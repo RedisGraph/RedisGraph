@@ -15,7 +15,7 @@
 #include "../arithmetic/arithmetic_expression.h"
 
 // Forward declaration
-static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identifiers);
+static AST_Validation _AST_ValidateDefinedIdentifiers(const cypher_astnode_t *node, rax *identifiers);
 
 inline static void _prepareIterateAll(rax *map, raxIterator *iter) {
 	raxStart(iter, map);
@@ -110,9 +110,9 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 	}
 }
 
-static void _AST_GetWithAliases(const cypher_astnode_t *node, rax *aliases) {
-	if(!node) return;
-	if(cypher_astnode_type(node) != CYPHER_AST_WITH) return;
+static AST_Validation _AST_GetWithAliases(const cypher_astnode_t *node, rax *aliases) {
+	if(!node) return AST_VALID;
+	if(cypher_astnode_type(node) != CYPHER_AST_WITH) return AST_VALID;
 	ASSERT(aliases != NULL);
 
 	uint num_with_projections = cypher_ast_with_nprojections(node);
@@ -131,6 +131,8 @@ static void _AST_GetWithAliases(const cypher_astnode_t *node, rax *aliases) {
 		}
 		raxInsert(aliases, (unsigned char *)alias, strlen(alias), NULL, NULL);
 	}
+
+	return AST_VALID;
 }
 
 static void _AST_GetWithReferences(const cypher_astnode_t *node, rax *identifiers) {
@@ -149,7 +151,7 @@ static void _AST_GetWithReferences(const cypher_astnode_t *node, rax *identifier
 }
 
 // extract identifiers / aliases from a procedure call
-static void _AST_GetProcCallAliases
+static AST_Validation _AST_GetProcCallAliases
 (
 	const cypher_astnode_t *node,
 	rax *identifiers
@@ -176,7 +178,10 @@ static void _AST_GetProcCallAliases
 			identifier = cypher_ast_identifier_get_name(exp_node);
 		}
 		ASSERT(identifiers != NULL);
-		raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
+		if(!raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL)) {
+			ErrorCtx_SetError("Variable `%s` already declared", identifier);
+			return AST_INVALID;
+		}
 	}
 
 	// if no YIELD is specified, collect the default projections
@@ -184,24 +189,30 @@ static void _AST_GetProcCallAliases
 		const char *proc_name =
 			cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(node));
 		ProcedureCtx *proc = Proc_Get(proc_name);
-		if(proc == NULL) return; // no such procedure
+		if(proc == NULL) return AST_VALID; // no such procedure
 
 		uint default_count = Procedure_OutputCount(proc);
 		for(uint i = 0; i < default_count; i ++) {
 			const char *output = Procedure_GetOutput(proc, i);
-			raxInsert(identifiers, (unsigned char *)output,
-					  strlen(output), NULL, NULL);
+			if(!raxInsert(identifiers, (unsigned char *)output,
+					  strlen(output), NULL, NULL)) {
+				Proc_Free(proc);
+				ErrorCtx_SetError("Variable `%s` already declared", output);
+				return AST_INVALID;
+			}
 		}
 		Proc_Free(proc);
 	}
+
+	return AST_VALID;
 }
 
 // UNWIND and WITH also form aliases, but don't need special handling for us yet.
-static void _AST_GetReturnAliases(const cypher_astnode_t *node, rax *aliases) {
+static AST_Validation _AST_GetReturnAliases(const cypher_astnode_t *node, rax *aliases) {
 	ASSERT(node && aliases && cypher_astnode_type(node) == CYPHER_AST_RETURN);
 
 	uint num_return_projections = cypher_ast_return_nprojections(node);
-	if(num_return_projections == 0) return;
+	if(num_return_projections == 0) return AST_VALID;
 
 	for(uint i = 0; i < num_return_projections; i ++) {
 		const cypher_astnode_t *child = cypher_ast_return_get_projection(node, i);
@@ -210,6 +221,8 @@ static void _AST_GetReturnAliases(const cypher_astnode_t *node, rax *aliases) {
 		const char *alias = cypher_ast_identifier_get_name(alias_node);
 		raxInsert(aliases, (unsigned char *)alias, strlen(alias), NULL, NULL);
 	}
+
+	return AST_VALID;
 }
 
 static void _CollectIdentifiers(const cypher_astnode_t *root, rax *projections) {
@@ -561,9 +574,7 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 	ProcedureCtx    *proc             =  NULL;
 	uint            *clause_indices   =  AST_GetClauseIndices(ast, CYPHER_AST_CALL);
 	uint            clause_count      =  array_len(clause_indices);
-	uint            start_offset      =  0;
 	rax             *identifiers      =  NULL;
-	rax             *defined_aliases  =  raxNew();
 
 	for(uint i = 0; i < clause_count; i ++) {
 		identifiers = raxNew();
@@ -619,19 +630,6 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 					res = AST_INVALID;
 					goto cleanup;
 				}
-				const cypher_astnode_t *ast_alias =
-					cypher_ast_projection_get_alias(proj);
-				if(ast_alias) {
-					const char *alias = cypher_ast_identifier_get_name(
-											ast_alias);
-					if(!raxInsert(identifiers, (unsigned char *)alias,
-								  strlen(alias), NULL, NULL)) {
-						ErrorCtx_SetError("Variable `%s` already declared",
-										  identifier);
-						res = AST_INVALID;
-						goto cleanup;
-					}
-				}
 
 				// make sure procedure is aware of output
 				if(!Procedure_ContainsOutput(proc, identifier)) {
@@ -656,28 +654,6 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 			}
 		}
 
-		// collect all entities that are bound before this CALL clause
-		uint clause_idx = clause_indices[i];
-		for(uint j = start_offset; j < clause_idx; j ++) {
-			const cypher_astnode_t *prev_clause = cypher_ast_query_get_clause(
-													  ast->root, j);
-			_AST_GetDefinedIdentifiers(prev_clause, defined_aliases);
-		}
-		start_offset = clause_idx;
-
-		raxIterator it;
-		_prepareIterateAll(identifiers, &it);
-		while(raxNext(&it)) {
-			int len = it.key_len;
-			unsigned char *alias = it.key;
-			// validate that no output identifier is previously defined
-			if(raxFind(defined_aliases, alias, len) != raxNotFound) {
-				ErrorCtx_SetError("%.*s already declared", len, alias);
-				res = AST_INVALID;
-				goto cleanup;
-			}
-		}
-
 		raxFree(identifiers);
 		identifiers = NULL;
 		Proc_Free(proc);
@@ -685,7 +661,6 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 	}
 
 cleanup:
-	raxFree(defined_aliases);
 	if(proc) Proc_Free(proc);
 	if(identifiers) raxFree(identifiers);
 	array_free(clause_indices);
@@ -859,7 +834,7 @@ static AST_Validation _Validate_MERGE_Clauses(const AST *ast) {
 		// Collect all entities that are bound before this MERGE clause.
 		for(uint j = start_offset; j < clause_idx; j ++) {
 			const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, j);
-			_AST_GetDefinedIdentifiers(clause, defined_aliases);
+			_AST_ValidateDefinedIdentifiers(clause, defined_aliases);
 		}
 		start_offset = clause_idx;
 
@@ -949,7 +924,7 @@ static AST_Validation _Validate_CREATE_Clauses(const AST *ast) {
 		// Collect all entities that are bound before this CREATE clause.
 		for(uint j = start_offset; j < clause_idx; j ++) {
 			const cypher_astnode_t *prev_clause = cypher_ast_query_get_clause(ast->root, j);
-			_AST_GetDefinedIdentifiers(prev_clause, defined_aliases);
+			_AST_ValidateDefinedIdentifiers(prev_clause, defined_aliases);
 		}
 		start_offset = clause_idx;
 
@@ -1003,7 +978,6 @@ static AST_Validation _Validate_UNWIND_Clauses
 	AST_Validation res               =  AST_VALID;
 	uint           *clause_indices   =  AST_GetClauseIndices(ast, CYPHER_AST_UNWIND);
 	uint           clause_count      =  array_len(clause_indices);
-	rax            *defined_aliases  =  NULL;
 
 	if(clause_count == 0) goto cleanup;
 
@@ -1025,39 +999,8 @@ static AST_Validation _Validate_UNWIND_Clauses
 		if(res != AST_VALID) goto cleanup;
 	}
 
-	// retrieve the variable introduced by each UNWIND clause and validate
-	// that it does not shadow a previously-declared variable
-	uint start_offset = 0;
-	defined_aliases = raxNew();
-	for(uint i = 0; i < clause_count; i ++) {
-		uint clause_idx = clause_indices[i];
-
-		// collect all entities that are bound before this UNWIND clause
-		for(uint j = start_offset; j < clause_idx; j ++) {
-			const cypher_astnode_t *prev_clause = cypher_ast_query_get_clause(
-													  ast->root, j);
-			_AST_GetDefinedIdentifiers(prev_clause, defined_aliases);
-		}
-		start_offset = clause_idx;
-
-		// validate that the UNWIND alias is not previously defined
-		const cypher_astnode_t *clause =
-			cypher_ast_query_get_clause(ast->root, clause_idx);
-		const cypher_astnode_t *alias_node =
-			cypher_ast_unwind_get_alias(clause);
-		const char *alias = cypher_ast_identifier_get_name(alias_node);
-
-		if(!raxInsert(defined_aliases, (unsigned char *)alias, strlen(alias),
-					  NULL, NULL)) {
-			ErrorCtx_SetError("%s already declared", alias);
-			res = AST_INVALID;
-			goto cleanup;
-		}
-	}
-
 cleanup:
 	array_free(clause_indices);
-	if(defined_aliases) raxFree(defined_aliases);
 	return res;
 }
 
@@ -1174,18 +1117,6 @@ static AST_Validation _ValidateQueryTermination(const AST *ast) {
 	return AST_VALID;
 }
 
-static void _AST_RegisterCallOutputs(const cypher_astnode_t *call_clause, rax *identifiers) {
-	const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
-	ProcedureCtx *proc = Proc_Get(proc_name);
-	ASSERT(proc != NULL);
-
-	unsigned int output_count = array_len(proc->output);
-	for(uint i = 0; i < output_count; i++) {
-		const char *name = Procedure_GetOutput(proc, i);
-		raxInsert(identifiers, (unsigned char *)name, strlen(name), NULL, NULL);
-	}
-}
-
 // Perform validations not constrained to a specific scope
 static AST_Validation _ValidateQuerySequence(const AST *ast) {
 
@@ -1248,7 +1179,7 @@ static AST_Validation _ValidateClauseOrder(const AST *ast) {
 	return AST_VALID;
 }
 
-static void _AST_Path_GetDefinedIdentifiers(const cypher_astnode_t *path, rax *identifiers) {
+static AST_Validation _AST_Path_GetDefinedIdentifiers(const cypher_astnode_t *path, rax *identifiers) {
 	/* Collect the aliases of named paths, nodes, and edges.
 	 * All more deeply-nested identifiers are referenced rather than defined,
 	 * and will not be collected. This enforces reference checking on aliases like 'fake' in:
@@ -1273,9 +1204,10 @@ static void _AST_Path_GetDefinedIdentifiers(const cypher_astnode_t *path, rax *i
 		raxInsert(identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
 	}
 
+	return AST_VALID;
 }
 
-static void _AST_Pattern_GetDefinedIdentifiers(const cypher_astnode_t *pattern, rax *identifiers) {
+static AST_Validation _AST_Pattern_GetDefinedIdentifiers(const cypher_astnode_t *pattern, rax *identifiers) {
 	/* Collect all aliases defined in a MATCH or CREATE pattern,
 	 * which is comprised of 1 or more paths. */
 	uint path_count = cypher_ast_pattern_npaths(pattern);
@@ -1284,51 +1216,57 @@ static void _AST_Pattern_GetDefinedIdentifiers(const cypher_astnode_t *pattern, 
 		// Collect aliases defined on each path.
 		_AST_Path_GetDefinedIdentifiers(path, identifiers);
 	}
+
+	return AST_VALID;
 }
 
-static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identifiers) {
-	if(!node) return;
+static AST_Validation _AST_ValidateDefinedIdentifiers(const cypher_astnode_t *node, rax *identifiers) {
+	if(!node) return AST_VALID;
 	cypher_astnode_type_t type = cypher_astnode_type(node);
 
 	if(type == CYPHER_AST_RETURN) {
 		/* Only collect aliases (which may be referenced in an ORDER BY)
 		 * from the RETURN clause, rather than all identifiers */
-		_AST_GetReturnAliases(node, identifiers);
+		return _AST_GetReturnAliases(node, identifiers);
 	} else if(type == CYPHER_AST_WITH) {
 		// Get alias if one is provided; otherwise use the expression identifier
-		_AST_GetWithAliases(node, identifiers);
+		return _AST_GetWithAliases(node, identifiers);
 	} else if(type == CYPHER_AST_CALL) {
 		// Get alias if one is provided; otherwise use the expression identifier
-		_AST_GetProcCallAliases(node, identifiers);
+		return _AST_GetProcCallAliases(node, identifiers);
 	} else if(type == CYPHER_AST_MATCH) {
 		/* Collect all identifiers defined by the pattern in the MATCH clause,
 		 * ignoring references in property maps and WHERE predicates. */
 		const cypher_astnode_t *match_pattern = cypher_ast_match_get_pattern(node);
-		_AST_Pattern_GetDefinedIdentifiers(match_pattern, identifiers);
+		return _AST_Pattern_GetDefinedIdentifiers(match_pattern, identifiers);
 	} else if(type == CYPHER_AST_MERGE) {
 		/* Collect all identifiers defined by the path in the MERGE clause,
 		 * ignoring references in property maps and ON CREATE / ON MATCH actions. */
 		const cypher_astnode_t *merge_path = cypher_ast_merge_get_pattern_path(node);
-		_AST_Path_GetDefinedIdentifiers(merge_path, identifiers);
+		return _AST_Path_GetDefinedIdentifiers(merge_path, identifiers);
 	} else if(type == CYPHER_AST_CREATE) {
 		/* Collect all identifiers defined by the pattern in the CREATE clause,
 		 * ignoring references in property maps.  */
 		const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(node);
-		_AST_Pattern_GetDefinedIdentifiers(pattern, identifiers);
+		return _AST_Pattern_GetDefinedIdentifiers(pattern, identifiers);
 	} else if(type == CYPHER_AST_UNWIND) {
 		/* UNWIND only defines its own alias, which is just 'defined' in the query:
 		 * UNWIND [ref_1, ref_2] AS defined RETURN defined */
 		const cypher_astnode_t *unwind_alias_node = cypher_ast_unwind_get_alias(node);
 		const char *unwind_alias = cypher_ast_identifier_get_name(unwind_alias_node);
-		raxInsert(identifiers, (unsigned char *)unwind_alias, strlen(unwind_alias), NULL, NULL);
-	} else if(type == CYPHER_AST_CALL) {
-		_AST_RegisterCallOutputs(node, identifiers);
+		if(!raxInsert(identifiers, (unsigned char *)unwind_alias, strlen(unwind_alias), NULL, NULL)) {
+			ErrorCtx_SetError("Variable `%s` already declared", unwind_alias);
+			return AST_INVALID;
+		}
+		return AST_VALID;
 	} else {
 		uint child_count = cypher_astnode_nchildren(node);
 		for(uint c = 0; c < child_count; c ++) {
 			const cypher_astnode_t *child = cypher_astnode_get_child(node, c);
-			_AST_GetDefinedIdentifiers(child, identifiers);
+			if(_AST_ValidateDefinedIdentifiers(child, identifiers) == AST_INVALID)
+				return AST_INVALID;
 		}
+		return AST_VALID;
 	}
 }
 
@@ -1345,10 +1283,12 @@ static void _AST_GetReferredIdentifiers(const cypher_astnode_t *node, rax *ident
 static AST_Validation _Validate_Aliases_DefinedInClause(const cypher_astnode_t *clause,
 														rax *defined_aliases) {
 	AST_Validation res = AST_VALID;
-	rax *referred_identifiers = raxNew();
 
 	// Get defined identifiers.
-	_AST_GetDefinedIdentifiers(clause, defined_aliases);
+	res = _AST_ValidateDefinedIdentifiers(clause, defined_aliases);
+	if(res == AST_INVALID) return AST_INVALID;
+
+	rax *referred_identifiers = raxNew();
 
 	// Get referred identifiers.
 	_AST_GetReferredIdentifiers(clause, referred_identifiers);
@@ -1390,7 +1330,7 @@ static AST_Validation _Validate_Aliases_Defined(const AST *ast) {
 			// Each WITH clause marks the beginning of a new scope for defined aliases.
 			raxFree(defined_aliases);
 			defined_aliases = raxNew();
-			_AST_GetDefinedIdentifiers(clause, defined_aliases);
+			_AST_ValidateDefinedIdentifiers(clause, defined_aliases);
 		}
 	}
 	raxFree(defined_aliases);
@@ -1797,4 +1737,3 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 
 	return res;
 }
-
