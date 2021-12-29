@@ -73,23 +73,42 @@ AggregateResult AGG_SUM(SIValue *argv, int argc) {
 typedef struct {
 	size_t count;
 	double total;
+	bool overflow;
 } _agg_AvgCtx;
 
 AggregateResult AGG_AVG(SIValue *argv, int argc) {
 	AggregateCtx *ctx = argv[1].ptrval;
-	// On the first invocation, initialize the context.
+	// on the first invocation, initialize the context
 	if(ctx->private_ctx == NULL) ctx->private_ctx = rm_calloc(1, sizeof(_agg_AvgCtx));
 
-	SIValue v = argv[0];
-	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
+	SIValue si_val = argv[0];
+	if(SI_TYPE(si_val) == T_NULL) return AGGREGATE_OK;
+	long double v = SI_GET_NUMERIC(si_val);
 
 	_agg_AvgCtx *avg_ctx = ctx->private_ctx;
 
-	// If we're uniquing inputs, return early if this value has already been seen.
-	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return AGGREGATE_OK;
+	// if we're uniquing inputs, return early if this value has already been seen
+	if(ctx->hashSet && Set_Add(ctx->hashSet, si_val) == false) return AGGREGATE_OK;
 
-	avg_ctx->count ++;
-	avg_ctx->total += SI_GET_NUMERIC(v);
+	avg_ctx->count ++; // increment the count
+
+	// if we've already overflowed or adding the current value
+	// will cause us to overflow, use the incremental averaging algorithm
+	if(avg_ctx->overflow || // already reached overflow
+				(signbit(avg_ctx->total) == signbit(v) && // values have the same MSB, adding will enlarge the total
+				 (fabs(avg_ctx->total) > (DBL_MAX - fabs(v))))) { // about to overflow
+		// divide the total by the new count
+		long double total = avg_ctx->total /= (long double) avg_ctx->count;
+		// if this is not the first call using the incremental algorithm,
+		// multiply the total by the previous count
+		if(avg_ctx->overflow) total *= (long double)(avg_ctx->count - 1);
+		// add v/count to total
+		total += (v / (long double)avg_ctx->count);
+		avg_ctx->total = total;
+		avg_ctx->overflow = true;
+	} else { // no overflow
+		avg_ctx->total += v;
+	}
 
 	return AGGREGATE_OK;
 }
@@ -97,8 +116,15 @@ AggregateResult AGG_AVG(SIValue *argv, int argc) {
 void AvgFinalize(void *ctx_ptr) {
 	AggregateCtx *ctx = ctx_ptr;
 	_agg_AvgCtx *avg_ctx = ctx->private_ctx;
-	if(avg_ctx->count > 0) Aggregate_SetResult(ctx, SI_DoubleVal(avg_ctx->total / avg_ctx->count));
-	else Aggregate_SetResult(ctx, SI_DoubleVal(0));
+	if(avg_ctx->count > 0) {
+		if(avg_ctx->overflow) {
+			// used incremental algorithm due to overflow, 'total' is the average
+			Aggregate_SetResult(ctx, SI_DoubleVal(avg_ctx->total));
+		} else {
+			// used traditional algorithm, divide total by count
+			Aggregate_SetResult(ctx, SI_DoubleVal(avg_ctx->total / avg_ctx->count));
+		}
+	} else Aggregate_SetResult(ctx, SI_DoubleVal(0));
 }
 
 

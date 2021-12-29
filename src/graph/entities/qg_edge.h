@@ -10,7 +10,6 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "../../util/branch_pred.h"
 
 struct QGEdge {
 	const char *alias;      /* User-provided alias attached to edge. */

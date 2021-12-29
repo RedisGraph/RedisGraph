@@ -23,7 +23,7 @@ static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 											   const SIValue v) {
 	switch(SI_TYPE(v)) {
 	case T_STRING:
-		RedisModule_ReplyWithSimpleString(ctx, v.stringval);
+		RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
 		return;
 	case T_INT64:
 		RedisModule_ReplyWithLongLong(ctx, v.longval);
@@ -71,7 +71,7 @@ static void _ResultSet_VerboseReplyWithProperties(RedisModuleCtx *ctx, GraphCont
 		EntityProperty prop = ENTITY_PROPS(e)[i];
 		// Emit the actual string
 		const char *prop_str = GraphContext_GetAttributeString(gc, prop.id);
-		RedisModule_ReplyWithSimpleString(ctx, prop_str);
+		RedisModule_ReplyWithStringBuffer(ctx, prop_str, strlen(prop_str));
 		// Emit the value
 		_ResultSet_VerboseReplyWithSIValue(ctx, gc, prop.value);
 	}
@@ -104,7 +104,7 @@ static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	for(int i = 0; i < lbls_count; i++) {
 		Schema *s = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
 		const char *lbl_name = Schema_GetName(s);
-		RedisModule_ReplyWithSimpleString(ctx, lbl_name);
+		RedisModule_ReplyWithStringBuffer(ctx, lbl_name, strlen(lbl_name));
 	}
 
 	// [properties, [properties]]
@@ -206,6 +206,6 @@ void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns,
 	RedisModule_ReplyWithArray(ctx, columns_len);
 	for(uint i = 0; i < columns_len; i++) {
 		// Emit the identifier string associated with the column
-		RedisModule_ReplyWithSimpleString(ctx, columns[i]);
+		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
 	}
 }
