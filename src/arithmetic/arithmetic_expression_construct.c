@@ -790,13 +790,17 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 		return _AR_ExpFromMapProjection(expr);
 	} else if(t == CYPHER_AST_LABELS_OPERATOR) {
 		return _AR_ExpFromLabelsOperatorFunction(expr);
-	}
-	else if(t == CYPHER_AST_REDUCE) {
+	} else if(t == CYPHER_AST_REDUCE) {
 		return _AR_ExpNodeFromReduceFunction(expr);
+	} else if(t == CYPHER_AST_PATTERN_PATH) {
+		return _AR_ExpFromNamedPath(expr);
+	} else if(t == CYPHER_AST_PATTERN_COMPREHENSION) {
+		AST *ast = QueryCtx_GetAST();
+		const char *alias = AST_GetEntityName(ast, expr);
+		return AR_EXP_NewVariableOperandNode(alias);
 	} else {
 		/*
 		   Unhandled types:
-		   CYPHER_AST_PATTERN_COMPREHENSION
 		*/
 		Error_UnsupportedASTNodeType(expr);
 		return AR_EXP_NewConstOperandNode(SI_NullVal());

@@ -3,7 +3,7 @@
 #include "../util/arr.h"
 
 // Forward declerations:
-static void _AST_MapReferencedEntitiesInPath(AST *ast, const cypher_astnode_t *path);
+static void _AST_MapReferencedEntitiesInPath(AST *ast, const cypher_astnode_t *path, bool override_force_mapping);
 
 // Adds an identifier or an alias to the reference map.
 static inline void _AST_UpdateRefMap(AST *ast, const char *name) {
@@ -20,10 +20,18 @@ static void _AST_MapExpression(AST *ast, const cypher_astnode_t *exp) {
 		_AST_UpdateRefMap(ast, identifier_name);
 	} else if(type == CYPHER_AST_PATTERN_PATH) {
 		// In case of pattern filter.
-		_AST_MapReferencedEntitiesInPath(ast, exp);
+		_AST_MapReferencedEntitiesInPath(ast, exp, false);
+	} else if(type == CYPHER_AST_NAMED_PATH) {
+		const cypher_astnode_t *pattern = cypher_ast_named_path_get_path(exp);
+		// In case of named path.
+		_AST_MapReferencedEntitiesInPath(ast, pattern, true);
 	} else if(type == CYPHER_AST_SHORTEST_PATH) {
 		// Reference all entity names in a shortest path.
-		_AST_MapReferencedEntitiesInPath(ast, exp);
+		_AST_MapReferencedEntitiesInPath(ast, exp, true);
+	} else if(type == CYPHER_AST_PATTERN_COMPREHENSION) {
+		const cypher_astnode_t *pattern = cypher_ast_pattern_comprehension_get_pattern(exp);
+		// Reference all entity names in pattern comprehension.
+		_AST_MapReferencedEntitiesInPath(ast, pattern, true);
 	} else {
 		// Recurse over children.
 		uint child_count = cypher_astnode_nchildren(exp);
@@ -96,12 +104,12 @@ static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge, bool 
 }
 
 // Maps entities in a given path.
-static void _AST_MapReferencedEntitiesInPath(AST *ast, const cypher_astnode_t *path) {
+static void _AST_MapReferencedEntitiesInPath(AST *ast, const cypher_astnode_t *path, bool override_force_mapping) {
 	uint path_len = cypher_ast_pattern_path_nelements(path);
 	// Check if the path is a named path or shortest path.
 	// If so, map all entities, else map only referenced entities.
 	const cypher_astnode_type_t type = cypher_astnode_type(path);
-	bool force_mapping = (type == CYPHER_AST_NAMED_PATH || type == CYPHER_AST_SHORTEST_PATH);
+	bool force_mapping = override_force_mapping || (type == CYPHER_AST_NAMED_PATH || type == CYPHER_AST_SHORTEST_PATH);
 	// Node are in even positions.
 	for(uint i = 0; i < path_len; i += 2)
 		_AST_MapReferencedNode(ast, cypher_ast_pattern_path_get_element(path, i), force_mapping);
@@ -117,7 +125,7 @@ static void _AST_MapMatchClauseReferences(AST *ast, const cypher_astnode_t *matc
 	uint path_count = cypher_ast_pattern_npaths(pattern);
 	for(uint i = 0; i < path_count; i++) {
 		const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
-		_AST_MapReferencedEntitiesInPath(ast, path);
+		_AST_MapReferencedEntitiesInPath(ast, path, false);
 	}
 
 	// Where clause.
@@ -131,7 +139,7 @@ static void _AST_MapCreateClauseReferences(AST *ast, const cypher_astnode_t *cre
 	uint path_count = cypher_ast_pattern_npaths(pattern);
 	for(uint i = 0; i < path_count; i++) {
 		const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
-		_AST_MapReferencedEntitiesInPath(ast, path);
+		_AST_MapReferencedEntitiesInPath(ast, path, false);
 	}
 }
 
@@ -214,7 +222,7 @@ static void _AST_MapDeleteClauseReferences(AST *ast, const cypher_astnode_t *del
 static void _AST_MapMergeClauseReference(AST *ast, const cypher_astnode_t *merge_clause) {
 	// Collect implicitly filtered entities.
 	const cypher_astnode_t *merge_path = cypher_ast_merge_get_pattern_path(merge_clause);
-	_AST_MapReferencedEntitiesInPath(ast, merge_path);
+	_AST_MapReferencedEntitiesInPath(ast, merge_path, false);
 
 	// Map modified entities, either by ON MATCH or ON CREATE clause.
 	uint merge_actions = cypher_ast_merge_nactions(merge_clause);
