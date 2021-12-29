@@ -36,6 +36,7 @@
         (GrB_Matrix) u, false,      /* u, never transposed         */       \
         (GrB_Matrix) v, false,      /* v, never transposed         */       \
         false,                      /* eWiseMult                   */       \
+        false, NULL, NULL,          /* not eWiseUnion              */       \
         Context) ;
 
 //------------------------------------------------------------------------------

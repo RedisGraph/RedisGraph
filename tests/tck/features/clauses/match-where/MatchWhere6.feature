@@ -30,7 +30,6 @@
 
 Feature: MatchWhere6 - Filter optional matches
 
-  @skip
   Scenario: [1] Filter node with node label predicate on multi variables with multiple bindings after MATCH and OPTIONAL MATCH
     Given an empty graph
     And having executed:
@@ -53,7 +52,6 @@ Feature: MatchWhere6 - Filter optional matches
       | 'A'    |
     And no side effects
 
-  @skip
   Scenario: [2] Filter node with false node label predicate after OPTIONAL MATCH
     Given an empty graph
     And having executed:

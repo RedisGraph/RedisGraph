@@ -84,7 +84,6 @@ void GB_iso_expand          // expand an iso scalar into an entire array
 
         case GB_16BYTE : // double complex, and UDT size 16
         {
-
             GB_blob16 a0 = (*((GB_blob16 *) scalar)) ;
             GB_blob16 *restrict Z = (GB_blob16 *) X ;
             #pragma omp parallel for num_threads(nthreads) schedule(static)
@@ -92,16 +91,6 @@ void GB_iso_expand          // expand an iso scalar into an entire array
             {
                 Z [p] = a0 ;
             }
-
-//          uint64_t *restrict a = (uint64_t *) scalar ;
-//          uint64_t *restrict Z = (uint64_t *) X ;
-//          #pragma omp parallel for num_threads(nthreads) schedule(static)
-//          for (p = 0 ; p < n ; p++)
-//          {
-//              Z [2*p  ] = a [0] ;
-//              Z [2*p+1] = a [1] ;
-//          }
-
         }
         break ;
 

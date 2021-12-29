@@ -86,7 +86,7 @@ void RdbLoadNodes_v8(RedisModuleIO *rdb, GraphContext *gc, uint64_t node_count) 
 		// * (labels) x M
 		// M will currently always be 0 or 1
 		uint64_t l = (nodeLabelCount) ? RedisModule_LoadUnsigned(rdb) : GRAPH_NO_LABEL;
-		Serializer_Graph_SetNode(gc->g, id, l, &n);
+		Serializer_Graph_SetNode(gc->g, id, &l, nodeLabelCount, &n);
 
 		_RdbLoadEntity(rdb, gc, (GraphEntity *)&n);
 	}
@@ -118,7 +118,9 @@ void RdbLoadEdges_v8(RedisModuleIO *rdb, GraphContext *gc, uint64_t edge_count) 
 		NodeID srcId = RedisModule_LoadUnsigned(rdb);
 		NodeID destId = RedisModule_LoadUnsigned(rdb);
 		uint64_t relation = RedisModule_LoadUnsigned(rdb);
-		Serializer_Graph_SetEdge(gc->g, gc->decoding_context->multi_edge[relation], edgeId, srcId, destId, relation, &e);
+		Serializer_Graph_SetEdge(gc->g,
+				gc->decoding_context->multi_edge[relation], edgeId, srcId,
+				destId, relation, &e);
 		_RdbLoadEntity(rdb, gc, (GraphEntity *)&e);
 	}
 }
@@ -131,3 +133,4 @@ void RdbLoadDeletedEdges_v8(RedisModuleIO *rdb, GraphContext *gc, uint64_t delet
 		Serializer_Graph_MarkEdgeDeleted(gc->g, id);
 	}
 }
+

@@ -8,7 +8,6 @@ Patterns are fully supported.
 ## Types
 ### Structural types
 + Nodes
-    - Nodes are fully supported save that a node can only be associated with a single label.
 + Relationships
 + Path variables (alternating sequence of nodes and relationships).
 
@@ -142,6 +141,8 @@ We do not support any of these properties at the type level, meaning nodes and r
 + exists
 + any
 + all
++ single
++ none
 
 ### Expression functions
 + case...when

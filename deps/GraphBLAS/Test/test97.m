@@ -33,7 +33,7 @@ rng ('default') ;
         Work (k+1).scalar = 1 ;
     end
 
-    C1 = GB_mex_assign  (C, Work) ;
+    C1 = GB_mex_assign  (C, Work) ; % WORK_ASSIGN
 
     C2 = C ;
     for k = 1:ntrials

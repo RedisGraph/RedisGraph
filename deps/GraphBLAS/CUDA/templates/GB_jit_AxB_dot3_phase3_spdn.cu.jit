@@ -19,7 +19,6 @@ const char* const templates_GB_jit_AxB_dot3_phase3_spdn_cu = "templates/GB_jit_A
 "#include <limits>\n"
 "#include <cstdint>\n"
 "#include <stdio.h>\n"
-"#include \"mySemiRing.h\"\n"
 "#include \"matrix.h\"\n"
 "\n"
 "template< typename T_C, typename T_A, typename T_B, typename T_X, typename T_Y, typename T_Z>\n"

@@ -19,11 +19,11 @@
 
 #define FREE_WORK                                               \
 {                                                               \
-    REMOVE (Cp) ; if (Cp != NULL) mxFree (Cp) ; Cp = NULL ;     \
-    REMOVE (Ch) ; if (Ch != NULL) mxFree (Ch) ; Ch = NULL ;     \
-    REMOVE (Cb) ; if (Cb != NULL) mxFree (Cb) ; Cb = NULL ;     \
-    REMOVE (Ci) ; if (Ci != NULL) mxFree (Ci) ; Ci = NULL ;     \
-    REMOVE (Cx) ; if (Cx != NULL) mxFree (Cx) ; Cx = NULL ;     \
+    if (Cp != NULL) mxFree (Cp) ; Cp = NULL ;     \
+    if (Ch != NULL) mxFree (Ch) ; Ch = NULL ;     \
+    if (Cb != NULL) mxFree (Cb) ; Cb = NULL ;     \
+    if (Ci != NULL) mxFree (Ci) ; Ci = NULL ;     \
+    if (Cx != NULL) mxFree (Cx) ; Cx = NULL ;     \
     GrB_Matrix_free_(&C) ;                                      \
 }
 

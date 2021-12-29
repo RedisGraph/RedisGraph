@@ -51,7 +51,7 @@ class TuplesTest: public ::testing::TestWithParam<std::tuple<int, bool>> {
 		}
 
 		GrB_Matrix_build_UINT64(A, I, J, X, n, GrB_FIRST_UINT64);
-		GrB_Matrix_wait(&A);
+		GrB_Matrix_wait(A, GrB_MATERIALIZE);
 
 		free(X);
 		free(I);
@@ -71,7 +71,7 @@ class TuplesTest: public ::testing::TestWithParam<std::tuple<int, bool>> {
 		// to avoid future conversion from HYPER-SPARSE, BITMAP, FULL to SPARSE
 		// we set matrix format at creation time
 		GxB_Matrix_Option_set(A, GxB_SPARSITY_CONTROL, std::get<0>(GetParam()));
-		GrB_Matrix_wait(&A);
+		GrB_Matrix_wait(A, GrB_MATERIALIZE);
 
 		bool iso;
 		GxB_Matrix_iso(&iso, A); // returns iso status of a matrix
@@ -114,7 +114,7 @@ TEST_P(TuplesTest, RandomVectorTest) {
 
 	GrB_Index I_expected[nvals];
 	GrB_Vector_extractTuples_BOOL(I_expected, NULL, &nvals, A);
-	GrB_Vector_wait(&A);
+	GrB_Vector_wait(A, GrB_MATERIALIZE);
 
 	//--------------------------------------------------------------------------
 	// Get an iterator over all nonzero elements.
@@ -451,7 +451,7 @@ TEST_P(TuplesTest, IteratorJumpToRowTest) {
 		val = indices[i][2];
 		GrB_Matrix_setElement_UINT64(A, val, row, col);
 	}
-	GrB_Matrix_wait(&A);
+	GrB_Matrix_wait(A, GrB_MATERIALIZE);
 
 	bool iso;
 	GxB_Matrix_iso(&iso, A); // returns iso status of a matrix

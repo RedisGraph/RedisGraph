@@ -61,7 +61,6 @@ Feature: Graph7 - Dynamic property access
       | +nodes      | 1 |
       | +properties | 1 |
 
-  @skip
   Scenario: [3] Use dynamic property lookup based on parameters when there is lhs type information
     Given any graph
     And parameters are:

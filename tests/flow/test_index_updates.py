@@ -43,14 +43,14 @@ class testIndexUpdatesFlow(FlowTestsBase):
 
     def build_indices(self):
         for field in fields:
-            redis_graph.redis_con.execute_command("GRAPH.QUERY", GRAPH_ID, "CREATE INDEX ON :label_a(%s)" % (field))
-            redis_graph.redis_con.execute_command("GRAPH.QUERY", GRAPH_ID, "CREATE INDEX ON :label_b(%s)" % (field))
+            redis_graph.query("CREATE INDEX ON :label_a(%s)" % (field))
+            redis_graph.query("CREATE INDEX ON :label_b(%s)" % (field))
 
     # Validate that all properties are indexed
     def validate_indexed(self):
         for field in fields:
             resp = redis_graph.execution_plan("""MATCH (a:label_a) WHERE a.%s > 0 RETURN a""" % (field))
-            self.env.assertIn('Index Scan', resp)
+            self.env.assertIn('Node By Index Scan', resp)
 
     # So long as 'unique' is not modified, label_a.unique will always be even and label_b.unique will always be odd
     def validate_unique(self):
@@ -70,7 +70,7 @@ class testIndexUpdatesFlow(FlowTestsBase):
     def validate_doubleval(self):
         for label in labels:
             resp = redis_graph.execution_plan("""MATCH (a:%s) WHERE a.doubleval < 100 RETURN a.doubleval ORDER BY a.doubleval""" % (label))
-            self.env.assertIn('Index Scan', resp)
+            self.env.assertIn('Node By Index Scan', resp)
             indexed_result = redis_graph.query("""MATCH (a:%s) WHERE a.doubleval < 100 RETURN a.doubleval ORDER BY a.doubleval""" % (label))
             scan_result = redis_graph.query("""MATCH (a:%s) RETURN a.doubleval ORDER BY a.doubleval""" % (label))
 
@@ -85,7 +85,7 @@ class testIndexUpdatesFlow(FlowTestsBase):
     def validate_intval(self):
         for label in labels:
             resp = redis_graph.execution_plan("""MATCH (a:%s) WHERE a.intval > 0 RETURN a.intval ORDER BY a.intval""" % (label))
-            self.env.assertIn('Index Scan', resp)
+            self.env.assertIn('Node By Index Scan', resp)
             indexed_result = redis_graph.query("""MATCH (a:%s) WHERE a.intval > 0 RETURN a.intval ORDER BY a.intval""" % (label))
             scan_result = redis_graph.query("""MATCH (a:%s) RETURN a.intval ORDER BY a.intval""" % (label))
 
@@ -170,7 +170,7 @@ class testIndexUpdatesFlow(FlowTestsBase):
         # Query the index for the entity
         query = """MATCH (a:NEW {v: 5}) RETURN a"""
         plan = redis_graph.execution_plan(query)
-        self.env.assertIn("Index Scan", plan)
+        self.env.assertIn("Node By Index Scan", plan)
         result = redis_graph.query(query)
         # No entities should be returned
         expected_result = []

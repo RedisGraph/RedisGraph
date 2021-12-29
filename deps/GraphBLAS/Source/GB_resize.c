@@ -97,7 +97,7 @@ GrB_Info GB_resize              // change the size of a matrix
 
         // get the old and new dimensions
         int64_t anz_new = 1 ;
-        bool ok = GB_Index_multiply ((GrB_Index *) &anz_new,
+        bool ok = GB_int64_multiply ((GrB_Index *) &anz_new,
             vlen_new, vdim_new) ;
         if (!ok) anz_new = 1 ;
         size_t nzmax_new = GB_IMAX (anz_new, 1) ;
@@ -281,8 +281,15 @@ GrB_Info GB_resize              // change the size of a matrix
         // if vlen is shrinking, delete entries outside the new matrix
         if (vlen_new < vlen_old)
         { 
-            GB_OK (GB_selector (NULL /* A in-place */, GB_RESIZE_opcode, NULL,
-                false, A, vlen_new-1, NULL, Context)) ;
+            GB_OK (GB_selector (
+                NULL,                   // A in-place
+                GB_ROWLE_idxunop_code,  // use the opcode only
+                NULL,                   // no operator, just opcode is needed
+                false,                  // flipij is false
+                A,                      // input/output matrix
+                vlen_new-1,             // ithunk
+                NULL,                   // no Thunk GrB_Scalar
+                Context)) ;
         }
 
         //----------------------------------------------------------------------
@@ -296,7 +303,9 @@ GrB_Info GB_resize              // change the size of a matrix
         // conform the matrix to its desired sparsity structure
         //----------------------------------------------------------------------
 
-        return (GB_conform (A, Context)) ;
+        info = GB_conform (A, Context) ;
+        ASSERT (GB_IMPLIES (info == GrB_SUCCESS, A->nvec_nonempty >= 0)) ;
+        return (info) ;
     }
 }
 

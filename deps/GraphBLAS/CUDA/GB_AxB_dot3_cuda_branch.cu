@@ -18,9 +18,9 @@ bool GB_AxB_dot3_cuda_branch
 )
 {
         // very rough estimate of the work to do
-        double adeg = ((double) GB_NNZ (A)) / ((double) GB_IMAX (1, A->nvec)) ;
-        double bdeg = ((double) GB_NNZ (B)) / ((double) GB_IMAX (1, B->nvec)) ;
-        double work = GB_NNZ (M) * GB_IMIN (adeg, bdeg) ;
+        double adeg = ((double) GB_nnz (A)) / ((double) GB_IMAX (1, A->nvec)) ;
+        double bdeg = ((double) GB_nnz (B)) / ((double) GB_IMAX (1, B->nvec)) ;
+        double work = GB_nnz (M) * GB_IMIN (adeg, bdeg) ;
 
         // TODO if A or B are not accessed (first, 2nd, or pair ops)
         // then the type if A can be user-defined here, for CUDA.
@@ -33,12 +33,14 @@ bool GB_AxB_dot3_cuda_branch
         // that are not built-in, but consist solely of built-in types and
         // operators (such as BOR_BSHIFT on INT32 inputs).
 
-        int ngpus_to_use = GB_ngpus_to_use (work) ;
+        int ngpus_to_use = 1 ; //GB_ngpus_to_use (work) ;)
         GBURBLE (" work:%g gpus:%d ", work, ngpus_to_use) ;
         if (ngpus_to_use > 0
             && (semiring->header_size == 0)     // semiring is built-in
             && (A->type->code != GB_UDT_code)
-            && (B->type->code != GB_UDT_code))
+            && (B->type->code != GB_UDT_code)
+            && !A->iso && !B->iso
+            && !GB_IS_BITMAP (A) && !GB_IS_BITMAP (B))
         {
             return true;
         }

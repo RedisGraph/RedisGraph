@@ -82,7 +82,11 @@ mxArray *gb_export_to_mxstruct  // return exported built-in struct G
     //--------------------------------------------------------------------------
 
     // TODO: this is done in GxB*export* and can be removed here
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK1 (A, GrB_Matrix_wait (&A)) ;
+    #else
+    OK1 (A, GrB_Matrix_wait (A, GrB_MATERIALIZE)) ;
+    #endif
 
     //--------------------------------------------------------------------------
     // get the sparsity_status and CSR/CSC format

@@ -152,7 +152,6 @@ name = sprintf ('%s_%s_%s', addop, multop, fname) ;
 % function names
 fprintf (f, 'define(`_Adot2B'', `_Adot2B__%s'')\n', name) ;
 fprintf (f, 'define(`_Adot3B'', `_Adot3B__%s'')\n', name) ;
-fprintf (f, 'define(`_Adot4B'', `_Adot4B__%s'')\n', name) ;
 fprintf (f, 'define(`_Asaxpy3B'', `_Asaxpy3B__%s'')\n', name) ;
 fprintf (f, 'define(`_Asaxpy3B_M'', `_Asaxpy3B_M__%s'')\n', name) ;
 fprintf (f, 'define(`_Asaxpy3B_noM'', `_Asaxpy3B_noM__%s'')\n', name) ;
@@ -281,24 +280,38 @@ else
 end
 
 if (ztype_is_real)
-    if (omp_atomic || is_any)
-        % on x86: all built-in real monoids are atomic.
-        % The ANY monoid is atomic on any architecture.
-        % MIN, MAX, EQ, XNOR are implemented with atomic compare/exchange.
-        fprintf (f, 'define(`GB_has_atomic'', `1'')\n') ;
+    % on x86: all built-in real monoids are atomic.
+    % The ANY monoid is atomic on any architecture.
+    % MIN, MAX, EQ, XNOR are implemented with atomic compare/exchange.
+    fprintf (f, 'define(`GB_has_atomic'', `1'')\n') ;
+    if (is_any)
+        % disable the ANY monoid for saxpy4
+        fprintf (f, 'define(`_Asaxpy4B'', `_Asaxpy4B__%s'')\n', '(none)') ;
+        fprintf (f, 'define(`if_saxpy4_enabled'', `#if 0'')\n') ;
     else
-        %% % no built-in OpenMP atomic pragma for this monoid.
-        %% % Do not use atomic compare/exchange unless on the x86.
-        %% fprintf (f, 'define(`GB_has_atomic'', `GB_X86_64'')\n') ;
-        fprintf (f, 'define(`GB_has_atomic'', `1'')\n') ;
+        fprintf (f, 'define(`_Asaxpy4B'', `_Asaxpy4B__%s'')\n', name) ;
+        fprintf (f, 'define(`if_saxpy4_enabled'', `#if 1'')\n') ;
     end
 else
     % complex monoids are not atomic, except for 'plus'
     if (isequal (addop, 'plus'))
         fprintf (f, 'define(`GB_has_atomic'', `1'')\n') ;
+        fprintf (f, 'define(`_Asaxpy4B'', `_Asaxpy4B__%s'')\n', name) ;
+        fprintf (f, 'define(`if_saxpy4_enabled'', `#if 1'')\n') ;
     else
         fprintf (f, 'define(`GB_has_atomic'', `0'')\n') ;
+        fprintf (f, 'define(`_Asaxpy4B'', `_Asaxpy4B__%s'')\n', '(none)') ;
+        fprintf (f, 'define(`if_saxpy4_enabled'', `#if 0'')\n') ;
     end
+end
+
+if (is_any)
+    % dot4 is disabled for the ANY monoid
+    fprintf (f, 'define(`_Adot4B'', `_Adot4B__%s'')\n', '(none)') ;
+    fprintf (f, 'define(`if_dot4_enabled'', `#if 0'')\n') ;
+else
+    fprintf (f, 'define(`_Adot4B'', `_Adot4B__%s'')\n', name) ;
+    fprintf (f, 'define(`if_dot4_enabled'', `#if 1'')\n') ;
 end
 
 % firsti multiply operator
@@ -530,113 +543,28 @@ else
     need_mult_typecast = true ;
 end
 
-% create the bitmap multiply-add statement:
-% The bitmap_multadd (cb,cx,exists,ax,bx) macro computes does the following.
-% The value of cx has been initialized to the identity value of the monoid, so
-% cx += ax*bx can always be used (except for the ANY monoid).
-%
-%   if (exists)
-%       if (cb == 0)
-%           cx = ax * bx
-%           cb = 1
-%       else
-%           cx += ax * bx
-
-mult2 = strrep (mult,  'xarg', 'ax') ;
-mult2 = strrep (mult2, 'yarg', 'bx') ;
-xinit = ';' ;
-xload = ';' ;
+% determine the identity byte
 idbyte = '' ;
-if (need_mult_typecast)
-    % the result of the multiplier must be explicitly typcasted
-    mult2 = sprintf ('((%s) (%s))', ztype, mult2) ;
-else
-    mult2 = sprintf ('(%s)', mult2) ;
-end
 
 switch (addop)
 
     % any monoid
     case { 'any' }
-        if (isequal (multop, 'pair'))
-            s = ' ' ;
-        else
-            s = sprintf ('if (exists && !cb) { cx = %s ; }', mult2) ;
-        end
 
     % boolean monoids (except eq / lxnor)
     case { 'lor' }
-        % TODO: should this be: cx ||= exists && %s ?
-        s = sprintf ('cx |= exists & %s', mult2) ;
         idbyte = '0' ;
     case { 'land' }
-        % TODO: should this be: cx &&= !exists || %s ?
-        s = sprintf ('cx &= ~exists | %s', mult2) ;
         idbyte = '1' ;
     case { 'lxor' }
-        if (isequal (multop, 'pair'))
-            s = sprintf ('cx ^= exists') ;
-        else
-            % TODO: should this be: cx ^= exists && %s ?
-            s = sprintf ('cx ^= exists & %s', mult2) ;
-        end
         idbyte = '0' ;
 
     % min/max monoids:
     case { 'min' }
-        if (codegen_contains (ztype, 'int'))
-            % min for signed or unsigned integers
-            if (t_is_simple)
-                s = sprintf ('if (exists && cx > %s) { cx = %s ; }', ...
-                    mult2, mult2) ;
-            else
-                s = sprintf (...
-                    '%s t = %s ; if (exists && cx > t) { cx = t ; }', ...
-                    ztype, mult2) ;
-            end
-        else
-            % min for float or double, with omitnan property
-            if (t_is_simple)
-                s = sprintf ( ...
-                'if (exists && !isnan (%s) && !islessequal (cx, %s)) { cx = %s ; }', ...
-                mult2, mult2, mult2) ;
-            elseif (t_is_nonnan)
-                s = sprintf ('%s t = %s ; if (exists && !islessequal (cx, t)) { cx = t ; } ', ...
-                ztype, mult2) ;
-            else
-                s = sprintf ('%s t = %s ; if (exists && !isnan (t) && !islessequal (cx, t)) { cx = t ; }', ...
-                ztype, mult2) ;
-            end
-        end
         if (codegen_contains (ztype, 'uint'))
             idbyte = '0xFF' ;
         end
     case { 'max' }
-        if (codegen_contains (ztype, 'int'))
-            % max for signed or unsigned integers
-            if (t_is_simple)
-                s = sprintf ('if (exists && cx < %s) { cx = %s ; }', ...
-                mult2, mult2) ;
-            else
-                s = sprintf ('%s t = %s ; if (exists && cx < t) { cx = t ; }', ...
-                ztype, mult2) ;
-            end
-        else
-            % max for float or double, with omitnan property
-            if (t_is_simple)
-                s = sprintf (...
-                'if (exists && !isnan (%s) && !isgreaterequal (cx, %s)) { cx = %s ; }', ...
-                mult2, mult2, mult2) ;
-            elseif (t_is_nonnan)
-                s = sprintf (...
-                '%s t = %s ; if (exists && !isgreaterequal (cx, t)) { cx = t ; }', ...
-                ztype, mult2) ;
-            else
-                s = sprintf (...
-                '%s t = %s ; if (exists && !isnan (t) && !isgreaterequal (cx, t)) { cx = t ; }', ...
-                ztype, mult2) ;
-            end
-        end
         if (codegen_contains (ztype, 'uint'))
             idbyte = '0' ;
         end
@@ -644,59 +572,21 @@ switch (addop)
     % plus monoid: special cases for some multipliers
     case { 'plus' }
         idbyte = '0' ;
-        if (ztype_is_real)
-            if (isequal (multop, 'times'))
-                % X = {0,bx}
-                xinit = sprintf ('%s X [2] = {0,0}', ztype) ;
-                xload = 'X [1] = bx' ;
-                if (need_mult_typecast)
-                    s = sprintf ('cx += (%s) (ax * X [exists])', ztype) ;
-                else
-                    s = 'cx += ax * X [exists]' ;
-                end
-            elseif (isequal (multop, 'pair'))
-                s = 'cx += exists' ;
-            else
-                % X = {0,1}
-                xinit = sprintf ('%s X [2] = {0,1}', ztype) ;
-                if (need_mult_typecast)
-                    s = sprintf ('cx += (%s) (%s * X [exists])', ztype, mult2) ;
-                else
-                    s = sprintf ('cx += %s * X [exists]', mult2) ;
-                end
-            end
-        else
-            % plus monoids for complex types
-            s = '' ;
-        end
 
     % bitwise monoids (except bxnor)
     case { 'bor' }
-        % X = {all zeros, all ones}
-        xinit = sprintf ('%s X [2] = {0,%s}', ztype, xbits) ;
-        s = sprintf ('cx |= X [exists] & %s', mult2) ;
         idbyte = '0' ;
     case { 'band' }
-        % X = {all ones, all zeros}
-        xinit = sprintf ('%s X [2] = {%s,0}', ztype, xbits) ;
-        s = sprintf ('cx &= X [exists] | %s', mult2) ;
         idbyte = '0xFF' ;
     case { 'bxor' }
-        % X = {all zeros, all ones}
-        xinit = sprintf ('%s X [2] = {0,%s}', ztype, xbits) ;
-        s = sprintf ('cx ^= X [exists] & %s', mult2) ;
         idbyte = '0' ;
 
-    % these monoids do not have a concise bitmap multiply-add
     case { 'eq' }
-        s = '' ;
-        idbyte = '1' ;      % eq monoid: identity byte for memset
+        idbyte = '1' ;
     case { 'times' }
-        s = '' ;
         idbyte = '' ;
     case {'bxnor' }
-        s = '' ;
-        idbyte = '0xFF' ;   % bxnor monoid: identity byte for memset
+        idbyte = '0xFF' ;
 end
 
 if (isempty (idbyte))
@@ -706,34 +596,6 @@ else
     fprintf (f, 'define(`GB_has_identity_byte'', `1'')\n') ;
     fprintf (f, 'define(`GB_identity_byte'', `%s'')\n', idbyte) ;
 end
-
-% disable the bitmap multadd when using div or rdiv and any floating-point
-% type, to avoid divide-by-zero when operating on entries not in the bitmap.
-if (codegen_contains (multop, 'div') && ztype_is_float)
-    s = '' ;
-end
-
-if (isempty (s))
-    fprintf (f, 'define(`GB_has_bitmap_multadd'', `0'')\n') ;
-    fprintf (f, 'define(`GB_bitmap_multadd'', `(none)'')\n') ;
-else
-    if (length (s) > 1)
-        s = [s ' ; cb |= exists'] ;
-    else
-        s = ['cb |= exists'] ;
-    end
-    s = strrep (s, 'cb', '$1') ;
-    s = strrep (s, 'cx', '$2') ;
-    s = strrep (s, 'exists', '$3') ;
-    s = strrep (s, 'ax', '$4') ;
-    s = strrep (s, 'bx', '$5') ;
-    fprintf (f, 'define(`GB_has_bitmap_multadd'', `1'')\n') ;
-    fprintf (f, 'define(`GB_bitmap_multadd'', `%s'')\n', s) ;
-end
-xload = strrep (xload, 'bx', '$1') ;
-fprintf (f, 'define(`GB_xload'', `%s'')\n', xload) ;
-fprintf (f, 'define(`GB_xinit'', `%s'')\n', xinit) ;
-% fprintf ('(%5s %-8s %10s): { %s } { %s } { %s }\n', addop, multop, ztype, xinit, xload, s) ;
 
 % create the disable flag
 if (is_any_pair)
@@ -760,7 +622,7 @@ end
 
 fclose (f) ;
 
-nprune = 72 ;
+nprune = 71 ;
 
 if (is_any_pair)
     % the ANY_PAIR_ISO semiring goes in Generated1

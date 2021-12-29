@@ -81,7 +81,7 @@ static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	/*  Verbose node reply format:
 	 *  [
 	 *      ["id", Node ID (integer)]
-	 *      ["label", [label (string or NULL)]]
+	 *      ["label", [label (NULL or string X N)]]
 	 *      ["properties", [[name, value, value type] X N]
 	 *  ]
 	 */
@@ -94,20 +94,17 @@ static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	RedisModule_ReplyWithStringBuffer(ctx, "id", 2);
 	RedisModule_ReplyWithLongLong(ctx, id);
 
-	// ["labels", [label (string)]]
+	// ["labels", [label (string) X N]]
 	RedisModule_ReplyWithArray(ctx, 2);
 	RedisModule_ReplyWithStringBuffer(ctx, "labels", 6);
-	const char *label = NODE_GET_LABEL(n);
-	// Retrieve label if it is not set on the node.
-	// TODO Make a more efficient lookup for this string
-	if(label == NULL) label = GraphContext_GetNodeLabel(gc, n);
-	if(label == NULL) {
-		// Emit an empty array for unlabeled nodes.
-		RedisModule_ReplyWithArray(ctx, 0);
-	} else {
-		// Print label in nested array for multi-label support.
-		RedisModule_ReplyWithArray(ctx, 1);
-		RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
+
+	uint lbls_count;
+	NODE_GET_LABELS(gc->g, n, lbls_count);
+	RedisModule_ReplyWithArray(ctx, lbls_count);
+	for(int i = 0; i < lbls_count; i++) {
+		Schema *s = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
+		const char *lbl_name = Schema_GetName(s);
+		RedisModule_ReplyWithStringBuffer(ctx, lbl_name, strlen(lbl_name));
 	}
 
 	// [properties, [properties]]
@@ -192,7 +189,7 @@ static void _ResultSet_VerboseReplyWithPoint(RedisModuleCtx *ctx, SIValue point)
 }
 
 void ResultSet_EmitVerboseRow(RedisModuleCtx *ctx, GraphContext *gc,
-		SIValue **row, uint numcols) {
+							  SIValue **row, uint numcols) {
 	// Prepare return array sized to the number of RETURN entities
 	RedisModule_ReplyWithArray(ctx, numcols);
 
@@ -204,7 +201,7 @@ void ResultSet_EmitVerboseRow(RedisModuleCtx *ctx, GraphContext *gc,
 
 // Emit the alias or descriptor for each column in the header.
 void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns,
-		uint *col_rec_map) {
+									  uint *col_rec_map) {
 	uint columns_len = array_len(columns);
 	RedisModule_ReplyWithArray(ctx, columns_len);
 	for(uint i = 0; i < columns_len; i++) {

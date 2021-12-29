@@ -30,6 +30,7 @@ GrB_Info GrB_Matrix_nvals   // get the number of entries in a matrix
 
     GrB_Info info = GB_nvals (nvals, A, Context) ;
     GB_BURBLE_END ;
+    #pragma omp flush
     return (info) ;
 }
 

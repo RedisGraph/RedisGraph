@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -16,36 +16,35 @@
 #include "serializers/graphmeta_type.h"
 #include "serializers/graphcontext_type.h"
 
-// Global array tracking all extant GraphContexts.
+// indicates the possibility of half-baked graphs in the keyspace
+#define INTERMEDIATE_GRAPHS (aux_field_counter > 0)
+
+// global array tracking all extant GraphContexts
 extern GraphContext **graphs_in_keyspace;
-// Flag indicating whether the running process is a child.
+// flag indicating whether the running process is a child
 extern bool process_is_child;
-// GraphContext type as it is registered at Redis.
+// graphContext type as it is registered at Redis
 extern RedisModuleType *GraphContextRedisModuleType;
-// Graph meta keys type as it is registered at Redis.
+// graph meta keys type as it is registered at Redis
 extern RedisModuleType *GraphMetaRedisModuleType;
 
-/* Both of the following fields are required to verify that the module is replicated
- * in a successful manner. In a sharded environment, there could be a race condition between the decoding of
- * the last key, and the last aux_fields, so both counters should be zeroed in order to verify
- * that the module replicated properly.*/
+// both of the following fields are required to verify that the module is replicated
+// in a successful manner. In a sharded environment, there could be a race condition between the decoding of
+// the last key, and the last aux_fields, so both counters should be zeroed in order to verify
+// that the module replicated properly.*/
 
-/* Holds the number of aux fields encountered during decoding of RDB file.
- * This field is used to represent when the module is replicating its graphs. */
+// holds the number of aux fields encountered during decoding of RDB file
+// this field is used to represent when the module is replicating its graphs
 uint aux_field_counter = 0 ;
 
-/* Holds the number of graphs encountered during decoding of RDB file.
- * This field is used to represent when the module is replicating its graphs. */
-uint currently_decoding_graphs = 0;
-
-/* Holds the id of the Redis Main thread in order to figure out the context the fork is running on */
+// holds the id of the Redis Main thread in order to figure out the context the fork is running on
 static pthread_t redis_main_thread_id;
 
-/* This callback invokes once rename for a graph is done. Since the key value is a graph context
- * which saves the name of the graph for later key accesses, this data must be consistent with the key name,
- * otherwise, the graph context will remain with the previous graph name, and a key access to this name might
- * yield an empty key or wrong value. This method changes the graph name value at the graph context to be
- * consistent with the key name. */
+// this callback invokes once rename for a graph is done. Since the key value is a graph context
+// which saves the name of the graph for later key accesses, this data must be consistent with the key name,
+// otherwise, the graph context will remain with the previous graph name, and a key access to this name might
+// yield an empty key or wrong value. This method changes the graph name value at the graph context to be
+// consistent with the key name
 static int _RenameGraphHandler(RedisModuleCtx *ctx, int type, const char *event,
 							   RedisModuleString *key_name) {
 	if(type != REDISMODULE_NOTIFY_GENERIC) return REDISMODULE_OK;
@@ -82,6 +81,7 @@ static bool _GraphContext_NameContainsTag(const GraphContext *gc) {
 static uint64_t _GraphContext_RequiredMetaKeys(const GraphContext *gc) {
 	uint64_t vkey_entity_count;
 	Config_Option_get(Config_VKEY_MAX_ENTITY_COUNT, &vkey_entity_count);
+	gc->encoding_context->vkey_entity_count = vkey_entity_count;
 
 	uint64_t entities_count = Graph_NodeCount(gc->g) + Graph_EdgeCount(gc->g) +
 		Graph_DeletedNodeCount(gc->g) + Graph_DeletedEdgeCount(gc->g);
@@ -161,19 +161,12 @@ static void _DeleteGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc, bool dec
 	RedisModule_Log(ctx, "notice", "Deleted %d virtual keys for graph %s", key_count, gc->graph_name);
 }
 
-// Create the meta keys for each graph in the keyspace
-// used on RDB start event.
+// create the meta keys for each graph in the keyspace
+// used on RDB start event
 static void _CreateKeySpaceMetaKeys(RedisModuleCtx *ctx) {
 	uint graphs_in_keyspace_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graphs_in_keyspace_count; i ++) {
 		_CreateGraphMetaKeys(ctx, graphs_in_keyspace[i]);
-	}
-}
-
-static void _ResetDecodeStates() {
-	uint graphs_in_keyspace_count = array_len(graphs_in_keyspace);
-	for(uint i = 0; i < graphs_in_keyspace_count; i ++) {
-		GraphDecodeContext_Reset(graphs_in_keyspace[i]->decoding_context);
 	}
 }
 
@@ -188,11 +181,14 @@ static void _ClearKeySpaceMetaKeys(RedisModuleCtx *ctx, bool decode) {
 
 static void _FlushDBHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
 							void *data) {
-	if(eid.id == REDISMODULE_EVENT_FLUSHDB && subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
-		// If a flushall occurs during replication, stop all decoding.
+	// reset `aux_field_counter` upon handeling FLUSH-ALL
+	if(eid.id == REDISMODULE_EVENT_FLUSHDB &&
+	   subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
 		aux_field_counter = 0;
-		currently_decoding_graphs = 0;
-		_ResetDecodeStates();
+		uint count = array_len(graphs_in_keyspace);
+		for (size_t i = 0; i < count; i++) {
+			GraphContext_Delete(graphs_in_keyspace[i]);
+		}
 	}
 }
 
@@ -213,16 +209,39 @@ static bool _IsEventPersistenceEnd(RedisModuleEvent eid, uint64_t subevent) {
 		   );
 }
 
-// Server persistence event handler.
+// server persistence event handler
 static void _PersistenceEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid,
 		uint64_t subevent, void *data) {
-	if(_IsEventPersistenceStart(eid, subevent)) _CreateKeySpaceMetaKeys(ctx);
-	else if(_IsEventPersistenceEnd(eid, subevent)) _ClearKeySpaceMetaKeys(ctx, false);
+	if(INTERMEDIATE_GRAPHS) {
+		// check for half-baked graphs
+		// indicated by `aux_field_counter` > 0
+		// in such case we do not want to either perform backup nor do we want to
+		// synchronize our replica, as such we're aborting by existing
+		// assuming we're running on a fork process
+		if(process_is_child) {
+			// intermediate graph(s) detected, exit!
+			RedisModule_Log(NULL, REDISMODULE_LOGLEVEL_WARNING,
+					"RedisGraph - aborting BGSAVE, detected intermediate graph(s)");
+
+			exit(255);
+		} else {
+			// don't mess with the keyspace if we have half-baked graphs
+			return;
+		}
+	}
+
+	if(_IsEventPersistenceStart(eid, subevent)) {
+		_CreateKeySpaceMetaKeys(ctx);
+	} else if(_IsEventPersistenceEnd(eid, subevent)) {
+		_ClearKeySpaceMetaKeys(ctx, false);
+	}
 }
 
 // Perform clean-up upon server shutdown.
 static void _ShutdownEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
 		void *data) {
+	// Stop threads before finalize GraphBLAS.
+	ThreadPools_Destroy();
 	// Server is shutting down, finalize GraphBLAS.
 	GrB_finalize();
 }
@@ -241,6 +260,11 @@ static void _RegisterServerEvents(RedisModuleCtx *ctx) {
 			_PersistenceEventHandler);
 }
 
+//------------------------------------------------------------------------------
+// FORK callbacks
+//------------------------------------------------------------------------------
+
+// before fork at parent
 static void RG_ForkPrepare() {
 	// at this point, fork been issued, we assume that this is due to BGSAVE
 	// or RedisSearch GC
@@ -249,23 +273,39 @@ static void RG_ForkPrepare() {
 	// modified, otherwise the child process might inherit a malformed matrix
 	//
 	// on BGSAVE: acquire read lock
-	// release immediately once forked
+	// flush all matrices such that child won't inherit locked matrix
+	// release read lock immediately once forked
 	//
 	// in the case of RediSearch GC fork, quickly return
 
 	// BGSAVE is invoked from Redis main thread
 	if(!pthread_equal(pthread_self(), redis_main_thread_id)) return;
 
+	// return if we have half-baked graphs
+	if(INTERMEDIATE_GRAPHS) return;
+
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
 		// acquire read lock, guarantee graph isn't modified
-		Graph_AcquireReadLock(graphs_in_keyspace[i]->g);
+		Graph *g = graphs_in_keyspace[i]->g;
+		Graph_AcquireReadLock(g);
+
+		// set matrix synchronization policy to default
+		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
+
+		// synchronize all matrices, make sure they're in a consistent state
+		// do not force-flush as this can take awhile
+		Graph_ApplyAllPending(g, false);
 	}
 }
 
+// after fork at parent
 static void RG_AfterForkParent() {
 	// BGSAVE is invoked from Redis main thread
 	if(!pthread_equal(pthread_self(), redis_main_thread_id)) return;
+
+	// return if we have half-baked graphs
+	if(INTERMEDIATE_GRAPHS) return;
 
 	// the child process forked, release all acquired locks
 	uint graph_count = array_len(graphs_in_keyspace);
@@ -274,6 +314,7 @@ static void RG_AfterForkParent() {
 	}
 }
 
+// after fork at child
 static void RG_AfterForkChild() {
 	// mark that the child is a forked process so that it doesn't
 	// attempt invalid accesses of POSIX primitives it doesn't own
@@ -289,11 +330,8 @@ static void RG_AfterForkChild() {
 	for(uint i = 0; i < graph_count; i++) {
 		Graph *g = graphs_in_keyspace[i]->g;
 
-		// synchronize all matrices, make sure they're in a consistent state
-		Graph_ApplyAllPending(g);
-
 		// all matrices should be synced, set synchronization policy to NOP
-		Graph_SetMatrixPolicy(g, DISABLED);
+		Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
 	}
 }
 
@@ -306,36 +344,28 @@ static void _RegisterForkHooks() {
 }
 
 static void _ModuleEventHandler_TryClearKeyspace(void) {
-	if(aux_field_counter == 0 && currently_decoding_graphs == 0) {
-		RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(NULL);
-		_ClearKeySpaceMetaKeys(ctx, true);
-		RedisModule_FreeThreadSafeContext(ctx);
-	}
+	// return if we have half-baked graphs
+	if(INTERMEDIATE_GRAPHS) return;
+
+	RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(NULL);
+	_ClearKeySpaceMetaKeys(ctx, true);
+	RedisModule_FreeThreadSafeContext(ctx);
 }
 
-/* Increase the number of aux fields encountered during rdb loading.
- * There could be more than one on multiple shards scenario
- * so each shard is saving the aux field in its own RDB file. */
+// increase the number of aux fields encountered during rdb loading
+// there could be more than one on multiple shards scenario
+// so each shard is saving the aux field in its own RDB file
 void ModuleEventHandler_AUXBeforeKeyspaceEvent(void) {
 	aux_field_counter++;
 }
 
-/* Decrease the number of aux fields encountered during rdb loading.
- * There could be more than one on multiple shards scenario
- * so each shard is saving the aux field in its own RDB file.
- * Once the number is zero,
- * the module finished replicating and the meta keys can be deleted. */
+// decrease the number of aux fields encountered during rdb loading
+// there could be more than one on multiple shards scenario
+// so each shard is saving the aux field in its own RDB file
+// once the number is zero,
+// the module finished replicating and the meta keys can be deleted
 void ModuleEventHandler_AUXAfterKeyspaceEvent(void) {
 	aux_field_counter--;
-	_ModuleEventHandler_TryClearKeyspace();
-}
-
-void ModuleEventHandler_IncreaseDecodingGraphsCount(void) {
-	currently_decoding_graphs++;
-}
-
-void ModuleEventHandler_DecreaseDecodingGraphsCount(void) {
-	currently_decoding_graphs--;
 	_ModuleEventHandler_TryClearKeyspace();
 }
 

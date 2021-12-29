@@ -25,7 +25,6 @@
 #include <stdio.h>
 #include <cooperative_groups.h>
 #include "matrix.h"
-#include "mySemiRing.h"
 
 using namespace cooperative_groups;
 

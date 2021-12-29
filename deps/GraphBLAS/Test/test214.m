@@ -29,7 +29,11 @@ C2 = GB_mex_mxm (Cin, M, [ ], semiring, A, B, desc) ;
 GB_spec_compare (C1, C2) ;
 
 semiring.multiply = 'pair' ;
+C1 = GB_mex_mxm (Cin, M, [ ], semiring, A, B, desc) ;
+C2 = GB_mex_mxm (Cin, M, [ ], semiring, A, B, desc) ;
+GB_spec_compare (C1, C2) ;
 
+semiring.multiply = 'oneb' ;
 C1 = GB_mex_mxm (Cin, M, [ ], semiring, A, B, desc) ;
 C2 = GB_mex_mxm (Cin, M, [ ], semiring, A, B, desc) ;
 GB_spec_compare (C1, C2) ;

@@ -47,10 +47,8 @@ GrB_Info GB_init            // start up GraphBLAS
 
     // pointers to memory management functions.
     void * (* malloc_function  ) (size_t),          // required
-    void * (* calloc_function  ) (size_t, size_t),  // ignored, no longer used
     void * (* realloc_function ) (void *, size_t),  // optional, can be NULL
     void   (* free_function    ) (void *),          // required
-    bool malloc_is_thread_safe,
 
     bool caller_is_GxB_cuda_init,       // true for GxB_cuda_init only
 
@@ -83,29 +81,10 @@ GrB_Info GB_init            // start up GraphBLAS
     // GrB_init passes in the ANSI C11 malloc/realloc/free
     // GxB_cuda_init passes in NULL pointers; they are now defined below.
 
-    if (caller_is_GxB_cuda_init)
-    {
-        #if defined ( GBCUDA )
-        // CUDA is available at compile time, and requested at run time via
-        // GxB_cuda_init.  Use CUDA unified memory management functions.
-        // No realloc function is needed.
-        malloc_function = GxB_cuda_malloc ;
-        realloc_function = NULL ;
-        free_function = GxB_cuda_free ;
-        #else
-        // CUDA not available at compile time.  Use ANSI C memory managment
-        // functions instead, even though the caller is GxB_cuda_init.
-        // No GPUs will be used.
-        malloc_function = malloc ;
-        realloc_function = realloc ;
-        free_function = free ;
-        #endif
-    }
-
     GB_Global_malloc_function_set  (malloc_function ) ; // cannot be NULL
     GB_Global_realloc_function_set (realloc_function) ; // ok if NULL
     GB_Global_free_function_set    (free_function   ) ; // cannot be NULL
-    GB_Global_malloc_is_thread_safe_set (malloc_is_thread_safe) ;
+    GB_Global_malloc_is_thread_safe_set (true) ; // malloc must be thread-safe
     GB_Global_memtable_clear ( ) ;
     GB_Global_free_pool_init (true) ;
 
@@ -133,12 +112,12 @@ GrB_Info GB_init            // start up GraphBLAS
     // set the global default format
     //--------------------------------------------------------------------------
 
-    // set the default hyper_switch and CSR/CSC format;  any thread
+    // set the default hyper_switch and the default format (by-row);  any thread
     // can do this later as well, so there is no race condition danger.
 
     GB_Global_hyper_switch_set (GB_HYPER_SWITCH_DEFAULT) ;
     GB_Global_bitmap_switch_default ( ) ;
-    GB_Global_is_csc_set (GB_FORMAT_DEFAULT != GxB_BY_ROW) ;
+    GB_Global_is_csc_set (false) ;
 
     //--------------------------------------------------------------------------
     // initialize malloc tracking (testing and debugging only)
@@ -173,8 +152,9 @@ GrB_Info GB_init            // start up GraphBLAS
     // Then warmup each GPU.
 
     #if defined ( GBCUDA )
-    if (caller_is_GxB_cuda_init)
     {
+        // TODO: this does not have to be here
+
         // query the system for the # of GPUs
         // TODO for GPU: make this a function in the CUDA folder
         GB_Global_gpu_control_set (GxB_DEFAULT) ;
@@ -197,13 +177,13 @@ GrB_Info GB_init            // start up GraphBLAS
 
         // also check for jit cache, pre-load library of common kernels ...
     }
-    else
-    #endif
+    #else
     { 
-        // CUDA not available at compile-time, or available but not requested.
+        // CUDA not available at compile-time
         GB_Global_gpu_control_set (GxB_GPU_NEVER) ;
         GB_Global_gpu_count_set (0) ;
     }
+    #endif
 
     GB_Global_gpu_chunk_set (GxB_DEFAULT) ;
 

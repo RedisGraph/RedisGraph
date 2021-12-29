@@ -7,6 +7,13 @@
 
 //------------------------------------------------------------------------------
 
+// C is bitmap or full. A is hyper/sparse, B is bitmap/full.
+
+// if C is bitmap: no accumulator is used
+
+// if C is full: C += A*B is computed with the accumulator identical to
+// the monoid
+
 {
 
     if (use_coarse_tasks)
@@ -19,22 +26,23 @@
         // number of columns in the workspace for each task
         #define GB_PANEL_SIZE 4
 
+        if (B_iso)
+        { 
+            // No special cases needed.  GB_GETB handles the B iso case.
+        }
+
         //----------------------------------------------------------------------
         // allocate workspace for each task
         //----------------------------------------------------------------------
 
-        GB_WERK_PUSH (GH_slice, 2*ntasks, int64_t) ;
-        if (GH_slice == NULL)
+        GB_WERK_PUSH (H_slice, ntasks, int64_t) ;
+        if (H_slice == NULL)
         { 
             // out of memory
             GB_FREE_ALL ;
             return (GrB_OUT_OF_MEMORY) ;
         }
 
-        int64_t *restrict G_slice = GH_slice ;
-        int64_t *restrict H_slice = GH_slice + ntasks ;
-
-        int64_t gwork = 0 ;
         int64_t hwork = 0 ;
         int tid ;
         for (tid = 0 ; tid < ntasks ; tid++)
@@ -43,27 +51,25 @@
             GB_PARTITION (jstart, jend, bvdim, tid, ntasks) ;
             int64_t jtask = jend - jstart ;
             int64_t jpanel = GB_IMIN (jtask, GB_PANEL_SIZE) ;
-            G_slice [tid] = gwork ;
             H_slice [tid] = hwork ;
+            #if ( !GB_C_IS_BITMAP )
+            // bitmap case always needs Hx workspace; full case only needs it
+            // if jpanel > 1
             if (jpanel > 1)
+            #endif
             { 
-                // no need to allocate workspace for Gb and Gx if jpanel == 1
-                gwork += jpanel ;
+                hwork += jpanel ;
             }
-            hwork += jpanel ;
         }
 
-        int64_t bvlenx = (B_is_pattern ? 0 : bvlen) * GB_BSIZE ;
+        //----------------------------------------------------------------------
+
         int64_t cvlenx = (GB_IS_ANY_PAIR_SEMIRING ? 0 : cvlen) * GB_CSIZE ;
-        int64_t bvlenb = (GB_B_IS_BITMAP ? bvlen : 0) ;
-        size_t gfspace = gwork * bvlenb ;
-        size_t wfspace = gfspace + hwork * cvlen ;
-        size_t wbxspace = gwork * bvlenx ;
-        size_t wcxspace = hwork * cvlenx ;
-        Wf  = GB_MALLOC_WERK (wfspace, int8_t, &Wf_size) ;
-        Wbx = GB_MALLOC_WERK (wbxspace, GB_void, &Wbx_size) ;
-        Wcx = GB_MALLOC_WERK (wcxspace, GB_void, &Wcx_size) ;
-        if (Wf == NULL || Wcx == NULL || Wbx == NULL)
+        #if GB_C_IS_BITMAP
+        Wf  = GB_MALLOC_WORK (hwork * cvlen, int8_t, &Wf_size) ;
+        #endif
+        Wcx = GB_MALLOC_WORK (hwork * cvlenx, GB_void, &Wcx_size) ;
+        if ((GB_C_IS_BITMAP && Wf == NULL) || Wcx == NULL)
         { 
             // out of memory
             GB_FREE_ALL ;
@@ -74,8 +80,12 @@
         // C<#M> += A*B
         //----------------------------------------------------------------------
 
+        #if GB_C_IS_BITMAP
         #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) \
             reduction(+:cnvals)
+        #else
+        #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
+        #endif
         for (tid = 0 ; tid < ntasks ; tid++)
         {
 
@@ -87,34 +97,29 @@
             GB_PARTITION (jstart, jend, bvdim, tid, ntasks) ;
             int64_t jtask = jend - jstart ;
             int64_t jpanel = GB_IMIN (jtask, GB_PANEL_SIZE) ;
+            #if GB_C_IS_BITMAP
             int64_t task_cnvals = 0 ;
+            #endif
 
             //------------------------------------------------------------------
             // get the workspace for this task
             //------------------------------------------------------------------
 
-            // Gb and Gx workspace to load the panel of B
             // Hf and Hx workspace to compute the panel of C
-            int8_t *restrict Gb = Wf + G_slice [tid] * bvlenb ;
-            int8_t *restrict Hf = Wf + (H_slice [tid] * cvlen) + gfspace ;
-
-            #if ( !GB_IS_ANY_PAIR_SEMIRING )
-            GB_BTYPE *restrict Gx = (GB_BTYPE *) (Wbx + G_slice [tid] * bvlenx);
-            GB_CTYPE *restrict Hx = (GB_CTYPE *) (Wcx + H_slice [tid] * cvlenx);
+            #if GB_C_IS_BITMAP
+            int8_t *restrict Hf = Wf + (H_slice [tid] * cvlen) ;
             #endif
-            #if GB_IS_PLUS_FC32_MONOID
-            float  *restrict Hx_real = (float *) Hx ;
-            float  *restrict Hx_imag = Hx_real + 1 ;
-            #elif GB_IS_PLUS_FC64_MONOID
-            double *restrict Hx_real = (double *) Hx ;
-            double *restrict Hx_imag = Hx_real + 1 ;
+            #if ( !GB_IS_ANY_PAIR_SEMIRING )
+            GB_CTYPE *restrict Hx = (GB_CTYPE *) (Wcx + H_slice [tid] * cvlenx);
             #endif
 
             //------------------------------------------------------------------
             // clear the panel
             //------------------------------------------------------------------
 
+            #if GB_C_IS_BITMAP
             memset (Hf, 0, jpanel * cvlen) ;
+            #endif
 
             //------------------------------------------------------------------
             // C<#M>(:,jstart:jend-1) += A * B(:,jstart:jend-1) by panel
@@ -131,93 +136,82 @@
                 int64_t np = j2 - j1 ;
 
                 //--------------------------------------------------------------
-                // load and transpose B(:,j1:j2-1) for one panel
+                // G = B(:,j1:j2-1), of size bvlen-by-np, in column major order
                 //--------------------------------------------------------------
 
-                #if GB_B_IS_BITMAP
-                {
-                    if (np == 1)
-                    { 
-                        // no need to load a single vector of B
-                        Gb = (int8_t *) (Bb + (j1 * bvlen)) ;
-                    }
-                    else
-                    {
-                        // load and transpose the bitmap of B(:,j1:j2-1)
-                        for (int64_t jj = 0 ; jj < np ; jj++)
-                        {
-                            int64_t j = j1 + jj ;
-                            for (int64_t i = 0 ; i < bvlen ; i++)
-                            { 
-                                Gb [i*np + jj] = Bb [i + j * bvlen] ;
-                            }
-                        }
-                    }
-                }
-                #endif
-
+                int8_t *restrict Gb = (int8_t *) (Bb + (j1 * bvlen)) ;
                 #if ( !GB_IS_ANY_PAIR_SEMIRING )
-                if (!B_is_pattern)
-                {
-                    if (np == 1)
-                    { 
-                        // no need to load a single vector of B
-                        GB_void *restrict Bx = (GB_void *) (B->x) ;
-                        Gx = (GB_BTYPE *) (Bx + (j1 * bvlen) * GB_BSIZE) ;
-                    }
-                    else
-                    {
-                        // load and transpose the values of B(:,j1:j2-1)
-                        for (int64_t jj = 0 ; jj < np ; jj++)
-                        {
-                            int64_t j = j1 + jj ;
-                            for (int64_t i = 0 ; i < bvlen ; i++)
-                            { 
-                                // G(i,jj) = B(i,j), and change storage order
-                                int64_t pG = i*np + jj ;
-                                int64_t pB = i + j * bvlen ;
-                                GB_LOADB (Gx, pG, Bx, pB, B_iso) ;
-                            }
-                        }
-                    }
-                }
+                GB_BTYPE *restrict Gx = (GB_BTYPE *)
+                     (((GB_void *) (B->x)) +
+                       (B_iso ? 0 : ((j1 * bvlen) * GB_BSIZE))) ;
                 #endif
 
                 //--------------------------------------------------------------
-                // H = A*G for one panel
+                // clear the panel H to compute C(:,j1:j2-1)
                 //--------------------------------------------------------------
 
-                for (int64_t kA = 0 ; kA < anvec ; kA++)
-                {
-
-                    //----------------------------------------------------------
-                    // get A(:,k)
-                    //----------------------------------------------------------
-
-                    int64_t k = GBH (Ah, kA) ;
-                    int64_t pA = Ap [kA] ;
-                    int64_t pA_end = Ap [kA+1] ;
-                    int64_t pG = k * np ;
-
-                    #undef  GB_MULT_A_ik_G_kjj
-                    #if GB_IS_PAIR_MULTIPLIER
-                        // t = A(i,k) * G (k,jj) is always equal to 1
-                        #define GB_MULT_A_ik_G_kjj(jj)
+                #if ( !GB_C_IS_BITMAP )
+                if (np == 1)
+                { 
+                    // Make H and alias to C(:,j1)
+                    int64_t j = j1 ;
+                    int64_t pC_start = j * cvlen ;    // get pointer to C(:,j)
+                    Hx = Cx + pC_start ;
+                }
+                else
+                { 
+                    // Hx = identity
+                    int64_t nc = np * cvlen ;
+                    #if GB_HAS_IDENTITY_BYTE
+                        memset (Hx, GB_IDENTITY_BYTE, nc * GB_CSIZE) ;
                     #else
-                        // t = A(i,k) * G (k,jj)
-                        GB_CIJ_DECLARE (t) ;
-                        #define GB_MULT_A_ik_G_kjj(jj)                      \
-                            GB_GETB (gkj, Gx, pG+jj, false) ;               \
-                            GB_MULT (t, aik, gkj, i, k, j1 + jj) ;
+                        for (int64_t i = 0 ; i < nc ; i++)
+                        { 
+                            Hx [i] = GB_IDENTITY ;
+                        }
                     #endif
+                }
+                #endif
 
-                    #undef  GB_HX_COMPUTE
-                    #define GB_HX_COMPUTE(jj)                               \
+                #if GB_IS_PLUS_FC32_MONOID
+                float  *restrict Hx_real = (float *) Hx ;
+                float  *restrict Hx_imag = Hx_real + 1 ;
+                #elif GB_IS_PLUS_FC64_MONOID
+                double *restrict Hx_real = (double *) Hx ;
+                double *restrict Hx_imag = Hx_real + 1 ;
+                #endif
+
+                //--------------------------------------------------------------
+                // H += A*G for one panel
+                //--------------------------------------------------------------
+
+                #undef GB_B_kj_PRESENT
+                #if GB_B_IS_BITMAP
+                #define GB_B_kj_PRESENT(b) b
+                #else
+                #define GB_B_kj_PRESENT(b) 1
+                #endif
+
+                #undef GB_MULT_A_ik_G_kj
+                #if GB_IS_PAIR_MULTIPLIER
+                    // t = A(i,k) * B (k,j) is already #defined as 1
+                    #define GB_MULT_A_ik_G_kj(gkj,jj)
+                #else
+                    // t = A(i,k) * B (k,j)
+                    #define GB_MULT_A_ik_G_kj(gkj,jj)                       \
+                        GB_CIJ_DECLARE (t) ;                                \
+                        GB_MULT (t, aik, gkj, i, k, j1 + jj)
+                #endif
+
+                #undef GB_HX_COMPUTE
+                #if GB_C_IS_BITMAP
+                    #define GB_HX_COMPUTE(gkj,gb,jj)                        \
                     {                                                       \
-                        /* H (i,jj) += A(i,k)*G(k,jj) */                    \
-                        if (!GB_B_IS_BITMAP || Gb [pG+jj])                  \
+                        /* H (i,jj) += A(i,k) * B(k,j) */                   \
+                        if (GB_B_kj_PRESENT (gb))                           \
                         {                                                   \
-                            GB_MULT_A_ik_G_kjj (jj) ;                       \
+                            /* t = A(i,k) * B (k,j) */                      \
+                            GB_MULT_A_ik_G_kj (gkj, jj) ;                   \
                             if (Hf [pH+jj] == 0)                            \
                             {                                               \
                                 /* H(i,jj) is a new entry */                \
@@ -227,92 +221,162 @@
                             else                                            \
                             {                                               \
                                 /* H(i,jj) is already present */            \
-                                GB_HX_UPDATE (pH+jj, t) ; /* Hx(i,jj)+=t */ \
+                                /* Hx(i,jj)+=t */                           \
+                                GB_HX_UPDATE (pH+jj, t) ;                   \
                             }                                               \
                         }                                                   \
                     }
-
-                    #undef  GB_LOAD_A_ij
-                    #define GB_LOAD_A_ij                                    \
-                        int64_t i = Ai [pA] ;                               \
-                        GB_GETA (aik, Ax, pA, A_iso) ;                      \
-                        int64_t pH = i * np ;
-
-                    //----------------------------------------------------------
-                    // H += A(:,k)*G(k,:)
-                    //----------------------------------------------------------
-
-                    #if GB_B_IS_BITMAP
-                    bool gb = false ;
-                    switch (np)
-                    {
-                        case 4 : gb  = Gb [pG+3] ;
-                        case 3 : gb |= Gb [pG+2] ;
-                        case 2 : gb |= Gb [pG+1] ;
-                        case 1 : gb |= Gb [pG  ] ; 
-                        default: ;
+                #else
+                    #define GB_HX_COMPUTE(gkj,gb,jj)                        \
+                    {                                                       \
+                        /* H (i,jj) += A(i,k) * B(k,j) */                   \
+                        if (GB_B_kj_PRESENT (gb))                           \
+                        {                                                   \
+                            /* t = A(i,k) * B (k,j) */                      \
+                            GB_MULT_A_ik_G_kj (gkj, jj) ;                   \
+                            /* Hx(i,jj)+=t */                               \
+                            GB_HX_UPDATE (pH+jj, t) ;                       \
+                        }                                                   \
                     }
-                    if (gb)
-                    #endif
-                    {
-                        switch (np)
+                #endif
+
+                switch (np)
+                {
+
+                    case 4 : 
+
+                        for (int64_t kA = 0 ; kA < anvec ; kA++)
                         {
-
-                            case 4 : 
-                                for ( ; pA < pA_end ; pA++)
-                                {
-                                    GB_LOAD_A_ij ;
-                                    GB_HX_COMPUTE (0) ;
-                                    GB_HX_COMPUTE (1) ;
-                                    GB_HX_COMPUTE (2) ;
-                                    GB_HX_COMPUTE (3) ;
-                                }
-                                break ;
-
-                            case 3 : 
-                                for ( ; pA < pA_end ; pA++)
-                                {
-                                    GB_LOAD_A_ij ;
-                                    GB_HX_COMPUTE (0) ;
-                                    GB_HX_COMPUTE (1) ;
-                                    GB_HX_COMPUTE (2) ;
-                                }
-                                break ;
-
-                            case 2 : 
-                                for ( ; pA < pA_end ; pA++)
-                                {
-                                    GB_LOAD_A_ij ;
-                                    GB_HX_COMPUTE (0) ;
-                                    GB_HX_COMPUTE (1) ;
-                                }
-                                break ;
-
-                            case 1 : 
-                                for ( ; pA < pA_end ; pA++)
-                                {
-                                    GB_LOAD_A_ij ;
-                                    GB_HX_COMPUTE (0) ;
-                                }
-                                break ;
-                            default:;
+                            // get A(:,k)
+                            const int64_t k = GBH (Ah, kA) ;
+                            // get B(k,j1:j2-1)
+                            #if GB_B_IS_BITMAP
+                            const int8_t gb0 = Gb [k          ] ;
+                            const int8_t gb1 = Gb [k +   bvlen] ;
+                            const int8_t gb2 = Gb [k + 2*bvlen] ;
+                            const int8_t gb3 = Gb [k + 3*bvlen] ;
+                            if (!(gb0 || gb1 || gb2 || gb3)) continue ;
+                            #endif
+                            GB_GETB (gk0, Gx, k          , B_iso) ;
+                            GB_GETB (gk1, Gx, k +   bvlen, B_iso) ;
+                            GB_GETB (gk2, Gx, k + 2*bvlen, B_iso) ;
+                            GB_GETB (gk3, Gx, k + 3*bvlen, B_iso) ;
+                            const int64_t pA_end = Ap [kA+1] ;
+                            for (int64_t pA = Ap [kA] ; pA < pA_end ; pA++)
+                            { 
+                                const int64_t i = Ai [pA] ;
+                                const int64_t pH = i * 4 ;
+                                GB_GETA (aik, Ax, pA, A_iso) ;
+                                GB_HX_COMPUTE (gk0, gb0, 0) ;
+                                GB_HX_COMPUTE (gk1, gb1, 1) ;
+                                GB_HX_COMPUTE (gk2, gb2, 2) ;
+                                GB_HX_COMPUTE (gk3, gb3, 3) ;
+                            }
                         }
-                    }
+                        break ;
 
-                    #undef  GB_MULT_A_ik_G_kjj
-                    #undef  GB_HX_COMPUTE
-                    #undef  GB_LOAD_A_ij
+                    case 3 : 
+
+                        for (int64_t kA = 0 ; kA < anvec ; kA++)
+                        {
+                            // get A(:,k)
+                            const int64_t k = GBH (Ah, kA) ;
+                            // get B(k,j1:j2-1)
+                            #if GB_B_IS_BITMAP
+                            const int8_t gb0 = Gb [k          ] ;
+                            const int8_t gb1 = Gb [k +   bvlen] ;
+                            const int8_t gb2 = Gb [k + 2*bvlen] ;
+                            if (!(gb0 || gb1 || gb2)) continue ;
+                            #endif
+                            GB_GETB (gk0, Gx, k          , B_iso) ;
+                            GB_GETB (gk1, Gx, k +   bvlen, B_iso) ;
+                            GB_GETB (gk2, Gx, k + 2*bvlen, B_iso) ;
+                            const int64_t pA_end = Ap [kA+1] ;
+                            for (int64_t pA = Ap [kA] ; pA < pA_end ; pA++)
+                            { 
+                                const int64_t i = Ai [pA] ;
+                                const int64_t pH = i * 3 ;
+                                GB_GETA (aik, Ax, pA, A_iso) ;
+                                GB_HX_COMPUTE (gk0, gb0, 0) ;
+                                GB_HX_COMPUTE (gk1, gb1, 1) ;
+                                GB_HX_COMPUTE (gk2, gb2, 2) ;
+                            }
+                        }
+                        break ;
+
+                    case 2 : 
+
+                        for (int64_t kA = 0 ; kA < anvec ; kA++)
+                        {
+                            // get A(:,k)
+                            const int64_t k = GBH (Ah, kA) ;
+                            // get B(k,j1:j2-1)
+                            #if GB_B_IS_BITMAP
+                            const int8_t gb0 = Gb [k          ] ;
+                            const int8_t gb1 = Gb [k +   bvlen] ;
+                            if (!(gb0 || gb1)) continue ;
+                            #endif
+                            GB_GETB (gk0, Gx, k          , B_iso) ;
+                            GB_GETB (gk1, Gx, k +   bvlen, B_iso) ;
+                            const int64_t pA_end = Ap [kA+1] ;
+                            for (int64_t pA = Ap [kA] ; pA < pA_end ; pA++)
+                            { 
+                                const int64_t i = Ai [pA] ;
+                                const int64_t pH = i * 2 ;
+                                GB_GETA (aik, Ax, pA, A_iso) ;
+                                GB_HX_COMPUTE (gk0, gb0, 0) ;
+                                GB_HX_COMPUTE (gk1, gb1, 1) ;
+                            }
+                        }
+                        break ;
+
+                    case 1 : 
+
+                        for (int64_t kA = 0 ; kA < anvec ; kA++)
+                        {
+                            // get A(:,k)
+                            const int64_t k = GBH (Ah, kA) ;
+                            // get B(k,j1:j2-1)
+                            #if GB_B_IS_BITMAP
+                            const int8_t gb0 = Gb [k] ;
+                            if (!gb0) continue ;
+                            #endif
+                            GB_GETB (gk0, Gx, k, B_iso) ;
+                            const int64_t pA_end = Ap [kA+1] ;
+                            for (int64_t pA = Ap [kA] ; pA < pA_end ; pA++)
+                            { 
+                                const int64_t i = Ai [pA] ;
+                                const int64_t pH = i ;
+                                GB_GETA (aik, Ax, pA, A_iso) ;
+                                GB_HX_COMPUTE (gk0, 1, 0) ;
+                            }
+                        }
+                        break ;
+
+                    default:;
                 }
 
+                #undef GB_HX_COMPUTE
+                #undef GB_B_kj_PRESENT
+                #undef GB_MULT_A_ik_G_kj
+
                 //--------------------------------------------------------------
-                // C<#M>(:,j1:j2-1) += H
+                // C<#M>(:,j1:j2-1) = H
                 //--------------------------------------------------------------
+
+                #if ( !GB_C_IS_BITMAP )
+                if (np == 1)
+                { 
+                    // Hx is already aliased to Cx; no more work to do
+                    continue ;
+                }
+                #endif
 
                 for (int64_t jj = 0 ; jj < np ; jj++)
                 {
 
                     //----------------------------------------------------------
-                    // C<#M>(:,j) += H (:,jj)
+                    // C<#M>(:,j) = H (:,jj)
                     //----------------------------------------------------------
 
                     int64_t j = j1 + jj ;
@@ -322,9 +386,11 @@
                     {
                         int64_t pC = pC_start + i ;     // pointer to C(i,j)
                         int64_t pH = i * np + jj ;      // pointer to H(i,jj)
+                        #if GB_C_IS_BITMAP
                         if (!Hf [pH]) continue ;
                         Hf [pH] = 0 ;                   // clear the panel
                         int8_t cb = Cb [pC] ;
+                        #endif
 
                         //------------------------------------------------------
                         // check M(i,j)
@@ -350,6 +416,7 @@
                         // C(i,j) += H(i,jj)
                         //------------------------------------------------------
 
+                        #if GB_C_IS_BITMAP
                         if (cb == 0)
                         { 
                             // C(i,j) = H(i,jj)
@@ -368,10 +435,18 @@
                             // C(i,j) += H(i,jj)
                             GB_CIJ_GATHER_UPDATE (pC, pH) ;
                         }
+                        #else
+                        { 
+                            // C(i,j) = H(i,jj)
+                            GB_CIJ_GATHER_UPDATE (pC, pH) ;
+                        }
+                        #endif
                     }
                 }
             }
+            #if GB_C_IS_BITMAP
             cnvals += task_cnvals ;
+            #endif
         }
 
         #undef GB_PANEL_SIZE
@@ -384,9 +459,19 @@
         // C<#M> += A*B using fine tasks and atomics
         //----------------------------------------------------------------------
 
+        if (B_iso)
+        { 
+            // No special cases needed.  GB_GET_B_kj (bkj = B(k,j))
+            // handles the B iso case.
+        }
+
         int tid ;
+        #if GB_C_IS_BITMAP
         #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) \
             reduction(+:cnvals)
+        #else
+        #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
+        #endif
         for (tid = 0 ; tid < ntasks ; tid++)
         {
 
@@ -405,7 +490,9 @@
             int64_t pB_start = j * bvlen ;      // pointer to B(:,j)
             int64_t pC_start = j * cvlen ;      // pointer to C(:,j)
             GB_GET_T_FOR_SECONDJ ;              // t = j or j+1 for SECONDJ*
+            #if GB_C_IS_BITMAP
             int64_t task_cnvals = 0 ;
+            #endif
 
             // for Hx Gustavason workspace: use C(:,j) in-place:
             #if ( !GB_IS_ANY_PAIR_SEMIRING )
@@ -433,7 +520,9 @@
 
                 int64_t k = GBH (Ah, kk) ;      // k in range k1:k2
                 int64_t pB = pB_start + k ;     // get pointer to B(k,j)
+                #if GB_B_IS_BITMAP
                 if (!GBB (Bb, pB)) continue ;   
+                #endif
                 int64_t pA = Ap [kk] ;
                 int64_t pA_end = Ap [kk+1] ;
                 GB_GET_B_kj ;                   // bkj = B(k,j)
@@ -447,13 +536,23 @@
 
                     int64_t i = Ai [pA] ;       // get A(i,k) index
                     int64_t pC = pC_start + i ; // get C(i,j) pointer
-                    int8_t cb ;
 
                     //----------------------------------------------------------
                     // C<#M>(i,j) += A(i,k) * B(k,j)
                     //----------------------------------------------------------
 
-                    #if GB_MASK_IS_SPARSE_OR_HYPER
+                    #if ( !GB_C_IS_BITMAP )
+                    { 
+
+                        //------------------------------------------------------
+                        // C is full: the monoid is always atomic
+                        //------------------------------------------------------
+
+                        GB_MULT_A_ik_B_kj ;     // t = A(i,k) * B(k,j)
+                        GB_ATOMIC_UPDATE_HX (i, t) ;    // C(i,j) += t
+
+                    }
+                    #elif GB_MASK_IS_SPARSE_OR_HYPER
                     { 
 
                         //------------------------------------------------------
@@ -467,6 +566,7 @@
                         // 3:   cij present, mij one (keep==3 for M)
                         // 7:   cij is locked
 
+                        int8_t cb ;
                         #if GB_HAS_ATOMIC
                         { 
                             // if C(i,j) is already present and can be modified
@@ -538,6 +638,7 @@
                         // C(i,j) += A(i,j) * B(k,j)
                         //------------------------------------------------------
 
+                        int8_t cb ;
                         #if GB_HAS_ATOMIC
                         { 
                             // if C(i,j) is already present (cb==1), and the
@@ -585,7 +686,9 @@
 
                 }
             }
+            #if GB_C_IS_BITMAP
             cnvals += task_cnvals ;
+            #endif
         }
 
     }
@@ -601,15 +704,23 @@
         // is defined by the fine_tid of the task.  The workspaces are then
         // summed into C in the second phase.
 
+        if (B_iso)
+        { 
+            // No special cases needed.  GB_GET_B_kj (bkj = B(k,j))
+            // handles the B iso case.
+        }
+
         //----------------------------------------------------------------------
         // allocate workspace
         //----------------------------------------------------------------------
 
         size_t workspace = cvlen * ntasks ;
         size_t cxsize = (GB_IS_ANY_PAIR_SEMIRING) ? 0 : GB_CSIZE ;
-        Wf  = GB_MALLOC_WERK (workspace, int8_t, &Wf_size) ;
-        Wcx = GB_MALLOC_WERK (workspace * cxsize, GB_void, &Wcx_size) ;
-        if (Wf == NULL || Wcx == NULL)
+        #if GB_C_IS_BITMAP
+        Wf  = GB_MALLOC_WORK (workspace, int8_t, &Wf_size) ;
+        #endif
+        Wcx = GB_MALLOC_WORK (workspace * cxsize, GB_void, &Wcx_size) ;
+        if ((GB_C_IS_BITMAP && Wf == NULL) || Wcx == NULL)
         { 
             // out of memory
             GB_FREE_ALL ;
@@ -641,10 +752,14 @@
             int64_t pC_start = j * cvlen ;      // pointer to C(:,j), for bitmap
             int64_t pW_start = tid * cvlen ;    // pointer to W(:,tid)
             GB_GET_T_FOR_SECONDJ ;              // t = j or j+1 for SECONDJ*
+            #if GB_C_IS_BITMAP
             int64_t task_cnvals = 0 ;
+            #endif
 
             // for Hf and Hx Gustavason workspace: use W(:,tid):
-            int8_t   *restrict Hf = Wf + pW_start ;
+            #if GB_C_IS_BITMAP
+            int8_t *restrict Hf = Wf + pW_start ;
+            #endif
             #if ( !GB_IS_ANY_PAIR_SEMIRING )
             GB_CTYPE *restrict Hx = (GB_CTYPE *) (Wcx + (pW_start * cxsize)) ;
             #endif
@@ -657,10 +772,26 @@
             #endif
 
             //------------------------------------------------------------------
-            // clear Hf
+            // clear the panel
             //------------------------------------------------------------------
 
-            memset (Hf, 0, cvlen) ;
+            #if GB_C_IS_BITMAP
+            { 
+                memset (Hf, 0, cvlen) ;
+            }
+            #else
+            { 
+                // set Hx to identity
+                #if GB_HAS_IDENTITY_BYTE
+                    memset (Hx, GB_IDENTITY_BYTE, cvlen * GB_CSIZE) ;
+                #else
+                    for (int64_t i = 0 ; i < cvlen ; i++)
+                    { 
+                        Hx [i] = GB_IDENTITY ;
+                    }
+                #endif
+            }
+            #endif
 
             //------------------------------------------------------------------
             // W<#M> = A(:,k1:k2) * B(k1:k2,j)
@@ -675,7 +806,9 @@
 
                 int64_t k = GBH (Ah, kk) ;      // k in range k1:k2
                 int64_t pB = pB_start + k ;     // get pointer to B(k,j)
+                #if GB_B_IS_BITMAP
                 if (!GBB (Bb, pB)) continue ;   
+                #endif
                 int64_t pA = Ap [kk] ;
                 int64_t pA_end = Ap [kk+1] ;
                 GB_GET_B_kj ;                   // bkj = B(k,j)
@@ -722,13 +855,15 @@
                     #else
                     {
                         GB_MULT_A_ik_B_kj ;         // t = A(i,k)*B(k,j)
+                        #if GB_C_IS_BITMAP
                         if (Hf [i] == 0)
                         { 
-                            // W(i,j) is a new entry
+                            // W(i) is a new entry
                             GB_HX_WRITE (i, t) ;    // Hx(i) = t
                             Hf [i] = 1 ;
                         }
                         else
+                        #endif
                         { 
                             // W(i) is already present
                             GB_HX_UPDATE (i, t) ;   // Hx(i) += t
@@ -743,8 +878,12 @@
         // second phase: C<#M> += reduce (W)
         //----------------------------------------------------------------------
 
+        #if GB_C_IS_BITMAP
         #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) \
             reduction(+:cnvals)
+        #else
+        #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
+        #endif
         for (tid = 0 ; tid < ntasks ; tid++)
         {
 
@@ -767,7 +906,9 @@
             int64_t pC_start = j * cvlen ;          // pointer to C(:,j)
             int64_t wstart = j * nfine_tasks_per_vector ;
             int64_t wend = (j + 1) * nfine_tasks_per_vector ;
+            #if GB_C_IS_BITMAP
             int64_t task_cnvals = 0 ;
+            #endif
 
             // Hx = (typecasted) Wcx workspace, use Wf as-is
             #if ( !GB_IS_ANY_PAIR_SEMIRING )
@@ -802,9 +943,13 @@
                     //----------------------------------------------------------
 
                     int64_t pW = pW_start + i ;     // pointer to W(i,w)
+                    #if GB_C_IS_BITMAP
                     if (Wf [pW] == 0) continue ;    // skip if not present
+                    #endif
                     int64_t pC = pC_start + i ;     // pointer to C(i,j)
+                    #if GB_C_IS_BITMAP
                     int8_t cb = Cb [pC] ;           // bitmap status of C(i,j)
+                    #endif
 
                     //----------------------------------------------------------
                     // M(i,j) already checked, but adjust Cb if M is sparse
@@ -821,6 +966,7 @@
                     // C(i,j) += W (i,w)
                     //----------------------------------------------------------
 
+                    #if GB_C_IS_BITMAP
                     if (cb == 0)
                     { 
                         // C(i,j) = W(i,w)
@@ -829,13 +975,16 @@
                         task_cnvals++ ;
                     }
                     else
+                    #endif
                     { 
                         // C(i,j) += W(i,w)
                         GB_CIJ_GATHER_UPDATE (pC, pW) ;
                     }
                 }
             }
+            #if GB_C_IS_BITMAP
             cnvals += task_cnvals ;
+            #endif
         }
     }
 }

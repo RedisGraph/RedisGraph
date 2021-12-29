@@ -28,8 +28,8 @@
 #include "GB_ek_slice.h"
 #include "GB_unused.h"
 
-#undef  GB_FREE_WORK
-#define GB_FREE_WORK                        \
+#undef  GB_FREE_WORKSPACE
+#define GB_FREE_WORKSPACE                   \
 {                                           \
     GB_WERK_POP (M_ek_slicing, int64_t) ;   \
     GB_WERK_POP (C_ek_slicing, int64_t) ;   \
@@ -38,13 +38,8 @@
 #undef  GB_FREE_ALL
 #define GB_FREE_ALL                         \
 {                                           \
-    GB_FREE_WORK ;                          \
+    GB_FREE_WORKSPACE ;                     \
     GB_phbix_free (R) ;                     \
-}
-
-static inline bool GB_iso_masker (GrB_Matrix C, GrB_Matrix Z)
-{
-    return (C->iso && Z->iso && (memcmp (C->x, Z->x, C->type->size) == 0)) ;
 }
 
 GrB_Info GB_masker_phase2           // phase2 for R = masker (C,M,Z)
@@ -123,7 +118,26 @@ GrB_Info GB_masker_phase2           // phase2 for R = masker (C,M,Z)
 
     int64_t rnz = (R_is_sparse_or_hyper) ? Rp [Rnvec] : C->vlen*C->vdim ;
 
-    bool R_iso = GB_iso_masker (C, Z) ;
+    size_t czsize = Z->type->size ;
+    bool R_iso ;
+    int64_t cnz = GB_nnz (C) ;
+    int64_t znz = GB_nnz (Z) ;
+    if (cnz == 0)
+    { 
+        // C is empty: R is iso if Z is iso
+        R_iso = Z->iso ;
+    }
+    else if (znz == 0)
+    { 
+        // Z is empty: R is iso if C is iso
+        R_iso = C->iso ;
+    }
+    else
+    { 
+        // C and Z are both non-empty:  R is iso if both C and Z are
+        // iso, and have the same iso value.
+        R_iso = (C->iso && Z->iso && (memcmp (C->x, Z->x, czsize) == 0)) ;
+    }
 
     // allocate the result R (but do not allocate R->p or R->h)
     // set R->iso = R_iso   OK
@@ -166,9 +180,19 @@ GrB_Info GB_masker_phase2           // phase2 for R = masker (C,M,Z)
     #define GB_PHASE_2_OF_2
     if (R_iso)
     { 
+        // R can be iso only if C and/or Z are iso
         GBURBLE ("(iso mask) ") ;
         #define GB_ISO_MASKER
-        memcpy (R->x, C->x, C->type->size) ;
+        if (cnz == 0)
+        { 
+            // Z must be iso; copy its iso value into R
+            memcpy (R->x, Z->x, czsize) ;
+        }
+        else
+        { 
+            // C must be iso; copy its iso value into R
+            memcpy (R->x, C->x, czsize) ;
+        }
         #include "GB_masker_template.c"
     }
     else
@@ -187,7 +211,7 @@ GrB_Info GB_masker_phase2           // phase2 for R = masker (C,M,Z)
     //--------------------------------------------------------------------------
 
     // caller must free R_to_M, R_to_C, and R_to_Z, but not Rp or Rh
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     ASSERT_MATRIX_OK (R, "R output for mask phase2", GB0) ;
     ASSERT (!GB_ZOMBIES (R)) ; 
     ASSERT (!GB_JUMBLED (R)) ;

@@ -1,0 +1,219 @@
+from base import FlowTestsBase
+import os
+import sys
+from RLTest import Env
+from redisgraph import Graph, Node, Edge
+import re
+
+redis_con = None
+
+class test_v7_encode_decode(FlowTestsBase):
+    def __init__(self):
+        self.env = Env(decodeResponses=True, moduleArgs='VKEY_MAX_ENTITY_COUNT 10')
+        global redis_con
+        redis_con = self.env.getConnection()
+
+    def test01_nodes_over_multiple_keys(self):
+        graph_name = "nodes_over_multiple_keys"
+        redis_graph = Graph(graph_name, redis_con)
+        # Create 3 nodes meta keys
+        redis_graph.query("UNWIND range(0,20) as i CREATE (:Node {val:i})")
+        # Return all the nodes, before and after saving & loading the RDB, and check equality
+        query = "MATCH (n:Node) return n"
+        expected = redis_graph.query(query)
+        # Save RDB & Load from RDB
+        redis_con.execute_command("DEBUG", "RELOAD")
+        actual = redis_graph.query(query)
+        self.env.assertEquals(expected.result_set, actual.result_set)
+
+    def test02_no_compaction_on_nodes_delete(self):
+        graph_name = "no_compaction_on_nodes_delete"
+        redis_graph = Graph(graph_name, redis_con)
+        # Create 20 nodes meta keys
+        redis_graph.query("UNWIND range(0, 20) as i CREATE (:Node)")
+        # Return all the nodes, before and after saving & loading the RDB, and check equality
+        query = "MATCH (n:Node) WITH n ORDER by id(n) return COLLECT(id(n))"
+        expected_full_graph_nodes_id = redis_graph.query(query)
+
+        # Delete 3 nodes.
+        redis_graph.query("MATCH (n:Node) WHERE id(n) IN [7, 14, 20] DELETE n")
+        expected_nodes_id_after_delete = redis_graph.query(query)
+
+        # Save RDB & Load from RDB
+        redis_con.execute_command("DEBUG", "RELOAD")
+
+        actual = redis_graph.query(query)
+        # Validate no compaction, all IDs are the same
+        self.env.assertEquals(expected_nodes_id_after_delete.result_set, actual.result_set)
+
+        # Validate reuse of node ids - create 3 nodes.
+        redis_graph.query("UNWIND range (0, 2) as i CREATE (:Node)")
+        actual = redis_graph.query(query)
+        self.env.assertEquals(expected_full_graph_nodes_id.result_set, actual.result_set)
+
+    def test03_edges_over_multiple_keys(self):
+        graph_name = "edges_over_multiple_keys"
+        redis_graph = Graph(graph_name, redis_con)
+        # Create 3 edges meta keys
+        redis_graph.query("UNWIND range(0,20) as i CREATE (:Src)-[:R {val:i}]->(:Dest)")
+        # Return all the edges, before and after saving & loading the RDB, and check equality
+        query = "MATCH (:Src)-[e:R]->(:Dest) return e"
+        expected = redis_graph.query(query)
+        # Save RDB & Load from RDB
+        redis_con.execute_command("DEBUG", "RELOAD")
+        actual = redis_graph.query(query)
+        self.env.assertEquals(expected.result_set, actual.result_set)
+
+    def test04_no_compaction_on_edges_delete(self):
+        graph_name = "no_compaction_on_edges_delete"
+        redis_graph = Graph(graph_name, redis_con)
+        # Create 3 nodes meta keys
+        redis_graph.query("UNWIND range(0,20) as i CREATE (:Src)-[:R]->(:Dest)")
+        # Return all the edges, before and after saving & loading the RDB, and check equality
+        query = "MATCH (:Src)-[e:R]->(:Dest) WITH e ORDER by id(e) return COLLECT(id(e))"
+        expected_full_graph_nodes_id = redis_graph.query(query)
+        # Delete 3 edges.
+        redis_graph.query("MATCH (:Src)-[e:R]->(:Dest) WHERE id(e) IN [7,14,20] DELETE e")
+        expected_nodes_id_after_delete = redis_graph.query(query)
+        # Save RDB & Load from RDB
+        redis_con.execute_command("DEBUG", "RELOAD")
+        actual = redis_graph.query(query)
+        # Validate no compaction, all IDs are the same
+        self.env.assertEquals(expected_nodes_id_after_delete.result_set, actual.result_set)
+        # Validate reuse of edges ids - create 3 edges.
+        redis_graph.query("UNWIND range (0,2) as i CREATE (:Src)-[:R]->(:Dest)")
+        actual = redis_graph.query(query)
+        self.env.assertEquals(expected_full_graph_nodes_id.result_set, actual.result_set)
+
+    def test05_multiple_edges_over_multiple_keys(self):
+        graph_name = "multiple_edges_over_multiple_keys"
+        redis_graph = Graph(graph_name, redis_con)
+        # Create 3 edges meta keys
+        redis_graph.query("CREATE (n1:Src {val:1}), (n2:Dest {val:2}) WITH n1, n2 UNWIND range(0,20) as i CREATE (n1)-[:R {val:i}]->(n2)")
+        # Return all the edges, before and after saving & loading the RDB, and check equality
+        query = "MATCH (:Src)-[e:R]->(:Dest) return e"
+        expected = redis_graph.query(query)
+        # Save RDB & Load from RDB
+        redis_con.execute_command("DEBUG", "RELOAD")
+        actual = redis_graph.query(query)
+        self.env.assertEquals(expected.result_set, actual.result_set)
+
+    def test06_no_compaction_on_multiple_edges_delete(self):
+        graph_name = "no_compaction_on_multiple_edges_delete"
+        redis_graph = Graph(graph_name, redis_con)
+        # Create 3 nodes meta keys
+        redis_graph.query("CREATE (n1:Src {val:1}), (n2:Dest {val:2}) WITH n1, n2 UNWIND range(0,20) as i CREATE (n1)-[:R]->(n2)")
+        # Return all the edges, before and after saving & loading the RDB, and check equality
+        query = "MATCH (:Src)-[e:R]->(:Dest) WITH e ORDER by id(e) return COLLECT(id(e))"
+        expected_full_graph_nodes_id = redis_graph.query(query)
+        # Delete 3 edges.
+        redis_graph.query("MATCH (:Src)-[e:R]->(:Dest) WHERE id(e) IN [7,14,20] DELETE e")
+        expected_nodes_id_after_delete = redis_graph.query(query)
+        # Save RDB & Load from RDB
+        redis_con.execute_command("DEBUG", "RELOAD")
+        actual = redis_graph.query(query)
+        # Validate no compaction, all IDs are the same
+        self.env.assertEquals(expected_nodes_id_after_delete.result_set, actual.result_set)
+        # Validate reuse of edges ids - create 3 edges.
+        redis_graph.query("MATCH (n1:Src {val:1}), (n2:Dest {val:2}) WITH n1, n2 UNWIND range (0,2) as i CREATE (n1)-[:R]->(n2)")
+        actual = redis_graph.query(query)
+        self.env.assertEquals(expected_full_graph_nodes_id.result_set, actual.result_set)
+
+    def test07_index_after_encode_decode_in_v7(self):
+        graph_name = "index_after_encode_decode_in_v7"
+        redis_graph = Graph(graph_name, redis_con)
+        redis_graph.query("CREATE INDEX ON :N(val)")
+        # Verify indices exists.
+        plan = redis_graph.execution_plan(
+            "MATCH (n:N {val:1}) RETURN n")
+        self.env.assertIn("Index Scan", plan)
+        # Save RDB & Load from RDB
+        redis_con.execute_command("DEBUG", "RELOAD")
+        # Verify indices exists after loading RDB.
+        plan = redis_graph.execution_plan(
+            "MATCH (n:N {val:1}) RETURN n")
+        self.env.assertIn("Index Scan", plan)
+
+    def test08_multiple_graphs_with_index(self):
+        # Create a multi-key graph.
+        graph1_name = "v7_graph_1"
+        graph1 = Graph(graph1_name, redis_con)
+        graph1.query("UNWIND range(0,21) AS i CREATE (a:L {v: i})-[:E]->(b:L2 {v: i})")
+
+        # Create a single-key graph.
+        graph2_name = "v7_graph_2"
+        graph2 = Graph(graph2_name, redis_con)
+        graph2.query("CREATE (a:L {v: 1})-[:E]->(b:L2 {v: 2})")
+
+        # Add an index to the multi-key graph.
+        graph1.query("CREATE INDEX ON :L(v)")
+
+        # Save RDB and reload from RDB
+        redis_con.execute_command("DEBUG", "RELOAD")
+
+        # The load should be successful and the index should still be built.
+        query = "MATCH (n:L {v:1}) RETURN n.v"
+        plan = graph1.execution_plan(query)
+        self.env.assertIn("Index Scan", plan)
+        expected = [[1]]
+        actual = graph1.query(query)
+        self.env.assertEquals(actual.result_set, expected)
+
+    def test08_multiple_reltypes(self):
+        graph_name = "multiple_reltypes"
+        redis_graph = Graph(graph_name, redis_con)
+        # Create 10 nodes
+        redis_graph.query("UNWIND range(0,10) as v CREATE (:L {v: v})")
+        # Create 3 edges of different relation types connecting 6 different nodes
+        redis_graph.query("MATCH (a:L {v: 1}), (b:L {v: 2}) CREATE (a)-[:R1]->(b)")
+        redis_graph.query("MATCH (a:L {v: 3}), (b:L {v: 4}) CREATE (a)-[:R2]->(b)")
+        redis_graph.query("MATCH (a:L {v: 5}), (b:L {v: 6}) CREATE (a)-[:R3]->(b)")
+
+        # Retrieve all the edges before and after saving & loading the RDB to check equality
+        query = "MATCH (:L)-[e]->(:L) RETURN ID(e), type(e) ORDER BY ID(e)"
+        expected = redis_graph.query(query)
+
+        # Save RDB & Load from RDB
+        redis_con.execute_command("DEBUG", "RELOAD")
+
+        actual = redis_graph.query(query)
+        self.env.assertEquals(expected.result_set, actual.result_set)
+
+    # test changes to the VKEY_MAX_ENTITY_COUNT configuration are reflected in
+    # the number of virtual keys created
+    def test09_vkey_max_entity_count(self):
+        redis_con.flushall()
+
+        logfilename = self.env.envRunner._getFileName("master", ".log")
+        logfile = open(f"{self.env.logDir}/{logfilename}")
+        log = logfile.read()
+
+        # Set configuration
+        response = redis_con.execute_command("GRAPH.CONFIG SET VKEY_MAX_ENTITY_COUNT 10")
+        self.env.assertEqual(response, "OK")
+
+        graph_name = "vkey_max_entity_count"
+        redis_graph = Graph(graph_name, redis_con)
+        
+        # Create 30 nodes
+        redis_graph.query("UNWIND range(0, 30) as v CREATE (:L {v: v})")
+        
+        # Save RDB & Load from RDB
+        redis_con.save()
+
+        # Set configuration
+        response = redis_con.execute_command("GRAPH.CONFIG SET VKEY_MAX_ENTITY_COUNT 5")
+        self.env.assertEqual(response, "OK")
+
+        # Save RDB & Load from RDB
+        redis_con.save()
+        
+        log = logfile.read()
+
+        matches = re.findall("Created (.) virtual keys for graph vkey_max_entity_count", log)
+
+        self.env.assertEqual(matches, ['3', '6'])
+
+        matches = re.findall("Deleted (.) virtual keys for graph vkey_max_entity_count", log)
+
+        self.env.assertEqual(matches, ['3', '6'])

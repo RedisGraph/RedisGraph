@@ -45,13 +45,13 @@ cOBJ = $(cSRC:.c=.o)
 cppSRC = $(wildcard *.cpp)
 cppOBJ = $(cppSRC:.cpp=.o) 
 
-I = -I. -I../Source -I../Source/Template -I../Include -Irmm/rmm/include/  -Irmm/thirdparty/spdlog/include -Irmm/include/thirdparty/cnmem/include
+I = -I. -I../Source -I../Source/Template -I../Include -I../rmm/rmm/include/  -Irmm/thirdparty/spdlog/include 
 SO_NAME = libgraphblascuda.so
 SO_OPTS = --shared \
     -Xlinker -soname \
     -Xlinker $(SO_NAME)
 
-LIBS = -L/usr/local/cuda/lib64 -lcudadevrt -lcudart -lrmm -lspdlog -lcnmem
+LIBS = -L/usr/local/cuda/lib64 -lcudadevrt -lcudart 
 
 CUDA_OPTS = -O2 --cudart=shared --gpu-architecture=compute_75 \
         --relocatable-device-code true \
@@ -68,7 +68,7 @@ JIT_TEMP := $(patsubst %.cu, %.cu.jit, $(TEMPLATES))
 %.cu: %.cutmp
 	cp $? $@
 
-%.cu.jit: %.cu 
+%.cu.jit: %.cu
 	./stringify $? > $@
 
 stringify: stringify.cpp
@@ -83,16 +83,16 @@ test: $(cOBJ)
 	@echo $(cOBJ)
 
 $(cppOBJ): %.o: %.cpp 
-	$(GXX) $(I) -o $@ -c $< -O2 -Wall
+	$(GXX) $(I) -fPIC -o $@ -c $< -O2 -Wall
 
-$(cOBJ): %.o: %.c GB_stringify.h 
-	$(GCC) $(I) -o $@ -c $< -O2 -Wall
+$(cOBJ): %.o: %.c 
+	$(GCC) $(I) -fPIC -o $@ -c $< -O2 -Wall
 
 $(SO_NAME): $(OBJ) $(cOBJ) $(cppOBJ) $(JIT_TEMP) GB_AxB_dot3_cuda.o
 	echo $(OBJ)
 	nvcc $(SO_OPTS) $(LIBS) $(OBJ) $(cOBJ) -o $@
 
-GB_AxB_dot3_cuda.o: $(JIT_TEMP) matrix.h
+GB_AxB_dot3_cuda.o: $(JIT_TEMP) GB_cuda_semiring_factory.hpp matrix.h
 %.o: %.cu
 	nvcc -c $(I) $(CUDA_OPTS) -o $@ $< $(LIBS)
 

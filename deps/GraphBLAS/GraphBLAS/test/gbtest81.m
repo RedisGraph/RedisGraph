@@ -122,7 +122,7 @@ for m = [1 5 10 ]
                             C2 = A ;
                         case { '2nd', 'any' }
                             C2 = B ;
-                        case { 'pair' }
+                        case { 'pair', 'oneb' }
                             C2 = complex (ones (m, n), 0) ;
                         case { '+' }
                             C2 = A+B ;

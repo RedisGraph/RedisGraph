@@ -35,7 +35,7 @@ GrB_Info GB_Monoid_check        // check a GraphBLAS monoid
     // check object
     //--------------------------------------------------------------------------
 
-    GB_CHECK_MAGIC (monoid, "Monoid") ;
+    GB_CHECK_MAGIC (monoid) ;
     GBPR0 (monoid->header_size > 0 ? "(user-defined)" : "(built-in)") ;
 
     GrB_Info info = GB_BinaryOp_check (monoid->op, "monoid->op", pr, f) ;

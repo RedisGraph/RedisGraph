@@ -8,8 +8,7 @@ For the GraphBLAS/GraphBLAS Octave/MATLAB interface *only*:
 SPDX-License-Identifier: GPL-3.0-or-later
 (see below for a discussion of the licensing of this package).
 
-CACHE-BREAK-3
-VERSION 5.1.4, July 6, 2021
+VERSION 6.0.0, Nov 15, 2021
 
 SuiteSparse:GraphBLAS is a complete implementation of the GraphBLAS standard,
 which defines a set of sparse matrix operations on an extended algebra of
@@ -20,21 +19,21 @@ framework for creating graph algorithms based on the elegant mathematics of
 sparse matrix operations on a semiring.
 
 SuiteSparse:GraphBLAS is used heavily in production.  It appears as the
-underlying graph engine in the RedisGraph database by Redis Labs, and as the
+underlying graph engine in the RedisGraph database by Redis, and as the
 built-in sparse matrix multiply in MATLAB R2021a, where `C=A*B` is now up to
 30x faster than in prior versions of MATLAB (on my 20-core NVIDIA DGX Station).
 
 The development of this package is supported by NVIDIA (including the donation
-of the 20-core DGX Station), Redis Labs, MIT Lincoln Lab, Intel, and IBM.
+of the 20-core DGX Station), Redis, MIT Lincoln Lab, Intel, IBM, and
+Julia Computing.
 
 See the user guide in `Doc/GraphBLAS_UserGuide.pdf` for documentation on the
 SuiteSparse implementation of GraphBLAS, and how to use it in your
 applications.
 
 See http://graphblas.org for more information on GraphBLAS, including the
-GraphBLAS C API (also in `Doc/GraphBLAS_API_C.pdf`).  See
-https://github.com/GraphBLAS/GraphBLAS-Pointers
-for additional resources on GraphBLAS.
+GraphBLAS C API.  See https://github.com/GraphBLAS/GraphBLAS-Pointers for
+additional resources on GraphBLAS.
 
 QUICK START: To compile and install, do these commands in this directory:
 
@@ -91,7 +90,8 @@ README.md:      this file
 
 Source:         source files of the SuiteSparse:GraphBLAS library.
 
-Tcov:           test coverage, requires Octave or MATLAB
+Tcov:           test coverage, requires Octave or MATLAB.  See the log...txt
+                files, which certify 100% test coverage.
 
 Test:           Extensive tests, not meant for general usage.  To compile and
                 run, go to this directory and type make;testall in Octave or
@@ -103,17 +103,19 @@ alternative:    an alternative to CMake; edit the alternative/Makefile and do
                 "make" or "make run" in the 'alternative' directory.
 
 CUDA:           GPU interface, a work in progress.  This is being developed in
-                collaboration with Joe Eaton and others at NVIDIA, with
-                support from NVIDIA.  It appears in this release but the CUDA
-                folder is a draft that isn't ready to use yet.
+                collaboration with Joe Eaton, Corey Nolet and others at NVIDIA,
+                with support from NVIDIA.  It appears in this release but the
+                CUDA folder is a draft that isn't ready to use yet.
 
 --------------------------------------------------------------------------------
 
 ## GraphBLAS C API Specification:
 
-This version fully conforms to the version 1.3.0 (Sept 25, 2019)
-of the GraphBLAS C API Specification.  It includes several additional functions
-and features as extensions to the spec.
+Versions v5.2.0 and earlier conform to the version 1.3.0 (Sept 25, 2019) of the
+GraphBLAS C API Specification.  Versions v6.0.0 and later conform to the
+version 2.0.0 (Nov, 2021) of the GraphBLAS C API Specification.  This library
+also includes several additional functions and features as extensions to the
+spec.
 
 All functions, objects, and macros with the prefix GxB are extensions to
 the spec.  Functions, objects, and macros with prefix GB must not be accessed
@@ -143,13 +145,13 @@ SuiteSparse:GraphBLAS and LAGraph.
 ## Licensing and supporting SuiteSparse:GraphBLAS
 
 SuiteSparse:GraphBLAS is released primarily under the Apache-2.0 license,
-because of how the project is supported by many organizations (NVIDIA, Redis
-Labs, MIT Lincoln Lab, Intel, and IBM), primarily through gifts to the Texas
-A&M Foundation.  Because of this support, and to facilitate the wide-spread use
-of GraphBLAS, the decision was made to give this library a permissive
-open-source license (Apache-2.0).  Currently all source code required to create
-the C-callable library libgraphblas.so is licensed with Apache-2.0, and there
-are no plans to change this.
+because of how the project is supported by many organizations (NVIDIA, Redis,
+MIT Lincoln Lab, Intel, IBM, and Julia Computing), primarily through gifts to
+the Texas A&M Foundation.  Because of this support, and to facilitate the
+wide-spread use of GraphBLAS, the decision was made to give this library a
+permissive open-source license (Apache-2.0).  Currently all source code
+required to create the C-callable library libgraphblas.so is licensed with
+Apache-2.0, and there are no plans to change this.
 
 However, just because this code is free to use doesn't make it zero-cost to
 create.  If you are using GraphBLAS in a commercial closed-source product and
@@ -160,12 +162,7 @@ The Octave/MATLAB interface is now licensed under the GNU GPLv3.0 (or later)
 license, so if any code from the GraphBLAS/GraphBLAS folder is needed in a
 commercial closed-source application, you will either need to license your
 commercial application as GNU GPLv3.0, or you can ask me for a non-GNU and
-non-Apache license.  This change to the licensing of the Octave/MATLAB
-interface is retroactive to all versions of GraphBLAS (back to v1.0 in 2017); I
-have not updated the github releases with the text to change this license,
-because this would be disruptive to version management systems.  However, if
-you see an "Apache-2.0" stamp on any file in the GraphBLAS/GraphBLAS folder or
-its subfolders, ignore it and assume GPLv3.
+non-Apache license.
 
 This licensing change has no impact at all on the use of GraphBLAS in Octave,
 since Octave itself is already under the GNU GPLv3.0 license.

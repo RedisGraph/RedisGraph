@@ -30,6 +30,7 @@ GrB_Info GxB_Monoid_identity        // return the monoid identity
     //--------------------------------------------------------------------------
 
     memcpy (identity, monoid->identity, monoid->op->ztype->size) ;
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

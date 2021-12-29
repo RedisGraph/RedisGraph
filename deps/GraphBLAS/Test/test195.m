@@ -30,7 +30,6 @@ for asparsity = [1 2 4 8]
                         fprintf ('.') ;
                         M = GB_spec_random (m, n, dm) ; M.sparsity = msparsity ;
                         M.matrix = spones (M.matrix) ;
-                        C0 = sparse (n, n) ;
 
                         % C = A*B
                         C0 = A.matrix * B.matrix ;
@@ -80,3 +79,4 @@ for asparsity = [1 2 4 8]
 end
 
 fprintf ('\ntest195: all tests passed\n') ;
+

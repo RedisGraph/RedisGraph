@@ -2,14 +2,13 @@ import os
 import sys
 from RLTest import Env
 from redisgraph import Graph, Node, Edge
-from base import FlowTestsBase
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/')
 import social_utils
 
 redis_graph = None
 
-class testIndexScanFlow(FlowTestsBase):
+class testIndexScanFlow():
     def __init__(self):
         self.env = Env(decodeResponses=True)
 
@@ -25,20 +24,20 @@ class testIndexScanFlow(FlowTestsBase):
 
     def build_indices(self):
         global redis_graph
-        redis_graph.redis_con.execute_command("GRAPH.QUERY", "social", "CREATE INDEX ON :person(age)")
-        redis_graph.redis_con.execute_command("GRAPH.QUERY", "social", "CREATE INDEX ON :country(name)")
+        redis_graph.query("CREATE INDEX ON :person(age)")
+        redis_graph.query("CREATE INDEX ON :country(name)")
 
     # Validate that Cartesian products using index and label scans succeed
     def test01_cartesian_product_mixed_scans(self):
         query = "MATCH (p:person), (c:country) WHERE p.age > 0 RETURN p.age, c.name ORDER BY p.age, c.name"
         plan = redis_graph.execution_plan(query)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
         self.env.assertIn('Label Scan', plan)
         indexed_result = redis_graph.query(query)
 
         query = "MATCH (p:person), (c:country) RETURN p.age, c.name ORDER BY p.age, c.name"
         plan = redis_graph.execution_plan(query)
-        self.env.assertNotIn('Index Scan', plan)
+        self.env.assertNotIn('Node By Index Scan', plan)
         self.env.assertIn('Label Scan', plan)
         unindexed_result = redis_graph.query(query)
 
@@ -49,13 +48,13 @@ class testIndexScanFlow(FlowTestsBase):
         query = "MATCH (p:person), (c:country) WHERE p.age > 0 AND c.name > '' RETURN p.age, c.name ORDER BY p.age, c.name"
         plan = redis_graph.execution_plan(query)
         # The two streams should both use index scans
-        self.env.assertEquals(plan.count('Index Scan'), 2)
+        self.env.assertEquals(plan.count('Node By Index Scan'), 2)
         self.env.assertNotIn('Label Scan', plan)
         indexed_result = redis_graph.query(query)
 
         query = "MATCH (p:person), (c:country) RETURN p.age, c.name ORDER BY p.age, c.name"
         plan = redis_graph.execution_plan(query)
-        self.env.assertNotIn('Index Scan', plan)
+        self.env.assertNotIn('Node By Index Scan', plan)
         self.env.assertIn('Label Scan', plan)
         unindexed_result = redis_graph.query(query)
 
@@ -63,11 +62,11 @@ class testIndexScanFlow(FlowTestsBase):
 
     # Validate that the appropriate bounds are respected when a Cartesian product uses the same index in two streams
     def test03_cartesian_product_reused_index(self):
-        redis_graph.redis_con.execute_command("GRAPH.QUERY", "social", "CREATE INDEX ON :person(name)")
+        redis_graph.query("CREATE INDEX ON :person(name)")
         query = "MATCH (a:person {name: 'Omri Traub'}), (b:person) WHERE b.age <= 30 RETURN a.name, b.name ORDER BY a.name, b.name"
         plan = redis_graph.execution_plan(query)
         # The two streams should both use index scans
-        self.env.assertEquals(plan.count('Index Scan'), 2)
+        self.env.assertEquals(plan.count('Node By Index Scan'), 2)
         self.env.assertNotIn('Label Scan', plan)
 
 
@@ -82,18 +81,18 @@ class testIndexScanFlow(FlowTestsBase):
         # Validate the transformation of IN to multiple OR expressions.
         query = "MATCH (p:person) WHERE p.age IN [1,2,3] RETURN p"
         plan = redis_graph.execution_plan(query)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
 
         # Validate that nested arrays are not scanned in index.
         query = "MATCH (p:person) WHERE p.age IN [[1,2],3] RETURN p"
         plan = redis_graph.execution_plan(query)
-        self.env.assertNotIn('Index Scan', plan)
+        self.env.assertNotIn('Node By Index Scan', plan)
         self.env.assertIn('Label Scan', plan)
 
         # Validate the transformation of IN to multiple OR, over a range.
         query = "MATCH (p:person) WHERE p.age IN range(0,30) RETURN p.name ORDER BY p.name"
         plan = redis_graph.execution_plan(query)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
 
         expected_result = [['Gal Derriere'], ['Lucy Yanfital']]
         result = redis_graph.query(query)
@@ -102,7 +101,7 @@ class testIndexScanFlow(FlowTestsBase):
          # Validate the transformation of IN to empty index iterator.
         query = "MATCH (p:person) WHERE p.age IN [] RETURN p.name"
         plan = redis_graph.execution_plan(query)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
 
         expected_result = []
         result = redis_graph.query(query)
@@ -111,7 +110,7 @@ class testIndexScanFlow(FlowTestsBase):
         # Validate the transformation of IN OR IN to empty index iterators.
         query = "MATCH (p:person) WHERE p.age IN [] OR p.age IN [] RETURN p.name"
         plan = redis_graph.execution_plan(query)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
 
         expected_result = []
         result = redis_graph.query(query)
@@ -120,7 +119,7 @@ class testIndexScanFlow(FlowTestsBase):
         # Validate the transformation of multiple IN filters.
         query = "MATCH (p:person) WHERE p.age IN [26, 27, 30] OR p.age IN [33, 34, 35] RETURN p.name ORDER BY p.age"
         plan = redis_graph.execution_plan(query)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
 
         expected_result = [['Gal Derriere'], ['Lucy Yanfital'], ['Omri Traub'], ['Noam Nativ']]
         result = redis_graph.query(query)
@@ -129,7 +128,7 @@ class testIndexScanFlow(FlowTestsBase):
         # Validate the transformation of multiple IN filters.
         query = "MATCH (p:person) WHERE p.age IN [26, 27, 30] OR p.age IN [33, 34, 35] OR p.age IN [] RETURN p.name ORDER BY p.age"
         plan = redis_graph.execution_plan(query)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
 
         expected_result = [['Gal Derriere'], ['Lucy Yanfital'], ['Omri Traub'], ['Noam Nativ']]
         result = redis_graph.query(query)
@@ -138,11 +137,11 @@ class testIndexScanFlow(FlowTestsBase):
     # Validate index utilization when filtering on string fields with the `IN` keyword.
     def test05_test_in_operator_string_props(self):
         # Build an index on the name property.
-        redis_graph.redis_con.execute_command("GRAPH.QUERY", "social", "CREATE INDEX ON :person(name)")
+        redis_graph.query("CREATE INDEX ON :person(name)")
         # Validate the transformation of IN to multiple OR expressions over string properties.
         query = "MATCH (p:person) WHERE p.name IN ['Gal Derriere', 'Lucy Yanfital'] RETURN p.name ORDER BY p.name"
         plan = redis_graph.execution_plan(query)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
         self.env.assertNotIn('Label Scan', plan)
 
         expected_result = [['Gal Derriere'], ['Lucy Yanfital']]
@@ -152,7 +151,7 @@ class testIndexScanFlow(FlowTestsBase):
         # Combine numeric and string filters specified by IN.
         query = "MATCH (p:person) WHERE p.name IN ['Gal Derriere', 'Lucy Yanfital'] AND p.age in [30] RETURN p.name ORDER BY p.name"
         plan = redis_graph.execution_plan(query)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
         self.env.assertNotIn('Label Scan', plan)
 
         expected_result = [['Lucy Yanfital']]
@@ -162,7 +161,7 @@ class testIndexScanFlow(FlowTestsBase):
          # Validate an empty index on IN with multiple indexes
         query = "MATCH (p:person) WHERE p.name IN [] OR p.age IN [] RETURN p.name"
         plan = redis_graph.execution_plan(query)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
 
         expected_result = []
         result = redis_graph.query(query)
@@ -171,7 +170,7 @@ class testIndexScanFlow(FlowTestsBase):
         # Combine IN filters with other relational filters.
         query = "MATCH (p:person) WHERE p.name IN ['Gal Derriere', 'Lucy Yanfital'] AND p.name < 'H' RETURN p.name ORDER BY p.name"
         plan = redis_graph.execution_plan(query)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
         self.env.assertNotIn('Label Scan', plan)
 
         expected_result = [['Gal Derriere']]
@@ -180,7 +179,7 @@ class testIndexScanFlow(FlowTestsBase):
 
         query = "MATCH (p:person) WHERE p.name IN ['Gal Derriere', 'Lucy Yanfital'] OR p.age = 33 RETURN p.name ORDER BY p.name"
         plan = redis_graph.execution_plan(query)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
         self.env.assertNotIn('Label Scan', plan)
 
         expected_result = [['Gal Derriere'], ['Lucy Yanfital'], ['Omri Traub']]
@@ -207,7 +206,7 @@ class testIndexScanFlow(FlowTestsBase):
         query = """MATCH (a:Node{value:"A ValuePartition is a pattern that describes a restricted set of classes from which a property can be associated. The parent class is used in restrictions, and the covering axiom means that only members of the subclasses may be used as values."}) RETURN a"""
         plan = redis_graph.execution_plan(query)
         result_set = redis_graph.query(query).result_set
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
         self.env.assertEqual(len(result_set), 1)
 
     def test07_index_scan_and_id(self):
@@ -227,7 +226,7 @@ class testIndexScanFlow(FlowTestsBase):
         query = """MATCH (n:person) WHERE id(n)>=7 AND n.age<9 RETURN n ORDER BY n.age"""
         plan = redis_graph.execution_plan(query)
         query_result = redis_graph.query(query)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
         self.env.assertIn('Filter', plan)
         query_result = redis_graph.query(query)
 
@@ -239,7 +238,7 @@ class testIndexScanFlow(FlowTestsBase):
     def test08_index_scan_multiple_filters(self):
         query = "MATCH (p:person) WHERE p.age = 30 AND NOT EXISTS(p.fakeprop) RETURN p.name"
         plan = redis_graph.execution_plan(query)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
         self.env.assertNotIn('Label Scan', plan)
         self.env.assertIn('Filter', plan)
 
@@ -249,21 +248,19 @@ class testIndexScanFlow(FlowTestsBase):
 
     def test09_index_scan_with_params(self):
         query = "MATCH (p:person) WHERE p.age = $age RETURN p.name"
-        params = {'age':30}
-        query = redis_graph.build_params_header(params) + query
-        plan = redis_graph.execution_plan(query)
-        self.env.assertIn('Index Scan', plan)
-        query_result = redis_graph.query(query)
+        params = {'age': 30}
+        plan = redis_graph.execution_plan(query, params=params)
+        self.env.assertIn('Node By Index Scan', plan)
+        query_result = redis_graph.query(query, params=params)
         expected_result = ["Lucy Yanfital"]
         self.env.assertEquals(query_result.result_set[0], expected_result)
 
     def test10_index_scan_with_param_array(self):
         query = "MATCH (p:person) WHERE p.age in $ages RETURN p.name"
-        params = {'ages':[30]}
-        query = redis_graph.build_params_header(params) + query
-        plan = redis_graph.execution_plan(query)
-        self.env.assertIn('Index Scan', plan)
-        query_result = redis_graph.query(query)
+        params = {'ages': [30]}
+        plan = redis_graph.execution_plan(query, params=params)
+        self.env.assertIn('Node By Index Scan', plan)
+        query_result = redis_graph.query(query, params=params)
         expected_result = ["Lucy Yanfital"]
         self.env.assertEquals(query_result.result_set[0], expected_result)
 
@@ -271,7 +268,7 @@ class testIndexScanFlow(FlowTestsBase):
         query = "MERGE (p1:person {age: 40}) MERGE (p2:person {age: 41})"
         plan = redis_graph.execution_plan(query)
         # Two index scans should be performed.
-        self.env.assertEqual(plan.count("Index Scan"), 2)
+        self.env.assertEqual(plan.count("Node By Index Scan"), 2)
 
         query_result = redis_graph.query(query)
         # Two new nodes should be created.
@@ -281,7 +278,7 @@ class testIndexScanFlow(FlowTestsBase):
         query = "MATCH (a:person {age: 32})-[]->(b) WHERE (b:person)-[]->(a) RETURN a"
         plan = redis_graph.execution_plan(query)
         # One index scan should be performed.
-        self.env.assertEqual(plan.count("Index Scan"), 1)
+        self.env.assertEqual(plan.count("Node By Index Scan"), 1)
 
     def test13_point_index_scan(self):
         # create index
@@ -299,7 +296,7 @@ class testIndexScanFlow(FlowTestsBase):
 
         # make sure index is used
         plan = redis_graph.execution_plan(q)
-        self.env.assertIn("Index Scan", plan)
+        self.env.assertIn("Node By Index Scan", plan)
 
         # refine query from '<' to '<='
         q = """MATCH (r:restaurant)
@@ -308,7 +305,7 @@ class testIndexScanFlow(FlowTestsBase):
 
         # make sure index is used
         plan = redis_graph.execution_plan(q)
-        self.env.assertIn("Index Scan", plan)
+        self.env.assertIn("Node By Index Scan", plan)
 
         # index should NOT be used when searching for points outside of a circle
         # testing operand: '>', '>=' and '='
@@ -318,7 +315,7 @@ class testIndexScanFlow(FlowTestsBase):
 
         # make sure index is NOT used
         plan = redis_graph.execution_plan(q)
-        self.env.assertNotIn("Index Scan", plan)
+        self.env.assertNotIn("Node By Index Scan", plan)
 
         q = """MATCH (r:restaurant)
         WHERE distance(r.location, point({latitude:30.27822306, longitude:-97.75134723})) >= 1000
@@ -326,7 +323,7 @@ class testIndexScanFlow(FlowTestsBase):
 
         # make sure index is NOT used
         plan = redis_graph.execution_plan(q)
-        self.env.assertNotIn("Index Scan", plan)
+        self.env.assertNotIn("Node By Index Scan", plan)
 
         q = """MATCH (r:restaurant)
         WHERE distance(r.location, point({latitude:30.27822306, longitude:-97.75134723})) = 1000
@@ -334,14 +331,14 @@ class testIndexScanFlow(FlowTestsBase):
 
         # make sure index is NOT used
         plan = redis_graph.execution_plan(q)
-        self.env.assertNotIn("Index Scan", plan)
+        self.env.assertNotIn("Node By Index Scan", plan)
 
     def test14_index_scan_utilize_array(self):
         # Querying indexed properties using IN a constant array should utilize indexes.
         query = "MATCH (a:person) WHERE a.age IN [34, 33] RETURN a.name ORDER BY a.name"
         plan = redis_graph.execution_plan(query)
         # One index scan should be performed.
-        self.env.assertEqual(plan.count("Index Scan"), 1)
+        self.env.assertEqual(plan.count("Node By Index Scan"), 1)
         query_result = redis_graph.query(query)
         expected_result = [["Noam Nativ"],
                            ["Omri Traub"]]
@@ -351,7 +348,7 @@ class testIndexScanFlow(FlowTestsBase):
         query = "MATCH (a:person) WHERE a.age IN range(33, 34) RETURN a.name ORDER BY a.name"
         plan = redis_graph.execution_plan(query)
         # One index scan should be performed.
-        self.env.assertEqual(plan.count("Index Scan"), 1)
+        self.env.assertEqual(plan.count("Node By Index Scan"), 1)
         query_result = redis_graph.query(query)
         expected_result = [["Noam Nativ"],
                            ["Omri Traub"]]
@@ -362,7 +359,7 @@ class testIndexScanFlow(FlowTestsBase):
         plan = redis_graph.execution_plan(query)
         # No index scans should be performed.
         self.env.assertEqual(plan.count("Label Scan"), 1)
-        self.env.assertEqual(plan.count("Index Scan"), 0)
+        self.env.assertEqual(plan.count("Node By Index Scan"), 0)
 
     # Test fulltext result scoring
     def test15_fulltext_result_scoring(self):
@@ -393,7 +390,7 @@ class testIndexScanFlow(FlowTestsBase):
         RETURN p.name
         ORDER BY p.name"""
         plan = redis_graph.execution_plan(q)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
         query_result = redis_graph.query(q)
         expected_result = [["Noam Nativ"], ["Omri Traub"]]
         self.env.assertEquals(query_result.result_set, expected_result)
@@ -406,7 +403,7 @@ class testIndexScanFlow(FlowTestsBase):
         RETURN p.name
         ORDER BY p.name"""
         plan = redis_graph.execution_plan(q)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
         query_result = redis_graph.query(q)
         expected_result = [["Noam Nativ"], ["Omri Traub"]]
         self.env.assertEquals(query_result.result_set, expected_result)
@@ -418,7 +415,7 @@ class testIndexScanFlow(FlowTestsBase):
         RETURN p.name
         ORDER BY p.name"""
         plan = redis_graph.execution_plan(q)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
         query_result = redis_graph.query(q)
         expected_result = [["Omri Traub"]]
         self.env.assertEquals(query_result.result_set, expected_result)
@@ -432,7 +429,7 @@ class testIndexScanFlow(FlowTestsBase):
         RETURN p.name
         ORDER BY p.name"""
         plan = redis_graph.execution_plan(q)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
         query_result = redis_graph.query(q)
         expected_result = [["Omri Traub"]]
         self.env.assertEquals(query_result.result_set, expected_result)
@@ -446,7 +443,7 @@ class testIndexScanFlow(FlowTestsBase):
         RETURN p.name
         ORDER BY p.name"""
         plan = redis_graph.execution_plan(q)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
         query_result = redis_graph.query(q)
         expected_result = [["Omri Traub"]]
         self.env.assertEquals(query_result.result_set, expected_result)
@@ -462,7 +459,7 @@ class testIndexScanFlow(FlowTestsBase):
         RETURN b.name
         ORDER BY b.name"""
         plan = redis_graph.execution_plan(q)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
         query_result = redis_graph.query(q)
         expected_result = [["Noam Nativ"]]
         self.env.assertEquals(query_result.result_set, expected_result)
@@ -476,7 +473,7 @@ class testIndexScanFlow(FlowTestsBase):
         RETURN b.name
         ORDER BY b.name"""
         plan = redis_graph.execution_plan(q)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
         query_result = redis_graph.query(q)
         expected_result = [["Noam Nativ"]]
         self.env.assertEquals(query_result.result_set, expected_result)
@@ -498,7 +495,7 @@ class testIndexScanFlow(FlowTestsBase):
         # find all person nodes with age value of [36]
         q = """WITH [36] AS age MATCH (a:person {age:age}) RETURN a.name"""
         plan = redis_graph.execution_plan(q)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
         query_result = redis_graph.query(q)
         expected_result = [["leonard"]]
         self.env.assertEquals(query_result.result_set, expected_result)
@@ -506,7 +503,7 @@ class testIndexScanFlow(FlowTestsBase):
         # find all person nodes with age > [33]
         q = """WITH [33] AS age MATCH (a:person) WHERE a.age > age RETURN a.name"""
         plan = redis_graph.execution_plan(q)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
         query_result = redis_graph.query(q)
         expected_result = [["leonard"], [["maynard"]]]
         self.env.assertEquals(query_result.result_set, expected_result)
@@ -514,8 +511,62 @@ class testIndexScanFlow(FlowTestsBase):
         # combine indexable value with none-indexable value index query
         q = """WITH [33] AS age, 'leonard' AS name MATCH (a:person) WHERE a.age >= age AND a.name = name RETURN a.name"""
         plan = redis_graph.execution_plan(q)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Index Scan', plan)
         query_result = redis_graph.query(q)
         expected_result = [["leonard"]]
         self.env.assertEquals(query_result.result_set, expected_result)
+
+    # test for https://github.com/RedisGraph/RedisGraph/issues/1980
+    def test18_index_scan_inside_apply(self):
+        redis_graph = Graph('g', self.env.getConnection())
+
+        redis_graph.query("CREATE INDEX ON :L1(id)")
+        redis_graph.query("UNWIND range(1, 5) AS v CREATE (:L1 {id: v})")
+        result = redis_graph.query("UNWIND range(1, 5) AS id OPTIONAL MATCH (u:L1{id: 5}) RETURN u.id")
+
+        expected_result = [[5], [5], [5], [5], [5]]
+        self.env.assertEquals(result.result_set, expected_result)
+
+    def test19_index_scan_numeric_accuracy(self):
+        redis_graph = Graph('large_index_values', self.env.getConnection())
+
+        redis_graph.query("CREATE INDEX ON :L1(id)")
+        redis_graph.query("CREATE INDEX ON :L2(id1, id2)")
+        redis_graph.query("UNWIND range(1, 5) AS v CREATE (:L1 {id: 990000000262240068 + v})")
+        redis_graph.query("UNWIND range(1, 5) AS v CREATE (:L2 {id1: 990000000262240068 + v, id2: 990000000262240068 - v})")
+
+        # test index search
+        result = redis_graph.query("MATCH (u:L1{id: 990000000262240069}) RETURN u.id")
+        expected_result = [[990000000262240069]]
+        self.env.assertEquals(result.result_set, expected_result)
+
+        # test index search from child
+        result = redis_graph.query("MATCH (u:L1) WITH min(u.id) as id MATCH (u:L1{id: id}) RETURN u.id")
+        expected_result = [[990000000262240069]]
+        self.env.assertEquals(result.result_set, expected_result)
+
+        # test index search with or
+        result = redis_graph.query("MATCH (u:L1) WHERE u.id = 990000000262240069 OR u.id = 990000000262240070 RETURN u.id ORDER BY u.id")
+        expected_result = [[990000000262240069], [990000000262240070]]
+        self.env.assertEquals(result.result_set, expected_result)
+
+        # test resetting index scan operation
+        result = redis_graph.query("MATCH (u1:L1), (u2:L1) WHERE u1.id = 990000000262240069 AND (u2.id = 990000000262240070 OR u2.id = 990000000262240071) RETURN u1.id, u2.id ORDER BY u1.id, u2.id")
+        expected_result = [[990000000262240069, 990000000262240070], [990000000262240069, 990000000262240071]]
+        self.env.assertEquals(result.result_set, expected_result)
+
+        # test resetting index scan operation when using the consume from child function
+        result = redis_graph.query("MATCH (u:L1) WITH min(u.id) as id MATCH (u1:L1), (u2:L1) WHERE u1.id = 990000000262240069 AND (u2.id = 990000000262240070 OR u2.id = 990000000262240071) RETURN u1.id, u2.id ORDER BY u1.id, u2.id")
+        expected_result = [[990000000262240069, 990000000262240070], [990000000262240069, 990000000262240071]]
+        self.env.assertEquals(result.result_set, expected_result)
+
+        # test resetting index scan operation when rebuild index is required
+        result = redis_graph.query("MATCH (u:L1) WITH min(u.id) as id MATCH (u1:L1), (u2:L1) WHERE u1.id = id AND (u2.id = 990000000262240070 OR u2.id = 990000000262240071) RETURN u1.id, u2.id ORDER BY u1.id, u2.id")
+        expected_result = [[990000000262240069, 990000000262240070], [990000000262240069, 990000000262240071]]
+        self.env.assertEquals(result.result_set, expected_result)
+
+        # test index scan with 2 different attributes
+        result = redis_graph.query("MATCH (u:L2) WHERE u.id1 = 990000000262240069 AND u.id2 = 990000000262240067 RETURN u.id1, u.id2")
+        expected_result = [[990000000262240069, 990000000262240067]]
+        self.env.assertEquals(result.result_set, expected_result)
 

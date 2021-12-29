@@ -6,18 +6,13 @@
 
 #include "decode_v8.h"
 
-// Module event handler functions declarations.
-void ModuleEventHandler_IncreaseDecodingGraphsCount(void);
-void ModuleEventHandler_DecreaseDecodingGraphsCount(void);
-
 static GraphContext *_GetOrCreateGraphContext(char *graph_name) {
 	GraphContext *gc = GraphContext_GetRegisteredGraphContext(graph_name);
 	if(!gc) {
 		// New graph is being decoded. Inform the module and create new graph context.
-		ModuleEventHandler_IncreaseDecodingGraphsCount();
 		gc = GraphContext_New(graph_name, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 		// While loading the graph, minimize matrix realloc and synchronization calls.
-		Graph_SetMatrixPolicy(gc->g, RESIZE_TO_CAPACITY);
+		Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_RESIZE);
 	}
 	// Free the name string, as it either not in used or copied.
 	RedisModule_Free(graph_name);
@@ -36,6 +31,8 @@ static void _InitGraphDataStructure(Graph *g, uint64_t node_count, uint64_t edge
 	DataBlock_Accommodate(g->edges, edge_count);
 	for(uint64_t i = 0; i < label_count; i++) Graph_AddLabel(g);
 	for(uint64_t i = 0; i < relation_count; i++) Graph_AddRelationType(g);
+	// flush all matrices, guarantee matrix dimensions matches graph's nodes count
+	Graph_ApplyAllPending(g, true);
 }
 
 static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
@@ -58,7 +55,7 @@ static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
 	uint64_t label_count = RedisModule_LoadUnsigned(rdb);
 	uint64_t relation_count = RedisModule_LoadUnsigned(rdb);
 	uint64_t multi_edge[relation_count];
-	
+
 	for(uint i = 0; i < relation_count; i++) {
 		multi_edge[i] = RedisModule_LoadUnsigned(rdb);
 	}
@@ -71,7 +68,7 @@ static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
 	// If it is the first key of this graph, allocate all the data structures, with the appropriate dimensions.
 	if(GraphDecodeContext_GetProcessedKeyCount(gc->decoding_context) == 0) {
 		_InitGraphDataStructure(gc->g, node_count, edge_count, label_count, relation_count);
-		
+
 		gc->decoding_context->multi_edge = array_new(uint64_t, relation_count);
 		for(uint i = 0; i < relation_count; i++) {
 			// Enable/Disable support for multi-edge
@@ -134,24 +131,26 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 	for(uint i = 0; i < payloads_count; i++) {
 		PayloadInfo payload = key_schema[i];
 		switch(payload.state) {
-		case ENCODE_STATE_NODES:
-			RdbLoadNodes_v8(rdb, gc, payload.entities_count);
-			break;
-		case ENCODE_STATE_DELETED_NODES:
-			RdbLoadDeletedNodes_v8(rdb, gc, payload.entities_count);
-			break;
-		case ENCODE_STATE_EDGES:
-			RdbLoadEdges_v8(rdb, gc, payload.entities_count);
-			break;
-		case ENCODE_STATE_DELETED_EDGES:
-			RdbLoadDeletedEdges_v8(rdb, gc, payload.entities_count);
-			break;
-		case ENCODE_STATE_GRAPH_SCHEMA:
-			RdbLoadGraphSchema_v8(rdb, gc);
-			break;
-		default:
-			ASSERT(false && "Unknown encoding");
-			break;
+			case ENCODE_STATE_NODES:
+				Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
+				RdbLoadNodes_v8(rdb, gc, payload.entities_count);
+				break;
+			case ENCODE_STATE_DELETED_NODES:
+				RdbLoadDeletedNodes_v8(rdb, gc, payload.entities_count);
+				break;
+			case ENCODE_STATE_EDGES:
+				Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
+				RdbLoadEdges_v8(rdb, gc, payload.entities_count);
+				break;
+			case ENCODE_STATE_DELETED_EDGES:
+				RdbLoadDeletedEdges_v8(rdb, gc, payload.entities_count);
+				break;
+			case ENCODE_STATE_GRAPH_SCHEMA:
+				RdbLoadGraphSchema_v8(rdb, gc);
+				break;
+			default:
+				ASSERT(false && "Unknown encoding");
+				break;
 		}
 	}
 	array_free(key_schema);
@@ -167,26 +166,38 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 	}
 
 	if(GraphDecodeContext_Finished(gc->decoding_context)) {
-		// Revert to default synchronization behavior
-		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
-		Graph_ApplyAllPending(gc->g);
-		// Set the thread-local GraphContext, as it will be accessed when creating indexes.
-		QueryCtx_SetGraphCtx(gc);
-		// Index the nodes when decoding ends.
-		uint node_schemas_count = array_len(gc->node_schemas);
-		for(uint i = 0; i < node_schemas_count; i++) {
-			Schema *s = gc->node_schemas[i];
+		Graph *g = gc->g;
+
+		// revert to default synchronization behavior
+		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
+		Graph_ApplyAllPending(g, true);
+		
+		uint label_count = Graph_LabelTypeCount(g);
+		// update the node statistics
+		// index the nodes
+		for(uint i = 0; i < label_count; i++) {
+			GrB_Index nvals;
+			RG_Matrix L = Graph_GetLabelMatrix(g, i);
+			RG_Matrix_nvals(&nvals, L);
+			GraphStatistics_IncNodeCount(&g->stats, i, nvals);
+
+			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
 			if(s->index) Index_Construct(s->index);
 			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
 		}
 
-		QueryCtx_Free(); // Release thread-local variables.
+		// make sure graph doesn't contains may pending changes
+		ASSERT(Graph_Pending(g) == false);
+
 		GraphDecodeContext_Reset(gc->decoding_context);
-		// Graph has finished decoding, inform the module.
-		ModuleEventHandler_DecreaseDecodingGraphsCount();
+		// graph has finished decoding, inform the module
 		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
-		RedisModule_Log(ctx, "notice", "Done decoding graph %s", gc->graph_name);
+		RedisModule_Log(ctx, "notice", "Done decoding graph %s", GraphContext_GetName(gc));
 	}
+	
+	// release thread-local variables
+	QueryCtx_Free();
+
 	return gc;
 }
 

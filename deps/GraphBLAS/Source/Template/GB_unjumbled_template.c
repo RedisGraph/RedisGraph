@@ -17,8 +17,8 @@
         // get the task description
         //----------------------------------------------------------------------
 
-        int64_t kfirst = A_slice [tid] ;
-        int64_t klast  = A_slice [tid+1] ;
+        const int64_t kfirst = A_slice [tid] ;
+        const int64_t klast  = A_slice [tid+1] ;
 
         //----------------------------------------------------------------------
         // sort vectors kfirst to klast
@@ -32,8 +32,8 @@
             //------------------------------------------------------------------
 
             bool jumbled = false ;
-            int64_t pA_start = Ap [k] ;
-            int64_t pA_end   = Ap [k+1] ;
+            const int64_t pA_start = Ap [k] ;
+            const int64_t pA_end   = Ap [k+1] ;
             int64_t ilast = -1 ;
             for (int64_t pA = pA_start ; pA < pA_end ; pA++)
             {
@@ -52,7 +52,7 @@
 
             if (jumbled)
             { 
-                int64_t aknz = pA_end - pA_start ;
+                const int64_t aknz = pA_end - pA_start ;
                 GB_QSORT ;
             }
         }

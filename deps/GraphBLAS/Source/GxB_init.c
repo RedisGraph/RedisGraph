@@ -62,8 +62,11 @@ GrB_Info GxB_init           // start up GraphBLAS and also define malloc, etc
     void * (* user_malloc_function  ) (size_t),         // required
     void * (* user_calloc_function  ) (size_t, size_t), // no longer used
     void * (* user_realloc_function ) (void *, size_t), // optional, can be NULL
-    void   (* user_free_function    ) (void *),         // required
-    bool user_malloc_is_thread_safe
+    void   (* user_free_function    ) (void *)          // required
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
+    // parameter added in v3.0, unused in this v5.2.0, to be removed in v6.0
+    , bool ignored
+    #endif
 )
 {
 
@@ -71,7 +74,7 @@ GrB_Info GxB_init           // start up GraphBLAS and also define malloc, etc
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_CONTEXT ("GxB_init (mode, malloc, calloc, realloc, free, thread_safe)") ;
+    GB_CONTEXT ("GxB_init (mode, malloc, calloc, realloc, free)") ;
     if (user_malloc_function == NULL || user_free_function == NULL)
     { 
         // only malloc and free are required.  calloc and/or realloc may be
@@ -86,10 +89,8 @@ GrB_Info GxB_init           // start up GraphBLAS and also define malloc, etc
     return (GB_init
         (mode,                          // blocking or non-blocking mode
         user_malloc_function,           // user-defined malloc, required
-        NULL,                           // user-defined calloc, ignored
         user_realloc_function,          // user-defined realloc, may be NULL
         user_free_function,             // user-defined free, required
-        user_malloc_is_thread_safe,     // true if all functions are thread-safe
         false,                          // do not use CUDA
         Context)) ;
 }

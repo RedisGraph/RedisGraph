@@ -24,9 +24,6 @@ static ExecutionPlan *_ClonePlanInternals(const ExecutionPlan *template) {
 		array_clone_with_cb(clone->connected_components, template->connected_components, QueryGraph_Clone);
 	}
 
-	// Temporarily set the thread-local AST to be the one referenced by this ExecutionPlan segment.
-	QueryCtx_SetAST(clone->ast_segment);
-
 	return clone;
 }
 
@@ -41,6 +38,9 @@ static OpBase *_CloneOpTree(OpBase *template_parent, OpBase *template_current,
 		// This op was built as part of the same segment as its parent, don't change ExecutionPlans.
 		plan_segment = clone_parent->plan;
 	}
+
+	// Temporarily set the thread-local AST to be the one referenced by this ExecutionPlan segment.
+	QueryCtx_SetAST(plan_segment->ast_segment);
 
 	// Clone the current operation.
 	OpBase *clone_current = OpBase_Clone(plan_segment, template_current);

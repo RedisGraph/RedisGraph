@@ -25,6 +25,7 @@ GrB_Info GrB_getVersion         // runtime access to C API version number
     if (version    != NULL) (*version   ) = GRB_VERSION ;
     if (subversion != NULL) (*subversion) = GRB_SUBVERSION ;
 
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

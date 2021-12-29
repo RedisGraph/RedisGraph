@@ -151,6 +151,10 @@ for k0 = 1:size (problems,1) ;
             for k3 = k3_list
                 op = accum_ops {k3} ;
                 fprintf ('.') ;
+                if (isequal (op, 'hypot'))
+                    continue
+                end
+                % op
 
                 if (fulltests)
                     k4_list = [1:length(types)] ;
@@ -246,6 +250,7 @@ for k0 = 1:size (problems,1) ;
                             C = GB_mex_Matrix_extract  (Csub, [ ], accum, ...
                                 A, I-1, J-1, [ ]) ;
                             assert (GB_spok (C.matrix*1) == 1) ;
+                            C.matrix = C.matrix * 1 ;
                             S = GB_spec_Matrix_extract (Csub, [ ], accum,  ...
                                 A, I, J, [ ]) ;
                             assert (isequal (C.class, cintype)) ;

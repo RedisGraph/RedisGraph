@@ -112,9 +112,9 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 				CondVarLenTraverseToString, CondVarLenTraverseClone,
 				CondVarLenTraverseFree, false, plan);
 
-	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
+	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Src(ae), &op->srcNodeIdx);
 	ASSERT(aware);
-	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
+	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Dest(ae));
 
 	// populate edge value in record only if it is referenced
 	AST *ast = QueryCtx_GetAST();

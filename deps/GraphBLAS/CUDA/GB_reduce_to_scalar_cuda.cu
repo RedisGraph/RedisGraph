@@ -45,15 +45,14 @@ GrB_Info GB_reduce_to_scalar_cuda
         file_callback_plus);
     //{"--use_fast_math", "-I/usr/local/cuda/include"});
 
-    int nnz = GB_NNZ( A ) ;
+    int nnz = GB_nnz( A ) ;
     GrB_Type ctype = reduce->op->ztype ;
 
     int blocksize = 1024 ;
     int ntasks = ( nnz + blocksize -1) / blocksize ;
 
     int32_t *block_sum;
-    //cudaMallocManaged ((void**) &block_sum, (num_reduce_blocks)*sizeof(int32_t)) ;
-    block_sum = (int32_t*)GB_cuda_malloc( (ntasks)*sizeof(int32_t)) ;
+    cudaMalloc ((void**) &block_sum, (ntasks)*sizeof(int32_t)) ;
 
     dim3 red_grid(ntasks);
     dim3 red_block(blocksize);
@@ -63,7 +62,7 @@ GrB_Info GB_reduce_to_scalar_cuda
                    templates_reduceNonZombiesWarp_cu,
                    header_names,
                    compiler_flags,
-                   callback_wrapper)
+                   dummy_callback)
                    .set_kernel_inst( reduce_kernel_name , { ctype->name })
                    .configure(red_grid, red_block) //if commented, use implicit 1D configure in launch
                    .launch(
@@ -82,7 +81,7 @@ GrB_Info GB_reduce_to_scalar_cuda
         *s += (block_sum [i]) ; 
     }
 
-
+    cudaFree( block_sum);
     return (GrB_SUCCESS) ;
 }
 

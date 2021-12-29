@@ -50,6 +50,7 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
     GrB_Matrix M,                   // optional mask matrix
     const bool Mask_comp,           // if true, use !M
     const bool Mask_struct,         // if true, use the only structure of M
+    const GrB_BinaryOp accum,
     const GrB_Matrix A,             // input matrix A
     const GrB_Matrix B,             // input matrix B
     const GrB_Semiring semiring,    // semiring that defines C=A*B
@@ -64,6 +65,7 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
     // check inputs
     //--------------------------------------------------------------------------
 
+    GrB_Info info ;
     ASSERT (C != NULL && C->static_header) ;
 
     ASSERT_MATRIX_OK_OR_NULL (M, "M for dot A'*B", GB0) ;
@@ -108,7 +110,7 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
             (*done_in_place) = false ;
             (*mask_applied) = false ;
             // set C->iso = true    OK
-            GrB_Info info = GB_new_bix (&C, true,    // static header
+            info = GB_new_bix (&C, true,    // static header
                 ztype, A->vdim, B->vdim, GB_Ap_null, true, GxB_FULL, false,
                 GB_HYPER_SWITCH_DEFAULT, -1, 1, true, true, Context) ;
             if (info == GrB_SUCCESS)
@@ -126,15 +128,20 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
     // in-place C+=A'*B.  mask is not present (and not applied)
     //--------------------------------------------------------------------------
 
-    if (GB_AxB_dot4_control (C_iso, C_in, M, Mask_comp))
+    if (GB_AxB_dot4_control (C_iso, C_in, M, Mask_comp, accum, semiring))
     { 
         // C_in must be as-if-full on input.  M must be NULL and not
         // complemented.  the C iso case is not handled (where C is iso on
         // output), but C_in might be iso on input.
-        (*done_in_place) = true ;
         (*mask_applied) = false ;    // no mask to apply
-        GBURBLE ("(dot4) ") ;
-        return (GB_AxB_dot4 (C_in, A, B, semiring, flipxy, Context)) ;
+        info = GB_AxB_dot4 (C_in, A, B, semiring, flipxy, done_in_place,
+            Context) ;
+        if (info != GrB_NO_VALUE)
+        { 
+            // return if dot4 has handled this case, otherwise fall through
+            // to dot2 or dot3 below.
+            return (info) ;
+        }
     }
 
     //--------------------------------------------------------------------------
@@ -165,35 +172,15 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
         (*done_in_place) = false ;
 
         #if defined ( GBCUDA )
-
-// [ replace this with:
-// if (GB_AxB_dot3_cuda_branch (M, Mask_struct, A, B, semiring, flipxy, Context)
-
-        // very rough estimate of the work to do
-        int64_t anz = GB_nnz (A) ;
-        int64_t bnz = GB_nnz (B) ;
-        int64_t mnz = GB_nnz (M) ;
-
-        double adeg = ((double) anz) / ((double) GB_IMAX (1, A->nvec)) ;
-        double bdeg = ((double) bnz) / ((double) GB_IMAX (1, B->nvec)) ;
-        double work = mnz * GB_IMIN (adeg, bdeg) ;
-
-        // TODO for GPU: if A or B are not accessed (first, 2nd, or pair
-        // ops) then the type of A can be user-defined here, for CUDA.
-
-        int ngpus_to_use = GB_ngpus_to_use (work) ;
-        GBURBLE (" work:%g gpus:%d ", work, ngpus_to_use) ;
-        if (ngpus_to_use > 0
-            && (semiring->header_size == 0)     // semiring is built-in
-            && (A->type->code != GB_UDT_code)
-            && (B->type->code != GB_UDT_code)
-            && !GB_IS_BITMAP (A) && !GB_IS_BITMAP (B)
-            && !C_iso)
-// to here ... ]
+        if (!C_iso && GB_AxB_dot3_cuda_branch (M, Mask_struct, A, B, semiring,
+            flipxy, Context))
         {
-            // use "the" GPU (TODO for GPU: could use multiple GPUs too)
-            return (GB_AxB_dot3_cuda (C, M, Mask_struct, A, B, semiring,
-                flipxy, Context)) ;
+            GB_MATRIX_WAIT (M) ;    // make sure it's not jumbled
+            if (GB_AxB_dot3_control (M, Mask_comp))
+            {
+                return (GB_AxB_dot3_cuda (C, M, Mask_struct, A, B, semiring,
+                    flipxy, Context)) ;
+            }
         }
         else
         #endif
@@ -211,7 +198,7 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
     GBURBLE ("(%sdot2) ", iso_kind) ;
     (*mask_applied) = (M != NULL) ; // mask applied if present
     (*done_in_place) = false ;      // TODO: allow dot2 to work in-place
-    return (GB_AxB_dot2 (C, C_iso, cscalar, M, Mask_comp, Mask_struct, A, B,
-        semiring, flipxy, Context)) ;
+    return (GB_AxB_dot2 (C, C_iso, cscalar, M, Mask_comp, Mask_struct,
+        false, A, B, semiring, flipxy, Context)) ;
 }
 

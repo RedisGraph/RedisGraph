@@ -1,50 +1,59 @@
 import os
-import sys
 import time
-import threading
 from time import sleep
 from RLTest import Env
 from redisgraph import Graph
-from base import FlowTestsBase
+from pathos.pools import ProcessPool as Pool
 
 graphs       = None  # one graph object per client
 GRAPH_ID     = "G"   # graph identifier
-CLIENT_COUNT = 100   # number of concurrent connections
 
-def query_crud(graph, threadID):
+def query_crud(graph, query_id):
+    query_id = int(query_id)
+    create_query = "CREATE (n:Node {v:%d}), (n)-[:HAVE]->(:Node {v:%d}), (n)-[:HAVE]->(:Node {v:%d})" % (query_id, query_id, query_id)
+    read_query   = "MATCH  (n:Node {v:%d})-[:HAVE]->(n1:Node) RETURN n1.v" % query_id
+    update_query = "MATCH  (n:Node {v:%d}) SET n.x = %d" % (query_id, query_id)
+    delete_query = "MATCH  (n:Node {v:%d})-[:HAVE*]->(n1:Node) DELETE n, n1" % query_id
+
     for i in range(10):
-        create_query = "CREATE (n:node {v:'%s'}), (n)-[:have]->({value:'%s'}), (n)-[:have]->({value:'%s'})" % (threadID, threadID, threadID)
-        read_query   = "MATCH (n0:node {v:'%s'})<-[:have]-(n:node)-[:have]->(n1:node) return n1.v" % threadID
-        update_query = "MATCH (n:node {v: '%s'}) SET n.x = '%s'" % (threadID, threadID)
-        delete_query = "MATCH (n:node {v: '%s'})-[:have*]->(n1:node) DELETE n, n1" % threadID
-
         try:
             graph.query(create_query)
             graph.query(read_query)
             graph.query(update_query)
             graph.query(delete_query)
+            return True
         except:
-            return
+            return False
 
 # run n_iterations and create n node in each iteration
-def create_nodes(graph, n_iterations, n):
+def create_nodes(graph, n_iterations):
     for i in range(n_iterations):
-        graph.query("UNWIND range(0, %d) AS x CREATE (:Node {val: x})" % n)
+        graph.query("CREATE (:Node {v: %d})-[:R]->()" % i)
 
 # run n_iterations and delete n in each iteration
-def delete_nodes(graph, n_iterations, n):
+def delete_nodes(graph, n_iterations):
     for i in range(n_iterations):
-        graph.query("MATCH (n) WITH n LIMIT %d DELETE n" % n)
+        graph.query("MATCH (n:Node) WITH n LIMIT 1 DELETE n")
 
 # run n_iterations and update all nodes in each iteration
 def update_nodes(graph, n_iterations):
     for i in range(n_iterations):
-        graph.query("MATCH (n) SET n.v = 1")
+        graph.query("MATCH (n:Node) WITH n LIMIT 1 SET n.v = 1")
 
 # run n_iterations and execute a read query in each iteration
 def read_nodes(graph, n_iterations):
     for i in range(n_iterations):
-        graph.query("MATCH (n) return n")
+        graph.query("MATCH (n:Node)-[:R]->() RETURN n LIMIT 1")
+
+# run n_iterations and merge 2 nodes and 1 edge in each iteration
+def merge_nodes_and_edges(graph, n_iterations):
+    for i in range(n_iterations):
+        graph.query("MERGE (a:Node {v: %d}) MERGE (b:Node {v: %d}) MERGE (a)-[:R]->(b)" % (i, i * 10))
+
+# run n_iterations and delete 1 edge in each iteration
+def delete_edges(graph, n_iterations):
+    for i in range(n_iterations):
+        graph.query("MATCH (:Node)-[r]->() WITH r LIMIT 1 DELETE r")
 
 # calls BGSAVE every 0.2 second
 def BGSAVE_loop(env, conn, n_iterations):
@@ -69,34 +78,41 @@ def BGSAVE_loop(env, conn, n_iterations):
         prev_bgsave_time = cur_bgsave_time
         env.assertEqual(results['rdb_last_bgsave_status'], "ok")
 
-class testStressFlow(FlowTestsBase):
+class testStressFlow():
     def __init__(self):
         self.env = Env(decodeResponses=True)
+        # skip test if we're running under Valgrind
+        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
+            self.env.skip() # valgrind is not working correctly with multi process
+
         global graphs
         graphs = []
 
-        for i in range(0, CLIENT_COUNT):
+        self.client_count = self.env.getConnection().execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1] * 5
+
+        for i in range(0, self.client_count):
             graphs.append(Graph(GRAPH_ID, self.env.getConnection()))
 
     def __del__(self):
-        for i in range(0, CLIENT_COUNT):
+        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
+            return
+
+        for i in range(0, self.client_count):
             g = graphs[0]
             g.redis_con.close()
 
+    # called before each test function
+    def setUp(self):
+        # flush DB after each test
+        self.env.flush()
+
     # Count number of nodes in the graph
     def test00_stress(self):
-        threads = []
-        for i in range(CLIENT_COUNT):
-            graph = graphs[i]
-            t = threading.Thread(target=query_crud, args=(graph, i))
-            t.setDaemon(True)
-            threads.append(t)
-            t.start()
+        ids = range(self.client_count)
+        pool = Pool(nodes=self.client_count)
 
-        # wait for threads to return
-        for i in range(CLIENT_COUNT):
-            t = threads[i]
-            t.join()
+        # invoke queries
+        pool.map(query_crud, graphs, ids)
 
         # make sure we did not crashed
         conn = self.env.getConnection()
@@ -104,69 +120,81 @@ class testStressFlow(FlowTestsBase):
         conn.close()
 
     def test01_bgsave_stress(self):
-        # skip test if we're running under Valgrind
-        if Env().envRunner.debugger is not None:
-            Env().skip() # fork doesn't free memory, so valgrind will complain
+        n_reads      =  50000
+        n_creations  =  50000
+        n_updates    =  n_creations/10
+        n_deletions  =  n_creations/2
 
-        n_nodes = 1000
-        n_iterations = 10
         conn = self.env.getConnection()
-        graphs[0].query("CREATE INDEX ON :Node(val)")
+        graphs[0].query("CREATE INDEX FOR (n:Node) ON (n.v)")
 
-        t1 = threading.Thread(target=create_nodes, args=(graphs[0], n_iterations, n_nodes))
-        t1.setDaemon(True)
+        pool = Pool(nodes=5)
 
-        t2 = threading.Thread(target=delete_nodes, args=(graphs[1], n_iterations, n_nodes/2))
-        t2.setDaemon(True)
+        t1 = pool.apipe(create_nodes, graphs[0], n_creations)
 
-        t3 = threading.Thread(target=read_nodes, args=(graphs[2], n_iterations))
-        t3.setDaemon(True)
+        t2 = pool.apipe(delete_nodes, graphs[1], n_deletions)
 
-        t4 = threading.Thread(target=update_nodes(graphs[3], n_iterations))
-        t4.setDaemon(True)
+        t3 = pool.apipe(read_nodes, graphs[2], n_reads)
 
-        t5 = threading.Thread(target=BGSAVE_loop, args=(self.env, conn, 3))
-        t5.setDaemon(True)
+        t4 = pool.apipe(update_nodes, graphs[3], n_updates)
 
-        t1.start()
-        t2.start()
-        t3.start()
-        t4.start()
-        t5.start()
+        t5 = pool.apipe(BGSAVE_loop, self.env, conn, 10000)
 
-        # wait for threads to join
-        t1.join()
-        t2.join()
-        t3.join()
-        t4.join()
-        t5.join()
+        # wait for processes to join
+        t1.wait()
+        t2.wait()
+        t3.wait()
+        t4.wait()
+        t5.wait()
 
         # make sure we did not crashed
         conn.ping()
         conn.close()
 
-    def test02_clean_shutdown(self):
-        # TODO: enable
-        return
+    def test02_write_only_workload(self):
+        pool              =  Pool(nodes=3)
+        n_creations       =  20000
+        n_node_deletions  =  10000
+        n_edge_deletions  =  10000
+
+        self.env.start()
+
+        # invoke queries
+        t1 = pool.apipe(merge_nodes_and_edges, graphs[0], n_creations)
+
+        t2 = pool.apipe(delete_nodes, graphs[1], n_node_deletions)
+
+        t3 = pool.apipe(delete_edges, graphs[2], n_edge_deletions)
+
+        # wait for processes to join
+        t1.wait()
+        t2.wait()
+        t3.wait()
+
+        # make sure we did not crash
+        conn = self.env.getConnection()
+        conn.ping()
+        conn.close()
+
+    def test03_clean_shutdown(self):
+        # skip test if we're running under COV=1
+        if os.getenv('COV') == '1':
+            self.env.skip() # valgrind is not working correctly with multi process
+
         # issue SHUTDOWN while traffic is generated
-        threads = []
-        for i in range(CLIENT_COUNT):
-            graph = graphs[i]
-            t = threading.Thread(target=query_crud, args=(graph, i))
-            t.setDaemon(True)
-            threads.append(t)
-            t.start()
+        indexes = range(self.client_count)
+        pool = Pool(nodes=self.client_count)
+
+        # invoke queries
+        m = pool.amap(query_crud, graphs, indexes)
 
         # sleep for half a second, allowing threads to kick in
         sleep(0.2)
 
-        conn.shutdown()
+        self.env.stop()
 
-        # wait for threads to return
-        for i in range(CLIENT_COUNT):
-            t = threads[i]
-            t.join()
+        # wait for processes to return
+        m.wait()
 
-        # TODO: exit code doesn't seems to work
-        # self.env.assertTrue(self.env.checkExitCode())
+        self.env.assertTrue(self.env.checkExitCode())
 

@@ -256,6 +256,52 @@ GXB_OP2 (POW    , "pow"   )
 #endif
 
 //------------------------------------------------------------------------------
+// index_unary functions z=f(x,i,j,thunk)
+//------------------------------------------------------------------------------
+
+#if defined ( GB_SIGNED_INDEX )
+
+    // z = f (x, i, j, thunk) where z and thunk have type int32 or int64
+    GRB_IDXOP_POSITIONAL (ROWINDEX,  "rowindex" ) ;
+    GRB_IDXOP_POSITIONAL (COLINDEX,  "colindex" ) ;
+    GRB_IDXOP_POSITIONAL (DIAGINDEX, "diagindex") ;
+    GXB_IDXOP_POSITIONAL (FLIPDIAGINDEX, "flipdiagindex") ;
+
+#endif
+
+#if defined ( GB_SIGNED_INDEX64 )
+
+    // z = f (x, i, j, thunk) where z is bool; thunk has type int64 only
+    GRB_IDXOP_POSITIONAL_BOOL (TRIL,    "tril" ) ;
+    GRB_IDXOP_POSITIONAL_BOOL (TRIU,    "triu" ) ;
+    GRB_IDXOP_POSITIONAL_BOOL (DIAG,    "diag" ) ;
+    GRB_IDXOP_POSITIONAL_BOOL (OFFDIAG, "offdiag" ) ;
+    GRB_IDXOP_POSITIONAL_BOOL (COLLE,   "colle" ) ;
+    GRB_IDXOP_POSITIONAL_BOOL (COLGT,   "colgt" ) ;
+    GRB_IDXOP_POSITIONAL_BOOL (ROWLE,   "rowle" ) ;
+    GRB_IDXOP_POSITIONAL_BOOL (ROWGT,   "rowgt" ) ;
+
+#endif
+
+#if defined ( GB_COMPLEX )
+
+    // z = f (x, i, j, thunk) where z is bool; thunk is complex
+    GXB_IDXOP_VALUE (VALUEEQ, "valueeq") ;
+    GXB_IDXOP_VALUE (VALUENE, "valuene") ;
+
+#else
+
+    // z = f (x, i, j, thunk) where z is bool; thunk is real
+    GRB_IDXOP_VALUE (VALUEEQ, "valueeq") ;
+    GRB_IDXOP_VALUE (VALUENE, "valuene") ;
+    GRB_IDXOP_VALUE (VALUELT, "valuelt") ;
+    GRB_IDXOP_VALUE (VALUELE, "valuele") ;
+    GRB_IDXOP_VALUE (VALUEGT, "valuegt") ;
+    GRB_IDXOP_VALUE (VALUEGE, "valuege") ;
+
+#endif
+
+//------------------------------------------------------------------------------
 // clear macros for next use of this file
 //------------------------------------------------------------------------------
 
@@ -269,4 +315,6 @@ GXB_OP2 (POW    , "pow"   )
 #undef GB_DOUBLE_COMPLEX
 #undef GB_SIGNED_INT
 #undef GB_UNSIGNED_INT
+#undef GB_SIGNED_INDEX
+#undef GB_SIGNED_INDEX64
 

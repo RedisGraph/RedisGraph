@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2021 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -7,10 +7,17 @@
 #include "RG.h"
 #include "qg_node.h"
 #include "qg_edge.h"
-#include "../graph.h"
+#include "RG.h"
 #include "../../util/arr.h"
 
-static void _QGNode_RemoveEdge(QGEdge **edges, QGEdge *e) {
+static void _QGNode_RemoveEdge
+(
+	QGEdge **edges,
+	QGEdge *e
+) {
+	ASSERT(e != NULL);
+	ASSERT(edges != NULL);
+
 	uint edge_count = array_len(edges);
 	for(uint i = 0; i < edge_count; i++) {
 		QGEdge *ie = edges[i];
@@ -19,91 +26,246 @@ static void _QGNode_RemoveEdge(QGEdge **edges, QGEdge *e) {
 			return;
 		}
 	}
+
+	ASSERT(false);
 }
 
-QGNode *QGNode_New(const char *alias) {
+QGNode *QGNode_New
+(
+	const char *alias
+) {
 	QGNode *n = rm_malloc(sizeof(QGNode));
-	n->label = NULL;
-	n->alias = alias;
-	n->highly_connected = false;
-	n->labelID = GRAPH_NO_LABEL;
-	n->incoming_edges = array_new(QGEdge *, 0);
-	n->outgoing_edges = array_new(QGEdge *, 0);
+
+	n->alias             =  alias;
+	n->labels            =  array_new(const char *, 0);
+	n->labelsID          =  array_new(int, 0);
+	n->incoming_edges    =  array_new(QGEdge *, 0);
+	n->outgoing_edges    =  array_new(QGEdge *, 0);
+	n->highly_connected  =  false;
+
 	return n;
 }
 
-uint QGNode_LabelCount(const QGNode *n) {
+const char *QGNode_Alias
+(
+	const QGNode *n
+) {
 	ASSERT(n != NULL);
-	return (n->label != NULL) ? 1 : 0;
+
+	return n->alias;
 }
 
-bool QGNode_HighlyConnected(const QGNode *n) {
+inline bool QGNode_Labeled
+(
+	const QGNode *n
+) {
+	ASSERT(n != NULL);
+
+	return array_len(n->labels) > 0;
+}
+
+inline uint QGNode_LabelCount
+(
+	const QGNode *n
+) {
+	ASSERT(n != NULL);
+
+	return array_len(n->labels);
+}
+
+int QGNode_GetLabelID
+(
+	const QGNode *n,
+	uint idx
+) {
+	ASSERT(n != NULL);
+	ASSERT(idx < QGNode_LabelCount(n));
+
+	return n->labelsID[idx];
+}
+
+const char *QGNode_GetLabel
+(
+	const QGNode *n,
+	uint idx
+) {
+	ASSERT(n != NULL);
+	ASSERT(idx < QGNode_LabelCount(n));
+
+	return n->labels[idx];
+}
+
+bool QGNode_HasLabel
+(
+	const QGNode *n,
+	const char *l
+) {
+	ASSERT(n != NULL);
+	ASSERT(l != NULL);
+
+	uint label_count = QGNode_LabelCount(n);
+	for(uint i = 0; i < label_count; i++) {
+		if(strcmp(n->labels[i], l) == 0) return true;
+	}
+
+	return false;
+}
+
+void QGNode_AddLabel
+(
+	QGNode *n,
+	const char *l,
+	int l_id
+) {
+	ASSERT(n != NULL);
+	ASSERT(l != NULL);
+
+	// node already labeled as l
+	if(QGNode_HasLabel(n, l)) return;
+
+	array_append(n->labels, l);
+	array_append(n->labelsID, l_id);
+}
+
+inline bool QGNode_HighlyConnected
+(
+	const QGNode *n
+) {
+	ASSERT(n != NULL);
+
 	return n->highly_connected;
 }
 
-int QGNode_Degree(const QGNode *n) {
+inline int QGNode_Degree
+(
+	const QGNode *n
+) {
+	ASSERT(n != NULL);
+
 	return QGNode_IncomeDegree(n) + QGNode_OutgoingDegree(n);
 }
 
-int QGNode_IncomeDegree(const QGNode *n) {
+inline int QGNode_IncomeDegree
+(
+	const QGNode *n
+) {
+	ASSERT(n != NULL);
+
 	return array_len(n->incoming_edges);
 }
 
-int QGNode_OutgoingDegree(const QGNode *n) {
+inline int QGNode_OutgoingDegree
+(
+	const QGNode *n
+) {
+	ASSERT(n != NULL);
+
 	return array_len(n->outgoing_edges);
 }
 
-int QGNode_EdgeCount(const QGNode *n) {
+inline int QGNode_EdgeCount
+(
+	const QGNode *n
+) {
+	ASSERT(n != NULL);
+
 	return QGNode_IncomeDegree(n) + QGNode_OutgoingDegree(n);
 }
 
-void QGNode_ConnectNode(QGNode *src, QGNode *dest, QGEdge *e) {
+void QGNode_ConnectNode
+(
+	QGNode *src,
+	QGNode *dest,
+	QGEdge *e
+) {
+	ASSERT(e    != NULL);
+	ASSERT(src  != NULL);
+	ASSERT(dest != NULL);
+
 	array_append(src->outgoing_edges, e);
 	array_append(dest->incoming_edges, e);
 
-	// Set src node as highly connected if in-degree + out-degree > 2
+	// set src node as highly connected if in-degree + out-degree > 2
 	if(src->highly_connected == false && QGNode_Degree(src) > 2) {
 		src->highly_connected = true;
 	}
 
-	// Set dest node as highly connected if in-degree + out-degree > 2
+	// set dest node as highly connected if in-degree + out-degree > 2
 	if(dest->highly_connected == false && QGNode_Degree(dest) > 2) {
 		dest->highly_connected = true;
 	}
 }
 
-void QGNode_RemoveIncomingEdge(QGNode *n, QGEdge *e) {
+inline void QGNode_RemoveIncomingEdge
+(
+	QGNode *n,
+	QGEdge *e
+) {
+	ASSERT(n != NULL);
+	ASSERT(e != NULL);
+
 	_QGNode_RemoveEdge(n->incoming_edges, e);
 }
 
-void QGNode_RemoveOutgoingEdge(QGNode *n, QGEdge *e) {
+inline void QGNode_RemoveOutgoingEdge
+(
+	QGNode *n,
+	QGEdge *e
+) {
+	ASSERT(n != NULL);
+	ASSERT(e != NULL);
+
 	_QGNode_RemoveEdge(n->outgoing_edges, e);
 }
 
-QGNode *QGNode_Clone(const QGNode *orig) {
-	QGNode *n = rm_malloc(sizeof(QGNode));
-	memcpy(n, orig, sizeof(QGNode));
-	// Don't save edges when duplicating a node
-	n->incoming_edges = array_new(QGEdge *, 0);
-	n->outgoing_edges = array_new(QGEdge *, 0);
+QGNode *QGNode_Clone
+(
+	const QGNode *orig
+) {
+	ASSERT(orig != NULL);
 
-	return n;
+	QGNode *clone = rm_malloc(sizeof(QGNode));
+	memcpy(clone, orig, sizeof(QGNode));
+
+	array_clone(clone->labels, orig->labels);
+	array_clone(clone->labelsID, orig->labelsID);
+
+	// don't clone edges when duplicating a node
+	clone->incoming_edges = array_new(QGEdge *, 0);
+	clone->outgoing_edges = array_new(QGEdge *, 0);
+
+	return clone;
 }
 
-void QGNode_ToString(const QGNode *n, sds *buff) {
-	ASSERT(n && buff);
+void QGNode_ToString
+(
+	const QGNode *n,
+	sds *buff
+) {
+	ASSERT(n != NULL);
+	ASSERT(buff != NULL);
 
 	*buff = sdscatprintf(*buff, "(");
+
 	if(n->alias) *buff = sdscatprintf(*buff, "%s", n->alias);
-	if(n->label) *buff = sdscatprintf(*buff, ":%s", n->label);
+
+	for(uint i = 0; i < QGNode_LabelCount(n); i++) {
+		*buff = sdscatprintf(*buff, ":%s", n->labels[i]);
+	}
+
 	*buff = sdscatprintf(*buff, ")");
 }
 
-void QGNode_Free(QGNode *node) {
-	if(!node) return;
+void QGNode_Free
+(
+	QGNode *node
+) {
+	if(node == NULL) return;
 
-	if(node->outgoing_edges) array_free(node->outgoing_edges);
-	if(node->incoming_edges) array_free(node->incoming_edges);
+	array_free(node->labels);
+	array_free(node->labelsID);
+	array_free(node->outgoing_edges);
+	array_free(node->incoming_edges);
 
 	rm_free(node);
 }

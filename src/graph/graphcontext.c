@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -20,7 +20,6 @@
 // Global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
 extern uint aux_field_counter;
-extern uint currently_decoding_graphs;
 // GraphContext type as it is registered at Redis.
 extern RedisModuleType *GraphContextRedisModuleType;
 
@@ -34,7 +33,7 @@ static inline void _GraphContext_IncreaseRefCount(GraphContext *gc) {
 
 static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 	// If the reference count is less than 0, the graph has been marked for deletion and no queries are active - free the graph.
-	if(__atomic_sub_fetch(&gc->ref_count, 1, __ATOMIC_RELAXED) < 0) {
+	if(__atomic_sub_fetch(&gc->ref_count, 1, __ATOMIC_RELAXED) == -1) {
 		bool async_delete;
 		Config_Option_get(Config_ASYNC_DELETE, &async_delete);
 
@@ -82,7 +81,7 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 	gc->cache = Cache_New(cache_size, (CacheEntryFreeFunc)ExecutionCtx_Free,
 						  (CacheEntryCopyFunc)ExecutionCtx_Clone);
 
-	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_FLUSH_RESIZE);
 	QueryCtx_SetGraphCtx(gc);
 
 	return gc;
@@ -108,20 +107,20 @@ static GraphContext *_GraphContext_Create(RedisModuleCtx *ctx, const char *graph
 	return gc;
 }
 
-/* In a sharded environment, there could be a race condition between the decoding of
- * the last key, and the last aux_fields, so both counters should be zeroed in order to verify
- * that the module replicated properly. */
-static bool _GraphContext_IsModuleReplicating(void) {
-	return aux_field_counter > 0 || currently_decoding_graphs > 0;
-}
-
-GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *graphID, bool readOnly,
-									bool shouldCreate) {
-	if(_GraphContext_IsModuleReplicating()) {
-		// The whole module is currently replicating, emit an error.
+GraphContext *GraphContext_Retrieve
+(
+	RedisModuleCtx *ctx,
+	RedisModuleString *graphID,
+	bool readOnly,
+	bool shouldCreate
+) {
+	// check if we're still replicating, if so don't allow access to the graph
+	if(aux_field_counter > 0) {
+		// the whole module is currently replicating, emit an error
 		RedisModule_ReplyWithError(ctx, "ERR RedisGraph module is currently replicating");
 		return NULL;
 	}
+
 	GraphContext *gc = NULL;
 	int rwFlag = readOnly ? REDISMODULE_READ : REDISMODULE_WRITE;
 
@@ -256,11 +255,11 @@ Schema *GraphContext_AddSchema(GraphContext *gc, const char *label, SchemaType t
 
 	if(t == SCHEMA_NODE) {
 		label_id = Graph_AddLabel(gc->g);
-		schema = Schema_New(label, label_id);
+		schema = Schema_New(SCHEMA_NODE, label_id, label);
 		array_append(gc->node_schemas, schema);
 	} else {
 		label_id = Graph_AddRelationType(gc->g);
-		schema = Schema_New(label, label_id);
+		schema = Schema_New(SCHEMA_EDGE, label_id, label);
 		array_append(gc->relation_schemas, schema);
 	}
 
@@ -268,12 +267,6 @@ Schema *GraphContext_AddSchema(GraphContext *gc, const char *label, SchemaType t
 	_GraphContext_UpdateVersion(gc, label);
 
 	return schema;
-}
-
-const char *GraphContext_GetNodeLabel(const GraphContext *gc, Node *n) {
-	int label_id = Graph_GetNodeLabel(gc->g, ENTITY_GET_ID(n));
-	if(label_id == GRAPH_NO_LABEL) return NULL;
-	return gc->node_schemas[label_id]->name;
 }
 
 const char *GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e) {
@@ -356,57 +349,79 @@ bool GraphContext_HasIndices(GraphContext *gc) {
 	for(uint i = 0; i < schema_count; i++) {
 		if(Schema_HasIndices(gc->node_schemas[i])) return true;
 	}
+
+	schema_count = array_len(gc->relation_schemas);
+	for(uint i = 0; i < schema_count; i++) {
+		if(Schema_HasIndices(gc->relation_schemas[i])) return true;
+	}
+	
 	return false;
 }
 Index *GraphContext_GetIndexByID(const GraphContext *gc, int id,
-		Attribute_ID *attribute_id, IndexType type) {
+					Attribute_ID *attribute_id, IndexType type, SchemaType t) {
 
 	ASSERT(gc     !=  NULL);
 
 	// Retrieve the schema for given id
-	Schema *s= GraphContext_GetSchemaByID(gc, id, SCHEMA_NODE);
+	Schema *s = GraphContext_GetSchemaByID(gc, id, t);
 	if(s == NULL) return NULL;
 
 	return Schema_GetIndex(s, attribute_id, type);
 }
 
 Index *GraphContext_GetIndex(const GraphContext *gc, const char *label,
-							 Attribute_ID *attribute_id, IndexType type) {
+							 Attribute_ID *attribute_id, IndexType type,
+							 SchemaType schema_type) {
 
 	ASSERT(gc != NULL);
 	ASSERT(label != NULL);
 
 	// Retrieve the schema for this label
-	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
 	if(s == NULL) return NULL;
 
 	return Schema_GetIndex(s, attribute_id, type);
 }
 
-int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label,
-						  const char *field, IndexType type) {
-
-	ASSERT(idx && gc && label && field);
+int GraphContext_AddIndex
+(
+	Index **idx,
+	GraphContext *gc,
+	SchemaType schema_type,
+	const char *label,
+	const char *field,
+	IndexType index_type
+) {
+	ASSERT(idx    !=  NULL);
+	ASSERT(gc     !=  NULL);
+	ASSERT(label  !=  NULL);
+	ASSERT(field  !=  NULL);
 
 	// Retrieve the schema for this label
-	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-	if(s == NULL) s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
+	if(s == NULL) s = GraphContext_AddSchema(gc, label, schema_type);
 
-	int res = Schema_AddIndex(idx, s, field, type);
+	int res = Schema_AddIndex(idx, s, field, index_type);
 	ResultSet *result_set = QueryCtx_GetResultSet();
 	ResultSet_IndexCreated(result_set, res);
 
 	return res;
 }
 
-int GraphContext_DeleteIndex(GraphContext *gc, const char *label,
-							 const char *field, IndexType type) {
-	ASSERT(gc != NULL);
-	ASSERT(label != NULL);
+int GraphContext_DeleteIndex
+(
+	GraphContext *gc,
+	SchemaType schema_type,
+	const char *label,
+	const char *field,
+	IndexType type
+) {
+	ASSERT(gc     !=  NULL);
+	ASSERT(label  !=  NULL);
 
-	// Retrieve the schema for this label
+	// retrieve the schema for this label
 	int res = INDEX_FAIL;
-	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
 
 	if(s != NULL) {
 		res = Schema_RemoveIndex(s, field, type);
@@ -420,27 +435,51 @@ int GraphContext_DeleteIndex(GraphContext *gc, const char *label,
 	return res;
 }
 
-// Delete all references to a node from any indices built upon its properties
-void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
-	Schema *s = NULL;
+// delete all references to a node from any indices built upon its properties
+void GraphContext_DeleteNodeFromIndices
+(
+	GraphContext *gc,
+	Node *n
+) {
+	ASSERT(n  != NULL);
+	ASSERT(gc != NULL);
 
-	if(n->label) {
-		// Node will have a label string if one was specified in the query MATCH clause
-		s = GraphContext_GetSchema(gc, n->label, SCHEMA_NODE);
-	} else {
-		EntityID node_id = ENTITY_GET_ID(n);
-		// Otherwise, look up the offset of the matching label (if any)
-		int schema_id = Graph_GetNodeLabel(gc->g, node_id);
-		// Do nothing if node had no label
-		if(schema_id == GRAPH_NO_LABEL) return;
-		s = GraphContext_GetSchemaByID(gc, schema_id, SCHEMA_NODE);
+	Schema    *s       =  NULL;
+	Graph     *g       =  gc->g;
+	EntityID  node_id  =  ENTITY_GET_ID(n);
+
+	// retrieve node labels
+	uint label_count;
+	NODE_GET_LABELS(g, n, label_count);
+
+	for(uint i = 0; i < label_count; i++) {
+		int label_id = labels[i];
+		s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
+		ASSERT(s != NULL);
+
+		// Update any indices this entity is represented in
+		Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+		if(idx) Index_RemoveNode(idx, n);
+
+		idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
+		if(idx) Index_RemoveNode(idx, n);
 	}
+}
 
-	// Update any indices this entity is represented in
+void GraphContext_DeleteEdgeFromIndices(GraphContext *gc, Edge *e) {
+	Schema  *s  =  NULL;
+	Graph   *g  =  gc->g;
+
+	int relation_id = EDGE_GET_RELATION_ID(e, g);
+
+	s = GraphContext_GetSchemaByID(gc, relation_id, SCHEMA_EDGE);
+
+	// update any indices this entity is represented in
 	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
-	if(idx) Index_RemoveNode(idx, n);
+	if(idx) Index_RemoveEdge(idx, e);
+
 	idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
-	if(idx) Index_RemoveNode(idx, n);
+	if(idx) Index_RemoveEdge(idx, e);
 }
 
 //------------------------------------------------------------------------------
@@ -510,7 +549,7 @@ static void _GraphContext_Free(void *arg) {
 	uint len;
 
 	// Disable matrix synchronization for graph deletion.
-	Graph_SetMatrixPolicy(gc->g, DISABLED);
+	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
 	Graph_Free(gc->g);
 
 	//--------------------------------------------------------------------------

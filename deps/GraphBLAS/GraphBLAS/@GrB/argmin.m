@@ -48,7 +48,7 @@ function [x,p] = argmin (A, dim)
 % for argmin(A,2) and p(i) is not present, and x(j) is NaN for argmin(A,1)
 % and p(j) is not present.
 %
-% See also min, max, GrB/min, GrB/max, GrB.argmax.
+% See also min, max, GrB/min, GrB/max, GrB.argmax, GrB.argsort.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later

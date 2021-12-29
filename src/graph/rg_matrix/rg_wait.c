@@ -86,7 +86,7 @@ static GrB_Info RG_Matrix_sync
 	GrB_Matrix_nvals(&nvals, dm);
 	ASSERT(nvals == 0);
 
-	info = GrB_wait(&m);
+	info = GrB_wait(m, GrB_MATERIALIZE);
 	ASSERT(info == GrB_SUCCESS);
 
 	return info;
@@ -107,10 +107,10 @@ GrB_Info RG_Matrix_wait
 	GrB_Matrix  delta_plus   =  RG_MATRIX_DELTA_PLUS(A);
 	GrB_Matrix  delta_minus  =  RG_MATRIX_DELTA_MINUS(A);
 
-	info = GrB_wait(&delta_plus);
+	info = GrB_wait(delta_plus, GrB_MATERIALIZE);
 	ASSERT(info == GrB_SUCCESS);
 
-	info = GrB_wait(&delta_minus);
+	info = GrB_wait(delta_minus, GrB_MATERIALIZE);
 	ASSERT(info == GrB_SUCCESS);
 
 	// check if merge is required

@@ -25,6 +25,12 @@ typedef struct Pair {
 
 typedef Pair *Map;
 
+// retrieves value under key, map[key]
+// where key is const string 
+// return true and set 'value' if key is in map
+// otherwise return false
+#define MAP_GET(map, key, value) Map_Get(map, SI_ConstStringVal(key), &value)
+
 // create a new map
 SIValue Map_New
 (

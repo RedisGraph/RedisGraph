@@ -4,7 +4,7 @@
 
 Executes the given query against a specified graph.
 
-Arguments: `Graph name, Query`
+Arguments: `Graph name, Query, Timeout [optional]`
 
 Returns: [Result set](result_structure.md#redisgraph-result-set-structure)
 
@@ -12,17 +12,21 @@ Returns: [Result set](result_structure.md#redisgraph-result-set-structure)
 GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
 ```
 
+Query-level timeouts can be set as described in [the configuration section](configuration.md#query-timeout).
+
 ## GRAPH.RO_QUERY
 
 Executes a given read only query against a specified graph.
 
-Arguments: `Graph name, Query`
+Arguments: `Graph name, Query, Timeout [optional]`
 
 Returns: [Result set](result_structure.md#redisgraph-result-set-structure) for a read only query or an error if a write query was given.
 
 ```sh
 GRAPH.RO_QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
 ```
+
+Query-level timeouts can be set as described in [the configuration section](configuration.md#query-timeout).
 
 ### Query language
 
@@ -256,6 +260,14 @@ Pattern predicates can be also negated and combined with the logical operators A
 MATCH (p:President), (s:State) WHERE NOT (p)-[:WON]->(s) AND (p)->[:governor]->(s) RETURN p, s
 ```
 
+Nodes can also be filtered by label:
+
+```sh
+MATCH (n)-[:R]->() WHERE n:L1 OR n:L2 RETURN n 
+```
+
+When possible, it is preferable to specify the label in the node pattern of the MATCH clause.
+
 #### RETURN
 
 In its simple form, Return defines which properties the returned result-set will contain.
@@ -446,6 +458,16 @@ SET n = {age: 33, name: 'Bob'}"
 
 Using `=` in this way replaces all of the entity's previous properties, while `+=` will only set the properties it explicitly mentions.
 
+In the same way, the full property set of a graph entity can be assigned or merged:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (jim {name: 'Jim'}), (pam {name: 'Pam'})
+SET jim = pam"
+```
+
+After executing this query, the `jim` node will have the same property set as the `pam` node.
+
 To remove a node's property, simply set property value to NULL.
 
 ```sh
@@ -489,7 +511,7 @@ GRAPH.QUERY DEMO_GRAPH "MERGE (charlie { name: 'Charlie Sheen', age: 10 })"
 To merge a single node, specifying both label and property:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "MERGE (michael:Person { name: 'Michael Douglas' })""
+GRAPH.QUERY DEMO_GRAPH "MERGE (michael:Person { name: 'Michael Douglas' })"
 ```
 
 **Merging paths**
@@ -604,11 +626,13 @@ This section contains information on all supported functions from the Cypher que
 
 ## Predicate functions
 
-| Function                                      | Description                                                                               |
-| -------                                       | :-----------                                                                              |
-| exists()                                      | Returns true if the specified property exists in the node or relationship.                |
-| [any()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for any element in the input array.  |
-| [all()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for all elements in the input array. |
+| Function                                         | Description                                                                                 |
+| -------                                          | :-----------                                                                                |
+| exists()                                         | Returns true if the specified property exists in the node or relationship.                  |
+| [any()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for any element in the input array.    |
+| [all()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for all elements in the input array.   |
+| [none()](#existential-comprehension-functions)   | Returns true if the inner WHERE predicate holds false for all elements in the input array.  |
+| [single()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for 1 element only in the input array. |
 
 ## Scalar functions
 
@@ -616,6 +640,7 @@ This section contains information on all supported functions from the Cypher que
 | -------             | :-----------                                                                |
 | endNode()           | Returns the destination node of a relationship.                             |
 | id()                | Returns the internal ID of a relationship or node (which is not immutable.) |
+| hasLabels()         | Returns true if input node contains all specified labels, otherwise false.  |
 | labels()            | Returns a string representation of the label of a node.                     |
 | startNode()         | Returns the source node of a relationship.                                  |
 | timestamp()         | Returns the the amount of milliseconds since epoch.                         |
@@ -637,12 +662,13 @@ This section contains information on all supported functions from the Cypher que
 |stDev() | Returns the standard deviation for the given value over a group|
 
 ## List functions
-|Function| Description|
-| ------- |:-----------|
-| head()  | Return the first member of a list |
-| range() | Create a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval.|
-| size()  | Return a list size |
-| tail()  | Return a sublist of a list, which contains all the values withiout the first value |
+| Function                     | Description                                                                                                                                                    |
+| -------                      | :-----------                                                                                                                                                   |
+| head()                       | Return the first member of a list                                                                                                                              |
+| range()                      | Create a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval. |
+| size()                       | Return a list size                                                                                                                                             |
+| tail()                       | Return a sublist of a list, which contains all the values without the first value                                                                              |
+| [reduce()](#reduce) | Return a scalar produced by evaluating an expression against each list member                                                                                  |
 
 ## Mathematical functions
 
@@ -664,6 +690,7 @@ This section contains information on all supported functions from the Cypher que
 | -------     | :-----------                                                                                    |
 | left()      | Returns a string containing the specified number of leftmost characters of the original string  |
 | lTrim()     | Returns the original string with leading whitespace removed                                     |
+| replace()   | Returns a string in which all occurrences of a specified substring are replaced with the specified replacement string |
 | reverse()   | Returns a string in which the order of all characters in the original string are reversed       |
 | right()     | Returns a string containing the specified number of rightmost characters of the original string |
 | rTrim()     | Returns the original string with trailing whitespace removed                                    |
@@ -673,6 +700,7 @@ This section contains information on all supported functions from the Cypher que
 | toJSON()    | Returns a [JSON representation](#json-format) of a value                                        |
 | toUpper()   | Returns the original string in uppercase                                                        |
 | trim()      | Returns the original string with leading and trailing whitespace removed                        |
+| size()      | Returns a string length                                                                         |
 
 ## Point functions
 
@@ -716,7 +744,7 @@ MATCH p=()-[*]->() RETURN [node IN nodes(p) WHERE node.rank > 10 | node.name]
 ```
 
 #### Existential comprehension functions
-The functions `any()` and `all()` use a simplified form of the list comprehension syntax and return a boolean value.
+The functions `any()`, `all()`, `single()` and `none()` use a simplified form of the list comprehension syntax and return a boolean value.
 
 ```sh
 any(element IN array WHERE condition)
@@ -727,6 +755,15 @@ They can operate on any form of input array, but are particularly useful for pat
 ```sh
 MATCH p=()-[*]->() WHERE all(edge IN relationships(p) WHERE edge.weight < 3) RETURN p
 ```
+
+#### Reduce
+The `reduce()` function accepts a starting value and updates it by evaluating an expression against each element of the list:
+
+```sh
+RETURN reduce(sum = 0, n IN [1,2,3] | sum + n)
+```
+
+`sum` will successively have the values 0, 1, 3, and 6, with 6 being the output of the function call.
 
 ### Point
 The `point()` function expects one map argument of the form:
@@ -793,7 +830,7 @@ YIELD modifiers are only required if explicitly specified; by default the value 
 | db.labels                       | none                                            | `label`                       | Yields all node labels in the graph.                                                                                                                                                   |
 | db.relationshipTypes            | none                                            | `relationshipType`            | Yields all relationship types in the graph.                                                                                                                                            |
 | db.propertyKeys                 | none                                            | `propertyKey`                 | Yields all property keys in the graph.                                                                                                                                                 |
-| db.indexes                      | none                                            | `type`, `label`, `properties` | Yield all indexes in the graph, denoting whether they are exact-match or full-text and which label and properties each covers.                                                         |
+| db.indexes                      | none                                            | `type`, `label`, `properties`, `entityType` | Yield all indexes in the graph, denoting whether they are exact-match or full-text and which label and properties each covers and whether they are indexing node or relationship attributes.                                                         |
 | db.idx.fulltext.createNodeIndex | `label`, `property` [, `property` ...]          | none                          | Builds a full-text searchable index on a label and the 1 or more specified properties.                                                                                                 |
 | db.idx.fulltext.drop            | `label`                                         | none                          | Deletes the full-text index associated with the given label.                                                                                                                           |
 | db.idx.fulltext.queryNodes      | `label`, `string`                               | `node`, `score`               | Retrieve all nodes that contain the specified string in the full-text indexes on the given label.                                                                                      |
@@ -826,13 +863,19 @@ String, numeric, and geospatial data types can be indexed.
 The creation syntax is:
 
 ```sh
+GRAPH.QUERY DEMO_GRAPH "CREATE INDEX FOR (p:Person) ON (p.age)"
+```
+
+The old syntax is depricated:
+
+```sh
 GRAPH.QUERY DEMO_GRAPH "CREATE INDEX ON :Person(age)"
 ```
 
 After an index is explicitly created, it will automatically be used by queries that reference that label and any indexed property in a filter.
 
 ```sh
-GRAPH.EXPLAIN G "MATCH (p:Person) WHERE p.age > 80 RETURN p"
+GRAPH.EXPLAIN DEMO_GRAPH "MATCH (p:Person) WHERE p.age > 80 RETURN p"
 1) "Results"
 2) "    Project"
 3) "        Index Scan | (p:Person)"
@@ -854,6 +897,26 @@ GRAPH.QUERY DEMO_GRAPH
 
 Geospatial indexes can currently only be leveraged with `<` and `<=` filters; matching nodes outside of the given radius is performed using conventional matching.
 
+Indexing relationship property
+
+The creation syntax is:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "CREATE INDEX FOR ()-[f:FOLLOW]-() ON (f.created_at)"
+```
+
+Then the execution plan for using the index:
+
+```sh
+GRAPH.EXPLAIN DEMO_GRAPH "MATCH (p:Person {id: 0})-[f:FOLLOW]->(fp) WHERE 0 < f.created_at AND f.created_at < 1000 RETURN fp"
+1) "Results"
+2) "    Project"
+3) "        Edge By Index Scan | [f:FOLLOW]"
+4) "            Node By Index Scan | (p:Person)"
+```
+
+This can significantly improve the runtime of queries that traverse super nodes or when we want to start traverse from relationships.
+
 Individual indexes can be deleted using the matching syntax:
 
 ```sh
@@ -862,7 +925,7 @@ GRAPH.QUERY DEMO_GRAPH "DROP INDEX ON :Person(age)"
 
 ## Full-text indexes
 
-RedisGraph leverages the indexing capabilities of [RediSearch](https://oss.redislabs.com/redisearch/index.html) to provide full-text indices through procedure calls. To construct a full-text index on the `title` property of all nodes with label `Movie`, use the syntax:
+RedisGraph leverages the indexing capabilities of [RediSearch](https://oss.redis.com/redisearch/index.html) to provide full-text indices through procedure calls. To construct a full-text index on the `title` property of all nodes with label `Movie`, use the syntax:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('Movie', 'title')"
@@ -906,7 +969,7 @@ RETURN m ORDER BY m.rating"
 3) 1) "Query internal execution time: 0.226914 milliseconds"
 ```
 
-In addition to yielding matching nodes, full-text index scans will return the score of each node. This is the [TF-IDF](https://oss.redislabs.com/redisearch/Scoring/#tfidf_default) score of the node, which is informed by how many times the search terms appear in the node and how closely grouped they are. This can be observed in the example:
+In addition to yielding matching nodes, full-text index scans will return the score of each node. This is the [TF-IDF](https://oss.redis.com/redisearch/Scoring/#tfidf_default) score of the node, which is informed by how many times the search terms appear in the node and how closely grouped they are. This can be observed in the example:
 ```sh
 GRAPH.QUERY DEMO_GRAPH
 "CALL db.idx.fulltext.queryNodes('Node', 'hello world') YIELD node, score RETURN score, node.val"
@@ -918,6 +981,16 @@ GRAPH.QUERY DEMO_GRAPH
       2) "hello to a different world"
 3) 1) "Cached execution: 1"
    2) "Query internal execution time: 0.335401 milliseconds"
+```
+
+RediSearch provide 2 additional index configuration options:
+1. Language - Define which language to use for stemming text which is adding the base form of a word to the index. This allows the query for "going" to also return results for "go" and "gone", for example.
+2. Stopwords - These are words that are usually so common that they do not add much information to search, but take up a lot of space and CPU time in the index.
+
+To construct a full-text index on the `title` using `German` using custom stopwords property of all nodes with label `Movie`, use the syntax:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex({ label: 'Movie', language: 'German', stopwords: ['a', 'ab'], 'title')"
 ```
 
 ## GRAPH.PROFILE
@@ -1021,4 +1094,4 @@ Lists all graph keys in the keyspace.
 2) G
 3) resources
 4) players
-
+```

@@ -31,7 +31,7 @@ Cx = sparse (cm,cn) ;
 AT = Ax' ;
 BT = Bx' ;
 
-for k2 = [4 7 44:51 ]
+for k2 = [4 7 45:52 ]
     for k1 = 1:4
 
         type = types {k1} ;

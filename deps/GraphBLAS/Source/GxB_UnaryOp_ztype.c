@@ -7,6 +7,8 @@
 
 //------------------------------------------------------------------------------
 
+// NOTE: this function is historical.  Use GxB_UnaryOp_ztype_name instead.
+
 #include "GB.h"
 
 GrB_Info GxB_UnaryOp_ztype          // return the type of z

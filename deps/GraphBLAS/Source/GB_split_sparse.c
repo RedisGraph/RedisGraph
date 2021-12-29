@@ -7,12 +7,12 @@
 
 //------------------------------------------------------------------------------
 
-#define GB_FREE_WORK                        \
+#define GB_FREE_WORKSPACE                   \
     GB_WERK_POP (C_ek_slicing, int64_t) ;   \
-    GB_FREE_WERK (&Wp, Wp_size) ;
+    GB_FREE_WORK (&Wp, Wp_size) ;
 
 #define GB_FREE_ALL                         \
-    GB_FREE_WORK ;                          \
+    GB_FREE_WORKSPACE ;                     \
     GB_Matrix_free (&C) ;
 
 #include "GB_split.h"
@@ -69,7 +69,7 @@ GrB_Info GB_split_sparse            // split a sparse matrix
 
     size_t Wp_size = 0 ;
     int64_t *restrict Wp = NULL ;
-    Wp = GB_MALLOC_WERK (anvec, int64_t, &Wp_size) ;
+    Wp = GB_MALLOC_WORK (anvec, int64_t, &Wp_size) ;
     if (Wp == NULL)
     { 
         // out of memory
@@ -154,8 +154,8 @@ GrB_Info GB_split_sparse            // split a sparse matrix
             for (k = akstart ; k < akend ; k++)
             {
                 int64_t pA = Wp [k] ;
-                int64_t pA_end = Ap [k+1] ;
-                int64_t aknz = pA_end - pA ;
+                const int64_t pA_end = Ap [k+1] ;
+                const int64_t aknz = pA_end - pA ;
                 if (aknz == 0 || Ai [pA] >= aiend)
                 { 
                     // this vector of C is empty
@@ -338,7 +338,7 @@ GrB_Info GB_split_sparse            // split a sparse matrix
         }
     }
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     return (GrB_SUCCESS) ;
 }
 

@@ -1,5 +1,3 @@
-import os
-import sys
 from RLTest import Env
 from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
@@ -177,3 +175,9 @@ class testBFS(FlowTestsBase):
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set, empty_result_set)
 
+    # test a query which calls BFS multiple times in the same scope
+    def test07_multiple_bfs_calls(self):
+        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 1, NULL) YIELD nodes as n1 MATCH (b {v: 'd'}) CALL algo.BFS(b, 1, NULL) YIELD nodes as n2 RETURN [n IN n1 | n.v] AS x, [n IN n2 | n.v] AS y ORDER BY x.v"""
+        actual_result = graph.query(query)
+        expected_result = [[['b'], ['e']]]
+        self.env.assertEquals(actual_result.result_set, expected_result)

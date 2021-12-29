@@ -7,11 +7,11 @@
 
 //------------------------------------------------------------------------------
 
-#define GB_FREE_WORK        \
+#define GB_FREE_WORKSPACE   \
     GB_phbix_free (T) ;
 
 #define GB_FREE_ALL         \
-    GB_FREE_WORK ;          \
+    GB_FREE_WORKSPACE ;     \
     GB_phbix_free (V) ;
 
 #include "GB_diag.h"
@@ -98,8 +98,16 @@ GrB_Info GB_Vector_diag     // extract a diagonal from a matrix, as a vector
     // extract the kth diagonal of A into the temporary hypersparse matrix T
     //--------------------------------------------------------------------------
 
-    // FUTURE: if A is bitmap or full, do not use GB_selector
-    GB_OK (GB_selector (T, GB_DIAG_opcode, NULL, false, A, k, NULL, Context)) ;
+    GB_OK (GB_selector (
+        T,                      // output matrix
+        GB_DIAG_selop_code,     // just use the DIAG opcode
+        NULL,                   // do not use the GB_Operator
+        false,                  // flipij is false
+        A,                      // input matrix
+        k,                      // ithunk = k
+        NULL,                   // no GrB_Scalar Thunk
+        Context)) ;
+
     GB_OK (GB_convert_any_to_hyper (T, Context)) ;
     GB_MATRIX_WAIT (T) ;
     ASSERT_MATRIX_OK (T, "T = diag (A,k)", GB0) ;
@@ -180,7 +188,7 @@ GrB_Info GB_Vector_diag     // extract a diagonal from a matrix, as a vector
     // free workspace, conform V to its desired format, and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     ASSERT_MATRIX_OK (V, "V before conform for GB_Vector_diag", GB0) ;
     GB_OK (GB_conform (V, Context)) ;
     ASSERT_MATRIX_OK (V, "V output for GB_Vector_diag", GB0) ;

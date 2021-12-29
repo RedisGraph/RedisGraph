@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_bitmap_AxB_saxpy: compute C=A*B, C<M>=A*B, or C<!M>=A*B; C bitmap or full
+// GB_bitmap_AxB_saxpy: compute C=A*B, C<M>=A*B, or C<!M>=A*B; C bitmap
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -23,12 +23,11 @@
 // like GB_AxB_dot4.
 
 GB_PUBLIC                           // for testing only
-GrB_Info GB_bitmap_AxB_saxpy        // C = A*B where C is bitmap or full
+GrB_Info GB_bitmap_AxB_saxpy        // C = A*B where C is bitmap
 (
     GrB_Matrix C,                   // output matrix, static header
     const bool C_iso,               // true if C is iso
     const GB_void *cscalar,         // iso value of C
-    const int C_sparsity,
     const GrB_Matrix M,             // optional mask matrix
     const bool Mask_comp,           // if true, use !M
     const bool Mask_struct,         // if true, use the only structure of M
@@ -36,7 +35,6 @@ GrB_Info GB_bitmap_AxB_saxpy        // C = A*B where C is bitmap or full
     const GrB_Matrix B,             // input matrix B
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
-    bool *mask_applied,             // mask always applied if present
     GB_Context Context
 )
 {
@@ -47,7 +45,6 @@ GrB_Info GB_bitmap_AxB_saxpy        // C = A*B where C is bitmap or full
 
     GrB_Info info ;
 
-    (*mask_applied) = false ;
     ASSERT (C != NULL && C->static_header) ;
 
     ASSERT_MATRIX_OK_OR_NULL (M, "M for bitmap saxpy A*B", GB0) ;
@@ -68,8 +65,6 @@ GrB_Info GB_bitmap_AxB_saxpy        // C = A*B where C is bitmap or full
     ASSERT_SEMIRING_OK (semiring, "semiring for bitmap saxpy A*B", GB0) ;
     ASSERT (A->vdim == B->vlen) ;
 
-    ASSERT (C_sparsity == GxB_BITMAP || C_sparsity == GxB_FULL) ;
-
     //--------------------------------------------------------------------------
     // construct C
     //--------------------------------------------------------------------------
@@ -77,12 +72,15 @@ GrB_Info GB_bitmap_AxB_saxpy        // C = A*B where C is bitmap or full
     // TODO: If C is the right type on input, and accum is the same as the
     // monoid, then do not create C, but compute in-place instead.
 
+    // Cb is set to all zero.  C->x is malloc'd unless C is iso, in which case
+    // it is calloc'ed.
+
     GrB_Type ctype = semiring->add->op->ztype ;
     int64_t cnzmax = 1 ;
-    (void) GB_Index_multiply ((GrB_Index *) &cnzmax, A->vlen, B->vdim) ;
+    (void) GB_int64_multiply ((GrB_Index *) &cnzmax, A->vlen, B->vdim) ;
     // set C->iso = C_iso   OK
     GB_OK (GB_new_bix (&C, true, // static header
-        ctype, A->vlen, B->vdim, GB_Ap_null, true, C_sparsity, true,
+        ctype, A->vlen, B->vdim, GB_Ap_null, true, GxB_BITMAP, true,
         GB_HYPER_SWITCH_DEFAULT, -1, cnzmax, true, C_iso, Context)) ;
     C->magic = GB_MAGIC ;
 
@@ -97,7 +95,7 @@ GrB_Info GB_bitmap_AxB_saxpy        // C = A*B where C is bitmap or full
     GB_binop_pattern (&A_is_pattern, &B_is_pattern, flipxy, mult->opcode) ;
 
     //--------------------------------------------------------------------------
-    // C<#M>+=A*B
+    // C<#M>=A*B
     //--------------------------------------------------------------------------
 
     if (C_iso)
@@ -110,7 +108,7 @@ GrB_Info GB_bitmap_AxB_saxpy        // C = A*B where C is bitmap or full
         GBURBLE ("(iso bitmap saxpy) ") ;
         memcpy (C->x, cscalar, ctype->size) ;
         info = GB (_AsaxbitB__any_pair_iso) (C, M, Mask_comp, Mask_struct, A,
-            true, B, true, Context) ;
+            B, Context) ;
 
     }
     else
@@ -135,8 +133,7 @@ GrB_Info GB_bitmap_AxB_saxpy        // C = A*B where C is bitmap or full
             #define GB_AxB_WORKER(add,mult,xname)                       \
             {                                                           \
                 info = GB_AsaxbitB (add,mult,xname) (C, M, Mask_comp,   \
-                    Mask_struct, A, A_is_pattern, B, B_is_pattern,      \
-                    Context) ;                                          \
+                    Mask_struct, A, B, Context) ;                       \
                 done = (info != GrB_NO_VALUE) ;                         \
             }                                                           \
             break ;
@@ -145,11 +142,11 @@ GrB_Info GB_bitmap_AxB_saxpy        // C = A*B where C is bitmap or full
             // launch the switch factory
             //------------------------------------------------------------------
 
-            GB_Opcode mult_opcode, add_opcode ;
+            GB_Opcode mult_binop_code, add_binop_code ;
             GB_Type_code xcode, ycode, zcode ;
             if (GB_AxB_semiring_builtin (A, A_is_pattern, B, B_is_pattern,
-                semiring, flipxy, &mult_opcode, &add_opcode, &xcode, &ycode,
-                &zcode))
+                semiring, flipxy, &mult_binop_code, &add_binop_code, &xcode,
+                &ycode, &zcode))
             { 
                 #include "GB_AxB_factory.c"
             }
@@ -181,7 +178,6 @@ GrB_Info GB_bitmap_AxB_saxpy        // C = A*B where C is bitmap or full
     // return result
     //--------------------------------------------------------------------------
 
-    (*mask_applied) = (M != NULL) ;
     ASSERT_MATRIX_OK (C, "C bitmap saxpy output", GB0) ;
     return (GrB_SUCCESS) ;
 }

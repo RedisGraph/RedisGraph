@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -8,36 +8,87 @@
 #include "../RG.h"
 #include "../util/datablock/oo_datablock.h"
 
-// Functions declerations - implemented in graph.c
+// functions declerations - implemented in graph.c
 void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int r);
 
-inline void Serializer_Graph_MarkEdgeDeleted(Graph *g, EdgeID id) {
+inline void Serializer_Graph_MarkEdgeDeleted
+(
+	Graph *g,
+	EdgeID id
+) {
 	DataBlock_MarkAsDeletedOutOfOrder(g->edges, id);
 }
 
-inline void Serializer_Graph_MarkNodeDeleted(Graph *g, NodeID id) {
+inline void Serializer_Graph_MarkNodeDeleted
+(
+	Graph *g,
+	NodeID id
+) {
 	DataBlock_MarkAsDeletedOutOfOrder(g->nodes, id);
 }
 
-void Serializer_Graph_SetNode(Graph *g, NodeID id, int label, Node *n) {
+void Serializer_Graph_SetNode
+(
+	Graph *g,
+	NodeID id,
+	LabelID *labels,
+	uint label_count,
+	Node *n
+) {
 	ASSERT(g);
 
 	Entity *en = DataBlock_AllocateItemOutOfOrder(g->nodes, id);
-	en->prop_count = 0;
-	en->properties = NULL;
-	n->id = id;
-	n->entity = en;
-	if(label != GRAPH_NO_LABEL) {
-		// Set matrix at position [id, id]
-		RG_Matrix M   =  Graph_GetLabelMatrix(g, label);
+	en->prop_count  =  0;
+	en->properties  =  NULL;
+	n->id           =  id;
+	n->entity       =  en;
+    GrB_Info info;
+    UNUSED(info);
+
+    RG_Matrix nl = Graph_GetNodeLabelMatrix(g);
+	for(uint i = 0; i < label_count; i ++) {
+		LabelID label = labels[i];
+		// set label matrix at position [id, id]
+		RG_Matrix  M  =  Graph_GetLabelMatrix(g, label);
 		GrB_Matrix m  =  RG_MATRIX_M(M);
-		
-		// Optimize set only for decoder
-		GrB_Matrix_setElement_BOOL(m, true, id, id);
+		info = GrB_Matrix_setElement_BOOL(m, true, id, id);
+		ASSERT(info == GrB_SUCCESS);
+
+		// map this label in this node's set of labels
+		info = RG_Matrix_setElement_BOOL(nl, id, label);
+		ASSERT(info == GrB_SUCCESS);
 	}
 }
 
-// optimized version of Graph_FormConnection 
+// computes NodeLabelMarix out of label matrices
+// NodeLabelMatrix[:i] = diag(LabelMatrix[i])
+void Serializer_Graph_SetNodeLabels
+(
+	Graph *g
+) {
+	ASSERT(g);
+
+	GrB_Vector v;
+	int node_count          = Graph_RequiredMatrixDim(g);
+	int label_count         = Graph_LabelTypeCount(g);
+	RG_Matrix node_labels   = Graph_GetNodeLabelMatrix(g);
+	GrB_Matrix node_labels_m = RG_MATRIX_M(node_labels);
+
+	GrB_Vector_new(&v, GrB_BOOL, node_count);
+
+	for(int i = 0; i < label_count; i++) {
+		RG_Matrix  M  =  Graph_GetLabelMatrix(g, i);
+		GrB_Matrix m  =  RG_MATRIX_M(M);
+
+		GxB_Vector_diag(v, m, 0, NULL);
+
+		GxB_Col_subassign(node_labels_m, NULL, NULL, v, GrB_ALL, 0, i, NULL);
+	}
+
+	GrB_Vector_free(&v);
+}
+
+// optimized version of Graph_FormConnection
 // used only when matrix not contains multi edge values
 static void _OptimizedSingleEdgeFormConnection
 (
@@ -58,10 +109,19 @@ static void _OptimizedSingleEdgeFormConnection
 	UNUSED(info);
 
 	// rows represent source nodes, columns represent destination nodes
+
+	//--------------------------------------------------------------------------
+	// update adjacency matrix
+	//--------------------------------------------------------------------------
+
 	info = GrB_Matrix_setElement_BOOL(adj_m, true, src, dest);
 	ASSERT(info == GrB_SUCCESS);
 	info = GrB_Matrix_setElement_BOOL(adj_tm, true, dest, src);
 	ASSERT(info == GrB_SUCCESS);
+
+	//--------------------------------------------------------------------------
+	// update relationship matrix
+	//--------------------------------------------------------------------------
 
 	info = GrB_Matrix_setElement_UINT64(m, edge_id, src, dest);
 	ASSERT(info == GrB_SUCCESS);
@@ -69,11 +129,21 @@ static void _OptimizedSingleEdgeFormConnection
 	ASSERT(info == GrB_SUCCESS);
 
 	// an edge of type r has just been created, update statistics
+	// TODO: stats->edge_count[relation_idx] += nvals;
 	GraphStatistics_IncEdgeCount(&g->stats, r, 1);
 }
 
-// Set a given edge in the graph - Used for deserialization of graph.
-void Serializer_Graph_SetEdge(Graph *g, int64_t multi_edge, EdgeID edge_id, NodeID src, NodeID dest, int r, Edge *e) {
+// set a given edge in the graph - Used for deserialization of graph
+void Serializer_Graph_SetEdge
+(
+	Graph *g,
+	bool multi_edge,
+	EdgeID edge_id,
+	NodeID src,
+	NodeID dest,
+	int r,
+	Edge *e
+) {
 	GrB_Info info;
 
 	Entity *en = DataBlock_AllocateItemOutOfOrder(g->edges, edge_id);
@@ -85,22 +155,26 @@ void Serializer_Graph_SetEdge(Graph *g, int64_t multi_edge, EdgeID edge_id, Node
 	e->srcNodeID = src;
 	e->destNodeID = dest;
 
-	if (multi_edge) {
+	if(multi_edge) {
 		Graph_FormConnection(g, src, dest, edge_id, r);
-	}
-	else {
+	} else {
 		_OptimizedSingleEdgeFormConnection(g, src, dest, edge_id, r);
 	}
 }
 
-
-// Returns the graph deleted nodes list.
-uint64_t *Serializer_Graph_GetDeletedNodesList(Graph *g) {
+// returns the graph deleted nodes list
+uint64_t *Serializer_Graph_GetDeletedNodesList
+(
+	Graph *g
+) {
 	return g->nodes->deletedIdx;
 }
 
-// Returns the graph deleted nodes list.
-uint64_t *Serializer_Graph_GetDeletedEdgesList(Graph *g) {
+// returns the graph deleted edge list
+uint64_t *Serializer_Graph_GetDeletedEdgesList
+(
+	Graph *g
+) {
 	return g->edges->deletedIdx;
 }
 

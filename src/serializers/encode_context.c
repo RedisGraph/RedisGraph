@@ -8,6 +8,7 @@
 #include "../RG.h"
 #include "../util/rmalloc.h"
 #include "../util/rax_extensions.h"
+#include "../configuration/config.h"
 
 GraphEncodeContext *GraphEncodeContext_New() {
 	GraphEncodeContext *ctx = rm_calloc(1, sizeof(GraphEncodeContext));
@@ -48,6 +49,8 @@ void GraphEncodeContext_Reset(GraphEncodeContext *ctx) {
 	ctx->current_relation_matrix_id = 0;
 	ctx->multiple_edges_current_index = 0;
 
+	Config_Option_get(Config_VKEY_MAX_ENTITY_COUNT, &ctx->vkey_entity_count);
+
 	// Avoid leaks in case or reset during encodeing.
 	if(ctx->datablock_iterator != NULL) {
 		DataBlockIterator_Free(ctx->datablock_iterator);
@@ -61,20 +64,20 @@ void GraphEncodeContext_Reset(GraphEncodeContext *ctx) {
 }
 
 void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, const char *graph_name, Graph *g) {
-	ASSERT(g != NULL);
+	ASSERT(g   != NULL);
 	ASSERT(ctx != NULL);
 
 	int r_count = Graph_RelationTypeCount(g);
 	GraphEncodeHeader *header = &(ctx->header);
 	ASSERT(header->multi_edge == NULL);
 
-	header->graph_name = graph_name;
-	header->node_count = Graph_NodeCount(g);
-	header->edge_count = Graph_EdgeCount(g);
-	header->relationship_matrix_count = r_count;
-	header->label_matrix_count = Graph_LabelTypeCount(g);
-	header->key_count = GraphEncodeContext_GetKeyCount(ctx);
-	header->multi_edge = rm_malloc(sizeof(bool) * r_count);
+	header->graph_name                 =  graph_name;
+	header->node_count                 =  Graph_NodeCount(g);
+	header->edge_count                 =  Graph_EdgeCount(g);
+	header->relationship_matrix_count  =  r_count;
+	header->label_matrix_count         =  Graph_LabelTypeCount(g);
+	header->key_count                  =  GraphEncodeContext_GetKeyCount(ctx);
+	header->multi_edge                 =  rm_malloc(sizeof(bool) * r_count);
 
 	// denote for each relationship matrix Ri if it contains muti-edge entries
 	// this information alows for an optimization when loading the data

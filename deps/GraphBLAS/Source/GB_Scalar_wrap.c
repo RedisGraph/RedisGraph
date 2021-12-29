@@ -13,10 +13,10 @@
 #include "GB.h"
 #include "GB_scalar.h"
 
-GxB_Scalar GB_Scalar_wrap   // create a new GxB_Scalar with one entry
+GrB_Scalar GB_Scalar_wrap   // create a new GrB_Scalar with one entry
 (
-    GxB_Scalar s,           // GxB_Scalar to create
-    GrB_Type type,          // type of GxB_Scalar to create
+    GrB_Scalar s,           // GrB_Scalar to create
+    GrB_Type type,          // type of GrB_Scalar to create
     void *Sx                // becomes S->x, an array of size 1 * type->size
 )
 { 
@@ -28,7 +28,7 @@ GxB_Scalar GB_Scalar_wrap   // create a new GxB_Scalar with one entry
     ASSERT (s != NULL) ;
 
     //--------------------------------------------------------------------------
-    // create the GxB_Scalar
+    // create the GrB_Scalar
     //--------------------------------------------------------------------------
 
     s->magic = GB_MAGIC ;

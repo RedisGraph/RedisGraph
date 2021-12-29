@@ -186,7 +186,7 @@ GrB_Info GB_assign_prep
 #define GB_SUBASSIGN_METHOD_16  16     // C(I,J)<!M> += A
 #define GB_SUBASSIGN_METHOD_17  17     // C(I,J)<!M,replace> = scalar
 #define GB_SUBASSIGN_METHOD_18  18     // C(I,J)<!M,replace> = A
-#define GB_SUBASSIGN_METHOD_19  19     // C(I,J)<!M,replace> = scalar
+#define GB_SUBASSIGN_METHOD_19  19     // C(I,J)<!M,replace> += scalar
 #define GB_SUBASSIGN_METHOD_20  20     // C(I,J)<!M,replace> += A
 #define GB_SUBASSIGN_METHOD_21  21     // C(:,:) = scalar ; C becomes full
 #define GB_SUBASSIGN_METHOD_22  22     // C += scalar ; C is dense

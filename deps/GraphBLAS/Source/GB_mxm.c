@@ -156,6 +156,7 @@ GrB_Info GB_mxm                     // C<M> = A*B
     { 
         // C has been computed in-place; no more work to do
         GB_phbix_free (MT) ;
+        GB_OK (GB_conform (C, Context)) ;
         ASSERT_MATRIX_OK (C, "C from GB_mxm (in-place)", GB0) ;
         return (info) ;
     }

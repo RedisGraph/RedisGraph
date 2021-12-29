@@ -67,32 +67,6 @@ commands:
             - '*.zip'
             - '*.tgz'
 
-  load-cached-deps:
-    steps:
-      # Load GraphBLAS from cache if possible.
-      - restore_cache:
-          keys:
-          - GraphBLAS4.0-{{checksum "./deps/GraphBLAS/README.md"}}
-
-      # Load libcypher-parser from cache if possible.
-      - restore_cache:
-          keys:
-          - libcypher-parser-{{checksum "./deps/libcypher-parser/README.md"}}
-
-  save-deps-cache:
-    steps:
-      # Save GraphBLAS to cache.
-      - save_cache:
-          paths:
-            - deps/GraphBLAS
-          key: GraphBLAS4.0-{{checksum "./deps/GraphBLAS/README.md"}}
-
-      # Save libcypher-parser to cache.
-      - save_cache:
-          paths:
-            - deps/libcypher-parser
-          key: libcypher-parser-{{checksum "./deps/libcypher-parser/README.md"}}
-
   setup-prerequisits:
     steps:
       - setup-automation
@@ -148,17 +122,15 @@ commands:
       - checkout-all
       - setup-automation
       - run:
-          name: Build for platform
+          name: Build for platform (docker build)
           command: |
-            cd build/docker
-            make build OSNICK=<<parameters.platform>> ARTIFACTS=1 TEST=1 SHOW=1
+            make -C build/docker build DOCKER_SUFFIX=".<<parameters.platform>>" OSNICK=<<parameters.platform>> PACK=1 TEST=1 VERBOSE=1
       - early-return-for-forked-pull-requests
       - run:
-          name: Build for platform (publish)
+          name: Build for platform (docker publish)
           command: |
             docker login -u redisfab -p $DOCKER_REDISFAB_PWD
-            cd build/docker
-            make publish OSNICK=<<parameters.platform>> OFFICIAL=0 SHOW=1 VERBOSE=1
+            make -C build/docker build DOCKER_SUFFIX=".<<parameters.platform>>" OSNICK=<<parameters.platform>> PACK=1 TEST=1 VERBOSE=1 PUBLISH=1 DOCKERWRAPPER_EXTRA_VARS="DOCKER_PUSH_ONLY=1"
       - persist-artifacts
 
   vm-build-platforms-steps:
@@ -175,16 +147,14 @@ commands:
       - run:
           name: Build for platform
           command: |
-            cd build/docker
-            make build OSNICK=<<parameters.platform>> VERSION=$CIRCLE_TAG BRANCH=$CIRCLE_BRANCH ARTIFACTS=1 TEST=1 SHOW=1
+            make -C build/docker build DOCKER_SUFFIX=".<<parameters.platform>>" OSNICK=<<parameters.platform>> PACK=1 TEST=1 VERBOSE=1
           no_output_timeout: 30m
       - early-return-for-forked-pull-requests
       - run:
           name: Build for platform (publish)
           command: |
             docker login -u redisfab -p $DOCKER_REDISFAB_PWD
-            cd build/docker
-            make publish OSNICK=<<parameters.platform>> VERSION=$CIRCLE_TAG BRANCH=$CIRCLE_BRANCH OFFICIAL=0 SHOW=1 VERBOSE=1
+            make -C build/docker build DOCKER_SUFFIX=".<<parameters.platform>>" OSNICK=<<parameters.platform>> PACK=1 TEST=1 VERBOSE=1 PUBLISH=1 DOCKERWRAPPER_EXTRA_VARS="DOCKER_PUSH_ONLY=1"
       - persist-artifacts
 
 #----------------------------------------------------------------------------------------------------------------------------------
@@ -197,11 +167,16 @@ jobs:
       - early-returns
       - checkout-all
       - setup-prerequisits
-      - load-cached-deps
+      - restore_cache:
+          keys:
+            - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build
           command: bash -l -c "make all package"
-      - save-deps-cache
+      - save_cache:
+          paths:
+            - deps/GraphBLAS/build
+          key: v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Test
           command: bash -l -c "make test"
@@ -227,7 +202,9 @@ jobs:
       - early-returns
       - checkout-all
       - setup-prerequisits
-      - load-cached-deps
+      - restore_cache:
+          keys:
+            - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build for coverage
           command: bash -l -c "make COV=1"
@@ -245,7 +222,9 @@ jobs:
       - early-returns
       - checkout-all
       - setup-prerequisits
-      - load-cached-deps
+      - restore_cache:
+          keys:
+            - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - attach_workspace:
           at: /workspace
       - run:
@@ -258,6 +237,21 @@ jobs:
           # Allow RediSearch global destructors
           environment:
             RS_GLOBAL_DTORS: 1
+      - run:
+          name: Cleanup test log dirs
+          command: |
+            if [[ -d tests/flow/logs ]]; then
+              cd tests/flow/logs
+              rm -f *.aof *.rdb
+            fi
+            if [[ -d tests/tck/logs ]]; then
+              cd tests/tck/logs
+              rm -f *.aof *.rdb
+            fi
+      - store_artifacts:
+          path: ~/project/tests/flow/logs
+      - store_artifacts:
+          path: ~/project/tests/tck/logs
 
   build_macos:
     macos:
@@ -266,13 +260,26 @@ jobs:
       - early-returns
       - checkout-all
       - setup-prerequisits
+      - restore_cache:
+          keys:
+            - GraphBLAS-mac-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build
           command: |
             bash -l -c "make all package"
+      - save_cache:
+          paths:
+            - deps/GraphBLAS/build
+          key: GraphBLAS-mac-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Test
-          command: bash -l -c "make test"
+          command: |
+            ulimit -n 10000
+            bash -l -c "make test"
+      - store_artifacts:
+          path: ~/project/tests/flow/logs
+      - store_artifacts:
+          path: ~/project/tests/tck/logs
       - persist-artifacts
 
   platform_build:
@@ -280,7 +287,7 @@ jobs:
       platform:
         type: string
     docker:
-      - image: debian:buster
+      - image: debian:bullseye
     steps:
       - platform-build-steps:
           platform: <<parameters.platform>>
@@ -326,7 +333,7 @@ jobs:
 
   release_automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-buster
+      - image: redisfab/rmbuilder:6.2.5-x64-bullseye
     steps:
       - checkout
       - setup-automation
@@ -336,7 +343,7 @@ jobs:
 
   nightly_automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-buster
+      - image: redisfab/rmbuilder:6.2.5-x64-bullseye
     steps:
       - checkout
       - setup-automation
@@ -446,6 +453,7 @@ on-integ-and-version-tags: &on-integ-and-version-tags
         - master
         - /^\d+\.\d+.*$/
         - /^feature-.*$/
+        - /^perf-.*$/
     tags:
       only: /^v[0-9].*/
 
@@ -500,11 +508,6 @@ workflows:
           requires:
             - platform_build
             - build_macos
-      - performance_ci_automation_not_integ:
-          <<: *context
-          <<: *not-on-integ-branch
-          requires:
-            - build
       - performance_ci_automation:
           <<: *context
           <<: *on-integ-and-version-tags

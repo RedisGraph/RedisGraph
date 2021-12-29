@@ -19,9 +19,9 @@
 #include "GB_ij.h"
 #include "GB_sort.h"
 
-#define GB_FREE_WORK                    \
+#define GB_FREE_WORKSPACE               \
 {                                       \
-    GB_FREE_WERK (&Work, Work_size) ;   \
+    GB_FREE_WORK (&Work, Work_size) ;   \
 }
 
 GrB_Info GB_ijsort
@@ -77,7 +77,7 @@ GrB_Info GB_ijsort
     // allocate workspace
     //--------------------------------------------------------------------------
 
-    Work = GB_MALLOC_WERK (2*ni + ntasks + 1, GrB_Index, &Work_size) ;
+    Work = GB_MALLOC_WORK (2*ni + ntasks + 1, GrB_Index, &Work_size) ;
     if (Work == NULL)
     { 
         // out of memory
@@ -112,7 +112,7 @@ GrB_Info GB_ijsort
     if (info != GrB_SUCCESS)
     { 
         // out of memory
-        GB_FREE_WORK ;
+        GB_FREE_WORKSPACE ;
         return (GrB_OUT_OF_MEMORY) ;
     }
 
@@ -143,14 +143,14 @@ GrB_Info GB_ijsort
     // allocate the result I2
     //--------------------------------------------------------------------------
 
-    I2  = GB_MALLOC_WERK (ni2, GrB_Index, &I2_size) ;
-    I2k = GB_MALLOC_WERK (ni2, GrB_Index, &I2k_size) ;
+    I2  = GB_MALLOC_WORK (ni2, GrB_Index, &I2_size) ;
+    I2k = GB_MALLOC_WORK (ni2, GrB_Index, &I2k_size) ;
     if (I2 == NULL || I2k == NULL)
     { 
         // out of memory
-        GB_FREE_WORK ;
-        GB_FREE_WERK (&I2, I2_size) ;
-        GB_FREE_WERK (&I2k, I2k_size) ;
+        GB_FREE_WORKSPACE ;
+        GB_FREE_WORK (&I2, I2_size) ;
+        GB_FREE_WORK (&I2k, I2k_size) ;
         return (GrB_OUT_OF_MEMORY) ;
     }
 
@@ -211,7 +211,7 @@ GrB_Info GB_ijsort
     // free workspace and return the new sorted list
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     *(p_I2 ) = (GrB_Index *) I2  ; (*I2_size_handle ) = I2_size ;
     *(p_I2k) = (GrB_Index *) I2k ; (*I2k_size_handle) = I2k_size ;
     *(p_ni ) = (int64_t    ) ni2 ;

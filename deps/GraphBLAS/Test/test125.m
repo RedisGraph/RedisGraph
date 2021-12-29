@@ -130,7 +130,7 @@ for k1 = 1:length(mult_ops)
                     mult_opname = 'lor' ;
                 case { 'and' }
                     mult_opname = 'land' ;
-                case { 'pair' }
+                case { 'pair', 'oneb' }
                     switch (add_opname)
                         case { 'eq', 'land', 'lor', 'min', 'max', 'times' }
                             add_opname = 'any' ;

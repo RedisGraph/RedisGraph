@@ -60,7 +60,7 @@
     GrB_Descriptor_free_(&dcrud) ;    CHECK (dcrud        == NULL) ;      \
     GxB_SelectOp_free_(&selectop) ;   CHECK (selectop     == NULL) ;      \
     GxB_SelectOp_free_(&selectopcrud) ; CHECK (selectopcrud == NULL) ;    \
-    GxB_Scalar_free_(&a_scalar) ;                                         \
+    GrB_Scalar_free_(&a_scalar) ;                                         \
     GB_mx_put_global (true) ;                                             \
 }
 
@@ -75,7 +75,6 @@ typedef int16_t user_int ;
 
 void f1 (double *z, const uint32_t *x) ;
 void f2 (int32_t *z, const uint8_t *x, const int16_t *y) ;
-bool fselect (GrB_Index i, GrB_Index j, const double *x, const double *k) ;
 
 void f1 (double *z, const uint32_t *x)
 { 
@@ -93,6 +92,7 @@ void f3 (GxB_FC64_t *z, const GxB_FC64_t *x, const double *y)
     (*z) = GB_FC64_add ((*x), GxB_CMPLX (0,(*y))) ;
 }
 
+bool fselect (GrB_Index i, GrB_Index j, const double *x, const double *k) ;
 bool fselect (GrB_Index i, GrB_Index j, const double *x, const double *k)
 {
     // select entries in triu(A) that are greater than k
@@ -100,7 +100,6 @@ bool fselect (GrB_Index i, GrB_Index j, const double *x, const double *k)
     int64_t j2 = (int64_t) j ;
     return (x > k && (j2-i2) > 0) ;
 }
-
 
 void mexFunction
 (
@@ -121,7 +120,15 @@ void mexFunction
     OK (GrB_finalize ( )) ;
 
     GB_Global_GrB_init_called_set (false) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GxB_init (GrB_NONBLOCKING, mxMalloc, NULL, NULL, mxFree, false)) ;
+    #else
+    OK (GxB_init (GrB_NONBLOCKING, mxMalloc, NULL, NULL, mxFree)) ;
+    #endif
+
+    // mxMalloc, mxCalloc, mxRealloc, and mxFree are not thread safe
+    GB_Global_malloc_is_thread_safe_set (false) ;
+
     GB_Global_abort_function_set (GB_mx_abort) ;
     GB_Global_malloc_tracking_set (true) ;
 
@@ -182,7 +189,7 @@ void mexFunction
     GB_void *pp = NULL ;
 
     GxB_SelectOp selectop = NULL, selectopcrud = NULL, sel0 ;
-    GxB_Scalar a_scalar = NULL ;
+    GrB_Scalar a_scalar = NULL ;
 
     char *err ;
 
@@ -213,12 +220,20 @@ void mexFunction
 
     // can't call it twice
     expected = GrB_INVALID_VALUE ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     ERR (GxB_init (GrB_NONBLOCKING, mxMalloc, NULL, NULL, mxFree, false)) ;
+    #else
+    ERR (GxB_init (GrB_NONBLOCKING, mxMalloc, NULL, NULL, mxFree)) ;
+    #endif
     GB_Global_GrB_init_called_set (false) ;
 
     // invalid mode
     expected = GrB_INVALID_VALUE ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     ERR (GxB_init (42, mxMalloc, NULL, NULL, mxFree, false)) ;
+    #else
+    ERR (GxB_init (42, mxMalloc, NULL, NULL, mxFree)) ;
+    #endif
     /*
     OK (GrB_finalize ( )) ;
     GB_Global_GrB_init_called_set (false) ;
@@ -226,8 +241,15 @@ void mexFunction
     */
 
     expected = GrB_NULL_POINTER ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
+    ERR (GxB_init (42, NULL    , NULL, NULL, mxFree, false)) ;
     ERR (GxB_init (42, NULL    , NULL, NULL, mxFree, false)) ;
     ERR (GxB_init (42, mxMalloc, NULL, NULL, NULL  , false)) ;
+    #else
+    ERR (GxB_init (42, NULL    , NULL, NULL, mxFree)) ;
+    ERR (GxB_init (42, NULL    , NULL, NULL, mxFree)) ;
+    ERR (GxB_init (42, mxMalloc, NULL, NULL, NULL  )) ;
+    #endif
 
     //--------------------------------------------------------------------------
     // Type
@@ -812,12 +834,12 @@ void mexFunction
 
     printf ("GrB_Vector---------------------------------------------------\n") ;
 
-    OK (GxB_Scalar_new (&a_scalar, GrB_INT32)) ;
+    OK (GrB_Scalar_new (&a_scalar, GrB_INT32)) ;
     CHECK (a_scalar != NULL) ;
 
     int32_t i_scalar = 33 ;
-    OK (GxB_Scalar_setElement_INT32 (a_scalar, 42)) ;
-    OK (GxB_Scalar_extractElement_INT32_(&i_scalar, a_scalar)) ;
+    OK (GrB_Scalar_setElement_INT32 (a_scalar, 42)) ;
+    OK (GrB_Scalar_extractElement_INT32_(&i_scalar, a_scalar)) ;
     CHECK (i_scalar == 42) ;
     GxB_Scalar_fprint_(a_scalar, 3, NULL) ;
 
@@ -830,27 +852,27 @@ void mexFunction
         a_scalar->nzombies = 1 ;
     }
 
-    info = GxB_Scalar_extractElement_INT32_(&i_scalar, a_scalar) ;
-    CHECK (i_scalar == (scalar_is_full) ? 42 : 33) ;
+    info = GrB_Scalar_extractElement_INT32_(&i_scalar, a_scalar) ;
+    CHECK (i_scalar == ((scalar_is_full) ? 42 : 33)) ;
     CHECK (info == (scalar_is_full) ? GrB_SUCCESS : GrB_NO_VALUE) ;
 
-    OK (GxB_Scalar_free_(&a_scalar)) ;
+    OK (GrB_Scalar_free_(&a_scalar)) ;
 
     OK (GrB_Type_new (&T, sizeof (int))) ;
 
     i_scalar = 207 ;
     expected = GrB_DOMAIN_MISMATCH ;
-    OK (GxB_Scalar_new (&a_scalar, T)) ;
+    OK (GrB_Scalar_new (&a_scalar, T)) ;
     GxB_Scalar_fprint_(a_scalar, 3, NULL) ;
     GxB_Type_fprint_(T, 3, NULL) ;
-    ERR1 (a_scalar, GxB_Scalar_setElement_INT32 (a_scalar, 42)) ;
-    ERR (GxB_Scalar_extractElement_INT32_(&i_scalar, a_scalar)) ;
+    ERR1 (a_scalar, GrB_Scalar_setElement_INT32 (a_scalar, 42)) ;
+    ERR (GrB_Scalar_extractElement_INT32_(&i_scalar, a_scalar)) ;
     CHECK (i_scalar == 207) ;
 
     printf ("error expected: %d\n", info) ;
 
     OK (GrB_Type_free_(&T)) ;
-    OK (GxB_Scalar_free_(&a_scalar)) ;
+    OK (GrB_Scalar_free_(&a_scalar)) ;
 
     //--------------------------------------------------------------------------
     // basic Vector methods
@@ -959,7 +981,11 @@ void mexFunction
     CHECK (nvals == 0) ;
 
     OK (GrB_Vector_nvals (&nvals, v)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Vector_wait (&v)) ;
+    #else
+    OK (GrB_Vector_wait (v, GrB_MATERIALIZE)) ;
+    #endif
     printf ("nvals "GBd"\n", nvals) ;
     GB_Vector_check (v, "vector 18:28", G3, NULL) ;
     GxB_Vector_fprint (v, "v", G3, ff) ;
@@ -1041,13 +1067,14 @@ void mexFunction
 
     OK (GrB_Vector_new (&v, GrB_FP64, 10)) ;
     ERR1 (v, GrB_Vector_build_FP64 (v, I, NULL, 0, NULL)) ;
-    ERR1 (v, GrB_Vector_build_FP64_(v, I, X,    0, NULL)) ;
+//  dup NULL is now OK
+//  ERR1 (v, GrB_Vector_build_FP64_(v, I, X,    0, NULL)) ;
 
     expected = GrB_INVALID_VALUE ;
     o2 = GrB_SECOND_FP64 ;
     ERR1 (v, GrB_Vector_build_FP64 (v, GrB_ALL, X, 0, o2)) ;
 
-    ERR1 (v, GrB_Vector_build_FP64_(v, I, X, GxB_INDEX_MAX+1, o2)) ;
+    ERR1 (v, GrB_Vector_build_FP64_(v, I, X, GB_NMAX+1, o2)) ;
 
     expected = GrB_UNINITIALIZED_OBJECT ;
 
@@ -1247,7 +1274,11 @@ void mexFunction
     CHECK (x_double == 77.3) ;
 
     OK (GrB_Vector_nvals (&n2, v)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Vector_wait_(&v)) ;
+    #else
+    OK (GrB_Vector_wait_(v, GrB_MATERIALIZE)) ;
+    #endif
     fprintf (f, "vector nvals: %d\n", (int) n2) ;
     CHECK (n2 == 3) ;
 
@@ -1505,14 +1536,15 @@ void mexFunction
     ERR1 (A, GrB_Matrix_build_FP64 (A, I,    NULL, NULL, 0, NULL)) ;
     ERR1 (A, GrB_Matrix_build_FP64 (A, NULL, NULL, NULL, 0, NULL)) ;
     ERR1 (A, GrB_Matrix_build_FP64 (A, I,    J,    NULL, 0, NULL)) ;
-    ERR1 (A, GrB_Matrix_build_FP64_(A, I,    J,    X,    0, NULL)) ;
+//  dup of NULL is now OK
+//  ERR1 (A, GrB_Matrix_build_FP64_(A, I,    J,    X,    0, NULL)) ;
 
     expected = GrB_INVALID_VALUE ;
 
     o2 = GrB_SECOND_FP64 ;
     ERR1 (A, GrB_Matrix_build_FP64_(A, GrB_ALL, J, X, 0, o2)) ;
     ERR1 (A, GrB_Matrix_build_FP64_(A, I, GrB_ALL, X, 0, o2)) ;
-    ERR1 (A, GrB_Matrix_build_FP64_(A, I,       J, X, GxB_INDEX_MAX+1, o2)) ;
+    ERR1 (A, GrB_Matrix_build_FP64_(A, I,       J, X, GB_NMAX+1, o2)) ;
 
     expected = GrB_UNINITIALIZED_OBJECT ;
 
@@ -1691,7 +1723,11 @@ void mexFunction
     CHECK (x_double == 707.3) ;
 
     OK (GrB_Matrix_nvals (&n2, A)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Matrix_wait_(&A)) ;
+    #else
+    OK (GrB_Matrix_wait_(A, GrB_MATERIALIZE)) ;
+    #endif
     fprintf (f, "nvals: %d\n", (int) n2) ;
 
     // A is now a valid FP64 matrix with 3 entries
@@ -1948,33 +1984,59 @@ void mexFunction
     OK (GB_mx_random_matrix (&F, false, false, 3, 2,  4, 0, false)) ;
     OK (GB_mx_random_matrix (&Z, false, false, 3, 2,  8, 0, true)) ; // complex
 
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Matrix_wait_(&A)) ;
     OK (GrB_Matrix_wait_(&B)) ;
     OK (GrB_Matrix_wait_(&C)) ;
     OK (GrB_Matrix_wait_(&E)) ;
     OK (GrB_Matrix_wait_(&F)) ;
     OK (GrB_Matrix_wait_(&Z)) ;
+    #else
+    OK (GrB_Matrix_wait_(A, GrB_MATERIALIZE)) ;
+    OK (GrB_Matrix_wait_(B, GrB_MATERIALIZE)) ;
+    OK (GrB_Matrix_wait_(C, GrB_MATERIALIZE)) ;
+    OK (GrB_Matrix_wait_(E, GrB_MATERIALIZE)) ;
+    OK (GrB_Matrix_wait_(F, GrB_MATERIALIZE)) ;
+    OK (GrB_Matrix_wait_(Z, GrB_MATERIALIZE)) ;
+    #endif
 
     OK (GrB_Vector_new (&v, GrB_FP64, 5)) ;
     OK (GrB_Vector_new (&u, GrB_FP64, 5)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Vector_wait_(&v)) ;
     OK (GrB_Vector_wait_(&u)) ;
+    #else
+    OK (GrB_Vector_wait_(v, GrB_MATERIALIZE)) ;
+    OK (GrB_Vector_wait_(u, GrB_MATERIALIZE)) ;
+    #endif
 
     printf ("complex vector:\n") ;
     OK (GrB_Vector_new (&z, Complex, 5)) ;
 
     OK (GrB_Descriptor_new (&dnt)) ;
     OK (GxB_Desc_set (dnt, GrB_INP1, GrB_TRAN)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Descriptor_wait_(&dnt)) ;
+    #else
+    OK (GrB_Descriptor_wait_(dnt, GrB_MATERIALIZE)) ;
+    #endif
 
     OK (GrB_Descriptor_new (&dtn)) ;
     OK (GxB_Desc_set (dtn, GrB_INP0, GrB_TRAN)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Descriptor_wait_(&dtn)) ;
+    #else
+    OK (GrB_Descriptor_wait_(dtn, GrB_MATERIALIZE)) ;
+    #endif
 
     OK (GrB_Descriptor_new (&dtt)) ;
     OK (GxB_Desc_set (dtt, GrB_INP0, GrB_TRAN)) ;
     OK (GxB_Desc_set (dtt, GrB_INP1, GrB_TRAN)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Descriptor_wait_(&dtt)) ;
+    #else
+    OK (GrB_Descriptor_wait_(dtt, GrB_MATERIALIZE)) ;
+    #endif
 
     //--------------------------------------------------------------------------
     // GrB_mxm, mxv, and vxm
@@ -2060,7 +2122,7 @@ void mexFunction
     // GrB_mxm dot product
     //--------------------------------------------------------------------------
 
-    GrB_Index huge = GxB_INDEX_MAX ;
+    GrB_Index huge = GB_NMAX ;
     GrB_Matrix HugeRow ;
     OK (GrB_Matrix_new (&HugeRow, GrB_FP64, 1, huge)) ;
     GB_Matrix_check (HugeRow, "huge row", G3, NULL) ;
@@ -2069,8 +2131,8 @@ void mexFunction
     struct GB_Matrix_opaque HugeMatrix_header ;
     GrB_Matrix HugeMatrix = GB_clear_static_header (&HugeMatrix_header) ;
 
-    OK (GB_AxB_dot2 (HugeMatrix, false, NULL, NULL, false, false, HugeRow,
-        HugeRow, GxB_PLUS_TIMES_FP64, false, Context)) ;
+    OK (GB_AxB_dot2 (HugeMatrix, false, NULL, NULL, false, false,
+        false, HugeRow, HugeRow, GxB_PLUS_TIMES_FP64, false, Context)) ;
 
     GxB_Matrix_fprint (HugeMatrix, "HugeMatrix", G3, ff) ;
     GrB_Matrix_free_(&HugeMatrix) ;
@@ -3211,7 +3273,11 @@ void mexFunction
         GrB_ALL, 0, GrB_ALL, 0, NULL)) ;
     GB_Matrix_check (A5, "A5 with 2nd:bool", G3, NULL) ;
     OK (GrB_Matrix_nvals (&nvals, A5)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Matrix_wait_(&A5)) ;
+    #else
+    OK (GrB_Matrix_wait_(A5, GrB_MATERIALIZE)) ;
+    #endif
     CHECK (nvals == 25) ;
     GB_Matrix_check (A5, "A5 done", G3, NULL) ;
 
@@ -3342,9 +3408,9 @@ void mexFunction
 
     double thresh = 42 ;
 
-    GxB_Scalar Thunk = NULL ;
-    OK (GxB_Scalar_new (&Thunk, GrB_FP64)) ;
-    OK (GxB_Scalar_setElement_FP64 (Thunk, thresh)) ;
+    GrB_Scalar Thunk = NULL ;
+    OK (GrB_Scalar_new (&Thunk, GrB_FP64)) ;
+    OK (GrB_Scalar_setElement_FP64 (Thunk, thresh)) ;
 
     o2  = Complex_plus ;
     expected = (Complex == GxB_FC64) ? GrB_DIMENSION_MISMATCH : GrB_DOMAIN_MISMATCH ;
@@ -3375,9 +3441,9 @@ void mexFunction
 
     expected = GrB_DIMENSION_MISMATCH ;
 
-    ERR1 (A,  GxB_Matrix_select_(A , NULL, NULL, GxB_TRIL, C , NULL, d0)) ;
+    ERR1 (A, GxB_Matrix_select_(A , NULL, NULL, GxB_TRIL, C , NULL, d0)) ;
 
-    OK (GxB_Scalar_free_(&Thunk)) ;
+    OK (GrB_Scalar_free_(&Thunk)) ;
 
     //--------------------------------------------------------------------------
     // reduce to scalar
@@ -3780,9 +3846,13 @@ void mexFunction
     ERR (GB_Type_check (T, "T bad size", G1, ff)) ;
     T->size = sizeof (int) ;
 
-    char *e = GB_code_string (9999) ;
+    const char *e = GB_code_string (9999) ;
     printf ("unknown code: [%s]\n", e) ;
-    CHECK (strcmp (e, "unknown!") == 0) ;
+    CHECK (strcmp (e, "unknown type!") == 0) ;
+
+    e = GB_status_code (9999) ;
+    printf ("unknown info: [%s]\n", e) ;
+    CHECK (strcmp (e, "unknown GrB_Info value!") == 0) ;
 
     OK (GB_Type_check (T, "type ok", G1, ff)) ;
     printf ("\nAll GB_Type_check tests passed (errors expected)\n") ;
@@ -3804,7 +3874,11 @@ void mexFunction
     #undef GrM_UnaryOp_new
     OK (GRB (UnaryOp_new) (&op1b, f1, GrB_FP64, GrB_UINT32)) ;
     CHECK (op1b != NULL) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_UnaryOp_wait_(&op1b)) ;
+    #else
+    OK (GrB_UnaryOp_wait_(op1b, GrB_MATERIALIZE)) ;
+    #endif
 
     Context->where = "GB_UnaryOp_check" ;
     OK (GB_UnaryOp_check (op1b, "op1b ok (via function)", G3, ff)) ;
@@ -3817,13 +3891,13 @@ void mexFunction
 
     expected = GrB_INVALID_OBJECT ;
 
-    op1b->function = NULL ;
+    op1b->unop_function = NULL ;
     ERR (GB_UnaryOp_check (op1b, "op1b null func", G1, ff)) ;
-    op1b->function = f1 ;
+    op1b->unop_function = f1 ;
 
     op1b->opcode = 1024 ;
     ERR (GB_UnaryOp_check (op1b, "op1b invalid opcode", G1, ff)) ;
-    op1b->opcode = GB_USER_opcode ;
+    op1b->opcode = GB_USER_unop_code ;
 
     op1b->ztype = NULL ;
     ERR (GB_UnaryOp_check (op1b, "op1b invalid ztype", G1, ff)) ;
@@ -3864,13 +3938,13 @@ void mexFunction
 
     expected = GrB_INVALID_OBJECT ;
 
-    op2b->function = NULL ;
+    op2b->binop_function = NULL ;
     ERR (GB_BinaryOp_check (op2b, "op2b null func", G1, ff)) ;
-    op2b->function = f2 ;
+    op2b->binop_function = f2 ;
 
     op2b->opcode = 1024 ;
     ERR (GB_BinaryOp_check (op2b, "op2b invalid opcode", G1, ff)) ;
-    op2b->opcode = GB_USER_opcode ;
+    op2b->opcode = GB_USER_binop_code ;
 
     op2b->ztype = NULL ;
     ERR (GB_BinaryOp_check (op2b, "op2b invalid ztype", G1, ff)) ;
@@ -3916,13 +3990,13 @@ void mexFunction
 
     expected = GrB_INVALID_OBJECT ;
 
-    selectop->function = NULL ;
+    selectop->selop_function = NULL ;
     ERR (GB_SelectOp_check (selectop, "selectop invalid function", G1, ff)) ;
-    selectop->function = fselect ;
+    selectop->selop_function = fselect ;
 
     selectop->opcode = 9999 ;
     ERR (GB_SelectOp_check (selectop, "selectop invalid opcode", G1, ff)) ;
-    selectop->opcode = GB_USER_SELECT_opcode ;
+    selectop->opcode = GB_USER_selop_code ;
 
     selectop->xtype = Tcrud ;
     ERR (GB_SelectOp_check (selectop, "selectop invalid xtype", G1, ff)) ;
@@ -4069,7 +4143,11 @@ void mexFunction
     OK (GrB_Vector_setElement_INT32 (v, 990, 0)) ;
     OK (GrB_Vector_setElement_INT32 (v, 991, 1)) ;
     OK (GrB_Vector_nvals (&nvals, v)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Vector_wait_(&v)) ;
+    #else
+    OK (GrB_Vector_wait_(v, GrB_MATERIALIZE)) ;
+    #endif
     CHECK (nvals == 2) ;
     OK (GxB_Vector_fprint (v, "v ok (might be bitmap)", G3, ff)) ;
     OK (GxB_Vector_Option_set (v, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
@@ -4177,7 +4255,11 @@ void mexFunction
         NULL)) ;
     OK (GB_Matrix_check (A, "valid pending pi", G3, NULL)) ;
     OK (GrB_Matrix_nvals (&nvals, A)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Matrix_wait_(&A)) ;
+    #else
+    OK (GrB_Matrix_wait_(A, GrB_MATERIALIZE)) ;
+    #endif
     CHECK (nvals == 1) ;
 
     printf ("\n========================================== valid pi\n") ;
@@ -4212,7 +4294,11 @@ void mexFunction
     OK (GB_Matrix_check (A, "with pi and 9.0909 pending", G3, NULL)) ;
 
     OK (GrB_Matrix_nvals (&nvals, A)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Matrix_wait_(&A)) ;
+    #else
+    OK (GrB_Matrix_wait_(A, GrB_MATERIALIZE)) ;
+    #endif
     CHECK (nvals == 3) ;
 
     Context->where = "GB_Matrix_check" ;
@@ -4322,7 +4408,11 @@ void mexFunction
     printf ("\n###### get nvals; assemble the pending tuples ##### \n") ;
 
     OK (GrB_Matrix_nvals (&nvals, A)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Matrix_wait_(&A)) ;
+    #else
+    OK (GrB_Matrix_wait_(A, GrB_MATERIALIZE)) ;
+    #endif
 
     Context->where = "GB_Matrix_check" ;
     printf ("\n====================================== valid [pi 7.1 11.4]\n") ;
@@ -4351,7 +4441,11 @@ void mexFunction
     A->i [1] = 1 ;
     OK (GB_Matrix_check (A, "OK", G3, NULL)) ;
     OK (GrB_Matrix_nvals (&nvals, A)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Matrix_wait_(&A)) ;
+    #else
+    OK (GrB_Matrix_wait_(A, GrB_MATERIALIZE)) ;
+    #endif
     CHECK (nvals == 5) ;
 
     AP = A->Pending ;
@@ -4365,13 +4459,21 @@ void mexFunction
     OK (GrB_Matrix_setElement_INT32 (A, 99099, 0, 0)) ;
     OK (GB_Matrix_check (A, "no more zombie", G3, NULL)) ;
     OK (GrB_Matrix_nvals (&nvals, A)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Matrix_wait_(&A)) ;
+    #else
+    OK (GrB_Matrix_wait_(A, GrB_MATERIALIZE)) ;
+    #endif
     CHECK (nvals == 5) ;
 
     OK (GxB_Matrix_subassign (A, NULL, NULL, Empty1, I, 1, J, 1, NULL)) ;
     OK (GB_Matrix_check (A, "valid zombie", G3, NULL)) ;
     OK (GrB_Matrix_nvals (&nvals, A)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Matrix_wait_(&A)) ;
+    #else
+    OK (GrB_Matrix_wait_(A, GrB_MATERIALIZE)) ;
+    #endif
     CHECK (nvals == 4) ;
     OK (GB_Matrix_check (A, "again no more zombie", G3, NULL)) ;
     OK (A->Pending == NULL && A->nzombies == 0) ;
@@ -4595,7 +4697,11 @@ void mexFunction
         }
     }
     OK (GrB_Matrix_nvals (&nvals, Eleven)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Matrix_wait_(&Eleven)) ;
+    #else
+    OK (GrB_Matrix_wait_(Eleven, GrB_MATERIALIZE)) ;
+    #endif
     CHECK (nvals == 121) ;
     OK (GB_Matrix_check (Eleven, "Eleven", G2, NULL)) ;
     OK (GrB_Matrix_free_(&Eleven)) ;
@@ -4751,33 +4857,33 @@ void mexFunction
     Context->where = "GrB_error" ;
 
     n = 1 ;
-    ok = GB_Index_multiply (&n, INT64_MAX, 0) ;
+    ok = GB_int64_multiply (&n, INT64_MAX, 0) ;
     CHECK (ok) ;
     CHECK (n == 0) ;
 
     n = 911 ;
-    ok = GB_Index_multiply (&n, -1, -1) ;
+    ok = GB_int64_multiply (&n, -1, -1) ;
     CHECK (!ok) ;
     CHECK (n == 0) ;
 
     n = 911 ;
-    ok = GB_Index_multiply (&n, 1, GxB_INDEX_MAX+1) ;
+    ok = GB_int64_multiply (&n, 1, GB_NMAX+1) ;
     CHECK (!ok) ;
     CHECK (n == 0) ;
 
-    ok = GB_Index_multiply (&n,
-        ((GrB_Index) GxB_INDEX_MAX)+1,
-        ((GrB_Index) GxB_INDEX_MAX)+1) ;
+    ok = GB_int64_multiply (&n,
+        ((GrB_Index) GB_NMAX)+1,
+        ((GrB_Index) GB_NMAX)+1) ;
     CHECK (!ok) ;
 
-    ok = GB_Index_multiply (&n,
-        ((GrB_Index) GxB_INDEX_MAX),
-        ((GrB_Index) GxB_INDEX_MAX)) ;
+    ok = GB_int64_multiply (&n,
+        ((GrB_Index) GB_NMAX),
+        ((GrB_Index) GB_NMAX)) ;
     CHECK (!ok) ;
 
     a = (GrB_Index) 16777216/2 ;     // (2^24)/2
     b = (GrB_Index) 16777216 ;
-    ok = GB_Index_multiply (&n, a, b) ;
+    ok = GB_int64_multiply (&n, a, b) ;
     // printf ("%lld %lld n\n", n, a*b) ;
     CHECK (ok) ;
     CHECK (n == a*b)
@@ -4790,7 +4896,7 @@ void mexFunction
     OK (GxB_Matrix_fprint (A, "A for bix_alloc", G3, NULL)) ;
     CHECK (A != NULL) ;
     Context->where = "GB_bix_alloc" ;
-    info = GB_bix_alloc (A, GxB_INDEX_MAX+1, GxB_SPARSE, true, true, false,
+    info = GB_bix_alloc (A, GB_NMAX+1, GxB_SPARSE, true, true, false,
         Context) ;
     CHECK (info == GrB_OUT_OF_MEMORY) ;
     OK (GrB_Matrix_free_(&A)) ;
@@ -4801,7 +4907,7 @@ void mexFunction
 
     CHECK (A != NULL) ;
     OK (GxB_Matrix_fprint (A, "A for ix_realloc", G3, NULL)) ;
-    info = GB_ix_realloc (A, GxB_INDEX_MAX+1, Context) ;
+    info = GB_ix_realloc (A, GB_NMAX+1, Context) ;
     CHECK (info == GrB_OUT_OF_MEMORY) ;
 
     OK (GB_Matrix_check (A, "A pattern 1", G3, NULL)) ;
@@ -5151,8 +5257,14 @@ void mexFunction
         OK (GrB_transpose (B, Amask, NULL, A, NULL)) ;
         OK (GrB_transpose (A, Amask, NULL, A, NULL)) ;
         GrB_Index ignore ;
+
+        #if (GxB_IMPLEMENTATION_MAJOR <= 5)
         OK (GrB_Matrix_wait (&A)) ;
         OK (GrB_Matrix_wait (&B)) ;
+        #else
+        OK (GrB_Matrix_wait (A, GrB_MATERIALIZE)) ;
+        OK (GrB_Matrix_wait (B, GrB_MATERIALIZE)) ;
+        #endif
         CHECK (GB_mx_isequal (A, B, 0)) ;
         GrB_Matrix_free_(&B) ;
 

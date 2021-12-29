@@ -1,8 +1,7 @@
 import random
-import threading
-from itertools import cycle
 from RLTest import Env
 from redisgraph import Graph
+from pathos.pools import ProcessPool as Pool
 
 # 1. test reading and setting query memory limit configuration
 
@@ -30,45 +29,44 @@ MEM_THRIFTY_QUERY  =  """UNWIND range(0, 10) AS x
                          WHERE (x / 2) = 50
                          RETURN x, count(x)"""
 
+def issue_query(conn, q, should_fail):
+    try:
+        g = Graph(GRAPH_NAME, conn)
+        g.query(q)
+        return not should_fail
+    except Exception as e:
+        assert "Query's mem consumption exceeded capacity" in str(e)
+        return should_fail
+
 class testQueryMemoryLimit():
     def __init__(self):
-        global g
         self.env = Env(decodeResponses=True)
-        self.conn = self.env.getConnection()
-        g = Graph(GRAPH_NAME, self.conn)
+        # skip test if we're running under Valgrind
+        if self.env.envRunner.debugger is not None:
+            self.env.skip() # valgrind is not working correctly with multi process
 
-    def issue_query(self, conn, q, should_fail):
-        try:
-            g.query(q)
-            self.env.assertFalse(should_fail)
-        except Exception as e:
-            assert "Query's mem consumption exceeded capacity" in str(e)
-            self.env.assertTrue(should_fail)
+        self.conn = self.env.getConnection()
 
     def stress_server(self, queries):
-        threads = []
         connections = []
-        threadpool_size = self.conn.execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1]
+        qs = []
+        should_fails = []
+        thread_count = self.conn.execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1]
+        pool = Pool(nodes=thread_count)
 
         # init connections
-        for t in range(threadpool_size):
+        for t in range(thread_count):
             connections.append(self.env.getConnection())
 
-        # init circular iterator
-        connections_pool = cycle(connections)
+        for q in queries:
+            qs.append(q[0])
+            should_fails.append(q[1])
 
         # invoke queries
-        for q in queries:
-            con = next(connections_pool)
-            t = threading.Thread(target=self.issue_query, args=(con, q[0], q[1]))
-            t.setDaemon(True)
-            threads.append(t)
-            t.start()
+        result = pool.map(issue_query, connections, qs, should_fails)
 
-        # wait for threads to return
-        while len(threads) > 0:
-            t = threads.pop()
-            t.join()
+        # validate all process return true
+        self.env.assertTrue(all(result))
 
     def test_01_read_memory_limit_config(self):
         # read configuration, test default value, expecting unlimited memory cap

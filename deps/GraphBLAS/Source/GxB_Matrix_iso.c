@@ -29,6 +29,7 @@ GrB_Info GxB_Matrix_iso     // return iso status of a matrix
     //--------------------------------------------------------------------------
 
     (*iso) = A->iso ;
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

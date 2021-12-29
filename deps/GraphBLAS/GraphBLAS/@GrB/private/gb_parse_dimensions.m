@@ -20,7 +20,7 @@ switch (nargin)
             n = m ;
         elseif (length (arg1) == 2)
             % C = ones ([m n])
-            [m, n] = gb_get_pair (arg1) ;
+            [m, n] = gb_get_2scalars (arg1) ;
         else
             error ('invalid dimensions') ;
         end
