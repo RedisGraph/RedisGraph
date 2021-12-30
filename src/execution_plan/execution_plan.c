@@ -15,6 +15,9 @@
 #include "../ast/ast_build_filter_tree.h"
 #include "execution_plan_build/execution_plan_construct.h"
 #include "execution_plan_build/execution_plan_modify.h"
+#include "../arithmetic/arithmetic_expression_construct.h"
+#include "../arithmetic/aggregate_funcs/agg_funcs.h"
+#include "../util/rax_extensions.h"
 
 #include <setjmp.h>
 
@@ -209,6 +212,59 @@ static ExecutionPlan **_process_segments(AST *ast) {
 	return segments;
 }
 
+static void _BuildPatternComprehensionOps(ExecutionPlan *plan, OpBase *op, const cypher_astnode_t *ast) {
+	const cypher_astnode_t **pcs = AST_GetTypedNodes(ast, CYPHER_AST_PATTERN_COMPREHENSION);
+	uint count = array_len(pcs);
+
+	const char **arguments = NULL;
+	if(op->childCount > 0) {
+		rax *bound_vars = raxNew();
+		ExecutionPlan_BoundVariables(op->children[0], bound_vars);
+		arguments = (const char **)raxValues(bound_vars);
+		raxFree(bound_vars);
+	}
+
+	for (uint i = 0; i < count; i++) {
+		const cypher_astnode_t *path = cypher_ast_pattern_comprehension_get_pattern(pcs[i]);
+
+		QueryCtx_SetAST(plan->ast_segment);
+		OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
+
+		const cypher_astnode_t *eval_node = cypher_ast_pattern_comprehension_get_eval(pcs[i]);
+		AR_ExpNode *eval_exp = AR_EXP_FromASTNode(eval_node);
+		eval_exp->resolved_name = AR_EXP_BuildResolvedName(eval_exp);
+		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", 1);
+		collect_exp->op.children[0] = eval_exp;
+		
+		AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
+		ctx->hashSet = NULL;
+		ctx->private_ctx = NULL;
+		ctx->result = SI_NullVal();
+		collect_exp->op.f = AR_SetPrivateData(collect_exp->op.f, ctx);
+
+		AST *ast = QueryCtx_GetAST();
+		collect_exp->resolved_name = AST_GetEntityName(ast, pcs[i]);
+
+		AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
+		array_append(exps, collect_exp);
+		OpBase *aggregate = NewAggregateOp(plan, exps, false);
+		OpBase *optional = NewOptionalOp(plan);
+		OptionalOp_DefaultValue((Optional *)optional, collect_exp->resolved_name, SI_Array(0));
+		ExecutionPlan_AddOp(optional, aggregate);
+		ExecutionPlan_AddOp(aggregate, match_stream);
+
+		if(op->childCount > 0) {
+			OpBase *apply_op = NewApplyOp(plan);
+			ExecutionPlan_PushBelow(op->children[0], apply_op);
+			ExecutionPlan_AddOp(apply_op, optional);
+		} else {
+			ExecutionPlan_AddOp(op, optional);
+		}
+	}
+
+	if(arguments != NULL) array_free(arguments);
+}
+
 static ExecutionPlan *_tie_segments(ExecutionPlan **segments,
 									uint segment_count) {
 	FT_FilterNode *ft = NULL;            // filters following WITH
@@ -240,8 +296,14 @@ static ExecutionPlan *_tie_segments(ExecutionPlan **segments,
 			// if it's been attached to a previous scope.
 			ASSERT(connecting_op->type == OPType_PROJECT ||
 				   connecting_op->type == OPType_AGGREGATE);
-
+			
+			const cypher_astnode_t *opening_clause = cypher_ast_query_get_clause(ast->root, 0);
 			ExecutionPlan_AddOp(connecting_op, prev_segment->root);
+			_BuildPatternComprehensionOps(segment, connecting_op, opening_clause);
+		} else if (segment_count == 1 && segment->root->type == OPType_RESULTS) {
+			uint clause_count = cypher_ast_query_nclauses(ast->root);
+			const cypher_astnode_t *closing_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
+			_BuildPatternComprehensionOps(segment, segment->root->children[0], closing_clause);
 		}
 
 		prev_segment = segment;
@@ -471,7 +533,7 @@ ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan) {
 //------------------------------------------------------------------------------
 
 static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
-	if(plan == NULL) return;
+	if(plan == NULL || plan->connected_components == NULL) return;
 
 	if(plan->connected_components) {
 		uint connected_component_count = array_len(plan->connected_components);
@@ -479,6 +541,7 @@ static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
 			QueryGraph_Free(plan->connected_components[i]);
 		}
 		array_free(plan->connected_components);
+		plan->connected_components = NULL;
 	}
 
 	QueryGraph_Free(plan->query_graph);

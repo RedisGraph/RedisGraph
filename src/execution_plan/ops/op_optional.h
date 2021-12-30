@@ -49,8 +49,13 @@
 typedef struct {
 	OpBase op;
 	bool emitted_record; // True if this operation has returned at least one Record.
+	bool use_default_value;
+	SIValue default_value;
+	const char *alias;
+	int idx;
 } Optional;
 
 /* Creates a new Optional operation. */
 OpBase *NewOptionalOp(const ExecutionPlan *plan);
 
+void OptionalOp_DefaultValue(Optional *op, const char *alias, SIValue value);

@@ -12,8 +12,6 @@
 #include "../execution_plan.h"
 #include "../../ast/ast_build_op_contexts.h"
 #include "../../arithmetic/arithmetic_expression_construct.h"
-#include "../../arithmetic/aggregate_funcs/agg_funcs.h"
-#include "../../util/rax_extensions.h"
 
 // Given a WITH/RETURN * clause, generate the array of expressions to populate.
 static AR_ExpNode **_PopulateProjectAll(const cypher_astnode_t *clause) {
@@ -157,57 +155,7 @@ static void _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **orde
 	*exps_ptr = project_exps;
 }
 
-static void _BuildPatternComprehensionOps(ExecutionPlan *plan, OpBase *op, const cypher_astnode_t *ast) {
-	const cypher_astnode_t **pcs = AST_GetTypedNodes(ast, CYPHER_AST_PATTERN_COMPREHENSION);
-	uint count = array_len(pcs);
 
-	const char **arguments = NULL;
-	if(op->childCount > 0) {
-		rax *bound_vars = raxNew();
-		ExecutionPlan_BoundVariables(op->children[0], bound_vars);
-		arguments = (const char **)raxValues(bound_vars);
-		raxFree(bound_vars);
-	}
-
-	for (uint i = 0; i < count; i++) {
-		const cypher_astnode_t *path = cypher_ast_pattern_comprehension_get_pattern(pcs[i]);
-
-		OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
-
-		const cypher_astnode_t *eval_node = cypher_ast_pattern_comprehension_get_eval(pcs[i]);
-		AR_ExpNode *eval_exp = AR_EXP_FromASTNode(eval_node);
-		eval_exp->resolved_name = AR_EXP_BuildResolvedName(eval_exp);
-		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", 1);
-		collect_exp->op.children[0] = eval_exp;
-		
-		AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
-		ctx->hashSet = NULL;
-		ctx->private_ctx = NULL;
-		ctx->result = SI_NullVal();
-		collect_exp->op.f = AR_SetPrivateData(collect_exp->op.f, ctx);
-
-		AST *ast = QueryCtx_GetAST();
-		collect_exp->resolved_name = AST_GetEntityName(ast, pcs[i]);
-
-		AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
-		array_append(exps, collect_exp);
-		OpBase *aggregate = NewAggregateOp(plan, exps, false);
-		ExecutionPlan_AddOp(aggregate, match_stream);
-
-		OpBase *apply_op = NewApplyOp(plan);
-		
-		if(op->childCount > 0) {
-			ExecutionPlan_PushBelow(op->children[0], apply_op);
-		} else {
-			ExecutionPlan_UpdateRoot(plan, apply_op);
-			NewArgumentOp(plan, array_new(const char *, 0));
-		}
-
-		ExecutionPlan_AddOp(apply_op, aggregate);
-	}
-
-	if(arguments != NULL) array_free(arguments);
-}
 
 // Build an aggregate or project operation and any required modifying operations.
 // This logic applies for both WITH and RETURN projections.
@@ -270,7 +218,6 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 		op = NewProjectOp(plan, projections);
 	}
 	ExecutionPlan_UpdateRoot(plan, op);
-	_BuildPatternComprehensionOps(plan, op, clause);
 
 	/* Add modifier operations in order such that the final execution plan will follow the sequence:
 	 * Limit -> Skip -> Sort -> Distinct -> Project/Aggregate */
