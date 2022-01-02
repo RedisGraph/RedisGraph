@@ -248,7 +248,6 @@ static void _BuildPatternComprehensionOps(ExecutionPlan *plan, OpBase *op, const
 			eval_exp = AR_EXP_FromASTNode(eval_node);
 		}
 
-		eval_exp->resolved_name = AR_EXP_BuildResolvedName(eval_exp);
 		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", 1);
 		collect_exp->op.children[0] = eval_exp;
 		
@@ -304,7 +303,6 @@ static void _BuildPatternPathOps(ExecutionPlan *plan, OpBase *op, const cypher_a
 		path_exp->op.children[0] = AR_EXP_NewConstOperandNode(SI_PtrVal((void *)path));
 		for(uint j = 0; j < path_len; j ++)
 			path_exp->op.children[j + 1] = AR_EXP_FromASTNode(cypher_ast_pattern_path_get_element(path, j));
-		path_exp->resolved_name = AR_EXP_BuildResolvedName(path_exp);
 		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", 1);
 		collect_exp->op.children[0] = path_exp;
 		
