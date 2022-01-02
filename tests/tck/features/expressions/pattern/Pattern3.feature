@@ -251,7 +251,9 @@ Feature: Pattern3 - Pattern Comprehension
       """
     When executing query:
       """
-      MATCH (n)-->(b) WITH [p = (n)-->() | p] AS ps, count(b) AS c RETURN ps, c
+      MATCH (n)-->(b)
+      WITH [p = (n)-->() | p] AS ps, count(b) AS c
+      RETURN ps, c
       """
     Then the result should be, in any order:
       | ps                                     | c |

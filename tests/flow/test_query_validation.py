@@ -445,18 +445,15 @@ class testQueryValidationFlow(FlowTestsBase):
         query = """MATCH (a) WHERE a.fakeprop RETURN a"""
         redis_graph.query(query)
 
-    # Encountering traversals as property values or ORDER BY expressions should raise compile-time errors.
+    # Encountering traversals as property values should raise compile-time errors.
     def test30_unexpected_traversals(self):
-        queries = ["""MATCH (a {prop: ()-[]->()}) RETURN a""",
-                   """MATCH (a) RETURN a ORDER BY (a)-[]->()""",
-                   """MATCH (a) RETURN (a)-[]->()"""]
-        for query in queries:
-            try:
-                redis_graph.query(query)
-                assert(False)
-            except redis.exceptions.ResponseError as e:
-                # Expecting an error.
-                assert("Encountered path traversal" in str(e))
+        query = """MATCH (a {prop: ()-[]->()}) RETURN a"""
+        try:
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Encountered path traversal" in str(e))
 
     def test31_set_invalid_property_type(self):
         # Skip this test if running under Valgrind, as it causes a memory leak.

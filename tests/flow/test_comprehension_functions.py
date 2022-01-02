@@ -1,3 +1,4 @@
+import re
 import redis
 from RLTest import Env
 from base import FlowTestsBase
@@ -244,4 +245,96 @@ class testComprehensionFunctions(FlowTestsBase):
         query = """MATCH p=()-[*0..1]->() WHERE all(node IN nodes(p) WHERE node.val = 'v1') RETURN length(p) ORDER BY length(p)"""
         actual_result = redis_graph.query(query)
         expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test14_simple_pattern_comprehension(self):
+        # Match all nodes and collect their destination's property in an array
+        query = """MATCH (a) RETURN a.val AS v, [(a)-[]->(b) | b.val] ORDER BY v"""
+        expected_plan = 'Apply.+Scan.+Conditional Traverse.+Argument'
+        plan = redis_graph.execution_plan(query)
+        self.env.assertTrue(re.search(expected_plan, plan, flags=re.DOTALL))
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', ['v2']],
+                           ['v2', ['v3']],
+                           ['v3', []]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test logically equivalent rewrites of the pattern comprehension
+        query = """MATCH (a) RETURN a.val AS v, [(a)-[:E]->(b:L) | b.val] ORDER BY v"""
+        plan = redis_graph.execution_plan(query)
+        self.env.assertTrue(re.search(expected_plan, plan, flags=re.DOTALL))
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """MATCH (a) RETURN a.val AS v, [(a:L)-[:E]->(b:L) | b.val] ORDER BY v"""
+        plan = redis_graph.execution_plan(query)
+        self.env.assertTrue(re.search(expected_plan, plan, flags=re.DOTALL))
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """MATCH (a) RETURN a.val AS v, [(b)<-[:E]-(a) | b.val] ORDER BY v"""
+        plan = redis_graph.execution_plan(query)
+        self.env.assertTrue(re.search(expected_plan, plan, flags=re.DOTALL))
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test15_variable_length_pattern_comprehension(self):
+        # Match all nodes and collect their destination's property over all hops in an array
+        query = """MATCH (a) RETURN a.val AS v, [(a)-[*0..]->(b) | b.val] ORDER BY v"""
+        expected_plan = 'Apply.+Scan.+Conditional Variable Length Traverse.+Argument'
+        plan = redis_graph.execution_plan(query)
+        self.env.assertTrue(re.search(expected_plan, plan, flags=re.DOTALL))
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', ['v1', 'v2', 'v3']],
+                           ['v2', ['v2', 'v3']],
+                           ['v3', ['v3']]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test logically equivalent rewrites of the pattern comprehension
+        query = """MATCH (a) RETURN a.val AS v, [(a)-[:E*0..]->(b) | b.val] ORDER BY v"""
+        plan = redis_graph.execution_plan(query)
+        self.env.assertTrue(re.search(expected_plan, plan, flags=re.DOTALL))
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """MATCH (a) RETURN a.val AS v, [(a)-[:E*0..]->(b:L) | b.val] ORDER BY v"""
+        plan = redis_graph.execution_plan(query)
+        self.env.assertTrue(re.search(expected_plan, plan, flags=re.DOTALL))
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test16_nested_pattern_comprehension(self):
+        # Perform pattern comprehension inside a function call
+        query = """MATCH (a) RETURN a.val AS v, size([p=(a)-[*0..]->() | p]) ORDER BY v"""
+        expected_plan = 'Apply.+Scan.+Conditional Variable Length Traverse.+Argument'
+        plan = redis_graph.execution_plan(query)
+        self.env.assertTrue(re.search(expected_plan, plan, flags=re.DOTALL))
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', 3],
+                           ['v2', 2],
+                           ['v3', 1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test17_pattern_comprehension_in_aggregation(self):
+        # Perform pattern comprehension as an aggregation key
+        query = """UNWIND range(1, 3) AS x MATCH (a) RETURN COUNT(a) AS v, [p=(a)-[]->(b) | b.val] AS w ORDER BY v, w"""
+        expected_plan = 'Aggregate.+Apply.+Scan.+Conditional Traverse.+Argument'
+        plan = redis_graph.execution_plan(query)
+        self.env.assertTrue(re.search(expected_plan, plan, flags=re.DOTALL))
+        actual_result = redis_graph.query(query)
+        expected_result = [[3, []],
+                           [3, ['v2']],
+                           [3, ['v3']]]
+
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Perform pattern comprehension in an aggregation value
+        query = """MATCH (a) RETURN a.val AS v, collect([p=(a)-[*0..]->(b) | b.val]) ORDER BY v"""
+        plan = redis_graph.execution_plan(query)
+        expected_plan = 'Aggregate.+Apply.+Scan.+Conditional Variable Length Traverse.+Argument'
+        self.env.assertTrue(re.search(expected_plan, plan, flags=re.DOTALL))
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', [['v1', 'v2', 'v3']]],
+                           ['v2', [['v2', 'v3']]],
+                           ['v3', [['v3']]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
