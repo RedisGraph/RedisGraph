@@ -279,6 +279,7 @@ static void _BuildPatternComprehensionOps(ExecutionPlan *plan, OpBase *op, const
 	}
 
 	if(arguments != NULL) array_free(arguments);
+	array_free(pcs);
 }
 
 static void _BuildPatternPathOps(ExecutionPlan *plan, OpBase *op, const cypher_astnode_t *ast) {
@@ -334,6 +335,7 @@ static void _BuildPatternPathOps(ExecutionPlan *plan, OpBase *op, const cypher_a
 	}
 
 	if(arguments != NULL) array_free(arguments);
+	array_free(pcs);
 }
 
 static ExecutionPlan *_tie_segments(ExecutionPlan **segments,

@@ -37,6 +37,8 @@ static void _annotate_pattern_comprehension(AST *ast, const cypher_astnode_t *no
 	if(t == CYPHER_AST_PATTERN_COMPREHENSION || t == CYPHER_AST_PATTERN_PATH) {
         // The AST node is a graph entity.
         char *alias = _create_anon_alias((*anon_count)++);
+		raxInsert(ast->canonical_entity_names, 
+			(unsigned char *)alias, strlen(alias), alias, NULL);
         // Add AST annotation.
         AST_AttachName(ast, node, alias);
 	}
