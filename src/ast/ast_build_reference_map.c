@@ -20,7 +20,7 @@ static void _AST_MapExpression(AST *ast, const cypher_astnode_t *exp) {
 		_AST_UpdateRefMap(ast, identifier_name);
 	} else if(type == CYPHER_AST_PATTERN_PATH) {
 		// In case of pattern filter.
-		_AST_MapReferencedEntitiesInPath(ast, exp, false);
+		_AST_MapReferencedEntitiesInPath(ast, exp, true);
 	} else if(type == CYPHER_AST_NAMED_PATH) {
 		const cypher_astnode_t *pattern = cypher_ast_named_path_get_path(exp);
 		// In case of named path.

@@ -34,7 +34,7 @@ static void _annotate_pattern_comprehension(AST *ast, const cypher_astnode_t *no
 	cypher_astnode_type_t t = cypher_astnode_type(node);
 	const cypher_astnode_t *ast_identifier = NULL;
 
-	if(t == CYPHER_AST_PATTERN_COMPREHENSION) {
+	if(t == CYPHER_AST_PATTERN_COMPREHENSION || t == CYPHER_AST_PATTERN_PATH) {
         // The AST node is a graph entity.
         char *alias = _create_anon_alias((*anon_count)++);
         // Add AST annotation.

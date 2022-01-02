@@ -453,7 +453,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("Encountered path traversal" in str(e))
+            assert("Encountered unhandled type" in str(e))
 
     def test31_set_invalid_property_type(self):
         # Skip this test if running under Valgrind, as it causes a memory leak.
