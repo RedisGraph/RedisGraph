@@ -241,7 +241,6 @@ Feature: Pattern3 - Pattern Comprehension
       | (:X {n: 2}) | [0, 1] |
     And no side effects
 
-  @skip
   Scenario: [12] Using a pattern comprehension in a WITH
     Given an empty graph
     And having executed:
@@ -259,7 +258,6 @@ Feature: Pattern3 - Pattern Comprehension
       | [<(:A)-[:T]->(:B)>, <(:A)-[:T]->(:C)>] | 2 |
     And no side effects
 
-  @skip
   Scenario: [13] Using a variable-length pattern comprehension in a WITH
     Given an empty graph
     And having executed:
@@ -296,7 +294,6 @@ Feature: Pattern3 - Pattern Comprehension
       | []                  |
     And no side effects
 
-  @skip
   Scenario: [15] Pattern comprehension and ORDER BY
     Given an empty graph
     And having executed:

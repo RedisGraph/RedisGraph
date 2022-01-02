@@ -299,11 +299,13 @@ static ExecutionPlan *_tie_segments(ExecutionPlan **segments,
 			
 			const cypher_astnode_t *opening_clause = cypher_ast_query_get_clause(ast->root, 0);
 			ExecutionPlan_AddOp(connecting_op, prev_segment->root);
-			_BuildPatternComprehensionOps(segment, connecting_op, opening_clause);
+			_BuildPatternComprehensionOps(prev_segment, connecting_op, opening_clause);
 		} else if (segment_count == 1 && segment->root->type == OPType_RESULTS) {
 			uint clause_count = cypher_ast_query_nclauses(ast->root);
 			const cypher_astnode_t *closing_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
-			_BuildPatternComprehensionOps(segment, segment->root->children[0], closing_clause);
+			OpBase *op = segment->root->children[0];
+			if(op->type == OPType_SORT) op = op->children[0];
+			_BuildPatternComprehensionOps(segment, op, closing_clause);
 		}
 
 		prev_segment = segment;
@@ -533,7 +535,7 @@ ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan) {
 //------------------------------------------------------------------------------
 
 static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
-	if(plan == NULL || plan->connected_components == NULL) return;
+	if(plan == NULL) return;
 
 	if(plan->connected_components) {
 		uint connected_component_count = array_len(plan->connected_components);
@@ -541,7 +543,6 @@ static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
 			QueryGraph_Free(plan->connected_components[i]);
 		}
 		array_free(plan->connected_components);
-		plan->connected_components = NULL;
 	}
 
 	QueryGraph_Free(plan->query_graph);
