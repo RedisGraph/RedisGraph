@@ -51,7 +51,7 @@ typedef struct {
 	bool emitted_record; // True if this operation has returned at least one Record.
 	bool use_default_value;
 	SIValue default_value;
-	const char *alias;
+	char *alias;
 	int idx;
 } Optional;
 

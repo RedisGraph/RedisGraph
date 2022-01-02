@@ -30,7 +30,7 @@ OpBase *NewOptionalOp(const ExecutionPlan *plan) {
 void OptionalOp_DefaultValue(Optional *op, const char *alias, SIValue value) {
 	op->use_default_value = true;
 	op->default_value = value;
-	op->alias = alias;
+	op->alias = rm_strdup(alias);
 	bool aware = OpBase_Aware((OpBase *)op, alias, &op->idx);
 	ASSERT(aware);
 }
@@ -64,7 +64,7 @@ static inline OpBase *OptionalClone(const ExecutionPlan *plan, const OpBase *opB
 	Optional *op = (Optional *)opBase;
 	OpBase *clone = NewOptionalOp(plan);
 	if(op->use_default_value) {
-		OptionalOp_DefaultValue((Optional *)clone, rm_strdup(op->alias), SI_CloneValue(op->default_value));
+		OptionalOp_DefaultValue((Optional *)clone, op->alias, SI_CloneValue(op->default_value));
 	}
 	return clone;
 }
