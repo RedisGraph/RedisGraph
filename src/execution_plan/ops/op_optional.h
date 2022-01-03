@@ -48,14 +48,15 @@
  * representing the elements of the failed traversal. */
 typedef struct {
 	OpBase op;
-	bool emitted_record; // True if this operation has returned at least one Record.
-	bool use_default_value;
-	SIValue default_value;
-	char *alias;
-	int idx;
+	bool emitted_record;     // True if this operation has returned at least one Record.
+	bool set_default_value;  // True if this operation set default value when the child operation didn't produce any record 
+	SIValue default_value;   // The default value
+	char *alias;             // The alias for the default value to be set
+	int idx;                 // The index in the Record to set the default value 
 } Optional;
 
-/* Creates a new Optional operation. */
+// creates a new Optional operation
 OpBase *NewOptionalOp(const ExecutionPlan *plan);
 
+// set default value
 void OptionalOp_DefaultValue(Optional *op, const char *alias, SIValue value);

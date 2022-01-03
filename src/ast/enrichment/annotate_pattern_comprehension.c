@@ -9,7 +9,7 @@
 
 
 //------------------------------------------------------------------------------
-//  Annotation context - graph entity naming
+//  Annotation context - pattern comprehension naming
 //------------------------------------------------------------------------------
 
 // Compute the number of digits in a non-negative integer.
@@ -35,19 +35,19 @@ static void _annotate_pattern_comprehension(AST *ast, const cypher_astnode_t *no
 	const cypher_astnode_t *ast_identifier = NULL;
 
 	if(t == CYPHER_AST_PATTERN_COMPREHENSION || t == CYPHER_AST_PATTERN_PATH) {
-        // The AST node is a graph entity.
-        char *alias = _create_anon_alias((*anon_count)++);
+		// The AST node is a graph entity.
+		char *alias = _create_anon_alias((*anon_count)++);
 		raxInsert(ast->canonical_entity_names, 
 			(unsigned char *)alias, strlen(alias), alias, NULL);
-        // Add AST annotation.
-        AST_AttachName(ast, node, alias);
+		// Add AST annotation.
+		AST_AttachName(ast, node, alias);
 	}
 
-    uint child_count = cypher_astnode_nchildren(node);
-    for(uint i = 0; i < child_count; i++) {
-        const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
-        _annotate_pattern_comprehension(ast, child, anon_count);
-    }
+	uint child_count = cypher_astnode_nchildren(node);
+	for(uint i = 0; i < child_count; i++) {
+		const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
+		_annotate_pattern_comprehension(ast, child, anon_count);
+	}
 }
 
 void AST_AnnotatePatternComprehension(AST *ast) {

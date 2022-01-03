@@ -21,10 +21,6 @@ static void _AST_MapExpression(AST *ast, const cypher_astnode_t *exp) {
 	} else if(type == CYPHER_AST_PATTERN_PATH) {
 		// In case of pattern filter.
 		_AST_MapReferencedEntitiesInPath(ast, exp, true);
-	} else if(type == CYPHER_AST_NAMED_PATH) {
-		const cypher_astnode_t *pattern = cypher_ast_named_path_get_path(exp);
-		// In case of named path.
-		_AST_MapReferencedEntitiesInPath(ast, pattern, true);
 	} else if(type == CYPHER_AST_SHORTEST_PATH) {
 		// Reference all entity names in a shortest path.
 		_AST_MapReferencedEntitiesInPath(ast, exp, true);

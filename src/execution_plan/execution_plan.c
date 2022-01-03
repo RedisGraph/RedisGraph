@@ -294,8 +294,9 @@ static void _BuildPatternPathOps(ExecutionPlan *plan, OpBase *op, const cypher_a
 	}
 
 	for (uint i = 0; i < count; i++) {
-		QueryCtx_SetAST(plan->ast_segment);
 		const cypher_astnode_t *path = pcs[i];
+
+		QueryCtx_SetAST(plan->ast_segment);
 		OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
 
 		uint path_len = cypher_ast_pattern_path_nelements(path);
@@ -303,6 +304,7 @@ static void _BuildPatternPathOps(ExecutionPlan *plan, OpBase *op, const cypher_a
 		path_exp->op.children[0] = AR_EXP_NewConstOperandNode(SI_PtrVal((void *)path));
 		for(uint j = 0; j < path_len; j ++)
 			path_exp->op.children[j + 1] = AR_EXP_FromASTNode(cypher_ast_pattern_path_get_element(path, j));
+
 		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", 1);
 		collect_exp->op.children[0] = path_exp;
 		
