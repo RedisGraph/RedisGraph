@@ -504,6 +504,16 @@ inline AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast) {
 	return ast->anot_ctx_collection;
 }
 
+char *AST_ToString(const cypher_astnode_t *node) {
+	QueryCtx *ctx = QueryCtx_GetQueryCtx();
+	struct cypher_input_range range = cypher_astnode_range(node);
+	uint length = range.end.offset - range.start.offset + 2;
+	char *str = rm_malloc(sizeof(char) * length);
+	strncpy(str, ctx->query_data.query + range.start.offset, length - 1);
+	str[length - 1] = '\0';
+	return str;
+}
+
 void AST_Free(AST *ast) {
 	if(ast == NULL) return;
 

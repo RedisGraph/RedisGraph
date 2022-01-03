@@ -212,14 +212,19 @@ static ExecutionPlan **_process_segments(AST *ast) {
 	return segments;
 }
 
-static void _BuildPatternComprehensionOps(ExecutionPlan *plan, OpBase *op, const cypher_astnode_t *ast) {
+// TODO: write doc
+static void _BuildPatternComprehensionOps(
+	ExecutionPlan *plan,
+	OpBase *root,
+	const cypher_astnode_t *ast
+) {
 	const cypher_astnode_t **pcs = AST_GetTypedNodes(ast, CYPHER_AST_PATTERN_COMPREHENSION);
 	uint count = array_len(pcs);
 
 	const char **arguments = NULL;
-	if(op->childCount > 0) {
+	if(root->childCount > 0) {
 		rax *bound_vars = raxNew();
-		ExecutionPlan_BoundVariables(op->children[0], bound_vars);
+		ExecutionPlan_BoundVariables(root->children[0], bound_vars);
 		arguments = (const char **)raxValues(bound_vars);
 		raxFree(bound_vars);
 	}
@@ -251,6 +256,7 @@ static void _BuildPatternComprehensionOps(ExecutionPlan *plan, OpBase *op, const
 		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", 1);
 		collect_exp->op.children[0] = eval_exp;
 		
+		// TODO move to AR_EXP_NewOpNode
 		AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
 		ctx->hashSet = NULL;
 		ctx->private_ctx = NULL;
@@ -258,7 +264,7 @@ static void _BuildPatternComprehensionOps(ExecutionPlan *plan, OpBase *op, const
 		collect_exp->op.f = AR_SetPrivateData(collect_exp->op.f, ctx);
 
 		AST *ast = QueryCtx_GetAST();
-		collect_exp->resolved_name = AST_GetEntityName(ast, pcs[i]);
+		collect_exp->resolved_name = AST_ToString(pcs[i]);
 
 		AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 		array_append(exps, collect_exp);
@@ -267,12 +273,12 @@ static void _BuildPatternComprehensionOps(ExecutionPlan *plan, OpBase *op, const
 		ExecutionPlan_AddOp(optional, aggregate);
 		ExecutionPlan_AddOp(aggregate, match_stream);
 
-		if(op->childCount > 0) {
+		if(root->childCount > 0) {
 			OpBase *apply_op = NewApplyOp(plan);
-			ExecutionPlan_PushBelow(op->children[0], apply_op);
+			ExecutionPlan_PushBelow(root->children[0], apply_op);
 			ExecutionPlan_AddOp(apply_op, optional);
 		} else {
-			ExecutionPlan_AddOp(op, optional);
+			ExecutionPlan_AddOp(root, optional);
 		}
 	}
 
@@ -280,14 +286,18 @@ static void _BuildPatternComprehensionOps(ExecutionPlan *plan, OpBase *op, const
 	array_free(pcs);
 }
 
-static void _BuildPatternPathOps(ExecutionPlan *plan, OpBase *op, const cypher_astnode_t *ast) {
+static void _BuildPatternPathOps(
+	ExecutionPlan *plan,
+	OpBase *root,
+	const cypher_astnode_t *ast
+) {
 	const cypher_astnode_t **pcs = AST_GetTypedNodes(ast, CYPHER_AST_PATTERN_PATH);
 	uint count = array_len(pcs);
 
 	const char **arguments = NULL;
-	if(op->childCount > 0) {
+	if(root->childCount > 0) {
 		rax *bound_vars = raxNew();
-		ExecutionPlan_BoundVariables(op->children[0], bound_vars);
+		ExecutionPlan_BoundVariables(root->children[0], bound_vars);
 		arguments = (const char **)raxValues(bound_vars);
 		raxFree(bound_vars);
 	}
@@ -314,7 +324,7 @@ static void _BuildPatternPathOps(ExecutionPlan *plan, OpBase *op, const cypher_a
 		collect_exp->op.f = AR_SetPrivateData(collect_exp->op.f, ctx);
 
 		AST *ast = QueryCtx_GetAST();
-		collect_exp->resolved_name = AST_GetEntityName(ast, path);
+		collect_exp->resolved_name = AST_ToString(path);
 
 		AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 		array_append(exps, collect_exp);
@@ -323,12 +333,12 @@ static void _BuildPatternPathOps(ExecutionPlan *plan, OpBase *op, const cypher_a
 		ExecutionPlan_AddOp(optional, aggregate);
 		ExecutionPlan_AddOp(aggregate, match_stream);
 
-		if(op->childCount > 0) {
+		if(root->childCount > 0) {
 			OpBase *apply_op = NewApplyOp(plan);
-			ExecutionPlan_PushBelow(op->children[0], apply_op);
+			ExecutionPlan_PushBelow(root->children[0], apply_op);
 			ExecutionPlan_AddOp(apply_op, optional);
 		} else {
-			ExecutionPlan_AddOp(op, optional);
+			ExecutionPlan_AddOp(root, optional);
 		}
 	}
 
