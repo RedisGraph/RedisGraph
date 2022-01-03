@@ -14,26 +14,13 @@ static void OptionalFree(OpBase *opBase);
 
 OpBase *NewOptionalOp(const ExecutionPlan *plan) {
 	Optional *op = rm_malloc(sizeof(Optional));
-	op->idx               = 0;
-	op->alias             = NULL;
-	op->default_value     = SI_NullVal();
-	op->emitted_record    = false;
-	op->set_default_value = false;
+	op->emitted_record = false;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_OPTIONAL, "Optional", NULL, OptionalConsume,
 				OptionalReset, NULL, OptionalClone, OptionalFree, false, plan);
 
 	return (OpBase *)op;
-}
-
-void OptionalOp_DefaultValue(Optional *op, const char *alias, SIValue value) {
-	op->alias             = rm_strdup(alias);
-	op->default_value     = value;
-	op->set_default_value = true;
-
-	bool aware = OpBase_Aware((OpBase *)op, alias, &op->idx);
-	ASSERT(aware);
 }
 
 static Record OptionalConsume(OpBase *opBase) {
@@ -45,10 +32,6 @@ static Record OptionalConsume(OpBase *opBase) {
 	// and this op has not yet returned data.
 	if(!r && !op->emitted_record) {
 		r = OpBase_CreateRecord(opBase);
-		// set default value if provided
-		if(op->set_default_value) {
-			Record_Add(r, op->idx, SI_CloneValue(op->default_value));
-		}
 	}
 
 	// don't produce multiple empty Records.
@@ -66,16 +49,9 @@ static OpResult OptionalReset(OpBase *opBase) {
 static inline OpBase *OptionalClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	Optional *op = (Optional *)opBase;
 	OpBase *clone = NewOptionalOp(plan);
-	if(op->set_default_value) {
-		OptionalOp_DefaultValue((Optional *)clone, op->alias, SI_CloneValue(op->default_value));
-	}
 	return clone;
 }
 
 static void OptionalFree(OpBase *opBase) {
 	Optional *op = (Optional *)opBase;
-	if(op->set_default_value) {
-		rm_free(op->alias);
-		SIValue_Free(op->default_value);
-	}
 }

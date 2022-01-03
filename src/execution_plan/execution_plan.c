@@ -264,7 +264,6 @@ static void _BuildPatternComprehensionOps(ExecutionPlan *plan, OpBase *op, const
 		array_append(exps, collect_exp);
 		OpBase *aggregate = NewAggregateOp(plan, exps, false);
 		OpBase *optional = NewOptionalOp(plan);
-		OptionalOp_DefaultValue((Optional *)optional, collect_exp->resolved_name, SI_Array(0));
 		ExecutionPlan_AddOp(optional, aggregate);
 		ExecutionPlan_AddOp(aggregate, match_stream);
 
@@ -321,7 +320,6 @@ static void _BuildPatternPathOps(ExecutionPlan *plan, OpBase *op, const cypher_a
 		array_append(exps, collect_exp);
 		OpBase *aggregate = NewAggregateOp(plan, exps, false);
 		OpBase *optional = NewOptionalOp(plan);
-		OptionalOp_DefaultValue((Optional *)optional, collect_exp->resolved_name, SI_Array(0));
 		ExecutionPlan_AddOp(optional, aggregate);
 		ExecutionPlan_AddOp(aggregate, match_stream);
 

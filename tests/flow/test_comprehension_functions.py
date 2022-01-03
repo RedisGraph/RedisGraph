@@ -329,12 +329,12 @@ class testComprehensionFunctions(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         # Perform pattern comprehension in an aggregation value
-        query = """MATCH (a) RETURN a.val AS v, collect([p=(a)-[*0..]->(b) | b.val]) ORDER BY v"""
+        query = """UNWIND range(1, 3) AS x MATCH (a) RETURN a.val AS v, collect([p=(a)-[*0..]->(b) | b.val]) ORDER BY v"""
         plan = redis_graph.execution_plan(query)
         expected_plan = 'Aggregate.+Apply.+Scan.+Conditional Variable Length Traverse.+Argument'
         self.env.assertTrue(re.search(expected_plan, plan, flags=re.DOTALL))
         actual_result = redis_graph.query(query)
-        expected_result = [['v1', [['v1', 'v2', 'v3']]],
-                           ['v2', [['v2', 'v3']]],
-                           ['v3', [['v3']]]]
+        expected_result = [['v1', [['v1', 'v2', 'v3'], ['v1', 'v2', 'v3'], ['v1', 'v2', 'v3']]],
+                           ['v2', [['v2', 'v3'], ['v2', 'v3'], ['v2', 'v3']]],
+                           ['v3', [['v3'], ['v3'], ['v3']]]]
         self.env.assertEquals(actual_result.result_set, expected_result)

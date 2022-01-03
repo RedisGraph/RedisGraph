@@ -4,13 +4,11 @@ import redis
 from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
-from base import FlowTestsBase
-
 nodes        =  {}
 GRAPH_ID     =  "path_projections"
 redis_graph  =  None
 
-class testPathProjections(FlowTestsBase):
+class testPathProjections():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_graph
