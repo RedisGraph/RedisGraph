@@ -473,8 +473,10 @@ static AST_Validation _ValidateInlinedProperties(const cypher_astnode_t *props) 
 	uint prop_count = cypher_ast_map_nentries(props);
 	for(uint i = 0; i < prop_count; i++) {
 		const cypher_astnode_t *prop_val = cypher_ast_map_get_value(props, i);
-		cypher_astnode_type_t prop_type = cypher_astnode_type(prop_val);
-		if(prop_type == CYPHER_AST_PATTERN_PATH) {
+		const cypher_astnode_t **patterns = AST_GetTypedNodes(prop_val, CYPHER_AST_PATTERN_PATH);
+		uint patterns_count = array_len(patterns);
+		array_free(patterns);
+		if(patterns_count > 0) {
 			// Encountered query of the form:
 			// MATCH (a {prop: ()-[]->()}) RETURN a
 			ErrorCtx_SetError("Encountered unhandled type in inlined properties.");
