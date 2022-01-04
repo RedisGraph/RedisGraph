@@ -62,7 +62,7 @@ def step_impl(context):
         query = params + query
 
     try:
-        resultset = graphs.query(query)
+        resultset = graphs.query(query.replace("\r", ""))
     except Exception as error:
         resultset = None
         exception = error
