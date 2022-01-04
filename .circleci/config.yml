@@ -93,8 +93,8 @@ commands:
           paths:
             - snapshots/*.zip
             - snapshots/*.tgz
-            - *.zip
-            - *.tgz
+            - '*.zip'
+            - '*.tgz'
 
   setup-prerequisits:
     steps:
