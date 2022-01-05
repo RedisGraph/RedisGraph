@@ -156,6 +156,14 @@ AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 	ASSERT(func != NULL);
 	node->op.f = func;
 
+	if(func->aggregate) {
+		AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
+		ctx->hashSet = NULL;
+		ctx->private_ctx = NULL;
+		ctx->result = SI_NullVal();
+		node->op.f = AR_SetPrivateData(node->op.f, ctx);
+	}
+
 	return node;
 }
 

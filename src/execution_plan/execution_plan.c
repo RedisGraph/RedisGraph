@@ -11,13 +11,13 @@
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
+#include "../util/rax_extensions.h"
 #include "./optimizations/optimizer.h"
 #include "../ast/ast_build_filter_tree.h"
-#include "execution_plan_build/execution_plan_construct.h"
-#include "execution_plan_build/execution_plan_modify.h"
-#include "../arithmetic/arithmetic_expression_construct.h"
 #include "../arithmetic/aggregate_funcs/agg_funcs.h"
-#include "../util/rax_extensions.h"
+#include "execution_plan_build/execution_plan_modify.h"
+#include "execution_plan_build/execution_plan_construct.h"
+#include "../arithmetic/arithmetic_expression_construct.h"
 
 #include <setjmp.h>
 
@@ -212,17 +212,36 @@ static ExecutionPlan **_process_segments(AST *ast) {
 	return segments;
 }
 
-// TODO: write doc
+// build pattern comprehension plan operations for example:
+// RETURN [p = (n)-->() | p] AS ps
+// Results
+//     Project
+//         Optional
+//             Aggregate
+//                 Conditional Traverse | (n)-[anon_0]->(anon_1)
+//                     All Node Scan | (n)
+//
+// MATCH (n) RETURN [p = (n)-->() | p] AS ps
+// Results
+//     Project
+//         Apply
+//             All Node Scan | (n)
+//             Optional
+//                 Aggregate
+//                     Conditional Traverse | (n)-[anon_1]->(anon_2)
+//                         Argument
 static void _BuildPatternComprehensionOps(
 	ExecutionPlan *plan,
 	OpBase *root,
 	const cypher_astnode_t *ast
 ) {
-	const cypher_astnode_t **pcs = AST_GetTypedNodes(ast, CYPHER_AST_PATTERN_COMPREHENSION);
+	const cypher_astnode_t **pcs =
+		AST_GetTypedNodes(ast, CYPHER_AST_PATTERN_COMPREHENSION);
 	uint count = array_len(pcs);
 
 	const char **arguments = NULL;
 	if(root->childCount > 0) {
+		// get the bound variable to use when building the traversal ops
 		rax *bound_vars = raxNew();
 		ExecutionPlan_BoundVariables(root->children[0], bound_vars);
 		arguments = (const char **)raxValues(bound_vars);
@@ -230,40 +249,20 @@ static void _BuildPatternComprehensionOps(
 	}
 
 	for (uint i = 0; i < count; i++) {
-		const cypher_astnode_t *path = cypher_ast_pattern_comprehension_get_pattern(pcs[i]);
+		const cypher_astnode_t *path =
+			cypher_ast_pattern_comprehension_get_pattern(pcs[i]);
 
 		QueryCtx_SetAST(plan->ast_segment);
-		OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
+		OpBase *match_stream =
+			ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
 
-		const cypher_astnode_t *eval_node = cypher_ast_pattern_comprehension_get_eval(pcs[i]);
-		AnnotationCtx *named_paths_ctx =
-			AST_AnnotationCtxCollection_GetNamedPathsCtx(plan->ast_segment->anot_ctx_collection);
-
-		path = cypher_astnode_get_annotation(named_paths_ctx, eval_node);
-
-		AR_ExpNode *eval_exp = NULL;
-
-		if(path) {
-			uint path_len = cypher_ast_pattern_path_nelements(path);
-			eval_exp = AR_EXP_NewOpNode("topath", 1 + path_len);
-			eval_exp->op.children[0] = AR_EXP_NewConstOperandNode(SI_PtrVal((void *)path));
-			for(uint j = 0; j < path_len; j ++)
-				eval_exp->op.children[j + 1] = AR_EXP_FromASTNode(cypher_ast_pattern_path_get_element(path, j));
-		} else {
-			eval_exp = AR_EXP_FromASTNode(eval_node);
-		}
+		const cypher_astnode_t *eval_node =
+			cypher_ast_pattern_comprehension_get_eval(pcs[i]);
+		
+		AR_ExpNode *eval_exp = AR_EXP_FromASTNode(eval_node);
 
 		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", 1);
 		collect_exp->op.children[0] = eval_exp;
-		
-		// TODO move to AR_EXP_NewOpNode
-		AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
-		ctx->hashSet = NULL;
-		ctx->private_ctx = NULL;
-		ctx->result = SI_NullVal();
-		collect_exp->op.f = AR_SetPrivateData(collect_exp->op.f, ctx);
-
-		AST *ast = QueryCtx_GetAST();
 		collect_exp->resolved_name = AST_ToString(pcs[i]);
 
 		AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
@@ -286,16 +285,39 @@ static void _BuildPatternComprehensionOps(
 	array_free(pcs);
 }
 
+// build pattern path plan operations for example:
+// RETURN ()-->() AS ps
+// Results
+//     Project
+//         Optional
+//             Aggregate
+//                 Conditional Traverse | (anon_0)-[anon_1]->(anon_2)
+//                     All Node Scan | (anon_0)
+//
+// MATCH (n) RETURN (n)-->() AS ps
+// Results
+//     Project
+//         Apply
+//             All Node Scan | (n)
+//             Optional
+//                 Aggregate
+//                     Conditional Traverse | (n)-[anon_1]->(anon_2)
+//                         Argument
 static void _BuildPatternPathOps(
 	ExecutionPlan *plan,
 	OpBase *root,
 	const cypher_astnode_t *ast
 ) {
-	const cypher_astnode_t **pcs = AST_GetTypedNodes(ast, CYPHER_AST_PATTERN_PATH);
-	uint count = array_len(pcs);
+	const cypher_astnode_t **pcs =
+		AST_GetTypedNodes(ast, CYPHER_AST_PATTERN_COMPREHENSION);
+	const cypher_astnode_t **pps =
+		AST_GetTypedNodes(ast, CYPHER_AST_PATTERN_PATH);
+	uint count = array_len(pps);
+	uint pcs_count = array_len(pcs);
 
 	const char **arguments = NULL;
 	if(root->childCount > 0) {
+		// get the bound variable to use when building the traversal ops
 		rax *bound_vars = raxNew();
 		ExecutionPlan_BoundVariables(root->children[0], bound_vars);
 		arguments = (const char **)raxValues(bound_vars);
@@ -303,27 +325,35 @@ static void _BuildPatternPathOps(
 	}
 
 	for (uint i = 0; i < count; i++) {
-		const cypher_astnode_t *path = pcs[i];
+		const cypher_astnode_t *path = pps[i];
+		
+		bool is_in_pattern_comprehension = false;
+		for (uint j = 0; j < pcs_count; j++) {
+			if(cypher_ast_pattern_comprehension_get_pattern(pcs[j]) == path) {
+				is_in_pattern_comprehension = true;
+				break;
+			}
+		}
+
+		// if this pattern path is in pattern comprehension
+		// we already built the ops in _BuildPatternComprehensionOps
+		if(is_in_pattern_comprehension) continue;
 
 		QueryCtx_SetAST(plan->ast_segment);
-		OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
+		OpBase *match_stream =
+			ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
 
 		uint path_len = cypher_ast_pattern_path_nelements(path);
 		AR_ExpNode *path_exp = AR_EXP_NewOpNode("topath", 1 + path_len);
-		path_exp->op.children[0] = AR_EXP_NewConstOperandNode(SI_PtrVal((void *)path));
-		for(uint j = 0; j < path_len; j ++)
-			path_exp->op.children[j + 1] = AR_EXP_FromASTNode(cypher_ast_pattern_path_get_element(path, j));
+		path_exp->op.children[0] =
+			AR_EXP_NewConstOperandNode(SI_PtrVal((void *)path));
+		for(uint j = 0; j < path_len; j ++) {
+			path_exp->op.children[j + 1] =
+				AR_EXP_FromASTNode(cypher_ast_pattern_path_get_element(path, j));
+		}
 
 		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", 1);
 		collect_exp->op.children[0] = path_exp;
-		
-		AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
-		ctx->hashSet = NULL;
-		ctx->private_ctx = NULL;
-		ctx->result = SI_NullVal();
-		collect_exp->op.f = AR_SetPrivateData(collect_exp->op.f, ctx);
-
-		AST *ast = QueryCtx_GetAST();
 		collect_exp->resolved_name = AST_ToString(path);
 
 		AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
@@ -343,6 +373,7 @@ static void _BuildPatternPathOps(
 	}
 
 	if(arguments != NULL) array_free(arguments);
+	array_free(pps);
 	array_free(pcs);
 }
 

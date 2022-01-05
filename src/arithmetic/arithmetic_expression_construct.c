@@ -17,6 +17,7 @@
 // Forward declaration
 static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr);
 static AR_ExpNode *_AR_ExpNodeFromGraphEntity(const cypher_astnode_t *entity);
+static AR_ExpNode *_AR_ExpFromNamedPath(const cypher_astnode_t *path);
 
 static bool __AR_EXP_ContainsNestedAgg(const AR_ExpNode *root, bool in_agg) {
 	// Is this an aggregation node?
@@ -76,14 +77,9 @@ static AR_ExpNode *_AR_EXP_FromApplyExpression(const cypher_astnode_t *expr) {
 		op->op.children[i] = _AR_EXP_FromASTNode(arg);
 	}
 
-	if(aggregate) {
-		AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
-		ctx->hashSet = NULL;
-		ctx->private_ctx = NULL;
-		ctx->result = SI_NullVal();
-		if(distinct) ctx->hashSet = Set_New();
-		// Add the context to the function descriptor as the function's private data.
-		op->op.f = AR_SetPrivateData(op->op.f, ctx);
+	if(aggregate && distinct) {
+		AggregateCtx *ctx = op->op.f->privdata;
+		ctx->hashSet = Set_New();
 	}
 
 	return op;
@@ -94,20 +90,10 @@ static AR_ExpNode *_AR_EXP_FromApplyAllExpression(const cypher_astnode_t *expr) 
 	// that they have no argument accessors - by definition, they have one argument (all/STAR).
 	const cypher_astnode_t *func_node = cypher_ast_apply_all_operator_get_func_name(expr);
 	const char *func_name = cypher_ast_function_name_get_value(func_node);
-	bool aggregate = AR_FuncIsAggregate(func_name);
 	AR_ExpNode *op = AR_EXP_NewOpNode(func_name, 1);
 
 	// Introduce a fake child constant so that the function always operates on something.
 	op->op.children[0] = AR_EXP_NewConstOperandNode(SI_BoolVal(1));
-
-	if(aggregate) {
-		AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
-		ctx->hashSet = NULL;
-		ctx->private_ctx = NULL;
-		ctx->result = SI_NullVal();
-		// Add the context to the function descriptor as the function's private data.
-		op->op.f = AR_SetPrivateData(op->op.f, ctx);
-	}
 
 	return op;
 }
@@ -137,7 +123,7 @@ static AR_ExpNode *_AR_EXP_FromIdentifier(const cypher_astnode_t *expr) {
 
 	// if the identifier is a named path identifier,
 	// evaluate the path expression accordingly
-	if(named_path_annotation) return _AR_EXP_FromASTNode(named_path_annotation);
+	if(named_path_annotation) return _AR_ExpFromNamedPath(named_path_annotation);
 	// else, evalute the identifier
 	return _AR_EXP_FromIdentifierExpression(expr);
 }
