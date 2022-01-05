@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -8,7 +8,6 @@
 #include "RG.h"
 #include "../ops/ops.h"
 #include "../../query_ctx.h"
-#include "../execution_plan.h"
 #include "../../util/rax_extensions.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 #include "../../arithmetic/arithmetic_expression_construct.h"
@@ -40,6 +39,9 @@ void buildPatternComprehensionOps(
 		AST_GetTypedNodes(ast, CYPHER_AST_PATTERN_COMPREHENSION);
 	uint count = array_len(pcs);
 
+	AST *prev_ast = QueryCtx_GetAST();
+	QueryCtx_SetAST(plan->ast_segment);
+
 	const char **arguments = NULL;
 	if(root->childCount > 0) {
 		// get the bound variable to use when building the traversal ops
@@ -53,7 +55,6 @@ void buildPatternComprehensionOps(
 		const cypher_astnode_t *path =
 			cypher_ast_pattern_comprehension_get_pattern(pcs[i]);
 
-		QueryCtx_SetAST(plan->ast_segment);
 		OpBase *match_stream =
 			ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
 
@@ -82,6 +83,7 @@ void buildPatternComprehensionOps(
 		}
 	}
 
+	QueryCtx_SetAST(prev_ast);
 	if(arguments != NULL) array_free(arguments);
 	array_free(pcs);
 }
@@ -116,6 +118,9 @@ void buildPatternPathOps(
 	uint count = array_len(pps);
 	uint pcs_count = array_len(pcs);
 
+	AST *prev_ast = QueryCtx_GetAST();
+	QueryCtx_SetAST(plan->ast_segment);
+
 	const char **arguments = NULL;
 	if(root->childCount > 0) {
 		// get the bound variable to use when building the traversal ops
@@ -140,7 +145,6 @@ void buildPatternPathOps(
 		// we already built the ops in _BuildPatternComprehensionOps
 		if(is_in_pattern_comprehension) continue;
 
-		QueryCtx_SetAST(plan->ast_segment);
 		OpBase *match_stream =
 			ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
 
@@ -173,6 +177,7 @@ void buildPatternPathOps(
 		}
 	}
 
+	QueryCtx_SetAST(prev_ast);
 	if(arguments != NULL) array_free(arguments);
 	array_free(pps);
 	array_free(pcs);
