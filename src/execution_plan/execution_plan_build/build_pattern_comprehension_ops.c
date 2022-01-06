@@ -204,4 +204,5 @@ void buildPatternPathOps(
 	if(arguments != NULL) array_free(arguments);
 	array_free(pps);
 	array_free(pcs);
+	array_free(sps);
 }
