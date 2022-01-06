@@ -122,10 +122,13 @@ void buildPatternPathOps(
 ) {
 	const cypher_astnode_t **pcs =
 		AST_GetTypedNodes(ast, CYPHER_AST_PATTERN_COMPREHENSION);
+	const cypher_astnode_t **sps =
+		AST_GetTypedNodes(ast, CYPHER_AST_SHORTEST_PATH);
 	const cypher_astnode_t **pps =
 		AST_GetTypedNodes(ast, CYPHER_AST_PATTERN_PATH);
 	uint count = array_len(pps);
 	uint pcs_count = array_len(pcs);
+	uint sps_count = array_len(sps);
 
 	AST *prev_ast = QueryCtx_GetAST();
 	QueryCtx_SetAST(plan->ast_segment);
@@ -142,17 +145,28 @@ void buildPatternPathOps(
 	for (uint i = 0; i < count; i++) {
 		const cypher_astnode_t *path = pps[i];
 		
-		bool is_in_pattern_comprehension = false;
+		bool skip_path = false;
 		for (uint j = 0; j < pcs_count; j++) {
 			if(cypher_ast_pattern_comprehension_get_pattern(pcs[j]) == path) {
-				is_in_pattern_comprehension = true;
+				skip_path = true;
 				break;
 			}
 		}
 
 		// if this pattern path is in pattern comprehension
 		// we already built the ops in _BuildPatternComprehensionOps
-		if(is_in_pattern_comprehension) continue;
+		if(skip_path) continue;
+
+		for (uint j = 0; j < sps_count; j++) {
+			if(cypher_ast_shortest_path_get_path(sps[j]) == path) {
+				skip_path = true;
+				break;
+			}
+		}
+
+		// if this pattern path is in shortest path
+		// we already built the expression
+		if(skip_path) continue;
 
 		OpBase *match_stream =
 			ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
