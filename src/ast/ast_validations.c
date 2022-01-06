@@ -1498,7 +1498,7 @@ static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, 
 	for(uint i = 0; i < n; i ++) {
 		clauses[i] = (cypher_astnode_t *)cypher_ast_query_get_clause(root, i + start_offset);
 	}
-	struct cypher_input_range range = {};
+	struct cypher_input_range range = {0};
 	ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n, clauses, n, range);
 	ast->ref_count = rm_malloc(sizeof(uint));
 	*(ast->ref_count) = 1;
