@@ -240,16 +240,23 @@ static ExecutionPlan *_tie_segments(ExecutionPlan **segments,
 			// if it's been attached to a previous scope.
 			ASSERT(connecting_op->type == OPType_PROJECT ||
 				   connecting_op->type == OPType_AGGREGATE);
-			
-			const cypher_astnode_t *opening_clause = cypher_ast_query_get_clause(ast->root, 0);
+
 			ExecutionPlan_AddOp(connecting_op, prev_segment->root);
+		}
+
+		// build pattern comprehension ops for with clause
+		if(prev_segment != NULL) {
+			const cypher_astnode_t *opening_clause = cypher_ast_query_get_clause(ast->root, 0);
 			uint projections = cypher_ast_with_nprojections(opening_clause);
 			for (uint j = 0; j < projections; j++) {
 				const cypher_astnode_t *projection = cypher_ast_with_get_projection(opening_clause, j);
 				buildPatternComprehensionOps(prev_segment, connecting_op, projection);
 				buildPatternPathOps(prev_segment, connecting_op, projection);
 			}
-		} else if (segment_count == 1 && segment->root->type == OPType_RESULTS) {
+		}
+
+		// build pattern comprehension ops for return clause
+		if (segment->root->type == OPType_RESULTS) {
 			uint clause_count = cypher_ast_query_nclauses(ast->root);
 			const cypher_astnode_t *closing_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
 			OpBase *op = segment->root->children[0];
