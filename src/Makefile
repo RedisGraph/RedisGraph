@@ -1,8 +1,8 @@
 
 ROOT:=$(realpath ..)
 
-# find the OS
-uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+OS:=$(shell MAX_NPROC=8 $(ROOT)/deps/readies/bin/platform --os)
+ARCH:=$(shell MAX_NPROC=8 $(ROOT)/deps/readies/bin/platform --arch)
 
 JOBS ?= $(shell MAX_NPROC=8 $(ROOT)/deps/readies/bin/nproc)
 
@@ -19,6 +19,7 @@ RAX_DIR = $(ROOT)/deps/rax
 XXHASH_DIR = $(ROOT)/deps/xxHash
 GRAPHBLAS_DIR = $(ROOT)/deps/GraphBLAS
 REDISEARCH_DIR = $(ROOT)/deps/RediSearch/src
+REDISEARCH_BINDIR=$(ROOT)/deps/RediSearch/bin/$(OS)-$(ARCH)-$(FLAVOR)
 LIBCYPHER-PARSER_DIR = $(ROOT)/deps/libcypher-parser/lib/src
 
 # if DEBUG env var is set, we compile with "debug" cflags
@@ -37,7 +38,7 @@ CFLAGS = \
 CFLAGS += $(DEBUGFLAGS)
 
 # Compile flags for linux / osx
-ifeq ($(uname_S),Linux)
+ifeq ($(OS),linux)
 	SHOBJ_LDFLAGS ?= -Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
 	export OS = Linux
 else
@@ -169,11 +170,17 @@ CC_DEPS = $(patsubst %.c, %.d, $(CC_SOURCES) )
 
 #----------------------------------------------------------------------------------------------
 
+ifeq ($(DEBUG),1)
+FLAVOR=debug
+else
+FLAVOR=release
+endif
+
 # Library dependencies
 RAX=$(ROOT)/deps/rax/rax.o
 LIBXXHASH=$(ROOT)/deps/xxHash/libxxhash.a
 GRAPHBLAS=$(ROOT)/deps/GraphBLAS/build/libgraphblas.a
-REDISEARCH=$(ROOT)/deps/RediSearch/build/libredisearch.a
+REDISEARCH=$(REDISEARCH_BIN)/search-static/libredisearch.a
 LIBCYPHER-PARSER=$(ROOT)/deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
 # Compilation deps for the module
@@ -223,12 +230,9 @@ endif
 
 $(REDISEARCH):
 ifeq (,$(wildcard $(REDISEARCH)))
-	cd $(ROOT)/deps/RediSearch; \
-	mkdir -p build; \
-	cd build; \
-	cmake -DRS_FORCE_NO_GITVERSION=ON -DRS_BUILD_STATIC=ON ..; \
-	make;
+	make -C $(ROOT)/deps/RediSearch STATIC=1
 endif
+
 .PHONY: $(REDISEARCH)
 
 # Build libcypher-parser only if library does not already exists.
@@ -239,6 +243,7 @@ ifeq (,$(wildcard $(LIBCYPHER-PARSER)))
 	./configure --disable-shared;
 	$(MAKE) CFLAGS="-O3 -fPIC -DYY_BUFFER_SIZE=1048576" clean check -C $(ROOT)/deps/libcypher-parser
 endif
+
 .PHONY: $(LIBCYPHER-PARSER)
 
 #----------------------------------------------------------------------------------------------
@@ -252,7 +257,7 @@ endef
 # Build the module...
 redisgraph.so: $(MODULE)
 	$(REDISGRAPH_CC) -o $@ $(CC_OBJECTS) $(LIBS) $(SHOBJ_LDFLAGS) -lc -lm
-ifeq ($(uname_S),Linux)
+ifeq ($(OS),linux)
 ifneq ($(DEBUG),1)
 	$(call extract_symbols,$@)
 endif
@@ -266,16 +271,17 @@ ifeq ($(ALL),1)
 	@$(MAKE) -C $(ROOT)/deps/xxHash clean
 	@$(MAKE) -C $(ROOT)/deps/GraphBLAS clean
 	@$(MAKE) -C $(ROOT)/deps/libcypher-parser clean
-	rm -rf $(ROOT)/deps/RediSearch/build/      # Directly delete the RediSearch build artifacts
+	rm -rf $(REDISEARCH_BINDIR) # Directly delete the RediSearch build artifacts
 endif
 	@$(MAKE) -C $(ROOT)/tests clean
+
 .PHONY: clean
 
 #----------------------------------------------------------------------------------------------
 
 package: redisgraph.so
 	@$(ROOT)/sbin/pack.sh
-	@PACKAGE_NAME=redisgraph-rce RAMP_YAML=$(ROOT)/ramp-rce.yml $(ROOT)/sbin/pack.sh
+
 .PHONY: package
 
 #----------------------------------------------------------------------------------------------
@@ -317,6 +323,7 @@ benchmark: redisgraph.so
 ifeq ($(COV),1)
 cov-upload:
 	$(SHOW)bash -c "bash <(curl -s https://codecov.io/bash) -f $(COV_INFO)"
+
 .PHONY: cov-upload
 endif # COV
 
