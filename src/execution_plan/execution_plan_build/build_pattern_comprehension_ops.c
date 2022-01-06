@@ -9,6 +9,7 @@
 #include "../ops/ops.h"
 #include "../../query_ctx.h"
 #include "../../util/rax_extensions.h"
+#include "../../ast/ast_build_filter_tree.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 #include "../../arithmetic/arithmetic_expression_construct.h"
 
@@ -72,7 +73,18 @@ void buildPatternComprehensionOps(
 		OpBase *aggregate = NewAggregateOp(plan, exps, false);
 		OpBase *optional = NewOptionalOp(plan);
 		ExecutionPlan_AddOp(optional, aggregate);
-		ExecutionPlan_AddOp(aggregate, match_stream);
+
+		const cypher_astnode_t *predicate =
+			cypher_ast_pattern_comprehension_get_predicate(pcs[i]);
+		if(predicate == NULL) {
+			ExecutionPlan_AddOp(aggregate, match_stream);
+		} else {
+			FT_FilterNode *filter_tree = NULL;
+			AST_ConvertFilters(&filter_tree, predicate);
+			OpBase *filter = NewFilterOp(plan, filter_tree);
+			ExecutionPlan_AddOp(filter, match_stream);
+			ExecutionPlan_AddOp(aggregate, filter);
+		}
 
 		if(root->childCount > 0) {
 			OpBase *apply_op = NewApplyOp(plan);

@@ -338,3 +338,25 @@ class testComprehensionFunctions(FlowTestsBase):
                            ['v2', [['v2', 'v3'], ['v2', 'v3'], ['v2', 'v3']]],
                            ['v3', [['v3'], ['v3'], ['v3']]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+    
+    def test17_pattern_comprehension_with_filters(self):
+        # Match all nodes and collect their destination's property in an array
+        query = """MATCH (a) RETURN a.val AS v, [(a)-[]->(b {val: 'v2'}) | b.val] ORDER BY v"""
+        expected_plan = 'Apply.+Scan.+Conditional Traverse.+Argument'
+        plan = redis_graph.execution_plan(query)
+        self.env.assertTrue(re.search(expected_plan, plan, flags=re.DOTALL))
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', ['v2']],
+                           ['v2', []],
+                           ['v3', []]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """MATCH (a) RETURN a.val AS v, [(a)-[]->(b) WHERE b.val CONTAINS '3' | b.val] ORDER BY v"""
+        expected_plan = 'Apply.+Scan.+Conditional Traverse.+Argument'
+        plan = redis_graph.execution_plan(query)
+        self.env.assertTrue(re.search(expected_plan, plan, flags=re.DOTALL))
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', []],
+                           ['v2', ['v3']],
+                           ['v3', []]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
