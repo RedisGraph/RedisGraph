@@ -73,17 +73,14 @@ void buildPatternComprehensionOps(
 		OpBase *aggregate = NewAggregateOp(plan, exps, false);
 		OpBase *optional = NewOptionalOp(plan);
 		ExecutionPlan_AddOp(optional, aggregate);
+		ExecutionPlan_AddOp(aggregate, match_stream);
 
 		const cypher_astnode_t *predicate =
 			cypher_ast_pattern_comprehension_get_predicate(pcs[i]);
-		if(predicate == NULL) {
-			ExecutionPlan_AddOp(aggregate, match_stream);
-		} else {
+		if(predicate != NULL) {
 			FT_FilterNode *filter_tree = NULL;
 			AST_ConvertFilters(&filter_tree, predicate);
-			OpBase *filter = NewFilterOp(plan, filter_tree);
-			ExecutionPlan_AddOp(filter, match_stream);
-			ExecutionPlan_AddOp(aggregate, filter);
+			ExecutionPlan_PlaceFilterOps(plan, aggregate, NULL, filter_tree);
 		}
 
 		if(root->childCount > 0) {
