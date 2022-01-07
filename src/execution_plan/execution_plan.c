@@ -209,14 +209,17 @@ static ExecutionPlan **_process_segments(AST *ast) {
 	return segments;
 }
 
-static ExecutionPlan *_tie_segments(ExecutionPlan **segments,
-									uint segment_count) {
-	FT_FilterNode *ft = NULL;            // filters following WITH
-	OpBase *connecting_op = NULL;        // op connecting one segment to another
-	OpBase *prev_connecting_op = NULL;   // root of previous segment
-	ExecutionPlan *prev_segment = NULL;
-	ExecutionPlan *current_segment = NULL;
-	AST *master_ast = QueryCtx_GetAST(); // top-level AST of plan
+static ExecutionPlan *_tie_segments
+(
+	ExecutionPlan **segments,
+	uint segment_count
+) {
+	FT_FilterNode  *ft                  =  NULL; // filters following WITH
+	OpBase         *connecting_op       =  NULL; // op connecting one segment to another
+	OpBase         *prev_connecting_op  =  NULL; // root of previous segment
+	ExecutionPlan  *prev_segment        =  NULL;
+	ExecutionPlan  *current_segment     =  NULL;
+	AST            *master_ast          =  QueryCtx_GetAST();  // top-level AST of plan
 
 	//--------------------------------------------------------------------------
 	// merge segments
@@ -235,16 +238,20 @@ static ExecutionPlan *_tie_segments(ExecutionPlan **segments,
 
 		// tie the current segment's tap to the previous segment's root op
 		if(prev_segment != NULL) {
-			// Validate the connecting operation.
-			// The connecting operation may already have children
-			// if it's been attached to a previous scope.
+			// validate the connecting operation
+			// the connecting operation may already have children
+			// if it's been attached to a previous scope
 			ASSERT(connecting_op->type == OPType_PROJECT ||
-				   connecting_op->type == OPType_AGGREGATE);
+			       connecting_op->type == OPType_AGGREGATE);
 
 			ExecutionPlan_AddOp(connecting_op, prev_segment->root);
 		}
 
-		// build pattern comprehension ops for with clause
+		//----------------------------------------------------------------------
+		// build pattern comprehension ops
+		//----------------------------------------------------------------------
+
+		// WITH projections
 		if(prev_segment != NULL) {
 			const cypher_astnode_t *opening_clause = cypher_ast_query_get_clause(ast->root, 0);
 			uint projections = cypher_ast_with_nprojections(opening_clause);
@@ -255,7 +262,7 @@ static ExecutionPlan *_tie_segments(ExecutionPlan **segments,
 			}
 		}
 
-		// build pattern comprehension ops for return clause
+		// RETURN projections
 		if (segment->root->type == OPType_RESULTS) {
 			uint clause_count = cypher_ast_query_nclauses(ast->root);
 			const cypher_astnode_t *closing_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
