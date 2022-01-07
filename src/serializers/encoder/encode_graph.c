@@ -8,6 +8,6 @@
 #include "v11/encode_v11.h"
 
 void RdbSaveGraph(RedisModuleIO *rdb, void *value) {
-	return RdbSaveGraph_v11(rdb, value);
+	RdbSaveGraph_v11(rdb, value);
 }
 

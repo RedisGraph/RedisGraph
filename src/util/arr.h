@@ -261,14 +261,14 @@ static void array_free(array_t arr) {
 
 /* Pop the top element from the array, reduce the size and return it */
 #define array_pop(arr)               \
-  ({                                 \
+  __extension__ ({                                 \
     ASSERT(array_hdr(arr)->len > 0); \
     arr[--(array_hdr(arr)->len)];    \
   })
 
 /* Remove a specified element from the array */
 #define array_del(arr, ix)                                                        \
-  ({                                                                              \
+  __extension__({                                                                              \
     ASSERT(array_len(arr) > ix);                                                  \
     if (array_len(arr) - 1 > ix) {                                                \
       memcpy(arr + ix, arr + ix + 1, sizeof(*arr) * (array_len(arr) - (ix + 1))); \
@@ -279,7 +279,7 @@ static void array_free(array_t arr) {
 
 /* Remove a specified element from the array, but does not preserve order */
 #define array_del_fast(arr, ix)                \
-  ({                                           \
+  __extension__({                                           \
     if (array_len((arr)) > 1) {                \
       (arr)[ix] = (arr)[array_len((arr)) - 1]; \
     }                                          \
@@ -289,14 +289,14 @@ static void array_free(array_t arr) {
 
 /* Duplicate the array to the pointer dest. */
 #define array_clone(dest, arr)                            \
-  ({                                                      \
+  __extension__({                                                      \
    dest = array_newlen(typeof(*arr), array_len(arr));     \
    memcpy(dest, arr, sizeof(*arr) * (array_len(arr)));    \
   })
 
 /* Duplicate an array with a dedicated value clone callback. */
 #define array_clone_with_cb(dest, arr, clone_cb)        \
-({                                                      \
+__extension__({                                                      \
     uint arrayLen = array_len((arr));                   \
     dest = array_new(__typeof__(*arr), arrayLen);       \
     for(uint i = 0; i < arrayLen; i++)                  \
@@ -304,7 +304,7 @@ static void array_free(array_t arr) {
 })
 
 #define array_reverse(arr)                      \
-    ({                                          \
+    __extension__({                                          \
         uint arrayLen = array_len(arr);         \
         for(uint i = 0; i < arrayLen/2; i++) {    \
             __typeof__(*arr) tmp = arr[i];      \
