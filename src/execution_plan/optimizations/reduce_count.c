@@ -38,7 +38,7 @@ static int _identifyResultAndAggregateOps(OpBase *root, OpResult **opResult,
 	if(exp->type != AR_EXP_OP ||
 	   exp->op.f->aggregate != true ||
 	   strcasecmp(exp->op.func_name, "count") ||
-	   Aggregate_PerformsDistinct(exp->op.f->privdata)) return 0;
+	   Aggregate_PerformsDistinct(exp)) return 0;
 
 	// Make sure Count acts on an alias.
 	if(exp->op.child_count != 1) return 0;

@@ -71,7 +71,6 @@ AR_FuncDesc *AR_GetFunc(const char *func_name) {
 
 		// create aggregation context
 		AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
-		ctx->hashSet      =  NULL;
 		ctx->private_ctx  =  NULL;
 		ctx->result       =  SI_NullVal();
 

@@ -8,17 +8,18 @@
 
 #include "../../value.h"
 #include "../../datatypes/set.h"
+#include "../arithmetic_expression.h"
+
 
 typedef struct {
 	SIValue result;
-	set *hashSet;
 	void *private_ctx;
 } AggregateCtx;
 
 void Register_AggFuncs(void);
 
 // check to see if the function operates on distinct results
-bool Aggregate_PerformsDistinct(AggregateCtx *ctx);
+bool Aggregate_PerformsDistinct(AR_ExpNode *exp);
 
 SIValue Aggregate_GetResult(AggregateCtx *ctx);
 

@@ -25,7 +25,6 @@ void Aggregate_Free(void *ctx_ptr) {
 	AggregateCtx *ctx = ctx_ptr;
 	if(ctx == NULL) return;
 	SIValue_Free(ctx->result);
-	if(ctx->hashSet) Set_Free(ctx->hashSet);
 	if(ctx->private_ctx) rm_free(ctx->private_ctx);
 	rm_free(ctx);
 }
@@ -35,7 +34,6 @@ void *Aggregate_Clone(void *orig) {
 	AggregateCtx *orig_ctx = orig;
 	AggregateCtx *ctx_clone = rm_malloc(sizeof(AggregateCtx));
 	ctx_clone->result = orig_ctx->result;
-	ctx_clone->hashSet = orig_ctx->hashSet ? Set_New() : NULL;
 	ctx_clone->private_ctx = NULL;
 	return ctx_clone;
 }
@@ -56,9 +54,6 @@ AggregateResult AGG_SUM(SIValue *argv, int argc) {
 
 	SIValue v = argv[0];
 	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
-
-	// If we're uniquing inputs, return early if this value has already been seen.
-	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return AGGREGATE_OK;
 
 	// Update the total.
 	if(SI_TYPE(v) != T_NULL) ctx->result.doubleval += SI_GET_NUMERIC(v);
@@ -86,9 +81,6 @@ AggregateResult AGG_AVG(SIValue *argv, int argc) {
 	long double v = SI_GET_NUMERIC(si_val);
 
 	_agg_AvgCtx *avg_ctx = ctx->private_ctx;
-
-	// if we're uniquing inputs, return early if this value has already been seen
-	if(ctx->hashSet && Set_Add(ctx->hashSet, si_val) == false) return AGGREGATE_OK;
 
 	avg_ctx->count ++; // increment the count
 
@@ -137,9 +129,6 @@ AggregateResult AGG_MAX(SIValue *argv, int argc) {
 	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
 	AggregateCtx *ctx = argv[1].ptrval;
 
-	// If we're uniquing inputs, return early if this value has already been seen.
-	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return AGGREGATE_OK;
-
 	// Update the result if the current element is greater.
 	int compared_null;
 	if((SIValue_Compare(ctx->result, v, &compared_null) < 0) ||
@@ -158,9 +147,6 @@ AggregateResult AGG_MIN(SIValue *argv, int argc) {
 	SIValue v = argv[0];
 	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
 	AggregateCtx *ctx = argv[1].ptrval;
-
-	// If we're uniquing inputs, return early if this value has already been seen.
-	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return AGGREGATE_OK;
 
 	// Update the result if the current element is lesser.
 	int compared_null;
@@ -183,9 +169,6 @@ AggregateResult AGG_COUNT(SIValue *argv, int argc) {
 
 	SIValue v = argv[0];
 	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
-
-	// If we're uniquing inputs, return early if this value has already been seen.
-	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return AGGREGATE_OK;
 
 	// Increment the result.
 	ctx->result.longval++;
@@ -223,9 +206,6 @@ AggregateResult AGG_PERC(SIValue *argv, int argc) {
 
 	SIValue v = argv[0];
 	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
-
-	// If we're uniquing inputs, return early if this value has already been seen.
-	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return AGGREGATE_OK;
 
 	double n;
 	SIValue_ToDouble(&v, &n);
@@ -286,7 +266,6 @@ void PercContFinalize(void *ctx_ptr) {
 void Percentile_Free(void *ctx_ptr) {
 	AggregateCtx *ctx = ctx_ptr;
 	SIValue_Free(ctx->result);
-	if(ctx->hashSet) Set_Free(ctx->hashSet);
 	if(ctx->private_ctx) {
 		_agg_PercCtx *perc_ctx = ctx->private_ctx;
 		array_free(perc_ctx->values);
@@ -317,9 +296,6 @@ AggregateResult AGG_STDEV(SIValue *argv, int argc) {
 
 	SIValue v = argv[0];
 	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
-
-	// If we're uniquing inputs, return early if this value has already been seen.
-	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return AGGREGATE_OK;
 
 	double n;
 	SIValue_ToDouble(&v, &n);
@@ -361,7 +337,6 @@ void StDevPFinalize(void *ctx_ptr) {
 void StDev_Free(void *ctx_ptr) {
 	AggregateCtx *ctx = ctx_ptr;
 	SIValue_Free(ctx->result);
-	if(ctx->hashSet) Set_Free(ctx->hashSet);
 	if(ctx->private_ctx) {
 		_agg_StDevCtx *stdev_ctx = ctx->private_ctx;
 		array_free(stdev_ctx->values);
@@ -381,9 +356,6 @@ AggregateResult AGG_COLLECT(SIValue *argv, int argc) {
 
 	SIValue v = argv[0];
 	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
-
-	// If we're uniquing inputs, return early if this value has already been seen.
-	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return AGGREGATE_OK;
 
 	// SIArray_Append will clone the added value, ensuring it can be
 	// safely accessed for the lifetime of the Collect context.
@@ -511,8 +483,9 @@ void Register_AggFuncs() {
 	AR_RegFunc(func_desc);
 }
 
-bool Aggregate_PerformsDistinct(AggregateCtx *ctx) {
-	return (ctx->hashSet != NULL);
+bool Aggregate_PerformsDistinct(AR_ExpNode *exp) {
+	if(exp->type != AR_EXP_OP || exp->op.children[0]->type != AR_EXP_OP) return false;
+	return strcmp(exp->op.children[0]->op.func_name, "distinct") == 0;
 }
 
 SIValue Aggregate_GetResult(AggregateCtx *ctx) {
