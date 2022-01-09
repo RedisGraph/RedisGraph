@@ -83,7 +83,12 @@ AR_FuncDesc *AR_GetFunc(const char *func_name) {
 }
 
 bool AR_FuncExists(const char *func_name) {
-	return (AR_GetFunc(func_name) != NULL);
+	size_t len = strlen(func_name);
+	char lower_func_name[len];
+	str_tolower(func_name, lower_func_name, &len);
+	void *f = raxFind(__aeRegisteredFuncs, (unsigned char *)lower_func_name, len);
+
+	return f != raxNotFound;
 }
 
 bool AR_FuncIsAggregate(const char *func_name) {
