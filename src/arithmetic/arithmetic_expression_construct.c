@@ -73,17 +73,18 @@ static AR_ExpNode *_AR_EXP_FromApplyExpression(const cypher_astnode_t *expr) {
 
 	op = AR_EXP_NewOpNode(func_name, arg_count);
 
-	AR_ExpNode *connecting_op = op;
-	if(aggregate && distinct) {
-		connecting_op = AR_EXP_NewOpNode("distinct", arg_count);
-		connecting_op->op.f = AR_SetPrivateData(connecting_op->op.f, Set_New());
-		op->op.children[0] = connecting_op;
-	}
-
 	for(unsigned int i = 0; i < arg_count; i ++) {
 		const cypher_astnode_t *arg = cypher_ast_apply_operator_get_argument(expr, i);
 		// Recursively convert arguments
-		connecting_op->op.children[i] = _AR_EXP_FromASTNode(arg);
+		op->op.children[i] = _AR_EXP_FromASTNode(arg);
+	}
+
+	if(aggregate && distinct) {
+		ASSERT(arg_count == 1);
+		AR_ExpNode *distinct = AR_EXP_NewOpNode("distinct", arg_count);
+		distinct->op.f = AR_SetPrivateData(distinct->op.f, Set_New());
+		distinct->op.children[0] = op->op.children[0];
+		op->op.children[0] = distinct;
 	}
 
 	return op;

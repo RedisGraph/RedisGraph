@@ -261,9 +261,6 @@ void _AST_ConvertGraphPatternToFilter(const AST *ast, FT_FilterNode **root,
 }
 
 void AST_ConvertFilters(FT_FilterNode **root, const cypher_astnode_t *entity) {
-	ASSERT(root != NULL);
-	*root = NULL;
-
 	if(!entity) return;
 
 	cypher_astnode_type_t type = cypher_astnode_type(entity);

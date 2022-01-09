@@ -105,7 +105,7 @@ void buildPatternComprehensionOps
 		predicate = cypher_ast_pattern_comprehension_get_predicate(pc);
 		if(predicate != NULL) {
 			// build filter tree
-			FT_FilterNode *filter_tree;
+			FT_FilterNode *filter_tree = NULL;
 			AST_ConvertFilters(&filter_tree, predicate);
 			// place filters
 			ExecutionPlan_PlaceFilterOps(plan, aggregate, NULL, filter_tree);
