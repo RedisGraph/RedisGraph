@@ -31,17 +31,29 @@
 //                 Aggregate
 //                     Conditional Traverse | (n)-[anon_1]->(anon_2)
 //                         Argument
-void buildPatternComprehensionOps(
+
+void buildPatternComprehensionOps
+(
 	ExecutionPlan *plan,
 	OpBase *root,
 	const cypher_astnode_t *ast
 ) {
+	// validations
+	ASSERT(plan != NULL);
+	ASSERT(root != NULL);
+	ASSERT(ast  != NULL);
 	ASSERT(root->type == OPType_PROJECT || root->type == OPType_AGGREGATE);
 
+
+	// search for pattern comprehension AST nodes
+	// quickly return if none been found
 	const cypher_astnode_t **pcs =
 		AST_GetTypedNodes(ast, CYPHER_AST_PATTERN_COMPREHENSION);
 	uint count = array_len(pcs);
 
+	if(count == 0) return;
+
+	// backup AST, restore at the end
 	AST *prev_ast = QueryCtx_GetAST();
 	QueryCtx_SetAST(plan->ast_segment);
 
@@ -55,36 +67,54 @@ void buildPatternComprehensionOps(
 	}
 
 	for (uint i = 0; i < count; i++) {
-		const cypher_astnode_t *path =
-			cypher_ast_pattern_comprehension_get_pattern(pcs[i]);
+		OpBase *match_stream;
+		const cypher_astnode_t *pc;
+		const cypher_astnode_t *path;
+		const cypher_astnode_t *eval_node;
+		const cypher_astnode_t *predicate;
 
-		OpBase *match_stream =
-			ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
+		pc = pcs[i];
+		path = cypher_ast_pattern_comprehension_get_pattern(pc);
 
-		const cypher_astnode_t *eval_node =
-			cypher_ast_pattern_comprehension_get_eval(pcs[i]);
-		
+		// constuct sub execution-plan resolving path
+		match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
+
+		// construct evaluation expression
+		// [(a)-[]->(z) | z.v] `z.v` is the evaluation expression
+		eval_node = cypher_ast_pattern_comprehension_get_eval(pc);
 		AR_ExpNode *eval_exp = AR_EXP_FromASTNode(eval_node);
 
+		// collect evaluation results into an array using `collect`
 		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", 1);
 		collect_exp->op.children[0] = eval_exp;
-		collect_exp->resolved_name = AST_ToString(pcs[i]);
+		collect_exp->resolved_name = AST_ToString(pc);
 
+		// add collect expression to an AGGREGATION Operation
 		AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 		array_append(exps, collect_exp);
 		OpBase *aggregate = NewAggregateOp(plan, exps, false);
+
+		// introduce OPTIONAL operation which will return an empty
+		// record in case the pattern path did not produced any results
 		OpBase *optional = NewOptionalOp(plan);
 		ExecutionPlan_AddOp(optional, aggregate);
 		ExecutionPlan_AddOp(aggregate, match_stream);
 
-		const cypher_astnode_t *predicate =
-			cypher_ast_pattern_comprehension_get_predicate(pcs[i]);
+		// handle filters attached to pattern
+		// [(a {v:1})-[]->(z) WHERE z.v = 2 | z.x]
+		predicate = cypher_ast_pattern_comprehension_get_predicate(pc);
 		if(predicate != NULL) {
-			FT_FilterNode *filter_tree = NULL;
+			// build filter tree
+			FT_FilterNode *filter_tree;
 			AST_ConvertFilters(&filter_tree, predicate);
+			// place filters
 			ExecutionPlan_PlaceFilterOps(plan, aggregate, NULL, filter_tree);
 		}
 
+		// in case the execution-plan had child operations we need to combine
+		// records coming out of our newly constucted aggregation with the rest
+		// of the execution-plan, use APPLY to do so
+		// otherwise (no children) RETURN [() | n.v] simply set `root`
 		if(root->childCount > 0) {
 			OpBase *apply_op = NewApplyOp(plan);
 			ExecutionPlan_PushBelow(root->children[0], apply_op);
@@ -94,7 +124,9 @@ void buildPatternComprehensionOps(
 		}
 	}
 
+	// restore AST
 	QueryCtx_SetAST(prev_ast);
+
 	if(arguments != NULL) array_free(arguments);
 	array_free(pcs);
 }
@@ -117,23 +149,30 @@ void buildPatternComprehensionOps(
 //                 Aggregate
 //                     Conditional Traverse | (n)-[anon_1]->(anon_2)
 //                         Argument
-void buildPatternPathOps(
+
+void buildPatternPathOps
+(
 	ExecutionPlan *plan,
 	OpBase *root,
 	const cypher_astnode_t *ast
 ) {
+	// validations
+	ASSERT(plan != NULL);
+	ASSERT(root != NULL);
+	ASSERT(ast  != NULL);
 	ASSERT(root->type == OPType_PROJECT || root->type == OPType_AGGREGATE);
 
-	const cypher_astnode_t **pcs =
-		AST_GetTypedNodes(ast, CYPHER_AST_PATTERN_COMPREHENSION);
-	const cypher_astnode_t **sps =
-		AST_GetTypedNodes(ast, CYPHER_AST_SHORTEST_PATH);
-	const cypher_astnode_t **pps =
-		AST_GetTypedNodes(ast, CYPHER_AST_PATTERN_PATH);
-	uint count = array_len(pps);
-	uint pcs_count = array_len(pcs);
-	uint sps_count = array_len(sps);
+	// search for pattern comprehension AST nodes
+	// quickly return if none been found
+	const  cypher_astnode_t  **sps  =  AST_GetTypedNodes(ast,  CYPHER_AST_SHORTEST_PATH);
+	const  cypher_astnode_t  **pps  =  AST_GetTypedNodes(ast,  CYPHER_AST_PATTERN_PATH);
+	const  cypher_astnode_t  **pcs  =  AST_GetTypedNodes(ast,  CYPHER_AST_PATTERN_COMPREHENSION);
 
+	uint  count      =  array_len(pps);
+	uint  pcs_count  =  array_len(pcs);
+	uint  sps_count  =  array_len(sps);
+
+	// backup AST, restore at the end
 	AST *prev_ast = QueryCtx_GetAST();
 	QueryCtx_SetAST(plan->ast_segment);
 
@@ -147,8 +186,11 @@ void buildPatternPathOps(
 	}
 
 	for (uint i = 0; i < count; i++) {
+		OpBase *match_stream;
 		const cypher_astnode_t *path = pps[i];
 		
+		// skip pattern paths declared within pattern comprehension
+		// as these are already handeled by `buildPatternComprehensionOps`
 		bool skip_path = false;
 		for (uint j = 0; j < pcs_count; j++) {
 			if(cypher_ast_pattern_comprehension_get_pattern(pcs[j]) == path) {
@@ -157,10 +199,12 @@ void buildPatternPathOps(
 			}
 		}
 
-		// if this pattern path is in pattern comprehension
-		// we already built the ops in _BuildPatternComprehensionOps
+		// if this pattern path is nested within a pattern comprehension
+		// we already handled it `buildPatternComprehensionOps`
 		if(skip_path) continue;
 
+		// skip pattern paths declared within shortest path
+		// as these were already handeled
 		for (uint j = 0; j < sps_count; j++) {
 			if(cypher_ast_shortest_path_get_path(sps[j]) == path) {
 				skip_path = true;
@@ -168,13 +212,15 @@ void buildPatternPathOps(
 			}
 		}
 
-		// if this pattern path is in shortest path
-		// we already built the expression
+		// if this pattern path is nexted within a shortest path
+		// we already handeled it
 		if(skip_path) continue;
 
-		OpBase *match_stream =
-			ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
+		// construct sub execution-plan resolving path
+		match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
 
+		// count number of elements in path
+		// construct a `topath` expression combining elements into a PATH object
 		uint path_len = cypher_ast_pattern_path_nelements(path);
 		AR_ExpNode *path_exp = AR_EXP_NewOpNode("topath", 1 + path_len);
 		path_exp->op.children[0] =
@@ -184,17 +230,27 @@ void buildPatternPathOps(
 				AR_EXP_FromASTNode(cypher_ast_pattern_path_get_element(path, j));
 		}
 
+		// we're require to return an ARRAY of paths, use `collect` to aggregate paths
 		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", 1);
 		collect_exp->op.children[0] = path_exp;
 		collect_exp->resolved_name = AST_ToString(path);
 
+		// constuct aggregation operation
 		AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 		array_append(exps, collect_exp);
 		OpBase *aggregate = NewAggregateOp(plan, exps, false);
+
+		// in case no data was produce introduce an OPTIONAL operation to return
+		// an empty record
 		OpBase *optional = NewOptionalOp(plan);
 		ExecutionPlan_AddOp(optional, aggregate);
 		ExecutionPlan_AddOp(aggregate, match_stream);
 
+
+		// in case the execution-plan had child operations we need to combine
+		// records coming out of our newly constucted aggregation with the rest
+		// of the execution-plan, use APPLY to do so
+		// otherwise (no children) RETURN () simply set `root`
 		if(root->childCount > 0) {
 			OpBase *apply_op = NewApplyOp(plan);
 			ExecutionPlan_PushBelow(root->children[0], apply_op);
@@ -204,9 +260,12 @@ void buildPatternPathOps(
 		}
 	}
 
+	// restore AST
 	QueryCtx_SetAST(prev_ast);
+
 	if(arguments != NULL) array_free(arguments);
 	array_free(pps);
 	array_free(pcs);
 	array_free(sps);
 }
+

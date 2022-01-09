@@ -127,10 +127,12 @@ static AR_ExpNode *_AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 	ASSERT(func_name != NULL);
 
 	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
-	node->type = AR_EXP_OP;
-	node->op.func_name = func_name;
-	node->op.child_count = child_count;
-	node->op.children = rm_malloc(child_count * sizeof(AR_ExpNode *));
+
+	node->type            =  AR_EXP_OP;
+	node->op.func_name    =  func_name;
+	node->op.child_count  =  child_count;
+	node->op.children     =  rm_malloc(child_count * sizeof(AR_ExpNode  *));
+
 	return node;
 }
 
@@ -151,18 +153,10 @@ AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 
 	AR_ExpNode *node = _AR_EXP_NewOpNode(func_name, child_count);
 
-	/* Retrieve function. */
+	// retrieve function
 	AR_FuncDesc *func = AR_GetFunc(func_name);
 	ASSERT(func != NULL);
 	node->op.f = func;
-
-	if(func->aggregate) {
-		AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
-		ctx->hashSet = NULL;
-		ctx->private_ctx = NULL;
-		ctx->result = SI_NullVal();
-		node->op.f = AR_SetPrivateData(node->op.f, ctx);
-	}
 
 	return node;
 }
