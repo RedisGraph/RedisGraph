@@ -140,7 +140,7 @@ static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 	AR_ExpNode *clone = _AR_EXP_NewOpNode(exp->op.func_name, exp->op.child_count);
 	/* If the function has private data, the function descriptor
 	 * itself should be cloned. Otherwise, we can perform a direct assignment. */
-	if(exp->op.f->privdata) clone->op.f = AR_CloneFuncDesc(exp->op.f);
+	if(exp->op.f->bclone) clone->op.f = AR_CloneFuncDesc(exp->op.f);
 	else clone->op.f = exp->op.f;
 	for(uint i = 0; i < exp->op.child_count; i++) {
 		AR_ExpNode *child = AR_EXP_Clone(exp->op.children[i]);

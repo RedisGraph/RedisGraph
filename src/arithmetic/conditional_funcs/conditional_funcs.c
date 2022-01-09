@@ -110,7 +110,7 @@ void Register_ConditionalFuncs() {
 
 	types = array_new(SIType, 1);
 	array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("distinct", AR_DISTINCT, 1, 1, types, false, false);
+	func_desc = AR_FuncDescNew("distinct", AR_DISTINCT, 2, 2, types, false, false);
 	AR_SetPrivateDataRoutines(func_desc, Distinct_Free, Distinct_Clone);
 	AR_RegFunc(func_desc);
 }

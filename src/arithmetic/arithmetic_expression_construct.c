@@ -82,7 +82,6 @@ static AR_ExpNode *_AR_EXP_FromApplyExpression(const cypher_astnode_t *expr) {
 	if(aggregate && distinct) {
 		ASSERT(arg_count == 1);
 		AR_ExpNode *distinct = AR_EXP_NewOpNode("distinct", arg_count);
-		distinct->op.f = AR_SetPrivateData(distinct->op.f, Set_New());
 		distinct->op.children[0] = op->op.children[0];
 		op->op.children[0] = distinct;
 	}
