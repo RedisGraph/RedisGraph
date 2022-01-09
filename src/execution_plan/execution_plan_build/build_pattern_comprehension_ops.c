@@ -36,6 +36,8 @@ void buildPatternComprehensionOps(
 	OpBase *root,
 	const cypher_astnode_t *ast
 ) {
+	ASSERT(root->type == OPType_PROJECT || root->type == OPType_AGGREGATE);
+
 	const cypher_astnode_t **pcs =
 		AST_GetTypedNodes(ast, CYPHER_AST_PATTERN_COMPREHENSION);
 	uint count = array_len(pcs);
@@ -120,6 +122,8 @@ void buildPatternPathOps(
 	OpBase *root,
 	const cypher_astnode_t *ast
 ) {
+	ASSERT(root->type == OPType_PROJECT || root->type == OPType_AGGREGATE);
+
 	const cypher_astnode_t **pcs =
 		AST_GetTypedNodes(ast, CYPHER_AST_PATTERN_COMPREHENSION);
 	const cypher_astnode_t **sps =

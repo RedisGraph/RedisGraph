@@ -247,6 +247,7 @@ static ExecutionPlan *_tie_segments(ExecutionPlan **segments,
 		// build pattern comprehension ops for with clause
 		if(prev_segment != NULL) {
 			const cypher_astnode_t *opening_clause = cypher_ast_query_get_clause(ast->root, 0);
+			ASSERT(cypher_astnode_type(opening_clause) == CYPHER_AST_WITH);
 			uint projections = cypher_ast_with_nprojections(opening_clause);
 			for (uint j = 0; j < projections; j++) {
 				const cypher_astnode_t *projection = cypher_ast_with_get_projection(opening_clause, j);
