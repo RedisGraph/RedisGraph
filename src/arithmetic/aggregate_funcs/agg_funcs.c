@@ -483,12 +483,6 @@ void Register_AggFuncs() {
 	AR_RegFunc(func_desc);
 }
 
-bool Aggregate_PerformsDistinct(AR_ExpNode *exp) {
-	if(exp->type != AR_EXP_OP || exp->op.children[0]->type != AR_EXP_OP) return false;
-	return strcmp(exp->op.children[0]->op.func_name, "distinct") == 0;
-}
-
 SIValue Aggregate_GetResult(AggregateCtx *ctx) {
 	return SI_TransferOwnership(&ctx->result);
 }
-
