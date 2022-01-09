@@ -64,12 +64,14 @@ static AR_ExpNode *AR_EXP_NewOpNodeFromAST(AST_Operator op, uint child_count) {
 
 static AR_ExpNode *_AR_EXP_FromApplyExpression(const cypher_astnode_t *expr) {
 	AR_ExpNode *op;
-	bool distinct = cypher_ast_apply_operator_get_distinct(expr);
-	unsigned int arg_count = cypher_ast_apply_operator_narguments(expr);
-	const cypher_astnode_t *func_node = cypher_ast_apply_operator_get_func_name(expr);
-	const char *func_name = cypher_ast_function_name_get_value(func_node);
-	bool aggregate = AR_FuncIsAggregate(func_name);
-	op = AR_EXP_NewOpNode(func_name, arg_count);
+
+	bool                    distinct    =  cypher_ast_apply_operator_get_distinct(expr);
+	uint                    arg_count   =  cypher_ast_apply_operator_narguments(expr);
+	const cypher_astnode_t  *func_node  =  cypher_ast_apply_operator_get_func_name(expr);
+	const char              *func_name  =  cypher_ast_function_name_get_value(func_node);
+	bool                    aggregate   =  AR_FuncIsAggregate(func_name);
+
+	op = AR_EXP_NewOpNode(func_name, arg_count, distinct);
 
 	for(unsigned int i = 0; i < arg_count; i ++) {
 		const cypher_astnode_t *arg = cypher_ast_apply_operator_get_argument(expr, i);
@@ -77,6 +79,9 @@ static AR_ExpNode *_AR_EXP_FromApplyExpression(const cypher_astnode_t *expr) {
 		op->op.children[i] = _AR_EXP_FromASTNode(arg);
 	}
 
+	// TODO: introduce a distinct function
+	// RETURN sum(x) distinct ->
+	// sum(distinct(x))
 	if(aggregate && distinct) {
 		AggregateCtx *ctx = op->op.f->privdata;
 		ctx->hashSet = Set_New();
