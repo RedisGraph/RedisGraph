@@ -51,7 +51,10 @@ void buildPatternComprehensionOps
 		AST_GetTypedNodes(ast, CYPHER_AST_PATTERN_COMPREHENSION);
 	uint count = array_len(pcs);
 
-	if(count == 0) return;
+	if(count == 0) {
+		array_free(pcs);
+		return;
+	}
 
 	// backup AST, restore at the end
 	AST *prev_ast = QueryCtx_GetAST();
