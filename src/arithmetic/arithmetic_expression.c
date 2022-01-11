@@ -261,9 +261,7 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val) {
 		if(!reduce_children) return false;
 
 		// All child nodes are constants, make sure function is marked as reducible.
-		AR_FuncDesc *func_desc = AR_GetFunc(root->op.f->name);
-		ASSERT(func_desc != NULL);
-		if(!func_desc->reducible) return false;
+		if(!root->op.f->reducible) return false;
 
 		// Evaluate function.
 		SIValue v = AR_EXP_Evaluate(root, NULL);
