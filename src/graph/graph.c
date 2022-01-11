@@ -22,6 +22,38 @@ void _MatrixResizeToCapacity(const Graph *g, RG_Matrix m);
 // Synchronization functions
 //------------------------------------------------------------------------------
 
+static void _CreateRWLock
+(
+	Graph *g
+) {
+	    // create a read write lock which favors writes
+		//
+		// consider the following locking sequence:
+		// T0 read lock  (acquired)
+		// T1 write lock (waiting)
+		// T2 read lock  (acquired if lock favor reads, waiting if favor writes)
+		//
+		// we don't want to cause write starvation as this can impact overall
+		// system performance
+
+		// specify prefer write in lock creation attributes
+		int res = 0 ;
+		UNUSED (res) ;
+
+		pthread_rwlockattr_t attr ;
+		res = pthread_rwlockattr_init (&attr) ;
+		ASSERT (res == 0) ;
+
+#if !defined(__APPLE__) && !defined(__FreeBSD__)
+		int pref = PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP ;
+		res = pthread_rwlockattr_setkind_np(&attr, pref) ;
+		ASSERT (res == 0) ;
+#endif
+
+		res = pthread_rwlock_init(&g->_rwlock, &attr);
+		ASSERT (res == 0) ;
+}
+
 // acquire a lock that does not restrict access from additional reader threads
 void Graph_AcquireReadLock(Graph *g) {
 	pthread_rwlock_rdlock(&g->_rwlock);
@@ -368,10 +400,7 @@ Graph *Graph_New
 	GraphStatistics_init(&g->stats);
 
 	// initialize a read-write lock scoped to the individual graph
-	int res;
-	UNUSED(res);
-	res = pthread_rwlock_init(&g->_rwlock, NULL);
-	ASSERT(res == 0);
+	_CreateRWLock(g);
 	g->_writelocked = false;
 
 	// force GraphBLAS updates and resize matrices to node count by default
