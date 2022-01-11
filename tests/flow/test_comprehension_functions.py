@@ -348,6 +348,9 @@ class testComprehensionFunctions(FlowTestsBase):
         query = """MATCH (a) RETURN a.val AS v, [(a)-[]->(b {val: 'v2'}) | b.val] ORDER BY v"""
         plan = redis_graph.explain(query)
         self.env.assertTrue(_check_pattern_comprehension_plan(plan))
+        apply = locate_operation(plan.structured_plan, "Apply")
+        filter = locate_operation(apply.children[1], "Filter")
+        self.env.assertIsNotNone(filter)
         actual_result = redis_graph.query(query)
         expected_result = [['v1', ['v2']],
                            ['v2', []],
@@ -356,12 +359,10 @@ class testComprehensionFunctions(FlowTestsBase):
 
         query = """MATCH (a) RETURN a.val AS v, [(a)-[]->(b) WHERE b.val CONTAINS '3' | b.val] ORDER BY v"""
         plan = redis_graph.explain(query)
+        self.env.assertTrue(_check_pattern_comprehension_plan(plan))
         apply = locate_operation(plan.structured_plan, "Apply")
-        self.env.assertIsNotNone(apply)
-        self.env.assertEquals(apply.children[0].name, "All Node Scan")
-        self.env.assertEquals(apply.children[1].name, "Optional")
-        self.env.assertEquals(apply.children[1].children[0].name, "Aggregate")
-        argument = locate_operation(plan.structured_plan, "Argument")
+        filter = locate_operation(apply.children[1], "Filter")
+        self.env.assertIsNotNone(filter)
         actual_result = redis_graph.query(query)
         expected_result = [['v1', []],
                            ['v2', ['v3']],
