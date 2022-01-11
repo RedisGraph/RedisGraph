@@ -131,13 +131,10 @@ static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 	return clone;
 }
 
-static AR_ExpNode *_AR_EXP_NewOpNode(const char *func_name, uint child_count) {
-	ASSERT(func_name != NULL);
-
+static AR_ExpNode *_AR_EXP_NewOpNode(uint child_count) {
 	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
 
 	node->type            =  AR_EXP_OP;
-	node->op.f->name      =  func_name;
 	node->op.child_count  =  child_count;
 	node->op.children     =  rm_malloc(child_count * sizeof(AR_ExpNode  *));
 
@@ -145,7 +142,7 @@ static AR_ExpNode *_AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 }
 
 static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
-	AR_ExpNode *clone = _AR_EXP_NewOpNode(exp->op.f->name, exp->op.child_count);
+	AR_ExpNode *clone = _AR_EXP_NewOpNode(exp->op.child_count);
 	/* If the function has private data, the function descriptor
 	 * itself should be cloned. Otherwise, we can perform a direct assignment. */
 	if(exp->op.f->bclone) clone->op.f = AR_CloneFuncDesc(exp->op.f);
@@ -159,7 +156,7 @@ static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 
 AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 
-	AR_ExpNode *node = _AR_EXP_NewOpNode(func_name, child_count);
+	AR_ExpNode *node = _AR_EXP_NewOpNode(child_count);
 
 	// retrieve function
 	AR_FuncDesc *func = AR_GetFunc(func_name);
