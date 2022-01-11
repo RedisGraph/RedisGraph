@@ -80,9 +80,14 @@ static AR_ExpNode *_AR_EXP_FromApplyExpression(const cypher_astnode_t *expr) {
 	}
 
 	if(aggregate && distinct) {
+		// when we aggregating distinct values
+		// for example COUNT(DISTINCT x)
+		// we use distinct function
 		ASSERT(arg_count == 1);
 		AR_ExpNode *distinct = AR_EXP_NewOpNode("distinct", arg_count);
+		// move x to be child of distinct
 		distinct->op.children[0] = op->op.children[0];
+		// distinct is child of COUNT
 		op->op.children[0] = distinct;
 	}
 

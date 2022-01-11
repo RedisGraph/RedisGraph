@@ -75,7 +75,9 @@ SIValue AR_COALESCE(SIValue *argv, int argc) {
 	return SI_NullVal();
 }
 
-// Distinct - return distinct values.
+// Distinct maintains a set of values,
+// if value `X` already in the set return NULL,
+// otherwise `X` is returned and added to to the set.
 SIValue AR_DISTINCT(SIValue *argv, int argc) {
 	set *set = argv[1].ptrval;
 	if(Set_Add(set, argv[0])) return SI_ConstValue(argv);

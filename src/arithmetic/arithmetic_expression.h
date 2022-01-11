@@ -149,7 +149,7 @@ bool AR_EXP_IsOperation(const AR_ExpNode *exp);
  * sets 'attr' to attribute name if provided. */
 bool AR_EXP_IsAttribute(const AR_ExpNode *exp, char **attr);
 
-/* check to see if the function operates on distinct results */
+/* check to see if the function operates on distinct values */
 bool AR_EXP_PerformsDistinct(AR_ExpNode *exp);
 
 /* Returns true if the arithmetic expression returns

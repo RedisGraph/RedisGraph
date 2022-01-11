@@ -85,8 +85,11 @@ bool AR_EXP_IsAttribute(const AR_ExpNode *exp, char **attr) {
 }
 
 bool AR_EXP_PerformsDistinct(AR_ExpNode *exp) {
-	if(exp->type != AR_EXP_OP || exp->op.children[0]->type != AR_EXP_OP) return false;
-	return strcmp(exp->op.children[0]->op.func_name, "distinct") == 0;
+	return (
+		exp->type == AR_EXP_OP                 &&
+		exp->op.child_count == 1               &&
+		exp->op.children[0]->type == AR_EXP_OP &&
+		strcmp(exp->op.children[0]->op.func_name, "distinct") == 0);
 }
 
 // repurpose node to a constant expression
