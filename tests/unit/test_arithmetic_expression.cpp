@@ -1692,7 +1692,7 @@ TEST_F(ArithmeticTest, ReduceTest) {
 
 	AR_ExpNode *lhs = arExp->op.children[0];
 	ASSERT_EQ(AR_EXP_OP, lhs->type);
-	ASSERT_EQ(0, strcasecmp("rand", lhs->op.func_name));
+	ASSERT_EQ(0, strcasecmp("rand", lhs->op.f->name));
 
 	AR_ExpNode *rhs = arExp->op.children[1];
 	ASSERT_EQ(AR_EXP_OPERAND, rhs->type);
