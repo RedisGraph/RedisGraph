@@ -40,7 +40,6 @@ typedef enum {
 /* Op represents an operation applied to child args. */
 typedef struct {
 	AR_FuncDesc *f;                 // Operation to perform on children
-	const char *func_name;          // Name of function
 	int child_count;                // Number of children
 	struct AR_ExpNode **children;   // Child nodes
 } AR_OpNode;

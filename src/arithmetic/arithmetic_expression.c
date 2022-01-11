@@ -71,7 +71,7 @@ bool AR_EXP_IsAttribute(const AR_ExpNode *exp, char **attr) {
 	// while the right-handside represents the attribute name
 
 	if(exp->type != AR_EXP_OP) return false;
-	if(RG_STRCMP(exp->op.func_name, "property") != 0) return false;
+	if(RG_STRCMP(exp->op.f->name, "property") != 0) return false;
 
 	if(attr != NULL) {
 		AR_ExpNode *r = exp->op.children[1];
@@ -89,7 +89,7 @@ bool AR_EXP_PerformsDistinct(AR_ExpNode *exp) {
 		exp->type == AR_EXP_OP                 &&
 		exp->op.child_count == 1               &&
 		exp->op.children[0]->type == AR_EXP_OP &&
-		strcmp(exp->op.children[0]->op.func_name, "distinct") == 0);
+		strcmp(exp->op.children[0]->op.f->name, "distinct") == 0);
 }
 
 // repurpose node to a constant expression
@@ -137,7 +137,7 @@ static AR_ExpNode *_AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
 
 	node->type            =  AR_EXP_OP;
-	node->op.func_name    =  func_name;
+	node->op.f->name      =  func_name;
 	node->op.child_count  =  child_count;
 	node->op.children     =  rm_malloc(child_count * sizeof(AR_ExpNode  *));
 
@@ -145,7 +145,7 @@ static AR_ExpNode *_AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 }
 
 static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
-	AR_ExpNode *clone = _AR_EXP_NewOpNode(exp->op.func_name, exp->op.child_count);
+	AR_ExpNode *clone = _AR_EXP_NewOpNode(exp->op.f->name, exp->op.child_count);
 	/* If the function has private data, the function descriptor
 	 * itself should be cloned. Otherwise, we can perform a direct assignment. */
 	if(exp->op.f->bclone) clone->op.f = AR_CloneFuncDesc(exp->op.f);
@@ -264,7 +264,7 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val) {
 		if(!reduce_children) return false;
 
 		// All child nodes are constants, make sure function is marked as reducible.
-		AR_FuncDesc *func_desc = AR_GetFunc(root->op.func_name);
+		AR_FuncDesc *func_desc = AR_GetFunc(root->op.f->name);
 		ASSERT(func_desc != NULL);
 		if(!func_desc->reducible) return false;
 
@@ -620,7 +620,7 @@ void AR_EXP_CollectEntities(AR_ExpNode *root, rax *aliases) {
 
 void AR_EXP_CollectAttributes(AR_ExpNode *root, rax *attributes) {
 	if(AR_EXP_IsOperation(root)) {
-		if(RG_STRCMP(root->op.func_name, "property") == 0) {
+		if(RG_STRCMP(root->op.f->name, "property") == 0) {
 			AR_ExpNode *arg = root->op.children[1];
 			ASSERT(AR_EXP_IsConstant(arg));
 			ASSERT(SI_TYPE(arg->operand.constant) == T_STRING);
@@ -652,7 +652,7 @@ bool AR_EXP_ContainsAggregation(AR_ExpNode *root) {
 bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
 	if(root == NULL) return false;
 	if(AR_EXP_IsOperation(root)) {
-		if(strcasecmp(root->op.func_name, func) == 0) return true;
+		if(strcasecmp(root->op.f->name, func) == 0) return true;
 		for(int i = 0; i < root->op.child_count; i++) {
 			if(AR_EXP_ContainsFunc(root->op.children[i], func)) return true;
 		}
@@ -694,10 +694,10 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 		/* Binary operation? */
 		char binary_op = 0;
 
-		if(strcmp(root->op.func_name, "ADD") == 0) binary_op = '+';
-		else if(strcmp(root->op.func_name, "SUB") == 0) binary_op = '-';
-		else if(strcmp(root->op.func_name, "MUL") == 0) binary_op = '*';
-		else if(strcmp(root->op.func_name, "DIV") == 0)  binary_op = '/';
+		if(strcmp(root->op.f->name, "ADD") == 0) binary_op = '+';
+		else if(strcmp(root->op.f->name, "SUB") == 0) binary_op = '-';
+		else if(strcmp(root->op.f->name, "MUL") == 0) binary_op = '*';
+		else if(strcmp(root->op.f->name, "DIV") == 0)  binary_op = '/';
 
 		if(binary_op) {
 			_AR_EXP_ToString(root->op.children[0], str, str_size, bytes_written);
@@ -713,7 +713,7 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 			_AR_EXP_ToString(root->op.children[1], str, str_size, bytes_written);
 		} else {
 			/* Operation isn't necessarily a binary operation, use function call representation. */
-			*bytes_written += sprintf((*str + *bytes_written), "%s(", root->op.func_name);
+			*bytes_written += sprintf((*str + *bytes_written), "%s(", root->op.f->name);
 
 			for(int i = 0; i < root->op.child_count ; i++) {
 				_AR_EXP_ToString(root->op.children[i], str, str_size, bytes_written);

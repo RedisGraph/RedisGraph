@@ -10,7 +10,7 @@
 bool isInFilter(const FT_FilterNode *filter) {
 	return (filter->t == FT_N_EXP &&
 			filter->exp.exp->type == AR_EXP_OP &&
-			strcasecmp(filter->exp.exp->op.func_name, "in") == 0);
+			strcasecmp(filter->exp.exp->op.f->name, "in") == 0);
 }
 
 // extracts both origin and radius from a distance filter
@@ -32,11 +32,11 @@ bool extractOriginAndRadius(const FT_FilterNode *filter, SIValue *origin,
 
 	// find distance expression
 	if(AR_EXP_IsOperation(lhs) &&
-	   strcasecmp(lhs->op.func_name, "distance") == 0) {
+	   strcasecmp(lhs->op.f->name, "distance") == 0) {
 		radius_exp = rhs;
 		distance_exp = lhs;
 	} else if(AR_EXP_IsOperation(rhs) &&
-			  strcasecmp(rhs->op.func_name, "distance") == 0) {
+			  strcasecmp(rhs->op.f->name, "distance") == 0) {
 		radius_exp = lhs;
 		distance_exp = rhs;
 	}
