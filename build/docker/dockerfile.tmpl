@@ -1,14 +1,14 @@
-# BUILD redisfab/redisgraph:{{REDIS_VERSION}}-{{REDIS_ARCH}}-{{REDIS_OSNICK}}
+# BUILD redisfab/redisgraph:{{REDIS_VERSION}}-{{ARCH}}-{{OSNICK}}
 
 ARG PACK={{REDIS_PACK}}
 ARG TEST={{REDIS_TEST}}
 
 #----------------------------------------------------------------------------------------------
-FROM redisfab/redis:{{REDIS_VERSION}}-{{REDIS_ARCH}}-{{REDIS_OSNICK}} AS redis
-# Build based on {{REDIS_OS}} (i.e., 'builder'), redis files are copies from 'redis'
-FROM {{REDIS_OS}} AS builder
+FROM redisfab/redis:{{REDIS_VERSION}}-{{ARCH}}-{{OSNICK}} AS redis
+# Build based on {{OS}} (i.e., 'builder'), redis files are copies from 'redis'
+FROM {{OS}} AS builder
 
-RUN echo "Building for {{REDIS_OSNICK}} ({{REDIS_OS}}) for {{REDIS_ARCH}} [with Redis {{REDIS_VERSION}}]"
+RUN echo "Building for {{OSNICK}} ({{OS}}) for {{ARCH}} [with Redis {{REDIS_VERSION}}]"
 
 WORKDIR /build
 
@@ -17,7 +17,7 @@ COPY --from=redis /usr/local/ /usr/local/
 ADD ./ /build
 
 # Set up a build environment
-{% if REDIS_OSNICK == "alpine3" %}
+{% if OSNICK == "alpine3" %}
 RUN ./deps/readies/bin/getbash
 {% endif %}
 RUN ./deps/readies/bin/getpy3
@@ -45,10 +45,10 @@ RUN set -ex ;\
     if [ "$PACK" = "1" ]; then bash -l -c "make package"; fi
 
 #----------------------------------------------------------------------------------------------
-{% if REDIS_OSNICK == "alpine3" %}
+{% if OSNICK == "alpine3" %}
 FROM redis:6-alpine
 {% else %}
-FROM redisfab/redis:{{REDIS_VERSION}}-{{REDIS_ARCH}}-{{REDIS_OSNICK}}
+FROM redisfab/redis:{{REDIS_VERSION}}-{{ARCH}}-{{OSNICK}}
 {% endif %}
 
 ARG PACK
