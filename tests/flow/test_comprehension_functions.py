@@ -2,9 +2,18 @@ import redis
 from RLTest import Env
 from base import FlowTestsBase
 from redisgraph import Graph, Node, Edge
-from redisgraph.execution_plan import Operation
+from redisgraph.execution_plan import ExecutionPlan
+from execution_plan_util import locate_operation
 
 redis_graph = None
+
+def _check_pattern_comprehension_plan(plan: ExecutionPlan):
+    apply = locate_operation(plan.structured_plan, "Apply")
+    return apply and                                          \
+        len(apply.children) == 2 and                          \
+        apply.children[1].name == "Optional" and              \
+        apply.children[1].children[0].name == "Aggregate" and \
+        locate_operation(apply.children[1], "Argument")
 
 class testComprehensionFunctions(FlowTestsBase):
     def __init__(self):
@@ -250,17 +259,8 @@ class testComprehensionFunctions(FlowTestsBase):
     def test14_simple_pattern_comprehension(self):
         # Match all nodes and collect their destination's property in an array
         query = """MATCH (a) RETURN a.val AS v, [(a)-[]->(b) | b.val] ORDER BY v"""
-        expected_plan = Operation('Results') \
-            .append_child(Operation('Sort')
-                .append_child(Operation('Project')
-                    .append_child(Operation('Apply')
-                        .append_child(Operation('Node By Label Scan'))
-                        .append_child(Operation('Optional')
-                            .append_child(Operation('Aggregate')
-                                .append_child(Operation('Conditional Traverse')
-                                    .append_child(Operation('Argument'))))))))
         plan = redis_graph.explain(query)
-        self.env.assertEquals(expected_plan, plan.structured_plan)
+        self.env.assertTrue(_check_pattern_comprehension_plan(plan))
         actual_result = redis_graph.query(query)
         expected_result = [['v1', ['v2']],
                            ['v2', ['v3']],
@@ -270,36 +270,27 @@ class testComprehensionFunctions(FlowTestsBase):
         # Test logically equivalent rewrites of the pattern comprehension
         query = """MATCH (a) RETURN a.val AS v, [(a)-[:E]->(b:L) | b.val] ORDER BY v"""
         plan = redis_graph.explain(query)
-        self.env.assertEquals(expected_plan, plan.structured_plan)
+        self.env.assertTrue(_check_pattern_comprehension_plan(plan))
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         query = """MATCH (a) RETURN a.val AS v, [(a:L)-[:E]->(b:L) | b.val] ORDER BY v"""
         plan = redis_graph.explain(query)
-        self.env.assertEquals(expected_plan, plan.structured_plan)
+        self.env.assertTrue(_check_pattern_comprehension_plan(plan))
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         query = """MATCH (a) RETURN a.val AS v, [(b)<-[:E]-(a) | b.val] ORDER BY v"""
         plan = redis_graph.explain(query)
-        self.env.assertEquals(expected_plan, plan.structured_plan)
+        self.env.assertTrue(_check_pattern_comprehension_plan(plan))
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set, expected_result)
 
     def test15_variable_length_pattern_comprehension(self):
         # Match all nodes and collect their destination's property over all hops in an array
         query = """MATCH (a) RETURN a.val AS v, [(a)-[*0..]->(b) | b.val] ORDER BY v"""
-        expected_plan = Operation('Results') \
-            .append_child(Operation('Sort')
-                .append_child(Operation('Project')
-                    .append_child(Operation('Apply')
-                        .append_child(Operation('Node By Label Scan'))
-                        .append_child(Operation('Optional')
-                            .append_child(Operation('Aggregate')
-                                .append_child(Operation('Conditional Traverse')
-                                    .append_child(Operation('Argument'))))))))
         plan = redis_graph.explain(query)
-        self.env.assertEquals(expected_plan, plan.structured_plan)
+        self.env.assertTrue(_check_pattern_comprehension_plan(plan))
         actual_result = redis_graph.query(query)
         expected_result = [['v1', ['v1', 'v2', 'v3']],
                            ['v2', ['v2', 'v3']],
@@ -309,30 +300,21 @@ class testComprehensionFunctions(FlowTestsBase):
         # Test logically equivalent rewrites of the pattern comprehension
         query = """MATCH (a) RETURN a.val AS v, [(a)-[:E*0..]->(b) | b.val] ORDER BY v"""
         plan = redis_graph.explain(query)
-        self.env.assertEquals(expected_plan, plan.structured_plan)
+        self.env.assertTrue(_check_pattern_comprehension_plan(plan))
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         query = """MATCH (a) RETURN a.val AS v, [(a)-[:E*0..]->(b:L) | b.val] ORDER BY v"""
         plan = redis_graph.explain(query)
-        self.env.assertEquals(expected_plan, plan.structured_plan)
+        self.env.assertTrue(_check_pattern_comprehension_plan(plan))
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set, expected_result)
 
     def test16_nested_pattern_comprehension(self):
         # Perform pattern comprehension inside a function call
         query = """MATCH (a) RETURN a.val AS v, size([p=(a)-[*0..]->() | p]) ORDER BY v"""
-        expected_plan = Operation('Results') \
-            .append_child(Operation('Sort')
-                .append_child(Operation('Project')
-                    .append_child(Operation('Apply')
-                        .append_child(Operation('Node By Label Scan'))
-                        .append_child(Operation('Optional')
-                            .append_child(Operation('Aggregate')
-                                .append_child(Operation('Conditional Traverse')
-                                    .append_child(Operation('Argument'))))))))
         plan = redis_graph.explain(query)
-        self.env.assertEquals(expected_plan, plan.structured_plan)
+        self.env.assertTrue(_check_pattern_comprehension_plan(plan))
         actual_result = redis_graph.query(query)
         expected_result = [['v1', 3],
                            ['v2', 2],
@@ -342,18 +324,8 @@ class testComprehensionFunctions(FlowTestsBase):
     def test17_pattern_comprehension_in_aggregation(self):
         # Perform pattern comprehension as an aggregation key
         query = """UNWIND range(1, 3) AS x MATCH (a) RETURN COUNT(a) AS v, [p=(a)-[]->(b) | b.val] AS w ORDER BY v, w"""
-        expected_plan = Operation('Results') \
-            .append_child(Operation('Sort')
-                .append_child(Operation('Aggregate')
-                    .append_child(Operation('Apply')
-                        .append_child(Operation('All Node Scan')
-                            .append_child(Operation('Unwind')))
-                        .append_child(Operation('Optional')
-                            .append_child(Operation('Aggregate')
-                                .append_child(Operation('Conditional Traverse')
-                                    .append_child(Operation('Argument'))))))))
         plan = redis_graph.explain(query)
-        self.env.assertEquals(expected_plan, plan.structured_plan)
+        self.env.assertTrue(_check_pattern_comprehension_plan(plan))
         actual_result = redis_graph.query(query)
         expected_result = [[3, []],
                            [3, ['v2']],
@@ -364,7 +336,7 @@ class testComprehensionFunctions(FlowTestsBase):
         # Perform pattern comprehension in an aggregation value
         query = """UNWIND range(1, 3) AS x MATCH (a) RETURN a.val AS v, collect([p=(a)-[*0..]->(b) | b.val]) ORDER BY v"""
         plan = redis_graph.explain(query)
-        self.env.assertEquals(expected_plan, plan.structured_plan)
+        self.env.assertTrue(_check_pattern_comprehension_plan(plan))
         actual_result = redis_graph.query(query)
         expected_result = [['v1', [['v1', 'v2', 'v3'], ['v1', 'v2', 'v3'], ['v1', 'v2', 'v3']]],
                            ['v2', [['v2', 'v3'], ['v2', 'v3'], ['v2', 'v3']]],
@@ -374,18 +346,8 @@ class testComprehensionFunctions(FlowTestsBase):
     def test18_pattern_comprehension_with_filters(self):
         # Match all nodes and collect their destination's property in an array
         query = """MATCH (a) RETURN a.val AS v, [(a)-[]->(b {val: 'v2'}) | b.val] ORDER BY v"""
-        expected_plan = Operation('Results') \
-            .append_child(Operation('Sort')
-                .append_child(Operation('Aggregate')
-                    .append_child(Operation('Apply')
-                        .append_child(Operation('All Node Scan')
-                            .append_child(Operation('Unwind')))
-                        .append_child(Operation('Optional')
-                            .append_child(Operation('Aggregate')
-                                .append_child(Operation('Conditional Traverse')
-                                    .append_child(Operation('Argument'))))))))
         plan = redis_graph.explain(query)
-        self.env.assertEquals(expected_plan, plan.structured_plan)
+        self.env.assertTrue(_check_pattern_comprehension_plan(plan))
         actual_result = redis_graph.query(query)
         expected_result = [['v1', ['v2']],
                            ['v2', []],
@@ -394,7 +356,12 @@ class testComprehensionFunctions(FlowTestsBase):
 
         query = """MATCH (a) RETURN a.val AS v, [(a)-[]->(b) WHERE b.val CONTAINS '3' | b.val] ORDER BY v"""
         plan = redis_graph.explain(query)
-        self.env.assertEquals(expected_plan, plan.structured_plan)
+        apply = locate_operation(plan.structured_plan, "Apply")
+        self.env.assertIsNotNone(apply)
+        self.env.assertEquals(apply.children[0].name, "All Node Scan")
+        self.env.assertEquals(apply.children[1].name, "Optional")
+        self.env.assertEquals(apply.children[1].children[0].name, "Aggregate")
+        argument = locate_operation(plan.structured_plan, "Argument")
         actual_result = redis_graph.query(query)
         expected_result = [['v1', []],
                            ['v2', ['v3']],
