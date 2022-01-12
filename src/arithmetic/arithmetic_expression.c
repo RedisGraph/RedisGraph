@@ -71,7 +71,7 @@ bool AR_EXP_IsAttribute(const AR_ExpNode *exp, char **attr) {
 	// while the right-handside represents the attribute name
 
 	if(exp->type != AR_EXP_OP) return false;
-	if(RG_STRCMP(exp->op.f->name, "property") != 0) return false;
+	if(RG_STRCMP(AR_EXP_GetFuncName(exp), "property") != 0) return false;
 
 	if(attr != NULL) {
 		AR_ExpNode *r = exp->op.children[1];
@@ -85,11 +85,7 @@ bool AR_EXP_IsAttribute(const AR_ExpNode *exp, char **attr) {
 }
 
 bool AR_EXP_PerformsDistinct(AR_ExpNode *exp) {
-	return (
-		exp->type == AR_EXP_OP                 &&
-		exp->op.child_count == 1               &&
-		exp->op.children[0]->type == AR_EXP_OP &&
-		strcmp(exp->op.children[0]->op.f->name, "distinct") == 0);
+	return AR_EXP_ContainsFunc(exp, "distinct");
 }
 
 // repurpose node to a constant expression
@@ -615,7 +611,7 @@ void AR_EXP_CollectEntities(AR_ExpNode *root, rax *aliases) {
 
 void AR_EXP_CollectAttributes(AR_ExpNode *root, rax *attributes) {
 	if(AR_EXP_IsOperation(root)) {
-		if(RG_STRCMP(root->op.f->name, "property") == 0) {
+		if(RG_STRCMP(AR_EXP_GetFuncName(root), "property") == 0) {
 			AR_ExpNode *arg = root->op.children[1];
 			ASSERT(AR_EXP_IsConstant(arg));
 			ASSERT(SI_TYPE(arg->operand.constant) == T_STRING);
@@ -647,7 +643,7 @@ bool AR_EXP_ContainsAggregation(AR_ExpNode *root) {
 bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
 	if(root == NULL) return false;
 	if(AR_EXP_IsOperation(root)) {
-		if(strcasecmp(root->op.f->name, func) == 0) return true;
+		if(strcasecmp(AR_EXP_GetFuncName(root), func) == 0) return true;
 		for(int i = 0; i < root->op.child_count; i++) {
 			if(AR_EXP_ContainsFunc(root->op.children[i], func)) return true;
 		}
@@ -689,10 +685,11 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 		/* Binary operation? */
 		char binary_op = 0;
 
-		if(strcmp(root->op.f->name, "ADD") == 0) binary_op = '+';
-		else if(strcmp(root->op.f->name, "SUB") == 0) binary_op = '-';
-		else if(strcmp(root->op.f->name, "MUL") == 0) binary_op = '*';
-		else if(strcmp(root->op.f->name, "DIV") == 0)  binary_op = '/';
+		const char *func_name = AR_EXP_GetFuncName(root);
+		if(strcmp(func_name, "ADD") == 0) binary_op = '+';
+		else if(strcmp(func_name, "SUB") == 0) binary_op = '-';
+		else if(strcmp(func_name, "MUL") == 0) binary_op = '*';
+		else if(strcmp(func_name, "DIV") == 0)  binary_op = '/';
 
 		if(binary_op) {
 			_AR_EXP_ToString(root->op.children[0], str, str_size, bytes_written);
@@ -708,7 +705,7 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 			_AR_EXP_ToString(root->op.children[1], str, str_size, bytes_written);
 		} else {
 			/* Operation isn't necessarily a binary operation, use function call representation. */
-			*bytes_written += sprintf((*str + *bytes_written), "%s(", root->op.f->name);
+			*bytes_written += sprintf((*str + *bytes_written), "%s(", AR_EXP_GetFuncName(root));
 
 			for(int i = 0; i < root->op.child_count ; i++) {
 				_AR_EXP_ToString(root->op.children[i], str, str_size, bytes_written);
@@ -747,6 +744,13 @@ char *AR_EXP_BuildResolvedName(AR_ExpNode *root) {
 	char *name = NULL;
 	AR_EXP_ToString(root, &name);
 	return name;
+}
+
+inline const char *AR_EXP_GetFuncName(const AR_ExpNode *root) {
+	ASSERT(root != NULL);
+	ASSERT(root->type == AR_EXP_OP);
+
+	return root->op.f->name;
 }
 
 AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
