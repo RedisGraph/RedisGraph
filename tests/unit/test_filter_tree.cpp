@@ -80,6 +80,7 @@ class FilterTreeTest: public ::testing::Test {
 	FT_FilterNode *_build_cond_tree(int cond) {
 		const char *q;
 		if(cond == OP_AND) q = "MATCH (me) WHERE me.age > 34 AND me.height <= 188 RETURN me";
+		else if(cond == OP_XOR) q = "MATCH (me) WHERE me.age > 34 XOR me.height <= 188 RETURN me";
 		else q = "MATCH (me) WHERE me.age > 34 OR me.height <= 188 RETURN me";
 		return build_tree_from_query(q);
 	}
@@ -163,6 +164,10 @@ class FilterTreeTest: public ::testing::Test {
 
 	FT_FilterNode *_build_AND_cond_tree() {
 		return _build_cond_tree(OP_AND);
+	}
+
+	FT_FilterNode *_build_XOR_cond_tree() {
+		return _build_cond_tree(OP_XOR);
 	}
 
 	FT_FilterNode *_build_OR_cond_tree() {
@@ -250,6 +255,18 @@ TEST_F(FilterTreeTest, SubTrees) {
 
 	array_free(sub_trees);
 	FilterTree_Free(original_tree);
+
+	//------------------------------------------------------------------------------
+
+	tree = _build_XOR_cond_tree();
+	sub_trees = FilterTree_SubTrees(tree);
+	ASSERT_EQ(array_len(sub_trees), 1);
+
+	sub_tree = sub_trees[0];
+	compareFilterTrees(tree, sub_tree);
+
+	array_free(sub_trees);
+	FilterTree_Free(tree);
 
 	//------------------------------------------------------------------------------
 
@@ -386,6 +403,12 @@ TEST_F(FilterTreeTest, FilterTree_Clone) {
 	FilterTree_Free(actual);
 
 	expected = _build_AND_cond_tree();
+	actual = FilterTree_Clone(expected);
+	compareFilterTrees(expected, actual);
+	FilterTree_Free(expected);
+	FilterTree_Free(actual);
+
+	expected = _build_XOR_cond_tree();
 	actual = FilterTree_Clone(expected);
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(expected);

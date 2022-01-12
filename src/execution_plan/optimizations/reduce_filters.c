@@ -71,6 +71,6 @@ void _reduceFilters(OpBase *op) {
 }
 
 void reduceFilters(ExecutionPlan *plan) {
-	return _reduceFilters(plan->root);
+	_reduceFilters(plan->root);
 }
 

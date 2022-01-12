@@ -9,6 +9,7 @@
 #include "../util/rmalloc.h"
 #include "../util/strutil.h"
 #include "../../deps/rax/rax.h"
+#include "aggregate_funcs/agg_funcs.h"
 #include <ctype.h>
 
 // Arithmetic function repository
@@ -53,21 +54,51 @@ void AR_RegFunc(AR_FuncDesc *func) {
 
 // get arithmetic function
 AR_FuncDesc *AR_GetFunc(const char *func_name) {
-	char lower_func_name[32];
-	size_t lower_func_name_len = 32;
-	str_tolower(func_name, lower_func_name, &lower_func_name_len);
-	void *f = raxFind(__aeRegisteredFuncs, (unsigned char *)lower_func_name, lower_func_name_len);
 
-	return (f != raxNotFound) ? f : NULL;
+	size_t len = strlen(func_name);
+	char lower_func_name[len];
+	str_tolower(func_name, lower_func_name, &len);
+	void *f = raxFind(__aeRegisteredFuncs, (unsigned char *)lower_func_name, len);
+
+	if(f == raxNotFound) return NULL;
+
+	AR_FuncDesc *func = (AR_FuncDesc*)f;
+
+	if(func->aggregate) {
+		// clone function descriptor
+		func = rm_malloc(sizeof(AR_FuncDesc));
+		memcpy(func, f, sizeof(AR_FuncDesc));
+
+		// create aggregation context
+		AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
+		ctx->private_ctx  =  NULL;
+		ctx->result       =  SI_NullVal();
+
+		func->privdata = ctx;
+	}
+
+	return func;
+
 }
 
 bool AR_FuncExists(const char *func_name) {
-	return (AR_GetFunc(func_name) != NULL);
+	size_t len = strlen(func_name);
+	char lower_func_name[len];
+	str_tolower(func_name, lower_func_name, &len);
+	void *f = raxFind(__aeRegisteredFuncs, (unsigned char *)lower_func_name, len);
+
+	return f != raxNotFound;
 }
 
 bool AR_FuncIsAggregate(const char *func_name) {
-	AR_FuncDesc *f = AR_GetFunc(func_name);
-	return (f != NULL) ? f->aggregate : false;
+	size_t len = strlen(func_name);
+	char lower_func_name[len];
+	str_tolower(func_name, lower_func_name, &len);
+	AR_FuncDesc *f = raxFind(__aeRegisteredFuncs, (unsigned char *)lower_func_name, len);
+
+	if(f == raxNotFound) return false;
+
+	return f->aggregate;
 }
 
 inline void AR_SetPrivateDataRoutines(AR_FuncDesc *func_desc, AR_Func_Free bfree,

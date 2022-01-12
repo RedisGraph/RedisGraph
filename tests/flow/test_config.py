@@ -90,9 +90,9 @@ class testConfig(FlowTestsBase):
         prev_conf = redis_con.execute_command("GRAPH.CONFIG GET *")
 
         try:
-            # Set multiple configuration values, VKEY_MAX_ENTITY_COUNT is NOT
+            # Set multiple configuration values, THREAD_COUNT is NOT
             # a runtime configuration, expecting this command to fail
-            response = redis_con.execute_command("GRAPH.CONFIG SET QUERY_MEM_CAPACITY 150 VKEY_MAX_ENTITY_COUNT 40")
+            response = redis_con.execute_command("GRAPH.CONFIG SET QUERY_MEM_CAPACITY 150 THREAD_COUNT 40")
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
@@ -232,3 +232,18 @@ class testConfig(FlowTestsBase):
                 assert(False)
             except redis.exceptions.ResponseError as e:
                 assert(("Failed to set config value %s to invalid" % config) in str(e))
+
+    def test09_set_get_vkey_max_entity_count(self):
+        global redis_graph
+
+        config_name = "VKEY_MAX_ENTITY_COUNT"
+        config_value = 100
+
+        # Set configuration
+        response = redis_con.execute_command("GRAPH.CONFIG SET %s %d" % (config_name, config_value))
+        self.env.assertEqual(response, "OK")
+
+        # Make sure config been updated.
+        response = redis_con.execute_command("GRAPH.CONFIG GET " + config_name)
+        expected_response = [config_name, config_value]
+        self.env.assertEqual(response, expected_response)
