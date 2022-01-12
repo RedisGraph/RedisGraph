@@ -746,11 +746,11 @@ char *AR_EXP_BuildResolvedName(AR_ExpNode *root) {
 	return name;
 }
 
-inline const char *AR_EXP_GetFuncName(const AR_ExpNode *root) {
-	ASSERT(root != NULL);
-	ASSERT(root->type == AR_EXP_OP);
+inline const char *AR_EXP_GetFuncName(const AR_ExpNode *exp) {
+	ASSERT(exp != NULL);
+	ASSERT(exp->type == AR_EXP_OP);
 
-	return root->op.f->name;
+	return exp->op.f->name;
 }
 
 AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
