@@ -160,7 +160,7 @@ bool AR_EXP_ReturnsBoolean(const AR_ExpNode *exp);
 char *AR_EXP_BuildResolvedName(AR_ExpNode *root);
 
 /* Get the function name of op node. */
-const char *AR_EXP_GetFuncName(const AR_ExpNode *root);
+const char *AR_EXP_GetFuncName(const AR_ExpNode *exp);
 
 /* Clones given expression. */
 AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp);
