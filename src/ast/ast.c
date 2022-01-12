@@ -504,6 +504,39 @@ inline AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast) {
 	return ast->anot_ctx_collection;
 }
 
+static void _free_to_string_annotation
+(
+	void *userdata,
+	const cypher_astnode_t *node,
+	void *annotation
+) {
+	rm_free(annotation);
+}
+
+char *AST_ToString(const cypher_astnode_t *node) {
+	QueryCtx *ctx = QueryCtx_GetQueryCtx();
+	AST *ast = QueryCtx_GetAST();
+	AnnotationCtx *to_string_ctx = AST_AnnotationCtxCollection_GetToStringCtx(ast->anot_ctx_collection);
+
+	if(to_string_ctx == NULL) {
+		to_string_ctx = cypher_ast_annotation_context();
+		// set release handler to free allocated string
+		cypher_ast_annotation_context_set_release_handler(to_string_ctx, _free_to_string_annotation, NULL);
+		AST_AnnotationCtxCollection_SetToStringCtx(ast->anot_ctx_collection, to_string_ctx);
+	}
+
+	char * str = (char *)cypher_astnode_get_annotation(to_string_ctx, node);
+	if(str == NULL) {
+		struct cypher_input_range range = cypher_astnode_range(node);
+		uint length = range.end.offset - range.start.offset + 2;
+		str = rm_malloc(sizeof(char) * length);
+		strncpy(str, ctx->query_data.query + range.start.offset, length - 1);
+		str[length - 1] = '\0';
+		cypher_astnode_attach_annotation(to_string_ctx, node, (void *)str, NULL);
+	}
+	return str;
+}
+
 void AST_Free(AST *ast) {
 	if(ast == NULL) return;
 
