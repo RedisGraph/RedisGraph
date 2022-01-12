@@ -261,23 +261,31 @@ OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
 	return resolving_op;
 }
 
-OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
-									   rax *refs_to_resolve) {
-	return ExecutionPlan_LocateReferencesExcludingOps(root, recurse_limit,
-													  NULL, 0, refs_to_resolve);
+OpBase *ExecutionPlan_LocateReferences
+(
+	OpBase *root,
+	const OpBase *recurse_limit,
+	rax *refs_to_resolve
+) {
+	return ExecutionPlan_LocateReferencesExcludingOps(
+			root, recurse_limit, NULL, 0, refs_to_resolve);
 }
 
-void _ExecutionPlan_LocateTaps(OpBase *root, OpBase ***taps) {
+void _ExecutionPlan_LocateTaps
+(
+	OpBase *root,
+	OpBase ***taps
+) {
 	if(root == NULL) return;
 
 	if(root->childCount == 0) {
-		// Op Argument isn't considered a tap.
+		// op Argument isn't considered a tap
 		if(root->type != OPType_ARGUMENT) {
 			array_append(*taps, root);
 		}
 	}
 
-	// Recursively visit children.
+	// recursively visit children
 	for(int i = 0; i < root->childCount; i++) {
 		_ExecutionPlan_LocateTaps(root->children[i], taps);
 	}
