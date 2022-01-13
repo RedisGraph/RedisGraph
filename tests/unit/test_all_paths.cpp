@@ -41,6 +41,7 @@ class AllPathsTest : public ::testing::Test {
 		size_t nodeCount = 4;
 		Graph *g = Graph_New(nodeCount, nodeCount);
 		int relation = Graph_AddRelationType(g);
+		Graph_AllocateNodes(g, 4);
 		for(int i = 0; i < 4; i++)
 			Graph_CreateNode(g, &n, NULL, 0);
 

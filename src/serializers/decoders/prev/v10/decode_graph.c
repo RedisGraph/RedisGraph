@@ -125,7 +125,7 @@ GraphContext *RdbLoadGraphContext_v10(RedisModuleIO *rdb) {
 	 * */
 
 	GraphContext *gc = _DecodeHeader(rdb);
-		
+
 	// load the key schema
 	PayloadInfo *key_schema = _RdbLoadKeySchema(rdb);
 
@@ -192,7 +192,7 @@ GraphContext *RdbLoadGraphContext_v10(RedisModuleIO *rdb) {
 		// revert to default synchronization behavior
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 		Graph_ApplyAllPending(g, true);
-		
+
 		uint label_count = Graph_LabelTypeCount(g);
 		// update the node statistics
 		for(uint i = 0; i < label_count; i++) {

@@ -27,8 +27,8 @@ static GraphContext *_GetOrCreateGraphContext(char *graph_name) {
  * of data blocks and matrices since they are all in the appropriate size. */
 static void _InitGraphDataStructure(Graph *g, uint64_t node_count, uint64_t edge_count,
 									uint64_t label_count,  uint64_t relation_count) {
-	DataBlock_Accommodate(g->nodes, node_count);
-	DataBlock_Accommodate(g->edges, edge_count);
+	Graph_AllocateNodes(g, node_count);
+	Graph_AllocateEdges(g, edge_count);
 	for(uint64_t i = 0; i < label_count; i++) Graph_AddLabel(g);
 	for(uint64_t i = 0; i < relation_count; i++) Graph_AddRelationType(g);
 	// flush all matrices, guarantee matrix dimensions matches graph's nodes count
@@ -171,7 +171,7 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 		// revert to default synchronization behavior
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 		Graph_ApplyAllPending(g, true);
-		
+
 		uint label_count = Graph_LabelTypeCount(g);
 		// update the node statistics
 		// index the nodes
@@ -194,7 +194,7 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
 		RedisModule_Log(ctx, "notice", "Done decoding graph %s", GraphContext_GetName(gc));
 	}
-	
+
 	// release thread-local variables
 	QueryCtx_Free();
 

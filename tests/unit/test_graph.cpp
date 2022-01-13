@@ -57,6 +57,7 @@ class GraphTest : public ::testing::Test {
 		GrB_Index ncols, nrows, nvals;
 
 		// Create nodes.
+		Graph_AllocateNodes(g, node_count);
 		Node n;
 		for(uint i = 0; i < node_count; i++) Graph_CreateNode(g, &n, NULL, 0);
 
@@ -275,7 +276,7 @@ void benchmark_edge_creation_with_relationships() {
 		simple_tic(tic);
 		for(int j = 0; j < edge_count; j++) {
 			Graph_CreateEdge(g, connections[j].srcId, connections[j].destId, connections[j].relationId,
-							   &edge);
+							 &edge);
 		}
 		timings[i] = simple_toc(tic);
 		printf("%d Formed connections, time: %.6f sec\n", edge_count, timings[i]);
@@ -354,6 +355,7 @@ TEST_F(GraphTest, RemoveNodes) {
 	Node node;
 	Edge edge;
 
+	Graph_AllocateNodes(g, 3);
 	for(int i = 0; i < 3; i++) Graph_CreateNode(g, &node, NULL, 0);
 	int r = Graph_AddRelationType(g);
 
@@ -419,6 +421,7 @@ TEST_F(GraphTest, RemoveMultipleNodes) {
 	Graph *g = Graph_New(32, 32);
 	Graph_AcquireWriteLock(g);
 	int relation = Graph_AddRelationType(g);
+	Graph_AllocateNodes(g, 8);
 	for(int i = 0; i < 8; i++) Graph_CreateNode(g, &n, NULL, 0);
 
 	// First node.
@@ -492,6 +495,7 @@ TEST_F(GraphTest, RemoveEdges) {
 	GrB_Index nnz;
 	Graph *g = Graph_New(32, 32);
 	Graph_AcquireWriteLock(g);
+	Graph_AllocateNodes(g, 3);
 	for(int i = 0; i < 3; i++) Graph_CreateNode(g, &n, NULL, 0);
 	int r = Graph_AddRelationType(g);
 
@@ -667,6 +671,7 @@ TEST_F(GraphTest, GetEdge) {
 
 	Graph *g = Graph_New(nodeCount, nodeCount);
 	Graph_AcquireWriteLock(g);
+	Graph_AllocateNodes(g, nodeCount);
 	for(int i = 0; i < nodeCount; i++) Graph_CreateNode(g, &n, NULL, 0);
 	for(int i = 0; i < relationCount; i++) relations[i] = Graph_AddRelationType(g);
 
@@ -774,6 +779,7 @@ TEST_F(GraphTest, BulkDelete) {
 	int l  = Graph_AddLabel(g);
 	int r0 = Graph_AddRelationType(g);
 	int r1 = Graph_AddRelationType(g);
+	Graph_AllocateNodes(g, node_count);
 
 	for(int i = 0; i < node_count; i++) {
 		Graph_CreateNode(g, &n[i], &l, 1);
@@ -885,6 +891,7 @@ TEST_F(GraphTest, GraphStatistics) {
 	ASSERT_EQ(Graph_RelationEdgeCount(g, r1), 0);
 	ASSERT_EQ(Graph_LabeledNodeCount(g, l), 0);
 
+	Graph_AllocateNodes(g, node_count);
 	for(int i = 0; i < node_count; i++) Graph_CreateNode(g, &n[i], &l, 1);
 	ASSERT_EQ(g->stats.node_count[l], 4);
 
@@ -991,3 +998,4 @@ TEST_F(GraphTest, GraphStatistics) {
 	// Clean up.
 	Graph_Free(g);
 }
+

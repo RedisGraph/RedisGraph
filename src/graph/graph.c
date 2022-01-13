@@ -38,20 +38,20 @@ static void _CreateRWLock
 
 	// specify prefer write in lock creation attributes
 	int res = 0 ;
-	UNUSED (res) ;
+	UNUSED(res) ;
 
 	pthread_rwlockattr_t attr ;
-	res = pthread_rwlockattr_init (&attr) ;
-	ASSERT (res == 0) ;
+	res = pthread_rwlockattr_init(&attr) ;
+	ASSERT(res == 0) ;
 
 #if !defined(__APPLE__) && !defined(__FreeBSD__)
 	int pref = PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP ;
 	res = pthread_rwlockattr_setkind_np(&attr, pref) ;
-	ASSERT (res == 0) ;
+	ASSERT(res == 0) ;
 #endif
 
 	res = pthread_rwlock_init(&g->_rwlock, &attr);
-	ASSERT (res == 0) ;
+	ASSERT(res == 0) ;
 }
 
 // acquire a lock that does not restrict access from additional reader threads
@@ -93,6 +93,10 @@ static inline size_t _Graph_NodeCap(const Graph *g) {
 // return number of edges graph can contain
 static inline size_t _Graph_EdgeCap(const Graph *g) {
 	return g->edges->itemCap;
+}
+
+static inline void _Graph_UpdateMatrixDimensions(Graph *g, size_t node_count) {
+	g->matrix_size = node_count + g->matrix_margin;
 }
 
 static void _CollectEdgesFromEntry
@@ -255,9 +259,9 @@ MATRIX_POLICY Graph_GetMatrixPolicy
 	MATRIX_POLICY policy = SYNC_POLICY_UNKNOWN;
 	SyncMatrixFunc f = g->SynchronizeMatrix;
 
-	if      (f == _MatrixSynchronize)      policy = SYNC_POLICY_FLUSH_RESIZE;
-	else if (f == _MatrixResizeToCapacity) policy = SYNC_POLICY_RESIZE;
-	else if (f == _MatrixNOP)              policy = SYNC_POLICY_NOP;
+	if(f == _MatrixSynchronize)           policy = SYNC_POLICY_FLUSH_RESIZE;
+	else if(f == _MatrixResizeToCapacity) policy = SYNC_POLICY_RESIZE;
+	else if(f == _MatrixNOP)              policy = SYNC_POLICY_NOP;
 	else ASSERT(false);
 
 	return policy;
@@ -303,8 +307,8 @@ void Graph_ApplyAllPending
 	M = Graph_GetAdjacencyMatrix(g, false);
 	RG_Matrix_wait(M, force_flush);
 
-    M = Graph_GetNodeLabelMatrix(g);
-    RG_Matrix_wait(M, force_flush);
+	M = Graph_GetNodeLabelMatrix(g);
+	RG_Matrix_wait(M, force_flush);
 
 	n = array_len(g->labels);
 	for(int i = 0; i < n; i ++) {
@@ -390,7 +394,11 @@ Graph *Graph_New
 	GrB_Info info;
 	UNUSED(info);
 
+	// compute initial matrix size
+	g->matrix_size = 0;
+	Config_Option_get(Config_NODE_CREATION_BUFFER, &g->matrix_margin);
 	GrB_Index n = Graph_RequiredMatrixDim(g);
+
 	RG_Matrix_new(&g->node_labels, GrB_BOOL, n, n);
 	RG_Matrix_new(&g->adjacency_matrix, GrB_BOOL, n, n);
 	RG_Matrix_new(&g->adjacency_matrix->transposed, GrB_BOOL, n, n);
@@ -412,7 +420,7 @@ Graph *Graph_New
 // All graph matrices are required to be squared NXN
 // where N = Graph_RequiredMatrixDim.
 inline size_t Graph_RequiredMatrixDim(const Graph *g) {
-	return _Graph_NodeCap(g);
+	return g->matrix_size;
 }
 
 size_t Graph_NodeCount(const Graph *g) {
@@ -462,6 +470,10 @@ int Graph_LabelTypeCount(const Graph *g) {
 void Graph_AllocateNodes(Graph *g, size_t n) {
 	ASSERT(g);
 	DataBlock_Accommodate(g->nodes, n);
+
+	size_t node_count = Graph_UncompactedNodeCount(g) + n;
+	if(node_count > Graph_RequiredMatrixDim(g))
+		_Graph_UpdateMatrixDimensions(g, node_count);
 }
 
 void Graph_AllocateEdges(Graph *g, size_t n) {
@@ -802,7 +814,7 @@ uint Graph_GetNodeLabels
 	bool depleted = false;
 
 	for(; i < label_count; i++) {
-		res = RG_MatrixTupleIter_next(&iter, NULL, labels+i, NULL, &depleted);
+		res = RG_MatrixTupleIter_next(&iter, NULL, labels + i, NULL, &depleted);
 		ASSERT(res == GrB_SUCCESS);
 
 		if(depleted) break;
@@ -892,7 +904,7 @@ void Graph_DeleteNode
 		RG_Matrix M = Graph_GetLabelMatrix(g, label_id);
 		// clear label matrix at position node ID
 		GrB_Info res = RG_Matrix_removeElement_BOOL(M, ENTITY_GET_ID(n),
-				ENTITY_GET_ID(n));
+													ENTITY_GET_ID(n));
 		// update statistics
 		GraphStatistics_DecNodeCount(&g->stats, label_id, 1);
 	}

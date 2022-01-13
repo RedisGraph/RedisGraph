@@ -37,8 +37,8 @@ static void _InitGraphDataStructure
 	uint64_t label_count,
 	uint64_t relation_count
 ) {
-	DataBlock_Accommodate(g->nodes, node_count);
-	DataBlock_Accommodate(g->edges, edge_count);
+	Graph_AllocateNodes(g, node_count);
+	Graph_AllocateEdges(g, edge_count);
 	for(uint64_t i = 0; i < label_count; i++) Graph_AddLabel(g);
 	for(uint64_t i = 0; i < relation_count; i++) Graph_AddRelationType(g);
 	// flush all matrices
@@ -199,7 +199,7 @@ GraphContext *RdbLoadGraphContext_v11
 		// revert to default synchronization behavior
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 		Graph_ApplyAllPending(g, true);
-		
+
 		uint label_count = Graph_LabelTypeCount(g);
 		// update the node statistics
 		for(uint i = 0; i < label_count; i++) {

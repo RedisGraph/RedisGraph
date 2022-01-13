@@ -124,6 +124,28 @@ $ redis-server --loadmodule ./redisgraph.so QUERY_MEM_CAPACITY 1048576 // 1 mega
 $ redis-cli GRAPH.CONFIG SET QUERY_MEM_CAPACITY 1048576
 ```
 
+---
+
+## NODE_CREATION_BUFFER
+
+The node creation buffer is the number of new nodes that can be created without resizing matrices. When set to 0, the matrices will have no extra space and every node creation will increase the graph dimensions by 1.
+
+Reducing this value will reduce memory consumption, but cause performance degradation due to the increased frequency of matrix resizes.
+
+Conversely, increasing it might improve performance for write-heavy workloads but will increase memory consumption.
+
+This configuration can only be set when the module loads.
+
+### Default
+
+`NODE_CREATION_BUFFER` is 16,384 by default.
+
+### Example
+
+```
+$ redis-server --loadmodule ./redisgraph.so NODE_CREATION_BUFFER 100
+```
+
 # Query Configurations
 
 Some configurations may be set per query in the form of additional arguments after the query string. All per-query configurations are off by default unless using a language-specific client, which may establish its own defaults.

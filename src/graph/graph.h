@@ -55,6 +55,8 @@ struct Graph {
 	RG_Matrix *relations;               // relation matrices
 	RG_Matrix _zero_matrix;             // zero matrix
 	pthread_rwlock_t _rwlock;           // read-write lock scoped to this specific graph
+	size_t matrix_size;                 // dimensions of matrices in the graph
+	uint matrix_margin;                 // size of node creation buffer in matrices
 	bool _writelocked;                  // true if the read-write lock was acquired by a writer
 	SyncMatrixFunc SynchronizeMatrix;   // function pointer to matrix synchronization routine
 	GraphStatistics stats;              // graph related statistics
