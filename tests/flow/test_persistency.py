@@ -244,7 +244,8 @@ class testGraphPersistency():
         runner = CliRunner()
 
         csv_path = os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/resources/bulk_formatted/'
-        res = runner.invoke(bulk_insert, ['--nodes', csv_path + 'Person.csv',
+        res = runner.invoke(bulk_insert, ['--port', redis_con.config_get('port')['port'],
+                                          '--nodes', csv_path + 'Person.csv',
                                           '--nodes', csv_path + 'Country.csv',
                                           '--relations', csv_path + 'KNOWS.csv',
                                           '--relations', csv_path + 'VISITED.csv',
