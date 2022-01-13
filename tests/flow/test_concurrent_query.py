@@ -277,3 +277,59 @@ class testConcurrentQueryFlow(FlowTestsBase):
                 self.env.assertEquals(0, result)
             else:
                 self.env.assertEquals(1000, result["result_set"][0][0])
+
+    def test_10_write_starvation(self):
+        # make sure write query do not starve
+        # when issuing a large number of read queries
+        # alongside a single write query
+        # we dont want the write query to have to wait for
+        # too long, consider the following sequence:
+        # R, W, R, R, R, R, R, R, R...
+        # if write is starved our write query might have to wait
+        # for all queued read queries to complete while holding
+        # Redis global lock, this will hurt performance
+        #
+        # this test issues a similar sequence of queries and
+        # validates that the write query wasn't delayed too much
+
+        self.graph = Graph(GRAPH_ID, self.conn)
+        pool = Pool(nodes=CLIENT_COUNT)
+
+        Rq = "UNWIND range(0, 10000) AS x WITH x WHERE x = 9999 RETURN 'R', timestamp()"
+        Wq = "UNWIND range(0, 1000) AS x WITH x WHERE x = 27 CREATE ({v:1}) RETURN 'W', timestamp()"
+        Slowq = "UNWIND range(0, 100000) AS x WITH x WHERE (x % 73) = 0 RETURN count(1)"
+
+        # issue a number of slow queries, this will give us time to fill up
+        # RedisGraph internal threadpool queue
+        queries = [Slowq] * CLIENT_COUNT * 5
+        nulls = [None] * CLIENT_COUNT * 5
+
+        # issue queries asynchronously
+        pool.imap(thread_run_query, queries, nulls)
+
+        # create a long sequence of read queries
+        queries = [Rq] * CLIENT_COUNT * 10
+        nulls = [None] * CLIENT_COUNT * 10
+
+        # inject a single write query close to the begining on the sequence
+        queries[CLIENT_COUNT] = Wq
+
+        # invoke queries
+        # execute queries in parallel
+        results = pool.map(thread_run_query, queries, nulls)
+
+        # count how many queries completed before the write query
+        count = 0
+        write_ts = results[CLIENT_COUNT]["result_set"][0][1]
+        for result in results:
+            row = result["result_set"][0]
+            ts = row[1]
+            if ts < write_ts:
+                count += 1
+
+        # make sure write query wasn't starved
+        self.env.assertLessEqual(count, len(queries) * 0.3)
+
+        # delete the key
+        self.conn.delete(GRAPH_ID)
+
