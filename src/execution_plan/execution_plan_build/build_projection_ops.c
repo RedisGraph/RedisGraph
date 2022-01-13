@@ -41,22 +41,7 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 		const cypher_astnode_t *item = cypher_ast_order_by_get_item(order_clause, i);
 		const cypher_astnode_t *ast_exp = cypher_ast_sort_item_get_expression(item);
 		AR_ExpNode *exp = AR_EXP_FromASTNode(ast_exp);
-		// Build a string representation of the ORDER identity.
-		char *constructed_name = AR_EXP_BuildResolvedName(exp);
-		// If the constructed name refers to a QueryGraph entity, use its canonical name.
-		char *canonical_name = raxFind(ast->canonical_entity_names, (unsigned char *)constructed_name,
-									   strlen(constructed_name));
-		if(canonical_name == raxNotFound) {
-			// Otherwise, introduce a new canonical name.
-			canonical_name = constructed_name;
-			raxInsert(ast->canonical_entity_names, (unsigned char *)constructed_name, strlen(constructed_name),
-					  constructed_name, NULL);
-		} else {
-			rm_free(constructed_name);
-		}
-
-		exp->resolved_name = canonical_name;
-		AST_AttachName(ast, item, exp->resolved_name);
+		exp->resolved_name = AR_EXP_BuildResolvedName(exp);
 
 		array_append(order_exps, exp);
 	}

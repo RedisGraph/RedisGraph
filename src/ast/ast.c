@@ -268,7 +268,6 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	ast->params_parse_result = NULL;
 	ast->referenced_entities = NULL;
 	ast->parse_result = parse_result;
-	ast->canonical_entity_names = raxNew();
 	ast->anot_ctx_collection = AST_AnnotationCtxCollection_New();
 
 	*(ast->ref_count) = 1;
@@ -294,7 +293,6 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->anot_ctx_collection = master_ast->anot_ctx_collection;
-	ast->canonical_entity_names = master_ast->canonical_entity_names;
 	ast->free_root = true;
 	ast->ref_count = rm_malloc(sizeof(uint));
 	ast->parse_result = NULL;
@@ -416,11 +414,6 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 	return aggregated;
 }
 
-const char *AST_GetEntityName(const AST *ast, const cypher_astnode_t *entity) {
-	AnnotationCtx *name_ctx = AST_AnnotationCtxCollection_GetNameCtx(ast->anot_ctx_collection);
-	return cypher_astnode_get_annotation(name_ctx, entity);
-}
-
 const char **AST_GetProjectAll(const cypher_astnode_t *projection_clause) {
 	AST *ast = QueryCtx_GetAST();
 	AnnotationCtx *project_all_ctx = AST_AnnotationCtxCollection_GetProjectAllCtx(
@@ -513,6 +506,24 @@ static void _free_to_string_annotation
 	rm_free(annotation);
 }
 
+// Compute the number of digits in a non-negative integer.
+static inline int _digit_count(int n) {
+	int count = 0;
+	do {
+		n /= 10;
+		count++;
+	} while(n);
+	return count;
+}
+
+static inline char *_create_anon_alias(int anon_count) {
+	// We need space for "anon_" (5), all digits, and a NULL terminator (1)
+	int alias_len = _digit_count(anon_count) + 6;
+	char *alias = rm_malloc(alias_len * sizeof(char));
+	snprintf(alias, alias_len, "anon_%d", anon_count);
+	return alias;
+}
+
 char *AST_ToString(const cypher_astnode_t *node) {
 	QueryCtx *ctx = QueryCtx_GetQueryCtx();
 	AST *ast = QueryCtx_GetAST();
@@ -527,11 +538,25 @@ char *AST_ToString(const cypher_astnode_t *node) {
 
 	char * str = (char *)cypher_astnode_get_annotation(to_string_ctx, node);
 	if(str == NULL) {
-		struct cypher_input_range range = cypher_astnode_range(node);
-		uint length = range.end.offset - range.start.offset + 2;
-		str = rm_malloc(sizeof(char) * length);
-		strncpy(str, ctx->query_data.query + range.start.offset, length - 1);
-		str[length - 1] = '\0';
+		cypher_astnode_type_t t = cypher_astnode_type(node);
+		const cypher_astnode_t *ast_identifier = NULL;
+		if(t == CYPHER_AST_NODE_PATTERN) {
+			ast_identifier = cypher_ast_node_pattern_get_identifier(node);
+		} else if(t == CYPHER_AST_REL_PATTERN) {
+			ast_identifier = cypher_ast_rel_pattern_get_identifier(node);
+		} else {
+			struct cypher_input_range range = cypher_astnode_range(node);
+			uint length = range.end.offset - range.start.offset + 1;
+			str = rm_malloc(sizeof(char) * length);
+			strncpy(str, ctx->query_data.query + range.start.offset, length - 1);
+			str[length - 1] = '\0';
+		}
+		if(ast_identifier) {
+			// Graph entity has a user-defined alias, clone it for the annotation.
+			return cypher_ast_identifier_get_name(ast_identifier);
+		} else if (str == NULL) {
+			str = _create_anon_alias(ast->anot_ctx_collection->anon_count++);
+		}
 		cypher_astnode_attach_annotation(to_string_ctx, node, (void *)str, NULL);
 	}
 	return str;
@@ -558,7 +583,6 @@ void AST_Free(AST *ast) {
 			/* this is the master AST,
 			 * free the annotation contexts that have been constructed */
 			AST_AnnotationCtxCollection_Free(ast->anot_ctx_collection);
-			raxFreeWithCallback(ast->canonical_entity_names, rm_free);
 			parse_result_free(ast->parse_result);
 		}
 

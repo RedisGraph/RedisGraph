@@ -9,16 +9,11 @@
 
 AST_AnnotationCtxCollection *AST_AnnotationCtxCollection_New() {
 	AST_AnnotationCtxCollection *anotCtxCollection = rm_malloc(sizeof(AST_AnnotationCtxCollection));
-	anotCtxCollection->name_ctx = NULL;
 	anotCtxCollection->named_paths_ctx = NULL;
 	anotCtxCollection->project_all_ctx = NULL;
-	anotCtxCollection->to_string_ctx = NULL;
+	anotCtxCollection->to_string_ctx   = NULL;
+	anotCtxCollection->anon_count      = 0;
 	return anotCtxCollection;
-}
-
-inline AnnotationCtx *AST_AnnotationCtxCollection_GetNameCtx(const AST_AnnotationCtxCollection
-															 *anot_ctx_collection) {
-	return anot_ctx_collection->name_ctx;
 }
 
 inline AnnotationCtx *AST_AnnotationCtxCollection_GetNamedPathsCtx(const AST_AnnotationCtxCollection
@@ -34,11 +29,6 @@ inline AnnotationCtx *AST_AnnotationCtxCollection_GetProjectAllCtx(const AST_Ann
 inline AnnotationCtx *AST_AnnotationCtxCollection_GetToStringCtx(const AST_AnnotationCtxCollection
 																   *anot_ctx_collection) {
 	return anot_ctx_collection->to_string_ctx;
-}
-
-inline void AST_AnnotationCtxCollection_SetNameCtx(AST_AnnotationCtxCollection *anot_ctx_collection,
-												   AnnotationCtx *name_ctx) {
-	anot_ctx_collection->name_ctx = name_ctx;
 }
 
 inline void AST_AnnotationCtxCollection_SetNamedPathsCtx(AST_AnnotationCtxCollection
@@ -60,7 +50,6 @@ inline void AST_AnnotationCtxCollection_SetToStringCtx(AST_AnnotationCtxCollecti
 
 void AST_AnnotationCtxCollection_Free(AST_AnnotationCtxCollection *anotCtxCollection) {
 	if(anotCtxCollection) {
-		if(anotCtxCollection->name_ctx) cypher_ast_annotation_context_free(anotCtxCollection->name_ctx);
 		if(anotCtxCollection->named_paths_ctx) cypher_ast_annotation_context_free(
 				anotCtxCollection->named_paths_ctx);
 		if(anotCtxCollection->project_all_ctx) cypher_ast_annotation_context_free(
