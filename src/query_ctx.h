@@ -21,6 +21,7 @@ typedef struct {
 	AST *ast;       // The scoped AST associated with this query.
 	rax *params;    // Query parameters.
 	const char *query;    // Query string.
+	const char *query_no_params;
 } QueryCtx_QueryData;
 
 typedef struct {

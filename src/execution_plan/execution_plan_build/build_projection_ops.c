@@ -33,7 +33,6 @@ static AR_ExpNode **_PopulateProjectAll(const cypher_astnode_t *clause) {
 // Handle ORDER entities
 static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 										   const cypher_astnode_t *order_clause) {
-	AST *ast = QueryCtx_GetAST();
 	uint count = cypher_ast_order_by_nitems(order_clause);
 	AR_ExpNode **order_exps = array_new(AR_ExpNode *, count);
 
@@ -41,8 +40,7 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 		const cypher_astnode_t *item = cypher_ast_order_by_get_item(order_clause, i);
 		const cypher_astnode_t *ast_exp = cypher_ast_sort_item_get_expression(item);
 		AR_ExpNode *exp = AR_EXP_FromASTNode(ast_exp);
-		exp->resolved_name = AR_EXP_BuildResolvedName(exp);
-
+		exp->resolved_name = AST_ToString(ast_exp);
 		array_append(order_exps, exp);
 	}
 

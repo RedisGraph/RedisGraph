@@ -72,6 +72,9 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 	// Return invalid execution context if there isn't a parser result.
 	cypher_parse_result_t *params_parse_result = parse_params(query,
 															  &query_string);
+	// update query context with the query without params
+	QueryCtx *ctx = QueryCtx_GetQueryCtx();
+	ctx->query_data.query_no_params = query_string;
 
 	// Parameter parsing failed, return NULL.
 	if(params_parse_result == NULL) return NULL;
