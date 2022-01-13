@@ -78,6 +78,9 @@ SIValue *GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id);
 /* Updates existing attribute value, return true if property been updated. */
 bool GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue value);
 
+// returns an SIArray of all keys in graph entity properties
+SIValue GraphEntity_Keys(const GraphEntity *e);
+
 /* Prints the graph entity into a buffer, returns what is the string length, buffer can be re-allocated at need. */
 void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen,
 						  size_t *bytesWritten,
