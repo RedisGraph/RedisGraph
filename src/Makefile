@@ -4,6 +4,12 @@ ROOT:=$(realpath ..)
 override OS:=$(shell $(ROOT)/deps/readies/bin/platform --os)
 ARCH:=$(shell $(ROOT)/deps/readies/bin/platform --arch)
 
+ifeq ($(DEBUG),1)
+FLAVOR=debug
+else
+FLAVOR=release
+endif
+
 JOBS ?= $(shell MAX_NPROC=8 $(ROOT)/deps/readies/bin/nproc)
 
 ifneq ($(filter cov-upload,$(MAKECMDGOALS)),)
@@ -19,7 +25,6 @@ RAX_DIR = $(ROOT)/deps/rax
 XXHASH_DIR = $(ROOT)/deps/xxHash
 GRAPHBLAS_DIR = $(ROOT)/deps/GraphBLAS
 REDISEARCH_DIR = $(ROOT)/deps/RediSearch
-# REDISEARCH_BINDIR=$(ROOT)/deps/RediSearch/bin/$(OS)-$(ARCH)-$(FLAVOR)
 REDISEARCH_BINROOT=$(ROOT)/bin/$(OS)-$(ARCH)-$(FLAVOR)
 LIBCYPHER_PARSER_DIR = $(ROOT)/deps/libcypher-parser/lib/src
 
@@ -170,12 +175,6 @@ export CC_OBJECTS
 CC_DEPS = $(patsubst %.c, %.d, $(CC_SOURCES) )
 
 #----------------------------------------------------------------------------------------------
-
-ifeq ($(DEBUG),1)
-FLAVOR=debug
-else
-FLAVOR=release
-endif
 
 # Library dependencies
 RAX=$(ROOT)/deps/rax/rax.o
