@@ -39,14 +39,12 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 	if(!node) return;
 	ASSERT(identifiers != NULL);
 
-	if(cypher_astnode_type(node) == CYPHER_AST_IDENTIFIER) {
+	cypher_astnode_type_t type = cypher_astnode_type(node);
+	if(type == CYPHER_AST_IDENTIFIER) {
 		const char *identifier = cypher_ast_identifier_get_name(node);
 		raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
 		return;
 	}
-
-	uint child_count = cypher_astnode_nchildren(node);
-	cypher_astnode_type_t type = cypher_astnode_type(node);
 
 	/* In case current node is of type CALL
 	 * Process procedure call arguments, those should be defined prior
@@ -60,6 +58,11 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 		}
 		return;
 	}
+
+	// Don't visit the children of pattern comprehensions, as these will be aliased later.
+	if(type == CYPHER_AST_PATTERN_COMPREHENSION) return;
+
+	uint child_count = cypher_astnode_nchildren(node);
 
 	/* In case current node is of type projection
 	 * inspect first child only,
@@ -344,33 +347,6 @@ cleanup:
 	return res;
 }
 
-/* While Cypher allows paths to appear in a number of places, RedisGraph
- * only supports them in the appropriate clauses and in path filters. */
-static AST_Validation _Validate_Path_Locations(const cypher_astnode_t *root) {
-	uint nchildren = cypher_astnode_nchildren(root);
-	const cypher_astnode_type_t root_type = cypher_astnode_type(root);
-	for(uint i = 0; i < nchildren; i ++) {
-		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
-		const cypher_astnode_type_t child_type = cypher_astnode_type(child);
-		if(child_type == CYPHER_AST_PATTERN_PATH) {
-			if(root_type != CYPHER_AST_PATTERN &&
-			   root_type != CYPHER_AST_SHORTEST_PATH &&
-			   root_type != CYPHER_AST_MATCH &&
-			   root_type != CYPHER_AST_MERGE &&
-			   root_type != CYPHER_AST_WITH &&
-			   root_type != CYPHER_AST_NAMED_PATH &&
-			   root_type != CYPHER_AST_UNARY_OPERATOR &&
-			   root_type != CYPHER_AST_BINARY_OPERATOR) {
-				ErrorCtx_SetError("Encountered path traversal in unsupported location '%s'",
-								  cypher_astnode_typestr(child_type));
-				return AST_INVALID;
-			}
-		}
-		if(_Validate_Path_Locations(child) != AST_VALID) return AST_INVALID;
-	}
-	return AST_VALID;
-}
-
 static inline bool _AliasIsReturned(rax *projections, const char *identifier) {
 	return raxFind(projections, (unsigned char *)identifier, strlen(identifier)) != raxNotFound;
 }
@@ -492,6 +468,20 @@ static AST_Validation _ValidateInlinedProperties(const cypher_astnode_t *props) 
 		// MATCH (p {invalid_property_construction}) RETURN p
 		ErrorCtx_SetError("Encountered unhandled type in inlined properties.");
 		return AST_INVALID;
+	}
+
+	uint prop_count = cypher_ast_map_nentries(props);
+	for(uint i = 0; i < prop_count; i++) {
+		const cypher_astnode_t *prop_val = cypher_ast_map_get_value(props, i);
+		const cypher_astnode_t **patterns = AST_GetTypedNodes(prop_val, CYPHER_AST_PATTERN_PATH);
+		uint patterns_count = array_len(patterns);
+		array_free(patterns);
+		if(patterns_count > 0) {
+			// Encountered query of the form:
+			// MATCH (a {prop: ()-[]->()}) RETURN a
+			ErrorCtx_SetError("Encountered unhandled type in inlined properties.");
+			return AST_INVALID;
+		}
 	}
 
 	return AST_VALID;
@@ -1498,7 +1488,7 @@ static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, 
 	for(uint i = 0; i < n; i ++) {
 		clauses[i] = (cypher_astnode_t *)cypher_ast_query_get_clause(root, i + start_offset);
 	}
-	struct cypher_input_range range = {};
+	struct cypher_input_range range = {0};
 	ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n, clauses, n, range);
 	ast->ref_count = rm_malloc(sizeof(uint));
 	*(ast->ref_count) = 1;
@@ -1658,9 +1648,6 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 
 	AST mock_ast; // Build a fake AST with the correct AST root
 	mock_ast.root = body;
-
-	// Check for path traversals in unsupported locations.
-	if(_Validate_Path_Locations(mock_ast.root) != AST_VALID) return AST_INVALID;
 
 	// Check for invalid queries not captured by libcypher-parser
 	AST_Validation res;

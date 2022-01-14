@@ -46,7 +46,7 @@
 // we first attempt to retrieve it from the local entity, then check the graph if not found.
 // if the Node is unlabeled, the return value will be GRAPH_NO_LABEL. */
 #define EDGE_GET_RELATION_ID(e, g)                                                         \
-({                                                                                         \
+__extension__({                                                                                         \
 	if ((e)->relationID == GRAPH_UNKNOWN_RELATION || (e)->relationID == GRAPH_NO_RELATION) \
 		 (e)->relationID = Graph_GetEdgeRelation((g), (e));                   \
 	(e)->relationID;                                                                       \
