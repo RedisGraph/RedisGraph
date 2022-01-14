@@ -1,8 +1,8 @@
 
 ROOT:=$(realpath ..)
 
-OS:=$(shell MAX_NPROC=8 $(ROOT)/deps/readies/bin/platform --os)
-ARCH:=$(shell MAX_NPROC=8 $(ROOT)/deps/readies/bin/platform --arch)
+override OS:=$(shell $(ROOT)/deps/readies/bin/platform --os)
+ARCH:=$(shell $(ROOT)/deps/readies/bin/platform --arch)
 
 JOBS ?= $(shell MAX_NPROC=8 $(ROOT)/deps/readies/bin/nproc)
 
@@ -18,9 +18,10 @@ endif
 RAX_DIR = $(ROOT)/deps/rax
 XXHASH_DIR = $(ROOT)/deps/xxHash
 GRAPHBLAS_DIR = $(ROOT)/deps/GraphBLAS
-REDISEARCH_DIR = $(ROOT)/deps/RediSearch/src
-REDISEARCH_BINDIR=$(ROOT)/deps/RediSearch/bin/$(OS)-$(ARCH)-$(FLAVOR)
-LIBCYPHER-PARSER_DIR = $(ROOT)/deps/libcypher-parser/lib/src
+REDISEARCH_DIR = $(ROOT)/deps/RediSearch
+# REDISEARCH_BINDIR=$(ROOT)/deps/RediSearch/bin/$(OS)-$(ARCH)-$(FLAVOR)
+REDISEARCH_BINROOT=$(ROOT)/bin/$(OS)-$(ARCH)-$(FLAVOR)
+LIBCYPHER_PARSER_DIR = $(ROOT)/deps/libcypher-parser/lib/src
 
 # if DEBUG env var is set, we compile with "debug" cflags
 DEBUGFLAGS = -g -ggdb -O3
@@ -180,12 +181,12 @@ endif
 RAX=$(ROOT)/deps/rax/rax.o
 LIBXXHASH=$(ROOT)/deps/xxHash/libxxhash.a
 GRAPHBLAS=$(ROOT)/deps/GraphBLAS/build/libgraphblas.a
-REDISEARCH=$(REDISEARCH_BIN)/search-static/libredisearch.a
-LIBCYPHER-PARSER=$(ROOT)/deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
+REDISEARCH=$(REDISEARCH_BINROOT)/search-static/libredisearch.a
+LIBCYPHER_PARSER=$(ROOT)/deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
 # Compilation deps for the module
-LIBS=$(RAX) $(GRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER-PARSER)
-MODULE= $(LIBS) $(CC_OBJECTS)
+LIBS=$(RAX) $(GRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER_PARSER)
+MODULE_DEPS=$(LIBS) $(CC_OBJECTS)
 
 #----------------------------------------------------------------------------------------------
 
@@ -203,8 +204,7 @@ endif
 
 # Compile C file while generating a .d file for it
 %.o: %.c
-%.o: %.c
-	$(REDISGRAPH_CC) $(CFLAGS) -I. -I$(GRAPHBLAS_DIR)/Include -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR) -c $< -o $@ -MMD -MF $(@:.o=.d)
+	$(REDISGRAPH_CC) $(CFLAGS) -I. -I$(GRAPHBLAS_DIR)/Include -I$(RAX_DIR) -I$(LIBCYPHER_PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR)/src -c $< -o $@ -MMD -MF $(@:.o=.d)
 
 all: redisgraph.so
 
@@ -215,36 +215,37 @@ all: redisgraph.so
 
 $(RAX):
 	@$(MAKE) -C $(ROOT)/deps/rax -f $(ROOT)/build/rax/Makefile
-.PHONY: $(RAX)
+# .PHONY: $(RAX)
 
 $(LIBXXHASH):
 	@$(MAKE) -C $(ROOT)/deps/xxHash lib
-.PHONY: $(LIBXXHASH)
+# .PHONY: $(LIBXXHASH)
 
 # Build GraphBLAS only if library does not already exists.
 $(GRAPHBLAS):
 ifeq (,$(wildcard $(GRAPHBLAS)))
 	@$(MAKE) -C $(ROOT)/deps/GraphBLAS CMAKE_OPTIONS="-DCMAKE_C_COMPILER='$(CC)'" static_only JOBS=$(JOBS)
 endif
-.PHONY: $(GRAPHBLAS)
+# .PHONY: $(GRAPHBLAS)
 
 $(REDISEARCH):
 ifeq (,$(wildcard $(REDISEARCH)))
-	make -C $(ROOT)/deps/RediSearch STATIC=1
+	make -C $(REDISEARCH_DIR) STATIC=1 BINROOT=$(REDISEARCH_BINROOT)
 endif
 
-.PHONY: $(REDISEARCH)
+# .PHONY: $(REDISEARCH)
 
 # Build libcypher-parser only if library does not already exists.
-$(LIBCYPHER-PARSER):
-ifeq (,$(wildcard $(LIBCYPHER-PARSER)))
+$(LIBCYPHER_PARSER):
+ifeq (,$(wildcard $(LIBCYPHER_PARSER)))
+	set -e ;\
 	cd $(ROOT)/deps/libcypher-parser; \
 	sh ./autogen.sh; \
-	./configure --disable-shared;
+	./configure --disable-shared
 	$(MAKE) CFLAGS="-O3 -fPIC -DYY_BUFFER_SIZE=1048576" clean check -C $(ROOT)/deps/libcypher-parser
 endif
 
-.PHONY: $(LIBCYPHER-PARSER)
+# .PHONY: $(LIBCYPHER_PARSER)
 
 #----------------------------------------------------------------------------------------------
 
@@ -255,7 +256,7 @@ objcopy --add-gnu-debuglink $1.debug $1
 endef
 
 # Build the module...
-redisgraph.so: $(MODULE)
+redisgraph.so: $(MODULE_DEPS)
 	$(REDISGRAPH_CC) -o $@ $(CC_OBJECTS) $(LIBS) $(SHOBJ_LDFLAGS) -lc -lm
 ifeq ($(OS),linux)
 ifneq ($(DEBUG),1)
@@ -271,7 +272,7 @@ ifeq ($(ALL),1)
 	@$(MAKE) -C $(ROOT)/deps/xxHash clean
 	@$(MAKE) -C $(ROOT)/deps/GraphBLAS clean
 	@$(MAKE) -C $(ROOT)/deps/libcypher-parser clean
-	rm -rf $(REDISEARCH_BINDIR) # Directly delete the RediSearch build artifacts
+	@$(MAKE) -C $(REDISEARCH_DIR) clean ALL=1
 endif
 	@$(MAKE) -C $(ROOT)/tests clean
 
@@ -288,9 +289,9 @@ package: redisgraph.so
 
 test: redisgraph.so
 	# check valgrind flag is not empty
-ifneq ($(VALGRIND),)
+ifeq ($(VALGRIND),1)
 	# valgrind is requested, check that host's os is not Linux
-ifneq ($(OS),Linux)
+ifeq ($(OS),macos)
 	@echo building docker to run valgrind on MacOS
 	@cd .. ;\
 	docker build -f tests/Dockerfile -t mac_os_test_docker .
