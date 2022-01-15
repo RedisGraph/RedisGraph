@@ -24,13 +24,13 @@ class RedisGraphSetup(paella.Setup):
 
     def debian_compat(self):
         self.install("locales")
-        self.run("%s/bin/getgcc" % READIES, sudo=True)
+        self.run("%s/bin/getgcc" % READIES)
         self.install("peg")
 
     def redhat_compat(self):
         self.install("redhat-lsb-core")
         self.run("%s/bin/getepel" % READIES, sudo=True)
-        self.run("%s/bin/getgcc --modern" % READIES, sudo=True)
+        self.run("%s/bin/getgcc --modern" % READIES)
         self.install("m4 libgomp")
         self.install_peg()
 
@@ -46,7 +46,7 @@ class RedisGraphSetup(paella.Setup):
 
     def alpine(self):
         self.install("automake make autoconf libtool m4")
-        self.run("%s/bin/getgcc" % READIES, sudo=True)
+        self.run("%s/bin/getgcc" % READIES)
         self.install_peg()
 
     def linux_last(self):
@@ -54,7 +54,7 @@ class RedisGraphSetup(paella.Setup):
 
     def common_last(self):
         self.install("astyle", _try=True) # fails for centos7
-        self.run("%s/bin/getcmake --usr" % READIES, sudo=True)
+        self.run("%s/bin/getcmake --usr" % READIES)
         self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall".format(PYTHON=self.python, READIES=READIES))
 
         self.pip_install("-r tests/requirements.txt")

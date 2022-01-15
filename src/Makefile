@@ -18,7 +18,7 @@ endif
 RAX_DIR = $(ROOT)/deps/rax
 XXHASH_DIR = $(ROOT)/deps/xxHash
 GRAPHBLAS_DIR = $(ROOT)/deps/GraphBLAS
-REDISEARCH_DIR = $(ROOT)/deps/RediSearch/src
+REDISEARCH_DIR = $(ROOT)/deps/RediSearch
 LIBCYPHER-PARSER_DIR = $(ROOT)/deps/libcypher-parser/lib/src
 
 # if DEBUG env var is set, we compile with "debug" cflags
@@ -196,7 +196,7 @@ endif
 
 # Compile C file while generating a .d file for it
 %.o: %.c
-	$(REDISGRAPH_CC) $(CFLAGS) -I. -I$(GRAPHBLAS_DIR)/Include -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR) -c $< -o $@ -MMD -MF $(@:.o=.d)
+	$(REDISGRAPH_CC) $(CFLAGS) -I. -I$(GRAPHBLAS_DIR)/Include -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR)/src -c $< -o $@ -MMD -MF $(@:.o=.d)
 
 all: redisgraph.so
 
@@ -267,8 +267,8 @@ ifeq ($(ALL),1)
 	@$(MAKE) -C $(ROOT)/deps/xxHash clean
 	@$(MAKE) -C $(ROOT)/deps/GraphBLAS clean
 	@$(MAKE) -C $(ROOT)/deps/libcypher-parser clean
-	rm -rf $(ROOT)/deps/RediSearch/build/      # Directly delete the RediSearch build artifacts
 endif
+	@$(MAKE) -C $(REDISEARCH_DIR) clean
 	@$(MAKE) -C $(ROOT)/tests clean
 .PHONY: clean
 

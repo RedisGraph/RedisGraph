@@ -57,15 +57,6 @@ commands:
             git submodule update --init deps/readies
             ./deps/readies/bin/getpy3
 
-  install-arlecchino:
-    steps:
-      - run:
-          name: Install Arlecchino
-          shell: /bin/bash -l -eo pipefail
-          command: |
-            cd
-            bash <(curl -fsSL https://raw.githubusercontent.com/RedisLabsModules/arlecchino/master/bin/setup-rlec)
-
   save-tests-logs:
     steps:
       - run:
@@ -337,7 +328,10 @@ jobs:
             sudo ./deps/readies/bin/getdocker --just-enable-exp
             docker version
             python3 -m pip list
-      - install-arlecchino
+      - run:
+          name: Install Arlecchino
+          command: |
+            FORCE=1 ./deps/readies/bin/getrlec
       - run:
           name: Build
           shell: /bin/bash -l -eo pipefail

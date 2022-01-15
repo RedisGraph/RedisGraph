@@ -9,7 +9,6 @@ SHELL ["/bin/bash", "-l", "-c"]
 RUN echo "Building for {{OSNICK}} ({{OS}}) for {{ARCH}} [with Redis {{REDIS_VERSION}}]"
 
 WORKDIR /build
-
 COPY --from=redis /usr/local/ /usr/local/
 
 ADD . /build
@@ -34,38 +33,39 @@ ENV LC_ALL=en_US.UTF-8
 RUN make -j`nproc`
 
 {% if TEST == "1" %}
-RUN TEST= make test
+RUN TEST='' make test
 {% endif %}
 
 {% if PACK == "1" %}
 RUN mkdir -p bin/artifacts
 RUN make package
+RUN set -e ;\
+    echo "Artifacts:" ;\
+    du -ah --apparent-size /build/bin/artifacts
 {% endif %}
 
 #----------------------------------------------------------------------------------------------
-{% if REDIS_OSNICK == "alpine3" %}
+{% if OSNICK == "alpine3" %}
 FROM redis:{{REDIS_VERSION}}-alpine
 {% else %}
 FROM redisfab/redis:{{REDIS_VERSION}}-{{ARCH}}-{{OSNICK}}
 {% endif %}
 
-SHELL ["/bin/bash", "-l", "-c"]
-
 WORKDIR /data
 
 RUN mkdir -p "{{MODULES_DIR}}"
 
+COPY --from=builder /build/src/redisgraph.so "{{MODULES_DIR}}/"
+
 {% if ARTIFACTS == "1" %}
 RUN mkdir -p /var/opt/redislabs/artifacts
 RUN chown -R redis:redis /var/opt/redislabs
-COPY --from=builder /build/bin/artifacts/ /var/opt/redislabs/artifacts
+COPY --from=builder /build/bin/artifacts/ /var/opt/redislabs/artifacts/
 {% endif %}
 
-COPY --from=builder /build/src/redisgraph.so "{{MODULES_DIR}}"
-
-RUN if command -v apt-get &> /dev/null; then apt-get -qq update; apt-get -q install -y libgomp1; fi
-RUN if command -v yum &> /dev/null; then yum install -y libgomp; fi
-RUN if command -v apk &> /dev/null; ]; then apk add libgomp; fi
+RUN if command -v apt-get 2>&1 > /dev/null; then apt-get -qq update; apt-get -q install -y libgomp1; fi
+RUN if command -v yum 2>&1 > /dev/null; then yum install -y libgomp; fi
+RUN if command -v apk 2>&1 > /dev/null; then apk add libgomp; fi
 
 EXPOSE 6379
 CMD ["redis-server", "--loadmodule", "{{MODULES_DIR}}/redisgraph.so"]
