@@ -357,6 +357,7 @@ jobs:
       - run:
           name: Access artifacts
           command: |
+            mkdir -p bin
             ln -s ~/workspace/artifacts bin/artifacts
 #      - run:
 #          name: Build
