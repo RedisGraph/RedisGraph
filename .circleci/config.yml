@@ -310,6 +310,25 @@ jobs:
       - vm-build-platforms-steps:
           platform: <<parameters.platform>>
 
+  build-for-rlec:
+    docker:
+      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+    steps:
+      - early-returns
+      - checkout-all
+      - setup-prerequisits
+      - restore_cache:
+          keys:
+            - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
+      - run:
+          name: Build
+          command: bash -l -c "make all package"
+      - save_cache:
+          paths:
+            - deps/GraphBLAS/build
+          key: v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
+      - persist-artifacts
+ 
   test-rlec:
     machine:
       enabled: true
@@ -332,12 +351,19 @@ jobs:
           name: Install Arlecchino
           command: |
             FORCE=1 ./deps/readies/bin/getrlec
+      - attach_workspace:
+          at: ~/workspace
+            mkdir -p bin
       - run:
-          name: Build
-          shell: /bin/bash -l -eo pipefail
+          name: Access artifacts
           command: |
-            make -C build/docker build OSNICK=bionic SHOW=1
-          no_output_timeout: 30m
+            ln -s ~/workspace/artifacts bin/artifacts
+#      - run:
+#          name: Build
+#          shell: /bin/bash -l -eo pipefail
+#          command: |
+#            make -C build/docker build OSNICK=bionic SHOW=1
+#          no_output_timeout: 30m
       - run:
           name: Start RLEC
           shell: /bin/bash -l -eo pipefail
@@ -537,8 +563,12 @@ workflows:
       - build_macos:
           <<: *context
           <<: *on-integ-and-version-tags
+      - build-for-rlec:
+          <<: *on-any-branch
       - test-rlec:
           <<: *on-any-branch
+          requires:
+            - build-for-rlec
       - platform_build:
           <<: *context
           <<: *on-integ-and-version-tags
