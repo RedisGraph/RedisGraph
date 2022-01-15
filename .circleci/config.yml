@@ -79,13 +79,20 @@ commands:
   persist-artifacts:
     steps:
       - early-return-for-forked-pull-requests
+      - run:
+          name: List artifacts
+          command: |
+            cd bin/artifacts
+            du -ah --apparent-size *
       - persist_to_workspace:
-          root: bin/artifacts
+          root: bin/
           paths:
-            - snapshots/*.zip
-            - snapshots/*.tgz
-            - '*.zip'
-            - '*.tgz'
+            - artifacts/*.zip
+            - artifacts/*.tgz
+            - artifacts/*.tar
+            - snapshots/artifacts/*.zip
+            - snapshots/artifacts/*.tgz
+            - snapshots/artifacts/*.tar
 
   setup-prerequisits:
     steps:
@@ -146,7 +153,7 @@ commands:
       - run:
           name: Build for platform (docker build)
           command: |
-            make -C build/docker build DOCKER_SUFFIX=".<<parameters.platform>>" OSNICK=<<parameters.platform>> PACK=1 TEST=1 VERBOSE=1
+            make -C build/docker build DOCKER_SUFFIX=".<<parameters.platform>>" OSNICK=<<parameters.platform>> TEST=1 VERBOSE=1
       - early-return-for-forked-pull-requests
       - run:
           name: Build for platform (docker publish)
@@ -353,7 +360,6 @@ jobs:
             FORCE=1 ./deps/readies/bin/getrlec
       - attach_workspace:
           at: ~/workspace
-            mkdir -p bin
       - run:
           name: Access artifacts
           command: |
