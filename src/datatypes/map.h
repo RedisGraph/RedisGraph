@@ -81,9 +81,9 @@ uint Map_KeyCount
 	SIValue map  // map to count number of keys in
 );
 
-// return all keys in map
-// caller should free returned array with array_free
-SIValue *Map_Keys
+// return an SIArray of all keys in map
+// caller should free returned array with SIArray_Free
+SIValue Map_Keys
 (
 	SIValue map  // map to extract keys from
 );

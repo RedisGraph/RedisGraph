@@ -18,7 +18,7 @@ static void IndexScanFree(OpBase *opBase);
 
 static void IndexScanToString(const OpBase *ctx, sds *buf) {
 	IndexScan *op = (IndexScan *)ctx;
-	return ScanToString(ctx, buf, op->n.alias, op->n.label);
+	ScanToString(ctx, buf, op->n.alias, op->n.label);
 }
 
 OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,
