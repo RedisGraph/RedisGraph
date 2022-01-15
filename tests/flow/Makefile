@@ -4,7 +4,7 @@ TARGET=$(realpath ../../src/redisgraph.so)
 
 DOCKER_VG=0
 ifeq ($(VALGRIND),)
-ifneq ($(OS),Linux)
+ifeq ($(OS),macos)
 DOCKER_VG=1
 endif
 endif

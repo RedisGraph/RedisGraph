@@ -381,7 +381,7 @@ jobs:
           command: |
             python3 -m pip list
             mkdir -p ~/workspace/tests
-            make flow_tests RLEC=1 SHOW=1
+            make test FLOW=1 RLEC=1 SHOW=1
       - save-tests-logs
 
   deploy_branch:
