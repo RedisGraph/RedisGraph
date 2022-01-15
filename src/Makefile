@@ -1,8 +1,13 @@
 
 ROOT:=$(realpath ..)
 
-# find the OS
-uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+DEPS_DIR:=$(ROOT)/deps
+
+override OS:=$(shell $(DEPS_DIR)/readies/bin/platform --os)
+ARCH:=$(shell $(DEPS_DIR)/readies/bin/platform --arch)
+
+export OS
+export ARCH
 
 JOBS ?= $(shell MAX_NPROC=8 $(ROOT)/deps/readies/bin/nproc)
 
@@ -37,7 +42,7 @@ CFLAGS = \
 CFLAGS += $(DEBUGFLAGS)
 
 # Compile flags for linux / osx
-ifeq ($(uname_S),Linux)
+ifeq ($(OS),linux)
 	SHOBJ_LDFLAGS ?= -Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
 	export OS = Linux
 else
@@ -253,7 +258,7 @@ endef
 # Build the module...
 redisgraph.so: $(MODULE_DEPS)
 	$(REDISGRAPH_CC) -o $@ $(CC_OBJECTS) $(LIBS) $(SHOBJ_LDFLAGS) -lc -lm
-ifeq ($(uname_S),Linux)
+ifeq ($(OS),linux)
 ifneq ($(DEBUG),1)
 	$(call extract_symbols,$@)
 endif
@@ -281,11 +286,15 @@ package: redisgraph.so
 
 #----------------------------------------------------------------------------------------------
 
+ifneq ($(RLEC),1)
 test: redisgraph.so
+else
+test:
+endif
 #   check valgrind flag is not empty
 ifneq ($(VALGRIND),)
 #   valgrind is requested, check that host's os is not Linux
-ifneq ($(OS),Linux)
+ifneq ($(OS),linux)
 	@echo building docker to run valgrind on MacOS
 	@cd .. ;\
 	docker build -f tests/Dockerfile -t mac_os_test_docker .
