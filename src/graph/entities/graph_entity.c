@@ -71,6 +71,12 @@ bool GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value
 	ASSERT(e);
 	if(!(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE)) return false;
 
+	SIValue *property_value =  GraphEntity_GetProperty(e, attr_id);
+	if(property_value != PROPERTY_NOTFOUND) {
+		*property_value = value;
+		return false;
+	}
+
 	if(e->entity->properties == NULL) {
 		e->entity->properties = rm_malloc(sizeof(EntityProperty));
 	} else {
