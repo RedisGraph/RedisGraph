@@ -48,7 +48,7 @@ static pthread_t redis_main_thread_id;
 static int _RenameGraphHandler(RedisModuleCtx *ctx, int type, const char *event,
 							   RedisModuleString *key_name) {
 	if(type != REDISMODULE_NOTIFY_GENERIC) return REDISMODULE_OK;
-	if(strcasecmp(event, "RENAME_TO") == 0) {
+	if(strcasecmp(event, "RENAME_TO") == 0 || strcasecmp(event, "restore") == 0) {
 		RedisModuleKey *key = RedisModule_OpenKey(ctx, key_name, REDISMODULE_WRITE);
 		if(RedisModule_ModuleTypeGetType(key) == GraphContextRedisModuleType) {
 			GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
