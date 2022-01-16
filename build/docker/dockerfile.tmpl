@@ -33,8 +33,9 @@ ENV LC_ALL=en_US.UTF-8
 RUN make -j`nproc`
 
 {% if TEST == "1" %}
-    TEST='' make test
+RUN TEST='' make test
 {% endif %}
+
 {% if PACK == "1" %}
 RUN mkdir -p bin/artifacts
 RUN make package
@@ -45,7 +46,7 @@ RUN set -e ;\
 
 #----------------------------------------------------------------------------------------------
 {% if OSNICK == "alpine3" %}
-FROM redis:6-alpine
+FROM redis:{{REDIS_VERSION}}-alpine
 {% else %}
 FROM redisfab/redis:{{REDIS_VERSION}}-{{ARCH}}-{{OSNICK}}
 {% endif %}

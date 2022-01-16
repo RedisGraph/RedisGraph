@@ -6,6 +6,9 @@ DEPS_DIR:=$(ROOT)/deps
 override OS:=$(shell $(DEPS_DIR)/readies/bin/platform --os)
 ARCH:=$(shell $(DEPS_DIR)/readies/bin/platform --arch)
 
+export OS
+export ARCH
+
 ifeq ($(DEBUG),1)
 FLAVOR=debug
 else
