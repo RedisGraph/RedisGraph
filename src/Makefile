@@ -228,21 +228,17 @@ $(RAX):
 
 $(LIBXXHASH):
 	@$(MAKE) -C $(ROOT)/deps/xxHash lib
-# .PHONY: $(LIBXXHASH)
 
 # Build GraphBLAS only if library does not already exists.
 $(GRAPHBLAS):
 ifeq (,$(wildcard $(GRAPHBLAS)))
 	@$(MAKE) -C $(ROOT)/deps/GraphBLAS CMAKE_OPTIONS="-DCMAKE_C_COMPILER='$(CC)'" static_only JOBS=$(JOBS)
 endif
-# .PHONY: $(GRAPHBLAS)
 
 $(REDISEARCH):
 ifeq (,$(wildcard $(REDISEARCH)))
 	make -C $(REDISEARCH_DIR) STATIC=1 BINROOT=$(REDISEARCH_BINROOT)
 endif
-
-# .PHONY: $(REDISEARCH)
 
 # Build libcypher-parser only if library does not already exists.
 $(LIBCYPHER_PARSER):
@@ -253,8 +249,6 @@ ifeq (,$(wildcard $(LIBCYPHER_PARSER)))
 	./configure --disable-shared
 	@$(MAKE) CFLAGS="-O3 -fPIC -DYY_BUFFER_SIZE=1048576" clean check -C $(ROOT)/deps/libcypher-parser
 endif
-
-# .PHONY: $(LIBCYPHER_PARSER)
 
 #----------------------------------------------------------------------------------------------
 

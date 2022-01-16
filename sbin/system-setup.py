@@ -23,7 +23,7 @@ class RedisGraphSetup(paella.Setup):
         self.install("git automake libtool autoconf")
 
     def debian_compat(self):
-        self.install("locales")# python3-dev")
+        self.install("locales")
         self.run("%s/bin/getgcc" % READIES)
         self.install("peg")
 
