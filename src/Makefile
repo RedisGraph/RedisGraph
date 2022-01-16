@@ -4,11 +4,8 @@ ROOT:=$(realpath ..)
 override OS:=$(shell $(ROOT)/deps/readies/bin/platform --os)
 ARCH:=$(shell $(ROOT)/deps/readies/bin/platform --arch)
 
-ifeq ($(DEBUG),1)
-FLAVOR=debug
-else
-FLAVOR=release
-endif
+export OS
+export ARCH
 
 JOBS ?= $(shell MAX_NPROC=8 $(ROOT)/deps/readies/bin/nproc)
 
@@ -18,6 +15,12 @@ endif
 
 ifeq ($(COV),1)
 export DEBUG ?= 1
+endif
+
+ifeq ($(DEBUG),1)
+FLAVOR=debug
+else
+FLAVOR=release
 endif
 
 # Paths to deps.
@@ -36,20 +39,25 @@ ifeq ($(DEBUG),1)
 	DEBUGFLAGS += -DRG_DEBUG
 endif
 
+CFLAGS.warnings=-Wall -Wno-unused-variable -Wno-unused-result
+ifeq ($(PEDANTIC),1)
+CFLAGS.warnings += -Wpedantic
+endif
+
 # Default CFLAGS
 CFLAGS = \
-	-Wall -Wpedantic -Wno-unused-variable -Wno-unused-result \
 	-fPIC -fcommon -fopenmp \
-	-D_GNU_SOURCE -DREDIS_MODULE_TARGET -DREDISMODULE_EXPERIMENTAL_API -DXXH_STATIC_LINKING_ONLY
-CFLAGS += $(DEBUGFLAGS)
+	-D_GNU_SOURCE \
+	-DREDIS_MODULE_TARGET \
+	-DREDISMODULE_EXPERIMENTAL_API \
+	-DXXH_STATIC_LINKING_ONLY \
+	$(CFLAGS.warnings) $(DEBUGFLAGS)
 
 # Compile flags for linux / osx
 ifeq ($(OS),linux)
-	SHOBJ_LDFLAGS ?= -Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
-	export OS = Linux
+SHOBJ_LDFLAGS ?= -Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
 else
-	SHOBJ_LDFLAGS ?= -bundle -undefined dynamic_lookup -ldl -lpthread -fopenmp
-	export OS = Mac
+SHOBJ_LDFLAGS ?= -bundle -undefined dynamic_lookup -ldl -lpthread -fopenmp
 endif
 SHOBJ_LDFLAGS += $(LDFLAGS)
 export CFLAGS
@@ -72,21 +80,21 @@ COV_EXCLUDE += \
 	'$(ROOT)/src/util/sds/*'
 
 define COVERAGE_RESET
-$(SHOW)set -e ;\
-echo "Starting coverage analysys." ;\
+set -e ;\
+echo "Starting coverage analysys ..." ;\
 mkdir -p $(COV_DIR) ;\
 lcov --directory $(BINROOT) --base-directory $(SOURCEDIR) -z > /dev/null 2>&1
 endef
 
 define COVERAGE_COLLECT
-$(SHOW)set -e ;\
+set -e ;\
 echo "Collecting coverage data ..." ;\
 lcov --capture --directory $(BINROOT) --base-directory $(SOURCEDIR) --output-file $(COV_INFO) > /dev/null 2>&1 ;\
 lcov -o $(COV_INFO) -r $(COV_INFO) $(COV_EXCLUDE) > /dev/null 2>&1
 endef
 
 define COVERAGE_REPORT
-$(SHOW)set -e ;\
+set -e ;\
 lcov -l $(COV_INFO) ;\
 genhtml --legend -o $(COV_DIR) $(COV_INFO) > /dev/null 2>&1 ;\
 echo "Coverage info at $$(realpath $(COV_DIR))/index.html"
@@ -207,6 +215,8 @@ endif
 
 all: redisgraph.so
 
+.PHONY: all
+
 # Include all dependency files for C files
 -include $(CC_DEPS)
 
@@ -237,11 +247,11 @@ endif
 # Build libcypher-parser only if library does not already exists.
 $(LIBCYPHER_PARSER):
 ifeq (,$(wildcard $(LIBCYPHER_PARSER)))
-	set -e ;\
-	cd $(ROOT)/deps/libcypher-parser; \
-	sh ./autogen.sh; \
+	@set -e ;\
+	cd $(ROOT)/deps/libcypher-parser ;\
+	sh ./autogen.sh ;\
 	./configure --disable-shared
-	$(MAKE) CFLAGS="-O3 -fPIC -DYY_BUFFER_SIZE=1048576" clean check -C $(ROOT)/deps/libcypher-parser
+	@$(MAKE) CFLAGS="-O3 -fPIC -DYY_BUFFER_SIZE=1048576" clean check -C $(ROOT)/deps/libcypher-parser
 endif
 
 # .PHONY: $(LIBCYPHER_PARSER)
