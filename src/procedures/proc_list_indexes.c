@@ -185,7 +185,7 @@ static bool _EmitIndex
 	if(ctx->yield_info) {
 		RSIdxInfo info = { .version = RS_INFO_CURRENT_VERSION };
 		
-		RediSearch_IndexInfo(s->fulltextIdx->idx, &info);
+		RediSearch_IndexInfo(idx->idx, &info);
 		SIValue map = SI_Map(23);
 
 		Map_Add(&map, SI_ConstStringVal("gcPolicy"),  SI_LongVal(info.gcPolicy));
