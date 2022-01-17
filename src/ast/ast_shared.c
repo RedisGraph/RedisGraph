@@ -63,32 +63,42 @@ PropertyMap *PropertyMap_New(GraphContext *gc, const cypher_astnode_t *props) {
 	uint prop_count = cypher_ast_map_nentries(props);
 
 	PropertyMap *map = rm_malloc(sizeof(PropertyMap));
-	map->keys = rm_malloc(prop_count * sizeof(Attribute_ID));
-	map->values = rm_malloc(prop_count * sizeof(AR_ExpNode *));
-	map->property_count = prop_count;
+	map->keys = array_new(Attribute_ID, prop_count);
+	map->values = array_new(AR_ExpNode *, prop_count);
 
 	for(uint prop_idx = 0; prop_idx < prop_count; prop_idx++) {
-		const cypher_astnode_t *ast_key = cypher_ast_map_get_key(props, prop_idx);
-		const char *attribute = cypher_ast_prop_name_get_value(ast_key);
-		// Convert the string key to an Attribute ID.
-		map->keys[prop_idx] = GraphContext_FindOrAddAttribute(gc, attribute);
-
+		uint insert_idx                   = prop_idx;
+		const cypher_astnode_t *ast_key   = cypher_ast_map_get_key(props, prop_idx);
+		const char *attribute             = cypher_ast_prop_name_get_value(ast_key);
 		const cypher_astnode_t *ast_value = cypher_ast_map_get_value(props, prop_idx);
-		// Convert the AST entity representing the value into an expression to be resolved later.
-		AR_ExpNode *value = AR_EXP_FromASTNode(ast_value);
-		map->values[prop_idx] = value;
+		AR_ExpNode *value                 = AR_EXP_FromASTNode(ast_value);
+
+		// Convert the string key to an Attribute ID.
+		Attribute_ID id = GraphContext_FindOrAddAttribute(gc, attribute);
+		// search for duplicate attributes
+		for (uint i = 0; i < prop_idx; i++) {
+			if(map->keys[i] == id) {
+				insert_idx = i;
+				break;
+			}
+		}
+
+		if(insert_idx == prop_idx) {
+			array_append(map->keys, id);			
+			array_append(map->values, value);
+		} else {
+			AR_EXP_Free(map->values[insert_idx]);
+			map->values[insert_idx] = value;
+		}
 	}
+
 	return map;
 }
 
 static PropertyMap *_PropertyMap_Clone(PropertyMap *map) {
 	PropertyMap *clone = rm_malloc(sizeof(PropertyMap));
-	uint prop_count = map->property_count;
-	clone->keys = rm_malloc(prop_count * sizeof(Attribute_ID));
-	clone->values = rm_malloc(prop_count * sizeof(AR_ExpNode *));
-	clone->property_count = prop_count;
-	memcpy(clone->keys, map->keys, prop_count * sizeof(Attribute_ID));
-	for(uint i = 0; i < prop_count; i++) clone->values[i] = AR_EXP_Clone(map->values[i]);
+	array_clone(clone->keys, map->keys);
+	array_clone_with_cb(clone->values, map->values, AR_EXP_Clone);
 
 	return clone;
 }
@@ -96,11 +106,8 @@ static PropertyMap *_PropertyMap_Clone(PropertyMap *map) {
 void PropertyMap_Free(PropertyMap *map) {
 	if(map == NULL) return;
 
-	for(uint i = 0; i < map->property_count; i++) {
-		AR_EXP_Free(map->values[i]);
-	}
-	rm_free(map->keys);
-	rm_free(map->values);
+	array_free(map->keys);
+	array_free_ex(map->values, AR_EXP_Free(*ptr));
 	rm_free(map);
 }
 

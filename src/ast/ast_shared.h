@@ -47,7 +47,6 @@ typedef enum {
 typedef struct {
 	Attribute_ID *keys;
 	struct AR_ExpNode **values;
-	int property_count;
 } PropertyMap;
 
 // Enum describing how a SET directive should treat pre-existing properties

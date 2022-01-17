@@ -117,7 +117,9 @@ class testGraphCreationFlow(FlowTestsBase):
                 self.env.assertTrue(False)
             except redis.exceptions.ResponseError as e:
                 self.env.assertContains("Property values can only be of primitive types or arrays of primitive types", str(e))
-        
+
+    # test creating a node with multiple attributes with the same name
+    # expecting node with single attribute 'name' with the last mentioned value 'B'
     def test08_create_node_with_2_attr_same_name(self):
         query = """CREATE (a:N {name:'A', name:'B'})"""
         result = redis_graph.query(query)
