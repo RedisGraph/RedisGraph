@@ -247,13 +247,12 @@ static void array_free(array_t arr) {
     }                                               \
   })
 
-/* Free the array, freeing individual elements with free_cb */
-#define array_free_ex(arr, blk)                       \
+/* Free the array, free individual element using callback */
+#define array_free_cb(arr, cb)                        \
   ({                                                  \
     if (arr) {                                        \
       for (uint32_t i = 0; i < array_len(arr); i++) { \
-        void *ptr = &arr[i];                          \
-        { blk; }                                      \
+        { cb(arr[i]); }                               \
       }                                               \
       array_free(arr);                                \
     }                                                 \
