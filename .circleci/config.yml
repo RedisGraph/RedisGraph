@@ -478,10 +478,12 @@ workflows:
           <<: *on-any-branch
       - build_macos:
           <<: *context
-          <<: *on-integ-and-version-tags
+          #@@<<: *on-integ-and-version-tags
+          <<: *on-any-branch
       - platform_build:
           <<: *context
-          <<: *on-integ-and-version-tags
+          #@@<<: *on-integ-and-version-tags
+          <<: *on-any-branch
           matrix:
             parameters:
               platform: [bionic, xenial, centos7, centos8]
