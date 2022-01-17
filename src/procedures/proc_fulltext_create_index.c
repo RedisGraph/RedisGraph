@@ -79,7 +79,7 @@ static ProcedureResult _validateIndexConfigMap
 			ErrorCtx_SetError("Language must be string");
 			return PROCEDURE_ERR;
 		}
-		if(RSLanguage_Find(lang.stringval, strlen(lang.stringval)) == RS_LANG_UNSUPPORTED) {
+		if(RediSearch_ValidateLanguage(lang.stringval)) {
 			ErrorCtx_SetError("Language is not supported");
 			return PROCEDURE_ERR;
 		}
