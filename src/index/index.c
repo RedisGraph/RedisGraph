@@ -18,36 +18,6 @@
 extern void populateEdgeIndex(Index *idx); 
 extern void populateNodeIndex(Index *idx);
 
-// TODO: Remove this comment when https://github.com/RediSearch/RediSearch/issues/1100 is closed
-// static int _getNodeAttribute(void *ctx, const char *fieldName, const void *id, char **strVal,
-// 							 double *doubleVal) {
-// 	Node n = GE_NEW_NODE();
-// 	NodeID nId = *(NodeID *)id;
-// 	GraphContext *gc = (GraphContext *)ctx;
-// 	Graph *g = gc->g;
-
-// 	int node_found = Graph_GetNode(g, nId, &n);
-// 	UNUSED(node_found);
-// 	ASSERT(node_found != 0);
-
-// 	Attribute_ID attrId = GraphContext_GetAttributeID(gc, fieldName);
-// 	SIValue *v = GraphEntity_GetProperty((GraphEntity *)&n, attrId);
-// 	int ret;
-// 	if(v == PROPERTY_NOTFOUND) {
-// 		ret = RSVALTYPE_NOTFOUND;
-// 	} else if(v->type & T_STRING) {
-// 		*strVal = v->stringval;
-// 		ret = RSVALTYPE_STRING;
-// 	} else if(v->type & SI_NUMERIC) {
-// 		*doubleVal = SI_GET_NUMERIC(*v);
-// 		ret = RSVALTYPE_DOUBLE;
-// 	} else {
-// 		// Skiping booleans.
-// 		ret = RSVALTYPE_NOTFOUND;
-// 	}
-// 	return ret;
-// }
-
 RSDoc *Index_IndexGraphEntity
 (
 	Index *idx,
@@ -75,7 +45,7 @@ RSDoc *Index_IndexGraphEntity
 	uint none_indexable_fields_count = 0; // number of none indexed fields
 	const char *none_indexable_fields[field_count]; // none indexed fields
 
-	// create a document out of node
+	// create an empty document
 	RSDoc *doc = RediSearch_CreateDocument2(key, key_len, rsIdx, score,
 			idx->language);
 
@@ -98,7 +68,7 @@ RSDoc *Index_IndexGraphEntity
 		}
 	} else {
 		for(uint i = 0; i < field_count; i++) {
-			field = &idx->fields[i];
+			field = idx->fields + i;
 			const char *field_name = field->name;
 			v = GraphEntity_GetProperty(e, field->id);
 			if(v == PROPERTY_NOTFOUND) continue;
@@ -199,7 +169,7 @@ Index *Index_New
 	idx->idx           =  NULL;
 	idx->type          =  type;
 	idx->label         =  rm_strdup(label);
-	idx->fields        =  array_new(IndexField, 0);
+	idx->fields        =  array_new(IndexField, 1);
 	idx->label_id      =  label_id;
 	idx->language      =  NULL;
 	idx->stopwords     =  NULL;
@@ -215,6 +185,7 @@ void Index_AddField
 	IndexField *field
 ) {
 	ASSERT(idx != NULL);
+	ASSERT(field != NULL);
 
 	if(Index_ContainsAttribute(idx, field->id)) return;
 
@@ -450,3 +421,4 @@ void Index_Free(Index *idx) {
 	rm_free(idx->label);
 	rm_free(idx);
 }
+
