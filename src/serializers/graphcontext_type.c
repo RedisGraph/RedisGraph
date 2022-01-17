@@ -44,28 +44,24 @@ static void *_GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
 	return gc;
 }
 
-// Save RDB for Redis 6 and up.
+// save RDB for Redis 6 and up
 static void _GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
 	RdbSaveGraph(rdb, value);
 }
 
-static void _GraphContextType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, void *value) {
-	// TODO: implement.
-}
-
-// Save an unsigned placeholder before and after the keyspace encoding.
+// save an unsigned placeholder before and after the keyspace encoding
 static void _GraphContextType_AuxSave(RedisModuleIO *rdb, int when) {
 	RedisModule_SaveUnsigned(rdb, 0);
 }
 
-// Decode the unsigned placeholders saved before and after the keyspace values
-// and call the module event handler.
+// decode the unsigned placeholders saved before and after the keyspace values
+// and call the module event handler
 static int _GraphContextType_AuxLoad(RedisModuleIO *rdb, int encver, int when) {
 	RedisModule_LoadUnsigned(rdb);
 	if(when == REDISMODULE_AUX_BEFORE_RDB) ModuleEventHandler_AUXBeforeKeyspaceEvent();
 	else ModuleEventHandler_AUXAfterKeyspaceEvent();
 	return REDISMODULE_OK;
-};
+}
 
 static void _GraphContextType_Free(void *value) {
 	GraphContext *gc = value;
@@ -73,16 +69,14 @@ static void _GraphContextType_Free(void *value) {
 }
 
 int GraphContextType_Register(RedisModuleCtx *ctx) {
-	RedisModuleTypeMethods tm = {
-		.version           = REDISMODULE_TYPE_METHOD_VERSION,
-		.rdb_load          = _GraphContextType_RdbLoad,
-		.rdb_save          = _GraphContextType_RdbSave,
-		.aof_rewrite       = _GraphContextType_AofRewrite,
-		.free              = _GraphContextType_Free,
-		.aux_save          = _GraphContextType_AuxSave,
-		.aux_load          = _GraphContextType_AuxLoad,
-		.aux_save_triggers = REDISMODULE_AUX_BEFORE_RDB | REDISMODULE_AUX_AFTER_RDB
-	};
+	RedisModuleTypeMethods tm = { 0 };
+	tm.free               =  _GraphContextType_Free;
+	tm.version            =  REDISMODULE_TYPE_METHOD_VERSION;
+	tm.rdb_load           =  _GraphContextType_RdbLoad;
+	tm.rdb_save           =  _GraphContextType_RdbSave;
+	tm.aux_save           =  _GraphContextType_AuxSave;
+	tm.aux_load           =  _GraphContextType_AuxLoad;
+	tm.aux_save_triggers  =  REDISMODULE_AUX_BEFORE_RDB | REDISMODULE_AUX_AFTER_RDB;
 
 	GraphContextRedisModuleType = RedisModule_CreateDataType(ctx, "graphdata",
 			GRAPH_ENCODING_VERSION_LATEST, &tm);

@@ -228,8 +228,9 @@ void CommitNewEntities(OpBase *op, PendingCreations *pending) {
 // Resolve the properties specified in the query into constant values.
 PendingProperties *ConvertPropertyMap(Record r, PropertyMap *map, bool fail_on_null) {
 	PendingProperties *converted = rm_malloc(sizeof(PendingProperties));
-	converted->values = rm_malloc(sizeof(SIValue) * map->property_count);
-	for(int i = 0; i < map->property_count; i++) {
+	uint property_count = array_len(map->keys);
+	converted->values = rm_malloc(sizeof(SIValue) * property_count);
+	for(int i = 0; i < property_count; i++) {
 		/* Note that AR_EXP_Evaluate may raise a run-time exception, in which case
 		 * the allocations in this function will be memory leaks.
 		 * For example, this occurs in the query:
@@ -271,7 +272,7 @@ PendingProperties *ConvertPropertyMap(Record r, PropertyMap *map, bool fail_on_n
 		// Set the converted property.
 		converted->values[i] = val;
 	}
-	converted->property_count = map->property_count;
+	converted->property_count = property_count;
 	converted->attr_keys = map->keys; // This pointer can be copied directly.
 
 	return converted;

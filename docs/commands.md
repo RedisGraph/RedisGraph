@@ -474,6 +474,16 @@ SET n = {age: 33, name: 'Bob'}"
 
 Using `=` in this way replaces all of the entity's previous properties, while `+=` will only set the properties it explicitly mentions.
 
+In the same way, the full property set of a graph entity can be assigned or merged:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (jim {name: 'Jim'}), (pam {name: 'Pam'})
+SET jim = pam"
+```
+
+After executing this query, the `jim` node will have the same property set as the `pam` node.
+
 To remove a node's property, simply set property value to NULL.
 
 ```sh
@@ -647,6 +657,7 @@ This section contains information on all supported functions from the Cypher que
 | endNode()           | Returns the destination node of a relationship.                             |
 | id()                | Returns the internal ID of a relationship or node (which is not immutable.) |
 | hasLabels()         | Returns true if input node contains all specified labels, otherwise false.  |
+| keys()              | Returns the array of keys contained in the given map, node, or edge.        |
 | labels()            | Returns a string representation of the label of a node.                     |
 | startNode()         | Returns the source node of a relationship.                                  |
 | timestamp()         | Returns the the amount of milliseconds since epoch.                         |
@@ -668,12 +679,13 @@ This section contains information on all supported functions from the Cypher que
 |stDev() | Returns the standard deviation for the given value over a group|
 
 ## List functions
-|Function| Description|
-| ------- |:-----------|
-| head()  | Return the first member of a list |
-| range() | Create a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval.|
-| size()  | Return a list size |
-| tail()  | Return a sublist of a list, which contains all the values withiout the first value |
+| Function                     | Description                                                                                                                                                    |
+| -------                      | :-----------                                                                                                                                                   |
+| head()                       | Return the first member of a list                                                                                                                              |
+| range()                      | Create a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval. |
+| size()                       | Return a list size                                                                                                                                             |
+| tail()                       | Return a sublist of a list, which contains all the values without the first value                                                                              |
+| [reduce()](#reduce) | Return a scalar produced by evaluating an expression against each list member                                                                                  |
 
 ## Mathematical functions
 
@@ -760,6 +772,15 @@ They can operate on any form of input array, but are particularly useful for pat
 ```sh
 MATCH p=()-[*]->() WHERE all(edge IN relationships(p) WHERE edge.weight < 3) RETURN p
 ```
+
+#### Reduce
+The `reduce()` function accepts a starting value and updates it by evaluating an expression against each element of the list:
+
+```sh
+RETURN reduce(sum = 0, n IN [1,2,3] | sum + n)
+```
+
+`sum` will successively have the values 0, 1, 3, and 6, with 6 being the output of the function call.
 
 ### Point
 The `point()` function expects one map argument of the form:

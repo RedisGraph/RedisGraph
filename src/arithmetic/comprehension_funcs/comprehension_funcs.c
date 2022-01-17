@@ -5,7 +5,7 @@
  */
 
 #include "comprehension_funcs.h"
-#include "../../RG.h"
+#include "RG.h"
 #include "../../value.h"
 #include "../func_desc.h"
 #include "../../errors.h"
@@ -35,6 +35,8 @@ void ListComprehension_Free(void *ctx_ptr) {
 
 // Routine for cloning a comprehension function's private data.
 void *ListComprehension_Clone(void *orig) {
+	if(orig == NULL) return NULL;
+
 	ListComprehensionCtx *ctx = orig;
 	// Allocate space for the clone.
 	ListComprehensionCtx *ctx_clone = rm_malloc(sizeof(ListComprehensionCtx));

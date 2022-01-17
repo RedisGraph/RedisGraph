@@ -6,15 +6,10 @@
 
 #include "decode_v8.h"
 
-// Module event handler functions declarations.
-void ModuleEventHandler_IncreaseDecodingGraphsCount(void);
-void ModuleEventHandler_DecreaseDecodingGraphsCount(void);
-
 static GraphContext *_GetOrCreateGraphContext(char *graph_name) {
 	GraphContext *gc = GraphContext_GetRegisteredGraphContext(graph_name);
 	if(!gc) {
 		// New graph is being decoded. Inform the module and create new graph context.
-		ModuleEventHandler_IncreaseDecodingGraphsCount();
 		gc = GraphContext_New(graph_name, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 		// While loading the graph, minimize matrix realloc and synchronization calls.
 		Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_RESIZE);
@@ -194,13 +189,14 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 		// make sure graph doesn't contains may pending changes
 		ASSERT(Graph_Pending(g) == false);
 
-		QueryCtx_Free(); // Release thread-local variables
 		GraphDecodeContext_Reset(gc->decoding_context);
 		// graph has finished decoding, inform the module
-		ModuleEventHandler_DecreaseDecodingGraphsCount();
 		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
 		RedisModule_Log(ctx, "notice", "Done decoding graph %s", GraphContext_GetName(gc));
 	}
+	
+	// release thread-local variables
+	QueryCtx_Free();
 
 	return gc;
 }

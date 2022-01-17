@@ -230,7 +230,7 @@ void Index_Construct
 
 	RSIndex *rsIdx = NULL;
 	RSIndexOptions *idx_options = RediSearch_CreateIndexOptions();
-	idx_options->lang = RSLanguage_Find(idx->language);
+	idx_options->lang = idx->language;
 	// TODO: Remove this comment when https://github.com/RediSearch/RediSearch/issues/1100 is closed
 	// RediSearch_IndexOptionsSetGetValueCallback(idx_options, _getNodeAttribute, gc);
 
@@ -354,6 +354,32 @@ char **Index_GetStopwords
 		return RediSearch_IndexGetStopwords(idx->idx, size);
 	
 	return NULL;
+}
+
+// set indexed language
+void Index_SetLanguage
+(
+	Index *idx,
+	const char *language
+) {
+	ASSERT(idx != NULL);
+	ASSERT(language != NULL);
+	ASSERT(idx->language == NULL);
+
+	idx->language = rm_strdup(language);
+}
+
+// set indexed stopwords
+void Index_SetStopwords
+(
+	Index *idx,
+	char **stopwords
+) {
+	ASSERT(idx != NULL);
+	ASSERT(stopwords != NULL);
+	ASSERT(idx->stopwords == NULL);
+
+	array_clone_with_cb(idx->stopwords, stopwords, rm_strdup);
 }
 
 // free index

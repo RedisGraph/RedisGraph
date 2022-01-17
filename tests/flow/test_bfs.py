@@ -1,5 +1,3 @@
-import os
-import sys
 from RLTest import Env
 from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase

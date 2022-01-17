@@ -24,13 +24,16 @@ OpBase *NewOptionalOp(const ExecutionPlan *plan) {
 
 static Record OptionalConsume(OpBase *opBase) {
 	Optional *op = (Optional *)opBase;
-	// Try to produce a Record from the child op.
+	// try to produce a Record from the child op.
 	Record r = OpBase_Consume(opBase->children[0]);
 
-	// Create an empty Record if the child returned NULL and this op has not yet returned data.
-	if(!r && !op->emitted_record) r = OpBase_CreateRecord(opBase);
+	// create an empty Record if the child returned NULL
+	// and this op has not yet returned data.
+	if(!r && !op->emitted_record) {
+		r = OpBase_CreateRecord(opBase);
+	}
 
-	// Don't produce multiple empty Records.
+	// don't produce multiple empty Records.
 	op->emitted_record = true;
 
 	return r;
@@ -43,6 +46,7 @@ static OpResult OptionalReset(OpBase *opBase) {
 }
 
 static inline OpBase *OptionalClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	return NewOptionalOp(plan);
+	Optional *op = (Optional *)opBase;
+	OpBase *clone = NewOptionalOp(plan);
+	return clone;
 }
-

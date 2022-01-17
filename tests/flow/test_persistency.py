@@ -1,11 +1,10 @@
-from base import FlowTestsBase
 import os
 import sys
 import random
 from RLTest import Env
+from click.testing import CliRunner
 from redisgraph import Graph, Node, Edge
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from redisgraph_bulk_loader.bulk_insert import bulk_insert
 
 redis_con = None
 
@@ -16,6 +15,7 @@ class testGraphPersistency():
         redis_con = self.env.getConnection()
 
     def populate_graph(self, graph_name):
+        redis_graph = Graph(graph_name, redis_con)
         # quick return if graph already exists
         if redis_con.exists(graph_name):
             return redis_graph
@@ -23,7 +23,6 @@ class testGraphPersistency():
         people       = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
         visits       = [("Roi", "USA"), ("Alon", "Israel"), ("Ailon", "Japan"), ("Boaz", "United Kingdom")]
         countries    = ["Israel", "USA", "Japan", "United Kingdom"]
-        redis_graph  = Graph(graph_name, redis_con)
         personNodes  = {}
         countryNodes = {}
 
@@ -33,10 +32,10 @@ class testGraphPersistency():
             redis_graph.add_node(person)
             personNodes[p] = person
 
-        for p in countries:
-            country = Node(label="country", properties={"name": p, "population": random.randint(100, 400)})
+        for c in countries:
+            country = Node(label="country", properties={"name": c, "population": random.randint(100, 400)})
             redis_graph.add_node(country)
-            countryNodes[p] = country
+            countryNodes[c] = country
 
         # create edges
         for v in visits:
@@ -48,7 +47,7 @@ class testGraphPersistency():
 
         redis_graph.commit()
 
-        # delete nodes, to introduce deleted item within our datablock
+        # delete nodes, to introduce deleted entries within our datablock
         query = """MATCH (n:person) WHERE n.name = 'Roi' or n.name = 'Ailon' DELETE n"""
         redis_graph.query(query)
 
@@ -56,14 +55,14 @@ class testGraphPersistency():
         redis_graph.query(query)
 
         # create indices
+        redis_con.execute_command(
+                "GRAPH.QUERY", graph_name, "CREATE INDEX FOR (p:Person) ON (p.name, p.height)")
+        redis_con.execute_command(
+                "GRAPH.QUERY", graph_name, "CREATE INDEX FOR (c:country) ON (c.name, c.population)")
         actual_result = redis_con.execute_command(
-            "GRAPH.QUERY", graph_name, "CREATE INDEX ON :person(name, height)")
+                "GRAPH.QUERY", graph_name, "CREATE INDEX FOR ()-[r:visit]-() ON (r.purpose)")
         actual_result = redis_con.execute_command(
-            "GRAPH.QUERY", graph_name, "CREATE INDEX ON :country(name, population)")
-        actual_result = redis_con.execute_command(
-            "GRAPH.QUERY", graph_name, "CREATE INDEX FOR ()-[r:visit]-() ON (r.purpose)")
-        actual_result = redis_con.execute_command(
-            "GRAPH.QUERY", graph_name, "CALL db.idx.fulltext.createNodeIndex({label: 'person', stopwords: ['A', 'B'], language: 'english'}, 'text')")
+                "GRAPH.QUERY", graph_name, "CALL db.idx.fulltext.createNodeIndex({label: 'person', stopwords: ['A', 'B'], language: 'english'}, 'text')")
 
         return redis_graph
 
@@ -87,7 +86,7 @@ class testGraphPersistency():
         dense_graph.flush()
         return dense_graph
 
-    def test01_save_load_rdb(self):
+    def test01_save_load(self):
         graph_names = ["G", "{tag}_G"]
         for graph_name in graph_names:
             graph = self.populate_graph(graph_name)
@@ -126,9 +125,17 @@ class testGraphPersistency():
                 self.env.assertEquals(edgeCount, 2)
 
                 # Verify indices exists
-                expected_indices = [['exact-match', 'country', ['name', 'population'], 'english', [], 'NODE'], ['exact-match', 'person', ['name', 'height'], 'english', [], 'NODE'], ['full-text', 'person', ['text'], 'english', ['a', 'b'], 'NODE'], ['exact-match', 'visit', ['_src_id', '_dest_id', 'purpose'], 'english', [], 'RELATIONSHIP']]
                 indices = graph.query("""CALL db.indexes()""").result_set
-                self.env.assertEquals(indices, expected_indices)
+                expected_indices = [
+                        ['exact-match', 'country', ['name', 'population'], 'english', [], 'NODE'],
+                        ['exact-match', 'person', ['name', 'height'], 'english', [], 'NODE'],
+                        ['full-text', 'person', ['text'], 'english', ['a', 'b'], 'NODE'],
+                        ['exact-match', 'visit', ['_src_id', '_dest_id', 'purpose'], 'english', [], 'RELATIONSHIP']
+                ]
+
+                self.env.assertEquals(len(indices), len(expected_indices))
+                for index in indices:
+                    self.env.assertIn(index, indices)
 
     # Verify that edges are not modified after entity deletion
     def test02_deleted_entity_migration(self):
@@ -148,7 +155,7 @@ class testGraphPersistency():
 
             second_result = graph.query(query)
             self.env.assertEquals(first_result.result_set,
-                                second_result.result_set)
+                                  second_result.result_set)
 
     # Strings, numerics, booleans, array, and point properties should be properly serialized and reloaded
     def test03_restore_properties(self):
@@ -195,7 +202,7 @@ class testGraphPersistency():
             actual_result = graph.query(q)
 
             expected_result = [[edge1.properties['val'], src.properties['name'], dest.properties['name']],
-                            [edge2.properties['val'], src.properties['name'], dest.properties['name']]]
+                               [edge2.properties['val'], src.properties['name'], dest.properties['name']]]
 
             self.env.assertEquals(actual_result.result_set, expected_result)
 
@@ -231,8 +238,142 @@ class testGraphPersistency():
             actual_result = graph.query(q)
             self.env.assertEquals(actual_result.result_set, expected_result)
 
+    # Verify that graphs created using the GRAPH.BULK endpoint are persisted correctly
+    def test06_bulk_insert(self):
+        graphname = "bulk_inserted_graph"
+        runner = CliRunner()
+
+        csv_path = os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/resources/bulk_formatted/'
+        res = runner.invoke(bulk_insert, ['--nodes', csv_path + 'Person.csv',
+                                          '--nodes', csv_path + 'Country.csv',
+                                          '--relations', csv_path + 'KNOWS.csv',
+                                          '--relations', csv_path + 'VISITED.csv',
+                                          graphname])
+
+        # The script should report 27 node creations and 56 edge creations
+        self.env.assertEquals(res.exit_code, 0)
+        self.env.assertIn('27 nodes created', res.output)
+        self.env.assertIn('56 relations created', res.output)
+
+        # Restart the server
+        self.env.dumpAndReload()
+
+        graph = Graph(graphname, redis_con)
+
+        query_result = graph.query("""MATCH (p:Person)
+                                      RETURN p.name, p.age, p.gender, p.status, ID(p)
+                                      ORDER BY p.name""")
+
+        # Verify that the Person label exists, has the correct attributes
+        # and is properly populated
+        expected_result = [
+                ['Ailon Velger',         32,     'male',    'married',  2],
+                ['Alon Fital',           32,     'male',    'married',  1],
+                ['Boaz Arad',            31,     'male',    'married',  4],
+                ['Gal Derriere',         26,     'male',    'single',   11],
+                ['Jane Chernomorin',     31,     'female',  'married',  8],
+                ['Lucy Yanfital',        30,     'female',  'married',  7],
+                ['Mor Yesharim',         31,     'female',  'married',  12],
+                ['Noam Nativ',           34,     'male',    'single',   13],
+                ['Omri Traub',           33,     'male',    'single',   5],
+                ['Ori Laslo',            32,     'male',    'married',  3],
+                ['Roi Lipman',           32,     'male',    'married',  0],
+                ['Shelly Laslo Rooz',    31,     'female',  'married',  9],
+                ['Tal Doron',            32,     'male',    'single',   6],
+                ['Valerie Abigail Arad', 31,     'female',  'married',  10]
+                ]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        # Verify that the Country label exists, has the correct attributes, and is properly populated
+        query_result = graph.query('MATCH (c:Country) RETURN c.name, ID(c) ORDER BY c.name')
+        expected_result = [
+                ['Andora',       21],
+                ['Canada',       18],
+                ['China',        19],
+                ['Germany',      24],
+                ['Greece',       17],
+                ['Italy',        25],
+                ['Japan',        16],
+                ['Kazakhstan',   22],
+                ['Netherlands',  20],
+                ['Prague',       15],
+                ['Russia',       23],
+                ['Thailand',     26],
+                ['USA',          14]
+        ]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        # Validate that the expected relations and properties have been constructed
+        query_result = graph.query('MATCH (a)-[e:KNOWS]->(b) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name')
+
+        expected_result = [
+                ['Ailon Velger', 'friend',   'Noam Nativ'],
+                ['Alon Fital',   'friend',   'Gal Derriere'],
+                ['Alon Fital',   'friend',   'Mor Yesharim'],
+                ['Boaz Arad',    'friend',   'Valerie Abigail Arad'],
+                ['Roi Lipman',   'friend',   'Ailon Velger'],
+                ['Roi Lipman',   'friend',   'Alon Fital'],
+                ['Roi Lipman',   'friend',   'Boaz Arad'],
+                ['Roi Lipman',   'friend',   'Omri Traub'],
+                ['Roi Lipman',   'friend',   'Ori Laslo'],
+                ['Roi Lipman',   'friend',   'Tal Doron'],
+                ['Ailon Velger', 'married',  'Jane Chernomorin'],
+                ['Alon Fital',   'married',  'Lucy Yanfital'],
+                ['Ori Laslo',    'married',  'Shelly Laslo Rooz']
+        ]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        query_result = graph.query('MATCH (a)-[e:VISITED]->(b) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name')
+
+        expected_result = [
+                ['Alon Fital',           'business',  'Prague'],
+                ['Alon Fital',           'business',  'USA'],
+                ['Boaz Arad',            'business',  'Netherlands'],
+                ['Boaz Arad',            'business',  'USA'],
+                ['Gal Derriere',         'business',  'Netherlands'],
+                ['Jane Chernomorin',     'business',  'USA'],
+                ['Lucy Yanfital',        'business',  'USA'],
+                ['Mor Yesharim',         'business',  'Germany'],
+                ['Ori Laslo',            'business',  'China'],
+                ['Ori Laslo',            'business',  'USA'],
+                ['Roi Lipman',           'business',  'Prague'],
+                ['Roi Lipman',           'business',  'USA'],
+                ['Tal Doron',            'business',  'Japan'],
+                ['Tal Doron',            'business',  'USA'],
+                ['Alon Fital',           'pleasure',  'Greece'],
+                ['Alon Fital',           'pleasure',  'Prague'],
+                ['Alon Fital',           'pleasure',  'USA'],
+                ['Boaz Arad',            'pleasure',  'Netherlands'],
+                ['Boaz Arad',            'pleasure',  'USA'],
+                ['Jane Chernomorin',     'pleasure',  'Greece'],
+                ['Jane Chernomorin',     'pleasure',  'Netherlands'],
+                ['Jane Chernomorin',     'pleasure',  'USA'],
+                ['Lucy Yanfital',        'pleasure',  'Kazakhstan'],
+                ['Lucy Yanfital',        'pleasure',  'Prague'],
+                ['Lucy Yanfital',        'pleasure',  'USA'],
+                ['Mor Yesharim',         'pleasure',  'Greece'],
+                ['Mor Yesharim',         'pleasure',  'Italy'],
+                ['Noam Nativ',           'pleasure',  'Germany'],
+                ['Noam Nativ',           'pleasure',  'Netherlands'],
+                ['Noam Nativ',           'pleasure',  'Thailand'],
+                ['Omri Traub',           'pleasure',  'Andora'],
+                ['Omri Traub',           'pleasure',  'Greece'],
+                ['Omri Traub',           'pleasure',  'USA'],
+                ['Ori Laslo',            'pleasure',  'Canada'],
+                ['Roi Lipman',           'pleasure',  'Japan'],
+                ['Roi Lipman',           'pleasure',  'Prague'],
+                ['Shelly Laslo Rooz',    'pleasure',  'Canada'],
+                ['Shelly Laslo Rooz',    'pleasure',  'China'],
+                ['Shelly Laslo Rooz',    'pleasure',  'USA'],
+                ['Tal Doron',            'pleasure',  'Andora'],
+                ['Tal Doron',            'pleasure',  'USA'],
+                ['Valerie Abigail Arad', 'pleasure',  'Netherlands'],
+                ['Valerie Abigail Arad', 'pleasure',  'Russia']
+                ]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
     # Verify that nodes with multiple labels are saved and restored correctly.
-    def test06_persist_multiple_labels(self):
+    def test07_persist_multiple_labels(self):
         graph_id = "multiple_labels"
         g = Graph(graph_id, redis_con)
         q = "CREATE (a:L0:L1:L2)"

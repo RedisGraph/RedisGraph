@@ -141,6 +141,20 @@ char **Index_GetStopwords
 	size_t *size
 );
 
+// set indexed language
+void Index_SetLanguage
+(
+	Index *idx,
+	const char *language
+);
+
+// set indexed stopwords
+void Index_SetStopwords
+(
+	Index *idx,
+	char **stopwords
+);
+
 // free fulltext index
 void Index_Free
 (

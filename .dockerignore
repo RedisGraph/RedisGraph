@@ -1,7 +1,8 @@
 /bin/
+/deps/GraphBLAS/build/
 .venv/
 __pycache__/
 *.o
 *.d
-*.so
+*.so*
 *.pyc
