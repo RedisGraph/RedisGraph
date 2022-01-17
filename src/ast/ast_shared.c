@@ -107,7 +107,7 @@ void PropertyMap_Free(PropertyMap *map) {
 	if(map == NULL) return;
 
 	array_free(map->keys);
-	array_free_ex(map->values, AR_EXP_Free(*ptr));
+	array_free_cb(map->values, AR_EXP_Free);
 	rm_free(map);
 }
 
