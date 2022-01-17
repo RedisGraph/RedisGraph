@@ -48,9 +48,8 @@
  * representing the elements of the failed traversal. */
 typedef struct {
 	OpBase op;
-	bool emitted_record; // True if this operation has returned at least one Record.
+	bool emitted_record;     // True if this operation has returned at least one Record.
 } Optional;
 
-/* Creates a new Optional operation. */
+// creates a new Optional operation
 OpBase *NewOptionalOp(const ExecutionPlan *plan);
-

@@ -38,7 +38,7 @@ static void _CreateBoundBranch(OpBase *op, ExecutionPlan *plan, const char **var
 static OpBase *_ApplyOpFromPathExpression(ExecutionPlan *plan, const char **vars,
 										  AR_ExpNode *expression) {
 	bool anti = false;
-	if(strcasecmp(expression->op.func_name, "not") == 0) {
+	if(strcasecmp(AR_EXP_GetFuncName(expression), "not") == 0) {
 		anti = true;
 		expression = expression->op.children[0];
 	}

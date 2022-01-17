@@ -130,7 +130,7 @@ SIValue SI_CloneValue(const SIValue v);
 SIValue SI_ShallowCloneValue(const SIValue v);
 
 // SI_ConstValue creates an SIValue that shares the original's allocations, but does not need to persist them.
-SIValue SI_ConstValue(const SIValue v);
+SIValue SI_ConstValue(const SIValue *v);
 
 // SI_TransferOwnership duplicates 'v'.
 // If 'v' owned its underlying value allocation,

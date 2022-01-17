@@ -40,7 +40,8 @@ typedef enum {
 	OP_ENDSWITH = 20,
 	OP_IN = 21,
 	OP_IS_NULL = 22,
-	OP_IS_NOT_NULL = 23
+	OP_IS_NOT_NULL = 23,
+	OP_XNOR = 24
 } AST_Operator;
 
 typedef struct {
