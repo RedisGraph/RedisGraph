@@ -13,6 +13,8 @@
 #include "util/redis_version.h"
 #include "../deps/GraphBLAS/Include/GraphBLAS.h"
 
+#define MAX(a,b) ((a) >= (b)) ? (a) : (b)
+
 //-----------------------------------------------------------------------------
 // Configuration parameters
 //-----------------------------------------------------------------------------
@@ -750,6 +752,7 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 			long long node_creation_buffer;
 			if(!_Config_ParseNonNegativeInteger(val, &node_creation_buffer)) return false;
 
+			node_creation_buffer = MAX(node_creation_buffer, 128);
 			Config_node_creation_buffer_set(node_creation_buffer);
 		}
 		break;

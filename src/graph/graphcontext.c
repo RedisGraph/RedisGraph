@@ -65,7 +65,9 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 	gc->decoding_context = GraphDecodeContext_New();
 
 	// initialize the graph's matrices and datablock storage
-	gc->g = Graph_New(node_cap, edge_cap);
+	size_t matrix_dims;
+	Config_Option_get(Config_NODE_CREATION_BUFFER, &matrix_dims);
+	gc->g = Graph_New(matrix_dims, matrix_dims);
 	gc->graph_name = rm_strdup(graph_name);
 
 	// allocate the default space for schemas and indices

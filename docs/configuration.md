@@ -140,10 +140,14 @@ This configuration can only be set when the module loads.
 
 `NODE_CREATION_BUFFER` is 16,384 by default.
 
+### Minimum
+
+The minimum value for `NODE_CREATION_BUFFER` is 128. Values lower than this will be accepted as arguments, but will internally be converted to 128.
+
 ### Example
 
 ```
-$ redis-server --loadmodule ./redisgraph.so NODE_CREATION_BUFFER 100
+$ redis-server --loadmodule ./redisgraph.so NODE_CREATION_BUFFER 200
 ```
 
 # Query Configurations

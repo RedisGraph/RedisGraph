@@ -13,12 +13,14 @@ class testNodeCreationBuffer():
         conn = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, conn)
 
-    # Validate that the configuration exists and is loaded
-    def test01_check_config(self):
+    # validate that the configuration exists and is loaded
+    def test01_check_config_default(self):
         creation_buffer_size = conn.execute_command("GRAPH.CONFIG", "GET", "NODE_CREATION_BUFFER")[1]
-        self.env.assertEqual(creation_buffer_size, 0)
+        # values less than 128 (such as 0, which this module was loaded with)
+        # will be increased to 128
+        self.env.assertEqual(creation_buffer_size, 128)
 
-    # Validate that the creation of large graphs works without a node creation buffer
+    # validate that the creation of large graphs works without a large node creation buffer
     def test02_create_entities(self):
         query = """UNWIND range(1, 100000) AS x CREATE (:L {v: x})"""
         actual_result = redis_graph.query(query)
