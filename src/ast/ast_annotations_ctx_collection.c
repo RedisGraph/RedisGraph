@@ -18,11 +18,11 @@ static void _free_to_string_annotation
 
 AST_AnnotationCtxCollection *AST_AnnotationCtxCollection_New() {
 	AST_AnnotationCtxCollection *anotCtxCollection = rm_malloc(sizeof(AST_AnnotationCtxCollection));
-	anotCtxCollection->named_paths_ctx = cypher_ast_annotation_context();
-	// set release handler to free allocated string
-	cypher_ast_annotation_context_set_release_handler(anotCtxCollection->named_paths_ctx, _free_to_string_annotation, NULL);
+	anotCtxCollection->named_paths_ctx = NULL;
 	anotCtxCollection->project_all_ctx = NULL;
-	anotCtxCollection->to_string_ctx   = NULL;
+	anotCtxCollection->to_string_ctx   = cypher_ast_annotation_context();
+	// set release handler to free allocated string
+	cypher_ast_annotation_context_set_release_handler(anotCtxCollection->to_string_ctx, _free_to_string_annotation, NULL);
 	anotCtxCollection->anon_count      = 0;
 	return anotCtxCollection;
 }
@@ -56,11 +56,11 @@ inline void AST_AnnotationCtxCollection_SetProjectAllCtx(AST_AnnotationCtxCollec
 
 void AST_AnnotationCtxCollection_Free(AST_AnnotationCtxCollection *anotCtxCollection) {
 	if(anotCtxCollection) {
-		cypher_ast_annotation_context_free(anotCtxCollection->named_paths_ctx);
+		if(anotCtxCollection->named_paths_ctx) cypher_ast_annotation_context_free(
+				anotCtxCollection->named_paths_ctx);
 		if(anotCtxCollection->project_all_ctx) cypher_ast_annotation_context_free(
 				anotCtxCollection->project_all_ctx);
-		if(anotCtxCollection->to_string_ctx) cypher_ast_annotation_context_free(
-				anotCtxCollection->to_string_ctx);
+		cypher_ast_annotation_context_free(anotCtxCollection->to_string_ctx);
 		rm_free(anotCtxCollection);
 	}
 }
