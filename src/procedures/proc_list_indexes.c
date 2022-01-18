@@ -196,8 +196,8 @@ static bool _EmitIndex
 		for (uint i = 0; i < info.numFields; i++) {
 			struct RSIdxField f = info.fields[i];
 			SIValue field = SI_Map(6);
-			Map_Add(&field, SI_ConstStringVal("path"),             SI_DuplicateStringVal(f.path));
-			Map_Add(&field, SI_ConstStringVal("name"),             SI_DuplicateStringVal(f.name));
+			Map_Add(&field, SI_ConstStringVal("path"),             SI_ConstStringVal(f.path));
+			Map_Add(&field, SI_ConstStringVal("name"),             SI_ConstStringVal(f.name));
 			Map_Add(&field, SI_ConstStringVal("types"),            SI_LongVal(f.types));
 			Map_Add(&field, SI_ConstStringVal("options"),          SI_LongVal(f.options));
 			Map_Add(&field, SI_ConstStringVal("textWeight"),       SI_DoubleVal(f.textWeight));
@@ -205,6 +205,7 @@ static bool _EmitIndex
 			SIArray_Append(&fields, field);
 		}
 		Map_Add(&map, SI_ConstStringVal("fields"), fields);
+		SIValue_Free(fields);
 
 		Map_Add(&map, SI_ConstStringVal("numDocuments"),     SI_LongVal(info.numDocuments));
 		Map_Add(&map, SI_ConstStringVal("maxDocId"),         SI_LongVal(info.maxDocId));
