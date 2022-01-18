@@ -232,7 +232,7 @@ void Index_Construct
 
 	RSIndex *rsIdx = NULL;
 	RSIndexOptions *idx_options = RediSearch_CreateIndexOptions();
-	idx_options->lang = idx->language;
+	RediSearch_IndexOptionsSetLanguage(idx_options, idx->language);
 	// TODO: Remove this comment when https://github.com/RediSearch/RediSearch/issues/1100 is closed
 	// RediSearch_IndexOptionsSetGetValueCallback(idx_options, _getNodeAttribute, gc);
 
