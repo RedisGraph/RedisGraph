@@ -27,8 +27,6 @@ AnnotationCtx *AST_AnnotationCtxCollection_GetProjectAllCtx(const AST_Annotation
 
 AnnotationCtx *AST_AnnotationCtxCollection_GetToStringCtx(const AST_AnnotationCtxCollection *anot_ctx_collection);
 
-void AST_AnnotationCtxCollection_SetNamedPathsCtx(AST_AnnotationCtxCollection *anot_ctx_collection, AnnotationCtx *named_paths_ctx);
-
 void AST_AnnotationCtxCollection_SetProjectAllCtx(AST_AnnotationCtxCollection *anot_ctx_collection, AnnotationCtx *project_all_ctx);
 
 void AST_AnnotationCtxCollection_SetToStringCtx(AST_AnnotationCtxCollection *anot_ctx_collection, AnnotationCtx *to_string_ctx);
