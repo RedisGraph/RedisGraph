@@ -552,7 +552,7 @@ char *AST_ToString(const cypher_astnode_t *node) {
 			str[length - 1] = '\0';
 		}
 		if(ast_identifier) {
-			// Graph entity has a user-defined alias, clone it for the annotation.
+			// Graph entity has a user-defined alias return it.
 			return cypher_ast_identifier_get_name(ast_identifier);
 		} else if (str == NULL) {
 			str = _create_anon_alias(ast->anot_ctx_collection->anon_count++);
