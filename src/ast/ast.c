@@ -515,7 +515,7 @@ static inline char *_create_anon_alias(int anon_count) {
 	return alias;
 }
 
-char *AST_ToString(const cypher_astnode_t *node) {
+const char *AST_ToString(const cypher_astnode_t *node) {
 	QueryCtx *ctx = QueryCtx_GetQueryCtx();
 	AST *ast = QueryCtx_GetAST();
 	AnnotationCtx *to_string_ctx = AST_AnnotationCtxCollection_GetToStringCtx(ast->anot_ctx_collection);

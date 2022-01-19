@@ -126,6 +126,6 @@ void parse_result_free(cypher_parse_result_t *parse_result);
 // Returns the ast annotation context collection of the AST.
 AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast);
 
-char *AST_ToString(const cypher_astnode_t *node);
+const char *AST_ToString(const cypher_astnode_t *node);
 
 void AST_Free(AST *ast);
