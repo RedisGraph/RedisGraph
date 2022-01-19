@@ -196,6 +196,19 @@ class testConfig(FlowTestsBase):
         expected_response = ["RESULTSET_SIZE", -1]
         self.env.assertEqual(response, expected_response)
 
+        #-----------------------------------------------------------------------
+        # NODE_CREATION_BUFFER
+        #-----------------------------------------------------------------------
+
+        # values less than 128 (such as 0, which this module was loaded with)
+        # will be increased to 128
+        response = redis_con.execute_command("GRAPH.CONFIG SET NODE_CREATION_BUFFER 2")
+        self.env.assertEqual(response, "OK")
+
+        creation_buffer_size = redis_con.execute_command("GRAPH.CONFIG", "GET", "NODE_CREATION_BUFFER")
+        expected_response = ["NODE_CREATION_BUFFER", 128]
+        self.env.assertEqual(response, expected_response)
+
     def test09_set_invalid_values(self):
         # The run-time configurations supported by RedisGraph are:
         # MAX_QUEUED_QUERIES
@@ -247,3 +260,15 @@ class testConfig(FlowTestsBase):
         response = redis_con.execute_command("GRAPH.CONFIG GET " + config_name)
         expected_response = [config_name, config_value]
         self.env.assertEqual(response, expected_response)
+
+    def test10_get_defaults(self):
+        # TODO: make sure all configurations are covered!
+
+        #-----------------------------------------------------------------------
+        # NODE_CREATION_BUFFER
+        #-----------------------------------------------------------------------
+
+        creation_buffer_size = redis_con.execute_command("GRAPH.CONFIG", "GET", "NODE_CREATION_BUFFER")
+        expected_response = ["NODE_CREATION_BUFFER", 128]
+        self.env.assertEqual(response, expected_response)
+

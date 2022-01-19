@@ -376,12 +376,14 @@ Graph *Graph_New
 	size_t node_cap,
 	size_t edge_cap
 ) {
+
+	fpDestructor cb = (fpDestructor)FreeEntity;
 	Graph *g = rm_calloc(1, sizeof(Graph));
 
-	g->nodes      =  DataBlock_New(node_cap,  sizeof(Entity), (fpDestructor)FreeEntity);
-	g->edges      =  DataBlock_New(edge_cap,  sizeof(Entity), (fpDestructor)FreeEntity);
-	g->labels     =  array_new(RG_Matrix,     GRAPH_DEFAULT_LABEL_CAP);
-	g->relations  =  array_new(RG_Matrix,     GRAPH_DEFAULT_RELATION_TYPE_CAP);
+	g->nodes      =  DataBlock_New(node_cap, node_cap, sizeof(Entity), cb);
+	g->edges      =  DataBlock_New(edge_cap, edge_cap, sizeof(Entity), cb);
+	g->labels     =  array_new(RG_Matrix, GRAPH_DEFAULT_LABEL_CAP);
+	g->relations  =  array_new(RG_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 
 	GrB_Info info;
 	UNUSED(info);

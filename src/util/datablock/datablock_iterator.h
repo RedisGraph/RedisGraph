@@ -12,29 +12,23 @@
 /* Datablock iterator iterates over items within a datablock. */
 
 typedef struct {
-	Block *_start_block;			// First block accessed by iterator.
-	Block *_current_block;			// Current block.
-	uint _block_pos;				// Position within a block.
-	uint64_t _start_pos;			// Iterator initial position.
-	uint64_t _current_pos;			// Iterator current position.
-	uint64_t _end_pos;				// Iterator won't pass end position.
-	uint _step;						// Increase current_pos by step each iteration.
+	Block *_start_block;			// first block accessed by iterator
+	Block *_current_block;			// current block
+	uint64_t _block_pos;			// position within a block
+	uint64_t _block_cap;            // max number of items in block
+	uint64_t _current_pos;			// iterator current position
+	uint64_t _end_pos;				// iterator won't pass end position
 } DataBlockIterator;
 
-// Creates a new datablock iterator.
-DataBlockIterator *DataBlockIterator_New(
-	Block *block,       // Block from which iteration begins.
-	uint64_t start_pos,	// Iteration starts here.
-	uint64_t end_pos,	// Iteration stops here.
-	uint step           // To scan entire range, set step to 1.
+// creates a new datablock iterator
+DataBlockIterator *DataBlockIterator_New
+(
+	Block *block,        // block from which iteration begins
+	uint64_t block_cap,  // max number of items in block
+	uint64_t end_pos	 // iteration stops here
 );
 
 #define DataBlockIterator_Position(iter) (iter)->_current_pos
-
-// Clones given iterator.
-DataBlockIterator *DataBlockIterator_Clone(
-	const DataBlockIterator *it  // Iterator to clone.
-);
 
 // Returns the next item, unless we've reached the end
 // in which case NULL is returned.

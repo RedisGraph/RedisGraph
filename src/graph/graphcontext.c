@@ -51,8 +51,11 @@ static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 // GraphContext API
 //------------------------------------------------------------------------------
 
-// Creates and initializes a graph context struct.
-GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t edge_cap) {
+// creates and initializes a graph context struct
+GraphContext *GraphContext_New
+(
+	const char *graph_name
+) {
 	GraphContext *gc = rm_malloc(sizeof(GraphContext));
 
 	gc->version          = 0;  // initial graph version
@@ -64,10 +67,16 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 	gc->encoding_context = GraphEncodeContext_New();
 	gc->decoding_context = GraphDecodeContext_New();
 
-	// initialize the graph's matrices and datablock storage
-	size_t matrix_dims;
-	Config_Option_get(Config_NODE_CREATION_BUFFER, &matrix_dims);
-	gc->g = Graph_New(matrix_dims, matrix_dims);
+	// read NODE_CREATION_BUFFER size from configuration
+	// this value controls how much extra room we're willing to spend for:
+	// 1. graph entity storage
+	// 2. matrices dimensions
+	size_t node_cap;
+	size_t edge_cap;
+	assert(Config_Option_get(Config_NODE_CREATION_BUFFER, &node_cap));
+	edge_cap = node_cap;
+
+	gc->g = Graph_New(node_cap, edge_cap);
 	gc->graph_name = rm_strdup(graph_name);
 
 	// allocate the default space for schemas and indices
@@ -92,10 +101,13 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 /* _GraphContext_Create tries to get a graph context, and if it does not exists, create a new one.
  * The try-get-create flow is done when module global lock is acquired, to enforce consistency
  * while BGSave is called. */
-static GraphContext *_GraphContext_Create(RedisModuleCtx *ctx, const char *graph_name,
-										  size_t node_cap, size_t edge_cap) {
+static GraphContext *_GraphContext_Create
+(
+	RedisModuleCtx *ctx,
+	const char *graph_name
+) {
 	// Create and initialize a graph context.
-	GraphContext *gc = GraphContext_New(graph_name, node_cap, edge_cap);
+	GraphContext *gc = GraphContext_New(graph_name);
 	RedisModuleString *graphID = RedisModule_CreateString(ctx, graph_name, strlen(graph_name));
 
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_WRITE);
@@ -131,7 +143,7 @@ GraphContext *GraphContext_Retrieve
 		if(shouldCreate) {
 			// Key doesn't exist, create it.
 			const char *graphName = RedisModule_StringPtrLen(graphID, NULL);
-			gc = _GraphContext_Create(ctx, graphName, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
+			gc = _GraphContext_Create(ctx, graphName);
 		} else {
 			// Key does not exist and won't be created, emit an error.
 			RedisModule_ReplyWithError(ctx, "ERR Invalid graph operation on empty key");
