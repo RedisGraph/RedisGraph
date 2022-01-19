@@ -196,17 +196,8 @@ class testConfig(FlowTestsBase):
         expected_response = ["RESULTSET_SIZE", -1]
         self.env.assertEqual(response, expected_response)
 
-        #-----------------------------------------------------------------------
-        # NODE_CREATION_BUFFER
-        #-----------------------------------------------------------------------
-
-        # values less than 128 (such as 0, which this module was loaded with)
-        # will be increased to 128
-        response = redis_con.execute_command("GRAPH.CONFIG SET NODE_CREATION_BUFFER 2")
-        self.env.assertEqual(response, "OK")
-
-        creation_buffer_size = redis_con.execute_command("GRAPH.CONFIG", "GET", "NODE_CREATION_BUFFER")
-        expected_response = ["NODE_CREATION_BUFFER", 128]
+        response = redis_con.execute_command("GRAPH.CONFIG", "GET", "NODE_CREATION_BUFFER")
+        expected_response = ["NODE_CREATION_BUFFER", 16384]
         self.env.assertEqual(response, expected_response)
 
     def test09_set_invalid_values(self):
@@ -246,7 +237,7 @@ class testConfig(FlowTestsBase):
             except redis.exceptions.ResponseError as e:
                 assert(("Failed to set config value %s to invalid" % config) in str(e))
 
-    def test09_set_get_vkey_max_entity_count(self):
+    def test10_set_get_vkey_max_entity_count(self):
         global redis_graph
 
         config_name = "VKEY_MAX_ENTITY_COUNT"
@@ -261,14 +252,14 @@ class testConfig(FlowTestsBase):
         expected_response = [config_name, config_value]
         self.env.assertEqual(response, expected_response)
 
-    def test10_get_defaults(self):
-        # TODO: make sure all configurations are covered!
+    def test11_set_get_node_creation_buffer(self):
+        self.env = Env(decodeResponses=True, moduleArgs='NODE_CREATION_BUFFER 0')
+        global redis_con
+        redis_con = self.env.getConnection()
 
-        #-----------------------------------------------------------------------
-        # NODE_CREATION_BUFFER
-        #-----------------------------------------------------------------------
-
+        # values less than 128 (such as 0, which this module was loaded with)
+        # will be increased to 128
         creation_buffer_size = redis_con.execute_command("GRAPH.CONFIG", "GET", "NODE_CREATION_BUFFER")
         expected_response = ["NODE_CREATION_BUFFER", 128]
-        self.env.assertEqual(response, expected_response)
+        self.env.assertEqual(creation_buffer_size, expected_response)
 
