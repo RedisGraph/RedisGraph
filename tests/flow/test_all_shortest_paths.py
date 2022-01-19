@@ -155,7 +155,7 @@ class testAllShortestPaths():
 
         self.env.assertEqual(actual_result.result_set, expected_result)
 
-    def test03_all_shortest_min_hops(self):
+    def test03_all_shortest_min_hops_fail(self):
         # running against following graph
         #
         # (v1)-[:E]->(v2)-[:E]->(v3)-[:E]->(v4)
@@ -168,18 +168,11 @@ class testAllShortestPaths():
                    RETURN nodes(p) AS nodes
                    ORDER BY nodes"""
 
-        actual_result = self.redis_graph.query(query)
-        # The single 3-hop traversal should be found
-        expected_result = [[[self.v1, self.v2, self.v3, self.v4]]]
-        self.env.assertEqual(actual_result.result_set, expected_result)
-
-        # Verify that a right-to-left traversal produces the same results
-        query = """MATCH (v1 {v: 1}), (v4 {v: 4})
-                   WITH v1, v4
-                   MATCH p = allShortestPaths((v4)<-[*3..]-(v1))
-                   RETURN nodes(p) AS nodes
-                   ORDER BY nodes"""
-        self.env.assertEqual(actual_result.result_set, expected_result)
+        try:
+            self.redis_graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertIn("allShortestPaths(...) does not support a minimal length different from 1", str(e))
 
     def test04_all_shortest_multiple_traversals(self):
         # running against following graph
@@ -190,19 +183,20 @@ class testAllShortestPaths():
 
         query = """MATCH (v1 {v: 1}), (v4 {v: 4})
                    WITH v1, v4
-                   MATCH p = allShortestPaths((v1)-[:E]->(:L)-[*2..]->(v4))
+                   MATCH p = allShortestPaths((v1)-[:E]->(:L)-[*..]->(v4))
                    RETURN nodes(p) AS nodes
                    ORDER BY nodes"""
 
         actual_result = self.redis_graph.query(query)
         # The single 3-hop traversal should be found
-        expected_result = [[[self.v1, self.v2, self.v3, self.v4]]]
+        expected_result = [[[self.v1, self.v2, self.v4]], 
+                           [[self.v1, self.v5, self.v4]]]
         self.env.assertEqual(actual_result.result_set, expected_result)
 
         # Verify that a right-to-left traversal produces the same results
         query = """MATCH (v1 {v: 1}), (v4 {v: 4})
                    WITH v1, v4
-                   MATCH p = allShortestPaths((v4)<-[*2..]-(:L)<-[:E]-(v1))
+                   MATCH p = allShortestPaths((v4)<-[*..]-(:L)<-[:E]-(v1))
                    RETURN nodes(p) AS nodes
                    ORDER BY nodes"""
         self.env.assertEqual(actual_result.result_set, expected_result)

@@ -42,6 +42,7 @@ typedef struct {
 	FT_FilterNode *ft;          // FilterTree of predicates to be applied to traversed edges.
 	uint edge_idx;              // Record index of the edge alias, only used for edge filtering.
 	bool shortest_paths;        // Only collect shortest paths.
+	GrB_Vector visited;         // Visited nodes in shortest path.
 } AllPathsCtx;
 
 // Create a new All paths context object.
@@ -60,10 +61,17 @@ AllPathsCtx *AllPathsCtx_New(
 	bool shortest_paths  // Only collect shortest paths.
 );
 
+void addNeighbors
+(
+	AllPathsCtx *ctx,
+	LevelConnection *frontier,
+	uint32_t depth,
+	GRAPH_EDGE_DIR dir
+);
+
 // Tries to produce a new path from given context
 // If no additional path can be computed return NULL.
 Path *AllPathsCtx_NextPath(AllPathsCtx *ctx);
 
 // Free context object.
 void AllPathsCtx_Free(AllPathsCtx *ctx);
-

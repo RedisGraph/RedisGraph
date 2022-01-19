@@ -106,6 +106,11 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 						AlgebraicExpression_Free(exp);
 						break;
 					}
+					if(edge->minHops != 1) {
+						ErrorCtx_SetError("allShortestPaths(...) does not support a minimal length different from 1");
+						AlgebraicExpression_Free(exp);
+						break;
+					}
 				}
 				root = NewCondVarLenTraverseOp(plan, gc->g, exp);
 			} else {

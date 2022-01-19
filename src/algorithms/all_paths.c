@@ -6,6 +6,7 @@
 
 #include "RG.h"
 #include "all_paths.h"
+#include "all_shortest_paths.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 
@@ -13,7 +14,7 @@
 // Append given 'node' to given 'level' array.
 static void _AllPathsCtx_AddConnectionToLevel(AllPathsCtx *ctx, uint level, Node *node,
 											  Edge *edge) {
-	while(array_len(ctx->levels) <= level) {
+	while (array_len(ctx->levels) <= level) {
 		array_append(ctx->levels, array_new(LevelConnection, 1));
 	}
 	LevelConnection connection;
@@ -28,8 +29,13 @@ static bool _AllPathsCtx_LevelNotEmpty(const AllPathsCtx *ctx, uint level) {
 }
 
 // Traverse from the frontier node in the specified direction and add all encountered nodes and edges.
-static void _addNeighbors(AllPathsCtx *ctx, LevelConnection *frontier, uint32_t depth,
-						  GRAPH_EDGE_DIR dir) {
+void addNeighbors
+(
+	AllPathsCtx *ctx,
+	LevelConnection *frontier,
+	uint32_t depth,
+	GRAPH_EDGE_DIR dir
+) {
 	EntityID frontierId = INVALID_ENTITY_ID;
 	if(depth > 1) frontierId = ENTITY_GET_ID(&frontier->edge);
 
@@ -82,71 +88,21 @@ static void _addNeighbors(AllPathsCtx *ctx, LevelConnection *frontier, uint32_t 
 	array_clear(ctx->neighbors);
 }
 
-static int _AllPathsCtx_FindMinimumLength
+AllPathsCtx *AllPathsCtx_New
 (
-	AllPathsCtx *ctx,
 	Node *src,
-	Node *dest
+	Node *dst,
+	Graph *g,
+	int *relationIDs,
+	int relationCount,
+	GRAPH_EDGE_DIR dir,
+	uint minLen,
+	uint maxLen,
+	Record r,
+	FT_FilterNode *ft,
+	uint edge_idx,
+	bool shortest_paths
 ) {
-	ASSERT(ctx  != NULL);
-	ASSERT(src  != NULL);
-	ASSERT(dest != NULL);
-
-	// TODO: src == dest
-
-	// TODO: what are we doing here?
-	int     depth     =  0;
-	rax     *visited  =  raxNew();
-	NodeID  destID    =  ENTITY_GET_ID(dest);
-
-	while(true) {
-		uint neighborCount = array_len(ctx->levels[depth]);
-		if(neighborCount == 0) {
-			depth++;
-			if(depth > ctx->maxLen) {
-				depth = 0;
-				break;
-			}
-		}
-
-		// get a new frontier from this level
-		LevelConnection frontierConnection = array_pop(ctx->levels[depth]);
-		Node frontierNode = frontierConnection.node;
-		NodeID frontierID = ENTITY_GET_ID(&frontierNode);
-		if(destID == frontierID && depth >= ctx->minLen) {
-			array_clear(ctx->levels[depth]);
-			depth++; // switch from edge count to node count
-			break;
-		}
-
-		// the node has already been visited if it is already in the rax
-		bool nodeVisited = raxTryInsert(visited, (unsigned char *)&frontierID,
-										sizeof(NodeID), NULL, NULL) == 0;
-
-		// introduce neighbors only if path depth < maximum path length
-		// and frontier wasn't already expanded
-		if(depth < ctx->maxLen && !nodeVisited) {
-			// add all neighbors of the current node to the next depth level
-			GRAPH_EDGE_DIR dir = ctx->dir;
-			if(dir == GRAPH_EDGE_DIR_BOTH) {
-				// if we're performing a bidirectional traversal, first add all incoming
-				// edges, then switch to outgoing edges for the default call
-				_addNeighbors(ctx, &frontierConnection, depth + 1, GRAPH_EDGE_DIR_INCOMING);
-				dir = GRAPH_EDGE_DIR_OUTGOING;
-			}
-			_addNeighbors(ctx, &frontierConnection, depth + 1, dir);
-		}
-	}
-
-	raxFree(visited);
-
-	return depth;
-}
-
-AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs,
-							 int relationCount, GRAPH_EDGE_DIR dir, uint minLen,
-							 uint maxLen, Record r, FT_FilterNode *ft,
-							 uint edge_idx, bool shortest_paths) {
 	ASSERT(src != NULL);
 
 	AllPathsCtx *ctx = rm_malloc(sizeof(AllPathsCtx));
@@ -169,6 +125,7 @@ AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs,
 	ctx->neighbors      =  array_new(Edge, 32);
 	ctx->dst            =  dst;
 	ctx->shortest_paths =  shortest_paths;
+	ctx->visited        =  NULL;
 
 	_AllPathsCtx_AddConnectionToLevel(ctx, 0, src, NULL);
 
@@ -179,10 +136,11 @@ AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs,
 			ctx->maxLen = 0;
 			return ctx;
 		}
-		int min_path_len = _AllPathsCtx_FindMinimumLength(ctx, src, dst);
+		int min_path_len = AllShortestPaths_FindMinimumLength(ctx, src, dst);
 		ctx->minLen = min_path_len;
 		ctx->maxLen = min_path_len;
-		_AllPathsCtx_AddConnectionToLevel(ctx, 0, src, NULL);
+		ctx->dst    = src;
+		_AllPathsCtx_AddConnectionToLevel(ctx, 0, dst, NULL);
 	}
 
 	// in case we have filter tree validate that we can access the filtered edge
@@ -190,9 +148,7 @@ AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs,
 	return ctx;
 }
 
-Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
-	if(!ctx) return NULL;
-
+static Path *_AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 	// As long as path is not empty OR there are neighbors to traverse.
 	while(Path_NodeCount(ctx->path) || _AllPathsCtx_LevelNotEmpty(ctx, 0)) {
 		uint32_t depth = Path_NodeCount(ctx->path);
@@ -227,10 +183,10 @@ Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 				if(dir == GRAPH_EDGE_DIR_BOTH) {
 					/* If we're performing a bidirectional traversal, first add all incoming
 					 * edges, then switch to outgoing edges for the default call. */
-					_addNeighbors(ctx, &frontierConnection, depth, GRAPH_EDGE_DIR_INCOMING);
+					addNeighbors(ctx, &frontierConnection, depth, GRAPH_EDGE_DIR_INCOMING);
 					dir = GRAPH_EDGE_DIR_OUTGOING;
 				}
-				_addNeighbors(ctx, &frontierConnection, depth, dir);
+				addNeighbors(ctx, &frontierConnection, depth, dir);
 			}
 
 			// See if we can return path.
@@ -243,10 +199,6 @@ Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 				if(ctx->dst != NULL) {
 					Node dst = Path_Head(ctx->path);
 					if(ENTITY_GET_ID(ctx->dst) != ENTITY_GET_ID(&dst)) continue;
-					// if we're only collecting shortest paths,
-					// update the max level
-					if(ctx->shortest_paths && depth < ctx->maxLen)
-						ctx->maxLen = depth;
 				}
 				return ctx->path;
 			}
@@ -260,6 +212,16 @@ Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 	return NULL;
 }
 
+Path *AllPathsCtx_NextPath(AllPathsCtx *ctx)
+{
+	if (!ctx || ctx->maxLen == 0) return NULL;
+
+	if (ctx->shortest_paths)
+		return AllShortestPaths_NextPath(ctx);
+	else
+		return _AllPathsCtx_NextPath(ctx);
+}
+
 void AllPathsCtx_Free(AllPathsCtx *ctx) {
 	if(!ctx) return;
 	uint32_t levelsCount = array_len(ctx->levels);
@@ -268,6 +230,6 @@ void AllPathsCtx_Free(AllPathsCtx *ctx) {
 	Path_Free(ctx->path);
 	array_free(ctx->neighbors);
 	rm_free(ctx);
+	if(ctx->shortest_paths) GrB_Vector_free(&ctx->visited);
 	ctx = NULL;
 }
-
