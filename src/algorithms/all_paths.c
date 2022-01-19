@@ -4,8 +4,8 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "all_paths.h"
 #include "RG.h"
+#include "all_paths.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 
@@ -82,10 +82,23 @@ static void _addNeighbors(AllPathsCtx *ctx, LevelConnection *frontier, uint32_t 
 	array_clear(ctx->neighbors);
 }
 
-static int _AllPathsCtx_FindMinimumLength(AllPathsCtx *ctx, Node *src, Node *dest) {
-	int depth = 0;
-	rax *visited = raxNew();
-	NodeID destID = ENTITY_GET_ID(dest);
+static int _AllPathsCtx_FindMinimumLength
+(
+	AllPathsCtx *ctx,
+	Node *src,
+	Node *dest
+) {
+	ASSERT(ctx  != NULL);
+	ASSERT(src  != NULL);
+	ASSERT(dest != NULL);
+
+	// TODO: src == dest
+
+	// TODO: what are we doing here?
+	int     depth     =  0;
+	rax     *visited  =  raxNew();
+	NodeID  destID    =  ENTITY_GET_ID(dest);
+
 	while(true) {
 		uint neighborCount = array_len(ctx->levels[depth]);
 		if(neighborCount == 0) {
@@ -105,6 +118,7 @@ static int _AllPathsCtx_FindMinimumLength(AllPathsCtx *ctx, Node *src, Node *des
 			depth++; // switch from edge count to node count
 			break;
 		}
+
 		// the node has already been visited if it is already in the rax
 		bool nodeVisited = raxTryInsert(visited, (unsigned char *)&frontierID,
 										sizeof(NodeID), NULL, NULL) == 0;
