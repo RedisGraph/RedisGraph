@@ -263,3 +263,12 @@ class testConfig(FlowTestsBase):
         expected_response = ["NODE_CREATION_BUFFER", 128]
         self.env.assertEqual(creation_buffer_size, expected_response)
 
+        # restart the server with a buffer argument of 600
+        self.env = Env(decodeResponses=True, moduleArgs='NODE_CREATION_BUFFER 600')
+        redis_con = self.env.getConnection()
+
+        # the node creation buffer should be 1024, the next-greatest power of 2 of 600
+        creation_buffer_size = redis_con.execute_command("GRAPH.CONFIG", "GET", "NODE_CREATION_BUFFER")
+        expected_response = ["NODE_CREATION_BUFFER", 1024]
+        self.env.assertEqual(creation_buffer_size, expected_response)
+

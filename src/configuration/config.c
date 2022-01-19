@@ -751,9 +751,19 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 			if(!_Config_ParseNonNegativeInteger(val, &node_creation_buffer)) return false;
 
 			// node_creation_buffer should be at-least 128
-			// TODO: round up to a power of 2
 			node_creation_buffer =
 				(node_creation_buffer < 128) ? 128: node_creation_buffer;
+
+			// retrieve the MSB of the value
+			long long msb = (sizeof(long long) * 8) - __builtin_clzll(node_creation_buffer);
+			long long set_msb = 1 << (msb - 1);
+
+			// if the value is not a power of 2
+			// (if any bits other than the MSB are 1),
+			// raise it to the next power of 2
+			if((~set_msb & node_creation_buffer) != 0) {
+				node_creation_buffer = 1 << msb;
+			}
 			Config_node_creation_buffer_set(node_creation_buffer);
 		}
 		break;

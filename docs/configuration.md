@@ -134,6 +134,8 @@ Reducing this value will reduce memory consumption, but cause performance degrad
 
 Conversely, increasing it might improve performance for write-heavy workloads but will increase memory consumption.
 
+If the passed argument was not a power of 2, it will be rounded to the next-greatest power of 2 to improve memory alignment.
+
 This configuration can only be set when the module loads.
 
 ### Default
