@@ -203,6 +203,7 @@ static bool _EmitIndex
 			Map_Add(&field, SI_ConstStringVal("textWeight"),       SI_DoubleVal(f.textWeight));
 			Map_Add(&field, SI_ConstStringVal("tagCaseSensitive"), SI_BoolVal(f.tagCaseSensitive));
 			SIArray_Append(&fields, field);
+			SIValue_Free(field);
 		}
 		Map_Add(&map, SI_ConstStringVal("fields"), fields);
 		SIValue_Free(fields);
