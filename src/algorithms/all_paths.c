@@ -86,39 +86,25 @@ static int _AllPathsCtx_FindMinimumLength(AllPathsCtx *ctx, Node *src, Node *des
 	int depth = 0;
 	rax *visited = raxNew();
 	NodeID destID = ENTITY_GET_ID(dest);
-	bool pathFound = false;
 	while(true) {
-		if(array_len(ctx->levels[depth]) == 0) {
-			depth ++;
-			uint neighborCount = 0;
-			if(array_len(ctx->levels) > depth)
-				neighborCount = array_len(ctx->levels[depth]);
-			if(depth > ctx->maxLen || neighborCount == 0) {
-				// no matching paths
+		uint neighborCount = array_len(ctx->levels[depth]);
+		if(neighborCount == 0) {
+			depth++;
+			if(depth > ctx->maxLen) {
 				depth = 0;
 				break;
 			}
-
-			if(depth + 1 >= ctx->minLen) {
-				// check all reached nodes to see if any are the destination
-				for(uint i = 0; i < neighborCount; i ++) {
-					Node dst = ctx->levels[depth][i].node;
-					if(destID == ENTITY_GET_ID(&dst)) {
-						pathFound = true;
-						array_clear(ctx->levels[depth]);
-						depth++; // switch from edge count to node count
-						break;
-					}
-				}
-			}
 		}
-
-		if(pathFound == true) break;
 
 		// get a new frontier from this level
 		LevelConnection frontierConnection = array_pop(ctx->levels[depth]);
 		Node frontierNode = frontierConnection.node;
 		NodeID frontierID = ENTITY_GET_ID(&frontierNode);
+		if(destID == frontierID && depth >= ctx->minLen) {
+			array_clear(ctx->levels[depth]);
+			depth++; // switch from edge count to node count
+			break;
+		}
 		// the node has already been visited if it is already in the rax
 		bool nodeVisited = raxTryInsert(visited, (unsigned char *)&frontierID,
 										sizeof(NodeID), NULL, NULL) == 0;
@@ -136,7 +122,6 @@ static int _AllPathsCtx_FindMinimumLength(AllPathsCtx *ctx, Node *src, Node *des
 			}
 			_addNeighbors(ctx, &frontierConnection, depth + 1, dir);
 		}
-
 	}
 
 	raxFree(visited);
