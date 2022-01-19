@@ -1,7 +1,7 @@
 .PHONY: test
 
 DOCKER_VG=0
-ifeq ($(VALGRIND),)
+ifeq ($(VALGRIND),1)
 ifeq ($(OS),macos)
 DOCKER_VG=1
 endif
