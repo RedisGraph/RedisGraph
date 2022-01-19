@@ -338,37 +338,3 @@ TEST_F(AllPathsTest, OnlyShortestPaths) {
 	AllPathsCtx_Free(ctx);
 	Graph_Free(g);
 }
-
-// Test all paths of the minimum length from source to a specific destination
-// node with a minimum length
-TEST_F(AllPathsTest, OnlyShortestPathsMinLength) {
-	NodeID p00_0[5] = {4, 0, 2, 1, 0};
-	NodeID p00_1[5] = {4, 0, 2, 3, 0};
-
-	NodeID *p00[2] = {p00_0, p00_1};
-
-	Graph *g = BuildGraph();
-
-	NodeID srcNodeID = 0;
-	Node src;
-	Path *path = NULL;
-	Graph_GetNode(g, srcNodeID, &src);
-	unsigned int minLen = 3;
-	unsigned int maxLen = UINT_MAX - 2;
-	unsigned int pathsCount = 0;
-	int relationships[] = {GRAPH_NO_RELATION};
-	AllPathsCtx *ctx = AllPathsCtx_New(&src, &src, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING,
-									   minLen, maxLen, NULL, NULL, 0, true);
-
-	while((path = AllPathsCtx_NextPath(ctx))) {
-		ASSERT_LT(pathsCount, 2);
-		ASSERT_TRUE(pathArrayContainsPath(p00, 2, path));
-		pathsCount++;
-	}
-
-	ASSERT_EQ(pathsCount, 2);
-
-	AllPathsCtx_Free(ctx);
-	Graph_Free(g);
-}
-
