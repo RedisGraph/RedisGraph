@@ -22,11 +22,14 @@ static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type, bool already_
 	uint index_count = RedisModule_LoadUnsigned(rdb);
 	for(uint i = 0; i < index_count; i++) {
 		IndexType type = RedisModule_LoadUnsigned(rdb);
-		char *field = RedisModule_LoadStringBuffer(rdb, NULL);
-
-		if(!already_loaded)
-			Schema_AddIndex(&idx, s, field, type);
-		RedisModule_Free(field);
+		char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
+		if(!already_loaded) {
+			IndexField field;
+			IndexField_New(&field, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
+					INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
+			Schema_AddIndex(&idx, s, &field, type);
+		}
+		RedisModule_Free(field_name);
 	}
 	if(s) {
 		// no entities are expected to be in the graph in this point in time
@@ -86,4 +89,3 @@ void RdbLoadGraphSchema_v10(RedisModuleIO *rdb, GraphContext *gc) {
 		if(!already_loaded) array_append(gc->relation_schemas, s);
 	}
 }
-
