@@ -223,4 +223,3 @@ GraphContext *RdbLoadGraphContext_v11
 
 	return gc;
 }
-
