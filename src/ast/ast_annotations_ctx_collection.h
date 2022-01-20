@@ -16,7 +16,7 @@ typedef struct {
 	AnnotationCtx *project_all_ctx; // Context containing aliases for WITH/RETURN * projections.
 	AnnotationCtx *named_paths_ctx; // Annotation context for named paths projections.
 	AnnotationCtx *to_string_ctx;   // Annotation context for AST_ToString of astnode.
-	uint anon_count;
+	uint anon_count;                // Counter of anonymous entities already created.
 } AST_AnnotationCtxCollection;
 
 AST_AnnotationCtxCollection *AST_AnnotationCtxCollection_New();

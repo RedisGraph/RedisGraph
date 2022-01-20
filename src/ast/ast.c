@@ -497,21 +497,9 @@ inline AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast) {
 	return ast->anot_ctx_collection;
 }
 
-// Compute the number of digits in a non-negative integer.
-static inline int _digit_count(int n) {
-	int count = 0;
-	do {
-		n /= 10;
-		count++;
-	} while(n);
-	return count;
-}
-
 static inline char *_create_anon_alias(int anon_count) {
-	// We need space for "anon_" (5), all digits, and a NULL terminator (1)
-	int alias_len = _digit_count(anon_count) + 6;
-	char *alias = rm_malloc(alias_len * sizeof(char));
-	snprintf(alias, alias_len, "anon_%d", anon_count);
+	char *alias;
+	asprintf(&alias, "anon_%d", anon_count);
 	return alias;
 }
 
@@ -520,7 +508,7 @@ const char *AST_ToString(const cypher_astnode_t *node) {
 	AST *ast = QueryCtx_GetAST();
 	AnnotationCtx *to_string_ctx = AST_AnnotationCtxCollection_GetToStringCtx(ast->anot_ctx_collection);
 
-	char * str = (char *)cypher_astnode_get_annotation(to_string_ctx, node);
+	char *str = (char *)cypher_astnode_get_annotation(to_string_ctx, node);
 	if(str == NULL) {
 		cypher_astnode_type_t t = cypher_astnode_type(node);
 		const cypher_astnode_t *ast_identifier = NULL;
