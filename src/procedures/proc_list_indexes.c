@@ -11,6 +11,7 @@
 #include "../query_ctx.h"
 #include "../index/index.h"
 #include "../schema/schema.h"
+#include "../datatypes/map.h"
 #include "../datatypes/array.h"
 
 typedef struct {
@@ -25,6 +26,7 @@ typedef struct {
 	SIValue *yield_language;    // yield index language
 	SIValue *yield_stopwords;   // yield index stopwords
 	SIValue *yield_entity_type; // yield index entity type
+	SIValue *yield_info;        // yield info
 } IndexesContext;
 
 static void _process_yield
@@ -38,6 +40,7 @@ static void _process_yield
 	ctx->yield_language    = NULL;
 	ctx->yield_stopwords   = NULL;
 	ctx->yield_entity_type = NULL;
+	ctx->yield_info        = NULL;
 
 	int idx = 0;
 	for(uint i = 0; i < array_len(yield); i++) {
@@ -76,6 +79,12 @@ static void _process_yield
 			idx++;
 			continue;
 		}
+
+		if(strcasecmp("info", yield[i]) == 0) {
+			ctx->yield_info = ctx->out + idx;
+			idx++;
+			continue;
+		}
 	}
 }
 
@@ -100,7 +109,7 @@ ProcedureResult Proc_IndexesInvoke
 
 	IndexesContext *pdata    = rm_malloc(sizeof(IndexesContext));
 	pdata->gc                = gc;
-	pdata->out               = array_new(SIValue, 6);
+	pdata->out               = array_new(SIValue, 7);
 	pdata->type              = IDX_EXACT_MATCH;
 	pdata->node_schema_id    = GraphContext_SchemaCount(gc, SCHEMA_NODE) - 1;
 	pdata->edge_schema_id    = GraphContext_SchemaCount(gc, SCHEMA_EDGE) - 1;
@@ -143,12 +152,12 @@ static bool _EmitIndex
 
 	if(ctx->yield_properties) {
 		uint fields_count        = Index_FieldsCount(idx);
-		const char **fields      = Index_GetFields(idx);
+		const IndexField *fields = Index_GetFields(idx);
 		*ctx->yield_properties   = SI_Array(fields_count);
 
 		for(uint i = 0; i < fields_count; i++) {
 			SIArray_Append(ctx->yield_properties,
-						   SI_ConstStringVal((char *)fields[i]));
+						   SI_ConstStringVal((char *)fields[i].name));
 		}
 	}
 
@@ -171,6 +180,57 @@ static bool _EmitIndex
 			*ctx->yield_stopwords = SI_Array(0);
 		}
 		rm_free(stopwords);
+	}
+
+	if(ctx->yield_info) {
+		RSIdxInfo info = { .version = RS_INFO_CURRENT_VERSION };
+		
+		RediSearch_IndexInfo(idx->idx, &info);
+		SIValue map = SI_Map(23);
+
+		Map_Add(&map, SI_ConstStringVal("gcPolicy"),  SI_LongVal(info.gcPolicy));
+		Map_Add(&map, SI_ConstStringVal("score"),     SI_DoubleVal(info.score));
+		Map_Add(&map, SI_ConstStringVal("lang"),      SI_ConstStringVal(info.lang));
+
+		SIValue fields = SIArray_New(info.numFields);
+		for (uint i = 0; i < info.numFields; i++) {
+			struct RSIdxField f = info.fields[i];
+			SIValue field = SI_Map(6);
+			Map_Add(&field, SI_ConstStringVal("path"),             SI_ConstStringVal(f.path));
+			Map_Add(&field, SI_ConstStringVal("name"),             SI_ConstStringVal(f.name));
+			Map_Add(&field, SI_ConstStringVal("types"),            SI_LongVal(f.types));
+			Map_Add(&field, SI_ConstStringVal("options"),          SI_LongVal(f.options));
+			Map_Add(&field, SI_ConstStringVal("textWeight"),       SI_DoubleVal(f.textWeight));
+			Map_Add(&field, SI_ConstStringVal("tagCaseSensitive"), SI_BoolVal(f.tagCaseSensitive));
+			SIArray_Append(&fields, field);
+			SIValue_Free(field);
+		}
+		Map_Add(&map, SI_ConstStringVal("fields"), fields);
+		SIValue_Free(fields);
+
+		Map_Add(&map, SI_ConstStringVal("numDocuments"),     SI_LongVal(info.numDocuments));
+		Map_Add(&map, SI_ConstStringVal("maxDocId"),         SI_LongVal(info.maxDocId));
+		Map_Add(&map, SI_ConstStringVal("docTableSize"),     SI_LongVal(info.docTableSize));
+		Map_Add(&map, SI_ConstStringVal("sortablesSize"),    SI_LongVal(info.sortablesSize));
+		Map_Add(&map, SI_ConstStringVal("docTrieSize"),      SI_LongVal(info.docTrieSize));
+		Map_Add(&map, SI_ConstStringVal("numTerms"),         SI_LongVal(info.numTerms));
+		Map_Add(&map, SI_ConstStringVal("numRecords"),       SI_LongVal(info.numRecords));
+		Map_Add(&map, SI_ConstStringVal("invertedSize"),     SI_LongVal(info.invertedSize));
+		Map_Add(&map, SI_ConstStringVal("invertedCap"),      SI_LongVal(info.invertedCap));
+		Map_Add(&map, SI_ConstStringVal("skipIndexesSize"),  SI_LongVal(info.skipIndexesSize));
+		Map_Add(&map, SI_ConstStringVal("scoreIndexesSize"), SI_LongVal(info.scoreIndexesSize));
+		Map_Add(&map, SI_ConstStringVal("offsetVecsSize"),   SI_LongVal(info.offsetVecsSize));
+		Map_Add(&map, SI_ConstStringVal("offsetVecRecords"), SI_LongVal(info.offsetVecRecords));
+		Map_Add(&map, SI_ConstStringVal("termsSize"),        SI_LongVal(info.termsSize));
+		Map_Add(&map, SI_ConstStringVal("indexingFailures"), SI_LongVal(info.indexingFailures));
+		Map_Add(&map, SI_ConstStringVal("totalCollected"),   SI_LongVal(info.totalCollected));
+		Map_Add(&map, SI_ConstStringVal("numCycles"),        SI_LongVal(info.numCycles));
+		Map_Add(&map, SI_ConstStringVal("totalMSRun"),       SI_LongVal(info.totalMSRun));
+		Map_Add(&map, SI_ConstStringVal("lastRunTimeMs"),    SI_LongVal(info.lastRunTimeMs));
+
+		*ctx->yield_info = map;
+
+		RediSearch_IndexInfoFree(&info);
 	}
 
 	return true;
@@ -243,7 +303,7 @@ ProcedureResult Proc_IndexesFree
 ProcedureCtx *Proc_IndexesCtx() {
 	void *privateData = NULL;
 	ProcedureOutput output;
-	ProcedureOutput *outputs = array_new(ProcedureOutput, 6);
+	ProcedureOutput *outputs = array_new(ProcedureOutput, 7);
 
 	// index type (exact-match / fulltext)
 	output = (ProcedureOutput) {
@@ -281,6 +341,12 @@ ProcedureCtx *Proc_IndexesCtx() {
 	};
 	array_append(outputs, output);
 
+	// index info
+	output = (ProcedureOutput) {
+		.name = "info", .type = T_MAP
+	};
+	array_append(outputs, output);
+
 	ProcedureCtx *ctx = ProcCtxNew("db.indexes",
 								   0,
 								   outputs,
@@ -291,4 +357,3 @@ ProcedureCtx *Proc_IndexesCtx() {
 								   true);
 	return ctx;
 }
-

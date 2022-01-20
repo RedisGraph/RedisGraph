@@ -153,4 +153,3 @@ void RdbLoadDeletedEdges_v10(RedisModuleIO *rdb, GraphContext *gc, uint64_t dele
 		Serializer_Graph_MarkEdgeDeleted(gc->g, id);
 	}
 }
-

@@ -209,15 +209,27 @@ Index *GraphContext_GetIndex
 	SchemaType schema_type
 );
 
-// create an index for the given label and attribute
-int GraphContext_AddIndex
+// create an exact match index for the given label and attribute
+int GraphContext_AddExactMatchIndex
+(
+	Index **idx,
+	GraphContext *gc,
+	SchemaType schema_type,
+	const char *label,
+	const char *field
+);
+
+// create a full text index for the given label and attribute
+int GraphContext_AddFullTextIndex
 (
 	Index **idx,
 	GraphContext *gc,
 	SchemaType schema_type,
 	const char *label,
 	const char *field,
-	IndexType index_type
+	double weight,
+	bool nostem,
+	const char *phonetic
 );
 
 // remove and free an index
