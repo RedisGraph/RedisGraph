@@ -597,7 +597,6 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 			if((~set_msb & node_creation_buffer) != 0) {
 				node_creation_buffer = 1 << msb;
 			}
-			break;
 			Config_node_creation_buffer_set(node_creation_buffer);
 		}
 		break;
