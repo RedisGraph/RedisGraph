@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -97,7 +97,7 @@ static void _buildTypesWhitelist(void) {
 		CYPHER_AST_SLICE_OPERATOR,
 		CYPHER_AST_LABELS_OPERATOR,
 		CYPHER_AST_LIST_COMPREHENSION,
-		// CYPHER_AST_PATTERN_COMPREHENSION,
+		CYPHER_AST_PATTERN_COMPREHENSION,
 		CYPHER_AST_CASE,
 		// CYPHER_AST_FILTER,  // Deprecated, will not be supported
 		// CYPHER_AST_EXTRACT, // Deprecated, will not be supported

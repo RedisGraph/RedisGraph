@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -27,7 +27,7 @@ void Index_IndexEdge
 	EntityID  dest_id  =  Edge_GetDestNodeID(e);
 	EntityID  edge_id  =  ENTITY_GET_ID(e);
 
-	EdgeIndexKey key = {src_id: src_id, dest_id: dest_id, edge_id: edge_id};
+	EdgeIndexKey key = {.src_id = src_id, .dest_id = dest_id, .edge_id = edge_id};
 	size_t key_len = sizeof(EdgeIndexKey);
 
 	uint doc_field_count = 0;
@@ -99,7 +99,7 @@ void Index_RemoveEdge
 	EntityID  dest_id  =  Edge_GetDestNodeID(e);
 	EntityID  edge_id  =  ENTITY_GET_ID(e);
 
-	EdgeIndexKey key = {src_id: src_id, dest_id: dest_id, edge_id: edge_id};
+	EdgeIndexKey key = {.src_id = src_id, .dest_id = dest_id, .edge_id = edge_id};
 	size_t key_len = sizeof(EdgeIndexKey);
 	RediSearch_DeleteDocument(idx->idx, &key, key_len);
 }

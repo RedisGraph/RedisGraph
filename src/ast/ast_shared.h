@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -47,7 +47,6 @@ typedef enum {
 typedef struct {
 	Attribute_ID *keys;
 	struct AR_ExpNode **values;
-	int property_count;
 } PropertyMap;
 
 // Enum describing how a SET directive should treat pre-existing properties

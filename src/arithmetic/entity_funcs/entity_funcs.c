@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -218,7 +218,7 @@ SIValue AR_PROPERTY(SIValue *argv, int argc) {
 
 		// Retrieve the property.
 		SIValue *value = GraphEntity_GetProperty(graph_entity, prop_idx);
-		return SI_ConstValue(*value);
+		return SI_ConstValue(value);
 	} else {
 		// retrieve map key
 		SIValue key = argv[1];

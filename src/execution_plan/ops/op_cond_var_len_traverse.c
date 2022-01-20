@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -70,7 +70,7 @@ static inline void _setTraverseDirection(CondVarLenTraverse *op, const QGEdge *e
 static inline void CondVarLenTraverseToString(const OpBase *ctx, sds *buf) {
 	// TODO: tmp, improve TraversalToString
 	AlgebraicExpression_Optimize(&((CondVarLenTraverse *)ctx)->ae);
-	return TraversalToString(ctx, buf, ((const CondVarLenTraverse *)ctx)->ae);
+	TraversalToString(ctx, buf, ((const CondVarLenTraverse *)ctx)->ae);
 }
 
 void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {

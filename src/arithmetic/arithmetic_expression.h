@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -40,7 +40,6 @@ typedef enum {
 /* Op represents an operation applied to child args. */
 typedef struct {
 	AR_FuncDesc *f;                 // Operation to perform on children
-	const char *func_name;          // Name of function
 	int child_count;                // Number of children
 	struct AR_ExpNode **children;   // Child nodes
 } AR_OpNode;
@@ -149,6 +148,9 @@ bool AR_EXP_IsOperation(const AR_ExpNode *exp);
  * sets 'attr' to attribute name if provided. */
 bool AR_EXP_IsAttribute(const AR_ExpNode *exp, char **attr);
 
+/* check to see if the function operates on distinct values */
+bool AR_EXP_PerformsDistinct(AR_ExpNode *exp);
+
 /* Returns true if the arithmetic expression returns
  * a boolean value and false otherwise. */
 bool AR_EXP_ReturnsBoolean(const AR_ExpNode *exp);
@@ -156,6 +158,9 @@ bool AR_EXP_ReturnsBoolean(const AR_ExpNode *exp);
 /* Generate a heap-allocated name for an arithmetic expression.
  * This routine is only used to name ORDER BY expressions. */
 char *AR_EXP_BuildResolvedName(AR_ExpNode *root);
+
+/* Get the function name of op node. */
+const char *AR_EXP_GetFuncName(const AR_ExpNode *exp);
 
 /* Clones given expression. */
 AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp);

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -18,7 +18,7 @@ static void IndexScanFree(OpBase *opBase);
 
 static void IndexScanToString(const OpBase *ctx, sds *buf) {
 	IndexScan *op = (IndexScan *)ctx;
-	return ScanToString(ctx, buf, op->n.alias, op->n.label);
+	ScanToString(ctx, buf, op->n.alias, op->n.label);
 }
 
 OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,

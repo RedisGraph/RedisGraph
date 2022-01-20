@@ -1,10 +1,11 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
 #include "map.h"
+#include "array.h"
 #include "../util/arr.h"
 #include "../util/qsort.h"
 #include "../util/strcmp.h"
@@ -187,18 +188,18 @@ uint Map_KeyCount
 	return array_len(map.map);
 }
 
-SIValue *Map_Keys
+SIValue Map_Keys
 (
 	SIValue map
 ) {
 	ASSERT(SI_TYPE(map) & T_MAP);
 
 	uint key_count = Map_KeyCount(map);
-	SIValue *keys = array_new(SIValue, key_count);
+	SIValue keys = SIArray_New(key_count);
 
 	for(uint i = 0; i < key_count; i++) {
 		Pair p = map.map[i];
-		array_append(keys, p.key);
+		SIArray_Append(&keys, p.key);
 	}
 
 	return keys;

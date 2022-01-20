@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -7,6 +7,7 @@
 #include "conditional_funcs.h"
 #include "../func_desc.h"
 #include "../../util/arr.h"
+#include "../../datatypes/set.h"
 
 /* Case When
  * Case Value [When Option i Then Result i] Else Default end */
@@ -74,6 +75,27 @@ SIValue AR_COALESCE(SIValue *argv, int argc) {
 	return SI_NullVal();
 }
 
+// Distinct maintains a set of values,
+// if value `X` already in the set return NULL,
+// otherwise `X` is returned and added to to the set.
+SIValue AR_DISTINCT(SIValue *argv, int argc) {
+	set *set = argv[1].ptrval;
+	if(Set_Add(set, argv[0])) return SI_ConstValue(argv);
+	return SI_NullVal();
+}
+
+// Routine for freeing a Distinct function context.
+void Distinct_Free(void *ctx_ptr) {
+	set *set = ctx_ptr;
+	if(set == NULL) return;
+	Set_Free(set);
+}
+
+// Routine for cloning a Distinct function context.
+void *Distinct_Clone(void *orig) {
+	return Set_New();
+}
+
 void Register_ConditionalFuncs() {
 	SIType *types;
 	AR_FuncDesc *func_desc;
@@ -86,6 +108,12 @@ void Register_ConditionalFuncs() {
 	types = array_new(SIType, 1);
 	array_append(types, SI_ALL);
 	func_desc = AR_FuncDescNew("coalesce", AR_COALESCE, 1, VAR_ARG_LEN, types, true, false);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, SI_ALL);
+	func_desc = AR_FuncDescNew("distinct", AR_DISTINCT, 2, 2, types, false, false);
+	AR_SetPrivateDataRoutines(func_desc, Distinct_Free, Distinct_Clone);
 	AR_RegFunc(func_desc);
 }
 

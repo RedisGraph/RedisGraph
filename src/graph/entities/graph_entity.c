@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -12,6 +12,7 @@
 #include "../../query_ctx.h"
 #include "../graphcontext.h"
 #include "../../util/rmalloc.h"
+#include "../../datatypes/array.h"
 
 SIValue *PROPERTY_NOTFOUND = &(SIValue) {
 	.longval = 0, .type = T_NULL
@@ -123,6 +124,16 @@ bool GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue
 	SIValue_Free(*current);
 	*current = SI_CloneValue(value);
 	return true;
+}
+
+SIValue GraphEntity_Keys(const GraphEntity *e) {
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	SIValue keys = SIArray_New(ENTITY_PROP_COUNT(e));
+	for(int i = 0; i < e->entity->prop_count; i++) {
+		const char *key = GraphContext_GetAttributeString(gc, ENTITY_PROPS(e)[i].id);
+		SIArray_Append(&keys, SI_ConstStringVal(key));
+	}
+	return keys;
 }
 
 size_t GraphEntity_PropertiesToString(const GraphEntity *e, char **buffer, size_t *bufferLen,
