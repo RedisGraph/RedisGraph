@@ -18,8 +18,6 @@
 #include "../util/datablock/datablock_iterator.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
-#define GRAPH_DEFAULT_NODE_CAP 16384            // Default number of nodes a graph can hold before resizing.
-#define GRAPH_DEFAULT_EDGE_CAP 16384            // Default number of edges a graph can hold before resizing.
 #define GRAPH_DEFAULT_RELATION_TYPE_CAP 16      // Default number of different relationship types a graph can hold before resizing.
 #define GRAPH_DEFAULT_LABEL_CAP 16              // Default number of different labels a graph can hold before resizing.
 #define GRAPH_NO_LABEL -1                       // Labels are numbered [0-N], -1 represents no label.
@@ -106,7 +104,7 @@ void Graph_SetMatrixPolicy
 (
 	Graph *g,
 	MATRIX_POLICY policy
- );
+);
 
 // checks to see if graph has pending operations
 bool Graph_Pending

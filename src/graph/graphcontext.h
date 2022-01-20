@@ -49,9 +49,7 @@ typedef struct {
 // Creates and initializes a graph context struct.
 GraphContext *GraphContext_New
 (
-	const char *graph_name,
-	size_t node_cap,
-	size_t edge_cap
+	const char *graph_name
 );
 
 // retrive the graph context according to the graph name
