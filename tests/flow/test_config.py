@@ -131,3 +131,97 @@ class testConfig(FlowTestsBase):
         # Issue long-running query to validate the reconfiguration
         result = redis_graph.query("UNWIND range(1,1000000) AS v RETURN COUNT(v)")
         self.env.assertEqual(result.result_set[0][0], 1000000)
+
+        # Change resultset_size from default
+        response = redis_con.execute_command("GRAPH.CONFIG SET RESULTSET_SIZE 2")
+        self.env.assertEqual(response, "OK")
+
+        # Validate modified resultset_size
+        result = redis_graph.query("UNWIND range(1, 10) AS v RETURN v")
+        self.env.assertEqual(len(result.result_set), 2)
+
+        # Revert resultset_size to unlimited with a negative argument
+        response = redis_con.execute_command("GRAPH.CONFIG SET RESULTSET_SIZE -100")
+        self.env.assertEqual(response, "OK")
+
+        # Make sure resultset_size has been updated to unlimited.
+        response = redis_con.execute_command("GRAPH.CONFIG GET RESULTSET_SIZE")
+        expected_response = ["RESULTSET_SIZE", -1]
+        self.env.assertEqual(response, expected_response)
+
+        response = redis_con.execute_command("GRAPH.CONFIG", "GET", "NODE_CREATION_BUFFER")
+        expected_response = ["NODE_CREATION_BUFFER", 16384]
+        self.env.assertEqual(response, expected_response)
+
+    def test09_set_invalid_values(self):
+        # The run-time configurations supported by RedisGraph are:
+        # MAX_QUEUED_QUERIES
+        # TIMEOUT
+        # QUERY_MEM_CAPACITY
+        # DELTA_MAX_PENDING_CHANGES
+        # RESULTSET_SIZE
+
+        # Validate that attempting to set these configurations to
+        # invalid values fails
+        try:
+            # MAX_QUEUED_QUERIES must be a positive value
+            redis_con.execute_command("GRAPH.CONFIG SET MAX_QUEUED_QUERIES 0")
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            assert("Failed to set config value MAX_QUEUED_QUERIES to 0" in str(e))
+            pass
+
+        # TIMEOUT, QUERY_MEM_CAPACITY, and DELTA_MAX_PENDING_CHANGES must be
+        # non-negative values, 0 resets to default
+        for config in ["TIMEOUT", "QUERY_MEM_CAPACITY", "DELTA_MAX_PENDING_CHANGES"]:
+            try:
+                redis_con.execute_command("GRAPH.CONFIG SET %s -1" % config)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                assert("Failed to set config value %s to -1" % config in str(e))
+                pass
+
+        # No configuration can be set to a string
+        for config in ["MAX_QUEUED_QUERIES", "TIMEOUT", "QUERY_MEM_CAPACITY",
+                       "DELTA_MAX_PENDING_CHANGES", "RESULTSET_SIZE"]:
+            try:
+                redis_con.execute_command("GRAPH.CONFIG SET %s invalid" % config)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                assert(("Failed to set config value %s to invalid" % config) in str(e))
+
+    def test10_set_get_vkey_max_entity_count(self):
+        global redis_graph
+
+        config_name = "VKEY_MAX_ENTITY_COUNT"
+        config_value = 100
+
+        # Set configuration
+        response = redis_con.execute_command("GRAPH.CONFIG SET %s %d" % (config_name, config_value))
+        self.env.assertEqual(response, "OK")
+
+        # Make sure config been updated.
+        response = redis_con.execute_command("GRAPH.CONFIG GET " + config_name)
+        expected_response = [config_name, config_value]
+        self.env.assertEqual(response, expected_response)
+
+    def test11_set_get_node_creation_buffer(self):
+        self.env = Env(decodeResponses=True, moduleArgs='NODE_CREATION_BUFFER 0')
+        global redis_con
+        redis_con = self.env.getConnection()
+
+        # values less than 128 (such as 0, which this module was loaded with)
+        # will be increased to 128
+        creation_buffer_size = redis_con.execute_command("GRAPH.CONFIG", "GET", "NODE_CREATION_BUFFER")
+        expected_response = ["NODE_CREATION_BUFFER", 128]
+        self.env.assertEqual(creation_buffer_size, expected_response)
+
+        # restart the server with a buffer argument of 600
+        self.env = Env(decodeResponses=True, moduleArgs='NODE_CREATION_BUFFER 600')
+        redis_con = self.env.getConnection()
+
+        # the node creation buffer should be 1024, the next-greatest power of 2 of 600
+        creation_buffer_size = redis_con.execute_command("GRAPH.CONFIG", "GET", "NODE_CREATION_BUFFER")
+        expected_response = ["NODE_CREATION_BUFFER", 1024]
+        self.env.assertEqual(creation_buffer_size, expected_response)
+

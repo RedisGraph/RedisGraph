@@ -25,8 +25,8 @@ void Serializer_Graph_SetNode(Graph *g, NodeID id, int label, Node *n) {
 	Entity *en = DataBlock_AllocateItemOutOfOrder(g->nodes, id);
 	en->prop_count = 0;
 	en->properties = NULL;
-	n->id = id;
-	n->entity = en;
+	n->id          = id;
+	n->entity      = en;
 	if(label != GRAPH_NO_LABEL) {
 		// Set matrix at position [id, id]
 		GrB_Matrix m = Graph_GetLabelMatrix(g, label);
