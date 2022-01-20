@@ -383,14 +383,13 @@ Index *GraphContext_GetIndex(const GraphContext *gc, const char *label,
 	return Schema_GetIndex(s, attribute_id, type);
 }
 
-int GraphContext_AddIndex
+int GraphContext_AddExactMatchIndex
 (
 	Index **idx,
 	GraphContext *gc,
 	SchemaType schema_type,
 	const char *label,
-	const char *field,
-	IndexType index_type
+	const char *field
 ) {
 	ASSERT(idx    !=  NULL);
 	ASSERT(gc     !=  NULL);
@@ -401,7 +400,43 @@ int GraphContext_AddIndex
 	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
 	if(s == NULL) s = GraphContext_AddSchema(gc, label, schema_type);
 
-	int res = Schema_AddIndex(idx, s, field, index_type);
+	IndexField idx_field;
+	IndexField_New(&idx_field, field, INDEX_FIELD_DEFAULT_WEIGHT,
+			INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
+
+	int res = Schema_AddIndex(idx, s, &idx_field, IDX_EXACT_MATCH);
+	if(res != INDEX_OK) {
+		IndexField_Free(&idx_field);
+	}
+
+	ResultSet *result_set = QueryCtx_GetResultSet();
+	ResultSet_IndexCreated(result_set, res);
+
+	return res;
+}
+
+int GraphContext_AddFullTextIndex
+(
+	Index **idx,
+	GraphContext *gc,
+	SchemaType schema_type,
+	const char *label,
+	const char *field,
+	double weight,
+	bool nostem,
+	const char *phonetic
+) {
+	ASSERT(idx    !=  NULL);
+	ASSERT(gc     !=  NULL);
+	ASSERT(label  !=  NULL);
+	ASSERT(field  !=  NULL);
+
+	// Retrieve the schema for this label
+	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
+	if(s == NULL) s = GraphContext_AddSchema(gc, label, schema_type);
+	IndexField index_field;
+	IndexField_New(&index_field, field, weight, nostem, phonetic);
+	int res = Schema_AddIndex(idx, s, &index_field, IDX_FULLTEXT);
 	ResultSet *result_set = QueryCtx_GetResultSet();
 	ResultSet_IndexCreated(result_set, res);
 
