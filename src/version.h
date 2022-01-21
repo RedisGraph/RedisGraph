@@ -8,7 +8,7 @@
 
 #define REDISGRAPH_VERSION_MAJOR 2
 #define REDISGRAPH_VERSION_MINOR 4
-#define REDISGRAPH_VERSION_PATCH 13
+#define REDISGRAPH_VERSION_PATCH 14
 
 #define REDISGRAPH_SEMANTIC_VERSION(major, minor, patch) \
   (major * 10000 + minor * 100 + patch)
