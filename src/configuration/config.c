@@ -46,6 +46,9 @@
 // Max mem(bytes) that query/thread can utilize at any given time
 #define QUERY_MEM_CAPACITY "QUERY_MEM_CAPACITY"
 
+// size of node creation buffer
+#define NODE_CREATION_BUFFER "NODE_CREATION_BUFFER"
+
 //------------------------------------------------------------------------------
 // Configuration defaults
 //------------------------------------------------------------------------------
@@ -66,6 +69,7 @@ typedef struct {
 	bool maintain_transposed_matrices; // If true, maintain a transposed version of each relationship matrix.
 	uint64_t max_queued_queries;       // max number of queued queries
 	int64_t query_mem_capacity;        // Max mem(bytes) that query/thread can utilize at any given time
+	uint64_t node_creation_buffer;     // Number of extra node creations to buffer as margin in matrices
 	Config_on_change cb;               // callback function which being called when config param changed
 } RG_Config;
 
@@ -111,8 +115,7 @@ static inline bool _Config_ParseYesNo(const char *str, bool *value) {
 	if(!strcasecmp(str, "yes")) {
 		res = true;
 		*value = true;
-	}
-	else if(!strcasecmp(str, "no")) {
+	} else if(!strcasecmp(str, "no")) {
 		res = true;
 		*value = false;
 	}
@@ -237,21 +240,30 @@ uint64_t Config_resultset_max_size_get(void) {
 // query mem capacity
 //------------------------------------------------------------------------------
 
-void Config_query_mem_capacity_set(int64_t capacity)
-{
-	if (capacity <= 0)
+void Config_query_mem_capacity_set(int64_t capacity) {
+	if(capacity <= 0)
 		config.query_mem_capacity = QUERY_MEM_CAPACITY_UNLIMITED;
 	else
 		config.query_mem_capacity = capacity;
 }
 
-uint64_t Config_query_mem_capacity_get(void)
-{
+uint64_t Config_query_mem_capacity_get(void) {
 	return config.query_mem_capacity;
 }
 
-bool Config_Contains_field(const char *field_str, Config_Option_Field *field)
-{
+//------------------------------------------------------------------------------
+// node creation buffer
+//------------------------------------------------------------------------------
+
+void Config_node_creation_buffer_set(uint64_t buf_size) {
+	config.node_creation_buffer = buf_size;
+}
+
+uint64_t Config_node_creation_buffer_get(void) {
+	return config.node_creation_buffer;
+}
+
+bool Config_Contains_field(const char *field_str, Config_Option_Field *field) {
 	ASSERT(field_str != NULL);
 
 	Config_Option_Field f;
@@ -270,10 +282,12 @@ bool Config_Contains_field(const char *field_str, Config_Option_Field *field)
 		f = Config_CACHE_SIZE;
 	} else if(!(strcasecmp(field_str, RESULTSET_SIZE))) {
 		f = Config_RESULTSET_MAX_SIZE;
-	} else if (!(strcasecmp(field_str, MAX_QUEUED_QUERIES))) {
+	} else if(!(strcasecmp(field_str, MAX_QUEUED_QUERIES))) {
 		f = Config_MAX_QUEUED_QUERIES;
-	} else if (!(strcasecmp(field_str, QUERY_MEM_CAPACITY))) {
+	} else if(!(strcasecmp(field_str, QUERY_MEM_CAPACITY))) {
 		f = Config_QUERY_MEM_CAPACITY;
+	} else if(!(strcasecmp(field_str, NODE_CREATION_BUFFER))) {
+		f = Config_NODE_CREATION_BUFFER;
 	} else {
 		return false;
 	}
@@ -284,8 +298,7 @@ bool Config_Contains_field(const char *field_str, Config_Option_Field *field)
 
 const char *Config_Field_name(Config_Option_Field field) {
 	const char *name = NULL;
-	switch (field)
-	{
+	switch(field) {
 		case Config_TIMEOUT:
 			name = TIMEOUT;
 			break;
@@ -326,14 +339,18 @@ const char *Config_Field_name(Config_Option_Field field) {
 			name = QUERY_MEM_CAPACITY;
 			break;
 
-        //----------------------------------------------------------------------
-        // invalid option
-        //----------------------------------------------------------------------
+		case Config_NODE_CREATION_BUFFER:
+			name = NODE_CREATION_BUFFER;
+			break;
 
-        default :
+		//----------------------------------------------------------------------
+		// invalid option
+		//----------------------------------------------------------------------
+
+		default :
 			ASSERT("invalid option field" && false);
-            break;
-    }
+			break;
+	}
 
 	return name;
 }
@@ -375,6 +392,9 @@ void _Config_SetToDefaults(void) {
 
 	// no limit on query memory capacity
 	config.query_mem_capacity = QUERY_MEM_CAPACITY_UNLIMITED;
+
+	// the amount of empty space to reserve for node creations in matrices
+	config.node_creation_buffer = NODE_CREATION_BUFFER_DEFAULT;
 }
 
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -404,14 +424,14 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		// exit if configuration is not aware of field
 		if(!Config_Contains_field(field_str, &field)) {
 			RedisModule_Log(ctx, "warning",
-					"Encountered unknown configuration field '%s'", field_str);
+							"Encountered unknown configuration field '%s'", field_str);
 			return REDISMODULE_ERR;
 		}
 
 		// exit if encountered an error when setting configuration
 		if(!Config_Option_set(field, val_str)) {
 			RedisModule_Log(ctx, "warning",
-					"Failed setting field '%s'", field_str);
+							"Failed setting field '%s'", field_str);
 			return REDISMODULE_ERR;
 		}
 	}
@@ -554,6 +574,32 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 				Config_query_mem_capacity_set(query_mem_capacity);
 			}
 			break;
+
+		//----------------------------------------------------------------------
+		// size of buffer to maintain as margin in matrices
+		//----------------------------------------------------------------------
+
+		case Config_NODE_CREATION_BUFFER: {
+			long long node_creation_buffer;
+			if(!_Config_ParseNonNegativeInteger(val, &node_creation_buffer)) return false;
+
+			// node_creation_buffer should be at-least 128
+			node_creation_buffer =
+				(node_creation_buffer < 128) ? 128: node_creation_buffer;
+
+			// retrieve the MSB of the value
+			long long msb = (sizeof(long long) * 8) - __builtin_clzll(node_creation_buffer);
+			long long set_msb = 1 << (msb - 1);
+
+			// if the value is not a power of 2
+			// (if any bits other than the MSB are 1),
+			// raise it to the next power of 2
+			if((~set_msb & node_creation_buffer) != 0) {
+				node_creation_buffer = 1 << msb;
+			}
+			Config_node_creation_buffer_set(node_creation_buffer);
+		}
+		break;
 
 	//----------------------------------------------------------------------
 	// invalid option
@@ -724,14 +770,27 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 			}
 			break;
 
-        //----------------------------------------------------------------------
-        // invalid option
-        //----------------------------------------------------------------------
+		//----------------------------------------------------------------------
+		// size of buffer to maintain as margin in matrices
+		//----------------------------------------------------------------------
 
-        default :
-			ASSERT("invalid option field" && false);
+		case Config_NODE_CREATION_BUFFER: {
+			va_start(ap, field);
+			uint64_t *node_creation_buffer = va_arg(ap, uint64_t *);
+			va_end(ap);
+
+			ASSERT(node_creation_buffer != NULL);
+			(*node_creation_buffer) = Config_node_creation_buffer_get();
+		}
+		break;
+
+		//----------------------------------------------------------------------
+		// invalid option
+		//----------------------------------------------------------------------
+
+		default:
 			return false;
-    }
+	}
 
 	return true;
 }

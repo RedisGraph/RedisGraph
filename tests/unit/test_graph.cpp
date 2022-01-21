@@ -28,6 +28,9 @@ extern "C"
 #define KRED "\x1B[31m"
 #define KNRM "\x1B[0m"
 
+#define GRAPH_DEFAULT_NODE_CAP 16384
+#define GRAPH_DEFAULT_EDGE_CAP 16384
+
 // Encapsulate the essence of an edge.
 typedef struct {
 	NodeID srcId;   	// Source node ID.

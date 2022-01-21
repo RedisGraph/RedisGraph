@@ -9,23 +9,25 @@
 #include <stdbool.h>
 #include "redismodule.h"
 
-#define RESULTSET_SIZE_UNLIMITED     UINT64_MAX
-#define QUERY_MEM_CAPACITY_UNLIMITED 0
-#define CONFIG_TIMEOUT_NO_TIMEOUT    0
-#define VKEY_ENTITY_COUNT_UNLIMITED  UINT64_MAX
+#define RESULTSET_SIZE_UNLIMITED           UINT64_MAX
+#define QUERY_MEM_CAPACITY_UNLIMITED       0
+#define CONFIG_TIMEOUT_NO_TIMEOUT          0
+#define VKEY_ENTITY_COUNT_UNLIMITED        UINT64_MAX
+#define NODE_CREATION_BUFFER_DEFAULT       16384
 
 typedef enum {
-	Config_TIMEOUT                  = 0,  // timeout value for queries
-	Config_CACHE_SIZE               = 1,  // number of entries in cache
-	Config_ASYNC_DELETE             = 2,  // delete graph asynchronously
-	Config_OPENMP_NTHREAD           = 3,  // max number of OpenMP threads to use
-	Config_THREAD_POOL_SIZE         = 4,  // number of threads in thread pool
-	Config_RESULTSET_MAX_SIZE       = 5,  // max number of records in result-set
-	Config_MAINTAIN_TRANSPOSE       = 6,  // maintain transpose matrices
-	Config_VKEY_MAX_ENTITY_COUNT    = 7,  // max number of elements in vkey
-	Config_MAX_QUEUED_QUERIES       = 8,  // max number of queued queries
-	Config_QUERY_MEM_CAPACITY       = 9,  // max mem(bytes) that query/thread can utilize at any given time
-	Config_END_MARKER               = 10
+	Config_TIMEOUT                   = 0,     // timeout value for queries
+	Config_CACHE_SIZE                = 1,     // number of entries in cache
+	Config_ASYNC_DELETE              = 2,     // delete graph asynchronously
+	Config_OPENMP_NTHREAD            = 3,     // max number of OpenMP threads to use
+	Config_THREAD_POOL_SIZE          = 4,     // number of threads in thread pool
+	Config_RESULTSET_MAX_SIZE        = 5,     // max number of records in result-set
+	Config_MAINTAIN_TRANSPOSE        = 6,     // maintain transpose matrices
+	Config_VKEY_MAX_ENTITY_COUNT     = 7,     // max number of elements in vkey
+	Config_MAX_QUEUED_QUERIES        = 8,     // max number of queued queries
+	Config_QUERY_MEM_CAPACITY        = 9,     // max mem(bytes) that query/thread can utilize at any given time
+	Config_NODE_CREATION_BUFFER      = 10,    // size of buffer to maintain as margin in matrices
+	Config_END_MARKER                = 11
 } Config_Option_Field;
 
 // callback function, invoked once configuration changes as a result of

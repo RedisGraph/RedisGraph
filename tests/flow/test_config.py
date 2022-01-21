@@ -131,3 +131,46 @@ class testConfig(FlowTestsBase):
         # Issue long-running query to validate the reconfiguration
         result = redis_graph.query("UNWIND range(1,1000000) AS v RETURN COUNT(v)")
         self.env.assertEqual(result.result_set[0][0], 1000000)
+
+        # Change resultset_size from default
+        response = redis_con.execute_command("GRAPH.CONFIG SET RESULTSET_SIZE 2")
+        self.env.assertEqual(response, "OK")
+
+        # Validate modified resultset_size
+        result = redis_graph.query("UNWIND range(1, 10) AS v RETURN v")
+        self.env.assertEqual(len(result.result_set), 2)
+
+        # Revert resultset_size to unlimited with a negative argument
+        response = redis_con.execute_command("GRAPH.CONFIG SET RESULTSET_SIZE -100")
+        self.env.assertEqual(response, "OK")
+
+        # Make sure resultset_size has been updated to unlimited.
+        response = redis_con.execute_command("GRAPH.CONFIG GET RESULTSET_SIZE")
+        expected_response = ["RESULTSET_SIZE", -1]
+        self.env.assertEqual(response, expected_response)
+
+        response = redis_con.execute_command("GRAPH.CONFIG", "GET", "NODE_CREATION_BUFFER")
+        expected_response = ["NODE_CREATION_BUFFER", 16384]
+        self.env.assertEqual(response, expected_response)
+
+    def test09_set_get_node_creation_buffer(self):
+        global redis_con
+        redis_con.execute_command("FLUSHALL")
+        self.env = Env(decodeResponses=True, moduleArgs='NODE_CREATION_BUFFER 0')
+        redis_con = self.env.getConnection()
+
+        # values less than 128 (such as 0, which this module was loaded with)
+        # will be increased to 128
+        creation_buffer_size = redis_con.execute_command("GRAPH.CONFIG", "GET", "NODE_CREATION_BUFFER")
+        expected_response = ["NODE_CREATION_BUFFER", 128]
+        self.env.assertEqual(creation_buffer_size, expected_response)
+
+        # restart the server with a buffer argument of 600
+        self.env = Env(decodeResponses=True, moduleArgs='NODE_CREATION_BUFFER 600')
+        redis_con = self.env.getConnection()
+
+        # the node creation buffer should be 1024, the next-greatest power of 2 of 600
+        creation_buffer_size = redis_con.execute_command("GRAPH.CONFIG", "GET", "NODE_CREATION_BUFFER")
+        expected_response = ["NODE_CREATION_BUFFER", 1024]
+        self.env.assertEqual(creation_buffer_size, expected_response)
+
