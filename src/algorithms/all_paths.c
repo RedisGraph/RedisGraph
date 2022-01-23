@@ -136,7 +136,8 @@ AllPathsCtx *AllPathsCtx_New
 			ctx->maxLen = 0;
 			return ctx;
 		}
-		// TODO: comment
+		// get the the minimum length between src and dst
+		// the start the traversal from dst to src
 		int min_path_len = AllShortestPaths_FindMinimumLength(ctx, src, dst);
 		ctx->minLen = min_path_len;
 		ctx->maxLen = min_path_len;
