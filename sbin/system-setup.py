@@ -23,7 +23,7 @@ class RedisGraphSetup(paella.Setup):
         self.install("git automake libtool autoconf")
 
     def debian_compat(self):
-        self.install("locales python3-dev")
+        self.install("locales")
         self.run("%s/bin/getgcc" % READIES)
         self.install("peg")
 
@@ -56,8 +56,12 @@ class RedisGraphSetup(paella.Setup):
         self.install("astyle", _try=True) # fails for centos7
         self.run("{PYTHON} {READIES}/bin/getcmake --usr".format(PYTHON=self.python, READIES=READIES),
                  sudo=self.os != 'macos')
-        self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall".format(PYTHON=self.python, READIES=READIES))
+        if self.dist != "arch":
+            self.install("lcov")
+        else:
+            self.install("lcov-git", aur=True)
 
+        self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall".format(PYTHON=self.python, READIES=READIES))
         self.pip_install("-r tests/requirements.txt")
 
     def install_peg(self):

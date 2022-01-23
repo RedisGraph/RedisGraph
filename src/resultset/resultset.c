@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -124,24 +124,26 @@ static void _ResultSet_SetColumns(ResultSet *set) {
 
 ResultSet *NewResultSet(RedisModuleCtx *ctx, ResultSetFormatterType format) {
 	ResultSet *set = rm_malloc(sizeof(ResultSet));
-	set->ctx = ctx;
-	set->gc = QueryCtx_GetGraphCtx();
-	set->format = format;
-	set->formatter = ResultSetFormatter_GetFormatter(format);
-	set->columns = NULL;
-	set->column_count = 0;
-	set->columns_record_map = NULL;
-	set->cells = DataBlock_New(32, sizeof(SIValue), NULL);
 
-	set->stats.labels_added = 0;
-	set->stats.nodes_created = 0;
-	set->stats.properties_set = 0;
-	set->stats.relationships_created = 0;
-	set->stats.nodes_deleted = 0;
-	set->stats.relationships_deleted = 0;
-	set->stats.indices_created = STAT_NOT_SET;
-	set->stats.indices_deleted = STAT_NOT_SET;
-	set->stats.cached = false;
+	set->gc                  =  QueryCtx_GetGraphCtx();
+	set->ctx                 =  ctx;
+	set->cells               =  DataBlock_New(16384, 32, sizeof(SIValue), NULL);
+	set->format              =  format;
+	set->columns             =  NULL;
+	set->formatter           =  ResultSetFormatter_GetFormatter(format);
+	set->column_count        =  0;
+	set->columns_record_map  =  NULL;
+
+	// init resultset statistics
+	set->stats.cached                 =  false;
+	set->stats.labels_added           =  0;
+	set->stats.nodes_deleted          =  0;
+	set->stats.nodes_created          =  0;
+	set->stats.properties_set         =  0;
+	set->stats.indices_created        =  STAT_NOT_SET;
+	set->stats.indices_deleted        =  STAT_NOT_SET;
+	set->stats.relationships_created  =  0;
+	set->stats.relationships_deleted  =  0;
 
 	_ResultSet_SetColumns(set);
 

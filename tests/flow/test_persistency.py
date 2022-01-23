@@ -62,7 +62,7 @@ class testGraphPersistency():
         actual_result = redis_con.execute_command(
                 "GRAPH.QUERY", graph_name, "CREATE INDEX FOR ()-[r:visit]-() ON (r.purpose)")
         actual_result = redis_con.execute_command(
-                "GRAPH.QUERY", graph_name, "CALL db.idx.fulltext.createNodeIndex({label: 'person', stopwords: ['A', 'B'], language: 'english'}, 'text')")
+                "GRAPH.QUERY", graph_name, "CALL db.idx.fulltext.createNodeIndex({label: 'person', stopwords: ['A', 'B'], language: 'english'}, { field: 'text', nostem: true, weight: 2, phonetic: 'dm:en' })")
 
         return redis_graph
 

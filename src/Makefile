@@ -19,12 +19,19 @@ ifeq ($(COV),1)
 export DEBUG ?= 1
 endif
 
+ifeq ($(DEBUG),1)
+FLAVOR=debug
+else
+FLAVOR=release
+endif
+
 # Paths to deps.
 RAX_DIR = $(ROOT)/deps/rax
 XXHASH_DIR = $(ROOT)/deps/xxHash
 GRAPHBLAS_DIR = $(ROOT)/deps/GraphBLAS
 REDISEARCH_DIR = $(ROOT)/deps/RediSearch
-LIBCYPHER-PARSER_DIR = $(ROOT)/deps/libcypher-parser/lib/src
+REDISEARCH_BINROOT=$(ROOT)/bin/$(OS)-$(ARCH)-$(FLAVOR)
+LIBCYPHER_PARSER_DIR = $(ROOT)/deps/libcypher-parser/lib/src
 
 # if DEBUG env var is set, we compile with "debug" cflags
 DEBUGFLAGS = -g -ggdb -O3
@@ -34,20 +41,25 @@ ifeq ($(DEBUG),1)
 	DEBUGFLAGS += -DRG_DEBUG
 endif
 
+CFLAGS.warnings=-Wall -Wno-unused-variable -Wno-unused-result
+ifeq ($(PEDANTIC),1)
+CFLAGS.warnings += -Wpedantic
+endif
+
 # Default CFLAGS
 CFLAGS = \
-	-Wall -Wpedantic -Wno-unused-variable -Wno-unused-result \
 	-fPIC -fcommon -fopenmp \
-	-D_GNU_SOURCE -DREDIS_MODULE_TARGET -DREDISMODULE_EXPERIMENTAL_API -DXXH_STATIC_LINKING_ONLY
-CFLAGS += $(DEBUGFLAGS)
+	-D_GNU_SOURCE \
+	-DREDIS_MODULE_TARGET \
+	-DREDISMODULE_EXPERIMENTAL_API \
+	-DXXH_STATIC_LINKING_ONLY \
+	$(CFLAGS.warnings) $(DEBUGFLAGS)
 
 # Compile flags for linux / osx
 ifeq ($(OS),linux)
-	SHOBJ_LDFLAGS ?= -Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
-	export OS = Linux
+SHOBJ_LDFLAGS ?= -Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
 else
-	SHOBJ_LDFLAGS ?= -bundle -undefined dynamic_lookup -ldl -lpthread -fopenmp
-	export OS = Mac
+SHOBJ_LDFLAGS ?= -bundle -undefined dynamic_lookup -ldl -lpthread -fopenmp
 endif
 SHOBJ_LDFLAGS += $(LDFLAGS)
 export CFLAGS
@@ -70,21 +82,21 @@ COV_EXCLUDE += \
 	'$(ROOT)/src/util/sds/*'
 
 define COVERAGE_RESET
-$(SHOW)set -e ;\
-echo "Starting coverage analysys." ;\
+set -e ;\
+echo "Starting coverage analysys ..." ;\
 mkdir -p $(COV_DIR) ;\
 lcov --directory $(BINROOT) --base-directory $(SOURCEDIR) -z > /dev/null 2>&1
 endef
 
 define COVERAGE_COLLECT
-$(SHOW)set -e ;\
+set -e ;\
 echo "Collecting coverage data ..." ;\
 lcov --capture --directory $(BINROOT) --base-directory $(SOURCEDIR) --output-file $(COV_INFO) > /dev/null 2>&1 ;\
 lcov -o $(COV_INFO) -r $(COV_INFO) $(COV_EXCLUDE) > /dev/null 2>&1
 endef
 
 define COVERAGE_REPORT
-$(SHOW)set -e ;\
+set -e ;\
 lcov -l $(COV_INFO) ;\
 genhtml --legend -o $(COV_DIR) $(COV_INFO) > /dev/null 2>&1 ;\
 echo "Coverage info at $$(realpath $(COV_DIR))/index.html"
@@ -178,11 +190,11 @@ CC_DEPS = $(patsubst %.c, %.d, $(CC_SOURCES) )
 RAX=$(ROOT)/deps/rax/rax.o
 LIBXXHASH=$(ROOT)/deps/xxHash/libxxhash.a
 GRAPHBLAS=$(ROOT)/deps/GraphBLAS/build/libgraphblas.a
-REDISEARCH=$(ROOT)/deps/RediSearch/build/libredisearch.a
-LIBCYPHER-PARSER=$(ROOT)/deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
+REDISEARCH=$(REDISEARCH_BINROOT)/search-static/libredisearch.a
+LIBCYPHER_PARSER=$(ROOT)/deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
 # Compilation deps for the module
-LIBS=$(RAX) $(GRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER-PARSER)
+LIBS=$(RAX) $(GRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER_PARSER)
 MODULE_DEPS=$(LIBS) $(CC_OBJECTS)
 
 #----------------------------------------------------------------------------------------------
@@ -201,9 +213,11 @@ endif
 
 # Compile C file while generating a .d file for it
 %.o: %.c
-	$(REDISGRAPH_CC) $(CFLAGS) -I. -I$(GRAPHBLAS_DIR)/Include -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR)/src -c $< -o $@ -MMD -MF $(@:.o=.d)
+	$(REDISGRAPH_CC) $(CFLAGS) -I. -I$(GRAPHBLAS_DIR)/Include -I$(RAX_DIR) -I$(LIBCYPHER_PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR)/src -c $< -o $@ -MMD -MF $(@:.o=.d)
 
 all: redisgraph.so
+
+.PHONY: all
 
 # Include all dependency files for C files
 -include $(CC_DEPS)
@@ -216,36 +230,27 @@ $(RAX):
 
 $(LIBXXHASH):
 	@$(MAKE) -C $(ROOT)/deps/xxHash lib
-# .PHONY: $(LIBXXHASH)
 
 # Build GraphBLAS only if library does not already exists.
 $(GRAPHBLAS):
 ifeq (,$(wildcard $(GRAPHBLAS)))
 	@$(MAKE) -C $(ROOT)/deps/GraphBLAS CMAKE_OPTIONS="-DCMAKE_C_COMPILER='$(CC)'" static_only JOBS=$(JOBS)
 endif
-# .PHONY: $(GRAPHBLAS)
 
 $(REDISEARCH):
 ifeq (,$(wildcard $(REDISEARCH)))
-	set -e ;\
-	cd $(ROOT)/deps/RediSearch ;\
-	mkdir -p build ;\
-	cd build ;\
-	cmake -DRS_FORCE_NO_GITVERSION=ON -DRS_BUILD_STATIC=ON .. ;\
-	make
+	make -C $(REDISEARCH_DIR) STATIC=1 BINROOT=$(REDISEARCH_BINROOT)
 endif
-# .PHONY: $(REDISEARCH)
 
 # Build libcypher-parser only if library does not already exists.
-$(LIBCYPHER-PARSER):
-ifeq (,$(wildcard $(LIBCYPHER-PARSER)))
-	set -e ;\
+$(LIBCYPHER_PARSER):
+ifeq (,$(wildcard $(LIBCYPHER_PARSER)))
+	@set -e ;\
 	cd $(ROOT)/deps/libcypher-parser ;\
 	sh ./autogen.sh ;\
-	./configure --disable-shared ;\
-	$(MAKE) CFLAGS="-O3 -fPIC -DYY_BUFFER_SIZE=1048576" clean check -C $(ROOT)/deps/libcypher-parser
+	./configure --disable-shared
+	@$(MAKE) CFLAGS="-O3 -fPIC -DYY_BUFFER_SIZE=1048576" clean check -C $(ROOT)/deps/libcypher-parser
 endif
-# .PHONY: $(LIBCYPHER-PARSER)
 
 #----------------------------------------------------------------------------------------------
 
@@ -272,16 +277,17 @@ ifeq ($(ALL),1)
 	@$(MAKE) -C $(ROOT)/deps/xxHash clean
 	@$(MAKE) -C $(ROOT)/deps/GraphBLAS clean
 	@$(MAKE) -C $(ROOT)/deps/libcypher-parser clean
+	@$(MAKE) -C $(REDISEARCH_DIR) clean ALL=1
 endif
-	@$(MAKE) -C $(REDISEARCH_DIR) clean
 	@$(MAKE) -C $(ROOT)/tests clean
+
 .PHONY: clean
 
 #----------------------------------------------------------------------------------------------
 
 package: redisgraph.so
 	@$(ROOT)/sbin/pack.sh
-	@PACKAGE_NAME=redisgraph-rce RAMP_YAML=$(ROOT)/ramp-rce.yml $(ROOT)/sbin/pack.sh
+
 .PHONY: package
 
 #----------------------------------------------------------------------------------------------
@@ -291,10 +297,8 @@ test: redisgraph.so
 else
 test:
 endif
-#   check valgrind flag is not empty
-ifneq ($(VALGRIND),)
-#   valgrind is requested, check that host's os is not Linux
-ifneq ($(OS),linux)
+ifeq ($(VALGRIND),1)
+ifeq ($(OS),macos)
 	@echo building docker to run valgrind on MacOS
 	@cd .. ;\
 	docker build -f tests/Dockerfile -t mac_os_test_docker .
@@ -327,6 +331,7 @@ benchmark: redisgraph.so
 ifeq ($(COV),1)
 cov-upload:
 	$(SHOW)bash -c "bash <(curl -s https://codecov.io/bash) -f $(COV_INFO)"
+
 .PHONY: cov-upload
 endif # COV
 
