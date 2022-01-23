@@ -21,6 +21,7 @@ int AllShortestPaths_FindMinimumLength(
 	ASSERT(ctx != NULL);
 	ASSERT(src != NULL);
 	ASSERT(dest != NULL);
+	ASSERT(ENTITY_GET_ID(ctx->levels[0][0].node) != ENTITY_GET_ID(src));
 
 
 	int    depth  = 0;
