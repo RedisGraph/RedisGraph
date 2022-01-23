@@ -231,7 +231,7 @@ void AllPathsCtx_Free(AllPathsCtx *ctx) {
 	array_free(ctx->levels);
 	Path_Free(ctx->path);
 	array_free(ctx->neighbors);
+	if(ctx->visited) GrB_Vector_free(&ctx->visited);
 	rm_free(ctx);
-	if(ctx->shortest_paths) GrB_Vector_free(&ctx->visited);
 	ctx = NULL;
 }
