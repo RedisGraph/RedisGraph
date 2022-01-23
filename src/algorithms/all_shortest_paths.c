@@ -13,13 +13,14 @@
 // then add the rest of the nodes in the current depth to the visited nodes
 // so it can be used in AllShortestPaths_NextPath finding all pathes
 // and return the current depth
-int AllShortestPaths_FindMinimumLength(
+int AllShortestPaths_FindMinimumLength
+(
 	AllPathsCtx *ctx,   // context of the all shortest path
 	Node *src,          // the source node
 	Node *dest          // the destination node
 ) {
-	ASSERT(ctx != NULL);
-	ASSERT(src != NULL);
+	ASSERT(ctx  != NULL);
+	ASSERT(src  != NULL);
 	ASSERT(dest != NULL);
 	ASSERT(ENTITY_GET_ID(&ctx->levels[0][0].node) != ENTITY_GET_ID(src));
 
@@ -27,9 +28,8 @@ int AllShortestPaths_FindMinimumLength(
 	NodeID destID = ENTITY_GET_ID(dest);
 
 	GrB_Vector visited;
-	// benchmark GrB_Vector vs rax vs RoaringBitmap
+	// TODO: benchmark GrB_Vector vs rax vs RoaringBitmap
 	GrB_Vector_new(&visited, GrB_BOOL, Graph_UncompactedNodeCount(ctx->g));
-	// TODO check format of the vector
 
 	while (true) {
 		// see if we have nodes in the current level
@@ -74,18 +74,6 @@ int AllShortestPaths_FindMinimumLength(
 	}
 
 	if(depth > 0) {
-		// add the rest of the nodes in this level to the visited nodes
-		// this is needed for AllShortestPaths_NextPath
-		GrB_Vector_setElement_BOOL(visited, true, destID);
-		uint count = array_len(ctx->levels[depth]);
-		Node node;
-		NodeID id;
-		for(uint i = 0; i < count; i++) {
-			node = ctx->levels[depth][i].node;
-			id = ENTITY_GET_ID(&node);
-			GrB_Vector_setElement_BOOL(visited, true, id);
-		}
-
 		// clean data
 		array_clear(ctx->levels[depth]);
 		depth++; // switch from edge count to node count
@@ -97,60 +85,82 @@ int AllShortestPaths_FindMinimumLength(
 	return depth;
 }
 
-Path *AllShortestPaths_NextPath(AllPathsCtx *ctx) {
+// find paths from src to dest by traversing from dest to src using DFS
+// inspecting nodes which where discovered by
+// the previous call to `AllShortestPaths_FindMinimumLength`
+Path *AllShortestPaths_NextPath
+(
+	AllPathsCtx *ctx
+) {
 	ASSERT(ctx != NULL);
-	// find pathes from src to dest by starting traverse from dest node to
-	// one level at time only in nodes that was visited in the AllShortestPaths_FindMinimumLength
+
+	// TODO: add an explanation on how paths are discovered
 
 	uint32_t depth = Path_NodeCount(ctx->path);
 	if(depth > 0) {
-		// backtrack to move to next path.
+		// TODO: further explain what is happening here
+		// backtrack to move to next path
 		Path_Reverse(ctx->path);
 		Path_PopNode(ctx->path);
 		if(Path_EdgeCount(ctx->path)) Path_PopEdge(ctx->path);
 		depth--;
+	} else {
+		Path_AppendNode(ctx->path, array_pop(ctx->levels[0]));
+		depth++;
 	}
+
 	// as long as we didn't found a full path from src to dest
 	while (depth < ctx->maxLen) {
 		if (array_len(ctx->levels[depth]) > 0) {
-			// Get a new node from the frontier.
+			// get a new node from the frontier
+			bool is_visited;
 			LevelConnection frontierConnection = array_pop(ctx->levels[depth]);
 			Node frontierNode = frontierConnection.node;
 			NodeID frontierID = ENTITY_GET_ID(&frontierNode);
-			bool is_visited;
-			GrB_Info info = GrB_Vector_extractElement_BOOL(&is_visited, ctx->visited, frontierID);
-			// continue only on visited nodes
+			GrB_Info info = GrB_Vector_extractElement_BOOL(&is_visited,
+					ctx->visited, frontierID);
+
+			// consider only on visited nodes
 			if(info == GrB_NO_VALUE) continue;
-			// if we reached to the end of the path and this node is not the dst node continue
+
+			// if we reached to the end of the path and this node is not the
+			// dst node continue
 			if(depth == ctx->maxLen - 1 && frontierID != ENTITY_GET_ID(ctx->dst)) continue;
 
 			Path_AppendNode(ctx->path, frontierNode);
-			if(depth > 0) Path_AppendEdge(ctx->path, frontierConnection.edge);
+			Path_AppendEdge(ctx->path, frontierConnection.edge);
 
 			depth++;
 			GRAPH_EDGE_DIR dir = ctx->dir;
 			if(dir == GRAPH_EDGE_DIR_BOTH) {
-				/* If we're performing a bidirectional traversal, first add all incoming
-				* edges, then switch to outgoing edges for the default call. */
+				// if we're performing a bidirectional traversal
+				// first add all incoming edges
+				// then switch to outgoing edges for the default call
 				addNeighbors(ctx, &frontierConnection, depth, GRAPH_EDGE_DIR_INCOMING);
 				dir = GRAPH_EDGE_DIR_OUTGOING;
 			} else if(dir == GRAPH_EDGE_DIR_INCOMING) {
+				// TODO: perform this update only once
 				dir = GRAPH_EDGE_DIR_OUTGOING;
 			} else {
 				dir = GRAPH_EDGE_DIR_INCOMING;
 			}
 			addNeighbors(ctx, &frontierConnection, depth, dir);
 		} else if(depth == 0) {
+			// first level fully consumed
+			// there are no more paths leading from src to dest, we're done
 			return NULL;
 		} else {
-			// No way to advance, backtrack.
+			// no way to advance, backtrack
 			Path_PopNode(ctx->path);
 			if(Path_EdgeCount(ctx->path)) Path_PopEdge(ctx->path);
 			depth--;
 		}
 	}
 
+	// we've traversed going from dest to src, caller expects path going from
+	// src to dest, reverse path
 	Path_Reverse(ctx->path);
 	
 	return ctx->path;
 }
+
