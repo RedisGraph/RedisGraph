@@ -13,7 +13,7 @@ static void _free_to_string_annotation
 	const cypher_astnode_t *node,
 	void *annotation
 ) {
-	rm_free(annotation);
+	free(annotation);
 }
 
 AST_AnnotationCtxCollection *AST_AnnotationCtxCollection_New() {
