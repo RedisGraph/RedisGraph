@@ -544,8 +544,7 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 }
 
 static AR_ExpNode *_AR_ExpNodeFromGraphEntity(const cypher_astnode_t *entity) {
-	AST *ast = QueryCtx_GetAST();
-	const char *alias = AST_GetEntityName(ast, entity);
+	const char *alias = AST_ToString(entity);
 	return AR_EXP_NewVariableOperandNode(alias);
 }
 

@@ -42,10 +42,10 @@ void Serializer_Graph_SetNode
 	en->properties  =  NULL;
 	n->id           =  id;
 	n->entity       =  en;
-    GrB_Info info;
-    UNUSED(info);
+	GrB_Info info;
+	UNUSED(info);
 
-    RG_Matrix nl = Graph_GetNodeLabelMatrix(g);
+	RG_Matrix nl = Graph_GetNodeLabelMatrix(g);
 	for(uint i = 0; i < label_count; i ++) {
 		LabelID label = labels[i];
 		// set label matrix at position [id, id]

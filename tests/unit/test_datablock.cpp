@@ -21,6 +21,8 @@ extern "C" {
 }
 #endif
 
+#define DATABLOCK_BLOCK_CAP 16384
+
 class DataBlockTest: public ::testing::Test {
   protected:
 	static void SetUpTestCase() {
@@ -34,7 +36,7 @@ TEST_F(DataBlockTest, New) {
 	// Create a new data block, which can hold at least 1024 items
 	// each item is an integer.
 	size_t itemSize = sizeof(int);
-	DataBlock *dataBlock = DataBlock_New(1024, itemSize, NULL);
+	DataBlock *dataBlock = DataBlock_New(DATABLOCK_BLOCK_CAP, 1024, itemSize, NULL);
 
 	ASSERT_EQ(dataBlock->itemCount, 0);     // No items were added.
 	ASSERT_GE(dataBlock->itemCap, 1024);
@@ -54,7 +56,7 @@ TEST_F(DataBlockTest, New) {
 }
 
 TEST_F(DataBlockTest, AddItem) {
-	DataBlock *dataBlock = DataBlock_New(1024, sizeof(int), NULL);
+	DataBlock *dataBlock = DataBlock_New(DATABLOCK_BLOCK_CAP, 1024, sizeof(int), NULL);
 	size_t itemCount = 512;
 	DataBlock_Accommodate(dataBlock, itemCount);
 	ASSERT_GE(dataBlock->itemCap, itemCount);
@@ -93,7 +95,7 @@ TEST_F(DataBlockTest, AddItem) {
 }
 
 TEST_F(DataBlockTest, Scan) {
-	DataBlock *dataBlock = DataBlock_New(1024, sizeof(int), NULL);
+	DataBlock *dataBlock = DataBlock_New(DATABLOCK_BLOCK_CAP, 1024, sizeof(int), NULL);
 	size_t itemCount = 2048;
 	DataBlock_Accommodate(dataBlock, itemCount);
 
@@ -139,7 +141,7 @@ TEST_F(DataBlockTest, Scan) {
 }
 
 TEST_F(DataBlockTest, RemoveItem) {
-	DataBlock *dataBlock = DataBlock_New(1024, sizeof(int), NULL);
+	DataBlock *dataBlock = DataBlock_New(DATABLOCK_BLOCK_CAP, 1024, sizeof(int), NULL);
 	uint itemCount = 32;
 	DataBlock_Accommodate(dataBlock, itemCount);
 
@@ -194,7 +196,7 @@ TEST_F(DataBlockTest, RemoveItem) {
 
 TEST_F(DataBlockTest, OutOfOrderBuilding) {
 	// This test checks for a fragmented, data block out of order re-construction.
-	DataBlock *dataBlock = DataBlock_New(1, sizeof(int), NULL);
+	DataBlock *dataBlock = DataBlock_New(DATABLOCK_BLOCK_CAP, 1, sizeof(int), NULL);
 	int insert_arr1[4] = {8, 2, 3, 6};
 	int delete_arr[2] = {4, 7};
 	int insert_arr2[4] = {9, 1, 5, 0};

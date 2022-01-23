@@ -40,8 +40,7 @@ static void _QueryGraphAddNode
 	QueryGraph *qg,
 	const cypher_astnode_t *ast_entity
 ) {
-	AST *ast = QueryCtx_GetAST();
-	const char *alias = AST_GetEntityName(ast, ast_entity);
+	const char *alias = AST_ToString(ast_entity);
 
 	// look up this alias in the QueryGraph
 	// this node may already exist
@@ -65,10 +64,8 @@ static void _QueryGraphAddEdge
 	QGNode *dest,
 	bool only_shortest
 ) {
-
-	AST *ast = QueryCtx_GetAST();
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	const char *alias = AST_GetEntityName(ast, ast_entity);
+	const char *alias = AST_ToString(ast_entity);
 	enum cypher_rel_direction dir = cypher_ast_rel_pattern_get_direction(ast_entity);
 
 	// each edge can only appear once in a QueryGraph
@@ -115,18 +112,16 @@ static void _QueryGraph_ExtractNode
 (
 	const QueryGraph *qg,
 	QueryGraph *graph,
-	AST *ast,
 	const cypher_astnode_t *ast_node
 ) {
 
 	// validate inputs
 	ASSERT(qg        !=  NULL);
 	ASSERT(graph     !=  NULL);
-	ASSERT(ast       !=  NULL);
 	ASSERT(ast_node  !=  NULL);
 
 	// see if node is already in 'graph'
-	const char *alias = AST_GetEntityName(ast, ast_node);
+	const char *alias = AST_ToString(ast_node);
 	QGNode *n = QueryGraph_GetNodeByAlias(graph, alias);
 
 	if(n == NULL) {
@@ -167,10 +162,9 @@ static void _QueryGraph_ExtractEdge
 	QueryGraph *graph,
 	QGNode *left,
 	QGNode *right,
-	AST *ast,
 	const cypher_astnode_t *ast_edge
 ) {
-	const char *alias = AST_GetEntityName(ast, ast_edge);
+	const char *alias = AST_ToString(ast_edge);
 
 	// validate input, edge shouldn't be in graph
 	ASSERT(left != NULL && right != NULL);
@@ -192,7 +186,6 @@ static void _QueryGraph_ExtractPath
 	ASSERT(qg != NULL && graph != NULL && path != NULL);
 
 	const char *alias;
-	AST *ast = QueryCtx_GetAST();
 	const cypher_astnode_t *ast_node;
 	uint nelems = cypher_ast_pattern_path_nelements(path);
 
@@ -200,7 +193,7 @@ static void _QueryGraph_ExtractPath
 	// nodes are at even indices
 	for(uint i = 0; i < nelems; i += 2) {
 		ast_node = cypher_ast_pattern_path_get_element(path, i);
-		_QueryGraph_ExtractNode(qg, graph, ast, ast_node);
+		_QueryGraph_ExtractNode(qg, graph, ast_node);
 	}
 
 	// introduce edges to graph
@@ -208,16 +201,16 @@ static void _QueryGraph_ExtractPath
 	for(uint i = 1; i < nelems; i += 2) {
 		// retrieve the QGNode corresponding to the node left of this edge
 		const cypher_astnode_t *l_node = cypher_ast_pattern_path_get_element(path, i - 1);
-		const char *l_alias = AST_GetEntityName(ast, l_node);
+		const char *l_alias = AST_ToString(l_node);
 		QGNode *left = QueryGraph_GetNodeByAlias(graph, l_alias);
 
 		// retrieve the QGNode corresponding to the node right of this edge
 		const cypher_astnode_t *r_node = cypher_ast_pattern_path_get_element(path, i + 1);
-		const char *r_alias = AST_GetEntityName(ast, r_node);
+		const char *r_alias = AST_ToString(r_node);
 		QGNode *right = QueryGraph_GetNodeByAlias(graph, r_alias);
 
 		ast_node = cypher_ast_pattern_path_get_element(path, i);
-		_QueryGraph_ExtractEdge(qg, graph, left, right, ast, ast_node);
+		_QueryGraph_ExtractEdge(qg, graph, left, right, ast_node);
 	}
 }
 
@@ -275,12 +268,12 @@ void QueryGraph_AddPath
 	for(uint i = 1; i < nelems; i += 2) {
 		// retrieve the QGNode corresponding to the node left of this edge
 		const cypher_astnode_t *l_node = cypher_ast_pattern_path_get_element(path, i - 1);
-		const char *l_alias = AST_GetEntityName(ast, l_node);
+		const char *l_alias = AST_ToString(l_node);
 		QGNode *left = QueryGraph_GetNodeByAlias(qg, l_alias);
 
 		// retrieve the QGNode corresponding to the node right of this edge
 		const cypher_astnode_t *r_node = cypher_ast_pattern_path_get_element(path, i + 1);
-		const char *r_alias = AST_GetEntityName(ast, r_node);
+		const char *r_alias = AST_ToString(r_node);
 		QGNode *right = QueryGraph_GetNodeByAlias(qg, r_alias);
 
 		// retrieve the AST reference to this edge
