@@ -361,7 +361,7 @@ jobs:
           name: Install Arlecchino
           command: |
             cd
-            FORCE=1 ./deps/readies/bin/getrlec
+            FORCE=1 ./RedisGraph/deps/readies/bin/getrlec
       - attach_workspace:
           at: ~/workspace
       - run:
