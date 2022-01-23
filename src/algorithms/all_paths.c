@@ -10,13 +10,24 @@
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 
-// Make sure context levels array have atleast 'level' entries,
+// Make sure context level array have 'cap' available entries.
+static void _AllPathsCtx_EnsureLevelArrayCap(AllPathsCtx *ctx, uint level, uint cap) {
+	if(cap == 0) return;
+
+	uint len = array_len(ctx->levels);
+	if(level < len) {
+		ctx->levels[level] = array_ensure_cap(ctx->levels[level], len + cap);
+		return;
+	}
+
+	ASSERT(level == len);
+	array_append(ctx->levels, array_new(LevelConnection, cap));
+}
+
 // Append given 'node' to given 'level' array.
 static void _AllPathsCtx_AddConnectionToLevel(AllPathsCtx *ctx, uint level, Node *node,
 											  Edge *edge) {
-	while (array_len(ctx->levels) <= level) {
-		array_append(ctx->levels, array_new(LevelConnection, 1));
-	}
+	ASSERT(level < array_len(ctx->levels));
 	LevelConnection connection;
 	connection.node = *node;
 	if(edge) connection.edge = *edge;
@@ -28,20 +39,18 @@ static bool _AllPathsCtx_LevelNotEmpty(const AllPathsCtx *ctx, uint level) {
 	return (level < array_len(ctx->levels) && array_len(ctx->levels[level]) > 0);
 }
 
-// Traverse from the frontier node in the specified direction and add all encountered nodes and edges.
-void addNeighbors
+void addOutgoingNeighbors
 (
 	AllPathsCtx *ctx,
 	LevelConnection *frontier,
-	uint32_t depth,
-	GRAPH_EDGE_DIR dir
+	uint32_t depth
 ) {
 	EntityID frontierId = INVALID_ENTITY_ID;
 	if(depth > 1) frontierId = ENTITY_GET_ID(&frontier->edge);
 
 	// Get frontier neighbors.
 	for(int i = 0; i < ctx->relationCount; i++) {
-		Graph_GetNodeEdges(ctx->g, &frontier->node, dir, ctx->relationIDs[i], &ctx->neighbors);
+		Graph_GetNodeEdges(ctx->g, &frontier->node, GRAPH_EDGE_DIR_OUTGOING, ctx->relationIDs[i], &ctx->neighbors);
 	}
 
 	// Add unvisited neighbors to next level.
@@ -66,26 +75,91 @@ void addNeighbors
 		}
 	}
 
+	_AllPathsCtx_EnsureLevelArrayCap(ctx, depth, neighborsCount);
 	for(uint32_t i = 0; i < neighborsCount; i++) {
 		// Don't follow the frontier edge again.
 		if(frontierId == ENTITY_GET_ID(ctx->neighbors + i)) continue;
 		// Set the neighbor by following the edge in the correct directoin.
 		Node neighbor = GE_NEW_NODE();
-		switch(dir) {
-			case GRAPH_EDGE_DIR_OUTGOING:
-				Graph_GetNode(ctx->g, Edge_GetDestNodeID(ctx->neighbors + i), &neighbor);
-				break;
-			case GRAPH_EDGE_DIR_INCOMING:
-				Graph_GetNode(ctx->g, Edge_GetSrcNodeID(ctx->neighbors + i), &neighbor);
-				break;
-			default:
-				ASSERT(false && "encountered unexpected traversal direction in AllPaths");
-				break;
-		}
+		Graph_GetNode(ctx->g, Edge_GetDestNodeID(ctx->neighbors + i), &neighbor);
 		// Add the node and edge to the frontier.
 		_AllPathsCtx_AddConnectionToLevel(ctx, depth, &neighbor, (ctx->neighbors + i));
 	}
 	array_clear(ctx->neighbors);
+}
+
+void addIncomingNeighbors
+(
+	AllPathsCtx *ctx,
+	LevelConnection *frontier,
+	uint32_t depth
+) {
+	EntityID frontierId = INVALID_ENTITY_ID;
+	if(depth > 1) frontierId = ENTITY_GET_ID(&frontier->edge);
+
+	// Get frontier neighbors.
+	for(int i = 0; i < ctx->relationCount; i++) {
+		Graph_GetNodeEdges(ctx->g, &frontier->node, GRAPH_EDGE_DIR_INCOMING, ctx->relationIDs[i], &ctx->neighbors);
+	}
+
+	// Add unvisited neighbors to next level.
+	uint32_t neighborsCount = array_len(ctx->neighbors);
+
+	//--------------------------------------------------------------------------
+	// apply filter to edge
+	//--------------------------------------------------------------------------
+	if(ctx->ft) {
+		for(uint32_t i = 0; i < neighborsCount; i++) {
+			Edge e = ctx->neighbors[i];
+
+			// update the record with the current edge
+			Record_AddEdge(ctx->r, ctx->edge_idx, e);
+
+			// drop edge if it doesn't passes filter
+			if(FilterTree_applyFilters(ctx->ft, ctx->r) != FILTER_PASS) {
+				array_del_fast(ctx->neighbors, i);
+				i--;
+				neighborsCount--;
+			}
+		}
+	}
+
+	_AllPathsCtx_EnsureLevelArrayCap(ctx, depth, neighborsCount);
+	for(uint32_t i = 0; i < neighborsCount; i++) {
+		// Don't follow the frontier edge again.
+		if(frontierId == ENTITY_GET_ID(ctx->neighbors + i)) continue;
+		// Set the neighbor by following the edge in the correct directoin.
+		Node neighbor = GE_NEW_NODE();
+		Graph_GetNode(ctx->g, Edge_GetSrcNodeID(ctx->neighbors + i), &neighbor);
+		// Add the node and edge to the frontier.
+		_AllPathsCtx_AddConnectionToLevel(ctx, depth, &neighbor, (ctx->neighbors + i));
+	}
+	array_clear(ctx->neighbors);
+}
+
+// Traverse from the frontier node in the specified direction and add all encountered nodes and edges.
+void addNeighbors
+(
+	AllPathsCtx *ctx,
+	LevelConnection *frontier,
+	uint32_t depth,
+	GRAPH_EDGE_DIR dir
+) {
+	switch(dir) {
+		case GRAPH_EDGE_DIR_OUTGOING:
+			addOutgoingNeighbors(ctx, frontier, depth);
+			break;
+		case GRAPH_EDGE_DIR_INCOMING:
+			addIncomingNeighbors(ctx, frontier, depth);
+			break;
+		case GRAPH_EDGE_DIR_BOTH:
+			addIncomingNeighbors(ctx, frontier, depth);
+			addOutgoingNeighbors(ctx, frontier, depth);
+			break;
+		default:
+			ASSERT(false && "encountered unexpected traversal direction in AllPaths");
+			break;
+	}
 }
 
 AllPathsCtx *AllPathsCtx_New
@@ -127,6 +201,7 @@ AllPathsCtx *AllPathsCtx_New
 	ctx->shortest_paths =  shortest_paths;
 	ctx->visited        =  NULL;
 
+	_AllPathsCtx_EnsureLevelArrayCap(ctx, 0, 1);
 	_AllPathsCtx_AddConnectionToLevel(ctx, 0, src, NULL);
 
 	if(ctx->shortest_paths) {
@@ -186,14 +261,7 @@ static Path *_AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 			/* Introduce neighbors only if path depth < maximum path length.
 			 * and frontier wasn't already expanded. */
 			if(depth < ctx->maxLen && !frontierAlreadyOnPath) {
-				GRAPH_EDGE_DIR dir = ctx->dir;
-				if(dir == GRAPH_EDGE_DIR_BOTH) {
-					/* If we're performing a bidirectional traversal, first add all incoming
-					 * edges, then switch to outgoing edges for the default call. */
-					addNeighbors(ctx, &frontierConnection, depth, GRAPH_EDGE_DIR_INCOMING);
-					dir = GRAPH_EDGE_DIR_OUTGOING;
-				}
-				addNeighbors(ctx, &frontierConnection, depth, dir);
+				addNeighbors(ctx, &frontierConnection, depth, ctx->dir);
 			}
 
 			// See if we can return path.

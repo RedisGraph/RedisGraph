@@ -62,14 +62,7 @@ int AllShortestPaths_FindMinimumLength
 		if(info == GrB_NO_VALUE && depth < ctx->maxLen) {
 			GrB_Vector_setElement_BOOL(visited, true, frontierID);
 			// add all neighbors of the current node to the next depth level
-			GRAPH_EDGE_DIR dir = ctx->dir;
-			if(dir == GRAPH_EDGE_DIR_BOTH) {
-				// if we're performing a bidirectional traversal, first add all incoming
-				// edges, then switch to outgoing edges for the default call
-				addNeighbors(ctx, &frontierConnection, depth + 1, GRAPH_EDGE_DIR_INCOMING);
-				dir = GRAPH_EDGE_DIR_OUTGOING;
-			}
-			addNeighbors(ctx, &frontierConnection, depth + 1, dir);
+			addNeighbors(ctx, &frontierConnection, depth + 1, ctx->dir);
 		}
 	}
 
@@ -113,15 +106,7 @@ Path *AllShortestPaths_NextPath
 		Node frontierNode = frontierConnection.node;
 		Path_AppendNode(ctx->path, frontierNode);
 		depth++;
-		GRAPH_EDGE_DIR dir = ctx->dir;
-		if(dir == GRAPH_EDGE_DIR_BOTH) {
-			// if we're performing a bidirectional traversal
-			// first add all incoming edges
-			// then switch to outgoing edges for the default call
-			addNeighbors(ctx, &frontierConnection, depth, GRAPH_EDGE_DIR_INCOMING);
-			dir = GRAPH_EDGE_DIR_OUTGOING;
-		}
-		addNeighbors(ctx, &frontierConnection, depth, dir);
+		addNeighbors(ctx, &frontierConnection, depth, ctx->dir);
 	}
 
 	// as long as we didn't found a full path from src to dest
@@ -146,15 +131,7 @@ Path *AllShortestPaths_NextPath
 			Path_AppendEdge(ctx->path, frontierConnection.edge);
 
 			depth++;
-			GRAPH_EDGE_DIR dir = ctx->dir;
-			if(dir == GRAPH_EDGE_DIR_BOTH) {
-				// if we're performing a bidirectional traversal
-				// first add all incoming edges
-				// then switch to outgoing edges for the default call
-				addNeighbors(ctx, &frontierConnection, depth, GRAPH_EDGE_DIR_INCOMING);
-				dir = GRAPH_EDGE_DIR_OUTGOING;
-			}
-			addNeighbors(ctx, &frontierConnection, depth, dir);
+			addNeighbors(ctx, &frontierConnection, depth, ctx->dir);
 		} else if(depth == 0) {
 			// first level fully consumed
 			// there are no more paths leading from src to dest, we're done
