@@ -88,12 +88,12 @@ commands:
       - persist_to_workspace:
           root: bin/
           paths:
+            - artifacts/snapshots/*.zip
+            - artifacts/snapshots/*.tgz
+            - artifacts/snapshots/*.tar
             - artifacts/*.zip
             - artifacts/*.tgz
             - artifacts/*.tar
-            - snapshots/artifacts/*.zip
-            - snapshots/artifacts/*.tgz
-            - snapshots/artifacts/*.tar
 
   setup-prerequisits:
     steps:
@@ -360,6 +360,7 @@ jobs:
       - run:
           name: Install Arlecchino
           command: |
+            cd
             FORCE=1 ./deps/readies/bin/getrlec
       - attach_workspace:
           at: ~/workspace
@@ -368,12 +369,7 @@ jobs:
           command: |
             mkdir -p bin
             ln -s ~/workspace/artifacts bin/artifacts
-#      - run:
-#          name: Build
-#          shell: /bin/bash -l -eo pipefail
-#          command: |
-#            make -C build/docker build OSNICK=bionic SHOW=1
-#          no_output_timeout: 30m
+            du -ah --apparent-size bin/artifacts/*
       - run:
           name: Start RLEC
           shell: /bin/bash -l -eo pipefail
