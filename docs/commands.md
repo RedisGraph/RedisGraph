@@ -847,7 +847,7 @@ YIELD modifiers are only required if explicitly specified; by default the value 
 | db.labels                       | none                                            | `label`                       | Yields all node labels in the graph.                                                                                                                                                   |
 | db.relationshipTypes            | none                                            | `relationshipType`            | Yields all relationship types in the graph.                                                                                                                                            |
 | db.propertyKeys                 | none                                            | `propertyKey`                 | Yields all property keys in the graph.                                                                                                                                                 |
-| db.indexes                      | none                                            | `type`, `label`, `properties`, `entityType` | Yield all indexes in the graph, denoting whether they are exact-match or full-text and which label and properties each covers and whether they are indexing node or relationship attributes.                                                         |
+| db.indexes                      | none                                            | `type`, `label`, `properties`, `language`, `stopwords`, `entityType`, `info` | Yield all indexes in the graph, denoting whether they are exact-match or full-text and which label and properties each covers and whether they are indexing node or relationship attributes.                                                         |
 | db.idx.fulltext.createNodeIndex | `label`, `property` [, `property` ...]          | none                          | Builds a full-text searchable index on a label and the 1 or more specified properties.                                                                                                 |
 | db.idx.fulltext.drop            | `label`                                         | none                          | Deletes the full-text index associated with the given label.                                                                                                                           |
 | db.idx.fulltext.queryNodes      | `label`, `string`                               | `node`, `score`               | Retrieve all nodes that contain the specified string in the full-text indexes on the given label.                                                                                      |
@@ -1004,10 +1004,21 @@ RediSearch provide 2 additional index configuration options:
 1. Language - Define which language to use for stemming text which is adding the base form of a word to the index. This allows the query for "going" to also return results for "go" and "gone", for example.
 2. Stopwords - These are words that are usually so common that they do not add much information to search, but take up a lot of space and CPU time in the index.
 
-To construct a full-text index on the `title` using `German` using custom stopwords property of all nodes with label `Movie`, use the syntax:
+To construct a full-text index on the `title` property using `German` language and using custom stopwords of all nodes with label `Movie`, use the syntax:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex({ label: 'Movie', language: 'German', stopwords: ['a', 'ab'], 'title')"
+GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex({ label: 'Movie', language: 'German', stopwords: ['a', 'ab'] }, 'title')"
+```
+
+RediSearch provide 3 additional field configuration options:
+1. Weight - The importance of the text in the field
+2. Nostem - Skip setemming when indexing text
+3. Phonetic - Enable phonetic search on the text
+
+To construct a full-text index on the `title` property with phonetic search of all nodes with label `Movie`, use the syntax:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('Movie', {field: 'title', phonetic: 'dm:en'})"
 ```
 
 ## GRAPH.PROFILE
