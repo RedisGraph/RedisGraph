@@ -136,6 +136,7 @@ AllPathsCtx *AllPathsCtx_New
 			ctx->maxLen = 0;
 			return ctx;
 		}
+		// TODO: comment
 		int min_path_len = AllShortestPaths_FindMinimumLength(ctx, src, dst);
 		ctx->minLen = min_path_len;
 		ctx->maxLen = min_path_len;

@@ -9,22 +9,27 @@
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 
+// run BFS from src untill dest is visited
+// then add the rest of the nodes in the current depth to the visited nodes
+// so it can be used in AllShortestPaths_NextPath finding all pathes
+// and return the current depth
 int AllShortestPaths_FindMinimumLength(
-	AllPathsCtx *ctx,
-	Node *src,
-	Node *dest
+	AllPathsCtx *ctx,   // context of the all shortest path
+	Node *src,          // the source node
+	Node *dest          // the destination node
 ) {
 	ASSERT(ctx != NULL);
 	ASSERT(src != NULL);
 	ASSERT(dest != NULL);
 
-	// run bfs from src till dest is visited then return the depth
 
 	int    depth  = 0;
 	NodeID destID = ENTITY_GET_ID(dest);
 
 	GrB_Vector visited;
-	GrB_Vector_new(&visited, GrB_BOOL, Graph_NodeCount(ctx->g));
+	// benchmark GrB_Vector vs rax vs RoaringBitmap
+	GrB_Vector_new(&visited, GrB_BOOL, Graph_UncompactedNodeCount(ctx->g));
+	// TODO check format of the vector
 
 	while (true) {
 		// see if we have nodes in the current level
@@ -45,19 +50,6 @@ int AllShortestPaths_FindMinimumLength(
 		NodeID frontierID = ENTITY_GET_ID(&frontierNode);
 		// check if we reached the destination
 		if(destID == frontierID && depth > 0) {
-			// add the rest of the nodes in this level to the visited nodes
-			GrB_Vector_setElement_BOOL(visited, true, frontierID);
-			neighborCount = array_len(ctx->levels[depth]);
-			for(uint i = 0; i < neighborCount; i++) {
-				frontierNode = ctx->levels[depth][i].node;
-				frontierID = ENTITY_GET_ID(&frontierNode);
-				GrB_Vector_setElement_BOOL(visited, true, frontierID);
-			}
-
-			// clean data
-			array_clear(ctx->levels[depth]);
-			depth++; // switch from edge count to node count
-			if(depth < array_len(ctx->levels)) array_clear(ctx->levels[depth]);
 			break;
 		}
 
@@ -67,7 +59,7 @@ int AllShortestPaths_FindMinimumLength(
 
 		// introduce neighbors only if path depth < maximum path length
 		// and frontier wasn't already expanded
-		if(depth < ctx->maxLen && info == GrB_NO_VALUE) {
+		if(info == GrB_NO_VALUE && depth < ctx->maxLen) {
 			GrB_Vector_setElement_BOOL(visited, true, frontierID);
 			// add all neighbors of the current node to the next depth level
 			GRAPH_EDGE_DIR dir = ctx->dir;
@@ -81,12 +73,32 @@ int AllShortestPaths_FindMinimumLength(
 		}
 	}
 
+	if(depth > 0) {
+		// add the rest of the nodes in this level to the visited nodes
+		// this is needed for AllShortestPaths_NextPath
+		GrB_Vector_setElement_BOOL(visited, true, destID);
+		uint count = array_len(ctx->levels[depth]);
+		Node node;
+		NodeID id;
+		for(uint i = 0; i < count; i++) {
+			node = ctx->levels[depth][i].node;
+			id = ENTITY_GET_ID(&node);
+			GrB_Vector_setElement_BOOL(visited, true, id);
+		}
+
+		// clean data
+		array_clear(ctx->levels[depth]);
+		depth++; // switch from edge count to node count
+		if(depth < array_len(ctx->levels)) array_clear(ctx->levels[depth]);
+	}
+
 	ctx->visited = visited;
 
 	return depth;
 }
 
 Path *AllShortestPaths_NextPath(AllPathsCtx *ctx) {
+	ASSERT(ctx != NULL);
 	// find pathes from src to dest by starting traverse from dest node to
 	// one level at time only in nodes that was visited in the AllShortestPaths_FindMinimumLength
 
