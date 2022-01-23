@@ -137,11 +137,16 @@ AllPathsCtx *AllPathsCtx_New
 			return ctx;
 		}
 		// get the the minimum length between src and dst
-		// the start the traversal from dst to src
+		// then start the traversal from dst to src
 		int min_path_len = AllShortestPaths_FindMinimumLength(ctx, src, dst);
 		ctx->minLen = min_path_len;
 		ctx->maxLen = min_path_len;
 		ctx->dst    = src;
+		if(dir == GRAPH_EDGE_DIR_INCOMING) {
+			ctx->dir = GRAPH_EDGE_DIR_OUTGOING;
+		} else if(dir == GRAPH_EDGE_DIR_OUTGOING) {
+			ctx->dir = GRAPH_EDGE_DIR_INCOMING;
+		}
 		_AllPathsCtx_AddConnectionToLevel(ctx, 0, dst, NULL);
 	}
 

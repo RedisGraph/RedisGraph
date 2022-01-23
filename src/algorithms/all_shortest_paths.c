@@ -22,7 +22,7 @@ int AllShortestPaths_FindMinimumLength
 	ASSERT(ctx  != NULL);
 	ASSERT(src  != NULL);
 	ASSERT(dest != NULL);
-	ASSERT(ENTITY_GET_ID(&ctx->levels[0][0].node) != ENTITY_GET_ID(src));
+	ASSERT(ENTITY_GET_ID(&ctx->levels[0]->node) == ENTITY_GET_ID(src));
 
 	int    depth  = 0;
 	NodeID destID = ENTITY_GET_ID(dest);
@@ -98,15 +98,30 @@ Path *AllShortestPaths_NextPath
 
 	uint32_t depth = Path_NodeCount(ctx->path);
 	if(depth > 0) {
-		// TODO: further explain what is happening here
-		// backtrack to move to next path
+		// a full path already returned
+		// reverse it to be from dest to src
+		// pop the src node and edge
+		// advance to next path by backtracking
 		Path_Reverse(ctx->path);
 		Path_PopNode(ctx->path);
-		if(Path_EdgeCount(ctx->path)) Path_PopEdge(ctx->path);
+		Path_PopEdge(ctx->path);
 		depth--;
 	} else {
-		Path_AppendNode(ctx->path, array_pop(ctx->levels[0]));
+		if (array_len(ctx->levels[0]) == 0) return NULL;
+
+		LevelConnection frontierConnection = array_pop(ctx->levels[0]);
+		Node frontierNode = frontierConnection.node;
+		Path_AppendNode(ctx->path, frontierNode);
 		depth++;
+		GRAPH_EDGE_DIR dir = ctx->dir;
+		if(dir == GRAPH_EDGE_DIR_BOTH) {
+			// if we're performing a bidirectional traversal
+			// first add all incoming edges
+			// then switch to outgoing edges for the default call
+			addNeighbors(ctx, &frontierConnection, depth, GRAPH_EDGE_DIR_INCOMING);
+			dir = GRAPH_EDGE_DIR_OUTGOING;
+		}
+		addNeighbors(ctx, &frontierConnection, depth, dir);
 	}
 
 	// as long as we didn't found a full path from src to dest
@@ -138,11 +153,6 @@ Path *AllShortestPaths_NextPath
 				// then switch to outgoing edges for the default call
 				addNeighbors(ctx, &frontierConnection, depth, GRAPH_EDGE_DIR_INCOMING);
 				dir = GRAPH_EDGE_DIR_OUTGOING;
-			} else if(dir == GRAPH_EDGE_DIR_INCOMING) {
-				// TODO: perform this update only once
-				dir = GRAPH_EDGE_DIR_OUTGOING;
-			} else {
-				dir = GRAPH_EDGE_DIR_INCOMING;
 			}
 			addNeighbors(ctx, &frontierConnection, depth, dir);
 		} else if(depth == 0) {
