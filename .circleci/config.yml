@@ -206,17 +206,20 @@ jobs:
             - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build
-          command: bash -l -c "make all package"
+          shell: /bin/bash -l -eo pipefail
+          command: make all package
       - save_cache:
           paths:
             - deps/GraphBLAS/build
           key: v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Test
-          command: bash -l -c "make test"
+          shell: /bin/bash -l -eo pipefail
+          command: make test
       - run:
           name: Run 30-second fuzz test
-          command: bash -l -c "make fuzz"
+          shell: /bin/bash -l -eo pipefail
+          command: make fuzz
       - early-return-for-forked-pull-requests
       - run:
           name: Persist Artifact for CI benchmarks
@@ -241,12 +244,14 @@ jobs:
             - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build for coverage
-          command: bash -l -c "make COV=1"
+          shell: /bin/bash -l -eo pipefail
+          command: make COV=1
       - run:
           name: Test with coverage
+          shell: /bin/bash -l -eo pipefail
           command: |
-            bash -l -c "make test COV=1"
-            bash -l -c "make cov-upload"
+            make test COV=1
+            make cov-upload
           no_output_timeout: 30m
 
   build_memcheck:
@@ -263,11 +268,12 @@ jobs:
           at: /workspace
       - run:
           name: Test for memory leaks
+          shell: /bin/bash -l -eo pipefail
           command: |
             # Replace the default Redis server with one linked to libc malloc rather than jemalloc
             python3 ./deps/readies/bin/getredis --force --valgrind
             # Re-run the test suite, failing if definite memory leaks have been introduced
-            bash -l -c "make memcheck"
+            make memcheck
           # Allow RediSearch global destructors
           environment:
             RS_GLOBAL_DTORS: 1
@@ -285,17 +291,19 @@ jobs:
             - GraphBLAS-mac-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build
+          shell: /bin/bash -l -eo pipefail
           command: |
-            bash -l -c "make all package"
+            make all package
       - save_cache:
           paths:
             - deps/GraphBLAS/build
           key: GraphBLAS-mac-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Test
+          shell: /bin/bash -l -eo pipefail
           command: |
             ulimit -n 10000
-            bash -l -c "make test"
+            make test
       - save-tests-logs
       - persist-artifacts
 
@@ -332,7 +340,8 @@ jobs:
             - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build
-          command: bash -l -c "make all package"
+          shell: /bin/bash -l -eo pipefail
+          command: make all package
       - save_cache:
           paths:
             - deps/GraphBLAS/build
@@ -354,7 +363,7 @@ jobs:
             ./deps/readies/bin/getpy3
             ./sbin/system-setup.py
             ./deps/readies/bin/getredis
-            sudo ./deps/readies/bin/getdocker --just-enable-exp
+            ./deps/readies/bin/getdocker --just-enable-exp
             docker version
             python3 -m pip list
       - run:
@@ -442,7 +451,8 @@ jobs:
           command: MODULE_VERSION=$CIRCLE_BRANCH VERBOSE=1 TEST=nightly QUICK=1 ./tests/qa/run
       - run:
           name: Run 10-minute fuzz test
-          command: bash -l -c "FUZZ_TIMEOUT=600 make fuzz"
+          shell: /bin/bash -l -eo pipefail
+          command: FUZZ_TIMEOUT=600 make fuzz
 
   performance_ci_automation_not_integ:
     docker:
@@ -467,7 +477,7 @@ jobs:
       - run:
           name: Unzip module artifact
           command: |
-            unzip `ls /workspace/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip |grep -v rce` -d /workspace/
+            unzip `ls /workspace/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip | grep -v rce` -d /workspace/
       - benchmark-automation
 
   nightly_performance_automation:
@@ -481,7 +491,8 @@ jobs:
           at: /workspace
       - run:
           name: Build artifact
-          command: bash -l -c make
+          shell: /bin/bash -l -eo pipefail
+          command: make
       - benchmark-automation:
           github_actor: "ci.nightly"
           module_path: "/root/project/src/$PACKAGE_NAME.so"
@@ -557,15 +568,15 @@ workflows:
   version: 2
   build_and_package:
     jobs:
-#      - build:
-#          <<: *context
-#          <<: *not-on-integ-branch
-#      - coverage:
-#          <<: *context
-#          <<: *on-any-branch
-#      - build_memcheck:
-#          <<: *context
-#          <<: *on-any-branch
+      - build:
+          <<: *context
+          <<: *not-on-integ-branch
+      - coverage:
+          <<: *context
+          <<: *on-any-branch
+      - build_memcheck:
+          <<: *context
+          <<: *on-any-branch
       - build_macos:
           <<: *context
           <<: *on-integ-and-version-tags
