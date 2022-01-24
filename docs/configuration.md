@@ -128,7 +128,7 @@ $ redis-cli GRAPH.CONFIG SET QUERY_MEM_CAPACITY 1048576
 
 ## NODE_CREATION_BUFFER
 
-The node creation buffer is the number of new nodes that can be created without resizing matrices. For example, when set to 16,384, the matrices will have extra space for 16,384 nodes upon creation. Whenever the extra space is utilized, the matrices' size will increase by 16,384.
+The node creation buffer is the number of new nodes that can be created without resizing matrices. For example, when set to 16,384, the matrices will have extra space for 16,384 nodes upon creation. Whenever the extra space is depleted, the matrices' size will increase by 16,384.
 
 Reducing this value will reduce memory consumption, but cause performance degradation due to the increased frequency of matrix resizes.
 
