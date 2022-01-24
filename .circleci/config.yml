@@ -368,7 +368,7 @@ jobs:
           name: Access artifacts
           command: |
             mkdir -p bin
-            ln -s ~/workspace/artifacts bin/artifacts
+            cp -R ~/workspace/artifacts bin/
             du -ah --apparent-size bin/artifacts/*
       - run:
           name: Start RLEC
