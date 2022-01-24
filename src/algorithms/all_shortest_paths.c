@@ -100,7 +100,7 @@ Path *AllShortestPaths_NextPath
 		Path_PopEdge(ctx->path);
 		depth--;
 	} else {
-		if (array_len(ctx->levels[0]) == 0) return NULL;
+		if(array_len(ctx->levels[0]) == 0) return NULL;
 
 		LevelConnection frontierConnection = array_pop(ctx->levels[0]);
 		Node frontierNode = frontierConnection.node;

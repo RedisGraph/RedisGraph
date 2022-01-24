@@ -16,7 +16,8 @@ static void _AllPathsCtx_EnsureLevelArrayCap(AllPathsCtx *ctx, uint level, uint 
 
 	uint len = array_len(ctx->levels);
 	if(level < len) {
-		ctx->levels[level] = array_ensure_cap(ctx->levels[level], len + cap);
+		LevelConnection *current = ctx->levels[level];
+		ctx->levels[level] = array_ensure_cap(current, array_len(current) + cap);
 		return;
 	}
 
@@ -287,8 +288,7 @@ static Path *_AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 	return NULL;
 }
 
-Path *AllPathsCtx_NextPath(AllPathsCtx *ctx)
-{
+Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 	if (!ctx || ctx->maxLen == 0) return NULL;
 
 	if (ctx->shortest_paths)
