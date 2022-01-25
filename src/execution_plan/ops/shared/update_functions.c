@@ -100,8 +100,13 @@ static PendingUpdateCtx _PreparePendingUpdate
 }
 
 // commits delayed updates
-void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
-				   PendingUpdateCtx *updates, EntityType type) {
+void CommitUpdates
+(
+	GraphContext *gc,
+	ResultSetStatistics *stats,
+	PendingUpdateCtx *updates,
+	EntityType type
+) {
 	ASSERT(gc      != NULL);
 	ASSERT(stats   != NULL);
 	ASSERT(updates != NULL);
@@ -185,9 +190,16 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 	if(stats) stats->properties_set += properties_set;
 }
 
-void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **node_updates,
-					   PendingUpdateCtx **edge_updates, const Record r,
-					   const EntityUpdateEvalCtx *ctx, bool allow_null) {
+void EvalEntityUpdates
+(
+	GraphContext *gc,
+	PendingUpdateCtx **node_updates,
+	PendingUpdateCtx **edge_updates,
+	const Record r,
+	const EntityUpdateEvalCtx *ctx,
+	bool allow_null,
+	UndoLog *undo_log
+) {
 	Schema *s         = NULL;
 	bool update_index     = false;
 
@@ -305,6 +317,9 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **node_updates,
 				attr_id, new_value, st);
 		// enqueue the current update
 		array_append(*updates, update);
+
+		SIValue *orig_val = GraphEntity_GetProperty(entity, attr_id);
+		UndoLog_AddUpdate(undo_log, &update, orig_val);
 	}
 }
 

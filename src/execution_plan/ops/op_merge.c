@@ -31,13 +31,14 @@ static void _UpdateProperties(PendingUpdateCtx **node_pending_updates,
 	ASSERT(record_count > 0);
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
+	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 	for(uint i = 0; i < record_count; i ++) {  // for each record to update
 		Record r = records[i];
 		// evaluate update expressions
 		raxSeek(&updates, "^", NULL, 0);
 		while(raxNext(&updates)) {
 			EntityUpdateEvalCtx *ctx = updates.data;
-			EvalEntityUpdates(gc, node_pending_updates, edge_pending_updates, r, ctx, false);
+			EvalEntityUpdates(gc, node_pending_updates, edge_pending_updates, r, ctx, false, &query_ctx->undo_log);
 		}
 	}
 }

@@ -15,6 +15,7 @@
 #include "../util/rmalloc.h"
 #include "../util/cache/cache.h"
 #include "../util/thpool/pools.h"
+#include "../undo_log/undo_log.h"
 #include "../execution_plan/execution_plan.h"
 #include "execution_ctx.h"
 
@@ -231,7 +232,10 @@ static void _ExecuteQuery(void *args) {
 		ASSERT("Unhandled query type" && false);
 	}
 
+	if(ErrorCtx_EncounteredError()) UndoLog_Rollback(&query_ctx->undo_log);
+	
 	QueryCtx_ForceUnlockCommit();
+
 
 	if(!profile || ErrorCtx_EncounteredError()) {
 		// if we encountered an error, ResultSet_Reply will emit the error

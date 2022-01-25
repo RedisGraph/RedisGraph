@@ -10,6 +10,7 @@
 #include "util/simple_timer.h"
 #include "arithmetic/arithmetic_expression.h"
 #include "serializers/graphcontext_type.h"
+#include "undo_log/undo_log.h"
 
 // GraphContext type as it is registered at Redis.
 extern RedisModuleType *GraphContextRedisModuleType;
@@ -22,6 +23,7 @@ static inline QueryCtx *_QueryCtx_GetCreateCtx(void) {
 	if(!ctx) {
 		// Set a new thread-local QueryCtx if one has not been created.
 		ctx = rm_calloc(1, sizeof(QueryCtx));
+		UndoLog_New(&ctx->undo_log);
 		pthread_setspecific(_tlsQueryCtxKey, ctx);
 	}
 	return ctx;
