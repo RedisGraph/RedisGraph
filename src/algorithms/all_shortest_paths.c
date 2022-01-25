@@ -30,6 +30,7 @@ int AllShortestPaths_FindMinimumLength
 	GrB_Vector visited;
 
 	GrB_Vector_new(&visited, GrB_BOOL, Graph_UncompactedNodeCount(ctx->g));
+	GxB_set(visited, GxB_SPARSITY_CONTROL, GxB_BITMAP);
 
 	while (true) {
 		// see if we have nodes in the current level
