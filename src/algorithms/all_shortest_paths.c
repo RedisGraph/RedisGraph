@@ -28,7 +28,7 @@ int AllShortestPaths_FindMinimumLength
 	NodeID destID = ENTITY_GET_ID(dest);
 
 	GrB_Vector visited;
-	// TODO: benchmark GrB_Vector vs rax vs RoaringBitmap
+
 	GrB_Vector_new(&visited, GrB_BOOL, Graph_UncompactedNodeCount(ctx->g));
 
 	while (true) {
