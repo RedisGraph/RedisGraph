@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -33,7 +33,7 @@ GraphContext *RdbLoadGraphContext_v6(RedisModuleIO *rdb) {
 	*/
 
 	char *graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
-	GraphContext *gc = GraphContext_New(graph_name, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
+	GraphContext *gc = GraphContext_New(graph_name);
 	RedisModule_Free(graph_name);
 
 	// Attributes, Load the full attribute mapping.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -24,7 +24,6 @@ typedef struct {
 	const cypher_astnode_t *root;                       // Root element of libcypher-parser AST
 	rax *referenced_entities;                           // Mapping of the referenced entities.
 	AST_AnnotationCtxCollection *anot_ctx_collection;   // Holds annotations contexts.
-	rax *canonical_entity_names;                        // Storage for canonical graph entity names.
 	bool free_root;                                     // The root should only be freed if this is a sub-AST we constructed
 	uint *ref_count;                                    // A pointer to reference counter (for deletion).
 	cypher_parse_result_t *parse_result;                // Query parsing output.
@@ -94,9 +93,6 @@ void AST_BuildReferenceMap(AST *ast, const cypher_astnode_t *project_clause);
 // Annotate AST, naming all anonymous graph entities.
 void AST_Enrich(AST *ast);
 
-// Annotate the AST node with the given name.
-void AST_AttachName(AST *ast, const cypher_astnode_t *node, const char *name);
-
 // Returns true if the given alias is referenced within this AST segment.
 bool AST_AliasIsReferenced(AST *ast, const char *alias);
 
@@ -108,10 +104,6 @@ long AST_ParseIntegerNode(const cypher_astnode_t *int_node);
 
 // Returns true if the given clause contains an aggregate function.
 bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause);
-
-// Retrieve the name of a given AST entity. This interface is valid for
-// AST node and edge patterns as well as any ORDER BY item.
-const char *AST_GetEntityName(const AST *ast, const cypher_astnode_t *entity);
 
 // Retrieve the array of projected aliases for a WITH/RETURN * clause.
 const char **AST_GetProjectAll(const cypher_astnode_t *projection_clause);
@@ -134,6 +126,6 @@ void parse_result_free(cypher_parse_result_t *parse_result);
 // Returns the ast annotation context collection of the AST.
 AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast);
 
-char *AST_ToString(const cypher_astnode_t *node);
+const char *AST_ToString(const cypher_astnode_t *node);
 
 void AST_Free(AST *ast);

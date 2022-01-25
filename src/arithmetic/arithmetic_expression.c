@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -736,14 +736,6 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str) {
 	size_t bytes_written = 0;
 	*str = NULL;
 	_AR_EXP_ToString(root, str, &str_size, &bytes_written);
-}
-
-// Generate a heap-allocated name for an arithmetic expression.
-// This routine is only used to name ORDER BY expressions.
-char *AR_EXP_BuildResolvedName(AR_ExpNode *root) {
-	char *name = NULL;
-	AR_EXP_ToString(root, &name);
-	return name;
 }
 
 inline const char *AR_EXP_GetFuncName(const AR_ExpNode *exp) {

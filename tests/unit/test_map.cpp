@@ -14,6 +14,7 @@ extern "C" {
 #include "../../src/util/arr.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/datatypes/map.h"
+#include "../../src/datatypes/array.h"
 
 #ifdef __cplusplus
 }
@@ -35,9 +36,9 @@ TEST_F(MapTest, empty_map) {
 
 	ASSERT_EQ(0, Map_KeyCount(map));
 
-	SIValue *keys = Map_Keys(map);
-	ASSERT_EQ(0, array_len(keys));
-	array_free(keys);
+	SIValue keys = Map_Keys(map);
+	ASSERT_EQ(0, SIArray_Length(keys));
+	SIArray_Free(keys);
 
 	//--------------------------------------------------------------------------
 	// try getting a key
@@ -97,14 +98,15 @@ TEST_F(MapTest, map_add) {
 	}
 
 	// verify keys
-	SIValue *stored_keys = Map_Keys(map);
-	ASSERT_EQ(array_len(stored_keys), 3);
+	SIValue stored_keys = Map_Keys(map);
+	ASSERT_EQ(SIArray_Length(stored_keys), 3);
 	for(int i = 0; i < 3; i++) {
-		ASSERT_TRUE(strcmp(keys[i].stringval, stored_keys[i].stringval) == 0);
+		SIValue key = SIArray_Get(stored_keys, i);
+		ASSERT_TRUE(strcmp(keys[i].stringval, key.stringval) == 0);
 	}
 
 	// clean up
-	array_free(stored_keys);
+	SIArray_Free(stored_keys);
 	Map_Free(map);
 }
 
@@ -147,11 +149,11 @@ TEST_F(MapTest, map_remove) {
 		ASSERT_FALSE(Map_Get(map, keys[0], &v));
 	}
 
-	SIValue *stored_keys = Map_Keys(map);
-	ASSERT_EQ(0, array_len(stored_keys));
+	SIValue stored_keys = Map_Keys(map);
+	ASSERT_EQ(0, SIArray_Length(stored_keys));
 
 	// clean up
-	array_free(stored_keys);
+	SIArray_Free(stored_keys);
 	Map_Free(map);
 }
 

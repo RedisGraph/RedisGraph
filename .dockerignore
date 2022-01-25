@@ -3,5 +3,5 @@
 __pycache__/
 *.o
 *.d
-*.so
+*.so*
 *.pyc

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -268,7 +268,6 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	ast->params_parse_result = NULL;
 	ast->referenced_entities = NULL;
 	ast->parse_result = parse_result;
-	ast->canonical_entity_names = raxNew();
 	ast->anot_ctx_collection = AST_AnnotationCtxCollection_New();
 
 	*(ast->ref_count) = 1;
@@ -294,7 +293,6 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->anot_ctx_collection = master_ast->anot_ctx_collection;
-	ast->canonical_entity_names = master_ast->canonical_entity_names;
 	ast->free_root = true;
 	ast->ref_count = rm_malloc(sizeof(uint));
 	ast->parse_result = NULL;
@@ -416,11 +414,6 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 	return aggregated;
 }
 
-const char *AST_GetEntityName(const AST *ast, const cypher_astnode_t *entity) {
-	AnnotationCtx *name_ctx = AST_AnnotationCtxCollection_GetNameCtx(ast->anot_ctx_collection);
-	return cypher_astnode_get_annotation(name_ctx, entity);
-}
-
 const char **AST_GetProjectAll(const cypher_astnode_t *projection_clause) {
 	AST *ast = QueryCtx_GetAST();
 	AnnotationCtx *project_all_ctx = AST_AnnotationCtxCollection_GetProjectAllCtx(
@@ -504,34 +497,38 @@ inline AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast) {
 	return ast->anot_ctx_collection;
 }
 
-static void _free_to_string_annotation
-(
-	void *userdata,
-	const cypher_astnode_t *node,
-	void *annotation
-) {
-	rm_free(annotation);
+static inline char *_create_anon_alias(int anon_count) {
+	char *alias;
+	asprintf(&alias, "anon_%d", anon_count);
+	return alias;
 }
 
-char *AST_ToString(const cypher_astnode_t *node) {
+const char *AST_ToString(const cypher_astnode_t *node) {
 	QueryCtx *ctx = QueryCtx_GetQueryCtx();
 	AST *ast = QueryCtx_GetAST();
 	AnnotationCtx *to_string_ctx = AST_AnnotationCtxCollection_GetToStringCtx(ast->anot_ctx_collection);
 
-	if(to_string_ctx == NULL) {
-		to_string_ctx = cypher_ast_annotation_context();
-		// set release handler to free allocated string
-		cypher_ast_annotation_context_set_release_handler(to_string_ctx, _free_to_string_annotation, NULL);
-		AST_AnnotationCtxCollection_SetToStringCtx(ast->anot_ctx_collection, to_string_ctx);
-	}
-
-	char * str = (char *)cypher_astnode_get_annotation(to_string_ctx, node);
+	char *str = (char *)cypher_astnode_get_annotation(to_string_ctx, node);
 	if(str == NULL) {
-		struct cypher_input_range range = cypher_astnode_range(node);
-		uint length = range.end.offset - range.start.offset + 2;
-		str = rm_malloc(sizeof(char) * length);
-		strncpy(str, ctx->query_data.query + range.start.offset, length - 1);
-		str[length - 1] = '\0';
+		cypher_astnode_type_t t = cypher_astnode_type(node);
+		const cypher_astnode_t *ast_identifier = NULL;
+		if(t == CYPHER_AST_NODE_PATTERN) {
+			ast_identifier = cypher_ast_node_pattern_get_identifier(node);
+		} else if(t == CYPHER_AST_REL_PATTERN) {
+			ast_identifier = cypher_ast_rel_pattern_get_identifier(node);
+		} else {
+			struct cypher_input_range range = cypher_astnode_range(node);
+			uint length = range.end.offset - range.start.offset + 1;
+			str = malloc(sizeof(char) * length);
+			strncpy(str, ctx->query_data.query_no_params + range.start.offset, length - 1);
+			str[length - 1] = '\0';
+		}
+		if(ast_identifier) {
+			// Graph entity has a user-defined alias return it.
+			return cypher_ast_identifier_get_name(ast_identifier);
+		} else if (str == NULL) {
+			str = _create_anon_alias(ast->anot_ctx_collection->anon_count++);
+		}
 		cypher_astnode_attach_annotation(to_string_ctx, node, (void *)str, NULL);
 	}
 	return str;
@@ -558,7 +555,6 @@ void AST_Free(AST *ast) {
 			/* this is the master AST,
 			 * free the annotation contexts that have been constructed */
 			AST_AnnotationCtxCollection_Free(ast->anot_ctx_collection);
-			raxFreeWithCallback(ast->canonical_entity_names, rm_free);
 			parse_result_free(ast->parse_result);
 		}
 

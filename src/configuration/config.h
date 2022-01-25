@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -14,6 +14,7 @@
 #define CONFIG_TIMEOUT_NO_TIMEOUT          0
 #define VKEY_ENTITY_COUNT_UNLIMITED        UINT64_MAX
 #define DELTA_MAX_PENDING_CHANGES_DEFAULT  10000
+#define NODE_CREATION_BUFFER_DEFAULT       16384
 
 typedef enum {
 	Config_TIMEOUT                   = 0,     // timeout value for queries
@@ -25,8 +26,9 @@ typedef enum {
 	Config_VKEY_MAX_ENTITY_COUNT     = 6,     // max number of elements in vkey
 	Config_MAX_QUEUED_QUERIES        = 7,     // max number of queued queries
 	Config_QUERY_MEM_CAPACITY        = 8,     // max mem(bytes) that query/thread can utilize at any given time
-	Config_DELTA_MAX_PENDING_CHANGES = 9,    // number of pending changed befor RG_Matrix flushed
-	Config_END_MARKER                = 10
+	Config_DELTA_MAX_PENDING_CHANGES = 9,     // number of pending changes before RG_Matrix flushed
+	Config_NODE_CREATION_BUFFER      = 10,    // size of buffer to maintain as margin in matrices
+	Config_END_MARKER                = 11
 } Config_Option_Field;
 
 // callback function, invoked once configuration changes as a result of
@@ -35,8 +37,7 @@ typedef void (*Config_on_change)(Config_Option_Field type);
 
 // Run-time configurable fields
 #define RUNTIME_CONFIG_COUNT 6
-static const Config_Option_Field RUNTIME_CONFIGS[] =
-{
+static const Config_Option_Field RUNTIME_CONFIGS[] = {
 	Config_RESULTSET_MAX_SIZE,
 	Config_TIMEOUT,
 	Config_MAX_QUEUED_QUERIES,

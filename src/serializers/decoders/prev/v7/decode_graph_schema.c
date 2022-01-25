@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -43,7 +43,10 @@ static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 
 	for(uint i = 0; i < index_count; i++) {
 		if(adjust_for_idx_any) types[i] += 1; // Adjust for invalid IDX_ANY value.
-		Schema_AddIndex(&idx, s, fields[i], types[i]);
+		IndexField field;
+		IndexField_New(&field, fields[i], INDEX_FIELD_DEFAULT_WEIGHT,
+				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
+		Schema_AddIndex(&idx, s, &field, types[i]);
 		RedisModule_Free(fields[i]);
 	}
 
