@@ -88,7 +88,6 @@ Path *AllShortestPaths_NextPath
 ) {
 	ASSERT(ctx != NULL);
 
-	// TODO: add an explanation on how paths are discovered
 	uint32_t depth = Path_NodeCount(ctx->path);
 	if(depth > 0) {
 		// a full path already returned
