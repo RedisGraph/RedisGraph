@@ -90,7 +90,12 @@ inline void CondVarLenTraverseOp_SetFilter(CondVarLenTraverse *op,
 	op->ft = ft;
 }
 
-OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
+OpBase *NewCondVarLenTraverseOp
+(
+	const ExecutionPlan *plan,
+	Graph *g,
+	AlgebraicExpression *ae
+) {
 	ASSERT(g != NULL);
 	ASSERT(ae != NULL);
 
@@ -120,7 +125,8 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	AST *ast = QueryCtx_GetAST();
 	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, AlgebraicExpression_Edge(op->ae));
 	op->edgesIdx = AST_AliasIsReferenced(ast, e->alias) ? OpBase_Modifies((OpBase *)op, e->alias) : -1;
-	op->shortestPaths = e->shortest_path;
+	op->shortestPaths = QGEdge_IsShortestPath(e);
+
 	_setTraverseDirection(op, e);
 
 	return (OpBase *)op;
@@ -146,7 +152,7 @@ static OpResult CondVarLenTraverseInit(OpBase *opBase) {
 	// in which case we can use a faster consume function
 
 	QGEdge *e = QueryGraph_GetEdgeByAlias(op->op.plan->query_graph,
-										  AlgebraicExpression_Edge(op->ae));
+			AlgebraicExpression_Edge(op->ae));
 	uint reltype_count = QGEdge_RelationCount(e);
 
 	bool  multi_edge  =  true;
@@ -155,7 +161,7 @@ static OpResult CondVarLenTraverseInit(OpBase *opBase) {
 		int rel_id = QGEdge_RelationID(e, 0);
 		if(rel_id != GRAPH_NO_RELATION && rel_id != GRAPH_UNKNOWN_RELATION) {
 			multi_edge = Graph_RelationshipContainsMultiEdge(op->g, rel_id,
-															 transpose);
+					transpose);
 		}
 	}
 
@@ -214,11 +220,11 @@ static Record CondVarLenTraverseOptimizedConsume(OpBase *opBase) {
 
 		if(op->allNeighborsCtx == NULL) {
 			op->allNeighborsCtx = AllNeighborsCtx_New(srcNode->id, op->M,
-													  op->minHops, op->maxHops);
+					op->minHops, op->maxHops);
 		} else {
 			// in case ctx already allocated simply reset it
 			AllNeighborsCtx_Reset(op->allNeighborsCtx, srcNode->id, op->M,
-								  op->minHops, op->maxHops);
+					op->minHops, op->maxHops);
 		}
 	}
 
@@ -276,12 +282,11 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 		if(op->expandInto) destNode = Record_GetNode(op->r, op->destNodeIdx);
 
 		AllPathsCtx_Free(op->allPathsCtx);
-		op->allPathsCtx = AllPathsCtx_New(srcNode, destNode, op->g, op->edgeRelationTypes,
-										  op->edgeRelationCount, op->traverseDir, op->minHops,
-										  op->maxHops, op->r, op->ft, op->edgesIdx, op->shortestPaths);
-
+		op->allPathsCtx = AllPathsCtx_New(srcNode, destNode, op->g,
+				op->edgeRelationTypes, op->edgeRelationCount, op->traverseDir,
+				op->minHops, op->maxHops, op->r, op->ft, op->edgesIdx,
+				op->shortestPaths);
 	}
-
 
 	//--------------------------------------------------------------------------
 	// populate output record

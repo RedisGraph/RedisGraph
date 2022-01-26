@@ -8,8 +8,12 @@
 #include "../optimizations/optimizations.h"
 #include "../../ast/ast_build_filter_tree.h"
 
-static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg,
-											 AST *ast) {
+static void _ExecutionPlan_ProcessQueryGraph
+(
+	ExecutionPlan *plan,
+	QueryGraph *qg,
+	AST *ast
+) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
 	// build the full FilterTree for this AST
@@ -42,7 +46,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			// if there are no edges in the component, we only need a node scan
 			QGNode *n = cc->nodes[0];
 			if(raxFind(bound_vars, (unsigned char *)n->alias, strlen(n->alias))
-			   != raxNotFound) {
+					!= raxNotFound) {
 				continue;
 			}
 		}
@@ -82,7 +86,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			// in-case there are additional patterns to traverse
 			if(array_len(cc->edges) == 0) {
 				AlgebraicExpression_Free(
-					AlgebraicExpression_RemoveSource(&exps[0]));
+						AlgebraicExpression_RemoveSource(&exps[0]));
 			}
 		}
 
@@ -93,23 +97,29 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			if(AlgebraicExpression_OperandCount(exp) == 0) continue;
 
 			QGEdge *edge = NULL;
-			if(AlgebraicExpression_Edge(exp)) edge = QueryGraph_GetEdgeByAlias(qg,
-																				   AlgebraicExpression_Edge(exp));
+			if(AlgebraicExpression_Edge(exp)) {
+				edge =
+					QueryGraph_GetEdgeByAlias(qg, AlgebraicExpression_Edge(exp));
+			}
+
 			if(edge && QGEdge_VariableLength(edge)) {
+				// edge is part of a shortest-path
+				// MATCH allShortestPaths((a)-[*..]->(b))
+				// validate both edge ends are bounded
 				if(QGEdge_IsShortestPath(edge)) {
-					const char *src_alias = QGNode_Alias(QGEdge_Src(edge));
+					const char *src_alias  = QGNode_Alias(QGEdge_Src(edge));
 					const char *dest_alias = QGNode_Alias(QGEdge_Dest(edge));
-					if(raxFind(bound_vars, (unsigned char *)src_alias, strlen(src_alias)) == raxNotFound ||
-					   raxFind(bound_vars, (unsigned char *)dest_alias,
-							   strlen(dest_alias)) == raxNotFound) {
+					bool src_bounded =
+						raxFind(bound_vars, (unsigned char *)src_alias,
+								strlen(src_alias)) != raxNotFound;
+					bool dest_bounded =
+						raxFind(bound_vars, (unsigned char *)dest_alias,
+								strlen(dest_alias)) != raxNotFound;
+
+					// TODO: would be great if we can perform this validation
+					// at AST validation time
+					if(!src_bounded || !dest_bounded) {
 						ErrorCtx_SetError("Source and destination must already be resolved to call allShortestPaths");
-						AlgebraicExpression_Free(exp);
-						break;
-					}
-					if(edge->minHops != 1) {
-						ErrorCtx_SetError("allShortestPaths(...) does not support a minimal length different from 1");
-						AlgebraicExpression_Free(exp);
-						break;
 					}
 				}
 				root = NewCondVarLenTraverseOp(plan, gc->g, exp);
@@ -205,7 +215,7 @@ void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *cla
 	// collect the QueryGraph entities referenced in the clauses being converted
 	QueryGraph *qg = plan->query_graph;
 	QueryGraph *sub_qg = QueryGraph_ExtractPatterns(qg, patterns,
-													mandatory_match_count);
+			mandatory_match_count);
 
 	_ExecutionPlan_ProcessQueryGraph(plan, sub_qg, ast);
 	if(ErrorCtx_EncounteredError()) goto cleanup;

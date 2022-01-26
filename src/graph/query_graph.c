@@ -58,15 +58,16 @@ static void _QueryGraphAddNode
 // adds edge to query graph
 static void _QueryGraphAddEdge
 (
-	QueryGraph *qg,
-	const cypher_astnode_t *ast_entity,
-	QGNode *src,
-	QGNode *dest,
-	bool only_shortest
+	QueryGraph *qg,                      // query graph to add edge to
+	const cypher_astnode_t *ast_entity,  // edge entity
+	QGNode *src,                         // src node
+	QGNode *dest,                        // dest node
+	bool only_shortest                   // edge is part of a shortest path
 ) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	const char *alias = AST_ToString(ast_entity);
-	enum cypher_rel_direction dir = cypher_ast_rel_pattern_get_direction(ast_entity);
+	enum cypher_rel_direction dir =
+		cypher_ast_rel_pattern_get_direction(ast_entity);
 
 	// each edge can only appear once in a QueryGraph
 	ASSERT(QueryGraph_GetEdgeByAlias(qg, alias) == NULL);
@@ -167,8 +168,10 @@ static void _QueryGraph_ExtractEdge
 	const char *alias = AST_ToString(ast_edge);
 
 	// validate input, edge shouldn't be in graph
-	ASSERT(left != NULL && right != NULL);
+	ASSERT(left != NULL);
+	ASSERT(right != NULL);
 	ASSERT(QueryGraph_GetEdgeByAlias(graph, alias) == NULL);
+
 	QGEdge *e = QueryGraph_GetEdgeByAlias(qg, alias);
 	bool shortest_path = e ? e->shortest_path : false;
 	_QueryGraphAddEdge(graph, ast_edge, left, right, shortest_path);
@@ -251,33 +254,38 @@ void QueryGraph_ConnectNodes
 
 void QueryGraph_AddPath
 (
-	QueryGraph *qg,
-	const cypher_astnode_t *path,
-	bool only_shortest
+	QueryGraph *qg,                // query graph to add path to
+	const cypher_astnode_t *path,  // path to add
+	bool only_shortest             // interested only in the shortest paths
 ) {
 	AST *ast = QueryCtx_GetAST();
 	uint nelems = cypher_ast_pattern_path_nelements(path);
-	// introduce nodes first. Nodes are positioned at every even offset
+	// introduce nodes first
+	// nodes are positioned at every even offset
 	// into the path (0, 2, ...)
 	for(uint i = 0; i < nelems; i += 2) {
-		const cypher_astnode_t *ast_node = cypher_ast_pattern_path_get_element(path, i);
+		const cypher_astnode_t *ast_node =
+			cypher_ast_pattern_path_get_element(path, i);
 		_QueryGraphAddNode(qg, ast_node);
 	}
 
 	// every odd offset corresponds to an edge in a path
 	for(uint i = 1; i < nelems; i += 2) {
 		// retrieve the QGNode corresponding to the node left of this edge
-		const cypher_astnode_t *l_node = cypher_ast_pattern_path_get_element(path, i - 1);
+		const cypher_astnode_t *l_node =
+			cypher_ast_pattern_path_get_element(path, i - 1);
 		const char *l_alias = AST_ToString(l_node);
 		QGNode *left = QueryGraph_GetNodeByAlias(qg, l_alias);
 
 		// retrieve the QGNode corresponding to the node right of this edge
-		const cypher_astnode_t *r_node = cypher_ast_pattern_path_get_element(path, i + 1);
+		const cypher_astnode_t *r_node =
+			cypher_ast_pattern_path_get_element(path, i + 1);
 		const char *r_alias = AST_ToString(r_node);
 		QGNode *right = QueryGraph_GetNodeByAlias(qg, r_alias);
 
 		// retrieve the AST reference to this edge
-		const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
+		const cypher_astnode_t *edge =
+			cypher_ast_pattern_path_get_element(path, i);
 		_QueryGraphAddEdge(qg, edge, left, right, only_shortest);
 	}
 }
@@ -364,29 +372,35 @@ QueryGraph *BuildQueryGraph
 		for(uint j = 0; j < clause_count; j ++) {
 			const cypher_astnode_t *clause = clauses[j];
 			// collect path objects
-			const cypher_astnode_t **paths = AST_GetTypedNodes(clause,
-															   CYPHER_AST_PATTERN_PATH);
+			const cypher_astnode_t **paths =
+				AST_GetTypedNodes(clause, CYPHER_AST_PATTERN_PATH);
+			const cypher_astnode_t **shortest_paths =
+				AST_GetTypedNodes(clause, CYPHER_AST_SHORTEST_PATH);
 
-			uint path_count = array_len(paths);
-
+			// differentiate between regular paths and shortest paths
+			// as a path can be marked as shortest
+			uint  path_count           =  array_len(paths);
+			uint  shortest_path_count  =  array_len(shortest_paths);
 			bool only_shortest[path_count];
 			memset(only_shortest, 0, path_count);
-			const cypher_astnode_t **shortest_paths = AST_GetTypedNodes(clause,
-																		CYPHER_AST_SHORTEST_PATH);
-			uint shortest_path_count = array_len(shortest_paths);
-			for(uint k = 0; k < shortest_path_count; k ++) {
+
+			uint l = 0;  // index to paths array
+			uint k = 0;  // index to shortest paths array
+			for (; k < shortest_path_count; k++) {
 				const cypher_astnode_t *shortest = shortest_paths[k];
 				// single shortest paths are handled by a procedure
 				if(cypher_ast_shortest_path_is_single(shortest)) continue;
+
 				const cypher_astnode_t *path =
 					cypher_ast_shortest_path_get_path(shortest);
+
 				// seek the matching path in the paths array
-				for(uint l = 0; l < path_count; l ++) {
-					if(paths[l] == path) {
-						only_shortest[l] = true;
-						break;
-					}
-				}
+				while(paths[l] != path) l++;
+				ASSERT(l < path_count);
+
+				// each shortest must find its counterpart path
+				only_shortest[l] = true;
+				l++; // advance for next match
 			}
 			array_free(shortest_paths);
 
@@ -623,14 +637,14 @@ QueryGraph **QueryGraph_ConnectedComponents
 			for(int i = 0; i < array_len(n->outgoing_edges); i++) {
 				QGEdge *e = n->outgoing_edges[i];
 				seen = raxFind(visited, (unsigned char *)e->dest->alias,
-							   strlen(e->dest->alias));
+						strlen(e->dest->alias));
 				if(seen == raxNotFound) array_append(q, e->dest);
 			}
 
 			for(int i = 0; i < array_len(n->incoming_edges); i++) {
 				QGEdge *e = n->incoming_edges[i];
 				seen = raxFind(visited, (unsigned char *)e->src->alias,
-							   strlen(e->src->alias));
+						strlen(e->src->alias));
 				if(seen == raxNotFound) array_append(q, e->src);
 			}
 		}
@@ -644,7 +658,7 @@ QueryGraph **QueryGraph_ConnectedComponents
 			void *reachable;
 			n = g->nodes[i];
 			reachable = raxFind(visited, (unsigned char *)n->alias,
-								strlen(n->alias));
+					strlen(n->alias));
 
 			// if node is reachable, which means it is part of the
 			// connected component, then remove it from the graph,

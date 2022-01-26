@@ -444,10 +444,14 @@ static AR_ExpNode *_AR_ExpFromNamedPath(const cypher_astnode_t *path) {
 	return op;
 }
 
-static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
+static AR_ExpNode *_AR_ExpFromShortestPath
+(
+	const cypher_astnode_t *path
+) {
 	// allShortestPaths is handled separately
-	if(!cypher_ast_shortest_path_is_single(path))
+	if(!cypher_ast_shortest_path_is_single(path)) {
 		return AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
 
 	uint path_len = cypher_ast_pattern_path_nelements(path);
 	if(path_len != 3) {

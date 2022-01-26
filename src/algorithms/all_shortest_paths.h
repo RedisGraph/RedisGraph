@@ -9,9 +9,16 @@
 #include "all_paths.h"
 
 int AllShortestPaths_FindMinimumLength(
-	AllPathsCtx *ctx,
-	Node *src,
-	Node *dest
+	AllPathsCtx *ctx,  // shortest path context
+	Node *src,         // start traversing from `src`
+	Node *dest         // end traversing when `dest` is reached
 );
 
-Path *AllShortestPaths_NextPath(AllPathsCtx *ctx);
+// get next shortest path
+// returns NULL when all shortest paths from `src` to `dest`
+// had been consumed
+Path *AllShortestPaths_NextPath
+(
+	AllPathsCtx *ctx
+);
+

@@ -9,15 +9,14 @@
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 
-// run BFS from src untill dest is visited
-// then add the rest of the nodes in the current depth to the visited nodes
-// so it can be used in AllShortestPaths_NextPath finding all pathes
-// and return the current depth
+// run BFS from `src` untill `dest` is rached
+// then add the rest of the nodes in the current depth to `visited`
+// so it can be used later on in `AllShortestPaths_NextPath`
 int AllShortestPaths_FindMinimumLength
 (
 	AllPathsCtx *ctx,   // context of the all shortest path
-	Node *src,          // the source node
-	Node *dest          // the destination node
+	Node *src,          // source node
+	Node *dest          // destination node
 ) {
 	ASSERT(ctx  != NULL);
 	ASSERT(src  != NULL);
