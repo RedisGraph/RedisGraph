@@ -91,19 +91,15 @@ Path *AllShortestPaths_NextPath
 	uint32_t depth = Path_NodeCount(ctx->path);
 	if(depth > 0) {
 		// a full path already returned
-		// reverse it to be from dest to src
-		// pop the src node and edge
 		// advance to next path by backtracking
-		Path_Reverse(ctx->path);
-		Path_PopNode(ctx->path);
-		Path_PopEdge(ctx->path);
 		depth--;
 	} else {
 		if(array_len(ctx->levels[0]) == 0) return NULL;
 
+		Path_EnsureLen(ctx->path, ctx->minLen);
 		LevelConnection frontierConnection = array_pop(ctx->levels[0]);
 		Node frontierNode = frontierConnection.node;
-		Path_AppendNode(ctx->path, frontierNode);
+		Path_SetNode(ctx->path, ctx->minLen - depth - 1, frontierNode);
 		depth++;
 		addNeighbors(ctx, &frontierConnection, depth, ctx->dir);
 	}
@@ -129,29 +125,21 @@ Path *AllShortestPaths_NextPath
 				continue;
 			}
 
-			Path_AppendNode(ctx->path, frontierNode);
-			Path_AppendEdge(ctx->path, frontierConnection.edge);
+			Path_SetNode(ctx->path, ctx->minLen - depth - 1, frontierNode);
+			Path_SetEdge(ctx->path, ctx->minLen - depth - 1, frontierConnection.edge);
 
 			depth++;
 			addNeighbors(ctx, &frontierConnection, depth, ctx->dir);
 		} else {
-			// no way to advance, backtrack
-			Path_PopNode(ctx->path);
-			if(Path_EdgeCount(ctx->path)) Path_PopEdge(ctx->path);
 			depth--;
 			if(depth == 0) {
+				Path_Clear(ctx->path);
 				// first level fully consumed
 				// there are no more paths leading from src to dest, we're done
 				return NULL;
 			}
 		}
 	}
-
-	// we've traversed going from dest to src, caller expects path going from
-	// src to dest, reverse path
-	// TODO: can we construct `path` in reverse? avoiding this call
-	// and the call on 98
-	Path_Reverse(ctx->path);
 	
 	return ctx->path;
 }

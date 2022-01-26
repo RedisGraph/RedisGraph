@@ -21,6 +21,8 @@ typedef struct {
  */
 Path *Path_New(size_t len);
 
+void Path_EnsureLen(Path *p, size_t len);
+
 /**
  * @brief  Appends a node to the path.
  * @param  *p: Path address.
@@ -34,6 +36,10 @@ void Path_AppendNode(Path *p, Node n);
  * @param  e: Given edge.
  */
 void Path_AppendEdge(Path *p, Edge e);
+
+void Path_SetNode(Path *p, uint i, Node n);
+
+void Path_SetEdge(Path *p, uint i, Edge e);
 
 /**
  * @brief  Returns a refernce to a node in the specific index.
@@ -124,6 +130,8 @@ Path *Path_Clone(const Path *p);
  * @retval None
  */
 void Path_Reverse(Path *p);
+
+void Path_Clear(Path *p);
 
 /**
  * @brief  Deletes the path nodes and edges arrays.
