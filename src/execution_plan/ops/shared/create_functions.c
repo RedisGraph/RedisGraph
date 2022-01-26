@@ -70,7 +70,6 @@ static void _CommitNodes(PendingCreations *pending) {
 	// sync policy should be set to NOP, no need to sync/resize
 	ASSERT(Graph_GetMatrixPolicy(g) == SYNC_POLICY_NOP);
 
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 	for(uint i = 0; i < node_count; i++) {
 		n = pending->created_nodes[i];
 		int *labels = pending->node_labels[i];
@@ -91,8 +90,6 @@ static void _CommitNodes(PendingCreations *pending) {
 
 			if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n);
 		}
-
-		UndoLog_AddCreateNode(&query_ctx->undo_log, n);
 	}
 }
 
@@ -136,7 +133,6 @@ static void _CommitEdges(PendingCreations *pending) {
 	// sync policy should be set to NOP, no need to sync/resize
 	ASSERT(Graph_GetMatrixPolicy(g) == SYNC_POLICY_NOP);
 
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 	for(uint i = 0; i < edge_count; i++) {
 		e = pending->created_edges[i];
 		NodeID srcNodeID;
@@ -164,7 +160,6 @@ static void _CommitEdges(PendingCreations *pending) {
 		}
 
 		if(s && Schema_HasIndices(s)) Schema_AddEdgeToIndices(s, e);
-		UndoLog_AddCreateEdge(&query_ctx->undo_log, e);
 	}
 }
 

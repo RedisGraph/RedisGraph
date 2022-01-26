@@ -39,10 +39,19 @@ typedef enum {
 	SYNC_POLICY_NOP,
 } MATRIX_POLICY;
 
+typedef enum {
+	CRUD_POLICY_UNDO,
+	CRUD_POLICY_NOP,
+} CRUD_HUB_POLICY;
+
 // forward declaration of Graph struct
 typedef struct Graph Graph;
 // typedef for synchronization function pointer
 typedef void (*SyncMatrixFunc)(const Graph *, RG_Matrix);
+
+typedef struct UndoOp UndoOp;
+// typedef for crud hub function pointer
+typedef void (*CrudHubFunc)(const Graph *, UndoOp *);
 
 struct Graph {
 	DataBlock *nodes;                   // graph nodes stored in blocks
@@ -56,6 +65,7 @@ struct Graph {
 	bool _writelocked;                  // true if the read-write lock was acquired by a writer
 	SyncMatrixFunc SynchronizeMatrix;   // function pointer to matrix synchronization routine
 	GraphStatistics stats;              // graph related statistics
+	CrudHubFunc CrudHub;                // function pointer to crud hub
 };
 
 // graph synchronization functions
@@ -394,6 +404,12 @@ RG_Matrix Graph_GetLabelRGMatrix
 (
 	const Graph *g,
 	int label_idx
+);
+
+void Graph_SetCrudHubPolicy
+(
+	Graph *g,
+	CRUD_HUB_POLICY policy
 );
 
 // free graph

@@ -319,7 +319,9 @@ void EvalEntityUpdates
 		array_append(*updates, update);
 
 		SIValue *orig_val = GraphEntity_GetProperty(entity, attr_id);
-		UndoLog_AddUpdate(undo_log, &update, orig_val);
+		UndoOp op;
+		UndoLog_Update(&op, &update, orig_val);
+		array_append(undo_log->undo_list, op);
 	}
 }
 

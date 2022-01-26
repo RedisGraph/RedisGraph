@@ -201,6 +201,8 @@ static void _ExecuteQuery(void *args) {
 			GraphContext_MarkWriter(rm_ctx, gc);
 		}
 		CommandCtx_ThreadSafeContextUnlock(command_ctx);
+
+		Graph_SetCrudHubPolicy(gc->g, CRUD_POLICY_UNDO);
 	}
 
 	if(exec_type == EXECUTION_TYPE_QUERY) {  // query operation

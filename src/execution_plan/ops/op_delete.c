@@ -16,7 +16,7 @@ static OpResult DeleteInit(OpBase *opBase);
 static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void DeleteFree(OpBase *opBase);
 
-void DeleteEntities(OpDelete *op, bool is_rollback) {
+void DeleteEntities(OpDelete *op) {
 	Graph  *g                     =  op->gc->g;
 	uint   node_deleted           =  0;
 	uint   edge_deleted           =  0;
@@ -29,14 +29,6 @@ void DeleteEntities(OpDelete *op, bool is_rollback) {
 
 	// lock everything
 	QueryCtx_LockForCommit();
-
-	if(!is_rollback) {
-		QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-		for(int i = 0; i < node_count; i++) {
-			Node *n = op->deleted_nodes + i;
-			UndoLog_AddDeleteNode(&query_ctx->undo_log, n);
-		}
-	}
 
 	if(GraphContext_HasIndices(op->gc)) {
 		for(int i = 0; i < node_count; i++) {
@@ -144,7 +136,7 @@ static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase) {
 static void DeleteFree(OpBase *ctx) {
 	OpDelete *op = (OpDelete *)ctx;
 
-	DeleteEntities(op, false);
+	DeleteEntities(op);
 
 	if(op->deleted_nodes) {
 		array_free(op->deleted_nodes);

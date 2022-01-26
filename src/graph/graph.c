@@ -7,8 +7,10 @@
 #include "RG.h"
 #include "graph.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "../util/qsort.h"
 #include "../util/rmalloc.h"
+#include "../undo_log/undo_log.h"
 #include "../util/datablock/oo_datablock.h"
 #include "../graph/rg_matrix/rg_matrix_iter.h"
 
@@ -632,6 +634,10 @@ void Graph_CreateNode
 	en->prop_count  =  0;
 	en->properties  =  NULL;
 
+	UndoOp op;
+	UndoLog_CreateNode(&op, n);
+	g->CrudHub(g, &op);
+
 	if(label_count > 0) _Graph_LabelNode(g, n->id, labels, label_count);
 }
 
@@ -691,6 +697,10 @@ void Graph_CreateEdge
 	en->properties  =  NULL;
 
 	Graph_FormConnection(g, src, dest, id, r);
+
+	UndoOp op;
+	UndoLog_CreateEdge(&op, e);
+	g->CrudHub(g, &op);
 }
 
 // retrieves all either incoming or outgoing edges
@@ -865,6 +875,11 @@ int Graph_DeleteEdge
 
 	// free and remove edges from datablock.
 	DataBlock_DeleteItem(g->edges, ENTITY_GET_ID(e));
+
+	UndoOp op;
+	UndoLog_DeleteEdge(&op, e);
+	g->CrudHub(g, &op);
+	
 	return 1;
 }
 
@@ -896,6 +911,10 @@ void Graph_DeleteNode
 	}
 
 	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
+
+	UndoOp op;
+	UndoLog_DeleteNode(&op, n);
+	g->CrudHub(g, &op);
 }
 
 static void _Graph_FreeRelationMatrices
@@ -980,6 +999,10 @@ static void _BulkDeleteNodes
 		RG_Matrix_removeElement_UINT64(R, src, dest);
 		DataBlock_DeleteItem(g->edges, edge_id);
 		edge_deletion_count[e->relationID]++;
+
+		UndoOp op;
+		UndoLog_DeleteEdge(&op, e);
+		g->CrudHub(g, &op);
 	}
 
 	for(int i = 0; i < relation_count; i++) {
@@ -1013,6 +1036,10 @@ static void _BulkDeleteNodes
 		}
 
 		DataBlock_DeleteItem(g->nodes, entity_id);
+		
+		UndoOp op;
+		UndoLog_DeleteNode(&op, n);
+		g->CrudHub(g, &op);
 	}
 
 	// update deleted node count
@@ -1062,6 +1089,10 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		if(j == relationCount) {
 			RG_Matrix_removeElement_BOOL(adj, src_id, dest_id);
 		}
+
+		UndoOp op;
+		UndoLog_DeleteEdge(&op, e);
+		g->CrudHub(g, &op);
 	}
 }
 
@@ -1259,6 +1290,33 @@ RG_Matrix Graph_GetZeroMatrix
 	return z;
 }
 
+static void _CrudHubNOP(const Graph *g, UndoOp *op) {
+}
+
+static void _CrudHub(const Graph *g, UndoOp *op) {
+	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+	array_append(query_ctx->undo_log.undo_list, *op);
+}
+
+void Graph_SetCrudHubPolicy
+(
+	Graph *g,
+	CRUD_HUB_POLICY policy
+) {
+	switch(policy) {
+		case CRUD_POLICY_UNDO:
+			// Default behavior; forces execution of pending GraphBLAS operations
+			// when appropriate and sizes matrices to the current node count.
+			g->CrudHub = _CrudHub;
+			break;
+		case CRUD_POLICY_NOP:
+			// Used when deleting or freeing a graph; forces no matrix updates or resizes.
+			g->CrudHub = _CrudHubNOP;
+			break;
+		default:
+			ASSERT(false);
+	}}
+
 void Graph_Free(Graph *g) {
 	ASSERT(g);
 	// free matrices
@@ -1302,4 +1360,3 @@ void Graph_Free(Graph *g) {
 
 	rm_free(g);
 }
-

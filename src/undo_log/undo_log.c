@@ -21,72 +21,72 @@ void UndoLog_New(UndoLog *undolog) {
 // Undo add changes
 //------------------------------------------------------------------------------
 
-// introduce a node creation change to undo log
-void UndoLog_AddCreateNode
+// create node creation operation
+void UndoLog_CreateNode
 (
-	UndoLog *undo_log,     // undo log to append creations to
+	UndoOp *op,
 	Node *node             // node created
 ) {
-	ASSERT(undo_log != NULL);
+	ASSERT(op != NULL);
 	ASSERT(node != NULL);
 
-	UndoOp op = {.n = node, .type = UL_CREATE_NODE};
-	array_append(undo_log->undo_list, op);
+	op->n    = node;
+	op->type = UL_CREATE_NODE;
 }
 
-// introduce an edge creation change to undo log
-void UndoLog_AddCreateEdge
+// create edge creation operation
+void UndoLog_CreateEdge
 (
-	UndoLog *undo_log,     // undo log to append creations to
+	UndoOp *op,
 	Edge *edge             // edge created
 ) {
-	ASSERT(undo_log != NULL);
+	ASSERT(op != NULL);
 	ASSERT(edge != NULL);
 
-	UndoOp op = {.e = edge, .type = UL_CREATE_EDGE};
-	array_append(undo_log->undo_list, op);
+	op->e    = edge;
+	op->type = UL_CREATE_EDGE;
 }
 
-// introduce a node deletion change to undo log
-void UndoLog_AddDeleteNode
+// create node deletion operation
+void UndoLog_DeleteNode
 (
-	UndoLog *undo_log,     // undo log to append creations to
+	UndoOp *op,
 	Node *node             // node deleted
 ) {
-	ASSERT(undo_log != NULL);
+	ASSERT(op != NULL);
 	ASSERT(node != NULL);
 
-	UndoOp op = {.n = node, .type = UL_DELETE_NODE};
-	array_append(undo_log->undo_list, op);
+	op->n    = node;
+	op->type = UL_DELETE_NODE;
 }
 
-// introduce an edge deletion change to undo log
-void UndoLog_AddDeleteEdge
+// create edge deletion operation
+void UndoLog_DeleteEdge
 (
-	UndoLog *undo_log,     // undo log to append creations to
+	UndoOp *op,
 	Edge *edge             // edge deleted
 ) {
-	ASSERT(undo_log != NULL);
+	ASSERT(op != NULL);
 	ASSERT(edge != NULL);
 
-	UndoOp op = {.e = edge, .type = UL_DELETE_EDGE};
-	array_append(undo_log->undo_list, op);
+	op->e    = edge;
+	op->type = UL_DELETE_EDGE;
 }
 
-// adds to the undo_log the undo for the pending_update
-void UndoLog_AddUpdate
+// create update operation
+void UndoLog_Update
 (
-	UndoLog *undo_log,
+	UndoOp *op,
 	const PendingUpdateCtx *pending_update,
 	const SIValue *orig_value   // the original value which pending_update is about to override
 ) {
-	ASSERT(undo_log != NULL);
+	ASSERT(op != NULL);
 	ASSERT(orig_value != NULL);
 	ASSERT(pending_update != NULL);
 
-	UndoOp op = {.update = *pending_update, .type = UL_UPDATE};
-	op.update.new_value  =  *orig_value;
-	array_append(undo_log->undo_list, op);
+	op->update            = *pending_update;
+	op->update.new_value  = *orig_value;
+	op->type              = UL_UPDATE;
 }
 
 // rollback the updates taken place by current query.
@@ -113,7 +113,7 @@ static void _UndoLog_Rollback_Create_Node(QueryCtx *ctx, size_t seq_start, size_
 	}
 
 	OpDelete op = { .gc = ctx->gc, .deleted_nodes = nodes_to_delete, .deleted_edges = NULL, .stats = QueryCtx_GetResultSetStatistics()};
-	DeleteEntities(&op, true);
+	DeleteEntities(&op);
 
 	array_free(nodes_to_delete);
 }
@@ -128,7 +128,7 @@ static void _UndoLog_Rollback_Create_Edge(QueryCtx *ctx, size_t seq_start, size_
 	}
 
 	OpDelete op = { .gc = ctx->gc, .deleted_nodes = NULL, .deleted_edges = edges_to_delete, .stats = QueryCtx_GetResultSetStatistics()};
-	DeleteEntities(&op, true);
+	DeleteEntities(&op);
 
 	array_free(edges_to_delete);
 }
@@ -148,6 +148,8 @@ void UndoLog_Rollback(UndoLog *undo_log) {
 	QueryCtx *ctx = QueryCtx_GetQueryCtx();
 	ASSERT(ctx);
 	ASSERT(undo_log);
+	Graph_SetCrudHubPolicy(ctx->gc->g, CRUD_POLICY_NOP);
+
 	uint64_t count = array_len(undo_log->undo_list);
 
 	// Reverse the undo_log since we need to commit the ops in reverse order for rollback correctness

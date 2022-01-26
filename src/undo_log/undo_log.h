@@ -7,7 +7,9 @@
 #pragma once
 
 #include <stdint.h>
-#include "../../src/value.h"
+#include "../value.h"
+#include "../graph/entities/node.h"
+#include "../graph/entities/edge.h"
 #include "../execution_plan/ops/shared/update_functions.h"
 
 // this file contains the rollback functionality:
@@ -50,40 +52,40 @@ void UndoLog_New
 // Undo add changes
 //------------------------------------------------------------------------------
 
-// introduce a node creation change to undo log
-void UndoLog_AddCreateNode
+// create node creation operation
+void UndoLog_CreateNode
 (
-	UndoLog *undo_log,     // undo log to append creations to
+	UndoOp *op,
 	Node *node             // node created
 );
 
-// introduce an edge creation change to undo log
-void UndoLog_AddCreateEdge
+// create edge creation operation
+void UndoLog_CreateEdge
 (
-	UndoLog *undo_log,     // undo log to append creations to
+	UndoOp *op,
 	Edge *edge             // edge created
 );
 
-// introduce a node deletion change to undo log
-void UndoLog_AddDeleteNode
+// create node deletion operation
+void UndoLog_DeleteNode
 (
-	UndoLog *undo_log,     // undo log to append creations to
+	UndoOp *op,
 	Node *node             // node deleted
 );
 
-// introduce an edge deletion change to undo log
-void UndoLog_AddDeleteEdge
+// create edge deletion operation
+void UndoLog_DeleteEdge
 (
-	UndoLog *undo_log,     // undo log to append creations to
+	UndoOp *op,
 	Edge *edge             // edge deleted
 );
 
-// introduce an update change to undo log
-void UndoLog_AddUpdate
+// create update operation
+void UndoLog_Update
 (
-	UndoLog *undo_log,                       // undo log to append update to
-	const PendingUpdateCtx *pending_update,  // update context
-	const SIValue *orig_value                // original value prior to update
+	UndoOp *op,
+	const PendingUpdateCtx *pending_update,
+	const SIValue *orig_value   // the original value which pending_update is about to override
 );
 
 // rollback all modifications tracked by this undo log
