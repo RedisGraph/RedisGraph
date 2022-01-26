@@ -155,10 +155,6 @@ bool AR_EXP_PerformsDistinct(AR_ExpNode *exp);
  * a boolean value and false otherwise. */
 bool AR_EXP_ReturnsBoolean(const AR_ExpNode *exp);
 
-/* Generate a heap-allocated name for an arithmetic expression.
- * This routine is only used to name ORDER BY expressions. */
-char *AR_EXP_BuildResolvedName(AR_ExpNode *root);
-
 /* Get the function name of op node. */
 const char *AR_EXP_GetFuncName(const AR_ExpNode *exp);
 
