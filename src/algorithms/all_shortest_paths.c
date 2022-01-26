@@ -135,15 +135,16 @@ Path *AllShortestPaths_NextPath
 
 			depth++;
 			addNeighbors(ctx, &frontierConnection, depth, ctx->dir);
-		} else if(depth == 0) {
-			// first level fully consumed
-			// there are no more paths leading from src to dest, we're done
-			return NULL;
 		} else {
 			// no way to advance, backtrack
 			Path_PopNode(ctx->path);
 			if(Path_EdgeCount(ctx->path)) Path_PopEdge(ctx->path);
 			depth--;
+			if(depth == 0) {
+				// first level fully consumed
+				// there are no more paths leading from src to dest, we're done
+				return NULL;
+			}
 		}
 	}
 
