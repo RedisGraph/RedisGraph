@@ -4,6 +4,33 @@ remote:
   - type: oss-standalone
 dbconfig:
   - init_commands:
+#           ┌────┐
+#           │ S0 │
+#           └────┘
+#       /     |          \
+#      /      |           \
+#     /       |            \
+#  ┌────┐   ┌────┐          ┌────┐
+#  │ S  │   │ S  │ ...5000  │ S  │
+#  └────┘   └────┘          └────┘
+#       \     |            /
+#        \    |           /
+#         \   |          /
+#           ┌────┐
+#           │ S1 │
+#           └────┘
+#       /     |          \
+#      /      |           \
+#     /       |            \
+#  ┌────┐   ┌────┐          ┌────┐
+#  │ S  │   │ S  │ ...5000  │ S  │
+#  └────┘   └────┘          └────┘
+#       \     |            /
+#        \    |           /
+#         \   |          /
+#           ┌────┐
+#           │ S2 │
+#           └────┘
     - '"GRAPH.QUERY" "g" "CREATE (s0:S0) CREATE (s1:S1) WITH * UNWIND range(1, 5000) AS x CREATE (s0)-[:R]->(:S)-[:R]->(s1)"'
     - '"GRAPH.QUERY" "g" "MATCH (s1:S1) CREATE (s2:S2) WITH * UNWIND range(1, 5000) AS x CREATE (s1)-[:R]->(:S)-[:R]->(s2)"'
 clientconfig:
