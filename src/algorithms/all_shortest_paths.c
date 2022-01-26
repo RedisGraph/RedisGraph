@@ -38,8 +38,8 @@ int AllShortestPaths_FindMinimumLength
 			// move to next level
 			depth++;
 			if(depth > ctx->maxLen || depth >= array_len(ctx->levels)) {
-				// we reached to the max level and didn't found the dest node
-				depth = 0;
+				// we reached max level and didn't found the dest node
+				depth = 0; // indicate `dest` wasn't reached
 				break;
 			}
 		}
@@ -48,27 +48,28 @@ int AllShortestPaths_FindMinimumLength
 		LevelConnection frontierConnection = array_pop(ctx->levels[depth]);
 		Node frontierNode = frontierConnection.node;
 		NodeID frontierID = ENTITY_GET_ID(&frontierNode);
-		// check if we reached the destination
+		// check if we reached dest
 		if(destID == frontierID && depth > 0) {
 			break;
 		}
 
 		// the node has already been visited if it is already in the vector
-		bool is_visited;
-		GrB_Info info = GrB_Vector_extractElement_BOOL(&is_visited, visited, frontierID);
+		bool x;
+		GrB_Info info = GrB_Vector_extractElement_BOOL(&x, visited, frontierID);
+		bool not_visited = (info == GrB_NO_VALUE);
 
 		// introduce neighbors only if path depth < maximum path length
 		// and frontier wasn't already expanded
-		if(info == GrB_NO_VALUE && depth < ctx->maxLen) {
+		if(not_visited && depth < ctx->maxLen) {
 			GrB_Vector_setElement_BOOL(visited, true, frontierID);
-			// add all neighbors of the current node to the next depth level
+			// add all neighbors of the current node to the next level
 			addNeighbors(ctx, &frontierConnection, depth + 1, ctx->dir);
 		}
 	}
 
 	if(depth > 0) {
-		// clean data
-		array_clear(ctx->levels[depth]);
+		// `dest` was reached
+		array_clear(ctx->levels[depth]); // clean data
 		depth++; // switch from edge count to node count
 		if(depth < array_len(ctx->levels)) array_clear(ctx->levels[depth]);
 	}
@@ -88,7 +89,6 @@ Path *AllShortestPaths_NextPath
 	ASSERT(ctx != NULL);
 
 	// TODO: add an explanation on how paths are discovered
-
 	uint32_t depth = Path_NodeCount(ctx->path);
 	if(depth > 0) {
 		// a full path already returned
@@ -120,12 +120,15 @@ Path *AllShortestPaths_NextPath
 			GrB_Info info = GrB_Vector_extractElement_BOOL(&is_visited,
 					ctx->visited, frontierID);
 
-			// consider only on visited nodes
+			// consider only previously discovered nodes
 			if(info == GrB_NO_VALUE) continue;
 
 			// if we reached to the end of the path and this node is not the
 			// dst node continue
-			if(depth == ctx->maxLen - 1 && frontierID != ENTITY_GET_ID(ctx->dst)) continue;
+			if(depth == ctx->maxLen - 1 &&
+			   frontierID != ENTITY_GET_ID(ctx->dst)) {
+				continue;
+			}
 
 			Path_AppendNode(ctx->path, frontierNode);
 			Path_AppendEdge(ctx->path, frontierConnection.edge);
@@ -146,6 +149,8 @@ Path *AllShortestPaths_NextPath
 
 	// we've traversed going from dest to src, caller expects path going from
 	// src to dest, reverse path
+	// TODO: can we construct `path` in reverse? avoiding this call
+	// and the call on 98
 	Path_Reverse(ctx->path);
 	
 	return ctx->path;
