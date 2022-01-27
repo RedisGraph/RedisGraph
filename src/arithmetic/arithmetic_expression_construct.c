@@ -516,7 +516,6 @@ static AR_ExpNode *_AR_ExpFromShortestPath
 	// Instantiate a context struct with traversal details.
 	ShortestPathCtx *ctx = rm_malloc(sizeof(ShortestPathCtx));
 	ctx->R              =  GrB_NULL;
-	ctx->TR             =  GrB_NULL;
 	ctx->minHops        =  start;
 	ctx->maxHops        =  end;
 	ctx->reltypes       =  NULL;
