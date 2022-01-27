@@ -16,8 +16,7 @@ typedef struct {
 	int *reltypes;               /* Relationship type IDs */
 	uint reltype_count;          /* Number of traversed relationship types */
 	GrB_Matrix R;                /* Traversed relationship matrix */
-	GrB_Matrix TR;               /* Transpose of traversed relationship matrix */
-	bool free_matrices;          /* If true, R and TR will ultimately be freed */
+	bool free_matrices;          /* If true, R will ultimately be freed */
 } ShortestPathCtx;
 
 void Register_PathFuncs();

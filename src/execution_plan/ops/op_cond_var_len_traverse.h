@@ -23,6 +23,7 @@ typedef struct {
 	int destNodeIdx;                       /* Node set by operation. */
 	bool expandInto;                       /* Both src and dest already resolved. */
 	FT_FilterNode *ft;                     /* If not NULL, FilterTree applied to traversed edge. */
+	bool shortestPaths;                    /* Only collect shortest paths. */
 	unsigned int minHops;                  /* Maximum number of hops to perform. */
 	unsigned int maxHops;                  /* Maximum number of hops to perform. */
 	int edgeRelationCount;                 /* Length of edgeRelationTypes. */
