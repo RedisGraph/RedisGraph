@@ -14,6 +14,71 @@
 #include "../procedures/procedure.h"
 #include "../arithmetic/arithmetic_expression.h"
 
+// TODO: generic function should be used to validate different features positions
+// static AST_Validation _NestedIn
+// (
+// 	const cypher_astnode_t *root,
+// 	cypher_astnode_type_t search_type,
+// 	cypher_astnode_type_t *whitelist,
+// 	bool is_in_whitelist
+// ) {
+// 	ASSERT(root != NULL);
+// 	ASSERT(whitelist != NULL);
+
+// 	cypher_astnode_type_t t = cypher_astnode_type(root);
+// 	if(t == search_type && is_in_whitelist) return true;
+
+// 	if(!is_in_whitelist) {
+// 		int len = array_len(whitelist);
+// 		for (uint i = 0; i < len; i++) {
+// 			if(t == whitelist[i]) {
+// 				is_in_whitelist = true;
+// 				break;
+// 			}
+// 		}
+// 	}
+
+// 	uint nchildren = cypher_astnode_nchildren(root);
+// 	for(uint i = 0; i < nchildren; i ++) {
+// 		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
+// 		bool res = _NestedIn(child, search_type, whitelist, is_in_whitelist);
+// 		if(res) return true;
+// 	}
+
+// 	return false;
+// }
+
+// validate that allShortestPaths is in a supported places
+static bool _ValidateAllShortestPaths
+(
+	const cypher_astnode_t *root
+) {
+	ASSERT(root != NULL);
+
+	cypher_astnode_type_t t = cypher_astnode_type(root);
+	// if we found allShortestPaths in invalid parent return true
+	if(t == CYPHER_AST_SHORTEST_PATH &&
+	   !cypher_ast_shortest_path_is_single(root)) {
+		return true;
+	}
+
+	if(t == CYPHER_AST_MATCH) {
+		// allShortesPath is invalid in the match predicate
+		const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(root);
+		return predicate != NULL && _ValidateAllShortestPaths(predicate);
+	}
+
+	// recursively traverse all children
+	uint nchildren = cypher_astnode_nchildren(root);
+	for(uint i = 0; i < nchildren; i ++) {
+		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
+		bool res = _ValidateAllShortestPaths(child);
+		if(res) return true;
+	}
+
+	return false;
+}
+
 // Forward declaration
 static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identifiers);
 
@@ -1682,6 +1747,13 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 	   body_type == CYPHER_AST_DROP_PROPS_INDEX) {
 		// Index operation; validations are handled elsewhere.
 		return AST_VALID;
+	}
+
+	// validate positions of allShortestPaths
+	bool invalid = _ValidateAllShortestPaths(body);
+	if(invalid) {
+		ErrorCtx_SetError("RedisGraph support allShortestPaths only in match clauses");
+		return AST_INVALID;
 	}
 
 	AST mock_ast; // Build a fake AST with the correct AST root

@@ -138,6 +138,27 @@ class testAllShortestPaths():
         except redis.exceptions.ResponseError as e:
             self.env.assertIn("allShortestPaths(...) does not support a minimal length different from 1", str(e))
 
+        # Test unsupported in return
+        query = """MATCH (a),(b)
+                   RETURN allShortestPaths((a)-[*]->(b))"""
+
+        try:
+            self.graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertIn("RedisGraph support allShortestPaths only in match clauses", str(e))
+        
+        # Test unsupported in where
+        query = """MATCH (a),(b)
+                   WHERE size(allShortestPaths((a)-[*]->(b))) > 0
+                   RETURN a, b"""
+
+        try:
+            self.graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertIn("RedisGraph support allShortestPaths only in match clauses", str(e))
+
     def test02_all_shortest_paths(self):
         # running against following graph
         #
