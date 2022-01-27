@@ -864,13 +864,13 @@ String, numeric, and geospatial data types can be indexed.
 The creation syntax is:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "CREATE INDEX FOR (p:Person) ON (p.age)"
+GRAPH.QUERY DEMO_GRAPH "CREATE INDEX ON :Person(age)"
 ```
 
-The old syntax is depricated:
+On the master branch, a newer syntax is also supported. This will be the standard in future versions:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "CREATE INDEX ON :Person(age)"
+GRAPH.QUERY DEMO_GRAPH "CREATE INDEX FOR (p:Person) ON (p.age)"
 ```
 
 After an index is explicitly created, it will automatically be used by queries that reference that label and any indexed property in a filter.
