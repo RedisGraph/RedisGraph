@@ -449,9 +449,7 @@ static AR_ExpNode *_AR_ExpFromShortestPath
 	const cypher_astnode_t *path
 ) {
 	// allShortestPaths is handled separately
-	if(!cypher_ast_shortest_path_is_single(path)) {
-		return AR_EXP_NewConstOperandNode(SI_NullVal());
-	}
+	ASSERT(cypher_ast_shortest_path_is_single(path) == true);
 
 	uint path_len = cypher_ast_pattern_path_nelements(path);
 	if(path_len != 3) {
