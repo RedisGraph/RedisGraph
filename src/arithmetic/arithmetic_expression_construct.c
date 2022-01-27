@@ -444,7 +444,13 @@ static AR_ExpNode *_AR_ExpFromNamedPath(const cypher_astnode_t *path) {
 	return op;
 }
 
-static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
+static AR_ExpNode *_AR_ExpFromShortestPath
+(
+	const cypher_astnode_t *path
+) {
+	// allShortestPaths is handled separately
+	ASSERT(cypher_ast_shortest_path_is_single(path) == true);
+
 	uint path_len = cypher_ast_pattern_path_nelements(path);
 	if(path_len != 3) {
 		ErrorCtx_SetError("shortestPath requires a path containing a single relationship");
@@ -475,11 +481,6 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 			ErrorCtx_SetError("Maximum number of hops must be greater than or equal to minimum number of hops");
 			return AR_EXP_NewConstOperandNode(SI_NullVal());
 		}
-	}
-
-	if(!cypher_ast_shortest_path_is_single(path)) {
-		ErrorCtx_SetError("RedisGraph does not currently support allShortestPaths");
-		return AR_EXP_NewConstOperandNode(SI_NullVal());
 	}
 
 	enum cypher_rel_direction dir = cypher_ast_rel_pattern_get_direction(edge);
@@ -702,8 +703,7 @@ static AR_ExpNode *_AR_ExpFromLabelsOperatorFunction(const cypher_astnode_t *exp
 	// create labels expression
 	uint nlabels = cypher_ast_labels_operator_nlabels(exp);
 	SIValue labels = SI_Array(nlabels);
-	for (uint i = 0; i < nlabels; i++)
-	{
+	for(uint i = 0; i < nlabels; i++) {
 		const cypher_astnode_t *label = cypher_ast_labels_operator_get_label(exp, i);
 		const char *label_str = cypher_ast_label_get_name(label);
 		SIArray_Append(&labels, SI_ConstStringVal((char *)label_str));
@@ -772,9 +772,9 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 		return _AR_ExpNodeFromGraphEntity(expr);
 	} else if(t == CYPHER_AST_PARAMETER) {
 		return _AR_ExpNodeFromParameter(expr);
-	} else if(t == CYPHER_AST_LIST_COMPREHENSION || 
+	} else if(t == CYPHER_AST_LIST_COMPREHENSION ||
 			  t == CYPHER_AST_ANY ||
-			  t == CYPHER_AST_ALL || 
+			  t == CYPHER_AST_ALL ||
 			  t == CYPHER_AST_SINGLE ||
 			  t == CYPHER_AST_NONE) {
 		return _AR_ExpNodeFromComprehensionFunction(expr, t);

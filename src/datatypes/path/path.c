@@ -15,12 +15,25 @@ Path *Path_New(size_t len) {
 	return path;
 }
 
+void Path_EnsureLen(Path *p, size_t len) {
+	p->nodes = array_ensure_len(p->nodes, len);
+	p->edges = array_ensure_len(p->edges, len - 1);
+}
+
 void Path_AppendNode(Path *p, Node n) {
 	array_append(p->nodes, n);
 }
 
 void Path_AppendEdge(Path *p, Edge e) {
 	array_append(p->edges, e);
+}
+
+void Path_SetNode(Path *p, uint i, Node n) {
+	p->nodes[i] = n;
+}
+
+void Path_SetEdge(Path *p, uint i, Edge e) {
+	p->edges[i] = e;
 }
 
 Node *Path_GetNode(const Path *p, int index) {
@@ -75,6 +88,11 @@ Path *Path_Clone(const Path *p) {
 void Path_Reverse(Path *p) {
 	array_reverse(p->nodes);
 	array_reverse(p->edges);
+}
+
+void Path_Clear(Path *p) {
+	array_clear(p->nodes);
+	array_clear(p->edges);
 }
 
 void Path_Free(Path *p) {

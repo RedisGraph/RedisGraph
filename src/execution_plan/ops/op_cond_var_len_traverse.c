@@ -90,7 +90,12 @@ inline void CondVarLenTraverseOp_SetFilter(CondVarLenTraverse *op,
 	op->ft = ft;
 }
 
-OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
+OpBase *NewCondVarLenTraverseOp
+(
+	const ExecutionPlan *plan,
+	Graph *g,
+	AlgebraicExpression *ae
+) {
 	ASSERT(g != NULL);
 	ASSERT(ae != NULL);
 
@@ -120,6 +125,8 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	AST *ast = QueryCtx_GetAST();
 	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, AlgebraicExpression_Edge(op->ae));
 	op->edgesIdx = AST_AliasIsReferenced(ast, e->alias) ? OpBase_Modifies((OpBase *)op, e->alias) : -1;
+	op->shortestPaths = QGEdge_IsShortestPath(e);
+
 	_setTraverseDirection(op, e);
 
 	return (OpBase *)op;
@@ -164,7 +171,7 @@ static OpResult CondVarLenTraverseInit(OpBase *opBase) {
 	   reltype_count   == 1                   && // single relationship
 	   multi_edge      == false               && // no multi edge entries
 	   op->traverseDir != GRAPH_EDGE_DIR_BOTH    // directed
-	) {
+	  ) {
 		AlgebraicExpression_Optimize(&op->ae);
 		ASSERT(op->ae->type == AL_OPERAND);
 		op->collect_paths = false;
@@ -180,8 +187,8 @@ static Record CondVarLenTraverseOptimizedConsume(OpBase *opBase) {
 	Node                dest    =  GE_NEW_NODE();
 	EntityID            dest_id =  INVALID_ENTITY_ID;
 
-	while ((dest_id = AllNeighborsCtx_NextNeighbor(op->allNeighborsCtx)) ==
-			INVALID_ENTITY_ID) {
+	while((dest_id = AllNeighborsCtx_NextNeighbor(op->allNeighborsCtx)) ==
+		  INVALID_ENTITY_ID) {
 		Record childRecord = OpBase_Consume(child);
 		if(!childRecord) return NULL;
 
@@ -275,12 +282,11 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 		if(op->expandInto) destNode = Record_GetNode(op->r, op->destNodeIdx);
 
 		AllPathsCtx_Free(op->allPathsCtx);
-		op->allPathsCtx = AllPathsCtx_New(srcNode, destNode, op->g, op->edgeRelationTypes,
-										  op->edgeRelationCount, op->traverseDir, op->minHops,
-										  op->maxHops, op->r, op->ft, op->edgesIdx);
-
+		op->allPathsCtx = AllPathsCtx_New(srcNode, destNode, op->g,
+				op->edgeRelationTypes, op->edgeRelationCount, op->traverseDir,
+				op->minHops, op->maxHops, op->r, op->ft, op->edgesIdx,
+				op->shortestPaths);
 	}
-
 
 	//--------------------------------------------------------------------------
 	// populate output record
