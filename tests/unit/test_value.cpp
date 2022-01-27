@@ -14,6 +14,7 @@ extern "C" {
 #include "../../src/util/rmalloc.h"
 #include "../../src/datatypes/set.h"
 #include "../../src/datatypes/array.h"
+#include "../../src/datatypes/path/path.h"
 #include "../../src/graph/entities/node.h"
 #include "../../src/graph/entities/edge.h"
 
@@ -347,3 +348,109 @@ TEST_F(ValueTest, TestSet) {
 	Set_Free(set);
 }
 
+TEST_F(ValueTest, TestPath) {
+	Path *path = Path_New(3);
+	Path *clone;
+	Node *n;
+	Edge *e;
+
+	// Path should be empty.
+	ASSERT_EQ(Path_NodeCount(path), 0);
+	ASSERT_EQ(Path_EdgeCount(path), 0);
+	ASSERT_EQ(Path_Len(path), 0);
+
+	// Populate path.
+	Node ns[3];
+	Edge es[2];
+	for (uint i = 0; i < 2; i++) {
+		ns[i].id = i;
+				
+		es[i].id = i;
+		es[i].srcNodeID = i;
+		es[i].destNodeID = i + 1;
+	}
+	ns[2].id = 2;
+
+	for (uint i = 0; i < 2; i++) {
+		Path_AppendNode(path, ns[i]);	
+		Path_AppendEdge(path, es[i]);
+	}
+	Path_AppendNode(path, ns[2]);
+
+	ASSERT_EQ(Path_NodeCount(path), 3);
+	ASSERT_EQ(Path_EdgeCount(path), 2);
+	ASSERT_EQ(Path_Len(path), 2);
+
+	// Make sure all nodes and edges are in path.
+	for (uint i = 0; i < 2; i++) {
+		n = Path_GetNode(path, i);
+		ASSERT_EQ(n->id, i);		
+		e = Path_GetEdge(path, i);
+		ASSERT_EQ(e->id, i);
+	}
+	n = Path_GetNode(path, 2);
+	ASSERT_EQ(n->id, 2);
+
+	clone = Path_Clone(path);
+	// Make sure all nodes and edges are in path.
+	for (uint i = 0; i < 2; i++) {
+		n = Path_GetNode(clone, i);
+		ASSERT_EQ(n->id, i);
+		e = Path_GetEdge(clone, i);
+		ASSERT_EQ(e->id, i);
+	}
+	n = Path_GetNode(clone, 2);
+	ASSERT_EQ(n->id, 2);
+
+	Node head = Path_Head(path);
+	ASSERT_EQ(head.id, 2);
+
+	Path_Reverse(path);
+
+	// Make sure all nodes and edges are reversed in path.
+	for (uint i = 0; i < 2; i++) {
+		n = Path_GetNode(path, i);
+		ASSERT_EQ(n->id, 2 - i);
+		e = Path_GetEdge(path, i);
+		ASSERT_EQ(e->id, 1 - i);
+	}
+	n = Path_GetNode(path, 2);
+	ASSERT_EQ(n->id, 0);
+
+	Path_Reverse(path);
+
+	// Remove node from path.
+	Node pop_n = Path_PopNode(path);
+	ASSERT_EQ(pop_n.id, 2);
+	ASSERT_EQ(Path_NodeCount(path), 2);
+
+	// Remove edge from path.
+	Edge pop_e = Path_PopEdge(path);
+	ASSERT_EQ(pop_e.id, 1);
+	ASSERT_EQ(Path_EdgeCount(path), 1);
+
+	// Make sure removed node not in path
+	bool res = Path_ContainsNode(path, &pop_n);
+	ASSERT_FALSE(res);
+
+	// Make sure node is in path
+	pop_n.id = 0;
+	res = Path_ContainsNode(path, &pop_n);
+	ASSERT_TRUE(res);
+
+	Path_SetNode(path, 1, pop_n);
+	Node *n1 = Path_GetNode(path, 1);
+	ASSERT_EQ(n1->id, pop_n.id);
+
+	Path_SetEdge(path, 0, pop_e);
+	Edge *e1 = Path_GetEdge(path, 0);
+	ASSERT_EQ(e1->id, pop_e.id);
+
+	// Make sure clear path clear all nodes and edges
+	Path_Clear(path);
+	ASSERT_EQ(Path_NodeCount(path), 0);
+	ASSERT_EQ(Path_EdgeCount(path), 0);
+
+	Path_Free(path);
+	Path_Free(clone);
+}
