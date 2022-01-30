@@ -67,6 +67,8 @@ void ExecutionPlan_Drain(ExecutionPlan *plan);
 /* Profile executes plan */
 ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan);
 
+uint ExecutionPlan_CountWriteOp(const ExecutionPlan *plan);
+
 /* Free execution plan */
 void ExecutionPlan_Free(ExecutionPlan *plan);
 

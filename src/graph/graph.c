@@ -406,6 +406,8 @@ Graph *Graph_New
 	// force GraphBLAS updates and resize matrices to node count by default
 	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 
+	Graph_SetCrudHubPolicy(g, CRUD_POLICY_NOP);
+
 	return g;
 }
 
