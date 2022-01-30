@@ -25,10 +25,9 @@ void UndoLog_New(UndoLog *undolog) {
 void UndoLog_CreateNode
 (
 	UndoOp *op,
-	Node *node             // node created
+	Node node             // node created
 ) {
 	ASSERT(op != NULL);
-	ASSERT(node != NULL);
 
 	op->n.n  = node;
 	op->type = UL_CREATE_NODE;
@@ -38,10 +37,9 @@ void UndoLog_CreateNode
 void UndoLog_CreateEdge
 (
 	UndoOp *op,
-	Edge *edge             // edge created
+	Edge edge             // edge created
 ) {
 	ASSERT(op != NULL);
-	ASSERT(edge != NULL);
 
 	op->e    = edge;
 	op->type = UL_CREATE_EDGE;
@@ -51,15 +49,14 @@ void UndoLog_CreateEdge
 void UndoLog_DeleteNode
 (
 	UndoOp *op,
-	Node *node,             // node deleted
+	Node node,             // node deleted
 	LabelID *labelIDs,
 	uint label_count
 ) {
 	ASSERT(op != NULL);
-	ASSERT(node != NULL);
 
 	op->n.n           = node;
-	op->n.labelIDs    = labelIDs;
+	op->n.labels      = labelIDs;
 	op->n.label_count = label_count;
 	op->type          = UL_DELETE_NODE;
 }
@@ -68,10 +65,9 @@ void UndoLog_DeleteNode
 void UndoLog_DeleteEdge
 (
 	UndoOp *op,
-	Edge *edge             // edge deleted
+	Edge edge             // edge deleted
 ) {
 	ASSERT(op != NULL);
-	ASSERT(edge != NULL);
 
 	op->e    = edge;
 	op->type = UL_DELETE_EDGE;
@@ -82,29 +78,39 @@ void UndoLog_Update
 (
 	UndoOp *op,
 	const PendingUpdateCtx *pending_update,
-	const SIValue *orig_value   // the original value which pending_update is about to override
+	const SIValue *orig_value,   // the original value which pending_update is about to override
+	EntityType entity_type
 ) {
 	ASSERT(op != NULL);
 	ASSERT(orig_value != NULL);
 	ASSERT(pending_update != NULL);
 
-	op->update            = *pending_update;
-	op->update.new_value  = *orig_value;
-	op->type              = UL_UPDATE;
+	op->update.pending            = *pending_update;
+	op->update.pending.new_value  = *orig_value;
+	op->update.entity_type        = entity_type;
+	op->type                      = UL_UPDATE;
 }
 
 // rollback the updates taken place by current query.
 static void _UndoLog_Rollback_Updates(QueryCtx *ctx, size_t seq_start, size_t seq_end) {
 	UndoOp *undo_list = ctx->undo_log.undo_list;
 	size_t len = seq_end - seq_start + 1; 
-	PendingUpdateCtx *updates = array_newlen(PendingUpdateCtx, len);
+	PendingUpdateCtx *node_updates = array_new(PendingUpdateCtx, len);
+	PendingUpdateCtx *edge_updates = array_new(PendingUpdateCtx, len);
 	for(int i = 0; i < len; ++i) {
-		updates[i] = undo_list[seq_start + i].update;
+		UndoOp *op = undo_list + seq_start + i;
+		if(op->update.entity_type == ENTITY_NODE) {
+			array_append(node_updates, op->update.pending);
+		} else {
+			array_append(edge_updates, op->update.pending);
+		}
 	}
 
-	CommitUpdates(ctx->gc, QueryCtx_GetResultSetStatistics(), updates, ENTITY_NODE);
+	CommitUpdates(ctx->gc, QueryCtx_GetResultSetStatistics(), node_updates, ENTITY_NODE);
+	CommitUpdates(ctx->gc, QueryCtx_GetResultSetStatistics(), edge_updates, ENTITY_EDGE);
 
-	array_free(updates);
+	array_free(node_updates);
+	array_free(edge_updates);
 }
 
 // Deletes all nodes that have been created by the query
@@ -113,7 +119,7 @@ static void _UndoLog_Rollback_Create_Node(QueryCtx *ctx, size_t seq_start, size_
 	size_t len = seq_end - seq_start + 1;
 	Node *nodes_to_delete = array_newlen(Node, len);
 	for(int i = 0; i < len; ++i) {
-		nodes_to_delete[i] = *undo_list[seq_start + i].n.n;
+		nodes_to_delete[i] = undo_list[seq_start + i].n.n;
 	}
 
 	OpDelete op = { .gc = ctx->gc, .deleted_nodes = nodes_to_delete, .deleted_edges = NULL, .stats = QueryCtx_GetResultSetStatistics()};
@@ -128,7 +134,7 @@ static void _UndoLog_Rollback_Create_Edge(QueryCtx *ctx, size_t seq_start, size_
 	size_t len = seq_end - seq_start + 1;
 	Edge *edges_to_delete = array_newlen(Edge, len);
 	for(int i = 0; i < len; ++i) {
-		edges_to_delete[i] = *undo_list[seq_start + i].e;
+		edges_to_delete[i] = undo_list[seq_start + i].e;
 	}
 
 	OpDelete op = { .gc = ctx->gc, .deleted_nodes = NULL, .deleted_edges = edges_to_delete, .stats = QueryCtx_GetResultSetStatistics()};
@@ -143,9 +149,17 @@ static void _UndoLog_Rollback_Delete_Node(QueryCtx *ctx, size_t seq_start, size_
 	for(int i = 0; i < len; ++i) {
 		UndoOp *op = undo_list + seq_start + i;
 		Node new;
-		Graph_CreateNode(ctx->gc->g, &new, op->n.labelIDs, op->n.label_count);
-		new.entity->prop_count = op->n.n->entity->prop_count;
-		new.entity->properties = op->n.n->entity->properties;
+		Graph_CreateNode(ctx->gc->g, &new, op->n.labels, op->n.label_count);
+		new.entity->prop_count = op->n.n.entity->prop_count;
+		new.entity->properties = op->n.n.entity->properties;
+		
+		// add node labels
+		for(uint j = 0; j < op->n.label_count; j++) {
+			Schema *s = GraphContext_GetSchemaByID(ctx->gc, op->n.labels[j], SCHEMA_NODE);
+			ASSERT(s);
+
+			if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, &new);
+		}
 	}
 }
 
@@ -155,9 +169,14 @@ static void _UndoLog_Rollback_Delete_Edge(QueryCtx *ctx, size_t seq_start, size_
 	for(int i = 0; i < len; ++i) {
 		UndoOp *op = undo_list + seq_start + i;
 		Edge new;
-		Graph_CreateEdge(ctx->gc->g, op->e->srcNodeID, op->e->destNodeID, op->e->relationID, &new);
-		new.entity->prop_count = op->e->entity->prop_count;
-		new.entity->properties = op->e->entity->properties;
+		Graph_CreateEdge(ctx->gc->g, op->e.srcNodeID, op->e.destNodeID, op->e.relationID, &new);
+		new.entity->prop_count = op->e.entity->prop_count;
+		new.entity->properties = op->e.entity->properties;
+
+		Schema *s = GraphContext_GetSchemaByID(ctx->gc, op->e.relationID, SCHEMA_EDGE);
+		ASSERT(s);
+
+		if(Schema_HasIndices(s)) Schema_AddEdgeToIndices(s, &new);
 	}
 }
 
@@ -203,6 +222,8 @@ void UndoLog_Rollback(UndoLog *undo_log) {
 
 		i = seq_end;
 	}
+
+	array_clear(undo_list);
 }
 
 void UndoOp_Free
@@ -217,11 +238,13 @@ void UndoOp_Free
 		case UL_CREATE_EDGE:
 			break;
 		case UL_DELETE_NODE:
-			rm_free(op->n.labelIDs);
-			rm_free(op->n.n->entity->properties);
-			rm_free(op->n.n->entity);
+			rm_free(op->n.labels);
+			rm_free(op->n.n.entity->properties);
+			rm_free(op->n.n.entity);
 			break;
 		case UL_DELETE_EDGE:
+			rm_free(op->e.entity->properties);
+			rm_free(op->e.entity);
 			break;
 		default:
 			ASSERT(false);           

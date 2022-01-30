@@ -320,7 +320,7 @@ void EvalEntityUpdates
 
 		SIValue *orig_val = GraphEntity_GetProperty(entity, attr_id);
 		UndoOp op;
-		UndoLog_Update(&op, &update, orig_val);
+		UndoLog_Update(&op, &update, orig_val, st == SCHEMA_NODE ? ENTITY_NODE : ENTITY_EDGE);
 		array_append(undo_log->undo_list, op);
 	}
 }

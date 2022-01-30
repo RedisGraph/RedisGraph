@@ -59,3 +59,43 @@ class testTraversalConstruction():
         except:
             result = self.graph.query("MATCH ()-[r]->() RETURN r.v")
             self.env.assertEquals(result.result_set[0][0], 1)
+
+    def test07_undo_delete_indexed_node(self):
+        self.redis_con.flushall()
+        self.graph.query("CREATE INDEX FOR (n:N) ON (n.v)")
+        self.graph.query("CREATE (:N {v: 0})")
+        try:
+            self.graph.query("MATCH (n:N) DELETE n WITH n CREATE (a:N {v: n})")
+        except:
+            result = self.graph.query("MATCH (n:N {v: 0}) RETURN COUNT(n)")
+            self.env.assertEquals(result.result_set[0][0], 1)
+
+    def test08_undo_delete_indexed_edge(self):
+        self.redis_con.flushall()
+        self.graph.query("CREATE INDEX FOR ()-[r:R]->() ON (r.v)")
+        self.graph.query("CREATE (:N)-[:R {v: 0}]->(:N)")
+        try:
+            self.graph.query("MATCH ()-[r:R]->() DELETE r WITH r CREATE (a:N {v: r})")
+        except:
+            result = self.graph.query("MATCH ()-[r:R {v: 0}]->() RETURN COUNT(r)")
+            self.env.assertEquals(result.result_set[0][0], 1)
+
+    def test09_undo_update_indexed_node(self):
+        self.redis_con.flushall()
+        self.graph.query("CREATE INDEX FOR (n:N) ON (n.v)")
+        self.graph.query("CREATE (:N {v: 1})")
+        try:
+            self.graph.query("MATCH (n:N {v: 1}) SET n.v = 2 WITH n CREATE (a:N {v: n})")
+        except:
+            result = self.graph.query("MATCH (n:N {v: 1}) RETURN n.v")
+            self.env.assertEquals(result.result_set[0][0], 1)
+    
+    def test10_undo_update_indexed_edge(self):
+        self.redis_con.flushall()
+        self.graph.query("CREATE INDEX FOR ()-[r:R]->() ON (r.v)")
+        self.graph.query("CREATE (:N)-[:R {v: 1}]->(:N)")
+        try:
+            self.graph.query("MATCH ()-[r]->() SET r.v = 2 WITH r CREATE (a:N {v: r})")
+        except:
+            result = self.graph.query("MATCH ()-[r:R {v: 1}]->() RETURN r.v")
+            self.env.assertEquals(result.result_set[0][0], 1)

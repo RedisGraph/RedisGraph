@@ -31,12 +31,15 @@ typedef enum {
 typedef struct UndoOp {
 	union {
 		struct {
-			Node *n;
-			LabelID *labelIDs;
+			Node n;
+			LabelID *labels;
 			uint label_count;
 		} n;
-		Edge *e;
-		PendingUpdateCtx update;
+		Edge e;
+		struct {
+			PendingUpdateCtx pending;
+			EntityType entity_type;
+		} update;
 	};
 	UndoOpType type;
 } UndoOp;
@@ -60,21 +63,21 @@ void UndoLog_New
 void UndoLog_CreateNode
 (
 	UndoOp *op,
-	Node *node             // node created
+	Node node             // node created
 );
 
 // create edge creation operation
 void UndoLog_CreateEdge
 (
 	UndoOp *op,
-	Edge *edge             // edge created
+	Edge edge             // edge created
 );
 
 // create node deletion operation
 void UndoLog_DeleteNode
 (
 	UndoOp *op,
-	Node *node,             // node deleted
+	Node node,             // node deleted
 	LabelID *labelIDs,
 	uint label_count
 );
@@ -83,7 +86,7 @@ void UndoLog_DeleteNode
 void UndoLog_DeleteEdge
 (
 	UndoOp *op,
-	Edge *edge             // edge deleted
+	Edge edge             // edge deleted
 );
 
 // create update operation
@@ -91,7 +94,8 @@ void UndoLog_Update
 (
 	UndoOp *op,
 	const PendingUpdateCtx *pending_update,
-	const SIValue *orig_value   // the original value which pending_update is about to override
+	const SIValue *orig_value,   // the original value which pending_update is about to override
+	EntityType entity_type
 );
 
 // rollback all modifications tracked by this undo log

@@ -77,6 +77,19 @@ void Edge_ToString(const Edge *e, char **buffer, size_t *bufferLen, size_t *byte
 	GraphEntity_ToString((const GraphEntity *)e, buffer, bufferLen, bytesWritten, format, GETYPE_EDGE);
 }
 
+void Edge_Clone(const Edge *e, Edge *clone) {
+	clone->id                 = e->id;
+	clone->srcNodeID          = e->srcNodeID;
+	clone->destNodeID         = e->destNodeID;
+	clone->relationID         = e->relationID;
+	clone->entity             = rm_malloc(sizeof(Entity));
+	clone->entity->prop_count = e->entity->prop_count;
+	clone->entity->properties = rm_malloc(sizeof(EntityProperty) * e->entity->prop_count);
+	for (uint i = 0; i < clone->entity->prop_count; i++) {
+		clone->entity->properties[i] = e->entity->properties[i];
+	}
+}
+
 void Edge_Free(Edge *edge) {
 	if(!edge) return;
 

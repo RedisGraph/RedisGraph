@@ -12,14 +12,13 @@ void Node_Clone
 	const Node *n,
 	Node *clone
 ) {
-	clone->id = n->id;
-	clone->entity = rm_malloc(sizeof(Entity));
+	clone->id                 = n->id;
+	clone->entity             = rm_malloc(sizeof(Entity));
 	clone->entity->prop_count = n->entity->prop_count;
 	clone->entity->properties = rm_malloc(sizeof(EntityProperty) * n->entity->prop_count);
 	for (uint i = 0; i < clone->entity->prop_count; i++) {
 		clone->entity->properties[i] = n->entity->properties[i];
 	}
-	
 }
 
 void Node_ToString

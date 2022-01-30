@@ -637,7 +637,7 @@ void Graph_CreateNode
 	en->properties  =  NULL;
 
 	UndoOp op;
-	UndoLog_CreateNode(&op, n);
+	UndoLog_CreateNode(&op, *n);
 	g->CrudHub(g, &op);
 
 	if(label_count > 0) _Graph_LabelNode(g, n->id, labels, label_count);
@@ -701,7 +701,7 @@ void Graph_CreateEdge
 	Graph_FormConnection(g, src, dest, id, r);
 
 	UndoOp op;
-	UndoLog_CreateEdge(&op, e);
+	UndoLog_CreateEdge(&op, *e);
 	g->CrudHub(g, &op);
 }
 
@@ -877,12 +877,14 @@ int Graph_DeleteEdge
 		}
 	}
 
+	UndoOp op;
+	Edge clone;
+	Edge_Clone(e, &clone);
+	UndoLog_DeleteEdge(&op, clone);
+	g->CrudHub(g, &op);
+
 	// free and remove edges from datablock.
 	DataBlock_DeleteItem(g->edges, ENTITY_GET_ID(e));
-
-	UndoOp op;
-	UndoLog_DeleteEdge(&op, e);
-	g->CrudHub(g, &op);
 	
 	return 1;
 }
@@ -918,7 +920,7 @@ void Graph_DeleteNode
 	UndoOp op;
 	Node clone;
 	Node_Clone(n, &clone);
-	UndoLog_DeleteNode(&op, &clone, labels, label_count);
+	UndoLog_DeleteNode(&op, clone, labels, label_count);
 	g->CrudHub(g, &op);
 
 	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
@@ -1004,12 +1006,15 @@ static void _BulkDeleteNodes
 
 		RG_Matrix_removeElement_BOOL(adj, src, dest);
 		RG_Matrix_removeElement_UINT64(R, src, dest);
-		DataBlock_DeleteItem(g->edges, edge_id);
-		edge_deletion_count[e->relationID]++;
 
 		UndoOp op;
-		UndoLog_DeleteEdge(&op, e);
+		Edge clone;
+		Edge_Clone(e, &clone);
+		UndoLog_DeleteEdge(&op, clone);
 		g->CrudHub(g, &op);
+
+		DataBlock_DeleteItem(g->edges, edge_id);
+		edge_deletion_count[e->relationID]++;
 	}
 
 	for(int i = 0; i < relation_count; i++) {
@@ -1046,7 +1051,7 @@ static void _BulkDeleteNodes
 		UndoOp op;
 		Node clone;
 		Node_Clone(n, &clone);
-		UndoLog_DeleteNode(&op, &clone, labels, label_count);
+		UndoLog_DeleteNode(&op, clone, labels, label_count);
 		g->CrudHub(g, &op);
 
 		DataBlock_DeleteItem(g->nodes, entity_id);
@@ -1083,6 +1088,12 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		// edge of type r has just been deleted, update statistics
 		GraphStatistics_DecEdgeCount(&g->stats, r, 1);
 
+		UndoOp op;
+		Edge clone;
+		Edge_Clone(e, &clone);
+		UndoLog_DeleteEdge(&op, clone);
+		g->CrudHub(g, &op);
+
 		// free and remove edges from datablock
 		DataBlock_DeleteItem(g->edges, edge_id);
 
@@ -1099,10 +1110,6 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		if(j == relationCount) {
 			RG_Matrix_removeElement_BOOL(adj, src_id, dest_id);
 		}
-
-		UndoOp op;
-		UndoLog_DeleteEdge(&op, e);
-		g->CrudHub(g, &op);
 	}
 }
 
