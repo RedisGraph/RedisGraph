@@ -30,7 +30,11 @@ typedef enum {
 // the abstract type of items in the undo_list
 typedef struct UndoOp {
 	union {
-		Node *n;
+		struct {
+			Node *n;
+			LabelID *labelIDs;
+			uint label_count;
+		} n;
 		Edge *e;
 		PendingUpdateCtx update;
 	};
@@ -70,7 +74,9 @@ void UndoLog_CreateEdge
 void UndoLog_DeleteNode
 (
 	UndoOp *op,
-	Node *node             // node deleted
+	Node *node,             // node deleted
+	LabelID *labelIDs,
+	uint label_count
 );
 
 // create edge deletion operation

@@ -810,7 +810,9 @@ uint Graph_GetNodeLabels
 	bool depleted = false;
 
 	for(; i < label_count; i++) {
-		res = RG_MatrixTupleIter_next(&iter, NULL, labels + i, NULL, &depleted);
+		GrB_Index col;
+		res = RG_MatrixTupleIter_next(&iter, NULL, &col, NULL, &depleted);
+		labels[i] = col;
 		ASSERT(res == GrB_SUCCESS);
 
 		if(depleted) break;
@@ -898,8 +900,9 @@ void Graph_DeleteNode
 	ASSERT(g != NULL);
 	ASSERT(n != NULL);
 
-	uint label_count;
-	NODE_GET_LABELS(g, n, label_count);
+	uint label_count = Graph_LabelTypeCount(g);
+	LabelID *labels = rm_malloc(sizeof(int) * label_count);
+	label_count = Graph_GetNodeLabels(g, n, labels, label_count);
 	for(uint i = 0; i < label_count; i++) {
 		int label_id = labels[i];
 		RG_Matrix M = Graph_GetLabelMatrix(g, label_id);
@@ -910,11 +913,13 @@ void Graph_DeleteNode
 		GraphStatistics_DecNodeCount(&g->stats, label_id, 1);
 	}
 
-	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
-
 	UndoOp op;
-	UndoLog_DeleteNode(&op, n);
+	Node clone;
+	Node_Clone(n, &clone);
+	UndoLog_DeleteNode(&op, &clone, labels, label_count);
 	g->CrudHub(g, &op);
+
+	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
 }
 
 static void _Graph_FreeRelationMatrices
@@ -1024,8 +1029,9 @@ static void _BulkDeleteNodes
 	for(int i = 0; i < node_count; i++) {
 		Node *n = distinct_nodes + i;
 		NodeID entity_id = ENTITY_GET_ID(n);
-		uint label_count;
-		NODE_GET_LABELS(g, n, label_count);
+		uint label_count = Graph_LabelTypeCount(g);
+		LabelID *labels = rm_malloc(sizeof(LabelID) * label_count);
+		label_count = Graph_GetNodeLabels(g, n, labels, label_count);
 
 		for(int i = 0; i < label_count; i++) {
 			RG_Matrix L = Graph_GetLabelMatrix(g, labels[i]);
@@ -1035,11 +1041,13 @@ static void _BulkDeleteNodes
 			GraphStatistics_DecNodeCount(&g->stats, labels[i], 1);
 		}
 
-		DataBlock_DeleteItem(g->nodes, entity_id);
-		
 		UndoOp op;
-		UndoLog_DeleteNode(&op, n);
+		Node clone;
+		Node_Clone(n, &clone);
+		UndoLog_DeleteNode(&op, &clone, labels, label_count);
 		g->CrudHub(g, &op);
+
+		DataBlock_DeleteItem(g->nodes, entity_id);
 	}
 
 	// update deleted node count

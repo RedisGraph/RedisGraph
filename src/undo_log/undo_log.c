@@ -30,7 +30,7 @@ void UndoLog_CreateNode
 	ASSERT(op != NULL);
 	ASSERT(node != NULL);
 
-	op->n    = node;
+	op->n.n  = node;
 	op->type = UL_CREATE_NODE;
 }
 
@@ -51,13 +51,17 @@ void UndoLog_CreateEdge
 void UndoLog_DeleteNode
 (
 	UndoOp *op,
-	Node *node             // node deleted
+	Node *node,             // node deleted
+	LabelID *labelIDs,
+	uint label_count
 ) {
 	ASSERT(op != NULL);
 	ASSERT(node != NULL);
 
-	op->n    = node;
-	op->type = UL_DELETE_NODE;
+	op->n.n           = node;
+	op->n.labelIDs    = labelIDs;
+	op->n.label_count = label_count;
+	op->type          = UL_DELETE_NODE;
 }
 
 // create edge deletion operation
@@ -109,7 +113,7 @@ static void _UndoLog_Rollback_Create_Node(QueryCtx *ctx, size_t seq_start, size_
 	size_t len = seq_end - seq_start + 1;
 	Node *nodes_to_delete = array_newlen(Node, len);
 	for(int i = 0; i < len; ++i) {
-		nodes_to_delete[i] = *undo_list[seq_start + i].n;
+		nodes_to_delete[i] = *undo_list[seq_start + i].n.n;
 	}
 
 	OpDelete op = { .gc = ctx->gc, .deleted_nodes = nodes_to_delete, .deleted_edges = NULL, .stats = QueryCtx_GetResultSetStatistics()};
@@ -134,14 +138,27 @@ static void _UndoLog_Rollback_Create_Edge(QueryCtx *ctx, size_t seq_start, size_
 }
 
 static void _UndoLog_Rollback_Delete_Node(QueryCtx *ctx, size_t seq_start, size_t seq_end) {
-	PendingCreations pc = NewPendingCreationsContainer(NULL, NULL);
 	UndoOp *undo_list = ctx->undo_log.undo_list;
 	size_t len = seq_end - seq_start + 1;
-	Node *nodes_to_delete = array_newlen(Node, len);
 	for(int i = 0; i < len; ++i) {
-		array_append(pc.created_nodes, undo_list[seq_start + i].n);
+		UndoOp *op = undo_list + seq_start + i;
+		Node new;
+		Graph_CreateNode(ctx->gc->g, &new, op->n.labelIDs, op->n.label_count);
+		new.entity->prop_count = op->n.n->entity->prop_count;
+		new.entity->properties = op->n.n->entity->properties;
 	}
-	CommitNewEntities(NULL, &pc);
+}
+
+static void _UndoLog_Rollback_Delete_Edge(QueryCtx *ctx, size_t seq_start, size_t seq_end) {
+	UndoOp *undo_list = ctx->undo_log.undo_list;
+	size_t len = seq_end - seq_start + 1;
+	for(int i = 0; i < len; ++i) {
+		UndoOp *op = undo_list + seq_start + i;
+		Edge new;
+		Graph_CreateEdge(ctx->gc->g, op->e->srcNodeID, op->e->destNodeID, op->e->relationID, &new);
+		new.entity->prop_count = op->e->entity->prop_count;
+		new.entity->properties = op->e->entity->properties;
+	}
 }
 
 void UndoLog_Rollback(UndoLog *undo_log) {
@@ -175,9 +192,10 @@ void UndoLog_Rollback(UndoLog *undo_log) {
 				_UndoLog_Rollback_Create_Edge(ctx, i, seq_end);
 				break;
 			case UL_DELETE_NODE:
-				// _UndoLog_Rollback_Delete_Node(ctx, i, seq_end);
+				_UndoLog_Rollback_Delete_Node(ctx, i, seq_end);
 				break;
 			case UL_DELETE_EDGE:
+				_UndoLog_Rollback_Delete_Edge(ctx, i, seq_end);
 				break;
 			default:
 				ASSERT(false);           
