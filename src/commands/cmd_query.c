@@ -205,7 +205,7 @@ static void _ExecuteQuery(void *args) {
 
 		uint64_t query_mem_capacity;
 		Config_Option_get(Config_QUERY_MEM_CAPACITY, &query_mem_capacity);
-		if(ExecutionPlan_CountWriteOp(plan) > 1 || query_mem_capacity != QUERY_MEM_CAPACITY_UNLIMITED) {
+		if(plan != NULL && (ExecutionPlan_CountWriteOp(plan) > 1 || query_mem_capacity != QUERY_MEM_CAPACITY_UNLIMITED)) {
 			Graph_SetCrudHubPolicy(gc->g, CRUD_POLICY_UNDO);
 		}
 	}
