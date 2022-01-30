@@ -100,6 +100,11 @@ void UndoLog_Rollback
 	UndoLog *undo_log
 );
 
+void UndoOp_Free
+(
+	UndoOp *op
+);
+
 // deallocates the UndoLog
 void UndoLog_Free
 (

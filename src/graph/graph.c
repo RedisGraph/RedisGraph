@@ -1301,6 +1301,7 @@ RG_Matrix Graph_GetZeroMatrix
 }
 
 static void _CrudHubNOP(const Graph *g, UndoOp *op) {
+	UndoOp_Free(op);
 }
 
 static void _CrudHub(const Graph *g, UndoOp *op) {

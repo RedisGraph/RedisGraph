@@ -130,4 +130,3 @@ double QueryCtx_GetExecutionTime(void);
 
 /* Free the allocations within the QueryCtx and reset it for the next query. */
 void QueryCtx_Free(void);
-

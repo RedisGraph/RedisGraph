@@ -253,6 +253,8 @@ void QueryCtx_Free(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ASSERT(ctx != NULL);
 
+	UndoLog_Free(&ctx->undo_log);
+
 	if(ctx->query_data.params) {
 		raxFreeWithCallback(ctx->query_data.params, _ParameterFreeCallback);
 		ctx->query_data.params = NULL;

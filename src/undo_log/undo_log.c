@@ -205,7 +205,32 @@ void UndoLog_Rollback(UndoLog *undo_log) {
 	}
 }
 
+void UndoOp_Free
+(
+	UndoOp *op
+) {
+	switch(op->type) {
+		case UL_UPDATE:
+			break;
+		case UL_CREATE_NODE:
+			break;
+		case UL_CREATE_EDGE:
+			break;
+		case UL_DELETE_NODE:
+			rm_free(op->n.labelIDs);
+			break;
+		case UL_DELETE_EDGE:
+			break;
+		default:
+			ASSERT(false);           
+	}
+}
+
 void UndoLog_Free(UndoLog *undo_log) {
+	uint count = array_len(undo_log->undo_list);
+	for (uint i = 0; i < count; i++) {
+		UndoOp_Free(undo_log->undo_list + i);
+	}
 	array_free(undo_log->undo_list);
 	undo_log->undo_list = NULL;
 }
