@@ -218,6 +218,8 @@ void UndoOp_Free
 			break;
 		case UL_DELETE_NODE:
 			rm_free(op->n.labelIDs);
+			rm_free(op->n.n->entity->properties);
+			rm_free(op->n.n->entity);
 			break;
 		case UL_DELETE_EDGE:
 			break;
