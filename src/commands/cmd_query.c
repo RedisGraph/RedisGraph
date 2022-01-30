@@ -16,6 +16,7 @@
 #include "../util/cache/cache.h"
 #include "../util/thpool/pools.h"
 #include "../undo_log/undo_log.h"
+#include "../configuration/config.h"
 #include "../execution_plan/execution_plan.h"
 #include "execution_ctx.h"
 
@@ -202,7 +203,9 @@ static void _ExecuteQuery(void *args) {
 		}
 		CommandCtx_ThreadSafeContextUnlock(command_ctx);
 
-		if(ExecutionPlan_CountWriteOp(plan) > 1) {
+		uint64_t query_mem_capacity;
+		Config_Option_get(Config_QUERY_MEM_CAPACITY, &query_mem_capacity);
+		if(ExecutionPlan_CountWriteOp(plan) > 1 || query_mem_capacity != QUERY_MEM_CAPACITY_UNLIMITED) {
 			Graph_SetCrudHubPolicy(gc->g, CRUD_POLICY_UNDO);
 		}
 	}
