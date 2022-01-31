@@ -146,21 +146,21 @@ class testPath():
     def test_nested_point(self):
         expected_value = [{'latitude':32, 'longitude':34}]
         # point as an array element
-        q = "RETURN [point({latitude:32, longitude:34})" 
+        q = "RETURN [point({latitude:32, longitude:34})]" 
         res = redis_graph.query(q)
-        self.env.assertEquals(res[0][0], expected_value)
+        self.env.assertEquals(res.result_set[0][0], expected_value)
 
         # test setting an array with a point as an entity attribute
         q = "CREATE (n:L {v: [point({latitude:32, longitude:34})]}) RETURN n.v"
         res = redis_graph.query(q)
-        self.env.assertEquals(res[0][0], expected_value)
+        self.env.assertEquals(res.result_set[0][0], expected_value)
 
         # update expected value
         expected_value = [{'latitude':34, 'longitude':35}]
         # update existing node, place a different point in its array
-        q = "MATCH (n:L) SET n.v = [point({latitude:33, longitude:35})]}) RETURN n.v"
+        q = "MATCH (n:L) SET n.v = [point({latitude:34, longitude:35})] RETURN n.v"
         res = redis_graph.query(q)
-        self.env.assertEquals(res[0][0], expected_value)
+        self.env.assertEquals(res.result_set[0][0], expected_value)
 
         # order a list of points
         expected_value = [
@@ -178,5 +178,10 @@ class testPath():
         WITH p ORDER BY p RETURN collect(p)"""
 
         res = redis_graph.query(q)
-        self.env.assertEquals(res[0][0], expected_value)
+        self.env.assertEquals(res.result_set[0][0], expected_value)
+
+        expected_value = "point({latitude: 32.000000, longitude: 34.000000})"
+        q = "RETURN tostring(point({latitude:32, longitude:34}))"
+        res = redis_graph.query(q)
+        self.env.assertEquals(res.result_set[0][0], expected_value)
 

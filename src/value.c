@@ -17,6 +17,7 @@
 #include "util/rmalloc.h"
 #include "datatypes/map.h"
 #include "datatypes/array.h"
+#include "datatypes/point.h"
 #include "datatypes/path/sipath.h"
 
 static inline void _SIString_ToString(SIValue str, char **buf, size_t *bufferLen,
@@ -299,6 +300,9 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 	case T_PTR:
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "POINTER");
 		break;
+	case T_POINT:
+		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "point({latitude: %f, longitude: %f})", Point_lat(v), Point_lon(v));
+		break;
 	default:
 		// unrecognized type
 		printf("unrecognized type: %d\n", v.type);
@@ -527,6 +531,11 @@ int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull) {
 			return Map_Compare(a, b, disjointOrNull);
 		case T_NULL:
 			break;
+		case T_POINT:
+			float lon_diff = SAFE_COMPARISON_RESULT(Point_lon(a) - Point_lon(b));
+			if(lon_diff == 0)
+				return SAFE_COMPARISON_RESULT(Point_lat(a) - Point_lat(b));
+			return lon_diff;
 		default:
 			// Both inputs were of an incomparable type, like a pointer, or not implemented comparison yet.
 			ASSERT(false);
