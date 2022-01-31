@@ -203,9 +203,15 @@ static void _ExecuteQuery(void *args) {
 		}
 		CommandCtx_ThreadSafeContextUnlock(command_ctx);
 
+		// decided rather or not to use an undo-log
+		// an undo-log will be used when the query has multiple write operations
+		// or a memory cap had been defined
 		uint64_t query_mem_capacity;
 		Config_Option_get(Config_QUERY_MEM_CAPACITY, &query_mem_capacity);
-		if(plan != NULL && (ExecutionPlan_CountWriteOp(plan) > 1 || query_mem_capacity != QUERY_MEM_CAPACITY_UNLIMITED)) {
+		// see if writer operation count > 2 or memory cap is enforced
+		if(plan != NULL &&
+		   (ExecutionPlan_CountWriteOp(plan) > 1 ||
+			query_mem_capacity != QUERY_MEM_CAPACITY_UNLIMITED)) {
 			Graph_SetCrudHubPolicy(gc->g, CRUD_POLICY_UNDO);
 		}
 	}
@@ -239,6 +245,7 @@ static void _ExecuteQuery(void *args) {
 		ASSERT("Unhandled query type" && false);
 	}
 
+	// in case of an error rollback modifications
 	if(ErrorCtx_EncounteredError()) UndoLog_Rollback(&query_ctx->undo_log);
 	
 	QueryCtx_ForceUnlockCommit();

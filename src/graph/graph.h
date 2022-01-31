@@ -40,8 +40,8 @@ typedef enum {
 } MATRIX_POLICY;
 
 typedef enum {
-	CRUD_POLICY_UNDO,
-	CRUD_POLICY_NOP,
+	CRUD_POLICY_UNDO,  // accumulate undo operations
+	CRUD_POLICY_NOP,   // discard undo operations
 } CRUD_HUB_POLICY;
 
 // forward declaration of Graph struct
@@ -406,6 +406,7 @@ RG_Matrix Graph_GetLabelRGMatrix
 	int label_idx
 );
 
+// set the CRUD policy
 void Graph_SetCrudHubPolicy
 (
 	Graph *g,

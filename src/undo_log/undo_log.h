@@ -114,3 +114,4 @@ void UndoLog_Free
 (
 	UndoLog *undo_log
 );
+
