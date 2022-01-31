@@ -532,10 +532,12 @@ int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull) {
 		case T_NULL:
 			break;
 		case T_POINT:
+		{
 			float lon_diff = SAFE_COMPARISON_RESULT(Point_lon(a) - Point_lon(b));
 			if(lon_diff == 0)
 				return SAFE_COMPARISON_RESULT(Point_lat(a) - Point_lat(b));
 			return lon_diff;
+		}
 		default:
 			// Both inputs were of an incomparable type, like a pointer, or not implemented comparison yet.
 			ASSERT(false);
