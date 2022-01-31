@@ -621,7 +621,7 @@ void Graph_CreateNode
 (
 	Graph *g,
 	Node *n,
-	int *labels,
+	LabelID *labels,
 	uint label_count
 ) {
 	ASSERT(g);
