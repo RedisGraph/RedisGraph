@@ -211,7 +211,8 @@ static void _ExecuteQuery(void *args) {
 		// see if writer operation count > 2 or memory cap is enforced
 		if(plan != NULL &&
 		   (ExecutionPlan_CountWriteOp(plan) > 1 ||
-			query_mem_capacity != QUERY_MEM_CAPACITY_UNLIMITED)) {
+			query_mem_capacity != QUERY_MEM_CAPACITY_UNLIMITED ||
+			gq_ctx->timeout != 0)) {
 			Graph_SetCrudHubPolicy(gc->g, CRUD_POLICY_UNDO);
 		}
 	}
@@ -338,11 +339,7 @@ void _query(bool profile, void *args) {
 
 	// set the query timeout if one was specified
 	if(command_ctx->timeout != 0) {
-		// disallow timeouts on write operations to avoid leaving the graph in an inconsistent state
-		if(readonly) {
-			timeout_task = Query_SetTimeOut(command_ctx->timeout,
-					exec_ctx->plan);
-		}
+		timeout_task = Query_SetTimeOut(command_ctx->timeout, exec_ctx->plan);
 	}
 
 	// populate the container struct for invoking _ExecuteQuery.
