@@ -67,6 +67,9 @@ void ExecutionPlan_Drain(ExecutionPlan *plan);
 /* Profile executes plan */
 ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan);
 
+// counts how many write operations are there within `plan`
+// write operations include:
+// op_create, op_merge, op_update, op_delete
 uint ExecutionPlan_CountWriteOp(const ExecutionPlan *plan);
 
 /* Free execution plan */

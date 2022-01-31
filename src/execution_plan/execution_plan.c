@@ -549,6 +549,7 @@ static ExecutionPlan *_ExecutionPlan_FreeOpTree(OpBase *op) {
 
 uint _ExecutionPlan_CountWriteOp(const OpBase *op) {
 	uint res = 0;
+
 	if(op->type == OPType_CREATE ||
 	   op->type == OPType_MERGE  ||
 	   op->type == OPType_DELETE ||
@@ -565,6 +566,9 @@ uint _ExecutionPlan_CountWriteOp(const OpBase *op) {
 	return res;
 }
 
+// counts how many write operations are there within `plan`
+// write operations include:
+// op_create, op_merge, op_update, op_delete
 uint ExecutionPlan_CountWriteOp(const ExecutionPlan *plan) {
 	return _ExecutionPlan_CountWriteOp(plan->root);
 }
