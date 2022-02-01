@@ -8,6 +8,7 @@
 #include "../../procedures/procedure.h"
 #include "../../util/arr.h"
 #include "../../util/qsort.h"
+#include "../../util/sds/sds.h"
 
 //------------------------------------------------------------------------------
 //  Annotation context - WITH/RETURN * projections
@@ -146,6 +147,39 @@ static const char **_collect_aliases_in_scope(AST *ast, uint scope_start, uint s
 	return aliases;
 }
 
+static sds aliases_to_query_string(sds s, const char **aliases) {
+	uint alias_count = array_len(aliases);
+	for(uint i = 0; i < alias_count; i ++) {
+		// append string with comma-separated aliases
+		s = sdscatprintf(s, "%s, ", aliases[i]);
+	}
+	// hack to make empty projections work:
+	// MATCH () WITH * CREATE ()
+	if(alias_count == 0) s = sdscat(s, "NULL AS a");
+	return s;
+}
+
+static cypher_astnode_t *build_clause_node(sds s) {
+	// generate a new parse result
+	cypher_parse_result_t *parse_result =
+		cypher_parse(s, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+	ASSERT(parse_result != NULL);
+	ASSERT(cypher_parse_result_nroots(parse_result) == 1);
+	// retrieve the AST root node from parsed query
+	const cypher_astnode_t *statement = cypher_parse_result_get_root(parse_result, 0);
+	ASSERT(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
+
+	const cypher_astnode_t *query = cypher_ast_statement_get_body(statement);
+	ASSERT(cypher_astnode_type(query) == CYPHER_AST_QUERY);
+
+	// clone the AST clause node so that the result can be freed
+	const cypher_astnode_t *new_clause = cypher_ast_query_get_clause(query, 0);
+	cypher_astnode_t *new_clause_clone = cypher_ast_clone(new_clause);
+	cypher_parse_result_free(parse_result);
+
+	return new_clause_clone;
+}
+
 static void _annotate_project_all(AST *ast) {
 	AnnotationCtx *project_all_ctx = AST_AnnotationCtxCollection_GetProjectAllCtx(
 										 ast->anot_ctx_collection);
@@ -157,8 +191,14 @@ static void _annotate_project_all(AST *ast) {
 		scope_end = with_clause_indices[i];
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, scope_end);
 		if(cypher_ast_with_has_include_existing(clause)) {
-			// Collect all aliases defined in this scope.
+			// collect all aliases defined in this scope.
 			const char **aliases = _collect_aliases_in_scope(ast, scope_start, scope_end);
+			sds s = sdsnew("WITH ");
+			s = aliases_to_query_string(s, aliases);
+			const cypher_astnode_t *new_clause = build_clause_node(s);
+			sdsfree(s);
+			cypher_astnode_free((cypher_astnode_t *)clause);
+			*clause = new_clause;
 			// Annotate the clause with the aliases array.
 			cypher_astnode_attach_annotation(project_all_ctx, clause, (void *)aliases, NULL);
 		}
