@@ -165,6 +165,7 @@ class testPath():
         # order a list of points
         expected_value = [
         {'latitude':32, 'longitude':31},
+        {'latitude':31, 'longitude':32},
         {'latitude':32, 'longitude':32},
         {'latitude':33, 'longitude':35},
         {'latitude':29, 'longitude':36}
@@ -174,6 +175,7 @@ class testPath():
         point({latitude:33, longitude:35}),
         point({latitude:32, longitude:31}),
         point({latitude:32, longitude:32}),
+        point({latitude:31, longitude:32}),
         point({latitude:29, longitude:36})] AS p
         WITH p ORDER BY p RETURN collect(p)"""
 
