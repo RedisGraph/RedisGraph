@@ -642,27 +642,30 @@ This section contains information on all supported functions from the Cypher que
 
 ## Predicate functions
 
-| Function                                         | Description                                                                                 |
-| -------                                          | :-----------                                                                                |
-| exists()                                         | Returns true if the specified property exists in the node or relationship.                  |
-| [any()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for any element in the input array.    |
-| [all()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for all elements in the input array.   |
-| [none()](#existential-comprehension-functions)   | Returns true if the inner WHERE predicate holds false for all elements in the input array.  |
-| [single()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for 1 element only in the input array. |
+| Function                                         | Description                                                                                   |
+| -------                                          | :-----------                                                                                  |
+| exists()                                         | Returns true if the specified property exists in the node or relationship.                    |
+| [any()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for any element in the input array.      |
+| [all()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for all elements in the input array.     |
+| [none()](#existential-comprehension-functions)   | Returns true if the inner WHERE predicate holds false for all elements in the input array.    |
+| [single()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for 1 element only in the input array.   |
+| [single()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for 1 element only in the input array.   |
+| [CASE...WHEN](#case-when)                        | Evaluates the CASE expression and returns the value indicated by the matching WHEN statement. |
 
 ## Scalar functions
 
-| Function            | Description                                                                 |
-| -------             | :-----------                                                                |
-| endNode()           | Returns the destination node of a relationship.                             |
-| id()                | Returns the internal ID of a relationship or node (which is not immutable.) |
-| hasLabels()         | Returns true if input node contains all specified labels, otherwise false.  |
-| keys()              | Returns the array of keys contained in the given map, node, or edge.        |
-| labels()            | Returns a string representation of the label of a node.                     |
-| startNode()         | Returns the source node of a relationship.                                  |
-| timestamp()         | Returns the the amount of milliseconds since epoch.                         |
-| type()              | Returns a string representation of the type of a relation.                  |
-| list comprehensions | [See documentation](#list-comprehensions)                                   |
+| Function               | Description                                                                 |
+| -------                | :-----------                                                                |
+| endNode()              | Returns the destination node of a relationship.                             |
+| id()                   | Returns the internal ID of a relationship or node (which is not immutable.) |
+| hasLabels()            | Returns true if input node contains all specified labels, otherwise false.  |
+| keys()                 | Returns the array of keys contained in the given map, node, or edge.        |
+| labels()               | Returns a string representation of the label of a node.                     |
+| startNode()            | Returns the source node of a relationship.                                  |
+| timestamp()            | Returns the the amount of milliseconds since epoch.                         |
+| type()                 | Returns a string representation of the type of a relation.                  |
+| list comprehensions    | [See documentation](#list-comprehensions)                                   |
+| pattern comprehensions | [See documentation](#pattern-comprehensions)                                |
 
 ## Aggregating functions
 
@@ -691,15 +694,21 @@ This section contains information on all supported functions from the Cypher que
 
 |Function    | Description|
 | ---------- |:-----------|
-|abs()		     | Returns the absolute value of a number|
-|ceil()		    | Returns the smallest floating point number that is greater than or equal to a number and equal to a mathematical integer |
-|floor()	    | Returns the largest floating point number that is less than or equal to a number and equal to a mathematical integer     |
-|rand()		    | Returns a random floating point number in the range from 0 to 1; i.e. [0,1]                                              |
-|round()     | Returns the value of a number rounded to the nearest integer                                                             |
-|sign()      | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number          |
-|sqrt()      | Returns the square root of a number                                                                                      |
-|pow()       | Returns base raised to the power of exponent, base^exponent                                                              |
-|toInteger() | Converts a floating point or string value to an integer value.                                                           |
+| +           | Add two values                                                                                                          |
+| -           | Subtract second value from first                                                                                        |
+| *           | Multiply two values                                                                                                     |
+| /           | Divide first value by the second                                                                                         |
+| ^           | Raise the first value to the power of the second                                                                         |
+| %           | Perform modulo division of the first value by the second                                                                 |
+| abs()       | Returns the absolute value of a number                                                                                   |
+| ceil()      | Returns the smallest floating point number that is greater than or equal to a number and equal to a mathematical integer |
+| floor()     | Returns the largest floating point number that is less than or equal to a number and equal to a mathematical integer     |
+| rand()      | Returns a random floating point number in the range from 0 to 1; i.e. [0,1]                                              |
+| round()     | Returns the value of a number rounded to the nearest integer                                                             |
+| sign()      | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number          |
+| sqrt()      | Returns the square root of a number                                                                                      |
+| pow()       | Returns base raised to the power of exponent, base^exponent                                                              |
+| toInteger() | Converts a floating point or string value to an integer value.                                                           |
 
 ## String functions
 
@@ -771,6 +780,58 @@ They can operate on any form of input array, but are particularly useful for pat
 
 ```sh
 MATCH p=()-[*]->() WHERE all(edge IN relationships(p) WHERE edge.weight < 3) RETURN p
+```
+
+### Pattern comprehensions
+
+Pattern comprehensions are a method of producing a list composed of values found by performing the traversal of a given graph pattern.
+
+The following query returns the name of a `Person` node and a list of all their friends' ages:
+
+```sh
+MATCH (n:Person)
+RETURN
+n.name,
+[(n)-[:FRIEND_OF]->(f:Person) | f.age]
+```
+
+Optionally, a `WHERE` clause may be embedded in the pattern comprehension to filter results. In this query, all friends' ages will be gathered for friendships that started before 2010:
+
+```sh
+MATCH (n:Person)
+RETURN
+n.name,
+[(n)-[e:FRIEND_OF]->(f:Person) WHERE e.since < 2010 | f.age]
+```
+
+### CASE WHEN
+
+The case statement comes in two variants. Both accept an input argument and evaluates it against one or more expressions. The first `WHEN` argument that specifies a value matching the result will be accepted, and the value specified by the corresponding `THEN` keyword will be returned.
+
+Optionally, an `ELSE` argument may also be specified to indicate what to do if none of the `WHEN` arguments match successfully.
+
+In its simple form, there is only one expression to evaluate and it immediately follows the `CASE` keyword:
+
+```sh
+MATCH (n)
+RETURN
+CASE n.title
+WHEN 'Engineer' THEN 100
+WHEN 'Scientist' THEN 80
+ELSE n.privileges
+END
+```
+
+In its generic form, no expression follows the `CASE` keyword. Instead, each `WHEN` statement specifies its own expression:
+
+```sh
+MATCH (n)
+RETURN
+CASE
+WHEN n.age < 18 THEN '0-18'
+WHEN n.age < 30 THEN '18-30'
+ELSE '30+'
+END
 ```
 
 #### Reduce
