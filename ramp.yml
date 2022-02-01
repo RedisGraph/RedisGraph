@@ -18,6 +18,7 @@ capabilities:
     - backup_restore
     - no_multi_key
     - intershard_tls
+    - intershard_tls_pass
 exclude_commands:
     - GRAPH.CONFIG
     - GRAPH.DEBUG
