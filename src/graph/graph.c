@@ -636,9 +636,7 @@ void Graph_CreateNode
 	en->prop_count  =  0;
 	en->properties  =  NULL;
 
-	UndoOp op;
-	UndoLog_CreateNode(&op, *n);
-	g->CrudHub(g, &op);
+	g->CrudHub.NodeCreated(g, n);
 
 	if(label_count > 0) _Graph_LabelNode(g, n->id, labels, label_count);
 }
@@ -700,9 +698,7 @@ void Graph_CreateEdge
 
 	Graph_FormConnection(g, src, dest, id, r);
 
-	UndoOp op;
-	UndoLog_CreateEdge(&op, *e);
-	g->CrudHub(g, &op);
+	g->CrudHub.EdgeCreated(g, e);
 }
 
 // retrieves all either incoming or outgoing edges
@@ -877,11 +873,7 @@ int Graph_DeleteEdge
 		}
 	}
 
-	UndoOp op;
-	Edge clone;
-	Edge_Clone(e, &clone);
-	UndoLog_DeleteEdge(&op, clone);
-	g->CrudHub(g, &op);
+	g->CrudHub.EdgeDeleted(g, e);
 
 	// free and remove edges from datablock.
 	DataBlock_DeleteItem(g->edges, ENTITY_GET_ID(e));
@@ -904,9 +896,8 @@ void Graph_DeleteNode
 	ASSERT(g != NULL);
 	ASSERT(n != NULL);
 
-	uint label_count = Graph_LabelTypeCount(g);
-	LabelID *labels = rm_malloc(sizeof(int) * label_count);
-	label_count = Graph_GetNodeLabels(g, n, labels, label_count);
+	uint label_count;
+ 	NODE_GET_LABELS(g, n, label_count);
 	for(uint i = 0; i < label_count; i++) {
 		int label_id = labels[i];
 		RG_Matrix M = Graph_GetLabelMatrix(g, label_id);
@@ -917,11 +908,7 @@ void Graph_DeleteNode
 		GraphStatistics_DecNodeCount(&g->stats, label_id, 1);
 	}
 
-	UndoOp op;
-	Node clone;
-	Node_Clone(n, &clone);
-	UndoLog_DeleteNode(&op, clone, labels, label_count);
-	g->CrudHub(g, &op);
+	g->CrudHub.NodeDeleted(g, n, labels, label_count);
 
 	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
 }
@@ -1007,11 +994,7 @@ static void _BulkDeleteNodes
 		RG_Matrix_removeElement_BOOL(adj, src, dest);
 		RG_Matrix_removeElement_UINT64(R, src, dest);
 
-		UndoOp op;
-		Edge clone;
-		Edge_Clone(e, &clone);
-		UndoLog_DeleteEdge(&op, clone);
-		g->CrudHub(g, &op);
+		g->CrudHub.EdgeDeleted(g, e);
 
 		DataBlock_DeleteItem(g->edges, edge_id);
 		edge_deletion_count[e->relationID]++;
@@ -1036,9 +1019,8 @@ static void _BulkDeleteNodes
 	for(int i = 0; i < node_count; i++) {
 		Node *n = distinct_nodes + i;
 		NodeID entity_id = ENTITY_GET_ID(n);
-		uint label_count = Graph_LabelTypeCount(g);
-		LabelID *labels = rm_malloc(sizeof(LabelID) * label_count);
-		label_count = Graph_GetNodeLabels(g, n, labels, label_count);
+		uint label_count;
+ 		NODE_GET_LABELS(g, n, label_count);
 
 		for(int i = 0; i < label_count; i++) {
 			RG_Matrix L = Graph_GetLabelMatrix(g, labels[i]);
@@ -1048,11 +1030,7 @@ static void _BulkDeleteNodes
 			GraphStatistics_DecNodeCount(&g->stats, labels[i], 1);
 		}
 
-		UndoOp op;
-		Node clone;
-		Node_Clone(n, &clone);
-		UndoLog_DeleteNode(&op, clone, labels, label_count);
-		g->CrudHub(g, &op);
+		g->CrudHub.NodeDeleted(g, n, labels, label_count);
 
 		DataBlock_DeleteItem(g->nodes, entity_id);
 	}
@@ -1088,11 +1066,7 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		// edge of type r has just been deleted, update statistics
 		GraphStatistics_DecEdgeCount(&g->stats, r, 1);
 
-		UndoOp op;
-		Edge clone;
-		Edge_Clone(e, &clone);
-		UndoLog_DeleteEdge(&op, clone);
-		g->CrudHub(g, &op);
+		g->CrudHub.EdgeDeleted(g, e);
 
 		// free and remove edges from datablock
 		DataBlock_DeleteItem(g->edges, edge_id);
@@ -1165,6 +1139,78 @@ void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges, uint 
 
 	if(node_deleted != NULL) *node_deleted = _node_deleted;
 	if(edge_deleted != NULL) *edge_deleted = _edge_deleted;
+}
+
+int Graph_UpdateNode
+(
+	Graph *g,
+	Node *node,
+	Attribute_ID attr_id,
+	SIValue new_value
+) {
+	ASSERT(g);
+	ASSERT(node);
+
+	int res         = 0;
+	GraphEntity *ge = (GraphEntity *)node;
+
+	// handle the case in which we are deleting all properties
+	if(attr_id == ATTRIBUTE_ALL) return GraphEntity_ClearProperties(ge);
+
+	// try to get current property value
+	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
+	
+	g->CrudHub.NodeUpdated(g, node, attr_id, old_value);
+
+	if(old_value == PROPERTY_NOTFOUND) {
+		// adding a new property; do nothing if its value is NULL
+		if(SI_TYPE(new_value) != T_NULL) {
+			res = GraphEntity_AddProperty(ge, attr_id, new_value);
+		}
+	} else {
+		// update property
+		res = GraphEntity_SetProperty(ge, attr_id, new_value);
+	}
+
+	SIValue_Free(new_value);
+
+	return res;
+}
+
+int Graph_UpdateEdge
+(
+	Graph *g,
+	Edge *edge,
+	Attribute_ID attr_id,
+	SIValue new_value
+) {
+	ASSERT(g);
+	ASSERT(edge);
+
+	int res         = 0;
+	GraphEntity *ge = (GraphEntity *)edge;
+
+	// handle the case in which we are deleting all properties
+	if(attr_id == ATTRIBUTE_ALL) return GraphEntity_ClearProperties(ge);
+
+	// try to get current property value
+	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
+
+	g->CrudHub.EdgeUpdated(g, edge, attr_id, old_value);
+
+	if(old_value == PROPERTY_NOTFOUND) {
+		// adding a new property; do nothing if its value is NULL
+		if(SI_TYPE(new_value) != T_NULL) {
+			res = GraphEntity_AddProperty(ge, attr_id, new_value);
+		}
+	} else {
+		// update property
+		res = GraphEntity_SetProperty(ge, attr_id, new_value);
+	}
+
+	SIValue_Free(new_value);
+
+	return res;
 }
 
 DataBlockIterator *Graph_ScanNodes(const Graph *g) {
@@ -1307,13 +1353,63 @@ RG_Matrix Graph_GetZeroMatrix
 	return z;
 }
 
-static void _CrudHubNOP(const Graph *g, UndoOp *op) {
-	UndoOp_Free(op);
-}
+static void _CrudHub_NOP_NodeCreated(const Graph *g, Node *n) {}
+static void _CrudHub_NOP_EdgeCreated(const Graph *g, Edge *e) {}
+static void _CrudHub_NOP_NodeDeleted(const Graph *g, Node *n, LabelID *labels, uint label_count) {}
+static void _CrudHub_NOP_EdgeDeleted(const Graph *g, Edge *e) {}
+static void _CrudHub_NOP_NodeUpdated(const Graph *g, Node *n, Attribute_ID attr_id, SIValue *orig_value) {}
+static void _CrudHub_NOP_EdgeUpdated(const Graph *g, Edge *e, Attribute_ID attr_id, SIValue *orig_value) {}
 
-static void _CrudHub(const Graph *g, UndoOp *op) {
+static void _add_undo_op(UndoOp *op) {
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 	array_append(query_ctx->undo_log.undo_list, *op);
+}
+
+static void _CrudHub_UNDO_NodeCreated(const Graph *g, Node *n) {
+	UndoOp op;
+	UndoLog_CreateNode(&op, *n);
+	_add_undo_op(&op);
+}
+
+static void _CrudHub_UNDO_EdgeCreated(const Graph *g, Edge *e) {
+	UndoOp op;
+	UndoLog_CreateEdge(&op, *e);
+	_add_undo_op(&op);
+}
+
+static void _CrudHub_UNDO_NodeDeleted(const Graph *g, Node *n, LabelID *labels, uint label_count) {
+	UndoOp op;
+	Node clone;
+	LabelID *labels_clone = rm_malloc(sizeof(LabelID) * label_count);
+	for (uint i = 0; i < label_count; i++) {
+		labels_clone[i] = labels[i];
+	}
+	
+	Node_Clone(n, &clone);
+	UndoLog_DeleteNode(&op, clone, labels_clone, label_count);
+	_add_undo_op(&op);
+}
+
+static void _CrudHub_UNDO_EdgeDeleted(const Graph *g, Edge *e) {
+	UndoOp op;
+	Edge clone;
+	Edge_Clone(e, &clone);
+	UndoLog_DeleteEdge(&op, clone);
+	_add_undo_op(&op);
+}
+
+static void _CrudHub_UNDO_NodeUpdated(const Graph *g, Node *n, Attribute_ID attr_id, SIValue *orig_value) {
+	UndoOp op;
+	SIValue clone = SI_CloneValue(*orig_value);
+	UndoLog_UpdateNode(&op, n, attr_id, clone);
+	_add_undo_op(&op);
+}
+
+static void _CrudHub_UNDO_EdgeUpdated(const Graph *g, Edge *e, Attribute_ID attr_id, SIValue *orig_value) {
+	UndoOp op;
+	SIValue clone = SI_CloneValue(*orig_value);
+	UndoLog_UpdateEdge(&op, e, attr_id, clone);
+	_add_undo_op(&op);
 }
 
 void Graph_SetCrudHubPolicy
@@ -1323,13 +1419,20 @@ void Graph_SetCrudHubPolicy
 ) {
 	switch(policy) {
 		case CRUD_POLICY_UNDO:
-			// Default behavior; forces execution of pending GraphBLAS operations
-			// when appropriate and sizes matrices to the current node count.
-			g->CrudHub = _CrudHub;
+			g->CrudHub.NodeCreated = _CrudHub_UNDO_NodeCreated;
+			g->CrudHub.EdgeCreated = _CrudHub_UNDO_EdgeCreated;
+			g->CrudHub.NodeDeleted = _CrudHub_UNDO_NodeDeleted;
+			g->CrudHub.EdgeDeleted = _CrudHub_UNDO_EdgeDeleted;
+			g->CrudHub.NodeUpdated = _CrudHub_UNDO_NodeUpdated;
+			g->CrudHub.EdgeUpdated = _CrudHub_UNDO_EdgeUpdated;
 			break;
 		case CRUD_POLICY_NOP:
-			// Used when deleting or freeing a graph; forces no matrix updates or resizes.
-			g->CrudHub = _CrudHubNOP;
+			g->CrudHub.NodeCreated = _CrudHub_NOP_NodeCreated;
+			g->CrudHub.EdgeCreated = _CrudHub_NOP_EdgeCreated;
+			g->CrudHub.NodeDeleted = _CrudHub_NOP_NodeDeleted;
+			g->CrudHub.EdgeDeleted = _CrudHub_NOP_EdgeDeleted;
+			g->CrudHub.NodeUpdated = _CrudHub_NOP_NodeUpdated;
+			g->CrudHub.EdgeUpdated = _CrudHub_NOP_EdgeUpdated;
 			break;
 		default:
 			ASSERT(false);

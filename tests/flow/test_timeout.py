@@ -53,6 +53,8 @@ class testQueryTimeout(FlowTestsBase):
             self.env.assertContains("Query timed out", str(error))
 
     def test03_timeout_index_scan(self):
+        redis_con.execute_command("GRAPH.CONFIG SET timeout 0")
+
         # construct a graph and create multiple indices
         query = """UNWIND range(0, 100000) AS x CREATE (p:Person {age: x%90, height: x%200, weight: x%80})"""
         redis_graph.query(query)

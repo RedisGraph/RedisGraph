@@ -8,9 +8,6 @@
 
 #include "../../execution_plan.h"
 
-struct UndoLog;
-typedef struct UndoLog UndoLog;
-
 // context representing a single update to perform on an entity
 typedef struct {
 	GraphEntity *ge;       // entity to be updated
@@ -38,7 +35,5 @@ void EvalEntityUpdates
 	PendingUpdateCtx **edge_updates,
 	const Record r,
 	const EntityUpdateEvalCtx *ctx,
-	bool allow_null,
-	UndoLog *undo_log
+	bool allow_null
 );
-

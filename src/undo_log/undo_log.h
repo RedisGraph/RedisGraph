@@ -20,27 +20,30 @@
 
 // the type of operation of each item in the undo_list
 typedef enum {
-	UL_UPDATE = 0,   // undo update
-	UL_CREATE_NODE,  // undo node creation
-	UL_CREATE_EDGE,  // undo edge creation
-	UL_DELETE_NODE,  // undo node deletion
-	UL_DELETE_EDGE   // undo edge deletion
+	UL_UPDATE_NODE = 0,   // undo node update
+	UL_UPDATE_EDGE,       // undo edge update
+	UL_CREATE_NODE,       // undo node creation
+	UL_CREATE_EDGE,       // undo edge creation
+	UL_DELETE_NODE,       // undo node deletion
+	UL_DELETE_EDGE        // undo edge deletion
 } UndoOpType;
 
 // the abstract type of items in the undo_list
 typedef struct UndoOp {
 	union {
+		Node n;
+		Edge e;
+	} entity;
+	union {
 		struct {
-			Node n;
 			LabelID *labels;
 			uint label_count;
-		} n;
-		Edge e;
+		} delete;
 		struct {
-			PendingUpdateCtx pending;
-			EntityType entity_type;
+			Attribute_ID attr_id;
+			SIValue orig_value;
 		} update;
-	};
+	} data;
 	UndoOpType type;
 } UndoOp;
 
@@ -89,13 +92,22 @@ void UndoLog_DeleteEdge
 	Edge edge             // edge deleted
 );
 
-// create update operation
-void UndoLog_Update
+// create node update operation
+void UndoLog_UpdateNode
 (
 	UndoOp *op,
-	const PendingUpdateCtx *pending_update,
-	SIValue orig_value,   // the original value which pending_update is about to override
-	EntityType entity_type
+	Node *n,
+	Attribute_ID attr_id,
+	SIValue orig_value   // the original value which pending_update is about to override
+);
+
+// create edge update operation
+void UndoLog_UpdateEdge
+(
+	UndoOp *op,
+	Edge *e,
+	Attribute_ID attr_id,
+	SIValue orig_value   // the original value which pending_update is about to override
 );
 
 // rollback all modifications tracked by this undo log

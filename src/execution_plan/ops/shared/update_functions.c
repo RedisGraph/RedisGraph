@@ -10,38 +10,6 @@
 #include "../../../datatypes/map.h"
 #include "../../../datatypes/array.h"
 
-/* set a property on a graph entity
- * for non-NULL values, the property will be added or updated
- * if it is already present
- * for NULL values, the property will be deleted if present
- * and nothing will be done otherwise
- * returns 1 if a property was set or deleted */
-static int _UpdateEntity(PendingUpdateCtx *update) {
-	int           res        =  0;
-	GraphEntity   *ge        =  update->ge;
-	Attribute_ID  attr_id    =  update->attr_id;
-	SIValue       new_value  =  update->new_value;
-
-	// handle the case in which we are deleting all properties
-	if(attr_id == ATTRIBUTE_ALL) return GraphEntity_ClearProperties(ge);
-
-	// try to get current property value
-	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
-
-	if(old_value == PROPERTY_NOTFOUND) {
-		// adding a new property; do nothing if its value is NULL
-		if(SI_TYPE(new_value) != T_NULL) {
-			res = GraphEntity_AddProperty(ge, attr_id, new_value);
-		}
-	} else {
-		// update property
-		res = GraphEntity_SetProperty(ge, attr_id, new_value);
-	}
-
-	SIValue_Free(new_value);
-	return res;
-}
-
 static PendingUpdateCtx _PreparePendingUpdate
 (
 	GraphContext *gc,
@@ -159,7 +127,9 @@ void CommitUpdates
 		if(GraphEntity_IsDeleted(ge)) continue;
 
 		// update the property on the graph entity
-		int updated = _UpdateEntity(update);
+		int updated = t == SCHEMA_NODE
+			? Graph_UpdateNode(gc->g, (Node *)update->ge, update->attr_id, update->new_value)
+			: Graph_UpdateEdge(gc->g, (Edge *)update->ge, update->attr_id, update->new_value);
 		properties_set += updated;
 		// reindex only if update performed
 		reindex |= update->update_index & (bool)updated;
@@ -197,8 +167,7 @@ void EvalEntityUpdates
 	PendingUpdateCtx **edge_updates,
 	const Record r,
 	const EntityUpdateEvalCtx *ctx,
-	bool allow_null,
-	UndoLog *undo_log
+	bool allow_null
 ) {
 	Schema *s         = NULL;
 	bool update_index     = false;
@@ -317,12 +286,6 @@ void EvalEntityUpdates
 				attr_id, new_value, st);
 		// enqueue the current update
 		array_append(*updates, update);
-
-		SIValue *orig_val = GraphEntity_GetProperty(entity, attr_id);
-		UndoOp op;
-		SIValue clone = SI_CloneValue(*orig_val);
-		UndoLog_Update(&op, &update, clone, st == SCHEMA_NODE ? ENTITY_NODE : ENTITY_EDGE);
-		array_append(undo_log->undo_list, op);
 	}
 }
 

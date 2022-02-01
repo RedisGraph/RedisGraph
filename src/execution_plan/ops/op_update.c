@@ -73,7 +73,6 @@ static Record UpdateConsume(OpBase *opBase) {
 	// updates already performed
 	if(op->updates_committed) return _handoff(op);
 
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 	while((r = OpBase_Consume(child))) {
 		Record_PersistScalars(r);
 
@@ -81,7 +80,7 @@ static Record UpdateConsume(OpBase *opBase) {
 		raxSeek(&op->it, "^", NULL, 0);
 		while(raxNext(&op->it)) {
 			EntityUpdateEvalCtx *ctx = op->it.data;
-			EvalEntityUpdates(op->gc, &op->node_updates, &op->edge_updates, r, ctx, true, &query_ctx->undo_log);
+			EvalEntityUpdates(op->gc, &op->node_updates, &op->edge_updates, r, ctx, true);
 		}
 
 		array_append(op->records, r);

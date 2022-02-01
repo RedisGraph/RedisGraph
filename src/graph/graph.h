@@ -50,8 +50,12 @@ typedef struct Graph Graph;
 typedef void (*SyncMatrixFunc)(const Graph *, RG_Matrix);
 
 typedef struct UndoOp UndoOp;
-// typedef for crud hub function pointer
-typedef void (*CrudHubFunc)(const Graph *, UndoOp *);
+typedef void (*NodeCreatedFunc)(const Graph *, Node *);
+typedef void (*EdgeCreatedFunc)(const Graph *, Edge *);
+typedef void (*NodeDeletedFunc)(const Graph *, Node *, LabelID *, uint);
+typedef void (*EdgeDeletedFunc)(const Graph *, Edge *);
+typedef void (*NodeUpdatedFunc)(const Graph *, Node *, Attribute_ID, SIValue *);
+typedef void (*EdgeUpdatedFunc)(const Graph *, Edge *, Attribute_ID, SIValue *);
 
 struct Graph {
 	DataBlock *nodes;                   // graph nodes stored in blocks
@@ -65,7 +69,14 @@ struct Graph {
 	bool _writelocked;                  // true if the read-write lock was acquired by a writer
 	SyncMatrixFunc SynchronizeMatrix;   // function pointer to matrix synchronization routine
 	GraphStatistics stats;              // graph related statistics
-	CrudHubFunc CrudHub;                // function pointer to crud hub
+	struct {
+		NodeCreatedFunc NodeCreated;
+		EdgeCreatedFunc EdgeCreated;
+		NodeDeletedFunc NodeDeleted;
+		EdgeDeletedFunc EdgeDeleted;
+		NodeUpdatedFunc NodeUpdated;
+		EdgeUpdatedFunc EdgeUpdated;
+	} CrudHub;
 };
 
 // graph synchronization functions
@@ -197,6 +208,22 @@ int Graph_DeleteEdge
 (
 	Graph *g,
 	Edge *e
+);
+
+int Graph_UpdateNode
+(
+	Graph *g,
+	Node *node,
+	Attribute_ID attr_id,
+	SIValue new_value
+);
+
+int Graph_UpdateEdge
+(
+	Graph *g,
+	Edge *edge,
+	Attribute_ID attr_id,
+	SIValue new_value
 );
 
 // returns true if the given entity has been deleted
