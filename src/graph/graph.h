@@ -40,16 +40,15 @@ typedef enum {
 } MATRIX_POLICY;
 
 typedef enum {
-	CRUD_POLICY_UNDO,  // accumulate undo operations
-	CRUD_POLICY_NOP,   // discard undo operations
-} CRUD_HUB_POLICY;
+	GRAPH_CALLBACKS_UNDO,  // accumulate undo operations
+	GRAPH_CALLBACKS_NOP,   // discard undo operations
+} GRAPH_CALLBACKS_TYPE;
 
 // forward declaration of Graph struct
 typedef struct Graph Graph;
 // typedef for synchronization function pointer
 typedef void (*SyncMatrixFunc)(const Graph *, RG_Matrix);
 
-typedef struct UndoOp UndoOp;
 typedef void (*NodeCreatedFunc)(const Graph *, Node *);
 typedef void (*EdgeCreatedFunc)(const Graph *, Edge *);
 typedef void (*NodeDeletedFunc)(const Graph *, Node *, LabelID *, uint);
@@ -76,7 +75,7 @@ struct Graph {
 		EdgeDeletedFunc EdgeDeleted;
 		NodeUpdatedFunc NodeUpdated;
 		EdgeUpdatedFunc EdgeUpdated;
-	} CrudHub;
+	} GraphCallbacks;
 };
 
 // graph synchronization functions
@@ -434,10 +433,10 @@ RG_Matrix Graph_GetLabelRGMatrix
 );
 
 // set the CRUD policy
-void Graph_SetCrudHubPolicy
+void Graph_SetCallbacks
 (
 	Graph *g,
-	CRUD_HUB_POLICY policy
+	GRAPH_CALLBACKS_TYPE type
 );
 
 // free graph

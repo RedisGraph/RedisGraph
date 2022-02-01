@@ -213,7 +213,7 @@ static void _ExecuteQuery(void *args) {
 		   (ExecutionPlan_CountWriteOp(plan) > 1 ||
 			query_mem_capacity != QUERY_MEM_CAPACITY_UNLIMITED ||
 			gq_ctx->timeout != 0)) {
-			Graph_SetCrudHubPolicy(gc->g, CRUD_POLICY_UNDO);
+			Graph_SetCallbacks(gc->g, GRAPH_CALLBACKS_UNDO);
 		}
 	}
 

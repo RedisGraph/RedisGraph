@@ -211,7 +211,7 @@ void UndoLog_Rollback(UndoLog *undo_log) {
 	QueryCtx *ctx = QueryCtx_GetQueryCtx();
 	ASSERT(ctx);
 	ASSERT(undo_log);
-	Graph_SetCrudHubPolicy(ctx->gc->g, CRUD_POLICY_NOP);
+	Graph_SetCallbacks(ctx->gc->g, GRAPH_CALLBACKS_NOP);
 
 	uint64_t count = array_len(undo_log->undo_list);
 

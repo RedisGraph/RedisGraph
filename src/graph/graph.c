@@ -14,6 +14,13 @@
 #include "../util/datablock/oo_datablock.h"
 #include "../graph/rg_matrix/rg_matrix_iter.h"
 
+static void _GraphCallbacks_NOP_NodeCreated(const Graph *g, Node *n) {}
+static void _GraphCallbacks_NOP_EdgeCreated(const Graph *g, Edge *e) {}
+static void _GraphCallbacks_NOP_NodeDeleted(const Graph *g, Node *n, LabelID *labels, uint label_count) {}
+static void _GraphCallbacks_NOP_EdgeDeleted(const Graph *g, Edge *e) {}
+static void _GraphCallbacks_NOP_NodeUpdated(const Graph *g, Node *n, Attribute_ID attr_id, SIValue *orig_value) {}
+static void _GraphCallbacks_NOP_EdgeUpdated(const Graph *g, Edge *e, Attribute_ID attr_id, SIValue *orig_value) {}
+
 //------------------------------------------------------------------------------
 // Forward declarations
 //------------------------------------------------------------------------------
@@ -406,7 +413,7 @@ Graph *Graph_New
 	// force GraphBLAS updates and resize matrices to node count by default
 	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 
-	Graph_SetCrudHubPolicy(g, CRUD_POLICY_NOP);
+	Graph_SetCallbacks(g, GRAPH_CALLBACKS_NOP);
 
 	return g;
 }
@@ -636,7 +643,7 @@ void Graph_CreateNode
 	en->prop_count  =  0;
 	en->properties  =  NULL;
 
-	g->CrudHub.NodeCreated(g, n);
+	g->GraphCallbacks.NodeCreated(g, n);
 
 	if(label_count > 0) _Graph_LabelNode(g, n->id, labels, label_count);
 }
@@ -698,7 +705,7 @@ void Graph_CreateEdge
 
 	Graph_FormConnection(g, src, dest, id, r);
 
-	g->CrudHub.EdgeCreated(g, e);
+	g->GraphCallbacks.EdgeCreated(g, e);
 }
 
 // retrieves all either incoming or outgoing edges
@@ -873,7 +880,7 @@ int Graph_DeleteEdge
 		}
 	}
 
-	g->CrudHub.EdgeDeleted(g, e);
+	g->GraphCallbacks.EdgeDeleted(g, e);
 
 	// free and remove edges from datablock.
 	DataBlock_DeleteItem(g->edges, ENTITY_GET_ID(e));
@@ -908,7 +915,7 @@ void Graph_DeleteNode
 		GraphStatistics_DecNodeCount(&g->stats, label_id, 1);
 	}
 
-	g->CrudHub.NodeDeleted(g, n, labels, label_count);
+	g->GraphCallbacks.NodeDeleted(g, n, labels, label_count);
 
 	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
 }
@@ -994,7 +1001,7 @@ static void _BulkDeleteNodes
 		RG_Matrix_removeElement_BOOL(adj, src, dest);
 		RG_Matrix_removeElement_UINT64(R, src, dest);
 
-		g->CrudHub.EdgeDeleted(g, e);
+		g->GraphCallbacks.EdgeDeleted(g, e);
 
 		DataBlock_DeleteItem(g->edges, edge_id);
 		edge_deletion_count[e->relationID]++;
@@ -1030,7 +1037,7 @@ static void _BulkDeleteNodes
 			GraphStatistics_DecNodeCount(&g->stats, labels[i], 1);
 		}
 
-		g->CrudHub.NodeDeleted(g, n, labels, label_count);
+		g->GraphCallbacks.NodeDeleted(g, n, labels, label_count);
 
 		DataBlock_DeleteItem(g->nodes, entity_id);
 	}
@@ -1066,7 +1073,7 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		// edge of type r has just been deleted, update statistics
 		GraphStatistics_DecEdgeCount(&g->stats, r, 1);
 
-		g->CrudHub.EdgeDeleted(g, e);
+		g->GraphCallbacks.EdgeDeleted(g, e);
 
 		// free and remove edges from datablock
 		DataBlock_DeleteItem(g->edges, edge_id);
@@ -1160,7 +1167,7 @@ int Graph_UpdateNode
 	// try to get current property value
 	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
 	
-	g->CrudHub.NodeUpdated(g, node, attr_id, old_value);
+	g->GraphCallbacks.NodeUpdated(g, node, attr_id, old_value);
 
 	if(old_value == PROPERTY_NOTFOUND) {
 		// adding a new property; do nothing if its value is NULL
@@ -1196,7 +1203,7 @@ int Graph_UpdateEdge
 	// try to get current property value
 	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
 
-	g->CrudHub.EdgeUpdated(g, edge, attr_id, old_value);
+	g->GraphCallbacks.EdgeUpdated(g, edge, attr_id, old_value);
 
 	if(old_value == PROPERTY_NOTFOUND) {
 		// adding a new property; do nothing if its value is NULL
@@ -1353,31 +1360,24 @@ RG_Matrix Graph_GetZeroMatrix
 	return z;
 }
 
-static void _CrudHub_NOP_NodeCreated(const Graph *g, Node *n) {}
-static void _CrudHub_NOP_EdgeCreated(const Graph *g, Edge *e) {}
-static void _CrudHub_NOP_NodeDeleted(const Graph *g, Node *n, LabelID *labels, uint label_count) {}
-static void _CrudHub_NOP_EdgeDeleted(const Graph *g, Edge *e) {}
-static void _CrudHub_NOP_NodeUpdated(const Graph *g, Node *n, Attribute_ID attr_id, SIValue *orig_value) {}
-static void _CrudHub_NOP_EdgeUpdated(const Graph *g, Edge *e, Attribute_ID attr_id, SIValue *orig_value) {}
-
 static void _add_undo_op(UndoOp *op) {
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 	array_append(query_ctx->undo_log.undo_list, *op);
 }
 
-static void _CrudHub_UNDO_NodeCreated(const Graph *g, Node *n) {
+static void _GraphCallbacks_UNDO_NodeCreated(const Graph *g, Node *n) {
 	UndoOp op;
 	UndoLog_CreateNode(&op, *n);
 	_add_undo_op(&op);
 }
 
-static void _CrudHub_UNDO_EdgeCreated(const Graph *g, Edge *e) {
+static void _GraphCallbacks_UNDO_EdgeCreated(const Graph *g, Edge *e) {
 	UndoOp op;
 	UndoLog_CreateEdge(&op, *e);
 	_add_undo_op(&op);
 }
 
-static void _CrudHub_UNDO_NodeDeleted(const Graph *g, Node *n, LabelID *labels, uint label_count) {
+static void _GraphCallbacks_UNDO_NodeDeleted(const Graph *g, Node *n, LabelID *labels, uint label_count) {
 	UndoOp op;
 	Node clone;
 	LabelID *labels_clone = rm_malloc(sizeof(LabelID) * label_count);
@@ -1390,7 +1390,7 @@ static void _CrudHub_UNDO_NodeDeleted(const Graph *g, Node *n, LabelID *labels, 
 	_add_undo_op(&op);
 }
 
-static void _CrudHub_UNDO_EdgeDeleted(const Graph *g, Edge *e) {
+static void _GraphCallbacks_UNDO_EdgeDeleted(const Graph *g, Edge *e) {
 	UndoOp op;
 	Edge clone;
 	Edge_Clone(e, &clone);
@@ -1398,41 +1398,41 @@ static void _CrudHub_UNDO_EdgeDeleted(const Graph *g, Edge *e) {
 	_add_undo_op(&op);
 }
 
-static void _CrudHub_UNDO_NodeUpdated(const Graph *g, Node *n, Attribute_ID attr_id, SIValue *orig_value) {
+static void _GraphCallbacks_UNDO_NodeUpdated(const Graph *g, Node *n, Attribute_ID attr_id, SIValue *orig_value) {
 	UndoOp op;
 	SIValue clone = SI_CloneValue(*orig_value);
 	UndoLog_UpdateNode(&op, n, attr_id, clone);
 	_add_undo_op(&op);
 }
 
-static void _CrudHub_UNDO_EdgeUpdated(const Graph *g, Edge *e, Attribute_ID attr_id, SIValue *orig_value) {
+static void _GraphCallbacks_UNDO_EdgeUpdated(const Graph *g, Edge *e, Attribute_ID attr_id, SIValue *orig_value) {
 	UndoOp op;
 	SIValue clone = SI_CloneValue(*orig_value);
 	UndoLog_UpdateEdge(&op, e, attr_id, clone);
 	_add_undo_op(&op);
 }
 
-void Graph_SetCrudHubPolicy
+void Graph_SetCallbacks
 (
 	Graph *g,
-	CRUD_HUB_POLICY policy
+	GRAPH_CALLBACKS_TYPE type
 ) {
-	switch(policy) {
-		case CRUD_POLICY_UNDO:
-			g->CrudHub.NodeCreated = _CrudHub_UNDO_NodeCreated;
-			g->CrudHub.EdgeCreated = _CrudHub_UNDO_EdgeCreated;
-			g->CrudHub.NodeDeleted = _CrudHub_UNDO_NodeDeleted;
-			g->CrudHub.EdgeDeleted = _CrudHub_UNDO_EdgeDeleted;
-			g->CrudHub.NodeUpdated = _CrudHub_UNDO_NodeUpdated;
-			g->CrudHub.EdgeUpdated = _CrudHub_UNDO_EdgeUpdated;
+	switch(type) {
+		case GRAPH_CALLBACKS_UNDO:
+			g->GraphCallbacks.NodeCreated = _GraphCallbacks_UNDO_NodeCreated;
+			g->GraphCallbacks.EdgeCreated = _GraphCallbacks_UNDO_EdgeCreated;
+			g->GraphCallbacks.NodeDeleted = _GraphCallbacks_UNDO_NodeDeleted;
+			g->GraphCallbacks.EdgeDeleted = _GraphCallbacks_UNDO_EdgeDeleted;
+			g->GraphCallbacks.NodeUpdated = _GraphCallbacks_UNDO_NodeUpdated;
+			g->GraphCallbacks.EdgeUpdated = _GraphCallbacks_UNDO_EdgeUpdated;
 			break;
-		case CRUD_POLICY_NOP:
-			g->CrudHub.NodeCreated = _CrudHub_NOP_NodeCreated;
-			g->CrudHub.EdgeCreated = _CrudHub_NOP_EdgeCreated;
-			g->CrudHub.NodeDeleted = _CrudHub_NOP_NodeDeleted;
-			g->CrudHub.EdgeDeleted = _CrudHub_NOP_EdgeDeleted;
-			g->CrudHub.NodeUpdated = _CrudHub_NOP_NodeUpdated;
-			g->CrudHub.EdgeUpdated = _CrudHub_NOP_EdgeUpdated;
+		case GRAPH_CALLBACKS_NOP:
+			g->GraphCallbacks.NodeCreated = _GraphCallbacks_NOP_NodeCreated;
+			g->GraphCallbacks.EdgeCreated = _GraphCallbacks_NOP_EdgeCreated;
+			g->GraphCallbacks.NodeDeleted = _GraphCallbacks_NOP_NodeDeleted;
+			g->GraphCallbacks.EdgeDeleted = _GraphCallbacks_NOP_EdgeDeleted;
+			g->GraphCallbacks.NodeUpdated = _GraphCallbacks_NOP_NodeUpdated;
+			g->GraphCallbacks.EdgeUpdated = _GraphCallbacks_NOP_EdgeUpdated;
 			break;
 		default:
 			ASSERT(false);
