@@ -4,7 +4,7 @@ from redisgraph import Graph
 GRAPH_ID = "undo-log"
 class testUndoLog():
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         self.redis_con = self.env.getConnection()
         self.graph = Graph(GRAPH_ID, self.redis_con)
 
@@ -103,6 +103,20 @@ class testUndoLog():
         # expecting the original attributes to be deleted
         result = self.graph.query("MATCH (n:N) RETURN n.e")
         self.env.assertEquals(result.result_set[0][0], None)
+
+        try:
+            self.graph.query("""MATCH (n:N {a: 1})
+                                SET n:M
+                                WITH n
+                                CREATE (a:N {v: n})""")
+            # we're not supposed to be here, expecting query to fail
+            self.env.assertTrue(False) 
+        except:
+            pass
+
+        # expecting the original attributes to be deleted
+        result = self.graph.query("MATCH (n:M) RETURN COUNT(n)")
+        self.env.assertEquals(result.result_set[0][0], 0)
     
     def test06_undo_update_edge(self):
         self.graph.query("CREATE (:N)-[:R {v: 1}]->(:N)")
@@ -134,8 +148,10 @@ class testUndoLog():
             pass
 
         # deleted node should be revived, expecting a single node
-        result = self.graph.query("MATCH (n:N {v: 0}) RETURN COUNT(n)")
-        # TODO: verify execution-plan utilizes the index
+        query = "MATCH (n:N {v: 0}) RETURN COUNT(n)"
+        plan = self.graph.execution_plan(query)
+        self.env.assertContains("Node By Index Scan", plan)
+        result = self.graph.query(query)
         self.env.assertEquals(result.result_set[0][0], 1)
 
     def test08_undo_delete_indexed_edge(self):
@@ -152,7 +168,10 @@ class testUndoLog():
             pass
 
         # deleted edge should be revived, expecting a single edge
-        result = self.graph.query("MATCH ()-[r:R {v: 0}]->() RETURN COUNT(r)")
+        query = "MATCH ()-[r:R {v: 0}]->() RETURN COUNT(r)"
+        plan = self.graph.execution_plan(query)
+        self.env.assertContains("Edge By Index Scan", plan)
+        result = self.graph.query(query)
         self.env.assertEquals(result.result_set[0][0], 1)
 
     def test09_undo_update_indexed_node(self):
@@ -169,7 +188,10 @@ class testUndoLog():
             pass
 
         # expecting the original attributes to be restored
-        result = self.graph.query("MATCH (n:N {v: 1}) RETURN n.v")
+        query = "MATCH (n:N {v: 1}) RETURN n.v"
+        plan = self.graph.execution_plan(query)
+        self.env.assertContains("Node By Index Scan", plan)
+        result = self.graph.query(query)
         self.env.assertEquals(result.result_set[0][0], 1)
     
     def test10_undo_update_indexed_edge(self):
@@ -186,7 +208,10 @@ class testUndoLog():
             pass
 
         # expecting the original attributes to be restored
-        result = self.graph.query("MATCH ()-[r:R {v: 1}]->() RETURN r.v")
+        query = "MATCH ()-[r:R {v: 1}]->() RETURN r.v"
+        plan = self.graph.execution_plan(query)
+        self.env.assertContains("Edge By Index Scan", plan)
+        result = self.graph.query(query)
         self.env.assertEquals(result.result_set[0][0], 1)
 
     def test11_undo_implicit_edge_delete(self):
@@ -210,7 +235,7 @@ class testUndoLog():
     def test11_undo_timeout(self):
         # Change timeout value from default
         response = self.redis_con.execute_command("GRAPH.CONFIG SET TIMEOUT 1")
-        self.env.assertEqual(response, b"OK")
+        self.env.assertEqual(response, "OK")
 
         try:
             self.graph.query("UNWIND range(1, 1000000) AS x CREATE (n:N)")
