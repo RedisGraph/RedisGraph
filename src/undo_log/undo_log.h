@@ -94,7 +94,7 @@ void UndoLog_Update
 (
 	UndoOp *op,
 	const PendingUpdateCtx *pending_update,
-	const SIValue *orig_value,   // the original value which pending_update is about to override
+	SIValue orig_value,   // the original value which pending_update is about to override
 	EntityType entity_type
 );
 

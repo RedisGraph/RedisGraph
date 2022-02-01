@@ -78,15 +78,14 @@ void UndoLog_Update
 (
 	UndoOp *op,
 	const PendingUpdateCtx *pending_update,
-	const SIValue *orig_value,   // the original value which pending_update is about to override
+	SIValue orig_value,   // the original value which pending_update is about to override
 	EntityType entity_type
 ) {
 	ASSERT(op != NULL);
-	ASSERT(orig_value != NULL);
 	ASSERT(pending_update != NULL);
 
 	op->update.pending            = *pending_update;
-	op->update.pending.new_value  = *orig_value;
+	op->update.pending.new_value  = orig_value;
 	op->update.entity_type        = entity_type;
 	op->type                      = UL_UPDATE;
 }
