@@ -55,10 +55,10 @@ void UndoLog_DeleteNode
 ) {
 	ASSERT(op != NULL);
 
-	op->entity.n                = node;
-	op->data.delete.labels      = labelIDs;
-	op->data.delete.label_count = label_count;
-	op->type                    = UL_DELETE_NODE;
+	op->entity.n                     = node;
+	op->data.delete_node.labels      = labelIDs;
+	op->data.delete_node.label_count = label_count;
+	op->type                         = UL_DELETE_NODE;
 }
 
 // create edge deletion operation
@@ -177,12 +177,12 @@ static void _UndoLog_Rollback_Delete_Node(QueryCtx *ctx, size_t seq_start, size_
 	for(int i = 0; i < len; ++i) {
 		UndoOp *op = undo_list + seq_start + i;
 		Node new;
-		Graph_CreateNode(ctx->gc->g, &new, op->data.delete.labels, op->data.delete.label_count);
+		Graph_CreateNode(ctx->gc->g, &new, op->data.delete_node.labels, op->data.delete_node.label_count);
 		new.entity->prop_count = op->entity.n.entity->prop_count;
 		new.entity->properties = op->entity.n.entity->properties;
 		
-		for(uint j = 0; j < op->data.delete.label_count; j++) {
-			Schema *s = GraphContext_GetSchemaByID(ctx->gc, op->data.delete.labels[j], SCHEMA_NODE);
+		for(uint j = 0; j < op->data.delete_node.label_count; j++) {
+			Schema *s = GraphContext_GetSchemaByID(ctx->gc, op->data.delete_node.labels[j], SCHEMA_NODE);
 			ASSERT(s);
 
 			if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, &new);
@@ -270,7 +270,7 @@ void UndoOp_Free
 		case UL_CREATE_EDGE:
 			break;
 		case UL_DELETE_NODE:
-			rm_free(op->data.delete.labels);
+			rm_free(op->data.delete_node.labels);
 			rm_free(op->entity.n.entity->properties);
 			rm_free(op->entity.n.entity);
 			break;

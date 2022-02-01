@@ -38,7 +38,7 @@ typedef struct UndoOp {
 		struct {
 			LabelID *labels;
 			uint label_count;
-		} delete;
+		} delete_node;
 		struct {
 			Attribute_ID attr_id;
 			SIValue orig_value;
