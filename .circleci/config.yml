@@ -125,13 +125,15 @@ commands:
       - run:
           name: Build for platform (docker build)
           command: |
-            make -C build/docker build DOCKER_SUFFIX=".<<parameters.platform>>" OSNICK=<<parameters.platform>> PACK=1 TEST=1 VERBOSE=1
+            cd build/docker
+            make build OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" TEST=1 OFFICIAL=1 SHOW=1 VERBOSE=1
       - early-return-for-forked-pull-requests
       - run:
-          name: Build for platform (docker publish)
+          name: Publish docker
           command: |
             docker login -u redisfab -p $DOCKER_REDISFAB_PWD
-            make -C build/docker build DOCKER_SUFFIX=".<<parameters.platform>>" OSNICK=<<parameters.platform>> PACK=1 TEST=1 VERBOSE=1 PUBLISH=1 DOCKERWRAPPER_EXTRA_VARS="DOCKER_PUSH_ONLY=1"
+            cd build/docker
+            make publish OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" OFFICIAL=1 SHOW=1 VERBOSE=1
       - persist-artifacts
 
   vm-build-platforms-steps:
@@ -144,18 +146,21 @@ commands:
       - setup-automation
       - run:
           name: Install Docker
-          command: bash <(curl -fsSL https://raw.githubusercontent.com/docker/docker-install/master/install.sh)
+          shell: /bin/bash -l -eo pipefail
+          command: ./deps/readies/bin/getdocker
       - run:
           name: Build for platform
           command: |
-            make -C build/docker build DOCKER_SUFFIX=".<<parameters.platform>>" OSNICK=<<parameters.platform>> PACK=1 TEST=1 VERBOSE=1
+            cd build/docker
+            make build OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" TEST=1 OFFICIAL=1 SHOW=1 VERBOSE=1
           no_output_timeout: 30m
       - early-return-for-forked-pull-requests
       - run:
-          name: Build for platform (publish)
+          name: Publish docker
           command: |
             docker login -u redisfab -p $DOCKER_REDISFAB_PWD
-            make -C build/docker build DOCKER_SUFFIX=".<<parameters.platform>>" OSNICK=<<parameters.platform>> PACK=1 TEST=1 VERBOSE=1 PUBLISH=1 DOCKERWRAPPER_EXTRA_VARS="DOCKER_PUSH_ONLY=1"
+            cd build/docker
+            make publish OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" OFFICIAL=1 SHOW=1 VERBOSE=1
       - persist-artifacts
 
 #----------------------------------------------------------------------------------------------------------------------------------
@@ -173,17 +178,20 @@ jobs:
             - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build
-          command: bash -l -c "make all package"
+          shell: /bin/bash -l -eo pipefail
+          command: make all package
       - save_cache:
           paths:
             - deps/GraphBLAS/build
           key: v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Test
-          command: bash -l -c "make test"
+          shell: /bin/bash -l -eo pipefail
+          command: make test
       - run:
           name: Run 30-second fuzz test
-          command: bash -l -c "make fuzz"
+          shell: /bin/bash -l -eo pipefail
+          command: make fuzz
       - early-return-for-forked-pull-requests
       - run:
           name: Persist Artifact for CI benchmarks
@@ -208,12 +216,14 @@ jobs:
             - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build for coverage
-          command: bash -l -c "make COV=1"
+          shell: /bin/bash -l -eo pipefail
+          command: make COV=1
       - run:
           name: Test with coverage
+          shell: /bin/bash -l -eo pipefail
           command: |
-            bash -l -c "make test COV=1"
-            bash -l -c "make cov-upload"
+            make test COV=1
+            make cov-upload
           no_output_timeout: 30m
 
   build_memcheck:
@@ -230,11 +240,12 @@ jobs:
           at: /workspace
       - run:
           name: Test for memory leaks
+          shell: /bin/bash -l -eo pipefail
           command: |
             # Replace the default Redis server with one linked to libc malloc rather than jemalloc
             python3 ./deps/readies/bin/getredis --force --valgrind
             # Re-run the test suite, failing if definite memory leaks have been introduced
-            bash -l -c "make memcheck"
+            make memcheck
           # Allow RediSearch global destructors
           environment:
             RS_GLOBAL_DTORS: 1
@@ -266,17 +277,19 @@ jobs:
             - GraphBLAS-mac-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build
+          shell: /bin/bash -l -eo pipefail
           command: |
-            bash -l -c "make all package"
+            make all package
       - save_cache:
           paths:
             - deps/GraphBLAS/build
           key: GraphBLAS-mac-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Test
+          shell: /bin/bash -l -eo pipefail
           command: |
             ulimit -n 10000
-            bash -l -c "make test"
+            make test
       - store_artifacts:
           path: ~/project/tests/flow/logs
       - store_artifacts:
@@ -336,6 +349,8 @@ jobs:
     docker:
       - image: redisfab/rmbuilder:6.2.5-x64-bullseye
     steps:
+      - early-returns
+      - early-return-for-forked-pull-requests
       - checkout
       - setup-automation
       - run:
@@ -346,6 +361,8 @@ jobs:
     docker:
       - image: redisfab/rmbuilder:6.2.5-x64-bullseye
     steps:
+      - early-returns
+      - early-return-for-forked-pull-requests
       - checkout
       - setup-automation
       - run:
@@ -353,7 +370,8 @@ jobs:
           command: MODULE_VERSION=$CIRCLE_BRANCH VERBOSE=1 TEST=nightly QUICK=1 ./tests/qa/run
       - run:
           name: Run 10-minute fuzz test
-          command: bash -l -c "FUZZ_TIMEOUT=600 make fuzz"
+          shell: /bin/bash -l -eo pipefail
+          command: FUZZ_TIMEOUT=600 make fuzz
 
   performance_ci_automation_not_integ:
     docker:
@@ -392,7 +410,8 @@ jobs:
           at: /workspace
       - run:
           name: Build artifact
-          command: bash -l -c make
+          shell: /bin/bash -l -eo pipefail
+          command: make
       - benchmark-automation:
           github_actor: "ci.nightly"
           module_path: "/root/project/src/$PACKAGE_NAME.so"
@@ -485,7 +504,7 @@ workflows:
           <<: *on-integ-and-version-tags
           matrix:
             parameters:
-              platform: [bionic, xenial, centos7, centos8]
+              platform: [bionic, xenial, centos7, ol8]
       - build-arm-platforms:
           <<: *on-integ-and-version-tags
           context: common
