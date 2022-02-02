@@ -93,7 +93,6 @@ GraphContext *GraphContext_New
 						  (CacheEntryCopyFunc)ExecutionCtx_Clone);
 
 	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_FLUSH_RESIZE);
-	QueryCtx_SetGraphCtx(gc);
 
 	return gc;
 }
@@ -368,11 +367,11 @@ bool GraphContext_HasIndices(GraphContext *gc) {
 	for(uint i = 0; i < schema_count; i++) {
 		if(Schema_HasIndices(gc->relation_schemas[i])) return true;
 	}
-	
+
 	return false;
 }
 Index *GraphContext_GetIndexByID(const GraphContext *gc, int id,
-					Attribute_ID *attribute_id, IndexType type, SchemaType t) {
+								 Attribute_ID *attribute_id, IndexType type, SchemaType t) {
 
 	ASSERT(gc     !=  NULL);
 
@@ -416,7 +415,7 @@ int GraphContext_AddExactMatchIndex
 
 	IndexField idx_field;
 	IndexField_New(&idx_field, field, INDEX_FIELD_DEFAULT_WEIGHT,
-			INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
+				   INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
 
 	int res = Schema_AddIndex(idx, s, &idx_field, IDX_EXACT_MATCH);
 	if(res != INDEX_OK) {

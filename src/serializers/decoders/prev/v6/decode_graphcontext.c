@@ -35,6 +35,7 @@ GraphContext *RdbLoadGraphContext_v6(RedisModuleIO *rdb) {
 	char *graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
 	GraphContext *gc = GraphContext_New(graph_name);
 	RedisModule_Free(graph_name);
+	QueryCtx_SetGraphCtx(gc);
 
 	// Attributes, Load the full attribute mapping.
 	_RdbLoadAttributeKeys(rdb, gc);
