@@ -12,6 +12,7 @@
 #include "entities/node.h"
 #include "entities/edge.h"
 #include "../redismodule.h"
+#include "graph_callbacks.h"
 #include "graph_statistics.h"
 #include "rg_matrix/rg_matrix.h"
 #include "../util/datablock/datablock.h"
@@ -49,12 +50,7 @@ typedef struct Graph Graph;
 // typedef for synchronization function pointer
 typedef void (*SyncMatrixFunc)(const Graph *, RG_Matrix);
 
-typedef void (*NodeCreatedFunc)(const Graph *, Node *);
-typedef void (*EdgeCreatedFunc)(const Graph *, Edge *);
-typedef void (*NodeDeletedFunc)(const Graph *, Node *, LabelID *, uint);
-typedef void (*EdgeDeletedFunc)(const Graph *, Edge *);
-typedef void (*NodeUpdatedFunc)(const Graph *, Node *, Attribute_ID, SIValue *);
-typedef void (*EdgeUpdatedFunc)(const Graph *, Edge *, Attribute_ID, SIValue *);
+
 
 struct Graph {
 	DataBlock *nodes;                   // graph nodes stored in blocks

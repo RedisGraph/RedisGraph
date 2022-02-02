@@ -1360,24 +1360,28 @@ RG_Matrix Graph_GetZeroMatrix
 	return z;
 }
 
+// add operation to the undo log
 static void _add_undo_op(UndoOp *op) {
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 	array_append(query_ctx->undo_log.undo_list, *op);
 }
 
 static void _GraphCallbacks_UNDO_NodeCreated(const Graph *g, Node *n) {
+	// add node creation operation to undo log
 	UndoOp op;
 	UndoLog_CreateNode(&op, *n);
 	_add_undo_op(&op);
 }
 
 static void _GraphCallbacks_UNDO_EdgeCreated(const Graph *g, Edge *e) {
+	// add edge creation operation to undo log
 	UndoOp op;
 	UndoLog_CreateEdge(&op, *e);
 	_add_undo_op(&op);
 }
 
 static void _GraphCallbacks_UNDO_NodeDeleted(const Graph *g, Node *n, LabelID *labels, uint label_count) {
+	// add node deletion operation to undo log
 	UndoOp op;
 	Node clone;
 	LabelID *labels_clone = rm_malloc(sizeof(LabelID) * label_count);
@@ -1391,6 +1395,7 @@ static void _GraphCallbacks_UNDO_NodeDeleted(const Graph *g, Node *n, LabelID *l
 }
 
 static void _GraphCallbacks_UNDO_EdgeDeleted(const Graph *g, Edge *e) {
+	// add edge deletion operation to undo log
 	UndoOp op;
 	Edge clone;
 	Edge_Clone(e, &clone);
@@ -1399,6 +1404,7 @@ static void _GraphCallbacks_UNDO_EdgeDeleted(const Graph *g, Edge *e) {
 }
 
 static void _GraphCallbacks_UNDO_NodeUpdated(const Graph *g, Node *n, Attribute_ID attr_id, SIValue *orig_value) {
+	// add node update operation to undo log
 	UndoOp op;
 	SIValue clone = SI_CloneValue(*orig_value);
 	UndoLog_UpdateNode(&op, n, attr_id, clone);
@@ -1406,6 +1412,7 @@ static void _GraphCallbacks_UNDO_NodeUpdated(const Graph *g, Node *n, Attribute_
 }
 
 static void _GraphCallbacks_UNDO_EdgeUpdated(const Graph *g, Edge *e, Attribute_ID attr_id, SIValue *orig_value) {
+	// add edge update operation to undo log
 	UndoOp op;
 	SIValue clone = SI_CloneValue(*orig_value);
 	UndoLog_UpdateEdge(&op, e, attr_id, clone);
