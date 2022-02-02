@@ -127,9 +127,8 @@ void CommitUpdates
 		if(GraphEntity_IsDeleted(ge)) continue;
 
 		// update the property on the graph entity
-		int updated = t == SCHEMA_NODE
-			? Graph_UpdateNode(gc->g, (Node *)update->ge, update->attr_id, update->new_value)
-			: Graph_UpdateEdge(gc->g, (Edge *)update->ge, update->attr_id, update->new_value);
+		int updated = Graph_UpdateEntity(gc->g, update->ge, update->attr_id,
+			update->new_value, type);
 		properties_set += updated;
 		// reindex only if update performed
 		reindex |= update->update_index & (bool)updated;

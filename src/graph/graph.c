@@ -1148,18 +1148,18 @@ void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges, uint 
 	if(edge_deleted != NULL) *edge_deleted = _edge_deleted;
 }
 
-int Graph_UpdateNode
+int Graph_UpdateEntity
 (
 	Graph *g,
-	Node *node,
+	GraphEntity *ge,
 	Attribute_ID attr_id,
-	SIValue new_value
+	SIValue new_value,
+	EntityType entity_type
 ) {
 	ASSERT(g);
-	ASSERT(node);
+	ASSERT(ge);
 
-	int res         = 0;
-	GraphEntity *ge = (GraphEntity *)node;
+	int res = 0;
 
 	// handle the case in which we are deleting all properties
 	if(attr_id == ATTRIBUTE_ALL) return GraphEntity_ClearProperties(ge);
@@ -1167,43 +1167,10 @@ int Graph_UpdateNode
 	// try to get current property value
 	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
 	
-	g->GraphCallbacks.NodeUpdated(g, node, attr_id, old_value);
-
-	if(old_value == PROPERTY_NOTFOUND) {
-		// adding a new property; do nothing if its value is NULL
-		if(SI_TYPE(new_value) != T_NULL) {
-			res = GraphEntity_AddProperty(ge, attr_id, new_value);
-		}
-	} else {
-		// update property
-		res = GraphEntity_SetProperty(ge, attr_id, new_value);
-	}
-
-	SIValue_Free(new_value);
-
-	return res;
-}
-
-int Graph_UpdateEdge
-(
-	Graph *g,
-	Edge *edge,
-	Attribute_ID attr_id,
-	SIValue new_value
-) {
-	ASSERT(g);
-	ASSERT(edge);
-
-	int res         = 0;
-	GraphEntity *ge = (GraphEntity *)edge;
-
-	// handle the case in which we are deleting all properties
-	if(attr_id == ATTRIBUTE_ALL) return GraphEntity_ClearProperties(ge);
-
-	// try to get current property value
-	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
-
-	g->GraphCallbacks.EdgeUpdated(g, edge, attr_id, old_value);
+	if(entity_type == ENTITY_NODE)
+		g->GraphCallbacks.NodeUpdated(g, (Node *)ge, attr_id, old_value);
+	else
+		g->GraphCallbacks.EdgeUpdated(g, (Edge *)ge, attr_id, old_value);
 
 	if(old_value == PROPERTY_NOTFOUND) {
 		// adding a new property; do nothing if its value is NULL

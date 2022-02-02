@@ -251,7 +251,6 @@ static void _ExecuteQuery(void *args) {
 	
 	QueryCtx_ForceUnlockCommit();
 
-
 	if(!profile || ErrorCtx_EncounteredError()) {
 		// if we encountered an error, ResultSet_Reply will emit the error
 		// send result-set back to client

@@ -50,7 +50,11 @@ typedef struct Graph Graph;
 // typedef for synchronization function pointer
 typedef void (*SyncMatrixFunc)(const Graph *, RG_Matrix);
 
-
+typedef enum {
+	ENTITY_UNKNOWN,
+	ENTITY_NODE,
+	ENTITY_EDGE,
+} EntityType;
 
 struct Graph {
 	DataBlock *nodes;                   // graph nodes stored in blocks
@@ -205,22 +209,15 @@ int Graph_DeleteEdge
 	Edge *e
 );
 
-int Graph_UpdateNode
+// update entity arrtibute with new value
+int Graph_UpdateEntity
 (
 	Graph *g,
-	Node *node,
+	GraphEntity *ge,
 	Attribute_ID attr_id,
-	SIValue new_value
+	SIValue new_value,
+	EntityType entity_type
 );
-
-int Graph_UpdateEdge
-(
-	Graph *g,
-	Edge *edge,
-	Attribute_ID attr_id,
-	SIValue new_value
-);
-
 // returns true if the given entity has been deleted
 bool Graph_EntityIsDeleted
 (

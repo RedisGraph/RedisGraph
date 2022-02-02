@@ -113,7 +113,7 @@ static void _UndoLog_Rollback_Update_Node(QueryCtx *ctx, size_t seq_start, size_
 	size_t len = seq_end - seq_start + 1; 
 	for(int i = 0; i < len; ++i) {
 		UndoOp *op = undo_list + seq_start + i;
-		Graph_UpdateNode(ctx->gc->g, &op->entity.n, op->data.update.attr_id, op->data.update.orig_value);
+		Graph_UpdateEntity(ctx->gc->g, (GraphEntity *)&op->entity.n, op->data.update.attr_id, op->data.update.orig_value, ENTITY_NODE);
 
 		uint label_count;
 		NODE_GET_LABELS(ctx->gc->g, &op->entity.n, label_count);
@@ -132,7 +132,7 @@ static void _UndoLog_Rollback_Update_Edge(QueryCtx *ctx, size_t seq_start, size_
 	size_t len = seq_end - seq_start + 1; 
 	for(int i = 0; i < len; ++i) {
 		UndoOp *op = undo_list + seq_start + i;
-		Graph_UpdateEdge(ctx->gc->g, &op->entity.e, op->data.update.attr_id, op->data.update.orig_value);
+		Graph_UpdateEntity(ctx->gc->g, (GraphEntity *)&op->entity.e, op->data.update.attr_id, op->data.update.orig_value, ENTITY_EDGE);
 
 		Schema *s = GraphContext_GetSchemaByID(ctx->gc, op->entity.e.relationID, SCHEMA_EDGE);
 		ASSERT(s);
