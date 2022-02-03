@@ -47,7 +47,7 @@ typedef struct UndoOp {
 	UndoOpType type;
 } UndoOp;
 
-// container for undo_list and the index of the last commited op in the list.
+// container for undo_list.
 typedef struct UndoLog {
 	UndoOp *undo_list;         // list of undo operations
 } UndoLog;
@@ -98,7 +98,7 @@ void UndoLog_UpdateNode
 	UndoOp *op,
 	Node *n,
 	Attribute_ID attr_id,
-	SIValue orig_value   // the original value which pending_update is about to override
+	SIValue orig_value   // the original value before the entity was changed
 );
 
 // create edge update operation
@@ -107,18 +107,13 @@ void UndoLog_UpdateEdge
 	UndoOp *op,
 	Edge *e,
 	Attribute_ID attr_id,
-	SIValue orig_value   // the original value which pending_update is about to override
+	SIValue orig_value   // the original value before the entity was changed
 );
 
 // rollback all modifications tracked by this undo log
 void UndoLog_Rollback
 (
 	UndoLog *undo_log
-);
-
-void UndoOp_Free
-(
-	UndoOp *op
 );
 
 // deallocates the UndoLog

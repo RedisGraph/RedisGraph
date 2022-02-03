@@ -21,6 +21,12 @@ typedef struct {
 	bool unknown_reltype_ids;   // Indicates if the query graph contains unknown relationship ids.
 } QueryGraph;
 
+typedef enum {
+	ENTITY_UNKNOWN,
+	ENTITY_NODE,
+	ENTITY_EDGE,
+} EntityType;
+
 /* Prepare a new query graph with initial allocations for
  * the provided node and edge counts. */
 QueryGraph *QueryGraph_New(uint node_cap, uint edge_cap);

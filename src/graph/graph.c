@@ -7,19 +7,10 @@
 #include "RG.h"
 #include "graph.h"
 #include "../util/arr.h"
-#include "../query_ctx.h"
 #include "../util/qsort.h"
 #include "../util/rmalloc.h"
-#include "../undo_log/undo_log.h"
 #include "../util/datablock/oo_datablock.h"
 #include "../graph/rg_matrix/rg_matrix_iter.h"
-
-static void _GraphCallbacks_NOP_NodeCreated(const Graph *g, Node *n) {}
-static void _GraphCallbacks_NOP_EdgeCreated(const Graph *g, Edge *e) {}
-static void _GraphCallbacks_NOP_NodeDeleted(const Graph *g, Node *n, LabelID *labels, uint label_count) {}
-static void _GraphCallbacks_NOP_EdgeDeleted(const Graph *g, Edge *e) {}
-static void _GraphCallbacks_NOP_NodeUpdated(const Graph *g, Node *n, Attribute_ID attr_id, SIValue *orig_value) {}
-static void _GraphCallbacks_NOP_EdgeUpdated(const Graph *g, Edge *e, Attribute_ID attr_id, SIValue *orig_value) {}
 
 //------------------------------------------------------------------------------
 // Forward declarations
@@ -413,6 +404,7 @@ Graph *Graph_New
 	// force GraphBLAS updates and resize matrices to node count by default
 	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 
+	// init the callback to nop
 	Graph_SetCallbacks(g, GRAPH_CALLBACKS_NOP);
 
 	return g;
@@ -643,6 +635,7 @@ void Graph_CreateNode
 	en->prop_count  =  0;
 	en->properties  =  NULL;
 
+	// call the node created callback
 	g->GraphCallbacks.NodeCreated(g, n);
 
 	if(label_count > 0) _Graph_LabelNode(g, n->id, labels, label_count);
@@ -705,6 +698,7 @@ void Graph_CreateEdge
 
 	Graph_FormConnection(g, src, dest, id, r);
 
+	// call the edge created callback
 	g->GraphCallbacks.EdgeCreated(g, e);
 }
 
@@ -880,6 +874,7 @@ int Graph_DeleteEdge
 		}
 	}
 
+	// call the edge deleted callback
 	g->GraphCallbacks.EdgeDeleted(g, e);
 
 	// free and remove edges from datablock.
@@ -904,7 +899,7 @@ void Graph_DeleteNode
 	ASSERT(n != NULL);
 
 	uint label_count;
- 	NODE_GET_LABELS(g, n, label_count);
+	NODE_GET_LABELS(g, n, label_count);
 	for(uint i = 0; i < label_count; i++) {
 		int label_id = labels[i];
 		RG_Matrix M = Graph_GetLabelMatrix(g, label_id);
@@ -915,6 +910,7 @@ void Graph_DeleteNode
 		GraphStatistics_DecNodeCount(&g->stats, label_id, 1);
 	}
 
+	// call the node created callback
 	g->GraphCallbacks.NodeDeleted(g, n, labels, label_count);
 
 	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
@@ -1001,6 +997,7 @@ static void _BulkDeleteNodes
 		RG_Matrix_removeElement_BOOL(adj, src, dest);
 		RG_Matrix_removeElement_UINT64(R, src, dest);
 
+		// call the edge deleted callback
 		g->GraphCallbacks.EdgeDeleted(g, e);
 
 		DataBlock_DeleteItem(g->edges, edge_id);
@@ -1037,6 +1034,7 @@ static void _BulkDeleteNodes
 			GraphStatistics_DecNodeCount(&g->stats, labels[i], 1);
 		}
 
+		// call the node deleted callback
 		g->GraphCallbacks.NodeDeleted(g, n, labels, label_count);
 
 		DataBlock_DeleteItem(g->nodes, entity_id);
@@ -1073,6 +1071,7 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		// edge of type r has just been deleted, update statistics
 		GraphStatistics_DecEdgeCount(&g->stats, r, 1);
 
+		// call the edge deleted callback
 		g->GraphCallbacks.EdgeDeleted(g, e);
 
 		// free and remove edges from datablock
@@ -1154,7 +1153,7 @@ int Graph_UpdateEntity
 	GraphEntity *ge,
 	Attribute_ID attr_id,
 	SIValue new_value,
-	EntityType entity_type
+	GraphEntityType entity_type
 ) {
 	ASSERT(g);
 	ASSERT(ge);
@@ -1163,10 +1162,10 @@ int Graph_UpdateEntity
 
 	// handle the case in which we are deleting all properties
 	if(attr_id == ATTRIBUTE_ALL) {
-		int prop_count = ge->entity->prop_count;
+		int prop_count = ENTITY_PROP_COUNT(ge);
 		for(int i = 0; i < prop_count; i++) {
-			EntityProperty *prop = ge->entity->properties + i;
-			if(entity_type == ENTITY_NODE)
+			EntityProperty *prop = ENTITY_PROPS(ge) + i;
+			if(entity_type == GETYPE_NODE)
 				g->GraphCallbacks.NodeUpdated(g, (Node *)ge, prop->id, &prop->value);
 			else
 				g->GraphCallbacks.EdgeUpdated(g, (Edge *)ge, prop->id, &prop->value);
@@ -1177,7 +1176,7 @@ int Graph_UpdateEntity
 	// try to get current property value
 	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
 	
-	if(entity_type == ENTITY_NODE)
+	if(entity_type == GETYPE_NODE)
 		g->GraphCallbacks.NodeUpdated(g, (Node *)ge, attr_id, old_value);
 	else
 		g->GraphCallbacks.EdgeUpdated(g, (Edge *)ge, attr_id, old_value);
@@ -1336,91 +1335,6 @@ RG_Matrix Graph_GetZeroMatrix
 
 	return z;
 }
-
-// add operation to the undo log
-static void _add_undo_op(UndoOp *op) {
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-	array_append(query_ctx->undo_log.undo_list, *op);
-}
-
-static void _GraphCallbacks_UNDO_NodeCreated(const Graph *g, Node *n) {
-	// add node creation operation to undo log
-	UndoOp op;
-	UndoLog_CreateNode(&op, *n);
-	_add_undo_op(&op);
-}
-
-static void _GraphCallbacks_UNDO_EdgeCreated(const Graph *g, Edge *e) {
-	// add edge creation operation to undo log
-	UndoOp op;
-	UndoLog_CreateEdge(&op, *e);
-	_add_undo_op(&op);
-}
-
-static void _GraphCallbacks_UNDO_NodeDeleted(const Graph *g, Node *n, LabelID *labels, uint label_count) {
-	// add node deletion operation to undo log
-	UndoOp op;
-	Node clone;
-	LabelID *labels_clone = rm_malloc(sizeof(LabelID) * label_count);
-	for (uint i = 0; i < label_count; i++) {
-		labels_clone[i] = labels[i];
-	}
-	
-	Node_Clone(n, &clone);
-	UndoLog_DeleteNode(&op, clone, labels_clone, label_count);
-	_add_undo_op(&op);
-}
-
-static void _GraphCallbacks_UNDO_EdgeDeleted(const Graph *g, Edge *e) {
-	// add edge deletion operation to undo log
-	UndoOp op;
-	Edge clone;
-	Edge_Clone(e, &clone);
-	UndoLog_DeleteEdge(&op, clone);
-	_add_undo_op(&op);
-}
-
-static void _GraphCallbacks_UNDO_NodeUpdated(const Graph *g, Node *n, Attribute_ID attr_id, SIValue *orig_value) {
-	// add node update operation to undo log
-	UndoOp op;
-	SIValue clone = SI_CloneValue(*orig_value);
-	UndoLog_UpdateNode(&op, n, attr_id, clone);
-	_add_undo_op(&op);
-}
-
-static void _GraphCallbacks_UNDO_EdgeUpdated(const Graph *g, Edge *e, Attribute_ID attr_id, SIValue *orig_value) {
-	// add edge update operation to undo log
-	UndoOp op;
-	SIValue clone = SI_CloneValue(*orig_value);
-	UndoLog_UpdateEdge(&op, e, attr_id, clone);
-	_add_undo_op(&op);
-}
-
-void Graph_SetCallbacks
-(
-	Graph *g,
-	GRAPH_CALLBACKS_TYPE type
-) {
-	switch(type) {
-		case GRAPH_CALLBACKS_UNDO:
-			g->GraphCallbacks.NodeCreated = _GraphCallbacks_UNDO_NodeCreated;
-			g->GraphCallbacks.EdgeCreated = _GraphCallbacks_UNDO_EdgeCreated;
-			g->GraphCallbacks.NodeDeleted = _GraphCallbacks_UNDO_NodeDeleted;
-			g->GraphCallbacks.EdgeDeleted = _GraphCallbacks_UNDO_EdgeDeleted;
-			g->GraphCallbacks.NodeUpdated = _GraphCallbacks_UNDO_NodeUpdated;
-			g->GraphCallbacks.EdgeUpdated = _GraphCallbacks_UNDO_EdgeUpdated;
-			break;
-		case GRAPH_CALLBACKS_NOP:
-			g->GraphCallbacks.NodeCreated = _GraphCallbacks_NOP_NodeCreated;
-			g->GraphCallbacks.EdgeCreated = _GraphCallbacks_NOP_EdgeCreated;
-			g->GraphCallbacks.NodeDeleted = _GraphCallbacks_NOP_NodeDeleted;
-			g->GraphCallbacks.EdgeDeleted = _GraphCallbacks_NOP_EdgeDeleted;
-			g->GraphCallbacks.NodeUpdated = _GraphCallbacks_NOP_NodeUpdated;
-			g->GraphCallbacks.EdgeUpdated = _GraphCallbacks_NOP_EdgeUpdated;
-			break;
-		default:
-			ASSERT(false);
-	}}
 
 void Graph_Free(Graph *g) {
 	ASSERT(g);

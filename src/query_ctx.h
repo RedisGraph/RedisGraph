@@ -44,7 +44,7 @@ typedef struct {
 	QueryCtx_InternalExecCtx internal_exec_ctx; // The data related to internal query execution.
 	QueryCtx_GlobalExecCtx global_exec_ctx;     // The data rlated to global redis execution.
 	GraphContext *gc;                           // The GraphContext associated with this query's graph.
-	UndoLog undo_log;                           // Undo log for updates, used in the case of timeout.
+	UndoLog undo_log;                           // Undo log for updates, used in the case of write query can fail and rollback is needed.
 } QueryCtx;
 
 /* Instantiate the thread-local QueryCtx on module load. */

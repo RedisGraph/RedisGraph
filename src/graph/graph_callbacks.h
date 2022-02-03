@@ -19,3 +19,17 @@ typedef void (*NodeDeletedFunc)(const Graph *, Node *, LabelID *, uint);
 typedef void (*EdgeDeletedFunc)(const Graph *, Edge *);
 typedef void (*NodeUpdatedFunc)(const Graph *, Node *, Attribute_ID, SIValue *);
 typedef void (*EdgeUpdatedFunc)(const Graph *, Edge *, Attribute_ID, SIValue *);
+
+typedef enum {
+	GRAPH_CALLBACKS_UNDO,  // accumulate undo operations
+	GRAPH_CALLBACKS_NOP,   // discard undo operations
+} GRAPH_CALLBACKS_TYPE;
+
+typedef struct {
+    NodeCreatedFunc NodeCreated;  // callback called on node creation
+    EdgeCreatedFunc EdgeCreated;  // callback called on edge creation
+    NodeDeletedFunc NodeDeleted;  // callback called on node deletion
+    EdgeDeletedFunc EdgeDeleted;  // callback called on edge deletion
+    NodeUpdatedFunc NodeUpdated;  // callback called on node update
+    EdgeUpdatedFunc EdgeUpdated;  // callback called on edge update
+} GraphCallback;

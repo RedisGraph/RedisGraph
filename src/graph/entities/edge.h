@@ -102,6 +102,7 @@ void Edge_SetRelationID(Edge *e, int relationID); // QG, graph.c
 void Edge_ToString(const Edge *e, char **buffer, size_t *bufferLen, size_t *bytesWritten,
 				   GraphEntityStringFromat format);
 
+// clones given edge
 void Edge_Clone(const Edge *e, Edge *clone);
 
 // Frees allocated space by given edge

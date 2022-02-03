@@ -40,21 +40,10 @@ typedef enum {
 	SYNC_POLICY_NOP,
 } MATRIX_POLICY;
 
-typedef enum {
-	GRAPH_CALLBACKS_UNDO,  // accumulate undo operations
-	GRAPH_CALLBACKS_NOP,   // discard undo operations
-} GRAPH_CALLBACKS_TYPE;
-
 // forward declaration of Graph struct
 typedef struct Graph Graph;
 // typedef for synchronization function pointer
 typedef void (*SyncMatrixFunc)(const Graph *, RG_Matrix);
-
-typedef enum {
-	ENTITY_UNKNOWN,
-	ENTITY_NODE,
-	ENTITY_EDGE,
-} EntityType;
 
 struct Graph {
 	DataBlock *nodes;                   // graph nodes stored in blocks
@@ -68,14 +57,7 @@ struct Graph {
 	bool _writelocked;                  // true if the read-write lock was acquired by a writer
 	SyncMatrixFunc SynchronizeMatrix;   // function pointer to matrix synchronization routine
 	GraphStatistics stats;              // graph related statistics
-	struct {
-		NodeCreatedFunc NodeCreated;
-		EdgeCreatedFunc EdgeCreated;
-		NodeDeletedFunc NodeDeleted;
-		EdgeDeletedFunc EdgeDeleted;
-		NodeUpdatedFunc NodeUpdated;
-		EdgeUpdatedFunc EdgeUpdated;
-	} GraphCallbacks;
+	GraphCallback GraphCallbacks;       // callback for graph update operations
 };
 
 // graph synchronization functions
@@ -212,12 +194,13 @@ int Graph_DeleteEdge
 // update entity attribute with new value
 int Graph_UpdateEntity
 (
-	Graph *g,
-	GraphEntity *ge,
-	Attribute_ID attr_id,
-	SIValue new_value,
-	EntityType entity_type
+	Graph *g,                    // graph to update entity from
+	GraphEntity *ge,             // entity yo update
+	Attribute_ID attr_id,        // attribute to update
+	SIValue new_value,           // value to be set
+	GraphEntityType entity_type  // type of the entity node/edge
 );
+
 // returns true if the given entity has been deleted
 bool Graph_EntityIsDeleted
 (
@@ -425,7 +408,7 @@ RG_Matrix Graph_GetLabelRGMatrix
 	int label_idx
 );
 
-// set the CRUD policy
+// set the craph callbacks type
 void Graph_SetCallbacks
 (
 	Graph *g,

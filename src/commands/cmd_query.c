@@ -205,10 +205,10 @@ static void _ExecuteQuery(void *args) {
 
 		// decided rather or not to use an undo-log
 		// an undo-log will be used when the query has multiple write operations
-		// or a memory cap had been defined
+		// or a write query with memory cap or timeout
 		uint64_t query_mem_capacity;
 		Config_Option_get(Config_QUERY_MEM_CAPACITY, &query_mem_capacity);
-		// see if writer operation count > 2 or memory cap is enforced
+		// see if writer operation count > 2 or memory cap or timeout is enforced
 		if(plan != NULL &&
 		   (ExecutionPlan_CountWriteOp(plan) > 1 ||
 			query_mem_capacity != QUERY_MEM_CAPACITY_UNLIMITED ||
@@ -248,6 +248,9 @@ static void _ExecuteQuery(void *args) {
 
 	// in case of an error rollback modifications
 	if(ErrorCtx_EncounteredError()) UndoLog_Rollback(&query_ctx->undo_log);
+
+	// restore callback to nop
+	Graph_SetCallbacks(gc->g, GRAPH_CALLBACKS_NOP);
 	
 	QueryCtx_ForceUnlockCommit();
 
