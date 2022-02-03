@@ -1,7 +1,7 @@
 function test92
 %TEST92 test GB_subref: symbolic case
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 fprintf ('test92:  test GB_subref: symbolic case\n') ;

@@ -2,7 +2,7 @@
 // GB_atomics.h: definitions for atomic operations
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -17,26 +17,6 @@
 #ifndef GB_ATOMICS_H
 #define GB_ATOMICS_H
 #include "GB.h"
-
-//------------------------------------------------------------------------------
-// determine the architecture
-//------------------------------------------------------------------------------
-
-#if __x86_64__
-
-    // on the x86, atomic updates can be more aggresive.  The MIN, MAX, EQ,
-    // XNOR, and ANY monoids are implemented with atomic compare/exchange.
-
-    #define GB_X86_64 1
-
-#else
-
-    // on the ARM, Power8/9, and others, only use built-in #pragma omp atomic
-    // updates.  Do not use atomic compare/exchange.
-
-    #define GB_X86_64 0
-
-#endif
 
 //------------------------------------------------------------------------------
 // atomic updates
@@ -80,7 +60,8 @@
 #if ( _OPENMP >= 201307 )
 
     // OpenMP 4.0 or later
-    #define GB_ATOMIC_UPDATE GB_PRAGMA (omp atomic update seq_cst)
+    // #define GB_ATOMIC_UPDATE GB_PRAGMA (omp atomic update seq_cst)
+    #define GB_ATOMIC_UPDATE GB_PRAGMA (omp atomic update)
 
 #elif ( _OPENMP >= 201107 )
 
@@ -103,6 +84,10 @@
 // atomic read and write
 //------------------------------------------------------------------------------
 
+// x86_64: no atomic read/write is needed.
+
+// ARM, Power8/9, and others need the explicit atomic read/write.
+
 // In Microsoft Visual Studio, simple reads and writes to properly aligned
 // 64-bit values are already atomic on 64-bit Windows for any architecture
 // supported by Windows (any Intel or ARM architecture). See:
@@ -111,30 +96,15 @@
 // is no need for atomic reads/writes when compiling GraphBLAS on Windows
 // with MS Visual Studio.
 
-// ARM, Power8/9, and others need the explicit atomic read/write.
-// x86: no atomic read/write is needed.
+#if GBX86
 
-#if GB_X86_64
-
-    // x86: no atomic read/write is needed.
+    // x86_64: no atomic read/write is needed.
     #define GB_ATOMIC_READ
     #define GB_ATOMIC_WRITE
 
-#elif ( _OPENMP >= 201811 )
-
-    // OpenMP 5.0 or later
-    #define GB_ATOMIC_READ    GB_PRAGMA (omp atomic read acquire)
-    #define GB_ATOMIC_WRITE   GB_PRAGMA (omp atomic write release)
-
-#elif ( _OPENMP >= 201307 )
-
-    // OpenMP 4.0 and 4.5
-    #define GB_ATOMIC_READ    GB_PRAGMA (omp atomic read seq_cst)
-    #define GB_ATOMIC_WRITE   GB_PRAGMA (omp atomic write seq_cst)
-
 #elif ( _OPENMP >= 201107 )
 
-    // OpenMP 3.1
+    // OpenMP 3.1 and later have atomic reads and writes
     #define GB_ATOMIC_READ    GB_PRAGMA (omp atomic read)
     #define GB_ATOMIC_WRITE   GB_PRAGMA (omp atomic write)
 
@@ -196,7 +166,8 @@
 #if ( _OPENMP >= 201307 )
 
     // OpenMP 4.0 or later
-    #define GB_ATOMIC_CAPTURE GB_PRAGMA (omp atomic capture seq_cst)
+    // #define GB_ATOMIC_CAPTURE GB_PRAGMA (omp atomic capture seq_cst)
+    #define GB_ATOMIC_CAPTURE GB_PRAGMA (omp atomic capture)
 
 #elif ( _OPENMP >= 201107 )
 
@@ -223,7 +194,7 @@
     // int64_t result, target, value ;
     // do this atomically: { result = target ; target = value ; }
 
-    #if GB_MICROSOFT
+    #if GB_COMPILER_MSC
 
         #define GB_ATOMIC_CAPTURE_INT64(result, target, value)          \
         {                                                               \
@@ -251,7 +222,7 @@
     // int8_t result, target, value ;
     // do this atomically: { result = target ; target = value ; }
 
-    #if GB_MICROSOFT
+    #if GB_COMPILER_MSC
 
         #define GB_ATOMIC_CAPTURE_INT8(result, target, value)           \
         {                                                               \
@@ -279,7 +250,7 @@
     // int64_t result, target, value ;
     // do this atomically: { result = target ; target |= value ; }
 
-    #if GB_MICROSOFT
+    #if GB_COMPILER_MSC
 
         #define GB_ATOMIC_CAPTURE_INT64_OR(result, target, value)       \
         {                                                               \
@@ -314,7 +285,7 @@
     // The MS Visual Studio version computes result = ++target, so result must
     // be decremented by one.
 
-    #if GB_MICROSOFT
+    #if GB_COMPILER_MSC
 
         #define GB_ATOMIC_CAPTURE_INC64(result,target)                  \
         {                                                               \
@@ -409,7 +380,7 @@
 // Type punning is used to extend these signed integer types to unsigned
 // integers of the same number of bytes, and to float and double.
 
-#if GB_MICROSOFT
+#if GB_COMPILER_MSC
 
     //--------------------------------------------------------------------------
     // GB_PUN: type punning

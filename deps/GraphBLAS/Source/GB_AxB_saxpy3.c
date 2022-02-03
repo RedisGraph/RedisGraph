@@ -2,7 +2,7 @@
 // GB_AxB_saxpy3: compute C=A*B, C<M>=A*B, or C<!M>=A*B in parallel
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -88,6 +88,7 @@
 //------------------------------------------------------------------------------
 
 #include "GB_mxm.h"
+#include "GB_AxB_saxpy_generic.h"
 #include "GB_control.h"
 #include "GB_AxB__include1.h"
 #ifndef GBCOMPACT

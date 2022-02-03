@@ -2,7 +2,7 @@
 // GB_serialize.h: definitions for GB_serialize_* and deserialize methods
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -44,8 +44,8 @@ GrB_Info GB_deserialize             // deserialize a matrix from a blob
 
 typedef struct
 {
-    void *p ;           // pointer to the compressed block
-    size_t p_size ;     // size of compressed block, or zero if p NULL
+    void *p ;                   // pointer to the compressed block
+    size_t p_size_allocated ;   // allocated size of compressed block
 }
 GB_blocks ;
 

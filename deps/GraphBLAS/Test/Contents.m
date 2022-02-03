@@ -278,6 +278,6 @@
 %   flopcount        - cumulative sum of flop counts for A*B, C<M>=A*B, C<!M>=A*B
 %   floptest         - compare flopcount with GB_mex_mxm_flops
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 

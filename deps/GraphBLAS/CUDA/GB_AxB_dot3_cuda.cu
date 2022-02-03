@@ -14,24 +14,13 @@
 // The output matrix C always has a static header.  The input matrices M, A,
 // and B may have static or dynamic headers.
 
-extern "C" 
+extern "C"
 {
   #include "GB_mxm.h"
   #include "GB_dynamic.h"
 }
 #include "GB_cuda.h"
 
-
-#include "templates/GB_jit_AxB_dot3_phase1.cu.jit"
-#include "templates/GB_jit_AxB_dot3_phase2.cu.jit"
-// the 5 kernels for the 5 buckets:
-#include "templates/GB_jit_AxB_dot3_phase3_dndn.cu.jit"
-#include "templates/GB_jit_AxB_dot3_phase3_vsvs.cu.jit"
-#include "templates/GB_jit_AxB_dot3_phase3_vssp.cu.jit"
-#include "templates/GB_jit_AxB_dot3_phase3_spdn.cu.jit"
-#include "templates/GB_jit_AxB_dot3_phase3_mp.cu.jit"
-#include "templates/GB_jit_AxB_dot3_phase3_warpix.cu.jit"
-#include "templates/reduceNonZombiesWarp.cu.jit"
 
 
 #include "GB_callback.hpp"
@@ -40,6 +29,7 @@ extern "C"
 
 const std::vector<std::string> header_names ={};
 
+#undef  GB_FREE_WORKSPACE
 #define GB_FREE_WORKSPACE                                               \
 {                                                                       \
     /* free any dynamic headers allocated by GB_do_dynamic_header */    \
@@ -53,6 +43,7 @@ const std::vector<std::string> header_names ={};
     if (offset      != NULL) cudaFree (offset);       offset      = NULL ; \
 }
 
+#undef  GB_FREE_ALL
 #define GB_FREE_ALL                                                     \
 {                                                                       \
     GB_FREE_WORKSPACE ;                                                 \
@@ -154,7 +145,7 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
         ctype, cvlen, cvdim, GB_Ap_malloc, true,
         sparsity_M, false, M->hyper_switch, cnvec,
         cnz+1,  // add one to cnz for GB_cumsum of Cwork 
-        true, Context) ;
+        true, /* not iso: */ false, Context) ;
 
     if (info != GrB_SUCCESS)
     { 
@@ -178,6 +169,7 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
     //cudaMemcpy (Cp, Mp, (cnvec+1) * sizeof (int64_t), cudaMemcpyDefault) ;
     if (M_is_hyper)
     { 
+        // FIXME
         //cudaMemcpy (Ch, Mh, cnvec * sizeof (int64_t), cudaMemcpyDefault) ;
     }
     C->magic = GB_MAGIC ;
@@ -358,12 +350,16 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
     */
     // where GB_semiring_23030928029.h is mysemiring.filename
 
+    /**
+     * JIT Instantiation Calls
+     */
     std::stringstream phase1_program ;
     phase1_program <<
     R"(phase1_program
     #include ")" << mysemiring.filename << R"("
-    #include "GB_jit_AxB_dot3_phase1.cu"
-    )" ;
+    #include "GB_jit_AxB_phase1.cu"
+    )";
+
     // dump it:
     std::cout << phase1_program.str() ;
 
@@ -371,10 +367,10 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
     jit::launcher( base_name + Opname + mysemiring.filename, 
                    phase1_program.str(),
                    header_names,
-                   compiler_flags,
+                   jit::compiler_flags,
                    dummy_callback,
                    stream_AxB)
-               .set_kernel_inst("GB_AxB_cuda_dot3_phase1",
+               .set_kernel_inst("GB_AxB_cuda_phase1",
                                 {M->type->name})
                .configure(grid, block); 
 
@@ -397,7 +393,7 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
     jit::launcher( base_name + Opname + mysemiring.filename,
                    phase2_program.str(),
                    header_names,
-                   compiler_flags,
+                   jit::compiler_flags,
                    dummy_callback) 
                    //stream_AxB)
                .set_kernel_inst("GB_AxB_dot3_phase2",
@@ -409,7 +405,7 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
     jit::launcher( base_name + Opname + mysemiring.filename,
                    phase2_program.str(),
                    header_names,
-                   compiler_flags,
+                   jit::compiler_flags,
                    dummy_callback)
                    //stream_AxB)
                .set_kernel_inst("GB_AxB_dot3_phase2end",
@@ -417,6 +413,9 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
                .configure(grid, block);
 
 
+    /**
+     * JIT Kernel Launch
+     */
     phase1Kernel.launch(
                         Nanobuckets,       // array of size NBUCKETS-blockDim.x-by-gridDim.x
                         Blockbucket,       // bucket counts, of size NBUCKETS-by-gridDim.x
@@ -491,8 +490,6 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
     //----------------------------------------------------------------------
     // phase3: do the numerical work
     //----------------------------------------------------------------------
-
-    const char *phase3_program; // to be specified by buckets
 
     C->nzombies = Bucketp[1];  //set pre-zombie counts
 
@@ -624,7 +621,7 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
         jit::launcher( base_name + Opname + "_" + mysemiring.filename,
                        phase3_program.str(),
                        header_names,
-                       compiler_flags,
+                       jit::compiler_flags,
                        dummy_callback)
                    .set_kernel_inst(kernel_name + Opname,
                                     { ctype->name,
@@ -675,7 +672,7 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
     jit::launcher( reduce_kernel_name + "_" + mysemiring.filename,
                    reduce_program.str(),
                    header_names,
-                   compiler_flags,
+                   jit::compiler_flags,
                    dummy_callback)
                    .set_kernel_inst( reduce_kernel_name , { ctype->name })
                    .configure(red_grid, red_block) //if commented, use implicit 1D configure in launch

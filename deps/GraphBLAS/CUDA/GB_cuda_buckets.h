@@ -14,12 +14,6 @@
 #ifndef GB_CUDA_BUCKETS_H
 #define GB_CUDA_BUCKETS_H
 
-// nvcc also chokes on fpclassify (an ANSI C11 construct that does not appear
-// in C++11, it seems).  It also issues spurious warnings about compiler
-// pragmas.  Source/GB.h avoids these constructs if GB_NVCC is defined.
-#define GB_NVCC
-
-
 // 12 buckets: computed by up to 11 kernel launches (zombies need no work...),
 // using 5 different kernels (with different configurations depending on the
 // bucket).

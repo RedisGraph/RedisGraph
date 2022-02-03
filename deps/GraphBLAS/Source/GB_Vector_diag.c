@@ -2,7 +2,7 @@
 // GB_Vector_diag: extract a diagonal from a matrix, as a vector
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -166,7 +166,8 @@ GrB_Info GB_Vector_diag     // extract a diagonal from a matrix, as a vector
     else
     {
         // V->x = (vtype) T->x
-        V->x = GB_XALLOC (V->iso, vnz, vtype->size, &(V->x_size)) ;
+        // V is sparse so malloc is OK
+        V->x = GB_XALLOC (false, V->iso, vnz, vtype->size, &(V->x_size)) ; // x:OK
         if (V->x == NULL)
         { 
             // out of memory

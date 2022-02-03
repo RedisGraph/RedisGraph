@@ -2,7 +2,7 @@
 // GB_AxB_meta: C<M>=A*B meta algorithm
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -98,6 +98,36 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
 
     (*mask_applied) = false ;
     (*done_in_place) = false ;
+
+    //--------------------------------------------------------------------------
+    // get the semiring
+    //--------------------------------------------------------------------------
+
+    GB_Opcode opcode = semiring->multiply->opcode  ;
+    bool op_is_positional = GB_OPCODE_IS_POSITIONAL (opcode) ;
+    bool op_is_first  = (opcode == GB_FIRST_binop_code) ;
+    bool op_is_second = (opcode == GB_SECOND_binop_code) ;
+    bool op_is_pair   = (opcode == GB_PAIR_binop_code) ;
+    bool allow_scale = true ;
+    if (semiring->multiply->binop_function == NULL &&
+        (op_is_first || op_is_second))
+    { 
+        // GB_AxB_rowscale and GB_AxB_colscale do not handle the implicit FIRST
+        // operator for GB_reduce_to_vector.  They do handle any other
+        // positional operator (FIRSTI, FIRSTJ, SECONDI, SECONDJ, etc).
+        allow_scale = false ;
+    }
+
+    //--------------------------------------------------------------------------
+    // estimate the work to transpose A, B, and C
+    //--------------------------------------------------------------------------
+
+    double A_work = GB_nnz_held (A_in) ;    // work to transpose A
+    double B_work = GB_nnz_held (B_in) ;    // work to transpose B
+    // work to transpose C cannot be determined; assume it is full
+    double C_work =
+        (double) (A_transpose ? GB_NCOLS (A_in) : GB_NROWS (A_in)) *
+        (double) (B_transpose ? GB_NROWS (B_in) : GB_NCOLS (B_in)) ;
 
     //--------------------------------------------------------------------------
     // see if the work can be done in-place
@@ -230,39 +260,72 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         //      C'<M > = A' * B'
         //      C'<M'> = A' * B'
 
-    //--------------------------------------------------------------------------
+    //==========================================================================
     // swap_rule: decide if C or C' should be computed
-    //--------------------------------------------------------------------------
+    //==========================================================================
 
     // This function can compute C or C', by setting C->is_csc as the negation
     // of the desired format C_is_csc.  This ensures that GB_accum_mask will
     // transpose C when this function is done.
 
-    double A_work = GB_nnz_held (A_in) ;    // work to transpose A
-    double B_work = GB_nnz_held (B_in) ;    // work to transpose B
-    // work to transpose C cannot be determined; assume it is full
-    double C_work = ((double) A_in->vlen) * ((double) B_in->vlen) ;
+    bool swap_rule = false ;
+    int A_in_is_diagonal = -1 ;            // not yet computed
+    int B_in_is_diagonal = -1 ;            // not yet computed
 
-    bool swap_rule ;
-
-    if (( C_transpose &&  A_transpose &&  B_transpose) ||   // C' = A'*B'
-        ( C_transpose &&  A_transpose && !B_transpose) ||   // C' = A'*B
-        (!C_transpose &&  A_transpose &&  B_transpose))     // C  = A'*B'
-    {
+    if (C_transpose && A_transpose && B_transpose)
+    { 
 
         //----------------------------------------------------------------------
-        // For these 3 cases, the swap_rule is true:
+        // C' = A'*B'       becomes C = B*A, never stays as-is
         //----------------------------------------------------------------------
-
-        // C' = A'*B'       becomes C = B*A
-        // C' = A'*B        becomes C = B'*A
-        // C  = A'*B'       becomes C = (B*A)'
 
         swap_rule = true ;
 
     }
-    else if (C_transpose && !A_transpose &&  B_transpose)   // C' = A*B'
-    {
+    else if (!C_transpose && A_transpose && B_transpose)
+    { 
+
+        //----------------------------------------------------------------------
+        // C  = A'*B'       becomes C = (B*A)', never stays as-is
+        //----------------------------------------------------------------------
+
+        swap_rule = true ;
+
+    }
+    else if (C_transpose && A_transpose && !B_transpose)
+    { 
+
+        //----------------------------------------------------------------------
+        // C' = A'*B        becomes C = B'*A via swap rule, or stays C'=A'*B
+        //----------------------------------------------------------------------
+
+        // by default, use the swap rule and compute C=B'*A instead
+        swap_rule = true ;
+
+        // In v6.1.1 and earlier, this method always chose swap_rule = true.
+        // The heuristic has been modified in v6.1.2 by adding the following
+        // refinement, possibly selecting swap_rule as false instead:
+
+        // see what the swap_rule == true would do for C=B'*A
+        A_in_is_diagonal = GB_is_diagonal (A_in, Context) ;
+
+        int tentative_axb_method ;
+        GB_AxB_meta_adotb_control (&tentative_axb_method, C_in, M_in,
+            Mask_comp, B_in, A_in, accum, semiring, flipxy, can_do_in_place,
+            allow_scale, A_in_is_diagonal, AxB_method, Context) ;
+
+        if (tentative_axb_method == GB_USE_SAXPY)
+        { 
+            // reconsider and do not use swap rule if saxpy C=B'*A is too
+            // expensive.  C'=A'*B is either computed as-is with swap_rule
+            // false, requiring a transpose of C and A.  Or, C=B'*A is
+            // computed, with swap_rule true, requiring a transpose of B.
+            swap_rule = (B_work < A_work + C_work) ;
+        }
+
+    }
+    else if (C_transpose && !A_transpose && B_transpose)
+    { 
 
         //----------------------------------------------------------------------
         // C' = A*B'        becomes C = B*A', or stays as C' = A*B'
@@ -278,12 +341,10 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         // false if C is small.
 
         swap_rule = (A_work < B_work + C_work) ;
-//      printf ("A_work %g < B_work %g C_work %g: %d\n", A_work, B_work, C_work,
-//          swap_rule) ;
 
     }
-    else if (!C_transpose && !A_transpose &&  B_transpose)  // C = A*B'
-    {
+    else if (!C_transpose && !A_transpose && B_transpose)
+    { 
 
         //----------------------------------------------------------------------
         // C  = A*B'        becomes C'=B*A' or stays C=A*B'
@@ -299,26 +360,64 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         // true if C is small.
 
         swap_rule = (B_work > A_work + C_work) ;
-//      printf ("B_work %g > A_work %g C_work %g: %d\n", B_work, A_work, C_work,
-//          swap_rule) ;
+
+    }
+    else if (!C_transpose && A_transpose && !B_transpose)
+    { 
+
+        //----------------------------------------------------------------------
+        // C  = A'*B        becomes C'=B'*A or stays C=A'*B
+        //----------------------------------------------------------------------
+
+        // by default, do not use the swap rule and compute C=A'*B as-is
+        swap_rule = false ;
+
+        // In v6.1.1 and earlier, this method always chose swap_rule = false.
+        // The heuristic has been modified in v6.1.2 by adding the following
+        // refinement, possibly selecting swap_rule as true instead:
+
+        // see what method C=A'*B would use if swap_rule is false
+        B_in_is_diagonal = GB_is_diagonal (B_in, Context) ;
+
+        int tentative_axb_method ;
+        GB_AxB_meta_adotb_control (&tentative_axb_method, C_in, M_in,
+            Mask_comp, A_in, B_in, accum, semiring, flipxy, can_do_in_place,
+            allow_scale, B_in_is_diagonal, AxB_method, Context) ;
+
+        if (tentative_axb_method == GB_USE_SAXPY)
+        { 
+            // reconsider and use swap rule if saxpy C=(A')*B is too expensive.
+            // C=(A')*B is either computed as-is, requiring a transpose of A,
+            // or it is computed as C'=(B')*A using the swap rule, requiring a
+            // transpose of C and B.
+            swap_rule = (A_work > B_work + C_work) ;
+        }
+
+    }
+    else if (C_transpose && !A_transpose && !B_transpose)
+    { 
+
+        //----------------------------------------------------------------------
+        // C' = A*B         stays as-is
+        //----------------------------------------------------------------------
+
+        swap_rule = false ;
 
     }
     else
-    {
+    { 
 
         //----------------------------------------------------------------------
-        // For these 3 cases, the swap_rule is false:
+        // C  = A*B         stays as-is
         //----------------------------------------------------------------------
-
-        // C' = A*B         use as-is, doing C = (A*B)'
-        // C  = A'*B        use as-is
-        // C  = A*B         use as-is
 
         swap_rule = false ;
     }
 
     GrB_Matrix A, B ;
     bool atrans, btrans ;
+    int A_is_diagonal = -1 ;            // not yet computed
+    int B_is_diagonal = -1 ;            // not yet computed
 
     if (swap_rule)
     { 
@@ -329,12 +428,16 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         flipxy = !flipxy ;              // flipxy is modified here
         M_transpose = !M_transpose ;
         C_transpose = !C_transpose ;
+        A_is_diagonal = B_in_is_diagonal ;
+        B_is_diagonal = -1 ;
     }
     else
     { 
         // use the input matrices as-is
         A = A_in ; atrans = A_transpose ;
         B = B_in ; btrans = B_transpose ;
+        A_is_diagonal = -1 ;
+        B_is_diagonal = B_in_is_diagonal ;
     }
 
     ASSERT_MATRIX_OK (A, "final A for A*B", GB0) ;
@@ -408,14 +511,8 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     // typecast A and B when transposing them, if needed
     //--------------------------------------------------------------------------
 
-    GB_Opcode opcode = semiring->multiply->opcode  ;
-    bool op_is_positional = GB_OPCODE_IS_POSITIONAL (opcode) ;
-    bool op_is_first  = (opcode == GB_FIRST_binop_code) ;
-    bool op_is_second = (opcode == GB_SECOND_binop_code) ;
-    bool op_is_pair   = (opcode == GB_PAIR_binop_code) ;
     bool A_is_pattern ;
     bool B_is_pattern ;
-
     GrB_Type atype_cast, btype_cast ;
     if (flipxy)
     { 
@@ -434,32 +531,11 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         btype_cast = semiring->multiply->ytype ;
     }
 
-    bool allow_scale = true ;
-    if (semiring->multiply->binop_function == NULL &&
-        (op_is_first || op_is_second))
-    { 
-        // GB_AxB_rowscale and GB_AxB_colscale do not handle the implicit FIRST
-        // operator for GB_reduce_to_vector.  They do handle any other
-        // positional operator (FIRSTI, FIRSTJ, SECONDI, SECONDJ, etc).
-        allow_scale = false ;
-    }
-
-    //--------------------------------------------------------------------------
-    // select the algorithm
-    //--------------------------------------------------------------------------
-
-    // Four cases remain with the swap_rule.  M may or may not be present.
-
-        //      C<M> = A*B
-        //      C<M> = A*B'
-        //      C<M> = A'*B
-        //      C<M> = (A*B)'
+    //==========================================================================
+    // select the final algorithm and perform the matrix multiply
+    //==========================================================================
 
     // use GB_AxB_saxpy3 by default
-    #define GB_USE_ROWSCALE 0
-    #define GB_USE_COLSCALE 1
-    #define GB_USE_DOT      2
-    #define GB_USE_SAXPY    3
     int axb_method = GB_USE_SAXPY ;
 
     if (atrans)
@@ -469,16 +545,18 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         // C<M> = A'*B' or A'*B
         //----------------------------------------------------------------------
 
-        bool B_is_diagonal = GB_is_diagonal (B, Context) ;
+        if (B_is_diagonal == -1)
+        {
+            B_is_diagonal = GB_is_diagonal (B, Context) ;
+        }
 
         // explicitly transpose B
         if (btrans && !B_is_diagonal)
         {
-            // B = B'
-            // with the swap_rule as defined above, this case will never occur.
-            // The code is left here in case swap_rule changes in the future.
-            // B = one(B') if only the pattern of B is needed.
-            ASSERT (GB_DEAD_CODE) ;
+            // B = B', or B = one(B') if only the pattern of B is needed.
+            // This is currently unused, since C=A'*B' and C'=A'*B' are always
+            // converted to C=(B*A)' and C=B*A, respectively.  It is left here
+            // in case the swap_rule changes.
             GB_OK (GB_transpose_cast (BT, btype_cast, true, B, B_is_pattern,
                 Context)) ;
             B = BT ;
@@ -488,65 +566,9 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         // select the method for C<M>=A'*B
         //----------------------------------------------------------------------
 
-        // A'*B is being computed: use the dot product without computing A'
-        // or use the saxpy (Gustavson) method
-
-        // If the mask is present, only entries for which M(i,j)=1 are
-        // computed, which makes this method very efficient when the mask is
-        // very sparse (triangle counting, for example).  Each entry C(i,j) for
-        // which M(i,j)=1 is computed via a dot product, C(i,j) =
-        // A(:,i)'*B(:,j).  If the mask is not present, the dot-product method
-        // is very slow in general, and thus the saxpy method is usually used
-        // instead.
-
-        if (allow_scale && M == NULL
-            && !GB_IS_BITMAP (A)     // TODO: A'*D colscale with A bitmap
-            && B_is_diagonal)
-        { 
-            // C = A'*D, col scale
-            axb_method = GB_USE_COLSCALE ;
-        }
-        else if (allow_scale && M == NULL
-            && !GB_IS_BITMAP (B)     // TODO: D*B rowscale with B bitmap
-            && GB_is_diagonal (A, Context))
-        { 
-            // C = D*B, row scale
-            axb_method = GB_USE_ROWSCALE ;
-        }
-        else if (AxB_method == GxB_DEFAULT)
-        {
-            // auto selection for A'*B
-            bool C_out_iso = false ;    // ignored unless C can be done in-place
-            if (can_do_in_place && C_in != NULL)
-            { 
-                // check if C will be iso on output (for dot4 control only).
-                // Ignored if dot4 C_in is not present or C cannot be
-                // computed in-place.
-                C_out_iso = GB_iso_AxB (NULL, A, B, A->vlen, semiring, flipxy,
-                    false) ;
-            }
-            if (GB_AxB_dot4_control (C_out_iso, can_do_in_place ? C_in : NULL,
-                M, Mask_comp, accum, semiring))
-            { 
-                // C+=A'*B can be done with dot4
-                axb_method = GB_USE_DOT ;
-            }
-            else if (GB_AxB_dot3_control (M, Mask_comp))
-            { 
-                // C<M>=A'*B uses the masked dot product method (dot3)
-                axb_method = GB_USE_DOT ;
-            }
-            else if (GB_AxB_dot2_control (A, B, Context))
-            { 
-                // C=A'*B or C<!M>=A'B* can efficiently use the dot2 method
-                axb_method = GB_USE_DOT ;
-            }
-        }
-        else if (AxB_method == GxB_AxB_DOT)
-        { 
-            // user selection for A'*B
-            axb_method = GB_USE_DOT ;
-        }
+        GB_AxB_meta_adotb_control (&axb_method, C_in, M,
+            Mask_comp, A, B, accum, semiring, flipxy, can_do_in_place,
+            allow_scale, B_is_diagonal, AxB_method, Context) ;
 
         //----------------------------------------------------------------------
         // AT = A'
@@ -613,14 +635,14 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
 
         if (allow_scale && M == NULL
             && !GB_IS_BITMAP (A)     // TODO: A*D colscale with A bitmap
-            && GB_is_diagonal (B, Context))
+            && ((B_is_diagonal == -1) ? GB_is_diagonal (B, Context) : B_is_diagonal))
         { 
             // C = A*D, column scale
             axb_method = GB_USE_COLSCALE ;
         }
         else if (allow_scale && M == NULL
             && !GB_IS_BITMAP (B)     // TODO: D*B' rowscale with B bitmap
-            && GB_is_diagonal (A, Context))
+            && ((A_is_diagonal == -1) ? GB_is_diagonal (A, Context) : A_is_diagonal))
         { 
             // C = D*B', row scale
             axb_method = GB_USE_ROWSCALE ;
@@ -698,14 +720,14 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
 
         if (allow_scale && M == NULL
             && !GB_IS_BITMAP (A)     // TODO: A*D colscale with A bitmap
-            && GB_is_diagonal (B, Context))
+            && ((B_is_diagonal == -1) ? GB_is_diagonal (B, Context) : B_is_diagonal))
         { 
             // C = A*D, column scale
             axb_method = GB_USE_COLSCALE ;
         }
         else if (allow_scale && M == NULL
             && !GB_IS_BITMAP (B)     // TODO: D*B rowscale with B bitmap
-            && GB_is_diagonal (A, Context))
+            && ((A_is_diagonal == -1) ? GB_is_diagonal (A, Context) : A_is_diagonal))
         { 
             // C = D*B, row scale
             axb_method = GB_USE_ROWSCALE ;

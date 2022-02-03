@@ -2,12 +2,13 @@
 // GB_bitmap_AxB_saxpy: compute C=A*B, C<M>=A*B, or C<!M>=A*B; C bitmap
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 #include "GB_bitmap_AxB_saxpy.h"
+#include "GB_AxB_saxpy_generic.h"
 #include "GB_AxB__include1.h"
 #ifndef GBCOMPACT
 #include "GB_AxB__include2.h"

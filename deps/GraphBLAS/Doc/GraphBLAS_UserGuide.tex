@@ -148,6 +148,91 @@ are extensions to the GraphBLAS C API.
 
 \begin{itemize}
 
+\item Version 6.2.0.beta1 (Jan 26, 2022)
+
+    \begin{packed_itemize}
+    \item added the \verb'GxB_Iterator' object and its methods.  See
+        Section~\ref{iter}.
+    \end{packed_itemize}
+
+\item Version 6.1.4 (Jan 12, 2022)
+
+    \begin{packed_itemize}
+    \item added Section~\ref{perf} to User Guide: how to get the best
+        performance out of algorithms based on GraphBLAS.
+    \item \verb'cpu_features':  no longer built as a separate library,
+        but built directly into \verb'libgraphblas.so' and
+        \verb'libgraphblas.a'.  Added compile-time flags to
+        optionally disable the use of \verb'cpu_features' completely.
+    \item Octave 7: port to Apple Silicon (thanks to 
+            G{\'{a}}bor Sz{\'{a}}rnyas).
+    \item min/max monoids:  real case (FP32 and FP64) no longer terminal
+    \item \verb'@GrB' interface: overloaded \verb'C=A*B' syntax where one
+        matrix is full always results in a full matrix \verb'C'.
+    \item Faster \verb'C=A*B' for sparse-times-full and full-times-sparse
+        for \verb'@GrB' interface.
+    \end{packed_itemize}
+
+\item Version 6.1.3 (Jan 1, 2022)
+
+    \begin{packed_itemize}
+    \item performance: task creation for \verb'GrB_mxm'
+        had a minor flaw (results were correct but parallelism suffered).
+        Performance improvement of up to 10x when nnz(A)<<nnz(B).
+    \end{packed_itemize}
+
+\item Version 6.1.2 (Dec 31, 2021)
+
+    \begin{packed_itemize}
+    \item performance: revised \verb'swap_rule' in \verb'GrB_mxm', which decides whether
+        to compute \verb"C=A*B" or \verb"C=(B'*A')'", and variants, resulting in up
+        to 3x performance gain over v6.1.1 for \verb'GrB_mxm' (observed;
+        could be higher in other cases).
+    \end{packed_itemize}
+
+\item Version 6.1.1 (Dec 28, 2021) 
+
+    \begin{packed_itemize}
+    \item minor revision to AVX2 and AVX512f selection
+    \item \verb'cpu_features/Makefile': remove test of \verb'list_cpu_features'
+        so that the package can be built when cross-compiling
+    \end{packed_itemize}
+
+\item Versions 6.1.0 (Dec 26, 2021)
+
+    \begin{packed_itemize}
+    \item added \verb'GxB_get' options: compiler name and version.
+    \item added package: \url{https://github.com/google/cpu_features},
+        Nov 30, 2021 version.
+    \item performance: faster \verb'C+=A*B' when \verb'C' is full,
+        \verb'A' is bitmap/full, and \verb'B' is sparse/hyper.  % saxpy5
+        Faster \verb"C+=A'*B" when
+        \verb'A' is sparse/hyper, and \verb'B' is bitmap/full.  % dot4
+    \item bug fix: deserialization of iso and empty matrices/vectors was
+        incorrect
+    \end{packed_itemize}
+
+\item Versions 6.0.2 and 5.2.2 (Nov 30, 2021)
+
+    \begin{packed_itemize}
+    \item (38) bug fix: \verb'GrB_Matrix_export':
+        numerical values not properly exported
+    \end{packed_itemize}
+
+\item Versions 6.0.1 and 5.2.1 (Nov 27, 2021)
+
+    \begin{packed_itemize}
+    \item v6.0.x and v5.2.x (for the same x):
+        differ only in \verb'GrB_wait', \verb'GrB_Info',
+        \verb'GrB_SCMP', and \verb'GxB_init'.
+    \item (37) bug fix:  \verb"C+=A'*B" when the accum operator is the same as
+        the monoid and C is iso-full, and \verb'A' or \verb'B' are hypersparse.
+        (dot4 method).
+    \item performance: \verb'GrB_select' with user-defined
+        \verb'GrB_IndexUnaryOp' about 2x faster.
+    \item performance: faster \verb'(MIN,MAX)_(FIRSTJ,SECONDI)' semirings
+    \end{packed_itemize}
+
 \item Version 6.0.0 (Nov 15, 2021)
 
     \begin{packed_itemize}
@@ -1270,11 +1355,11 @@ Both of them allow for pending work to be left pending in a \verb'GrB_Matrix'.
 
 The Julia interface is at
 \url{https://github.com/JuliaSparse/SuiteSparseGraphBLAS.jl}, developed by Will
-Kimmerer, Abhinav Mehndiratta, and Viral Shah.  Unlike the Octave/MATLAB
-interface (and like the Python interfaces) the Julia interface can keep pending
-work (zombies, pending tuples, jumbled state) in a \verb'GrB_Matrix'.
-This makes Python and Julia the best high-level interfaces for
-SuiteSparse:GraphBLAS.  MATLAB is not as well suited, since it does not
+Kimmerer, Abhinav Mehndiratta, Miha Zgubic, and Viral Shah.  
+Unlike the Octave/MATLAB interface (and like the Python interfaces) the Julia 
+interface can keep pending work (zombies, pending tuples, jumbled state) in
+a \verb'GrB_Matrix'. This makes Python and Julia the best high-level interfaces
+for SuiteSparse:GraphBLAS.  MATLAB is not as well suited, since it does not
 allow inputs to a function or mexFunction to be modified, so any pending
 work must be finished before a matrix can be used as input.
 
@@ -1341,6 +1426,41 @@ to 1000x faster than the same statement with the same syntax, when using MATLAB
 sparse matrices instead.  Matrix concatenation \verb'C = [A B]' is about 17
 times faster in GraphBLAS, on a 20-core Intel Xeon.  For more details, see the
 \verb'GraphBLAS/GraphBLAS/demo' folder and its contents.
+
+Below is a comparison of other methods in SuiteSparse:GraphBLAS, compared with
+MATLAB 2021a.  SuiteSparse:GraphBLAS: v6.1.4 (Jan 12, 2022), was used, compiled
+with gcc 11.2.0.  The system is an Intel(R) Xeon(R) CPU E5-2698 v4 @ 2.20GHz
+(20 hardware cores, 40 threads), Ubuntu 20.04, 256GB RAM.  Full details appear
+in the \verb'GraphBLAS/GraphBLAS/demo/benchmark' folder.  For this matrix,
+SuiteSparse:GraphBLAS is anywhere from 3x to 17x faster than the built-in
+methods in MATLAB.  This matrix is not special, but is typical of the relative
+performance of many large matrices.  Note that two of these (\verb'C=L*S' and
+\verb'C=S*R') rely on an older version of SuiteSparse:GraphBLAS (v3.3.3) built
+into MATLAB R2021a.
+
+{\footnotesize
+\begin{verbatim}
+    Legend:
+    S: large input sparse matrix (n-by-n), the GAP-twitter matrix
+    x: dense vector (1-by-n or n-by-1)
+    F: dense matrix (4-by-n or n-by-4)
+    L: 8-by-n sparse matrix, about 1000 entries
+    R: n-by-8 sparse matrix, about 1000 entries
+    B: n-by-n sparse matrix, about nnz(S)/10 entries
+    p,q: random permutation vectors
+
+    GAP/GAP-twitter: n: 61.5784 million nnz: 1468.36 million
+    (run time in seconds):
+    y=S*x:   MATLAB:  22.8012 GrB:   2.4018 speedup:     9.49
+    y=x*S:   MATLAB:  16.1618 GrB:   1.1610 speedup:    13.92
+    C=S*F:   MATLAB:  30.6121 GrB:   9.7052 speedup:     3.15
+    C=F*S:   MATLAB:  26.4044 GrB:   1.5245 speedup:    17.32
+    C=L*S:   MATLAB:  19.1228 GrB:   2.4301 speedup:     7.87
+    C=S*R:   MATLAB:   0.0087 GrB:   0.0020 speedup:     4.40
+    C=S'     MATLAB: 224.7268 GrB:  22.6855 speedup:     9.91
+    C=S+S:   MATLAB:  14.3368 GrB:   1.5539 speedup:     9.23
+    C=S+B:   MATLAB:  15.5600 GrB:   1.5098 speedup:    10.31
+    C=S(p,q) MATLAB:  95.6219 GrB:  15.9468 speedup:     6.00    \end{verbatim}
 
 \newpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1692,6 +1812,7 @@ Error                           &  v5  & v6  & description \\
 \verb'GrB_SUCCESS'              &  0   & 0   & the method or operation was successful \\
 \verb'GrB_NO_VALUE'             &  1   & 1   & the method was successful, but the entry \\
                                 &      &     & does not appear in the matrix or vector. \\
+\verb'GxB_EXHAUSTED'            &  -   & 2   & the iterator is exhausted \\
 \hline
 \hline
 \verb'GrB_UNINITIALIZED_OBJECT' &  2   & -1   & object has not been initialized \\
@@ -7738,7 +7859,7 @@ GrB_Info GxB_sort
 
 \verb'GxB_Matrix_sort' sorts all the rows or all the columns of a matrix.
 Each row (or column) is sorted separately.  The rows are sorted by default.
-To sort the columns, use \verb'GrB_DESC_IN0'.  A comparator operator is
+To sort the columns, use \verb'GrB_DESC_T0'.  A comparator operator is
 provided to define the sorting order (ascending or descending).
 For example, to sort a \verb'GrB_FP64' matrix in ascending order,
 use \verb'GrB_LT_FP64' as the \verb'op', and to sort in descending order,
@@ -7753,7 +7874,7 @@ must match the type of \verb'A', and whose output is \verb'GrB_BOOL'.
 The two matrix outputs are \verb'C' and \verb'P'.  Any entries present on input
 in \verb'C' or \verb'P' are discarded on output.  The type of \verb'C' must
 match the type of \verb'A' exactly.  The dimensions of \verb'C', \verb'P', and
-\verb'A' must also match exactly (even with the \verb'GrB_DESC_IN0'
+\verb'A' must also match exactly (even with the \verb'GrB_DESC_T0'
 descriptor).
 
 With the default sort (by row), suppose \verb'A(i,:)' contains \verb'k'
@@ -8435,9 +8556,79 @@ repl & accum & ${\bf C}$ & ${\bf T}$ & mask & action taken by ${\bf C \langle M 
 \hline
 \end{tabular}
 }
-\caption{Results of the mask/accumulator phase \label{tab:maskaccum}}
+\caption{Results of the mask/accumulator phase. \label{tab:maskaccum}}
 \end{table}
 
+When there is no mask and the mask \verb'GrB_COMP' option is not selected, the
+table simplifies (Table~\ref{tab:maskaccum_nomask}).  The \verb'GrB_REPLACE'
+option no longer has any effect.  The \verb'GrB_SECOND_T' binary operator when
+used as the accumulator unifies the first cases, shown in
+Table~\ref{tab:maskaccum_nomask_2nd}.  The only difference now is the behavior
+when $c_{ij}$ is present but $t_{ij}$ is not.  Finally, the effect of
+\verb'GrB_FIRST_T' as the accumulator is shown in
+Table~\ref{tab:maskaccum_nomask_1st}. 
+
+\begin{table}[h]
+\begin{center}
+{\small
+\begin{tabular}{lll|l}
+\hline
+       accum & ${\bf C}$ & ${\bf T}$        & action taken by ${\bf C = C \odot T}$ \\
+\hline
+        -   & $c_{ij}$ & $t_{ij}$         &  $c_{ij} = t_{ij}$, update \\
+        -   &  -       & $t_{ij}$         &  $c_{ij} = t_{ij}$, insert \\
+        -   & $c_{ij}$ &  -               &  delete $c_{ij}$ because $t_{ij}$ not present \\
+        -   &  -       &  -               &   \\
+\hline
+        yes & $c_{ij}$ & $t_{ij}$         &  $c_{ij} = c_{ij} \odot t_{ij}$, apply accumulator \\
+        yes &  -       & $t_{ij}$         &  $c_{ij} = t_{ij}$, insert \\
+        yes & $c_{ij}$ &  -               &   \\
+        yes &  -       &  -               &   \\
+\hline
+\end{tabular}
+}
+\caption{When no mask is present (and not complemented).
+\label{tab:maskaccum_nomask}}
+\end{center}
+\end{table}
+
+\begin{table}[h]
+\begin{center}
+{\small
+\begin{tabular}{lll|l}
+\hline
+       accum & ${\bf C}$ & ${\bf T}$        & action taken by ${\bf C = C \odot T}$ \\
+\hline
+        yes & $c_{ij}$ & $t_{ij}$         &  $c_{ij} = t_{ij}$, apply \verb'GrB_SECOND' accumulator \\
+        yes &  -       & $t_{ij}$         &  $c_{ij} = t_{ij}$, insert \\
+        yes & $c_{ij}$ &  -               &   \\
+        yes &  -       &  -               &   \\
+\hline
+\end{tabular}
+}
+\caption{No mask, with the SECOND operator as the accumulator.
+\label{tab:maskaccum_nomask_2nd}}
+\end{center}
+\end{table}
+
+\begin{table}[h]
+\begin{center}
+{\small
+\begin{tabular}{lll|l}
+\hline
+       accum & ${\bf C}$ & ${\bf T}$        & action taken by ${\bf C = C \odot T}$ \\
+\hline
+        yes & $c_{ij}$ & $t_{ij}$         &  \\ 
+        yes &  -       & $t_{ij}$         &  $c_{ij} = t_{ij}$, insert \\
+        yes & $c_{ij}$ &  -               &   \\
+        yes &  -       &  -               &   \\
+\hline
+\end{tabular}
+}
+\caption{No Mask, with the FIRST operator as the accumulator.
+\label{tab:maskaccum_nomask_1st}}
+\end{center}
+\end{table}
 
 \newpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -8569,6 +8760,8 @@ field                       & value         & description \\
 \verb'GxB_API_DATE'             & \verb'char *' & C API date \\
 \verb'GxB_API_ABOUT'            & \verb'char *' & about the C API \\
 \verb'GxB_API_URL'              & \verb'char *' & \verb'http://graphblas.org' \\
+\verb'GxB_COMPILER_NAME'        & \verb'char *' & C compiler name \\
+\verb'GxB_COMPILER_VERSION'     & \verb'int [3]' & C compiler version \\
 \hline
 \end{tabular}
 }
@@ -9671,6 +9864,14 @@ discussion applies equally to the row indices \verb'I' and the column indices
     has \verb'm' rows, with length \verb'|I|=m'.  If \verb'J' is used the
     columns of an \verb'm'-by-\verb'n' matrix, then \verb'J=GrB_ALL' refers to
     all columns, and is the sequence \verb'0:(n-1)', of length \verb'|J|=n'.
+
+    \begin{alert}
+    {\bf SPEC:} If \verb'I' or \verb'J' are \verb'GrB_ALL', the specification
+    requires that \verb'ni' be passed in as \verb'm' (the number of rows)
+    and \verb'nj' be passed in as \verb'n'.  Any other value is an error.
+    SuiteSparse:GraphBLAS ignores these scalar inputs and treats them as if
+    they are equal to their only possible correct value.
+    \end{alert}
 
 \item To specify a contiguous range of indices, such as \verb'I=10:20'
     in MATLAB, the array \verb'I' has size 2, and \verb'ni' is passed to
@@ -12857,6 +13058,694 @@ Most of the rest of the report is self-explanatory.
 
 \newpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Matrix and Vector iterators} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\label{iter}
+
+The \verb'GxB_Iterator' is an object that allows user applications to iterate
+over the entries of a matrix or vector, one entry at a time.  Iteration can
+be done in a linear manner (analogous to reading a file one entry at a time,
+from start to finish), or in a random-access pattern (analogous to
+the \verb'fseek' method for repositioning the access to file to a different 
+position).
+
+Multiple iterators can be used on a single matrix or vector, even in parallel
+by multiple user threads.  While a matrix or vector is being used with an
+iterator, the matrix or vector must not be modified.  Doing so will lead to
+undefined results.
+
+Since accessing a matrix or vector via an iterator requires many calls to
+the iterator methods, they must be very fast.  Error checking is skipped,
+except for the methods that create, attach, or free an iterator.  Methods
+that advance an iterator or that access values or indices from a matrix or
+vector do not return error conditions.  Instead, they have well-defined
+preconditions that must be met (and which should be checked by the user
+application).  If those preconditions are not met, results are undefined.
+
+Most of the iterator methods are implemented in SuiteSparse:GraphBLAS as
+\verb'static' \verb'inline' functions.  This requires that the opaque contents
+of the iterator object are defined in \verb'GraphBLAS.h' itself.  The user
+application must not access these contents directly, but can only do so safely
+via the iterator methods provided by SuiteSparse:GraphBLAS.
+
+The iterator object can be used in one of four sets of methods,
+for four different access patterns:
+
+    \begin{enumerate}
+    \item {\em row iterator}:  iterates across the rows of a matrix, and then
+        within each row to access the entries in a given row.  Accessing all
+        the entries of a matrix using a row iterator requires an outer loop
+        (for the rows) and an inner loop (for the entries in each row).
+        A matrix can be accessed via a row iterator only if its format
+        (determined by \verb'GxB_get (A, GxB_FORMAT, &fmt)') is by-row
+        (that is, \verb'GxB_BY_ROW').
+        See Section~\ref{options}.
+    \item {\em column iterator}:  iterates across the columns of a matrix, and
+        then within each column to access the entries in a given column.
+        Accessing all the entries of a matrix using a column iterator requires
+        an outer loop (for the columns) and an inner loop (for the entries in
+        each column).  A matrix can be accessed via a column iterator only if
+        its format (determined by \verb'GxB_get (A, GxB_FORMAT, &fmt)') is
+        by-column (that is, \verb'GxB_BY_COL').
+        See Section~\ref{options}.
+    \item {\em entry iterator}:  iterates across the entries of a matrix.
+        Accessing all the entries of a matrix using an entry iterator requires
+        just a single loop.  Any matrix can be accessed with an entry iterator.
+    \item {\em vector iterator}:  iterates across the entries of a vector.
+        Accessing all the entries of a vector using a vector iterator requires
+        just a single loop.  Any vector can be accessed with a vector iterator.
+    \end{enumerate}
+
+%===============================================================================
+\subsection{Creating and destroying an iterator}
+%===============================================================================
+
+The process for using an iterator starts with the creation of an iterator, with
+\verb'GxB_Iterator_new'.  This method creates an \verb'iterator' object but
+does not {\em attach} it to any specific matrix or vector:
+
+    {\footnotesize
+    \begin{verbatim}
+    GxB_Iterator iterator ;
+    GxB_Iterator_new (&iterator) ; \end{verbatim}}
+
+When finished, the \verb'iterator' is freed with either of these methods:
+
+    {\footnotesize
+    \begin{verbatim}
+    GrB_free (&iterator) ;
+    GxB_Iterator_free (&iterator) ; \end{verbatim}}
+
+%===============================================================================
+\subsection{Attaching an iterator to a matrix or vector}
+%===============================================================================
+
+This new \verb'iterator' object can be {\em attached} to any matrix or vector,
+and used as a row, column, or entry iterator for any matrix, or as an iterator
+for any vector.  The \verb'iterator' can be used in any of these methods before
+it is freed, but with just one access method at a time.
+
+Once it is created, the \verb'iterator' must be attached to a matrix or
+vector.  This process also selects the method by which the \verb'iterator'
+will be used for a matrix.  Each of the four \verb'GxB_*Iterator_attach'
+methods returns a \verb'GrB_Info' result.  The descriptor \verb'desc' in the
+examples below is used only to control the number of threads used for the
+internal call to \verb'GrB_wait', if the matrix \verb'A' or vector \verb'v' has
+pending operations.
+
+    \begin{enumerate}
+    \item {\em row iterator}: 
+    {\footnotesize
+    \begin{verbatim}
+    GrB_Info info = GxB_rowIterator_attach (iterator, A, desc) ; \end{verbatim}}
+    \item {\em column iterator}: 
+    {\footnotesize
+    \begin{verbatim}
+    GrB_Info info = GxB_colIterator_attach (iterator, A, desc) ; \end{verbatim}}
+    \item {\em entry iterator}:
+    {\footnotesize
+    \begin{verbatim}
+    GrB_Info info = GxB_Matrix_Iterator_attach (iterator, A, desc) ; \end{verbatim}}
+    \item {\em vector iterator}:
+    {\footnotesize
+    \begin{verbatim}
+    GrB_Info info = GxB_Vector_Iterator_attach (iterator, v, desc) ; \end{verbatim}}
+    \end{enumerate}
+
+On input to \verb'GxB_*Iterator_attach', the \verb'iterator' must already
+exist, having been created by \verb'GxB_Iterator_new'.  If the \verb'iterator'
+is already attached to a matrix or vector, it is detached and then attached to
+the given matrix \verb'A' or vector \verb'v'.
+
+The return values for row/column methods are:
+
+    \begin{itemize}
+    \item
+    \verb'GrB_SUCCESS':         if the \verb'iterator' is successfully
+        attached to the matrix \verb'A'.
+    \item
+    \verb'GrB_NULL_POINTER':    if the \verb'iterator' or \verb'A' are NULL.
+    \item
+    \verb'GrB_INVALID_OBJECT':  if the matrix \verb'A' is invalid.
+    \item
+    \verb'GrB_NOT_IMPLEMENTED': if the matrix \verb'A' cannot be iterated
+        in the requested access method (row iterators require the matrix to
+        be held by-row, and column iterators require the matrix to be held
+        by-column).
+    \item
+    \verb'GrB_OUT_OF_MEMORY':   if the method runs out of memory.
+    \end{itemize}
+
+The other two methods (entry iterator for matrices, or the vector iterator)
+do not return \verb'GrB_NOT_IMPLEMENTED'.
+
+%===============================================================================
+\subsection{Seeking to an arbitrary position}
+%===============================================================================
+
+Attaching the \verb'iterator' to a matrix or vector does not define a specific
+position for the \verb'iterator'.  To use the \verb'iterator', a single call to
+the corresponding {\em seek} method is required.  These
+\verb'GxB*_Iterator_*seek*' methods may also be used later on to change the
+position of the iterator arbitrarily.
+
+    \begin{enumerate}
+    \item {\em row iterator}: 
+    {\footnotesize
+    \begin{verbatim}
+    GrB_Info info = GxB_rowIterator_seekRow (iterator, row) ;
+    GrB_Index kount = GxB_rowIterator_kount (iterator) ;
+    GrB_Info info = GxB_rowIterator_kseek (iterator, k) ; \end{verbatim}}
+
+        These methods move a row iterator to a specific row, defined in one of
+        two ways: (1) the row index itself (in range 0 to \verb'nrows'-1), or
+        (2) by specifying \verb'k', which moves the iterator to the \verb'k'th
+        {\em explicit} row (in the range 0 to \verb'kount'-1). For sparse,
+        bitmap, or full matrices, these two methods are identical.  For
+        hypersparse matrices, not all rows are present in the data structure;
+        these {\em implicit} rows are skipped and not included in the
+        \verb'kount'.  Implicit rows contain no entries.  The
+        \verb'GxB_rowIterator_kount' method returns the \verb'kount' of the
+        matrix, where \verb'kount' is equal to \verb'nrows' for sparse, bitmap,
+        and matrices, and \verb'kount' $\le$ \verb'nrows' for hypersparse
+        matrices.  All three methods listed above can be used for any row
+        iterator.
+
+        The \verb'GxB_rowIterator_*seek*' methods return \verb'GrB_SUCCESS' if
+        the iterator has been moved to a row that contains at least one entry,
+        \verb'GrB_NO_VALUE' if the row has no entries, or \verb'GxB_EXHAUSTED'
+        if the row is out of bounds (\verb'row' $\ge$ \verb'nrows' or
+        if \verb'k' $\ge$ \verb'kount').
+        None of these return conditions are
+        errors; they are all informational.
+
+        For sparse, bitmap, and full matrices, \verb'GxB_rowIterator_seekRow'
+        always moves to the given row.  For hypersparse matrices, if the
+        requested row is implicit, the iterator is moved to the first
+        explicit row following it.  If no such row exists, the iterator
+        is exhausted and \verb'GxB_EXHAUSTED' is returned.
+        The \verb'GxB_rowIterator_kseek' method always moves to the \verb'k'th
+        explicit row, for any matrix.
+        Use \verb'GxB_rowIterator_getRowIndex', described below, to determine
+        the row index of the current position.
+
+        Precondition: on input, the \verb'iterator' must have been successfully
+        attached to a matrix via a prior call to \verb'GxB_rowIterator_attach'.
+        Results are undefined if this precondition is not met.
+
+    \item {\em column iterator}: 
+    {\footnotesize
+    \begin{verbatim}
+    GrB_Info info = GxB_colIterator_seekCol (iterator, col) ;
+    GrB_Index kount = GxB_colIterator_kount (iterator) ;
+    GrB_Info info = GxB_colIterator_kseek (iterator, k) ; \end{verbatim}}
+
+        These methods move a column iterator to a specific column, defined in
+        one of two ways: (1) the column index itself (in range 0 to
+        \verb'ncols'-1), or (2) by specifying \verb'k', which moves the
+        iterator to the \verb'k'th {\em explicit} column (in the range 0 to
+        \verb'kount'-1). For sparse, bitmap, or full matrices, these two
+        methods are identical.  For hypersparse matrices, not all columns are
+        present in the data structure; these {\em implicit} columns are skipped
+        and not included in the \verb'kount'.  Implicit columns contain no
+        entries.  The \verb'GxB_colIterator_kount' method returns the
+        \verb'kount' of the matrix, where \verb'kount' is equal to \verb'ncols'
+        for sparse, bitmap, and matrices, and \verb'kount' $\le$ \verb'ncols'
+        for hypersparse matrices.  All three methods listed above can be used
+        for any column iterator.
+
+        The \verb'GxB_colIterator_*seek*' methods return \verb'GrB_SUCCESS' if
+        the iterator has been moved to a column that contains at least one
+        entry, \verb'GrB_NO_VALUE' if the column has no entries, or
+        \verb'GxB_EXHAUSTED' if the column is out of bounds (\verb'col' $\ge$
+        \verb'ncols' or \verb'k' $\ge$ \verb'kount').
+        None of these return conditions are
+        errors; they are all informational.
+
+        For sparse, bitmap, and full matrices, \verb'GxB_colIterator_seekCol'
+        always moves to the given column.  For hypersparse matrices, if the
+        requested column is implicit, the iterator is moved to the first
+        explicit column following it.  If no such column exists, the iterator
+        is exhausted and \verb'GxB_EXHAUSTED' is returned.
+        The \verb'GxB_colIterator_kseek' method always moves to the \verb'k'th
+        explicit column, for any matrix.
+        Use \verb'GxB_colIterator_getColIndex', described below, to determine
+        the column index of the current position.
+
+        Precondition: on input, the \verb'iterator' must have been successfully
+        attached to a matrix via a prior call to \verb'GxB_colIterator_attach'.
+        Results are undefined if this precondition is not met.
+
+    \item {\em entry iterator}:
+    {\footnotesize
+    \begin{verbatim}
+    GrB_Info info = GxB_Matrix_Iterator_seek (iterator, p) ;
+    GrB_Index pmax = GxB_Matrix_Iterator_getpmax (iterator) ;
+    GrB_Index p = GxB_Matrix_Iterator_getp (iterator); \end{verbatim}}
+
+        The \verb'GxB_Matrix_Iterator_seek' method moves the \verb'iterator' to
+        the given position \verb'p', which is in the range 0 to \verb'pmax'-1,
+        where the value of \verb'pmax' is obtained from
+        \verb'GxB_Matrix_Iterator_getpmax'.
+        For sparse, hypersparse, and full matrices, \verb'pmax' is the same as
+        \verb'nvals' returned by \verb'GrB_Matrix_nvals'.  For bitmap matrices,
+        \verb'pmax' is equal to \verb'nrows*ncols'.  If \verb'p' $\ge$
+        \verb'pmax', the iterator is exhausted and \verb'GxB_EXHAUSTED' is
+        returned.  Otherwise, \verb'GrB_SUCCESS' is returned.
+
+        All entries in the matrix are given an ordinal position, \verb'p'.
+        Seeking to position \verb'p' will either move the \verb'iterator' to
+        that particular position, or to the next higher position containing an
+        entry if there is entry at position \verb'p'.  The latter case only
+        occurs for bitmap matrices.
+        Use \verb'GxB_Matrix_Iterator_getp' to determine the current
+        position of the iterator.
+
+        Precondition: on input, the \verb'iterator' must have been successfully
+        attached to a matrix via a prior call to
+        \verb'GxB_Matrix_Iterator_attach'.  Results are undefined if this
+        precondition is not met.
+
+    \item {\em vector iterator}:
+    {\footnotesize
+    \begin{verbatim}
+    GrB_Info info = GxB_Vector_Iterator_seek (iterator, p) ;
+    GrB_Index pmax = GxB_Vector_Iterator_getpmax (iterator) ;
+    GrB_Index p = GxB_Vector_Iterator_getp (iterator); \end{verbatim}}
+
+        The \verb'GxB_Vector_Iterator_seek' method is identical to the
+        entry iterator of a matrix, but applied to a \verb'GrB_Vector' instead.
+
+        Precondition: on input, the \verb'iterator' must have been successfully
+        attached to a vector via a prior call to
+        \verb'GxB_Vector_Iterator_attach'.  Results are undefined if this
+        precondition is not met.
+
+    \end{enumerate}
+
+%===============================================================================
+\subsection{Advancing to the next position}
+%===============================================================================
+
+For best performance, the {\em seek} methods described above should be used
+with care, since some of them require $O(\log n)$ time.  The fastest method
+for changing the position of the iterator is the corresponding {\em next}
+method, described below for each iterator:
+
+    \begin{enumerate}
+    \item {\em row iterator}: 
+
+    {\footnotesize
+    \begin{verbatim}
+    GrB_Info info = GxB_rowIterator_nextRow (iterator) ; \end{verbatim}}
+
+    The row iterator is a 2-dimensional iterator, requiring an outer loop and
+    an inner loop.  The outer loop iterates over the rows of the matrix, using
+    \verb'GxB_rowIterator_nextRow' to move to the next row.  If the matrix is
+    hypersparse, the next row is always an explicit row; implicit rows are
+    skipped.  The return conditions are identical to
+    \verb'GxB_rowIterator_seekRow'.
+
+    Preconditions: on input, the row iterator must already be attached to a
+    matrix via a prior call to \verb'GxB_rowIterator_attach', and the
+    \verb'iterator' must be at a specific row, via a prior call to
+    \verb'GxB_rowIterator_*seek*' or \verb'GxB_rowIterator_nextRow'. 
+    Results are undefined if these conditions are not met.
+
+    {\footnotesize
+    \begin{verbatim}
+    GrB_Info info = GxB_rowIterator_nextCol (iterator) ; \end{verbatim}}
+
+    The row iterator is moved to the next entry in the current row.
+    The method returns \verb'GrB_NO_VALUE' if the end of the row is reached.
+    The iterator does not move to the next row in this case.
+    The method returns \verb'GrB_SUCCESS' if the iterator has been moved
+    to a specific entry in the current row.
+
+    Preconditions: the same as \verb'GxB_rowIterator_nextRow'.
+
+    \item {\em column iterator}: 
+
+    {\footnotesize
+    \begin{verbatim}
+    GrB_Info info = GxB_colIterator_nextCol (iterator) ; \end{verbatim}}
+
+    The column iterator is a 2-dimensional iterator, requiring an outer loop
+    and an inner loop.  The outer loop iterates over the columns of the matrix,
+    using \verb'GxB_colIterator_nextCol' to move to the next column.  If the
+    matrix is hypersparse, the next column is always an explicit column;
+    implicit columns are skipped.  The return conditions are identical to
+    \verb'GxB_colIterator_seekCol'.
+
+    Preconditions: on input, the column iterator must already be attached to a
+    matrix via a prior call to \verb'GxB_colIterator_attach', and the
+    \verb'iterator' must be at a specific column, via a prior call to
+    \verb'GxB_colIterator_*seek*' or \verb'GxB_colIterator_nextCol'.
+    Results are undefined if these conditions are not met.
+
+    {\footnotesize
+    \begin{verbatim}
+    GrB_Info info = GxB_colIterator_nextRow (iterator) ; \end{verbatim}}
+
+    The column iterator is moved to the next entry in the current column.
+    The method returns \verb'GrB_NO_VALUE' if the end of the column is reached.
+    The iterator does not move to the next column in this case.
+    The method returns \verb'GrB_SUCCESS' if the iterator has been moved
+    to a specific entry in the current column.
+
+    Preconditions: the same as \verb'GxB_colIterator_nextCol'.
+
+    \item {\em entry iterator}:
+    {\footnotesize
+    \begin{verbatim}
+    GrB_Info info = GxB_Matrix_Iterator_next (iterator) ; \end{verbatim}}
+
+    This method moves an iterator to the next entry of a matrix.
+    It returns \verb'GrB_SUCCESS' if the iterator is at an entry that
+    exists in the matrix, or \verb'GrB_EXHAUSTED' otherwise.
+
+    Preconditions: on input, the entry iterator must be already attached to a
+    matrix via \verb'GxB_Matrix_Iterator_attach', and the position of the
+    iterator must also have been defined by a prior call to
+    \verb'GxB_Matrix_Iterator_seek' or \verb'GxB_Matrix_Iterator_next'.
+    Results are undefined if these conditions are not met.
+
+    \item {\em vector iterator}:
+    {\footnotesize
+    \begin{verbatim}
+    GrB_Info info = GxB_Vector_Iterator_next (iterator) ; \end{verbatim}}
+
+    This method moves an iterator to the next entry of a vector.
+    It returns \verb'GrB_SUCCESS' if the iterator is at an entry that
+    exists in the vector, or \verb'GrB_EXHAUSTED' otherwise.
+
+    Preconditions: on input, the iterator must be already attached to a
+    vector via \verb'GxB_Vector_Iterator_attach', and the position of the
+    iterator must also have been defined by a prior call to
+    \verb'GxB_Vector_Iterator_seek' or \verb'GxB_Vector_Iterator_next'.
+    Results are undefined if these conditions are not met.
+
+    \end{enumerate}
+
+%===============================================================================
+\subsection{Accessing the indices of the current entry}
+%===============================================================================
+
+Once the iterator is attached to a matrix or vector, and is placed in position
+at an entry in the matrix or vector, the indices and value of this entry can be
+obtained.  The methods for accessing the value of the entry are described in
+the next sectio.  Accessing the indices is performed with four different sets
+of methods, depending on which access pattern is in use, described below:
+
+    \begin{enumerate}
+    \item {\em row iterator}: 
+    {\footnotesize
+    \begin{verbatim}
+    GrB_Index i = GxB_rowIterator_getRowIndex (iterator) ; \end{verbatim}}
+
+    The method returns \verb'nrows(A)' if the iterator is exhausted, or the
+    current row index \verb'i' otherwise.  There need not be any entry in the
+    current row.  Zero is returned if the iterator is attached to the matrix
+    but \verb'GxB_rowIterator_*seek*' has not been called, but this does not
+    mean the iterator is positioned at row zero.
+
+    Preconditions: on input, the iterator must be already successfully attached
+    to matrix as a row iterator via \verb'GxB_rowIterator_attach'.
+    Results are undefined if this condition is not met.
+
+    {\footnotesize
+    \begin{verbatim}
+    GrB_Index j = GxB_rowIterator_getColIndex (iterator) ; \end{verbatim}}
+
+    Preconditions: on input, the iterator must be already successfully attached
+    to matrix as a row iterator via \verb'GxB_rowIterator_attach', and in
+    addition, the row iterator must be positioned at a valid entry present in
+    the matrix.  That is, the last call to \verb'GxB_rowIterator_*seek*' or
+    \verb'GxB_rowIterator_*next*', must have returned \verb'GrB_SUCCESS'.
+    Results are undefined if these conditions are not met.
+
+    \item {\em column iterator}: 
+    {\footnotesize
+    \begin{verbatim}
+    GrB_Index j = GxB_colIterator_getColIndex (iterator) ; \end{verbatim}}
+
+    The method returns \verb'ncols(A)' if the iterator is exhausted, or the
+    current column index \verb'j' otherwise.  There need not be any entry in the
+    current column.  Zero is returned if the iterator is attached to the matrix
+    but \verb'GxB_colIterator_*seek*' has not been called, but this does not
+    mean the iterator is positioned at column zero.
+
+    Precondition: on input, the iterator must be already successfully attached
+    to matrix as a column iterator via \verb'GxB_colIterator_attach'.
+    Results are undefined if this condition is not met.
+
+    {\footnotesize
+    \begin{verbatim}
+    GrB_Index i = GxB_colIterator_getRowIndex (iterator) ; \end{verbatim}}
+
+    Preconditions: on input, the iterator must be already successfully attached
+    to matrix as a column iterator via \verb'GxB_colIterator_attach', and in
+    addition, the column iterator must be positioned at a valid entry present in
+    the matrix.  That is, the last call to \verb'GxB_colIterator_*seek*' or
+    \verb'GxB_colIterator_*next*', must have returned \verb'GrB_SUCCESS'.
+    Results are undefined if these conditions are not met.
+
+    \item {\em entry iterator}:
+    {\footnotesize
+    \begin{verbatim}
+    GrB_Index i, j ;
+    GxB_Matrix_Iterator_getIndex (iterator, &i, &j) ; \end{verbatim}}
+
+    Returns the row and column index of the current entry.
+
+    Preconditions: on input, the entry iterator must be already attached to a
+    matrix via \verb'GxB_Matrix_Iterator_attach', and the position of the
+    iterator must also have been defined by a prior call to
+    \verb'GxB_Matrix_Iterator_seek' or \verb'GxB_Matrix_Iterator_next', with a
+    return value of \verb'GrB_SUCCESS'.
+    Results are undefined if these conditions are not met.
+
+    \item {\em vector iterator}:
+    {\footnotesize
+    \begin{verbatim}
+    GrB_Index i = GxB_Vector_Iterator_getIndex (iterator) ; \end{verbatim}}
+
+    Returns the index of the current entry.
+
+    Preconditions: on input, the entry iterator must be already attached to a
+    matrix via \verb'GxB_Vector_Iterator_attach', and the position of the
+    iterator must also have been defined by a prior call to
+    \verb'GxB_Vector_Iterator_seek' or \verb'GxB_Vector_Iterator_next', with a
+    return value of \verb'GrB_SUCCESS'.
+    Results are undefined if these conditions are not met.
+
+    \end{enumerate}
+
+%===============================================================================
+\subsection{Accessing the value of the current entry}
+%===============================================================================
+
+So far, all methods that create or use an iterator have been split into four
+sets of methods, for the row, column, or entry iterators attached to a matrix,
+or for a vector iterator.  Accessing the value is different.  All four
+iterators use the same set of methods to access the value of their current
+entry.  These methods return the value of the current entry at the position
+determined by the iterator.  The return value can of course be typecasted
+using standard C syntax once the value is returned to the caller.
+
+Preconditions: on input, the prior call to \verb'GxB_*Iterator_*seek*', or
+\verb'GxB_*Iterator_*next*' must have returned \verb'GrB_SUCCESS', indicating
+that the iterator is at a valid current entry for either a matrix or vector.
+No typecasting is permitted, in the sense that the method name must match the
+type of the matrix or vector.
+Results are undefined if these conditions are not met.
+
+    {\footnotesize
+    \begin{verbatim}
+    // for built-in types:
+    bool       value = GxB_Iterator_get_BOOL (iterator) ;
+    int8_t     value = GxB_Iterator_get_INT8 (iterator) ;
+    int16_t    value = GxB_Iterator_get_INT16 (iterator) ;
+    int32_t    value = GxB_Iterator_get_INT32 (iterator) ;
+    int64_t    value = GxB_Iterator_get_INT64 (iterator) ;
+    uint8_t    value = GxB_Iterator_get_UINT8 (iterator) ;
+    uint16_t   value = GxB_Iterator_get_UINT16 (iterator) ;
+    uint32_t   value = GxB_Iterator_get_UINT32 (iterator) ;
+    uint64_t   value = GxB_Iterator_get_UINT64 (iterator) ;
+    float      value = GxB_Iterator_get_FP32 (iterator) ;
+    double     value = GxB_Iterator_get_FP64 (iterator) ;
+    GxB_FC32_t value = GxB_Iterator_get_FC32 (iterator) ;
+    GxB_FC64_t value = GxB_Iterator_get_FC64 (iterator) ;
+
+    // for user-defined types:
+    <type> value ;
+    GxB_Iterator_get_UDT (iterator, (void *) &value) ; \end{verbatim}}
+
+%===============================================================================
+\newpage
+\subsection{Example: row iterator for a matrix}
+%===============================================================================
+
+The following example uses a row iterator to access all of the entries
+in a matrix \verb'A' of type \verb'GrB_FP64'.  Note the inner and outer loops.
+The outer loop iterates over all rows of the matrix.  The inner loop iterates
+over all entries in the row \verb'i'.  This access pattern requires the matrix
+to be held by-row, but otherwise it works for any matrix.  If the matrix is
+held by-column, then use the column iterator methods instead.
+
+    {\footnotesize
+    \begin{verbatim}
+    // create an iterator
+    GxB_Iterator iterator ;
+    GxB_Iterator_new (&iterator) ;
+    // attach it to the matrix A, known to be type GrB_FP64
+    GrB_Info info = GxB_rowIterator_attach (iterator, A, NULL) ;
+    if (info < 0) { handle the failure ... }
+    // seek to A(0,:)
+    info = GxB_rowIterator_seekRow (iterator, 0) ;
+    while (info != GxB_EXHAUSTED)
+    {
+        // iterate over entries in A(i,:)
+        GrB_Index i = GxB_rowIterator_getRowIndex (iterator) ;
+        while (info == GrB_SUCCESS)
+        {
+            // get the entry A(i,j)
+            GrB_Index j = GxB_rowIterator_getColIndex (iterator) ;
+            double  aij = GxB_Iterator_get_FP64 (iterator) ;
+            // move to the next entry in A(i,:)
+            info = GxB_rowIterator_nextCol (iterator) ;
+        }
+        // move to the next row, A(i+1,:), or a subsequent one if i+1 is implicit
+        info = GxB_rowIterator_nextRow (iterator) ;
+    }
+    GrB_free (&iterator) ; \end{verbatim}}
+
+%===============================================================================
+\newpage
+\subsection{Example: column iterator for a matrix}
+%===============================================================================
+
+The column iterator is analgous to the row iterator.
+
+The following example uses a column iterator to access all of the entries in a
+matrix \verb'A' of type \verb'GrB_FP64'.  The outer loop iterates over all
+columns of the matrix.  The inner loop iterates over all entries in the column
+\verb'j'.  This access pattern requires the matrix to be held by-column, but
+otherwise it works for any matrix.  If the matrix is held by-column, then use
+the row iterator methods instead.
+
+    {\footnotesize
+    \begin{verbatim}
+    // create an iterator
+    GxB_Iterator iterator ;
+    GxB_Iterator_new (&iterator) ;
+    // attach it to the matrix A, known to be type GrB_FP64
+    GrB_Info info = GxB_colIterator_attach (iterator, A, NULL) ;
+    // seek to A(:,0)
+    info = GxB_colIterator_seekCol (iterator, 0) ;
+    while (info != GxB_EXHAUSTED)
+    {
+        // iterate over entries in A(:,j)
+        GrB_Index j = GxB_colIterator_getColIndex (iterator) ;
+        while (info == GrB_SUCCESS)
+        {
+            // get the entry A(i,j)
+            GrB_Index i = GxB_colIterator_getRowIndex (iterator) ;
+            double  aij = GxB_Iterator_get_FP64 (iterator) ;
+            // move to the next entry in A(:,j)
+            info = GxB_colIterator_nextRow (iterator) ;
+            OK (info) ;
+        }
+        // move to the next column, A(:,j+1), or a subsequent one if j+1 is implicit
+        info = GxB_colIterator_nextCol (iterator) ;
+    }
+    GrB_free (&iterator) ; \end{verbatim}}
+
+%===============================================================================
+\newpage
+\subsection{Example: entry iterator for a matrix}
+%===============================================================================
+
+The entry iterator allows for a simpler access pattern, with a single loop, but
+using a row or column iterator is faster.  The method works for any matrix.
+
+    {\footnotesize
+    \begin{verbatim}
+    // create an iterator
+    GxB_Iterator iterator ;
+    GxB_Iterator_new (&iterator) ;
+    // attach it to the matrix A, known to be type GrB_FP64
+    GrB_Info info = GxB_Matrix_Iterator_attach (iterator, A, NULL) ;
+    if (info < 0) { handle the failure ... }
+    // seek to the first entry
+    info = GxB_Matrix_Iterator_seek (iterator, 0) ;
+    while (info != GxB_EXHAUSTED)
+    {
+        // get the entry A(i,j)
+        GrB_Index i, j ;
+        GxB_Matrix_Iterator_getIndex (iterator, &i, &j) ;
+        double aij = GxB_Iterator_get_FP64 (iterator) ;
+        // move to the next entry in A
+        info = GxB_Matrix_Iterator_next (iterator) ;
+    }
+    GrB_free (&iterator) ; \end{verbatim}}
+
+%===============================================================================
+\subsection{Example: vector iterator}
+%===============================================================================
+
+A vector iterator is used much like an entry iterator for a matrix.
+
+    {\footnotesize
+    \begin{verbatim}
+    // create an iterator
+    GxB_Iterator iterator ;
+    GxB_Iterator_new (&iterator) ;
+    // attach it to the vector v, known to be type GrB_FP64
+    GrB_Info info = GxB_Vector_Iterator_attach (iterator, v, NULL) ;
+    if (info < 0) { handle the failure ... }
+    // seek to the first entry
+    info = GxB_Vector_Iterator_seek (iterator, 0) ;
+    while (info != GxB_EXHAUSTED)
+    {
+        // get the entry v(i)
+        GrB_Index i = GxB_Vector_Iterator_getIndex (iterator) ;
+        double vi = GxB_Iterator_get_FP64 (iterator) ;
+        // move to the next entry in v
+        info = GxB_Vector_Iterator_next (iterator) ;
+    }
+    GrB_free (&iterator) ; \end{verbatim}}
+
+%===============================================================================
+\newpage
+\subsection{Performance}
+%===============================================================================
+
+I have benchmarked the performance of the row and column iterators to compute
+\verb'y=0' and then \verb'y+=A*x' where \verb'y' is a dense vector and \verb'A'
+is a sparse matrix, using a single thread.  The row and column iterators are
+very fast, sometimes only 1\% slower than calling \verb'GrB_mxv' to compute the
+same thing (also assuming a single thread), for large problems.  For sparse
+matrices that average just 1 or 2 entries per row, the row iterator can be
+about 30\% slower than \verb'GrB_mxv', likely because of the slightly higher
+complexity of moving from one row to the next using these methods.
+
+It is possible to split up the problem for multiple user threads, each with its
+own iterator.  Given the low overhead of the row and column iterator for a
+single thread, this should be very fast.  Care must be taken to ensure a good
+load balance.  Simply spliting up the rows of a matrix and giving the same
+number of rows to each user thread can result in imbalanced work.  This is
+handled internally in \verb'GrB_*' methods, but enabling parallelism when using
+iterators is the responsibility of the user application.
+
+The entry iterators are easier to use but harder to implement.  The methods
+must internally fuse both inner and outer loops so that the user application can
+use a single loop.  As a result, the computation \verb'y+=A*x' can be up to
+4x slower (about 2x typical) than when using \verb'GrB_mxv' with a single
+thread.
+
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Iso-Valued Matrices and Vectors } %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{iso}
@@ -13411,6 +14300,299 @@ these cases.
 
 \newpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Performance} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\label{perf}
+
+Getting the best performance out of an algorithm that relies on GraphBLAS can
+depend on many factors.  This section describes some of the possible
+performance pitfalls you can hit when using SuiteSparse:GraphBLAS, and how to
+avoid them (or at least know when you've encountered them).
+
+%-------------------------------------------------------------------------------
+\subsection{The burble is your friend}
+%-------------------------------------------------------------------------------
+
+Turn on the burble with \verb'GxB_set (GxB_BURBLE, true)'.  You will get a
+single line of output from each (significant) call to GraphBLAS.
+The burble output can help you detect when you are likely using sub-optimal
+methods, as described in the next sections.
+
+%-------------------------------------------------------------------------------
+\subsection{Data types and typecasting}
+%-------------------------------------------------------------------------------
+
+Avoid mixing data types and relying on typecasting as much as possible.
+SuiteSparse:GraphBLAS has a set of highly-tuned kernels for each data type,
+and many operators and semirings, but there are too many combinations to
+generate ahead of time.  If typecasting is required, or if
+SuiteSparse:GraphBLAS does not have a kernel for the specific operator or
+semiring, the word \verb'generic' will appear in the burble.  The generic
+methods rely on function pointers for each operation on every scalar, so they
+are slow.  A future JIT will avoid this problem.
+
+The only time that typecasting is fast is when computing \verb'C=A' via
+\verb'GrB_assign' or \verb'GrB_apply', where the data types of \verb'C' and
+\verb'A' can differ.  In this case, one of $13^2 = 169$ kernels are called,
+each of which performs the specific typecasting requested, without relying on
+function pointers.
+
+%-------------------------------------------------------------------------------
+\subsection{Matrix data structures: sparse, hypersparse, bitmap, or full}
+%-------------------------------------------------------------------------------
+
+SuiteSparse:GraphBLAS tries to automatically determine the best data structure
+for your matrices and vectors, selecting between sparse, hypersparse, bitmap,
+and full formats.  By default, all 4 formats can be used.  A matrix typically
+starts out hypersparse when it is created by \verb'GrB_Matrix_new', and then
+changes during its lifetime, possibly taking on all four different formats
+at different times.  This can be modified via \verb'GxB_set'.  For example,
+this line of code:
+
+    {\scriptsize
+    \begin{verbatim}
+    GxB_set (A, GxB_SPARSITY_CONTROL, GxB_SPARSE + GxB_BITMAP) ; \end{verbatim}}
+
+\noindent
+tells SuiteSparse that the matrix \verb'A' can be held in either sparse or
+bitmap format (at its discretion), but not hypersparse or full.  The bitmap
+format will be used if the matrix has enough entries, or sparse otherwise.
+Sometimes this selection is best controlled by the user algorithm, so a single
+format can be requested:
+
+    {\scriptsize
+    \begin{verbatim}
+    GxB_set (A, GxB_SPARSITY_CONTROL, GxB_SPARSE) ; \end{verbatim}}
+
+This ensures that SuiteSparse will primarily use the sparse format.  This is
+still just a hint, however.  The data structure is opaque and SuiteSparse is
+free to choose otherwise.  In particular, if you insist on using only the
+\verb'GxB_FULL' format, then that format is used when all entries are present.
+However, if the matrix is not actually full with all entries present, then the
+bitmap format is used instead.  The full format does not preserve the sparsity
+structure in this case.  Any GraphBLAS library must preserve the proper
+structure, per the C Specification.  This is critical in a graph algorithm,
+since an edge $(i,j)$ of weight zero, say, is not the same as no edge $(i,j)$
+at all.
+
+%-------------------------------------------------------------------------------
+\subsection{Matrix formats: by row or by column, or using the transpose of
+a matrix}
+%-------------------------------------------------------------------------------
+
+By default, SuiteSparse uses a simple rule:
+all matrices are held by row, unless the consist of a single
+column, in which case they are held by column.  All vectors are treated as if
+they are $n$-by-1 matrices with a single column.  Changing formats from
+row-oriented to column-oriented can have significant performance implications,
+so SuiteSparse never tries to outguess the application.  It just uses this
+simple rule.
+
+However, there are cases where changing the format can greatly improve
+performance.  There are two ways to handle this, which in the end are
+equivalent in the SuiteSparse internals.  You can change the format (row to
+column oriented, or visa versa), or work with the explicit transpose of a
+matrix in the same storage orientation.
+
+There are cases where SuiteSparse must explicitly transpose an input matrix, or
+the output matrix, in order to perform a computation.  For example, if all
+matrices are held in row-oriented fashion, SuiteSparse does not have a method
+for computing \verb"C=A'*B", where \verb'A' is transposed.  Thus, SuiteSparse
+either computes a temporary transpose of its input matrix \verb'AT=A' and then
+\verb'C=AT*B', or it swaps the computations, performing \verb"C=(B'*A)'", which
+requires an explicit transpose of \verb'BT=B', and a transpose of the final
+result to obtain \verb'C'.
+
+These temporary transposes are costly to compute, taking time and memory.  They
+are not kept, but are discarded when the method returns to the user
+application.  If you see the term \verb'transpose' in the burble output, and if
+you need to perform this computation many times, try constructing your own
+explicit transpose, say \verb"AT=A'", via \verb'GrB_transpose', or create a
+copy of \verb'A' but held in another orientation via \verb'GxB_set'.  For
+example, assuming the default matrix format is by-row, and that \verb'A' is
+\verb'm'-by-\verb'n' of type \verb'GrB_FP32':
+
+    {\scriptsize
+    \begin{verbatim}
+    // method 1: AT = A'
+    GrB_Matrix_new (AT, GrB_FP32, n, m) ;
+    GrB_transpose (AT, NULL, NULL, A, NULL) ;
+
+    // method 2: A2 = A but held by column instead of by row
+    // note: doing the set before the assign is faster than the reverse
+    GrB_Matrix_new (A2, GrB_FP32, m, n) ;
+    GxB_set (A2, GxB_FORMAT, GxB_BY_COL) ;
+    GrB_assign (A2, NULL, NULL, A, GrB_ALL, m, GrB_ALL, n, NULL) ; \end{verbatim}}
+
+Internally, the data structure for \verb'AT' and \verb'A2' are nearly identical
+(that is, the tranpose of \verb'A' held in row format is the same as \verb'A'
+held in column format).  Using either of them in subsequent calls to GraphBLAS
+will allow SuiteSparse to avoid computing an explicit transpose.  The two
+matrices \verb'AT' and \verb'A2' do differ in one very significant way:  their
+dimensions are different, and they behave differement mathematically.
+Computing \verb"C=A'*B" using these matrices would differ:
+
+    {\scriptsize
+    \begin{verbatim}
+    // method 1: C=A'*B using AT
+    GrB_mxm (C, NULL, NULL, semiring, AT, B, NULL) ;
+
+    // method 2: C=A'*B using A2
+    GrB_mxm (C, NULL, NULL, semiring, A2, B, GrB_DESC_T0) ; \end{verbatim}}
+
+The first method computes \verb'C=AT*B'.  The second method computes
+\verb"C=A2'*B", but the result of both computations is the same, and internally
+the same kernels will be used.
+
+%-------------------------------------------------------------------------------
+\subsection{Push/pull optimization}
+%-------------------------------------------------------------------------------
+
+Closely related to the discussion above on when to use a matrix or its
+transpose is the exploitation of ``push/pull'' direction optimization.  In
+linear algebraic terms, this is simply deciding whether to multiply by the
+matrix or its transpose.  Examples can be see in the BFS and
+Betweeness-Centrality methods of LAGraph.  Here is the BFS kernel:
+
+    {\scriptsize
+    \begin{verbatim}
+    int sparsity = do_push ? GxB_SPARSE : GxB_BITMAP ;
+    GxB_set (q, GxB_SPARSITY_CONTROL, sparsity) ;
+    if (do_push)
+    {
+        // q'{!pi} = q'*A
+        GrB_vxm (q, pi, NULL, semiring, q, A, GrB_DESC_RSC) ;
+    }
+    else
+    {
+        // q{!pi} = AT*q
+        GrB_mxv (q, pi, NULL, semiring, AT, q, GrB_DESC_RSC) ;
+    }\end{verbatim}}
+
+The call to \verb'GxB_set' is optional, since SuiteSparse will likely already
+determine that a bitmap format will work best when the frontier \verb'q' has
+many entries, which is also when the pull step is fastest.  The push step
+relies on a sparse vector times sparse matrix method originally due to
+Gustavson.  The output is computed as a set union of all rows \verb'A(i,:)'
+where \verb'q(i)' is present on input.  This set union is very fast when
+\verb'q' is very sparse.  The pull step relies on a sequence of dot product
+computations, one per possible entry in the output \verb'q', and it uses the
+matrix \verb"AT" which is a row-oriented copy of the explicit transpose of the
+adjacency matrix \verb'A'.
+
+Mathematically, the results of the two methods are identical, but internally,
+the data format of the input matrices is very different (using \verb'A' held
+by row, or \verb'AT' held by row which is the same as a copy of \verb'A' that
+is held by column), and the algorithms used are very different.
+
+%-------------------------------------------------------------------------------
+\subsection{Computing with full matrices and vectors}
+%-------------------------------------------------------------------------------
+
+Sometimes the best approach to getting the highest performance is to use dense
+vectors, and occassionaly dense matrices are tall-and-thin or short-and-fat.
+Packages such as Julia, Octave, or MATLAB, when dealing with the conventional
+plus-times semirings, assume that multiplying a sparse matrix \verb'A' times a
+dense vector \verb'x', \verb'y=A*x', will result in a dense vector \verb'y'.
+This is not always the case, however. GraphBLAS must always return a result
+that respects the sparsity structure of the output matrix or vector.  If the
+$i$th row of \verb'A' has no entries then \verb'y(i)' must not appear as an
+entry in the vector \verb'y', so it cannot be held as a full vector.  As a
+result, the following computation can be slower than it could be:
+
+    {\scriptsize
+    \begin{verbatim}
+    GrB_mxv (y, NULL, NULL, semiring, A, x, NULL) ; \end{verbatim}}
+
+SuiteSparse must do extra work to compute the sparsity of this vector \verb'y',
+but if this is not needed, and \verb'y' can be padded with zeros (or 
+the identity value of the monoid, to be precise), a faster method can be used,
+by relying on the accumulator.  Instead of computing \verb'y=A*x', set all
+entries of \verb'y' to zero first, and then compute \verb'y+=A*x' where the
+accumulator operator and type matches the monoid of the semiring.  SuiteSparse
+has special kernels for this case; you can see them in the burble as
+\verb'F+=S*F' for example.
+
+    {\scriptsize
+    \begin{verbatim}
+    // y = 0
+    GrB_assign (y, NULL, NULL, 0, GrB_ALL, n, NULL) ;
+    // y += A*x
+    GrB_mxv (y, NULL, GrB_PLUS_FP32, GrB_PLUS_TIMES_SEMIRING_FP32, A, x, NULL) ; \end{verbatim}}
+
+You can see this computation in the LAGraph PageRank method, where all
+entries of \verb'r' are set to the \verb'teleport' scalar first.
+
+    {\scriptsize
+    \begin{verbatim}
+    for (iters = 0 ; iters < itermax && rdiff > tol ; iters++)
+    {
+        // swap t and r ; now t is the old score
+        GrB_Vector temp = t ; t = r ; r = temp ;
+        // w = t ./ d
+        GrB_eWiseMult (w, NULL, NULL, GrB_DIV_FP32, t, d, NULL) ;
+        // r = teleport
+        GrB_assign (r, NULL, NULL, teleport, GrB_ALL, n, NULL) ;
+        // r += A'*w
+        GrB_mxv (r, NULL, GrB_PLUS_FP32, LAGraph_plus_second_fp32, AT, w, NULL) ;
+        // t -= r
+        GrB_assign (t, NULL, GrB_MINUS_FP32, r, GrB_ALL, n, NULL) ;
+        // t = abs (t)
+        GrB_apply (t, NULL, NULL, GrB_ABS_FP32, t, NULL) ;
+        // rdiff = sum (t)
+        GrB_reduce (&rdiff, NULL, GrB_PLUS_MONOID_FP32, t, NULL) ;
+    } \end{verbatim}}
+
+SuiteSparse exploits the iso-valued property of the scalar-to-vector assignment
+of \verb'y=0', or \verb'r=teleport', and performs these assignments in O(1)
+time and space.  Because the \verb'r' vector start out as full on input to
+\verb'GrB_mxv', and because there is an accumulatr with no mask, no entries in
+the input/output vector \verb'r' will be deleted, even if \verb'A' has empty
+rows.  The call to \verb'GrB_mxv' exploits this, and is able to use a fast
+kernel for this computation.  SuiteSparse does not need to compute the sparsity
+pattern of the vector \verb'r'.
+
+%-------------------------------------------------------------------------------
+\subsection{Iso-valued matrices and vectors}
+%-------------------------------------------------------------------------------
+
+Using iso-valued matrices and vectors is always faster than using matrices and
+vectors whose entries can have different values.  Iso-valued matrices are very
+important in graph algorithms.  For example, an unweighted graph is best
+represented as an iso-valued sparse matrix, and unweighted graphs are very
+common.  The burble output, or the \verb'GxB_print', \verb'GxB_Matrix_iso', or
+\verb'GxB_Vector_iso' can all be used to report whether or not your matrix or
+vector is iso-valued.
+
+Sometimes a matrix or vector may have values that are all the same, but
+SuiteSparse hasn't detected this.  If this occurs, you can force a matrix
+or vector to be iso-valued by assigning a single scalar to all its entries.
+
+    {\scriptsize
+    \begin{verbatim}
+    // C<s(C)> = 3.14159
+    GrB_assign (C, C, NULL, 3.14159, GrB_ALL, m, GrB_ALL, n, GrB_DESC_S) ; \end{verbatim}}
+
+The matrix \verb'C' is used as its own mask.  The descriptor is essential here,
+telling the mask to be used in a structural sense, without regard to the values
+of the entries in the mask.  This assignment sets all entries that already
+exist in \verb'C' to be equal to a single value, 3.14159. The sparsity
+structure of \verb'C' does not change.  Of course, any scalar can be used; the
+value 1 is common for unweighted graphs.  SuiteSparse:GraphBLAS performs the
+above assignment in O(1) time and space, independent of the dimension of
+\verb'C' or the number of entries in contains.
+
+%-------------------------------------------------------------------------------
+\subsection{User-defined types and operators}
+%-------------------------------------------------------------------------------
+
+These are currently slow.  Once SuiteSparse:GraphBLAS employs a JIT
+accelerator, these data types and operators will be just as fast as built-in
+types and operators.  This work is in progress for the GPU, in CUDA, in
+collaboration with Joe Eaton and Corey Nolet.
+
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Examples} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{examples}
@@ -13917,32 +15099,32 @@ other threading library.  In all cases, GraphBLAS will be thread safe.
 
 GraphBLAS makes extensive use of features in the ANSI C11 standard, and thus a
 C compiler supporting this version of the C standard is required to use
-all features of GraphBLAS.  On the Mac
-(OS X), \verb'clang' 8.0.0 in \verb'Xcode' version 8.2.1 is sufficient,
-although earlier versions of \verb'Xcode' may work as well.  For the GNU
-\verb'gcc' compiler, version 4.9 or later is required.  For the Intel
-\verb'icc' compiler, version 18.0 or later is required.  Version 2.8.12 or
-later of \verb'cmake' is required; version 3.0.0 is preferred.
+all features of GraphBLAS. 
 
-If you are using a pre-C11 ANSI C compiler, or Microsoft Visual Studio,
+{\bf Any version of the Intel \verb'icx' compiler is highly recommended.} In
+most cases, the Intel \verb'icx' and the Intel OpenMP library (\verb'libiomp')
+result in the best performance.  The \verb'gcc' and the GNU OpenMP library
+(\verb'libgomp') generally gives good performance: typically on par with icx
+but in a few special cases significantly slower.  The Intel \verb'icc' compiler
+is not recommended; it results in poor performance for
+\verb'#pragma omp atomic'.
+
+On the Mac (OS X), \verb'clang' 8.0.0 in \verb'Xcode' version 8.2.1 is
+sufficient, although earlier versions of \verb'Xcode' may work as well.  For
+the GNU \verb'gcc' compiler, version 4.9 or later is required, but best
+performance is obtained in 9.3 or later.  Version 3.13 or later of \verb'cmake'
+is required; version 3.17 is preferred.
+
+If you are using a pre-C11 ANSI C compiler, such as Microsoft Visual Studio,
 then the \verb'_Generic' keyword is not available.  SuiteSparse:GraphBLAS
 will still compile, but you will not have access to polymorphic functions
 such as \verb'GrB_assign'.  You will need to use the non-polymorphic functions
 instead.
 
-\begin{note}
-{\bf NOTE:} icc is generally an excellent compiler, but it will generate slower
-code than gcc for SuiteSparse:GraphBLAS.  This is because of how the two
-compilers treat \verb'#pragma omp atomic'. The use of gcc is strongly
-recommended.  Atomics are far slower in icc as compared to gcc.
-Intel has a new \verb'icx' compiler that has much better performance for
-atomics, but I have not tested it with GraphBLAS.
-\end{note}
-
-To compile SuiteSparse:GraphBLAS, simply type \verb'make'
-in the main GraphBLAS folder, which compiles the library.  This will be a
-single-threaded compilation, which will take a long time.  To compile in 
-parallel (40 threads for example), use:
+To compile SuiteSparse:GraphBLAS, simply type \verb'make' in the main GraphBLAS
+folder, which compiles the library with your default system compiler.  This
+compile GraphBLAS using 8 threads, which will take a long time.  To compile with
+more threads (40, for this example), use:
 
     {\small
     \begin{verbatim}
@@ -13952,7 +15134,33 @@ To use a non-default compiler with 4 threads:
 
     {\small
     \begin{verbatim}
-    make CC=icc CXX=icc JOBS=4 \end{verbatim} }
+    make CC=icx CXX=icpx JOBS=4 \end{verbatim} }
+
+GraphBLAS v6.1.3 and later use the \verb'cpu_features' package by Google to
+determine if the target architecture supports AVX2 and/or AVX512F (on Intel
+x86\_64 architectures only).  In case you have build issues with this package,
+you can compile without it (and then AVX2 and AVX512F acceleration will not
+be used):
+
+    {\small
+    \begin{verbatim}
+    make CMAKE_OPTIONS='-DGBNCPUFEAT=1'  \end{verbatim} }
+
+Without \verb'cpu_features', it is still possible to enable AVX2 and AVX512F.
+Rather than relying on run-time tests, you can use these flags to enable
+both AVX2 and AVX512F, without relying on \verb'cpu_features':
+
+    {\small
+    \begin{verbatim}
+    make CMAKE_OPTIONS='-DGBNCPUFEAT=1 -DGBAVX2=1 -DGBAVX512F=1' \end{verbatim} }
+
+To use multiple options, separate them by a space.  For example, to build
+just the library but not \verb'cpu_features', and to enable
+AVX2 but not AVX512F, and use 40 threads to compile:
+
+    {\small
+    \begin{verbatim}
+    make CMAKE_OPTIONS='-DGBNCPUFEAT=1 -DGBAVX2=1' JOBS=40 \end{verbatim} }
 
 After compiling the library, you can compile the demos with
 \verb'make all' and then \verb'make run'.
@@ -13964,18 +15172,18 @@ these options.  Go into the \verb'build' directory and type one of these:
     {\small
     \begin{verbatim}
     CC=gcc cmake ..
-    CC=gcc-6 cmake ..
+    CC=gcc-11 cmake ..
     CC=xlc cmake ..
-    CC=icc cmake ..  \end{verbatim} }
+    CC=icx cmake ..  \end{verbatim} }
 
 You can also do the following in the top-level GraphBLAS folder instead:
 
     {\small
     \begin{verbatim}
     CC=gcc make
-    CC=gcc-6 cmake
-    CC=xlc cmake
-    CC=icc cmake \end{verbatim} }
+    CC=gcc-11 make
+    CC=xlc make
+    CC=icx make \end{verbatim} }
 
 For faster compilation, you can specify a parallel make.  For example,
 to use 32 parallel jobs and the \verb'gcc' compiler, do the following:
@@ -13998,9 +15206,10 @@ in the top-level \verb'GraphBLAS' folder.  OpenMP will be found automatically:
 
     {\small
     \begin{verbatim}
-    make CC=icc CXX=icc \end{verbatim} }
+    make CC=icc CXX=icpc \end{verbatim} }
 
-The following instructions work on MacOS Big Sur (v11.3), using
+The following instructions work on MacOS Big Sur (v11.3)
+and MacOS Monterey (12.1), using
 cmake 3.13 or later:
 
 First install Xcode (see \url{https://developer.apple.com/xcode},
@@ -14013,15 +15222,16 @@ and then install the command line tools for Xcode:
 
 Next, install brew, at \url{https://brew.sh}.
 
-If not used for the MATLAB mexFunction interface,
-Clang now works with \verb'libomp' and the \verb'GraphBLAS/CMakeLists.txt'.
-To use the MATLAB mexFunction, however, you must use \verb'gcc-11'.
+If not used for the MATLAB mexFunction interface, a recent update of the Apple
+Clang compiler now works with \verb'libomp' and the
+\verb'GraphBLAS/CMakeLists.txt'.  To use the MATLAB mexFunction, however, you
+must use \verb'gcc' (\verb'gcc-11' is recommended).  Using Clang will result in
+a segfault when you attempt to use the \verb'@GrB' interface in MATLAB.
 
 With MacOS Big Sur install \verb'gcc-11', \verb'cmake', and OpenMP, and then
-compile GraphBLAS.  cmake 3.13 or later is required.
-For the MATLAB mexFunctions, you must use \verb'gcc-11'; the
-\verb'libomp' from \verb'brew' will allow you to compile the mexFunctions
-but they will not work properly.
+compile GraphBLAS.  cmake 3.13 or later is required.  For the MATLAB
+mexFunctions, you must use \verb'gcc-11'; the \verb'libomp' from \verb'brew'
+will allow you to compile the mexFunctions but they will not work properly.
 
     {\small
     \begin{verbatim}
@@ -14048,17 +15258,15 @@ must become \verb"MACOSX_DEPLOYMENT_TARGET=11.3".  Otherwise, MATLAB
 complains that the \verb'libgraphblas_renamed.dylib' was built for 11.3 but
 linked for 10.14.
 
-Next, type the following in the MATLAB Command
-Window:
+Next, type the following in the MATLAB Command Window:
 
     {\small
     \begin{verbatim}
     cd GraphBLAS/GraphBLAS/@GrB/private
     gbmake \end{verbatim} }
 
-Then add the paths to your \verb'startup.m' file
-(usually in \verb'~/Documents/MATLAB/startup.m').
-For example, my path is:
+Then add the paths to your \verb'startup.m' file (usually in
+\verb'~/Documents/MATLAB/startup.m').  For example, my path is:
 
     {\small
     \begin{verbatim}
@@ -14071,6 +15279,23 @@ Finally, you can run the tests to see if your installation works:
     \begin{verbatim}
     cd ../../test
     gbtest \end{verbatim} }
+
+%----------------------------------------
+\subsection{On the ARM64 architecture}
+%----------------------------------------
+
+You may encounter a compiler error on the ARM64 architecture when using the
+\verb'gcc' compiler, versions 6.x and earlier.  This error was encountered on
+ARM64 Linux with gcc 6.x:
+
+\begin{verbatim}
+`In function GrB_Matrix_apply_BinaryOp1st_Scalar.part.1':
+GrB_Matrix_apply.c:(.text+0x210): relocation truncated to
+fit: R_AARCH64_CALL26 against `.text.unlikely'
+\end{verbatim}
+
+For the ARM64, this error is silenced with gcc v7.x and later, at least on
+Linux.
 
 %----------------------------------------
 \subsection{On Microsoft Windows}
@@ -14090,9 +15315,11 @@ will need to use \verb'GrB_Matrix_free' instead of just \verb'GrB_free'.
 types are limited to 128 bytes in size.  This can be changed by editing
 \verb'GB_VLA_MAXSIZE' in \verb'Source/GB_compiler.h', and recompiling
 SuiteSparse:GraphBLAS.
+
+\item AVX acceleration is not enabled.
 \end{itemize}
 
-If you use a recent \verb'gcc' or \verb'icc' compiler on Windows other than the
+If you use a recent \verb'gcc' or \verb'icx' compiler on Windows other than the
 Microsoft Compiler (\verb'cl'), these limitations can be avoided.
 
 The following instructions apply to Windows 10, CMake 3.16, and
@@ -14175,10 +15402,65 @@ Visual Studio 2019, but may work for earlier versions.
 %----------------------------------------
 \label{gbmake}
 
+I'm working closely with John Eaton (the primary developer of Octave) to
+enable SuiteSparse:GraphBLAS to work with Octave, and thus Octave 7 is
+required.  The latest version of Octave is 6.4.0, so you need to download and
+install the development version of Octave 7 to use SuiteSparse:GraphBLAS within
+Octave.
+
 First, compile the SuiteSparse:GraphBLAS dynamic library
 (\verb'libgraphblas.so' for Linux, \verb'libgraphblas.dylib' for Mac,
 or \verb'graphblas.dll' for Windows), as described in the prior two
-subsections.  Next:
+subsections.
+
+On the Mac, SuiteSparse:GraphBLAS v6.1.4 and Octave 7 will work 
+Apple Silicon (thanks to G{\'{a}}bor Sz{\'{a}}rnyas).  Here are his instructions
+(replicated from
+\url{https://github.com/DrTimothyAldenDavis/GraphBLAS/issues/90}); do
+these in your Mac Terminal:
+
+\begin{itemize}
+\item Building Octave.  Grab the brew formula:
+
+    {\scriptsize
+    \begin{verbatim}
+    wget https://raw.githubusercontent.com/Homebrew/homebrew-core/master/Formula/octave.rb
+    \end{verbatim} }
+
+\item Edit \verb'octave.rb'.
+
+   Add \verb`"disable-docs"` to \verb`args` (or ensure that you have a working
+   texinfo installation).
+   Edit Mercurial (\verb`hg`) repository: switch from the \verb`default` branch
+   (containing code for Octave v8.0) to \verb`stable` (v7.0).  Then do:
+
+    {\small
+    \begin{verbatim}
+    brew install --head ./octave.rb
+    \end{verbatim} }
+
+\item Building the tests (\verb'gbmake').
+    Grab the OpenMP binaries as described at
+    \url{https://mac.r-project.org/openmp/}
+
+    {\scriptsize
+    \begin{verbatim}
+    curl -O https://mac.r-project.org/openmp/openmp-13.0.0-darwin21-Release.tar.gz
+    sudo tar fvxz openmp-13.0.0-darwin21-Release.tar.gz -C /
+    \end{verbatim} }
+
+\item Do the following to edit \verb'gbmake.m':
+
+    {\scriptsize
+    \begin{verbatim}
+    sed -i.bkp 's/-fopenmp/-Xclang -fopenmp/g' @GrB/private/gbmake.m
+    \end{verbatim} }
+
+\end{itemize}
+
+Once Octave 7 and SuiteSparse:GraphBLAS are compiled and installed,
+and \verb'gbmake.m' is modified if needed for Octave 7 on the Mac,
+(or if using MATLAB) continue with the following instructions:
 
 \begin{enumerate}
 \item In the Octave/MATLAB command window:
@@ -14363,14 +15645,13 @@ The \verb'./demo' command is a script that runs the demos with various input
 matrices in the \verb'Demo/Matrix' folder.  The output of the demos will be
 compared with expected output files in \verb'Demo/Output'.
 
-\begin{note}
+NOTE:
 DO NOT publish benchmarks of these demos, and do not link against the
 demo library in any user application.  These codes are sometimes slow,
 and are meant as simple illustrations only, not for performance.  The fastest
 methods are in LAGraph, not in SuiteSparse/GraphBLAS/Demo.  Benchmark LAGraph
 instead.  Eventually, all GraphBLAS/Demos methods will be removed, and LAGraph
 will serve all uses: for illustration, benchmarking, and production uses.
-\end{note}
 
 %----------------------------------------
 \subsection{Installing SuiteSparse:GraphBLAS}
@@ -14402,12 +15683,12 @@ include file as \verb'/usr/local/include/GraphBLAS.h'.  This command fails:
 Revising my \verb'LD_LIBRARY_PATH' to put \verb'/usr/local/lib' first in the
 library directory order didn't help.  If you encounter this problem, try one of
 the following options (all four work for me, and link against the proper
-version (\verb'/usr/local/lib/libgraphblas.so.5.2.0' for example):
+version (\verb'/usr/local/lib/libgraphblas.so.6.1.4' for example):
 
     {\small
     \begin{verbatim}
-    gcc prog.c -l:libgraphblas.so.5
-    gcc prog.c -l:libgraphblas.so.5.2.0
+    gcc prog.c -l:libgraphblas.so.6
+    gcc prog.c -l:libgraphblas.so.6.1.4
     gcc prog.c /usr/local/lib/libgraphblas.so
     gcc prog.c -Wl,-v -L/usr/local/lib -lgraphblas \end{verbatim} }
 
@@ -14424,7 +15705,7 @@ later:
     } \end{verbatim} }
 
 Compile the program above, then use this command to ensure
-\verb'libgraphblas.so.5' appears:
+\verb'libgraphblas.so.6' appears:
 
     {\small
     \begin{verbatim}
@@ -14484,6 +15765,9 @@ collaboration and for the support of Intel.
 I would like to thank Joe Eaton and Corey Nolet for their collaboration on the
 CUDA kernels (still in progress), and for the support of NVIDIA.
 
+I would like to thank John Eaton for his collaboration on the integration
+with Octave 7.
+
 I would like to thank Michel Pelletier for his collaboration and work on the
 pygraphblas interface, and Jim Kitchen and Erik Welch for their work on
 Anaconda's python interface.
@@ -14499,6 +15783,9 @@ I would like to thank S\'ebastien Villemot (Debian Developer,
 \url{http://sebastien.villemot.name}) for helping me with various build issues
 and other code issues with GraphBLAS (and all of SuiteSparse) for its packaging
 in Debian Linux.
+
+I would like to thank G{\'{a}}bor Sz{\'{a}}rnyas for porting the \verb'@GrB'
+interface to Octave 7 on Apple Silicon.
 
 I would like to thank Roi Lipman, Redis (\url{https://redislabs.com}), for
 our many discussions on GraphBLAS and for enabling its use in RedisGraph

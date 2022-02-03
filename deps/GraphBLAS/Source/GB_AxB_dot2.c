@@ -2,7 +2,7 @@
 // GB_AxB_dot2: compute C<#M>=A'*B, C is bitmap, or C<#M>=A*B (C bitmap/full)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------

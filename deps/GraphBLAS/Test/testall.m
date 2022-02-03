@@ -11,7 +11,7 @@ function testall (threads,longtests)
 % the # of threads to use and the 2nd being the chunk size.  The default is
 % {[4 1]} if empty or not present.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 GrB.init
@@ -75,14 +75,19 @@ GB_mex_hack (hack) ;
 % tests with high rates (over 100/sec)
 %----------------------------------------
 
-logstat ('test239',t) ; % test GxB_eWiseUnion
-logstat ('test74' ,t) ; % test GrB_mxm on all semirings
+logstat ('test243',t) ; % test GxB_Vector_Iterator
+logstat ('test242',t) ; % test GxB_Iterator for matrices
+logstat ('test241',t) ; % test GrB_mxm, triggering the swap_rule
+logstat ('testca',t) ;  % test complex mxm, mxv, and vxm
+logstat ('test240',t) ; % test dot4 and saxpy5
 
 % disable the Werk stack for these tests:
 hack (2) = 1 ;
 GB_mex_hack (hack) ;
 
-logstat ('test238',t) ; % test GrB_mxm (dot4)
+logstat ('test240',t) ; % test dot4 and saxpy5 again
+logstat ('testca',t) ;  % test complex mxm, mxv, and vxm
+logstat ('test238',t) ; % test GrB_mxm (dot4 and dot2)
 logstat ('test237',t) ; % test GrB_mxm (saxpy4)
 logstat ('test236',t) ; % test GxB_Matrix_sort and GxB_Vector_sort
 logstat ('test192',t) ; % test C<C,struct>=scalar
@@ -105,6 +110,8 @@ logstat ('test151b',t); % test bshift operator
 hack (2) = 0 ;
 GB_mex_hack (hack) ;
 
+logstat ('test239',t) ; % test GxB_eWiseUnion
+logstat ('test74' ,t) ; % test GrB_mxm on all semirings
 logstat ('test235',t) ; % test GxB_eWiseUnion and GrB_eWiseAdd
 logstat ('test234',t) ; % test GxB_eWiseUnion
 logstat ('test233',t) ; % test bitmap saxpy C=A*B with A sparse and B bitmap
@@ -208,8 +215,6 @@ logstat ('test29' ,t) ; % reduce with zombies
 % tests with decent rates (10 to 20/sec)
 %----------------------------------------
 
-logstat ('test03' ,t) ; % random matrix tests
-logstat ('test03' ,s) ; % random matrix tests
 logstat ('test128',t) ; % eWiseMult, eWiseAdd, eWiseUnion special cases
 logstat ('test125',t) ; % test GrB_mxm: row and column scaling
 logstat ('test82' ,t) ; % GrB_extract with index range (hypersparse)
@@ -224,7 +229,6 @@ logstat ('test130',t) ; % GrB_apply, hypersparse cases
 logstat ('test19b',t) ; % GrB_assign, many pending operators
 logstat ('test19b',s) ; % GrB_assign, many pending operators
 logstat ('test133',t) ; % test mask operations (GB_masker)
-logstat ('test72' ,t) ; % several special cases
 logstat ('test80' ,t) ; % test GrB_mxm on all semirings (different matrix)
 logstat ('test151',t) ; % test bitwise operators
 logstat ('test124',t) ; % GrB_extract, case 6
@@ -286,6 +290,8 @@ if (longtests)
 % test script              % time % description
 % ------------------------ % ---- % ------------------------------
 
+logstat ('test03' ,t) ;    %    0 % random matrix tests
+logstat ('test03' ,s) ;    %    0 % random matrix tests
 logstat ('test05',t) ;     %      % quick setElement test, with typecasting
 logstat ('test06(936)',t); %      % performance test GrB_mxm on all semirings
 logstat ('test07',t) ;     %    0 % quick test GB_mex_subassign
@@ -358,6 +364,7 @@ logstat ('test66',t) ;     %      % quick test for GrB_Matrix_reduce
 logstat ('test67',t) ;     %      % quick test for GrB_apply
 logstat ('test68',t) ;
 
+logstat ('test72' ,t) ;    %    0 % several special cases
 logstat ('test73',t) ;     %      % performance of C = A*B, with mask
 logstat ('test75',t) ;     %      % test GrB_mxm A'*B on all semirings
 logstat ('test77',t) ;     %  450 % long tests of GrB_kronecker

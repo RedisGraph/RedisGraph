@@ -2,7 +2,7 @@
 // GB_concat_bitmap: concatenate an array of matrices into a bitmap matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -186,11 +186,6 @@ GrB_Info GB_concat_bitmap           // concatenate into a bitmap matrix
 
                         case GB_16BYTE : // double complex or 16-byte user
                             #define GB_CTYPE GB_blob16
-//                          #define GB_CTYPE uint64_t
-//                          #undef  GB_COPY
-//                          #define GB_COPY(pC,pA,A_iso)                    \
-//                              Cx [2*pC  ] = Ax [A_iso ? 0 : (2*pA)] ;     \
-//                              Cx [2*pC+1] = Ax [A_iso ? 1 : (2*pA+1)] ;
                             #include "GB_concat_bitmap_template.c"
                             break ;
 

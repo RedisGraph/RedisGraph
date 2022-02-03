@@ -2,7 +2,7 @@
 // GB_opaque.h: definitions of opaque objects
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -509,7 +509,7 @@ static inline GrB_Matrix GB_clear_static_header // clear a static header
 (
     GrB_Matrix C    // static header to clear
 )
-{ 
+{
     ASSERT (C != NULL) ;
     memset (C, 0, sizeof (struct GB_Matrix_opaque)) ;
     C->static_header = true ;

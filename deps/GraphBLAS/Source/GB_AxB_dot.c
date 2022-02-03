@@ -2,7 +2,7 @@
 // GB_AxB_dot: C<M>=A'*B using dot products
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -172,11 +172,15 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
         (*done_in_place) = false ;
 
         #if defined ( GBCUDA )
-        if (!C_iso && GB_AxB_dot3_cuda_branch (M, Mask_struct, A, B, semiring,
+        if (!C_iso &&   // FIXME, remove this and create C iso on output
+            GB_AxB_dot3_cuda_branch (M, Mask_struct, A, B, semiring,
             flipxy, Context))
         {
+            // FIXME: can M be jumbled for the CUDA kernel?
             GB_MATRIX_WAIT (M) ;    // make sure it's not jumbled
-            if (GB_AxB_dot3_control (M, Mask_comp))
+            if (GB_AxB_dot3_control (M, Mask_comp)
+                && !GB_IS_HYPERSPARSE (M)   // FIXME, remove this
+            )
             {
                 return (GB_AxB_dot3_cuda (C, M, Mask_struct, A, B, semiring,
                     flipxy, Context)) ;

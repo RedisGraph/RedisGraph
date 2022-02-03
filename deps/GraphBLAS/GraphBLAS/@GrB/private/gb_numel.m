@@ -2,7 +2,7 @@ function s = gb_numel (G)
 %GB_NUMEL the maximum number of entries a GraphBLAS matrix can hold.
 % Implements s = numel (G)
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
 [m, n] = gbsize (G) ;

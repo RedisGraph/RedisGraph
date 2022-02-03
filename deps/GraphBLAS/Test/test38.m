@@ -1,7 +1,7 @@
 function test38
 %TEST38 test GrB_transpose
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\n ----------- testing GB_mex_transpose on SuiteSparse matrices\n') ;

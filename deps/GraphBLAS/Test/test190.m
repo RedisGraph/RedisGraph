@@ -1,7 +1,7 @@
 function test190
 %TEST190 test dense matrix for C<!M>=A*B
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 fprintf ('test190 ----------- dense matrix for C<!M>=A*B\n') ;

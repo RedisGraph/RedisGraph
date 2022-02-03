@@ -2,7 +2,7 @@
 // GB_ewise_generic: generic methods for eWiseMult and eWiseAdd
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -11,8 +11,6 @@
 // built-in worker in the switch factory can handle this case.  This occurs
 // for user-defined operators, when typecasting occurs, or for FIRST[IJ]* and
 // SECOND[IJ]* positional operators.
-
-// TODO: the generic eWiseAdd is very similar; merge the 2 codes
 
 // C is not iso, but A and/or B might be.
 

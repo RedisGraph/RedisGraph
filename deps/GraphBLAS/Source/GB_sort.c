@@ -2,7 +2,7 @@
 // GB_sort: sort all vectors in a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -508,7 +508,7 @@ GrB_Info GB_sort
             // become the values of P.  Cp is copied to Pp, and Ch (if present)
             // is copied to Ph.
             P->plen = cnvec ;
-            P->x = GB_MALLOC (cnz, int64_t, &(P->x_size)) ;
+            P->x = GB_MALLOC (cnz, int64_t, &(P->x_size)) ; // x:OK
             P->p = GB_MALLOC (cnvec+1, int64_t, &(P->p_size)) ;
             P->h = NULL ;
             if (C_is_hyper)

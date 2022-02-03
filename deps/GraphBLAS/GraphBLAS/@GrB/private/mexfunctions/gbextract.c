@@ -2,13 +2,13 @@
 // gbextract: extract entries into a GraphBLAS matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
-// gbextract is an interface to GrB_Matrix_extract and GrB_Matrix_extract_[TYPE],
-// computing the GraphBLAS expression:
+// gbextract is an interface to GrB_Matrix_extract and
+// GrB_Matrix_extract_[TYPE], computing the GraphBLAS expression:
 
 //      C<#M,replace> = accum (C, A (I,J)) or
 //      C<#M,replace> = accum (C, AT (I,J))
@@ -179,8 +179,8 @@ void mexFunction
     OK (GrB_Matrix_free (&M)) ;
     OK (GrB_Matrix_free (&A)) ;
     OK (GrB_Descriptor_free (&desc)) ;
-    if (I_allocated) gb_mxfree (&I) ;
-    if (J_allocated) gb_mxfree (&J) ;
+    if (I_allocated) gb_mxfree ((void **) (&I)) ;
+    if (J_allocated) gb_mxfree ((void **) (&J)) ;
 
     //--------------------------------------------------------------------------
     // export the output matrix C

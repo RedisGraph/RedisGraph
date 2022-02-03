@@ -2,35 +2,30 @@
 // GB_init: initialize GraphBLAS
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
-// GrB_init, GxB_init, or GxB_cuda_init must called before any other GraphBLAS
+// GrB_init or GxB_init must called before any other GraphBLAS
 // operation; all three rely on this internal function.  If GraphBLAS is used
-// by multiple user threads, only one can call GrB_init, GxB_init or
-// GxB_cuda_init.
+// by multiple user threads, only one can call GrB_init or GxB_init.
 
-// Result are undefined if multiple user threads simultaneously
-// call GrB_init, GxB_init, or GxB_cuda_init.
+// Result are undefined if multiple user threads simultaneously call GrB_init
+// or GxB_init.
 
 // Per the spec, GrB_finalize must be called as the last GraphBLAS operation.
 // Not even GrB_Matrix_free can be safely called after GrB_finalize.  In the
 // current version of SuiteSparse:GraphBLAS, GrB_finalize does nothing, but in
 // future versions it may do critical work such as freeing a memory pool.
 
-// GrB_init, GxB_init, or GxB_cuda_init define the mode that GraphBLAS will
-// use:  blocking or non-blocking.  With blocking mode, all operations finish
-// before returning to the user application.  With non-blocking mode,
-// operations can be left pending, and are computed only when needed.
+// GrB_init or GxB_init define the mode that GraphBLAS will use:  blocking or
+// non-blocking.  With blocking mode, all operations finish before returning to
+// the user application.  With non-blocking mode, operations can be left
+// pending, and are computed only when needed.
 
 // GxB_init is the same as GrB_init except that it also defines the
 // malloc/realloc/free functions to use.
-
-// GxB_cuda_init is the same as GrB_init, except that it passes in
-// caller_is_GxB_cuda_init as true to this function.  GxB_init and GrB_init
-// both pass this flag in as false.
 
 // The realloc function pointer is optional and can be NULL.  If realloc is
 // NULL, it is not used, and malloc/memcpy/free are used instead.
@@ -49,8 +44,6 @@ GrB_Info GB_init            // start up GraphBLAS
     void * (* malloc_function  ) (size_t),          // required
     void * (* realloc_function ) (void *, size_t),  // optional, can be NULL
     void   (* free_function    ) (void *),          // required
-
-    bool caller_is_GxB_cuda_init,       // true for GxB_cuda_init only
 
     GB_Context Context      // from GrB_init or GxB_init
 )
@@ -75,11 +68,16 @@ GrB_Info GB_init            // start up GraphBLAS
     }
 
     //--------------------------------------------------------------------------
+    // query hardware features for future use
+    //--------------------------------------------------------------------------
+
+    GB_Global_cpu_features_query ( ) ;
+
+    //--------------------------------------------------------------------------
     // establish malloc/realloc/free
     //--------------------------------------------------------------------------
 
     // GrB_init passes in the ANSI C11 malloc/realloc/free
-    // GxB_cuda_init passes in NULL pointers; they are now defined below.
 
     GB_Global_malloc_function_set  (malloc_function ) ; // cannot be NULL
     GB_Global_realloc_function_set (realloc_function) ; // ok if NULL
@@ -146,14 +144,16 @@ GrB_Info GB_init            // start up GraphBLAS
     // CUDA initializations
     //--------------------------------------------------------------------------
 
-    // If CUDA exists (#define GBCUDA) and if the caller is GxB_cuda_init, then
-    // query the system for the # of GPUs available, their memory sizes, SM
-    // counts, and other capabilities.  Unified Memory support is assumed.
-    // Then warmup each GPU.
+// FIXME NOW: MOVE THIS functionality to rmm_wrap (or call it something else)
 
     #if defined ( GBCUDA )
     {
-        // TODO: this does not have to be here
+        // TODO: must NOT be here
+
+        // If CUDA exists (#define GBCUDA) and if the caller is GxB_cuda_init,
+        // then query the system for the # of GPUs available, their memory
+        // sizes, SM counts, and other capabilities.  Unified Memory support is
+        // assumed.  Then warmup each GPU.
 
         // query the system for the # of GPUs
         // TODO for GPU: make this a function in the CUDA folder

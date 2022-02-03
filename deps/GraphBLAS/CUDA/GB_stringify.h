@@ -192,10 +192,8 @@ void GB_enumify_identity       // return enum of identity value
     GB_Type_code zcode      // type code used in the opcode we want
 ) ;
 
-void GB_charify_identity_or_terminal
+const char *GB_charify_identity_or_terminal // return string encoding the value
 (
-    // output:
-    char **value_string,        // string encoding the value
     // input:
     int ecode                   // enumerated identity/terminal value
 ) ;
@@ -238,7 +236,7 @@ void GB_charify_terminal_expression    // string for terminal expression
     // output:
     char *terminal_expression,          // string with terminal expression
     // input:
-    char *terminal_string,              // string with terminal value
+    const char *terminal_string,        // string with terminal value
     bool is_monoid_terminal,            // true if monoid is terminal
     int ecode                           // ecode of monoid operator
 ) ;
@@ -248,7 +246,7 @@ void GB_charify_terminal_statement // string for terminal statement
     // output:
     char *terminal_statement,           // string with terminal statement
     // input:
-    char *terminal_string,              // string with terminal value
+    const char *terminal_string,        // string with terminal value
     bool is_monoid_terminal,            // true if monoid is terminal
     int ecode                           // ecode of monoid operator
 ) ;

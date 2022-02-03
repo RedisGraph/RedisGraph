@@ -2,7 +2,7 @@
 // GB_deserialize_from_blob: uncompress a set of blocks from the blob
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -66,7 +66,7 @@ GrB_Info GB_deserialize_from_blob
     //--------------------------------------------------------------------------
 
     size_t X_size = 0 ;
-    GB_void *X = GB_MALLOC (X_len, GB_void, &X_size) ;
+    GB_void *X = GB_MALLOC (X_len, GB_void, &X_size) ;  // OK
     if (X == NULL)
     { 
         // out of memory
@@ -93,7 +93,7 @@ GrB_Info GB_deserialize_from_blob
         // no compression; the array is held in a single block
         //----------------------------------------------------------------------
 
-        if (nblocks != 1 || Sblocks [0] != X_len || s + X_len > blob_size)
+        if (nblocks > 1 || Sblocks [0] != X_len || s + X_len > blob_size)
         {
             // blob is invalid: guard against an unsafe memcpy
             ok = false ;
@@ -175,7 +175,10 @@ GrB_Info GB_deserialize_from_blob
 
     (*X_handle) = X ;
     (*X_size_handle) = X_size ;
-    s += Sblocks [nblocks-1] ;
+    if (nblocks > 0)
+    {
+        s += Sblocks [nblocks-1] ;
+    }
     (*s_handle) = s ;
     return (GrB_SUCCESS) ;
 }

@@ -1,6 +1,6 @@
 # SuiteSparse:GraphBLAS
 
-SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 
@@ -8,7 +8,7 @@ For the GraphBLAS/GraphBLAS Octave/MATLAB interface *only*:
 SPDX-License-Identifier: GPL-3.0-or-later
 (see below for a discussion of the licensing of this package).
 
-VERSION 6.0.0, Nov 15, 2021
+VERSION 6.2.0, Jan 28, 2022
 
 SuiteSparse:GraphBLAS is a complete implementation of the GraphBLAS standard,
 which defines a set of sparse matrix operations on an extended algebra of
@@ -142,6 +142,25 @@ SuiteSparse:GraphBLAS and LAGraph.
 
 --------------------------------------------------------------------------------
 
+## Contributing to SuiteSparse:GraphBLAS
+
+To add an issue for a bug report (gasp!) or a feature request,
+you can use the issue tracker on github.com, at
+[`https://github.com/DrTimothyAldenDavis/GraphBLAS/issues`]
+(https://github.com/DrTimothyAldenDavis/GraphBLAS/issues) or
+[`https://github.com/DrTimothyAldenDavis/SuiteSparse/issues`]
+(https://github.com/DrTimothyAldenDavis/SuiteSparse/issues).
+
+To contribute code, you can submit a pull request.  To do so,
+you must first agree to the Contributor License Agreement
+[`CONTRIBUTOR-LICENSE.txt`](CONTRIBUTOR-LICENSE.txt).
+Print a copy of the txt file (as a PDF), sign and date it,
+and email it to me at DrTimothyAldenDavis@gmail.com.  Pull
+requests will only be included into SuiteSparse after I receive
+your email with the signed PDF.
+
+--------------------------------------------------------------------------------
+
 ## Licensing and supporting SuiteSparse:GraphBLAS
 
 SuiteSparse:GraphBLAS is released primarily under the Apache-2.0 license,
@@ -171,6 +190,6 @@ To support the development of GraphBLAS, contact the author (davis@tamu.edu) or
 the Texas A&M Foundation (True Brown, tbrown@txamfoundation.com; or Kevin
 McGinnis, kmcginnis@txamfoundation.com) for details.
 
-SuiteSparse:GraphBLAS, is copyrighted by Timothy A. Davis, (c) 2017-2021, All
+SuiteSparse:GraphBLAS, is copyrighted by Timothy A. Davis, (c) 2017-2022, All
 Rights Reserved.  davis@tamu.edu.  Contact me if you need a non-GNU license.
 
