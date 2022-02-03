@@ -15,8 +15,10 @@
 typedef struct
 {
     RG_Matrix A;                   // matrix iterated
-    GxB_MatrixTupleIter m_it;      // internal m iterator
-    GxB_MatrixTupleIter dp_it;     // internal delta plus iterator
+    GxB_Iterator m_it;             // internal m iterator
+    GxB_Iterator dp_it;            // internal delta plus iterator
+	bool m_depleted;
+	bool dp_depleted;
 } RG_MatrixTupleIter ;
 
 // create a new iterator
