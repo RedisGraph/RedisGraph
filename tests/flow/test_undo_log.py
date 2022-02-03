@@ -117,7 +117,42 @@ class testUndoLog():
         # expecting the original attributes to be deleted
         result = self.graph.query("MATCH (n:M) RETURN COUNT(n)")
         self.env.assertEquals(result.result_set[0][0], 0)
-    
+
+        try:
+            self.graph.query("""MATCH (n:N {a: 1})
+                                SET n = {}
+                                WITH n
+                                CREATE (a:N {v: n})""")
+            # we're not supposed to be here, expecting query to fail
+            self.env.assertTrue(False) 
+        except:
+            pass
+
+        # expecting the original attributes to be deleted
+        result = self.graph.query("MATCH (n:N) RETURN n.a, n.b, n.c, n.d")
+        self.env.assertEquals(result.result_set[0][0], 1)
+        self.env.assertEquals(result.result_set[0][1], 'str')
+        self.env.assertEquals(result.result_set[0][2], [1, 'str', {'latitude':1, 'longitude':2}])
+        self.env.assertEquals(result.result_set[0][3], {'latitude':1, 'longitude':2})
+
+        try:
+            self.graph.query("""MATCH (n:N {a: 1})
+                                SET n += { e: 1}
+                                WITH n
+                                CREATE (a:N {v: n})""")
+            # we're not supposed to be here, expecting query to fail
+            self.env.assertTrue(False) 
+        except:
+            pass
+
+        # expecting the original attributes to be deleted
+        result = self.graph.query("MATCH (n:N) RETURN n.a, n.b, n.c, n.d, n.e")
+        self.env.assertEquals(result.result_set[0][0], 1)
+        self.env.assertEquals(result.result_set[0][1], 'str')
+        self.env.assertEquals(result.result_set[0][2], [1, 'str', {'latitude':1, 'longitude':2}])
+        self.env.assertEquals(result.result_set[0][3], {'latitude':1, 'longitude':2})
+        self.env.assertEquals(result.result_set[0][4], None)
+
     def test06_undo_update_edge(self):
         self.graph.query("CREATE (:N)-[:R {v: 1}]->(:N)")
         try:

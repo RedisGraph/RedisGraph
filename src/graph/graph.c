@@ -1162,7 +1162,17 @@ int Graph_UpdateEntity
 	int res = 0;
 
 	// handle the case in which we are deleting all properties
-	if(attr_id == ATTRIBUTE_ALL) return GraphEntity_ClearProperties(ge);
+	if(attr_id == ATTRIBUTE_ALL) {
+		int prop_count = ge->entity->prop_count;
+		for(int i = 0; i < prop_count; i++) {
+			EntityProperty *prop = ge->entity->properties + i;
+			if(entity_type == ENTITY_NODE)
+				g->GraphCallbacks.NodeUpdated(g, (Node *)ge, prop->id, &prop->value);
+			else
+				g->GraphCallbacks.EdgeUpdated(g, (Edge *)ge, prop->id, &prop->value);
+		}
+		return GraphEntity_ClearProperties(ge);
+	}
 
 	// try to get current property value
 	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
