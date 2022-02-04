@@ -416,25 +416,13 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 	return aggregated;
 }
 
-const char **AST_GetProjectAll(const cypher_astnode_t *projection_clause) {
-	AST *ast = QueryCtx_GetAST();
-	AnnotationCtx *project_all_ctx = AST_AnnotationCtxCollection_GetProjectAllCtx(
-										 ast->anot_ctx_collection);
-	return cypher_astnode_get_annotation(project_all_ctx, projection_clause);
-}
-
 const char **AST_BuildReturnColumnNames(const cypher_astnode_t *return_clause) {
-	const char **columns;
-	if(cypher_ast_return_has_include_existing(return_clause)) {
-		// If this is a RETURN *, the column names should be retrieved from the clause annotation.
-		const char **projection_names = AST_GetProjectAll(return_clause);
-		array_clone(columns, projection_names);
-		return columns;
-	}
+	// all RETURN * clauses should have been converted to explicit lists
+	ASSERT(cypher_ast_return_has_include_existing(return_clause) == false);
 
 	// Collect every alias from the RETURN projections.
 	uint projection_count = cypher_ast_return_nprojections(return_clause);
-	columns = array_new(const char *, projection_count);
+	const char **columns = array_new(const char *, projection_count);
 	for(uint i = 0; i < projection_count; i++) {
 		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
 		const cypher_astnode_t *ast_alias = cypher_ast_projection_get_alias(projection);

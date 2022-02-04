@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "annotate_project_all.h"
+#include "rewrite_star_projections.h"
 #include "../../procedures/procedure.h"
 #include "../../util/arr.h"
 #include "../../util/qsort.h"
@@ -42,12 +42,6 @@ static void _collect_aliases_in_pattern(const cypher_astnode_t *pattern, const c
 }
 
 static void _collect_with_projections(const cypher_astnode_t *with_clause, const char ***aliases) {
-	if(cypher_ast_with_has_include_existing(with_clause)) {
-		const char **prev_aliases = AST_GetProjectAll(with_clause);
-		array_ensure_append(*aliases, prev_aliases, array_len(prev_aliases), const char *);
-		return;
-	}
-
 	uint projection_count = cypher_ast_with_nprojections(with_clause);
 	for(uint i = 0; i < projection_count; i ++) {
 		const cypher_astnode_t *projection = cypher_ast_with_get_projection(with_clause, i);
@@ -213,9 +207,8 @@ static cypher_astnode_t *build_clause_node(sds s) {
 	return new_clause_clone;
 }
 
-static void _annotate_project_all(AST *ast) {
-	AnnotationCtx *project_all_ctx = AST_AnnotationCtxCollection_GetProjectAllCtx(
-										 ast->anot_ctx_collection);
+void AST_RewriteStarProjections(AST *ast) {
+	// rewrite all WITH * and RETURN * clauses to include all aliases
 	uint *with_clause_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
 	uint with_clause_count = array_len(with_clause_indices);
 	uint scope_start = 0;
@@ -229,6 +222,7 @@ static void _annotate_project_all(AST *ast) {
 			sds s = aliases_to_query_string(aliases, clause);
 			cypher_astnode_t *new_clause = build_clause_node(s);
 			sdsfree(s);
+			// replace original clause with fully populated one
 			cypher_astnode_free((cypher_astnode_t *)clause);
 			cypher_ast_query_set_clause((cypher_astnode_t *)ast->root,
 										new_clause, scope_end);
@@ -248,32 +242,12 @@ static void _annotate_project_all(AST *ast) {
 		sds s = aliases_to_query_string(aliases, last_clause);
 		cypher_astnode_t *new_clause = build_clause_node(s);
 		sdsfree(s);
+		// replace original clause with fully populated one
 		cypher_astnode_free((cypher_astnode_t *)last_clause);
 		cypher_ast_query_set_clause((cypher_astnode_t *)ast->root, new_clause,
 									last_clause_index);
 		cypher_astnode_set_child((cypher_astnode_t *)ast->root, new_clause,
 								 last_clause_index);
 	}
-}
-
-// AST annotation callback routine for freeing projection arrays.
-static void _FreeProjectAllAnnotationCallback(void *unused, const cypher_astnode_t *node,
-											  void *annotation) {
-	array_free(annotation);
-}
-
-// Construct a new annotation context for holding names in WITH/RETURN * projections.
-static AnnotationCtx *_AST_NewProjectAllContext(void) {
-	AnnotationCtx *project_all_ctx = cypher_ast_annotation_context();
-	cypher_ast_annotation_context_release_handler_t handler = &_FreeProjectAllAnnotationCallback;
-	cypher_ast_annotation_context_set_release_handler(project_all_ctx, handler, NULL);
-	return project_all_ctx;
-}
-
-void AST_AnnotateProjectAll(AST *ast) {
-	// Instantiate an annotation context for augmenting STAR projections.
-	AST_AnnotationCtxCollection_SetProjectAllCtx(ast->anot_ctx_collection, _AST_NewProjectAllContext());
-	// Generate annotations for WITH/RETURN * clauses.
-	_annotate_project_all(ast);
 }
 

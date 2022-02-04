@@ -8,4 +8,4 @@
 
 #include "../ast.h"
 
-void AST_AnnotateProjectAll(AST *ast);
+void AST_RewriteStarProjections(AST *ast);
