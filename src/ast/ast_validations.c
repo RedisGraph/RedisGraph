@@ -1361,14 +1361,6 @@ static AST_Validation _Validate_Aliases_Defined(const AST *ast) {
 			defined_aliases = raxNew();
 			_AST_GetDefinedIdentifiers(clause, defined_aliases);
 		}
-		// validate that we don't have a RETURN * with no bound variables
-		if(cypher_astnode_type(clause) == CYPHER_AST_RETURN &&
-				cypher_ast_return_has_include_existing(clause) &&
-				raxSize(defined_aliases) == 0) {
-			ErrorCtx_SetError("RETURN * is not allowed when there are no variables in scope");
-			res = AST_INVALID;
-			break;
-		}
 	}
 	raxFree(defined_aliases);
 	return res;

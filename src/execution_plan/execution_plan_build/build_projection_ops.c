@@ -40,7 +40,9 @@ AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *clause) {
 	ASSERT(t == CYPHER_AST_RETURN || t == CYPHER_AST_WITH);
 
 	if(t == CYPHER_AST_RETURN) {
-		ASSERT(cypher_ast_return_has_include_existing(clause) == false);
+		// if we have a "RETURN *" at this point, it is because we raised 
+		// an error in AST rewriting
+		if(cypher_ast_return_has_include_existing(clause)) return NULL;
 		count = cypher_ast_return_nprojections(clause);
 	} else {
 		ASSERT(cypher_ast_with_has_include_existing(clause) == false);

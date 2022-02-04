@@ -6,6 +6,7 @@
 
 #include "rewrite_star_projections.h"
 #include "../../procedures/procedure.h"
+#include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../util/qsort.h"
 #include "../../util/sds/sds.h"
@@ -168,7 +169,7 @@ static sds aliases_to_query_string(const char **aliases,
 	uint alias_count = array_len(aliases);
 	// hack to make empty projections work:
 	// MATCH () WITH * CREATE ()
-	if(alias_count == 0) return sdscat(s, "NULL AS a");
+	if(alias_count == 0 && t == CYPHER_AST_WITH) return sdscat(s, "NULL AS a");
 
 	for(uint i = 0; i < alias_count - 1; i ++) {
 		// append string with comma-separated aliases
@@ -217,11 +218,12 @@ void AST_RewriteStarProjections(AST *ast) {
 		scope_end = with_clause_indices[i];
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, scope_end);
 		if(cypher_ast_with_has_include_existing(clause)) {
-			// collect all aliases defined in this scope.
+			// collect all aliases defined in this scope
 			const char **aliases = _collect_aliases_in_scope(ast, scope_start, scope_end);
 			sds s = aliases_to_query_string(aliases, clause);
 			cypher_astnode_t *new_clause = build_clause_node(s);
 			sdsfree(s);
+			array_free(aliases);
 			// replace original clause with fully populated one
 			cypher_astnode_free((cypher_astnode_t *)clause);
 			cypher_ast_query_set_clause((cypher_astnode_t *)ast->root,
@@ -237,11 +239,17 @@ void AST_RewriteStarProjections(AST *ast) {
 	const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(ast->root, last_clause_index);
 	if(cypher_astnode_type(last_clause) == CYPHER_AST_RETURN &&
 	   cypher_ast_return_has_include_existing(last_clause)) {
-		// Collect all aliases defined in this scope.
+		// collect all aliases defined in this scope
 		const char **aliases = _collect_aliases_in_scope(ast, scope_start, last_clause_index);
+		if(array_len(aliases) == 0) {
+			ErrorCtx_SetError("RETURN * is not allowed when there are no variables in scope");
+			array_free(aliases);
+			return;
+		}
 		sds s = aliases_to_query_string(aliases, last_clause);
 		cypher_astnode_t *new_clause = build_clause_node(s);
 		sdsfree(s);
+		array_free(aliases);
 		// replace original clause with fully populated one
 		cypher_astnode_free((cypher_astnode_t *)last_clause);
 		cypher_ast_query_set_clause((cypher_astnode_t *)ast->root, new_clause,
