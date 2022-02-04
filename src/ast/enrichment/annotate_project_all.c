@@ -147,15 +147,46 @@ static const char **_collect_aliases_in_scope(AST *ast, uint scope_start, uint s
 	return aliases;
 }
 
-static sds aliases_to_query_string(sds s, const char **aliases) {
+static sds aliases_to_query_string(const char **aliases,
+								   const cypher_astnode_t *clause) {
+	cypher_astnode_type_t t = cypher_astnode_type(clause);
+	ASSERT(t == CYPHER_AST_WITH || t == CYPHER_AST_RETURN);
+
+	sds s                                     =  NULL  ;
+	bool                    distinct          =  false ;
+	const cypher_astnode_t  *skip_clause      =  NULL  ;
+	const cypher_astnode_t  *limit_clause     =  NULL  ;
+	const cypher_astnode_t  *order_clause     =  NULL  ;
+	if(t == CYPHER_AST_WITH) {
+		s             =  sdsnew("WITH ");
+		distinct      =  cypher_ast_with_is_distinct(clause);
+		skip_clause   =  cypher_ast_with_get_skip(clause);
+		limit_clause  =  cypher_ast_with_get_limit(clause);
+		order_clause  =  cypher_ast_with_get_order_by(clause);
+	} else {
+		s             =  sdsnew("RETURN ");
+		distinct      =  cypher_ast_return_is_distinct(clause);
+		skip_clause   =  cypher_ast_return_get_skip(clause);
+		limit_clause  =  cypher_ast_return_get_limit(clause);
+		order_clause  =  cypher_ast_return_get_order_by(clause);
+	}
+	if(distinct) s = sdscat(s, "DISTINCT ");
 	uint alias_count = array_len(aliases);
-	for(uint i = 0; i < alias_count; i ++) {
+	// hack to make empty projections work:
+	// MATCH () WITH * CREATE ()
+	if(alias_count == 0) return sdscat(s, "NULL AS a");
+
+	for(uint i = 0; i < alias_count - 1; i ++) {
 		// append string with comma-separated aliases
 		s = sdscatprintf(s, "%s, ", aliases[i]);
 	}
-	// hack to make empty projections work:
-	// MATCH () WITH * CREATE ()
-	if(alias_count == 0) s = sdscat(s, "NULL AS a");
+	// append the last alias with no trailing comma
+	s = sdscat(s, aliases[alias_count - 1]);
+
+	// append ORDER BY, SKIP, and LIMIT modifiers to string
+	if(order_clause) s = sdscatprintf(s, " %s", AST_ToString(order_clause));
+	if(skip_clause) s = sdscatprintf(s, " SKIP %s", AST_ToString(skip_clause));
+	if(limit_clause) s = sdscatprintf(s, " LIMIT %s", AST_ToString(limit_clause));
 	return s;
 }
 
@@ -171,9 +202,11 @@ static cypher_astnode_t *build_clause_node(sds s) {
 
 	const cypher_astnode_t *query = cypher_ast_statement_get_body(statement);
 	ASSERT(cypher_astnode_type(query) == CYPHER_AST_QUERY);
-
+	ASSERT(cypher_ast_query_nclauses(query) == 1);
 	// clone the AST clause node so that the result can be freed
 	const cypher_astnode_t *new_clause = cypher_ast_query_get_clause(query, 0);
+	ASSERT(cypher_astnode_type(new_clause) == CYPHER_AST_WITH ||
+		   cypher_astnode_type(new_clause) == CYPHER_AST_RETURN);
 	cypher_astnode_t *new_clause_clone = cypher_ast_clone(new_clause);
 	cypher_parse_result_free(parse_result);
 
@@ -193,14 +226,14 @@ static void _annotate_project_all(AST *ast) {
 		if(cypher_ast_with_has_include_existing(clause)) {
 			// collect all aliases defined in this scope.
 			const char **aliases = _collect_aliases_in_scope(ast, scope_start, scope_end);
-			sds s = sdsnew("WITH ");
-			s = aliases_to_query_string(s, aliases);
-			const cypher_astnode_t *new_clause = build_clause_node(s);
+			sds s = aliases_to_query_string(aliases, clause);
+			cypher_astnode_t *new_clause = build_clause_node(s);
 			sdsfree(s);
 			cypher_astnode_free((cypher_astnode_t *)clause);
-			*clause = new_clause;
-			// Annotate the clause with the aliases array.
-			cypher_astnode_attach_annotation(project_all_ctx, clause, (void *)aliases, NULL);
+			cypher_ast_query_set_clause((cypher_astnode_t *)ast->root,
+										new_clause, scope_end);
+			cypher_astnode_set_child((cypher_astnode_t *)ast->root,
+									 new_clause, scope_end);
 		}
 		scope_start = scope_end;
 	}
@@ -212,8 +245,14 @@ static void _annotate_project_all(AST *ast) {
 	   cypher_ast_return_has_include_existing(last_clause)) {
 		// Collect all aliases defined in this scope.
 		const char **aliases = _collect_aliases_in_scope(ast, scope_start, last_clause_index);
-		// Annotate the clause with the aliases array.
-		cypher_astnode_attach_annotation(project_all_ctx, last_clause, (void *)aliases, NULL);
+		sds s = aliases_to_query_string(aliases, last_clause);
+		cypher_astnode_t *new_clause = build_clause_node(s);
+		sdsfree(s);
+		cypher_astnode_free((cypher_astnode_t *)last_clause);
+		cypher_ast_query_set_clause((cypher_astnode_t *)ast->root, new_clause,
+									last_clause_index);
+		cypher_astnode_set_child((cypher_astnode_t *)ast->root, new_clause,
+								 last_clause_index);
 	}
 }
 
