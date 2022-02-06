@@ -122,6 +122,8 @@ uint DeleteNode
 		DeleteEdge(gc, edges + i);
 	}
 
+	array_free(edges);
+
 	// add node deletion operation to undo log
 	UndoOp op;
 	Node clone;

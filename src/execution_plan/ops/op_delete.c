@@ -53,6 +53,8 @@ void _DeleteEntities(OpDelete *op) {
 		implicit_edge_deleted += DeleteNode(op->gc, distinct_nodes + i);
 	}
 
+	array_free(distinct_nodes);
+
 	if(op->stats != NULL) {
 		op->stats->nodes_deleted          +=  node_count;
 		op->stats->relationships_deleted  +=  edge_deleted;
