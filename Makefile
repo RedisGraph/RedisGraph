@@ -13,6 +13,7 @@ make test             # Run tests
   UNIT=1                # Run unit tests
   FLOW=1                # Run flow tests (Python)
   TCK=1                 # Run TCK framework tests
+  RLEC=1                # Run tests on RLEC
 make memcheck         # Run tests with Valgrind
 make benchmark        # Run benchmarks
 make fuzz             # Run fuzz tester
@@ -87,4 +88,3 @@ help:
 	@cat $(HELPFILE)
 	@echo
 	@-rm -f $(HELPFILE)
-

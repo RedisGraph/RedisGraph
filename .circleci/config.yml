@@ -155,7 +155,7 @@ commands:
           name: Build for platform (docker build)
           command: |
             cd build/docker
-            make build OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" TEST=1 OFFICIAL=1 VERBOSE=1
+            make build OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" TEST=1 OFFICIAL=1 SHOW=1 VERBOSE=1
       - early-return-for-forked-pull-requests
       - run:
           name: Publish docker
@@ -175,7 +175,8 @@ commands:
       - setup-automation
       - run:
           name: Install Docker
-          command: bash <(curl -fsSL https://raw.githubusercontent.com/docker/docker-install/master/install.sh)
+          shell: /bin/bash -l -eo pipefail
+          command: ./deps/readies/bin/getdocker
       - run:
           name: Build for platform
           command: |
@@ -184,7 +185,7 @@ commands:
           no_output_timeout: 30m
       - early-return-for-forked-pull-requests
       - run:
-          name: Build for platform (publish)
+          name: Publish docker
           command: |
             docker login -u redisfab -p $DOCKER_REDISFAB_PWD
             cd build/docker
