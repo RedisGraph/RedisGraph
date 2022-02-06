@@ -203,16 +203,8 @@ static void _ExecuteQuery(void *args) {
 		}
 		CommandCtx_ThreadSafeContextUnlock(command_ctx);
 
-		// decided rather or not to use an undo-log
-		// an undo-log will be used when the query has multiple write operations
-		// or a write query with memory cap or timeout
-		uint64_t query_mem_capacity;
-		Config_Option_get(Config_QUERY_MEM_CAPACITY, &query_mem_capacity);
-		// see if writer operation count > 2 or memory cap or timeout is enforced
-		if(plan != NULL &&
-		   (ExecutionPlan_CountWriteOp(plan) > 1 ||
-			query_mem_capacity != QUERY_MEM_CAPACITY_UNLIMITED ||
-			gq_ctx->timeout != 0)) {
+		// enable undo log for write queries
+		if(plan != NULL) {
 			Graph_SetCallbacks(gc->g, GRAPH_CALLBACKS_UNDO);
 		}
 	}
@@ -247,7 +239,18 @@ static void _ExecuteQuery(void *args) {
 	}
 
 	// in case of an error rollback modifications
-	if(ErrorCtx_EncounteredError()) UndoLog_Rollback(&query_ctx->undo_log);
+	if(ErrorCtx_EncounteredError()) {
+		UndoLog_Rollback(&query_ctx->undo_log);
+		// clear stats so the commad will not be replicated
+		result_set->stats.labels_added           =  0;
+		result_set->stats.nodes_deleted          =  0;
+		result_set->stats.nodes_created          =  0;
+		result_set->stats.properties_set         =  0;
+		result_set->stats.indices_created        =  STAT_NOT_SET;
+		result_set->stats.indices_deleted        =  STAT_NOT_SET;
+		result_set->stats.relationships_created  =  0;
+		result_set->stats.relationships_deleted  =  0;
+	}
 
 	// restore callback to nop
 	Graph_SetCallbacks(gc->g, GRAPH_CALLBACKS_NOP);

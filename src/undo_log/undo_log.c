@@ -29,8 +29,8 @@ void UndoLog_CreateNode
 ) {
 	ASSERT(op != NULL);
 
-	op->entity.n = node;
-	op->type     = UL_CREATE_NODE;
+	op->create_op.n = node;
+	op->type        = UL_CREATE_NODE;
 }
 
 // create edge creation operation
@@ -41,8 +41,8 @@ void UndoLog_CreateEdge
 ) {
 	ASSERT(op != NULL);
 
-	op->entity.e = edge;
-	op->type     = UL_CREATE_EDGE;
+	op->create_op.e = edge;
+	op->type        = UL_CREATE_EDGE;
 }
 
 // create node deletion operation
@@ -55,10 +55,10 @@ void UndoLog_DeleteNode
 ) {
 	ASSERT(op != NULL);
 
-	op->entity.n                     = node;
-	op->data.delete_node.labels      = labelIDs;
-	op->data.delete_node.label_count = label_count;
-	op->type                         = UL_DELETE_NODE;
+	op->delete_op.n           = node;
+	op->delete_op.labels      = labelIDs;
+	op->delete_op.label_count = label_count;
+	op->type                  = UL_DELETE_NODE;
 }
 
 // create edge deletion operation
@@ -69,8 +69,8 @@ void UndoLog_DeleteEdge
 ) {
 	ASSERT(op != NULL);
 
-	op->entity.e = edge;
-	op->type     = UL_DELETE_EDGE;
+	op->delete_op.e = edge;
+	op->type        = UL_DELETE_EDGE;
 }
 
 // create node update operation
@@ -84,10 +84,10 @@ void UndoLog_UpdateNode
 	ASSERT(op != NULL);
 	ASSERT(n != NULL);
 
-	op->entity.n               = *n;
-	op->data.update.attr_id    = attr_id;
-	op->data.update.orig_value = orig_value;
-	op->type                   = UL_UPDATE_NODE;
+	op->update_op.n          = *n;
+	op->update_op.attr_id    = attr_id;
+	op->update_op.orig_value = orig_value;
+	op->type                 = UL_UPDATE_NODE;
 }
 
 // create edge update operation
@@ -101,10 +101,10 @@ void UndoLog_UpdateEdge
 	ASSERT(op != NULL);
 	ASSERT(e != NULL);
 
-	op->entity.e               = *e;
-	op->data.update.attr_id    = attr_id;
-	op->data.update.orig_value = orig_value;
-	op->type                   = UL_UPDATE_EDGE;
+	op->update_op.e          = *e;
+	op->update_op.attr_id    = attr_id;
+	op->update_op.orig_value = orig_value;
+	op->type                 = UL_UPDATE_EDGE;
 }
 
 // rollback the updates taken place by current query.
@@ -113,15 +113,16 @@ static void _UndoLog_Rollback_Update_Node(QueryCtx *ctx, size_t seq_start, size_
 	size_t len = seq_end - seq_start + 1; 
 	for(int i = 0; i < len; ++i) {
 		UndoOp *op = undo_list + seq_start + i;
-		Graph_UpdateEntity(ctx->gc->g, (GraphEntity *)&op->entity.n, op->data.update.attr_id, op->data.update.orig_value, GETYPE_NODE);
+		Graph_UpdateEntity(ctx->gc->g, (GraphEntity *)&op->update_op.n,
+			op->update_op.attr_id, op->update_op.orig_value, GETYPE_NODE);
 
 		uint label_count;
-		NODE_GET_LABELS(ctx->gc->g, &op->entity.n, label_count);
+		NODE_GET_LABELS(ctx->gc->g, &op->update_op.n, label_count);
 		for(uint j = 0; j < label_count; j++) {
 			Schema *s = GraphContext_GetSchemaByID(ctx->gc, labels[j], SCHEMA_NODE);
 			ASSERT(s);
 
-			if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, &op->entity.n);
+			if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, &op->update_op.n);
 		}
 	}
 }
@@ -132,12 +133,13 @@ static void _UndoLog_Rollback_Update_Edge(QueryCtx *ctx, size_t seq_start, size_
 	size_t len = seq_end - seq_start + 1; 
 	for(int i = 0; i < len; ++i) {
 		UndoOp *op = undo_list + seq_start + i;
-		Graph_UpdateEntity(ctx->gc->g, (GraphEntity *)&op->entity.e, op->data.update.attr_id, op->data.update.orig_value, GETYPE_EDGE);
+		Graph_UpdateEntity(ctx->gc->g, (GraphEntity *)&op->update_op.e,
+			op->update_op.attr_id, op->update_op.orig_value, GETYPE_EDGE);
 
-		Schema *s = GraphContext_GetSchemaByID(ctx->gc, op->entity.e.relationID, SCHEMA_EDGE);
+		Schema *s = GraphContext_GetSchemaByID(ctx->gc, op->update_op.e.relationID, SCHEMA_EDGE);
 		ASSERT(s);
 
-		if(Schema_HasIndices(s)) Schema_AddEdgeToIndices(s, &op->entity.e);
+		if(Schema_HasIndices(s)) Schema_AddEdgeToIndices(s, &op->update_op.e);
 	}
 }
 
@@ -147,7 +149,7 @@ static void _UndoLog_Rollback_Create_Node(QueryCtx *ctx, size_t seq_start, size_
 	size_t len = seq_end - seq_start + 1;
 	Node *nodes_to_delete = array_newlen(Node, len);
 	for(int i = 0; i < len; ++i) {
-		nodes_to_delete[i] = undo_list[seq_start + i].entity.n;
+		nodes_to_delete[i] = undo_list[seq_start + i].create_op.n;
 	}
 
 	OpDelete op = { .gc = ctx->gc, .deleted_nodes = nodes_to_delete, .deleted_edges = NULL, .stats = QueryCtx_GetResultSetStatistics()};
@@ -162,7 +164,7 @@ static void _UndoLog_Rollback_Create_Edge(QueryCtx *ctx, size_t seq_start, size_
 	size_t len = seq_end - seq_start + 1;
 	Edge *edges_to_delete = array_newlen(Edge, len);
 	for(int i = 0; i < len; ++i) {
-		edges_to_delete[i] = undo_list[seq_start + i].entity.e;
+		edges_to_delete[i] = undo_list[seq_start + i].create_op.e;
 	}
 
 	OpDelete op = { .gc = ctx->gc, .deleted_nodes = NULL, .deleted_edges = edges_to_delete, .stats = QueryCtx_GetResultSetStatistics()};
@@ -177,12 +179,13 @@ static void _UndoLog_Rollback_Delete_Node(QueryCtx *ctx, size_t seq_start, size_
 	for(int i = 0; i < len; ++i) {
 		UndoOp *op = undo_list + seq_start + i;
 		Node new;
-		Graph_CreateNode(ctx->gc->g, &new, op->data.delete_node.labels, op->data.delete_node.label_count);
-		new.entity->prop_count = op->entity.n.entity->prop_count;
-		new.entity->properties = op->entity.n.entity->properties;
+		Graph_CreateNode(ctx->gc->g, &new, op->delete_op.labels, op->delete_op.label_count);
+		new.entity->prop_count = op->delete_op.n.entity->prop_count;
+		new.entity->properties = op->delete_op.n.entity->properties;
 		
-		for(uint j = 0; j < op->data.delete_node.label_count; j++) {
-			Schema *s = GraphContext_GetSchemaByID(ctx->gc, op->data.delete_node.labels[j], SCHEMA_NODE);
+		for(uint j = 0; j < op->delete_op.label_count; j++) {
+			Schema *s = GraphContext_GetSchemaByID(ctx->gc,
+				op->delete_op.labels[j], SCHEMA_NODE);
 			ASSERT(s);
 
 			if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, &new);
@@ -196,11 +199,12 @@ static void _UndoLog_Rollback_Delete_Edge(QueryCtx *ctx, size_t seq_start, size_
 	for(int i = 0; i < len; ++i) {
 		UndoOp *op = undo_list + seq_start + i;
 		Edge new;
-		Graph_CreateEdge(ctx->gc->g, op->entity.e.srcNodeID, op->entity.e.destNodeID, op->entity.e.relationID, &new);
-		new.entity->prop_count = op->entity.e.entity->prop_count;
-		new.entity->properties = op->entity.e.entity->properties;
+		Graph_CreateEdge(ctx->gc->g, op->delete_op.e.srcNodeID,
+			op->delete_op.e.destNodeID, op->delete_op.e.relationID, &new);
+		new.entity->prop_count = op->delete_op.e.entity->prop_count;
+		new.entity->properties = op->delete_op.e.entity->properties;
 
-		Schema *s = GraphContext_GetSchemaByID(ctx->gc, op->entity.e.relationID, SCHEMA_EDGE);
+		Schema *s = GraphContext_GetSchemaByID(ctx->gc, op->delete_op.e.relationID, SCHEMA_EDGE);
 		ASSERT(s);
 
 		if(Schema_HasIndices(s)) Schema_AddEdgeToIndices(s, &new);
@@ -270,13 +274,11 @@ static void UndoOp_Free
 		case UL_CREATE_EDGE:
 			break;
 		case UL_DELETE_NODE:
-			rm_free(op->data.delete_node.labels);
-			rm_free(op->entity.n.entity->properties);
-			rm_free(op->entity.n.entity);
+			rm_free(op->delete_op.labels);
+			GraphEntity_Free(op->delete_op.n.entity);
 			break;
 		case UL_DELETE_EDGE:
-			rm_free(op->entity.e.entity->properties);
-			rm_free(op->entity.e.entity);
+			GraphEntity_Free(op->delete_op.e.entity);
 			break;
 		default:
 			ASSERT(false);           

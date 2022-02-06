@@ -377,7 +377,7 @@ Graph *Graph_New
 	size_t edge_cap
 ) {
 
-	fpDestructor cb = (fpDestructor)FreeEntity;
+	fpDestructor cb = (fpDestructor)GraphEntity_FreeProperties;
 	Graph *g = rm_calloc(1, sizeof(Graph));
 
 	g->nodes      =  DataBlock_New(node_cap, node_cap, sizeof(Entity), cb);
@@ -1147,13 +1147,14 @@ void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges, uint 
 	if(edge_deleted != NULL) *edge_deleted = _edge_deleted;
 }
 
+// update entity attribute with new value
 int Graph_UpdateEntity
 (
-	Graph *g,
-	GraphEntity *ge,
-	Attribute_ID attr_id,
-	SIValue new_value,
-	GraphEntityType entity_type
+	Graph *g,                    // graph to update entity from
+	GraphEntity *ge,             // entity yo update
+	Attribute_ID attr_id,        // attribute to update
+	SIValue new_value,           // value to be set
+	GraphEntityType entity_type  // type of the entity node/edge
 ) {
 	ASSERT(g);
 	ASSERT(ge);
@@ -1358,12 +1359,14 @@ void Graph_Free(Graph *g) {
 	// is being removed we won't be reusing items
 	it = Graph_ScanNodes(g);
 	while((en = (Entity *)DataBlockIterator_Next(it, NULL)) != NULL) {
-		FreeEntity(en);
+		GraphEntity_FreeProperties(en);
 	}
 	DataBlockIterator_Free(it);
 
 	it = Graph_ScanEdges(g);
-	while((en = DataBlockIterator_Next(it, NULL)) != NULL) FreeEntity(en);
+	while((en = DataBlockIterator_Next(it, NULL)) != NULL) {
+		GraphEntity_FreeProperties(en);
+	}
 	DataBlockIterator_Free(it);
 
 	// free blocks

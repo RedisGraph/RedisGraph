@@ -28,22 +28,38 @@ typedef enum {
 	UL_DELETE_EDGE        // undo edge deletion
 } UndoOpType;
 
-// the abstract type of items in the undo_list
-typedef struct UndoOp {
+typedef struct CreateOp {
 	union {
 		Node n;
 		Edge e;
-	} entity;
+	};
+} CreateOp;
+
+typedef struct DeleteOp {
 	union {
-		struct {
-			LabelID *labels;
-			uint label_count;
-		} delete_node;
-		struct {
-			Attribute_ID attr_id;
-			SIValue orig_value;
-		} update;
-	} data;
+		Node n;
+		Edge e;
+	};
+	LabelID *labels;
+	uint label_count;
+} DeleteOp;
+
+typedef struct UpdateOp {
+	union {
+		Node n;
+		Edge e;
+	};
+	Attribute_ID attr_id;
+	SIValue orig_value;
+} UpdateOp;
+
+// the abstract type of items in the undo_list
+typedef struct UndoOp {
+	union {
+		CreateOp create_op;
+		DeleteOp delete_op;
+		UpdateOp update_op;
+	};
 	UndoOpType type;
 } UndoOp;
 

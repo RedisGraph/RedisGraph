@@ -70,25 +70,42 @@ int GraphEntity_ClearProperties(GraphEntity *e);
  * returns - reference to newly added property. */
 bool GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value);
 
-/* Retrieves entity's property
- * NOTE: If the key does not exist, we return the special
- * constant value PROPERTY_NOTFOUND. */
-SIValue *GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id);
+// retrieves entity's property
+// NOTE: If the key does not exist, we return the special
+// constant value PROPERTY_NOTFOUND
+SIValue *GraphEntity_GetProperty
+(
+	const GraphEntity *e,
+	Attribute_ID attr_id
+);
 
-/* Updates existing attribute value, return true if property been updated. */
-bool GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue value);
+// updates existing attribute value, return true if property been updated
+bool GraphEntity_SetProperty
+(
+	const GraphEntity *e,
+	Attribute_ID attr_id,
+	SIValue value
+);
 
 // returns an SIArray of all keys in graph entity properties
 SIValue GraphEntity_Keys(const GraphEntity *e);
 
-/* Prints the graph entity into a buffer, returns what is the string length, buffer can be re-allocated at need. */
-void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen,
-						  size_t *bytesWritten,
-						  GraphEntityStringFromat format, GraphEntityType entityType);
+// prints the graph entity into a buffer, returns what is the string length, buffer can be re-allocated at need
+void GraphEntity_ToString
+(
+	const GraphEntity *e,
+	char **buffer,
+	size_t *bufferLen,
+	size_t *bytesWritten,
+	GraphEntityStringFromat format,
+	GraphEntityType entityType
+);
 
-// Returns true if the given graph entity has been deleted.
+// returns true if the given graph entity has been deleted.
 bool GraphEntity_IsDeleted(const GraphEntity *e);
 
-/* Release all memory allocated by entity */
-void FreeEntity(Entity *e);
+// release all memory allocated for entity properties
+void GraphEntity_FreeProperties(Entity *e);
 
+// release all memory allocated by entity
+void GraphEntity_Free(Entity * e);

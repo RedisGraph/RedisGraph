@@ -266,7 +266,7 @@ inline bool GraphEntity_IsDeleted(const GraphEntity *e) {
 	return Graph_EntityIsDeleted(e->entity);
 }
 
-void FreeEntity(Entity *e) {
+void GraphEntity_FreeProperties(Entity *e) {
 	ASSERT(e);
 	if(e->properties != NULL) {
 		for(int i = 0; i < e->prop_count; i++) SIValue_Free(e->properties[i].value);
@@ -276,3 +276,9 @@ void FreeEntity(Entity *e) {
 	}
 }
 
+void GraphEntity_Free(Entity * e) {
+	ASSERT(e);
+
+	GraphEntity_FreeProperties(e);
+	rm_free(e);
+}
