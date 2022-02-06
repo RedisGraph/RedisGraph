@@ -187,4 +187,3 @@ void EvalEntityUpdates
 	// enqueue the current update
 	array_append(*updates, update);
 }
-

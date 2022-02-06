@@ -85,8 +85,9 @@ bool Entity_AddProperty
 	}
 
 	int prop_idx = e->prop_count;
-	e->properties[prop_idx].id = attr_id;
-	e->properties[prop_idx].value = SI_CloneValue(value);
+	EntityProperty *prop = e->properties + prop_idx;
+	prop->id = attr_id;
+	prop->value = SI_CloneValue(value);
 	e->prop_count++;
 
 	return true;
