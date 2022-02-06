@@ -67,9 +67,15 @@ int Entity_ClearProperties(Entity *e) {
 }
 
 /* Add a new property to entity */
-bool Entity_AddProperty(Entity *e, Attribute_ID attr_id, SIValue value) {
+bool Entity_AddProperty
+(
+	Entity *e,
+	Attribute_ID attr_id,
+	SIValue value,
+	bool allow_null
+) {
 	ASSERT(e);
-	if(!(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE)) return false;
+	if(!(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE) && SIValue_IsNull(value) && !allow_null) return false;
 
 	if(e->properties == NULL) {
 		e->properties = rm_malloc(sizeof(EntityProperty));

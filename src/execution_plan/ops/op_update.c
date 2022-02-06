@@ -127,11 +127,21 @@ static void UpdateFree(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 
 	if(op->node_updates) {
+		// uint node_updates_count = array_len(op->node_updates);
+		// for(uint i = 0; i < node_updates_count; i ++) {
+		// 	PendingUpdateCtx *pending_update = op->node_updates + i;
+		// 	Entity_FreeProperties(&pending_update->props);
+		// }
 		array_free(op->node_updates);
 		op->node_updates = NULL;
 	}
 
 	if(op->edge_updates) {
+		// uint edge_updates_count = array_len(op->edge_updates);
+		// for(uint i = 0; i < edge_updates_count; i ++) {
+		// 	PendingUpdateCtx *pending_update = op->edge_updates + i;
+		// 	Entity_FreeProperties(&pending_update->props);
+		// }
 		array_free(op->edge_updates);
 		op->edge_updates = NULL;
 	}

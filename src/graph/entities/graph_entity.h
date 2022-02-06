@@ -68,7 +68,13 @@ int Entity_ClearProperties(Entity *e);
 
 // adds property to entity
 // returns - reference to newly added property
-bool Entity_AddProperty(Entity *e, Attribute_ID attr_id, SIValue value);
+bool Entity_AddProperty
+(
+	Entity *e,
+	Attribute_ID attr_id,
+	SIValue value,
+	bool allow_null
+);
 
 // retrieves entity's property
 // NOTE: If the key does not exist, we return the special

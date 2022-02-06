@@ -61,12 +61,59 @@ static void _DeleteEdgeFromIndices(GraphContext *gc, Edge *e) {
 	if(idx) Index_RemoveEdge(idx, e);
 }
 
+// delete all references to a node from any indices built upon its properties
+static void _AddNodeToIndices
+(
+	GraphContext *gc,
+	Node *n
+) {
+	ASSERT(n  != NULL);
+	ASSERT(gc != NULL);
+
+	Schema    *s       =  NULL;
+	Graph     *g       =  gc->g;
+	EntityID  node_id  =  ENTITY_GET_ID(n);
+
+	// retrieve node labels
+	uint label_count;
+	NODE_GET_LABELS(g, n, label_count);
+
+	for(uint i = 0; i < label_count; i++) {
+		int label_id = labels[i];
+		s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
+		ASSERT(s != NULL);
+
+		// Update any indices this entity is represented in
+		Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+		if(idx) Index_IndexNode(idx, n);
+
+		idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
+		if(idx) Index_IndexNode(idx, n);
+	}
+}
+
+static void _AddEdgeToIndices(GraphContext *gc, Edge *e) {
+	Schema  *s  =  NULL;
+	Graph   *g  =  gc->g;
+
+	int relation_id = EDGE_GET_RELATION_ID(e, g);
+
+	s = GraphContext_GetSchemaByID(gc, relation_id, SCHEMA_EDGE);
+
+	// update any indices this entity is represented in
+	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+	if(idx) Index_IndexEdge(idx, e);
+
+	idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
+	if(idx) Index_IndexEdge(idx, e);
+}
+
 // Add properties to the GraphEntity.
 static inline uint _AddProperties(Entity *e, Entity *props) {
 	int failed_updates = 0;
 	for(int i = 0; i < props->prop_count; i++) {
 		EntityProperty *prop = props->properties + i;
-		bool updated = Entity_AddProperty(e, prop->id, prop->value);
+		bool updated = Entity_AddProperty(e, prop->id, prop->value, false);
 		if(!updated) failed_updates++;
 	}
 
@@ -201,17 +248,14 @@ int DeleteEdge
 	return Graph_DeleteEdge(gc->g, e);
 }
 
-int UpdateEntity
+static int _Update_Entity
 (
 	GraphContext *gc,
 	GraphEntity *ge,
-	Attribute_ID attr_id,        // attribute to update
-	SIValue new_value,           // value to be set
+	Attribute_ID attr_id,
+	SIValue new_value,
 	GraphEntityType entity_type
 ) {
-	ASSERT(gc != NULL);
-	ASSERT(ge != NULL);
-
 	if(attr_id == ATTRIBUTE_ALL) {
 		int prop_count = ENTITY_PROP_COUNT(ge);
 		for(int i = 0; i < prop_count; i++) {
@@ -232,4 +276,30 @@ int UpdateEntity
 	}
 
 	return Graph_UpdateEntity(gc->g, ge, attr_id, new_value, entity_type);
+}
+
+int UpdateEntity
+(
+	GraphContext *gc,
+	GraphEntity *ge,
+	Entity *props,        // attribute to update
+	GraphEntityType entity_type
+) {
+	ASSERT(gc != NULL);
+	ASSERT(ge != NULL);
+
+	int updates = 0;
+	uint prop_count = props->prop_count;
+	for (uint i = 0; i < prop_count; i++) {
+		EntityProperty *prop = props->properties + i;
+		updates += _Update_Entity(gc, ge, prop->id, prop->value, entity_type);
+	}
+
+	if(entity_type == GETYPE_NODE) {
+		_AddNodeToIndices(gc, (Node *)ge);
+	} else {
+		_AddEdgeToIndices(gc, (Edge *)ge);
+	}
+
+	return updates;
 }

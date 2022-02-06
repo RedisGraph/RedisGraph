@@ -43,7 +43,6 @@ int UpdateEntity
 (
 	GraphContext *gc,
 	GraphEntity *ge,
-	Attribute_ID attr_id,        // attribute to update
-	SIValue new_value,           // value to be set
+	Entity *props,        // attribute to update
 	GraphEntityType entity_type
 );

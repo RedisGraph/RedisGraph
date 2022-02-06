@@ -934,7 +934,7 @@ int Graph_UpdateEntity
 	if(old_value == PROPERTY_NOTFOUND) {
 		// adding a new property; do nothing if its value is NULL
 		if(SI_TYPE(new_value) != T_NULL) {
-			res = Entity_AddProperty(ge->entity, attr_id, new_value);
+			res = Entity_AddProperty(ge->entity, attr_id, new_value, false);
 		}
 	} else {
 		// update property

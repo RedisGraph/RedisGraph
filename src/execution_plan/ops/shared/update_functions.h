@@ -11,9 +11,7 @@
 // context representing a single update to perform on an entity
 typedef struct {
 	GraphEntity *ge;       // entity to be updated
-	bool update_index;     // whether an index is affected by update
-	SIValue new_value;     // constant value to set
-	Attribute_ID attr_id;  // ID of attribute to update
+	Entity props;
 } PendingUpdateCtx;
 
 // commit all updates described in the array of pending updates

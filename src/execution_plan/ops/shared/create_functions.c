@@ -235,7 +235,7 @@ void ConvertPropertyMap(Entity *entity, Record r, PropertyMap *map, bool fail_on
 		}
 
 		// Set the converted property.
-		Entity_AddProperty(entity, map->keys[i], val);
+		Entity_AddProperty(entity, map->keys[i], val, false);
 	}
 }
 
