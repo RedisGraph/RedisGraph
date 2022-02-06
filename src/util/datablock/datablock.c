@@ -150,7 +150,8 @@ void DataBlock_Ensure(DataBlock *dataBlock, uint64_t idx) {
 void *DataBlock_GetItem(const DataBlock *dataBlock, uint64_t idx) {
 	ASSERT(dataBlock != NULL);
 
-	ASSERT(!_DataBlock_IndexOutOfBounds(dataBlock, idx));
+	// return NULL if idx is out of bounds
+	if(_DataBlock_IndexOutOfBounds(dataBlock, idx)) return NULL;
 
 	DataBlockItemHeader *item_header = DataBlock_GetItemHeader(dataBlock, idx);
 

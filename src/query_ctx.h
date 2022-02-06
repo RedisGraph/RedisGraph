@@ -18,9 +18,10 @@
 extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
 
 typedef struct {
-	AST *ast;       // The scoped AST associated with this query.
-	rax *params;    // Query parameters.
-	const char *query;    // Query string.
+	AST *ast;                     // The scoped AST associated with this query.
+	rax *params;                  // Query parameters.
+	const char *query;            // Query string.
+	const char *query_no_params;  // Query string without parameters part.
 } QueryCtx_QueryData;
 
 typedef struct {

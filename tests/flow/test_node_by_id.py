@@ -239,3 +239,4 @@ class testNodeByIDFlow(FlowTestsBase):
             resultset = redis_graph.query(query).result_set        
             self.env.assertEquals(len(resultset), 0)    # Expecting no results.
             self.env.assertIn("Node By Label and ID Scan", redis_graph.execution_plan(query))
+

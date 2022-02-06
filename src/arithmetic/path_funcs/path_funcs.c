@@ -12,7 +12,7 @@
 #include "../../util/rmalloc.h"
 #include "../../configuration/config.h"
 #include "../../datatypes/path/sipath_builder.h"
-#include "../../algorithms/LAGraph_bfs_pushpull.h"
+#include "../../algorithms/LAGraph/LAGraph_bfs.h"
 
 /* Creates a path from a given sequence of graph entities.
  * The first argument is the ast node represents the path.
@@ -71,7 +71,6 @@ void ShortestPath_Free(void *ctx_ptr) {
 	if(ctx->reltype_names) array_free(ctx->reltype_names);
 	if(ctx->free_matrices) {
 		GrB_free(&ctx->R);
-		GrB_free(&ctx->TR);
 	}
 	rm_free(ctx);
 }
@@ -92,7 +91,6 @@ void *ShortestPath_Clone(void *orig) {
 	else ctx_clone->reltype_names = NULL;
 	// Do not clone matrix data
 	ctx_clone->R = GrB_NULL;
-	ctx_clone->TR = GrB_NULL;
 	ctx_clone->free_matrices = false;
 
 	return ctx_clone;
@@ -106,8 +104,8 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 	Node             *srcNode   =  argv[0].ptrval;
 	Node             *destNode  =  argv[1].ptrval;
 	ShortestPathCtx  *ctx       =  argv[2].ptrval;
-	int64_t src_id              =  ENTITY_GET_ID(srcNode);
-	int64_t dest_id             =  ENTITY_GET_ID(destNode);
+	GrB_Index src_id            =  ENTITY_GET_ID(srcNode);
+	GrB_Index dest_id           =  ENTITY_GET_ID(destNode);
 
 	GrB_Info res;
 	UNUSED(res);
@@ -116,10 +114,7 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 	GrB_Vector PI = GrB_NULL; // vector backtracking results to their parents
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
-	/* The BFS algorithm uses a level of 1 to indicate the source node.
-	 * If this value is not zero (unlimited), increment it by 1
-	 * to make level 1 indicate the source's direct neighbors. */
-	int64_t max_level = (ctx->maxHops == EDGE_LENGTH_INF) ? 0 : ctx->maxHops + 1;
+	GrB_Index max_level = (ctx->maxHops == EDGE_LENGTH_INF) ? 0 : ctx->maxHops;
 
 	if(ctx->R == GrB_NULL) {
 		// First invocation, initialize unset context members.
@@ -143,24 +138,16 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 			res = RG_Matrix_export(&ctx->R, Graph_GetAdjacencyMatrix(gc->g,
 						false));
 			ASSERT(res == GrB_SUCCESS);
-			res = RG_Matrix_export(&ctx->TR, Graph_GetAdjacencyMatrix(gc->g,
-						true));
-			ASSERT(res == GrB_SUCCESS);
 		} else if(ctx->reltype_count == 0) {
 			// If edge types were specified but none were valid,
 			// use the zero matrix
 			ctx->free_matrices = true;
 			res = RG_Matrix_export(&ctx->R, Graph_GetZeroMatrix(gc->g));
 			ASSERT(res == GrB_SUCCESS);
-			res = RG_Matrix_export(&ctx->TR, Graph_GetZeroMatrix(gc->g));
-			ASSERT(res == GrB_SUCCESS);
 		} else if(ctx->reltype_count == 1) {
 			ctx->free_matrices = true;
 			res = RG_Matrix_export(&ctx->R, Graph_GetRelationMatrix(gc->g,
 						ctx->reltypes[0], false));
-			ASSERT(res == GrB_SUCCESS);
-			res = RG_Matrix_export(&ctx->TR, Graph_GetRelationMatrix(gc->g,
-						ctx->reltypes[0], true));
 			ASSERT(res == GrB_SUCCESS);
 		} else {
 			// we have multiple edge types, combine them into a boolean matrix
@@ -184,17 +171,15 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 			GrB_Index nrows;
 			res = GrB_Matrix_nrows(&nrows, ctx->R);
 			ASSERT(res == GrB_SUCCESS);
-			res = GrB_Matrix_new(&ctx->TR, GrB_BOOL, nrows, nrows);
-			ASSERT(res == GrB_SUCCESS);
-			res = GrB_transpose(ctx->TR, NULL, NULL, ctx->R, GrB_DESC_R);
-			ASSERT(res == GrB_SUCCESS);
 		}
 	}
 
 	// Invoke the BFS algorithm
-	res = LAGraph_bfs_pushpull(&V, &PI, ctx->R, ctx->TR, src_id,
-							   &dest_id, max_level, true);
+	res = LG_BreadthFirstSearch_SSGrB(&V, &PI, ctx->R, src_id, &dest_id,
+		max_level);
 	ASSERT(res == GrB_SUCCESS);
+	ASSERT(V != GrB_NULL);
+	ASSERT(PI != GrB_NULL);
 
 	SIValue p = SI_NullVal();
 
@@ -202,8 +187,6 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 	GrB_Index path_len;
 	res = GrB_Vector_extractElement(&path_len, V, dest_id);
 	if(res == GrB_NO_VALUE) goto cleanup; // no path found
-
-	path_len -= 1; // Convert node count to edge count
 
 	// Only emit a path with no edges if minHops is 0
 	if(path_len == 0 && ctx->minHops != 0) goto cleanup;
@@ -223,7 +206,6 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 		// Find the parent of the reached node.
 		GrB_Info res = GrB_Vector_extractElement(&parent_id, PI, id);
 		ASSERT(res == GrB_SUCCESS);
-		parent_id --; // Decrement the parent ID by 1 to correct 1-indexing.
 
 		// Retrieve edges connecting the parent node to the current node.
 		if(ctx->reltype_count == 0) {

@@ -6,7 +6,7 @@ include $(ROOT)/deps/readies/mk/main
 REPO=redisgraph
 
 REDIS_VERSION=6.2.6
-OSNICK.official=bullseye
+OSNICK.official=bionic
 
 INT_BRANCHES=2.8 2.6 2.4 2.2 1.2 1.0
 LATEST_BRANCH=2.4

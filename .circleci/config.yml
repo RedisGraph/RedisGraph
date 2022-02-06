@@ -283,6 +283,7 @@ jobs:
   build_macos:
     macos:
       xcode: 12.4.0
+    resource_class: macos.x86.medium.gen2
     steps:
       - early-returns
       - checkout-all
@@ -592,7 +593,7 @@ workflows:
           <<: *on-integ-and-version-tags
           matrix:
             parameters:
-              platform: [bionic, xenial, centos7, centos8]
+              platform: [bionic, xenial, centos7, ol8]
       - build-arm-platforms:
           <<: *on-integ-and-version-tags
           context: common

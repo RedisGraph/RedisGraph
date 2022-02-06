@@ -77,7 +77,7 @@ static void _AST_MapReferencedNode(AST *ast, const cypher_astnode_t *node, bool 
 	// A node with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
 	if(properties || force_mapping) {
-		const char *alias = AST_GetEntityName(ast, node);
+		const char *alias = AST_ToString(node);
 		_AST_UpdateRefMap(ast, alias);
 
 		// Map any references within the properties map, such as 'b' in:
@@ -95,7 +95,7 @@ static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge, bool 
 	// An edge with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
 	if(properties || force_mapping) {
-		const char *alias = AST_GetEntityName(ast, edge);
+		const char *alias = AST_ToString(edge);
 		_AST_UpdateRefMap(ast, alias);
 
 		// Map any references within the properties map, such as 'b' in:

@@ -29,6 +29,8 @@ class RedisGraphSetup(paella.Setup):
 
     def redhat_compat(self):
         self.install("redhat-lsb-core")
+        if self.osnick == 'ol8':
+            self.install("which") # for automake
         self.run("%s/bin/getepel" % READIES, sudo=True)
         self.run("%s/bin/getgcc --modern" % READIES)
         self.install("m4 libgomp")

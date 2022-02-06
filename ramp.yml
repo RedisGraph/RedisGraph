@@ -1,12 +1,12 @@
 display_name: RedisGraph
-author: RedisLabs
-email: roi@redislabs.com
-description: A graph database on top of Redis which supports Open-Cypher query language.
+author: Redis
+email: roi@redis.com
+description: A graph database module for Redis
 homepage: http://redisgraph.io
 license: Redis Source Available License Agreement
 command_line_args: ""
-min_redis_version: "6.0"
-min_redis_pack_version: "6.0.8"
+min_redis_version: "6.2"
+min_redis_pack_version: "6.2.8"
 config_command: "GRAPH.CONFIG SET"
 capabilities:
     - types
@@ -18,6 +18,7 @@ capabilities:
     - backup_restore
     - no_multi_key
     - intershard_tls
+    - intershard_tls_pass
 exclude_commands:
     - GRAPH.CONFIG
     - GRAPH.DEBUG

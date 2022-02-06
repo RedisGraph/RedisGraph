@@ -162,7 +162,7 @@ static FT_FilterNode *_convertComparison(const cypher_astnode_t *comparison_node
 	return root;
 }
 
-static FT_FilterNode *_convertInlinedProperties(const AST *ast, const cypher_astnode_t *entity,
+static FT_FilterNode *_convertInlinedProperties(const cypher_astnode_t *entity,
 												GraphEntityType type) {
 	const cypher_astnode_t *props = NULL;
 	const cypher_astnode_t *ast_identifer;
@@ -175,7 +175,7 @@ static FT_FilterNode *_convertInlinedProperties(const AST *ast, const cypher_ast
 	if(!props) return NULL;
 
 	// Retrieve the entity's alias.
-	const char *alias = AST_GetEntityName(ast, entity);
+	const char *alias = AST_ToString(entity);
 
 	FT_FilterNode *root = NULL;
 	uint nelems = cypher_ast_map_nentries(props);
@@ -248,13 +248,13 @@ void _AST_ConvertGraphPatternToFilter(const AST *ast, FT_FilterNode **root,
 		// Nodes are in even places.
 		for(uint n = 0; n < nelements; n += 2) {
 			const cypher_astnode_t *node = cypher_ast_pattern_path_get_element(path, n);
-			ft_node = _convertInlinedProperties(ast, node, GETYPE_NODE);
+			ft_node = _convertInlinedProperties(node, GETYPE_NODE);
 			if(ft_node) _FT_Append(root, ft_node);
 		}
 		// Edges are in odd places.
 		for(uint e = 1; e < nelements; e += 2) {
 			const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, e);
-			ft_node = _convertInlinedProperties(ast, edge, GETYPE_EDGE);
+			ft_node = _convertInlinedProperties(edge, GETYPE_EDGE);
 			if(ft_node) _FT_Append(root, ft_node);
 		}
 	}
