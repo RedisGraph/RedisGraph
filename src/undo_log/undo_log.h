@@ -20,8 +20,7 @@
 
 // the type of operation of each item in the undo_list
 typedef enum {
-	UL_UPDATE_NODE = 0,   // undo node update
-	UL_UPDATE_EDGE,       // undo edge update
+	UL_UPDATE = 0,        // undo node/edge update
 	UL_CREATE_NODE,       // undo node creation
 	UL_CREATE_EDGE,       // undo edge creation
 	UL_DELETE_NODE,       // undo node deletion
@@ -45,10 +44,8 @@ typedef struct DeleteOp {
 } DeleteOp;
 
 typedef struct UpdateOp {
-	union {
-		Node n;
-		Edge e;
-	};
+	GraphEntity *ge;
+	GraphEntityType entity_type;
 	Attribute_ID attr_id;
 	SIValue orig_value;
 } UpdateOp;
@@ -109,21 +106,13 @@ void UndoLog_DeleteEdge
 );
 
 // create node update operation
-void UndoLog_UpdateNode
+void UndoLog_UpdateEntity
 (
 	UndoOp *op,
-	Node *n,
+	GraphEntity *ge,
 	Attribute_ID attr_id,
-	SIValue orig_value   // the original value before the entity was changed
-);
-
-// create edge update operation
-void UndoLog_UpdateEdge
-(
-	UndoOp *op,
-	Edge *e,
-	Attribute_ID attr_id,
-	SIValue orig_value   // the original value before the entity was changed
+	SIValue orig_value,   // the original value before the entity was changed
+	GraphEntityType entity_type
 );
 
 // rollback all modifications tracked by this undo log

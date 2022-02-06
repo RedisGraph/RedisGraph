@@ -9,6 +9,8 @@
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../arithmetic/arithmetic_expression.h"
+#include "../../graph/graph_hub.h"
+#include "../../util/qsort.h"
 
 /* Forward declarations. */
 static Record DeleteConsume(OpBase *opBase);
@@ -16,9 +18,7 @@ static OpResult DeleteInit(OpBase *opBase);
 static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void DeleteFree(OpBase *opBase);
 
-void DeleteEntities(OpDelete *op) {
-	Graph  *g                     =  op->gc->g;
-	uint   node_deleted           =  0;
+void _DeleteEntities(OpDelete *op) {
 	uint   edge_deleted           =  0;
 	uint   implicit_edge_deleted  =  0;
 	uint   node_count             =  array_len(op->deleted_nodes);
@@ -30,30 +30,31 @@ void DeleteEntities(OpDelete *op) {
 	// lock everything
 	QueryCtx_LockForCommit();
 
-	if(GraphContext_HasIndices(op->gc)) {
-		for(int i = 0; i < node_count; i++) {
-			Node *n = op->deleted_nodes + i;
-			GraphContext_DeleteNodeFromIndices(op->gc, n);
-		}
+	// removing duplicates
+	Node *nodes = op->deleted_nodes;
+	Node *distinct_nodes = array_new(Node, 1);
 
-		for(int i = 0; i < edge_count; i++) {
-			Edge *e = op->deleted_edges + i;
-			GraphContext_DeleteEdgeFromIndices(op->gc, e);
-		}
+#define is_entity_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
+	QSORT(Node, nodes, node_count, is_entity_lt);
+
+	for(uint i = 0; i < node_count; i++) {
+		while(i < node_count - 1 && ENTITY_GET_ID(nodes + i) == ENTITY_GET_ID(nodes + i + 1)) i++;
+
+		array_append(distinct_nodes, *(nodes + i));
 	}
 
-	if(edge_count <= EDGE_BULK_DELETE_THRESHOLD) {
-		for(uint i = 0; i < edge_count; i++) {
-			edge_deleted += Graph_DeleteEdge(g, op->deleted_edges + i);
-		}
-		edge_count = 0;
+	node_count = array_len(distinct_nodes);
+
+	for(uint i = 0; i < edge_count; i++) {
+		edge_deleted += DeleteEdge(op->gc, op->deleted_edges + i);
 	}
 
-	Graph_BulkDelete(g, op->deleted_nodes, node_count, op->deleted_edges,
-					 edge_count, &node_deleted, &implicit_edge_deleted);
+	for(uint i = 0; i < node_count; i++) {
+		implicit_edge_deleted += DeleteNode(op->gc, distinct_nodes + i);
+	}
 
 	if(op->stats != NULL) {
-		op->stats->nodes_deleted          +=  node_deleted;
+		op->stats->nodes_deleted          +=  node_count;
 		op->stats->relationships_deleted  +=  edge_deleted;
 		op->stats->relationships_deleted  +=  implicit_edge_deleted;
 	}
@@ -136,7 +137,7 @@ static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase) {
 static void DeleteFree(OpBase *ctx) {
 	OpDelete *op = (OpDelete *)ctx;
 
-	DeleteEntities(op);
+	_DeleteEntities(op);
 
 	if(op->deleted_nodes) {
 		array_free(op->deleted_nodes);

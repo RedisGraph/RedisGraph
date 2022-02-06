@@ -9,6 +9,7 @@
 #include "../../../query_ctx.h"
 #include "../../../datatypes/map.h"
 #include "../../../datatypes/array.h"
+#include "../../../graph/graph_hub.h"
 
 static PendingUpdateCtx _PreparePendingUpdate
 (
@@ -127,7 +128,7 @@ void CommitUpdates
 		if(GraphEntity_IsDeleted(ge)) continue;
 
 		// update the property on the graph entity
-		int updated = Graph_UpdateEntity(gc->g, update->ge, update->attr_id,
+		int updated = UpdateEntity(gc, update->ge, update->attr_id,
 			update->new_value, type);
 		properties_set += updated;
 		// reindex only if update performed

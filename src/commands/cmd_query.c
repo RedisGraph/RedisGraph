@@ -202,11 +202,6 @@ static void _ExecuteQuery(void *args) {
 			GraphContext_MarkWriter(rm_ctx, gc);
 		}
 		CommandCtx_ThreadSafeContextUnlock(command_ctx);
-
-		// enable undo log for write queries
-		if(plan != NULL) {
-			Graph_SetCallbacks(gc->g, GRAPH_CALLBACKS_UNDO);
-		}
 	}
 
 	if(exec_type == EXECUTION_TYPE_QUERY) {  // query operation
@@ -251,9 +246,6 @@ static void _ExecuteQuery(void *args) {
 		result_set->stats.relationships_created  =  0;
 		result_set->stats.relationships_deleted  =  0;
 	}
-
-	// restore callback to nop
-	Graph_SetCallbacks(gc->g, GRAPH_CALLBACKS_NOP);
 	
 	QueryCtx_ForceUnlockCommit();
 

@@ -12,7 +12,6 @@
 #include "entities/node.h"
 #include "entities/edge.h"
 #include "../redismodule.h"
-#include "graph_callbacks.h"
 #include "graph_statistics.h"
 #include "rg_matrix/rg_matrix.h"
 #include "../util/datablock/datablock.h"
@@ -25,7 +24,6 @@
 #define GRAPH_UNKNOWN_LABEL -2                  // Labels are numbered [0-N], -2 represents an unknown relation.
 #define GRAPH_NO_RELATION -1                    // Relations are numbered [0-N], -1 represents no relation.
 #define GRAPH_UNKNOWN_RELATION -2               // Relations are numbered [0-N], -2 represents an unknown relation.
-#define EDGE_BULK_DELETE_THRESHOLD 4            // Max number of deletions to perform without choosing the bulk delete routine.
 
 typedef enum {
 	GRAPH_EDGE_DIR_INCOMING,
@@ -57,7 +55,6 @@ struct Graph {
 	bool _writelocked;                  // true if the read-write lock was acquired by a writer
 	SyncMatrixFunc SynchronizeMatrix;   // function pointer to matrix synchronization routine
 	GraphStatistics stats;              // graph related statistics
-	GraphCallback GraphCallbacks;       // callback for graph update operations
 };
 
 // graph synchronization functions
@@ -205,18 +202,6 @@ int Graph_UpdateEntity
 bool Graph_EntityIsDeleted
 (
 	Entity *e
-);
-
-// removes both nodes and edges from graph
-void Graph_BulkDelete
-(
-	Graph *g,           // graph to delete entities from
-	Node *nodes,        // nodes to delete
-	uint node_count,    // number of nodes to delete
-	Edge *edges,        // edges to delete
-	uint edge_count,    // number of edges to delete
-	uint *node_deleted, // number of nodes removed
-	uint *edge_deleted  // number of edges removed
 );
 
 // all graph matrices are required to be squared NXN
@@ -406,13 +391,6 @@ RG_Matrix Graph_GetLabelRGMatrix
 (
 	const Graph *g,
 	int label_idx
-);
-
-// set the craph callbacks type
-void Graph_SetCallbacks
-(
-	Graph *g,
-	GRAPH_CALLBACKS_TYPE type
 );
 
 // free graph

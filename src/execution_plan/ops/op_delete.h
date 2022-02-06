@@ -26,5 +26,3 @@ typedef struct {
 } OpDelete;
 
 OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps);
-
-void DeleteEntities(OpDelete *op);

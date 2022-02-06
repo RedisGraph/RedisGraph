@@ -8,7 +8,6 @@
 #include "query_ctx.h"
 #include "../graph/entities/node.h"
 #include "../graph/entities/edge.h"
-#include "../execution_plan/ops/op_delete.h"
 #include "../execution_plan/ops/shared/update_functions.h"
 #include "../execution_plan/ops/shared/create_functions.h"
 
@@ -73,73 +72,51 @@ void UndoLog_DeleteEdge
 	op->type        = UL_DELETE_EDGE;
 }
 
-// create node update operation
-void UndoLog_UpdateNode
+// create entity update operation
+void UndoLog_UpdateEntity
 (
 	UndoOp *op,
-	Node *n,
+	GraphEntity *ge,
 	Attribute_ID attr_id,
-	SIValue orig_value   // the original value which pending_update is about to override
+	SIValue orig_value,   // the original value which pending_update is about to override
+	GraphEntityType entity_type
 ) {
 	ASSERT(op != NULL);
-	ASSERT(n != NULL);
+	ASSERT(ge != NULL);
 
-	op->update_op.n          = *n;
-	op->update_op.attr_id    = attr_id;
-	op->update_op.orig_value = orig_value;
-	op->type                 = UL_UPDATE_NODE;
-}
-
-// create edge update operation
-void UndoLog_UpdateEdge
-(
-	UndoOp *op,
-	Edge *e,
-	Attribute_ID attr_id,
-	SIValue orig_value   // the original value which pending_update is about to override
-) {
-	ASSERT(op != NULL);
-	ASSERT(e != NULL);
-
-	op->update_op.e          = *e;
-	op->update_op.attr_id    = attr_id;
-	op->update_op.orig_value = orig_value;
-	op->type                 = UL_UPDATE_EDGE;
+	op->update_op.ge          = ge;
+	op->update_op.entity_type = entity_type;
+	op->update_op.attr_id     = attr_id;
+	op->update_op.orig_value  = orig_value;
+	op->type                  = UL_UPDATE;
 }
 
 // rollback the updates taken place by current query.
-static void _UndoLog_Rollback_Update_Node(QueryCtx *ctx, size_t seq_start, size_t seq_end) {
+static void _UndoLog_Rollback_Update_Entity(QueryCtx *ctx, size_t seq_start, size_t seq_end) {
 	UndoOp *undo_list = ctx->undo_log.undo_list;
 	size_t len = seq_end - seq_start + 1; 
 	for(int i = 0; i < len; ++i) {
 		UndoOp *op = undo_list + seq_start + i;
-		Graph_UpdateEntity(ctx->gc->g, (GraphEntity *)&op->update_op.n,
-			op->update_op.attr_id, op->update_op.orig_value, GETYPE_NODE);
+		Graph_UpdateEntity(ctx->gc->g, op->update_op.ge,
+			op->update_op.attr_id, op->update_op.orig_value, op->update_op.entity_type);
 
-		uint label_count;
-		NODE_GET_LABELS(ctx->gc->g, &op->update_op.n, label_count);
-		for(uint j = 0; j < label_count; j++) {
-			Schema *s = GraphContext_GetSchemaByID(ctx->gc, labels[j], SCHEMA_NODE);
+		if(op->update_op.entity_type == GETYPE_NODE) {
+			Node *n = (Node *)op->update_op.ge;
+			uint label_count;
+			NODE_GET_LABELS(ctx->gc->g, n, label_count);
+			for(uint j = 0; j < label_count; j++) {
+				Schema *s = GraphContext_GetSchemaByID(ctx->gc, labels[j], SCHEMA_NODE);
+				ASSERT(s);
+
+				if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n);
+			}
+		} else {
+			Edge *e = (Edge *)op->update_op.ge;
+			Schema *s = GraphContext_GetSchemaByID(ctx->gc, e->relationID, SCHEMA_EDGE);
 			ASSERT(s);
 
-			if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, &op->update_op.n);
+			if(Schema_HasIndices(s)) Schema_AddEdgeToIndices(s, e);
 		}
-	}
-}
-
-// rollback the updates taken place by current query.
-static void _UndoLog_Rollback_Update_Edge(QueryCtx *ctx, size_t seq_start, size_t seq_end) {
-	UndoOp *undo_list = ctx->undo_log.undo_list;
-	size_t len = seq_end - seq_start + 1; 
-	for(int i = 0; i < len; ++i) {
-		UndoOp *op = undo_list + seq_start + i;
-		Graph_UpdateEntity(ctx->gc->g, (GraphEntity *)&op->update_op.e,
-			op->update_op.attr_id, op->update_op.orig_value, GETYPE_EDGE);
-
-		Schema *s = GraphContext_GetSchemaByID(ctx->gc, op->update_op.e.relationID, SCHEMA_EDGE);
-		ASSERT(s);
-
-		if(Schema_HasIndices(s)) Schema_AddEdgeToIndices(s, &op->update_op.e);
 	}
 }
 
@@ -147,30 +124,18 @@ static void _UndoLog_Rollback_Update_Edge(QueryCtx *ctx, size_t seq_start, size_
 static void _UndoLog_Rollback_Create_Node(QueryCtx *ctx, size_t seq_start, size_t seq_end) {
 	UndoOp *undo_list = ctx->undo_log.undo_list;
 	size_t len = seq_end - seq_start + 1;
-	Node *nodes_to_delete = array_newlen(Node, len);
 	for(int i = 0; i < len; ++i) {
-		nodes_to_delete[i] = undo_list[seq_start + i].create_op.n;
+		Graph_DeleteNode(ctx->gc->g, &undo_list[seq_start + i].create_op.n);
 	}
-
-	OpDelete op = { .gc = ctx->gc, .deleted_nodes = nodes_to_delete, .deleted_edges = NULL, .stats = QueryCtx_GetResultSetStatistics()};
-	DeleteEntities(&op);
-
-	array_free(nodes_to_delete);
 }
 
 // Deletes all edges that have been created by the query
 static void _UndoLog_Rollback_Create_Edge(QueryCtx *ctx, size_t seq_start, size_t seq_end) {
 	UndoOp *undo_list = ctx->undo_log.undo_list;
 	size_t len = seq_end - seq_start + 1;
-	Edge *edges_to_delete = array_newlen(Edge, len);
 	for(int i = 0; i < len; ++i) {
-		edges_to_delete[i] = undo_list[seq_start + i].create_op.e;
+		Graph_DeleteEdge(ctx->gc->g, &undo_list[seq_start + i].create_op.e);
 	}
-
-	OpDelete op = { .gc = ctx->gc, .deleted_nodes = NULL, .deleted_edges = edges_to_delete, .stats = QueryCtx_GetResultSetStatistics()};
-	DeleteEntities(&op);
-
-	array_free(edges_to_delete);
 }
 
 static void _UndoLog_Rollback_Delete_Node(QueryCtx *ctx, size_t seq_start, size_t seq_end) {
@@ -215,7 +180,6 @@ void UndoLog_Rollback(UndoLog *undo_log) {
 	QueryCtx *ctx = QueryCtx_GetQueryCtx();
 	ASSERT(ctx);
 	ASSERT(undo_log);
-	Graph_SetCallbacks(ctx->gc->g, GRAPH_CALLBACKS_NOP);
 
 	uint64_t count = array_len(undo_log->undo_list);
 
@@ -232,11 +196,8 @@ void UndoLog_Rollback(UndoLog *undo_log) {
 		}
 
 		switch(cur_type) {
-			case UL_UPDATE_NODE:
-				_UndoLog_Rollback_Update_Node(ctx, i, seq_end);
-				break;
-			case UL_UPDATE_EDGE:
-				_UndoLog_Rollback_Update_Edge(ctx, i, seq_end);
+			case UL_UPDATE:
+				_UndoLog_Rollback_Update_Entity(ctx, i, seq_end);
 				break;
 			case UL_CREATE_NODE:
 				_UndoLog_Rollback_Create_Node(ctx, i, seq_end);
@@ -265,9 +226,7 @@ static void UndoOp_Free
 	UndoOp *op
 ) {
 	switch(op->type) {
-		case UL_UPDATE_NODE:
-			break;
-		case UL_UPDATE_EDGE:
+		case UL_UPDATE:
 			break;
 		case UL_CREATE_NODE:
 			break;

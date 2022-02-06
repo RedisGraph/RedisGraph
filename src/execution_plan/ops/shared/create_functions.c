@@ -10,6 +10,7 @@
 #include "../../../query_ctx.h"
 #include "../../../ast/ast_shared.h"
 #include "../../../datatypes/array.h"
+#include "../../../graph/graph_hub.h"
 
 // Add properties to the GraphEntity.
 static inline void _AddProperties(ResultSetStatistics *stats, GraphEntity *ge,
@@ -76,7 +77,7 @@ static void _CommitNodes(PendingCreations *pending) {
 		uint label_count = array_len(labels);
 
 		// introduce node into graph
-		Graph_CreateNode(g, n, labels, label_count);
+		CreateNode(gc, n, labels, label_count);
 
 		if(pending->node_properties[i]) {
 			_AddProperties(pending->stats, (GraphEntity *)n,
@@ -152,7 +153,7 @@ static void _CommitEdges(PendingCreations *pending) {
 		ASSERT(s != NULL);
 		int relation_id = Schema_GetID(s);
 
-		Graph_CreateEdge(g, srcNodeID, destNodeID, relation_id, e);
+		CreateEdge(gc, e, srcNodeID, destNodeID, relation_id);
 
 		if(pending->edge_properties[i]) {
 			_AddProperties(pending->stats, (GraphEntity *)e,
