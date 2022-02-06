@@ -62,27 +62,27 @@ typedef struct {
 	EntityID id;
 } GraphEntity;
 
-/* Deletes all properties on the GraphEntity and returns
- * the number of deleted properties. */
-int GraphEntity_ClearProperties(GraphEntity *e);
+// deletes all properties on the GraphEntity and returns
+// the number of deleted properties
+int Entity_ClearProperties(Entity *e);
 
-/* Adds property to entity
- * returns - reference to newly added property. */
-bool GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value);
+// adds property to entity
+// returns - reference to newly added property
+bool Entity_AddProperty(Entity *e, Attribute_ID attr_id, SIValue value);
 
 // retrieves entity's property
 // NOTE: If the key does not exist, we return the special
 // constant value PROPERTY_NOTFOUND
-SIValue *GraphEntity_GetProperty
+SIValue *Entity_GetProperty
 (
-	const GraphEntity *e,
+	const Entity *e,
 	Attribute_ID attr_id
 );
 
 // updates existing attribute value, return true if property been updated
-bool GraphEntity_SetProperty
+bool Entity_SetProperty
 (
-	const GraphEntity *e,
+	Entity *e,
 	Attribute_ID attr_id,
 	SIValue value
 );
@@ -105,7 +105,7 @@ void GraphEntity_ToString
 bool GraphEntity_IsDeleted(const GraphEntity *e);
 
 // release all memory allocated for entity properties
-void GraphEntity_FreeProperties(Entity *e);
+void Entity_FreeProperties(Entity *e);
 
 // release all memory allocated by entity
-void GraphEntity_Free(Entity * e);
+void Entity_Free(Entity * e);

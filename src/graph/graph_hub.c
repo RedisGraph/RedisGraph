@@ -61,41 +61,75 @@ static void _DeleteEdgeFromIndices(GraphContext *gc, Edge *e) {
 	if(idx) Index_RemoveEdge(idx, e);
 }
 
-void CreateNode
+// Add properties to the GraphEntity.
+static inline uint _AddProperties(Entity *e, Entity *props) {
+	int failed_updates = 0;
+	for(int i = 0; i < props->prop_count; i++) {
+		EntityProperty *prop = props->properties + i;
+		bool updated = Entity_AddProperty(e, prop->id, prop->value);
+		if(!updated) failed_updates++;
+	}
+
+	return props->prop_count - failed_updates;
+}
+
+uint CreateNode
 (
 	GraphContext *gc,
 	Node *n,
 	LabelID *labels,
-	uint label_count
+	uint label_count,
+	Entity *props
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(n != NULL);
 
 	Graph_CreateNode(gc->g, n, labels, label_count);
+	uint properties_set = _AddProperties(n->entity, props);
+
+	// add node labels
+	for(uint i = 0; i < label_count; i++) {
+		Schema *s = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
+		ASSERT(s);
+
+		if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n);
+	}
 
 	// add node creation operation to undo log
 	UndoOp op;
 	UndoLog_CreateNode(&op, *n);
 	_add_undo_op(&op);
+
+	return properties_set;
 }
 
-void CreateEdge
+uint CreateEdge
 (
 	GraphContext *gc,
 	Edge *e,
 	NodeID src,
 	NodeID dst,
-	int r
+	int r,
+	Entity *props
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(e != NULL);
 
 	Graph_CreateEdge(gc->g, src, dst, r, e);
+	uint properties_set = _AddProperties(e->entity, props);
+
+	Schema *s = GraphContext_GetSchema(gc, e->relationship, SCHEMA_EDGE);
+	// all schemas have been created in the edge blueprint loop or earlier
+	ASSERT(s != NULL);
+
+	if(s && Schema_HasIndices(s)) Schema_AddEdgeToIndices(s, e);
 
 	// add edge creation operation to undo log
 	UndoOp op;
 	UndoLog_CreateEdge(&op, *e);
 	_add_undo_op(&op);
+
+	return properties_set;
 }
 
 uint DeleteNode
@@ -189,7 +223,7 @@ int UpdateEntity
 			_add_undo_op(&op);
 		}
 	} else {
-		SIValue *orig_value = GraphEntity_GetProperty(ge, attr_id);
+		SIValue *orig_value = Entity_GetProperty(ge->entity, attr_id);
 		// add entity update operation to undo log
 		UndoOp op;
 		SIValue clone = SI_CloneValue(*orig_value);

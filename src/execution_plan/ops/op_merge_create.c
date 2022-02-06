@@ -16,7 +16,7 @@ static void MergeCreateFree(OpBase *opBase);
 
 // convert a graph entity's components into an identifying hash code
 static void _IncrementalHashEntity(XXH64_state_t *state, const char *label,
-								   PendingProperties *props) {
+								   Entity *props) {
 	// update hash with label if one is provided
 	XXH_errorcode res;
 	UNUSED(res);
@@ -27,15 +27,16 @@ static void _IncrementalHashEntity(XXH64_state_t *state, const char *label,
 
 	if(props) {
 		// update hash with attribute count
-		res = XXH64_update(state, &props->property_count, sizeof(props->property_count));
+		res = XXH64_update(state, &props->prop_count, sizeof(props->prop_count));
 		ASSERT(res != XXH_ERROR);
-		for(int i = 0; i < props->property_count; i++) {
+		for(int i = 0; i < props->prop_count; i++) {
+			EntityProperty *prop = props->properties + i;
 			// update hash with attribute ID
-			res = XXH64_update(state, &props->attr_keys[i], sizeof(props->attr_keys[i]));
+			res = XXH64_update(state, &prop->id, sizeof(prop->id));
 			ASSERT(res != XXH_ERROR);
 
 			// update hash with the hashval of the associated SIValue
-			XXH64_hash_t value_hash = SIValue_HashCode(props->values[i]);
+			XXH64_hash_t value_hash = SIValue_HashCode(prop->value);
 			res = XXH64_update(state, &value_hash, sizeof(value_hash));
 			ASSERT(res != XXH_ERROR);
 		}
@@ -47,15 +48,15 @@ static void _RollbackPendingCreations(OpMergeCreate *op) {
 	uint nodes_to_create_count = array_len(op->pending.nodes_to_create);
 	for(uint i = 0; i < nodes_to_create_count; i++) {
 		array_pop(op->pending.created_nodes);
-		PendingProperties *props = array_pop(op->pending.node_properties);
-		PendingPropertiesFree(props);
+		Entity props = array_pop(op->pending.node_properties);
+		Entity_FreeProperties(&props);
 	}
 
 	uint edges_to_create_count = array_len(op->pending.edges_to_create);
 	for(uint i = 0; i < edges_to_create_count; i++) {
 		array_pop(op->pending.created_edges);
-		PendingProperties *props = array_pop(op->pending.edge_properties);
-		PendingPropertiesFree(props);
+		Entity props = array_pop(op->pending.edge_properties);
+		Entity_FreeProperties(&props);
 	}
 }
 
@@ -115,14 +116,14 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 
 		// convert query-level properties
 		PropertyMap *map = n->properties;
-		PendingProperties *converted_properties = NULL;
-		if(map) converted_properties = ConvertPropertyMap(r, map, true);
+		Entity converted_properties = {0};
+		if(map) ConvertPropertyMap(&converted_properties, r, map, true);
 
 		// update the hash code with this entity
 		uint label_count = array_len(n->labels);
-		if(label_count == 0) _IncrementalHashEntity(op->hash_state, NULL, converted_properties);
+		if(label_count == 0) _IncrementalHashEntity(op->hash_state, NULL, &converted_properties);
 		for(uint i = 0; i < label_count; i ++) {
-			_IncrementalHashEntity(op->hash_state, n->labels[i], converted_properties);
+			_IncrementalHashEntity(op->hash_state, n->labels[i], &converted_properties);
 		}
 
 		// Save node for later insertion
@@ -159,15 +160,15 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 
 		// convert query-level properties
 		PropertyMap *map = e->properties;
-		PendingProperties *converted_properties = NULL;
-		if(map) converted_properties = ConvertPropertyMap(r, map, true);
+		Entity converted_properties = {0};
+		if(map) ConvertPropertyMap(&converted_properties, r, map, true);
 
 		/* Update the hash code with this entity, an edge is represented by its
 		 * relation, properties and nodes.
 		 * Note that unbounded nodes were already presented to the hash.
 		 * Incase node has its internal entity set, this means the node has been retrieved from the graph
 		 * i.e. bounded node. */
-		_IncrementalHashEntity(op->hash_state, e->relation, converted_properties);
+		_IncrementalHashEntity(op->hash_state, e->relation, &converted_properties);
 		if(src_node->entity != NULL) {
 			EntityID id = ENTITY_GET_ID(src_node);
 			void *data = &id;

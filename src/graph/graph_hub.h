@@ -8,21 +8,23 @@
 
 #include "graphcontext.h"
 
-void CreateNode
+uint CreateNode
 (
 	GraphContext *gc,
 	Node *n,
 	LabelID *labels,
-	uint label_count
+	uint label_count,
+	Entity *props
 );
 
-void CreateEdge
+uint CreateEdge
 (
 	GraphContext *gc,
 	Edge *e,
 	NodeID src,
 	NodeID dst,
-	int r
+	int r,
+	Entity *props
 );
 
 uint DeleteNode

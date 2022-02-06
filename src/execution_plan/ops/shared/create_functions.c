@@ -12,18 +12,6 @@
 #include "../../../datatypes/array.h"
 #include "../../../graph/graph_hub.h"
 
-// Add properties to the GraphEntity.
-static inline void _AddProperties(ResultSetStatistics *stats, GraphEntity *ge,
-								  PendingProperties *props) {
-	int failed_updates = 0;
-	for(int i = 0; i < props->property_count; i++) {
-		bool updated = GraphEntity_AddProperty(ge, props->attr_keys[i], props->values[i]);
-		if(!updated) failed_updates++;
-	}
-
-	if(stats) stats->properties_set += props->property_count - failed_updates;
-}
-
 // commit node blueprints
 static void _CommitNodesBlueprint(PendingCreations *pending) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
@@ -77,20 +65,7 @@ static void _CommitNodes(PendingCreations *pending) {
 		uint label_count = array_len(labels);
 
 		// introduce node into graph
-		CreateNode(gc, n, labels, label_count);
-
-		if(pending->node_properties[i]) {
-			_AddProperties(pending->stats, (GraphEntity *)n,
-						   pending->node_properties[i]);
-		}
-
-		// add node labels
-		for(uint i = 0; i < label_count; i++) {
-			Schema *s = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
-			ASSERT(s);
-
-			if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n);
-		}
+		pending->stats->properties_set += CreateNode(gc, n, labels, label_count, pending->node_properties + i);
 	}
 }
 
@@ -153,14 +128,7 @@ static void _CommitEdges(PendingCreations *pending) {
 		ASSERT(s != NULL);
 		int relation_id = Schema_GetID(s);
 
-		CreateEdge(gc, e, srcNodeID, destNodeID, relation_id);
-
-		if(pending->edge_properties[i]) {
-			_AddProperties(pending->stats, (GraphEntity *)e,
-						   pending->edge_properties[i]);
-		}
-
-		if(s && Schema_HasIndices(s)) Schema_AddEdgeToIndices(s, e);
+		pending->stats->properties_set += CreateEdge(gc, e, srcNodeID, destNodeID, relation_id, pending->edge_properties + i);
 	}
 }
 
@@ -172,8 +140,8 @@ PendingCreations NewPendingCreationsContainer(NodeCreateCtx *nodes, EdgeCreateCt
 	pending.node_labels = array_new(int *, 0);
 	pending.created_nodes = array_new(Node *, 0);
 	pending.created_edges = array_new(Edge *, 0);
-	pending.node_properties = array_new(PendingProperties *, 0);
-	pending.edge_properties = array_new(PendingProperties *, 0);
+	pending.node_properties = array_new(Entity, 0);
+	pending.edge_properties = array_new(Entity, 0);
 	pending.stats = NULL;
 
 	return pending;
@@ -227,10 +195,8 @@ void CommitNewEntities(OpBase *op, PendingCreations *pending) {
 }
 
 // Resolve the properties specified in the query into constant values.
-PendingProperties *ConvertPropertyMap(Record r, PropertyMap *map, bool fail_on_null) {
-	PendingProperties *converted = rm_malloc(sizeof(PendingProperties));
+void ConvertPropertyMap(Entity *entity, Record r, PropertyMap *map, bool fail_on_null) {
 	uint property_count = array_len(map->keys);
-	converted->values = rm_malloc(sizeof(SIValue) * property_count);
 	for(int i = 0; i < property_count; i++) {
 		/* Note that AR_EXP_Evaluate may raise a run-time exception, in which case
 		 * the allocations in this function will be memory leaks.
@@ -241,8 +207,7 @@ PendingProperties *ConvertPropertyMap(Record r, PropertyMap *map, bool fail_on_n
 			// This value is of an invalid type.
 			if(!SIValue_IsNull(val)) {
 				// If the value was a complex type, emit an exception.
-				converted->property_count = i;
-				PendingPropertiesFree(converted);
+				Entity_FreeProperties(entity);
 				Error_InvalidPropertyValue();
 				ErrorCtx_RaiseRuntimeException(NULL);
 			}
@@ -250,8 +215,7 @@ PendingProperties *ConvertPropertyMap(Record r, PropertyMap *map, bool fail_on_n
 			 * otherwise skip this value. */
 			if(fail_on_null) {
 				// Emit an error and exit.
-				converted->property_count = i;
-				PendingPropertiesFree(converted);
+				Entity_FreeProperties(entity);
 				ErrorCtx_RaiseRuntimeException("Cannot merge node using null property value");
 			}
 		}
@@ -264,30 +228,15 @@ PendingProperties *ConvertPropertyMap(Record r, PropertyMap *map, bool fail_on_n
 			if(res) {
 				// validation failed
 				SIValue_Free(val);
-				converted->property_count = i;
-				PendingPropertiesFree(converted);
+				Entity_FreeProperties(entity);
 				Error_InvalidPropertyValue();
 				ErrorCtx_RaiseRuntimeException(NULL);
 			}
 		}
+
 		// Set the converted property.
-		converted->values[i] = val;
+		Entity_AddProperty(entity, map->keys[i], val);
 	}
-	converted->property_count = property_count;
-	converted->attr_keys = map->keys; // This pointer can be copied directly.
-
-	return converted;
-}
-
-// Free the properties that have been committed to the graph
-void PendingPropertiesFree(PendingProperties *props) {
-	if(props == NULL) return;
-	// The 'keys' array belongs to the original PropertyMap, so shouldn't be freed here.
-	for(uint j = 0; j < props->property_count; j ++) {
-		SIValue_Free(props->values[j]);
-	}
-	rm_free(props->values);
-	rm_free(props);
 }
 
 // Free all data associated with a completed create operation.
@@ -329,7 +278,7 @@ void PendingCreationsFree(PendingCreations *pending) {
 	if(pending->node_properties) {
 		uint prop_count = array_len(pending->node_properties);
 		for(uint i = 0; i < prop_count; i ++) {
-			PendingPropertiesFree(pending->node_properties[i]);
+			Entity_FreeProperties(pending->node_properties + i);
 		}
 		array_free(pending->node_properties);
 		pending->node_properties = NULL;
@@ -339,7 +288,7 @@ void PendingCreationsFree(PendingCreations *pending) {
 	if(pending->edge_properties) {
 		uint prop_count = array_len(pending->edge_properties);
 		for(uint i = 0; i < prop_count; i ++) {
-			PendingPropertiesFree(pending->edge_properties[i]);
+			Entity_FreeProperties(pending->edge_properties + i);
 		}
 		array_free(pending->edge_properties);
 		pending->edge_properties = NULL;

@@ -234,10 +234,10 @@ static void UndoOp_Free
 			break;
 		case UL_DELETE_NODE:
 			rm_free(op->delete_op.labels);
-			GraphEntity_Free(op->delete_op.n.entity);
+			Entity_Free(op->delete_op.n.entity);
 			break;
 		case UL_DELETE_EDGE:
-			GraphEntity_Free(op->delete_op.e.entity);
+			Entity_Free(op->delete_op.e.entity);
 			break;
 		default:
 			ASSERT(false);           

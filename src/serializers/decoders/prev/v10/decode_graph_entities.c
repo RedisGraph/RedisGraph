@@ -71,7 +71,7 @@ static void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e)
 	for(int i = 0; i < propCount; i++) {
 		Attribute_ID attr_id = RedisModule_LoadUnsigned(rdb);
 		SIValue attr_value = _RdbLoadSIValue(rdb);
-		GraphEntity_AddProperty(e, attr_id, attr_value);
+		Entity_AddProperty(e->entity, attr_id, attr_value);
 		SIValue_Free(attr_value);
 	}
 }

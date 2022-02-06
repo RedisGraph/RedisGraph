@@ -377,7 +377,7 @@ Graph *Graph_New
 	size_t edge_cap
 ) {
 
-	fpDestructor cb = (fpDestructor)GraphEntity_FreeProperties;
+	fpDestructor cb = (fpDestructor)Entity_FreeProperties;
 	Graph *g = rm_calloc(1, sizeof(Graph));
 
 	g->nodes      =  DataBlock_New(node_cap, node_cap, sizeof(Entity), cb);
@@ -925,20 +925,20 @@ int Graph_UpdateEntity
 
 	// handle the case in which we are deleting all properties
 	if(attr_id == ATTRIBUTE_ALL) {
-		return GraphEntity_ClearProperties(ge);
+		return Entity_ClearProperties(ge->entity);
 	}
 
 	// try to get current property value
-	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
+	SIValue *old_value = Entity_GetProperty(ge->entity, attr_id);
 
 	if(old_value == PROPERTY_NOTFOUND) {
 		// adding a new property; do nothing if its value is NULL
 		if(SI_TYPE(new_value) != T_NULL) {
-			res = GraphEntity_AddProperty(ge, attr_id, new_value);
+			res = Entity_AddProperty(ge->entity, attr_id, new_value);
 		}
 	} else {
 		// update property
-		res = GraphEntity_SetProperty(ge, attr_id, new_value);
+		res = Entity_SetProperty(ge->entity, attr_id, new_value);
 	}
 
 	SIValue_Free(new_value);
@@ -1108,13 +1108,13 @@ void Graph_Free(Graph *g) {
 	// is being removed we won't be reusing items
 	it = Graph_ScanNodes(g);
 	while((en = (Entity *)DataBlockIterator_Next(it, NULL)) != NULL) {
-		GraphEntity_FreeProperties(en);
+		Entity_FreeProperties(en);
 	}
 	DataBlockIterator_Free(it);
 
 	it = Graph_ScanEdges(g);
 	while((en = DataBlockIterator_Next(it, NULL)) != NULL) {
-		GraphEntity_FreeProperties(en);
+		Entity_FreeProperties(en);
 	}
 	DataBlockIterator_Free(it);
 
