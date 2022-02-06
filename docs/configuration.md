@@ -26,7 +26,7 @@ The number of threads in RedisGraph's thread pool. This is equivalent to the max
 
 ### Default
 
-`THREAD_COUNT` defaults to the system's processor count.
+`THREAD_COUNT` defaults to the system's hardware threads (logical cores)
 
 ### Example
 
