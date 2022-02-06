@@ -150,12 +150,12 @@ class testConfig(FlowTestsBase):
         self.env.assertEqual(response, "OK")
 
         # Change timeout value from default
-        response = redis_con.execute_command("GRAPH.CONFIG SET TIMEOUT 10")
+        response = redis_con.execute_command("GRAPH.CONFIG SET TIMEOUT 5")
         self.env.assertEqual(response, "OK")
 
         # Make sure config been updated.
         response = redis_con.execute_command("GRAPH.CONFIG GET TIMEOUT")
-        expected_response = ["TIMEOUT", 10]
+        expected_response = ["TIMEOUT", 5]
         self.env.assertEqual(response, expected_response)
 
         query = """UNWIND range(1,1000000) AS v RETURN COUNT(v)"""
