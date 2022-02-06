@@ -88,6 +88,13 @@ bool Entity_AddProperty(Entity *e, Attribute_ID attr_id, SIValue value) {
 
 SIValue *Entity_GetProperty(const Entity *e, Attribute_ID attr_id) {
 	if(attr_id == ATTRIBUTE_NOTFOUND) return PROPERTY_NOTFOUND;
+	if(e == NULL) {
+ 		/* The internal entity pointer should only be NULL if the entity
+ 		 * is in an intermediate state, such as a node scheduled for creation.
+ 		 * Note that this exception may cause memory to be leaked in the caller. */
+ 		ErrorCtx_SetError("Attempted to access undefined property");
+ 		return PROPERTY_NOTFOUND;
+ 	}
 
 	for(int i = 0; i < e->prop_count; i++) {
 		if(attr_id == e->properties[i].id) {
