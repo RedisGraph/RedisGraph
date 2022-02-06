@@ -98,60 +98,60 @@ class testIndexUpdatesFlow(FlowTestsBase):
         self.validate_doubleval()
         self.validate_intval()
 
-    # # Modify a property, triggering updates to all nodes in two indices
-    # def test01_full_property_update(self):
-    #     result = redis_graph.query("MATCH (a) SET a.doubleval = a.doubleval + %f" % (round(random.uniform(-1, 1), 2)))
-    #     self.env.assertEquals(result.properties_set, 1000)
-    #     # Verify that index scans still function and return correctly
-    #     self.validate_state()
+    # Modify a property, triggering updates to all nodes in two indices
+    def test01_full_property_update(self):
+        result = redis_graph.query("MATCH (a) SET a.doubleval = a.doubleval + %f" % (round(random.uniform(-1, 1), 2)))
+        self.env.assertEquals(result.properties_set, 1000)
+        # Verify that index scans still function and return correctly
+        self.validate_state()
 
-    # # Modify a property, triggering updates to a subset of nodes in two indices
-    # def test02_partial_property_update(self):
-    #     redis_graph.query("MATCH (a) WHERE a.doubleval > 0 SET a.doubleval = a.doubleval + %f" % (round(random.uniform(-1, 1), 2)))
-    #     # Verify that index scans still function and return correctly
-    #     self.validate_state()
+    # Modify a property, triggering updates to a subset of nodes in two indices
+    def test02_partial_property_update(self):
+        redis_graph.query("MATCH (a) WHERE a.doubleval > 0 SET a.doubleval = a.doubleval + %f" % (round(random.uniform(-1, 1), 2)))
+        # Verify that index scans still function and return correctly
+        self.validate_state()
 
-    # #  Add 100 randomized nodes and validate indices
-    # def test03_node_creation(self):
-    #     # Reset nodes in the Graph object so that we won't double-commit the originals
-    #     redis_graph.nodes = {}
-    #     global node_ctr
-    #     for i in range(100):
-    #         node = self.new_node()
-    #         redis_graph.add_node(node)
-    #         node_ctr += 1
-    #     redis_graph.commit()
-    #     self.validate_state()
+    #  Add 100 randomized nodes and validate indices
+    def test03_node_creation(self):
+        # Reset nodes in the Graph object so that we won't double-commit the originals
+        redis_graph.nodes = {}
+        global node_ctr
+        for i in range(100):
+            node = self.new_node()
+            redis_graph.add_node(node)
+            node_ctr += 1
+        redis_graph.commit()
+        self.validate_state()
 
-    # # Delete every other node in first 100 and validate indices
-    # def test04_node_deletion(self):
-    #     # Reset nodes in the Graph object so that we won't double-commit the originals
-    #     redis_graph.nodes = {}
-    #     global node_ctr
-    #     # Delete nodes one at a time
-    #     for i in range(0, 100, 2):
-    #         result = redis_graph.query("MATCH (a) WHERE ID(a) = %d DELETE a" % (i))
-    #         self.env.assertEquals(result.nodes_deleted, 1)
-    #         node_ctr -= 1
-    #     self.validate_state()
+    # Delete every other node in first 100 and validate indices
+    def test04_node_deletion(self):
+        # Reset nodes in the Graph object so that we won't double-commit the originals
+        redis_graph.nodes = {}
+        global node_ctr
+        # Delete nodes one at a time
+        for i in range(0, 100, 2):
+            result = redis_graph.query("MATCH (a) WHERE ID(a) = %d DELETE a" % (i))
+            self.env.assertEquals(result.nodes_deleted, 1)
+            node_ctr -= 1
+        self.validate_state()
 
-    #     # Delete all nodes matching a filter
-    #     result = redis_graph.query("MATCH (a:label_a) WHERE a.group = 'Group A' DELETE a")
-    #     self.env.assertGreater(result.nodes_deleted, 0)
-    #     self.validate_state()
+        # Delete all nodes matching a filter
+        result = redis_graph.query("MATCH (a:label_a) WHERE a.group = 'Group A' DELETE a")
+        self.env.assertGreater(result.nodes_deleted, 0)
+        self.validate_state()
 
-    # def test05_unindexed_property_update(self):
-    #     # Add an unindexed property to all nodes.
-    #     redis_graph.query("MATCH (a) SET a.unindexed = 'unindexed'")
+    def test05_unindexed_property_update(self):
+        # Add an unindexed property to all nodes.
+        redis_graph.query("MATCH (a) SET a.unindexed = 'unindexed'")
 
-    #     # Retrieve a single node
-    #     result = redis_graph.query("MATCH (a) RETURN a.unique LIMIT 1")
-    #     unique_prop = result.result_set[0][0]
-    #     query = """MATCH (a {unique: %s }) SET a.unindexed = 5, a.unique = %s RETURN a.unindexed, a.unique""" % (unique_prop, unique_prop)
-    #     result = redis_graph.query(query)
-    #     expected_result = [[5, unique_prop]]
-    #     self.env.assertEquals(result.result_set, expected_result)
-    #     self.env.assertEquals(result.properties_set, 1)
+        # Retrieve a single node
+        result = redis_graph.query("MATCH (a) RETURN a.unique LIMIT 1")
+        unique_prop = result.result_set[0][0]
+        query = """MATCH (a {unique: %s }) SET a.unindexed = 5, a.unique = %s RETURN a.unindexed, a.unique""" % (unique_prop, unique_prop)
+        result = redis_graph.query(query)
+        expected_result = [[5, unique_prop]]
+        self.env.assertEquals(result.result_set, expected_result)
+        self.env.assertEquals(result.properties_set, 1)
 
     # Validate that after deleting an indexed property, that property can no longer be found in the index.
     def test06_remove_indexed_prop(self):
@@ -176,28 +176,28 @@ class testIndexUpdatesFlow(FlowTestsBase):
         expected_result = []
         self.env.assertEquals(result.result_set, expected_result)
 
-    # # Validate that when a label has both exact-match and full-text indexes
-    # # on different properties, an update operation checks all indexes to
-    # # determine whether they must be updated.
-    # # This is necessary because either one of the indexes may not track the
-    # # property being updated, but that does not guarantee that the other
-    # # index does not track the property.
-    # def test07_update_property_only_on_fulltext_index(self):
-    #     # Remove the exact-match index on a property
-    #     redis_graph.redis_con.execute_command("GRAPH.QUERY", GRAPH_ID, "DROP INDEX ON :label_a(group)")
-    #     # Add a full-text index on the property
-    #     result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex('label_a', 'group')")
-    #     self.env.assertEquals(result.indices_created, 1)
+    # Validate that when a label has both exact-match and full-text indexes
+    # on different properties, an update operation checks all indexes to
+    # determine whether they must be updated.
+    # This is necessary because either one of the indexes may not track the
+    # property being updated, but that does not guarantee that the other
+    # index does not track the property.
+    def test07_update_property_only_on_fulltext_index(self):
+        # Remove the exact-match index on a property
+        redis_graph.redis_con.execute_command("GRAPH.QUERY", GRAPH_ID, "DROP INDEX ON :label_a(group)")
+        # Add a full-text index on the property
+        result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex('label_a', 'group')")
+        self.env.assertEquals(result.indices_created, 1)
 
-    #     # Modify the values of the property
-    #     result = redis_graph.query("MATCH (a:label_a) WHERE a.group = 'Group C' SET a.group = 'Group NEW'")
-    #     modified_count = result.properties_set
-    #     self.env.assertGreater(modified_count, 0)
+        # Modify the values of the property
+        result = redis_graph.query("MATCH (a:label_a) WHERE a.group = 'Group C' SET a.group = 'Group NEW'")
+        modified_count = result.properties_set
+        self.env.assertGreater(modified_count, 0)
 
-    #     # Validate that the full-text index reflects the update
-    #     result = redis_graph.query("CALL db.idx.fulltext.queryNodes('label_a', 'Group NEW')")
-    #     self.env.assertEquals(len(result.result_set), modified_count)
+        # Validate that the full-text index reflects the update
+        result = redis_graph.query("CALL db.idx.fulltext.queryNodes('label_a', 'Group NEW')")
+        self.env.assertEquals(len(result.result_set), modified_count)
 
-    #     # Validate that the previous value has been removed
-    #     result = redis_graph.query("CALL db.idx.fulltext.queryNodes('label_a', 'Group C')")
-    #     self.env.assertEquals(len(result.result_set), 0)
+        # Validate that the previous value has been removed
+        result = redis_graph.query("CALL db.idx.fulltext.queryNodes('label_a', 'Group C')")
+        self.env.assertEquals(len(result.result_set), 0)
