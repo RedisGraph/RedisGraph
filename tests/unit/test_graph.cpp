@@ -649,7 +649,7 @@ TEST_F(GraphTest, GetNode) {
 	NodeID i = 0;
 	for(; i < nodeCount; i++) {
 		Graph_GetNode(g, i, &n);
-		ASSERT_TRUE(n.entity != NULL);
+		ASSERT_TRUE(n.attributes != NULL);
 	}
 
 	Graph_Free(g);
@@ -691,7 +691,7 @@ TEST_F(GraphTest, GetEdge) {
 	// Try to get edges by ID
 	for(EdgeID i = 0; i < edgeCount; i++) {
 		Graph_GetEdge(g, i, &e);
-		ASSERT_TRUE(e.entity != NULL);
+		ASSERT_TRUE(e.attributes != NULL);
 		ASSERT_EQ(e.id, i);
 	}
 
@@ -711,7 +711,7 @@ TEST_F(GraphTest, GetEdge) {
 	for(int i = 0; i < 2; i++) {
 		e = edges[i];
 		relation = relations[i];
-		ASSERT_TRUE(e.entity != NULL);
+		ASSERT_TRUE(e.attributes != NULL);
 		ASSERT_EQ(Edge_GetSrcNodeID(&e), src);
 		ASSERT_EQ(Edge_GetDestNodeID(&e), dest);
 		ASSERT_EQ(Edge_GetRelationID(&e), relation);

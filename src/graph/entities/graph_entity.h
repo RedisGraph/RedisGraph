@@ -6,12 +6,9 @@
 
 #pragma once
 
+#include "attribute_set.h"
 #include "../../value.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
-
-#define ATTRIBUTE_NOTFOUND USHRT_MAX
-// ATTRIBUTE_ALL indicates all properties for SET clauses that replace a property map
-#define ATTRIBUTE_ALL USHRT_MAX - 1
 
 #define ENTITY_ID_ISLT(a, b) ((*a) < (*b))
 #define INVALID_ENTITY_ID -1l
@@ -26,7 +23,6 @@ extern SIValue *PROPERTY_NOTFOUND;
 typedef GrB_Index EdgeID;
 typedef GrB_Index NodeID;
 typedef GrB_Index EntityID;
-typedef unsigned short Attribute_ID;
 
 /*  Format a graph entity string according to the enum.
     One can sum the enum values in order to print multiple value:
@@ -44,57 +40,11 @@ typedef enum GraphEntityType {
 	GETYPE_EDGE
 } GraphEntityType;
 
-typedef struct {
-	Attribute_ID id;
-	SIValue value;
-} EntityProperty;
-
-// Essence of a graph entity.
-// TODO: see if pragma pack 0 will cause memory access violation on ARM.
-typedef struct {
-	int prop_count;             // Number of properties.
-	EntityProperty *properties; // Key value pair of attributes.
-} AttributeSet;
-
 // Common denominator between nodes and edges.
 typedef struct {
 	AttributeSet *attributes;
 	EntityID id;
 } GraphEntity;
-
-// deletes all properties on the GraphEntity and returns
-// the number of deleted properties
-int AttributeSet_ClearProperties
-(
-	AttributeSet *e
-);
-
-// adds property to entity
-// returns - reference to newly added property
-bool AttributeSet_AddProperty
-(
-	AttributeSet *e,
-	Attribute_ID attr_id,
-	SIValue value,
-	bool allow_null
-);
-
-// retrieves entity's property
-// NOTE: If the key does not exist, we return the special
-// constant value PROPERTY_NOTFOUND
-SIValue *AttributeSet_GetProperty
-(
-	const AttributeSet *e,
-	Attribute_ID attr_id
-);
-
-// updates existing attribute value, return true if property been updated
-bool AttributeSet_SetProperty
-(
-	AttributeSet *e,
-	Attribute_ID attr_id,
-	SIValue value
-);
 
 // returns an SIArray of all keys in graph entity properties
 SIValue GraphEntity_Keys
@@ -117,16 +67,4 @@ void GraphEntity_ToString
 bool GraphEntity_IsDeleted
 (
 	const GraphEntity *e
-);
-
-// release all memory allocated for entity properties
-void AttributeSet_FreeProperties
-(
-	AttributeSet *e
-);
-
-// release all memory allocated by entity
-void AttributeSet_Free
-(
-	AttributeSet *e
 );

@@ -19,13 +19,7 @@ void Node_Clone
 	clone->id                     = n->id;
 	clone->attributes             = rm_malloc(sizeof(AttributeSet));
 	clone->attributes->prop_count = ENTITY_PROP_COUNT(n);
-	clone->attributes->properties = rm_malloc(sizeof(EntityProperty) * ENTITY_PROP_COUNT(n));
-	for (uint i = 0; i < ENTITY_PROP_COUNT(n); i++) {
-		EntityProperty *prop       = ENTITY_PROPS(n) + i;
-		EntityProperty *clone_prop = ENTITY_PROPS(clone) + i;
-		clone_prop->id             = prop->id;
-		clone_prop->value          = SI_CloneValue(prop->value);
-	}
+	clone->attributes             = AttributeSet_Clone(n->attributes);
 }
 
 void Node_ToString

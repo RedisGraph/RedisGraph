@@ -125,15 +125,7 @@ void Edge_Clone
 	clone->srcNodeID              = e->srcNodeID;
 	clone->destNodeID             = e->destNodeID;
 	clone->relationID             = e->relationID;
-	clone->attributes             = rm_malloc(sizeof(AttributeSet));
-	clone->attributes->prop_count = ENTITY_PROP_COUNT(e);
-	clone->attributes->properties = rm_malloc(sizeof(EntityProperty) * ENTITY_PROP_COUNT(e));
-	for (uint i = 0; i < ENTITY_PROP_COUNT(e); i++) {
-		EntityProperty *prop       = ENTITY_PROPS(e) + i;
-		EntityProperty *clone_prop = ENTITY_PROPS(clone) + i;
-		clone_prop->id             = prop->id;
-		clone_prop->value          = SI_CloneValue(prop->value);
-	}
+	clone->attributes             = AttributeSet_Clone(e->attributes);
 }
 
 void Edge_Free
