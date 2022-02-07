@@ -47,5 +47,6 @@ void ResultSet_Reply(ResultSet *set);
 
 void ResultSet_ReportQueryRuntime(RedisModuleCtx *ctx);
 
-void ResultSet_Free(ResultSet *set);
+void ResultSet_Clear(ResultSet *set);
 
+void ResultSet_Free(ResultSet *set);

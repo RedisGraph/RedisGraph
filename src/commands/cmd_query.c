@@ -234,15 +234,8 @@ static void _ExecuteQuery(void *args) {
 	// in case of an error rollback modifications
 	if(ErrorCtx_EncounteredError()) {
 		UndoLog_Rollback(&query_ctx->undo_log);
-		// clear stats so the commad will not be replicated
-		result_set->stats.labels_added           =  0;
-		result_set->stats.nodes_deleted          =  0;
-		result_set->stats.nodes_created          =  0;
-		result_set->stats.properties_set         =  0;
-		result_set->stats.indices_created        =  STAT_NOT_SET;
-		result_set->stats.indices_deleted        =  STAT_NOT_SET;
-		result_set->stats.relationships_created  =  0;
-		result_set->stats.relationships_deleted  =  0;
+		// clear stats so the commnad will not be replicated
+		ResultSet_Clear(result_set);
 	}
 	
 	QueryCtx_ForceUnlockCommit();
