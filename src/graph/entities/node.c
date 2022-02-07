@@ -17,8 +17,6 @@ void Node_Clone
 	ASSERT(clone != NULL);
 
 	clone->id                     = n->id;
-	clone->attributes             = rm_malloc(sizeof(AttributeSet));
-	clone->attributes->prop_count = ENTITY_PROP_COUNT(n);
 	clone->attributes             = AttributeSet_Clone(n->attributes);
 }
 
