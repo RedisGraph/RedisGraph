@@ -21,7 +21,7 @@ class testQueryTimeout(FlowTestsBase):
         redis_graph = Graph("timeout", redis_con)
 
     def test01_read_query_timeout(self):
-        query = "UNWIND range(0,100000) AS x WITH x AS x WHERE x = 10000 RETURN x"
+        query = "UNWIND range(0,1000000) AS x WITH x AS x WHERE x = 10000 RETURN x"
         try:
             # The query is expected to timeout
             redis_graph.query(query, timeout=1)
@@ -31,7 +31,7 @@ class testQueryTimeout(FlowTestsBase):
 
         try:
             # The query is expected to succeed
-            redis_graph.query(query, timeout=200)
+            redis_graph.query(query, timeout=2000)
         except:
             assert(False)
 
@@ -45,7 +45,7 @@ class testQueryTimeout(FlowTestsBase):
         self.env.assertEquals(response[1], 1)
 
         # Validate that a read query times out
-        query = "UNWIND range(0,100000) AS x WITH x AS x WHERE x = 10000 RETURN x"
+        query = "UNWIND range(0,1000000) AS x WITH x AS x WHERE x = 10000 RETURN x"
         try:
             redis_graph.query(query)
             assert(False)
@@ -56,7 +56,7 @@ class testQueryTimeout(FlowTestsBase):
         redis_con.execute_command("GRAPH.CONFIG SET timeout 0")
 
         # construct a graph and create multiple indices
-        query = """UNWIND range(0, 100000) AS x CREATE (p:Person {age: x%90, height: x%200, weight: x%80})"""
+        query = """UNWIND range(0, 500000) AS x CREATE (p:Person {age: x%90, height: x%200, weight: x%80})"""
         redis_graph.query(query)
 
         query = """CREATE INDEX ON :Person(age, height, weight)"""
@@ -90,7 +90,7 @@ class testQueryTimeout(FlowTestsBase):
         for q in queries:
             try:
                 # query is expected to timeout
-                redis_graph.query(q, timeout=2)
+                redis_graph.query(q, timeout=1)
                 assert(False)
             except ResponseError as error:
                 self.env.assertContains("Query timed out", str(error))
