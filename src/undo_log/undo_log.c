@@ -145,8 +145,8 @@ static void _UndoLog_Rollback_Delete_Node(QueryCtx *ctx, size_t seq_start, size_
 		UndoOp *op = undo_list + seq_start + i;
 		Node new;
 		Graph_CreateNode(ctx->gc->g, &new, op->delete_op.labels, op->delete_op.label_count);
-		new.entity->prop_count = op->delete_op.n.entity->prop_count;
-		new.entity->properties = op->delete_op.n.entity->properties;
+		new.attributes->prop_count = op->delete_op.n.attributes->prop_count;
+		new.attributes->properties = op->delete_op.n.attributes->properties;
 		
 		for(uint j = 0; j < op->delete_op.label_count; j++) {
 			Schema *s = GraphContext_GetSchemaByID(ctx->gc,
@@ -166,8 +166,8 @@ static void _UndoLog_Rollback_Delete_Edge(QueryCtx *ctx, size_t seq_start, size_
 		Edge new;
 		Graph_CreateEdge(ctx->gc->g, op->delete_op.e.srcNodeID,
 			op->delete_op.e.destNodeID, op->delete_op.e.relationID, &new);
-		new.entity->prop_count = op->delete_op.e.entity->prop_count;
-		new.entity->properties = op->delete_op.e.entity->properties;
+		new.attributes->prop_count = op->delete_op.e.attributes->prop_count;
+		new.attributes->properties = op->delete_op.e.attributes->properties;
 
 		Schema *s = GraphContext_GetSchemaByID(ctx->gc, op->delete_op.e.relationID, SCHEMA_EDGE);
 		ASSERT(s);
@@ -234,10 +234,10 @@ static void UndoOp_Free
 			break;
 		case UL_DELETE_NODE:
 			rm_free(op->delete_op.labels);
-			Entity_Free(op->delete_op.n.entity);
+			AttributeSet_Free(op->delete_op.n.attributes);
 			break;
 		case UL_DELETE_EDGE:
-			Entity_Free(op->delete_op.e.entity);
+			AttributeSet_Free(op->delete_op.e.attributes);
 			break;
 		default:
 			ASSERT(false);           

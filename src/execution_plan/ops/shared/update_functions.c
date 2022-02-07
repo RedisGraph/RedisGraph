@@ -13,7 +13,7 @@
 
 static void _PreparePendingUpdate
 (
-	Entity *props,
+	AttributeSet *props,
 	SIType accepted_properties,
 	Attribute_ID attr_id,
 	SIValue new_value
@@ -41,7 +41,7 @@ static void _PreparePendingUpdate
 		}
 	}
 
-	Entity_AddProperty(props, attr_id, new_value, true);
+	AttributeSet_AddProperty(props, attr_id, new_value, true);
 }
 
 // commits delayed updates
@@ -72,7 +72,7 @@ void CommitUpdates
 		if(GraphEntity_IsDeleted(update->ge)) continue;
 
 		// update the property on the graph entity
-		properties_set += UpdateEntity(gc, update->ge, &update->props, type);
+		properties_set += UpdateEntity(gc, update->ge, &update->attributes, type);
 	}
 
 	if(stats) stats->properties_set += properties_set;
@@ -119,7 +119,7 @@ void EvalEntityUpdates
 	// if this update replaces all existing properties
 	// enqueue a clear update to do so
 	if(ctx->mode == UPDATE_REPLACE) {
-		Entity_AddProperty(&update.props, ATTRIBUTE_ALL, SI_NullVal(), true);
+		AttributeSet_AddProperty(&update.attributes, ATTRIBUTE_ALL, SI_NullVal(), true);
 	}
 
 	// if we're converting a SET clause, NULL is acceptable
@@ -157,9 +157,9 @@ void EvalEntityUpdates
 				SIValue value;
 				Map_GetIdx(m, j, &key, &value);
 				Attribute_ID attr_id = GraphContext_FindOrAddAttribute(gc,
-																	   key.stringval);
+					key.stringval);
 
-				_PreparePendingUpdate(&update.props, accepted_properties,
+				_PreparePendingUpdate(&update.attributes, accepted_properties,
 					attr_id, value);
 			}
 			continue;
@@ -176,13 +176,13 @@ void EvalEntityUpdates
 				Attribute_ID attr_id = ENTITY_PROPS(ge)[j].id;
 				SIValue value = ENTITY_PROPS(ge)[j].value;
 
-				_PreparePendingUpdate(&update.props, accepted_properties,
+				_PreparePendingUpdate(&update.attributes, accepted_properties,
 					attr_id, value);
 			}
 			continue;
 		}
 
-		_PreparePendingUpdate(&update.props, accepted_properties, attr_id, new_value);
+		_PreparePendingUpdate(&update.attributes, accepted_properties, attr_id, new_value);
 	}
 	// enqueue the current update
 	array_append(*updates, update);

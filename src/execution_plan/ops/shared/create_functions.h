@@ -14,8 +14,8 @@ typedef struct {
 	NodeCreateCtx *nodes_to_create;
 	EdgeCreateCtx *edges_to_create;
 
-	Entity *node_properties;
-	Entity *edge_properties;
+	AttributeSet *node_properties;
+	AttributeSet *edge_properties;
 
 	int **node_labels;
 	Node **created_nodes;
@@ -23,14 +23,31 @@ typedef struct {
 	ResultSetStatistics *stats;
 } PendingCreations;
 
-// Initialize all variables for storing pending creations.
-PendingCreations NewPendingCreationsContainer(NodeCreateCtx *nodes, EdgeCreateCtx *edges);
+// initialize all variables for storing pending creations
+PendingCreations NewPendingCreationsContainer
+(
+	NodeCreateCtx *nodes,
+	EdgeCreateCtx *edges
+);
 
-// Lock the graph and commit all changes introduced by the operation.
-void CommitNewEntities(OpBase *op, PendingCreations *pending);
+// lock the graph and commit all changes introduced by the operation
+void CommitNewEntities
+(
+	OpBase *op,
+	PendingCreations *pending
+);
 
-// Resolve the properties specified in the query into constant values.
-void ConvertPropertyMap(Entity *entity, Record r, PropertyMap *map, bool fail_on_null);
+// resolve the properties specified in the query into constant values
+void ConvertPropertyMap
+(
+	AttributeSet *attributes,
+	Record r,
+	PropertyMap *map,
+	bool fail_on_null
+);
 
-// Free all data associated with a completed create operation.
-void PendingCreationsFree(PendingCreations *pending);
+// free all data associated with a completed create operation
+void PendingCreationsFree
+(
+	PendingCreations *pending
+);

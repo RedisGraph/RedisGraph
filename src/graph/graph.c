@@ -110,9 +110,9 @@ static void _CollectEdgesFromEntry
 	e.destNodeID  =  dest;
 
 	if(SINGLE_EDGE(edgeId)) {
-		e.id      =  edgeId;
-		e.entity  =  DataBlock_GetItem(g->edges, edgeId);
-		ASSERT(e.entity);
+		e.id          =  edgeId;
+		e.attributes  =  DataBlock_GetItem(g->edges, edgeId);
+		ASSERT(e.attributes);
 		array_append(*edges, e);
 	} else {
 		// multiple edges connecting src to dest,
@@ -121,10 +121,10 @@ static void _CollectEdgesFromEntry
 		uint edgeCount = array_len(edgeIds);
 
 		for(uint i = 0; i < edgeCount; i++) {
-			edgeId = edgeIds[i];
-			e.entity = DataBlock_GetItem(g->edges, edgeId);
-			e.id = edgeId;
-			ASSERT(e.entity);
+			edgeId       = edgeIds[i];
+			e.id         = edgeId;
+			e.attributes = DataBlock_GetItem(g->edges, edgeId);
+			ASSERT(e.attributes);
 			array_append(*edges, e);
 		}
 	}
@@ -156,7 +156,7 @@ void _Graph_GetEdgesConnectingNodes
 	_CollectEdgesFromEntry(g, src, dest, r, id, edges);
 }
 
-static inline Entity *_Graph_GetEntity(const DataBlock *entities, EntityID id) {
+static inline AttributeSet *_Graph_GetEntity(const DataBlock *entities, EntityID id) {
 	return DataBlock_GetItem(entities, id);
 }
 
@@ -377,11 +377,11 @@ Graph *Graph_New
 	size_t edge_cap
 ) {
 
-	fpDestructor cb = (fpDestructor)Entity_FreeProperties;
+	fpDestructor cb = (fpDestructor)AttributeSet_FreeProperties;
 	Graph *g = rm_calloc(1, sizeof(Graph));
 
-	g->nodes      =  DataBlock_New(node_cap, node_cap, sizeof(Entity), cb);
-	g->edges      =  DataBlock_New(edge_cap, edge_cap, sizeof(Entity), cb);
+	g->nodes      =  DataBlock_New(node_cap, node_cap, sizeof(AttributeSet), cb);
+	g->edges      =  DataBlock_New(edge_cap, edge_cap, sizeof(AttributeSet), cb);
 	g->labels     =  array_new(RG_Matrix, GRAPH_DEFAULT_LABEL_CAP);
 	g->relations  =  array_new(RG_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 
@@ -475,9 +475,9 @@ int Graph_GetNode
 ) {
 	ASSERT(g);
 	ASSERT(n);
-	n->entity = _Graph_GetEntity(g->nodes, id);
-	n->id = id;
-	return (n->entity != NULL);
+	n->id         = id;
+	n->attributes = _Graph_GetEntity(g->nodes, id);
+	return (n->attributes != NULL);
 }
 
 int Graph_GetEdge
@@ -490,9 +490,9 @@ int Graph_GetEdge
 	ASSERT(e);
 	ASSERT(id < _Graph_EdgeCap(g));
 
-	e->id = id;
-	e->entity = _Graph_GetEntity(g->edges, id);
-	return (e->entity != NULL);
+	e->id         = id;
+	e->attributes = _Graph_GetEntity(g->edges, id);
+	return (e->attributes != NULL);
 }
 
 int Graph_GetEdgeRelation
@@ -625,10 +625,10 @@ void Graph_CreateNode
 	ASSERT(label_count == 0 || (label_count > 0 && labels != NULL));
 
 	NodeID id;
-	Entity *en = DataBlock_AllocateItem(g->nodes, &id);
+	AttributeSet *en = DataBlock_AllocateItem(g->nodes, &id);
 
 	n->id           =  id;
-	n->entity       =  en;
+	n->attributes   =  en;
 	en->prop_count  =  0;
 	en->properties  =  NULL;
 
@@ -680,10 +680,10 @@ void Graph_CreateEdge
 #endif
 
 	EdgeID id;
-	Entity *en = DataBlock_AllocateItem(g->edges, &id);
+	AttributeSet *en = DataBlock_AllocateItem(g->edges, &id);
 
 	e->id           =  id;
-	e->entity       =  en;
+	e->attributes   =  en;
 	e->srcNodeID    =  src;
 	e->destNodeID   =  dest;
 	e->relationID   =  r;
@@ -871,7 +871,7 @@ int Graph_DeleteEdge
 	return 1;
 }
 
-inline bool Graph_EntityIsDeleted(Entity *e) {
+inline bool Graph_EntityIsDeleted(AttributeSet *e) {
 	return DataBlock_ItemIsDeleted(e);
 }
 
@@ -925,20 +925,20 @@ int Graph_UpdateEntity
 
 	// handle the case in which we are deleting all properties
 	if(attr_id == ATTRIBUTE_ALL) {
-		return Entity_ClearProperties(ge->entity);
+		return AttributeSet_ClearProperties(ge->attributes);
 	}
 
 	// try to get current property value
-	SIValue *old_value = Entity_GetProperty(ge->entity, attr_id);
+	SIValue *old_value = AttributeSet_GetProperty(ge->attributes, attr_id);
 
 	if(old_value == PROPERTY_NOTFOUND) {
 		// adding a new property; do nothing if its value is NULL
 		if(SI_TYPE(new_value) != T_NULL) {
-			res = Entity_AddProperty(ge->entity, attr_id, new_value, false);
+			res = AttributeSet_AddProperty(ge->attributes, attr_id, new_value, false);
 		}
 	} else {
 		// update property
-		res = Entity_SetProperty(ge->entity, attr_id, new_value);
+		res = AttributeSet_SetProperty(ge->attributes, attr_id, new_value);
 	}
 
 	SIValue_Free(new_value);
@@ -1089,7 +1089,7 @@ RG_Matrix Graph_GetZeroMatrix
 void Graph_Free(Graph *g) {
 	ASSERT(g);
 	// free matrices
-	Entity *en;
+	AttributeSet *en;
 	DataBlockIterator *it;
 	RG_Matrix_free(&g->_zero_matrix);
 	RG_Matrix_free(&g->adjacency_matrix);
@@ -1107,14 +1107,14 @@ void Graph_Free(Graph *g) {
 	// there's no need to keep track after deleted items as the graph
 	// is being removed we won't be reusing items
 	it = Graph_ScanNodes(g);
-	while((en = (Entity *)DataBlockIterator_Next(it, NULL)) != NULL) {
-		Entity_FreeProperties(en);
+	while((en = (AttributeSet *)DataBlockIterator_Next(it, NULL)) != NULL) {
+		AttributeSet_FreeProperties(en);
 	}
 	DataBlockIterator_Free(it);
 
 	it = Graph_ScanEdges(g);
 	while((en = DataBlockIterator_Next(it, NULL)) != NULL) {
-		Entity_FreeProperties(en);
+		AttributeSet_FreeProperties(en);
 	}
 	DataBlockIterator_Free(it);
 

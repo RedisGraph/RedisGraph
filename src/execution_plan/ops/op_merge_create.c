@@ -16,7 +16,7 @@ static void MergeCreateFree(OpBase *opBase);
 
 // convert a graph entity's components into an identifying hash code
 static void _IncrementalHashEntity(XXH64_state_t *state, const char *label,
-								   Entity *props) {
+								   AttributeSet *props) {
 	// update hash with label if one is provided
 	XXH_errorcode res;
 	UNUSED(res);
@@ -48,15 +48,15 @@ static void _RollbackPendingCreations(OpMergeCreate *op) {
 	uint nodes_to_create_count = array_len(op->pending.nodes_to_create);
 	for(uint i = 0; i < nodes_to_create_count; i++) {
 		array_pop(op->pending.created_nodes);
-		Entity props = array_pop(op->pending.node_properties);
-		Entity_FreeProperties(&props);
+		AttributeSet props = array_pop(op->pending.node_properties);
+		AttributeSet_FreeProperties(&props);
 	}
 
 	uint edges_to_create_count = array_len(op->pending.edges_to_create);
 	for(uint i = 0; i < edges_to_create_count; i++) {
 		array_pop(op->pending.created_edges);
-		Entity props = array_pop(op->pending.edge_properties);
-		Entity_FreeProperties(&props);
+		AttributeSet props = array_pop(op->pending.edge_properties);
+		AttributeSet_FreeProperties(&props);
 	}
 }
 
@@ -116,7 +116,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 
 		// convert query-level properties
 		PropertyMap *map = n->properties;
-		Entity converted_properties = {0};
+		AttributeSet converted_properties = {0};
 		if(map) ConvertPropertyMap(&converted_properties, r, map, true);
 
 		// update the hash code with this entity
@@ -160,7 +160,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 
 		// convert query-level properties
 		PropertyMap *map = e->properties;
-		Entity converted_properties = {0};
+		AttributeSet converted_properties = {0};
 		if(map) ConvertPropertyMap(&converted_properties, r, map, true);
 
 		/* Update the hash code with this entity, an edge is represented by its
@@ -169,14 +169,14 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		 * Incase node has its internal entity set, this means the node has been retrieved from the graph
 		 * i.e. bounded node. */
 		_IncrementalHashEntity(op->hash_state, e->relation, &converted_properties);
-		if(src_node->entity != NULL) {
+		if(src_node->attributes != NULL) {
 			EntityID id = ENTITY_GET_ID(src_node);
 			void *data = &id;
 			size_t len = sizeof(id);
 			res = XXH64_update(op->hash_state, data, len);
 			ASSERT(res != XXH_ERROR);
 		}
-		if(dest_node->entity != NULL) {
+		if(dest_node->attributes != NULL) {
 			EntityID id = ENTITY_GET_ID(dest_node);
 			void *data = &id;
 			size_t len = sizeof(id);

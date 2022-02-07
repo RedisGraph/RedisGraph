@@ -37,11 +37,11 @@ void Serializer_Graph_SetNode
 ) {
 	ASSERT(g);
 
-	Entity *en = DataBlock_AllocateItemOutOfOrder(g->nodes, id);
-	en->prop_count  =  0;
-	en->properties  =  NULL;
-	n->id           =  id;
-	n->entity       =  en;
+	AttributeSet *en = DataBlock_AllocateItemOutOfOrder(g->nodes, id);
+	en->prop_count   =  0;
+	en->properties   =  NULL;
+	n->id            =  id;
+	n->attributes    =  en;
 	GrB_Info info;
 	UNUSED(info);
 
@@ -146,14 +146,14 @@ void Serializer_Graph_SetEdge
 ) {
 	GrB_Info info;
 
-	Entity *en = DataBlock_AllocateItemOutOfOrder(g->edges, edge_id);
-	en->prop_count = 0;
-	en->properties = NULL;
-	e->id = edge_id;
-	e->entity = en;
-	e->relationID = r;
-	e->srcNodeID = src;
-	e->destNodeID = dest;
+	AttributeSet *en = DataBlock_AllocateItemOutOfOrder(g->edges, edge_id);
+	en->prop_count   = 0;
+	en->properties   = NULL;
+	e->id            = edge_id;
+	e->attributes    = en;
+	e->relationID    = r;
+	e->srcNodeID     = src;
+	e->destNodeID    = dest;
 
 	if(multi_edge) {
 		Graph_FormConnection(g, src, dest, edge_id, r);

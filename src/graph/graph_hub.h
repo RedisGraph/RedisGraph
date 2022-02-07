@@ -14,7 +14,7 @@ uint CreateNode
 	Node *n,
 	LabelID *labels,
 	uint label_count,
-	Entity *props
+	AttributeSet *props
 );
 
 uint CreateEdge
@@ -24,7 +24,7 @@ uint CreateEdge
 	NodeID src,
 	NodeID dst,
 	int r,
-	Entity *props
+	AttributeSet *props
 );
 
 uint DeleteNode
@@ -43,6 +43,6 @@ int UpdateEntity
 (
 	GraphContext *gc,
 	GraphEntity *ge,
-	Entity *props,        // attribute to update
+	AttributeSet *props,        // attribute to update
 	GraphEntityType entity_type
 );

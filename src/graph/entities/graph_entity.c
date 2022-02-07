@@ -18,8 +18,12 @@ SIValue *PROPERTY_NOTFOUND = &(SIValue) {
 	.longval = 0, .type = T_NULL
 };
 
-/* Removes entity's property. */
-static bool _Entity_RemoveProperty(Entity *e, Attribute_ID attr_id) {
+// removes entity's property
+static bool _AttributeSet_RemoveProperty
+(
+	AttributeSet *e,
+	Attribute_ID attr_id
+) {
 	// Quick return if attribute is missing.
 	if(attr_id == ATTRIBUTE_NOTFOUND) return false;
 
@@ -49,7 +53,10 @@ static bool _Entity_RemoveProperty(Entity *e, Attribute_ID attr_id) {
 	return false;
 }
 
-int Entity_ClearProperties(Entity *e) {
+int AttributeSet_ClearProperties
+(
+	AttributeSet *e
+) {
 	ASSERT(e);
 
 	int prop_count = e->prop_count;
@@ -67,9 +74,9 @@ int Entity_ClearProperties(Entity *e) {
 }
 
 /* Add a new property to entity */
-bool Entity_AddProperty
+bool AttributeSet_AddProperty
 (
-	Entity *e,
+	AttributeSet *e,
 	Attribute_ID attr_id,
 	SIValue value,
 	bool allow_null
@@ -93,7 +100,11 @@ bool Entity_AddProperty
 	return true;
 }
 
-SIValue *Entity_GetProperty(const Entity *e, Attribute_ID attr_id) {
+SIValue *AttributeSet_GetProperty
+(
+	const AttributeSet *e,
+	Attribute_ID attr_id
+) {
 	if(attr_id == ATTRIBUTE_NOTFOUND) return PROPERTY_NOTFOUND;
 	if(e == NULL) {
  		/* The internal entity pointer should only be NULL if the entity
@@ -113,14 +124,19 @@ SIValue *Entity_GetProperty(const Entity *e, Attribute_ID attr_id) {
 	return PROPERTY_NOTFOUND;
 }
 
-// Updates existing property value.
-bool Entity_SetProperty(Entity *e, Attribute_ID attr_id, SIValue value) {
+// updates existing property value
+bool AttributeSet_SetProperty
+(
+	AttributeSet *e,
+	Attribute_ID attr_id,
+	SIValue value
+) {
 	ASSERT(e);
 
 	// Setting an attribute value to NULL removes that attribute.
-	if(SIValue_IsNull(value)) return _Entity_RemoveProperty(e, attr_id);
+	if(SIValue_IsNull(value)) return _AttributeSet_RemoveProperty(e, attr_id);
 
-	SIValue *current = Entity_GetProperty(e, attr_id);
+	SIValue *current = AttributeSet_GetProperty(e, attr_id);
 	ASSERT(current != PROPERTY_NOTFOUND);
 
 	// compare current value to new value, only update if current != new
@@ -132,18 +148,26 @@ bool Entity_SetProperty(Entity *e, Attribute_ID attr_id, SIValue value) {
 	return true;
 }
 
-SIValue GraphEntity_Keys(const GraphEntity *e) {
+SIValue GraphEntity_Keys
+(
+	const GraphEntity *e
+) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	SIValue keys = SIArray_New(ENTITY_PROP_COUNT(e));
-	for(int i = 0; i < e->entity->prop_count; i++) {
+	for(int i = 0; i < e->attributes->prop_count; i++) {
 		const char *key = GraphContext_GetAttributeString(gc, ENTITY_PROPS(e)[i].id);
 		SIArray_Append(&keys, SI_ConstStringVal(key));
 	}
 	return keys;
 }
 
-size_t GraphEntity_PropertiesToString(const GraphEntity *e, char **buffer, size_t *bufferLen,
-									  size_t *bytesWritten) {
+size_t GraphEntity_PropertiesToString
+(
+	const GraphEntity *e,
+	char **buffer,
+	size_t *bufferLen,
+	size_t *bytesWritten
+) {
 	// make sure there is enough space for "{...}\0"
 	if(*bufferLen - *bytesWritten < 64) {
 		*bufferLen += 64;
@@ -268,11 +292,17 @@ void GraphEntity_ToString
 	*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "%s", closeSymbole);
 }
 
-inline bool GraphEntity_IsDeleted(const GraphEntity *e) {
-	return Graph_EntityIsDeleted(e->entity);
+inline bool GraphEntity_IsDeleted
+(
+	const GraphEntity *e
+) {
+	return Graph_EntityIsDeleted(e->attributes);
 }
 
-void Entity_FreeProperties(Entity *e) {
+void AttributeSet_FreeProperties
+(
+	AttributeSet *e
+) {
 	ASSERT(e);
 	if(e->properties != NULL) {
 		for(int i = 0; i < e->prop_count; i++) SIValue_Free(e->properties[i].value);
@@ -282,9 +312,12 @@ void Entity_FreeProperties(Entity *e) {
 	}
 }
 
-void Entity_Free(Entity * e) {
+void AttributeSet_Free
+(
+	AttributeSet * e
+) {
 	ASSERT(e);
 
-	Entity_FreeProperties(e);
+	AttributeSet_FreeProperties(e);
 	rm_free(e);
 }

@@ -217,7 +217,7 @@ SIValue AR_PROPERTY(SIValue *argv, int argc) {
 		}
 
 		// Retrieve the property.
-		SIValue *value = Entity_GetProperty(graph_entity->entity, prop_idx);
+		SIValue *value = AttributeSet_GetProperty(graph_entity->attributes, prop_idx);
 		return SI_ConstValue(value);
 	} else {
 		// retrieve map key

@@ -17,8 +17,8 @@
 #define INVALID_ENTITY_ID -1l
 
 #define ENTITY_GET_ID(graphEntity) (graphEntity)->id
-#define ENTITY_PROP_COUNT(graphEntity) ((graphEntity)->entity->prop_count)
-#define ENTITY_PROPS(graphEntity) ((graphEntity)->entity->properties)
+#define ENTITY_PROP_COUNT(graphEntity) ((graphEntity)->attributes->prop_count)
+#define ENTITY_PROPS(graphEntity) ((graphEntity)->attributes->properties)
 
 // Defined in graph_entity.c
 extern SIValue *PROPERTY_NOTFOUND;
@@ -54,23 +54,26 @@ typedef struct {
 typedef struct {
 	int prop_count;             // Number of properties.
 	EntityProperty *properties; // Key value pair of attributes.
-} Entity;
+} AttributeSet;
 
 // Common denominator between nodes and edges.
 typedef struct {
-	Entity *entity;
+	AttributeSet *attributes;
 	EntityID id;
 } GraphEntity;
 
 // deletes all properties on the GraphEntity and returns
 // the number of deleted properties
-int Entity_ClearProperties(Entity *e);
+int AttributeSet_ClearProperties
+(
+	AttributeSet *e
+);
 
 // adds property to entity
 // returns - reference to newly added property
-bool Entity_AddProperty
+bool AttributeSet_AddProperty
 (
-	Entity *e,
+	AttributeSet *e,
 	Attribute_ID attr_id,
 	SIValue value,
 	bool allow_null
@@ -79,22 +82,25 @@ bool Entity_AddProperty
 // retrieves entity's property
 // NOTE: If the key does not exist, we return the special
 // constant value PROPERTY_NOTFOUND
-SIValue *Entity_GetProperty
+SIValue *AttributeSet_GetProperty
 (
-	const Entity *e,
+	const AttributeSet *e,
 	Attribute_ID attr_id
 );
 
 // updates existing attribute value, return true if property been updated
-bool Entity_SetProperty
+bool AttributeSet_SetProperty
 (
-	Entity *e,
+	AttributeSet *e,
 	Attribute_ID attr_id,
 	SIValue value
 );
 
 // returns an SIArray of all keys in graph entity properties
-SIValue GraphEntity_Keys(const GraphEntity *e);
+SIValue GraphEntity_Keys
+(
+	const GraphEntity *e
+);
 
 // prints the graph entity into a buffer, returns what is the string length, buffer can be re-allocated at need
 void GraphEntity_ToString
@@ -108,10 +114,19 @@ void GraphEntity_ToString
 );
 
 // returns true if the given graph entity has been deleted.
-bool GraphEntity_IsDeleted(const GraphEntity *e);
+bool GraphEntity_IsDeleted
+(
+	const GraphEntity *e
+);
 
 // release all memory allocated for entity properties
-void Entity_FreeProperties(Entity *e);
+void AttributeSet_FreeProperties
+(
+	AttributeSet *e
+);
 
 // release all memory allocated by entity
-void Entity_Free(Entity * e);
+void AttributeSet_Free
+(
+	AttributeSet *e
+);

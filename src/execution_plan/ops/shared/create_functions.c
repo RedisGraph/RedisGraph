@@ -13,7 +13,10 @@
 #include "../../../graph/graph_hub.h"
 
 // commit node blueprints
-static void _CommitNodesBlueprint(PendingCreations *pending) {
+static void _CommitNodesBlueprint
+(
+	PendingCreations *pending
+) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Graph *g = gc->g;
 
@@ -50,7 +53,10 @@ static void _CommitNodesBlueprint(PendingCreations *pending) {
 }
 
 // commit nodes
-static void _CommitNodes(PendingCreations *pending) {
+static void _CommitNodes
+(
+	PendingCreations *pending
+) {
 	Node          *n          =  NULL;
 	GraphContext  *gc         =  QueryCtx_GetGraphCtx();
 	Graph         *g          =  gc->g;
@@ -70,7 +76,10 @@ static void _CommitNodes(PendingCreations *pending) {
 }
 
 // commit edge blueprints
-static void _CommitEdgesBlueprint(EdgeCreateCtx *blueprints) {
+static void _CommitEdgesBlueprint
+(
+	EdgeCreateCtx *blueprints
+) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Graph *g = gc->g;
 
@@ -100,7 +109,10 @@ static void _CommitEdgesBlueprint(EdgeCreateCtx *blueprints) {
 }
 
 // commit edges
-static void _CommitEdges(PendingCreations *pending) {
+static void _CommitEdges
+(
+	PendingCreations *pending
+) {
 	Edge          *e          =  NULL;
 	GraphContext  *gc         =  QueryCtx_GetGraphCtx();
 	Graph         *g          =  gc->g;
@@ -133,22 +145,30 @@ static void _CommitEdges(PendingCreations *pending) {
 }
 
 // Initialize all variables for storing pending creations.
-PendingCreations NewPendingCreationsContainer(NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
+PendingCreations NewPendingCreationsContainer
+(
+	NodeCreateCtx *nodes,
+	EdgeCreateCtx *edges
+) {
 	PendingCreations pending;
 	pending.nodes_to_create = nodes;
 	pending.edges_to_create = edges;
-	pending.node_labels = array_new(int *, 0);
-	pending.created_nodes = array_new(Node *, 0);
-	pending.created_edges = array_new(Edge *, 0);
-	pending.node_properties = array_new(Entity, 0);
-	pending.edge_properties = array_new(Entity, 0);
+	pending.node_labels     = array_new(int *, 0);
+	pending.created_nodes   = array_new(Node *, 0);
+	pending.created_edges   = array_new(Edge *, 0);
+	pending.node_properties = array_new(AttributeSet, 0);
+	pending.edge_properties = array_new(AttributeSet, 0);
 	pending.stats = NULL;
 
 	return pending;
 }
 
 // Lock the graph and commit all changes introduced by the operation.
-void CommitNewEntities(OpBase *op, PendingCreations *pending) {
+void CommitNewEntities
+(
+	OpBase *op,
+	PendingCreations *pending
+) {
 	Graph *g = QueryCtx_GetGraph();
 	uint node_count = array_len(pending->created_nodes);
 	uint edge_count = array_len(pending->created_edges);
@@ -195,7 +215,13 @@ void CommitNewEntities(OpBase *op, PendingCreations *pending) {
 }
 
 // Resolve the properties specified in the query into constant values.
-void ConvertPropertyMap(Entity *entity, Record r, PropertyMap *map, bool fail_on_null) {
+void ConvertPropertyMap
+(
+	AttributeSet *attributes,
+	Record r,
+	PropertyMap *map,
+	bool fail_on_null
+) {
 	uint property_count = array_len(map->keys);
 	for(int i = 0; i < property_count; i++) {
 		/* Note that AR_EXP_Evaluate may raise a run-time exception, in which case
@@ -207,7 +233,7 @@ void ConvertPropertyMap(Entity *entity, Record r, PropertyMap *map, bool fail_on
 			// This value is of an invalid type.
 			if(!SIValue_IsNull(val)) {
 				// If the value was a complex type, emit an exception.
-				Entity_FreeProperties(entity);
+				AttributeSet_FreeProperties(attributes);
 				Error_InvalidPropertyValue();
 				ErrorCtx_RaiseRuntimeException(NULL);
 			}
@@ -215,7 +241,7 @@ void ConvertPropertyMap(Entity *entity, Record r, PropertyMap *map, bool fail_on
 			 * otherwise skip this value. */
 			if(fail_on_null) {
 				// Emit an error and exit.
-				Entity_FreeProperties(entity);
+				AttributeSet_FreeProperties(attributes);
 				ErrorCtx_RaiseRuntimeException("Cannot merge node using null property value");
 			}
 		}
@@ -228,19 +254,22 @@ void ConvertPropertyMap(Entity *entity, Record r, PropertyMap *map, bool fail_on
 			if(res) {
 				// validation failed
 				SIValue_Free(val);
-				Entity_FreeProperties(entity);
+				AttributeSet_FreeProperties(attributes);
 				Error_InvalidPropertyValue();
 				ErrorCtx_RaiseRuntimeException(NULL);
 			}
 		}
 
 		// Set the converted property.
-		Entity_AddProperty(entity, map->keys[i], val, false);
+		AttributeSet_AddProperty(attributes, map->keys[i], val, false);
 	}
 }
 
 // Free all data associated with a completed create operation.
-void PendingCreationsFree(PendingCreations *pending) {
+void PendingCreationsFree
+(
+	PendingCreations *pending
+) {
 	if(pending->nodes_to_create) {
 		uint nodes_to_create_count = array_len(pending->nodes_to_create);
 		for(uint i = 0; i < nodes_to_create_count; i ++) {
@@ -278,7 +307,7 @@ void PendingCreationsFree(PendingCreations *pending) {
 	if(pending->node_properties) {
 		uint prop_count = array_len(pending->node_properties);
 		for(uint i = 0; i < prop_count; i ++) {
-			Entity_FreeProperties(pending->node_properties + i);
+			AttributeSet_FreeProperties(pending->node_properties + i);
 		}
 		array_free(pending->node_properties);
 		pending->node_properties = NULL;
@@ -288,10 +317,9 @@ void PendingCreationsFree(PendingCreations *pending) {
 	if(pending->edge_properties) {
 		uint prop_count = array_len(pending->edge_properties);
 		for(uint i = 0; i < prop_count; i ++) {
-			Entity_FreeProperties(pending->edge_properties + i);
+			AttributeSet_FreeProperties(pending->edge_properties + i);
 		}
 		array_free(pending->edge_properties);
 		pending->edge_properties = NULL;
 	}
 }
-

@@ -9,7 +9,10 @@
 #include "../undo_log/undo_log.h"
 
 // add operation to the undo log
-static void _add_undo_op(UndoOp *op) {
+static inline void _add_undo_op
+(
+	UndoOp *op
+) {
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 	array_append(query_ctx->undo_log.undo_list, *op);
 }
@@ -45,7 +48,11 @@ static void _DeleteNodeFromIndices
 	}
 }
 
-static void _DeleteEdgeFromIndices(GraphContext *gc, Edge *e) {
+static void _DeleteEdgeFromIndices
+(
+	GraphContext *gc,
+	Edge *e
+) {
 	Schema  *s  =  NULL;
 	Graph   *g  =  gc->g;
 
@@ -109,11 +116,15 @@ static void _AddEdgeToIndices(GraphContext *gc, Edge *e) {
 }
 
 // Add properties to the GraphEntity.
-static inline uint _AddProperties(Entity *e, Entity *props) {
+static inline uint _AddProperties
+(
+	AttributeSet *e,
+	AttributeSet *props
+) {
 	int failed_updates = 0;
 	for(int i = 0; i < props->prop_count; i++) {
 		EntityProperty *prop = props->properties + i;
-		bool updated = Entity_AddProperty(e, prop->id, prop->value, false);
+		bool updated = AttributeSet_AddProperty(e, prop->id, prop->value, false);
 		if(!updated) failed_updates++;
 	}
 
@@ -126,13 +137,13 @@ uint CreateNode
 	Node *n,
 	LabelID *labels,
 	uint label_count,
-	Entity *props
+	AttributeSet *props
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(n != NULL);
 
 	Graph_CreateNode(gc->g, n, labels, label_count);
-	uint properties_set = _AddProperties(n->entity, props);
+	uint properties_set = _AddProperties(n->attributes, props);
 
 	// add node labels
 	for(uint i = 0; i < label_count; i++) {
@@ -157,13 +168,13 @@ uint CreateEdge
 	NodeID src,
 	NodeID dst,
 	int r,
-	Entity *props
+	AttributeSet *props
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(e != NULL);
 
 	Graph_CreateEdge(gc->g, src, dst, r, e);
-	uint properties_set = _AddProperties(e->entity, props);
+	uint properties_set = _AddProperties(e->attributes, props);
 
 	Schema *s = GraphContext_GetSchema(gc, e->relationship, SCHEMA_EDGE);
 	// all schemas have been created in the edge blueprint loop or earlier
@@ -267,7 +278,7 @@ static int _Update_Entity
 			_add_undo_op(&op);
 		}
 	} else {
-		SIValue *orig_value = Entity_GetProperty(ge->entity, attr_id);
+		SIValue *orig_value = AttributeSet_GetProperty(ge->attributes, attr_id);
 		// add entity update operation to undo log
 		UndoOp op;
 		SIValue clone = SI_CloneValue(*orig_value);
@@ -282,7 +293,7 @@ int UpdateEntity
 (
 	GraphContext *gc,
 	GraphEntity *ge,
-	Entity *props,        // attribute to update
+	AttributeSet *props,        // attribute to update
 	GraphEntityType entity_type
 ) {
 	ASSERT(gc != NULL);

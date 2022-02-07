@@ -201,7 +201,7 @@ int Graph_UpdateEntity
 // returns true if the given entity has been deleted
 bool Graph_EntityIsDeleted
 (
-	Entity *e
+	AttributeSet *e
 );
 
 // all graph matrices are required to be squared NXN

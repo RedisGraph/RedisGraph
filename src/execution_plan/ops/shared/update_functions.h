@@ -11,7 +11,7 @@
 // context representing a single update to perform on an entity
 typedef struct {
 	GraphEntity *ge;       // entity to be updated
-	Entity props;
+	AttributeSet attributes;
 } PendingUpdateCtx;
 
 // commit all updates described in the array of pending updates
