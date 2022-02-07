@@ -60,6 +60,10 @@ void Graph_AcquireReadLock(Graph *g) {
 
 // acquire a lock for exclusive access to this graph's data
 void Graph_AcquireWriteLock(Graph *g) {
+	// release read lock before trying to acquire write lock
+	Graph_ReleaseLock(g);
+
+	// try to acquire lock for writing
 	pthread_rwlock_wrlock(&g->_rwlock);
 	g->_writelocked = true;
 }
