@@ -27,9 +27,6 @@ void _DeleteEntities(OpDelete *op) {
 	// nothing to delete, quickly return
 	if((node_count + edge_count) == 0) goto cleanup;
 
-	// lock everything
-	QueryCtx_LockForCommit();
-
 	// removing duplicates
 	Node *nodes = op->deleted_nodes;
 	Node *distinct_nodes = array_new(Node, 1);
@@ -44,6 +41,9 @@ void _DeleteEntities(OpDelete *op) {
 	}
 
 	node_count = array_len(distinct_nodes);
+
+	// lock everything
+	QueryCtx_LockForCommit();
 
 	for(uint i = 0; i < edge_count; i++) {
 		edge_deleted += DeleteEdge(op->gc, op->deleted_edges + i);

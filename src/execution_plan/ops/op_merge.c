@@ -396,4 +396,3 @@ static void MergeFree(OpBase *opBase) {
 		raxStop(&op->on_create_it);
 	}
 }
-

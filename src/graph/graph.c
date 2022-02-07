@@ -941,8 +941,6 @@ int Graph_UpdateEntity
 		res = AttributeSet_SetProperty(ge->attributes, attr_id, new_value);
 	}
 
-	SIValue_Free(new_value);
-
 	return res;
 }
 
