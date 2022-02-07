@@ -4,12 +4,13 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "rewrite_star_projections.h"
-#include "../../procedures/procedure.h"
-#include "../../errors.h"
-#include "../../util/arr.h"
-#include "../../util/qsort.h"
-#include "../../util/sds/sds.h"
+#include "ast.h"
+#include "../query_ctx.h"
+#include "../errors.h"
+#include "../util/arr.h"
+#include "../util/qsort.h"
+#include "../util/sds/sds.h"
+#include "../procedures/procedure.h"
 
 //------------------------------------------------------------------------------
 //  Annotation context - WITH/RETURN * projections
@@ -104,12 +105,13 @@ static void _collect_call_projections(const cypher_astnode_t *call_clause, const
 	}
 }
 
-static const char **_collect_aliases_in_scope(AST *ast, uint scope_start, uint scope_end) {
+static const char **_collect_aliases_in_scope(const cypher_astnode_t *root,
+											  uint scope_start, uint scope_end) {
 	ASSERT(scope_start != scope_end);
 	const char **aliases = array_new(const char *, 1);
 
 	for(uint i = scope_start; i < scope_end; i ++) {
-		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
+		const cypher_astnode_t *clause = cypher_ast_query_get_clause(root, i);
 		cypher_astnode_type_t type = cypher_astnode_type(clause);
 		if(type == CYPHER_AST_WITH) {
 			// The WITH clause contains either aliases or its own STAR projection.
@@ -179,9 +181,18 @@ static sds aliases_to_query_string(const char **aliases,
 	s = sdscat(s, aliases[alias_count - 1]);
 
 	// append ORDER BY, SKIP, and LIMIT modifiers to string
-	if(order_clause) s = sdscatprintf(s, " %s", AST_ToString(order_clause));
-	if(skip_clause) s = sdscatprintf(s, " SKIP %s", AST_ToString(skip_clause));
-	if(limit_clause) s = sdscatprintf(s, " LIMIT %s", AST_ToString(limit_clause));
+	if(order_clause) {
+		const char *query = QueryCtx_GetQuery();
+		struct cypher_input_range range = cypher_astnode_range(order_clause);
+		// copy the ORDER BY segment of the query
+		uint length = range.end.offset - range.start.offset;
+		s = sdscat(s, " ");
+		s = sdscatlen(s, query + range.start.offset, length);
+	}
+	if(skip_clause) s = sdscatprintf(s, " SKIP %s",
+										 cypher_ast_integer_get_valuestr(skip_clause));
+	if(limit_clause) s = sdscatprintf(s, " LIMIT %s",
+										  cypher_ast_integer_get_valuestr(limit_clause));
 	return s;
 }
 
@@ -208,54 +219,50 @@ static cypher_astnode_t *build_clause_node(sds s) {
 	return new_clause_clone;
 }
 
-void AST_RewriteStarProjections(AST *ast) {
-	// rewrite all WITH * and RETURN * clauses to include all aliases
-	uint *with_clause_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
-	uint with_clause_count = array_len(with_clause_indices);
+static void replace_clause(cypher_astnode_t *root, cypher_astnode_t *clause,
+						   int scope_start, int idx) {
+	// collect all aliases defined in this scope
+	const char **aliases = _collect_aliases_in_scope(root, scope_start, idx);
+	if(array_len(aliases) == 0 &&
+	   cypher_astnode_type(clause) == CYPHER_AST_RETURN) {
+		// error if this is a RETURN clause with no aliases
+		ErrorCtx_SetError("RETURN * is not allowed when there are no variables in scope");
+		array_free(aliases);
+		return;
+	}
+	sds s = aliases_to_query_string(aliases, clause);
+	cypher_astnode_t *new_clause = build_clause_node(s);
+	sdsfree(s);
+	array_free(aliases);
+	// replace original clause with fully populated one
+	cypher_astnode_free(clause);
+	cypher_ast_query_set_clause(root, new_clause, idx);
+	cypher_astnode_set_child(root, new_clause, idx);
+
+}
+
+void AST_RewriteStarProjections(cypher_parse_result_t *result) {
+	const cypher_astnode_t *statement = cypher_parse_result_get_root(result, 0);
+	if(cypher_astnode_type(statement) != CYPHER_AST_STATEMENT) return;
+	const cypher_astnode_t *root = cypher_ast_statement_get_body(statement);
+	if(cypher_astnode_type(root) != CYPHER_AST_QUERY) return;
+	// rewrite all WITH * clauses to include all aliases
+	uint clause_count = cypher_ast_query_nclauses(root);
 	uint scope_start = 0;
 	uint scope_end;
-	for(uint i = 0; i < with_clause_count; i ++) {
-		scope_end = with_clause_indices[i];
-		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, scope_end);
-		if(cypher_ast_with_has_include_existing(clause)) {
-			// collect all aliases defined in this scope
-			const char **aliases = _collect_aliases_in_scope(ast, scope_start, scope_end);
-			sds s = aliases_to_query_string(aliases, clause);
-			cypher_astnode_t *new_clause = build_clause_node(s);
-			sdsfree(s);
-			array_free(aliases);
-			// replace original clause with fully populated one
-			cypher_astnode_free((cypher_astnode_t *)clause);
-			cypher_ast_query_set_clause((cypher_astnode_t *)ast->root,
-										new_clause, scope_end);
-			cypher_astnode_set_child((cypher_astnode_t *)ast->root,
-									 new_clause, scope_end);
+	for(uint i = 0; i < clause_count; i ++) {
+		const cypher_astnode_t *clause = cypher_ast_query_get_clause(root, i);
+		cypher_astnode_type_t t = cypher_astnode_type(clause);
+		if(t == CYPHER_AST_WITH || t == CYPHER_AST_RETURN) {
+			bool has_include_existing = (t == CYPHER_AST_WITH) ?
+										cypher_ast_with_has_include_existing(clause) :
+										cypher_ast_return_has_include_existing(clause);
+			if(has_include_existing) {
+				replace_clause((cypher_astnode_t *)root,
+							   (cypher_astnode_t *)clause, scope_start, i);
+			}
+			scope_start = i;
 		}
-		scope_start = scope_end;
-	}
-	array_free(with_clause_indices);
-
-	uint last_clause_index = cypher_ast_query_nclauses(ast->root) - 1;
-	const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(ast->root, last_clause_index);
-	if(cypher_astnode_type(last_clause) == CYPHER_AST_RETURN &&
-	   cypher_ast_return_has_include_existing(last_clause)) {
-		// collect all aliases defined in this scope
-		const char **aliases = _collect_aliases_in_scope(ast, scope_start, last_clause_index);
-		if(array_len(aliases) == 0) {
-			ErrorCtx_SetError("RETURN * is not allowed when there are no variables in scope");
-			array_free(aliases);
-			return;
-		}
-		sds s = aliases_to_query_string(aliases, last_clause);
-		cypher_astnode_t *new_clause = build_clause_node(s);
-		sdsfree(s);
-		array_free(aliases);
-		// replace original clause with fully populated one
-		cypher_astnode_free((cypher_astnode_t *)last_clause);
-		cypher_ast_query_set_clause((cypher_astnode_t *)ast->root, new_clause,
-									last_clause_index);
-		cypher_astnode_set_child((cypher_astnode_t *)ast->root, new_clause,
-								 last_clause_index);
 	}
 }
 

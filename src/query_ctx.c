@@ -141,6 +141,11 @@ void QueryCtx_PrintQuery(void) {
 	printf("%s\n", ctx->query_data.query);
 }
 
+const char *QueryCtx_GetQuery(void) {
+	QueryCtx *ctx = _QueryCtx_GetCreateCtx();
+	return ctx->query_data.query;
+}
+
 static void _QueryCtx_ThreadSafeContextLock(QueryCtx *ctx) {
 	if(ctx->global_exec_ctx.bc) RedisModule_ThreadSafeContextLock(ctx->global_exec_ctx.redis_ctx);
 }

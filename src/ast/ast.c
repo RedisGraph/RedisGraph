@@ -12,6 +12,7 @@
 #include "../query_ctx.h"
 #include "../util/qsort.h"
 #include "../procedures/procedure.h"
+#include "ast_rewrite_star_projections.h"
 #include "../arithmetic/arithmetic_expression.h"
 #include "../arithmetic/arithmetic_expression_construct.h"
 
@@ -122,7 +123,7 @@ bool AST_ReadOnly(const cypher_astnode_t *root) {
 	// in case of procedure call which modifies the graph/indices
 	if(type == CYPHER_AST_CALL) {
 		const char *proc_name = cypher_ast_proc_name_get_value(
-				cypher_ast_call_get_proc_name(root));
+									cypher_ast_call_get_proc_name(root));
 
 		ProcedureCtx *proc = Proc_Get(proc_name);
 		bool read_only = Procedure_IsReadOnly(proc);
@@ -222,7 +223,7 @@ const cypher_astnode_t **AST_GetClauses
 	const AST *ast,
 	cypher_astnode_type_t type
 ) {
-	const cypher_astnode_t **clauses = array_new(const cypher_astnode_t*, 0);
+	const cypher_astnode_t **clauses = array_new(const cypher_astnode_t *, 0);
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 
 	for(uint i = 0; i < clause_count; i ++) {
@@ -516,7 +517,7 @@ const char *AST_ToString(const cypher_astnode_t *node) {
 		if(ast_identifier) {
 			// Graph entity has a user-defined alias return it.
 			return cypher_ast_identifier_get_name(ast_identifier);
-		} else if (str == NULL) {
+		} else if(str == NULL) {
 			str = _create_anon_alias(ast->anot_ctx_collection->anon_count++);
 		}
 		cypher_astnode_attach_annotation(to_string_ctx, node, (void *)str, NULL);
@@ -561,6 +562,7 @@ cypher_parse_result_t *parse_query(const char *query) {
 	cypher_parse_result_t *result = cypher_fparse(f, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 	fclose(f);
 	if(!result) return NULL;
+	AST_RewriteStarProjections(result);
 	if(AST_Validate_Query(result) != AST_VALID) {
 		parse_result_free(result);
 		return NULL;
