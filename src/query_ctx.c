@@ -94,6 +94,11 @@ void QueryCtx_SetLastWriter(OpBase *last_writer) {
 	ctx->internal_exec_ctx.last_writer = last_writer;
 }
 
+void QueryCtx_SetLockStatus(LockStatus status) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	ctx->internal_exec_ctx.lock_status = status;
+}
+
 AST *QueryCtx_GetAST(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ASSERT(ctx != NULL);

@@ -245,7 +245,6 @@ static void _ExecuteQuery(void *args) {
 	}
 
 	// release read lock
-	// it is OK to try releasing an already released lock
 	Graph_ReleaseLock(gc->g);
 
 	// log query to slowlog

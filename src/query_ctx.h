@@ -68,23 +68,29 @@ void QueryCtx_RemoveFromTLS();
 /* Start timing query execution. */
 void QueryCtx_BeginTimer(void);
 
-/* Setters */
-/* Sets the global execution context */
+//------------------------------------------------------------------------------
+// setters
+//------------------------------------------------------------------------------
+
+// Sets the global execution context
 void QueryCtx_SetGlobalExecutionCtx(CommandCtx *cmd_ctx);
-/* Set the provided AST for access through the QueryCtx. */
+// Set the provided AST for access through the QueryCtx
 void QueryCtx_SetAST(AST *ast);
-/* Set the provided GraphCtx for access through the QueryCtx. */
+// Set the provided GraphCtx for access through the QueryCtx
 void QueryCtx_SetGraphCtx(GraphContext *gc);
-/* Set the resultset. */
+// Set the resultset
 void QueryCtx_SetResultSet(ResultSet *result_set);
-/* Set the parameters map. */
+// Set the parameters map
 void QueryCtx_SetParams(rax *params);
-/* Set the last writer which needs to commit */
+// Set the last writer which needs to commit
 void QueryCtx_SetLastWriter(OpBase *op);
+// set lock status
+void QueryCtx_SetLockStatus(LockStatus status);
 
 //------------------------------------------------------------------------------
 // getters
 //------------------------------------------------------------------------------
+
 // retrieve the AST
 AST *QueryCtx_GetAST(void);
 // retrieve the query parameters values map
