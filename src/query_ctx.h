@@ -15,21 +15,29 @@
 #include "execution_plan/ops/op.h"
 #include <pthread.h>
 
-extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
+extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key
+
+// define a RWLock status
+typedef enum {
+	LOCK_STATUS_UNLOCKED = 0,  // lock isn't acquired
+	LOCK_STATUS_READLOCKED  ,  // lock is acquired for reading
+	LOCK_STATUS_WRITELOCKED ,  // lock is acquired for writing
+} LockStatus;
 
 typedef struct {
-	AST *ast;                     // The scoped AST associated with this query.
-	rax *params;                  // Query parameters.
-	const char *query;            // Query string.
-	const char *query_no_params;  // Query string without parameters part.
+	AST *ast;                     // the scoped AST associated with this query
+	rax *params;                  // query parameters
+	const char *query;            // query string
+	const char *query_no_params;  // query string without parameters part
 } QueryCtx_QueryData;
 
 typedef struct {
-	double timer[2];            // Query execution time tracking.
-	RedisModuleKey *key;        // Saves an open key value, for later extraction and closing.
-	ResultSet *result_set;      // Save the execution result set.
-	bool locked_for_commit;     // Indicates if a call for QueryCtx_LockForCommit issued before.
-	OpBase *last_writer;        // The last writer operation which indicates the need for commit.
+	double timer[2];            // query execution time tracking
+	RedisModuleKey *key;        // saves an open key value, for later extraction and closing
+	ResultSet *result_set;      // save the execution result set
+	bool locked_for_commit;     // indicates if a call for QueryCtx_LockForCommit issued before
+	OpBase *last_writer;        // the last writer operation which indicates the need for commit
+	LockStatus lock_status;     // RWLock status
 } QueryCtx_InternalExecCtx;
 
 typedef struct {
@@ -74,21 +82,25 @@ void QueryCtx_SetParams(rax *params);
 /* Set the last writer which needs to commit */
 void QueryCtx_SetLastWriter(OpBase *op);
 
-/* Getters */
-/* Retrieve the AST. */
+//------------------------------------------------------------------------------
+// getters
+//------------------------------------------------------------------------------
+// retrieve the AST
 AST *QueryCtx_GetAST(void);
-/* Retrieve the query parameters values map. */
+// retrieve the query parameters values map
 rax *QueryCtx_GetParams(void);
-/* Retrieve the Graph object. */
+// retrieve the Graph object
 Graph *QueryCtx_GetGraph(void);
-/* Retrieve the GraphCtx. */
+// retrieve the GraphCtx
 GraphContext *QueryCtx_GetGraphCtx(void);
-/* Retrieve the Redis module context. */
+// retrieve the Redis module context
 RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void);
-/* Retrive the resultset. */
+// retrive the resultset
 ResultSet *QueryCtx_GetResultSet(void);
-/* Retrive the resultset statistics. */
+// retrive the resultset statistics
 ResultSetStatistics *QueryCtx_GetResultSetStatistics(void);
+// retrieve the lock status: unlocked, read-locked, write-locked
+LockStatus QueryCtx_LockStatus(void);
 
 /* Print the current query. */
 void QueryCtx_PrintQuery(void);
@@ -116,11 +128,12 @@ bool QueryCtx_LockForCommit(void);
  * 4. Unlock GIL */
 void QueryCtx_UnlockCommit(OpBase *writer_op);
 
-/*
- * -------------------------FOR SAFETY ONLY---------------------------
- *
- * This method force releases the locks acquired during commit flow if for
- * some reason the last writer op has not invoked QueryCtx_UnlockCommit and Redis is locked.*/
+//------------------------------------------------------------------------------
+// safety mechanism
+//------------------------------------------------------------------------------
+// This method force releases the locks acquired during commit flow
+// if for some reason the last writer op has not invoked QueryCtx_UnlockCommit
+// and Redis is locked
 void QueryCtx_ForceUnlockCommit(void);
 
 /* Compute and return elapsed query execution time. */

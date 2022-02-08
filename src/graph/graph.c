@@ -61,7 +61,7 @@ void Graph_AcquireReadLock(Graph *g) {
 // acquire a lock for exclusive access to this graph's data
 void Graph_AcquireWriteLock(Graph *g) {
 	// release read lock before trying to acquire write lock
-	Graph_ReleaseLock(g);
+	// Graph_ReleaseLock(g);
 
 	// try to acquire lock for writing
 	pthread_rwlock_wrlock(&g->_rwlock);
@@ -73,6 +73,12 @@ void Graph_ReleaseLock
 (
 	Graph *g
 ) {
+	// do not try to release an unlocked RWLock
+	//if(QueryCtx_LockStatus() == LOCK_STATUS_UNLOCKED)
+	//{
+	//	return;
+	//}
+
 	// set _writelocked to false BEFORE unlocking
 	// if this is a reader thread no harm done,
 	// if this is a writer thread the writer is about to unlock so once again

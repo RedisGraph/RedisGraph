@@ -136,6 +136,12 @@ ResultSetStatistics *QueryCtx_GetResultSetStatistics(void) {
 	return stats;
 }
 
+LockStatus QueryCtx_LockStatus(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	ASSERT(ctx != NULL);
+	return ctx->internal_exec_ctx.lock_status;
+}
+
 void QueryCtx_PrintQuery(void) {
 	QueryCtx *ctx = _QueryCtx_GetCreateCtx();
 	printf("%s\n", ctx->query_data.query);
@@ -185,6 +191,8 @@ bool QueryCtx_LockForCommit(void) {
 
 	ctx->internal_exec_ctx.key = key;
 
+	// release read lock
+	Graph_ReleaseLock(gc->g);
 	// acquire graph write lock
 	Graph_AcquireWriteLock(gc->g);
 	ctx->internal_exec_ctx.locked_for_commit = true;
