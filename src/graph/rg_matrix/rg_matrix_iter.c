@@ -23,22 +23,37 @@ GrB_Info RG_MatrixTupleIter_new
 
 	RG_MatrixTupleIter *it = rm_calloc(1, sizeof(RG_MatrixTupleIter)) ;
 	it->A = A ;
+	it->min_row = 0 ;
+	it->max_row = ULLONG_MAX ;
+
+	GrB_Index nvals;
+	GrB_Matrix_nvals(&nvals, M);
 
 	info = GxB_Iterator_new(&it->m_it) ;
 	ASSERT(info == GrB_SUCCESS) ;
-	info = GxB_rowIterator_attach(it->m_it, M, NULL) ;
-	ASSERT(info == GrB_SUCCESS) ;
-	info = GxB_rowIterator_seekRow (it->m_it, 0) ;
-	if(info == GrB_NO_VALUE) it->m_depleted = true ;
-	else ASSERT(info == GrB_SUCCESS) ;
+	if(nvals > 0) {
+		info = GxB_rowIterator_attach(it->m_it, M, NULL) ;
+		ASSERT(info == GrB_SUCCESS) ;
+		info = GxB_rowIterator_seekRow (it->m_it, 0) ;
+		it->m_depleted = info == GxB_EXHAUSTED ;
+		if(!it->m_depleted) ASSERT(info == GrB_SUCCESS || info == GrB_NO_VALUE) ;
+	} else {
+		it->m_depleted = true;
+	}
+
+	GrB_Matrix_nvals(&nvals, DP);
 
 	info = GxB_Iterator_new(&it->dp_it) ;
 	ASSERT(info == GrB_SUCCESS) ;
-	info = GxB_rowIterator_attach(it->dp_it, DP, NULL) ;
-	ASSERT(info == GrB_SUCCESS) ;
-	info = GxB_rowIterator_seekRow (it->dp_it, 0) ;
-	if(info == GrB_NO_VALUE) it->m_depleted = true ;
-	else ASSERT(info == GrB_SUCCESS) ;
+	if(nvals > 0) {
+		info = GxB_rowIterator_attach(it->dp_it, DP, NULL) ;
+		ASSERT(info == GrB_SUCCESS) ;
+		info = GxB_rowIterator_seekRow (it->dp_it, 0) ;
+		it->dp_depleted = info == GxB_EXHAUSTED ;
+		if(!it->dp_depleted) ASSERT(info == GrB_SUCCESS || info == GrB_NO_VALUE) ;
+	} else {
+		it->dp_depleted = true;
+	}
 
 	*iter = it ;
 	return info ;
@@ -53,13 +68,16 @@ GrB_Info RG_MatrixTupleIter_iterate_row
 
 	if(iter == NULL) return GrB_NULL_POINTER ;
 
+	iter->min_row = rowIdx ;
+	iter->max_row = rowIdx ;
+
 	info = GxB_rowIterator_seekRow(iter->m_it, rowIdx) ;
-	if(info == GrB_NO_VALUE) iter->m_depleted = true ;
-	else ASSERT(info == GrB_SUCCESS) ;
+	iter->m_depleted = info == GxB_EXHAUSTED ;
+	if(!iter->m_depleted) ASSERT(info == GrB_SUCCESS || info == GrB_NO_VALUE) ;
 
 	info = GxB_rowIterator_seekRow(iter->dp_it, rowIdx) ;
-	if(info == GrB_NO_VALUE) iter->dp_depleted = true ;
-	else ASSERT(info == GrB_SUCCESS) ;
+	iter->dp_depleted = info == GxB_EXHAUSTED ;
+	if(!iter->dp_depleted) ASSERT(info == GrB_SUCCESS || info == GrB_NO_VALUE) ;
 
 	return info ;
 }
@@ -72,6 +90,8 @@ GrB_Info RG_MatrixTupleIter_jump_to_row
 	GrB_Info info ;
 
 	if(iter == NULL) return GrB_NULL_POINTER ;
+
+	iter->min_row = rowIdx ;
 
 	info = GxB_rowIterator_seekRow(iter->m_it, rowIdx) ;
 	ASSERT(info == GrB_SUCCESS) ;
@@ -88,18 +108,20 @@ GrB_Info RG_MatrixTupleIter_iterate_range
 	GrB_Index startRowIdx,      // row index to start with
 	GrB_Index endRowIdx         // row index to finish with
 ) {
-	ASSERT(false);
-	GrB_Info info = GrB_SUCCESS;
+	GrB_Info info ;
 
-	// if(iter == NULL) return GrB_NULL_POINTER ;
+	if(iter == NULL) return GrB_NULL_POINTER ;
 
-	// info = GxB_MatrixTupleIter_iterate_range(&(iter->m_it), startRowIdx,
-	// 		endRowIdx) ;
-	// ASSERT(info == GrB_SUCCESS) ;
+	iter->min_row = startRowIdx ;
+	iter->max_row = endRowIdx ;
 
-	// info = GxB_MatrixTupleIter_iterate_range(&(iter->dp_it), startRowIdx,
-	// 		endRowIdx) ;
-	// ASSERT(info == GrB_SUCCESS) ;
+	info = GxB_rowIterator_seekRow(iter->m_it, startRowIdx) ;
+	iter->m_depleted = info == GxB_EXHAUSTED ;
+	if(!iter->m_depleted) ASSERT(info == GrB_SUCCESS || info == GrB_NO_VALUE) ;
+
+	info = GxB_rowIterator_seekRow(iter->dp_it, startRowIdx) ;
+	iter->dp_depleted = info == GxB_EXHAUSTED ;
+	if(!iter->dp_depleted) ASSERT(info == GrB_SUCCESS || info == GrB_NO_VALUE) ;
 
 	return info ;
 }
@@ -107,14 +129,13 @@ GrB_Info RG_MatrixTupleIter_iterate_range
 // iterate over M matrix
 static GrB_Info _next_m_iter
 (
-	GxB_Iterator it,         // iterator scanning M
+	RG_MatrixTupleIter iter, // iterator scanning M
 	const GrB_Matrix DM,     // delta-minus, masked entries
 	GrB_Index *row,          // optional extracted row index
 	GrB_Index *col,          // optional extracted column index
 	void *val,               // optional extracted value
 	bool *depleted           // [output] true if iterator depleted
 ) {
-	ASSERT(it       != NULL) ;
 	ASSERT(DM       != NULL) ;
 	ASSERT(depleted != NULL) ;
 
@@ -122,17 +143,19 @@ static GrB_Info _next_m_iter
 	GrB_Index  _row ;
 	GrB_Index  _col ;
 
+	GxB_Iterator it = iter.m_it;
+
 	do {
 		// iterator depleted, return
 		if(*depleted) return info;
 
 		_row = GxB_rowIterator_getRowIndex (it) ;
 		_col = GxB_rowIterator_getColIndex (it) ;
-		if(val) GxB_Iterator_get_UDT (it, val) ;
+		if(val && RG_MATRIX_MULTI_EDGE(iter.A)) GxB_Iterator_get_UDT (it, val) ;
 		info = GxB_rowIterator_nextCol (it) ;
 		if (info != GrB_SUCCESS) {
 			info = GxB_rowIterator_nextRow (it) ;
-			*depleted = info == GxB_EXHAUSTED ;
+			*depleted = info == GxB_EXHAUSTED || GxB_rowIterator_getRowIndex (it) > iter.max_row ;
 		}
 
 		bool x ;
@@ -166,13 +189,8 @@ GrB_Info RG_MatrixTupleIter_next
 	GxB_Iterator         dp_it    =  iter->dp_it                    ;
 
 	if(!iter->m_depleted) {
-		info = _next_m_iter(m_it, DM, row, col, val, depleted) ;
-		if(!(*depleted)) {
-			return info ;
-		} else {
-			iter->m_depleted = true;
-			return info;
-		}
+		info = _next_m_iter(*iter, DM, row, col, val, &iter->m_depleted) ;
+		return GrB_SUCCESS ;
 	}
 
 	if(iter->dp_depleted) {
@@ -182,11 +200,11 @@ GrB_Info RG_MatrixTupleIter_next
 
 	if(row) *row = GxB_rowIterator_getRowIndex (dp_it) ;
 	if(col) *col = GxB_rowIterator_getColIndex (dp_it) ;
-	if(val) GxB_Iterator_get_UDT (dp_it, val) ;
+	if(val && RG_MATRIX_MULTI_EDGE(iter->A)) GxB_Iterator_get_UDT (dp_it, val) ;
 	info = GxB_rowIterator_nextCol (dp_it) ;
 	if (info != GrB_SUCCESS) {
 		info = GxB_rowIterator_nextRow (dp_it) ;
-		iter->dp_depleted = info == GxB_EXHAUSTED ;
+		iter->dp_depleted = info == GxB_EXHAUSTED || GxB_rowIterator_getRowIndex (dp_it) > iter->max_row ;
 	}
 	return GrB_SUCCESS ;
 }
@@ -201,10 +219,12 @@ GrB_Info RG_MatrixTupleIter_reset
 	if(iter == NULL) return GrB_NULL_POINTER ;
 
 	info = GxB_rowIterator_seekRow(iter->m_it, 0) ;
-	ASSERT(info == GrB_SUCCESS) ;
+	iter->m_depleted = info == GxB_EXHAUSTED ;
+	if(!iter->m_depleted) ASSERT(info == GrB_SUCCESS || info == GrB_NO_VALUE) ;
 
 	info = GxB_rowIterator_seekRow(iter->dp_it, 0) ;
-	ASSERT(info == GrB_SUCCESS) ;
+	iter->dp_depleted = info == GxB_EXHAUSTED ;
+	if(!iter->dp_depleted) ASSERT(info == GrB_SUCCESS || info == GrB_NO_VALUE) ;
 
 	return info ;
 }
@@ -224,13 +244,19 @@ GrB_Info RG_MatrixTupleIter_reuse
 
 	iter->A = A ;
 
+	// GrB_free (&iter->m_it) ;
+	info = GxB_Iterator_new(&iter->m_it) ;
 	info = GxB_rowIterator_attach(iter->m_it, M, NULL) ;
 	info = GxB_rowIterator_seekRow(iter->m_it, 0) ;
-	ASSERT(info == GrB_SUCCESS) ;
+	iter->m_depleted = info == GxB_EXHAUSTED ;
+	if(!iter->m_depleted) ASSERT(info == GrB_SUCCESS || info == GrB_NO_VALUE) ;
 
+	// GrB_free (&iter->dp_it) ;
+	info = GxB_Iterator_new(&iter->dp_it) ;
 	info = GxB_rowIterator_attach(iter->dp_it, DP, NULL) ;
 	info = GxB_rowIterator_seekRow(iter->dp_it, 0) ;
-	ASSERT(info == GrB_SUCCESS) ;
+	iter->dp_depleted = info == GxB_EXHAUSTED ;
+	if(!iter->dp_depleted) ASSERT(info == GrB_SUCCESS || info == GrB_NO_VALUE) ;
 
 	return info;
 }
@@ -241,6 +267,11 @@ GrB_Info RG_MatrixTupleIter_free
 	RG_MatrixTupleIter **iter       // iterator to free
 ) {
 	ASSERT(*iter != NULL) ;
+
+	RG_MatrixTupleIter *it = *iter ;
+
+	GrB_free (&it->m_it) ;
+	GrB_free (&it->dp_it) ;
 
 	rm_free(*iter) ;
 	*iter = NULL ;

@@ -19,6 +19,9 @@ typedef struct
     GxB_Iterator dp_it;            // internal delta plus iterator
 	bool m_depleted;
 	bool dp_depleted;
+	GrB_Index min_row;
+	GrB_Index max_row;
+
 } RG_MatrixTupleIter ;
 
 // create a new iterator
