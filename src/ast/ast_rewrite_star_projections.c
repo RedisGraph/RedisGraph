@@ -217,7 +217,7 @@ static void replace_clause
 			cypher_astnode_t *expression = cypher_ast_null(range);
 			cypher_astnode_t *identifier = cypher_ast_identifier("",
 																 1, range);
-			cypher_astnode_t **children = malloc(2 * sizeof(cypher_astnode_t *));
+			cypher_astnode_t *children[2];
 			children[0] = expression;
 			children[1] = identifier;
 			projections[0] = cypher_ast_projection(expression, identifier,
@@ -225,6 +225,7 @@ static void replace_clause
 			alias_count = 1;
 		}
 	}
+	array_free(aliases);
 
 	// prepare arguments for new return clause node
 	bool                    distinct   =  false ;
@@ -289,7 +290,7 @@ static void replace_clause
 									   range);
 	}
 
-	cypher_astnode_free(clause);
+	cypher_ast_free(clause);
 	// replace original clause with fully populated one
 	cypher_ast_query_set_clause(root, new_clause, idx);
 }
