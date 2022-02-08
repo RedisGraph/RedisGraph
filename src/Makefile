@@ -1,8 +1,10 @@
 
 ROOT:=$(realpath ..)
 
-override OS:=$(shell $(ROOT)/deps/readies/bin/platform --os)
-ARCH:=$(shell $(ROOT)/deps/readies/bin/platform --arch)
+DEPS_DIR:=$(ROOT)/deps
+
+override OS:=$(shell $(DEPS_DIR)/readies/bin/platform --os)
+ARCH:=$(shell $(DEPS_DIR)/readies/bin/platform --arch)
 
 export OS
 export ARCH

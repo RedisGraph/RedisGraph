@@ -65,6 +65,7 @@ class RedisGraphSetup(paella.Setup):
 
         self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall".format(PYTHON=self.python, READIES=READIES))
         self.pip_install("-r tests/requirements.txt")
+        self.run("%s/bin/getpy2" % READIES)
 
     def install_peg(self):
         self.run(r"""
