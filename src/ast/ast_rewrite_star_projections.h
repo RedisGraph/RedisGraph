@@ -9,3 +9,4 @@
 #include "ast.h"
 
 void AST_RewriteStarProjections(cypher_parse_result_t *result);
+

@@ -15,7 +15,11 @@
 //------------------------------------------------------------------------------
 //  Annotation context - WITH/RETURN * projections
 //------------------------------------------------------------------------------
-static void _collect_aliases_in_path(const cypher_astnode_t *path, const char ***aliases) {
+static void _collect_aliases_in_path
+(
+	const cypher_astnode_t *path,
+	const cypher_astnode_t **identifiers
+) {
 	uint path_len = cypher_ast_pattern_path_nelements(path);
 	// Every even offset corresponds to a node.
 	for(uint i = 0; i < path_len; i += 2) {
@@ -23,7 +27,8 @@ static void _collect_aliases_in_path(const cypher_astnode_t *path, const char **
 		const cypher_astnode_t *ast_alias = cypher_ast_node_pattern_get_identifier(ast_node);
 		if(ast_alias == NULL) continue;  // Unaliased node, do nothing.
 		// Add node alias to projection array.
-		array_append(*aliases, cypher_ast_identifier_get_name(ast_alias));
+		//array_append(*aliases, cypher_ast_identifier_get_name(ast_alias));
+		array_append(identifiers, ast_alias);
 	}
 
 	// Every odd offset corresponds to an edge.
@@ -32,11 +37,16 @@ static void _collect_aliases_in_path(const cypher_astnode_t *path, const char **
 		const cypher_astnode_t *ast_alias = cypher_ast_rel_pattern_get_identifier(ast_edge);
 		if(ast_alias == NULL) continue;  // Unaliased edge, do nothing.
 		// Add edge alias to projection array.
-		array_append(*aliases, cypher_ast_identifier_get_name(ast_alias));
+		//array_append(*aliases, cypher_ast_identifier_get_name(ast_alias));
+		array_append(identifiers, ast_alias);
 	}
 }
 
-static void _collect_aliases_in_pattern(const cypher_astnode_t *pattern, const char ***aliases) {
+static void _collect_aliases_in_pattern
+(
+	const cypher_astnode_t *pattern,
+	const cypher_astnode_t **aliases
+) {
 	uint path_count = cypher_ast_pattern_npaths(pattern);
 	for(uint i = 0; i < path_count; i ++) {
 		_collect_aliases_in_path(cypher_ast_pattern_get_path(pattern, i), aliases);
@@ -105,41 +115,57 @@ static void _collect_call_projections(const cypher_astnode_t *call_clause, const
 	}
 }
 
-static const char **_collect_aliases_in_scope(const cypher_astnode_t *root,
-											  uint scope_start, uint scope_end) {
+//static const char **_collect_aliases_in_scope
+static const cypher_astnode_t **_collect_aliases_in_scope
+(
+	const cypher_astnode_t *root,
+	uint scope_start,
+	uint scope_end
+) {
 	ASSERT(scope_start != scope_end);
-	const char **aliases = array_new(const char *, 1);
+	//const char **aliases = array_new(const char *, 1);
+	const cypher_astnode_t **aliases = array_new(const cypher_astnode_t *, 1);
 
 	for(uint i = scope_start; i < scope_end; i ++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(root, i);
 		cypher_astnode_type_t type = cypher_astnode_type(clause);
-		if(type == CYPHER_AST_WITH) {
-			// The WITH clause contains either aliases or its own STAR projection.
-			_collect_with_projections(clause, &aliases);
-		} else if(type == CYPHER_AST_MATCH) {
+		if(type == CYPHER_AST_MATCH) {
 			// The MATCH clause contains one pattern of N paths.
 			const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clause);
-			_collect_aliases_in_pattern(pattern, &aliases);
-		} else if(type == CYPHER_AST_CREATE) {
-			// The CREATE clause contains one pattern of N paths.
-			const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clause);
-			_collect_aliases_in_pattern(pattern, &aliases);
-		} else if(type == CYPHER_AST_MERGE) {
-			// The MERGE clause contains one path.
-			const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
-			_collect_aliases_in_path(path, &aliases);
-		} else if(type == CYPHER_AST_UNWIND) {
-			// The UNWIND clause introduces one alias.
-			const cypher_astnode_t *unwind_alias = cypher_ast_unwind_get_alias(clause);
-			array_append(aliases, cypher_ast_identifier_get_name(unwind_alias));
-		} else if(type == CYPHER_AST_CALL) {
-			_collect_call_projections(clause, &aliases);
+			_collect_aliases_in_pattern(pattern, aliases);
 		}
 	}
 
+	//for(uint i = scope_start; i < scope_end; i ++) {
+	//	const cypher_astnode_t *clause = cypher_ast_query_get_clause(root, i);
+	//	cypher_astnode_type_t type = cypher_astnode_type(clause);
+	//	if(type == CYPHER_AST_WITH) {
+	//		// The WITH clause contains either aliases or its own STAR projection.
+	//		_collect_with_projections(clause, &aliases);
+	//	} else if(type == CYPHER_AST_MATCH) {
+	//		// The MATCH clause contains one pattern of N paths.
+	//		const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clause);
+	//		_collect_aliases_in_pattern(pattern, &aliases);
+	//	} else if(type == CYPHER_AST_CREATE) {
+	//		// The CREATE clause contains one pattern of N paths.
+	//		const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clause);
+	//		_collect_aliases_in_pattern(pattern, &aliases);
+	//	} else if(type == CYPHER_AST_MERGE) {
+	//		// The MERGE clause contains one path.
+	//		const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
+	//		_collect_aliases_in_path(path, &aliases);
+	//	} else if(type == CYPHER_AST_UNWIND) {
+	//		// The UNWIND clause introduces one alias.
+	//		const cypher_astnode_t *unwind_alias = cypher_ast_unwind_get_alias(clause);
+	//		array_append(aliases, cypher_ast_identifier_get_name(unwind_alias));
+	//	} else if(type == CYPHER_AST_CALL) {
+	//		_collect_call_projections(clause, &aliases);
+	//	}
+	//}
+
 	// Sort and unique the aliases array so that we won't make redundant projections given queries like:
 	// MATCH (a)-[]->(a) RETURN *
-	_uniqueArray(aliases);
+	//_uniqueArray(aliases);
 
 	return aliases;
 }
@@ -219,10 +245,17 @@ static cypher_astnode_t *build_clause_node(sds s) {
 	return new_clause_clone;
 }
 
-static void replace_clause(cypher_astnode_t *root, cypher_astnode_t *clause,
-						   int scope_start, int idx) {
+static void replace_clause
+(
+	cypher_astnode_t *root,
+	cypher_astnode_t *clause,
+	int scope_start,
+	int idx
+) {
 	// collect all aliases defined in this scope
-	const char **aliases = _collect_aliases_in_scope(root, scope_start, idx);
+	const cypher_astnode_t **aliases = _collect_aliases_in_scope(root,
+			scope_start, idx);
+
 	if(array_len(aliases) == 0 &&
 	   cypher_astnode_type(clause) == CYPHER_AST_RETURN) {
 		// error if this is a RETURN clause with no aliases
@@ -230,39 +263,110 @@ static void replace_clause(cypher_astnode_t *root, cypher_astnode_t *clause,
 		array_free(aliases);
 		return;
 	}
-	sds s = aliases_to_query_string(aliases, clause);
-	cypher_astnode_t *new_clause = build_clause_node(s);
-	sdsfree(s);
-	array_free(aliases);
-	// replace original clause with fully populated one
-	cypher_astnode_free(clause);
-	cypher_ast_query_set_clause(root, new_clause, idx);
-	cypher_astnode_set_child(root, new_clause, idx);
 
+	// convert aliases to expressions
+	for(int i = 0; i < array_len(aliases); i++) {
+		aliases[i] = cypher_ast_clone(aliases[i]);
+		const cypher_astnode_t *expression = aliases[i];
+		const cypher_astnode_t *alias = NULL;
+		cypher_astnode_t **children = aliases+i;
+		unsigned int nchildren = 1;
+		struct cypher_input_range range = cypher_astnode_range(aliases[i]);
+
+		aliases[i] = cypher_ast_projection(expression, alias, children,
+				nchildren, range);
+	}
+
+	// prepare arguments for new return clause node
+	bool distinct = cypher_ast_return_is_distinct(clause);
+	bool include_existing = false;
+	cypher_astnode_t * const *projections = (cypher_astnode_t*const*)aliases;
+	unsigned int nprojections = array_len(aliases);
+
+	unsigned int nchildren = nprojections;
+
+	cypher_astnode_t *children[nprojections + 3];
+	for(int i = 0; i < nprojections; i++) {
+		children[i] = aliases[i];
+	}
+
+	const cypher_astnode_t *order_by = cypher_ast_return_get_order_by(clause);
+	if(order_by != NULL) {
+		order_by = cypher_ast_clone(order_by);
+		children[nchildren] = (cypher_astnode_t*)order_by;
+		nchildren++;
+	}
+
+	const cypher_astnode_t *skip = cypher_ast_return_get_skip(clause);
+	if(skip != NULL) {
+		skip = cypher_ast_clone(skip);
+		children[nchildren] = (cypher_astnode_t*)skip;
+		nchildren++;
+	}
+
+	const cypher_astnode_t *limit = cypher_ast_return_get_limit(clause);
+	if(limit != NULL) {
+		limit = cypher_ast_clone(limit);
+		children[nchildren] = (cypher_astnode_t*)limit;
+		nchildren++;
+	}
+
+	struct cypher_input_range range = cypher_astnode_range(clause);
+
+	cypher_astnode_t *return_node = cypher_ast_return(
+		distinct,
+		include_existing,
+		projections,
+		nprojections,
+		order_by,
+		skip,
+		limit,
+		children,
+		nchildren,
+		range
+	);
+
+	cypher_astnode_free(clause);
+	cypher_ast_query_set_clause(root, return_node, idx);
+	cypher_astnode_set_child(root, return_node, idx);
+
+	//sds s = aliases_to_query_string(aliases, clause);
+	//cypher_astnode_t *new_clause = build_clause_node(s);
+	//sdsfree(s);
+	//array_free(aliases);
+	// replace original clause with fully populated one
+	//cypher_astnode_free(clause);
+	//cypher_ast_query_set_clause(root, new_clause, idx);
+	//cypher_astnode_set_child(root, new_clause, idx);
 }
 
 void AST_RewriteStarProjections(cypher_parse_result_t *result) {
 	const cypher_astnode_t *statement = cypher_parse_result_get_root(result, 0);
 	if(cypher_astnode_type(statement) != CYPHER_AST_STATEMENT) return;
+
 	const cypher_astnode_t *root = cypher_ast_statement_get_body(statement);
 	if(cypher_astnode_type(root) != CYPHER_AST_QUERY) return;
-	// rewrite all WITH * clauses to include all aliases
-	uint clause_count = cypher_ast_query_nclauses(root);
-	uint scope_start = 0;
-	uint scope_end;
+
+	// rewrite all WITH * / RETURN * clauses to include all aliases
+	uint  scope_start   =  0;
+	uint  clause_count  =  cypher_ast_query_nclauses(root);
+
 	for(uint i = 0; i < clause_count; i ++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(root, i);
 		cypher_astnode_type_t t = cypher_astnode_type(clause);
-		if(t == CYPHER_AST_WITH || t == CYPHER_AST_RETURN) {
-			bool has_include_existing = (t == CYPHER_AST_WITH) ?
-										cypher_ast_with_has_include_existing(clause) :
-										cypher_ast_return_has_include_existing(clause);
-			if(has_include_existing) {
-				replace_clause((cypher_astnode_t *)root,
-							   (cypher_astnode_t *)clause, scope_start, i);
-			}
-			scope_start = i;
+		if(t != CYPHER_AST_WITH && t != CYPHER_AST_RETURN) continue;
+
+		bool has_include_existing = (t == CYPHER_AST_WITH) ?
+			cypher_ast_with_has_include_existing(clause) :
+			cypher_ast_return_has_include_existing(clause);
+
+		if(has_include_existing) {
+			replace_clause((cypher_astnode_t *)root, (cypher_astnode_t *)clause,
+					scope_start, i);
 		}
+
+		// update scope start
+		scope_start = i;
 	}
 }
 
