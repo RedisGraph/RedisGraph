@@ -91,44 +91,64 @@ for k = 1:(ntypes + 1)
 
             % CSR with row iterator
             A.is_csc = false ;
-            y1 = GB_mex_mxv_iterator (A, x, 0) ;
+            y1 = GB_mex_mxv_iterator (A, x, 0) ;    % with macros
+            GB_spec_compare (y0, y1, 0, tol) ;
+            y1 = GB_mex_mxv_iterator (A, x, 0+8) ;  % with functions
             GB_spec_compare (y0, y1, 0, tol) ;
 
             % CSR with entry iterator
-            y1 = GB_mex_mxv_iterator (A, x, 2) ;
+            y1 = GB_mex_mxv_iterator (A, x, 2) ;    % with macros
+            GB_spec_compare (y0, y1, 0, tol) ;
+            y1 = GB_mex_mxv_iterator (A, x, 2+8) ;  % with functions
             GB_spec_compare (y0, y1, 0, tol) ;
 
             % CSR with row iterator: backwards kseek
-            y1 = GB_mex_mxv_iterator (A, x, 3) ;
+            y1 = GB_mex_mxv_iterator (A, x, 3) ;    % with macros
+            GB_spec_compare (y0, y1, 0, tol) ;
+            y1 = GB_mex_mxv_iterator (A, x, 3+8) ;  % with functions
             GB_spec_compare (y0, y1, 0, tol) ;
 
             % CSR with row iterator: with seekRow
-            y1 = GB_mex_mxv_iterator (A, x, 5) ;
+            y1 = GB_mex_mxv_iterator (A, x, 5) ;    % with macros
+            GB_spec_compare (y0, y1, 0, tol) ;
+            y1 = GB_mex_mxv_iterator (A, x, 5+8) ;  % with functions
             GB_spec_compare (y0, y1, 0, tol) ;
 
             % CSR with entry iterator, seek
-            y1 = GB_mex_mxv_iterator (A, x, 7) ;
+            y1 = GB_mex_mxv_iterator (A, x, 7) ;    % with macros
+            GB_spec_compare (y0, y1, 0, tol) ;
+            y1 = GB_mex_mxv_iterator (A, x, 7+8) ;  % with functions
             GB_spec_compare (y0, y1, 0, tol) ;
 
             % CSC with col iterator
             A.is_csc = true ;
-            y1 = GB_mex_mxv_iterator (A, x, 1) ;
+            y1 = GB_mex_mxv_iterator (A, x, 1) ;    % with macros
+            GB_spec_compare (y0, y1, 0, tol) ;
+            y1 = GB_mex_mxv_iterator (A, x, 1+8) ;  % with functions
             GB_spec_compare (y0, y1, 0, tol) ;
 
             % CSC with entry iterator
-            y1 = GB_mex_mxv_iterator (A, x, 2) ;
+            y1 = GB_mex_mxv_iterator (A, x, 2) ;    % with macros
+            GB_spec_compare (y0, y1, 0, tol) ;
+            y1 = GB_mex_mxv_iterator (A, x, 2+8) ;  % with functions
             GB_spec_compare (y0, y1, 0, tol) ;
 
             % CSC with col iterator: backwards kseek
-            y1 = GB_mex_mxv_iterator (A, x, 4) ;
+            y1 = GB_mex_mxv_iterator (A, x, 4) ;    % with macros
+            GB_spec_compare (y0, y1, 0, tol) ;
+            y1 = GB_mex_mxv_iterator (A, x, 4+8) ;  % with functions
             GB_spec_compare (y0, y1, 0, tol) ;
 
             % CSC with col iterator: with seekCol
-            y1 = GB_mex_mxv_iterator (A, x, 6) ;
+            y1 = GB_mex_mxv_iterator (A, x, 6) ;    % with macros
+            GB_spec_compare (y0, y1, 0, tol) ;
+            y1 = GB_mex_mxv_iterator (A, x, 6+8) ;  % with functions
             GB_spec_compare (y0, y1, 0, tol) ;
 
             % CSC with entry iterator, seek
-            y1 = GB_mex_mxv_iterator (A, x, 7) ;
+            y1 = GB_mex_mxv_iterator (A, x, 7) ;    % with macros
+            GB_spec_compare (y0, y1, 0, tol) ;
+            y1 = GB_mex_mxv_iterator (A, x, 7+8) ;  % with functions
             GB_spec_compare (y0, y1, 0, tol) ;
 
         end

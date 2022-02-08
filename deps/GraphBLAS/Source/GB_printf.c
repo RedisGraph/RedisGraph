@@ -9,8 +9,6 @@
 
 #include "GB.h"
 
-#if GB_BURBLE
-
 void GB_burble_assign
 (
     const bool C_replace,       // descriptor for C
@@ -139,6 +137,4 @@ void GB_burble_assign
         default: ;
     }
 }
-
-#endif
 

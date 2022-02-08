@@ -13,7 +13,6 @@
 // structure.
 
 #include "GB_mxm.h"
-// #include "GB_dynamic.h"
 #include "GB_binop.h"
 #include "GB_AxB__include1.h"
 #ifndef GBCOMPACT
@@ -22,9 +21,6 @@
 
 #define GB_FREE_WORKSPACE                       \
 {                                               \
-/*  GB_undo_dynamic_header (&M, M_input, Context) ; */  \
-/*  GB_undo_dynamic_header (&A, A_input, Context) ; */  \
-/*  GB_undo_dynamic_header (&B, B_input, Context) ; */  \
     GB_FREE_WORK (&TaskList, TaskList_size) ;   \
 }
 
@@ -55,10 +51,7 @@ GrB_Info GB_AxB_dot3                // C<M> = A'*B using dot product method
     //--------------------------------------------------------------------------
 
     GrB_Info info ;
-    ASSERT (C != NULL && C->static_header) ;
-//  GB_OK (GB_do_dynamic_header (&M, M_input, Context)) ;
-//  GB_OK (GB_do_dynamic_header (&A, A_input, Context)) ;
-//  GB_OK (GB_do_dynamic_header (&B, B_input, Context)) ;
+    ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
 
     ASSERT_MATRIX_OK (M, "M for dot3 A'*B", GB0) ;
     ASSERT_MATRIX_OK (A, "A for dot3 A'*B", GB0) ;
@@ -171,7 +164,7 @@ GrB_Info GB_AxB_dot3                // C<M> = A'*B using dot product method
 
     // C is sparse or hypersparse, not full or bitmap
     // set C->iso = C_iso   OK
-    GB_OK (GB_new_bix (&C, true, // sparse or hyper (from M), static header
+    GB_OK (GB_new_bix (&C, // sparse or hyper (from M), existing header
         ctype, cvlen, cvdim, GB_Ap_malloc, true,
         C_sparsity, true, M->hyper_switch, cnvec,
         cnz+1,  // add one to cnz for GB_cumsum of Cwork in GB_AxB_dot3_slice
@@ -321,7 +314,6 @@ GrB_Info GB_AxB_dot3                // C<M> = A'*B using dot product method
 
     GB_FREE_WORKSPACE ;
     C->jumbled = GB_JUMBLED (M) ;   // C is jumbled if M is jumbled
-//  GB_undo_dynamic_header (&C, C_output, Context) ;
     ASSERT_MATRIX_OK (C, "dot3: C<M> = A'*B output", GB0) ;
     ASSERT (GB_ZOMBIES_OK (C)) ;
     ASSERT (GB_JUMBLED_OK (C)) ;

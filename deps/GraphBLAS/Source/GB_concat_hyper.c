@@ -55,7 +55,6 @@ GrB_Info GB_concat_hyper            // concatenate into a hypersparse matrix
     float bitmap_switch = C->bitmap_switch ;
     int sparsity_control = C->sparsity_control ;
 
-    bool static_header = C->static_header ;
     GB_phbix_free (C) ;
 
     Wi = GB_MALLOC (cnz, int64_t, &Wi_size) ;               // becomes C->i
@@ -212,7 +211,6 @@ GrB_Info GB_concat_hyper            // concatenate into a hypersparse matrix
     C->hyper_switch = hyper_switch ;
     C->bitmap_switch = bitmap_switch ;
     C->sparsity_control = sparsity_control ;
-    ASSERT (C->static_header == static_header) ;
     ASSERT (GB_IS_HYPERSPARSE (C)) ;
     ASSERT_MATRIX_OK (C, "C from concat hyper", GB0) ;
 

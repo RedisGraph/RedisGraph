@@ -77,6 +77,15 @@ class AxB_dot3_Test : public ::testing::Test
 
 };
 
+template<typename T, typename I>
+void print_array(void *arr, I size, const char *name) {
+    std::cout << "Printing " << name << std::endl;
+    for(I i = 0; i < size; ++i) {
+        std::cout << static_cast<T*>(arr)[i] << ", ";
+    }
+    std::cout << std::endl << "Done." << std::endl;
+}
+
 // Test generator code, to allow parameterized tests
 // Uses jitFactory, dataFactory and GB_jit 
 template <typename T_C, typename T_M, typename T_A,typename T_B>
@@ -103,12 +112,8 @@ bool test_AxB_phase1_factory( int TB, int64_t N, int64_t Anz, int64_t Bnz, GrB_M
     matrix<T_M>* M = G.getMptr();
     matrix<T_A>* A = G.getAptr();
     matrix<T_B>* B = G.getBptr();
-//
-//    T_C *Cx = (T_C*)C->mat->x;
-//    T_A *Ax = (T_A*)A->mat->x;
-//    T_B *Bx = (T_B*)B->mat->x;
 
-    int nblck = Cnz;
+    int nblck = N;
     int nthrd = 32;
     int sz = 4;
     //int m = 256/sz;
@@ -116,40 +121,41 @@ bool test_AxB_phase1_factory( int TB, int64_t N, int64_t Anz, int64_t Bnz, GrB_M
     GpuTimer kernTimer;
     kernTimer.Start();
 
-    #define NBUCKETS 12 + 1 // TODO: This should be set in GB_buckets
+    // HACK:
+    #define NBUCKETS 12 // + 1 // TODO: This should be set in GB_buckets
     #define chunksize 128
 
     const int64_t mnz = GB_nnz (M->mat) ;
 
     int number_of_sms = GB_Global_gpu_sm_get (0) ;
 
-    int ntasks =  ( mnz +chunksize -1)/chunksize;
+    int ntasks =  ( mnz + chunksize - 1)/chunksize;
+
     // Idea is to have each task work on a continguous block of columns of C
-    ntasks = GB_IMIN( ntasks,  128*number_of_sms) ;    // ntasks will be grid.x
+    //ntasks =; //GB_IMIN( ntasks,  128*number_of_sms) ;    // ntasks will be grid.x
 
     // TODO: Verify that RMM is checking and throwing exceptions
-    int64_t *Nanobuckets = (int64_t*)rmm_wrap_malloc(NBUCKETS * nthrd * ntasks * sizeof (int64_t));
-    int64_t *Blockbucket = (int64_t*)rmm_wrap_malloc(NBUCKETS * ntasks * sizeof (int64_t));
+    int nanobuckets_size = NBUCKETS * nthrd * ntasks;
+
+    printf("nanobuckets_size: %d\n", nanobuckets_size);
+    int64_t *Nanobuckets = (int64_t*)rmm_wrap_malloc(nanobuckets_size * sizeof (int64_t));
+    int blockbuckets_size = NBUCKETS * ntasks;
+    int64_t *Blockbucket = (int64_t*)rmm_wrap_malloc(blockbuckets_size * sizeof (int64_t));
 
     p1lF.jitGridBlockLaunch( nblck, nthrd, Nanobuckets, Blockbucket,
                              C->get_grb_matrix(), M->get_grb_matrix(),
                              A->get_grb_matrix(), B->get_grb_matrix());
 
     kernTimer.Stop();
-    std::cout<<"returned from kernel "<<kernTimer.Elapsed()<<"ms"<<std::endl;
+    std::cout<<"returned from phase1 kernel "<<kernTimer.Elapsed()<<"ms"<<std::endl;
+
+    print_array<int64_t>(Nanobuckets, nanobuckets_size, "Nanobuckets");
+    print_array<int64_t>(Blockbucket, blockbuckets_size, "Blockbucket");
+    std::cout<<"==== phase1 done=============================" <<std::endl;
 
     return true;
 }
 
-
-template<typename T, typename I>
-void print_array(void *arr, I size, const char *name) {
-    std::cout << "Printing " << name << std::endl;
-    for(I i = 0; i < size; ++i) {
-        std::cout << static_cast<T*>(arr)[i] << ", ";
-    }
-    std::cout << std::endl << "Done." << std::endl;
-}
 
 template <typename T_C>
 bool test_AxB_phase2_factory( int TB, int64_t N, int64_t Anz, int64_t Bnz) {
@@ -171,15 +177,15 @@ bool test_AxB_phase2_factory( int TB, int64_t N, int64_t Anz, int64_t Bnz) {
     G.fill_buckets( TB ); // all elements go to testbucket= TB
 
     matrix<T_C>* C = G.getCptr();
-    matrix<T_C>* M = G.getMptr();
-    matrix<T_C>* A = G.getAptr();
-    matrix<T_C>* B = G.getBptr();
+    matrix<T_C>* M = G.getMptr();       // note: values are not accessed
+//  matrix<T_C>* A = G.getAptr();
+//  matrix<T_C>* B = G.getBptr();
 //
 //    T_C *Cx = C->mat->x;
 //    T_C *Ax = A->mat->x;
 //    T_C *Bx = B->mat->x;
 
-    int nblck = Cnz;
+    int nblck = N;
    int nthrd = 32;
    // int sz = 4;
    //int m = 256/sz;
@@ -187,6 +193,8 @@ bool test_AxB_phase2_factory( int TB, int64_t N, int64_t Anz, int64_t Bnz) {
    GpuTimer kernTimer;
    kernTimer.Start();
 
+    // HACK
+    #undef  NBUCKETS
     #define NBUCKETS 12 + 1 // TODO: This should be set in GB_buckets
     #define chunksize 128
 
@@ -213,7 +221,7 @@ bool test_AxB_phase2_factory( int TB, int64_t N, int64_t Anz, int64_t Bnz) {
     int64_t *nanobuckets = (int64_t*)rmm_wrap_malloc(NBUCKETS * nthrd * ntasks * sizeof (int64_t));
     int64_t *blockbucket = (int64_t*)rmm_wrap_malloc(NBUCKETS * ntasks * sizeof (int64_t));
     int64_t *bucketp = (int64_t*)rmm_wrap_malloc(NBUCKETS * sizeof (int64_t));
-    int64_t *bucket = (int64_t*)rmm_wrap_malloc(Cnz * sizeof (int64_t));
+    int64_t *bucket = (int64_t*)rmm_wrap_malloc(mnz * sizeof (int64_t));
     int64_t *offset = (int64_t*)rmm_wrap_malloc(NBUCKETS * sizeof (int64_t));
 
     std::cout << "nthrd: " << nthrd << ", ntasks: " << ntasks << std::endl;
@@ -221,11 +229,12 @@ bool test_AxB_phase2_factory( int TB, int64_t N, int64_t Anz, int64_t Bnz) {
     fillvector_constant(NBUCKETS * ntasks, blockbucket, (int64_t)1);
     fillvector_constant(NBUCKETS, bucketp, (int64_t)1);
 
-    print_array<T_C>(C->mat->x, Cnz, "C");
+//  print_array<T_C>(C->mat->x, mnz, "C");
     print_array<int64_t>(nanobuckets, NBUCKETS*nthrd*ntasks, "nanobuckets");
     print_array<int64_t>(blockbucket, NBUCKETS*ntasks, "blockbucket");
-    print_array<int64_t>(bucketp, NBUCKETS, "bucketp");
-    print_array<int64_t>(bucket, Cnz, "bucket");
+//  print_array<int64_t>(bucketp, NBUCKETS, "bucketp");
+//  print_array<int64_t>(bucket, mnz, "bucket");
+
 //
 //    std::stringstream string_to_be_jitted ;
 //    string_to_be_jitted << "testInt" << std::endl << R"(#include "GB_jit_AxB_phase2.cu")" << std::endl;
@@ -245,15 +254,14 @@ bool test_AxB_phase2_factory( int TB, int64_t N, int64_t Anz, int64_t Bnz) {
 
 
     p2lF.jitGridBlockLaunch( nblck, nthrd, nanobuckets, blockbucket,
-                            bucketp, bucket, offset, C, Cnz, nblck);
-
-//    bool jitGridBlockLaunch(int gridsz, int blocksz,
-//                            int64_t *nanobuckets, int64_t *blockBucket,
-//                            int64_t *bucketp, int64_t *bucket,
-//                            matrix *C, const int64_t cnz, const int64_t nblocks )
+                            bucketp, bucket, offset, nblck);
 
     kernTimer.Stop();
-   std::cout<<"returned from kernel "<<kernTimer.Elapsed()<<"ms"<<std::endl;
+    std::cout<<"returned from phase2 kernel "<<kernTimer.Elapsed()<<"ms"<<std::endl;
+
+    print_array<int64_t>(bucketp, NBUCKETS, "bucketp");
+    print_array<int64_t>(bucket, mnz, "bucket");
+    std::cout<<"phase2 kernel done =================="<<std::endl;
 
    return true;
 }

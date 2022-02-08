@@ -66,7 +66,7 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
     //--------------------------------------------------------------------------
 
     GrB_Info info ;
-    ASSERT (C != NULL && C->static_header) ;
+    ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
 
     ASSERT_MATRIX_OK_OR_NULL (M, "M for dot A'*B", GB0) ;
     ASSERT (!GB_PENDING (M)) ;
@@ -110,7 +110,7 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
             (*done_in_place) = false ;
             (*mask_applied) = false ;
             // set C->iso = true    OK
-            info = GB_new_bix (&C, true,    // static header
+            info = GB_new_bix (&C, // existing header
                 ztype, A->vdim, B->vdim, GB_Ap_null, true, GxB_FULL, false,
                 GB_HYPER_SWITCH_DEFAULT, -1, 1, true, true, Context) ;
             if (info == GrB_SUCCESS)
@@ -153,7 +153,7 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
         // no work to do; C is an empty matrix, normally hypersparse
         GBURBLE ("(empty dot) ") ;
         if (C_in != NULL) return (GrB_SUCCESS) ;
-        return (GB_new (&C, true, // auto sparsity, static header
+        return (GB_new (&C, // auto sparsity, existing header
             ztype, A->vdim, B->vdim, GB_Ap_calloc, true, GxB_AUTO_SPARSITY,
             GB_Global_hyper_switch_get ( ), 1, Context)) ;
     }
@@ -172,14 +172,14 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
         (*done_in_place) = false ;
 
         #if defined ( GBCUDA )
-        if (!C_iso &&   // FIXME, remove this and create C iso on output
+        if (!C_iso &&   // FIXME for CUDA, remove and create C iso on output
             GB_AxB_dot3_cuda_branch (M, Mask_struct, A, B, semiring,
             flipxy, Context))
         {
-            // FIXME: can M be jumbled for the CUDA kernel?
+            // FIXME for CUDA: can M be jumbled for the CUDA kernel?
             GB_MATRIX_WAIT (M) ;    // make sure it's not jumbled
             if (GB_AxB_dot3_control (M, Mask_comp)
-                && !GB_IS_HYPERSPARSE (M)   // FIXME, remove this
+                && !GB_IS_HYPERSPARSE (M)   // FIXME for CUDA, remove this
             )
             {
                 return (GB_AxB_dot3_cuda (C, M, Mask_struct, A, B, semiring,

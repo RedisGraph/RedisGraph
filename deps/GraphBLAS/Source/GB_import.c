@@ -202,10 +202,11 @@ GrB_Info GB_import      // import/pack a matrix in any format
     { 
         // clear the content and reuse the header
         GB_phbix_free (*A) ;
+        ASSERT (!((*A)->static_header)) ;
     }
 
     // also create A->p if this is a sparse GrB_Vector
-    GrB_Info info = GB_new (A, false, // any sparsity, new user header
+    GrB_Info info = GB_new (A, // any sparsity, new or existing user header
         type, vlen, vdim, is_sparse_vector ? GB_Ap_calloc : GB_Ap_null,
         is_csc, sparsity, GB_Global_hyper_switch_get ( ), nvec, Context) ;
     if (info != GrB_SUCCESS)
@@ -213,6 +214,9 @@ GrB_Info GB_import      // import/pack a matrix in any format
         // out of memory
         return (info) ;
     }
+
+    // A never has a static header
+    ASSERT (!((*A)->static_header)) ;
 
     //--------------------------------------------------------------------------
     // import the matrix

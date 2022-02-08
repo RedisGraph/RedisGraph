@@ -18,7 +18,6 @@ void GB_Matrix_free             // free a matrix
     GrB_Matrix *Ahandle         // handle of matrix to free
 )
 {
-
     if (Ahandle != NULL)
     {
         GrB_Matrix A = *Ahandle ;

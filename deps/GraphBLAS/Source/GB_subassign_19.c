@@ -56,6 +56,7 @@ GrB_Info GB_subassign_19
     //--------------------------------------------------------------------------
 
     GB_EMPTY_TASKLIST ;
+    GB_CLEAR_STATIC_HEADER (S, &S_header) ;
     GB_OK (GB_subassign_symbolic (S, C, I, ni, J, nj, true, Context)) ;
 
     //--------------------------------------------------------------------------

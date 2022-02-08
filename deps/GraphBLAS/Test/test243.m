@@ -104,12 +104,20 @@ for k = 1:(ntypes + 1)
                 % y0 = X'*Y
                 y0 = GB_spec_mxm (scalar_in, [ ], accum, semiring, X, Y, desc) ;
 
-                % with vector iterator
-                y1 = GB_mex_dot_iterator (X, Y) ;
+                % with vector iterator, with macros
+                y1 = GB_mex_dot_iterator (X, Y, 0) ;
                 GB_spec_compare (y0, y1, 0, tol) ;
 
-                % with vector iterator, brute force
+                % with vector iterator, brute force, with macros
                 y1 = GB_mex_dot_iterator (X, Y, 1) ;
+                GB_spec_compare (y0, y1, 0, tol) ;
+
+                % with vector iterator, with functions
+                y1 = GB_mex_dot_iterator (X, Y, 2) ;
+                GB_spec_compare (y0, y1, 0, tol) ;
+
+                % with vector iterator, brute force, with functions
+                y1 = GB_mex_dot_iterator (X, Y, 3) ;
                 GB_spec_compare (y0, y1, 0, tol) ;
 
             end

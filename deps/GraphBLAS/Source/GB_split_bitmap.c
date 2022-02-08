@@ -79,7 +79,7 @@ GrB_Info GB_split_bitmap            // split a bitmap matrix
 
             C = NULL ;
             // set C->iso = A_iso       OK
-            GB_OK (GB_new_bix (&C, false,      // new header
+            GB_OK (GB_new_bix (&C, // new header
                 atype, cvlen, cvdim, GB_Ap_null, csc, GxB_BITMAP, false,
                 hyper_switch, 0, cnzmax, true, A_iso, Context)) ;
             int8_t *restrict Cb = C->b ;

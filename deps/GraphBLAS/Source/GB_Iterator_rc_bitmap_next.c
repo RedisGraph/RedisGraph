@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GxB_Vector_Iterator_attach: attach an iterator to vector
+// GB_Iterator_rc_bitmap_next: move a row/col iterator to next entry in bitmap
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
@@ -9,16 +9,16 @@
 
 #include "GB.h"
 
-GrB_Info GxB_Vector_Iterator_attach
-(
-    // input/output:
-    GxB_Iterator iterator,      // iterator to attach to the vector v
-    // input
-    GrB_Vector v,               // vector to attach
-    GrB_Descriptor desc
-)
+GrB_Info GB_Iterator_rc_bitmap_next (GxB_Iterator iterator)
 {
-    return (GB_Iterator_attach (iterator, (GrB_Matrix) v, GxB_NO_FORMAT,
-        desc)) ;
+    for ( ; iterator->p < iterator->pend ; iterator->p++)
+    {
+        if (iterator->Ab [iterator->p])
+        { 
+            // found the next entry in this vector
+            return (GrB_SUCCESS) ;
+        }
+    }
+    return (GrB_NO_VALUE) ;
 }
 

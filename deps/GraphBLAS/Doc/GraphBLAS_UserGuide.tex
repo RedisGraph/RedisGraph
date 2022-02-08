@@ -148,11 +148,16 @@ are extensions to the GraphBLAS C API.
 
 \begin{itemize}
 
-\item Version 6.2.0.beta1 (Jan 26, 2022)
+\item Version 6.2.0.beta4 (Feb 5, 2022)
 
     \begin{packed_itemize}
     \item added the \verb'GxB_Iterator' object and its methods.  See
         Section~\ref{iter}.
+    \item \verb'@GrB' interface: revised sparse-times-full rule for the
+        conventional semiring (the syntax \verb'C=A*B'), so that
+        sparse-times-full results in \verb'C' as full,
+        but hypersparse-times-sparse is not full
+        (typically sparse or hypersparse).
     \end{packed_itemize}
 
 \item Version 6.1.4 (Jan 12, 2022)
@@ -208,14 +213,14 @@ are extensions to the GraphBLAS C API.
         \verb'A' is bitmap/full, and \verb'B' is sparse/hyper.  % saxpy5
         Faster \verb"C+=A'*B" when
         \verb'A' is sparse/hyper, and \verb'B' is bitmap/full.  % dot4
-    \item bug fix: deserialization of iso and empty matrices/vectors was
+    \item (40) bug fix: deserialization of iso and empty matrices/vectors was
         incorrect
     \end{packed_itemize}
 
 \item Versions 6.0.2 and 5.2.2 (Nov 30, 2021)
 
     \begin{packed_itemize}
-    \item (38) bug fix: \verb'GrB_Matrix_export':
+    \item (39) bug fix: \verb'GrB_Matrix_export':
         numerical values not properly exported
     \end{packed_itemize}
 
@@ -225,7 +230,7 @@ are extensions to the GraphBLAS C API.
     \item v6.0.x and v5.2.x (for the same x):
         differ only in \verb'GrB_wait', \verb'GrB_Info',
         \verb'GrB_SCMP', and \verb'GxB_init'.
-    \item (37) bug fix:  \verb"C+=A'*B" when the accum operator is the same as
+    \item (38) bug fix:  \verb"C+=A'*B" when the accum operator is the same as
         the monoid and C is iso-full, and \verb'A' or \verb'B' are hypersparse.
         (dot4 method).
     \item performance: \verb'GrB_select' with user-defined
@@ -308,10 +313,10 @@ are extensions to the GraphBLAS C API.
         2), v1.9.3, Copyright (c) 2011-2016, Yann Collet.
     \item MIS and pagerank demos: removed; MIS added to LAGraph/experimental
     \item disabled free memory pool if OpenMP not available
-    \item (36) bug fix: ewise \verb'C=A+B' when all matrices are full,
+    \item (37) bug fix: ewise \verb'C=A+B' when all matrices are full,
         \verb'GBCOMPACT' not used, but \verb'GB_control.h' disabled the
         operator or type.  Caught by Roi Lipman, Redis.
-    \item (34) bug fix: \verb'C<M>=Z' not returning \verb'C'
+    \item (36) bug fix: \verb'C<M>=Z' not returning \verb'C'
         as iso if \verb'Z 'iso and \verb'C' initially
         empty.  Caught by Erik Welch, Anaconda.
     \item performance improvements: \verb'C=A*B': sparse/hyper times
@@ -329,21 +334,21 @@ are extensions to the GraphBLAS C API.
 \item Version 5.1.9 (Oct 26, 2021)
 
     \begin{packed_itemize}
-    \item (33) bug fix: in-place test incorrect for \verb"C+=A'*B" using dot4
-    \item (32) bug fix: disable free pool if OpenMP not available
+    \item (34) bug fix: in-place test incorrect for \verb"C+=A'*B" using dot4
+    \item (33) bug fix: disable free pool if OpenMP not available
     \end{packed_itemize}
 
 \item Version 5.1.8 (Oct 5, 2021)
 
     \begin{packed_itemize}
-    \item (31) bug fix: C=A*B when A is sparse and B is iso and bitmap.
+    \item (32) bug fix: C=A*B when A is sparse and B is iso and bitmap.
         Caught by Mark Blanco, CMU.
     \end{packed_itemize}
 
 \item Version 5.1.7 (Aug 23, 2021)
 
     \begin{packed_itemize}
-    \item (30) bug fix:  \verb'GrB_apply', when done in-place and matrix starts
+    \item (31) bug fix:  \verb'GrB_apply', when done in-place and matrix starts
         non-iso and becomes iso, gave the wrong iso result.
         Caught by Fabian Murariu.
     \end{packed_itemize}
@@ -13743,6 +13748,18 @@ must internally fuse both inner and outer loops so that the user application can
 use a single loop.  As a result, the computation \verb'y+=A*x' can be up to
 4x slower (about 2x typical) than when using \verb'GrB_mxv' with a single
 thread.
+
+To obtain the best performace possible, many of the iterator methods are
+implemented as macros in \verb'GraphBLAS.h'.  Using macros is the default,
+giving typical C and C++ applications access to the fastest methods possible.
+
+To ensure access to these methods when not using the macros, these methods are
+also defined as regular functions that appear in the compiled
+\verb'libgraphblas.so' library with the same name as the macros.  Applications
+that cannot use the macro versions can \verb'#undef' the macros after the
+\verb'#include <GraphBLAS.h>' statement, and then they would access the regular
+compiled functions in \verb'libgraphblas.so'.  This non-macro approach is not
+the default, and the iterator methods may be slightly slower.
 
 \newpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

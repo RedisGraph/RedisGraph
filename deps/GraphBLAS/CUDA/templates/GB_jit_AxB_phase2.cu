@@ -150,25 +150,11 @@ void AxB_phase2
     int64_t *__restrict__ bucket,         // global buckets, of size cnz (== mnz)
     int64_t *__restrict__ offset,         // global offsets, for each bucket
     // inputs, not modified:
-    GrB_Matrix C,             // output matrix
-    const int64_t cnz,        // number of entries in C and M
     const int nblocks         // input number of blocks to reduce
 )
 {
     //printf("In AxB_phase2 kernel\n");
     //printf("nanobuckets: %ld\n", nanobuckets[0]);
-
-    //--------------------------------------------------------------------------
-    // get C and M
-    //--------------------------------------------------------------------------
-
-    //int64_t *Ci = C->i ;       // for zombies, or bucket assignment
-
-    // Ci [p] for an entry C(i,j) contains either GB_FLIP(i) if C(i,j) is a
-    // zombie, or (k << 4) + bucket otherwise, where C(:,j) is the kth vector
-    // of C (j = Ch [k] if hypersparse or j = k if standard sparse), and
-    // where bucket is the bucket assignment for C(i,j).  This phase does not
-    // need k, just the bucket for each entry C(i,j).
 
     //--------------------------------------------------------------------------
     // sum up the bucket counts of prior threadblocks
@@ -319,18 +305,27 @@ __global__
 void GB_AxB_dot3_phase2end
 (
     // input, not modified:
-    int64_t *__restrict__ nanobuckets,    // array of size 12-blockDim.x-by-nblocks
+          int64_t *__restrict__ nanobuckets,    // array of size 12-blockDim.x-by-nblocks
     const int64_t *__restrict__ blockbucket,    // global bucket count, of size 12*nblocks
     // output:
     const int64_t *__restrict__ bucketp,        // global bucket cumsum, of size 13 
-    int64_t *__restrict__ bucket,         // global buckets, of size cnz (== mnz)
-    const int64_t *__restrict__ offset,        // global offsets, for each bucket
+          int64_t *__restrict__ bucket,         // global buckets, of size cnz (== mnz)
+    const int64_t *__restrict__ offset,         // global offsets, for each bucket
     // inputs, not modified:
     const GrB_Matrix C,            // output matrix
     const int64_t cnz        // number of entries in C and M 
 )
 {
 
+    //--------------------------------------------------------------------------
+    // get C and M
+    //--------------------------------------------------------------------------
+
+    // Ci [p] for an entry C(i,j) contains either GB_FLIP(i) if C(i,j) is a
+    // zombie, or (k << 4) + bucket otherwise, where C(:,j) is the kth vector
+    // of C (j = Ch [k] if hypersparse or j = k if standard sparse), and
+    // where bucket is the bucket assignment for C(i,j).  This phase does not
+    // need k, just the bucket for each entry C(i,j).
 
     int64_t *__restrict__ Ci = C->i ;       // for zombies, or bucket assignment
     int64_t *__restrict__ Mp = C->p ;       // for offset calculations 

@@ -138,7 +138,8 @@ GrB_Info GB_deserialize             // deserialize a matrix from a blob
     //--------------------------------------------------------------------------
 
     // allocate the matrix with info from the header
-    GB_OK (GB_new (&C, false, ctype, vlen, vdim, GB_Ap_null, is_csc,
+    GB_OK (GB_new (&C,  // new header (C is NULL on input)
+        ctype, vlen, vdim, GB_Ap_null, is_csc,
         sparsity, hyper_switch, nvec, Context)) ;
 
     C->nvec = nvec ;

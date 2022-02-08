@@ -119,7 +119,7 @@ GrB_Info GB_subassign               // C(Rows,Cols)<M> += A or A'
         // Transplant the content of C2 into C_in and free C2.  Zombies and
         // pending tuples can be transplanted from C2 into C_in, and if C2 is
         // jumbled, C_in becomes jumbled too.
-        ASSERT (C2->static_header) ;
+        ASSERT (C2->static_header || GBNSTATIC) ;
         GB_OK (GB_transplant (C_in, C_in->type, &C2, Context)) ;
     }
 

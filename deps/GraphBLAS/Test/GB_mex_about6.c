@@ -11,7 +11,6 @@
 
 #include "GB_mex.h"
 #include "GB_mex_errors.h"
-#include "GB_dynamic.h"
 #include "GB_serialize.h"
 
 #define USAGE "GB_mex_about6"

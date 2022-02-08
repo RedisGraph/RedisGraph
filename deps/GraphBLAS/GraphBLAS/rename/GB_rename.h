@@ -1695,8 +1695,6 @@
 #define GxB_ISNE_UINT32 GxM_ISNE_UINT32
 #define GxB_ISNE_UINT64 GxM_ISNE_UINT64
 #define GxB_ISNE_UINT8 GxM_ISNE_UINT8
-#define GxB_Iterator_free GxM_Iterator_free
-#define GxB_Iterator_new GxM_Iterator_new
 #define GxB_kron GxM_kron
 #define GxB_LAND_BOOL GxM_LAND_BOOL
 #define GxB_LAND_BOOL_MONOID GxM_LAND_BOOL_MONOID
@@ -2026,8 +2024,6 @@
 #define GxB_Matrix_import_HyperCSC GxM_Matrix_import_HyperCSC
 #define GxB_Matrix_import_HyperCSR GxM_Matrix_import_HyperCSR
 #define GxB_Matrix_iso GxM_Matrix_iso
-#define GxB_Matrix_Iterator_next GxM_Matrix_Iterator_next
-#define GxB_Matrix_Iterator_seek GxM_Matrix_Iterator_seek
 #define GxB_Matrix_memoryUsage GxM_Matrix_memoryUsage
 #define GxB_Matrix_Option_get GxM_Matrix_Option_get
 #define GxB_Matrix_Option_set GxM_Matrix_Option_set
@@ -3269,7 +3265,6 @@
 #define GxB_Vector_import_CSC GxM_Vector_import_CSC
 #define GxB_Vector_import_Full GxM_Vector_import_Full
 #define GxB_Vector_iso GxM_Vector_iso
-#define GxB_Vector_Iterator_attach GxM_Vector_Iterator_attach
 #define GxB_Vector_memoryUsage GxM_Vector_memoryUsage
 #define GxB_Vector_Option_get GxM_Vector_Option_get
 #define GxB_Vector_Option_set GxM_Vector_Option_set
@@ -3543,7 +3538,6 @@
 #define GB_deserialize GM_deserialize
 #define GB_deserialize_from_blob GM_deserialize_from_blob
 #define GB_divcomplex GM_divcomplex
-#define GB_do_dynamic_header GM_do_dynamic_header
 #define GB_dup GM_dup
 #define GB_dup_worker GM_dup_worker
 #define GB_ek_slice GM_ek_slice
@@ -3701,8 +3695,6 @@
 #define GB_iso_unop GM_iso_unop
 #define GB_iso_unop_code GM_iso_unop_code
 #define GB_is_shallow GM_is_shallow
-#define GB_Iterator_attach GM_Iterator_attach
-#define GB_Iterator_rc_seek GM_Iterator_rc_seek
 #define GB_ix_realloc GM_ix_realloc
 #define GB_kron GM_kron
 #define GB_kroner GM_kroner
@@ -3938,7 +3930,6 @@
 #define GB_Type_new GM_Type_new
 #define GB_UnaryOp_check GM_UnaryOp_check
 #define GB_UnaryOp_new GM_UnaryOp_new
-#define GB_undo_dynamic_header GM_undo_dynamic_header
 #define GB_unjumble GM_unjumble
 #define GB_unop_one GM_unop_one
 #define GB_Vector_check GM_Vector_check

@@ -144,7 +144,7 @@ GrB_Info GB_init            // start up GraphBLAS
     // CUDA initializations
     //--------------------------------------------------------------------------
 
-// FIXME NOW: MOVE THIS functionality to rmm_wrap (or call it something else)
+// FIXME for CUDA: MOVE THIS to rmm_wrap (or call it something else)
 
     #if defined ( GBCUDA )
     {

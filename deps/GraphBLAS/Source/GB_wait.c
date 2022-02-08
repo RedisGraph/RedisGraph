@@ -9,9 +9,6 @@
 
 // CALLS:     GB_builder
 
-// This function is typically called via the GB_MATRIX_WAIT(A) macro, except
-// for GB_assign, GB_subassign, and GB_mxm.
-
 // The matrix A has zombies and/or pending tuples placed there by
 // GrB_setElement, GrB_*assign, or GB_mxm.  Zombies must now be deleted, and
 // pending tuples must now be assembled together and added into the matrix.
@@ -34,19 +31,19 @@
 
 // If the method is successful, it does an OpenMP flush just before returning.
 
+#define GB_FREE_ALL                     \
+{                                       \
+    GB_phbix_free (A) ;                 \
+    GB_Matrix_free (&T) ;               \
+    GB_Matrix_free (&S) ;               \
+    GB_Matrix_free (&A1) ;              \
+}
+
 #include "GB_select.h"
 #include "GB_add.h"
 #include "GB_Pending.h"
 #include "GB_build.h"
 #include "GB_jappend.h"
-
-#define GB_FREE_ALL                     \
-{                                       \
-    GB_phbix_free (A) ;                 \
-    GB_phbix_free (T) ;                 \
-    GB_phbix_free (S) ;                 \
-    GB_phbix_free (A1) ;                \
-}
 
 GB_PUBLIC
 GrB_Info GB_wait                // finish all pending computations
@@ -61,11 +58,9 @@ GrB_Info GB_wait                // finish all pending computations
     // check inputs
     //--------------------------------------------------------------------------
 
-    struct GB_Matrix_opaque T_header, A1_header, S_header ;
-    GrB_Matrix T  = GB_clear_static_header (&T_header) ;
-    GrB_Matrix A1 = NULL ;
-    GrB_Matrix S  = GB_clear_static_header (&S_header) ;
     GrB_Info info = GrB_SUCCESS ;
+    struct GB_Matrix_opaque T_header, A1_header, S_header ;
+    GrB_Matrix T = NULL, A1 = NULL, S = NULL ;
 
     ASSERT_MATRIX_OK (A, "A to wait", GB_FLIP (GB0)) ;
 
@@ -123,14 +118,6 @@ GrB_Info GB_wait                // finish all pending computations
     }
 
     //--------------------------------------------------------------------------
-    // ensure A is not shallow
-    //--------------------------------------------------------------------------
-
-    int64_t anz_orig = GB_nnz (A) ;
-    int64_t asize = A->type->size ;
-    ASSERT (!GB_is_shallow (A)) ;
-
-    //--------------------------------------------------------------------------
     // check if A only needs to be unjumbled
     //--------------------------------------------------------------------------
 
@@ -147,6 +134,9 @@ GrB_Info GB_wait                // finish all pending computations
     //--------------------------------------------------------------------------
     // assemble the pending tuples into T
     //--------------------------------------------------------------------------
+
+    int64_t anz_orig = GB_nnz (A) ;
+    int64_t asize = A->type->size ;
 
     int64_t tnz = 0 ;
     if (npending > 0)
@@ -165,6 +155,7 @@ GrB_Info GB_wait                // finish all pending computations
         GB_void *S_input = (A_iso) ? ((GB_void *) A->x) : NULL ;
         GrB_Type stype = (A_iso) ? A->type : A->Pending->type ;
 
+        GB_CLEAR_STATIC_HEADER (T, &T_header) ;
         info = GB_builder (
             T,                      // create T using a static header
             A->type,                // T->type = A->type
@@ -181,7 +172,7 @@ GrB_Info GB_wait                // finish all pending computations
             false,                  // there might be duplicates; look for them
             A->Pending->nmax,       // size of Pending->[ijx] arrays
             true,                   // is_matrix: unused
-            NULL, NULL, S_input,    // original I,J,S tuples, not used here
+            NULL, NULL, S_input,    // original I,J,S_input tuples
             A_iso,                  // pending tuples are iso if A is iso
             npending,               // # of tuples
             A->Pending->op,         // dup operator for assembling duplicates,
@@ -395,8 +386,8 @@ GrB_Info GB_wait                // finish all pending computations
             //------------------------------------------------------------------
 
             // A1 = [0, A (:, kA:end)], hypersparse with same dimensions as A
-            A1 = GB_clear_static_header (&A1_header) ;
-            GB_OK (GB_new (&A1, true, // hyper, static header
+            GB_CLEAR_STATIC_HEADER (A1, &A1_header) ;
+            GB_OK (GB_new (&A1, // hyper, existing header
                 A->type, A->vlen, A->vdim, GB_Ap_malloc, A->is_csc,
                 GxB_HYPERSPARSE, GB_ALWAYS_HYPER, anvec - kA, Context)) ;
 
@@ -442,15 +433,16 @@ GrB_Info GB_wait                // finish all pending computations
             //------------------------------------------------------------------
             // S = A1 + T, with no operator or mask
             //------------------------------------------------------------------
-
+    
+            GB_CLEAR_STATIC_HEADER (S, &S_header) ;
             GB_OK (GB_add (S, A->type, A->is_csc, NULL, 0, 0, &ignore, A1, T,
                 false, NULL, NULL, NULL, Context)) ;
 
             ASSERT_MATRIX_OK (S, "S = A1+T", GB0) ;
 
             // free A1 and T
-            GB_phbix_free (T) ;
-            GB_phbix_free (A1) ;
+            GB_Matrix_free (&T) ;
+            GB_Matrix_free (&A1) ;
 
             //------------------------------------------------------------------
             // replace T with S
@@ -509,7 +501,7 @@ GrB_Info GB_wait                // finish all pending computations
 
         ASSERT_MATRIX_OK (A, "A after GB_wait:append", GB0) ;
 
-        GB_phbix_free (T) ;
+        GB_Matrix_free (&T) ;
 
         // conform A to its desired sparsity structure
         info = GB_conform (A, Context) ;
@@ -530,9 +522,10 @@ GrB_Info GB_wait                // finish all pending computations
         // FUTURE:: if GB_add could tolerate zombies in A, then the initial
         // prune of zombies can be skipped.
 
+        GB_CLEAR_STATIC_HEADER (S, &S_header) ;
         GB_OK (GB_add (S, A->type, A->is_csc, NULL, 0, 0, &ignore, A, T,
             false, NULL, NULL, NULL, Context)) ;
-        GB_phbix_free (T) ;
+        GB_Matrix_free (&T) ;
         ASSERT_MATRIX_OK (S, "S after GB_wait:add", GB0) ;
         info = GB_transplant_conform (A, A->type, &S, Context) ;
     }

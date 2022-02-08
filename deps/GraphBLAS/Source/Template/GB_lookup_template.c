@@ -25,7 +25,7 @@
 
 #ifdef GB_CUDA_KERNEL
 __device__
-static inline bool GB_lookup_device // FIXME: use name "GB_lookup"
+static inline bool GB_lookup_device // FIXME for CUDA: use name "GB_lookup"
 #else
 static inline bool GB_lookup        // find j = Ah [k] in a hyperlist
 #endif

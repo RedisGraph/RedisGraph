@@ -11,6 +11,14 @@
 // optionally transposed.  Does the work for GrB_eWiseAdd_* and
 // GrB_eWiseMult_*.  Handles all cases of the mask.
 
+#define GB_FREE_ALL         \
+{                           \
+    GB_Matrix_free (&T) ;   \
+    GB_Matrix_free (&AT) ;  \
+    GB_Matrix_free (&BT) ;  \
+    GB_Matrix_free (&MT) ;  \
+}
+
 #include "GB_ewise.h"
 #include "GB_add.h"
 #include "GB_emult.h"
@@ -18,14 +26,6 @@
 #include "GB_accum_mask.h"
 #include "GB_dense.h"
 #include "GB_binop.h"
-
-#define GB_FREE_ALL         \
-{                           \
-    GB_phbix_free (T) ;     \
-    GB_phbix_free (AT) ;    \
-    GB_phbix_free (BT) ;    \
-    GB_phbix_free (MT) ;    \
-}
 
 GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
 (
@@ -56,12 +56,8 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
     // C may be aliased with M, A, and/or B
 
     GrB_Info info ;
-
-    GrB_Matrix MT = NULL ;
+    GrB_Matrix MT = NULL, T = NULL, AT = NULL, BT = NULL ;
     struct GB_Matrix_opaque T_header, MT_header, AT_header, BT_header ;
-    GrB_Matrix T  = GB_clear_static_header (&T_header) ;
-    GrB_Matrix AT = GB_clear_static_header (&AT_header) ;
-    GrB_Matrix BT = GB_clear_static_header (&BT_header) ;
 
     GB_RETURN_IF_FAULTY_OR_POSITIONAL (accum) ;
 
@@ -228,7 +224,7 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
     { 
         // MT = (bool) M'
         GBURBLE ("(M transpose) ") ;
-        MT = GB_clear_static_header (&MT_header) ;
+        GB_CLEAR_STATIC_HEADER (MT, &MT_header) ;
         GB_OK (GB_transpose_cast (MT, GrB_BOOL, T_is_csc, M, Mask_struct,
             Context)) ;
         M1 = MT ;
@@ -251,6 +247,7 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
     { 
         // AT = (xtype) A' or AT = (xtype) one (A')
         GBURBLE ("(A transpose) ") ;
+        GB_CLEAR_STATIC_HEADER (AT, &AT_header) ;
         GB_OK (GB_transpose_cast (AT, op->xtype, T_is_csc, A, A_is_pattern,
             Context)) ;
         A1 = AT ;
@@ -262,6 +259,7 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
     { 
         // BT = (ytype) B' or BT = (ytype) one (B')
         GBURBLE ("(B transpose) ") ;
+        GB_CLEAR_STATIC_HEADER (BT, &BT_header) ;
         GB_OK (GB_transpose_cast (BT, op->ytype, T_is_csc, B, B_is_pattern,
             Context)) ;
         B1 = BT ;
@@ -367,6 +365,7 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
     //--------------------------------------------------------------------------
 
     bool mask_applied = false ;
+    GB_CLEAR_STATIC_HEADER (T, &T_header) ;
 
     if (eWiseAdd)
     { 
@@ -472,8 +471,8 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
     // free the transposed matrices
     //--------------------------------------------------------------------------
 
-    GB_phbix_free (AT) ;
-    GB_phbix_free (BT) ;
+    GB_Matrix_free (&AT) ;
+    GB_Matrix_free (&BT) ;
 
     //--------------------------------------------------------------------------
     // C<M> = accum (C,T): accumulate the results into C via the mask
@@ -492,7 +491,7 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
         // needed.  If no typecasting is done then this takes no time at all
         // and is a pure transplant.  Also conform C to its desired
         // hypersparsity.
-        GB_phbix_free (MT) ;
+        GB_Matrix_free (&MT) ;
         GB_OK (GB_transplant_conform (C, C->type, &T, Context)) ;
         return (GB_block (C, Context)) ;
     }
@@ -502,7 +501,7 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
         // GB_accum_mask also conforms C to its desired hypersparsity
         info = GB_accum_mask (C, M, MT, accum, &T, C_replace, Mask_comp,
             Mask_struct, Context) ;
-        GB_phbix_free (MT) ;
+        GB_Matrix_free (&MT) ;
         return (info) ;
     }
 }

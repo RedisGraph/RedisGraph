@@ -41,7 +41,7 @@
 
 GrB_Info GB_selector
 (
-    GrB_Matrix C,               // output matrix, NULL or static header
+    GrB_Matrix C,               // output matrix, NULL or existing header
     GB_Opcode opcode,           // selector opcode
     const GB_Operator op,       // user operator, NULL for resize/nonzombie
     const bool flipij,          // if true, flip i and j for user operator
@@ -64,7 +64,7 @@ GrB_Info GB_selector
     // positional selector (tril, triu, diag, offdiag, resize, rowindex, ...):
     // can't be jumbled.  nonzombie, entry-valued op, user op: jumbled OK
     ASSERT (GB_IMPLIES (GB_OPCODE_IS_POSITIONAL (opcode), !GB_JUMBLED (A))) ;
-    ASSERT (C == NULL || (C != NULL && C->static_header)) ;
+    ASSERT (C == NULL || (C != NULL && (C->static_header || GBNSTATIC))) ;
 
     //--------------------------------------------------------------------------
     // declare workspace
@@ -178,7 +178,7 @@ GrB_Info GB_selector
         // GB_bitmap_selector.
 
         ASSERT (!in_place_A) ;
-        ASSERT (C != NULL && C->static_header) ;
+        ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
 
         // construct a scalar containing the iso scalar of A
 
@@ -214,7 +214,7 @@ GrB_Info GB_selector
         if (C_empty)
         { 
             // C is an empty matrix
-            return (GB_new (&C, true, // static header
+            return (GB_new (&C, // existing header
                 A->type, avlen, avdim, GB_Ap_calloc, true,
                 GxB_SPARSE + GxB_HYPERSPARSE, GB_Global_hyper_switch_get ( ),
                 1, Context)) ;
@@ -300,7 +300,7 @@ GrB_Info GB_selector
     if (use_bitmap_selector)
     { 
         GB_BURBLE_MATRIX (A, "(bitmap select) ") ;
-        ASSERT (C != NULL && C->static_header) ;
+        ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
         return (GB_bitmap_selector (C, C_iso, opcode, op,                  
             flipij, A, ithunk, athunk, ythunk, Context)) ;
     }
@@ -348,7 +348,7 @@ GrB_Info GB_selector
         ASSERT_MATRIX_OK (A, "A for col selector", GB_FLIP (GB0)) ;
         int nth = nthreads_max ;
         ASSERT (!in_place_A) ;
-        ASSERT (C != NULL && C->static_header) ;
+        ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
         ASSERT (GB_JUMBLED_OK (A)) ;
 
         int64_t j = (opcode == GB_COLINDEX_idxunop_code) ? (-ithunk) : ithunk ;
@@ -419,7 +419,7 @@ GrB_Info GB_selector
         else if (cnz == 0)
         { 
             // return C as empty
-            return (GB_new (&C, true, // auto (sparse or hyper), static header
+            return (GB_new (&C, // auto (sparse or hyper), existing header
                 A->type, avlen, avdim, GB_Ap_calloc, true,
                 GxB_HYPERSPARSE, GB_Global_hyper_switch_get ( ), 1, Context)) ;
         }
@@ -429,7 +429,7 @@ GrB_Info GB_selector
         //----------------------------------------------------------------------
 
         int sparsity = (A_is_hyper) ? GxB_HYPERSPARSE : GxB_SPARSE ;
-        GB_OK (GB_new_bix (&C, true, // sparse or hyper (from A), static header
+        GB_OK (GB_new_bix (&C, // sparse or hyper (from A), existing header
             A->type, avlen, avdim, GB_Ap_malloc, true, sparsity, false,
             A->hyper_switch, cnvec, cnz, true, A_iso, Context)) ;
 
@@ -794,8 +794,8 @@ GrB_Info GB_selector
         //----------------------------------------------------------------------
 
         int sparsity = (A_is_hyper) ? GxB_HYPERSPARSE : GxB_SPARSE ;
-        ASSERT (C != NULL && C->static_header) ;
-        info = GB_new (&C, true, // sparse or hyper (from A), static header
+        ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
+        info = GB_new (&C, // sparse or hyper (from A), existing header
             A->type, avlen, avdim, GB_Ap_null, true,
             sparsity, A->hyper_switch, anvec, Context) ;
         ASSERT (info == GrB_SUCCESS) ;

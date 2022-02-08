@@ -11,7 +11,6 @@
 
 #include "GB_mex.h"
 #include "GB_mex_errors.h"
-#include "GB_dynamic.h"
 #include "GB_serialize.h"
 
 #define USAGE "GB_mex_about5"
@@ -187,6 +186,7 @@ void mexFunction
 
     char type_name [GxB_MAX_NAME_LEN] ;
 
+#if 1
     OK (GxB_UnaryOp_xtype_name (type_name, GrB_ABS_INT32)) ;
     CHECK (MATCH (type_name, "int32_t")) ;
     OK (GxB_Type_from_name (&type, type_name)) ;
@@ -760,11 +760,13 @@ void mexFunction
     OK (GrB_IndexUnaryOp_free_ (&Banded32)) ;
     OK (GrB_IndexUnaryOp_free_ (&UpperBanded)) ;
     OK (GrB_IndexUnaryOp_free_ (&UpperBanded_int64)) ;
+#endif
 
     //--------------------------------------------------------------------------
     // operator check
     //--------------------------------------------------------------------------
 
+#if 1
     OK (GB_Operator_check ((GB_Operator) GrB_PLUS_FP32, "plus", 3, NULL)) ;
     OK (GB_Operator_check ((GB_Operator) GrB_ABS_FP32, "abs", 3, NULL)) ;
     OK (GB_Operator_check ((GB_Operator) GrB_TRIL, "tril_idx", 3, NULL)) ;
@@ -782,46 +784,6 @@ void mexFunction
     ERR (GrB_Matrix_eWiseAdd_BinaryOp (A, NULL, NULL, GxB_IGNORE_DUP, A, A,
         NULL)) ;
     OK (GrB_Matrix_free_ (&A)) ;
-
-    //--------------------------------------------------------------------------
-    // dynamic header
-    //--------------------------------------------------------------------------
-
-    OK (GrB_Matrix_new (&A, GrB_FP32, 5, 5)) ;
-    OK (GrB_Matrix_setElement_INT64 (A, 2, 0, 0)) ;
-    OK (GrB_Matrix_setElement_INT64 (A, 1, 1, 1)) ;
-    OK (GrB_Matrix_wait_ (A, GrB_MATERIALIZE)) ;
-    OK (GxB_Matrix_fprint (A, "A for static/dynamic header", 3, NULL)) ;
-    struct GB_Matrix_opaque A2_header ;
-    GrB_Matrix A2 = GB_clear_static_header (&A2_header) ;
-    GB_undo_dynamic_header (NULL, NULL, NULL) ;
-    GB_undo_dynamic_header (&A, A, NULL) ;
-    CHECK (A != NULL) ;
-    OK (GxB_Matrix_fprint (A, "A unchanged", 3, NULL)) ;
-    GB_undo_dynamic_header (&A, A2, NULL) ;
-    OK (GxB_Matrix_fprint (A2, "A2 with static header", 3, NULL)) ;
-    CHECK (A == NULL) ;
-
-    OK (GB_do_dynamic_header (&A, NULL, NULL)) ;
-    CHECK (A == NULL) ;
-
-    OK (GB_do_dynamic_header (&A, A2, NULL)) ;
-    CHECK (A != NULL) ;
-
-    OK (GB_do_dynamic_header (&A, A, NULL)) ;
-    CHECK (A != NULL) ;
-
-    GB_undo_dynamic_header (&A, A2, NULL) ;
-    CHECK (A == NULL) ;
-
-    GB_Global_malloc_debug_count_set (0) ;
-    GB_Global_malloc_debug_set (true) ;
-    expected = GrB_OUT_OF_MEMORY ;
-    ERR (GB_do_dynamic_header (&A, A2, NULL)) ;
-    CHECK (A == NULL) ;
-    GB_Global_malloc_debug_set (false) ;
-
-    OK (GrB_Matrix_free_ (&A2)) ;
 
     //--------------------------------------------------------------------------
     // apply with user idxunop
@@ -934,10 +896,13 @@ void mexFunction
     OK (GrB_Matrix_free_ (&C)) ;
     mxFree (blob) ;
 
+#endif
+
     //--------------------------------------------------------------------------
     // descriptor
     //--------------------------------------------------------------------------
 
+#if 1
     OK (GrB_Descriptor_new (&desc)) ;
     OK (GxB_Desc_set (desc, GxB_IMPORT, GxB_SECURE_IMPORT)) ;
     OK (GxB_Descriptor_fprint (desc, "desc with secure import", 3, NULL)) ;
@@ -952,11 +917,13 @@ void mexFunction
 
     OK (GxB_Descriptor_fprint (desc, "desc with secure & lz4hc+4", 3, NULL)) ;
     OK (GrB_Descriptor_free_ (&desc)) ;
+#endif
 
     //--------------------------------------------------------------------------
     // export hint
     //--------------------------------------------------------------------------
 
+#if 1
     OK (GrB_Matrix_new (&A, GrB_FP32, 3, 4)) ;
     OK (GrB_Matrix_assign_FP32 (A, NULL, NULL, (float) 1, GrB_ALL, 3,
         GrB_ALL, 4, NULL)) ;
@@ -999,11 +966,13 @@ void mexFunction
     ERR (GrB_Matrix_exportHint (NULL, NULL)) ;
 
     OK (GrB_Matrix_free_ (&A)) ;
+#endif
 
     //--------------------------------------------------------------------------
     // conform_hyper
     //--------------------------------------------------------------------------
 
+#if 1
     OK (GrB_Matrix_new (&A, GrB_FP32, 100, 100)) ;
     OK (GrB_Matrix_setElement_FP32 (A, 1, 0, 0)) ;
     OK (GrB_Matrix_wait_ (A, GrB_MATERIALIZE)) ;
@@ -1011,6 +980,7 @@ void mexFunction
     OK (GB_conform_hyper (A, NULL)) ;
     OK (GxB_Matrix_fprint (A, "A conformed", 3, NULL)) ;
     OK (GrB_Matrix_free_ (&A)) ;
+#endif
 
     //--------------------------------------------------------------------------
     // import/export
@@ -1084,6 +1054,7 @@ void mexFunction
     // build with duplicates
     //--------------------------------------------------------------------------
 
+#if 1
     GrB_Index *I = mxCalloc (4, sizeof (GrB_Index)) ;
     GrB_Index *J = mxCalloc (4, sizeof (GrB_Index)) ;
     double *X    = mxCalloc (4, sizeof (double)) ;
@@ -1342,7 +1313,9 @@ void mexFunction
             CHECK (aij == i) ;
         }
     }
+
     OK (GrB_Matrix_free_ (&A)) ;
+#endif
 
     //--------------------------------------------------------------------------
     // wrapup

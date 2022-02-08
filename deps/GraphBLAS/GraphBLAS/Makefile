@@ -18,6 +18,10 @@ default: library
 library:
 	( cd build ; cmake $(CMAKE_OPTIONS) .. ; $(MAKE) --jobs=$(JOBS) )
 
+# compile with -g 
+debug:
+	( cd build ; cmake -DCMAKE_BUILD_TYPE=Debug $(CMAKE_OPTIONS) .. ; $(MAKE) --jobs=$(JOBS) )
+
 # just do 'make' in build; do not rerun the cmake script
 remake:
 	( cd build ; $(MAKE) --jobs=$(JOBS) )

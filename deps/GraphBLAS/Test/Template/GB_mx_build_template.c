@@ -148,14 +148,14 @@ GrB_Info builder
     if (C_is_csc)
     {
         // create a hypersparse CSC matrix
-        info = GB_new (Chandle, false, // sparse/hyper, new mx header
+        info = GB_new (Chandle, // sparse/hyper, new header
             ctype, nrows, ncols, GB_Ap_calloc,
             true, sparsity, GxB_HYPER_DEFAULT, 1, Context) ;
     }
     else
     {
         // create a hypersparse CSR matrix
-        info = GB_new (Chandle, false, // sparse/hyper, new mx header
+        info = GB_new (Chandle, // sparse/hyper, new header
             ctype, ncols, nrows, GB_Ap_calloc,
             false, sparsity, GxB_HYPER_DEFAULT, 1, Context) ;
     }

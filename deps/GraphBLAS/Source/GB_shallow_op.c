@@ -46,7 +46,7 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (C != NULL && C->static_header) ;
+    ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
     ASSERT_MATRIX_OK (A, "A for shallow_op", GB0) ;
     ASSERT_OP_OK (op, "unop/binop for shallow_op", GB0) ;
     ASSERT (!GB_ZOMBIES (A)) ;
@@ -93,7 +93,7 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
     // initialized the header for C, but do not allocate C->{p,h,b,i,x}
     // C has the exact same sparsity structure as A.
     GrB_Info info ;
-    info = GB_new (&C, true, // any sparsity, static header
+    info = GB_new (&C, // any sparsity, existing header
         ztype, A->vlen, A->vdim, GB_Ap_null, C_is_csc,
         GB_sparsity (A), A->hyper_switch, 0, Context) ;
     ASSERT (info == GrB_SUCCESS) ;

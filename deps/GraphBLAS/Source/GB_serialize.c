@@ -126,11 +126,10 @@ GrB_Info GB_serialize               // serialize a matrix into a blob
     // parse the method
     //--------------------------------------------------------------------------
 
-    bool intel ;
     int32_t algo, level ;
-    GB_serialize_method (&intel, &algo, &level, method) ;
-    method = (intel ? GxB_COMPRESSION_INTEL : 0) + (algo) + (level) ;
-    GBURBLE ("(compression: %s%s%s%s:%d) ", intel ? "Intel IPP:" : "",
+    GB_serialize_method (&algo, &level, method) ;
+    method = algo + level ;
+    GBURBLE ("(compression: %s%s%s:%d) ",
         (algo == GxB_COMPRESSION_NONE ) ? "none" : "",
         (algo == GxB_COMPRESSION_LZ4  ) ? "LZ4" : "",
         (algo == GxB_COMPRESSION_LZ4HC) ? "LZ4HC" : "", level) ;
@@ -195,27 +194,27 @@ GrB_Info GB_serialize               // serialize a matrix into a blob
     GB_OK (GB_serialize_array (&Ap_Blocks, &Ap_Blocks_size,
         &Ap_Sblocks, &Ap_Sblocks_size, &Ap_nblocks, &Ap_method,
         &Ap_compressed_size, dryrun,
-        (GB_void *) A->p, Ap_len, method, intel, algo, level, Context)) ;
+        (GB_void *) A->p, Ap_len, method, algo, level, Context)) ;
 
     GB_OK (GB_serialize_array (&Ah_Blocks, &Ah_Blocks_size,
         &Ah_Sblocks, &Ah_Sblocks_size, &Ah_nblocks, &Ah_method,
         &Ah_compressed_size, dryrun,
-        (GB_void *) A->h, Ah_len, method, intel, algo, level, Context)) ;
+        (GB_void *) A->h, Ah_len, method, algo, level, Context)) ;
 
     GB_OK (GB_serialize_array (&Ab_Blocks, &Ab_Blocks_size,
         &Ab_Sblocks, &Ab_Sblocks_size, &Ab_nblocks, &Ab_method,
         &Ab_compressed_size, dryrun,
-        (GB_void *) A->b, Ab_len, method, intel, algo, level, Context)) ;
+        (GB_void *) A->b, Ab_len, method, algo, level, Context)) ;
 
     GB_OK (GB_serialize_array (&Ai_Blocks, &Ai_Blocks_size,
         &Ai_Sblocks, &Ai_Sblocks_size, &Ai_nblocks, &Ai_method,
         &Ai_compressed_size, dryrun,
-        (GB_void *) A->i, Ai_len, method, intel, algo, level, Context)) ;
+        (GB_void *) A->i, Ai_len, method, algo, level, Context)) ;
 
     GB_OK (GB_serialize_array (&Ax_Blocks, &Ax_Blocks_size,
         &Ax_Sblocks, &Ax_Sblocks_size, &Ax_nblocks, &Ax_method,
         &Ax_compressed_size, dryrun,
-        (GB_void *) A->x, Ax_len, method, intel, algo, level, Context)) ;
+        (GB_void *) A->x, Ax_len, method, algo, level, Context)) ;
 
     //--------------------------------------------------------------------------
     // determine the size of the blob

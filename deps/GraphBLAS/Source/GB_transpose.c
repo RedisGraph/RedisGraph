@@ -34,10 +34,6 @@
 // m-by-n, then at most O(e/n) threads are used.  The GB_builder method is more
 // scalable, but not as fast with a modest number of threads.
 
-#include "GB_transpose.h"
-#include "GB_build.h"
-#include "GB_apply.h"
-
 #define GB_FREE_WORKSPACE               \
 {                                       \
     GB_FREE (&iwork, iwork_size) ;      \
@@ -49,10 +45,14 @@
 #define GB_FREE_ALL                     \
 {                                       \
     GB_FREE_WORKSPACE ;                 \
-    GB_phbix_free (T) ;                 \
+    GB_Matrix_free (&T) ;               \
     /* freeing C also frees A if transpose is done in-place */ \
     GB_phbix_free (C) ;                 \
 }
+
+#include "GB_transpose.h"
+#include "GB_build.h"
+#include "GB_apply.h"
 
 //------------------------------------------------------------------------------
 // GB_transpose
@@ -82,12 +82,13 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
     ASSERT (C != NULL) ;
     ASSERT (A != NULL) ;
     bool in_place = (A == C) ;
-    struct GB_Matrix_opaque T_header ;
-    GrB_Matrix T = GB_clear_static_header (&T_header) ;
     GB_WERK_DECLARE (Count, int64_t) ;
     int64_t *iwork = NULL ; size_t iwork_size = 0 ;
     int64_t *jwork = NULL ; size_t jwork_size = 0 ;
     GB_void *Swork = NULL ; size_t Swork_size = 0 ;
+    struct GB_Matrix_opaque T_header ;
+    GrB_Matrix T = NULL ;
+    GB_CLEAR_STATIC_HEADER (T, &T_header) ;
 
     ASSERT_MATRIX_OK (A, "A input for GB_transpose", GB0) ;
     ASSERT_TYPE_OK_OR_NULL (ctype, "ctype for GB_transpose", GB0) ;
@@ -250,7 +251,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
 
         // create a new empty matrix T, with the new type and dimensions.
         // set T->iso = false   OK
-        GB_OK (GB_new_bix (&T, true, // hyper, static header
+        GB_OK (GB_new_bix (&T, // hyper, existing header
             ctype, avdim, avlen, GB_Ap_calloc, C_is_csc, GxB_HYPERSPARSE,
             true, A_hyper_switch, 1, 1, true, false, Context)) ;
 
@@ -277,7 +278,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
         { 
             // just initialize the static header of T, not T->b or T->x
             GBURBLE ("(cheap transpose) ") ;
-            info = GB_new (&T, true,  // bitmap or full, static header
+            info = GB_new (&T, // bitmap or full, existing header
                 ctype, avdim, avlen, GB_Ap_null, C_is_csc,
                 T_sparsity, A_hyper_switch, 1, Context) ;
             ASSERT (info == GrB_SUCCESS) ;
@@ -286,7 +287,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
         { 
             // allocate all of T, including T->b and T->x
             // set T->iso = C_iso   OK
-            GB_OK (GB_new_bix (&T, true,  // bitmap or full, static header
+            GB_OK (GB_new_bix (&T, // bitmap or full, existing header
                 ctype, avdim, avlen, GB_Ap_null, C_is_csc, T_sparsity, true,
                 A_hyper_switch, 1, anz_held, true, C_iso, Context)) ;
         }
@@ -360,7 +361,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
         // Initialized the header of T, with no content, and initialize the
         // type and dimension of T.  T is hypersparse.
 
-        info = GB_new (&T, true, // hyper; static header
+        info = GB_new (&T, // hyper; existing header
             ctype, 1, avlen, GB_Ap_null, C_is_csc,
             GxB_HYPERSPARSE, A_hyper_switch, 0, Context) ;
         ASSERT (info == GrB_SUCCESS) ;
@@ -488,7 +489,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
 
         // Allocate the header of T, with no content
         // and initialize the type and dimension of T.
-        info = GB_new (&T, true, // sparse; static header
+        info = GB_new (&T, // sparse; existing header
             ctype, avdim, 1, GB_Ap_null, C_is_csc,
             GxB_SPARSE, A_hyper_switch, 0, Context) ;
         ASSERT (info == GrB_SUCCESS) ;
@@ -726,7 +727,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
             // initialize the header of T, with no content
             // content, and initialize the type and dimension of T.
 
-            info = GB_new (&T, true, // hyper, static header
+            info = GB_new (&T, // hyper, existing header
                 ctype, avdim, avlen, GB_Ap_null, C_is_csc,
                 GxB_HYPERSPARSE, A_hyper_switch, 0, Context) ;
             ASSERT (info == GrB_SUCCESS) ;

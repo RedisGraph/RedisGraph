@@ -41,7 +41,7 @@ GrB_Info GB_shallow_copy    // create a purely shallow matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (C != NULL && C->static_header) ;
+    ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
     ASSERT_MATRIX_OK (A, "A for shallow copy", GB0) ;
     GB_MATRIX_WAIT_IF_PENDING_OR_ZOMBIES (A) ;
     ASSERT (!GB_PENDING (A)) ;
@@ -55,7 +55,7 @@ GrB_Info GB_shallow_copy    // create a purely shallow matrix
     // allocate the struct for C, but do not allocate C->[p,h,b,i,x].
     // C has the exact same sparsity structure as A.
     GrB_Info info ;
-    info = GB_new (&C, true, // sparse or hyper, static header
+    info = GB_new (&C, // sparse or hyper, existing header
         A->type, A->vlen, A->vdim, GB_Ap_null, C_is_csc,
         GB_sparsity (A), A->hyper_switch, 0, Context) ;
     ASSERT (info == GrB_SUCCESS) ;

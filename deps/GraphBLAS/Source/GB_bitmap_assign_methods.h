@@ -20,14 +20,10 @@
 // burble
 //------------------------------------------------------------------------------
 
-#if GB_BURBLE
     #define GBURBLE_BITMAP_ASSIGN(method,M,Mask_comp,accum,Ikind,Jkind,akind) \
         GBURBLE ("Method:" method " ") ;                                    \
         GB_burble_assign (C_replace, Ikind, Jkind, M, Mask_comp,            \
             Mask_struct, accum, A, akind) ;
-#else
-    #define GBURBLE_BITMAP_ASSIGN(method,M,Mask_comp,accum,Ikind,Jkind,akind) ;
-#endif
 
 //------------------------------------------------------------------------------
 // GB_GET_C_BITMAP: get the C matrix (must be bitmap)

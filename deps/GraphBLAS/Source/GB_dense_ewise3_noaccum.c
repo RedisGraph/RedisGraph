@@ -87,7 +87,7 @@ GrB_Info GB_dense_ewise3_noaccum    // C = A+B
         ASSERT (C != A && C != B) ;
         GB_phbix_free (C) ;
         // set C->iso = false   OK
-        GB_OK (GB_new_bix (&C, C->static_header,
+        GB_OK (GB_new_bix (&C,  // existing header
             C->type, C->vlen, C->vdim, GB_Ap_null, C->is_csc, GxB_FULL, false,
             C->hyper_switch, -1, GB_nnz_full (C), true, false, Context)) ;
         C->magic = GB_MAGIC ;

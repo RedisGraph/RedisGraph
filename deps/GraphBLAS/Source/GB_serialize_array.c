@@ -37,7 +37,6 @@ GrB_Info GB_serialize_array
     GB_void *X,                         // input array of size len
     int64_t len,                        // size of X, in bytes
     int32_t method,                     // compression method requested
-    bool intel,                         // if true, use Intel IPPS
     int32_t algo,                       // compression algorithm
     int32_t level,                      // compression level
     GB_Context Context

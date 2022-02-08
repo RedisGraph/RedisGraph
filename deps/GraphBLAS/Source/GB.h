@@ -14,6 +14,7 @@
 // definitions that modify GraphBLAS.h
 //------------------------------------------------------------------------------
 
+#include "GB_dev.h"
 #include "GB_compiler.h"
 #include "GB_cpu_features.h"
 #include "GB_warnings.h"
@@ -33,7 +34,6 @@
 #define restrict GB_restrict
 
 #include "GB_prefix.h"
-#include "GB_dev.h"
 #include "GB_bytes.h"
 #include "GB_defaults.h"
 #include "GB_index.h"
@@ -42,6 +42,7 @@
 #include "GB_printf.h"
 #include "GB_assert.h"
 #include "GB_opaque.h"
+#include "GB_static_header.h"
 #include "GB_casting.h"
 #include "GB_math.h"
 #include "GB_bitwise.h"

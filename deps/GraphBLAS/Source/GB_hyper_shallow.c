@@ -7,10 +7,10 @@
 
 //------------------------------------------------------------------------------
 
-// The header of C itself is assumed to be statically allocated.  On input C
-// must exist but the content of the C header is uninitialized.  No memory is
-// allocated to construct C as the hyper_shallow version of A.  C is purely
-// shallow.  If A is iso then so is C.
+// On input C must exist but the content of the C header is uninitialized
+// except for C->static_header and C->header_size.  No memory is allocated to
+// construct C as the hyper_shallow version of A.  C is purely shallow.  If A
+// is iso then so is C.
 
 #include "GB.h"
 #include "GB_convert.h"
@@ -27,18 +27,23 @@ GrB_Matrix GB_hyper_shallow         // return C
     //--------------------------------------------------------------------------
 
     ASSERT_MATRIX_OK (A, "hyper_shallow input", GB0) ;
-    ASSERT (C != NULL) ;
+    ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
     ASSERT (GB_IS_HYPERSPARSE (A)) ;
 
     //--------------------------------------------------------------------------
     // construct the shallow copy
     //--------------------------------------------------------------------------
 
+    // save the C header status
+    bool C_static_header = C->static_header ;
+    bool C_header_size = C->header_size ;
+
     // copy the header
     memcpy (C, A, sizeof (struct GB_Matrix_opaque)) ;
 
-    // flag the header of C as static
-    C->static_header = true ;
+    // restore the C header status
+    C->static_header = C_static_header  ;
+    C->header_size = C_header_size ;
 
     // remove the hyperlist
     C->h = NULL ;

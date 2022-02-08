@@ -9,6 +9,54 @@
 #include "GB_search_for_vector_template.c"
 
 //------------------------------------------------------------------------------
+// GxB_Matrix_Iterator_attach: attach an entry iterator to a matrix
+//------------------------------------------------------------------------------
+
+// On input, the iterator must already exist, having been created by
+// GxB_Iterator_new.
+
+// GxB_Matrix_Iterator_attach attaches an entry iterator to a matrix.  If the
+// iterator is already attached to a matrix, it is detached and then attached
+// to the given matrix A.
+
+// The following error conditions are returned:
+// GrB_NULL_POINTER:    if the iterator or A are NULL.
+// GrB_INVALID_OBJECT:  if the matrix A is invalid.
+// GrB_OUT_OF_MEMORY:   if the method runs out of memory.
+
+// If successful, the entry iterator is attached to the matrix, but not to any
+// specific entry.  Use GxB_Matrix_Iterator_*seek* to move the iterator to a
+// particular entry.
+
+GrB_Info GxB_Matrix_Iterator_attach
+(
+    GxB_Iterator iterator,
+    GrB_Matrix A,
+    GrB_Descriptor desc
+)
+{ 
+    return (GB_Iterator_attach (iterator, A, GxB_NO_FORMAT, desc)) ;
+}
+
+//------------------------------------------------------------------------------
+// GxB_Matrix_Iterator_getpmax: return the range of the iterator
+//------------------------------------------------------------------------------
+
+// On input, the entry iterator must be already attached to a matrix via
+// GxB_Matrix_Iterator_attach; results are undefined if this condition is not
+// met.
+
+// Entries in a matrix are given an index p, ranging from 0 to pmax-1, where
+// pmax >= nvals(A).  For sparse, hypersparse, and full matrices, pmax is equal
+// to nvals(A).  For an m-by-n bitmap matrix, pmax=m*n, or pmax=0 if the
+// matrix has no entries.
+
+GrB_Index GxB_Matrix_Iterator_getpmax (GxB_Iterator iterator)
+{ 
+    return (iterator->pmax) ;
+}
+
+//------------------------------------------------------------------------------
 // GB_full_position: find the vector containing p for a full/bitmap matrix
 //------------------------------------------------------------------------------
 
@@ -93,7 +141,7 @@ static inline GrB_Info GB_check_for_end_of_vector (GxB_Iterator iterator)
 GrB_Info GxB_Matrix_Iterator_next (GxB_Iterator iterator)
 {
     // move to the next entry
-    if (++iterator->p >= iterator->pmax)
+    if (++(iterator->p) >= iterator->pmax)
     { 
         // the iterator is exhausted
         iterator->p = iterator->pmax ;
@@ -172,5 +220,89 @@ GrB_Info GxB_Matrix_Iterator_seek
         }
     }
     return (GrB_SUCCESS) ;
+}
+
+//------------------------------------------------------------------------------
+// GxB_Matrix_Iterator_getp: get the current position of a matrix iterator
+//------------------------------------------------------------------------------
+
+// On input, the entry iterator must be already attached to a matrix via
+// GxB_Matrix_Iterator_attach, and the position of the iterator must also have
+// been defined by a prior call to GxB_Matrix_Iterator_seek or
+// GxB_Matrix_Iterator_next.  Results are undefined if these conditions are not
+// met.
+
+GrB_Index GxB_Matrix_Iterator_getp (GxB_Iterator iterator)
+{ 
+    return (iterator->p) ;
+}
+
+//------------------------------------------------------------------------------
+// GxB_Matrix_Iterator_getIndex: get the row and column index of a matrix entry
+//------------------------------------------------------------------------------
+
+// On input, the entry iterator must be already attached to a matrix via
+// GxB_Matrix_Iterator_attach, and the position of the iterator must also have
+// been defined by a prior call to GxB_Matrix_Iterator_seek or
+// GxB_Matrix_Iterator_next, with a return value of GrB_SUCCESS.  Results are
+// undefined if these conditions are not met.
+
+void GxB_Matrix_Iterator_getIndex
+(
+    GxB_Iterator iterator,
+    GrB_Index *row,
+    GrB_Index *col
+)
+{
+    // get row and column index of current entry, for matrix iterator
+    switch (iterator->A_sparsity)
+    {
+        default:  
+        case GxB_SPARSE : 
+        {
+            if (iterator->by_col)
+            { 
+                (*row) = iterator->Ai [iterator->p] ;
+                (*col) = iterator->k ;
+            }
+            else
+            { 
+                (*row) = iterator->k ;
+                (*col) = iterator->Ai [iterator->p] ;
+            }
+        }
+        break ;
+
+        case GxB_HYPERSPARSE : 
+        {
+            if (iterator->by_col)
+            { 
+                (*row) = iterator->Ai [iterator->p] ;
+                (*col) = iterator->Ah [iterator->k] ;
+            }
+            else
+            { 
+                (*row) = iterator->Ah [iterator->k] ;
+                (*col) = iterator->Ai [iterator->p] ;
+            }
+        }
+        break ;
+
+        case GxB_BITMAP : 
+        case GxB_FULL : 
+        {
+            if (iterator->by_col)
+            { 
+                (*row) = iterator->p - iterator->pstart ;
+                (*col) = iterator->k ;
+            }
+            else
+            { 
+                (*row) = iterator->k ;
+                (*col) = iterator->p - iterator->pstart ;
+            }
+        }
+        break ;
+    }
 }
 

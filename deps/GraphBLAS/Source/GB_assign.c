@@ -24,21 +24,21 @@
 
 // Compare with GB_subassign, which uses M and C_replace differently
 
+#define GB_FREE_ALL                 \
+{                                   \
+    GB_Matrix_free (&C2) ;          \
+    GB_Matrix_free (&M2) ;          \
+    GB_Matrix_free (&A2) ;          \
+    GB_Matrix_free (&SubMask) ;     \
+    GB_FREE_WORK (&I2, I2_size) ;   \
+    GB_FREE_WORK (&J2, J2_size) ;   \
+}
+
 #include "GB_assign.h"
 #include "GB_assign_zombie.h"
 #include "GB_subassign.h"
 #include "GB_subref.h"
 #include "GB_bitmap_assign.h"
-
-#define GB_FREE_ALL                 \
-{                                   \
-    GB_phbix_free (C2) ;            \
-    GB_phbix_free (M2) ;            \
-    GB_phbix_free (A2) ;            \
-    GB_phbix_free (SubMask) ;       \
-    GB_FREE_WORK (&I2, I2_size) ;   \
-    GB_FREE_WORK (&J2, J2_size) ;   \
-}
 
 GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
 (
@@ -75,16 +75,11 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     GrB_Index *J = NULL ;           // Rows, Cols, or J2
 
     // temporary matrices and arrays
-    GrB_Matrix C2 = NULL ;
-    GrB_Matrix M2 = NULL ;
-    GrB_Matrix A2 = NULL ;
-    struct GB_Matrix_opaque
-        C2_header, M2_header, A2_header, MT_header, AT_header ;
+    GrB_Matrix C2 = NULL, M2 = NULL, A2 = NULL, SubMask = NULL ;
+    struct GB_Matrix_opaque C2_header, M2_header, A2_header, MT_header,
+        AT_header, SubMask_header ;
     GrB_Index *I2 = NULL ; size_t I2_size = 0 ;
     GrB_Index *J2 = NULL ; size_t J2_size = 0 ;
-
-    struct GB_Matrix_opaque SubMask_header ;
-    GrB_Matrix SubMask = NULL ;
 
     GrB_Type atype = NULL ;
     int64_t ni, nj, nI, nJ, Icolon [3], Jcolon [3] ;
@@ -212,7 +207,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             //------------------------------------------------------------------
 
             ASSERT_MATRIX_OK (M, "big mask", GB0) ;
-            SubMask = GB_clear_static_header (&SubMask_header) ;
+            GB_CLEAR_STATIC_HEADER (SubMask, &SubMask_header) ;
 
             const GrB_Index *I_SubMask = I ; int64_t ni_SubMask = ni ;
             const GrB_Index *J_SubMask = J ; int64_t nj_SubMask = nj ;
@@ -264,7 +259,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
                 I, ni, nI, Ikind, Icolon, J, nj, nJ, Jkind, Jcolon,
                 scalar_expansion, scalar, atype, Context)) ;
 
-            GB_phbix_free (SubMask) ;
+            GB_Matrix_free (&SubMask) ;
         }
 
         //----------------------------------------------------------------------

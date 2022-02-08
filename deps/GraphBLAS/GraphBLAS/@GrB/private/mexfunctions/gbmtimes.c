@@ -8,9 +8,17 @@
 //------------------------------------------------------------------------------
 
 // gbmtimes provides the mexFunction for computing the overloaded method C =
-// mtimes (A,B) using the standard PLUS_TIMES_* semiring, and the the standard
-// Octave/MATLAB rules for the sparsity of C: if A or B are full, then C is
-// full.  This method also allows for the inputs A and/or B to be transposed.
+// mtimes (A,B) using the standard PLUS_TIMES_* semiring, and (mostly) the
+// standard Octave/MATLAB rules for the sparsity of C.
+
+// The standard rules state that if A or B are full, then C is always full.
+// The rules here are slightly different:  C is full for (sparse or bitmap)
+// times full, or full times (sparse or bitmap), using this full.  C is not
+// full for hypersparse times full or full times hypersparse.  Instead, it is
+// left sparse (or whatever format GraphBLAS decides to use).
+
+// This method also allows for the inputs A and/or B to be transposed, but
+// this parameter is not passed by MATLAB to the mtimes method.
 
 // Usage:
 

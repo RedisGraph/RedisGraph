@@ -77,7 +77,7 @@ GrB_Info GB_split_full              // split a full matrix
 
             C = NULL ;
             // set C->iso = A_iso       OK
-            GB_OK (GB_new_bix (&C, false,      // new header
+            GB_OK (GB_new_bix (&C, // new header
                 atype, cvlen, cvdim, GB_Ap_null, csc, GxB_FULL, false,
                 hyper_switch, 0, cnz, true, A_iso, Context)) ;
             C->sparsity_control = sparsity_control ;

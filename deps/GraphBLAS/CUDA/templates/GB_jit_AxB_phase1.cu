@@ -435,6 +435,8 @@ j = k ;
 
             int64_t pB, pB_end ;
 // HACK: for sparse only, not hypersparse
+
+printf("Bp[j]= %ld", Bp[j]);
 pB = Bp [j] ;
 pB_end = Bp [j+1] ;
 //              GB_lookup_device (B_is_hyper, Bh, Bp, &bpleft, bnvec-1, j,
@@ -508,13 +510,15 @@ pA_end = Ap [i+1] ;
     int64_t *nanobucket =
         nanobuckets + blockIdx.x * (12 * blockDim.x) + threadIdx.x ;
 
-    #define CUMSUM_AND_STORE_NANOBUCKET(bucket)                             \
+    #define CUMSUM_AND_STORE_NANOBUCKET(bucket) \
+        printf("blockbucket %d, %ld", bucket, blockbucket[blockIdx.x + bucket * gridDim.x]); \
         if( threadIdx.x == blockDim.x-1)                                    \
             blockbucket [blockIdx.x + bucket * gridDim.x] =                 \
             my_bucket_ ## bucket ;                                          \
         BlockCumSum(temp_storage).ExclusiveSum                              \
             ( my_bucket_ ## bucket, my_bucket_ ## bucket) ;                 \
-            __syncthreads();                                                \
+            __syncthreads();                    \
+        printf("nanobucket %d, %ld", nanobucket, nanobucket[bucket * blockDim.x]); \
         nanobucket [bucket * blockDim.x] = my_bucket_ ## bucket ;
 
     CUMSUM_AND_STORE_NANOBUCKET (0) ;

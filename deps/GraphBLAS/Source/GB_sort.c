@@ -186,21 +186,24 @@
 //------------------------------------------------------------------------------
 // GB_sort
 //------------------------------------------------------------------------------
-    
+
 #undef  GB_FREE_WORKSPACE
 #define GB_FREE_WORKSPACE                   \
 {                                           \
     GB_WERK_POP (C_ek_slicing, int64_t) ;   \
-    GB_phbix_free (T) ;                     \
+    GB_Matrix_free (&T) ;                   \
 }
 
 #undef  GB_FREE_ALL
 #define GB_FREE_ALL                         \
 {                                           \
     GB_FREE_WORKSPACE ;                     \
-    GB_phbix_free (C) ;                     \
+    if (!C_is_NULL) GB_phbix_free (C) ;     \
     GB_phbix_free (P) ;                     \
 }
+
+// redefine to use the revised GB_FREE_ALL above:
+#include "GB_static_header.h"
 
 GrB_Info GB_sort
 (
@@ -276,7 +279,7 @@ GrB_Info GB_sort
     if (C_is_NULL)
     { 
         // C is a temporary matrix, which is freed when done
-        T = GB_clear_static_header (&T_header) ;
+        GB_CLEAR_STATIC_HEADER (T, &T_header) ;
         C = T ;
     }
 
@@ -340,6 +343,7 @@ GrB_Info GB_sort
     { 
         GB_OK (GB_convert_any_to_sparse (C, Context)) ;
     }
+
 
     //--------------------------------------------------------------------------
     // sort C in place

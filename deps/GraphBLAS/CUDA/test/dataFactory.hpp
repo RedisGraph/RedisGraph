@@ -126,40 +126,32 @@ class matrix : public Managed {
      }
 
      // FIXME: We probably want this to go away
-     void fill_random( int64_t nnz, std::mt19937 r, bool debug_print = false) {
+     void fill_random( int64_t nnz, bool debug_print = false) {
+
 
          std::cout << "inside fill" << std::endl;
          alloc();
-//         int64_t *p = mat->p;
-//         int64_t *i = mat->i;
-//         T *x = (T*)mat->x;
+
         int64_t inv_sparsity = (nrows_*ncols_)/nnz;   //= values not taken per value occupied in index space
 
         std::cout<< "fill_random nrows="<< nrows_<<"ncols=" << ncols_ <<" need "<< nnz<<" values, invsparse = "<<inv_sparsity<<std::endl;
-
         std::cout<< "fill_random"<<" after alloc values"<<std::endl;
-//        mat->vdim = nro;
         std::cout<<"vdim ready "<<std::endl;
-//        mat->vlen = N;
         std::cout<<"vlen ready "<<std::endl;
         std::cout<<"ready to fill p"<<std::endl;
-
-//        mat->p[0] = 0;
-//        mat->p[N] = Nz;
-
-
 
         bool make_symmetric = false;
         bool no_self_edges = false;
 
-        // FIXME: Use random matrix generator from Demi/random_matrix.c
-        std::cout<<"   in fill loop"<<std::endl;
+        std::random_device rd;
+        std::mt19937 r(rd());
+        std::uniform_real_distribution<double> dis(0.0, 1.0);
          for (int64_t k = 0 ; k < nnz ; k++)
          {
-             GrB_Index i = r ( ) % nrows_ ;
-             GrB_Index j = r ( ) % ncols_ ;
+             GrB_Index i = ((GrB_Index) (dis(r) * nrows_)) % ((GrB_Index) nrows_) ;
+             GrB_Index j = ((GrB_Index) (dis(r) * ncols_)) % ((GrB_Index) ncols_) ;
              if (no_self_edges && (i == j)) continue ;
-             double x = r ( ) ;
+             double x = dis(r) ;
              // A (i,j) = x
              cuda::set_element<T> (mat, x, i, j) ;
              if (make_symmetric)
@@ -169,22 +161,21 @@ class matrix : public Managed {
              }
          }
 
-//        for (int64_t j = 0; j < N; ++j) {
-//           int64_t p_j+1] = p[j] + Nz/N;
-//           for ( int k = p[j] ; k < p[j+1]; ++k) {
-//               i[k] = (k-p[j])*inv_sparsity +  r() % inv_sparsity;
-//               x[k] = (T) (k & 63) ;
-//           }
-//        }
-//        mat->jumbled = true ;
-
-
-
         GrB_Matrix_wait (mat, GrB_MATERIALIZE) ;
-
         // TODO: Need to specify these
         GxB_Matrix_Option_set (mat, GxB_FORMAT, GxB_BY_ROW) ;
         GxB_Matrix_Option_set (mat, GxB_SPARSITY_CONTROL, GxB_SPARSE) ;
+        GrB_Matrix_nvals ((GrB_Index *) &nnz, mat) ;
+        GxB_Matrix_fprint (mat, "my mat", GxB_SHORT_VERBOSE, stdout) ;
+    
+        printf("a_vector = [");
+        for (int p = 0;  p < nnz; p++) {
+            printf("%ld, ", mat->i [p]);
+            if (p > 100) { printf ("...\n") ; break ; }
+        }
+        printf("]\n");
+
+
      }
 };
 
@@ -199,7 +190,6 @@ class SpGEMM_problem_generator {
 
     int64_t BucketStart[13];
     unsigned seed = 13372801;
-    std::mt19937 r; //random number generator Mersenne Twister
     bool ready = false;
 
     int64_t nrows_;
@@ -214,25 +204,11 @@ class SpGEMM_problem_generator {
 
     SpGEMM_problem_generator(int64_t nrows, int64_t ncols): nrows_(nrows), ncols_(ncols) {
     
-       //std::cout<<"creating matrices"<<std::endl;
        // Create sparse matrices
        C = new matrix<T_C>(nrows_, ncols_);
-       // CHECK_CUDA( cudaMallocManaged( (void**)&C, sizeof(matrix<T_C>)) );
-       //cudaMemAdvise ( C, sizeof(matrix<T_C>), cudaMemAdviseSetReadMostly, 1);
-       //std::cout<<"created  C matrix"<<std::endl;
        M = new matrix<T_M>(nrows_, ncols_);
-       //cudaMallocManaged( (void**)&M, sizeof(matrix<T_M>));
-       //cudaMemAdvise ( M, sizeof(matrix<T_C>), cudaMemAdviseSetReadOnly, 1);
-       //std::cout<<"created  M matrix"<<std::endl;
        A = new matrix<T_A>(nrows_, ncols_);
-       //cudaMallocManaged( (void**)&A, sizeof(matrix<T_A>));
-       //cudaMemAdvise ( C, sizeof(matrix<T_C>), cudaMemAdviseSetReadOnly, 1);
-       //std::cout<<"created  A matrix"<<std::endl;
        B = new matrix<T_B>(nrows_, ncols_);
-       //cudaMallocManaged( (void**)&B, sizeof(matrix<T_B>));
-       //cudaMemAdvise ( C, sizeof(matrix<T_C>), cudaMemAdviseSetReadOnly, 1);
-       //std::cout<<"created  B matrix"<<std::endl;
-
     };
 
     matrix<T_C>* getCptr(){ return C;}
@@ -264,14 +240,12 @@ class SpGEMM_problem_generator {
        std::cout<<"Anz% ="<<Anzpercent<<" Bnz% ="<<Bnzpercent<<" Cnz% ="<<Cnzpercent<<std::endl;
 
        //Seed the generator
-       r.seed(seed);
-
        std::cout<<"filling matrices"<<std::endl;
 
-       C->fill_random(Cnz, r);
-       M->fill_random(Cnz, r);
-       A->fill_random(Anz, r);
-       B->fill_random(Bnz, r);
+       C->fill_random(Cnz);
+       M->fill_random(Cnz);
+       A->fill_random(Anz);
+       B->fill_random(Bnz);
 
 
        std::cout<<"fill complete"<<std::endl;

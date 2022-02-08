@@ -17,6 +17,7 @@
 // Compare with GrB_Matrix_assign_scalar,
 // which uses M and C_Replace differently.
 
+#define GB_FREE_ALL ;
 #include "GB_subassign.h"
 #include "GB_ij.h"
 #include "GB_get_mask.h"
@@ -73,7 +74,9 @@ GB_ASSIGN_SCALAR (void *    , UDT    ,  )
 //  GxB_Matrix_subassign (C, M, accum, S, Rows, nRows, Cols, nCols, desc) ;
 //  GrB_Matrix_free (&S) ;
 
-#define GB_FREE_ALL GB_phbix_free (S) ;
+#undef  GB_FREE_ALL
+#define GB_FREE_ALL GB_Matrix_free (&S) ;
+#include "GB_static_header.h"
 
 GB_PUBLIC
 GrB_Info GxB_Matrix_subassign_Scalar   // C(I,J)<M> = accum (C(I,J),s)
@@ -153,12 +156,13 @@ GrB_Info GxB_Matrix_subassign_Scalar   // C(I,J)<M> = accum (C(I,J),s)
 
         // create an empty matrix S of the right size, and use matrix assign
         struct GB_Matrix_opaque S_header ;
-        S = GB_clear_static_header (&S_header) ;
+        GB_CLEAR_STATIC_HEADER (S, &S_header) ;
         bool is_csc = C->is_csc ;
         int64_t vlen = is_csc ? nRows : nCols ;
         int64_t vdim = is_csc ? nCols : nRows ;
-        GB_OK (GB_new (&S, true, scalar->type, vlen, vdim, GB_Ap_calloc,
-            is_csc, GxB_AUTO_SPARSITY, GB_HYPER_SWITCH_DEFAULT, 1, Context)) ;
+        GB_OK (GB_new (&S, // existing header
+            scalar->type, vlen, vdim, GB_Ap_calloc, is_csc, GxB_AUTO_SPARSITY,
+            GB_HYPER_SWITCH_DEFAULT, 1, Context)) ;
         info = GB_subassign (
             C, C_replace,                   // C matrix and its descriptor
             M, Mask_comp, Mask_struct,      // mask matrix and its descriptor

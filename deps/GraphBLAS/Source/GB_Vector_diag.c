@@ -8,11 +8,15 @@
 //------------------------------------------------------------------------------
 
 #define GB_FREE_WORKSPACE   \
-    GB_phbix_free (T) ;
+{                           \
+    GB_Matrix_free (&T) ;   \
+}
 
 #define GB_FREE_ALL         \
+{                           \
     GB_FREE_WORKSPACE ;     \
-    GB_phbix_free (V) ;
+    GB_phbix_free (V) ;     \
+}
 
 #include "GB_diag.h"
 #include "GB_select.h"
@@ -38,7 +42,7 @@ GrB_Info GB_Vector_diag     // extract a diagonal from a matrix, as a vector
     ASSERT (!GB_IS_HYPERSPARSE (V)) ;       // vectors cannot be hypersparse
 
     struct GB_Matrix_opaque T_header ;
-    GrB_Matrix T = GB_clear_static_header (&T_header) ;
+    GrB_Matrix T = NULL ;
 
     GrB_Type atype = A->type ;
     GrB_Type vtype = V->type ;
@@ -98,6 +102,7 @@ GrB_Info GB_Vector_diag     // extract a diagonal from a matrix, as a vector
     // extract the kth diagonal of A into the temporary hypersparse matrix T
     //--------------------------------------------------------------------------
 
+    GB_CLEAR_STATIC_HEADER (T, &T_header) ;
     GB_OK (GB_selector (
         T,                      // output matrix
         GB_DIAG_selop_code,     // just use the DIAG opcode
@@ -119,9 +124,8 @@ GrB_Info GB_Vector_diag     // extract a diagonal from a matrix, as a vector
     int64_t vnz = GB_nnz (T) ;
     float bitmap_switch = V->bitmap_switch ;
     int sparsity_control = V->sparsity_control ;
-    bool static_header = V->static_header ;
 
-    GB_OK (GB_new (&V, static_header,   // prior static or dynamic header
+    GB_OK (GB_new (&V, // existing header
         vtype, n, 1, GB_Ap_malloc, true, GxB_SPARSE,
         GxB_NEVER_HYPER, 1, Context)) ;
 

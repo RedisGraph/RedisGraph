@@ -30,6 +30,10 @@ default: library
 library:
 	( cd build ; cmake $(CMAKE_OPTIONS) .. ; $(MAKE) --jobs=$(JOBS) )
 
+# compile with -g 
+debug:
+	( cd build ; cmake -DCMAKE_BUILD_TYPE=Debug $(CMAKE_OPTIONS) .. ; $(MAKE) --jobs=$(JOBS) )
+
 # build the dynamic library and the demos
 all:
 	( cd build ; cmake $(CMAKE_OPTIONS) -DDEMO=1 .. ; $(MAKE) --jobs=$(JOBS) )

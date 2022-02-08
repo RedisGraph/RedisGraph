@@ -94,6 +94,7 @@ template<  typename T_C, typename T_M,
 
 const std::vector<std::string> compiler_flags{
    "-std=c++14",
+   "-G",
    "-remove-unused-globals",
    "-w",
    "-D__CUDACC_RTC__",
@@ -183,6 +184,8 @@ public:
       R"(#include ")" << hashable_name << R"(.cu")" << std::endl;
     std::cout << string_to_be_jitted.str();
 
+
+
     jit::launcher( hashable_name,
                    string_to_be_jitted.str(),
                    header_names,
@@ -208,10 +211,27 @@ class phase2launchFactory
 
 public:
 
-  bool jitGridBlockLaunch(int gridsz, int blocksz, 
+    #if 0
+    void AxB_phase2
+    (
+        // input, not modified:
+        int64_t *__restrict__ nanobuckets,    // array of size 12-blockDim.x-by-nblocks
+        int64_t *__restrict__ blockbucket,    // global bucket count, of size 12*nblocks
+        // output:
+        int64_t *__restrict__ bucketp,        // global bucket cumsum, of size 13
+        int64_t *__restrict__ bucket,         // global buckets, of size cnz (== mnz)
+        int64_t *__restrict__ offset,         // global offsets, for each bucket
+        // inputs, not modified:
+        const int nblocks         // input number of blocks to reduce
+    )
+    #endif
+
+  bool jitGridBlockLaunch(// launcher input:
+                          int gridsz, int blocksz, 
+                          // parameters to AxB_phase2:
                           int64_t *nanobuckets, int64_t *blockBucket, 
                           int64_t *bucketp, int64_t *bucket, int64_t *offset,
-                          matrix<T_C> *C, const int64_t cnz, const int64_t nblocks )
+                          const int64_t nblocks )
      {
       
       bool result = false; 
@@ -236,20 +256,8 @@ public:
                      file_callback)
                    .set_kernel_inst( kernel_name, {})
                    .configure(grid, block)
-                   .launch( nanobuckets, blockBucket, bucketp, bucket, offset,
-                            C->get_grb_matrix(), cnz, nblocks);
-
-//          // input, not modified:
-//    int64_t *__restrict__ nanobuckets,    // array of size 12-blockDim.x-by-nblocks
-//    int64_t *__restrict__ blockbucket,    // global bucket count, of size 12*nblocks
-//    // output:
-//    int64_t *__restrict__ bucketp,        // global bucket cumsum, of size 13
-//    int64_t *__restrict__ bucket,         // global buckets, of size cnz (== mnz)
-//    int64_t *__restrict__ offset,         // global offsets, for each bucket
-//    // inputs, not modified:
-//    GrB_Matrix C,             // output matrix
-//    const int64_t cnz,        // number of entries in C and M
-//    const int nblocks         // input number of blocks to reduce
+                   // parameters to AxB_phase2:
+                   .launch( nanobuckets, blockBucket, bucketp, bucket, offset, nblocks);
 
       checkCudaErrors( cudaDeviceSynchronize() );
       result= true;
@@ -269,9 +277,26 @@ class phase2endlaunchFactory
 
 public: 
 
+    #if 0
+    // The jitified kernel itself:
+    void GB_AxB_dot3_phase2end
+    (
+        // input, not modified:
+              int64_t *__restrict__ nanobuckets,    // array of size 12-blockDim.x-by-nblocks
+        const int64_t *__restrict__ blockbucket,    // global bucket count, of size 12*nblocks
+        // output:
+        const int64_t *__restrict__ bucketp,        // global bucket cumsum, of size 13 
+              int64_t *__restrict__ bucket,         // global buckets, of size cnz (== mnz)
+        const int64_t *__restrict__ offset,         // global offsets, for each bucket
+        // inputs, not modified:
+        const GrB_Matrix C,            // output matrix
+        const int64_t cnz        // number of entries in C and M 
+    )
+    #endif
+
   bool jitGridBlockLaunch(int gridsz, int blocksz, 
                           int64_t *nanobuckets, int64_t *blockBucket, 
-                          int64_t *bucketp, int64_t *bucket,
+                          int64_t *bucketp, int64_t *bucket, int64_t *offset,
                           matrix<T_C> *C, const int64_t cnz) 
      {
       
@@ -302,7 +327,7 @@ public:
                    .set_kernel_inst(  base_name + kernel_name ,
                                     { GET_TYPE_NAME(dumC) })
                    .configure(grid, block)
-                   .launch( nanobuckets, blockBucket, bucketp, bucket, C, cnz);
+                   .launch( nanobuckets, blockBucket, bucketp, bucket, offset, C, cnz);
 
       checkCudaErrors( cudaDeviceSynchronize() );
       result= true;

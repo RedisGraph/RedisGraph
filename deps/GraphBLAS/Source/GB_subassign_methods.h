@@ -36,8 +36,10 @@
     GB_FREE_WORK (&Z_to_S, Z_to_S_size) ;       \
     GB_FREE_WORK (&Z_to_A, Z_to_A_size) ;       \
     GB_FREE_WORK (&Z_to_M, Z_to_M_size) ;       \
-    GB_phbix_free (S) ;                         \
+    GB_Matrix_free (&S) ;                       \
 }
+
+#include "GB_static_header.h"
 
 //------------------------------------------------------------------------------
 // GB_EMPTY_TASKLIST: declare an empty TaskList
@@ -54,7 +56,7 @@
     int64_t *restrict Z_to_A = NULL ; size_t Z_to_A_size = 0 ;              \
     int64_t *restrict Z_to_M = NULL ; size_t Z_to_M_size = 0 ;              \
     struct GB_Matrix_opaque S_header ;                                      \
-    GrB_Matrix S = GB_clear_static_header (&S_header) ;
+    GrB_Matrix S = NULL ;
 
 //------------------------------------------------------------------------------
 // GB_GET_C: get the C matrix (cannot be bitmap)

@@ -76,8 +76,7 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (C != NULL) ;
-    ASSERT (C->static_header) ;
+    ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
     ASSERT_TYPE_OK (ctype, "ctype for transpose", GB0) ;
     ASSERT_MATRIX_OK (A, "A input for transpose_bucket", GB0) ;
     ASSERT (!GB_PENDING (A)) ;
@@ -122,7 +121,7 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     GrB_Info info ;
     // set C->iso = C_iso   OK
     bool C_iso = (C_code_iso != GB_NON_ISO) ;
-    GB_OK (GB_new_bix (&C, true, // sparse, static header
+    GB_OK (GB_new_bix (&C, // sparse, existing header
         ctype, A->vdim, vlen, GB_Ap_malloc, C_is_csc,
         GxB_SPARSE, true, A->hyper_switch, vlen, anz, true, C_iso, Context)) ;
 

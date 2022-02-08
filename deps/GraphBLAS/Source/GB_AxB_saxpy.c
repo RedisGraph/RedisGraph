@@ -39,7 +39,7 @@ GrB_Info GB_AxB_saxpy               // C = A*B using Gustavson/Hash/Bitmap
 
     GrB_Info info ;
     (*mask_applied) = false ;
-    ASSERT (C != NULL && C->static_header) ;
+    ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
 
     ASSERT_MATRIX_OK_OR_NULL (M, "M for saxpy A*B", GB0) ;
     ASSERT (!GB_PENDING (M)) ;
@@ -176,7 +176,7 @@ GrB_Info GB_AxB_saxpy               // C = A*B using Gustavson/Hash/Bitmap
         GBURBLE ("(iso full saxpy) ") ;
         ASSERT (C_sparsity == GxB_FULL) ;
         // set C->iso = true    OK
-        info = GB_new_bix (&C, true,    // static header
+        info = GB_new_bix (&C, // existing header
             ztype, A->vlen, B->vdim, GB_Ap_null, true, GxB_FULL, false,
             GB_HYPER_SWITCH_DEFAULT, -1, 1, true, true, Context) ;
         if (info == GrB_SUCCESS)

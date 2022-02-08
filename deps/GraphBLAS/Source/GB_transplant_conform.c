@@ -43,7 +43,7 @@ GrB_Info GB_transplant_conform      // transplant and conform sparsity structure
 
     // T is always freed, even if the transplant runs out of memory
     ASSERT (*Thandle == NULL ||
-           (*Thandle != NULL && (*Thandle)->static_header)) ;
+           (*Thandle != NULL && ((*Thandle)->static_header || GBNSTATIC))) ;
 
     if (info != GrB_SUCCESS)
     { 

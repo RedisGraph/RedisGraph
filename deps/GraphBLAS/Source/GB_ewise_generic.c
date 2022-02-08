@@ -63,7 +63,7 @@ void GB_ewise_generic       // generic ewise
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (C != NULL && C->static_header) ;
+    ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
     ASSERT_MATRIX_OK_OR_NULL (M, "M for ewise generic", GB0) ;
     ASSERT_MATRIX_OK (A, "A for ewise generic", GB0) ;
     ASSERT_MATRIX_OK (B, "B for ewise generic", GB0) ;
