@@ -244,6 +244,9 @@ fi
 
 if [[ -n $STATFILE ]]; then
 	mkdir -p $(dirname $STATFILE)
+	if [[ -f $STATFILE ]]; then
+		(( E |= `cat $STATFILE || echo 1` ))
+	fi
 	echo $E > $STATFILE
 fi
 if [[ $NOFAIL != 1 ]]; then
