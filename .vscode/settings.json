@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "iterator": "c",
+        "__tree": "c",
+        "map": "c"
+    }
+}
