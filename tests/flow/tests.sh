@@ -39,13 +39,13 @@ help() {
 		DOCKER_HOST         Address of Docker server (default: localhost)
 		RLEC_PORT           Port of existing-env in RLEC container (default: 12000)
 
-		COLLECT_LOGS=1      Collect logs into .tar file
 		CLEAR_LOGS=0        Do not remove logs prior to running tests
+		COLLECT_LOGS=1      Collect logs into .tar file
 
 		RLTEST_ARGS=...     Extra RLTest arguments
-		V|VERBOSE=1         Print commands
-		NOFAIL=1            Do not exit
+		NOFAIL=1            Do not fail on errors (always exit with 0)
 		STATFILE=file       Write test status (0|1) into `file`
+		V|VERBOSE=1         Print commands
 
 	END
 }
@@ -223,7 +223,7 @@ fi
 
 cd $ROOT/tests/flow
 if [[ $CLEAR_LOGS != 0 ]]; then
-	echo rm -rf logs ../tck/logs
+	rm -rf logs ../tck/logs
 fi
 
 E=0
@@ -232,6 +232,8 @@ E=0
 [[ $TCK == 1 ]]  && { (cd ../tck; run_tests "TCK tests"); (( E |= $? )); } || true
 
 [[ $RLEC == 1 ]] && { (RLTEST_ARGS="${RLTEST_ARGS} --env existing-env --existing-env-addr $DOCKER_HOST:$RLEC_PORT" run_tests "tests on RLEC"); (( E |= $? )); } || true
+
+#---------------------------------------------------------------------------------------------- 
 
 if [[ $COLLECT_LOGS == 1 ]]; then
 	ARCH=`$READIES/bin/platform --arch`
