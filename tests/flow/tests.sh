@@ -249,8 +249,8 @@ if [[ -n $STATFILE ]]; then
 	fi
 	echo $E > $STATFILE
 fi
-if [[ $NOFAIL != 1 ]]; then
-	exit $E
-else
+
+if [[ $NOFAIL == 1 ]]; then
 	exit 0
 fi
+exit $E

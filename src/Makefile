@@ -286,25 +286,17 @@ endif
 
 #----------------------------------------------------------------------------------------------
 
-ifndef ($(BUILD),0)
 package: redisgraph.so
-else
-package:
-endif
 	@$(ROOT)/sbin/pack.sh
 
 .PHONY: package
 
 #----------------------------------------------------------------------------------------------
 
-ifndef ($(BUILD),0)
 test: redisgraph.so
-else
-test:
-endif
-	# check valgrind flag is not empty
+# check valgrind flag is not empty
 ifeq ($(VALGRIND),1)
-	# valgrind is requested, check that host's os is not Linux
+# valgrind is requested, check that host's os is not Linux
 ifeq ($(OS),macos)
 	@echo building docker to run valgrind on MacOS
 	@cd .. ;\
