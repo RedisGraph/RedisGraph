@@ -707,7 +707,7 @@ void Graph_GetNodeEdges
 	ASSERT(n);
 	ASSERT(edges);
 
-	RG_MatrixTupleIter   it;
+	RG_MatrixTupleIter   it       =  {0};
 	RG_Matrix            M        =  NULL;
 	RG_Matrix            TM       =  NULL;
 	NodeID               srcID    =  ENTITY_GET_ID(n);

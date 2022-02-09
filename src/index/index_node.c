@@ -53,7 +53,7 @@ void populateNodeIndex
 	const RG_Matrix m = Graph_GetLabelMatrix(g, idx->label_id);
 	ASSERT(m != NULL);
 
-	RG_MatrixTupleIter it;
+	RG_MatrixTupleIter it = {0};
 	RG_MatrixTupleIter_reuse(&it, m);
 
 	// iterate over each graph entity

@@ -64,7 +64,7 @@ void populateEdgeIndex
 	const RG_Matrix m = Graph_GetRelationMatrix(g, idx->label_id, false);
 	ASSERT(m != NULL);
 
-	RG_MatrixTupleIter it;
+	RG_MatrixTupleIter it = {0};
 	RG_MatrixTupleIter_reuse(&it, m);
 
 	// iterate over each graph entity
