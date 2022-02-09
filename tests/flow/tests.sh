@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # [[ $VERBOSE == 1 ]] && set -x
-[[ $IGNERR == 1 ]] || set -e
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 ROOT=$(cd $HERE/../.. && pwd)
@@ -45,7 +44,8 @@ help() {
 
 		RLTEST_ARGS=...     Extra RLTest arguments
 		V|VERBOSE=1         Print commands
-		IGNERR=1            Do not abort on error
+		NOFAIL=1            Do not exit
+		STATFILE=file       Write test status (0|1) into `file`
 
 	END
 }
@@ -242,4 +242,12 @@ if [[ $COLLECT_LOGS == 1 ]]; then
 	find tests/tck/logs -name "*.log" | tar -czf bin/artifacts/tests/tests-tck-logs-${ARCH}-${OSNICK}.tgz -T -
 fi
 
-exit $E
+if [[ -n $STATFILE ]]; then
+	mkdir -p $(dirname $STATFILE)
+	echo $E > $STATFILE
+fi
+if [[ $NOFAIL != 1 ]]; then
+	exit $E
+else
+	exit 0
+fi
