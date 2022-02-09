@@ -231,10 +231,10 @@ static void _ExecuteQuery(void *args) {
 		ASSERT("Unhandled query type" && false);
 	}
 
-	// in case of an error rollback modifications
+	// in case of an error, rollback any modifications
 	if(ErrorCtx_EncounteredError()) {
 		UndoLog_Rollback(&query_ctx->undo_log);
-		// clear stats so the commnad will not be replicated
+		// clear resultset statistics, avoiding commnad being replicated
 		ResultSet_Clear(result_set);
 	}
 	

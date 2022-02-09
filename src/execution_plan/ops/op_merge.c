@@ -307,13 +307,19 @@ static Record MergeConsume(OpBase *opBase) {
 	if(array_len(op->node_pending_updates) > 0 || array_len(op->edge_pending_updates) > 0) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		// lock everything
-		QueryCtx_LockForCommit();
-		CommitUpdates(gc, op->stats, op->node_pending_updates, ENTITY_NODE);
-		CommitUpdates(gc, op->stats, op->edge_pending_updates, ENTITY_EDGE);
+		QueryCtx_LockForCommit(); {
+			CommitUpdates(gc, op->stats, op->node_pending_updates, ENTITY_NODE);
+			CommitUpdates(gc, op->stats, op->edge_pending_updates, ENTITY_EDGE);
+		}
+		// release the lock
+		QueryCtx_UnlockCommit(&op->op);
 	}
 
-	// release the lock
-	QueryCtx_UnlockCommit(&op->op);
+	//--------------------------------------------------------------------------
+	// free updates
+	//--------------------------------------------------------------------------
+
+	// free node updates
 	uint pending_updates_count = array_len(op->node_pending_updates);
 	for(uint i = 0; i < pending_updates_count; i++) {
 		PendingUpdateCtx *pending_update = op->node_pending_updates + i;
@@ -321,6 +327,8 @@ static Record MergeConsume(OpBase *opBase) {
 	}
 	array_free(op->node_pending_updates);
 	op->node_pending_updates = NULL;
+
+	// free edge updates
 	pending_updates_count = array_len(op->edge_pending_updates);
 	for(uint i = 0; i < pending_updates_count; i++) {
 		PendingUpdateCtx *pending_update = op->edge_pending_updates + i;

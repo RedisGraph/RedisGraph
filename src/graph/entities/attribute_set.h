@@ -7,74 +7,76 @@
 #pragma once
 
 #include "../../value.h"
-#include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
-#define ATTRIBUTE_NOTFOUND USHRT_MAX
-// ATTRIBUTE_ALL indicates all properties for SET clauses that replace a property map
-#define ATTRIBUTE_ALL USHRT_MAX - 1
+// indicates a none existing attribute ID
+#define ATTRIBUTE_ID_NONE USHRT_MAX
+// indicates all attributes for SET clauses that replace a property map
+#define ATTRIBUTE_ID_ALL USHRT_MAX - 1
 
 typedef unsigned short Attribute_ID;
 
 typedef struct {
-	Attribute_ID id;
-	SIValue value;
-} EntityProperty;
+	Attribute_ID id;  // attribute identifier
+	SIValue value;    // attribute value
+} Attribute;
 
-// Essence of a graph entity.
 // TODO: see if pragma pack 0 will cause memory access violation on ARM.
 typedef struct {
-	int prop_count;             // Number of properties.
-	EntityProperty *properties; // Key value pair of attributes.
+	int attr_count;         // number of attributes
+	Attribute *attributes;  // key value pair of attributes
 } AttributeSet;
 
-// deletes all properties on the GraphEntity and returns
-// the number of deleted properties
-int AttributeSet_ClearProperties
+// clears attribute set
+// returns number of attributes cleared
+// TODO: see if we can change from `int` to `void`
+int AttributeSet_Clear
 (
-	AttributeSet *attributes
+	AttributeSet *set  // set to be cleared
 );
 
-// adds property to entity
-// returns - reference to newly added property
-bool AttributeSet_AddProperty
+// adds an attribute to the set
+// returns true if attribute was added to the set
+// TODO: see if we can change from `bool` to `void`
+bool AttributeSet_Add
 (
-	AttributeSet *attributes,
-	Attribute_ID attr_id,
-	SIValue value,
-	bool allow_null
+	AttributeSet *set,     // set to update
+	Attribute_ID attr_id,  // attribute identifier
+	SIValue value,         // attribute value
+	bool allow_null        // is NULL consider valid value
 );
 
-// retrieves entity's property
-// NOTE: If the key does not exist, we return the special
-// constant value PROPERTY_NOTFOUND
-SIValue *AttributeSet_GetProperty
+// retrieves a value from set
+// NOTE: if the key does not exist
+//       we return the special constant value ATTRIBUTE_NOTFOUND
+SIValue *AttributeSet_Get
 (
-	const AttributeSet *attributes,
-	Attribute_ID attr_id
+	const AttributeSet *set,  // set to retieve attribute from
+	Attribute_ID attr_id      // attribute identifier
 );
 
-// updates existing attribute value, return true if property been updated
-bool AttributeSet_SetProperty
+// updates existing attribute, return true if attribute been updated
+bool AttributeSet_Update
 (
-	AttributeSet *e,
-	Attribute_ID attr_id,
-	SIValue value
+	AttributeSet *set,     // set to update
+	Attribute_ID attr_id,  // attribute identifier
+	SIValue value          // new value
 );
 
-// clones the given attribute set
+// clones attribute set
 AttributeSet *AttributeSet_Clone
 (
-	const AttributeSet *attributes
+	const AttributeSet *set  // set to clone
 );
 
-// release all memory allocated for attribute set properties
-void AttributeSet_FreeProperties
+// clears all attributes from set
+void AttributeSet_FreeAttributes
 (
-	AttributeSet *e
+	AttributeSet *set  // set to be cleared
 );
 
-// release all memory allocated by attribute set
+// free attribute set
 void AttributeSet_Free
 (
-	AttributeSet *e
+	AttributeSet *set  // set to be freed
 );
+

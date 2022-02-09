@@ -255,15 +255,7 @@ void ResultSet_ReportQueryRuntime(RedisModuleCtx *ctx) {
 
 void ResultSet_Clear(ResultSet *set) {
 	ASSERT(set != NULL);
-
-	set->stats.labels_added           =  0;
-	set->stats.nodes_deleted          =  0;
-	set->stats.nodes_created          =  0;
-	set->stats.properties_set         =  0;
-	set->stats.indices_created        =  STAT_NOT_SET;
-	set->stats.indices_deleted        =  STAT_NOT_SET;
-	set->stats.relationships_created  =  0;
-	set->stats.relationships_deleted  =  0;
+	ResultSetStat_Clear(&set->stats);
 }
 
 void ResultSet_Free(ResultSet *set) {

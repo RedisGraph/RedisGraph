@@ -57,10 +57,8 @@ void CommitUpdates
 	ASSERT(updates != NULL);
 	ASSERT(type    != ENTITY_UNKNOWN);
 
-	uint       properties_set = 0;
-	Schema     *s             = NULL;
-	uint       update_count   = array_len(updates);
-	SchemaType t              = type == ENTITY_NODE ? SCHEMA_NODE : SCHEMA_EDGE;
+	uint  properties_set  =  0;
+	uint  update_count    =  array_len(updates);
 
 	// return early if no updates are enqueued
 	if(update_count == 0) return;
@@ -71,8 +69,9 @@ void CommitUpdates
 		// if entity has been deleted, perform no updates
 		if(GraphEntity_IsDeleted(update->ge)) continue;
 
-		// update the property on the graph entity
-		properties_set += UpdateEntity(gc, update->ge, &update->attributes, type);
+		// update the attributes on the graph entity
+		properties_set += UpdateEntity(gc, update->ge, &update->attributes,
+				type);
 	}
 
 	if(stats) stats->properties_set += properties_set;
@@ -105,8 +104,6 @@ void EvalEntityUpdates
 			ctx->alias);
 	}
 
-	SchemaType st = t == REC_TYPE_NODE ? SCHEMA_NODE : SCHEMA_EDGE;
-
 	PendingUpdateCtx **updates = t == REC_TYPE_NODE
 		? node_updates
 		: edge_updates;
@@ -134,11 +131,12 @@ void EvalEntityUpdates
 	//--------------------------------------------------------------------------
 
 	for(uint i = 0; i < exp_count; i++) {
-		PropertySetCtx    property   =  ctx->properties[i];
-		Attribute_ID      attr_id    =  property.id;
-		SIValue           new_value  =  AR_EXP_Evaluate(property.exp,  r);
+		PropertySetCtx    *property  =  ctx->properties + i;
+		Attribute_ID      attr_id    =  property->id;
+		SIValue           new_value  =  AR_EXP_Evaluate(property->exp,  r);
 
-		if(attr_id == ATTRIBUTE_ALL && !(SI_TYPE(new_value) & (T_NODE | T_EDGE | T_MAP))) {
+		if(attr_id == ATTRIBUTE_ALL &&
+		   !(SI_TYPE(new_value) & (T_NODE | T_EDGE | T_MAP))) {
 			// left-hand side is alias reference but right-hand side is a
 			// scalar, emit an error
 			Error_InvalidPropertyValue();
@@ -187,3 +185,4 @@ void EvalEntityUpdates
 	// enqueue the current update
 	array_append(*updates, update);
 }
+

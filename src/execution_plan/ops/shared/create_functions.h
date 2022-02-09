@@ -14,8 +14,8 @@ typedef struct {
 	NodeCreateCtx *nodes_to_create;
 	EdgeCreateCtx *edges_to_create;
 
-	AttributeSet *node_properties;
-	AttributeSet *edge_properties;
+	AttributeSet *node_attributes;
+	AttributeSet *edge_attributes;
 
 	int **node_labels;
 	Node **created_nodes;
@@ -51,3 +51,4 @@ void PendingCreationsFree
 (
 	PendingCreations *pending
 );
+

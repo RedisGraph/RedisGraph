@@ -13,7 +13,6 @@ extern "C"
 
 #include "../../src/util/arr.h"
 #include "../../src/graph/graph.h"
-#include "../../src/graph/graph_hub.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/util/simple_timer.h"
 #include "../../src/configuration/config.h"

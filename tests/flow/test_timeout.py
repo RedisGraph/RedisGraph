@@ -53,6 +53,7 @@ class testQueryTimeout(FlowTestsBase):
             self.env.assertContains("Query timed out", str(error))
 
     def test03_timeout_index_scan(self):
+        # set timeout to unlimited
         redis_con.execute_command("GRAPH.CONFIG SET timeout 0")
 
         # construct a graph and create multiple indices
@@ -95,14 +96,9 @@ class testQueryTimeout(FlowTestsBase):
             except ResponseError as error:
                 self.env.assertContains("Query timed out", str(error))
 
-        # validate that server didn't crash
-        redis_con.ping()
-
         # rerun each query with timeout and limit
         # expecting queries to run to completion
         for q in queries:
             q += " LIMIT 2"
             redis_graph.query(q, timeout=10)
 
-        # validate that server didn't crash
-        redis_con.ping()

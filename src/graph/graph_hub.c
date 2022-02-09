@@ -249,6 +249,7 @@ int DeleteEdge
 	UndoOp op;
 	Edge clone;
 	Edge_Clone(e, &clone);
+
 	UndoLog_DeleteEdge(&op, clone);
 	_add_undo_op(&op);
 

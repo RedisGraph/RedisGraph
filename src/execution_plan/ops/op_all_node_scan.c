@@ -54,7 +54,7 @@ static Record AllNodeScanConsumeFromChild(OpBase *opBase) {
 	}
 
 	Node n = GE_NEW_NODE();
-	n.attributes = (AttributeSet *)DataBlockIterator_Next(op->iter, &n.id);
+	n.attributes = DataBlockIterator_Next(op->iter, &n.id);
 	if(n.attributes == NULL) {
 		OpBase_DeleteRecord(op->child_record); // Free old record.
 		// Pull a new record from child.
@@ -80,7 +80,7 @@ static Record AllNodeScanConsume(OpBase *opBase) {
 	AllNodeScan *op = (AllNodeScan *)opBase;
 
 	Node n = GE_NEW_NODE();
-	n.attributes = (AttributeSet *)DataBlockIterator_Next(op->iter, &n.id);
+	n.attributes = DataBlockIterator_Next(op->iter, &n.id);
 	if(n.attributes == NULL) return NULL;
 
 	Record r = OpBase_CreateRecord((OpBase *)op);

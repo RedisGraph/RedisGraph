@@ -9,132 +9,148 @@
 #include "../../errors.h"
 #include "../../util/rmalloc.h"
 
-SIValue *PROPERTY_NOTFOUND = &(SIValue) {
+// returned value for a missing attribute
+SIValue *ATTRIBUTE_NOTFOUND = &(SIValue) {
 	.longval = 0, .type = T_NULL
 };
 
-// removes entity's property
-static bool _AttributeSet_RemoveProperty
+// removes an attribute from set
+static bool _AttributeSet_Remove
 (
-	AttributeSet *e,
+	AttributeSet *set,
 	Attribute_ID attr_id
 ) {
-	// Quick return if attribute is missing.
-	if(attr_id == ATTRIBUTE_NOTFOUND) return false;
+	// quick return if attribute is missing
+	if(attr_id == ATTRIBUTE_ID_NONE) return false;
 
-	// Locate attribute position.
-	int prop_count = e->prop_count;
-	for(int i = 0; i < prop_count; i++) {
-		if(attr_id == e->properties[i].id) {
-			SIValue_Free(e->properties[i].value);
-			e->prop_count--;
+	// locate attribute position
+	int attr_count = set->attr_count;
+	for(int i = 0; i < attr_count; i++) {
+		if(attr_id == set->attributes[i].id) {
+			SIValue_Free(set->attributes[i].value);
+			set->attr_count--;
 
-			if(e->prop_count == 0) {
-				/* Only attribute removed, free properties bag. */
-				rm_free(e->properties);
-				e->properties = NULL;
+			if(set->attr_count == 0) {
+				// only attribute removed, free attribute bag
+				rm_free(set->attributes);
+				set->attributes = NULL;
 			} else {
-				/* Overwrite deleted attribute with the last
-				 * attribute and shrink properties bag. */
-				e->properties[i] = e->properties[prop_count - 1];
-				e->properties = rm_realloc(e->properties,
-					sizeof(EntityProperty) * e->prop_count);
+				// overwrite deleted attribute with the last
+				// attribute and shrink attributes bag
+				set->attributes[i] = set->attributes[prop_count - 1];
+				set->attributes = rm_realloc(set->attributes,
+					sizeof(Attribute) * set->attr_count);
 			}
 
+			// attribute was removed
 			return true;
 		}
 	}
 
+	// unable to locate attribute
 	return false;
 }
 
-int AttributeSet_ClearProperties
+// clears attribute set
+// returns number of attributes cleared
+int AttributeSet_Clear
 (
-	AttributeSet *e
+	AttributeSet *set  // set to be cleared
 ) {
-	ASSERT(e);
+	ASSERT(set != NULL);
 
-	int prop_count = e->prop_count;
-	for(int i = 0; i < prop_count; i++) {
+	int attr_count = set->attr_count;
+	for(int i = 0; i < attr_count; i++) {
 		// free all allocated properties
-		SIValue_Free(e->properties[i].value);
+		SIValue_Free(set->attributes[i].value);
 	}
-	e->prop_count = 0;
+	e->attr_count = 0;
 
-	// free and NULL-set the properties bag.
-	rm_free(e->properties);
-	e->properties = NULL;
+	// free and NULL-set the attribute bag
+	rm_free(set->attributes);
+	set->attributes = NULL;
 
-	return prop_count;
+	return attr_count;
 }
 
-/* Add a new property to entity */
-bool AttributeSet_AddProperty
+// adds an attribute to the set
+// returns true if attribute was added to the set
+// TODO: see if we can change from `bool` to `void`
+bool AttributeSet_Add
 (
-	AttributeSet *e,
-	Attribute_ID attr_id,
-	SIValue value,
-	bool allow_null
+	AttributeSet *set,     // set to update
+	Attribute_ID attr_id,  // attribute identifier
+	SIValue value,         // attribute value
+	bool allow_null        // is NULL consider valid value
 ) {
-	ASSERT(e);
-	if(!(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE) && SIValue_IsNull(value) && !allow_null) return false;
+	ASSERT(set != NULL);
 
-	if(e->properties == NULL) {
-		e->properties = rm_malloc(sizeof(EntityProperty));
-	} else {
-		e->properties = rm_realloc(e->properties,
-			sizeof(EntityProperty) * (e->prop_count + 1));
+	// validate value type
+	if(!(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE) &&
+			SIValue_IsNull(value)                  &&
+			!allow_null) {
+		return false;
 	}
 
-	int prop_idx = e->prop_count;
-	EntityProperty *prop = e->properties + prop_idx;
-	prop->id = attr_id;
-	prop->value = SI_CloneValue(value);
-	e->prop_count++;
+	// allocate room for attribute
+	set->attr_count++;
+	if(set->attributes == NULL) {
+		set->attributes = rm_malloc(sizeof(Attribute));
+	} else {
+		set->attributes = rm_realloc(set->attributes,
+			sizeof(Attribute) * set->attr_count);
+	}
+
+	Attribute *attr = set->attributes + set->attr_count;
+	attr->id = attr_id;
+	attr->value = SI_CloneValue(value);
 
 	return true;
 }
 
-SIValue *AttributeSet_GetProperty
+// retrieves a value from set
+// NOTE: if the key does not exist
+//       we return the special constant value ATTRIBUTE_NOTFOUND
+SIValue *AttributeSet_Get
 (
-	const AttributeSet *e,
-	Attribute_ID attr_id
+	const AttributeSet *set,  // set to retieve attribute from
+	Attribute_ID attr_id      // attribute identifier
 ) {
-	if(attr_id == ATTRIBUTE_NOTFOUND) return PROPERTY_NOTFOUND;
-	if(e == NULL) {
- 		/* The internal entity pointer should only be NULL if the entity
- 		 * is in an intermediate state, such as a node scheduled for creation.
- 		 * Note that this exception may cause memory to be leaked in the caller. */
- 		ErrorCtx_SetError("Attempted to access undefined property");
- 		return PROPERTY_NOTFOUND;
+	if(attr_id == ATTRIBUTE_ID_NONE) return ATTRIBUTE_NOTFOUND;
+	if(set == NULL) {
+ 		// note that this exception may cause memory to be leaked in the caller
+ 		ErrorCtx_SetError("Attempted to access undefined attribute-set");
+ 		return ATTRIBUTE_NOTFOUND;
  	}
 
-	for(int i = 0; i < e->prop_count; i++) {
-		if(attr_id == e->properties[i].id) {
-			// Note, unsafe as entity properties can get reallocated.
-			return &(e->properties[i].value);
+	for(int i = 0; i < set->attr_count; i++) {
+		Attribute *attr = set->attributes + i;
+		if(attr_id == set->attr->id) {
+			// note, unsafe as attribute-set  can get reallocated
+			return &attr->value;
 		}
 	}
 
-	return PROPERTY_NOTFOUND;
+	return ATTRIBUTE_NOTFOUND;
 }
 
-// updates existing property value
-bool AttributeSet_SetProperty
+// updates existing attribute, return true if attribute been updated
+bool AttributeSet_Update
 (
-	AttributeSet *e,
-	Attribute_ID attr_id,
-	SIValue value
+	AttributeSet *set,     // set to update
+	Attribute_ID attr_id,  // attribute identifier
+	SIValue value          // new value
 ) {
-	ASSERT(e);
+	ASSERT(set != NULL);
 
-	// Setting an attribute value to NULL removes that attribute.
-	if(SIValue_IsNull(value)) return _AttributeSet_RemoveProperty(e, attr_id);
+	// setting an attribute value to NULL removes that attribute
+	if(SIValue_IsNull(value)) return _AttributeSet_Remove(set, attr_id);
 
-	SIValue *current = AttributeSet_GetProperty(e, attr_id);
-	ASSERT(current != PROPERTY_NOTFOUND);
+	SIValue *current = AttributeSet_Get(set, attr_id);
+	ASSERT(current != ATTRIBUTE_NOTFOUND);
 
 	// compare current value to new value, only update if current != new
+	// TODO: only index entities that performed a successful update on an indexed attribute
 	if(SIValue_Compare(*current, value, NULL) == 0) return false;
 
 	// value != current, update entity
@@ -142,44 +158,58 @@ bool AttributeSet_SetProperty
 	*current = SI_CloneValue(value);
 	return true;
 }
-// clones the given attribute set
+
+// clones attribute set
 AttributeSet *AttributeSet_Clone
 (
-	const AttributeSet *attributes
+	const AttributeSet *set  // set to clone
 ) {
+	ASSERT(set != NULL);
+
     AttributeSet *clone = rm_malloc(sizeof(AttributeSet));
-	clone->prop_count   = attributes->prop_count;
-	clone->properties   = rm_malloc(sizeof(EntityProperty) * attributes->prop_count);
+	clone->attr_count   = set->attr_count;
+	clone->attributes   = rm_malloc(sizeof(Attribute) * set->attr_count);
 	
-    for (uint i = 0; i < attributes->prop_count; i++) {
-		EntityProperty *prop       = attributes->properties + i;
-		EntityProperty *clone_prop = clone->properties + i;
-		clone_prop->id             = prop->id;
-		clone_prop->value          = SI_CloneValue(prop->value);
+	for (uint i = 0; i < set->attr_count; i++) {
+		Attribute *attr        = set->attributes   + i;
+		Attribute *clone_attr  = clone->attributes + i;
+
+		clone_attr->id = attr->id;
+		clone_attr->value = SI_CloneValue(attr->value);
 	}
 
     return clone;
 }
 
-void AttributeSet_FreeProperties
+// clears all attributes from set
+void AttributeSet_FreeAttributes
 (
-	AttributeSet *e
+	AttributeSet *set  // set to be cleared
 ) {
-	ASSERT(e);
-	if(e->properties != NULL) {
-		for(int i = 0; i < e->prop_count; i++) SIValue_Free(e->properties[i].value);
-		rm_free(e->properties);
-		e->properties = NULL;
-		e->prop_count = 0;
+	ASSERT(set != NULL);
+
+	// quick return if there are no attributes
+	if(set->attributes == NULL) return;
+
+	// free each attribute
+	for(int i = 0; i < set->attr_count; i++) {
+		Attribute *attr = set->attributes + i;
+		SIValue_Free(attr->value);
 	}
+	rm_free(set->attributes);
+
+	set->attr_count = 0;
+	set->attributes = NULL;
 }
 
+// free attribute set
 void AttributeSet_Free
 (
-	AttributeSet * e
+	AttributeSet *set  // set to be freed
 ) {
-	ASSERT(e);
+	ASSERT(set != NULL);
 
-	AttributeSet_FreeProperties(e);
-	rm_free(e);
+	AttributeSet_FreeAttributes(set);
+	rm_free(set);
 }
+

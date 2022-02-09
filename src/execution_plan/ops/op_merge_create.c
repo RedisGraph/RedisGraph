@@ -16,7 +16,7 @@ static void MergeCreateFree(OpBase *opBase);
 
 // convert a graph entity's components into an identifying hash code
 static void _IncrementalHashEntity(XXH64_state_t *state, const char *label,
-								   AttributeSet *props) {
+								   AttributeSet *attr) {
 	// update hash with label if one is provided
 	XXH_errorcode res;
 	UNUSED(res);
@@ -25,12 +25,12 @@ static void _IncrementalHashEntity(XXH64_state_t *state, const char *label,
 		ASSERT(res != XXH_ERROR);
 	}
 
-	if(props) {
+	if(attr) {
 		// update hash with attribute count
-		res = XXH64_update(state, &props->prop_count, sizeof(props->prop_count));
+		res = XXH64_update(state, &attr->prop_count, sizeof(attr->prop_count));
 		ASSERT(res != XXH_ERROR);
-		for(int i = 0; i < props->prop_count; i++) {
-			EntityProperty *prop = props->properties + i;
+		for(int i = 0; i < attr->prop_count; i++) {
+			EntityProperty *prop = attr->properties + i;
 			// update hash with attribute ID
 			res = XXH64_update(state, &prop->id, sizeof(prop->id));
 			ASSERT(res != XXH_ERROR);
@@ -116,21 +116,21 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 
 		// convert query-level properties
 		PropertyMap *map = n->properties;
-		AttributeSet converted_properties = {0};
-		if(map) ConvertPropertyMap(&converted_properties, r, map, true);
+		AttributeSet converted_attr = {0};
+		if(map) ConvertPropertyMap(&converted_attr, r, map, true);
 
 		// update the hash code with this entity
 		uint label_count = array_len(n->labels);
-		if(label_count == 0) _IncrementalHashEntity(op->hash_state, NULL, &converted_properties);
+		if(label_count == 0) _IncrementalHashEntity(op->hash_state, NULL, &converted_attr);
 		for(uint i = 0; i < label_count; i ++) {
-			_IncrementalHashEntity(op->hash_state, n->labels[i], &converted_properties);
+			_IncrementalHashEntity(op->hash_state, n->labels[i], &converted_attr);
 		}
 
 		// Save node for later insertion
 		array_append(op->pending.created_nodes, node_ref);
 
 		// Save properties to insert with node
-		array_append(op->pending.node_properties, converted_properties);
+		array_append(op->pending.node_properties, converted_attr);
 
 		// save labels to assigned to node
 		array_append(op->pending.node_labels, n->labelsId);
@@ -160,15 +160,15 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 
 		// convert query-level properties
 		PropertyMap *map = e->properties;
-		AttributeSet converted_properties = {0};
-		if(map) ConvertPropertyMap(&converted_properties, r, map, true);
+		AttributeSet converted_attr = {0};
+		if(map) ConvertPropertyMap(&converted_attr, r, map, true);
 
 		/* Update the hash code with this entity, an edge is represented by its
 		 * relation, properties and nodes.
 		 * Note that unbounded nodes were already presented to the hash.
 		 * Incase node has its internal entity set, this means the node has been retrieved from the graph
 		 * i.e. bounded node. */
-		_IncrementalHashEntity(op->hash_state, e->relation, &converted_properties);
+		_IncrementalHashEntity(op->hash_state, e->relation, &converted_attr);
 		if(src_node->attributes != NULL) {
 			EntityID id = ENTITY_GET_ID(src_node);
 			void *data = &id;
@@ -188,7 +188,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		array_append(op->pending.created_edges, edge_ref);
 
 		/* Save properties to insert with node. */
-		array_append(op->pending.edge_properties, converted_properties);
+		array_append(op->pending.edge_properties, converted_attr);
 	}
 
 	// Finalize the hash value for all processed creations.

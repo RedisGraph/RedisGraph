@@ -35,3 +35,4 @@ void EvalEntityUpdates
 	const EntityUpdateEvalCtx *ctx,
 	bool allow_null
 );
+

@@ -4,16 +4,32 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include "RG.h"
 #include "resultset_statistics.h"
 
-bool ResultSetStat_IndicateModification(ResultSetStatistics stats) {
-	return (stats.labels_added > 0
-			|| stats.nodes_created > 0
-			|| stats.properties_set > 0
-			|| stats.relationships_created > 0
-			|| stats.nodes_deleted > 0
-			|| stats.relationships_deleted > 0
-			|| stats.indices_created > 0
-			|| stats.indices_deleted > 0);
+bool ResultSetStat_IndicateModification(ResultSetStatistics *stats) {
+	ASSERT(stats != NULL);
+
+	return (stats->labels_added > 0
+			|| stats->nodes_created > 0
+			|| stats->properties_set > 0
+			|| stats->relationships_created > 0
+			|| stats->nodes_deleted > 0
+			|| stats->relationships_deleted > 0
+			|| stats->indices_created > 0
+			|| stats->indices_deleted > 0);
+}
+
+void ResultSetStat_Clear(ResultSetStatistics *stats) {
+	ASSERT(stats != NULL);
+
+	stats->labels_added           =  0;
+	stats->nodes_deleted          =  0;
+	stats->nodes_created          =  0;
+	stats->properties_set         =  0;
+	stats->indices_created        =  STAT_NOT_SET;
+	stats->indices_deleted        =  STAT_NOT_SET;
+	stats->relationships_created  =  0;
+	stats->relationships_deleted  =  0;
 }
 

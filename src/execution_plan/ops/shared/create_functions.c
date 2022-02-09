@@ -26,7 +26,7 @@ static void _CommitNodesBlueprint
 	// create missing schemas
 	// this loop iterates over the CREATE pattern, e.g.
 	// CREATE (p:Person)
-	// As such we're not expecting a large number of iterations
+	// as such we're not expecting a large number of iterations
 	uint blueprint_node_count = array_len(pending->nodes_to_create);
 	for(uint i = 0; i < blueprint_node_count; i++) {
 		NodeCreateCtx *node_ctx = pending->nodes_to_create + i;
@@ -156,8 +156,8 @@ PendingCreations NewPendingCreationsContainer
 	pending.node_labels     = array_new(int *, 0);
 	pending.created_nodes   = array_new(Node *, 0);
 	pending.created_edges   = array_new(Edge *, 0);
-	pending.node_properties = array_new(AttributeSet, 0);
-	pending.edge_properties = array_new(AttributeSet, 0);
+	pending.node_attributes = array_new(AttributeSet, 0);
+	pending.edge_attributes = array_new(AttributeSet, 0);
 	pending.stats = NULL;
 
 	return pending;
@@ -225,7 +225,7 @@ void ConvertPropertyMap
 	uint property_count = array_len(map->keys);
 	for(int i = 0; i < property_count; i++) {
 		/* Note that AR_EXP_Evaluate may raise a run-time exception, in which case
-		 * the allocations in this function will be memory leaks.
+		 * the allocations in this function will leak.
 		 * For example, this occurs in the query:
 		 * CREATE (a {val: 2}), (b {val: a.val}) */
 		SIValue val = AR_EXP_Evaluate(map->values[i], r);
@@ -233,15 +233,15 @@ void ConvertPropertyMap
 			// This value is of an invalid type.
 			if(!SIValue_IsNull(val)) {
 				// If the value was a complex type, emit an exception.
-				AttributeSet_FreeProperties(attributes);
+				AttributeSet_FreeAttributes(attributes);
 				Error_InvalidPropertyValue();
 				ErrorCtx_RaiseRuntimeException(NULL);
 			}
 			/* The value was NULL. If this was prohibited in this context, raise an exception,
 			 * otherwise skip this value. */
 			if(fail_on_null) {
-				// Emit an error and exit.
-				AttributeSet_FreeProperties(attributes);
+				// emit an error and exit
+				AttributeSet_FreeAttributes(attributes);
 				ErrorCtx_RaiseRuntimeException("Cannot merge node using null property value");
 			}
 		}
@@ -254,18 +254,18 @@ void ConvertPropertyMap
 			if(res) {
 				// validation failed
 				SIValue_Free(val);
-				AttributeSet_FreeProperties(attributes);
+				AttributeSet_FreeAttributes(attributes);
 				Error_InvalidPropertyValue();
 				ErrorCtx_RaiseRuntimeException(NULL);
 			}
 		}
 
-		// Set the converted property.
+		// set the converted property
 		AttributeSet_AddProperty(attributes, map->keys[i], val, false);
 	}
 }
 
-// Free all data associated with a completed create operation.
+// free all data associated with a completed create operation
 void PendingCreationsFree
 (
 	PendingCreations *pending
@@ -307,7 +307,7 @@ void PendingCreationsFree
 	if(pending->node_properties) {
 		uint prop_count = array_len(pending->node_properties);
 		for(uint i = 0; i < prop_count; i ++) {
-			AttributeSet_FreeProperties(pending->node_properties + i);
+			AttributeSet_FreeAttributes(pending->node_properties + i);
 		}
 		array_free(pending->node_properties);
 		pending->node_properties = NULL;
@@ -317,9 +317,10 @@ void PendingCreationsFree
 	if(pending->edge_properties) {
 		uint prop_count = array_len(pending->edge_properties);
 		for(uint i = 0; i < prop_count; i ++) {
-			AttributeSet_FreeProperties(pending->edge_properties + i);
+			AttributeSet_FreeAttributes(pending->edge_properties + i);
 		}
 		array_free(pending->edge_properties);
 		pending->edge_properties = NULL;
 	}
 }
+

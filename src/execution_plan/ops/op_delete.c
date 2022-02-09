@@ -25,7 +25,7 @@ void _DeleteEntities(OpDelete *op) {
 	uint   edge_count             =  array_len(op->deleted_edges);
 
 	// nothing to delete, quickly return
-	if((node_count + edge_count) == 0) goto cleanup;
+	if((node_count + edge_count) == 0) return;
 
 	// removing duplicates
 	Node *nodes = op->deleted_nodes;
@@ -43,17 +43,17 @@ void _DeleteEntities(OpDelete *op) {
 	node_count = array_len(distinct_nodes);
 
 	// lock everything
-	QueryCtx_LockForCommit();
+	QueryCtx_LockForCommit(); {
+		for(uint i = 0; i < edge_count; i++) {
+			edge_deleted += DeleteEdge(op->gc, op->deleted_edges + i);
+		}
 
-	for(uint i = 0; i < edge_count; i++) {
-		edge_deleted += DeleteEdge(op->gc, op->deleted_edges + i);
+		for(uint i = 0; i < node_count; i++) {
+			implicit_edge_deleted += DeleteNode(op->gc, distinct_nodes + i);
+		}
 	}
-
-	for(uint i = 0; i < node_count; i++) {
-		implicit_edge_deleted += DeleteNode(op->gc, distinct_nodes + i);
-	}
-
-	array_free(distinct_nodes);
+	// release lock
+	QueryCtx_UnlockCommit(&op->op);
 
 	if(op->stats != NULL) {
 		op->stats->nodes_deleted          +=  node_count;
@@ -61,9 +61,7 @@ void _DeleteEntities(OpDelete *op) {
 		op->stats->relationships_deleted  +=  implicit_edge_deleted;
 	}
 
-cleanup:
-	// release lock, no harm in trying to release an unlocked lock
-	QueryCtx_UnlockCommit(&op->op);
+	array_free(distinct_nodes);
 }
 
 OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps) {

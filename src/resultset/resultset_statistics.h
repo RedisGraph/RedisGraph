@@ -22,5 +22,7 @@ typedef struct {
 } ResultSetStatistics;
 
 // Checks to see if resultset-statistics indicate that a modification was made
-bool ResultSetStat_IndicateModification(ResultSetStatistics stats);
+bool ResultSetStat_IndicateModification(ResultSetStatistics *stats);
 
+// Clear result-set statistics
+void ResultSetStat_Clear(ResultSetStatistics *stats);
