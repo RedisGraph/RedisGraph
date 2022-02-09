@@ -107,10 +107,12 @@ static void _collect_call_projections(
 ) {
 	uint yield_count = cypher_ast_call_nprojections(call_clause);
 	if(yield_count == 0) {
-		// If the procedure call is missing its yield part, include procedure outputs.
+		// if the procedure call is missing its yield part, include procedure outputs
 		const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
 		ProcedureCtx *proc = Proc_Get(proc_name);
-		ASSERT(proc);
+		// the procedure may not exist here, as we have not yet validated
+		// that its name refers to a valid procedure
+		if(proc == NULL) return;
 
 		uint output_count = Procedure_OutputCount(proc);
 		struct cypher_input_range range = { 0 };
@@ -197,7 +199,7 @@ static void replace_clause
 			scope_start, idx);
 	uint alias_count = array_len(aliases);
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
-	cypher_astnode_t *projections[alias_count];
+	cypher_astnode_t *projections[alias_count == 0 ? 1 : alias_count];
 
 	// convert aliases to expressions
 	for(uint i = 0; i < alias_count; i++) {
