@@ -39,12 +39,13 @@ help() {
 		DOCKER_HOST         Address of Docker server (default: localhost)
 		RLEC_PORT           Port of existing-env in RLEC container (default: 12000)
 
+		PLATFORM_MODE=1     Implies NOFAIL & COLLECT_LOGS into STATFILE
 		CLEAR_LOGS=0        Do not remove logs prior to running tests
 		COLLECT_LOGS=1      Collect logs into .tar file
-
-		RLTEST_ARGS=...     Extra RLTest arguments
 		NOFAIL=1            Do not fail on errors (always exit with 0)
 		STATFILE=file       Write test status (0|1) into `file`
+
+		RLTEST_ARGS=...     Extra RLTest arguments
 		V|VERBOSE=1         Print commands
 
 	END
@@ -166,6 +167,15 @@ OP=""
 [[ $NOP == 1 ]] && OP=echo
 
 [[ $V == 1 ]] && VERBOSE=1
+
+#----------------------------------------------------------------------------------------------
+
+if [[ $PLATFORM_MODE == 1 ]]; then
+	CLEAR_LOGS=0
+	COLLECT_LOGS=1
+	NOFAIL=1
+	STATFILE=$ROOT/bin/artifacts/tests/status
+fi
 
 #----------------------------------------------------------------------------------------------
 

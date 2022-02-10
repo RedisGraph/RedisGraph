@@ -35,7 +35,7 @@ ENV LC_ALL=en_US.UTF-8
 RUN make -j`nproc`
 
 {% if TEST == "1" %}
-RUN TEST='' make test COLLECT_LOGS=1 NOFAIL=1 STATFILE=bin/artifacts/tests/status
+RUN TEST='' make test PLATFORM_MODE=1
 {% endif %}
 
 {% if PACK == "1" %}

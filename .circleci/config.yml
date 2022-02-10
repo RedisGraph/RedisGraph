@@ -310,10 +310,14 @@ jobs:
     parameters:
       platform:
         type: string
-    docker:
-      - image: debian:bullseye
+    # docker:
+    #   - image: debian:bullseye
+    machine:
+      enabled: true
+      image: ubuntu-2004:202010-01
+      resource_class: large
     steps:
-      - platform-build-steps:
+      - vm-build-platforms-steps:
           platform: <<parameters.platform>>
 
   build-arm-platforms:
