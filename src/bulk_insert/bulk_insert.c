@@ -235,7 +235,7 @@ static int _BulkInsert_ProcessNodeFile
 			// skip invalid attribute values
 			if (!(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE))
 				continue;
-			AttributeSet_AddProperty(ge->attributes, prop_indices[i], value, false);
+			AttributeSet_Add(ge->attributes, prop_indices[i], value, false);
 		}
 	}
 
@@ -300,7 +300,7 @@ static int _BulkInsert_ProcessEdgeFile
 				continue;
 			}
 
-			AttributeSet_AddProperty(ge->attributes, prop_indices[i], value, false);
+			AttributeSet_Add(ge->attributes, prop_indices[i], value, false);
 		}
 	}
 

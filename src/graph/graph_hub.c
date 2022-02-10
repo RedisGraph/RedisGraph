@@ -119,16 +119,16 @@ static void _AddEdgeToIndices(GraphContext *gc, Edge *e) {
 static inline uint _AddProperties
 (
 	AttributeSet *e,
-	AttributeSet *props
+	AttributeSet *attr
 ) {
 	int failed_updates = 0;
-	for(int i = 0; i < props->prop_count; i++) {
-		EntityProperty *prop = props->properties + i;
-		bool updated = AttributeSet_AddProperty(e, prop->id, prop->value, false);
+	for(int i = 0; i < attr->attr_count; i++) {
+		Attribute *a = attr->attributes + i;
+		bool updated = AttributeSet_Add(e, a->id, a->value, false);
 		if(!updated) failed_updates++;
 	}
 
-	return props->prop_count - failed_updates;
+	return attr->attr_count - failed_updates;
 }
 
 uint CreateNode
@@ -268,10 +268,10 @@ static int _Update_Entity
 	SIValue new_value,
 	GraphEntityType entity_type
 ) {
-	if(attr_id == ATTRIBUTE_ALL) {
+	if(attr_id == ATTRIBUTE_ID_ALL) {
 		int prop_count = ENTITY_PROP_COUNT(ge);
 		for(int i = 0; i < prop_count; i++) {
-			EntityProperty *prop = ENTITY_PROPS(ge) + i;
+			Attribute *prop = ENTITY_PROPS(ge) + i;
 			// add entity update operation to undo log
 			UndoOp op;
 			SIValue clone = SI_CloneValue(prop->value);
@@ -279,7 +279,7 @@ static int _Update_Entity
 			_add_undo_op(&op);
 		}
 	} else {
-		SIValue *orig_value = AttributeSet_GetProperty(ge->attributes, attr_id);
+		SIValue *orig_value = AttributeSet_Get(ge->attributes, attr_id);
 		// add entity update operation to undo log
 		UndoOp op;
 		SIValue clone = SI_CloneValue(*orig_value);
@@ -294,16 +294,16 @@ int UpdateEntity
 (
 	GraphContext *gc,
 	GraphEntity *ge,
-	AttributeSet *props,        // attribute to update
+	AttributeSet *attr,        // attribute to update
 	GraphEntityType entity_type
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(ge != NULL);
 
 	int updates = 0;
-	uint prop_count = props->prop_count;
-	for (uint i = 0; i < prop_count; i++) {
-		EntityProperty *prop = props->properties + i;
+	uint attr_count = attr->attr_count;
+	for (uint i = 0; i < attr_count; i++) {
+		Attribute *prop = attr->attributes + i;
 		updates += _Update_Entity(gc, ge, prop->id, prop->value, entity_type);
 	}
 

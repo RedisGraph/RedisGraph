@@ -18,7 +18,7 @@ static void CreateFree(OpBase *opBase);
 OpBase *NewCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
 	OpCreate *op = rm_calloc(1, sizeof(OpCreate));
 	op->records = NULL;
-	op->pending = NewPendingCreationsContainer(nodes, edges); // Prepare all creation variables.
+	NewPendingCreationsContainer(&op->pending, nodes, edges); // Prepare all creation variables.
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CREATE, "Create", NULL, CreateConsume,
 				NULL, NULL, CreateClone, CreateFree, true, plan);
@@ -66,8 +66,8 @@ static void _CreateNodes(OpCreate *op, Record r) {
 		// save node for later insertion
 		array_append(op->pending.created_nodes, node_ref);
 
-		// save properties to insert with node
-		array_append(op->pending.node_properties, converted_properties);
+		// save attributes to insert with node
+		array_append(op->pending.node_attributes, converted_properties);
 
 		// save labels to assigned to node
 		array_append(op->pending.node_labels, n->labelsId);
@@ -104,8 +104,8 @@ static void _CreateEdges(OpCreate *op, Record r) {
 		// save edge for later insertion
 		array_append(op->pending.created_edges, edge_ref);
 
-		// save properties to insert with node
-		array_append(op->pending.edge_properties, converted_properties);
+		// save attributes to insert with node
+		array_append(op->pending.edge_attributes, converted_properties);
 	}
 }
 

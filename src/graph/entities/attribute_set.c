@@ -4,6 +4,8 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include <limits.h>
+
 #include "attribute_set.h"
 #include "../../RG.h"
 #include "../../errors.h"
@@ -37,7 +39,7 @@ static bool _AttributeSet_Remove
 			} else {
 				// overwrite deleted attribute with the last
 				// attribute and shrink attributes bag
-				set->attributes[i] = set->attributes[prop_count - 1];
+				set->attributes[i] = set->attributes[attr_count - 1];
 				set->attributes = rm_realloc(set->attributes,
 					sizeof(Attribute) * set->attr_count);
 			}
@@ -64,7 +66,7 @@ int AttributeSet_Clear
 		// free all allocated properties
 		SIValue_Free(set->attributes[i].value);
 	}
-	e->attr_count = 0;
+	set->attr_count = 0;
 
 	// free and NULL-set the attribute bag
 	rm_free(set->attributes);
@@ -125,7 +127,7 @@ SIValue *AttributeSet_Get
 
 	for(int i = 0; i < set->attr_count; i++) {
 		Attribute *attr = set->attributes + i;
-		if(attr_id == set->attr->id) {
+		if(attr_id == attr->id) {
 			// note, unsafe as attribute-set  can get reallocated
 			return &attr->value;
 		}

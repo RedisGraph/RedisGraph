@@ -27,16 +27,16 @@ static void _IncrementalHashEntity(XXH64_state_t *state, const char *label,
 
 	if(attr) {
 		// update hash with attribute count
-		res = XXH64_update(state, &attr->prop_count, sizeof(attr->prop_count));
+		res = XXH64_update(state, &attr->attr_count, sizeof(attr->attr_count));
 		ASSERT(res != XXH_ERROR);
-		for(int i = 0; i < attr->prop_count; i++) {
-			EntityProperty *prop = attr->properties + i;
+		for(int i = 0; i < attr->attr_count; i++) {
+			Attribute *a = attr->attributes + i;
 			// update hash with attribute ID
-			res = XXH64_update(state, &prop->id, sizeof(prop->id));
+			res = XXH64_update(state, &a->id, sizeof(a->id));
 			ASSERT(res != XXH_ERROR);
 
 			// update hash with the hashval of the associated SIValue
-			XXH64_hash_t value_hash = SIValue_HashCode(prop->value);
+			XXH64_hash_t value_hash = SIValue_HashCode(a->value);
 			res = XXH64_update(state, &value_hash, sizeof(value_hash));
 			ASSERT(res != XXH_ERROR);
 		}
@@ -48,15 +48,15 @@ static void _RollbackPendingCreations(OpMergeCreate *op) {
 	uint nodes_to_create_count = array_len(op->pending.nodes_to_create);
 	for(uint i = 0; i < nodes_to_create_count; i++) {
 		array_pop(op->pending.created_nodes);
-		AttributeSet props = array_pop(op->pending.node_properties);
-		AttributeSet_FreeProperties(&props);
+		AttributeSet props = array_pop(op->pending.node_attributes);
+		AttributeSet_FreeAttributes(&props);
 	}
 
 	uint edges_to_create_count = array_len(op->pending.edges_to_create);
 	for(uint i = 0; i < edges_to_create_count; i++) {
 		array_pop(op->pending.created_edges);
-		AttributeSet props = array_pop(op->pending.edge_properties);
-		AttributeSet_FreeProperties(&props);
+		AttributeSet props = array_pop(op->pending.edge_attributes);
+		AttributeSet_FreeAttributes(&props);
 	}
 }
 
@@ -65,7 +65,7 @@ OpBase *NewMergeCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCr
 	op->unique_entities = raxNew();       // Create a map to unique pending creations.
 	op->hash_state = XXH64_createState(); // Create a hash state.
 
-	op->pending = NewPendingCreationsContainer(nodes, edges); // Prepare all creation variables.
+	NewPendingCreationsContainer(&op->pending, nodes, edges); // Prepare all creation variables.
 	op->handoff_mode = false;
 	op->records = array_new(Record, 32);
 
@@ -129,8 +129,8 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		// Save node for later insertion
 		array_append(op->pending.created_nodes, node_ref);
 
-		// Save properties to insert with node
-		array_append(op->pending.node_properties, converted_attr);
+		// Save attributes to insert with node
+		array_append(op->pending.node_attributes, converted_attr);
 
 		// save labels to assigned to node
 		array_append(op->pending.node_labels, n->labelsId);
@@ -187,8 +187,8 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		/* Save edge for later insertion. */
 		array_append(op->pending.created_edges, edge_ref);
 
-		/* Save properties to insert with node. */
-		array_append(op->pending.edge_properties, converted_attr);
+		/* Save attributes to insert with node. */
+		array_append(op->pending.edge_attributes, converted_attr);
 	}
 
 	// Finalize the hash value for all processed creations.

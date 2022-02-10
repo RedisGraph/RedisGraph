@@ -24,8 +24,9 @@ typedef struct {
 } PendingCreations;
 
 // initialize all variables for storing pending creations
-PendingCreations NewPendingCreationsContainer
+void NewPendingCreationsContainer
 (
+	PendingCreations *pending,
 	NodeCreateCtx *nodes,
 	EdgeCreateCtx *edges
 );

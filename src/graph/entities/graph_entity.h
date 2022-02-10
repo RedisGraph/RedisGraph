@@ -14,11 +14,11 @@
 #define INVALID_ENTITY_ID -1l
 
 #define ENTITY_GET_ID(graphEntity) (graphEntity)->id
-#define ENTITY_PROP_COUNT(graphEntity) ((graphEntity)->attributes->prop_count)
-#define ENTITY_PROPS(graphEntity) ((graphEntity)->attributes->properties)
+#define ENTITY_PROP_COUNT(graphEntity) ((graphEntity)->attributes->attr_count)
+#define ENTITY_PROPS(graphEntity) ((graphEntity)->attributes->attributes)
 
 // Defined in graph_entity.c
-extern SIValue *PROPERTY_NOTFOUND;
+extern SIValue *ATTRIBUTE_NOTFOUND;
 
 typedef GrB_Index EdgeID;
 typedef GrB_Index NodeID;

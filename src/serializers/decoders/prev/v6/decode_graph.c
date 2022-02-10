@@ -62,8 +62,8 @@ static void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e)
 		char *attr_name = RedisModule_LoadStringBuffer(rdb, NULL);
 		SIValue attr_value = _RdbLoadSIValue(rdb);
 		Attribute_ID attr_id = GraphContext_GetAttributeID(gc, attr_name);
-		ASSERT(attr_id != ATTRIBUTE_NOTFOUND);
-		AttributeSet_AddProperty(e->attributes, attr_id, attr_value, false);
+		ASSERT(attr_id != ATTRIBUTE_ID_NONE);
+		AttributeSet_Add(e->attributes, attr_id, attr_value, false);
 		SIValue_Free(attr_value);
 		RedisModule_Free(attr_name);
 	}

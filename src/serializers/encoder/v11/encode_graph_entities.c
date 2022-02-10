@@ -77,12 +77,12 @@ static void _RdbSaveEntity
 	// #attributes N
 	// (name, value type, value) X N 
 
-	RedisModule_SaveUnsigned(rdb, e->prop_count);
+	RedisModule_SaveUnsigned(rdb, e->attr_count);
 
-	for(int i = 0; i < e->prop_count; i++) {
-		EntityProperty attr = e->properties[i];
-		RedisModule_SaveUnsigned(rdb, attr.id);
-		_RdbSaveSIValue(rdb, &attr.value);
+	for(int i = 0; i < e->attr_count; i++) {
+		Attribute *attr = e->attributes + i;
+		RedisModule_SaveUnsigned(rdb, attr->id);
+		_RdbSaveSIValue(rdb, &attr->value);
 	}
 }
 

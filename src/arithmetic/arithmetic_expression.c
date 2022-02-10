@@ -188,11 +188,11 @@ AR_ExpNode *AR_EXP_NewAttributeAccessNode(AR_ExpNode *entity,
 	// the property using its string representation
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	SIValue prop_idx = SI_LongVal(ATTRIBUTE_NOTFOUND);
+	SIValue prop_idx = SI_LongVal(ATTRIBUTE_ID_NONE);
 	SIValue prop_name = SI_ConstStringVal((char *)attr);
 	Attribute_ID idx = GraphContext_GetAttributeID(gc, attr);
 
-	if(idx != ATTRIBUTE_NOTFOUND) prop_idx = SI_LongVal(idx);
+	if(idx != ATTRIBUTE_ID_NONE) prop_idx = SI_LongVal(idx);
 
 	// entity is an expression which should be evaluated to a graph entity
 	// attr is the name of the attribute we want to extract from entity

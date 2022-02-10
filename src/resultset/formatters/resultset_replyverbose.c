@@ -68,12 +68,12 @@ static void _ResultSet_VerboseReplyWithProperties(RedisModuleCtx *ctx, GraphCont
 	// Iterate over all properties stored on entity
 	for(int i = 0; i < prop_count; i ++) {
 		RedisModule_ReplyWithArray(ctx, 2);
-		EntityProperty prop = ENTITY_PROPS(e)[i];
+		Attribute *prop = ENTITY_PROPS(e) +i;
 		// Emit the actual string
-		const char *prop_str = GraphContext_GetAttributeString(gc, prop.id);
+		const char *prop_str = GraphContext_GetAttributeString(gc, prop->id);
 		RedisModule_ReplyWithStringBuffer(ctx, prop_str, strlen(prop_str));
 		// Emit the value
-		_ResultSet_VerboseReplyWithSIValue(ctx, gc, prop.value);
+		_ResultSet_VerboseReplyWithSIValue(ctx, gc, prop->value);
 	}
 }
 

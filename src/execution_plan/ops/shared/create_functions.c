@@ -71,7 +71,7 @@ static void _CommitNodes
 		uint label_count = array_len(labels);
 
 		// introduce node into graph
-		pending->stats->properties_set += CreateNode(gc, n, labels, label_count, pending->node_properties + i);
+		pending->stats->properties_set += CreateNode(gc, n, labels, label_count, pending->node_attributes + i);
 	}
 }
 
@@ -140,27 +140,27 @@ static void _CommitEdges
 		ASSERT(s != NULL);
 		int relation_id = Schema_GetID(s);
 
-		pending->stats->properties_set += CreateEdge(gc, e, srcNodeID, destNodeID, relation_id, pending->edge_properties + i);
+		pending->stats->properties_set += CreateEdge(gc, e, srcNodeID, destNodeID, relation_id, pending->edge_attributes + i);
 	}
 }
 
 // Initialize all variables for storing pending creations.
-PendingCreations NewPendingCreationsContainer
+void NewPendingCreationsContainer
 (
+	PendingCreations *pending,
 	NodeCreateCtx *nodes,
 	EdgeCreateCtx *edges
 ) {
-	PendingCreations pending;
-	pending.nodes_to_create = nodes;
-	pending.edges_to_create = edges;
-	pending.node_labels     = array_new(int *, 0);
-	pending.created_nodes   = array_new(Node *, 0);
-	pending.created_edges   = array_new(Edge *, 0);
-	pending.node_attributes = array_new(AttributeSet, 0);
-	pending.edge_attributes = array_new(AttributeSet, 0);
-	pending.stats = NULL;
+	ASSERT(pending != NULL);
 
-	return pending;
+	pending->nodes_to_create = nodes;
+	pending->edges_to_create = edges;
+	pending->node_labels     = array_new(int *, 0);
+	pending->created_nodes   = array_new(Node *, 0);
+	pending->created_edges   = array_new(Edge *, 0);
+	pending->node_attributes = array_new(AttributeSet, 0);
+	pending->edge_attributes = array_new(AttributeSet, 0);
+	pending->stats = NULL;
 }
 
 // Lock the graph and commit all changes introduced by the operation.
@@ -260,8 +260,8 @@ void ConvertPropertyMap
 			}
 		}
 
-		// set the converted property
-		AttributeSet_AddProperty(attributes, map->keys[i], val, false);
+		// set the converted attribute
+		AttributeSet_Add(attributes, map->keys[i], val, false);
 	}
 }
 
@@ -303,24 +303,23 @@ void PendingCreationsFree
 		pending->created_edges = NULL;
 	}
 
-	// Free all graph-committed properties associated with nodes.
-	if(pending->node_properties) {
-		uint prop_count = array_len(pending->node_properties);
+	// Free all graph-committed attributes associated with nodes.
+	if(pending->node_attributes) {
+		uint prop_count = array_len(pending->node_attributes);
 		for(uint i = 0; i < prop_count; i ++) {
-			AttributeSet_FreeAttributes(pending->node_properties + i);
+			AttributeSet_FreeAttributes(pending->node_attributes + i);
 		}
-		array_free(pending->node_properties);
-		pending->node_properties = NULL;
+		array_free(pending->node_attributes);
+		pending->node_attributes = NULL;
 	}
 
-	// Free all graph-committed properties associated with edges.
-	if(pending->edge_properties) {
-		uint prop_count = array_len(pending->edge_properties);
+	// Free all graph-committed attributes associated with edges.
+	if(pending->edge_attributes) {
+		uint prop_count = array_len(pending->edge_attributes);
 		for(uint i = 0; i < prop_count; i ++) {
-			AttributeSet_FreeAttributes(pending->edge_properties + i);
+			AttributeSet_FreeAttributes(pending->edge_attributes + i);
 		}
-		array_free(pending->edge_properties);
-		pending->edge_properties = NULL;
+		array_free(pending->edge_attributes);
+		pending->edge_attributes = NULL;
 	}
 }
-

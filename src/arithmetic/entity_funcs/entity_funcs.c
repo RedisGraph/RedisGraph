@@ -211,13 +211,13 @@ SIValue AR_PROPERTY(SIValue *argv, int argc) {
 		Attribute_ID prop_idx     = argv[2].longval;
 
 		// We have the property string, attempt to look up the index now.
-		if(prop_idx == ATTRIBUTE_NOTFOUND) {
+		if(prop_idx == ATTRIBUTE_ID_NONE) {
 			GraphContext *gc = QueryCtx_GetGraphCtx();
 			prop_idx = GraphContext_GetAttributeID(gc, prop_name);
 		}
 
 		// Retrieve the property.
-		SIValue *value = AttributeSet_GetProperty(graph_entity->attributes, prop_idx);
+		SIValue *value = AttributeSet_Get(graph_entity->attributes, prop_idx);
 		return SI_ConstValue(value);
 	} else {
 		// retrieve map key

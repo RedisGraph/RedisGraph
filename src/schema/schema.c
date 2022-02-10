@@ -162,7 +162,7 @@ static int _Schema_RemoveExactMatchIndex
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
-	if(attribute_id == ATTRIBUTE_NOTFOUND) return INDEX_FAIL;
+	if(attribute_id == ATTRIBUTE_ID_NONE) return INDEX_FAIL;
 
 	Index *idx = Schema_GetIndex(s, &attribute_id, IDX_EXACT_MATCH);
 	if(idx == NULL) return INDEX_FAIL;

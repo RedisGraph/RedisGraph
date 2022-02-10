@@ -323,7 +323,7 @@ static Record MergeConsume(OpBase *opBase) {
 	uint pending_updates_count = array_len(op->node_pending_updates);
 	for(uint i = 0; i < pending_updates_count; i++) {
 		PendingUpdateCtx *pending_update = op->node_pending_updates + i;
-		AttributeSet_FreeProperties(&pending_update->attributes);
+		AttributeSet_FreeAttributes(&pending_update->attributes);
 	}
 	array_free(op->node_pending_updates);
 	op->node_pending_updates = NULL;
@@ -332,7 +332,7 @@ static Record MergeConsume(OpBase *opBase) {
 	pending_updates_count = array_len(op->edge_pending_updates);
 	for(uint i = 0; i < pending_updates_count; i++) {
 		PendingUpdateCtx *pending_update = op->edge_pending_updates + i;
-		AttributeSet_FreeProperties(&pending_update->attributes);
+		AttributeSet_FreeAttributes(&pending_update->attributes);
 	}
 	array_free(op->edge_pending_updates);
 	op->edge_pending_updates = NULL;
@@ -376,7 +376,7 @@ static void MergeFree(OpBase *opBase) {
 		uint pending_updates_count = array_len(op->node_pending_updates);
 		for(uint i = 0; i < pending_updates_count; i++) {
 			PendingUpdateCtx *pending_update = op->node_pending_updates + i;
-			AttributeSet_FreeProperties(&pending_update->attributes);
+			AttributeSet_FreeAttributes(&pending_update->attributes);
 		}
 		array_free(op->node_pending_updates);
 		op->node_pending_updates  =  NULL;
@@ -386,7 +386,7 @@ static void MergeFree(OpBase *opBase) {
 		uint pending_updates_count = array_len(op->edge_pending_updates);
 		for(uint i = 0; i < pending_updates_count; i++) {
 			PendingUpdateCtx *pending_update = op->edge_pending_updates + i;
-			AttributeSet_FreeProperties(&pending_update->attributes);
+			AttributeSet_FreeAttributes(&pending_update->attributes);
 		}
 		array_free(op->edge_pending_updates);
 		op->edge_pending_updates  =  NULL;

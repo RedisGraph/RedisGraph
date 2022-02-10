@@ -104,11 +104,11 @@ static void _ResultSet_CompactReplyWithProperties(RedisModuleCtx *ctx, GraphCont
 	for(int i = 0; i < prop_count; i ++) {
 		// Compact replies include the value's type; verbose replies do not
 		RedisModule_ReplyWithArray(ctx, 3);
-		EntityProperty prop = ENTITY_PROPS(e)[i];
+		Attribute *prop = ENTITY_PROPS(e) +i;
 		// Emit the string index
-		RedisModule_ReplyWithLongLong(ctx, prop.id);
+		RedisModule_ReplyWithLongLong(ctx, prop->id);
 		// Emit the value
-		_ResultSet_CompactReplyWithSIValue(ctx, gc, prop.value);
+		_ResultSet_CompactReplyWithSIValue(ctx, gc, prop->value);
 	}
 }
 

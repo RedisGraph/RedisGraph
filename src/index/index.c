@@ -54,8 +54,8 @@ RSDoc *Index_IndexGraphEntity
 		for(uint i = 0; i < field_count; i++) {
 			field = idx->fields + i;
 			const char *field_name = field->name;
-			v = AttributeSet_GetProperty(e->attributes, field->id);
-			if(v == PROPERTY_NOTFOUND) continue;
+			v = AttributeSet_Get(e->attributes, field->id);
+			if(v == ATTRIBUTE_NOTFOUND) continue;
 
 			SIType t = SI_TYPE(*v);
 
@@ -70,8 +70,8 @@ RSDoc *Index_IndexGraphEntity
 		for(uint i = 0; i < field_count; i++) {
 			field = idx->fields + i;
 			const char *field_name = field->name;
-			v = AttributeSet_GetProperty(e->attributes, field->id);
-			if(v == PROPERTY_NOTFOUND) continue;
+			v = AttributeSet_Get(e->attributes, field->id);
+			if(v == ATTRIBUTE_NOTFOUND) continue;
 
 			SIType t = SI_TYPE(*v);
 
@@ -203,7 +203,7 @@ void Index_RemoveField
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
-	ASSERT(attribute_id != ATTRIBUTE_NOTFOUND);
+	ASSERT(attribute_id != ATTRIBUTE_ID_NONE);
 
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
@@ -332,7 +332,7 @@ bool Index_ContainsAttribute
 ) {
 	ASSERT(idx != NULL);
 
-	if(attribute_id == ATTRIBUTE_NOTFOUND) return false;
+	if(attribute_id == ATTRIBUTE_ID_NONE) return false;
 	
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {

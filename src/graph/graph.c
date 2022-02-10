@@ -377,7 +377,7 @@ Graph *Graph_New
 	size_t edge_cap
 ) {
 
-	fpDestructor cb = (fpDestructor)AttributeSet_FreeProperties;
+	fpDestructor cb = (fpDestructor)AttributeSet_FreeAttributes;
 	Graph *g = rm_calloc(1, sizeof(Graph));
 
 	g->nodes      =  DataBlock_New(node_cap, node_cap, sizeof(AttributeSet), cb);
@@ -629,8 +629,8 @@ void Graph_CreateNode
 
 	n->id           =  id;
 	n->attributes   =  en;
-	en->prop_count  =  0;
-	en->properties  =  NULL;
+	en->attr_count  =  0;
+	en->attributes  =  NULL;
 
 	if(label_count > 0) _Graph_LabelNode(g, n->id, labels, label_count);
 }
@@ -687,8 +687,8 @@ void Graph_CreateEdge
 	e->srcNodeID    =  src;
 	e->destNodeID   =  dest;
 	e->relationID   =  r;
-	en->prop_count  =  0;
-	en->properties  =  NULL;
+	en->attr_count  =  0;
+	en->attributes  =  NULL;
 
 	Graph_FormConnection(g, src, dest, id, r);
 }
@@ -923,22 +923,22 @@ int Graph_UpdateEntity
 
 	int res = 0;
 
-	// handle the case in which we are deleting all properties
-	if(attr_id == ATTRIBUTE_ALL) {
-		return AttributeSet_ClearProperties(ge->attributes);
+	// handle the case in which we are deleting all attributes
+	if(attr_id == ATTRIBUTE_ID_ALL) {
+		return AttributeSet_Clear(ge->attributes);
 	}
 
-	// try to get current property value
-	SIValue *old_value = AttributeSet_GetProperty(ge->attributes, attr_id);
+	// try to get current attribute value
+	SIValue *old_value = AttributeSet_Get(ge->attributes, attr_id);
 
-	if(old_value == PROPERTY_NOTFOUND) {
-		// adding a new property; do nothing if its value is NULL
+	if(old_value == ATTRIBUTE_NOTFOUND) {
+		// adding a new attribute; do nothing if its value is NULL
 		if(SI_TYPE(new_value) != T_NULL) {
-			res = AttributeSet_AddProperty(ge->attributes, attr_id, new_value, false);
+			res = AttributeSet_Add(ge->attributes, attr_id, new_value, false);
 		}
 	} else {
-		// update property
-		res = AttributeSet_SetProperty(ge->attributes, attr_id, new_value);
+		// update attribute
+		res = AttributeSet_Update(ge->attributes, attr_id, new_value);
 	}
 
 	return res;
@@ -1106,13 +1106,13 @@ void Graph_Free(Graph *g) {
 	// is being removed we won't be reusing items
 	it = Graph_ScanNodes(g);
 	while((en = (AttributeSet *)DataBlockIterator_Next(it, NULL)) != NULL) {
-		AttributeSet_FreeProperties(en);
+		AttributeSet_FreeAttributes(en);
 	}
 	DataBlockIterator_Free(it);
 
 	it = Graph_ScanEdges(g);
 	while((en = DataBlockIterator_Next(it, NULL)) != NULL) {
-		AttributeSet_FreeProperties(en);
+		AttributeSet_FreeAttributes(en);
 	}
 	DataBlockIterator_Free(it);
 
