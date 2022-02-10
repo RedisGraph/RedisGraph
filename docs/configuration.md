@@ -24,6 +24,8 @@ $ redis-server --loadmodule ./redisgraph.so OPT1 OPT2
 
 The number of threads in RedisGraph's thread pool. This is equivalent to the maximum number of queries that can be processed concurrently.
 
+`THREAD_COUNT` can only be set on module load.
+
 ### Default
 
 `THREAD_COUNT` defaults to the system's hardware threads (logical cores).
@@ -39,6 +41,8 @@ $ redis-server --loadmodule ./redisgraph.so THREAD_COUNT 4
 ## CACHE_SIZE
 
 The max number of queries for RedisGraph to cache. When a new query is encountered and the cache is full, meaning the cache has reached the size of `CACHE_SIZE`, it will evict the least recently used (LRU) entry.
+
+`CACHE_SIZE` can only be set on module load.
 
 ### Default
 
@@ -56,6 +60,8 @@ $ redis-server --loadmodule ./redisgraph.so CACHE_SIZE 10
 
 The maximum number of threads that OpenMP may use for computation per query. These threads are used for parallelizing GraphBLAS computations, so may be considered to control concurrency within the execution of individual queries.
 
+`OMP_THREAD_COUNT` can only be set on module load.
+
 ### Default
 
 `OMP_THREAD_COUNT` is defined by GraphBLAS by default.
@@ -72,7 +78,7 @@ $ redis-server --loadmodule ./redisgraph.so OMP_THREAD_COUNT 1
 
 Setting the maximum number of queued queries allows the server to reject incoming queries with the error message `Max pending queries exceeded`. This reduces the memory overhead of pending queries on an overloaded server and avoids congestion when the server processes its backlog of queries.
 
-This configuration can be set when the module loads or at runtime.
+`MAX_QUEUED_QUERIES` can be set on module load or at runtime using `GRAPH.CONFIG SET`.
 
 ### Default
 
@@ -92,6 +98,8 @@ $ redis-cli GRAPH.CONFIG SET MAX_QUEUED_QUERIES 500
 
 Timeout is a flag that specifies the maximum runtime for read queries in milliseconds. This configuration will not be respected by write queries, to avoid leaving the graph in an inconsistent state.
 
+`TIMEOUT` can be set on module load or at runtime using `GRAPH.CONFIG SET`.
+
 ### Default
 
 `TIMEOUT` is off by default (config value of `0`).
@@ -104,13 +112,41 @@ $ redis-server --loadmodule ./redisgraph.so TIMEOUT 1000
 
 ---
 
+---
+
+## RESULTSET_SIZE
+
+Result set size is a limit on the number of records that should be returned by any query. This can be a valuable safeguard against incurring a heavy IO load while running queries with unknown results.
+
+`RESULTSET_SIZE` can be set on module load or at runtime using `GRAPH.CONFIG SET`.
+
+### Default
+
+`RESULTSET_SIZE` is unlimited by default (negative config value).
+
+### Example
+
+```
+127.0.0.1:6379> GRAPH.CONFIG SET RESULTSET_SIZE 3
+OK
+127.0.0.1:6379> GRAPH.QUERY G "UNWIND range(1, 5) AS x RETURN x"
+1) 1) "x"
+2) 1) 1) (integer) 1
+   2) 1) (integer) 2
+   3) 1) (integer) 3
+3) 1) "Cached execution: 0"
+   2) "Query internal execution time: 0.445790 milliseconds"
+```
+
+---
+
 ## QUERY_MEM_CAPACITY
 
 Setting the memory capacity of a query allows the server to kill queries that are consuming too much memory and return with the error message `Query's mem consumption exceeded capacity`. This helps to avoid scenarios when the server becomes unresponsive due to an unbounded query exhausting system resources.
 
 The configuration argument is the maximum number of bytes that can be allocated by any single query.
 
-This configuration can be set when the module loads or at runtime.
+`QUERY_MEM_CAPACITY` can be set on module load or at runtime using `GRAPH.CONFIG SET`.
 
 ### Default
 
@@ -136,7 +172,7 @@ Conversely, increasing it might improve performance for write-heavy workloads bu
 
 If the passed argument was not a power of 2, it will be rounded to the next-greatest power of 2 to improve memory alignment.
 
-This configuration can only be set when the module loads.
+`NODE_CREATION_BUFFER` can only be set on module load.
 
 ### Default
 
