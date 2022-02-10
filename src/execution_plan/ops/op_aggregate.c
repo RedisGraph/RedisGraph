@@ -165,7 +165,10 @@ static void _aggregateRecord(OpAggregate *op, Record r) {
 }
 
 // returns a record populated with group data
-static Record _handoff(OpAggregate *op) {
+static Record _handoff
+(
+	OpAggregate *op
+) {
 	Group *group;
 	if(!CacheGroupIterNext(op->group_iter, &group)) return NULL;
 
@@ -228,14 +231,17 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should
 	return (OpBase *)op;
 }
 
-static Record AggregateConsume(OpBase *opBase) {
+static Record AggregateConsume
+(
+	OpBase *opBase
+) {
 	OpAggregate *op = (OpAggregate *)opBase;
 	if(op->group_iter) return _handoff(op);
 
 	Record r;
 	if(op->op.childCount == 0) {
-		/* RETURN max (1)
-		 * Create a 'fake' record. */
+		// RETURN max (1)
+		// create a 'fake' record
 		r = OpBase_CreateRecord(opBase);
 		_aggregateRecord(op, r);
 	} else {
@@ -243,7 +249,21 @@ static Record AggregateConsume(OpBase *opBase) {
 		while((r = OpBase_Consume(child))) _aggregateRecord(op, r);
 	}
 
+	// did we processed any records?
+	// does aggregation contains keys?
+	// e.g.
+	// MATCH (n:N) WHERE n.noneExisting = 2 RETURN count(n)
+	if(raxSize(op->groups) == 0 && array_len(op->key_exps) == 0) {
+		// no data was processed and aggregation doesn't have a key
+		// in this case we want to return aggregation default value
+		// aggregate on an empty record
+		r = OpBase_CreateRecord(opBase);
+		_aggregateRecord(op, r);
+	}
+
+	// create group iterator
 	op->group_iter = CacheGroupIter(op->groups);
+
 	return _handoff(op);
 }
 

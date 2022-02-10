@@ -116,7 +116,7 @@ void AvgFinalize(void *ctx_ptr) {
 			// used traditional algorithm, divide total by count
 			Aggregate_SetResult(ctx, SI_DoubleVal(avg_ctx->total / avg_ctx->count));
 		}
-	} else Aggregate_SetResult(ctx, SI_DoubleVal(0));
+	} else Aggregate_SetResult(ctx, SI_NullVal());
 }
 
 
