@@ -1,17 +1,17 @@
 import redis
 from RLTest import Env
 from redisgraph import Graph
-from base import FlowTestsBase
 
+GRAPH_ID = "starProjection"
 redis_graph = None
 
-class testStarProjections(FlowTestsBase):
+class testStarProjections():
 
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph("G", redis_con)
+        redis_graph = Graph(GRAPH_ID, redis_con)
 
     # verify that star projections in RETURN clauses perform as
     # expected with all clause modifiers
@@ -73,3 +73,4 @@ class testStarProjections(FlowTestsBase):
                     [3],
                     [4]]
         self.env.assertEqual(actual_result.result_set, expected)
+
