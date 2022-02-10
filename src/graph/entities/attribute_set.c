@@ -103,7 +103,7 @@ bool AttributeSet_Add
 			sizeof(Attribute) * set->attr_count);
 	}
 
-	Attribute *attr = set->attributes + set->attr_count;
+	Attribute *attr = set->attributes + set->attr_count - 1;
 	attr->id = attr_id;
 	attr->value = SI_CloneValue(value);
 
