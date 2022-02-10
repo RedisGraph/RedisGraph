@@ -561,3 +561,12 @@ class testQueryValidationFlow(FlowTestsBase):
             except redis.exceptions.ResponseError as e:
                 pass
 
+    def test38_backtick_escaping(self):
+        # Strings interpolated in backticks should be able to include special characters
+        queries = ["WITH 'str' AS `backtick:string` RETURN `backtick:string`",
+                   "CYPHER `backtick:string`='str' RETURN $`backtick:string`"]
+
+        expected_result = [['str']]
+        for q in queries:
+            actual_result = redis_graph.query(q)
+            self.env.assertEquals(actual_result.result_set, expected_result)

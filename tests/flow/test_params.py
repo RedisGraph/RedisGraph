@@ -21,7 +21,7 @@ class testParams(FlowTestsBase):
 
     def setUp(self):
         self.env.flush()
-    
+
     def test_simple_params(self):
         params = [1, 2.3, -1, -2.3, "str", True, False, None, [0, 1, 2]]
         query = "RETURN $param"
@@ -63,7 +63,7 @@ class testParams(FlowTestsBase):
         params = {'param': 1}
         query = "RETURN $param + 1"
         expected_results = [[2]]
-            
+
         query_info = QueryInfo(query = query, description="Tests expression on param", expected_result = expected_results)
         self._assert_resultset_equals_expected(redis_graph.query(query, params), query_info)
 
@@ -79,7 +79,7 @@ class testParams(FlowTestsBase):
         params = {'name': 'a'}
         query = "MATCH (n :Person {name:$name}) RETURN n"
         expected_results = [[p0]]
-            
+
         query_info = QueryInfo(query = query, description="Tests expression on param", expected_result = expected_results)
         self._assert_resultset_equals_expected(redis_graph.query(query, params), query_info)
 
@@ -87,7 +87,7 @@ class testParams(FlowTestsBase):
         params = {'skip': 1, 'limit': 1}
         query = "UNWIND [1,2,3] AS X RETURN X SKIP $skip LIMIT $limit"
         expected_results = [[2]]
-            
+
         query_info = QueryInfo(query = query, description="Tests skip limit as params", expected_result = expected_results)
         self._assert_resultset_equals_expected(redis_graph.query(query, params), query_info)
 
@@ -149,3 +149,9 @@ class testParams(FlowTestsBase):
         plan = redis_graph.execution_plan(query, params=params)
         self.env.assertIn('NodeByIdSeek', plan)
 
+    def test_escaped_parameter_name(self):
+        params = {'`escaped:param`': 5}
+        query = "RETURN $`escaped:param`"
+        actual_result = redis_graph.query(query, params)
+        expected_result = [[5]]
+        self.env.assertEqual(actual_result.result_set, expected_result)
