@@ -257,7 +257,16 @@ static Record AggregateConsume
 		// no data was processed and aggregation doesn't have a key
 		// in this case we want to return aggregation default value
 		// aggregate on an empty record
-		r = OpBase_CreateRecord(opBase);
+		ASSERT(op->op.childCount > 0);
+		// use child record
+		// this is required in case this aggregation is perford within the
+		// context of a WITH projection as we need the child's mapping for
+		// expression evaluation
+		// there's no harm in doing so when not in a WITH aggregation,
+		// as we'll be using the same mapping;
+		// this operation and it child are in the same scope
+		OpBase *child = op->op.children[0];
+		r = OpBase_CreateRecord(child);
 		_aggregateRecord(op, r);
 	}
 

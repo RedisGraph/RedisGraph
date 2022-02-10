@@ -36,13 +36,13 @@ class testAggregations():
         self.env.assertEquals(result.result_set[0], expected_result)
 
         # issue a similar query only perform aggregations within a WITH clause
-        #query = """MATCH (n) WHERE n.v = 'noneExisting'
-        #           WITH count(n) as A, min(n.v) as B, max(n.v) as C, sum(n.v) as D,
-        #           avg(n.v) as E, stDev(n.v) as F,  stDevP(n.v) as G,
-        #           collect(n) as H, percentileDisc(n.v, 0.5) as I,
-        #           percentileCont(n.v, 0.5) as J
-        #           RETURN *"""
+        query = """MATCH (n) WHERE n.v = 'noneExisting'
+                   WITH count(n) as A, min(n.v) as B, max(n.v) as C, sum(n.v) as D,
+                   avg(n.v) as E, stDev(n.v) as F,  stDevP(n.v) as G,
+                   collect(n) as H, percentileDisc(n.v, 0.5) as I,
+                   percentileCont(n.v, 0.5) as J
+                   RETURN *"""
 
-        #result = graph.query(query)
-        #self.env.assertEquals(result.result_set[0], expected_result)
+        result = graph.query(query)
+        self.env.assertEquals(result.result_set[0], expected_result)
 
