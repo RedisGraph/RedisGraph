@@ -74,7 +74,7 @@ void populateEdgeIndex
 		EntityID  dest_id;
 		EntityID  edge_id;
 
-		RG_MatrixTupleIter_next(&it, &src_id, &dest_id, &edge_id, &depleted);
+		RG_MatrixTupleIter_next_UINT64(&it, &src_id, &dest_id, &edge_id, &depleted);
 		if(depleted) break;
 
 		Edge e;

@@ -138,7 +138,7 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 	// Try to get new nodeID.
 	GrB_Index nodeId;
 	bool depleted = true;
-	RG_MatrixTupleIter_next(op->iter, NULL, &nodeId, NULL, &depleted);
+	RG_MatrixTupleIter_next_BOOL(op->iter, NULL, &nodeId, NULL, &depleted);
 	/* depleted will be true in the following cases:
 	 * 1. No iterator: GxB_MatrixTupleIter_next will fail and depleted will stay true. This scenario means
 	 * that there was no consumption of a record from a child, otherwise there was an iterator.
@@ -165,7 +165,7 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 			_ResetIterator(op);
 		}
 		// Try to get new NodeID.
-		RG_MatrixTupleIter_next(op->iter, NULL, &nodeId, NULL, &depleted);
+		RG_MatrixTupleIter_next_BOOL(op->iter, NULL, &nodeId, NULL, &depleted);
 	}
 
 	// We've got a record and NodeID.
@@ -181,7 +181,7 @@ static Record NodeByLabelScanConsume(OpBase *opBase) {
 
 	GrB_Index nodeId;
 	bool depleted = false;
-	RG_MatrixTupleIter_next(op->iter, NULL, &nodeId, NULL, &depleted);
+	RG_MatrixTupleIter_next_BOOL(op->iter, NULL, &nodeId, NULL, &depleted);
 	if(depleted) return NULL;
 
 	Record r = OpBase_CreateRecord((OpBase *)op);

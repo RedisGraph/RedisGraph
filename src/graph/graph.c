@@ -733,7 +733,7 @@ void Graph_GetNodeEdges
 		// containing all outgoing edges
 		RG_MatrixTupleIter_reuse(&it, M);
 		RG_MatrixTupleIter_iterate_row(&it, srcID);
-		while(RG_MatrixTupleIter_next(&it, NULL, &destID, &edgeID, &depleted) == GrB_SUCCESS) {
+		while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, &edgeID, &depleted) == GrB_SUCCESS) {
 			if(depleted) break;
 
 			// collect all edges (src)->(dest)
@@ -756,7 +756,7 @@ void Graph_GetNodeEdges
 		RG_MatrixTupleIter_reuse(&it, TM);
 		RG_MatrixTupleIter_iterate_row(&it, srcID);
 
-		while(RG_MatrixTupleIter_next(&it, NULL, &destID, NULL, &depleted) == GrB_SUCCESS) {
+		while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, NULL, &depleted) == GrB_SUCCESS) {
 			if(depleted) break;
 			RG_Matrix_extractElement_UINT64(&edgeID, M, destID, srcID);
 			// collect all edges connecting destId to srcId
@@ -800,7 +800,7 @@ uint Graph_GetNodeLabels
 	bool depleted = false;
 
 	for(; i < label_count; i++) {
-		res = RG_MatrixTupleIter_next(iter, NULL, labels + i, NULL, &depleted);
+		res = RG_MatrixTupleIter_next_BOOL(iter, NULL, labels + i, NULL, &depleted);
 		ASSERT(res == GrB_SUCCESS);
 
 		if(depleted) break;

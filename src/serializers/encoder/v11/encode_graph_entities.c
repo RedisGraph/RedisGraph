@@ -341,7 +341,7 @@ void RdbSaveEdges_v11
 		bool depleted = false;
 
 		// try to get next tuple
-		info = RG_MatrixTupleIter_next(iter, &src, &dest, &edgeID, &depleted);
+		info = RG_MatrixTupleIter_next_UINT64(iter, &src, &dest, &edgeID, &depleted);
 		ASSERT(info == GrB_SUCCESS);
 		// if iterator is depleted
 		// get new tuple from different matrix or finish encode
@@ -358,7 +358,7 @@ void RdbSaveEdges_v11
 			M = Graph_GetRelationMatrix(gc->g, r, false);
 			info = RG_MatrixTupleIter_reuse(iter, M);
 			ASSERT(info == GrB_SUCCESS);
-			info = RG_MatrixTupleIter_next(iter, &src, &dest, &edgeID, &depleted);
+			info = RG_MatrixTupleIter_next_UINT64(iter, &src, &dest, &edgeID, &depleted);
 			ASSERT(info == GrB_SUCCESS);
 		}
 

@@ -61,7 +61,7 @@ void populateNodeIndex
 		EntityID id;
 		bool depleted = false;
 
-		RG_MatrixTupleIter_next(&it, NULL, &id, NULL, &depleted);
+		RG_MatrixTupleIter_next_BOOL(&it, NULL, &id, NULL, &depleted);
 		if(depleted) break;
 
 		Node n;

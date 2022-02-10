@@ -58,12 +58,21 @@ GrB_Info RG_MatrixTupleIter_iterate_range
 );
 
 // advance iterator
-GrB_Info RG_MatrixTupleIter_next
+GrB_Info RG_MatrixTupleIter_next_BOOL
 (
 	RG_MatrixTupleIter *iter,       // iterator to consume
 	GrB_Index *row,                 // optional output row index
 	GrB_Index *col,                 // optional output column index
-	void *val,                      // optional value at A[row, col]
+	bool *val,                      // optional value at A[row, col]
+	bool *depleted                  // indicate if iterator depleted
+);
+
+GrB_Info RG_MatrixTupleIter_next_UINT64
+(
+	RG_MatrixTupleIter *iter,       // iterator to consume
+	GrB_Index *row,                 // optional output row index
+	GrB_Index *col,                 // optional output column index
+	uint64_t *val,                  // optional value at A[row, col]
 	bool *depleted                  // indicate if iterator depleted
 );
 

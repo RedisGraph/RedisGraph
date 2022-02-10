@@ -172,13 +172,13 @@ static void _iter_next
 }
 
 // iterate over M matrix
-static GrB_Info _next_m_iter
+static GrB_Info _next_m_iter_bool
 (
 	RG_MatrixTupleIter *iter,  // iterator scanning M
 	const GrB_Matrix DM,       // delta-minus, masked entries
 	GrB_Index *row,            // optional extracted row index
 	GrB_Index *col,            // optional extracted column index
-	void *val,                 // optional extracted value
+	bool *val,                 // optional extracted value
 	bool *depleted             // [output] true if iterator depleted
 ) {
 	ASSERT(iter     != NULL) ;
@@ -197,7 +197,7 @@ static GrB_Info _next_m_iter
 		_row = GxB_rowIterator_getRowIndex (it) ;
 		_col = GxB_rowIterator_getColIndex (it) ;
 		// TODO: depending on the matrix type BOOL/UINT64 use the right typed function(s)
-		if(val) GxB_Iterator_get_UDT (it, val) ;
+		if(val) *val = GxB_Iterator_get_BOOL (it) ;
 
 		// prep value for next iteration
 		_iter_next(it, iter->max_row, depleted);
@@ -214,12 +214,12 @@ static GrB_Info _next_m_iter
 }
 
 // advance iterator
-GrB_Info RG_MatrixTupleIter_next
+GrB_Info RG_MatrixTupleIter_next_BOOL
 (
 	RG_MatrixTupleIter *iter,       // iterator to consume
 	GrB_Index *row,                 // optional output row index
 	GrB_Index *col,                 // optional output column index
-	void *val,                      // optional value at A[row, col]
+	bool *val,                      // optional value at A[row, col]
 	bool *depleted                  // [output] true if iterator depleted
 ) {
 	if(iter == NULL) return GrB_NULL_POINTER ;
@@ -233,7 +233,7 @@ GrB_Info RG_MatrixTupleIter_next
 	*depleted = false;
 
 	if(!iter->m_depleted) {
-		info = _next_m_iter(iter, DM, row, col, val, &iter->m_depleted) ;
+		info = _next_m_iter_bool(iter, DM, row, col, val, &iter->m_depleted) ;
 		if(info == GrB_SUCCESS) return GrB_SUCCESS ;
 	}
 
@@ -244,7 +244,87 @@ GrB_Info RG_MatrixTupleIter_next
 
 	if(row) *row = GxB_rowIterator_getRowIndex (dp_it) ;
 	if(col) *col = GxB_rowIterator_getColIndex (dp_it) ;
-	if(val) GxB_Iterator_get_UDT (dp_it, val) ;
+	if(val) *val = GxB_Iterator_get_BOOL (dp_it) ;
+
+	// prep value for next iteration
+	_iter_next(dp_it, iter->max_row, &iter->dp_depleted);
+
+	return GrB_SUCCESS ;
+}
+
+// iterate over M matrix
+static GrB_Info _next_m_iter_uint64
+(
+	RG_MatrixTupleIter *iter,  // iterator scanning M
+	const GrB_Matrix DM,       // delta-minus, masked entries
+	GrB_Index *row,            // optional extracted row index
+	GrB_Index *col,            // optional extracted column index
+	uint64_t *val,             // optional extracted value
+	bool *depleted             // [output] true if iterator depleted
+) {
+	ASSERT(iter     != NULL) ;
+	ASSERT(DM       != NULL) ;
+	ASSERT(depleted != NULL) ;
+
+	GrB_Index  _row ;
+	GrB_Index  _col ;
+
+	GxB_Iterator it = iter->m_it;
+
+	do {
+		// iterator depleted, return
+		if(*depleted) return GrB_NO_VALUE;
+
+		_row = GxB_rowIterator_getRowIndex (it) ;
+		_col = GxB_rowIterator_getColIndex (it) ;
+		if(val) *val = GxB_Iterator_get_UINT64 (it) ;
+
+		// prep value for next iteration
+		_iter_next(it, iter->max_row, depleted);
+
+		bool x ;
+ 		GrB_Info delete_info = GrB_Matrix_extractElement_BOOL(&x, DM, _row, _col) ;
+ 		if(delete_info == GrB_NO_VALUE) break ; // entry isn't deleted, return
+	} while (true) ;
+
+	if(row) *row = _row ;
+	if(col) *col = _col ;
+
+	return GrB_SUCCESS ;
+}
+
+// advance iterator
+GrB_Info RG_MatrixTupleIter_next_UINT64
+(
+	RG_MatrixTupleIter *iter,       // iterator to consume
+	GrB_Index *row,                 // optional output row index
+	GrB_Index *col,                 // optional output column index
+	uint64_t *val,                  // optional value at A[row, col]
+	bool *depleted                  // [output] true if iterator depleted
+) {
+	if(iter == NULL) return GrB_NULL_POINTER ;
+
+	ASSERT(depleted != NULL) ;
+
+	GrB_Info             info     =  GrB_SUCCESS                    ;
+	GrB_Matrix           DM       =  RG_MATRIX_DELTA_MINUS(iter->A) ;
+	GxB_Iterator         dp_it    =  iter->dp_it                    ;
+
+	*depleted = false;
+
+	if(!iter->m_depleted) {
+		info = _next_m_iter_uint64(iter, DM, row, col, val, &iter->m_depleted) ;
+		if(info == GrB_SUCCESS) return GrB_SUCCESS ;
+	}
+
+	if(iter->dp_depleted) {
+		*depleted = true;
+		return GrB_SUCCESS;
+	}
+
+	if(row) *row = GxB_rowIterator_getRowIndex (dp_it) ;
+	if(col) *col = GxB_rowIterator_getColIndex (dp_it) ;
+	if(val) *val = GxB_Iterator_get_UINT64 (dp_it) ;
 
 	// prep value for next iteration
 	_iter_next(dp_it, iter->max_row, &iter->dp_depleted);

@@ -124,7 +124,7 @@ EntityID AllNeighborsCtx_NextNeighbor
 
 		bool depleted;
 		GrB_Index dest_id;
-		RG_MatrixTupleIter_next(it, NULL, &dest_id, NULL, &depleted);
+		RG_MatrixTupleIter_next_UINT64(it, NULL, &dest_id, NULL, &depleted);
 
 		if(depleted) {
 			// backtrack
