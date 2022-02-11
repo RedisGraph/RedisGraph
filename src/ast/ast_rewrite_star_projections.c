@@ -199,9 +199,6 @@ static void replace_clause
 	//--------------------------------------------------------------------------
 	// collect identifiers
 	//--------------------------------------------------------------------------
-
-	// TODO: MATCH (a)-[]->(a) RETURN *
-	// 'a' is duplicated ?
 	const cypher_astnode_t **identifiers = _collect_aliases_in_scope(root,
 			scope_start, scope_end);
 	uint identifiers_count = array_len(identifiers);
@@ -212,7 +209,7 @@ static void replace_clause
 
 	// `existing_projections_count` refers to explicit projections
 	// e.g.
-	// RETURN *, x, 1+2 will cause
+	// RETURN *, x, 1+2
 	// `x`, `1+2` are explicit projections
 	uint existing_projections_count = (t == CYPHER_AST_WITH) ?
 		cypher_ast_with_nprojections(clause) :
