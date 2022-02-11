@@ -26,7 +26,7 @@ The number of threads in RedisGraph's thread pool. This is equivalent to the max
 
 ### Default
 
-`THREAD_COUNT` defaults to the system's processor count.
+`THREAD_COUNT` defaults to the system's hardware threads (logical cores).
 
 ### Example
 
@@ -54,7 +54,7 @@ $ redis-server --loadmodule ./redisgraph.so CACHE_SIZE 10
 
 ## OMP_THREAD_COUNT
 
-The maximum number of threads that OpenMP may use for computation. These threads are used for parallelizing GraphBLAS computations, so may be considered to control concurrency within the execution of individual queries.
+The maximum number of threads that OpenMP may use for computation per query. These threads are used for parallelizing GraphBLAS computations, so may be considered to control concurrency within the execution of individual queries.
 
 ### Default
 

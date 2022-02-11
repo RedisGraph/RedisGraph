@@ -11,6 +11,7 @@ In addition there are severeal client libraries to improve abstractions and allo
 | [JRedisGraph][JRedisGraph-url]                            | Java       | BSD     | [Redis][JRedisGraph-author]            | [![JRedisGraph-stars]][JRedisGraph-url]                           |
 | [redisgraph-rb][redisgraph-rb-url]                        | Ruby       | BSD     | [Redis][redisgraph-rb-author]          | [![redisgraph-rb-stars]][redisgraph-rb-url]                       |
 | [redisgraph-go][redisgraph-go-url]                        | Go         | BSD     | [Redis][redisgraph-go-author]          | [![redisgraph-go-stars]][redisgraph-go-url]                       |
+| [rueidis][rueidis-url]                                    | Go         | Apache 2.0 | [Rueian][rueidis-author]          | [![rueidis-stars]][rueidis-url]                       |
 | [redisgraph.js][redisgraph.js-url]                        | JavaScript | BSD     | [Redis][redisgraph.js-author]          | [![redisgraph.js-stars]][redisgraph.js-url]                       |
 | [ioredisgraph][ioredisgraph-url]                          | JavaScript | ISC     | [Jonah][ioredisgraph-author]                | [![ioredisgraph-stars]][ioredisgraph-url]                         |
 | [@hydre/rgraph][rgraph-url]                               | JavaScript | MIT     | [Sceat][rgraph-author]                      | [![rgraph-stars]][rgraph-url]                                     |
@@ -41,6 +42,10 @@ In addition there are severeal client libraries to improve abstractions and allo
 [redisgraph-go-author]: https://redis.com
 [redisgraph-go-url]: https://github.com/RedisGraph/redisgraph-go
 [redisgraph-go-stars]: https://img.shields.io/github/stars/RedisGraph/redisgraph-go.svg?style=social&amp;label=Star&amp;maxAge=2592000
+
+[rueidis-url]: https://github.com/rueian/rueidis
+[rueidis-author]: https://github.com/rueian
+[rueidis-stars]: https://img.shields.io/github/stars/rueian/rueidis.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 [redisgraph.js-author]: https://redis.com
 [redisgraph.js-url]: https://github.com/RedisGraph/redisgraph.js
