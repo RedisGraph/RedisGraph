@@ -186,7 +186,7 @@ $ redis-cli GRAPH.CONFIG SET QUERY_MEM_CAPACITY 1048576
 
 # Query Configurations
 
-Some configurations may be set per query in the form of additional arguments after the query string. All per-query configurations are off by default unless using a language-specific client, which may establish its own defaults.
+The query timeout configuration may also be set per query in the form of additional arguments after the query string. This configuration is unset by default unless using a language-specific client, which may establish its own defaults.
 
 ## Query Timeout
 
