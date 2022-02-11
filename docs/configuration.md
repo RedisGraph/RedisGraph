@@ -20,11 +20,21 @@ $ redis-server --loadmodule ./redisgraph.so OPT1 OPT2
 
 # RedisGraph configuration options
 
+| Configuration                                 | Load-time          | Run-time             |
+| :-------                                      | :-----             | :-----------         |
+| [THREAD_COUNT](#THREAD_COUNT)                 | :white_check_mark: | :white_large_square: |
+| [CACHE_SIZE](#CACHE_SIZE)                     | :white_check_mark: | :white_large_square: |
+| [OMP_THREAD_COUNT](#OMP_THREAD_COUNT)         | :white_check_mark: | :white_large_square: |
+| [NODE_CREATION_BUFFER](#NODE_CREATION_BUFFER) | :white_check_mark: | :white_large_square: |
+| [MAX_QUEUED_QUERIES](#MAX_QUEUED_QUERIES)     | :white_check_mark: | :white_check_mark:   |
+| [TIMEOUT](#TIMEOUT)                           | :white_check_mark: | :white_check_mark:   |
+| [RESULTSET_SIZE](#RESULTSET_SIZE)             | :white_check_mark: | :white_check_mark:   |
+| [QUERY_MEM_CAPACITY](#QUERY_MEM_CAPACITY)     | :white_check_mark: | :white_check_mark:   |
+
+
 ## THREAD_COUNT
 
 The number of threads in RedisGraph's thread pool. This is equivalent to the maximum number of queries that can be processed concurrently.
-
-`THREAD_COUNT` can only be set on module load.
 
 ### Default
 
@@ -42,8 +52,6 @@ $ redis-server --loadmodule ./redisgraph.so THREAD_COUNT 4
 
 The max number of queries for RedisGraph to cache. When a new query is encountered and the cache is full, meaning the cache has reached the size of `CACHE_SIZE`, it will evict the least recently used (LRU) entry.
 
-`CACHE_SIZE` can only be set on module load.
-
 ### Default
 
 `CACHE_SIZE` default value is 25.
@@ -60,8 +68,6 @@ $ redis-server --loadmodule ./redisgraph.so CACHE_SIZE 10
 
 The maximum number of threads that OpenMP may use for computation per query. These threads are used for parallelizing GraphBLAS computations, so may be considered to control concurrency within the execution of individual queries.
 
-`OMP_THREAD_COUNT` can only be set on module load.
-
 ### Default
 
 `OMP_THREAD_COUNT` is defined by GraphBLAS by default.
@@ -74,11 +80,21 @@ $ redis-server --loadmodule ./redisgraph.so OMP_THREAD_COUNT 1
 
 ---
 
+## NODE_CREATION_BUFFER
+
+The node creation buffer is the number of new nodes that can be created without resizing matrices. For example, when set to 16,384, the matrices will have extra space for 16,384 nodes upon creation. Whenever the extra space is depleted, the matrices' size will increase by 16,384.
+
+Reducing this value will reduce memory consumption, but cause performance degradation due to the increased frequency of matrix resizes.
+
+Conversely, increasing it might improve performance for write-heavy workloads but will increase memory consumption.
+
+If the passed argument was not a power of 2, it will be rounded to the next-greatest power of 2 to improve memory alignment.
+
+---
+
 ## MAX_QUEUED_QUERIES
 
 Setting the maximum number of queued queries allows the server to reject incoming queries with the error message `Max pending queries exceeded`. This reduces the memory overhead of pending queries on an overloaded server and avoids congestion when the server processes its backlog of queries.
-
-`MAX_QUEUED_QUERIES` can be set on module load or at runtime using `GRAPH.CONFIG SET`.
 
 ### Default
 
@@ -92,13 +108,25 @@ $ redis-server --loadmodule ./redisgraph.so MAX_QUEUED_QUERIES 500
 $ redis-cli GRAPH.CONFIG SET MAX_QUEUED_QUERIES 500
 ```
 
+### Default
+
+`NODE_CREATION_BUFFER` is 16,384 by default.
+
+### Minimum
+
+The minimum value for `NODE_CREATION_BUFFER` is 128. Values lower than this will be accepted as arguments, but will internally be converted to 128.
+
+### Example
+
+```
+$ redis-server --loadmodule ./redisgraph.so NODE_CREATION_BUFFER 200
+```
+
 ---
 
 ## TIMEOUT
 
 Timeout is a flag that specifies the maximum runtime for read queries in milliseconds. This configuration will not be respected by write queries, to avoid leaving the graph in an inconsistent state.
-
-`TIMEOUT` can be set on module load or at runtime using `GRAPH.CONFIG SET`.
 
 ### Default
 
@@ -117,8 +145,6 @@ $ redis-server --loadmodule ./redisgraph.so TIMEOUT 1000
 ## RESULTSET_SIZE
 
 Result set size is a limit on the number of records that should be returned by any query. This can be a valuable safeguard against incurring a heavy IO load while running queries with unknown results.
-
-`RESULTSET_SIZE` can be set on module load or at runtime using `GRAPH.CONFIG SET`.
 
 ### Default
 
@@ -146,8 +172,6 @@ Setting the memory capacity of a query allows the server to kill queries that ar
 
 The configuration argument is the maximum number of bytes that can be allocated by any single query.
 
-`QUERY_MEM_CAPACITY` can be set on module load or at runtime using `GRAPH.CONFIG SET`.
-
 ### Default
 
 `QUERY_MEM_CAPACITY` is unlimited by default; this default can be restored by setting `QUERY_MEM_CAPACITY` to zero or a negative value.
@@ -158,34 +182,6 @@ The configuration argument is the maximum number of bytes that can be allocated 
 $ redis-server --loadmodule ./redisgraph.so QUERY_MEM_CAPACITY 1048576 // 1 megabyte limit
 
 $ redis-cli GRAPH.CONFIG SET QUERY_MEM_CAPACITY 1048576
-```
-
----
-
-## NODE_CREATION_BUFFER
-
-The node creation buffer is the number of new nodes that can be created without resizing matrices. For example, when set to 16,384, the matrices will have extra space for 16,384 nodes upon creation. Whenever the extra space is depleted, the matrices' size will increase by 16,384.
-
-Reducing this value will reduce memory consumption, but cause performance degradation due to the increased frequency of matrix resizes.
-
-Conversely, increasing it might improve performance for write-heavy workloads but will increase memory consumption.
-
-If the passed argument was not a power of 2, it will be rounded to the next-greatest power of 2 to improve memory alignment.
-
-`NODE_CREATION_BUFFER` can only be set on module load.
-
-### Default
-
-`NODE_CREATION_BUFFER` is 16,384 by default.
-
-### Minimum
-
-The minimum value for `NODE_CREATION_BUFFER` is 128. Values lower than this will be accepted as arguments, but will internally be converted to 128.
-
-### Example
-
-```
-$ redis-server --loadmodule ./redisgraph.so NODE_CREATION_BUFFER 200
 ```
 
 # Query Configurations
