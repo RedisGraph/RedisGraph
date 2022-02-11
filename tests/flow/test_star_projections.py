@@ -1,6 +1,6 @@
 import redis
 from RLTest import Env
-from redisgraph import Graph
+from redisgraph import Graph, Node, Edge
 
 GRAPH_ID = "starProjection"
 redis_graph = None
@@ -108,3 +108,20 @@ class testStarProjections():
                     [4]]
         self.env.assertEqual(actual_result.result_set, expected)
 
+    # verify that duplicate aliases only result in a single column
+    def test04_duplicate_removal(self):
+        # create a single node connected to itself
+        n = Node(node_id=0, label="L", properties={"v": 1})
+        e = Edge(n, "R", n)
+        redis_graph.add_node(n)
+        redis_graph.add_edge(e)
+        redis_graph.flush()
+
+        query = """MATCH (a)-[]->(a) RETURN *"""
+        actual_result = redis_graph.query(query)
+        expected = [[n]]
+        self.env.assertEqual(actual_result.result_set, expected)
+
+        query = """MATCH (a)-[]->(a) RETURN *, a"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEqual(actual_result.result_set, expected)
