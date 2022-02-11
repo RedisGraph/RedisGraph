@@ -189,40 +189,69 @@ static const cypher_astnode_t **_collect_aliases_in_scope
 
 static void replace_clause
 (
-	cypher_astnode_t *root,
-	cypher_astnode_t *clause,
-	int scope_start,
-	int idx
+	cypher_astnode_t *root,    // ast root
+	cypher_astnode_t *clause,  // clause being replaced
+	int scope_start,           // begining of scope
+	int scope_end              // ending of scope
 ) {
-	// collect all aliases defined in this scope
-	const cypher_astnode_t **aliases = _collect_aliases_in_scope(root,
-																 scope_start, idx);
-	uint alias_count = array_len(aliases);
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
-	uint other_projections_count = (t == CYPHER_AST_WITH) ?
-								   cypher_ast_with_nprojections(clause) :
-								   cypher_ast_return_nprojections(clause);
 
-	cypher_astnode_t *projections[alias_count == 0 ? 1 :
-											  alias_count + other_projections_count];
+	//--------------------------------------------------------------------------
+	// collect identifiers
+	//--------------------------------------------------------------------------
 
-	// convert aliases to expressions
-	for(uint i = 0; i < alias_count; i++) {
-		cypher_astnode_t         *expression = cypher_ast_clone(aliases[i]);
-		const cypher_astnode_t   *alias      = NULL;
-		cypher_astnode_t        **children   = &expression;
+	// TODO: MATCH (a)-[]->(a) RETURN *
+	// 'a' is duplicated ?
+	const cypher_astnode_t **identifiers = _collect_aliases_in_scope(root,
+			scope_start, scope_end);
+	uint identifiers_count = array_len(identifiers);
+
+	//--------------------------------------------------------------------------
+	// determine number of projections
+	//--------------------------------------------------------------------------
+
+	// `existing_projections_count` refers to explicit projections
+	// e.g.
+	// RETURN *, x, 1+2 will cause
+	// `x`, `1+2` are explicit projections
+	uint existing_projections_count = (t == CYPHER_AST_WITH) ?
+		cypher_ast_with_nprojections(clause) :
+		cypher_ast_return_nprojections(clause);
+
+	// require atleast 1 projection
+	uint nprojections = identifiers_count + existing_projections_count;
+	uint proj_idx = 0; // projections will be added to projections[proj_idx];
+	cypher_astnode_t *projections[nprojections + 1];
+
+	//--------------------------------------------------------------------------
+	// convert identifiers to expressions
+	//--------------------------------------------------------------------------
+
+	for(uint i = 0; i < identifiers_count; i++) {
+		cypher_astnode_t*         exp        = cypher_ast_clone(identifiers[i]);
+		const cypher_astnode_t*   alias      = NULL;
+		cypher_astnode_t**        children   = &exp;
 		unsigned int              nchildren  = 1;
-		struct cypher_input_range range      = cypher_astnode_range(aliases[i]);
+		struct cypher_input_range range      = cypher_astnode_range(identifiers[i]);
 
-		projections[i] = cypher_ast_projection(expression, alias, children,
-											   nchildren, range);
+		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
+				nchildren, range);
 	}
 
-	if(alias_count == 0) {
+	//--------------------------------------------------------------------------
+	// handle no projections
+	//--------------------------------------------------------------------------
+
+	// e.g.
+	// MATCH () RETURN *
+	// MATCH () WITH * RETURN *
+	if(nprojections == 0) {
 		if(t == CYPHER_AST_RETURN) {
 			// error if this is a RETURN clause with no aliases
+			// e.g.
+			// MATCH () RETURN *
 			ErrorCtx_SetError("RETURN * is not allowed when there are no variables in scope");
-			array_free(aliases);
+			array_free(identifiers);
 			return;
 		} else {
 			// build an empty projection
@@ -235,41 +264,53 @@ static void replace_clause
 			cypher_astnode_t *children[2];
 			children[0] = expression;
 			children[1] = identifier;
-			projections[0] = cypher_ast_projection(expression, identifier,
-												   children, 2, range);
-			alias_count = 1;
+			projections[proj_idx++] = cypher_ast_projection(expression,
+					identifier, children, 2, range);
+			nprojections = 1;
 		}
 	}
 
-	uint nprojections = alias_count;
-	// clone non-star projections into projections array
-	for(uint i = 0; i < other_projections_count; i ++) {
+	//--------------------------------------------------------------------------
+	// introduce explicit projections
+	//--------------------------------------------------------------------------
+
+	// clone explicit projections into projections array
+	for(uint i = 0; i < existing_projections_count; i ++) {
 		const cypher_astnode_t *projection = (t == CYPHER_AST_WITH) ?
-											 cypher_ast_with_get_projection(clause, i) :
-											 cypher_ast_return_get_projection(clause, i);
+			cypher_ast_with_get_projection(clause, i) :
+			cypher_ast_return_get_projection(clause, i);
 		// if the projection has an alias use it,
 		// otherwise the expression is the alias
-		const cypher_astnode_t *alias = cypher_ast_projection_get_alias(projection);
-		const cypher_astnode_t *exp = alias ? alias :
-									  cypher_ast_projection_get_expression(projection);
+		const cypher_astnode_t *exp =
+			cypher_ast_projection_get_alias(projection);
+		exp = exp ? exp : cypher_ast_projection_get_expression(projection);
 		ASSERT(cypher_astnode_type(exp) == CYPHER_AST_IDENTIFIER);
+
+		//----------------------------------------------------------------------
+		// check for duplicates
+		//----------------------------------------------------------------------
 		bool duplicate = false;
-		if(cypher_astnode_type(aliases[i]) == CYPHER_AST_IDENTIFIER) {
-			const char *alias = cypher_ast_identifier_get_name(exp);
-			// don't introduce duplicates of existing aliases
-			for(uint j = 0; j < alias_count; j ++) {
-				const char *other = cypher_ast_identifier_get_name(aliases[j]);
-				if(strcmp(alias, other) == 0) {
-					duplicate = true;
-					break;
-				}
+		const char *alias = cypher_ast_identifier_get_name(exp);
+
+		// don't introduce duplicates of existing aliases
+		for(uint j = 0; j < identifiers_count; j ++) {
+			const char *other = cypher_ast_identifier_get_name(identifiers[j]);
+			if(strcmp(alias, other) == 0) {
+				duplicate = true;
+				break;
 			}
 		}
 		if(duplicate) continue;
-		projections[alias_count + i] = cypher_ast_clone(projection);
+
+		// maintain expression
+		projections[proj_idx++] = cypher_ast_clone(projection);
 		nprojections++;
 	}
-	array_free(aliases);
+
+	// update `nprojections` to actual number of projections
+	// value might be reduced due to duplicates
+	nprojections = proj_idx;
+	array_free(identifiers);
 
 	// prepare arguments for new return clause node
 	bool                    distinct   =  false ;
@@ -333,7 +374,7 @@ static void replace_clause
 
 	cypher_ast_free(clause);
 	// replace original clause with fully populated one
-	cypher_ast_query_set_clause(root, new_clause, idx);
+	cypher_ast_query_set_clause(root, new_clause, scope_end);
 }
 
 void AST_RewriteStarProjections
