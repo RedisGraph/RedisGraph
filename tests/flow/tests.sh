@@ -86,7 +86,7 @@ valgrind_config() {
 
 	[[ $VG_LEAKS == 0 ]] && VALGRIND_ARGS+=" --vg-no-leakcheck"
 
-	VALGRIND_SUPRESSIONS=$ROOT/src/valgrind.sup
+	VALGRIND_SUPRESSIONS=$ROOT/tests/valgrind/valgrind.sup
 
 	VALGRIND_ARGS+="\
 		--no-output-catch \
