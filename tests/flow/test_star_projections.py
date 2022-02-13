@@ -45,6 +45,13 @@ class testStarProjections():
         except redis.exceptions.ResponseError as e:
             self.env.assertContains("RETURN * is not allowed when there are no variables in scope", str(e))
 
+        try:
+            query = """CALL db.indexes() RETURN *"""
+            actual_result = redis_graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertContains("RETURN * is not allowed when there are no variables in scope", str(e))
+
     # verify that star projections combined with explicit aliases function properly
     def test02_return_star_and_projections(self):
         # duplicate column names should not result in multiple columns
@@ -69,6 +76,13 @@ class testStarProjections():
         expected = [[1, 2],
                     [2, 3],
                     [3, 4]]
+        self.env.assertEqual(actual_result.result_set, expected)
+
+        # call expressions in RETURN *
+        redis_graph.query("CREATE INDEX FOR (n:L) ON (l.v)")
+        query = "CALL db.indexes() YIELD label RETURN *"
+        actual_result = redis_graph.query(query)
+        expected = [['L']]
         self.env.assertEqual(actual_result.result_set, expected)
 
         # RETURN *, * should produce an error

@@ -92,25 +92,12 @@ static void _collect_call_projections(
 	rax *identifiers
 ) {
 	uint yield_count = cypher_ast_call_nprojections(call_clause);
-	if(yield_count == 0) {
-		// if the procedure call is missing its yield part, include procedure outputs
-		const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
-		ProcedureCtx *proc = Proc_Get(proc_name);
-		// the procedure may not exist here, as we have not yet validated
-		// that its name refers to a valid procedure
-		if(proc == NULL) return;
 
-		uint output_count = Procedure_OutputCount(proc);
-		struct cypher_input_range range = { 0 };
-		for(uint i = 0; i < output_count; i++) {
-			const char *name = Procedure_GetOutput(proc, i);
-			cypher_astnode_t *identifier_node = cypher_ast_identifier(name,
-																 strlen(name), range);
-			const char *identifier = cypher_ast_identifier_get_name(identifier_node);
-			raxTryInsert(identifiers, (unsigned char *)identifier,
-				strlen(identifier), (void *)identifier_node, NULL);
-		}
-		Proc_Free(proc);
+	if(yield_count == 0) {
+		// error if this is a RETURN clause with no aliases
+		// e.g.
+		// CALL db.indexes() RETURN *
+		ErrorCtx_SetError("RETURN * is not allowed when there are no variables in scope");
 		return;
 	}
 
