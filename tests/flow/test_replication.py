@@ -97,7 +97,7 @@ class testReplication(FlowTestsBase):
         env.assertEquals(replica_result, result)
 
         # make sure both primary and replica have the same set of indexes
-        q = "CALL db.indexes()"
+        q = "CALL db.indexes() YIELD type, label, properties, language, stopwords, entitytype"
         result = graph.query(q).result_set
         replica_result = replica.query(q).result_set
         env.assertEquals(replica_result, result)
@@ -110,8 +110,7 @@ class testReplication(FlowTestsBase):
         source_con.execute_command("WAIT", "1", "0")
 
         # make sure both primary and replica have the same set of indexes
-        q = "CALL db.indexes()"
+        q = "CALL db.indexes() YIELD type, label, properties, language, stopwords, entitytype"
         result = graph.query(q).result_set
         replica_result = replica.query(q).result_set
         env.assertEquals(replica_result, result)
-
