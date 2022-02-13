@@ -59,7 +59,6 @@ Feature: Match1 - Match nodes
       | ({name: 'c'})    |
     And no side effects
 
-  @skip
   Scenario: [3] Matching nodes using multiple labels
     Given an empty graph
     And having executed:
@@ -71,12 +70,12 @@ Feature: Match1 - Match nodes
     When executing query:
       """
       MATCH (a:A:B)
-      RETURN a
+      RETURN a ORDER BY ID(a)
       """
     Then the result should be, in any order:
       | a        |
-      | (:A:B)   |
       | (:A:B:C) |
+      | (:A:B)   |
     And no side effects
 
   Scenario: [4] Simple node inline property predicate

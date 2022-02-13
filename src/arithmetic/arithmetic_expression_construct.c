@@ -786,11 +786,9 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 	} else if(t == CYPHER_AST_REDUCE) {
 		return _AR_ExpNodeFromReduceFunction(expr);
 	} else if(t == CYPHER_AST_PATTERN_PATH || t == CYPHER_AST_PATTERN_COMPREHENSION) {
-		AR_ExpNode *e = AR_EXP_NewOpNode("coalesce", 2);
+		// TODO: explain this variable construction
 		const char *alias = AST_ToString(expr);
-		e->op.children[0] = AR_EXP_NewVariableOperandNode(alias);
-		e->op.children[1] = AR_EXP_NewConstOperandNode(SI_Array(0));
-		return e;
+		return AR_EXP_NewVariableOperandNode(alias);
 	} else {
 		/*
 		   Unhandled types:
