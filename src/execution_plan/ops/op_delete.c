@@ -51,15 +51,17 @@ void _DeleteEntities(OpDelete *op) {
 		for(uint i = 0; i < node_count; i++) {
 			implicit_edge_deleted += DeleteNode(op->gc, distinct_nodes + i);
 		}
+
+		// stats must be updated befor releasing the commit for replication
+		if(op->stats != NULL) {
+			op->stats->nodes_deleted          +=  node_count;
+			op->stats->relationships_deleted  +=  edge_deleted;
+			op->stats->relationships_deleted  +=  implicit_edge_deleted;
+		}
+
 	}
 	// release lock
 	QueryCtx_UnlockCommit(&op->op);
-
-	if(op->stats != NULL) {
-		op->stats->nodes_deleted          +=  node_count;
-		op->stats->relationships_deleted  +=  edge_deleted;
-		op->stats->relationships_deleted  +=  implicit_edge_deleted;
-	}
 
 	array_free(distinct_nodes);
 }
