@@ -55,13 +55,12 @@ static RSQNode *_StringRangeToQueryNode
 
 	if(max != NULL && min != NULL && strcmp(max, min) == 0) {
 		// exact match
-		child = RediSearch_CreateTokenNode(idx, field, max);
+		child = RediSearch_CreateTagTokenNode(idx, max);
 	} else {
 		// range search
 		max = (max == NULL) ? RSLECRANGE_INF     : max;
 		min = (min == NULL) ? RSLEXRANGE_NEG_INF : min;
-
-		child = RediSearch_CreateLexRangeNode(idx, field, min, max,
+		child = RediSearch_CreateTagLexRangeNode(idx, min, max,
 				range->include_min, range->include_max);
 	}
 

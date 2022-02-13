@@ -570,3 +570,38 @@ class testIndexScanFlow():
         expected_result = [[990000000262240069, 990000000262240067]]
         self.env.assertEquals(result.result_set, expected_result)
 
+    def test20_index_scan_stopwords(self):
+        redis_graph = Graph('stopword', self.env.getConnection())
+
+        #-----------------------------------------------------------------------
+        # create indices
+        #-----------------------------------------------------------------------
+
+        # create exact match index over User id
+        redis_graph.query("CREATE INDEX ON :User(id)")
+        # create a fulltext index over User id
+        redis_graph.query("CALL db.idx.fulltext.createNodeIndex('User', 'id')")
+
+        #-----------------------------------------------------------------------
+        # create node
+        #-----------------------------------------------------------------------
+
+        # create a User node with a RediSearch stopword as the id attribute
+        user = Node(label='User', properties={'id': 'not'})
+        redis_graph.add_node(user)
+        redis_graph.commit()
+
+        #-----------------------------------------------------------------------
+        # query indices
+        #-----------------------------------------------------------------------
+
+        # query exact match index for user
+        # expecting node to return as stopwords are not enforced
+        result = redis_graph.query("MATCH (u:User {id: 'not'}) RETURN u")
+        self.env.assertEquals(result.result_set[0][0], user)
+
+        # query fulltext index for user
+        # expecting no results as stopwords are enforced
+        result = redis_graph.query("CALL db.idx.fulltext.queryNodes('User', 'stop')")
+        self.env.assertEquals(result.result_set, [])
+
