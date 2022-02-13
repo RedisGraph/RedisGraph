@@ -93,9 +93,6 @@ ResultSetStatistics *QueryCtx_GetResultSetStatistics(void);
 // print the current query
 void QueryCtx_PrintQuery(void);
 
-// retrieve the current query
-const char *QueryCtx_GetQuery(void);
-
 /* Starts a locking flow before commiting changes in the graph and Redis keyspace.
  * Locking flow is:
  * 1. LOCK GIL
