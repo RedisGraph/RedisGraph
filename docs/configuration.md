@@ -8,14 +8,31 @@ Passing configuration options is done by appending arguments after the `--loadmo
 
 In redis.conf:
 
-```
-loadmodule ./redisgraph.so OPT1 OPT2
+```sh
+loadmodule ./redisgraph.so OPT1 VAL1
 ```
 
 From the command line:
 
+```sh
+$ redis-server --loadmodule ./redisgraph.so OPT1 VAL1
 ```
-$ redis-server --loadmodule ./redisgraph.so OPT1 OPT2
+
+## Passing configuration options at run-time
+
+RedisGraph exposes the `GRAPH.CONFIG` endpoint to allowing for the setting and retrieval of configurations at run-time.
+
+To set a config, simply run:
+
+```sh
+GRAPH.CONFIG SET OPT1 VAL1
+```
+
+Similarly, the current configurations can be retrieved using the syntax:
+
+```sh
+GRAPH.CONFIG GET OPT1
+GRAPH.CONFIG GET *
 ```
 
 # RedisGraph configuration options
