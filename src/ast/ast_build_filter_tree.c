@@ -46,32 +46,32 @@ FT_FilterNode *_CreateFilterSubtree(AST_Operator op, const cypher_astnode_t *lhs
 									const cypher_astnode_t *rhs) {
 	FT_FilterNode *filter = NULL;
 	switch(op) {
-	case OP_OR:
-	case OP_AND:
-	case OP_XOR:
-		filter = FilterTree_CreateConditionFilter(op);
-		FilterTree_AppendLeftChild(filter, _FilterNode_FromAST(lhs));
-		FilterTree_AppendRightChild(filter, _FilterNode_FromAST(rhs));
-		return filter;
-	case OP_NOT:
-		filter = FilterTree_CreateConditionFilter(op);
-		FilterTree_AppendLeftChild(filter, _FilterNode_FromAST(lhs));
-		FilterTree_AppendRightChild(filter, NULL);
-		return filter;
-	case OP_EQUAL:
-	case OP_NEQUAL:
-	case OP_LT:
-	case OP_LE:
-	case OP_GT:
-	case OP_GE:
-		return _CreatePredicateFilterNode(op, lhs, rhs);
-	default:
-		/* Probably an invalid query
-		 * e.g. MATCH (u) where u.v NOT NULL RETURN u
-		 * this will cause the constructed tree to form an illegal structure
-		 * which will be caught later on by `FilterTree_Valid`
-		 * and set a compile-time error. */
-		return NULL;
+		case OP_OR:
+		case OP_AND:
+		case OP_XOR:
+			filter = FilterTree_CreateConditionFilter(op);
+			FilterTree_AppendLeftChild(filter, _FilterNode_FromAST(lhs));
+			FilterTree_AppendRightChild(filter, _FilterNode_FromAST(rhs));
+			return filter;
+		case OP_NOT:
+			filter = FilterTree_CreateConditionFilter(op);
+			FilterTree_AppendLeftChild(filter, _FilterNode_FromAST(lhs));
+			FilterTree_AppendRightChild(filter, NULL);
+			return filter;
+		case OP_EQUAL:
+		case OP_NEQUAL:
+		case OP_LT:
+		case OP_LE:
+		case OP_GT:
+		case OP_GE:
+			return _CreatePredicateFilterNode(op, lhs, rhs);
+		default:
+			/* Probably an invalid query
+			 * e.g. MATCH (u) where u.v NOT NULL RETURN u
+			 * this will cause the constructed tree to form an illegal structure
+			 * which will be caught later on by `FilterTree_Valid`
+			 * and set a compile-time error. */
+			return NULL;
 	}
 }
 
@@ -85,24 +85,24 @@ static FT_FilterNode *_convertBinaryOperator(const cypher_astnode_t *op_node) {
 	const cypher_astnode_t *rhs;
 
 	switch(op) {
-	case OP_OR:
-	case OP_AND:
-	case OP_XOR:
-	case OP_EQUAL:
-	case OP_NEQUAL:
-	case OP_LT:
-	case OP_LE:
-	case OP_GT:
-	case OP_GE:
-		// Arguments are of type CYPHER_AST_EXPRESSION
-		lhs = cypher_ast_binary_operator_get_argument1(op_node);
-		rhs = cypher_ast_binary_operator_get_argument2(op_node);
-		return _CreateFilterSubtree(op, lhs, rhs);
-	case OP_NOT:
-		ErrorCtx_SetError("Invalid usage of 'NOT' filter with expressions on left and right sides.");
-		return NULL;
-	default:
-		return FilterTree_CreateExpressionFilter(AR_EXP_FromASTNode(op_node));
+		case OP_OR:
+		case OP_AND:
+		case OP_XOR:
+		case OP_EQUAL:
+		case OP_NEQUAL:
+		case OP_LT:
+		case OP_LE:
+		case OP_GT:
+		case OP_GE:
+			// Arguments are of type CYPHER_AST_EXPRESSION
+			lhs = cypher_ast_binary_operator_get_argument1(op_node);
+			rhs = cypher_ast_binary_operator_get_argument2(op_node);
+			return _CreateFilterSubtree(op, lhs, rhs);
+		case OP_NOT:
+			ErrorCtx_SetError("Invalid usage of 'NOT' filter with expressions on left and right sides.");
+			return NULL;
+		default:
+			return FilterTree_CreateExpressionFilter(AR_EXP_FromASTNode(op_node));
 	}
 }
 
@@ -112,11 +112,11 @@ static FT_FilterNode *_convertUnaryOperator(const cypher_astnode_t *op_node) {
 	const cypher_astnode_t *arg = cypher_ast_unary_operator_get_argument(op_node);
 	AST_Operator op = AST_ConvertOperatorNode(operator);
 	switch(op) {
-	case OP_IS_NULL:
-	case OP_IS_NOT_NULL:
-		return FilterTree_CreateExpressionFilter(AR_EXP_FromASTNode(op_node));
-	default:
-		return _CreateFilterSubtree(op, arg, NULL);
+		case OP_IS_NULL:
+		case OP_IS_NOT_NULL:
+			return FilterTree_CreateExpressionFilter(AR_EXP_FromASTNode(op_node));
+		default:
+			return _CreateFilterSubtree(op, arg, NULL);
 	}
 }
 
@@ -248,14 +248,30 @@ void _AST_ConvertGraphPatternToFilter(const AST *ast, FT_FilterNode **root,
 		// Nodes are in even places.
 		for(uint n = 0; n < nelements; n += 2) {
 			const cypher_astnode_t *node = cypher_ast_pattern_path_get_element(path, n);
+			// retrieve and convert the property map
 			ft_node = _convertInlinedProperties(node, GETYPE_NODE);
 			if(ft_node) _FT_Append(root, ft_node);
+			// retrieve and convert any WHERE predicates on this entity
+			const cypher_astnode_t *predicate =
+				cypher_ast_node_pattern_get_predicate(node);
+			if(predicate) {
+				AST_ConvertFilters(&ft_node, predicate);
+				_FT_Append(root, ft_node);
+			}
 		}
 		// Edges are in odd places.
 		for(uint e = 1; e < nelements; e += 2) {
 			const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, e);
+			// retrieve and convert the property map
 			ft_node = _convertInlinedProperties(edge, GETYPE_EDGE);
 			if(ft_node) _FT_Append(root, ft_node);
+			// retrieve and convert any WHERE predicates on this entity
+			const cypher_astnode_t *predicate =
+				cypher_ast_rel_pattern_get_predicate(edge);
+			if(predicate) {
+				AST_ConvertFilters(&ft_node, predicate);
+				_FT_Append(root, ft_node);
+			}
 		}
 	}
 }
