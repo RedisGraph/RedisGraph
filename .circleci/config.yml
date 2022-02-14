@@ -100,9 +100,7 @@ commands:
       - setup-automation
       - run:
           name: Install prerequisites
-          command: |
-            ./sbin/system-setup.py
-            python3 -m pip list
+          command: ./sbin/system-setup.py
 
   benchmark-automation:
     parameters:

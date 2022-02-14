@@ -7,7 +7,7 @@ ROOT=$(cd $HERE/../.. && pwd)
 READIES=$ROOT/deps/readies 
 . $READIES/shibumi/defs
 
-VALGRIND_REDIS_VER=6.2
+VALGRIND_REDIS_VER=6
 
 #----------------------------------------------------------------------------------------------
 
