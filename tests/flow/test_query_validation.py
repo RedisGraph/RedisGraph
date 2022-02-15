@@ -561,3 +561,34 @@ class testQueryValidationFlow(FlowTestsBase):
             except redis.exceptions.ResponseError as e:
                 pass
 
+    def test38_return_star_union(self):
+        # queries of the form [...] RETURN * UNION [...] should have
+        # all relevant validations on their column names enforced
+        queries = ["WITH 5 AS x RETURN * UNION WITH 10 AS y RETURN *",
+                   "WITH 5 AS x RETURN * UNION WITH 10 AS y RETURN y",
+                   "WITH 5 AS x, 8 AS y RETURN * UNION WITH 10 AS y RETURN y"]
+        for q in queries:
+            try:
+                redis_graph.query(q)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("All sub queries in an UNION must have the same column names", str(e))
+
+    def test39_non_single_statement_query(self):
+        queries = [";",
+                   " ;",
+                   " "]
+        for q in queries:
+            try:
+                redis_graph.query(q)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("empty query", str(e))
+        
+        queries = ["MATCH (n) RETURN n; MATCH"]
+        for q in queries:
+            try:
+                redis_graph.query(q)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("query with more than one statement is not supported", str(e))
