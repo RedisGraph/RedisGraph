@@ -564,9 +564,10 @@ cypher_parse_result_t *parse_query(const char *query) {
 	fclose(f);
 
 	if(!result) return NULL;
-	
+
+	// check that the parser parse the entire query
 	if(!cypher_parse_result_eof(result)) {
-		ErrorCtx_SetError("Error: query is incomplete.");
+		ErrorCtx_SetError("Error: query with more then one statement is not supported.");
 		return NULL;
 	}
 

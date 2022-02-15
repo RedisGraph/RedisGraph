@@ -574,9 +574,10 @@ class testQueryValidationFlow(FlowTestsBase):
             except redis.exceptions.ResponseError as e:
                 self.env.assertContains("All sub queries in an UNION must have the same column names", str(e))
 
-    def test39_invalid_query(self):
+    def test39_query_with_different_then_one_statement(self):
         queries = [";",
-                   " ;"]
+                   " ;",
+                   " "]
         for q in queries:
             try:
                 redis_graph.query(q)
@@ -584,10 +585,10 @@ class testQueryValidationFlow(FlowTestsBase):
             except redis.exceptions.ResponseError as e:
                 self.env.assertContains("empty query", str(e))
         
-        queries = ["MATCH (n) RETURN n;MATCH"]
+        queries = ["MATCH (n) RETURN n; MATCH"]
         for q in queries:
             try:
                 redis_graph.query(q)
                 assert(False)
             except redis.exceptions.ResponseError as e:
-                self.env.assertContains("query is incomplete", str(e))
+                self.env.assertContains("query with more then one statement is not supported", str(e))

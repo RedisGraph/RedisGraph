@@ -1681,6 +1681,7 @@ static AST_Validation _AST_Validate_ParseResultRoot(const cypher_parse_result_t 
 		}
 	}
 
+	// query with no roots like ';'
 	if(nroots == 0) {
 		ErrorCtx_SetError("Error: empty query.");
 	}
