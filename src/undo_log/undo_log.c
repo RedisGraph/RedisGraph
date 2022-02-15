@@ -97,8 +97,8 @@ static void _UndoLog_Rollback_Update_Entity(QueryCtx *ctx, size_t seq_start, siz
 	size_t len = seq_end - seq_start + 1; 
 	for(int i = 0; i < len; ++i) {
 		UndoOp *op = undo_list + seq_start + i;
-		Graph_UpdateEntity(ctx->gc->g, op->update_op.ge,
-			op->update_op.attr_id, op->update_op.orig_value, op->update_op.entity_type);
+		Graph_UpdateEntity(op->update_op.ge, op->update_op.attr_id,
+			op->update_op.orig_value, op->update_op.entity_type);
 
 		if(op->update_op.entity_type == GETYPE_NODE) {
 			Node *n = (Node *)op->update_op.ge;

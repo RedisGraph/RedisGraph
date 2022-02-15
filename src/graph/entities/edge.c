@@ -121,11 +121,8 @@ void Edge_Clone
 	ASSERT(e != NULL);
 	ASSERT(clone != NULL);
 
-	clone->id                     = e->id;
-	clone->srcNodeID              = e->srcNodeID;
-	clone->destNodeID             = e->destNodeID;
-	clone->relationID             = e->relationID;
-	clone->attributes             = AttributeSet_Clone(e->attributes);
+	*clone            = *e;
+	clone->attributes = AttributeSet_Clone(e->attributes);
 }
 
 void Edge_Free

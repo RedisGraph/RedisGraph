@@ -191,7 +191,6 @@ int Graph_DeleteEdge
 // update entity attribute with new value
 int Graph_UpdateEntity
 (
-	Graph *g,                    // graph to update entity from
 	GraphEntity *ge,             // entity yo update
 	Attribute_ID attr_id,        // attribute to update
 	SIValue new_value,           // value to be set
@@ -201,7 +200,7 @@ int Graph_UpdateEntity
 // returns true if the given entity has been deleted
 bool Graph_EntityIsDeleted
 (
-	AttributeSet *e
+	GraphEntity *e
 );
 
 // all graph matrices are required to be squared NXN

@@ -54,7 +54,7 @@ RSDoc *Index_IndexGraphEntity
 		for(uint i = 0; i < field_count; i++) {
 			field = idx->fields + i;
 			const char *field_name = field->name;
-			v = AttributeSet_Get(e->attributes, field->id);
+			v = GraphEntity_GetProperty(e, field->id);
 			if(v == ATTRIBUTE_NOTFOUND) continue;
 
 			SIType t = SI_TYPE(*v);
@@ -70,7 +70,7 @@ RSDoc *Index_IndexGraphEntity
 		for(uint i = 0; i < field_count; i++) {
 			field = idx->fields + i;
 			const char *field_name = field->name;
-			v = AttributeSet_Get(e->attributes, field->id);
+			v = GraphEntity_GetProperty(e, field->id);
 			if(v == ATTRIBUTE_NOTFOUND) continue;
 
 			SIType t = SI_TYPE(*v);

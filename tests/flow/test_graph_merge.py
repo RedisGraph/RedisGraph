@@ -574,4 +574,4 @@ class testGraphMergeFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            self.env.assertIn("undefined attribute-set", str(e))
+            self.env.assertIn("undefined attribute", str(e))

@@ -118,13 +118,13 @@ static void _AddEdgeToIndices(GraphContext *gc, Edge *e) {
 // Add properties to the GraphEntity.
 static inline uint _AddProperties
 (
-	AttributeSet *e,
+	GraphEntity *e,
 	AttributeSet *attr
 ) {
 	int failed_updates = 0;
 	for(int i = 0; i < attr->attr_count; i++) {
 		Attribute *a = attr->attributes + i;
-		bool updated = AttributeSet_Add(e, a->id, a->value, false);
+		bool updated = GraphEntity_AddProperty(e, a->id, a->value);
 		if(!updated) failed_updates++;
 	}
 
@@ -143,7 +143,7 @@ uint CreateNode
 	ASSERT(n != NULL);
 
 	Graph_CreateNode(gc->g, n, labels, label_count);
-	uint properties_set = _AddProperties(n->attributes, props);
+	uint properties_set = _AddProperties((GraphEntity *)n, props);
 
 	// add node labels
 	for(uint i = 0; i < label_count; i++) {
@@ -174,7 +174,7 @@ uint CreateEdge
 	ASSERT(e != NULL);
 
 	Graph_CreateEdge(gc->g, src, dst, r, e);
-	uint properties_set = _AddProperties(e->attributes, props);
+	uint properties_set = _AddProperties((GraphEntity *)e, props);
 
 	Schema *s = GraphContext_GetSchema(gc, e->relationship, SCHEMA_EDGE);
 	// all schemas have been created in the edge blueprint loop or earlier
@@ -279,7 +279,7 @@ static int _Update_Entity
 			_add_undo_op(&op);
 		}
 	} else {
-		SIValue *orig_value = AttributeSet_Get(ge->attributes, attr_id);
+		SIValue *orig_value = GraphEntity_GetProperty(ge, attr_id);
 		// add entity update operation to undo log
 		UndoOp op;
 		SIValue clone = SI_CloneValue(*orig_value);
@@ -287,7 +287,7 @@ static int _Update_Entity
 		_add_undo_op(&op);
 	}
 
-	return Graph_UpdateEntity(gc->g, ge, attr_id, new_value, entity_type);
+	return Graph_UpdateEntity(ge, attr_id, new_value, entity_type);
 }
 
 int UpdateEntity

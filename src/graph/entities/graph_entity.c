@@ -10,6 +10,40 @@
 #include "../../util/rmalloc.h"
 #include "../../datatypes/array.h"
 
+// add a new property to entity
+bool GraphEntity_AddProperty
+(
+	GraphEntity *e,
+	Attribute_ID attr_id,
+	SIValue value
+) {
+	ASSERT(e);
+
+	return AttributeSet_Add(e->attributes, attr_id, value, false);
+}
+
+SIValue *GraphEntity_GetProperty
+(
+	const GraphEntity *e,
+	Attribute_ID attr_id
+) {
+	ASSERT(e);
+
+	return AttributeSet_Get(e->attributes, attr_id);
+}
+
+// updates existing property value
+bool GraphEntity_SetProperty
+(
+	const GraphEntity *e,
+	Attribute_ID attr_id,
+	SIValue value
+) {
+	ASSERT(e);
+
+	return AttributeSet_Update(e->attributes, attr_id, value);
+}
+
 SIValue GraphEntity_Keys
 (
 	const GraphEntity *e
@@ -158,5 +192,5 @@ inline bool GraphEntity_IsDeleted
 (
 	const GraphEntity *e
 ) {
-	return Graph_EntityIsDeleted(e->attributes);
+	return Graph_EntityIsDeleted(e);
 }

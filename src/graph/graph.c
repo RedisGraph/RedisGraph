@@ -871,8 +871,8 @@ int Graph_DeleteEdge
 	return 1;
 }
 
-inline bool Graph_EntityIsDeleted(AttributeSet *e) {
-	return DataBlock_ItemIsDeleted(e);
+inline bool Graph_EntityIsDeleted(GraphEntity *e) {
+	return DataBlock_ItemIsDeleted(e->attributes);
 }
 
 void Graph_DeleteNode
@@ -912,13 +912,11 @@ static void _Graph_FreeRelationMatrices
 // update entity attribute with new value
 int Graph_UpdateEntity
 (
-	Graph *g,                    // graph to update entity from
 	GraphEntity *ge,             // entity yo update
 	Attribute_ID attr_id,        // attribute to update
 	SIValue new_value,           // value to be set
 	GraphEntityType entity_type  // type of the entity node/edge
 ) {
-	ASSERT(g);
 	ASSERT(ge);
 
 	int res = 0;
@@ -929,16 +927,16 @@ int Graph_UpdateEntity
 	}
 
 	// try to get current attribute value
-	SIValue *old_value = AttributeSet_Get(ge->attributes, attr_id);
+	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
 
 	if(old_value == ATTRIBUTE_NOTFOUND) {
 		// adding a new attribute; do nothing if its value is NULL
 		if(SI_TYPE(new_value) != T_NULL) {
-			res = AttributeSet_Add(ge->attributes, attr_id, new_value, false);
+			res = GraphEntity_AddProperty(ge, attr_id, new_value);
 		}
 	} else {
 		// update attribute
-		res = AttributeSet_Update(ge->attributes, attr_id, new_value);
+		res = GraphEntity_SetProperty(ge, attr_id, new_value);
 	}
 
 	return res;

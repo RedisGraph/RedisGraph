@@ -46,6 +46,31 @@ typedef struct {
 	EntityID id;
 } GraphEntity;
 
+// adds property to entity
+// returns - reference to newly added property
+bool GraphEntity_AddProperty
+(
+	GraphEntity *e,
+	Attribute_ID attr_id,
+	SIValue value
+);
+
+// Retrieves entity's property
+// NOTE: If the key does not exist, we return the special
+// constant value PROPERTY_NOTFOUND
+SIValue *GraphEntity_GetProperty
+(
+	const GraphEntity *e,
+	Attribute_ID attr_id
+);
+
+// updates existing attribute value, return true if property been updated. */
+bool GraphEntity_SetProperty
+(
+	const GraphEntity *e,
+	Attribute_ID attr_id,SIValue value
+);
+
 // returns an SIArray of all keys in graph entity properties
 SIValue GraphEntity_Keys
 (

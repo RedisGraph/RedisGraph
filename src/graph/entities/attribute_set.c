@@ -121,7 +121,7 @@ SIValue *AttributeSet_Get
 	if(attr_id == ATTRIBUTE_ID_NONE) return ATTRIBUTE_NOTFOUND;
 	if(set == NULL) {
  		// note that this exception may cause memory to be leaked in the caller
- 		ErrorCtx_SetError("Attempted to access undefined attribute-set");
+ 		ErrorCtx_SetError("Attempted to access undefined attribute");
  		return ATTRIBUTE_NOTFOUND;
  	}
 

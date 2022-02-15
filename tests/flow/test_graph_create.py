@@ -85,7 +85,7 @@ class testGraphCreationFlow(FlowTestsBase):
             redis_graph.query(query)
             self.env.assertTrue(False)
         except redis.exceptions.ResponseError as e:
-            self.env.assertIn("undefined attribute-set", str(e))
+            self.env.assertIn("undefined attribute", str(e))
 
     def test06_create_project_volatile_value(self):
         # The path e is volatile; verify that it can be projected after entity creation.

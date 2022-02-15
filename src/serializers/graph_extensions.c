@@ -37,11 +37,11 @@ void Serializer_Graph_SetNode
 ) {
 	ASSERT(g);
 
-	AttributeSet *en = DataBlock_AllocateItemOutOfOrder(g->nodes, id);
-	en->attr_count   =  0;
-	en->attributes   =  NULL;
-	n->id            =  id;
-	n->attributes    =  en;
+	AttributeSet *set = DataBlock_AllocateItemOutOfOrder(g->nodes, id);
+	set->attr_count   =  0;
+	set->attributes   =  NULL;
+	n->id             =  id;
+	n->attributes     =  set;
 	GrB_Info info;
 	UNUSED(info);
 
