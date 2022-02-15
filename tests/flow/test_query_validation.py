@@ -574,7 +574,7 @@ class testQueryValidationFlow(FlowTestsBase):
             except redis.exceptions.ResponseError as e:
                 self.env.assertContains("All sub queries in an UNION must have the same column names", str(e))
 
-    def test39_query_with_different_then_one_statement(self):
+    def test39_non_single_statement_query(self):
         queries = [";",
                    " ;",
                    " "]
@@ -591,4 +591,4 @@ class testQueryValidationFlow(FlowTestsBase):
                 redis_graph.query(q)
                 assert(False)
             except redis.exceptions.ResponseError as e:
-                self.env.assertContains("query with more then one statement is not supported", str(e))
+                self.env.assertContains("query with more than one statement is not supported", str(e))
