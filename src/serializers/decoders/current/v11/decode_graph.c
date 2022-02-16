@@ -20,9 +20,6 @@ static GraphContext *_GetOrCreateGraphContext
 	// Free the name string, as it either not in used or copied.
 	RedisModule_Free(graph_name);
 
-	// Set the GraphCtx in thread-local storage.
-	QueryCtx_SetGraphCtx(gc);
-
 	return gc;
 }
 
@@ -217,9 +214,6 @@ GraphContext *RdbLoadGraphContext_v11
 		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
 		RedisModule_Log(ctx, "notice", "Done decoding graph %s", gc->graph_name);
 	}
-
-	// release thread-local variables
-	QueryCtx_Free();
 
 	return gc;
 }

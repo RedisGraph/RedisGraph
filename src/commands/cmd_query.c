@@ -100,7 +100,7 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 		}
 
 		// populate the index only when at least one attribute was introduced
-		if(index_added) Index_Construct(idx);
+		if(index_added) Index_Construct(idx, gc->g);
 
 		QueryCtx_UnlockCommit(NULL);
 	} else if(exec_type == EXECUTION_TYPE_INDEX_DROP) {

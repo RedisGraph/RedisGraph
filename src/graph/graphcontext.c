@@ -414,7 +414,8 @@ int GraphContext_AddExactMatchIndex
 	if(s == NULL) s = GraphContext_AddSchema(gc, label, schema_type);
 
 	IndexField idx_field;
-	IndexField_New(&idx_field, field, INDEX_FIELD_DEFAULT_WEIGHT,
+	Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field);
+	IndexField_New(&idx_field, field_id, field, INDEX_FIELD_DEFAULT_WEIGHT,
 				   INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
 
 	int res = Schema_AddIndex(idx, s, &idx_field, IDX_EXACT_MATCH);
@@ -448,7 +449,8 @@ int GraphContext_AddFullTextIndex
 	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
 	if(s == NULL) s = GraphContext_AddSchema(gc, label, schema_type);
 	IndexField index_field;
-	IndexField_New(&index_field, field, weight, nostem, phonetic);
+	Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field);
+	IndexField_New(&index_field, field_id, field, weight, nostem, phonetic);
 	int res = Schema_AddIndex(idx, s, &index_field, IDX_FULLTEXT);
 	ResultSet *result_set = QueryCtx_GetResultSet();
 	ResultSet_IndexCreated(result_set, res);

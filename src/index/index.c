@@ -15,8 +15,8 @@
 #include "../graph/entities/node.h"
 #include "../graph/rg_matrix/rg_matrix_iter.h"
 
-extern void populateEdgeIndex(Index *idx); 
-extern void populateNodeIndex(Index *idx);
+extern void populateEdgeIndex(Index *idx, Graph *g); 
+extern void populateNodeIndex(Index *idx, Graph *g);
 
 RSDoc *Index_IndexGraphEntity
 (
@@ -128,6 +128,7 @@ RSDoc *Index_IndexGraphEntity
 void IndexField_New
 (
 	IndexField *field,
+	Attribute_ID id,
 	const char *name,
 	double weight,
 	bool nostem,
@@ -137,9 +138,7 @@ void IndexField_New
 	ASSERT(field     !=  NULL);
 	ASSERT(phonetic  !=  NULL);
 
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-
-	field->id       = GraphContext_FindOrAddAttribute(gc, name);
+	field->id       = id;
 	field->name     = rm_strdup(name);
 	field->weight   = weight;
 	field->nostem   = nostem;
@@ -220,7 +219,8 @@ void Index_RemoveField
 // constructs index
 void Index_Construct
 (
-	Index *idx
+	Index *idx,
+	Graph *g
 ) {
 	ASSERT(idx != NULL);
 
@@ -288,8 +288,8 @@ void Index_Construct
 	}
 
 	idx->idx = rsIdx;
-	if(idx->entity_type == GETYPE_NODE) populateNodeIndex(idx);
-	else populateEdgeIndex(idx);
+	if(idx->entity_type == GETYPE_NODE) populateNodeIndex(idx, g);
+	else populateEdgeIndex(idx, g);
 }
 
 // query index

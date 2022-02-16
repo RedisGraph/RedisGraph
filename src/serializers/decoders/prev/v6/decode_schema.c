@@ -6,7 +6,12 @@
 
 #include "decode_v6.h"
 
-Schema *RdbLoadSchema_v6(RedisModuleIO *rdb, SchemaType type) {
+Schema *RdbLoadSchema_v6
+(
+	RedisModuleIO *rdb,
+	GraphContext *gc,
+	SchemaType type
+) {
 	/* Format:
 	 * id
 	 * name
@@ -24,7 +29,8 @@ Schema *RdbLoadSchema_v6(RedisModuleIO *rdb, SchemaType type) {
 		IndexType type = RedisModule_LoadUnsigned(rdb);
 		char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
 		IndexField field;
-		IndexField_New(&field, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
+		Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field_name);
+		IndexField_New(&field, field_id, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
 				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
 		Schema_AddIndex(&idx, s, &field, type);
 		RedisModule_Free(field_name);
