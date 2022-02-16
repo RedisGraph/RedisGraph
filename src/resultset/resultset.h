@@ -16,37 +16,87 @@
 #define RESULTSET_FULL 0
 
 typedef struct {
-	RedisModuleCtx *ctx;            /* Redis context. */
-	GraphContext *gc;               /* Context used for mapping attribute strings and IDs */
-	uint column_count;              /* Number of columns in result set. */
-	const char **columns;           /* Field names for each column of results. */
-	uint *columns_record_map;       /* Mapping between column name and record index.*/
-	DataBlock *cells;               /* Accumulated cells */
-	double timer[2];                /* Query runtime tracker. */
-	ResultSetStatistics stats;      /* ResultSet statistics. */
-	ResultSetFormatterType format;  /* Result-set format; compact/verbose/nop. */
-	ResultSetFormatter *formatter;  /* ResultSet data formatter. */
+	RedisModuleCtx *ctx;            // redis context
+	GraphContext *gc;               // context used for mapping attribute strings and IDs
+	uint column_count;              // number of columns in result set
+	const char **columns;           // field names for each column of results
+	uint *columns_record_map;       // mapping between column name and record index
+	DataBlock *cells;               // accumulated cells
+	double timer[2];                // query runtime tracker
+	ResultSetStatistics stats;      // resultSet statistics
+	ResultSetFormatterType format;  // result-set format; compact/verbose/nop
+	ResultSetFormatter *formatter;  // resultSet data formatter
 } ResultSet;
 
-void ResultSet_MapProjection(ResultSet *set, const Record r);
+// map each column to a record index
+// such that when resolving resultset row i column j we'll extract
+// data from record at position columns_record_map[j]
+void ResultSet_MapProjection
+(
+	ResultSet *set,
+	const Record r
+);
 
-ResultSet *NewResultSet(RedisModuleCtx *ctx, ResultSetFormatterType format);
+// allocate new result set and initialize it
+ResultSet *NewResultSet
+(
+	RedisModuleCtx *ctx,
+	ResultSetFormatterType format
+);
 
 // returns number of rows in result-set
-uint64_t ResultSet_RowCount(const ResultSet *set);
+uint64_t ResultSet_RowCount
+(
+	const ResultSet *set
+);
 
-int ResultSet_AddRecord(ResultSet *set, Record r);
+// add a record to result set
+int ResultSet_AddRecord
+(
+	ResultSet *set,
+	Record r
+);
 
-void ResultSet_IndexCreated(ResultSet *set, int status_code);
+// increment the index created stats
+void ResultSet_IndexCreated
+(
+	ResultSet *set,
+	int status_code
+);
 
-void ResultSet_IndexDeleted(ResultSet *set, int status_code);
+// increment the index deleted stats
+void ResultSet_IndexDeleted
+(
+	ResultSet *set,
+	int status_code
+);
 
-void ResultSet_CachedExecution(ResultSet *set);
+// set the cache execution stats
+void ResultSet_CachedExecution
+(
+	ResultSet *set
+);
 
-void ResultSet_Reply(ResultSet *set);
+// return the result to the client
+void ResultSet_Reply
+(
+	ResultSet *set
+);
 
-void ResultSet_ReportQueryRuntime(RedisModuleCtx *ctx);
+// report execution timing
+void ResultSet_ReportQueryRuntime
+(
+	RedisModuleCtx *ctx
+);
 
-void ResultSet_Clear(ResultSet *set);
+// clear result set stats
+void ResultSet_Clear
+(
+	ResultSet *set
+);
 
-void ResultSet_Free(ResultSet *set);
+// free the result set
+void ResultSet_Free
+(
+	ResultSet *set
+);
