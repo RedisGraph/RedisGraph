@@ -77,7 +77,6 @@ void AttributeSet_Clear
 
 // adds an attribute to the set
 // returns true if attribute was added to the set
-// TODO: see if we can change from `bool` to `void`
 bool AttributeSet_Add
 (
 	AttributeSet *set,     // set to update
