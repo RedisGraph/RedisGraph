@@ -377,7 +377,7 @@ Graph *Graph_New
 	size_t edge_cap
 ) {
 
-	fpDestructor cb = (fpDestructor)AttributeSet_FreeAttributes;
+	fpDestructor cb = (fpDestructor)AttributeSet_Clear;
 	Graph *g = rm_calloc(1, sizeof(Graph));
 
 	g->nodes      =  DataBlock_New(node_cap, node_cap, sizeof(AttributeSet), cb);
@@ -871,7 +871,10 @@ int Graph_DeleteEdge
 	return 1;
 }
 
-inline bool Graph_EntityIsDeleted(GraphEntity *e) {
+inline bool Graph_EntityIsDeleted
+(
+	const GraphEntity *e
+) {
 	return DataBlock_ItemIsDeleted(e->attributes);
 }
 
@@ -923,7 +926,9 @@ int Graph_UpdateEntity
 
 	// handle the case in which we are deleting all attributes
 	if(attr_id == ATTRIBUTE_ID_ALL) {
-		return AttributeSet_Clear(ge->attributes);
+		int count = ge->attributes->attr_count;
+		AttributeSet_Clear(ge->attributes);
+		return count;
 	}
 
 	// try to get current attribute value
@@ -1104,13 +1109,13 @@ void Graph_Free(Graph *g) {
 	// is being removed we won't be reusing items
 	it = Graph_ScanNodes(g);
 	while((en = (AttributeSet *)DataBlockIterator_Next(it, NULL)) != NULL) {
-		AttributeSet_FreeAttributes(en);
+		AttributeSet_Clear(en);
 	}
 	DataBlockIterator_Free(it);
 
 	it = Graph_ScanEdges(g);
 	while((en = DataBlockIterator_Next(it, NULL)) != NULL) {
-		AttributeSet_FreeAttributes(en);
+		AttributeSet_Clear(en);
 	}
 	DataBlockIterator_Free(it);
 

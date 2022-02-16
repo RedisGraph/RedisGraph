@@ -28,8 +28,7 @@ typedef struct {
 
 // clears attribute set
 // returns number of attributes cleared
-// TODO: see if we can change from `int` to `void`
-int AttributeSet_Clear
+void AttributeSet_Clear
 (
 	AttributeSet *set  // set to be cleared
 );
@@ -66,12 +65,6 @@ bool AttributeSet_Update
 AttributeSet *AttributeSet_Clone
 (
 	const AttributeSet *set  // set to clone
-);
-
-// clears all attributes from set
-void AttributeSet_FreeAttributes
-(
-	AttributeSet *set  // set to be cleared
 );
 
 // free attribute set

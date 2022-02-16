@@ -55,24 +55,24 @@ static bool _AttributeSet_Remove
 
 // clears attribute set
 // returns number of attributes cleared
-int AttributeSet_Clear
+void AttributeSet_Clear
 (
 	AttributeSet *set  // set to be cleared
 ) {
 	ASSERT(set != NULL);
 
-	int attr_count = set->attr_count;
-	for(int i = 0; i < attr_count; i++) {
+	// quick return if there are no attributes
+	if(set->attributes == NULL) return;
+
+	for(int i = 0; i < set->attr_count; i++) {
 		// free all allocated properties
 		SIValue_Free(set->attributes[i].value);
 	}
-	set->attr_count = 0;
 
 	// free and NULL-set the attribute bag
 	rm_free(set->attributes);
 	set->attributes = NULL;
-
-	return attr_count;
+	set->attr_count = 0;
 }
 
 // adds an attribute to the set
@@ -183,27 +183,6 @@ AttributeSet *AttributeSet_Clone
     return clone;
 }
 
-// clears all attributes from set
-void AttributeSet_FreeAttributes
-(
-	AttributeSet *set  // set to be cleared
-) {
-	ASSERT(set != NULL);
-
-	// quick return if there are no attributes
-	if(set->attributes == NULL) return;
-
-	// free each attribute
-	for(int i = 0; i < set->attr_count; i++) {
-		Attribute *attr = set->attributes + i;
-		SIValue_Free(attr->value);
-	}
-	rm_free(set->attributes);
-
-	set->attr_count = 0;
-	set->attributes = NULL;
-}
-
 // free attribute set
 void AttributeSet_Free
 (
@@ -211,7 +190,7 @@ void AttributeSet_Free
 ) {
 	ASSERT(set != NULL);
 
-	AttributeSet_FreeAttributes(set);
+	AttributeSet_Clear(set);
 	rm_free(set);
 }
 

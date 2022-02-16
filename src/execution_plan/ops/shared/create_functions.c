@@ -233,7 +233,7 @@ void ConvertPropertyMap
 			// This value is of an invalid type.
 			if(!SIValue_IsNull(val)) {
 				// If the value was a complex type, emit an exception.
-				AttributeSet_FreeAttributes(attributes);
+				AttributeSet_Clear(attributes);
 				Error_InvalidPropertyValue();
 				ErrorCtx_RaiseRuntimeException(NULL);
 			}
@@ -241,7 +241,7 @@ void ConvertPropertyMap
 			 * otherwise skip this value. */
 			if(fail_on_null) {
 				// emit an error and exit
-				AttributeSet_FreeAttributes(attributes);
+				AttributeSet_Clear(attributes);
 				ErrorCtx_RaiseRuntimeException("Cannot merge node using null property value");
 			}
 		}
@@ -254,7 +254,7 @@ void ConvertPropertyMap
 			if(res) {
 				// validation failed
 				SIValue_Free(val);
-				AttributeSet_FreeAttributes(attributes);
+				AttributeSet_Clear(attributes);
 				Error_InvalidPropertyValue();
 				ErrorCtx_RaiseRuntimeException(NULL);
 			}
@@ -307,7 +307,7 @@ void PendingCreationsFree
 	if(pending->node_attributes) {
 		uint prop_count = array_len(pending->node_attributes);
 		for(uint i = 0; i < prop_count; i ++) {
-			AttributeSet_FreeAttributes(pending->node_attributes + i);
+			AttributeSet_Clear(pending->node_attributes + i);
 		}
 		array_free(pending->node_attributes);
 		pending->node_attributes = NULL;
@@ -317,7 +317,7 @@ void PendingCreationsFree
 	if(pending->edge_attributes) {
 		uint prop_count = array_len(pending->edge_attributes);
 		for(uint i = 0; i < prop_count; i ++) {
-			AttributeSet_FreeAttributes(pending->edge_attributes + i);
+			AttributeSet_Clear(pending->edge_attributes + i);
 		}
 		array_free(pending->edge_attributes);
 		pending->edge_attributes = NULL;
