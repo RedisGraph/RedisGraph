@@ -42,10 +42,23 @@ void _DeleteEntities(OpDelete *op) {
 
 	node_count = array_len(distinct_nodes);
 
+	Edge *edges = op->deleted_edges;
+	Edge *distinct_edges = array_new(Edge, 1);
+
+	QSORT(Edge, edges, edge_count, is_entity_lt);
+
+	for(uint i = 0; i < edge_count; i++) {
+		while(i < edge_count - 1 && ENTITY_GET_ID(edges + i) == ENTITY_GET_ID(edges + i + 1)) i++;
+
+		array_append(distinct_edges, *(edges + i));
+	}
+
+	edge_count = array_len(distinct_edges);
+
 	// lock everything
 	QueryCtx_LockForCommit(); {
 		for(uint i = 0; i < edge_count; i++) {
-			edge_deleted += DeleteEdge(op->gc, op->deleted_edges + i);
+			edge_deleted += DeleteEdge(op->gc, distinct_edges + i);
 		}
 
 		for(uint i = 0; i < node_count; i++) {
@@ -64,6 +77,7 @@ void _DeleteEntities(OpDelete *op) {
 	QueryCtx_UnlockCommit(&op->op);
 
 	array_free(distinct_nodes);
+	array_free(distinct_edges);
 }
 
 OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
