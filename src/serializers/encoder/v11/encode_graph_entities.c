@@ -77,12 +77,15 @@ static void _RdbSaveEntity
 	// #attributes N
 	// (name, value type, value) X N 
 
-	RedisModule_SaveUnsigned(rdb, e->attributes->attr_count);
+	AttributeSet *set = ENTITY_ATTRIBUTE_SET(e);
 
-	for(int i = 0; i < e->attributes->attr_count; i++) {
-		Attribute *attr = e->attributes->attributes + i;
-		RedisModule_SaveUnsigned(rdb, attr->id);
-		_RdbSaveSIValue(rdb, &attr->value);
+	RedisModule_SaveUnsigned(rdb, ATTRIBUTE_SET_COUNT(set));
+
+	for(int i = 0; i < ATTRIBUTE_SET_COUNT(set); i++) {
+		Attribute_ID attr_id;
+		SIValue value = AttributeSet_GetIdx(set, i, &attr_id);
+		RedisModule_SaveUnsigned(rdb, attr_id);
+		_RdbSaveSIValue(rdb, &value);
 	}
 }
 
