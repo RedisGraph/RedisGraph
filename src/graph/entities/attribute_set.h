@@ -13,6 +13,8 @@
 // indicates all attributes for SET clauses that replace a property map
 #define ATTRIBUTE_ID_ALL USHRT_MAX - 1
 
+#define ATTRIBUTE_SET_COUNT(attributes) ((attributes)->attr_count)
+
 typedef unsigned short Attribute_ID;
 
 typedef struct {
@@ -35,7 +37,6 @@ void AttributeSet_Clear
 
 // adds an attribute to the set
 // returns true if attribute was added to the set
-// TODO: see if we can change from `bool` to `void`
 bool AttributeSet_Add
 (
 	AttributeSet *set,     // set to update
@@ -51,6 +52,14 @@ SIValue *AttributeSet_Get
 (
 	const AttributeSet *set,  // set to retieve attribute from
 	Attribute_ID attr_id      // attribute identifier
+);
+
+// retrieves a value from set by index
+SIValue AttributeSet_GetIdx
+(
+	const AttributeSet *set,  // set to retieve attribute from
+	int i,                    // index of the property
+	Attribute_ID *attr_id     // attribute identifier
 );
 
 // updates existing attribute, return true if attribute been updated

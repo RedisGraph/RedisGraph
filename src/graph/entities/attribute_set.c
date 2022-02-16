@@ -118,6 +118,8 @@ SIValue *AttributeSet_Get
 	const AttributeSet *set,  // set to retieve attribute from
 	Attribute_ID attr_id      // attribute identifier
 ) {
+	ASSERT(set != NULL);
+
 	if(attr_id == ATTRIBUTE_ID_NONE) return ATTRIBUTE_NOTFOUND;
 	if(set == NULL) {
  		// note that this exception may cause memory to be leaked in the caller
@@ -134,6 +136,22 @@ SIValue *AttributeSet_Get
 	}
 
 	return ATTRIBUTE_NOTFOUND;
+}
+
+// retrieves a value from set by index
+SIValue AttributeSet_GetIdx
+(
+	const AttributeSet *set,  // set to retieve attribute from
+	int i,                    // index of the property
+	Attribute_ID *attr_id     // attribute identifier
+) {
+	ASSERT(set != NULL);
+	ASSERT(i < set->attr_count);
+	ASSERT(attr_id != NULL);
+
+	Attribute *attr = set->attributes + i;
+	*attr_id = attr->id;
+	return attr->value;
 }
 
 // updates existing attribute, return true if attribute been updated

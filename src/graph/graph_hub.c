@@ -269,13 +269,14 @@ static int _Update_Entity
 	GraphEntityType entity_type
 ) {
 	if(attr_id == ATTRIBUTE_ID_ALL) {
-		int prop_count = ENTITY_PROP_COUNT(ge);
+		AttributeSet *set = ENTITY_ATTRIBUTE_SET(ge);
+		int prop_count = ATTRIBUTE_SET_COUNT(set);
 		for(int i = 0; i < prop_count; i++) {
-			Attribute *prop = ENTITY_PROPS(ge) + i;
+			Attribute_ID attr_id;
 			// add entity update operation to undo log
 			UndoOp op;
-			SIValue clone = SI_CloneValue(prop->value);
-			UndoLog_UpdateEntity(&op, ge, prop->id, clone, entity_type);
+			SIValue clone = SI_CloneValue(AttributeSet_GetIdx(set, i, &attr_id));
+			UndoLog_UpdateEntity(&op, ge, attr_id, clone, entity_type);
 			_add_undo_op(&op);
 		}
 	} else {

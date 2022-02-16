@@ -49,9 +49,13 @@ SIValue GraphEntity_Keys
 	const GraphEntity *e
 ) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	SIValue keys = SIArray_New(ENTITY_PROP_COUNT(e));
-	for(int i = 0; i < e->attributes->attr_count; i++) {
-		const char *key = GraphContext_GetAttributeString(gc, ENTITY_PROPS(e)[i].id);
+	AttributeSet *set = ENTITY_ATTRIBUTE_SET(e);
+	int prop_count = ATTRIBUTE_SET_COUNT(set);
+	SIValue keys = SIArray_New(prop_count);
+	for(int i = 0; i < prop_count; i++) {
+		Attribute_ID attr_id;
+		AttributeSet_GetIdx(set, i, &attr_id);
+		const char *key = GraphContext_GetAttributeString(gc, attr_id);
 		SIArray_Append(&keys, SI_ConstStringVal(key));
 	}
 	return keys;
@@ -71,11 +75,13 @@ size_t GraphEntity_PropertiesToString
 	}
 	*bytesWritten += snprintf(*buffer, *bufferLen, "{");
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	int propCount = ENTITY_PROP_COUNT(e);
-	Attribute *attributes = ENTITY_PROPS(e);
+	AttributeSet *set = ENTITY_ATTRIBUTE_SET(e);
+	int propCount = ATTRIBUTE_SET_COUNT(set);
 	for(int i = 0; i < propCount; i++) {
+		Attribute_ID attr_id;
+		SIValue value = AttributeSet_GetIdx(set, i, &attr_id);
 		// print key
-		const char *key = GraphContext_GetAttributeString(gc, attributes[i].id);
+		const char *key = GraphContext_GetAttributeString(gc, attr_id);
 		// check for enough space
 		size_t keyLen = strlen(key);
 		if(*bufferLen - *bytesWritten < keyLen) {
@@ -85,7 +91,7 @@ size_t GraphEntity_PropertiesToString
 		*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "%s:", key);
 
 		// print value
-		SIValue_ToString(attributes[i].value, buffer, bufferLen, bytesWritten);
+		SIValue_ToString(value, buffer, bufferLen, bytesWritten);
 
 		// if not the last element print ", "
 		if(i != propCount - 1) *bytesWritten = snprintf(*buffer + *bytesWritten, *bufferLen, ", ");

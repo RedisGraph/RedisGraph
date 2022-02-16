@@ -14,8 +14,7 @@
 #define INVALID_ENTITY_ID -1l
 
 #define ENTITY_GET_ID(graphEntity) (graphEntity)->id
-#define ENTITY_PROP_COUNT(graphEntity) ((graphEntity)->attributes->attr_count)
-#define ENTITY_PROPS(graphEntity) ((graphEntity)->attributes->attributes)
+#define ENTITY_ATTRIBUTE_SET(graphEntity) ((graphEntity)->attributes)
 
 // Defined in graph_entity.c
 extern SIValue *ATTRIBUTE_NOTFOUND;

@@ -169,10 +169,11 @@ void EvalEntityUpdates
 				ErrorCtx_RaiseRuntimeException(NULL);
 			}
 			// iterate over all entity properties to build updates
-			uint property_count = ENTITY_PROP_COUNT(ge);
+			AttributeSet *set = ENTITY_ATTRIBUTE_SET(ge);
+			uint property_count = ATTRIBUTE_SET_COUNT(set);
 			for(uint j = 0; j < property_count; j ++) {
-				Attribute_ID attr_id = ENTITY_PROPS(ge)[j].id;
-				SIValue value = ENTITY_PROPS(ge)[j].value;
+				Attribute_ID attr_id;
+				SIValue value = AttributeSet_GetIdx(set, j, &attr_id);
 
 				_PreparePendingUpdate(&update.attributes, accepted_properties,
 					attr_id, value);
