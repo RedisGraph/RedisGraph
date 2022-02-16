@@ -16,8 +16,8 @@ void Node_Clone
 	ASSERT(n != NULL);
 	ASSERT(clone != NULL);
 
-	clone->id                     = n->id;
-	clone->attributes             = AttributeSet_Clone(n->attributes);
+	clone->id         = n->id;
+	clone->attributes = AttributeSet_Clone(n->attributes);
 }
 
 void Node_ToString
