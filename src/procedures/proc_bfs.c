@@ -203,6 +203,8 @@ static SIValue *Proc_BFS_Step
 		id = GxB_Vector_Iterator_getIndex(iter);
 	}
 
+	GxB_Iterator_free(&iter);
+
 	bfs_ctx->depleted = res == GxB_EXHAUSTED;
 
 	// populate output
