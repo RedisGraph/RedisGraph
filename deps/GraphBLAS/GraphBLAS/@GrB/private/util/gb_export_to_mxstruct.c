@@ -2,7 +2,7 @@
 // gb_export_to_mxstruct: export a GrB_Matrix to a built-in struct
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
@@ -69,7 +69,6 @@ mxArray *gb_export_to_mxstruct  // return exported built-in struct G
     if (GB_is_shallow (*A_handle))
     {
         // A is shallow so make a deep copy
-        // TODO:: do this in GxB*export*
         OK (GrB_Matrix_dup (&T, *A_handle)) ;
         OK (GrB_Matrix_free (A_handle)) ;
         (*A_handle) = T ;
@@ -81,12 +80,7 @@ mxArray *gb_export_to_mxstruct  // return exported built-in struct G
     // make sure the matrix is finished
     //--------------------------------------------------------------------------
 
-    // TODO: this is done in GxB*export* and can be removed here
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK1 (A, GrB_Matrix_wait (&A)) ;
-    #else
     OK1 (A, GrB_Matrix_wait (A, GrB_MATERIALIZE)) ;
-    #endif
 
     //--------------------------------------------------------------------------
     // get the sparsity_status and CSR/CSC format
@@ -102,7 +96,6 @@ mxArray *gb_export_to_mxstruct  // return exported built-in struct G
     // extract the opaque content not provided by GxB*export
     //--------------------------------------------------------------------------
 
-    // TODO: this content is opaque, try to remove it here
     int64_t nzmax = GB_nnz_max (A) ;
     int64_t plen = A->plen ;
     int64_t nvec_nonempty = A->nvec_nonempty ;
@@ -115,14 +108,12 @@ mxArray *gb_export_to_mxstruct  // return exported built-in struct G
     GrB_Type type = NULL ;
     GrB_Index nrows = 0, ncols = 0 ;
     int8_t *Ab = NULL ;
-    int64_t *Ap = NULL, *Ah = NULL, *Ai = NULL ;
+    uint64_t *Ap = NULL, *Ah = NULL, *Ai = NULL ;
     void *Ax = NULL ;
     int64_t Ap_size = 0, Ah_size = 0, Ab_size = 0, Ai_size = 0, Ax_size = 0 ;
     int64_t nvals = 0, nvec = 0 ;
     bool by_col = (fmt == GxB_BY_COL) ;
     bool iso = false ;
-
-    // TODO write GxB_Matrix_export which exports the matrix as-is
 
     switch (sparsity_status)
     {

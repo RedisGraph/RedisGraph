@@ -1,7 +1,7 @@
 function gbtest39
 %GBTEST39 test amd, colamd, symamd, symrcm, dmperm, etree
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
 for trial = 1:40

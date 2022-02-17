@@ -1,7 +1,7 @@
 function test102
 %TEST102 test GB_AxB_saxpy3_flopcount
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\ntest102: testing GB_AxB_saxpy3_flopcount\n') ;

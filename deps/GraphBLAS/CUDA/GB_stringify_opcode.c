@@ -119,8 +119,6 @@ const char *GB_stringify_opcode    // name of unary/binary opcode
         case GB_POSITIONJ_unop_code     : return ("positionj") ;
         case GB_POSITIONJ1_unop_code    : return ("positionj1") ;
 
-        case GB_USER_unop_code : return ("user_unop") ;    // unary only
-
         //======================================================================
         // binary operators
         //======================================================================
@@ -129,67 +127,67 @@ const char *GB_stringify_opcode    // name of unary/binary opcode
         // binary operators z=f(x,y) that return the same type as their inputs
         //----------------------------------------------------------------------
 
-        case GB_FIRST_binop_code  : return ("first") ;  // z = x
-        case GB_SECOND_binop_code : return ("second") ; // z = y
-        case GB_ANY_binop_code    : return ("any") ;    // z = pick x or y
-        case GB_PAIR_binop_code   : return ("pair") ;   // z = 1
-        case GB_MIN_binop_code    : return ("min") ;    // z = min(x,y)
-        case GB_MAX_binop_code    : return ("max") ;    // z = max(x,y)
-        case GB_PLUS_binop_code   : return ("plus") ;   // z = x + y
-        case GB_MINUS_binop_code  : return ("minus") ;  // z = x - y
-        case GB_RMINUS_binop_code : return ("rminus") ; // z = y - x
-        case GB_TIMES_binop_code  : return ("times") ;  // z = x * y
-        case GB_DIV_binop_code    : return ("div") ;    // z = x / y
-        case GB_RDIV_binop_code   : return ("rdiv") ;   // z = y / x
-        case GB_POW_binop_code    : return ("pow") ;    // z = pow (x,y)
+        case GB_FIRST_binop_code     : return ("first") ;  // z = x
+        case GB_SECOND_binop_code    : return ("second") ; // z = y
+        case GB_ANY_binop_code       : return ("any") ;    // z = pick x or y
+        case GB_PAIR_binop_code      : return ("pair") ;   // z = 1
+        case GB_MIN_binop_code       : return ("min") ;    // z = min(x,y)
+        case GB_MAX_binop_code       : return ("max") ;    // z = max(x,y)
+        case GB_PLUS_binop_code      : return ("plus") ;   // z = x + y
+        case GB_MINUS_binop_code     : return ("minus") ;  // z = x - y
+        case GB_RMINUS_binop_code    : return ("rminus") ; // z = y - x
+        case GB_TIMES_binop_code     : return ("times") ;  // z = x * y
+        case GB_DIV_binop_code       : return ("div") ;    // z = x / y
+        case GB_RDIV_binop_code      : return ("rdiv") ;   // z = y / x
+        case GB_POW_binop_code       : return ("pow") ;    // z = pow (x,y)
 
-        case GB_ISEQ_binop_code   : return ("iseq") ;   // z = (x == y)
-        case GB_ISNE_binop_code   : return ("isne") ;   // z = (x != y)
-        case GB_ISGT_binop_code   : return ("isgt") ;   // z = (x >  y)
-        case GB_ISLT_binop_code   : return ("islt") ;   // z = (x <  y)
-        case GB_ISGE_binop_code   : return ("isge") ;   // z = (x >= y)
-        case GB_ISLE_binop_code   : return ("isle") ;   // z = (x <= y)
+        case GB_ISEQ_binop_code      : return ("iseq") ;   // z = (x == y)
+        case GB_ISNE_binop_code      : return ("isne") ;   // z = (x != y)
+        case GB_ISGT_binop_code      : return ("isgt") ;   // z = (x >  y)
+        case GB_ISLT_binop_code      : return ("islt") ;   // z = (x <  y)
+        case GB_ISGE_binop_code      : return ("isge") ;   // z = (x >= y)
+        case GB_ISLE_binop_code      : return ("isle") ;   // z = (x <= y)
 
-        case GB_LOR_binop_code    : return ("lor") ;    // z = x || y
-        case GB_LAND_binop_code   : return ("land") ;   // z = x && y
-        case GB_LXOR_binop_code   : return ("lxor") ;   // z = x != y
+        case GB_LOR_binop_code       : return ("lor") ;    // z = x || y
+        case GB_LAND_binop_code      : return ("land") ;   // z = x && y
+        case GB_LXOR_binop_code      : return ("lxor") ;   // z = x != y
 
-        case GB_BOR_binop_code    : return ("bor") ;     // z = (x | y), bitwise
-        case GB_BAND_binop_code   : return ("band") ;    // z = (x & y), bitwise
-        case GB_BXOR_binop_code   : return ("bxor") ;    // z = (x ^ y), bitwise
-        case GB_BXNOR_binop_code  : return ("bxnor") ;   // z = ~(x^y), bitwise
-        case GB_BGET_binop_code   : return ("bget") ;    // z = bitget (x,y)
-        case GB_BSET_binop_code   : return ("bset") ;    // z = bitset (x,y)
-        case GB_BCLR_binop_code   : return ("bclr") ;    // z = bitclr (x,y)
-        case GB_BSHIFT_binop_code : return ("bshift") ;  // z = bitshift (x,y)
+        case GB_BOR_binop_code       : return ("bor") ;     // z = (x | y), bitwise
+        case GB_BAND_binop_code      : return ("band") ;    // z = (x & y), bitwise
+        case GB_BXOR_binop_code      : return ("bxor") ;    // z = (x ^ y), bitwise
+        case GB_BXNOR_binop_code     : return ("bxnor") ;   // z = ~(x ^ y), bitwise
+        case GB_BGET_binop_code      : return ("bget") ;    // z = bitget (x,y)
+        case GB_BSET_binop_code      : return ("bset") ;    // z = bitset (x,y)
+        case GB_BCLR_binop_code      : return ("bclr") ;    // z = bitclr (x,y)
+        case GB_BSHIFT_binop_code    : return ("bshift") ;  // z = bitshift (x,y)
 
         //----------------------------------------------------------------------
         // binary operators z=f(x,y) that return bool (TxT -> bool)
         //----------------------------------------------------------------------
 
-        case GB_EQ_binop_code     : return ("eq") ;   // z = (x == y)
-        case GB_NE_binop_code     : return ("ne") ;   // z = (x != y)
-        case GB_GT_binop_code     : return ("gt") ;   // z = (x >  y)
-        case GB_LT_binop_code     : return ("lt") ;   // z = (x <  y)
-        case GB_GE_binop_code     : return ("ge") ;   // z = (x >= y)
-        case GB_LE_binop_code     : return ("le") ;   // z = (x <= y)
+        case GB_EQ_binop_code        : return ("eq") ;   // z = (x == y)
+        case GB_NE_binop_code        : return ("ne") ;   // z = (x != y)
+        case GB_GT_binop_code        : return ("gt") ;   // z = (x >  y)
+        case GB_LT_binop_code        : return ("lt") ;   // z = (x <  y)
+        case GB_GE_binop_code        : return ("ge") ;   // z = (x >= y)
+        case GB_LE_binop_code        : return ("le") ;   // z = (x <= y)
 
         //----------------------------------------------------------------------
         // binary operators for real floating-point types (TxT -> T)
         //----------------------------------------------------------------------
 
-        case GB_ATAN2_binop_code  : return ("atan2") ;       // z = atan2 (x,y)
-        case GB_HYPOT_binop_code  : return ("hypot") ;       // z = hypot (x,y)
-        case GB_FMOD_binop_code   : return ("fmod") ;        // z = fmod (x,y)
-        case GB_REMAINDER_binop_code : return ("remainder") ;// z=rem(x,y)
-        case GB_COPYSIGN_binop_code  : return ("copysign") ; // z=copysign (x,y)
-        case GB_LDEXP_binop_code  : return ("ldexp") ;       // z = ldexp (x,y)
+        case GB_ATAN2_binop_code     : return ("atan2") ;       // z = atan2 (x,y)
+        case GB_HYPOT_binop_code     : return ("hypot") ;       // z = hypot (x,y)
+        case GB_FMOD_binop_code      : return ("fmod") ;        // z = fmod (x,y)
+        case GB_REMAINDER_binop_code : return ("remainder") ;   // z=remainder(x,y)
+        case GB_COPYSIGN_binop_code  : return ("copysign") ;    // z=copysign (x,y)
+        case GB_LDEXP_binop_code     : return ("ldexp") ;       // z = ldexp (x,y)
 
         //----------------------------------------------------------------------
         // binary operator z=f(x,y) where z is complex, x,y real:
         //----------------------------------------------------------------------
 
-        case GB_CMPLX_binop_code  : return ("cmplx") ;       // z = cmplx (x,y)
+        case GB_CMPLX_binop_code     : return ("cmplx") ;       // z = cmplx (x,y)
 
         //----------------------------------------------------------------------
         // positional binary operators: z is int64, x and y are ignored
@@ -209,7 +207,8 @@ const char *GB_stringify_opcode    // name of unary/binary opcode
         // user-defined: unary and binary operators
         //======================================================================
 
-        case GB_USER_binop_code : return ("user_binop") ;    // binary op only
+        case GB_USER_unop_code : return ("user_unop") ;
+        case GB_USER_binop_code : return ("user_binop") ;
 
         //======================================================================
         // invalid opcode

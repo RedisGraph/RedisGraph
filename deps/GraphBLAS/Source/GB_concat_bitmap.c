@@ -2,14 +2,14 @@
 // GB_concat_bitmap: concatenate an array of matrices into a bitmap matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 #define GB_FREE_WORKSPACE                   \
     GB_WERK_POP (A_ek_slicing, int64_t) ;   \
-    GB_phbix_free (T) ;
+    GB_Matrix_free (&T) ;
 
 #define GB_FREE_ALL         \
     GB_FREE_WORKSPACE ;     \
@@ -40,7 +40,7 @@ GrB_Info GB_concat_bitmap           // concatenate into a bitmap matrix
     GrB_Matrix A = NULL ;
     GB_WERK_DECLARE (A_ek_slicing, int64_t) ;
     struct GB_Matrix_opaque T_header ;
-    GrB_Matrix T = GB_clear_static_header (&T_header) ;
+    GrB_Matrix T = NULL ;
 
     GrB_Type ctype = C->type ;
     int64_t cvlen = C->vlen ;
@@ -87,6 +87,7 @@ GrB_Info GB_concat_bitmap           // concatenate into a bitmap matrix
             if (csc != A->is_csc)
             { 
                 // T = (ctype) A'
+                GB_CLEAR_STATIC_HEADER (T, &T_header) ;
                 GB_OK (GB_transpose_cast (T, ctype, csc, A, false, Context)) ;
                 A = T ;
                 GB_MATRIX_WAIT (A) ;
@@ -186,11 +187,6 @@ GrB_Info GB_concat_bitmap           // concatenate into a bitmap matrix
 
                         case GB_16BYTE : // double complex or 16-byte user
                             #define GB_CTYPE GB_blob16
-//                          #define GB_CTYPE uint64_t
-//                          #undef  GB_COPY
-//                          #define GB_COPY(pC,pA,A_iso)                    \
-//                              Cx [2*pC  ] = Ax [A_iso ? 0 : (2*pA)] ;     \
-//                              Cx [2*pC+1] = Ax [A_iso ? 1 : (2*pA+1)] ;
                             #include "GB_concat_bitmap_template.c"
                             break ;
 

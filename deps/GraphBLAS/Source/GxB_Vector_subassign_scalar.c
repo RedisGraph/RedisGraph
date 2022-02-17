@@ -2,7 +2,7 @@
 // GxB_Vector_subassign_[SCALAR]: assign scalar to vector, via scalar expansion
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -13,6 +13,7 @@
 
 // The actual work is done in GB_subassign_scalar.c.
 
+#define GB_FREE_ALL ;
 #include "GB_subassign.h"
 #include "GB_ij.h"
 #include "GB_get_mask.h"
@@ -70,7 +71,9 @@ GB_ASSIGN_SCALAR (void *    , UDT    ,  )
 //  GxB_Vector_subassign (w, M, accum, S, Rows, nRows, desc) ;
 //  GrB_Vector_free (&S) ;
 
-#define GB_FREE_ALL GB_phbix_free (S) ;
+#undef  GB_FREE_ALL
+#define GB_FREE_ALL GB_Matrix_free (&S) ;
+#include "GB_static_header.h"
 
 GB_PUBLIC
 GrB_Info GxB_Vector_subassign_Scalar   // w<Mask>(I) = accum (w(I),s)
@@ -149,9 +152,10 @@ GrB_Info GxB_Vector_subassign_Scalar   // w<Mask>(I) = accum (w(I),s)
 
         // create an empty matrix S of the right size, and use matrix assign
         struct GB_Matrix_opaque S_header ;
-        S = GB_clear_static_header (&S_header) ;
-        GB_OK (GB_new (&S, true, scalar->type, nRows, 1, GB_Ap_calloc,
-            true, GxB_AUTO_SPARSITY, GB_HYPER_SWITCH_DEFAULT, 1, Context)) ;
+        GB_CLEAR_STATIC_HEADER (S, &S_header) ;
+        GB_OK (GB_new (&S,  // existing header
+            scalar->type, nRows, 1, GB_Ap_calloc, true, GxB_AUTO_SPARSITY,
+            GB_HYPER_SWITCH_DEFAULT, 1, Context)) ;
         info = GB_subassign (
             (GrB_Matrix) w, C_replace,      // w vector and its descriptor
             M, Mask_comp, Mask_struct,      // mask matrix and its descriptor

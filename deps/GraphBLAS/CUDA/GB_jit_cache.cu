@@ -24,27 +24,28 @@
 
 #include "GB_jit_cache.h"
 #include "GraphBLAS.h"
-// in GraphBLAS.h
-// #define GxB_IMPLEMENTATION_MAJOR 5
+// from GraphBLAS.h (for example):
+// #define GxB_IMPLEMENTATION_MAJOR 6
 // #define GxB_IMPLEMENTATION_MINOR 0
 // #define GxB_IMPLEMENTATION_SUB   3
 
 namespace jit {
 
-
 // Get the directory in home to use for storing the cache
-std::string get_user_home_cache_dir() {
-  auto home_dir = std::getenv("HOME");
-  if (home_dir != nullptr) {
-    std::string Major_ver = "5";
-    std::string Minor_ver = "1";
-    std::string Imple_sub = "4";
-    return std::string(home_dir) + "/.SuiteSparse/GraphBLAS/" 
-                                 + Major_ver+"."+Minor_ver+"."+Imple_sub;
-  } else {
-    return std::string();
-  }
-}
+    std::string get_user_home_cache_dir() {
+        auto home_dir = std::getenv("HOME");
+        if (home_dir != nullptr) {
+            std::string Major_ver = GB_XSTR (GxB_IMPLEMENTATION_MAJOR) ;
+            std::string Minor_ver = GB_XSTR (GxB_IMPLEMENTATION_MINOR) ;
+            std::string Imple_sub = GB_XSTR (GxB_IMPLEMENTATION_SUB) ;
+            return std::string(home_dir) + "/.SuiteSparse/GraphBLAS/"
+                   + Major_ver+"."+Minor_ver+"."+Imple_sub;
+        } else {
+            return std::string();
+        }
+    }
+
+
 
 // Default `GRAPHBLAS_CACHE_PATH` to `$HOME/.GraphBLAS`.
 // This definition can be overridden at compile time by specifying a
@@ -91,18 +92,24 @@ GBJitCache::GBJitCache() { }
 
 GBJitCache::~GBJitCache() { }
 
+
+//void GBJitCache::macrofy() {
+//    printf("GOT HERE and shouldn't have!\n");
+//}
+
+
 std::mutex GBJitCache::_kernel_cache_mutex;
 std::mutex GBJitCache::_program_cache_mutex;
 
 std::string GBJitCache::getFile(
-    File_Desc const &file_object )
+    File_Desc &file_object )
 {
     // Lock for thread safety
     std::lock_guard<std::mutex> lock(_program_cache_mutex);
 
+    // Macrofied version
     auto cached_file = getCachedFile( file_object, file_map );
     return *std::get<1>( cached_file ).get();
-
 }
 
 named_prog<jitify::experimental::Program> GBJitCache::getProgram(
@@ -114,7 +121,7 @@ named_prog<jitify::experimental::Program> GBJitCache::getProgram(
 {
     // Lock for thread safety
     std::lock_guard<std::mutex> lock(_program_cache_mutex);
-    //printf(" jit_cache get program %s\n", prog_name.c_str());
+    printf(" jit_cache get program %s\n", prog_name.c_str());
 
     return getCached(prog_name, program_map, 
         [&](){
@@ -138,10 +145,10 @@ named_prog<jitify::experimental::KernelInstantiation> GBJitCache::getKernelInsta
     jitify::experimental::Program& program = *std::get<1>(named_program);
 
     // Make instance name e.g. "prog_binop.kernel_v_v_int_int_long int_Add"
-    std::string kern_inst_name = prog_name + '.' + kern_name;
+    std::string kern_inst_name = kern_name;
     for ( auto&& arg : arguments ) kern_inst_name += '_' + arg;
 
-    //printf(" got kernel instance %s\n",kern_inst_name.c_str());
+    printf(" got kernel instance %s\n",kern_inst_name.c_str());
 
     return getCached(kern_inst_name, kernel_inst_map, 
         [&](){return program.kernel(kern_name)
@@ -183,7 +190,7 @@ std::string GBJitCache::cacheFile::read_file()
     int fd = open ( _file_name.c_str(), O_RDWR );
     if ( fd == -1 ) {
         // TODO: connect errors to GrB_error result
-        //printf(" failed to open cache file %s\n",_file_name.c_str());
+        printf(" failed to open cache file %s\n",_file_name.c_str());
         successful_read = false;
         return std::string();
     }
@@ -205,16 +212,19 @@ std::string GBJitCache::cacheFile::read_file()
     // Allocate memory of file length size
     std::string content;
     content.resize(file_size);
-    char *buffer = &content[0];
+
+    char *buffer = content.data();
 
     // Copy file into buffer
     if( fread(buffer, file_size, 1, fp) != 1 ) {
         //printf(" failed to read cache file %s\n",_file_name.c_str());
         successful_read = false;
         fclose(fp);
-        free(buffer);
-        return std::string();
+//        free(buffer); FIXME: Shouldn't need to free buffer since it's RAII
+        return content; // FIXME: use unique_ptr here
     }
+
+    printf("about to close\n");
     fclose(fp);
     successful_read = true;
     printf(" read cache file %s\n",_file_name.c_str());

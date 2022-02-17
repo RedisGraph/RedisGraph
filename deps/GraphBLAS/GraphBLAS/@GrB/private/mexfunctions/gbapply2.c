@@ -2,7 +2,7 @@
 // gbapply2: apply idxunop or binary operator to a matrix, with scalar binding
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
@@ -135,11 +135,7 @@ void mexFunction
         OK (GrB_Scalar_dup (&scalar0, scalar)) ;
         // the scalar need not be int32; this will typecast as needed
         OK (GrB_Scalar_setElement_INT32 (scalar0, 0)) ;
-        #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-        OK (GrB_Scalar_wait (&scalar0)) ;
-        #else
         OK (GrB_Scalar_wait (scalar0, GrB_MATERIALIZE)) ;
-        #endif
         scalar = scalar0 ;
     }
 
@@ -249,7 +245,7 @@ void mexFunction
     OK (GrB_Matrix_free (&M)) ;
     OK (GrB_Matrix_free (&A)) ;
     OK (GrB_Matrix_free (&B)) ;
-    OK (GrB_Matrix_free (&scalar0)) ;
+    OK (GrB_Scalar_free (&scalar0)) ;
     OK (GrB_Scalar_free (&Thunk)) ;
     OK (GrB_Descriptor_free (&desc)) ;
 

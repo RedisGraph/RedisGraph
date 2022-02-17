@@ -2,7 +2,7 @@
 // GB_deserialize_from_blob: uncompress a set of blocks from the blob
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -35,7 +35,7 @@ GrB_Info GB_deserialize_from_blob
     int32_t nblocks,            // # of compressed blocks for this array
     int32_t method,             // compression method used for each block
     // input/output:
-    size_t *s_handle,           // location to write into the blob
+    size_t *s_handle,           // where to read from the blob
     GB_Context Context
 )
 {
@@ -56,17 +56,15 @@ GrB_Info GB_deserialize_from_blob
     // parse the method
     //--------------------------------------------------------------------------
 
-    bool intel ;
     int32_t algo, level ;
-    GB_serialize_method (&intel, &algo, &level, method) ;
-    // method = (intel ? GxB_COMPRESSION_INTEL : 0) + (algo) + (level) ;
+    GB_serialize_method (&algo, &level, method) ;
 
     //--------------------------------------------------------------------------
     // allocate the output array
     //--------------------------------------------------------------------------
 
     size_t X_size = 0 ;
-    GB_void *X = GB_MALLOC (X_len, GB_void, &X_size) ;
+    GB_void *X = GB_MALLOC (X_len, GB_void, &X_size) ;  // OK
     if (X == NULL)
     { 
         // out of memory
@@ -93,7 +91,7 @@ GrB_Info GB_deserialize_from_blob
         // no compression; the array is held in a single block
         //----------------------------------------------------------------------
 
-        if (nblocks != 1 || Sblocks [0] != X_len || s + X_len > blob_size)
+        if (nblocks > 1 || Sblocks [0] != X_len || s + X_len > blob_size)
         {
             // blob is invalid: guard against an unsafe memcpy
             ok = false ;
@@ -175,7 +173,10 @@ GrB_Info GB_deserialize_from_blob
 
     (*X_handle) = X ;
     (*X_size_handle) = X_size ;
-    s += Sblocks [nblocks-1] ;
+    if (nblocks > 0)
+    {
+        s += Sblocks [nblocks-1] ;
+    }
     (*s_handle) = s ;
     return (GrB_SUCCESS) ;
 }

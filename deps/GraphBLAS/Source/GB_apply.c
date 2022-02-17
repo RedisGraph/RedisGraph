@@ -2,7 +2,7 @@
 // GB_apply: apply a unary operator; optionally transpose a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -11,13 +11,13 @@
 
 // GB_apply does the work for GrB_*_apply, including the binary op variants.
 
+#define GB_FREE_ALL ;
+
 #include "GB_apply.h"
 #include "GB_binop.h"
 #include "GB_transpose.h"
 #include "GB_accum_mask.h"
 #include "GB_scalar.h"
-
-#define GB_FREE_ALL ;
 
 GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
 (
@@ -43,7 +43,7 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     // C may be aliased with M and/or A
 
     struct GB_Matrix_opaque T_header ;
-    GrB_Matrix T = GB_clear_static_header (&T_header) ;
+    GrB_Matrix T = NULL ;
 
     GB_RETURN_IF_FAULTY_OR_POSITIONAL (accum) ;
     GB_RETURN_IF_NULL_OR_FAULTY (op_in) ;
@@ -265,6 +265,7 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     { 
         // T = op (A'), typecasting to op->ztype
         GBURBLE ("(transpose-op) ") ;
+        GB_CLEAR_STATIC_HEADER (T, &T_header) ;
         info = GB_transpose (T, T_type, T_is_csc, A, op, scalar,
             binop_bind1st, flipij, Context) ;
         ASSERT (GB_JUMBLED_OK (T)) ;
@@ -309,13 +310,14 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     { 
         // T = op (A), pattern is a shallow copy of A, type is op->ztype.
         GBURBLE ("(shallow-op) ") ;
+        GB_CLEAR_STATIC_HEADER (T, &T_header) ;
         info = GB_shallow_op (T, T_is_csc, op, scalar, binop_bind1st, flipij,
             A, Context) ;
     }
 
     if (info != GrB_SUCCESS)
     { 
-        GB_phbix_free (T) ;
+        GB_Matrix_free (&T) ;
         return (info) ;
     }
 

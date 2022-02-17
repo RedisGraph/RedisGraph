@@ -2,7 +2,7 @@
 // GB_builder: build a matrix from tuples
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -802,8 +802,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
     // allocate T; allocate T->p and T->h but do not initialize them.
     // T is always hypersparse.  The header T always exists on input, as
     // either a static or dynamic header.
-    bool static_header = T->static_header ;
-    info = GB_new (&T, static_header, // always hyper, static or dynamic header
+    info = GB_new (&T, // always hyper, existing header
         ttype, vlen, vdim, GB_Ap_malloc, is_csc,
         GxB_HYPERSPARSE, GB_ALWAYS_HYPER, tnvec, Context) ;
     if (info != GrB_SUCCESS)
@@ -1156,7 +1155,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
         // allocate T->x
         //----------------------------------------------------------------------
 
-        T->x = GB_XALLOC (S_iso, tnz, tsize, &(T->x_size)) ;
+        T->x = GB_XALLOC (false, S_iso, tnz, tsize, &(T->x_size)) ; // x:OK
         if (T->x == NULL)
         { 
             // out of memory

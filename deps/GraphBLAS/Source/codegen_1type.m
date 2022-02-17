@@ -4,7 +4,7 @@ function codegen_1type
 % This function creates all files of the form GB_type__*.[ch], including 11
 % functions (GB_type__*.c) and one include file, GB_type__include.h.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\ntypes:\n') ;
@@ -14,7 +14,7 @@ fprintf (f, '//-----------------------------------------------------------------
 fprintf (f, '// GB_type__include.h: definitions for GB_type__*.c\n') ;
 fprintf (f, '//------------------------------------------------------------------------------\n') ;
 fprintf (f, '\n') ;
-fprintf (f, '// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.\n') ;
+fprintf (f, '// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.\n') ;
 fprintf (f, '// SPDX-License-Identifier: Apache-2.0\n\n') ;
 fprintf (f, '// This file has been automatically generated from Generator/GB_type.h') ;
 fprintf (f, '\n\n') ;

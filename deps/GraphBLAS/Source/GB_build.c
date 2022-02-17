@@ -2,7 +2,7 @@
 // GB_build: build a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -94,8 +94,8 @@
 
 // The input arrays I, J, and X are not modified.
 
+#define GB_FREE_ALL GrB_Matrix_free (&T) ;
 #include "GB_build.h"
-#define GB_FREE_ALL GB_phbix_free (T) ;
 
 GrB_Info GB_build               // build matrix
 (
@@ -262,7 +262,8 @@ GrB_Info GB_build               // build matrix
     int64_t *no_J_work = NULL ; size_t J_work_size = 0 ;
     GB_void *no_X_work = NULL ; size_t X_work_size = 0 ;
     struct GB_Matrix_opaque T_header ;
-    GrB_Matrix T = GB_clear_static_header (&T_header) ;
+    GrB_Matrix T = NULL ;
+    GB_CLEAR_STATIC_HEADER (T, &T_header) ;
     GrB_Type ttype = (discard_duplicates) ? xtype : dup->ztype ;
 
     GB_OK (GB_builder (
