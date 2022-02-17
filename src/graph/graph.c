@@ -707,7 +707,7 @@ void Graph_GetNodeEdges
 	ASSERT(n);
 	ASSERT(edges);
 
-	RG_MatrixTupleIter   it;
+	RG_MatrixTupleIter   it       =  {0};
 	RG_Matrix            M        =  NULL;
 	RG_Matrix            TM       =  NULL;
 	NodeID               srcID    =  ENTITY_GET_ID(n);
@@ -733,7 +733,7 @@ void Graph_GetNodeEdges
 		// containing all outgoing edges
 		RG_MatrixTupleIter_reuse(&it, M);
 		RG_MatrixTupleIter_iterate_row(&it, srcID);
-		while(RG_MatrixTupleIter_next(&it, NULL, &destID, &edgeID, &depleted) == GrB_SUCCESS) {
+		while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, &edgeID, &depleted) == GrB_SUCCESS) {
 			if(depleted) break;
 
 			// collect all edges (src)->(dest)
@@ -743,6 +743,7 @@ void Graph_GetNodeEdges
 				Graph_GetEdgesConnectingNodes(g, srcID, destID, edgeType, edges);
 			}
 		}
+		RG_MatrixTupleIter_free_data(&it);
 	}
 
 	if(incoming) {
@@ -756,7 +757,7 @@ void Graph_GetNodeEdges
 		RG_MatrixTupleIter_reuse(&it, TM);
 		RG_MatrixTupleIter_iterate_row(&it, srcID);
 
-		while(RG_MatrixTupleIter_next(&it, NULL, &destID, NULL, &depleted) == GrB_SUCCESS) {
+		while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, NULL, &depleted) == GrB_SUCCESS) {
 			if(depleted) break;
 			RG_Matrix_extractElement_UINT64(&edgeID, M, destID, srcID);
 			// collect all edges connecting destId to srcId
@@ -766,6 +767,7 @@ void Graph_GetNodeEdges
 				Graph_GetEdgesConnectingNodes(g, destID, srcID, edgeType, edges);
 			}
 		}
+		RG_MatrixTupleIter_free_data(&it);
 	}
 }
 
@@ -788,7 +790,7 @@ uint Graph_GetNodeLabels
 	// GrB_Col_extract will iterate over the range of the output size
 	RG_Matrix M = Graph_GetNodeLabelMatrix(g);
 
-	RG_MatrixTupleIter iter;
+	RG_MatrixTupleIter iter = {0};
 	res = RG_MatrixTupleIter_reuse(&iter, M);
 	ASSERT(res == GrB_SUCCESS);
 
@@ -800,11 +802,13 @@ uint Graph_GetNodeLabels
 	bool depleted = false;
 
 	for(; i < label_count; i++) {
-		res = RG_MatrixTupleIter_next(&iter, NULL, labels + i, NULL, &depleted);
+		res = RG_MatrixTupleIter_next_BOOL(&iter, NULL, labels + i, NULL, &depleted);
 		ASSERT(res == GrB_SUCCESS);
 
 		if(depleted) break;
 	}
+
+	RG_MatrixTupleIter_free_data(&iter);
 
 	return i;
 }

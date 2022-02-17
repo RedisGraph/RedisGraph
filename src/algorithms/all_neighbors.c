@@ -16,7 +16,7 @@ static void _AllNeighborsCtx_CollectNeighbors
 ) {
 	ctx->current_level++;
 	if(ctx->current_level == array_len(ctx->levels)) {
-		RG_MatrixTupleIter iter;
+		RG_MatrixTupleIter iter = {0};
 		RG_MatrixTupleIter_reuse(&iter, ctx->M);
 		array_append(ctx->levels, iter);
 	}
@@ -124,7 +124,7 @@ EntityID AllNeighborsCtx_NextNeighbor
 
 		bool depleted;
 		GrB_Index dest_id;
-		RG_MatrixTupleIter_next(it, NULL, &dest_id, NULL, &depleted);
+		RG_MatrixTupleIter_next_UINT64(it, NULL, &dest_id, NULL, &depleted);
 
 		if(depleted) {
 			// backtrack
@@ -163,6 +163,10 @@ void AllNeighborsCtx_Free
 ) {
 	if(!ctx) return;
 
+	uint count = array_len(ctx->levels);
+	for (uint i = 0; i < count; i++) {
+		RG_MatrixTupleIter_free_data(ctx->levels + i);
+	}
 	array_free(ctx->levels);
 	array_free(ctx->visited);
 

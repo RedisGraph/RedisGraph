@@ -66,8 +66,8 @@ void _traverse(OpCondTraverse *op) {
 	// Evaluate expression.
 	AlgebraicExpression_Eval(op->ae, op->M);
 
-	if(op->iter == NULL) GxB_MatrixTupleIter_new(&op->iter, RG_MATRIX_M(op->M));
-	else GxB_MatrixTupleIter_reuse(op->iter, RG_MATRIX_M(op->M));
+	if(op->iter == NULL) RG_MatrixTupleIter_new(&op->iter, op->M);
+	else RG_MatrixTupleIter_reuse(op->iter, op->M);
 
 	// Clear filter matrix.
 	RG_Matrix_clear(op->F);
@@ -142,7 +142,7 @@ static Record CondTraverseConsume(OpBase *opBase) {
 	NodeID dest_id = INVALID_ENTITY_ID;
 
 	while(true) {
-		if(op->iter) GxB_MatrixTupleIter_next(op->iter, &src_id, &dest_id,
+		if(op->iter) RG_MatrixTupleIter_next_UINT64(op->iter, &src_id, &dest_id,
 				NULL, &depleted);
 
 		// Managed to get a tuple, break.
@@ -207,7 +207,7 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 	if(op->edge_ctx) EdgeTraverseCtx_Reset(op->edge_ctx);
 
 	if(op->iter) {
-		GxB_MatrixTupleIter_free(&op->iter);
+		RG_MatrixTupleIter_free(&op->iter);
 	}
 	if(op->F != NULL) RG_Matrix_clear(op->F);
 	return OP_OK;
@@ -224,7 +224,7 @@ static void CondTraverseFree(OpBase *ctx) {
 	OpCondTraverse *op = (OpCondTraverse *)ctx;
 
 	if(op->iter) {
-		GxB_MatrixTupleIter_free(&op->iter);
+		RG_MatrixTupleIter_free(&op->iter);
 	}
 
 	if(op->F != NULL) {

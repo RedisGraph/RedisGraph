@@ -64,7 +64,7 @@ void populateEdgeIndex
 	const RG_Matrix m = Graph_GetRelationMatrix(g, idx->label_id, false);
 	ASSERT(m != NULL);
 
-	RG_MatrixTupleIter it;
+	RG_MatrixTupleIter it = {0};
 	RG_MatrixTupleIter_reuse(&it, m);
 
 	// iterate over each graph entity
@@ -74,7 +74,7 @@ void populateEdgeIndex
 		EntityID  dest_id;
 		EntityID  edge_id;
 
-		RG_MatrixTupleIter_next(&it, &src_id, &dest_id, &edge_id, &depleted);
+		RG_MatrixTupleIter_next_UINT64(&it, &src_id, &dest_id, &edge_id, &depleted);
 		if(depleted) break;
 
 		Edge e;
@@ -85,6 +85,8 @@ void populateEdgeIndex
 		Graph_GetEdge(g, edge_id, &e);
 		Index_IndexEdge(idx, &e);
 	}
+
+	RG_MatrixTupleIter_free_data(&it);
 }
 
 void Index_RemoveEdge

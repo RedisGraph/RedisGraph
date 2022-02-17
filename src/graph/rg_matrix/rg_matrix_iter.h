@@ -15,8 +15,13 @@
 typedef struct
 {
     RG_Matrix A;                   // matrix iterated
-    GxB_MatrixTupleIter m_it;      // internal m iterator
-    GxB_MatrixTupleIter dp_it;     // internal delta plus iterator
+    GxB_Iterator m_it;             // internal m iterator
+    GxB_Iterator dp_it;            // internal delta plus iterator
+	bool m_depleted;               // is m iterator depleted
+	bool dp_depleted;              // is dp iterator depleted
+	GrB_Index min_row;             // minimum row for iteration
+	GrB_Index max_row;             // maximum row for iteration
+
 } RG_MatrixTupleIter ;
 
 // create a new iterator
@@ -53,12 +58,21 @@ GrB_Info RG_MatrixTupleIter_iterate_range
 );
 
 // advance iterator
-GrB_Info RG_MatrixTupleIter_next
+GrB_Info RG_MatrixTupleIter_next_BOOL
 (
 	RG_MatrixTupleIter *iter,       // iterator to consume
 	GrB_Index *row,                 // optional output row index
 	GrB_Index *col,                 // optional output column index
-	void *val,                      // optional value at A[row, col]
+	bool *val,                      // optional value at A[row, col]
+	bool *depleted                  // indicate if iterator depleted
+);
+
+GrB_Info RG_MatrixTupleIter_next_UINT64
+(
+	RG_MatrixTupleIter *iter,       // iterator to consume
+	GrB_Index *row,                 // optional output row index
+	GrB_Index *col,                 // optional output column index
+	uint64_t *val,                  // optional value at A[row, col]
 	bool *depleted                  // indicate if iterator depleted
 );
 
@@ -68,9 +82,14 @@ GrB_Info RG_MatrixTupleIter_reset
 	RG_MatrixTupleIter *iter       // iterator to reset
 );
 
+// free iterator data
+GrB_Info RG_MatrixTupleIter_free_data
+(
+	RG_MatrixTupleIter *iter       // iterator to free
+);
+
 // free iterator
 GrB_Info RG_MatrixTupleIter_free
 (
 	RG_MatrixTupleIter **iter       // iterator to free
 );
-
