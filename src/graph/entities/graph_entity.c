@@ -5,6 +5,7 @@
 */
 
 #include "graph_entity.h"
+#include "../../errors.h"
 #include "../../query_ctx.h"
 #include "../graphcontext.h"
 #include "../../util/rmalloc.h"
@@ -28,6 +29,12 @@ SIValue *GraphEntity_GetProperty
 	Attribute_ID attr_id
 ) {
 	ASSERT(e);
+
+	if(e->attributes == NULL) {
+ 		// note that this exception may cause memory to be leaked in the caller
+ 		ErrorCtx_SetError("Attempted to access undefined attribute");
+ 		return ATTRIBUTE_NOTFOUND;
+ 	}
 
 	return AttributeSet_Get(e->attributes, attr_id);
 }

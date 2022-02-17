@@ -8,7 +8,6 @@
 
 #include "attribute_set.h"
 #include "../../RG.h"
-#include "../../errors.h"
 #include "../../util/rmalloc.h"
 
 // returned value for a missing attribute
@@ -120,11 +119,6 @@ SIValue *AttributeSet_Get
 	ASSERT(set != NULL);
 
 	if(attr_id == ATTRIBUTE_ID_NONE) return ATTRIBUTE_NOTFOUND;
-	if(set == NULL) {
- 		// note that this exception may cause memory to be leaked in the caller
- 		ErrorCtx_SetError("Attempted to access undefined attribute");
- 		return ATTRIBUTE_NOTFOUND;
- 	}
 
 	for(int i = 0; i < set->attr_count; i++) {
 		Attribute *attr = set->attributes + i;
