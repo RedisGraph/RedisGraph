@@ -272,11 +272,11 @@ static int _Update_Entity
 		AttributeSet *set = ENTITY_ATTRIBUTE_SET(ge);
 		int prop_count = ATTRIBUTE_SET_COUNT(set);
 		for(int i = 0; i < prop_count; i++) {
-			Attribute_ID attr_id;
+			Attribute_ID id;
 			// add entity update operation to undo log
 			UndoOp op;
-			SIValue clone = SI_CloneValue(AttributeSet_GetIdx(set, i, &attr_id));
-			UndoLog_UpdateEntity(&op, ge, attr_id, clone, entity_type);
+			SIValue clone = SI_CloneValue(AttributeSet_GetIdx(set, i, &id));
+			UndoLog_UpdateEntity(&op, ge, id, clone, entity_type);
 			_add_undo_op(&op);
 		}
 	} else {
