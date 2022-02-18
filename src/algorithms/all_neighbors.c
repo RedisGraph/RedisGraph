@@ -59,6 +59,10 @@ void AllNeighborsCtx_Reset
 	ctx->first_pull     =  true;
 	ctx->current_level  =  0;
 
+	uint count = array_len(ctx->levels);
+	for (uint i = 0; i < count; i++) {
+		RG_MatrixTupleIter_free_data(ctx->levels + i);
+	}
 	array_clear(ctx->levels);
 	array_clear(ctx->visited);
 
