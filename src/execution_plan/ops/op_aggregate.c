@@ -189,7 +189,7 @@ static Record _handoff
 		int rec_idx = op->record_offsets[i + op->key_count];
 		AR_ExpNode *exp = group->aggregationFunctions[i];
 
-		SIValue res = AR_EXP_Finalize(exp, r);
+		SIValue res = AR_EXP_FinalizeAggregations(exp, r);
 		Record_AddScalar(r, rec_idx, res);
 	}
 
@@ -253,7 +253,7 @@ static Record AggregateConsume
 	// does aggregation contains keys?
 	// e.g.
 	// MATCH (n:N) WHERE n.noneExisting = 2 RETURN count(n)
-	if(raxSize(op->groups) == 0 && array_len(op->key_exps) == 0) {
+	if(raxSize(op->groups) == 0 && op->key_count == 0) {
 		// no data was processed and aggregation doesn't have a key
 		// in this case we want to return aggregation default value
 		// aggregate on an empty record
@@ -267,7 +267,22 @@ static Record AggregateConsume
 		// this operation and it child are in the same scope
 		OpBase *child = op->op.children[0];
 		r = OpBase_CreateRecord(child);
-		_aggregateRecord(op, r);
+		//_aggregateRecord(op, r);
+
+		// TEST
+			// get group
+			Group *group = _GetGroup(op, r);
+			ASSERT(group != NULL);
+
+			// aggregate group exps
+			//for(uint i = 0; i < op->aggregate_count; i++) {
+			//	AR_ExpNode *exp = group->aggregationFunctions[i];
+			//	AR_EXP_FinalizeAggregations(exp, r);
+			//}
+
+			// free record
+			OpBase_DeleteRecord(r);
+		// END OF TEST
 	}
 
 	// create group iterator

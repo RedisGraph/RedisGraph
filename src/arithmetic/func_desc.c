@@ -22,22 +22,22 @@ AR_FuncDesc *AR_FuncDescNew
 	uint min_argc,
 	uint max_argc,
 	SIType *types,
-	bool reducible,
-	bool aggregate
+	bool reducible
 ) {
 	AR_FuncDesc *desc = rm_malloc(sizeof(AR_FuncDesc));
 
-	desc->name       =  name;
-	desc->func       =  func;
-	desc->bfree      =  NULL;
-	desc->bclone     =  NULL;
-	desc->types      =  types;
-	desc->finalize   =  NULL;
-	desc->privdata   =  NULL;
-	desc->min_argc   =  min_argc;
-	desc->max_argc   =  max_argc;
-	desc->aggregate  =  aggregate;
-	desc->reducible  =  reducible;
+	desc->name           =  name;
+	desc->func           =  func;
+	desc->bfree          =  NULL;
+	desc->bclone         =  NULL;
+	desc->types          =  types;
+	desc->finalize       =  NULL;
+	desc->privdata       =  NULL;
+	desc->min_argc       =  min_argc;
+	desc->max_argc       =  max_argc;
+	desc->aggregate      =  false;
+	desc->reducible      =  reducible;
+	desc->default_value  =  SI_NullVal(); 
 
 	return desc;
 }
@@ -72,7 +72,7 @@ AR_FuncDesc *AR_GetFunc(const char *func_name) {
 		// create aggregation context
 		AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
 		ctx->private_ctx  =  NULL;
-		ctx->result       =  SI_NullVal();
+		ctx->result       =  SI_CloneValue(func->default_value);
 
 		func->privdata = ctx;
 	}
@@ -105,6 +105,15 @@ inline void AR_SetPrivateDataRoutines(AR_FuncDesc *func_desc, AR_Func_Free bfree
 									  AR_Func_Clone bclone) {
 	func_desc->bfree = bfree;
 	func_desc->bclone = bclone;
+}
+
+void AR_SetDefaultValue
+(
+	AR_FuncDesc *func_desc,
+	SIValue default_value
+) {
+	ASSERT(func_desc->aggregate == true);
+	func_desc->default_value = default_value;
 }
 
 void AR_SetFinalizeRoutine(AR_FuncDesc *func_desc, AR_Func_Finalize finalize) {

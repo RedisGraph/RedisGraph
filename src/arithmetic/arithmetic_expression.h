@@ -104,9 +104,9 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r);
 /* Evaluate aggregate functions in expression tree. */
 void AR_EXP_Aggregate(AR_ExpNode *root, const Record r);
 
-/* Reduce aggregation functions to their scalar values
- * and evaluates the expression */
-SIValue AR_EXP_Finalize(AR_ExpNode *root, const Record r);
+// reduce aggregation functions to their scalar values
+// and evaluates the expression
+SIValue AR_EXP_FinalizeAggregations(AR_ExpNode *root, const Record r);
 
 //------------------------------------------------------------------------------
 // Utility functions

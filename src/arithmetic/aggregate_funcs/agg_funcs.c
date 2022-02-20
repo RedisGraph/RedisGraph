@@ -49,8 +49,6 @@ static inline void Aggregate_SetResult(AggregateCtx *ctx, SIValue result) {
 
 AggregateResult AGG_SUM(SIValue *argv, int argc) {
 	AggregateCtx *ctx = argv[1].ptrval;
-	// On the first invocation, initialize the context's value.
-	if(SI_TYPE(ctx->result) == T_NULL) ctx->result = SI_DoubleVal(0);
 
 	SIValue v = argv[0];
 	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
@@ -60,65 +58,6 @@ AggregateResult AGG_SUM(SIValue *argv, int argc) {
 
 	return AGGREGATE_OK;
 }
-
-//------------------------------------------------------------------------------
-// Avg
-//------------------------------------------------------------------------------
-
-typedef struct {
-	size_t count;
-	double total;
-	bool overflow;
-} _agg_AvgCtx;
-
-AggregateResult AGG_AVG(SIValue *argv, int argc) {
-	AggregateCtx *ctx = argv[1].ptrval;
-	// on the first invocation, initialize the context
-	if(ctx->private_ctx == NULL) ctx->private_ctx = rm_calloc(1, sizeof(_agg_AvgCtx));
-
-	SIValue si_val = argv[0];
-	if(SI_TYPE(si_val) == T_NULL) return AGGREGATE_OK;
-	long double v = SI_GET_NUMERIC(si_val);
-
-	_agg_AvgCtx *avg_ctx = ctx->private_ctx;
-
-	avg_ctx->count ++; // increment the count
-
-	// if we've already overflowed or adding the current value
-	// will cause us to overflow, use the incremental averaging algorithm
-	if(avg_ctx->overflow || // already reached overflow
-				(signbit(avg_ctx->total) == signbit(v) && // values have the same MSB, adding will enlarge the total
-				 (fabs(avg_ctx->total) > (DBL_MAX - fabs(v))))) { // about to overflow
-		// divide the total by the new count
-		long double total = avg_ctx->total /= (long double) avg_ctx->count;
-		// if this is not the first call using the incremental algorithm,
-		// multiply the total by the previous count
-		if(avg_ctx->overflow) total *= (long double)(avg_ctx->count - 1);
-		// add v/count to total
-		total += (v / (long double)avg_ctx->count);
-		avg_ctx->total = total;
-		avg_ctx->overflow = true;
-	} else { // no overflow
-		avg_ctx->total += v;
-	}
-
-	return AGGREGATE_OK;
-}
-
-void AvgFinalize(void *ctx_ptr) {
-	AggregateCtx *ctx = ctx_ptr;
-	_agg_AvgCtx *avg_ctx = ctx->private_ctx;
-	if(avg_ctx->count > 0) {
-		if(avg_ctx->overflow) {
-			// used incremental algorithm due to overflow, 'total' is the average
-			Aggregate_SetResult(ctx, SI_DoubleVal(avg_ctx->total));
-		} else {
-			// used traditional algorithm, divide total by count
-			Aggregate_SetResult(ctx, SI_DoubleVal(avg_ctx->total / avg_ctx->count));
-		}
-	} else Aggregate_SetResult(ctx, SI_NullVal());
-}
-
 
 //------------------------------------------------------------------------------
 // Max
@@ -164,8 +103,6 @@ AggregateResult AGG_MIN(SIValue *argv, int argc) {
 
 AggregateResult AGG_COUNT(SIValue *argv, int argc) {
 	AggregateCtx *ctx = argv[1].ptrval;
-	// On the first invocation, initialize the context's value.
-	if(SI_TYPE(ctx->result) == T_NULL) ctx->result = SI_LongVal(0);
 
 	SIValue v = argv[0];
 	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
@@ -192,7 +129,7 @@ AggregateResult AGG_PERC(SIValue *argv, int argc) {
 
 	// On the first invocation, initialize the context.
 	if(ctx->private_ctx == NULL) {
-		ctx->private_ctx = rm_calloc(1, sizeof(_agg_AvgCtx));
+		ctx->private_ctx = rm_calloc(1, sizeof(_agg_PercCtx));
 		perc_ctx = ctx->private_ctx;
 		// The second argument is the requested percentile, which we only
 		// need to apply on the first function invocation.
@@ -350,9 +287,7 @@ void StDev_Free(void *ctx_ptr) {
 //------------------------------------------------------------------------------
 
 AggregateResult AGG_COLLECT(SIValue *argv, int argc) {
-	// On the first invocation, initialize the context's value.
 	AggregateCtx *ctx = argv[1].ptrval;
-	if(SI_TYPE(ctx->result) == T_NULL) ctx->result = SI_Array(1);
 
 	SIValue v = argv[0];
 	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
@@ -382,6 +317,7 @@ void Register_AggFuncs() {
 	array_append(types, T_PTR);
 	func_desc = AR_FuncDescNew("sum", AGG_SUM, 2, 2, types, false, true);
 	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Aggregate_Clone);
+	AR_SetDefaultValue(func_desc, SI_LongVal(0));
 	AR_RegFunc(func_desc);
 
 	//--------------------------------------------------------------------------
@@ -393,7 +329,9 @@ void Register_AggFuncs() {
 	array_append(types, T_PTR);
 	func_desc = AR_FuncDescNew("avg", AGG_AVG, 2, 2, types, false, true);
 	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Aggregate_Clone);
+	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Avg_Clone);
 	AR_SetFinalizeRoutine(func_desc, AvgFinalize);
+	AR_SetDefaultValue(func_desc, SI_NullVal());
 	AR_RegFunc(func_desc);
 
 	//--------------------------------------------------------------------------
@@ -405,6 +343,7 @@ void Register_AggFuncs() {
 	array_append(types, T_PTR);
 	func_desc = AR_FuncDescNew("max", AGG_MAX, 2, 2, types, false, true);
 	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Aggregate_Clone);
+	AR_SetDefaultValue(func_desc, SI_NullVal());
 	AR_RegFunc(func_desc);
 
 	//--------------------------------------------------------------------------
@@ -416,6 +355,7 @@ void Register_AggFuncs() {
 	array_append(types, T_PTR);
 	func_desc = AR_FuncDescNew("min", AGG_MIN, 2, 2, types, false, true);
 	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Aggregate_Clone);
+	AR_SetDefaultValue(func_desc, SI_NullVal());
 	AR_RegFunc(func_desc);
 
 	//--------------------------------------------------------------------------
@@ -427,10 +367,11 @@ void Register_AggFuncs() {
 	array_append(types, T_PTR);
 	func_desc = AR_FuncDescNew("count", AGG_COUNT, 2, 2, types, false, true);
 	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Aggregate_Clone);
+	AR_SetDefaultValue(func_desc, SI_LongVal(0));
 	AR_RegFunc(func_desc);
 
 	//--------------------------------------------------------------------------
-	// Avg
+	// precentile
 	//--------------------------------------------------------------------------
 
 	types = array_new(SIType, 3);
@@ -440,6 +381,7 @@ void Register_AggFuncs() {
 	func_desc = AR_FuncDescNew("percentileDisc", AGG_PERC, 3, 3, types, false, true);
 	AR_SetPrivateDataRoutines(func_desc, Percentile_Free, Aggregate_Clone);
 	AR_SetFinalizeRoutine(func_desc, PercDiscFinalize);
+	AR_SetDefaultValue(func_desc, SI_NullVal());
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
@@ -449,6 +391,7 @@ void Register_AggFuncs() {
 	func_desc = AR_FuncDescNew("percentileCont", AGG_PERC, 3, 3, types, false, true);
 	AR_SetPrivateDataRoutines(func_desc, Percentile_Free, Aggregate_Clone);
 	AR_SetFinalizeRoutine(func_desc, PercContFinalize);
+	AR_SetDefaultValue(func_desc, SI_NullVal());
 	AR_RegFunc(func_desc);
 
 	//--------------------------------------------------------------------------
@@ -461,6 +404,7 @@ void Register_AggFuncs() {
 	func_desc = AR_FuncDescNew("stDev", AGG_STDEV, 2, 2, types, false, true);
 	AR_SetPrivateDataRoutines(func_desc, StDev_Free, Aggregate_Clone);
 	AR_SetFinalizeRoutine(func_desc, StDevFinalize);
+	AR_SetDefaultValue(func_desc, SI_DoubleVal(0));
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
@@ -469,6 +413,7 @@ void Register_AggFuncs() {
 	func_desc = AR_FuncDescNew("stDevP", AGG_STDEV, 2, 2, types, false, true);
 	AR_SetPrivateDataRoutines(func_desc, StDev_Free, Aggregate_Clone);
 	AR_SetFinalizeRoutine(func_desc, StDevPFinalize);
+	AR_SetDefaultValue(func_desc, SI_DoubleVal(0));
 	AR_RegFunc(func_desc);
 
 	//--------------------------------------------------------------------------
@@ -480,9 +425,11 @@ void Register_AggFuncs() {
 	array_append(types, T_PTR);
 	func_desc = AR_FuncDescNew("collect", AGG_COLLECT, 2, 2, types, false, true);
 	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Aggregate_Clone);
+	AR_SetDefaultValue(func_desc, SI_Array(0));
 	AR_RegFunc(func_desc);
 }
 
 SIValue Aggregate_GetResult(AggregateCtx *ctx) {
 	return SI_TransferOwnership(&ctx->result);
 }
+

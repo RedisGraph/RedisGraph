@@ -139,8 +139,8 @@ static AR_ExpNode *_AR_EXP_NewOpNode(uint child_count) {
 
 static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 	AR_ExpNode *clone = _AR_EXP_NewOpNode(exp->op.child_count);
-	/* If the function has private data, the function descriptor
-	 * itself should be cloned. Otherwise, we can perform a direct assignment. */
+	// if the function has private data, the function descriptor
+	// itself should be cloned. Otherwise, we can perform a direct assignment
 	if(exp->op.f->bclone) clone->op.f = AR_CloneFuncDesc(exp->op.f);
 	else clone->op.f = exp->op.f;
 	for(uint i = 0; i < exp->op.child_count; i++) {
@@ -539,24 +539,22 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 }
 
 void AR_EXP_Aggregate(AR_ExpNode *root, const Record r) {
-	if(AR_EXP_IsOperation(root)) {
-		if(root->op.f->aggregate == true) {
-			AR_EXP_Result res = _AR_EXP_EvaluateFunctionCall(root, r, NULL);
-			if(res == EVAL_ERR) {
-				ErrorCtx_RaiseRuntimeException(NULL);  // Raise an exception if we're in a run-time context.
-				return;
-			}
-		} else {
-			/* Keep searching for aggregation nodes. */
-			for(int i = 0; i < root->op.child_count; i++) {
-				AR_ExpNode *child = root->op.children[i];
-				AR_EXP_Aggregate(child, r);
-			}
+	if(AGGREGATION_NODE(root)) {
+		AR_EXP_Result res = _AR_EXP_EvaluateFunctionCall(root, r, NULL);
+		if(res == EVAL_ERR) {
+			ErrorCtx_RaiseRuntimeException(NULL);  // Raise an exception if we're in a run-time context.
+			return;
+		}
+	} else if(AR_EXP_IsOperation(root)) {
+		// keep searching for aggregation nodes
+		for(int i = 0; i < root->op.child_count; i++) {
+			AR_ExpNode *child = root->op.children[i];
+			AR_EXP_Aggregate(child, r);
 		}
 	}
 }
 
-void _AR_EXP_Finalize(AR_ExpNode *root) {
+void _AR_EXP_FinalizeAggregations(AR_ExpNode *root) {
 	//--------------------------------------------------------------------------
 	// finalize aggregation node
 	//--------------------------------------------------------------------------
@@ -584,15 +582,15 @@ void _AR_EXP_Finalize(AR_ExpNode *root) {
 	if(AR_EXP_IsOperation(root)) {
 		for(int i = 0; i < NODE_CHILD_COUNT(root); i++) {
 			AR_ExpNode *child = NODE_CHILD(root, i);
-			_AR_EXP_Finalize(child);
+			_AR_EXP_FinalizeAggregations(child);
 		}
 	}
 }
 
-SIValue AR_EXP_Finalize(AR_ExpNode *root, const Record r) {
+SIValue AR_EXP_FinalizeAggregations(AR_ExpNode *root, const Record r) {
 	ASSERT(root != NULL);
 
-	_AR_EXP_Finalize(root);
+	_AR_EXP_FinalizeAggregations(root);
 	return AR_EXP_Evaluate(root, r);
 }
 
