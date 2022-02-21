@@ -20,6 +20,23 @@
 typedef SIValue AggregateResult;
 AggregateResult AGGREGATE_OK;
 
+// finalize aggregation
+void AvgFinalize
+(
+	void *ctx_ptr
+);
+
+// avarage "step" function expects 2 arguments:
+// 1. aggregation context
+// 2. value to aggregate
+AggregateResult AGG_AVG
+(
+	SIValue *argv,
+	int argc
+);
+
+void *Avg_Clone(void *orig);
+
 // Routine for freeing a generic aggregate function context.
 void Aggregate_Free(void *ctx_ptr) {
 	AggregateCtx *ctx = ctx_ptr;
@@ -226,7 +243,7 @@ AggregateResult AGG_STDEV(SIValue *argv, int argc) {
 
 	// On the first invocation, initialize the context.
 	if(ctx->private_ctx == NULL) {
-		ctx->private_ctx = rm_calloc(1, sizeof(_agg_AvgCtx));
+		ctx->private_ctx = rm_calloc(1, sizeof(_agg_StDevCtx));
 		stdev_ctx = ctx->private_ctx;
 		stdev_ctx->values = array_new(double, 1024);
 	}
@@ -315,7 +332,7 @@ void Register_AggFuncs() {
 	types = array_new(SIType, 2);
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("sum", AGG_SUM, 2, 2, types, false, true);
+	func_desc = AR_AggFuncDescNew("sum", AGG_SUM, 2, 2, types, false);
 	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Aggregate_Clone);
 	AR_SetDefaultValue(func_desc, SI_LongVal(0));
 	AR_RegFunc(func_desc);
@@ -327,8 +344,7 @@ void Register_AggFuncs() {
 	types = array_new(SIType, 2);
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("avg", AGG_AVG, 2, 2, types, false, true);
-	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Aggregate_Clone);
+	func_desc = AR_AggFuncDescNew("avg", AGG_AVG, 2, 2, types, false);
 	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Avg_Clone);
 	AR_SetFinalizeRoutine(func_desc, AvgFinalize);
 	AR_SetDefaultValue(func_desc, SI_NullVal());
@@ -341,7 +357,7 @@ void Register_AggFuncs() {
 	types = array_new(SIType, 2);
 	array_append(types, SI_ALL);
 	array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("max", AGG_MAX, 2, 2, types, false, true);
+	func_desc = AR_AggFuncDescNew("max", AGG_MAX, 2, 2, types, false);
 	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Aggregate_Clone);
 	AR_SetDefaultValue(func_desc, SI_NullVal());
 	AR_RegFunc(func_desc);
@@ -353,7 +369,7 @@ void Register_AggFuncs() {
 	types = array_new(SIType, 2);
 	array_append(types, SI_ALL);
 	array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("min", AGG_MIN, 2, 2, types, false, true);
+	func_desc = AR_AggFuncDescNew("min", AGG_MIN, 2, 2, types, false);
 	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Aggregate_Clone);
 	AR_SetDefaultValue(func_desc, SI_NullVal());
 	AR_RegFunc(func_desc);
@@ -365,7 +381,7 @@ void Register_AggFuncs() {
 	types = array_new(SIType, 2);
 	array_append(types, SI_ALL);
 	array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("count", AGG_COUNT, 2, 2, types, false, true);
+	func_desc = AR_AggFuncDescNew("count", AGG_COUNT, 2, 2, types, false);
 	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Aggregate_Clone);
 	AR_SetDefaultValue(func_desc, SI_LongVal(0));
 	AR_RegFunc(func_desc);
@@ -378,7 +394,7 @@ void Register_AggFuncs() {
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("percentileDisc", AGG_PERC, 3, 3, types, false, true);
+	func_desc = AR_AggFuncDescNew("percentileDisc", AGG_PERC, 3, 3, types, false);
 	AR_SetPrivateDataRoutines(func_desc, Percentile_Free, Aggregate_Clone);
 	AR_SetFinalizeRoutine(func_desc, PercDiscFinalize);
 	AR_SetDefaultValue(func_desc, SI_NullVal());
@@ -388,7 +404,7 @@ void Register_AggFuncs() {
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("percentileCont", AGG_PERC, 3, 3, types, false, true);
+	func_desc = AR_AggFuncDescNew("percentileCont", AGG_PERC, 3, 3, types, false);
 	AR_SetPrivateDataRoutines(func_desc, Percentile_Free, Aggregate_Clone);
 	AR_SetFinalizeRoutine(func_desc, PercContFinalize);
 	AR_SetDefaultValue(func_desc, SI_NullVal());
@@ -401,7 +417,7 @@ void Register_AggFuncs() {
 	types = array_new(SIType, 2);
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("stDev", AGG_STDEV, 2, 2, types, false, true);
+	func_desc = AR_AggFuncDescNew("stDev", AGG_STDEV, 2, 2, types, false);
 	AR_SetPrivateDataRoutines(func_desc, StDev_Free, Aggregate_Clone);
 	AR_SetFinalizeRoutine(func_desc, StDevFinalize);
 	AR_SetDefaultValue(func_desc, SI_DoubleVal(0));
@@ -410,7 +426,7 @@ void Register_AggFuncs() {
 	types = array_new(SIType, 2);
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("stDevP", AGG_STDEV, 2, 2, types, false, true);
+	func_desc = AR_AggFuncDescNew("stDevP", AGG_STDEV, 2, 2, types, false);
 	AR_SetPrivateDataRoutines(func_desc, StDev_Free, Aggregate_Clone);
 	AR_SetFinalizeRoutine(func_desc, StDevPFinalize);
 	AR_SetDefaultValue(func_desc, SI_DoubleVal(0));
@@ -423,7 +439,7 @@ void Register_AggFuncs() {
 	types = array_new(SIType, 2);
 	array_append(types, SI_ALL);
 	array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("collect", AGG_COLLECT, 2, 2, types, false, true);
+	func_desc = AR_AggFuncDescNew("collect", AGG_COLLECT, 2, 2, types, false);
 	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Aggregate_Clone);
 	AR_SetDefaultValue(func_desc, SI_Array(0));
 	AR_RegFunc(func_desc);

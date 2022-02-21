@@ -26,7 +26,7 @@ typedef struct {
 	AR_Func_Free bfree;         // [optional] Function pointer to function cleanup routine
 	AR_Func_Clone bclone;       // [optional] Function pointer to function clone routine
 	AR_Func_Finalize finalize;  // [optional] Function pointer to routine for finalizing aggregate value.
-};
+} AggCBs;
 
 
 typedef struct {
@@ -40,9 +40,6 @@ typedef struct {
 	const char *name;           // function name
 	SIValue default_value;      // aggregation default value
 	AggCBs agg_callbacks;       // aggregation
-	AR_Func_Free bfree;         // [optional] Function pointer to function cleanup routine
-	AR_Func_Clone bclone;       // [optional] Function pointer to function clone routine
-	AR_Func_Finalize finalize;  // [optional] Function pointer to routine for finalizing aggregate value.
 } AR_FuncDesc;
 
 typedef struct {
@@ -68,8 +65,7 @@ AR_FuncDesc *AR_AggFuncDescNew
 	uint min_argc,        // minimum number of arguments
 	uint max_argc,        // maximum number of arguments
 	SIType *types,        // acceptable types
-	bool reducible,       // is function reducible
-
+	bool reducible        // is function reducible
 );
 
 /* Register arithmetic function to repository. */

@@ -370,48 +370,48 @@ void Register_ListFuncs() {
 
 	types = array_new(SIType, 1);
 	array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("tolist", AR_TOLIST, 0, VAR_ARG_LEN, types, true, false);
+	func_desc = AR_FuncDescNew("tolist", AR_TOLIST, 0, VAR_ARG_LEN, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	array_append(types, T_ARRAY | T_MAP | SI_GRAPHENTITY | T_NULL);
 	array_append(types, T_INT64 | T_STRING | T_NULL);
-	func_desc = AR_FuncDescNew("subscript", AR_SUBSCRIPT, 2, 2, types, true, false);
+	func_desc = AR_FuncDescNew("subscript", AR_SUBSCRIPT, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
 	array_append(types, T_ARRAY | T_NULL);
 	array_append(types, T_INT64 | T_NULL);
 	array_append(types, T_INT64 | T_NULL);
-	func_desc = AR_FuncDescNew("slice", AR_SLICE, 3, 3, types, true, false);
+	func_desc = AR_FuncDescNew("slice", AR_SLICE, 3, 3, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
 	array_append(types, T_INT64);
 	array_append(types, T_INT64);
 	array_append(types, T_INT64);
-	func_desc = AR_FuncDescNew("range", AR_RANGE, 2, 3, types, true, false);
+	func_desc = AR_FuncDescNew("range", AR_RANGE, 2, 3, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	array_append(types, SI_ALL);
 	array_append(types, T_ARRAY | T_NULL);
-	func_desc = AR_FuncDescNew("in", AR_IN, 2, 2, types, true, false);
+	func_desc = AR_FuncDescNew("in", AR_IN, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_STRING | T_ARRAY | T_NULL);
-	func_desc = AR_FuncDescNew("size", AR_SIZE, 1, 1, types, true, false);
+	func_desc = AR_FuncDescNew("size", AR_SIZE, 1, 1, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_ARRAY | T_NULL);
-	func_desc = AR_FuncDescNew("head", AR_HEAD, 1, 1, types, true, false);
+	func_desc = AR_FuncDescNew("head", AR_HEAD, 1, 1, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_ARRAY | T_NULL);
-	func_desc = AR_FuncDescNew("tail", AR_TAIL, 1, 1, types, true, false);
+	func_desc = AR_FuncDescNew("tail", AR_TAIL, 1, 1, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 4);
@@ -419,7 +419,7 @@ void Register_ListFuncs() {
 	array_append(types, T_ARRAY | T_NULL);  // array to iterate over
 	array_append(types, T_PTR);             // input record
 	array_append(types, T_PTR);             // private data
-	func_desc = AR_FuncDescNew("reduce", AR_REDUCE, 4, 4, types, true, false);
+	func_desc = AR_FuncDescNew("reduce", AR_REDUCE, 4, 4, types, true);
 	AR_SetPrivateDataRoutines(func_desc, ListReduceCtx_Free,
 			ListReduceCtx_Clone);
 	AR_RegFunc(func_desc);

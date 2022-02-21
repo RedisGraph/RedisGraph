@@ -4,6 +4,15 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include "RG.h"
+#include "agg_funcs.h"
+#include "../../util/rmalloc.h"
+#include <math.h>
+#include <float.h>
+
+typedef SIValue AggregateResult;
+AggregateResult AGGREGATE_OK;
+
 //------------------------------------------------------------------------------
 // Avg
 //------------------------------------------------------------------------------
@@ -37,7 +46,7 @@ AggregateResult AGG_AVG
 
 	long double v = SI_GET_NUMERIC(val);
 
-	avg_ctx->count ++; // increment count
+	ctx->count ++; // increment count
 
 	//--------------------------------------------------------------------------
 	// check for overflow
@@ -45,22 +54,30 @@ AggregateResult AGG_AVG
 
 	// if we've already overflowed or adding the current value
 	// will cause us to overflow, use the incremental averaging algorithm
-	if(avg_ctx->overflow || ABOUT_TO_OVERFLOW(avg_ctx->total, v)) {
+	if(ctx->overflow || ABOUT_TO_OVERFLOW(ctx->total, v)) {
 		// divide the total by the new count
-		long double total = avg_ctx->total /= (long double) avg_ctx->count;
+		long double total = ctx->total /= (long double) ctx->count;
 		// if this is not the first call using the incremental algorithm,
 		// multiply the total by the previous count
-		if(avg_ctx->overflow) total *= (long double)(avg_ctx->count - 1);
+		if(ctx->overflow) total *= (long double)(ctx->count - 1);
 		// add v/count to total
-		total += (v / (long double)avg_ctx->count);
-		avg_ctx->total = total;
-		avg_ctx->overflow = true;
+		total += (v / (long double)ctx->count);
+		ctx->total = total;
+		ctx->overflow = true;
 	} else {
 		// no overflow
-		avg_ctx->total += v;
+		ctx->total += v;
 	}
 
 	return AGGREGATE_OK;
+}
+
+// Routine for cloning a avg aggregate function context.
+void *Avg_Clone(void *orig) {
+	AvgCtx *orig_ctx = orig;
+	AvgCtx *ctx_clone = rm_malloc(sizeof(AvgCtx));
+	ctx_clone->result = orig_ctx->result;
+	return ctx_clone;
 }
 
 // finalize aggregation
@@ -71,14 +88,13 @@ void AvgFinalize
 	ASSERT(ctx_ptr != NULL);
 
 	AvgCtx *ctx = (AvgCtx*)ctx_ptr;
-	if(avg_ctx->count > 0) {
-		if(avg_ctx->overflow) {
+	if(ctx->count > 0) {
+		if(ctx->overflow) {
 			// used incremental algorithm due to overflow, 'total' is the average
-			Aggregate_SetResult(ctx, SI_DoubleVal(ctx->total));
+			ctx->result = SI_DoubleVal(ctx->total);
 		} else {
 			// used traditional algorithm, divide total by count
-			Aggregate_SetResult(ctx, SI_DoubleVal(ctx->total / ctx->count));
+			ctx->result = SI_DoubleVal(ctx->total / ctx->count);
 		}
 	}
 }
-

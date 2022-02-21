@@ -141,7 +141,7 @@ static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 	AR_ExpNode *clone = _AR_EXP_NewOpNode(exp->op.child_count);
 	// if the function has private data, the function descriptor
 	// itself should be cloned. Otherwise, we can perform a direct assignment
-	if(exp->op.f->bclone) clone->op.f = AR_CloneFuncDesc(exp->op.f);
+	if(exp->op.f->agg_callbacks.bclone) clone->op.f = AR_CloneFuncDesc(exp->op.f);
 	else clone->op.f = exp->op.f;
 	for(uint i = 0; i < exp->op.child_count; i++) {
 		AR_ExpNode *child = AR_EXP_Clone(exp->op.children[i]);
@@ -767,7 +767,7 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
 
 static inline void _AR_EXP_FreeOpInternals(AR_ExpNode *op_node) {
 	void *pdata = op_node->op.f->privdata;
-	AR_Func_Free free_func = op_node->op.f->bfree;
+	AR_Func_Free free_func = op_node->op.f->agg_callbacks.bfree;
 
 	// free function private data if there's a custom free function
 	// and private data exists

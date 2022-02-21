@@ -18,7 +18,7 @@ void Register_PlaceholderFuncs() {
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 0);
-	func_desc = AR_FuncDescNew("path_filter", AR_PATH_FILTER, 0, 0, types, false, false);
+	func_desc = AR_FuncDescNew("path_filter", AR_PATH_FILTER, 0, 0, types, false);
 	AR_RegFunc(func_desc);
 }
 

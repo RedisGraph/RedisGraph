@@ -258,7 +258,7 @@ void Register_ComprehensionFuncs() {
 	array_append(types, T_ARRAY | T_NULL);
 	array_append(types, T_PTR);
 	array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("any", AR_ANY, 3, 3, types, true, false);
+	func_desc = AR_FuncDescNew("any", AR_ANY, 3, 3, types, true);
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
 
@@ -266,7 +266,7 @@ void Register_ComprehensionFuncs() {
 	array_append(types, T_ARRAY | T_NULL);
 	array_append(types, T_PTR);
 	array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("all", AR_ALL, 3, 3, types, true, false);
+	func_desc = AR_FuncDescNew("all", AR_ALL, 3, 3, types, true);
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
 
@@ -274,7 +274,7 @@ void Register_ComprehensionFuncs() {
 	array_append(types, T_ARRAY | T_NULL);
 	array_append(types, T_PTR);
 	array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("single", AR_SINGLE, 3, 3, types, true, false);
+	func_desc = AR_FuncDescNew("single", AR_SINGLE, 3, 3, types, true);
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
 
@@ -282,7 +282,7 @@ void Register_ComprehensionFuncs() {
 	array_append(types, T_ARRAY | T_NULL);
 	array_append(types, T_PTR);
 	array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("none", AR_NONE, 3, 3, types, true, false);
+	func_desc = AR_FuncDescNew("none", AR_NONE, 3, 3, types, true);
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
 
@@ -290,7 +290,7 @@ void Register_ComprehensionFuncs() {
 	array_append(types, T_ARRAY | T_NULL);
 	array_append(types, T_PTR);
 	array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("list_comprehension", AR_LIST_COMPREHENSION, 3, 3, types, true, false);
+	func_desc = AR_FuncDescNew("list_comprehension", AR_LIST_COMPREHENSION, 3, 3, types, true);
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
 }

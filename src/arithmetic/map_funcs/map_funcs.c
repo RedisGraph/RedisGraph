@@ -63,12 +63,12 @@ void Register_MapFuncs() {
 
 	types = array_new(SIType, 1);
 	array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("tomap", AR_TOMAP, 0, VAR_ARG_LEN, types, true, false);
+	func_desc = AR_FuncDescNew("tomap", AR_TOMAP, 0, VAR_ARG_LEN, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_MAP | T_NODE | T_EDGE);
-	func_desc = AR_FuncDescNew("keys", AR_KEYS, 1, 1, types, true, false);
+	func_desc = AR_FuncDescNew("keys", AR_KEYS, 1, 1, types, true);
 	AR_RegFunc(func_desc);
 }
 
