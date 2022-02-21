@@ -21,7 +21,7 @@ typedef SIValue AggregateResult;
 AggregateResult AGGREGATE_OK;
 
 // finalize aggregation
-void AvgFinalize
+void Avg_Finalize
 (
 	void *ctx_ptr
 );
@@ -36,6 +36,8 @@ AggregateResult AGG_AVG
 );
 
 void *Avg_Clone(void *orig);
+
+void Avg_Free(void *ctx_ptr);
 
 // Routine for freeing a generic aggregate function context.
 void Aggregate_Free(void *ctx_ptr) {
@@ -334,7 +336,7 @@ void Register_AggFuncs() {
 	array_append(types, T_PTR);
 	func_desc = AR_AggFuncDescNew("sum", AGG_SUM, 2, 2, types, false);
 	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Aggregate_Clone);
-	AR_SetDefaultValue(func_desc, SI_LongVal(0));
+	AR_SetDefaultValue(func_desc, SI_DoubleVal(0));
 	AR_RegFunc(func_desc);
 
 	//--------------------------------------------------------------------------
@@ -345,8 +347,8 @@ void Register_AggFuncs() {
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	array_append(types, T_PTR);
 	func_desc = AR_AggFuncDescNew("avg", AGG_AVG, 2, 2, types, false);
-	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Avg_Clone);
-	AR_SetFinalizeRoutine(func_desc, AvgFinalize);
+	AR_SetPrivateDataRoutines(func_desc, Avg_Free, Avg_Clone);
+	AR_SetFinalizeRoutine(func_desc, Avg_Finalize);
 	AR_SetDefaultValue(func_desc, SI_NullVal());
 	AR_RegFunc(func_desc);
 

@@ -22,7 +22,6 @@ typedef struct {
 	size_t count;    // number of elements summed
 	double total;    // sum of all elements
 	bool overflow;   // track numeric overflow
-	SIValue result;  // computed average
 } AvgCtx;
 
 // return true if adding a and b will overflow
@@ -39,14 +38,20 @@ AggregateResult AGG_AVG
 	int argc
 ) {
 	SIValue val = argv[0];
-	AvgCtx *ctx = argv[1].ptrval;
+	AggregateCtx *ctx = argv[1].ptrval;
+	AvgCtx *avg_ctx = ctx->private_ctx;
+
+	// On the first invocation, initialize the context.
+	if(ctx->private_ctx == NULL) {
+		avg_ctx = ctx->private_ctx = rm_calloc(1, sizeof(AvgCtx));
+	}
 
 	// check input
 	if(SI_TYPE(val) == T_NULL) return AGGREGATE_OK;
 
 	long double v = SI_GET_NUMERIC(val);
 
-	ctx->count ++; // increment count
+	avg_ctx->count++; // increment count
 
 	//--------------------------------------------------------------------------
 	// check for overflow
@@ -54,19 +59,19 @@ AggregateResult AGG_AVG
 
 	// if we've already overflowed or adding the current value
 	// will cause us to overflow, use the incremental averaging algorithm
-	if(ctx->overflow || ABOUT_TO_OVERFLOW(ctx->total, v)) {
+	if(avg_ctx->overflow || ABOUT_TO_OVERFLOW(avg_ctx->total, v)) {
 		// divide the total by the new count
-		long double total = ctx->total /= (long double) ctx->count;
+		long double total = avg_ctx->total /= (long double) avg_ctx->count;
 		// if this is not the first call using the incremental algorithm,
 		// multiply the total by the previous count
-		if(ctx->overflow) total *= (long double)(ctx->count - 1);
+		if(avg_ctx->overflow) total *= (long double)(avg_ctx->count - 1);
 		// add v/count to total
-		total += (v / (long double)ctx->count);
-		ctx->total = total;
-		ctx->overflow = true;
+		total += (v / (long double)avg_ctx->count);
+		avg_ctx->total = total;
+		avg_ctx->overflow = true;
 	} else {
 		// no overflow
-		ctx->total += v;
+		avg_ctx->total += v;
 	}
 
 	return AGGREGATE_OK;
@@ -76,25 +81,41 @@ AggregateResult AGG_AVG
 void *Avg_Clone(void *orig) {
 	AvgCtx *orig_ctx = orig;
 	AvgCtx *ctx_clone = rm_malloc(sizeof(AvgCtx));
-	ctx_clone->result = orig_ctx->result;
+	ctx_clone->total  = orig_ctx->total;
+	ctx_clone->overflow = orig_ctx->overflow;
+	ctx_clone->count = orig_ctx->count;
 	return ctx_clone;
 }
 
 // finalize aggregation
-void AvgFinalize
+void Avg_Finalize
 (
 	void *ctx_ptr
 ) {
 	ASSERT(ctx_ptr != NULL);
 
-	AvgCtx *ctx = (AvgCtx*)ctx_ptr;
-	if(ctx->count > 0) {
-		if(ctx->overflow) {
+	AggregateCtx *ctx = (AggregateCtx*)ctx_ptr;
+
+	AvgCtx *avg_ctx = ctx->private_ctx;
+	if(avg_ctx->count > 0) {
+		if(avg_ctx->overflow) {
 			// used incremental algorithm due to overflow, 'total' is the average
-			ctx->result = SI_DoubleVal(ctx->total);
+			ctx->result = SI_DoubleVal(avg_ctx->total);
 		} else {
 			// used traditional algorithm, divide total by count
-			ctx->result = SI_DoubleVal(ctx->total / ctx->count);
+			ctx->result = SI_DoubleVal(avg_ctx->total / avg_ctx->count);
 		}
 	}
+}
+
+// Routine for freeing a avg aggregate function context.
+void Avg_Free(void *ctx_ptr) {
+	AggregateCtx *ctx = ctx_ptr;
+	SIValue_Free(ctx->result);
+	if(ctx->private_ctx) {
+		AvgCtx *avg_ctx = ctx->private_ctx;
+		// SIValue_Free(avg_ctx->result);
+		// rm_free(ctx->private_ctx);
+	}
+	rm_free(ctx);
 }
