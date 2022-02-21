@@ -278,14 +278,6 @@ static void _AST_MapReturnReferredEntities(AST *ast_segment,
 	if(order_by) _AST_MapOrderByReferences(ast_segment, order_by);
 }
 
-static void _AST_MapProjectAll(AST *ast, const cypher_astnode_t *project_clause) {
-	const char **aliases = AST_GetProjectAll(project_clause);
-	uint alias_count = array_len(aliases);
-	for(uint i = 0; i < alias_count; i ++) {
-		_AST_UpdateRefMap(ast, aliases[i]);
-	}
-}
-
 static void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *clause) {
 	if(!clause) return;
 
@@ -332,13 +324,9 @@ static void _AST_MapProjectionClause(AST *ast_segment, const cypher_astnode_t *p
 	ASSERT(type == CYPHER_AST_WITH || type == CYPHER_AST_RETURN);
 
 	if(type == CYPHER_AST_WITH) {
-		// If the projection clause is WITH *, all user-defined aliases are referenced.
-		if(cypher_ast_with_has_include_existing(projection)) _AST_MapProjectAll(ast_segment, projection);
-		else _AST_MapWithReferredEntities(ast_segment, projection);
+		_AST_MapWithReferredEntities(ast_segment, projection);
 	} else {
-		// If the projection clause is RETURN *, all user-defined aliases are referenced.
-		if(cypher_ast_return_has_include_existing(projection)) _AST_MapProjectAll(ast_segment, projection);
-		else _AST_MapReturnReferredEntities(ast_segment, projection);
+		_AST_MapReturnReferredEntities(ast_segment, projection);
 	}
 }
 
