@@ -80,10 +80,10 @@ AggregateResult AGG_AVG
 // Routine for cloning a avg aggregate function context.
 void *Avg_Clone(void *orig) {
 	AvgCtx *orig_ctx = orig;
-	AvgCtx *ctx_clone = rm_malloc(sizeof(AvgCtx));
-	ctx_clone->total  = orig_ctx->total;
+	AvgCtx *ctx_clone   = rm_malloc(sizeof(AvgCtx));
+	ctx_clone->total    = orig_ctx->total;
 	ctx_clone->overflow = orig_ctx->overflow;
-	ctx_clone->count = orig_ctx->count;
+	ctx_clone->count    = orig_ctx->count;
 	return ctx_clone;
 }
 
@@ -106,16 +106,4 @@ void Avg_Finalize
 			ctx->result = SI_DoubleVal(avg_ctx->total / avg_ctx->count);
 		}
 	}
-}
-
-// Routine for freeing a avg aggregate function context.
-void Avg_Free(void *ctx_ptr) {
-	AggregateCtx *ctx = ctx_ptr;
-	SIValue_Free(ctx->result);
-	if(ctx->private_ctx) {
-		AvgCtx *avg_ctx = ctx->private_ctx;
-		// SIValue_Free(avg_ctx->result);
-		// rm_free(ctx->private_ctx);
-	}
-	rm_free(ctx);
 }
