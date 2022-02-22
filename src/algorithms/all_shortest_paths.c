@@ -27,9 +27,13 @@ int AllShortestPaths_FindMinimumLength
 	NodeID destID = ENTITY_GET_ID(dest);
 
 	GrB_Vector visited;
+	GrB_Vector current_visited;
 
 	GrB_Vector_new(&visited, GrB_BOOL, Graph_UncompactedNodeCount(ctx->g));
 	GxB_set(visited, GxB_SPARSITY_CONTROL, GxB_BITMAP);
+
+	GrB_Vector_new(&current_visited, GrB_BOOL, Graph_UncompactedNodeCount(ctx->g));
+	GxB_set(current_visited, GxB_SPARSITY_CONTROL, GxB_BITMAP);
 
 	while (true) {
 		// see if we have nodes in the current level
@@ -37,11 +41,13 @@ int AllShortestPaths_FindMinimumLength
 		if(neighborCount == 0) {
 			// move to next level
 			depth++;
-			if(depth > ctx->maxLen || depth >= array_len(ctx->levels)) {
+			if(depth == ctx->maxLen || depth >= array_len(ctx->levels)) {
 				// we reached max level and didn't found the dest node
 				depth = 0; // indicate `dest` wasn't reached
 				break;
 			}
+			GrB_Vector_eWiseAdd_BinaryOp(visited, NULL, NULL, GxB_ANY_BOOL, visited, current_visited, NULL);
+			GrB_Vector_clear(current_visited);
 		}
 
 		// get the node from the frontier
@@ -53,18 +59,21 @@ int AllShortestPaths_FindMinimumLength
 			break;
 		}
 
+		// introduce neighbors only if path depth < maximum path length
+		if(depth == ctx->maxLen - 1) continue;
+
 		// the node has already been visited if it is already in the vector
 		bool x;
 		GrB_Info info = GrB_Vector_extractElement_BOOL(&x, visited, frontierID);
-		bool not_visited = (info == GrB_NO_VALUE);
+		bool is_visited = (info == GrB_SUCCESS);
+		if(is_visited) continue;
+		info = GrB_Vector_extractElement_BOOL(&x, current_visited, frontierID);
+		is_visited = (info == GrB_SUCCESS);
+		if(is_visited) continue;
 
-		// introduce neighbors only if path depth < maximum path length
-		// and frontier wasn't already expanded
-		if(not_visited && depth < ctx->maxLen) {
-			GrB_Vector_setElement_BOOL(visited, true, frontierID);
-			// add all neighbors of the current node to the next level
-			addNeighbors(ctx, &frontierConnection, depth + 1, ctx->dir);
-		}
+		GrB_Vector_setElement_BOOL(current_visited, true, frontierID);
+		// add all neighbors of the current node to the next level
+		addNeighbors(ctx, &frontierConnection, depth + 1, ctx->dir);
 	}
 
 	if(depth > 0) {
@@ -74,7 +83,10 @@ int AllShortestPaths_FindMinimumLength
 		if(depth < array_len(ctx->levels)) array_clear(ctx->levels[depth]);
 	}
 
+	GrB_free(&current_visited);
 	ctx->visited = visited;
+	GrB_Index nvals;
+	GrB_Vector_nvals(&nvals, visited);
 
 	return depth;
 }
@@ -127,6 +139,8 @@ Path *AllShortestPaths_NextPath
 
 			Path_SetNode(ctx->path, ctx->minLen - depth - 1, frontierNode);
 			Path_SetEdge(ctx->path, ctx->minLen - depth - 1, frontierConnection.edge);
+
+			if(depth == ctx->maxLen - 1) break;
 
 			depth++;
 			addNeighbors(ctx, &frontierConnection, depth, ctx->dir);
