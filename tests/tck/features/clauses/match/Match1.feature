@@ -70,12 +70,12 @@ Feature: Match1 - Match nodes
     When executing query:
       """
       MATCH (a:A:B)
-      RETURN a ORDER BY ID(a)
+      RETURN a
       """
     Then the result should be, in any order:
       | a        |
-      | (:A:B:C) |
       | (:A:B)   |
+      | (:A:B:C) |
     And no side effects
 
   Scenario: [4] Simple node inline property predicate
