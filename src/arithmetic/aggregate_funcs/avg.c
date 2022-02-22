@@ -77,16 +77,6 @@ AggregateResult AGG_AVG
 	return AGGREGATE_OK;
 }
 
-// Routine for cloning a avg aggregate function context.
-void *Avg_Clone(void *orig) {
-	AvgCtx *orig_ctx = orig;
-	AvgCtx *ctx_clone   = rm_malloc(sizeof(AvgCtx));
-	ctx_clone->total    = orig_ctx->total;
-	ctx_clone->overflow = orig_ctx->overflow;
-	ctx_clone->count    = orig_ctx->count;
-	return ctx_clone;
-}
-
 // finalize aggregation
 void Avg_Finalize
 (

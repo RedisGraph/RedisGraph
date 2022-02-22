@@ -35,8 +35,6 @@ AggregateResult AGG_AVG
 	int argc
 );
 
-void *Avg_Clone(void *orig);
-
 // Routine for freeing a generic aggregate function context.
 void Aggregate_Free(void *ctx_ptr) {
 	AggregateCtx *ctx = ctx_ptr;
@@ -345,7 +343,7 @@ void Register_AggFuncs() {
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	array_append(types, T_PTR);
 	func_desc = AR_AggFuncDescNew("avg", AGG_AVG, 2, 2, types, false);
-	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Avg_Clone);
+	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Aggregate_Clone);
 	AR_SetFinalizeRoutine(func_desc, Avg_Finalize);
 	AR_SetDefaultValue(func_desc, SI_NullVal());
 	AR_RegFunc(func_desc);
