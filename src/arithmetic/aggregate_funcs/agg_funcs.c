@@ -50,7 +50,7 @@ void Aggregate_Free(void *ctx_ptr) {
 void *Aggregate_Clone(void *orig) {
 	AggregateCtx *orig_ctx = orig;
 	AggregateCtx *ctx_clone = rm_malloc(sizeof(AggregateCtx));
-	ctx_clone->result = orig_ctx->result;
+	ctx_clone->result = SI_CloneValue(orig_ctx->result);
 	ctx_clone->private_ctx = NULL;
 	return ctx_clone;
 }
