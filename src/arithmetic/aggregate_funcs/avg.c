@@ -87,6 +87,8 @@ void Avg_Finalize
 	AggregateCtx *ctx = (AggregateCtx*)ctx_ptr;
 
 	AvgCtx *avg_ctx = ctx->private_ctx;
+	if(avg_ctx == NULL) return;
+
 	if(avg_ctx->count > 0) {
 		if(avg_ctx->overflow) {
 			// used incremental algorithm due to overflow, 'total' is the average

@@ -267,22 +267,13 @@ static Record AggregateConsume
 		// this operation and it child are in the same scope
 		OpBase *child = op->op.children[0];
 		r = OpBase_CreateRecord(child);
-		//_aggregateRecord(op, r);
 
-		// TEST
-			// get group
-			Group *group = _GetGroup(op, r);
-			ASSERT(group != NULL);
+		// get group
+		Group *group = _GetGroup(op, r);
+		ASSERT(group != NULL);
 
-			// aggregate group exps
-			//for(uint i = 0; i < op->aggregate_count; i++) {
-			//	AR_ExpNode *exp = group->aggregationFunctions[i];
-			//	AR_EXP_FinalizeAggregations(exp, r);
-			//}
-
-			// free record
-			OpBase_DeleteRecord(r);
-		// END OF TEST
+		// free record
+		OpBase_DeleteRecord(r);
 	}
 
 	// create group iterator

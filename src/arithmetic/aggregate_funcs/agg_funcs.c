@@ -169,6 +169,8 @@ AggregateResult AGG_PERC(SIValue *argv, int argc) {
 void PercDiscFinalize(void *ctx_ptr) {
 	AggregateCtx *ctx = ctx_ptr;
 	_agg_PercCtx *perc_ctx = ctx->private_ctx;
+	if(perc_ctx == NULL) return;
+
 	uint count = array_len(perc_ctx->values);
 	if(count == 0) {
 		Aggregate_SetResult(ctx, SI_NullVal());
@@ -185,6 +187,8 @@ void PercDiscFinalize(void *ctx_ptr) {
 void PercContFinalize(void *ctx_ptr) {
 	AggregateCtx *ctx = ctx_ptr;
 	_agg_PercCtx *perc_ctx = ctx->private_ctx;
+	if(perc_ctx == NULL) return;
+
 	uint count = array_len(perc_ctx->values);
 	if(count == 0) {
 		Aggregate_SetResult(ctx, SI_NullVal());
@@ -259,6 +263,8 @@ AggregateResult AGG_STDEV(SIValue *argv, int argc) {
 
 void StDevGenericFinalize(AggregateCtx *ctx, int is_sampled) {
 	_agg_StDevCtx *stdev_ctx = ctx->private_ctx;
+
+	if(stdev_ctx == NULL) return;
 
 	uint count = array_len(stdev_ctx->values);
 	if(count - is_sampled == 0) {
