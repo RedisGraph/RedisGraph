@@ -46,6 +46,8 @@ int AllShortestPaths_FindMinimumLength
 				depth = 0; // indicate `dest` wasn't reached
 				break;
 			}
+			// add the current level visited to the global visited vector
+			// as we finished with current level and move to next level
 			GrB_Vector_eWiseAdd_BinaryOp(visited, NULL, NULL, GxB_ANY_BOOL, visited, current_visited, NULL);
 			GrB_Vector_clear(current_visited);
 		}
@@ -85,8 +87,6 @@ int AllShortestPaths_FindMinimumLength
 
 	GrB_free(&current_visited);
 	ctx->visited = visited;
-	GrB_Index nvals;
-	GrB_Vector_nvals(&nvals, visited);
 
 	return depth;
 }
