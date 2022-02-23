@@ -20,6 +20,10 @@
 typedef SIValue AggregateResult;
 AggregateResult AGGREGATE_OK;
 
+//------------------------------------------------------------------------------
+// forward declarations of functions defined in avg.c
+//------------------------------------------------------------------------------
+
 // finalize aggregation
 void Avg_Finalize
 (
@@ -34,6 +38,10 @@ AggregateResult AGG_AVG
 	SIValue *argv,
 	int argc
 );
+
+//------------------------------------------------------------------------------
+// Aggregate functions
+//------------------------------------------------------------------------------
 
 // Routine for freeing a generic aggregate function context.
 void Aggregate_Free(void *ctx_ptr) {
