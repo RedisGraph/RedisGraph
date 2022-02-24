@@ -13,23 +13,6 @@
 #include "../../ast/ast_build_op_contexts.h"
 #include "../../arithmetic/arithmetic_expression_construct.h"
 
-// Given a WITH/RETURN * clause, generate the array of expressions to populate.
-static AR_ExpNode **_PopulateProjectAll(const cypher_astnode_t *clause) {
-	// Retrieve the relevant aliases from the AST.
-	const char **aliases = AST_GetProjectAll(clause);
-	uint count = array_len(aliases);
-
-	AR_ExpNode **project_exps = array_new(AR_ExpNode *, count);
-	for(uint i = 0; i < count; i++) {
-		// Build an expression for each alias.
-		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(aliases[i]);
-		exp->resolved_name = aliases[i];
-		array_append(project_exps, exp);
-	}
-
-	return project_exps;
-}
-
 // Handle ORDER entities
 static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 										   const cypher_astnode_t *order_clause) {
@@ -51,22 +34,20 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 // (This function is not static because it is relied upon by unit tests)
 AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *clause) {
 	uint count = 0;
-	bool project_all = false;
 	AR_ExpNode **expressions = NULL;
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
 
 	ASSERT(t == CYPHER_AST_RETURN || t == CYPHER_AST_WITH);
 
 	if(t == CYPHER_AST_RETURN) {
-		project_all = cypher_ast_return_has_include_existing(clause);
+		// if we have a "RETURN *" at this point, it is because we raised 
+		// an error in AST rewriting
+		if(cypher_ast_return_has_include_existing(clause)) return NULL;
 		count = cypher_ast_return_nprojections(clause);
 	} else {
-		project_all = cypher_ast_with_has_include_existing(clause);
+		ASSERT(cypher_ast_with_has_include_existing(clause) == false);
 		count = cypher_ast_with_nprojections(clause);
 	}
-
-	// Project all '*'
-	if(project_all) return _PopulateProjectAll(clause);
 
 	expressions = array_new(AR_ExpNode *, count);
 

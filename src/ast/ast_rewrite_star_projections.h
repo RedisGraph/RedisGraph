@@ -6,6 +6,7 @@
 
 #pragma once
 
-#include "../ast.h"
+#include "ast.h"
 
-void AST_AnnotateProjectAll(AST *ast);
+void AST_RewriteStarProjections(cypher_parse_result_t *result);
+
