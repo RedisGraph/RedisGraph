@@ -170,7 +170,7 @@ TEST_F(RGMatrixTest, RGMatrix_new) {
 
 	// M should be either hyper-sparse or sparse
 	GxB_Matrix_Option_get(M, GxB_SPARSITY_CONTROL, &format);
-	ASSERT_TRUE(format == GxB_SPARSE || format == GxB_HYPERSPARSE);
+	ASSERT_EQ(format, GxB_SPARSE | GxB_HYPERSPARSE);
 
 	// DP should always be hyper
 	GxB_Matrix_Option_get(DP, GxB_HYPER_SWITCH, &hyper_switch);
