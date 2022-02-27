@@ -17,7 +17,7 @@ static void _AllNeighborsCtx_CollectNeighbors
 	ctx->current_level++;
 	if(ctx->current_level == array_len(ctx->levels)) {
 		RG_MatrixTupleIter iter = {0};
-		RG_MatrixTupleIter_reuse(&iter, ctx->M);
+		RG_MatrixTupleIter_attach(&iter, ctx->M);
 		array_append(ctx->levels, iter);
 	}
 
@@ -61,7 +61,7 @@ void AllNeighborsCtx_Reset
 
 	uint count = array_len(ctx->levels);
 	for (uint i = 0; i < count; i++) {
-		RG_MatrixTupleIter_free_data(ctx->levels + i);
+		RG_MatrixTupleIter_free_internals(ctx->levels + i);
 	}
 	array_clear(ctx->levels);
 	array_clear(ctx->visited);
@@ -168,7 +168,7 @@ void AllNeighborsCtx_Free
 
 	uint count = array_len(ctx->levels);
 	for (uint i = 0; i < count; i++) {
-		RG_MatrixTupleIter_free_data(ctx->levels + i);
+		RG_MatrixTupleIter_free_internals(ctx->levels + i);
 	}
 	array_free(ctx->levels);
 	array_free(ctx->visited);

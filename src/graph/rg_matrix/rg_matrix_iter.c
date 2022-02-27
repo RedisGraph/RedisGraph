@@ -336,7 +336,7 @@ GrB_Info RG_MatrixTupleIter_reset
 }
 
 // update iterator to scan given matrix
-GrB_Info RG_MatrixTupleIter_reuse
+GrB_Info RG_MatrixTupleIter_attach
 (
 	RG_MatrixTupleIter *iter,       // iterator to update
 	const RG_Matrix A               // matrix to scan
@@ -361,7 +361,7 @@ GrB_Info RG_MatrixTupleIter_reuse
 }
 
 // free iterator data
-GrB_Info RG_MatrixTupleIter_free_data
+GrB_Info RG_MatrixTupleIter_free_internals
 (
 	RG_MatrixTupleIter *iter       // iterator to free
 ) {
@@ -383,7 +383,7 @@ GrB_Info RG_MatrixTupleIter_free
 ) {
 	ASSERT(*iter != NULL) ;
 
-	RG_MatrixTupleIter_free_data(*iter);
+	RG_MatrixTupleIter_free_internals(*iter);
 
 	rm_free(*iter) ;
 	*iter = NULL ;

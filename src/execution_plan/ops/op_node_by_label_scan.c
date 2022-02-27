@@ -137,7 +137,7 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 
 	// Try to get new nodeID.
 	GrB_Index nodeId;
-	GrB_Info info = RG_MatrixTupleIter_next_BOOL(op->iter, NULL, &nodeId, NULL);
+	GrB_Info info = RG_MatrixTupleIter_next_BOOL(op->iter, &nodeId, NULL, NULL);
 	while(info == GxB_EXHAUSTED || info == GrB_NULL_POINTER || op->child_record == NULL) {
 		// Try to get a record.
 		if(op->child_record) OpBase_DeleteRecord(op->child_record);
@@ -157,7 +157,7 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 			_ResetIterator(op);
 		}
 		// Try to get new NodeID.
-		info = RG_MatrixTupleIter_next_BOOL(op->iter, NULL, &nodeId, NULL);
+		info = RG_MatrixTupleIter_next_BOOL(op->iter, &nodeId, NULL, NULL);
 	}
 
 	// We've got a record and NodeID.
@@ -172,7 +172,7 @@ static Record NodeByLabelScanConsume(OpBase *opBase) {
 	NodeByLabelScan *op = (NodeByLabelScan *)opBase;
 
 	GrB_Index nodeId;
-	GrB_Info info = RG_MatrixTupleIter_next_BOOL(op->iter, NULL, &nodeId, NULL);
+	GrB_Info info = RG_MatrixTupleIter_next_BOOL(op->iter, &nodeId, NULL, NULL);
 	if(info == GxB_EXHAUSTED) return NULL;
 
 	ASSERT(info == GrB_SUCCESS);

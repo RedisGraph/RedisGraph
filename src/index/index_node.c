@@ -54,17 +54,17 @@ void populateNodeIndex
 	ASSERT(m != NULL);
 
 	RG_MatrixTupleIter it = {0};
-	RG_MatrixTupleIter_reuse(&it, m);
+	RG_MatrixTupleIter_attach(&it, m);
 
 	// iterate over each graph entity
 	EntityID id;
-	while(RG_MatrixTupleIter_next_BOOL(&it, NULL, &id, NULL) != GxB_EXHAUSTED) {
+	while(RG_MatrixTupleIter_next_BOOL(&it, &id, NULL, NULL) != GxB_EXHAUSTED) {
 		Node n;
 		Graph_GetNode(g, id, &n);
 		Index_IndexNode(idx, &n);
 	}
 
-	RG_MatrixTupleIter_free_data(&it);
+	RG_MatrixTupleIter_free_internals(&it);
 }
 
 void Index_RemoveNode

@@ -353,7 +353,7 @@ void RdbSaveEdges_v11
 
 			// get matrix and set iterator
 			M = Graph_GetRelationMatrix(gc->g, r, false);
-			info = RG_MatrixTupleIter_reuse(iter, M);
+			info = RG_MatrixTupleIter_attach(iter, M);
 			ASSERT(info == GrB_SUCCESS);
 			info = RG_MatrixTupleIter_next_UINT64(iter, &src, &dest, &edgeID);
 		}

@@ -67,7 +67,7 @@ void _traverse(OpCondTraverse *op) {
 	AlgebraicExpression_Eval(op->ae, op->M);
 
 	if(op->iter == NULL) RG_MatrixTupleIter_new(&op->iter, op->M);
-	else RG_MatrixTupleIter_reuse(op->iter, op->M);
+	else RG_MatrixTupleIter_attach(op->iter, op->M);
 
 	// Clear filter matrix.
 	RG_Matrix_clear(op->F);
@@ -209,7 +209,8 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 	if(op->edge_ctx) EdgeTraverseCtx_Reset(op->edge_ctx);
 
 	if(op->iter) {
-		RG_MatrixTupleIter_free(&op->iter);
+		GrB_Info info = RG_MatrixTupleIter_free(&op->iter);
+		ASSERT(info == GrB_SUCCESS);
 	}
 	if(op->F != NULL) RG_Matrix_clear(op->F);
 	return OP_OK;
@@ -226,7 +227,8 @@ static void CondTraverseFree(OpBase *ctx) {
 	OpCondTraverse *op = (OpCondTraverse *)ctx;
 
 	if(op->iter) {
-		RG_MatrixTupleIter_free(&op->iter);
+		GrB_Info info = RG_MatrixTupleIter_free(&op->iter);
+		ASSERT(info == GrB_SUCCESS);
 	}
 
 	if(op->F != NULL) {

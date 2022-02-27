@@ -730,7 +730,7 @@ void Graph_GetNodeEdges
 	if(outgoing) {
 		// construct an iterator to traverse over the source node row,
 		// containing all outgoing edges
-		RG_MatrixTupleIter_reuse(&it, M);
+		RG_MatrixTupleIter_attach(&it, M);
 		RG_MatrixTupleIter_iterate_row(&it, srcID);
 		while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, &edgeID) == GrB_SUCCESS) {
 			// collect all edges (src)->(dest)
@@ -740,7 +740,7 @@ void Graph_GetNodeEdges
 				Graph_GetEdgesConnectingNodes(g, srcID, destID, edgeType, edges);
 			}
 		}
-		RG_MatrixTupleIter_free_data(&it);
+		RG_MatrixTupleIter_free_internals(&it);
 	}
 
 	if(incoming) {
@@ -751,7 +751,7 @@ void Graph_GetNodeEdges
 
 		// construct an iterator to traverse over the source node row,
 		// containing all incoming edges
-		RG_MatrixTupleIter_reuse(&it, TM);
+		RG_MatrixTupleIter_attach(&it, TM);
 		RG_MatrixTupleIter_iterate_row(&it, srcID);
 
 		while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, NULL) == GrB_SUCCESS) {
@@ -763,7 +763,7 @@ void Graph_GetNodeEdges
 				Graph_GetEdgesConnectingNodes(g, destID, srcID, edgeType, edges);
 			}
 		}
-		RG_MatrixTupleIter_free_data(&it);
+		RG_MatrixTupleIter_free_internals(&it);
 	}
 }
 
@@ -787,7 +787,7 @@ uint Graph_GetNodeLabels
 	RG_Matrix M = Graph_GetNodeLabelMatrix(g);
 
 	RG_MatrixTupleIter iter = {0};
-	res = RG_MatrixTupleIter_reuse(&iter, M);
+	res = RG_MatrixTupleIter_attach(&iter, M);
 	ASSERT(res == GrB_SUCCESS);
 
 	EntityID id = ENTITY_GET_ID(n);
@@ -797,12 +797,12 @@ uint Graph_GetNodeLabels
 	uint i = 0;
 
 	for(; i < label_count; i++) {
-		res = RG_MatrixTupleIter_next_BOOL(&iter, NULL, labels + i, NULL);
+		res = RG_MatrixTupleIter_next_BOOL(&iter, labels + i, NULL, NULL);
 
 		if(res == GxB_EXHAUSTED) break;
 	}
 
-	RG_MatrixTupleIter_free_data(&iter);
+	RG_MatrixTupleIter_free_internals(&iter);
 
 	return i;
 }

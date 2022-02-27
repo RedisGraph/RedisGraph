@@ -51,7 +51,7 @@ typedef struct {
 	uint current_relation_matrix_id;            // Current encoded relationship matrix.
 	uint multiple_edges_current_index;          // The current index of the encoded edges array.
 	DataBlockIterator *datablock_iterator;      // Datablock iterator to be saved in the context.
-	RG_MatrixTupleIter *matrix_tuple_iterator; // Matrix tuple iterator to be saved in the context.
+	RG_MatrixTupleIter *matrix_tuple_iterator;  // Matrix tuple iterator to be saved in the context.
 } GraphEncodeContext;
 
 // Creates a new graph encoding context.

@@ -14,14 +14,13 @@
 // to iterate over a RG_Matrix
 typedef struct
 {
-    RG_Matrix A;                   // matrix iterated
-    GxB_Iterator m_it;             // internal m iterator
-    GxB_Iterator dp_it;            // internal delta plus iterator
+	RG_Matrix A;                   // matrix iterated
+	GxB_Iterator m_it;             // internal m iterator
+	GxB_Iterator dp_it;            // internal delta plus iterator
 	bool m_depleted;               // is m iterator depleted
 	bool dp_depleted;              // is dp iterator depleted
 	GrB_Index min_row;             // minimum row for iteration
 	GrB_Index max_row;             // maximum row for iteration
-
 } RG_MatrixTupleIter ;
 
 // create a new iterator
@@ -31,8 +30,8 @@ GrB_Info RG_MatrixTupleIter_new
 	const RG_Matrix A              // matrix to iterate over
 );
 
-// reuse iterator to iterate over given matrix
-GrB_Info RG_MatrixTupleIter_reuse
+// attach iterator to iterate over given matrix
+GrB_Info RG_MatrixTupleIter_attach
 (
 	RG_MatrixTupleIter *iter,       // iterator to update
 	const RG_Matrix A               // matrix to scan
@@ -81,7 +80,7 @@ GrB_Info RG_MatrixTupleIter_reset
 );
 
 // free iterator data
-GrB_Info RG_MatrixTupleIter_free_data
+GrB_Info RG_MatrixTupleIter_free_internals
 (
 	RG_MatrixTupleIter *iter       // iterator to free
 );

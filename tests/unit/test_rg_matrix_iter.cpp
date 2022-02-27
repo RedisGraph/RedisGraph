@@ -165,7 +165,7 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_reuse) {
 	info = RG_MatrixTupleIter_new(&iter, B);
 	ASSERT_TRUE(iter != NULL);
 
-	info = RG_MatrixTupleIter_reuse(iter, A);
+	info = RG_MatrixTupleIter_attach(iter, A);
 	ASSERT_TRUE(iter != NULL);
 
 	info = RG_MatrixTupleIter_next_UINT64(iter, &row, &col, &val);

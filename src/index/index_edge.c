@@ -65,7 +65,7 @@ void populateEdgeIndex
 	ASSERT(m != NULL);
 
 	RG_MatrixTupleIter it = {0};
-	RG_MatrixTupleIter_reuse(&it, m);
+	RG_MatrixTupleIter_attach(&it, m);
 
 	// iterate over each graph entity
 	while(true) {
@@ -86,7 +86,7 @@ void populateEdgeIndex
 		Index_IndexEdge(idx, &e);
 	}
 
-	RG_MatrixTupleIter_free_data(&it);
+	RG_MatrixTupleIter_free_internals(&it);
 }
 
 void Index_RemoveEdge

@@ -170,7 +170,7 @@ static SIValue *Proc_BFS_Step
 	UNUSED(res);
 	res = GxB_Iterator_new(&iter);
 	ASSERT(res == GrB_SUCCESS);
-	GxB_Vector_Iterator_attach(iter, bfs_ctx->nodes, NULL);
+	res = GxB_Vector_Iterator_attach(iter, bfs_ctx->nodes, NULL);
 	ASSERT(res == GrB_SUCCESS);
 	res = GxB_Vector_Iterator_seek(iter, 0);
 	id = GxB_Vector_Iterator_getIndex(iter);
@@ -200,12 +200,12 @@ static SIValue *Proc_BFS_Step
 		}
 
 		res = GxB_Vector_Iterator_next(iter);
-		id = GxB_Vector_Iterator_getIndex(iter);
+		if(res == GrB_SUCCESS) id = GxB_Vector_Iterator_getIndex(iter);
 	}
 
 	GxB_Iterator_free(&iter);
 
-	bfs_ctx->depleted = res == GxB_EXHAUSTED;
+	bfs_ctx->depleted = true;
 
 	// populate output
 	if(yield_nodes) *bfs_ctx->yield_nodes = nodes;
