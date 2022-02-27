@@ -44,18 +44,20 @@ static inline void _set_iter_range
 			     GxB_rowIterator_getRowIndex(it) > max_row) ;
 }
 
-static inline GxB_Iterator _init_iter
+static inline void _init_iter
 (
+	GxB_Iterator *it,
 	GrB_Matrix m,
 	GrB_Index min_row,
 	GrB_Index max_row,
 	bool *depleted
 ) {
+	ASSERT(m != NULL) ;
+	ASSERT(min_row <= max_row) ;
 	ASSERT(depleted != NULL) ;
 
 	*depleted = true ; // default
 
-	GxB_Iterator it ;
 	GrB_Index nvals ;
 	GrB_Info info ;
 	UNUSED(info) ;
@@ -63,16 +65,14 @@ static inline GxB_Iterator _init_iter
 	info = GrB_Matrix_nvals(&nvals, m) ;
 	ASSERT(info == GrB_SUCCESS) ;
 
-	info = GxB_Iterator_new(&it) ;
+	info = GxB_Iterator_new(it) ;
 	ASSERT(info == GrB_SUCCESS) ;
 
 	if(nvals > 0) {
-		info = GxB_rowIterator_attach(it, m, NULL) ;
+		info = GxB_rowIterator_attach(*it, m, NULL) ;
 		ASSERT(info == GrB_SUCCESS) ;
-		_set_iter_range(it, min_row, max_row, depleted) ;
+		_set_iter_range(*it, min_row, max_row, depleted) ;
 	}
-
-	return it ;
 }
 
 // create a new iterator
@@ -92,8 +92,8 @@ GrB_Info RG_MatrixTupleIter_new
 	it->min_row = 0 ;
 	it->max_row = ULLONG_MAX ;
 
-	it->m_it = _init_iter(M, it->min_row, it->max_row, &it->m_depleted) ;
-	it->dp_it = _init_iter(DP, it->min_row, it->max_row, &it->dp_depleted) ;
+	_init_iter(&it->m_it, M, it->min_row, it->max_row, &it->m_depleted) ;
+	_init_iter(&it->dp_it, DP, it->min_row, it->max_row, &it->dp_depleted) ;
 
 	*iter = it ;
 	return GrB_SUCCESS ;
@@ -121,6 +121,7 @@ GrB_Info RG_MatrixTupleIter_jump_to_row
 	GrB_Index rowIdx
 ) {
 	if(iter == NULL) return GrB_NULL_POINTER ;
+	if(iter->max_row < rowIdx) return GrB_INVALID_INDEX ;
 
 	iter->min_row = rowIdx ;
 
@@ -160,8 +161,6 @@ static void _iter_next
 		info = GxB_rowIterator_nextRow (it) ;
 		// in-case iterator maintains number of yield values, we can use nvals here
 		// for a quick return!
-		// TODO: see how much time does it take to figure out that there are no more none-empty rows
-		// in a 50MX50M matrix with "last" entry at position [10M, 0] (seeking 40M rows)
 		while(info == GrB_NO_VALUE && GxB_rowIterator_getRowIndex(it) < max_row) {
 			info = GxB_rowIterator_nextRow (it) ;
 		}
@@ -188,19 +187,18 @@ static GrB_Info _next_m_iter_bool
 	GrB_Index  _row ;
 	GrB_Index  _col ;
 
-	GxB_Iterator it = iter->m_it;
+	GxB_Iterator m_it = iter->m_it ;
 
 	do {
 		// iterator depleted, return
-		if(*depleted) return GrB_NO_VALUE;
+		if(*depleted) return GrB_NO_VALUE ;
 
-		_row = GxB_rowIterator_getRowIndex (it) ;
-		_col = GxB_rowIterator_getColIndex (it) ;
-		// TODO: depending on the matrix type BOOL/UINT64 use the right typed function(s)
-		if(val) *val = GxB_Iterator_get_BOOL (it) ;
+		_row = GxB_rowIterator_getRowIndex (m_it) ;
+		_col = GxB_rowIterator_getColIndex (m_it) ;
+		if(val) *val = GxB_Iterator_get_BOOL (m_it) ;
 
 		// prep value for next iteration
-		_iter_next(it, iter->max_row, depleted);
+		_iter_next(m_it, iter->max_row, depleted);
 
 		bool x ;
  		GrB_Info delete_info = GrB_Matrix_extractElement_BOOL(&x, DM, _row, _col) ;
@@ -263,18 +261,18 @@ static GrB_Info _next_m_iter_uint64
 	GrB_Index  _row ;
 	GrB_Index  _col ;
 
-	GxB_Iterator it = iter->m_it;
+	GxB_Iterator m_it = iter->m_it ;
 
 	do {
 		// iterator depleted, return
 		if(*depleted) return GrB_NO_VALUE;
 
-		_row = GxB_rowIterator_getRowIndex (it) ;
-		_col = GxB_rowIterator_getColIndex (it) ;
-		if(val) *val = GxB_Iterator_get_UINT64 (it) ;
+		_row = GxB_rowIterator_getRowIndex (m_it) ;
+		_col = GxB_rowIterator_getColIndex (m_it) ;
+		if(val) *val = GxB_Iterator_get_UINT64 (m_it) ;
 
 		// prep value for next iteration
-		_iter_next(it, iter->max_row, depleted);
+		_iter_next(m_it, iter->max_row, depleted);
 
 		bool x ;
  		GrB_Info delete_info = GrB_Matrix_extractElement_BOOL(&x, DM, _row, _col) ;
@@ -354,8 +352,8 @@ GrB_Info RG_MatrixTupleIter_attach
 	if(iter->m_it != NULL) GrB_free (&iter->m_it) ;
 	if(iter->dp_it != NULL) GrB_free (&iter->dp_it) ;
 
-	iter->m_it = _init_iter(M, iter->min_row, iter->max_row, &iter->m_depleted) ;
-	iter->dp_it = _init_iter(DP, iter->min_row, iter->max_row, &iter->dp_depleted) ;
+	_init_iter(&iter->m_it, M, iter->min_row, iter->max_row, &iter->m_depleted) ;
+	_init_iter(&iter->dp_it, DP, iter->min_row, iter->max_row, &iter->dp_depleted) ;
 
 	return GrB_SUCCESS ;
 }

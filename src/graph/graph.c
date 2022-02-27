@@ -797,7 +797,7 @@ uint Graph_GetNodeLabels
 	uint i = 0;
 
 	for(; i < label_count; i++) {
-		res = RG_MatrixTupleIter_next_BOOL(&iter, labels + i, NULL, NULL);
+		res = RG_MatrixTupleIter_next_BOOL(&iter, NULL, labels + i, NULL);
 
 		if(res == GxB_EXHAUSTED) break;
 	}
