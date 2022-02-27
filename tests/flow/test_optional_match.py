@@ -1,5 +1,4 @@
-import os
-import sys
+import re
 from RLTest import Env
 from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
@@ -274,4 +273,21 @@ class testOptionalFlow(FlowTestsBase):
         query = """OPTIONAL MATCH (a {v: 'v1'}), (b {v: 'v2'}) WHERE true RETURN a.v, b.v"""
         actual_result = redis_graph.query(query)
         expected_result = [['v1', 'v2']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # validate that the correct plan is populated and executed when OPTIONAL
+    # does not introduce any new variables
+    def test22_optional_repeats_reference(self):
+        global redis_graph
+        query = """MATCH (n1) OPTIONAL MATCH (n1) WHERE n1.nonexistent > 0 RETURN n1.v ORDER BY n1.v"""
+        plan = redis_graph.execution_plan(query)
+        # the first child of the Apply op should be a scan and the
+        # second should be the OPTIONAL subtree
+        self.env.assertTrue(re.search('Apply\s+All Node Scan | (n1)\s+Optional\s+Filter\s+Argument', plan))
+
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1'],
+                           ['v2'],
+                           ['v3'],
+                           ['v4']]
         self.env.assertEquals(actual_result.result_set, expected_result)
