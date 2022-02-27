@@ -219,18 +219,13 @@ GrB_Info RG_MatrixTupleIter_next_BOOL
 	RG_MatrixTupleIter *iter,       // iterator to consume
 	GrB_Index *row,                 // optional output row index
 	GrB_Index *col,                 // optional output column index
-	bool *val,                      // optional value at A[row, col]
-	bool *depleted                  // [output] true if iterator depleted
+	bool *val                       // optional value at A[row, col]
 ) {
 	if(iter == NULL) return GrB_NULL_POINTER ;
-
-	ASSERT(depleted != NULL) ;
 
 	GrB_Info             info     =  GrB_SUCCESS                    ;
 	GrB_Matrix           DM       =  RG_MATRIX_DELTA_MINUS(iter->A) ;
 	GxB_Iterator         dp_it    =  iter->dp_it                    ;
-
-	*depleted = false;
 
 	if(!iter->m_depleted) {
 		info = _next_m_iter_bool(iter, DM, row, col, val, &iter->m_depleted) ;
@@ -238,8 +233,7 @@ GrB_Info RG_MatrixTupleIter_next_BOOL
 	}
 
 	if(iter->dp_depleted) {
-		*depleted = true;
-		return GrB_SUCCESS;
+		return GxB_EXHAUSTED ;
 	}
 
 	if(row) *row = GxB_rowIterator_getRowIndex (dp_it) ;
@@ -299,18 +293,13 @@ GrB_Info RG_MatrixTupleIter_next_UINT64
 	RG_MatrixTupleIter *iter,       // iterator to consume
 	GrB_Index *row,                 // optional output row index
 	GrB_Index *col,                 // optional output column index
-	uint64_t *val,                  // optional value at A[row, col]
-	bool *depleted                  // [output] true if iterator depleted
+	uint64_t *val                  // optional value at A[row, col]
 ) {
 	if(iter == NULL) return GrB_NULL_POINTER ;
-
-	ASSERT(depleted != NULL) ;
 
 	GrB_Info             info     =  GrB_SUCCESS                    ;
 	GrB_Matrix           DM       =  RG_MATRIX_DELTA_MINUS(iter->A) ;
 	GxB_Iterator         dp_it    =  iter->dp_it                    ;
-
-	*depleted = false;
 
 	if(!iter->m_depleted) {
 		info = _next_m_iter_uint64(iter, DM, row, col, val, &iter->m_depleted) ;
@@ -318,8 +307,7 @@ GrB_Info RG_MatrixTupleIter_next_UINT64
 	}
 
 	if(iter->dp_depleted) {
-		*depleted = true;
-		return GrB_SUCCESS;
+		return GxB_EXHAUSTED ;
 	}
 
 	if(row) *row = GxB_rowIterator_getRowIndex (dp_it) ;

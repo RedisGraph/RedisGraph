@@ -69,13 +69,13 @@ void populateEdgeIndex
 
 	// iterate over each graph entity
 	while(true) {
-		bool      depleted;
+		GrB_Info  info;
 		EntityID  src_id;
 		EntityID  dest_id;
 		EntityID  edge_id;
 
-		RG_MatrixTupleIter_next_UINT64(&it, &src_id, &dest_id, &edge_id, &depleted);
-		if(depleted) break;
+		info = RG_MatrixTupleIter_next_UINT64(&it, &src_id, &dest_id, &edge_id);
+		if(info == GxB_EXHAUSTED) break;
 
 		Edge e;
 		e.relationID  =  idx->label_id;

@@ -137,16 +137,18 @@ static Record CondTraverseConsume(OpBase *opBase) {
 		return OpBase_CloneRecord(op->r);
 	}
 
-	bool depleted = true;
-	NodeID src_id = INVALID_ENTITY_ID;
+	GrB_Info info = GxB_EXHAUSTED;
+	NodeID src_id  = INVALID_ENTITY_ID;
 	NodeID dest_id = INVALID_ENTITY_ID;
 
 	while(true) {
-		if(op->iter) RG_MatrixTupleIter_next_UINT64(op->iter, &src_id, &dest_id,
-				NULL, &depleted);
+		if(op->iter) {
+			info = RG_MatrixTupleIter_next_UINT64(op->iter, &src_id, &dest_id,
+				NULL);
+		}
 
 		// Managed to get a tuple, break.
-		if(!depleted) break;
+		if(info == GrB_SUCCESS) break;
 
 		/* Run out of tuples, try to get new data.
 		 * Free old records. */

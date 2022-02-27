@@ -713,7 +713,6 @@ void Graph_GetNodeEdges
 	NodeID               srcID    =  ENTITY_GET_ID(n);
 	NodeID               destID   =  INVALID_ENTITY_ID;
 	EdgeID               edgeID   =  INVALID_ENTITY_ID;
-	bool                 depleted =  false;
 
 	if(edgeType == GRAPH_UNKNOWN_RELATION) return;
 
@@ -733,9 +732,7 @@ void Graph_GetNodeEdges
 		// containing all outgoing edges
 		RG_MatrixTupleIter_reuse(&it, M);
 		RG_MatrixTupleIter_iterate_row(&it, srcID);
-		while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, &edgeID, &depleted) == GrB_SUCCESS) {
-			if(depleted) break;
-
+		while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, &edgeID) == GrB_SUCCESS) {
 			// collect all edges (src)->(dest)
 			if(edgeType != GRAPH_NO_RELATION) {
 				_CollectEdgesFromEntry(g, srcID, destID, edgeType, edgeID, edges);
@@ -757,8 +754,7 @@ void Graph_GetNodeEdges
 		RG_MatrixTupleIter_reuse(&it, TM);
 		RG_MatrixTupleIter_iterate_row(&it, srcID);
 
-		while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, NULL, &depleted) == GrB_SUCCESS) {
-			if(depleted) break;
+		while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, NULL) == GrB_SUCCESS) {
 			RG_Matrix_extractElement_UINT64(&edgeID, M, destID, srcID);
 			// collect all edges connecting destId to srcId
 			if(edgeType != GRAPH_NO_RELATION) {
@@ -799,13 +795,11 @@ uint Graph_GetNodeLabels
 	ASSERT(res == GrB_SUCCESS);
 
 	uint i = 0;
-	bool depleted = false;
 
 	for(; i < label_count; i++) {
-		res = RG_MatrixTupleIter_next_BOOL(&iter, NULL, labels + i, NULL, &depleted);
-		ASSERT(res == GrB_SUCCESS);
+		res = RG_MatrixTupleIter_next_BOOL(&iter, NULL, labels + i, NULL);
 
-		if(depleted) break;
+		if(res == GxB_EXHAUSTED) break;
 	}
 
 	RG_MatrixTupleIter_free_data(&iter);

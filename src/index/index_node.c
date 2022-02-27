@@ -57,13 +57,8 @@ void populateNodeIndex
 	RG_MatrixTupleIter_reuse(&it, m);
 
 	// iterate over each graph entity
-	while(true) {
-		EntityID id;
-		bool depleted = false;
-
-		RG_MatrixTupleIter_next_BOOL(&it, NULL, &id, NULL, &depleted);
-		if(depleted) break;
-
+	EntityID id;
+	while(RG_MatrixTupleIter_next_BOOL(&it, NULL, &id, NULL) != GxB_EXHAUSTED) {
 		Node n;
 		Graph_GetNode(g, id, &n);
 		Index_IndexNode(idx, &n);

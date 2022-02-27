@@ -63,8 +63,7 @@ GrB_Info RG_MatrixTupleIter_next_BOOL
 	RG_MatrixTupleIter *iter,       // iterator to consume
 	GrB_Index *row,                 // optional output row index
 	GrB_Index *col,                 // optional output column index
-	bool *val,                      // optional value at A[row, col]
-	bool *depleted                  // indicate if iterator depleted
+	bool *val                       // optional value at A[row, col]
 );
 
 GrB_Info RG_MatrixTupleIter_next_UINT64
@@ -72,8 +71,7 @@ GrB_Info RG_MatrixTupleIter_next_UINT64
 	RG_MatrixTupleIter *iter,       // iterator to consume
 	GrB_Index *row,                 // optional output row index
 	GrB_Index *col,                 // optional output column index
-	uint64_t *val,                  // optional value at A[row, col]
-	bool *depleted                  // indicate if iterator depleted
+	uint64_t *val                   // optional value at A[row, col]
 );
 
 // reset iterator
