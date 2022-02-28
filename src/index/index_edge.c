@@ -68,15 +68,11 @@ void populateEdgeIndex
 	RG_MatrixTupleIter_attach(&it, m);
 
 	// iterate over each graph entity
-	while(true) {
-		GrB_Info  info;
-		EntityID  src_id;
-		EntityID  dest_id;
-		EntityID  edge_id;
-
-		info = RG_MatrixTupleIter_next_UINT64(&it, &src_id, &dest_id, &edge_id);
-		if(info == GxB_EXHAUSTED) break;
-
+	EntityID  src_id;
+	EntityID  dest_id;
+	EntityID  edge_id;
+	while(RG_MatrixTupleIter_next_UINT64(&it, &src_id, &dest_id, &edge_id)
+			== GrB_SUCCESS) {
 		Edge e;
 		e.relationID  =  idx->label_id;
 		e.srcNodeID   =  src_id;

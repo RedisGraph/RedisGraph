@@ -344,7 +344,7 @@ void RdbSaveEdges_v11
 
 		// if iterator is depleted
 		// get new tuple from different matrix or finish encode
-		while(info == GxB_EXHAUSTED && r < relation_count) {
+		while(info == GxB_EXHAUSTED) {
 			// proceed to next relation matrix
 			r++;
 

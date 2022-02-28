@@ -30,7 +30,7 @@ GrB_Info RG_MatrixTupleIter_new
 	const RG_Matrix A              // matrix to iterate over
 );
 
-// attach iterator to iterate over given matrix
+// attach iterator to matrix
 GrB_Info RG_MatrixTupleIter_attach
 (
 	RG_MatrixTupleIter *iter,       // iterator to update
@@ -79,7 +79,7 @@ GrB_Info RG_MatrixTupleIter_reset
 	RG_MatrixTupleIter *iter       // iterator to reset
 );
 
-// free iterator data
+// free iterator internals, keeping the iterator intact
 GrB_Info RG_MatrixTupleIter_free_internals
 (
 	RG_MatrixTupleIter *iter       // iterator to free

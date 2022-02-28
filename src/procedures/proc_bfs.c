@@ -173,9 +173,10 @@ static SIValue *Proc_BFS_Step
 	res = GxB_Vector_Iterator_attach(iter, bfs_ctx->nodes, NULL);
 	ASSERT(res == GrB_SUCCESS);
 	res = GxB_Vector_Iterator_seek(iter, 0);
-	id = GxB_Vector_Iterator_getIndex(iter);
 
-	while(res != GxB_EXHAUSTED) {
+	while(res == GrB_SUCCESS) {
+		id = GxB_Vector_Iterator_getIndex(iter);
+
 		// get the reached node
 		if(yield_nodes) {
 			// append each reachable node to the nodes output array
@@ -184,8 +185,8 @@ static SIValue *Proc_BFS_Step
 			SIArray_Append(&nodes, SI_Node(&n));
 		}
 
-		array_clear(edge);
 		if(yield_edges) {
+			array_clear(edge);
 			GrB_Index parent_id;
 			// find the parent of the reached node
 			GrB_Info res = GrB_Vector_extractElement(&parent_id,
@@ -200,7 +201,6 @@ static SIValue *Proc_BFS_Step
 		}
 
 		res = GxB_Vector_Iterator_next(iter);
-		if(res == GrB_SUCCESS) id = GxB_Vector_Iterator_getIndex(iter);
 	}
 
 	GxB_Iterator_free(&iter);

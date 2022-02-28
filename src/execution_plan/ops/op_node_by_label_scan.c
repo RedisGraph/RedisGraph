@@ -138,7 +138,7 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 	// Try to get new nodeID.
 	GrB_Index nodeId;
 	GrB_Info info = RG_MatrixTupleIter_next_BOOL(op->iter, &nodeId, NULL, NULL);
-	while(info == GxB_EXHAUSTED || info == GrB_NULL_POINTER || op->child_record == NULL) {
+	while(info == GrB_NULL_POINTER || op->child_record == NULL || info == GxB_EXHAUSTED) {
 		// Try to get a record.
 		if(op->child_record) OpBase_DeleteRecord(op->child_record);
 		op->child_record = OpBase_Consume(op->op.children[0]);

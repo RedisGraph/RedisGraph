@@ -170,6 +170,7 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_reuse) {
 
 	info = RG_MatrixTupleIter_next_UINT64(iter, &row, &col, &val);
 
+	ASSERT_EQ(info, GrB_SUCCESS);
 	ASSERT_EQ(row, i);
 	ASSERT_EQ(col, j);
 	ASSERT_EQ(val, 0);
