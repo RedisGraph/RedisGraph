@@ -2,7 +2,7 @@
 // GB_import: import a matrix in any format
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -71,11 +71,9 @@ GrB_Info GB_import      // import/pack a matrix in any format
     }
 
     GB_RETURN_IF_NULL_OR_FAULTY (type) ;
-    if (vlen  > GB_NMAX || vdim > GB_NMAX ||
-        nvals > GB_NMAX || nvec > GB_NMAX ||
-        Ap_size > GB_NMAX ||
-        Ah_size > GB_NMAX || Ab_size > GB_NMAX ||
-        Ai_size > GB_NMAX || Ax_size > GB_NMAX)
+    if (vlen  > GB_NMAX || vdim > GB_NMAX || nvals > GB_NMAX || nvec > GB_NMAX
+        || Ap_size > GB_NMAX || Ah_size > GB_NMAX || Ab_size > GB_NMAX
+        || Ai_size > GB_NMAX || Ax_size > GB_NMAX)
     { 
         return (GrB_INVALID_VALUE) ;
     }
@@ -204,10 +202,11 @@ GrB_Info GB_import      // import/pack a matrix in any format
     { 
         // clear the content and reuse the header
         GB_phbix_free (*A) ;
+        ASSERT (!((*A)->static_header)) ;
     }
 
     // also create A->p if this is a sparse GrB_Vector
-    GrB_Info info = GB_new (A, false, // any sparsity, new user header
+    GrB_Info info = GB_new (A, // any sparsity, new or existing user header
         type, vlen, vdim, is_sparse_vector ? GB_Ap_calloc : GB_Ap_null,
         is_csc, sparsity, GB_Global_hyper_switch_get ( ), nvec, Context) ;
     if (info != GrB_SUCCESS)
@@ -215,6 +214,9 @@ GrB_Info GB_import      // import/pack a matrix in any format
         // out of memory
         return (info) ;
     }
+
+    // A never has a static header
+    ASSERT (!((*A)->static_header)) ;
 
     //--------------------------------------------------------------------------
     // import the matrix

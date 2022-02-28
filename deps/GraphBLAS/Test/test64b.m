@@ -1,7 +1,7 @@
 function test64b
 %TEST64B test GrB_*_assign, scalar expansion, with and without duplicates
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\n ------------------- quick test of GrB_*_assign_scalar\n') ;

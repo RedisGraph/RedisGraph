@@ -2,7 +2,7 @@
 // GB_transplant_conform: transplant T into C, then conform C
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -43,7 +43,7 @@ GrB_Info GB_transplant_conform      // transplant and conform sparsity structure
 
     // T is always freed, even if the transplant runs out of memory
     ASSERT (*Thandle == NULL ||
-           (*Thandle != NULL && (*Thandle)->static_header)) ;
+           (*Thandle != NULL && ((*Thandle)->static_header || GBNSTATIC))) ;
 
     if (info != GrB_SUCCESS)
     { 

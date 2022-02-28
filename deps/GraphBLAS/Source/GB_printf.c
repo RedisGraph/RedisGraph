@@ -2,14 +2,12 @@
 // GB_printf.c: printing for GraphBLAS *check functions
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 #include "GB.h"
-
-#if GB_BURBLE
 
 void GB_burble_assign
 (
@@ -139,6 +137,4 @@ void GB_burble_assign
         default: ;
     }
 }
-
-#endif
 

@@ -2,7 +2,7 @@
 // GB_AxB__band_bxor_uint8.c: matrix multiply for a single semiring
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -36,10 +36,11 @@
 // C+=A'*B (dot4):     GB (_Adot4B__band_bxor_uint8)
 // A*B (saxpy bitmap): GB (_AsaxbitB__band_bxor_uint8)
 // A*B (saxpy3):       GB (_Asaxpy3B__band_bxor_uint8)
-// A*B (saxpy4):       GB (_Asaxpy4B__band_bxor_uint8)
 //     no mask:        GB (_Asaxpy3B_noM__band_bxor_uint8)
 //     mask M:         GB (_Asaxpy3B_M__band_bxor_uint8)
 //     mask !M:        GB (_Asaxpy3B_notM__band_bxor_uint8)
+// A*B (saxpy4):       GB (_Asaxpy4B__band_bxor_uint8)
+// A*B (saxpy5):       GB (_Asaxpy5B__band_bxor_uint8)
 
 // C type:     uint8_t
 // A type:     uint8_t
@@ -47,14 +48,15 @@
 // B type:     uint8_t
 // B pattern?  0
 
-// Multiply: z = (aik ^ bkj)
-// Add:      cij &= z
-//           'any' monoid?  0
-//           atomic?        1
-//           OpenMP atomic? 1
-// MultAdd:  uint8_t x_op_y = (aik ^ bkj) ; cij &= x_op_y
-// Identity: 0xFF
-// Terminal: if (cij == 0) { break ; }
+// Multiply: z = (x ^ y)
+// Add:      cij &= t
+//    'any' monoid?  0
+//    atomic?        1
+//    OpenMP atomic? 1
+//    identity:      0xFF
+//    terminal?      1
+//    terminal condition: if (cij == 0) { break ; }
+// MultAdd:  { uint8_t x_op_y = (x ^ y) ; z &= x_op_y ; }
 
 #define GB_ATYPE \
     uint8_t
@@ -73,6 +75,10 @@
 
 #define GB_CSIZE \
     sizeof (uint8_t)
+
+// # of bits in the type of C, for AVX2 and AVX512F
+#define GB_CNBITS \
+    8
 
 // true for int64, uint64, float, double, float complex, and double complex 
 #define GB_CTYPE_IGNORE_OVERFLOW \
@@ -119,7 +125,7 @@
 
 // multiply-add
 #define GB_MULTADD(z, x, y, i, k, j) \
-    uint8_t x_op_y = (x ^ y) ; z &= x_op_y
+    { uint8_t x_op_y = (x ^ y) ; z &= x_op_y ; }
 
 // monoid identity value
 #define GB_IDENTITY \
@@ -132,6 +138,10 @@
 // identity byte, for memset
 #define GB_IDENTITY_BYTE \
     0xFF
+
+// true if the monoid has a terminal value
+#define GB_MONOID_IS_TERMINAL \
+    1
 
 // break if cij reaches the terminal value (dot product only)
 #define GB_DOT_TERMINAL(cij) \
@@ -148,13 +158,13 @@
 #define GB_IS_PLUS_PAIR_REAL_SEMIRING \
     0
 
+// 1 if the semiring is accelerated with AVX2 or AVX512f
+#define GB_SEMIRING_HAS_AVX_IMPLEMENTATION \
+    0
+
 // declare the cij scalar (initialize cij to zero for PLUS_PAIR)
 #define GB_CIJ_DECLARE(cij) \
     uint8_t cij
-
-// cij = Cx [pC] for dot4 method only
-#define GB_GET4C(cij,p) \
-    cij = (C_in_iso) ? cinput : Cx [p]
 
 // Cx [pC] = cij
 #define GB_PUTC(cij,p) \
@@ -189,7 +199,8 @@
     1
 
 // 1 if monoid update can be done with an OpenMP atomic update, 0 otherwise
-#if GB_MICROSOFT
+#if GB_COMPILER_MSC
+    /* MS Visual Studio only has OpenMP 2.0, with fewer atomics */
     #define GB_HAS_OMP_ATOMIC \
         0
 #else
@@ -247,6 +258,10 @@
 
 // 1 for the SECONDJ or SECONDJ1 multiply operator
 #define GB_IS_SECONDJ_MULTIPLIER \
+    0
+
+// 1 for the FIRSTI1, FIRSTJ1, SECONDI1, or SECONDJ1 multiply operators
+#define GB_OFFSET \
     0
 
 // atomic compare-exchange
@@ -396,6 +411,136 @@ GrB_Info GB (_AsaxbitB__band_bxor_uint8)
         return (GrB_NO_VALUE) ;
         #else
         #include "GB_AxB_saxpy4_template.c"
+        return (GrB_SUCCESS) ;
+        #endif
+    }
+
+#endif
+
+//------------------------------------------------------------------------------
+// GB_Asaxpy5B: C += A*B when C is full, A is bitmap/full, B is sparse/hyper
+//------------------------------------------------------------------------------
+
+#if 1
+
+    #if GB_DISABLE
+    #elif ( !GB_A_IS_PATTERN )
+
+        //----------------------------------------------------------------------
+        // saxpy5 method with vectors of length 8 for double, 16 for single
+        //----------------------------------------------------------------------
+
+        // AVX512F: vector registers are 512 bits, or 64 bytes, which can hold
+        // 16 floats or 8 doubles.
+
+        #define GB_V16_512 (16 * GB_CNBITS <= 512)
+        #define GB_V8_512  ( 8 * GB_CNBITS <= 512)
+        #define GB_V4_512  ( 4 * GB_CNBITS <= 512)
+
+        #define GB_V16 GB_V16_512
+        #define GB_V8  GB_V8_512
+        #define GB_V4  GB_V4_512
+
+        #if GB_SEMIRING_HAS_AVX_IMPLEMENTATION && GB_COMPILER_SUPPORTS_AVX512F \
+            && GB_V4_512
+
+            GB_TARGET_AVX512F static inline void GB_AxB_saxpy5_unrolled_avx512f
+            (
+                GrB_Matrix C,
+                const GrB_Matrix A,
+                const GrB_Matrix B,
+                const int ntasks,
+                const int nthreads,
+                const int64_t *B_slice,
+                GB_Context Context
+            )
+            {
+                #include "GB_AxB_saxpy5_unrolled.c"
+            }
+
+        #endif
+
+        //----------------------------------------------------------------------
+        // saxpy5 method with vectors of length 4 for double, 8 for single
+        //----------------------------------------------------------------------
+
+        // AVX2: vector registers are 256 bits, or 32 bytes, which can hold
+        // 8 floats or 4 doubles.
+
+        #define GB_V16_256 (16 * GB_CNBITS <= 256)
+        #define GB_V8_256  ( 8 * GB_CNBITS <= 256)
+        #define GB_V4_256  ( 4 * GB_CNBITS <= 256)
+
+        #undef  GB_V16
+        #undef  GB_V8
+        #undef  GB_V4
+
+        #define GB_V16 GB_V16_256
+        #define GB_V8  GB_V8_256
+        #define GB_V4  GB_V4_256
+
+        #if GB_SEMIRING_HAS_AVX_IMPLEMENTATION && GB_COMPILER_SUPPORTS_AVX2 \
+            && GB_V4_256
+
+            GB_TARGET_AVX2 static inline void GB_AxB_saxpy5_unrolled_avx2
+            (
+                GrB_Matrix C,
+                const GrB_Matrix A,
+                const GrB_Matrix B,
+                const int ntasks,
+                const int nthreads,
+                const int64_t *B_slice,
+                GB_Context Context
+            )
+            {
+                #include "GB_AxB_saxpy5_unrolled.c"
+            }
+
+        #endif
+
+        //----------------------------------------------------------------------
+        // saxpy5 method unrolled, with no vectors
+        //----------------------------------------------------------------------
+
+        #undef  GB_V16
+        #undef  GB_V8
+        #undef  GB_V4
+
+        #define GB_V16 0
+        #define GB_V8  0
+        #define GB_V4  0
+
+        static inline void GB_AxB_saxpy5_unrolled_vanilla
+        (
+            GrB_Matrix C,
+            const GrB_Matrix A,
+            const GrB_Matrix B,
+            const int ntasks,
+            const int nthreads,
+            const int64_t *B_slice,
+            GB_Context Context
+        )
+        {
+            #include "GB_AxB_saxpy5_unrolled.c"
+        }
+
+    #endif
+
+    GrB_Info GB (_Asaxpy5B__band_bxor_uint8)
+    (
+        GrB_Matrix C,
+        const GrB_Matrix A,
+        const GrB_Matrix B,
+        const int ntasks,
+        const int nthreads,
+        const int64_t *B_slice,
+        GB_Context Context
+    )
+    { 
+        #if GB_DISABLE
+        return (GrB_NO_VALUE) ;
+        #else
+        #include "GB_AxB_saxpy5_meta.c"
         return (GrB_SUCCESS) ;
         #endif
     }

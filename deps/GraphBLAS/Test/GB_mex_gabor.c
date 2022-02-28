@@ -2,7 +2,7 @@
 // GB_mex_gabor: test case from Gabor Szarnyas and Marton Elekes
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -80,31 +80,19 @@ void mexFunction
     GrB_Matrix_new (&A, GrB_UINT64, n, n) ;
     GxB_Matrix_Option_set_ (A, GxB_SPARSITY_CONTROL, A_sparsity) ;
     GrB_Matrix_build (A, I, I, I, nvals, GrB_PLUS_UINT64) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    if (wait) GrB_Matrix_wait (&A) ;
-    #else
     if (wait) GrB_Matrix_wait (A, GrB_MATERIALIZE) ;
-    #endif
 
     // construct v from I, with value v (i) = i 
     GrB_Vector_new (&v, GrB_UINT64, n) ;
     GxB_Vector_Option_set_ (v, GxB_SPARSITY_CONTROL, v_sparsity) ;
     GrB_Vector_build (v, I, I, nvals, GrB_PLUS_UINT64) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    if (wait) GrB_Vector_wait (&v) ;
-    #else
     if (wait) GrB_Vector_wait (v, GrB_MATERIALIZE) ;
-    #endif
 
     // w<v> = 1
     GrB_Vector_new (&w, GrB_UINT64, n) ;
     GxB_Vector_Option_set_ (w, GxB_SPARSITY_CONTROL, w_sparsity) ;
     GrB_Vector_assign_UINT64 (w, v, NULL, 1, GrB_ALL, 0, NULL) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    if (wait) GrB_Vector_wait (&w) ;
-    #else
     if (wait) GrB_Vector_wait (w, GrB_MATERIALIZE) ;
-    #endif
 
     // w<v> = sum (A)
     GrB_Matrix_reduce_Monoid (w, v, NULL, GrB_PLUS_MONOID_UINT64, A, NULL) ;

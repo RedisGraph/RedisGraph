@@ -14,7 +14,7 @@ function make (what)
 % GraphBLAS requires an ANSI C11 compliant compiler.  On the Mac, clang 8.0
 % suffices.  gcc should be version 4.9.3 or later
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 here = pwd ;
@@ -50,7 +50,7 @@ end
 
 make_all = (isequal (what, 'all')) ;
 
-flags = '-g -R2018a' ;
+flags = '-g -R2018a -DGBNCPUFEAT' ;
 
 if (~have_octave)
     try
@@ -80,7 +80,7 @@ mexfunctions = dir ('GB_mex_*.c') ;
 cfiles = [ dir('GB_mx_*.c') ] ;
 
 hfiles = [ dir('*.h') ; dir('Template/*.c') ] ;
-inc = '-ITemplate -I../Include -I../Source -I../Source/Template -I../lz4' ;
+inc = '-ITemplate -I../Include -I../Source -I../Source/Template -I../lz4 -I../rmm_wrap' ;
 
 if (ismac)
     % Mac (do 'make install' for GraphBLAS first)

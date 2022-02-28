@@ -2,7 +2,7 @@
 // GB_AxB__include1.h: definitions for Generated1/GB_AxB__*.c
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // This file has been automatically generated from Generator/GB_AxB.h
@@ -108,6 +108,19 @@ GrB_Info GB (_Asaxpy4B__(none))
     const bool use_coarse_tasks,
     const bool use_atomics,
     const int64_t *A_slice,
+    GB_Context Context
+) ;
+#endif
+
+#if 0
+GrB_Info GB (_Asaxpy5B__(none))
+(
+    GrB_Matrix C,
+    const GrB_Matrix A,
+    const GrB_Matrix B,
+    const int ntasks,
+    const int nthreads,
+    const int64_t *B_slice,
     GB_Context Context
 ) ;
 #endif
