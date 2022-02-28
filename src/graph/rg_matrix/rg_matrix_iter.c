@@ -8,6 +8,8 @@
 #include "./rg_matrix_iter.h"
 #include "../../util/rmalloc.h"
 
+#define IS_ATTACHED(iter) iter == NULL || iter->A == NULL
+
 static inline void _set_iter_range
 (
 	GxB_Iterator it,
@@ -81,7 +83,7 @@ GrB_Info RG_MatrixTupleIter_iterate_row
 	RG_MatrixTupleIter *iter,
 	GrB_Index rowIdx
 ) {
-	if(iter == NULL) return GrB_NULL_POINTER ;
+	if(IS_ATTACHED(iter)) return GrB_NULL_POINTER ;
 
 	iter->min_row = rowIdx ;
 	iter->max_row = rowIdx ;
@@ -97,7 +99,7 @@ GrB_Info RG_MatrixTupleIter_jump_to_row
 	RG_MatrixTupleIter *iter,
 	GrB_Index rowIdx
 ) {
-	if(iter == NULL) return GrB_NULL_POINTER ;
+	if(IS_ATTACHED(iter)) return GrB_NULL_POINTER ;
 	if(iter->max_row < rowIdx) return GrB_INVALID_INDEX ;
 
 	iter->min_row = rowIdx ;
@@ -114,7 +116,7 @@ GrB_Info RG_MatrixTupleIter_iterate_range
 	GrB_Index startRowIdx,      // row index to start with
 	GrB_Index endRowIdx         // row index to finish with
 ) {
-	if(iter == NULL) return GrB_NULL_POINTER ;
+	if(IS_ATTACHED(iter)) return GrB_NULL_POINTER ;
 
 	iter->min_row = startRowIdx ;
 	iter->max_row = endRowIdx ;
@@ -196,7 +198,7 @@ GrB_Info RG_MatrixTupleIter_next_BOOL
 	GrB_Index *col,                 // optional output column index
 	bool *val                       // optional value at A[row, col]
 ) {
-	if(iter == NULL || iter->A == NULL) return GrB_NULL_POINTER ;
+	if(IS_ATTACHED(iter)) return GrB_NULL_POINTER ;
 
 	GrB_Info             info     =  GrB_SUCCESS                    ;
 	GrB_Matrix           DM       =  RG_MATRIX_DELTA_MINUS(iter->A) ;
@@ -270,7 +272,7 @@ GrB_Info RG_MatrixTupleIter_next_UINT64
 	GrB_Index *col,                 // optional output column index
 	uint64_t *val                  // optional value at A[row, col]
 ) {
-	if(iter == NULL || iter->A == NULL) return GrB_NULL_POINTER ;
+	if(IS_ATTACHED(iter)) return GrB_NULL_POINTER ;
 
 	GrB_Info             info     =  GrB_SUCCESS                    ;
 	GrB_Matrix           DM       =  RG_MATRIX_DELTA_MINUS(iter->A) ;
@@ -302,12 +304,22 @@ GrB_Info RG_MatrixTupleIter_reset
 ) {
 	GrB_Info info = GrB_SUCCESS;
 
-	if(iter == NULL) return GrB_NULL_POINTER ;
+	if(IS_ATTACHED(iter)) return GrB_NULL_POINTER ;
 
 	_set_iter_range(iter->m_it, iter->min_row, iter->max_row, &iter->m_depleted) ;
 	_set_iter_range(iter->dp_it, iter->min_row, iter->max_row, &iter->dp_depleted) ;
 
 	return info ;
+}
+
+bool RG_MatrixTupleIter_is_attached
+(
+	const RG_MatrixTupleIter *iter,       // iterator to check
+	const RG_Matrix m                     // matrix attached to
+) {
+	ASSERT(iter != NULL);
+
+	return iter->A == m;
 }
 
 // update iterator to scan given matrix

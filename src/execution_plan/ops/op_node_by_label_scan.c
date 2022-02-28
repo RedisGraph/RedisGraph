@@ -209,7 +209,8 @@ static OpBase *NodeByLabelScanClone(const ExecutionPlan *plan, const OpBase *opB
 static void NodeByLabelScanFree(OpBase *op) {
 	NodeByLabelScan *nodeByLabelScan = (NodeByLabelScan *)op;
 
-	RG_MatrixTupleIter_detach(&(nodeByLabelScan->iter));
+	GrB_Info info = RG_MatrixTupleIter_detach(&(nodeByLabelScan->iter));
+	ASSERT(info == GrB_SUCCESS);
 
 	if(nodeByLabelScan->child_record) {
 		OpBase_DeleteRecord(nodeByLabelScan->child_record);

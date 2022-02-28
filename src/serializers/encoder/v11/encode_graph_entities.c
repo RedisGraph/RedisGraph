@@ -310,6 +310,10 @@ void RdbSaveEdges_v11
 	// already set to the next entry to fetch
 	// for previous edge encide or create new one
 	RG_MatrixTupleIter *iter = GraphEncodeContext_GetMatrixTupleIterator(gc->encoding_context);
+	if(!RG_MatrixTupleIter_is_attached(iter, M)) {
+		info = RG_MatrixTupleIter_attach(iter, M);
+		ASSERT(info == GrB_SUCCESS);
+	}
 
 	// first, see if the last edges encoding stopped at multiple edges array
 	EdgeID *multiple_edges_array = GraphEncodeContext_GetMultipleEdgesArray(gc->encoding_context);
@@ -340,11 +344,6 @@ void RdbSaveEdges_v11
 
 		// try to get next tuple
 		info = RG_MatrixTupleIter_next_UINT64(iter, &src, &dest, &edgeID);
-		if(info == GrB_NULL_POINTER) {
-			info = RG_MatrixTupleIter_attach(iter, M);
-			ASSERT(info == GrB_SUCCESS);
-			info = RG_MatrixTupleIter_next_UINT64(iter, &src, &dest, &edgeID);
-		}
 
 		// if iterator is depleted
 		// get new tuple from different matrix or finish encode
@@ -390,7 +389,6 @@ finish:
 	// check if done encoding edges
 	if(offset + edges_to_encode == graph_edges) {
 		RG_MatrixTupleIter_detach(iter);
-		iter = NULL;
 	}
 
 	// update context
