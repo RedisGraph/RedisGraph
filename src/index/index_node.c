@@ -64,7 +64,7 @@ void populateNodeIndex
 		Index_IndexNode(idx, &n);
 	}
 
-	RG_MatrixTupleIter_free_internals(&it);
+	RG_MatrixTupleIter_detach(&it);
 }
 
 void Index_RemoveNode

@@ -76,30 +76,6 @@ static inline void _init_iter
 	}
 }
 
-// create a new iterator
-GrB_Info RG_MatrixTupleIter_new
-(
-	RG_MatrixTupleIter **iter,     // iterator to create
-	const RG_Matrix A              // matrix to iterate over
-) {
-	ASSERT(A != NULL) ;
-	ASSERT(iter != NULL) ;
-
-	GrB_Matrix M  = RG_MATRIX_M(A) ;
-	GrB_Matrix DP = RG_MATRIX_DELTA_PLUS(A) ;
-
-	RG_MatrixTupleIter *it = rm_calloc(1, sizeof(RG_MatrixTupleIter)) ;
-	it->A = A ;
-	it->min_row = 0 ;
-	it->max_row = ULLONG_MAX ;
-
-	_init_iter(&it->m_it, M, it->min_row, it->max_row, &it->m_depleted) ;
-	_init_iter(&it->dp_it, DP, it->min_row, it->max_row, &it->dp_depleted) ;
-
-	*iter = it ;
-	return GrB_SUCCESS ;
-}
-
 GrB_Info RG_MatrixTupleIter_iterate_row
 (
 	RG_MatrixTupleIter *iter,
@@ -220,7 +196,7 @@ GrB_Info RG_MatrixTupleIter_next_BOOL
 	GrB_Index *col,                 // optional output column index
 	bool *val                       // optional value at A[row, col]
 ) {
-	if(iter == NULL) return GrB_NULL_POINTER ;
+	if(iter == NULL || iter->A == NULL) return GrB_NULL_POINTER ;
 
 	GrB_Info             info     =  GrB_SUCCESS                    ;
 	GrB_Matrix           DM       =  RG_MATRIX_DELTA_MINUS(iter->A) ;
@@ -294,7 +270,7 @@ GrB_Info RG_MatrixTupleIter_next_UINT64
 	GrB_Index *col,                 // optional output column index
 	uint64_t *val                  // optional value at A[row, col]
 ) {
-	if(iter == NULL) return GrB_NULL_POINTER ;
+	if(iter == NULL || iter->A == NULL) return GrB_NULL_POINTER ;
 
 	GrB_Info             info     =  GrB_SUCCESS                    ;
 	GrB_Matrix           DM       =  RG_MATRIX_DELTA_MINUS(iter->A) ;
@@ -360,7 +336,7 @@ GrB_Info RG_MatrixTupleIter_attach
 }
 
 // free iterator data
-GrB_Info RG_MatrixTupleIter_free_internals
+GrB_Info RG_MatrixTupleIter_detach
 (
 	RG_MatrixTupleIter *iter       // iterator to free
 ) {
@@ -369,23 +345,9 @@ GrB_Info RG_MatrixTupleIter_free_internals
 	if(iter->m_it  != NULL) GrB_free (&iter->m_it) ;
 	if(iter->dp_it != NULL) GrB_free (&iter->dp_it) ;
 
+	iter->A     = NULL ;
 	iter->m_it  = NULL ;
 	iter->dp_it = NULL ;
-
-	return GrB_SUCCESS ;
-}
-
-// free iterator
-GrB_Info RG_MatrixTupleIter_free
-(
-	RG_MatrixTupleIter **iter       // iterator to free
-) {
-	ASSERT(*iter != NULL) ;
-
-	RG_MatrixTupleIter_free_internals(*iter);
-
-	rm_free(*iter) ;
-	*iter = NULL ;
 
 	return GrB_SUCCESS ;
 }

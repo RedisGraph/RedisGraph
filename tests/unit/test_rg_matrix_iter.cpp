@@ -42,24 +42,23 @@ class RGMatrixTupleIterTest: public ::testing::Test {
 };
 
 // test RGMatrixTupleIter initialization
-TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_new) {
+TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_attach) {
 	RG_Matrix          A                   =  NULL;
 	GrB_Type           t                   =  GrB_UINT64;
 	GrB_Info           info                =  GrB_SUCCESS;
-	RG_MatrixTupleIter *iter               =  NULL;
 	GrB_Index          nrows               =  100;
 	GrB_Index          ncols               =  100;
+	RG_MatrixTupleIter iter;
+	memset(&iter, 0, sizeof(RG_MatrixTupleIter));
 
 	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	info = RG_MatrixTupleIter_new(&iter, A);
-	ASSERT_TRUE(iter != NULL);
+	info = RG_MatrixTupleIter_attach(&iter, A);
+	ASSERT_EQ(iter.A, A);
 
-	ASSERT_EQ(iter->A, A);
-
-	RG_MatrixTupleIter_free(&iter);
-	ASSERT_TRUE(iter == NULL);
+	RG_MatrixTupleIter_detach(&iter);
+	ASSERT_TRUE(iter.A == NULL);
 
 	RG_Matrix_free(&A);
 	ASSERT_TRUE(A == NULL);
@@ -70,7 +69,6 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_next) {
 	RG_Matrix          A                   =  NULL;
 	GrB_Type           t                   =  GrB_UINT64;
 	GrB_Info           info                =  GrB_SUCCESS;
-	RG_MatrixTupleIter *iter               =  NULL;
 	GrB_Index          i                   =  1;
 	GrB_Index          j                   =  2;
 	GrB_Index          row                 =  0;
@@ -79,6 +77,8 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_next) {
 	GrB_Index          ncols               =  100;
 	uint64_t           val                 =  0;
 	bool               sync                =  false;
+	RG_MatrixTupleIter iter;
+	memset(&iter, 0, sizeof(RG_MatrixTupleIter));
 
 	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
@@ -107,24 +107,24 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_next) {
 	info = RG_Matrix_setElement_UINT64(A, 1, i+1, j+1);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	info = RG_MatrixTupleIter_new(&iter, A);
-	ASSERT_TRUE(iter != NULL);
+	info = RG_MatrixTupleIter_attach(&iter, A);
+	ASSERT_EQ(iter.A, A);
 
-	info = RG_MatrixTupleIter_next_UINT64(iter, &row, &col, &val);
+	info = RG_MatrixTupleIter_next_UINT64(&iter, &row, &col, &val);
 	ASSERT_EQ(info, GrB_SUCCESS);
 	
 	ASSERT_EQ(row, i+1);
 	ASSERT_EQ(col, j+1);
 	ASSERT_EQ(val, 1);
 
-	info = RG_MatrixTupleIter_next_UINT64(iter, &row, &col, &val);
+	info = RG_MatrixTupleIter_next_UINT64(&iter, &row, &col, &val);
 
 	ASSERT_EQ(info, GxB_EXHAUSTED);
 
 	RG_Matrix_free(&A);
 	ASSERT_TRUE(A == NULL);
-	RG_MatrixTupleIter_free(&iter);
-	ASSERT_TRUE(iter == NULL);
+	RG_MatrixTupleIter_detach(&iter);
+	ASSERT_TRUE(iter.A == NULL);
 }
 
 
@@ -134,7 +134,6 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_reuse) {
 	RG_Matrix          B                   =  NULL;
 	GrB_Type           t                   =  GrB_UINT64;
 	GrB_Info           info                =  GrB_SUCCESS;
-	RG_MatrixTupleIter *iter               =  NULL;
 	GrB_Index          i                   =  1;
 	GrB_Index          j                   =  2;
 	GrB_Index          row                 =  0;
@@ -143,6 +142,8 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_reuse) {
 	GrB_Index          ncols               =  100;
 	uint64_t           val                 =  0;
 	bool               sync                =  false;
+	RG_MatrixTupleIter iter;
+	memset(&iter, 0, sizeof(RG_MatrixTupleIter));
 
 	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
@@ -162,20 +163,20 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_reuse) {
 	sync = true;
 	RG_Matrix_wait(A, sync);
 
-	info = RG_MatrixTupleIter_new(&iter, B);
-	ASSERT_TRUE(iter != NULL);
+	info = RG_MatrixTupleIter_attach(&iter, B);
+	ASSERT_EQ(iter.A, B);
 
-	info = RG_MatrixTupleIter_attach(iter, A);
-	ASSERT_TRUE(iter != NULL);
+	info = RG_MatrixTupleIter_attach(&iter, A);
+	ASSERT_EQ(iter.A, A);
 
-	info = RG_MatrixTupleIter_next_UINT64(iter, &row, &col, &val);
+	info = RG_MatrixTupleIter_next_UINT64(&iter, &row, &col, &val);
 
 	ASSERT_EQ(info, GrB_SUCCESS);
 	ASSERT_EQ(row, i);
 	ASSERT_EQ(col, j);
 	ASSERT_EQ(val, 0);
 
-	info = RG_MatrixTupleIter_next_UINT64(iter, &row, &col, &val);
+	info = RG_MatrixTupleIter_next_UINT64(&iter, &row, &col, &val);
 
 	ASSERT_EQ(info, GxB_EXHAUSTED);
 
@@ -183,8 +184,8 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_reuse) {
 	ASSERT_TRUE(A == NULL);
 	RG_Matrix_free(&B);
 	ASSERT_TRUE(A == NULL);
-	RG_MatrixTupleIter_free(&iter);
-	ASSERT_TRUE(iter == NULL);
+	RG_MatrixTupleIter_detach(&iter);
+	ASSERT_TRUE(iter.A == NULL);
 }
 
 // test RGMatrixTupleIter_iterate_row
@@ -198,9 +199,10 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_iterate_row) {
 	GrB_Index          col                 =  0;
 	GrB_Index          nrows               =  100;
 	GrB_Index          ncols               =  100;
-	RG_MatrixTupleIter *iter               =  NULL;
 	uint64_t           val                 =  0;
 	bool               sync                =  false;
+	RG_MatrixTupleIter iter;
+	memset(&iter, 0, sizeof(RG_MatrixTupleIter));
 
 	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
@@ -233,35 +235,35 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_iterate_row) {
 	info = RG_Matrix_setElement_UINT64(A, 2, i+1, j+1);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	info = RG_MatrixTupleIter_new(&iter, A);
-	ASSERT_TRUE(iter != NULL);
+	info = RG_MatrixTupleIter_attach(&iter, A);
+	ASSERT_EQ(iter.A , A);
 
-	info = RG_MatrixTupleIter_iterate_row(iter, i);
+	info = RG_MatrixTupleIter_iterate_row(&iter, i);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	info = RG_MatrixTupleIter_next_UINT64(iter, &row, &col, &val);
+	info = RG_MatrixTupleIter_next_UINT64(&iter, &row, &col, &val);
 	ASSERT_EQ(info, GxB_EXHAUSTED);
 
-	info = RG_MatrixTupleIter_reset(iter);
+	info = RG_MatrixTupleIter_reset(&iter);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	info = RG_MatrixTupleIter_iterate_row(iter, i+1);
+	info = RG_MatrixTupleIter_iterate_row(&iter, i+1);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	info = RG_MatrixTupleIter_next_UINT64(iter, &row, &col, &val);
+	info = RG_MatrixTupleIter_next_UINT64(&iter, &row, &col, &val);
 
 	ASSERT_EQ(info, GrB_SUCCESS);
 	ASSERT_EQ(row, i+1);
 	ASSERT_EQ(col, j+1);
 	ASSERT_EQ(val, 2);
 
-	info = RG_MatrixTupleIter_next_UINT64(iter, &row, &col, &val);
+	info = RG_MatrixTupleIter_next_UINT64(&iter, &row, &col, &val);
 	ASSERT_EQ(info, GxB_EXHAUSTED);
 
 	RG_Matrix_free(&A);
 	ASSERT_TRUE(A == NULL);
-	RG_MatrixTupleIter_free(&iter);
-	ASSERT_TRUE(iter == NULL);
+	RG_MatrixTupleIter_detach(&iter);
+	ASSERT_TRUE(iter.A == NULL);
 }
 
 // test RGMatrixTupleiIter_jump_to_row
@@ -269,7 +271,6 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_jump_to_row) {
 	RG_Matrix          A                   =  NULL;
 	GrB_Type           t                   =  GrB_UINT64;
 	GrB_Info           info                =  GrB_SUCCESS;
-	RG_MatrixTupleIter *iter               =  NULL;
 	GrB_Index          i                   =  1;
 	GrB_Index          j                   =  2;
 	GrB_Index          row                 =  0;
@@ -278,6 +279,8 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_jump_to_row) {
 	GrB_Index          ncols               =  100;
 	uint64_t           val                 =  0;
 	bool               sync                =  false;
+	RG_MatrixTupleIter iter;
+	memset(&iter, 0, sizeof(RG_MatrixTupleIter));
 
 	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
@@ -306,26 +309,26 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_jump_to_row) {
 	info = RG_Matrix_setElement_UINT64(A, 1, i+1, j+1);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	info = RG_MatrixTupleIter_new(&iter, A);
-	ASSERT_TRUE(iter != NULL);
+	info = RG_MatrixTupleIter_attach(&iter, A);
+	ASSERT_EQ(iter.A, A);
 
-	info = RG_MatrixTupleIter_jump_to_row(iter, i+1);
+	info = RG_MatrixTupleIter_jump_to_row(&iter, i+1);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	info = RG_MatrixTupleIter_next_UINT64(iter, &row, &col, &val);
+	info = RG_MatrixTupleIter_next_UINT64(&iter, &row, &col, &val);
 
 	ASSERT_EQ(info, GrB_SUCCESS);
 	ASSERT_EQ(row, i+1);
 	ASSERT_EQ(col, j+1);
 	ASSERT_EQ(val, 1);
 
-	info = RG_MatrixTupleIter_next_UINT64(iter, &row, &col, &val);
+	info = RG_MatrixTupleIter_next_UINT64(&iter, &row, &col, &val);
 	ASSERT_EQ(info, GxB_EXHAUSTED);
 
 	RG_Matrix_free(&A);
 	ASSERT_TRUE(A == NULL);
-	RG_MatrixTupleIter_free(&iter);
-	ASSERT_TRUE(iter == NULL);
+	RG_MatrixTupleIter_detach(&iter);
+	ASSERT_TRUE(iter.A == NULL);
 }
 
 // test RGMatrixTupleiIter_iterate_range
@@ -333,7 +336,6 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_iterate_range) {
 	RG_Matrix          A                   =  NULL;
 	GrB_Type           t                   =  GrB_UINT64;
 	GrB_Info           info                =  GrB_SUCCESS;
-	RG_MatrixTupleIter *iter               =  NULL;
 	GrB_Index          i                   =  1;
 	GrB_Index          j                   =  2;
 	GrB_Index          row                 =  0;
@@ -342,6 +344,8 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_iterate_range) {
 	GrB_Index          ncols               =  100;
 	uint64_t           val                 =  0;
 	bool               sync                =  false;
+	RG_MatrixTupleIter iter;
+	memset(&iter, 0, sizeof(RG_MatrixTupleIter));
 
 	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
@@ -370,24 +374,24 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_iterate_range) {
 	info = RG_Matrix_setElement_UINT64(A, 1, i+1, j+1);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	info = RG_MatrixTupleIter_new(&iter, A);
-	ASSERT_TRUE(iter != NULL);
+	info = RG_MatrixTupleIter_attach(&iter, A);
+	ASSERT_EQ(iter.A, A);
 
-	info = RG_MatrixTupleIter_iterate_range(iter, i+1, i+1);
+	info = RG_MatrixTupleIter_iterate_range(&iter, i+1, i+1);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	info = RG_MatrixTupleIter_next_UINT64(iter, &row, &col, &val);
+	info = RG_MatrixTupleIter_next_UINT64(&iter, &row, &col, &val);
 
 	ASSERT_EQ(info, GrB_SUCCESS);
 	ASSERT_EQ(row, i+1);
 	ASSERT_EQ(col, j+1);
 	ASSERT_EQ(val, 1);
 
-	info = RG_MatrixTupleIter_next_UINT64(iter, &row, &col, &val);
+	info = RG_MatrixTupleIter_next_UINT64(&iter, &row, &col, &val);
 	ASSERT_EQ(info, GxB_EXHAUSTED);
 
 	RG_Matrix_free(&A);
 	ASSERT_TRUE(A == NULL);
-	RG_MatrixTupleIter_free(&iter);
-	ASSERT_TRUE(iter == NULL);
+	RG_MatrixTupleIter_detach(&iter);
+	ASSERT_TRUE(iter.A == NULL);
 }

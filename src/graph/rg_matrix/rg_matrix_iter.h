@@ -23,13 +23,6 @@ typedef struct
 	GrB_Index max_row;             // maximum row for iteration
 } RG_MatrixTupleIter ;
 
-// create a new iterator
-GrB_Info RG_MatrixTupleIter_new
-(
-	RG_MatrixTupleIter **iter,     // iterator to create
-	const RG_Matrix A              // matrix to iterate over
-);
-
 // attach iterator to matrix
 GrB_Info RG_MatrixTupleIter_attach
 (
@@ -80,13 +73,7 @@ GrB_Info RG_MatrixTupleIter_reset
 );
 
 // free iterator internals, keeping the iterator intact
-GrB_Info RG_MatrixTupleIter_free_internals
+GrB_Info RG_MatrixTupleIter_detach
 (
 	RG_MatrixTupleIter *iter       // iterator to free
-);
-
-// free iterator
-GrB_Info RG_MatrixTupleIter_free
-(
-	RG_MatrixTupleIter **iter       // iterator to free
 );

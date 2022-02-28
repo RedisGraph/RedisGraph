@@ -25,12 +25,10 @@ static inline void NodeByLabelScanToString(const OpBase *ctx, sds *buf) {
 }
 
 OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, NodeScanCtx n) {
-	NodeByLabelScan *op = rm_malloc(sizeof(NodeByLabelScan));
+	NodeByLabelScan *op = rm_calloc(sizeof(NodeByLabelScan), 1);
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	op->g = gc->g;
 	op->n = n;
-	op->iter = NULL;
-	op->child_record = NULL;
 	// Defaults to [0...UINT64_MAX].
 	op->id_range = UnsignedRange_New();
 
@@ -76,12 +74,12 @@ static GrB_Info _ConstructIterator(NodeByLabelScan *op, Schema *schema) {
 	if(op->id_range->include_max) maxId = op->id_range->max;
 	else maxId = op->id_range->max - 1;
 
-	info = RG_MatrixTupleIter_new(&(op->iter), L);
+	info = RG_MatrixTupleIter_attach(&op->iter, L);
 	ASSERT(info == GrB_SUCCESS);
 
 	// use range only when minId and maxId are subset of the entire matrix
 	if(minId > 0 || maxId < nrows-1) {
-		info = RG_MatrixTupleIter_iterate_range(op->iter, minId, maxId);
+		info = RG_MatrixTupleIter_iterate_range(&op->iter, minId, maxId);
 	}
 
 	return info;
@@ -129,7 +127,7 @@ static inline void _UpdateRecord(NodeByLabelScan *op, Record r, GrB_Index node_i
 static inline void _ResetIterator(NodeByLabelScan *op) {
 	NodeID minId = op->id_range->include_min ? op->id_range->min : op->id_range->min + 1;
 	NodeID maxId = op->id_range->include_max ? op->id_range->max : op->id_range->max - 1 ;
-	RG_MatrixTupleIter_iterate_range(op->iter, minId, maxId);
+	RG_MatrixTupleIter_iterate_range(&op->iter, minId, maxId);
 }
 
 static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
@@ -137,7 +135,7 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 
 	// Try to get new nodeID.
 	GrB_Index nodeId;
-	GrB_Info info = RG_MatrixTupleIter_next_BOOL(op->iter, &nodeId, NULL, NULL);
+	GrB_Info info = RG_MatrixTupleIter_next_BOOL(&op->iter, &nodeId, NULL, NULL);
 	while(info == GrB_NULL_POINTER || op->child_record == NULL || info == GxB_EXHAUSTED) {
 		// Try to get a record.
 		if(op->child_record) OpBase_DeleteRecord(op->child_record);
@@ -145,7 +143,7 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 		if(op->child_record == NULL) return NULL;
 
 		// Got a record.
-		if(!op->iter) {
+		if(info == GrB_NULL_POINTER) {
 			// Iterator wasn't set up until now.
 			GraphContext *gc = QueryCtx_GetGraphCtx();
 			Schema *schema = GraphContext_GetSchema(gc, op->n.label, SCHEMA_NODE);
@@ -157,7 +155,7 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 			_ResetIterator(op);
 		}
 		// Try to get new NodeID.
-		info = RG_MatrixTupleIter_next_BOOL(op->iter, &nodeId, NULL, NULL);
+		info = RG_MatrixTupleIter_next_BOOL(&op->iter, &nodeId, NULL, NULL);
 	}
 
 	// We've got a record and NodeID.
@@ -172,7 +170,7 @@ static Record NodeByLabelScanConsume(OpBase *opBase) {
 	NodeByLabelScan *op = (NodeByLabelScan *)opBase;
 
 	GrB_Index nodeId;
-	GrB_Info info = RG_MatrixTupleIter_next_BOOL(op->iter, &nodeId, NULL, NULL);
+	GrB_Info info = RG_MatrixTupleIter_next_BOOL(&op->iter, &nodeId, NULL, NULL);
 	if(info == GxB_EXHAUSTED) return NULL;
 
 	ASSERT(info == GrB_SUCCESS);
@@ -211,10 +209,7 @@ static OpBase *NodeByLabelScanClone(const ExecutionPlan *plan, const OpBase *opB
 static void NodeByLabelScanFree(OpBase *op) {
 	NodeByLabelScan *nodeByLabelScan = (NodeByLabelScan *)op;
 
-	if(nodeByLabelScan->iter) {
-		RG_MatrixTupleIter_free(&(nodeByLabelScan->iter));
-		nodeByLabelScan->iter = NULL;
-	}
+	RG_MatrixTupleIter_detach(&(nodeByLabelScan->iter));
 
 	if(nodeByLabelScan->child_record) {
 		OpBase_DeleteRecord(nodeByLabelScan->child_record);

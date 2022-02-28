@@ -740,7 +740,7 @@ void Graph_GetNodeEdges
 				Graph_GetEdgesConnectingNodes(g, srcID, destID, edgeType, edges);
 			}
 		}
-		RG_MatrixTupleIter_free_internals(&it);
+		RG_MatrixTupleIter_detach(&it);
 	}
 
 	if(incoming) {
@@ -763,7 +763,7 @@ void Graph_GetNodeEdges
 				Graph_GetEdgesConnectingNodes(g, destID, srcID, edgeType, edges);
 			}
 		}
-		RG_MatrixTupleIter_free_internals(&it);
+		RG_MatrixTupleIter_detach(&it);
 	}
 }
 
@@ -802,7 +802,7 @@ uint Graph_GetNodeLabels
 		if(res == GxB_EXHAUSTED) break;
 	}
 
-	RG_MatrixTupleIter_free_internals(&iter);
+	RG_MatrixTupleIter_detach(&iter);
 
 	return i;
 }

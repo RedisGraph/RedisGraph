@@ -82,7 +82,7 @@ void populateEdgeIndex
 		Index_IndexEdge(idx, &e);
 	}
 
-	RG_MatrixTupleIter_free_internals(&it);
+	RG_MatrixTupleIter_detach(&it);
 }
 
 void Index_RemoveEdge
