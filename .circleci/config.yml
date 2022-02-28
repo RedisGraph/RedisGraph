@@ -517,6 +517,7 @@ workflows:
           <<: *on-integ-branch
           requires:
             - platform_build
+            - build-arm-platforms
             - build_macos
       - release_automation:
           <<: *context
