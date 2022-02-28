@@ -55,7 +55,7 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_attach) {
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	info = RG_MatrixTupleIter_attach(&iter, A);
-	ASSERT_EQ(iter.A, A);
+	ASSERT_TRUE(RG_MatrixTupleIter_is_attached(&iter, A));
 
 	RG_MatrixTupleIter_detach(&iter);
 	ASSERT_TRUE(iter.A == NULL);
@@ -108,7 +108,7 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_next) {
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	info = RG_MatrixTupleIter_attach(&iter, A);
-	ASSERT_EQ(iter.A, A);
+	ASSERT_TRUE(RG_MatrixTupleIter_is_attached(&iter, A));
 
 	info = RG_MatrixTupleIter_next_UINT64(&iter, &row, &col, &val);
 	ASSERT_EQ(info, GrB_SUCCESS);
@@ -164,10 +164,10 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_reuse) {
 	RG_Matrix_wait(A, sync);
 
 	info = RG_MatrixTupleIter_attach(&iter, B);
-	ASSERT_EQ(iter.A, B);
+	ASSERT_TRUE(RG_MatrixTupleIter_is_attached(&iter, B));
 
 	info = RG_MatrixTupleIter_attach(&iter, A);
-	ASSERT_EQ(iter.A, A);
+	ASSERT_TRUE(RG_MatrixTupleIter_is_attached(&iter, A));
 
 	info = RG_MatrixTupleIter_next_UINT64(&iter, &row, &col, &val);
 
@@ -310,7 +310,7 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_jump_to_row) {
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	info = RG_MatrixTupleIter_attach(&iter, A);
-	ASSERT_EQ(iter.A, A);
+	ASSERT_TRUE(RG_MatrixTupleIter_is_attached(&iter, A));
 
 	info = RG_MatrixTupleIter_jump_to_row(&iter, i+1);
 	ASSERT_EQ(info, GrB_SUCCESS);
@@ -375,7 +375,7 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_iterate_range) {
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	info = RG_MatrixTupleIter_attach(&iter, A);
-	ASSERT_EQ(iter.A, A);
+	ASSERT_TRUE(RG_MatrixTupleIter_is_attached(&iter, A));
 
 	info = RG_MatrixTupleIter_iterate_range(&iter, i+1, i+1);
 	ASSERT_EQ(info, GrB_SUCCESS);

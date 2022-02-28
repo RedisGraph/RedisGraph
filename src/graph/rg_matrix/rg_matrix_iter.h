@@ -23,18 +23,24 @@ typedef struct
 	GrB_Index max_row;             // maximum row for iteration
 } RG_MatrixTupleIter ;
 
-// check if iterator is attached to a matrix
-bool RG_MatrixTupleIter_is_attached
-(
-	const RG_MatrixTupleIter *iter,       // iterator to check
-	const RG_Matrix m                     // matrix attached to
-);
-
 // attach iterator to matrix
 GrB_Info RG_MatrixTupleIter_attach
 (
 	RG_MatrixTupleIter *iter,       // iterator to update
 	const RG_Matrix A               // matrix to scan
+);
+
+// free iterator internals, keeping the iterator intact
+GrB_Info RG_MatrixTupleIter_detach
+(
+	RG_MatrixTupleIter *iter       // iterator to free
+);
+
+// returns true if iterator is attached to given matrix false otherwise
+bool RG_MatrixTupleIter_is_attached
+(
+	const RG_MatrixTupleIter *iter,       // iterator to check
+	const RG_Matrix M                     // matrix attached to
 );
 
 GrB_Info RG_MatrixTupleIter_iterate_row
@@ -79,8 +85,3 @@ GrB_Info RG_MatrixTupleIter_reset
 	RG_MatrixTupleIter *iter       // iterator to reset
 );
 
-// free iterator internals, keeping the iterator intact
-GrB_Info RG_MatrixTupleIter_detach
-(
-	RG_MatrixTupleIter *iter       // iterator to free
-);
