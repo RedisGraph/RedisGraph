@@ -24,7 +24,10 @@ class RedisGraphSetup(paella.Setup):
 
     def debian_compat(self):
         self.install("locales")
-        self.run("%s/bin/getgcc" % READIES)
+        if self.platform.is_arm():
+            self.run("%s/bin/getgcc --modern" % READIES)
+        else:
+            self.run("%s/bin/getgcc" % READIES)
         self.install("peg")
 
     def redhat_compat(self):
