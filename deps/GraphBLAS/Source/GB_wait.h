@@ -2,13 +2,20 @@
 // GB_wait.h: definitions for GB_wait
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 #ifndef GB_WAIT_H
 #define GB_WAIT_H
+
+GB_PUBLIC
+GrB_Info GB_block   // apply all pending computations if blocking mode enabled
+(
+    GrB_Matrix A,
+    GB_Context Context
+) ;
 
 GB_PUBLIC
 GrB_Info GB_wait                // finish all pending computations

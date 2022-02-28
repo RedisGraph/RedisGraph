@@ -2,7 +2,7 @@
 // GB_Global: global values in GraphBLAS
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -138,6 +138,13 @@ typedef struct
     int64_t free_pool_limit [64] ;
 
     //--------------------------------------------------------------------------
+    // CPU features
+    //--------------------------------------------------------------------------
+
+    bool cpu_features_avx2 ;        // x86_64 with AVX2
+    bool cpu_features_avx512f ;     // x86_64 with AVX512f
+
+    //--------------------------------------------------------------------------
     // CUDA (DRAFT: in progress)
     //--------------------------------------------------------------------------
 
@@ -145,7 +152,7 @@ typedef struct
     GrB_Desc_Value gpu_control ;    // always, never, or default
     double gpu_chunk ;              // min problem size for using a GPU
     // properties of each GPU:
-    GB_cuda_device gpu_properties [GB_CUDA_MAX_GPUS] ;
+    rmm_device gpu_properties [GB_CUDA_MAX_GPUS] ;
 
 }
 GB_Global_struct ;
@@ -331,6 +338,10 @@ GB_Global_struct GB_Global =
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
 #endif
 
+    // CPU features
+    .cpu_features_avx2 = false,         // x86_64 with AVX2
+    .cpu_features_avx512f = false,      // x86_64 with AVX512f
+
     // CUDA environment (DRAFT: in progress)
     .gpu_count = 0,                     // # of GPUs in the system
     .gpu_control = GxB_DEFAULT,         // always, never, or default
@@ -370,6 +381,87 @@ GB_PUBLIC
 bool GB_Global_GrB_init_called_get (void)
 { 
     return (GB_Global.GrB_init_called) ;
+}
+
+//------------------------------------------------------------------------------
+// cpu features
+//------------------------------------------------------------------------------
+
+// GB_Global_cpu_features_query is used just once, by GrB_init or GxB_init,
+// to determine at run-time whether or not AVX2 and/or AVX512F is available.
+// Once these two flags are set, they are saved in the GB_Global struct, and
+// can then be queried later by GB_Global_cpu_features_avx*.
+
+GB_PUBLIC
+void GB_Global_cpu_features_query (void)
+{ 
+    #if GBX86
+    {
+
+        //----------------------------------------------------------------------
+        // x86_64 architecture: see if AVX2 and/or AVX512F are supported
+        //----------------------------------------------------------------------
+
+        #if !defined ( GBNCPUFEAT )
+        {
+            // Google's cpu_features package is available: use run-time tests
+            X86Features features = GetX86Info ( ).features ;
+            GB_Global.cpu_features_avx2 = (bool) (features.avx2) ;
+            GB_Global.cpu_features_avx512f = (bool) (features.avx512f) ;
+        }
+        #else
+        {
+            // cpu_features package not available; use compile-time tests
+            #if defined ( GBAVX2 )
+            {
+                // the build system asserts whether or not AVX2 is available
+                GB_Global.cpu_features_avx2 = (bool) (GBAVX2) ;
+            }
+            #else
+            {
+                // AVX2 not available
+                GB_Global.cpu_features_avx2 = false ;
+            }
+            #endif
+            #if defined ( GBAVX512F )
+            {
+                // the build system asserts whether or not AVX512F is available
+                GB_Global.cpu_features_avx512f = (bool) (GBAVX512F) ;
+            }
+            #else
+            {
+                // AVX512F not available
+                GB_Global.cpu_features_avx512f = false ;
+            }
+            #endif
+        }
+        #endif
+
+    }
+    #else
+    {
+
+        //----------------------------------------------------------------------
+        // not on the x86_64 architecture, so no AVX2 or AVX512F acceleration
+        //----------------------------------------------------------------------
+
+        GB_Global.cpu_features_avx2 = false ;
+        GB_Global.cpu_features_avx512f = false ;
+
+    }
+    #endif
+}
+
+GB_PUBLIC
+bool GB_Global_cpu_features_avx2 (void)
+{ 
+    return (GB_Global.cpu_features_avx2) ;
+}
+
+GB_PUBLIC
+bool GB_Global_cpu_features_avx512f (void)
+{ 
+    return (GB_Global.cpu_features_avx512f) ;
 }
 
 //------------------------------------------------------------------------------

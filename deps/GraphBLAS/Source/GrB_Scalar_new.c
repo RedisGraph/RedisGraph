@@ -2,7 +2,7 @@
 // GrB_Scalar_new: create a new GrB_Scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -34,9 +34,9 @@ GrB_Info GrB_Scalar_new     // create a new GrB_Scalar with no entries
 
     GrB_Info info ;
 
-    info = GB_new ((GrB_Matrix *) s, false, // new user header
-        type, 1, 1, GB_Ap_calloc, true,
-        GxB_SPARSE, GB_Global_hyper_switch_get ( ), 1, Context) ;
+    info = GB_new ((GrB_Matrix *) s, // new user header
+        type, 1, 1, GB_Ap_calloc, true, GxB_SPARSE,
+        GB_Global_hyper_switch_get ( ), 1, Context) ;
     ASSERT (GB_IMPLIES (info == GrB_SUCCESS, GB_SCALAR_OK (*s))) ;
     return (info) ;
 }

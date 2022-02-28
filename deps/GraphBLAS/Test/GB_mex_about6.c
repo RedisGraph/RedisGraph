@@ -2,7 +2,7 @@
 // GB_mex_about6: still more basic tests
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -11,7 +11,6 @@
 
 #include "GB_mex.h"
 #include "GB_mex_errors.h"
-#include "GB_dynamic.h"
 #include "GB_serialize.h"
 
 #define USAGE "GB_mex_about6"
@@ -35,7 +34,7 @@ void mexFunction
     GrB_Scalar alpha = NULL, beta = NULL, S = NULL ;
     GrB_Vector u = NULL ;
     GrB_Type MyType = NULL ;
-    char *err ;
+    const char *err ;
 
     //--------------------------------------------------------------------------
     // startup GraphBLAS

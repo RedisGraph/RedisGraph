@@ -14,23 +14,33 @@
 // to iterate over a RG_Matrix
 typedef struct
 {
-    RG_Matrix A;                   // matrix iterated
-    GxB_MatrixTupleIter m_it;      // internal m iterator
-    GxB_MatrixTupleIter dp_it;     // internal delta plus iterator
+	RG_Matrix A;                   // matrix iterated
+	GxB_Iterator m_it;             // internal m iterator
+	GxB_Iterator dp_it;            // internal delta plus iterator
+	bool m_depleted;               // is m iterator depleted
+	bool dp_depleted;              // is dp iterator depleted
+	GrB_Index min_row;             // minimum row for iteration
+	GrB_Index max_row;             // maximum row for iteration
 } RG_MatrixTupleIter ;
 
-// create a new iterator
-GrB_Info RG_MatrixTupleIter_new
-(
-	RG_MatrixTupleIter **iter,     // iterator to create
-	const RG_Matrix A              // matrix to iterate over
-);
-
-// reuse iterator to iterate over given matrix
-GrB_Info RG_MatrixTupleIter_reuse
+// attach iterator to matrix
+GrB_Info RG_MatrixTupleIter_attach
 (
 	RG_MatrixTupleIter *iter,       // iterator to update
 	const RG_Matrix A               // matrix to scan
+);
+
+// free iterator internals, keeping the iterator intact
+GrB_Info RG_MatrixTupleIter_detach
+(
+	RG_MatrixTupleIter *iter       // iterator to free
+);
+
+// returns true if iterator is attached to given matrix false otherwise
+bool RG_MatrixTupleIter_is_attached
+(
+	const RG_MatrixTupleIter *iter,       // iterator to check
+	const RG_Matrix M                     // matrix attached to
 );
 
 GrB_Info RG_MatrixTupleIter_iterate_row
@@ -53,24 +63,25 @@ GrB_Info RG_MatrixTupleIter_iterate_range
 );
 
 // advance iterator
-GrB_Info RG_MatrixTupleIter_next
+GrB_Info RG_MatrixTupleIter_next_BOOL
 (
 	RG_MatrixTupleIter *iter,       // iterator to consume
 	GrB_Index *row,                 // optional output row index
 	GrB_Index *col,                 // optional output column index
-	void *val,                      // optional value at A[row, col]
-	bool *depleted                  // indicate if iterator depleted
+	bool *val                       // optional value at A[row, col]
+);
+
+GrB_Info RG_MatrixTupleIter_next_UINT64
+(
+	RG_MatrixTupleIter *iter,       // iterator to consume
+	GrB_Index *row,                 // optional output row index
+	GrB_Index *col,                 // optional output column index
+	uint64_t *val                   // optional value at A[row, col]
 );
 
 // reset iterator
 GrB_Info RG_MatrixTupleIter_reset
 (
 	RG_MatrixTupleIter *iter       // iterator to reset
-);
-
-// free iterator
-GrB_Info RG_MatrixTupleIter_free
-(
-	RG_MatrixTupleIter **iter       // iterator to free
 );
 

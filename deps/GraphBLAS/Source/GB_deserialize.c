@@ -2,7 +2,7 @@
 // GB_deserialize: decompress and deserialize a blob into a GrB_Matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -86,7 +86,7 @@ GrB_Info GB_deserialize             // deserialize a matrix from a blob
     GB_BLOB_READ (Cx_nblocks, int32_t) ; GB_BLOB_READ (Cx_method, int32_t) ;
 
     int32_t sparsity = sparsity_iso_csc / 4 ;
-    bool iso = ((sparsity_iso_csc & 2) == 1) ;
+    bool iso = ((sparsity_iso_csc & 2) == 2) ;
     bool is_csc = ((sparsity_iso_csc & 1) == 1) ;
 
     //--------------------------------------------------------------------------
@@ -138,7 +138,8 @@ GrB_Info GB_deserialize             // deserialize a matrix from a blob
     //--------------------------------------------------------------------------
 
     // allocate the matrix with info from the header
-    GB_OK (GB_new (&C, false, ctype, vlen, vdim, GB_Ap_null, is_csc,
+    GB_OK (GB_new (&C,  // new header (C is NULL on input)
+        ctype, vlen, vdim, GB_Ap_null, is_csc,
         sparsity, hyper_switch, nvec, Context)) ;
 
     C->nvec = nvec ;
@@ -160,14 +161,15 @@ GrB_Info GB_deserialize             // deserialize a matrix from a blob
     switch (sparsity)
     {
         case GxB_HYPERSPARSE : 
-
             // decompress Cp, Ch, and Ci
             GB_OK (GB_deserialize_from_blob ((GB_void **) &(C->p), &(C->p_size),
                 Cp_len, blob, blob_size, Cp_Sblocks, Cp_nblocks, Cp_method,
                 &s, Context)) ;
+
             GB_OK (GB_deserialize_from_blob ((GB_void **) &(C->h), &(C->h_size),
                 Ch_len, blob, blob_size, Ch_Sblocks, Ch_nblocks, Ch_method,
                 &s, Context)) ;
+
             GB_OK (GB_deserialize_from_blob ((GB_void **) &(C->i), &(C->i_size),
                 Ci_len, blob, blob_size, Ci_Sblocks, Ci_nblocks, Ci_method,
                 &s, Context)) ;
@@ -179,6 +181,7 @@ GrB_Info GB_deserialize             // deserialize a matrix from a blob
             GB_OK (GB_deserialize_from_blob ((GB_void **) &(C->p), &(C->p_size),
                 Cp_len, blob, blob_size, Cp_Sblocks, Cp_nblocks, Cp_method,
                 &s, Context)) ;
+
             GB_OK (GB_deserialize_from_blob ((GB_void **) &(C->i), &(C->i_size),
                 Ci_len, blob, blob_size, Ci_Sblocks, Ci_nblocks, Ci_method,
                 &s, Context)) ;

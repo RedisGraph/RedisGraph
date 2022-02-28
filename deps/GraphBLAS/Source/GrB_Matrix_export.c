@@ -2,7 +2,7 @@
 // GrB_Matrix_export: export a matrix in CSR, CSC, FullC, FullR, or COO format
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -23,12 +23,12 @@
 // application can ensure that its Ax array has the correct size for any
 // given GrB_Matrix it wishes to export, regardless of its type.
 
-#include "GB_transpose.h"
-
 #define GB_FREE_ALL                 \
 {                                   \
-    GB_phbix_free (T) ;             \
+    GB_Matrix_free (&T) ;           \
 }
+
+#include "GB_transpose.h"
 
 //------------------------------------------------------------------------------
 // GB_export_worker: export a matrix of any type
@@ -56,7 +56,7 @@ static GrB_Info GB_export_worker  // export a matrix
 
     GrB_Matrix A = A_input ;
     struct GB_Matrix_opaque T_header ;
-    GrB_Matrix T = GB_clear_static_header (&T_header) ;
+    GrB_Matrix T = NULL ;
 
     switch (format)
     {
@@ -130,6 +130,7 @@ static GrB_Info GB_export_worker  // export a matrix
 
     if (make_copy)
     { 
+        GB_CLEAR_STATIC_HEADER (T, &T_header) ;
         if (is_csc != csc_requested)
         { 
             // T = A'
@@ -198,7 +199,7 @@ static GrB_Info GB_export_worker  // export a matrix
             }
             else
             { 
-                GB_memcpy (Ax, A->x, nvals, nthreads_max) ;
+                GB_memcpy (Ax, A->x, nvals * A->type->size, nthreads_max) ;
             }
             break ;
 
@@ -233,8 +234,8 @@ static GrB_Info GB_export_worker  // export a matrix
 #undef  GB_FREE_ALL
 #define GB_FREE_ALL ;
 
-#define GB_EXPORT(prefix,ctype,T,acode)                                        \
-GrB_Info GB_EVAL3 (prefix, _Matrix_export_, T) /* export a matrix */           \
+#define GB_EXPORT(prefix,ctype,Type,acode)                                     \
+GrB_Info GB_EVAL3 (prefix, _Matrix_export_, Type) /* export a matrix */        \
 (                                                                              \
     GrB_Index *Ap,          /* pointers for CSR, CSC, row indices for COO    */\
     GrB_Index *Ai,          /* row indices for CSR, CSC, col indices for COO */\
@@ -246,9 +247,9 @@ GrB_Info GB_EVAL3 (prefix, _Matrix_export_, T) /* export a matrix */           \
     GrB_Matrix A            /* matrix to export                              */\
 )                                                                              \
 {                                                                              \
-    GB_WHERE1 (GB_STR(prefix) "_Matrix_export_" GB_STR(T)                      \
+    GB_WHERE1 (GB_STR(prefix) "_Matrix_export_" GB_STR(Type)                   \
         " (Ap, Ai, Ax, &Ap_len, &Ai_len, &Ax_len, format, A)") ;               \
-    GB_BURBLE_START (GB_STR(prefix) "_Matrix_export_" GB_STR(T)) ;             \
+    GB_BURBLE_START (GB_STR(prefix) "_Matrix_export_" GB_STR(Type)) ;          \
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;                                          \
     if (A->type->code != acode) return (GrB_DOMAIN_MISMATCH) ;                 \
     GrB_Info info = GB_export_worker (Ap, Ai, (void *) Ax,                     \

@@ -1,4 +1,4 @@
-name: "ENTITY_COUNT"
+name: "allShortestPaths-10hop-100Kpaths"
 description: '
            ┌────┐
            │ S0 │

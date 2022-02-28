@@ -2,7 +2,7 @@
 // GB_mex_unpack_pack: unpack and then pack a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -17,14 +17,14 @@
 
 #define USAGE "C = GB_mex_unpack_pack (A, format_matrix, format_export)"
 
-#define FREE_WORK                                               \
-{                                                               \
-    if (Cp != NULL) mxFree (Cp) ; Cp = NULL ;     \
-    if (Ch != NULL) mxFree (Ch) ; Ch = NULL ;     \
-    if (Cb != NULL) mxFree (Cb) ; Cb = NULL ;     \
-    if (Ci != NULL) mxFree (Ci) ; Ci = NULL ;     \
-    if (Cx != NULL) mxFree (Cx) ; Cx = NULL ;     \
-    GrB_Matrix_free_(&C) ;                                      \
+#define FREE_WORK                                   \
+{                                                   \
+    if (Cp != NULL) { mxFree (Cp) ; Cp = NULL ; }   \
+    if (Ch != NULL) { mxFree (Ch) ; Ch = NULL ; }   \
+    if (Cb != NULL) { mxFree (Cb) ; Cb = NULL ; }   \
+    if (Ci != NULL) { mxFree (Ci) ; Ci = NULL ; }   \
+    if (Cx != NULL) { mxFree (Cx) ; Cx = NULL ; }   \
+    GrB_Matrix_free_(&C) ;                          \
 }
 
 #define FREE_ALL                        \
@@ -47,7 +47,7 @@
 GrB_Matrix A = NULL ;
 GrB_Matrix C = NULL ;
 GrB_Index *Cp = NULL, *Ch = NULL, *Ci = NULL ;
-GB_void *Cx = NULL ;
+void *Cx = NULL ;
 int8_t *Cb = NULL ;
 GB_Context Context = NULL ;
 GrB_Index nvec = 0, nvals = 0 ;
@@ -328,24 +328,16 @@ GrB_Info unpack_pack
         case 6 :    // FullR
         //----------------------------------------------------------------------
 
-            OK (GxB_Matrix_unpack_FullR (C,
-                &Cx, &Cx_size, &iso, NULL)) ;
-
-            OK (GxB_Matrix_pack_FullR (C,
-                &Cx, Cx_size, iso, NULL)) ;
-
+            OK (GxB_Matrix_unpack_FullR (C, &Cx, &Cx_size, &iso, NULL)) ;
+            OK (GxB_Matrix_pack_FullR (C, &Cx, Cx_size, iso, NULL)) ;
             break ;
 
         //----------------------------------------------------------------------
         case 7 :    // FullC
         //----------------------------------------------------------------------
 
-            OK (GxB_Matrix_unpack_FullC (C,
-                &Cx, &Cx_size, &iso, NULL)) ;
-
-            OK (GxB_Matrix_pack_FullC (C,
-                &Cx, Cx_size, iso, NULL)) ;
-
+            OK (GxB_Matrix_unpack_FullC (C, &Cx, &Cx_size, &iso, NULL)) ;
+            OK (GxB_Matrix_pack_FullC (C, &Cx, Cx_size, iso, NULL)) ;
             break ;
 
         //----------------------------------------------------------------------
@@ -357,8 +349,7 @@ GrB_Info unpack_pack
                 NULL, NULL)) ;
 
             OK (GxB_Matrix_pack_CSR (C,
-                &Cp, &Ci, &Cx, Cp_size, Ci_size, Cx_size, iso,
-                false, NULL)) ;
+                &Cp, &Ci, &Cx, Cp_size, Ci_size, Cx_size, iso, false, NULL)) ;
 
             break ;
 
@@ -371,8 +362,7 @@ GrB_Info unpack_pack
                 NULL, NULL)) ;
 
             OK (GxB_Matrix_pack_CSC (C,
-                &Cp, &Ci, &Cx, Cp_size, Ci_size, Cx_size, iso,
-                false, NULL)) ;
+                &Cp, &Ci, &Cx, Cp_size, Ci_size, Cx_size, iso, false, NULL)) ;
 
             break ;
 
@@ -386,9 +376,8 @@ GrB_Info unpack_pack
                 &nvec, NULL, NULL)) ;
 
             OK (GxB_Matrix_pack_HyperCSR (C,
-                &Cp, &Ch, &Ci, &Cx,
-                Cp_size, Ch_size, Ci_size, Cx_size, iso,
-                nvec, false, NULL)) ;
+                &Cp, &Ch, &Ci, &Cx, Cp_size, Ch_size, Ci_size, Cx_size,
+                iso, nvec, false, NULL)) ;
 
             break ;
 
@@ -402,8 +391,7 @@ GrB_Info unpack_pack
                 &nvec, NULL, NULL)) ;
 
             OK (GxB_Matrix_pack_HyperCSC (C,
-                &Cp, &Ch, &Ci, &Cx,
-                Cp_size, Ch_size, Ci_size, Cx_size, iso,
+                &Cp, &Ch, &Ci, &Cx, Cp_size, Ch_size, Ci_size, Cx_size, iso,
                 nvec, false, NULL)) ;
 
             break ;
@@ -508,11 +496,11 @@ GrB_Info vector_unpack_pack
         case 1 :    // standard CSC
         //----------------------------------------------------------------------
 
-            OK (GxB_Vector_unpack_CSC ((GrB_Vector *) C,
+            OK (GxB_Vector_unpack_CSC ((GrB_Vector) C,
                 &Ci, &Cx, &Ci_size, &Cx_size, &iso,
                 &nvals, &jumbled, NULL)) ;
 
-            OK (GxB_Vector_pack_CSC ((GrB_Vector *) C,
+            OK (GxB_Vector_pack_CSC ((GrB_Vector) C,
                 &Ci, &Cx, Ci_size, Cx_size, iso,
                 nvals, jumbled, NULL)) ;
 
@@ -540,10 +528,10 @@ GrB_Info vector_unpack_pack
         case 5 :    // bitmapC
         //----------------------------------------------------------------------
 
-            OK (GxB_Vector_unpack_Bitmap ((GrB_Vector *) C,
+            OK (GxB_Vector_unpack_Bitmap ((GrB_Vector) C,
                 &Cb, &Cx, &Cb_size, &Cx_size, &iso, &nvals, NULL)) ;
 
-            OK (GxB_Vector_pack_Bitmap ((GrB_Vector *) C,
+            OK (GxB_Vector_pack_Bitmap ((GrB_Vector) C,
                 &Cb, &Cx, Cb_size, Cx_size, iso, nvals, NULL)) ;
 
             break ;
@@ -558,10 +546,10 @@ GrB_Info vector_unpack_pack
         case 7 :    // FullC
         //----------------------------------------------------------------------
 
-            OK (GxB_Vector_unpack_Full ((GrB_Vector *) C,
+            OK (GxB_Vector_unpack_Full ((GrB_Vector) C,
                 &Cx, &Cx_size, &iso, NULL)) ;
 
-            OK (GxB_Vector_pack_Full ((GrB_Vector *) C,
+            OK (GxB_Vector_pack_Full ((GrB_Vector) C,
                 &Cx, Cx_size, iso, NULL)) ;
 
             break ;
@@ -576,13 +564,11 @@ GrB_Info vector_unpack_pack
         case 9 :    // standard CSC, not jumbled
         //----------------------------------------------------------------------
 
-            OK (GxB_Vector_unpack_CSC ((GrB_Vector *) C,
-                &Ci, &Cx, &Ci_size, &Cx_size, &iso,
-                &nvals, NULL, NULL)) ;
+            OK (GxB_Vector_unpack_CSC ((GrB_Vector) C,
+                &Ci, &Cx, &Ci_size, &Cx_size, &iso, &nvals, NULL, NULL)) ;
 
-            OK (GxB_Vector_pack_CSC ((GrB_Vector *) C,
-                &Ci, &Cx, Ci_size, Cx_size, iso,
-                nvals, false, NULL)) ;
+            OK (GxB_Vector_pack_CSC ((GrB_Vector) C,
+                &Ci, &Cx, Ci_size, Cx_size, iso, nvals, false, NULL)) ;
 
             break ;
 
