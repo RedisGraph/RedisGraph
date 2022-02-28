@@ -1274,9 +1274,6 @@ void Graph_Free(Graph *g) {
 	array_free(g->labels);
 	RG_Matrix_free(&g->node_labels);
 
-	// TODO: disable datablock deleted items array
-	// there's no need to keep track after deleted items as the graph
-	// is being removed we won't be reusing items
 	it = Graph_ScanNodes(g);
 	while((en = (Entity *)DataBlockIterator_Next(it, NULL)) != NULL) {
 		FreeEntity(en);
