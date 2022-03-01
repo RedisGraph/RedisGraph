@@ -2,7 +2,7 @@
 // GB_AxB_saxpy3: compute C=A*B, C<M>=A*B, or C<!M>=A*B in parallel
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -88,6 +88,7 @@
 //------------------------------------------------------------------------------
 
 #include "GB_mxm.h"
+#include "GB_AxB_saxpy_generic.h"
 #include "GB_control.h"
 #include "GB_AxB__include1.h"
 #ifndef GBCOMPACT
@@ -145,7 +146,7 @@ GrB_Info GB_AxB_saxpy3              // C = A*B using Gustavson+Hash
     (*mask_applied) = false ;
     bool apply_mask = false ;
 
-    ASSERT (C != NULL && C->static_header) ;
+    ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
 
     ASSERT_MATRIX_OK_OR_NULL (M, "M for saxpy3 A*B", GB0) ;
     ASSERT (!GB_PENDING (M)) ;
@@ -228,7 +229,7 @@ GrB_Info GB_AxB_saxpy3              // C = A*B using Gustavson+Hash
     int64_t cvdim = bvdim ;
     int64_t cnvec = bnvec ;
 
-    info = GB_new (&C, true, // sparse or hyper, static header
+    info = GB_new (&C, // sparse or hyper, existing header
         ctype, cvlen, cvdim, GB_Ap_malloc, true,
         C_sparsity, B->hyper_switch, cnvec, Context) ;
     if (info != GrB_SUCCESS)

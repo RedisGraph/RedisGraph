@@ -5,7 +5,7 @@ function I = gb_index1 (G)
 % This function converts them into into integer lists so that they can be
 % handled by the mexFunctions.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
 type = gbtype (G) ;

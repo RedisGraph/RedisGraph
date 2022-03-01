@@ -29,27 +29,11 @@
 // The default value of this parameter is GB_GPU_CHUNK_DEFAULT:
 #define GB_GPU_CHUNK_DEFAULT (1024*1024)
 
-#if defined ( GB_NVCC )
-extern "C" {
-#endif
-
 //------------------------------------------------------------------------------
-// GB_cuda_device: properties of each GPU in the system
+// rmm_device: properties of each GPU in the system
 //------------------------------------------------------------------------------
 
-typedef struct
-{
-    char    name [256] ;
-    size_t  total_global_memory ;
-    int  number_of_sms ;
-    int  compute_capability_major;
-    int  compute_capability_minor;
-    bool use_memory_pool;
-    int  pool_size;             // TODO: should this be size_t?
-    int  max_pool_size;         // TODO: should this be size_t?
-    void *memory_resource;
-}
-GB_cuda_device ;
+#include "rmm_device.h"
 
 //------------------------------------------------------------------------------
 // GB_ngpus_to_use: determine # of GPUs to use for the next computation
@@ -110,7 +94,7 @@ bool GB_cuda_set_device( int device) ;
 bool GB_cuda_get_device_properties
 (
     int device,
-    GB_cuda_device *prop
+    rmm_device *prop
 ) ;
 
 bool GB_reduce_to_scalar_cuda_branch 
@@ -140,9 +124,17 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
     GB_Context Context
 ) ;
 
-#if defined ( GB_NVCC )
-}
-#endif
+
+bool GB_AxB_dot3_cuda_branch
+(
+    const GrB_Matrix M,             // mask matrix
+    const bool Mask_struct,         // if true, use the only structure of M
+    const GrB_Matrix A,             // input matrix
+    const GrB_Matrix B,             // input matrix
+    const GrB_Semiring semiring,    // semiring that defines C=A*B
+    const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
+    GB_Context Context
+);
 
 #endif
 

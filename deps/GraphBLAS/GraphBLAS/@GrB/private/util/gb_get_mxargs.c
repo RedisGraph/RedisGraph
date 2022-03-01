@@ -2,7 +2,7 @@
 // gb_get_mxargs: get input arguments to a GraphBLAS mexFunction 
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
@@ -24,11 +24,11 @@ void gb_get_mxargs
     const mxArray *pargin [ ],  // input arguments for mexFunction
     const char *usage,          // usage to print, if too many args appear
     // output:
-    const mxArray *Matrix [6],  // matrix arguments
+    mxArray *Matrix [6],        // matrix arguments
     int *nmatrices,             // # of matrix arguments
-    const mxArray *String [2],  // string arguments
+    mxArray *String [2],        // string arguments
     int *nstrings,              // # of string arguments
-    const mxArray *Cell [2],    // cell array arguments
+    mxArray *Cell [2],          // cell array arguments
     int *ncells,                // # of cell array arguments
     GrB_Descriptor *desc,       // last argument is always the descriptor
     base_enum_t *base,          // desc.base
@@ -76,7 +76,7 @@ void gb_get_mxargs
             { 
                 ERROR ("only 2D indexing is supported") ;
             }
-            Cell [(*ncells)++] = pargin [k] ;
+            Cell [(*ncells)++] = (mxArray *) pargin [k] ;
         }
         else if (mxIsChar (pargin [k]))
         {
@@ -85,7 +85,7 @@ void gb_get_mxargs
             { 
                 ERROR (usage) ;
             }
-            String [(*nstrings)++] = pargin [k] ;
+            String [(*nstrings)++] = (mxArray *) pargin [k] ;
         }
         else
         {
@@ -95,7 +95,7 @@ void gb_get_mxargs
                 // at most 4 matrix inputs are allowed
                 ERROR (usage) ;
             }
-            Matrix [(*nmatrices)++] = pargin [k] ;
+            Matrix [(*nmatrices)++] = (mxArray *) pargin [k] ;
         }
     }
 }

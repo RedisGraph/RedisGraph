@@ -2,7 +2,7 @@
 // GB_AxB_saxpy3_flopcount:  compute flops for GB_AxB_saxpy3
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -244,7 +244,7 @@ GrB_Info GB_AxB_saxpy3_flopcount
             // if M(:,j) is full, bitmap, or dense, do not add mjnz to bjflops
             // or task_MWork.
 
-            int64_t bjflops = (B_is_bitmap) ? my_bjnz : 0 ;
+            int64_t bjflops = my_bjnz ; // account for scan of B(:,j) itself
             int64_t mjnz = 0 ;
             if (M != NULL && !M_is_dense)
             {

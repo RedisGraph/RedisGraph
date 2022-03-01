@@ -2,7 +2,7 @@
 // GB_sel:  hard-coded functions for selection operators
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -34,7 +34,7 @@
 
 // test value of Ax [p]
 #define GB_TEST_VALUE_OF_ENTRY(keep,p)                  \
-    GB_void z [GB_VLA(zsize)] ; GB_void x [GB_VLA(xsize)] ; GB_cast_scalar (x, xcode, Ax, acode, asize) ; op->idxunop_function (z, x, flipij ? j : i, flipij ? i : j, ythunk) ; bool keep ; GB_cast_scalar (&keep, GB_BOOL_code, z, zcode, zsize) ;
+    bool keep ; idxunop_func (&keep, x, flipij ? j : i, flipij ? i : j, ythunk) ; 
 
 // Cx [pC] = Ax [pA], no typecast
 #define GB_SELECT_ENTRY(Cx,pC,Ax,pA)                    \
@@ -63,6 +63,7 @@ void GB (_sel_phase1__idxunop_iso)
 { 
     
     GB_Type_code zcode = op->ztype->code, xcode = op->xtype->code, acode = A->type->code ; size_t zsize = op->ztype->size, xsize = op->xtype->size ;
+    GxB_index_unary_function idxunop_func = op->idxunop_function ; GB_void x [GB_VLA(xsize)] ; GB_cast_scalar (x, xcode, A->x, acode, A->type->size) ; 
     #include "GB_select_phase1.c"
 }
 
@@ -92,6 +93,7 @@ void GB (_sel_phase2__idxunop_iso)
 { 
     
     GB_Type_code zcode = op->ztype->code, xcode = op->xtype->code, acode = A->type->code ; size_t zsize = op->ztype->size, xsize = op->xtype->size ;
+    GxB_index_unary_function idxunop_func = op->idxunop_function ; GB_void x [GB_VLA(xsize)] ; GB_cast_scalar (x, xcode, A->x, acode, A->type->size) ; 
     #include "GB_select_phase2.c"
 }
 
@@ -119,6 +121,7 @@ void GB (_sel_bitmap__idxunop_iso)
 { 
     
     GB_Type_code zcode = op->ztype->code, xcode = op->xtype->code, acode = A->type->code ; size_t zsize = op->ztype->size, xsize = op->xtype->size ;
+    GxB_index_unary_function idxunop_func = op->idxunop_function ; GB_void x [GB_VLA(xsize)] ; GB_cast_scalar (x, xcode, A->x, acode, A->type->size) ; 
     #include "GB_bitmap_select_template.c"
 }
 

@@ -2,7 +2,7 @@
 // GB_mex_about: print the 'about' information
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -56,7 +56,7 @@ void mexFunction
 
     FILE *f = fopen ("errlog2.txt", "w") ;
     printf ("in %s\n", __FILE__) ;
-    char *err ;
+    const char *err ;
 
     //--------------------------------------------------------------------------
     // test GrB_init with invalid mode
@@ -141,11 +141,7 @@ void mexFunction
     GrB_BinaryOp op ;
 
     OK (GrB_Monoid_new_UINT16_(&m, GrB_PLUS_UINT16, (uint16_t) 0)) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Monoid_wait_(&m)) ;
-    #else
     OK (GrB_Monoid_wait_(m, GrB_MATERIALIZE)) ;
-    #endif
     OK (GB_Monoid_check (m, "plus uint16 monoid", GxB_COMPLETE, stdout)) ;
     uint16_t id ;
     OK (GxB_Monoid_identity (&id, m)) ;
@@ -174,11 +170,7 @@ void mexFunction
 
     GrB_Semiring sem ;
     OK (GrB_Semiring_new (&sem, m, GrB_TIMES_INT16)) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Semiring_wait_(&sem)) ;
-    #else
     OK (GrB_Semiring_wait_(sem, GrB_MATERIALIZE)) ;
-    #endif
     OK (GB_Semiring_check (sem, "\nnew sem", GxB_COMPLETE, stdout)) ;
 
     GrB_Monoid mm ;
@@ -202,11 +194,7 @@ void mexFunction
     GrB_Vector victor ;
     GrB_Vector_new (&victor, GrB_UINT32, 43) ;
     GxB_Vector_type (&t, victor) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Vector_wait_(&victor)) ;
-    #else
     OK (GrB_Vector_wait_(victor, GrB_MATERIALIZE)) ;
-    #endif
     GB_Type_check (t, "victor type is:", GxB_COMPLETE, stdout) ;
     GxB_Type_size (&s, t) ;
     printf ("and its size of type is %d\n", s) ;
@@ -273,11 +261,7 @@ void mexFunction
     GxB_Desc_get (Duh, GrB_INP1, &val) ; printf ("got inp1 %d\n", val) ; CHECK (val == GxB_DEFAULT) ;
 
     info = GxB_Desc_set (Duh, GrB_INP1, GrB_REPLACE) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Descriptor_wait_(&Duh)) ;
-    #else
     OK (GrB_Descriptor_wait_(Duh, GrB_MATERIALIZE)) ;
-    #endif
     GrB_Descriptor_error_(&err, Duh) ;
     printf ("%s\n", err) ;
     GB_Descriptor_check (Duh, "\n-----Duh set in1",
@@ -537,13 +521,8 @@ void mexFunction
     OK (GrB_Matrix_new (&B, GrB_BOOL, 10000, 10000)) ;
     OK (GrB_Matrix_setElement_BOOL (A, true, 0, 0)) ;
     OK (GrB_Matrix_setElement_BOOL (B, true, 0, 0)) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Matrix_wait_(&A)) ;
-    OK (GrB_Matrix_wait_(&B)) ;
-    #else
     OK (GrB_Matrix_wait_(A, GrB_MATERIALIZE)) ;
     OK (GrB_Matrix_wait_(B, GrB_MATERIALIZE)) ;
-    #endif
     CHECK (!GB_aliased (A, B)) ;
     int64_t *Bh_save = B->h ;
     B->h = A->h ; B->h_shallow = true ;
@@ -565,11 +544,7 @@ void mexFunction
     OK (GxB_Desc_set (desc, GxB_CHUNK, (double) 12345)) ;
     OK (GxB_Desc_get (desc, GxB_CHUNK, &chunk)) ;
     OK (GxB_Desc_get (desc, GxB_NTHREADS, &nthreads)) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Descriptor_wait_(&desc)) ;
-    #else
     OK (GrB_Descriptor_wait_(desc, GrB_MATERIALIZE)) ;
-    #endif
     OK (GxB_Descriptor_fprint_(desc, GxB_COMPLETE, NULL)) ;
     CHECK (chunk == 12345) ;
     CHECK (nthreads == 42) ;
@@ -684,11 +659,7 @@ void mexFunction
 
     GrB_Type user_type = NULL ;
     OK (GrB_Type_new (&user_type, sizeof (user_int))) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Type_wait_(&user_type)) ;
-    #else
     OK (GrB_Type_wait_(user_type, GrB_MATERIALIZE)) ;
-    #endif
     OK (GrB_Matrix_new (&A, user_type, 10, 10)) ;
     OK (GrB_Matrix_new (&B, GrB_INT16, 10, 10)) ;
     user_int value ;
@@ -698,13 +669,8 @@ void mexFunction
         OK (GrB_Matrix_setElement_UDT (A, &value, i, i)) ;
         OK (GrB_Matrix_setElement_INT16 (B, i, i, i)) ;
     }
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Matrix_wait_(&A)) ;
-    OK (GrB_Matrix_wait_(&B)) ;
-    #else
     OK (GrB_Matrix_wait_(A, GrB_MATERIALIZE)) ;
     OK (GrB_Matrix_wait_(B, GrB_MATERIALIZE)) ;
-    #endif
     OK (GxB_Matrix_fprint_(A, GxB_COMPLETE, NULL)) ;
     OK (GxB_Matrix_fprint_(B, GxB_COMPLETE, NULL)) ;
 
@@ -727,11 +693,7 @@ void mexFunction
     GrB_Scalar thunk2 = NULL ;
     OK (GrB_Scalar_new (&thunk2, GrB_INT16)) ;
     OK (GrB_Scalar_setElement_INT16 (thunk2, 4)) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Scalar_wait_(&thunk2)) ;
-    #else
     OK (GrB_Scalar_wait_(thunk2, GrB_MATERIALIZE)) ;
-    #endif
 
     expected = GrB_DOMAIN_MISMATCH ;
 
@@ -784,11 +746,7 @@ void mexFunction
     {
         OK (GrB_Matrix_setElement_BOOL_(A, (bool) (i % 2), i, i)) ;
     }
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Matrix_wait_(&A)) ;
-    #else
     OK (GrB_Matrix_wait_(A, GrB_MATERIALIZE)) ;
-    #endif
     OK (GxB_Matrix_fprint_(A, GxB_COMPLETE, NULL)) ;
 
     printf ("\n============== B = select (A > 0)\n") ;
@@ -820,19 +778,11 @@ void mexFunction
             OK (GrB_Matrix_setElement_FP64 (A, i*100+j, i, j)) ;
         }
     }
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Matrix_wait_(&A)) ;
-    #else
     OK (GrB_Matrix_wait_(A, GrB_MATERIALIZE)) ;
-    #endif
 
     GrB_Vector_new (&victor, GrB_FP64, 43) ;
     OK (GrB_Vector_setElement_FP64 (victor, 99, 0)) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Vector_wait_(&victor)) ;
-    #else
     OK (GrB_Vector_wait_(victor, GrB_MATERIALIZE)) ;
-    #endif
 
     //--------------------------------------------------------------------------
     // GxB_get
@@ -891,11 +841,7 @@ void mexFunction
     GxB_Matrix_fprint_(A, GxB_COMPLETE, NULL) ;
     OK (GrB_Matrix_setElement_FP64_(A, (double) 3, 0, 0)) ;
     GxB_Matrix_fprint_(A, GxB_COMPLETE, NULL) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Matrix_wait_(&A)) ;
-    #else
     OK (GrB_Matrix_wait_(A, GrB_MATERIALIZE)) ;
-    #endif
     GxB_Matrix_fprint_(A, GxB_COMPLETE, NULL) ;
 
     GrB_Matrix_free_(&A) ;
@@ -919,12 +865,9 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     GxB_SelectOp selectop = NULL ;
-    OK (GxB_SelectOp_new (&selectop, select_plus_one, GrB_FP64, GrB_FP64)) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GxB_SelectOp_wait_(&selectop)) ;
-    #else
+    OK (GxB_SelectOp_new (&selectop, 
+        (GxB_select_function) select_plus_one, GrB_FP64, GrB_FP64)) ;
     OK (GxB_SelectOp_wait_(selectop, GrB_MATERIALIZE)) ;
-    #endif
     OK (GrB_Matrix_new (&A, GrB_FP64, 8, 8)) ;
     OK (GrB_Matrix_new (&C, GrB_FP64, 8, 8)) ;
     for (int i = 0 ; i < 8 ; i++)
@@ -965,7 +908,8 @@ void mexFunction
     printf ("Error expected: %d\n%s\n", info, err) ;
 
     GxB_SelectOp_free_(&selectop) ;
-    OK (GxB_SelectOp_new (&selectop, select_nothing, GrB_FP64, NULL)) ;
+    OK (GxB_SelectOp_new (&selectop, 
+        (GxB_select_function) select_nothing, GrB_FP64, NULL)) ;
     ERR1 (C, GxB_Matrix_select_(C, NULL, NULL, selectop, A, thunk, NULL)) ;
     GrB_Matrix_error_(&err, C) ;
     printf ("Error expected: %d\n%s\n", info, err) ;
@@ -998,11 +942,7 @@ void mexFunction
     GrB_Scalar scalar = NULL, scalar2 = NULL ;
     OK (GrB_Scalar_new (&scalar, GrB_FP64)) ;
     OK (GrB_Scalar_nvals (&nvals, scalar)) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Scalar_wait_(&scalar)) ;
-    #else
     OK (GrB_Scalar_wait_(scalar, GrB_MATERIALIZE)) ;
-    #endif
     CHECK (nvals == 0) ;
 
     bool     b_8 = 0 ;
@@ -1019,11 +959,7 @@ void mexFunction
 
     OK (GrB_Scalar_setElement_FP64_(scalar, (double) 1.25)) ;
     OK (GrB_Scalar_nvals (&nvals, scalar)) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Scalar_wait_(&scalar)) ;
-    #else
     OK (GrB_Scalar_wait_(scalar, GrB_MATERIALIZE)) ;
-    #endif
     CHECK (nvals == 1) ;
 
     OK (GrB_Scalar_dup (&scalar2, scalar)) ;
@@ -1060,11 +996,7 @@ void mexFunction
     u_64 = 0 ;
     OK (GrB_Scalar_extractElement_UINT64_(&u_64, scalar2)) ; CHECK (u_64 == 1) ;
     OK (GrB_Scalar_nvals (&nvals, scalar2)) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Scalar_wait_(&scalar2)) ;
-    #else
     OK (GrB_Scalar_wait_(scalar2, GrB_MATERIALIZE)) ;
-    #endif
     CHECK (nvals == 1) ;
 
     expected = GrB_INVALID_OBJECT ;

@@ -1,7 +1,7 @@
 function test75
 %TEST75 test GrB_mxm and GrB_vxm on all semirings
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 [binops, ~, add_ops, types, ~, ~] = GB_spec_opsall ;

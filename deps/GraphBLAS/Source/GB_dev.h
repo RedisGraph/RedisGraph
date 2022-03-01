@@ -2,7 +2,7 @@
 // GB_dev.h: definitions for code development
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -11,21 +11,11 @@
 #define GB_DEV_H
 
 //------------------------------------------------------------------------------
-// code development settings
+// code development settings: by default, all settings should be commented out
 //------------------------------------------------------------------------------
 
 // to turn on Debug for a single file of GraphBLAS, add '#define GB_DEBUG'
 // just before the statement '#include "GB.h"'
-
-// set GB_BURBLE to 0 to disable diagnostic output, or compile with
-// -DGB_BURBLE=0.  Enabling/disabling the burble has little effect on
-// performance, unless GxB_set (GxB_BURBLE, true) is set.  In that case, a
-// small drop in performance can occur because of the volume of output.  But
-// with GxB_set (GxB_BURBLE, false), which is the default, the performance is
-// not affected.
-#ifndef GB_BURBLE
-#define GB_BURBLE 1
-#endif
 
 // to turn on Debug for all of GraphBLAS, uncomment this line:
 // (GraphBLAS will be exceedingly slow; this is for development only)
@@ -40,32 +30,15 @@
 // (GraphBLAS will be exceedingly slow; this is for development only)
 // #define GB_MEMDUMP
 
-//------------------------------------------------------------------------------
-// notes on future work
-//------------------------------------------------------------------------------
-
-// FUTURE: transpose full or bitmap inputs by changing how they are accessed
-
-// FUTURE: DIFF1, DIFF2 binary operators, GxB_vxv
-//
-//      add binary operators:
-//          DIFF1(x,y) = abs(x-y), for all types
-//          DIFF2(x,y) = (x-y)^2 for real types, (x-y)*conj(x-y) for complex
-//      to compute x = sum (abs (t-r)), with PLUS_DIFF1 semiring
-//
-//          1-norm of a x-y:  PLUS_DIFF1 with GxB_vtxv
-//          2-norm of a x-y:  PLUS_DIFF2 with GxB_vtxv, the sqrt of the scalar
-//          +inf-norm of a x-y:  MAX_DIFF1 with GxB_vtxv
-//          -inf-norm of a x-y:  MIN_DIFF1 with GxB_vtxv
-//
-//      to compute these for just a vector x, use y as all-zero iso full
-//
-//      GxB_vtxv : inner product of 2 vectors, result is a GrB_Scalar
-//      GxB_vxvt : outer product of 2 vectors, result is a GrB_Matrix
-
-// FUTURE: do O(1)-time typecasting for iso matrices, if their types don't match
-//      the operator.  Do this after WAIT on the inputs, since that may change
-//      the iso property.
+// By default, many internal temporary matrices use statically allocated
+// headers to reduce the number of calls to malloc/free.  This works fine for
+// matrices on the CPU, but the static headers do not get automatically
+// transfered to the GPU.  Only dynamically allocated headers, allocated by
+// rmm_wrap_malloc, get transfered.  Set this to 1 to turn off static headers
+// (required for CUDA; see GB_static_headers.h).  Leave static headers
+// enabled by default by leaving this commented out or setting GBNSTATIC to 0.
+// #undef  GBNSTATIC
+// #define GBNSTATIC 1
 
 #endif
 

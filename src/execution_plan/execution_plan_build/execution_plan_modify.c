@@ -268,7 +268,7 @@ OpBase *ExecutionPlan_LocateReferences
 	rax *refs_to_resolve
 ) {
 	return ExecutionPlan_LocateReferencesExcludingOps(
-			root, recurse_limit, NULL, 0, refs_to_resolve);
+			   root, recurse_limit, NULL, 0, refs_to_resolve);
 }
 
 void _ExecutionPlan_LocateTaps
@@ -368,7 +368,8 @@ OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_v
 	match_stream_plan->record_map = plan->record_map;
 
 	// If we have bound variables, build an Argument op that represents them.
-	if(bound_vars) match_stream_plan->root = NewArgumentOp(plan, bound_vars);
+	if(bound_vars) match_stream_plan->root = NewArgumentOp(match_stream_plan,
+															   bound_vars);
 
 	AST *ast = QueryCtx_GetAST();
 	// Build a temporary AST holding a MATCH clause.

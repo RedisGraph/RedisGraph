@@ -2,17 +2,26 @@
 // GB_math.c: declaring functions from GB_math.h
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 #include "GB.h"
 
+// integer division
+extern int8_t   GB_idiv_int8   (int8_t   x, int8_t   y) ;
+extern int16_t  GB_idiv_int16  (int16_t  x, int16_t  y) ;
+extern int32_t  GB_idiv_int32  (int32_t  x, int32_t  y) ;
+extern int64_t  GB_idiv_int64  (int64_t  x, int64_t  y) ;
+extern uint8_t  GB_idiv_uint8  (uint8_t  x, uint8_t  y) ;
+extern uint16_t GB_idiv_uint16 (uint16_t x, uint16_t y) ;
+extern uint32_t GB_idiv_uint32 (uint32_t x, uint32_t y) ;
+extern uint64_t GB_idiv_uint64 (uint64_t x, uint64_t y) ;
+
 // complex division
 extern int GB_divcomplex (double xr, double xi, double yr, double yi,
     double *zr, double *zi) ;
-
 extern GxB_FC32_t GB_FC32_div (GxB_FC32_t x, GxB_FC32_t y) ;
 extern GxB_FC64_t GB_FC64_div (GxB_FC64_t x, GxB_FC64_t y) ;
 

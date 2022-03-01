@@ -2,7 +2,7 @@ function test24(fulltest)
 %TEST24 test GrB_reduce
 % test24(fulltest); fulltest=1 if longer test, 0 for quick test
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 [binops, ~, add_ops, types, ~, ~] = GB_spec_opsall ;

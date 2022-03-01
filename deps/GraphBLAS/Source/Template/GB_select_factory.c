@@ -2,7 +2,7 @@
 // GB_select_factory: switch factory for C=select(A,thunk)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -120,7 +120,7 @@ switch (opcode)
         ASSERT (op->ztype != NULL) ;
         ASSERT (op->xtype != NULL) ;
         ASSERT (op->ytype != NULL) ;
-        GB_SEL_WORKER (_idxunop, _any, GB_void)
+        GB_SEL_WORKER (_idxunop_cast, _any, GB_void)
 
     case GB_USER_idxunop_code   : // C = user_idxunop (A,k)
 
@@ -128,10 +128,29 @@ switch (opcode)
         ASSERT (op->ztype != NULL) ;
         ASSERT (op->xtype != NULL) ;
         ASSERT (op->ytype != NULL) ;
-        switch (typecode)
+        if ((op->ztype != GrB_BOOL) ||
+           ((typecode != GB_ignore_code) && (op->xtype != A->type)))
         {
-            case GB_ignore_code  : GB_SEL_WORKER (_idxunop, _iso, GB_void)
-            default              : GB_SEL_WORKER (_idxunop, _any, GB_void)
+            // typecasting is required
+            #ifdef GB_SELECT_PHASE1
+            GBURBLE ("(generic select) ") ;
+            #endif
+            switch (typecode)
+            {
+                case GB_ignore_code :   // A is iso
+                    GB_SEL_WORKER (_idxunop_cast, _iso, GB_void)
+                default             :   // A is non-iso
+                    GB_SEL_WORKER (_idxunop_cast, _any, GB_void)
+            }
+        }
+        else
+        {
+            // no typecasting
+            switch (typecode)
+            {
+                case GB_ignore_code : GB_SEL_WORKER (_idxunop, _iso, GB_void)
+                default             : GB_SEL_WORKER (_idxunop, _any, GB_void)
+            }
         }
         break ;
 

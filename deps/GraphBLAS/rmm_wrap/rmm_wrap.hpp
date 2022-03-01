@@ -1,3 +1,5 @@
+#pragma once
+
 #include "stddef.h"
 //#include <rmm/cuda_stream.hpp>
 //#include <rmm/device_buffer.hpp>

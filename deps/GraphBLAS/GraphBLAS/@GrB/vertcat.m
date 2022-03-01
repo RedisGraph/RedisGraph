@@ -7,7 +7,7 @@ function C = vertcat (varargin)
 %
 % See also GrB/horzcat, GrB/cat, GrB.cell2mat, GrB/mat2cell, GrB/num2cell.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
 % get the input matrices

@@ -14,7 +14,7 @@ function Y = dnn_builtin (W, bias, Y0)
 % note: this is now ported to Octave, by avoiding the use of singleton
 % expansion.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
 Y = Y0 ;

@@ -8,17 +8,46 @@ Passing configuration options is done by appending arguments after the `--loadmo
 
 In redis.conf:
 
-```
-loadmodule ./redisgraph.so OPT1 OPT2
+```sh
+loadmodule ./redisgraph.so OPT1 VAL1
 ```
 
 From the command line:
 
+```sh
+$ redis-server --loadmodule ./redisgraph.so OPT1 VAL1
 ```
-$ redis-server --loadmodule ./redisgraph.so OPT1 OPT2
+
+## Passing configuration options at run-time
+
+RedisGraph exposes the `GRAPH.CONFIG` endpoint to allowing for the setting and retrieval of configurations at run-time.
+
+To set a config, simply run:
+
+```sh
+GRAPH.CONFIG SET OPT1 VAL1
+```
+
+Similarly, the current configurations can be retrieved using the syntax:
+
+```sh
+GRAPH.CONFIG GET OPT1
+GRAPH.CONFIG GET *
 ```
 
 # RedisGraph configuration options
+
+| Configuration                                 | Load-time          | Run-time             |
+| :-------                                      | :-----             | :-----------         |
+| [THREAD_COUNT](#THREAD_COUNT)                 | :white_check_mark: | :white_large_square: |
+| [CACHE_SIZE](#CACHE_SIZE)                     | :white_check_mark: | :white_large_square: |
+| [OMP_THREAD_COUNT](#OMP_THREAD_COUNT)         | :white_check_mark: | :white_large_square: |
+| [NODE_CREATION_BUFFER](#NODE_CREATION_BUFFER) | :white_check_mark: | :white_large_square: |
+| [MAX_QUEUED_QUERIES](#MAX_QUEUED_QUERIES)     | :white_check_mark: | :white_check_mark:   |
+| [TIMEOUT](#TIMEOUT)                           | :white_check_mark: | :white_check_mark:   |
+| [RESULTSET_SIZE](#RESULTSET_SIZE)             | :white_check_mark: | :white_check_mark:   |
+| [QUERY_MEM_CAPACITY](#QUERY_MEM_CAPACITY)     | :white_check_mark: | :white_check_mark:   |
+
 
 ## THREAD_COUNT
 
@@ -68,11 +97,21 @@ $ redis-server --loadmodule ./redisgraph.so OMP_THREAD_COUNT 1
 
 ---
 
+## NODE_CREATION_BUFFER
+
+The node creation buffer is the number of new nodes that can be created without resizing matrices. For example, when set to 16,384, the matrices will have extra space for 16,384 nodes upon creation. Whenever the extra space is depleted, the matrices' size will increase by 16,384.
+
+Reducing this value will reduce memory consumption, but cause performance degradation due to the increased frequency of matrix resizes.
+
+Conversely, increasing it might improve performance for write-heavy workloads but will increase memory consumption.
+
+If the passed argument was not a power of 2, it will be rounded to the next-greatest power of 2 to improve memory alignment.
+
+---
+
 ## MAX_QUEUED_QUERIES
 
 Setting the maximum number of queued queries allows the server to reject incoming queries with the error message `Max pending queries exceeded`. This reduces the memory overhead of pending queries on an overloaded server and avoids congestion when the server processes its backlog of queries.
-
-This configuration can be set when the module loads or at runtime.
 
 ### Default
 
@@ -84,6 +123,20 @@ This configuration can be set when the module loads or at runtime.
 $ redis-server --loadmodule ./redisgraph.so MAX_QUEUED_QUERIES 500
 
 $ redis-cli GRAPH.CONFIG SET MAX_QUEUED_QUERIES 500
+```
+
+### Default
+
+`NODE_CREATION_BUFFER` is 16,384 by default.
+
+### Minimum
+
+The minimum value for `NODE_CREATION_BUFFER` is 128. Values lower than this will be accepted as arguments, but will internally be converted to 128.
+
+### Example
+
+```
+$ redis-server --loadmodule ./redisgraph.so NODE_CREATION_BUFFER 200
 ```
 
 ---
@@ -104,13 +157,37 @@ $ redis-server --loadmodule ./redisgraph.so TIMEOUT 1000
 
 ---
 
+---
+
+## RESULTSET_SIZE
+
+Result set size is a limit on the number of records that should be returned by any query. This can be a valuable safeguard against incurring a heavy IO load while running queries with unknown results.
+
+### Default
+
+`RESULTSET_SIZE` is unlimited by default (negative config value).
+
+### Example
+
+```
+127.0.0.1:6379> GRAPH.CONFIG SET RESULTSET_SIZE 3
+OK
+127.0.0.1:6379> GRAPH.QUERY G "UNWIND range(1, 5) AS x RETURN x"
+1) 1) "x"
+2) 1) 1) (integer) 1
+   2) 1) (integer) 2
+   3) 1) (integer) 3
+3) 1) "Cached execution: 0"
+   2) "Query internal execution time: 0.445790 milliseconds"
+```
+
+---
+
 ## QUERY_MEM_CAPACITY
 
 Setting the memory capacity of a query allows the server to kill queries that are consuming too much memory and return with the error message `Query's mem consumption exceeded capacity`. This helps to avoid scenarios when the server becomes unresponsive due to an unbounded query exhausting system resources.
 
 The configuration argument is the maximum number of bytes that can be allocated by any single query.
-
-This configuration can be set when the module loads or at runtime.
 
 ### Default
 
@@ -124,37 +201,9 @@ $ redis-server --loadmodule ./redisgraph.so QUERY_MEM_CAPACITY 1048576 // 1 mega
 $ redis-cli GRAPH.CONFIG SET QUERY_MEM_CAPACITY 1048576
 ```
 
----
-
-## NODE_CREATION_BUFFER
-
-The node creation buffer is the number of new nodes that can be created without resizing matrices. For example, when set to 16,384, the matrices will have extra space for 16,384 nodes upon creation. Whenever the extra space is depleted, the matrices' size will increase by 16,384.
-
-Reducing this value will reduce memory consumption, but cause performance degradation due to the increased frequency of matrix resizes.
-
-Conversely, increasing it might improve performance for write-heavy workloads but will increase memory consumption.
-
-If the passed argument was not a power of 2, it will be rounded to the next-greatest power of 2 to improve memory alignment.
-
-This configuration can only be set when the module loads.
-
-### Default
-
-`NODE_CREATION_BUFFER` is 16,384 by default.
-
-### Minimum
-
-The minimum value for `NODE_CREATION_BUFFER` is 128. Values lower than this will be accepted as arguments, but will internally be converted to 128.
-
-### Example
-
-```
-$ redis-server --loadmodule ./redisgraph.so NODE_CREATION_BUFFER 200
-```
-
 # Query Configurations
 
-Some configurations may be set per query in the form of additional arguments after the query string. All per-query configurations are off by default unless using a language-specific client, which may establish its own defaults.
+The query timeout configuration may also be set per query in the form of additional arguments after the query string. This configuration is unset by default unless using a language-specific client, which may establish its own defaults.
 
 ## Query Timeout
 

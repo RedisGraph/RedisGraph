@@ -6,7 +6,7 @@ function s = sprintf (varargin)
 %
 % See also fprintf, sprintf, GrB/fprintf.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
 s = gb_printf_helper ('sprintf', varargin {:}) ;

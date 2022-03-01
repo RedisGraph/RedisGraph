@@ -2,7 +2,7 @@
 // gb_interface.h: definitions the SuiteSparse:GraphBLAS interface
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
@@ -73,7 +73,7 @@ void gbcov_put (void) ;
 {                                                           \
     if ((method) != GrB_SUCCESS)                            \
     {                                                       \
-        char *message ;                                     \
+        const char *message ;                               \
         GrB_Matrix_error (&message, C) ;                    \
         ERROR (message) ;                                   \
     }                                                       \
@@ -182,7 +182,7 @@ GrB_Matrix gb_get_deep      // return a deep GrB_Matrix copy of a built-in X
     const mxArray *X        // input built-in matrix (sparse or struct)
 ) ;
 
-GrB_Type gb_type_to_mxstring    // return the built-in string from a GrB_Type
+mxArray * gb_type_to_mxstring    // return the built-in string from a GrB_Type
 (
     const GrB_Type type
 ) ;
@@ -513,11 +513,11 @@ void gb_get_mxargs
     const mxArray *pargin [ ],  // input arguments for mexFunction
     const char *usage,          // usage to print, if too many args appear
     // output:
-    const mxArray *Matrix [4],  // matrix arguments
+    mxArray *Matrix [4],        // matrix arguments
     int *nmatrices,             // # of matrix arguments
-    const mxArray *String [2],  // string arguments
+    mxArray *String [2],        // string arguments
     int *nstrings,              // # of string arguments
-    const mxArray *Cell [2],    // cell array arguments
+    mxArray *Cell [2],          // cell array arguments
     int *ncells,                // # of cell array arguments
     GrB_Descriptor *desc,       // last argument is always the descriptor
     base_enum_t *base,          // desc.base
@@ -544,7 +544,7 @@ bool gb_is_integer (const GrB_Type type) ;
 
 bool gb_is_float (const GrB_Type type) ;
 
-GrB_BinaryOp gb_round_binop (const GrB_Type type) ;
+GrB_UnaryOp gb_round_op (const GrB_Type type) ;
 
 mxArray *gb_mxclass_to_mxstring (mxClassID class, bool is_complex) ;
 

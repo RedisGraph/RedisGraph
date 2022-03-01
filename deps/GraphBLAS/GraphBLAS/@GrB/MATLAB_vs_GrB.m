@@ -263,7 +263,7 @@
 %% For more details, see the GraphBLAS user guide in GraphBLAS/Doc.
 % See also GrB, sparse.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
 help GrB.MATLAB_vs_GrB ;

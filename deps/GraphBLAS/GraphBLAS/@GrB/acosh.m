@@ -6,7 +6,7 @@ function C = acosh (G)
 %
 % See also GrB/cos, GrB/acos, GrB/cosh.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
 G = G.opaque ;

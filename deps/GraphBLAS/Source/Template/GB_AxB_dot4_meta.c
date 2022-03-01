@@ -2,7 +2,7 @@
 // GB_AxB_dot4_meta:  C+=A'*B via dot products, where C is full
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -13,7 +13,10 @@
 
 // The matrix C is the user input matrix.  C is not iso on output, but might
 // iso on input, in which case the input iso scalar is cinput, and C->x has
-// been expanded but is not initialized.  A and/or B can be iso.
+// been expanded to non-iso.  If A and/or B are hypersparse, the iso value of C
+// has been expanded, so that C->x is initialized.  Otherwise, C->x is not
+// initialized.  Instead, each entry is initialized by the iso value in
+// the GB_GET4C(cij,p) macro.  A and/or B can be iso.
 
 #define GB_DOT4
 
@@ -41,6 +44,7 @@
     const int64_t  *restrict Bi = B->i ;
     const bool B_iso = B->iso ;
     const int64_t vlen = B->vlen ;
+    const int64_t bvdim = B->vdim ;
     const bool B_is_hyper = GB_IS_HYPERSPARSE (B) ;
     const bool B_is_bitmap = GB_IS_BITMAP (B) ;
     const bool B_is_sparse = GB_IS_SPARSE (B) ;
@@ -50,7 +54,9 @@
     const int64_t  *restrict Ah = A->h ;
     const int64_t  *restrict Ai = A->i ;
     const bool A_iso = A->iso ;
+    const int64_t avdim = A->vdim ;
     ASSERT (A->vlen == B->vlen) ;
+    ASSERT (A->vdim == C->vlen) ;
     const bool A_is_hyper = GB_IS_HYPERSPARSE (A) ;
     const bool A_is_bitmap = GB_IS_BITMAP (A) ;
     const bool A_is_sparse = GB_IS_SPARSE (A) ;
@@ -77,8 +83,9 @@
     const GB_CTYPE cinput = (C_in_iso) ? Cx [0] : GB_IDENTITY ;
     if (C_in_iso)
     { 
-        // allocate but do not initialize C->x
-        GrB_Info info = GB_convert_any_to_non_iso (C, false, Context) ;
+        // allocate but do not initialize C->x unless A or B are hypersparse
+        GrB_Info info = GB_convert_any_to_non_iso (C, A_is_hyper || B_is_hyper,
+            Context) ;
         if (info != GrB_SUCCESS)
         { 
             // out of memory

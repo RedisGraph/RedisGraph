@@ -35,11 +35,18 @@ bool GB_AxB_dot3_cuda_branch
 
         int ngpus_to_use = 1 ; //GB_ngpus_to_use (work) ;)
         GBURBLE (" work:%g gpus:%d ", work, ngpus_to_use) ;
-        if (ngpus_to_use > 0
+        if (
+            // FIXME: user control over # GPUs to use
+            ngpus_to_use > 0
+            // FIXME: FUTURE: user-defined types and operators
             && (semiring->header_size == 0)     // semiring is built-in
             && (A->type->code != GB_UDT_code)
             && (B->type->code != GB_UDT_code)
+            // FIXME: M could be hypersparse.  we should handle this
+            && !GB_IS_HYPERSPARSE (M)
+            // FIXME: this is easy
             && !A->iso && !B->iso
+            // FIXME:
             && !GB_IS_BITMAP (A) && !GB_IS_BITMAP (B))
         {
             return true;

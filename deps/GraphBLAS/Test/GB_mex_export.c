@@ -2,7 +2,7 @@
 // GB_mex_export: test import/export
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -18,11 +18,11 @@
 #define FREE_WORK                                               \
 {                                                               \
     GrB_Matrix_free_(&C) ;                                      \
-    if (Ap != NULL) mxFree (Ap) ; Ap = NULL ;     \
-    if (Ah != NULL) mxFree (Ah) ; Ah = NULL ;     \
-    if (Ai != NULL) mxFree (Ai) ; Ai = NULL ;     \
-    if (Aj != NULL) mxFree (Aj) ; Aj = NULL ;     \
-    if (Ax != NULL) mxFree (Ax) ; Ax = NULL ;     \
+    if (Ap != NULL) { mxFree (Ap) ; Ap = NULL ; }               \
+    if (Ah != NULL) { mxFree (Ah) ; Ah = NULL ; }               \
+    if (Ai != NULL) { mxFree (Ai) ; Ai = NULL ; }               \
+    if (Aj != NULL) { mxFree (Aj) ; Aj = NULL ; }               \
+    if (Ax != NULL) { mxFree (Ax) ; Ax = NULL ; }               \
 }
 
 #define FREE_ALL                                                \
@@ -87,7 +87,7 @@ GrB_Info import_export ( )
     if (GB_VECTOR_OK (C))
     {
         OK (GxB_Vector_export_CSC ((GrB_Vector *) (&C), &type, &nrows,
-            &Ai, &Ax, &Ai_size, &Ax_size, &iso,
+            &Ai, (void **) &Ax, &Ai_size, &Ax_size, &iso,
             &nvals, &jumbled, desc)) ;
 
         OK (GxB_Type_size (&asize, type)) ;
@@ -108,7 +108,7 @@ GrB_Info import_export ( )
         }
 
         OK (GxB_Vector_import_CSC ((GrB_Vector *) (&C), type, nrows,
-            &Ai, &Ax, Ai_size, Ax_size, iso, nvals, jumbled, desc)) ;
+            &Ai, (void **) &Ax, Ai_size, Ax_size, iso, nvals, jumbled, desc)) ;
 
         return (GrB_SUCCESS) ;
     }
@@ -125,7 +125,7 @@ GrB_Info import_export ( )
         //----------------------------------------------------------------------
 
             OK (GxB_Matrix_export_CSR (&C, &type, &nrows, &ncols,
-                    &Ap, &Aj, &Ax, &Ap_size, &Aj_size, &Ax_size, &iso,
+                    &Ap, &Aj, (void **) &Ax, &Ap_size, &Aj_size, &Ax_size, &iso,
                     &jumbled, desc)) ;
 
             OK (GxB_Type_size (&asize, type)) ;
@@ -152,7 +152,7 @@ GrB_Info import_export ( )
             }
 
             OK (GxB_Matrix_import_CSR (&C, type, nrows, ncols,
-                &Ap, &Aj, &Ax, Ap_size, Aj_size, Ax_size, iso,
+                &Ap, &Aj, (void **) &Ax, Ap_size, Aj_size, Ax_size, iso,
                 jumbled, desc)) ;
 
             OK (GB_Matrix_check (C, "C reimported",
@@ -164,7 +164,7 @@ GrB_Info import_export ( )
         //----------------------------------------------------------------------
 
             OK (GxB_Matrix_export_CSC (&C, &type, &nrows, &ncols,
-                    &Ap, &Ai, &Ax, &Ap_size, &Ai_size, &Ax_size, &iso,
+                    &Ap, &Ai, (void **) &Ax, &Ap_size, &Ai_size, &Ax_size, &iso,
                     &jumbled, desc)) ;
 
             nvec = ncols ;
@@ -191,7 +191,7 @@ GrB_Info import_export ( )
             }
 
             OK (GxB_Matrix_import_CSC (&C, type, nrows, ncols,
-                &Ap, &Ai, &Ax, Ap_size, Ai_size, Ax_size, iso,
+                &Ap, &Ai, (void **) &Ax, Ap_size, Ai_size, Ax_size, iso,
                 jumbled, desc)) ;
 
             OK (GB_Matrix_check (C, "C reimported",
@@ -203,7 +203,7 @@ GrB_Info import_export ( )
         //----------------------------------------------------------------------
 
             OK (GxB_Matrix_export_HyperCSR (&C, &type, &nrows, &ncols,
-                &Ap, &Ah, &Aj, &Ax,
+                &Ap, &Ah, &Aj, (void **) &Ax,
                 &Ap_size, &Ah_size, &Aj_size, &Ax_size, &iso,
                 &nvec, &jumbled, desc)) ;
 
@@ -231,7 +231,7 @@ GrB_Info import_export ( )
             }
 
             OK (GxB_Matrix_import_HyperCSR (&C, type, nrows, ncols,
-                &Ap, &Ah, &Aj, &Ax,
+                &Ap, &Ah, &Aj, (void **) &Ax,
                 Ap_size, Ah_size, Aj_size, Ax_size, iso,
                 nvec, jumbled, desc)) ;
 
@@ -244,7 +244,7 @@ GrB_Info import_export ( )
         //----------------------------------------------------------------------
 
             OK (GxB_Matrix_export_HyperCSC (&C, &type, &nrows, &ncols,
-                &Ap, &Ah, &Ai, &Ax,
+                &Ap, &Ah, &Ai, (void **) &Ax,
                 &Ap_size, &Ah_size, &Ai_size, &Ax_size, &iso,
                 &nvec, &jumbled, desc)) ;
 
@@ -272,7 +272,7 @@ GrB_Info import_export ( )
             }
 
             OK (GxB_Matrix_import_HyperCSC (&C, type, nrows, ncols,
-                &Ap, &Ah, &Ai, &Ax,
+                &Ap, &Ah, &Ai, (void **) &Ax,
                 Ap_size, Ah_size, Ai_size, Ax_size, iso,
                 nvec, jumbled, desc)) ;
 
