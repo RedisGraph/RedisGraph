@@ -375,3 +375,25 @@ class testComprehensionFunctions(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected_result = [[[[1, 1]]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Clear data
+        redis_con = self.env.getConnection()
+        redis_con.flushall()
+
+        # Create data
+        redis_graph.query("UNWIND range(1, 10) AS x CREATE (:N{v:x})")
+
+        query = """MATCH p=(n) RETURN [n in nodes(p) | [n in range(1, n.v) | n]]"""
+        actual_result = redis_graph.query(query)
+        expected_result = [
+            [[[1]]],
+            [[[1, 2]]],
+            [[[1, 2, 3]]],
+            [[[1, 2, 3, 4]]],
+            [[[1, 2, 3, 4, 5]]],
+            [[[1, 2, 3, 4, 5, 6]]],
+            [[[1, 2, 3, 4, 5, 6, 7]]],
+            [[[1, 2, 3, 4, 5, 6, 7, 8]]],
+            [[[1, 2, 3, 4, 5, 6, 7, 8, 9]]],
+            [[[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]] ]
+        self.env.assertEquals(actual_result.result_set, expected_result)
