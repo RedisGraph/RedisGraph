@@ -371,7 +371,8 @@ class testComprehensionFunctions(FlowTestsBase):
 
     def test19_variable_redefinition(self):
         # Use a list comprehension's variable in two different contexts
-        query = """MATCH p=(a {val: 'v3'}) RETURN [x IN nodes(p) | [elem IN range(3, 4) | size(({val: 'v2'})-[]->(x))]]"""
+        # The shared variable is x
+        query = """MATCH x=(a {val: 'v3'}) RETURN [x IN nodes(x) | [elem IN range(1, 2) | size(({val: 'v2'})-[]->(x))]]"""
         actual_result = redis_graph.query(query)
         expected_result = [[[[1, 1]]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
@@ -380,9 +381,11 @@ class testComprehensionFunctions(FlowTestsBase):
         redis_con = self.env.getConnection()
         redis_con.flushall()
 
-        # Create data
+        # Create 10 nodes with incremental v attribute
         redis_graph.query("UNWIND range(1, 10) AS x CREATE (:N{v:x})")
 
+        # Validate n used correctly in each scope
+        # Iterate each node create an array with v values from 1 to v
         query = """MATCH p=(n) RETURN [n in nodes(p) | [n in range(1, n.v) | n]]"""
         actual_result = redis_graph.query(query)
         expected_result = [
