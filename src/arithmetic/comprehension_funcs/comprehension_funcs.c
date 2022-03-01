@@ -57,14 +57,8 @@ void *ListComprehension_Clone(void *orig) {
 static void _PopulateComprehensionCtx(ListComprehensionCtx *ctx, Record outer_record) {
 	rax *local_record_map = raxClone(outer_record->mapping);
 	intptr_t id = raxSize(local_record_map);
-	int rc = raxTryInsert(local_record_map, (unsigned char *)ctx->variable_str,
+	raxTryInsert(local_record_map, (unsigned char *)ctx->variable_str,
 						  strlen(ctx->variable_str), (void *)id, NULL);
-	if(rc == 0) {
-		// The local variable's name shadows an outer variable, emit an error.
-		ErrorCtx_RaiseRuntimeException("Variable '%s' redefined inside of list comprehension",
-						  (unsigned char *)ctx->variable_str);
-	}
-
 	ctx->local_record = Record_New(local_record_map);
 
 	// This could just be assigned to 'id', but for safety we'll use a Record lookup.
