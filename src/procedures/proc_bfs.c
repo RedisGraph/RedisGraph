@@ -165,16 +165,18 @@ static SIValue *Proc_BFS_Step
 	// setup result iterator
 	NodeID               id;
 	GrB_Info             res;
-	bool                 depleted;
-	GxB_MatrixTupleIter  iter;
+	GxB_Iterator         iter;
 
 	UNUSED(res);
-	res = GxB_MatrixTupleIter_reuse(&iter, (GrB_Matrix)bfs_ctx->nodes);
+	res = GxB_Iterator_new(&iter);
 	ASSERT(res == GrB_SUCCESS);
-	res = GxB_MatrixTupleIter_next(&iter, NULL, &id, NULL, &depleted);
+	res = GxB_Vector_Iterator_attach(iter, bfs_ctx->nodes, NULL);
 	ASSERT(res == GrB_SUCCESS);
+	res = GxB_Vector_Iterator_seek(iter, 0);
 
-	while(!depleted) {
+	while(res == GrB_SUCCESS) {
+		id = GxB_Vector_Iterator_getIndex(iter);
+
 		// get the reached node
 		if(yield_nodes) {
 			// append each reachable node to the nodes output array
@@ -183,8 +185,8 @@ static SIValue *Proc_BFS_Step
 			SIArray_Append(&nodes, SI_Node(&n));
 		}
 
-		array_clear(edge);
 		if(yield_edges) {
+			array_clear(edge);
 			GrB_Index parent_id;
 			// find the parent of the reached node
 			GrB_Info res = GrB_Vector_extractElement(&parent_id,
@@ -198,11 +200,12 @@ static SIValue *Proc_BFS_Step
 			SIArray_Append(&edges, SI_Edge(edge));
 		}
 
-		res = GxB_MatrixTupleIter_next(&iter, NULL, &id, NULL, &depleted);
-		ASSERT(res == GrB_SUCCESS);
+		res = GxB_Vector_Iterator_next(iter);
 	}
 
-	bfs_ctx->depleted = depleted;
+	GxB_Iterator_free(&iter);
+
+	bfs_ctx->depleted = true;
 
 	// populate output
 	if(yield_nodes) *bfs_ctx->yield_nodes = nodes;

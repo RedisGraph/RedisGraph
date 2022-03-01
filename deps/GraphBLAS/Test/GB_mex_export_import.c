@@ -2,7 +2,7 @@
 // GB_mex_export_import: export and then reimport a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -44,14 +44,14 @@
 
 #define USAGE "C = GB_mex_export_import (A, format_matrix, format_export, mode)"
 
-#define FREE_WORK                               \
-{                                               \
-    if (Cp != NULL) mxFree (Cp) ; Cp = NULL ;   \
-    if (Ch != NULL) mxFree (Ch) ; Ch = NULL ;   \
-    if (Cb != NULL) mxFree (Cb) ; Cb = NULL ;   \
-    if (Ci != NULL) mxFree (Ci) ; Ci = NULL ;   \
-    if (Cx != NULL) mxFree (Cx) ; Cx = NULL ;   \
-    GrB_Matrix_free_(&C) ;                      \
+#define FREE_WORK                                   \
+{                                                   \
+    if (Cp != NULL) { mxFree (Cp) ; Cp = NULL ; }   \
+    if (Ch != NULL) { mxFree (Ch) ; Ch = NULL ; }   \
+    if (Cb != NULL) { mxFree (Cb) ; Cb = NULL ; }   \
+    if (Ci != NULL) { mxFree (Ci) ; Ci = NULL ; }   \
+    if (Cx != NULL) { mxFree (Cx) ; Cx = NULL ; }   \
+    GrB_Matrix_free_(&C) ;                          \
 }
 
 #define FREE_ALL                                \
@@ -76,7 +76,7 @@ GrB_Descriptor desc = NULL ;
 GrB_Matrix A = NULL ;
 GrB_Matrix C = NULL ;
 GrB_Index *Cp = NULL, *Ch = NULL, *Ci = NULL, *Tp = NULL, *Ti = NULL ;
-GB_void *Cx = NULL, *Tx = NULL ;
+void *Cx = NULL, *Tx = NULL ;
 int8_t *Cb = NULL ;
 GB_Context Context = NULL ;
 GrB_Index nvec = 0, nvals = 0, nrows = 0, ncols = 0 ;
@@ -126,6 +126,7 @@ static GrB_Info GB_exporter (GrB_Index *Ap, GrB_Index *Ai, void *Ax,
         default             : ;
     }
     mexErrMsgTxt ("unknown type") ;
+    return (GrB_NOT_IMPLEMENTED) ;
 }
 
 //------------------------------------------------------------------------------
@@ -155,6 +156,7 @@ static GrB_Info GB_importer (GrB_Matrix *A, GrB_Type type, GrB_Index nrows,
         default             : ;
     }
     mexErrMsgTxt ("unknown type") ;
+    return (GrB_NOT_IMPLEMENTED) ;
 }
 
 //------------------------------------------------------------------------------

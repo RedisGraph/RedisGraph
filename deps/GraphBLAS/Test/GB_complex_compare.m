@@ -3,7 +3,7 @@ function GB_complex_compare (C1, C2, tol)
 %
 % compare two complex results, from GB_mex_op and GB_user_op
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 if (tol ~= 0)

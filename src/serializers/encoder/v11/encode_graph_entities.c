@@ -313,7 +313,10 @@ void RdbSaveEdges_v11
 	// already set to the next entry to fetch
 	// for previous edge encide or create new one
 	RG_MatrixTupleIter *iter = GraphEncodeContext_GetMatrixTupleIterator(gc->encoding_context);
-	if(!iter) RG_MatrixTupleIter_new(&iter, M);
+	if(!RG_MatrixTupleIter_is_attached(iter, M)) {
+		info = RG_MatrixTupleIter_attach(iter, M);
+		ASSERT(info == GrB_SUCCESS);
+	}
 
 	// first, see if the last edges encoding stopped at multiple edges array
 	EdgeID *multiple_edges_array = GraphEncodeContext_GetMultipleEdgesArray(gc->encoding_context);
@@ -341,16 +344,13 @@ void RdbSaveEdges_v11
 	while(encoded_edges < edges_to_encode) {
 		Edge e;
 		EdgeID edgeID;
-		bool depleted = false;
 
 		// try to get next tuple
-		info = RG_MatrixTupleIter_next(iter, &src, &dest, &edgeID, &depleted);
-		ASSERT(info == GrB_SUCCESS);
+		info = RG_MatrixTupleIter_next_UINT64(iter, &src, &dest, &edgeID);
+
 		// if iterator is depleted
 		// get new tuple from different matrix or finish encode
-		while(depleted && r < relation_count) {
-			depleted = false;
-
+		while(info == GxB_EXHAUSTED) {
 			// proceed to next relation matrix
 			r++;
 
@@ -359,11 +359,12 @@ void RdbSaveEdges_v11
 
 			// get matrix and set iterator
 			M = Graph_GetRelationMatrix(gc->g, r, false);
-			info = RG_MatrixTupleIter_reuse(iter, M);
+			info = RG_MatrixTupleIter_attach(iter, M);
 			ASSERT(info == GrB_SUCCESS);
-			info = RG_MatrixTupleIter_next(iter, &src, &dest, &edgeID, &depleted);
-			ASSERT(info == GrB_SUCCESS);
+			info = RG_MatrixTupleIter_next_UINT64(iter, &src, &dest, &edgeID);
 		}
+		
+		ASSERT(info == GrB_SUCCESS);
 
 		e.srcNodeID = src;
 		e.destNodeID = dest;
@@ -390,16 +391,11 @@ void RdbSaveEdges_v11
 finish:
 	// check if done encoding edges
 	if(offset + edges_to_encode == graph_edges) {
-		if(iter) {
-			RG_MatrixTupleIter_free(&iter);
-			iter = NULL;
-		}
+		RG_MatrixTupleIter_detach(iter);
 	}
 
 	// update context
 	GraphEncodeContext_SetCurrentRelationID(gc->encoding_context, r);
-	GraphEncodeContext_SetMatrixTupleIterator(gc->encoding_context, iter);
 	GraphEncodeContext_SetMutipleEdgesArray(gc->encoding_context, multiple_edges_array,
 											multiple_edges_current_index, src, dest);
 }
-

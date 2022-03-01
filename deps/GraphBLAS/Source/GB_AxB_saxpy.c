@@ -2,7 +2,7 @@
 // GB_AxB_saxpy: compute C=A*B, C<M>=A*B, or C<!M>=A*B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -39,7 +39,7 @@ GrB_Info GB_AxB_saxpy               // C = A*B using Gustavson/Hash/Bitmap
 
     GrB_Info info ;
     (*mask_applied) = false ;
-    ASSERT (C != NULL && C->static_header) ;
+    ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
 
     ASSERT_MATRIX_OK_OR_NULL (M, "M for saxpy A*B", GB0) ;
     ASSERT (!GB_PENDING (M)) ;
@@ -86,30 +86,55 @@ GrB_Info GB_AxB_saxpy               // C = A*B using Gustavson/Hash/Bitmap
     }
 
     //--------------------------------------------------------------------------
-    // determine if saxpy4 can be used: C += A*B where C is full
+    // determine if saxpy4 or saxpy5 can be used: C += A*B where C is full
     //--------------------------------------------------------------------------
 
-    if (!C_iso && C_in != NULL && GB_as_if_full (C_in) && M == NULL
-        && (accum != NULL)
-        && (accum == semiring->add->op) && (C_in->type == accum->ztype)
-        && (GB_IS_SPARSE (A) || GB_IS_HYPERSPARSE (A))
-        && (GB_IS_BITMAP (B) || GB_as_if_full (B)))
-    { 
-        // GB_AxB_saxpy4 computes C += A*B where C is as-is-full, no mask is
-        // present, accum is present and matches the monoid, no typecasting, A
-        // is sparse or hypersparse, and B is bitmap or as-if-full.  Only
-        // built-in semirings are supported, but not all: (1) the ANY monoid is
-        // not supported since it would be unusual to use ANY as the accum, and
-        // (2) only monoids that can be done atomically without a critical
-        // section are supported.  The method is not used if A*B is iso;
-        // C may be iso on input but it is non-iso on output.
-        info = GB_AxB_saxpy4 (C_in, A, B, semiring, flipxy, done_in_place,
-            Context) ;
-        if (info != GrB_NO_VALUE)
+    if (!C_iso                              // C must be non-iso on output
+        && C_in != NULL                     // GB_AxB_meta says it is OK
+        && GB_as_if_full (C_in)             // C must be "as if" full
+        && M == NULL                        // no mask present
+        && (accum != NULL)                  // accum is present
+        && (accum == semiring->add->op)     // accum is same as monoid
+        && (C_in->type == accum->ztype))    // no typecast from accum output
+    {
+        if ((GB_IS_SPARSE (A) || GB_IS_HYPERSPARSE (A))
+        &&  (GB_IS_BITMAP (B) || GB_as_if_full (B)))
         { 
-            // return if saxpy4 has handled this case, otherwise fall through
-            // to saxpy3, dot2, or bitmap_saxpy below.
-            return (info) ;
+            // GB_AxB_saxpy4 computes C += A*B where C is as-if-full, no mask
+            // is present, accum is present and matches the monoid, no
+            // typecasting, A is sparse or hypersparse, and B is bitmap or
+            // as-if-full.  Only built-in semirings are supported, but not all:
+            // (1) the ANY monoid is not supported since it would be unusual to
+            // use ANY as the accum, and (2) only monoids that can be done
+            // atomically without a critical section are supported.  The method
+            // is not used if A*B is iso; C may be iso on input but it is
+            // non-iso on output.
+            info = GB_AxB_saxpy4 (C_in, A, B, semiring, flipxy, done_in_place,
+                Context) ;
+            if (info != GrB_NO_VALUE)
+            { 
+                // return if saxpy4 has handled this case, otherwise fall
+                // through to saxpy3, dot2, or bitmap_saxpy below.
+                return (info) ;
+            }
+        }
+        else if ((GB_IS_BITMAP (A) || GB_as_if_full (A))
+             &&  (GB_IS_SPARSE (B) || GB_IS_HYPERSPARSE (B)))
+        {
+            // GB_AxB_saxpy5 computes C+=A*B where C is as-if-full, just like
+            // GB_AxB_saxpy4, except that the sparsity format of A and B are
+            // reversed.  A is bitmap or full, and B is sparse or hypersparse.
+            // Only built-in semirings are supported, except for the ANY
+            // monoid.  Unlike GB_AxB_saxpy4, built-in monoids without their
+            // own atomics (TIMES for complex) are supported.
+            info = GB_AxB_saxpy5 (C_in, A, B, semiring, flipxy, done_in_place,
+                Context) ;
+            if (info != GrB_NO_VALUE)
+            { 
+                // return if saxpy5 has handled this case, otherwise fall
+                // through to saxpy3, dot2, or bitmap_saxpy below.
+                return (info) ;
+            }
         }
     }
 
@@ -119,10 +144,11 @@ GrB_Info GB_AxB_saxpy               // C = A*B using Gustavson/Hash/Bitmap
 
     if (M == NULL)
     { 
-        GBURBLE ("(%s = %s*%s) ",
+        GBURBLE ("(%s = %s*%s, anz: %g bnz: %g) ",
             GB_sparsity_char (C_sparsity),
             GB_sparsity_char_matrix (A),
-            GB_sparsity_char_matrix (B)) ;
+            GB_sparsity_char_matrix (B),
+            (double) GB_nnz (A), (double) GB_nnz (B)) ;
     }
     else
     { 
@@ -150,7 +176,7 @@ GrB_Info GB_AxB_saxpy               // C = A*B using Gustavson/Hash/Bitmap
         GBURBLE ("(iso full saxpy) ") ;
         ASSERT (C_sparsity == GxB_FULL) ;
         // set C->iso = true    OK
-        info = GB_new_bix (&C, true,    // static header
+        info = GB_new_bix (&C, // existing header
             ztype, A->vlen, B->vdim, GB_Ap_null, true, GxB_FULL, false,
             GB_HYPER_SWITCH_DEFAULT, -1, 1, true, true, Context) ;
         if (info == GrB_SUCCESS)

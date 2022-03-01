@@ -2,7 +2,7 @@
 // GB_subassign_08s_and_16: C(I,J)<M or !M> += A ; using S
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -58,6 +58,7 @@ GrB_Info GB_subassign_08s_and_16
     //--------------------------------------------------------------------------
 
     GB_EMPTY_TASKLIST ;
+    GB_CLEAR_STATIC_HEADER (S, &S_header) ;
     GB_OK (GB_subassign_symbolic (S, C, I, ni, J, nj, true, Context)) ;
 
     //--------------------------------------------------------------------------

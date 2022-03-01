@@ -2,7 +2,7 @@
 // GrB_Monoid_new:  create a new monoid
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -12,6 +12,7 @@
 // same type.  No typecasting is done for the identity value.
 
 #include "GB.h"
+#include "GB_Monoid_new.h"
 
 #define GB_MONOID_NEW(prefix,type,T)                                        \
 GrB_Info GB_EVAL3 (prefix, _Monoid_new_, T) /* create a new monoid */       \

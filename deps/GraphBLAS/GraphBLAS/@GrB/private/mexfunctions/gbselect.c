@@ -2,7 +2,7 @@
 // gbselect: select entries from a GraphBLAS matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
@@ -317,49 +317,57 @@ void mexFunction
             if (idxunop == GrB_VALUEEQ_FP32 ||
                 selop == GxB_EQ_THUNK && atype == GrB_FP32)
             { 
-                OK (GrB_IndexUnaryOp_new (&nan_test, gb_isnan32,
+                OK (GrB_IndexUnaryOp_new (&nan_test,
+                    (GxB_index_unary_function) gb_isnan32,
                     GrB_BOOL, GrB_FP32, GrB_FP32)) ;
             }
             else if (idxunop == GrB_VALUEEQ_FP64 ||
                      selop == GxB_EQ_THUNK && atype == GrB_FP64)
             { 
-                OK (GrB_IndexUnaryOp_new (&nan_test, gb_isnan64,
+                OK (GrB_IndexUnaryOp_new (&nan_test,
+                    (GxB_index_unary_function) gb_isnan64,
                     GrB_BOOL, GrB_FP64, GrB_FP64)) ;
             }
             else if (idxunop == GxB_VALUEEQ_FC32 ||
                      selop == GxB_EQ_THUNK && atype == GxB_FC32)
             { 
-                OK (GrB_IndexUnaryOp_new (&nan_test, gb_isnanfc32,
+                OK (GrB_IndexUnaryOp_new (&nan_test,
+                    (GxB_index_unary_function) gb_isnanfc32,
                     GrB_BOOL, GxB_FC32, GxB_FC32)) ;
             }
             else if (idxunop == GxB_VALUEEQ_FC64 ||
                      selop == GxB_EQ_THUNK && atype == GxB_FC64)
             { 
-                OK (GrB_IndexUnaryOp_new (&nan_test, gb_isnanfc64,
+                OK (GrB_IndexUnaryOp_new (&nan_test,
+                    (GxB_index_unary_function) gb_isnanfc64,
                     GrB_BOOL, GxB_FC64, GxB_FC64)) ;
             }
             else if (idxunop == GrB_VALUENE_FP32 ||
                      selop == GxB_NE_THUNK && atype == GrB_FP32)
             { 
-                OK (GrB_IndexUnaryOp_new (&nan_test, gb_isnotnan32,
+                OK (GrB_IndexUnaryOp_new (&nan_test,
+                    (GxB_index_unary_function) gb_isnotnan32,
                     GrB_BOOL, GrB_FP32, GrB_FP32)) ;
             }
             else if (idxunop == GrB_VALUENE_FP64 ||
                      selop == GxB_NE_THUNK && atype == GrB_FP64)
             { 
-                OK (GrB_IndexUnaryOp_new (&nan_test, gb_isnotnan64,
+                OK (GrB_IndexUnaryOp_new (&nan_test,
+                    (GxB_index_unary_function) gb_isnotnan64,
                     GrB_BOOL, GrB_FP64, GrB_FP64)) ;
             }
             else if (idxunop == GxB_VALUENE_FC32 ||
                      selop == GxB_NE_THUNK && atype == GxB_FC32)
             { 
-                OK (GrB_IndexUnaryOp_new (&nan_test, gb_isnotnanfc32,
+                OK (GrB_IndexUnaryOp_new (&nan_test,
+                    (GxB_index_unary_function) gb_isnotnanfc32,
                     GrB_BOOL, GxB_FC32, GxB_FC32)) ;
             }
             else if (idxunop == GxB_VALUENE_FC64 ||
                      selop == GxB_NE_THUNK && atype == GxB_FC64)
             { 
-                OK (GrB_IndexUnaryOp_new (&nan_test, gb_isnotnanfc64,
+                OK (GrB_IndexUnaryOp_new (&nan_test,
+                    (GxB_index_unary_function) gb_isnotnanfc64,
                     GrB_BOOL, GxB_FC64, GxB_FC64)) ;
             }
         }

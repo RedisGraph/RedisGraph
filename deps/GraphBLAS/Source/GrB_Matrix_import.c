@@ -2,7 +2,7 @@
 // GrB_Matrix_import: import a matrix in CSR, CSC, FullC, FullR, or COO format
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -135,13 +135,13 @@ static GrB_Info GB_import_worker   // import a matrix of any type
         case GrB_CSC_FORMAT : 
             Ap_copy = GB_MALLOC (plen,           GrB_Index, &Ap_size) ;
             Ai_copy = GB_MALLOC (nvals,          GrB_Index, &Ai_size) ;
-            Ax_copy = GB_MALLOC (nvals*typesize, GB_void,   &Ax_size) ;
+            Ax_copy = GB_MALLOC (nvals*typesize, GB_void,   &Ax_size) ; // x:OK
             ok = (Ap_copy != NULL && Ai_copy != NULL && Ax_copy != NULL) ;
             break ;
 
 //      case GrB_DENSE_ROW_FORMAT :
 //      case GrB_DENSE_COL_FORMAT :
-//          Ax_copy = GB_MALLOC (nvals*typesize, GB_void,   &Ax_size) ;
+//          Ax_copy = GB_MALLOC (nvals*typesize, GB_void,   &Ax_size) ; // x:OK
 //          ok = (Ax_copy != NULL) ;
 //          break ;
 
@@ -266,8 +266,8 @@ static GrB_Info GB_import_worker   // import a matrix of any type
                 int64_t vdim = is_csc ? ncols : nrows ;
 
                 // allocate the header for A
-                GB_OK (GB_new (A, false, type,  // new header
-                    vlen, vdim, GB_Ap_null, is_csc, GxB_AUTO_SPARSITY,
+                GB_OK (GB_new (A, // new header
+                    type, vlen, vdim, GB_Ap_null, is_csc, GxB_AUTO_SPARSITY,
                     GB_Global_hyper_switch_get ( ), 0, Context)) ;
 
                 // build A from the input triplets

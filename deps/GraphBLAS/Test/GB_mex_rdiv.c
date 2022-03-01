@@ -2,7 +2,7 @@
 // GB_mex_rdiv: compute C=A*B with the rdiv operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -56,13 +56,10 @@ void my_rdiv (double *z, const double *x, const double *y)
 GrB_Info axb (GB_Context Context, bool cprint)
 {
     // create the rdiv operator
-    info = GrB_BinaryOp_new (&My_rdiv, my_rdiv, GrB_FP64, GrB_FP64, GrB_FP64) ;
+    info = GrB_BinaryOp_new (&My_rdiv,
+        (GxB_binary_function) my_rdiv, GrB_FP64, GrB_FP64, GrB_FP64) ;
     if (info != GrB_SUCCESS) return (info) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    GrB_BinaryOp_wait_(&My_rdiv) ;
-    #else
     GrB_BinaryOp_wait_(My_rdiv, GrB_MATERIALIZE) ;
-    #endif
     if (info != GrB_SUCCESS) return (info) ;
     info = GrB_Semiring_new (&My_plus_rdiv, GxB_PLUS_FP64_MONOID, My_rdiv) ;
     if (info != GrB_SUCCESS)

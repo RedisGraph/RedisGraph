@@ -2,7 +2,7 @@ function C = gb_min1 (op, A)
 %GB_MIN1 single-input min
 % Implements C = min (A)
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
 [m, n] = gbsize (A) ;

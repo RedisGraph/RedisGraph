@@ -19,7 +19,7 @@
 
 //  Blocksize is 1024, uses warp and block reductions to count zombies produced.
 //******************************************************************************
-#define GB_KERNEL
+#define GB_CUDA_KERNEL
 #include <limits>
 #include <cstdint>
 #include <stdio.h>

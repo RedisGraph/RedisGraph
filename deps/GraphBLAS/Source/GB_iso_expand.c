@@ -2,12 +2,13 @@
 // GB_iso_expand: expand a scalar into an entire array
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 #include "GB.h"
+#include "GB_is_nonzero.h"
 
 void GB_iso_expand          // expand an iso scalar into an entire array
 (
@@ -24,86 +25,103 @@ void GB_iso_expand          // expand an iso scalar into an entire array
     //--------------------------------------------------------------------------
 
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
-    int nthreads = GB_nthreads (n, chunk, nthreads_max) ;
 
     //--------------------------------------------------------------------------
-    // copy the value into X
+    // copy the scalar into X
     //--------------------------------------------------------------------------
 
-    int64_t p ;
-    switch (size)
+    if (GB_is_nonzero (scalar, size))
     {
 
-        case GB_1BYTE : // bool, uint8, int8, and UDT of size 1
-        {
-            uint8_t a0 = (*((uint8_t *) scalar)) ;
-            uint8_t *restrict Z = (uint8_t *) X ;
-            #pragma omp parallel for num_threads(nthreads) schedule(static)
-            for (p = 0 ; p < n ; p++)
-            {
-                Z [p] = a0 ;
-            }
-        }
-        break ;
+        //----------------------------------------------------------------------
+        // the scalar is nonzero
+        //----------------------------------------------------------------------
 
-        case GB_2BYTE : // uint16, int16, and UDT of size 2
+        int64_t p ;
+        int nthreads = GB_nthreads (n, chunk, nthreads_max) ;
+        switch (size)
         {
-            uint16_t a0 = (*((uint16_t *) scalar)) ;
-            uint16_t *restrict Z = (uint16_t *) X ;
-            #pragma omp parallel for num_threads(nthreads) schedule(static)
-            for (p = 0 ; p < n ; p++)
-            {
-                Z [p] = a0 ;
-            }
-        }
-        break ;
 
-        case GB_4BYTE : // uint32, int32, float, and UDT of size 4
-        {
-            uint32_t a0 = (*((uint32_t *) scalar)) ;
-            uint32_t *restrict Z = (uint32_t *) X ;
-            #pragma omp parallel for num_threads(nthreads) schedule(static)
-            for (p = 0 ; p < n ; p++)
+            case GB_1BYTE : // bool, uint8, int8, and UDT of size 1
             {
-                Z [p] = a0 ;
+                uint8_t a0 = (*((uint8_t *) scalar)) ;
+                uint8_t *restrict Z = (uint8_t *) X ;
+                #pragma omp parallel for num_threads(nthreads) schedule(static)
+                for (p = 0 ; p < n ; p++)
+                {
+                    Z [p] = a0 ;
+                }
             }
-        }
-        break ;
+            break ;
 
-        case GB_8BYTE : // uint64, int64, double, float complex, UDT size 8
-        {
-            uint64_t a0 = (*((uint64_t *) scalar)) ;
-            uint64_t *restrict Z = (uint64_t *) X ;
-            #pragma omp parallel for num_threads(nthreads) schedule(static)
-            for (p = 0 ; p < n ; p++)
+            case GB_2BYTE : // uint16, int16, and UDT of size 2
             {
-                Z [p] = a0 ;
+                uint16_t a0 = (*((uint16_t *) scalar)) ;
+                uint16_t *restrict Z = (uint16_t *) X ;
+                #pragma omp parallel for num_threads(nthreads) schedule(static)
+                for (p = 0 ; p < n ; p++)
+                {
+                    Z [p] = a0 ;
+                }
             }
-        }
-        break ;
+            break ;
 
-        case GB_16BYTE : // double complex, and UDT size 16
-        {
-            GB_blob16 a0 = (*((GB_blob16 *) scalar)) ;
-            GB_blob16 *restrict Z = (GB_blob16 *) X ;
-            #pragma omp parallel for num_threads(nthreads) schedule(static)
-            for (p = 0 ; p < n ; p++)
+            case GB_4BYTE : // uint32, int32, float, and UDT of size 4
             {
-                Z [p] = a0 ;
+                uint32_t a0 = (*((uint32_t *) scalar)) ;
+                uint32_t *restrict Z = (uint32_t *) X ;
+                #pragma omp parallel for num_threads(nthreads) schedule(static)
+                for (p = 0 ; p < n ; p++)
+                {
+                    Z [p] = a0 ;
+                }
             }
-        }
-        break ;
+            break ;
 
-        default : // user-defined types of arbitrary size
-        {
-            GB_void *restrict Z = (GB_void *) X ;
-            #pragma omp parallel for num_threads(nthreads) schedule(static)
-            for (p = 0 ; p < n ; p++)
+            case GB_8BYTE : // uint64, int64, double, float complex, UDT size 8
             {
-                memcpy (Z + p*size, scalar, size) ;
+                uint64_t a0 = (*((uint64_t *) scalar)) ;
+                uint64_t *restrict Z = (uint64_t *) X ;
+                #pragma omp parallel for num_threads(nthreads) schedule(static)
+                for (p = 0 ; p < n ; p++)
+                {
+                    Z [p] = a0 ;
+                }
             }
+            break ;
+
+            case GB_16BYTE : // double complex, and UDT size 16
+            {
+                GB_blob16 a0 = (*((GB_blob16 *) scalar)) ;
+                GB_blob16 *restrict Z = (GB_blob16 *) X ;
+                #pragma omp parallel for num_threads(nthreads) schedule(static)
+                for (p = 0 ; p < n ; p++)
+                {
+                    Z [p] = a0 ;
+                }
+            }
+            break ;
+
+            default : // user-defined types of arbitrary size
+            {
+                GB_void *restrict Z = (GB_void *) X ;
+                #pragma omp parallel for num_threads(nthreads) schedule(static)
+                for (p = 0 ; p < n ; p++)
+                {
+                    memcpy (Z + p*size, scalar, size) ;
+                }
+            }
+            break ;
         }
-        break ;
+    }
+    else
+    {
+
+        //----------------------------------------------------------------------
+        // the scalar is zero: use memset
+        //----------------------------------------------------------------------
+
+        GB_memset (X, 0, n*size, nthreads_max) ;
     }
 }
 
