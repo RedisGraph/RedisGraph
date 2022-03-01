@@ -2,7 +2,7 @@
 // GB_sel:  hard-coded functions for selection operators
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -63,6 +63,7 @@ void GB (_sel_phase1)
 { 
     GB_get_thunk
     GB_get_zxtypes
+    GB_setup
     #include "GB_select_phase1.c"
 }
 
@@ -92,6 +93,7 @@ void GB (_sel_phase2)
 { 
     GB_get_thunk
     GB_get_zxtypes
+    GB_setup
     #include "GB_select_phase2.c"
 }
 
@@ -119,6 +121,7 @@ void GB (_sel_bitmap)
 { 
     GB_get_thunk
     GB_get_zxtypes
+    GB_setup
     #include "GB_bitmap_select_template.c"
 }
 

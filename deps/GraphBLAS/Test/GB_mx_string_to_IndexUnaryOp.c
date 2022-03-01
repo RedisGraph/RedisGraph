@@ -1,8 +1,8 @@
 //------------------------------------------------------------------------------
-// GB_mx_string_to_IndexUnaryOp.c: get a GraphBLAS operator from built-in strings
+// GB_mx_string_to_IndexUnaryOp.c: get GraphBLAS operator from built-in strings
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------

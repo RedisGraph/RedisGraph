@@ -2,7 +2,7 @@
 // GB_serialize_method: parse the compression method
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -13,7 +13,6 @@
 void GB_serialize_method
 (
     // output
-    bool *intel,                    // if true, use Intel IPPS (if available)
     int32_t *algo,                  // algorithm to use
     int32_t *level,                 // compression level
     // input
@@ -24,19 +23,9 @@ void GB_serialize_method
     if (method < 0)
     { 
         // no compression if method is negative
-        (*intel) = false ;
         (*algo) = GxB_COMPRESSION_NONE ;
         (*level) = 0 ;
         return ;
-    }
-
-    // determine if the Intel IPPS versions should be used
-    (*intel) = false ;
-    if (method >= GxB_COMPRESSION_INTEL)
-    {
-        // uncomment this line when the Intel IPPS methods are used
-//      (*intel) = true ;
-        method = method % GxB_COMPRESSION_INTEL ;
     }
 
     // Determine the algorithm and level.  Lower levels give faster compression
@@ -52,7 +41,6 @@ void GB_serialize_method
 
         default : 
             (*algo) = GxB_COMPRESSION_LZ4 ; 
-            (*intel) = false ;
             (*level) = 0 ;              // level is ignored
             break ;
 

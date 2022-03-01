@@ -11,7 +11,7 @@ function C = le (A, B)
 % B scalar, A matrix:  C is full if B>=0, otherwise C is a subset of A.
 % A matrix, B matrix:  C is full.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
 if (isobject (A))

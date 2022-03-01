@@ -2,7 +2,7 @@
 // GB_extract: C<M> = accum(C,A(I,J))
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -17,11 +17,11 @@
 //      C<M> = accum (C, A(Rows,Cols) )
 //      C<M> = accum (C, A(Cols,Rows)')
 
+#define GB_FREE_ALL GrB_Matrix_free (&T) ;
+
 #include "GB_extract.h"
 #include "GB_subref.h"
 #include "GB_accum_mask.h"
-
-#define GB_FREE_ALL ;
 
 GrB_Info GB_extract                 // C<M> = accum (C, A(I,J))
 (
@@ -48,6 +48,8 @@ GrB_Info GB_extract                 // C<M> = accum (C, A(I,J))
     // C may be aliased with M and/or A
 
     GrB_Info info ;
+    struct GB_Matrix_opaque T_header ;
+    GrB_Matrix T = NULL ;
     GB_RETURN_IF_NULL (Rows) ;
     GB_RETURN_IF_NULL (Cols) ;
     GB_RETURN_IF_FAULTY_OR_POSITIONAL (accum) ;
@@ -160,8 +162,7 @@ GrB_Info GB_extract                 // C<M> = accum (C, A(I,J))
 
     // TODO::: iso:  if accum is PAIR, extract T as iso
 
-    struct GB_Matrix_opaque T_header ;
-    GrB_Matrix T = GB_clear_static_header (&T_header) ;
+    GB_CLEAR_STATIC_HEADER (T, &T_header) ;
     GB_OK (GB_subref (T, false, T_is_csc, A, I, ni, J, nj, false, Context)) ;
     ASSERT_MATRIX_OK (T, "T extracted", GB0) ;
     ASSERT (GB_JUMBLED_OK (T)) ;

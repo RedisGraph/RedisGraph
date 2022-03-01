@@ -2,17 +2,21 @@
 // GB_Matrix_diag: construct a diagonal matrix from a vector
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 #define GB_FREE_WORKSPACE   \
-    GB_phbix_free (T) ;
+{                           \
+    GB_Matrix_free (&T) ;   \
+}
 
 #define GB_FREE_ALL         \
+{                           \
     GB_FREE_WORKSPACE ;     \
-    GB_phbix_free (C) ;
+    GB_phbix_free (C) ;     \
+}
 
 #include "GB_diag.h"
 
@@ -37,7 +41,7 @@ GrB_Info GB_Matrix_diag     // construct a diagonal matrix from a vector
     ASSERT (!GB_IS_HYPERSPARSE (V_in)) ; // vectors cannot be hypersparse
 
     struct GB_Matrix_opaque T_header ;
-    GrB_Matrix T = GB_clear_static_header (&T_header) ;
+    GrB_Matrix T = NULL ;
 
     GrB_Type ctype = C->type ;
     GrB_Type vtype = V_in->type ;
@@ -75,6 +79,7 @@ GrB_Info GB_Matrix_diag     // construct a diagonal matrix from a vector
     { 
         // make a deep copy of V_in and convert to CSC
         // set T->iso = V_in->iso   OK
+        GB_CLEAR_STATIC_HEADER (T, &T_header) ;
         GB_OK (GB_dup_worker (&T, V_in->iso, V_in, true, NULL, Context)) ;
         GB_OK (GB_convert_bitmap_to_sparse (T, Context)) ;
         V = T ;
@@ -103,7 +108,7 @@ GrB_Info GB_Matrix_diag     // construct a diagonal matrix from a vector
     const int sparsity_control = C->sparsity_control ;
 
     // set C->iso = C_iso   OK
-    GB_OK (GB_new_bix (&C, C->static_header,   // prior static or dynamic header
+    GB_OK (GB_new_bix (&C, // existing header
         ctype, n, n, GB_Ap_malloc, csc, C_sparsity, false,
         C->hyper_switch, vnz, vnz, true, C_iso, Context)) ;
     C->sparsity_control = sparsity_control ;

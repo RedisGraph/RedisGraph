@@ -68,7 +68,7 @@ JIT_TEMP := $(patsubst %.cu, %.cu.jit, $(TEMPLATES))
 %.cu: %.cutmp
 	cp $? $@
 
-%.cu.jit: %.cu
+%.cu.jit: %.cu 
 	./stringify $? > $@
 
 stringify: stringify.cpp

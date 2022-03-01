@@ -1,7 +1,7 @@
 function test07b
 %TEST07B test GrB_assign with a single pending tuple
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 % adds a single pending tuple

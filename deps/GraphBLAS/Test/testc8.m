@@ -1,7 +1,7 @@
 function testc8
 %TESTC8 test complex eWiseAdd and eWiseMult
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 fprintf ('testc8: test complex eWiseAdd and eWiseMult\n') ;

@@ -8,7 +8,6 @@ int main()
     init_size = 256*(1ULL<<10);
     max_size  = 256*(1ULL<<20);
 
-    rmm_wrap_create_handle();
     //printf(" pool init size %ld, max size %ld\n", init_size, max_size);
     rmm_wrap_initialize( rmm_wrap_managed, init_size, max_size );
     printf("RMM initialized!  in managed mode\n");
@@ -22,10 +21,9 @@ int main()
     printf(" actually allocated  %ld\n", buff_size);
     fflush(stdout);
     rmm_wrap_deallocate( p, buff_size);
-    rmm_wrap_destroy_handle();
+    rmm_wrap_finalize();
 
 
-    rmm_wrap_create_handle();
     rmm_wrap_initialize( rmm_wrap_device, init_size, max_size );
     printf("RMM initialized!  in device mode\n");
 
@@ -36,7 +34,7 @@ int main()
     printf(" actually allocated  %ld\n", buff_size);
     fflush(stdout);
     rmm_wrap_deallocate( p, buff_size);
-    rmm_wrap_destroy_handle();
+    rmm_wrap_finalize();
 
 
 }
