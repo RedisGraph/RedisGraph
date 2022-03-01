@@ -474,3 +474,10 @@ class testFunctionCallsFlow(FlowTestsBase):
         # Test trying to retrieve keys of an invalid type
         query = """WITH 10 AS map RETURN keys(map)"""
         self.expect_type_error(query)
+
+    def test21_distinct_memory_management(self):
+        # validate behavior of the DISTINCT function with allocated values
+        query = """MATCH (a {val: 0}) RETURN collect(DISTINCT a { .name })"""
+        actual_result = graph.query(query)
+        expected_result = [[[{'name': 'Roi'}]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)

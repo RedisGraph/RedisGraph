@@ -1,7 +1,7 @@
 function test16
 %TEST16 test user-defined complex type (runs all testc*.m)
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 % all complex matrix tests

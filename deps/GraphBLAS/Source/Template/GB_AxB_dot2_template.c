@@ -2,7 +2,7 @@
 // GB_AxB_dot2_template:  C=A'B, C<!M>=A'*B, or C<M>=A'*B via dot products
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -165,13 +165,13 @@
                     //----------------------------------------------------------
 
                     #if GB_A_IS_SPARSE
-                    // A is sparse
-                    int64_t pA = Ap [i] ;
-                    const int64_t pA_end = Ap [i+1] ;
-                    const int64_t ainz = pA_end - pA ;
-                    #if (!GB_C_IS_FULL)
-                    if (ainz > 0)       // skip this test if C is full
-                    #endif
+                        // A is sparse
+                        int64_t pA = Ap [i] ;
+                        const int64_t pA_end = Ap [i+1] ;
+                        const int64_t ainz = pA_end - pA ;
+                        #if (!GB_C_IS_FULL)
+                        if (ainz > 0)       // skip this test if C is full
+                        #endif
                     #else
                         // A is bitmap or full
                         #ifdef GB_A_NOT_TRANSPOSED

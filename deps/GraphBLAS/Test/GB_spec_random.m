@@ -11,7 +11,7 @@ function A = GB_spec_random (m, n, d, scale, type, is_csc,is_hyper,hyper_switch)
 % is_csc: true for CSC, false for CSR; defaults to true
 % is_hyper: false for non-hypersparse, true for hypersparse, default false
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 if (nargin < 1)

@@ -2,7 +2,7 @@
 // GB_mask: apply a mask: C<M> = Z
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -20,8 +20,6 @@
 // comments, C(i,j) is shorthand for the index i in the jth vector, and
 // likewise for M, Z, and R.  If the matrices are all CSC, then this is row i
 // and column j.  If the matrices are all CSR, then it is row j and column i.
-
-#include "GB_mask.h"
 
 /*
 
@@ -112,9 +110,11 @@
 #define GB_FREE_ALL                     \
 {                                       \
     GB_Matrix_free (Zhandle) ;          \
-    GB_phbix_free (C0) ;       \
-    GB_phbix_free (R) ;               \
+    GB_Matrix_free (&C0) ;              \
+    GB_Matrix_free (&R) ;               \
 }
+
+#include "GB_mask.h"
 
 //------------------------------------------------------------------------------
 
@@ -167,12 +167,8 @@ GrB_Info GB_mask                // C<M> = Z
     ASSERT_OK (GB_Mask_compatible (M, Mask_struct, C_result, 0, 0, Context)) ;
 
     GrB_Info info = GrB_SUCCESS ;
-
-    GrB_Matrix C = NULL ;
-
+    GrB_Matrix C = NULL, C0 = NULL, R = NULL ;
     struct GB_Matrix_opaque C0_header, R_header ;
-    GrB_Matrix C0 = GB_clear_static_header (&C0_header) ;
-    GrB_Matrix R  = GB_clear_static_header (&R_header) ;
 
     //--------------------------------------------------------------------------
     // apply the mask
@@ -270,12 +266,13 @@ GrB_Info GB_mask                // C<M> = Z
                 // C_result is left unchanged since changing it would change M.
                 // The C0 matrix is created as hypersparse.
                 // set C0->iso = false  OK
-                GB_OK (GB_new_bix (&C0, true, // sparse or hyper, static header
+                GB_CLEAR_STATIC_HEADER (C0, &C0_header) ;
+                GB_OK (GB_new_bix (&C0, // sparse or hyper, existing header
                     C_result->type, vlen, vdim, GB_Ap_calloc, R_is_csc,
                     GxB_HYPERSPARSE, true, C_result->hyper_switch, 0, 0,
                     true, false, Context)) ;
                 C = C0 ;
-                ASSERT (C->static_header) ;
+                ASSERT (C->static_header || GBNSTATIC) ;
             }
             else
             { 
@@ -317,6 +314,7 @@ GrB_Info GB_mask                // C<M> = Z
         // R = masker (C, M, Z):  compute C<M>=Z, placing results in R
         //----------------------------------------------------------------------
 
+        GB_CLEAR_STATIC_HEADER (R, &R_header) ;
         GB_OK (GB_masker (R, R_is_csc, M, Mask_comp, Mask_struct, C, Z,
             Context)) ;
 
@@ -325,7 +323,7 @@ GrB_Info GB_mask                // C<M> = Z
         //----------------------------------------------------------------------
 
         GB_Matrix_free (Zhandle) ;
-        GB_phbix_free (C0) ;
+        GB_Matrix_free (&C0) ;
 
         //----------------------------------------------------------------------
         // transplant the result, conform, and free R

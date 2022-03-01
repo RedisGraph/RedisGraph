@@ -2,7 +2,7 @@
 // GB_AxB_dot2: compute C<#M>=A'*B, C is bitmap, or C<#M>=A*B (C bitmap/full)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -21,6 +21,14 @@
 // performance is not as good as it could be.  For large problems, C=(A')*B is
 // faster with the saxpy3 method, as compared to this method with C=A'*B.
 
+#define GB_FREE_ALL                         \
+{                                           \
+    GB_Matrix_free (&M2) ;                  \
+    GB_WERK_POP (M_ek_slicing, int64_t) ;   \
+    GB_WERK_POP (B_slice, int64_t) ;        \
+    GB_WERK_POP (A_slice, int64_t) ;        \
+}
+
 #include "GB_mxm.h"
 #include "GB_subref.h"
 #include "GB_ek_slice.h"
@@ -29,14 +37,6 @@
 #ifndef GBCOMPACT
 #include "GB_AxB__include2.h"
 #endif
-
-#define GB_FREE_ALL                         \
-{                                           \
-    GB_phbix_free (M2) ;                    \
-    GB_WERK_POP (M_ek_slicing, int64_t) ;   \
-    GB_WERK_POP (B_slice, int64_t) ;        \
-    GB_WERK_POP (A_slice, int64_t) ;        \
-}
 
 GB_PUBLIC
 GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
@@ -62,7 +62,7 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
 
     GrB_Info info ;
 
-    ASSERT (C != NULL && C->static_header) ;
+    ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
     ASSERT_MATRIX_OK_OR_NULL (M_in, "M for dot A'*B", GB0) ;
     ASSERT_MATRIX_OK (A_in, "A for dot A'*B", GB0) ;
     ASSERT_MATRIX_OK (B_in, "B for dot A'*B", GB0) ;
@@ -145,7 +145,7 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
     { 
         // M2 = M_in (Ah, Bh), where M2 has a static header
         // if Mask_struct then M2 is extracted as iso
-        M2 = GB_clear_static_header (&M2_header) ;
+        GB_CLEAR_STATIC_HEADER (M2, &M2_header) ;
         GB_OK (GB_subref (M2, Mask_struct, M_in->is_csc, M_in,
             (A_is_hyper) ? Ah : GrB_ALL, cvlen,
             (B_is_hyper) ? Bh : GrB_ALL, cvdim, false, Context)) ;
@@ -332,7 +332,7 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
     }
 
     // set C->iso = C_iso
-    GB_OK (GB_new_bix (&C, true, // bitmap/ful, static header
+    GB_OK (GB_new_bix (&C, // bitmap/full, existing header
         ctype, cvlen, cvdim, GB_Ap_malloc, true, C_sparsity,
         M_is_sparse_or_hyper, B->hyper_switch, cnvec, cnz, true, C_iso,
         Context)) ;

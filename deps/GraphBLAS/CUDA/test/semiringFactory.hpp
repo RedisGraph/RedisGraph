@@ -1,33 +1,33 @@
 // SPDX-License-Identifier: Apache-2.0
-
+#pragma once
 // Implementations of string callbacks
 #include <limits>
 #include <iostream>
 #include "GB_callback.hpp"
 
 // Define function pointer we will use later
-std::istream* (*file_callback)(std::string, std::iostream&);
+inline std::istream* (*file_callback)(std::string, std::iostream&);
 
 
-//Semi-ring callbacks
+////Semi-ring callbacks
+//
+//std::istream* semiring_plus_times_callback( std::string filename, std::iostream& tmp_stream);
+//
+//std::istream* semiring_min_plus_callback( std::string filename, std::iostream& tmp_stream);
+//
+//std::istream* semiring_max_plus_callback( std::string filename, std::iostream& tmp_stream);
+//
+//
+////Monoid callbacks
+//
+//std::istream* file_callback_plus(std::string filename, std::iostream& tmp_stream);
+//
+//std::istream* file_callback_max(std::string filename, std::iostream& tmp_stream);
+//
+//std::istream* file_callback_min(std::string filename, std::iostream& tmp_stream);
 
-std::istream* semiring_plus_times_callback( std::string filename, std::iostream& tmp_stream);
 
-std::istream* semiring_min_plus_callback( std::string filename, std::iostream& tmp_stream);
-
-std::istream* semiring_max_plus_callback( std::string filename, std::iostream& tmp_stream);
-
-
-//Monoid callbacks
-
-std::istream* file_callback_plus(std::string filename, std::iostream& tmp_stream);
-
-std::istream* file_callback_max(std::string filename, std::iostream& tmp_stream);
-
-std::istream* file_callback_min(std::string filename, std::iostream& tmp_stream);
-
-
-std::istream* semiring_plus_times_callback( std::string filename, 
+inline std::istream* semiring_plus_times_callback( std::string filename,
                                              std::iostream& tmp_stream)
 {
   if (filename == "mySemiRing.h") {
@@ -44,7 +44,7 @@ std::istream* semiring_plus_times_callback( std::string filename,
 
 }
 
-std::istream* semiring_min_plus_callback( std::string filename, 
+inline std::istream* semiring_min_plus_callback( std::string filename,
                                            std::iostream& tmp_stream)
 { // Define the identity and operations for the (MIN,PLUS) semi-ring. mul->+, add -> min
   if (filename == "mySemiRing.h") {
@@ -60,7 +60,7 @@ std::istream* semiring_min_plus_callback( std::string filename,
 
 }
 
-std::istream* semiring_max_plus_callback( std::string filename, 
+inline std::istream* semiring_max_plus_callback( std::string filename,
                                            std::iostream& tmp_stream)
 { // Define the identity and operations for the (MAX,PLUS) semi-ring. mul->+, add -> max
   if (filename == "mySemiRing.h") {
@@ -76,7 +76,7 @@ std::istream* semiring_max_plus_callback( std::string filename,
 
 }
 
-std::istream* file_callback_plus(std::string filename, std::iostream& tmp_stream) {
+inline std::istream* file_callback_plus(std::string filename, std::iostream& tmp_stream) {
   // User returns NULL or pointer to stream containing file source
   // Note: tmp_stream is provided for convenience
   if (filename == "myOp.h") {
@@ -91,7 +91,7 @@ std::istream* file_callback_plus(std::string filename, std::iostream& tmp_stream
   }
 }
 
-std::istream* file_callback_max(std::string filename, std::iostream& tmp_stream) {
+inline std::istream* file_callback_max(std::string filename, std::iostream& tmp_stream) {
   // User returns NULL or pointer to stream containing file source
   // Note: tmp_stream is provided for convenience
   if (filename == "myOp.h") {
@@ -108,7 +108,7 @@ std::istream* file_callback_max(std::string filename, std::iostream& tmp_stream)
   }
 }
 
-std::istream* file_callback_min(std::string filename, std::iostream& tmp_stream) {
+inline std::istream* file_callback_min(std::string filename, std::iostream& tmp_stream) {
   // User returns NULL or pointer to stream containing file source
   // Note: tmp_stream is provided for convenience
   if (filename == "myOp.h") {

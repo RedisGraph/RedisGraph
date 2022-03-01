@@ -2,7 +2,7 @@
 // GB_shallow_op:  create a shallow copy and apply a unary operator to a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -46,7 +46,7 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (C != NULL && C->static_header) ;
+    ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
     ASSERT_MATRIX_OK (A, "A for shallow_op", GB0) ;
     ASSERT_OP_OK (op, "unop/binop for shallow_op", GB0) ;
     ASSERT (!GB_ZOMBIES (A)) ;
@@ -93,7 +93,7 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
     // initialized the header for C, but do not allocate C->{p,h,b,i,x}
     // C has the exact same sparsity structure as A.
     GrB_Info info ;
-    info = GB_new (&C, true, // any sparsity, static header
+    info = GB_new (&C, // any sparsity, existing header
         ztype, A->vlen, A->vdim, GB_Ap_null, C_is_csc,
         GB_sparsity (A), A->hyper_switch, 0, Context) ;
     ASSERT (info == GrB_SUCCESS) ;
@@ -174,8 +174,9 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
     // apply the operator to the numerical values
     //--------------------------------------------------------------------------
 
-    // allocate new space for the numerical values of C
-    C->x = GB_XALLOC (C_iso, anz, C->type->size, &(C->x_size)) ;
+    // allocate new space for the numerical values of C; use calloc if bitmap
+    C->x = GB_XALLOC (GB_IS_BITMAP (C), C_iso, anz,     // x:OK
+        C->type->size, &(C->x_size)) ;
     C->x_shallow = false ;          // free C->x when freeing C
     if (C->x == NULL)
     { 

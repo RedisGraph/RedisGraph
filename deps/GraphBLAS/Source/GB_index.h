@@ -2,7 +2,7 @@
 // GB_index.h: definitions for index lists and types of assignments
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -13,6 +13,10 @@
 //------------------------------------------------------------------------------
 // maximum matrix or vector dimension
 //------------------------------------------------------------------------------
+
+#ifndef GrB_INDEX_MAX
+#define GrB_INDEX_MAX ((GrB_Index) (1ULL << 60) - 1)
+#endif
 
 #define GB_NMAX (GrB_INDEX_MAX + 1)
 

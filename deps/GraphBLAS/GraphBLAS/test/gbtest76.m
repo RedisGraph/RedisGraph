@@ -1,7 +1,7 @@
 function gbtest76
 %GBTEST76 test trig and other functions
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
 fprintf ('\ngbtest76: testing trig and special functions\n') ;
@@ -429,7 +429,7 @@ function gbtest76b (A, B, G, H, tol)
     C1 = A.^1 ;
     C2 = G.^1 ;
     err = norm (C1-C2, 1) ;
-    assert (err == 0) ;
+    assert (err < tol) ;
 
 end
 

@@ -2,7 +2,7 @@
 // GB_split_sparse: split a sparse/hypersparse matrix into tiles 
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -136,7 +136,7 @@ GrB_Info GB_split_sparse            // split a sparse matrix
             const int64_t cvlen = aiend - aistart ;
 
             C = NULL ;
-            GB_OK (GB_new (&C, false,      // new header
+            GB_OK (GB_new (&C, // new header
                 atype, cvlen, cvdim, GB_Ap_malloc, csc, A_sparsity,
                 hyper_switch, cnvec, Context)) ;
             C->sparsity_control = sparsity_control ;

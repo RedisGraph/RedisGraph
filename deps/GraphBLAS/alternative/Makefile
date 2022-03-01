@@ -2,7 +2,7 @@
 # GraphBLAS/alternative/Makefile
 #-------------------------------------------------------------------------------
 
-# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 #-------------------------------------------------------------------------------
@@ -20,7 +20,7 @@ default: library
 
 # This version info must match ../CMakeLists.txt 
 VER1 = 6
-VER2 = 0
+VER2 = 2
 VER3 = 0
 
 # pick your compiler:
@@ -48,7 +48,7 @@ CFLAGS = -fopenmp -fexceptions -fPIC
 ifneq ($(CC),c++)
     CFLAGS += -std=c11
 endif
-CPPFLAGS = -I../Include -I../Source -I../Source/Template -I../Source/Generated1 -I../Source/Generated2 -I../lz4
+CPPFLAGS = -I../Include -I../Source -I../Source/Template -I../Source/Generated1 -I../Source/Generated2 -I../lz4 -I../cpu_features/include
 SO_OPTS = $(LDFLAGS)
 CFLAGS += -Wno-pragmas
 

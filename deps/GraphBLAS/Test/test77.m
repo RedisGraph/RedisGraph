@@ -1,7 +1,7 @@
 function test77 (fulltest)
 %TEST77 test GrB_kronecker
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 % TODO: this test takes too long; cut it down

@@ -2,7 +2,7 @@
 // gb_expand_to_full: add identity values to a matrix so all entries are present
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
@@ -63,8 +63,7 @@ GrB_Matrix gb_expand_to_full    // C = full (A), and typecast
     { 
         // T = (type) round (A)
         T = gb_new (type, nrows, ncols, fmt, 0) ;
-        OK1 (T, GrB_Matrix_apply (T, NULL, NULL, gb_round_binop (atype), A,
-            NULL)) ;
+        OK1 (T, GrB_Matrix_apply (T, NULL, NULL, gb_round_op (atype), A, NULL));
         S = T ;
     }
     else

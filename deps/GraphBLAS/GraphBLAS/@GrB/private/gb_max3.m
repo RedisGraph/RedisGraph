@@ -2,7 +2,7 @@ function C = gb_max3 (op, A, option)
 %GB_MAX3 3-input max
 % Implements C = max (A, [ ], option)
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
 if (isequal (option, 'all'))

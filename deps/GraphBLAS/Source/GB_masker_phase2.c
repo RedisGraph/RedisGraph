@@ -2,7 +2,7 @@
 // GB_masker_phase2: phase2 for R = masker (C,M,Z)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -97,7 +97,7 @@ GrB_Info GB_masker_phase2           // phase2 for R = masker (C,M,Z)
     ASSERT (C->vdim == M->vdim && C->vlen == M->vlen) ;
     ASSERT (C->type == Z->type) ;
 
-    ASSERT (R != NULL && R->static_header) ;
+    ASSERT (R != NULL && (R->static_header || GBNSTATIC)) ;
 
     GB_WERK_DECLARE (C_ek_slicing, int64_t) ;
     GB_WERK_DECLARE (M_ek_slicing, int64_t) ;
@@ -141,7 +141,7 @@ GrB_Info GB_masker_phase2           // phase2 for R = masker (C,M,Z)
 
     // allocate the result R (but do not allocate R->p or R->h)
     // set R->iso = R_iso   OK
-    GrB_Info info = GB_new_bix (&R, true, // any sparsity, static header
+    GrB_Info info = GB_new_bix (&R, // any sparsity, existing header
         C->type, C->vlen, C->vdim, GB_Ap_null, R_is_csc,
         R_sparsity, true, C->hyper_switch, Rnvec, rnz, true, R_iso, Context) ;
     if (info != GrB_SUCCESS)

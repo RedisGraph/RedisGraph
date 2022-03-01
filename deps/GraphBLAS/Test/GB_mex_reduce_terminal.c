@@ -2,7 +2,7 @@
 // GB_mex_reduce_terminal: [c,flag] = sum(A), reduce to scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -72,7 +72,8 @@ void mexFunction
     double GET_SCALAR (1, double, terminal, 1) ;
 
     // create the Max operator
-    info = GrB_BinaryOp_new (&Max, maxdouble, GrB_FP64, GrB_FP64, GrB_FP64);
+    info = GrB_BinaryOp_new (&Max,
+        (GxB_binary_function) maxdouble, GrB_FP64, GrB_FP64, GrB_FP64);
     if (info != GrB_SUCCESS)
     {
         mexErrMsgTxt ("Max failed") ;

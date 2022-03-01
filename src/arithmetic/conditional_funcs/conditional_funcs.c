@@ -80,7 +80,7 @@ SIValue AR_COALESCE(SIValue *argv, int argc) {
 // otherwise `X` is returned and added to to the set.
 SIValue AR_DISTINCT(SIValue *argv, int argc) {
 	set *set = argv[1].ptrval;
-	if(Set_Add(set, argv[0])) return SI_ConstValue(argv);
+	if(Set_Add(set, argv[0])) return SI_TransferOwnership(argv);
 	return SI_NullVal();
 }
 

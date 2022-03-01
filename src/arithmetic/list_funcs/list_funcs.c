@@ -71,28 +71,16 @@ static void _PopulateReduceCtx
 	//--------------------------------------------------------------------------
 
 	intptr_t id = raxSize(record_map);
-	int rc = raxTryInsert(record_map, (unsigned char *)ctx->variable,
-						  strlen(ctx->variable), (void *)id, NULL);
-	if(rc == 0) {
-		// The local variable's name shadows an outer variable, emit an error
-		ErrorCtx_RaiseRuntimeException(
-				"Variable '%s' redefined inside of list reduce",
-				(unsigned char *)ctx->variable);
-	}
+	raxTryInsert(record_map, (unsigned char *)ctx->variable,
+				 strlen(ctx->variable), (void *)id, NULL);
 
 	//--------------------------------------------------------------------------
 	// map accumulator name
 	//--------------------------------------------------------------------------
 
 	id++;
-	rc = raxTryInsert(record_map, (unsigned char *)ctx->accumulator,
-						  strlen(ctx->accumulator), (void *)id, NULL);
-	if(rc == 0) {
-		// The local variable's name shadows an outer variable, emit an error
-		ErrorCtx_RaiseRuntimeException(
-				"Variable '%s' redefined inside of list reduce",
-				(unsigned char *)ctx->variable);
-	}
+	raxTryInsert(record_map, (unsigned char *)ctx->accumulator,
+				 strlen(ctx->accumulator), (void *)id, NULL);
 
 	ctx->record = Record_New(record_map);
 
@@ -269,15 +257,15 @@ SIValue AR_SIZE(SIValue *argv, int argc) {
 	ASSERT(argc == 1);
 	SIValue value = argv[0];
 	switch(SI_TYPE(value)) {
-	case T_ARRAY:
-		return SI_LongVal(SIArray_Length(value));
-	case T_STRING:
-		return SI_LongVal(strlen(value.stringval));
-	case T_NULL:
-		return SI_NullVal();
-	default:
-		ASSERT(false);
-		return SI_NullVal();
+		case T_ARRAY:
+			return SI_LongVal(SIArray_Length(value));
+		case T_STRING:
+			return SI_LongVal(strlen(value.stringval));
+		case T_NULL:
+			return SI_NullVal();
+		default:
+			ASSERT(false);
+			return SI_NullVal();
 	}
 }
 
@@ -421,7 +409,7 @@ void Register_ListFuncs() {
 	array_append(types, T_PTR);             // private data
 	func_desc = AR_FuncDescNew("reduce", AR_REDUCE, 4, 4, types, true);
 	AR_SetPrivateDataRoutines(func_desc, ListReduceCtx_Free,
-			ListReduceCtx_Clone);
+							  ListReduceCtx_Clone);
 	AR_RegFunc(func_desc);
 }
 

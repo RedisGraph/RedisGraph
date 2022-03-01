@@ -2,7 +2,7 @@
 // GB_transplant: replace contents of one matrix with another
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -134,8 +134,9 @@ GrB_Info GB_transplant          // transplant one matrix into another
 
     if (allocate_Cx)
     { 
-        // allocate new C->x component
-        C->x = GB_XALLOC (A_iso, anz, C->type->size, &(C->x_size)) ;
+        // allocate new C->x component; use calloc if C is bitmap
+        C->x = GB_XALLOC (C_is_bitmap, A_iso, anz, // x:OK
+            C->type->size, &(C->x_size)) ;
         ok = ok && (C->x != NULL) ;
     }
 

@@ -2,7 +2,7 @@
 // GB_search_for_vector_template: find the vector k that contains p
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -16,7 +16,7 @@
 #ifndef GB_SEARCH_FOR_VECTOR_H
 #define GB_SEARCH_FOR_VECTOR_H
 
-#ifdef GB_KERNEL
+#ifdef GB_CUDA_KERNEL
 __device__
 static inline int64_t GB_search_for_vector_device
 #else

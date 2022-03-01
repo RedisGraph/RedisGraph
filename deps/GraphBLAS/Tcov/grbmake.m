@@ -7,19 +7,19 @@ function grbmake
 %
 % See also: grbcover, grbcover_edit
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 if (ispc)
     error ('The tests in Tcov are not ported to Windows') ;
 end
 
-% copy the GraphBLAS.h file
-copyfile ('../Include/GraphBLAS.h', 'tmp_include/GraphBLAS.h') ;
+% copy the GB_rename.h file
 copyfile ('../GraphBLAS/rename/GB_rename.h', 'tmp_include/GB_rename.h') ;
 
 % create the include files and place in tmp_include
-hfiles = [ dir('../Source/*.h') ; ...
+hfiles = [ dir('../Include/*') ; ...
+           dir('../Source/*.h') ; ...
            dir('../lz4/*.h') ; ...
            dir('../lz4/*.c') ; ...
            dir('../Source/Template') ; ...

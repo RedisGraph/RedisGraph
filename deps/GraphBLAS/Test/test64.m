@@ -1,7 +1,7 @@
 function test64
 %TEST64 test GxB_*_subassign, scalar expansion, with and without duplicates
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\n ------------------- quick test of GxB_*_subassign_scalar\n') ;

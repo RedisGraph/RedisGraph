@@ -2,7 +2,7 @@
 // gbargminmax: argmin or argmax of a GraphBLAS matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
@@ -28,8 +28,8 @@
 static void gb_argminmax
 (
     // output
-    GrB_Vector *x,              // min/max value in each row/col of A
-    GrB_Vector *p,              // index of min/max value in each row/col of A
+    GrB_Matrix *x,              // min/max value in each row/col of A
+    GrB_Matrix *p,              // index of min/max value in each row/col of A
     // input
     GrB_Matrix A,
     int dim,                    // dim=1: cols of A, dim=2: rows of A
@@ -55,17 +55,18 @@ static void gb_argminmax
     // create outputs x and p, and the iso full vector y
     //--------------------------------------------------------------------------
 
-    GrB_Vector y = NULL ;
+    GrB_Matrix y = NULL ;
     GrB_Matrix G = NULL, D = NULL ;
     GrB_Index n = (dim == 2) ? ncols : nrows ;
     GrB_Index m = (dim == 2) ? nrows : ncols ;
     GrB_Descriptor desc = (dim == 2) ? NULL : GrB_DESC_T0 ;
-    OK (GrB_Vector_new (x, type, m)) ;
-    OK (GrB_Vector_new (&y, type, n)) ;
-    OK (GrB_Vector_new (p, GrB_INT64, m)) ;
+    OK (GrB_Matrix_new (x, type, m, 1)) ;
+    OK (GrB_Matrix_new (&y, type, n, 1)) ;
+    OK (GrB_Matrix_new (p, GrB_INT64, m, 1)) ;
 
     // y (:) = 1, an iso full vector
-    OK (GrB_Vector_assign_INT64 (y, NULL, NULL, 1, GrB_ALL, n, NULL)) ;
+    OK (GrB_Matrix_assign_INT64 (y, NULL, NULL, 1, GrB_ALL, n, GrB_ALL, 1,
+        NULL)) ;
 
     //--------------------------------------------------------------------------
     // compute x = min/max(A)
@@ -74,7 +75,7 @@ static void gb_argminmax
     // for dim=1: x = min/max (A) where x(j) = min/max (A (:,j))
     // for dim=2: x = min/max (A) where x(i) = min/max (A (i,:))
 
-    OK (GrB_mxv (*x, NULL, NULL, minmax_first, A, y, desc)) ;
+    OK (GrB_mxm (*x, NULL, NULL, minmax_first, A, y, desc)) ;
 
     //--------------------------------------------------------------------------
     // D = diag (x)
@@ -86,7 +87,7 @@ static void gb_argminmax
     // but using x as a GrB_Matrix simplifies the gb_export.
 
     OK (GrB_Matrix_new (&D, type, m, m)) ;
-    OK (GrB_Matrix_diag (D, *x, 0)) ;
+    OK (GrB_Matrix_diag (D, (GrB_Vector) *x, 0)) ;
 
     //--------------------------------------------------------------------------
     // compute G, where G(i,j)=1 if A(i,j) is the min/max in its row/col
@@ -120,7 +121,7 @@ static void gb_argminmax
     // For both cases, use the SECONDI1 operator since built-in indexing is
     // 1-based.  The ANY monoid would be faster, but this uses MIN so that the
     // result for the user is repeatable.
-    OK (GrB_mxv (*p, NULL, NULL, GxB_MIN_SECONDI1_INT64, G, y, desc)) ;
+    OK (GrB_mxm (*p, NULL, NULL, GxB_MIN_SECONDI1_INT64, G, y, desc)) ;
 
     //--------------------------------------------------------------------------
     // free workspace
@@ -128,7 +129,7 @@ static void gb_argminmax
 
     GrB_Matrix_free (&D) ;
     GrB_Matrix_free (&G) ;
-    GrB_Vector_free (&y) ;
+    GrB_Matrix_free (&y) ;
 }
 
 //------------------------------------------------------------------------------
@@ -326,21 +327,21 @@ void mexFunction
         if (nvals0 > 0 && nvals1 > 0)
         {
             // I [0] = p [0], the row index of the global argmin/max of A
-            OK (GrB_Vector_extractElement_INT64 (&(I [0]), p, 0)) ;
+            OK (GrB_Matrix_extractElement_INT64 (&(I [0]), p, 0, 0)) ;
             // I [1] = p [I [0]-1] (use -1 since I[0] is 1-based),
             // which is the column index of the global argmin/max of A
-            OK (GrB_Vector_extractElement_INT64 (&(I [1]), p1, I [0] - 1)) ;
+            OK (GrB_Matrix_extractElement_INT64 (&(I [1]), p1, I [0] - 1, 0)) ;
         }
 
         // free workspace and create p = [row, col] 
-        OK (GrB_Vector_free (&x1)) ;
-        OK (GrB_Vector_free (&p1)) ;
-        OK (GrB_Vector_free (&p)) ;
-        OK (GrB_Vector_new (&p, GrB_INT64, 2)) ;
+        OK (GrB_Matrix_free (&x1)) ;
+        OK (GrB_Matrix_free (&p1)) ;
+        OK (GrB_Matrix_free (&p)) ;
+        OK (GrB_Matrix_new (&p, GrB_INT64, 2,1)) ;
         if (nvals0 > 0 && nvals1 > 0)
         {
-            OK (GrB_Vector_setElement_INT64 (p, I [1], 0)) ;
-            OK (GrB_Vector_setElement_INT64 (p, I [0], 1)) ;
+            OK (GrB_Matrix_setElement_INT64 (p, I [1], 0, 0)) ;
+            OK (GrB_Matrix_setElement_INT64 (p, I [0], 1, 0)) ;
         }
 
     }
