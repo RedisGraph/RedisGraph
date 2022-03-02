@@ -504,15 +504,13 @@ workflows:
   build_and_package:
     jobs:
       - build:
+          <<: *context
+          <<: *not-on-integ-branch
           name: build-with-redis-<<matrix.redis_version>>
-          <<: *on-any-branch
           matrix:
             alias: build-with-redis-ver
             parameters:
               redis_version: ["6.2", "7.0-rc2"]
-      - build:
-          <<: *context
-          <<: *not-on-integ-branch
       - coverage:
           <<: *context
           <<: *on-any-branch
