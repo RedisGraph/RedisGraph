@@ -6,6 +6,8 @@
 
 #include "RG.h"
 #include "agg_funcs.h"
+#include "../func_desc.h"
+#include "../../util/arr.h"
 
 //------------------------------------------------------------------------------
 // Sum
@@ -23,15 +25,15 @@ AggregateResult AGG_SUM(SIValue *argv, int argc) {
 	return AGGREGATE_OK;
 }
 
-Register_SUM(void) {
+void Register_SUM(void) {
 	SIType *types;
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 2);
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	array_append(types, T_PTR);
-	func_desc = AR_AggFuncDescNew("sum", AGG_SUM, 2, 2, types, Aggregate_Free,
-			NULL, Default_Double);
+	func_desc = AR_AggFuncDescNew("sum", AGG_SUM, 2, 2, types, NULL, NULL,
+			Default_Double);
 	AR_RegFunc(func_desc);
 }
 

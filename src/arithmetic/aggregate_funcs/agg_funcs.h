@@ -7,31 +7,46 @@
 #pragma once
 
 #include "../../value.h"
+#include "../func_desc.h"
 #include "../../datatypes/set.h"
 
 typedef SIValue AggregateResult;
 AggregateResult AGGREGATE_OK;
 
+// an aggregation context
+// each aggregation function operates on an aggregation context
+// this is where the function can maintin its internal state
 typedef struct {
-	SIValue result;
-	void *private_ctx;
+	SIValue result;     // aggregation value
+	void *private_data; // [optional] addition private data
 } AggregateCtx;
 
+// register all aggregation funcitons
 void Register_AggFuncs(void);
 
+// get computed aggregated value
 SIValue Aggregate_GetResult
 (
 	AggregateCtx *ctx
 );
 
 // finalize the result of an aggregate function
-void Aggregate_SetResult(
+void Aggregate_SetResult
+(
 	AggregateCtx *ctx,
 	SIValue result
 );
 
+void Aggregate_Finalize
+(
+	AR_FuncDesc *func_desc,
+	AggregateCtx *ctx
+);
+
+// free aggregation context
 void Aggregate_Free
 (
+	AR_FuncDesc *agg_func,
 	AggregateCtx *ctx
 );
 

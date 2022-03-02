@@ -6,6 +6,9 @@
 
 #include "RG.h"
 #include "agg_funcs.h"
+#include "../func_desc.h"
+#include "../../util/arr.h"
+#include "../../datatypes/array.h"
 
 //------------------------------------------------------------------------------
 // Collect
@@ -24,7 +27,7 @@ AggregateResult AGG_COLLECT(SIValue *argv, int argc) {
 	return AGGREGATE_OK;
 }
 
-Register_COLLECT(void) {
+void Register_COLLECT(void) {
 	SIType *types;
 	AR_FuncDesc *func_desc;
 
@@ -32,7 +35,7 @@ Register_COLLECT(void) {
 	array_append(types, SI_ALL);
 	array_append(types, T_PTR);
 	func_desc = AR_AggFuncDescNew("collect", AGG_COLLECT, 2, 2, types,
-			Aggregate_Free, NULL, Default_Array);
+			NULL, NULL, Default_Array);
 	AR_RegFunc(func_desc);
 }
 

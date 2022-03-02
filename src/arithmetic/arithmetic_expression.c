@@ -31,6 +31,10 @@
 // return child at position 'idx' of 'n'
 #define NODE_CHILD(n, idx) (n)->op.children[(idx)]
 
+// get aggregation context from aggregation operation node
+// the aggregation context resides inside the last direct child value pointer
+#define AGGREGATION_NODE_GET_CTX(n) (AggregateCtx*)NODE_CHILD((n), NODE_CHILD_COUNT((n))-1)->operand.constant.ptrval
+
 //------------------------------------------------------------------------------
 // Forward declarations
 //------------------------------------------------------------------------------
@@ -141,12 +145,21 @@ static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 	AR_ExpNode *clone = _AR_EXP_NewOpNode(exp->op.child_count);
 	// if the function has private data, the function descriptor
 	// itself should be cloned. Otherwise, we can perform a direct assignment
-	if(exp->op.f->agg_callbacks.bclone) clone->op.f = AR_CloneFuncDesc(exp->op.f);
-	else clone->op.f = exp->op.f;
+	if(AGGREGATION_NODE(exp)) {
+		ASSERT(false && "need to clone AggregateCtx");
+	}
+
+	//if(exp->op.f->agg_callbacks.bclone) clone->op.f = AR_CloneFuncDesc(exp->op.f);
+	else {
+		clone->op.f = exp->op.f;
+	}
+
+	// clone child nodes
 	for(uint i = 0; i < exp->op.child_count; i++) {
 		AR_ExpNode *child = AR_EXP_Clone(exp->op.children[i]);
 		clone->op.children[i] = child;
 	}
+
 	return clone;
 }
 
@@ -325,12 +338,17 @@ void AR_EXP_ResolveVariables(AR_ExpNode *root, const Record r) {
 	AR_EXP_ReduceToScalar(root, true, NULL);
 }
 
-static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint argc) {
+static bool _AR_EXP_ValidateInvocation
+(
+	AR_FuncDesc *fdesc,
+	SIValue *argv,
+	uint argc
+) {
 	SIType actual_type;
 	SIType expected_type = T_NULL;
 
-	// If the function accepts private data, reduce all user-facing counts by 1.
-	int offset = (fdesc->privdata != NULL);
+	// if this is an aggregation function, reduce all user-facing counts by 1
+	int offset = fdesc->aggregate ? 1 : 0;
 
 	// Make sure number of arguments is as expected.
 	if(fdesc->min_argc > argc) {
@@ -378,16 +396,17 @@ static inline void _AR_EXP_FreeResultsArray(SIValue *results, int count) {
 	}
 }
 
-static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node,
-												  const Record r, SIValue *result) {
+static AR_EXP_Result _AR_EXP_EvaluateFunctionCall
+(
+	AR_ExpNode *node,
+	const Record r,
+	SIValue *result
+) {
 	AR_EXP_Result res = EVAL_OK;
 
 	int child_count = node->op.child_count;
-	// Functions with private data will have it appended as an additional child.
-	bool include_privdata = (node->op.f->privdata != NULL);
-	if(include_privdata) child_count ++;
 
-	// Evaluate each child before evaluating current node.
+	// evaluate each child before evaluating current node
 	SIValue sub_trees[child_count];
 
 	bool param_found = false;
@@ -397,9 +416,9 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node,
 		res = _AR_EXP_Evaluate(child, r, &v);
 
 		if(res == EVAL_ERR) {
-			/* Encountered an error while evaluating a subtree.
-			 * Free all values generated up to this point
-			 * and propagate the error upwards */
+			// encountered an error while evaluating a subtree
+			// free all values generated up to this point
+			// and propagate the error upwards
 			_AR_EXP_FreeResultsArray(sub_trees, child_idx);
 			return res;
 		}
@@ -410,22 +429,19 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node,
 
 	if(param_found) res = EVAL_FOUND_PARAM;
 
-	// Add the function's private data, if any.
-	if(include_privdata) sub_trees[child_count - 1] = SI_PtrVal(node->op.f->privdata);
-
-	// Validate before evaluation.
+	// validate before evaluation
 	if(!_AR_EXP_ValidateInvocation(node->op.f, sub_trees, child_count)) {
-		// The expression tree failed its validations and set an error message.
+		// the expression tree failed its validations and set an error message
 		res = EVAL_ERR;
 		goto cleanup;
 	}
 
-	// Evaluate self.
+	// evaluate self
 	SIValue v = node->op.f->func(sub_trees, child_count);
 	if(SIValue_IsNull(v) && ErrorCtx_EncounteredError()) {
-		/* An error was encountered while evaluating this function,
-		 * and has already been set in the QueryCtx.
-		 * Exit with an error. */
+		// an error was encountered while evaluating this function,
+		// and has already been set in the QueryCtx
+		// exit with an error
 		res = EVAL_ERR;
 	}
 	if(result) *result = v;
@@ -563,8 +579,9 @@ void _AR_EXP_FinalizeAggregations
 	//--------------------------------------------------------------------------
 
 	if(AGGREGATION_NODE(root)) {
-		AR_Finalize(root->op.f);
-		SIValue v = Aggregate_GetResult(root->op.f->privdata);
+		AggregateCtx *ctx = AGGREGATION_NODE_GET_CTX(root);
+		Aggregate_Finalize(root->op.f, ctx);
+		SIValue v = Aggregate_GetResult(ctx);
 
 		// free node internals
 		_AR_EXP_FreeOpInternals(root);
@@ -773,16 +790,10 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
 }
 
 static inline void _AR_EXP_FreeOpInternals(AR_ExpNode *op_node) {
-	void *pdata = op_node->op.f->privdata;
-	AR_Func_Free free_func = op_node->op.f->agg_callbacks.bfree;
-
-	// free function private data if there's a custom free function
-	// and private data exists
-	if(free_func && pdata) {
-		// free the function's private data
-		free_func(pdata);
-		// the function descriptor itself is an allocation in this case
-		rm_free(op_node->op.f);
+	if(AGGREGATION_NODE(op_node)) {
+		AggregateCtx *ctx = AGGREGATION_NODE_GET_CTX(op_node);
+		AR_FuncDesc *agg_func = op_node->op.f;
+		Aggregate_Free(agg_func, ctx);
 	}
 
 	for(int child_idx = 0; child_idx < op_node->op.child_count; child_idx++) {

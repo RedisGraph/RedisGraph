@@ -524,7 +524,9 @@ static AR_ExpNode *_AR_ExpFromShortestPath
 	ctx->free_matrices  =  false;
 
 	// Add the context to the function descriptor as the function's private data.
-	op->op.f = AR_SetPrivateData(op->op.f, ctx);
+	// TODO: introduce ctx as an additional child node
+	assert(false && "see TODO");
+	//op->op.f = AR_SetPrivateData(op->op.f, ctx);
 	AR_ExpNode *src;
 	AR_ExpNode *dest;
 	const cypher_astnode_t *ast_src = cypher_ast_pattern_path_get_element(path, 0);

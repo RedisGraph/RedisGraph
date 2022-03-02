@@ -6,6 +6,8 @@
 
 #include "RG.h"
 #include "agg_funcs.h"
+#include "../func_desc.h"
+#include "../../util/arr.h"
 
 //------------------------------------------------------------------------------
 // Count
@@ -23,7 +25,7 @@ AggregateResult AGG_COUNT(SIValue *argv, int argc) {
 	return AGGREGATE_OK;
 }
 
-Register_COUNT(void) {
+void Register_COUNT(void) {
 	SIType *types;
 	AR_FuncDesc *func_desc;
 
@@ -31,7 +33,7 @@ Register_COUNT(void) {
 	array_append(types, SI_ALL);
 	array_append(types, T_PTR);
 	func_desc = AR_AggFuncDescNew("count", AGG_COUNT, 2, 2, types,
-			Aggregate_Free, NULL, Default_Long);
+			NULL, NULL, Default_Long);
 	AR_RegFunc(func_desc);
 }
 

@@ -6,6 +6,13 @@
 
 #include "RG.h"
 #include "agg_funcs.h"
+#include "../func_desc.h"
+#include "../../errors.h"
+#include "../../util/arr.h"
+#include "../../util/qsort.h"
+#include <math.h>
+
+#define ISLT(a,b) ((*a) < (*b))
 
 //------------------------------------------------------------------------------
 // Precentile
@@ -19,12 +26,12 @@ typedef struct {
 // This function is agnostic as to percentile method
 AggregateResult AGG_PERC(SIValue *argv, int argc) {
 	AggregateCtx *ctx = argv[2].ptrval;
-	_agg_PercCtx *perc_ctx = ctx->private_ctx;
+	_agg_PercCtx *perc_ctx = ctx->private_data;
 
 	// On the first invocation, initialize the context.
-	if(ctx->private_ctx == NULL) {
-		ctx->private_ctx = rm_calloc(1, sizeof(_agg_PercCtx));
-		perc_ctx = ctx->private_ctx;
+	if(ctx->private_data == NULL) {
+		ctx->private_data = rm_calloc(1, sizeof(_agg_PercCtx));
+		perc_ctx = ctx->private_data;
 		// The second argument is the requested percentile, which we only
 		// need to apply on the first function invocation.
 		SIValue_ToDouble(&argv[1], &perc_ctx->percentile);
@@ -47,7 +54,7 @@ AggregateResult AGG_PERC(SIValue *argv, int argc) {
 
 void PercDiscFinalize(void *ctx_ptr) {
 	AggregateCtx *ctx = ctx_ptr;
-	_agg_PercCtx *perc_ctx = ctx->private_ctx;
+	_agg_PercCtx *perc_ctx = ctx->private_data;
 	if(perc_ctx == NULL) return;
 
 	uint count = array_len(perc_ctx->values);
@@ -65,7 +72,7 @@ void PercDiscFinalize(void *ctx_ptr) {
 
 void PercContFinalize(void *ctx_ptr) {
 	AggregateCtx *ctx = ctx_ptr;
-	_agg_PercCtx *perc_ctx = ctx->private_ctx;
+	_agg_PercCtx *perc_ctx = ctx->private_data;
 	if(perc_ctx == NULL) return;
 
 	uint count = array_len(perc_ctx->values);
@@ -101,15 +108,15 @@ void PercContFinalize(void *ctx_ptr) {
 void Percentile_Free(void *ctx_ptr) {
 	AggregateCtx *ctx = ctx_ptr;
 	SIValue_Free(ctx->result);
-	if(ctx->private_ctx) {
-		_agg_PercCtx *perc_ctx = ctx->private_ctx;
+	if(ctx->private_data) {
+		_agg_PercCtx *perc_ctx = ctx->private_data;
 		array_free(perc_ctx->values);
-		rm_free(ctx->private_ctx);
+		rm_free(ctx->private_data);
 	}
 	rm_free(ctx);
 }
 
-Register_PRECENTILE(void) {
+void Register_PRECENTILE(void) {
 	SIType *types;
 	AR_FuncDesc *func_desc;
 

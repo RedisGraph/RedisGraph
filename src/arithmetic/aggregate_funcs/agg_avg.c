@@ -6,6 +6,8 @@
 
 #include "RG.h"
 #include "agg_funcs.h"
+#include "../func_desc.h"
+#include "../../util/arr.h"
 #include "../../util/rmalloc.h"
 #include <math.h>
 #include <float.h>
@@ -36,11 +38,11 @@ AggregateResult AGG_AVG
 ) {
 	SIValue val = argv[0];
 	AggregateCtx *ctx = argv[1].ptrval;
-	AvgCtx *avg_ctx = ctx->private_ctx;
+	AvgCtx *avg_ctx = ctx->private_data;
 
 	// On the first invocation, initialize the context.
-	if(ctx->private_ctx == NULL) {
-		avg_ctx = ctx->private_ctx = rm_calloc(1, sizeof(AvgCtx));
+	if(ctx->private_data == NULL) {
+		avg_ctx = ctx->private_data = rm_calloc(1, sizeof(AvgCtx));
 	}
 
 	// check input
@@ -83,7 +85,7 @@ void Avg_Finalize
 
 	AggregateCtx *ctx = (AggregateCtx*)ctx_ptr;
 
-	AvgCtx *avg_ctx = ctx->private_ctx;
+	AvgCtx *avg_ctx = ctx->private_data;
 	if(avg_ctx == NULL) return;
 
 	if(avg_ctx->count > 0) {
@@ -104,7 +106,7 @@ void Register_AVG(void) {
 	types = array_new(SIType, 2);
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	array_append(types, T_PTR);
-	func_desc = AR_AggFuncDescNew("avg", AGG_AVG, 2, 2, types, Aggregate_Free,
+	func_desc = AR_AggFuncDescNew("avg", AGG_AVG, 2, 2, types, rm_free,
 			Avg_Finalize, SI_NullVal);
 
 	AR_RegFunc(func_desc);

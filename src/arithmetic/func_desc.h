@@ -94,24 +94,3 @@ bool AR_FuncIsAggregate
 	const char *func_name
 );
 
-// invoke finalize routine for function
-void AR_Finalize
-(
-	AR_FuncDesc *func_desc
-);
-
-// TODO: might need to be removed
-// duplicate a function descriptor and populate the clone with the given private data
-AR_FuncDesc *AR_SetPrivateData
-(
-	const AR_FuncDesc *orig,
-	void *privdata
-);
-
-// TODO: might need to be removed
-// clone the given function descriptor and its private data
-AR_FuncDesc *AR_CloneFuncDesc
-(
-	const AR_FuncDesc *orig
-);
-

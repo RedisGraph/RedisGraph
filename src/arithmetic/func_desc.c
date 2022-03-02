@@ -45,7 +45,7 @@ AR_FuncDesc *AR_AggFuncDescNew
 	uint max_argc,                      // maximum number of arguments
 	SIType *types,                      // acceptable types
 	AR_Func_Free free,                  // free aggregation callback
-	AR_Func_Clone clone,                // clone aggregation callback
+	//AR_Func_Clone clone,                // clone aggregation callback
 	AR_Func_Finalize finalize,          // finalize aggregation callback
 	AR_Func_DefaultValue default_value  // default value callback
 ) {
@@ -58,8 +58,8 @@ AR_FuncDesc *AR_AggFuncDescNew
 	desc->max_argc                     =  max_argc;
 	desc->aggregate                    =  true;
 	desc->reducible                    =  false;
-	desc->agg_callbacks.bfree          =  free;
-	desc->agg_callbacks.bclone         =  clone;
+	desc->agg_callbacks.free           =  free;
+	//desc->agg_callbacks.clone          =  clone;
 	desc->agg_callbacks.finalize       =  finalize;
 	desc->agg_callbacks.default_value  =  default_value;
 
@@ -93,18 +93,18 @@ AR_FuncDesc *AR_GetFunc
 
 	AR_FuncDesc *func = (AR_FuncDesc*)f;
 
-	if(func->aggregate) {
-		// clone function descriptor
-		func = rm_malloc(sizeof(AR_FuncDesc));
-		memcpy(func, f, sizeof(AR_FuncDesc));
-
-		// create aggregation context
-		AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
-		ctx->private_ctx  =  NULL;
-		ctx->result       =  SI_CloneValue(func->default_value);
-
-		func->privdata = ctx;
-	}
+//	if(func->aggregate) {
+//		// clone function descriptor
+//		func = rm_malloc(sizeof(AR_FuncDesc));
+//		memcpy(func, f, sizeof(AR_FuncDesc));
+//
+//		// create aggregation context
+//		AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
+//		ctx->private_ctx  =  NULL;
+//		ctx->result       =  SI_CloneValue(func->default_value);
+//
+//		func->privdata = ctx;
+//	}
 
 	return func;
 }
@@ -134,47 +134,5 @@ bool AR_FuncIsAggregate
 	if(f == raxNotFound) return false;
 
 	return f->aggregate;
-}
-
-void AR_Finalize
-(
-	AR_FuncDesc *func_desc
-) {
-	if(func_desc->agg_callbacks.finalize) {
-		func_desc->agg_callbacks.finalize(func_desc->privdata);
-	}
-}
-
-// TODO: might need to be removed
-AR_FuncDesc *AR_SetPrivateData
-(
-	const AR_FuncDesc *orig,
-	void *privdata
-) {
-	// create a new function descriptor
-	AR_FuncDesc *func = rm_malloc(sizeof(AR_FuncDesc));
-	memcpy(func, orig, sizeof(AR_FuncDesc));
-
-	// set the private data pointer
-	func->privdata = privdata;
-
-	return func;
-}
-
-// TODO: might need to be removed
-AR_FuncDesc *AR_CloneFuncDesc
-(
-	const AR_FuncDesc *orig
-) {
-	ASSERT(orig->agg_callbacks.bclone);
-
-	// perform a shallow copy of the input function descriptor
-	AR_FuncDesc *clone = rm_malloc(sizeof(AR_FuncDesc));
-	memcpy(clone, orig, sizeof(AR_FuncDesc));
-
-	// clone the function's private data
-	clone->privdata = orig->agg_callbacks.bclone(orig->privdata);
-
-	return clone;
 }
 

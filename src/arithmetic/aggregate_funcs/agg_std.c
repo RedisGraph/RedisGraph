@@ -6,6 +6,9 @@
 
 #include "RG.h"
 #include "agg_funcs.h"
+#include "../func_desc.h"
+#include "../../util/arr.h"
+#include <math.h>
 
 //------------------------------------------------------------------------------
 // Standard deviation
@@ -18,12 +21,12 @@ typedef struct {
 
 AggregateResult AGG_STDEV(SIValue *argv, int argc) {
 	AggregateCtx *ctx = argv[1].ptrval;
-	_agg_StDevCtx *stdev_ctx = ctx->private_ctx;
+	_agg_StDevCtx *stdev_ctx = ctx->private_data;
 
 	// On the first invocation, initialize the context.
-	if(ctx->private_ctx == NULL) {
-		ctx->private_ctx = rm_calloc(1, sizeof(_agg_StDevCtx));
-		stdev_ctx = ctx->private_ctx;
+	if(ctx->private_data == NULL) {
+		ctx->private_data = rm_calloc(1, sizeof(_agg_StDevCtx));
+		stdev_ctx = ctx->private_data;
 		stdev_ctx->values = array_new(double, 1024);
 	}
 
@@ -39,7 +42,7 @@ AggregateResult AGG_STDEV(SIValue *argv, int argc) {
 }
 
 void StDevGenericFinalize(AggregateCtx *ctx, int is_sampled) {
-	_agg_StDevCtx *stdev_ctx = ctx->private_ctx;
+	_agg_StDevCtx *stdev_ctx = ctx->private_data;
 
 	if(stdev_ctx == NULL) return;
 
@@ -72,15 +75,15 @@ void StDevPFinalize(void *ctx_ptr) {
 void StDev_Free(void *ctx_ptr) {
 	AggregateCtx *ctx = ctx_ptr;
 	SIValue_Free(ctx->result);
-	if(ctx->private_ctx) {
-		_agg_StDevCtx *stdev_ctx = ctx->private_ctx;
+	if(ctx->private_data) {
+		_agg_StDevCtx *stdev_ctx = ctx->private_data;
 		array_free(stdev_ctx->values);
-		rm_free(ctx->private_ctx);
+		rm_free(ctx->private_data);
 	}
 	rm_free(ctx);
 }
 
-Register_STD(void) {
+void Register_STD(void) {
 	SIType *types;
 	AR_FuncDesc *func_desc;
 
