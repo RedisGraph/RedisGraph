@@ -19,6 +19,9 @@ typedef struct {
 // Initialize the node_count and edge_count arrays
 void GraphStatistics_init(GraphStatistics *stats);
 
+// clone a GraphStatistics object
+GraphStatistics GraphStatistics_Clone(const GraphStatistics *orig_stats);
+
 // New relationship is added, resize the edge_count array.
 void GraphStatistics_IntroduceRelationship(GraphStatistics *stats);
 

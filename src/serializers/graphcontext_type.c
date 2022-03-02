@@ -63,6 +63,14 @@ static int _GraphContextType_AuxLoad(RedisModuleIO *rdb, int encver, int when) {
 	return REDISMODULE_OK;
 }
 
+static void *_GraphContextType_RdbCopy(RedisModuleString *fromkey, RedisModuleString *tokey,
+									   const void *value) {
+	const GraphContext *orig_gc = value;
+	const char *new_name = RedisModule_StringPtrLen(tokey, NULL);
+	GraphContext *new_gc = GraphContext_Clone(new_name, orig_gc);
+	return new_gc;
+}
+
 static void _GraphContextType_Free(void *value) {
 	GraphContext *gc = value;
 	GraphContext_Delete(gc);
@@ -77,9 +85,10 @@ int GraphContextType_Register(RedisModuleCtx *ctx) {
 	tm.aux_save           =  _GraphContextType_AuxSave;
 	tm.aux_load           =  _GraphContextType_AuxLoad;
 	tm.aux_save_triggers  =  REDISMODULE_AUX_BEFORE_RDB | REDISMODULE_AUX_AFTER_RDB;
+	tm.copy               =  _GraphContextType_RdbCopy;
 
 	GraphContextRedisModuleType = RedisModule_CreateDataType(ctx, "graphdata",
-			GRAPH_ENCODING_VERSION_LATEST, &tm);
+															 GRAPH_ENCODING_VERSION_LATEST, &tm);
 
 	if(GraphContextRedisModuleType == NULL) return REDISMODULE_ERR;
 	return REDISMODULE_OK;

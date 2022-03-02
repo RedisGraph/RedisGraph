@@ -14,6 +14,7 @@
 #include "../redismodule.h"
 #include "../util/rmalloc.h"
 #include "../util/thpool/pools.h"
+#include "../util/rax_extensions.h"
 #include "../serializers/graphcontext_type.h"
 #include "../commands/execution_ctx.h"
 
@@ -94,6 +95,53 @@ GraphContext *GraphContext_New
 
 	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_FLUSH_RESIZE);
 	QueryCtx_SetGraphCtx(gc);
+
+	return gc;
+}
+
+// perform a deep copy of a graph context, providing it with a new name
+GraphContext *GraphContext_Clone
+(
+	const char *graph_name,
+	const GraphContext *orig_gc
+) {
+	GraphContext *gc = rm_malloc(sizeof(GraphContext));
+
+	gc->version          = orig_gc->version;
+	gc->slowlog          = SlowLog_New();
+	gc->ref_count        = 0;  // no references
+	gc->attributes       = raxClone(orig_gc->attributes);
+	gc->index_count      = orig_gc->index_count;
+	gc->encoding_context = GraphEncodeContext_New();
+	gc->decoding_context = GraphDecodeContext_New();
+	array_clone(gc->string_mapping, orig_gc->string_mapping);
+
+	gc->g = Graph_Clone(orig_gc->g);
+	gc->graph_name = rm_strdup(graph_name);
+
+	// duplicate schemas and indices
+	uint node_schema_count = array_len(orig_gc->node_schemas);
+	gc->node_schemas = array_new(Schema *, node_schema_count);
+	for(uint i = 0; i < node_schema_count; i ++) {
+		array_append(gc->node_schemas, Schema_Clone(orig_gc->node_schemas[i]));
+	}
+	uint relation_schema_count = array_len(orig_gc->relation_schemas);
+	gc->relation_schemas = array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
+	for(uint i = 0; i < relation_schema_count; i ++) {
+		array_append(gc->relation_schemas, Schema_Clone(orig_gc->relation_schemas[i]));
+	}
+
+	// initialize the read-write lock to protect access to the attributes rax
+	assert(pthread_rwlock_init(&gc->_attribute_rwlock, NULL) == 0);
+
+	// build the execution plans cache
+	uint64_t cache_size;
+	Config_Option_get(Config_CACHE_SIZE, &cache_size);
+	gc->cache = Cache_New(cache_size, (CacheEntryFreeFunc)ExecutionCtx_Free,
+						  (CacheEntryCopyFunc)ExecutionCtx_Clone);
+
+	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_FLUSH_RESIZE);
+	// QueryCtx_SetGraphCtx(gc);
 
 	return gc;
 }
@@ -368,11 +416,11 @@ bool GraphContext_HasIndices(GraphContext *gc) {
 	for(uint i = 0; i < schema_count; i++) {
 		if(Schema_HasIndices(gc->relation_schemas[i])) return true;
 	}
-	
+
 	return false;
 }
 Index *GraphContext_GetIndexByID(const GraphContext *gc, int id,
-					Attribute_ID *attribute_id, IndexType type, SchemaType t) {
+								 Attribute_ID *attribute_id, IndexType type, SchemaType t) {
 
 	ASSERT(gc     !=  NULL);
 
@@ -416,7 +464,7 @@ int GraphContext_AddExactMatchIndex
 
 	IndexField idx_field;
 	IndexField_New(&idx_field, field, INDEX_FIELD_DEFAULT_WEIGHT,
-			INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
+				   INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
 
 	int res = Schema_AddIndex(idx, s, &idx_field, IDX_EXACT_MATCH);
 	if(res != INDEX_OK) {

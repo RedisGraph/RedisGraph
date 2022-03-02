@@ -15,7 +15,7 @@
 #include "../graph/entities/node.h"
 #include "../graph/rg_matrix/rg_matrix_iter.h"
 
-extern void populateEdgeIndex(Index *idx); 
+extern void populateEdgeIndex(Index *idx);
 extern void populateNodeIndex(Index *idx);
 
 RSDoc *Index_IndexGraphEntity
@@ -47,7 +47,7 @@ RSDoc *Index_IndexGraphEntity
 
 	// create an empty document
 	RSDoc *doc = RediSearch_CreateDocument2(key, key_len, rsIdx, score,
-			idx->language);
+											idx->language);
 
 	// add document field for each indexed property
 	if(idx->type == IDX_FULLTEXT) {
@@ -63,7 +63,7 @@ RSDoc *Index_IndexGraphEntity
 			if(t == T_STRING) {
 				*doc_field_count += 1;
 				RediSearch_DocumentAddFieldString(doc, field_name, v->stringval,
-						strlen(v->stringval), RSFLDTYPE_FULLTEXT);
+												  strlen(v->stringval), RSFLDTYPE_FULLTEXT);
 			}
 		}
 	} else {
@@ -78,16 +78,16 @@ RSDoc *Index_IndexGraphEntity
 			*doc_field_count += 1;
 			if(t == T_STRING) {
 				RediSearch_DocumentAddFieldString(doc, field_name, v->stringval,
-						strlen(v->stringval), RSFLDTYPE_TAG);
+												  strlen(v->stringval), RSFLDTYPE_TAG);
 			} else if(t & (SI_NUMERIC | T_BOOL)) {
 				double d = SI_GET_NUMERIC(*v);
 				RediSearch_DocumentAddFieldNumber(doc, field_name, d,
-						RSFLDTYPE_NUMERIC);
+												  RSFLDTYPE_NUMERIC);
 			} else if(t == T_POINT) {
 				double lat = (double)Point_lat(*v);
 				double lon = (double)Point_lon(*v);
 				RediSearch_DocumentAddFieldGeo(doc, field_name, lat, lon,
-						RSFLDTYPE_GEO);
+											   RSFLDTYPE_GEO);
 			} else {
 				// none indexable field
 				none_indexable_fields[none_indexable_fields_count++] =
@@ -115,7 +115,7 @@ RSDoc *Index_IndexGraphEntity
 			}
 
 			RediSearch_DocumentAddFieldString(doc, INDEX_FIELD_NONE_INDEXED,
-						s, len, RSFLDTYPE_TAG);
+											  s, len, RSFLDTYPE_TAG);
 
 			// free if heap based
 			if(s != stack_fields) rm_free(s);
@@ -144,6 +144,21 @@ void IndexField_New
 	field->weight   = weight;
 	field->nostem   = nostem;
 	field->phonetic = rm_strdup(phonetic);
+}
+
+static IndexField IndexField_Clone
+(
+	const IndexField orig
+) {
+	IndexField new;
+
+	new.id       = orig.id;
+	new.name     = rm_strdup(orig.name);
+	new.weight   = orig.weight;
+	new.nostem   = orig.nostem;
+	new.phonetic = rm_strdup(orig.phonetic);
+
+	return new;
 }
 
 void IndexField_Free
@@ -176,6 +191,27 @@ Index *Index_New
 	idx->entity_type   =  entity_type;
 
 	return idx;
+}
+
+// clone an existing index
+Index *Index_Clone
+(
+	const Index *orig
+) {
+	Index *new = rm_malloc(sizeof(Index));
+
+	new->idx           =  NULL;
+	new->type          =  orig->type;
+	new->label         =  rm_strdup(orig->label);
+	new->label_id      =  orig->label_id;
+	new->language      =  (orig->language) ? rm_strdup(orig->language) : NULL;
+	new->entity_type   =  orig->entity_type;
+	array_clone_with_cb(new->fields, orig->fields, IndexField_Clone);
+	array_clone_with_cb(new->stopwords, orig->stopwords, rm_strdup);
+
+	Index_Construct(new);
+
+	return new;
 }
 
 // adds field to index
@@ -242,7 +278,7 @@ void Index_Construct
 
 	if(idx->stopwords) {
 		RediSearch_IndexOptionsSetStopwords(idx_options,
-				(const char**)idx->stopwords, array_len(idx->stopwords));
+											(const char **)idx->stopwords, array_len(idx->stopwords));
 	}
 
 	rsIdx = RediSearch_CreateIndex(idx->label, idx_options);
@@ -262,16 +298,16 @@ void Index_Construct
 			}
 
 			RSFieldID fieldID = RediSearch_CreateField(rsIdx, field->name,
-					RSFLDTYPE_FULLTEXT, options);
+													   RSFLDTYPE_FULLTEXT, options);
 			RediSearch_TextFieldSetWeight(rsIdx, fieldID, field->weight);
 		}
 	} else {
 		for(uint i = 0; i < fields_count; i++) {
-			IndexField *field = idx->fields+i;
+			IndexField *field = idx->fields + i;
 			// introduce both text, numeric and geo fields
 			unsigned types = RSFLDTYPE_NUMERIC | RSFLDTYPE_GEO | RSFLDTYPE_TAG;
 			RSFieldID fieldID = RediSearch_CreateField(rsIdx, field->name,
-					types, RSFLDOPT_NONE);
+													   types, RSFLDOPT_NONE);
 
 			RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
 			RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
@@ -281,7 +317,7 @@ void Index_Construct
 		// "none_indexable_fields" which will hold a list of attribute names
 		// that were not indexed
 		RSFieldID fieldID = RediSearch_CreateField(rsIdx,
-				INDEX_FIELD_NONE_INDEXED, RSFLDTYPE_TAG, RSFLDOPT_NONE);
+												   INDEX_FIELD_NONE_INDEXED, RSFLDTYPE_TAG, RSFLDOPT_NONE);
 
 		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
 		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
@@ -333,7 +369,7 @@ bool Index_ContainsAttribute
 	ASSERT(idx != NULL);
 
 	if(attribute_id == ATTRIBUTE_NOTFOUND) return false;
-	
+
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
 		IndexField *field = idx->fields + i;
@@ -366,7 +402,7 @@ char **Index_GetStopwords
 ) {
 	if(idx->type == IDX_FULLTEXT)
 		return RediSearch_IndexGetStopwords(idx->idx, size);
-	
+
 	return NULL;
 }
 

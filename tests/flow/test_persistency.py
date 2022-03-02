@@ -412,3 +412,52 @@ class testGraphPersistency():
         for q in queries:
             actual_result = g.query(q)
             self.env.assertEquals(actual_result.result_set[0], [1])
+
+    def test08_copy(self):
+        # populate the source graph
+        self.populate_graph("FROM")
+        # copy the source graph to the key "TO"
+        self.env.execute_command("COPY FROM TO")
+        # connect to the new graph
+        graph = Graph("TO", redis_con)
+
+        # expecting 5 person entities
+        query = """MATCH (p:person) RETURN COUNT(p)"""
+        actual_result = graph.query(query)
+        nodeCount = actual_result.result_set[0][0]
+        self.env.assertEquals(nodeCount, 5)
+
+        query = """MATCH (p:person) WHERE p.name='Alon' RETURN COUNT(p)"""
+        actual_result = graph.query(query)
+        nodeCount = actual_result.result_set[0][0]
+        self.env.assertEquals(nodeCount, 1)
+
+        # expecting 3 country entities
+        query = """MATCH (c:country) RETURN COUNT(c)"""
+        actual_result = graph.query(query)
+        nodeCount = actual_result.result_set[0][0]
+        self.env.assertEquals(nodeCount, 3)
+
+        query = """MATCH (c:country) WHERE c.name = 'Israel' RETURN COUNT(c)"""
+        actual_result = graph.query(query)
+        nodeCount = actual_result.result_set[0][0]
+        self.env.assertEquals(nodeCount, 1)
+
+        # expecting 2 visit edges
+        query = """MATCH (n:person)-[e:visit]->(c:country) WHERE e.purpose='pleasure' RETURN COUNT(e)"""
+        actual_result = graph.query(query)
+        edgeCount = actual_result.result_set[0][0]
+        self.env.assertEquals(edgeCount, 2)
+
+        # verify indexes exist
+        indices = graph.query("""CALL db.indexes()""").result_set
+        expected_indices = [
+                ['exact-match', 'country', ['name', 'population'], 'english', [], 'NODE'],
+                ['exact-match', 'person', ['name', 'height'], 'english', [], 'NODE'],
+                ['full-text', 'person', ['text'], 'english', ['a', 'b'], 'NODE'],
+                ['exact-match', 'visit', ['_src_id', '_dest_id', 'purpose'], 'english', [], 'RELATIONSHIP']
+        ]
+
+        self.env.assertEquals(len(indices), len(expected_indices))
+        for index in indices:
+            self.env.assertIn(index, indices)

@@ -13,6 +13,16 @@ void GraphStatistics_init(GraphStatistics *stats) {
 	stats->edge_count = array_new(uint64_t, 0);
 }
 
+GraphStatistics GraphStatistics_Clone(const GraphStatistics *orig_stats) {
+	ASSERT(orig_stats);
+
+	GraphStatistics stats;
+	array_clone(stats.node_count, orig_stats->node_count);
+	array_clone(stats.edge_count, orig_stats->edge_count);
+
+	return stats;
+}
+
 void GraphStatistics_IntroduceRelationship(GraphStatistics *stats) {
 	ASSERT(stats && stats->edge_count);
 	array_append(stats->edge_count, 0);

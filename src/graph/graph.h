@@ -119,6 +119,12 @@ Graph *Graph_New
 	size_t edge_cap     // Allocation size for edge datablocks.
 );
 
+// clone a Graph object
+Graph *Graph_Clone
+(
+	const Graph *orig_graph
+);
+
 // creates a new label matrix, returns id given to label
 int Graph_AddLabel
 (

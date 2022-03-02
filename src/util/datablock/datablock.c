@@ -100,7 +100,44 @@ DataBlock *DataBlock_New
 	ASSERT(res == 0);
 
 	_DataBlock_AddBlocks(dataBlock,
-			ITEM_COUNT_TO_BLOCK_COUNT(itemCap, dataBlock->blockCap));
+						 ITEM_COUNT_TO_BLOCK_COUNT(itemCap, dataBlock->blockCap));
+
+	return dataBlock;
+}
+
+DataBlock *DataBlock_Clone
+(
+	const DataBlock *orig_datablock,
+	fpCopy copy
+) {
+	DataBlock *dataBlock = rm_malloc(sizeof(DataBlock));
+	dataBlock->blocks      =  NULL;
+	dataBlock->blockCount  =  0;
+	dataBlock->itemCount   =  0;
+	dataBlock->itemCap     =  0;
+	dataBlock->blockCap    =  orig_datablock->blockCap;
+	dataBlock->itemSize    =  orig_datablock->itemSize;
+	DataBlock_Accommodate(dataBlock, orig_datablock->itemCount);
+	dataBlock->itemCount   =  orig_datablock->itemCount;
+	dataBlock->itemCap     =  orig_datablock->itemCap;
+	dataBlock->destructor  =  orig_datablock->destructor;
+	array_clone(dataBlock->deletedIdx, orig_datablock->deletedIdx);
+
+	int res = pthread_mutex_init(&dataBlock->mutex, NULL);
+	UNUSED(res);
+	ASSERT(res == 0);
+
+	for(uint64_t i = 0; i < dataBlock->itemCount; i ++) {
+		DataBlockItemHeader *header = DataBlock_GetItemHeader(dataBlock, i);
+		// Block *block = GET_ITEM_BLOCK(dataBlock, i);
+		// uint64_t idx = ITEM_POSITION_WITHIN_BLOCK(idx, dataBlock->blockCap);
+		// header = block->data + (idx * block->itemSize);
+
+		DataBlockItemHeader *orig_header = DataBlock_GetItemHeader(orig_datablock, i);
+		if(IS_ITEM_DELETED(orig_header)) MARK_HEADER_AS_DELETED(header);
+		else MARK_HEADER_AS_NOT_DELETED(header);
+		copy(ITEM_DATA(orig_header), ITEM_DATA(header));
+	}
 
 	return dataBlock;
 }

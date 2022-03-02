@@ -17,4 +17,3 @@ void Node_ToString
 	GraphEntity_ToString((const GraphEntity *)n, buffer, bufferLen,
 			bytesWritten, format, GETYPE_NODE);
 }
-

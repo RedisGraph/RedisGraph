@@ -78,6 +78,9 @@ SIValue *GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id);
 /* Updates existing attribute value, return true if property been updated. */
 bool GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue value);
 
+// duplicates an entity and all of its properties
+void GraphEntity_Clone(const Entity *orig, Entity *new);
+
 // returns an SIArray of all keys in graph entity properties
 SIValue GraphEntity_Keys(const GraphEntity *e);
 

@@ -407,6 +407,43 @@ Graph *Graph_New
 	return g;
 }
 
+Graph *Graph_Clone
+(
+	const Graph *orig_graph
+) {
+
+	fpCopy cb = (fpCopy)GraphEntity_Clone;
+	Graph *g = rm_calloc(1, sizeof(Graph));
+
+	g->nodes      =  DataBlock_Clone(orig_graph->nodes, cb);
+	g->edges      =  DataBlock_Clone(orig_graph->edges, cb);
+	array_clone(g->labels, orig_graph->labels);
+	array_clone(g->relations, orig_graph->relations);
+
+	GrB_Index n = Graph_RequiredMatrixDim(orig_graph);
+	// instantiate the new matrices
+	RG_Matrix_new(&g->node_labels, GrB_BOOL, n, n);
+	RG_Matrix_new(&g->adjacency_matrix, GrB_BOOL, n, n);
+	RG_Matrix_new(&g->adjacency_matrix->transposed, GrB_BOOL, n, n);
+	RG_Matrix_new(&g->_zero_matrix, GrB_BOOL, n, n);
+
+	// copy the matrix contents
+	RG_Matrix_copy(g->node_labels, orig_graph->node_labels);
+	RG_Matrix_copy(g->adjacency_matrix, orig_graph->adjacency_matrix);
+
+	// clone graph statistics
+	g->stats = GraphStatistics_Clone(&orig_graph->stats);
+
+	// initialize a read-write lock scoped to the individual graph
+	_CreateRWLock(g);
+	g->_writelocked = false;
+
+	// force GraphBLAS updates and resize matrices to node count by default
+	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
+
+	return g;
+}
+
 // All graph matrices are required to be squared NXN
 // where N = Graph_RequiredMatrixDim.
 inline size_t Graph_RequiredMatrixDim(const Graph *g) {

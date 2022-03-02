@@ -52,6 +52,13 @@ GraphContext *GraphContext_New
 	const char *graph_name
 );
 
+// perform a deep copy of a graph context, providing it with a new name
+GraphContext *GraphContext_Clone
+(
+	const char *graph_name,
+	const GraphContext *orig_gc
+);
+
 // retrive the graph context according to the graph name
 // readOnly is the access mode to the graph key
 GraphContext *GraphContext_Retrieve
