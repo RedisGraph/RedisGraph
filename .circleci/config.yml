@@ -69,11 +69,18 @@ commands:
             - '*.tgz'
 
   setup-prerequisits:
+    parameters:
+      redis_version:
+        type: string
+        default: "6"
     steps:
       - setup-automation
       - run:
           name: Install prerequisites
-          command: ./sbin/system-setup.py
+          command: |
+            ./sbin/system-setup.py
+            python3 ./deps/readies/bin/getredis -v '<<parameters.redis_version>>'
+            redis-server --version
 
   benchmark-automation:
     parameters:
@@ -117,6 +124,9 @@ commands:
     parameters:
       platform:
         type: string
+      redis_version:
+        type: string
+        default: "6.2"
     steps:
       - early-returns
       - setup-executor
@@ -167,12 +177,17 @@ commands:
 
 jobs:
   build:
+    parameters:
+      redis_version:
+        type: string
+        default: "6"
     docker:
       - image: redisfab/rmbuilder:6.2.5-x64-bionic
     steps:
       - early-returns
       - checkout-all
-      - setup-prerequisits
+      - setup-prerequisits:
+        redis_version: <<parameters.redis_version>>
       - restore_cache:
           keys:
             - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
@@ -488,6 +503,13 @@ workflows:
   version: 2
   build_and_package:
     jobs:
+      - build:
+          name: build-with-redis-<<matrix.redis_version>>
+          <<: *on-any-branch
+          matrix:
+            alias: build-with-redis-ver
+            parameters:
+              redis_version: ["6.2", "7.0-rc2"]
       - build:
           <<: *context
           <<: *not-on-integ-branch
