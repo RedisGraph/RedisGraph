@@ -504,7 +504,7 @@ workflows:
           <<: *not-on-integ-branch
           matrix:
             parameters:
-              redis_version: ["6.2", "7.0-rc2"]
+              redis_version: ["6.2", "7"]
       - coverage:
           <<: *context
           <<: *on-any-branch
