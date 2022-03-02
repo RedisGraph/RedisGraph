@@ -15,8 +15,8 @@
 typedef struct
 {
 	RG_Matrix A;                   // matrix iterated
-	GxB_Iterator m_it;             // internal m iterator
-	GxB_Iterator dp_it;            // internal delta plus iterator
+	struct GB_Iterator_opaque m_it;             // internal m iterator
+	struct GB_Iterator_opaque dp_it;            // internal delta plus iterator
 	bool m_depleted;               // is m iterator depleted
 	bool dp_depleted;              // is dp iterator depleted
 	GrB_Index min_row;             // minimum row for iteration
