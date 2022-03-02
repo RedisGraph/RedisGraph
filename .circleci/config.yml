@@ -183,7 +183,7 @@ jobs:
       - early-returns
       - checkout-all
       - setup-prerequisits:
-        redis_version: <<parameters.redis_version>>
+          redis_version: <<parameters.redis_version>>
       - restore_cache:
           keys:
             - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
