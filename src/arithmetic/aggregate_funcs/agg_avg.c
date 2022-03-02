@@ -10,9 +10,6 @@
 #include <math.h>
 #include <float.h>
 
-typedef SIValue AggregateResult;
-AggregateResult AGGREGATE_OK;
-
 //------------------------------------------------------------------------------
 // Avg
 //------------------------------------------------------------------------------
@@ -99,3 +96,17 @@ void Avg_Finalize
 		}
 	}
 }
+
+void Register_AVG(void) {
+	SIType *types;
+	AR_FuncDesc *func_desc;
+
+	types = array_new(SIType, 2);
+	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
+	array_append(types, T_PTR);
+	func_desc = AR_AggFuncDescNew("avg", AGG_AVG, 2, 2, types, Aggregate_Free,
+			Avg_Finalize, SI_NullVal);
+
+	AR_RegFunc(func_desc);
+}
+

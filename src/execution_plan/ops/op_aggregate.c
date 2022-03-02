@@ -174,7 +174,7 @@ static Record _handoff
 
 	Record r = OpBase_CreateRecord((OpBase *)op);
 
-	// Add all projected keys to the Record.
+	// add all projected keys to the Record
 	for(uint i = 0; i < op->key_count; i++) {
 		int rec_idx = op->record_offsets[i];
 		// Non-aggregated expression.
@@ -184,7 +184,7 @@ static Record _handoff
 		Record_Add(r, rec_idx, res);
 	}
 
-	// Compute the final value of all aggregating expressions and add to the Record.
+	// compute the final value of all aggregate expressions and add to Record
 	for(uint i = 0; i < op->aggregate_count; i++) {
 		int rec_idx = op->record_offsets[i + op->key_count];
 		AR_ExpNode *exp = group->aggregationFunctions[i];
@@ -246,6 +246,7 @@ static Record AggregateConsume
 		_aggregateRecord(op, r);
 	} else {
 		OpBase *child = op->op.children[0];
+		// eager consumption!
 		while((r = OpBase_Consume(child))) _aggregateRecord(op, r);
 	}
 
@@ -258,6 +259,7 @@ static Record AggregateConsume
 		// in this case we want to return aggregation default value
 		// aggregate on an empty record
 		ASSERT(op->op.childCount > 0);
+
 		// use child record
 		// this is required in case this aggregation is perford within the
 		// context of a WITH projection as we need the child's mapping for

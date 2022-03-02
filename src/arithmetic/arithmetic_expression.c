@@ -554,7 +554,10 @@ void AR_EXP_Aggregate(AR_ExpNode *root, const Record r) {
 	}
 }
 
-void _AR_EXP_FinalizeAggregations(AR_ExpNode *root) {
+void _AR_EXP_FinalizeAggregations
+(
+	AR_ExpNode *root
+) {
 	//--------------------------------------------------------------------------
 	// finalize aggregation node
 	//--------------------------------------------------------------------------
@@ -587,7 +590,11 @@ void _AR_EXP_FinalizeAggregations(AR_ExpNode *root) {
 	}
 }
 
-SIValue AR_EXP_FinalizeAggregations(AR_ExpNode *root, const Record r) {
+SIValue AR_EXP_FinalizeAggregations
+(
+	AR_ExpNode *root,
+	const Record r
+) {
 	ASSERT(root != NULL);
 
 	_AR_EXP_FinalizeAggregations(root);
