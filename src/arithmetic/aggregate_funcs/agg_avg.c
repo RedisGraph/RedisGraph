@@ -99,6 +99,16 @@ void Avg_Finalize
 	}
 }
 
+AggregateCtx *Avg_PrivateData(void)
+{
+	AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
+
+	ctx->result = SI_NullVal();  // avg default value is NULL
+	ctx->private_data = rm_calloc(1, sizeof(AvgCtx));
+
+	return ctx;
+}
+
 void Register_AVG(void) {
 	SIType *types;
 	AR_FuncDesc *func_desc;
@@ -107,7 +117,7 @@ void Register_AVG(void) {
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	array_append(types, T_PTR);
 	func_desc = AR_AggFuncDescNew("avg", AGG_AVG, 2, 2, types, rm_free,
-			Avg_Finalize, SI_NullVal);
+			Avg_Finalize, Avg_PrivateData);
 
 	AR_RegFunc(func_desc);
 }

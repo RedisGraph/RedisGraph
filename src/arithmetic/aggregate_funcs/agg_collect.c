@@ -27,6 +27,16 @@ AggregateResult AGG_COLLECT(SIValue *argv, int argc) {
 	return AGGREGATE_OK;
 }
 
+AggregateCtx *Collect_PrivateData(void)
+{
+	AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
+
+	ctx->result = SI_Array(0);  // collect default value is an empty array
+	ctx->private_data = NULL;
+
+	return ctx;
+}
+
 void Register_COLLECT(void) {
 	SIType *types;
 	AR_FuncDesc *func_desc;
@@ -35,7 +45,7 @@ void Register_COLLECT(void) {
 	array_append(types, SI_ALL);
 	array_append(types, T_PTR);
 	func_desc = AR_AggFuncDescNew("collect", AGG_COLLECT, 2, 2, types,
-			NULL, NULL, Default_Array);
+			NULL, NULL, Collect_PrivateData);
 	AR_RegFunc(func_desc);
 }
 

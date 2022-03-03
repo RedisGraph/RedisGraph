@@ -11,6 +11,14 @@
 
 #define VAR_ARG_LEN UINT_MAX
 
+// an aggregation context
+// each aggregation function operates on an aggregation context
+// this is where the function can maintin its internal state
+typedef struct {
+	SIValue result;     // aggregation value
+	void *private_data; // [optional] addition private data
+} AggregateCtx;
+
 // AR_Func - function pointer to an operation with an arithmetic expression
 typedef SIValue(*AR_Func)(SIValue *argv, int argc);
 
@@ -23,15 +31,15 @@ typedef void (*AR_Func_Free)(void *ctx);
 // AR_Func_Clone - function pointer to a routine for cloning a function's private data
 typedef void *(*AR_Func_Clone)(void *orig);
 
-// AR_Func_DefaultValue - function pointer to a routine for producing an aggregation default value
-typedef SIValue (*AR_Func_DefaultValue)(void);
+// AR_Func_PrivateData - function pointer to a routine which produce function's private data
+typedef AggregateCtx *(*AR_Func_PrivateData)(void);
 
 // aggregation function callbacks
 typedef struct {
 	AR_Func_Free free;                  // [optional] function pointer to cleanup routine
 	AR_Func_Clone clone;                // [optional] function pointer to clone routine
 	AR_Func_Finalize finalize;          // [optional] function pointer to finalizing aggregate value routine
-	AR_Func_DefaultValue default_value; // function pointer to get aggregation default value
+	AR_Func_PrivateData private_data;   // function pointer to private data generator
 } AggCBs;
 
 typedef struct {
@@ -54,19 +62,6 @@ AR_FuncDesc *AR_FuncDescNew
 	uint max_argc,        // maximum number of arguments
 	SIType *types,        // acceptable types
 	bool reducible        // is function reducible
-);
-
-// create a new aggregation function descriptor
-AR_FuncDesc *AR_AggFuncDescNew
-(
-	const char *name,                   // function name
-	AR_Func func,                       // pointer to function
-	uint min_argc,                      // minimum number of arguments
-	uint max_argc,                      // maximum number of arguments
-	SIType *types,                      // acceptable types
-	AR_Func_Free free,                  // free aggregation callback
-	AR_Func_Finalize finalize,          // finalize aggregation callback
-	AR_Func_DefaultValue default_value  // default value callback
 );
 
 // register arithmetic function to repository
@@ -92,5 +87,11 @@ bool AR_FuncExists
 bool AR_FuncIsAggregate
 (
 	const char *func_name
+);
+
+//TODO: implement
+void AR_FuncFree
+(
+	AR_FuncDesc *f
 );
 

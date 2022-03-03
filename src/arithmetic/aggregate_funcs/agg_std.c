@@ -23,10 +23,9 @@ AggregateResult AGG_STDEV(SIValue *argv, int argc) {
 	AggregateCtx *ctx = argv[1].ptrval;
 	_agg_StDevCtx *stdev_ctx = ctx->private_data;
 
-	// On the first invocation, initialize the context.
-	if(ctx->private_data == NULL) {
-		ctx->private_data = rm_calloc(1, sizeof(_agg_StDevCtx));
-		stdev_ctx = ctx->private_data;
+	// on the first invocation, initialize the context
+	if(stdev_ctx->values == NULL) {
+		stdev_ctx->total = 0;
 		stdev_ctx->values = array_new(double, 1024);
 	}
 
@@ -72,15 +71,30 @@ void StDevPFinalize(void *ctx_ptr) {
 	StDevGenericFinalize(ctx_ptr, 0);
 }
 
-void StDev_Free(void *ctx_ptr) {
-	AggregateCtx *ctx = ctx_ptr;
-	SIValue_Free(ctx->result);
-	if(ctx->private_data) {
-		_agg_StDevCtx *stdev_ctx = ctx->private_data;
+void StDev_Free(void *pdata) {
+	ASSERT(pdata != NULL);
+
+	_agg_StDevCtx *stdev_ctx = pdata;
+	if(stdev_ctx->values != NULL) {
 		array_free(stdev_ctx->values);
-		rm_free(ctx->private_data);
 	}
-	rm_free(ctx);
+	rm_free(pdata);
+}
+
+AggregateCtx *STD_PrivateData(void)
+{
+	AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
+
+	ctx->result = SI_DoubleVal(0);  // STD default value is 0
+
+	// initialize private data
+	_agg_StDevCtx *pdata = rm_calloc(1, sizeof(_agg_StDevCtx));
+	pdata->values = NULL;
+	pdata->total = -1;
+
+	ctx->private_data = pdata;
+
+	return ctx;
 }
 
 void Register_STD(void) {
@@ -91,14 +105,14 @@ void Register_STD(void) {
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	array_append(types, T_PTR);
 	func_desc = AR_AggFuncDescNew("stDev", AGG_STDEV, 2, 2, types, StDev_Free,
-			StDevFinalize, Default_Double);
+			StDevFinalize, STD_PrivateData);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	array_append(types, T_PTR);
 	func_desc = AR_AggFuncDescNew("stDevP", AGG_STDEV, 2, 2, types, StDev_Free,
-			StDevPFinalize, Default_Double);
+			StDevPFinalize, STD_PrivateData);
 	AR_RegFunc(func_desc);
 }
 

@@ -13,13 +13,18 @@
 typedef SIValue AggregateResult;
 AggregateResult AGGREGATE_OK;
 
-// an aggregation context
-// each aggregation function operates on an aggregation context
-// this is where the function can maintin its internal state
-typedef struct {
-	SIValue result;     // aggregation value
-	void *private_data; // [optional] addition private data
-} AggregateCtx;
+// create a new aggregation function descriptor
+AR_FuncDesc *AR_AggFuncDescNew
+(
+	const char *name,                   // function name
+	AR_Func func,                       // pointer to function
+	uint min_argc,                      // minimum number of arguments
+	uint max_argc,                      // maximum number of arguments
+	SIType *types,                      // acceptable types
+	AR_Func_Free free,                  // free aggregation callback
+	AR_Func_Finalize finalize,          // finalize aggregation callback
+	AR_Func_PrivateData private_data    // generate private data
+);
 
 // register all aggregation funcitons
 void Register_AggFuncs(void);
@@ -49,17 +54,4 @@ void Aggregate_Free
 	AR_FuncDesc *agg_func,
 	AggregateCtx *ctx
 );
-
-//------------------------------------------------------------------------------
-// Aggregation default value generators
-//------------------------------------------------------------------------------
-
-// default double aggregation value
-SIValue Default_Double();
-
-// default long aggregation value
-SIValue Default_Long();
-
-// default array aggregation value
-SIValue Default_Array();
 

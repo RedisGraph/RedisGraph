@@ -28,6 +28,16 @@ AggregateResult AGG_MAX(SIValue *argv, int argc) {
 	return AGGREGATE_OK;
 }
 
+AggregateCtx *Max_PrivateData(void)
+{
+	AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
+
+	ctx->result = SI_NullVal();  // max default value is NULL
+	ctx->private_data = NULL;
+
+	return ctx;
+}
+
 void Register_MAX(void) {
 	SIType *types;
 	AR_FuncDesc *func_desc;
@@ -36,7 +46,7 @@ void Register_MAX(void) {
 	array_append(types, SI_ALL);
 	array_append(types, T_PTR);
 	func_desc = AR_AggFuncDescNew("max", AGG_MAX, 2, 2, types, NULL, NULL,
-			SI_NullVal);
+			Max_PrivateData);
 	AR_RegFunc(func_desc);
 }
 

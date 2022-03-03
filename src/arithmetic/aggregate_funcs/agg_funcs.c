@@ -9,6 +9,38 @@
 #include "../../value.h"
 #include "../../util/rmalloc.h"
 
+// create a new aggregation function descriptor
+AR_FuncDesc *AR_AggFuncDescNew
+(
+	const char *name,                   // function name
+	AR_Func func,                       // pointer to function
+	uint min_argc,                      // minimum number of arguments
+	uint max_argc,                      // maximum number of arguments
+	SIType *types,                      // acceptable types
+	AR_Func_Free free,                  // free aggregation callback
+	//AR_Func_Clone clone,                // clone aggregation callback
+	AR_Func_Finalize finalize,          // finalize aggregation callback
+	//AR_Func_DefaultValue default_value  // default value callback
+	AR_Func_PrivateData private_data    // generate private data
+) {
+	AR_FuncDesc *desc = rm_calloc(1, sizeof(AR_FuncDesc));
+
+	desc->name                         =  name;
+	desc->func                         =  func;
+	desc->types                        =  types;
+	desc->min_argc                     =  min_argc;
+	desc->max_argc                     =  max_argc;
+	desc->aggregate                    =  true;
+	desc->reducible                    =  false;
+	desc->agg_callbacks.free           =  free;
+	//desc->agg_callbacks.clone          =  clone;
+	desc->agg_callbacks.finalize       =  finalize;
+	//desc->agg_callbacks.default_value  =  default_value;
+	desc->agg_callbacks.private_data = private_data;
+
+	return desc;
+}
+
 // TODO: might be deprecated?
 // routine for cloning a generic aggregate function context
 void *Aggregate_Clone(void *orig) {
@@ -53,25 +85,26 @@ SIValue Aggregate_GetResult
 // Aggregation default value generators
 //------------------------------------------------------------------------------
 
-// default double aggregation value
-SIValue Default_Double(void) {
-	return SI_DoubleVal(0);
-}
-
-// default long aggregation value
-SIValue Default_Long(void) {
-	return SI_LongVal(0);
-}
-
-// default array aggregation value
-SIValue Default_Array(void) {
-	return SI_Array(0);
-}
+//// default double aggregation value
+//SIValue Default_Double(void) {
+//	return SI_DoubleVal(0);
+//}
+//
+//// default long aggregation value
+//SIValue Default_Long(void) {
+//	return SI_LongVal(0);
+//}
+//
+//// default array aggregation value
+//SIValue Default_Array(void) {
+//	return SI_Array(0);
+//}
 
 //------------------------------------------------------------------------------
 // Aggregation function registration
 //------------------------------------------------------------------------------
 
+// forward declarations
 void Register_AVG        (void);
 void Register_SUM        (void);
 void Register_MAX        (void);
@@ -81,6 +114,7 @@ void Register_COUNT      (void);
 void Register_COLLECT    (void);
 void Register_PRECENTILE (void);
 
+// register all aggregation functions
 void Register_AggFuncs() {
 	Register_AVG();
 	Register_SUM();

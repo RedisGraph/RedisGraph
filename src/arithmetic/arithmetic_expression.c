@@ -135,24 +135,16 @@ static AR_ExpNode *_AR_EXP_NewOpNode(uint child_count) {
 	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
 
 	node->type            =  AR_EXP_OP;
+	node->op.children     =  rm_malloc(child_count * sizeof(AR_ExpNode *));
 	node->op.child_count  =  child_count;
-	node->op.children     =  rm_malloc(child_count * sizeof(AR_ExpNode  *));
 
 	return node;
 }
 
 static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
-	AR_ExpNode *clone = _AR_EXP_NewOpNode(exp->op.child_count);
-	// if the function has private data, the function descriptor
-	// itself should be cloned. Otherwise, we can perform a direct assignment
-	if(AGGREGATION_NODE(exp)) {
-		ASSERT(false && "need to clone AggregateCtx");
-	}
-
-	//if(exp->op.f->agg_callbacks.bclone) clone->op.f = AR_CloneFuncDesc(exp->op.f);
-	else {
-		clone->op.f = exp->op.f;
-	}
+	const char *func_name = exp->op.f->name;
+	uint child_count = exp->op.child_count;
+	AR_ExpNode *clone = AR_EXP_NewOpNode(func_name, child_count);
 
 	// clone child nodes
 	for(uint i = 0; i < exp->op.child_count; i++) {
@@ -163,7 +155,11 @@ static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 	return clone;
 }
 
-AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count) {
+AR_ExpNode *AR_EXP_NewOpNode
+(
+	const char *func_name,
+	uint child_count
+) {
 
 	AR_ExpNode *node = _AR_EXP_NewOpNode(child_count);
 
@@ -171,6 +167,13 @@ AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 	AR_FuncDesc *func = AR_GetFunc(func_name);
 	ASSERT(func != NULL);
 	node->op.f = func;
+
+	// add aggregation context as function private data
+	if(func->aggregate) {
+		// generate aggregation context and store it in node's private data
+		ASSERT(func->agg_callbacks.private_data != NULL);
+		node->op.private_data = func->agg_callbacks.private_data();
+	}
 
 	return node;
 }
@@ -791,8 +794,12 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
 
 static inline void _AR_EXP_FreeOpInternals(AR_ExpNode *op_node) {
 	if(AGGREGATION_NODE(op_node)) {
-		AggregateCtx *ctx = AGGREGATION_NODE_GET_CTX(op_node);
 		AR_FuncDesc *agg_func = op_node->op.f;
+
+		//AggregateCtx *ctx = AGGREGATION_NODE_GET_CTX(op_node);
+		AggregateCtx *ctx = op_node->op.private_data;
+		ASSERT(ctx != NULL);
+
 		Aggregate_Free(agg_func, ctx);
 	}
 

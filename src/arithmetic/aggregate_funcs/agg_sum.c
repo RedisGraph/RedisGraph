@@ -25,6 +25,15 @@ AggregateResult AGG_SUM(SIValue *argv, int argc) {
 	return AGGREGATE_OK;
 }
 
+AggregateCtx *SUM_PrivateData(void)
+{
+	AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
+
+	ctx->result = SI_DoubleVal(0);  // SUM default value is 0
+
+	return ctx;
+}
+
 void Register_SUM(void) {
 	SIType *types;
 	AR_FuncDesc *func_desc;
@@ -33,7 +42,7 @@ void Register_SUM(void) {
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	array_append(types, T_PTR);
 	func_desc = AR_AggFuncDescNew("sum", AGG_SUM, 2, 2, types, NULL, NULL,
-			Default_Double);
+			SUM_PrivateData);
 	AR_RegFunc(func_desc);
 }
 

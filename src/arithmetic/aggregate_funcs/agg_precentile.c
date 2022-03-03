@@ -23,23 +23,21 @@ typedef struct {
 	double *values;
 } _agg_PercCtx;
 
-// This function is agnostic as to percentile method
+// this function is agnostic as to percentile method
 AggregateResult AGG_PERC(SIValue *argv, int argc) {
 	AggregateCtx *ctx = argv[2].ptrval;
 	_agg_PercCtx *perc_ctx = ctx->private_data;
 
-	// On the first invocation, initialize the context.
-	if(ctx->private_data == NULL) {
-		ctx->private_data = rm_calloc(1, sizeof(_agg_PercCtx));
-		perc_ctx = ctx->private_data;
-		// The second argument is the requested percentile, which we only
-		// need to apply on the first function invocation.
+	// on the first invocation, initialize the context
+	if(perc_ctx->values == NULL) {
+		// the second argument is the requested percentile, which we only
+		// need to apply on the first function invocation
 		SIValue_ToDouble(&argv[1], &perc_ctx->percentile);
-		perc_ctx->values = array_new(double, 1024);
 		if(perc_ctx->percentile < 0 || perc_ctx->percentile > 1) {
 			ErrorCtx_SetError("Invalid input - '%f' is not a valid argument, must be a number in the range 0.0 to 1.0",
 							  perc_ctx->percentile);
 		}
+		perc_ctx->values = array_new(double, 1024);
 	}
 
 	SIValue v = argv[0];
@@ -105,15 +103,30 @@ void PercContFinalize(void *ctx_ptr) {
 	}
 }
 
-void Percentile_Free(void *ctx_ptr) {
-	AggregateCtx *ctx = ctx_ptr;
-	SIValue_Free(ctx->result);
-	if(ctx->private_data) {
-		_agg_PercCtx *perc_ctx = ctx->private_data;
-		array_free(perc_ctx->values);
-		rm_free(ctx->private_data);
+void Percentile_Free(void *pdata) {
+	ASSERT(pdata != NULL);
+
+	_agg_PercCtx *ctx = pdata;
+	if(ctx->values != NULL) {
+		array_free(ctx->values);
 	}
 	rm_free(ctx);
+}
+
+AggregateCtx *Precentile_PrivateData(void)
+{
+	AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
+
+	ctx->result = SI_NullVal();  // precentile default value is NULL
+
+	// initialize private data
+	_agg_PercCtx *pdata = rm_calloc(1, sizeof(_agg_PercCtx));
+	pdata->percentile= -1; // invalid precentile value
+	pdata->values = NULL;
+
+	ctx->private_data = pdata;
+
+	return ctx;
 }
 
 void Register_PRECENTILE(void) {
@@ -125,7 +138,7 @@ void Register_PRECENTILE(void) {
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	array_append(types, T_PTR);
 	func_desc = AR_AggFuncDescNew("percentileDisc", AGG_PERC, 3, 3, types,
-			Percentile_Free, PercDiscFinalize, SI_NullVal);
+			Percentile_Free, PercDiscFinalize, Precentile_PrivateData);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
@@ -133,7 +146,7 @@ void Register_PRECENTILE(void) {
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	array_append(types, T_PTR);
 	func_desc = AR_AggFuncDescNew("percentileCont", AGG_PERC, 3, 3, types,
-			Percentile_Free, PercContFinalize, SI_NullVal);
+			Percentile_Free, PercContFinalize, Precentile_PrivateData);
 	AR_RegFunc(func_desc);
 }
 
