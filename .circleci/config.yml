@@ -540,13 +540,29 @@ workflows:
               redis_version: ["6.0", "6.2", "7", "unstable"]
             exclude:
               - platform: bionic
-                redis_version: ["6.0", "7", "unstable"]
+                redis_version: "6.0"
+              - platform: bionic
+                redis_version: "7"
+              - platform: bionic
+                redis_version: "unstable"
               - platform: xenial
-                redis_version: ["6.0", "7", "unstable"]
+                redis_version: "6.0"
+              - platform: xenial
+                redis_version: "7"
+              - platform: xenial
+                redis_version: "unstable"
               - platform: centos7
-                redis_version: ["6.0", "7", "unstable"]
+                redis_version: "6.0"
+              - platform: centos7
+                redis_version: "7"
+              - platform: centos7
+                redis_version: "unstable"
               - platform: ol8
-                redis_version: ["6.0", "7", "unstable"]
+                redis_version: "6.0"
+              - platform: ol8
+                redis_version: "7"
+              - platform: ol8
+                redis_version: "unstable"
       - build-arm-platforms:
           <<: *on-integ-and-version-tags
           context: common
