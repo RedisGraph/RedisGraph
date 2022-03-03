@@ -127,6 +127,68 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_next) {
 	ASSERT_TRUE(iter.A == NULL);
 }
 
+// test RGMatrixTupleIter iteration for sparse matrix
+TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_next_sparse) {
+	RG_Matrix          A                   =  NULL;
+	GrB_Type           t                   =  GrB_UINT64;
+	GrB_Info           info                =  GrB_SUCCESS;
+	GrB_Index          row                 =  0;
+	GrB_Index          col                 =  0;
+	GrB_Index          nrows               =  100;
+	GrB_Index          ncols               =  100;
+	uint64_t           val                 =  0;
+	bool               sync                =  false;
+	RG_MatrixTupleIter iter;
+	memset(&iter, 0, sizeof(RG_MatrixTupleIter));
+
+	info = RG_Matrix_new(&A, t, nrows, ncols);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	for (GrB_Index i = 25; i < 100; i++) {
+		for (GrB_Index j = 25; j < 100; j++) {
+			// set element at position i,j
+			info = RG_Matrix_setElement_UINT64(A, 0, i, j);
+			ASSERT_EQ(info, GrB_SUCCESS);
+		}
+	}
+
+	//--------------------------------------------------------------------------
+	// flush matrix, sync
+	//--------------------------------------------------------------------------
+	
+	// wait, force sync
+	sync = true;
+	RG_Matrix_wait(A, sync);
+
+	//--------------------------------------------------------------------------
+	// check M is sparse
+	//--------------------------------------------------------------------------
+
+	GrB_Matrix M = RG_MATRIX_M(A);
+	
+	int sparsity;
+	GxB_Matrix_Option_get(M, GxB_SPARSITY_STATUS, &sparsity);
+	ASSERT_TRUE(sparsity == GxB_SPARSE);
+
+	//--------------------------------------------------------------------------
+	// check iter start from correct row
+	//--------------------------------------------------------------------------
+
+	info = RG_MatrixTupleIter_attach(&iter, A);
+	ASSERT_TRUE(RG_MatrixTupleIter_is_attached(&iter, A));
+
+	info = RG_MatrixTupleIter_next_UINT64(&iter, &row, &col, &val);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	
+	ASSERT_EQ(row, 25);
+	ASSERT_EQ(col, 25);
+	ASSERT_EQ(val, 0);
+
+	RG_Matrix_free(&A);
+	ASSERT_TRUE(A == NULL);
+	RG_MatrixTupleIter_detach(&iter);
+	ASSERT_TRUE(iter.A == NULL);
+}
 
 // test RGMatrixTupleIter iteration
 TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_reuse) {

@@ -20,31 +20,31 @@ static inline void _set_iter_range
 ) {
 	GrB_Info info = GxB_rowIterator_seekRow (it, min_row) ;
 
-	// exhausted -> depleted
-	if (info == GxB_EXHAUSTED) {
-		*depleted = true ;
-		return ;
-	}
+	switch (info)
+	{
+		case GxB_EXHAUSTED:
+			// no values to iterate on
+			*depleted = true ;
+			break ;
+		case GrB_NO_VALUE:
+			// in sparse matrix no value in the current row
+			// seek to first none empty row
+			while (info == GrB_NO_VALUE && GxB_rowIterator_getRowIndex(it) < max_row) {
+				info = GxB_rowIterator_nextRow (it) ;
+			}
 
-	// make sure seekRow didn't over-reached
-	if (GxB_rowIterator_getRowIndex (it) > max_row) {
-		*depleted = true ;
-		return ;
+			*depleted = (info != GrB_SUCCESS ||
+						GxB_rowIterator_getRowIndex(it) > max_row) ;
+			break ;
+		case GrB_SUCCESS:
+			// in hypersparse matrix iterator move to the next row with values
+			// make sure seekRow didn't over-reached
+			*depleted = GxB_rowIterator_getRowIndex (it) > max_row;
+			break ;		
+		default:
+			ASSERT(false);
+			break;
 	}
-
-	// iterator is within min/max range bounds
-	if (info == GrB_SUCCESS) {
-		*depleted = false ;
-		return ;
-	}
-
-	// seek to first none empty row
-	while (info == GrB_NO_VALUE && GxB_rowIterator_getRowIndex(it) < max_row) {
-		info = GxB_rowIterator_nextRow (it) ;
-	}
-
-	*depleted = (info != GrB_SUCCESS ||
-			     GxB_rowIterator_getRowIndex(it) > max_row) ;
 }
 
 static inline void _init_iter
@@ -350,7 +350,9 @@ GrB_Info RG_MatrixTupleIter_detach
 ) {
 	ASSERT(iter != NULL) ;
 
-	iter->A = NULL ;
+	iter->A           = NULL ;
+	iter->m_depleted  = true ;
+	iter->dp_depleted = true ;
 
 	return GrB_SUCCESS ;
 }

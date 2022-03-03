@@ -14,13 +14,13 @@
 // to iterate over a RG_Matrix
 typedef struct
 {
-	RG_Matrix A;                   // matrix iterated
-	struct GB_Iterator_opaque m_it;             // internal m iterator
-	struct GB_Iterator_opaque dp_it;            // internal delta plus iterator
-	bool m_depleted;               // is m iterator depleted
-	bool dp_depleted;              // is dp iterator depleted
-	GrB_Index min_row;             // minimum row for iteration
-	GrB_Index max_row;             // maximum row for iteration
+	RG_Matrix A;                      // matrix iterated
+	struct GB_Iterator_opaque m_it;   // internal m iterator
+	struct GB_Iterator_opaque dp_it;  // internal delta plus iterator
+	bool m_depleted;                  // is m iterator depleted
+	bool dp_depleted;                 // is dp iterator depleted
+	GrB_Index min_row;                // minimum row for iteration
+	GrB_Index max_row;                // maximum row for iteration
 } RG_MatrixTupleIter ;
 
 // attach iterator to matrix
