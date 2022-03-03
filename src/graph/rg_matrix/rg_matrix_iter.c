@@ -20,36 +20,36 @@ static inline void _set_iter_range
 ) {
 	GrB_Info info = GxB_rowIterator_seekRow (it, min_row) ;
 
-	// exhausted -> depleted
-	if (info == GxB_EXHAUSTED) {
-		*depleted = true ;
-		return ;
-	}
+	switch (info)
+	{
+		case GxB_EXHAUSTED:
+			// no values to iterate on
+			*depleted = true ;
+			break ;
+		case GrB_NO_VALUE:
+			// in sparse matrix no value in the current row
+			// seek to first none empty row
+			while (info == GrB_NO_VALUE && GxB_rowIterator_getRowIndex(it) < max_row) {
+				info = GxB_rowIterator_nextRow (it) ;
+			}
 
-	// make sure seekRow didn't over-reached
-	if (GxB_rowIterator_getRowIndex (it) > max_row) {
-		*depleted = true ;
-		return ;
+			*depleted = (info != GrB_SUCCESS ||
+						GxB_rowIterator_getRowIndex(it) > max_row) ;
+			break ;
+		case GrB_SUCCESS:
+			// in hypersparse matrix iterator move to the next row with values
+			// make sure seekRow didn't over-reached
+			*depleted = GxB_rowIterator_getRowIndex (it) > max_row;
+			break ;		
+		default:
+			ASSERT(false);
+			break;
 	}
-
-	// iterator is within min/max range bounds
-	if (info == GrB_SUCCESS) {
-		*depleted = false ;
-		return ;
-	}
-
-	// seek to first none empty row
-	while (info == GrB_NO_VALUE && GxB_rowIterator_getRowIndex(it) < max_row) {
-		info = GxB_rowIterator_nextRow (it) ;
-	}
-
-	*depleted = (info != GrB_SUCCESS ||
-			     GxB_rowIterator_getRowIndex(it) > max_row) ;
 }
 
 static inline void _init_iter
 (
-	GxB_Iterator *it,
+	GxB_Iterator it,
 	GrB_Matrix m,
 	GrB_Index min_row,
 	GrB_Index max_row,
@@ -69,13 +69,10 @@ static inline void _init_iter
 	info = GrB_Matrix_nvals(&nvals, m) ;
 	ASSERT(info == GrB_SUCCESS) ;
 
-	info = GxB_Iterator_new(it) ;
-	ASSERT(info == GrB_SUCCESS) ;
-
 	if(nvals > 0) {
-		info = GxB_rowIterator_attach(*it, m, NULL) ;
+		info = GxB_rowIterator_attach(it, m, NULL) ;
 		ASSERT(info == GrB_SUCCESS) ;
-		_set_iter_range(*it, min_row, max_row, depleted) ;
+		_set_iter_range(it, min_row, max_row, depleted) ;
 	}
 }
 
@@ -89,8 +86,8 @@ GrB_Info RG_MatrixTupleIter_iterate_row
 	iter->min_row = rowIdx ;
 	iter->max_row = rowIdx ;
 
-	_set_iter_range(iter->m_it, iter->min_row, iter->max_row, &iter->m_depleted) ;
-	_set_iter_range(iter->dp_it, iter->min_row, iter->max_row, &iter->dp_depleted) ;
+	_set_iter_range(&iter->m_it, iter->min_row, iter->max_row, &iter->m_depleted) ;
+	_set_iter_range(&iter->dp_it, iter->min_row, iter->max_row, &iter->dp_depleted) ;
 
 	return GrB_SUCCESS ;
 }
@@ -105,8 +102,8 @@ GrB_Info RG_MatrixTupleIter_jump_to_row
 
 	iter->min_row = rowIdx ;
 
-	_set_iter_range(iter->m_it, iter->min_row, iter->max_row, &iter->m_depleted) ;
-	_set_iter_range(iter->dp_it, iter->min_row, iter->max_row, &iter->dp_depleted) ;
+	_set_iter_range(&iter->m_it, iter->min_row, iter->max_row, &iter->m_depleted) ;
+	_set_iter_range(&iter->dp_it, iter->min_row, iter->max_row, &iter->dp_depleted) ;
 
 	return GrB_SUCCESS ;
 }
@@ -122,8 +119,8 @@ GrB_Info RG_MatrixTupleIter_iterate_range
 	iter->min_row = startRowIdx ;
 	iter->max_row = endRowIdx ;
 
-	_set_iter_range(iter->m_it, iter->min_row, iter->max_row, &iter->m_depleted) ;
-	_set_iter_range(iter->dp_it, iter->min_row, iter->max_row, &iter->dp_depleted) ;
+	_set_iter_range(&iter->m_it, iter->min_row, iter->max_row, &iter->m_depleted) ;
+	_set_iter_range(&iter->dp_it, iter->min_row, iter->max_row, &iter->dp_depleted) ;
 
 	return GrB_SUCCESS ;
 }
@@ -167,7 +164,7 @@ static GrB_Info _next_m_iter_bool
 	GrB_Index  _row ;
 	GrB_Index  _col ;
 
-	GxB_Iterator m_it = iter->m_it ;
+	GxB_Iterator m_it = &iter->m_it ;
 
 	do {
 		// iterator depleted, return
@@ -203,7 +200,7 @@ GrB_Info RG_MatrixTupleIter_next_BOOL
 
 	GrB_Info             info     =  GrB_SUCCESS                    ;
 	GrB_Matrix           DM       =  RG_MATRIX_DELTA_MINUS(iter->A) ;
-	GxB_Iterator         dp_it    =  iter->dp_it                    ;
+	GxB_Iterator         dp_it    =  &iter->dp_it                   ;
 
 	if(!iter->m_depleted) {
 		info = _next_m_iter_bool(iter, DM, row, col, val, &iter->m_depleted) ;
@@ -241,7 +238,7 @@ static GrB_Info _next_m_iter_uint64
 	GrB_Index  _row ;
 	GrB_Index  _col ;
 
-	GxB_Iterator m_it = iter->m_it ;
+	GxB_Iterator m_it = &iter->m_it ;
 
 	do {
 		// iterator depleted, return
@@ -277,7 +274,7 @@ GrB_Info RG_MatrixTupleIter_next_UINT64
 
 	GrB_Info             info     =  GrB_SUCCESS                    ;
 	GrB_Matrix           DM       =  RG_MATRIX_DELTA_MINUS(iter->A) ;
-	GxB_Iterator         dp_it    =  iter->dp_it                    ;
+	GxB_Iterator         dp_it    =  &iter->dp_it                    ;
 
 	if(!iter->m_depleted) {
 		info = _next_m_iter_uint64(iter, DM, row, col, val, &iter->m_depleted) ;
@@ -307,8 +304,8 @@ GrB_Info RG_MatrixTupleIter_reset
 
 	if(IS_DETACHED(iter)) return GrB_NULL_POINTER ;
 
-	_set_iter_range(iter->m_it, iter->min_row, iter->max_row, &iter->m_depleted) ;
-	_set_iter_range(iter->dp_it, iter->min_row, iter->max_row, &iter->dp_depleted) ;
+	_set_iter_range(&iter->m_it, iter->min_row, iter->max_row, &iter->m_depleted) ;
+	_set_iter_range(&iter->dp_it, iter->min_row, iter->max_row, &iter->dp_depleted) ;
 
 	return info ;
 }
@@ -340,9 +337,6 @@ GrB_Info RG_MatrixTupleIter_attach
 	iter->min_row = 0 ;
 	iter->max_row = ULLONG_MAX ;
 
-	if(iter->m_it != NULL) GrB_free (&iter->m_it) ;
-	if(iter->dp_it != NULL) GrB_free (&iter->dp_it) ;
-
 	_init_iter(&iter->m_it, M, iter->min_row, iter->max_row, &iter->m_depleted) ;
 	_init_iter(&iter->dp_it, DP, iter->min_row, iter->max_row, &iter->dp_depleted) ;
 
@@ -356,12 +350,9 @@ GrB_Info RG_MatrixTupleIter_detach
 ) {
 	ASSERT(iter != NULL) ;
 
-	if(iter->m_it  != NULL) GrB_free (&iter->m_it) ;
-	if(iter->dp_it != NULL) GrB_free (&iter->dp_it) ;
-
-	iter->A     = NULL ;
-	iter->m_it  = NULL ;
-	iter->dp_it = NULL ;
+	iter->A           = NULL ;
+	iter->m_depleted  = true ;
+	iter->dp_depleted = true ;
 
 	return GrB_SUCCESS ;
 }
