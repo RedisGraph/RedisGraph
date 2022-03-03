@@ -50,6 +50,9 @@ commands:
           command: git submodule update --init --recursive
 
   setup-automation:
+    parameters:
+      redis_version:
+        type: string
     steps:
       - run:
           name: Setup automation
@@ -57,6 +60,8 @@ commands:
             git submodule update --init deps/readies
             ./deps/readies/bin/getpy3
             ./deps/readies/bin/getpy2
+            ./deps/readies/bin/getredis -v '<<parameters.redis_version>>' --force
+            redis-server --version
 
   persist-artifacts:
     steps:
@@ -74,13 +79,12 @@ commands:
         type: string
         default: "6.2"
     steps:
-      - setup-automation
+      - setup-automation:
+          redis_version: <<parameters.redis_version>>
       - run:
           name: Install prerequisites
           command: |
             ./sbin/system-setup.py
-            python3 ./deps/readies/bin/getredis -v '<<parameters.redis_version>>' --force
-            redis-server --version
 
   benchmark-automation:
     parameters:
@@ -124,11 +128,14 @@ commands:
     parameters:
       platform:
         type: string
+      redis_version:
+        type: string
     steps:
       - early-returns
       - setup-executor
       - checkout-all
-      - setup-automation
+      - setup-automation:
+          redis_version: <<parameters.redis_version>>
       - run:
           name: Build for platform (docker build)
           command: |
@@ -147,10 +154,13 @@ commands:
     parameters:
       platform:
         type: string
+      redis_version:
+        type: string
     steps:
       - early-returns
       - checkout-all
-      - setup-automation
+      - setup-automation:
+          redis_version: <<parameters.redis_version>>
       - run:
           name: Install Docker
           shell: /bin/bash -l -eo pipefail
@@ -312,15 +322,20 @@ jobs:
     parameters:
       platform:
         type: string
+      redis_version:
+        type: string
     docker:
       - image: debian:bullseye
     steps:
       - platform-build-steps:
           platform: <<parameters.platform>>
+          redis_version: <<parameters.redis_version>>
 
   build-arm-platforms:
     parameters:
       platform:
+        type: string
+      redis_version:
         type: string
     machine:
       image: ubuntu-2004:202101-01
@@ -328,6 +343,7 @@ jobs:
     steps:
       - vm-build-platforms-steps:
           platform: <<parameters.platform>>
+          redis_version: <<parameters.redis_version>>
 
   deploy_branch:
     docker:
@@ -364,7 +380,8 @@ jobs:
       - early-returns
       - early-return-for-forked-pull-requests
       - checkout
-      - setup-automation
+      - setup-automation:
+          redis_version: "6.2"
       - run:
           name: Run QA Automation
           command: MODULE_VERSION=$CIRCLE_TAG VERBOSE=1 TEST=release ./tests/qa/run
@@ -504,7 +521,7 @@ workflows:
           <<: *not-on-integ-branch
           matrix:
             parameters:
-              redis_version: ["6.2", "7"]
+              redis_version: ["6.2"]
       - coverage:
           <<: *context
           <<: *on-any-branch
@@ -516,16 +533,27 @@ workflows:
           <<: *on-integ-and-version-tags
       - platform_build:
           <<: *context
-          <<: *on-integ-and-version-tags
+          <<: *on-any-branch // revert on-integ-and-version-tags
           matrix:
             parameters:
               platform: [focal, bionic, xenial, centos7, ol8]
+              redis_version: ["6.0", "6.2", "7", "unstable"]
+            exclude:
+              - platform: bionic
+                redis_version: ["6.0", "7", "unstable"]
+              - platform: xenial
+                redis_version: ["6.0", "7", "unstable"]
+              - platform: centos7
+                redis_version: ["6.0", "7", "unstable"]
+              - platform: ol8
+                redis_version: ["6.0", "7", "unstable"]
       - build-arm-platforms:
           <<: *on-integ-and-version-tags
           context: common
           matrix:
             parameters:
               platform: [bionic]
+              redis_version: ["6.2"]
       - deploy_branch:
           <<: *context
           <<: *on-integ-branch
