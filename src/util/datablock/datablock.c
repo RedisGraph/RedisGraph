@@ -129,10 +129,6 @@ DataBlock *DataBlock_Clone
 
 	for(uint64_t i = 0; i < dataBlock->itemCount; i ++) {
 		DataBlockItemHeader *header = DataBlock_GetItemHeader(dataBlock, i);
-		// Block *block = GET_ITEM_BLOCK(dataBlock, i);
-		// uint64_t idx = ITEM_POSITION_WITHIN_BLOCK(idx, dataBlock->blockCap);
-		// header = block->data + (idx * block->itemSize);
-
 		DataBlockItemHeader *orig_header = DataBlock_GetItemHeader(orig_datablock, i);
 		if(IS_ITEM_DELETED(orig_header)) MARK_HEADER_AS_DELETED(header);
 		else MARK_HEADER_AS_NOT_DELETED(header);
