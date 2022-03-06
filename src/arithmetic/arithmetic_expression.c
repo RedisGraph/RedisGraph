@@ -141,7 +141,12 @@ static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 	const char *func_name = exp->op.f->name;
 	uint child_count = exp->op.child_count;
 	AR_ExpNode *clone = AR_EXP_NewOpNode(func_name, child_count);
-	if(clone->op.f->callbacks.clone) clone->op.private_data = clone->op.f->callbacks.clone(exp->op.private_data);
+	AR_Func_Clone clone_cb = clone->op.f->callbacks.clone;
+	void *pdata = exp->op.private_data;
+	if(clone_cb != NULL) {
+		// clone callback specified, use it to duplicate function's private data
+		clone->op.private_data = clone_cb(exp->op.private_data);
+	}
 
 	// clone child nodes
 	for(uint i = 0; i < exp->op.child_count; i++) {

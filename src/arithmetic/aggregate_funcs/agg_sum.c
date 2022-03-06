@@ -30,6 +30,7 @@ AggregateCtx *SUM_PrivateData(void)
 	AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
 
 	ctx->result = SI_DoubleVal(0);  // SUM default value is 0
+	ctx->private_data = NULL;
 
 	return ctx;
 }
