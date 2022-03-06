@@ -1,6 +1,12 @@
-# Cypher Coverage
-RedisGraph implements a subset of the Cypher language, which is growing as development continues.
-This document is based on the Cypher Query Language Reference (version 9), available at [OpenCypher Resources](https://www.opencypher.org/resources).
+---
+title: "Cypher Coverage"
+linkTitle: "Cypher Coverage"
+type: docs
+weight: 1
+description: >
+"RedisGraph implements a subset of the Cypher language, which is growing as development continues.
+This document is based on the Cypher Query Language Reference (version 9), available at [OpenCypher Resources](https://www.opencypher.org/resources)."
+---
 
 ## Patterns
 Patterns are fully supported.
