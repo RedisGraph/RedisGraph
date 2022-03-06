@@ -812,6 +812,8 @@ static inline void _AR_EXP_FreeOpInternals(AR_ExpNode *op_node) {
 		ASSERT(ctx != NULL);
 
 		Aggregate_Free(agg_func, ctx);
+	} else if(op_node->op.f->callbacks.free && op_node->op.private_data) {
+		op_node->op.f->callbacks.free(op_node->op.private_data);
 	}
 
 	for(int child_idx = 0; child_idx < op_node->op.child_count; child_idx++) {
