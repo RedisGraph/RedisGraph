@@ -67,7 +67,7 @@ static void _PopulateComprehensionCtx(ListComprehensionCtx *ctx, Record outer_re
 }
 
 
-SIValue AR_ANY(SIValue *argv, int argc) {
+SIValue AR_ANY(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	// ANY comprehensions are invoked with three children:
 	// The list to iterate over.
@@ -75,7 +75,7 @@ SIValue AR_ANY(SIValue *argv, int argc) {
 	// The function context.
 	SIValue list = argv[0];
 	Record outer_record = argv[1].ptrval;
-	ListComprehensionCtx *ctx = argv[2].ptrval;
+	ListComprehensionCtx *ctx = private_data;
 
 	// On the first invocation, build the local Record.
 	if(ctx->local_record == NULL) _PopulateComprehensionCtx(ctx, outer_record);
@@ -99,7 +99,7 @@ SIValue AR_ANY(SIValue *argv, int argc) {
 	return SI_BoolVal(false);
 }
 
-SIValue AR_ALL(SIValue *argv, int argc) {
+SIValue AR_ALL(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	// ALL comprehensions are invoked with three children:
 	// The list to iterate over.
@@ -107,7 +107,7 @@ SIValue AR_ALL(SIValue *argv, int argc) {
 	// The function context.
 	SIValue list = argv[0];
 	Record outer_record = argv[1].ptrval;
-	ListComprehensionCtx *ctx = argv[2].ptrval;
+	ListComprehensionCtx *ctx = private_data;
 
 	// On the first invocation, build the local Record.
 	if(ctx->local_record == NULL) _PopulateComprehensionCtx(ctx, outer_record);
@@ -131,7 +131,7 @@ SIValue AR_ALL(SIValue *argv, int argc) {
 	return SI_BoolVal(true);
 }
 
-SIValue AR_SINGLE(SIValue *argv, int argc) {
+SIValue AR_SINGLE(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	// ALL comprehensions are invoked with three children:
 	// The list to iterate over.
@@ -139,7 +139,7 @@ SIValue AR_SINGLE(SIValue *argv, int argc) {
 	// The function context.
 	SIValue list = argv[0];
 	Record outer_record = argv[1].ptrval;
-	ListComprehensionCtx *ctx = argv[2].ptrval;
+	ListComprehensionCtx *ctx = private_data;
 
 	// On the first invocation, build the local Record.
 	if(ctx->local_record == NULL) _PopulateComprehensionCtx(ctx, outer_record);
@@ -167,7 +167,7 @@ SIValue AR_SINGLE(SIValue *argv, int argc) {
 	return SI_BoolVal(single);
 }
 
-SIValue AR_NONE(SIValue *argv, int argc) {
+SIValue AR_NONE(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	// ALL comprehensions are invoked with three children:
 	// The list to iterate over.
@@ -175,7 +175,7 @@ SIValue AR_NONE(SIValue *argv, int argc) {
 	// The function context.
 	SIValue list = argv[0];
 	Record outer_record = argv[1].ptrval;
-	ListComprehensionCtx *ctx = argv[2].ptrval;
+	ListComprehensionCtx *ctx = private_data;
 
 	// On the first invocation, build the local Record.
 	if(ctx->local_record == NULL) _PopulateComprehensionCtx(ctx, outer_record);
@@ -200,7 +200,7 @@ SIValue AR_NONE(SIValue *argv, int argc) {
 }
 
 
-SIValue AR_LIST_COMPREHENSION(SIValue *argv, int argc) {
+SIValue AR_LIST_COMPREHENSION(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	/* List comprehensions are invoked with three children:
 	 * The list to iterate over.
@@ -208,7 +208,7 @@ SIValue AR_LIST_COMPREHENSION(SIValue *argv, int argc) {
 	 * The function context. */
 	SIValue list = argv[0];
 	Record outer_record = argv[1].ptrval;
-	ListComprehensionCtx *ctx = argv[2].ptrval;
+	ListComprehensionCtx *ctx = private_data;
 
 	// On the first invocation, build the local Record.
 	if(ctx->local_record == NULL) _PopulateComprehensionCtx(ctx, outer_record);
@@ -251,41 +251,35 @@ void Register_ComprehensionFuncs() {
 	types = array_new(SIType, 3);
 	array_append(types, T_ARRAY | T_NULL);
 	array_append(types, T_PTR);
-	array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("any", AR_ANY, 3, 3, types, true);
+	func_desc = AR_FuncDescNew("any", AR_ANY, 2, 2, types, true);
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
 	array_append(types, T_ARRAY | T_NULL);
 	array_append(types, T_PTR);
-	array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("all", AR_ALL, 3, 3, types, true);
+	func_desc = AR_FuncDescNew("all", AR_ALL, 2, 2, types, true);
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
 	array_append(types, T_ARRAY | T_NULL);
 	array_append(types, T_PTR);
-	array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("single", AR_SINGLE, 3, 3, types, true);
+	func_desc = AR_FuncDescNew("single", AR_SINGLE, 2, 2, types, true);
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
 	array_append(types, T_ARRAY | T_NULL);
 	array_append(types, T_PTR);
-	array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("none", AR_NONE, 3, 3, types, true);
+	func_desc = AR_FuncDescNew("none", AR_NONE, 2, 2, types, true);
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
 	array_append(types, T_ARRAY | T_NULL);
 	array_append(types, T_PTR);
-	array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("list_comprehension", AR_LIST_COMPREHENSION, 3, 3, types, true);
+	func_desc = AR_FuncDescNew("list_comprehension", AR_LIST_COMPREHENSION, 2, 2, types, true);
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
 }
-

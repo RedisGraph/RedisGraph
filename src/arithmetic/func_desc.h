@@ -20,7 +20,7 @@ typedef struct {
 } AggregateCtx;
 
 // AR_Func - function pointer to an operation with an arithmetic expression
-typedef SIValue(*AR_Func)(SIValue *argv, int argc);
+typedef SIValue(*AR_Func)(SIValue *argv, int argc, void *private_data);
 
 // AR_Func_Finalize - function pointer to a routine for computing an aggregate function's final value
 typedef void (*AR_Func_Finalize)(void *ctx);

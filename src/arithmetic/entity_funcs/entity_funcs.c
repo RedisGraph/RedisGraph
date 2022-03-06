@@ -18,14 +18,14 @@
 #include "../../graph/entities/graph_entity.h"
 
 // returns the id of a relationship or node
-SIValue AR_ID(SIValue *argv, int argc) {
+SIValue AR_ID(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	GraphEntity *graph_entity = (GraphEntity *)argv[0].ptrval;
 	return SI_LongVal(ENTITY_GET_ID(graph_entity));
 }
 
 // returns an array of string representations of each label of a node
-SIValue AR_LABELS(SIValue *argv, int argc) {
+SIValue AR_LABELS(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 
 	Node *node = argv[0].ptrval;
@@ -46,7 +46,7 @@ SIValue AR_LABELS(SIValue *argv, int argc) {
 }
 
 // returns true if input node contains all specified labels, otherwise false
-SIValue AR_HAS_LABELS(SIValue *argv, int argc) {
+SIValue AR_HAS_LABELS(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 
 	bool         res       =  true;
@@ -88,7 +88,7 @@ SIValue AR_HAS_LABELS(SIValue *argv, int argc) {
 }
 
 /* returns a string representation of the type of a relation. */
-SIValue AR_TYPE(SIValue *argv, int argc) {
+SIValue AR_TYPE(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	char *type = "";
 	Edge *e = argv[0].ptrval;
@@ -99,7 +99,7 @@ SIValue AR_TYPE(SIValue *argv, int argc) {
 }
 
 /* returns the start node of a relationship. */
-SIValue AR_STARTNODE(SIValue *argv, int argc) {
+SIValue AR_STARTNODE(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	Edge *e = argv[0].ptrval;
 	NodeID start_id = Edge_GetSrcNodeID(e);
@@ -115,7 +115,7 @@ SIValue AR_STARTNODE(SIValue *argv, int argc) {
 }
 
 /* returns the end node of a relationship. */
-SIValue AR_ENDNODE(SIValue *argv, int argc) {
+SIValue AR_ENDNODE(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	Edge *e = argv[0].ptrval;
 	NodeID end_id = Edge_GetDestNodeID(e);
@@ -131,7 +131,7 @@ SIValue AR_ENDNODE(SIValue *argv, int argc) {
 }
 
 /* returns true if the specified property exists in the node, or relationship. */
-SIValue AR_EXISTS(SIValue *argv, int argc) {
+SIValue AR_EXISTS(SIValue *argv, int argc, void *private_data) {
 	/* MATCH (n) WHERE EXISTS(n.name) RETURN n
 	 * If property n.name does not exists
 	 * SIValue representing NULL is returned.
@@ -169,18 +169,18 @@ SIValue _AR_NodeDegree(SIValue *argv, int argc, GRAPH_EDGE_DIR dir) {
 }
 
 /* Returns the number of incoming edges for given node. */
-SIValue AR_INCOMEDEGREE(SIValue *argv, int argc) {
+SIValue AR_INCOMEDEGREE(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	return _AR_NodeDegree(argv, argc, GRAPH_EDGE_DIR_INCOMING);
 }
 
 /* Returns the number of outgoing edges for given node. */
-SIValue AR_OUTGOINGDEGREE(SIValue *argv, int argc) {
+SIValue AR_OUTGOINGDEGREE(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	return _AR_NodeDegree(argv, argc, GRAPH_EDGE_DIR_OUTGOING);
 }
 
-SIValue AR_PROPERTY(SIValue *argv, int argc) {
+SIValue AR_PROPERTY(SIValue *argv, int argc, void *private_data) {
 	// return NULL for missing graph entity
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 

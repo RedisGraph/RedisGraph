@@ -14,8 +14,8 @@
 // Collect
 //------------------------------------------------------------------------------
 
-AggregateResult AGG_COLLECT(SIValue *argv, int argc) {
-	AggregateCtx *ctx = argv[1].ptrval;
+AggregateResult AGG_COLLECT(SIValue *argv, int argc, void *private_data) {
+	AggregateCtx *ctx = private_data;
 
 	SIValue v = argv[0];
 	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
@@ -43,8 +43,7 @@ void Register_COLLECT(void) {
 
 	types = array_new(SIType, 2);
 	array_append(types, SI_ALL);
-	array_append(types, T_PTR);
-	func_desc = AR_AggFuncDescNew("collect", AGG_COLLECT, 2, 2, types,
+	func_desc = AR_AggFuncDescNew("collect", AGG_COLLECT, 1, 1, types,
 			NULL, NULL, Collect_PrivateData);
 	AR_RegFunc(func_desc);
 }

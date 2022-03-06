@@ -34,10 +34,11 @@ typedef struct {
 AggregateResult AGG_AVG
 (
 	SIValue *argv,
-	int argc
+	int argc,
+	void *private_data
 ) {
 	SIValue val = argv[0];
-	AggregateCtx *ctx = argv[1].ptrval;
+	AggregateCtx *ctx = private_data;
 	AvgCtx *avg_ctx = ctx->private_data;
 
 	// On the first invocation, initialize the context.

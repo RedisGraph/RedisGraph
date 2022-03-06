@@ -10,7 +10,7 @@
 #include "../../datatypes/temporal_value.h"
 
 /* returns a timestamp - millis from epoch */
-SIValue AR_TIMESTAMP(SIValue *argv, int argc) {
+SIValue AR_TIMESTAMP(SIValue *argv, int argc, void *private_data) {
 	return SI_LongVal(TemporalValue_NewTimestamp());
 }
 

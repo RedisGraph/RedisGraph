@@ -19,8 +19,8 @@ typedef struct {
 	double total;
 } _agg_StDevCtx;
 
-AggregateResult AGG_STDEV(SIValue *argv, int argc) {
-	AggregateCtx *ctx = argv[1].ptrval;
+AggregateResult AGG_STDEV(SIValue *argv, int argc, void *private_data) {
+	AggregateCtx *ctx = private_data;
 	_agg_StDevCtx *stdev_ctx = ctx->private_data;
 
 	// on the first invocation, initialize the context
@@ -103,15 +103,13 @@ void Register_STD(void) {
 
 	types = array_new(SIType, 2);
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
-	array_append(types, T_PTR);
-	func_desc = AR_AggFuncDescNew("stDev", AGG_STDEV, 2, 2, types, StDev_Free,
+	func_desc = AR_AggFuncDescNew("stDev", AGG_STDEV, 1, 1, types, StDev_Free,
 			StDevFinalize, STD_PrivateData);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
-	array_append(types, T_PTR);
-	func_desc = AR_AggFuncDescNew("stDevP", AGG_STDEV, 2, 2, types, StDev_Free,
+	func_desc = AR_AggFuncDescNew("stDevP", AGG_STDEV, 1, 1, types, StDev_Free,
 			StDevPFinalize, STD_PrivateData);
 	AR_RegFunc(func_desc);
 }

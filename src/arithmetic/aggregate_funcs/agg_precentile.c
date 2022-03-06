@@ -24,8 +24,8 @@ typedef struct {
 } _agg_PercCtx;
 
 // this function is agnostic as to percentile method
-AggregateResult AGG_PERC(SIValue *argv, int argc) {
-	AggregateCtx *ctx = argv[2].ptrval;
+AggregateResult AGG_PERC(SIValue *argv, int argc, void *private_data) {
+	AggregateCtx *ctx = private_data;
 	_agg_PercCtx *perc_ctx = ctx->private_data;
 
 	// on the first invocation, initialize the context
@@ -136,16 +136,14 @@ void Register_PRECENTILE(void) {
 	types = array_new(SIType, 3);
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
-	array_append(types, T_PTR);
-	func_desc = AR_AggFuncDescNew("percentileDisc", AGG_PERC, 3, 3, types,
+	func_desc = AR_AggFuncDescNew("percentileDisc", AGG_PERC, 2, 2, types,
 			Percentile_Free, PercDiscFinalize, Precentile_PrivateData);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
-	array_append(types, T_PTR);
-	func_desc = AR_AggFuncDescNew("percentileCont", AGG_PERC, 3, 3, types,
+	func_desc = AR_AggFuncDescNew("percentileCont", AGG_PERC, 2, 2, types,
 			Percentile_Free, PercContFinalize, Precentile_PrivateData);
 	AR_RegFunc(func_desc);
 }

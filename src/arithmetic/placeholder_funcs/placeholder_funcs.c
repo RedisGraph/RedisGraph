@@ -8,7 +8,7 @@
 #include "../func_desc.h"
 #include "../../util/arr.h"
 
-SIValue AR_PATH_FILTER(SIValue *argv, int argc) {
+SIValue AR_PATH_FILTER(SIValue *argv, int argc, void *private_data) {
 	ASSERT(false);
 	return SI_NullVal();
 }

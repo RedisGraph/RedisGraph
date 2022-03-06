@@ -132,7 +132,7 @@ void Aggregate_Free
 
 	SIValue_Free(ctx->result);
 
-	if(ctx->private_data) agg_func->callbacks.free(ctx->private_data);
+	if(ctx->private_data && agg_func->callbacks.free) agg_func->callbacks.free(ctx->private_data);
 
 	rm_free(ctx);
 }

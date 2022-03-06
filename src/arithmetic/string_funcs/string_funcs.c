@@ -14,7 +14,7 @@
 #include "../../util/json_encoder.h"
 
 // returns a string containing the specified number of leftmost characters of the original string.
-SIValue AR_LEFT(SIValue *argv, int argc) {
+SIValue AR_LEFT(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
 	int64_t newlen = argv[1].longval;
@@ -29,7 +29,7 @@ SIValue AR_LEFT(SIValue *argv, int argc) {
 }
 
 // returns the original string with leading whitespace removed.
-SIValue AR_LTRIM(SIValue *argv, int argc) {
+SIValue AR_LTRIM(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
 	char *trimmed = argv[0].stringval;
@@ -42,7 +42,7 @@ SIValue AR_LTRIM(SIValue *argv, int argc) {
 }
 
 // returns a string containing the specified number of rightmost characters of the original string.
-SIValue AR_RIGHT(SIValue *argv, int argc) {
+SIValue AR_RIGHT(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
 	int64_t newlen = argv[1].longval;
@@ -56,7 +56,7 @@ SIValue AR_RIGHT(SIValue *argv, int argc) {
 }
 
 // returns the original string with trailing whitespace removed.
-SIValue AR_RTRIM(SIValue *argv, int argc) {
+SIValue AR_RTRIM(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
 	char *str = argv[0].stringval;
@@ -76,7 +76,7 @@ SIValue AR_RTRIM(SIValue *argv, int argc) {
 // incase the parameter type is 
 // 1. string - returns a string in which the order of all characters in the original string have been reversed.
 // 2. array  - returns an array in which the order of all elements in the original array have been reversed.
-SIValue AR_REVERSE(SIValue *argv, int argc) {
+SIValue AR_REVERSE(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
 	SIValue value = argv[0];
@@ -101,7 +101,7 @@ SIValue AR_REVERSE(SIValue *argv, int argc) {
 }
 
 // returns a substring of the original string, beginning with a 0-based index start and length.
-SIValue AR_SUBSTRING(SIValue *argv, int argc) {
+SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 	/*
 	    argv[0] - original string
 	    argv[1] - start position
@@ -141,7 +141,7 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc) {
 }
 
 // returns the original string in lowercase.
-SIValue AR_TOLOWER(SIValue *argv, int argc) {
+SIValue AR_TOLOWER(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *original = argv[0].stringval;
 	size_t lower_len = strlen(original);
@@ -151,7 +151,7 @@ SIValue AR_TOLOWER(SIValue *argv, int argc) {
 }
 
 // returns the original string in uppercase.
-SIValue AR_TOUPPER(SIValue *argv, int argc) {
+SIValue AR_TOUPPER(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *original = argv[0].stringval;
 	size_t upper_len = strlen(original);
@@ -161,7 +161,7 @@ SIValue AR_TOUPPER(SIValue *argv, int argc) {
 }
 
 // converts an integer, float or boolean value to a string.
-SIValue AR_TOSTRING(SIValue *argv, int argc) {
+SIValue AR_TOSTRING(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	size_t len = SIValue_StringJoinLen(argv, 1, "");
 	char *str = rm_malloc(len * sizeof(char));
@@ -171,22 +171,22 @@ SIValue AR_TOSTRING(SIValue *argv, int argc) {
 }
 
 // Returns a JSON string representation of a map value.
-SIValue AR_TOJSON(SIValue *argv, int argc) {
+SIValue AR_TOJSON(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *buf = JsonEncoder_SIValue(argv[0]);
 	return SI_TransferStringVal(buf);
 }
 
 // returns the original string with leading and trailing whitespace removed.
-SIValue AR_TRIM(SIValue *argv, int argc) {
+SIValue AR_TRIM(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
-	SIValue ltrim = AR_LTRIM(argv, argc);
-	SIValue trimmed = AR_RTRIM(&ltrim, 1);
+	SIValue ltrim = AR_LTRIM(argv, argc, NULL);
+	SIValue trimmed = AR_RTRIM(&ltrim, 1, NULL);
 	return trimmed;
 }
 
 // returns true if argv[1] is a substring of argv[0].
-SIValue AR_CONTAINS(SIValue *argv, int argc) {
+SIValue AR_CONTAINS(SIValue *argv, int argc, void *private_data) {
 	// No string contains null.
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
 
@@ -199,7 +199,7 @@ SIValue AR_CONTAINS(SIValue *argv, int argc) {
 }
 
 // returns true if argv[0] starts with argv[1].
-SIValue AR_STARTSWITH(SIValue *argv, int argc) {
+SIValue AR_STARTSWITH(SIValue *argv, int argc, void *private_data) {
 	// No string contains null.
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
 
@@ -220,7 +220,7 @@ SIValue AR_STARTSWITH(SIValue *argv, int argc) {
 }
 
 // returns true if argv[0] ends with argv[1].
-SIValue AR_ENDSWITH(SIValue *argv, int argc) {
+SIValue AR_ENDSWITH(SIValue *argv, int argc, void *private_data) {
 	// No string contains null.
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
 
@@ -245,7 +245,7 @@ SIValue AR_ENDSWITH(SIValue *argv, int argc) {
 // returns a string in which all occurrences of a specified string in the original string have been replaced by ANOTHER (specified) string.
 // for example: RETURN replace('Well I wish I was in the land of cotton', 'cotton', 'the free')
 // the result is Well I wish I was in the land of the free
-SIValue AR_REPLACE(SIValue *argv, int argc) {
+SIValue AR_REPLACE(SIValue *argv, int argc, void *private_data) {
 	// No string contains null.
 	if(SIValue_IsNull(argv[0]) ||
 	   SIValue_IsNull(argv[1]) ||
@@ -331,7 +331,7 @@ SIValue AR_REPLACE(SIValue *argv, int argc) {
 //=== Scalar functions =========================================================
 //==============================================================================
 
-SIValue AR_RANDOMUUID(SIValue *argv, int argc) {
+SIValue AR_RANDOMUUID(SIValue *argv, int argc, void *private_data) {
 	char *uuid = UUID_New();
 	return SI_TransferStringVal(uuid);
 }

@@ -13,10 +13,10 @@
 // Min
 //------------------------------------------------------------------------------
 
-AggregateResult AGG_MIN(SIValue *argv, int argc) {
+AggregateResult AGG_MIN(SIValue *argv, int argc, void *private_data) {
 	SIValue v = argv[0];
 	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
-	AggregateCtx *ctx = argv[1].ptrval;
+	AggregateCtx *ctx = private_data;
 
 	// Update the result if the current element is lesser.
 	int compared_null;
@@ -44,8 +44,7 @@ void Register_MIN(void) {
 
 	types = array_new(SIType, 2);
 	array_append(types, SI_ALL);
-	array_append(types, T_PTR);
-	func_desc = AR_AggFuncDescNew("min", AGG_MIN, 2, 2, types, NULL, NULL,
+	func_desc = AR_AggFuncDescNew("min", AGG_MIN, 1, 1, types, NULL, NULL,
 			Min_PrivateData);
 	AR_RegFunc(func_desc);
 }

@@ -14,7 +14,7 @@
 #define EARTH_RADIUS 6378140.0
 #define DegreeToRadians(d) ((d) * M_PI / 180.0)
 
-SIValue AR_TOPOINT(SIValue *argv, int argc) {
+SIValue AR_TOPOINT(SIValue *argv, int argc, void *private_data) {
 	SIValue map = argv[0];
 	SIType t = SI_TYPE(map);
 
@@ -64,7 +64,7 @@ SIValue AR_TOPOINT(SIValue *argv, int argc) {
 	return SI_Point(SI_GET_NUMERIC(latitude), SI_GET_NUMERIC(longitude));
 }
 
-SIValue AR_DISTANCE(SIValue *argv, int argc) {
+SIValue AR_DISTANCE(SIValue *argv, int argc, void *private_data) {
 	// compute distance between two points
 	// a = sin²(Δφ/2) + cos φ1 ⋅ cos φ2 ⋅ sin²(Δλ/2)
 	// c = 2 * atan2( √a, √(1−a) )

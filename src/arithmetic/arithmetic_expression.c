@@ -31,10 +31,6 @@
 // return child at position 'idx' of 'n'
 #define NODE_CHILD(n, idx) (n)->op.children[(idx)]
 
-// get aggregation context from aggregation operation node
-// the aggregation context resides inside the last direct child value pointer
-#define AGGREGATION_NODE_GET_CTX(n) (AggregateCtx*)NODE_CHILD((n), NODE_CHILD_COUNT((n))-1)->operand.constant.ptrval
-
 //------------------------------------------------------------------------------
 // Forward declarations
 //------------------------------------------------------------------------------
@@ -145,6 +141,7 @@ static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 	const char *func_name = exp->op.f->name;
 	uint child_count = exp->op.child_count;
 	AR_ExpNode *clone = AR_EXP_NewOpNode(func_name, child_count);
+	if(clone->op.f->callbacks.clone) clone->op.private_data = clone->op.f->callbacks.clone(exp->op.private_data);
 
 	// clone child nodes
 	for(uint i = 0; i < exp->op.child_count; i++) {
@@ -160,11 +157,10 @@ AR_ExpNode *AR_EXP_NewOpNode
 	const char *func_name,
 	uint child_count
 ) {
-
-	AR_ExpNode *node = _AR_EXP_NewOpNode(child_count);
-
 	// retrieve function
 	AR_FuncDesc *func = AR_GetFunc(func_name);
+	AR_ExpNode *node = _AR_EXP_NewOpNode(child_count);
+
 	ASSERT(func != NULL);
 	node->op.f = func;
 
@@ -364,21 +360,18 @@ static bool _AR_EXP_ValidateInvocation
 	SIType actual_type;
 	SIType expected_type = T_NULL;
 
-	// if this is an aggregation function, reduce all user-facing counts by 1
-	int offset = fdesc->aggregate ? 1 : 0;
-
 	// Make sure number of arguments is as expected.
 	if(fdesc->min_argc > argc) {
 		// Set the query-level error.
-		ErrorCtx_SetError("Received %d arguments to function '%s', expected at least %d", argc - offset,
-						  fdesc->name, fdesc->min_argc - offset);
+		ErrorCtx_SetError("Received %d arguments to function '%s', expected at least %d", argc,
+						  fdesc->name, fdesc->min_argc);
 		return false;
 	}
 
 	if(fdesc->max_argc < argc) {
 		// Set the query-level error.
-		ErrorCtx_SetError("Received %d arguments to function '%s', expected at most %d", argc - offset,
-						  fdesc->name, fdesc->max_argc - offset);
+		ErrorCtx_SetError("Received %d arguments to function '%s', expected at most %d", argc,
+						  fdesc->name, fdesc->max_argc);
 		return false;
 	}
 
@@ -454,7 +447,7 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall
 	}
 
 	// evaluate self
-	SIValue v = node->op.f->func(sub_trees, child_count);
+	SIValue v = node->op.f->func(sub_trees, child_count, node->op.private_data);
 	if(SIValue_IsNull(v) && ErrorCtx_EncounteredError()) {
 		// an error was encountered while evaluating this function,
 		// and has already been set in the QueryCtx
@@ -596,7 +589,7 @@ void _AR_EXP_FinalizeAggregations
 	//--------------------------------------------------------------------------
 
 	if(AGGREGATION_NODE(root)) {
-		AggregateCtx *ctx = AGGREGATION_NODE_GET_CTX(root);
+		AggregateCtx *ctx = root->op.private_data;
 		Aggregate_Finalize(root->op.f, ctx);
 		SIValue v = Aggregate_GetResult(ctx);
 
@@ -810,7 +803,6 @@ static inline void _AR_EXP_FreeOpInternals(AR_ExpNode *op_node) {
 	if(AGGREGATION_NODE(op_node)) {
 		AR_FuncDesc *agg_func = op_node->op.f;
 
-		//AggregateCtx *ctx = AGGREGATION_NODE_GET_CTX(op_node);
 		AggregateCtx *ctx = op_node->op.private_data;
 		ASSERT(ctx != NULL);
 

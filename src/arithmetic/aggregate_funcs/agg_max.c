@@ -13,10 +13,10 @@
 // Max
 //------------------------------------------------------------------------------
 
-AggregateResult AGG_MAX(SIValue *argv, int argc) {
+AggregateResult AGG_MAX(SIValue *argv, int argc, void *private_data) {
 	SIValue v = argv[0];
 	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
-	AggregateCtx *ctx = argv[1].ptrval;
+	AggregateCtx *ctx = private_data;
 
 	// Update the result if the current element is greater.
 	int compared_null;

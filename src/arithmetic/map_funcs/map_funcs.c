@@ -12,7 +12,7 @@
 #include "../../datatypes/map.h"
 #include "../../graph/entities/graph_entity.h"
 
-SIValue AR_TOMAP(SIValue *argv, int argc) {
+SIValue AR_TOMAP(SIValue *argv, int argc, void *private_data) {
 	/* create a new SIMap object
 	 * expecting an even number of arguments
 	 * argv[even] = key
@@ -41,7 +41,7 @@ SIValue AR_TOMAP(SIValue *argv, int argc) {
 	return map;
 }
 
-SIValue AR_KEYS(SIValue *argv, int argc) {
+SIValue AR_KEYS(SIValue *argv, int argc, void *private_data) {
 	ASSERT(argc == 1);
 	switch(SI_TYPE(argv[0])) {
 		case T_NULL:

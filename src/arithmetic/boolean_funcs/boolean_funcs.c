@@ -12,7 +12,7 @@
 
 #define CONTAINS_NULL 2 // Macro used for efficiently evaluating 3-valued truth table
 
-SIValue AR_AND(SIValue *argv, int argc) {
+SIValue AR_AND(SIValue *argv, int argc, void *private_data) {
 	// false AND null evaluates to false ; all other null comparisons evaluate to null
 
 	SIValue a = argv[0];
@@ -33,7 +33,7 @@ SIValue AR_AND(SIValue *argv, int argc) {
 	return SI_BoolVal(a.longval & b.longval); // Return the logical AND.
 }
 
-SIValue AR_OR(SIValue *argv, int argc) {
+SIValue AR_OR(SIValue *argv, int argc, void *private_data) {
 	// true OR null evaluates to true; all other null comparisons evaluate to null
 
 	SIValue a = argv[0];
@@ -48,7 +48,7 @@ SIValue AR_OR(SIValue *argv, int argc) {
 	return SI_BoolVal(false);                    // If both arguments are false, returns false
 }
 
-SIValue AR_XOR(SIValue *argv, int argc) {
+SIValue AR_XOR(SIValue *argv, int argc, void *private_data) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
@@ -59,7 +59,7 @@ SIValue AR_XOR(SIValue *argv, int argc) {
 	return SI_BoolVal(res);
 }
 
-SIValue AR_NOT(SIValue *argv, int argc) {
+SIValue AR_NOT(SIValue *argv, int argc, void *private_data) {
 	SIValue a = argv[0];
 	if(SIValue_IsNull(a)) return SI_NullVal();
 
@@ -68,7 +68,7 @@ SIValue AR_NOT(SIValue *argv, int argc) {
 	return SI_BoolVal(false);
 }
 
-SIValue AR_GT(SIValue *argv, int argc) {
+SIValue AR_GT(SIValue *argv, int argc, void *private_data) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
@@ -86,7 +86,7 @@ SIValue AR_GT(SIValue *argv, int argc) {
 	return SI_BoolVal(res > 0);
 }
 
-SIValue AR_GE(SIValue *argv, int argc) {
+SIValue AR_GE(SIValue *argv, int argc, void *private_data) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
@@ -104,7 +104,7 @@ SIValue AR_GE(SIValue *argv, int argc) {
 	return SI_BoolVal(res >= 0);
 }
 
-SIValue AR_LT(SIValue *argv, int argc) {
+SIValue AR_LT(SIValue *argv, int argc, void *private_data) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
@@ -122,7 +122,7 @@ SIValue AR_LT(SIValue *argv, int argc) {
 	return SI_BoolVal(res < 0);
 }
 
-SIValue AR_LE(SIValue *argv, int argc) {
+SIValue AR_LE(SIValue *argv, int argc, void *private_data) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
@@ -140,7 +140,7 @@ SIValue AR_LE(SIValue *argv, int argc) {
 	return SI_BoolVal(res <= 0);
 }
 
-SIValue AR_EQ(SIValue *argv, int argc) {
+SIValue AR_EQ(SIValue *argv, int argc, void *private_data) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
@@ -151,7 +151,7 @@ SIValue AR_EQ(SIValue *argv, int argc) {
 	return SI_BoolVal(res == 0);
 }
 
-SIValue AR_NE(SIValue *argv, int argc) {
+SIValue AR_NE(SIValue *argv, int argc, void *private_data) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
@@ -163,13 +163,13 @@ SIValue AR_NE(SIValue *argv, int argc) {
 }
 
 // Returns true if argv[0] is null.
-SIValue AR_IS_NULL(SIValue *argv, int argc) {
+SIValue AR_IS_NULL(SIValue *argv, int argc, void *private_data) {
 	SIValue v = argv[0];
 	return SI_BoolVal(v.type == T_NULL);
 }
 
 // Returns true if argv[0] is not null.
-SIValue AR_IS_NOT_NULL(SIValue *argv, int argc) {
+SIValue AR_IS_NOT_NULL(SIValue *argv, int argc, void *private_data) {
 	SIValue v = argv[0];
 	return SI_BoolVal(v.type != T_NULL);
 }
