@@ -514,8 +514,7 @@ workflows:
           <<: *not-on-integ-branch
       - build:
           name: build-with-redis-<<matrix.redis_version>>
-          #@@<<: *on-integ-branch
-          <<: *on-any-branch
+          <<: *on-integ-branch
           matrix:
             alias: build-with-redis-ver
             parameters:
@@ -531,8 +530,7 @@ workflows:
           <<: *on-integ-and-version-tags
       - platform_build:
           <<: *context
-          #@@<<: *on-integ-and-version-tags
-          <<: *on-any-branch
+          <<: *on-integ-and-version-tags
           matrix:
             parameters:
               platform: [focal, bionic, xenial, centos7, ol8]
