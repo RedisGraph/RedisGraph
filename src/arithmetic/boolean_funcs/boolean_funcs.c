@@ -12,7 +12,7 @@
 
 #define CONTAINS_NULL 2 // Macro used for efficiently evaluating 3-valued truth table
 
-SIValue AR_AND(SIValue *argv, int argc) {
+SIValue AR_AND(SIValue *argv, int argc, void *private_data) {
 	// false AND null evaluates to false ; all other null comparisons evaluate to null
 
 	SIValue a = argv[0];
@@ -33,7 +33,7 @@ SIValue AR_AND(SIValue *argv, int argc) {
 	return SI_BoolVal(a.longval & b.longval); // Return the logical AND.
 }
 
-SIValue AR_OR(SIValue *argv, int argc) {
+SIValue AR_OR(SIValue *argv, int argc, void *private_data) {
 	// true OR null evaluates to true; all other null comparisons evaluate to null
 
 	SIValue a = argv[0];
@@ -48,7 +48,7 @@ SIValue AR_OR(SIValue *argv, int argc) {
 	return SI_BoolVal(false);                    // If both arguments are false, returns false
 }
 
-SIValue AR_XOR(SIValue *argv, int argc) {
+SIValue AR_XOR(SIValue *argv, int argc, void *private_data) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
@@ -59,7 +59,7 @@ SIValue AR_XOR(SIValue *argv, int argc) {
 	return SI_BoolVal(res);
 }
 
-SIValue AR_NOT(SIValue *argv, int argc) {
+SIValue AR_NOT(SIValue *argv, int argc, void *private_data) {
 	SIValue a = argv[0];
 	if(SIValue_IsNull(a)) return SI_NullVal();
 
@@ -68,7 +68,7 @@ SIValue AR_NOT(SIValue *argv, int argc) {
 	return SI_BoolVal(false);
 }
 
-SIValue AR_GT(SIValue *argv, int argc) {
+SIValue AR_GT(SIValue *argv, int argc, void *private_data) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
@@ -86,7 +86,7 @@ SIValue AR_GT(SIValue *argv, int argc) {
 	return SI_BoolVal(res > 0);
 }
 
-SIValue AR_GE(SIValue *argv, int argc) {
+SIValue AR_GE(SIValue *argv, int argc, void *private_data) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
@@ -104,7 +104,7 @@ SIValue AR_GE(SIValue *argv, int argc) {
 	return SI_BoolVal(res >= 0);
 }
 
-SIValue AR_LT(SIValue *argv, int argc) {
+SIValue AR_LT(SIValue *argv, int argc, void *private_data) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
@@ -122,7 +122,7 @@ SIValue AR_LT(SIValue *argv, int argc) {
 	return SI_BoolVal(res < 0);
 }
 
-SIValue AR_LE(SIValue *argv, int argc) {
+SIValue AR_LE(SIValue *argv, int argc, void *private_data) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
@@ -140,7 +140,7 @@ SIValue AR_LE(SIValue *argv, int argc) {
 	return SI_BoolVal(res <= 0);
 }
 
-SIValue AR_EQ(SIValue *argv, int argc) {
+SIValue AR_EQ(SIValue *argv, int argc, void *private_data) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
@@ -151,7 +151,7 @@ SIValue AR_EQ(SIValue *argv, int argc) {
 	return SI_BoolVal(res == 0);
 }
 
-SIValue AR_NE(SIValue *argv, int argc) {
+SIValue AR_NE(SIValue *argv, int argc, void *private_data) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
@@ -163,13 +163,13 @@ SIValue AR_NE(SIValue *argv, int argc) {
 }
 
 // Returns true if argv[0] is null.
-SIValue AR_IS_NULL(SIValue *argv, int argc) {
+SIValue AR_IS_NULL(SIValue *argv, int argc, void *private_data) {
 	SIValue v = argv[0];
 	return SI_BoolVal(v.type == T_NULL);
 }
 
 // Returns true if argv[0] is not null.
-SIValue AR_IS_NOT_NULL(SIValue *argv, int argc) {
+SIValue AR_IS_NOT_NULL(SIValue *argv, int argc, void *private_data) {
 	SIValue v = argv[0];
 	return SI_BoolVal(v.type != T_NULL);
 }
@@ -181,70 +181,69 @@ void Register_BooleanFuncs() {
 	types = array_new(SIType, 2);
 	array_append(types, T_BOOL | T_NULL);
 	array_append(types, T_BOOL | T_NULL);
-	func_desc = AR_FuncDescNew("and", AR_AND, 2, 2, types, true, false);
+	func_desc = AR_FuncDescNew("and", AR_AND, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	array_append(types, T_BOOL | T_NULL);
 	array_append(types, T_BOOL | T_NULL);
-	func_desc = AR_FuncDescNew("or", AR_OR, 2, 2, types, true, false);
+	func_desc = AR_FuncDescNew("or", AR_OR, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	array_append(types, T_BOOL | T_NULL);
 	array_append(types, T_BOOL | T_NULL);
-	func_desc = AR_FuncDescNew("xor", AR_XOR, 2, 2, types, true, false);
+	func_desc = AR_FuncDescNew("xor", AR_XOR, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_BOOL | T_NULL);
-	func_desc = AR_FuncDescNew("not", AR_NOT, 1, 1, types, true, false);
+	func_desc = AR_FuncDescNew("not", AR_NOT, 1, 1, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_MAP | T_NULL));
 	array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_MAP | T_NULL));
-	func_desc = AR_FuncDescNew("gt", AR_GT, 2, 2, types, true, false);
+	func_desc = AR_FuncDescNew("gt", AR_GT, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_MAP | T_NULL));
 	array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_MAP | T_NULL));
-	func_desc = AR_FuncDescNew("ge", AR_GE, 2, 2, types, true, false);
+	func_desc = AR_FuncDescNew("ge", AR_GE, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_MAP | T_NULL));
 	array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_MAP | T_NULL));
-	func_desc = AR_FuncDescNew("lt", AR_LT, 2, 2, types, true, false);
+	func_desc = AR_FuncDescNew("lt", AR_LT, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_MAP | T_NULL));
 	array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_MAP | T_NULL));
-	func_desc = AR_FuncDescNew("le", AR_LE, 2, 2, types, true, false);
-	AR_RegFunc(func_desc);
-
-	types = array_new(SIType, 2);
-	array_append(types, SI_ALL);
-	array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("eq", AR_EQ, 2, 2, types, true, false);
+	func_desc = AR_FuncDescNew("le", AR_LE, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	array_append(types, SI_ALL);
 	array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("neq", AR_NE, 2, 2, types, true, false);
+	func_desc = AR_FuncDescNew("eq", AR_EQ, 2, 2, types, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 2);
+	array_append(types, SI_ALL);
+	array_append(types, SI_ALL);
+	func_desc = AR_FuncDescNew("neq", AR_NE, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("is null", AR_IS_NULL, 1, 1, types, true, false);
+	func_desc = AR_FuncDescNew("is null", AR_IS_NULL, 1, 1, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("is not null", AR_IS_NOT_NULL, 1, 1, types, true, false);
+	func_desc = AR_FuncDescNew("is not null", AR_IS_NOT_NULL, 1, 1, types, true);
 	AR_RegFunc(func_desc);
 }
-
