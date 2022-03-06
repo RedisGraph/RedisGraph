@@ -18,25 +18,21 @@ AR_FuncDesc *AR_AggFuncDescNew
 	uint max_argc,                      // maximum number of arguments
 	SIType *types,                      // acceptable types
 	AR_Func_Free free,                  // free aggregation callback
-	//AR_Func_Clone clone,                // clone aggregation callback
 	AR_Func_Finalize finalize,          // finalize aggregation callback
-	//AR_Func_DefaultValue default_value  // default value callback
 	AR_Func_PrivateData private_data    // generate private data
 ) {
 	AR_FuncDesc *desc = rm_calloc(1, sizeof(AR_FuncDesc));
 
-	desc->name                         =  name;
-	desc->func                         =  func;
-	desc->types                        =  types;
-	desc->min_argc                     =  min_argc;
-	desc->max_argc                     =  max_argc;
-	desc->aggregate                    =  true;
-	desc->reducible                    =  false;
-	desc->agg_callbacks.free           =  free;
-	//desc->agg_callbacks.clone          =  clone;
-	desc->agg_callbacks.finalize       =  finalize;
-	//desc->agg_callbacks.default_value  =  default_value;
-	desc->agg_callbacks.private_data = private_data;
+	desc->name                    =  name;
+	desc->func                    =  func;
+	desc->types                   =  types;
+	desc->min_argc                =  min_argc;
+	desc->max_argc                =  max_argc;
+	desc->aggregate               =  true;
+	desc->reducible               =  false;
+	desc->callbacks.free          =  free;
+	desc->callbacks.finalize      =  finalize;
+	desc->callbacks.private_data  =  private_data;
 
 	return desc;
 }
@@ -68,8 +64,8 @@ void Aggregate_Finalize
 	ASSERT(func_desc != NULL);
 	ASSERT(ctx != NULL);
 
-	if(func_desc->agg_callbacks.finalize) {
-		func_desc->agg_callbacks.finalize(ctx);
+	if(func_desc->callbacks.finalize) {
+		func_desc->callbacks.finalize(ctx);
 	}
 }
 
@@ -136,7 +132,7 @@ void Aggregate_Free
 
 	SIValue_Free(ctx->result);
 
-	if(ctx->private_data) agg_func->agg_callbacks.free(ctx->private_data);
+	if(ctx->private_data) agg_func->callbacks.free(ctx->private_data);
 
 	rm_free(ctx);
 }

@@ -40,17 +40,17 @@ typedef struct {
 	AR_Func_Clone clone;                // [optional] function pointer to clone routine
 	AR_Func_Finalize finalize;          // [optional] function pointer to finalizing aggregate value routine
 	AR_Func_PrivateData private_data;   // function pointer to private data generator
-} AggCBs;
+} AR_FuncCBs;
 
 typedef struct {
-	AR_Func func;               // function pointer to scalar or aggregate function routine
-	SIType *types;              // types of arguments
-	uint min_argc;              // minimal number of arguments function expects
-	uint max_argc;              // maximal number of arguments function expects
-	bool reducible;             // can be reduced using static evaluation
-	bool aggregate;             // true if the function is an aggregation
-	const char *name;           // function name
-	AggCBs agg_callbacks;       // aggregation callbacks
+	AR_Func func;          // function pointer to scalar or aggregate function routine
+	SIType *types;         // types of arguments
+	uint min_argc;         // minimal number of arguments function expects
+	uint max_argc;         // maximal number of arguments function expects
+	bool reducible;        // can be reduced using static evaluation
+	bool aggregate;        // true if the function is an aggregation
+	const char *name;      // function name
+	AR_FuncCBs callbacks;  // aggregation callbacks
 } AR_FuncDesc;
 
 // create a new function descriptor
@@ -74,6 +74,14 @@ void AR_RegFunc
 AR_FuncDesc *AR_GetFunc
 (
 	const char *func_name
+);
+
+// set the function pointers for cloning and freeing a function's private data
+void AR_SetPrivateDataRoutines
+(
+	AR_FuncDesc *func_desc,
+	AR_Func_Free free,
+	AR_Func_Clone clone
 );
 
 // check to see if function exists

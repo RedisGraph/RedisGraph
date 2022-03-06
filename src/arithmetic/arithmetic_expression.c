@@ -171,8 +171,8 @@ AR_ExpNode *AR_EXP_NewOpNode
 	// add aggregation context as function private data
 	if(func->aggregate) {
 		// generate aggregation context and store it in node's private data
-		ASSERT(func->agg_callbacks.private_data != NULL);
-		node->op.private_data = func->agg_callbacks.private_data();
+		ASSERT(func->callbacks.private_data != NULL);
+		node->op.private_data = func->callbacks.private_data();
 	}
 
 	return node;
@@ -234,6 +234,20 @@ AR_ExpNode *AR_EXP_NewParameterOperandNode(const char *param_name) {
 
 AR_ExpNode *AR_EXP_NewRecordNode() {
 	return _AR_EXP_InitializeOperand(AR_EXP_BORROW_RECORD);
+}
+
+void AR_SetPrivateData
+(
+	AR_ExpNode *node, void *pdata
+) {
+	// validations
+	// node must be an operation
+	// operation private data must be NULL
+	ASSERT(node != NULL);
+	ASSERT(node->type == AR_EXP_OP);
+	ASSERT(node->op.private_data == NULL);
+
+	node->op.private_data = pdata;
 }
 
 /* Compact tree by evaluating constant expressions

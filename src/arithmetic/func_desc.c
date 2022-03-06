@@ -64,20 +64,17 @@ AR_FuncDesc *AR_GetFunc
 
 	AR_FuncDesc *func = (AR_FuncDesc*)f;
 
-//	if(func->aggregate) {
-//		// clone function descriptor
-//		func = rm_malloc(sizeof(AR_FuncDesc));
-//		memcpy(func, f, sizeof(AR_FuncDesc));
-//
-//		// create aggregation context
-//		AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
-//		ctx->private_ctx  =  NULL;
-//		ctx->result       =  SI_CloneValue(func->default_value);
-//
-//		func->privdata = ctx;
-//	}
-
 	return func;
+}
+
+inline void AR_SetPrivateDataRoutines
+(
+	AR_FuncDesc *func_desc,
+	AR_Func_Free free,
+	AR_Func_Clone clone
+) {
+	func_desc->callbacks.free = free;
+	func_desc->callbacks.clone = clone;
 }
 
 bool AR_FuncExists

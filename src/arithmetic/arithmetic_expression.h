@@ -90,6 +90,9 @@ AR_ExpNode *AR_EXP_NewParameterOperandNode(const char *param_name);
 // creates a new Arithmetic expression that will resolve to the current Record
 AR_ExpNode *AR_EXP_NewRecordNode(void);
 
+// set node private data
+void AR_SetPrivateData(AR_ExpNode *node, void *pdata);
+
 // compact tree by evaluating all contained functions that can be resolved right now
 // the function returns true if it managed to compact the expression
 // the reduce_params flag indicates if parameters should be evaluated
