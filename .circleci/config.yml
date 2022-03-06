@@ -80,7 +80,7 @@ commands:
       - setup-automation
       - run:
           name: System setup
-          command: ./system-setup.py
+          command: ./sbin/system-setup.py
       - run:
           name: Install Redis
           shell: /bin/bash -l -eo pipefail
