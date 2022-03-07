@@ -4,6 +4,7 @@ FROM redisfab/redis:{{REDIS_VERSION}}-{{ARCH}}-{{OSNICK}} AS redis
 # Build based on {{OS}} (i.e., 'builder'), redis files are copies from 'redis'
 FROM {{OS}} AS builder
 
+RUN if [ -f /root/.profile ]; then sed -ie 's/mesg n/tty -s \&\& mesg -n/g' /root/.profile; fi
 SHELL ["/bin/bash", "-l", "-c"]
 
 RUN echo "Building for {{OSNICK}} ({{OS}}) for {{ARCH}} [with Redis {{REDIS_VERSION}}]"

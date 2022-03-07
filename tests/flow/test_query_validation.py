@@ -573,3 +573,22 @@ class testQueryValidationFlow(FlowTestsBase):
                 assert(False)
             except redis.exceptions.ResponseError as e:
                 self.env.assertContains("All sub queries in an UNION must have the same column names", str(e))
+
+    def test39_non_single_statement_query(self):
+        queries = [";",
+                   " ;",
+                   " "]
+        for q in queries:
+            try:
+                redis_graph.query(q)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("empty query", str(e))
+        
+        queries = ["MATCH (n) RETURN n; MATCH"]
+        for q in queries:
+            try:
+                redis_graph.query(q)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("query with more than one statement is not supported", str(e))

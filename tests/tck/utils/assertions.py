@@ -37,12 +37,12 @@ def nodeToString(value):
     res = '('
     if value.alias:
         res += value.alias
-    if value.label:
-        res += ':' + value.label
+    if value.labels:
+        res += ':' + ":".join(value.labels)
     if value.properties:
         props = ', '.join(key+': '+str(val)
                           for key, val in value.properties.items())
-        if value.label:
+        if value.labels:
             res += " "
         res += '{' + props + '}'
     res += ')'
