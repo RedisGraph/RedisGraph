@@ -250,6 +250,9 @@ void ConvertPropertyMap
 				AttributeSet_Clear(attributes);
 				ErrorCtx_RaiseRuntimeException("Cannot merge node using null property value");
 			}
+
+			// don't add null to attrribute set
+			continue;
 		}
 
 		// emit an error and exit if we're trying to add
