@@ -195,9 +195,10 @@ static void _FlushDBHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t 
 // Checks if the event is persistence start event.
 static bool _IsEventPersistenceStart(RedisModuleEvent eid, uint64_t subevent) {
 	return eid.id == REDISMODULE_EVENT_PERSISTENCE  &&
-		   (subevent == REDISMODULE_SUBEVENT_PERSISTENCE_RDB_START ||    // Normal RDB.
-			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_AOF_START ||    // Preamble AOF.
-			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_SYNC_RDB_START  // SAVE and DEBUG RELOAD.
+		   (subevent == REDISMODULE_SUBEVENT_PERSISTENCE_RDB_START      ||    // Normal RDB.
+			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_AOF_START      ||    // Preamble AOF.
+			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_SYNC_RDB_START ||    // SAVE and DEBUG RELOAD.
+			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_SYNC_AOF_START       // 
 		   );
 }
 
