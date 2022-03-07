@@ -12,8 +12,9 @@
 #include "../block.h"
 #include "./datablock_iterator.h"
 
-typedef void (*fpDestructor)(void *);
-typedef void (*fpCopy)(const void *, void *);
+// callbacks
+typedef void (*fpDestructor)(void *);          // datablock element destructor
+typedef void (*fpCopy)(const void *, void *);  // datablock element copy
 
 // Returns the item header size.
 #define ITEM_HEADER_SIZE 1
@@ -67,11 +68,13 @@ DataBlock *DataBlock_New
 	fpDestructor fp     // item destructor
 );
 
+// clone datablock
 DataBlock *DataBlock_Clone
 (
-	const DataBlock *orig_datablock,  // original datablock
-	fpCopy copy                       // element copy routine
+	const DataBlock *datablock,  // original datablock
+	fpCopy copy                  // element copy routine
 );
+
 // returns number of items stored
 uint64_t DataBlock_ItemCount(const DataBlock *dataBlock);
 

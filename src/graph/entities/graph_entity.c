@@ -126,14 +126,16 @@ bool GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue
 	return true;
 }
 
-void GraphEntity_Clone(const Entity *orig, Entity *new) {
-	new->prop_count = orig->prop_count;
-	new->properties = NULL;
-	if(new->prop_count > 0) {
-		new->properties = rm_malloc(new->prop_count * sizeof(EntityProperty));
-		for(int i = 0; i < new->prop_count; i ++) {
-			new->properties[i].id = orig->properties[i].id;
-			new->properties[i].value = SI_CloneValue(orig->properties[i].value);
+void GraphEntity_Clone(const Entity *e, Entity *clone) {
+	clone->properties = NULL;
+	clone->prop_count = e->prop_count;
+
+	if(e->prop_count > 0) {
+		// clone properties
+		clone->properties = rm_malloc(clone->prop_count * sizeof(EntityProperty));
+		for(int i = 0; i < clone->prop_count; i ++) {
+			clone->properties[i].id = e->properties[i].id;
+			clone->properties[i].value = SI_CloneValue(e->properties[i].value);
 		}
 	}
 }

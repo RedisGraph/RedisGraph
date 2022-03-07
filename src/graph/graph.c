@@ -409,39 +409,73 @@ Graph *Graph_New
 
 Graph *Graph_Clone
 (
-	const Graph *orig_graph
+	const Graph *graph
 ) {
-
 	fpCopy cb = (fpCopy)GraphEntity_Clone;
-	Graph *g = rm_calloc(1, sizeof(Graph));
+	// TODO: switch to Graph_New
+	Graph *clone = rm_calloc(1, sizeof(Graph));
+	// Graph *clone = Graph_New(size_t node_cap, size_t edge_cap);
 
-	g->nodes      =  DataBlock_Clone(orig_graph->nodes, cb);
-	g->edges      =  DataBlock_Clone(orig_graph->edges, cb);
-	array_clone(g->labels, orig_graph->labels);
-	array_clone(g->relations, orig_graph->relations);
+	//--------------------------------------------------------------------------
+	// clone graph entities
+	//--------------------------------------------------------------------------
+	clone->nodes = DataBlock_Clone(graph->nodes, cb);
+	clone->edges = DataBlock_Clone(graph->edges, cb);
 
-	GrB_Index n = Graph_RequiredMatrixDim(orig_graph);
-	// instantiate the new matrices
-	RG_Matrix_new(&g->node_labels, GrB_BOOL, n, n);
-	RG_Matrix_new(&g->adjacency_matrix, GrB_BOOL, n, n);
-	RG_Matrix_new(&g->adjacency_matrix->transposed, GrB_BOOL, n, n);
-	RG_Matrix_new(&g->_zero_matrix, GrB_BOOL, n, n);
+	//--------------------------------------------------------------------------
+	// clone graph matrices
+	//--------------------------------------------------------------------------
+	GrB_Matrix M = GrB_NULL;
+	GrB_Index  n = Graph_RequiredMatrixDim(graph);
 
-	// copy the matrix contents
-	RG_Matrix_copy(g->node_labels, orig_graph->node_labels);
-	RG_Matrix_copy(g->adjacency_matrix, orig_graph->adjacency_matrix);
+	//--------------------------------------------------------------------------
+	// clone label matrices
+	//--------------------------------------------------------------------------
+	int label_count = Graph_LabelTypeCount(graph);
+	for(int i = 0; i < label_count; i++) {
+		GrB_Matrix L = RG_Matrix Graph_GetLabelMatrix(graph, i);
+		RG_Matrix_new(&M, GrB_BOOL, n, n);
+		RG_Matrix_copy(M, L);
+		clone->labels[i] = M;
+	}
 
+	// clone labels matrix
+	RG_Matrix_new(&clone->node_labels, GrB_BOOL, n, n);
+	RG_Matrix_copy(clone->node_labels, graph->node_labels);
+
+	//--------------------------------------------------------------------------
+	// clone relation matrices
+	//--------------------------------------------------------------------------
+	int relation_count = Graph_RelationTypeCount(graph);
+	for(int i = 0; i < relation_count; i++) {
+		GrB_Matrix R = RG_Matrix Graph_GetRelationMatrix(graph, i);
+		RG_Matrix_new(&M, GrB_UINT64, n, n);
+		RG_Matrix_copy(M, R);
+		clone->relations[i] = M;
+	}
+	// clone THE adjacency matrix
+	RG_Matrix_new(&clone->adjacency_matrix, GrB_BOOL, n, n);
+	RG_Matrix_copy(clone->adjacency_matrix, graph->adjacency_matrix);
+
+	// TODO: once we switch to clone = Graph_New
+	// just make sure zero matrix is of the right dimensions
+	// RG_Matrix_new(&clone->_zero_matrix, GrB_BOOL, n, n);
+
+	//--------------------------------------------------------------------------
 	// clone graph statistics
-	g->stats = GraphStatistics_Clone(&orig_graph->stats);
+	//--------------------------------------------------------------------------
+	clone->stats = GraphStatistics_Clone(&graph->stats);
 
+	// TODO: remove once we've switch to clone = Graph_New
 	// initialize a read-write lock scoped to the individual graph
-	_CreateRWLock(g);
-	g->_writelocked = false;
+	// _CreateRWLock(clone);
+	// clone->_writelocked = false;
 
+	// TODO: remove once we switch to clone = Graph_New
 	// force GraphBLAS updates and resize matrices to node count by default
-	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
+	// Graph_SetMatrixPolicy(clone, SYNC_POLICY_FLUSH_RESIZE);
 
-	return g;
+	return clone;
 }
 
 // All graph matrices are required to be squared NXN

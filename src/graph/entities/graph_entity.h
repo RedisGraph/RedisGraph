@@ -79,7 +79,7 @@ SIValue *GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id);
 bool GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue value);
 
 // duplicates an entity and all of its properties
-void GraphEntity_Clone(const Entity *orig, Entity *new_entity);
+void GraphEntity_Clone(const Entity *e, Entity *clone);
 
 // returns an SIArray of all keys in graph entity properties
 SIValue GraphEntity_Keys(const GraphEntity *e);

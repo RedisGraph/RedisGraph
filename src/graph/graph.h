@@ -122,7 +122,7 @@ Graph *Graph_New
 // clone a Graph object
 Graph *Graph_Clone
 (
-	const Graph *orig_graph
+	const Graph *graph
 );
 
 // creates a new label matrix, returns id given to label
