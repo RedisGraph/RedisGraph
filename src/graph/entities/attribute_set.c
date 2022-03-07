@@ -6,8 +6,8 @@
 
 #include <limits.h>
 
+#include "RG.h"
 #include "attribute_set.h"
-#include "../../RG.h"
 #include "../../util/rmalloc.h"
 
 // returned value for a missing attribute
@@ -52,62 +52,6 @@ static bool _AttributeSet_Remove
 	return false;
 }
 
-// clears attribute set
-// returns number of attributes cleared
-void AttributeSet_Clear
-(
-	AttributeSet *set  // set to be cleared
-) {
-	ASSERT(set != NULL);
-
-	// quick return if there are no attributes
-	if(set->attributes == NULL) return;
-
-	for(int i = 0; i < set->attr_count; i++) {
-		// free all allocated properties
-		SIValue_Free(set->attributes[i].value);
-	}
-
-	// free and NULL-set the attribute bag
-	rm_free(set->attributes);
-	set->attributes = NULL;
-	set->attr_count = 0;
-}
-
-// adds an attribute to the set
-// returns true if attribute was added to the set
-bool AttributeSet_Add
-(
-	AttributeSet *set,     // set to update
-	Attribute_ID attr_id,  // attribute identifier
-	SIValue value,         // attribute value
-	bool allow_null        // is NULL consider valid value
-) {
-	ASSERT(set != NULL);
-
-	// validate value type
-	if(!(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE) &&
-			SIValue_IsNull(value)                  &&
-			!allow_null) {
-		return false;
-	}
-
-	// allocate room for attribute
-	set->attr_count++;
-	if(set->attributes == NULL) {
-		set->attributes = rm_malloc(sizeof(Attribute));
-	} else {
-		set->attributes = rm_realloc(set->attributes,
-			sizeof(Attribute) * set->attr_count);
-	}
-
-	Attribute *attr = set->attributes + set->attr_count - 1;
-	attr->id = attr_id;
-	attr->value = SI_CloneValue(value);
-
-	return true;
-}
-
 // retrieves a value from set
 // NOTE: if the key does not exist
 //       we return the special constant value ATTRIBUTE_NOTFOUND
@@ -123,7 +67,7 @@ SIValue *AttributeSet_Get
 	for(int i = 0; i < set->attr_count; i++) {
 		Attribute *attr = set->attributes + i;
 		if(attr_id == attr->id) {
-			// note, unsafe as attribute-set  can get reallocated
+			// note, unsafe as attribute-set can get reallocated
 			return &attr->value;
 		}
 	}
@@ -145,6 +89,36 @@ SIValue AttributeSet_GetIdx
 	Attribute *attr = set->attributes + i;
 	*attr_id = attr->id;
 	return attr->value;
+}
+
+// adds an attribute to the set
+// returns true if attribute was added to the set
+bool AttributeSet_Add
+(
+	AttributeSet *set,     // set to update
+	Attribute_ID attr_id,  // attribute identifier
+	SIValue value,         // attribute value
+	bool allow_null        // is NULL consider valid value
+) {
+	ASSERT(set != NULL);
+	ASSERT(attr_id != ATTRIBUTE_ID_NONE);
+
+	// validate value type
+	// value must be a valid property type
+	// or NULL in the case where `allow_null` is true
+	ASSERT(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE ||
+			(SIValue_IsNull(value) && allow_null));
+
+	// allocate room for attribute
+	set->attr_count++;
+	set->attributes = rm_realloc(set->attributes,
+			sizeof(Attribute) * set->attr_count);
+
+	Attribute *attr = set->attributes + set->attr_count - 1;
+	attr->id = attr_id;
+	attr->value = SI_CloneValue(value);
+
+	return true;
 }
 
 // updates existing attribute, return true if attribute been updated
@@ -192,6 +166,28 @@ AttributeSet *AttributeSet_Clone
 	}
 
     return clone;
+}
+
+// clears attribute set
+// returns number of attributes cleared
+void AttributeSet_Clear
+(
+	AttributeSet *set  // set to be cleared
+) {
+	ASSERT(set != NULL);
+
+	// quick return if there are no attributes
+	if(set->attributes == NULL) return;
+
+	for(int i = 0; i < set->attr_count; i++) {
+		// free all allocated properties
+		SIValue_Free(set->attributes[i].value);
+	}
+
+	// free and NULL-set the attribute bag
+	rm_free(set->attributes);
+	set->attributes = NULL;
+	set->attr_count = 0;
 }
 
 // free attribute set

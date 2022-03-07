@@ -473,10 +473,12 @@ int Graph_GetNode
 	NodeID id,
 	Node *n
 ) {
-	ASSERT(g);
-	ASSERT(n);
+	ASSERT(g != NULL);
+	ASSERT(n != NULL);
+
 	n->id         = id;
 	n->attributes = _Graph_GetEntity(g->nodes, id);
+
 	return (n->attributes != NULL);
 }
 
@@ -486,12 +488,13 @@ int Graph_GetEdge
 	EdgeID id,
 	Edge *e
 ) {
-	ASSERT(g);
-	ASSERT(e);
+	ASSERT(g != NULL);
+	ASSERT(e != NULL);
 	ASSERT(id < _Graph_EdgeCap(g));
 
 	e->id         = id;
 	e->attributes = _Graph_GetEntity(g->edges, id);
+
 	return (e->attributes != NULL);
 }
 
@@ -620,17 +623,17 @@ void Graph_CreateNode
 	LabelID *labels,
 	uint label_count
 ) {
-	ASSERT(g);
-	ASSERT(n);
+	ASSERT(g != NULL);
+	ASSERT(n != NULL);
 	ASSERT(label_count == 0 || (label_count > 0 && labels != NULL));
 
 	NodeID id;
-	AttributeSet *en = DataBlock_AllocateItem(g->nodes, &id);
+	AttributeSet *set = DataBlock_AllocateItem(g->nodes, &id);
 
-	n->id           =  id;
-	n->attributes   =  en;
-	en->attr_count  =  0;
-	en->attributes  =  NULL;
+	n->id            =  id;
+	n->attributes    =  set;
+	set->attr_count  =  0;
+	set->attributes  =  NULL;
 
 	if(label_count > 0) _Graph_LabelNode(g, n->id, labels, label_count);
 }
@@ -669,7 +672,7 @@ void Graph_CreateEdge
 	int r,
 	Edge *e
 ) {
-	ASSERT(g);
+	ASSERT(g != NULL);
 	ASSERT(r < Graph_RelationTypeCount(g));
 
 #ifdef RG_DEBUG
@@ -680,15 +683,15 @@ void Graph_CreateEdge
 #endif
 
 	EdgeID id;
-	AttributeSet *en = DataBlock_AllocateItem(g->edges, &id);
+	AttributeSet *set = DataBlock_AllocateItem(g->edges, &id);
 
-	e->id           =  id;
-	e->attributes   =  en;
-	e->srcNodeID    =  src;
-	e->destNodeID   =  dest;
-	e->relationID   =  r;
-	en->attr_count  =  0;
-	en->attributes  =  NULL;
+	e->id            =  id;
+	e->attributes    =  set;
+	e->srcNodeID     =  src;
+	e->destNodeID    =  dest;
+	e->relationID    =  r;
+	set->attr_count  =  0;
+	set->attributes  =  NULL;
 
 	Graph_FormConnection(g, src, dest, id, r);
 }
@@ -916,7 +919,7 @@ int Graph_UpdateEntity
 	SIValue value,               // value to be set
 	GraphEntityType entity_type  // type of the entity node/edge
 ) {
-	ASSERT(ge);
+	ASSERT(ge != NULL);
 
 	int res = 0;
 
@@ -1085,9 +1088,10 @@ RG_Matrix Graph_GetZeroMatrix
 }
 
 void Graph_Free(Graph *g) {
-	ASSERT(g);
+	ASSERT(g != NULL);
+
 	// free matrices
-	AttributeSet *en;
+	AttributeSet *set;
 	DataBlockIterator *it;
 	RG_Matrix_free(&g->_zero_matrix);
 	RG_Matrix_free(&g->adjacency_matrix);
@@ -1102,14 +1106,14 @@ void Graph_Free(Graph *g) {
 	RG_Matrix_free(&g->node_labels);
 
 	it = Graph_ScanNodes(g);
-	while((en = (AttributeSet *)DataBlockIterator_Next(it, NULL)) != NULL) {
-		AttributeSet_Clear(en);
+	while((set = (AttributeSet *)DataBlockIterator_Next(it, NULL)) != NULL) {
+		AttributeSet_Clear(set);
 	}
 	DataBlockIterator_Free(it);
 
 	it = Graph_ScanEdges(g);
-	while((en = DataBlockIterator_Next(it, NULL)) != NULL) {
-		AttributeSet_Clear(en);
+	while((set = DataBlockIterator_Next(it, NULL)) != NULL) {
+		AttributeSet_Clear(set);
 	}
 	DataBlockIterator_Free(it);
 
