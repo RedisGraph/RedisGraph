@@ -63,7 +63,7 @@ SIValue *GraphEntity_GetProperty
 	Attribute_ID attr_id
 );
 
-// updates existing attribute value, return true if property been updated. */
+// updates existing attribute value, return true if property been updated
 bool GraphEntity_SetProperty
 (
 	const GraphEntity *e,
@@ -76,7 +76,8 @@ SIValue GraphEntity_Keys
 	const GraphEntity *e
 );
 
-// prints the graph entity into a buffer, returns what is the string length, buffer can be re-allocated at need
+// prints the graph entity into a buffer, returns what is the string length
+// buffer can be re-allocated if needed
 void GraphEntity_ToString
 (
 	const GraphEntity *e,
@@ -87,8 +88,9 @@ void GraphEntity_ToString
 	GraphEntityType entityType
 );
 
-// returns true if the given graph entity has been deleted.
+// returns true if the given graph entity has been deleted
 bool GraphEntity_IsDeleted
 (
 	const GraphEntity *e
 );
+

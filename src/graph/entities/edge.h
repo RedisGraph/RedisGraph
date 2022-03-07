@@ -42,9 +42,9 @@
 	.mat = NULL                             \
 }
 
-// resolves to the label ID of the given Node.
-// we first attempt to retrieve it from the local entity, then check the graph if not found.
-// if the Node is unlabeled, the return value will be GRAPH_NO_LABEL. */
+// resolves to relationship-type ID of the given edge
+// we first attempt to retrieve it from the given entity
+// then check the graph if relationship-type isn't set
 #define EDGE_GET_RELATION_ID(e, g)                                                         \
 __extension__({                                                                            \
 	if ((e)->relationID == GRAPH_UNKNOWN_RELATION || (e)->relationID == GRAPH_NO_RELATION) \

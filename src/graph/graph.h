@@ -193,7 +193,7 @@ int Graph_UpdateEntity
 (
 	GraphEntity *ge,             // entity yo update
 	Attribute_ID attr_id,        // attribute to update
-	SIValue new_value,           // value to be set
+	SIValue value,               // value to be set
 	GraphEntityType entity_type  // type of the entity node/edge
 );
 
