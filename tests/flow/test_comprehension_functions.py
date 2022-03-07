@@ -11,8 +11,7 @@ def _check_pattern_comprehension_plan(plan: ExecutionPlan):
     apply = locate_operation(plan.structured_plan, "Apply")
     return apply and                                          \
         len(apply.children) == 2 and                          \
-        apply.children[1].name == "Optional" and              \
-        apply.children[1].children[0].name == "Aggregate" and \
+        apply.children[1].name == "Aggregate" and             \
         locate_operation(apply.children[1], "Argument")
 
 class testComprehensionFunctions(FlowTestsBase):
