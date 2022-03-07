@@ -130,6 +130,9 @@ commands:
     parameters:
       platform:
         type: string
+      official:
+        type: string
+        default: "1"
     steps:
       - early-returns
       - setup-executor
@@ -139,20 +142,23 @@ commands:
           name: Build for platform (docker build)
           command: |
             cd build/docker
-            make build OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" TEST=1 OFFICIAL=1 SHOW=1 VERBOSE=1
+            make build OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" TEST=1 OFFICIAL=<<parameters.official>> SHOW=1 VERBOSE=1
       - early-return-for-forked-pull-requests
       - run:
           name: Publish docker
           command: |
             docker login -u redisfab -p $DOCKER_REDISFAB_PWD
             cd build/docker
-            make publish OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" OFFICIAL=1 SHOW=1 VERBOSE=1
+            make publish OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" OFFICIAL=<<parameters.official>> SHOW=1 VERBOSE=1
       - persist-artifacts
 
   vm-build-platforms-steps:
     parameters:
       platform:
         type: string
+      official:
+        type: string
+        default: "1"
     steps:
       - early-returns
       - checkout-all
@@ -165,7 +171,7 @@ commands:
           name: Build for platform
           command: |
             cd build/docker
-            make build OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" TEST=1 OFFICIAL=1 SHOW=1 VERBOSE=1
+            make build OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" TEST=1 OFFICIAL=<<parameters.official>> SHOW=1 VERBOSE=1
           no_output_timeout: 30m
       - early-return-for-forked-pull-requests
       - run:
@@ -173,7 +179,7 @@ commands:
           command: |
             docker login -u redisfab -p $DOCKER_REDISFAB_PWD
             cd build/docker
-            make publish OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" OFFICIAL=1 SHOW=1 VERBOSE=1
+            make publish OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" OFFICIAL=<<parameters.official>> SHOW=1 VERBOSE=1
       - persist-artifacts
 
 #----------------------------------------------------------------------------------------------------------------------------------
@@ -338,6 +344,7 @@ jobs:
     steps:
       - vm-build-platforms-steps:
           platform: <<parameters.platform>>
+          official: "0"
 
   deploy_branch:
     docker:
