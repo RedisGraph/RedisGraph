@@ -8,9 +8,9 @@
 #include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
-#include "../../arithmetic/arithmetic_expression.h"
-#include "../../graph/graph_hub.h"
 #include "../../util/qsort.h"
+#include "../../graph/graph_hub.h"
+#include "../../arithmetic/arithmetic_expression.h"
 
 /* Forward declarations. */
 static Record DeleteConsume(OpBase *opBase);
@@ -27,7 +27,11 @@ void _DeleteEntities(OpDelete *op) {
 	// nothing to delete, quickly return
 	if((node_count + edge_count) == 0) return;
 
+	//--------------------------------------------------------------------------
 	// removing duplicates
+	//--------------------------------------------------------------------------
+
+	// remove node duplicates
 	Node *nodes = op->deleted_nodes;
 	Node *distinct_nodes = array_new(Node, 1);
 
@@ -42,6 +46,7 @@ void _DeleteEntities(OpDelete *op) {
 
 	node_count = array_len(distinct_nodes);
 
+	// remove edge duplicates
 	Edge *edges = op->deleted_edges;
 	Edge *distinct_edges = array_new(Edge, 1);
 
@@ -57,10 +62,12 @@ void _DeleteEntities(OpDelete *op) {
 
 	// lock everything
 	QueryCtx_LockForCommit(); {
+		// delete edges
 		for(uint i = 0; i < edge_count; i++) {
 			edge_deleted += DeleteEdge(op->gc, distinct_edges + i);
 		}
 
+		// delete nodes
 		for(uint i = 0; i < node_count; i++) {
 			implicit_edge_deleted += DeleteNode(op->gc, distinct_nodes + i);
 		}
@@ -71,11 +78,11 @@ void _DeleteEntities(OpDelete *op) {
 			op->stats->relationships_deleted  +=  edge_deleted;
 			op->stats->relationships_deleted  +=  implicit_edge_deleted;
 		}
-
 	}
 	// release lock
 	QueryCtx_UnlockCommit(&op->op);
 
+	// clean up
 	array_free(distinct_nodes);
 	array_free(distinct_edges);
 }

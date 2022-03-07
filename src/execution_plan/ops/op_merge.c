@@ -379,7 +379,7 @@ static void MergeFree(OpBase *opBase) {
 			AttributeSet_Clear(&pending_update->attributes);
 		}
 		array_free(op->node_pending_updates);
-		op->node_pending_updates  =  NULL;
+		op->node_pending_updates = NULL;
 	}
 
 	if(op->edge_pending_updates) {
@@ -389,7 +389,7 @@ static void MergeFree(OpBase *opBase) {
 			AttributeSet_Clear(&pending_update->attributes);
 		}
 		array_free(op->edge_pending_updates);
-		op->edge_pending_updates  =  NULL;
+		op->edge_pending_updates = NULL;
 	}
 
 	if(op->on_match) {

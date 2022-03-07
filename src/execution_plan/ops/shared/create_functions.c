@@ -69,9 +69,11 @@ static void _CommitNodes
 		n = pending->created_nodes[i];
 		int *labels = pending->node_labels[i];
 		uint label_count = array_len(labels);
+		AttributeSet *attr = pending->node_attributes + i;
 
 		// introduce node into graph
-		pending->stats->properties_set += CreateNode(gc, n, labels, label_count, pending->node_attributes + i);
+		pending->stats->properties_set += CreateNode(gc, n, labels, label_count,
+				attr);
 	}
 }
 
@@ -125,6 +127,7 @@ static void _CommitEdges
 		e = pending->created_edges[i];
 		NodeID srcNodeID;
 		NodeID destNodeID;
+		AttributeSet *attr = pending->edge_attributes + i;
 
 		// Nodes which already existed prior to this query would
 		// have their ID set under e->srcNodeID and e->destNodeID
@@ -140,7 +143,8 @@ static void _CommitEdges
 		ASSERT(s != NULL);
 		int relation_id = Schema_GetID(s);
 
-		pending->stats->properties_set += CreateEdge(gc, e, srcNodeID, destNodeID, relation_id, pending->edge_attributes + i);
+		pending->stats->properties_set += CreateEdge(gc, e, srcNodeID,
+				destNodeID, relation_id, attr);
 	}
 }
 
@@ -204,17 +208,18 @@ void CommitNewEntities
 		_CommitEdges(pending);
 	}
 
-	// Release lock.
-	pending->stats->nodes_created += node_count;
-	pending->stats->relationships_created += edge_count;
+	// update statistics
+	pending->stats->nodes_created          +=  node_count;
+	pending->stats->relationships_created  +=  edge_count;
+
+	// release lock
+	QueryCtx_UnlockCommit(op);
 
 	// restore matrix sync policy to default
 	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
-
-	QueryCtx_UnlockCommit(op);
 }
 
-// Resolve the properties specified in the query into constant values.
+// resolve the properties specified in the query into constant values
 void ConvertPropertyMap
 (
 	AttributeSet *attributes,
@@ -224,21 +229,22 @@ void ConvertPropertyMap
 ) {
 	uint property_count = array_len(map->keys);
 	for(int i = 0; i < property_count; i++) {
-		/* Note that AR_EXP_Evaluate may raise a run-time exception, in which case
-		 * the allocations in this function will leak.
-		 * For example, this occurs in the query:
-		 * CREATE (a {val: 2}), (b {val: a.val}) */
+		// note that AR_EXP_Evaluate may raise a run-time exception
+		// in which case the allocations in this function will leak
+		// for example, this occurs in the query:
+		// CREATE (a {val: 2}), (b {val: a.val})
 		SIValue val = AR_EXP_Evaluate(map->values[i], r);
 		if(!(SI_TYPE(val) & SI_VALID_PROPERTY_VALUE)) {
-			// This value is of an invalid type.
+			// this value is of an invalid type
 			if(!SIValue_IsNull(val)) {
-				// If the value was a complex type, emit an exception.
+				// if the value was a complex type, emit an exception
 				AttributeSet_Clear(attributes);
 				Error_InvalidPropertyValue();
 				ErrorCtx_RaiseRuntimeException(NULL);
 			}
-			/* The value was NULL. If this was prohibited in this context, raise an exception,
-			 * otherwise skip this value. */
+			// the value was NULL
+			// if this was prohibited in this context, raise an exception,
+			// otherwise skip this value
 			if(fail_on_null) {
 				// emit an error and exit
 				AttributeSet_Clear(attributes);
@@ -303,7 +309,7 @@ void PendingCreationsFree
 		pending->created_edges = NULL;
 	}
 
-	// Free all graph-committed attributes associated with nodes.
+	// free all graph-committed attributes associated with nodes
 	if(pending->node_attributes) {
 		uint prop_count = array_len(pending->node_attributes);
 		for(uint i = 0; i < prop_count; i ++) {
@@ -313,7 +319,7 @@ void PendingCreationsFree
 		pending->node_attributes = NULL;
 	}
 
-	// Free all graph-committed attributes associated with edges.
+	// free all graph-committed attributes associated with edges
 	if(pending->edge_attributes) {
 		uint prop_count = array_len(pending->edge_attributes);
 		for(uint i = 0; i < prop_count; i ++) {
