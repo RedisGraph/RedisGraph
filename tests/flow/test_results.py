@@ -130,7 +130,7 @@ class testResultSetFlow(FlowTestsBase):
         # Avarage default value is 0.
         query = """MATCH (a) return avg(a.missing_field)"""
         result = graph.query(query)
-        self.env.assertEqual(0, result.result_set[0][0])
+        self.env.assertEqual(None, result.result_set[0][0])
 
         # Collect default value is an empty array.
         query = """MATCH (a) return collect(a.missing_field)"""

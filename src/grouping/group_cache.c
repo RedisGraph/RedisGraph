@@ -27,8 +27,11 @@ void FreeGroupCache(CacheGroup *groups) {
 	raxFreeWithCallback(groups, (void (*)(void *))FreeGroup);
 }
 
-// Populates an iterator to scan entire group cache
-CacheGroupIterator *CacheGroupIter(CacheGroup *groups) {
+// populates an iterator to scan entire group cache
+CacheGroupIterator *CacheGroupIter
+(
+	CacheGroup *groups
+) {
 	CacheGroupIterator *iter = rm_malloc(sizeof(CacheGroupIterator));
 
 	raxStart(iter, groups);

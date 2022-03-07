@@ -68,12 +68,25 @@ commands:
             - '*.zip'
             - '*.tgz'
 
-  setup-prerequisits:
+  install-prerequisites:
+    parameters:
+      redis_version:
+        type: string
+        default: "6"
+      getredis_params:
+        type: string
+        default: ""
     steps:
       - setup-automation
       - run:
-          name: Install prerequisites
+          name: System setup
           command: ./sbin/system-setup.py
+      - run:
+          name: Install Redis
+          shell: /bin/bash -l -eo pipefail
+          command: |
+            python3 ./deps/readies/bin/getredis -v '<<parameters.redis_version>>' --force <<parameters.getredis_params>>
+            redis-server --version
 
   benchmark-automation:
     parameters:
@@ -167,12 +180,17 @@ commands:
 
 jobs:
   build:
+    parameters:
+      redis_version:
+        type: string
+        default: "6"
     docker:
       - image: redisfab/rmbuilder:6.2.5-x64-bionic
     steps:
       - early-returns
       - checkout-all
-      - setup-prerequisits
+      - install-prerequisites:
+          redis_version: <<parameters.redis_version>>
       - restore_cache:
           keys:
             - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
@@ -210,7 +228,7 @@ jobs:
     steps:
       - early-returns
       - checkout-all
-      - setup-prerequisits
+      - install-prerequisites
       - restore_cache:
           keys:
             - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
@@ -232,7 +250,7 @@ jobs:
     steps:
       - early-returns
       - checkout-all
-      - setup-prerequisits
+      - install-prerequisites
       - restore_cache:
           keys:
             - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
@@ -272,7 +290,7 @@ jobs:
     steps:
       - early-returns
       - checkout-all
-      - setup-prerequisits
+      - install-prerequisites
       - restore_cache:
           keys:
             - GraphBLAS-mac-{{ checksum "deps/GraphBLAS/README.md" }}
@@ -301,6 +319,9 @@ jobs:
     parameters:
       platform:
         type: string
+      redis_version:
+        type: string
+        default: "6"
     docker:
       - image: debian:bullseye
     steps:
@@ -380,7 +401,7 @@ jobs:
     steps:
       - early-returns
       - checkout
-      - setup-prerequisits
+      - install-prerequisites
       - attach_workspace:
           at: /workspace
       - benchmark-automation
@@ -391,7 +412,7 @@ jobs:
     steps:
       - early-returns
       - checkout
-      - setup-prerequisits
+      - install-prerequisites
       - attach_workspace:
           at: /workspace
       - run:
@@ -406,7 +427,7 @@ jobs:
     steps:
       - early-returns
       - checkout-all
-      - setup-prerequisits
+      - install-prerequisites
       - attach_workspace:
           at: /workspace
       - run:
@@ -491,6 +512,13 @@ workflows:
       - build:
           <<: *context
           <<: *not-on-integ-branch
+      - build:
+          name: build-with-redis-<<matrix.redis_version>>
+          <<: *on-integ-branch
+          matrix:
+            alias: build-with-redis-ver
+            parameters:
+              redis_version: ["6.0", "6.2", "7", "unstable"]
       - coverage:
           <<: *context
           <<: *on-any-branch

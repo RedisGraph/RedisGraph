@@ -165,13 +165,16 @@ static void _aggregateRecord(OpAggregate *op, Record r) {
 }
 
 // returns a record populated with group data
-static Record _handoff(OpAggregate *op) {
+static Record _handoff
+(
+	OpAggregate *op
+) {
 	Group *group;
 	if(!CacheGroupIterNext(op->group_iter, &group)) return NULL;
 
 	Record r = OpBase_CreateRecord((OpBase *)op);
 
-	// Add all projected keys to the Record.
+	// add all projected keys to the Record
 	for(uint i = 0; i < op->key_count; i++) {
 		int rec_idx = op->record_offsets[i];
 		// Non-aggregated expression.
@@ -181,12 +184,12 @@ static Record _handoff(OpAggregate *op) {
 		Record_Add(r, rec_idx, res);
 	}
 
-	// Compute the final value of all aggregating expressions and add to the Record.
+	// compute the final value of all aggregate expressions and add to Record
 	for(uint i = 0; i < op->aggregate_count; i++) {
 		int rec_idx = op->record_offsets[i + op->key_count];
 		AR_ExpNode *exp = group->aggregationFunctions[i];
 
-		SIValue res = AR_EXP_Finalize(exp, r);
+		SIValue res = AR_EXP_FinalizeAggregations(exp, r);
 		Record_AddScalar(r, rec_idx, res);
 	}
 
@@ -228,22 +231,56 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should
 	return (OpBase *)op;
 }
 
-static Record AggregateConsume(OpBase *opBase) {
+static Record AggregateConsume
+(
+	OpBase *opBase
+) {
 	OpAggregate *op = (OpAggregate *)opBase;
 	if(op->group_iter) return _handoff(op);
 
 	Record r;
 	if(op->op.childCount == 0) {
-		/* RETURN max (1)
-		 * Create a 'fake' record. */
+		// RETURN max (1)
+		// create a 'fake' record
 		r = OpBase_CreateRecord(opBase);
 		_aggregateRecord(op, r);
 	} else {
 		OpBase *child = op->op.children[0];
+		// eager consumption!
 		while((r = OpBase_Consume(child))) _aggregateRecord(op, r);
 	}
 
+	// did we processed any records?
+	// does aggregation contains keys?
+	// e.g.
+	// MATCH (n:N) WHERE n.noneExisting = 2 RETURN count(n)
+	if(raxSize(op->groups) == 0 && op->key_count == 0) {
+		// no data was processed and aggregation doesn't have a key
+		// in this case we want to return aggregation default value
+		// aggregate on an empty record
+		ASSERT(op->op.childCount > 0);
+
+		// use child record
+		// this is required in case this aggregation is perford within the
+		// context of a WITH projection as we need the child's mapping for
+		// expression evaluation
+		// there's no harm in doing so when not in a WITH aggregation,
+		// as we'll be using the same mapping;
+		// this operation and it child are in the same scope
+		OpBase *child = op->op.children[0];
+		r = OpBase_CreateRecord(child);
+
+		// get group
+		Group *group = _GetGroup(op, r);
+		ASSERT(group != NULL);
+
+		// free record
+		OpBase_DeleteRecord(r);
+	}
+
+	// create group iterator
 	op->group_iter = CacheGroupIter(op->groups);
+
 	return _handoff(op);
 }
 
