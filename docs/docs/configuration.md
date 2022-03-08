@@ -4,7 +4,7 @@ linkTitle: "Run-time Configuration"
 type: docs
 weight: 1
 description: >
-"RedisGraph supports a few run-time configuration options that can be defined when loading the module. In the future more options will be added."
+	RedisGraph supports a few run-time configuration options that can be defined when loading the module. In the future more options will be added.
 ---
 
 ## Passing configuration options on module load
