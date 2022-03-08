@@ -6,7 +6,7 @@
 
 * Article - [RedisGraph GraphBLAS Enabled Graph Database](https://arxiv.org/abs/1905.01294).
 Cailliau, Pieter & Davis, Tim & Gadepally, Vijay & Kepner, Jeremy & Lipman, Roi & Lovitz, Jeffrey & Ouaknine, Keren (IEEE IPDPS 2019 GrAPL workshop).
-([pdf](http://www.mit.edu/~kepner/NEDB2019/NEDB2019-RedisGraph-NEDB.pdf)) </br>
+([pdf](http://www.mit.edu/~kepner/NEDB2019/NEDB2019-RedisGraph-NEDB.pdf))
 
 * Blog - [What’s New in RedisGraph 1.2.0](https://redis.com/blog/whats-new-redisgraph-1-2-0/). [Roi Lipman](https://redis.com/author/roi/).
 
