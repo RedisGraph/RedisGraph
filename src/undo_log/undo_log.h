@@ -10,109 +10,112 @@
 #include "../value.h"
 #include "../graph/entities/node.h"
 #include "../graph/entities/edge.h"
-#include "../execution_plan/ops/shared/update_functions.h"
 
-// this file contains the rollback functionality:
-// when a query finished in timeout or exception
-// all it's commited data should be rollbacked.
-// the UndoLog accumulates the commited changes of the query.
+// UndoLog
+// matains a list of undo operation reverting all changes
+// performed by a query: CREATE, UPDATE, DELETE
+// 
+// upon failure for which ever reason we can apply the
+// operations within the undo log to rollback the graph to its
+// original state
 
-
-// the type of operation of each item in the undo_list
+// UndoLog operation types
 typedef enum {
-	UL_UPDATE = 0,        // undo node/edge update
-	UL_CREATE_NODE,       // undo node creation
-	UL_CREATE_EDGE,       // undo edge creation
-	UL_DELETE_NODE,       // undo node deletion
-	UL_DELETE_EDGE        // undo edge deletion
+	UNDO_UPDATE = 0,        // undo entity update
+	UNDO_CREATE_NODE,       // undo node creation
+	UNDO_CREATE_EDGE,       // undo edge creation
+	UNDO_DELETE_NODE,       // undo node deletion
+	UNDO_DELETE_EDGE        // undo edge deletion
 } UndoOpType;
 
-typedef struct CreateOp {
+//------------------------------------------------------------------------------
+// Undo operations
+//------------------------------------------------------------------------------
+
+// undo node/edge creation
+typedef struct {
 	union {
 		Node n;
 		Edge e;
 	};
-} CreateOp;
+} UndoCreateOp;
 
-typedef struct DeleteOp {
+// undo node/edge deletion
+typedef struct {
 	union {
 		Node n;
 		Edge e;
 	};
-	LabelID *labels;
-	uint label_count;
-} DeleteOp;
+	LabelID *labels;   // labels attached to deleted entity
+	uint label_count;  // number of labels attached to deleted entity
+} UndoDeleteOp;
 
-typedef struct UpdateOp {
-	GraphEntity *ge;
-	GraphEntityType entity_type;
-	Attribute_ID attr_id;
-	SIValue orig_value;
-} UpdateOp;
+// undo graph entity update
+typedef struct {
+	GraphEntity *ge;              // entity updated
+	GraphEntityType entity_type;  // node/edge
+	Attribute_ID attr_id;         // attribute update
+	SIValue orig_value;           // attribute original value
+} UndoUpdateOp;
 
-// the abstract type of items in the undo_list
-typedef struct UndoOp {
+// Undo operation
+typedef struct {
 	union {
-		CreateOp create_op;
-		DeleteOp delete_op;
-		UpdateOp update_op;
+		UndoCreateOp create_op;
+		UndoDeleteOp delete_op;
+		UndoUpdateOp update_op;
 	};
-	UndoOpType type;
+	UndoOpType type;  // type of undo operation
 } UndoOp;
 
-// container for undo_list.
-typedef struct UndoLog {
-	UndoOp *undo_list;         // list of undo operations
-} UndoLog;
+// container for undo_list
+typedef UndoOp *UndoLog;
 
-// allocate and init the UndoLog
-void UndoLog_New
-(
-	UndoLog *undo_log
-);
+// create a new undo-log
+UndoLog *UndoLog_New(void);
 
 //------------------------------------------------------------------------------
-// Undo add changes
+// UndoLog add operations
 //------------------------------------------------------------------------------
 
-// create node creation operation
+// undo node creation
 void UndoLog_CreateNode
 (
-	UndoOp *op,
-	Node node             // node created
+	UndoLog log,  // undo log
+	Node node     // node created
 );
 
-// create edge creation operation
+// undo edge creation
 void UndoLog_CreateEdge
 (
-	UndoOp *op,
-	Edge edge             // edge created
+	UndoLog *log,  // undo log
+	Edge edge      // edge created
 );
 
-// create node deletion operation
+// undo node deletion
 void UndoLog_DeleteNode
 (
-	UndoOp *op,
+	UndoLog *log,
 	Node node,             // node deleted
 	LabelID *labelIDs,
 	uint label_count
 );
 
-// create edge deletion operation
+// undo edge deletion
 void UndoLog_DeleteEdge
 (
-	UndoOp *op,
-	Edge edge             // edge deleted
+	UndoLog *log,  // undo log
+	Edge edge      // edge deleted
 );
 
-// create node update operation
+// undo entity update
 void UndoLog_UpdateEntity
 (
-	UndoOp *op,
-	GraphEntity *ge,
-	Attribute_ID attr_id,
-	SIValue orig_value,   // the original value before the entity was changed
-	GraphEntityType entity_type
+	UndoLog *log,                // undo log
+	GraphEntity *ge,             // updated entity
+	Attribute_ID attr_id,        // updated attribute ID
+	SIValue orig_value,          // attribute original value
+	GraphEntityType entity_type  // entity type
 );
 
 // rollback all modifications tracked by this undo log
@@ -121,7 +124,7 @@ void UndoLog_Rollback
 	UndoLog *undo_log
 );
 
-// deallocates the UndoLog
+// free UndoLog
 void UndoLog_Free
 (
 	UndoLog *undo_log
