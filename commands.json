@@ -121,7 +121,6 @@
 	},
 	"GRAPH.LIST": {
 		"summary": "Lists all graph keys in the keyspace",
-		"arguments": [],
 		"since": "2.4.3",
 		"group": "module",
 		"module": "graph"
