@@ -2,6 +2,7 @@ from RLTest import Env
 from redisgraph import Graph
 
 GRAPH_ID = "undo-log"
+
 class testUndoLog():
     def __init__(self):
         self.env = Env(decodeResponses=True)
@@ -13,7 +14,7 @@ class testUndoLog():
 
     def test01_undo_create_node(self):
         try:
-            self.graph.query("CREATE (n:N) WITH n CREATE (a:N {v: n})")
+            self.graph.query("CREATE (n:N) WITH n RETURN 1 * 'a'")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -29,7 +30,7 @@ class testUndoLog():
             self.graph.query("""MATCH (s:N {v: 1}), (t:N {v: 2})
                                 CREATE (s)-[r:R]->(t)
                                 WITH r
-                                CREATE (a:N {v: r})""")
+                                RETURN 1 * 'a'""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -45,7 +46,7 @@ class testUndoLog():
             self.graph.query("""MATCH (n:N)
                                 DELETE n
                                 WITH n
-                                CREATE (a:N {v: n})""")
+                                RETURN 1 * 'a'""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -61,7 +62,7 @@ class testUndoLog():
             self.graph.query("""MATCH ()-[r:R]->()
                                 DELETE r
                                 WITH r 
-                                CREATE (a:N {v: r})""")
+                                RETURN 1 * 'a'""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -75,9 +76,9 @@ class testUndoLog():
         self.graph.query("CREATE (:N {a: 1, b:'str', c:[1, 'str', point({latitude:1, longitude:2})], d:point({latitude:1, longitude:2})})")
         try:
             self.graph.query("""MATCH (n:N {a: 1})
-                                SET n.a = 2, n.b = '', n.c = '', n.d = point({latitude:2, longitude:1})
+                                SET n.a = 2, n.b = '', n.c = null, n.d = point({latitude:2, longitude:1})
                                 WITH n
-                                CREATE (a:N {v: n})""")
+                                RETURN 1 * 'a'""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -94,7 +95,7 @@ class testUndoLog():
             self.graph.query("""MATCH (n:N {a: 1})
                                 SET n.e = 1
                                 WITH n
-                                CREATE (a:N {v: n})""")
+                                RETURN 1 * 'a'""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -108,13 +109,13 @@ class testUndoLog():
             self.graph.query("""MATCH (n:N {a: 1})
                                 SET n:M
                                 WITH n
-                                CREATE (a:N {v: n})""")
+                                RETURN 1 * 'a'""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
             pass
 
-        # expecting the original attributes to be deleted
+        # expecting the additional label 'M' to be removed
         result = self.graph.query("MATCH (n:M) RETURN COUNT(n)")
         self.env.assertEquals(result.result_set[0][0], 0)
 
@@ -122,13 +123,13 @@ class testUndoLog():
             self.graph.query("""MATCH (n:N {a: 1})
                                 SET n = {}
                                 WITH n
-                                CREATE (a:N {v: n})""")
+                                RETURN 'a' * 1""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
             pass
 
-        # expecting the original attributes to be deleted
+        # expecting the original attributes to be restored
         result = self.graph.query("MATCH (n:N) RETURN n.a, n.b, n.c, n.d")
         self.env.assertEquals(result.result_set[0][0], 1)
         self.env.assertEquals(result.result_set[0][1], 'str')
@@ -137,15 +138,15 @@ class testUndoLog():
 
         try:
             self.graph.query("""MATCH (n:N {a: 1})
-                                SET n += { e: 1}
+                                SET n += {e: 1}
                                 WITH n
-                                CREATE (a:N {v: n})""")
+                                RETURN 'a' * 1""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
             pass
 
-        # expecting the original attributes to be deleted
+        # expecting the original attributes to be restored
         result = self.graph.query("MATCH (n:N) RETURN n.a, n.b, n.c, n.d, n.e")
         self.env.assertEquals(result.result_set[0][0], 1)
         self.env.assertEquals(result.result_set[0][1], 'str')
@@ -159,7 +160,7 @@ class testUndoLog():
             self.graph.query("""MATCH ()-[r]->()
                               SET r.v = 2
                               WITH r
-                              CREATE (a:N {v: r})""")
+                              RETURN 'a' * 1""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -176,7 +177,7 @@ class testUndoLog():
             self.graph.query("""MATCH (n:N)
                                 DELETE n
                                 WITH n
-                                CREATE (a:N {v: n})""")
+                                RETURN 'a' * 1""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -196,7 +197,7 @@ class testUndoLog():
             self.graph.query("""MATCH ()-[r:R]->()
                                 DELETE r
                                 WITH r
-                                CREATE (a:N {v: r})""")
+                                RETURN 'a' * 1""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -216,13 +217,13 @@ class testUndoLog():
             self.graph.query("""MATCH (n:N {v: 1})
                                 SET n.v = 2
                                 WITH n
-                                CREATE (a:N {v: n})""")
+                                RETURN 'a' * 1""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
             pass
 
-        # expecting the original attributes to be restored
+        # expecting the original attributes to be restored and indexed
         query = "MATCH (n:N {v: 1}) RETURN n.v"
         plan = self.graph.execution_plan(query)
         self.env.assertContains("Node By Index Scan", plan)
@@ -236,13 +237,13 @@ class testUndoLog():
             self.graph.query("""MATCH ()-[r]->()
                                 SET r.v = 2
                                 WITH r
-                                CREATE (a:N {v: r})""")
+                                RETURN 'a' * 1""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
             pass
 
-        # expecting the original attributes to be restored
+        # expecting the original attributes to be restored and indexed
         query = "MATCH ()-[r:R {v: 1}]->() RETURN r.v"
         plan = self.graph.execution_plan(query)
         self.env.assertContains("Edge By Index Scan", plan)
@@ -255,7 +256,7 @@ class testUndoLog():
             self.graph.query("""MATCH (n:N)
                                 DETACH DELETE n
                                 WITH n
-                                CREATE (a:N {v: n})""")
+                                RETURN 1 * 'a'""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -282,3 +283,4 @@ class testUndoLog():
         # node (n:N) should be removed, expecting an empty graph
         result = self.graph.query("MATCH (n:N) RETURN COUNT(n)")
         self.env.assertEquals(result.result_set[0][0], 0)
+
