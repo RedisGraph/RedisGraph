@@ -12,7 +12,7 @@ In addition there are severeal client libraries to improve abstractions and allo
 | [redisgraph-rb][redisgraph-rb-url]                       | Ruby       | BSD          | [Redis][redisgraph-rb-author]               | [![redisgraph-rb-stars]][redisgraph-rb-url]                       |
 | [redisgraph-go][redisgraph-go-url]                       | Go         | BSD          | [Redis][redisgraph-go-author]               | [![redisgraph-go-stars]][redisgraph-go-url]                       |
 | [rueidis][rueidis-url]                                   | Go         | Apache 2.0   | [Rueian][rueidis-author]                    | [![rueidis-stars]][rueidis-url]                                   |
-| [node-redis][node-redis-url]                             | JavaScript | BSD          | [Redis][node-redis-author]                  | [![node-redis-stars]][node-redis-url]                             |
+| [node-redis][node-redis-url]                             | JavaScript | MIT          | [Redis][node-redis-author]                  | [![node-redis-stars]][node-redis-url]                             |
 | [ioredisgraph][ioredisgraph-url]                         | JavaScript | ISC          | [Jonah][ioredisgraph-author]                | [![ioredisgraph-stars]][ioredisgraph-url]                         |
 | [@hydre/rgraph][rgraph-url]                              | JavaScript | MIT          | [Sceat][rgraph-author]                      | [![rgraph-stars]][rgraph-url]                                     |
 | [redis-modules-sdk][redis-modules-sdk-url]               | TypeScript | BSD-3-Clause | [Dani Tseitlin][redis-modules-sdk-author]   | [![redis-modules-sdk-stars]][redis-modules-sdk-url]               |
