@@ -23,7 +23,7 @@ static inline QueryCtx *_QueryCtx_GetCreateCtx(void) {
 	if(!ctx) {
 		// Set a new thread-local QueryCtx if one has not been created.
 		ctx = rm_calloc(1, sizeof(QueryCtx));
-		UndoLog_New(&ctx->undo_log);
+		ctx->undo_log = UndoLog_New();
 		pthread_setspecific(_tlsQueryCtxKey, ctx);
 	}
 	return ctx;
@@ -254,7 +254,7 @@ void QueryCtx_Free(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ASSERT(ctx != NULL);
 
-	UndoLog_Free(&ctx->undo_log);
+	UndoLog_Free(ctx->undo_log);
 
 	if(ctx->query_data.params) {
 		raxFreeWithCallback(ctx->query_data.params, _ParameterFreeCallback);

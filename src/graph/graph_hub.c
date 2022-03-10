@@ -8,15 +8,6 @@
 #include "../query_ctx.h"
 #include "../undo_log/undo_log.h"
 
-// add operation to the undo log
-static inline void _add_undo_op
-(
-	UndoOp *op
-) {
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-	array_append(query_ctx->undo_log.undo_list, *op);
-}
-
 // delete all references to a node from any indices built upon its properties
 static void _DeleteNodeFromIndices
 (
@@ -122,13 +113,14 @@ static inline uint _AddProperties
 	AttributeSet *attr
 ) {
 	int failed_updates = 0;
-	for(int i = 0; i < attr->attr_count; i++) {
-		Attribute *a = attr->attributes + i;
+	AttributeSet _set = *attr;
+	for(int i = 0; i < ATTRIBUTE_SET_COUNT(_set); i++) {
+		Attribute *a = _set->attributes + i;
 		bool updated = GraphEntity_AddProperty(e, a->id, a->value);
 		if(!updated) failed_updates++;
 	}
 
-	return attr->attr_count - failed_updates;
+	return _set->attr_count - failed_updates;
 }
 
 uint CreateNode
@@ -154,9 +146,8 @@ uint CreateNode
 	}
 
 	// add node creation operation to undo log
-	UndoOp op;
-	UndoLog_CreateNode(&op, *n);
-	_add_undo_op(&op);
+	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+	UndoLog_CreateNode(&query_ctx->undo_log, *n);
 
 	return properties_set;
 }
@@ -183,9 +174,8 @@ uint CreateEdge
 	if(s && Schema_HasIndices(s)) Schema_AddEdgeToIndices(s, e);
 
 	// add edge creation operation to undo log
-	UndoOp op;
-	UndoLog_CreateEdge(&op, *e);
-	_add_undo_op(&op);
+	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+	UndoLog_CreateEdge(&query_ctx->undo_log, *e);
 
 	return properties_set;
 }
@@ -217,16 +207,13 @@ uint DeleteNode
 	array_free(edges);
 
 	// add node deletion operation to undo log
-	UndoOp op;
-	Node clone;
 	LabelID *labels_clone = rm_malloc(sizeof(LabelID) * label_count);
 	for (uint i = 0; i < label_count; i++) {
 		labels_clone[i] = labels[i];
 	}
 	
-	Node_Clone(n, &clone);
-	UndoLog_DeleteNode(&op, clone, labels_clone, label_count);
-	_add_undo_op(&op);
+	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+	UndoLog_DeleteNode(&query_ctx->undo_log, n, labels_clone, label_count);
 
 	if(GraphContext_HasIndices(gc)) {
 		_DeleteNodeFromIndices(gc, n);
@@ -246,12 +233,8 @@ int DeleteEdge
 	ASSERT(e != NULL);
 
 	// add edge deletion operation to undo log
-	UndoOp op;
-	Edge clone;
-	Edge_Clone(e, &clone);
-
-	UndoLog_DeleteEdge(&op, clone);
-	_add_undo_op(&op);
+	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+	UndoLog_DeleteEdge(&query_ctx->undo_log, e);
 
 	if(GraphContext_HasIndices(gc)) {
 		_DeleteEdgeFromIndices(gc, e);
@@ -270,22 +253,19 @@ static int _Update_Entity
 ) {
 	if(attr_id == ATTRIBUTE_ID_ALL) {
 		AttributeSet *set = ENTITY_ATTRIBUTE_SET(ge);
-		int prop_count = ATTRIBUTE_SET_COUNT(set);
-		for(int i = 0; i < prop_count; i++) {
+		for(int i = 0; i < ATTRIBUTE_SET_COUNT(*set); i++) {
 			Attribute_ID id;
 			// add entity update operation to undo log
-			UndoOp op;
-			SIValue clone = SI_CloneValue(AttributeSet_GetIdx(set, i, &id));
-			UndoLog_UpdateEntity(&op, ge, id, clone, entity_type);
-			_add_undo_op(&op);
+			SIValue clone = SI_CloneValue(AttributeSet_GetIdx(*set, i, &id));
+			QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+			UndoLog_UpdateEntity(&query_ctx->undo_log, ge, id, clone, entity_type);
 		}
 	} else {
 		SIValue *orig_value = GraphEntity_GetProperty(ge, attr_id);
 		// add entity update operation to undo log
-		UndoOp op;
 		SIValue clone = SI_CloneValue(*orig_value);
-		UndoLog_UpdateEntity(&op, ge, attr_id, clone, entity_type);
-		_add_undo_op(&op);
+		QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+		UndoLog_UpdateEntity(&query_ctx->undo_log, ge, attr_id, clone, entity_type);
 	}
 
 	return Graph_UpdateEntity(ge, attr_id, new_value, entity_type);
@@ -302,9 +282,9 @@ int UpdateEntity
 	ASSERT(ge != NULL);
 
 	int updates = 0;
-	uint attr_count = attr->attr_count;
-	for (uint i = 0; i < attr_count; i++) {
-		Attribute *prop = attr->attributes + i;
+	AttributeSet _set = *attr;
+	for (uint i = 0; i < ATTRIBUTE_SET_COUNT(_set); i++) {
+		Attribute *prop = _set->attributes + i;
 		updates += _Update_Entity(gc, ge, prop->id, prop->value, entity_type);
 	}
 

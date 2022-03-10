@@ -59,15 +59,16 @@ static void _CreateNodes(OpCreate *op, Record r) {
 		Node *node_ref = Record_AddNode(r, op->pending.nodes_to_create[i].node_idx, newNode);
 
 		// convert query-level properties
-		AttributeSet converted_properties = {0};
+		AttributeSet converted_attr;
+		AttributeSet_New(&converted_attr);
 		PropertyMap *map = op->pending.nodes_to_create[i].properties;
-		if(map) ConvertPropertyMap(&converted_properties, r, map, false);
+		if(map) ConvertPropertyMap(&converted_attr, r, map, false);
 
 		// save node for later insertion
 		array_append(op->pending.created_nodes, node_ref);
 
 		// save attributes to insert with node
-		array_append(op->pending.node_attributes, converted_properties);
+		array_append(op->pending.node_attributes, converted_attr);
 
 		// save labels to assigned to node
 		array_append(op->pending.node_labels, n->labelsId);
@@ -98,14 +99,15 @@ static void _CreateEdges(OpCreate *op, Record r) {
 
 		// convert query-level properties
 		PropertyMap *map = op->pending.edges_to_create[i].properties;
-		AttributeSet converted_properties = {0};
-		if(map) ConvertPropertyMap(&converted_properties, r, map, false);
+		AttributeSet converted_attr;
+		AttributeSet_New(&converted_attr);
+		if(map) ConvertPropertyMap(&converted_attr, r, map, false);
 
 		// save edge for later insertion
 		array_append(op->pending.created_edges, edge_ref);
 
 		// save attributes to insert with node
-		array_append(op->pending.edge_attributes, converted_properties);
+		array_append(op->pending.edge_attributes, converted_attr);
 	}
 }
 

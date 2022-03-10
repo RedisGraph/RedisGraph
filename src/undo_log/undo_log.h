@@ -40,15 +40,22 @@ typedef struct {
 	};
 } UndoCreateOp;
 
-// undo node/edge deletion
+// undo node deletion
 typedef struct {
-	union {
-		Node n;
-		Edge e;
-	};
+	EntityID id;
+	AttributeSet set;
 	LabelID *labels;   // labels attached to deleted entity
 	uint label_count;  // number of labels attached to deleted entity
-} UndoDeleteOp;
+} UndoDeleteNodeOp;
+
+// undo edge deletion
+typedef struct {
+	EntityID id;
+	int relationID;             // Relation ID
+	NodeID srcNodeID;           // Source node ID
+	NodeID destNodeID;          // Destination node ID
+	AttributeSet set;
+} UndoDeleteEdgeOp;
 
 // undo graph entity update
 typedef struct {
@@ -62,7 +69,8 @@ typedef struct {
 typedef struct {
 	union {
 		UndoCreateOp create_op;
-		UndoDeleteOp delete_op;
+		UndoDeleteNodeOp delete_node_op;
+		UndoDeleteEdgeOp delete_edge_op;
 		UndoUpdateOp update_op;
 	};
 	UndoOpType type;  // type of undo operation
@@ -72,7 +80,7 @@ typedef struct {
 typedef UndoOp *UndoLog;
 
 // create a new undo-log
-UndoLog *UndoLog_New(void);
+UndoLog UndoLog_New(void);
 
 //------------------------------------------------------------------------------
 // UndoLog add operations
@@ -81,7 +89,7 @@ UndoLog *UndoLog_New(void);
 // undo node creation
 void UndoLog_CreateNode
 (
-	UndoLog log,  // undo log
+	UndoLog *log,  // undo log
 	Node node     // node created
 );
 
@@ -96,7 +104,7 @@ void UndoLog_CreateEdge
 void UndoLog_DeleteNode
 (
 	UndoLog *log,
-	Node node,             // node deleted
+	Node *node,             // node deleted
 	LabelID *labelIDs,
 	uint label_count
 );
@@ -105,7 +113,7 @@ void UndoLog_DeleteNode
 void UndoLog_DeleteEdge
 (
 	UndoLog *log,  // undo log
-	Edge edge      // edge deleted
+	Edge *edge      // edge deleted
 );
 
 // undo entity update
@@ -121,12 +129,12 @@ void UndoLog_UpdateEntity
 // rollback all modifications tracked by this undo log
 void UndoLog_Rollback
 (
-	UndoLog *undo_log
+	UndoLog log
 );
 
 // free UndoLog
 void UndoLog_Free
 (
-	UndoLog *undo_log
+	UndoLog log
 );
 

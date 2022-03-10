@@ -8,18 +8,6 @@
 #include "node.h"
 #include "../../util/rmalloc.h"
 
-void Node_Clone
-(
-	const Node *n,
-	Node *clone
-) {
-	ASSERT(n != NULL);
-	ASSERT(clone != NULL);
-
-	clone->id         = n->id;
-	clone->attributes = AttributeSet_Clone(n->attributes);
-}
-
 void Node_ToString
 (
 	const Node *n,

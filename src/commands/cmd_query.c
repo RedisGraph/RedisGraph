@@ -233,7 +233,7 @@ static void _ExecuteQuery(void *args) {
 
 	// in case of an error, rollback any modifications
 	if(ErrorCtx_EncounteredError()) {
-		UndoLog_Rollback(&query_ctx->undo_log);
+		UndoLog_Rollback(query_ctx->undo_log);
 		// clear resultset statistics, avoiding commnad being replicated
 		ResultSet_Clear(result_set);
 	}

@@ -25,11 +25,17 @@ typedef struct {
 } Attribute;
 
 typedef struct {
-	int attr_count;         // number of attributes
+	ushort attr_count;       // number of attributes
 	Attribute attributes[];  // key value pair of attributes
 } _AttributeSet;
 
 typedef _AttributeSet* AttributeSet;
+
+// create new empty attribute set
+void AttributeSet_New
+(
+	AttributeSet *set  // pointer to the set
+);
 
 // retrieves a value from set
 // NOTE: if the key does not exist
@@ -51,6 +57,15 @@ SIValue AttributeSet_GetIdx
 // adds an attribute to the set
 // returns true if attribute was added otherwise false
 void AttributeSet_Add
+(
+	AttributeSet *set,     // set to update
+	Attribute_ID attr_id,  // attribute identifier
+	SIValue value          // attribute value
+);
+
+// adds or update an attribute to the set null value allowed
+// returns true if attribute was added to the set
+void AttributeSet_Set_Allow_Null
 (
 	AttributeSet *set,     // set to update
 	Attribute_ID attr_id,  // attribute identifier
@@ -83,4 +98,3 @@ void AttributeSet_Free
 (
 	AttributeSet *set  // set to be freed
 );
-

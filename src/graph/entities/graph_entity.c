@@ -20,7 +20,9 @@ bool GraphEntity_AddProperty
 ) {
 	ASSERT(e);
 
-	return AttributeSet_Add(e->attributes, attr_id, value, false);
+	AttributeSet_Add(e->attributes, attr_id, value);
+	
+	return true;
 }
 
 SIValue *GraphEntity_GetProperty
@@ -36,7 +38,7 @@ SIValue *GraphEntity_GetProperty
  		return ATTRIBUTE_NOTFOUND;
  	}
 
-	return AttributeSet_Get(e->attributes, attr_id);
+	return AttributeSet_Get(*e->attributes, attr_id);
 }
 
 // updates existing property value
@@ -57,11 +59,11 @@ SIValue GraphEntity_Keys
 ) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	AttributeSet *set = ENTITY_ATTRIBUTE_SET(e);
-	int prop_count = ATTRIBUTE_SET_COUNT(set);
+	int prop_count = ATTRIBUTE_SET_COUNT(*set);
 	SIValue keys = SIArray_New(prop_count);
 	for(int i = 0; i < prop_count; i++) {
 		Attribute_ID attr_id;
-		AttributeSet_GetIdx(set, i, &attr_id);
+		AttributeSet_GetIdx(*set, i, &attr_id);
 		const char *key = GraphContext_GetAttributeString(gc, attr_id);
 		SIArray_Append(&keys, SI_ConstStringVal(key));
 	}
@@ -83,10 +85,10 @@ size_t GraphEntity_PropertiesToString
 	*bytesWritten += snprintf(*buffer, *bufferLen, "{");
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	AttributeSet *set = ENTITY_ATTRIBUTE_SET(e);
-	int propCount = ATTRIBUTE_SET_COUNT(set);
+	int propCount = ATTRIBUTE_SET_COUNT(*set);
 	for(int i = 0; i < propCount; i++) {
 		Attribute_ID attr_id;
-		SIValue value = AttributeSet_GetIdx(set, i, &attr_id);
+		SIValue value = AttributeSet_GetIdx(*set, i, &attr_id);
 		// print key
 		const char *key = GraphContext_GetAttributeString(gc, attr_id);
 		// check for enough space

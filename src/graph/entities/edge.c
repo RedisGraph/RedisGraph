@@ -113,18 +113,6 @@ void Edge_ToString
 	GraphEntity_ToString((const GraphEntity *)e, buffer, bufferLen, bytesWritten, format, GETYPE_EDGE);
 }
 
-void Edge_Clone
-(
-	const Edge *e,
-	Edge *clone
-) {
-	ASSERT(e != NULL);
-	ASSERT(clone != NULL);
-
-	*clone            = *e;
-	clone->attributes = AttributeSet_Clone(e->attributes);
-}
-
 void Edge_Free
 (
 	Edge *edge

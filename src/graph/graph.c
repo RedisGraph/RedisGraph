@@ -629,11 +629,10 @@ void Graph_CreateNode
 
 	NodeID id;
 	AttributeSet *set = DataBlock_AllocateItem(g->nodes, &id);
+	AttributeSet_New(set);
 
 	n->id            =  id;
 	n->attributes    =  set;
-	set->attr_count  =  0;
-	set->attributes  =  NULL;
 
 	if(label_count > 0) _Graph_LabelNode(g, n->id, labels, label_count);
 }
@@ -684,14 +683,14 @@ void Graph_CreateEdge
 
 	EdgeID id;
 	AttributeSet *set = DataBlock_AllocateItem(g->edges, &id);
+	AttributeSet_New(set);
 
 	e->id            =  id;
 	e->attributes    =  set;
 	e->srcNodeID     =  src;
 	e->destNodeID    =  dest;
 	e->relationID    =  r;
-	set->attr_count  =  0;
-	set->attributes  =  NULL;
+
 
 	Graph_FormConnection(g, src, dest, id, r);
 }
@@ -800,7 +799,9 @@ uint Graph_GetNodeLabels
 	uint i = 0;
 
 	for(; i < label_count; i++) {
-		res = RG_MatrixTupleIter_next_BOOL(&iter, NULL, labels + i, NULL);
+		GrB_Index col;
+		res = RG_MatrixTupleIter_next_BOOL(&iter, NULL, &col, NULL);
+		labels[i] = col;
 
 		if(res == GxB_EXHAUSTED) break;
 	}
@@ -926,7 +927,7 @@ int Graph_UpdateEntity
 	// handle the case in which we are deleting all attributes
 	if(attr_id == ATTRIBUTE_ID_ALL) {
 		AttributeSet *set = ENTITY_ATTRIBUTE_SET(ge);
-		int count = ATTRIBUTE_SET_COUNT(set);
+		int count = ATTRIBUTE_SET_COUNT(*set);
 		AttributeSet_Clear(set);
 		return count;
 	}

@@ -30,13 +30,6 @@ typedef struct {
 	EntityID id;                    // unique id, MUST be the second member
 } Node;
 
-// clones given node
-void Node_Clone
-(
-	const Node *n,
-	Node *clone
-);
-
 // prints a string representation of the node to buffer
 // return the string length
 void Node_ToString

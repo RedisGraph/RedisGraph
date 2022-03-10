@@ -26,11 +26,11 @@ static inline sds _JsonEncoder_String(SIValue v, sds s) {
 static sds _JsonEncoder_Properties(const GraphEntity *ge, sds s) {
 	s = sdscat(s, "\"properties\": {");
 	AttributeSet *set = ENTITY_ATTRIBUTE_SET(ge);
-	uint prop_count = ATTRIBUTE_SET_COUNT(set);
+	uint prop_count = ATTRIBUTE_SET_COUNT(*set);
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	for(uint i = 0; i < prop_count; i ++) {
 		Attribute_ID attr_id;
-		SIValue value = AttributeSet_GetIdx(set, i, &attr_id);
+		SIValue value = AttributeSet_GetIdx(*set, i, &attr_id);
 		const char *key = GraphContext_GetAttributeString(gc, attr_id);
 		s = sdscatfmt(s, "\"%s\": ", key);
 		s = _JsonEncoder_SIValue(value, s);

@@ -11,7 +11,7 @@
 #include "../../util/rmalloc.h"
 
 // compute size of attribute set in bytes
-#define ATTRIBUTESET_BYTE_SIZE(set) sizeof(int) + sizeof(Attribute) * (set)->attr_count
+#define ATTRIBUTESET_BYTE_SIZE(set) sizeof(ushort) + sizeof(Attribute) * (set)->attr_count
 
 // determine if set is empty
 #define ATTRIBUTESET_EMPTY(set) (set)->attr_count == 0
@@ -57,6 +57,18 @@ static bool _AttributeSet_Remove
 
 	// unable to locate attribute
 	return false;
+}
+
+// create new empty attribute set
+void AttributeSet_New
+(
+	AttributeSet *set  // pointer to the set
+) {
+	ASSERT(set != NULL);
+
+	*set = malloc(sizeof(ushort));
+
+	(*set)->attr_count = 0;
 }
 
 // retrieves a value from set
@@ -132,7 +144,46 @@ void AttributeSet_Add
 	_set = rm_realloc(_set, n);
 
 	// set attribute
-	Attribute *attr = set->attributes + set->attr_count - 1;
+	Attribute *attr = _set->attributes + _set->attr_count - 1;
+	attr->id = attr_id;
+	attr->value = SI_CloneValue(value);
+
+	// update pointer
+	*set = _set;
+}
+
+// adds or updates an attribute to the set null value allowed
+// returns true if attribute was added to the set
+void AttributeSet_Set_Allow_Null
+(
+	AttributeSet *set,     // set to update
+	Attribute_ID attr_id,  // attribute identifier
+	SIValue value          // attribute value
+) {
+	ASSERT(set != NULL && *set != NULL);
+	ASSERT(attr_id != ATTRIBUTE_ID_NONE);
+
+	AttributeSet _set = *set;
+
+	// validate value type
+	// value must be a valid property type
+	ASSERT(SI_TYPE(value) & (SI_VALID_PROPERTY_VALUE | T_NULL));
+
+	// make sure attribute isn't already in set
+	if(AttributeSet_Get(_set, attr_id) != ATTRIBUTE_NOTFOUND) {
+		AttributeSet_Update(&_set, attr_id, value);
+		// update pointer
+		*set = _set;
+		return;
+	}
+
+	// allocate room for new attribute
+	_set->attr_count++;
+	size_t n = ATTRIBUTESET_BYTE_SIZE(_set);
+	_set = rm_realloc(_set, n);
+
+	// set attribute
+	Attribute *attr = _set->attributes + _set->attr_count - 1;
 	attr->id = attr_id;
 	attr->value = SI_CloneValue(value);
 
@@ -213,7 +264,7 @@ void AttributeSet_Clear
 
 	// shrink attribute set
 	size_t n = ATTRIBUTESET_BYTE_SIZE(_set);
-	*set = rm_realloc(n);
+	*set = rm_realloc(_set, n);
 }
 
 // free attribute set

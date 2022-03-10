@@ -135,13 +135,6 @@ void Edge_ToString
 	GraphEntityStringFromat format
 );
 
-// clones given edge
-void Edge_Clone
-(
-	const Edge *e,
-	Edge *clone
-);
-
 // frees allocated space by given edge
 void Edge_Free
 (

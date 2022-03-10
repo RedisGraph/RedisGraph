@@ -41,7 +41,7 @@ static void _PreparePendingUpdate
 		}
 	}
 
-	AttributeSet_Add(props, attr_id, new_value, true);
+	AttributeSet_Set_Allow_Null(props, attr_id, new_value);
 }
 
 // commits delayed updates
@@ -112,11 +112,12 @@ void EvalEntityUpdates
 
 	PendingUpdateCtx  update = {0};
 	update.ge = entity;
+	AttributeSet_New(&update.attributes);
 
 	// if this update replaces all existing properties
 	// enqueue a clear update to do so
 	if(ctx->mode == UPDATE_REPLACE) {
-		AttributeSet_Add(&update.attributes, ATTRIBUTE_ID_ALL, SI_NullVal(), true);
+		AttributeSet_Set_Allow_Null(&update.attributes, ATTRIBUTE_ID_ALL, SI_NullVal());
 	}
 
 	// if we're converting a SET clause, NULL is acceptable
@@ -170,10 +171,9 @@ void EvalEntityUpdates
 			}
 			// iterate over all entity properties to build updates
 			AttributeSet *set = ENTITY_ATTRIBUTE_SET(ge);
-			uint property_count = ATTRIBUTE_SET_COUNT(set);
-			for(uint j = 0; j < property_count; j ++) {
+			for(uint j = 0; j < ATTRIBUTE_SET_COUNT(*set); j ++) {
 				Attribute_ID attr_id;
-				SIValue value = AttributeSet_GetIdx(set, j, &attr_id);
+				SIValue value = AttributeSet_GetIdx(*set, j, &attr_id);
 
 				_PreparePendingUpdate(&update.attributes, accepted_properties,
 					attr_id, value);
@@ -186,4 +186,3 @@ void EvalEntityUpdates
 	// enqueue the current update
 	array_append(*updates, update);
 }
-

@@ -38,8 +38,8 @@ void Serializer_Graph_SetNode
 	ASSERT(g);
 
 	AttributeSet *set = DataBlock_AllocateItemOutOfOrder(g->nodes, id);
-	set->attr_count   =  0;
-	set->attributes   =  NULL;
+	AttributeSet_New(set);
+
 	n->id             =  id;
 	n->attributes     =  set;
 	GrB_Info info;
@@ -147,9 +147,8 @@ void Serializer_Graph_SetEdge
 	GrB_Info info;
 
 	AttributeSet *set = DataBlock_AllocateItemOutOfOrder(g->edges, edge_id);
+	AttributeSet_New(set);
 
-	set->attr_count  =  0;
-	set->attributes  =  NULL;
 	e->id            =  edge_id;
 	e->attributes    =  set;
 	e->relationID    =  r;
