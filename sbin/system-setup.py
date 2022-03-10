@@ -46,7 +46,7 @@ class RedisGraphSetup(paella.Setup):
     def macos(self):
         self.install_gnu_utils()
         self.run("%s/bin/getgcc --modern" % READIES)
-        self.run("%s/bin/getclang" % READIES)
+        self.run("%s/bin/getclang --modern" % READIES)
         self.run("brew install libomp")
         self.install("redis")
         self.install_peg()
