@@ -75,7 +75,7 @@ We do not support any of these properties at the type level, meaning nodes and r
 ### Reading/Writing Clauses
 + MERGE
 + CALL (procedures)
-    - The currently-supported procedures can be found in [the Procedures documentation](commands.md#procedures).
+    - The currently-supported procedures can be found in [the Procedures documentation](commands#procedures).
 
 ### Set Operations
 + UNION
@@ -90,7 +90,7 @@ We do not support any of these properties at the type level, meaning nodes and r
 + coalesce
 + startNode
 + endNode
-+ [list comprehensions](commands.md#list-comprehensions)
++ [list comprehensions](commands#list-comprehensions)
 
   **Unsupported:**
 
