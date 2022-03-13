@@ -304,7 +304,7 @@ jobs:
           name: Build
           shell: /bin/bash -l -eo pipefail
           command: |
-            DYLD_LIBRARY_PATH=/usr/local/opt/libomp/lib CC=clang make all package
+            DYLD_LIBRARY_PATH=/usr/local/lib CC=clang make all package
       - save_cache:
           paths:
             - deps/GraphBLAS/build
@@ -314,7 +314,7 @@ jobs:
           shell: /bin/bash -l -eo pipefail
           command: |
             ulimit -n 10000
-            DYLD_LIBRARY_PATH=/usr/local/opt/libomp/lib CC=clang CXX=clang++ make test
+            DYLD_LIBRARY_PATH= /usr/local/lib CC=clang CXX=clang++ make test
       - store_artifacts:
           path: ~/project/tests/flow/logs
       - store_artifacts:

@@ -36,7 +36,7 @@ CXX_SUPPRESS = -Wno-unused-function -Wno-sign-compare -Wno-format -Wno-write-str
 ifeq ($(OS),linux)
 CXXFLAGS += -fopenmp
 else
-CXXFLAGS += -Xpreprocessor -fopenmp -lomp
+CXXFLAGS += -lomp
 endif
 
 ifeq ($(COV),1)
