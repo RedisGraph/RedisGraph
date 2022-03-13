@@ -1,6 +1,10 @@
 ---
-title: RedisGraph
-linkTitle: RedisGraph
+title: "Quick start"
+linkTitle: "Quick start"
+type: docs
+weight: 1
+description: >
+    Quick start
 ---
 
 # RedisGraph
@@ -142,7 +146,7 @@ The system is missing the run-time dependency OpenMP. This can be installed on U
 ## Using RedisGraph
 
 Before using RedisGraph, you should familiarize yourself with its commands and syntax as detailed in the
-[command reference](commands).
+[command reference](/redisgraph/commands).
 
 You can call RedisGraph's commands from any Redis client.
 
@@ -174,13 +178,13 @@ reply = r.execute_command('GRAPH.QUERY', 'social', "CREATE (:person {name:'roi',
 
 Language-specific clients have been written by the community and the RedisGraph team for 6 languages.
 
-The full list and links can be found on [the Clients page](clients).
+The full list and links can be found on [the Clients page](/redisgraph/clients).
 
 ## Data import
 
 The RedisGraph team maintains the [redisgraph-bulk-loader](https://github.com/redisgraph/redisgraph-bulk-loader) for importing new graphs from CSV files.
 
-The data format used by this tool is described in the [GRAPH.BULK implementation details](bulk_spec).
+The data format used by this tool is described in the [GRAPH.BULK implementation details](redisgraph/bulk_spec).
 
 ## Mailing List / Forum
 
