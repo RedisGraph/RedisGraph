@@ -68,7 +68,8 @@ int ThreadPools_AddWorkReader
 int ThreadPools_AddWorkWriter
 (
 	void (*function_p)(void *),
-	void *arg_p
+	void *arg_p,
+	int force
 );
 
 // sets the limit on max queued queries in each thread pool

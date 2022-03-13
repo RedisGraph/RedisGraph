@@ -39,7 +39,7 @@ static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 
 		if(async_delete) {
 			// Async delete
-			ThreadPools_AddWorkWriter(_GraphContext_Free, gc);
+			ThreadPools_AddWorkWriter(_GraphContext_Free, gc, 1);
 		} else {
 			// Sync delete
 			_GraphContext_Free(gc);
