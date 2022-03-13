@@ -30,7 +30,7 @@ CPPFLAGS += -isystem $(GTEST_DIR)/include -I$(GTEST_DIR)/include/gtest/
 LDFLAGS += -ldl
 
 # Flags passed to the C++ compiler.
-CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11 -Xpreprocessor -fopenmp -lomp
+CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11 -Xpreprocessor -fopenmp
 CXX_SUPPRESS = -Wno-unused-function -Wno-sign-compare -Wno-format -Wno-write-strings
 
 ifeq ($(OS),linux)
