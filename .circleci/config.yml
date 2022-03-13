@@ -304,7 +304,7 @@ jobs:
           name: Build
           shell: /bin/bash -l -eo pipefail
           command: |
-            DYLD_LIBRARY_PATH=/usr/local/opt/llvm/lib CC=clang make all package
+            DYLD_LIBRARY_PATH=/usr/local/opt/libomp/lib CC=clang make all package
       - save_cache:
           paths:
             - deps/GraphBLAS/build
