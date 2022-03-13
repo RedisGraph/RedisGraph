@@ -33,6 +33,11 @@ LDFLAGS += -ldl
 CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11 -Xpreprocessor -fopenmp -lomp
 CXX_SUPPRESS = -Wno-unused-function -Wno-sign-compare -Wno-format -Wno-write-strings
 
+ifeq ($(OS),linux)
+else
+CXXFLAGS += -lomp
+endif
+
 ifeq ($(COV),1)
 CXXFLAGS += --coverage
 LDFLAGS += --coverage
