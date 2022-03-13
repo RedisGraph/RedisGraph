@@ -55,7 +55,7 @@ CFLAGS = \
 
 # Compile flags for linux / osx
 ifeq ($(OS),linux)
-SHOBJ_LDFLAGS ?= -Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
+SHOBJ_LDFLAGS ?= -Wl,-Bsymbolic,-Bsymbolic-functions -shared -ldl -lpthread
 else
 SHOBJ_LDFLAGS ?= -bundle -undefined dynamic_lookup -ldl -lpthread -fopenmp
 endif

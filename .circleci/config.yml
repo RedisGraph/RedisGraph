@@ -299,7 +299,7 @@ jobs:
       - install-prerequisites
       - restore_cache:
           keys:
-            - GraphBLAS-mac-{{ checksum "deps/GraphBLAS/README.md" }}
+            - GraphBLAS-mac-clang-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build
           shell: /bin/bash -l -eo pipefail
@@ -308,7 +308,7 @@ jobs:
       - save_cache:
           paths:
             - deps/GraphBLAS/build
-          key: GraphBLAS-mac-{{ checksum "deps/GraphBLAS/README.md" }}
+          key: GraphBLAS-mac-clang-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Test
           shell: /bin/bash -l -eo pipefail
