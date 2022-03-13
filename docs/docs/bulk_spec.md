@@ -2,7 +2,7 @@
 title: "Implementation details for the GRAPH.BULK endpoint"
 linkTitle: "Implementation details for the GRAPH.BULK endpoint"
 type: docs
-weight: 1
+weight: 12
 description: >
     The RedisGraph bulk loader uses the GRAPH.BULK endpoint to build a new graph from 1 or more Redis queries.
     The bulk of these queries is binary data that is unpacked to create nodes, edges, and their properties.

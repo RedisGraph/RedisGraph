@@ -2,7 +2,7 @@
 title: "RedisGraph Result Set Structure"
 linkTitle: "RedisGraph Result Set Structure"
 type: docs
-weight: 1
+weight: 11
 description: >
     This document describes the format RedisGraph uses to print data when accessed through the `redis-cli` utility.
     The [language-specific clients](clients) retrieve data in a more succinct format, and provide their own functionality for printing result sets.

@@ -2,7 +2,7 @@
 title: "Quick start"
 linkTitle: "Quick start"
 type: docs
-weight: 12
+weight: 1
 description: >
     Quick start
 ---
