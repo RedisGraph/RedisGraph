@@ -1,3 +1,12 @@
+---
+title: "References"
+linkTitle: "References"
+type: docs
+weight: 5
+description: >
+    Quick start
+---
+
 * [Development Tutorial](https://developer.redis.com/howtos/redisgraph/)
 
 * Video - [Building a Multi-dimensional Analytics Engine with RedisGraph](https://www.youtube.com/watch?v=6FYYn-9fPXE)

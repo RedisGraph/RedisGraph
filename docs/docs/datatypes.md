@@ -2,7 +2,7 @@
 title: "RedisGraph Data Types"
 linkTitle: "RedisGraph Data Types"
 type: docs
-weight: 1
+weight: 9
 description: "RedisGraph supports a number of distinct data types, some of which can be persisted as property values and some of which are ephemeral."
 ---
 

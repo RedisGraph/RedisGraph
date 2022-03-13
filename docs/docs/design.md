@@ -2,7 +2,7 @@
 title: "RedisGraph: A High Performance In-Memory Graph Database"
 linkTitle: "RedisGraph: A High Performance In-Memory Graph Database"
 type: docs
-weight: 1
+weight: 8
 description: ""
 ---
 
