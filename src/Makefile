@@ -46,7 +46,7 @@ endif
 
 # Default CFLAGS
 CFLAGS = \
-	-fPIC -fcommon -Xpreprocessor -fopenmp \
+	-fPIC -fcommon \
 	-D_GNU_SOURCE \
 	-DREDIS_MODULE_TARGET \
 	-DREDISMODULE_EXPERIMENTAL_API \
@@ -55,8 +55,10 @@ CFLAGS = \
 
 # Compile flags for linux / osx
 ifeq ($(OS),linux)
+CFLAGS += -fopenmp
 SHOBJ_LDFLAGS ?= -Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
 else
+CFLAGS += -Xpreprocessor -fopenmp
 SHOBJ_LDFLAGS ?= -bundle -undefined dynamic_lookup -ldl -lpthread -Xpreprocessor -fopenmp -lomp
 endif
 SHOBJ_LDFLAGS += $(LDFLAGS)
