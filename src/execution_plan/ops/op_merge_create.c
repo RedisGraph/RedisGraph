@@ -15,13 +15,13 @@ static OpBase *MergeCreateClone(const ExecutionPlan *plan, const OpBase *opBase)
 static void MergeCreateFree(OpBase *opBase);
 
 // convert a graph entity's components into an identifying hash code
-static void _IncrementalHashEntity(XXH64_state_t *state, const char *label,
-								   PendingProperties *props) {
+static void _IncrementalHashEntity(XXH64_state_t *state, const char **labels,
+								   uint label_count, PendingProperties *props) {
 	// update hash with label if one is provided
 	XXH_errorcode res;
 	UNUSED(res);
-	if(label) {
-		res = XXH64_update(state, label, strlen(label));
+	for(uint i = 0; i < label_count; i++) {
+		res = XXH64_update(state, labels[i], strlen(labels[i]));
 		ASSERT(res != XXH_ERROR);
 	}
 
@@ -120,10 +120,8 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 
 		// update the hash code with this entity
 		uint label_count = array_len(n->labels);
-		if(label_count == 0) _IncrementalHashEntity(op->hash_state, NULL, converted_properties);
-		for(uint i = 0; i < label_count; i ++) {
-			_IncrementalHashEntity(op->hash_state, n->labels[i], converted_properties);
-		}
+		_IncrementalHashEntity(op->hash_state, n->labels, label_count,
+				converted_properties);
 
 		// Save node for later insertion
 		array_append(op->pending.created_nodes, node_ref);
@@ -167,7 +165,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		 * Note that unbounded nodes were already presented to the hash.
 		 * Incase node has its internal entity set, this means the node has been retrieved from the graph
 		 * i.e. bounded node. */
-		_IncrementalHashEntity(op->hash_state, e->relation, converted_properties);
+		_IncrementalHashEntity(op->hash_state, &e->relation, 1, converted_properties);
 		if(src_node->entity != NULL) {
 			EntityID id = ENTITY_GET_ID(src_node);
 			void *data = &id;
