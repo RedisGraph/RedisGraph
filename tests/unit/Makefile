@@ -30,8 +30,14 @@ CPPFLAGS += -isystem $(GTEST_DIR)/include -I$(GTEST_DIR)/include/gtest/
 LDFLAGS += -ldl
 
 # Flags passed to the C++ compiler.
-CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11 -fopenmp
+CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11
 CXX_SUPPRESS = -Wno-unused-function -Wno-sign-compare -Wno-format -Wno-write-strings
+
+ifeq ($(OS),linux)
+CXXFLAGS += -fopenmp
+else
+CXXFLAGS += -lomp
+endif
 
 ifeq ($(COV),1)
 CXXFLAGS += --coverage
