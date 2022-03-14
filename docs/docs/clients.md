@@ -1,6 +1,6 @@
 ---
 title: "RedisGraph Client Libraries"
-linkTitle: "RedisGraph Client Libraries"
+linkTitle: "Clients"
 type: docs
 weight: 2
 description: >
