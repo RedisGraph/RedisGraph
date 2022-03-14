@@ -89,11 +89,6 @@ static inline size_t _Graph_NodeCap(const Graph *g) {
 	return g->nodes->itemCap;
 }
 
-// return number of edges graph can contain
-static inline size_t _Graph_EdgeCap(const Graph *g) {
-	return g->edges->itemCap;
-}
-
 static void _CollectEdgesFromEntry
 (
 	const Graph *g,
@@ -488,7 +483,7 @@ int Graph_GetEdge
 ) {
 	ASSERT(g);
 	ASSERT(e);
-	ASSERT(id < _Graph_EdgeCap(g));
+	ASSERT(id < g->edges->itemCap);
 
 	e->id = id;
 	e->entity = _Graph_GetEntity(g->edges, id);
