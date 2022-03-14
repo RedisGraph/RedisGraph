@@ -67,9 +67,9 @@ int ThreadPools_AddWorkReader
 // add a write task
 int ThreadPools_AddWorkWriter
 (
-	void (*function_p)(void *),
-	void *arg_p,
-	int force
+	void (*function_p)(void *),  // function to run
+	void *arg_p,                 // function arguments
+	int force                    // true will add task even if internal queue is full
 );
 
 // sets the limit on max queued queries in each thread pool
