@@ -1,10 +1,8 @@
 ---
-title: "Quick start"
-linkTitle: "Quick start"
+title: RedisGraph - Queryable Property Graph
+linkTitle: RedisGraph 
 type: docs
 weight: 1
-description: >
-    Quick start
 ---
 
 # RedisGraph
