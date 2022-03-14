@@ -185,10 +185,6 @@ static void _FlushDBHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t 
 	if(eid.id == REDISMODULE_EVENT_FLUSHDB &&
 	   subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
 		aux_field_counter = 0;
-		uint count = array_len(graphs_in_keyspace);
-		for (size_t i = 0; i < count; i++) {
-			GraphContext_Delete(graphs_in_keyspace[i]);
-		}
 	}
 }
 
