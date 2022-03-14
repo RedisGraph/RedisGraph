@@ -7,7 +7,6 @@
 #include "query_graph.h"
 #include "RG.h"
 #include "../util/arr.h"
-#include "../util/strcmp.h"
 #include "../query_ctx.h"
 #include "../schema/schema.h"
 #include "../../deps/rax/rax.h"
@@ -457,7 +456,7 @@ QGNode *QueryGraph_GetNodeByAlias
 ) {
 	uint node_count = QueryGraph_NodeCount(qg);
 	for(uint i = 0; i < node_count; i ++) {
-		if(!RG_STRCMP(qg->nodes[i]->alias, alias)) return qg->nodes[i];
+		if(!strcmp(qg->nodes[i]->alias, alias)) return qg->nodes[i];
 	}
 	return NULL;
 }
@@ -469,7 +468,7 @@ QGEdge *QueryGraph_GetEdgeByAlias
 ) {
 	uint edge_count = QueryGraph_EdgeCount(qg);
 	for(uint i = 0; i < edge_count; i ++) {
-		if(!RG_STRCMP(qg->edges[i]->alias, alias)) return qg->edges[i];
+		if(!strcmp(qg->edges[i]->alias, alias)) return qg->edges[i];
 	}
 	return NULL;
 }
