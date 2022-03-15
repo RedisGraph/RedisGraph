@@ -87,19 +87,6 @@ inline static void _prepareIterateAll(rax *map, raxIterator *iter) {
 	raxSeek(iter, "^", NULL, 0);
 }
 
-// Validate that an input string can be completely converted to a positive integer in range.
-static inline AST_Validation _ValidatePositiveInteger(const char *input) {
-	ASSERT(input);
-	char *endptr; // If the entire string is converted, endptr will point to a null byte
-	errno = 0; // If underflow or overflow occurs, errno will be set
-
-	strtol(input, &endptr, 0); // Perform conversion
-
-	if(errno != 0 || *endptr != '\0') return AST_INVALID;
-
-	return AST_VALID;
-}
-
 static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) {
 	if(!node) return;
 	ASSERT(identifiers != NULL);
