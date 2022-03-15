@@ -20,6 +20,7 @@ static void _IncrementalHashEntity(XXH64_state_t *state, const char **labels,
 	// update hash with label if one is provided
 	XXH_errorcode res;
 	UNUSED(res);
+
 	for(uint i = 0; i < label_count; i++) {
 		res = XXH64_update(state, labels[i], strlen(labels[i]));
 		ASSERT(res != XXH_ERROR);
@@ -29,6 +30,7 @@ static void _IncrementalHashEntity(XXH64_state_t *state, const char **labels,
 		// update hash with attribute count
 		res = XXH64_update(state, &props->property_count, sizeof(props->property_count));
 		ASSERT(res != XXH_ERROR);
+
 		for(int i = 0; i < props->property_count; i++) {
 			// update hash with attribute ID
 			res = XXH64_update(state, &props->attr_keys[i], sizeof(props->attr_keys[i]));
