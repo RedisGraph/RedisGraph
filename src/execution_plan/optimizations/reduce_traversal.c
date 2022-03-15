@@ -6,7 +6,6 @@
 
 #include "RG.h"
 #include "../../util/arr.h"
-#include "../../util/strcmp.h"
 #include "../ops/op_expand_into.h"
 #include "../ops/op_conditional_traverse.h"
 #include "../ops/op_cond_var_len_traverse.h"
@@ -34,7 +33,7 @@ static inline bool _isInSubExecutionPlan(OpBase *op) {
 static void _removeRedundantTraversal(ExecutionPlan *plan, OpCondTraverse *traverse) {
 	AlgebraicExpression *ae =  traverse->ae;
 	if(AlgebraicExpression_OperandCount(ae) == 1 &&
-	   !RG_STRCMP(AlgebraicExpression_Src(ae), AlgebraicExpression_Dest(ae))) {
+	   !strcmp(AlgebraicExpression_Src(ae), AlgebraicExpression_Dest(ae))) {
 		ExecutionPlan_RemoveOp(plan, (OpBase *)traverse);
 		OpBase_Free((OpBase *)traverse);
 	}
@@ -74,7 +73,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 		 * in this case there will be a traverse operation which will
 		 * filter our dest nodes (b) which aren't of type B. */
 
-		if(!RG_STRCMP(AlgebraicExpression_Src(ae), AlgebraicExpression_Dest(ae)) &&
+		if(!strcmp(AlgebraicExpression_Src(ae), AlgebraicExpression_Dest(ae)) &&
 		   AlgebraicExpression_OperandCount(ae) == 1 &&
 		   AlgebraicExpression_DiagonalOperand(ae, 0)) continue;
 

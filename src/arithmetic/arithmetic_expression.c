@@ -12,7 +12,6 @@
 #include "../errors.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
-#include "../util/strcmp.h"
 #include "../graph/graph.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
@@ -71,7 +70,7 @@ bool AR_EXP_IsAttribute(const AR_ExpNode *exp, char **attr) {
 	// while the right-handside represents the attribute name
 
 	if(exp->type != AR_EXP_OP) return false;
-	if(RG_STRCMP(AR_EXP_GetFuncName(exp), "property") != 0) return false;
+	if(strcmp(AR_EXP_GetFuncName(exp), "property") != 0) return false;
 
 	if(attr != NULL) {
 		AR_ExpNode *r = exp->op.children[1];
@@ -648,7 +647,7 @@ void AR_EXP_CollectEntities(AR_ExpNode *root, rax *aliases) {
 
 void AR_EXP_CollectAttributes(AR_ExpNode *root, rax *attributes) {
 	if(AR_EXP_IsOperation(root)) {
-		if(RG_STRCMP(AR_EXP_GetFuncName(root), "property") == 0) {
+		if(strcmp(AR_EXP_GetFuncName(root), "property") == 0) {
 			AR_ExpNode *arg = root->op.children[1];
 			ASSERT(AR_EXP_IsConstant(arg));
 			ASSERT(SI_TYPE(arg->operand.constant) == T_STRING);

@@ -122,6 +122,12 @@ class testStarProjections():
                     [4]]
         self.env.assertEqual(actual_result.result_set, expected)
 
+        # test a WITH clause with a WHERE condition
+        query = """UNWIND range(1, 2) AS x WITH * WHERE false RETURN *"""
+        actual_result = redis_graph.query(query)
+        expected = []
+        self.env.assertEqual(actual_result.result_set, expected)
+
     # verify that duplicate aliases only result in a single column
     def test04_duplicate_removal(self):
         # create a single node connected to itself
