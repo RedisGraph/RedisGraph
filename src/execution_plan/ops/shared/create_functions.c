@@ -316,7 +316,7 @@ void PendingCreationsFree
 	if(pending->node_attributes) {
 		uint prop_count = array_len(pending->node_attributes);
 		for(uint i = 0; i < prop_count; i ++) {
-			AttributeSet_Clear(pending->node_attributes + i);
+			AttributeSet_Free(pending->node_attributes + i);
 		}
 		array_free(pending->node_attributes);
 		pending->node_attributes = NULL;
@@ -326,7 +326,7 @@ void PendingCreationsFree
 	if(pending->edge_attributes) {
 		uint prop_count = array_len(pending->edge_attributes);
 		for(uint i = 0; i < prop_count; i ++) {
-			AttributeSet_Clear(pending->edge_attributes + i);
+			AttributeSet_Free(pending->edge_attributes + i);
 		}
 		array_free(pending->edge_attributes);
 		pending->edge_attributes = NULL;

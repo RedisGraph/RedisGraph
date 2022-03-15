@@ -377,7 +377,7 @@ Graph *Graph_New
 	size_t edge_cap
 ) {
 
-	fpDestructor cb = (fpDestructor)AttributeSet_Clear;
+	fpDestructor cb = (fpDestructor)AttributeSet_Free;
 	Graph *g = rm_calloc(1, sizeof(Graph));
 
 	g->nodes      =  DataBlock_New(node_cap, node_cap, sizeof(AttributeSet), cb);
@@ -1109,7 +1109,7 @@ void Graph_Free(Graph *g) {
 	it = Graph_ScanNodes(g);
 	while((set = (AttributeSet *)DataBlockIterator_Next(it, NULL)) != NULL) {
 		if(*set != NULL) {
-			AttributeSet_Clear(set);
+			AttributeSet_Free(set);
 		}
 	}
 	DataBlockIterator_Free(it);
@@ -1117,7 +1117,7 @@ void Graph_Free(Graph *g) {
 	it = Graph_ScanEdges(g);
 	while((set = DataBlockIterator_Next(it, NULL)) != NULL) {
 		if(*set != NULL) {
-			AttributeSet_Clear(set);
+			AttributeSet_Free(set);
 		}
 	}
 	DataBlockIterator_Free(it);
