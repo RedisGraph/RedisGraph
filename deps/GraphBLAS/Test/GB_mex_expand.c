@@ -2,7 +2,7 @@
 // GB_mex_expand: C<M,struct> = scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -68,7 +68,7 @@ void mexFunction
     if (ctype == Complex && Complex != GxB_FC64)
     {
         // user-defined complex case
-        GxB_FC64_t *scalar = mxGetComplexDoubles (pargin [1]) ;
+        GxB_FC64_t *scalar = (GxB_FC64_t *) mxGetComplexDoubles (pargin [1]) ;
         info = GxB_Matrix_subassign_UDT_(C, M, NULL, (void *) scalar,
             GrB_ALL, nrows, GrB_ALL, ncols, GrB_DESC_RS) ;
         if (info != GrB_SUCCESS)

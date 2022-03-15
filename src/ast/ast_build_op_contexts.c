@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -125,7 +125,6 @@ static void _ConvertSetItem(GraphContext *gc, rax *updates,
 
 void AST_PreparePathCreation(const cypher_astnode_t *path, const QueryGraph *qg,
 		rax *bound_vars, NodeCreateCtx **nodes, EdgeCreateCtx **edges) {
-	AST *ast = QueryCtx_GetAST();
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
 	QueryGraph *g = QueryGraph_ExtractPaths(qg, &path, 1);
@@ -135,7 +134,7 @@ void AST_PreparePathCreation(const cypher_astnode_t *path, const QueryGraph *qg,
 		 * 1. Current entity is NOT bound in a previous clause.
 		 * 2. We have yet to account for this entity. */
 		const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, i);
-		const char *alias = AST_GetEntityName(ast, elem);
+		const char *alias = AST_ToString(elem);
 
 		// Skip entities defined in previous clauses or already represented in our nodes/edges arrays.
 		int rc = raxTryInsert(bound_vars, (unsigned char *)alias, strlen(alias), NULL, NULL);

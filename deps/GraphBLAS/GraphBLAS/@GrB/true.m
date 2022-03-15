@@ -12,7 +12,7 @@ function C = true (varargin)
 %
 % See also GrB.zeros, GrB.ones, GrB.false, GrB.eye, GrB.speye.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
 [m, n, ~] = gb_parse_args ('true', varargin {:}) ;

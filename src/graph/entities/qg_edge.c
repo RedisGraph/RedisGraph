@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -15,14 +15,16 @@ QGEdge *QGEdge_New
 	const char *alias
 ) {
 	QGEdge *e = rm_malloc(sizeof(QGEdge));
-	e->alias = alias;
-	e->reltypes = array_new(const char *, 1);
-	e->reltypeIDs = array_new(int, 1);
-	e->src = NULL;
-	e->dest = NULL;
-	e->minHops = 1;
-	e->maxHops = 1;
-	e->bidirectional = false;
+
+	e->alias          =  alias;
+	e->reltypes       =  array_new(const char*, 1);
+	e->reltypeIDs     =  array_new(int, 1);
+	e->src            =  NULL;
+	e->dest           =  NULL;
+	e->minHops        =  1;
+	e->maxHops        =  1;
+	e->bidirectional  =  false;
+	e->shortest_path  =  false;
 
 	return e;
 }
@@ -74,6 +76,14 @@ bool QGEdge_VariableLength
 ) {
 	ASSERT(e);
 	return (e->minHops != e->maxHops);
+}
+
+bool QGEdge_IsShortestPath
+(
+	const QGEdge *e
+) {
+	ASSERT(e);
+	return e->shortest_path;
 }
 
 int QGEdge_RelationCount

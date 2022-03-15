@@ -2,7 +2,7 @@
 // GB_new: create a new GraphBLAS matrix, but do not allocate A->{b,i,x}
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -37,7 +37,6 @@ GB_PUBLIC
 GrB_Info GB_new                 // create matrix, except for indices & values
 (
     GrB_Matrix *Ahandle,        // handle of matrix to create
-    const bool A_static_header, // true if Ahandle is statically allocated
     const GrB_Type type,        // matrix type
     const int64_t vlen,         // length of each vector
     const int64_t vdim,         // number of vectors
@@ -78,12 +77,12 @@ GrB_Info GB_new                 // create matrix, except for indices & values
         (*Ahandle)->static_header = false ;  // header of A has been malloc'd
         (*Ahandle)->header_size = header_size ;
     }
-    else
-    { 
-        // the header of A has been provided on input.  It may already be
-        // malloc'd, or it might be statically allocated in the caller. 
-        (*Ahandle)->static_header = A_static_header ;
-    }
+//  else
+//  { 
+//      // the header of A has been provided on input.  It may already be
+//      // malloc'd, or it might be statically allocated in the caller. 
+//      // (*Ahandle)->static_header is not modified.
+//  }
 
     GrB_Matrix A = *Ahandle ;
 

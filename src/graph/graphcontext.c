@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -39,7 +39,9 @@ static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 
 		if(async_delete) {
 			// Async delete
-			ThreadPools_AddWorkWriter(_GraphContext_Free, gc);
+			// add deletion task to pool using force mode
+			// we can't lose this task in-case pool's queue is full
+			ThreadPools_AddWorkWriter(_GraphContext_Free, gc, 1);
 		} else {
 			// Sync delete
 			_GraphContext_Free(gc);
@@ -51,8 +53,11 @@ static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 // GraphContext API
 //------------------------------------------------------------------------------
 
-// Creates and initializes a graph context struct.
-GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t edge_cap) {
+// creates and initializes a graph context struct
+GraphContext *GraphContext_New
+(
+	const char *graph_name
+) {
 	GraphContext *gc = rm_malloc(sizeof(GraphContext));
 
 	gc->version          = 0;  // initial graph version
@@ -64,7 +69,15 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 	gc->encoding_context = GraphEncodeContext_New();
 	gc->decoding_context = GraphDecodeContext_New();
 
-	// initialize the graph's matrices and datablock storage
+	// read NODE_CREATION_BUFFER size from configuration
+	// this value controls how much extra room we're willing to spend for:
+	// 1. graph entity storage
+	// 2. matrices dimensions
+	size_t node_cap;
+	size_t edge_cap;
+	assert(Config_Option_get(Config_NODE_CREATION_BUFFER, &node_cap));
+	edge_cap = node_cap;
+
 	gc->g = Graph_New(node_cap, edge_cap);
 	gc->graph_name = rm_strdup(graph_name);
 
@@ -90,10 +103,13 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 /* _GraphContext_Create tries to get a graph context, and if it does not exists, create a new one.
  * The try-get-create flow is done when module global lock is acquired, to enforce consistency
  * while BGSave is called. */
-static GraphContext *_GraphContext_Create(RedisModuleCtx *ctx, const char *graph_name,
-										  size_t node_cap, size_t edge_cap) {
+static GraphContext *_GraphContext_Create
+(
+	RedisModuleCtx *ctx,
+	const char *graph_name
+) {
 	// Create and initialize a graph context.
-	GraphContext *gc = GraphContext_New(graph_name, node_cap, edge_cap);
+	GraphContext *gc = GraphContext_New(graph_name);
 	RedisModuleString *graphID = RedisModule_CreateString(ctx, graph_name, strlen(graph_name));
 
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_WRITE);
@@ -129,7 +145,7 @@ GraphContext *GraphContext_Retrieve
 		if(shouldCreate) {
 			// Key doesn't exist, create it.
 			const char *graphName = RedisModule_StringPtrLen(graphID, NULL);
-			gc = _GraphContext_Create(ctx, graphName, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
+			gc = _GraphContext_Create(ctx, graphName);
 		} else {
 			// Key does not exist and won't be created, emit an error.
 			RedisModule_ReplyWithError(ctx, "ERR Invalid graph operation on empty key");
@@ -383,14 +399,13 @@ Index *GraphContext_GetIndex(const GraphContext *gc, const char *label,
 	return Schema_GetIndex(s, attribute_id, type);
 }
 
-int GraphContext_AddIndex
+int GraphContext_AddExactMatchIndex
 (
 	Index **idx,
 	GraphContext *gc,
 	SchemaType schema_type,
 	const char *label,
-	const char *field,
-	IndexType index_type
+	const char *field
 ) {
 	ASSERT(idx    !=  NULL);
 	ASSERT(gc     !=  NULL);
@@ -401,7 +416,43 @@ int GraphContext_AddIndex
 	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
 	if(s == NULL) s = GraphContext_AddSchema(gc, label, schema_type);
 
-	int res = Schema_AddIndex(idx, s, field, index_type);
+	IndexField idx_field;
+	IndexField_New(&idx_field, field, INDEX_FIELD_DEFAULT_WEIGHT,
+			INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
+
+	int res = Schema_AddIndex(idx, s, &idx_field, IDX_EXACT_MATCH);
+	if(res != INDEX_OK) {
+		IndexField_Free(&idx_field);
+	}
+
+	ResultSet *result_set = QueryCtx_GetResultSet();
+	ResultSet_IndexCreated(result_set, res);
+
+	return res;
+}
+
+int GraphContext_AddFullTextIndex
+(
+	Index **idx,
+	GraphContext *gc,
+	SchemaType schema_type,
+	const char *label,
+	const char *field,
+	double weight,
+	bool nostem,
+	const char *phonetic
+) {
+	ASSERT(idx    !=  NULL);
+	ASSERT(gc     !=  NULL);
+	ASSERT(label  !=  NULL);
+	ASSERT(field  !=  NULL);
+
+	// Retrieve the schema for this label
+	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
+	if(s == NULL) s = GraphContext_AddSchema(gc, label, schema_type);
+	IndexField index_field;
+	IndexField_New(&index_field, field, weight, nostem, phonetic);
+	int res = Schema_AddIndex(idx, s, &index_field, IDX_FULLTEXT);
 	ResultSet *result_set = QueryCtx_GetResultSet();
 	ResultSet_IndexCreated(result_set, res);
 

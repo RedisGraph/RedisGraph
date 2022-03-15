@@ -2,13 +2,10 @@
 // GB_mex.h: definitions for the Test interface to GraphBLAS
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
-
-// to turn on memory usage debug printing, uncomment this line:
-// #define GB_PRINT_MALLOC 1
 
 #ifndef GB_MEXH
 #define GB_MEXH
@@ -25,6 +22,7 @@
 #include "GB_mx_usercomplex.h"
 #include "mex.h"
 #include "matrix.h"
+#include "GB_dev.h"
 
 #define SIMPLE_RAND_MAX 32767
 uint64_t simple_rand (void) ;
@@ -310,7 +308,7 @@ GrB_Scalar GB_mx_get_Scalar
 
 //------------------------------------------------------------------------------
 
-#ifdef GB_PRINT_MALLOC
+#ifdef GB_MEMDUMP
 
 #define METHOD_START(OP) \
     printf ("\n================================================================================\n") ; \
@@ -332,6 +330,10 @@ GrB_Scalar GB_mx_get_Scalar
 #define METHOD_TRY ;
 #define METHOD_FINAL(OP) ;
 
+#endif
+
+#ifndef GB_DUMP_STUFF
+#define GB_DUMP_STUFF ;
 #endif
 
 // test a GraphBLAS operation with malloc debuging
@@ -360,6 +362,7 @@ GrB_Scalar GB_mx_get_Scalar
             /* callocs, and reallocs of larger size, equal to tries */      \
             GB_Global_malloc_debug_count_set (tries) ;                      \
             METHOD_TRY ;                                                    \
+            GB_DUMP_STUFF ;                                                 \
             /* call the method with malloc debug enabled */                 \
             GB_Global_malloc_debug_set (true) ;                             \
             GrB_Info info = GRAPHBLAS_OPERATION ;                           \
@@ -377,6 +380,7 @@ GrB_Scalar GB_mx_get_Scalar
                 /* out of memory; check for leaks */                        \
                 /* output matrix may have changed; recopy for next test */  \
                 /* but turn off malloc debugging to get the copy */         \
+                GB_DUMP_STUFF ;                                             \
                 FREE_DEEP_COPY ;                                            \
                 GET_DEEP_COPY ;                                             \
                 int nmalloc_end = (int) GB_Global_nmalloc_get ( ) ;         \

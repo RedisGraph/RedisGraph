@@ -29,11 +29,15 @@ void GB_enumify_monoid  // enumerate a monoid
 )
 {
 
+    printf("Calling enumify binop\n");
     GB_enumify_binop (add_ecode, add_opcode, zcode, false) ;
     ASSERT (*add_ecode < 32) ;
+    printf("Calling enumify identity\n");
     GB_enumify_identity (id_ecode, add_opcode, zcode) ;
     bool is_term ;
+    printf("Calling enumify terminal\n");
     GB_enumify_terminal (&is_term, term_ecode, add_opcode, zcode) ;
+    printf("Done enumify monoid\n");
 }
 
 //------------------------------------------------------------------------------
@@ -51,21 +55,21 @@ void GB_macrofy_monoid  // construct the macros for a monoid
 )
 {
 
-    char s [GB_CUDA_STRLEN+1] ;
+    const char *s ;
 
     GB_charify_binop (&s, add_ecode) ;
     GB_macrofy_binop ( fp, "GB_ADD", s, false) ;
 
-    GB_charify_identity_or_terminal (&s, id_ecode) ;
-    GB_macrofy_identity ( fp, s) ;
+    const char *id_value = GB_charify_identity_or_terminal (id_ecode) ;
+    GB_macrofy_identity ( fp, id_value) ;
 
     char texpr [GB_CUDA_STRLEN+1] ;
     char tstmt [GB_CUDA_STRLEN+1] ;
 
     // convert ecode and is_term to strings
-    GB_charify_identity_or_terminal (&s, id_ecode) ;
-    GB_charify_terminal_expression (texpr, s, is_term, term_ecode) ;
-    GB_charify_terminal_statement  (tstmt, s, is_term, term_ecode) ;
+    const char *term_value = GB_charify_identity_or_terminal (term_ecode) ;
+    GB_charify_terminal_expression (texpr, term_value, is_term, term_ecode) ;
+    GB_charify_terminal_statement  (tstmt, term_value, is_term, term_ecode) ;
 
     // convert strings to macros
     GB_macrofy_terminal_expression ( fp,

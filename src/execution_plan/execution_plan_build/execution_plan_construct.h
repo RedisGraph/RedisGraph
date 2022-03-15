@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -42,3 +42,16 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, OpBase *root, const OpBas
 void ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 										const cypher_astnode_t *clause);
 
+// Build pattern comprehension plan operations
+void buildPatternComprehensionOps(
+	ExecutionPlan *plan,
+	OpBase *root,
+	const cypher_astnode_t *ast
+);
+
+// Build pattern path plan operations
+void buildPatternPathOps(
+	ExecutionPlan *plan,
+	OpBase *root,
+	const cypher_astnode_t *ast
+);

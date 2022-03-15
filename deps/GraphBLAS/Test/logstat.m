@@ -1,7 +1,7 @@
 function logstat (testscript, threads)
 %LOGSTAT run a GraphBLAS test and log the results to log.txt 
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 [debug, compact, malloc, covered] = GB_mex_debug ;

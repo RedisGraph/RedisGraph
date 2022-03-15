@@ -4,7 +4,7 @@ function codegen_sel
 % This function creates all files of the form GB_sel__*.c,
 % and the include file GB_sel__include.h.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\nselection operators:\n') ;
@@ -14,7 +14,7 @@ fprintf (f, '//-----------------------------------------------------------------
 fprintf (f, '// GB_sel__include.h: definitions for GB_sel__*.c\n') ;
 fprintf (f, '//------------------------------------------------------------------------------\n') ;
 fprintf (f, '\n') ;
-fprintf (f, '// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.\n') ;
+fprintf (f, '// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.\n') ;
 fprintf (f, '// SPDX-License-Identifier: Apache-2.0\n\n') ;
 fprintf (f, '// This file has been automatically generated from Generator/GB_sel.h') ;
 fprintf (f, '\n\n') ;
@@ -24,34 +24,68 @@ fclose (f) ;
 % select ops where A is either iso or non-iso
 %===============================================================================
 
+%-------------------------------------------------------------------------------
 % USER selectop:
+%-------------------------------------------------------------------------------
+
 fprintf ('\nselop      ') ;
 
-% user select op, A is not iso
-test_value = 'bool keep = op->selop_function (flipij ? j : i, flipij ? i : j, Ax +(p)*asize, ythunk)' ;
+% user select op, A is not iso, no typecasting
+test_value {1} = 'GxB_select_function selop_func = op->selop_function ;' ;
+test_value {2} = 'bool keep = selop_func (flipij ? j : i, flipij ? i : j, Ax +(p)*asize, ythunk)' ;
 codegen_sel_method ('user', test_value, 'GB_void') ;
 
-% user select op, A is iso
-test_value = 'bool keep = op->selop_function (flipij ? j : i, flipij ? i : j, Ax, ythunk)' ;
+% user select op, A is iso, no typecasting
+test_value {1} = 'GxB_select_function selop_func = op->selop_function ;' ;
+test_value {2} = 'bool keep = selop_func (flipij ? j : i, flipij ? i : j, Ax, ythunk)' ;
 codegen_sel_method ('user', test_value, 'GB_void', [ ], 1) ;
 
+%-------------------------------------------------------------------------------
 % GrB_IndexUnaryOp:
+%-------------------------------------------------------------------------------
+
 fprintf ('\nidxunop    ') ;
 
-% index_unaryop op, A is not iso
+% index_unaryop op, A is not iso, with typecasting
+s1 = 'GxB_index_unary_function idxunop_func = op->idxunop_function ; ' ;
+s2 = 'GB_cast_function cast_A_to_X = GB_cast_factory (xcode, acode) ; ' ;
+s3 = 'GB_cast_function cast_Z_to_bool = GB_cast_factory (GB_BOOL_code, zcode) ; ' ;
+test_value {1} = [s1 s2 s3] ;
 zx = 'GB_void z [GB_VLA(zsize)] ; GB_void x [GB_VLA(xsize)] ; ' ;
-ca = 'GB_cast_scalar (x, xcode, Ax +(p)*asize, acode, asize) ; ' ;
-fn = 'op->idxunop_function (z, x, flipij ? j : i, flipij ? i : j, ythunk) ; ' ;
-ke = 'bool keep ; GB_cast_scalar (&keep, GB_BOOL_code, z, zcode, zsize) ;' ;
-test_value = [zx ca fn ke] ;
+ca = 'cast_A_to_X (x, Ax +(p)*asize, asize) ; ' ;
+fn = 'idxunop_func (z, x, flipij ? j : i, flipij ? i : j, ythunk) ; ' ;
+ke = 'bool keep ; cast_Z_to_bool (&keep, z, zsize) ;' ;
+test_value {2} = [zx ca fn ke] ;
+codegen_sel_method ('idxunop_cast', test_value, 'GB_void') ;
+
+% index_unaryop op, A is not iso, no typecasting
+s1 = 'GxB_index_unary_function idxunop_func = op->idxunop_function ; ' ;
+test_value {1} = [s1] ;
+test_value {2} = 'bool keep ; idxunop_func (&keep, Ax +(p)*asize, flipij ? j : i, flipij ? i : j, ythunk) ; ' ;
 codegen_sel_method ('idxunop', test_value, 'GB_void') ;
 
-% index_unaryop op, A is iso
-ca = 'GB_cast_scalar (x, xcode, Ax, acode, asize) ; ' ;
-test_value = [zx ca fn ke] ;
+% index_unaryop op, A is iso, with typecasting 
+s1 = 'GxB_index_unary_function idxunop_func = op->idxunop_function ; ' ;
+s2 = 'GB_void x [GB_VLA(xsize)] ; GB_cast_scalar (x, xcode, A->x, acode, A->type->size) ; ' ;
+s3 = 'GB_cast_function cast_Z_to_bool = GB_cast_factory (GB_BOOL_code, zcode) ; ' ;
+test_value {1} = [s1 s2 s3] ;
+zx = 'GB_void z [GB_VLA(zsize)] ; ' ;
+fn = 'idxunop_func (z, x, flipij ? j : i, flipij ? i : j, ythunk) ; ' ;
+ke = 'bool keep ; cast_Z_to_bool (&keep, z, zsize) ;' ;
+test_value {2} = [zx fn ke] ;
+codegen_sel_method ('idxunop_cast', test_value, 'GB_void', [ ], 1) ;
+
+% index_unaryop op, A is iso, no typecast
+s1 = 'GxB_index_unary_function idxunop_func = op->idxunop_function ; ' ;
+s2 = 'GB_void x [GB_VLA(xsize)] ; GB_cast_scalar (x, xcode, A->x, acode, A->type->size) ; ' ;
+test_value {1} = [s1 s2] ;
+test_value {2} = 'bool keep ; idxunop_func (&keep, x, flipij ? j : i, flipij ? i : j, ythunk) ; ' ;
 codegen_sel_method ('idxunop', test_value, 'GB_void', [ ], 1) ;
 
+%-------------------------------------------------------------------------------
 % TRIL, TRIU, DIAG, OFFIDIAG, ...
+%-------------------------------------------------------------------------------
+
 fprintf ('\ntril       ') ;
 codegen_sel_method ('tril'      , [ ], 'GB_void' , 'GB_TRIL_SELECTOR'    ) ;
 codegen_sel_method ('tril'      , [ ], 'GB_void' , 'GB_TRIL_SELECTOR'    , 1) ;

@@ -2,12 +2,13 @@
 // GB_bitmap_AxB_saxpy: compute C=A*B, C<M>=A*B, or C<!M>=A*B; C bitmap
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 #include "GB_bitmap_AxB_saxpy.h"
+#include "GB_AxB_saxpy_generic.h"
 #include "GB_AxB__include1.h"
 #ifndef GBCOMPACT
 #include "GB_AxB__include2.h"
@@ -45,7 +46,7 @@ GrB_Info GB_bitmap_AxB_saxpy        // C = A*B where C is bitmap
 
     GrB_Info info ;
 
-    ASSERT (C != NULL && C->static_header) ;
+    ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
 
     ASSERT_MATRIX_OK_OR_NULL (M, "M for bitmap saxpy A*B", GB0) ;
     ASSERT (!GB_PENDING (M)) ;
@@ -79,7 +80,7 @@ GrB_Info GB_bitmap_AxB_saxpy        // C = A*B where C is bitmap
     int64_t cnzmax = 1 ;
     (void) GB_int64_multiply ((GrB_Index *) &cnzmax, A->vlen, B->vdim) ;
     // set C->iso = C_iso   OK
-    GB_OK (GB_new_bix (&C, true, // static header
+    GB_OK (GB_new_bix (&C, // existing header
         ctype, A->vlen, B->vdim, GB_Ap_null, true, GxB_BITMAP, true,
         GB_HYPER_SWITCH_DEFAULT, -1, cnzmax, true, C_iso, Context)) ;
     C->magic = GB_MAGIC ;

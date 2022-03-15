@@ -1,15 +1,16 @@
 //------------------------------------------------------------------------------
-// GB_AxB_saxpy4: compute C+=A*B
+// GB_AxB_saxpy4: compute C+=A*B: C full, A sparse/hyper, B bitmap/full
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
-// GB_AxB_saxpy4 computes C+=A*B where C and B are as-is-full, A is sparse,
-// no mask is present, C_replace is false, the accum matches the monoid,
-// no typecasting is needed, and no user-defined types or operators are used.
+// GB_AxB_saxpy4 computes C+=A*B where C is as-if-full, A is
+// sparse/hypersparse, and B is bitmap/full (or as-if-full).  No mask is
+// present, C_replace is false, the accum matches the monoid, no typecasting is
+// needed, and no user-defined types or operators are used.
 
 // The ANY monoid is not supported, since its use as accum would be unusual.
 // The monoid must have an atomic implementation, so the TIMES monoid for
@@ -35,7 +36,7 @@
 }
 
 //------------------------------------------------------------------------------
-// GB_AxB_saxpy4: compute C+=A*B in-place
+// GB_AxB_saxpy4: compute C+=A*B: C full, A sparse/hyper, B bitmap/full
 //------------------------------------------------------------------------------
 
 GrB_Info GB_AxB_saxpy4              // C += A*B

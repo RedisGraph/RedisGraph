@@ -2,7 +2,7 @@
 // GB_mxm.h: definitions for C=A*B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -269,6 +269,36 @@ bool GB_iso_AxB             // C = A*B, return true if C is iso
     bool flipxy,            // true if z=fmult(b,a), false if z=fmult(a,b)
     bool ignore_monoid      // rowscale and colscale do not use the monoid
 ) ;
+
+//------------------------------------------------------------------------------
+// GB_AxB_adotb_meta_control: determine method for C=A'*B
+//------------------------------------------------------------------------------
+
+void GB_AxB_meta_adotb_control
+(
+    // output:
+    int *axb_method,
+    // input:
+    const GrB_Matrix C_in,
+    const GrB_Matrix M,
+    bool Mask_comp,
+    const GrB_Matrix A,
+    const GrB_Matrix B,
+    const GrB_BinaryOp accum,
+    const GrB_Semiring semiring,    // semiring that defines C=A*B
+    bool flipxy,
+    bool can_do_in_place,
+    bool allow_scale,
+    bool B_is_diagonal,
+    GrB_Desc_Value AxB_method,
+    GB_Context Context
+) ;
+
+// return value of axb_method from GB_AxB_meta_adotb_control
+#define GB_USE_ROWSCALE 0
+#define GB_USE_COLSCALE 1
+#define GB_USE_DOT      2
+#define GB_USE_SAXPY    3
 
 #endif
 

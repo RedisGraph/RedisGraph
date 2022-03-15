@@ -2,7 +2,7 @@
 // GB_mex_band: C = tril (triu (A,lo), hi), or with A'
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -96,11 +96,7 @@ void mexFunction
 
     OK (GrB_Scalar_new (&Thunk, Thunk_type)) ;
     OK (GrB_Scalar_setElement_UDT (Thunk, (void *) &bandwidth)) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Scalar_wait_(&Thunk)) ;
-    #else
     OK (GrB_Scalar_wait_(Thunk, GrB_MATERIALIZE)) ;
-    #endif
 
     // get atranspose
     bool atranspose = false ;

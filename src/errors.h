@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -22,7 +22,7 @@ typedef struct {
 /* On invocation, set an exception handler, returning 0 from this macro.
  * Upon encountering an exception, execution will resume at this point and return nonzero. */
 #define SET_EXCEPTION_HANDLER()                                         \
-   ({                                                                   \
+   __extension__({                                                                   \
     ErrorCtx *ctx = ErrorCtx_Get();                                     \
     if(!ctx->breakpoint) ctx->breakpoint = rm_malloc(sizeof(jmp_buf));  \
     setjmp(*ctx->breakpoint);                                           \

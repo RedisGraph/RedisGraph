@@ -1,11 +1,12 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
 #include "RG.h"
-#include "./record.h"
+#include "record.h"
+#include "../errors.h"
 #include "../util/rmalloc.h"
 
 /* Migrate the entry at the given index in the source Record at the same index in the destination.
@@ -107,7 +108,7 @@ Node *Record_GetNode(const Record r, uint idx) {
 			// Null scalar values are expected here; otherwise fall through.
 			if(SIValue_IsNull(r->entries[idx].value.s)) return NULL;
 		default:
-			ASSERT("encountered unexpected type in Record; expected Node" && false);
+			ErrorCtx_RaiseRuntimeException("encountered unexpected type in Record; expected Node");
 			return NULL;
 	}
 }
@@ -122,7 +123,7 @@ Edge *Record_GetEdge(const Record r, uint idx) {
 			// Null scalar values are expected here; otherwise fall through.
 			if(SIValue_IsNull(r->entries[idx].value.s)) return NULL;
 		default:
-			ASSERT("encountered unexpected type in Record; expected Edge" && false);
+			ErrorCtx_RaiseRuntimeException("encountered unexpected type in Record; expected Edge");
 			return NULL;
 	}
 }
@@ -145,7 +146,7 @@ SIValue Record_Get(Record r, uint idx) {
 }
 
 void Record_Remove(Record r, uint idx) {
-	r->entries[idx].type = REC_TYPE_UNKNOWN; 
+	r->entries[idx].type = REC_TYPE_UNKNOWN;
 }
 
 GraphEntity *Record_GetGraphEntity(const Record r, uint idx) {
@@ -156,7 +157,7 @@ GraphEntity *Record_GetGraphEntity(const Record r, uint idx) {
 		case REC_TYPE_EDGE:
 			return (GraphEntity *)Record_GetEdge(r, idx);
 		default:
-			ASSERT(false && "encountered unexpected type when trying to retrieve graph entity");
+			ErrorCtx_RaiseRuntimeException("encountered unexpected type when trying to retrieve graph entity");
 	}
 	return NULL;
 }

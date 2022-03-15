@@ -3,7 +3,7 @@ function test153
 %
 % Lists all possible semirings that can be constructed from built-in operators.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 [binops, unary_ops, add_ops, types, semirings, selops] = GB_spec_opsall ;

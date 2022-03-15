@@ -1,14 +1,19 @@
 #include "execution_plan_construct.h"
 #include "execution_plan_modify.h"
-#include "../execution_plan.h"
 #include "../ops/ops.h"
+#include "../../errors.h"
 #include "../../query_ctx.h"
+#include "../execution_plan.h"
 #include "../../util/rax_extensions.h"
 #include "../optimizations/optimizations.h"
 #include "../../ast/ast_build_filter_tree.h"
 
-static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg,
-											 AST *ast) {
+static void _ExecutionPlan_ProcessQueryGraph
+(
+	ExecutionPlan *plan,
+	QueryGraph *qg,
+	AST *ast
+) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
 	// build the full FilterTree for this AST
@@ -38,10 +43,10 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 		OpBase *tail = NULL;
 
 		if(edge_count == 0) {
- 			// if there are no edges in the component, we only need a node scan
- 			QGNode *n = cc->nodes[0];
+			// if there are no edges in the component, we only need a node scan
+			QGNode *n = cc->nodes[0];
 			if(raxFind(bound_vars, (unsigned char *)n->alias, strlen(n->alias))
-				!= raxNotFound) {
+					!= raxNotFound) {
 				continue;
 			}
 		}
@@ -92,9 +97,31 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			if(AlgebraicExpression_OperandCount(exp) == 0) continue;
 
 			QGEdge *edge = NULL;
-			if(AlgebraicExpression_Edge(exp)) edge = QueryGraph_GetEdgeByAlias(qg,
-																				   AlgebraicExpression_Edge(exp));
+			if(AlgebraicExpression_Edge(exp)) {
+				edge =
+					QueryGraph_GetEdgeByAlias(qg, AlgebraicExpression_Edge(exp));
+			}
+
 			if(edge && QGEdge_VariableLength(edge)) {
+				// edge is part of a shortest-path
+				// MATCH allShortestPaths((a)-[*..]->(b))
+				// validate both edge ends are bounded
+				if(QGEdge_IsShortestPath(edge)) {
+					const char *src_alias  = QGNode_Alias(QGEdge_Src(edge));
+					const char *dest_alias = QGNode_Alias(QGEdge_Dest(edge));
+					bool src_bounded =
+						raxFind(bound_vars, (unsigned char *)src_alias,
+								strlen(src_alias)) != raxNotFound;
+					bool dest_bounded =
+						raxFind(bound_vars, (unsigned char *)dest_alias,
+								strlen(dest_alias)) != raxNotFound;
+
+					// TODO: would be great if we can perform this validation
+					// at AST validation time
+					if(!src_bounded || !dest_bounded) {
+						ErrorCtx_SetError("Source and destination must already be resolved to call allShortestPaths");
+					}
+				}
 				root = NewCondVarLenTraverseOp(plan, gc->g, exp);
 			} else {
 				root = NewCondTraverseOp(plan, gc->g, exp);
@@ -191,6 +218,7 @@ void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *cla
 			mandatory_match_count);
 
 	_ExecutionPlan_ProcessQueryGraph(plan, sub_qg, ast);
+	if(ErrorCtx_EncounteredError()) goto cleanup;
 
 	// Build the FilterTree to model any WHERE predicates on these clauses and place ops appropriately.
 	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, mandatory_matches,
@@ -198,6 +226,7 @@ void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *cla
 	ExecutionPlan_PlaceFilterOps(plan, plan->root, NULL, sub_ft);
 
 	// Clean up
+cleanup:
 	QueryGraph_Free(sub_qg);
 	array_free(match_clauses);
 }

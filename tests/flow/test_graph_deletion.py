@@ -88,7 +88,7 @@ class testGraphDeletionFlow(FlowTestsBase):
                     WHERE d.name = "Boaz" AND d.name = "Ori"
                     RETURN COUNT(s)"""
         actual_result = redis_graph.query(query)
-        self.env.assertEquals(len(actual_result.result_set), 0)
+        self.env.assertEquals(actual_result.result_set[0][0], 0)
 
     # Remove 'know' edge connecting Roi to Alon
     # Leaving a single edge of type SameBirthday
@@ -118,7 +118,7 @@ class testGraphDeletionFlow(FlowTestsBase):
         query = """MATCH (s:person {name: "Roi"})-[e:know]->(d:person {name: "Alon"})
                    RETURN COUNT(s)"""
         actual_result = redis_graph.query(query)
-        self.env.assertEquals(len(actual_result.result_set), 0)
+        self.env.assertEquals(actual_result.result_set[0][0], 0)
 
     # Remove both Alon and Boaz from the graph.
     def test06_delete_nodes(self):

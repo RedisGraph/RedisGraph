@@ -1,30 +1,29 @@
-# BUILD redisfab/redisgraph:{{REDIS_VERSION}}-{{REDIS_ARCH}}-{{REDIS_OSNICK}}
-
-ARG PACK={{REDIS_PACK}}
-ARG TEST={{REDIS_TEST}}
 
 #----------------------------------------------------------------------------------------------
-FROM redisfab/redis:{{REDIS_VERSION}}-{{REDIS_ARCH}}-{{REDIS_OSNICK}} AS redis
-# Build based on {{REDIS_OS}} (i.e., 'builder'), redis files are copies from 'redis'
-FROM {{REDIS_OS}} AS builder
+FROM redisfab/redis:{{REDIS_VERSION}}-{{ARCH}}-{{OSNICK}} AS redis
+# Build based on {{OS}} (i.e., 'builder'), redis files are copies from 'redis'
+FROM {{OS}} AS builder
 
-RUN echo "Building for {{REDIS_OSNICK}} ({{REDIS_OS}}) for {{REDIS_ARCH}} [with Redis {{REDIS_VERSION}}]"
+RUN if [ -f /root/.profile ]; then sed -ie 's/mesg n/tty -s \&\& mesg -n/g' /root/.profile; fi
+SHELL ["/bin/bash", "-l", "-c"]
+
+RUN echo "Building for {{OSNICK}} ({{OS}}) for {{ARCH}} [with Redis {{REDIS_VERSION}}]"
 
 WORKDIR /build
-
 COPY --from=redis /usr/local/ /usr/local/
 
-ADD ./ /build
+ADD . /build
 
 # Set up a build environment
-{% if REDIS_OSNICK == "alpine3" %}
+{% if OSNICK == "alpine3" %}
 RUN ./deps/readies/bin/getbash
 {% endif %}
-RUN ./deps/readies/bin/getpy3
 RUN ./deps/readies/bin/getupdates
+RUN ./deps/readies/bin/getpy3
+RUN ./deps/readies/bin/getpy2 # for RediSearch
 RUN ./sbin/system-setup.py
 
-RUN if [ ! -z $(command -v apt-get) ]; then \
+RUN if command -v apt-get &> /dev/null; then \
         locale-gen --purge en_US.UTF-8 ;\
         dpkg-reconfigure -f noninteractive locales ;\
     fi
@@ -33,38 +32,42 @@ ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
 
-RUN bash -l -c make -j`nproc`
+RUN make -j`nproc`
 
-ARG PACK
-ARG TEST
-
-RUN set -ex ;\
-    if [ "$TEST" = "1" ]; then bash -l -c "TEST= make test"; fi
-RUN set -ex ;\
-    mkdir -p bin/artifacts ;\
-    if [ "$PACK" = "1" ]; then bash -l -c "make package"; fi
-
-#----------------------------------------------------------------------------------------------
-{% if REDIS_OSNICK == "alpine3" %}
-FROM redis:6-alpine
-{% else %}
-FROM redisfab/redis:{{REDIS_VERSION}}-{{REDIS_ARCH}}-{{REDIS_OSNICK}}
+{% if TEST == "1" %}
+RUN TEST='' make test
 {% endif %}
 
-ARG PACK
+{% if PACK == "1" %}
+RUN mkdir -p bin/artifacts
+RUN make package
+RUN set -e ;\
+    echo "Artifacts:" ;\
+    du -ah --apparent-size /build/bin/artifacts
+{% endif %}
 
-ENV LIBDIR /usr/lib/redis/modules
+#----------------------------------------------------------------------------------------------
+{% if OSNICK == "alpine3" %}
+FROM redis:{{REDIS_VERSION}}-alpine
+{% else %}
+FROM redisfab/redis:{{REDIS_VERSION}}-{{ARCH}}-{{OSNICK}}
+{% endif %}
 
 WORKDIR /data
 
-RUN mkdir -p $LIBDIR
+RUN mkdir -p "{{MODULES_DIR}}"
 
-COPY --from=builder /build/bin/artifacts/ /var/opt/redislabs/artifacts
-COPY --from=builder /build/src/redisgraph.so $LIBDIR
+COPY --from=builder /build/src/redisgraph.so "{{MODULES_DIR}}/"
 
-RUN if [ -f /usr/bin/apt-get ]; then apt-get -qq update; apt-get -q install -y libgomp1; fi
-RUN if [ -f /usr/bin/yum ]; then yum install -y libgomp; fi
-RUN if [ -f /sbin/apk ]; then apk add libgomp; fi
+{% if ARTIFACTS == "1" %}
+RUN mkdir -p /var/opt/redislabs/artifacts
+RUN chown -R redis:redis /var/opt/redislabs
+COPY --from=builder /build/bin/artifacts/ /var/opt/redislabs/artifacts/
+{% endif %}
+
+RUN if command -v apt-get 2>&1 > /dev/null; then apt-get -qq update; apt-get -q install -y libgomp1; fi
+RUN if command -v yum 2>&1 > /dev/null; then yum install -y libgomp; fi
+RUN if command -v apk 2>&1 > /dev/null; then apk add libgomp; fi
 
 EXPOSE 6379
-CMD ["redis-server", "--loadmodule", "/usr/lib/redis/modules/redisgraph.so"]
+CMD ["redis-server", "--loadmodule", "{{MODULES_DIR}}/redisgraph.so"]

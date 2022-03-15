@@ -2,7 +2,7 @@
 
 test:
 # if host is linux
-ifeq ($(OS), Linux)
+ifeq ($(OS),linux)
 	# regular tests on linux
 	@python3 -m RLTest --module ../../src/redisgraph.so $(TEST_ARGS)
 	# rerun persistency tests using AOF

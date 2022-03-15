@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -55,13 +55,12 @@ static RSQNode *_StringRangeToQueryNode
 
 	if(max != NULL && min != NULL && strcmp(max, min) == 0) {
 		// exact match
-		child = RediSearch_CreateTokenNode(idx, field, max);
+		child = RediSearch_CreateTagTokenNode(idx, max);
 	} else {
 		// range search
 		max = (max == NULL) ? RSLECRANGE_INF     : max;
 		min = (min == NULL) ? RSLEXRANGE_NEG_INF : min;
-
-		child = RediSearch_CreateLexRangeNode(idx, field, min, max,
+		child = RediSearch_CreateTagLexRangeNode(idx, min, max,
 				range->include_min, range->include_max);
 	}
 
@@ -179,6 +178,10 @@ static bool _predicateTreeToRange
 	// get or create range object for alias.prop
 	// constant is either numeric or boolean
 	if(t & SI_NUMERIC || t == T_BOOL) {
+		// TODO: remove when RediSearch INT64 indexing bug fixed
+		if(t == T_INT64 && c.longval & 0x7FF0000000000000) {
+			return false;
+		}
 		nr = raxFind(numeric_ranges, (unsigned char *)prop, prop_len);
 		// create if doesn't exists
 		if(nr == raxNotFound) {
@@ -409,6 +412,7 @@ static bool _FilterTreePredicateToQueryNode
 	*root = NULL;
 
 	// expecting left hand side to be an attribute access
+	bool     res        =  true;
 	RSQNode  *node      =  NULL;
 	char     *field     =  NULL;
 	bool     attribute  =  AR_EXP_IsAttribute(tree->pred.lhs,  &field);
@@ -479,6 +483,10 @@ static bool _FilterTreePredicateToQueryNode
 				break;
 			case OP_EQUAL:  // ==
 				node = RediSearch_CreateNumericNode(idx, field, d, d, true, true);
+				// TODO: remove when RediSearch INT64 indexing bug fixed
+				if(t == T_INT64 && v.longval & 0x7FF0000000000000) {
+					res = false;
+				}
 				break;
 			default:
 				ASSERT(false && "unexpected operation");
@@ -486,7 +494,7 @@ static bool _FilterTreePredicateToQueryNode
 	}
 
 	*root = node;
-	return true;
+	return res;
 }
 
 // returns true if 'tree' been converted into an index query, false otherwise

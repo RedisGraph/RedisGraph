@@ -158,7 +158,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         expected_result = [[0, 1], [False, 1], ["false", 1], ['0', 1]]
         self.env.assertEquals(actual_result.result_set, expected_result)
-    
+
     def test09_static_aggregation(self):
         query = "RETURN count(*)"
         actual_result = graph.query(query)
@@ -404,25 +404,25 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
     def test19_has_labels(self):
-        # Test existing label 
+        # Test existing label
         query = """MATCH (n) WHERE n:person RETURN n.name"""
         actual_result = graph.query(query)
         expected_result = [['Roi'], ['Alon'], ['Ailon'], ['Boaz']]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-        # Test not existing label 
+        # Test not existing label
         query = """MATCH (n) WHERE n:L RETURN n.name"""
         actual_result = graph.query(query)
         expected_result = []
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-        # Test multi label 
+        # Test multi label
         query = """MATCH (n) WHERE n:person:L RETURN n.name"""
         actual_result = graph.query(query)
         expected_result = []
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-        # Test or between different labels label 
+        # Test or between different labels label
         query = """MATCH (n) WHERE n:person OR n:L RETURN n.name"""
         actual_result = graph.query(query)
         expected_result = [['Roi'], ['Alon'], ['Ailon'], ['Boaz']]
@@ -440,3 +440,44 @@ class testFunctionCallsFlow(FlowTestsBase):
             graph.query(query)
         except redis.ResponseError as e:
             self.env.assertContains("Type mismatch: expected String but was Integer", str(e))
+
+    def test20_keys(self):
+        # Test retrieving keys of a nested map
+        query = """RETURN keys({a: 5, b: 10})"""
+        actual_result = graph.query(query)
+        expected_result = [[['a', 'b']]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test retrieving keys of a map reference
+        query = """WITH {a: 5, b: 10} AS map RETURN keys(map)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test retrieving keys of a node
+        query = """MATCH (n:person {name: 'Roi'}) RETURN keys(n)"""
+        actual_result = graph.query(query)
+        expected_result = [[['name', 'val']]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test retrieving keys of an (empty) edge
+        query = """MATCH (:person {name: 'Roi'})-[e:works_with]->(:person {name: 'Alon'}) RETURN keys(e)"""
+        actual_result = graph.query(query)
+        expected_result = [[[]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test a null input
+        query = """WITH NULL AS map RETURN keys(map)"""
+        actual_result = graph.query(query)
+        expected_result = [[None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test trying to retrieve keys of an invalid type
+        query = """WITH 10 AS map RETURN keys(map)"""
+        self.expect_type_error(query)
+
+    def test21_distinct_memory_management(self):
+        # validate behavior of the DISTINCT function with allocated values
+        query = """MATCH (a {val: 0}) RETURN collect(DISTINCT a { .name })"""
+        actual_result = graph.query(query)
+        expected_result = [[[{'name': 'Roi'}]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)

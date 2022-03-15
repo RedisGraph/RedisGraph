@@ -2,7 +2,7 @@
 // gb_mxcell_to_index: convert cell array to index list I or colon expression
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
@@ -105,8 +105,8 @@ GrB_Index *gb_mxcell_to_index   // return index list I
         I [GxB_END  ] = Item [1][0] ;
         I [GxB_INC  ] = 0 ;             // unused
 
-        if (Item_allocated [0]) gb_mxfree (& (Item [0])) ;
-        if (Item_allocated [1]) gb_mxfree (& (Item [1])) ;
+        if (Item_allocated [0]) gb_mxfree ((void **) (& (Item [0]))) ;
+        if (Item_allocated [1]) gb_mxfree ((void **) (& (Item [1]))) ;
 
         (*ni) = GxB_RANGE ;
 
@@ -138,9 +138,9 @@ GrB_Index *gb_mxcell_to_index   // return index list I
             inc++ ;
         }
 
-        if (Item_allocated [0]) gb_mxfree (& (Item [0])) ;
-        if (Item_allocated [1]) gb_mxfree (& (Item [1])) ;
-        if (Item_allocated [2]) gb_mxfree (& (Item [2])) ;
+        if (Item_allocated [0]) gb_mxfree ((void **) (& (Item [0]))) ;
+        if (Item_allocated [1]) gb_mxfree ((void **) (& (Item [1]))) ;
+        if (Item_allocated [2]) gb_mxfree ((void **) (& (Item [2]))) ;
 
         if (inc < 0)
         { 

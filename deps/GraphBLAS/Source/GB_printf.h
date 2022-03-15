@@ -2,7 +2,7 @@
 // GB_printf.h: definitions for printing from GraphBLAS
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -120,11 +120,9 @@
 // burble
 //------------------------------------------------------------------------------
 
-// GB_BURBLE provides diagnostic output.
+// GBBURBLE and the GB_BURBLE_* methods provide diagnostic output.
 // Use GxB_set (GxB_BURBLE, true) to turn it on
 // and GxB_set (GxB_BURBLE, false) to turn it off.
-
-#if GB_BURBLE
 
 void GB_burble_assign
 (
@@ -209,16 +207,5 @@ void GB_burble_assign
     if (!(A->vlen <= 1 && A->vdim <= 1)) GBURBLE (__VA_ARGS__)      \
 }
 
-#else
-
-// no burble
-#define GBURBLE(...)
-#define GB_BURBLE_START(func)
-#define GB_BURBLE_END
-#define GB_BURBLE_N(n,...)
-#define GB_BURBLE_MATRIX(A,...)
-#define GB_BURBLE_DENSE(A,format)
-
-#endif
 #endif
 

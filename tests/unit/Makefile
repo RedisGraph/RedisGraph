@@ -1,12 +1,27 @@
 
-ROOT=../..
+ROOT:=$(realpath ../..)
+
+DEPS_DIR:=$(ROOT)/deps
+
+override OS:=$(shell $(DEPS_DIR)/readies/bin/platform --os)
+ARCH:=$(shell $(DEPS_DIR)/readies/bin/platform --arch)
+
+export OS
+export ARCH
+
+ifeq ($(DEBUG),1)
+FLAVOR=debug
+else
+FLAVOR=release
+endif
 
 # Path to Google Test source
-GTEST_DIR = ../../deps/googletest/googletest
-RAX_DIR = ../../deps/rax
-XXHASH_DIR = ../../deps/xxHash
-REDISEARCH_DIR = ../../deps/RediSearch/src
-LIBCYPHER-PARSER_DIR = ../../deps/libcypher-parser/lib/src
+GTEST_DIR = $(DEPS_DIR)/googletest/googletest
+RAX_DIR = $(DEPS_DIR)/rax
+XXHASH_DIR = $(DEPS_DIR)/xxHash
+REDISEARCH_DIR = $(DEPS_DIR)/RediSearch
+REDISEARCH_BINROOT=$(ROOT)/bin/$(OS)-$(ARCH)-$(FLAVOR)
+LIBCYPHER_PARSER_DIR = $(DEPS_DIR)/libcypher-parser/lib/src
 
 # Flags passed to the preprocessor.
 # Set Google Test's header directory as a system directory, such that
@@ -15,8 +30,14 @@ CPPFLAGS += -isystem $(GTEST_DIR)/include -I$(GTEST_DIR)/include/gtest/
 LDFLAGS += -ldl
 
 # Flags passed to the C++ compiler.
-CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11 -fopenmp
+CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11
 CXX_SUPPRESS = -Wno-unused-function -Wno-sign-compare -Wno-format -Wno-write-strings
+
+ifeq ($(OS),linux)
+CXXFLAGS += -fopenmp
+else
+CXXFLAGS += -lomp
+endif
 
 ifeq ($(COV),1)
 CXXFLAGS += --coverage
@@ -34,8 +55,9 @@ QUIET_CXX = @printf '    %b %b\n' $(CCCOLOR)CXX$(ENDCOLOR) $(SRCCOLOR)$@$(ENDCOL
 endif
 
 # Google Test headers - do not modify
-GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
-                $(GTEST_DIR)/include/gtest/internal/*.h
+GTEST_HEADERS = \
+	$(GTEST_DIR)/include/gtest/*.h \
+	$(GTEST_DIR)/include/gtest/internal/*.h
 
 # Google Test compiler targets
 GTEST_SRCS_ = $(GTEST_DIR)/src/*.cc $(GTEST_DIR)/src/*.h $(GTEST_HEADERS)
@@ -56,13 +78,13 @@ gtest_main.a : gtest-all.o gtest_main.o
 
 # RedisGraph flags and libraries
 CC_OBJECTS:=$(CC_OBJECTS)
-RAX=../../deps/rax/rax.o
-LIBXXHASH=$(ROOT)/deps/xxHash/libxxhash.a
-REDISEARCH=../../deps/RediSearch/build/libredisearch.a
-LIBGRAPHBLAS=../../deps/GraphBLAS/build/libgraphblas.a
-LIBCYPHER-PARSER=../../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
+RAX=$(DEPS_DIR)/rax/rax.o
+LIBXXHASH=$(DEPS_DIR)/xxHash/libxxhash.a
+REDISEARCH=$(REDISEARCH_BINROOT)/search-static/libredisearch.a
+LIBGRAPHBLAS=$(DEPS_DIR)/GraphBLAS/build/libgraphblas.a
+LIBCYPHER_PARSER=$(DEPS_DIR)/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
-LIBS=$(LIBGRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER-PARSER)
+LIBS=$(LIBGRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER_PARSER)
 DEPS=$(CC_OBJECTS) $(RAX) $(LIBS)
 
 # Build and run a test for each cpp file in directory
@@ -72,7 +94,7 @@ TEST_EXECUTABLES = $(patsubst %.cpp, %.run, $(TEST_SOURCES))
 
 # Compile object files from unit test sources
 %.o: %.cpp
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR) -c -o $@ $<
+	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) -I$(RAX_DIR) -I$(LIBCYPHER_PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR)/src -c -o $@ $<
 
 # Build '*.run' binaries for each source
 %.run: %.o gtest_main.a $(DEPS)

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -81,6 +81,7 @@ static bool _GraphContext_NameContainsTag(const GraphContext *gc) {
 static uint64_t _GraphContext_RequiredMetaKeys(const GraphContext *gc) {
 	uint64_t vkey_entity_count;
 	Config_Option_get(Config_VKEY_MAX_ENTITY_COUNT, &vkey_entity_count);
+	gc->encoding_context->vkey_entity_count = vkey_entity_count;
 
 	uint64_t entities_count = Graph_NodeCount(gc->g) + Graph_EdgeCount(gc->g) +
 		Graph_DeletedNodeCount(gc->g) + Graph_DeletedEdgeCount(gc->g);
@@ -184,19 +185,16 @@ static void _FlushDBHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t 
 	if(eid.id == REDISMODULE_EVENT_FLUSHDB &&
 	   subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
 		aux_field_counter = 0;
-		uint count = array_len(graphs_in_keyspace);
-		for (size_t i = 0; i < count; i++) {
-			GraphContext_Delete(graphs_in_keyspace[i]);
-		}
 	}
 }
 
 // Checks if the event is persistence start event.
 static bool _IsEventPersistenceStart(RedisModuleEvent eid, uint64_t subevent) {
 	return eid.id == REDISMODULE_EVENT_PERSISTENCE  &&
-		   (subevent == REDISMODULE_SUBEVENT_PERSISTENCE_RDB_START ||    // Normal RDB.
-			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_AOF_START ||    // Preamble AOF.
-			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_SYNC_RDB_START  // SAVE and DEBUG RELOAD.
+		   (subevent == REDISMODULE_SUBEVENT_PERSISTENCE_RDB_START      ||    // Normal RDB.
+			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_AOF_START      ||    // Preamble AOF.
+			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_SYNC_RDB_START ||    // SAVE and DEBUG RELOAD.
+			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_SYNC_AOF_START       // 
 		   );
 }
 

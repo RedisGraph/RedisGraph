@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -22,7 +22,6 @@ void SIArray_Append(SIValue *siarray, SIValue value) {
 	SIValue clone = SI_CloneValue(value);
 	// append
 	array_append(siarray->array, clone);
-
 }
 
 SIValue SIArray_Get(SIValue siarray, uint32_t index) {

@@ -2,7 +2,7 @@
 // GB_reduce_to_vector: reduce a matrix to a vector using a monoid
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -10,12 +10,13 @@
 // C<M> = accum (C,reduce(A)) where C is n-by-1.  Reduces a matrix A or A'
 // to a vector.
 
+#define GB_FREE_ALL GB_Matrix_free (&B) ;
+
 #include "GB_reduce.h"
 #include "GB_binop.h"
 #include "GB_mxm.h"
 #include "GB_get_mask.h"
-
-#define GB_FREE_ALL ;
+#include "GB_Semiring_new.h"
 
 GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
 (
@@ -34,7 +35,7 @@ GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
     //--------------------------------------------------------------------------
 
     struct GB_Matrix_opaque B_header ;
-    GrB_Matrix B = GB_clear_static_header (&B_header) ;
+    GrB_Matrix B = NULL ;
 
     // C may be aliased with M and/or A
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;
@@ -108,7 +109,8 @@ GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
     // though it is m-by-1.  It contains no dynamically-allocated content and
     // does not need to be freed.
     int64_t m = A_transpose ? GB_NROWS (A) : GB_NCOLS (A) ;
-    info = GB_new (&B, true,  // full, static header
+    GB_CLEAR_STATIC_HEADER (B, &B_header) ;
+    info = GB_new (&B, // full, existing header
         ztype, m, 1, GB_Ap_null, true, GxB_FULL, GB_NEVER_HYPER, 1, Context) ;
     ASSERT (info == GrB_SUCCESS) ;
     B->magic = GB_MAGIC ;
@@ -147,8 +149,10 @@ GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
     // reduce the matrix to a vector via C<M> = accum (C, A*B)
     //--------------------------------------------------------------------------
 
-    return (GB_mxm (C, C_replace, M, Mask_comp, Mask_struct, accum,
+    info = GB_mxm (C, C_replace, M, Mask_comp, Mask_struct, accum,
         semiring, A, A_transpose, B, false, false, GxB_DEFAULT, do_sort,
-        Context)) ;
+        Context) ;
+    GB_FREE_ALL ;
+    return (info) ;
 }
 

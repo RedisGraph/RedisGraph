@@ -58,7 +58,7 @@ TEST_F(ThreadPoolsTest, ThreadPools_ThreadID) {
 		int offset = i + READER_COUNT + 1;
 		ASSERT_EQ(0,
 				ThreadPools_AddWorkWriter(get_thread_friendly_id,
-					thread_ids + offset));
+					thread_ids + offset, 0));
 	}
 
 	// wait for all threads

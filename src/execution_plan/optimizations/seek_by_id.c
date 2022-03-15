@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -51,7 +51,7 @@ static bool _idFilter(FT_FilterNode *f, AST_Operator *rel, EntityID *id, bool *r
 	*id = SI_GET_NUMERIC(val);
 
 	// Make sure applied function is ID.
-	if(strcasecmp(op->func_name, "id")) return false;
+	if(strcasecmp(op->f->name, "id")) return false;
 
 	return true;
 }

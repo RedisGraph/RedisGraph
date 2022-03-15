@@ -77,20 +77,6 @@ inline auto make_and_set_managed_pool(std::size_t initial_size, std::size_t maxi
     return resource;
 }
 
-
-//------------------------------------------------------------------------------
-// rmm_wrap_create_handle: create the global rmm_wrap_context
-//------------------------------------------------------------------------------
-
-void rmm_wrap_create_handle (void)
-{
-    if (rmm_wrap_context == NULL)
-    {
-        // create the RMM wrap handle and save it as a global pointer.
-        rmm_wrap_context = new RMM_Wrap_Handle(); 
-    }
-}
-
 //------------------------------------------------------------------------------
 // rmm_wrap_destroy_handle: destroy the global rmm_wrap_context
 //------------------------------------------------------------------------------
@@ -99,7 +85,7 @@ void rmm_wrap_create_handle (void)
 // the rmm_wrap_context:  the memory resource (host or device) and the
 // alloc_map.
 
-void rmm_wrap_destroy_handle (void)
+void rmm_wrap_finalize (void)
 {
     if (rmm_wrap_context != NULL)
     {
@@ -119,12 +105,14 @@ void rmm_wrap_destroy_handle (void)
 
 int rmm_wrap_initialize(RMM_MODE mode,  std::size_t init_pool_size, std::size_t max_pool_size)
 {
-    if (rmm_wrap_context == NULL)
+    if (rmm_wrap_context != NULL)
     {
-        // error: rmm_wrap_context has not been created yet
-        std::cout<< " must create the handle first with rmm_create_handle" << std::endl ;
+        // rmm_wrap_initialize cannot be called twice
         return (-1) ;
     }
+
+    // create the RMM wrap handle and save it as a global pointer.
+    rmm_wrap_context = new RMM_Wrap_Handle(); 
 
     std::cout<< " init called with mode "<<mode<<" init_size "<<init_pool_size<<" max_size "<<max_pool_size<<"\n";
 
@@ -285,6 +273,8 @@ void rmm_wrap_free (void *p)
 
 void *rmm_wrap_allocate( std::size_t *size)
 {
+    if (rmm_wrap_context == NULL) return (NULL) ;
+
     // ensure size is nonzero
     if (*size == 0) *size = 256 ;
     // round-up the allocation to a multiple of 256
@@ -322,6 +312,7 @@ void *rmm_wrap_allocate( std::size_t *size)
 
 void rmm_wrap_deallocate( void *p, std::size_t size)
 {
+    if (rmm_wrap_context == NULL) return ;
     //printf("dealloc %ld bytes\n", size); 
 
     // Note: there are 3 PANIC cases below.  The API of rmm_wrap_deallocate does not

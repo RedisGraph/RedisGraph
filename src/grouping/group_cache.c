@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -27,8 +27,11 @@ void FreeGroupCache(CacheGroup *groups) {
 	raxFreeWithCallback(groups, (void (*)(void *))FreeGroup);
 }
 
-// Populates an iterator to scan entire group cache
-CacheGroupIterator *CacheGroupIter(CacheGroup *groups) {
+// populates an iterator to scan entire group cache
+CacheGroupIterator *CacheGroupIter
+(
+	CacheGroup *groups
+) {
 	CacheGroupIterator *iter = rm_malloc(sizeof(CacheGroupIterator));
 
 	raxStart(iter, groups);

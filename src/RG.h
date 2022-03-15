@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -34,6 +34,8 @@
 
 	// assert X is true
 	#define ASSERT(X)                                               \
+	_Pragma("GCC diagnostic push")                                  \
+	_Pragma("GCC diagnostic ignored \"-Wnull-dereference\"")        \
 	{                                                               \
 		if (!(X))                                                   \
 		{                                                           \
@@ -47,7 +49,8 @@
 				assert(x); /* solves C++ unused var warning */      \
 			}                                                       \
 		}                                                           \
-	}
+	}                                                               \
+	_Pragma("GCC diagnostic pop")
 
 #else
 
@@ -62,4 +65,13 @@
 
 #undef UNUSED
 #define UNUSED(V) ((void)V)
+
+// GraphBLAS return code validation
+// both GrB_SUCCESS and GrB_NO_VALUE are valid "OK"
+// return codes
+#define GrB_OK(GrB_method)                                      \
+{                                                               \
+	    GrB_Info info = GrB_method ;                            \
+	    ASSERT ( (info == GrB_SUCCESS || info == GrB_NO_VALUE)) \
+}
 

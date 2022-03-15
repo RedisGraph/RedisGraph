@@ -62,6 +62,7 @@ jobs:
     - name: Build
       run: |
         sudo ./deps/readies/bin/getpy3
+        sudo ./deps/readies/bin/getpy2
         sudo ./sbin/system-setup.py
         make TEST=1
 
