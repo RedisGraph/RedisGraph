@@ -112,7 +112,7 @@ void EvalEntityUpdates
 
 	PendingUpdateCtx  update = {0};
 	update.ge = entity;
-	AttributeSet_New(&update.attributes);
+	update.attributes = AttributeSet_New();
 
 	// if this update replaces all existing properties
 	// enqueue a clear update to do so

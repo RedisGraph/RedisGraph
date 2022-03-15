@@ -11,7 +11,7 @@
 #include "../../util/rmalloc.h"
 
 // compute size of attribute set in bytes
-#define ATTRIBUTESET_BYTE_SIZE(set) sizeof(ushort) + sizeof(Attribute) * (set)->attr_count
+#define ATTRIBUTESET_BYTE_SIZE(set) sizeof(_AttributeSet) + sizeof(Attribute) * (set)->attr_count
 
 // determine if set is empty
 #define ATTRIBUTESET_EMPTY(set) (set)->attr_count == 0
@@ -60,15 +60,12 @@ static bool _AttributeSet_Remove
 }
 
 // create new empty attribute set
-void AttributeSet_New
-(
-	AttributeSet *set  // pointer to the set
-) {
-	ASSERT(set != NULL);
+AttributeSet AttributeSet_New(void) {
+	AttributeSet set = malloc(sizeof(_AttributeSet));
 
-	*set = malloc(sizeof(ushort));
+	set->attr_count = 0;
 
-	(*set)->attr_count = 0;
+	return set;
 }
 
 // retrieves a value from set

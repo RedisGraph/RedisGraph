@@ -32,10 +32,7 @@ typedef struct {
 typedef _AttributeSet* AttributeSet;
 
 // create new empty attribute set
-void AttributeSet_New
-(
-	AttributeSet *set  // pointer to the set
-);
+AttributeSet AttributeSet_New(void);
 
 // retrieves a value from set
 // NOTE: if the key does not exist

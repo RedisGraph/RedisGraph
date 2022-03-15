@@ -629,7 +629,7 @@ void Graph_CreateNode
 
 	NodeID id;
 	AttributeSet *set = DataBlock_AllocateItem(g->nodes, &id);
-	AttributeSet_New(set);
+	*set = AttributeSet_New();
 
 	n->id            =  id;
 	n->attributes    =  set;
@@ -683,7 +683,7 @@ void Graph_CreateEdge
 
 	EdgeID id;
 	AttributeSet *set = DataBlock_AllocateItem(g->edges, &id);
-	AttributeSet_New(set);
+	*set = AttributeSet_New();
 
 	e->id            =  id;
 	e->attributes    =  set;

@@ -121,8 +121,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 
 		// convert query-level properties
 		PropertyMap *map = n->properties;
-		AttributeSet converted_attr;
-		AttributeSet_New(&converted_attr);
+		AttributeSet converted_attr = AttributeSet_New();
 		if(map) ConvertPropertyMap(&converted_attr, r, map, true);
 
 		// update the hash code with this entity
@@ -164,8 +163,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 
 		// convert query-level properties
 		PropertyMap *map = e->properties;
-		AttributeSet converted_attr;
-		AttributeSet_New(&converted_attr);
+		AttributeSet converted_attr = AttributeSet_New();
 		if(map) ConvertPropertyMap(&converted_attr, r, map, true);
 
 		/* Update the hash code with this entity, an edge is represented by its
