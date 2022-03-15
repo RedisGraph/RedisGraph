@@ -71,7 +71,7 @@ void CommitUpdates
 
 		// update the attributes on the graph entity
 		properties_set += UpdateEntity(gc, update->ge, &update->attributes,
-				type);
+				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE);
 	}
 
 	if(stats) stats->properties_set += properties_set;
