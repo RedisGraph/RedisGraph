@@ -1108,13 +1108,17 @@ void Graph_Free(Graph *g) {
 
 	it = Graph_ScanNodes(g);
 	while((set = (AttributeSet *)DataBlockIterator_Next(it, NULL)) != NULL) {
-		AttributeSet_Clear(set);
+		if(*set != NULL) {
+			AttributeSet_Clear(set);
+		}
 	}
 	DataBlockIterator_Free(it);
 
 	it = Graph_ScanEdges(g);
 	while((set = DataBlockIterator_Next(it, NULL)) != NULL) {
-		AttributeSet_Clear(set);
+		if(*set != NULL) {
+			AttributeSet_Clear(set);
+		}
 	}
 	DataBlockIterator_Free(it);
 

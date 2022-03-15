@@ -283,4 +283,3 @@ void AttributeSet_Free
 
 	rm_free(set);
 }
-
