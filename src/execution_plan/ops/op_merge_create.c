@@ -54,14 +54,14 @@ static void _RollbackPendingCreations(OpMergeCreate *op) {
 	for(uint i = 0; i < nodes_to_create_count; i++) {
 		array_pop(op->pending.created_nodes);
 		AttributeSet props = array_pop(op->pending.node_attributes);
-		AttributeSet_Clear(&props);
+		AttributeSet_Free(&props);
 	}
 
 	uint edges_to_create_count = array_len(op->pending.edges_to_create);
 	for(uint i = 0; i < edges_to_create_count; i++) {
 		array_pop(op->pending.created_edges);
 		AttributeSet props = array_pop(op->pending.edge_attributes);
-		AttributeSet_Clear(&props);
+		AttributeSet_Free(&props);
 	}
 }
 
