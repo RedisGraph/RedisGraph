@@ -39,7 +39,9 @@ static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 
 		if(async_delete) {
 			// Async delete
-			ThreadPools_AddWorkWriter(_GraphContext_Free, gc);
+			// add deletion task to pool using force mode
+			// we can't lose this task in-case pool's queue is full
+			ThreadPools_AddWorkWriter(_GraphContext_Free, gc, 1);
 		} else {
 			// Sync delete
 			_GraphContext_Free(gc);

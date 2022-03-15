@@ -89,11 +89,6 @@ static inline size_t _Graph_NodeCap(const Graph *g) {
 	return g->nodes->itemCap;
 }
 
-// return number of edges graph can contain
-static inline size_t _Graph_EdgeCap(const Graph *g) {
-	return g->edges->itemCap;
-}
-
 static void _CollectEdgesFromEntry
 (
 	const Graph *g,
@@ -254,10 +249,15 @@ MATRIX_POLICY Graph_GetMatrixPolicy
 	MATRIX_POLICY policy = SYNC_POLICY_UNKNOWN;
 	SyncMatrixFunc f = g->SynchronizeMatrix;
 
-	if(f == _MatrixSynchronize)           policy = SYNC_POLICY_FLUSH_RESIZE;
-	else if(f == _MatrixResizeToCapacity) policy = SYNC_POLICY_RESIZE;
-	else if(f == _MatrixNOP)              policy = SYNC_POLICY_NOP;
-	else ASSERT(false);
+	if(f == _MatrixSynchronize) {
+		policy = SYNC_POLICY_FLUSH_RESIZE;
+	} else if(f == _MatrixResizeToCapacity) {
+		policy = SYNC_POLICY_RESIZE;
+	} else if(f == _MatrixNOP) {
+		policy = SYNC_POLICY_NOP;
+	} else {
+		ASSERT(false);
+	}
 
 	return policy;
 }
@@ -490,7 +490,7 @@ int Graph_GetEdge
 ) {
 	ASSERT(g != NULL);
 	ASSERT(e != NULL);
-	ASSERT(id < _Graph_EdgeCap(g));
+	ASSERT(id < g->edges->itemCap);
 
 	e->id         = id;
 	e->attributes = _Graph_GetEntity(g->edges, id);

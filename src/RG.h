@@ -34,6 +34,8 @@
 
 	// assert X is true
 	#define ASSERT(X)                                               \
+	_Pragma("GCC diagnostic push")                                  \
+	_Pragma("GCC diagnostic ignored \"-Wnull-dereference\"")        \
 	{                                                               \
 		if (!(X))                                                   \
 		{                                                           \
@@ -47,7 +49,8 @@
 				assert(x); /* solves C++ unused var warning */      \
 			}                                                       \
 		}                                                           \
-	}
+	}                                                               \
+	_Pragma("GCC diagnostic pop")
 
 #else
 

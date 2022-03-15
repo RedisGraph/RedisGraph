@@ -18,15 +18,15 @@
 
 // avarage context
 typedef struct {
-	size_t count;    // number of elements summed
-	double total;    // sum of all elements
-	bool overflow;   // track numeric overflow
+	size_t count;       // number of elements summed
+	long double total;  // sum of all elements
+	bool overflow;      // track numeric overflow
 } AvgCtx;
 
 // return true if adding a and b will overflow
 // values have the same MSB, adding will enlarge the total
 #define ABOUT_TO_OVERFLOW(a, b) (signbit((a)) == signbit((b)) && \
-	   (fabs((a)) > (DBL_MAX - fabs((b))))) 
+	   (fabsl((a)) > (DBL_MAX - fabsl((b)))))
 
 // avarage "step" function expects 2 arguments:
 // 1. aggregation context
