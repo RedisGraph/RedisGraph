@@ -280,15 +280,15 @@ void UndoLog_Free
 ) {
 	// free each undo operation
 	uint count = array_len(log);
-	// for (uint i = 0; i < count; i++) {
-	// 	UndoOp *op = log + i;
-	// 	if (op->type == UNDO_DELETE_NODE) {
-	// 		rm_free(op->delete_op.labels);
-	// 		AttributeSet_Free(op->delete_op.n.attributes);
-	// 	} else if (op->type == UNDO_DELETE_EDGE) {
-	// 		AttributeSet_Free(op->delete_op.e.attributes);
-	// 	}
-	// }
+	for (uint i = 0; i < count; i++) {
+		UndoOp *op = log + i;
+		if (op->type == UNDO_DELETE_NODE) {
+			rm_free(op->delete_node_op.labels);
+			AttributeSet_Free(&op->delete_node_op.set);
+		} else if (op->type == UNDO_DELETE_EDGE) {
+			AttributeSet_Free(&op->delete_edge_op.set);
+		}
+	}
 
 	array_free(log);
 }

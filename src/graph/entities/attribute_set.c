@@ -278,5 +278,5 @@ void AttributeSet_Free
 		SIValue_Free(_set->attributes[i].value);
 	}
 
-	rm_free(set);
+	rm_free(*set);
 }
