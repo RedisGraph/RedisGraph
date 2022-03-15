@@ -61,7 +61,7 @@ static bool _AttributeSet_Remove
 
 // create new empty attribute set
 AttributeSet AttributeSet_New(void) {
-	AttributeSet set = malloc(sizeof(_AttributeSet));
+	AttributeSet set = rm_malloc(sizeof(_AttributeSet));
 
 	set->attr_count = 0;
 
