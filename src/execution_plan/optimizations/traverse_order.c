@@ -7,7 +7,6 @@
 #include "RG.h"
 #include "../../util/arr.h"
 #include "../../util/qsort.h"
-#include "../../util/strcmp.h"
 #include "../../util/rmalloc.h"
 #include "../../arithmetic/algebraic_expression/utils.h"
 #include "traverse_order_utils.h"
@@ -79,8 +78,8 @@ static void _resolve_winning_sequence
 		// see if source is already resolved
 		for(int j = i - 1; j >= 0; j--) {
 			AlgebraicExpression *prev_exp = exps[j];
-			if(!RG_STRCMP(AlgebraicExpression_Src(prev_exp), src) ||
-			   !RG_STRCMP(AlgebraicExpression_Dest(prev_exp), src)) {
+			if(!strcmp(AlgebraicExpression_Src(prev_exp), src) ||
+			   !strcmp(AlgebraicExpression_Dest(prev_exp), src)) {
 				src_resolved = true;
 				break;
 			}
@@ -128,10 +127,10 @@ static AlgebraicExpression **_valid_expressions
 			const char *used_src = AlgebraicExpression_Src(used);
 			const char *used_dest  = AlgebraicExpression_Dest(used);
 
-			if(RG_STRCMP(src, used_src)   == 0  ||
-			   RG_STRCMP(src, used_dest)  == 0  ||
-			   RG_STRCMP(dest, used_src)  == 0  ||
-			   RG_STRCMP(dest, used_dest) == 0) {
+			if(strcmp(src, used_src)   == 0  ||
+			   strcmp(src, used_dest)  == 0  ||
+			   strcmp(dest, used_src)  == 0  ||
+			   strcmp(dest, used_dest) == 0) {
 				valid = true;
 				break;
 			}
