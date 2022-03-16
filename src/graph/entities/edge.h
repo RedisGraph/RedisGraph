@@ -72,60 +72,60 @@ typedef struct Edge Edge;
 NodeID Edge_GetSrcNodeID
 (
 	const Edge *edge
-); // graph.c, serializer, all_paths, replies
+);
 
 // retrieve edge destination node ID
 NodeID Edge_GetDestNodeID
 (
 	const Edge *edge
-); // graph.c, serializer, all_paths, replies
+);
 
 // retrieve edge relation ID
 int Edge_GetRelationID
 (
 	const Edge *edge
-); // graph.c, replies
+);
 
 // retrieve edge source node
 Node *Edge_GetSrcNode
 (
 	Edge *e
-); // opcreate
+);
 
 // retrieve edge destination node
 Node *Edge_GetDestNode
 (
 	Edge *e
-);  // opcreate
+);
 
 // retrieves edge matrix
 RG_Matrix Edge_GetMatrix
 (
 	Edge *e
-); // AE
+);
 
 // sets edge source node
 void Edge_SetSrcNode
 (
 	Edge *e,
 	Node *src
-); // QG
+);
 
 // sets edge destination node
 void Edge_SetDestNode
 (
 	Edge *e,
 	Node *dest
-); // QG
+);
 
 // sets edge relation type
 void Edge_SetRelationID
 (
 	Edge *e,
 	int relationID
-); // QG, graph.c
+);
 
-// prints a string representation of the edge to buffer, return the string length
+// constructs a string representation of edge
 void Edge_ToString
 (
 	const Edge *e,
@@ -140,4 +140,3 @@ void Edge_Free
 (
 	Edge *edge
 );
-

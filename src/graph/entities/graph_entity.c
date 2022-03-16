@@ -32,6 +32,8 @@ SIValue *GraphEntity_GetProperty
 ) {
 	ASSERT(e);
 
+	// e->attributes is NULL when dealing with an "intermediate" entity,
+    // one which didn't had its attribute-set allocated within the graph datablock.
 	if(e->attributes == NULL) {
  		// note that this exception may cause memory to be leaked in the caller
  		ErrorCtx_SetError("Attempted to access undefined attribute");
@@ -53,23 +55,26 @@ bool GraphEntity_SetProperty
 	return AttributeSet_Update(e->attributes, attr_id, value);
 }
 
+// returns an SIArray of all keys in graph entity properties
 SIValue GraphEntity_Keys
 (
 	const GraphEntity *e
 ) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	AttributeSet *set = ENTITY_ATTRIBUTE_SET(e);
-	int prop_count = ATTRIBUTE_SET_COUNT(*set);
+	AttributeSet set = *(ENTITY_ATTRIBUTE_SET(e));
+	int prop_count = ATTRIBUTE_SET_COUNT(set);
 	SIValue keys = SIArray_New(prop_count);
 	for(int i = 0; i < prop_count; i++) {
 		Attribute_ID attr_id;
-		AttributeSet_GetIdx(*set, i, &attr_id);
+		AttributeSet_GetIdx(set, i, &attr_id);
 		const char *key = GraphContext_GetAttributeString(gc, attr_id);
 		SIArray_Append(&keys, SI_ConstStringVal(key));
 	}
 	return keys;
 }
 
+// prints the attribute set into a buffer, returns what is the string length
+// buffer can be re-allocated if needed
 size_t GraphEntity_PropertiesToString
 (
 	const GraphEntity *e,

@@ -4,9 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "RG.h"
 #include "node.h"
-#include "../../util/rmalloc.h"
 
 void Node_ToString
 (

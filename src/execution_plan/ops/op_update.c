@@ -116,8 +116,6 @@ static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase) {
 static OpResult UpdateReset(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 
-	ASSERT(array_len(op->node_updates) > 0)
-
 	uint node_updates_count = array_len(op->node_updates);
 	for(uint i = 0; i < node_updates_count; i ++) {
 		PendingUpdateCtx *pending_update = op->node_updates + i;

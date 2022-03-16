@@ -39,16 +39,16 @@ AttributeSet AttributeSet_New(void);
 //       we return the special constant value ATTRIBUTE_NOTFOUND
 SIValue *AttributeSet_Get
 (
-	AttributeSet set,     // set to retieve attribute from
-	Attribute_ID attr_id  // attribute identifier
+	const AttributeSet set,  // set to retieve attribute from
+	Attribute_ID attr_id     // attribute identifier
 );
 
 // retrieves a value from set by index
 SIValue AttributeSet_GetIdx
 (
-	AttributeSet set,      // set to retieve attribute from
-	int i,                 // index of the property
-	Attribute_ID *attr_id  // attribute identifier
+	const AttributeSet set,  // set to retieve attribute from
+	int i,                   // index of the property
+	Attribute_ID *attr_id    // attribute identifier
 );
 
 // adds an attribute to the set
@@ -60,8 +60,7 @@ void AttributeSet_Add
 	SIValue value          // attribute value
 );
 
-// adds or update an attribute to the set null value allowed
-// returns true if attribute was added to the set
+// add or update an attribute, this function allows NULL value to be added to the set
 void AttributeSet_Set_Allow_Null
 (
 	AttributeSet *set,     // set to update
