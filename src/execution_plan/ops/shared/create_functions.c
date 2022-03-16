@@ -238,7 +238,7 @@ void ConvertPropertyMap
 			// this value is of an invalid type
 			if(!SIValue_IsNull(val)) {
 				// if the value was a complex type, emit an exception
-				AttributeSet_Clear(attributes);
+				AttributeSet_Free(attributes);
 				Error_InvalidPropertyValue();
 				ErrorCtx_RaiseRuntimeException(NULL);
 			}
@@ -247,7 +247,7 @@ void ConvertPropertyMap
 			// otherwise skip this value
 			if(fail_on_null) {
 				// emit an error and exit
-				AttributeSet_Clear(attributes);
+				AttributeSet_Free(attributes);
 				ErrorCtx_RaiseRuntimeException("Cannot merge node using null property value");
 			}
 
@@ -263,7 +263,7 @@ void ConvertPropertyMap
 			if(res) {
 				// validation failed
 				SIValue_Free(val);
-				AttributeSet_Clear(attributes);
+				AttributeSet_Free(attributes);
 				Error_InvalidPropertyValue();
 				ErrorCtx_RaiseRuntimeException(NULL);
 			}

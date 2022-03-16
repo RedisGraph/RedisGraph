@@ -292,4 +292,3 @@ static void MergeCreateFree(OpBase *ctx) {
 
 	PendingCreationsFree(&op->pending);
 }
-
