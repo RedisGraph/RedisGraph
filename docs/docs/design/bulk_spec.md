@@ -1,6 +1,6 @@
 ---
 title: "Implementation details for the GRAPH.BULK endpoint"
-linkTitle: "Implementation details for the GRAPH.BULK endpoint"
+linkTitle: "GRAPH.BULK endpoint"
 type: docs
 weight: 12
 description: >
