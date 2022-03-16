@@ -12,9 +12,9 @@
 // while updating relevant components e.g. indexes and undo log
 
 // create a node
-// this function set the node labels and attributes
+// set the node labels and attributes
 // add the node to the relevant indexes
-// and add node creation operation to undo log
+// add node creation operation to undo-log
 // return the # of attributes set
 uint CreateNode
 (
@@ -25,10 +25,10 @@ uint CreateNode
 	AttributeSet *props  // node attributes
 );
 
-// create a edge
-// this function set the edge src and dst and attributes
+// create an edge
+// set the edge src, dst endpoints and attributes
 // add the edge to the relevant indexes
-// and add edge creation operation to undo log
+// add edge creation operation to undo-log
 // return the # of attributes set
 uint CreateEdge
 (
@@ -41,9 +41,9 @@ uint CreateEdge
 );
 
 // delete a node
-// this function delete the node from the graph
+// delete the node from the graph
 // delete the node from the relevant indexes
-// and add node deletion operation to undo log
+// add node deletion operation to undo-log
 // return the # of implicit edges deleted
 uint DeleteNode
 (
@@ -51,10 +51,10 @@ uint DeleteNode
 	Node *n              // the node to be deleted
 );
 
-// delete a edge
-// this function delete the edge from the graph
+// delete an edge
+// delete the edge from the graph
 // delete the edge from the relevant indexes
-// and add edge deletion operation to undo log
+// add edge deletion operation to undo-log
 // return the # of edges deleted
 int DeleteEdge
 (
@@ -63,9 +63,9 @@ int DeleteEdge
 );
 
 // update an entity(node/edge)
-// this function update the entity attributes
+// update the entity attributes
 // update the relevant indexes of the entity
-// and add entity update operations to undo log
+// add entity update operations to undo log
 // return the # of properties updated
 int UpdateEntity
 (
@@ -74,3 +74,4 @@ int UpdateEntity
 	AttributeSet *props,        // attribute to update
 	GraphEntityType entity_type // the entity type (node/edge)
 );
+

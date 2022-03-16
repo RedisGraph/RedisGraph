@@ -4,15 +4,19 @@
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
+#include "RG.h"
 #include "undo_log.h"
 #include "query_ctx.h"
-#include "../graph/entities/node.h"
-#include "../graph/entities/edge.h"
 #include "../execution_plan/ops/shared/update_functions.h"
 #include "../execution_plan/ops/shared/create_functions.h"
 
-// rollback the updates taken place by current query.
-static void _UndoLog_Rollback_Update_Entity(QueryCtx *ctx, size_t seq_start, size_t seq_end) {
+// rollback the updates taken place by current query
+static void _UndoLog_Rollback_Update_Entity
+(
+	QueryCtx *ctx,
+	size_t seq_start,
+	size_t seq_end
+) {
 	UndoOp *undo_list = ctx->undo_log;
 	size_t len = seq_end - seq_start + 1; 
 	for(int i = seq_end; i < len; --i) {
@@ -20,6 +24,7 @@ static void _UndoLog_Rollback_Update_Entity(QueryCtx *ctx, size_t seq_start, siz
 		Graph_UpdateEntity(op->update_op.ge, op->update_op.attr_id,
 			op->update_op.orig_value, op->update_op.entity_type);
 
+		// update indices
 		if(op->update_op.entity_type == GETYPE_NODE) {
 			Node *n = (Node *)op->update_op.ge;
 			uint label_count;
@@ -79,17 +84,18 @@ static void _UndoLog_Rollback_Delete_Node
 	size_t len = seq_end - seq_start + 1;
 	for(int i = seq_end; i < len; --i) {
 		UndoOp *op = undo_list + seq_start + i;
-		Node new;
-		Graph_CreateNode(ctx->gc->g, &new, op->delete_node_op.labels, op->delete_node_op.label_count);
-		new.attributes = &op->delete_node_op.set;
-		
+		Node n;
+		Graph_CreateNode(ctx->gc->g, &n, op->delete_node_op.labels,
+				op->delete_node_op.label_count);
+		n.attributes = &op->delete_node_op.set;
+
 		// re-introduce node to indices
 		for(uint j = 0; j < op->delete_node_op.label_count; j++) {
 			Schema *s = GraphContext_GetSchemaByID(ctx->gc,
 				op->delete_node_op.labels[j], SCHEMA_NODE);
 			ASSERT(s);
 
-			if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, &new);
+			if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, &n);
 		}
 	}
 }
@@ -105,16 +111,16 @@ static void _UndoLog_Rollback_Delete_Edge
 	size_t len = seq_end - seq_start + 1;
 	for(int i = seq_end; i < len; --i) {
 		UndoOp *op = undo_list + seq_start + i;
-		Edge new;
+		Edge e;
 		Graph_CreateEdge(ctx->gc->g, op->delete_edge_op.srcNodeID,
-			op->delete_edge_op.destNodeID, op->delete_edge_op.relationID, &new);
-		new.attributes = &op->delete_edge_op.set;
+			op->delete_edge_op.destNodeID, op->delete_edge_op.relationID, &e);
+		e.attributes = &op->delete_edge_op.set;
 
 		Schema *s = GraphContext_GetSchemaByID(ctx->gc, op->delete_edge_op.relationID, SCHEMA_EDGE);
 		ASSERT(s);
 
 		// re-introduce edge to index
-		if(Schema_HasIndices(s)) Schema_AddEdgeToIndices(s, &new);
+		if(Schema_HasIndices(s)) Schema_AddEdgeToIndices(s, &e);
 	}
 }
 
@@ -167,6 +173,7 @@ void UndoLog_DeleteNode
 	uint label_count    // node label count
 ) {
 	ASSERT(log != NULL && *log != NULL);
+	ASSERT(node != NULL);
 
 	UndoOp op;
 
@@ -186,6 +193,7 @@ void UndoLog_DeleteEdge
 	Edge *edge      // edge deleted
 ) {
 	ASSERT(log != NULL && *log != NULL);
+	ASSERT(edge != NULL);
 
 	UndoOp op;
 
@@ -238,8 +246,8 @@ void UndoLog_Rollback
 
 	if(count == 0) return;
 
-	// apply undo operations is reverse order for rollback correctness
-	// Find sequences of operation of the same type and rollback them as a bulk
+	// apply undo operations in reverse order for rollback correctness
+	// find sequences of operation of the same type and rollback them as a bulk
 	uint i = count - 1;
 	while (i > 0) {
 		UndoOpType cur_type = log[i].type;
@@ -265,7 +273,7 @@ void UndoLog_Rollback
 				_UndoLog_Rollback_Delete_Edge(ctx, i, seq_end);
 				break;
 			default:
-				ASSERT(false);           
+				ASSERT(false);
 		}
  
 		if(i > 0) i--;
