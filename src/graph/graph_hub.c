@@ -106,21 +106,21 @@ static void _AddEdgeToIndices(GraphContext *gc, Edge *e) {
 	if(idx) Index_IndexEdge(idx, e);
 }
 
-// Add properties to the GraphEntity.
+// add properties to the GraphEntity
 static inline uint _AddProperties
 (
 	GraphEntity *e,
-	AttributeSet *attr
+	const AttributeSet set
 ) {
-	int failed_updates = 0;
-	AttributeSet _set = *attr;
-	for(int i = 0; i < ATTRIBUTE_SET_COUNT(_set); i++) {
-		Attribute *a = _set->attributes + i;
-		bool updated = GraphEntity_AddProperty(e, a->id, a->value);
-		if(!updated) failed_updates++;
+	uint updates = 0;
+	uint attr_count = ATTRIBUTE_SET_COUNT(set);
+	for(int i = 0; i < attr_count; i++) {
+		Attribute_ID attr_id;
+		SIValue v = AttributeSet_GetIdx(set, i, &attr_id);
+		updates += GraphEntity_AddProperty(e, attr_id, v);
 	}
 
-	return _set->attr_count - failed_updates;
+	return updates;
 }
 
 uint CreateNode
@@ -129,7 +129,7 @@ uint CreateNode
 	Node *n,
 	LabelID *labels,
 	uint label_count,
-	AttributeSet *props
+	const AttributeSet props
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(n != NULL);
@@ -159,7 +159,7 @@ uint CreateEdge
 	NodeID src,
 	NodeID dst,
 	int r,
-	AttributeSet *props
+	const AttributeSet props
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(e != NULL);
@@ -196,6 +196,7 @@ uint DeleteNode
 	GrB_Index src;
 	GrB_Index dest;
 
+	// delete node's incoming and outgoing edges
 	// collect edges
 	Graph_GetNodeEdges(gc->g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, &edges);
 
@@ -252,6 +253,8 @@ static int _Update_Entity
 	GraphEntityType entity_type
 ) {
 	if(attr_id == ATTRIBUTE_ID_ALL) {
+		// we're requested to clear entitiy's attribute-set
+		// backup entity's attributes in case we'll need to roolback
 		AttributeSet *set = ENTITY_ATTRIBUTE_SET(ge);
 		for(int i = 0; i < ATTRIBUTE_SET_COUNT(*set); i++) {
 			Attribute_ID id;
@@ -275,7 +278,7 @@ int UpdateEntity
 (
 	GraphContext *gc,
 	GraphEntity *ge,
-	AttributeSet *attr,        // attribute to update
+	AttributeSet *attr,        // attributes to update
 	GraphEntityType entity_type
 ) {
 	ASSERT(gc != NULL);
