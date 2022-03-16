@@ -1,6 +1,6 @@
 ---
 title: "Technical specification for writing RedisGraph client libraries"
-linkTitle: "Technical specification for writing RedisGraph client libraries"
+linkTitle: "Client Specification"
 type: docs
 weight: 10
 description: >

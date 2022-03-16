@@ -1,6 +1,6 @@
 ---
 title: "RedisGraph Result Set Structure"
-linkTitle: "RedisGraph Result Set Structure"
+linkTitle: "Result Set Structure"
 type: docs
 weight: 11
 description: >
