@@ -183,6 +183,9 @@ jobs:
           keys:
             - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
+          name: Install python dependencies
+          command: python3 -m pip install -r ./tests/fuzz/requirements.txt
+      - run:
           name: Build
           shell: /bin/bash -l -eo pipefail
           command: make all package
