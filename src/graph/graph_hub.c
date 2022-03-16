@@ -8,7 +8,7 @@
 #include "../query_ctx.h"
 #include "../undo_log/undo_log.h"
 
-// delete all references to a node from any indices built upon its properties
+// delete all references to a node from any relevant index
 static void _DeleteNodeFromIndices
 (
 	GraphContext *gc,
@@ -30,7 +30,7 @@ static void _DeleteNodeFromIndices
 		s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
 		ASSERT(s != NULL);
 
-		// Update any indices this entity is represented in
+		// update any indices this entity is represented in
 		Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
 		if(idx) Index_RemoveNode(idx, n);
 
@@ -59,7 +59,7 @@ static void _DeleteEdgeFromIndices
 	if(idx) Index_RemoveEdge(idx, e);
 }
 
-// delete all references to a node from any indices built upon its properties
+// add node to any relevant index
 static void _AddNodeToIndices
 (
 	GraphContext *gc,
@@ -80,16 +80,11 @@ static void _AddNodeToIndices
 		int label_id = labels[i];
 		s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
 		ASSERT(s != NULL);
-
-		// Update any indices this entity is represented in
-		Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
-		if(idx) Index_IndexNode(idx, n);
-
-		idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
-		if(idx) Index_IndexNode(idx, n);
+		Schema_AddNodeToIndices(s, n);
 	}
 }
 
+// add edge to any relevant index
 static void _AddEdgeToIndices(GraphContext *gc, Edge *e) {
 	Schema  *s  =  NULL;
 	Graph   *g  =  gc->g;
@@ -97,13 +92,7 @@ static void _AddEdgeToIndices(GraphContext *gc, Edge *e) {
 	int relation_id = EDGE_GET_RELATION_ID(e, g);
 
 	s = GraphContext_GetSchemaByID(gc, relation_id, SCHEMA_EDGE);
-
-	// update any indices this entity is represented in
-	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
-	if(idx) Index_IndexEdge(idx, e);
-
-	idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
-	if(idx) Index_IndexEdge(idx, e);
+	Schema_AddEdgeToIndices(s, e);
 }
 
 // add properties to the GraphEntity
@@ -141,8 +130,7 @@ uint CreateNode
 	for(uint i = 0; i < label_count; i++) {
 		Schema *s = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
 		ASSERT(s);
-
-		if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n);
+		Schema_AddNodeToIndices(s, n);
 	}
 
 	// add node creation operation to undo log
@@ -170,8 +158,7 @@ uint CreateEdge
 	Schema *s = GraphContext_GetSchema(gc, e->relationship, SCHEMA_EDGE);
 	// all schemas have been created in the edge blueprint loop or earlier
 	ASSERT(s != NULL);
-
-	if(s && Schema_HasIndices(s)) Schema_AddEdgeToIndices(s, e);
+	Schema_AddEdgeToIndices(s, e);
 
 	// add edge creation operation to undo log
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();

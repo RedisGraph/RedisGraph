@@ -69,7 +69,7 @@ static void _CommitNodes
 		n = pending->created_nodes[i];
 		int *labels = pending->node_labels[i];
 		uint label_count = array_len(labels);
-		AttributeSet *attr = pending->node_attributes + i;
+		AttributeSet attr = pending->node_attributes[i];
 
 		// introduce node into graph
 		pending->stats->properties_set += CreateNode(gc, n, labels, label_count,
@@ -127,7 +127,7 @@ static void _CommitEdges
 		e = pending->created_edges[i];
 		NodeID srcNodeID;
 		NodeID destNodeID;
-		AttributeSet *attr = pending->edge_attributes + i;
+		AttributeSet attr = pending->edge_attributes[i];
 
 		// Nodes which already existed prior to this query would
 		// have their ID set under e->srcNodeID and e->destNodeID
