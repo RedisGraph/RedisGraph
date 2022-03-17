@@ -175,9 +175,6 @@ uint DeleteNode
 	ASSERT(gc != NULL);
 	ASSERT(n != NULL);
 
-	uint label_count;
-	NODE_GET_LABELS(gc->g, n, label_count);
-
 	Edge *edges = array_new(Edge, 1);
 
 	GrB_Index src;
@@ -194,14 +191,9 @@ uint DeleteNode
 
 	array_free(edges);
 
-	// add node deletion operation to undo log
-	LabelID *labels_clone = rm_malloc(sizeof(LabelID) * label_count);
-	for (uint i = 0; i < label_count; i++) {
-		labels_clone[i] = labels[i];
-	}
-	
+	// add node deletion operation to undo log	
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-	UndoLog_DeleteNode(&query_ctx->undo_log, n, labels_clone, label_count);
+	UndoLog_DeleteNode(&query_ctx->undo_log, n);
 
 	if(GraphContext_HasIndices(gc)) {
 		_DeleteNodeFromIndices(gc, n);

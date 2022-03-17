@@ -167,10 +167,8 @@ void UndoLog_CreateEdge
 // undo node deletion
 void UndoLog_DeleteNode
 (
-	UndoLog *log,       // undo log
-	Node *node,         // node deleted
-	LabelID *labelIDs,  // node labels
-	uint label_count    // node label count
+	UndoLog *log,      // undo log
+	Node *node         // node deleted
 ) {
 	ASSERT(log != NULL && *log != NULL);
 	ASSERT(node != NULL);
@@ -180,8 +178,13 @@ void UndoLog_DeleteNode
 	op.type                        =  UNDO_DELETE_NODE;
 	op.delete_node_op.id           =  node->id;
 	op.delete_node_op.set          =  AttributeSet_Clone(*node->attributes);
-	op.delete_node_op.labels       =  labelIDs;
-	op.delete_node_op.label_count  =  label_count;
+
+	Graph *g = QueryCtx_GetGraph();
+	NODE_GET_LABELS(g, node, op.delete_node_op.label_count);
+	op.delete_node_op.labels = rm_malloc(sizeof(LabelID) * op.delete_node_op.label_count);
+	for (uint i = 0; i < op.delete_node_op.label_count; i++) {
+		op.delete_node_op.labels[i] = labels[i];
+	}
 
 	array_append(*log, op);
 }

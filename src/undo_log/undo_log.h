@@ -103,17 +103,15 @@ void UndoLog_CreateEdge
 // undo node deletion
 void UndoLog_DeleteNode
 (
-	UndoLog *log,
-	Node *node,             // node deleted
-	LabelID *labelIDs,
-	uint label_count
+	UndoLog *log,  // undo log
+	Node *node     // node deleted
 );
 
 // undo edge deletion
 void UndoLog_DeleteEdge
 (
 	UndoLog *log,  // undo log
-	Edge *edge      // edge deleted
+	Edge *edge     // edge deleted
 );
 
 // undo entity update
