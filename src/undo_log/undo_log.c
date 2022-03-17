@@ -87,7 +87,7 @@ static void _UndoLog_Rollback_Delete_Node
 		Node n;
 		Graph_CreateNode(ctx->gc->g, &n, op->delete_node_op.labels,
 				op->delete_node_op.label_count);
-		n.attributes = &op->delete_node_op.set;
+		*n.attributes = op->delete_node_op.set;
 
 		// re-introduce node to indices
 		for(uint j = 0; j < op->delete_node_op.label_count; j++) {
@@ -114,7 +114,7 @@ static void _UndoLog_Rollback_Delete_Edge
 		Edge e;
 		Graph_CreateEdge(ctx->gc->g, op->delete_edge_op.srcNodeID,
 			op->delete_edge_op.destNodeID, op->delete_edge_op.relationID, &e);
-		e.attributes = &op->delete_edge_op.set;
+		*e.attributes = op->delete_edge_op.set;
 
 		Schema *s = GraphContext_GetSchemaByID(ctx->gc, op->delete_edge_op.relationID, SCHEMA_EDGE);
 		ASSERT(s);
@@ -247,36 +247,35 @@ void UndoLog_Rollback
 
 	// apply undo operations in reverse order for rollback correctness
 	// find sequences of operation of the same type and rollback them as a bulk
-	uint i = count - 1;
-	while (i > 0) {
-		UndoOpType cur_type = log[i].type;
-		uint seq_start = i;
-		while(i > 0 && log[i - 1].type == cur_type) {
-			i--;
+	uint seq_end = count - 1;
+	while (seq_end > 0) {
+		UndoOpType cur_type = log[seq_end].type;
+		int seq_start = seq_end;
+		seq_end--;
+		while(seq_end > 0 && log[seq_end].type == cur_type) {
+			seq_end--;
 		}
 
 		switch(cur_type) {
 			case UNDO_UPDATE:
-				_UndoLog_Rollback_Update_Entity(ctx, seq_start, i);
+				_UndoLog_Rollback_Update_Entity(ctx, seq_start, seq_end);
 				break;
 			case UNDO_CREATE_NODE:
-				_UndoLog_Rollback_Create_Node(ctx, seq_start, i);
+				_UndoLog_Rollback_Create_Node(ctx, seq_start, seq_end);
 				break;
 			case UNDO_CREATE_EDGE:
-				_UndoLog_Rollback_Create_Edge(ctx, seq_start, i);
+				_UndoLog_Rollback_Create_Edge(ctx, seq_start, seq_end);
 				break;
 			case UNDO_DELETE_NODE:
-				_UndoLog_Rollback_Delete_Node(ctx, seq_start, i);
+				_UndoLog_Rollback_Delete_Node(ctx, seq_start, seq_end);
 				break;
 			case UNDO_DELETE_EDGE:
-				_UndoLog_Rollback_Delete_Edge(ctx, seq_start, i);
+				_UndoLog_Rollback_Delete_Edge(ctx, seq_start, seq_end);
 				break;
 			default:
 				ASSERT(false);
 		}
- 
-		if(i > 0) i--;
-	}
+ 	}
 
 	array_clear(log);
 }
@@ -289,11 +288,23 @@ void UndoLog_Free
 	uint count = array_len(log);
 	for (uint i = 0; i < count; i++) {
 		UndoOp *op = log + i;
-		if (op->type == UNDO_DELETE_NODE) {
-			rm_free(op->delete_node_op.labels);
-			AttributeSet_Free(&op->delete_node_op.set);
-		} else if (op->type == UNDO_DELETE_EDGE) {
-			AttributeSet_Free(&op->delete_edge_op.set);
+		switch(op->type) {
+			case UNDO_UPDATE:
+				SIValue_Free(op->update_op.orig_value);
+				break;
+			case UNDO_CREATE_NODE:
+				break;
+			case UNDO_CREATE_EDGE:
+				break;
+			case UNDO_DELETE_NODE:
+				rm_free(op->delete_node_op.labels);
+				AttributeSet_Free(&op->delete_node_op.set);
+				break;
+			case UNDO_DELETE_EDGE:
+				AttributeSet_Free(&op->delete_edge_op.set);
+				break;
+			default:
+				ASSERT(false);
 		}
 	}
 

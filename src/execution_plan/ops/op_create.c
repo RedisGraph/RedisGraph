@@ -59,9 +59,12 @@ static void _CreateNodes(OpCreate *op, Record r) {
 		Node *node_ref = Record_AddNode(r, op->pending.nodes_to_create[i].node_idx, newNode);
 
 		// convert query-level properties
-		AttributeSet converted_attr = AttributeSet_New();
+		AttributeSet converted_attr = NULL;
 		PropertyMap *map = op->pending.nodes_to_create[i].properties;
-		if(map) ConvertPropertyMap(&converted_attr, r, map, false);
+		if(map != NULL) {
+			converted_attr = AttributeSet_New();
+			ConvertPropertyMap(&converted_attr, r, map, false);
+		}
 
 		// save node for later insertion
 		array_append(op->pending.created_nodes, node_ref);
@@ -98,8 +101,11 @@ static void _CreateEdges(OpCreate *op, Record r) {
 
 		// convert query-level properties
 		PropertyMap *map = op->pending.edges_to_create[i].properties;
-		AttributeSet converted_attr = AttributeSet_New();
-		if(map) ConvertPropertyMap(&converted_attr, r, map, false);
+		AttributeSet converted_attr = NULL;
+		if(map != NULL) {
+			converted_attr = AttributeSet_New();
+			ConvertPropertyMap(&converted_attr, r, map, false);
+		}
 
 		// save edge for later insertion
 		array_append(op->pending.created_edges, edge_ref);

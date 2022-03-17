@@ -62,6 +62,28 @@ static void _InitializeUpdates(OpMerge *op, rax *updates, raxIterator *it) {
 
 }
 
+static inline void _free_pending_updates(OpMerge *op) {
+	if(op->node_pending_updates) {
+		uint pending_updates_count = array_len(op->node_pending_updates);
+		for(uint i = 0; i < pending_updates_count; i++) {
+			PendingUpdateCtx *pending_update = op->node_pending_updates + i;
+			AttributeSet_Free(&pending_update->attributes);
+		}
+		array_free(op->node_pending_updates);
+		op->node_pending_updates = NULL;
+	}
+
+	if(op->edge_pending_updates) {
+		uint pending_updates_count = array_len(op->edge_pending_updates);
+		for(uint i = 0; i < pending_updates_count; i++) {
+			PendingUpdateCtx *pending_update = op->edge_pending_updates + i;
+			AttributeSet_Free(&pending_update->attributes);
+		}
+		array_free(op->edge_pending_updates);
+		op->edge_pending_updates = NULL;
+	}
+}
+
 OpBase *NewMergeOp(const ExecutionPlan *plan, rax *on_match, rax *on_create) {
 
 	/* merge is an operator with two or three children
@@ -319,23 +341,7 @@ static Record MergeConsume(OpBase *opBase) {
 	// free updates
 	//--------------------------------------------------------------------------
 
-	// free node updates
-	uint pending_updates_count = array_len(op->node_pending_updates);
-	for(uint i = 0; i < pending_updates_count; i++) {
-		PendingUpdateCtx *pending_update = op->node_pending_updates + i;
-		AttributeSet_Free(&pending_update->attributes);
-	}
-	array_free(op->node_pending_updates);
-	op->node_pending_updates = NULL;
-
-	// free edge updates
-	pending_updates_count = array_len(op->edge_pending_updates);
-	for(uint i = 0; i < pending_updates_count; i++) {
-		PendingUpdateCtx *pending_update = op->edge_pending_updates + i;
-		AttributeSet_Free(&pending_update->attributes);
-	}
-	array_free(op->edge_pending_updates);
-	op->edge_pending_updates = NULL;
+	_free_pending_updates(op);
 
 	return _handoff(op);
 }
@@ -372,25 +378,7 @@ static void MergeFree(OpBase *opBase) {
 		op->output_records = NULL;
 	}
 
-	if(op->node_pending_updates) {
-		uint pending_updates_count = array_len(op->node_pending_updates);
-		for(uint i = 0; i < pending_updates_count; i++) {
-			PendingUpdateCtx *pending_update = op->node_pending_updates + i;
-			AttributeSet_Free(&pending_update->attributes);
-		}
-		array_free(op->node_pending_updates);
-		op->node_pending_updates = NULL;
-	}
-
-	if(op->edge_pending_updates) {
-		uint pending_updates_count = array_len(op->edge_pending_updates);
-		for(uint i = 0; i < pending_updates_count; i++) {
-			PendingUpdateCtx *pending_update = op->edge_pending_updates + i;
-			AttributeSet_Free(&pending_update->attributes);
-		}
-		array_free(op->edge_pending_updates);
-		op->edge_pending_updates = NULL;
-	}
+	_free_pending_updates(op);
 
 	if(op->on_match) {
 		raxFreeWithCallback(op->on_match, (void(*)(void *))UpdateCtx_Free);

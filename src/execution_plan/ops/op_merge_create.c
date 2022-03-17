@@ -121,8 +121,11 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 
 		// convert query-level properties
 		PropertyMap *map = n->properties;
-		AttributeSet converted_attr = AttributeSet_New();
-		if(map) ConvertPropertyMap(&converted_attr, r, map, true);
+		AttributeSet converted_attr = NULL;
+		if(map != NULL) {
+			converted_attr = AttributeSet_New();
+			ConvertPropertyMap(&converted_attr, r, map, true);
+		}
 
 		// update the hash code with this entity
 		uint label_count = array_len(n->labels);
@@ -163,8 +166,11 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 
 		// convert query-level properties
 		PropertyMap *map = e->properties;
-		AttributeSet converted_attr = AttributeSet_New();
-		if(map) ConvertPropertyMap(&converted_attr, r, map, true);
+		AttributeSet converted_attr = NULL;
+		if(map != NULL) {
+			converted_attr = AttributeSet_New();
+			ConvertPropertyMap(&converted_attr, r, map, true);
+		}
 
 		/* Update the hash code with this entity, an edge is represented by its
 		 * relation, properties and nodes.
