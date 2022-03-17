@@ -61,7 +61,7 @@ SIValue GraphEntity_Keys
 	const GraphEntity *e
 ) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	AttributeSet set = *(ENTITY_ATTRIBUTE_SET(e));
+	const AttributeSet set = GraphEntity_GetAttributes(e);
 	int prop_count = ATTRIBUTE_SET_COUNT(set);
 	SIValue keys = SIArray_New(prop_count);
 	for(int i = 0; i < prop_count; i++) {
@@ -89,11 +89,11 @@ size_t GraphEntity_PropertiesToString
 	}
 	*bytesWritten += snprintf(*buffer, *bufferLen, "{");
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	AttributeSet *set = ENTITY_ATTRIBUTE_SET(e);
-	int propCount = ATTRIBUTE_SET_COUNT(*set);
+	const AttributeSet set = GraphEntity_GetAttributes(e);
+	int propCount = ATTRIBUTE_SET_COUNT(set);
 	for(int i = 0; i < propCount; i++) {
 		Attribute_ID attr_id;
-		SIValue value = AttributeSet_GetIdx(*set, i, &attr_id);
+		SIValue value = AttributeSet_GetIdx(set, i, &attr_id);
 		// print key
 		const char *key = GraphContext_GetAttributeString(gc, attr_id);
 		// check for enough space
@@ -213,4 +213,26 @@ inline bool GraphEntity_IsDeleted
 	const GraphEntity *e
 ) {
 	return Graph_EntityIsDeleted(e);
+}
+
+inline const AttributeSet GraphEntity_GetAttributes
+(
+	const GraphEntity *e
+) {
+	ASSERT(e != NULL);
+
+	return *e->attributes;
+}
+
+inline int GraphEntity_ClearAttributes
+(
+	GraphEntity *e
+) {
+	ASSERT(e != NULL);
+
+	int count = ATTRIBUTE_SET_COUNT(*e->attributes);
+	
+	AttributeSet_Clear(e->attributes);
+	
+	return count;
 }

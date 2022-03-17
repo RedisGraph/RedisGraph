@@ -170,10 +170,10 @@ void EvalEntityUpdates
 				ErrorCtx_RaiseRuntimeException(NULL);
 			}
 			// iterate over all entity properties to build updates
-			AttributeSet *set = ENTITY_ATTRIBUTE_SET(ge);
-			for(uint j = 0; j < ATTRIBUTE_SET_COUNT(*set); j ++) {
+			const AttributeSet set = GraphEntity_GetAttributes(ge);
+			for(uint j = 0; j < ATTRIBUTE_SET_COUNT(set); j ++) {
 				Attribute_ID attr_id;
-				SIValue value = AttributeSet_GetIdx(*set, j, &attr_id);
+				SIValue value = AttributeSet_GetIdx(set, j, &attr_id);
 
 				_PreparePendingUpdate(&update.attributes, accepted_properties,
 					attr_id, value);

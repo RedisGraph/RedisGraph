@@ -77,13 +77,13 @@ static void _RdbSaveEntity
 	// #attributes N
 	// (name, value type, value) X N 
 
-	AttributeSet *set = ENTITY_ATTRIBUTE_SET(e);
+	const AttributeSet set = GraphEntity_GetAttributes(e);
 
-	RedisModule_SaveUnsigned(rdb, ATTRIBUTE_SET_COUNT(*set));
+	RedisModule_SaveUnsigned(rdb, ATTRIBUTE_SET_COUNT(set));
 
-	for(int i = 0; i < ATTRIBUTE_SET_COUNT(*set); i++) {
+	for(int i = 0; i < ATTRIBUTE_SET_COUNT(set); i++) {
 		Attribute_ID attr_id;
-		SIValue value = AttributeSet_GetIdx(*set, i, &attr_id);
+		SIValue value = AttributeSet_GetIdx(set, i, &attr_id);
 		RedisModule_SaveUnsigned(rdb, attr_id);
 		_RdbSaveSIValue(rdb, &value);
 	}

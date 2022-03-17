@@ -926,10 +926,7 @@ int Graph_UpdateEntity
 
 	// handle the case in which we are deleting all attributes
 	if(attr_id == ATTRIBUTE_ID_ALL) {
-		AttributeSet *set = ENTITY_ATTRIBUTE_SET(ge);
-		int count = ATTRIBUTE_SET_COUNT(*set);
-		AttributeSet_Clear(set);
-		return count;
+		return GraphEntity_ClearAttributes(ge);
 	}
 
 	// try to get current attribute value

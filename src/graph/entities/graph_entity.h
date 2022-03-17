@@ -14,7 +14,6 @@
 #define INVALID_ENTITY_ID -1l
 
 #define ENTITY_GET_ID(graphEntity) (graphEntity)->id
-#define ENTITY_ATTRIBUTE_SET(graphEntity) ((graphEntity)->attributes)
 
 // Defined in graph_entity.c
 extern SIValue *ATTRIBUTE_NOTFOUND;
@@ -94,3 +93,13 @@ bool GraphEntity_IsDeleted
 	const GraphEntity *e
 );
 
+// returns attribute-set of entity
+const AttributeSet GraphEntity_GetAttributes
+(
+	const GraphEntity *e
+);
+
+int GraphEntity_ClearAttributes
+(
+	GraphEntity *e
+);

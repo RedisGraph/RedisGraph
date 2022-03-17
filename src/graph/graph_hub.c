@@ -242,11 +242,11 @@ static int _Update_Entity
 	if(attr_id == ATTRIBUTE_ID_ALL) {
 		// we're requested to clear entitiy's attribute-set
 		// backup entity's attributes in case we'll need to roolback
-		AttributeSet *set = ENTITY_ATTRIBUTE_SET(ge);
-		for(int i = 0; i < ATTRIBUTE_SET_COUNT(*set); i++) {
+		const AttributeSet set = GraphEntity_GetAttributes(ge);
+		for(int i = 0; i < ATTRIBUTE_SET_COUNT(set); i++) {
 			Attribute_ID id;
 			// add entity update operation to undo log
-			SIValue clone = SI_CloneValue(AttributeSet_GetIdx(*set, i, &id));
+			SIValue clone = SI_CloneValue(AttributeSet_GetIdx(set, i, &id));
 			QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 			UndoLog_UpdateEntity(&query_ctx->undo_log, ge, id, clone, entity_type);
 		}
