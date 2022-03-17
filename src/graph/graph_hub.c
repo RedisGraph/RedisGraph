@@ -246,16 +246,15 @@ static int _Update_Entity
 		for(int i = 0; i < ATTRIBUTE_SET_COUNT(set); i++) {
 			Attribute_ID id;
 			// add entity update operation to undo log
-			SIValue clone = SI_CloneValue(AttributeSet_GetIdx(set, i, &id));
+			SIValue value = AttributeSet_GetIdx(set, i, &id);
 			QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-			UndoLog_UpdateEntity(&query_ctx->undo_log, ge, id, clone, entity_type);
+			UndoLog_UpdateEntity(&query_ctx->undo_log, ge, id, value, entity_type);
 		}
 	} else {
 		SIValue *orig_value = GraphEntity_GetProperty(ge, attr_id);
 		// add entity update operation to undo log
-		SIValue clone = SI_CloneValue(*orig_value);
 		QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-		UndoLog_UpdateEntity(&query_ctx->undo_log, ge, attr_id, clone, entity_type);
+		UndoLog_UpdateEntity(&query_ctx->undo_log, ge, attr_id, *orig_value, entity_type);
 	}
 
 	return Graph_UpdateEntity(ge, attr_id, new_value, entity_type);
@@ -265,16 +264,15 @@ int UpdateEntity
 (
 	GraphContext *gc,
 	GraphEntity *ge,
-	AttributeSet *attr,        // attributes to update
+	const AttributeSet set,
 	GraphEntityType entity_type
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(ge != NULL);
 
 	int updates = 0;
-	AttributeSet _set = *attr;
-	for (uint i = 0; i < ATTRIBUTE_SET_COUNT(_set); i++) {
-		Attribute *prop = _set->attributes + i;
+	for (uint i = 0; i < ATTRIBUTE_SET_COUNT(set); i++) {
+		Attribute *prop = set->attributes + i;
 		updates += _Update_Entity(gc, ge, prop->id, prop->value, entity_type);
 	}
 

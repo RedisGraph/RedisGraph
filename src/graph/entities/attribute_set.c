@@ -209,7 +209,7 @@ bool AttributeSet_Update
 	ASSERT(attr_id != ATTRIBUTE_ID_NONE);
 
 	// setting an attribute value to NULL removes that attribute
-	if(SIValue_IsNull(value)) {
+	if(unlikely(SIValue_IsNull(value))) {
 		return _AttributeSet_Remove(set, attr_id);
 	}
 
@@ -217,7 +217,7 @@ bool AttributeSet_Update
 	ASSERT(current != ATTRIBUTE_NOTFOUND);
 
 	// compare current value to new value, only update if current != new
-	if(SIValue_Compare(*current, value, NULL) == 0) {
+	if(unlikely(SIValue_Compare(*current, value, NULL) == 0)) {
 		return false;
 	}
 

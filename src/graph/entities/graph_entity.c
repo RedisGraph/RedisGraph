@@ -33,7 +33,7 @@ SIValue *GraphEntity_GetProperty
 	ASSERT(e);
 
 	// e->attributes is NULL when dealing with an "intermediate" entity,
-    // one which didn't had its attribute-set allocated within the graph datablock.
+	// one which didn't had its attribute-set allocated within the graph datablock.
 	if(e->attributes == NULL) {
  		// note that this exception may cause memory to be leaked in the caller
  		ErrorCtx_SetError("Attempted to access undefined attribute");

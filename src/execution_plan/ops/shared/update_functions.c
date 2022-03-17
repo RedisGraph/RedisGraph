@@ -70,7 +70,7 @@ void CommitUpdates
 		if(GraphEntity_IsDeleted(update->ge)) continue;
 
 		// update the attributes on the graph entity
-		properties_set += UpdateEntity(gc, update->ge, &update->attributes,
+		properties_set += UpdateEntity(gc, update->ge, update->attributes,
 				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE);
 	}
 

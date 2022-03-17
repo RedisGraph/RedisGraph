@@ -69,9 +69,8 @@ int DeleteEdge
 // return the # of properties updated
 int UpdateEntity
 (
-	GraphContext *gc,           // graph context to update the entity
-	GraphEntity *ge,            // the entity to be updated
-	AttributeSet *props,        // attributes to update
-	GraphEntityType entity_type // the entity type (node/edge)
+	GraphContext *gc,            // graph context to update the entity
+	GraphEntity *ge,             // the entity to be updated
+	const AttributeSet set,      // attributes to update
+	GraphEntityType entity_type  // the entity type (node/edge)
 );
-
