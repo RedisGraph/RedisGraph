@@ -15,7 +15,7 @@
 #define ATTRIBUTE_ID_ALL USHRT_MAX - 1
 
 // returns number of attribute within the set
-#define ATTRIBUTE_SET_COUNT(attributes) ((attributes)->attr_count)
+#define ATTRIBUTE_SET_COUNT(attributes) (attributes == NULL ? 0 : ((attributes)->attr_count))
 
 typedef unsigned short Attribute_ID;
 

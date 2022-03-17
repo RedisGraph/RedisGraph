@@ -11,10 +11,10 @@
 #include "../../util/rmalloc.h"
 
 // compute size of attribute set in bytes
-#define ATTRIBUTESET_BYTE_SIZE(set) sizeof(_AttributeSet) + sizeof(Attribute) * (set)->attr_count
+#define ATTRIBUTESET_BYTE_SIZE(set) set == NULL ? sizeof(_AttributeSet) : sizeof(_AttributeSet) + sizeof(Attribute) * (set)->attr_count
 
 // determine if set is empty
-#define ATTRIBUTESET_EMPTY(set) (set)->attr_count == 0
+#define ATTRIBUTESET_EMPTY(set) (set) == NULL
 
 // returned value for a missing attribute
 SIValue *ATTRIBUTE_NOTFOUND = &(SIValue) {
@@ -36,6 +36,12 @@ static bool _AttributeSet_Remove
 			continue;
 		}
 
+		// if this is the last attribute free the attribute-set
+		if(_set->attr_count == 1) {
+			AttributeSet_Free(set);
+			return true;
+		}
+
 		// attribute located
 		// free attribute value
 		SIValue_Free(_set->attributes[i].value);
@@ -46,6 +52,7 @@ static bool _AttributeSet_Remove
 
 		// update attribute count
 		_set->attr_count--;
+
 
 		// compute new set size
 		size_t n = ATTRIBUTESET_BYTE_SIZE(_set);
@@ -76,7 +83,7 @@ SIValue *AttributeSet_Get
 	const AttributeSet set,  // set to retieve attribute from
 	Attribute_ID attr_id     // attribute identifier
 ) {
-	ASSERT(set != NULL);
+	if(set == NULL) return ATTRIBUTE_NOTFOUND;
 
 	if(attr_id == ATTRIBUTE_ID_NONE) return ATTRIBUTE_NOTFOUND;
 
@@ -116,14 +123,13 @@ SIValue AttributeSet_GetIdx
 }
 
 // adds an attribute to the set
-// returns true if attribute was added to the set
 void AttributeSet_Add
 (
 	AttributeSet *set,     // set to update
 	Attribute_ID attr_id,  // attribute identifier
 	SIValue value          // attribute value
 ) {
-	ASSERT(set != NULL && *set != NULL);
+	ASSERT(set != NULL);
 	ASSERT(attr_id != ATTRIBUTE_ID_NONE);
 
 	AttributeSet _set = *set;
@@ -136,9 +142,14 @@ void AttributeSet_Add
 	ASSERT(AttributeSet_Get(_set, attr_id) == ATTRIBUTE_NOTFOUND);
 
 	// allocate room for new attribute
-	_set->attr_count++;
-	size_t n = ATTRIBUTESET_BYTE_SIZE(_set);
-	_set = rm_realloc(_set, n);
+	if(_set == NULL) {
+		_set = rm_malloc(sizeof(_AttributeSet) + sizeof(Attribute));
+		_set->attr_count = 1;
+	} else {
+		_set->attr_count++;
+		size_t n = ATTRIBUTESET_BYTE_SIZE(_set);
+		_set = rm_realloc(_set, n);
+	}
 
 	// set attribute
 	Attribute *attr = _set->attributes + _set->attr_count - 1;
@@ -150,7 +161,6 @@ void AttributeSet_Add
 }
 
 // adds or updates an attribute to the set null value allowed
-// returns true if attribute was added to the set
 void AttributeSet_Set_Allow_Null
 (
 	AttributeSet *set,     // set to update
@@ -223,7 +233,7 @@ AttributeSet AttributeSet_Clone
 (
 	const AttributeSet set  // set to clone
 ) {
-	ASSERT(set != NULL);
+	if(set == NULL) return NULL;
 
 	size_t n = ATTRIBUTESET_BYTE_SIZE(set);
     AttributeSet clone  = rm_malloc(n);
@@ -246,7 +256,7 @@ void AttributeSet_Clear
 (
 	AttributeSet *set  // set to be cleared
 ) {
-	ASSERT(set != NULL && *set != NULL);
+	ASSERT(set != NULL);
 
 	AttributeSet _set = *set;
 
@@ -269,14 +279,17 @@ void AttributeSet_Free
 (
 	AttributeSet *set  // set to be freed
 ) {
-	ASSERT(set != NULL && *set != NULL);
+	ASSERT(set != NULL);
 
 	AttributeSet _set = *set;
+
+	if(_set == NULL) return;
 
 	// free all allocated properties
 	for(int i = 0; i < _set->attr_count; i++) {
 		SIValue_Free(_set->attributes[i].value);
 	}
 
-	rm_free(*set);
+	rm_free(_set);
+	*set = NULL;
 }
