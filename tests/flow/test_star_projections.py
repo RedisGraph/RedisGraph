@@ -145,19 +145,3 @@ class testStarProjections():
         query = """MATCH (a)-[]->(a) RETURN *, a"""
         actual_result = redis_graph.query(query)
         self.env.assertEqual(actual_result.result_set, expected)
-
-    # verify that parser errors are handled gracefully
-    def test05_invalid_query(self):
-        try:
-            query = """MATCH (a)-[r:]->(b) RETURN *"""
-            redis_graph.query(query)
-            self.env.assertTrue(False)
-        except redis.exceptions.ResponseError:
-            pass
-
-        try:
-            query = """MATCH (a)-[r:]->(b) WITH b RETURN *"""
-            redis_graph.query(query)
-            self.env.assertTrue(False)
-        except redis.exceptions.ResponseError:
-            pass

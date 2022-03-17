@@ -171,15 +171,6 @@ static void replace_clause
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
 
 	//--------------------------------------------------------------------------
-	// return early in the case of a parse error
-	//--------------------------------------------------------------------------
-	uint child_count = cypher_astnode_nchildren(root);
-	for(uint i = 0; i < child_count; i++) {
-		const cypher_astnode_t *to = cypher_astnode_get_child(root, i);
-		if(cypher_astnode_type(to) == CYPHER_AST_ERROR) return;
-	}
-
-	//--------------------------------------------------------------------------
 	// collect identifiers
 	//--------------------------------------------------------------------------
 	rax *identifiers = raxNew();
