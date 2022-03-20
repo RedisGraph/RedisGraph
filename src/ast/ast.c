@@ -571,7 +571,14 @@ cypher_parse_result_t *parse_query(const char *query) {
 		return NULL;
 	}
 
-	if(!AST_ContainsErrors(result)) AST_RewriteStarProjections(result);
+	// in case ast contains any errors, report them and return
+	if(AST_ContainsErrors(result)) {
+		AST_ReportErrors(result);
+		parse_result_free(result);
+		return NULL;
+	}
+
+	AST_RewriteStarProjections(result);
 
 	if(AST_Validate_Query(result) != AST_VALID) {
 		parse_result_free(result);
