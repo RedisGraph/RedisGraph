@@ -88,9 +88,6 @@ static OpResult DeleteInit(OpBase *opBase) {
 
 static Record DeleteConsume(OpBase *opBase) {
 	OpDelete *op = (OpDelete *)opBase;
-	if(op->op.childCount == 0) {
-		ErrorCtx_RaiseRuntimeException("Delete was called without a child operation");
-	}
 	OpBase *child = op->op.children[0];
 
 	Record r = OpBase_Consume(child);

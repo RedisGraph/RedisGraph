@@ -344,7 +344,7 @@ class testGraphDeletionFlow(FlowTestsBase):
             redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Delete was called without a child operation", str(e))
+            self.env.assertContains("Delete was constructed without a child operation", str(e))
 
         # try to delete a function return that's not a graph entity
         try:
@@ -353,3 +353,16 @@ class testGraphDeletionFlow(FlowTestsBase):
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("Delete type mismatch", str(e))
+
+        # try deleting all scalar types at runtime
+        queries = ["WITH 1 AS n DELETE n",
+                   "WITH 'str' AS n DELETE n",
+                   "WITH true AS n DELETE n",
+                   "WITH [] AS n DELETE n",
+                   "WITH {} AS n DELETE n"]
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                self.env.assertTrue(False)
+            except ResponseError as e:
+                self.env.assertContains("Delete type mismatch", str(e))
