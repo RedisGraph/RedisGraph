@@ -596,39 +596,26 @@ class testQueryValidationFlow(FlowTestsBase):
     def test40_compile_time_errors_in_star_projections(self):
         # validate that parser errors are handled correctly
         # in queries containing star projections
-        try:
-            query = """MATCH (a)-[r:]->(b) RETURN *"""
-            redis_graph.query(query)
-            self.env.assertTrue(False)
-        except redis.exceptions.ResponseError:
-            pass
-
-        try:
-            query = """MATCH (a)-[r:]->(b) WITH b RETURN *"""
-            redis_graph.query(query)
-            self.env.assertTrue(False)
-        except redis.exceptions.ResponseError:
-            pass
+        queries = ["MATCH (a)-[r:]->(b) RETURN *",
+                   "MATCH (a)-[r:]->(b) WITH b RETURN *"]
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError:
+                pass
 
         # check that AST validation errors are handled correctly
         # in queries containing star projections
-        try:
-            query = """WITH 1 RETURN *"""
-            redis_graph.query(query)
-            self.env.assertTrue(False)
-        except redis.exceptions.ResponseError:
-            pass
-
-        try:
-            query = """RETURN *"""
-            redis_graph.query(query)
-            self.env.assertTrue(False)
-        except redis.exceptions.ResponseError:
-            pass
-
-        try:
-            query = """CREATE () RETURN DISTINCT *"""
-            redis_graph.query(query)
-            self.env.assertTrue(False)
-        except redis.exceptions.ResponseError:
-            pass
+        queries = ["WITH 1 RETURN *",
+                   "RETURN *",
+                   "CREATE () RETURN DISTINCT *",
+                   "MATCH () WITH * RETURN z",
+                   "MATCH () WITH * RETURN *",
+                   "MATCH () WITH * WHERE n.v > 1 RETURN *"]
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError:
+                pass

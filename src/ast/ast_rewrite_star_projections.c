@@ -80,6 +80,10 @@ static void _collect_with_projections
 			// so the projection itself must be an identifier
 			identifier_node = cypher_ast_projection_get_expression(projection);
 			ASSERT(cypher_astnode_type(identifier_node) == CYPHER_AST_IDENTIFIER);
+		} else {
+			// do not include empty projections, which may have been made to
+			// handle the MATCH () WITH * case
+			if(!strcmp(cypher_ast_identifier_get_name(identifier_node), "")) continue;
 		}
 		const char *identifier = cypher_ast_identifier_get_name(identifier_node);
 		raxTryInsert(identifiers, (unsigned char *)identifier,
