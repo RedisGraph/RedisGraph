@@ -36,6 +36,42 @@ static void _index_edge
 	if(Schema_HasIndices(s)) Schema_AddEdgeToIndices(s, e);
 }
 
+static void _index_delete_node
+(
+	QueryCtx *ctx,
+	Node *n
+) {
+	uint label_count;
+	NODE_GET_LABELS(ctx->gc->g, n, label_count);
+	for(uint j = 0; j < label_count; j++) {
+		Schema *s = GraphContext_GetSchemaByID(ctx->gc, labels[j], SCHEMA_NODE);
+		ASSERT(s);
+
+		// update any indices this entity is represented in
+		Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+		if(idx) Index_RemoveNode(idx, n);
+
+		idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
+		if(idx) Index_RemoveNode(idx, n);
+	}
+}
+
+static void _index_delete_edge
+(
+	QueryCtx *ctx,
+	Edge *e
+) {
+	Schema *s = GraphContext_GetSchemaByID(ctx->gc, e->relationID, SCHEMA_EDGE);
+	ASSERT(s);
+
+	// update any indices this entity is represented in
+	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+	if(idx) Index_RemoveEdge(idx, e);
+
+	idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
+	if(idx) Index_RemoveEdge(idx, e);
+}
+
 // rollback the updates taken place by current query
 static void _UndoLog_Rollback_Update_Entity
 (
@@ -69,7 +105,9 @@ static void _UndoLog_Rollback_Create_Node
 ) {
 	UndoOp *undo_list = ctx->undo_log;
 	for(int i = seq_start; i > seq_end; --i) {
-		Graph_DeleteNode(ctx->gc->g, &undo_list[i].create_op.n);
+		Node *n = &undo_list[i].create_op.n;
+		Graph_DeleteNode(ctx->gc->g, n);
+		_index_delete_node(ctx, n);
 	}
 }
 
@@ -82,7 +120,9 @@ static void _UndoLog_Rollback_Create_Edge
 ) {
 	UndoOp *undo_list = ctx->undo_log;
 	for(int i = seq_start; i > seq_end; --i) {
-		Graph_DeleteEdge(ctx->gc->g, &undo_list[i].create_op.e);
+		Edge *e = &undo_list[i].create_op.e;
+		Graph_DeleteEdge(ctx->gc->g, e);
+		_index_delete_edge(ctx, e);
 	}
 }
 

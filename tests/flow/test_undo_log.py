@@ -170,7 +170,37 @@ class testUndoLog():
         result = self.graph.query("MATCH ()-[r]->() RETURN r.v")
         self.env.assertEquals(result.result_set[0][0], 1)
 
-    def test07_undo_delete_indexed_node(self):
+    def test07_undo_create_indexed_node(self):
+        self.graph.query("CREATE INDEX FOR (n:N) ON (n.v)")
+        try:
+            self.graph.query("CREATE (n:N {v:1}) WITH n RETURN 1 * 'a'")
+            # we're not supposed to be here, expecting query to fail
+            self.env.assertTrue(False) 
+        except:
+            pass
+
+        # node (n:N) should be removed, expecting an empty graph
+        result = self.graph.query("MATCH (n:N {v:1}) RETURN COUNT(n)")
+        self.env.assertEquals(result.result_set[0][0], 0)
+
+    def test08_undo_create_indexed_edge(self):
+        self.graph.query("CREATE INDEX FOR ()-[r:R]->() ON (r.v)")
+        self.graph.query("CREATE (:N {v: 1}), (:N {v: 2})")
+        try:
+            self.graph.query("""MATCH (s:N {v: 1}), (t:N {v: 2})
+                                CREATE (s)-[r:R {v:1}]->(t)
+                                WITH r
+                                RETURN 1 * 'a'""")
+            # we're not supposed to be here, expecting query to fail
+            self.env.assertTrue(False) 
+        except:
+            pass
+
+        # edge [r:R] should have been removed
+        result = self.graph.query("MATCH ()-[r:R {v:1}]->() RETURN COUNT(r)")
+        self.env.assertEquals(result.result_set[0][0], 0)
+
+    def test09_undo_delete_indexed_node(self):
         self.graph.query("CREATE INDEX FOR (n:N) ON (n.v)")
         self.graph.query("CREATE (:N {v: 0})")
         try:
@@ -190,7 +220,7 @@ class testUndoLog():
         result = self.graph.query(query)
         self.env.assertEquals(result.result_set[0][0], 1)
 
-    def test08_undo_delete_indexed_edge(self):
+    def test10_undo_delete_indexed_edge(self):
         self.graph.query("CREATE INDEX FOR ()-[r:R]->() ON (r.v)")
         self.graph.query("CREATE (:N)-[:R {v: 0}]->(:N)")
         try:
@@ -210,7 +240,7 @@ class testUndoLog():
         result = self.graph.query(query)
         self.env.assertEquals(result.result_set[0][0], 1)
 
-    def test09_undo_update_indexed_node(self):
+    def test11_undo_update_indexed_node(self):
         self.graph.query("CREATE INDEX FOR (n:N) ON (n.v)")
         self.graph.query("CREATE (:N {v: 1})")
         try:
@@ -230,7 +260,7 @@ class testUndoLog():
         result = self.graph.query(query)
         self.env.assertEquals(result.result_set[0][0], 1)
     
-    def test10_undo_update_indexed_edge(self):
+    def test12_undo_update_indexed_edge(self):
         self.graph.query("CREATE INDEX FOR ()-[r:R]->() ON (r.v)")
         self.graph.query("CREATE (:N)-[:R {v: 1}]->(:N)")
         try:
@@ -250,7 +280,7 @@ class testUndoLog():
         result = self.graph.query(query)
         self.env.assertEquals(result.result_set[0][0], 1)
 
-    def test11_undo_implicit_edge_delete(self):
+    def test13_undo_implicit_edge_delete(self):
         self.graph.query("CREATE (n:N), (m:N), (n)-[:R]->(m), (n)-[:R]->(m)")
         try:
             self.graph.query("""MATCH (n:N)
@@ -268,7 +298,7 @@ class testUndoLog():
         result = self.graph.query("MATCH ()-[r:R]->() RETURN COUNT(r)")
         self.env.assertEquals(result.result_set[0][0], 2)
 
-    def test11_undo_timeout(self):
+    def test14_undo_timeout(self):
         # Change timeout value from default
         response = self.redis_con.execute_command("GRAPH.CONFIG SET TIMEOUT 1")
         self.env.assertEqual(response, "OK")
@@ -288,7 +318,7 @@ class testUndoLog():
         response = self.redis_con.execute_command("GRAPH.CONFIG SET TIMEOUT 0")
         self.env.assertEqual(response, "OK")
 
-    def test12_complex_undo(self):
+    def test15_complex_undo(self):
         # create a graph
         self.graph.query("UNWIND range(1, 3) AS x CREATE (:N {v:x})-[:R{v:x}]->(:N {v:x})")
 
@@ -303,4 +333,3 @@ class testUndoLog():
         expected_result = [[1, 1, 1], [2, 2, 2], [3, 3, 3]]
         result = self.graph.query("MATCH (n:N)-[r:R]->(m:N) RETURN n.v, r.v, m.v")
         self.env.assertEquals(result.result_set, expected_result)
-
