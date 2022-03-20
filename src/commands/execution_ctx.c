@@ -50,7 +50,8 @@ static AST *_ExecutionCtx_ParseAST(const char *query_string,
 								   cypher_parse_result_t *params_parse_result) {
 	cypher_parse_result_t *query_parse_result = parse_query(query_string);
 	// If no output from the parser, the query is not valid.
-	if(!query_parse_result) {
+	if(query_parse_result == NULL ||
+			ErrorCtx_EncounteredError()) {
 		parse_result_free(params_parse_result);
 		return NULL;
 	}
