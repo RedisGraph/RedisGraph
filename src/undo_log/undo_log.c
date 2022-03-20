@@ -48,11 +48,7 @@ static void _index_delete_node
 		ASSERT(s);
 
 		// update any indices this entity is represented in
-		Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
-		if(idx) Index_RemoveNode(idx, n);
-
-		idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
-		if(idx) Index_RemoveNode(idx, n);
+		Schema_RemoveNodeFromIndices(s, n);
 	}
 }
 
@@ -65,11 +61,7 @@ static void _index_delete_edge
 	ASSERT(s);
 
 	// update any indices this entity is represented in
-	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
-	if(idx) Index_RemoveEdge(idx, e);
-
-	idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
-	if(idx) Index_RemoveEdge(idx, e);
+	Schema_RemoveEdgeFromIndices(s, e);
 }
 
 // rollback the updates taken place by current query
@@ -82,15 +74,16 @@ static void _UndoLog_Rollback_Update_Entity
 	UndoOp *undo_list = ctx->undo_log;
 	for(int i = seq_start; i > seq_end; --i) {
 		UndoOp *op = undo_list + i;
-		Graph_UpdateEntity(op->update_op.ge, op->update_op.attr_id,
-			op->update_op.orig_value, op->update_op.entity_type);
+		UndoUpdateOp update_op = op->update_op;
+		Graph_UpdateEntity(update_op.ge, update_op.attr_id,
+				update_op.orig_value, update_op.entity_type);
 
 		// update indices
-		if(op->update_op.entity_type == GETYPE_NODE) {
-			Node *n = (Node *)op->update_op.ge;
+		if(update_op.entity_type == GETYPE_NODE) {
+			Node *n = (Node *)update_op.ge;
 			_index_node(ctx, n);
 		} else {
-			Edge *e = (Edge *)op->update_op.ge;
+			Edge *e = (Edge *)update_op.ge;
 			_index_edge(ctx, e);
 		}
 	}
@@ -106,8 +99,8 @@ static void _UndoLog_Rollback_Create_Node
 	UndoOp *undo_list = ctx->undo_log;
 	for(int i = seq_start; i > seq_end; --i) {
 		Node *n = &undo_list[i].create_op.n;
-		Graph_DeleteNode(ctx->gc->g, n);
 		_index_delete_node(ctx, n);
+		Graph_DeleteNode(ctx->gc->g, n);
 	}
 }
 
@@ -121,8 +114,8 @@ static void _UndoLog_Rollback_Create_Edge
 	UndoOp *undo_list = ctx->undo_log;
 	for(int i = seq_start; i > seq_end; --i) {
 		Edge *e = &undo_list[i].create_op.e;
-		Graph_DeleteEdge(ctx->gc->g, e);
 		_index_delete_edge(ctx, e);
+		Graph_DeleteEdge(ctx->gc->g, e);
 	}
 }
 
@@ -135,11 +128,13 @@ static void _UndoLog_Rollback_Delete_Node
 ) {
 	UndoOp *undo_list = ctx->undo_log;
 	for(int i = seq_start; i > seq_end; --i) {
-		UndoOp *op = undo_list + i;
 		Node n;
-		Graph_CreateNode(ctx->gc->g, &n, op->delete_node_op.labels,
-				op->delete_node_op.label_count);
-		*n.attributes = op->delete_node_op.set;
+		UndoOp *op = undo_list + i;
+		UndoDeleteNodeOp delete_op = op->delete_node_op;
+
+		Graph_CreateNode(ctx->gc->g, &n, delete_op.labels,
+				delete_op.label_count);
+		*n.attributes = delete_op.set;
 
 		// re-introduce node to indices
 		_index_node(ctx, &n);
@@ -155,11 +150,13 @@ static void _UndoLog_Rollback_Delete_Edge
 ) {
 	UndoOp *undo_list = ctx->undo_log;
 	for(int i = seq_start; i > seq_end; --i) {
-		UndoOp *op = undo_list + i;
 		Edge e;
-		Graph_CreateEdge(ctx->gc->g, op->delete_edge_op.srcNodeID,
-			op->delete_edge_op.destNodeID, op->delete_edge_op.relationID, &e);
-		*e.attributes = op->delete_edge_op.set;
+		UndoOp *op = undo_list + i;
+		UndoDeleteEdgeOp delete_op = op->delete_edge_op;
+
+		Graph_CreateEdge(ctx->gc->g, delete_op.srcNodeID, delete_op.destNodeID,
+				delete_op.relationID, &e);
+		*e.attributes = delete_op.set;
 
 		_index_edge(ctx, &e);
 	}

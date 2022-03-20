@@ -248,6 +248,42 @@ void Schema_AddEdgeToIndices
 	if(idx) Index_IndexEdge(idx, e);
 }
 
+// remove node from schema indicies
+void Schema_RemoveNodeFromIndices
+(
+	const Schema *s,
+	const Node *n
+) {
+	ASSERT(s != NULL);
+	ASSERT(n != NULL);
+
+	Index *idx = NULL;
+
+	idx = s->fulltextIdx;
+	if(idx) Index_RemoveNode(idx, n);
+
+	idx = s->index;
+	if(idx) Index_RemoveNode(idx, n);
+}
+
+// remove edge from schema indicies
+void Schema_RemoveEdgeFromIndices
+(
+	const Schema *s,
+	const Edge *e
+) {
+	ASSERT(s != NULL);
+	ASSERT(e != NULL);
+
+	Index *idx = NULL;
+
+	idx = s->fulltextIdx;
+	if(idx) Index_RemoveEdge(idx, e);
+
+	idx = s->index;
+	if(idx) Index_RemoveEdge(idx, e);
+}
+
 void Schema_Free
 (
 	Schema *s
