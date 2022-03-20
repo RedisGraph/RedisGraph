@@ -10,6 +10,32 @@
 #include "../execution_plan/ops/shared/update_functions.h"
 #include "../execution_plan/ops/shared/create_functions.h"
 
+static void _index_node
+(
+	QueryCtx *ctx,
+	Node *n
+) {
+	uint label_count;
+	NODE_GET_LABELS(ctx->gc->g, n, label_count);
+	for(uint j = 0; j < label_count; j++) {
+		Schema *s = GraphContext_GetSchemaByID(ctx->gc, labels[j], SCHEMA_NODE);
+		ASSERT(s);
+
+		if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n);
+	}
+}
+
+static void _index_edge
+(
+	QueryCtx *ctx,
+	Edge *e
+) {
+	Schema *s = GraphContext_GetSchemaByID(ctx->gc, e->relationID, SCHEMA_EDGE);
+	ASSERT(s);
+
+	if(Schema_HasIndices(s)) Schema_AddEdgeToIndices(s, e);
+}
+
 // rollback the updates taken place by current query
 static void _UndoLog_Rollback_Update_Entity
 (
@@ -26,20 +52,10 @@ static void _UndoLog_Rollback_Update_Entity
 		// update indices
 		if(op->update_op.entity_type == GETYPE_NODE) {
 			Node *n = (Node *)op->update_op.ge;
-			uint label_count;
-			NODE_GET_LABELS(ctx->gc->g, n, label_count);
-			for(uint j = 0; j < label_count; j++) {
-				Schema *s = GraphContext_GetSchemaByID(ctx->gc, labels[j], SCHEMA_NODE);
-				ASSERT(s);
-
-				if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n);
-			}
+			_index_node(ctx, n);
 		} else {
 			Edge *e = (Edge *)op->update_op.ge;
-			Schema *s = GraphContext_GetSchemaByID(ctx->gc, e->relationID, SCHEMA_EDGE);
-			ASSERT(s);
-
-			if(Schema_HasIndices(s)) Schema_AddEdgeToIndices(s, e);
+			_index_edge(ctx, e);
 		}
 	}
 }
@@ -86,13 +102,7 @@ static void _UndoLog_Rollback_Delete_Node
 		*n.attributes = op->delete_node_op.set;
 
 		// re-introduce node to indices
-		for(uint j = 0; j < op->delete_node_op.label_count; j++) {
-			Schema *s = GraphContext_GetSchemaByID(ctx->gc,
-				op->delete_node_op.labels[j], SCHEMA_NODE);
-			ASSERT(s);
-
-			if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, &n);
-		}
+		_index_node(ctx, &n);
 	}
 }
 
@@ -111,11 +121,7 @@ static void _UndoLog_Rollback_Delete_Edge
 			op->delete_edge_op.destNodeID, op->delete_edge_op.relationID, &e);
 		*e.attributes = op->delete_edge_op.set;
 
-		Schema *s = GraphContext_GetSchemaByID(ctx->gc, op->delete_edge_op.relationID, SCHEMA_EDGE);
-		ASSERT(s);
-
-		// re-introduce edge to index
-		if(Schema_HasIndices(s)) Schema_AddEdgeToIndices(s, &e);
+		_index_edge(ctx, &e);
 	}
 }
 

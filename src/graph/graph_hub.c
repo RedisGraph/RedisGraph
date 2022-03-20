@@ -223,6 +223,8 @@ int DeleteEdge
 	return Graph_DeleteEdge(gc->g, e);
 }
 
+// update entity attributes and update undo log
+// in case attr_id is ATTRIBUTE_ID_ALL clear all attributes values
 static int _Update_Entity
 (
 	GraphContext *gc,
