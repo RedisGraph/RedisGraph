@@ -8,5 +8,7 @@
 
 #include "ast.h"
 
-void AST_RewriteStarProjections(cypher_parse_result_t *result);
+// rewrite WITH/RETURN * clauses in query to project explicit identifiers,
+// returning true if a rewrite has been performed
+bool AST_RewriteStarProjections(cypher_parse_result_t *result);
 
