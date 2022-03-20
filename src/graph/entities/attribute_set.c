@@ -53,7 +53,6 @@ static bool _AttributeSet_Remove
 		// update attribute count
 		_set->attr_count--;
 
-
 		// compute new set size
 		size_t n = ATTRIBUTESET_BYTE_SIZE(_set);
 		*set = rm_realloc(_set, n);
@@ -176,7 +175,7 @@ void AttributeSet_Set_Allow_Null
 	// value must be a valid property type
 	ASSERT(SI_TYPE(value) & (SI_VALID_PROPERTY_VALUE | T_NULL));
 
-	// make sure attribute isn't already in set
+	// update the attribute if it is already presented in the set
 	if(AttributeSet_Get(_set, attr_id) != ATTRIBUTE_NOTFOUND) {
 		AttributeSet_Update(&_set, attr_id, value);
 		// update pointer
@@ -236,7 +235,7 @@ AttributeSet AttributeSet_Clone
 	if(set == NULL) return NULL;
 
 	size_t n = ATTRIBUTESET_BYTE_SIZE(set);
-    AttributeSet clone  = rm_malloc(n);
+	AttributeSet clone  = rm_malloc(n);
 	clone->attr_count   = set->attr_count;
 	
 	for (uint i = 0; i < set->attr_count; i++) {
@@ -248,30 +247,6 @@ AttributeSet AttributeSet_Clone
 	}
 
     return clone;
-}
-
-// clears attribute set
-// returns number of attributes cleared
-void AttributeSet_Clear
-(
-	AttributeSet *set  // set to be cleared
-) {
-	ASSERT(set != NULL);
-
-	AttributeSet _set = *set;
-
-	// quick return if set is empty
-	if(ATTRIBUTESET_EMPTY(_set)) return;
-
-	// free all allocated properties
-	for(int i = 0; i < _set->attr_count; i++) {
-		SIValue_Free(_set->attributes[i].value);
-	}
-	_set->attr_count = 0;
-
-	// shrink attribute set
-	size_t n = ATTRIBUTESET_BYTE_SIZE(_set);
-	*set = rm_realloc(_set, n);
 }
 
 // free attribute set

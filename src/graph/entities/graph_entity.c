@@ -232,7 +232,7 @@ inline int GraphEntity_ClearAttributes
 
 	int count = ATTRIBUTE_SET_COUNT(*e->attributes);
 	
-	AttributeSet_Clear(e->attributes);
+	AttributeSet_Free(e->attributes);
 	
 	return count;
 }

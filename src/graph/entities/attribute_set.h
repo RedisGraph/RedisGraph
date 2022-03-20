@@ -52,7 +52,6 @@ SIValue AttributeSet_GetIdx
 );
 
 // adds an attribute to the set
-// returns true if attribute was added otherwise false
 void AttributeSet_Add
 (
 	AttributeSet *set,     // set to update
@@ -81,12 +80,6 @@ bool AttributeSet_Update
 AttributeSet AttributeSet_Clone
 (
 	const AttributeSet set  // set to clone
-);
-
-// clears attribute set
-void AttributeSet_Clear
-(
-	AttributeSet *set  // set to be cleared
 );
 
 // free attribute set

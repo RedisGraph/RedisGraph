@@ -250,7 +250,7 @@ void UndoLog_Rollback
 	if(count == 0) return;
 
 	// apply undo operations in reverse order for rollback correctness
-	// find sequences of operation of the same type and rollback them as a bulk
+	// find sequences of the same operation and rollback them as a bulk
 	int seq_end = count - 1;
 	while (seq_end >= 0) {
 		UndoOpType cur_type = log[seq_end].type;

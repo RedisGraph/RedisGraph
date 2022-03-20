@@ -172,11 +172,11 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 			ConvertPropertyMap(&converted_attr, r, map, true);
 		}
 
-		/* Update the hash code with this entity, an edge is represented by its
-		 * relation, properties and nodes.
-		 * Note that unbounded nodes were already presented to the hash.
-		 * Incase node has its internal entity set, this means the node has been retrieved from the graph
-		 * i.e. bounded node. */
+		// Update the hash code with this entity, an edge is represented by its
+		// relation, properties, source and destination nodes.
+		// note: unbounded nodes were already presented to the hash.
+		// incase node has its internal attribute-set, this means the node has been retrieved from the graph
+		// i.e. bounded node
 		_IncrementalHashEntity(op->hash_state, &e->relation, 1, &converted_attr);
 		if(src_node->attributes != NULL) {
 			EntityID id = ENTITY_GET_ID(src_node);

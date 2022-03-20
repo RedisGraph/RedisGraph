@@ -62,6 +62,7 @@ static void _InitializeUpdates(OpMerge *op, rax *updates, raxIterator *it) {
 
 }
 
+// free node and edge pending updates
 static inline void _free_pending_updates(OpMerge *op) {
 	if(op->node_pending_updates) {
 		uint pending_updates_count = array_len(op->node_pending_updates);
