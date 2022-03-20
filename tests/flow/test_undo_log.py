@@ -283,4 +283,3 @@ class testUndoLog():
         # node (n:N) should be removed, expecting an empty graph
         result = self.graph.query("MATCH (n:N) RETURN COUNT(n)")
         self.env.assertEquals(result.result_set[0][0], 0)
-

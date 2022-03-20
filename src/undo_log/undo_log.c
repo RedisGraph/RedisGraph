@@ -14,12 +14,11 @@
 static void _UndoLog_Rollback_Update_Entity
 (
 	QueryCtx *ctx,
-	size_t seq_start,
-	size_t seq_end
+	int seq_start,
+	int seq_end
 ) {
 	UndoOp *undo_list = ctx->undo_log;
-	size_t len = seq_start - seq_end + 1; 
-	for(int i = seq_start; i < len; --i) {
+	for(int i = seq_start; i > seq_end; --i) {
 		UndoOp *op = undo_list + i;
 		Graph_UpdateEntity(op->update_op.ge, op->update_op.attr_id,
 			op->update_op.orig_value, op->update_op.entity_type);
@@ -49,12 +48,11 @@ static void _UndoLog_Rollback_Update_Entity
 static void _UndoLog_Rollback_Create_Node
 (
 	QueryCtx *ctx,
-	size_t seq_start,
-	size_t seq_end
+	int seq_start,
+	int seq_end
 ) {
 	UndoOp *undo_list = ctx->undo_log;
-	size_t len = seq_start - seq_end + 1; 
-	for(int i = seq_start; i < len; --i) {
+	for(int i = seq_start; i > seq_end; --i) {
 		Graph_DeleteNode(ctx->gc->g, &undo_list[i].create_op.n);
 	}
 }
@@ -63,12 +61,11 @@ static void _UndoLog_Rollback_Create_Node
 static void _UndoLog_Rollback_Create_Edge
 (
 	QueryCtx *ctx,
-	size_t seq_start,
-	size_t seq_end
+	int seq_start,
+	int seq_end
 ) {
 	UndoOp *undo_list = ctx->undo_log;
-	size_t len = seq_start - seq_end + 1; 
-	for(int i = seq_start; i < len; --i) {
+	for(int i = seq_start; i > seq_end; --i) {
 		Graph_DeleteEdge(ctx->gc->g, &undo_list[i].create_op.e);
 	}
 }
@@ -77,12 +74,11 @@ static void _UndoLog_Rollback_Create_Edge
 static void _UndoLog_Rollback_Delete_Node
 (
 	QueryCtx *ctx,
-	size_t seq_start,
-	size_t seq_end
+	int seq_start,
+	int seq_end
 ) {
 	UndoOp *undo_list = ctx->undo_log;
-	size_t len = seq_start - seq_end + 1; 
-	for(int i = seq_start; i < len; --i) {
+	for(int i = seq_start; i > seq_end; --i) {
 		UndoOp *op = undo_list + i;
 		Node n;
 		Graph_CreateNode(ctx->gc->g, &n, op->delete_node_op.labels,
@@ -104,12 +100,11 @@ static void _UndoLog_Rollback_Delete_Node
 static void _UndoLog_Rollback_Delete_Edge
 (
 	QueryCtx *ctx,
-	size_t seq_start,
-	size_t seq_end
+	int seq_start,
+	int seq_end
 ) {
 	UndoOp *undo_list = ctx->undo_log;
-	size_t len = seq_start - seq_end + 1; 
-	for(int i = seq_start; i < len; --i) {
+	for(int i = seq_start; i > seq_end; --i) {
 		UndoOp *op = undo_list + i;
 		Edge e;
 		Graph_CreateEdge(ctx->gc->g, op->delete_edge_op.srcNodeID,
@@ -250,8 +245,8 @@ void UndoLog_Rollback
 
 	// apply undo operations in reverse order for rollback correctness
 	// find sequences of operation of the same type and rollback them as a bulk
-	uint seq_end = count - 1;
-	while (seq_end > 0) {
+	int seq_end = count - 1;
+	while (seq_end >= 0) {
 		UndoOpType cur_type = log[seq_end].type;
 		int seq_start = seq_end;
 		seq_end--;
