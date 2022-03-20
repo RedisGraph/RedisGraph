@@ -593,7 +593,7 @@ class testQueryValidationFlow(FlowTestsBase):
             except redis.exceptions.ResponseError as e:
                 self.env.assertContains("query with more than one statement is not supported", str(e))
 
-    def test40_parser_errors_in_star_projections(self):
+    def test40_compile_time_errors_in_star_projections(self):
         # validate that parser errors are handled correctly
         # in queries containing star projections
         try:
@@ -605,6 +605,29 @@ class testQueryValidationFlow(FlowTestsBase):
 
         try:
             query = """MATCH (a)-[r:]->(b) WITH b RETURN *"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError:
+            pass
+
+        # check that AST validation errors are handled correctly
+        # in queries containing star projections
+        try:
+            query = """WITH 1 RETURN *"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError:
+            pass
+
+        try:
+            query = """RETURN *"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError:
+            pass
+
+        try:
+            query = """CREATE () RETURN DISTINCT *"""
             redis_graph.query(query)
             self.env.assertTrue(False)
         except redis.exceptions.ResponseError:

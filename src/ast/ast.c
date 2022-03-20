@@ -587,10 +587,10 @@ cypher_parse_result_t *parse_query(const char *query) {
 	// e.g. MATCH (a), (b) RETURN *
 	// will be rewritten as:
 	//  MATCH (a), (b) RETURN a, b
-	AST_RewriteStarProjections(result);
+	bool rerun_validation = AST_RewriteStarProjections(result);
 
-	// TODO: only perform additional validations if there's been a rewrite!
-	if(AST_Validate_Query(result) != AST_VALID) {
+	// only perform validations again if there's been a rewrite
+	if(rerun_validation && AST_Validate_Query(result) != AST_VALID) {
 		parse_result_free(result);
 		return NULL;
 	}
