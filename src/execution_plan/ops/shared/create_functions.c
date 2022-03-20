@@ -238,6 +238,7 @@ void ConvertPropertyMap
 			// this value is of an invalid type
 			if(!SIValue_IsNull(val)) {
 				// if the value was a complex type, emit an exception
+				SIValue_Free(val);
 				AttributeSet_Free(attributes);
 				Error_InvalidPropertyValue();
 				ErrorCtx_RaiseRuntimeException(NULL);
