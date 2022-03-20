@@ -283,3 +283,24 @@ class testUndoLog():
         # node (n:N) should be removed, expecting an empty graph
         result = self.graph.query("MATCH (n:N) RETURN COUNT(n)")
         self.env.assertEquals(result.result_set[0][0], 0)
+
+        # Restore timeout value to default
+        response = self.redis_con.execute_command("GRAPH.CONFIG SET TIMEOUT 0")
+        self.env.assertEqual(response, "OK")
+
+    def test12_complex_undo(self):
+        # create a graph
+        self.graph.query("UNWIND range(1, 3) AS x CREATE (:N {v:x})-[:R{v:x}]->(:N {v:x})")
+
+        try:
+            self.graph.query("MATCH (n:N)-[r:R]->(m:N) SET n.v = n.v + 1, r.v = r.v + 1, m.v = m.v + 1 CREATE (:N{v:n.v}) DELETE r RETURN CASE n.v WHEN 3 THEN n.v * 'a' ELSE n.v END")
+            # we're not supposed to be here, expecting query to fail
+            self.env.assertTrue(False) 
+        except Exception as e:
+            self.env.assertEquals(str(e), "Type mismatch: expected Integer but was String") 
+
+        # validate no changed is the created graph
+        expected_result = [[1, 1, 1], [2, 2, 2], [3, 3, 3]]
+        result = self.graph.query("MATCH (n:N)-[r:R]->(m:N) RETURN n.v, r.v, m.v")
+        self.env.assertEquals(result.result_set, expected_result)
+
