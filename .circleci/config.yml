@@ -83,6 +83,18 @@ commands:
       module_path:
         type: string
         default: /workspace/$MODULE_ARTIFACT
+      profile_env:
+        type: string
+        default: "0"
+      benchmark_glob:
+        type: string
+        default: "*.yml"
+      triggering_env:
+        type: string
+        default: "circleci"
+      allowed_envs:
+        type: string
+        default: "oss-standalone"
     steps:
       - run:
           name: Install remote benchmark tool dependencies
@@ -100,7 +112,9 @@ commands:
             export AWS_SECRET_ACCESS_KEY=$PERFORMANCE_EC2_SECRET_KEY
             export AWS_DEFAULT_REGION=$PERFORMANCE_EC2_REGION
             export EC2_PRIVATE_PEM=$PERFORMANCE_EC2_PRIVATE_PEM
-
+            export PROFILE=<< parameters.profile_env >>
+            export BENCHMARK_GLOB=<< parameters.benchmark_glob >>
+            export PERF_CALLGRAPH_MODE="dwarf"
             redisbench-admin run-remote \
               --module_path << parameters.module_path >> \
               --github_actor << parameters.github_actor >> \
@@ -111,7 +125,11 @@ commands:
               --upload_results_s3 \
               --triggering_env circleci \
               --required-module graph \
-              --push_results_redistimeseries
+              --upload_results_s3 \
+              --triggering_env << parameters.triggering_env >> \
+              --fail_fast \
+              --push_results_redistimeseries \
+              --allowed-envs << parameters.allowed_envs >>
 
   platform-build-steps:
     parameters:
@@ -384,17 +402,6 @@ jobs:
           shell: /bin/bash -l -eo pipefail
           command: FUZZ_TIMEOUT=600 make fuzz
 
-  performance_ci_automation_not_integ:
-    docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
-    steps:
-      - early-returns
-      - checkout
-      - setup-prerequisits
-      - attach_workspace:
-          at: /workspace
-      - benchmark-automation
-
   performance_ci_automation:
     docker:
       - image: redisfab/rmbuilder:6.2.5-x64-bionic
@@ -409,6 +416,24 @@ jobs:
           command: |
             unzip `ls /workspace/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip |grep -v rce` -d /workspace/
       - benchmark-automation
+
+  performance_ci_automation_profiler:
+    docker:
+      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+    steps:
+      - early-returns
+      - checkout
+      - setup-prerequisits
+      - attach_workspace:
+          at: /workspace
+      - run:
+          name: Unzip module artifact
+          command: |
+            unzip `ls /workspace/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip |grep -v rce` -d /workspace/
+      - benchmark-automation:
+          profile_env: "1"
+          triggering_env: "circleci.profilers" # results generated with profilers attached are not mixed with the ones without it
+
 
   nightly_performance_automation:
     docker:
@@ -426,6 +451,25 @@ jobs:
       - benchmark-automation:
           github_actor: "ci.nightly"
           module_path: "/root/project/src/$PACKAGE_NAME.so"
+
+  nightly_performance_automation_profiler:
+    docker:
+      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+    steps:
+      - early-returns
+      - checkout-all
+      - install-prerequisites
+      - attach_workspace:
+          at: /workspace
+      - run:
+          name: Build artifact
+          shell: /bin/bash -l -eo pipefail
+          command: make
+      - benchmark-automation:
+          github_actor: "ci.nightly"
+          module_path: "/root/project/src/$PACKAGE_NAME.so"
+          profile_env: "1"
+          triggering_env: "circleci.profilers" # results generated with profilers attached are not mixed with the ones without it
 
 #----------------------------------------------------------------------------------------------------------------------------------
 
@@ -484,6 +528,15 @@ on-integ-and-version-tags: &on-integ-and-version-tags
         - master
         - /^\d+\.\d+.*$/
         - /^feature-.*$/
+    tags:
+      only: /^v[0-9].*/
+
+on-perf-tags: &on-perf-tags
+  filters:
+    branches:
+      only:
+        - master
+        - /^\d+\.\d+.*$/
         - /^perf-.*$/
     tags:
       only: /^v[0-9].*/
@@ -542,7 +595,12 @@ workflows:
             - build_macos
       - performance_ci_automation:
           <<: *context
-          <<: *on-integ-and-version-tags
+          <<: *on-perf-tags
+          requires:
+            - platform_build
+      - performance_ci_automation_profiler:
+          <<: *context
+          <<: *on-perf-tags
           requires:
             - platform_build
 
@@ -555,4 +613,6 @@ workflows:
               only: master
     jobs:
       - nightly_performance_automation:
+          <<: *context
+      - nightly_performance_automation_profiler:
           <<: *context
