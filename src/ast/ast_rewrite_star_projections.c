@@ -80,6 +80,10 @@ static void _collect_with_projections
 			// so the projection itself must be an identifier
 			identifier_node = cypher_ast_projection_get_expression(projection);
 			ASSERT(cypher_astnode_type(identifier_node) == CYPHER_AST_IDENTIFIER);
+		} else {
+			// do not include empty projections, which may have been made to
+			// handle the MATCH () WITH * case
+			if(!strcmp(cypher_ast_identifier_get_name(identifier_node), "")) continue;
 		}
 		const char *identifier = cypher_ast_identifier_get_name(identifier_node);
 		raxTryInsert(identifiers, (unsigned char *)identifier,
@@ -363,17 +367,18 @@ static void replace_clause
 	cypher_ast_query_set_clause(root, new_clause, scope_end);
 }
 
-void AST_RewriteStarProjections
+bool AST_RewriteStarProjections
 (
 	cypher_parse_result_t *result
 ) {
+	bool rewritten = false;
 	// retrieve the statement node
 	const cypher_astnode_t *statement = cypher_parse_result_get_root(result, 0);
-	if(cypher_astnode_type(statement) != CYPHER_AST_STATEMENT) return;
+	if(cypher_astnode_type(statement) != CYPHER_AST_STATEMENT) return rewritten;
 
 	// retrieve the root query node from the statement
 	const cypher_astnode_t *root = cypher_ast_statement_get_body(statement);
-	if(cypher_astnode_type(root) != CYPHER_AST_QUERY) return;
+	if(cypher_astnode_type(root) != CYPHER_AST_QUERY) return rewritten;
 
 	// rewrite all WITH * / RETURN * clauses to include all aliases
 	uint  scope_start   =  0;
@@ -392,10 +397,13 @@ void AST_RewriteStarProjections
 			// clause contains a star projection, replace it
 			replace_clause((cypher_astnode_t *)root, (cypher_astnode_t *)clause,
 						   scope_start, i);
+			rewritten = true;
 		}
 
 		// update scope start
 		scope_start = i;
 	}
+
+	return rewritten;
 }
 

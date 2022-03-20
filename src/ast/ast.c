@@ -7,7 +7,7 @@
 #include "ast.h"
 #include <pthread.h>
 
-#include "../RG.h"
+#include "RG.h"
 #include "../errors.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
@@ -571,9 +571,26 @@ cypher_parse_result_t *parse_query(const char *query) {
 		return NULL;
 	}
 
-	AST_RewriteStarProjections(result);
+	// in case ast contains any errors, report them and return
+	if(AST_ContainsErrors(result)) {
+		AST_ReportErrors(result);
+		parse_result_free(result);
+		return NULL;
+	}
 
 	if(AST_Validate_Query(result) != AST_VALID) {
+		parse_result_free(result);
+		return NULL;
+	}
+
+	// rewrite '*' projections
+	// e.g. MATCH (a), (b) RETURN *
+	// will be rewritten as:
+	//  MATCH (a), (b) RETURN a, b
+	bool rerun_validation = AST_RewriteStarProjections(result);
+
+	// only perform validations again if there's been a rewrite
+	if(rerun_validation && AST_Validate_Query(result) != AST_VALID) {
 		parse_result_free(result);
 		return NULL;
 	}
