@@ -272,6 +272,7 @@ void ConvertPropertyMap
 
 		// set the converted attribute
 		AttributeSet_Add(attributes, map->keys[i], val);
+		SIValue_Free(val);
 	}
 }
 
