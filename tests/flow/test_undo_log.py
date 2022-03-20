@@ -21,8 +21,8 @@ class testUndoLog():
             pass
 
         # node (n:N) should be removed, expecting an empty graph
-        result = self.graph.query("MATCH (n:N) RETURN COUNT(n)")
-        self.env.assertEquals(result.result_set[0][0], 0)
+        result = self.graph.query("MATCH (n:N) RETURN n")
+        self.env.assertEquals(len(result.result_set), 0)
 
     def test02_undo_create_edge(self):
         self.graph.query("CREATE (:N {v: 1}), (:N {v: 2})")
@@ -37,8 +37,8 @@ class testUndoLog():
             pass
 
         # edge [r:R] should have been removed
-        result = self.graph.query("MATCH ()-[r:R]->() RETURN COUNT(r)")
-        self.env.assertEquals(result.result_set[0][0], 0)
+        result = self.graph.query("MATCH ()-[r:R]->() RETURN r")
+        self.env.assertEquals(len(result.result_set), 0)
 
     def test03_undo_delete_node(self):
         self.graph.query("CREATE (:N)")
@@ -53,8 +53,8 @@ class testUndoLog():
             pass
 
         # deleted node should be revived, expecting a single node
-        result = self.graph.query("MATCH (n:N) RETURN COUNT(n)")
-        self.env.assertEquals(result.result_set[0][0], 1)
+        result = self.graph.query("MATCH (n:N) RETURN n")
+        self.env.assertEquals(len(result.result_set), 1)
 
     def test04_undo_delete_edge(self):
         self.graph.query("CREATE (:N)-[:R]->(:N)")
@@ -69,8 +69,8 @@ class testUndoLog():
             pass
 
         # deleted edge should be revived, expecting a single edge
-        result = self.graph.query("MATCH ()-[r:R]->() RETURN COUNT(r)")
-        self.env.assertEquals(result.result_set[0][0], 1)
+        result = self.graph.query("MATCH ()-[r:R]->() RETURN r")
+        self.env.assertEquals(len(result.result_set), 1)
 
     def test05_undo_update_node(self):
         self.graph.query("CREATE (:N {a: 1, b:'str', c:[1, 'str', point({latitude:1, longitude:2})], d:point({latitude:1, longitude:2})})")
@@ -91,6 +91,7 @@ class testUndoLog():
         self.env.assertEquals(result.result_set[0][2], [1, 'str', {'latitude':1, 'longitude':2}])
         self.env.assertEquals(result.result_set[0][3], {'latitude':1, 'longitude':2})
 
+        # introduce a new attribute `n.e`
         try:
             self.graph.query("""MATCH (n:N {a: 1})
                                 SET n.e = 1
@@ -105,6 +106,7 @@ class testUndoLog():
         result = self.graph.query("MATCH (n:N) RETURN n.e")
         self.env.assertEquals(result.result_set[0][0], None)
 
+        # introduce a new Label `n:M`
         try:
             self.graph.query("""MATCH (n:N {a: 1})
                                 SET n:M
@@ -119,6 +121,7 @@ class testUndoLog():
         result = self.graph.query("MATCH (n:M) RETURN COUNT(n)")
         self.env.assertEquals(result.result_set[0][0], 0)
 
+        # clear all attributes of `n`
         try:
             self.graph.query("""MATCH (n:N {a: 1})
                                 SET n = {}
@@ -180,8 +183,8 @@ class testUndoLog():
             pass
 
         # node (n:N) should be removed, expecting an empty graph
-        result = self.graph.query("MATCH (n:N {v:1}) RETURN COUNT(n)")
-        self.env.assertEquals(result.result_set[0][0], 0)
+        result = self.graph.query("MATCH (n:N {v:1}) RETURN n")
+        self.env.assertEquals(len(result.result_set), 0)
 
     def test08_undo_create_indexed_edge(self):
         self.graph.query("CREATE INDEX FOR ()-[r:R]->() ON (r.v)")
@@ -197,8 +200,8 @@ class testUndoLog():
             pass
 
         # edge [r:R] should have been removed
-        result = self.graph.query("MATCH ()-[r:R {v:1}]->() RETURN COUNT(r)")
-        self.env.assertEquals(result.result_set[0][0], 0)
+        result = self.graph.query("MATCH ()-[r:R {v:1}]->() RETURN r")
+        self.env.assertEquals(len(result.result_set), 0)
 
     def test09_undo_delete_indexed_node(self):
         self.graph.query("CREATE INDEX FOR (n:N) ON (n.v)")
@@ -214,11 +217,11 @@ class testUndoLog():
             pass
 
         # deleted node should be revived, expecting a single node
-        query = "MATCH (n:N {v: 0}) RETURN COUNT(n)"
+        query = "MATCH (n:N {v: 0}) RETURN n"
         plan = self.graph.execution_plan(query)
         self.env.assertContains("Node By Index Scan", plan)
         result = self.graph.query(query)
-        self.env.assertEquals(result.result_set[0][0], 1)
+        self.env.assertEquals(len(result.result_set), 1)
 
     def test10_undo_delete_indexed_edge(self):
         self.graph.query("CREATE INDEX FOR ()-[r:R]->() ON (r.v)")
@@ -234,11 +237,11 @@ class testUndoLog():
             pass
 
         # deleted edge should be revived, expecting a single edge
-        query = "MATCH ()-[r:R {v: 0}]->() RETURN COUNT(r)"
+        query = "MATCH ()-[r:R {v: 0}]->() RETURN r"
         plan = self.graph.execution_plan(query)
         self.env.assertContains("Edge By Index Scan", plan)
         result = self.graph.query(query)
-        self.env.assertEquals(result.result_set[0][0], 1)
+        self.env.assertEquals(len(result.result_set), 1)
 
     def test11_undo_update_indexed_node(self):
         self.graph.query("CREATE INDEX FOR (n:N) ON (n.v)")
@@ -293,10 +296,10 @@ class testUndoLog():
             pass
 
         # deleted node should be revived, expecting a single node
-        result = self.graph.query("MATCH (n:N) RETURN COUNT(n)")
-        self.env.assertEquals(result.result_set[0][0], 2)
-        result = self.graph.query("MATCH ()-[r:R]->() RETURN COUNT(r)")
-        self.env.assertEquals(result.result_set[0][0], 2)
+        result = self.graph.query("MATCH (n:N) RETURN n")
+        self.env.assertEquals(len(result.result_set), 2)
+        result = self.graph.query("MATCH ()-[r:R]->() RETURN r")
+        self.env.assertEquals(len(result.result_set), 2)
 
     def test14_undo_timeout(self):
         # Change timeout value from default
@@ -311,8 +314,8 @@ class testUndoLog():
             pass
 
         # node (n:N) should be removed, expecting an empty graph
-        result = self.graph.query("MATCH (n:N) RETURN COUNT(n)")
-        self.env.assertEquals(result.result_set[0][0], 0)
+        result = self.graph.query("MATCH (n:N) RETURN n")
+        self.env.assertEquals(len(result.result_set), 0)
 
         # Restore timeout value to default
         response = self.redis_con.execute_command("GRAPH.CONFIG SET TIMEOUT 0")
@@ -333,3 +336,4 @@ class testUndoLog():
         expected_result = [[1, 1, 1], [2, 2, 2], [3, 3, 3]]
         result = self.graph.query("MATCH (n:N)-[r:R]->(m:N) RETURN n.v, r.v, m.v")
         self.env.assertEquals(result.result_set, expected_result)
+
