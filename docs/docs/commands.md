@@ -3,7 +3,7 @@
 
 ### RedisGraph Features
 
-RedisGraph exposes graph database functionality within Redis using the [openCypher](https://opencypher.org/) query language. Its basic commands accept openCypher queries and return data, while additional commands are exposed for configuration or metadata retrieval.
+RedisGraph exposes graph database functionality within Redis using the [openCypher](https://opencypher.org/) query language. Its basic commands accept openCypher queries, while additional commands are exposed for configuration or metadata retrieval.
 
 ### RedisGraph API
 
@@ -15,5 +15,3 @@ The details include the syntax for the commands, where:
 *   Additional optional arguments are indicated by an ellipsis: `...`
 
 Most commands require a graph key's name as their first argument.
-
-The time complexity of each command is dependent on the operations performed by that command.
