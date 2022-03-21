@@ -128,8 +128,6 @@ void RdbLoadNodes_v11
 			if(s->fulltextIdx) Index_IndexNode(s->fulltextIdx, &n);
 		}
 	}
-
-	Serializer_Graph_SetNodeLabels(gc->g);
 }
 
 void RdbLoadDeletedNodes_v11
