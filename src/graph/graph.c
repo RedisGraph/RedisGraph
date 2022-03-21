@@ -926,12 +926,14 @@ static void _BulkDeleteNodes
 	Edge *edges = array_new(Edge, 1);
 
 	// removing duplicates
-#define is_edge_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
-	QSORT(Node, nodes, node_count, is_edge_lt);
+#define is_id_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
+	QSORT(Node, nodes, node_count, is_id_lt);
 
 	for(uint i = 0; i < node_count; i++) {
 		while(i < node_count - 1 && ENTITY_GET_ID(nodes + i) == ENTITY_GET_ID(nodes + i + 1)) i++;
 
+		// skip nodes that have already been deleted
+		if(!DataBlock_GetItem(g->nodes, ENTITY_GET_ID(nodes + i))) continue;
 		array_append(distinct_nodes, *(nodes + i));
 	}
 
@@ -964,7 +966,7 @@ static void _BulkDeleteNodes
 	int edge_count = array_len(edges);
 
 	// removing duplicates
-	QSORT(Edge, edges, edge_count, is_edge_lt);
+	QSORT(Edge, edges, edge_count, is_id_lt);
 
 	for(int i = 0; i < edge_count; i++) {
 		// As long as current is the same as follows.
@@ -1098,15 +1100,17 @@ void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges, uint 
 		}
 
 		// removing duplicates
-#define is_edge_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
-		QSORT(Edge, edges, edge_count, is_edge_lt);
+#define is_id_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
+		QSORT(Edge, edges, edge_count, is_id_lt);
 
 		size_t uniqueIdx = 0;
 		for(int i = 0; i < edge_count; i++) {
 			// As long as current is the same as follows.
 			while(i < edge_count - 1 && ENTITY_GET_ID(edges + i) == ENTITY_GET_ID(edges + i + 1)) i++;
 
-			if(uniqueIdx < i) edges[uniqueIdx] = edges[i];
+			// skip edges that have already been deleted
+			if(!DataBlock_GetItem(g->edges, ENTITY_GET_ID(edges + i))) continue;
+			edges[uniqueIdx] = edges[i];
 			uniqueIdx++;
 		}
 
