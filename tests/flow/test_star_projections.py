@@ -109,6 +109,12 @@ class testStarProjections():
         actual_result = redis_graph.query(query)
         self.env.assertEqual(actual_result.result_set, expected)
 
+        # test an explicit variable in the RETURN clause
+        # after a sequence of WITH * projections
+        query = """UNWIND range(1, 2) AS x UNWIND range(3, 4) AS y WITH * WITH * WITH * RETURN x, y"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEqual(actual_result.result_set, expected)
+
         query = """UNWIND range(1, 2) AS x UNWIND range(3, 4) AS y WITH * SKIP 1 LIMIT 2 RETURN *"""
         actual_result = redis_graph.query(query)
         expected = [[1, 4],
@@ -126,6 +132,19 @@ class testStarProjections():
         query = """UNWIND range(1, 2) AS x WITH * WHERE false RETURN *"""
         actual_result = redis_graph.query(query)
         expected = []
+        self.env.assertEqual(actual_result.result_set, expected)
+
+        # test a WITH * projection that also introduces a new variable
+        query = """UNWIND range(1, 2) AS x WITH *, 3 AS y RETURN *"""
+        actual_result = redis_graph.query(query)
+        expected = [[1, 3],
+                    [2, 3]]
+        self.env.assertEqual(actual_result.result_set, expected)
+
+        # test a WITH * projection that also introduces a new variable
+        # and is explicitly returned
+        query = """UNWIND range(1, 2) AS x WITH *, 3 AS y RETURN x, y"""
+        actual_result = redis_graph.query(query)
         self.env.assertEqual(actual_result.result_set, expected)
 
     # verify that duplicate aliases only result in a single column
