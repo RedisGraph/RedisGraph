@@ -1369,9 +1369,13 @@ static AST_Validation _Validate_Aliases_Defined(const AST *ast) {
 		res = _Validate_Aliases_DefinedInClause(clause, defined_aliases);
 		if(res != AST_VALID) break;
 		if(cypher_astnode_type(clause) == CYPHER_AST_WITH) {
-			// Each WITH clause marks the beginning of a new scope for defined aliases.
-			raxFree(defined_aliases);
-			defined_aliases = raxNew();
+			// each WITH clause marks the beginning of a new scope for defined aliases
+			// if the WITH clause contains a star projection, all variables from
+			// the previous scope are carried over
+			if(!cypher_ast_with_has_include_existing(clause)) {
+				raxFree(defined_aliases);
+				defined_aliases = raxNew();
+			}
 			_AST_GetDefinedIdentifiers(clause, defined_aliases);
 		}
 	}
