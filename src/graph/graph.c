@@ -1106,7 +1106,7 @@ void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges, uint 
 
 			// skip edges that have already been deleted
 			if(!DataBlock_GetItem(g->edges, ENTITY_GET_ID(edges + i))) continue;
-			if(uniqueIdx < i) edges[uniqueIdx] = edges[i];
+			edges[uniqueIdx] = edges[i];
 			uniqueIdx++;
 		}
 
