@@ -375,7 +375,7 @@ Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan) {
 	return r;
 }
 
-void ExecutionPlan_ReturnRecord(ExecutionPlan *plan, Record r) {
+void ExecutionPlan_ReturnRecord(const ExecutionPlan *plan, Record r) {
 	ASSERT(plan && r);
 	ObjectPool_DeleteItem(plan->record_pool, r);
 }
