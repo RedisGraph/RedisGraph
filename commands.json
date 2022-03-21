@@ -13,8 +13,7 @@
 			}
 		],
 		"since": "1.0.0",
-		"group": "module",
-		"module": "graph"
+		"group": "graph"
 	},
 	"GRAPH.RO_QUERY": {
 		"summary": "Executes a given read only query against a specified graph",
@@ -30,8 +29,7 @@
 			}
 		],
 		"since": "2.2.8",
-		"group": "module",
-		"module": "graph"
+		"group": "graph"
 	},
 	"GRAPH.DELETE": {
 		"summary": "Completely removes the graph and all of its entities",
@@ -42,8 +40,7 @@
 			}
 		],
 		"since": "1.0.0",
-		"group": "module",
-		"module": "graph"
+		"group": "graph"
 	},
 	"GRAPH.EXPLAIN": {
 		"summary": "Returns a query execution plan without running the query",
@@ -59,8 +56,7 @@
 			}
 		],
 		"since": "2.0.0",
-		"group": "module",
-		"module": "graph"
+		"group": "graph"
 	},
 	"GRAPH.PROFILE": {
 		"summary": "Executes a query and returns an execution plan augmented with metrics for each operation's execution",
@@ -76,8 +72,7 @@
 			}
 		],
 		"since": "2.0.0",
-		"group": "module",
-		"module": "graph"
+		"group": "graph"
 	},
 	"GRAPH.SLOWLOG": {
 		"summary": "Returns a list containing up to 10 of the slowest queries issued against the given graph",
@@ -88,8 +83,7 @@
 			}
 		],
 		"since": "2.0.12",
-		"group": "module",
-		"module": "graph"
+		"group": "graph"
 	},
 	"GRAPH.CONFIG GET": {
 		"summary": "Retrieves a RedisGraph configuration",
@@ -100,8 +94,7 @@
 			}
 		],
 		"since": "2.2.11",
-		"group": "module",
-		"module": "graph"
+		"group": "graph"
 	},
 	"GRAPH.CONFIG SET": {
 		"summary": "Updates a RedisGraph configuration",
@@ -116,13 +109,11 @@
 			}
 		],
 		"since": "2.2.11",
-		"group": "module",
-		"module": "graph"
+		"group": "graph"
 	},
 	"GRAPH.LIST": {
 		"summary": "Lists all graph keys in the keyspace",
 		"since": "2.4.3",
-		"group": "module",
-		"module": "graph"
+		"group": "graph"
 	}
 }
