@@ -160,6 +160,11 @@ static inline void _buildUpdateOp(GraphContext *gc, ExecutionPlan *plan,
 }
 
 static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *clause) {
+	if(plan->root == NULL) {
+		// delete must operate on child data, prepare an error if there
+		// is no child op
+		ErrorCtx_SetError("Delete was constructed without a child operation");
+	}
 	AR_ExpNode **exps = AST_PrepareDeleteOp(clause);
 	OpBase *op = NewDeleteOp(plan, exps);
 	ExecutionPlan_UpdateRoot(plan, op);
