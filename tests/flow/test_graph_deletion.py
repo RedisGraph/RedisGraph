@@ -1,6 +1,7 @@
 import os
 import sys
 from RLTest import Env
+from redis import ResponseError
 from redisgraph import Graph, Node, Edge
 
 from base import FlowTestsBase
@@ -311,3 +312,79 @@ class testGraphDeletionFlow(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected_result = []
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test16_repeated_entity_deletion(self):
+        self.env.flush()
+        redis_con = self.env.getConnection()
+        redis_graph = Graph("repeated_edge_deletion", redis_con)
+
+        # create 2 nodes cyclically connected by 2 edges
+        actual_result = redis_graph.query("CREATE (x1:A)-[r:R]->(n2:B)-[t:T]->(x1)")
+        self.env.assertEquals(actual_result.nodes_created, 2)
+        self.env.assertEquals(actual_result.relationships_created, 2)
+
+        # attempt to repeatedly delete edges
+        query = """MATCH ()-[r]-() delete r delete r, r delete r, r"""
+        actual_result = redis_graph.query(query)
+        # 2 edges should be reported as deleted
+        self.env.assertEquals(actual_result.relationships_deleted, 2)
+
+        # attempt to repeatedly delete nodes
+        query = """MATCH (n) delete n delete n, n delete n, n"""
+        actual_result = redis_graph.query(query)
+        # 2 nodes should be reported as deleted
+        self.env.assertEquals(actual_result.nodes_deleted, 2)
+
+    def test17_invalid_deletions(self):
+        self.env.flush()
+        redis_con = self.env.getConnection()
+        redis_graph = Graph("delete_test", redis_con)
+
+        n = Node()
+        redis_graph.add_node(n)
+        redis_graph.flush()
+
+        # try to delete a value that's not a graph entity
+        try:
+            query = """DELETE 1"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("DELETE can only be called on nodes and relationships", str(e))
+
+        # try to delete the output of a nonexistent function call
+        try:
+            query = """DELETE x()"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Unknown function 'x'", str(e))
+
+        # try to delete with no child op
+        try:
+            query = """DELETE rand()"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Delete was constructed without a child operation", str(e))
+
+        # try to delete a function return that's not a graph entity
+        try:
+            query = """MATCH (a) DELETE rand()"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Delete type mismatch", str(e))
+
+        # try deleting all scalar types at runtime
+        queries = ["WITH 1 AS n DELETE n",
+                   "WITH 'str' AS n DELETE n",
+                   "WITH true AS n DELETE n",
+                   "WITH [] AS n DELETE n",
+                   "WITH {} AS n DELETE n"]
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                self.env.assertTrue(False)
+            except ResponseError as e:
+                self.env.assertContains("Delete type mismatch", str(e))
