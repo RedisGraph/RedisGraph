@@ -155,13 +155,13 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 		accum_node = cypher_ast_reduce_get_accumulator(node);
 		variable = cypher_ast_identifier_get_name(accum_node);
 		raxRemove(identifiers, (unsigned char *)variable, strlen(variable),
-				NULL);
+				  NULL);
 
 		// `n` in the above example
 		identifier_node = cypher_ast_reduce_get_identifier(node);
 		variable = cypher_ast_identifier_get_name(identifier_node);
 		raxRemove(identifiers, (unsigned char *)variable, strlen(variable),
-				NULL);
+				  NULL);
 	}
 }
 
@@ -544,7 +544,7 @@ static AST_Validation _ValidatePattern
 
 	for(uint i = 0; i < path_count; i ++) {
 		res = _ValidatePath(cypher_ast_pattern_get_path(pattern, i),
-				projections, edge_aliases);
+							projections, edge_aliases);
 		if(res != AST_VALID) break;
 	}
 
@@ -739,7 +739,7 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast) {
 		const cypher_astnode_t *match_clause = match_clauses[i];
 		// Validate the pattern described by the MATCH clause
 		res = _ValidatePattern(projections,
-				cypher_ast_match_get_pattern(match_clause), edge_aliases);
+							   cypher_ast_match_get_pattern(match_clause), edge_aliases);
 		if(res == AST_INVALID) goto cleanup;
 
 		// Validate that inlined filters do not use parameters
@@ -974,11 +974,37 @@ cleanup:
 }
 
 static AST_Validation _Validate_DELETE_Clauses(const AST *ast) {
-	const cypher_astnode_t *delete_clause = AST_GetClause(ast,
-														  CYPHER_AST_DELETE, NULL);
-	if(!delete_clause) return AST_VALID;
-	// TODO: Validated that the deleted entities are indeed matched or projected.
-	return AST_VALID;
+	const cypher_astnode_t **delete_clauses = AST_GetClauses(ast, CYPHER_AST_DELETE);
+	AST_Validation res = AST_VALID;
+	uint clause_count = array_len(delete_clauses);
+	for(uint i = 0; i < clause_count; i++) {
+		const cypher_astnode_t *clause = delete_clauses[i];
+		uint expression_count = cypher_ast_delete_nexpressions(clause);
+		for(uint j = 0; j < expression_count; j++) {
+			const cypher_astnode_t *exp = cypher_ast_delete_get_expression(clause, j);
+			cypher_astnode_type_t type = cypher_astnode_type(exp);
+			// expecting an identifier or a function call
+			// identifiers and calls that don't resolve to a node or edge
+			// will raise an error at run-time
+			if(type != CYPHER_AST_IDENTIFIER &&
+			   type != CYPHER_AST_APPLY_OPERATOR &&
+			   type != CYPHER_AST_APPLY_ALL_OPERATOR &&
+			   type != CYPHER_AST_SUBSCRIPT_OPERATOR) {
+				ErrorCtx_SetError("DELETE can only be called on nodes and relationships");
+				res = AST_INVALID;
+				goto cleanup;
+			}
+		}
+
+		// validate any func
+		bool include_aggregates = false;
+		res = _ValidateFunctionCalls(clause, include_aggregates);
+		if(res == AST_INVALID) goto cleanup;
+	}
+
+cleanup:
+	array_free(delete_clauses);
+	return res;
 }
 
 static AST_Validation _Validate_RETURN_Clause(const AST *ast) {
@@ -1354,33 +1380,32 @@ static AST_Validation _Validate_Aliases_Defined(const AST *ast) {
 }
 
 // Report encountered errors by libcypher-parser.
-static void _AST_ReportErrors(const cypher_parse_result_t *result) {
-	uint nerrors = cypher_parse_result_nerrors(result);
-	// We are currently only reporting the first error to simplify the response.
-	if(nerrors > 1) nerrors = 1;
-	for(uint i = 0; i < nerrors; i++) {
-		const cypher_parse_error_t *error = cypher_parse_result_get_error(result, i);
+void AST_ReportErrors(const cypher_parse_result_t *result) {
+	ASSERT(cypher_parse_result_nerrors(result) > 0);
 
-		// Get the position of an error.
-		struct cypher_input_position errPos = cypher_parse_error_position(error);
+	// report first encountered error
+	const cypher_parse_error_t *error =
+		cypher_parse_result_get_error(result, 0);
 
-		// Get the error message of an error.
-		const char *errMsg = cypher_parse_error_message(error);
+	// Get the position of an error.
+	struct cypher_input_position errPos = cypher_parse_error_position(error);
 
-		// Get the error context of an error.
-		// This returns a pointer to a null-terminated string, which contains a
-		// section of the input around where the error occurred, that is limited
-		// in length and suitable for presentation to a user.
-		const char *errCtx = cypher_parse_error_context(error);
+	// Get the error message of an error.
+	const char *errMsg = cypher_parse_error_message(error);
 
-		// Get the offset into the context of an error.
-		// Identifies the point of the error within the context string, allowing
-		// this to be reported to the user, typically with an arrow pointing to the
-		// invalid character.
-		size_t errCtxOffset = cypher_parse_error_context_offset(error);
-		ErrorCtx_SetError("errMsg: %s line: %u, column: %u, offset: %zu errCtx: %s errCtxOffset: %zu",
-						  errMsg, errPos.line, errPos.column, errPos.offset, errCtx, errCtxOffset);
-	}
+	// Get the error context of an error.
+	// This returns a pointer to a null-terminated string, which contains a
+	// section of the input around where the error occurred, that is limited
+	// in length and suitable for presentation to a user.
+	const char *errCtx = cypher_parse_error_context(error);
+
+	// Get the offset into the context of an error.
+	// Identifies the point of the error within the context string, allowing
+	// this to be reported to the user, typically with an arrow pointing to the
+	// invalid character.
+	size_t errCtxOffset = cypher_parse_error_context_offset(error);
+	ErrorCtx_SetError("errMsg: %s line: %u, column: %u, offset: %zu errCtx: %s errCtxOffset: %zu",
+					  errMsg, errPos.line, errPos.column, errPos.offset, errCtx, errCtxOffset);
 }
 
 // checks if set items contains non-alias referenes in lhs
@@ -1646,10 +1671,7 @@ bool AST_ContainsErrors(const cypher_parse_result_t *result) {
 static AST_Validation _AST_Validate_ParseResultRoot(const cypher_parse_result_t *result,
 													int *index) {
 	// Check for failures in libcypher-parser
-	if(AST_ContainsErrors(result)) {
-		_AST_ReportErrors(result);
-		return AST_INVALID;
-	}
+	ASSERT(AST_ContainsErrors(result) == false);
 
 	uint nroots = cypher_parse_result_nroots(result);
 	for(uint i = 0; i < nroots; i++) {
@@ -1762,3 +1784,4 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 
 	return res;
 }
+
