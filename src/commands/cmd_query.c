@@ -275,7 +275,7 @@ static void _DelegateWriter(GraphQueryCtx *gq_ctx) {
 	gq_ctx->command_ctx->thread = EXEC_THREAD_WRITER;
 
 	// dispatch work to the writer thread
-	int res = ThreadPools_AddWorkWriter(_ExecuteQuery, gq_ctx);
+	int res = ThreadPools_AddWorkWriter(_ExecuteQuery, gq_ctx, 0);
 	ASSERT(res == 0);
 }
 

@@ -3,7 +3,7 @@ function s = gb_isvector (G)
 % where G is the opaque struct of the GraphBLAS matrix.
 % gb_isvector (G) is true for an m-by-n GraphBLAS matrix if m or n is 1.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
 [m, n] = gbsize (G) ;

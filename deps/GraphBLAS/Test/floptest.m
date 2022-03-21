@@ -12,7 +12,7 @@ function floptest (M, Mask_complement, A, B, flops1)
 % hypersparse, flops1 has length B->nvec+1, not size(B,2).  In this case,
 % only the total flop count is checked.  In that case, flops1 is a scalar.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 [flops2 mwork] = GB_mex_mxm_flops (M, Mask_complement, A, B) ;

@@ -2,7 +2,7 @@
 // GB_bitmap_selector:  select entries from a bitmap or full matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -35,7 +35,7 @@ GrB_Info GB_bitmap_selector
     ASSERT_MATRIX_OK (A, "A for bitmap selector", GB0) ;
     ASSERT (GB_IS_BITMAP (A) || GB_as_if_full (A)) ;
     ASSERT (opcode != GB_NONZOMBIE_selop_code) ;
-    ASSERT (C != NULL && C->static_header) ;
+    ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
 
     //--------------------------------------------------------------------------
     // get A
@@ -51,7 +51,7 @@ GrB_Info GB_bitmap_selector
 
     // C->b and C->x are malloc'd, not calloc'd
     // set C->iso = C_iso   OK
-    GB_OK (GB_new_bix (&C, true, // always bitmap, static header
+    GB_OK (GB_new_bix (&C, // always bitmap, existing header
         A->type, A->vlen, A->vdim, GB_Ap_calloc, true,
         GxB_BITMAP, false, A->hyper_switch, -1, anz, true, C_iso, Context)) ;
     int64_t cnvals ;

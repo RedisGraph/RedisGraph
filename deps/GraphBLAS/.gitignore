@@ -82,6 +82,9 @@ CUDA/test/googletest/*
 
 desktop.ini
 
+.idea/
+cmake-build-debug/
+
 # Do not ignore this file
 !.gitignore
 

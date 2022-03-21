@@ -11,8 +11,7 @@ def _check_pattern_comprehension_plan(plan: ExecutionPlan):
     apply = locate_operation(plan.structured_plan, "Apply")
     return apply and                                          \
         len(apply.children) == 2 and                          \
-        apply.children[1].name == "Optional" and              \
-        apply.children[1].children[0].name == "Aggregate" and \
+        apply.children[1].name == "Aggregate" and             \
         locate_operation(apply.children[1], "Argument")
 
 class testComprehensionFunctions(FlowTestsBase):
@@ -342,7 +341,7 @@ class testComprehensionFunctions(FlowTestsBase):
                            ['v2', [['v2', 'v3'], ['v2', 'v3'], ['v2', 'v3']]],
                            ['v3', [['v3'], ['v3'], ['v3']]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
-    
+
     def test18_pattern_comprehension_with_filters(self):
         # Match all nodes and collect their destination's property in an array
         query = """MATCH (a) RETURN a.val AS v, [(a)-[]->(b {val: 'v2'}) | b.val] ORDER BY v"""
@@ -367,4 +366,36 @@ class testComprehensionFunctions(FlowTestsBase):
         expected_result = [['v1', []],
                            ['v2', ['v3']],
                            ['v3', []]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test19_variable_redefinition(self):
+        # Use a list comprehension's variable in two different contexts
+        # The shared variable is x
+        query = """MATCH x=(a {val: 'v3'}) RETURN [x IN nodes(x) | [elem IN range(1, 2) | size(({val: 'v2'})-[]->(x))]]"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[[[1, 1]]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Clear data
+        redis_con = self.env.getConnection()
+        redis_con.flushall()
+
+        # Create 10 nodes with incremental v attribute
+        redis_graph.query("UNWIND range(1, 10) AS x CREATE (:N{v:x})")
+
+        # Validate n used correctly in each scope
+        # Iterate each node create an array with v values from 1 to v
+        query = """MATCH p=(n) RETURN [n in nodes(p) | [n in range(1, n.v) | n]]"""
+        actual_result = redis_graph.query(query)
+        expected_result = [
+            [[[1]]],
+            [[[1, 2]]],
+            [[[1, 2, 3]]],
+            [[[1, 2, 3, 4]]],
+            [[[1, 2, 3, 4, 5]]],
+            [[[1, 2, 3, 4, 5, 6]]],
+            [[[1, 2, 3, 4, 5, 6, 7]]],
+            [[[1, 2, 3, 4, 5, 6, 7, 8]]],
+            [[[1, 2, 3, 4, 5, 6, 7, 8, 9]]],
+            [[[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]] ]
         self.env.assertEquals(actual_result.result_set, expected_result)

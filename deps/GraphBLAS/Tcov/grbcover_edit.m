@@ -25,7 +25,7 @@ function count = grbcover_edit (infiles, count, outdir)
 %       default :     GB_cov[count]++ ; statement
 %
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 if (ispc)
@@ -58,6 +58,7 @@ for k = 1:nfiles
     % get the first line
     cline = fgetl (f_input) ;
     len = length (cline) ;
+    indent = false ;
 
     while (ischar (cline))
 
@@ -101,10 +102,18 @@ for k = 1:nfiles
             fprintf (f_output, '%s\n', cline) ;
 
             % determine if the code is commented out
-            if (isequal (cline, '#if 0') || isequal (cline, '    #if 0'))
-                % code coverage disabled
+            if (isequal (cline, '#if 0') && enabled)
+                % code coverage disabled until reaching "#endif"
+                indent = false ;
                 enabled = false ;
-            elseif (isequal (cline, '#endif') || isequal (cline, '    #endif'))
+            elseif (isequal (cline, '    #if 0') && enabled)
+                % code coverage disabled until reaching "    #endif"
+                indent = true ;
+                enabled = false ;
+            elseif (isequal (cline, '#endif') && (~indent) && (~enabled))
+                % code coverage enabled
+                enabled = true ;
+            elseif (isequal (cline, '    #endif') && (indent) && (~enabled))
                 % code coverage enabled
                 enabled = true ;
             end

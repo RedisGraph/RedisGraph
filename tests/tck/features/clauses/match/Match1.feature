@@ -59,7 +59,6 @@ Feature: Match1 - Match nodes
       | ({name: 'c'})    |
     And no side effects
 
-  @skip
   Scenario: [3] Matching nodes using multiple labels
     Given an empty graph
     And having executed:

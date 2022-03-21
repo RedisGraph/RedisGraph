@@ -6,7 +6,7 @@ function C = reshape (G, varargin)
 %
 % See also GrB/numel, squeeze.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
 % FUTURE: this would be faster as a built-in GxB_reshape function.
@@ -30,9 +30,9 @@ end
 desc.base = 'zero-based' ;
 [iold, jold, x] = gbextracttuples (G, desc) ;
 % convert i and j from 2D (mold-by-nold) to 1D indices
-k = gb_convert_index_2d_to_1d (iold, jold, mold) ;
+k = gb_2d_to_1d (iold, jold, mold) ;
 % convert k from 1D indices to 2D (mnew-by-nnew)
-[inew, jnew] = gb_convert_index_1d_to_2d (k, mnew) ;
+[inew, jnew] = gb_1d_to_2d (k, mnew) ;
 % rebuild the new matrix
 C = GrB (gbbuild (inew, jnew, x, mnew, nnew, desc)) ;
 

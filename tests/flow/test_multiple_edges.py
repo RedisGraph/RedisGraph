@@ -26,7 +26,9 @@ class testGraphMultipleEdgeFlow(FlowTestsBase):
         # Expecting no connections.
         query = """MATCH (a {v:1})-[e]->(b {v:2}) RETURN count(e)"""
         actual_result = redis_graph.query(query)
-        self.env.assertEquals(len(actual_result.result_set), 0)
+        self.env.assertEquals(len(actual_result.result_set), 1)
+        edge_count = actual_result.result_set[0][0]
+        self.env.assertEquals(edge_count, 0)
 
         # Connect a to b with a single edge of type R.
         query = """MATCH (a {v:1}), (b {v:2}) CREATE (a)-[:R {v:1}]->(b)"""
@@ -83,7 +85,9 @@ class testGraphMultipleEdgeFlow(FlowTestsBase):
         # Expecting no connections.
         query = """MATCH (a {v:1})-[e:R]->(b {v:2}) RETURN count(e)"""
         actual_result = redis_graph.query(query)        
-        self.env.assertEquals(len(actual_result.result_set), 0)
+        self.env.assertEquals(len(actual_result.result_set), 1)
+        edge_count = actual_result.result_set[0][0]
+        self.env.assertEquals(edge_count, 0)
 
         # Remove none existing connection.
         query = """MATCH (a {v:1})-[e]->(b {v:2}) DELETE e"""
@@ -99,3 +103,4 @@ class testGraphMultipleEdgeFlow(FlowTestsBase):
         actual_result = redis_graph.query(query)
         edge_count = actual_result.result_set[0][0]
         self.env.assertEquals(edge_count, 1)
+

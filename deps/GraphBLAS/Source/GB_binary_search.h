@@ -2,7 +2,7 @@
 // GB_binary_search.h: binary search in a sorted list
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -18,7 +18,7 @@
 // The list X [pleft ... pright] is in ascending order.  It may have
 // duplicates.
 
-#if GB_KERNEL
+#ifdef GB_CUDA_KERNEL
 
 // version for the GPU, with fewer branches
 #define GB_TRIM_BINARY_SEARCH(i,X,pleft,pright)                             \
@@ -110,7 +110,7 @@
 // GB_TRIM_BINARY_SEARCH_ZOMBIE: binary search in the presence of zombies
 //------------------------------------------------------------------------------
 
-#if GB_KERNEL
+#ifdef GB_CUDA_KERNEL
 
 // version for the GPU, with fewer branches
 #define GB_TRIM_BINARY_SEARCH_ZOMBIE(i,X,pleft,pright)                      \

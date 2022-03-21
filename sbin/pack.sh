@@ -65,6 +65,7 @@ export OSNICK=$($READIES/bin/platform --osnick)
 [[ $OSNICK == centos7 ]] && OSNICK=rhel7
 [[ $OSNICK == centos8 ]] && OSNICK=rhel8
 [[ $OSNICK == ol8 ]]     && OSNICK=rhel8
+[[ $OSNICK == rocky8 ]]  && OSNICK=rhel8
 
 export PRODUCT=redisgraph
 export PRODUCT_LIB=$PRODUCT.so

@@ -89,11 +89,6 @@ static inline size_t _Graph_NodeCap(const Graph *g) {
 	return g->nodes->itemCap;
 }
 
-// return number of edges graph can contain
-static inline size_t _Graph_EdgeCap(const Graph *g) {
-	return g->edges->itemCap;
-}
-
 static void _CollectEdgesFromEntry
 (
 	const Graph *g,
@@ -254,10 +249,15 @@ MATRIX_POLICY Graph_GetMatrixPolicy
 	MATRIX_POLICY policy = SYNC_POLICY_UNKNOWN;
 	SyncMatrixFunc f = g->SynchronizeMatrix;
 
-	if(f == _MatrixSynchronize)           policy = SYNC_POLICY_FLUSH_RESIZE;
-	else if(f == _MatrixResizeToCapacity) policy = SYNC_POLICY_RESIZE;
-	else if(f == _MatrixNOP)              policy = SYNC_POLICY_NOP;
-	else ASSERT(false);
+	if(f == _MatrixSynchronize) {
+		policy = SYNC_POLICY_FLUSH_RESIZE;
+	} else if(f == _MatrixResizeToCapacity) {
+		policy = SYNC_POLICY_RESIZE;
+	} else if(f == _MatrixNOP) {
+		policy = SYNC_POLICY_NOP;
+	} else {
+		ASSERT(false);
+	}
 
 	return policy;
 }
@@ -488,7 +488,7 @@ int Graph_GetEdge
 ) {
 	ASSERT(g);
 	ASSERT(e);
-	ASSERT(id < _Graph_EdgeCap(g));
+	ASSERT(id < g->edges->itemCap);
 
 	e->id = id;
 	e->entity = _Graph_GetEntity(g->edges, id);
@@ -707,13 +707,12 @@ void Graph_GetNodeEdges
 	ASSERT(n);
 	ASSERT(edges);
 
-	RG_MatrixTupleIter   it;
+	RG_MatrixTupleIter   it       =  {0};
 	RG_Matrix            M        =  NULL;
 	RG_Matrix            TM       =  NULL;
 	NodeID               srcID    =  ENTITY_GET_ID(n);
 	NodeID               destID   =  INVALID_ENTITY_ID;
 	EdgeID               edgeID   =  INVALID_ENTITY_ID;
-	bool                 depleted =  false;
 
 	if(edgeType == GRAPH_UNKNOWN_RELATION) return;
 
@@ -731,11 +730,9 @@ void Graph_GetNodeEdges
 	if(outgoing) {
 		// construct an iterator to traverse over the source node row,
 		// containing all outgoing edges
-		RG_MatrixTupleIter_reuse(&it, M);
+		RG_MatrixTupleIter_attach(&it, M);
 		RG_MatrixTupleIter_iterate_row(&it, srcID);
-		while(RG_MatrixTupleIter_next(&it, NULL, &destID, &edgeID, &depleted) == GrB_SUCCESS) {
-			if(depleted) break;
-
+		while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, &edgeID) == GrB_SUCCESS) {
 			// collect all edges (src)->(dest)
 			if(edgeType != GRAPH_NO_RELATION) {
 				_CollectEdgesFromEntry(g, srcID, destID, edgeType, edgeID, edges);
@@ -743,6 +740,7 @@ void Graph_GetNodeEdges
 				Graph_GetEdgesConnectingNodes(g, srcID, destID, edgeType, edges);
 			}
 		}
+		RG_MatrixTupleIter_detach(&it);
 	}
 
 	if(incoming) {
@@ -753,11 +751,10 @@ void Graph_GetNodeEdges
 
 		// construct an iterator to traverse over the source node row,
 		// containing all incoming edges
-		RG_MatrixTupleIter_reuse(&it, TM);
+		RG_MatrixTupleIter_attach(&it, TM);
 		RG_MatrixTupleIter_iterate_row(&it, srcID);
 
-		while(RG_MatrixTupleIter_next(&it, NULL, &destID, NULL, &depleted) == GrB_SUCCESS) {
-			if(depleted) break;
+		while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, NULL) == GrB_SUCCESS) {
 			RG_Matrix_extractElement_UINT64(&edgeID, M, destID, srcID);
 			// collect all edges connecting destId to srcId
 			if(edgeType != GRAPH_NO_RELATION) {
@@ -766,6 +763,7 @@ void Graph_GetNodeEdges
 				Graph_GetEdgesConnectingNodes(g, destID, srcID, edgeType, edges);
 			}
 		}
+		RG_MatrixTupleIter_detach(&it);
 	}
 }
 
@@ -788,8 +786,8 @@ uint Graph_GetNodeLabels
 	// GrB_Col_extract will iterate over the range of the output size
 	RG_Matrix M = Graph_GetNodeLabelMatrix(g);
 
-	RG_MatrixTupleIter iter;
-	res = RG_MatrixTupleIter_reuse(&iter, M);
+	RG_MatrixTupleIter iter = {0};
+	res = RG_MatrixTupleIter_attach(&iter, M);
 	ASSERT(res == GrB_SUCCESS);
 
 	EntityID id = ENTITY_GET_ID(n);
@@ -797,14 +795,14 @@ uint Graph_GetNodeLabels
 	ASSERT(res == GrB_SUCCESS);
 
 	uint i = 0;
-	bool depleted = false;
 
 	for(; i < label_count; i++) {
-		res = RG_MatrixTupleIter_next(&iter, NULL, labels + i, NULL, &depleted);
-		ASSERT(res == GrB_SUCCESS);
+		res = RG_MatrixTupleIter_next_BOOL(&iter, NULL, labels + i, NULL);
 
-		if(depleted) break;
+		if(res == GxB_EXHAUSTED) break;
 	}
+
+	RG_MatrixTupleIter_detach(&iter);
 
 	return i;
 }
@@ -1276,9 +1274,6 @@ void Graph_Free(Graph *g) {
 	array_free(g->labels);
 	RG_Matrix_free(&g->node_labels);
 
-	// TODO: disable datablock deleted items array
-	// there's no need to keep track after deleted items as the graph
-	// is being removed we won't be reusing items
 	it = Graph_ScanNodes(g);
 	while((en = (Entity *)DataBlockIterator_Next(it, NULL)) != NULL) {
 		FreeEntity(en);
