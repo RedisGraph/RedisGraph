@@ -75,6 +75,12 @@ void Serializer_Graph_SetNodeLabels
 	RG_Matrix node_labels   = Graph_GetNodeLabelMatrix(g);
 	GrB_Matrix node_labels_m = RG_MATRIX_M(node_labels);
 
+#if RG_DEBUG
+	GrB_Index nvals;
+	GrB_Matrix_nvals(&nvals, node_labels_m);
+	ASSERT(nvals == 0);
+#endif
+
 	GrB_Vector_new(&v, GrB_BOOL, node_count);
 
 	for(int i = 0; i < label_count; i++) {
