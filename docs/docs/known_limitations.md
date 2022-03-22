@@ -1,7 +1,6 @@
 ---
 title: "Known limitations"
 linkTitle: "Known limitations"
-type: docs
 weight: 9
 description: ""
 ---

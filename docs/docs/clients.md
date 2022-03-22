@@ -1,7 +1,6 @@
 ---
 title: "RedisGraph Client Libraries"
 linkTitle: "Clients"
-type: docs
 weight: 2
 description: >
     The full functionality of RedisGraph is available through `redis-cli` and the Redis API.  [RedisInsight](https://redis.com/redis-enterprise/redis-insight/) is a visual tool that provides capabilities to design, develop and optimize into a single easy-to-use environment, and has built-in support for RedisGraph.

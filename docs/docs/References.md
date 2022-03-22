@@ -1,7 +1,6 @@
 ---
 title: "References"
 linkTitle: "References"
-type: docs
 weight: 8
 description: >
     Quick start

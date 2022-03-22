@@ -1,7 +1,6 @@
 ---
 title: "Cypher Coverage"
 linkTitle: "Cypher Coverage"
-type: docs
 weight: 7
 description: >
     RedisGraph implements a subset of the Cypher language, which is growing as development continues.

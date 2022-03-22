@@ -1,7 +1,6 @@
 ---
 title: RedisGraph - Queryable Property Graph
 linkTitle: RedisGraph 
-type: docs
 weight: 1
 ---
 

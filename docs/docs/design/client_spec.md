@@ -1,7 +1,6 @@
 ---
 title: "Technical specification for writing RedisGraph client libraries"
 linkTitle: "Client Specification"
-type: docs
 weight: 10
 description: >
     By design, there is not a full standard for RedisGraph clients to adhere to. Areas such as pretty-print formatting, query validation, and transactional and multithreaded capabilities have no canonically correct behavior, and the implementer is free to choose the approach and complexity that suits them best.
