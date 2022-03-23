@@ -127,7 +127,7 @@ commands:
             export EC2_PRIVATE_PEM=$PERFORMANCE_EC2_PRIVATE_PEM
             export PROFILE=<< parameters.profile_env >>
             export BENCHMARK_GLOB=<< parameters.benchmark_glob >>
-            export PERF_CALLGRAPH_MODE="dwarf"
+            export PERF_CALLGRAPH_MODE="fp"
             redisbench-admin run-remote \
               --module_path << parameters.module_path >> \
               --github_actor << parameters.github_actor >> \
@@ -624,13 +624,9 @@ workflows:
       - performance_ci_automation:
           <<: *context
           <<: *on-perf-tags
-          requires:
-            - platform_build
       - performance_ci_automation_profiler:
           <<: *context
           <<: *on-perf-tags
-          requires:
-            - platform_build
 
   nightly:
     triggers:
