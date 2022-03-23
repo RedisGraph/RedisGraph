@@ -1,41 +1,24 @@
 ---
-title: RedisGraph - Queryable Property Graph
-linkTitle: RedisGraph 
-weight: 1
+title: RedisGraph
+linkTitle: Graph
+description: A Graph database built on Redis
+type: docs
 ---
 
-<img src="images/logo.svg" alt="logo" width="200"/>
-
-[![Forum](https://img.shields.io/badge/Forum-RedisGraph-blue)](https://forum.redis.com/c/modules/redisgraph)
 [![Discord](https://img.shields.io/discord/697882427875393627?style=flat-square)](https://discord.gg/gWBRT6P)
 
-RedisGraph is the first queryable [Property Graph](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc) database to use [sparse matrices](https://en.wikipedia.org/wiki/Sparse_matrix) to represent the [adjacency matrix](https://en.wikipedia.org/wiki/Adjacency_matrix) in graphs and [linear algebra](http://faculty.cse.tamu.edu/davis/GraphBLAS.html) to query the graph.
+RedisGraph is a graph database built on Redis. This graph database uses [GraphBlas](http://faculty.cse.tamu.edu/davis/GraphBLAS.html) under the hood for its [sparse adjacency matrix](https://en.wikipedia.org/wiki/Adjacency_matrix) graph representation.
 
-## Primary features:
+## Primary features
 
-* Based on the [Property Graph Model](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc)
-  * Nodes (vertices) and Relationships (edges) that may have attributes
-  * Nodes that can have any number of labels
-  * Relationships have a relationship type
+* Based on the [property graph model](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc)
+* Nodes can have any number of labels
+* Relationships have a relationship type
 * Graphs represented as sparse adjacency matrices
 * [Cypher](http://www.opencypher.org/) as the query language
-  * Cypher queries translated into linear algebra expressions
+* Cypher queries translate into linear algebra expressions
 
-To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGraph/tree/master/demo).
-
-## Quickstart
-
-1. [Redis Cloud](#redis-cloud)
-1. [Docker](#docker)
-1. [Build](#building)
-1. [Start](#loading-redisgraph-into-redis)
-1. [Use from any client](#using-redisgraph)
-
-## Redis Cloud
-
-RedisGraph is available on all Redis Cloud managed services, including a completely free managed database up to 30MB.
-
-[Select your plan here](https://redis.com/redis-enterprise-cloud/pricing/)
+To see RedisGraph in action, [explore our demos](https://github.com/RedisGraph/RedisGraph/tree/master/demo).
 
 ## Docker
 
@@ -47,10 +30,9 @@ docker run -p 6379:6379 -it --rm redislabs/redisgraph
 
 ### Give it a try
 
-After you load RedisGraph, you can interact with it using redis-cli.
+After you load RedisGraph, you can interact with it using `redis-cli`.
 
-Here we'll quickly create a small graph representing a subset of motorcycle riders and teams 
-taking part in the MotoGP championship. Once created, we'll start querying our data.
+Here we'll quickly create a small graph representing a subset of motorcycle riders and teams taking part in the MotoGP championship. Once created, we'll start querying our data.
 
 ### With `redis-cli`
 
@@ -85,10 +67,6 @@ How many riders represent team Ducati?
 3) 1) "Query internal execution time: 0.624435 milliseconds"
 ```
 
-## Download
-
-A pre-compiled version can be downloaded from the [Redis download center](https://redis.com/download-center/modules/).
-
 ## Building
 
 Requirements:
@@ -104,42 +82,9 @@ To build, run `make` in the project's directory.
 
 Congratulations! You can find the compiled binary at: `src/redisgraph.so`
 
-## Loading RedisGraph into Redis
+## Installing RedisGraph
 
-RedisGraph is hosted by [Redis](https://redis.io), so you'll first have to load it as a Module to a Redis server running [Redis v4.0 or above](https://redis.io/download).
-
-We recommend having Redis load RedisGraph during startup by adding the following to your redis.conf file:
-
-```
-loadmodule /path/to/module/src/redisgraph.so
-```
-
-In the line above, replace `/path/to/module/src/redisgraph.so` with the actual path to RedisGraph's library.
-
-Alternatively, you can have Redis load RedisGraph using this command-line argument syntax:
-
-```sh
-$ redis-server --loadmodule /path/to/module/src/redisgraph.so
-```
-
-You can also use the [`MODULE LOAD`](http://redis.io/commands/module-load) command. Note, however, that `MODULE LOAD` is a dangerous command and may be blocked/deprecated in the future due to security considerations.
-
-After you've successfully loaded RedisGraph, your Redis log should contain entries similar to:
-
-```
-...
-30707:M 20 Jun 02:08:12.314 * Module 'graph' loaded from <redacted>/src/redisgraph.so
-...
-```
-
-If the server fails to launch with output similar to:
-
-```
-# Module /usr/lib/redis/modules/redisgraph.so failed to load: libgomp.so.1: cannot open shared object file: No such file or directory
-# Can't load module from /usr/lib/redis/modules/redisgraph.so: server aborting
-```
-
-The system is missing the run-time dependency OpenMP. This can be installed on Ubuntu with `apt-get install libgomp1`, on RHEL/CentOS with `yum install libgomp`, and on OSX with `brew install libomp`.
+RedisGraph is part of [Redis Stack](/docs/stack). See the [Redis Stack download page](/download) for installaton options.
 
 ## Using RedisGraph
 
