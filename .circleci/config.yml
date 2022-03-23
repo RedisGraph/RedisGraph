@@ -458,7 +458,7 @@ jobs:
     steps:
       - early-returns
       - checkout-all
-      - install-prerequisites
+      - setup-prerequisits
       - attach_workspace:
           at: /workspace
       - run:
