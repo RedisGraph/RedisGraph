@@ -264,6 +264,7 @@ class testConfig(FlowTestsBase):
         self.env.assertEqual(creation_buffer_size, expected_response)
 
         # restart the server with a buffer argument of 600
+        self.env.flush()
         self.env = Env(decodeResponses=True, moduleArgs='NODE_CREATION_BUFFER 600')
         redis_con = self.env.getConnection()
 
