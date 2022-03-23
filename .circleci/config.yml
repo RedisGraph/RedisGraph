@@ -590,9 +590,10 @@ workflows:
       - performance_ci_automation:
           <<: *context
           <<: *on-perf-tags
-      - performance_ci_automation_profiler:
-          <<: *context
-          <<: *on-perf-tags
+      # disable temporarily due to huge profile overhead in RG
+      # - performance_ci_automation_profiler: 
+      #     <<: *context
+      #     <<: *on-perf-tags
 
   nightly:
     triggers:
@@ -604,5 +605,6 @@ workflows:
     jobs:
       - performance_ci_automation:
           <<: *context
-      - performance_ci_automation_profiler:
-          <<: *context
+      # disable temporarily due to huge profile overhead in RG
+      # - performance_ci_automation_profiler:
+      #     <<: *context
