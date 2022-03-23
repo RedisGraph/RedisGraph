@@ -126,7 +126,10 @@ int Schema_AddIndex
 
 	// index exists, make sure attribute isn't already indexed
 	if(_idx != NULL) {
-		if(Index_ContainsAttribute(_idx, field->id)) return INDEX_FAIL;
+		if(Index_ContainsAttribute(_idx, field->id)) {
+			IndexField_Free(field);
+			return INDEX_FAIL;
+		}
 	} else {
 		// index doesn't exist, create it
 		// determine index graph entity type
