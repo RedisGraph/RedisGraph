@@ -127,9 +127,22 @@ static inline void _UpdateRecord(NodeByLabelScan *op, Record r, GrB_Index node_i
 }
 
 static inline void _ResetIterator(NodeByLabelScan *op) {
-	NodeID minId = op->id_range->include_min ? op->id_range->min : op->id_range->min + 1;
-	NodeID maxId = op->id_range->include_max ? op->id_range->max : op->id_range->max - 1 ;
-	RG_MatrixTupleIter_iterate_range(op->iter, minId, maxId);
+	if(op->id_range) {
+		// reset the range iterator
+		NodeID minId = op->id_range->include_min ? op->id_range->min : op->id_range->min + 1;
+		NodeID maxId = op->id_range->include_max ? op->id_range->max : op->id_range->max - 1 ;
+		RG_MatrixTupleIter_iterate_range(op->iter, minId, maxId);
+	} else {
+		// id_range is NULL, this operation must have been freed previously
+		// rebuild the range iterator
+		GraphContext *gc = QueryCtx_GetGraphCtx();
+		Schema *schema = GraphContext_GetSchema(gc, op->n.label, SCHEMA_NODE);
+		if(!schema) return; // invalid schema, our consume function is NOP
+		op->id_range = UnsignedRange_New();
+		GrB_Info iterator_built = _ConstructIterator(op, schema);
+		// if the iterator is invalid, our consume function is NOP
+		if(iterator_built != GrB_SUCCESS) return;
+	}
 }
 
 static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
