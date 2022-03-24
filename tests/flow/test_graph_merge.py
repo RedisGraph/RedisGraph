@@ -575,3 +575,24 @@ class testGraphMergeFlow(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
             self.env.assertIn("undefined property", str(e))
+
+    def test28_merge_reset_label_scan(self):
+        redis_con = self.env.getConnection()
+        graph = Graph("M", redis_con)
+
+        # Starting with an empty graph.
+        # Create 2 nodes and connect them to one another.
+        self.env.flush()
+        query = """MERGE (a:Person {name: 'a'}) MERGE (b:Person {name: 'b'}) MERGE (a)-[:FRIEND]->(b)"""
+        result = graph.query(query)
+
+        # Verify that every entity was created.
+        self.env.assertEquals(result.nodes_created, 2)
+        self.env.assertEquals(result.relationships_created, 1)
+        self.env.assertEquals(result.properties_set, 2)
+
+        # Issue a query that forces a Cartesian Product to reset a Node by Label Scan
+        # after a Merge operation has freed that scan once.
+        query = """MERGE (a:Person {name: 'a'})-[:FRIEND]->() WITH NULL AS a MATCH (n1:Person), (n2:Person) MERGE (:NEW)"""
+        result = graph.query(query)
+        self.env.assertEquals(result.nodes_created, 1)
