@@ -69,8 +69,9 @@ static inline void _setTraverseDirection(CondVarLenTraverse *op, const QGEdge *e
 
 static inline void CondVarLenTraverseToString(const OpBase *ctx, sds *buf) {
 	// TODO: tmp, improve TraversalToString
-	AlgebraicExpression_Optimize(&((CondVarLenTraverse *)ctx)->ae);
-	TraversalToString(ctx, buf, ((const CondVarLenTraverse *)ctx)->ae);
+	CondVarLenTraverse *op = (CondVarLenTraverse *)ctx;
+	if(op->ae) AlgebraicExpression_Optimize(&op->ae);
+	TraversalToString(ctx, buf, op->ae);
 }
 
 void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {
