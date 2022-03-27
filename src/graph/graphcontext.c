@@ -421,9 +421,6 @@ int GraphContext_AddExactMatchIndex
 			INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
 
 	int res = Schema_AddIndex(idx, s, &idx_field, IDX_EXACT_MATCH);
-	if(res != INDEX_OK) {
-		IndexField_Free(&idx_field);
-	}
 
 	ResultSet *result_set = QueryCtx_GetResultSet();
 	ResultSet_IndexCreated(result_set, res);
