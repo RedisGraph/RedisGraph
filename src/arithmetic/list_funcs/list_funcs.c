@@ -339,7 +339,6 @@ SIValue AR_REDUCE
 		// set current element to the record
 		Record_AddScalar(r, ctx->variable_idx, elem);
 		// compute sum = sum + i
-		accum = Record_Get(r, ctx->accumulator_idx);
 		SIValue new_accum = AR_EXP_Evaluate(ctx->exp, r);
 		SIValue_Free(accum);
 		accum = new_accum;
