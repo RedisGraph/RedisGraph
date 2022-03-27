@@ -253,6 +253,8 @@ class testConfig(FlowTestsBase):
         self.env.assertEqual(response, expected_response)
 
     def test11_set_get_node_creation_buffer(self):
+        self.env.flush()
+        self.env.stop()
         self.env = Env(decodeResponses=True, moduleArgs='NODE_CREATION_BUFFER 0')
         global redis_con
         redis_con = self.env.getConnection()
