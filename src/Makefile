@@ -15,6 +15,12 @@ ifneq ($(filter cov-upload,$(MAKECMDGOALS)),)
 COV=1
 endif
 
+ifneq ($(filter memcheckk,$(MAKECMDGOALS)),)
+export DEBUG ?= 1
+MEMCHECK=1
+endif
+
+
 ifeq ($(COV),1)
 export DEBUG ?= 1
 endif
@@ -33,14 +39,6 @@ REDISEARCH_DIR = $(ROOT)/deps/RediSearch
 REDISEARCH_BINROOT=$(ROOT)/bin/$(OS)-$(ARCH)-$(FLAVOR)
 LIBCYPHER_PARSER_DIR = $(ROOT)/deps/libcypher-parser/lib/src
 
-# if DEBUG env var is set, we compile with "debug" cflags
-DEBUGFLAGS = -g -ggdb -O3
-ifeq ($(DEBUG),1)
-	DEBUGFLAGS = -fno-omit-frame-pointer -g -ggdb -O0
-	# Enable all assertions in debug mode
-	DEBUGFLAGS += -DRG_DEBUG
-endif
-
 CFLAGS.warnings=-Wall -Wno-unused-variable -Wno-unused-result
 ifeq ($(PEDANTIC),1)
 CFLAGS.warnings += -Wpedantic
@@ -56,12 +54,24 @@ CFLAGS = \
 	$(CFLAGS.warnings) $(DEBUGFLAGS)
 
 # Compile flags for linux / osx
-ifeq ($(OS),linux)
-SHOBJ_LDFLAGS ?= -Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
+LDFLAGS.linux=-Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
+LDFLAGS.macos=-bundle -undefined dynamic_lookup -ldl -lpthread -lomp
+
+SHOBJ_LDFLAGS += $(LDFLAGS) $(LDFLAGS.$(OS))
+
+# if DEBUG env var is set, we compile with "debug" cflags
+ifeq ($(DEBUG),1)
+	DEBUGFLAGS = -fno-omit-frame-pointer -g -ggdb -O0
+	# Enable all assertions in debug mode
+	DEBUGFLAGS += -DRG_DEBUG
+	ifeq ($(MEMCHECK),1)
+		DEBUGFLAGS += -DMEMCHECK
+		SHOBJ_LDFLAGS += -u RediSearch_CleanupModule
+	endif
 else
-SHOBJ_LDFLAGS ?= -bundle -undefined dynamic_lookup -ldl -lpthread -lomp
+	DEBUGFLAGS = -g -ggdb -O3
 endif
-SHOBJ_LDFLAGS += $(LDFLAGS)
+
 export CFLAGS
 
 #----------------------------------------------------------------------------------------------

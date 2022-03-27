@@ -1,6 +1,7 @@
 .PHONY: test
 
-TARGET=$(realpath ../../src/redisgraph.so)
+ROOT:=$(realpath ../..)
+TARGET=$(ROOT)/src/redisgraph.so)
 
 DOCKER_VG=0
 ifeq ($(VALGRIND),)

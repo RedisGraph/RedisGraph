@@ -74,9 +74,8 @@ setup_redis_server() {
 
 valgrind_config() {
 	# RLTest reads this
-	export VG_OPTIONS="
+	VG_OPTIONS="
 		-q \
-		--leak-check=full \
 		--show-reachable=no \
 		--track-origins=yes \
 		--show-possibly-lost=no"
@@ -84,18 +83,25 @@ valgrind_config() {
 	# To generate supressions and/or log to file
 	# --gen-suppressions=all --log-file=valgrind.log
 
-	[[ $VG_LEAKS == 0 ]] && VALGRIND_ARGS+=" --vg-no-leakcheck"
+	if [[ $VG_LEAKS == 0 ]]; then
+		RLTEST_VG_ARGS+=" --vg-no-leakcheck"
+		VG_OPTIONS+=" --no-output-catch"
+	else
+		VG_OPTIONS+=" --leak-check=full"
+	fi
 
-	VALGRIND_SUPRESSIONS=$ROOT/tests/valgrind/valgrind.sup
+	VALGRIND_SUPRESSIONS=$ROOT/tests/valgrind/valgrind.supp
 
-	VALGRIND_ARGS+="\
-		--no-output-catch \
+	RLTEST_VG_ARGS+="\
 		--use-valgrind \
 		--vg-verbose \
+		--vg-no-fail-on-errors \
 		--vg-suppressions $VALGRIND_SUPRESSIONS"
 
 	export RS_GLOBAL_DTORS=1
 	export VALGRIND=1
+	export VG_OPTIONS
+	export RLTEST_VG_ARGS
 }
 
 #----------------------------------------------------------------------------------------------
