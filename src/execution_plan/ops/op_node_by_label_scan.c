@@ -131,7 +131,7 @@ static inline void _ResetIterator(NodeByLabelScan *op) {
 		// reset the range iterator
 		NodeID minId = op->id_range->include_min ? op->id_range->min : op->id_range->min + 1;
 		NodeID maxId = op->id_range->include_max ? op->id_range->max : op->id_range->max - 1 ;
-		RG_MatrixTupleIter_iterate_range(&op->iter, minId, maxId);
+		RG_MatrixTupleIter_iterate_range(op->iter, minId, maxId);
 	} else {
 		// id_range is NULL, this operation must have been freed previously
 		// rebuild the range iterator
