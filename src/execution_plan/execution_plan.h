@@ -47,7 +47,7 @@ rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan);
 Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan);
 
 /* Free Record contents and return it to the Record pool. */
-void ExecutionPlan_ReturnRecord(ExecutionPlan *plan, Record r);
+void ExecutionPlan_ReturnRecord(const ExecutionPlan *plan, Record r);
 
 /* Prints execution plan. */
 void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx);
