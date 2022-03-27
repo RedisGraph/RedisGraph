@@ -127,7 +127,7 @@ commands:
             export EC2_PRIVATE_PEM=$PERFORMANCE_EC2_PRIVATE_PEM
             export PROFILE=<< parameters.profile_env >>
             export BENCHMARK_GLOB=<< parameters.benchmark_glob >>
-            export PERF_CALLGRAPH_MODE="dwarf"
+            export PERF_CALLGRAPH_MODE="fp"
             redisbench-admin run-remote \
               --module_path << parameters.module_path >> \
               --github_actor << parameters.github_actor >> \
@@ -428,39 +428,22 @@ jobs:
       - image: redisfab/rmbuilder:6.2.5-x64-bionic
     steps:
       - early-returns
-      - checkout
+      - checkout-all
       - install-prerequisites
       - attach_workspace:
           at: /workspace
       - run:
-          name: Unzip module artifact
-          command: |
-            unzip `ls /workspace/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip |grep -v rce` -d /workspace/
-      - benchmark-automation
+          name: Build artifact
+          shell: /bin/bash -l -eo pipefail
+          command: make
+      - benchmark-automation:
+          module_path: "/root/project/src/$PACKAGE_NAME.so"
 
   performance_ci_automation_profiler:
     docker:
       - image: redisfab/rmbuilder:6.2.5-x64-bionic
     steps:
       - early-returns
-      - checkout
-      - install-prerequisites
-      - attach_workspace:
-          at: /workspace
-      - run:
-          name: Unzip module artifact
-          command: |
-            unzip `ls /workspace/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip |grep -v rce` -d /workspace/
-      - benchmark-automation:
-          profile_env: "1"
-          triggering_env: "circleci.profilers" # results generated with profilers attached are not mixed with the ones without it
-
-
-  nightly_performance_automation:
-    docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
-    steps:
-      - early-returns
       - checkout-all
       - install-prerequisites
       - attach_workspace:
@@ -470,27 +453,10 @@ jobs:
           shell: /bin/bash -l -eo pipefail
           command: make
       - benchmark-automation:
-          github_actor: "ci.nightly"
-          module_path: "/root/project/src/$PACKAGE_NAME.so"
-
-  nightly_performance_automation_profiler:
-    docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
-    steps:
-      - early-returns
-      - checkout-all
-      - install-prerequisites
-      - attach_workspace:
-          at: /workspace
-      - run:
-          name: Build artifact
-          shell: /bin/bash -l -eo pipefail
-          command: make
-      - benchmark-automation:
-          github_actor: "ci.nightly"
-          module_path: "/root/project/src/$PACKAGE_NAME.so"
           profile_env: "1"
+          module_path: "/root/project/src/$PACKAGE_NAME.so"
           triggering_env: "circleci.profilers" # results generated with profilers attached are not mixed with the ones without it
+
 
 #----------------------------------------------------------------------------------------------------------------------------------
 
@@ -624,13 +590,10 @@ workflows:
       - performance_ci_automation:
           <<: *context
           <<: *on-perf-tags
-          requires:
-            - platform_build
-      - performance_ci_automation_profiler:
-          <<: *context
-          <<: *on-perf-tags
-          requires:
-            - platform_build
+      # disable temporarily due to huge profile overhead in RG
+      # - performance_ci_automation_profiler: 
+      #     <<: *context
+      #     <<: *on-perf-tags
 
   nightly:
     triggers:
@@ -640,7 +603,8 @@ workflows:
             branches:
               only: master
     jobs:
-      - nightly_performance_automation:
+      - performance_ci_automation:
           <<: *context
-      - nightly_performance_automation_profiler:
-          <<: *context
+      # disable temporarily due to huge profile overhead in RG
+      # - performance_ci_automation_profiler:
+      #     <<: *context

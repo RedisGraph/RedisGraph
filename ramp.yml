@@ -16,6 +16,7 @@ capabilities:
     - clustering
     - replica_of
     - backup_restore
+    - eviction_expiry
     - no_multi_key
     - intershard_tls
     - intershard_tls_pass
