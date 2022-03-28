@@ -25,7 +25,37 @@ class testExpiry():
         # key should have been evicted by now
         env.assertFalse(redis_con.exists(GRAPH_ID))
         try:
-            slowlog = redis_con.execute_command("GRAPH.SLOWLOG", GRAPH_ID)
+            redis_con.execute_command("GRAPH.SLOWLOG", GRAPH_ID)
+        except ResponseError as e:
+            env.assertIn("Invalid graph operation on empty key", str(e))
+    
+    def test02_eviction_graph(self):
+        # create a redisgraph object
+        env = Env(decodeResponses=True)
+        redis_con = env.getConnection()
+
+        # set memory policy
+        redis_con.config_set("maxmemory-policy", "allkeys-lru")
+        redis_con.config_set("maxmemory", "2mb")
+
+        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph_new = Graph(GRAPH_ID + "new", redis_con)
+
+        # create a single node
+        redis_graph.query("create ()")
+
+        # create a single node utill OOM exception raised
+        ex = None
+        while "OOM command not allowed when used memory > 'maxmemory'" not in str(ex):
+            try:
+                redis_graph_new.query("create ()")
+            except ResponseError as e:
+                ex = e
+
+        # key should have been evicted by now
+        env.assertFalse(redis_con.exists(GRAPH_ID))
+        try:
+            redis_con.execute_command("GRAPH.SLOWLOG", GRAPH_ID)
         except ResponseError as e:
             env.assertIn("Invalid graph operation on empty key", str(e))
 
