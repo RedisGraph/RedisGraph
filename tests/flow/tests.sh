@@ -85,7 +85,7 @@ valgrind_config() {
 
 	if [[ $VG_LEAKS == 0 ]]; then
 		RLTEST_VG_ARGS+=" --vg-no-leakcheck"
-		VG_OPTIONS+=" --no-output-catch"
+		VG_OPTIONS+=" --leak-check=no"
 	else
 		VG_OPTIONS+=" --leak-check=full"
 	fi
@@ -126,8 +126,8 @@ run_tests() {
 
 				EOF
 		else
-			cat <<-EOF > $rltest_config
 				# --clear-logs
+			cat <<-EOF > $rltest_config
 				$RLTEST_ARGS
 				$RLTEST_VG_ARGS
 
@@ -164,7 +164,7 @@ run_tests() {
 
 #----------------------------------------------------------------------------------------------
 
-[[ $1 == --help || $1 == help ]] && {
+[[ $1 == --help || $1 == help || $HELP == 1 ]] && {
 	help
 	exit 0
 }
@@ -201,6 +201,8 @@ else
 fi
 
 #----------------------------------------------------------------------------------------------
+
+[[ $VERBOSE == 1 ]] && RLTEST_ARGS+=" -s"
 
 GDB=${GDB:-0}
 [[ $GDB == 1 ]] && RLTEST_ARGS+=" -i --verbose"
