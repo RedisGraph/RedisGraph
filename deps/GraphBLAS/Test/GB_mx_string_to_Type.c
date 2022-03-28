@@ -2,7 +2,7 @@
 // GB_mx_string_to_Type.c: return the GrB_type from a string
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -43,5 +43,6 @@ GrB_Type GB_mx_string_to_Type       // GrB_Type from the string
     if (MATCH (type, "GxB_FC64_t" )) return (GxB_FC64) ;
 
     mexErrMsgTxt ("unknown class") ;
+    return (NULL) ;
 }
 

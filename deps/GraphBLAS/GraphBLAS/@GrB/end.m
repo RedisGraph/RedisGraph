@@ -3,7 +3,7 @@ function i = end (G, k, ndims)
 %
 % See also GrB/size, GrB/length.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
 % FUTURE: add linear indexing

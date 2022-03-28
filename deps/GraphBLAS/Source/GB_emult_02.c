@@ -2,7 +2,7 @@
 // GB_emult_02: C = A.*B where A is sparse/hyper and B is bitmap/full
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -108,7 +108,7 @@ GrB_Info GB_emult_02        // C=A.*B when A is sparse/hyper, B bitmap/full
     //--------------------------------------------------------------------------
 
     GrB_Info info ;
-    ASSERT (C != NULL && C->static_header) ;
+    ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
 
     ASSERT_MATRIX_OK_OR_NULL (M, "M for emult_02", GB0) ;
     ASSERT_MATRIX_OK (A, "A for emult_02", GB0) ;
@@ -223,7 +223,7 @@ GrB_Info GB_emult_02        // C=A.*B when A is sparse/hyper, B bitmap/full
     // allocate C->p and C->h
     //--------------------------------------------------------------------------
 
-    GB_OK (GB_new (&C, true, // sparse or hyper (same as A), static header
+    GB_OK (GB_new (&C, // sparse or hyper (same as A), existing header
         ctype, vlen, vdim, GB_Ap_calloc, C_is_csc,
         C_sparsity, A->hyper_switch, nvec, Context)) ;
     int64_t *restrict Cp = C->p ;

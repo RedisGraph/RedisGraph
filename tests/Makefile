@@ -60,6 +60,7 @@ tck:
 	@$(MAKE) -C tck TEST_ARGS="$(TEST_ARGS)"
 
 memcheck: export RS_GLOBAL_DTORS = 1
+memcheck: export VALGRIND = 1
 memcheck:
 	@$(MAKE) -C flow TEST_ARGS="$(MEMCHECK_ARGS)"
 	@$(MAKE) -C tck TEST_ARGS="$(MEMCHECK_ARGS)"

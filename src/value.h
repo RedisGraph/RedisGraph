@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -50,7 +50,7 @@ typedef enum {
 #define SI_TYPE(value) (value).type
 #define SI_NUMERIC (T_INT64 | T_DOUBLE)
 #define SI_GRAPHENTITY (T_NODE | T_EDGE)
-#define SI_ALL (T_MAP | T_NODE | T_EDGE | T_ARRAY | T_PATH | T_DATETIME | T_LOCALDATETIME | T_DATE | T_TIME | T_LOCALTIME | T_DURATION | T_STRING | T_BOOL | T_INT64 | T_DOUBLE | T_NULL | T_PTR)
+#define SI_ALL (T_MAP | T_NODE | T_EDGE | T_ARRAY | T_PATH | T_DATETIME | T_LOCALDATETIME | T_DATE | T_TIME | T_LOCALTIME | T_DURATION | T_STRING | T_BOOL | T_INT64 | T_DOUBLE | T_NULL | T_PTR | T_POINT)
 #define SI_VALID_PROPERTY_VALUE (T_POINT | T_ARRAY | T_DATETIME | T_LOCALDATETIME | T_DATE | T_TIME | T_LOCALTIME | T_DURATION | T_STRING | T_BOOL | T_INT64 | T_DOUBLE)
 #define SI_INDEXABLE (SI_NUMERIC | T_BOOL | T_STRING)
 
@@ -130,7 +130,7 @@ SIValue SI_CloneValue(const SIValue v);
 SIValue SI_ShallowCloneValue(const SIValue v);
 
 // SI_ConstValue creates an SIValue that shares the original's allocations, but does not need to persist them.
-SIValue SI_ConstValue(const SIValue v);
+SIValue SI_ConstValue(const SIValue *v);
 
 // SI_TransferOwnership duplicates 'v'.
 // If 'v' owned its underlying value allocation,

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -41,8 +41,9 @@ class AllPathsTest : public ::testing::Test {
 		size_t nodeCount = 4;
 		Graph *g = Graph_New(nodeCount, nodeCount);
 		int relation = Graph_AddRelationType(g);
-		for(int i = 0; i < 4; i++)
+		for(int i = 0; i < 4; i++) {
 			Graph_CreateNode(g, &n, NULL, 0);
+		}
 
 		/* Connections:
 		 * 0 -> 1
@@ -105,7 +106,7 @@ TEST_F(AllPathsTest, NoPaths) {
 
 	int relationships[] = {GRAPH_NO_RELATION};
 	AllPathsCtx *ctx = AllPathsCtx_New(&src, NULL, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen,
-									   maxLen, NULL, NULL, 0);
+									   maxLen, NULL, NULL, 0, false);
 	Path *p = AllPathsCtx_NextPath(ctx);
 
 	ASSERT_TRUE(p == NULL);
@@ -125,7 +126,7 @@ TEST_F(AllPathsTest, LongestPaths) {
 	unsigned int maxLen = UINT_MAX - 2;
 	int relationships[] = {GRAPH_NO_RELATION};
 	AllPathsCtx *ctx = AllPathsCtx_New(&src, NULL, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen,
-									   maxLen, NULL, NULL, 0);
+									   maxLen, NULL, NULL, 0, false);
 	Path *path;
 
 	unsigned int longestPath = 0;
@@ -154,7 +155,7 @@ TEST_F(AllPathsTest, UpToThreeLegsPaths) {
 	uint pathsCount = 0;
 	int relationships[] = {GRAPH_NO_RELATION};
 	AllPathsCtx *ctx = AllPathsCtx_New(&src, NULL, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen,
-									   maxLen, NULL, NULL, 0);
+									   maxLen, NULL, NULL, 0, false);
 
 	/* Connections:
 	 * 0 -> 1
@@ -230,7 +231,7 @@ TEST_F(AllPathsTest, TwoLegPaths) {
 	unsigned int pathsCount = 0;
 	int relationships[] = {GRAPH_NO_RELATION};
 	AllPathsCtx *ctx = AllPathsCtx_New(&src, NULL, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen,
-									   maxLen, NULL, NULL, 0);
+									   maxLen, NULL, NULL, 0, false);
 	/* Connections:
 	 * 0 -> 1
 	 * 0 -> 2
@@ -293,7 +294,7 @@ TEST_F(AllPathsTest, DestinationSpecificPaths) {
 	unsigned int pathsCount = 0;
 	int relationships[] = {GRAPH_NO_RELATION};
 	AllPathsCtx *ctx = AllPathsCtx_New(&src, &src, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING,
-									   minLen, maxLen, NULL, NULL, 0);
+									   minLen, maxLen, NULL, NULL, 0, false);
 
 	while((path = AllPathsCtx_NextPath(ctx))) {
 		ASSERT_LT(pathsCount, 5);
@@ -306,4 +307,3 @@ TEST_F(AllPathsTest, DestinationSpecificPaths) {
 	AllPathsCtx_Free(ctx);
 	Graph_Free(g);
 }
-

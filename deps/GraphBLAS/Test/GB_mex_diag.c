@@ -2,7 +2,7 @@
 // GB_mex_diag: compute C=diag(A,k)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -71,11 +71,7 @@ void mexFunction
 
     GrB_Scalar_new (&Thunk, GrB_INT64) ;
     GrB_Scalar_setElement_INT64_(Thunk, k) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    GrB_Scalar_wait_(&Thunk) ;
-    #else
     GrB_Scalar_wait_(Thunk, GrB_MATERIALIZE) ;
-    #endif
 
     // C = diag (A,k)
     METHOD (GxB_Matrix_select_(C, NULL, NULL, GxB_DIAG, A, Thunk, NULL)) ;

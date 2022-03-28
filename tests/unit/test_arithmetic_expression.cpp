@@ -249,7 +249,7 @@ TEST_F(ArithmeticTest, AggregateTest) {
 	AR_EXP_Aggregate(arExp, NULL);
 	AR_EXP_Aggregate(arExp, NULL);
 	AR_EXP_Aggregate(arExp, NULL);
-	result = AR_EXP_Finalize(arExp, NULL);
+	result = AR_EXP_FinalizeAggregations(arExp, NULL);
 	ASSERT_EQ(result.doubleval, 3);
 	AR_EXP_Free(arExp);
 
@@ -259,7 +259,7 @@ TEST_F(ArithmeticTest, AggregateTest) {
 	AR_EXP_Aggregate(arExp, NULL);
 	AR_EXP_Aggregate(arExp, NULL);
 	AR_EXP_Aggregate(arExp, NULL);
-	result = AR_EXP_Finalize(arExp, NULL);
+	result = AR_EXP_FinalizeAggregations(arExp, NULL);
 	ASSERT_EQ(result.doubleval, 5);
 	AR_EXP_Free(arExp);
 }
@@ -1692,7 +1692,7 @@ TEST_F(ArithmeticTest, ReduceTest) {
 
 	AR_ExpNode *lhs = arExp->op.children[0];
 	ASSERT_EQ(AR_EXP_OP, lhs->type);
-	ASSERT_EQ(0, strcasecmp("rand", lhs->op.func_name));
+	ASSERT_EQ(0, strcasecmp("rand", AR_EXP_GetFuncName(lhs)));
 
 	AR_ExpNode *rhs = arExp->op.children[1];
 	ASSERT_EQ(AR_EXP_OPERAND, rhs->type);

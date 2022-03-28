@@ -2,7 +2,7 @@
 // GxB_Monoid_terminal_new:  create a new monoid with a terminal value
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -12,6 +12,7 @@
 // identity value.
 
 #include "GB.h"
+#include "GB_Monoid_new.h"
 
 #define GB_MONOID_TERMINAL_NEW(type,T)                                      \
 GrB_Info GB_EVAL2 (GXB (Monoid_terminal_new_), T) /* create a new monoid */ \

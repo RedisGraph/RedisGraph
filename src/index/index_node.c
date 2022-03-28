@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -53,21 +53,18 @@ void populateNodeIndex
 	const RG_Matrix m = Graph_GetLabelMatrix(g, idx->label_id);
 	ASSERT(m != NULL);
 
-	RG_MatrixTupleIter it;
-	RG_MatrixTupleIter_reuse(&it, m);
+	RG_MatrixTupleIter it = {0};
+	RG_MatrixTupleIter_attach(&it, m);
 
 	// iterate over each graph entity
-	while(true) {
-		EntityID id;
-		bool depleted = false;
-
-		RG_MatrixTupleIter_next(&it, NULL, &id, NULL, &depleted);
-		if(depleted) break;
-
+	EntityID id;
+	while(RG_MatrixTupleIter_next_BOOL(&it, &id, NULL, NULL) == GrB_SUCCESS) {
 		Node n;
 		Graph_GetNode(g, id, &n);
 		Index_IndexNode(idx, &n);
 	}
+
+	RG_MatrixTupleIter_detach(&it);
 }
 
 void Index_RemoveNode

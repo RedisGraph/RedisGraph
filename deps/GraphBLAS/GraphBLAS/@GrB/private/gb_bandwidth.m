@@ -2,7 +2,7 @@ function [lo, hi] = gb_bandwidth (G)
 %GB_BANDWIDTH Determine the bandwidth of a GraphBLAS matrix.
 % Implements [lo, hi] = bandwidth (G).
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
 % FUTURE: this is slow; use gbselect with DIAGINDEX and then

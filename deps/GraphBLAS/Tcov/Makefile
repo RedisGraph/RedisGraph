@@ -2,7 +2,7 @@
 # GraphBLAS/Tcov/Makefile
 #-------------------------------------------------------------------------------
 
-# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 #-------------------------------------------------------------------------------
@@ -11,29 +11,30 @@ UNAME := $(shell uname)
 
 # pick your compiler:
 # CC = gcc
-# CC = cc
+  CC = cc
 # CC = clang
 # CC = xlc
 # CC = gcc-8
+# CC = gcc-11
 # CC = icc
 ifeq ($(UNAME),Darwin)
-    CC = gcc-11
+    CFLAGS  = -g -Xclang -fopenmp -std=c11 -fPIC -Wno-pragmas -fno-common
+    LDFLAGS = -Xclang -fopenmp
 else
-    CC = gcc
+    CFLAGS  = -g -std=c11 -fopenmp -fexceptions -fPIC -Wno-pragmas
+    LDFLAGS = -fopenmp
 endif
 
 SRC = tmp_source/*
 INC = tmp_include/*
 SRC2 = $(notdir $(wildcard $(SRC)))
 OBJ = $(SRC2:.c=.o)
-LDFLAGS = -fopenmp
-CFLAGS = -g -std=c11 -fopenmp -fexceptions -fPIC -Wno-pragmas
-CPPFLAGS = -Itmp_include -DGBCOVER $(RENAME)
+LIBS = 
+CPPFLAGS = -Itmp_include -DGBNCPUFEAT -I../rmm_wrap -DGBCOVER $(RENAME)
 SO_OPTS = $(LDFLAGS)
 
 ifeq ($(UNAME),Darwin)
     # Mac
-    CFLAGS += -fno-common
     SO_NAME = libgraphblas_tcov.dylib
     SO_OPTS += -dynamiclib -shared -Wl,-install_name -Wl,$(SO_NAME) -undefined dynamic_lookup
 else
@@ -48,12 +49,12 @@ default: $(SO_NAME)
 	$(CC) -c $(CFLAGS) $(CPPFLAGS) $< -o $(notdir $@)
 
 $(SO_NAME): $(OBJ)
-	$(CC) $(SO_OPTS) $^ -o $@ -lm
+	$(CC) $(SO_OPTS) $^ $(LIBS) -o $@ -lm
 
 .KEEP: $(OBJ)
 
 clean:
-	$(RM) *.o
+	$(RM) *.o *.d
 
 distclean: clean
 	$(RM) *.mex* tmp*/* errlog*.txt grbstat.mat fprint.txt

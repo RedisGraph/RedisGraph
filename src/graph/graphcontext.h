@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -49,9 +49,7 @@ typedef struct {
 // Creates and initializes a graph context struct.
 GraphContext *GraphContext_New
 (
-	const char *graph_name,
-	size_t node_cap,
-	size_t edge_cap
+	const char *graph_name
 );
 
 // retrive the graph context according to the graph name
@@ -209,15 +207,27 @@ Index *GraphContext_GetIndex
 	SchemaType schema_type
 );
 
-// create an index for the given label and attribute
-int GraphContext_AddIndex
+// create an exact match index for the given label and attribute
+int GraphContext_AddExactMatchIndex
+(
+	Index **idx,
+	GraphContext *gc,
+	SchemaType schema_type,
+	const char *label,
+	const char *field
+);
+
+// create a full text index for the given label and attribute
+int GraphContext_AddFullTextIndex
 (
 	Index **idx,
 	GraphContext *gc,
 	SchemaType schema_type,
 	const char *label,
 	const char *field,
-	IndexType index_type
+	double weight,
+	bool nostem,
+	const char *phonetic
 );
 
 // remove and free an index

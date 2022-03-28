@@ -2,7 +2,7 @@
 // GB_AxB_dot_generic: generic template for all dot-product methods
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -68,6 +68,13 @@
     // no vectorization
     #define GB_PRAGMA_SIMD_VECTORIZE ;
     #define GB_PRAGMA_SIMD_DOT(cij) ;
+
+    // no special semirings or operators
+    #define GB_IS_PAIR_MULTIPLIER 0
+    #define GB_IS_ANY_PAIR_SEMIRING 0
+    #define GB_IS_IMIN_MONOID 0
+    #define GB_IS_IMAX_MONOID 0
+    #define GB_IS_FIRSTJ_MULTIPLIER 0
 
     if (op_is_positional)
     { 

@@ -2,7 +2,7 @@
 // GB_new_bix: create a matrix and allocate space
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -18,23 +18,21 @@
 //      successful, *Ahandle points to the new handle, and its contents, on
 //      output.  If an out-of-memory condition occurs, the header is freed and
 //      *Ahandle is NULL on output.  If successful, (*Ahandle)->static_header
-//      will always be false (A_static_header is ignored).
+//      will always be false on output.
 
 // If *Ahandle is not NULL on input:
 
-//      The static header for A is used.  The pointer *Ahandle itself is not
+//      The existing header for A is used.  The pointer *Ahandle itself is not
 //      modified on output, either on success or failure.  If successful, the
 //      content of A has been created.  If an out-of-memory condition occurs,
 //      the preexisting header is not freed and *Ahandle is unmodified on
-//      output. (*Ahandle)->static_header is determined from the input
-//      parameter, A_static_header.
+//      output. (*Ahandle)->static_header is unchanged.
 
 #include "GB.h"
 
 GrB_Info GB_new_bix             // create a new matrix, incl. A->b, A->i, A->x
 (
     GrB_Matrix *Ahandle,        // output matrix to create
-    const bool A_static_header, // true if Ahandle is statically allocated.
     const GrB_Type type,        // type of output matrix
     const int64_t vlen,         // length of each vector
     const int64_t vdim,         // number of vectors
@@ -63,7 +61,7 @@ GrB_Info GB_new_bix             // create a new matrix, incl. A->b, A->i, A->x
     //--------------------------------------------------------------------------
 
     bool preexisting_header = (*Ahandle != NULL) ;
-    GrB_Info info = GB_new (Ahandle, A_static_header, type, vlen, vdim,
+    GrB_Info info = GB_new (Ahandle, type, vlen, vdim,
         Ap_option, is_csc, sparsity, hyper_switch, plen, Context) ;
     if (info != GrB_SUCCESS)
     { 

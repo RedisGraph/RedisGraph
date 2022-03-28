@@ -261,23 +261,31 @@ OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
 	return resolving_op;
 }
 
-OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
-									   rax *refs_to_resolve) {
-	return ExecutionPlan_LocateReferencesExcludingOps(root, recurse_limit,
-													  NULL, 0, refs_to_resolve);
+OpBase *ExecutionPlan_LocateReferences
+(
+	OpBase *root,
+	const OpBase *recurse_limit,
+	rax *refs_to_resolve
+) {
+	return ExecutionPlan_LocateReferencesExcludingOps(
+			   root, recurse_limit, NULL, 0, refs_to_resolve);
 }
 
-void _ExecutionPlan_LocateTaps(OpBase *root, OpBase ***taps) {
+void _ExecutionPlan_LocateTaps
+(
+	OpBase *root,
+	OpBase ***taps
+) {
 	if(root == NULL) return;
 
 	if(root->childCount == 0) {
-		// Op Argument isn't considered a tap.
+		// op Argument isn't considered a tap
 		if(root->type != OPType_ARGUMENT) {
 			array_append(*taps, root);
 		}
 	}
 
-	// Recursively visit children.
+	// recursively visit children
 	for(int i = 0; i < root->childCount; i++) {
 		_ExecutionPlan_LocateTaps(root->children[i], taps);
 	}
@@ -360,7 +368,8 @@ OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_v
 	match_stream_plan->record_map = plan->record_map;
 
 	// If we have bound variables, build an Argument op that represents them.
-	if(bound_vars) match_stream_plan->root = NewArgumentOp(plan, bound_vars);
+	if(bound_vars) match_stream_plan->root = NewArgumentOp(match_stream_plan,
+															   bound_vars);
 
 	AST *ast = QueryCtx_GetAST();
 	// Build a temporary AST holding a MATCH clause.

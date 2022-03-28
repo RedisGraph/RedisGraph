@@ -2,6 +2,11 @@
 // GB_operator.h: definitions of all operator objects
 //------------------------------------------------------------------------------
 
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
+//------------------------------------------------------------------------------
+
 // GrB_UnaryOp, GrB_IndexUnaryOp, GrB_BinaryOp, and GxB_SelectOp all use the
 // same internal structure.
 

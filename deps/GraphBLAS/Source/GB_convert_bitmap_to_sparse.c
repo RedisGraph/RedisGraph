@@ -2,7 +2,7 @@
 // GB_convert_bitmap_to_sparse: convert a matrix from bitmap to sparse
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -75,7 +75,7 @@ GrB_Info GB_convert_bitmap_to_sparse    // convert matrix from bitmap to sparse
     {
         // A is not iso.  Allocate new space for Ax, which is filled by
         // GB_convert_bitmap_worker.
-        Ax = GB_MALLOC (anzmax * asize, GB_void, &Ax_size) ;
+        Ax = GB_MALLOC (anzmax * asize, GB_void, &Ax_size) ;    // x:OK
         Ax_shallow = false ;
         if (Ax == NULL)
         { 

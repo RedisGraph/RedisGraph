@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -95,8 +95,8 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 				: cypher_ast_property_operator_get_prop_name(cypher_ast_create_pattern_props_index_get_property_operator(index_op, i));
 			const char *prop = cypher_ast_prop_name_get_value(prop_name);
 
-			index_added |= (GraphContext_AddIndex(&idx, gc, schema_type, label,
-						prop, idx_type) == INDEX_OK);
+			index_added |= (GraphContext_AddExactMatchIndex(&idx, gc,
+						schema_type, label, prop) == INDEX_OK);
 		}
 
 		// populate the index only when at least one attribute was introduced
@@ -275,7 +275,7 @@ static void _DelegateWriter(GraphQueryCtx *gq_ctx) {
 	gq_ctx->command_ctx->thread = EXEC_THREAD_WRITER;
 
 	// dispatch work to the writer thread
-	int res = ThreadPools_AddWorkWriter(_ExecuteQuery, gq_ctx);
+	int res = ThreadPools_AddWorkWriter(_ExecuteQuery, gq_ctx, 0);
 	ASSERT(res == 0);
 }
 

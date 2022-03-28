@@ -2,11 +2,13 @@
 
 test:
 # if host is linux
-ifeq ($(OS), Linux)
+ifeq ($(OS),linux)
 	# regular tests on linux
 	@python3 -m RLTest --module ../../src/redisgraph.so $(TEST_ARGS)
-	# rerun persistency tests using AOF
+ifeq ($(VALGRIND),)
+	# rerun persistency tests using AOF if Valgrind is not being used
 	@python3 -m RLTest --module ../../src/redisgraph.so --use-aof -t test_persistency $(TEST_ARGS)
+endif
 else
 # mac
 ifeq ($(VALGRIND),)

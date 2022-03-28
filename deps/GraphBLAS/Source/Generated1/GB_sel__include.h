@@ -2,7 +2,7 @@
 // GB_sel__include.h: definitions for GB_sel__*.c
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // This file has been automatically generated from Generator/GB_sel.h
@@ -111,6 +111,57 @@ void GB (_sel_bitmap__user_iso)
 
 // SPDX-License-Identifier: Apache-2.0
 
+void GB (_sel_phase1__idxunop_cast_any)
+(
+    int64_t *restrict Zp,
+    int64_t *restrict Cp,
+    int64_t *restrict Wfirst,
+    int64_t *restrict Wlast,
+    const GrB_Matrix A,
+    const bool flipij,
+    const int64_t ithunk,
+    const GB_void *restrict athunk,
+    const GB_void *restrict ythunk,
+    const GB_Operator op,
+    const int64_t *A_ek_slicing, const int A_ntasks, const int A_nthreads
+) ;
+
+
+
+void GB (_sel_phase2__idxunop_cast_any)
+(
+    int64_t *restrict Ci,
+    GB_void *restrict Cx,
+    const int64_t *restrict Zp,
+    const int64_t *restrict Cp,
+    const int64_t *restrict Cp_kfirst,
+    const GrB_Matrix A,
+    const bool flipij,
+    const int64_t ithunk,
+    const GB_void *restrict athunk,
+    const GB_void *restrict ythunk,
+    const GB_Operator op,
+    const int64_t *A_ek_slicing, const int A_ntasks, const int A_nthreads
+) ;
+
+
+
+void GB (_sel_bitmap__idxunop_cast_any)
+(
+    int8_t *Cb,
+    GB_void *restrict Cx,
+    int64_t *cnvals_handle,
+    GrB_Matrix A,
+    const bool flipij,
+    const int64_t ithunk,
+    const GB_void *restrict athunk,
+    const GB_void *restrict ythunk,
+    const GB_Operator op,
+    const int nthreads
+) ;
+
+// SPDX-License-Identifier: Apache-2.0
+
 void GB (_sel_phase1__idxunop_any)
 (
     int64_t *restrict Zp,
@@ -147,6 +198,57 @@ void GB (_sel_phase2__idxunop_any)
 
 
 void GB (_sel_bitmap__idxunop_any)
+(
+    int8_t *Cb,
+    GB_void *restrict Cx,
+    int64_t *cnvals_handle,
+    GrB_Matrix A,
+    const bool flipij,
+    const int64_t ithunk,
+    const GB_void *restrict athunk,
+    const GB_void *restrict ythunk,
+    const GB_Operator op,
+    const int nthreads
+) ;
+
+// SPDX-License-Identifier: Apache-2.0
+
+void GB (_sel_phase1__idxunop_cast_iso)
+(
+    int64_t *restrict Zp,
+    int64_t *restrict Cp,
+    int64_t *restrict Wfirst,
+    int64_t *restrict Wlast,
+    const GrB_Matrix A,
+    const bool flipij,
+    const int64_t ithunk,
+    const GB_void *restrict athunk,
+    const GB_void *restrict ythunk,
+    const GB_Operator op,
+    const int64_t *A_ek_slicing, const int A_ntasks, const int A_nthreads
+) ;
+
+
+
+void GB (_sel_phase2__idxunop_cast_iso)
+(
+    int64_t *restrict Ci,
+    GB_void *restrict Cx,
+    const int64_t *restrict Zp,
+    const int64_t *restrict Cp,
+    const int64_t *restrict Cp_kfirst,
+    const GrB_Matrix A,
+    const bool flipij,
+    const int64_t ithunk,
+    const GB_void *restrict athunk,
+    const GB_void *restrict ythunk,
+    const GB_Operator op,
+    const int64_t *A_ek_slicing, const int A_ntasks, const int A_nthreads
+) ;
+
+
+
+void GB (_sel_bitmap__idxunop_cast_iso)
 (
     int8_t *Cb,
     GB_void *restrict Cx,

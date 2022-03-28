@@ -3,7 +3,7 @@ function mxm_demo
 % Requires the ssget interface to the SuiteSparse Matrix Collection.
 % See https://sparse.tamu.edu.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
 % reset to the default number of threads

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -66,24 +66,16 @@ void _traverse(OpCondTraverse *op) {
 	// Evaluate expression.
 	AlgebraicExpression_Eval(op->ae, op->M);
 
-	if(op->iter == NULL) GxB_MatrixTupleIter_new(&op->iter, RG_MATRIX_M(op->M));
-	else GxB_MatrixTupleIter_reuse(op->iter, RG_MATRIX_M(op->M));
+	RG_MatrixTupleIter_attach(&op->iter, op->M);
 
 	// Clear filter matrix.
 	RG_Matrix_clear(op->F);
 }
 
 OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
-	OpCondTraverse *op = rm_malloc(sizeof(OpCondTraverse));
+	OpCondTraverse *op = rm_calloc(sizeof(OpCondTraverse), 1);
 	op->graph = g;
 	op->ae = ae;
-	op->r = NULL;
-	op->iter = NULL;
-	op->F = NULL;
-	op->M = NULL;
-	op->records = NULL;
-	op->record_count = 0;
-	op->edge_ctx = NULL;
 	op->record_cap = BATCH_SIZE;
 
 	// Set our Op operations
@@ -137,16 +129,14 @@ static Record CondTraverseConsume(OpBase *opBase) {
 		return OpBase_CloneRecord(op->r);
 	}
 
-	bool depleted = true;
-	NodeID src_id = INVALID_ENTITY_ID;
+	NodeID src_id  = INVALID_ENTITY_ID;
 	NodeID dest_id = INVALID_ENTITY_ID;
 
 	while(true) {
-		if(op->iter) GxB_MatrixTupleIter_next(op->iter, &src_id, &dest_id,
-				NULL, &depleted);
+		GrB_Info info = RG_MatrixTupleIter_next_UINT64(&op->iter, &src_id, &dest_id, NULL);
 
 		// Managed to get a tuple, break.
-		if(!depleted) break;
+		if(info == GrB_SUCCESS) break;
 
 		/* Run out of tuples, try to get new data.
 		 * Free old records. */
@@ -206,9 +196,9 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 
 	if(op->edge_ctx) EdgeTraverseCtx_Reset(op->edge_ctx);
 
-	if(op->iter) {
-		GxB_MatrixTupleIter_free(&op->iter);
-	}
+	GrB_Info info = RG_MatrixTupleIter_detach(&op->iter);
+	ASSERT(info == GrB_SUCCESS);
+
 	if(op->F != NULL) RG_Matrix_clear(op->F);
 	return OP_OK;
 }
@@ -223,9 +213,8 @@ static inline OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase 
 static void CondTraverseFree(OpBase *ctx) {
 	OpCondTraverse *op = (OpCondTraverse *)ctx;
 
-	if(op->iter) {
-		GxB_MatrixTupleIter_free(&op->iter);
-	}
+	GrB_Info info = RG_MatrixTupleIter_detach(&op->iter);
+	ASSERT(info == GrB_SUCCESS);
 
 	if(op->F != NULL) {
 		RG_Matrix_free(&op->F);

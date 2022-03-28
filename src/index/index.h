@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -16,10 +16,24 @@
 #define INDEX_SEPARATOR '\1'  // can't use '\0', RediSearch will terminate on \0
 #define INDEX_FIELD_NONE_INDEXED "NONE_INDEXABLE_FIELDS"
 
+#define INDEX_FIELD_DEFAULT_WEIGHT 1.0
+#define INDEX_FIELD_DEFAULT_NOSTEM false
+#define INDEX_FIELD_DEFAULT_PHONETIC "no"
+
+// creates a new index field and initialize it to default values
+// returns a pointer to the field
+#define INDEX_FIELD_DEFAULT(field)                                      \
+	({                                                                  \
+		IndexField field;                                               \
+		IndexField_New(&field, #field, INDEX_FIELD_DEFAULT_WEIGHT,      \
+			INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);  \
+		&field;                                                         \
+	})
+
 typedef enum {
-	IDX_ANY = 0,
-	IDX_EXACT_MATCH = 1,
-	IDX_FULLTEXT = 2,
+	IDX_ANY          =  0,
+	IDX_EXACT_MATCH  =  1,
+	IDX_FULLTEXT     =  2,
 } IndexType;
 
 typedef struct {
@@ -29,16 +43,38 @@ typedef struct {
 } EdgeIndexKey;
 
 typedef struct {
+	char *name;        // field name
+	Attribute_ID id;   // field id
+	double weight;     // the importance of text
+	bool nostem;       // disable stemming of the text
+	char *phonetic;    // phonetic search of text
+} IndexField;
+
+typedef struct {
 	char *label;                  // indexed label
 	int label_id;                 // indexed label ID
-	char **fields;                // indexed fields
-	Attribute_ID *fields_ids;     // indexed field IDs
+	IndexField *fields;           // indexed fields
 	char *language;               // language
 	char **stopwords;             // stopwords
 	GraphEntityType entity_type;  // entity type (node/edge) indexed
 	IndexType type;               // index type exact-match / fulltext
 	RSIndex *idx;                 // rediSearch index
 } Index;
+
+// create new index field
+void IndexField_New
+(
+	IndexField *field,    // field to initialize
+	const char *name,     // field name
+	double weight,        // the importance of text
+	bool nostem,          // disable stemming of the text
+	const char *phonetic  // phonetic search of text
+);
+
+void IndexField_Free
+(
+	IndexField *field
+);
 
 // create a new index
 Index *Index_New
@@ -59,7 +95,7 @@ void Index_Construct
 void Index_AddField
 (
 	Index *idx,
-	const char *field  // field to add
+	IndexField *field
 );
 
 // removes field from index
@@ -110,7 +146,7 @@ uint Index_FieldsCount
 );
 
 // returns a shallow copy of indexed fields
-const char **Index_GetFields
+const IndexField *Index_GetFields
 (
 	const Index *idx
 );
@@ -139,6 +175,20 @@ char **Index_GetStopwords
 (
 	const Index *idx,
 	size_t *size
+);
+
+// set indexed language
+void Index_SetLanguage
+(
+	Index *idx,
+	const char *language
+);
+
+// set indexed stopwords
+void Index_SetStopwords
+(
+	Index *idx,
+	char **stopwords
 );
 
 // free fulltext index

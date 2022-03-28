@@ -30,7 +30,7 @@
 //  matrix<T_M> *M         <- mask matrix
 //  matrix<T_A> *A         <- input matrix A
 //  matrix<T_B> *B         <- input matrix B
-#define GB_KERNEL
+#define GB_CUDA_KERNEL
 #include <limits>
 #include <cstdint>
 #include "matrix.h"

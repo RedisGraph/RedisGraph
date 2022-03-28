@@ -2,7 +2,7 @@
 // GB_log2.h: integer log2 and check if power of 2
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -14,15 +14,17 @@
 #define GB_64 (8 * sizeof (unsigned long long))
 
 // floor and ceiling of the log2 of an integer.
-#ifdef __GNUC__
+
+#if GB_COMPILER_MSC
+// Microsoft Visual Studio does not have the __builtin_clzll
+#define GB_CLZLL(k)   not defined, using log2 instead
+#define GB_CEIL_LOG2(k)  ((uint64_t) (ceil  (log2 ((double) k))))
+#define GB_FLOOR_LOG2(k) ((uint64_t) (floor (log2 ((double) k))))
+#else
 // see https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html
 #define GB_CLZLL(k)   __builtin_clzll ((unsigned long long) (k))
 #define GB_CEIL_LOG2(k)  ((uint64_t) ((k) < 2) ? 0 : (GB_64 - GB_CLZLL ((k)-1)))
 #define GB_FLOOR_LOG2(k) ((uint64_t) ((k) < 2) ? 0 : (GB_64 - GB_CLZLL (k) - 1))
-#else
-#define GB_CLZLL(k)   not defined, using log2 instead
-#define GB_CEIL_LOG2(k)  ((uint64_t) (ceil  (log2 ((double) k))))
-#define GB_FLOOR_LOG2(k) ((uint64_t) (floor (log2 ((double) k))))
 #endif
 
 // GB_IS_POWER_OF_TWO(k) is true if the unsigned integer k is an exact power of

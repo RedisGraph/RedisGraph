@@ -2,7 +2,7 @@
 // GxB_init: initialize GraphBLAS and declare malloc/calloc/realloc/free to use
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -25,32 +25,74 @@
 //      // either use:
 //      GrB_init (mode) ;
 //      // or use this (but not both):
-//      GxB_init (mode, malloc, calloc, realloc, free, true) ;
+//      GxB_init (mode, malloc, calloc, realloc, free) ;
 //
 // To use GraphBLAS from within a mexFunction:
 //
 //      #include "mex.h"
-//      GxB_init (mode, mxMalloc, mxCalloc, mxRealloc, mxFree, false) ;
+//      GxB_init (mode, mxMalloc, mxCalloc, mxRealloc, mxFree) ;
 //
 // To use the C interface to the Intel TBB scalable allocators:
 //
 //      #include "tbb/scalable_allocator.h"
 //      GxB_init (mode, scalable_malloc, scalable_calloc, scalable_realloc,
-//          scalable_free, true) ;
+//          scalable_free) ;
 //
-// To use CUDA, do not use this function.  Instead use the following:
+// To use CUDA and its RMM memory manager:
 //
-//      GxB_cuda_init (mode) ;
+//      GxB_init (mode, rmm_malloc, rmm_calloc, rmm_realloc, rmm_free) ;
 //
-//      // All GraphBLAS objects are allocated with GxB_cuda_malloc, and
-//      // GxB_cuda_free.  This function can still be used if CUDA is not
-//      // available at compile-time; in this case, it acts just like GrB_init
-//      // (mode).  The memory allocators GxB_cuda_malloc, etc., just call the
-//      // ANSI C malloc/free functions.
+//          mode is GrB_BLOCKING or GrB_NONBLOCKING
+
+#if for_comments_only
+compute_system = rmm_wrap_initialize (mode, initpoolsize, maxpoolsize) ;
+
+    create RMM instance
+    query the GPU(s) available, set their context
+    compute_system: holds 4 RMM contexts, 4 GPUs, how big they are ...
+
+p = rmm_wrap_malloc (42) ;  // needs the GPUs to be warmed up
+...
+
+    // option:
+    GxB_init (GrB_NONBLOCKING, rmm_wrap_malloc, rmm_wrap_calloc,
+        rmm_wrap_realloc, rmm_wrap_free) ;
+
+    // use GrB just on the CPU cores
+    GrB_Matrix_new (&C, ...)
+    GrB_mxm (...)
+
+    GxB_set (GxB_CUDA_SYSTEM_CONTEXT, compute_system) ;   // use the GPUs ...
+    GxB_set (GxB_NTHREDS, 4) ;  // use 4 cpu threads
+
+    GxB_get (GxB_CUDA_NGPUS, &ngpus)
+
+    // use GrB just on the GPU 2
+    GxB_set (GxB_CUDA_SET_DEVICE, 2) ;
+    GrB_mxm (C, ...)
+    GxB_set (C, GxB_SPARSITY, GxB_SPARSE + GxB_HYPERSPARE) ;
+    GxB_Matrix_Option_set
+
+    GrB_mxm (C, ...)
+
+    ...
+    GxB_set (GxB_CUDA, true) ;      // 0 seconds, GPUs already warmed up
+    ...
+    GxB_set (GxB_CUDA, false) ;
+    ...
+    GxB_set (GxB_CUDA, true) ;      // 0 seconds
+    GxB_set (GxB_GPUS, [0 2]) ;
+    ...
+
+GrB_finalize ( ) ;
+rmm_wrap_free (p) ;
+rmm_wrap_finalize ( ) ;
+#endif
+
 //
 // To use user-provided malloc and free functions, but not calloc/realloc:
 //
-//      GxB_init (mode, my_malloc, NULL, NULL, my_free, true) ;
+//      GxB_init (mode, my_malloc, NULL, NULL, my_free) ;
 
 #include "GB.h"
 
@@ -63,10 +105,6 @@ GrB_Info GxB_init           // start up GraphBLAS and also define malloc, etc
     void * (* user_calloc_function  ) (size_t, size_t), // no longer used
     void * (* user_realloc_function ) (void *, size_t), // optional, can be NULL
     void   (* user_free_function    ) (void *)          // required
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    // parameter added in v3.0, unused in this v5.2.0, to be removed in v6.0
-    , bool ignored
-    #endif
 )
 {
 
@@ -91,7 +129,6 @@ GrB_Info GxB_init           // start up GraphBLAS and also define malloc, etc
         user_malloc_function,           // user-defined malloc, required
         user_realloc_function,          // user-defined realloc, may be NULL
         user_free_function,             // user-defined free, required
-        false,                          // do not use CUDA
         Context)) ;
 }
 

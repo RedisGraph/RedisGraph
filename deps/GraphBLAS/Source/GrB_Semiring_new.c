@@ -2,7 +2,7 @@
 // GrB_Semiring_new: create a new semiring
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -28,6 +28,7 @@
 // operator is not assumed to be commutative.
 
 #include "GB.h"
+#include "GB_Semiring_new.h"
 
 #define GB_FREE_ALL                     \
 {                                       \
@@ -40,15 +41,18 @@ GrB_Info GrB_Semiring_new           // create a semiring
     GrB_Monoid add,                 // additive monoid of the semiring
     GrB_BinaryOp multiply           // multiply operator of the semiring
 )
-{ 
+{
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
     GrB_Info info ;
+
     GB_WHERE1 ("GrB_Semiring_new (&semiring, add, multiply)") ;
+
     GB_RETURN_IF_NULL (semiring) ;
+
     (*semiring) = NULL ;
     GB_RETURN_IF_NULL_OR_FAULTY (add) ;
     GB_RETURN_IF_NULL_OR_FAULTY (multiply) ;
@@ -62,10 +66,11 @@ GrB_Info GrB_Semiring_new           // create a semiring
     size_t header_size ;
     (*semiring) = GB_MALLOC (1, struct GB_Semiring_opaque, &header_size) ;
     if (*semiring == NULL)
-    { 
+    {
         // out of memory
         return (GrB_OUT_OF_MEMORY) ;
     }
+
     (*semiring)->header_size = header_size ;
 
     //--------------------------------------------------------------------------

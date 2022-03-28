@@ -2,7 +2,7 @@
 // GxB_Global_Option_get: get a global default option for all future matrices
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -277,6 +277,34 @@ GrB_Info GxB_Global_Option_get      // gets the current global option
                 va_end (ap) ;
                 GB_RETURN_IF_NULL (api_url) ;
                 (*api_url) = "http://graphblas.org" ;
+            }
+            break ;
+
+        //----------------------------------------------------------------------
+        // compiler used to compile GraphBLAS
+        //----------------------------------------------------------------------
+
+        case GxB_COMPILER_VERSION : 
+
+            {
+                va_start (ap, field) ;
+                int *compiler_version = va_arg (ap, int *) ;
+                va_end (ap) ;
+                GB_RETURN_IF_NULL (compiler_version) ;
+                compiler_version [0] = GB_COMPILER_MAJOR ; 
+                compiler_version [1] = GB_COMPILER_MINOR ;
+                compiler_version [2] = GB_COMPILER_SUB ;
+            }
+            break ;
+
+        case GxB_COMPILER_NAME : 
+
+            {
+                va_start (ap, field) ;
+                char **compiler_name = va_arg (ap, char **) ;
+                va_end (ap) ;
+                GB_RETURN_IF_NULL (compiler_name) ;
+                (*compiler_name) = GB_COMPILER_NAME ;
             }
             break ;
 

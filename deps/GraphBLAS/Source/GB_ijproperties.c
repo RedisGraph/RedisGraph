@@ -2,7 +2,7 @@
 // GB_ijproperties: check I and determine its properties
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -65,7 +65,7 @@ GrB_Info GB_ijproperties        // check I and determine its properties
 
     ASSERT (I != NULL) ;
     ASSERT (limit >= 0) ;
-    ASSERT (limit < GB_NMAX) ;
+    ASSERT (limit <= GB_NMAX) ;
     int64_t imin, imax ;
 
     //--------------------------------------------------------------------------
