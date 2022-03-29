@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -40,13 +40,13 @@ typedef enum {
 	OP_ENDSWITH = 20,
 	OP_IN = 21,
 	OP_IS_NULL = 22,
-	OP_IS_NOT_NULL = 23
+	OP_IS_NOT_NULL = 23,
+	OP_XNOR = 24
 } AST_Operator;
 
 typedef struct {
 	Attribute_ID *keys;
 	struct AR_ExpNode **values;
-	int property_count;
 } PropertyMap;
 
 // Enum describing how a SET directive should treat pre-existing properties

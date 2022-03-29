@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -23,7 +23,7 @@ typedef struct {
 	NodeScanCtx n;              // Label data of node being scanned
 	unsigned int nodeRecIdx;    // Node position within record
 	UnsignedRange *id_range;    // ID range to iterate over
-	RG_MatrixTupleIter *iter;
+	RG_MatrixTupleIter iter;    // Iterator over label matrix
 	Record child_record;        // The Record this op acts on if it is not a tap
 } NodeByLabelScan;
 

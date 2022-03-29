@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -116,7 +116,8 @@ static Record DeleteConsume(OpBase *opBase) {
 			array_clear(op->deleted_edges);
 			// If evaluating the expression allocated any memory, free it.
 			SIValue_Free(value);
-
+			// free the Record this operation acted on
+			OpBase_DeleteRecord(r);
 			ErrorCtx_RaiseRuntimeException("Delete type mismatch, expecting either Node or Relationship.");
 			break;
 		}

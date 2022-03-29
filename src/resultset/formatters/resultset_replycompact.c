@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -57,7 +57,7 @@ static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 
 	switch(SI_TYPE(v)) {
 	case T_STRING:
-		RedisModule_ReplyWithSimpleString(ctx, v.stringval);
+		RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
 		return;
 	case T_INT64:
 		RedisModule_ReplyWithLongLong(ctx, v.longval);
@@ -299,6 +299,6 @@ void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns,
 		RedisModule_ReplyWithLongLong(ctx, t);
 
 		// Second, emit the identifier string associated with the column
-		RedisModule_ReplyWithSimpleString(ctx, columns[i]);
+		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
 	}
 }

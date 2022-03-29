@@ -1,12 +1,11 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
 #include "../../util/arr.h"
 #include "../ops/op_filter.h"
-#include "../../util/strcmp.h"
 #include "../ops/op_value_hash_join.h"
 #include "../../util/rax_extensions.h"
 #include "../ops/op_cartesian_product.h"

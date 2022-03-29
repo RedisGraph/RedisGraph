@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -14,6 +14,71 @@
 #include "../procedures/procedure.h"
 #include "../arithmetic/arithmetic_expression.h"
 
+// TODO: generic function should be used to validate different features positions
+// static AST_Validation _NestedIn
+// (
+// 	const cypher_astnode_t *root,
+// 	cypher_astnode_type_t search_type,
+// 	cypher_astnode_type_t *whitelist,
+// 	bool is_in_whitelist
+// ) {
+// 	ASSERT(root != NULL);
+// 	ASSERT(whitelist != NULL);
+
+// 	cypher_astnode_type_t t = cypher_astnode_type(root);
+// 	if(t == search_type && is_in_whitelist) return true;
+
+// 	if(!is_in_whitelist) {
+// 		int len = array_len(whitelist);
+// 		for (uint i = 0; i < len; i++) {
+// 			if(t == whitelist[i]) {
+// 				is_in_whitelist = true;
+// 				break;
+// 			}
+// 		}
+// 	}
+
+// 	uint nchildren = cypher_astnode_nchildren(root);
+// 	for(uint i = 0; i < nchildren; i ++) {
+// 		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
+// 		bool res = _NestedIn(child, search_type, whitelist, is_in_whitelist);
+// 		if(res) return true;
+// 	}
+
+// 	return false;
+// }
+
+// validate that allShortestPaths is in a supported places
+static bool _ValidateAllShortestPaths
+(
+	const cypher_astnode_t *root
+) {
+	ASSERT(root != NULL);
+
+	cypher_astnode_type_t t = cypher_astnode_type(root);
+	// if we found allShortestPaths in invalid parent return true
+	if(t == CYPHER_AST_SHORTEST_PATH &&
+	   !cypher_ast_shortest_path_is_single(root)) {
+		return true;
+	}
+
+	if(t == CYPHER_AST_MATCH) {
+		// allShortesPath is invalid in the match predicate
+		const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(root);
+		return predicate != NULL && _ValidateAllShortestPaths(predicate);
+	}
+
+	// recursively traverse all children
+	uint nchildren = cypher_astnode_nchildren(root);
+	for(uint i = 0; i < nchildren; i ++) {
+		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
+		bool res = _ValidateAllShortestPaths(child);
+		if(res) return true;
+	}
+
+	return false;
+}
+
 // Forward declaration
 static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identifiers);
 
@@ -22,31 +87,16 @@ inline static void _prepareIterateAll(rax *map, raxIterator *iter) {
 	raxSeek(iter, "^", NULL, 0);
 }
 
-// Validate that an input string can be completely converted to a positive integer in range.
-static inline AST_Validation _ValidatePositiveInteger(const char *input) {
-	ASSERT(input);
-	char *endptr; // If the entire string is converted, endptr will point to a null byte
-	errno = 0; // If underflow or overflow occurs, errno will be set
-
-	strtol(input, &endptr, 0); // Perform conversion
-
-	if(errno != 0 || *endptr != '\0') return AST_INVALID;
-
-	return AST_VALID;
-}
-
 static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) {
 	if(!node) return;
 	ASSERT(identifiers != NULL);
 
-	if(cypher_astnode_type(node) == CYPHER_AST_IDENTIFIER) {
+	cypher_astnode_type_t type = cypher_astnode_type(node);
+	if(type == CYPHER_AST_IDENTIFIER) {
 		const char *identifier = cypher_ast_identifier_get_name(node);
 		raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
 		return;
 	}
-
-	uint child_count = cypher_astnode_nchildren(node);
-	cypher_astnode_type_t type = cypher_astnode_type(node);
 
 	/* In case current node is of type CALL
 	 * Process procedure call arguments, those should be defined prior
@@ -60,6 +110,11 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 		}
 		return;
 	}
+
+	// Don't visit the children of pattern comprehensions, as these will be aliased later.
+	if(type == CYPHER_AST_PATTERN_COMPREHENSION) return;
+
+	uint child_count = cypher_astnode_nchildren(node);
 
 	/* In case current node is of type projection
 	 * inspect first child only,
@@ -85,6 +140,28 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 		const cypher_astnode_t *variable_node = cypher_ast_list_comprehension_get_identifier(node);
 		const char *variable = cypher_ast_identifier_get_name(variable_node);
 		raxRemove(identifiers, (unsigned char *)variable, strlen(variable), NULL);
+	}
+
+	if(type == CYPHER_AST_REDUCE) {
+		// A reduce call has an accumulator and a local variable that should
+		// only be accessed within its scope;
+		// do not leave them in the identifiers map
+		// example: reduce(sum=0, n in [1,2] | sum+n)
+		const  char              *variable         =  NULL;
+		const  cypher_astnode_t  *accum_node       =  NULL;
+		const  cypher_astnode_t  *identifier_node  =  NULL;
+
+		// `sum` in the above example
+		accum_node = cypher_ast_reduce_get_accumulator(node);
+		variable = cypher_ast_identifier_get_name(accum_node);
+		raxRemove(identifiers, (unsigned char *)variable, strlen(variable),
+				  NULL);
+
+		// `n` in the above example
+		identifier_node = cypher_ast_reduce_get_identifier(node);
+		variable = cypher_ast_identifier_get_name(identifier_node);
+		raxRemove(identifiers, (unsigned char *)variable, strlen(variable),
+				  NULL);
 	}
 }
 
@@ -322,33 +399,6 @@ cleanup:
 	return res;
 }
 
-/* While Cypher allows paths to appear in a number of places, RedisGraph
- * only supports them in the appropriate clauses and in path filters. */
-static AST_Validation _Validate_Path_Locations(const cypher_astnode_t *root) {
-	uint nchildren = cypher_astnode_nchildren(root);
-	const cypher_astnode_type_t root_type = cypher_astnode_type(root);
-	for(uint i = 0; i < nchildren; i ++) {
-		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
-		const cypher_astnode_type_t child_type = cypher_astnode_type(child);
-		if(child_type == CYPHER_AST_PATTERN_PATH) {
-			if(root_type != CYPHER_AST_PATTERN &&
-			   root_type != CYPHER_AST_SHORTEST_PATH &&
-			   root_type != CYPHER_AST_MATCH &&
-			   root_type != CYPHER_AST_MERGE &&
-			   root_type != CYPHER_AST_WITH &&
-			   root_type != CYPHER_AST_NAMED_PATH &&
-			   root_type != CYPHER_AST_UNARY_OPERATOR &&
-			   root_type != CYPHER_AST_BINARY_OPERATOR) {
-				ErrorCtx_SetError("Encountered path traversal in unsupported location '%s'",
-								  cypher_astnode_typestr(child_type));
-				return AST_INVALID;
-			}
-		}
-		if(_Validate_Path_Locations(child) != AST_VALID) return AST_INVALID;
-	}
-	return AST_VALID;
-}
-
 static inline bool _AliasIsReturned(rax *projections, const char *identifier) {
 	return raxFind(projections, (unsigned char *)identifier, strlen(identifier)) != raxNotFound;
 }
@@ -431,32 +481,70 @@ static AST_Validation _ValidateRelation(rax *projections, const cypher_astnode_t
 	return res;
 }
 
-static AST_Validation _ValidatePath(const cypher_astnode_t *path, rax *projections,
-									rax *edge_aliases) {
+static AST_Validation _ValidatePath
+(
+	const cypher_astnode_t *path,
+	rax *projections,
+	rax *edge_aliases
+) {
 	AST_Validation res = AST_VALID;
-	if(cypher_astnode_type(path) == CYPHER_AST_NAMED_PATH) path = cypher_ast_named_path_get_path(path);
-	if(cypher_astnode_type(path) == CYPHER_AST_SHORTEST_PATH) {
-		ErrorCtx_SetError("RedisGraph currently only supports shortestPath in WITH or RETURN clauses");
-		return AST_INVALID;
-	}
-	uint path_len = cypher_ast_pattern_path_nelements(path);
 
-	// Check all relations on the path (every odd offset) and collect aliases.
-	for(uint i = 1; i < path_len; i += 2) {
-		const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
-		res = _ValidateRelation(projections, edge, edge_aliases);
-		if(res != AST_VALID) return res;
+	if(cypher_astnode_type(path) == CYPHER_AST_NAMED_PATH) {
+		path = cypher_ast_named_path_get_path(path);
+	}
+
+	if(cypher_astnode_type(path) == CYPHER_AST_SHORTEST_PATH) {
+		if(cypher_ast_shortest_path_is_single(path)) {
+			// MATCH (a), (b), p = shortestPath((a)-[*]->(b)) RETURN p
+			res = AST_INVALID;
+			ErrorCtx_SetError("RedisGraph currently only supports shortestPath in WITH or RETURN clauses");
+		} else {
+			// MATCH (a), (b), p = allShortestPaths((a)-[*2..]->(b)) RETURN p
+			// validate rel pattern range doesn't contains a minimum > 1
+			const cypher_astnode_t **ranges =
+				AST_GetTypedNodes(path, CYPHER_AST_RANGE);
+			int range_count = array_len(ranges);
+			for(int i = 0; i < range_count; i++) {
+				long min_hops = 1;
+				const cypher_astnode_t *r = ranges[i];
+				const cypher_astnode_t *start = cypher_ast_range_get_start(r);
+				if(start) min_hops = AST_ParseIntegerNode(start);
+				if(min_hops != 1) {
+					res = AST_INVALID;
+					ErrorCtx_SetError("allShortestPaths(...) does not support a minimal length different from 1");
+					break;
+				}
+			}
+			array_free(ranges);
+		}
+	}
+
+	if(res == AST_VALID) {
+		uint path_len = cypher_ast_pattern_path_nelements(path);
+
+		// validate relations on the path (every odd offset) and collect aliases
+		for(uint i = 1; i < path_len; i += 2) {
+			const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
+			res = _ValidateRelation(projections, edge, edge_aliases);
+			if(res != AST_VALID) break;
+		}
 	}
 
 	return res;
 }
 
-static AST_Validation _ValidatePattern(rax *projections, const cypher_astnode_t *pattern,
-									   rax *edge_aliases) {
-	AST_Validation res = AST_VALID;
-	uint path_count = cypher_ast_pattern_npaths(pattern);
+static AST_Validation _ValidatePattern
+(
+	rax *projections,
+	const cypher_astnode_t *pattern,
+	rax *edge_aliases
+) {
+	AST_Validation  res         =  AST_VALID;
+	uint            path_count  =  cypher_ast_pattern_npaths(pattern);
+
 	for(uint i = 0; i < path_count; i ++) {
-		res = _ValidatePath(cypher_ast_pattern_get_path(pattern, i), projections, edge_aliases);
+		res = _ValidatePath(cypher_ast_pattern_get_path(pattern, i),
+							projections, edge_aliases);
 		if(res != AST_VALID) break;
 	}
 
@@ -470,6 +558,20 @@ static AST_Validation _ValidateInlinedProperties(const cypher_astnode_t *props) 
 		// MATCH (p {invalid_property_construction}) RETURN p
 		ErrorCtx_SetError("Encountered unhandled type in inlined properties.");
 		return AST_INVALID;
+	}
+
+	uint prop_count = cypher_ast_map_nentries(props);
+	for(uint i = 0; i < prop_count; i++) {
+		const cypher_astnode_t *prop_val = cypher_ast_map_get_value(props, i);
+		const cypher_astnode_t **patterns = AST_GetTypedNodes(prop_val, CYPHER_AST_PATTERN_PATH);
+		uint patterns_count = array_len(patterns);
+		array_free(patterns);
+		if(patterns_count > 0) {
+			// Encountered query of the form:
+			// MATCH (a {prop: ()-[]->()}) RETURN a
+			ErrorCtx_SetError("Encountered unhandled type in inlined properties.");
+			return AST_INVALID;
+		}
 	}
 
 	return AST_VALID;
@@ -624,20 +726,20 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast) {
 	// libcypher-parser doesn't have a WHERE node, all of the filters
 	// are specified within the MATCH node sub-tree.
 	const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
-	if(match_clauses == NULL) return AST_VALID;
 
-	rax *edge_aliases = raxNew();
-	rax *reused_entities = raxNew();
-	AST_Validation res = AST_VALID;
+	rax             *edge_aliases     =  raxNew();
+	rax             *reused_entities  =  raxNew();
+	AST_Validation  res               =  AST_VALID;
 
-	const cypher_astnode_t *return_clause = AST_GetClause(ast,
-														  CYPHER_AST_RETURN, NULL);
+	const cypher_astnode_t *return_clause =
+		AST_GetClause(ast, CYPHER_AST_RETURN, NULL);
 	rax *projections = _AST_GetReturnProjections(return_clause);
 	uint match_count = array_len(match_clauses);
 	for(uint i = 0; i < match_count; i ++) {
 		const cypher_astnode_t *match_clause = match_clauses[i];
 		// Validate the pattern described by the MATCH clause
-		res = _ValidatePattern(projections, cypher_ast_match_get_pattern(match_clause), edge_aliases);
+		res = _ValidatePattern(projections,
+							   cypher_ast_match_get_pattern(match_clause), edge_aliases);
 		if(res == AST_INVALID) goto cleanup;
 
 		// Validate that inlined filters do not use parameters
@@ -872,11 +974,37 @@ cleanup:
 }
 
 static AST_Validation _Validate_DELETE_Clauses(const AST *ast) {
-	const cypher_astnode_t *delete_clause = AST_GetClause(ast,
-														  CYPHER_AST_DELETE, NULL);
-	if(!delete_clause) return AST_VALID;
-	// TODO: Validated that the deleted entities are indeed matched or projected.
-	return AST_VALID;
+	const cypher_astnode_t **delete_clauses = AST_GetClauses(ast, CYPHER_AST_DELETE);
+	AST_Validation res = AST_VALID;
+	uint clause_count = array_len(delete_clauses);
+	for(uint i = 0; i < clause_count; i++) {
+		const cypher_astnode_t *clause = delete_clauses[i];
+		uint expression_count = cypher_ast_delete_nexpressions(clause);
+		for(uint j = 0; j < expression_count; j++) {
+			const cypher_astnode_t *exp = cypher_ast_delete_get_expression(clause, j);
+			cypher_astnode_type_t type = cypher_astnode_type(exp);
+			// expecting an identifier or a function call
+			// identifiers and calls that don't resolve to a node or edge
+			// will raise an error at run-time
+			if(type != CYPHER_AST_IDENTIFIER &&
+			   type != CYPHER_AST_APPLY_OPERATOR &&
+			   type != CYPHER_AST_APPLY_ALL_OPERATOR &&
+			   type != CYPHER_AST_SUBSCRIPT_OPERATOR) {
+				ErrorCtx_SetError("DELETE can only be called on nodes and relationships");
+				res = AST_INVALID;
+				goto cleanup;
+			}
+		}
+
+		// validate any func
+		bool include_aggregates = false;
+		res = _ValidateFunctionCalls(clause, include_aggregates);
+		if(res == AST_INVALID) goto cleanup;
+	}
+
+cleanup:
+	array_free(delete_clauses);
+	return res;
 }
 
 static AST_Validation _Validate_RETURN_Clause(const AST *ast) {
@@ -1241,9 +1369,13 @@ static AST_Validation _Validate_Aliases_Defined(const AST *ast) {
 		res = _Validate_Aliases_DefinedInClause(clause, defined_aliases);
 		if(res != AST_VALID) break;
 		if(cypher_astnode_type(clause) == CYPHER_AST_WITH) {
-			// Each WITH clause marks the beginning of a new scope for defined aliases.
-			raxFree(defined_aliases);
-			defined_aliases = raxNew();
+			// each WITH clause marks the beginning of a new scope for defined aliases
+			// if the WITH clause contains a star projection, all variables from
+			// the previous scope are carried over
+			if(!cypher_ast_with_has_include_existing(clause)) {
+				raxFree(defined_aliases);
+				defined_aliases = raxNew();
+			}
 			_AST_GetDefinedIdentifiers(clause, defined_aliases);
 		}
 	}
@@ -1252,33 +1384,32 @@ static AST_Validation _Validate_Aliases_Defined(const AST *ast) {
 }
 
 // Report encountered errors by libcypher-parser.
-static void _AST_ReportErrors(const cypher_parse_result_t *result) {
-	uint nerrors = cypher_parse_result_nerrors(result);
-	// We are currently only reporting the first error to simplify the response.
-	if(nerrors > 1) nerrors = 1;
-	for(uint i = 0; i < nerrors; i++) {
-		const cypher_parse_error_t *error = cypher_parse_result_get_error(result, i);
+void AST_ReportErrors(const cypher_parse_result_t *result) {
+	ASSERT(cypher_parse_result_nerrors(result) > 0);
 
-		// Get the position of an error.
-		struct cypher_input_position errPos = cypher_parse_error_position(error);
+	// report first encountered error
+	const cypher_parse_error_t *error =
+		cypher_parse_result_get_error(result, 0);
 
-		// Get the error message of an error.
-		const char *errMsg = cypher_parse_error_message(error);
+	// Get the position of an error.
+	struct cypher_input_position errPos = cypher_parse_error_position(error);
 
-		// Get the error context of an error.
-		// This returns a pointer to a null-terminated string, which contains a
-		// section of the input around where the error occurred, that is limited
-		// in length and suitable for presentation to a user.
-		const char *errCtx = cypher_parse_error_context(error);
+	// Get the error message of an error.
+	const char *errMsg = cypher_parse_error_message(error);
 
-		// Get the offset into the context of an error.
-		// Identifies the point of the error within the context string, allowing
-		// this to be reported to the user, typically with an arrow pointing to the
-		// invalid character.
-		size_t errCtxOffset = cypher_parse_error_context_offset(error);
-		ErrorCtx_SetError("errMsg: %s line: %u, column: %u, offset: %zu errCtx: %s errCtxOffset: %zu",
-						  errMsg, errPos.line, errPos.column, errPos.offset, errCtx, errCtxOffset);
-	}
+	// Get the error context of an error.
+	// This returns a pointer to a null-terminated string, which contains a
+	// section of the input around where the error occurred, that is limited
+	// in length and suitable for presentation to a user.
+	const char *errCtx = cypher_parse_error_context(error);
+
+	// Get the offset into the context of an error.
+	// Identifies the point of the error within the context string, allowing
+	// this to be reported to the user, typically with an arrow pointing to the
+	// invalid character.
+	size_t errCtxOffset = cypher_parse_error_context_offset(error);
+	ErrorCtx_SetError("errMsg: %s line: %u, column: %u, offset: %zu errCtx: %s errCtxOffset: %zu",
+					  errMsg, errPos.line, errPos.column, errPos.offset, errCtx, errCtxOffset);
 }
 
 // checks if set items contains non-alias referenes in lhs
@@ -1476,7 +1607,7 @@ static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, 
 	for(uint i = 0; i < n; i ++) {
 		clauses[i] = (cypher_astnode_t *)cypher_ast_query_get_clause(root, i + start_offset);
 	}
-	struct cypher_input_range range = {};
+	struct cypher_input_range range = {0};
 	ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n, clauses, n, range);
 	ast->ref_count = rm_malloc(sizeof(uint));
 	*(ast->ref_count) = 1;
@@ -1544,10 +1675,7 @@ bool AST_ContainsErrors(const cypher_parse_result_t *result) {
 static AST_Validation _AST_Validate_ParseResultRoot(const cypher_parse_result_t *result,
 													int *index) {
 	// Check for failures in libcypher-parser
-	if(AST_ContainsErrors(result)) {
-		_AST_ReportErrors(result);
-		return AST_INVALID;
-	}
+	ASSERT(AST_ContainsErrors(result) == false);
 
 	uint nroots = cypher_parse_result_nroots(result);
 	for(uint i = 0; i < nroots; i++) {
@@ -1564,6 +1692,11 @@ static AST_Validation _AST_Validate_ParseResultRoot(const cypher_parse_result_t 
 			*index = i;
 			return AST_VALID;
 		}
+	}
+
+	// query with no roots like ';'
+	if(nroots == 0) {
+		ErrorCtx_SetError("Error: empty query.");
 	}
 
 	return AST_INVALID;
@@ -1634,11 +1767,15 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 		return AST_VALID;
 	}
 
+	// validate positions of allShortestPaths
+	bool invalid = _ValidateAllShortestPaths(body);
+	if(invalid) {
+		ErrorCtx_SetError("RedisGraph support allShortestPaths only in match clauses");
+		return AST_INVALID;
+	}
+
 	AST mock_ast; // Build a fake AST with the correct AST root
 	mock_ast.root = body;
-
-	// Check for path traversals in unsupported locations.
-	if(_Validate_Path_Locations(mock_ast.root) != AST_VALID) return AST_INVALID;
 
 	// Check for invalid queries not captured by libcypher-parser
 	AST_Validation res;
@@ -1651,3 +1788,4 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 
 	return res;
 }
+

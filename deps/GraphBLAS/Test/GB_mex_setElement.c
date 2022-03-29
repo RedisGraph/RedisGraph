@@ -2,7 +2,7 @@
 // GB_mex_setElement: interface for A(i,j) = x
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -258,7 +258,7 @@ void mexFunction
     if (mxIsComplex (pargin [3]))
     {
         xtype = Complex ;
-        Y = mxGetComplexDoubles (pargin [3]) ;
+        Y = (GB_void *) mxGetComplexDoubles (pargin [3]) ;
     }
     else
     {

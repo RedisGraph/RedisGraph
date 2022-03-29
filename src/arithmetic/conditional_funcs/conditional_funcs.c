@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -7,10 +7,11 @@
 #include "conditional_funcs.h"
 #include "../func_desc.h"
 #include "../../util/arr.h"
+#include "../../datatypes/set.h"
 
 /* Case When
  * Case Value [When Option i Then Result i] Else Default end */
-SIValue AR_CASEWHEN(SIValue *argv, int argc) {
+SIValue AR_CASEWHEN(SIValue *argv, int argc, void *private_data) {
 	int alternatives = argc - 1;
 	SIValue d = argv[argc - 1];
 
@@ -61,7 +62,7 @@ SIValue AR_CASEWHEN(SIValue *argv, int argc) {
 }
 
 // Coalesce - return the first value which is not null. Defaults to null.
-SIValue AR_COALESCE(SIValue *argv, int argc) {
+SIValue AR_COALESCE(SIValue *argv, int argc, void *private_data) {
 	for(int i = 0; i < argc; i++)
 		if(!SIValue_IsNull(argv[i])) {
 			/* Avoid double free, since the value is propagated and will be free twice:
@@ -74,18 +75,45 @@ SIValue AR_COALESCE(SIValue *argv, int argc) {
 	return SI_NullVal();
 }
 
+// Distinct maintains a set of values,
+// if value `X` already in the set return NULL,
+// otherwise `X` is returned and added to to the set.
+SIValue AR_DISTINCT(SIValue *argv, int argc, void *private_data) {
+	set *set = private_data;
+	if(Set_Add(set, argv[0])) return SI_TransferOwnership(argv);
+	return SI_NullVal();
+}
+
+// Routine for freeing a Distinct function context.
+void Distinct_Free(void *ctx_ptr) {
+	set *set = ctx_ptr;
+	if(set == NULL) return;
+	Set_Free(set);
+}
+
+// Routine for cloning a Distinct function context.
+void *Distinct_Clone(void *orig) {
+	return Set_New();
+}
+
 void Register_ConditionalFuncs() {
 	SIType *types;
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 1);
 	array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("case", AR_CASEWHEN, 2, VAR_ARG_LEN, types, true, false);
+	func_desc = AR_FuncDescNew("case", AR_CASEWHEN, 2, VAR_ARG_LEN, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("coalesce", AR_COALESCE, 1, VAR_ARG_LEN, types, true, false);
+	func_desc = AR_FuncDescNew("coalesce", AR_COALESCE, 1, VAR_ARG_LEN, types, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, SI_ALL);
+	func_desc = AR_FuncDescNew("distinct", AR_DISTINCT, 1, 1, types, false);
+	AR_SetPrivateDataRoutines(func_desc, Distinct_Free, Distinct_Clone);
 	AR_RegFunc(func_desc);
 }
 

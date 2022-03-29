@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -63,8 +63,8 @@ unsigned short Schema_IndexCount
 	ASSERT(s != NULL);
 	unsigned short n = 0;
 
-	if(s->index) n += Index_FieldsCount(s->index);
-	if(s->fulltextIdx) n += Index_FieldsCount(s->fulltextIdx);
+	if(s->index) n += 1;
+	if(s->fulltextIdx) n += 1;
 
 	return n;
 }
@@ -115,18 +115,21 @@ int Schema_AddIndex
 (
 	Index **idx,
 	Schema *s,
-	const char *field,
+	IndexField *field,
 	IndexType type
 ) {
-	ASSERT(field);
+	ASSERT(s != NULL);
+	ASSERT(idx != NULL);
+	ASSERT(field != NULL);
 
 	Index *_idx = Schema_GetIndex(s, NULL, type);
 
 	// index exists, make sure attribute isn't already indexed
 	if(_idx != NULL) {
-		GraphContext *gc = QueryCtx_GetGraphCtx();
-		Attribute_ID fieldID = GraphContext_FindOrAddAttribute(gc, field);
-		if(Index_ContainsAttribute(_idx, fieldID)) return INDEX_FAIL;
+		if(Index_ContainsAttribute(_idx, field->id)) {
+			IndexField_Free(field);
+			return INDEX_FAIL;
+		}
 	} else {
 		// index doesn't exist, create it
 		// determine index graph entity type
@@ -141,8 +144,8 @@ int Schema_AddIndex
 		// introduce edge src and dest node ids
 		// as additional index fields
 		if(entity_type == GETYPE_EDGE) {
-			Index_AddField(_idx, "_src_id");
-			Index_AddField(_idx, "_dest_id");
+			Index_AddField(_idx, INDEX_FIELD_DEFAULT(_src_id));
+			Index_AddField(_idx, INDEX_FIELD_DEFAULT(_dest_id));
 		}
 	}
 

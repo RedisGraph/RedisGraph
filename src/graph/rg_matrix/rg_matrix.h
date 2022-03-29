@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -34,7 +34,7 @@ typedef _RG_Matrix *RG_Matrix;
 
 #define RG_MATRIX_MAINTAIN_TRANSPOSE(C) (C)->transposed != NULL
 
-#define RG_MATRIX_MULTI_EDGE(M) ({ \
+#define RG_MATRIX_MULTI_EDGE(M) __extension__({ \
 	GrB_Type t;                    \
 	GrB_Matrix m = RG_MATRIX_M(M); \
 	GxB_Matrix_type(&t, m);        \

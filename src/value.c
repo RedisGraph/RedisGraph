@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -17,6 +17,7 @@
 #include "util/rmalloc.h"
 #include "datatypes/map.h"
 #include "datatypes/array.h"
+#include "datatypes/point.h"
 #include "datatypes/path/sipath.h"
 
 static inline void _SIString_ToString(SIValue str, char **buf, size_t *bufferLen,
@@ -177,9 +178,9 @@ SIValue SI_ShallowCloneValue(const SIValue v) {
 
 /* Make an SIValue that shares the original's allocations but can safely expect those allocations
  *  to remain in scope. This is most frequently the case for GraphEntity properties. */
-SIValue SI_ConstValue(const SIValue v) {
-	SIValue dup = v;
-	if(v.allocation != M_NONE) dup.allocation = M_CONST;
+SIValue SI_ConstValue(const SIValue *v) {
+	SIValue dup = *v;
+	if(v->allocation != M_NONE) dup.allocation = M_CONST;
 	return dup;
 }
 
@@ -300,7 +301,7 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "POINTER");
 		break;
 	case T_POINT:
-		// TODO: implement
+		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "point({latitude: %f, longitude: %f})", Point_lat(v), Point_lon(v));
 		break;
 	default:
 		// unrecognized type
@@ -530,6 +531,13 @@ int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull) {
 			return Map_Compare(a, b, disjointOrNull);
 		case T_NULL:
 			break;
+		case T_POINT:
+		{
+			int lon_diff = SAFE_COMPARISON_RESULT(Point_lon(a) - Point_lon(b));
+			if(lon_diff == 0)
+				return SAFE_COMPARISON_RESULT(Point_lat(a) - Point_lat(b));
+			return lon_diff;
+		}
 		default:
 			// Both inputs were of an incomparable type, like a pointer, or not implemented comparison yet.
 			ASSERT(false);

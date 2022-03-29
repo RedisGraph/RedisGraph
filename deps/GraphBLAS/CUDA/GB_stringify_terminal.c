@@ -37,7 +37,6 @@ void GB_stringify_terminal         // return strings to check terminal
 )
 {
 
-    char *terminal_value ;
     char terminal_expression [GB_CUDA_STRLEN+1] ;
     char terminal_statement  [GB_CUDA_STRLEN+1] ;
     int ecode ;
@@ -47,7 +46,7 @@ void GB_stringify_terminal         // return strings to check terminal
     (*is_monoid_terminal) = (ecode <= 29) ;
 
     // convert ecode and is_monoid_terminal to strings
-    GB_charify_identity_or_terminal (&terminal_value, ecode) ;
+    const char *terminal_value = GB_charify_identity_or_terminal (ecode) ;
     GB_charify_terminal_expression (terminal_expression,
         terminal_value, is_monoid_terminal, ecode) ;
     GB_charify_terminal_statement (terminal_statement,
@@ -176,7 +175,7 @@ void GB_enumify_terminal       // return enum of terminal value
             e = 31 ;                    // builtin with no terminal value
             break ;
 
-        //case GB_USER_binop_code :
+        // case GB_USER_binop_code :
 
     }
 
@@ -192,7 +191,7 @@ void GB_charify_terminal_expression    // string for terminal expression
     // output:
     char *terminal_expression,          // string with terminal expression
     // input:
-    char *terminal_string,              // string with terminal value
+    const char *terminal_string,        // string with terminal value
     bool is_monoid_terminal,            // true if monoid is terminal
     int ecode                           // ecode of monoid operator
 )
@@ -230,7 +229,7 @@ void GB_charify_terminal_statement // string for terminal statement
     // output:
     char *terminal_statement,           // string with terminal statement
     // input:
-    char *terminal_string,              // string with terminal value
+    const char *terminal_string,        // string with terminal value
     bool is_monoid_terminal,            // true if monoid is terminal
     int ecode                           // ecode of monoid operator
 )
@@ -255,7 +254,7 @@ void GB_charify_terminal_statement // string for terminal statement
     else
     {
         // the monoid is not terminal: the terminal statement is empty
-        snprintf (terminal_statement, GB_CUDA_STRLEN, "") ;
+        snprintf (terminal_statement, GB_CUDA_STRLEN, " ") ;
     }
 }
 

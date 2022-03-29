@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -16,8 +16,8 @@ static void _AllNeighborsCtx_CollectNeighbors
 ) {
 	ctx->current_level++;
 	if(ctx->current_level == array_len(ctx->levels)) {
-		RG_MatrixTupleIter iter;
-		RG_MatrixTupleIter_reuse(&iter, ctx->M);
+		RG_MatrixTupleIter iter = {0};
+		RG_MatrixTupleIter_attach(&iter, ctx->M);
 		array_append(ctx->levels, iter);
 	}
 
@@ -59,6 +59,10 @@ void AllNeighborsCtx_Reset
 	ctx->first_pull     =  true;
 	ctx->current_level  =  0;
 
+	uint count = array_len(ctx->levels);
+	for (uint i = 0; i < count; i++) {
+		RG_MatrixTupleIter_detach(ctx->levels + i);
+	}
 	array_clear(ctx->levels);
 	array_clear(ctx->visited);
 
@@ -122,11 +126,10 @@ EntityID AllNeighborsCtx_NextNeighbor
 		ASSERT(ctx->current_level < array_len(ctx->levels));
 		RG_MatrixTupleIter *it = &ctx->levels[ctx->current_level];
 
-		bool depleted;
 		GrB_Index dest_id;
-		RG_MatrixTupleIter_next(it, NULL, &dest_id, NULL, &depleted);
+		GrB_Info info = RG_MatrixTupleIter_next_UINT64(it, NULL, &dest_id, NULL);
 
-		if(depleted) {
+		if(info == GxB_EXHAUSTED) {
 			// backtrack
 			ctx->current_level--;
 			array_pop(ctx->visited);
@@ -163,6 +166,10 @@ void AllNeighborsCtx_Free
 ) {
 	if(!ctx) return;
 
+	uint count = array_len(ctx->levels);
+	for (uint i = 0; i < count; i++) {
+		RG_MatrixTupleIter_detach(ctx->levels + i);
+	}
 	array_free(ctx->levels);
 	array_free(ctx->visited);
 

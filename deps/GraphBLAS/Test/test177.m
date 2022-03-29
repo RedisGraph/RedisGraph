@@ -1,7 +1,7 @@
 function test177
 %TEST177 C<!M>=A*B, C bitmap, M sparse, A bitmap, B sparse
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 fprintf ('test177:   C<!M>=A*B, C bitmap, M sparse, A bitmap, B sparse\n') ;

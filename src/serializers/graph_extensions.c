@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -42,10 +42,9 @@ void Serializer_Graph_SetNode
 	en->properties  =  NULL;
 	n->id           =  id;
 	n->entity       =  en;
-    GrB_Info info;
-    UNUSED(info);
+	GrB_Info info;
+	UNUSED(info);
 
-    RG_Matrix nl = Graph_GetNodeLabelMatrix(g);
 	for(uint i = 0; i < label_count; i ++) {
 		LabelID label = labels[i];
 		// set label matrix at position [id, id]
@@ -53,15 +52,12 @@ void Serializer_Graph_SetNode
 		GrB_Matrix m  =  RG_MATRIX_M(M);
 		info = GrB_Matrix_setElement_BOOL(m, true, id, id);
 		ASSERT(info == GrB_SUCCESS);
-
-		// map this label in this node's set of labels
-		info = RG_Matrix_setElement_BOOL(nl, id, label);
-		ASSERT(info == GrB_SUCCESS);
 	}
 }
 
 // computes NodeLabelMarix out of label matrices
 // NodeLabelMatrix[:i] = diag(LabelMatrix[i])
+// must be called once after all virtual keys loaded for perf
 void Serializer_Graph_SetNodeLabels
 (
 	Graph *g
@@ -69,10 +65,16 @@ void Serializer_Graph_SetNodeLabels
 	ASSERT(g);
 
 	GrB_Vector v;
-	int node_count          = Graph_RequiredMatrixDim(g);
-	int label_count         = Graph_LabelTypeCount(g);
-	RG_Matrix node_labels   = Graph_GetNodeLabelMatrix(g);
+	int node_count           = Graph_RequiredMatrixDim(g);
+	int label_count          = Graph_LabelTypeCount(g);
+	RG_Matrix node_labels    = Graph_GetNodeLabelMatrix(g);
 	GrB_Matrix node_labels_m = RG_MATRIX_M(node_labels);
+
+#if RG_DEBUG
+	GrB_Index nvals;
+	RG_Matrix_nvals(&nvals, node_labels);
+	ASSERT(nvals == 0);
+#endif
 
 	GrB_Vector_new(&v, GrB_BOOL, node_count);
 
@@ -82,8 +84,10 @@ void Serializer_Graph_SetNodeLabels
 
 		GxB_Vector_diag(v, m, 0, NULL);
 
-		GxB_Col_subassign(node_labels_m, NULL, NULL, v, GrB_ALL, 0, i, NULL);
+		GxB_Row_subassign(node_labels_m, NULL, NULL, v, i, GrB_ALL, 0, NULL);
 	}
+
+	GrB_transpose(node_labels_m, NULL, NULL, node_labels_m, NULL);
 
 	GrB_Vector_free(&v);
 }

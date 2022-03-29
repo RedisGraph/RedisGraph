@@ -62,7 +62,7 @@ TEST_F(AggregateTest, CountTest) {
 
 	int num_values = 5;
 	for(int i = 0; i < num_values; i++) AR_EXP_Aggregate(arExp, NULL);
-	result = AR_EXP_Finalize(arExp, NULL);
+	result = AR_EXP_FinalizeAggregations(arExp, NULL);
 	ASSERT_EQ(result.longval, num_values);
 	AR_EXP_Free(arExp);
 }
@@ -94,7 +94,7 @@ TEST_F(AggregateTest, PartialCountTest) {
 			arExp->op.children[0] = arExpNULL;
 		AR_EXP_Aggregate(arExp, NULL);
 	}
-	SIValue res = AR_EXP_Finalize(arExp, NULL);
+	SIValue res = AR_EXP_FinalizeAggregations(arExp, NULL);
 
 	// The counted result should be half the number of inserted entities,
 	// as the null values are ignored.
@@ -153,7 +153,7 @@ TEST_F(AggregateTest, PercentileContTest) {
 			perc->op.children[1] = test_percentiles[i];
 			AR_EXP_Aggregate(perc, NULL);
 		}
-		result = AR_EXP_Finalize(perc, NULL);
+		result = AR_EXP_FinalizeAggregations(perc, NULL);
 		ASSERT_EQ(result.doubleval, expected_values[i]);
 		AR_EXP_Free(perc);
 	}
@@ -185,7 +185,7 @@ TEST_F(AggregateTest, PercentileDiscTest) {
 			AR_EXP_Aggregate(perc, NULL);
 		}
 		// Reduce sorts the list and applies the percentile formula
-		SIValue res = AR_EXP_Finalize(perc, NULL);
+		SIValue res = AR_EXP_FinalizeAggregations(perc, NULL);
 		expected_outcome = AR_EXP_Evaluate(expectedResults[expected[i]], NULL);
 		ASSERT_EQ(res.doubleval, expected_outcome.doubleval);
 		AR_EXP_Free(perc);
@@ -198,7 +198,7 @@ TEST_F(AggregateTest, StDevTest) {
 	AR_ExpNode *stdev = _exp_from_query("RETURN stDev(1)");
 	stdev->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(5.1));
 	AR_EXP_Aggregate(stdev, NULL);
-	SIValue result = AR_EXP_Finalize(stdev, NULL);
+	SIValue result = AR_EXP_FinalizeAggregations(stdev, NULL);
 	ASSERT_EQ(result.doubleval, 0);
 	AR_EXP_Free(stdev);
 
@@ -220,7 +220,7 @@ TEST_F(AggregateTest, StDevTest) {
 	double sample_variance = tmp_variance / 9;
 	double sample_result = sqrt(sample_variance);
 
-	result = AR_EXP_Finalize(stdev, NULL);
+	result = AR_EXP_FinalizeAggregations(stdev, NULL);
 
 	ASSERT_EQ(result.doubleval, sample_result);
 	AR_EXP_Free(stdev);
@@ -237,9 +237,59 @@ TEST_F(AggregateTest, StDevTest) {
 	double pop_variance = tmp_variance / 10;
 	double pop_result = sqrt(pop_variance);
 
-	result = AR_EXP_Finalize(stdevp, NULL);
+	result = AR_EXP_FinalizeAggregations(stdevp, NULL);
 
 	ASSERT_EQ(result.doubleval, pop_result);
 	AR_EXP_Free(stdevp);
+}
+
+TEST_F(AggregateTest, AverageDoubleOverflowTest) {
+	// values to average
+	AR_ExpNode *max = AR_EXP_NewConstOperandNode(SI_DoubleVal(DBL_MAX));
+	AR_ExpNode *half_max = AR_EXP_NewConstOperandNode(SI_DoubleVal(DBL_MAX / 2));
+
+	// build new average function
+	AR_ExpNode *avg = _exp_from_query("RETURN avg(1)");
+
+	// first value to average is DBL_MAX
+	avg->op.children[0] = max;
+	AR_EXP_Aggregate(avg, NULL);
+
+	// second value is DBL_MAX / 2, causing overflow
+	avg->op.children[0] = half_max;
+	AR_EXP_Aggregate(avg, NULL);
+
+	// test average of DBL_MAX and DBL_MAX / 2
+	SIValue res = AR_EXP_FinalizeAggregations(avg, NULL);
+	SIValue expected_outcome = SI_DoubleVal((DBL_MAX / 2) + ((DBL_MAX / 2) / 2));
+	ASSERT_EQ(res.doubleval, expected_outcome.doubleval);
+
+	AR_EXP_Free(avg);
+	AR_EXP_Free(max);
+}
+
+TEST_F(AggregateTest, AverageLongOverflowTest) {
+	// values to average
+	AR_ExpNode *max = AR_EXP_NewConstOperandNode(SI_LongVal(LONG_MAX));
+	AR_ExpNode *half_max = AR_EXP_NewConstOperandNode(SI_LongVal(LONG_MAX / 2));
+
+	// build new average function
+	AR_ExpNode *avg = _exp_from_query("RETURN avg(1)");
+
+	// first value to average is DBL_MAX
+	avg->op.children[0] = max;
+	AR_EXP_Aggregate(avg, NULL);
+
+	// second value is DBL_MAX / 2, causing overflow
+	avg->op.children[0] = half_max;
+	AR_EXP_Aggregate(avg, NULL);
+
+	// test average of DBL_MAX and DBL_MAX / 2
+	SIValue res = AR_EXP_FinalizeAggregations(avg, NULL);
+	SIValue expected_outcome = SI_DoubleVal((LONG_MAX / 2) + ((LONG_MAX / 2) / 2));
+	ASSERT_EQ(res.doubleval, expected_outcome.doubleval);
+
+	AR_EXP_Free(avg);
+	AR_EXP_Free(max);
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -33,7 +33,6 @@ static AR_ExpNode **_PopulateProjectAll(const cypher_astnode_t *clause) {
 // Handle ORDER entities
 static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 										   const cypher_astnode_t *order_clause) {
-	AST *ast = QueryCtx_GetAST();
 	uint count = cypher_ast_order_by_nitems(order_clause);
 	AR_ExpNode **order_exps = array_new(AR_ExpNode *, count);
 
@@ -41,22 +40,6 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 		const cypher_astnode_t *item = cypher_ast_order_by_get_item(order_clause, i);
 		const cypher_astnode_t *ast_exp = cypher_ast_sort_item_get_expression(item);
 		AR_ExpNode *exp = AR_EXP_FromASTNode(ast_exp);
-		// Build a string representation of the ORDER identity.
-		char *constructed_name = (char *)AR_EXP_GetResolvedName(exp);
-		// If the constructed name refers to a QueryGraph entity, use its canonical name.
-		char *canonical_name = raxFind(ast->canonical_entity_names, (unsigned char *)constructed_name,
-									   strlen(constructed_name));
-		if(canonical_name == raxNotFound) {
-			// Otherwise, introduce a new canonical name.
-			canonical_name = constructed_name;
-			raxInsert(ast->canonical_entity_names, (unsigned char *)constructed_name, strlen(constructed_name),
-					  constructed_name, NULL);
-		} else {
-			rm_free(constructed_name);
-		}
-
-		AST_AttachName(ast, item, canonical_name);
-
 		array_append(order_exps, exp);
 	}
 
@@ -67,22 +50,20 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 // (This function is not static because it is relied upon by unit tests)
 AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *clause) {
 	uint count = 0;
-	bool project_all = false;
 	AR_ExpNode **expressions = NULL;
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
 
 	ASSERT(t == CYPHER_AST_RETURN || t == CYPHER_AST_WITH);
 
 	if(t == CYPHER_AST_RETURN) {
-		project_all = cypher_ast_return_has_include_existing(clause);
+		// if we have a "RETURN *" at this point, it is because we raised 
+		// an error in AST rewriting
+		if(cypher_ast_return_has_include_existing(clause)) return NULL;
 		count = cypher_ast_return_nprojections(clause);
 	} else {
-		project_all = cypher_ast_with_has_include_existing(clause);
+		ASSERT(cypher_ast_with_has_include_existing(clause) == false);
 		count = cypher_ast_with_nprojections(clause);
 	}
-
-	// Project all '*'
-	if(project_all) return _PopulateProjectAll(clause);
 
 	expressions = array_new(AR_ExpNode *, count);
 

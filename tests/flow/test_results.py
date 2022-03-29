@@ -130,7 +130,7 @@ class testResultSetFlow(FlowTestsBase):
         # Avarage default value is 0.
         query = """MATCH (a) return avg(a.missing_field)"""
         result = graph.query(query)
-        self.env.assertEqual(0, result.result_set[0][0])
+        self.env.assertEqual(None, result.result_set[0][0])
 
         # Collect default value is an empty array.
         query = """MATCH (a) return collect(a.missing_field)"""
@@ -196,3 +196,7 @@ class testResultSetFlow(FlowTestsBase):
         unlimited_record_count = len(result.result_set)
         assert(unlimited_record_count == record_count)
 
+    def test10_carriage_return_in_result(self):
+        query = """RETURN 'Foo\r\nBar'"""
+        result = graph.query(query)
+        self.env.assertEqual(result.result_set[0][0], 'Foo\r\nBar')

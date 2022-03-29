@@ -103,3 +103,16 @@ GrB_Info GB (_Asaxpy4B)
 ) ;
 #endif
 
+if_saxpy5_enabled
+GrB_Info GB (_Asaxpy5B)
+(
+    GrB_Matrix C,
+    const GrB_Matrix A,
+    const GrB_Matrix B,
+    const int ntasks,
+    const int nthreads,
+    const int64_t *B_slice,
+    GB_Context Context
+) ;
+#endif
+

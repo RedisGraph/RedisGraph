@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -8,6 +8,7 @@
 #include "../RG.h"
 #include "../util/rmalloc.h"
 #include "../util/rax_extensions.h"
+#include "../configuration/config.h"
 
 GraphEncodeContext *GraphEncodeContext_New() {
 	GraphEncodeContext *ctx = rm_calloc(1, sizeof(GraphEncodeContext));
@@ -48,6 +49,8 @@ void GraphEncodeContext_Reset(GraphEncodeContext *ctx) {
 	ctx->current_relation_matrix_id = 0;
 	ctx->multiple_edges_current_index = 0;
 
+	Config_Option_get(Config_VKEY_MAX_ENTITY_COUNT, &ctx->vkey_entity_count);
+
 	// Avoid leaks in case or reset during encodeing.
 	if(ctx->datablock_iterator != NULL) {
 		DataBlockIterator_Free(ctx->datablock_iterator);
@@ -55,9 +58,7 @@ void GraphEncodeContext_Reset(GraphEncodeContext *ctx) {
 	}
 
 	// Avoid leaks in case or reset during encodeing.
-	if(ctx->matrix_tuple_iterator != NULL) {
-		RG_MatrixTupleIter_free(&ctx->matrix_tuple_iterator);
-	}
+	RG_MatrixTupleIter_detach(&ctx->matrix_tuple_iterator);
 }
 
 void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, const char *graph_name, Graph *g) {
@@ -156,15 +157,9 @@ void GraphEncodeContext_SetCurrentRelationID(GraphEncodeContext *ctx,
 }
 
 RG_MatrixTupleIter *GraphEncodeContext_GetMatrixTupleIterator(
-	const GraphEncodeContext *ctx) {
+	GraphEncodeContext *ctx) {
 	ASSERT(ctx);
-	return ctx->matrix_tuple_iterator;
-}
-
-void GraphEncodeContext_SetMatrixTupleIterator(GraphEncodeContext *ctx,
-											   RG_MatrixTupleIter *iter) {
-	ASSERT(ctx);
-	ctx->matrix_tuple_iterator = iter;
+	return &ctx->matrix_tuple_iterator;
 }
 
 void GraphEncodeContext_SetMutipleEdgesArray(GraphEncodeContext *ctx, EdgeID *edges,

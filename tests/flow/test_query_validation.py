@@ -445,18 +445,15 @@ class testQueryValidationFlow(FlowTestsBase):
         query = """MATCH (a) WHERE a.fakeprop RETURN a"""
         redis_graph.query(query)
 
-    # Encountering traversals as property values or ORDER BY expressions should raise compile-time errors.
+    # Encountering traversals as property values should raise compile-time errors.
     def test30_unexpected_traversals(self):
-        queries = ["""MATCH (a {prop: ()-[]->()}) RETURN a""",
-                   """MATCH (a) RETURN a ORDER BY (a)-[]->()""",
-                   """MATCH (a) RETURN (a)-[]->()"""]
-        for query in queries:
-            try:
-                redis_graph.query(query)
-                assert(False)
-            except redis.exceptions.ResponseError as e:
-                # Expecting an error.
-                assert("Encountered path traversal" in str(e))
+        query = """MATCH (a {prop: ()-[]->()}) RETURN a"""
+        try:
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Encountered unhandled type" in str(e))
 
     def test31_set_invalid_property_type(self):
         # Skip this test if running under Valgrind, as it causes a memory leak.
@@ -564,3 +561,61 @@ class testQueryValidationFlow(FlowTestsBase):
             except redis.exceptions.ResponseError as e:
                 pass
 
+    def test38_return_star_union(self):
+        # queries of the form [...] RETURN * UNION [...] should have
+        # all relevant validations on their column names enforced
+        queries = ["WITH 5 AS x RETURN * UNION WITH 10 AS y RETURN *",
+                   "WITH 5 AS x RETURN * UNION WITH 10 AS y RETURN y",
+                   "WITH 5 AS x, 8 AS y RETURN * UNION WITH 10 AS y RETURN y"]
+        for q in queries:
+            try:
+                redis_graph.query(q)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("All sub queries in an UNION must have the same column names", str(e))
+
+    def test39_non_single_statement_query(self):
+        queries = [";",
+                   " ;",
+                   " "]
+        for q in queries:
+            try:
+                redis_graph.query(q)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("empty query", str(e))
+        
+        queries = ["MATCH (n) RETURN n; MATCH"]
+        for q in queries:
+            try:
+                redis_graph.query(q)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("query with more than one statement is not supported", str(e))
+
+    def test40_compile_time_errors_in_star_projections(self):
+        # validate that parser errors are handled correctly
+        # in queries containing star projections
+        queries = ["MATCH (a)-[r:]->(b) RETURN *",
+                   "MATCH (a)-[r:]->(b) WITH b RETURN *"]
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError:
+                pass
+
+        # check that AST validation errors are handled correctly
+        # in queries containing star projections
+        queries = ["WITH 1 RETURN *",
+                   "RETURN *",
+                   "CREATE () RETURN DISTINCT *",
+                   "MATCH () WITH * RETURN z",
+                   "MATCH () WITH * RETURN *",
+                   "MATCH () WITH * WHERE n.v > 1 RETURN *"]
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError:
+                pass

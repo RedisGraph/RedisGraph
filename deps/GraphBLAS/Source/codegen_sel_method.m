@@ -3,7 +3,7 @@ function codegen_sel_method (opname, func, atype, kind, iso)
 %
 % codegen_sel_method (opname, func, atype, kind)
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 if (nargin < 4)
@@ -15,7 +15,7 @@ end
 
 is_entry_selector = isempty (kind) ;
 is_nonzombie_selector = isequal (opname, 'nonzombie') ;
-is_idxunop_selector = isequal (opname, 'idxunop') ;
+is_idxunop_selector = codegen_contains (opname, 'idxunop') ;
 
 f = fopen ('control.m4', 'w') ;
 
@@ -76,8 +76,13 @@ fprintf (f, 'define(`GB_atype'', `%s'')\n', atype) ;
 
 % create the operator to test the numerical values of the entries
 if (isempty (func))
+    fprintf (f, 'define(`GB_setup'', `'')\n') ;
     fprintf (f, 'define(`GB_test_value_of_entry'', `(no test; %s ignores values)'')\n', opname) ;
+elseif (iscell (func))
+    fprintf (f, 'define(`GB_setup'', `%s'')\n', func {1}) ;
+    fprintf (f, 'define(`GB_test_value_of_entry'', `%s'')\n', func {2}) ;
 else
+    fprintf (f, 'define(`GB_setup'', `'')\n') ;
     fprintf (f, 'define(`GB_test_value_of_entry'', `%s'')\n', func) ;
 end
 
@@ -136,14 +141,14 @@ fclose (f) ;
 
 % construct the *.c file
 cmd = sprintf (...
-'cat control.m4 Generator/GB_sel.c | m4 | tail -n +17 > Generated1/GB_sel__%s.c', ...
+'cat control.m4 Generator/GB_sel.c | m4 | tail -n +18 > Generated1/GB_sel__%s.c', ...
 name) ;
 fprintf ('.') ;
 system (cmd) ;
 
 % append to the *.h file
 cmd = sprintf (...
-'cat control.m4 Generator/GB_sel.h | m4 | tail -n +17 >> Generated1/GB_sel__include.h') ;
+'cat control.m4 Generator/GB_sel.h | m4 | tail -n +18 >> Generated1/GB_sel__include.h') ;
 system (cmd) ;
 
 delete ('control.m4') ;

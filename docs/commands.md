@@ -162,6 +162,22 @@ RETURN nodes(p) as actors"
 
 This query will produce all the paths matching the pattern contained in the named path `p`. All of these paths will share the same starting point, the actor node representing Charlie Sheen, but will otherwise vary in length and contents. Though the variable-length traversal and `(:Actor)` endpoint are not explicitly aliased, all nodes and edges traversed along the path will be included in `p`. In this case, we are only interested in the nodes of each path, which we'll collect using the built-in function `nodes()`. The returned value will contain, in order, Charlie Sheen, between 0 and 2 intermediate nodes, and the unaliased endpoint.
 
+##### allShortestPaths()
+
+`allShortestPaths()` is a MATCH mode in which only the shortest paths matching all criteria are captured. Both endpoints must be bound in an earlier WITH-demarcated scope to invoke `allShortestPaths()`.
+
+Example:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (charlie:Actor {name: 'Charlie Sheen'}), (kevin:Actor {name: 'Kevin Bacon'})
+WITH charlie, kevin
+MATCH p=allShortestPaths((charlie)-[:PLAYED_WITH*]->(kevin))
+RETURN nodes(p) as actors"
+```
+
+This query will produce all paths of the minimum length connecting the actor node representing Charlie Sheen to the one representing Kevin Bacon. There are several 2-hop paths between the two actors, and all of these will be returned. The computation of paths then terminates, as we are not interested in any paths of length greater than 2.
+
 #### OPTIONAL MATCH
 
 The OPTIONAL MATCH clause is a MATCH variant that produces null values for elements that do not match successfully, rather than the all-or-nothing logic for patterns in MATCH clauses.
@@ -458,6 +474,16 @@ SET n = {age: 33, name: 'Bob'}"
 
 Using `=` in this way replaces all of the entity's previous properties, while `+=` will only set the properties it explicitly mentions.
 
+In the same way, the full property set of a graph entity can be assigned or merged:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (jim {name: 'Jim'}), (pam {name: 'Pam'})
+SET jim = pam"
+```
+
+After executing this query, the `jim` node will have the same property set as the `pam` node.
+
 To remove a node's property, simply set property value to NULL.
 
 ```sh
@@ -616,26 +642,30 @@ This section contains information on all supported functions from the Cypher que
 
 ## Predicate functions
 
-| Function                                         | Description                                                                                 |
-| -------                                          | :-----------                                                                                |
-| exists()                                         | Returns true if the specified property exists in the node or relationship.                  |
-| [any()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for any element in the input array.    |
-| [all()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for all elements in the input array.   |
-| [none()](#existential-comprehension-functions)   | Returns true if the inner WHERE predicate holds false for all elements in the input array.  |
-| [single()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for 1 element only in the input array. |
+| Function                                         | Description                                                                                   |
+| -------                                          | :-----------                                                                                  |
+| exists()                                         | Returns true if the specified property exists in the node or relationship.                    |
+| [any()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for any element in the input array.      |
+| [all()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for all elements in the input array.     |
+| [none()](#existential-comprehension-functions)   | Returns true if the inner WHERE predicate holds false for all elements in the input array.    |
+| [single()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for 1 element only in the input array.   |
+| [single()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for 1 element only in the input array.   |
+| [CASE...WHEN](#case-when)                        | Evaluates the CASE expression and returns the value indicated by the matching WHEN statement. |
 
 ## Scalar functions
 
-| Function            | Description                                                                 |
-| -------             | :-----------                                                                |
-| endNode()           | Returns the destination node of a relationship.                             |
-| id()                | Returns the internal ID of a relationship or node (which is not immutable.) |
-| hasLabels()         | Returns true if input node contains all specified labels, otherwise false.  |
-| labels()            | Returns a string representation of the label of a node.                     |
-| startNode()         | Returns the source node of a relationship.                                  |
-| timestamp()         | Returns the the amount of milliseconds since epoch.                         |
-| type()              | Returns a string representation of the type of a relation.                  |
-| list comprehensions | [See documentation](#list-comprehensions)                                   |
+| Function               | Description                                                                 |
+| -------                | :-----------                                                                |
+| endNode()              | Returns the destination node of a relationship.                             |
+| id()                   | Returns the internal ID of a relationship or node (which is not immutable.) |
+| hasLabels()            | Returns true if input node contains all specified labels, otherwise false.  |
+| keys()                 | Returns the array of keys contained in the given map, node, or edge.        |
+| labels()               | Returns a string representation of the label of a node.                     |
+| startNode()            | Returns the source node of a relationship.                                  |
+| timestamp()            | Returns the the amount of milliseconds since epoch.                         |
+| type()                 | Returns a string representation of the type of a relation.                  |
+| list comprehensions    | [See documentation](#list-comprehensions)                                   |
+| pattern comprehensions | [See documentation](#pattern-comprehensions)                                |
 
 ## Aggregating functions
 
@@ -652,26 +682,33 @@ This section contains information on all supported functions from the Cypher que
 |stDev() | Returns the standard deviation for the given value over a group|
 
 ## List functions
-|Function| Description|
-| ------- |:-----------|
-| head()  | Return the first member of a list |
-| range() | Create a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval.|
-| size()  | Return a list size |
-| tail()  | Return a sublist of a list, which contains all the values withiout the first value |
+| Function                     | Description                                                                                                                                                    |
+| -------                      | :-----------                                                                                                                                                   |
+| head()                       | Return the first member of a list                                                                                                                              |
+| range()                      | Create a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval. |
+| size()                       | Return a list size                                                                                                                                             |
+| tail()                       | Return a sublist of a list, which contains all the values without the first value                                                                              |
+| [reduce()](#reduce) | Return a scalar produced by evaluating an expression against each list member                                                                                  |
 
 ## Mathematical functions
 
 |Function    | Description|
 | ---------- |:-----------|
-|abs()		     | Returns the absolute value of a number|
-|ceil()		    | Returns the smallest floating point number that is greater than or equal to a number and equal to a mathematical integer |
-|floor()	    | Returns the largest floating point number that is less than or equal to a number and equal to a mathematical integer     |
-|rand()		    | Returns a random floating point number in the range from 0 to 1; i.e. [0,1]                                              |
-|round()     | Returns the value of a number rounded to the nearest integer                                                             |
-|sign()      | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number          |
-|sqrt()      | Returns the square root of a number                                                                                      |
-|pow()       | Returns base raised to the power of exponent, base^exponent                                                              |
-|toInteger() | Converts a floating point or string value to an integer value.                                                           |
+| +           | Add two values                                                                                                          |
+| -           | Subtract second value from first                                                                                        |
+| *           | Multiply two values                                                                                                     |
+| /           | Divide first value by the second                                                                                         |
+| ^           | Raise the first value to the power of the second                                                                         |
+| %           | Perform modulo division of the first value by the second                                                                 |
+| abs()       | Returns the absolute value of a number                                                                                   |
+| ceil()      | Returns the smallest floating point number that is greater than or equal to a number and equal to a mathematical integer |
+| floor()     | Returns the largest floating point number that is less than or equal to a number and equal to a mathematical integer     |
+| rand()      | Returns a random floating point number in the range from 0 to 1; i.e. [0,1]                                              |
+| round()     | Returns the value of a number rounded to the nearest integer                                                             |
+| sign()      | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number          |
+| sqrt()      | Returns the square root of a number                                                                                      |
+| pow()       | Returns base raised to the power of exponent, base^exponent                                                              |
+| toInteger() | Converts a floating point or string value to an integer value.                                                           |
 
 ## String functions
 
@@ -745,6 +782,67 @@ They can operate on any form of input array, but are particularly useful for pat
 MATCH p=()-[*]->() WHERE all(edge IN relationships(p) WHERE edge.weight < 3) RETURN p
 ```
 
+### Pattern comprehensions
+
+Pattern comprehensions are a method of producing a list composed of values found by performing the traversal of a given graph pattern.
+
+The following query returns the name of a `Person` node and a list of all their friends' ages:
+
+```sh
+MATCH (n:Person)
+RETURN
+n.name,
+[(n)-[:FRIEND_OF]->(f:Person) | f.age]
+```
+
+Optionally, a `WHERE` clause may be embedded in the pattern comprehension to filter results. In this query, all friends' ages will be gathered for friendships that started before 2010:
+
+```sh
+MATCH (n:Person)
+RETURN
+n.name,
+[(n)-[e:FRIEND_OF]->(f:Person) WHERE e.since < 2010 | f.age]
+```
+
+### CASE WHEN
+
+The case statement comes in two variants. Both accept an input argument and evaluates it against one or more expressions. The first `WHEN` argument that specifies a value matching the result will be accepted, and the value specified by the corresponding `THEN` keyword will be returned.
+
+Optionally, an `ELSE` argument may also be specified to indicate what to do if none of the `WHEN` arguments match successfully.
+
+In its simple form, there is only one expression to evaluate and it immediately follows the `CASE` keyword:
+
+```sh
+MATCH (n)
+RETURN
+CASE n.title
+WHEN 'Engineer' THEN 100
+WHEN 'Scientist' THEN 80
+ELSE n.privileges
+END
+```
+
+In its generic form, no expression follows the `CASE` keyword. Instead, each `WHEN` statement specifies its own expression:
+
+```sh
+MATCH (n)
+RETURN
+CASE
+WHEN n.age < 18 THEN '0-18'
+WHEN n.age < 30 THEN '18-30'
+ELSE '30+'
+END
+```
+
+#### Reduce
+The `reduce()` function accepts a starting value and updates it by evaluating an expression against each element of the list:
+
+```sh
+RETURN reduce(sum = 0, n IN [1,2,3] | sum + n)
+```
+
+`sum` will successively have the values 0, 1, 3, and 6, with 6 being the output of the function call.
+
 ### Point
 The `point()` function expects one map argument of the form:
 ```sh
@@ -810,7 +908,7 @@ YIELD modifiers are only required if explicitly specified; by default the value 
 | db.labels                       | none                                            | `label`                       | Yields all node labels in the graph.                                                                                                                                                   |
 | db.relationshipTypes            | none                                            | `relationshipType`            | Yields all relationship types in the graph.                                                                                                                                            |
 | db.propertyKeys                 | none                                            | `propertyKey`                 | Yields all property keys in the graph.                                                                                                                                                 |
-| db.indexes                      | none                                            | `type`, `label`, `properties`, `entityType` | Yield all indexes in the graph, denoting whether they are exact-match or full-text and which label and properties each covers and whether they are indexing node or relationship attributes.                                                         |
+| db.indexes                      | none                                            | `type`, `label`, `properties`, `language`, `stopwords`, `entityType`, `info` | Yield all indexes in the graph, denoting whether they are exact-match or full-text and which label and properties each covers and whether they are indexing node or relationship attributes.                                                         |
 | db.idx.fulltext.createNodeIndex | `label`, `property` [, `property` ...]          | none                          | Builds a full-text searchable index on a label and the 1 or more specified properties.                                                                                                 |
 | db.idx.fulltext.drop            | `label`                                         | none                          | Deletes the full-text index associated with the given label.                                                                                                                           |
 | db.idx.fulltext.queryNodes      | `label`, `string`                               | `node`, `score`               | Retrieve all nodes that contain the specified string in the full-text indexes on the given label.                                                                                      |
@@ -843,13 +941,13 @@ String, numeric, and geospatial data types can be indexed.
 The creation syntax is:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "CREATE INDEX FOR (p:Person) ON (p.age)"
+GRAPH.QUERY DEMO_GRAPH "CREATE INDEX ON :Person(age)"
 ```
 
-The old syntax is depricated:
+On the master branch, a newer syntax is also supported. This will be the standard in future versions:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "CREATE INDEX ON :Person(age)"
+GRAPH.QUERY DEMO_GRAPH "CREATE INDEX FOR (p:Person) ON (p.age)"
 ```
 
 After an index is explicitly created, it will automatically be used by queries that reference that label and any indexed property in a filter.
@@ -967,10 +1065,21 @@ RediSearch provide 2 additional index configuration options:
 1. Language - Define which language to use for stemming text which is adding the base form of a word to the index. This allows the query for "going" to also return results for "go" and "gone", for example.
 2. Stopwords - These are words that are usually so common that they do not add much information to search, but take up a lot of space and CPU time in the index.
 
-To construct a full-text index on the `title` using `German` using custom stopwords property of all nodes with label `Movie`, use the syntax:
+To construct a full-text index on the `title` property using `German` language and using custom stopwords of all nodes with label `Movie`, use the syntax:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex({ label: 'Movie', language: 'German', stopwords: ['a', 'ab'], 'title')"
+GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex({ label: 'Movie', language: 'German', stopwords: ['a', 'ab'] }, 'title')"
+```
+
+RediSearch provide 3 additional field configuration options:
+1. Weight - The importance of the text in the field
+2. Nostem - Skip setemming when indexing text
+3. Phonetic - Enable phonetic search on the text
+
+To construct a full-text index on the `title` property with phonetic search of all nodes with label `Movie`, use the syntax:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('Movie', {field: 'title', phonetic: 'dm:en'})"
 ```
 
 ## GRAPH.PROFILE
