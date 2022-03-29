@@ -15,11 +15,10 @@ ifneq ($(filter cov-upload,$(MAKECMDGOALS)),)
 COV=1
 endif
 
-ifneq ($(filter memcheckk,$(MAKECMDGOALS)),)
+ifneq ($(filter memcheck,$(MAKECMDGOALS)),)
 export DEBUG ?= 1
-MEMCHECK=1
+export MEMCHECK=1
 endif
-
 
 ifeq ($(COV),1)
 export DEBUG ?= 1
@@ -31,13 +30,22 @@ else
 FLAVOR=release
 endif
 
+#----------------------------------------------------------------------------------------------
+
+TARGET=redisgraph.so
+export BINROOT=$(ROOT)/bin/$(OS)-$(ARCH)-$(FLAVOR)
+
+#----------------------------------------------------------------------------------------------
+
 # Paths to deps.
 RAX_DIR = $(ROOT)/deps/rax
 XXHASH_DIR = $(ROOT)/deps/xxHash
 GRAPHBLAS_DIR = $(ROOT)/deps/GraphBLAS
 REDISEARCH_DIR = $(ROOT)/deps/RediSearch
-REDISEARCH_BINROOT=$(ROOT)/bin/$(OS)-$(ARCH)-$(FLAVOR)
+REDISEARCH_BINROOT=$(BINROOT)
 LIBCYPHER_PARSER_DIR = $(ROOT)/deps/libcypher-parser/lib/src
+
+#----------------------------------------------------------------------------------------------
 
 CFLAGS.warnings=-Wall -Wno-unused-variable -Wno-unused-result
 ifeq ($(PEDANTIC),1)
@@ -45,13 +53,15 @@ CFLAGS.warnings += -Wpedantic
 endif
 
 # Default CFLAGS
-CFLAGS = \
+CFLAGS=\
 	-fPIC -fcommon \
 	-D_GNU_SOURCE \
 	-DREDIS_MODULE_TARGET \
 	-DREDISMODULE_EXPERIMENTAL_API \
 	-DXXH_STATIC_LINKING_ONLY \
-	$(CFLAGS.warnings) $(DEBUGFLAGS)
+	$(CFLAGS.opt) \
+	$(CFLAGS.warnings) \
+	$(CFLAGS.debug)
 
 # Compile flags for linux / osx
 LDFLAGS.linux=-Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
@@ -61,15 +71,17 @@ SHOBJ_LDFLAGS += $(LDFLAGS) $(LDFLAGS.$(OS))
 
 # if DEBUG env var is set, we compile with "debug" cflags
 ifeq ($(DEBUG),1)
-	DEBUGFLAGS = -fno-omit-frame-pointer -g -ggdb -O0
+	CFLAGS.opt += -O0
+	CFLAGS.debug += -fno-omit-frame-pointer -g -ggdb
 	# Enable all assertions in debug mode
-	DEBUGFLAGS += -DRG_DEBUG
+	CFLAGS.debug += -DRG_DEBUG
 	ifeq ($(MEMCHECK),1)
-		DEBUGFLAGS += -DMEMCHECK
+		CFLAGS.debug += -DMEMCHECK
 		SHOBJ_LDFLAGS += -u RediSearch_CleanupModule
 	endif
 else
-	DEBUGFLAGS = -g -ggdb -O3
+	CFLAGS.opt += -O3
+	CFLAGS.debug += -g -ggdb
 endif
 
 export CFLAGS
@@ -210,14 +222,18 @@ MODULE_DEPS=$(LIBS) $(CC_OBJECTS)
 
 #----------------------------------------------------------------------------------------------
 
-REDISGRAPH_CC=$(QUIET_CC)$(CC)
+define REDISGRAPH_CC
+$(QUIET_CC); $(CC)
+endef
 
 CCCOLOR="\033[34m"
 SRCCOLOR="\033[33m"
 ENDCOLOR="\033[0m"
 
 ifndef V
-QUIET_CC = @printf '    %b %b\n' $(CCCOLOR)CC$(ENDCOLOR) $(SRCCOLOR)$@$(ENDCOLOR) 1>&2;
+define QUIET_CC
+@printf '    %b %b\n' $(CCCOLOR)CC$(ENDCOLOR) $(SRCCOLOR)$@$(ENDCOLOR) 1>&2
+endef
 endif
 
 %.c: %.y
@@ -226,7 +242,7 @@ endif
 %.o: %.c
 	$(REDISGRAPH_CC) $(CFLAGS) -I. -I$(GRAPHBLAS_DIR)/Include -I$(RAX_DIR) -I$(LIBCYPHER_PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR)/src -c $< -o $@ -MMD -MF $(@:.o=.d)
 
-all: redisgraph.so
+all: $(TARGET)
 
 .PHONY: all
 
@@ -272,7 +288,7 @@ objcopy --add-gnu-debuglink $1.debug $1
 endef
 
 # Build the module...
-redisgraph.so: $(MODULE_DEPS)
+$(TARGET): $(MODULE_DEPS)
 	$(REDISGRAPH_CC) -o $@ $(CC_OBJECTS) $(LIBS) $(SHOBJ_LDFLAGS) -lc -lm
 ifeq ($(OS),linux)
 ifneq ($(DEBUG),1)
@@ -282,7 +298,7 @@ endif
 
 clean:
 	@find . -name '*.[oad]' -type f -delete
-	@-rm -f redisgraph.so
+	@-rm -f $(TARGET)
 ifeq ($(ALL),1)
 	@$(MAKE) -C $(ROOT)/deps/rax clean
 	@$(MAKE) -C $(ROOT)/deps/xxHash clean
@@ -296,14 +312,14 @@ endif
 
 #----------------------------------------------------------------------------------------------
 
-package: redisgraph.so
+package: $(TARGET)
 	@$(ROOT)/sbin/pack.sh
 
 .PHONY: package
 
 #----------------------------------------------------------------------------------------------
 
-test: redisgraph.so
+test: $(TARGET)
 # check valgrind flag is not empty
 ifeq ($(VALGRIND),1)
 # valgrind is requested, check that host's os is not Linux
@@ -321,16 +337,16 @@ endif
 
 #----------------------------------------------------------------------------------------------
 
-memcheck: CFLAGS += -fno-omit-frame-pointer -g -ggdb -O0 -D MEMCHECK
-memcheck: SHOBJ_LDFLAGS += -u RediSearch_CleanupModule
-memcheck: redisgraph.so
+# memcheck: CFLAGS += -fno-omit-frame-pointer -g -ggdb -O0 -D MEMCHECK
+# memcheck: SHOBJ_LDFLAGS += -u RediSearch_CleanupModule
+memcheck: $(TARGET)
 	@$(MAKE) -C $(ROOT)/tests memcheck
 
 .PHONY: memcheck
 
 #----------------------------------------------------------------------------------------------
 
-benchmark: redisgraph.so
+benchmark: $(TARGET)
 	@$(MAKE) -C $(ROOT)/tests benchmark
 
 .PHONY: benchmark
@@ -338,15 +354,17 @@ benchmark: redisgraph.so
 #----------------------------------------------------------------------------------------------
 
 ifeq ($(COV),1)
+
 cov-upload:
 	$(SHOW)bash -c "bash <(curl -s https://codecov.io/bash) -f $(COV_INFO)"
 
 .PHONY: cov-upload
+
 endif # COV
 
 #----------------------------------------------------------------------------------------------
 
-fuzz: redisgraph.so
+fuzz: $(TARGET)
 	@$(MAKE) -C $(ROOT)/tests fuzz
 
 .PHONY: fuzz

@@ -53,6 +53,58 @@ help() {
 
 #----------------------------------------------------------------------------------------------
 
+[[ $1 == --help || $1 == help || $HELP == 1 ]] && {
+	help
+	exit 0
+}
+
+OP=""
+[[ $NOP == 1 ]] && OP=echo
+
+[[ $V == 1 ]] && VERBOSE=1
+
+RLEC=${RLEC:-0}
+DOCKER_HOST=${DOCKER_HOST:-localhost}
+RLEC_PORT=${RLEC_PORT:-12000}
+
+if [[ $RLEC != 1 ]]; then
+	GEN=${GEN:-1}
+	AOF=${AOF:-1}
+	TCK=${TCK:-0}
+
+	MODULE=${MODULE:-$1}
+	[[ -z $MODULE || ! -f $MODULE ]] && {
+		echo "Module not found at ${MODULE}. Aborting."
+		exit 1
+	}
+else
+	GEN=0
+	AOF=0
+	TCK=0
+fi
+
+[[ $EXT == 1 ]] && EXISTING_ENV=1
+EXT_HOST=${EXT_HOST:-127.0.0.1:6379}
+
+#----------------------------------------------------------------------------------------------
+
+[[ $VG == 1 ]] && VALGRIND=1
+VG_LEAKS=${VG_LEAKS:-1}
+VG_ACCESS=${VG_ACCESS:-1}
+
+GDB=${GDB:-0}
+
+#----------------------------------------------------------------------------------------------
+
+if [[ $PLATFORM_MODE == 1 ]]; then
+	CLEAR_LOGS=0
+	COLLECT_LOGS=1
+	NOFAIL=1
+	STATFILE=$ROOT/bin/artifacts/tests/status
+fi
+
+#----------------------------------------------------------------------------------------------
+
 setup_redis_server() {
 	if [[ $VALGRIND == 1 ]]; then
 		REDIS_SERVER=${REDIS_SERVER:-redis-server-vg}
@@ -126,8 +178,8 @@ run_tests() {
 
 				EOF
 		else
-				# --clear-logs
 			cat <<-EOF > $rltest_config
+				# --clear-logs
 				$RLTEST_ARGS
 				$RLTEST_VG_ARGS
 
@@ -164,76 +216,16 @@ run_tests() {
 
 #----------------------------------------------------------------------------------------------
 
-[[ $1 == --help || $1 == help || $HELP == 1 ]] && {
-	help
-	exit 0
-}
+[[ $VERBOSE == 1 ]] && RLTEST_ARGS+=" -s -v"
 
-OP=""
-[[ $NOP == 1 ]] && OP=echo
-
-[[ $V == 1 ]] && VERBOSE=1
-
-#----------------------------------------------------------------------------------------------
-
-if [[ $PLATFORM_MODE == 1 ]]; then
-	CLEAR_LOGS=0
-	COLLECT_LOGS=1
-	NOFAIL=1
-	STATFILE=$ROOT/bin/artifacts/tests/status
-fi
-
-#----------------------------------------------------------------------------------------------
-
-RLEC=${RLEC:-0}
-
-[[ $EXT == 1 ]] && EXISTING_ENV=1
-EXT_HOST=${EXT_HOST:-127.0.0.1:6379}
-
-if [[ $RLEC != 1 ]]; then
-	GEN=${GEN:-1}
-	AOF=${AOF:-1}
-	TCK=${TCK:-0}
-else
-	GEN=0
-	AOF=0
-	TCK=0
-fi
-
-#----------------------------------------------------------------------------------------------
-
-[[ $VERBOSE == 1 ]] && RLTEST_ARGS+=" -s"
-
-GDB=${GDB:-0}
 [[ $GDB == 1 ]] && RLTEST_ARGS+=" -i --verbose"
 
-VG_LEAKS=${VG_LEAKS:-1}
-VG_ACCESS=${VG_ACCESS:-1}
-
-[[ $VG == 1 ]] && VALGRIND=1
 [[ $VALGRIND == 1 ]] && valgrind_config
-
-#----------------------------------------------------------------------------------------------
-
-DOCKER_HOST=${DOCKER_HOST:-localhost}
-RLEC_PORT=${RLEC_PORT:-12000}
-
-#----------------------------------------------------------------------------------------------
-
-if [[ $RLEC != 1 ]]; then
-	MODULE=${MODULE:-$1}
-	[[ -z $MODULE || ! -f $MODULE ]] && {
-		echo "Module not found at ${MODULE}. Aborting."
-		exit 1
-	}
-fi
 
 if [[ -n $TEST ]]; then
 	RLTEST_ARGS+=" --test $TEST"
 	export BB=${BB:-1}
 fi
-
-[[ $VERBOSE == 1 ]] && RLTEST_ARGS+=" -v"
 
 [[ $RLEC != 1 ]] && setup_redis_server
 
