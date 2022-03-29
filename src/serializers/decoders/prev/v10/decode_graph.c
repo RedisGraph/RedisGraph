@@ -189,6 +189,9 @@ GraphContext *RdbLoadGraphContext_v10(RedisModuleIO *rdb) {
 	if(GraphDecodeContext_Finished(gc->decoding_context)) {
 		Graph *g = gc->g;
 
+		// set the node label matrix
+		Serializer_Graph_SetNodeLabels(g);
+
 		// revert to default synchronization behavior
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 		Graph_ApplyAllPending(g, true);
