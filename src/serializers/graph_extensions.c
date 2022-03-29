@@ -45,17 +45,12 @@ void Serializer_Graph_SetNode
 	GrB_Info info;
 	UNUSED(info);
 
-	RG_Matrix nl = Graph_GetNodeLabelMatrix(g);
 	for(uint i = 0; i < label_count; i ++) {
 		LabelID label = labels[i];
 		// set label matrix at position [id, id]
 		RG_Matrix  M  =  Graph_GetLabelMatrix(g, label);
 		GrB_Matrix m  =  RG_MATRIX_M(M);
 		info = GrB_Matrix_setElement_BOOL(m, true, id, id);
-		ASSERT(info == GrB_SUCCESS);
-
-		// map this label in this node's set of labels
-		info = RG_Matrix_setElement_BOOL(nl, id, label);
 		ASSERT(info == GrB_SUCCESS);
 	}
 }
@@ -70,14 +65,14 @@ void Serializer_Graph_SetNodeLabels
 	ASSERT(g);
 
 	GrB_Vector v;
-	int node_count          = Graph_RequiredMatrixDim(g);
-	int label_count         = Graph_LabelTypeCount(g);
-	RG_Matrix node_labels   = Graph_GetNodeLabelMatrix(g);
+	int node_count           = Graph_RequiredMatrixDim(g);
+	int label_count          = Graph_LabelTypeCount(g);
+	RG_Matrix node_labels    = Graph_GetNodeLabelMatrix(g);
 	GrB_Matrix node_labels_m = RG_MATRIX_M(node_labels);
 
 #if RG_DEBUG
 	GrB_Index nvals;
-	GrB_Matrix_nvals(&nvals, node_labels_m);
+	RG_Matrix_nvals(&nvals, node_labels);
 	ASSERT(nvals == 0);
 #endif
 
