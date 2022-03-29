@@ -166,6 +166,8 @@ This query will produce all the paths matching the pattern contained in the name
 
 `allShortestPaths()` is a MATCH mode in which only the shortest paths matching all criteria are captured. Both endpoints must be bound in an earlier WITH-demarcated scope to invoke `allShortestPaths()`.
 
+`allShortestPaths()` can have any number of hops for its minimum and maximum, including zero. Filters on properties are supported, and any number of labels may be specified.
+
 Example:
 
 ```sh
