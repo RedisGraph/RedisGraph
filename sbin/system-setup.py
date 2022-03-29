@@ -32,6 +32,8 @@ class RedisGraphSetup(paella.Setup):
 
     def redhat_compat(self):
         self.install("redhat-lsb-core")
+        if not self.platform.is_arm():
+            self.install_linux_gnu_tar()
         if self.osnick == 'ol8':
             self.install("which") # for automake
         self.run("%s/bin/getepel" % READIES, sudo=True)
