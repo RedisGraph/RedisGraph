@@ -165,9 +165,9 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 	}
 }
 
-static AST_Validation _AST_GetWithAliases(const cypher_astnode_t *node, rax *aliases) {
-	if(!node) return AST_VALID;
-	if(cypher_astnode_type(node) != CYPHER_AST_WITH) return AST_VALID;
+static void _AST_GetWithAliases(const cypher_astnode_t *node, rax *aliases) {
+	if(!node) return;
+	if(cypher_astnode_type(node) != CYPHER_AST_WITH) return;
 	ASSERT(aliases != NULL);
 
 	uint num_with_projections = cypher_ast_with_nprojections(node);
@@ -186,8 +186,6 @@ static AST_Validation _AST_GetWithAliases(const cypher_astnode_t *node, rax *ali
 		}
 		raxInsert(aliases, (unsigned char *)alias, strlen(alias), NULL, NULL);
 	}
-
-	return AST_VALID;
 }
 
 static void _AST_GetWithReferences(const cypher_astnode_t *node, rax *identifiers) {
@@ -263,11 +261,11 @@ static AST_Validation _AST_GetProcCallAliases
 }
 
 // UNWIND and WITH also form aliases, but don't need special handling for us yet.
-static AST_Validation _AST_GetReturnAliases(const cypher_astnode_t *node, rax *aliases) {
+static void _AST_GetReturnAliases(const cypher_astnode_t *node, rax *aliases) {
 	ASSERT(node && aliases && cypher_astnode_type(node) == CYPHER_AST_RETURN);
 
 	uint num_return_projections = cypher_ast_return_nprojections(node);
-	if(num_return_projections == 0) return AST_VALID;
+	if(num_return_projections == 0) return;
 
 	for(uint i = 0; i < num_return_projections; i ++) {
 		const cypher_astnode_t *child = cypher_ast_return_get_projection(node, i);
@@ -276,8 +274,6 @@ static AST_Validation _AST_GetReturnAliases(const cypher_astnode_t *node, rax *a
 		const char *alias = cypher_ast_identifier_get_name(alias_node);
 		raxInsert(aliases, (unsigned char *)alias, strlen(alias), NULL, NULL);
 	}
-
-	return AST_VALID;
 }
 
 static void _CollectIdentifiers(const cypher_astnode_t *root, rax *projections) {
@@ -701,16 +697,6 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 				ASSERT(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
 				const char *identifier =
 					cypher_ast_identifier_get_name(ast_exp);
-
-				// make sure each yield output is mentioned only once
-				if(!raxInsert(identifiers, (unsigned char *)identifier,
-							  strlen(identifier), NULL, NULL)) {
-					ErrorCtx_SetError("Variable `%s` already declared",
-									  identifier);
-					res = AST_INVALID;
-					goto cleanup;
-				}
-
 				// make sure procedure is aware of output
 				if(!Procedure_ContainsOutput(proc, identifier)) {
 					ErrorCtx_SetError("Procedure `%s` does not yield output `%s`",
@@ -1333,10 +1319,12 @@ static AST_Validation _AST_ValidateDefinedIdentifiers(const cypher_astnode_t *no
 	if(type == CYPHER_AST_RETURN) {
 		/* Only collect aliases (which may be referenced in an ORDER BY)
 		 * from the RETURN clause, rather than all identifiers */
-		return _AST_GetReturnAliases(node, identifiers);
+		_AST_GetReturnAliases(node, identifiers);
+		return AST_VALID;
 	} else if(type == CYPHER_AST_WITH) {
 		// Get alias if one is provided; otherwise use the expression identifier
-		return _AST_GetWithAliases(node, identifiers);
+		_AST_GetWithAliases(node, identifiers);
+		return AST_VALID;
 	} else if(type == CYPHER_AST_CALL) {
 		// Get alias if one is provided; otherwise use the expression identifier
 		return _AST_GetProcCallAliases(node, identifiers);
