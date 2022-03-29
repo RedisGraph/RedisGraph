@@ -92,7 +92,7 @@ ifeq ($(COV),1)
 
 CFLAGS += --coverage
 SHOBJ_LDFLAGS += --coverage
-BINROOT=$(SOURCEDIR)
+COV_BINROOT=$(SOURCEDIR)
 
 COV_INFO=$(ROOT)/cov/cov.info
 COV_DIR=$(ROOT)/cov
@@ -107,13 +107,13 @@ define COVERAGE_RESET
 set -e ;\
 echo "Starting coverage analysys ..." ;\
 mkdir -p $(COV_DIR) ;\
-lcov --directory $(BINROOT) --base-directory $(SOURCEDIR) -z > /dev/null 2>&1
+lcov --directory $(COV_BINROOT) --base-directory $(SOURCEDIR) -z > /dev/null 2>&1
 endef
 
 define COVERAGE_COLLECT
 set -e ;\
 echo "Collecting coverage data ..." ;\
-lcov --capture --directory $(BINROOT) --base-directory $(SOURCEDIR) --output-file $(COV_INFO) > /dev/null 2>&1 ;\
+lcov --capture --directory $(COV_BINROOT) --base-directory $(SOURCEDIR) --output-file $(COV_INFO) > /dev/null 2>&1 ;\
 lcov -o $(COV_INFO) -r $(COV_INFO) $(COV_EXCLUDE) > /dev/null 2>&1
 endef
 
@@ -298,13 +298,14 @@ endif
 
 clean:
 	@find . -name '*.[oad]' -type f -delete
+	@find . -name '*.gcda' -type f -delete
 	@-rm -f $(TARGET)
 ifeq ($(ALL),1)
 	@$(MAKE) -C $(ROOT)/deps/rax clean
 	@$(MAKE) -C $(ROOT)/deps/xxHash clean
 	@$(MAKE) -C $(ROOT)/deps/GraphBLAS clean
 	@$(MAKE) -C $(ROOT)/deps/libcypher-parser clean
-	@$(MAKE) -C $(REDISEARCH_DIR) clean ALL=1
+	@$(MAKE) -C $(REDISEARCH_DIR) clean ALL=1 BINROOT=$(REDISEARCH_BINROOT)
 endif
 	@$(MAKE) -C $(ROOT)/tests clean
 
@@ -337,8 +338,6 @@ endif
 
 #----------------------------------------------------------------------------------------------
 
-# memcheck: CFLAGS += -fno-omit-frame-pointer -g -ggdb -O0 -D MEMCHECK
-# memcheck: SHOBJ_LDFLAGS += -u RediSearch_CleanupModule
 memcheck: $(TARGET)
 	@$(MAKE) -C $(ROOT)/tests memcheck
 
