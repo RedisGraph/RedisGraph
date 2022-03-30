@@ -619,3 +619,26 @@ class testQueryValidationFlow(FlowTestsBase):
                 self.env.assertTrue(False)
             except redis.exceptions.ResponseError:
                 pass
+
+    def test41_nested_unary_operators(self):
+        # validate that the arguments of unary operators cannot
+        # be nested unary operators
+        queries = ["RETURN -+3",
+                   "RETURN ++3",
+                   "RETURN ---3",
+                   "RETURN --+3",
+                   "RETURN -+-3",
+                   "RETURN -++3",
+                   "RETURN +--3",
+                   "RETURN +-+3",
+                   "RETURN ++-3",
+                   "RETURN +++3",
+                   "RETURN + NOT 3",
+                   "RETURN + IS NOT NULL 3"]
+
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError:
+                pass

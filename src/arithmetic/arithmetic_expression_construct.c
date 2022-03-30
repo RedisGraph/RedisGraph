@@ -204,10 +204,25 @@ static AR_ExpNode *_AR_EXP_FromNullExpression() {
 	return AR_EXP_NewConstOperandNode(converted);
 }
 
+static inline bool _AR_EXP_ValidateUnaryArg(const cypher_astnode_t *expr) {
+	// unary ops should not have unary op plus or minus arguments
+	// this invalidates expressions like:
+	// --3
+	// - NOT 3
+	if(cypher_astnode_type(expr) != CYPHER_AST_UNARY_OPERATOR) return true;
+	const cypher_operator_t *operator = cypher_ast_unary_operator_get_operator(expr);
+	return (operator != CYPHER_OP_UNARY_MINUS && operator != CYPHER_OP_UNARY_PLUS);
+}
+
 static AR_ExpNode *_AR_EXP_FromUnaryOpExpression(const cypher_astnode_t *expr) {
 	AR_ExpNode *op = NULL;
 	const cypher_astnode_t *arg = cypher_ast_unary_operator_get_argument(expr); // CYPHER_AST_EXPRESSION
 	const cypher_operator_t *operator = cypher_ast_unary_operator_get_operator(expr);
+
+	if(!_AR_EXP_ValidateUnaryArg(arg)) {
+		ErrorCtx_SetError("Encountered invalid sequence of unary operators");
+		return AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
 
 	if(operator == CYPHER_OP_UNARY_MINUS) {
 		// This expression can be something like -3 or -a.val
