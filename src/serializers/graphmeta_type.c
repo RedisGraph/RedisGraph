@@ -44,7 +44,9 @@ static void _GraphMetaType_RdbSave(RedisModuleIO *rdb, void *value) {
 }
 
 static void _GraphMetaType_Free(void *value) {
-	// No-Op in this type.
+	GraphContext *gc = value;
+	// Unregister graph object from global list.
+	GraphContext_RemoveFromRegistry(gc);
 }
 
 int GraphMetaType_Register(RedisModuleCtx *ctx) {
