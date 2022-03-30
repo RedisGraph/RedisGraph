@@ -152,6 +152,9 @@ void RdbLoadGraph_v6(RedisModuleIO *rdb, GraphContext *gc) {
 	// Load edges.
 	_RdbLoadEdges(rdb, gc);
 
+	// set the node label matrix
+	Serializer_Graph_SetNodeLabels(g);
+
 	// Revert to default synchronization behavior
 	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 
