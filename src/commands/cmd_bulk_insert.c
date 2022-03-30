@@ -89,7 +89,7 @@ int Graph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 	if(rc == BULK_FAIL) {
 		// if insertion failed, clean up keyspace and free added entities
-		GraphContext_Release(gc);
+		GraphContext_DecreaseRefCount(gc);
 		RedisModuleKey *key = NULL;
 
 		key = RedisModule_OpenKey(ctx, rs_graph_name, REDISMODULE_WRITE);
@@ -110,7 +110,7 @@ int Graph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	RedisModule_ReplyWithStringBuffer(ctx, reply, len);
 
 cleanup:
-	if(gc) GraphContext_Release(gc);
+	if(gc) GraphContext_DecreaseRefCount(gc);
 
 	return REDISMODULE_OK;
 }
