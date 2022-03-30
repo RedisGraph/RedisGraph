@@ -17,7 +17,7 @@ void Graph_Slowlog(void *args) {
 	SlowLog *slowlog = GraphContext_GetSlowLog(gc);
 	SlowLog_Replay(slowlog, ctx);
 
-	GraphContext_Release(gc);
+	GraphContext_DecreaseRefCount(gc);
 	CommandCtx_Free(command_ctx);
 }
 
