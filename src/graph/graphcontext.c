@@ -27,7 +27,7 @@ extern RedisModuleType *GraphContextRedisModuleType;
 static void _GraphContext_Free(void *arg);
 static void _GraphContext_UpdateVersion(GraphContext *gc, const char *str);
 
-// Delete a GraphContext reference from the global array
+// delete a GraphContext reference from the `graphs_in_keyspace` global array
 void _GraphContext_RemoveFromRegistry(GraphContext *gc) {
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i ++) {
@@ -38,6 +38,7 @@ void _GraphContext_RemoveFromRegistry(GraphContext *gc) {
 	}
 }
 
+// increase graph context ref count by 1
 inline void GraphContext_IncreaseRefCount
 (
 	GraphContext *gc
@@ -45,15 +46,19 @@ inline void GraphContext_IncreaseRefCount
 	__atomic_fetch_add(&gc->ref_count, 1, __ATOMIC_RELAXED);
 }
 
+// decrease graph context ref count by 1
 inline void GraphContext_DecreaseRefCount
 (
 	GraphContext *gc
 ) {
-	// If the reference count is 0, the graph has been marked for deletion and no queries are active - free the graph.
+	// if the reference count is 0
+	// the graph has been marked for deletion and no queries are active
+	// free the graph
 	if(__atomic_sub_fetch(&gc->ref_count, 1, __ATOMIC_RELAXED) == 0) {
 		bool async_delete;
 		Config_Option_get(Config_ASYNC_DELETE, &async_delete);
 		
+		// remove graph context from global `graphs_in_keyspace` array
 		_GraphContext_RemoveFromRegistry(gc);
 
 		if(async_delete) {
@@ -132,9 +137,11 @@ static GraphContext *_GraphContext_Create
 	RedisModuleString *graphID = RedisModule_CreateString(ctx, graph_name, strlen(graph_name));
 
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_WRITE);
-	// Set value in key.
+
+	// set value in key
 	RedisModule_ModuleTypeSetValue(key, GraphContextRedisModuleType, gc);
-	// Register graph context for BGSave.
+
+	// register graph context for BGSave
 	GraphContext_RegisterWithModule(gc);
 
 	RedisModule_FreeString(ctx, graphID);
@@ -536,8 +543,10 @@ void GraphContext_DeleteEdgeFromIndices(GraphContext *gc, Edge *e) {
 // Functions for globally tracking GraphContexts
 //------------------------------------------------------------------------------
 
-// Register a new GraphContext for module-level tracking
+// register a new GraphContext for module-level tracking
 void GraphContext_RegisterWithModule(GraphContext *gc) {
+
+	// increase graph context ref count
 	GraphContext_IncreaseRefCount(gc);
 
 	// See if the graph context is not already in the keyspace.

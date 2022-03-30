@@ -52,13 +52,13 @@ GraphContext *GraphContext_New
 	const char *graph_name
 );
 
-// 
+// increase graph context ref count by 1
 void GraphContext_IncreaseRefCount
 (
 	GraphContext *gc
 );
 
-// 
+// decrease graph context ref count by 1
 void GraphContext_DecreaseRefCount
 (
 	GraphContext *gc

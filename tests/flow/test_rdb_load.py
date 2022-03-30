@@ -13,12 +13,13 @@ class testRdbLoad():
         self.env = Env(decodeResponses=True, moduleArgs='VKEY_MAX_ENTITY_COUNT 10')
         self.conn = self.env.getConnection()
 
-    def _check(self, expected_keys):
+    # assert that |keyspace| == `n`
+    def validate_key_count(self, n):
         keys = self.conn.keys('*')
-        self.env.assertEqual(len(keys), expected_keys)
+        self.env.assertEqual(len(keys), n)
 
     # restore the key data
-    def _step(self, key):
+    def restore_key(self, key):
         self.conn.restore(key, '0', keys[key])
 
     # validate that the imported data exists
@@ -32,24 +33,24 @@ class testRdbLoad():
         aux = self.conn.execute_command("GRAPH.DEBUG", "AUX", "START")
         self.env.assertEqual(aux, 1)
 
-        self._step(b'{x}x_a244836f-fe81-4f8d-8ee2-83fc3fbcf102')
-        self._step(b'{x}x_53ab30bb-1dbb-47b2-a41d-cac3acd68b8c')
+        self.restore_key(b'{x}x_a244836f-fe81-4f8d-8ee2-83fc3fbcf102')
+        self.restore_key(b'{x}x_53ab30bb-1dbb-47b2-a41d-cac3acd68b8c')
         
         self.conn.flushall()
 
-        self._check(0)
+        self.validate_key_count(0)
         
         aux = self.conn.execute_command("GRAPH.DEBUG", "AUX", "START")
         self.env.assertEqual(aux, 1)
 
-        self._step(b'{x}x_a244836f-fe81-4f8d-8ee2-83fc3fbcf102')
-        self._step(b'{x}x_53ab30bb-1dbb-47b2-a41d-cac3acd68b8c')
-        self._step(b'x')
+        self.restore_key(b'{x}x_a244836f-fe81-4f8d-8ee2-83fc3fbcf102')
+        self.restore_key(b'{x}x_53ab30bb-1dbb-47b2-a41d-cac3acd68b8c')
+        self.restore_key(b'x')
 
         aux = self.conn.execute_command("GRAPH.DEBUG", "AUX", "END")
         self.env.assertEqual(aux, 0)
 
-        self._check(1)
+        self.validate_key_count(1)
         self._test_data()
 
         self.conn.save()

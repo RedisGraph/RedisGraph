@@ -130,7 +130,7 @@ static void _CreateGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
 		RedisModule_ModuleTypeSetValue(key, GraphMetaRedisModuleType, gc);
 		RedisModule_CloseKey(key);
 		
-		// keep GraphContext for each virtual key
+		// increase graph context ref count for each virtual key
 		GraphContext_IncreaseRefCount(gc);
 		RedisModule_FreeString(ctx, meta_rm_string);
 		rm_free(uuid);
