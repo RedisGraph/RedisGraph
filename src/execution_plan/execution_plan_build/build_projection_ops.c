@@ -82,9 +82,6 @@ AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *clause) {
 			// This expression did not have an alias,
 			// so it must be an identifier
 			ASSERT(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
-			// Retrieve "a" from "RETURN a" or "RETURN a AS e"
-			// (theoretically; the latter case is already handled)
-			exp->alias = cypher_ast_identifier_get_name(ast_exp);
 		}
 
 		array_append(expressions, exp);

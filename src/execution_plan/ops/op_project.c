@@ -122,7 +122,7 @@ static Record ProjectConsume(OpBase *opBase) {
 		}
 	}
 	
-	op->projection = op->intermidiate ? OpBase_CreateRecord(opBase) : op->r;
+	op->projection = OpBase_CreateRecord(opBase);
 
 	for(uint i = 0; i < op->exp_count; i++) {
 		AR_ExpNode *exp = op->exps[i];
@@ -141,10 +141,9 @@ static Record ProjectConsume(OpBase *opBase) {
 		if((v.type & SI_GRAPHENTITY)) SIValue_Free(v);
 	}
 
-
 	if(op->order_exp_count > 0) {
-		Record order_record = op->projection;
-		
+		Record order_record = op->r;
+
 		if(op->intermidiate) {
 			_update_intermidiate_record(op, output_rax, op->projection);
 
@@ -169,9 +168,7 @@ static Record ProjectConsume(OpBase *opBase) {
 		}
 	}
 
-	if(op->intermidiate) {
-		OpBase_DeleteRecord(op->r);
-	}
+	OpBase_DeleteRecord(op->r);
 	op->r = NULL;
 
 	// Emit the projected Record once.
