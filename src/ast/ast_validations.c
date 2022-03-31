@@ -1357,8 +1357,12 @@ static AST_Validation _AST_ValidateDefinedIdentifiers(const cypher_astnode_t *no
 		uint child_count = cypher_astnode_nchildren(node);
 		for(uint c = 0; c < child_count; c ++) {
 			const cypher_astnode_t *child = cypher_astnode_get_child(node, c);
-			if(_AST_ValidateDefinedIdentifiers(child, identifiers) == AST_INVALID)
+			if(_AST_ValidateDefinedIdentifiers(child, identifiers) == AST_INVALID) {
+				// NOTE - if this validation is triggered, the code should be
+				// investigated, as this is currently an unreachable point
+				ASSERT(false && "No known AST sequence can trigger failures in child nodes");
 				return AST_INVALID;
+			}
 		}
 		return AST_VALID;
 	}
