@@ -7,8 +7,6 @@ ROOT=$(cd $HERE/../.. && pwd)
 READIES=$ROOT/deps/readies 
 . $READIES/shibumi/defs
 
-VALGRIND_REDIS_VER=6
-
 #----------------------------------------------------------------------------------------------
 
 help() {
@@ -21,11 +19,17 @@ help() {
 		MODULE=path         Module .so path
 
 		TEST=test           Run specific test (e.g. test.py:test_name)
+		TESTFILE=file       Run tests listed in `file`
+		FAILEDFILE=file     Write failed tests into `file`
 
 		GEN=1               General tests on standalone Redis (default)
 		AOF=1               AOF persistency tests on standalone Redis
 		TCK=1               Cypher Technology Compatibility Kit tests
 		RLEC=0|1            General tests on RLEC
+
+		PARALLEL=1          Runs RLTest tests in parallel
+		UNIX=1              Use unix sockets
+		RANDPORTS=1         Use randomized ports
 
 		REDIS_SERVER=path   Location of redis-server
 
@@ -40,11 +44,12 @@ help() {
 		RLEC_PORT           Port of existing-env in RLEC container (default: 12000)
 
 		PLATFORM_MODE=1     Implies NOFAIL & COLLECT_LOGS into STATFILE
-		CLEAR_LOGS=0        Do not remove logs prior to running tests
 		COLLECT_LOGS=1      Collect logs into .tar file
+		CLEAR_LOGS=0        Do not remove logs prior to running tests
 		NOFAIL=1            Do not fail on errors (always exit with 0)
 		STATFILE=file       Write test status (0|1) into `file`
 
+		LIST=1                List all tests and exit
 		RLTEST_ARGS=...     Extra RLTest arguments
 		V|VERBOSE=1         Print commands
 
@@ -88,6 +93,8 @@ EXT_HOST=${EXT_HOST:-127.0.0.1:6379}
 
 #----------------------------------------------------------------------------------------------
 
+VALGRIND_REDIS_VER=6
+
 [[ $VG == 1 ]] && VALGRIND=1
 VG_LEAKS=${VG_LEAKS:-1}
 VG_ACCESS=${VG_ACCESS:-1}
@@ -102,6 +109,19 @@ if [[ $PLATFORM_MODE == 1 ]]; then
 	NOFAIL=1
 	STATFILE=$ROOT/bin/artifacts/tests/status
 fi
+
+#---------------------------------------------------------------------------------------------- 
+
+if [[ -n $RLTEST ]]; then
+    export PYTHONPATH="$PYTHONPATH:$RLTEST"
+fi
+
+#---------------------------------------------------------------------------------------------- 
+
+[[ $PARALLEL == 1 ]] && RLTEST_PARALLEL_ARG="--parallelism $($READIES/bin/nproc)"
+
+[[ $UNIX == 1 ]] && RLTEST_ARGS+=" --unix"
+[[ $RANDPORTS == 1 ]] && RLTEST_ARGS+=" --randomize-ports"
 
 #----------------------------------------------------------------------------------------------
 
@@ -174,6 +194,7 @@ run_tests() {
 				--module $MODULE
 				--module-args '$MODARGS'
 				$RLTEST_ARGS
+				$RLTEST_PARALLEL_ARG
 				$RLTEST_VG_ARGS
 
 				EOF
@@ -216,6 +237,8 @@ run_tests() {
 
 #----------------------------------------------------------------------------------------------
 
+[[ $LIST == 1 ]] && RLTEST_ARGS+=" --collect-only"
+
 [[ $VERBOSE == 1 ]] && RLTEST_ARGS+=" -s -v"
 
 [[ $GDB == 1 ]] && RLTEST_ARGS+=" -i --verbose"
@@ -226,6 +249,8 @@ if [[ -n $TEST ]]; then
 	RLTEST_ARGS+=" --test $TEST"
 	export BB=${BB:-1}
 fi
+[[ -n $TESTFILE ]] && RLTEST_ARGS+=" -f $TESTFILE"
+[[ -n $FAILEDFILE ]] && RLTEST_ARGS+=" -F $FAILEDFILE"
 
 [[ $RLEC != 1 ]] && setup_redis_server
 

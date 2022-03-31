@@ -9,10 +9,12 @@ make all              # Build everything
 make clean            # Clean build artifacts
   ALL=1                 # Completely remove
 make test             # Run tests
-  COV=1                  # Perform coverage analysis
+  LIST=1                 # List all tests, do not execute
   UNIT=1                 # Run unit tests
   FLOW=1                 # Run flow tests (Python)
   TCK=1                  # Run TCK framework tests
+  COV=1                  # Perform coverage analysis
+  SLOW=1                 # Do not run in parallel
 make memcheck         # Run tests with Valgrind
 make benchmark        # Run benchmarks
 make fuzz             # Run fuzz tester

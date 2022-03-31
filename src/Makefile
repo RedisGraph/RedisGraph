@@ -320,6 +320,12 @@ package: $(TARGET)
 
 #----------------------------------------------------------------------------------------------
 
+ifeq ($(SLOW),1)
+_RLTEST_PARALLEL=0
+else
+_RLTEST_PARALLEL=1
+endif
+
 test: $(TARGET)
 # check valgrind flag is not empty
 ifeq ($(VALGRIND),1)
@@ -331,7 +337,7 @@ ifeq ($(OS),macos)
 endif
 endif
 	@$(COVERAGE_RESET)
-	@$(MAKE) -C $(ROOT)/tests test
+	@$(MAKE) -C $(ROOT)/tests test PARALLEL=$(_RLTEST_PARALLEL)
 	@$(COVERAGE_COLLECT_REPORT)
 
 .PHONY: test
@@ -339,7 +345,7 @@ endif
 #----------------------------------------------------------------------------------------------
 
 memcheck: $(TARGET)
-	@$(MAKE) -C $(ROOT)/tests memcheck
+	@$(MAKE) -C $(ROOT)/tests memcheck PARALLEL=$(_RLTEST_PARALLEL)
 
 .PHONY: memcheck
 
