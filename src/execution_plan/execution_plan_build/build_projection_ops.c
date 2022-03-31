@@ -14,22 +14,6 @@
 #include "../../arithmetic/arithmetic_expression.h"
 #include "../../arithmetic/arithmetic_expression_construct.h"
 
-// Given a WITH/RETURN * clause, generate the array of expressions to populate.
-static AR_ExpNode **_PopulateProjectAll(const cypher_astnode_t *clause) {
-	// Retrieve the relevant aliases from the AST.
-	const char **aliases = AST_GetProjectAll(clause);
-	uint count = array_len(aliases);
-
-	AR_ExpNode **project_exps = array_new(AR_ExpNode *, count);
-	for(uint i = 0; i < count; i++) {
-		// Build an expression for each alias.
-		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(aliases[i]);
-		array_append(project_exps, exp);
-	}
-
-	return project_exps;
-}
-
 // Handle ORDER entities
 static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 										   const cypher_astnode_t *order_clause) {
