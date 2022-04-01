@@ -74,9 +74,13 @@ static void _AST_MapReferencedNode(AST *ast, const cypher_astnode_t *node, bool 
 	const cypher_astnode_t *properties = cypher_ast_node_pattern_get_properties(node);
 	// Disregard empty property maps.
 	if(properties && cypher_astnode_nchildren(properties) == 0) properties = NULL;
+
+	// check if entity has an inlined WHERE clause
+	bool has_predicate = cypher_ast_node_pattern_get_predicate(node);
+
 	// A node with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
-	if(properties || force_mapping) {
+	if(properties || has_predicate || force_mapping) {
 		const char *alias = AST_ToString(node);
 		_AST_UpdateRefMap(ast, alias);
 
@@ -92,9 +96,13 @@ static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge, bool 
 	const cypher_astnode_t *properties = cypher_ast_rel_pattern_get_properties(edge);
 	// Disregard empty property maps.
 	if(properties && cypher_astnode_nchildren(properties) == 0) properties = NULL;
+
+	// check if entity has an inlined WHERE clause
+	bool has_predicate = cypher_ast_rel_pattern_get_predicate(edge);
+
 	// An edge with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
-	if(properties || force_mapping) {
+	if(properties || has_predicate || force_mapping) {
 		const char *alias = AST_ToString(edge);
 		_AST_UpdateRefMap(ast, alias);
 

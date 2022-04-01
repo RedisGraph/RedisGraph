@@ -794,6 +794,12 @@ static AST_Validation _Validate_WITH_Clauses(const AST *ast) {
 
 // Verify that MERGE doesn't redeclare bound relations and that one reltype is specified for unbound relations.
 static AST_Validation _ValidateMergeRelation(const cypher_astnode_t *entity, rax *defined_aliases) {
+	// no edge should not have a WHERE predicate
+	if(cypher_ast_rel_pattern_get_predicate(entity) != NULL) {
+		ErrorCtx_SetError("Edge pattern predicates are not allowed in MERGE, but only in MATCH clause or inside a pattern comprehension");
+		return AST_INVALID;
+	}
+
 	const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(entity);
 	const char *alias = NULL;
 	if(identifier) {
@@ -820,6 +826,12 @@ static AST_Validation _ValidateMergeRelation(const cypher_astnode_t *entity, rax
 
 // Verify that MERGE doesn't redeclare bound nodes.
 static AST_Validation _ValidateMergeNode(const cypher_astnode_t *entity, rax *defined_aliases) {
+	// no node should not have a WHERE predicate
+	if(cypher_ast_node_pattern_get_predicate(entity) != NULL) {
+		ErrorCtx_SetError("Node pattern predicates are not allowed in MERGE, but only in MATCH clause or inside a pattern comprehension");
+		return AST_INVALID;
+	}
+
 	if(raxSize(defined_aliases) == 0) return AST_VALID;
 
 	const cypher_astnode_t *identifier = cypher_ast_node_pattern_get_identifier(entity);
@@ -922,6 +934,21 @@ static AST_Validation _Validate_CREATE_Entities(const cypher_astnode_t *clause,
 			// Validate that each relation being created is directed.
 			if(cypher_ast_rel_pattern_get_direction(rel) == CYPHER_REL_BIDIRECTIONAL) {
 				ErrorCtx_SetError("Only directed relationships are supported in CREATE");
+				return AST_INVALID;
+			}
+
+			// validate that each relation does not have a WHERE predicate
+			if(cypher_ast_rel_pattern_get_predicate(rel) != NULL) {
+				ErrorCtx_SetError("Edge pattern predicates are not allowed in CREATE, but only in MATCH clause or inside a pattern comprehension");
+				return AST_INVALID;
+			}
+		}
+
+		for(uint j = 0; j < nelems; j += 2) {
+			const cypher_astnode_t *node = cypher_ast_pattern_path_get_element(path, j);
+			// validate that each node does not have a WHERE predicate
+			if(cypher_ast_node_pattern_get_predicate(node) != NULL) {
+				ErrorCtx_SetError("Node pattern predicates are not allowed in CREATE, but only in MATCH clause or inside a pattern comprehension");
 				return AST_INVALID;
 			}
 		}
