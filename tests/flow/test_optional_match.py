@@ -290,3 +290,55 @@ class testOptionalFlow(FlowTestsBase):
                            ['v3'],
                            ['v4']]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # validate that OPTIONAL subtrees that perform nested loops
+    # (that before optimizations utilize Cartesian Products)
+    # are populated and executed properly
+    def test22_optional_nested_loop(self):
+        global redis_graph
+        query = """MATCH (n1) OPTIONAL MATCH (n1), (n2) RETURN n1.v, n2.v ORDER BY n1.v, n2.v"""
+        plan = redis_graph.execution_plan(query)
+        # the first child of the Apply op should be a scan and the
+        # second should be the OPTIONAL subtree
+        # the OPTIONAL subtree should not have a Cartesian Product
+        self.env.assertTrue(re.search('Apply\s+All Node Scan | (n1)\s+Optional\s+All Node Scan | (n2) \s+Argument', plan))
+
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', 'v1'],
+                           ['v1', 'v2'],
+                           ['v1', 'v3'],
+                           ['v1', 'v4'],
+                           ['v2', 'v1'],
+                           ['v2', 'v2'],
+                           ['v2', 'v3'],
+                           ['v2', 'v4'],
+                           ['v3', 'v1'],
+                           ['v3', 'v2'],
+                           ['v3', 'v3'],
+                           ['v3', 'v4'],
+                           ['v4', 'v1'],
+                           ['v4', 'v2'],
+                           ['v4', 'v3'],
+                           ['v4', 'v4']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """MATCH (n1) OPTIONAL MATCH (n1), (n2) RETURN n1.v, n2.v ORDER BY n1.v, n2.v"""
+        plan = redis_graph.execution_plan(query)
+
+        # the first child of the Apply op should be a scan and the
+        # second should be the OPTIONAL subtree with a Cartesian Product
+        # combinining a traversal with an argument child and a scan
+        self.env.assertTrue(re.search('Apply\s+All Node Scan | (n1)\s+Optional\s+Cartesian Product\s+Conditional Traverse | (n1)->(anon_0)\s+Argument\s+All Node Scan | (n2)', plan))
+
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', 'v1'],
+                           ['v1', 'v2'],
+                           ['v1', 'v3'],
+                           ['v1', 'v4'],
+                           ['v2', 'v1'],
+                           ['v2', 'v2'],
+                           ['v2', 'v3'],
+                           ['v2', 'v4'],
+                           ['v3', None],
+                           ['v4', None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)

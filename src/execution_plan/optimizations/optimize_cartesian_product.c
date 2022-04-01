@@ -163,13 +163,48 @@ static void _optimize_cartesian_product(ExecutionPlan *plan, OpBase *cp) {
 	array_free(filter_ctx_arr);
 }
 
-void reduceCartesianProductStreamCount(ExecutionPlan *plan) {
+// add an argument op to the tail of a stream
+static void _push_down_argument(OpBase *cp, OpBase *arg, int i) {
+	OpBase *parent;
+	// choose a different stream to migrate the argument to
+	if(i == 0) parent = cp->children[1];
+	else parent = cp->children[i - 1];
+	// find the tail
+	while(parent->childCount > 0) parent = parent->children[0];
+	// add the argument as a new child
+	ExecutionPlan_AddOp(parent, arg);
+}
+
+// find and relocate any argument child ops
+static void _flatten_argument_ops(ExecutionPlan *plan, OpBase *cp) {
+	for(uint i = 0; i < cp->childCount; i++) {
+		OpBase *child = cp->children[i];
+		if(child->type == OPType_ARGUMENT) {
+			// disconnect the argument from the cartesian product parent
+			ExecutionPlan_RemoveOp(plan, child);
+			// decrement the argument's index if it was just modified
+			if(i > 0) i--;
+			// relocate the argument
+			_push_down_argument(cp, child, i);
+		}
+	}
+}
+
+void reduceCartesianProduct(ExecutionPlan *plan) {
 	OpBase **cps = ExecutionPlan_CollectOps(plan->root, OPType_CARTESIAN_PRODUCT);
 	uint cp_count = array_len(cps);
 
 	for(uint i = 0; i < cp_count ; i++) {
 		OpBase *cp = cps[i];
-		if(cp->childCount > 2) _optimize_cartesian_product(plan, cp);
+		// if the cartesian product has an argument child, it should be relocated
+		_flatten_argument_ops(plan, cp);
+		if(cp->childCount == 1) {
+			// a cartesian product with only 1 child is redundant and should be removed
+			ExecutionPlan_RemoveOp(plan, cp);
+			OpBase_Free(cp);
+		} else if(cp->childCount > 2) {
+			_optimize_cartesian_product(plan, cp);
+		}
 	}
 	array_free(cps);
 }

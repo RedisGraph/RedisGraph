@@ -12,14 +12,19 @@ void optimizePlan(ExecutionPlan *plan) {
 	compactFilters(plan);
 
 	// scan optimizations order:
-	// 1. remove redundant scans which checks for the same node
-	// 2. try to use the indices
+	// 1. migrate argument ops that may have erroneously been made
+	//    the child of a cartesian product
+	// 2. remove redundant scans which checks for the same node
+	// 3. try to use the indices
 	//    given a label scan and an indexed property, apply index scan
-	// 3. given a filter which checks id condition, and full or label scan
+	// 4. given a filter which checks id condition, and full or label scan
 	//    reduce it to id scan or label with id scan
 	//    note: due to the scan optimization order
 	//          label scan will be replaced with index scan when possible
 	//          so the id filter remains
+
+	// migrate misplaced ARGUMENT operations
+	migrateArguments(plan);
 
 	// remove redundant SCAN operations
 	reduceScans(plan);
@@ -37,7 +42,7 @@ void optimizePlan(ExecutionPlan *plan) {
 	filterVariableLengthEdges(plan);
 
 	// try to optimize cartesian product
-	reduceCartesianProductStreamCount(plan);
+	reduceCartesianProduct(plan);
 
 	// try to match disjoint entities by applying a join
 	applyJoin(plan);
