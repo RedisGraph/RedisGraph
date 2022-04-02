@@ -7,12 +7,16 @@ from redisgraph import Graph, Node, Edge
 from redisgraph_bulk_loader.bulk_insert import bulk_insert
 
 redis_con = None
+port = None
 
 class testGraphPersistency():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_con
         redis_con = self.env.getConnection()
+        global port
+        port = self.env.envRunner.port
+        
 
     def populate_graph(self, graph_name):
         redis_graph = Graph(graph_name, redis_con)
@@ -244,7 +248,8 @@ class testGraphPersistency():
         runner = CliRunner()
 
         csv_path = os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/resources/bulk_formatted/'
-        res = runner.invoke(bulk_insert, ['--nodes', csv_path + 'Person.csv',
+        res = runner.invoke(bulk_insert, ['--port', port,
+                                          '--nodes', csv_path + 'Person.csv',
                                           '--nodes', csv_path + 'Country.csv',
                                           '--relations', csv_path + 'KNOWS.csv',
                                           '--relations', csv_path + 'VISITED.csv',

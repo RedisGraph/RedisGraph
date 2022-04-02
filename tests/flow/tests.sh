@@ -219,6 +219,7 @@ run_tests() {
 	if [[ $VERBOSE == 1 ]]; then
 		echo "RLTest configuration:"
 		cat $rltest_config
+		[[ -n $VG_OPTIONS ]] && { echo "VG_OPTIONS: $VG_OPTIONS"; echo; }
 	fi
 
 	[[ $RLEC == 1 ]] && export RLEC_CLUSTER=1

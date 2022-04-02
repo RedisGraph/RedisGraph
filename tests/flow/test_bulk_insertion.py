@@ -29,7 +29,9 @@ class testGraphBulkInsertFlow(FlowTestsBase):
         self.env = Env(decodeResponses=True)
         global redis_graph
         global redis_con
+        global port
         redis_con = self.env.getConnection()
+        port = self.env.envRunner.port
         redis_graph = Graph("graph", redis_con)
 
     # Run bulk loader script and validate terminal output
