@@ -2,7 +2,9 @@ import os
 import sys
 from RLTest import Env
 
-from redisgraph import Graph, Node, Edge
+from redis.commands.graph import Graph
+from redis.commands.graph.node import Node
+from redis.commands.graph.edge import Edge
 
 r = None
 graph_name = "G"

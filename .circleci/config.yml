@@ -317,7 +317,7 @@ jobs:
       - run:
           name: Test for memory leaks
           shell: /bin/bash -l -eo pipefail
-          command: make memcheck
+          command: make memcheck PARALLEL=8 PLATFORM_MODE=1
       - save-tests-logs
 
   build_macos:

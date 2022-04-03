@@ -1,7 +1,11 @@
 from numbers import Number
 from collections import Counter
-from redisgraph import Node, Edge, Path
 from RLTest import Env
+
+from redis.commands.graph import Graph
+from redis.commands.graph.node import Node
+from redis.commands.graph.edge import Edge
+from redis.commands.graph.path import Path
 
 # Returns True if value is a number or string representation of a number.
 
