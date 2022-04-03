@@ -1,8 +1,5 @@
-import os
-import sys
-from RLTest import Env
+from common import *
 from redis import ResponseError
-from redisgraph import Graph
 
 GRAPH_ID = "index"
 redis_graph = None
@@ -14,7 +11,7 @@ class testIndexDeletionFlow():
         global redis_graph
         global redis_con
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
 
     def test01_drop_index(self):
         # drop not existed index

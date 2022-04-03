@@ -1,7 +1,4 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
+from common import *
 
 from base import FlowTestsBase
 
@@ -16,7 +13,7 @@ class testReversedPatterns(FlowTestsBase):
         global redis_graph
         global redis_con
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
         self.populate_graph()
 
     def populate_graph(self):

@@ -25,7 +25,7 @@ def debug(host, port):
     global redis_con
     global redis_graph
     redis_con = redis.Redis(host=host, port=port)
-    redis_graph = Graph(social_utils.graph_name, redis_con)
+    redis_graph = Graph(redis_con, social_utils.graph_name)
 
     print("populate_graph")
     social_utils.populate_graph(redis_con, redis_graph)
@@ -49,7 +49,7 @@ def main(argv):
         debug(args.host, args.port)
     else:
         with _redis() as redis_con:
-            redis_graph = Graph(social_utils.graph_name, redis_con)
+            redis_graph = Graph(redis_con, social_utils.graph_name)
             social_utils.populate_graph(redis_con, redis_graph)
             run_queries()
 

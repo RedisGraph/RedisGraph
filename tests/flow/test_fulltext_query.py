@@ -1,7 +1,4 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node
+from common import *
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -15,7 +12,7 @@ class testFulltextIndexQuery(FlowTestsBase):
         self.env = Env(decodeResponses=True)
         global graph
         redis_con = self.env.getConnection()
-        graph = Graph(GRAPH_ID, redis_con)
+        graph = Graph(redis_con, GRAPH_ID)
         self.populate_graph()
 
     def populate_graph(self):

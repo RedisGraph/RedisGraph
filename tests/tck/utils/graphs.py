@@ -26,7 +26,7 @@ def empty_graph():
     global redis_graph
 
     redis_con = _brand_new_redis()
-    redis_graph = Graph("G", redis_con)
+    redis_graph = Graph(redis_con, "G")
 
     # Create a graph with a single node.
     redis_graph.add_node(Node())
@@ -44,7 +44,7 @@ def binary_tree_graph1():
     global redis_graph
 
     redis_con = _brand_new_redis()
-    redis_graph = Graph("G1", redis_con)
+    redis_graph = Graph(redis_con, "G1")
     redis_graph.query("CREATE(a: A {name: 'a'}),    \
                       (b1: X {name: 'b1'}),         \
                       (b2: X {name: 'b2'}),         \
@@ -81,7 +81,7 @@ def binary_tree_graph2():
     global redis_graph
 
     redis_con = _brand_new_redis()
-    redis_graph = Graph("G2", redis_con)
+    redis_graph = Graph(redis_con, "G2")
     redis_graph.query("CREATE(a: A {name: 'a'}),    \
                       (b1: X {name: 'b1'}),         \
                       (b2: X {name: 'b2'}),         \

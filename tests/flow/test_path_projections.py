@@ -1,8 +1,4 @@
-import os
-import sys
-import redis
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
+from common import *
 
 nodes        =  {}
 GRAPH_ID     =  "path_projections"
@@ -13,7 +9,7 @@ class testPathProjections():
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
         self.populate_graph()
 
     def populate_graph(self):

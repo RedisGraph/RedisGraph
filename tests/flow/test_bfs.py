@@ -1,5 +1,4 @@
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
+from common import *
 from base import FlowTestsBase
 
 graph = None
@@ -11,7 +10,7 @@ class testBFS(FlowTestsBase):
         self.env = Env(decodeResponses=True)
         global graph
         redis_con = self.env.getConnection()
-        graph = Graph("proc_bfs", redis_con)
+        graph = Graph(redis_con, "proc_bfs")
         self.populate_graph()
 
     def populate_graph(self):

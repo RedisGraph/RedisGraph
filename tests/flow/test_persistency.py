@@ -1,9 +1,6 @@
-import os
-import sys
+from common import *
 import random
-from RLTest import Env
 from click.testing import CliRunner
-from redisgraph import Graph, Node, Edge
 from redisgraph_bulk_loader.bulk_insert import bulk_insert
 
 redis_con = None
@@ -19,7 +16,7 @@ class testGraphPersistency():
         
 
     def populate_graph(self, graph_name):
-        redis_graph = Graph(graph_name, redis_con)
+        redis_graph = Graph(redis_con, graph_name)
         # quick return if graph already exists
         if redis_con.exists(graph_name):
             return redis_graph
@@ -71,7 +68,7 @@ class testGraphPersistency():
         return redis_graph
 
     def populate_dense_graph(self, graph_name):
-        dense_graph = Graph(graph_name, redis_con)
+        dense_graph = Graph(redis_con, graph_name)
 
         # return early if graph exists
         if redis_con.exists(graph_name):
@@ -165,7 +162,7 @@ class testGraphPersistency():
     def test03_restore_properties(self):
         graph_names = ("simple_props", "{tag}_simple_props")
         for graph_name in graph_names:
-            graph = Graph(graph_name, redis_con)
+            graph = Graph(redis_con, graph_name)
 
             query = """CREATE (:p {strval: 'str', numval: 5.5, boolval: true, array: [1,2,3], pointval: point({latitude: 5.5, longitude: 6})})"""
             result = graph.query(query)
@@ -189,7 +186,7 @@ class testGraphPersistency():
     def test04_repeated_edges(self):
         graph_names = ["repeated_edges", "{tag}_repeated_edges"]
         for graph_name in graph_names:
-            graph = Graph(graph_name, redis_con)
+            graph = Graph(redis_con, graph_name)
             src   = Node(label='p', properties={'name': 'src'})
             dest  = Node(label='p', properties={'name': 'dest'})
             edge1 = Edge(src, 'e', dest, properties={'val': 1})
@@ -221,7 +218,7 @@ class testGraphPersistency():
     # default capacity are persisted correctly.
     def test05_load_large_graph(self):
         graph_name = "LARGE_GRAPH"
-        graph = Graph(graph_name, redis_con)
+        graph = Graph(redis_con, graph_name)
         q = """UNWIND range(1, 50000) AS v CREATE (:L)-[:R {v: v}]->(:L)"""
         actual_result = graph.query(q)
         self.env.assertEquals(actual_result.nodes_created, 100_000)
@@ -263,7 +260,7 @@ class testGraphPersistency():
         # Restart the server
         self.env.dumpAndReload()
 
-        graph = Graph(graphname, redis_con)
+        graph = Graph(redis_con, graphname)
 
         query_result = graph.query("""MATCH (p:Person)
                                       RETURN p.name, p.age, p.gender, p.status, ID(p)
@@ -380,7 +377,7 @@ class testGraphPersistency():
     # Verify that nodes with multiple labels are saved and restored correctly.
     def test07_persist_multiple_labels(self):
         graph_id = "multiple_labels"
-        g = Graph(graph_id, redis_con)
+        g = Graph(redis_con, graph_id)
         q = "CREATE (a:L0:L1:L2)"
         actual_result = g.query(q)
         self.env.assertEquals(actual_result.nodes_created, 1)

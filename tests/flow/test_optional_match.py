@@ -1,6 +1,5 @@
+from common import *
 import re
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
 
 redis_graph = None
@@ -11,7 +10,7 @@ class testOptionalFlow(FlowTestsBase):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph("optional_match", redis_con)
+        redis_graph = Graph(redis_con, "optional_match")
         self.populate_graph()
 
     def populate_graph(self):

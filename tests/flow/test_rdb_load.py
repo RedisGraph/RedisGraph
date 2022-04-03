@@ -1,4 +1,4 @@
-from RLTest import Env
+from common import *
 
 # TODO: when introducing new encoder/decoder this needs to be updated consider
 # using GRAPH.DEBUG command to be able to get this data

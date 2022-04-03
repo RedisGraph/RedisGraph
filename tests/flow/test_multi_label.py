@@ -1,7 +1,5 @@
-import redis
-from RLTest import Env
+from common import *
 from base import FlowTestsBase
-from redisgraph import Graph, Node, Edge
 
 graph = None
 GRAPH_ID = "multi_label"
@@ -11,7 +9,7 @@ class testMultiLabel():
         global graph
         self.env = Env(decodeResponses=True)
         self.redis_con = self.env.getConnection()
-        graph = Graph(GRAPH_ID, self.redis_con)
+        graph = Graph(self.redis_con, GRAPH_ID)
         self.populate_graph()
 
     def populate_graph(self):
@@ -209,7 +207,7 @@ class testMultiLabel():
         self.env.assertEquals(query_result.result_set, expected_result)
 
     def test09_test_query_graph_populate_nodes_labels(self):
-        graph = Graph('G', self.redis_con)
+        graph = Graph(self.redis_con, 'G')
 
         # create node with label L1 for the test in the next query
         # we need to make sure we replace the starting point of the traversal

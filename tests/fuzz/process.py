@@ -10,7 +10,7 @@ from redis import ResponseError
 def make_connection():
     env = Env(decodeResponses=True, module="../../src/redisgraph.so", logDir="logs")
     redis_con = env.getConnection()
-    return Graph("G", redis_con)
+    return Graph(redis_con, "G")
 
 
 def issue_queries(graph, timeout):

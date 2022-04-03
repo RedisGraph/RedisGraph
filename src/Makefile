@@ -322,6 +322,8 @@ package: $(TARGET)
 
 ifeq ($(SLOW),1)
 _RLTEST_PARALLEL=0
+else ifneq ($(PARALLEL),)
+_RLTEST_PARALLEL=$(PARALLEL)
 else
 _RLTEST_PARALLEL=1
 endif

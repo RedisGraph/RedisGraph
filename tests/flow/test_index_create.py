@@ -1,8 +1,5 @@
-import os
-import sys
-from RLTest import Env
+from common import *
 from redis import ResponseError
-from redisgraph import Graph
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -18,7 +15,7 @@ class testIndexCreationFlow(FlowTestsBase):
         global redis_graph
         global redis_con
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
 
     # full-text index creation
     def test01_fulltext_index_creation(self):

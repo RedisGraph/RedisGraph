@@ -1,6 +1,4 @@
-import os
-from RLTest import Env
-from redisgraph import Graph
+from common import *
 from pathos.pools import ProcessPool as Pool
 
 # 1.test getting and setting config

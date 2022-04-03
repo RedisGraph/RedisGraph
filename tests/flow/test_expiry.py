@@ -1,6 +1,5 @@
 import time
-from RLTest import Env
-from redisgraph import Graph
+from common import *
 from redis import ResponseError
 
 GRAPH_ID = "expire"
@@ -10,7 +9,7 @@ class testExpiry():
         # create a redisgraph object
         env = Env(decodeResponses=True)
         redis_con = env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
 
         # create a single node
         redis_graph.query("create ()")

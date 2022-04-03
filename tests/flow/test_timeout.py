@@ -1,9 +1,4 @@
-import sys
-import os
-from RLTest import Env
-from base import FlowTestsBase
-from redis import ResponseError
-from redisgraph import Graph
+from common import *
 
 redis_con = None
 redis_graph = None
@@ -18,7 +13,7 @@ class testQueryTimeout(FlowTestsBase):
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph("timeout", redis_con)
+        redis_graph = Graph(redis_con, "timeout")
 
     def test01_read_query_timeout(self):
         query = "UNWIND range(0,1000000) AS x WITH x AS x WHERE x = 10000 RETURN x"

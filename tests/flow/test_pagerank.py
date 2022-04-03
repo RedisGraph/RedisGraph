@@ -1,7 +1,4 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
+from common import *
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -15,7 +12,7 @@ class testPagerankFlow(FlowTestsBase):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
 
     def test_pagerank_no_label_no_relation(self):
         self.env.cmd('flushall')

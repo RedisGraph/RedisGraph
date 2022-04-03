@@ -1,8 +1,6 @@
-import redis
-from RLTest import Env
+from common import *
 from base import FlowTestsBase
-from redisgraph import Graph, Node, Edge
-from redisgraph.execution_plan import ExecutionPlan
+from redis.commands.graph.execution_plan import ExecutionPlan
 from execution_plan_util import locate_operation
 
 redis_graph = None
@@ -20,7 +18,7 @@ class testComprehensionFunctions(FlowTestsBase):
         global redis_graph
         graph_id = "list_comprehension"
         redis_con = self.env.getConnection()
-        redis_graph = Graph(graph_id, redis_con)
+        redis_graph = Graph(redis_con, graph_id)
         self.populate_graph()
 
     def populate_graph(self):

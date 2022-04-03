@@ -118,7 +118,16 @@ fi
 
 #---------------------------------------------------------------------------------------------- 
 
-[[ $PARALLEL == 1 ]] && RLTEST_PARALLEL_ARG="--parallelism $($READIES/bin/nproc)"
+if [[ -n $PARALLEL ]]; then
+	if [[ $PARALLEL != 0 ]]; then
+		if [[ $PARALLEL == 1 ]]; then
+			parallel="$($READIES/bin/nproc)"
+		else
+			parallel="$PARALLEL"
+		fi
+		RLTEST_PARALLEL_ARG="--parallelism $parallel"
+	fi
+fi
 
 [[ $UNIX == 1 ]] && RLTEST_ARGS+=" --unix"
 [[ $RANDPORTS == 1 ]] && RLTEST_ARGS+=" --randomize-ports"

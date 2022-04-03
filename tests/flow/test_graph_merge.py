@@ -1,9 +1,5 @@
-import os
+from common import *
 import re
-import sys
-import redis
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
 
 redis_graph = None
@@ -15,8 +11,8 @@ class testGraphMergeFlow(FlowTestsBase):
         global redis_graph
         global graph_2
         redis_con = self.env.getConnection()
-        redis_graph = Graph("G", redis_con)
-        graph_2 = Graph("H", redis_con)
+        redis_graph = Graph(redis_con, "G")
+        graph_2 = Graph(redis_con, "H")
 
     # Create a single node without any labels or properties.
     def test01_single_node_with_label(self):
@@ -367,7 +363,7 @@ class testGraphMergeFlow(FlowTestsBase):
 
     def test19_merge_dependency(self):
         redis_con = self.env.getConnection()
-        graph = Graph("M", redis_con)
+        graph = Graph(redis_con, "M")
 
         # Starting with an empty graph.
         # Create 2 nodes and connect them to one another.
@@ -390,7 +386,7 @@ class testGraphMergeFlow(FlowTestsBase):
 
     def test20_merge_edge_dependency(self):
         redis_con = self.env.getConnection()
-        graph = Graph("M", redis_con)
+        graph = Graph(redis_con, "M")
 
         # Starting with an empty graph.
         # Make sure the pattern ()-[]->()-[]->()-[]->() exists.
@@ -413,7 +409,7 @@ class testGraphMergeFlow(FlowTestsBase):
 
     def test21_merge_scan(self):
         redis_con = self.env.getConnection()
-        graph = Graph("M", redis_con)
+        graph = Graph(redis_con, "M")
 
         # Starting with an empty graph.
         # All node scan should see created nodes.
@@ -439,7 +435,7 @@ class testGraphMergeFlow(FlowTestsBase):
 
     def test22_merge_label_scan(self):
         redis_con = self.env.getConnection()
-        graph = Graph("M", redis_con)
+        graph = Graph(redis_con, "M")
 
         # Starting with an empty graph.
         # Make sure the pattern ()-[]->()-[]->()-[]->() exists.
@@ -462,7 +458,7 @@ class testGraphMergeFlow(FlowTestsBase):
 
     def test23_merge_var_traverse(self):
         redis_con = self.env.getConnection()
-        graph = Graph("M", redis_con)
+        graph = Graph(redis_con, "M")
 
         # Starting with an empty graph.
         # Make sure the pattern ()-[]->()-[]->()-[]->() exists.
@@ -485,7 +481,7 @@ class testGraphMergeFlow(FlowTestsBase):
 
     def test24_merge_merge_delete(self):
         redis_con = self.env.getConnection()
-        graph = Graph("M", redis_con)
+        graph = Graph(redis_con, "M")
 
         # Merge followed by an additional merge and ending with a deletion
         # which doesn't have any data to operate on,
@@ -509,7 +505,7 @@ class testGraphMergeFlow(FlowTestsBase):
 
     def test25_merge_with_where(self):
         redis_con = self.env.getConnection()
-        graph = Graph("M", redis_con)
+        graph = Graph(redis_con, "M")
 
         # Index the "L:prop) combination so that the MERGE tree will not have a filter op.
         query = """CREATE INDEX ON :L(prop)"""
@@ -538,7 +534,7 @@ class testGraphMergeFlow(FlowTestsBase):
 
     def test26_merge_set_invalid_property(self):
         redis_con = self.env.getConnection()
-        graph = Graph("M", redis_con)
+        graph = Graph(redis_con, "M")
 
         query = """MATCH p=() MERGE () ON MATCH SET p.prop4 = 5"""
         result = graph.query(query)
@@ -550,7 +546,7 @@ class testGraphMergeFlow(FlowTestsBase):
             self.env.skip()
 
         redis_con = self.env.getConnection()
-        graph = Graph("N", redis_con) # Instantiate a new graph.
+        graph = Graph(redis_con, "N") # Instantiate a new graph.
 
         try:
             # Try to create a node with an invalid NULL property.
@@ -578,7 +574,7 @@ class testGraphMergeFlow(FlowTestsBase):
 
     def test28_merge_reset_label_scan(self):
         redis_con = self.env.getConnection()
-        graph = Graph("M", redis_con)
+        graph = Graph(redis_con, "M")
 
         # Starting with an empty graph.
         # Create 2 nodes and connect them to one another.

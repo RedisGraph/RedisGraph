@@ -1,6 +1,4 @@
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
-from base import FlowTestsBase
+from common import *
 
 dis_redis = None
 redis_graph = None
@@ -16,7 +14,7 @@ class testVariableLengthTraversals(FlowTestsBase):
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph("G", redis_con)
+        redis_graph = Graph(redis_con, "G")
         self.populate_graph()
 
     def populate_graph(self):

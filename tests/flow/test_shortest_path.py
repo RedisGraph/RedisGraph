@@ -1,8 +1,5 @@
-import os
-import sys
-import redis
+from common import *
 from RLTest import Env
-from redisgraph import Graph, Node, Edge
 
 from base import FlowTestsBase
 
@@ -15,7 +12,7 @@ class testShortestPath(FlowTestsBase):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
         self.populate_graph()
 
     def populate_graph(self):

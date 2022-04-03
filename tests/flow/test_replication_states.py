@@ -1,5 +1,5 @@
+from common import *
 from itertools import permutations
-from RLTest import Env
 from enum import Enum
 import random
 

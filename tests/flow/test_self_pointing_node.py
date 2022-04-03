@@ -1,7 +1,4 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
+from common import *
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -16,7 +13,7 @@ class testSelfPointingNode(FlowTestsBase):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
         self.populate_graph()
    
     def populate_graph(self):

@@ -1,17 +1,13 @@
 # -*- coding: utf-8 -*-
-import os
-import sys
+from common import *
 import csv
 import time
-import redis
 import threading
-from RLTest import Env
 from click.testing import CliRunner
 from redisgraph_bulk_loader.bulk_insert import bulk_insert
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
 
 redis_con = None
@@ -32,7 +28,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
         global port
         redis_con = self.env.getConnection()
         port = self.env.envRunner.port
-        redis_graph = Graph("graph", redis_con)
+        redis_graph = Graph(redis_con, "graph")
 
     # Run bulk loader script and validate terminal output
     def test01_run_script(self):
@@ -188,7 +184,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
         os.remove('/tmp/nodes.tmp')
         os.remove('/tmp/relations.tmp')
 
-        tmp_graph = Graph(graphname, redis_con)
+        tmp_graph = Graph(redis_con, graphname)
         # The field "_identifier" should not be a property in the graph
         query_result = tmp_graph.query('MATCH (a) RETURN a')
 
@@ -251,7 +247,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
         # The script should report statistics multiple times
         self.env.assertGreater(res.output.count('nodes created'), 1)
 
-        new_graph = Graph(graphname, redis_con)
+        new_graph = Graph(redis_con, graphname)
 
         # Newly-created graph should be identical to graph created in single query
         original_result = redis_graph.query('MATCH (p:Person) RETURN p, ID(p) ORDER BY p.name')
@@ -351,7 +347,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
         self.env.assertIn('3 nodes created', res.output)
         self.env.assertIn('3 relations created', res.output)
 
-        graph = Graph(graphname, redis_con)
+        graph = Graph(redis_con, graphname)
         query_result = graph.query('MATCH (a)-[e]->() RETURN a.numeric, a.mixed, a.bool, e.prop ORDER BY a.numeric, e.prop')
         expected_result = [[0, None, True, True],
                            [5, 'notnull', False, 3.5],
@@ -438,7 +434,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
         self.env.assertIn('6 nodes created', res.output)
         self.env.assertIn('5 relations created', res.output)
 
-        graph = Graph(graphname, redis_con)
+        graph = Graph(redis_con, graphname)
 
         #-----------------------------------------------------------------------
         expected_result = [["Binghamton"],
@@ -530,7 +526,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
     def test11_social_multiple_labels(self):
         # Create the social graph with multi-labeled nodes
         graphname = "multilabel_social"
-        graph = Graph(graphname, redis_con)
+        graph = Graph(redis_con, graphname)
         csv_path = os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/resources/bulk_formatted/'
 
         runner = CliRunner()

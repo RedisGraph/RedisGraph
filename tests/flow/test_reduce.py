@@ -1,6 +1,5 @@
-from RLTest import Env
+from common import *
 from redis import ResponseError
-from redisgraph import Graph, Node, Edge
 
 GRAPH_ID = "REDUCE"
 
@@ -20,7 +19,7 @@ class testReduce():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         self.conn = self.env.getConnection()
-        self.graph = Graph(GRAPH_ID ,self.conn)
+        self.graph = Graph(self.conn, GRAPH_ID)
 
     def test_sum_reduction(self):
         # sum = 0, for n in [1,2,3], sum += n

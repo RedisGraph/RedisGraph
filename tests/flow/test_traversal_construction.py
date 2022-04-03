@@ -1,6 +1,4 @@
-import os
-from RLTest import Env
-from redisgraph import Graph
+from common import *
 
 graph = None
 
@@ -10,7 +8,7 @@ class testTraversalConstruction():
 
         self.env = Env(decodeResponses=True)
         redis_con = self.env.getConnection()
-        graph = Graph("TraversalConstruction", redis_con)
+        graph = Graph(redis_con, "TraversalConstruction")
 
     # Test differing starting points for the same search pattern
     def test_starting_point(self):

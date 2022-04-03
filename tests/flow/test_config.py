@@ -1,8 +1,4 @@
-import os
-import sys
-import redis
-from RLTest import Env
-from redisgraph import Graph
+from common import *
 from base import FlowTestsBase
 
 redis_con = None
@@ -14,7 +10,7 @@ class testConfig(FlowTestsBase):
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph("config", redis_con)
+        redis_graph = Graph(redis_con, "config")
 
     def test01_config_get(self):
         global redis_graph

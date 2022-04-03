@@ -1,9 +1,4 @@
-import os
-import sys
-import redis
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
-
+from common import *
 from base import FlowTestsBase
 
 GRAPH_ID = "G"
@@ -14,7 +9,7 @@ class testGraphCreationFlow(FlowTestsBase):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
 
     def test01_create_return(self):
         query = """CREATE (a:person {name:'A'}), (b:person {name:'B'})"""

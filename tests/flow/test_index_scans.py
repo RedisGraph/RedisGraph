@@ -1,7 +1,4 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
+from common import *
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/')
 import social_utils
@@ -15,7 +12,7 @@ class testIndexScanFlow():
     def setUp(self):
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(social_utils.graph_name, redis_con)
+        redis_graph = Graph(redis_con, social_utils.graph_name)
         social_utils.populate_graph(redis_con, redis_graph)
         self.build_indices()
 
@@ -192,7 +189,7 @@ class testIndexScanFlow():
     # https://github.com/RedisGraph/RedisGraph/issues/696
     def test06_tag_separator(self):
         redis_con = self.env.getConnection()
-        redis_graph = Graph("G", redis_con)
+        redis_graph = Graph(redis_con, "G")
 
         # Create a single node with a long string property, introduce a comma as part of the string.
         query = """CREATE (:Node{value:"A ValuePartition is a pattern that describes a restricted set of classes from which a property can be associated. The parent class is used in restrictions, and the covering axiom means that only members of the subclasses may be used as values."})"""
@@ -211,7 +208,7 @@ class testIndexScanFlow():
 
     def test07_index_scan_and_id(self):
         redis_con = self.env.getConnection()
-        redis_graph = Graph("G", redis_con)
+        redis_graph = Graph(redis_con, "G")
         nodes=[]
         for i in range(10):
             node = Node(node_id=i, label='person', properties={'age':i})
@@ -363,7 +360,7 @@ class testIndexScanFlow():
 
     # Test fulltext result scoring
     def test15_fulltext_result_scoring(self):
-        g = Graph('fulltext_scoring', self.env.getConnection())
+        g = Graph(self.env.getConnection(), 'fulltext_scoring')
 
         # create full-text index over label 'L', attribute 'v'
         g.call_procedure('db.idx.fulltext.createNodeIndex', 'L', 'v')
@@ -518,7 +515,7 @@ class testIndexScanFlow():
 
     # test for https://github.com/RedisGraph/RedisGraph/issues/1980
     def test18_index_scan_inside_apply(self):
-        redis_graph = Graph('g', self.env.getConnection())
+        redis_graph = Graph(self.env.getConnection(), 'g')
 
         redis_graph.query("CREATE INDEX ON :L1(id)")
         redis_graph.query("UNWIND range(1, 5) AS v CREATE (:L1 {id: v})")
@@ -528,7 +525,7 @@ class testIndexScanFlow():
         self.env.assertEquals(result.result_set, expected_result)
 
     def test19_index_scan_numeric_accuracy(self):
-        redis_graph = Graph('large_index_values', self.env.getConnection())
+        redis_graph = Graph(self.env.getConnection(), 'large_index_values')
 
         redis_graph.query("CREATE INDEX ON :L1(id)")
         redis_graph.query("CREATE INDEX ON :L2(id1, id2)")
@@ -571,7 +568,7 @@ class testIndexScanFlow():
         self.env.assertEquals(result.result_set, expected_result)
 
     def test20_index_scan_stopwords(self):
-        redis_graph = Graph('stopword', self.env.getConnection())
+        redis_graph = Graph(self.env.getConnection(), 'stopword')
 
         #-----------------------------------------------------------------------
         # create indices

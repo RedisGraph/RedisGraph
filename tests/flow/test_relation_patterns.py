@@ -1,7 +1,4 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
+from common import *
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -17,7 +14,7 @@ class testRelationPattern(FlowTestsBase):
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
         self.populate_graph()
 
     def populate_graph(self):
@@ -231,7 +228,7 @@ class testRelationPattern(FlowTestsBase):
 
     def test07_transposed_multi_hop(self):
         redis_con = self.env.getConnection()
-        g = Graph("tran_multi_hop", redis_con)
+        g = Graph(redis_con, "tran_multi_hop")
 
         # (a)-[R]->(b)-[R]->(c)<-[R]-(d)<-[R]-(e)
         a = Node(properties={"val": 'a'})
@@ -272,7 +269,7 @@ class testRelationPattern(FlowTestsBase):
 
     def test09_transposed_elem_order(self):
         redis_con = self.env.getConnection()
-        g = Graph("transpose_patterns", redis_con)
+        g = Graph(redis_con, "transpose_patterns")
 
         # Create a new graph of the form:
         # (A)<-[1]-(B)-[2]->(C)
@@ -293,7 +290,7 @@ class testRelationPattern(FlowTestsBase):
         # (A)-[X]->(B)
         # (A)-[Y]->(C)
         # (A)-[Z]->(D)
-        g = Graph("triple_edge_type", redis_con)
+        g = Graph(redis_con, "triple_edge_type")
         q = "CREATE(a:A), (b:B), (c:C), (d:D), (a)-[:X]->(b), (a)-[:Y]->(c), (a)-[:Z]->(d)"
         g.query(q)
 

@@ -1,8 +1,5 @@
-import os
-import sys
-import unittest
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
+# import unittest
+from common import *
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -16,7 +13,7 @@ class testGraphMultiPatternQueryFlow(FlowTestsBase):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph("G", redis_con)
+        redis_graph = Graph(redis_con, "G")
         self.populate_graph()
 
     def populate_graph(self):

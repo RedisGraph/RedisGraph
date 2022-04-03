@@ -1,8 +1,5 @@
-import os
-import sys
+from common import *
 import time
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
 
 from base import FlowTestsBase
 
@@ -33,8 +30,8 @@ class testReplication(FlowTestsBase):
 
         # perform CRUD operations
         # create a simple graph
-        graph = Graph(GRAPH_ID, source_con)
-        replica = Graph(GRAPH_ID, replica_con)
+        graph = Graph(source_con, GRAPH_ID)
+        replica = Graph(replica_con, GRAPH_ID)
         s = Node(label='L', properties={'id': 0, 'name': 'abcd'})
         t = Node(label='L', properties={'id': 1, 'name': 'efgh'})
         e = Edge(s, 'R', t)

@@ -1,7 +1,4 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph
+from common import *
 from base import FlowTestsBase
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -23,9 +20,9 @@ class testImdbFlow(FlowTestsBase):
         global imdb
         global queries
         global redis_graph
-        redis_con = self.env.getConnection()
-        redis_graph = Graph(imdb_utils.graph_name, redis_con)
-        actors, movies = imdb_utils.populate_graph(redis_con, redis_graph)
+        self.redis_con = self.env.getConnection()
+        redis_graph = Graph(self.redis_con, imdb_utils.graph_name)
+        actors, movies = imdb_utils.populate_graph(self.redis_con, redis_graph)
         imdb = imdb_queries.IMDBQueries(actors, movies)
         queries = imdb.queries()
 
@@ -91,14 +88,14 @@ class testImdbFlow(FlowTestsBase):
 
         # Execute this command directly, as its response does not contain the result set that
         # 'redis_graph.query()' expects
-        redis_graph.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "CREATE INDEX ON :movie(year)")
+        self.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "CREATE INDEX ON :movie(year)")
         q = imdb.eighties_movies_index_scan.query
         execution_plan = redis_graph.execution_plan(q)
         self.env.assertIn('Index Scan', execution_plan)
 
         actual_result = redis_graph.query(q)
 
-        redis_graph.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "DROP INDEX ON :movie(year)")
+        self.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "DROP INDEX ON :movie(year)")
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(

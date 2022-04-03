@@ -1,7 +1,5 @@
-from RLTest import Env
+from common import *
 from redis import ResponseError
-from redisgraph import Graph, Node, Edge
-
 from base import FlowTestsBase
 
 graph = None
@@ -13,11 +11,11 @@ class testEntityUpdate(FlowTestsBase):
         global multiple_entity_graph
         self.env = Env(decodeResponses=True)
         # create a graph with a single node with attribute 'v'
-        graph = Graph('update', self.env.getConnection())
+        graph = Graph(self.env.getConnection(), 'update')
         graph.query("CREATE ({v:1})")
 
         # create a graph with a two nodes connected by an edge
-        multiple_entity_graph = Graph('multiple_entity_update', self.env.getConnection())
+        multiple_entity_graph = Graph(self.env.getConnection(), 'multiple_entity_update')
         multiple_entity_graph.query("CREATE (:L {v1: 1})-[:R {v1: 3}]->(:L {v2: 2})")
         multiple_entity_graph.query("CREATE INDEX ON :L(v1)")
         multiple_entity_graph.query("CREATE INDEX ON :L(v2)")
