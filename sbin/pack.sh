@@ -49,8 +49,6 @@ INSTALL_DIR=$(cd $INSTALL_DIR && pwd)
 mkdir -p $BINDIR
 BINDIR=$(cd $BINDIR && pwd)
 
-. $READIES/bin/enable-utf8
-
 export ARCH=$($READIES/bin/platform --arch)
 [[ $ARCH == x64 ]] && ARCH=x86_64
 

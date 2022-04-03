@@ -19,6 +19,16 @@ for testdir in flow tck; do
 			rc=1
 		fi
 	done
+	if grep -l "Invalid read" $testdir/logs/*.valgrind.log &> /dev/null; then
+		echo
+		echo "### Invalid reads:"
+		grep -l "Invalid read" $testdir/logs/*.valgrind.log
+	fi
+	if grep -l "Invalid write" $testdir/logs/*.valgrind.log &> /dev/null; then
+		echo
+		echo "### Invalid writes:"
+		grep -l "Invalid write" $testdir/logs/*.valgrind.log
+	fi
 done
 
 exit $rc
