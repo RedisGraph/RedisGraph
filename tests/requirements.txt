@@ -3,7 +3,7 @@ redis~=4.2.1
 # redisgraph~=2.4.1
 # git+https://github.com/RedisGraph/redisgraph-py.git@rafi-redispy4-1
 
-redisgraph-bulk-loader~=0.9.16
+redisgraph-bulk-loader~=0.10.2
 # git+https://github.com/RedisGraph/redisgraph-bulk-loader.git@master
 
 # click~=8.1.2
