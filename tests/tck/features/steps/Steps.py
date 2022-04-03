@@ -275,3 +275,9 @@ def step_impl(context):
     global exception
     assert exception != None
     assert "RETURN * is not allowed when there are no variables in scope" in str(exception)
+
+@then(u'a TypeError should be raised at runtime: InvalidPropertyType')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Property values can only be of primitive types or arrays of primitive types" in str(exception)
