@@ -1,10 +1,11 @@
-redis
-redisgraph>=2.4.1
+redis~=4.2.1
+# redisgraph~=2.4.1
+git+https://github.com/RedisGraph/redisgraph-py.git@rafi-redispy4-1
 # redisgraph-bulk-loader
 git+https://github.com/RedisGraph/redisgraph-bulk-loader.git@master
-click>=6.7
-behave>=1.2
-pathos>=0.2.8
+click~=8.1.2
+behave~=1.2
+pathos~=0.2.8
 # RLTest~=0.4.2
 # ramp-packer~=2.2.1
 
