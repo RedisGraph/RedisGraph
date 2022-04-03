@@ -63,14 +63,8 @@ commands:
       - run:
           name: Cleanup test log dir
           command: |
-            if [[ -d tests/flow/logs ]]; then
-              cd tests/flow/logs
-              rm -f *.aof *.rdb
-            fi
-            if [[ -d tests/tck/logs ]]; then
-              cd tests/tck/logs
-              rm -f *.aof *.rdb
-            fi
+            rm -f tests/flow/logs/*.{aof,rdb}
+            rm -f tests/tck/logs/*.{aof,rdb}
           when: always
       - store_artifacts:
           path: tests/flow/logs
@@ -107,7 +101,9 @@ commands:
       - setup-automation
       - run:
           name: System setup
-          command: ./sbin/system-setup.py
+          command: |
+            ./sbin/system-setup.py
+            python3 -m pip list
       - run:
           name: Install Redis
           shell: /bin/bash -l -eo pipefail

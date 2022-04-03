@@ -3,6 +3,7 @@ from itertools import permutations
 from enum import Enum
 import random
 
+
 class Connection(Enum):
     Connected = 1
     Disconnected = 2

@@ -10,6 +10,7 @@ from redis.commands.graph.node import Node
 from redis.commands.graph.edge import Edge
 from redis.commands.graph.path import Path
 from redis.commands.graph import query_result
+from redis.commands.graph.execution_plan import ExecutionPlan
 
 from base import FlowTestsBase
 

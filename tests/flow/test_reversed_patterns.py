@@ -1,7 +1,5 @@
 from common import *
 
-from base import FlowTestsBase
-
 GRAPH_ID = "G"
 redis_con = None
 redis_graph = None

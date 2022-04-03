@@ -1,9 +1,9 @@
 from common import *
 import re
-from base import FlowTestsBase
 
 redis_graph = None
 graph_2 = None
+
 
 class testGraphMergeFlow(FlowTestsBase):
     def __init__(self):

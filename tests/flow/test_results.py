@@ -1,9 +1,5 @@
 from common import *
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
-
 graph = None
 redis_con = None
 

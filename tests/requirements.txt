@@ -5,6 +5,5 @@ click
 behave~=1.2
 pathos~=0.2.8
 
-RLTest ~= 0.5.0
-ramp-packer ~= 2.3.0
-# git+https://github.com/RedisLabsModules/RLTest.git@rafi-testloader-1
+RLTest~=0.5.0
+ramp-packer~=2.3.0

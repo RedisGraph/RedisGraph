@@ -1,12 +1,9 @@
 from common import *
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
-
 redis_graph = None
 male = ["Roi", "Alon", "Omri"]
 female = ["Hila", "Lucy"]
+
 
 class testGraphMixLabelsFlow(FlowTestsBase):
     def __init__(self):

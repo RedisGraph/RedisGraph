@@ -1,8 +1,8 @@
 from common import *
-from base import FlowTestsBase
 
 redis_graph = None
 GRAPH_ID = "map_test"
+
 
 class testMap(FlowTestsBase):
     def __init__(self):

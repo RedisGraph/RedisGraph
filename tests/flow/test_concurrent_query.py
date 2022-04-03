@@ -1,12 +1,11 @@
 from common import *
-from base import FlowTestsBase
-from redis import ResponseError
 from pathos.pools import ProcessPool as Pool
 from pathos.helpers import mp as pathos_multiprocess
 
 GRAPH_ID = "G"                      # Graph identifier.
 CLIENT_COUNT = 16                   # Number of concurrent connections.
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
+
 
 def thread_run_query(query, barrier):
     env = Env(decodeResponses=True)

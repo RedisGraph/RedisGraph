@@ -6,6 +6,7 @@ from pathos.pools import ProcessPool as Pool
 graphs       = None  # one graph object per client
 GRAPH_ID     = "G"   # graph identifier
 
+
 def query_crud(graph, query_id):
     query_id = int(query_id)
     create_query = "CREATE (n:Node {v:%d}), (n)-[:HAVE]->(:Node {v:%d}), (n)-[:HAVE]->(:Node {v:%d})" % (query_id, query_id, query_id)

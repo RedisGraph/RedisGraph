@@ -1,8 +1,8 @@
 from common import *
-from base import FlowTestsBase
 
 redis_con = None
 redis_graph = None
+
 
 class testConfig(FlowTestsBase):
     def __init__(self):

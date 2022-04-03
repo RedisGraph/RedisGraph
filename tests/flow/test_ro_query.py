@@ -1,5 +1,4 @@
 from common import *
-from base import FlowTestsBase
 import time
 
 slave_con = None

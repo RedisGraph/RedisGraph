@@ -15,6 +15,9 @@ make test             # Run tests
   TCK=1                  # Run TCK framework tests
   COV=1                  # Perform coverage analysis
   SLOW=1                 # Do not run in parallel
+  TEST=test              # Run specific test
+  TESTFILE=file          # Run tests listed in file
+  FAILFILE=file          # Write failed tests to file
 make memcheck         # Run tests with Valgrind
 make benchmark        # Run benchmarks
 make fuzz             # Run fuzz tester

@@ -256,7 +256,7 @@ run_tests() {
 [[ $VALGRIND == 1 ]] && valgrind_config
 
 if [[ -n $TEST ]]; then
-	RLTEST_ARGS+=" --test $TEST"
+	RLTEST_ARGS+=$(echo -n " "; echo "$TEST" | awk 'BEGIN { RS=" "; ORS=" " } {print "--test " $1 }')
 	export BB=${BB:-1}
 fi
 [[ -n $TESTFILE ]] && RLTEST_ARGS+=" -f $TESTFILE"

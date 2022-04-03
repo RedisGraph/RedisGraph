@@ -6,13 +6,10 @@ import threading
 from click.testing import CliRunner
 from redisgraph_bulk_loader.bulk_insert import bulk_insert
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
-
 redis_con = None
 port = None
 redis_graph = None
+
 
 def run_bulk_loader(graphname, filename):
     runner = CliRunner()

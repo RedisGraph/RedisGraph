@@ -1,11 +1,8 @@
 from common import *
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
-
 redis_con = None
 redis_graph = None
+
 
 class testQueryValidationFlow(FlowTestsBase):
 

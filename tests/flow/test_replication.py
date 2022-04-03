@@ -1,9 +1,8 @@
 from common import *
 import time
 
-from base import FlowTestsBase
-
 GRAPH_ID = "replication"
+
 
 # test to see if replication works as expected
 # RedisGraph should replicate all write queries which had an effect on the

@@ -1,8 +1,8 @@
 from common import *
-from base import FlowTestsBase
 
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
 redis_graph = None
+
 
 class testEdgeByIndexScanFlow(FlowTestsBase):
     def __init__(self):

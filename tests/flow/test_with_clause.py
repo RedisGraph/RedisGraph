@@ -4,6 +4,7 @@ import re
 redis_graph = None
 values = ["str1", "str2", False, True, 5, 10.5]
 
+
 class testWithClause(FlowTestsBase):
     
     def __init__(self):

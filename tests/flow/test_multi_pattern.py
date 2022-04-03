@@ -1,12 +1,8 @@
-# import unittest
 from common import *
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
 
 redis_graph = None
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
+
 
 class testGraphMultiPatternQueryFlow(FlowTestsBase):
     def __init__(self):

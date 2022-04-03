@@ -1,9 +1,9 @@
 from common import *
-from base import FlowTestsBase
 
 graph1 = None
 graph2 = None
 graph3 = None
+
 
 class testReturnDistinctFlow1(FlowTestsBase):
 

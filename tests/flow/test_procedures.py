@@ -1,9 +1,5 @@
 from common import *
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
-
 GRAPH_ID = "procedures"
 redis_graph = None
 redis_con = None
@@ -13,6 +9,7 @@ node2 = Node(label="fruit", properties={"name": "Orange2", "value": 2})
 node3 = Node(label="fruit", properties={"name": "Orange3", "value": 3})
 node4 = Node(label="fruit", properties={"name": "Orange4", "value": 4})
 node5 = Node(label="fruit", properties={"name": "Banana", "value": 5})
+
 
 # Tests built in procedures,
 # e.g. db.idx.fulltext.queryNodes

@@ -1,12 +1,11 @@
 from common import *
-from redis import ResponseError
 
-from base import FlowTestsBase
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../..')
 from demo import QueryInfo
 
 GRAPH_ID = "G"
 redis_graph = None
+
 
 class testGraphDeletionFlow(FlowTestsBase):
     def __init__(self):

@@ -1,8 +1,8 @@
 from common import *
-from base import FlowTestsBase
 
 graph = None
 GRAPH_ID = "multi_label"
+
 
 class testMultiLabel():
     def __init__(self):

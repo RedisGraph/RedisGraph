@@ -1,9 +1,9 @@
 from common import *
 import re
-from base import FlowTestsBase
 
 redis_graph = None
 nodes = {}
+
 
 class testOptionalFlow(FlowTestsBase):
     def __init__(self):

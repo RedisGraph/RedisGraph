@@ -4,6 +4,7 @@ nodes        =  {}
 GRAPH_ID     =  "path_projections"
 redis_graph  =  None
 
+
 class testPathProjections():
     def __init__(self):
         self.env = Env(decodeResponses=True)

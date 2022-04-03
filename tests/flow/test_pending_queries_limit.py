@@ -10,6 +10,7 @@ from pathos.pools import ProcessPool as Pool
 GRAPH_NAME = "max_pending_queries"
 SLOW_QUERY = "UNWIND range (0, 1000000) AS x WITH x WHERE (x / 2) = 50 RETURN x"
 
+
 def issue_query(conn, q):
     try:
         conn.execute_command("GRAPH.QUERY", GRAPH_NAME, q)

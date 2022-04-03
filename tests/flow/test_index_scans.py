@@ -1,9 +1,10 @@
 from common import *
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social')
 import social_utils
 
 redis_graph = None
+
 
 class testIndexScanFlow():
     def __init__(self):

@@ -1,13 +1,13 @@
 from common import *
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/')
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
 from reversepattern import ReversePattern
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/')
 import social_queries as queries
 import social_utils
 
 redis_graph = None
+
 
 class testSocialFlow(FlowTestsBase):
 

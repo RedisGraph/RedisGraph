@@ -3,6 +3,7 @@ from common import *
 redis_con = None
 redis_graph = None
 
+
 class testQueryTimeout(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)

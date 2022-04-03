@@ -1,8 +1,8 @@
 from common import *
-from base import FlowTestsBase
 import re
 
 redis_con = None
+
 
 class test_v7_encode_decode(FlowTestsBase):
     def __init__(self):

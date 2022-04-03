@@ -3,6 +3,7 @@ from common import *
 GRAPH_ID = "union_test"
 redis_graph = None
 
+
 class testUnion(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)

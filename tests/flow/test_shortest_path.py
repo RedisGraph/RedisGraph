@@ -1,11 +1,9 @@
 from common import *
-from RLTest import Env
-
-from base import FlowTestsBase
 
 nodes        =  []
 GRAPH_ID     =  "shortest_path"
 redis_graph  =  None
+
 
 class testShortestPath(FlowTestsBase):
     def __init__(self):

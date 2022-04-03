@@ -1,11 +1,10 @@
 from common import *
 import json
-from base import FlowTestsBase
-
 
 graph = None
 redis_con = None
 people = ["Roi", "Alon", "Ailon", "Boaz"]
+
 
 class testFunctionCallsFlow(FlowTestsBase):
     def __init__(self):

@@ -1,11 +1,8 @@
 from common import *
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
-
 GRAPH_ID = "query"
 graph = None
+
 
 class testFulltextIndexQuery(FlowTestsBase):
     def __init__(self):

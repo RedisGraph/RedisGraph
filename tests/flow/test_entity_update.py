@@ -1,9 +1,8 @@
 from common import *
-from redis import ResponseError
-from base import FlowTestsBase
 
 graph = None
 multiple_entity_graph = None
+
 
 class testEntityUpdate(FlowTestsBase):
     def __init__(self):

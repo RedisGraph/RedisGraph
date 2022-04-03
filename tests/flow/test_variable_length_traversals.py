@@ -8,6 +8,7 @@ node_names = ["A", "B", "C", "D"]
 # A can reach 3 nodes, B can reach 2 nodes, C can reach 1 node
 max_results = 6
 
+
 class testVariableLengthTraversals(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)

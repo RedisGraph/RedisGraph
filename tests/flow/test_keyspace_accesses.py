@@ -1,16 +1,13 @@
 from common import *
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../..')
 from demo import QueryInfo
 
 graph = None
 redis_con = None
 GRAPH_ID = "G"
 NEW_GRAPH_ID = "G2"
+
 
 class testKeyspaceAccesses(FlowTestsBase):
     def __init__(self):

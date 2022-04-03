@@ -1,5 +1,4 @@
 from common import *
-from redis import ResponseError
 
 GRAPH_ID = "REDUCE"
 

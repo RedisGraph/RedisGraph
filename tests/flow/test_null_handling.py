@@ -1,7 +1,7 @@
 from common import *
-from base import FlowTestsBase
 
 redis_graph = None
+
 
 class testNullHandlingFlow(FlowTestsBase):
     def __init__(self):

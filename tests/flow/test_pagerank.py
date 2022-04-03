@@ -1,11 +1,8 @@
 from common import *
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
-
 GRAPH_ID = "G"
 redis_graph = None
+
 
 class testPagerankFlow(FlowTestsBase):
     def __init__(self):

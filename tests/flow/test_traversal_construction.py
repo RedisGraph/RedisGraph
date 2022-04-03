@@ -2,6 +2,7 @@ from common import *
 
 graph = None
 
+
 class testTraversalConstruction():
     def __init__(self):
         global graph

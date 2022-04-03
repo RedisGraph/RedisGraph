@@ -1,13 +1,9 @@
 from common import *
-from redis import ResponseError
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
 
 GRAPH_ID = "index"
 redis_graph = None
 redis_con = None
+
 
 class testIndexCreationFlow(FlowTestsBase):
     def __init__(self):

@@ -1,9 +1,8 @@
 from common import *
 
-from base import FlowTestsBase
-
 redis_graph = None
 GRAPH_ID = "G"
+
 
 # tests the GRAPH.LIST command
 class testGraphList(FlowTestsBase):

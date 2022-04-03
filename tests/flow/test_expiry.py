@@ -1,8 +1,8 @@
-import time
 from common import *
-from redis import ResponseError
+import time
 
 GRAPH_ID = "expire"
+
 
 class testExpiry():
     def test01_expire_graph(self):

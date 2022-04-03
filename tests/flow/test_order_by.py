@@ -1,5 +1,4 @@
 from common import *
-from base import FlowTestsBase
 
 GRAPH_ID = "order_by_test"
 redis_graph = None

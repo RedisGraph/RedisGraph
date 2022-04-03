@@ -1,8 +1,7 @@
 from common import *
-from redis import ResponseError
-from base import FlowTestsBase
 
 graph = None
+
 
 class testEmptyQuery(FlowTestsBase):
     def __init__(self):

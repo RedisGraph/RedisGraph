@@ -1,9 +1,8 @@
 from common import *
-from base import FlowTestsBase
-from redis.commands.graph.execution_plan import ExecutionPlan
 from execution_plan_util import locate_operation
 
 redis_graph = None
+
 
 def _check_pattern_comprehension_plan(plan: ExecutionPlan):
     apply = locate_operation(plan.structured_plan, "Apply")

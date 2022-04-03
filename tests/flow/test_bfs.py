@@ -1,9 +1,9 @@
 from common import *
-from base import FlowTestsBase
 
 graph = None
 nodes = {}
 edges = {}
+
 
 class testBFS(FlowTestsBase):
     def __init__(self):

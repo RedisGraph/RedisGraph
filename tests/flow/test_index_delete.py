@@ -1,9 +1,9 @@
 from common import *
-from redis import ResponseError
 
 GRAPH_ID = "index"
 redis_graph = None
 redis_con = None
+
 
 class testIndexDeletionFlow():
     def __init__(self):

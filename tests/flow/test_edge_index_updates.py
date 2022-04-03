@@ -2,10 +2,6 @@ from common import *
 import random
 import string
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
-
 GRAPH_ID = "G"
 redis_graph = None
 labels = ["label_a", "label_b"]
@@ -14,6 +10,7 @@ fields = ['unique', 'group', 'doubleval', 'intval', 'stringval']
 groups = ["Group A", "Group B", "Group C","Group D", "Group E"]
 node_ctr = 0
 edge_ctr = 0
+
 
 class testEdgeIndexUpdatesFlow(FlowTestsBase):
     def __init__(self):

@@ -28,6 +28,7 @@ MEM_THRIFTY_QUERY  =  """UNWIND range(0, 10) AS x
                          WHERE (x / 2) = 50
                          RETURN x, count(x)"""
 
+
 def issue_query(conn, q, should_fail):
     try:
         g = Graph(conn, GRAPH_NAME)

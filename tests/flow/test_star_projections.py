@@ -3,6 +3,7 @@ from common import *
 GRAPH_ID = "starProjection"
 redis_graph = None
 
+
 class testStarProjections():
 
     def __init__(self):

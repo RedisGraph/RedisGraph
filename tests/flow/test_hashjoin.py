@@ -1,7 +1,7 @@
 from common import *
-from base import FlowTestsBase
 
 GRAPH_ID = "G"
+
 
 class testHashJoin(FlowTestsBase):
     def __init__(self):

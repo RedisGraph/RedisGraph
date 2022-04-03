@@ -1,9 +1,9 @@
 from common import *
-from base import FlowTestsBase
 
 redis_con = None
 
 CACHE_SIZE = 16
+
 
 class testCache(FlowTestsBase):
 

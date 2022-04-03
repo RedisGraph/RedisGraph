@@ -2,15 +2,13 @@ from common import *
 import re
 from collections import Counter
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../..')
 from demo import QueryInfo
 
 GRAPH_ID = "G"
 redis_con = None
 redis_graph = None
+
 
 class testPathFilter(FlowTestsBase):
     def __init__(self):

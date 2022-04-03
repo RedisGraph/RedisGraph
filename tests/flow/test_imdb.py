@@ -1,16 +1,15 @@
 from common import *
-from base import FlowTestsBase
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from reversepattern import ReversePattern
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/imdb/')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/imdb')
 import imdb_queries
 import imdb_utils
 
 imdb = None
 queries = None
 redis_graph = None
+
 
 class testImdbFlow(FlowTestsBase):
     def __init__(self):

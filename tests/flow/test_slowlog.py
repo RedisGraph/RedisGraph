@@ -4,6 +4,7 @@ GRAPH_ID = "slowlog_test"
 redis_con = None
 redis_graph = None
 
+
 class testSlowLog(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
