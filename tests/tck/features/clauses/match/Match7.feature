@@ -474,7 +474,6 @@ Feature: Match7 - Optional match
       | d |
     And no side effects
 
-  @skip
   Scenario: [23] OPTIONAL MATCH with labels on the optional end node
     Given an empty graph
     And having executed:

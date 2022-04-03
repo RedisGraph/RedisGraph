@@ -67,7 +67,6 @@ Feature: Merge6 - Merge relationships - on create
       | +relationships | 1 |
       | +properties    | 1 |
 
-  @skip
   Scenario: [3] Updating one property with ON CREATE
     Given an empty graph
     And having executed:

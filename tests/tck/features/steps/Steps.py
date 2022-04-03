@@ -263,3 +263,15 @@ def step_impl(context):
     global exception
     assert exception != None
     assert "Only directed relationships" in str(exception)
+
+@then(u'a SyntaxError should be raised at compile time: RelationshipUniquenessViolation')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Cannot use the same relationship variable" in str(exception)
+
+@then(u'a SyntaxError should be raised at compile time: NoVariablesInScope')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "RETURN * is not allowed when there are no variables in scope" in str(exception)
