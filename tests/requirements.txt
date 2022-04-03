@@ -1,7 +1,7 @@
 redis~=4.2.1
 redisgraph-bulk-loader~=0.10.2
 
-click~=8.1.2
+click
 behave~=1.2
 pathos~=0.2.8
 
