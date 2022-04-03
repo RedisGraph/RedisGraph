@@ -57,7 +57,7 @@ static AR_ExpNode **_BuildCallProjections(const cypher_astnode_t *call_clause) {
 			identifier = cypher_ast_identifier_get_name(ast_exp);
 		}
 
-		exp->resolved_name = identifier;
+		exp->alias = identifier;
 		array_append(expressions, exp);
 	}
 
@@ -71,7 +71,7 @@ static AR_ExpNode **_BuildCallProjections(const cypher_astnode_t *call_clause) {
 		for(uint i = 0; i < output_count; i++) {
 			const char *name = Procedure_GetOutput(proc, i);
 			AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(name);
-			exp->resolved_name = name;
+			exp->alias = name;
 			array_append(expressions, exp);
 		}
 		Proc_Free(proc);

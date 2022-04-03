@@ -12,13 +12,17 @@
 
 typedef struct {
 	OpBase op;
-	Record r;                       // Input Record being read from (stored to free if we encounter an error).
-	Record projection;              // Record projected by this operation (stored to free if we encounter an error).
-	AR_ExpNode **exps;              // Projected expressions (including order exps).
-	uint *record_offsets;           // Record IDs corresponding to each projection (including order exps).
-	bool singleResponse;            // When no child operations, return NULL after a first response.
-	uint exp_count;                 // Number of projected expressions.
+	Record r;                       // Input Record being read from (stored to free if we encounter an error)
+	Record intermidiate;
+  	rax   *intermidiate_rax;
+	Record projection;              // Record projected by this operation (stored to free if we encounter an error)
+	AR_ExpNode **exps;              // Projected expressions
+	AR_ExpNode **order_exps;        // Order expressions
+	uint *record_offsets;           // Record IDs corresponding to each projection (including order exps)
+	bool singleResponse;            // When no child operations, return NULL after a first response
+	uint exp_count;                 // Number of projected expressions
+	uint order_exp_count;           // Number of order expressions
 } OpProject;
 
-OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps);
+OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode **order_exps);
 

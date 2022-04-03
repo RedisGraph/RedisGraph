@@ -774,6 +774,14 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str) {
 	_AR_EXP_ToString(root, str, &str_size, &bytes_written);
 }
 
+const char *AR_EXP_GetResolvedName(AR_ExpNode *root) {
+	if(root->alias) return root->alias;
+
+	char *name = NULL;
+	AR_EXP_ToString(root, &name);
+	return name;
+}
+
 inline const char *AR_EXP_GetFuncName(const AR_ExpNode *exp) {
 	ASSERT(exp != NULL);
 	ASSERT(exp->type == AR_EXP_OP);
@@ -798,7 +806,7 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
 		break;
 	}
 
-	clone->resolved_name = exp->resolved_name;
+	clone->alias = exp->alias;
 
 	return clone;
 }

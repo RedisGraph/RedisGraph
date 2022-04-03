@@ -219,12 +219,12 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should
 	op->record_offsets = array_new(uint, op->aggregate_count + op->key_count);
 	for(uint i = 0; i < op->key_count; i ++) {
 		// Store the index of each key expression.
-		int record_idx = OpBase_Modifies((OpBase *)op, op->key_exps[i]->resolved_name);
+		int record_idx = OpBase_Modifies((OpBase *)op, AR_EXP_GetResolvedName(op->key_exps[i]));
 		array_append(op->record_offsets, record_idx);
 	}
 	for(uint i = 0; i < op->aggregate_count; i ++) {
 		// Store the index of each aggregating expression.
-		int record_idx = OpBase_Modifies((OpBase *)op, op->aggregate_exps[i]->resolved_name);
+		int record_idx = OpBase_Modifies((OpBase *)op, AR_EXP_GetResolvedName(op->aggregate_exps[i]));
 		array_append(op->record_offsets, record_idx);
 	}
 

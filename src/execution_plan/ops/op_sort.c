@@ -93,7 +93,7 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions)
 	op->record_offsets = array_new(uint, comparison_count);
 	for(uint i = 0; i < comparison_count; i ++) {
 		int record_idx;
-		bool aware = OpBase_Aware((OpBase *)op, exps[i]->resolved_name, &record_idx);
+		bool aware = OpBase_Aware((OpBase *)op, AR_EXP_GetResolvedName(exps[i]), &record_idx);
 		ASSERT(aware);
 		array_append(op->record_offsets, record_idx);
 	}

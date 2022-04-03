@@ -23,7 +23,7 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 		const cypher_astnode_t *item = cypher_ast_order_by_get_item(order_clause, i);
 		const cypher_astnode_t *ast_exp = cypher_ast_sort_item_get_expression(item);
 		AR_ExpNode *exp = AR_EXP_FromASTNode(ast_exp);
-		exp->resolved_name = AST_ToString(ast_exp);
+		exp->alias = AST_ToString(ast_exp);
 		array_append(order_exps, exp);
 	}
 
@@ -87,7 +87,7 @@ AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *clause) {
 			identifier = cypher_ast_identifier_get_name(ast_exp);
 		}
 
-		exp->resolved_name = identifier;
+		exp->alias = identifier;
 		array_append(expressions, exp);
 	}
 
@@ -103,13 +103,13 @@ static void _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **orde
 
 	// Add all WITH/RETURN projection names to rax.
 	for(uint i = 0; i < project_count; i ++) {
-		const char *name = project_exps[i]->resolved_name;
+		const char *name = AR_EXP_GetResolvedName(project_exps[i]);
 		raxTryInsert(projection_names, (unsigned char *)name, strlen(name), NULL, NULL);
 	}
 
 	// Merge non-duplicate order expressions into projection array.
 	for(uint i = 0; i < order_count; i ++) {
-		const char *name = order_exps[i]->resolved_name;
+		const char *name = AR_EXP_GetResolvedName(order_exps[i]);
 		int new_name = raxTryInsert(projection_names, (unsigned char *)name, strlen(name), NULL, NULL);
 		// If it is a new projection, add a clone to the array.
 		if(new_name) array_append(project_exps, AR_EXP_Clone(order_exps[i]));
@@ -160,24 +160,26 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 
 		// Populate a stack array with the aliases to perform Distinct on
 		const char *aliases[n];
-		for(uint i = 0; i < n; i ++) aliases[i] = projections[i]->resolved_name;
+		for(uint i = 0; i < n; i ++) aliases[i] = projections[i]->alias;
 		distinct_op = NewDistinctOp(plan, aliases, n);
 	}
 
 	if(order_clause) {
 		AST_PrepareSortOp(order_clause, &sort_directions);
 		order_exps = _BuildOrderExpressions(projections, order_clause);
-		// Merge order expressions into the projections array.
-		_combine_projection_arrays(&projections, order_exps);
 	}
 
 	// Our fundamental operation will be a projection or aggregation.
 	if(aggregate) {
 		// An aggregate op's caching policy depends on whether its results will be sorted.
 		bool sorting_after_aggregation = (order_exps != NULL);
+		if(order_clause) {
+			// Merge order expressions into the projections array.
+			_combine_projection_arrays(&projections, order_exps);
+		}
 		op = NewAggregateOp(plan, projections, sorting_after_aggregation);
 	} else {
-		op = NewProjectOp(plan, projections);
+		op = NewProjectOp(plan, projections, order_exps);
 	}
 	ExecutionPlan_UpdateRoot(plan, op);
 
