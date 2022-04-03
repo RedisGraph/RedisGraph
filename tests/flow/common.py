@@ -17,11 +17,8 @@ from base import FlowTestsBase
 if sys.version_info > (3, 0):
     Defaults.decode_responses = True
 
-try:
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../deps/readies"))
-    import paella
-except:
-    pass
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../deps/readies"))
+import paella
 
 SANITIZER = os.getenv('SANITIZER', '')
 VALGRIND = os.getenv('VALGRIND', '0') == '1'
