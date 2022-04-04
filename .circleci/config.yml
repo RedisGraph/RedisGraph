@@ -556,17 +556,20 @@ workflows:
           <<: *on-any-branch
       - build_memcheck:
           <<: *context
-          <<: *on-any-branch
+          #@@<<: *on-any-branch
+          <<: *on-integ-and-version-tags
       - build_macos:
           <<: *context
           <<: *on-integ-and-version-tags
       - platform_build:
           <<: *context
-          <<: *on-integ-and-version-tags
+          #@@<<: *on-integ-and-version-tags
+          <<: *on-integ-branch
           matrix:
             parameters:
               platform: [focal, bionic, xenial, centos7, rocky8]
       - build-arm-platforms:
+          <<: *context
           <<: *on-integ-and-version-tags
           context: common
           matrix:
