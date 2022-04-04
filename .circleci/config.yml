@@ -564,7 +564,7 @@ workflows:
       - platform_build:
           <<: *context
           #@@<<: *on-integ-and-version-tags
-          <<: *on-integ-branch
+          <<: *on-any-branch
           matrix:
             parameters:
               platform: [focal, bionic, xenial, centos7, rocky8]
