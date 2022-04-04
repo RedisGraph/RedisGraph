@@ -1,10 +1,15 @@
+#!/usr/bin/env python3
+
 import os
 import argparse
 import subprocess
 from time import time
 from RLTest import Env
-from redisgraph import Graph
 from redis import ResponseError
+from redis.commands.graph import Graph
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../deps/readies"))
+import paella
 
 
 def make_connection():
