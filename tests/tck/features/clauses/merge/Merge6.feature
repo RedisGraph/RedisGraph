@@ -117,7 +117,6 @@ Feature: Merge6 - Merge relationships - on create
       | keyValue |
       | []       |
 
-  @skip
   Scenario: [6] Copying properties from node with ON CREATE
     Given an empty graph
     And having executed:
