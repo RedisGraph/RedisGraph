@@ -6,4 +6,6 @@ logs/
 *.o
 *.d
 *.so*
+*.a
 *.pyc
+*.gcno

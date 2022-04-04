@@ -2,7 +2,8 @@
 
 # [[ $VERBOSE == 1 ]] && set -x
 
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+PROGNAME="${BASH_SOURCE[0]}"
+HERE="$(cd "$(dirname "$PROGNAME")" &>/dev/null && pwd)"
 ROOT=$(cd $HERE/../.. && pwd)
 READIES=$ROOT/deps/readies 
 . $READIES/shibumi/defs
@@ -292,7 +293,7 @@ fi
 if [[ -n $STATFILE ]]; then
 	mkdir -p $(dirname $STATFILE)
 	if [[ -f $STATFILE ]]; then
-		(( E |= `cat $STATFILE || echo 1` ))
+		(( E |= `cat $STATFILE || echo 1` )) || true
 	fi
 	echo $E > $STATFILE
 fi
