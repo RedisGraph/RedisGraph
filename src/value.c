@@ -101,7 +101,7 @@ SIValue SI_DuplicateStringVal(const char *s) {
 
 SIValue SI_ConstStringVal(const char *s) {
 	return (SIValue) {
-		.stringval = (char*)s, .type = T_STRING, .allocation = M_CONST
+		.stringval = (char *)s, .type = T_STRING, .allocation = M_CONST
 	};
 }
 
@@ -114,7 +114,7 @@ SIValue SI_TransferStringVal(char *s) {
 SIValue SI_Point(float latitude, float longitude) {
 	return (SIValue) {
 		.type = T_POINT, .allocation = M_NONE,
-			.point = {.latitude = latitude, .longitude = longitude}
+		.point = {.latitude = latitude, .longitude = longitude}
 	};
 }
 
@@ -218,12 +218,16 @@ inline bool SIValue_IsNull(SIValue v) {
 }
 
 inline bool SIValue_IsFalse(SIValue v) {
-	ASSERT(SI_TYPE(v) ==  T_BOOL && "SIValue_IsFalse: Expected boolean");
+	SIType t = SI_TYPE(v);
+	ASSERT(t & (T_NULL | T_BOOL) && "SIValue_IsTrue: Expected boolean");
+	if(t == T_NULL) return true;
 	return !v.longval;
 }
 
 inline bool SIValue_IsTrue(SIValue v) {
-	ASSERT(SI_TYPE(v) ==  T_BOOL && "SIValue_IsTrue: Expected boolean");
+	SIType t = SI_TYPE(v);
+	ASSERT(t & (T_NULL | T_BOOL) && "SIValue_IsTrue: Expected boolean");
+	if(t == T_NULL) return false;
 	return v.longval;
 }
 
@@ -267,63 +271,64 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 	}
 
 	switch(v.type) {
-	case T_STRING:
-		_SIString_ToString(v, buf, bufferLen, bytesWritten);
-		break;
-	case T_INT64:
-		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%lld", (long long)v.longval);
-		break;
-	case T_BOOL:
-		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%s", v.longval ? "true" : "false");
-		break;
-	case T_DOUBLE:
-		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%f", v.doubleval);
-		break;
-	case T_NODE:
-		Node_ToString(v.ptrval, buf, bufferLen, bytesWritten, ENTITY_ID);
-		break;
-	case T_EDGE:
-		Edge_ToString(v.ptrval, buf, bufferLen, bytesWritten, ENTITY_ID);
-		break;
-	case T_ARRAY:
-		SIArray_ToString(v, buf, bufferLen, bytesWritten);
-		break;
-	case T_MAP:
-		Map_ToString(v, buf, bufferLen, bytesWritten);
-		break;
-	case T_PATH:
-		SIPath_ToString(v, buf, bufferLen, bytesWritten);
-		break;
-	case T_NULL:
-		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "NULL");
-		break;
-	case T_PTR:
-		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "POINTER");
-		break;
-	case T_POINT:
-		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "point({latitude: %f, longitude: %f})", Point_lat(v), Point_lon(v));
-		break;
-	default:
-		// unrecognized type
-		printf("unrecognized type: %d\n", v.type);
-		ASSERT(false);
-		break;
+		case T_STRING:
+			_SIString_ToString(v, buf, bufferLen, bytesWritten);
+			break;
+		case T_INT64:
+			*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%lld", (long long)v.longval);
+			break;
+		case T_BOOL:
+			*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%s", v.longval ? "true" : "false");
+			break;
+		case T_DOUBLE:
+			*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%f", v.doubleval);
+			break;
+		case T_NODE:
+			Node_ToString(v.ptrval, buf, bufferLen, bytesWritten, ENTITY_ID);
+			break;
+		case T_EDGE:
+			Edge_ToString(v.ptrval, buf, bufferLen, bytesWritten, ENTITY_ID);
+			break;
+		case T_ARRAY:
+			SIArray_ToString(v, buf, bufferLen, bytesWritten);
+			break;
+		case T_MAP:
+			Map_ToString(v, buf, bufferLen, bytesWritten);
+			break;
+		case T_PATH:
+			SIPath_ToString(v, buf, bufferLen, bytesWritten);
+			break;
+		case T_NULL:
+			*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "NULL");
+			break;
+		case T_PTR:
+			*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "POINTER");
+			break;
+		case T_POINT:
+			*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "point({latitude: %f, longitude: %f})",
+									  Point_lat(v), Point_lon(v));
+			break;
+		default:
+			// unrecognized type
+			printf("unrecognized type: %d\n", v.type);
+			ASSERT(false);
+			break;
 	}
 }
 
 int SIValue_ToDouble(const SIValue *v, double *d) {
 	switch(v->type) {
-	case T_DOUBLE:
-		*d = v->doubleval;
-		return 1;
-	case T_INT64:
-	case T_BOOL:
-		*d = (double)v->longval;
-		return 1;
+		case T_DOUBLE:
+			*d = v->doubleval;
+			return 1;
+		case T_INT64:
+		case T_BOOL:
+			*d = (double)v->longval;
+			return 1;
 
-	default:
-		// cannot convert!
-		return 0;
+		default:
+			// cannot convert!
+			return 0;
 	}
 }
 
@@ -513,35 +518,34 @@ int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull) {
 	/* In order to be comparable, both SIValues must be from the same type. */
 	if(a.type == b.type) {
 		switch(a.type) {
-		case T_INT64:
-		case T_BOOL:
-			return SAFE_COMPARISON_RESULT(a.longval - b.longval);
-		case T_DOUBLE:
-			return SAFE_COMPARISON_RESULT(a.doubleval - b.doubleval);
-		case T_STRING:
-			return strcmp(a.stringval, b.stringval);
-		case T_NODE:
-		case T_EDGE:
-			return ENTITY_GET_ID((GraphEntity *)a.ptrval) - ENTITY_GET_ID((GraphEntity *)b.ptrval);
-		case T_ARRAY:
-			return SIArray_Compare(a, b, disjointOrNull);
-		case T_PATH:
-			return SIPath_Compare(a, b);
-		case T_MAP:
-			return Map_Compare(a, b, disjointOrNull);
-		case T_NULL:
-			break;
-		case T_POINT:
-		{
-			int lon_diff = SAFE_COMPARISON_RESULT(Point_lon(a) - Point_lon(b));
-			if(lon_diff == 0)
-				return SAFE_COMPARISON_RESULT(Point_lat(a) - Point_lat(b));
-			return lon_diff;
-		}
-		default:
-			// Both inputs were of an incomparable type, like a pointer, or not implemented comparison yet.
-			ASSERT(false);
-			break;
+			case T_INT64:
+			case T_BOOL:
+				return SAFE_COMPARISON_RESULT(a.longval - b.longval);
+			case T_DOUBLE:
+				return SAFE_COMPARISON_RESULT(a.doubleval - b.doubleval);
+			case T_STRING:
+				return strcmp(a.stringval, b.stringval);
+			case T_NODE:
+			case T_EDGE:
+				return ENTITY_GET_ID((GraphEntity *)a.ptrval) - ENTITY_GET_ID((GraphEntity *)b.ptrval);
+			case T_ARRAY:
+				return SIArray_Compare(a, b, disjointOrNull);
+			case T_PATH:
+				return SIPath_Compare(a, b);
+			case T_MAP:
+				return Map_Compare(a, b, disjointOrNull);
+			case T_NULL:
+				break;
+			case T_POINT: {
+				int lon_diff = SAFE_COMPARISON_RESULT(Point_lon(a) - Point_lon(b));
+				if(lon_diff == 0)
+					return SAFE_COMPARISON_RESULT(Point_lat(a) - Point_lat(b));
+				return lon_diff;
+			}
+			default:
+				// Both inputs were of an incomparable type, like a pointer, or not implemented comparison yet.
+				ASSERT(false);
+				break;
 		}
 	}
 
@@ -658,7 +662,7 @@ void SIValue_HashUpdate(SIValue v, XXH64_state_t *state) {
 			inner_hash = SIPath_HashCode(v);
 			XXH64_update(state, &inner_hash, sizeof(inner_hash));
 			return;
-			// TODO: Implement for temporal types once we support them.
+		// TODO: Implement for temporal types once we support them.
 		default:
 			ASSERT(false);
 			break;
@@ -685,24 +689,24 @@ void SIValue_Free(SIValue v) {
 	if(v.allocation != M_SELF) return;
 
 	switch(v.type) {
-	case T_STRING:
-		rm_free(v.stringval);
-		v.stringval = NULL;
-		return;
-	case T_NODE:
-	case T_EDGE:
-		rm_free(v.ptrval);
-		return;
-	case T_ARRAY:
-		SIArray_Free(v);
-		return;
-	case T_PATH:
-		SIPath_Free(v);
-		return;
-	case T_MAP:
-		Map_Free(v);
-	default:
-		return;
+		case T_STRING:
+			rm_free(v.stringval);
+			v.stringval = NULL;
+			return;
+		case T_NODE:
+		case T_EDGE:
+			rm_free(v.ptrval);
+			return;
+		case T_ARRAY:
+			SIArray_Free(v);
+			return;
+		case T_PATH:
+			SIPath_Free(v);
+			return;
+		case T_MAP:
+			Map_Free(v);
+		default:
+			return;
 	}
 }
 
