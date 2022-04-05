@@ -69,6 +69,8 @@ OP=""
 
 [[ $V == 1 ]] && VERBOSE=1
 
+OS=$($READIES/bin/platform --os)
+
 RLEC=${RLEC:-0}
 DOCKER_HOST=${DOCKER_HOST:-localhost}
 RLEC_PORT=${RLEC_PORT:-12000}
@@ -118,6 +120,8 @@ if [[ -n $RLTEST ]]; then
 fi
 
 #---------------------------------------------------------------------------------------------- 
+
+[[ $OS == macos ]] && PARALLEL=0
 
 if [[ -n $PARALLEL ]]; then
 	if [[ $PARALLEL != 0 ]]; then

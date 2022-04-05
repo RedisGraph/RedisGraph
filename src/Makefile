@@ -63,9 +63,13 @@ CFLAGS=\
 	$(CFLAGS.warnings) \
 	$(CFLAGS.debug)
 
+ifeq ($(OS),macos)
+LIBOMP_PREFIX:=$(shell brew --prefix libomp)
+endif
+
 # Compile flags for linux / osx
 LDFLAGS.linux=-Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
-LDFLAGS.macos=-bundle -undefined dynamic_lookup -ldl -lpthread -lomp
+LDFLAGS.macos=-bundle -undefined dynamic_lookup -ldl -lpthread $(LIBOMP_PREFIX)/lib/libomp.a
 
 SHOBJ_LDFLAGS += $(LDFLAGS) $(LDFLAGS.$(OS))
 
