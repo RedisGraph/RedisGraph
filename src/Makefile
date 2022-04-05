@@ -239,7 +239,7 @@ endif
 %.c: %.y
 
 # Compile C file while generating a .d file for it
-%.o: %.c
+%.o: %.c $(LIBCYPHER_PARSER_DIR)/cypher-parser.h
 	$(REDISGRAPH_CC) $(CFLAGS) -I. -I$(GRAPHBLAS_DIR)/Include -I$(RAX_DIR) -I$(LIBCYPHER_PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR)/src -c $< -o $@ -MMD -MF $(@:.o=.d)
 
 all: $(TARGET)
@@ -278,6 +278,8 @@ ifeq (,$(wildcard $(LIBCYPHER_PARSER)))
 	./configure --disable-shared
 	@$(MAKE) CFLAGS="-O3 -fPIC -DYY_BUFFER_SIZE=1048576" clean check -C $(ROOT)/deps/libcypher-parser
 endif
+
+$(LIBCYPHER_PARSER_DIR)/cypher-parser.h : $(LIBCYPHER_PARSER)
 
 #----------------------------------------------------------------------------------------------
 
