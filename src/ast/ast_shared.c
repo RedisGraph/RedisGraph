@@ -53,7 +53,7 @@ AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op) {
 		return OP_IS_NOT_NULL;
 	}
 
-	return -1;
+	return OP_UNKNOWN;
 }
 
 PropertyMap *PropertyMap_New(GraphContext *gc, const cypher_astnode_t *props) {
@@ -77,7 +77,7 @@ PropertyMap *PropertyMap_New(GraphContext *gc, const cypher_astnode_t *props) {
 		Attribute_ID id = GraphContext_FindOrAddAttribute(gc, attribute);
 		// search for duplicate attributes
 		uint count = array_len(map->keys);
-		for (uint i = 0; i < count; i++) {
+		for(uint i = 0; i < count; i++) {
 			if(map->keys[i] == id) {
 				insert_idx = i;
 				break;
@@ -85,7 +85,7 @@ PropertyMap *PropertyMap_New(GraphContext *gc, const cypher_astnode_t *props) {
 		}
 
 		if(insert_idx == prop_idx) {
-			array_append(map->keys, id);			
+			array_append(map->keys, id);
 			array_append(map->values, value);
 		} else {
 			AR_EXP_Free(map->values[insert_idx]);
