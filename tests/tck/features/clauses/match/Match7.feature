@@ -474,7 +474,6 @@ Feature: Match7 - Optional match
       | d |
     And no side effects
 
-  @skip
   Scenario: [23] OPTIONAL MATCH with labels on the optional end node
     Given an empty graph
     And having executed:
@@ -496,7 +495,6 @@ Feature: Match7 - Optional match
       | (:Y:Z) |
     And no side effects
 
-  @skip
   Scenario: [24] Optionally matching self-loops
     Given an empty graph
     And having executed:
@@ -519,7 +517,6 @@ Feature: Match7 - Optional match
       | [:LOOP] |
     And no side effects
 
-  @skip
   Scenario: [25] Optionally matching self-loops without matches
     Given an empty graph
     And having executed:
