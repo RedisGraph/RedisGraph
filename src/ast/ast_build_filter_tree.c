@@ -329,8 +329,12 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 	return filter_tree;
 }
 
-FT_FilterNode *AST_BuildFilterTreeFromClauses(const AST *ast,
-											  const cypher_astnode_t **clauses, uint count) {
+FT_FilterNode *AST_BuildFilterTreeFromClauses
+(
+	const AST *ast,
+	const cypher_astnode_t **clauses,
+	uint count
+) {
 	cypher_astnode_type_t type;
 	FT_FilterNode *filter_tree = NULL;
 	const cypher_astnode_t *predicate = NULL;

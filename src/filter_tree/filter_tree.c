@@ -448,9 +448,12 @@ void _FilterTree_ApplyNegate(FT_FilterNode **root, uint negate_count) {
 	}
 }
 
-/* If a filter node that's not a child of a predicate is an expression,
- * it should resolve to a boolean value. */
-static inline bool _FilterTree_ValidExpressionNode(const FT_FilterNode *root) {
+// if a filter node that's not a child of a predicate is an expression,
+// it should resolve to a boolean value
+static inline bool _FilterTree_ValidExpressionNode
+(
+	const FT_FilterNode *root
+) {
 	bool valid = AR_EXP_ReturnsBoolean(root->exp.exp);
 	if(!valid) ErrorCtx_SetError("Expected boolean predicate.");
 	return valid;

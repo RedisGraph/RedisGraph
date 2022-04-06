@@ -52,6 +52,16 @@ void AR_RegFunc
 	ASSERT(res == 1);
 }
 
+inline void AR_SetPrivateDataRoutines
+(
+	AR_FuncDesc *func_desc,
+	AR_Func_Free free,
+	AR_Func_Clone clone
+) {
+	func_desc->callbacks.free = free;
+	func_desc->callbacks.clone = clone;
+}
+
 // get arithmetic function
 AR_FuncDesc *AR_GetFunc
 (
@@ -69,14 +79,13 @@ AR_FuncDesc *AR_GetFunc
 	return func;
 }
 
-inline void AR_SetPrivateDataRoutines
+SIType AR_FuncDesc_RetType
 (
-	AR_FuncDesc *func_desc,
-	AR_Func_Free free,
-	AR_Func_Clone clone
+	const AR_FuncDesc *func	
 ) {
-	func_desc->callbacks.free = free;
-	func_desc->callbacks.clone = clone;
+	ASSERT(func != NULL);
+
+	return func->ret_type;
 }
 
 bool AR_FuncExists
