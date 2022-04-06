@@ -52,7 +52,7 @@ once created we'll start querying our data.
 
 ### With `redis-cli`
 
-The format of results through `redis-cli` is described in [the RedisGraph documentation](https://oss.redislabs.com/redisgraph/result_structure).
+The format of results through `redis-cli` is described in [the RedisGraph documentation](https://redis.io/docs/stack/graph/design/result_structure/).
 
 ```sh
 $ redis-cli
