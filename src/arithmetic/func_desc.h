@@ -45,6 +45,7 @@ typedef struct {
 typedef struct {
 	AR_Func func;          // function pointer to scalar or aggregate function routine
 	SIType *types;         // types of arguments
+	SIType ret_type;       // return type
 	uint min_argc;         // minimal number of arguments function expects
 	uint max_argc;         // maximal number of arguments function expects
 	bool reducible;        // can be reduced using static evaluation
@@ -61,6 +62,7 @@ AR_FuncDesc *AR_FuncDescNew
 	uint min_argc,        // minimum number of arguments
 	uint max_argc,        // maximum number of arguments
 	SIType *types,        // acceptable types
+	SIType ret_type,      // return type
 	bool reducible        // is function reducible
 );
 

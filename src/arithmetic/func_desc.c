@@ -22,6 +22,7 @@ AR_FuncDesc *AR_FuncDescNew
 	uint min_argc,
 	uint max_argc,
 	SIType *types,
+	SIType ret_type,
 	bool reducible
 ) {
 	AR_FuncDesc *desc = rm_calloc(1, sizeof(AR_FuncDesc));
@@ -29,6 +30,7 @@ AR_FuncDesc *AR_FuncDescNew
 	desc->name                    =  name;
 	desc->func                    =  func;
 	desc->types                   =  types;
+	desc->ret_type                =  ret_type;
 	desc->min_argc                =  min_argc;
 	desc->max_argc                =  max_argc;
 	desc->aggregate               =  false;
