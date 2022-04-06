@@ -59,16 +59,19 @@ SIValue AR_KEYS(SIValue *argv, int argc, void *private_data) {
 
 void Register_MapFuncs() {
 	SIType *types;
+	SIType ret_type;
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 1);
 	array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("tomap", AR_TOMAP, 0, VAR_ARG_LEN, types, true);
+	ret_type = T_MAP;
+	func_desc = AR_FuncDescNew("tomap", AR_TOMAP, 0, VAR_ARG_LEN, types, ret_type, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_MAP | T_NODE | T_EDGE);
-	func_desc = AR_FuncDescNew("keys", AR_KEYS, 1, 1, types, true);
+	ret_type = T_NULL | T_ARRAY;
+	func_desc = AR_FuncDescNew("keys", AR_KEYS, 1, 1, types, ret_type, true);
 	AR_RegFunc(func_desc);
 }
 
