@@ -296,7 +296,7 @@ void Register_EntityFuncs() {
 	array_append(types, T_NULL | T_NODE | T_EDGE | T_MAP);
 	array_append(types, T_STRING);
 	array_append(types, T_INT64);
-	ret_type = T_NULL | SI_VALID_PROPERTY_VALUE;
+	ret_type = SI_ALL;
 	func_desc = AR_FuncDescNew("property", AR_PROPERTY, 3, 3, types, ret_type, true);
 	AR_RegFunc(func_desc);
 }

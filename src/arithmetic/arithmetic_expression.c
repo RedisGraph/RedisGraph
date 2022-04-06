@@ -452,6 +452,7 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall
 
 	// evaluate self
 	SIValue v = node->op.f->func(sub_trees, child_count, node->op.private_data);
+	ASSERT(node->op.f->aggregate || SI_TYPE(v) & AR_FuncDesc_RetType(node->op.f));
 	if(SIValue_IsNull(v) && ErrorCtx_EncounteredError()) {
 		// an error was encountered while evaluating this function,
 		// and has already been set in the QueryCtx
@@ -726,7 +727,7 @@ bool AR_EXP_ReturnsBoolean
 	// return true if `t` is either Boolean or NULL
 	// in case `exp` is a variable or parameter
 	// whether it evaluates to boolean cannot be determined at this point
-	return t & (T_BOOL | T_NULL);
+	return t & T_BOOL || t == T_NULL;
 }
 
 void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,

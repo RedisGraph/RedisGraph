@@ -376,7 +376,7 @@ void Register_ListFuncs() {
 	array_append(types, T_ARRAY | T_NULL);
 	array_append(types, T_INT64 | T_NULL);
 	array_append(types, T_INT64 | T_NULL);
-	ret_type = T_ARRAY;
+	ret_type = T_ARRAY | T_NULL;
 	func_desc = AR_FuncDescNew("slice", AR_SLICE, 3, 3, types, ret_type, true);
 	AR_RegFunc(func_desc);
 
@@ -384,7 +384,7 @@ void Register_ListFuncs() {
 	array_append(types, T_INT64);
 	array_append(types, T_INT64);
 	array_append(types, T_INT64);
-	ret_type = T_ARRAY;
+	ret_type = T_ARRAY | T_NULL;
 	func_desc = AR_FuncDescNew("range", AR_RANGE, 2, 3, types, ret_type, true);
 	AR_RegFunc(func_desc);
 

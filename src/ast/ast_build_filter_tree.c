@@ -112,11 +112,10 @@ static FT_FilterNode *_convertUnaryOperator(const cypher_astnode_t *op_node) {
 	const cypher_astnode_t *arg = cypher_ast_unary_operator_get_argument(op_node);
 	AST_Operator op = AST_ConvertOperatorNode(operator);
 	switch(op) {
-	case OP_IS_NULL:
-	case OP_IS_NOT_NULL:
-		return FilterTree_CreateExpressionFilter(AR_EXP_FromASTNode(op_node));
-	default:
-		return _CreateFilterSubtree(op, arg, NULL);
+		case OP_NOT:
+			return _CreateFilterSubtree(op, arg, NULL);
+		default:
+			return FilterTree_CreateExpressionFilter(AR_EXP_FromASTNode(op_node));
 	}
 }
 
