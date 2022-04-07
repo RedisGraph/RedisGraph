@@ -369,7 +369,7 @@ void Register_StringFuncs() {
 
 	types = array_new(SIType, 1);
 	array_append(types, (T_STRING | T_ARRAY | T_NULL));
-	ret_type = T_STRING | T_NULL;
+	ret_type = T_STRING | T_ARRAY | T_NULL;
 	func_desc = AR_FuncDescNew("reverse", AR_REVERSE, 1, 1, types, ret_type, true);
 	AR_RegFunc(func_desc);
 
