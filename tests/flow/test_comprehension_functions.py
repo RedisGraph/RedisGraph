@@ -399,3 +399,21 @@ class testComprehensionFunctions(FlowTestsBase):
             [[[1, 2, 3, 4, 5, 6, 7, 8, 9]]],
             [[[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]] ]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test20_pattern_comprehension_in_switch_case(self):
+        query = "RETURN CASE WHEN [()-[]-() | 1] THEN [()-[]-() | 0]  END AS v3"
+        actual_result = redis_graph.query(query)
+        expected_result = [[[]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+        
+        # Create a single relationship
+        query = "CREATE ()-[:R]->()"
+        redis_graph.query(query)
+
+        # Lookup for undirected relationship. For each releationship there will be an entry with the value 1.
+        # The result of the case will be to lookup again and for each relationship add the value 0 to an array.
+        # Since there is one relationship and the pattern matching is undirected we will get two matches.
+        query = "RETURN CASE WHEN [()-[]-() | 1] THEN [()-[]-() | 0]  END AS v3"
+        actual_result = redis_graph.query(query)
+        expected_result = [[[0, 0]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
