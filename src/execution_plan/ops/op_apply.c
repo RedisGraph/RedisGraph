@@ -41,7 +41,7 @@ static OpResult ApplyInit(OpBase *opBase) {
 	// Locate branch's Argument op tap.
 	op->op_arg = (Argument *)ExecutionPlan_LocateOp(op->rhs_branch, OPType_ARGUMENT);
 	if(!op->op_arg) {
-		opBase->consume = ArgumentLessApplyConsume;
+		OpBase_UpdateConsume(opBase, ArgumentLessApplyConsume);
 	}
 
 	return OP_OK;
