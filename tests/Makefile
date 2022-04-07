@@ -23,14 +23,15 @@ ifneq ($(ENV),)
 TEST_ARGS += --env $(ENV)
 endif
 
-ifeq ($(UNIT),1)
+TESTS=
+ifneq ($(UNIT),0)
 TESTS += unit
-else ifeq ($(FLOW),1)
+endif
+ifneq ($(FLOW),0)
 TESTS += flow
-else ifeq ($(TCK),1)
+endif
+ifneq ($(TCK),0)
 TESTS += tck
-else
-TESTS=unit flow tck
 endif
 
 test: $(TESTS)

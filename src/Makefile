@@ -47,6 +47,20 @@ LIBCYPHER_PARSER_DIR = $(ROOT)/deps/libcypher-parser/lib/src
 
 #----------------------------------------------------------------------------------------------
 
+ifeq ($(OS),macos)
+CLANG=1
+endif
+
+ifeq ($(GCC),1)
+override CC=gcc
+override CXX=g++
+else ifeq ($(CLANG),1)
+override CC=clang
+override CXX=clang++
+endif
+
+#----------------------------------------------------------------------------------------------
+
 CFLAGS.warnings=-Wall -Wno-unused-variable -Wno-unused-result
 ifeq ($(PEDANTIC),1)
 CFLAGS.warnings += -Wpedantic
@@ -65,11 +79,12 @@ CFLAGS=\
 
 ifeq ($(OS),macos)
 LIBOMP_PREFIX:=$(shell brew --prefix libomp)
+LIBOMP=$(LIBOMP_PREFIX)/lib/libomp.a
 endif
 
 # Compile flags for linux / osx
 LDFLAGS.linux=-Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
-LDFLAGS.macos=-bundle -undefined dynamic_lookup -ldl -lpthread $(LIBOMP_PREFIX)/lib/libomp.a
+LDFLAGS.macos=-bundle -undefined dynamic_lookup -ldl -lpthread $(LIBOMP)
 
 SHOBJ_LDFLAGS += $(LDFLAGS) $(LDFLAGS.$(OS))
 
