@@ -537,18 +537,24 @@ static bool _FilterTree_Compact_And(FT_FilterNode *node) {
 	bool is_rhs_const = FilterTree_Compact(node->cond.right);
 	// If both are not compactable, this node is not compactable.
 	if(!is_lhs_const && !is_rhs_const) return false;
+
 	// In every case from now, there will be a reduction, save the children in local placeholders for current node in-place modifications.
+	bool final_value;
 	FT_FilterNode *lhs = node->cond.left;
 	FT_FilterNode *rhs = node->cond.right;
 	// Both children are constants. This node can be set as constant expression.
 	if(is_lhs_const && is_rhs_const) {
 		// Both children are now contant expressions. We can evaluate and compact.
-		SIValue rhs_value = AR_EXP_Evaluate(rhs->exp.exp, NULL);
-		SIValue lhs_value = AR_EXP_Evaluate(lhs->exp.exp, NULL);
 		// Final value is AND operation on lhs and rhs - reducing an AND node.
-		SIValue final_value = SI_BoolVal(SIValue_IsTrue(lhs_value) && SIValue_IsTrue(rhs_value));
+		SIValue v = AR_EXP_Evaluate(rhs->exp.exp, NULL);
+		final_value = !SIValue_IsNull(v) && SIValue_IsTrue(v);
+		if(final_value) {
+			v = AR_EXP_Evaluate(lhs->exp.exp, NULL);
+			final_value = !SIValue_IsNull(v) && SIValue_IsTrue(v);
+		}
+
 		// In place set the node to be an expression node.
-		_FilterTree_In_Place_Set_Exp(node, final_value);
+		_FilterTree_In_Place_Set_Exp(node, SI_BoolVal(final_value));
 		FilterTree_Free(lhs);
 		FilterTree_Free(rhs);
 		return true;
@@ -560,7 +566,7 @@ static bool _FilterTree_Compact_And(FT_FilterNode *node) {
 		// Evaluate constant.
 		SIValue const_value = AR_EXP_Evaluate(const_node->exp.exp, NULL);
 		// If consant is false, everything is false.
-		if(SIValue_IsFalse(const_value)) {
+		if(!SIValue_IsNull(const_value) && SIValue_IsFalse(const_value)) {
 			*node = *const_node;
 			// Free const node allocation, without free the data.
 			rm_free(const_node);
@@ -595,9 +601,11 @@ static bool _FilterTree_Compact_Or(FT_FilterNode *node) {
 	// both children are constants. This node can be set as constant expression
 	if(is_lhs_const && is_rhs_const) {
 		// both children are now contant expressions, evaluate and compact
-		final_value = SIValue_IsTrue(AR_EXP_Evaluate(rhs->exp.exp, NULL));
+		SIValue v = AR_EXP_Evaluate(rhs->exp.exp, NULL);
+		final_value = !SIValue_IsNull(v) && SIValue_IsTrue(v);
 		if(!final_value) {
-			final_value = SIValue_IsTrue(AR_EXP_Evaluate(lhs->exp.exp, NULL));
+			v = AR_EXP_Evaluate(lhs->exp.exp, NULL);
+			final_value = !SIValue_IsNull(v) && SIValue_IsTrue(v);
 		}
 
 		// final value is OR operation on lhs and rhs - reducing an OR node
@@ -614,7 +622,7 @@ static bool _FilterTree_Compact_Or(FT_FilterNode *node) {
 		// evaluate constant
 		SIValue const_value = AR_EXP_Evaluate(const_node->exp.exp, NULL);
 		// if consant is true, everything is true
-		if(SIValue_IsTrue(const_value)) {
+		if(!SIValue_IsNull(const_value) && SIValue_IsTrue(const_value)) {
 			*node = *const_node;
 			// free const node allocation, without free the data
 			rm_free(const_node);
@@ -649,15 +657,12 @@ static bool _FilterTree_Compact_XOr(FT_FilterNode *node, bool xnor) {
 	// both children are constants. This node can be set as constant expression
 	if(is_lhs_const && is_rhs_const) {
 		// both children are now contant expressions, evaluate and compact
-		final_value = SIValue_IsTrue(AR_EXP_Evaluate(rhs->exp.exp, NULL));
-		if(final_value) {
-			// RHS is true
-			// TRUE if LHS is false
-			final_value = SIValue_IsFalse(AR_EXP_Evaluate(lhs->exp.exp, NULL));
+		SIValue lhs_value = AR_EXP_Evaluate(lhs->exp.exp, NULL);
+		SIValue rhs_value = AR_EXP_Evaluate(rhs->exp.exp, NULL);
+		if(SIValue_IsNull(lhs_value) || SIValue_IsNull(rhs_value)) {
+			final_value =  false;
 		} else {
-			// RHS is false
-			// TRUE if LHS is true
-			final_value = SIValue_IsTrue(AR_EXP_Evaluate(lhs->exp.exp, NULL));
+			final_value = SIValue_IsTrue(lhs_value) == SIValue_IsTrue(rhs_value);
 		}
 
 		// invert the result if we are performing XNOR
