@@ -417,3 +417,26 @@ class testComprehensionFunctions(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected_result = [[[0, 0]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Clear data
+        redis_con = self.env.getConnection()
+        redis_con.flushall()
+
+        # Create:
+        # Node a with 2 outgoing relationships to b and c
+        # Node d without relationships
+        query = "CREATE (a {val: 1})-[:R1]->(b {val: 2}), (a)-[:R2]->(c {val: 3}), (d {val: 4})"
+        redis_graph.query(query)
+
+        # Lookup for undirected relationship. For each releationship there will be an entry with the value 1.
+        # The result of the case will be to lookup again and for each relationship add the value 0 to an array.
+        # Since there is two relationships:
+        # a-->b will yield 2 matches
+        # a-->c will yield 2 matches
+        # The result should be an array with [1, 1, 2, 3]
+
+        query = "RETURN CASE WHEN [()-[]-() | 1] THEN [(a)-[]-() | a.val]  END AS v3"
+        actual_result = redis_graph.query(query)
+        expected_result = [[[1, 1, 2, 3]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
