@@ -401,7 +401,7 @@ class testComprehensionFunctions(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
     def test20_pattern_comprehension_in_switch_case(self):
-        query = "RETURN CASE WHEN [()-[]-() | 1] THEN [()-[]-() | 0]  END AS v3"
+        query = "RETURN CASE WHEN [()-[]-() | 1] THEN [()-[]-() | 0] END AS v3"
         actual_result = redis_graph.query(query)
         expected_result = [[[]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
@@ -413,7 +413,13 @@ class testComprehensionFunctions(FlowTestsBase):
         # Lookup for undirected relationship. For each releationship there will be an entry with the value 1.
         # The result of the case will be to lookup again and for each relationship add the value 0 to an array.
         # Since there is one relationship and the pattern matching is undirected we will get two matches.
-        query = "RETURN CASE WHEN [()-[]-() | 1] THEN [()-[]-() | 0]  END AS v3"
+        query = "RETURN CASE WHEN [()-[]-() | 1] THEN [()-[]-() | 0] END AS v3"
+        actual_result = redis_graph.query(query)
+        expected_result = [[[0, 0]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Similar but with more complex plan
+        query = "RETURN CASE WHEN [()-[]-() | 1] THEN [()-[]-() | 0] WHEN [()-[]-()-[]-() | 1] THEN [()-[]-()-[]-() | 0] END AS v3"
         actual_result = redis_graph.query(query)
         expected_result = [[[0, 0]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
@@ -435,7 +441,7 @@ class testComprehensionFunctions(FlowTestsBase):
         # a-->c will yield 2 matches
         # The result should be an array with [1, 1, 2, 3]
 
-        query = "RETURN CASE WHEN [()-[]-() | 1] THEN [(a)-[]-() | a.val]  END AS v3"
+        query = "RETURN CASE WHEN [()-[]-() | 1] THEN [(a)-[]-() | a.val] END AS v3"
         actual_result = redis_graph.query(query)
         expected_result = [[[1, 1, 2, 3]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
@@ -448,7 +454,7 @@ class testComprehensionFunctions(FlowTestsBase):
         # c, a--c will yield [3]
         # d, will yield [] as there are no relationship matches
         # The result should be an array with [1, 1, 2, 3]
-        query = "MATCH (n) WITH CASE WHEN [(n)-[]-() | 1] THEN [(n)-[]-() | n.val]  END AS v3 RETURN v3"
+        query = "MATCH (n) WITH CASE WHEN [(n)-[]-() | 1] THEN [(n)-[]-() | n.val] END AS v3 RETURN v3"
         actual_result = redis_graph.query(query)
         expected_result = [[[1, 1]], [[2]], [[3]], [[]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
