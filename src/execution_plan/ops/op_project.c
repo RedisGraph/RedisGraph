@@ -48,6 +48,7 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode **
 		// to ensure that space is allocated for each entry.
 		const char *resolved_name = AR_EXP_GetResolvedName(op->order_exps[i]);
 		if(raxFind(rax, (unsigned char *)resolved_name, strlen(resolved_name)) != raxNotFound) {
+			// use -1 as flag to skip evaluating same expression from op->exps
 			array_append(op->record_offsets, -1);
 		} else {
 			int record_idx = OpBase_Modifies((OpBase *)op, resolved_name);
@@ -60,6 +61,8 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode **
 	return (OpBase *)op;
 }
 
+// build intermidiate_rax by merging input and output rax
+// and create the intermidiate record
 static void _init_intermidiate_record(OpProject *op) {
 	rax *input_rax = op->r->mapping;
 	rax *output_rax = op->op.plan->record_map;
@@ -69,6 +72,7 @@ static void _init_intermidiate_record(OpProject *op) {
 
 	uint64_t id = 0;
 
+	// iterate over output rax add items to intermidiate_rax
 	raxStart(&it, output_rax);
 	raxSeek(&it, "^", NULL, 0);
 	while(raxNext(&it)) {
@@ -76,6 +80,7 @@ static void _init_intermidiate_record(OpProject *op) {
 	}
 	raxStop(&it);
 
+	// iterate over input rax add distinct items to intermidiate_rax
 	raxStart(&it, input_rax);
 	raxSeek(&it, "^", NULL, 0);
 	while(raxNext(&it)) {
@@ -88,6 +93,7 @@ static void _init_intermidiate_record(OpProject *op) {
 	op->intermidiate = Record_New(op->intermidiate_rax);
 }
 
+// add given record values to intermidiate record
 static void _update_intermidiate_record(OpProject *op, rax *rax, Record r) {
 	raxIterator it;
 	raxStart(&it, op->intermidiate_rax);
@@ -101,6 +107,7 @@ static void _update_intermidiate_record(OpProject *op, rax *rax, Record r) {
 
 		uint from_idx = (uint)(uint64_t)data;
 		uint to_idx = (uint)(uint64_t)it.data;
+		// add only values that was set
 		if(r->entries[from_idx].type != REC_TYPE_UNKNOWN) {
 			Record_Add(op->intermidiate, to_idx, SI_CloneValue(Record_Get(r, from_idx)));
 		}
@@ -108,6 +115,7 @@ static void _update_intermidiate_record(OpProject *op, rax *rax, Record r) {
 	raxStop(&it);
 }
 
+// tranfer values from input record to output record
 static void _update_projection_record(OpProject *op) {
 	raxIterator it;
 	raxStart(&it, op->op.plan->record_map);
@@ -121,6 +129,7 @@ static void _update_projection_record(OpProject *op) {
 
 		uint from_idx = (uint)(uint64_t)data;
 		uint to_idx = (uint)(uint64_t)it.data;
+		// add only values that was set
 		if(op->r->entries[from_idx].type != REC_TYPE_UNKNOWN) {
 			Record_Add(op->projection, to_idx, SI_CloneValue(Record_Get(op->r, from_idx)));
 		}

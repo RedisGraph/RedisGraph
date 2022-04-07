@@ -13,8 +13,8 @@
 typedef struct {
 	OpBase op;
 	Record r;                       // Input Record being read from (stored to free if we encounter an error)
-	Record intermidiate;
-  	rax   *intermidiate_rax;
+	Record intermidiate;            // Record used to evaluate order expression that use input and output record
+  	rax *intermidiate_rax;          // Merge of input and output rax when they different
 	Record projection;              // Record projected by this operation (stored to free if we encounter an error)
 	AR_ExpNode **exps;              // Projected expressions
 	AR_ExpNode **order_exps;        // Order expressions
