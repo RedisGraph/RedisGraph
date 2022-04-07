@@ -80,25 +80,6 @@ SIValue Aggregate_GetResult
 }
 
 //------------------------------------------------------------------------------
-// Aggregation default value generators
-//------------------------------------------------------------------------------
-
-//// default double aggregation value
-//SIValue Default_Double(void) {
-//	return SI_DoubleVal(0);
-//}
-//
-//// default long aggregation value
-//SIValue Default_Long(void) {
-//	return SI_LongVal(0);
-//}
-//
-//// default array aggregation value
-//SIValue Default_Array(void) {
-//	return SI_Array(0);
-//}
-
-//------------------------------------------------------------------------------
 // Aggregation function registration
 //------------------------------------------------------------------------------
 

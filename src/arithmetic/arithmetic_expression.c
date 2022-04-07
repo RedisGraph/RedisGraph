@@ -597,6 +597,7 @@ void _AR_EXP_FinalizeAggregations
 		AggregateCtx *ctx = root->op.private_data;
 		Aggregate_Finalize(root->op.f, ctx);
 		SIValue v = Aggregate_GetResult(ctx);
+		ASSERT(SI_TYPE(v) & AR_FuncDesc_RetType(root->op.f));
 
 		// free node internals
 		_AR_EXP_FreeOpInternals(root);
