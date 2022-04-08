@@ -24,14 +24,20 @@ TEST_ARGS += --env $(ENV)
 endif
 
 TESTS=
-ifneq ($(UNIT),0)
+ifeq ($(UNIT),1)
 TESTS += unit
 endif
-ifneq ($(FLOW),0)
+ifeq ($(FLOW),1)
 TESTS += flow
 endif
-ifneq ($(TCK),0)
+ifeq ($(TCK),1)
 TESTS += tck
+endif
+ifeq ($(TCK),1)
+TESTS += tck
+endif
+ifeq ($(ALL),1)
+TESTS=unit flow tck
 endif
 
 test: $(TESTS)
