@@ -4,7 +4,7 @@ import time
 slave_con = None
 master_con = None
 
-def checkSlaveSynced(env, slaveConn, graph_name, time_out=10):
+def checkSlaveSynced(env, slaveConn, graph_name, time_out=5):
     time.sleep(time_out)
     res = slaveConn.execute_command("keys", graph_name)
     env.assertEqual(res, [graph_name])
@@ -72,6 +72,8 @@ class test_read_only_query(FlowTestsBase):
             pass
 
     def test03_test_replica_read_only(self):
+        if OS == 'macos':
+            self.env.skip()
         # This test checks that only RO_QUERY is valid on replicas.
         graph_name = "Test_RO_QUERY_command_on_replica"
         graph = Graph(master_con, graph_name)
