@@ -539,7 +539,6 @@ static bool _FilterTree_Compact_And(FT_FilterNode *node) {
 	if(!is_lhs_const && !is_rhs_const) return false;
 
 	// In every case from now, there will be a reduction, save the children in local placeholders for current node in-place modifications.
-	bool final_value;
 	FT_FilterNode *lhs = node->cond.left;
 	FT_FilterNode *rhs = node->cond.right;
 	// Both children are constants. This node can be set as constant expression.
@@ -547,7 +546,7 @@ static bool _FilterTree_Compact_And(FT_FilterNode *node) {
 		// Both children are now contant expressions. We can evaluate and compact.
 		// Final value is AND operation on lhs and rhs - reducing an AND node.
 		SIValue v = AR_EXP_Evaluate(rhs->exp.exp, NULL);
-		final_value = !SIValue_IsNull(v) && SIValue_IsTrue(v);
+		bool final_value = !SIValue_IsNull(v) && SIValue_IsTrue(v);
 		if(final_value) {
 			v = AR_EXP_Evaluate(lhs->exp.exp, NULL);
 			final_value = !SIValue_IsNull(v) && SIValue_IsTrue(v);
@@ -565,8 +564,8 @@ static bool _FilterTree_Compact_And(FT_FilterNode *node) {
 
 		// Evaluate constant.
 		SIValue const_value = AR_EXP_Evaluate(const_node->exp.exp, NULL);
-		// If consant is false, everything is false.
-		if(!SIValue_IsNull(const_value) && SIValue_IsFalse(const_value)) {
+		// If consant is false or null, everything is false.
+		if(SIValue_IsNull(const_value) || SIValue_IsFalse(const_value)) {
 			*node = *const_node;
 			// Free const node allocation, without free the data.
 			rm_free(const_node);
@@ -595,15 +594,14 @@ static bool _FilterTree_Compact_Or(FT_FilterNode *node) {
 
 	// in every case from now, there will be a reduction,
 	// save the children in local placeholders for current node in-place modifications
-	bool final_value = false;
 	FT_FilterNode *lhs = node->cond.left;
 	FT_FilterNode *rhs = node->cond.right;
 	// both children are constants. This node can be set as constant expression
 	if(is_lhs_const && is_rhs_const) {
 		// both children are now contant expressions, evaluate and compact
 		SIValue v = AR_EXP_Evaluate(rhs->exp.exp, NULL);
-		final_value = !SIValue_IsNull(v) && SIValue_IsTrue(v);
-		if(!final_value) {
+		bool final_value = true;
+		if(SIValue_IsNull(v) || SIValue_IsFalse(v)) {
 			v = AR_EXP_Evaluate(lhs->exp.exp, NULL);
 			final_value = !SIValue_IsNull(v) && SIValue_IsTrue(v);
 		}
@@ -662,7 +660,7 @@ static bool _FilterTree_Compact_XOr(FT_FilterNode *node, bool xnor) {
 		if(SIValue_IsNull(lhs_value) || SIValue_IsNull(rhs_value)) {
 			final_value =  false;
 		} else {
-			final_value = SIValue_IsTrue(lhs_value) == SIValue_IsTrue(rhs_value);
+			final_value = SIValue_IsTrue(lhs_value) != SIValue_IsTrue(rhs_value);
 		}
 
 		// invert the result if we are performing XNOR

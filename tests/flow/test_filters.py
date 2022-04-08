@@ -38,3 +38,34 @@ class testFilters():
         expected = [[i, j] for i in range(1, 6) for j in range(1, 6) if not (i % 2 != j % 2)]
         result = g.query("MATCH (n:N), (m:N) WHERE NOT (n.b XOR m.b) RETURN n.v, m.v ORDER BY n.v, m.v")
         self.env.assertEqual(result.result_set,  expected)
+
+    def test01_filter_with_null(self):
+        g = Graph("g", self.env.getConnection())
+
+        conditions = [("null", None), ("true", True), ("false", False), ("x", True), ("y", False), ("z", None)]
+        for c in conditions:
+            q = "WITH true AS x, false AS y, null AS z WHERE %s RETURN x" % c[0]
+            result = g.query(q)
+            expected = [[True]] if c[1] else []
+            self.env.assertEqual(result.result_set,  expected)
+
+        ops = [("AND", lambda a, b : a and b), ("OR", lambda a, b : a or b), ("XOR", lambda a, b : None if a is None or b is None else a ^ b)]
+        for op in ops:
+            for c1 in conditions:
+                for c2 in conditions:
+                    q = "WITH true AS x, false AS y, null AS z WHERE %s %s %s RETURN x" % (c1[0], op[0], c2[0])
+                    print(q)
+                    result = g.query(q)
+                    expected = [[True]] if op[1](c1[1], c2[1]) else []
+                    self.env.assertEqual(result.result_set,  expected)
+
+        for op1 in ops:
+            for op2 in ops:
+                for c1 in conditions:
+                    for c2 in conditions:
+                        for c3 in conditions:
+                            q = "WITH true AS x, false AS y, null AS z WHERE (%s %s %s) %s %s RETURN x" % (c1[0], op1[0], c2[0], op2[0], c3[0])
+                            print(q)
+                            result = g.query(q)
+                            expected = [[True]] if op2[1](op1[1](c1[1], c2[1]), c3[1]) else []
+                            self.env.assertEqual(result.result_set,  expected)
