@@ -56,7 +56,6 @@ Feature: Map3 - Keys function
       | ['address', 'name', 'age'] |
     And no side effects
 
-  @skip
   Scenario: [3] Using `keys()` on null map
     Given any graph
     When executing query:

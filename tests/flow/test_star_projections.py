@@ -163,3 +163,24 @@ class testStarProjections():
         query = """MATCH (a)-[]->(a) RETURN *, a"""
         actual_result = redis_graph.query(query)
         self.env.assertEqual(actual_result.result_set, expected)
+
+    # verify that explicitly returning children that can have predicates
+    # alongside a star projection does not result in errors
+    def test05_star_and_nonpredicate_children(self):
+        # create a single node
+        self.env.flush()
+        n = Node(node_id=0, label="L", properties={"v": 1})
+        redis_graph.add_node(n)
+        redis_graph.flush()
+
+        try:
+            query = """WITH 5 AS a RETURN *, NONE(t0 IN TRUE * COUNT(*))"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("'NONE' function requires a WHERE predicate", str(e))
+
+        query = """MATCH (v0) RETURN *, [()-[]->() | v0]"""
+        actual_result = redis_graph.query(query)
+        expected = [[n, []]]
+        self.env.assertEqual(actual_result.result_set, expected)
