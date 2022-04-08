@@ -278,7 +278,11 @@ fi
 
 E=0
 [[ $GEN == 1 ]]  && { (run_tests "general tests"); (( E |= $? )); } || true
-[[ $AOF == 1 ]]  && { (RLTEST_ARGS="${RLTEST_ARGS} --use-aof --test test_persistency" run_tests "tests with AOF"); (( E |= $? )); } || true
+if [[ $AOF == 1 ]]; then                                                                                                                                       
+	[[ -z $TEST || -z $TESTFILE ]] && RLTEST_ARGS="${RLTEST_ARGS} --test test_persistency"                                                                                  
+	(RLTEST_ARGS="${RLTEST_ARGS} --use-aof" run_tests "tests with AOF")                                                                                     
+	(( E |= $? )) || true                                                                                                                                   
+fi                                                                                                                                                             
 [[ $TCK == 1 ]]  && { (cd ../tck; run_tests "TCK tests"); (( E |= $? )); } || true
 
 [[ $RLEC == 1 ]] && { (RLTEST_ARGS="${RLTEST_ARGS} --env existing-env --existing-env-addr $DOCKER_HOST:$RLEC_PORT" run_tests "tests on RLEC"); (( E |= $? )); } || true

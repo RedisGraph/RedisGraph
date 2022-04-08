@@ -556,7 +556,8 @@ workflows:
           <<: *on-any-branch
       - build_memcheck:
           <<: *context
-          <<: *on-any-branch
+          #@@<<: *on-any-branch
+          <<: *never
       - build_macos:
           <<: *context
           #@@<<: *on-integ-and-version-tags

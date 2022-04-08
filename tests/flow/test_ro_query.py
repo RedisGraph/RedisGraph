@@ -4,7 +4,7 @@ import time
 slave_con = None
 master_con = None
 
-def checkSlaveSynced(env, slaveConn, graph_name, time_out=5):
+def checkSlaveSynced(env, slaveConn, graph_name, time_out=10):
     time.sleep(time_out)
     res = slaveConn.execute_command("keys", graph_name)
     env.assertEqual(res, [graph_name])
