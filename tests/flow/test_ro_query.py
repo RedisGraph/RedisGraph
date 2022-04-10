@@ -76,7 +76,6 @@ class test_read_only_query(FlowTestsBase):
         graph_name = "Test_RO_QUERY_command_on_replica"
         graph = Graph(master_con, graph_name)
         graph.query("UNWIND range(0,20) as i CREATE ()")
-        slave_con.execute_command("REPLICAOF", "127.0.0.1", self.env.envRunner.port)
         checkSlaveSynced(self.env, master_con, slave_con, graph_name)
         raw_result_set = slave_con.execute_command("GRAPH.RO_QUERY", graph_name, "MATCH (n) RETURN COUNT(n)", "--compact")
         result_set = query_result.QueryResult(graph, raw_result_set).result_set
