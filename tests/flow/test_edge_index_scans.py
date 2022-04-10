@@ -1,11 +1,8 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
-from base import FlowTestsBase
+from common import *
 
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
 redis_graph = None
+
 
 class testEdgeByIndexScanFlow(FlowTestsBase):
     def __init__(self):
@@ -14,7 +11,7 @@ class testEdgeByIndexScanFlow(FlowTestsBase):
     def setUp(self):
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph("social", redis_con)
+        redis_graph = Graph(redis_con, "social")
         self.populate_graph(redis_graph)
         self.build_indices()
 
@@ -466,7 +463,7 @@ class testEdgeByIndexScanFlow(FlowTestsBase):
         self.env.assertEquals(query_result.result_set[0], expected_result)
 
     def test20_index_scan_numeric_accuracy(self):
-        redis_graph = Graph('large_index_values', self.env.getConnection())
+        redis_graph = Graph(self.env.getConnection(), 'large_index_values')
 
         redis_graph.query("CREATE INDEX FOR ()-[r:R1]-() ON (r.id)")
         redis_graph.query("CREATE INDEX FOR ()-[r:R2]-() ON (r.id1, r.id2)")

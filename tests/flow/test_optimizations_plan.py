@@ -1,9 +1,4 @@
-from base import FlowTestsBase
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
-
+from common import *
 
 graph = None
 redis_con = None
@@ -16,7 +11,7 @@ class testOptimizationsPlan(FlowTestsBase):
         global graph
         global redis_con
         redis_con = self.env.getConnection()
-        graph = Graph("g", redis_con)
+        graph = Graph(redis_con, "g")
         self.populate_graph()
 
     def populate_graph(self):
@@ -359,7 +354,7 @@ class testOptimizationsPlan(FlowTestsBase):
     # their batch size to match the current limit.
     def test23_limit_propagation(self):
         graph_id = "limit-propagation"
-        graph = Graph(graph_id, redis_con)
+        graph = Graph(redis_con, graph_id)
 
         # create graph
         query = """UNWIND range(0, 64) AS x CREATE ()-[:R]->()-[:R]->()"""

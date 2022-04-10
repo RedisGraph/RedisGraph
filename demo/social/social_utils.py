@@ -1,7 +1,8 @@
 import csv
 import os
-from redisgraph import Node, Edge
-
+from redis.commands.graph import Graph
+from redis.commands.graph.node import Node
+from redis.commands.graph.edge import Edge
 
 graph_name = "social"
 
