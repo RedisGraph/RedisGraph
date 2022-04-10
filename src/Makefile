@@ -78,8 +78,12 @@ CFLAGS=\
 	$(CFLAGS.debug)
 
 ifeq ($(OS),macos)
-LIBOMP_PREFIX:=$(shell brew --prefix libomp)
-LIBOMP=$(LIBOMP_PREFIX)/lib/libomp.a
+	ifeq ($(STATIC_OMP),1)
+		LIBOMP_PREFIX:=$(shell brew --prefix libomp)
+		LIBOMP=$(LIBOMP_PREFIX)/lib/libomp.a
+	else
+		LIBOMP=-lomp
+	endif
 endif
 
 # Compile flags for linux / osx

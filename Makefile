@@ -6,6 +6,7 @@ define HELP
 make all              # Build everything
   DEBUG=1               # Build for debugging
   COV=1                 # Build for coverage analysis (implies DEBUG=1)
+  STATIC_OMP=1          # Link OpenMP statically
 make clean            # Clean build artifacts
   ALL=1                 # Completely remove
 make test             # Run tests
