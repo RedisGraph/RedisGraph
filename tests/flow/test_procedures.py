@@ -1,12 +1,4 @@
-import os
-import sys
-import redis
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
+from common import *
 
 GRAPH_ID = "procedures"
 redis_graph = None
@@ -18,6 +10,7 @@ node3 = Node(label="fruit", properties={"name": "Orange3", "value": 3})
 node4 = Node(label="fruit", properties={"name": "Orange4", "value": 4})
 node5 = Node(label="fruit", properties={"name": "Banana", "value": 5})
 
+
 # Tests built in procedures,
 # e.g. db.idx.fulltext.queryNodes
 # Test over all procedure behavior in addition to procedure specifics.
@@ -27,7 +20,7 @@ class testProcedures(FlowTestsBase):
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
         self.populate_graph()
 
     def populate_graph(self):

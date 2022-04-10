@@ -1,9 +1,12 @@
 import csv
 import os
 from datetime import date
-from redisgraph import Node, Edge
+from redis.commands.graph import Graph
+from redis.commands.graph.node import Node
+from redis.commands.graph.edge import Edge
 
 graph_name = "imdb"
+
 
 def populate_graph(redis_con, redis_graph):
 	# check if graph already exists

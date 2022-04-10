@@ -1,6 +1,7 @@
 #!/bin/bash
 
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+PROGNAME="${BASH_SOURCE[0]}"
+HERE="$(cd "$(dirname "$PROGNAME")" &>/dev/null && pwd)"
 ROOT=$(cd $HERE/.. && pwd)
 export READIES=$ROOT/deps/readies
 . $READIES/shibumi/defs
@@ -48,8 +49,6 @@ INSTALL_DIR=$(cd $INSTALL_DIR && pwd)
 [[ -z $BINDIR ]] && BINDIR=bin/artifacts
 mkdir -p $BINDIR
 BINDIR=$(cd $BINDIR && pwd)
-
-. $READIES/bin/enable-utf8
 
 export ARCH=$($READIES/bin/platform --arch)
 [[ $ARCH == x64 ]] && ARCH=x86_64

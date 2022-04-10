@@ -1,6 +1,4 @@
-import os
-from RLTest import Env
-from redisgraph import Graph
+from common import *
 from pathos.pools import ProcessPool as Pool
 
 # 1.test getting and setting config
@@ -11,6 +9,7 @@ from pathos.pools import ProcessPool as Pool
 
 GRAPH_NAME = "max_pending_queries"
 SLOW_QUERY = "UNWIND range (0, 1000000) AS x WITH x WHERE (x / 2) = 50 RETURN x"
+
 
 def issue_query(conn, q):
     try:

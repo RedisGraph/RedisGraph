@@ -1,4 +1,6 @@
-from redisgraph.execution_plan import Operation, ExecutionPlan
+
+from redis.commands.graph.execution_plan import Operation, ExecutionPlan
+
 
 def locate_operation(op: Operation, name: str):
     if op.name == name:
