@@ -277,6 +277,10 @@ if [[ $CLEAR_LOGS != 0 ]]; then
 	rm -rf logs ../tck/logs
 fi
 
+if [[ $OS == macos ]]; then
+	ulimit -n 10000
+fi
+
 E=0
 [[ $GEN == 1 ]]  && { (run_tests "general tests"); (( E |= $? )); } || true
 if [[ $AOF == 1 ]]; then                                                                                                                                       

@@ -327,8 +327,7 @@ jobs:
       - run:
           name: Build
           shell: /bin/bash -l -eo pipefail
-          command: |
-            DYLD_LIBRARY_PATH=/usr/local/lib CC=clang make all package
+          command: make all package
       - save_cache:
           paths:
             - deps/GraphBLAS/build
@@ -336,9 +335,7 @@ jobs:
       - run:
           name: Test
           shell: /bin/bash -l -eo pipefail
-          command: |
-            ulimit -n 10000
-            DYLD_LIBRARY_PATH=/usr/local/lib CC=clang CXX=clang++ make test
+          command: make test
       - save-tests-logs
       - persist-artifacts
 
@@ -556,7 +553,8 @@ workflows:
           <<: *on-any-branch
       - build_memcheck:
           <<: *context
-          <<: *on-any-branch
+          #@@<<: *on-any-branch
+          <<: *never
       - build_macos:
           <<: *context
           #@@<<: *on-integ-and-version-tags
