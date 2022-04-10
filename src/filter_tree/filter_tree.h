@@ -15,6 +15,7 @@
 
 #define FILTER_FAIL 0
 #define FILTER_PASS 1
+#define FILTER_NULL -1
 
 /* Nodes within the filter tree are one of two types
  * Either a predicate node or a condition node. */

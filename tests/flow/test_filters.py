@@ -49,14 +49,31 @@ class testFilters():
             expected = [[True]] if c[1] else []
             self.env.assertEqual(result.result_set,  expected)
 
-        ops = [("AND", lambda a, b : a and b), ("OR", lambda a, b : a or b), ("XOR", lambda a, b : None if a is None or b is None else a ^ b)]
+        def null_and(a, b):
+            if a is not None and b is not None:
+                return a and b
+            elif a is not None and not a:
+                return False
+            elif b is not None and not b:
+                return False
+            return None
+        def null_or(a, b):
+            if a is not None and b is not None:
+                return a or b
+            elif a is not None and a:
+                return True
+            elif b is not None and b:
+                return True
+            return None
+        ops = [("AND", lambda a, b : null_and(a, b)), ("OR", lambda a, b : null_or(a, b)), ("XOR", lambda a, b : None if a is None or b is None else a ^ b)]
         for op in ops:
             for c1 in conditions:
                 for c2 in conditions:
                     q = "WITH true AS x, false AS y, null AS z WHERE %s %s %s RETURN x" % (c1[0], op[0], c2[0])
-                    print(q)
                     result = g.query(q)
                     expected = [[True]] if op[1](c1[1], c2[1]) else []
+                    if result.result_set != expected:
+                        print(q)
                     self.env.assertEqual(result.result_set,  expected)
 
         for op1 in ops:
@@ -65,7 +82,8 @@ class testFilters():
                     for c2 in conditions:
                         for c3 in conditions:
                             q = "WITH true AS x, false AS y, null AS z WHERE (%s %s %s) %s %s RETURN x" % (c1[0], op1[0], c2[0], op2[0], c3[0])
-                            print(q)
                             result = g.query(q)
                             expected = [[True]] if op2[1](op1[1](c1[1], c2[1]), c3[1]) else []
+                            if result.result_set != expected:
+                                print(q)
                             self.env.assertEqual(result.result_set,  expected)

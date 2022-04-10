@@ -192,7 +192,7 @@ SIValue AR_NONE(SIValue *argv, int argc, void *private_data) {
 		Record_AddScalar(r, ctx->variable_idx, current_elem);
 
 		// If any element in an NONE function pass the predicate, return false.
-		if(FilterTree_applyFilters(ctx->ft, r)) return SI_BoolVal(false);
+		if(FilterTree_applyFilters(ctx->ft, r) == FILTER_PASS) return SI_BoolVal(false);
 	}
 
 	// No elements passed, return true.
@@ -228,7 +228,7 @@ SIValue AR_LIST_COMPREHENSION(SIValue *argv, int argc, void *private_data) {
 
 		/* If the comprehension has a filter tree, run the current element through it.
 		 * If it does not pass, skip this element. */
-		if(ctx->ft && !(FilterTree_applyFilters(ctx->ft, r))) continue;
+		if(ctx->ft && !(FilterTree_applyFilters(ctx->ft, r) == FILTER_PASS)) continue;
 
 		if(ctx->eval_exp) {
 			// Compute the current element to append to the return list.
