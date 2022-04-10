@@ -2,10 +2,10 @@ import os
 import sys
 import redis
 import argparse
-from redisgraph import Graph
+from redis.commands.graph import Graph
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 import imdb_queries
 import imdb_utils
 from utils import execute_query, _redis
@@ -25,7 +25,7 @@ def debug(host, port):
     global redis_con
     global redis_graph
     redis_con = redis.Redis(host=host, port=port)
-    redis_graph = Graph(imdb_utils.graph_name, redis_con)
+    redis_graph = Graph(redis_con, imdb_utils.graph_name)
 
     print("populate_graph")
     imdb_utils.populate_graph(redis_con, redis_graph)
@@ -49,7 +49,7 @@ def main(argv):
         debug(args.host, args.port)
     else:
         with _redis() as redis_con:
-            redis_graph = Graph(imdb_utils.graph_name, redis_con)
+            redis_graph = Graph(redis_con, imdb_utils.graph_name)
             imdb_utils.populate_graph(redis_con, redis_graph)
             run_queries()
 

@@ -1,7 +1,4 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
+from common import *
 
 GRAPH_ID = "G"
 
@@ -18,7 +15,7 @@ class testExpandInto():
     # (:A)-[:R]->(:B)
     def test01_single_hop_no_multi_edge(self):
         redis_con = self.env.getConnection()
-        graph = Graph(GRAPH_ID, redis_con)
+        graph = Graph(redis_con, GRAPH_ID)
         try:
             graph.delete()
         except:
@@ -46,7 +43,7 @@ class testExpandInto():
     # (:A)-[:R]->(:B), (:A)-[:R]->(:B)
     def test02_single_hop_multi_edge(self):
         redis_con = self.env.getConnection()
-        graph = Graph(GRAPH_ID, redis_con)
+        graph = Graph(redis_con, GRAPH_ID)
         graph.delete()
 
         # create graph
@@ -73,7 +70,7 @@ class testExpandInto():
     # (:A)-[:R]->()-[:R]->(:B)
     def test03_multi_hop_no_multi_edge(self):
         redis_con = self.env.getConnection()
-        graph = Graph(GRAPH_ID, redis_con)
+        graph = Graph(redis_con, GRAPH_ID)
         graph.delete()
 
         # create graph
@@ -93,7 +90,7 @@ class testExpandInto():
     # (a:A)-[:R]->(i)-[:R]->(b:B)
     def test04_multi_hop_multi_edge(self):
         redis_con = self.env.getConnection()
-        graph = Graph(GRAPH_ID, redis_con)
+        graph = Graph(redis_con, GRAPH_ID)
         graph.delete()
 
         # create graph

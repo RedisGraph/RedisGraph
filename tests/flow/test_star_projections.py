@@ -1,10 +1,8 @@
-import redis
-from RLTest import Env
-from redis import ResponseError
-from redisgraph import Graph, Node, Edge
+from common import *
 
 GRAPH_ID = "starProjection"
 redis_graph = None
+
 
 class testStarProjections():
 
@@ -12,7 +10,7 @@ class testStarProjections():
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
 
     # verify that star projections in RETURN clauses perform as
     # expected with all clause modifiers

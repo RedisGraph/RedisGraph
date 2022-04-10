@@ -1,14 +1,6 @@
-import os
-import sys
-import redis
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
+from common import *
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../..')
 from demo import QueryInfo
 
 graph = None
@@ -16,13 +8,14 @@ redis_con = None
 GRAPH_ID = "G"
 NEW_GRAPH_ID = "G2"
 
+
 class testKeyspaceAccesses(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global graph
         global redis_con
         redis_con = self.env.getConnection()
-        graph = Graph(GRAPH_ID, redis_con)
+        graph = Graph(redis_con, GRAPH_ID)
     
     def test00_test_data_valid_after_rename(self):
         global graph
@@ -31,7 +24,7 @@ class testKeyspaceAccesses(FlowTestsBase):
         graph.flush()
         redis_con.rename(GRAPH_ID, NEW_GRAPH_ID)
 
-        graph = Graph(NEW_GRAPH_ID, redis_con)
+        graph = Graph(redis_con, NEW_GRAPH_ID)
 
         node1 = Node(node_id=1, label="L", properties={'name':'x', 'age':1})
         graph.add_node(node1)
@@ -45,7 +38,7 @@ class testKeyspaceAccesses(FlowTestsBase):
     # Graph queries should fail gracefully on accessing non-graph keys.
     def test01_graph_access_on_invalid_key(self):
         redis_con.set("integer_key", 5)
-        graph = Graph("integer_key", redis_con)
+        graph = Graph(redis_con, "integer_key")
         try:
             query = """MATCH (n) RETURN noneExistingFunc(n.age) AS cast"""
             graph.query(query)
@@ -57,7 +50,7 @@ class testKeyspaceAccesses(FlowTestsBase):
 
     # Fail gracefully on attempting a graph deletion of an empty key.
     def test02_graph_delete_on_empty_key(self):
-        graph = Graph("nonexistent_key", redis_con)
+        graph = Graph(redis_con, "nonexistent_key")
         try:
             graph.delete()
             assert(False)

@@ -1,17 +1,16 @@
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
-from base import FlowTestsBase
+from common import *
 
 graph = None
 nodes = {}
 edges = {}
+
 
 class testBFS(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global graph
         redis_con = self.env.getConnection()
-        graph = Graph("proc_bfs", redis_con)
+        graph = Graph(redis_con, "proc_bfs")
         self.populate_graph()
 
     def populate_graph(self):

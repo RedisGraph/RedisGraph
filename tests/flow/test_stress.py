@@ -1,12 +1,11 @@
-import os
+from common import *
 import time
 from time import sleep
-from RLTest import Env
-from redisgraph import Graph
 from pathos.pools import ProcessPool as Pool
 
 graphs       = None  # one graph object per client
 GRAPH_ID     = "G"   # graph identifier
+
 
 def query_crud(graph, query_id):
     query_id = int(query_id)
@@ -91,7 +90,7 @@ class testStressFlow():
         self.client_count = self.env.getConnection().execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1] * 5
 
         for i in range(0, self.client_count):
-            graphs.append(Graph(GRAPH_ID, self.env.getConnection()))
+            graphs.append(Graph(self.env.getConnection(), GRAPH_ID))
 
     def __del__(self):
         if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
@@ -99,7 +98,7 @@ class testStressFlow():
 
         for i in range(0, self.client_count):
             g = graphs[0]
-            g.redis_con.close()
+            self.env.getConnection().close()
 
     # called before each test function
     def setUp(self):

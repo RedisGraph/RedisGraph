@@ -1,14 +1,9 @@
-import os
-import sys
-from RLTest import Env
+from common import *
 from redis import ResponseError
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
 
 VERSION = 0
 GRAPH_ID = "GraphVersion"
+
 
 class testGraphVersioning(FlowTestsBase):
     def __init__(self):

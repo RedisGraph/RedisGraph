@@ -1,15 +1,10 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node, Edge, Path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
+from common import *
 
 GRAPH_ID = "profile"
 
 redis_con = None
 redis_graph = None
+
 
 class testProfile(FlowTestsBase):
     def __init__(self):
@@ -17,7 +12,7 @@ class testProfile(FlowTestsBase):
         global redis_graph
         self.env = Env(decodeResponses=True)
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
 
     def test01_profile(self):
         q = """UNWIND range(1, 3) AS x CREATE (p:Person {v:x})"""
