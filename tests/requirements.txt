@@ -1,8 +1,9 @@
-redis
-redisgraph>=2.4.1
-redisgraph-bulk-loader
-click>=6.7
-behave>=1.2
-pathos>=0.2.8
-RLTest~=0.4.2
-ramp-packer~=2.2.1
+redis~=4.2.1
+redisgraph-bulk-loader~=0.10.2
+
+click
+behave~=1.2
+pathos~=0.2.8
+
+RLTest~=0.5.3
+ramp-packer~=2.3.0

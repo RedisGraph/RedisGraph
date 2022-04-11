@@ -65,7 +65,7 @@ static int _GraphContextType_AuxLoad(RedisModuleIO *rdb, int encver, int when) {
 
 static void _GraphContextType_Free(void *value) {
 	GraphContext *gc = value;
-	GraphContext_Delete(gc);
+	GraphContext_DecreaseRefCount(gc);
 }
 
 int GraphContextType_Register(RedisModuleCtx *ctx) {

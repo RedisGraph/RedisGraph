@@ -1,11 +1,4 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
+from common import *
 
 graph = None
 redis_con = None
@@ -19,7 +12,7 @@ class testResultSetFlow(FlowTestsBase):
         global graph
         global redis_con
         redis_con = self.env.getConnection()
-        graph = Graph("G", redis_con)
+        graph = Graph(redis_con, "G")
         self.populate_graph()
 
     def populate_graph(self):
@@ -83,7 +76,7 @@ class testResultSetFlow(FlowTestsBase):
 
     # Verify that the DISTINCT operator works with full entity returns
     def test05_distinct_full_entities(self):
-        graph2 = Graph("H", redis_con)
+        graph2 = Graph(redis_con, "H")
         query = """CREATE (a)-[:e]->(), (a)-[:e]->()"""
         result = graph2.query(query)
         self.env.assertEquals(result.nodes_created, 3)

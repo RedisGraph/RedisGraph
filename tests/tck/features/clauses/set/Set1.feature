@@ -30,7 +30,6 @@
 
 Feature: Set1 - Set a Property
 
-  @skip
   Scenario: [1] Set a property
     Given any graph
     And having executed:
@@ -51,7 +50,6 @@ Feature: Set1 - Set a Property
       | +properties | 1 |
       | -properties | 1 |
 
-  @skip
   Scenario: [2] Set a property to an expression
     Given an empty graph
     And having executed:
@@ -183,7 +181,6 @@ Feature: Set1 - Set a Property
     Then a SyntaxError should be raised at compile time: UndefinedVariable
 
   @NegativeTest
-  @skip
   Scenario: [10] Failing when setting a list of maps as a property
     Given any graph
     When executing query:

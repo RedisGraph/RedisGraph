@@ -34,16 +34,17 @@ ENV LC_ALL=en_US.UTF-8
 RUN make -j`nproc`
 
 {% if TEST == "1" %}
-RUN TEST='' make test
+RUN TEST='' make test PLATFORM_MODE=1
 {% endif %}
 
 {% if PACK == "1" %}
 RUN mkdir -p bin/artifacts
-RUN make package
+RUN make pack
+{% endif %}
+
 RUN set -e ;\
     echo "Artifacts:" ;\
     du -ah --apparent-size /build/bin/artifacts
-{% endif %}
 
 #----------------------------------------------------------------------------------------------
 {% if OSNICK == "alpine3" %}
@@ -56,7 +57,7 @@ WORKDIR /data
 
 RUN mkdir -p "{{MODULES_DIR}}"
 
-COPY --from=builder /build/src/redisgraph.so "{{MODULES_DIR}}/"
+COPY --from=builder /build/src/redisgraph.so* "{{MODULES_DIR}}/"
 
 {% if ARTIFACTS == "1" %}
 RUN mkdir -p /var/opt/redislabs/artifacts

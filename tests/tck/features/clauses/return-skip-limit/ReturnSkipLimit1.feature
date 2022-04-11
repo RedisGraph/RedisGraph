@@ -141,7 +141,6 @@ Feature: ReturnSkipLimit1 - Skip
     Then a SyntaxError should be raised at runtime: NegativeIntegerArgument
 
   @NegativeTest
-  @skip
   Scenario: [7] Negative SKIP should fail
     Given any graph
     And having executed:
@@ -194,7 +193,6 @@ Feature: ReturnSkipLimit1 - Skip
     Then a SyntaxError should be raised at compile time: InvalidArgumentType
 
   @NegativeTest
-  @skip
   Scenario: [10] Fail when using non-constants in SKIP
     Given any graph
     When executing query:
@@ -206,7 +204,6 @@ Feature: ReturnSkipLimit1 - Skip
     Then a SyntaxError should be raised at compile time: NonConstantExpression
 
   @NegativeTest
-  @skip
   Scenario: [11] Fail when using negative value in SKIP
     Given any graph
     When executing query:

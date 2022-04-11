@@ -44,7 +44,8 @@ static void _GraphMetaType_RdbSave(RedisModuleIO *rdb, void *value) {
 }
 
 static void _GraphMetaType_Free(void *value) {
-	// No-Op in this type.
+	GraphContext *gc = value;
+	GraphContext_DecreaseRefCount(gc);
 }
 
 int GraphMetaType_Register(RedisModuleCtx *ctx) {
