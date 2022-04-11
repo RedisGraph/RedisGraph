@@ -13,6 +13,7 @@
 typedef struct {
 	OpBase op;
 	Record r;
+	Record reset;
 } Argument;
 
 OpBase *NewArgumentOp(const ExecutionPlan *plan, const char **variables);

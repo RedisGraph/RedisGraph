@@ -294,7 +294,7 @@ class testOptionalFlow(FlowTestsBase):
     # validate that OPTIONAL subtrees that perform nested loops
     # (that before optimizations utilize Cartesian Products)
     # are populated and executed properly
-    def test22_optional_nested_loop(self):
+    def test23_optional_nested_loop(self):
         global redis_graph
         query = """MATCH (n1) OPTIONAL MATCH (n1), (n2) RETURN n1.v, n2.v ORDER BY n1.v, n2.v"""
         plan = redis_graph.execution_plan(query)
@@ -322,7 +322,7 @@ class testOptionalFlow(FlowTestsBase):
                            ['v4', 'v4']]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-        query = """MATCH (n1) OPTIONAL MATCH (n1), (n2) RETURN n1.v, n2.v ORDER BY n1.v, n2.v"""
+        query = """MATCH (n1) OPTIONAL MATCH (n1)-[]->(), (n2) RETURN n1.v, n2.v ORDER BY n1.v, n2.v"""
         plan = redis_graph.execution_plan(query)
 
         # the first child of the Apply op should be a scan and the
