@@ -37,12 +37,14 @@ AggregateCtx *SUM_PrivateData(void)
 
 void Register_SUM(void) {
 	SIType *types;
+	SIType ret_type;
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 2);
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
-	func_desc = AR_AggFuncDescNew("sum", AGG_SUM, 1, 1, types, NULL, NULL,
-			SUM_PrivateData);
+	ret_type = T_NULL | T_DOUBLE;
+	func_desc = AR_AggFuncDescNew("sum", AGG_SUM, 1, 1, types, ret_type, NULL,
+			NULL, SUM_PrivateData);
 	AR_RegFunc(func_desc);
 }
 
