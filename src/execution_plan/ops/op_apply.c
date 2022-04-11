@@ -10,7 +10,6 @@
 /* Forward declarations. */
 static OpResult ApplyInit(OpBase *opBase);
 static Record ApplyConsume(OpBase *opBase);
-static Record ArgumentLessApplyConsume(OpBase *opBase);
 static OpResult ApplyReset(OpBase *opBase);
 static OpBase *ApplyClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void ApplyFree(OpBase *opBase);
@@ -40,47 +39,8 @@ static OpResult ApplyInit(OpBase *opBase) {
 
 	// Locate branch's Argument op tap.
 	op->op_arg = (Argument *)ExecutionPlan_LocateOp(op->rhs_branch, OPType_ARGUMENT);
-	if(!op->op_arg) {
-		OpBase_UpdateConsume(opBase, ArgumentLessApplyConsume);
-	}
 
 	return OP_OK;
-}
-
-static Record ArgumentLessApplyConsume(OpBase* opBase) {
-		Apply *op = (Apply *)opBase;
-
-	while(true) {
-		if(op->r == NULL) {
-			// Retrieve a Record from the bound branch if we're not currently holding one.
-			op->r = OpBase_Consume(op->bound_branch);
-			if(!op->r) return NULL; // Bound branch and this op are depleted.
-		}
-
-		// Pull a Record from the RHS branch.
-		Record rhs_record = OpBase_Consume(op->rhs_branch);
-
-		if(rhs_record == NULL) {
-			/* RHS branch depleted for the current bound Record;
-			 * free it and loop back to retrieve a new one. */
-			OpBase_DeleteRecord(op->r);
-			op->r = NULL;
-			// Reset the RHS branch.
-			OpBase_PropagateReset(op->rhs_branch);
-			continue;
-		}
-
-		// Clone the bound Record and merge the RHS Record into it.
-		Record r = OpBase_CloneRecord(op->r);
-		Record_Merge(r, rhs_record);
-		// Delete the RHS record, as it has been merged into r.
-		OpBase_DeleteRecord(rhs_record);
-
-		return r;
-	}
-
-	return NULL;
-
 }
 
 static Record ApplyConsume(OpBase *opBase) {
@@ -88,12 +48,14 @@ static Record ApplyConsume(OpBase *opBase) {
 
 	while(true) {
 		if(op->r == NULL) {
-			// Retrieve a Record from the bound branch if we're not currently holding one.
+			// Retrieve a Record from the bound branch.
 			op->r = OpBase_Consume(op->bound_branch);
 			if(!op->r) return NULL; // Bound branch and this op are depleted.
 
 			// Successfully pulled a new Record, propagate to the top of the RHS branch.
-			Argument_AddRecord(op->op_arg, OpBase_CloneRecord(op->r));
+			if(op->op_arg) {
+				Argument_AddRecord(op->op_arg, OpBase_CloneRecord(op->r));
+			}
 		}
 
 		// Pull a Record from the RHS branch.
