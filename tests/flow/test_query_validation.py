@@ -1,15 +1,8 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
-
-import redis
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
+from common import *
 
 redis_con = None
 redis_graph = None
+
 
 class testQueryValidationFlow(FlowTestsBase):
 
@@ -18,7 +11,7 @@ class testQueryValidationFlow(FlowTestsBase):
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph("G", redis_con)
+        redis_graph = Graph(redis_con, "G")
         self.populate_graph()
     
     def populate_graph(self):

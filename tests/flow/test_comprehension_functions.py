@@ -1,11 +1,8 @@
-import redis
-from RLTest import Env
-from base import FlowTestsBase
-from redisgraph import Graph, Node, Edge
-from redisgraph.execution_plan import ExecutionPlan
+from common import *
 from execution_plan_util import locate_operation
 
 redis_graph = None
+
 
 def _check_pattern_comprehension_plan(plan: ExecutionPlan):
     apply = locate_operation(plan.structured_plan, "Apply")
@@ -20,7 +17,7 @@ class testComprehensionFunctions(FlowTestsBase):
         global redis_graph
         graph_id = "list_comprehension"
         redis_con = self.env.getConnection()
-        redis_graph = Graph(graph_id, redis_con)
+        redis_graph = Graph(redis_con, graph_id)
         self.populate_graph()
 
     def populate_graph(self):

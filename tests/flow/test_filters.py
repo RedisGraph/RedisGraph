@@ -1,12 +1,11 @@
-from RLTest import Env
-from redisgraph import Graph
+from common import *
 
 class testFilters():
     def __init__(self):
         self.env = Env(decodeResponses=True)
 
     def test01_filter_with_different_predicates(self):
-        g = Graph("g", self.env.getConnection())
+        g = Graph(self.env.getConnection(), "g")
         g.query("UNWIND range(1, 5) AS x CREATE (:N { v: x, b: x % 2 = 0 })")
 
         # test and operation

@@ -1,5 +1,4 @@
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
+from common import *
 
 graph = None
 GRAPH_ID = "aggregations"
@@ -8,7 +7,7 @@ class testAggregations():
     def __init__(self):
         global graph
         self.env = Env(decodeResponses=True)
-        graph = Graph(GRAPH_ID, self.env.getConnection())
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
 
     # test aggregation default values
     # default values should be returned when the aggregation operation
