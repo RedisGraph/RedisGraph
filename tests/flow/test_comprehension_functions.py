@@ -142,13 +142,13 @@ class testComprehensionFunctions(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         # List comprehension with predicate and eval in WHERE predicate - evaluates to false
-        query = """WITH 1 AS a WHERE [i in [2,3] WHERE i > 5] RETURN a"""
+        query = """WITH 1 AS a WHERE size([i in [2,3] WHERE i > 5]) > 0 RETURN a"""
         actual_result = redis_graph.query(query)
         expected_result = []
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         # List comprehension without predicate or eval in WHERE predicate - evaluates to true
-        query = """WITH 1 AS a WHERE [i in [2,3]] RETURN a"""
+        query = """WITH 1 AS a WHERE size([i in [2,3]]) > 0 RETURN a"""
         actual_result = redis_graph.query(query)
         expected_result = [[1]]
         self.env.assertEquals(actual_result.result_set, expected_result)
