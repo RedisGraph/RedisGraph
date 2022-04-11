@@ -254,34 +254,40 @@ SIValue AR_PATH_LENGTH(SIValue *argv, int argc, void *private_data) {
 
 void Register_PathFuncs() {
 	SIType *types;
+	SIType ret_type;
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 2);
 	array_append(types, T_PTR);
 	array_append(types, T_NULL | T_NODE | T_EDGE | T_PATH);
-	func_desc = AR_FuncDescNew("topath", AR_TOPATH, 1, VAR_ARG_LEN, types, false);
+	ret_type = T_PATH | T_NULL;
+	func_desc = AR_FuncDescNew("topath", AR_TOPATH, 1, VAR_ARG_LEN, types, ret_type, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
 	array_append(types, T_NULL | T_NODE);
 	array_append(types, T_NULL | T_NODE);
-	func_desc = AR_FuncDescNew("shortestpath", AR_SHORTEST_PATH, 2, 2, types, false);
+	ret_type = T_PATH | T_NULL;
+	func_desc = AR_FuncDescNew("shortestpath", AR_SHORTEST_PATH, 2, 2, types, ret_type, false);
 	AR_SetPrivateDataRoutines(func_desc, ShortestPath_Free, ShortestPath_Clone);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_PATH);
-	func_desc = AR_FuncDescNew("nodes", AR_PATH_NODES, 1, 1, types, false);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("nodes", AR_PATH_NODES, 1, 1, types, ret_type, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_PATH);
-	func_desc = AR_FuncDescNew("relationships", AR_PATH_RELATIONSHIPS, 1, 1, types, false);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("relationships", AR_PATH_RELATIONSHIPS, 1, 1, types, ret_type, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_PATH);
-	func_desc = AR_FuncDescNew("length", AR_PATH_LENGTH, 1, 1, types, false);
+	ret_type = T_INT64 | T_NULL;
+	func_desc = AR_FuncDescNew("length", AR_PATH_LENGTH, 1, 1, types, ret_type, false);
 	AR_RegFunc(func_desc);
 }
 
