@@ -396,3 +396,63 @@ class testComprehensionFunctions(FlowTestsBase):
             [[[1, 2, 3, 4, 5, 6, 7, 8, 9]]],
             [[[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]] ]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test20_pattern_comprehension_in_switch_case(self):
+        query = "RETURN CASE WHEN [()-[]-() | 1] THEN [()-[]-() | 0] END AS v3"
+        actual_result = redis_graph.query(query)
+        expected_result = [[[]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+        
+        # Create a single relationship
+        query = "CREATE ()-[:R]->()"
+        redis_graph.query(query)
+
+        # Lookup for undirected relationship. For each releationship there will be an entry with the value 1.
+        # The result of the case will be to lookup again and for each relationship add the value 0 to an array.
+        # Since there is one relationship and the pattern matching is undirected we will get two matches.
+        query = "RETURN CASE WHEN [()-[]-() | 1] THEN [()-[]-() | 0] END AS v3"
+        actual_result = redis_graph.query(query)
+        expected_result = [[[0, 0]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Similar but with more complex plan
+        query = "RETURN CASE WHEN [()-[]-() | 1] THEN [()-[]-() | 0] WHEN [()-[]-()-[]-() | 1] THEN [()-[]-()-[]-() | 0] END AS v3"
+        actual_result = redis_graph.query(query)
+        expected_result = [[[0, 0]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Clear data
+        redis_con = self.env.getConnection()
+        redis_con.flushall()
+
+        # Create:
+        # Node a with 2 outgoing relationships to b and c
+        # Node d without relationships
+        query = "CREATE (a {val: 1})-[:R1]->(b {val: 2}), (a)-[:R2]->(c {val: 3}), (d {val: 4})"
+        redis_graph.query(query)
+
+        # Lookup for undirected relationship. For each releationship there will be an entry with the value 1.
+        # The result of the case will be to lookup again and for each relationship add the LHS node's val field value to an array.
+        # Since there is two relationships:
+        # a-->b will yield 2 matches
+        # a-->c will yield 2 matches
+        # The result should be an array with [1, 1, 2, 3]
+
+        query = "RETURN CASE WHEN [()-[]-() | 1] THEN [(a)-[]-() | a.val] END AS v3"
+        actual_result = redis_graph.query(query)
+        expected_result = [[[1, 1, 2, 3]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # For each node, lookup for its undirected relationship. For each releationship there will be an entry with the value 1.
+        # The result of the case will be to lookup again and for each relationship add the matched node's val field value to an array.
+        # Since there is two relationships:
+        # a, a-->b, a-->c will yield [1, 1]
+        # b, a--b will yield [2]
+        # c, a--c will yield [3]
+        # d, will yield [] as there are no relationship matches
+        # The result should be an array with [1, 1, 2, 3]
+        query = "MATCH (n) WITH CASE WHEN [(n)-[]-() | 1] THEN [(n)-[]-() | n.val] END AS v3 RETURN v3"
+        actual_result = redis_graph.query(query)
+        expected_result = [[[1, 1]], [[2]], [[3]], [[]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
