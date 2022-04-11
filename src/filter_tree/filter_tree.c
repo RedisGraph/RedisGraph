@@ -687,6 +687,8 @@ static bool _FilterTree_Compact_And(FT_FilterNode *node) {
 
 		// evaluate constant
 		SIValue const_value = AR_EXP_Evaluate(const_node->exp.exp, NULL);
+		// if constant is null, no compaction
+		if(SIValue_IsNull(const_value)) return false;
 		
 		// if consant is false, everything is false
 		if(SIValue_IsFalse(const_value)) {
@@ -697,7 +699,7 @@ static bool _FilterTree_Compact_And(FT_FilterNode *node) {
 			FilterTree_Free(non_const_node);
 			return true;
 		} else {
-			// const value is either true or NULL
+			// const value is either true
 			// current node should be replaced with the non const node
 			*node = *non_const_node;
 			// free non const node allocation, without free the data
