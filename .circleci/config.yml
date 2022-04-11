@@ -551,7 +551,7 @@ on-perf-tags: &on-perf-tags
 
 workflows:
   version: 2
-  default-flow:
+  build_and_package:
     jobs:
       - build-linux-debian:
           name: build
