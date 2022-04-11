@@ -39,7 +39,7 @@ class testFilters():
         self.env.assertEqual(result.result_set,  expected)
 
     def test01_filter_with_null(self):
-        g = Graph("g", self.env.getConnection())
+        g = Graph(self.env.getConnection(), "g")
 
         conditions = [("null", None), ("true", True), ("false", False), ("x", True), ("y", False), ("z", None)]
         for c in conditions:
