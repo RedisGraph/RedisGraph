@@ -226,17 +226,21 @@ SIValue AR_LIST_COMPREHENSION(SIValue *argv, int argc, void *private_data) {
 		// Add the current element to the record at its allocated position.
 		Record_AddScalar(r, ctx->variable_idx, current_elem);
 
-		/* If the comprehension has a filter tree, run the current element through it.
-		 * If it does not pass, skip this element. */
-		if(ctx->ft && !(FilterTree_applyFilters(ctx->ft, r) == FILTER_PASS)) continue;
+		// if the comprehension has a filter tree
+		// run the current element through it
+		// if it does not pass, skip this element
+		if(ctx->ft && FilterTree_applyFilters(ctx->ft, r) != FILTER_PASS) {
+			continue;
+		}
 
 		if(ctx->eval_exp) {
-			// Compute the current element to append to the return list.
+			// compute the current element to append to the return list
 			SIValue newval = AR_EXP_Evaluate(ctx->eval_exp, r);
 			SIArray_Append(&retval, newval);
 			SIValue_Free(newval);
 		} else {
-			// If the comprehension has no eval routine, add each element unmodified.
+			// if the comprehension has no eval routine
+			// add each element unmodified
 			SIArray_Append(&retval, current_elem);
 		}
 	}
