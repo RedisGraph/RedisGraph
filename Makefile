@@ -1,32 +1,43 @@
 MAKEFLAGS += --no-print-directory
 
-.PHONY: all parser clean package docker docker_push docker_alpine builddocs localdocs deploydocs test benchmark test_valgrind fuzz help
+.PHONY: all parser clean package docker upload-artifacts upload-release docker_push docker_alpine \
+	builddocs localdocs deploydocs test benchmark test_valgrind fuzz help
 
 define HELP
-make all              # Build everything
-  DEBUG=1               # Build for debugging
-  COV=1                 # Build for coverage analysis (implies DEBUG=1)
-  STATIC_OMP=1          # Link OpenMP statically
-make clean            # Clean build artifacts
-  ALL=1                 # Completely remove
-make test             # Run tests
-  LIST=1                 # List all tests, do not execute
-  UNIT=1                 # Run unit tests
-  FLOW=1                 # Run flow tests (Python)
-  TCK=1                  # Run TCK framework tests
-  COV=1                  # Perform coverage analysis
-  SLOW=1                 # Do not run in parallel
-  TEST=test              # Run specific test
-  TESTFILE=file          # Run tests listed in file
-  FAILFILE=file          # Write failed tests to file
-make memcheck         # Run tests with Valgrind
-make benchmark        # Run benchmarks
-make fuzz             # Run fuzz tester
+make all                # Build everything
+  DEBUG=1                 # Build for debugging
+  COV=1                   # Build for coverage analysis (implies DEBUG=1)
+  STATIC_OMP=1            # Link OpenMP statically
+make clean              # Clean build artifacts
+  ALL=1                   # Completely remove
+make test               # Run tests
+  LIST=1                   # List all tests, do not execute
+  UNIT=1                   # Run unit tests
+  FLOW=1                   # Run flow tests (Python)
+  TCK=1                    # Run TCK framework tests
+  COV=1                    # Perform coverage analysis
+  SLOW=1                   # Do not run in parallel
+  TEST=test                # Run specific test
+  TESTFILE=file            # Run tests listed in file
+  FAILFILE=file            # Write failed tests to file
+make memcheck           # Run tests with Valgrind
+make benchmark          # Run benchmarks
+make fuzz               # Run fuzz tester
 
-make package          # Build RAMP packages
-make cov-upload       # Upload coverage data to codecov.io
+make package            # Build RAMP packages
+make cov-upload         # Upload coverage data to codecov.io
 
-make format           # Apply source code formatting
+make upload-artifacts   # copy snapshot packages to S3
+  OSNICK=nick             # copy snapshots for specific OSNICK
+make upload-release     # copy release packages to S3
+
+common options for upload operations:
+  STAGING=1             # copy to staging lab area (for validation)
+  FORCE=1               # allow operation outside CI environment
+  VERBOSE=1             # show more details
+  NOP=1                 # do not copy, just print commands
+
+make format             # Apply source code formatting
 
 endef
 
@@ -44,6 +55,12 @@ clean-graphblas:
 
 pack package: all
 	@$(MAKE) -C src package
+
+upload-release:
+	$(SHOW)RELEASE=1 ./sbin/upload-artifacts
+
+upload-artifacts:
+	$(SHOW)SNAPSHOT=1 ./sbin/upload-artifacts
 
 docker:
 	@$(MAKE) -C build/docker
