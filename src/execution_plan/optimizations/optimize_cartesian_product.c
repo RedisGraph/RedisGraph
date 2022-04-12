@@ -163,12 +163,9 @@ static void _optimize_cartesian_product(ExecutionPlan *plan, OpBase *cp) {
 	array_free(filter_ctx_arr);
 }
 
-// add an argument op to the tail of a stream
-static void _push_down_argument(OpBase *cp, OpBase *arg, int i) {
-	OpBase *parent;
-	// choose a different stream to migrate the argument to
-	if(i == 0) parent = cp->children[1];
-	else parent = cp->children[i - 1];
+// add an argument op to the tail of the stream
+static void _push_down_argument(OpBase *cp, OpBase *arg) {
+	OpBase *parent = cp->children[0];
 	// find the tail
 	while(parent->childCount > 0) parent = parent->children[0];
 	// add the argument as a new child
@@ -182,10 +179,8 @@ static void _flatten_argument_ops(ExecutionPlan *plan, OpBase *cp) {
 		if(child->type == OPType_ARGUMENT) {
 			// disconnect the argument from the cartesian product parent
 			ExecutionPlan_RemoveOp(plan, child);
-			// decrement the argument's index if it was just modified
-			if(i > 0) i--;
 			// relocate the argument
-			_push_down_argument(cp, child, i);
+			_push_down_argument(cp, child);
 		}
 	}
 }
