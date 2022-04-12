@@ -37,7 +37,7 @@ static void _removeTrueFilter(ExecutionPlan *plan, OpBase *op) {
 		SIValue_Free(bool_val);
 		return;
 	}
-	if(SIValue_IsTrue(bool_val)) {
+	if(!SIValue_IsNull(bool_val) && SIValue_IsTrue(bool_val)) {
 		ExecutionPlan_RemoveOp(plan, op);
 		OpBase_Free(op);
 	}
