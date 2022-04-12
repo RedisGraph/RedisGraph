@@ -57,10 +57,10 @@ pack package: all
 	@$(MAKE) -C src package
 
 upload-release:
-	$(SHOW)RELEASE=1 ./sbin/upload-artifacts
+	@RELEASE=1 ./sbin/upload-artifacts
 
 upload-artifacts:
-	$(SHOW)SNAPSHOT=1 ./sbin/upload-artifacts
+	@SNAPSHOT=1 ./sbin/upload-artifacts
 
 docker:
 	@$(MAKE) -C build/docker
