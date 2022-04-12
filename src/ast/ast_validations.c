@@ -1007,6 +1007,29 @@ cleanup:
 	return res;
 }
 
+AST_Validation _AST_ValidateResultColumns
+(
+	const cypher_astnode_t *return_clause
+) {
+	rax           *rax          = raxNew();
+	AST_Validation res          = AST_VALID;
+	const char   **columns      = AST_BuildReturnColumnNames(return_clause);
+	uint           column_count = array_len(columns);
+
+	for (uint i = 0; i < column_count; i++) {
+		// column with same name is invalid
+		if(raxTryInsert(rax, (unsigned char *)columns[i], strlen(columns[i]), NULL, NULL) == 0) {
+			ErrorCtx_SetError("Error: Multiple result columns with the same name are not supported.");
+			res = AST_INVALID;
+			break;
+		}
+	}
+	
+	array_free(columns);
+	
+	return res;
+}
+
 static AST_Validation _Validate_RETURN_Clause(const AST *ast) {
 	const cypher_astnode_t *return_clause;
 	return_clause = AST_GetClause(ast, CYPHER_AST_RETURN, NULL);
@@ -1016,7 +1039,10 @@ static AST_Validation _Validate_RETURN_Clause(const AST *ast) {
 
 	// validate all user-specified functions in RETURN clause
 	bool include_aggregates = true;
-	return _ValidateFunctionCalls(return_clause, include_aggregates);
+	if(_ValidateFunctionCalls(return_clause, include_aggregates) == AST_INVALID)
+		return AST_INVALID;
+	
+	return _AST_ValidateResultColumns(return_clause);
 }
 
 static AST_Validation _Validate_UNWIND_Clauses(const AST *ast) {
