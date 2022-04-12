@@ -145,24 +145,6 @@ class testResultSetFlow(FlowTestsBase):
         result = graph.query(query)
         self.env.assertEqual(None, result.result_set[0][0])
 
-    # Test returning multiple occurrence of an expression.
-    def test08_return_duplicate_expression(self):
-        query = """MATCH (a) RETURN max(a.val), max(a.val)"""
-        result = graph.query(query)
-        self.env.assertEqual(result.result_set[0][0], result.result_set[0][1])
-
-        query = """MATCH (a) return max(a.val) as x, max(a.val) as x"""
-        result = graph.query(query)
-        self.env.assertEqual(result.result_set[0][0], result.result_set[0][1])
-
-        query = """MATCH (a) RETURN a.val, a.val LIMIT 1"""
-        result = graph.query(query)
-        self.env.assertEqual(result.result_set[0][0], result.result_set[0][1])
-
-        query = """MATCH (a) return a.val as x, a.val as x LIMIT 1"""
-        result = graph.query(query)
-        self.env.assertEqual(result.result_set[0][0], result.result_set[0][1])
-
     # Test implicit result-set size limit
     def test09_implicit_resultset_limit(self):
         query = "MATCH (a) RETURN a"

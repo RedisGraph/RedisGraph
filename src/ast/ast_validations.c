@@ -1011,6 +1011,12 @@ AST_Validation _AST_ValidateResultColumns
 (
 	const cypher_astnode_t *return_clause
 ) {
+	ASSERT(return_clause != NULL);
+
+	if(cypher_ast_return_has_include_existing(return_clause)) {
+		return AST_VALID;
+	}
+
 	rax           *rax          = raxNew();
 	AST_Validation res          = AST_VALID;
 	const char   **columns      = AST_BuildReturnColumnNames(return_clause);

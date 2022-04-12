@@ -599,3 +599,17 @@ class testQueryValidationFlow(FlowTestsBase):
                 self.env.assertTrue(False)
             except redis.exceptions.ResponseError:
                 pass
+
+    # Test returning multiple occurrence of an expression.
+    def test41_return_duplicate_expression(self):
+        queries = ["""MATCH (a) RETURN max(a.val), max(a.val)""",
+                """MATCH (a) return max(a.val) as x, max(a.val) as x""",
+                """MATCH (a) RETURN a.val, a.val LIMIT 1""",
+                """MATCH (a) return a.val as x, a.val as x LIMIT 1"""]
+
+        for q in queries:
+            try:
+                redis_graph.query(q)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("Multiple result columns with the same name are not supported", str(e))
