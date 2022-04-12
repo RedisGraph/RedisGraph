@@ -104,12 +104,14 @@ static Record DeleteConsume(OpBase *opBase) {
 		if(type & T_NODE) {
 			Node *n = (Node *)value.ptrval;
 			array_append(op->deleted_nodes, *n);
+			// If evaluating the expression allocated any memory, free it.
+			SIValue_Free(value);
 		} else if(type & T_EDGE) {
 			Edge *e = (Edge *)value.ptrval;
 			array_append(op->deleted_edges, *e);
-		} else if(type & T_NULL) {
-			continue; // Ignore null values.
-		} else {
+			// If evaluating the expression allocated any memory, free it.
+			SIValue_Free(value);
+		} else if(!(type & T_NULL)) {
 			/* Expression evaluated to a non-graph entity type
 			 * clear pending deletions and raise an exception. */
 			array_clear(op->deleted_nodes);

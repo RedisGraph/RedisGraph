@@ -179,7 +179,6 @@ Feature: ReturnSkipLimit2 - Limit
     And no side effects
 
   @NegativeTest
-  @skip
   Scenario: [9] Fail when using non-constants in LIMIT
     Given any graph
     When executing query:
@@ -227,7 +226,6 @@ Feature: ReturnSkipLimit2 - Limit
     Then a SyntaxError should be raised at runtime: NegativeIntegerArgument
 
   @NegativeTest
-  @skip
   Scenario: [12] Fail when using negative value in LIMIT 1
     Given any graph
     When executing query:

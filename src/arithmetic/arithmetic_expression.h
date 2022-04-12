@@ -155,6 +155,11 @@ bool AR_EXP_IsAttribute(const AR_ExpNode *exp, char **attr);
 // check to see if the function operates on distinct values
 bool AR_EXP_PerformsDistinct(AR_ExpNode *exp);
 
+// return type of expression
+// e.g. the expression: `1+3` return type is SI_NUMERIC
+// e.g. the expression : `ToString(4+3)` return type is T_STRING
+SIType AR_EXP_ReturnType(const AR_ExpNode *exp);
+
 // returns true if the arithmetic expression returns
 // a boolean value and false otherwise
 bool AR_EXP_ReturnsBoolean(const AR_ExpNode *exp);

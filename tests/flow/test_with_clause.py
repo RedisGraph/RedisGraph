@@ -1,11 +1,9 @@
+from common import *
 import re
-import redis
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
-from base import FlowTestsBase
 
 redis_graph = None
 values = ["str1", "str2", False, True, 5, 10.5]
+
 
 class testWithClause(FlowTestsBase):
     
@@ -13,7 +11,7 @@ class testWithClause(FlowTestsBase):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph("G", redis_con)
+        redis_graph = Graph(redis_con, "G")
         self.populate_graph()
  
     def populate_graph(self):
