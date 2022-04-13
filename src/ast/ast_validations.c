@@ -777,16 +777,33 @@ static AST_Validation _Validate_WITH_Clauses(const AST *ast) {
 														NULL);
 	if(with_clause == NULL) return AST_VALID;
 
+	rax *rax = raxNew();
+	AST_Validation res = AST_VALID;
+
 	// Verify that each WITH projection either is aliased or is itself an identifier.
 	uint projection_count = cypher_ast_with_nprojections(with_clause);
 	for(uint i = 0; i < projection_count; i ++) {
 		const cypher_astnode_t *proj = cypher_ast_with_get_projection(with_clause, i);
-		if(!cypher_ast_projection_get_alias(proj) &&
+		const cypher_astnode_t *ast_alias = cypher_ast_projection_get_alias(proj);
+		if(!ast_alias &&
 		   cypher_astnode_type(cypher_ast_projection_get_expression(proj)) != CYPHER_AST_IDENTIFIER) {
 			ErrorCtx_SetError("WITH clause projections must be aliased");
-			return AST_INVALID;
+			res = AST_INVALID;
+			break;
+		}
+		if(ast_alias == NULL) ast_alias = cypher_ast_projection_get_expression(proj);
+		const char *alias = cypher_ast_identifier_get_name(ast_alias);
+		// column with same name is invalid
+		if(raxTryInsert(rax, (unsigned char *)alias, strlen(alias), NULL, NULL) == 0) {
+			ErrorCtx_SetError("Error: Multiple result columns with the same name are not supported.");
+			res = AST_INVALID;
+			break;
 		}
 	}
+
+	raxFree(rax);
+
+	if(res == AST_INVALID) return AST_INVALID;
 
 	// Verify that functions invoked by the WITH clause are valid.
 	return _ValidateFunctionCalls(with_clause, true);
