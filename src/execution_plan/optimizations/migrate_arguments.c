@@ -10,10 +10,9 @@
 #include "../../query_ctx.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 
-/* The reduce arguments optimizer searches the execution plans for
- * argument operations which set node N, in-case there's an earlier
- * operation within the execution plan e.g. PROCEDURE-CALL which sets N
- * then omit argument. */
+/* the migrate arguments optimizer searches the execution plans for
+ * argument operations that are the children of Cartesian Products
+ * and relocates them to the tail of one of the other streams */
 
 static void _migrateArguments(ExecutionPlan *plan, OpBase *argument) {
 	// Return early if the Argument is not a child of a Cartesian Product

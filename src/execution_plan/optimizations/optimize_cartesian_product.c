@@ -165,11 +165,11 @@ static void _optimize_cartesian_product(ExecutionPlan *plan, OpBase *cp) {
 
 // add an argument op to the tail of the stream
 static void _push_down_argument(OpBase *cp, OpBase *arg) {
-	OpBase *parent = cp->children[0];
+	OpBase *root = cp->children[0];
 	// find the tail
-	while(parent->childCount > 0) parent = parent->children[0];
+	while(root->childCount > 0) root = root->children[0];
 	// add the argument as a new child
-	ExecutionPlan_AddOp(parent, arg);
+	ExecutionPlan_AddOp(root, arg);
 }
 
 // find and relocate any argument child ops
