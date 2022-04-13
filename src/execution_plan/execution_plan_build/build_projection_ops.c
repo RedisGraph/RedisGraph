@@ -51,6 +51,8 @@ AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *clause) {
 
 	expressions = array_new(AR_ExpNode *, count);
 
+	rax *rax = raxNew();
+
 	for(uint i = 0; i < count; i++) {
 		const cypher_astnode_t *projection = NULL;
 		if(t == CYPHER_AST_RETURN) {
@@ -62,9 +64,6 @@ AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *clause) {
 		// The AST expression can be an identifier, function call, or constant
 		const cypher_astnode_t *ast_exp =
 			cypher_ast_projection_get_expression(projection);
-
-		// Construction an AR_ExpNode to represent this projected entity.
-		AR_ExpNode *exp = AR_EXP_FromASTNode(ast_exp);
 
 		// Find the resolved name of the entity - its alias,
 		// its identifier if referring to a full entity,
@@ -87,9 +86,15 @@ AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *clause) {
 			identifier = cypher_ast_identifier_get_name(ast_exp);
 		}
 
-		exp->resolved_name = identifier;
-		array_append(expressions, exp);
+		if(raxTryInsert(rax, (unsigned char *)identifier, strlen(identifier), NULL, NULL) != 0) {
+			// Construction an AR_ExpNode to represent this projected entity.
+			AR_ExpNode *exp = AR_EXP_FromASTNode(ast_exp);
+			exp->resolved_name = identifier;
+			array_append(expressions, exp);
+		}
 	}
+
+	raxFree(rax);
 
 	return expressions;
 }

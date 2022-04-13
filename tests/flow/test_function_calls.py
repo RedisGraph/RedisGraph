@@ -1,15 +1,10 @@
-import redis
-import os
-import sys
+from common import *
 import json
-from RLTest import Env
-from base import FlowTestsBase
-from redisgraph import Graph, Node, Edge
-
 
 graph = None
 redis_con = None
 people = ["Roi", "Alon", "Ailon", "Boaz"]
+
 
 class testFunctionCallsFlow(FlowTestsBase):
     def __init__(self):
@@ -17,7 +12,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         global graph
         global redis_con
         redis_con = self.env.getConnection()
-        graph = Graph("G", redis_con)
+        graph = Graph(redis_con, "G")
         self.populate_graph()
 
     def populate_graph(self):
