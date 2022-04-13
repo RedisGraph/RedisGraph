@@ -557,7 +557,8 @@ class testQueryValidationFlow(FlowTestsBase):
     def test39_non_single_statement_query(self):
         queries = [";",
                    " ;",
-                   " "]
+                   " ",
+                   "cypher"]
         for q in queries:
             try:
                 redis_graph.query(q)
