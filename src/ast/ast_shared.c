@@ -76,7 +76,8 @@ PropertyMap *PropertyMap_New(GraphContext *gc, const cypher_astnode_t *props) {
 		// Convert the string key to an Attribute ID.
 		Attribute_ID id = GraphContext_FindOrAddAttribute(gc, attribute);
 		// search for duplicate attributes
-		for (uint i = 0; i < prop_idx; i++) {
+		uint count = array_len(map->keys);
+		for (uint i = 0; i < count; i++) {
 			if(map->keys[i] == id) {
 				insert_idx = i;
 				break;

@@ -1,15 +1,8 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
-
-import redis
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
+from common import *
 
 redis_con = None
 redis_graph = None
+
 
 class testQueryValidationFlow(FlowTestsBase):
 
@@ -18,7 +11,7 @@ class testQueryValidationFlow(FlowTestsBase):
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph("G", redis_con)
+        redis_graph = Graph(redis_con, "G")
         self.populate_graph()
     
     def populate_graph(self):
@@ -344,16 +337,6 @@ class testQueryValidationFlow(FlowTestsBase):
         query = """CALL db.idx.fulltext.queryNodes('A', 'B') YIELD node AS n RETURN n"""
         redis_graph.query(query)
 
-    # Applying a filter for a non-boolean constant should raise a compile-time error.
-    def test23_invalid_constant_filter(self):
-        try:
-            query = """MATCH (a) WHERE 1 RETURN a"""
-            redis_graph.query(query)
-            assert(False)
-        except redis.exceptions.ResponseError as e:
-            assert("Expected boolean predicate" in str(e))
-            pass
-
     # Referencing a variable before defining it should raise a compile-time error.
     def test24_reference_before_definition(self):
         try:
@@ -376,28 +359,25 @@ class testQueryValidationFlow(FlowTestsBase):
             assert("Type mismatch: expected Node but was Path" in str(e))
             pass
 
-    # Scalar predicates in filters should raise errors.
+    # invalid predicates should raise errors.
     def test26_invalid_filter_predicate(self):
-        try:
-            query = """WITH 1 AS a WHERE '' RETURN a"""
-            redis_graph.query(query)
-            assert(False)
-        except redis.exceptions.ResponseError as e:
-            # Expecting an error.
-            assert("Expected boolean predicate" in str(e))
-            pass
+        queries = [
+            """WITH 1 AS a WHERE '' RETURN a""",
+            """MATCH (a) WHERE 1 RETURN a""",
+            """MATCH (a) WHERE -1 RETURN a""",
+            """MATCH (a) WHERE -1 OR true RETURN a""",
+            """MATCH (a) WHERE true OR -1 RETURN a""",
+            """MATCH (a) WHERE true AND -1 RETURN a""",
+            """MATCH (a:Author) WHERE a.name CONTAINS 'Ernest' OR 'Amor' RETURN a"""]
 
-    # Conditional filters with non-boolean scalar predicate children should raise errors.
-    def test27_invalid_filter_predicate_child(self):
-        try:
-            # 'Amor' is an invalid construct for the RHS of 'OR'.
-            query = """MATCH (a:Author) WHERE a.name CONTAINS 'Ernest' OR 'Amor' RETURN a"""
-            redis_graph.query(query)
-            assert(False)
-        except redis.exceptions.ResponseError as e:
-            # Expecting an error.
-            assert("Expected boolean predicate" in str(e))
-            pass
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                # Expecting an error.
+                assert("Expected boolean predicate" in str(e))
+                pass
 
     # The NOT operator does not compare left and right side expressions.
     def test28_invalid_filter_binary_not(self):
@@ -592,3 +572,30 @@ class testQueryValidationFlow(FlowTestsBase):
                 assert(False)
             except redis.exceptions.ResponseError as e:
                 self.env.assertContains("query with more than one statement is not supported", str(e))
+
+    def test40_compile_time_errors_in_star_projections(self):
+        # validate that parser errors are handled correctly
+        # in queries containing star projections
+        queries = ["MATCH (a)-[r:]->(b) RETURN *",
+                   "MATCH (a)-[r:]->(b) WITH b RETURN *"]
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError:
+                pass
+
+        # check that AST validation errors are handled correctly
+        # in queries containing star projections
+        queries = ["WITH 1 RETURN *",
+                   "RETURN *",
+                   "CREATE () RETURN DISTINCT *",
+                   "MATCH () WITH * RETURN z",
+                   "MATCH () WITH * RETURN *",
+                   "MATCH () WITH * WHERE n.v > 1 RETURN *"]
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError:
+                pass

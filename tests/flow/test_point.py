@@ -1,7 +1,4 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph
+from common import *
 
 GRAPH_ID = "point"
 redis_graph = None
@@ -11,7 +8,7 @@ class testPath():
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
 
     def setUp(self):
         self.env.flush()

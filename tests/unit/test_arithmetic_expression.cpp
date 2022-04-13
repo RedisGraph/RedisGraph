@@ -249,7 +249,7 @@ TEST_F(ArithmeticTest, AggregateTest) {
 	AR_EXP_Aggregate(arExp, NULL);
 	AR_EXP_Aggregate(arExp, NULL);
 	AR_EXP_Aggregate(arExp, NULL);
-	result = AR_EXP_Finalize(arExp, NULL);
+	result = AR_EXP_FinalizeAggregations(arExp, NULL);
 	ASSERT_EQ(result.doubleval, 3);
 	AR_EXP_Free(arExp);
 
@@ -259,7 +259,7 @@ TEST_F(ArithmeticTest, AggregateTest) {
 	AR_EXP_Aggregate(arExp, NULL);
 	AR_EXP_Aggregate(arExp, NULL);
 	AR_EXP_Aggregate(arExp, NULL);
-	result = AR_EXP_Finalize(arExp, NULL);
+	result = AR_EXP_FinalizeAggregations(arExp, NULL);
 	ASSERT_EQ(result.doubleval, 5);
 	AR_EXP_Free(arExp);
 }

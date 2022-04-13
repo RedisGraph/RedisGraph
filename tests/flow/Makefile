@@ -1,22 +1,20 @@
 .PHONY: test
 
-test:
-# if host is linux
-ifeq ($(OS),linux)
-	# regular tests on linux
-	@python3 -m RLTest --module ../../src/redisgraph.so $(TEST_ARGS)
-	# rerun persistency tests using AOF
-	@python3 -m RLTest --module ../../src/redisgraph.so --use-aof -t test_persistency $(TEST_ARGS)
-else
-# mac
+ROOT:=$(realpath ../..)
+TARGET=$(ROOT)/src/redisgraph.so)
+
+DOCKER_VG=0
 ifeq ($(VALGRIND),)
-	# no valgrind
-	@python3 -m RLTest --module ../../src/redisgraph.so $(TEST_ARGS)
-	# rerun persistency tests using AOF
-	@python3 -m RLTest --module ../../src/redisgraph.so --use-aof -t test_persistency $(TEST_ARGS)
+ifeq ($(OS),macos)
+DOCKER_VG=1
+endif
+endif
+
+test:
+ifeq ($(DOCKER_VG),0)
+	@MODULE=$(TARGET) ./test.sh
 else
 	# valgrind in docker
 	@echo running docker to run valgrind flow test on MacOS
-	@docker run -ti  mac_os_test_docker bash -c "cd tests/flow/; RLTest --module ../../src/redisgraph.so $(TEST_ARGS)"
-endif
+	@docker run -ti  mac_os_test_docker bash -c "cd tests/flow/; MODULE=../../src/redisgraph.so ./test.sh"
 endif

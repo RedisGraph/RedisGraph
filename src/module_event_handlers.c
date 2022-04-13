@@ -129,6 +129,9 @@ static void _CreateGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
 		// set value in key
 		RedisModule_ModuleTypeSetValue(key, GraphMetaRedisModuleType, gc);
 		RedisModule_CloseKey(key);
+		
+		// increase graph context ref count for each virtual key
+		GraphContext_IncreaseRefCount(gc);
 		RedisModule_FreeString(ctx, meta_rm_string);
 		rm_free(uuid);
 	}
@@ -185,19 +188,16 @@ static void _FlushDBHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t 
 	if(eid.id == REDISMODULE_EVENT_FLUSHDB &&
 	   subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
 		aux_field_counter = 0;
-		uint count = array_len(graphs_in_keyspace);
-		for (size_t i = 0; i < count; i++) {
-			GraphContext_Delete(graphs_in_keyspace[i]);
-		}
 	}
 }
 
 // Checks if the event is persistence start event.
 static bool _IsEventPersistenceStart(RedisModuleEvent eid, uint64_t subevent) {
 	return eid.id == REDISMODULE_EVENT_PERSISTENCE  &&
-		   (subevent == REDISMODULE_SUBEVENT_PERSISTENCE_RDB_START ||    // Normal RDB.
-			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_AOF_START ||    // Preamble AOF.
-			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_SYNC_RDB_START  // SAVE and DEBUG RELOAD.
+		   (subevent == REDISMODULE_SUBEVENT_PERSISTENCE_RDB_START      ||    // Normal RDB.
+			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_AOF_START      ||    // Preamble AOF.
+			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_SYNC_RDB_START ||    // SAVE and DEBUG RELOAD.
+			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_SYNC_AOF_START       // 
 		   );
 }
 

@@ -523,8 +523,7 @@ static AR_ExpNode *_AR_ExpFromShortestPath
 	ctx->reltype_count  =  array_len(reltype_names);
 	ctx->free_matrices  =  false;
 
-	// Add the context to the function descriptor as the function's private data.
-	op->op.f = AR_SetPrivateData(op->op.f, ctx);
+	AR_SetPrivateData(op, ctx);
 	AR_ExpNode *src;
 	AR_ExpNode *dest;
 	const cypher_astnode_t *ast_src = cypher_ast_pattern_path_get_element(path, 0);
@@ -554,8 +553,11 @@ static AR_ExpNode *_AR_ExpNodeFromParameter(const cypher_astnode_t *param) {
 	return AR_EXP_NewParameterOperandNode(identifier);
 }
 
-static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *comp_exp,
-														cypher_astnode_type_t type) {
+static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction
+(
+	const cypher_astnode_t *comp_exp,
+	cypher_astnode_type_t type
+) {
 	// set the appropriate function name according to the node type
 	const char *func_name;
 	if(type == CYPHER_AST_ANY) func_name = "ANY";
@@ -564,12 +566,11 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 	else if(type == CYPHER_AST_NONE) func_name = "NONE";
 	else func_name = "LIST_COMPREHENSION";
 
-	/* Using the sample query:
-	 * WITH [1,2,3] AS arr RETURN [val IN arr WHERE val % 2 = 1 | val * 2] AS comp
-	 */
+	// using the sample query:
+	// WITH [1,2,3] AS arr RETURN [val IN arr WHERE val % 2 = 1 | val * 2] AS comp
 
-	/* The comprehension's local variable, WHERE expression, and eval routine
-	 * do not change for each invocation, so are bundled together in the function's context. */
+	// the comprehension's local variable, WHERE expression, and eval routine
+	// do not change for each invocation, so are bundled together in the function's context
 	ListComprehensionCtx *ctx = rm_malloc(sizeof(ListComprehensionCtx));
 	ctx->ft            =  NULL;
 	ctx->eval_exp      =  NULL;
@@ -577,8 +578,8 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 	ctx->variable_str  =  NULL;
 	ctx->variable_idx  =  INVALID_INDEX;
 
-	/* Retrieve the variable name introduced in this context to iterate over list elements.
-	 * In the above query, this is 'val'. */
+	// retrieve the variable name introduced in this context to iterate over list elements
+	// in the above query, this is 'val'
 	const cypher_astnode_t *variable_node = cypher_ast_list_comprehension_get_identifier(comp_exp);
 	ASSERT(cypher_astnode_type(variable_node) == CYPHER_AST_IDENTIFIER);
 
@@ -611,8 +612,8 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 	// build an operation node to represent the list comprehension
 	AR_ExpNode *op = AR_EXP_NewOpNode(func_name, 2);
 
-	// add the context to the function descriptor as the function's private data
-	op->op.f = AR_SetPrivateData(op->op.f, ctx);
+	// add the context as function's private data
+	AR_SetPrivateData(op, ctx);
 
 	// 'arr' is the list expression
 	// note that this value could resolve to an alias, a literal array,
@@ -673,8 +674,8 @@ static AR_ExpNode *_AR_ExpNodeFromReduceFunction
 	// build an operation node to represent the reduction
 	AR_ExpNode *reduce = AR_EXP_NewOpNode("REDUCE", 3);
 
-	// add the context to the function descriptor as the function's private data
-	reduce->op.f = AR_SetPrivateData(reduce->op.f, ctx);
+	// add the context as function's private data
+	AR_SetPrivateData(reduce, ctx);
 
 	//--------------------------------------------------------------------------
 	// set expression child nodes
@@ -786,11 +787,9 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 	} else if(t == CYPHER_AST_REDUCE) {
 		return _AR_ExpNodeFromReduceFunction(expr);
 	} else if(t == CYPHER_AST_PATTERN_PATH || t == CYPHER_AST_PATTERN_COMPREHENSION) {
-		AR_ExpNode *e = AR_EXP_NewOpNode("coalesce", 2);
+		// this variable is assign by operitions that created in build_pattern_comprehension_ops.c
 		const char *alias = AST_ToString(expr);
-		e->op.children[0] = AR_EXP_NewVariableOperandNode(alias);
-		e->op.children[1] = AR_EXP_NewConstOperandNode(SI_Array(0));
-		return e;
+		return AR_EXP_NewVariableOperandNode(alias);
 	} else {
 		/*
 		   Unhandled types:

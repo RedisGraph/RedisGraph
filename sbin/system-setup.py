@@ -32,6 +32,8 @@ class RedisGraphSetup(paella.Setup):
 
     def redhat_compat(self):
         self.install("redhat-lsb-core")
+        if not self.platform.is_arm():
+            self.install_linux_gnu_tar()
         if self.osnick == 'ol8':
             self.install("which") # for automake
         self.run("%s/bin/getepel" % READIES, sudo=True)
@@ -45,7 +47,8 @@ class RedisGraphSetup(paella.Setup):
 
     def macos(self):
         self.install_gnu_utils()
-        self.run("%s/bin/getgcc --modern" % READIES)
+        # self.run("%s/bin/getgcc --modern" % READIES)
+        self.run("brew install libomp")
         self.install("redis")
         self.install_peg()
 
@@ -66,8 +69,10 @@ class RedisGraphSetup(paella.Setup):
         else:
             self.install("lcov-git", aur=True)
 
-        self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall".format(PYTHON=self.python, READIES=READIES))
+        self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall --modern".format(PYTHON=self.python, READIES=READIES))
         self.pip_install("-r tests/requirements.txt")
+        self.pip_install("-r tests/fuzz/requirements.txt")
+        self.run("%s/bin/getpy2" % READIES) # for RediSearch build
 
     def install_peg(self):
         self.run(r"""

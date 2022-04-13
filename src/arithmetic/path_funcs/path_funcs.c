@@ -21,7 +21,7 @@
  * Odd indices members are always representing the value of a single node.
  * Even indices members are either representing the value of a single edge,
  * or an sipath, in case of variable length traversal. */
-SIValue AR_TOPATH(SIValue *argv, int argc) {
+SIValue AR_TOPATH(SIValue *argv, int argc, void *private_data) {
 	const cypher_astnode_t *ast_path = argv[0].ptrval;
 	uint nelements = cypher_ast_pattern_path_nelements(ast_path);
 	ASSERT(argc == (nelements + 1));
@@ -96,14 +96,13 @@ void *ShortestPath_Clone(void *orig) {
 	return ctx_clone;
 }
 
-SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
+SIValue AR_SHORTEST_PATH(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	if(SI_TYPE(argv[1]) == T_NULL) return SI_NullVal();
-	ASSERT(SI_TYPE(argv[2]) != T_NULL);
 
 	Node             *srcNode   =  argv[0].ptrval;
 	Node             *destNode  =  argv[1].ptrval;
-	ShortestPathCtx  *ctx       =  argv[2].ptrval;
+	ShortestPathCtx  *ctx       =  private_data;
 	GrB_Index src_id            =  ENTITY_GET_ID(srcNode);
 	GrB_Index dest_id           =  ENTITY_GET_ID(destNode);
 
@@ -238,52 +237,57 @@ cleanup:
 	return p;
 }
 
-SIValue AR_PATH_NODES(SIValue *argv, int argc) {
+SIValue AR_PATH_NODES(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	return SIPath_Nodes(argv[0]);
 }
 
-SIValue AR_PATH_RELATIONSHIPS(SIValue *argv, int argc) {
+SIValue AR_PATH_RELATIONSHIPS(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	return SIPath_Relationships(argv[0]);
 }
 
-SIValue AR_PATH_LENGTH(SIValue *argv, int argc) {
+SIValue AR_PATH_LENGTH(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	return SI_LongVal(SIPath_Length(argv[0]));
 }
 
 void Register_PathFuncs() {
 	SIType *types;
+	SIType ret_type;
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 2);
 	array_append(types, T_PTR);
 	array_append(types, T_NULL | T_NODE | T_EDGE | T_PATH);
-	func_desc = AR_FuncDescNew("topath", AR_TOPATH, 1, VAR_ARG_LEN, types, false, false);
+	ret_type = T_PATH | T_NULL;
+	func_desc = AR_FuncDescNew("topath", AR_TOPATH, 1, VAR_ARG_LEN, types, ret_type, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
 	array_append(types, T_NULL | T_NODE);
 	array_append(types, T_NULL | T_NODE);
-	array_append(types, T_PTR); // pointer to ShortestPathCtx struct
-	func_desc = AR_FuncDescNew("shortestpath", AR_SHORTEST_PATH, 3, 3, types, false, false);
+	ret_type = T_PATH | T_NULL;
+	func_desc = AR_FuncDescNew("shortestpath", AR_SHORTEST_PATH, 2, 2, types, ret_type, false);
 	AR_SetPrivateDataRoutines(func_desc, ShortestPath_Free, ShortestPath_Clone);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_PATH);
-	func_desc = AR_FuncDescNew("nodes", AR_PATH_NODES, 1, 1, types, false, false);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("nodes", AR_PATH_NODES, 1, 1, types, ret_type, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_PATH);
-	func_desc = AR_FuncDescNew("relationships", AR_PATH_RELATIONSHIPS, 1, 1, types, false, false);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("relationships", AR_PATH_RELATIONSHIPS, 1, 1, types, ret_type, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_PATH);
-	func_desc = AR_FuncDescNew("length", AR_PATH_LENGTH, 1, 1, types, false, false);
+	ret_type = T_INT64 | T_NULL;
+	func_desc = AR_FuncDescNew("length", AR_PATH_LENGTH, 1, 1, types, ret_type, false);
 	AR_RegFunc(func_desc);
 }
 

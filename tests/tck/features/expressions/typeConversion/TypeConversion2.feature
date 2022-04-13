@@ -91,7 +91,6 @@ Feature: TypeConversion2 - To Integer
       | [2, 2, null] |
     And no side effects
 
-  @skip
   Scenario: [6] `toInteger()` on a complex-typed expression
     Given any graph
     And parameters are:
