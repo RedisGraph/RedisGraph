@@ -1,6 +1,5 @@
+from common import *
 import random
-from RLTest import Env
-from redisgraph import Graph
 from pathos.pools import ProcessPool as Pool
 
 # 1. test reading and setting query memory limit configuration
@@ -29,9 +28,10 @@ MEM_THRIFTY_QUERY  =  """UNWIND range(0, 10) AS x
                          WHERE (x / 2) = 50
                          RETURN x, count(x)"""
 
+
 def issue_query(conn, q, should_fail):
     try:
-        g = Graph(GRAPH_NAME, conn)
+        g = Graph(conn, GRAPH_NAME)
         g.query(q)
         return not should_fail
     except Exception as e:

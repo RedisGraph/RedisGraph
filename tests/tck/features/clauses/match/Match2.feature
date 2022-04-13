@@ -60,18 +60,15 @@ Feature: Match2 - Match relationships
       | [:T1] |
     And no side effects
 
-  @skip
   Scenario: [3] Matching a self-loop with an undirected relationship pattern
     Given an empty graph
     And having executed:
       """
-      CREATE (a)
-      CREATE (a)-[:T]->(a)
+      CREATE (a) CREATE (a)-[:T]->(a)
       """
     When executing query:
       """
-      MATCH ()-[r]-()
-      RETURN type(r) AS r
+      MATCH ()-[r]-() RETURN type(r) AS r
       """
     Then the result should be, in any order:
       | r   |
