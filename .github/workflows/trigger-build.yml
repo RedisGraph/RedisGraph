@@ -2,7 +2,7 @@ name: Trigger website deploy
 on:
   push:
     branches:
-      - master-newdocs
+      - master
 
 jobs:
   trigger:
