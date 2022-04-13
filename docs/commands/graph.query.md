@@ -1,32 +1,14 @@
-# Redis Graph Commands
-
-## GRAPH.QUERY
-
 Executes the given query against a specified graph.
 
 Arguments: `Graph name, Query, Timeout [optional]`
 
-Returns: [Result set](result_structure.md#redisgraph-result-set-structure)
+Returns: [Result set](result_structure#redisgraph-result-set-structure)
 
 ```sh
 GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
 ```
 
-Query-level timeouts can be set as described in [the configuration section](configuration.md#query-timeout).
-
-## GRAPH.RO_QUERY
-
-Executes a given read only query against a specified graph.
-
-Arguments: `Graph name, Query, Timeout [optional]`
-
-Returns: [Result set](result_structure.md#redisgraph-result-set-structure) for a read only query or an error if a write query was given.
-
-```sh
-GRAPH.RO_QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
-```
-
-Query-level timeouts can be set as described in [the configuration section](configuration.md#query-timeout).
+Query-level timeouts can be set as described in [the configuration section](configuration#query-timeout).
 
 ### Query language
 
@@ -1080,107 +1062,4 @@ To construct a full-text index on the `title` property with phonetic search of a
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('Movie', {field: 'title', phonetic: 'dm:en'})"
-```
-
-## GRAPH.PROFILE
-
-Executes a query and produces an execution plan augmented with metrics for each operation's execution.
-
-Arguments: `Graph name, Query`
-
-Returns: `String representation of a query execution plan, with details on results produced by and time spent in each operation.`
-
-`GRAPH.PROFILE` is a parallel entrypoint to `GRAPH.QUERY`. It accepts and executes the same queries, but it will not emit results,
-instead returning the operation tree structure alongside the number of records produced and total runtime of each operation.
-
-It is important to note that this blends elements of [GRAPH.QUERY](#graphquery) and [GRAPH.EXPLAIN](#graphexplain).
-It is not a dry run and will perform all graph modifications expected of the query, but will not output results produced by a `RETURN` clause or query statistics.
-
-```sh
-GRAPH.PROFILE imdb
-"MATCH (actor_a:Actor)-[:ACT]->(:Movie)<-[:ACT]-(actor_b:Actor)
-WHERE actor_a <> actor_b
-CREATE (actor_a)-[:COSTARRED_WITH]->(actor_b)"
-1) "Create | Records produced: 11208, Execution time: 168.208661 ms"
-2) "    Filter | Records produced: 11208, Execution time: 1.250565 ms"
-3) "        Conditional Traverse | Records produced: 12506, Execution time: 7.705860 ms"
-4) "            Node By Label Scan | (actor_a:Actor) | Records produced: 1317, Execution time: 0.104346 ms"
-```
-
-## GRAPH.DELETE
-
-Completely removes the graph and all of its entities.
-
-Arguments: `Graph name`
-
-Returns: `String indicating if operation succeeded or failed.`
-
-```sh
-GRAPH.DELETE us_government
-```
-
-Note: To delete a node from the graph (not the entire graph), execute a `MATCH` query and pass the alias to the `DELETE` clause:
-
-```
-GRAPH.QUERY DEMO_GRAPH "MATCH (x:Y {propname: propvalue}) DELETE x"
-```
-
-WARNING: When you delete a node, all of the node's incoming/outgoing relationships are also removed.
-
-## GRAPH.EXPLAIN
-
-Constructs a query execution plan but does not run it. Inspect this execution plan to better
-understand how your query will get executed.
-
-Arguments: `Graph name, Query`
-
-Returns: `String representation of a query execution plan`
-
-```sh
-GRAPH.EXPLAIN us_government "MATCH (p:President)-[:BORN]->(h:State {name:'Hawaii'}) RETURN p"
-```
-
-## GRAPH.SLOWLOG
-
-Returns a list containing up to 10 of the slowest queries issued against the given graph ID.
-
-Each item in the list has the following structure:
-
-1. A unix timestamp at which the log entry was processed.
-2. The issued command.
-3. The issued query.
-4. The amount of time needed for its execution, in milliseconds.
-
-```sh
-GRAPH.SLOWLOG graph_id
- 1) 1) "1581932396"
-    2) "GRAPH.QUERY"
-    3) "MATCH (a:Person)-[:FRIEND]->(e) RETURN e.name"
-    4) "0.831"
- 2) 1) "1581932396"
-    2) "GRAPH.QUERY"
-    3) "MATCH (me:Person)-[:FRIEND]->(:Person)-[:FRIEND]->(fof:Person) RETURN fof.name"
-    4) "0.288"
-```
-
-## GRAPH.CONFIG
-Retrieves or updates a RedisGraph configuration.
-Arguments: `GET/SET, <config name> [value]`
-`value` should only be specified in `SET` contexts, while `*` may be substituted for an explict `config name` if all configurations should be returned.
-Only run-time configurations may be `SET`, though all configurations may be retrieved.
-```sh
-127.0.0.1:6379> GRAPH.CONFIG SET RESULTSET_SIZE 1000
-OK
-127.0.0.1:6379> GRAPH.CONFIG GET RESULTSET_SIZE
-1) "RESULTSET_SIZE"
-2) (integer) 1000
-```
-
-## GRAPH.LIST
-Lists all graph keys in the keyspace.
-```sh
-127.0.0.1:6379> GRAPH.LIST
-2) G
-3) resources
-4) players
 ```

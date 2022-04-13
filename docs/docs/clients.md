@@ -1,7 +1,11 @@
-# RedisGraph Client Libraries
-
-The full functionality of RedisGraph is available through `redis-cli` and the Redis API.  [RedisInsight](https://redis.com/redis-enterprise/redis-insight/) is a visual tool that provides capabilities to design, develop and optimize into a single easy-to-use environment, and has built-in support for RedisGraph.
-In addition there are severeal client libraries to improve abstractions and allow for a more natural experience in a project's native language. Additionally, these clients take advantage of some RedisGraph features that may reduce network throughput in some circumstances.
+---
+title: "RedisGraph Client Libraries"
+linkTitle: "Clients"
+weight: 2
+description: >
+    The full functionality of RedisGraph is available through `redis-cli` and the Redis API.  [RedisInsight](https://redis.com/redis-enterprise/redis-insight/) is a visual tool that provides capabilities to design, develop and optimize into a single easy-to-use environment, and has built-in support for RedisGraph.
+    In addition there are severeal client libraries to improve abstractions and allow for a more natural experience in a project's native language. Additionally, these clients take advantage of some RedisGraph features that may reduce network throughput in some circumstances.
+---
 
 ## Currently available Libraries
 
@@ -101,4 +105,4 @@ In addition there are severeal client libraries to improve abstractions and allo
 
 ## Implementing a client
 
-Information on some of the tasks involved in writing a RedisGraph client can be found in the [Client Specification](client_spec.md).
+Information on some of the tasks involved in writing a RedisGraph client can be found in the [Client Specification](client_spec).
