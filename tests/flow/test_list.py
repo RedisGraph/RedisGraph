@@ -1,11 +1,8 @@
-from RLTest import Env
-import redis
-from redisgraph import Graph, Node, Edge
-
-from base import FlowTestsBase
+from common import *
 
 redis_graph = None
 GRAPH_ID = "G"
+
 
 # tests the GRAPH.LIST command
 class testGraphList(FlowTestsBase):
@@ -59,7 +56,7 @@ class testList(FlowTestsBase):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
 
     def test01_collect(self):
         for i in range(10):
