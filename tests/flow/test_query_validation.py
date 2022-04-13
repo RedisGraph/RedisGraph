@@ -607,7 +607,8 @@ class testQueryValidationFlow(FlowTestsBase):
                 """MATCH (a) return max(a.val) as x, max(a.val) as x""",
                 """MATCH (a) RETURN a.val, a.val LIMIT 1""",
                 """MATCH (a) return a.val as x, a.val as x LIMIT 1""",
-                """WITH 1 AS a, 1 AS a RETURN a"""]
+                """WITH 1 AS a, 1 AS a RETURN a""",
+                """MATCH (n) WITH n, n RETURN n"""]
 
         for q in queries:
             try:

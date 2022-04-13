@@ -803,10 +803,12 @@ static AST_Validation _Validate_WITH_Clauses(const AST *ast) {
 
 	raxFree(rax);
 
-	if(res == AST_INVALID) return AST_INVALID;
+	if(res == AST_VALID) {
+		// Verify that functions invoked by the WITH clause are valid.
+		res = _ValidateFunctionCalls(with_clause, true);
+	}
 
-	// Verify that functions invoked by the WITH clause are valid.
-	return _ValidateFunctionCalls(with_clause, true);
+	return res;
 }
 
 // Verify that MERGE doesn't redeclare bound relations and that one reltype is specified for unbound relations.
