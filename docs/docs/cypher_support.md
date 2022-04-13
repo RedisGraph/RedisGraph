@@ -1,6 +1,11 @@
-# Cypher Coverage
-RedisGraph implements a subset of the Cypher language, which is growing as development continues.
-This document is based on the Cypher Query Language Reference (version 9), available at [OpenCypher Resources](https://www.opencypher.org/resources).
+---
+title: "Cypher Coverage"
+linkTitle: "Cypher Coverage"
+weight: 7
+description: >
+    RedisGraph implements a subset of the Cypher language, which is growing as development continues.
+    This document is based on the Cypher Query Language Reference (version 9), available at [OpenCypher Resources](https://www.opencypher.org/resources).
+---
 
 ## Patterns
 Patterns are fully supported.
@@ -69,7 +74,7 @@ We do not support any of these properties at the type level, meaning nodes and r
 ### Reading/Writing Clauses
 + MERGE
 + CALL (procedures)
-    - The currently-supported procedures can be found in [the Procedures documentation](commands.md#procedures).
+    - The currently-supported procedures can be found in [the Procedures documentation](commands#procedures).
 
 ### Set Operations
 + UNION
@@ -84,7 +89,7 @@ We do not support any of these properties at the type level, meaning nodes and r
 + coalesce
 + startNode
 + endNode
-+ [list comprehensions](commands.md#list-comprehensions)
++ [list comprehensions](commands#list-comprehensions)
 
   **Unsupported:**
 
@@ -183,7 +188,7 @@ We do not support any of these properties at the type level, meaning nodes and r
 ## Parameters
 Parameters may be specified to allow for more flexible query construction:
 ```sh
-CYPHER name_param = "Niccolò Machiavelli" birth_year_param = 1469; MATCH (p:Person {name: $name_param, birth_year: $birth_year_param}) RETURN p
+CYPHER name_param = "Niccolò Machiavelli" birth_year_param = 1469 MATCH (p:Person {name: $name_param, birth_year: $birth_year_param}) RETURN p
 ```
 The example above shows the syntax used by `redis-cli` to set parameters, but 
 each RedisGraph client introduces a language-appropriate method for setting parameters,
