@@ -411,10 +411,10 @@ static inline void _AR_EXP_FreeResultsArray(SIValue *results, int count) {
 	for(int i = 0; i < count; i ++) {
 		SIValue_Free(results[i]);
 	}
-    // Large arrays are heap-allocated, so here is where we free it.
-    if (count > MAX_ARRAY_SIZE_ON_STACK) {
-        rm_free(results);
-    }
+	// Large arrays are heap-allocated, so here is where we free it.
+	if (count > MAX_ARRAY_SIZE_ON_STACK) {
+		rm_free(results);
+	}
 }
 
 static AR_EXP_Result _AR_EXP_EvaluateFunctionCall
@@ -428,14 +428,15 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall
 	int child_count = node->op.child_count;
 
 	// evaluate each child before evaluating current node
-    SIValue *sub_trees;
-    // if array size is above the threshold, we allocate it on the heap (otherwise on stack)
-    SIValue sub_trees_on_stack[MAX_ARRAY_SIZE_ON_STACK];
-    if (child_count > MAX_ARRAY_SIZE_ON_STACK) {
-        sub_trees = rm_malloc(child_count * sizeof(SIValue));
-    } else {
-        sub_trees = sub_trees_on_stack;
-    }
+	SIValue *sub_trees = NULL;
+	// if array size is above the threshold, we allocate it on the heap (otherwise on stack)
+	size_t array_on_stack_size = child_count > MAX_ARRAY_SIZE_ON_STACK ? 0 : child_count;
+	SIValue sub_trees_on_stack[array_on_stack_size];
+	if (child_count > MAX_ARRAY_SIZE_ON_STACK) {
+		sub_trees = rm_malloc(child_count * sizeof(SIValue));
+	} else {
+		sub_trees = sub_trees_on_stack;
+	}
 	bool param_found = false;
 	for(int child_idx = 0; child_idx < NODE_CHILD_COUNT(node); child_idx++) {
 		SIValue v;
