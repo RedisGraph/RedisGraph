@@ -56,7 +56,7 @@ static AST_Operator _NegateOperator(AST_Operator op) {
 
 /* Negate expression by wrapping it with a NOT function, NOT(exp) */
 static void _NegateExpression(AR_ExpNode **exp) {
-	AR_ExpNode *root = AR_EXP_NewOpNode("not", 1);
+	AR_ExpNode *root = AR_EXP_NewOpNode("not", true, 1);
 	root->op.children[0] = *exp;
 	*exp = root;
 }
