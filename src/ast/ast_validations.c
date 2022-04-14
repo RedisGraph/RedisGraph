@@ -1056,6 +1056,7 @@ AST_Validation _AST_ValidateResultColumns
 		}
 	}
 	
+	raxFree(rax);
 	array_free(columns);
 	
 	return res;
