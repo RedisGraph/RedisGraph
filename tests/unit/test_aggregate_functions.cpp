@@ -20,7 +20,6 @@ extern "C"
 
 // Declaration of used functions not in header files
 extern AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *ret_clause, AST *ast);
-extern AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count);
 
 
 #ifdef __cplusplus

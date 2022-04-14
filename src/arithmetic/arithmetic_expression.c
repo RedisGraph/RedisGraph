@@ -138,8 +138,9 @@ static AR_ExpNode *_AR_EXP_NewOpNode(uint child_count) {
 
 static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 	const char *func_name = exp->op.f->name;
+	bool include_internal = exp->op.f->internal;
 	uint child_count = exp->op.child_count;
-	AR_ExpNode *clone = AR_EXP_NewOpNode(func_name, child_count);
+	AR_ExpNode *clone = AR_EXP_NewOpNode(func_name, include_internal, child_count);
 	AR_Func_Clone clone_cb = clone->op.f->callbacks.clone;
 	void *pdata = exp->op.private_data;
 	if(clone_cb != NULL) {
@@ -159,10 +160,11 @@ static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 AR_ExpNode *AR_EXP_NewOpNode
 (
 	const char *func_name,
+	bool include_internal,
 	uint child_count
 ) {
 	// retrieve function
-	AR_FuncDesc *func = AR_GetFunc(func_name);
+	AR_FuncDesc *func = AR_GetFunc(func_name, include_internal);
 	AR_ExpNode *node = _AR_EXP_NewOpNode(child_count);
 
 	ASSERT(func != NULL);
@@ -212,7 +214,7 @@ AR_ExpNode *AR_EXP_NewAttributeAccessNode(AR_ExpNode *entity,
 
 	// entity is an expression which should be evaluated to a graph entity
 	// attr is the name of the attribute we want to extract from entity
-	AR_ExpNode *root = AR_EXP_NewOpNode("property", 3);
+	AR_ExpNode *root = AR_EXP_NewOpNode("property", true, 3);
 	root->op.children[0] = entity;
 	root->op.children[1] = AR_EXP_NewConstOperandNode(prop_name);
 	root->op.children[2] = AR_EXP_NewConstOperandNode(prop_idx);
