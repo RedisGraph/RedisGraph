@@ -621,7 +621,10 @@ class testQueryValidationFlow(FlowTestsBase):
     def test42_unknown_function(self):
         queries = ["""MATCH (a { v: x()}) RETURN a""",
                 """MERGE (a { v: x()}) RETURN a""",
-                """CREATE (a { v: x()}) RETURN a"""]
+                """CREATE (a { v: x()}) RETURN a""",
+                """MATCH (n) RETURN shortestPath(n, n)""",
+                """MATCH p=()-[*1..5]->() RETURN shortestPath(p)""",
+                """RETURN ge(1, 2)"""]
 
         for q in queries:
             try:

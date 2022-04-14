@@ -207,7 +207,7 @@ static FT_FilterNode *_convertPatternPath(const cypher_astnode_t *entity) {
 	 * First argument is a pointer to the original AST pattern node.
 	 * argument 1..alias_count are the referenced aliases,
 	 * required for filter positioning when constructing an execution plan. */
-	AR_ExpNode *exp = AR_EXP_NewOpNode("path_filter", 1 + alias_count);
+	AR_ExpNode *exp = AR_EXP_NewOpNode("path_filter", true, 1 + alias_count);
 	exp->op.children[0] = AR_EXP_NewConstOperandNode(SI_PtrVal((void *)entity));
 	for(uint i = 0; i < alias_count; i++) {
 		AR_ExpNode *child = AR_EXP_NewVariableOperandNode(aliases[i]);

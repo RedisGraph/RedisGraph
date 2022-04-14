@@ -48,6 +48,7 @@ typedef struct {
 	SIType ret_type;       // return type
 	uint min_argc;         // minimal number of arguments function expects
 	uint max_argc;         // maximal number of arguments function expects
+	bool internal;         // is function internal
 	bool reducible;        // can be reduced using static evaluation
 	bool aggregate;        // true if the function is an aggregation
 	const char *name;      // function name
@@ -63,6 +64,7 @@ AR_FuncDesc *AR_FuncDescNew
 	uint max_argc,        // maximum number of arguments
 	SIType *types,        // acceptable types
 	SIType ret_type,      // return type
+	bool internal,        // is function internal
 	bool reducible        // is function reducible
 );
 
@@ -83,7 +85,8 @@ void AR_SetPrivateDataRoutines
 // retrieves an arithmetic function by its name
 AR_FuncDesc *AR_GetFunc
 (
-	const char *func_name
+	const char *func_name,
+	bool include_internal
 );
 
 // get function return type
