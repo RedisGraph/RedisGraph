@@ -68,6 +68,9 @@ const cypher_astnode_t *AST_GetClauseByIdx(const AST *ast, uint i);
 // Returns the indexes into the AST of all instances of the given clause.
 uint *AST_GetClauseIndices(const AST *ast, cypher_astnode_type_t clause_type);
 
+// Returns the index in the AST of the first instance of the given clause, and -1 if there is no such instance.
+int AST_GetClauseFirstIndex(const AST *ast, cypher_astnode_type_t clause_type);
+
 // Returns the number of times the given clause appears in the AST.
 uint AST_GetClauseCount(const AST *ast, cypher_astnode_type_t clause_type);
 

@@ -993,6 +993,21 @@ cleanup:
 }
 
 static AST_Validation _Validate_DELETE_Clauses(const AST *ast) {
+	// validate that after delete clause there are only delete/return clauses
+	int delete_first_ind = AST_GetClauseFirstIndex(ast, CYPHER_AST_DELETE);
+	if(delete_first_ind == -1) {
+		return AST_VALID;
+	}
+	uint total_clause_count = cypher_ast_query_nclauses(ast->root);
+	for(uint i = delete_first_ind + 1; i < total_clause_count; i++) {
+		const cypher_astnode_t *clause = AST_GetClauseByIdx(ast, i);
+		if(cypher_astnode_type(clause) != CYPHER_AST_DELETE &&
+		cypher_astnode_type(clause) != CYPHER_AST_RETURN) {
+			ErrorCtx_SetError("DELETE can only be followed by DELETE or RETURN");
+			return AST_INVALID;
+		}
+	}
+
 	const cypher_astnode_t **delete_clauses = AST_GetClauses(ast, CYPHER_AST_DELETE);
 	AST_Validation res = AST_VALID;
 	uint clause_count = array_len(delete_clauses);
