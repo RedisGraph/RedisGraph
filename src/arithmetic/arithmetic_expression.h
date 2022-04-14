@@ -73,7 +73,7 @@ typedef struct AR_ExpNode {
 } AR_ExpNode;
 
 // creates a new Arithmetic expression operation node
-AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count);
+AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, bool include_internal, uint child_count);
 
 // creates a new Arithmetic expression variable operand node
 AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias);
