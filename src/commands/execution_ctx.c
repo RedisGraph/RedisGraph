@@ -75,6 +75,9 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 	cypher_parse_result_t *params_parse_result = parse_params(query,
 															  &query_string);
 
+	// Parameter parsing failed, return NULL.
+	if(params_parse_result == NULL) return NULL;
+
 	// query included only params e.g. 'cypher a=1' was provided
 	if(strlen(query_string) == 0) {
 		ErrorCtx_SetError("Error: empty query.");
@@ -83,9 +86,6 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 	// update query context with the query without params
 	QueryCtx *ctx = QueryCtx_GetQueryCtx();
 	ctx->query_data.query_no_params = query_string;
-
-	// Parameter parsing failed, return NULL.
-	if(params_parse_result == NULL) return NULL;
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Cache *cache = GraphContext_GetCache(gc);

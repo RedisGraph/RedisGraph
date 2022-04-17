@@ -30,6 +30,7 @@ AR_FuncDesc *AR_AggFuncDescNew
 	desc->ret_type                =  ret_type;
 	desc->min_argc                =  min_argc;
 	desc->max_argc                =  max_argc;
+	desc->internal                =  false;
 	desc->aggregate               =  true;
 	desc->reducible               =  false;
 	desc->callbacks.free          =  free;
