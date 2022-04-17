@@ -207,16 +207,6 @@ uint *AST_GetClauseIndices(const AST *ast, cypher_astnode_type_t clause_type) {
 	return clause_indices;
 }
 
-int AST_GetClauseFirstIndex(const AST *ast, cypher_astnode_type_t clause_type) {
-    uint clause_count = cypher_ast_query_nclauses(ast->root);
-    for(int i = 0; i < clause_count; i ++) {
-        if(cypher_astnode_type(cypher_ast_query_get_clause(ast->root, i)) == clause_type) {
-            return i;
-        }
-    }
-    return -1;
-}
-
 uint AST_GetClauseCount(const AST *ast, cypher_astnode_type_t clause_type) {
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	uint num_found = 0;

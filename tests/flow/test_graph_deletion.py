@@ -280,7 +280,36 @@ class testGraphDeletionFlow(FlowTestsBase):
         expected_result = [[1]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-    def test15_repeated_entity_deletion(self):
+    def test15_update_deleted_entities(self):
+        self.env.flush()
+        redis_con = self.env.getConnection()
+        redis_graph = Graph(redis_con, "delete_test")
+
+        src = Node()
+        dest = Node()
+        edge = Edge(src, "R", dest)
+
+        redis_graph.add_node(src)
+        redis_graph.add_node(dest)
+        redis_graph.add_edge(edge)
+        redis_graph.flush()
+
+        # Attempt to update entities after deleting them.
+        query = """MATCH (a)-[e]->(b) DELETE a, b SET a.v = 1, e.v = 2, b.v = 3"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.nodes_deleted, 2)
+        self.env.assertEquals(actual_result.relationships_deleted, 1)
+        # No properties should be set.
+        # (Note that this behavior is left unspecified by Cypher.)
+        self.env.assertEquals(actual_result.properties_set, 0)
+
+        # Validate that the graph is empty.
+        query = """MATCH (a) RETURN a"""
+        actual_result = redis_graph.query(query)
+        expected_result = []
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test16_repeated_entity_deletion(self):
         self.env.flush()
         redis_con = self.env.getConnection()
         redis_graph = Graph(redis_con, "repeated_edge_deletion")
@@ -302,7 +331,7 @@ class testGraphDeletionFlow(FlowTestsBase):
         # 2 nodes should be reported as deleted
         self.env.assertEquals(actual_result.nodes_deleted, 2)
 
-    def test16_invalid_deletions(self):
+    def test17_invalid_deletions(self):
         self.env.flush()
         redis_con = self.env.getConnection()
         redis_graph = Graph(redis_con, "delete_test")
@@ -356,35 +385,10 @@ class testGraphDeletionFlow(FlowTestsBase):
             except ResponseError as e:
                 self.env.assertContains("Delete type mismatch", str(e))
 
-        # try to update entities after deleting them - currently we don't allow it
+        # trying to change the graph after deletion is not supported currently
         try:
-            query = """MATCH (a)-[e]->(b) DELETE a, b SET a.v = 1, e.v = 2, b.v = 3"""
+            query = """MATCH (a:A)-[ab]->(b:B) DELETE ab, b MERGE (newB:B {num: 1})"""
             redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("DELETE can only be followed by DELETE or RETURN", str(e))
-
-        # try to update entities after deleting them - validate no crash (after bug fix)
-        query = """
-            CREATE (a:A)
-            CREATE (b1:B {num: 0}), (b2:B {num: 1})
-            CREATE (c1:C), (c2:C)
-            CREATE (a)-[:REL]->(b1),
-                   (a)-[:REL]->(b2),
-                   (b1)-[:REL]->(c1),
-                   (b2)-[:REL]->(c2)
-            """
-        redis_graph.query(query)
-        try:
-            query = """
-                  MATCH (a:A)-[ab]->(b:B)-[bc]->(c:C)
-                  DELETE ab, bc, b, c
-                  MERGE (newB:B {num: 1})
-                  MERGE (a)-[:REL]->(newB)
-                  MERGE (newC:C)
-                  MERGE (newB)-[:REL]->(newC)
-            """
-            redis_graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("DELETE can only be followed by DELETE or RETURN", str(e))
+            self.env.assertContains("DELETE can only be followed by another DELETE, SET or RETURN clauses", str(e))

@@ -993,51 +993,48 @@ cleanup:
 }
 
 static AST_Validation _Validate_DELETE_Clauses(const AST *ast) {
-	// validate that after delete clause there are only delete/return clauses
-	int delete_first_ind = AST_GetClauseFirstIndex(ast, CYPHER_AST_DELETE);
-	if(delete_first_ind == -1) {
-		return AST_VALID;
+	uint *delete_clause_indices = AST_GetClauseIndices(ast, CYPHER_AST_DELETE);
+	AST_Validation res = AST_VALID;
+	if (array_len(delete_clause_indices) == 0) {
+		goto cleanup;
 	}
 	uint total_clause_count = cypher_ast_query_nclauses(ast->root);
-	for(uint i = delete_first_ind + 1; i < total_clause_count; i++) {
+	for(uint i = delete_clause_indices[0]; i < total_clause_count; i++) {
+		// validate that after delete clause there are only delete/return/set clauses
 		const cypher_astnode_t *clause = AST_GetClauseByIdx(ast, i);
 		if(cypher_astnode_type(clause) != CYPHER_AST_DELETE &&
-		cypher_astnode_type(clause) != CYPHER_AST_RETURN) {
-			ErrorCtx_SetError("DELETE can only be followed by DELETE or RETURN");
-			return AST_INVALID;
+		   cypher_astnode_type(clause) != CYPHER_AST_RETURN &&
+		   cypher_astnode_type(clause) != CYPHER_AST_SET) {
+			ErrorCtx_SetError("DELETE can only be followed by another DELETE, SET or RETURN clauses");
+			res = AST_INVALID;
+			goto cleanup;
 		}
-	}
-
-	const cypher_astnode_t **delete_clauses = AST_GetClauses(ast, CYPHER_AST_DELETE);
-	AST_Validation res = AST_VALID;
-	uint clause_count = array_len(delete_clauses);
-	for(uint i = 0; i < clause_count; i++) {
-		const cypher_astnode_t *clause = delete_clauses[i];
-		uint expression_count = cypher_ast_delete_nexpressions(clause);
-		for(uint j = 0; j < expression_count; j++) {
-			const cypher_astnode_t *exp = cypher_ast_delete_get_expression(clause, j);
-			cypher_astnode_type_t type = cypher_astnode_type(exp);
-			// expecting an identifier or a function call
-			// identifiers and calls that don't resolve to a node or edge
-			// will raise an error at run-time
-			if(type != CYPHER_AST_IDENTIFIER &&
-			   type != CYPHER_AST_APPLY_OPERATOR &&
-			   type != CYPHER_AST_APPLY_ALL_OPERATOR &&
-			   type != CYPHER_AST_SUBSCRIPT_OPERATOR) {
-				ErrorCtx_SetError("DELETE can only be called on nodes and relationships");
-				res = AST_INVALID;
-				goto cleanup;
+		if (cypher_astnode_type(clause) == CYPHER_AST_DELETE) {
+			uint expression_count = cypher_ast_delete_nexpressions(clause);
+			for (uint j = 0; j < expression_count; j++) {
+				const cypher_astnode_t *exp = cypher_ast_delete_get_expression(clause, j);
+				cypher_astnode_type_t type = cypher_astnode_type(exp);
+				// expecting an identifier or a function call
+				// identifiers and calls that don't resolve to a node or edge
+				// will raise an error at run-time
+				if (type != CYPHER_AST_IDENTIFIER &&
+				    type != CYPHER_AST_APPLY_OPERATOR &&
+				    type != CYPHER_AST_APPLY_ALL_OPERATOR &&
+				    type != CYPHER_AST_SUBSCRIPT_OPERATOR) {
+					ErrorCtx_SetError("DELETE can only be called on nodes and relationships");
+					res = AST_INVALID;
+					goto cleanup;
+				}
 			}
+			// validate any func
+			bool include_aggregates = false;
+			res = _ValidateFunctionCalls(clause, include_aggregates);
+			if(res == AST_INVALID) goto cleanup;
 		}
-
-		// validate any func
-		bool include_aggregates = false;
-		res = _ValidateFunctionCalls(clause, include_aggregates);
-		if(res == AST_INVALID) goto cleanup;
 	}
 
 cleanup:
-	array_free(delete_clauses);
+	array_free(delete_clause_indices);
 	return res;
 }
 
