@@ -901,52 +901,70 @@ cleanup:
 	return res;
 }
 
-// Validate each entity referenced in the CREATE clause.
-static AST_Validation _Validate_CREATE_Entities(const cypher_astnode_t *clause,
+// Validate each entity referenced in a single path of a CREATE clause.
+static AST_Validation _Validate_CREATE_Entities(const cypher_astnode_t *path,
 												rax *defined_aliases) {
-	const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clause);
-	// Verify that functions invoked in the CREATE pattern are valid.
-	if(_ValidateFunctionCalls(pattern, false) != AST_VALID) return AST_INVALID;
-	uint path_count = cypher_ast_pattern_npaths(pattern);
-	for(uint i = 0; i < path_count; i ++) {
-		const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
-		// Validate that inlined properties are valid.
-		if(_ValidateInlinedPropertiesOnPath(path) != AST_VALID) return AST_INVALID;
-
-		uint nelems = cypher_ast_pattern_path_nelements(path);
-		/* Visit every relationship (every odd offset) on the path to validate its alias and structure.
-		 * TODO There should also be a syntax error for redeclaring nodes, as in:
-		 * MATCH (a) CREATE (a)
-		 * But this is a no-op query, and we don't have the logic to differentiate this from a valid query like
-		 * MATCH (a) CREATE (a)-[:E]->(:B) */
-		for(uint j = 1; j < nelems; j += 2) {
-			const cypher_astnode_t *rel = cypher_ast_pattern_path_get_element(path, j);
-			const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(rel);
-			// Validate that no relation aliases are previously bound.
-			if(identifier) {
-				const char *alias = cypher_ast_identifier_get_name(identifier);
-				if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) != raxNotFound) {
-					ErrorCtx_SetError("The bound variable %s' can't be redeclared in a CREATE clause", alias);
-					return AST_INVALID;
-				}
-			}
-
-			// Validate that each relation has exactly one type.
-			uint reltype_count = cypher_ast_rel_pattern_nreltypes(rel);
-			if(reltype_count != 1) {
-				ErrorCtx_SetError("Exactly one relationship type must be specified for CREATE");
+	if(_ValidateInlinedPropertiesOnPath(path) != AST_VALID) return AST_INVALID;
+	uint nelems = cypher_ast_pattern_path_nelements(path);
+	/* Visit every relationship (every odd offset) on the path to validate its alias and structure.
+	 * TODO There should also be a syntax error for redeclaring nodes, as in:
+	 * MATCH (a) CREATE (a)
+	 * But this is a no-op query, and we don't have the logic to differentiate this from a valid query like
+	 * MATCH (a) CREATE (a)-[:E]->(:B) */
+	for(uint j = 1; j < nelems; j += 2) {
+		const cypher_astnode_t *rel = cypher_ast_pattern_path_get_element(path, j);
+		const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(rel);
+		// Validate that no relation aliases are previously bound.
+		if(identifier) {
+			const char *alias = cypher_ast_identifier_get_name(identifier);
+			if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) != raxNotFound) {
+				ErrorCtx_SetError("The bound variable '%s' can't be redeclared in a CREATE clause", alias);
 				return AST_INVALID;
 			}
+		}
 
-			// Validate that each relation being created is directed.
-			if(cypher_ast_rel_pattern_get_direction(rel) == CYPHER_REL_BIDIRECTIONAL) {
-				ErrorCtx_SetError("Only directed relationships are supported in CREATE");
-				return AST_INVALID;
-			}
+		// Validate that each relation has exactly one type.
+		uint reltype_count = cypher_ast_rel_pattern_nreltypes(rel);
+		if(reltype_count != 1) {
+			ErrorCtx_SetError("Exactly one relationship type must be specified for CREATE");
+			return AST_INVALID;
+		}
+
+		// Validate that each relation being created is directed.
+		if(cypher_ast_rel_pattern_get_direction(rel) == CYPHER_REL_BIDIRECTIONAL) {
+			ErrorCtx_SetError("Only directed relationships are supported in CREATE");
+			return AST_INVALID;
 		}
 	}
 
 	return AST_VALID;
+}
+
+static void _AST_Path_GetDefinedIdentifiers(const cypher_astnode_t *path, rax *identifiers) {
+	/* Collect the aliases of named paths, nodes, and edges.
+	 * All more deeply-nested identifiers are referenced rather than defined,
+	 * and will not be collected. This enforces reference checking on aliases like 'fake' in:
+	 * MATCH (a {val: fake}) RETURN a */
+	if(cypher_astnode_type(path) == CYPHER_AST_NAMED_PATH) {
+		// If this is a named path, collect its alias.
+		const cypher_astnode_t *alias_node = cypher_ast_named_path_get_identifier(path);
+		const char *alias = cypher_ast_identifier_get_name(alias_node);
+		raxInsert(identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
+	}
+
+	uint path_len = cypher_ast_pattern_path_nelements(path);
+	for(uint j = 0; j < path_len; j ++) {
+		const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, j);
+		// Retrieve the path element's alias if one is present.
+		// Odd offsets correspond to edges, even offsets correspond to nodes.
+		const cypher_astnode_t *alias_node = (j % 2) ?
+		                                     cypher_ast_rel_pattern_get_identifier(elem) :
+		                                     cypher_ast_node_pattern_get_identifier(elem);
+		if(!alias_node) continue; // Skip unaliased entities.
+		const char *alias = cypher_ast_identifier_get_name(alias_node);
+		raxInsert(identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
+	}
+
 }
 
 static AST_Validation _Validate_CREATE_Clauses(const AST *ast) {
@@ -963,15 +981,27 @@ static AST_Validation _Validate_CREATE_Clauses(const AST *ast) {
 		uint clause_idx = create_clause_indices[i];
 
 		// Collect all entities that are bound before this CREATE clause.
-		for(uint j = start_offset; j < clause_idx; j ++) {
-			const cypher_astnode_t *prev_clause = cypher_ast_query_get_clause(ast->root, i);
+		for (uint j = start_offset; j < clause_idx; j++) {
+			const cypher_astnode_t *prev_clause = cypher_ast_query_get_clause(ast->root, j);
 			_AST_GetDefinedIdentifiers(prev_clause, defined_aliases);
 		}
 		start_offset = clause_idx;
 
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, clause_idx);
-		res = _Validate_CREATE_Entities(clause, defined_aliases);
-		if(res == AST_INVALID) goto cleanup;
+		const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clause);
+
+		// Verify that functions invoked in the CREATE pattern are valid.
+		if (_ValidateFunctionCalls(pattern, false) != AST_VALID) return AST_INVALID;
+		uint path_count = cypher_ast_pattern_npaths(pattern);
+		const cypher_astnode_t *prev_path = NULL;
+		for (uint j = 0; j < path_count; j++) {
+			const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
+			// Collect aliases defined on the previous path in this CREATE clause.
+			if (prev_path) _AST_Path_GetDefinedIdentifiers(prev_path, defined_aliases);
+			res = _Validate_CREATE_Entities(path, defined_aliases);
+			if (res == AST_INVALID) goto cleanup;
+			prev_path = path;
+		}
 	}
 
 	/* Since we combine all our CREATE clauses in a segment into one operation,
@@ -1291,33 +1321,6 @@ static AST_Validation _ValidateClauseOrder(const AST *ast) {
 	}
 
 	return AST_VALID;
-}
-
-static void _AST_Path_GetDefinedIdentifiers(const cypher_astnode_t *path, rax *identifiers) {
-	/* Collect the aliases of named paths, nodes, and edges.
-	 * All more deeply-nested identifiers are referenced rather than defined,
-	 * and will not be collected. This enforces reference checking on aliases like 'fake' in:
-	 * MATCH (a {val: fake}) RETURN a */
-	if(cypher_astnode_type(path) == CYPHER_AST_NAMED_PATH) {
-		// If this is a named path, collect its alias.
-		const cypher_astnode_t *alias_node = cypher_ast_named_path_get_identifier(path);
-		const char *alias = cypher_ast_identifier_get_name(alias_node);
-		raxInsert(identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
-	}
-
-	uint path_len = cypher_ast_pattern_path_nelements(path);
-	for(uint j = 0; j < path_len; j ++) {
-		const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, j);
-		// Retrieve the path element's alias if one is present.
-		// Odd offsets correspond to edges, even offsets correspond to nodes.
-		const cypher_astnode_t *alias_node = (j % 2) ?
-											 cypher_ast_rel_pattern_get_identifier(elem) :
-											 cypher_ast_node_pattern_get_identifier(elem);
-		if(!alias_node) continue; // Skip unaliased entities.
-		const char *alias = cypher_ast_identifier_get_name(alias_node);
-		raxInsert(identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
-	}
-
 }
 
 static void _AST_Pattern_GetDefinedIdentifiers(const cypher_astnode_t *pattern, rax *identifiers) {
