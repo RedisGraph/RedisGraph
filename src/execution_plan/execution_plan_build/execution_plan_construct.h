@@ -43,7 +43,7 @@ void ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, ExecutionPla
 										const cypher_astnode_t *clause);
 
 // Build pattern comprehension plan operations
-void buildPatternComprehensionOps(
+bool buildPatternComprehensionOps(
 	ExecutionPlan *plan,
 	OpBase *root,
 	const cypher_astnode_t *ast

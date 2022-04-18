@@ -32,7 +32,8 @@
 //                     Conditional Traverse | (n)-[anon_1]->(anon_2)
 //                         Argument
 
-void buildPatternComprehensionOps
+// Returns true iff the pattern is invalid
+bool buildPatternComprehensionOps
 (
 	ExecutionPlan *plan,
 	OpBase *root,
@@ -43,7 +44,7 @@ void buildPatternComprehensionOps
 	ASSERT(root != NULL);
 	ASSERT(ast  != NULL);
 	ASSERT(root->type == OPType_PROJECT || root->type == OPType_AGGREGATE);
-
+	int err = false;
 
 	// search for pattern comprehension AST nodes
 	// quickly return if none been found
@@ -53,7 +54,7 @@ void buildPatternComprehensionOps
 
 	if(count == 0) {
 		array_free(pcs);
-		return;
+		return err;
 	}
 
 	// backup AST, restore at the end
@@ -105,6 +106,17 @@ void buildPatternComprehensionOps
 			// build filter tree
 			FT_FilterNode *filter_tree = NULL;
 			AST_ConvertFilters(&filter_tree, predicate);
+
+			if(!FilterTree_Valid(filter_tree)) {
+				// Invalid filter tree structure, a compile-time error has been set.
+				FilterTree_Free(filter_tree);
+				err = true;
+				goto _out;
+			}
+
+			// Apply De Morgan's laws
+			FilterTree_DeMorgan(&filter_tree);
+
 			// place filters
 			ExecutionPlan_PlaceFilterOps(plan, aggregate, NULL, filter_tree);
 		}
@@ -122,11 +134,13 @@ void buildPatternComprehensionOps
 		}
 	}
 
+_out:
 	// restore AST
 	QueryCtx_SetAST(prev_ast);
 
 	if(arguments != NULL) array_free(arguments);
 	array_free(pcs);
+	return err;
 }
 
 // build pattern path plan operations for example:

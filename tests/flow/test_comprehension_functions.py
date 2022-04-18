@@ -282,6 +282,12 @@ class testComprehensionFunctions(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set, expected_result)
 
+        query = """MATCH ()  RETURN [(:Company)<-[]-() WHERE NOT FALSE | TRUE]"""
+        plan = redis_graph.explain(query)
+        self.env.assertTrue(_check_pattern_comprehension_plan(plan))
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, [])
+
     def test15_variable_length_pattern_comprehension(self):
         # Match all nodes and collect their destination's property over all hops in an array
         query = """MATCH (a) RETURN a.val AS v, [(a)-[*0..]->(b) | b.val] ORDER BY v"""
