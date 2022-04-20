@@ -333,11 +333,15 @@ jobs:
       - install-prerequisites
       - restore_cache:
           keys:
-            - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
+            - v1-GraphBLAS-memcheck-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Test for memory leaks
           shell: /bin/bash -l -eo pipefail
           command: make memcheck PARALLEL=8 PLATFORM_MODE=1
+      - save_cache:
+          paths:
+            - deps/GraphBLAS/build
+          key: v1-GraphBLAS-memcheck-{{ checksum "deps/GraphBLAS/README.md" }}
       - save-tests-logs
 
   build-platforms:
@@ -372,8 +376,7 @@ jobs:
     steps:
       - early-returns
       - checkout-all
-      - setup-prerequisits
-
+      - install-prerequisites
       - build-steps
       - persist-artifacts
  
