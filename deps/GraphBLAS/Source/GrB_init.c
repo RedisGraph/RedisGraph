@@ -2,7 +2,7 @@
 // GrB_init: initialize GraphBLAS
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -33,7 +33,6 @@ GrB_Info GrB_init           // start up GraphBLAS
     return (GB_init
         (mode,                          // blocking or non-blocking mode
         malloc, realloc, free,          // ANSI C memory management functions
-        false,                          // do not use CUDA
         Context)) ;
 }
 

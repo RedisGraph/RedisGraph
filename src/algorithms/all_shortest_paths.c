@@ -10,8 +10,8 @@
 #include "../util/rmalloc.h"
 
 // run BFS from `src` untill `dest` is rached
-// then add the rest of the nodes in the current depth to `visited`
-// so it can be used later on in `AllShortestPaths_NextPath`
+// add all nodes visited during traversal except for nodes in
+// `dest` level, so it can be used later on in `AllShortestPaths_NextPath`
 int AllShortestPaths_FindMinimumLength
 (
 	AllPathsCtx *ctx,   // context of the all shortest path
@@ -26,22 +26,35 @@ int AllShortestPaths_FindMinimumLength
 	int    depth  = 0;
 	NodeID destID = ENTITY_GET_ID(dest);
 
-	GrB_Vector visited;
+	GrB_Vector visited;       // all visited nodes
+	GrB_Vector newly_visited; // nodes visited in current level
 
+	// initialize both `visited` and `newly_visited` vectors
 	GrB_Vector_new(&visited, GrB_BOOL, Graph_UncompactedNodeCount(ctx->g));
 	GxB_set(visited, GxB_SPARSITY_CONTROL, GxB_BITMAP);
+
+	GrB_Vector_new(&newly_visited, GrB_BOOL, Graph_UncompactedNodeCount(ctx->g));
+	GxB_set(newly_visited, GxB_SPARSITY_CONTROL, GxB_BITMAP);
 
 	while (true) {
 		// see if we have nodes in the current level
 		uint neighborCount = array_len(ctx->levels[depth]);
 		if(neighborCount == 0) {
-			// move to next level
+			// current level depleted, move to next level
 			depth++;
-			if(depth > ctx->maxLen || depth >= array_len(ctx->levels)) {
+			if(depth == ctx->maxLen || depth >= array_len(ctx->levels)) {
 				// we reached max level and didn't found the dest node
 				depth = 0; // indicate `dest` wasn't reached
 				break;
 			}
+
+			// add the newly_visited nodes to the global visited vector
+			// as we finished with current level and move to next level
+			GrB_Vector_eWiseAdd_BinaryOp(visited, NULL, NULL, GxB_ANY_BOOL,
+					visited, newly_visited, NULL);
+
+			// clear newly visited
+			GrB_Vector_clear(newly_visited);
 		}
 
 		// get the node from the frontier
@@ -53,18 +66,24 @@ int AllShortestPaths_FindMinimumLength
 			break;
 		}
 
-		// the node has already been visited if it is already in the vector
+		// introduce neighbors only if path depth < maximum path length
+		if(depth == ctx->maxLen - 1) continue;
+
+		// the node has already been visited if it is already in either
+		// visited or newly_visited
 		bool x;
 		GrB_Info info = GrB_Vector_extractElement_BOOL(&x, visited, frontierID);
-		bool not_visited = (info == GrB_NO_VALUE);
+		bool is_visited = (info == GrB_SUCCESS);
+		if(is_visited) continue;
 
-		// introduce neighbors only if path depth < maximum path length
-		// and frontier wasn't already expanded
-		if(not_visited && depth < ctx->maxLen) {
-			GrB_Vector_setElement_BOOL(visited, true, frontierID);
-			// add all neighbors of the current node to the next level
-			addNeighbors(ctx, &frontierConnection, depth + 1, ctx->dir);
-		}
+		info = GrB_Vector_extractElement_BOOL(&x, newly_visited, frontierID);
+		is_visited = (info == GrB_SUCCESS);
+		if(is_visited) continue;
+
+		// mark node in newly_visited vector
+		GrB_Vector_setElement_BOOL(newly_visited, true, frontierID);
+		// add all neighbors of the current node to the next level
+		addNeighbors(ctx, &frontierConnection, depth + 1, ctx->dir);
 	}
 
 	if(depth > 0) {
@@ -74,6 +93,7 @@ int AllShortestPaths_FindMinimumLength
 		if(depth < array_len(ctx->levels)) array_clear(ctx->levels[depth]);
 	}
 
+	GrB_free(&newly_visited);
 	ctx->visited = visited;
 
 	return depth;
@@ -127,6 +147,8 @@ Path *AllShortestPaths_NextPath
 
 			Path_SetNode(ctx->path, ctx->minLen - depth - 1, frontierNode);
 			Path_SetEdge(ctx->path, ctx->minLen - depth - 1, frontierConnection.edge);
+
+			if(depth == ctx->maxLen - 1) break;
 
 			depth++;
 			addNeighbors(ctx, &frontierConnection, depth, ctx->dir);

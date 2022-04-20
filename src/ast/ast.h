@@ -33,6 +33,10 @@ typedef struct {
 // Checks to see if libcypher-parser reported any errors.
 bool AST_ContainsErrors(const cypher_parse_result_t *result);
 
+// reports first encountered error
+// asserts if there are no errors!
+void AST_ReportErrors(const cypher_parse_result_t *result);
+
 // Make sure the parse result and the AST tree pass all validations.
 AST_Validation AST_Validate_Query(const cypher_parse_result_t *result);
 
@@ -104,9 +108,6 @@ long AST_ParseIntegerNode(const cypher_astnode_t *int_node);
 
 // Returns true if the given clause contains an aggregate function.
 bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause);
-
-// Retrieve the array of projected aliases for a WITH/RETURN * clause.
-const char **AST_GetProjectAll(const cypher_astnode_t *projection_clause);
 
 // Collect the aliases from a RETURN clause to populate ResultSet column names.
 const char **AST_BuildReturnColumnNames(const cypher_astnode_t *return_clause);

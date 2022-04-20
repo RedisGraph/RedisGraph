@@ -2,16 +2,16 @@
 // GB_select: apply a select operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 // C<M> = accum (C, select(A,Thunk)) or select(A,Thunk)')
 
-#define GB_FREE_ALL     \
-{                       \
-    GB_phbix_free (T) ; \
+#define GB_FREE_ALL         \
+{                           \
+    GB_Matrix_free (&T) ;   \
 }
 
 #include "GB_select.h"
@@ -52,7 +52,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
     ASSERT_SCALAR_OK_OR_NULL (Thunk, "Thunk for GB_select", GB0) ;
 
     struct GB_Matrix_opaque T_header ;
-    GrB_Matrix T = GB_clear_static_header (&T_header) ;
+    GrB_Matrix T = NULL ;
 
     // check domains and dimensions for C<M> = accum (C,T)
     GrB_Info info ;
@@ -677,6 +677,8 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
     // create T
     //--------------------------------------------------------------------------
 
+    GB_CLEAR_STATIC_HEADER (T, &T_header) ;
+
     if (make_copy)
     { 
         // selectop is always true, so T = A
@@ -686,7 +688,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
     else if (is_empty)
     { 
         // selectop is always false, so T is an empty non-iso matrix
-        GB_OK (GB_new (&T, true, // auto (sparse or hyper), static header
+        GB_OK (GB_new (&T, // auto (sparse or hyper), existing header
             A->type, A->vlen, A->vdim, GB_Ap_calloc, A_csc,
             GxB_SPARSE + GxB_HYPERSPARSE, GB_Global_hyper_switch_get ( ),
             1, Context)) ;

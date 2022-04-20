@@ -2,7 +2,7 @@
 // GB_emult_08_phase2: C=A.*B, C<M>=A.*B, or C<!M>=A.*B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -74,7 +74,7 @@ GrB_Info GB_emult_08_phase2             // C=A.*B or C<M>=A.*B
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (C != NULL && C->static_header) ;
+    ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
 
     ASSERT_BINARYOP_OK (op, "op for emult phase2", GB0) ;
     ASSERT_MATRIX_OK (A, "A for emult phase2", GB0) ;
@@ -134,7 +134,7 @@ GrB_Info GB_emult_08_phase2             // C=A.*B or C<M>=A.*B
 
     // allocate the result C (but do not allocate C->p or C->h)
     // set C->iso = C_iso   OK
-    GrB_Info info = GB_new_bix (&C, true, // any sparsity, static header
+    GrB_Info info = GB_new_bix (&C, // any sparsity, existing header
         ctype, A->vlen, A->vdim, GB_Ap_null, C_is_csc,
         C_sparsity, true, A->hyper_switch, Cnvec, cnz, true, C_iso, Context) ;
     if (info != GrB_SUCCESS)

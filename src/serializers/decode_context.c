@@ -76,6 +76,12 @@ bool GraphDecodeContext_GetProcessedKeyCount(const GraphDecodeContext *ctx) {
 void GraphDecodeContext_Free(GraphDecodeContext *ctx) {
 	if(ctx) {
 		raxFree(ctx->meta_keys);
+
+		if(ctx->multi_edge) {
+			array_free(ctx->multi_edge);
+			ctx->multi_edge = NULL;
+		}
+
 		rm_free(ctx);
 	}
 }

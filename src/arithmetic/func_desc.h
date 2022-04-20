@@ -11,59 +11,106 @@
 
 #define VAR_ARG_LEN UINT_MAX
 
-/* AR_Func - Function pointer to an operation with an arithmetic expression */
-typedef SIValue(*AR_Func)(SIValue *argv, int argc);
+// an aggregation context
+// each aggregation function operates on an aggregation context
+// this is where the function can maintin its internal state
+typedef struct {
+	SIValue result;     // aggregation value
+	void *private_data; // [optional] addition private data
+} AggregateCtx;
 
-/* AR_Func_Finalize - Function pointer to a routine for computing an aggregate function's final value. */
+// AR_Func - function pointer to an operation with an arithmetic expression
+typedef SIValue(*AR_Func)(SIValue *argv, int argc, void *private_data);
+
+// AR_Func_Finalize - function pointer to a routine for computing an aggregate function's final value
 typedef void (*AR_Func_Finalize)(void *ctx);
 
-/* AR_Func_Free - Function pointer to a routine for freeing a function's private data. */
+// AR_Func_Free - function pointer to a routine for freeing a function's private data
 typedef void (*AR_Func_Free)(void *ctx);
-/* AR_Func_Clone - Function pointer to a routine for cloning a function's private data. */
+
+// AR_Func_Clone - function pointer to a routine for cloning a function's private data
 typedef void *(*AR_Func_Clone)(void *orig);
 
+// AR_Func_PrivateData - function pointer to a routine which produce function's private data
+typedef AggregateCtx *(*AR_Func_PrivateData)(void);
+
+// aggregation function callbacks
 typedef struct {
-	AR_Func func;              // Function pointer to scalar or aggregate function routine.
-	SIType *types;             // Types of arguments.
-	uint min_argc;             // Minimal number of arguments function expects
-	uint max_argc;             // Maximal number of arguments function expects
-	bool reducible;            // Can be reduced using static evaluation.
-	bool aggregate;            // True if the function is an aggregation.
-	void *privdata;            // [optional] Private data used in evaluating this function.
-	const char *name;          // Function name.
-	AR_Func_Free bfree;        // [optional] Function pointer to function cleanup routine.
-	AR_Func_Clone bclone;      // [optional] Function pointer to function clone routine.
-	AR_Func_Finalize finalize; // [optional] Function pointer to routine for finalizing aggregate value.
+	AR_Func_Free free;                  // [optional] function pointer to cleanup routine
+	AR_Func_Clone clone;                // [optional] function pointer to clone routine
+	AR_Func_Finalize finalize;          // [optional] function pointer to finalizing aggregate value routine
+	AR_Func_PrivateData private_data;   // function pointer to private data generator
+} AR_FuncCBs;
+
+typedef struct {
+	AR_Func func;          // function pointer to scalar or aggregate function routine
+	SIType *types;         // types of arguments
+	SIType ret_type;       // return type
+	uint min_argc;         // minimal number of arguments function expects
+	uint max_argc;         // maximal number of arguments function expects
+	bool internal;         // is function internal
+	bool reducible;        // can be reduced using static evaluation
+	bool aggregate;        // true if the function is an aggregation
+	const char *name;      // function name
+	AR_FuncCBs callbacks;  // aggregation callbacks
 } AR_FuncDesc;
 
-AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint min_argc, uint max_argc,
-							SIType *types, bool reducible, bool aggregate);
+// create a new function descriptor
+AR_FuncDesc *AR_FuncDescNew
+(
+	const char *name,     // function name
+	AR_Func func,         // pointer to function
+	uint min_argc,        // minimum number of arguments
+	uint max_argc,        // maximum number of arguments
+	SIType *types,        // acceptable types
+	SIType ret_type,      // return type
+	bool internal,        // is function internal
+	bool reducible        // is function reducible
+);
 
-/* Register arithmetic function to repository. */
-void AR_RegFunc(AR_FuncDesc *func);
+// register arithmetic function to repository
+void AR_RegFunc
+(
+	AR_FuncDesc *func
+);
 
-/* Retrieves an arithmetic function by its name. */
-AR_FuncDesc *AR_GetFunc(const char *func_name);
+// set the function pointers for cloning and freeing a function's private data
+void AR_SetPrivateDataRoutines
+(
+	AR_FuncDesc *func_desc,
+	AR_Func_Free free,
+	AR_Func_Clone clone
+);
 
-/* Check to see if function exists.
- * TODO: move this function to more appropriate place. */
-bool AR_FuncExists(const char *func_name);
+// retrieves an arithmetic function by its name
+AR_FuncDesc *AR_GetFunc
+(
+	const char *func_name,
+	bool include_internal
+);
 
-/* Check to see if function is an aggregation. */
-bool AR_FuncIsAggregate(const char *func_name);
+// get function return type
+SIType AR_FuncDesc_RetType
+(
+	const AR_FuncDesc *func	
+);
 
-/* Set the function pointers for cloning and freeing a function's private data. */
-void AR_SetPrivateDataRoutines(AR_FuncDesc *func_desc, AR_Func_Free bfree, AR_Func_Clone bclone);
+// check to see if function exists
+// TODO: move this function to more appropriate place
+bool AR_FuncExists
+(
+	const char *func_name
+);
 
-/* Set the function pointer for computing an aggregate function's final value. */
-void AR_SetFinalizeRoutine(AR_FuncDesc *func_desc, AR_Func_Finalize finalize);
+// check to see if function is an aggregation
+bool AR_FuncIsAggregate
+(
+	const char *func_name
+);
 
-/* Invoke finalize routine for function. */
-void AR_Finalize(AR_FuncDesc *func_desc);
-
-/* Duplicate a function descriptor and populate the clone with the given private data. */
-AR_FuncDesc *AR_SetPrivateData(const AR_FuncDesc *orig, void *privdata);
-
-/* Clone the given function descriptor and its private data. */
-AR_FuncDesc *AR_CloneFuncDesc(const AR_FuncDesc *orig);
+//TODO: implement
+void AR_FuncFree
+(
+	AR_FuncDesc *f
+);
 

@@ -2,7 +2,7 @@
 // gblogextract: logical extraction: C = A(M)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
@@ -77,8 +77,6 @@
 
 // C is always returned as a GrB matrix.
 
-// TODO:: do not directly access opaque content
-
 #include "gb_interface.h"
 #include "GB_transpose.h"
 
@@ -98,7 +96,7 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     gb_usage (nargin == 2 && nargout <= 1, USAGE) ;
-    GB_CONTEXT ("gblogextract") ;       // TODO: remove this
+    GB_CONTEXT ("gblogextract") ;
 
     //--------------------------------------------------------------------------
     // get A
@@ -153,17 +151,12 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     GrB_Index gnvals ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK1 (G, GrB_Matrix_wait (&G)) ;
-    #else
     OK1 (G, GrB_Matrix_wait (G, GrB_MATERIALIZE)) ;
-    #endif
     OK (GrB_Matrix_nvals (&gnvals, G)) ;
     OK (GxB_Matrix_Option_get (G, GxB_SPARSITY_STATUS, &sparsity)) ;
     CHECK_ERROR (sparsity == GxB_BITMAP, "internal error 0") ;
 
     // Remove G->x from G
-    // TODO: use GxB*export to access the content of G
     void *Gx = G->x ;
     size_t Gx_size = G->x_size ;
     #ifdef GB_MEMDUMP
@@ -226,11 +219,7 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     GrB_Index tnvals ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK1 (T, GrB_Matrix_wait (&T)) ;
-    #else
     OK1 (T, GrB_Matrix_wait (T, GrB_MATERIALIZE)) ;
-    #endif
     OK (GrB_Matrix_nvals (&tnvals, T)) ;
     uint64_t *Tx = T->x ;
     size_t Tx_size = T->x_size ;
@@ -253,16 +242,16 @@ void mexFunction
 
     GrB_Vector V ;
     OK (GrB_Vector_new (&V, type, mnz)) ;
-    OK1 (V, GxB_Vector_Option_set (V, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
+    OK (GxB_Vector_Option_set (V, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
 
     #ifdef GB_MEMDUMP
     printf ("remove V->i from memtable: %p\n", V->i) ;
     printf ("remove V->x from memtable: %p\n", V->x) ;
     #endif
     GB_Global_memtable_remove (V->i) ;
-    gb_mxfree (&V->i) ;
+    gb_mxfree ((void **) (&V->i)) ;
     GB_Global_memtable_remove (V->x) ;
-    gb_mxfree (&V->x) ;
+    gb_mxfree ((void **) (&V->x)) ;
 
     // transplant values of T as the row indices of V
     V->i = (int64_t *) Tx ;

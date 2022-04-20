@@ -1,13 +1,6 @@
-import os
-import sys
+from common import *
 import random
 import string
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
 
 GRAPH_ID = "G"
 redis_graph = None
@@ -18,12 +11,13 @@ groups = ["Group A", "Group B", "Group C","Group D", "Group E"]
 node_ctr = 0
 edge_ctr = 0
 
+
 class testEdgeIndexUpdatesFlow(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
         self.populate_graph()
         self.build_indices()
 

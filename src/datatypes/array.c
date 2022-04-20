@@ -22,7 +22,6 @@ void SIArray_Append(SIValue *siarray, SIValue value) {
 	SIValue clone = SI_CloneValue(value);
 	// append
 	array_append(siarray->array, clone);
-
 }
 
 SIValue SIArray_Get(SIValue siarray, uint32_t index) {

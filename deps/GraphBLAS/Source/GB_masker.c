@@ -2,7 +2,7 @@
 // GB_masker: R = masker (C, M, Z) constructs R for C<M>=Z
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -72,7 +72,7 @@ GrB_Info GB_masker          // R = masker (C, M, Z)
 
     GrB_Info info ;
 
-    ASSERT (R != NULL && R->static_header) ;
+    ASSERT (R != NULL && (R->static_header || GBNSTATIC)) ;
 
     ASSERT_MATRIX_OK (M, "M for masker", GB0) ;
     ASSERT (!GB_PENDING (M)) ;

@@ -1,7 +1,7 @@
 function C = accum_mask (C, Mask, accum, T, C_replace, Mask_complement)
 %ACCUM_MASK apply the mask
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 [m n] = size (C.matrix) ;

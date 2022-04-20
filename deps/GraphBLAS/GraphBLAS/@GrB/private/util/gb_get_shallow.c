@@ -2,7 +2,7 @@
 // gb_get_shallow: create a shallow copy of a built-in sparse matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
@@ -176,7 +176,7 @@ GrB_Matrix gb_get_shallow   // return a shallow copy of built-in sparse matrix
         }
 
         // each component
-        int64_t *Ap = NULL, *Ai = NULL, *Ah = NULL ;
+        uint64_t *Ap = NULL, *Ai = NULL, *Ah = NULL ;
         int8_t *Ab = NULL ;
         void *Ax = NULL ;
 

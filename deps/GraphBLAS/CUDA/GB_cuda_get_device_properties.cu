@@ -42,7 +42,7 @@ bool GB_cuda_set_device( int device) {
 bool GB_cuda_get_device_properties  // true if OK, false if failure
 (
     int device,
-    GB_cuda_device *prop
+    rmm_device *prop
 )
 {
 

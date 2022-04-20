@@ -2,13 +2,16 @@
 // GB_Scalar_wrap: wrap a C scalar inside a GraphBLAS scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 // This method construct a shallow statically-defined scalar, with no memory
 // allocations.  The scalar is iso full, with a single entry.
+
+// Note that since the header is statically allocated, it cannot be transfered
+// automatically to the GPU when using CUDA.
 
 #include "GB.h"
 #include "GB_scalar.h"

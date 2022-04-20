@@ -7,11 +7,13 @@
 #include "ast.h"
 #include <pthread.h>
 
-#include "../RG.h"
+#include "RG.h"
+#include "../errors.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/qsort.h"
 #include "../procedures/procedure.h"
+#include "ast_rewrite_star_projections.h"
 #include "../arithmetic/arithmetic_expression.h"
 #include "../arithmetic/arithmetic_expression_construct.h"
 
@@ -122,7 +124,7 @@ bool AST_ReadOnly(const cypher_astnode_t *root) {
 	// in case of procedure call which modifies the graph/indices
 	if(type == CYPHER_AST_CALL) {
 		const char *proc_name = cypher_ast_proc_name_get_value(
-				cypher_ast_call_get_proc_name(root));
+									cypher_ast_call_get_proc_name(root));
 
 		ProcedureCtx *proc = Proc_Get(proc_name);
 		bool read_only = Procedure_IsReadOnly(proc);
@@ -222,7 +224,7 @@ const cypher_astnode_t **AST_GetClauses
 	const AST *ast,
 	cypher_astnode_type_t type
 ) {
-	const cypher_astnode_t **clauses = array_new(const cypher_astnode_t*, 0);
+	const cypher_astnode_t **clauses = array_new(const cypher_astnode_t *, 0);
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 
 	for(uint i = 0; i < clause_count; i ++) {
@@ -416,25 +418,13 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 	return aggregated;
 }
 
-const char **AST_GetProjectAll(const cypher_astnode_t *projection_clause) {
-	AST *ast = QueryCtx_GetAST();
-	AnnotationCtx *project_all_ctx = AST_AnnotationCtxCollection_GetProjectAllCtx(
-										 ast->anot_ctx_collection);
-	return cypher_astnode_get_annotation(project_all_ctx, projection_clause);
-}
-
 const char **AST_BuildReturnColumnNames(const cypher_astnode_t *return_clause) {
-	const char **columns;
-	if(cypher_ast_return_has_include_existing(return_clause)) {
-		// If this is a RETURN *, the column names should be retrieved from the clause annotation.
-		const char **projection_names = AST_GetProjectAll(return_clause);
-		array_clone(columns, projection_names);
-		return columns;
-	}
+	// all RETURN * clauses should have been converted to explicit lists
+	ASSERT(cypher_ast_return_has_include_existing(return_clause) == false);
 
 	// Collect every alias from the RETURN projections.
 	uint projection_count = cypher_ast_return_nprojections(return_clause);
-	columns = array_new(const char *, projection_count);
+	const char **columns = array_new(const char *, projection_count);
 	for(uint i = 0; i < projection_count; i++) {
 		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
 		const cypher_astnode_t *ast_alias = cypher_ast_projection_get_alias(projection);
@@ -528,7 +518,7 @@ const char *AST_ToString(const cypher_astnode_t *node) {
 		if(ast_identifier) {
 			// Graph entity has a user-defined alias return it.
 			return cypher_ast_identifier_get_name(ast_identifier);
-		} else if (str == NULL) {
+		} else if(str == NULL) {
 			str = _create_anon_alias(ast->anot_ctx_collection->anon_count++);
 		}
 		cypher_astnode_attach_annotation(to_string_ctx, node, (void *)str, NULL);
@@ -570,16 +560,44 @@ void AST_Free(AST *ast) {
 
 cypher_parse_result_t *parse_query(const char *query) {
 	FILE *f = fmemopen((char *)query, strlen(query), "r");
-	cypher_parse_result_t *result = cypher_fparse(f, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+	cypher_parse_result_t *result = cypher_fparse(f, NULL, NULL, CYPHER_PARSE_SINGLE);
 	fclose(f);
+
 	if(!result) return NULL;
+
+	// check that the parser parse the entire query
+	if(!cypher_parse_result_eof(result)) {
+		ErrorCtx_SetError("Error: query with more than one statement is not supported.");
+		parse_result_free(result);
+		return NULL;
+	}
+
+	// in case ast contains any errors, report them and return
+	if(AST_ContainsErrors(result)) {
+		AST_ReportErrors(result);
+		parse_result_free(result);
+		return NULL;
+	}
+
 	if(AST_Validate_Query(result) != AST_VALID) {
 		parse_result_free(result);
 		return NULL;
 	}
+
+	// rewrite '*' projections
+	// e.g. MATCH (a), (b) RETURN *
+	// will be rewritten as:
+	//  MATCH (a), (b) RETURN a, b
+	bool rerun_validation = AST_RewriteStarProjections(result);
+
+	// only perform validations again if there's been a rewrite
+	if(rerun_validation && AST_Validate_Query(result) != AST_VALID) {
+		parse_result_free(result);
+		return NULL;
+	}
+
 	return result;
 }
-
 
 cypher_parse_result_t *parse_params(const char *query, const char **query_body) {
 	FILE *f = fmemopen((char *)query, strlen(query), "r");

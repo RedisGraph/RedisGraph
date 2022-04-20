@@ -1,17 +1,15 @@
-import redis
-from RLTest import Env
-from base import FlowTestsBase
-from redisgraph import Graph, Node, Edge
+from common import *
 
 redis_graph = None
 GRAPH_ID = "map_test"
+
 
 class testMap(FlowTestsBase):
     def __init__(self):
         global redis_graph
         self.env = Env(decodeResponses=True)
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
         self.populate_graph()
 
     def populate_graph(self):

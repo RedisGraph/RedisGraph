@@ -88,7 +88,7 @@ void buildPatternComprehensionOps
 		AR_ExpNode *eval_exp = AR_EXP_FromASTNode(eval_node);
 
 		// collect evaluation results into an array using `collect`
-		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", 1);
+		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", false, 1);
 		collect_exp->op.children[0] = eval_exp;
 		collect_exp->resolved_name = AST_ToString(pc);
 
@@ -96,11 +96,6 @@ void buildPatternComprehensionOps
 		AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 		array_append(exps, collect_exp);
 		OpBase *aggregate = NewAggregateOp(plan, exps, false);
-
-		// introduce OPTIONAL operation which will return an empty
-		// record in case the pattern path did not produced any results
-		OpBase *optional = NewOptionalOp(plan);
-		ExecutionPlan_AddOp(optional, aggregate);
 		ExecutionPlan_AddOp(aggregate, match_stream);
 
 		// handle filters attached to pattern
@@ -121,9 +116,9 @@ void buildPatternComprehensionOps
 		if(root->childCount > 0) {
 			OpBase *apply_op = NewApplyOp(plan);
 			ExecutionPlan_PushBelow(root->children[0], apply_op);
-			ExecutionPlan_AddOp(apply_op, optional);
+			ExecutionPlan_AddOp(apply_op, aggregate);
 		} else {
-			ExecutionPlan_AddOp(root, optional);
+			ExecutionPlan_AddOp(root, aggregate);
 		}
 	}
 
@@ -225,7 +220,7 @@ void buildPatternPathOps
 		// count number of elements in path
 		// construct a `topath` expression combining elements into a PATH object
 		uint path_len = cypher_ast_pattern_path_nelements(path);
-		AR_ExpNode *path_exp = AR_EXP_NewOpNode("topath", 1 + path_len);
+		AR_ExpNode *path_exp = AR_EXP_NewOpNode("topath", true, 1 + path_len);
 		path_exp->op.children[0] =
 			AR_EXP_NewConstOperandNode(SI_PtrVal((void *)path));
 		for(uint j = 0; j < path_len; j ++) {
@@ -234,7 +229,7 @@ void buildPatternPathOps
 		}
 
 		// we're require to return an ARRAY of paths, use `collect` to aggregate paths
-		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", 1);
+		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", false, 1);
 		collect_exp->op.children[0] = path_exp;
 		collect_exp->resolved_name = AST_ToString(path);
 
@@ -242,13 +237,7 @@ void buildPatternPathOps
 		AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 		array_append(exps, collect_exp);
 		OpBase *aggregate = NewAggregateOp(plan, exps, false);
-
-		// in case no data was produce introduce an OPTIONAL operation to return
-		// an empty record
-		OpBase *optional = NewOptionalOp(plan);
-		ExecutionPlan_AddOp(optional, aggregate);
 		ExecutionPlan_AddOp(aggregate, match_stream);
-
 
 		// in case the execution-plan had child operations we need to combine
 		// records coming out of our newly constucted aggregation with the rest
@@ -257,9 +246,9 @@ void buildPatternPathOps
 		if(root->childCount > 0) {
 			OpBase *apply_op = NewApplyOp(plan);
 			ExecutionPlan_PushBelow(root->children[0], apply_op);
-			ExecutionPlan_AddOp(apply_op, optional);
+			ExecutionPlan_AddOp(apply_op, aggregate);
 		} else {
-			ExecutionPlan_AddOp(root, optional);
+			ExecutionPlan_AddOp(root, aggregate);
 		}
 	}
 

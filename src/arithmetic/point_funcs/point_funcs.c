@@ -14,7 +14,7 @@
 #define EARTH_RADIUS 6378140.0
 #define DegreeToRadians(d) ((d) * M_PI / 180.0)
 
-SIValue AR_TOPOINT(SIValue *argv, int argc) {
+SIValue AR_TOPOINT(SIValue *argv, int argc, void *private_data) {
 	SIValue map = argv[0];
 	SIType t = SI_TYPE(map);
 
@@ -64,7 +64,7 @@ SIValue AR_TOPOINT(SIValue *argv, int argc) {
 	return SI_Point(SI_GET_NUMERIC(latitude), SI_GET_NUMERIC(longitude));
 }
 
-SIValue AR_DISTANCE(SIValue *argv, int argc) {
+SIValue AR_DISTANCE(SIValue *argv, int argc, void *private_data) {
 	// compute distance between two points
 	// a = sin²(Δφ/2) + cos φ1 ⋅ cos φ2 ⋅ sin²(Δλ/2)
 	// c = 2 * atan2( √a, √(1−a) )
@@ -102,18 +102,20 @@ SIValue AR_DISTANCE(SIValue *argv, int argc) {
 
 void Register_PointFuncs() {
 	SIType *types;
+	SIType ret_type;
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_MAP);
-	func_desc = AR_FuncDescNew("point", AR_TOPOINT, 1, 1, types, true, false);
+	ret_type = T_NULL | T_POINT;
+	func_desc = AR_FuncDescNew("point", AR_TOPOINT, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 
 	types = array_new(SIType, 2);
 	array_append(types, T_NULL | T_POINT);
 	array_append(types, T_NULL | T_POINT);
-	func_desc = AR_FuncDescNew("distance", AR_DISTANCE, 2, 2, types, true, false);
+	ret_type = T_NULL | T_DOUBLE;
+	func_desc = AR_FuncDescNew("distance", AR_DISTANCE, 2, 2, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 }
-

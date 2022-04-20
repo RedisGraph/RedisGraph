@@ -2,12 +2,10 @@
 // GB_helper.c: helper functions for @GrB interface
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
-
-// TODO::: move these into the @GrB interface instead
 
 // These functions are only used by the @GrB interface for
 // SuiteSparse:GraphBLAS.
@@ -38,6 +36,15 @@
 
 #define GB_FREE_WORKSPACE                                                   \
     GB_FREE_WORK (&Work, Work_size) ;
+
+//------------------------------------------------------------------------------
+// GB_helper0: get the current wall-clock time from OpenMP
+//------------------------------------------------------------------------------
+
+double GB_helper0 (void)
+{
+    return (GB_OPENMP_GET_WTIME) ;
+}
 
 //------------------------------------------------------------------------------
 // GB_helper1: convert 0-based indices to 1-based for gbextracttuples

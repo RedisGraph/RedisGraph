@@ -126,7 +126,6 @@ Feature: Aggregation6 - Percentiles
       | -1         |
       | 1.1        |
 
-  @skip
   @NegativeTest
   Scenario: [5] `percentileDisc()` failing in more involved query
     Given an empty graph
