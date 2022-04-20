@@ -345,14 +345,6 @@ package: $(TARGET)
 
 #----------------------------------------------------------------------------------------------
 
-<<<<<<< HEAD
-ifneq ($(RLEC),1)
-test: redisgraph.so
-else
-test:
-endif
-ifeq ($(VALGRIND),1)
-=======
 ifeq ($(SLOW),1)
 _RLTEST_PARALLEL=0
 else ifneq ($(PARALLEL),)
@@ -361,11 +353,13 @@ else
 _RLTEST_PARALLEL=1
 endif
 
-test: $(TARGET)
-# check valgrind flag is not empty
+ifneq ($(RLEC),1)
+test: redisgraph.so
+else
+test:
+endif
 ifeq ($(VALGRIND),1)
 # valgrind is requested, check that host's os is not Linux
->>>>>>> origin/master
 ifeq ($(OS),macos)
 	@echo building docker to run valgrind on MacOS
 	@cd .. ;\

@@ -72,12 +72,8 @@ class RedisGraphSetup(paella.Setup):
         self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall --modern".format(PYTHON=self.python, READIES=READIES))
         self.pip_install("awscli")
         self.pip_install("-r tests/requirements.txt")
-<<<<<<< HEAD
-        self.run("%s/bin/getpy2" % READIES)
-=======
         self.pip_install("-r tests/fuzz/requirements.txt")
         self.run("%s/bin/getpy2" % READIES) # for RediSearch build
->>>>>>> origin/master
 
     def install_peg(self):
         self.run(r"""

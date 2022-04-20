@@ -1,18 +1,6 @@
 
 MAKEFLAGS += --no-builtin-rules
 
-<<<<<<< HEAD
-ROOT:=$(realpath $(shell pwd)/..)
-
-.PHONY: test unit flow tck memcheck benchmark fuzz clean
-
-TARGET:=$(realpath ../src/redisgraph.so)
-
-ifneq ($(REMOTE),)
-BENCHMARK_ARGS=run-remote 
-else
-BENCHMARK_ARGS=run-local 
-=======
 ROOT:=$(realpath ..)
 
 .PHONY: test unit flow tck memcheck benchmark fuzz clean
@@ -23,7 +11,6 @@ ifneq ($(REMOTE),)
 BENCHMARK_ARGS=run-remote
 else
 BENCHMARK_ARGS=run-local
->>>>>>> origin/master
 endif
 
 BENCHMARK_ARGS += --module_path $(TARGET) --required-module graph
@@ -36,12 +23,8 @@ ifneq ($(ENV),)
 TEST_ARGS += --env $(ENV)
 endif
 
-<<<<<<< HEAD
-ifeq ($(UNIT),1)
-=======
 TESTS=
 ifneq ($(UNIT),0)
->>>>>>> origin/master
 TESTS += unit
 endif
 ifneq ($(FLOW),0)
@@ -69,11 +52,7 @@ tck:
 	@GEN=0 AOF=0 TCK=1 MODULE=$(TARGET) ./flow/tests.sh
 
 memcheck:
-<<<<<<< HEAD
-	@TCK=1 VG=1 VG_ACCESS=1 VG_LEAKS=0 MODULE=$(TARGET) ./flow/tests.sh
-=======
 	@TCK=1 VG=1 VG_ACCESS=1 VG_LEAKS=1 MODULE=$(TARGET) ./flow/tests.sh
->>>>>>> origin/master
 	./memcheck.sh
 
 benchmark:
