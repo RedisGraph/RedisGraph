@@ -237,6 +237,8 @@ static void _PersistenceEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid,
 	}
 }
 
+void RediSearch_CleanupModule(void);
+
 // Perform clean-up upon server shutdown.
 static void _ShutdownEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
 		void *data) {
@@ -244,6 +246,9 @@ static void _ShutdownEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uin
 	ThreadPools_Destroy();
 	// Server is shutting down, finalize GraphBLAS.
 	GrB_finalize();
+
+    RedisModule_Log(ctx, "notice", "%s", "Clearing RediSearch resources on shutdown");
+    RediSearch_CleanupModule();
 }
 
 static void _RegisterServerEvents(RedisModuleCtx *ctx) {
