@@ -5,8 +5,6 @@ import time
 import threading
 from click.testing import CliRunner
 from redisgraph_bulk_loader.bulk_insert import bulk_insert
-from includes import *
-
 
 redis_con = None
 port = None

@@ -23,6 +23,7 @@ import paella
 SANITIZER = os.getenv('SANITIZER', '')
 VALGRIND = os.getenv('VALGRIND', '0') == '1'
 CODE_COVERAGE = os.getenv('CODE_COVERAGE', '0') == '1'
+RLEC_CLUSTER = os.getenv('RLEC_CLUSTER', '0') == '1'
 
 OSNICK = paella.Platform().osnick
 OS = paella.Platform().os
