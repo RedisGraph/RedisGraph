@@ -88,7 +88,7 @@ void buildPatternComprehensionOps
 		AR_ExpNode *eval_exp = AR_EXP_FromASTNode(eval_node);
 
 		// collect evaluation results into an array using `collect`
-		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", 1);
+		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", false, 1);
 		collect_exp->op.children[0] = eval_exp;
 		collect_exp->resolved_name = AST_ToString(pc);
 
@@ -220,7 +220,7 @@ void buildPatternPathOps
 		// count number of elements in path
 		// construct a `topath` expression combining elements into a PATH object
 		uint path_len = cypher_ast_pattern_path_nelements(path);
-		AR_ExpNode *path_exp = AR_EXP_NewOpNode("topath", 1 + path_len);
+		AR_ExpNode *path_exp = AR_EXP_NewOpNode("topath", true, 1 + path_len);
 		path_exp->op.children[0] =
 			AR_EXP_NewConstOperandNode(SI_PtrVal((void *)path));
 		for(uint j = 0; j < path_len; j ++) {
@@ -229,7 +229,7 @@ void buildPatternPathOps
 		}
 
 		// we're require to return an ARRAY of paths, use `collect` to aggregate paths
-		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", 1);
+		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", false, 1);
 		collect_exp->op.children[0] = path_exp;
 		collect_exp->resolved_name = AST_ToString(path);
 

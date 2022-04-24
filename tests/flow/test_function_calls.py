@@ -476,3 +476,10 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         expected_result = [[[{'name': 'Roi'}]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test22_large_list_argument(self):
+        # validate that large lists arguments are not allocated on stack
+        large_list = str([1] * 1000000)
+        query = f"""RETURN {large_list}"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(len(actual_result.result_set[0][0]), 1000000)

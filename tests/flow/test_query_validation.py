@@ -557,7 +557,8 @@ class testQueryValidationFlow(FlowTestsBase):
     def test39_non_single_statement_query(self):
         queries = [";",
                    " ;",
-                   " "]
+                   " ",
+                   "cypher"]
         for q in queries:
             try:
                 redis_graph.query(q)
@@ -599,3 +600,35 @@ class testQueryValidationFlow(FlowTestsBase):
                 self.env.assertTrue(False)
             except redis.exceptions.ResponseError:
                 pass
+
+    # Test returning multiple occurrence of an expression.
+    def test41_return_duplicate_expression(self):
+        queries = ["""MATCH (a) RETURN max(a.val), max(a.val)""",
+                """MATCH (a) return max(a.val) as x, max(a.val) as x""",
+                """MATCH (a) RETURN a.val, a.val LIMIT 1""",
+                """MATCH (a) return a.val as x, a.val as x LIMIT 1""",
+                """WITH 1 AS a, 1 AS a RETURN a""",
+                """MATCH (n) WITH n, n RETURN n"""]
+
+        for q in queries:
+            try:
+                redis_graph.query(q)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("Multiple result columns with the same name are not supported", str(e))
+
+    # Test fail with unknown function.
+    def test42_unknown_function(self):
+        queries = ["""MATCH (a { v: x()}) RETURN a""",
+                """MERGE (a { v: x()}) RETURN a""",
+                """CREATE (a { v: x()}) RETURN a""",
+                """MATCH (n) RETURN shortestPath(n, n)""",
+                """MATCH p=()-[*1..5]->() RETURN shortestPath(p)""",
+                """RETURN ge(1, 2)"""]
+
+        for q in queries:
+            try:
+                redis_graph.query(q)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("Unknown function", str(e))
