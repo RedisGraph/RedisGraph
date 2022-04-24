@@ -150,3 +150,8 @@ class testMap(FlowTestsBase):
         query_result = redis_graph.query(query)
         expected_result = [['xx']]
         self.env.assertEquals(query_result.result_set, expected_result)
+
+        query = """RETURN {a: 5, b: toUpper('xx')}.b"""
+        query_result = redis_graph.query(query)
+        expected_result = [['XX']]
+        self.env.assertEquals(query_result.result_set, expected_result)
