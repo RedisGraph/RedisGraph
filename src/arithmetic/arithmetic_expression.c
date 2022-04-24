@@ -475,7 +475,10 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall
 		// exit with an error
 		res = EVAL_ERR;
 	}
-	if(result) *result = v;
+	if(result) {
+		SIValue_Persist(&v);
+		*result = v;
+	}
 
 cleanup:
 	_AR_EXP_FreeResultsArray(sub_trees, node->op.child_count);
