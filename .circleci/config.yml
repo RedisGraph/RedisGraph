@@ -561,7 +561,7 @@ workflows:
           context: common
           matrix:
             parameters:
-              platform: [focal, bionic, xenial, centos7, rocky8]
+              platform: [focal, bionic, xenial, centos7, rocky8, jammy]
       - build-arm-platforms:
           <<: *on-integ-and-version-tags
           context: common
@@ -601,7 +601,7 @@ workflows:
           <<: *on-perf-tags
           context: common
       # disable temporarily due to huge profile overhead in RG
-      # - benchmark-profiler: 
+      # - benchmark-profiler:
       #     <<: *on-perf-tags
       #     context: common
 
