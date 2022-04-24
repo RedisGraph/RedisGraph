@@ -616,3 +616,19 @@ class testQueryValidationFlow(FlowTestsBase):
                 assert(False)
             except redis.exceptions.ResponseError as e:
                 self.env.assertContains("Multiple result columns with the same name are not supported", str(e))
+
+    # Test fail with unknown function.
+    def test42_unknown_function(self):
+        queries = ["""MATCH (a { v: x()}) RETURN a""",
+                """MERGE (a { v: x()}) RETURN a""",
+                """CREATE (a { v: x()}) RETURN a""",
+                """MATCH (n) RETURN shortestPath(n, n)""",
+                """MATCH p=()-[*1..5]->() RETURN shortestPath(p)""",
+                """RETURN ge(1, 2)"""]
+
+        for q in queries:
+            try:
+                redis_graph.query(q)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("Unknown function", str(e))

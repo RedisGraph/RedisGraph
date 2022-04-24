@@ -881,6 +881,11 @@ static AST_Validation _Validate_MERGE_Clauses(const AST *ast) {
 
 		const cypher_astnode_t *merge_clause = cypher_ast_query_get_clause(ast->root, clause_idx);
 		const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clause);
+
+		// Verify that functions invoked in the MERGE pattern are valid.
+		res = _ValidateFunctionCalls(path, false);
+		if(res != AST_VALID) goto cleanup;
+
 		uint nelems = cypher_ast_pattern_path_nelements(path);
 		for(uint j = 0; j < nelems; j ++) {
 			const cypher_astnode_t *entity = cypher_ast_pattern_path_get_element(path, j);
@@ -925,6 +930,7 @@ static AST_Validation _Validate_CREATE_Entities(const cypher_astnode_t *clause,
 			// Validate that no relation aliases are previously bound.
 			if(identifier) {
 				const char *alias = cypher_ast_identifier_get_name(identifier);
+				printf("\nDA %s\n", alias);
 				if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) != raxNotFound) {
 					ErrorCtx_SetError("The bound variable %s' can't be redeclared in a CREATE clause", alias);
 					return AST_INVALID;
@@ -1050,6 +1056,7 @@ AST_Validation _AST_ValidateResultColumns
 		}
 	}
 	
+	raxFree(rax);
 	array_free(columns);
 	
 	return res;

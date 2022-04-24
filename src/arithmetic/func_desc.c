@@ -23,6 +23,7 @@ AR_FuncDesc *AR_FuncDescNew
 	uint max_argc,
 	SIType *types,
 	SIType ret_type,
+	bool internal,
 	bool reducible
 ) {
 	AR_FuncDesc *desc = rm_calloc(1, sizeof(AR_FuncDesc));
@@ -33,6 +34,7 @@ AR_FuncDesc *AR_FuncDescNew
 	desc->ret_type                =  ret_type;
 	desc->min_argc                =  min_argc;
 	desc->max_argc                =  max_argc;
+	desc->internal                =  internal;
 	desc->aggregate               =  false;
 	desc->reducible               =  reducible;
 
@@ -65,7 +67,8 @@ inline void AR_SetPrivateDataRoutines
 // get arithmetic function
 AR_FuncDesc *AR_GetFunc
 (
-	const char *func_name
+	const char *func_name,
+	bool include_internal
 ) {
 	size_t len = strlen(func_name);
 	char lower_func_name[len];
@@ -75,6 +78,8 @@ AR_FuncDesc *AR_GetFunc
 	if(f == raxNotFound) return NULL;
 
 	AR_FuncDesc *func = (AR_FuncDesc*)f;
+
+	if(func->internal && !include_internal) return NULL;
 
 	return func;
 }
@@ -97,7 +102,11 @@ bool AR_FuncExists
 	str_tolower(func_name, lower_func_name, &len);
 	void *f = raxFind(__aeRegisteredFuncs, (unsigned char *)lower_func_name, len);
 
-	return f != raxNotFound;
+	if(f == raxNotFound) return false;
+
+	AR_FuncDesc *func = (AR_FuncDesc*)f;
+
+	return !func->internal;
 }
 
 bool AR_FuncIsAggregate
