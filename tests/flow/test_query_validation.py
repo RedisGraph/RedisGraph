@@ -369,7 +369,7 @@ class testQueryValidationFlow(FlowTestsBase):
             """MATCH (a) WHERE true OR -1 RETURN a""",
             """MATCH (a) WHERE true AND -1 RETURN a""",
             """MATCH (a:Author) WHERE a.name CONTAINS 'Ernest' OR 'Amor' RETURN a""",
-            """MATCH () RETURN [(:Company)<-[]-() WHERE NOT FALSE | TRUE]"""]
+            """MATCH () RETURN [()<-[]-() WHERE 1 | TRUE]"""]
 
         for query in queries:
             try:

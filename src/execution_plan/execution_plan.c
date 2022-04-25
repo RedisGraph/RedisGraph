@@ -258,7 +258,7 @@ static ExecutionPlan *_tie_segments
 			uint projections = cypher_ast_with_nprojections(opening_clause);
 			for (uint j = 0; j < projections; j++) {
 				const cypher_astnode_t *projection = cypher_ast_with_get_projection(opening_clause, j);
-				if(buildPatternComprehensionOps(prev_segment, connecting_op, projection)) continue;
+				buildPatternComprehensionOps(prev_segment, connecting_op, projection);
 				buildPatternPathOps(prev_segment, connecting_op, projection);
 			}
 		}
@@ -272,7 +272,7 @@ static ExecutionPlan *_tie_segments
 			uint projections = cypher_ast_return_nprojections(closing_clause);
 			for (uint j = 0; j < projections; j++) {
 				const cypher_astnode_t *projection = cypher_ast_return_get_projection(closing_clause, j);
-				if(buildPatternComprehensionOps(segment, op, projection)) continue;
+				buildPatternComprehensionOps(segment, op, projection);
 				buildPatternPathOps(segment, op, projection);
 			}
 		}
