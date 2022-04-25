@@ -144,3 +144,14 @@ class testMap(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             self.env.assertIn("Encountered unhandled type", str(e))
 
+    # validate that function accesses of scalar-reducible maps do not access invalid memory
+    def test08_map_safe_return_value(self):
+        query = """RETURN {a: 5, b: 'xx'}.b"""
+        query_result = redis_graph.query(query)
+        expected_result = [['xx']]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        query = """RETURN {a: 5, b: toUpper('xx')}.b"""
+        query_result = redis_graph.query(query)
+        expected_result = [['XX']]
+        self.env.assertEquals(query_result.result_set, expected_result)

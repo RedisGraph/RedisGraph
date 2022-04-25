@@ -899,6 +899,12 @@ static AST_Validation _Validate_MERGE_Clauses(const AST *ast) {
 		// Verify that any filters on the path refer to constants or resolved identifiers.
 		res = _ValidateInlinedPropertiesOnPath(path);
 		if(res != AST_VALID) goto cleanup;
+
+		uint action_count = cypher_ast_merge_nactions(merge_clause);
+		for (uint j = 0; j < action_count; j++) {
+			const cypher_astnode_t *action = cypher_ast_merge_get_action(merge_clause, j);
+			_ValidateFunctionCalls(action, false);
+		}
 	}
 
 cleanup:
@@ -1069,6 +1075,7 @@ AST_Validation _AST_ValidateResultColumns
 		}
 	}
 	
+	raxFree(rax);
 	array_free(columns);
 	
 	return res;
