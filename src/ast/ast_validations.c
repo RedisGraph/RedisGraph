@@ -80,6 +80,7 @@ static bool _ValidateAllShortestPaths
 }
 
 // Forward declaration
+static void _AST_Path_GetDefinedIdentifiers(const cypher_astnode_t *path, rax *identifiers);
 static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identifiers);
 
 inline static void _prepareIterateAll(rax *map, raxIterator *iter) {
@@ -910,6 +911,7 @@ cleanup:
 static AST_Validation _Validate_CREATE_Entities(const cypher_astnode_t *path,
 												rax *defined_aliases) {
 	if(_ValidateInlinedPropertiesOnPath(path) != AST_VALID) return AST_INVALID;
+
 	uint nelems = cypher_ast_pattern_path_nelements(path);
 	/* Visit every relationship (every odd offset) on the path to validate its alias and structure.
 	 * TODO There should also be a syntax error for redeclaring nodes, as in:
@@ -943,33 +945,6 @@ static AST_Validation _Validate_CREATE_Entities(const cypher_astnode_t *path,
 	}
 
 	return AST_VALID;
-}
-
-static void _AST_Path_GetDefinedIdentifiers(const cypher_astnode_t *path, rax *identifiers) {
-	/* Collect the aliases of named paths, nodes, and edges.
-	 * All more deeply-nested identifiers are referenced rather than defined,
-	 * and will not be collected. This enforces reference checking on aliases like 'fake' in:
-	 * MATCH (a {val: fake}) RETURN a */
-	if(cypher_astnode_type(path) == CYPHER_AST_NAMED_PATH) {
-		// If this is a named path, collect its alias.
-		const cypher_astnode_t *alias_node = cypher_ast_named_path_get_identifier(path);
-		const char *alias = cypher_ast_identifier_get_name(alias_node);
-		raxInsert(identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
-	}
-
-	uint path_len = cypher_ast_pattern_path_nelements(path);
-	for(uint j = 0; j < path_len; j ++) {
-		const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, j);
-		// Retrieve the path element's alias if one is present.
-		// Odd offsets correspond to edges, even offsets correspond to nodes.
-		const cypher_astnode_t *alias_node = (j % 2) ?
-		                                     cypher_ast_rel_pattern_get_identifier(elem) :
-		                                     cypher_ast_node_pattern_get_identifier(elem);
-		if(!alias_node) continue; // Skip unaliased entities.
-		const char *alias = cypher_ast_identifier_get_name(alias_node);
-		raxInsert(identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
-	}
-
 }
 
 static AST_Validation _Validate_CREATE_Clauses(const AST *ast) {
@@ -1314,6 +1289,33 @@ static AST_Validation _ValidateClauseOrder(const AST *ast) {
 	}
 
 	return AST_VALID;
+}
+
+static void _AST_Path_GetDefinedIdentifiers(const cypher_astnode_t *path, rax *identifiers) {
+	/* Collect the aliases of named paths, nodes, and edges.
+	 * All more deeply-nested identifiers are referenced rather than defined,
+	 * and will not be collected. This enforces reference checking on aliases like 'fake' in:
+	 * MATCH (a {val: fake}) RETURN a */
+	if(cypher_astnode_type(path) == CYPHER_AST_NAMED_PATH) {
+		// If this is a named path, collect its alias.
+		const cypher_astnode_t *alias_node = cypher_ast_named_path_get_identifier(path);
+		const char *alias = cypher_ast_identifier_get_name(alias_node);
+		raxInsert(identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
+	}
+
+	uint path_len = cypher_ast_pattern_path_nelements(path);
+	for(uint j = 0; j < path_len; j ++) {
+		const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, j);
+		// Retrieve the path element's alias if one is present.
+		// Odd offsets correspond to edges, even offsets correspond to nodes.
+		const cypher_astnode_t *alias_node = (j % 2) ?
+											 cypher_ast_rel_pattern_get_identifier(elem) :
+											 cypher_ast_node_pattern_get_identifier(elem);
+		if(!alias_node) continue; // Skip unaliased entities.
+		const char *alias = cypher_ast_identifier_get_name(alias_node);
+		raxInsert(identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
+	}
+
 }
 
 static void _AST_Pattern_GetDefinedIdentifiers(const cypher_astnode_t *pattern, rax *identifiers) {

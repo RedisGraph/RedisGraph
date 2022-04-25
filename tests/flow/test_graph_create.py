@@ -136,7 +136,7 @@ class testGraphCreationFlow(FlowTestsBase):
 
         queries = ["CREATE (n1)-[r:Rel1]->(n2) CREATE (n2)-[r:Rel1]->(n1)",
                    "CREATE (n1)-[r:Rel1]->(n2), (n2)-[r:Rel1]->(n1)",
-                   "CREATE (n1) CREATE (n1)-[r:Rel1]->(n2), (n3)-[r:Rel1]->(n1)"]
+                   "CREATE (n1)-[r:Rel1]->(n2) CREATE (n2)-[r2:Rel1]->(n3), (n3)-[r:Rel1]->(n2)"]
         for query in queries:
             try:
                 redis_graph.query(query)
