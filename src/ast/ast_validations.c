@@ -913,11 +913,20 @@ static AST_Validation _Validate_CREATE_Entities(const cypher_astnode_t *path,
 	if(_ValidateInlinedPropertiesOnPath(path) != AST_VALID) return AST_INVALID;
 
 	uint nelems = cypher_ast_pattern_path_nelements(path);
-	/* Visit every relationship (every odd offset) on the path to validate its alias and structure.
-	 * TODO There should also be a syntax error for redeclaring nodes, as in:
-	 * MATCH (a) CREATE (a)
-	 * But this is a no-op query, and we don't have the logic to differentiate this from a valid query like
-	 * MATCH (a) CREATE (a)-[:E]->(:B) */
+	 // Redeclaration of a node is not allowed only when the path is of length 0, as in: MATCH (a) CREATE (a).
+	 // Otherwise, using a defined alias of a node is allowed, as in: MATCH (a) CREATE (a)-[:E]->(:B)
+	if(nelems == 1) {
+		const cypher_astnode_t *node = cypher_ast_pattern_path_get_element(path, 0);
+		const cypher_astnode_t *identifier = cypher_ast_node_pattern_get_identifier(node);
+		if(identifier) {
+			const char *alias = cypher_ast_identifier_get_name(identifier);
+			if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) != raxNotFound) {
+				ErrorCtx_SetError("The bound variable '%s' can't be redeclared in a CREATE clause", alias);
+				return AST_INVALID;
+			}
+		}
+	}
+	//Visit every relationship (every odd offset) on the path to validate its alias and structure.
 	for(uint j = 1; j < nelems; j += 2) {
 		const cypher_astnode_t *rel = cypher_ast_pattern_path_get_element(path, j);
 		const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(rel);
