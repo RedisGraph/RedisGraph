@@ -307,7 +307,7 @@ jobs:
     steps:
       - early-returns
       - checkout-all
-      - setup-prerequisits
+      - install-prerequisites
       - restore_cache:
           keys:
             - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
@@ -330,7 +330,7 @@ jobs:
     steps:
       - early-returns
       - checkout-all
-      - setup-prerequisits
+      - install-prerequisites
       - restore_cache:
           keys:
             - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
@@ -446,8 +446,8 @@ jobs:
       - image: redisfab/rmbuilder:6.2.5-x64-bionic
     steps:
       - early-returns
-      - checkout
-      - setup-prerequisits
+      - checkout-all
+      - install-prerequisites
       - attach_workspace:
           at: ~/workspace
       - run:
@@ -463,7 +463,7 @@ jobs:
     steps:
       - early-returns
       - checkout-all
-      - setup-prerequisits
+      - install-prerequisites
       - attach_workspace:
           at: ~/workspace
       - run:
@@ -534,6 +534,15 @@ on-integ-and-version-tags: &on-integ-and-version-tags
         - master
         - /^\d+\.\d+.*$/
         - /^feature-.*$/
+    tags:
+      only: /^v[0-9].*/
+
+on-perf-tags: &on-perf-tags
+  filters:
+    branches:
+      only:
+        - master
+        - /^\d+\.\d+.*$/
         - /^perf-.*$/
     tags:
       only: /^v[0-9].*/
@@ -552,7 +561,7 @@ workflows:
           context: common
           matrix:
             parameters:
-              platform: [focal, bionic, xenial, centos7, ol8]
+              platform: [focal, bionic, xenial, centos7, rocky8]
       - build-arm-platforms:
           <<: *on-integ-and-version-tags
           context: common
