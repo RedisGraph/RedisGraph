@@ -385,10 +385,22 @@ class testGraphDeletionFlow(FlowTestsBase):
             except ResponseError as e:
                 self.env.assertContains("Delete type mismatch", str(e))
 
-        # trying to change the graph after deletion is not supported currently
-        try:
-            query = """MATCH (a:A)-[ab]->(b:B) DELETE ab, b MERGE (newB:B {num: 1})"""
-            redis_graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("DELETE can only be followed by another DELETE, SET or RETURN clauses", str(e))
+        # trying to match/merge/project is not supported currently
+        queries = ["MATCH (a:A) DELETE a MERGE (newA:A) RETURN newA",
+                   "MATCH (a:A) DELETE a WITH a AS newA RETURN newA"]
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                self.env.assertTrue(False)
+            except ResponseError as e:
+                self.env.assertContains("DELETE cannot be followed by MATCH, MERGE or WITH clauses", str(e))
+
+        # try referring to a deleted entity
+        queries = ["MATCH (a:A) DELETE a CREATE (a:A) RETURN a",
+                   "MATCH (a1:A)-[a:R]->(a2:A) DELETE a, a1 CREATE (b) CREATE (a:B)-[:R2]->(b:B)"]
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                self.env.assertTrue(False)
+            except ResponseError as e:
+                self.env.assertContains("Referring to a deleted entity 'a' is invalid", str(e))

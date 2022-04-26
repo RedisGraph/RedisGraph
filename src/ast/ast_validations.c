@@ -1004,30 +1004,32 @@ cleanup:
 	return res;
 }
 
-static AST_Validation _ValidateDeletedEntitiesNotReferenced(rax *deleted_entities, const cypher_astnode_t *clause) {
+static AST_Validation _ValidateDeletedEntitiesNotReferenced(const char **deleted_entities, const cypher_astnode_t *clause) {
 	rax *identifiers = raxNew();
 	_AST_GetDefinedIdentifiers(clause, identifiers);
-	raxIterator it1;
-	raxStart(&it1, identifiers);
-	raxSeek(&it1, "^", NULL, 0);
 
-	while (raxNext(&it1)) {
-		if (raxFind(deleted_entities, (unsigned char *) &it1.key, (size_t)&it1.key_len) != raxNotFound) {
-			ErrorCtx_SetError("Referring to a deleted entity is invalid");
+	size_t n_deleted_entities = array_len(deleted_entities);
+	for (size_t i = 0; i < n_deleted_entities; i++) {
+		const char *entity = deleted_entities[i];
+		if (raxFind(identifiers, (unsigned char *)entity, strlen(entity)) != raxNotFound) {
+			ErrorCtx_SetError("Referring to a deleted entity '%s' is invalid", entity);
+			raxFree(identifiers);
 			return AST_INVALID;
 		}
 	}
+	raxFree(identifiers);
 	return AST_VALID;
 }
 
 static AST_Validation _Validate_DELETE_Clauses(const AST *ast) {
 	uint *delete_clause_indices = AST_GetClauseIndices(ast, CYPHER_AST_DELETE);
+	const char **deleted_entities = NULL;
 	AST_Validation res = AST_VALID;
 	if (array_len(delete_clause_indices) == 0) {
 		goto cleanup;
 	}
-	rax *deleted_entities = raxNew();
 
+	deleted_entities = array_new(const char *, 1);
 	uint total_clause_count = cypher_ast_query_nclauses(ast->root);
 	for(uint i = delete_clause_indices[0]; i < total_clause_count; i++) {
 		// if we have one of return/set clauses - no problem.
@@ -1036,16 +1038,13 @@ static AST_Validation _Validate_DELETE_Clauses(const AST *ast) {
 		   cypher_astnode_type(clause) == CYPHER_AST_SET) {
 			continue;
 		}
-		if(cypher_astnode_type(clause) == CYPHER_AST_CREATE ||
-			cypher_astnode_type(clause) == CYPHER_AST_CALL ||
-			cypher_astnode_type(clause) == CYPHER_AST_UNWIND) {
+		if(cypher_astnode_type(clause) == CYPHER_AST_CREATE) {
 			// validate that a deleted alias isn't used in the following clauses.
 			if (_ValidateDeletedEntitiesNotReferenced(deleted_entities, clause) == AST_INVALID) {
 				res = AST_INVALID;
 				goto cleanup;
 			}
-		}
-		if(cypher_astnode_type(clause) == CYPHER_AST_DELETE) {
+		} else if(cypher_astnode_type(clause) == CYPHER_AST_DELETE) {
 			uint expression_count = cypher_ast_delete_nexpressions(clause);
 			for (uint j = 0; j < expression_count; j++) {
 				const cypher_astnode_t *exp = cypher_ast_delete_get_expression(clause, j);
@@ -1061,9 +1060,9 @@ static AST_Validation _Validate_DELETE_Clauses(const AST *ast) {
 					res = AST_INVALID;
 					goto cleanup;
 				}
-				if(type == CYPHER_AST_IDENTIFIER || type == CYPHER_AST_SUBSCRIPT_OPERATOR) {
+				if(type == CYPHER_AST_IDENTIFIER) {
 					const char *name = cypher_ast_identifier_get_name(exp);
-					raxInsert(deleted_entities, (unsigned char *)name, strlen(name), NULL, NULL);
+					array_append(deleted_entities, name);
 				}
 			}
 			// validate any func
@@ -1071,7 +1070,9 @@ static AST_Validation _Validate_DELETE_Clauses(const AST *ast) {
 			res = _ValidateFunctionCalls(clause, include_aggregates);
 			if(res == AST_INVALID) goto cleanup;
 		} else {
-			ErrorCtx_SetError("DELETE cannot be followed by another MATCH, MERGE, WITH or UNION clauses");
+			// Note that UNWIND/CALL also cannot be followed, since a WITH clause must come between an update
+			// clause and UNWIND/MATCH/CALL clauses.
+			ErrorCtx_SetError("DELETE cannot be followed by MATCH, MERGE or WITH clauses");
 			res = AST_INVALID;
 			goto cleanup;
 		}
@@ -1079,7 +1080,7 @@ static AST_Validation _Validate_DELETE_Clauses(const AST *ast) {
 
 cleanup:
 	array_free(delete_clause_indices);
-	raxFree(deleted_entities);
+	if(deleted_entities) array_free(deleted_entities);
 	return res;
 }
 
