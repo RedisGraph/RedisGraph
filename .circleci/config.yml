@@ -621,9 +621,11 @@ workflows:
           name: build
           <<: *not-on-integ-branch
       - coverage:
-          <<: *on-any-branch
+          #@@<<: *on-any-branch
+          <<: *never
       - build-memcheck:
-          <<: *on-any-branch
+          #@@<<: *on-any-branch
+          <<: *never
       - build-for-rlec:
           <<: *on-any-branch
       - test-rlec:
