@@ -1,6 +1,4 @@
-from RLTest import Env
-from redisgraph import Graph, Node
-from base import FlowTestsBase
+from common import *
 
 GRAPH_ID = "order_by_test"
 redis_graph = None
@@ -11,7 +9,7 @@ class testOrderBy(FlowTestsBase):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
         self.populate_graph()
 
     def populate_graph(self):

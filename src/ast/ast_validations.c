@@ -777,19 +777,38 @@ static AST_Validation _Validate_WITH_Clauses(const AST *ast) {
 														NULL);
 	if(with_clause == NULL) return AST_VALID;
 
+	rax *rax = raxNew();
+	AST_Validation res = AST_VALID;
+
 	// Verify that each WITH projection either is aliased or is itself an identifier.
 	uint projection_count = cypher_ast_with_nprojections(with_clause);
 	for(uint i = 0; i < projection_count; i ++) {
 		const cypher_astnode_t *proj = cypher_ast_with_get_projection(with_clause, i);
-		if(!cypher_ast_projection_get_alias(proj) &&
+		const cypher_astnode_t *ast_alias = cypher_ast_projection_get_alias(proj);
+		if(!ast_alias &&
 		   cypher_astnode_type(cypher_ast_projection_get_expression(proj)) != CYPHER_AST_IDENTIFIER) {
 			ErrorCtx_SetError("WITH clause projections must be aliased");
-			return AST_INVALID;
+			res = AST_INVALID;
+			break;
+		}
+		if(ast_alias == NULL) ast_alias = cypher_ast_projection_get_expression(proj);
+		const char *alias = cypher_ast_identifier_get_name(ast_alias);
+		// column with same name is invalid
+		if(raxTryInsert(rax, (unsigned char *)alias, strlen(alias), NULL, NULL) == 0) {
+			ErrorCtx_SetError("Error: Multiple result columns with the same name are not supported.");
+			res = AST_INVALID;
+			break;
 		}
 	}
 
-	// Verify that functions invoked by the WITH clause are valid.
-	return _ValidateFunctionCalls(with_clause, true);
+	raxFree(rax);
+
+	if(res == AST_VALID) {
+		// Verify that functions invoked by the WITH clause are valid.
+		res = _ValidateFunctionCalls(with_clause, true);
+	}
+
+	return res;
 }
 
 // Verify that MERGE doesn't redeclare bound relations and that one reltype is specified for unbound relations.
@@ -862,6 +881,11 @@ static AST_Validation _Validate_MERGE_Clauses(const AST *ast) {
 
 		const cypher_astnode_t *merge_clause = cypher_ast_query_get_clause(ast->root, clause_idx);
 		const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clause);
+
+		// Verify that functions invoked in the MERGE pattern are valid.
+		res = _ValidateFunctionCalls(path, false);
+		if(res != AST_VALID) goto cleanup;
+
 		uint nelems = cypher_ast_pattern_path_nelements(path);
 		for(uint j = 0; j < nelems; j ++) {
 			const cypher_astnode_t *entity = cypher_ast_pattern_path_get_element(path, j);
@@ -874,6 +898,12 @@ static AST_Validation _Validate_MERGE_Clauses(const AST *ast) {
 		// Verify that any filters on the path refer to constants or resolved identifiers.
 		res = _ValidateInlinedPropertiesOnPath(path);
 		if(res != AST_VALID) goto cleanup;
+
+		uint action_count = cypher_ast_merge_nactions(merge_clause);
+		for (uint j = 0; j < action_count; j++) {
+			const cypher_astnode_t *action = cypher_ast_merge_get_action(merge_clause, j);
+			_ValidateFunctionCalls(action, false);
+		}
 	}
 
 cleanup:
@@ -906,6 +936,7 @@ static AST_Validation _Validate_CREATE_Entities(const cypher_astnode_t *clause,
 			// Validate that no relation aliases are previously bound.
 			if(identifier) {
 				const char *alias = cypher_ast_identifier_get_name(identifier);
+				printf("\nDA %s\n", alias);
 				if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) != raxNotFound) {
 					ErrorCtx_SetError("The bound variable %s' can't be redeclared in a CREATE clause", alias);
 					return AST_INVALID;
@@ -1007,6 +1038,36 @@ cleanup:
 	return res;
 }
 
+AST_Validation _AST_ValidateResultColumns
+(
+	const cypher_astnode_t *return_clause
+) {
+	ASSERT(return_clause != NULL);
+
+	if(cypher_ast_return_has_include_existing(return_clause)) {
+		return AST_VALID;
+	}
+
+	rax           *rax          = raxNew();
+	AST_Validation res          = AST_VALID;
+	const char   **columns      = AST_BuildReturnColumnNames(return_clause);
+	uint           column_count = array_len(columns);
+
+	for (uint i = 0; i < column_count; i++) {
+		// column with same name is invalid
+		if(raxTryInsert(rax, (unsigned char *)columns[i], strlen(columns[i]), NULL, NULL) == 0) {
+			ErrorCtx_SetError("Error: Multiple result columns with the same name are not supported.");
+			res = AST_INVALID;
+			break;
+		}
+	}
+	
+	raxFree(rax);
+	array_free(columns);
+	
+	return res;
+}
+
 static AST_Validation _Validate_RETURN_Clause(const AST *ast) {
 	const cypher_astnode_t *return_clause;
 	return_clause = AST_GetClause(ast, CYPHER_AST_RETURN, NULL);
@@ -1016,7 +1077,10 @@ static AST_Validation _Validate_RETURN_Clause(const AST *ast) {
 
 	// validate all user-specified functions in RETURN clause
 	bool include_aggregates = true;
-	return _ValidateFunctionCalls(return_clause, include_aggregates);
+	if(_ValidateFunctionCalls(return_clause, include_aggregates) == AST_INVALID)
+		return AST_INVALID;
+	
+	return _AST_ValidateResultColumns(return_clause);
 }
 
 static AST_Validation _Validate_UNWIND_Clauses(const AST *ast) {

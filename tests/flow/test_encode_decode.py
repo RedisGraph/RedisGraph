@@ -1,11 +1,8 @@
-from base import FlowTestsBase
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
+from common import *
 import re
 
 redis_con = None
+
 
 class test_v7_encode_decode(FlowTestsBase):
     def __init__(self):
@@ -15,7 +12,7 @@ class test_v7_encode_decode(FlowTestsBase):
 
     def test01_nodes_over_multiple_keys(self):
         graph_name = "nodes_over_multiple_keys"
-        redis_graph = Graph(graph_name, redis_con)
+        redis_graph = Graph(redis_con, graph_name)
         # Create 3 nodes meta keys
         redis_graph.query("UNWIND range(0,20) as i CREATE (:Node {val:i})")
         # Return all the nodes, before and after saving & loading the RDB, and check equality
@@ -28,7 +25,7 @@ class test_v7_encode_decode(FlowTestsBase):
 
     def test02_no_compaction_on_nodes_delete(self):
         graph_name = "no_compaction_on_nodes_delete"
-        redis_graph = Graph(graph_name, redis_con)
+        redis_graph = Graph(redis_con, graph_name)
         # Create 20 nodes meta keys
         redis_graph.query("UNWIND range(0, 20) as i CREATE (:Node)")
         # Return all the nodes, before and after saving & loading the RDB, and check equality
@@ -53,7 +50,7 @@ class test_v7_encode_decode(FlowTestsBase):
 
     def test03_edges_over_multiple_keys(self):
         graph_name = "edges_over_multiple_keys"
-        redis_graph = Graph(graph_name, redis_con)
+        redis_graph = Graph(redis_con, graph_name)
         # Create 3 edges meta keys
         redis_graph.query("UNWIND range(0,20) as i CREATE (:Src)-[:R {val:i}]->(:Dest)")
         # Return all the edges, before and after saving & loading the RDB, and check equality
@@ -66,7 +63,7 @@ class test_v7_encode_decode(FlowTestsBase):
 
     def test04_no_compaction_on_edges_delete(self):
         graph_name = "no_compaction_on_edges_delete"
-        redis_graph = Graph(graph_name, redis_con)
+        redis_graph = Graph(redis_con, graph_name)
         # Create 3 nodes meta keys
         redis_graph.query("UNWIND range(0,20) as i CREATE (:Src)-[:R]->(:Dest)")
         # Return all the edges, before and after saving & loading the RDB, and check equality
@@ -87,7 +84,7 @@ class test_v7_encode_decode(FlowTestsBase):
 
     def test05_multiple_edges_over_multiple_keys(self):
         graph_name = "multiple_edges_over_multiple_keys"
-        redis_graph = Graph(graph_name, redis_con)
+        redis_graph = Graph(redis_con, graph_name)
         # Create 3 edges meta keys
         redis_graph.query("CREATE (n1:Src {val:1}), (n2:Dest {val:2}) WITH n1, n2 UNWIND range(0,20) as i CREATE (n1)-[:R {val:i}]->(n2)")
         # Return all the edges, before and after saving & loading the RDB, and check equality
@@ -100,7 +97,7 @@ class test_v7_encode_decode(FlowTestsBase):
 
     def test06_no_compaction_on_multiple_edges_delete(self):
         graph_name = "no_compaction_on_multiple_edges_delete"
-        redis_graph = Graph(graph_name, redis_con)
+        redis_graph = Graph(redis_con, graph_name)
         # Create 3 nodes meta keys
         redis_graph.query("CREATE (n1:Src {val:1}), (n2:Dest {val:2}) WITH n1, n2 UNWIND range(0,20) as i CREATE (n1)-[:R]->(n2)")
         # Return all the edges, before and after saving & loading the RDB, and check equality
@@ -121,7 +118,7 @@ class test_v7_encode_decode(FlowTestsBase):
 
     def test07_index_after_encode_decode_in_v7(self):
         graph_name = "index_after_encode_decode_in_v7"
-        redis_graph = Graph(graph_name, redis_con)
+        redis_graph = Graph(redis_con, graph_name)
         redis_graph.query("CREATE INDEX ON :N(val)")
         # Verify indices exists.
         plan = redis_graph.execution_plan(
@@ -137,12 +134,12 @@ class test_v7_encode_decode(FlowTestsBase):
     def test08_multiple_graphs_with_index(self):
         # Create a multi-key graph.
         graph1_name = "v7_graph_1"
-        graph1 = Graph(graph1_name, redis_con)
+        graph1 = Graph(redis_con, graph1_name)
         graph1.query("UNWIND range(0,21) AS i CREATE (a:L {v: i})-[:E]->(b:L2 {v: i})")
 
         # Create a single-key graph.
         graph2_name = "v7_graph_2"
-        graph2 = Graph(graph2_name, redis_con)
+        graph2 = Graph(redis_con, graph2_name)
         graph2.query("CREATE (a:L {v: 1})-[:E]->(b:L2 {v: 2})")
 
         # Add an index to the multi-key graph.
@@ -161,7 +158,7 @@ class test_v7_encode_decode(FlowTestsBase):
 
     def test08_multiple_reltypes(self):
         graph_name = "multiple_reltypes"
-        redis_graph = Graph(graph_name, redis_con)
+        redis_graph = Graph(redis_con, graph_name)
         # Create 10 nodes
         redis_graph.query("UNWIND range(0,10) as v CREATE (:L {v: v})")
         # Create 3 edges of different relation types connecting 6 different nodes
@@ -193,7 +190,7 @@ class test_v7_encode_decode(FlowTestsBase):
         self.env.assertEqual(response, "OK")
 
         graph_name = "vkey_max_entity_count"
-        redis_graph = Graph(graph_name, redis_con)
+        redis_graph = Graph(redis_con, graph_name)
         
         # Create 30 nodes
         redis_graph.query("UNWIND range(0, 30) as v CREATE (:L {v: v})")

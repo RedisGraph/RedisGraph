@@ -1,7 +1,11 @@
 from numbers import Number
 from collections import Counter
-from redisgraph import Node, Edge, Path
 from RLTest import Env
+
+from redis.commands.graph import Graph
+from redis.commands.graph.node import Node
+from redis.commands.graph.edge import Edge
+from redis.commands.graph.path import Path
 
 # Returns True if value is a number or string representation of a number.
 
@@ -189,13 +193,18 @@ def assert_statistics(resultset, stat, value):
         Env.RTestInstance.currEnv.assertEquals(resultset.nodes_created, value)
     elif stat == "+relationships":
         Env.RTestInstance.currEnv.assertEquals(resultset.relationships_created, value)
+    elif stat == "-relationships":
+        Env.RTestInstance.currEnv.assertEquals(resultset.relationships_deleted, value)
     elif stat == "+labels":
         Env.RTestInstance.currEnv.assertEquals(resultset.labels_added, value)
     elif stat == "+properties":
         Env.RTestInstance.currEnv.assertEquals(resultset.properties_set, value)
     elif stat == "-nodes":
         Env.RTestInstance.currEnv.assertEquals(resultset.nodes_deleted, value)
+    elif stat == "-labels" or stat == "-properties":
+        pass
     else:
+        print(stat)
         Env.RTestInstance.currEnv.assertTrue(False)
 
 # checks resultset statistics for no graph modifications

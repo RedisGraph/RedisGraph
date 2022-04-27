@@ -1,12 +1,11 @@
-import redis
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
+from common import *
+
 class testAllShortestPaths():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         redis_con = self.env.getConnection()
-        self.graph = Graph("all_shortest_paths", redis_con)
-        self.cyclic_graph = Graph("all_shortest_paths_cyclic", redis_con)
+        self.graph = Graph(redis_con, "all_shortest_paths")
+        self.cyclic_graph = Graph(redis_con, "all_shortest_paths_cyclic")
         self.populate_graph()
         self.populate_cyclic_graph()
 

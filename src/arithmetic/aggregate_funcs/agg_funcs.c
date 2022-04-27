@@ -17,6 +17,7 @@ AR_FuncDesc *AR_AggFuncDescNew
 	uint min_argc,                      // minimum number of arguments
 	uint max_argc,                      // maximum number of arguments
 	SIType *types,                      // acceptable types
+	SIType ret_type,                    // return type
 	AR_Func_Free free,                  // free aggregation callback
 	AR_Func_Finalize finalize,          // finalize aggregation callback
 	AR_Func_PrivateData private_data    // generate private data
@@ -26,8 +27,10 @@ AR_FuncDesc *AR_AggFuncDescNew
 	desc->name                    =  name;
 	desc->func                    =  func;
 	desc->types                   =  types;
+	desc->ret_type                =  ret_type;
 	desc->min_argc                =  min_argc;
 	desc->max_argc                =  max_argc;
+	desc->internal                =  false;
 	desc->aggregate               =  true;
 	desc->reducible               =  false;
 	desc->callbacks.free          =  free;
@@ -76,25 +79,6 @@ SIValue Aggregate_GetResult
 ) {
 	return SI_TransferOwnership(&ctx->result);
 }
-
-//------------------------------------------------------------------------------
-// Aggregation default value generators
-//------------------------------------------------------------------------------
-
-//// default double aggregation value
-//SIValue Default_Double(void) {
-//	return SI_DoubleVal(0);
-//}
-//
-//// default long aggregation value
-//SIValue Default_Long(void) {
-//	return SI_LongVal(0);
-//}
-//
-//// default array aggregation value
-//SIValue Default_Array(void) {
-//	return SI_Array(0);
-//}
 
 //------------------------------------------------------------------------------
 // Aggregation function registration

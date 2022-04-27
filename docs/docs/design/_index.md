@@ -1,4 +1,9 @@
-# RedisGraph: A High Performance In-Memory Graph Database
+---
+title: "RedisGraph: A High Performance In-Memory Graph Database"
+linkTitle: "Design"
+weight: 3 
+description: ""
+---
 
 ## Abstract
 
@@ -116,11 +121,9 @@ movies_count DESC"
 
 RedisGraph uses sparse adjacency matrices to represent graphs. As directed relationship connecting source node S to destination node T is
 recorded within an adjacency matrix M, by setting M's S,T entry to 1 (M[S,T]=1).
-<!-- The above sentence is not clear -->
 As a rule of thumb, matrix rows represent source nodes while matrix columns represent destination nodes.
 
 Every graph stored within RedisGraph has at least one matrix, referred to as THE adjacency matrix (relation-type agnostic). In addition, every relation with a type has its own dedicated matrix. Consider a graph with two relationships types:
-<!-- What is the meaning of THE? -->
 
 1. visits
 2. friend

@@ -452,7 +452,7 @@ void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
 	if(other_label_count > 0) {
 		// create func expression
 		const char *func_name = "hasLabels";
-		AR_ExpNode *op = AR_EXP_NewOpNode(func_name, 2);
+		AR_ExpNode *op = AR_EXP_NewOpNode(func_name, true, 2);
 
 		// create node expression
 		AR_ExpNode *node_exp = AR_EXP_NewVariableOperandNode(other_alias);

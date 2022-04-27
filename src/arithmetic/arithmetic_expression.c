@@ -30,6 +30,9 @@
 // return child at position 'idx' of 'n'
 #define NODE_CHILD(n, idx) (n)->op.children[(idx)]
 
+// maximum size for which an array of SIValue will be stack-allocated, otherwise it will be heap-allocated.
+#define MAX_ARRAY_SIZE_ON_STACK 32
+
 //------------------------------------------------------------------------------
 // Forward declarations
 //------------------------------------------------------------------------------
@@ -138,8 +141,9 @@ static AR_ExpNode *_AR_EXP_NewOpNode(uint child_count) {
 
 static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 	const char *func_name = exp->op.f->name;
+	bool include_internal = exp->op.f->internal;
 	uint child_count = exp->op.child_count;
-	AR_ExpNode *clone = AR_EXP_NewOpNode(func_name, child_count);
+	AR_ExpNode *clone = AR_EXP_NewOpNode(func_name, include_internal, child_count);
 	AR_Func_Clone clone_cb = clone->op.f->callbacks.clone;
 	void *pdata = exp->op.private_data;
 	if(clone_cb != NULL) {
@@ -159,10 +163,11 @@ static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 AR_ExpNode *AR_EXP_NewOpNode
 (
 	const char *func_name,
+	bool include_internal,
 	uint child_count
 ) {
 	// retrieve function
-	AR_FuncDesc *func = AR_GetFunc(func_name);
+	AR_FuncDesc *func = AR_GetFunc(func_name, include_internal);
 	AR_ExpNode *node = _AR_EXP_NewOpNode(child_count);
 
 	ASSERT(func != NULL);
@@ -212,7 +217,7 @@ AR_ExpNode *AR_EXP_NewAttributeAccessNode(AR_ExpNode *entity,
 
 	// entity is an expression which should be evaluated to a graph entity
 	// attr is the name of the attribute we want to extract from entity
-	AR_ExpNode *root = AR_EXP_NewOpNode("property", 3);
+	AR_ExpNode *root = AR_EXP_NewOpNode("property", true, 3);
 	root->op.children[0] = entity;
 	root->op.children[1] = AR_EXP_NewConstOperandNode(prop_name);
 	root->op.children[2] = AR_EXP_NewConstOperandNode(prop_idx);
@@ -408,6 +413,10 @@ static inline void _AR_EXP_FreeResultsArray(SIValue *results, int count) {
 	for(int i = 0; i < count; i ++) {
 		SIValue_Free(results[i]);
 	}
+	// Large arrays are heap-allocated, so here is where we free it.
+	if (count > MAX_ARRAY_SIZE_ON_STACK) {
+		rm_free(results);
+	}
 }
 
 static AR_EXP_Result _AR_EXP_EvaluateFunctionCall
@@ -421,8 +430,15 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall
 	int child_count = node->op.child_count;
 
 	// evaluate each child before evaluating current node
-	SIValue sub_trees[child_count];
-
+	SIValue *sub_trees = NULL;
+	// if array size is above the threshold, we allocate it on the heap (otherwise on stack)
+	size_t array_on_stack_size = child_count > MAX_ARRAY_SIZE_ON_STACK ? 0 : child_count;
+	SIValue sub_trees_on_stack[array_on_stack_size];
+	if (child_count > MAX_ARRAY_SIZE_ON_STACK) {
+		sub_trees = rm_malloc(child_count * sizeof(SIValue));
+	} else {
+		sub_trees = sub_trees_on_stack;
+	}
 	bool param_found = false;
 	for(int child_idx = 0; child_idx < NODE_CHILD_COUNT(node); child_idx++) {
 		SIValue v;
@@ -452,13 +468,17 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall
 
 	// evaluate self
 	SIValue v = node->op.f->func(sub_trees, child_count, node->op.private_data);
+	ASSERT(node->op.f->aggregate || SI_TYPE(v) & AR_FuncDesc_RetType(node->op.f));
 	if(SIValue_IsNull(v) && ErrorCtx_EncounteredError()) {
 		// an error was encountered while evaluating this function,
 		// and has already been set in the QueryCtx
 		// exit with an error
 		res = EVAL_ERR;
 	}
-	if(result) *result = v;
+	if(result) {
+		SIValue_Persist(&v);
+		*result = v;
+	}
 
 cleanup:
 	_AR_EXP_FreeResultsArray(sub_trees, node->op.child_count);
@@ -596,6 +616,7 @@ void _AR_EXP_FinalizeAggregations
 		AggregateCtx *ctx = root->op.private_data;
 		Aggregate_Finalize(root->op.f, ctx);
 		SIValue v = Aggregate_GetResult(ctx);
+		ASSERT(SI_TYPE(v) & AR_FuncDesc_RetType(root->op.f));
 
 		// free node internals
 		_AR_EXP_FreeOpInternals(root);
@@ -687,20 +708,46 @@ bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
 	return false;
 }
 
-bool AR_EXP_ReturnsBoolean(const AR_ExpNode *exp) {
-	ASSERT(exp != NULL && exp->type != AR_EXP_UNKNOWN);
+// return type of expression
+// e.g. the expression: `1+3` return type is SI_NUMERIC
+// e.g. the expression : `ToString(4+3)` return type is T_STRING
+SIType AR_EXP_ReturnType
+(
+	const AR_ExpNode *exp  // expression to query
+)
+{
+	// validation
+	ASSERT(exp != NULL);
+	ASSERT(exp->type != AR_EXP_UNKNOWN);
 
-	// If the node does not represent a constant, assume it returns a boolean.
-	// TODO We can add greater introspection in the future if required.
-	if(AR_EXP_IsOperation(exp)) return true;
+	SIType t = T_NULL; // returned type
 
-	// Operand node, return true if it is a boolean or NULL constant.
-	if(exp->operand.type == AR_EXP_CONSTANT) {
-		return (SI_TYPE(exp->operand.constant) & (T_BOOL | T_NULL));
+	if(exp->type == AR_EXP_OP) {
+		// expression is a function call
+		// get function return type
+		t = AR_FuncDesc_RetType(exp->op.f);
+	} else {
+		// expression is an operand
+		if (exp->operand.type == AR_EXP_CONSTANT) {
+			t = exp->operand.constant.type;
+		}
 	}
 
-	// Node is a variable or parameter, whether it evaluates to boolean cannot be determined now.
-	return true;
+	return t;
+}
+
+bool AR_EXP_ReturnsBoolean
+(
+	const AR_ExpNode *exp
+) {
+	ASSERT(exp != NULL && exp->type != AR_EXP_UNKNOWN);
+
+	SIType t = AR_EXP_ReturnType(exp);
+
+	// return true if `t` is either Boolean or NULL
+	// in case `exp` is a variable or parameter
+	// whether it evaluates to boolean cannot be determined at this point
+	return t & T_BOOL || t == T_NULL;
 }
 
 void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,

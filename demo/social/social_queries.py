@@ -1,8 +1,9 @@
 import sys
 import os
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../..')
 from demo import QueryInfo
+
 
 graph_entities = QueryInfo(
     query="""MATCH (e) RETURN e.name, LABELS(e) as label ORDER BY label, e.name""",

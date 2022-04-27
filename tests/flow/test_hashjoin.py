@@ -1,8 +1,7 @@
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
-from base import FlowTestsBase
+from common import *
 
 GRAPH_ID = "G"
+
 
 class testHashJoin(FlowTestsBase):
     def __init__(self):
@@ -11,7 +10,7 @@ class testHashJoin(FlowTestsBase):
     def test_multi_hashjoins(self):
         # See issue https://github.com/RedisGraph/RedisGraph/issues/1124
         # Construct a 4 node graph, (v1),(v2),(v3),(v4)
-        graph = Graph(GRAPH_ID, self.env.getConnection())
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
         a = Node(properties = {"val": 1})
         b = Node(properties = {"val": 2})
         c = Node(properties = {"val": 3})
