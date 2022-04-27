@@ -44,7 +44,6 @@ void buildPatternComprehensionOps
 	ASSERT(ast  != NULL);
 	ASSERT(root->type == OPType_PROJECT || root->type == OPType_AGGREGATE);
 
-
 	// search for pattern comprehension AST nodes
 	// quickly return if none been found
 	const cypher_astnode_t **pcs =
@@ -105,8 +104,17 @@ void buildPatternComprehensionOps
 			// build filter tree
 			FT_FilterNode *filter_tree = NULL;
 			AST_ConvertFilters(&filter_tree, predicate);
-			// place filters
-			ExecutionPlan_PlaceFilterOps(plan, aggregate, NULL, filter_tree);
+
+			if(!FilterTree_Valid(filter_tree)) {
+				// Invalid filter tree structure, a compile-time error has been set.
+				FilterTree_Free(filter_tree);
+			} else {
+				// Apply De Morgan's laws
+				FilterTree_DeMorgan(&filter_tree);
+
+				// place filters
+				ExecutionPlan_PlaceFilterOps(plan, aggregate, NULL, filter_tree);
+			}
 		}
 
 		// in case the execution-plan had child operations we need to combine
