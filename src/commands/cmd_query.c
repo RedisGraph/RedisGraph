@@ -59,8 +59,13 @@ void static inline GraphQueryCtx_Free(GraphQueryCtx *ctx) {
 	rm_free(ctx);
 }
 
-static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
-							 ExecutionType exec_type) {
+static void _index_operation
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc,
+	AST *ast,
+	ExecutionType exec_type
+) {
 	Index       *idx         =  NULL;
 	SchemaType  schema_type  =  SCHEMA_NODE;
 	IndexType   idx_type     =  IDX_EXACT_MATCH;
@@ -188,19 +193,19 @@ static void _ExecuteQuery(void *args) {
 
 	QueryCtx_SetResultSet(result_set);
 
-	// acquire the appropriate lock
-	if(readonly) {
-		Graph_AcquireReadLock(gc->g);
-	} else {
-		/* if this is a writer query `we need to re-open the graph key with write flag
-		 * this notifies Redis that the key is "dirty" any watcher on that key will
-		 * be notified */
+	if(!readonly) {
+		// if this is a writer query `we need to re-open the graph key
+		// with write flag this notifies Redis that the key is "dirty"
+		// any watcher on that key will be notified
 		CommandCtx_ThreadSafeContextLock(command_ctx);
 		{
 			GraphContext_MarkWriter(rm_ctx, gc);
 		}
 		CommandCtx_ThreadSafeContextUnlock(command_ctx);
 	}
+
+	// both readers and writers start off as readers
+	Graph_AcquireReadLock(gc->g);
 
 	if(exec_type == EXECUTION_TYPE_QUERY) {  // query operation
 		// set policy after lock acquisition,
@@ -239,7 +244,8 @@ static void _ExecuteQuery(void *args) {
 		ResultSet_Reply(result_set);
 	}
 
-	if(readonly) Graph_ReleaseLock(gc->g); // release read lock
+	// release read lock
+	Graph_ReleaseLock(gc->g);
 
 	// log query to slowlog
 	SlowLog *slowlog = GraphContext_GetSlowLog(gc);

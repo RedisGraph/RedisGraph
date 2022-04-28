@@ -7,6 +7,7 @@
 #include "RG.h"
 #include "graph.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "../util/qsort.h"
 #include "../util/rmalloc.h"
 #include "../util/datablock/oo_datablock.h"
@@ -55,13 +56,30 @@ static void _CreateRWLock
 
 // acquire a lock that does not restrict access from additional reader threads
 void Graph_AcquireReadLock(Graph *g) {
-	pthread_rwlock_rdlock(&g->_rwlock);
+	// a thread asking for read acquisition
+	// mustn't be holding the lock for either read or write!
+	assert(QueryCtx_LockStatus() == LOCK_STATUS_UNLOCKED);
+	assert(pthread_rwlock_rdlock(&g->_rwlock) == 0);
+
+	// mark lock status as read locked
+	QueryCtx_SetLockStatus(LOCK_STATUS_WRITELOCKED);
 }
 
 // acquire a lock for exclusive access to this graph's data
 void Graph_AcquireWriteLock(Graph *g) {
-	pthread_rwlock_wrlock(&g->_rwlock);
+	// a thread asking for write acquisition
+	// mustn't be holding the lock for either read or write!
+	assert(QueryCtx_LockStatus() == LOCK_STATUS_UNLOCKED);
+
+	// release read lock before trying to acquire write lock
+	// Graph_ReleaseLock(g);
+
+	// try to acquire lock for writing
+	assert(pthread_rwlock_wrlock(&g->_rwlock) == 0);
 	g->_writelocked = true;
+
+	// mark lock status as write locked
+	QueryCtx_SetLockStatus(LOCK_STATUS_WRITELOCKED);
 }
 
 // Release the held lock
@@ -69,6 +87,12 @@ void Graph_ReleaseLock
 (
 	Graph *g
 ) {
+	// do not try to release an unlocked RWLock
+	if(QueryCtx_LockStatus() == LOCK_STATUS_UNLOCKED)
+	{
+		return;
+	}
+
 	// set _writelocked to false BEFORE unlocking
 	// if this is a reader thread no harm done,
 	// if this is a writer thread the writer is about to unlock so once again
@@ -77,7 +101,10 @@ void Graph_ReleaseLock
 	// underline matrices, consider a context switch after unlocking `_rwlock` but
 	// before setting `_writelocked` to false
 	g->_writelocked = false;
-	pthread_rwlock_unlock(&g->_rwlock);
+	assert(pthread_rwlock_unlock(&g->_rwlock) == 0);
+
+	// mark lock status as unlocked
+	QueryCtx_SetLockStatus(LOCK_STATUS_UNLOCKED);
 }
 
 //------------------------------------------------------------------------------
