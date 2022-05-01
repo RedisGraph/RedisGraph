@@ -31,15 +31,23 @@ TCK ?= 1
 endif
 
 TESTS=
-ifneq ($(UNIT),0)
-TESTS += unit
+ifneq ($(RLEC),1)
+	ifneq ($(UNIT),0)
+		TESTS += unit
+	endif
+	ifneq ($(FLOW),0)
+		TESTS += flow
+	endif
+	ifneq ($(TCK),0)
+		TESTS += tck
+	endif
+else
+	TESTS += flow
+	GEN ?= 1
+	AOF ?= 0
+	TCK ?= 0
 endif
-ifneq ($(FLOW),0)
-TESTS += flow
-endif
-ifneq ($(TCK),0)
-TESTS += tck
-endif
+
 
 test: $(TESTS)
 
