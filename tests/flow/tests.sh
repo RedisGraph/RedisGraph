@@ -162,6 +162,7 @@ setup_redis_server() {
 valgrind_config() {
 	# RLTest reads this
 	VG_OPTIONS="
+		-q \
 		--show-reachable=no \
 		--track-origins=yes \
 		--show-possibly-lost=no"

@@ -24,8 +24,6 @@
 
 #include "thpool.h"
 
-#include "rmalloc.h"
-
 #ifdef THPOOL_DEBUG
 #define THPOOL_DEBUG 1
 #else
