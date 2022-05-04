@@ -70,6 +70,7 @@ class RedisGraphSetup(paella.Setup):
             self.install("lcov-git", aur=True)
 
         self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall --modern".format(PYTHON=self.python, READIES=READIES))
+        self.pip_install("awscli")
         self.pip_install("-r tests/requirements.txt")
         self.pip_install("-r tests/fuzz/requirements.txt")
 
