@@ -104,6 +104,7 @@ class testAllShortestPaths():
         for p in result.result_set:
             if len(p) > 0:
                 print(p[0])
+                print(p[1])
 
     def test02_spmw_all_minimal_paths(self):    
         query = """
@@ -116,6 +117,7 @@ class testAllShortestPaths():
         for p in result.result_set:
             if len(p) > 0:
                 print(p[0])
+                print(p[1])
     
     def test03_spmw_k_minimal_paths(self):    
         query = """
@@ -128,3 +130,4 @@ class testAllShortestPaths():
         for p in result.result_set:
             if len(p) > 0:
                 print(p[0])
+                print(p[1])

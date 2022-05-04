@@ -196,11 +196,11 @@ static bool _AllPathsCtx_LevelNotEmpty(const AllPathsCtx *ctx, uint level) {
 	return (level < array_len(ctx->levels) && array_len(ctx->levels[level]) > 0);
 }
 
-Path *SPMWpaths_next
+void SPMWpaths_next
 (
 	SPMWctx *ctx,
-	double *cost,
-	double *weight
+	WeightedPath *p,
+	double max_weight
 ) {
 	AllPathsCtx *allPathsCtx = ctx->all_paths_ctx;
 
@@ -230,16 +230,15 @@ Path *SPMWpaths_next
 				SIValue c = ctx->cost_prop == ATTRIBUTE_NOTFOUND
 					? SI_LongVal(1)
 					: *GraphEntity_GetProperty((GraphEntity *)&frontierConnection.edge, ctx->cost_prop);
-				*cost += SI_GET_NUMERIC(c);
-				if(*cost <= ctx->max_cost) {
-					SIValue w = ctx->weight_prop == ATTRIBUTE_NOTFOUND
-						? SI_LongVal(1)
-						: *GraphEntity_GetProperty((GraphEntity *)&frontierConnection.edge, ctx->weight_prop);
-					*weight += SI_GET_NUMERIC(w);
+				SIValue w = ctx->weight_prop == ATTRIBUTE_NOTFOUND
+					? SI_LongVal(1)
+					: *GraphEntity_GetProperty((GraphEntity *)&frontierConnection.edge, ctx->weight_prop);
+				if(p->cost + SI_GET_NUMERIC(c) <= ctx->max_cost && p->weight + SI_GET_NUMERIC(w) <= max_weight) {
+					p->cost += SI_GET_NUMERIC(c);
+					p->weight += SI_GET_NUMERIC(w);
 					Path_AppendEdge(allPathsCtx->path, frontierConnection.edge);
 				} else {
 					Path_PopNode(allPathsCtx->path);
-					*cost -= SI_GET_NUMERIC(c);
 					continue;
 				}
 			}
@@ -259,7 +258,8 @@ Path *SPMWpaths_next
 					Node dst = Path_Head(allPathsCtx->path);
 					if(ENTITY_GET_ID(allPathsCtx->dst) != ENTITY_GET_ID(&dst)) continue;
 				}
-				return allPathsCtx->path;
+				p->path = allPathsCtx->path;
+				return;
 			}
 		} else {
 			// No way to advance, backtrack.
@@ -269,22 +269,29 @@ Path *SPMWpaths_next
 				SIValue c = ctx->cost_prop == ATTRIBUTE_NOTFOUND
 					? SI_LongVal(1)
 					: *GraphEntity_GetProperty((GraphEntity *)&e, ctx->cost_prop);
-				*cost += SI_GET_NUMERIC(c);
+				p->cost -= SI_GET_NUMERIC(c);
 				SIValue w = ctx->weight_prop == ATTRIBUTE_NOTFOUND
 					? SI_LongVal(1)
 					: *GraphEntity_GetProperty((GraphEntity *)&e, ctx->weight_prop);
-				*weight += SI_GET_NUMERIC(w);
+				p->weight -= SI_GET_NUMERIC(w);
 			}
 		}
 	}
 
 	// Couldn't find a path.
-	return NULL;
+	p->path = NULL;
+	return;
 }
 
 static int path_cmp(const void *a, const void *b, const void *udata) {
 	WeightedPath *da = (WeightedPath *)a;
 	WeightedPath *db = (WeightedPath *)b;
+	if(da->weight == db->weight) {
+		if(da->cost - db->cost) {
+			return Path_Len(da->path) - Path_Len(db->path);
+		}
+		return da->cost - db->cost;
+	}
 	return da->weight - db->weight;
 }
 
@@ -295,7 +302,8 @@ void SPMWpaths_all_minimal
 	spmw_ctx->array = array_new(WeightedPath, 0);
 
 	WeightedPath p = {0};
-	p.path = SPMWpaths_next(spmw_ctx, &p.weight, &p.cost);
+	double max_weight = DBL_MAX;
+	SPMWpaths_next(spmw_ctx, &p, max_weight);
 	while (p.path != NULL) {
 		uint count = array_len(spmw_ctx->array);
 		if(count > 0 && p.weight < spmw_ctx->array[0].weight) {
@@ -305,11 +313,10 @@ void SPMWpaths_all_minimal
 			array_clear(spmw_ctx->array);
 			count = 0;
 		}
-		if(count == 0 || p.weight == spmw_ctx->array[0].weight) {
-			p.path = Path_Clone(p.path);
-			array_append(spmw_ctx->array, p);
-		}
-		p.path = SPMWpaths_next(spmw_ctx, &p.weight, &p.cost);
+		p.path = Path_Clone(p.path);
+		array_append(spmw_ctx->array, p);
+		max_weight = p.weight;
+		SPMWpaths_next(spmw_ctx, &p, max_weight);
 	}
 }
 
@@ -321,7 +328,7 @@ void SPMWpaths_single_minimal
 	spmw_ctx->single.weight = DBL_MAX;
 	spmw_ctx->single.cost   = DBL_MAX;
 	WeightedPath p = {0};
-	p.path = SPMWpaths_next(spmw_ctx, &p.weight, &p.cost);
+	SPMWpaths_next(spmw_ctx, &p, DBL_MAX);
 	while (p.path != NULL) {
 		if(p.weight < spmw_ctx->single.weight ||
 			(p.weight == spmw_ctx->single.weight &&
@@ -330,7 +337,7 @@ void SPMWpaths_single_minimal
 			spmw_ctx->single.weight = p.weight;
 			spmw_ctx->single.cost = p.cost;
 		}
-		p.path = SPMWpaths_next(spmw_ctx, &p.weight, &p.cost);
+		SPMWpaths_next(spmw_ctx, &p, spmw_ctx->single.weight);
 	}
 }
 
@@ -341,7 +348,8 @@ void SPMWpaths_k_minimal
 	spmw_ctx->heap = Heap_new(path_cmp, NULL);
 
 	WeightedPath p = {0};
-	p.path = SPMWpaths_next(spmw_ctx, &p.weight, &p.cost);
+	double max_weight = DBL_MAX;
+	SPMWpaths_next(spmw_ctx, &p, max_weight);
 	while (p.path != NULL) {
 		if(Heap_count(spmw_ctx->heap) == spmw_ctx->path_count) {
 			WeightedPath *pp = Heap_peek(spmw_ctx->heap);
@@ -353,6 +361,7 @@ void SPMWpaths_k_minimal
 				pp->cost = p.cost;
 				Heap_offer(&spmw_ctx->heap, pp);
 			}
+			max_weight = pp->weight;
 		} else {
 			WeightedPath *pp = rm_malloc(sizeof(WeightedPath));
 			pp->path = Path_Clone(p.path);
@@ -360,7 +369,7 @@ void SPMWpaths_k_minimal
 			pp->cost = p.cost;
 			Heap_offer(&spmw_ctx->heap, pp);
 		}
-		p.path = SPMWpaths_next(spmw_ctx, &p.weight, &p.cost);
+		SPMWpaths_next(spmw_ctx, &p, max_weight);
 	}
 }
 
