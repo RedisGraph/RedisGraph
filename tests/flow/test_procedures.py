@@ -361,6 +361,7 @@ class testProcedures(FlowTestsBase):
         actual_resultset = redis_graph.query("CALL dbms.procedures() YIELD mode, name RETURN mode, name ORDER BY name").result_set
 
         expected_result = [["READ", "algo.BFS"],
+                           ['READ', 'algo.SPMinWpaths'],
                            ["READ", "algo.pageRank"],
                            ["WRITE", "db.idx.fulltext.createNodeIndex"],
                            ["WRITE", "db.idx.fulltext.drop"],
