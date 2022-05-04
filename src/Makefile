@@ -68,8 +68,7 @@ endif
 
 # Default CFLAGS
 CFLAGS=\
-	-fPIC \
-	-fcommon \
+	-fPIC -fcommon \
 	-D_GNU_SOURCE \
 	-DREDIS_MODULE_TARGET \
 	-DREDISMODULE_EXPERIMENTAL_API \
