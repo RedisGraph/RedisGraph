@@ -196,6 +196,17 @@ static bool _AllPathsCtx_LevelNotEmpty(const AllPathsCtx *ctx, uint level) {
 	return (level < array_len(ctx->levels) && array_len(ctx->levels[level]) > 0);
 }
 
+static inline SIValue _get_value_or_defualt(GraphEntity *ge, Attribute_ID id, SIValue default_value) {
+	if(id == ATTRIBUTE_NOTFOUND) return default_value;
+
+	SIValue *v = GraphEntity_GetProperty(ge, id);
+	if(v == PROPERTY_NOTFOUND) return default_value;
+
+	if(SI_TYPE(*v) & SI_NUMERIC) return *v;
+
+	return default_value;
+}
+
 void SPMWpaths_next
 (
 	SPMWctx *ctx,
@@ -227,12 +238,8 @@ void SPMWpaths_next
 			/* If depth is 0 this is the source node, there is no leading edge to it.
 			 * For depth > 0 for each frontier node, there is a leading edge. */
 			if(depth > 0) {
-				SIValue c = ctx->cost_prop == ATTRIBUTE_NOTFOUND
-					? SI_LongVal(1)
-					: *GraphEntity_GetProperty((GraphEntity *)&frontierConnection.edge, ctx->cost_prop);
-				SIValue w = ctx->weight_prop == ATTRIBUTE_NOTFOUND
-					? SI_LongVal(1)
-					: *GraphEntity_GetProperty((GraphEntity *)&frontierConnection.edge, ctx->weight_prop);
+				SIValue c = _get_value_or_defualt((GraphEntity *)&frontierConnection.edge, ctx->cost_prop, SI_LongVal(1));
+				SIValue w = _get_value_or_defualt((GraphEntity *)&frontierConnection.edge, ctx->weight_prop, SI_LongVal(1));
 				if(p->cost + SI_GET_NUMERIC(c) <= ctx->max_cost && p->weight + SI_GET_NUMERIC(w) <= max_weight) {
 					p->cost += SI_GET_NUMERIC(c);
 					p->weight += SI_GET_NUMERIC(w);
@@ -266,13 +273,9 @@ void SPMWpaths_next
 			Path_PopNode(allPathsCtx->path);
 			if(Path_EdgeCount(allPathsCtx->path)) {
 				Edge e = Path_PopEdge(allPathsCtx->path);
-				SIValue c = ctx->cost_prop == ATTRIBUTE_NOTFOUND
-					? SI_LongVal(1)
-					: *GraphEntity_GetProperty((GraphEntity *)&e, ctx->cost_prop);
+				SIValue c = _get_value_or_defualt((GraphEntity *)&e, ctx->cost_prop, SI_LongVal(1));
+				SIValue w = _get_value_or_defualt((GraphEntity *)&e, ctx->weight_prop, SI_LongVal(1));
 				p->cost -= SI_GET_NUMERIC(c);
-				SIValue w = ctx->weight_prop == ATTRIBUTE_NOTFOUND
-					? SI_LongVal(1)
-					: *GraphEntity_GetProperty((GraphEntity *)&e, ctx->weight_prop);
 				p->weight -= SI_GET_NUMERIC(w);
 			}
 		}
@@ -452,7 +455,7 @@ ProcedureCtx *Proc_SPMWpathCtx() {
 	output = (ProcedureOutput){.name = "pathCost", .type = T_DOUBLE | T_NULL};
 	array_append(outputs, output);
 
-	ProcedureCtx *ctx = ProcCtxNew("algo.SPMWpaths",
+	ProcedureCtx *ctx = ProcCtxNew("algo.SPMinWpaths",
 								   1,
 								   outputs,
 								   Proc_SPMWpathsStep,

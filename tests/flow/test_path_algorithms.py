@@ -96,7 +96,7 @@ class testAllShortestPaths():
     def test01_spmw_single_path(self):
         query = """
         MATCH (n:L {v: 1}), (m:L {v: 5})
-        CALL algo.SPMWpaths({sourceNode: n, targetNode: m, relTypes: ['E'], maxLen: 3, weightProp: 'weight', costProp: 'cost', maxCost: 4, pathCount: 1}) YIELD path, pathWeight, pathCost
+        CALL algo.SPMinWpaths({sourceNode: n, targetNode: m, relTypes: ['E'], maxLen: 3, weightProp: 'weight', costProp: 'cost', maxCost: 4, pathCount: 1}) YIELD path, pathWeight, pathCost
         RETURN path, pathWeight, pathCost
         LIMIT 3"""
         
@@ -109,7 +109,7 @@ class testAllShortestPaths():
     def test02_spmw_all_minimal_paths(self):    
         query = """
         MATCH (n:L {v: 1}), (m:L {v: 5})
-        CALL algo.SPMWpaths({sourceNode: n, targetNode: m, relTypes: ['E'], maxLen: 3, weightProp: 'weight', costProp: 'cost', maxCost: 4, pathCount: 0}) YIELD path, pathWeight, pathCost
+        CALL algo.SPMinWpaths({sourceNode: n, targetNode: m, relTypes: ['E'], maxLen: 3, weightProp: 'weight', costProp: 'cost', maxCost: 4, pathCount: 0}) YIELD path, pathWeight, pathCost
         RETURN path, pathWeight, pathCost
         LIMIT 3"""
         
@@ -122,7 +122,7 @@ class testAllShortestPaths():
     def test03_spmw_k_minimal_paths(self):    
         query = """
         MATCH (n:L {v: 1}), (m:L {v: 5})
-        CALL algo.SPMWpaths({sourceNode: n, targetNode: m, relTypes: ['E'], maxLen: 3, weightProp: 'weight', costProp: 'cost', maxCost: 4, pathCount: 2}) YIELD path, pathWeight, pathCost
+        CALL algo.SPMinWpaths({sourceNode: n, targetNode: m, relTypes: ['E'], maxLen: 3, weightProp: 'weight', costProp: 'cost', maxCost: 4, pathCount: 2}) YIELD path, pathWeight, pathCost
         RETURN path, pathWeight, pathCost
         LIMIT 3"""
         
