@@ -4,7 +4,7 @@ linkTitle: "Result Set Structure"
 weight: 11
 description: >
     This document describes the format RedisGraph uses to print data when accessed through the `redis-cli` utility.
-    The [language-specific clients](clients) retrieve data in a more succinct format, and provide their own functionality for printing result sets.
+    The [language-specific clients](/docs/stack/graph/clients) retrieve data in a more succinct format, and provide their own functionality for printing result sets.
 ---
 
 ## Top-level members
