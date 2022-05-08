@@ -51,12 +51,14 @@ ifeq ($(OS),macos)
 CLANG=1
 endif
 
+ifeq ($(CC),)
 ifeq ($(GCC),1)
 override CC=gcc
 override CXX=g++
 else ifeq ($(CLANG),1)
 override CC=clang
 override CXX=clang++
+endif
 endif
 
 #----------------------------------------------------------------------------------------------
