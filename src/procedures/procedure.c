@@ -36,6 +36,7 @@ void Proc_Register() {
 	_procRegister("algo.BFS", Proc_BFS_Ctx);
 	_procRegister("algo.pageRank", Proc_PagerankCtx);
 	_procRegister("algo.SPMinWpaths", Proc_SPMWpathCtx);
+	_procRegister("algo.SSMinWpaths", Proc_SSMWpathCtx);
 
 	// Register FullText Search generator.
 	_procRegister("db.idx.fulltext.drop", Proc_FulltextDropIdxGen);

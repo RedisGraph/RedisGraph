@@ -12,6 +12,7 @@
 #include "proc_relations.h"
 #include "proc_procedures.h"
 #include "proc_spmw_paths.h"
+#include "proc_ssmw_paths.h"
 #include "proc_list_indexes.h"
 #include "proc_property_keys.h"
 #include "proc_fulltext_query.h"

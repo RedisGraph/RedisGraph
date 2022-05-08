@@ -93,6 +93,84 @@ class testAllShortestPaths():
 
         self.cyclic_graph.flush()
 
+    def test00_validate_algorithms(self):
+        queries = [
+                """CALL algo.SPMinWpaths({})""",
+                """MATCH (n:L {v: 1}) CALL algo.SPMinWpaths({sourceNode: n})""",
+                """MATCH (n:L {v: 1}) CALL algo.SPMinWpaths({targetNode: n})"""
+            ]
+        for query in queries:
+            try:
+                self.graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("sourceNode and targetNode are required", str(e))
+
+        queries = [
+                """MATCH (n:L {v: 1}) CALL algo.SPMinWpaths({sourceNode: 1, targetNode: 1})""",
+                """MATCH (n:L {v: 1}) CALL algo.SPMinWpaths({sourceNode: 1, targetNode: n})""",
+                """MATCH (n:L {v: 1}) CALL algo.SPMinWpaths({sourceNode: n, targetNode: 1})"""
+            ]
+        for query in queries:
+            try:
+                self.graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("sourceNode and targetNode must be Node", str(e))
+        
+        queries = [
+                """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SPMinWpaths({sourceNode: n, targetNode: m, relTypes: 1})""",
+                """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SPMinWpaths({sourceNode: n, targetNode: m, relTypes: [1]})""",
+                """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SPMinWpaths({sourceNode: n, targetNode: m, relTypes: ['a', 1]})"""
+            ]
+        for query in queries:
+            try:
+                self.graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("relTypes must be array of strings", str(e))
+
+        queries = [
+                """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SPMinWpaths({sourceNode: n, targetNode: m, relDirection: 1})""",
+                """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SPMinWpaths({sourceNode: n, targetNode: m, relDirection: 'a'})"""
+            ]
+        for query in queries:
+            try:
+                self.graph.query(query)
+                print(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("relDirection values must be 'incoming', 'outgoing' or 'both'", str(e))
+
+        query = """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SPMinWpaths({sourceNode: n, targetNode: m, weightProp: 1})"""
+        try:
+            self.graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertContains("weightProp must be a string", str(e))
+        
+        query = """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SPMinWpaths({sourceNode: n, targetNode: m, costProp: 1})"""
+        try:
+            self.graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertContains("costProp must be a string", str(e))
+
+        query = """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SPMinWpaths({sourceNode: n, targetNode: m, maxCost: '1'})"""
+        try:
+            self.graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertContains("maxCost must be numeric", str(e))
+
+        query = """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SPMinWpaths({sourceNode: n, targetNode: m, pathCount: '1'})"""
+        try:
+            self.graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertContains("pathCount must be integer", str(e))
+
+
     def test01_spmw_single_path(self):
         query = """
         MATCH (n:L {v: 1}), (m:L {v: 5})
@@ -123,6 +201,45 @@ class testAllShortestPaths():
         query = """
         MATCH (n:L {v: 1}), (m:L {v: 5})
         CALL algo.SPMinWpaths({sourceNode: n, targetNode: m, relTypes: ['E'], maxLen: 3, weightProp: 'weight', costProp: 'cost', maxCost: 4, pathCount: 2}) YIELD path, pathWeight, pathCost
+        RETURN path, pathWeight, pathCost
+        LIMIT 3"""
+        
+        result = self.graph.query(query)
+        for p in result.result_set:
+            if len(p) > 0:
+                print(p[0])
+                print(p[1])
+
+    def test04_ssmw_single_path(self):
+        query = """
+        MATCH (n:L {v: 1})
+        CALL algo.SSMinWpaths({sourceNode: n, relTypes: ['E'], maxLen: 3, weightProp: 'weight', costProp: 'cost', maxCost: 4, pathCount: 1}) YIELD path, pathWeight, pathCost
+        RETURN path, pathWeight, pathCost
+        LIMIT 3"""
+        
+        result = self.graph.query(query)
+        for p in result.result_set:
+            if len(p) > 0:
+                print(p[0])
+                print(p[1])
+
+    def test05_ssmw_all_minimal_paths(self):    
+        query = """
+        MATCH (n:L {v: 1})
+        CALL algo.SSMinWpaths({sourceNode: n, relTypes: ['E'], maxLen: 3, weightProp: 'weight', costProp: 'cost', maxCost: 4, pathCount: 0}) YIELD path, pathWeight, pathCost
+        RETURN path, pathWeight, pathCost
+        LIMIT 3"""
+        
+        result = self.graph.query(query)
+        for p in result.result_set:
+            if len(p) > 0:
+                print(p[0])
+                print(p[1])
+    
+    def test06_ssmw_k_minimal_paths(self):    
+        query = """
+        MATCH (n:L {v: 1})
+        CALL algo.SSMinWpaths({sourceNode: n, relTypes: ['E'], maxLen: 3, weightProp: 'weight', costProp: 'cost', maxCost: 4, pathCount: 2}) YIELD path, pathWeight, pathCost
         RETURN path, pathWeight, pathCost
         LIMIT 3"""
         
