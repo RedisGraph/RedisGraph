@@ -1261,11 +1261,15 @@ RG_Matrix Graph_GetZeroMatrix
 	return z;
 }
 
-void Graph_Free(Graph *g) {
+void Graph_Free
+(
+	Graph *g,
+	bool is_full_graph
+) {
 	ASSERT(g);
 	// free matrices
 	Entity *en;
-	DataBlockIterator *it;
+
 	RG_Matrix_free(&g->_zero_matrix);
 	RG_Matrix_free(&g->adjacency_matrix);
 
@@ -1278,15 +1282,40 @@ void Graph_Free(Graph *g) {
 	array_free(g->labels);
 	RG_Matrix_free(&g->node_labels);
 
-	it = Graph_ScanNodes(g);
-	while((en = (Entity *)DataBlockIterator_Next(it, NULL)) != NULL) {
-		FreeEntity(en);
-	}
-	DataBlockIterator_Free(it);
+	if(is_full_graph) {
+		DataBlockIterator *it;
+		it = Graph_ScanNodes(g);
+		while((en = (Entity *)DataBlockIterator_Next(it, NULL)) != NULL) {
+			FreeEntity(en);
+		}
+		DataBlockIterator_Free(it);
 
-	it = Graph_ScanEdges(g);
-	while((en = DataBlockIterator_Next(it, NULL)) != NULL) FreeEntity(en);
-	DataBlockIterator_Free(it);
+		it = Graph_ScanEdges(g);
+		while((en = DataBlockIterator_Next(it, NULL)) != NULL) FreeEntity(en);
+		DataBlockIterator_Free(it);
+	} else {
+		DataBlockItemHeader  *item_header  =  NULL;
+
+		for (uint i = 0; i < g->nodes->blockCount; i++) {
+			Block *block = g->nodes->blocks[i];
+			for (uint j = 0; j < g->nodes->blockCap; j++) {
+				item_header = (DataBlockItemHeader *)block->data + (j * block->itemSize);
+				if(IS_ITEM_DELETED(item_header)) continue;
+				en = ITEM_DATA(item_header);
+				FreeEntity(en);
+			}
+		}
+
+		for (uint i = 0; i < g->edges->blockCount; i++) {
+			Block *block = g->edges->blocks[i];
+			for (uint j = 0; j < g->edges->blockCap; j++) {
+				item_header = (DataBlockItemHeader *)block->data + (j * block->itemSize);
+				if(IS_ITEM_DELETED(item_header)) continue;
+				en = ITEM_DATA(item_header);
+				FreeEntity(en);
+			}
+		}
+	}
 
 	// free blocks
 	DataBlock_Free(g->nodes);

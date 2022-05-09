@@ -600,7 +600,7 @@ static void _GraphContext_Free(void *arg) {
 
 	// Disable matrix synchronization for graph deletion.
 	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
-	Graph_Free(gc->g);
+	Graph_Free(gc->g, GraphDecodeContext_Finished(gc->decoding_context));
 
 	//--------------------------------------------------------------------------
 	// Free node schemas

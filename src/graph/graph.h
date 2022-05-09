@@ -399,6 +399,7 @@ RG_Matrix Graph_GetLabelRGMatrix
 // free graph
 void Graph_Free
 (
-	Graph *g
+	Graph *g,
+	bool is_full_graph
 );
 
