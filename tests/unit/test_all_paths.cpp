@@ -112,7 +112,7 @@ TEST_F(AllPathsTest, NoPaths) {
 	ASSERT_TRUE(p == NULL);
 
 	AllPathsCtx_Free(ctx);
-	Graph_Free(g);
+	Graph_Free(g, true);
 }
 
 TEST_F(AllPathsTest, LongestPaths) {
@@ -139,7 +139,7 @@ TEST_F(AllPathsTest, LongestPaths) {
 	ASSERT_EQ(longestPath, 4);
 
 	AllPathsCtx_Free(ctx);
-	Graph_Free(g);
+	Graph_Free(g, true);
 }
 
 TEST_F(AllPathsTest, UpToThreeLegsPaths) {
@@ -216,7 +216,7 @@ TEST_F(AllPathsTest, UpToThreeLegsPaths) {
 	ASSERT_EQ(pathsCount, 12);
 
 	AllPathsCtx_Free(ctx);
-	Graph_Free(g);
+	Graph_Free(g, true);
 }
 
 TEST_F(AllPathsTest, TwoLegPaths) {
@@ -269,7 +269,7 @@ TEST_F(AllPathsTest, TwoLegPaths) {
 	ASSERT_EQ(pathsCount, 4);
 
 	AllPathsCtx_Free(ctx);
-	Graph_Free(g);
+	Graph_Free(g, true);
 }
 
 // Test all paths from source to a specific destination node.
@@ -305,5 +305,5 @@ TEST_F(AllPathsTest, DestinationSpecificPaths) {
 	ASSERT_EQ(pathsCount, 5);
 
 	AllPathsCtx_Free(ctx);
-	Graph_Free(g);
+	Graph_Free(g, true);
 }

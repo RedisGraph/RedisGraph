@@ -208,7 +208,7 @@ void benchmark_node_creation_with_labels() {
 	}
 
 	Graph_ReleaseLock(g);
-	Graph_Free(g);
+	Graph_Free(g, true);
 }
 
 // Test graph creation time.
@@ -243,7 +243,7 @@ void benchmark_node_creation_no_labels() {
 	}
 
 	Graph_ReleaseLock(g);
-	Graph_Free(g);
+	Graph_Free(g, true);
 }
 
 void benchmark_edge_creation_with_relationships() {
@@ -295,7 +295,7 @@ void benchmark_edge_creation_with_relationships() {
 	}
 
 	Graph_ReleaseLock(g);
-	Graph_Free(g);
+	Graph_Free(g, true);
 }
 
 void benchmark_graph() {
@@ -328,7 +328,7 @@ TEST_F(GraphTest, NewGraph) {
 	ASSERT_EQ(nvals, 0);
 
 	Graph_ReleaseLock(g);
-	Graph_Free(g);
+	Graph_Free(g, true);
 }
 
 // Tests node and edge creation.
@@ -343,7 +343,7 @@ TEST_F(GraphTest, GraphConstruction) {
 	// _test_graph_resize(g);
 
 	Graph_ReleaseLock(g);
-	Graph_Free(g);
+	Graph_Free(g, true);
 }
 
 TEST_F(GraphTest, RemoveNodes) {
@@ -484,7 +484,7 @@ TEST_F(GraphTest, RemoveMultipleNodes) {
 	GrB_Vector_free(&col);
 
 	Graph_ReleaseLock(g);
-	Graph_Free(g);
+	Graph_Free(g, true);
 }
 
 TEST_F(GraphTest, RemoveEdges) {
@@ -626,7 +626,7 @@ TEST_F(GraphTest, RemoveEdges) {
 
 	// Cleanup.
 	Graph_ReleaseLock(g);
-	Graph_Free(g);
+	Graph_Free(g, true);
 }
 
 TEST_F(GraphTest, GetNode) {
@@ -651,7 +651,7 @@ TEST_F(GraphTest, GetNode) {
 		ASSERT_TRUE(n.entity != NULL);
 	}
 
-	Graph_Free(g);
+	Graph_Free(g, true);
 }
 
 TEST_F(GraphTest, GetEdge) {
@@ -760,7 +760,7 @@ TEST_F(GraphTest, GetEdge) {
 
 	array_free(edges);
 	Graph_ReleaseLock(g);
-	Graph_Free(g);
+	Graph_Free(g, true);
 }
 
 
@@ -867,7 +867,7 @@ TEST_F(GraphTest, BulkDelete) {
 	ASSERT_EQ(Graph_EdgeCount(g), 3);
 
 	// Clean up.
-	Graph_Free(g);
+	Graph_Free(g, true);
 }
 
 TEST_F(GraphTest, GraphStatistics) {
@@ -992,5 +992,5 @@ TEST_F(GraphTest, GraphStatistics) {
 	ASSERT_EQ(g->stats.node_count[l], 2);
 
 	// Clean up.
-	Graph_Free(g);
+	Graph_Free(g, true);
 }
