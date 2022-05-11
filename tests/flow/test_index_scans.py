@@ -132,6 +132,15 @@ class testIndexScanFlow():
         result = redis_graph.query(query)
         self.env.assertEquals(result.result_set, expected_result)
 
+        # Validate the transformation of IN filters 1 not on attribute.
+        query = "MATCH (p:person) WHERE id(p) IN [18, 26] AND p.age IN [33, 34, 35] RETURN p.name ORDER BY p.age"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn('Node By Index Scan', plan)
+
+        expected_result = [['Omri Traub'], ['Noam Nativ']]
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.result_set, expected_result)
+
     # Validate index utilization when filtering on string fields with the `IN` keyword.
     def test05_test_in_operator_string_props(self):
         # Build an index on the name property.

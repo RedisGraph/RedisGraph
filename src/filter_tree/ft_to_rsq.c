@@ -512,8 +512,13 @@ static bool _FilterTreeToQueryNode
 	*root = NULL;
 
 	if(isInFilter(tree)) {
-		*root = _FilterTreeToInQueryNode(tree, idx);
-		return true;
+		bool attribute = AR_EXP_IsAttribute(tree->exp.exp->op.children[0], NULL);
+		if(attribute) {
+			*root = _FilterTreeToInQueryNode(tree, idx);
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	if(isDistanceFilter(tree)) {
@@ -570,8 +575,7 @@ RSQNode *FilterTreeToQueryNode
 	for(uint i = 0; i < tree_count; i++) {
 		RSQNode *node = NULL;
 		bool resolved_filter = _FilterTreeToQueryNode(&node, trees[i], idx);
-		ASSERT(node != NULL);
-		array_append(nodes, node);
+		if(node != NULL) array_append(nodes, node);
 		if(resolved_filter) {
 			FilterTree_Free(trees[i]);
 			// remove converted filter from filters array
