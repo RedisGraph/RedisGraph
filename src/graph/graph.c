@@ -1261,7 +1261,7 @@ RG_Matrix Graph_GetZeroMatrix
 	return z;
 }
 
-void Graph_Free
+static void _Graph_Free
 (
 	Graph *g,
 	bool is_full_graph
@@ -1282,40 +1282,17 @@ void Graph_Free
 	array_free(g->labels);
 	RG_Matrix_free(&g->node_labels);
 
-	if(is_full_graph) {
-		DataBlockIterator *it;
-		it = Graph_ScanNodes(g);
-		while((en = (Entity *)DataBlockIterator_Next(it, NULL)) != NULL) {
-			FreeEntity(en);
-		}
-		DataBlockIterator_Free(it);
-
-		it = Graph_ScanEdges(g);
-		while((en = DataBlockIterator_Next(it, NULL)) != NULL) FreeEntity(en);
-		DataBlockIterator_Free(it);
-	} else {
-		DataBlockItemHeader  *item_header  =  NULL;
-
-		for (uint i = 0; i < g->nodes->blockCount; i++) {
-			Block *block = g->nodes->blocks[i];
-			for (uint j = 0; j < g->nodes->blockCap; j++) {
-				item_header = (DataBlockItemHeader *)block->data + (j * block->itemSize);
-				if(IS_ITEM_DELETED(item_header)) continue;
-				en = ITEM_DATA(item_header);
-				FreeEntity(en);
-			}
-		}
-
-		for (uint i = 0; i < g->edges->blockCount; i++) {
-			Block *block = g->edges->blocks[i];
-			for (uint j = 0; j < g->edges->blockCap; j++) {
-				item_header = (DataBlockItemHeader *)block->data + (j * block->itemSize);
-				if(IS_ITEM_DELETED(item_header)) continue;
-				en = ITEM_DATA(item_header);
-				FreeEntity(en);
-			}
-		}
+	DataBlockIterator *it;
+	it = is_full_graph ? Graph_ScanNodes(g) : DataBlock_FullScan(g->nodes);
+	while((en = (Entity *)DataBlockIterator_Next(it, NULL)) != NULL) {
+		FreeEntity(en);
 	}
+	DataBlockIterator_Free(it);
+
+	it = is_full_graph ? Graph_ScanEdges(g) : DataBlock_FullScan(g->edges);
+	while((en = DataBlockIterator_Next(it, NULL)) != NULL) FreeEntity(en);
+	DataBlockIterator_Free(it);
+
 
 	// free blocks
 	DataBlock_Free(g->nodes);
@@ -1331,3 +1308,16 @@ void Graph_Free
 	rm_free(g);
 }
 
+void Graph_Free
+(
+	Graph *g
+) {
+	_Graph_Free(g, true);
+}
+
+void Graph_PartialFree
+(
+	Graph *g
+) {
+	_Graph_Free(g, false);
+}
