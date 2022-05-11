@@ -1269,6 +1269,7 @@ static void _Graph_Free
 	ASSERT(g);
 	// free matrices
 	Entity *en;
+	DataBlockIterator *it;
 
 	RG_Matrix_free(&g->_zero_matrix);
 	RG_Matrix_free(&g->adjacency_matrix);
@@ -1282,7 +1283,6 @@ static void _Graph_Free
 	array_free(g->labels);
 	RG_Matrix_free(&g->node_labels);
 
-	DataBlockIterator *it;
 	it = is_full_graph ? Graph_ScanNodes(g) : DataBlock_FullScan(g->nodes);
 	while((en = (Entity *)DataBlockIterator_Next(it, NULL)) != NULL) {
 		FreeEntity(en);
