@@ -116,7 +116,7 @@ class testAllShortestPaths():
                 self.graph.query(query)
                 self.env.assertTrue(False)
             except redis.exceptions.ResponseError as e:
-                self.env.assertContains("sourceNode and targetNode must be Node", str(e))
+                self.env.assertContains("sourceNode and targetNode must be of type Node", str(e))
         
         queries = [
                 """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SPMinWpaths({sourceNode: n, targetNode: m, relTypes: 1})""",
