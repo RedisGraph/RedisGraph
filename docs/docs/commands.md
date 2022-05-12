@@ -14,10 +14,10 @@ RedisGraph exposes graph database functionality within Redis using the [openCyph
 
 ### RedisGraph API
 
-Command details can be retrieved by filtering for the [module](/commands/?group=graph) or for a specific command, e.g. [`QUERY`](/commands/?group=redisgraph&name=graph.query).
+Command details can be retrieved by filtering for the [module](/commands/?group=graph) or for a specific command, e.g. [`GRAPH.QUERY`](/commands/?name=graph.query).
 The details include the syntax for the commands, where:
 
-*   Command and subcommand names are in uppercase, for example `GRAPH.CONFIG` or `SET`
+*   Command and subcommand names are in uppercase, for example [`GRAPH.CONFIG`](/commands/?name=graph.config) or `SET`
 *   Optional arguments are enclosed in square brackets, for example `[timeout]`
 *   Additional optional arguments are indicated by an ellipsis: `...`
 
