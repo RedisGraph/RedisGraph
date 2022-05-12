@@ -105,4 +105,4 @@ description: >
 
 ## Implementing a client
 
-Information on some of the tasks involved in writing a RedisGraph client can be found in the [Client Specification](client_spec).
+Information on some of the tasks involved in writing a RedisGraph client can be found in the [Client Specification](design/client_spec).
