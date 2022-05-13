@@ -28,24 +28,64 @@ typedef struct {
 	ResultSetFormatter *formatter;  /* ResultSet data formatter. */
 } ResultSet;
 
-void ResultSet_MapProjection(ResultSet *set, const Record r);
+// map each column to a record index
+// such that when resolving resultset row i column j we'll extract
+// data from record at position columns_record_map[j]
+void ResultSet_MapProjection
+(
+	ResultSet *set,  // resultset to init mappings for
+	const Record r   // record to map
+);
 
-ResultSet *NewResultSet(RedisModuleCtx *ctx, ResultSetFormatterType format);
+// create a new result set
+ResultSet *NewResultSet
+(
+	RedisModuleCtx *ctx,
+	ResultSetFormatterType format  // resultset format
+);
 
 // returns number of rows in result-set
-uint64_t ResultSet_RowCount(const ResultSet *set);
+uint64_t ResultSet_RowCount
+(
+	const ResultSet *set  // resultset to inquery
+);
 
-int ResultSet_AddRecord(ResultSet *set, Record r);
+// add a new row to resultset
+int ResultSet_AddRecord
+(
+	ResultSet *set,  // resultset to extend
+	Record r         // record containing projected data
+);
 
-void ResultSet_IndexCreated(ResultSet *set, int status_code);
+// update resultset index creation statistics
+void ResultSet_IndexCreated
+(
+	ResultSet *set,  // resultset to update
+	int status_code  // index creation status code
+);
 
-void ResultSet_IndexDeleted(ResultSet *set, int status_code);
+// update resultset index deleted statistics
+void ResultSet_IndexDeleted
+(
+	ResultSet *set,  // resultset to update
+	int status_code  // index deletion status code
+);
 
-void ResultSet_CachedExecution(ResultSet *set);
+// update resultset cache execution statistics
+void ResultSet_CachedExecution
+(
+	ResultSet *set  // resultset to update
+);
 
-void ResultSet_Reply(ResultSet *set);
+// flush resultset to network
+void ResultSet_Reply
+(
+	ResultSet *set  // resultset to reply with
+);
 
-void ResultSet_ReportQueryRuntime(RedisModuleCtx *ctx);
-
-void ResultSet_Free(ResultSet *set);
+// free resultset
+void ResultSet_Free
+(
+	ResultSet *set  // resultset to free
+);
 

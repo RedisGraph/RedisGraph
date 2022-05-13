@@ -30,6 +30,14 @@ static OpResult ResultsInit(OpBase *opBase) {
 	Results *op = (Results *)opBase;
 	op->result_set = QueryCtx_GetResultSet();
 	Config_Option_get(Config_RESULTSET_MAX_SIZE, &op->result_set_size_limit);
+
+	// use an empty record to map resultset columns to record entries
+	if(op->result_set != NULL) {
+		Record r = OpBase_CreateRecord(opBase);
+		ResultSet_MapProjection(op->result_set, r);
+		OpBase_DeleteRecord(r);
+	}
+
 	return OP_OK;
 }
 
