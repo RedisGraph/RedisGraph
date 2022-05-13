@@ -16,16 +16,17 @@
 #define RESULTSET_FULL 0
 
 typedef struct {
-	RedisModuleCtx *ctx;            /* Redis context. */
-	GraphContext *gc;               /* Context used for mapping attribute strings and IDs */
-	uint column_count;              /* Number of columns in result set. */
-	const char **columns;           /* Field names for each column of results. */
-	uint *columns_record_map;       /* Mapping between column name and record index.*/
-	DataBlock *cells;               /* Accumulated cells */
-	double timer[2];                /* Query runtime tracker. */
-	ResultSetStatistics stats;      /* ResultSet statistics. */
-	ResultSetFormatterType format;  /* Result-set format; compact/verbose/nop. */
-	ResultSetFormatter *formatter;  /* ResultSet data formatter. */
+	RedisModuleCtx *ctx;            // Redis context
+	GraphContext *gc;               // context used for mapping attribute strings and IDs
+	uint column_count;              // number of columns in result set
+	const char **columns;           // field names for each column of results
+	uint *columns_record_map;       // mapping between column name and record index
+	DataBlock *cells;               // accumulated cells
+	double timer[2];                // query runtime tracker
+	ResultSetStatistics stats;      // result set statistics
+	ResultSetFormatterType format;  // result set format; compact/verbose/nop
+	ResultSetFormatter *formatter;  // result set data formatter
+	SIAllocation cells_allocation;  // encountered values allocation
 } ResultSet;
 
 // map each column to a record index

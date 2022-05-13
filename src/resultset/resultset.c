@@ -72,6 +72,7 @@ ResultSet *NewResultSet
 	set->columns             =  NULL;
 	set->formatter           =  ResultSetFormatter_GetFormatter(format);
 	set->column_count        =  0;
+	set->cells_allocation    =  M_NONE;
 	set->columns_record_map  =  NULL;
 
 	// init resultset statistics
@@ -142,6 +143,7 @@ int ResultSet_AddRecord
 		SIValue *cell = DataBlock_AllocateItem(set->cells, NULL);
 		*cell = Record_Get(r, idx);
 		SIValue_Persist(cell);
+		set->cells_allocation |= SI_ALLOCATION(cell);
 	}
 
 	// remove entry from record in a second pass
@@ -260,10 +262,13 @@ void ResultSet_Free
 	// at the moment we can't tell rather or not
 	// calling SIValue_Free is required
 	if(set->cells) {
-		uint64_t n = DataBlock_ItemCount(set->cells);
-		for(uint64_t i = 0; i < n; i++) {
-			SIValue *v = DataBlock_GetItem(set->cells, i);
-			SIValue_Free(*v);
+		// free individual cells if resultset encountered a heap allocated value
+		if(set->cells_allocation & M_SELF) {
+			uint64_t n = DataBlock_ItemCount(set->cells);
+			for(uint64_t i = 0; i < n; i++) {
+				SIValue *v = DataBlock_GetItem(set->cells, i);
+				SIValue_Free(*v);
+			}
 		}
 		DataBlock_Free(set->cells);
 	}
