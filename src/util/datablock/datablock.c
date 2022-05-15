@@ -119,6 +119,14 @@ DataBlockIterator *DataBlock_Scan(const DataBlock *dataBlock) {
 	return DataBlockIterator_New(startBlock, dataBlock->blockCap, endPos);
 }
 
+DataBlockIterator *DataBlock_FullScan(const DataBlock *dataBlock) {
+	ASSERT(dataBlock != NULL);
+	Block *startBlock = dataBlock->blocks[0];
+
+	int64_t endPos = dataBlock->blockCount * dataBlock->blockCap;
+	return DataBlockIterator_New(startBlock, dataBlock->blockCap, endPos);
+}
+
 // Make sure datablock can accommodate at least k items.
 void DataBlock_Accommodate(DataBlock *dataBlock, int64_t k) {
 	// Compute number of free slots.
