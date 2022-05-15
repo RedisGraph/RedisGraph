@@ -424,6 +424,16 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 
 	ExecutionPlan_Init(plan);
 
+	// use an empty record to map resultset columns to record entries
+	if(plan->root->type == OPType_RESULTS) {
+		OpBase *join = ExecutionPlan_LocateOp(plan->root, OPType_JOIN);
+		Results *op = (Results *)plan->root;
+		if(op->result_set != NULL && join == NULL) {
+			rax *mapping = ExecutionPlan_GetMappings(plan);
+			ResultSet_MapProjection(op->result_set, mapping);
+		}
+	}
+
 	Record r = NULL;
 	// Execute the root operation and free the processed Record until the data stream is depleted.
 	while((r = OpBase_Consume(plan->root)) != NULL) ExecutionPlan_ReturnRecord(r->owner, r);
