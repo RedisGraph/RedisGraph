@@ -11,6 +11,7 @@ description: >
 
 | Project                                                  | Language   | License      | Author                                      | Stars                                                             |
 | -------------------------------------------------------- | ---------- | ------------ | ------------------------------------------- | ----------------------------------------------------------------- |
+| [Jedis][Jedis-url]                                       | Java       | MIT          | [Redis][Jedis-author]                       | [![Jedis-stars]][Jedis-url]                                       |
 | [redisgraph-py][redisgraph-py-url]                       | Python     | BSD          | [Redis][redisgraph-py-author]               | [![redisgraph-py-stars]][redisgraph-py-url]                       |
 | [JRedisGraph][JRedisGraph-url]                           | Java       | BSD          | [Redis][JRedisGraph-author]                 | [![JRedisGraph-stars]][JRedisGraph-url]                           |
 | [redisgraph-rb][redisgraph-rb-url]                       | Ruby       | BSD          | [Redis][redisgraph-rb-author]               | [![redisgraph-rb-stars]][redisgraph-rb-url]                       |
@@ -30,6 +31,10 @@ description: >
 | [RedisGraphDotNet.Client][RedisGraphDotNet.Client-url]   | C#         | BSD          | [Sgawrys][RedisGraphDotNet.Client-author]   | [![RedisGraphDotNet.Client-stars]][RedisGraphDotNet.Client-url]   |
 | [RedisGraph.jl][RedisGraph.jl-url]                       | Julia      | MIT          | [xyxel][RedisGraph.jl-author]               | [![RedisGraph.jl-stars]][RedisGraph.jl-url]                       |
 
+
+[Jedis-author]: https://redis.com
+[Jedis-url]: https://github.com/redis/jedis
+[Jedis-stars]: https://img.shields.io/github/stars/redis/jedis.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 [redisgraph-py-author]: https://redis.com
 [redisgraph-py-url]: https://github.com/RedisGraph/redisgraph-py
@@ -105,4 +110,4 @@ description: >
 
 ## Implementing a client
 
-Information on some of the tasks involved in writing a RedisGraph client can be found in the [Client Specification](client_spec).
+Information on some of the tasks involved in writing a RedisGraph client can be found in the [Client Specification](design/client_spec).
