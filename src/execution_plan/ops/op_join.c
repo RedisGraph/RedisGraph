@@ -16,6 +16,7 @@ static OpBase *JoinClone(const ExecutionPlan *plan, const OpBase *opBase);
 OpBase *NewJoinOp(const ExecutionPlan *plan) {
 	OpJoin *op = rm_malloc(sizeof(OpJoin));
 	op->stream = NULL;
+	op->update_column_map = true;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_JOIN, "Join", JoinInit, JoinConsume, 
@@ -36,7 +37,6 @@ static Record JoinConsume(OpBase *opBase) {
 	OpJoin *op = (OpJoin *)opBase;
 	Record r = NULL;
 
-	bool update_column_map = false;
 	while(!r) {
 		// Try pulling from current stream.
 		r = OpBase_Consume(op->stream);
@@ -48,14 +48,14 @@ static Record JoinConsume(OpBase *opBase) {
 
 			op->stream = op->op.children[op->streamIdx];
 			// Switched streams, need to update the ResultSet column mapping
-			update_column_map = true;
+			op->update_column_map = true;
 			continue;
 		}
-
-		if(update_column_map) {
+		
+		if(op->update_column_map) {
 			// We have a new record mapping, update the ResultSet column map to match it.
-			ResultSet_MapProjection(QueryCtx_GetResultSet(), r);
-			update_column_map = false;
+			ResultSet_MapProjection(QueryCtx_GetResultSet(), r->mapping);
+			op->update_column_map = false;
 		}
 	}
 

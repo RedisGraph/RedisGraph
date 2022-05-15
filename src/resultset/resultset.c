@@ -100,10 +100,10 @@ ResultSet *NewResultSet
 void ResultSet_MapProjection
 (
 	ResultSet *set,  // resultset to init mappings for
-	const Record r   // record to map
+	rax *mapping     // mapping
 ) {
-	ASSERT(r   != NULL);
-	ASSERT(set != NULL);
+	ASSERT(set     != NULL);
+	ASSERT(mapping != NULL);
 
 	if(set->columns_record_map == NULL) {
 		set->columns_record_map = rm_malloc(sizeof(uint) * set->column_count);
@@ -111,9 +111,9 @@ void ResultSet_MapProjection
 
 	for(uint i = 0; i < set->column_count; i++) {
 		const char *column = set->columns[i];
-		uint idx = Record_GetEntryIdx(r, column);
-		ASSERT(idx != INVALID_INDEX);
-		set->columns_record_map[i] = idx;
+		void *idx = raxFind(mapping, (unsigned char *)column, strlen(column));
+		ASSERT(idx != raxNotFound);
+		set->columns_record_map[i] = (intptr_t)idx;
 	}
 }
 

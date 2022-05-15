@@ -35,7 +35,7 @@ typedef struct {
 void ResultSet_MapProjection
 (
 	ResultSet *set,  // resultset to init mappings for
-	const Record r   // record to map
+	rax *mapping     // mapping
 );
 
 // create a new result set
