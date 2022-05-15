@@ -40,11 +40,12 @@ Here we'll quickly create a small graph representing a subset of motorcycle ride
 ```sh
 $ redis-cli
 127.0.0.1:6379> GRAPH.QUERY MotoGP "CREATE (:Rider {name:'Valentino Rossi'})-[:rides]->(:Team {name:'Yamaha'}), (:Rider {name:'Dani Pedrosa'})-[:rides]->(:Team {name:'Honda'}), (:Rider {name:'Andrea Dovizioso'})-[:rides]->(:Team {name:'Ducati'})"
-1) 1) Labels added: 2
-   2) Nodes created: 6
-   3) Properties set: 6
-   4) Relationships created: 3
-   5) "Query internal execution time: 0.399000 milliseconds"
+1) 1) "Labels added: 2"
+   2) "Nodes created: 6"
+   3) "Properties set: 6"
+   4) "Relationships created: 3"
+   5) "Cached execution: 0"
+   6) "Query internal execution time: 0.399000 milliseconds"
 ```
 
 Now that our MotoGP graph is created, we can start asking questions. For example:
@@ -56,7 +57,8 @@ Who's riding for team Yamaha?
    2) "t.name"
 2) 1) 1) "Valentino Rossi"
       2) "Yamaha"
-3) 1) "Query internal execution time: 0.625399 milliseconds"
+3) 1) "Cached execution: 0"
+   2) "Query internal execution time: 0.625399 milliseconds"
 ```
 
 How many riders represent team Ducati?
@@ -65,7 +67,8 @@ How many riders represent team Ducati?
 127.0.0.1:6379> GRAPH.QUERY MotoGP "MATCH (r:Rider)-[:rides]->(t:Team {name:'Ducati'}) RETURN count(r)"
 1) 1) "count(r)"
 2) 1) 1) (integer) 1
-3) 1) "Query internal execution time: 0.624435 milliseconds"
+3) 1) "Cached execution: 0"
+   2) "Query internal execution time: 0.624435 milliseconds"
 ```
 
 ## Building
@@ -109,13 +112,13 @@ The exact method for doing that depends on your client of choice.
 #### Python example
 
 This code snippet shows how to use RedisGraph with raw Redis commands from Python using
-[redis-py](https://github.com/andymccurdy/redis-py):
+[redis-py](https://github.com/redis/redis-py):
 
 ```python
 import redis
 
-r = redis.StrictRedis()
-reply = r.execute_command('GRAPH.QUERY', 'social', "CREATE (:person {name:'roi', age:33, gender:'male', status:'married'})")
+r = redis.Redis()
+reply = r.graph("social").query("MATCH (r:Rider)-[:rides]->(t:Team {name:'Ducati'}) RETURN count(r)")
 ```
 
 ## Client libraries
@@ -128,7 +131,7 @@ The full list and links can be found on [the Clients page](/redisgraph/clients).
 
 The RedisGraph team maintains the [redisgraph-bulk-loader](https://github.com/redisgraph/redisgraph-bulk-loader) for importing new graphs from CSV files.
 
-The data format used by this tool is described in the [GRAPH.BULK implementation details](redisgraph/bulk_spec).
+The data format used by this tool is described in the [GRAPH.BULK implementation details](/graph/design/bulk_spec).
 
 ## Mailing List / Forum
 
