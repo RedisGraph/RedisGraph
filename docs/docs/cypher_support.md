@@ -74,7 +74,7 @@ We do not support any of these properties at the type level, meaning nodes and r
 ### Reading/Writing Clauses
 + MERGE
 + CALL (procedures)
-    - The currently-supported procedures can be found in [the Procedures documentation](commands#procedures).
+    - The currently-supported procedures can be found in [the Procedures documentation](/commands/graph.query/#procedures).
 
 ### Set Operations
 + UNION
