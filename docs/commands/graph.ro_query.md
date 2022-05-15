@@ -8,4 +8,4 @@ Returns: [Result set](/graph/design/result_structure) for a read only query or a
 GRAPH.RO_QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
 ```
 
-Query-level timeouts can be set as described in [the configuration section](/docs/stack/graph/configuration#timeout).
+Query-level timeouts can be set as described in [the configuration section](/graph/configuration#timeout).
