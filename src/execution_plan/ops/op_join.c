@@ -51,7 +51,7 @@ static Record JoinConsume(OpBase *opBase) {
 			op->update_column_map = true;
 			continue;
 		}
-		
+
 		if(op->update_column_map) {
 			// We have a new record mapping, update the ResultSet column map to match it.
 			ResultSet_MapProjection(QueryCtx_GetResultSet(), r->mapping);

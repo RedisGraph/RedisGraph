@@ -30,7 +30,6 @@ static OpResult ResultsInit(OpBase *opBase) {
 	Results *op = (Results *)opBase;
 	op->result_set = QueryCtx_GetResultSet();
 	Config_Option_get(Config_RESULTSET_MAX_SIZE, &op->result_set_size_limit);
-
 	return OP_OK;
 }
 
