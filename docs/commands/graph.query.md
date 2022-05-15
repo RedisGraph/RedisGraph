@@ -2,13 +2,13 @@ Executes the given query against a specified graph.
 
 Arguments: `Graph name, Query, Timeout [optional]`
 
-Returns: [Result set](result_structure#redisgraph-result-set-structure)
+Returns: [Result set](/graph/design/result_structure)
 
 ```sh
 GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
 ```
 
-Query-level timeouts can be set as described in [the configuration section](configuration#query-timeout).
+Query-level timeouts can be set as described in [the configuration section](/graph/configuration#timeout).
 
 ### Query language
 
