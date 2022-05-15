@@ -986,7 +986,8 @@ static AST_Validation _Validate_CREATE_Clauses(const AST *ast) {
 		const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clause);
 
 		// Verify that functions invoked in the CREATE pattern are valid.
-		if (_ValidateFunctionCalls(pattern, false) != AST_VALID) return AST_INVALID;
+		if (_ValidateFunctionCalls(pattern, false) != AST_VALID) goto cleanup;
+
 		uint path_count = cypher_ast_pattern_npaths(pattern);
 		const cypher_astnode_t *prev_path = NULL;
 		for (uint j = 0; j < path_count; j++) {

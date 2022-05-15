@@ -329,7 +329,7 @@ jobs:
           command: |
             make test COV=1
             make cov-upload
-          no_output_timeout: 30m
+          no_output_timeout: 45m
       - save-tests-logs
 
   build-memcheck:
