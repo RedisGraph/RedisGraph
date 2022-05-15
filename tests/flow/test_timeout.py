@@ -149,3 +149,17 @@ class testQueryTimeout(FlowTestsBase):
         # validate that server didn't crash
         redis_con.ping()
 
+    def test05_query_timeout_free_resultset(self):
+        query = "UNWIND range(0,1000000) AS x RETURN toString(x)"
+        try:
+            # The query is expected to timeout
+            redis_graph.query(query, timeout=10)
+            assert(False)
+        except ResponseError as error:
+            self.env.assertContains("Query timed out", str(error))
+
+        try:
+            # The query is expected to succeed
+            redis_graph.query(query, timeout=2000)
+        except:
+            assert(False)
