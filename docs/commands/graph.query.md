@@ -2,7 +2,7 @@ Executes the given query against a specified graph.
 
 Arguments: `Graph name, Query, Timeout [optional]`
 
-Returns: [Result set](/docs/stack/graph/design/result_structure)
+Returns: [Result set](/graph/design/result_structure)
 
 ```sh
 GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
