@@ -51,12 +51,14 @@ ifeq ($(OS),macos)
 CLANG=1
 endif
 
+ifeq ($(CC),)
 ifeq ($(GCC),1)
 override CC=gcc
 override CXX=g++
 else ifeq ($(CLANG),1)
 override CC=clang
 override CXX=clang++
+endif
 endif
 
 #----------------------------------------------------------------------------------------------
@@ -68,7 +70,8 @@ endif
 
 # Default CFLAGS
 CFLAGS=\
-	-fPIC -fcommon \
+	-fPIC \
+	-fcommon \
 	-D_GNU_SOURCE \
 	-DREDIS_MODULE_TARGET \
 	-DREDISMODULE_EXPERIMENTAL_API \
@@ -330,6 +333,7 @@ ifeq ($(ALL),1)
 	@$(MAKE) -C $(ROOT)/deps/xxHash clean
 	@$(MAKE) -C $(ROOT)/deps/GraphBLAS clean
 	@$(MAKE) -C $(ROOT)/deps/libcypher-parser clean
+	@cd $(ROOT)/deps/libcypher-parser; git ls-files -o | xargs rm
 	@$(MAKE) -C $(REDISEARCH_DIR) clean ALL=1 BINROOT=$(REDISEARCH_BINROOT)
 endif
 	@$(MAKE) -C $(ROOT)/tests clean
