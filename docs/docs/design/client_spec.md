@@ -270,5 +270,5 @@ In the case of an IndexError, it issues a procedure call to fully refresh its la
 
 ## Reference clients
 
-All the logic described in this document has been implemented in most of the clients listed in [Client Libraries](/docs/stack/graph/clients/#currently-available-libraries). Among these, `redisgraph-py` and `JRedisGraph` are currently the most sophisticated.
+All the logic described in this document has been implemented in most of the clients listed in [Client Libraries](clients/#currently-available-libraries). Among these, `node-redis`, `redis-py` and `jedis` are currently the most sophisticated.
 
