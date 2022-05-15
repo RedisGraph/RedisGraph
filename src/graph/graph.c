@@ -1261,11 +1261,16 @@ RG_Matrix Graph_GetZeroMatrix
 	return z;
 }
 
-void Graph_Free(Graph *g) {
+static void _Graph_Free
+(
+	Graph *g,
+	bool is_full_graph
+) {
 	ASSERT(g);
 	// free matrices
 	Entity *en;
 	DataBlockIterator *it;
+
 	RG_Matrix_free(&g->_zero_matrix);
 	RG_Matrix_free(&g->adjacency_matrix);
 
@@ -1278,15 +1283,16 @@ void Graph_Free(Graph *g) {
 	array_free(g->labels);
 	RG_Matrix_free(&g->node_labels);
 
-	it = Graph_ScanNodes(g);
+	it = is_full_graph ? Graph_ScanNodes(g) : DataBlock_FullScan(g->nodes);
 	while((en = (Entity *)DataBlockIterator_Next(it, NULL)) != NULL) {
 		FreeEntity(en);
 	}
 	DataBlockIterator_Free(it);
 
-	it = Graph_ScanEdges(g);
+	it = is_full_graph ? Graph_ScanEdges(g) : DataBlock_FullScan(g->edges);
 	while((en = DataBlockIterator_Next(it, NULL)) != NULL) FreeEntity(en);
 	DataBlockIterator_Free(it);
+
 
 	// free blocks
 	DataBlock_Free(g->nodes);
@@ -1302,3 +1308,16 @@ void Graph_Free(Graph *g) {
 	rm_free(g);
 }
 
+void Graph_Free
+(
+	Graph *g
+) {
+	_Graph_Free(g, true);
+}
+
+void Graph_PartialFree
+(
+	Graph *g
+) {
+	_Graph_Free(g, false);
+}

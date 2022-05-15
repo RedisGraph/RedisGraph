@@ -80,6 +80,7 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 
 	// query included only params e.g. 'cypher a=1' was provided
 	if(strlen(query_string) == 0) {
+		parse_result_free(params_parse_result);
 		ErrorCtx_SetError("Error: empty query.");
 		return NULL;
 	}
