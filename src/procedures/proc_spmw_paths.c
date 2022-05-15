@@ -114,30 +114,6 @@ static ProcedureResult validate_config(SIValue config, SPMWctx *ctx) {
 		ErrorCtx_SetError("sourceNode and targetNode must be of type Node");
 		return false;
 	}
-	
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Graph *g = QueryCtx_GetGraph();
-	int *types = NULL;
-	uint types_count = 0;
-	if(relationships_exists) {
-		if(SI_TYPE(relationships) != T_ARRAY || 
-			!SIArray_AllOfType(relationships, T_STRING)) {
-			ErrorCtx_SetError("relTypes must be array of strings");
-			return false;
-		}
-		types_count = SIArray_Length(relationships);
-		if(types_count > 0) {
-			types = array_new(int, types_count);
-			for (uint i = 0; i < types_count; i++) {
-				SIValue rel = SIArray_Get(relationships, i);
-				const char *type = rel.stringval;
-				Schema *s = GraphContext_GetSchema(gc, type, SCHEMA_EDGE);
-				if(s == NULL) continue;
-				array_append(types, Schema_GetID(s));
-			}
-			types_count = array_len(types);
-		}
-	}
 
 	GRAPH_EDGE_DIR direction = GRAPH_EDGE_DIR_OUTGOING;
 	if(dir_exists) {
@@ -164,6 +140,30 @@ static ProcedureResult validate_config(SIValue config, SPMWctx *ctx) {
 			return false;
 		}
 		max_length_val = SI_GET_NUMERIC(max_length);
+	}
+
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Graph *g = QueryCtx_GetGraph();
+	int *types = NULL;
+	uint types_count = 0;
+	if(relationships_exists) {
+		if(SI_TYPE(relationships) != T_ARRAY || 
+			!SIArray_AllOfType(relationships, T_STRING)) {
+			ErrorCtx_SetError("relTypes must be array of strings");
+			return false;
+		}
+		types_count = SIArray_Length(relationships);
+		if(types_count > 0) {
+			types = array_new(int, types_count);
+			for (uint i = 0; i < types_count; i++) {
+				SIValue rel = SIArray_Get(relationships, i);
+				const char *type = rel.stringval;
+				Schema *s = GraphContext_GetSchema(gc, type, SCHEMA_EDGE);
+				if(s == NULL) continue;
+				array_append(types, Schema_GetID(s));
+			}
+			types_count = array_len(types);
+		}
 	}
 
 	ctx->all_paths_ctx = AllPathsCtx_New((Node *)start.ptrval,
