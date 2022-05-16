@@ -31,7 +31,7 @@ static OpResult JoinInit(OpBase *opBase) {
 	op->stream = op->op.children[op->streamIdx];
 
 	// map first stream resultset mapping
-	ResultSet resultset = QueryCtx_GetResultSet();
+	ResultSet *result_set = QueryCtx_GetResultSet();
 	if(result_set != NULL) {
 		OpBase *child = op->stream;
 		rax *mapping = ExecutionPlan_GetMappings(child->plan);
