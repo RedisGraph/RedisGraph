@@ -16,7 +16,6 @@ static OpBase *JoinClone(const ExecutionPlan *plan, const OpBase *opBase);
 OpBase *NewJoinOp(const ExecutionPlan *plan) {
 	OpJoin *op = rm_malloc(sizeof(OpJoin));
 	op->stream = NULL;
-	op->update_column_map = true;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_JOIN, "Join", JoinInit, JoinConsume, 
@@ -30,12 +29,22 @@ static OpResult JoinInit(OpBase *opBase) {
 	// Start pulling from first stream.
 	op->streamIdx = 0;
 	op->stream = op->op.children[op->streamIdx];
+
+	// map first stream resultset mapping
+	ResultSet resultset = QueryCtx_GetResultSet();
+	if(result_set != NULL) {
+		OpBase *child = op->stream;
+		rax *mapping = ExecutionPlan_GetMappings(child->plan);
+		ResultSet_MapProjection(result_set, mapping);
+	}
+
 	return OP_OK;
 }
 
 static Record JoinConsume(OpBase *opBase) {
 	OpJoin *op = (OpJoin *)opBase;
 	Record r = NULL;
+	bool update_column_map = false;
 
 	while(!r) {
 		// Try pulling from current stream.
@@ -48,14 +57,13 @@ static Record JoinConsume(OpBase *opBase) {
 
 			op->stream = op->op.children[op->streamIdx];
 			// Switched streams, need to update the ResultSet column mapping
-			op->update_column_map = true;
+			update_column_map = true;
 			continue;
 		}
 
-		if(op->update_column_map) {
+		if(update_column_map) {
 			// We have a new record mapping, update the ResultSet column map to match it.
 			ResultSet_MapProjection(QueryCtx_GetResultSet(), r->mapping);
-			op->update_column_map = false;
 		}
 	}
 
