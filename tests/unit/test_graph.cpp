@@ -397,6 +397,8 @@ TEST_F(GraphTest, RemoveNodes) {
 
 	Graph_GetNode(g, 0, &node);
 	Graph_BulkDelete(g, &node, 1, edges, edge_count, NULL, NULL);
+	
+	Graph_ReleaseLock(g);
 
 	array_free(edges);
 
@@ -970,7 +972,6 @@ TEST_F(GraphTest, GraphStatistics) {
 
 	Graph_AcquireWriteLock(g);
 	Graph_BulkDelete(g, &n[2], 1, &e[0], 1, &node_deleted, &edge_deleted);
-	Graph_ReleaseLock(g);
 
 	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r0, transpose));
 	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1, transpose));
@@ -981,7 +982,6 @@ TEST_F(GraphTest, GraphStatistics) {
 	ASSERT_EQ(edge_deleted, 3);
 
 	// delete disconnected node
-	Graph_AcquireWriteLock(g);
 	Graph_BulkDelete(g, &n[3], 1, NULL, 0, NULL, NULL);
 	Graph_ReleaseLock(g);
 
