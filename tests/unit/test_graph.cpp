@@ -395,15 +395,12 @@ TEST_F(GraphTest, RemoveNodes) {
 	uint edge_count = array_len(edges);
 	ASSERT_EQ(edge_count, 2);
 
-	// Delete the edges on the first node manually, as Graph_DeleteNode expects
-	// it to be detached.
-	// Both 0 -> 1 edge and 1 -> 0 edge should be removed.
-	for(uint i = 0; i < edge_count; i ++) Graph_DeleteEdge(g, &edges[i]);
+	Graph_GetNode(g, 0, &node);
+	Graph_BulkDelete(g, &node, 1, edges, edge_count, NULL, NULL);
+	
+	Graph_ReleaseLock(g);
 
 	array_free(edges);
-
-	Graph_GetNode(g, 0, &node);
-	Graph_DeleteNode(g, &node);
 
 	ASSERT_EQ(Graph_NodeCount(g), 2);
 	ASSERT_EQ(Graph_EdgeCount(g), 1);
@@ -442,9 +439,9 @@ TEST_F(GraphTest, RemoveMultipleNodes) {
 	// Delete first and last nodes.
 	simple_tic(tic);
 	Graph_GetNode(g, 0, &n);
-	Graph_DeleteNode(g, &n);
+	Graph_BulkDelete(g, &n, 1, NULL, 0, NULL, NULL);
 	Graph_GetNode(g, 7, &n);
-	Graph_DeleteNode(g, &n);
+	Graph_BulkDelete(g, &n, 1, NULL, 0, NULL, NULL);
 
 	ASSERT_EQ(Graph_NodeCount(g), 8 - 2);
 
@@ -975,7 +972,6 @@ TEST_F(GraphTest, GraphStatistics) {
 
 	Graph_AcquireWriteLock(g);
 	Graph_BulkDelete(g, &n[2], 1, &e[0], 1, &node_deleted, &edge_deleted);
-	Graph_ReleaseLock(g);
 
 	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r0, transpose));
 	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1, transpose));
@@ -986,7 +982,9 @@ TEST_F(GraphTest, GraphStatistics) {
 	ASSERT_EQ(edge_deleted, 3);
 
 	// delete disconnected node
-	Graph_DeleteNode(g, &n[3]);
+	Graph_BulkDelete(g, &n[3], 1, NULL, 0, NULL, NULL);
+	Graph_ReleaseLock(g);
+
 	ASSERT_EQ(Graph_RelationEdgeCount(g, r0), 1);
 	ASSERT_EQ(Graph_RelationEdgeCount(g, r1), 2);
 	ASSERT_EQ(g->stats.node_count[l], 2);

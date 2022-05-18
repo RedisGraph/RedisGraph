@@ -872,32 +872,6 @@ inline bool Graph_EntityIsDeleted(Entity *e) {
 	return DataBlock_ItemIsDeleted(e);
 }
 
-void Graph_DeleteNode
-(
-	Graph *g,
-	Node *n
-) {
-	// assumption, node is completely detected,
-	// there are no incoming nor outgoing edges
-	// leading to / from node
-	ASSERT(g != NULL);
-	ASSERT(n != NULL);
-
-	uint label_count;
-	NODE_GET_LABELS(g, n, label_count);
-	for(uint i = 0; i < label_count; i++) {
-		int label_id = labels[i];
-		RG_Matrix M = Graph_GetLabelMatrix(g, label_id);
-		// clear label matrix at position node ID
-		GrB_Info res = RG_Matrix_removeElement_BOOL(M, ENTITY_GET_ID(n),
-													ENTITY_GET_ID(n));
-		// update statistics
-		GraphStatistics_DecNodeCount(&g->stats, label_id, 1);
-	}
-
-	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
-}
-
 static void _Graph_FreeRelationMatrices
 (
 	const Graph *g
@@ -1009,7 +983,7 @@ static void _BulkDeleteNodes
 		for(int i = 0; i < label_count; i++) {
 			RG_Matrix L = Graph_GetLabelMatrix(g, labels[i]);
 			RG_Matrix_removeElement_BOOL(L, entity_id, entity_id);
-			RG_Matrix_removeElement_BOOL(M, entity_id, i);
+			RG_Matrix_removeElement_BOOL(M, entity_id, labels[i]);
 			// update statistics for label of deleted node
 			GraphStatistics_DecNodeCount(&g->stats, labels[i], 1);
 		}
