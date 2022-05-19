@@ -500,7 +500,10 @@ static SIValue *Proc_SSMWpathsStep
 		rm_free(pp);
 	}
 	
-	if(ssmw_ctx->yield_path)        *ssmw_ctx->yield_path        = SI_Path(p.path);
+	if(ssmw_ctx->yield_path) {
+		*ssmw_ctx->yield_path = SI_Path(p.path);
+		Path_Free(p.path);
+	}
 	if(ssmw_ctx->yield_path_weight) *ssmw_ctx->yield_path_weight = SI_DoubleVal(p.weight);
 	if(ssmw_ctx->yield_path_cost)   *ssmw_ctx->yield_path_cost   = SI_DoubleVal(p.cost);
 
