@@ -66,8 +66,17 @@ commands:
       getredis_params:
         type: string
         default: ""
+      benchmarks:
+        type: string
+        default: "no"
     steps:
       - setup-automation
+      - run:
+          name: Install remote benchmark python dependencies
+          command: |
+            if [[ "<<parameters.benchmarks>>" == "yes" ]]; then
+              python3 -m pip install -r ./tests/benchmarks/requirements.txt
+            fi
       - run:
           name: System setup
           shell: /bin/bash -l -eo pipefail
@@ -80,6 +89,12 @@ commands:
           command: |
             python3 ./deps/readies/bin/getredis -v '<<parameters.redis_version>>' --force <<parameters.getredis_params>>
             redis-server --version
+      - run:
+          name: Install remote benchmark tool dependencies
+          command: |
+            if [[ "<<parameters.benchmarks>>" == "yes" ]]; then
+              VERSION=0.14.8 ./deps/readies/bin/getterraform
+            fi
 
   save-tests-logs:
     steps:
@@ -237,13 +252,6 @@ commands:
         default: "oss-standalone"
     steps:
       - run:
-          name: Install remote benchmark tool dependencies
-          command: |
-            VERSION=0.14.8 ./deps/readies/bin/getterraform
-      - run:
-          name: Install remote benchmark python dependencies
-          command: python3 -m pip install -r ./tests/benchmarks/requirements.txt
-      - run:
           name: Run CI benchmarks on aws
           no_output_timeout: 30m # given we use very large datasets we need this timeout
           command: |
@@ -321,7 +329,7 @@ jobs:
           command: |
             make test COV=1
             make cov-upload
-          no_output_timeout: 30m
+          no_output_timeout: 45m
       - save-tests-logs
 
   build-memcheck:
@@ -447,7 +455,8 @@ jobs:
     steps:
       - early-returns
       - checkout-all
-      - install-prerequisites
+      - install-prerequisites:
+          benchmarks: "yes"
       - attach_workspace:
           at: ~/workspace
       - run:
@@ -463,7 +472,8 @@ jobs:
     steps:
       - early-returns
       - checkout-all
-      - install-prerequisites
+      - install-prerequisites:
+          benchmarks: "yes"
       - attach_workspace:
           at: ~/workspace
       - run:
@@ -561,7 +571,7 @@ workflows:
           context: common
           matrix:
             parameters:
-              platform: [focal, bionic, xenial, centos7, rocky8]
+              platform: [focal, bionic, xenial, centos7, rocky8, bullseye]
       - build-arm-platforms:
           <<: *on-integ-and-version-tags
           context: common
@@ -601,7 +611,7 @@ workflows:
           <<: *on-perf-tags
           context: common
       # disable temporarily due to huge profile overhead in RG
-      # - benchmark-profiler: 
+      # - benchmark-profiler:
       #     <<: *on-perf-tags
       #     context: common
 
