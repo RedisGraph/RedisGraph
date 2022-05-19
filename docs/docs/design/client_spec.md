@@ -16,8 +16,6 @@ GRAPH.QUERY demo "MATCH (a) RETURN a" --compact
 
 ## Formatting differences in the compact result set
 
-The result set has the same overall structure as described in the [Result Set documentation](result_structure#top-level-members).
-
 Certain values are emitted as integer IDs rather than strings:
 
 1. Node labels
@@ -270,5 +268,5 @@ In the case of an IndexError, it issues a procedure call to fully refresh its la
 
 ## Reference clients
 
-All the logic described in this document has been implemented in most of the clients listed in [Client Libraries](clients/#currently-available-libraries). Among these, `node-redis`, `redis-py` and `jedis` are currently the most sophisticated.
+All the logic described in this document has been implemented in most of the clients listed in [Client Libraries](/docs/clients). Among these, `node-redis`, `redis-py` and `jedis` are currently the most sophisticated.
 
