@@ -51,6 +51,20 @@ typedef struct {
 	SIValue *yield_path_cost;    // yield path cost
 } SPMWctx;
 
+// free SPMWctx
+static void SPMWctx_Free
+(
+	SPMWctx *ctx
+) {
+	if(ctx == NULL) return;
+
+	AllPathsCtx_Free(ctx->all_paths_ctx);
+	if(ctx->path_count == 0 && ctx->array != NULL) array_free(ctx->array);
+	else if(ctx->path_count > 1 && ctx->heap != NULL) Heap_free(ctx->heap);
+	array_free(ctx->output);
+	rm_free(ctx);
+}
+
 // initialize returned values pointers
 static void _process_yield
 (
@@ -230,6 +244,7 @@ static inline SIValue _get_value_or_defualt
 	return default_value;
 }
 
+// use DFS to find all paths from src to dst tracking cost and weight
 static void SPMWpaths_next
 (
 	SPMWctx *ctx,
@@ -307,6 +322,7 @@ static void SPMWpaths_next
 	return;
 }
 
+// compare path by weight, cost and path length
 static int path_cmp(const void *a, const void *b, const void *udata) {
 	WeightedPath *da = (WeightedPath *)a;
 	WeightedPath *db = (WeightedPath *)b;
@@ -319,16 +335,22 @@ static int path_cmp(const void *a, const void *b, const void *udata) {
 	return da->weight - db->weight;
 }
 
+// get all minimal paths (all paths with the same weight)
 static void SPMWpaths_all_minimal
 (
 	SPMWctx *spmw_ctx
 ) {
+	// initialize array that contains the result
 	spmw_ctx->array = array_new(WeightedPath, 0);
 
+	// get first path
 	WeightedPath p = {0};
 	double max_weight = DBL_MAX;
 	SPMWpaths_next(spmw_ctx, &p, max_weight);
+
+	// iterate over all paths
 	while (p.path != NULL) {
+		// if current path is better and the array is not empty clear it
 		uint count = array_len(spmw_ctx->array);
 		if(count > 0 && p.weight < spmw_ctx->array[0].weight) {
 			for (uint i = 0; i < array_len(spmw_ctx->array); i++) {
@@ -336,23 +358,36 @@ static void SPMWpaths_all_minimal
 			}
 			array_clear(spmw_ctx->array);
 		}
+
+		// add the path to the result array
 		p.path = Path_Clone(p.path);
 		array_append(spmw_ctx->array, p);
+
+		// update max weight
 		max_weight = p.weight;
+
+		// get next path where path weight is <= max_weight
 		SPMWpaths_next(spmw_ctx, &p, max_weight);
 	}
 }
 
+// find the single minimal weighted path
 static void SPMWpaths_single_minimal
 (
 	SPMWctx *spmw_ctx
 ) {
+	// initialize the result path to worst path
 	spmw_ctx->single.path   = NULL;
 	spmw_ctx->single.weight = DBL_MAX;
 	spmw_ctx->single.cost   = DBL_MAX;
+
+	// get first path
 	WeightedPath p = {0};
 	SPMWpaths_next(spmw_ctx, &p, DBL_MAX);
+
+	// iterate over all paths
 	while (p.path != NULL) {
+		// if the current path is better replace it
 		if(p.weight < spmw_ctx->single.weight ||
 			p.cost < spmw_ctx->single.cost ||
 			(p.cost == spmw_ctx->single.cost &&
@@ -364,21 +399,30 @@ static void SPMWpaths_single_minimal
 			spmw_ctx->single.weight = p.weight;
 			spmw_ctx->single.cost = p.cost;
 		}
+
+		// get next path where path weight is <= result weight
 		SPMWpaths_next(spmw_ctx, &p, spmw_ctx->single.weight);
 	}
 }
 
+// find k minimal weighted path (path can have different weight)
 static void SPMWpaths_k_minimal
 (
 	SPMWctx *spmw_ctx
 ) {
+	// initialize heap that contains the result where top path is the highest weight
 	spmw_ctx->heap = Heap_new(path_cmp, NULL);
 
+	// get first path
 	WeightedPath p = {0};
 	double max_weight = DBL_MAX;
 	SPMWpaths_next(spmw_ctx, &p, max_weight);
+
+	// iterate over all paths
 	while (p.path != NULL) {
 		if(Heap_count(spmw_ctx->heap) == spmw_ctx->path_count) {
+			// if the heap is full check if the current path is better 
+			// than the worst path if yes replace it
 			WeightedPath *pp = Heap_peek(spmw_ctx->heap);
 			if(p.weight < pp->weight ||
 				p.cost < pp->cost ||
@@ -391,15 +435,20 @@ static void SPMWpaths_k_minimal
 				pp->cost = p.cost;
 				Heap_offer(&spmw_ctx->heap, pp);
 			}
+
+			// update the max weight so we will get better paths
 			pp = Heap_peek(spmw_ctx->heap);
 			max_weight = pp->weight;
 		} else {
+			// fill the heap
 			WeightedPath *pp = rm_malloc(sizeof(WeightedPath));
 			pp->path = Path_Clone(p.path);
 			pp->weight = p.weight;
 			pp->cost = p.cost;
 			Heap_offer(&spmw_ctx->heap, pp);
 		}
+
+		// get next path where path weight is <= max_weight
 		SPMWpaths_next(spmw_ctx, &p, max_weight);
 	}
 }
@@ -410,9 +459,9 @@ static ProcedureResult Proc_SPMWpathsInvoke
 	const SIValue *args,
 	const char **yield
 ) {
-	SPMWctx *spmw_ctx = rm_malloc(sizeof(SPMWctx));
+	SPMWctx *spmw_ctx = rm_calloc(1, sizeof(SPMWctx));
 	if(!validate_config(args[0], spmw_ctx)) {
-		rm_free(spmw_ctx);
+		SPMWctx_Free(spmw_ctx);
 		return PROCEDURE_ERR;
 	}
 	ctx->privateData = spmw_ctx;
@@ -465,13 +514,7 @@ static ProcedureResult Proc_SPMWpathsFree
 	ProcedureCtx *ctx
 ) {
 	SPMWctx *spmw_ctx = ctx->privateData;
-	if(spmw_ctx != NULL) {
-		AllPathsCtx_Free(spmw_ctx->all_paths_ctx);
-		if(spmw_ctx->path_count == 0) array_free(spmw_ctx->array);
-		else if(spmw_ctx->path_count > 1) Heap_free(spmw_ctx->heap);
-		array_free(spmw_ctx->output);
-		rm_free(spmw_ctx);
-	}
+	SPMWctx_Free(spmw_ctx);
 	return PROCEDURE_OK;
 }
 
