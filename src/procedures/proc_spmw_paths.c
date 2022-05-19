@@ -58,6 +58,9 @@ static void SPMWctx_Free
 ) {
 	if(ctx == NULL) return;
 
+	if(ctx->all_paths_ctx && ctx->all_paths_ctx->relationIDs) {
+		array_free(ctx->all_paths_ctx->relationIDs);
+	}
 	AllPathsCtx_Free(ctx->all_paths_ctx);
 	if(ctx->path_count == 0 && ctx->array != NULL) array_free(ctx->array);
 	else if(ctx->path_count > 1 && ctx->heap != NULL) Heap_free(ctx->heap);
