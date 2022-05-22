@@ -5,7 +5,7 @@
 */
 
 #include "RG.h"
-#include "proc_spmw_paths.h"
+#include "proc_ss_paths.h"
 #include "../value.h"
 #include "../errors.h"
 #include "../util/arr.h"
@@ -17,15 +17,14 @@
 
 #include <float.h>
 
-// MATCH (n:L {v: 1}), (m:L {v: 5})
-// CALL algo.SPMinWpaths({sourceNode: n,
-//						  targetNode: m,
-//						  relTypes: ['E'], 
+// MATCH (n:L {v: 1})
+// CALL algo.SSpaths({sourceNode: n,
+//						  relTypes: ['E'],
 //						  maxLen: 3,
 //						  weightProp: 'weight',
 //						  costProp: 'cost',
 //						  maxCost: 4,
-//						  pathCount: 2}) YIELD path, pathWeight, pathCost
+//						  pathCount: 1}) YIELD path, pathWeight, pathCost
 // RETURN path, pathWeight, pathCost
 
 typedef struct {
@@ -49,12 +48,12 @@ typedef struct {
 	SIValue *yield_path;         // yield path
 	SIValue *yield_path_weight;  // yield path weight
 	SIValue *yield_path_cost;    // yield path cost
-} SPMWctx;
+} SSctx;
 
-// free SPMWctx
-static void SPMWctx_Free
+// free SSctx
+static void SSctx_Free
 (
-	SPMWctx *ctx
+	SSctx *ctx
 ) {
 	if(ctx == NULL) return;
 
@@ -71,7 +70,7 @@ static void SPMWctx_Free
 // initialize returned values pointers
 static void _process_yield
 (
-	SPMWctx *ctx,
+	SSctx *ctx,
 	const char **yield
 ) {
 	ctx->yield_path         = NULL;
@@ -100,10 +99,9 @@ static void _process_yield
 	}
 }
 
-// validate config map and initialize SPMWctx
-static ProcedureResult validate_config(SIValue config, SPMWctx *ctx) {
+// validate config map and initialize SSctx
+static ProcedureResult validate_config(SIValue config, SSctx *ctx) {
 	SIValue start;                // start node
-	SIValue end;                  // end node
 	SIValue relationships;        // relationship types allowed
 	SIValue dir;                  // direction
 	SIValue max_length;           // max traverse length
@@ -113,7 +111,6 @@ static ProcedureResult validate_config(SIValue config, SPMWctx *ctx) {
 	SIValue path_count;           // # of paths to return
 	
 	bool start_exists         = MAP_GET(config, "sourceNode",   start);
-	bool end_exists           = MAP_GET(config, "targetNode",   end);
 	bool relationships_exists = MAP_GET(config, "relTypes",     relationships);
 	bool dir_exists           = MAP_GET(config, "relDirection", dir);
 	bool max_length_exists    = MAP_GET(config, "maxLen",       max_length);
@@ -123,12 +120,12 @@ static ProcedureResult validate_config(SIValue config, SPMWctx *ctx) {
 	bool path_count_exists    = MAP_GET(config, "pathCount",    path_count);
 	
 
-	if(!start_exists || !end_exists) {
-		ErrorCtx_SetError("sourceNode and targetNode are required");
+	if(!start_exists) {
+		ErrorCtx_SetError("sourceNode is required");
 		return false;
 	}
-	if(SI_TYPE(start) != T_NODE || SI_TYPE(end) != T_NODE) {
-		ErrorCtx_SetError("sourceNode and targetNode must be of type Node");
+	if(SI_TYPE(start) != T_NODE) {
+		ErrorCtx_SetError("sourceNode must be of type Node");
 		return false;
 	}
 
@@ -153,7 +150,7 @@ static ProcedureResult validate_config(SIValue config, SPMWctx *ctx) {
 	int64_t max_length_val = LONG_MAX;
 	if(max_length_exists) {
 		if(SI_TYPE(max_length) != T_INT64) {
-			ErrorCtx_SetError("max_length must be integer");
+			ErrorCtx_SetError("maxLen must be integer");
 			return false;
 		}
 		max_length_val = SI_GET_NUMERIC(max_length);
@@ -164,7 +161,7 @@ static ProcedureResult validate_config(SIValue config, SPMWctx *ctx) {
 	int *types = NULL;
 	uint types_count = 0;
 	if(relationships_exists) {
-		if(SI_TYPE(relationships) != T_ARRAY || 
+		if(SI_TYPE(relationships) != T_ARRAY ||
 			!SIArray_AllOfType(relationships, T_STRING)) {
 			ErrorCtx_SetError("relTypes must be array of strings");
 			return false;
@@ -184,14 +181,14 @@ static ProcedureResult validate_config(SIValue config, SPMWctx *ctx) {
 	}
 
 	ctx->all_paths_ctx = AllPathsCtx_New((Node *)start.ptrval,
-		(Node *)end.ptrval, g, types, types_count, direction, 1,
+		NULL, g, types, types_count, direction, 1,
 		max_length_val, NULL, NULL, 0, false);
 
 	ctx->weight_prop = ATTRIBUTE_NOTFOUND;
 	ctx->cost_prop = ATTRIBUTE_NOTFOUND;
 	ctx->max_cost = DBL_MAX;
 	ctx->path_count = 1;
-	
+
 	if(weight_prop_exists) {
 		if(SI_TYPE(weight_prop) != T_STRING) {
 			ErrorCtx_SetError("weightProp must be a string");
@@ -247,10 +244,10 @@ static inline SIValue _get_value_or_defualt
 	return default_value;
 }
 
-// use DFS to find all paths from src to dst tracking cost and weight
-static void SPMWpaths_next
+// use DFS to find all paths from src tracking cost and weight
+static void SSpaths_next
 (
-	SPMWctx *ctx,
+	SSctx *ctx,
 	WeightedPath *p,
 	double max_weight
 ) {
@@ -302,8 +299,6 @@ static void SPMWpaths_next
 
 			// See if we can return path.
 			if(depth >= allPathsCtx->minLen && depth <= allPathsCtx->maxLen) {
-				Node dst = Path_Head(allPathsCtx->path);
-				if(ENTITY_GET_ID(allPathsCtx->dst) != ENTITY_GET_ID(&dst)) continue;
 				p->path = allPathsCtx->path;
 				return;
 			}
@@ -330,7 +325,7 @@ static int path_cmp(const void *a, const void *b, const void *udata) {
 	WeightedPath *da = (WeightedPath *)a;
 	WeightedPath *db = (WeightedPath *)b;
 	if(da->weight == db->weight) {
-		if(da->cost - db->cost) {
+		if(da->cost == db->cost) {
 			return Path_Len(da->path) - Path_Len(db->path);
 		}
 		return da->cost - db->cost;
@@ -339,108 +334,108 @@ static int path_cmp(const void *a, const void *b, const void *udata) {
 }
 
 // get all minimal paths (all paths with the same weight)
-static void SPMWpaths_all_minimal
+static void SSpaths_all_minimal
 (
-	SPMWctx *spmw_ctx
+	SSctx *ctx
 ) {
 	// initialize array that contains the result
-	spmw_ctx->array = array_new(WeightedPath, 0);
+	ctx->array = array_new(WeightedPath, 0);
 
 	// get first path
 	WeightedPath p = {0};
 	double max_weight = DBL_MAX;
-	SPMWpaths_next(spmw_ctx, &p, max_weight);
+	SSpaths_next(ctx, &p, max_weight);
 
 	// iterate over all paths
 	while (p.path != NULL) {
 		// if current path is better and the array is not empty clear it
-		uint count = array_len(spmw_ctx->array);
-		if(count > 0 && p.weight < spmw_ctx->array[0].weight) {
-			for (uint i = 0; i < array_len(spmw_ctx->array); i++) {
-				Path_Free(spmw_ctx->array[i].path);
+		uint count = array_len(ctx->array);
+		if(count > 0 && p.weight < ctx->array[0].weight) {
+			for (uint i = 0; i < array_len(ctx->array); i++) {
+				Path_Free(ctx->array[i].path);
 			}
-			array_clear(spmw_ctx->array);
+			array_clear(ctx->array);
 		}
 
 		// add the path to the result array
 		p.path = Path_Clone(p.path);
-		array_append(spmw_ctx->array, p);
+		array_append(ctx->array, p);
 
 		// update max weight
 		max_weight = p.weight;
 
 		// get next path where path weight is <= max_weight
-		SPMWpaths_next(spmw_ctx, &p, max_weight);
+		SSpaths_next(ctx, &p, max_weight);
 	}
 }
 
 // find the single minimal weighted path
-static void SPMWpaths_single_minimal
+static void SSpaths_single_minimal
 (
-	SPMWctx *spmw_ctx
+	SSctx *ctx
 ) {
 	// initialize the result path to worst path
-	spmw_ctx->single.path   = NULL;
-	spmw_ctx->single.weight = DBL_MAX;
-	spmw_ctx->single.cost   = DBL_MAX;
+	ctx->single.path   = NULL;
+	ctx->single.weight = DBL_MAX;
+	ctx->single.cost   = DBL_MAX;
 
 	// get first path
 	WeightedPath p = {0};
-	SPMWpaths_next(spmw_ctx, &p, DBL_MAX);
+	SSpaths_next(ctx, &p, DBL_MAX);
 
 	// iterate over all paths
 	while (p.path != NULL) {
 		// if the current path is better replace it
-		if(p.weight < spmw_ctx->single.weight ||
-			p.cost < spmw_ctx->single.cost ||
-			(p.cost == spmw_ctx->single.cost &&
-				Path_Len(p.path) < Path_Len(spmw_ctx->single.path))) {
-			if(spmw_ctx->single.path != NULL) {
-				Path_Free(spmw_ctx->single.path);
+		if(p.weight < ctx->single.weight ||
+			p.cost < ctx->single.cost ||
+			(p.cost == ctx->single.cost &&
+				Path_Len(p.path) < Path_Len(ctx->single.path))) {
+			if(ctx->single.path != NULL) {
+				Path_Free(ctx->single.path);
 			}
-			spmw_ctx->single.path = Path_Clone(p.path);
-			spmw_ctx->single.weight = p.weight;
-			spmw_ctx->single.cost = p.cost;
+			ctx->single.path = Path_Clone(p.path);
+			ctx->single.weight = p.weight;
+			ctx->single.cost = p.cost;
 		}
 
 		// get next path where path weight is <= result weight
-		SPMWpaths_next(spmw_ctx, &p, spmw_ctx->single.weight);
+		SSpaths_next(ctx, &p, ctx->single.weight);
 	}
 }
 
 // find k minimal weighted path (path can have different weight)
-static void SPMWpaths_k_minimal
+static void SSpaths_k_minimal
 (
-	SPMWctx *spmw_ctx
+	SSctx *ctx
 ) {
 	// initialize heap that contains the result where top path is the highest weight
-	spmw_ctx->heap = Heap_new(path_cmp, NULL);
+	ctx->heap = Heap_new(path_cmp, NULL);
 
 	// get first path
 	WeightedPath p = {0};
 	double max_weight = DBL_MAX;
-	SPMWpaths_next(spmw_ctx, &p, max_weight);
+	SSpaths_next(ctx, &p, max_weight);
 
 	// iterate over all paths
 	while (p.path != NULL) {
-		if(Heap_count(spmw_ctx->heap) == spmw_ctx->path_count) {
+		if(Heap_count(ctx->heap) == ctx->path_count) {
 			// if the heap is full check if the current path is better 
 			// than the worst path if yes replace it
-			WeightedPath *pp = Heap_peek(spmw_ctx->heap);
+			WeightedPath *pp = Heap_peek(ctx->heap);
 			if(p.weight < pp->weight ||
 				p.cost < pp->cost ||
 				(p.cost == pp->cost &&
 					Path_Len(p.path) < Path_Len(pp->path))) {
-				Heap_poll(spmw_ctx->heap);
+				Heap_poll(ctx->heap);
 				Path_Free(pp->path);
 				pp->path = Path_Clone(p.path);
 				pp->weight = p.weight;
 				pp->cost = p.cost;
-				Heap_offer(&spmw_ctx->heap, pp);
+				Heap_offer(&ctx->heap, pp);
 			}
 
 			// update the max weight so we will get better paths
-			pp = Heap_peek(spmw_ctx->heap);
+			pp = Heap_peek(ctx->heap);
 			max_weight = pp->weight;
 		} else {
 			// fill the heap
@@ -448,99 +443,104 @@ static void SPMWpaths_k_minimal
 			pp->path = Path_Clone(p.path);
 			pp->weight = p.weight;
 			pp->cost = p.cost;
-			Heap_offer(&spmw_ctx->heap, pp);
+			Heap_offer(&ctx->heap, pp);
+
+			if(Heap_count(ctx->heap) == ctx->path_count) {
+				pp = Heap_peek(ctx->heap);
+				max_weight = pp->weight;
+			}
 		}
 
 		// get next path where path weight is <= max_weight
-		SPMWpaths_next(spmw_ctx, &p, max_weight);
+		SSpaths_next(ctx, &p, max_weight);
 	}
 }
 
-static ProcedureResult Proc_SPMWpathsInvoke
+static ProcedureResult Proc_SSpathsInvoke
 (
 	ProcedureCtx *ctx,
 	const SIValue *args,
 	const char **yield
 ) {
-	SPMWctx *spmw_ctx = rm_calloc(1, sizeof(SPMWctx));
-	if(!validate_config(args[0], spmw_ctx)) {
-		SPMWctx_Free(spmw_ctx);
+	SSctx *ss_ctx = rm_calloc(1, sizeof(SSctx));
+	if(!validate_config(args[0], ss_ctx)) {
+		SSctx_Free(ss_ctx);
 		return PROCEDURE_ERR;
 	}
-	ctx->privateData = spmw_ctx;
+	ctx->privateData = ss_ctx;
 
-	spmw_ctx->output = array_new(SIValue, 3);
-	_process_yield(spmw_ctx, yield);
+	ss_ctx->output = array_new(SIValue, 3);
+	_process_yield(ss_ctx, yield);
 
-	if(spmw_ctx->path_count == 0) SPMWpaths_all_minimal(spmw_ctx);
-	else if(spmw_ctx->path_count == 1) SPMWpaths_single_minimal(spmw_ctx);
-	else SPMWpaths_k_minimal(spmw_ctx);
+	if(ss_ctx->path_count == 0) SSpaths_all_minimal(ss_ctx);
+	else if(ss_ctx->path_count == 1) SSpaths_single_minimal(ss_ctx);
+	else SSpaths_k_minimal(ss_ctx);
 
 	return PROCEDURE_OK;
 }
 
-static SIValue *Proc_SPMWpathsStep
+static SIValue *Proc_SSpathsStep
 (
 	ProcedureCtx *ctx
 ) {
 	ASSERT(ctx->privateData != NULL);
 	
-	SPMWctx *spmw_ctx = ctx->privateData;
+	SSctx *ss_ctx = ctx->privateData;
 	WeightedPath p;
 
-	if(spmw_ctx->path_count == 0) {
-		if(array_len(spmw_ctx->array) == 0) return NULL;
+	if(ss_ctx->path_count == 0) {
+		if(array_len(ss_ctx->array) == 0) return NULL;
 
-		p = array_pop(spmw_ctx->array);
-	} else if(spmw_ctx->path_count == 1) {
-		p = spmw_ctx->single;
+		p = array_pop(ss_ctx->array);
+	} else if(ss_ctx->path_count == 1) {
+		p = ss_ctx->single;
 		if(p.path == NULL) return NULL;
 
-		spmw_ctx->single.path = NULL;
+		ss_ctx->single.path = NULL;
 	} else {
-		WeightedPath *pp = Heap_poll(spmw_ctx->heap);
+		WeightedPath *pp = Heap_poll(ss_ctx->heap);
 		if(pp == NULL) return NULL;
 		
 		p = *pp;
 		rm_free(pp);
 	}
 	
-	if(spmw_ctx->yield_path) {
-		*spmw_ctx->yield_path = SI_Path(p.path);
+	if(ss_ctx->yield_path) {
+		*ss_ctx->yield_path = SI_Path(p.path);
 		Path_Free(p.path);
 	}
-	if(spmw_ctx->yield_path_weight) *spmw_ctx->yield_path_weight = SI_DoubleVal(p.weight);
-	if(spmw_ctx->yield_path_cost)   *spmw_ctx->yield_path_cost   = SI_DoubleVal(p.cost);
+	if(ss_ctx->yield_path_weight) *ss_ctx->yield_path_weight = SI_DoubleVal(p.weight);
+	if(ss_ctx->yield_path_cost)   *ss_ctx->yield_path_cost   = SI_DoubleVal(p.cost);
 
-	return spmw_ctx->output;
+	return ss_ctx->output;
 }
 
-static ProcedureResult Proc_SPMWpathsFree
+static ProcedureResult Proc_SSpathsFree
 (
 	ProcedureCtx *ctx
 ) {
-	SPMWctx *spmw_ctx = ctx->privateData;
-	SPMWctx_Free(spmw_ctx);
+	SSctx *ss_ctx = ctx->privateData;
+	SSctx_Free(ss_ctx);
 	return PROCEDURE_OK;
 }
 
-ProcedureCtx *Proc_SPMWpathCtx() {
+ProcedureCtx *Proc_SSpathCtx() {
 	void *privateData = NULL;
 	ProcedureOutput output;
 	ProcedureOutput *outputs = array_new(ProcedureOutput, 3);
-	output = (ProcedureOutput){.name = "path", .type = T_PATH};
+	output = (ProcedureOutput){.name = "path", .type = T_PATH | T_NULL};
 	array_append(outputs, output);
-	output = (ProcedureOutput){.name = "pathWeight", .type = T_DOUBLE};
+	output = (ProcedureOutput){.name = "pathWeight", .type = T_DOUBLE | T_NULL};
 	array_append(outputs, output);
-	output = (ProcedureOutput){.name = "pathCost", .type = T_DOUBLE};
+	output = (ProcedureOutput){.name = "pathCost", .type = T_DOUBLE | T_NULL};
 	array_append(outputs, output);
 
-	ProcedureCtx *ctx = ProcCtxNew("algo.SPMinWpaths",
+	ProcedureCtx *ctx = ProcCtxNew("algo.SSpaths",
 								   1,
 								   outputs,
-								   Proc_SPMWpathsStep,
-								   Proc_SPMWpathsInvoke,
-								   Proc_SPMWpathsFree,
+								   Proc_SSpathsStep,
+								   Proc_SSpathsInvoke,
+								   Proc_SSpathsFree,
 								   privateData,
 								   true);
 	return ctx;
