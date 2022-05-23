@@ -272,6 +272,7 @@ static void SPpaths_next
 			 * won't expand frontier.
 			 * i.e. closing a cycle and continuing traversal. */
 			bool frontierAlreadyOnPath = Path_ContainsNode(allPathsCtx->path, &frontierNode);
+			if(frontierAlreadyOnPath) continue;
 
 			// Add frontier to path.
 			Path_AppendNode(allPathsCtx->path, frontierNode);
@@ -296,7 +297,7 @@ static void SPpaths_next
 
 			/* Introduce neighbors only if path depth < maximum path length.
 			 * and frontier wasn't already expanded. */
-			if(depth < allPathsCtx->maxLen && !frontierAlreadyOnPath) {
+			if(depth < allPathsCtx->maxLen) {
 				addNeighbors(allPathsCtx, &frontierConnection, depth, allPathsCtx->dir);
 			}
 
@@ -408,6 +409,14 @@ static void SPpaths_single_minimal
 	}
 }
 
+static void inline _add_path(heap_t **heap, WeightedPath *p) {
+	WeightedPath *pp = rm_malloc(sizeof(WeightedPath));
+	pp->path = Path_Clone(p->path);
+	pp->weight = p->weight;
+	pp->cost = p->cost;
+	Heap_offer(heap, pp);
+}
+
 // find k minimal weighted path (path can have different weight)
 static void SPpaths_k_minimal
 (
@@ -422,38 +431,45 @@ static void SPpaths_k_minimal
 	SPpaths_next(ctx, &p, max_weight);
 
 	// iterate over all paths
-	while (p.path != NULL) {
-		if(Heap_count(ctx->heap) == ctx->path_count) {
-			// if the heap is full check if the current path is better 
-			// than the worst path if yes replace it
-			WeightedPath *pp = Heap_peek(ctx->heap);
-			if(p.weight < pp->weight ||
-				p.cost < pp->cost ||
-				(p.cost == pp->cost &&
-					Path_Len(p.path) < Path_Len(pp->path))) {
-				Heap_poll(ctx->heap);
-				Path_Free(pp->path);
-				pp->path = Path_Clone(p.path);
-				pp->weight = p.weight;
-				pp->cost = p.cost;
-				Heap_offer(&ctx->heap, pp);
-			}
+	while (p.path != NULL && Heap_count(ctx->heap) < ctx->path_count - 1) {
+		// fill the heap
+		_add_path(&ctx->heap, &p);
 
-			// update the max weight so we will get better paths
-			pp = Heap_peek(ctx->heap);
-			max_weight = pp->weight;
-		} else {
-			// fill the heap
-			WeightedPath *pp = rm_malloc(sizeof(WeightedPath));
+		// get next path where path weight is <= max_weight
+		SPpaths_next(ctx, &p, max_weight);
+	}
+
+	if(p.path == NULL) return;
+
+	// fill the heap
+	_add_path(&ctx->heap, &p);
+
+	// update the max weight so we will get better paths
+	WeightedPath *pp = Heap_peek(ctx->heap);
+	max_weight = pp->weight;
+
+	// get next path where path weight is <= max_weight
+	SPpaths_next(ctx, &p, max_weight);
+
+	while (p.path != NULL) {
+		// if the heap is full check if the current path is better 
+		// than the worst path if yes replace it
+		pp = Heap_peek(ctx->heap);
+		if(p.weight < pp->weight ||
+			p.cost < pp->cost ||
+			(p.cost == pp->cost &&
+				Path_Len(p.path) < Path_Len(pp->path))) {
+			Heap_poll(ctx->heap);
+			Path_Free(pp->path);
 			pp->path = Path_Clone(p.path);
 			pp->weight = p.weight;
 			pp->cost = p.cost;
 			Heap_offer(&ctx->heap, pp);
+			RedisModule_Log(NULL, "notice", "%f %f", pp->weight, pp->cost);
 
-			if(Heap_count(ctx->heap) == ctx->path_count) {
-				pp = Heap_peek(ctx->heap);
-				max_weight = pp->weight;
-			}
+			// update the max weight so we will get better paths
+			pp = Heap_peek(ctx->heap);
+			max_weight = pp->weight;
 		}
 
 		// get next path where path weight is <= max_weight

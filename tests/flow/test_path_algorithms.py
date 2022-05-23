@@ -2,19 +2,19 @@ from common import *
 from random import randint
 from functools import cmp_to_key
 
+NODES = 20    # node count
+EDGES = 200  # edge count
 class testAllShortestPaths():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         redis_con = self.env.getConnection()
         self.graph = Graph(redis_con, "path_algos")
         self.populate_graph()
+        self.init()
 
     def populate_graph(self):
         # TODO: direction
         # TODO: weight not numeric
-
-        NODES = 50    # node count
-        EDGES = 1000  # edge count
 
         self.graph.query("CREATE INDEX ON :L(v)")
         self.graph.query(f"UNWIND range(1, {NODES}) AS x CREATE (:L{{v: x}})")
@@ -23,10 +23,7 @@ class testAllShortestPaths():
                              MATCH (a:L{{v: x}}), (b:L{{v: y}})
                              CREATE (a)-[:E {{weight: ToInteger(rand()*5) + 1, cost: ToInteger(rand()*10) + 3}}]->(b)""")
 
-        # TODO: break this function into two
-        # 1: graph population
-        # 2: nodes lookup / initialization
-
+    def init(self):
         self.n = 0                   # start node ID
         self.m = 0                   # end node ID
         self.sp_paths = []           # paths between (n)->(m)
@@ -98,24 +95,20 @@ class testAllShortestPaths():
         self.max_cost = self.sp_paths[7][2]
 
         # filter
-        self.sp_paths = [p for p in self.sp_paths if p[2] <= self.max_cost]
-        self.ss_paths = [p for p in self.ss_paths if p[2] <= self.max_cost]
-        self.incoming_sp_paths = [p for p in self.incoming_sp_paths if p[2] <= self.max_cost]
+        self.sp_paths = [p for p in self.sp_paths if p[2] <= self.max_cost and len(p[0].nodes()) == len(set([n.id for n in p[0].nodes()]))]
+        self.ss_paths = [p for p in self.ss_paths if p[2] <= self.max_cost and len(p[0].nodes()) == len(set([n.id for n in p[0].nodes()]))]
+        self.incoming_sp_paths = [p for p in self.incoming_sp_paths if p[2] <= self.max_cost and len(p[0].nodes()) == len(set([n.id for n in p[0].nodes()]))]
 
         # sort
         self.sp_paths.sort(key=cmp_to_key(compare_full))
         self.ss_paths.sort(key=cmp_to_key(compare_full))
         self.incoming_sp_paths.sort(key=cmp_to_key(compare_full))
 
-        # for p in self.sp_paths:
+        # for p in self.incoming_sp_paths:
         #     print(p)
-        
-        
-        # for p in self.ss_paths:
-        #     print(p)
+        #     print(p[0])
 
-
-    def test00_SPpaths_validations(self):
+    def test01_SPpaths_validations(self):
         # all queries should produce a run-time errors
         queries = [
                 """CALL algo.SPpaths({})""",
@@ -212,8 +205,90 @@ class testAllShortestPaths():
         except redis.exceptions.ResponseError as e:
             self.env.assertContains("pathCount must be integer", str(e))
 
+    def test01_SSpaths_validations(self):
+        query = """CALL algo.SSpaths({})"""
 
-    def test01_sp_single_path(self):
+        try:
+            self.graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertContains("sourceNode is required", str(e))
+
+        query = """MATCH (n:L {v: 1}) CALL algo.SSpaths({sourceNode: 1})"""
+
+        try:
+            self.graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertContains("sourceNode must be of type Node", str(e))
+        
+        # all queries should produce a run-time errors
+        queries = [
+                """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SSpaths({sourceNode: n, relTypes: 1})""",
+                """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SSpaths({sourceNode: n, relTypes: [1]})""",
+                """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SSpaths({sourceNode: n, relTypes: ['a', 1]})"""
+            ]
+
+        # validate we're getting an exception
+        for query in queries:
+            try:
+                self.graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("relTypes must be array of strings", str(e))
+
+        # all queries should produce a run-time errors
+        queries = [
+                """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SSpaths({sourceNode: n, relDirection: 1})""",
+                """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SSpaths({sourceNode: n, relDirection: 'a'})"""
+            ]
+
+        # validate we're getting an exception
+        for query in queries:
+            try:
+                self.graph.query(query)
+                print(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("relDirection values must be 'incoming', 'outgoing' or 'both'", str(e))
+
+        query = """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SSpaths({sourceNode: n, maxLen: 'a'})"""
+
+        try:
+            self.graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertContains("maxLen must be integer", str(e))
+
+        query = """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SSpaths({sourceNode: n, weightProp: 1})"""
+        try:
+            self.graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertContains("weightProp must be a string", str(e))
+        
+        query = """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SSpaths({sourceNode: n, costProp: 1})"""
+        try:
+            self.graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertContains("costProp must be a string", str(e))
+
+        query = """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SSpaths({sourceNode: n, maxCost: '1'})"""
+        try:
+            self.graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertContains("maxCost must be numeric", str(e))
+
+        query = """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SSpaths({sourceNode: n, pathCount: '1'})"""
+        try:
+            self.graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertContains("pathCount must be integer", str(e))
+
+    def test02_sp_single_path(self):
         query = f"""
         MATCH (n:L {{v: {self.n}}}), (m:L {{v: {self.m}}})
         CALL algo.SPpaths({{sourceNode: n, targetNode: m, relTypes: ['E'], maxLen: 3, weightProp: 'weight', costProp: 'cost', maxCost: {self.max_cost}, pathCount: 1}}) YIELD path, pathWeight, pathCost
@@ -234,7 +309,7 @@ class testAllShortestPaths():
         self.env.assertEquals(len(result.result_set), 1)
         self.env.assertEquals(result.result_set[0], self.incoming_sp_paths[0])
 
-    def test02_sp_all_minimal_paths(self):
+    def test03_sp_all_minimal_paths(self):
         query = f"""
         MATCH (n:L {{v: {self.n}}}), (m:L {{v: {self.m}}})
         CALL algo.SPpaths({{sourceNode: n, targetNode: m, relTypes: ['E'], maxLen: 3, weightProp: 'weight', costProp: 'cost', maxCost: {self.max_cost}, pathCount: 0}}) YIELD path, pathWeight, pathCost
@@ -261,7 +336,7 @@ class testAllShortestPaths():
         for i in range(0, len(all_minimal)):
             self.env.assertEquals(result.result_set[i], self.incoming_sp_paths[i])
     
-    def test03_sp_k_minimal_paths(self):    
+    def test04_sp_k_minimal_paths(self):    
         query = f"""
         MATCH (n:L {{v: {self.n}}}), (m:L {{v: {self.m}}})
         CALL algo.SPpaths({{sourceNode: n, targetNode: m, relTypes: ['E'], maxLen: 3, weightProp: 'weight', costProp: 'cost', maxCost: {self.max_cost}, pathCount: 5}}) YIELD path, pathWeight, pathCost
@@ -286,7 +361,7 @@ class testAllShortestPaths():
         for i in range(0, 5):
             self.env.assertEquals(result.result_set[i], self.incoming_sp_paths[i])
 
-    def test04_ss_single_path(self):
+    def test05_ss_single_path(self):
         query = f"""
         MATCH (n:L {{v: {self.n}}})
         CALL algo.SSpaths({{sourceNode: n, relTypes: ['E'], maxLen: 3, weightProp: 'weight', costProp: 'cost', maxCost: {self.max_cost}, pathCount: 1}}) YIELD path, pathWeight, pathCost
@@ -297,7 +372,7 @@ class testAllShortestPaths():
         self.env.assertEquals(len(result.result_set), 1)
         self.env.assertEquals(result.result_set[0], self.ss_paths[0])
 
-    def test05_ss_all_minimal_paths(self):    
+    def test06_ss_all_minimal_paths(self):    
         query = f"""
         MATCH (n:L {{v: {self.n}}})
         CALL algo.SSpaths({{sourceNode: n, relTypes: ['E'], maxLen: 3, weightProp: 'weight', costProp: 'cost', maxCost: {self.max_cost}, pathCount: 0}}) YIELD path, pathWeight, pathCost
@@ -311,7 +386,7 @@ class testAllShortestPaths():
         for i in range(0, len(all_minimal)):
             self.env.assertEquals(result.result_set[i], self.ss_paths[i])
     
-    def test06_ss_k_minimal_paths(self):    
+    def test07_ss_k_minimal_paths(self):    
         query = f"""
         MATCH (n:L {{v: {self.n}}})
         CALL algo.SSpaths({{sourceNode: n, relTypes: ['E'], maxLen: 3, weightProp: 'weight', costProp: 'cost', maxCost: {self.max_cost}, pathCount: 5}}) YIELD path, pathWeight, pathCost
