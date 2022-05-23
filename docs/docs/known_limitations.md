@@ -1,4 +1,9 @@
-# Known limitations
+---
+title: "Known limitations"
+linkTitle: "Known limitations"
+weight: 9
+description: ""
+---
 
 ## Relationship uniqueness in patterns
 

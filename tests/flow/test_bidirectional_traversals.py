@@ -1,16 +1,9 @@
-import os
-import sys
-from RLTest import Env
-
-from redisgraph import Graph, Node, Edge
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
+from common import *
 
 redis_con = None
 acyclic_graph = None
 graph_with_cycle = None
+
 
 class testBidirectionalTraversals(FlowTestsBase):
     def __init__(self):
@@ -22,7 +15,7 @@ class testBidirectionalTraversals(FlowTestsBase):
 
     def populate_acyclic_graph(self):
         global acyclic_graph
-        acyclic_graph = Graph("G", redis_con)
+        acyclic_graph = Graph(redis_con, "G")
         # Construct a graph with the form:
         # (v1)-[:E]->(v2)-[:E]->(v3)
         node_props = ['v1', 'v2', 'v3']
@@ -43,7 +36,7 @@ class testBidirectionalTraversals(FlowTestsBase):
 
     def populate_cyclic_graph(self):
         global graph_with_cycle
-        graph_with_cycle = Graph("H", redis_con)
+        graph_with_cycle = Graph(redis_con, "H")
         # Construct a graph with the form:
         # (v1)-[:E]->(v2)-[:E]->(v3), (v2)-[:E]->(v1)
         node_props = ['v1', 'v2', 'v3']
@@ -283,7 +276,7 @@ class testBidirectionalTraversals(FlowTestsBase):
         # Construct a simple graph:
         # (a)-[E1]->(b), (c)-[E2]->(d)
 
-        g = Graph("multi_edge_type", redis_con)
+        g = Graph(redis_con, "multi_edge_type")
 
         a = Node(properties={'val': 'a'})
         b = Node(properties={'val': 'b'})

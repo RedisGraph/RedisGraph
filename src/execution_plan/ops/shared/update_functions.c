@@ -176,7 +176,7 @@ void EvalEntityUpdates
 				SIValue value = AttributeSet_GetIdx(set, j, &attr_id);
 
 				_PreparePendingUpdate(&update.attributes, accepted_properties,
-					attr_id, value);
+					attr_id, SI_CloneValue(value));
 			}
 			continue;
 		}

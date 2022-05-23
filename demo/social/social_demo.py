@@ -2,16 +2,17 @@ import os
 import sys
 import redis
 import argparse
-from redisgraph import Graph
+from redis.commands.graph import Graph
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 from social_queries import queries_info
 import social_utils
 from utils import execute_query, _redis
 
 redis_con = None
 redis_graph = None
+
 
 def run_queries():
     print("Querying...\n")
@@ -25,7 +26,7 @@ def debug(host, port):
     global redis_con
     global redis_graph
     redis_con = redis.Redis(host=host, port=port)
-    redis_graph = Graph(social_utils.graph_name, redis_con)
+    redis_graph = Graph(redis_con, social_utils.graph_name)
 
     print("populate_graph")
     social_utils.populate_graph(redis_con, redis_graph)
@@ -49,7 +50,7 @@ def main(argv):
         debug(args.host, args.port)
     else:
         with _redis() as redis_con:
-            redis_graph = Graph(social_utils.graph_name, redis_con)
+            redis_graph = Graph(redis_con, social_utils.graph_name)
             social_utils.populate_graph(redis_con, redis_graph)
             run_queries()
 

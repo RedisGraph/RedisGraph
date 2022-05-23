@@ -189,7 +189,7 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		_rejectOnVersionMismatch(ctx, GraphContext_GetVersion(gc));
 		// Release the GraphContext, as we increased its reference count
 		// when retrieving it.
-		GraphContext_Release(gc);
+		GraphContext_DecreaseRefCount(gc);
 		return REDISMODULE_OK;
 	}
 
@@ -224,7 +224,7 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 			RedisModule_ReplyWithError(ctx, "Max pending queries exceeded");
 			// Release the GraphContext, as we increased its reference count
 			// when retrieving it.
-			GraphContext_Release(gc);
+			GraphContext_DecreaseRefCount(gc);
 			CommandCtx_Free(context);
 		}
 	}

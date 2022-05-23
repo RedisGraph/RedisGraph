@@ -1,8 +1,10 @@
 
 ROOT:=$(realpath ..)
 
-override OS:=$(shell $(ROOT)/deps/readies/bin/platform --os)
-ARCH:=$(shell $(ROOT)/deps/readies/bin/platform --arch)
+DEPS_DIR:=$(ROOT)/deps
+
+override OS:=$(shell $(DEPS_DIR)/readies/bin/platform --os)
+ARCH:=$(shell $(DEPS_DIR)/readies/bin/platform --arch)
 
 export OS
 export ARCH
@@ -11,6 +13,11 @@ JOBS ?= $(shell MAX_NPROC=8 $(ROOT)/deps/readies/bin/nproc)
 
 ifneq ($(filter cov-upload,$(MAKECMDGOALS)),)
 COV=1
+endif
+
+ifneq ($(filter memcheck,$(MAKECMDGOALS)),)
+export DEBUG ?= 1
+export MEMCHECK=1
 endif
 
 ifeq ($(COV),1)
@@ -23,21 +30,38 @@ else
 FLAVOR=release
 endif
 
+#----------------------------------------------------------------------------------------------
+
+TARGET=redisgraph.so
+export BINROOT=$(ROOT)/bin/$(OS)-$(ARCH)-$(FLAVOR)
+
+#----------------------------------------------------------------------------------------------
+
 # Paths to deps.
 RAX_DIR = $(ROOT)/deps/rax
 XXHASH_DIR = $(ROOT)/deps/xxHash
 GRAPHBLAS_DIR = $(ROOT)/deps/GraphBLAS
 REDISEARCH_DIR = $(ROOT)/deps/RediSearch
-REDISEARCH_BINROOT=$(ROOT)/bin/$(OS)-$(ARCH)-$(FLAVOR)
+REDISEARCH_BINROOT=$(BINROOT)
 LIBCYPHER_PARSER_DIR = $(ROOT)/deps/libcypher-parser/lib/src
 
-# if DEBUG env var is set, we compile with "debug" cflags
-DEBUGFLAGS = -g -ggdb -O3
-ifeq ($(DEBUG),1)
-	DEBUGFLAGS = -fno-omit-frame-pointer -g -ggdb -O0
-	# Enable all assertions in debug mode
-	DEBUGFLAGS += -DRG_DEBUG
+#----------------------------------------------------------------------------------------------
+
+ifeq ($(OS),macos)
+CLANG=1
 endif
+
+ifeq ($(CC),)
+ifeq ($(GCC),1)
+override CC=gcc
+override CXX=g++
+else ifeq ($(CLANG),1)
+override CC=clang
+override CXX=clang++
+endif
+endif
+
+#----------------------------------------------------------------------------------------------
 
 CFLAGS.warnings=-Wall -Wno-unused-variable -Wno-unused-result
 ifeq ($(PEDANTIC),1)
@@ -45,21 +69,47 @@ CFLAGS.warnings += -Wpedantic
 endif
 
 # Default CFLAGS
-CFLAGS = \
-	-fPIC -fcommon \
+CFLAGS=\
+	-fPIC \
+	-fcommon \
 	-D_GNU_SOURCE \
 	-DREDIS_MODULE_TARGET \
 	-DREDISMODULE_EXPERIMENTAL_API \
 	-DXXH_STATIC_LINKING_ONLY \
-	$(CFLAGS.warnings) $(DEBUGFLAGS)
+	$(CFLAGS.opt) \
+	$(CFLAGS.warnings) \
+	$(CFLAGS.debug)
+
+ifeq ($(OS),macos)
+	ifeq ($(STATIC_OMP),1)
+		LIBOMP_PREFIX:=$(shell brew --prefix libomp)
+		LIBOMP=$(LIBOMP_PREFIX)/lib/libomp.a
+	else
+		LIBOMP=-lomp
+	endif
+endif
 
 # Compile flags for linux / osx
-ifeq ($(OS),linux)
-SHOBJ_LDFLAGS ?= -Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
+LDFLAGS.linux=-Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
+LDFLAGS.macos=-bundle -undefined dynamic_lookup -ldl -lpthread $(LIBOMP)
+
+SHOBJ_LDFLAGS += $(LDFLAGS) $(LDFLAGS.$(OS))
+
+# if DEBUG env var is set, we compile with "debug" cflags
+ifeq ($(DEBUG),1)
+	CFLAGS.opt += -O0
+	CFLAGS.debug += -fno-omit-frame-pointer -g -ggdb
+	# Enable all assertions in debug mode
+	CFLAGS.debug += -DRG_DEBUG
+	ifeq ($(MEMCHECK),1)
+		CFLAGS.debug += -DMEMCHECK
+		SHOBJ_LDFLAGS += -u RediSearch_CleanupModule
+	endif
 else
-SHOBJ_LDFLAGS ?= -bundle -undefined dynamic_lookup -ldl -lpthread -lomp
+	CFLAGS.opt += -O3
+	CFLAGS.debug += -g -ggdb
 endif
-SHOBJ_LDFLAGS += $(LDFLAGS)
+
 export CFLAGS
 
 #----------------------------------------------------------------------------------------------
@@ -68,7 +118,7 @@ ifeq ($(COV),1)
 
 CFLAGS += --coverage
 SHOBJ_LDFLAGS += --coverage
-BINROOT=$(SOURCEDIR)
+COV_BINROOT=$(SOURCEDIR)
 
 COV_INFO=$(ROOT)/cov/cov.info
 COV_DIR=$(ROOT)/cov
@@ -83,13 +133,13 @@ define COVERAGE_RESET
 set -e ;\
 echo "Starting coverage analysys ..." ;\
 mkdir -p $(COV_DIR) ;\
-lcov --directory $(BINROOT) --base-directory $(SOURCEDIR) -z > /dev/null 2>&1
+lcov --directory $(COV_BINROOT) --base-directory $(SOURCEDIR) -z > /dev/null 2>&1
 endef
 
 define COVERAGE_COLLECT
 set -e ;\
 echo "Collecting coverage data ..." ;\
-lcov --capture --directory $(BINROOT) --base-directory $(SOURCEDIR) --output-file $(COV_INFO) > /dev/null 2>&1 ;\
+lcov --capture --directory $(COV_BINROOT) --base-directory $(SOURCEDIR) --output-file $(COV_INFO) > /dev/null 2>&1 ;\
 lcov -o $(COV_INFO) -r $(COV_INFO) $(COV_EXCLUDE) > /dev/null 2>&1
 endef
 
@@ -199,23 +249,27 @@ MODULE_DEPS=$(LIBS) $(CC_OBJECTS)
 
 #----------------------------------------------------------------------------------------------
 
-REDISGRAPH_CC=$(QUIET_CC)$(CC)
+define REDISGRAPH_CC
+$(QUIET_CC); $(CC)
+endef
 
 CCCOLOR="\033[34m"
 SRCCOLOR="\033[33m"
 ENDCOLOR="\033[0m"
 
 ifndef V
-QUIET_CC = @printf '    %b %b\n' $(CCCOLOR)CC$(ENDCOLOR) $(SRCCOLOR)$@$(ENDCOLOR) 1>&2;
+define QUIET_CC
+@printf '    %b %b\n' $(CCCOLOR)CC$(ENDCOLOR) $(SRCCOLOR)$@$(ENDCOLOR) 1>&2
+endef
 endif
 
 %.c: %.y
 
 # Compile C file while generating a .d file for it
-%.o: %.c
+%.o: %.c $(LIBCYPHER_PARSER_DIR)/cypher-parser.h
 	$(REDISGRAPH_CC) $(CFLAGS) -I. -I$(GRAPHBLAS_DIR)/Include -I$(RAX_DIR) -I$(LIBCYPHER_PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR)/src -c $< -o $@ -MMD -MF $(@:.o=.d)
 
-all: redisgraph.so
+all: $(TARGET)
 
 .PHONY: all
 
@@ -252,6 +306,8 @@ ifeq (,$(wildcard $(LIBCYPHER_PARSER)))
 	@$(MAKE) CFLAGS="-O3 -fPIC -DYY_BUFFER_SIZE=1048576" clean check -C $(ROOT)/deps/libcypher-parser
 endif
 
+$(LIBCYPHER_PARSER_DIR)/cypher-parser.h : $(LIBCYPHER_PARSER)
+
 #----------------------------------------------------------------------------------------------
 
 define extract_symbols
@@ -261,7 +317,7 @@ objcopy --add-gnu-debuglink $1.debug $1
 endef
 
 # Build the module...
-redisgraph.so: $(MODULE_DEPS)
+$(TARGET): $(MODULE_DEPS)
 	$(REDISGRAPH_CC) -o $@ $(CC_OBJECTS) $(LIBS) $(SHOBJ_LDFLAGS) -lc -lm
 ifeq ($(OS),linux)
 ifneq ($(DEBUG),1)
@@ -271,13 +327,15 @@ endif
 
 clean:
 	@find . -name '*.[oad]' -type f -delete
-	@-rm -f redisgraph.so
+	@find . -name '*.gcda' -type f -delete
+	@-rm -f $(TARGET)
 ifeq ($(ALL),1)
 	@$(MAKE) -C $(ROOT)/deps/rax clean
 	@$(MAKE) -C $(ROOT)/deps/xxHash clean
 	@$(MAKE) -C $(ROOT)/deps/GraphBLAS clean
 	@$(MAKE) -C $(ROOT)/deps/libcypher-parser clean
-	@$(MAKE) -C $(REDISEARCH_DIR) clean ALL=1
+	@cd $(ROOT)/deps/libcypher-parser; git ls-files -o | xargs rm
+	@$(MAKE) -C $(REDISEARCH_DIR) clean ALL=1 BINROOT=$(REDISEARCH_BINROOT)
 endif
 	@$(MAKE) -C $(ROOT)/tests clean
 
@@ -285,17 +343,25 @@ endif
 
 #----------------------------------------------------------------------------------------------
 
-package: redisgraph.so
+package: $(TARGET)
 	@$(ROOT)/sbin/pack.sh
 
 .PHONY: package
 
 #----------------------------------------------------------------------------------------------
 
-test: redisgraph.so
-	# check valgrind flag is not empty
+ifeq ($(SLOW),1)
+_RLTEST_PARALLEL=0
+else ifneq ($(PARALLEL),)
+_RLTEST_PARALLEL=$(PARALLEL)
+else
+_RLTEST_PARALLEL=1
+endif
+
+test: $(TARGET)
+# check valgrind flag is not empty
 ifeq ($(VALGRIND),1)
-	# valgrind is requested, check that host's os is not Linux
+# valgrind is requested, check that host's os is not Linux
 ifeq ($(OS),macos)
 	@echo building docker to run valgrind on MacOS
 	@cd .. ;\
@@ -303,23 +369,21 @@ ifeq ($(OS),macos)
 endif
 endif
 	@$(COVERAGE_RESET)
-	@$(MAKE) -C $(ROOT)/tests test
+	@$(MAKE) -C $(ROOT)/tests test PARALLEL=$(_RLTEST_PARALLEL)
 	@$(COVERAGE_COLLECT_REPORT)
 
 .PHONY: test
 
 #----------------------------------------------------------------------------------------------
 
-memcheck: CFLAGS += -fno-omit-frame-pointer -g -ggdb -O0 -D MEMCHECK
-memcheck: SHOBJ_LDFLAGS += -u RediSearch_CleanupModule
-memcheck: redisgraph.so
-	@$(MAKE) -C $(ROOT)/tests memcheck
+memcheck: $(TARGET)
+	@$(MAKE) -C $(ROOT)/tests memcheck PARALLEL=$(_RLTEST_PARALLEL)
 
 .PHONY: memcheck
 
 #----------------------------------------------------------------------------------------------
 
-benchmark: redisgraph.so
+benchmark: $(TARGET)
 	@$(MAKE) -C $(ROOT)/tests benchmark
 
 .PHONY: benchmark
@@ -327,15 +391,17 @@ benchmark: redisgraph.so
 #----------------------------------------------------------------------------------------------
 
 ifeq ($(COV),1)
+
 cov-upload:
 	$(SHOW)bash -c "bash <(curl -s https://codecov.io/bash) -f $(COV_INFO)"
 
 .PHONY: cov-upload
+
 endif # COV
 
 #----------------------------------------------------------------------------------------------
 
-fuzz: redisgraph.so
+fuzz: $(TARGET)
 	@$(MAKE) -C $(ROOT)/tests fuzz
 
 .PHONY: fuzz

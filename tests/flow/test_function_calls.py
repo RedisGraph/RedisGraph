@@ -1,15 +1,10 @@
-import redis
-import os
-import sys
+from common import *
 import json
-from RLTest import Env
-from base import FlowTestsBase
-from redisgraph import Graph, Node, Edge
-
 
 graph = None
 redis_con = None
 people = ["Roi", "Alon", "Ailon", "Boaz"]
+
 
 class testFunctionCallsFlow(FlowTestsBase):
     def __init__(self):
@@ -17,7 +12,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         global graph
         global redis_con
         redis_con = self.env.getConnection()
-        graph = Graph("G", redis_con)
+        graph = Graph(redis_con, "G")
         self.populate_graph()
 
     def populate_graph(self):
@@ -481,3 +476,10 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         expected_result = [[[{'name': 'Roi'}]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test22_large_list_argument(self):
+        # validate that large lists arguments are not allocated on stack
+        large_list = str([1] * 1000000)
+        query = f"""RETURN {large_list}"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(len(actual_result.result_set[0][0]), 1000000)

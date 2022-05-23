@@ -23,9 +23,10 @@ typedef struct {
 	uint *columns_record_map;       // mapping between column name and record index
 	DataBlock *cells;               // accumulated cells
 	double timer[2];                // query runtime tracker
-	ResultSetStatistics stats;      // resultSet statistics
-	ResultSetFormatterType format;  // result-set format; compact/verbose/nop
-	ResultSetFormatter *formatter;  // resultSet data formatter
+	ResultSetStatistics stats;      // result set statistics
+	ResultSetFormatterType format;  // result set format; compact/verbose/nop
+	ResultSetFormatter *formatter;  // result set data formatter
+	SIAllocation cells_allocation;  // encountered values allocation
 } ResultSet;
 
 // map each column to a record index
@@ -33,70 +34,58 @@ typedef struct {
 // data from record at position columns_record_map[j]
 void ResultSet_MapProjection
 (
-	ResultSet *set,
-	const Record r
+	ResultSet *set,  // resultset to init mappings for
+	rax *mapping     // mapping
 );
 
-// allocate new result set and initialize it
+// create a new result set
 ResultSet *NewResultSet
 (
 	RedisModuleCtx *ctx,
-	ResultSetFormatterType format
+	ResultSetFormatterType format  // resultset format
 );
 
 // returns number of rows in result-set
 uint64_t ResultSet_RowCount
 (
-	const ResultSet *set
+	const ResultSet *set  // resultset to inquery
 );
 
-// add a record to result set
+// add a new row to resultset
 int ResultSet_AddRecord
 (
-	ResultSet *set,
-	Record r
+	ResultSet *set,  // resultset to extend
+	Record r         // record containing projected data
 );
 
-// increment the index created stats
+// update resultset index creation statistics
 void ResultSet_IndexCreated
 (
-	ResultSet *set,
-	int status_code
+	ResultSet *set,  // resultset to update
+	int status_code  // index creation status code
 );
 
-// increment the index deleted stats
+// update resultset index deleted statistics
 void ResultSet_IndexDeleted
 (
-	ResultSet *set,
-	int status_code
+	ResultSet *set,  // resultset to update
+	int status_code  // index deletion status code
 );
 
-// set the cache execution stats
+// update resultset cache execution statistics
 void ResultSet_CachedExecution
 (
-	ResultSet *set
+	ResultSet *set  // resultset to update
 );
 
-// return the result to the client
+// flush resultset to network
 void ResultSet_Reply
 (
-	ResultSet *set
+	ResultSet *set  // resultset to reply with
 );
 
-// report execution timing
-void ResultSet_ReportQueryRuntime
-(
-	RedisModuleCtx *ctx
-);
-
-// clear result set stats
-void ResultSet_Clear
-(
-	ResultSet *set
-);
-
-// free the result set
+// free resultset
 void ResultSet_Free
 (
-	ResultSet *set
+	ResultSet *set  // resultset to free
 );

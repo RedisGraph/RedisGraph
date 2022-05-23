@@ -878,32 +878,6 @@ inline bool Graph_EntityIsDeleted
 	return DataBlock_ItemIsDeleted(e->attributes);
 }
 
-void Graph_DeleteNode
-(
-	Graph *g,
-	Node *n
-) {
-	// assumption, node is completely detected,
-	// there are no incoming nor outgoing edges
-	// leading to / from node
-	ASSERT(g != NULL);
-	ASSERT(n != NULL);
-
-	uint label_count;
-	NODE_GET_LABELS(g, n, label_count);
-	for(uint i = 0; i < label_count; i++) {
-		int label_id = labels[i];
-		RG_Matrix M = Graph_GetLabelMatrix(g, label_id);
-		// clear label matrix at position node ID
-		GrB_Info res = RG_Matrix_removeElement_BOOL(M, ENTITY_GET_ID(n),
-													ENTITY_GET_ID(n));
-		// update statistics
-		GraphStatistics_DecNodeCount(&g->stats, label_id, 1);
-	}
-
-	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
-}
-
 static void _Graph_FreeRelationMatrices
 (
 	const Graph *g
@@ -1085,12 +1059,16 @@ RG_Matrix Graph_GetZeroMatrix
 	return z;
 }
 
-void Graph_Free(Graph *g) {
-	ASSERT(g != NULL);
-
+static void _Graph_Free
+(
+	Graph *g,
+	bool is_full_graph
+) {
+	ASSERT(g);
 	// free matrices
 	AttributeSet *set;
 	DataBlockIterator *it;
+
 	RG_Matrix_free(&g->_zero_matrix);
 	RG_Matrix_free(&g->adjacency_matrix);
 
@@ -1103,7 +1081,7 @@ void Graph_Free(Graph *g) {
 	array_free(g->labels);
 	RG_Matrix_free(&g->node_labels);
 
-	it = Graph_ScanNodes(g);
+	it = is_full_graph ? Graph_ScanNodes(g) : DataBlock_FullScan(g->nodes);
 	while((set = (AttributeSet *)DataBlockIterator_Next(it, NULL)) != NULL) {
 		if(*set != NULL) {
 			AttributeSet_Free(set);
@@ -1111,13 +1089,14 @@ void Graph_Free(Graph *g) {
 	}
 	DataBlockIterator_Free(it);
 
-	it = Graph_ScanEdges(g);
+	it = is_full_graph ? Graph_ScanEdges(g) : DataBlock_FullScan(g->edges);
 	while((set = DataBlockIterator_Next(it, NULL)) != NULL) {
 		if(*set != NULL) {
 			AttributeSet_Free(set);
 		}
 	}
 	DataBlockIterator_Free(it);
+
 
 	// free blocks
 	DataBlock_Free(g->nodes);
@@ -1131,4 +1110,18 @@ void Graph_Free(Graph *g) {
 	ASSERT(res == 0);
 
 	rm_free(g);
+}
+
+void Graph_Free
+(
+	Graph *g
+) {
+	_Graph_Free(g, true);
+}
+
+void Graph_PartialFree
+(
+	Graph *g
+) {
+	_Graph_Free(g, false);
 }

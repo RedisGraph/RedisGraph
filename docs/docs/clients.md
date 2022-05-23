@@ -1,12 +1,17 @@
-# RedisGraph Client Libraries
-
-The full functionality of RedisGraph is available through `redis-cli` and the Redis API.  [RedisInsight](https://redis.com/redis-enterprise/redis-insight/) is a visual tool that provides capabilities to design, develop and optimize into a single easy-to-use environment, and has built-in support for RedisGraph.
-In addition there are severeal client libraries to improve abstractions and allow for a more natural experience in a project's native language. Additionally, these clients take advantage of some RedisGraph features that may reduce network throughput in some circumstances.
+---
+title: "RedisGraph Client Libraries"
+linkTitle: "Clients"
+weight: 2
+description: >
+    The full functionality of RedisGraph is available through `redis-cli` and the Redis API.  [RedisInsight](https://redis.com/redis-enterprise/redis-insight/) is a visual tool that provides capabilities to design, develop and optimize into a single easy-to-use environment, and has built-in support for RedisGraph.
+    In addition there are severeal client libraries to improve abstractions and allow for a more natural experience in a project's native language. Additionally, these clients take advantage of some RedisGraph features that may reduce network throughput in some circumstances.
+---
 
 ## Currently available Libraries
 
 | Project                                                  | Language   | License      | Author                                      | Stars                                                             |
 | -------------------------------------------------------- | ---------- | ------------ | ------------------------------------------- | ----------------------------------------------------------------- |
+| [Jedis][Jedis-url]                                       | Java       | MIT          | [Redis][Jedis-author]                       | [![Jedis-stars]][Jedis-url]                                       |
 | [redisgraph-py][redisgraph-py-url]                       | Python     | BSD          | [Redis][redisgraph-py-author]               | [![redisgraph-py-stars]][redisgraph-py-url]                       |
 | [JRedisGraph][JRedisGraph-url]                           | Java       | BSD          | [Redis][JRedisGraph-author]                 | [![JRedisGraph-stars]][JRedisGraph-url]                           |
 | [redisgraph-rb][redisgraph-rb-url]                       | Ruby       | BSD          | [Redis][redisgraph-rb-author]               | [![redisgraph-rb-stars]][redisgraph-rb-url]                       |
@@ -26,6 +31,10 @@ In addition there are severeal client libraries to improve abstractions and allo
 | [RedisGraphDotNet.Client][RedisGraphDotNet.Client-url]   | C#         | BSD          | [Sgawrys][RedisGraphDotNet.Client-author]   | [![RedisGraphDotNet.Client-stars]][RedisGraphDotNet.Client-url]   |
 | [RedisGraph.jl][RedisGraph.jl-url]                       | Julia      | MIT          | [xyxel][RedisGraph.jl-author]               | [![RedisGraph.jl-stars]][RedisGraph.jl-url]                       |
 
+
+[Jedis-author]: https://redis.com
+[Jedis-url]: https://github.com/redis/jedis
+[Jedis-stars]: https://img.shields.io/github/stars/redis/jedis.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 [redisgraph-py-author]: https://redis.com
 [redisgraph-py-url]: https://github.com/RedisGraph/redisgraph-py
@@ -101,4 +110,4 @@ In addition there are severeal client libraries to improve abstractions and allo
 
 ## Implementing a client
 
-Information on some of the tasks involved in writing a RedisGraph client can be found in the [Client Specification](client_spec.md).
+Information on some of the tasks involved in writing a RedisGraph client can be found in the [Client Specification](/graph/design/client_spec).

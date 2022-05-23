@@ -22,6 +22,8 @@ AR_FuncDesc *AR_FuncDescNew
 	uint min_argc,
 	uint max_argc,
 	SIType *types,
+	SIType ret_type,
+	bool internal,
 	bool reducible
 ) {
 	AR_FuncDesc *desc = rm_calloc(1, sizeof(AR_FuncDesc));
@@ -29,8 +31,10 @@ AR_FuncDesc *AR_FuncDescNew
 	desc->name                    =  name;
 	desc->func                    =  func;
 	desc->types                   =  types;
+	desc->ret_type                =  ret_type;
 	desc->min_argc                =  min_argc;
 	desc->max_argc                =  max_argc;
+	desc->internal                =  internal;
 	desc->aggregate               =  false;
 	desc->reducible               =  reducible;
 
@@ -50,10 +54,21 @@ void AR_RegFunc
 	ASSERT(res == 1);
 }
 
+inline void AR_SetPrivateDataRoutines
+(
+	AR_FuncDesc *func_desc,
+	AR_Func_Free free,
+	AR_Func_Clone clone
+) {
+	func_desc->callbacks.free = free;
+	func_desc->callbacks.clone = clone;
+}
+
 // get arithmetic function
 AR_FuncDesc *AR_GetFunc
 (
-	const char *func_name
+	const char *func_name,
+	bool include_internal
 ) {
 	size_t len = strlen(func_name);
 	char lower_func_name[len];
@@ -64,17 +79,18 @@ AR_FuncDesc *AR_GetFunc
 
 	AR_FuncDesc *func = (AR_FuncDesc*)f;
 
+	if(func->internal && !include_internal) return NULL;
+
 	return func;
 }
 
-inline void AR_SetPrivateDataRoutines
+SIType AR_FuncDesc_RetType
 (
-	AR_FuncDesc *func_desc,
-	AR_Func_Free free,
-	AR_Func_Clone clone
+	const AR_FuncDesc *func	
 ) {
-	func_desc->callbacks.free = free;
-	func_desc->callbacks.clone = clone;
+	ASSERT(func != NULL);
+
+	return func->ret_type;
 }
 
 bool AR_FuncExists
@@ -86,7 +102,11 @@ bool AR_FuncExists
 	str_tolower(func_name, lower_func_name, &len);
 	void *f = raxFind(__aeRegisteredFuncs, (unsigned char *)lower_func_name, len);
 
-	return f != raxNotFound;
+	if(f == raxNotFound) return false;
+
+	AR_FuncDesc *func = (AR_FuncDesc*)f;
+
+	return !func->internal;
 }
 
 bool AR_FuncIsAggregate

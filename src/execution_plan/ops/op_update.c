@@ -100,6 +100,9 @@ static Record UpdateConsume(OpBase *opBase) {
 	// release lock
 	QueryCtx_UnlockCommit(opBase);
 
+	array_clear(op->node_updates);
+	array_clear(op->edge_updates);
+
 	op->updates_committed = true;
 
 	return _handoff(op);

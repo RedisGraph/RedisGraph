@@ -232,61 +232,72 @@ SIValue AR_PROPERTY(SIValue *argv, int argc, void *private_data) {
 
 void Register_EntityFuncs() {
 	SIType *types;
+	SIType ret_type;
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_NODE | T_EDGE);
-	func_desc = AR_FuncDescNew("id", AR_ID, 1, 1, types, true);
+	ret_type = T_NULL | T_INT64;
+	func_desc = AR_FuncDescNew("id", AR_ID, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_NODE);
-	func_desc = AR_FuncDescNew("labels", AR_LABELS, 1, 1, types, true);
+	ret_type = T_NULL | T_ARRAY;
+	func_desc = AR_FuncDescNew("labels", AR_LABELS, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	array_append(types, T_NULL | T_NODE);
 	array_append(types, T_ARRAY);
-	func_desc = AR_FuncDescNew("hasLabels", AR_HAS_LABELS, 2, 2, types, false);
+	ret_type = T_NULL | T_BOOL;
+	func_desc = AR_FuncDescNew("hasLabels", AR_HAS_LABELS, 2, 2, types, ret_type, false, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_EDGE);
-	func_desc = AR_FuncDescNew("type", AR_TYPE, 1, 1, types, true);
+	ret_type = T_NULL | T_STRING;
+	func_desc = AR_FuncDescNew("type", AR_TYPE, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_EDGE);
-	func_desc = AR_FuncDescNew("startNode", AR_STARTNODE, 1, 1, types, true);
+	ret_type = T_NULL | T_NODE;
+	func_desc = AR_FuncDescNew("startNode", AR_STARTNODE, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_EDGE);
-	func_desc = AR_FuncDescNew("endNode", AR_ENDNODE, 1, 1, types, true);
+	ret_type = T_NULL | T_NODE;
+	func_desc = AR_FuncDescNew("endNode", AR_ENDNODE, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | SI_ALL);
-	func_desc = AR_FuncDescNew("exists", AR_EXISTS, 1, 1, types, true);
+	ret_type = T_NULL | T_BOOL;
+	func_desc = AR_FuncDescNew("exists", AR_EXISTS, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	array_append(types, T_NULL | T_NODE);
 	array_append(types, T_STRING);
-	func_desc = AR_FuncDescNew("indegree", AR_INCOMEDEGREE, 1, VAR_ARG_LEN, types, true);
+	ret_type = T_NULL | T_INT64;
+	func_desc = AR_FuncDescNew("indegree", AR_INCOMEDEGREE, 1, VAR_ARG_LEN, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	array_append(types, T_NULL | T_NODE);
 	array_append(types, T_STRING);
-	func_desc = AR_FuncDescNew("outdegree", AR_OUTGOINGDEGREE, 1, VAR_ARG_LEN, types, true);
+	ret_type = T_NULL | T_INT64;
+	func_desc = AR_FuncDescNew("outdegree", AR_OUTGOINGDEGREE, 1, VAR_ARG_LEN, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
 	array_append(types, T_NULL | T_NODE | T_EDGE | T_MAP);
 	array_append(types, T_STRING);
 	array_append(types, T_INT64);
-	func_desc = AR_FuncDescNew("property", AR_PROPERTY, 3, 3, types, true);
+	ret_type = SI_ALL;
+	func_desc = AR_FuncDescNew("property", AR_PROPERTY, 3, 3, types, ret_type, true, true);
 	AR_RegFunc(func_desc);
 }
 

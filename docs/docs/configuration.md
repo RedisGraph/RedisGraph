@@ -1,6 +1,10 @@
-# Run-time Configuration
-
-RedisGraph supports a few run-time configuration options that can be defined when loading the module. In the future more options will be added.
+---
+title: "Run-time Configuration"
+linkTitle: "Configuration"
+weight: 3
+description: >
+    RedisGraph supports a few run-time configuration options that can be defined when loading the module. In the future more options will be added.
+---
 
 ## Passing configuration options on module load
 
@@ -39,14 +43,14 @@ GRAPH.CONFIG GET *
 
 | Configuration                                 | Load-time          | Run-time             |
 | :-------                                      | :-----             | :-----------         |
-| [THREAD_COUNT](#THREAD_COUNT)                 | :white_check_mark: | :white_large_square: |
-| [CACHE_SIZE](#CACHE_SIZE)                     | :white_check_mark: | :white_large_square: |
-| [OMP_THREAD_COUNT](#OMP_THREAD_COUNT)         | :white_check_mark: | :white_large_square: |
-| [NODE_CREATION_BUFFER](#NODE_CREATION_BUFFER) | :white_check_mark: | :white_large_square: |
-| [MAX_QUEUED_QUERIES](#MAX_QUEUED_QUERIES)     | :white_check_mark: | :white_check_mark:   |
-| [TIMEOUT](#TIMEOUT)                           | :white_check_mark: | :white_check_mark:   |
-| [RESULTSET_SIZE](#RESULTSET_SIZE)             | :white_check_mark: | :white_check_mark:   |
-| [QUERY_MEM_CAPACITY](#QUERY_MEM_CAPACITY)     | :white_check_mark: | :white_check_mark:   |
+| [THREAD_COUNT](#thread_count)                 | :white_check_mark: | :white_large_square: |
+| [CACHE_SIZE](#cache_size)                     | :white_check_mark: | :white_large_square: |
+| [OMP_THREAD_COUNT](#omp_thread_count)         | :white_check_mark: | :white_large_square: |
+| [NODE_CREATION_BUFFER](#node_creation_buffer) | :white_check_mark: | :white_large_square: |
+| [MAX_QUEUED_QUERIES](#max_queued_queries)     | :white_check_mark: | :white_check_mark:   |
+| [TIMEOUT](#timeout)                           | :white_check_mark: | :white_check_mark:   |
+| [RESULTSET_SIZE](#resultset_size)             | :white_check_mark: | :white_check_mark:   |
+| [QUERY_MEM_CAPACITY](#query_mem_capacity)     | :white_check_mark: | :white_check_mark:   |
 
 
 ## THREAD_COUNT
@@ -207,7 +211,7 @@ The query timeout configuration may also be set per query in the form of additio
 
 ## Query Timeout
 
-The query flag `timeout` allows the user to specify a timeout as described in [TIMEOUT](#TIMEOUT) for a single query.
+The query flag `timeout` allows the user to specify a timeout as described in [TIMEOUT](#timeout) for a single query.
 
 ### Example
 

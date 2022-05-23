@@ -1,22 +1,18 @@
-import os
-import sys
-from RLTest import Env
-from redis import ResponseError
-from redisgraph import Graph, Node, Edge
+from common import *
 
-from base import FlowTestsBase
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../..')
 from demo import QueryInfo
 
 GRAPH_ID = "G"
 redis_graph = None
+
 
 class testGraphDeletionFlow(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
         self.populate_graph()
 
     def populate_graph(self):
@@ -203,7 +199,7 @@ class testGraphDeletionFlow(FlowTestsBase):
 
     def test12_delete_unwind_entity(self):
         redis_con = self.env.getConnection()
-        redis_graph = Graph("delete_test", redis_con)
+        redis_graph = Graph(redis_con, "delete_test")
 
         # Create 10 nodes.
         for i in range(10):
@@ -229,7 +225,7 @@ class testGraphDeletionFlow(FlowTestsBase):
     def test13_delete_path_elements(self):
         self.env.flush()
         redis_con = self.env.getConnection()
-        redis_graph = Graph("delete_test", redis_con)
+        redis_graph = Graph(redis_con, "delete_test")
 
         src = Node()
         dest = Node()
@@ -251,7 +247,7 @@ class testGraphDeletionFlow(FlowTestsBase):
     def test14_post_deletion_traversal_directions(self):
         self.env.flush()
         redis_con = self.env.getConnection()
-        redis_graph = Graph("G", redis_con)
+        redis_graph = Graph(redis_con, "G")
 
         nodes = {}
         # Create entities.
@@ -287,7 +283,7 @@ class testGraphDeletionFlow(FlowTestsBase):
     def test15_update_deleted_entities(self):
         self.env.flush()
         redis_con = self.env.getConnection()
-        redis_graph = Graph("delete_test", redis_con)
+        redis_graph = Graph(redis_con, "delete_test")
 
         src = Node()
         dest = Node()
@@ -313,10 +309,32 @@ class testGraphDeletionFlow(FlowTestsBase):
         expected_result = []
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-    def test16_invalid_deletions(self):
+    def test16_repeated_entity_deletion(self):
         self.env.flush()
         redis_con = self.env.getConnection()
-        redis_graph = Graph("delete_test", redis_con)
+        redis_graph = Graph(redis_con, "repeated_edge_deletion")
+
+        # create 2 nodes cyclically connected by 2 edges
+        actual_result = redis_graph.query("CREATE (x1:A)-[r:R]->(n2:B)-[t:T]->(x1)")
+        self.env.assertEquals(actual_result.nodes_created, 2)
+        self.env.assertEquals(actual_result.relationships_created, 2)
+
+        # attempt to repeatedly delete edges
+        query = """MATCH ()-[r]-() delete r delete r, r delete r, r"""
+        actual_result = redis_graph.query(query)
+        # 2 edges should be reported as deleted
+        self.env.assertEquals(actual_result.relationships_deleted, 2)
+
+        # attempt to repeatedly delete nodes
+        query = """MATCH (n) delete n delete n, n delete n, n"""
+        actual_result = redis_graph.query(query)
+        # 2 nodes should be reported as deleted
+        self.env.assertEquals(actual_result.nodes_deleted, 2)
+
+    def test17_invalid_deletions(self):
+        self.env.flush()
+        redis_con = self.env.getConnection()
+        redis_graph = Graph(redis_con, "delete_test")
 
         n = Node()
         redis_graph.add_node(n)

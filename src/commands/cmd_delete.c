@@ -31,7 +31,7 @@ int Graph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_WRITE);
 	RedisModule_DeleteKey(key); // Decreases graph ref count.
 	RedisModule_CloseKey(key);  // Free key handle.
-	GraphContext_Release(gc);   // Decrease graph ref count.
+	GraphContext_DecreaseRefCount(gc);   // Decrease graph ref count.
 
 	double t = QueryCtx_GetExecutionTime();
 	asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);

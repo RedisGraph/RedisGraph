@@ -1,12 +1,8 @@
-import os
-import sys
-import redis
-from RLTest import Env
-from redisgraph import Graph
-from base import FlowTestsBase
+from common import *
 
 redis_con = None
 redis_graph = None
+
 
 class testConfig(FlowTestsBase):
     def __init__(self):
@@ -14,7 +10,7 @@ class testConfig(FlowTestsBase):
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph("config", redis_con)
+        redis_graph = Graph(redis_con, "config")
 
     def test01_config_get(self):
         global redis_graph
@@ -253,6 +249,10 @@ class testConfig(FlowTestsBase):
         self.env.assertEqual(response, expected_response)
 
     def test11_set_get_node_creation_buffer(self):
+        # flush and stop is needed for memcheck for clean shutdown
+        self.env.flush()
+        self.env.stop()
+
         self.env = Env(decodeResponses=True, moduleArgs='NODE_CREATION_BUFFER 0')
         global redis_con
         redis_con = self.env.getConnection()
@@ -264,6 +264,7 @@ class testConfig(FlowTestsBase):
         self.env.assertEqual(creation_buffer_size, expected_response)
 
         # restart the server with a buffer argument of 600
+        self.env.flush()
         self.env = Env(decodeResponses=True, moduleArgs='NODE_CREATION_BUFFER 600')
         redis_con = self.env.getConnection()
 

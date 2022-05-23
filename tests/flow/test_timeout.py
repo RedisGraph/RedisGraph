@@ -1,12 +1,8 @@
-import sys
-import os
-from RLTest import Env
-from base import FlowTestsBase
-from redis import ResponseError
-from redisgraph import Graph
+from common import *
 
 redis_con = None
 redis_graph = None
+
 
 class testQueryTimeout(FlowTestsBase):
     def __init__(self):
@@ -18,7 +14,7 @@ class testQueryTimeout(FlowTestsBase):
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph("timeout", redis_con)
+        redis_graph = Graph(redis_con, "timeout")
 
     def test01_read_query_timeout(self):
         query = "UNWIND range(0,1000000) AS x WITH x AS x WHERE x = 10000 RETURN x"
@@ -102,3 +98,20 @@ class testQueryTimeout(FlowTestsBase):
             q += " LIMIT 2"
             redis_graph.query(q, timeout=10)
 
+        # validate that server didn't crash
+        redis_con.ping()
+
+    def test05_query_timeout_free_resultset(self):
+        query = "UNWIND range(0,1000000) AS x RETURN toString(x)"
+        try:
+            # The query is expected to timeout
+            redis_graph.query(query, timeout=10)
+            assert(False)
+        except ResponseError as error:
+            self.env.assertContains("Query timed out", str(error))
+
+        try:
+            # The query is expected to succeed
+            redis_graph.query(query, timeout=2000)
+        except:
+            assert(False)

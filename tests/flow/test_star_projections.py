@@ -1,9 +1,8 @@
-import redis
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
+from common import *
 
 GRAPH_ID = "starProjection"
 redis_graph = None
+
 
 class testStarProjections():
 
@@ -11,7 +10,7 @@ class testStarProjections():
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
 
     # verify that star projections in RETURN clauses perform as
     # expected with all clause modifiers
@@ -109,6 +108,12 @@ class testStarProjections():
         actual_result = redis_graph.query(query)
         self.env.assertEqual(actual_result.result_set, expected)
 
+        # test an explicit variable in the RETURN clause
+        # after a sequence of WITH * projections
+        query = """UNWIND range(1, 2) AS x UNWIND range(3, 4) AS y WITH * WITH * WITH * RETURN x, y"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEqual(actual_result.result_set, expected)
+
         query = """UNWIND range(1, 2) AS x UNWIND range(3, 4) AS y WITH * SKIP 1 LIMIT 2 RETURN *"""
         actual_result = redis_graph.query(query)
         expected = [[1, 4],
@@ -128,6 +133,19 @@ class testStarProjections():
         expected = []
         self.env.assertEqual(actual_result.result_set, expected)
 
+        # test a WITH * projection that also introduces a new variable
+        query = """UNWIND range(1, 2) AS x WITH *, 3 AS y RETURN *"""
+        actual_result = redis_graph.query(query)
+        expected = [[1, 3],
+                    [2, 3]]
+        self.env.assertEqual(actual_result.result_set, expected)
+
+        # test a WITH * projection that also introduces a new variable
+        # and is explicitly returned
+        query = """UNWIND range(1, 2) AS x WITH *, 3 AS y RETURN x, y"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEqual(actual_result.result_set, expected)
+
     # verify that duplicate aliases only result in a single column
     def test04_duplicate_removal(self):
         # create a single node connected to itself
@@ -144,4 +162,25 @@ class testStarProjections():
 
         query = """MATCH (a)-[]->(a) RETURN *, a"""
         actual_result = redis_graph.query(query)
+        self.env.assertEqual(actual_result.result_set, expected)
+
+    # verify that explicitly returning children that can have predicates
+    # alongside a star projection does not result in errors
+    def test05_star_and_nonpredicate_children(self):
+        # create a single node
+        self.env.flush()
+        n = Node(node_id=0, label="L", properties={"v": 1})
+        redis_graph.add_node(n)
+        redis_graph.flush()
+
+        try:
+            query = """WITH 5 AS a RETURN *, NONE(t0 IN TRUE * COUNT(*))"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("'NONE' function requires a WHERE predicate", str(e))
+
+        query = """MATCH (v0) RETURN *, [()-[]->() | v0]"""
+        actual_result = redis_graph.query(query)
+        expected = [[n, []]]
         self.env.assertEqual(actual_result.result_set, expected)
