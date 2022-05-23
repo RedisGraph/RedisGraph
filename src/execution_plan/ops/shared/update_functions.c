@@ -140,12 +140,14 @@ void EvalEntityUpdates
 		   !(SI_TYPE(new_value) & (T_NODE | T_EDGE | T_MAP))) {
 			// left-hand side is alias reference but right-hand side is a
 			// scalar, emit an error
+			AttributeSet_Free(&update.attributes);
 			Error_InvalidPropertyValue();
 			ErrorCtx_RaiseRuntimeException(NULL);
 		} else if(SI_TYPE(new_value) == T_MAP) {
 			// value is of type map e.g. n.v = {a:1, b:2}
 			SIValue m = new_value;
 			if(attr_id != ATTRIBUTE_ID_ALL) {
+				AttributeSet_Free(&update.attributes);
 				Error_InvalidPropertyValue();
 				ErrorCtx_RaiseRuntimeException(NULL);
 			}
@@ -166,6 +168,7 @@ void EvalEntityUpdates
 			// value is a node or edge; perform attribute set reassignment
 			GraphEntity *ge = new_value.ptrval;
 			if(attr_id != ATTRIBUTE_ID_ALL) {
+				AttributeSet_Free(&update.attributes);
 				Error_InvalidPropertyValue();
 				ErrorCtx_RaiseRuntimeException(NULL);
 			}
