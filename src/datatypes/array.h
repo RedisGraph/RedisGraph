@@ -44,10 +44,10 @@ u_int32_t SIArray_Length(SIValue siarray);
 bool SIArray_ContainsType(SIValue siarray, SIType t);
 
 /**
-  * @brief  Returns true if all of the elemet of the array of type 't'
+  * @brief  Returns true if all of the elements in the array are of type 't'
   * @param  siarray: array
   * @param  t: type to compare
-  * @retval a boolean indicating whether all the elements are of type
+  * @retval a boolean indicating whether all elements are of type 't'
   */
 bool SIArray_AllOfType(SIValue siarray, SIType t);
 
