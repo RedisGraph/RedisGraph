@@ -41,6 +41,7 @@ void _DeleteEntities(OpDelete *op) {
 	for(uint i = 0; i < node_count; i++) {
 		while(i < node_count - 1 && ENTITY_GET_ID(nodes + i) == ENTITY_GET_ID(nodes + i + 1)) i++;
 
+		if(DataBlock_ItemIsDeleted((nodes + i)->attributes)) continue;
 		array_append(distinct_nodes, *(nodes + i));
 	}
 

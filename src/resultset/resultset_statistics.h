@@ -43,4 +43,7 @@ void ResultSetStat_emit
 );
 
 // Clear result-set statistics
-void ResultSetStat_Clear(ResultSetStatistics *stats);
+void ResultSetStat_Clear
+(
+	ResultSetStatistics *stats
+);

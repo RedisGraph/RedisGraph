@@ -174,6 +174,13 @@ void Graph_CreateEdge
 	Edge *e
 );
 
+// removes node and all of its connections within the graph
+void Graph_DeleteNode
+(
+	Graph *g,
+	Node *node
+);
+
 // removes an edge from Graph and updates graph relevent matrices
 int Graph_DeleteEdge
 (

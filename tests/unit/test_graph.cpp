@@ -395,8 +395,9 @@ TEST_F(GraphTest, RemoveNodes) {
 	uint edge_count = array_len(edges);
 	ASSERT_EQ(edge_count, 2);
 
+	for(uint i = 0; i < edge_count; i ++) Graph_DeleteEdge(g, &edges[i]);
 	Graph_GetNode(g, 0, &node);
-	Graph_BulkDelete(g, &node, 1, edges, edge_count, NULL, NULL);
+	Graph_DeleteNode(g, &node);
 	
 	Graph_ReleaseLock(g);
 
@@ -439,9 +440,9 @@ TEST_F(GraphTest, RemoveMultipleNodes) {
 	// Delete first and last nodes.
 	simple_tic(tic);
 	Graph_GetNode(g, 0, &n);
-	Graph_BulkDelete(g, &n, 1, NULL, 0, NULL, NULL);
+	Graph_DeleteNode(g, &n);
 	Graph_GetNode(g, 7, &n);
-	Graph_BulkDelete(g, &n, 1, NULL, 0, NULL, NULL);
+	Graph_DeleteNode(g, &n);
 
 	ASSERT_EQ(Graph_NodeCount(g), 8 - 2);
 

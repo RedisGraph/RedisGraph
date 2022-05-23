@@ -811,6 +811,34 @@ uint Graph_GetNodeLabels
 	return i;
 }
 
+// removes node and all of its connections within the graph
+void Graph_DeleteNode
+(
+	Graph *g,
+	Node *n
+) {
+	// assumption, node is completely detected,
+	// there are no incoming nor outgoing edges
+	// leading to / from node
+	ASSERT(g != NULL);
+	ASSERT(n != NULL);
+
+	RG_Matrix N = Graph_GetNodeLabelMatrix(g);
+	uint label_count;
+	NODE_GET_LABELS(g, n, label_count);
+	for(uint i = 0; i < label_count; i++) {
+		int label_id = labels[i];
+		RG_Matrix M = Graph_GetLabelMatrix(g, label_id);
+		// clear label matrix at position node ID
+		RG_Matrix_removeElement_BOOL(M, ENTITY_GET_ID(n), ENTITY_GET_ID(n));
+		RG_Matrix_removeElement_BOOL(N, ENTITY_GET_ID(n), labels[i]);
+		// update statistics
+		GraphStatistics_DecNodeCount(&g->stats, label_id, 1);
+	}
+
+	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
+}
+
 // removes an edge from Graph and updates graph relevent matrices
 int Graph_DeleteEdge
 (

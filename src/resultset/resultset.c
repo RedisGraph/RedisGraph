@@ -241,6 +241,11 @@ void ResultSet_Reply
 	ResultSetStat_emit(set->ctx, &set->stats); // response with statistics
 }
 
+void ResultSet_Clear(ResultSet *set) {
+	ASSERT(set != NULL);
+	ResultSetStat_Clear(&set->stats);
+}
+
 // free resultset
 void ResultSet_Free
 (

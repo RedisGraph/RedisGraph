@@ -84,6 +84,12 @@ void ResultSet_Reply
 	ResultSet *set  // resultset to reply with
 );
 
+// clear result set stats
+void ResultSet_Clear
+(
+	ResultSet *set
+);
+
 // free resultset
 void ResultSet_Free
 (

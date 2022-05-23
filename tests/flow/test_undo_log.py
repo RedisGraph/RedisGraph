@@ -1,5 +1,4 @@
-from RLTest import Env
-from redisgraph import Graph
+from common import *
 
 GRAPH_ID = "undo-log"
 
@@ -7,7 +6,7 @@ class testUndoLog():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         self.redis_con = self.env.getConnection()
-        self.graph = Graph(GRAPH_ID, self.redis_con)
+        self.graph = Graph(self.redis_con, GRAPH_ID)
 
     def tearDown(self):
         self.redis_con.flushall()
