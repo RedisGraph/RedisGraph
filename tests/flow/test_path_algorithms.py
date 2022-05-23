@@ -1,9 +1,9 @@
 from common import *
-from random import randint
 from functools import cmp_to_key
 
 NODES = 20    # node count
-EDGES = 200  # edge count
+EDGES = 200   # edge count
+
 class testAllShortestPaths():
     def __init__(self):
         self.env = Env(decodeResponses=True)
@@ -13,9 +13,6 @@ class testAllShortestPaths():
         self.init()
 
     def populate_graph(self):
-        # TODO: direction
-        # TODO: weight not numeric
-
         self.graph.query("CREATE INDEX ON :L(v)")
         self.graph.query(f"UNWIND range(1, {NODES}) AS x CREATE (:L{{v: x}})")
         self.graph.query(f"""UNWIND range(1, {EDGES}) AS i
