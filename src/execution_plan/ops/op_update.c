@@ -100,6 +100,18 @@ static Record UpdateConsume(OpBase *opBase) {
 	// release lock
 	QueryCtx_UnlockCommit(opBase);
 
+	uint node_updates_count = array_len(op->node_updates);
+	for(uint i = 0; i < node_updates_count; i ++) {
+		PendingUpdateCtx *pending_update = op->node_updates + i;
+		AttributeSet_Free(&pending_update->attributes);
+	}
+
+	uint edge_updates_count = array_len(op->edge_updates);
+	for(uint i = 0; i < edge_updates_count; i ++) {
+		PendingUpdateCtx *pending_update = op->edge_updates + i;
+		AttributeSet_Free(&pending_update->attributes);
+	}
+
 	array_clear(op->node_updates);
 	array_clear(op->edge_updates);
 
