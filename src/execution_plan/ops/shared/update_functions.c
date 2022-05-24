@@ -24,6 +24,7 @@ static void _PreparePendingUpdate
 
 	// emit an error and exit if we're trying to add an invalid type
 	if(!(SI_TYPE(new_value) & accepted_properties)) {
+		AttributeSet_Free(props);
 		Error_InvalidPropertyValue();
 		ErrorCtx_RaiseRuntimeException(NULL);
 	}
@@ -36,6 +37,7 @@ static void _PreparePendingUpdate
 		if(res) {
 			// validation failed
 			SIValue_Free(new_value);
+			AttributeSet_Free(props);
 			Error_InvalidPropertyValue();
 			ErrorCtx_RaiseRuntimeException(NULL);
 		}
