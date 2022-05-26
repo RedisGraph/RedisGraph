@@ -56,7 +56,7 @@ GraphContext *GraphContext_New
 GraphContext *GraphContext_Clone
 (
 	const char *graph_name,
-	const GraphContext *orig_gc
+	const GraphContext *gc
 );
 
 // retrive the graph context according to the graph name

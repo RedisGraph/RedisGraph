@@ -95,35 +95,10 @@ DataBlock *DataBlock_New
 	dataBlock->deletedIdx  =  array_new(uint64_t, 128);
 	dataBlock->destructor  =  fp;
 
-	int res = pthread_mutex_init(&dataBlock->mutex, NULL);
-	UNUSED(res);
-	ASSERT(res == 0);
-
 	_DataBlock_AddBlocks(dataBlock,
 						 ITEM_COUNT_TO_BLOCK_COUNT(itemCap, dataBlock->blockCap));
 
 	return dataBlock;
-}
-
-DataBlock *DataBlock_Clone
-(
-	const DataBlock *datablock,
-	fpCopy copy
-) {
-	// create a new datablock
-	DataBlock *clone = DataBlock_New(datablock->blockCap, datablock->itemCount,
-		   datablock->itemSize - ITEM_HEADER_SIZE, datablock->destructor);	
-
-	// clone each element
-	DataBlockIterator *it = DataBlock_Scan(datablock);
-	uint64_t idx = 0;
-	while (void *element = DataBlockIterator_Next(iter, NULL)) {
-		void *clone_element = DataBlock_GetItem(clone, idx++);
-		copy(element, clone_element);
-	}
-	DataBlockIterator_Free(it);
-
-	return clone;
 }
 
 uint64_t DataBlock_ItemCount(const DataBlock *dataBlock) {
@@ -222,18 +197,8 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
 
 	MARK_HEADER_AS_DELETED(item_header);
 
-	/* DataBlock_DeleteItem should be thread-safe as it's being called
-	 * from GraphBLAS concurent operations, e.g. GxB_SelectOp.
-	 * As such updateing the datablock deleted indices array must be guarded
-	 * if there's enough space to accommodate the deleted idx the operation should
-	 * return quickly otherwise, memory reallocation will occur, which we want to perform
-	 * in a thread safe matter. */
-	pthread_mutex_lock(&dataBlock->mutex);
-	{
-		array_append(dataBlock->deletedIdx, idx);
-		dataBlock->itemCount--;
-	}
-	pthread_mutex_unlock(&dataBlock->mutex);
+	array_append(dataBlock->deletedIdx, idx);
+	dataBlock->itemCount--;
 }
 
 uint DataBlock_DeletedItemsCount(const DataBlock *dataBlock) {
@@ -280,9 +245,6 @@ void DataBlock_Free(DataBlock *dataBlock) {
 
 	rm_free(dataBlock->blocks);
 	array_free(dataBlock->deletedIdx);
-	int res = pthread_mutex_destroy(&dataBlock->mutex);
-	UNUSED(res);
-	ASSERT(res == 0);
 	rm_free(dataBlock);
 }
 

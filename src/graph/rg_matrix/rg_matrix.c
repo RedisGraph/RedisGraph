@@ -51,6 +51,18 @@ void RG_Matrix_Unlock
 	pthread_mutex_unlock(&C->mutex);
 }
 
+GrB_Info RG_Matrix_type  // get the type of a matrix
+(
+    GrB_Type *type,      // returns the type of the matrix
+    const RG_Matrix A    // matrix to query
+) {
+	ASSERT(A);
+	ASSERT(type);
+
+	GrB_Matrix m = RG_MATRIX_M(A);
+	return GxB_Matrix_type(type, m);
+}
+
 GrB_Info RG_Matrix_nrows
 (
 	GrB_Index *nrows,

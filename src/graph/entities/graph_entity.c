@@ -126,7 +126,11 @@ bool GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue
 	return true;
 }
 
-void GraphEntity_Clone(const Entity *e, Entity *clone) {
+void GraphEntity_Clone
+(
+	const Entity *e,
+	Entity *clone
+) {
 	clone->properties = NULL;
 	clone->prop_count = e->prop_count;
 

@@ -148,17 +148,17 @@ void IndexField_New
 
 static IndexField IndexField_Clone
 (
-	const IndexField orig
+	const IndexField field
 ) {
-	IndexField new;
+	IndexField clone;
 
-	new.id       = orig.id;
-	new.name     = rm_strdup(orig.name);
-	new.weight   = orig.weight;
-	new.nostem   = orig.nostem;
-	new.phonetic = rm_strdup(orig.phonetic);
+	clone.id       = field.id;
+	clone.name     = rm_strdup(field.name);
+	clone.weight   = field.weight;
+	clone.nostem   = field.nostem;
+	clone.phonetic = rm_strdup(field.phonetic);
 
-	return new;
+	return clone;
 }
 
 void IndexField_Free
@@ -196,22 +196,26 @@ Index *Index_New
 // clone an existing index
 Index *Index_Clone
 (
-	const Index *orig
+	const Index *idx
 ) {
-	Index *new = rm_malloc(sizeof(Index));
+	Index *clone = rm_malloc(sizeof(Index));
 
-	new->idx           =  NULL;
-	new->type          =  orig->type;
-	new->label         =  rm_strdup(orig->label);
-	new->label_id      =  orig->label_id;
-	new->language      =  (orig->language) ? rm_strdup(orig->language) : NULL;
-	new->entity_type   =  orig->entity_type;
-	array_clone_with_cb(new->fields, orig->fields, IndexField_Clone);
-	array_clone_with_cb(new->stopwords, orig->stopwords, rm_strdup);
+	clone->idx         = NULL;
+	clone->type        = idx->type;
+	clone->label       = rm_strdup(idx->label);
+	clone->label_id    = idx->label_id;
+	clone->entity_type = idx->entity_type;
 
-	Index_Construct(new);
+	if(idx->language) {
+		clone->language = rm_strdup(idx->language);
+	}
 
-	return new;
+	array_clone_with_cb(clone->fields, idx->fields, IndexField_Clone);
+	array_clone_with_cb(clone->stopwords, idx->stopwords, rm_strdup);
+
+	Index_Construct(clone);
+
+	return clone;
 }
 
 // adds field to index

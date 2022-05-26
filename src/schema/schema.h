@@ -39,7 +39,7 @@ Schema *Schema_New
 // clones an existing schema
 Schema *Schema_Clone
 (
-	const Schema *orig
+	const Schema *s
 );
 
 /* Return the given schema's name. */

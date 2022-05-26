@@ -94,7 +94,7 @@ void Index_Construct
 // clone an existing index
 Index *Index_Clone
 (
-	const Index *orig
+	const Index *idx
 );
 
 // adds field to index

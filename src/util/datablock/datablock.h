@@ -12,9 +12,7 @@
 #include "../block.h"
 #include "./datablock_iterator.h"
 
-// callbacks
 typedef void (*fpDestructor)(void *);          // datablock element destructor
-typedef void (*fpCopy)(const void *, void *);  // datablock element copy
 
 // Returns the item header size.
 #define ITEM_HEADER_SIZE 1
@@ -46,7 +44,6 @@ typedef struct {
 	uint itemSize;              // Size of a single item in bytes.
 	Block **blocks;             // Array of blocks.
 	uint64_t *deletedIdx;       // Array of free indicies.
-	pthread_mutex_t mutex;      // Mutex guarding from concurent updates.
 	fpDestructor destructor;    // Function pointer to a clean-up function of an item.
 } DataBlock;
 
@@ -66,13 +63,6 @@ DataBlock *DataBlock_New
 	uint64_t itemCap,   // initial item cap
 	uint itemSize,      // size of item in bytes
 	fpDestructor fp     // item destructor
-);
-
-// clone datablock
-DataBlock *DataBlock_Clone
-(
-	const DataBlock *datablock,  // original datablock
-	fpCopy copy                  // element copy routine
 );
 
 // returns number of items stored

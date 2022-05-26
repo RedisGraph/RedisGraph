@@ -103,47 +103,53 @@ GraphContext *GraphContext_New
 GraphContext *GraphContext_Clone
 (
 	const char *graph_name,
-	const GraphContext *orig_gc
+	const GraphContext *gc
 ) {
-	GraphContext *gc = rm_malloc(sizeof(GraphContext));
+	GraphContext *clone = rm_calloc(1, sizeof(GraphContext));
 
-	gc->version          = orig_gc->version;
-	gc->slowlog          = SlowLog_New();
-	gc->ref_count        = 0;  // no references
-	gc->attributes       = raxClone(orig_gc->attributes);
-	gc->index_count      = orig_gc->index_count;
-	gc->encoding_context = GraphEncodeContext_New();
-	gc->decoding_context = GraphDecodeContext_New();
-	array_clone(gc->string_mapping, orig_gc->string_mapping);
+	clone->version          = gc->version;
+	clone->slowlog          = SlowLog_New();
+	clone->ref_count        = 0;
+	clone->attributes       = raxClone(gc->attributes);
+	clone->index_count      = gc->index_count;
+	clone->encoding_context = GraphEncodeContext_New();
+	clone->decoding_context = GraphDecodeContext_New();
 
-	gc->g = Graph_Clone(orig_gc->g);
-	gc->graph_name = rm_strdup(graph_name);
+	array_clone(clone->string_mapping, gc->string_mapping);
 
+	clone->g = Graph_Clone(gc->g);
+	clone->graph_name = rm_strdup(graph_name);
+
+	//--------------------------------------------------------------------------
 	// duplicate schemas and indices
-	uint node_schema_count = array_len(orig_gc->node_schemas);
-	gc->node_schemas = array_new(Schema *, node_schema_count);
+	//--------------------------------------------------------------------------
+
+	uint node_schema_count = array_len(gc->node_schemas);
+	clone->node_schemas = array_new(Schema*, node_schema_count);
 	for(uint i = 0; i < node_schema_count; i ++) {
-		array_append(gc->node_schemas, Schema_Clone(orig_gc->node_schemas[i]));
+		Schema *s = gc->node_schemas[i];
+		array_append(clone->node_schemas, Schema_Clone(s));
 	}
-	uint relation_schema_count = array_len(orig_gc->relation_schemas);
-	gc->relation_schemas = array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
+
+	uint relation_schema_count = array_len(gc->relation_schemas);
+	clone->relation_schemas = array_new(Schema*, relation_schema_count);
 	for(uint i = 0; i < relation_schema_count; i ++) {
-		array_append(gc->relation_schemas, Schema_Clone(orig_gc->relation_schemas[i]));
+		Schema *s = gc->relation_schemas[i];
+		array_append(clone->relation_schemas, Schema_Clone(s));
 	}
 
 	// initialize the read-write lock to protect access to the attributes rax
-	assert(pthread_rwlock_init(&gc->_attribute_rwlock, NULL) == 0);
+	assert(pthread_rwlock_init(&clone->_attribute_rwlock, NULL) == 0);
 
 	// build the execution plans cache
 	uint64_t cache_size;
 	Config_Option_get(Config_CACHE_SIZE, &cache_size);
-	gc->cache = Cache_New(cache_size, (CacheEntryFreeFunc)ExecutionCtx_Free,
+	clone->cache = Cache_New(cache_size, (CacheEntryFreeFunc)ExecutionCtx_Free,
 						  (CacheEntryCopyFunc)ExecutionCtx_Clone);
 
-	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_FLUSH_RESIZE);
-	// QueryCtx_SetGraphCtx(gc);
+	Graph_SetMatrixPolicy(clone->g, SYNC_POLICY_FLUSH_RESIZE);
 
-	return gc;
+	return clone;
 }
 
 /* _GraphContext_Create tries to get a graph context, and if it does not exists, create a new one.
