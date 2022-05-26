@@ -56,7 +56,7 @@ static AST_Operator _NegateOperator(AST_Operator op) {
 
 /* Negate expression by wrapping it with a NOT function, NOT(exp) */
 static void _NegateExpression(AR_ExpNode **exp) {
-	AR_ExpNode *root = AR_EXP_NewOpNode("not", 1);
+	AR_ExpNode *root = AR_EXP_NewOpNode("not", true, 1);
 	root->op.children[0] = *exp;
 	*exp = root;
 }
@@ -195,14 +195,14 @@ int _applyFilter(SIValue *aVal, SIValue *bVal, AST_Operator op) {
 	return 0;
 }
 
-int _applyPredicateFilters(const FT_FilterNode *root, const Record r) {
+FT_Result _applyPredicateFilters(const FT_FilterNode *root, const Record r) {
 	/* A op B
 	 * Evaluate the left and right sides of the predicate to obtain
 	 * comparable SIValues. */
 	SIValue lhs = AR_EXP_Evaluate(root->pred.lhs, r);
 	SIValue rhs = AR_EXP_Evaluate(root->pred.rhs, r);
 
-	int ret = _applyFilter(&lhs, &rhs, root->pred.op);
+	FT_Result ret = _applyFilter(&lhs, &rhs, root->pred.op);
 
 	SIValue_Free(lhs);
 	SIValue_Free(rhs);
@@ -210,58 +210,168 @@ int _applyPredicateFilters(const FT_FilterNode *root, const Record r) {
 	return ret;
 }
 
-int FilterTree_applyFilters(const FT_FilterNode *root, const Record r) {
+static FT_Result _applyCondition
+(
+	const FT_FilterNode *root,
+	const Record r
+) {
+	// root->t == FT_N_COND, visit left subtree
+	FT_Result rhs_pass;
+	FT_Result lhs_pass = FilterTree_applyFilters(LeftChild(root), r);
+	FT_Result pass = lhs_pass;
+
+	if(root->cond.op == OP_AND && lhs_pass != FILTER_FAIL) {
+		// AND truth table
+		// ------------------------
+		// AND  | T     F    NULL |
+		// ------------------------
+		// T    | T     F    NULL |
+		// ------------------------
+		// F    | F     F    F    |
+		// ------------------------
+		// NULL | NULL  F    NULL |
+		// ------------------------
+		// AND ( F, ? ) == F
+		// AND ( T, T ) == T
+		// otherwise NULL
+
+		// evaluate right subtree
+		rhs_pass = FilterTree_applyFilters(RightChild(root), r);
+		if(lhs_pass == FILTER_PASS && rhs_pass == FILTER_PASS) {
+			// true && true == true
+			pass = FILTER_PASS;
+		} else if(rhs_pass == FILTER_FAIL) {
+			// ? && false == false
+			pass = FILTER_FAIL;
+		} else {
+			// otherwise NULL
+			pass = FILTER_NULL;
+		}
+	} else if(root->cond.op == OP_OR && lhs_pass != FILTER_PASS) {
+		// OR truth table
+		// ------------------------
+		// OR   | T     F    NULL |
+		// ------------------------
+		// T    | T     T    T    |
+		// ------------------------
+		// F    | T     F    NULL |
+		// ------------------------
+		// NULL | T     NULL NULL |
+		// ------------------------
+		// OR ( T, ? ) == T
+		// OR ( F, F ) == F
+		// otherwise NULL
+
+		// visit right subtree
+		rhs_pass = FilterTree_applyFilters(RightChild(root), r);
+		if(rhs_pass == FILTER_PASS) {
+			// ? || true == true
+			pass = FILTER_PASS;
+		} else if(lhs_pass == FILTER_FAIL && rhs_pass == FILTER_FAIL) {
+			// false || false == false
+			pass = FILTER_FAIL;
+		} else {
+			// otherwise NULL
+			pass = FILTER_NULL;
+		}
+	} else if(root->cond.op == OP_XOR && lhs_pass != FILTER_NULL) {
+		// XOR truth table
+		// ------------------------
+		// XOR  | T     F    NULL |
+		// ------------------------
+		// T    | F     T    NULL |
+		// ------------------------
+		// F    | T     F    NULL |
+		// ------------------------
+		// NULL | NULL  NULL NULL |
+		// ------------------------
+		// XOR ( T, F ) == T
+		// XOR ( F, T ) == T
+		// XOR ( F, F ) == F
+		// XOR ( T, T ) == F
+		// otherwise NULL
+
+		// visit right subtree
+		rhs_pass = FilterTree_applyFilters(RightChild(root), r);
+		if(rhs_pass == FILTER_NULL) {
+			pass = FILTER_NULL;
+		} else {
+			pass = (lhs_pass == rhs_pass) ? FILTER_FAIL : FILTER_PASS;
+		}
+	} else if(root->cond.op == OP_XNOR && lhs_pass != FILTER_NULL) {
+		// XNOR truth table
+		// ------------------------
+		// XNOR | T     F    NULL |
+		// ------------------------
+		// T    | T     F    NULL |
+		// ------------------------
+		// F    | F     T    NULL |
+		// ------------------------
+		// NULL | NULL  NULL NULL |
+		// ------------------------
+		// XOR ( T, F ) == F
+		// XOR ( F, T ) == F
+		// XOR ( F, F ) == T
+		// XOR ( T, T ) == T
+		// otherwise NULL
+
+		// visit right subtree
+		rhs_pass = FilterTree_applyFilters(RightChild(root), r);
+		if(rhs_pass == FILTER_NULL) {
+			pass = FILTER_NULL;
+		} else {
+			pass = (lhs_pass == rhs_pass) ? FILTER_PASS : FILTER_FAIL;
+		}
+	} else if(root->cond.op == OP_NOT && lhs_pass != FILTER_NULL) {
+		// NOT truth table
+		// -------------
+		// NOT         | 
+		// -------------
+		// T    | F    |
+		// -------------
+		// F    | T    |
+		// -------------
+		// NULL | NULL |
+		// -------------
+
+		pass = lhs_pass == FILTER_PASS ? FILTER_FAIL : FILTER_PASS;
+	}
+
+	return pass;
+}
+
+FT_Result FilterTree_applyFilters
+(
+	const FT_FilterNode *root,
+	const Record r
+) {
 	switch(root->t) {
 		case FT_N_COND: {
-			/* root->t == FT_N_COND, visit left subtree. */
-			int pass = FilterTree_applyFilters(LeftChild(root), r);
-
-			if(root->cond.op == OP_AND && pass == 1) {
-				/* Visit right subtree. */
-				pass *= FilterTree_applyFilters(RightChild(root), r);
-			} else if(root->cond.op == OP_OR && pass == 0) {
-				/* Visit right subtree. */
-				pass = FilterTree_applyFilters(RightChild(root), r);
-			} else if(root->cond.op == OP_XOR) {
-				/* Visit right subtree. if the results of evaluating the left
-				 * and right subtrees are inequal, return true. */
-				pass = pass == FilterTree_applyFilters(RightChild(root), r)
-					   ? FILTER_FAIL
-					   : FILTER_PASS;
-			} else if(root->cond.op == OP_XNOR) {
-				/* Visit right subtree. if the results of evaluating the left
-				 * and right subtrees are equal, return true. */
-				pass = pass == FilterTree_applyFilters(RightChild(root), r)
-					   ? FILTER_PASS
-					   : FILTER_FAIL;
-			} else if(root->cond.op == OP_NOT) {
-				pass = pass == FILTER_PASS ? FILTER_FAIL : FILTER_PASS;
-			}
-
-			return pass;
+			return _applyCondition(root, r);
 		}
 		case FT_N_PRED: {
 			return _applyPredicateFilters(root, r);
 		}
 		case FT_N_EXP: {
-			int retval = FILTER_PASS;
+			FT_Result retval = FILTER_PASS;
 			SIValue res = AR_EXP_Evaluate(root->exp.exp, r);
 			if(SIValue_IsNull(res)) {
-				/* Expression evaluated to NULL should return false. */
-				retval = FILTER_FAIL;
+				// expression evaluated to NULL should return NULL
+				retval = FILTER_NULL;
 			} else if(SI_TYPE(res) & T_BOOL) {
-				/* Return false if this boolean value is false. */
-				if(res.longval == 0) retval = FILTER_FAIL;
+				// return false if this boolean value is false
+				if(SIValue_IsFalse(res)) retval = FILTER_FAIL;
 			} else if(SI_TYPE(res) & T_ARRAY) {
-				/* An empty array is falsey, all other arrays should return true. */
+				// an empty array is falsey, all other arrays should return true
 				if(SIArray_Length(res) == 0) retval = FILTER_FAIL;
 			} else {
-				// If the expression node evaluated to an unexpected type (numeric, string, node, edge), emit an error.
+				// if the expression node evaluated to an unexpected type:
+				// numeric, string, node or edge, emit an error
 				Error_SITypeMismatch(res, T_BOOL);
 				retval = FILTER_FAIL;
 			}
 
-			SIValue_Free(res); // If res was a heap allocation, free it.
+			SIValue_Free(res); // if res was a heap allocation, free it
 			return retval;
 		}
 		default:
@@ -269,8 +379,9 @@ int FilterTree_applyFilters(const FT_FilterNode *root, const Record r) {
 			break;
 	}
 
-	// We shouldn't be here.
-	return 0;
+	// we shouldn't be here
+	ASSERT(false);
+	return FILTER_FAIL;
 }
 
 void _FilterTree_CollectModified(const FT_FilterNode *root, rax *modified) {
@@ -448,9 +559,12 @@ void _FilterTree_ApplyNegate(FT_FilterNode **root, uint negate_count) {
 	}
 }
 
-/* If a filter node that's not a child of a predicate is an expression,
- * it should resolve to a boolean value. */
-static inline bool _FilterTree_ValidExpressionNode(const FT_FilterNode *root) {
+// if a filter node that's not a child of a predicate is an expression,
+// it should resolve to a boolean value
+static inline bool _FilterTree_ValidExpressionNode
+(
+	const FT_FilterNode *root
+) {
 	bool valid = AR_EXP_ReturnsBoolean(root->exp.exp);
 	if(!valid) ErrorCtx_SetError("Expected boolean predicate.");
 	return valid;
@@ -516,7 +630,7 @@ void FilterTree_DeMorgan(FT_FilterNode **root) {
 	_FilterTree_DeMorgan(root, 0);
 }
 
-// Return if this node can be used in compression - constant expression.
+// return if this node can be used in compression - constant expression
 static inline bool _FilterTree_Compact_Exp(FT_FilterNode *node) {
 	return AR_EXP_IsConstant(node->exp.exp) || AR_EXP_IsParameter(node->exp.exp);
 }
@@ -527,49 +641,70 @@ static inline void _FilterTree_In_Place_Set_Exp(FT_FilterNode *node, SIValue v) 
 	node->exp.exp = AR_EXP_NewConstOperandNode(v);
 }
 
-// Compacts 'AND' condition node.
+// compacts 'AND' condition node
 static bool _FilterTree_Compact_And(FT_FilterNode *node) {
-	// Try to compact left and right children.
+	// try to compact left and right children
 	bool is_lhs_const = FilterTree_Compact(node->cond.left);
 	bool is_rhs_const = FilterTree_Compact(node->cond.right);
-	// If both are not compactable, this node is not compactable.
+
+	// if both are not compactable, this node is not compactable
 	if(!is_lhs_const && !is_rhs_const) return false;
-	// In every case from now, there will be a reduction, save the children in local placeholders for current node in-place modifications.
+
+	// in every case from now, there will be a reduction
+	// save the children in local placeholders
+	// for current node in-place modifications
 	FT_FilterNode *lhs = node->cond.left;
 	FT_FilterNode *rhs = node->cond.right;
-	// Both children are constants. This node can be set as constant expression.
+
+	// both children are constants
+	// this node can be set as a constant expression
 	if(is_lhs_const && is_rhs_const) {
-		// Both children are now contant expressions. We can evaluate and compact.
-		SIValue rhs_value = AR_EXP_Evaluate(rhs->exp.exp, NULL);
-		SIValue lhs_value = AR_EXP_Evaluate(lhs->exp.exp, NULL);
-		// Final value is AND operation on lhs and rhs - reducing an AND node.
-		SIValue final_value = SI_BoolVal(SIValue_IsTrue(lhs_value) && SIValue_IsTrue(rhs_value));
-		// In place set the node to be an expression node.
+		// both children are contant expressions
+		// we can evaluate and compact
+		// final value is AND operation on lhs and rhs - reducing an AND node
+		SIValue  final_value  =  SI_NullVal();
+		SIValue  lhs_value    =  AR_EXP_Evaluate(lhs->exp.exp,  NULL);
+		SIValue  rhs_value    =  AR_EXP_Evaluate(rhs->exp.exp,  NULL);
+
+		if(!SIValue_IsNull(lhs_value) && !SIValue_IsNull(rhs_value)) {
+			// both lhs and rhs are NOT NULL
+			final_value = SI_BoolVal(SIValue_IsTrue(lhs_value) && SIValue_IsTrue(rhs_value));
+		} else if((!SIValue_IsNull(lhs_value) && SIValue_IsFalse(lhs_value)) ||
+				  (!SIValue_IsNull(rhs_value) && SIValue_IsFalse(rhs_value))) {
+			// FALSE AND NULL is NULL
+			final_value =  SI_BoolVal(false);
+		}
+
+		// in place set the node to be an expression node
 		_FilterTree_In_Place_Set_Exp(node, final_value);
 		FilterTree_Free(lhs);
 		FilterTree_Free(rhs);
 		return true;
 	} else {
-		// Only one of the nodes is constant. Find and evaluate.
+		// only one of the nodes is constant, find and evaluate
 		FT_FilterNode *const_node = is_lhs_const ? lhs : rhs;
 		FT_FilterNode *non_const_node = is_lhs_const ? rhs : lhs;
 
-		// Evaluate constant.
+		// evaluate constant
 		SIValue const_value = AR_EXP_Evaluate(const_node->exp.exp, NULL);
-		// If consant is false, everything is false.
+		// if constant is null, no compaction
+		if(SIValue_IsNull(const_value)) return false;
+		
+		// if consant is false, everything is false
 		if(SIValue_IsFalse(const_value)) {
 			*node = *const_node;
-			// Free const node allocation, without free the data.
+			// free const node allocation, without free the data
 			rm_free(const_node);
-			// Free non const node completely.
+			// free non const node completely
 			FilterTree_Free(non_const_node);
 			return true;
 		} else {
-			// Const value is true. Current node should be replaced with the non const node.
+			// const value is either true
+			// current node should be replaced with the non const node
 			*node = *non_const_node;
-			// Free non const node allocation, without free the data.
+			// free non const node allocation, without free the data
 			rm_free(non_const_node);
-			// Free const node completely.
+			// free const node completely
 			FilterTree_Free(const_node);
 			return false;
 		}
@@ -586,20 +721,24 @@ static bool _FilterTree_Compact_Or(FT_FilterNode *node) {
 
 	// in every case from now, there will be a reduction,
 	// save the children in local placeholders for current node in-place modifications
-	bool final_value = false;
 	FT_FilterNode *lhs = node->cond.left;
 	FT_FilterNode *rhs = node->cond.right;
 	// both children are constants. This node can be set as constant expression
 	if(is_lhs_const && is_rhs_const) {
 		// both children are now contant expressions, evaluate and compact
-		final_value = SIValue_IsTrue(AR_EXP_Evaluate(rhs->exp.exp, NULL));
-		if(!final_value) {
-			final_value = SIValue_IsTrue(AR_EXP_Evaluate(lhs->exp.exp, NULL));
+		SIValue final_value = SI_NullVal();
+		SIValue lhs_value = AR_EXP_Evaluate(rhs->exp.exp, NULL);
+		SIValue rhs_value = AR_EXP_Evaluate(lhs->exp.exp, NULL);
+		if(!SIValue_IsNull(lhs_value) && !SIValue_IsNull(rhs_value)) {
+			final_value =  SI_BoolVal(SIValue_IsTrue(lhs_value) || SIValue_IsTrue(rhs_value));
+		} else if((!SIValue_IsNull(lhs_value) && SIValue_IsTrue(lhs_value)) ||
+				  (!SIValue_IsNull(rhs_value) && SIValue_IsTrue(rhs_value))) {
+			final_value =  SI_BoolVal(true);
 		}
 
 		// final value is OR operation on lhs and rhs - reducing an OR node
 		// in place set the node to be an expression node
-		_FilterTree_In_Place_Set_Exp(node, SI_BoolVal(final_value));
+		_FilterTree_In_Place_Set_Exp(node, final_value);
 		FilterTree_Free(lhs);
 		FilterTree_Free(rhs);
 		return true;
@@ -610,6 +749,8 @@ static bool _FilterTree_Compact_Or(FT_FilterNode *node) {
 
 		// evaluate constant
 		SIValue const_value = AR_EXP_Evaluate(const_node->exp.exp, NULL);
+		if(SIValue_IsNull(const_value)) return false;
+
 		// if consant is true, everything is true
 		if(SIValue_IsTrue(const_value)) {
 			*node = *const_node;
@@ -635,50 +776,74 @@ static bool _FilterTree_Compact_XOr(FT_FilterNode *node, bool xnor) {
 	// try to compact left and right children
 	bool is_lhs_const = FilterTree_Compact(node->cond.left);
 	bool is_rhs_const = FilterTree_Compact(node->cond.right);
+
 	// if both are not compactable, this node is not compactable
 	if(!is_lhs_const && !is_rhs_const) return false;
 
 	// in every case from now, there will be a reduction,
 	// save the children in local placeholders for current node in-place modifications
-	bool final_value = false;
+	SIValue final_value = SI_NullVal();
 	FT_FilterNode *lhs = node->cond.left;
 	FT_FilterNode *rhs = node->cond.right;
-	// both children are constants. This node can be set as constant expression
+
+	// both children are constants
+	// this node can be set as constant expression
 	if(is_lhs_const && is_rhs_const) {
 		// both children are now contant expressions, evaluate and compact
-		final_value = SIValue_IsTrue(AR_EXP_Evaluate(rhs->exp.exp, NULL));
-		if(final_value) {
-			// RHS is true
-			// TRUE if LHS is false
-			final_value = SIValue_IsFalse(AR_EXP_Evaluate(lhs->exp.exp, NULL));
-		} else {
-			// RHS is false
-			// TRUE if LHS is true
-			final_value = SIValue_IsTrue(AR_EXP_Evaluate(lhs->exp.exp, NULL));
+		SIValue lhs_value = AR_EXP_Evaluate(lhs->exp.exp, NULL);
+		SIValue rhs_value = AR_EXP_Evaluate(rhs->exp.exp, NULL);
+		if(!SIValue_IsNull(lhs_value) && !SIValue_IsNull(rhs_value)) {
+			// lhs and rhs are NOT NULL
+			if(xnor) {
+				final_value = SI_BoolVal(SIValue_IsTrue(lhs_value) == SIValue_IsTrue(rhs_value));
+			} else {
+				final_value = SI_BoolVal(SIValue_IsTrue(lhs_value) != SIValue_IsTrue(rhs_value));
+			}
 		}
-
-		// invert the result if we are performing XNOR
-		if(xnor) final_value = !final_value;
 
 		// final value is XOR operation on lhs and rhs - reducing an XOR node
 		// in place set the node to be an expression node
-		_FilterTree_In_Place_Set_Exp(node, SI_BoolVal(final_value));
+		_FilterTree_In_Place_Set_Exp(node, final_value);
 		FilterTree_Free(lhs);
 		FilterTree_Free(rhs);
 		return true;
-	} else {
-		return false;
+	} else if(is_lhs_const || is_rhs_const) {
+		// either lhs or rhs is const
+		SIValue value;
+		if(is_lhs_const) {
+			value = AR_EXP_Evaluate(lhs->exp.exp, NULL);
+		} else {
+			value = AR_EXP_Evaluate(rhs->exp.exp, NULL);
+		}
+
+		// reduce to NULL if `value` is NULL
+		// ? XOR NULL == ? XNOR NULL == NULL
+		if(SIValue_IsNull(value)) {
+			_FilterTree_In_Place_Set_Exp(node, value);
+			FilterTree_Free(lhs);
+			FilterTree_Free(rhs);
+			return true;
+		}
 	}
+
+	return false;
 }
 
-// Compacts a condition node if possible
+// compacts a condition node if possible
 static inline bool _FilterTree_Compact_Cond(FT_FilterNode *node) {
-	if(node->cond.op == OP_AND) return _FilterTree_Compact_And(node);
-	if(node->cond.op == OP_XOR) return _FilterTree_Compact_XOr(node, false);
-	if(node->cond.op == OP_XNOR) return _FilterTree_Compact_XOr(node, true);
-	if(node->cond.op == OP_OR) return _FilterTree_Compact_Or(node);
-	ASSERT(false && "_FilterTree_Compact_Cond: Unkown filter operator to compact");
-	return false;
+	switch(node->cond.op) {
+		case OP_AND:
+			return _FilterTree_Compact_And(node);
+		case OP_OR:
+			return _FilterTree_Compact_Or(node);
+		case OP_XOR:
+			return _FilterTree_Compact_XOr(node, false);
+		case OP_XNOR:
+			return _FilterTree_Compact_XOr(node, true);
+		default:
+			ASSERT(false && "_FilterTree_Compact_Cond: Unkown filter operator to compact");
+			return false;
+	}
 }
 
 // Compacts a predicate node if possible,

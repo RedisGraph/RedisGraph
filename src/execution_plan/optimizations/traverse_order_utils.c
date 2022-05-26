@@ -6,7 +6,6 @@
 
 #include "RG.h"
 #include "../../util/arr.h"
-#include "../../util/strcmp.h"
 #include "traverse_order_utils.h"
 
 static bool _AlgebraicExpression_IsVarLen
@@ -53,7 +52,7 @@ int TraverseOrder_LabelsScore
 
 	// TODO: re-enable, see https://github.com/RedisGraph/RedisGraph/issues/1742
 	// consider 'dest' only if different than 'src'
-	//if(RG_STRCMP(src, dest) != 0) {
+	//if(strcmp(src, dest) != 0) {
 	//  score += QGNode_LabelCount(dest_node);
 	//}
 
@@ -102,7 +101,7 @@ int TraverseOrder_FilterExistenceScore
 		}
 
 		// consider 'dest' only if different than 'src'
-		if(RG_STRCMP(src, dest) != 0) {
+		if(strcmp(src, dest) != 0) {
 			frequency = raxFind(filtered_entities, (unsigned char *)dest, strlen(dest));
 			if(frequency != raxNotFound) {
 				score += 2;
@@ -144,7 +143,7 @@ int TraverseOrder_BoundVariableScore
 						strlen(src)) != raxNotFound;
 
 	// consider 'dest' only if different than 'src'
-	if(RG_STRCMP(src, dest) != 0) {
+	if(strcmp(src, dest) != 0) {
 		dest_bound = raxFind(bound_vars, (unsigned char *)dest,
 							 strlen(dest)) != raxNotFound;
 	}

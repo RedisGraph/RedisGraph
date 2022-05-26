@@ -57,6 +57,17 @@ GraphContext *GraphContext_Clone
 (
 	const char *graph_name,
 	const GraphContext *gc
+
+// increase graph context ref count by 1
+void GraphContext_IncreaseRefCount
+(
+	GraphContext *gc
+);
+
+// decrease graph context ref count by 1
+void GraphContext_DecreaseRefCount
+(
+	GraphContext *gc
 );
 
 // retrive the graph context according to the graph name
@@ -69,22 +80,10 @@ GraphContext *GraphContext_Retrieve
 	bool shouldCreate
 );
 
-// graphContext_Retrieve counterpart, releases a retrieved GraphContext
-void GraphContext_Release
-(
-	GraphContext *gc
-);
-
 // mark graph key as "dirty" for Redis to pick up on
 void GraphContext_MarkWriter
 (
 	RedisModuleCtx *ctx,
-	GraphContext *gc
-);
-
-// mark graph as deleted, reduce graph reference count by 1
-void GraphContext_Delete
-(
 	GraphContext *gc
 );
 
@@ -272,12 +271,6 @@ void GraphContext_RegisterWithModule
 GraphContext *GraphContext_GetRegisteredGraphContext
 (
 	const char *graph_name
-);
-
-// remove GraphContext from global array
-void GraphContext_RemoveFromRegistry
-(
-	GraphContext *gc
 );
 
 //------------------------------------------------------------------------------

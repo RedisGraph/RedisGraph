@@ -98,21 +98,22 @@ void *Distinct_Clone(void *orig) {
 
 void Register_ConditionalFuncs() {
 	SIType *types;
+	SIType ret_type = SI_ALL;
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 1);
 	array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("case", AR_CASEWHEN, 2, VAR_ARG_LEN, types, true);
+	func_desc = AR_FuncDescNew("case", AR_CASEWHEN, 2, VAR_ARG_LEN, types, ret_type, true, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("coalesce", AR_COALESCE, 1, VAR_ARG_LEN, types, true);
+	func_desc = AR_FuncDescNew("coalesce", AR_COALESCE, 1, VAR_ARG_LEN, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("distinct", AR_DISTINCT, 1, 1, types, false);
+	func_desc = AR_FuncDescNew("distinct", AR_DISTINCT, 1, 1, types, ret_type, true, false);
 	AR_SetPrivateDataRoutines(func_desc, Distinct_Free, Distinct_Clone);
 	AR_RegFunc(func_desc);
 }

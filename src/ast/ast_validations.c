@@ -80,24 +80,12 @@ static bool _ValidateAllShortestPaths
 }
 
 // Forward declaration
+static void _AST_Path_GetDefinedIdentifiers(const cypher_astnode_t *path, rax *identifiers);
 static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identifiers);
 
 inline static void _prepareIterateAll(rax *map, raxIterator *iter) {
 	raxStart(iter, map);
 	raxSeek(iter, "^", NULL, 0);
-}
-
-// Validate that an input string can be completely converted to a positive integer in range.
-static inline AST_Validation _ValidatePositiveInteger(const char *input) {
-	ASSERT(input);
-	char *endptr; // If the entire string is converted, endptr will point to a null byte
-	errno = 0; // If underflow or overflow occurs, errno will be set
-
-	strtol(input, &endptr, 0); // Perform conversion
-
-	if(errno != 0 || *endptr != '\0') return AST_INVALID;
-
-	return AST_VALID;
 }
 
 static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) {
@@ -168,13 +156,13 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 		accum_node = cypher_ast_reduce_get_accumulator(node);
 		variable = cypher_ast_identifier_get_name(accum_node);
 		raxRemove(identifiers, (unsigned char *)variable, strlen(variable),
-				NULL);
+				  NULL);
 
 		// `n` in the above example
 		identifier_node = cypher_ast_reduce_get_identifier(node);
 		variable = cypher_ast_identifier_get_name(identifier_node);
 		raxRemove(identifiers, (unsigned char *)variable, strlen(variable),
-				NULL);
+				  NULL);
 	}
 }
 
@@ -557,7 +545,7 @@ static AST_Validation _ValidatePattern
 
 	for(uint i = 0; i < path_count; i ++) {
 		res = _ValidatePath(cypher_ast_pattern_get_path(pattern, i),
-				projections, edge_aliases);
+							projections, edge_aliases);
 		if(res != AST_VALID) break;
 	}
 
@@ -752,7 +740,7 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast) {
 		const cypher_astnode_t *match_clause = match_clauses[i];
 		// Validate the pattern described by the MATCH clause
 		res = _ValidatePattern(projections,
-				cypher_ast_match_get_pattern(match_clause), edge_aliases);
+							   cypher_ast_match_get_pattern(match_clause), edge_aliases);
 		if(res == AST_INVALID) goto cleanup;
 
 		// Validate that inlined filters do not use parameters
@@ -790,19 +778,38 @@ static AST_Validation _Validate_WITH_Clauses(const AST *ast) {
 														NULL);
 	if(with_clause == NULL) return AST_VALID;
 
+	rax *rax = raxNew();
+	AST_Validation res = AST_VALID;
+
 	// Verify that each WITH projection either is aliased or is itself an identifier.
 	uint projection_count = cypher_ast_with_nprojections(with_clause);
 	for(uint i = 0; i < projection_count; i ++) {
 		const cypher_astnode_t *proj = cypher_ast_with_get_projection(with_clause, i);
-		if(!cypher_ast_projection_get_alias(proj) &&
+		const cypher_astnode_t *ast_alias = cypher_ast_projection_get_alias(proj);
+		if(!ast_alias &&
 		   cypher_astnode_type(cypher_ast_projection_get_expression(proj)) != CYPHER_AST_IDENTIFIER) {
 			ErrorCtx_SetError("WITH clause projections must be aliased");
-			return AST_INVALID;
+			res = AST_INVALID;
+			break;
+		}
+		if(ast_alias == NULL) ast_alias = cypher_ast_projection_get_expression(proj);
+		const char *alias = cypher_ast_identifier_get_name(ast_alias);
+		// column with same name is invalid
+		if(raxTryInsert(rax, (unsigned char *)alias, strlen(alias), NULL, NULL) == 0) {
+			ErrorCtx_SetError("Error: Multiple result columns with the same name are not supported.");
+			res = AST_INVALID;
+			break;
 		}
 	}
 
-	// Verify that functions invoked by the WITH clause are valid.
-	return _ValidateFunctionCalls(with_clause, true);
+	raxFree(rax);
+
+	if(res == AST_VALID) {
+		// Verify that functions invoked by the WITH clause are valid.
+		res = _ValidateFunctionCalls(with_clause, true);
+	}
+
+	return res;
 }
 
 // Verify that MERGE doesn't redeclare bound relations and that one reltype is specified for unbound relations.
@@ -875,6 +882,11 @@ static AST_Validation _Validate_MERGE_Clauses(const AST *ast) {
 
 		const cypher_astnode_t *merge_clause = cypher_ast_query_get_clause(ast->root, clause_idx);
 		const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clause);
+
+		// Verify that functions invoked in the MERGE pattern are valid.
+		res = _ValidateFunctionCalls(path, false);
+		if(res != AST_VALID) goto cleanup;
+
 		uint nelems = cypher_ast_pattern_path_nelements(path);
 		for(uint j = 0; j < nelems; j ++) {
 			const cypher_astnode_t *entity = cypher_ast_pattern_path_get_element(path, j);
@@ -887,6 +899,12 @@ static AST_Validation _Validate_MERGE_Clauses(const AST *ast) {
 		// Verify that any filters on the path refer to constants or resolved identifiers.
 		res = _ValidateInlinedPropertiesOnPath(path);
 		if(res != AST_VALID) goto cleanup;
+
+		uint action_count = cypher_ast_merge_nactions(merge_clause);
+		for (uint j = 0; j < action_count; j++) {
+			const cypher_astnode_t *action = cypher_ast_merge_get_action(merge_clause, j);
+			_ValidateFunctionCalls(action, false);
+		}
 	}
 
 cleanup:
@@ -895,48 +913,49 @@ cleanup:
 	return res;
 }
 
-// Validate each entity referenced in the CREATE clause.
-static AST_Validation _Validate_CREATE_Entities(const cypher_astnode_t *clause,
+// Validate each entity referenced in a single path of a CREATE clause.
+static AST_Validation _Validate_CREATE_Entities(const cypher_astnode_t *path,
 												rax *defined_aliases) {
-	const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clause);
-	// Verify that functions invoked in the CREATE pattern are valid.
-	if(_ValidateFunctionCalls(pattern, false) != AST_VALID) return AST_INVALID;
-	uint path_count = cypher_ast_pattern_npaths(pattern);
-	for(uint i = 0; i < path_count; i ++) {
-		const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
-		// Validate that inlined properties are valid.
-		if(_ValidateInlinedPropertiesOnPath(path) != AST_VALID) return AST_INVALID;
+	if(_ValidateInlinedPropertiesOnPath(path) != AST_VALID) return AST_INVALID;
 
-		uint nelems = cypher_ast_pattern_path_nelements(path);
-		/* Visit every relationship (every odd offset) on the path to validate its alias and structure.
-		 * TODO There should also be a syntax error for redeclaring nodes, as in:
-		 * MATCH (a) CREATE (a)
-		 * But this is a no-op query, and we don't have the logic to differentiate this from a valid query like
-		 * MATCH (a) CREATE (a)-[:E]->(:B) */
-		for(uint j = 1; j < nelems; j += 2) {
-			const cypher_astnode_t *rel = cypher_ast_pattern_path_get_element(path, j);
-			const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(rel);
-			// Validate that no relation aliases are previously bound.
-			if(identifier) {
-				const char *alias = cypher_ast_identifier_get_name(identifier);
-				if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) != raxNotFound) {
-					ErrorCtx_SetError("The bound variable %s' can't be redeclared in a CREATE clause", alias);
-					return AST_INVALID;
-				}
-			}
-
-			// Validate that each relation has exactly one type.
-			uint reltype_count = cypher_ast_rel_pattern_nreltypes(rel);
-			if(reltype_count != 1) {
-				ErrorCtx_SetError("Exactly one relationship type must be specified for CREATE");
+	uint nelems = cypher_ast_pattern_path_nelements(path);
+	 // Redeclaration of a node is not allowed only when the path is of length 0, as in: MATCH (a) CREATE (a).
+	 // Otherwise, using a defined alias of a node is allowed, as in: MATCH (a) CREATE (a)-[:E]->(:B)
+	if(nelems == 1) {
+		const cypher_astnode_t *node = cypher_ast_pattern_path_get_element(path, 0);
+		const cypher_astnode_t *identifier = cypher_ast_node_pattern_get_identifier(node);
+		if(identifier) {
+			const char *alias = cypher_ast_identifier_get_name(identifier);
+			if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) != raxNotFound) {
+				ErrorCtx_SetError("The bound variable '%s' can't be redeclared in a CREATE clause", alias);
 				return AST_INVALID;
 			}
-
-			// Validate that each relation being created is directed.
-			if(cypher_ast_rel_pattern_get_direction(rel) == CYPHER_REL_BIDIRECTIONAL) {
-				ErrorCtx_SetError("Only directed relationships are supported in CREATE");
+		}
+	}
+	//Visit every relationship (every odd offset) on the path to validate its alias and structure.
+	for(uint j = 1; j < nelems; j += 2) {
+		const cypher_astnode_t *rel = cypher_ast_pattern_path_get_element(path, j);
+		const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(rel);
+		// Validate that no relation aliases are previously bound.
+		if(identifier) {
+			const char *alias = cypher_ast_identifier_get_name(identifier);
+			if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) != raxNotFound) {
+				ErrorCtx_SetError("The bound variable '%s' can't be redeclared in a CREATE clause", alias);
 				return AST_INVALID;
 			}
+		}
+
+		// Validate that each relation has exactly one type.
+		uint reltype_count = cypher_ast_rel_pattern_nreltypes(rel);
+		if(reltype_count != 1) {
+			ErrorCtx_SetError("Exactly one relationship type must be specified for CREATE");
+			return AST_INVALID;
+		}
+
+		// Validate that each relation being created is directed.
+		if(cypher_ast_rel_pattern_get_direction(rel) == CYPHER_REL_BIDIRECTIONAL) {
+			ErrorCtx_SetError("Only directed relationships are supported in CREATE");
+			return AST_INVALID;
 		}
 	}
 
@@ -957,15 +976,28 @@ static AST_Validation _Validate_CREATE_Clauses(const AST *ast) {
 		uint clause_idx = create_clause_indices[i];
 
 		// Collect all entities that are bound before this CREATE clause.
-		for(uint j = start_offset; j < clause_idx; j ++) {
-			const cypher_astnode_t *prev_clause = cypher_ast_query_get_clause(ast->root, i);
+		for (uint j = start_offset; j < clause_idx; j++) {
+			const cypher_astnode_t *prev_clause = cypher_ast_query_get_clause(ast->root, j);
 			_AST_GetDefinedIdentifiers(prev_clause, defined_aliases);
 		}
 		start_offset = clause_idx;
 
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, clause_idx);
-		res = _Validate_CREATE_Entities(clause, defined_aliases);
-		if(res == AST_INVALID) goto cleanup;
+		const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clause);
+
+		// Verify that functions invoked in the CREATE pattern are valid.
+		if (_ValidateFunctionCalls(pattern, false) != AST_VALID) goto cleanup;
+
+		uint path_count = cypher_ast_pattern_npaths(pattern);
+		const cypher_astnode_t *prev_path = NULL;
+		for (uint j = 0; j < path_count; j++) {
+			const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
+			// Collect aliases defined on the previous path in this CREATE clause.
+			if (prev_path) _AST_Path_GetDefinedIdentifiers(prev_path, defined_aliases);
+			res = _Validate_CREATE_Entities(path, defined_aliases);
+			if (res == AST_INVALID) goto cleanup;
+			prev_path = path;
+		}
 	}
 
 	/* Since we combine all our CREATE clauses in a segment into one operation,
@@ -987,11 +1019,67 @@ cleanup:
 }
 
 static AST_Validation _Validate_DELETE_Clauses(const AST *ast) {
-	const cypher_astnode_t *delete_clause = AST_GetClause(ast,
-														  CYPHER_AST_DELETE, NULL);
-	if(!delete_clause) return AST_VALID;
-	// TODO: Validated that the deleted entities are indeed matched or projected.
-	return AST_VALID;
+	const cypher_astnode_t **delete_clauses = AST_GetClauses(ast, CYPHER_AST_DELETE);
+	AST_Validation res = AST_VALID;
+	uint clause_count = array_len(delete_clauses);
+	for(uint i = 0; i < clause_count; i++) {
+		const cypher_astnode_t *clause = delete_clauses[i];
+		uint expression_count = cypher_ast_delete_nexpressions(clause);
+		for(uint j = 0; j < expression_count; j++) {
+			const cypher_astnode_t *exp = cypher_ast_delete_get_expression(clause, j);
+			cypher_astnode_type_t type = cypher_astnode_type(exp);
+			// expecting an identifier or a function call
+			// identifiers and calls that don't resolve to a node or edge
+			// will raise an error at run-time
+			if(type != CYPHER_AST_IDENTIFIER &&
+			   type != CYPHER_AST_APPLY_OPERATOR &&
+			   type != CYPHER_AST_APPLY_ALL_OPERATOR &&
+			   type != CYPHER_AST_SUBSCRIPT_OPERATOR) {
+				ErrorCtx_SetError("DELETE can only be called on nodes and relationships");
+				res = AST_INVALID;
+				goto cleanup;
+			}
+		}
+
+		// validate any func
+		bool include_aggregates = false;
+		res = _ValidateFunctionCalls(clause, include_aggregates);
+		if(res == AST_INVALID) goto cleanup;
+	}
+
+cleanup:
+	array_free(delete_clauses);
+	return res;
+}
+
+AST_Validation _AST_ValidateResultColumns
+(
+	const cypher_astnode_t *return_clause
+) {
+	ASSERT(return_clause != NULL);
+
+	if(cypher_ast_return_has_include_existing(return_clause)) {
+		return AST_VALID;
+	}
+
+	rax           *rax          = raxNew();
+	AST_Validation res          = AST_VALID;
+	const char   **columns      = AST_BuildReturnColumnNames(return_clause);
+	uint           column_count = array_len(columns);
+
+	for (uint i = 0; i < column_count; i++) {
+		// column with same name is invalid
+		if(raxTryInsert(rax, (unsigned char *)columns[i], strlen(columns[i]), NULL, NULL) == 0) {
+			ErrorCtx_SetError("Error: Multiple result columns with the same name are not supported.");
+			res = AST_INVALID;
+			break;
+		}
+	}
+	
+	raxFree(rax);
+	array_free(columns);
+	
+	return res;
 }
 
 static AST_Validation _Validate_RETURN_Clause(const AST *ast) {
@@ -1003,7 +1091,10 @@ static AST_Validation _Validate_RETURN_Clause(const AST *ast) {
 
 	// validate all user-specified functions in RETURN clause
 	bool include_aggregates = true;
-	return _ValidateFunctionCalls(return_clause, include_aggregates);
+	if(_ValidateFunctionCalls(return_clause, include_aggregates) == AST_INVALID)
+		return AST_INVALID;
+	
+	return _AST_ValidateResultColumns(return_clause);
 }
 
 static AST_Validation _Validate_UNWIND_Clauses(const AST *ast) {
@@ -1356,9 +1447,13 @@ static AST_Validation _Validate_Aliases_Defined(const AST *ast) {
 		res = _Validate_Aliases_DefinedInClause(clause, defined_aliases);
 		if(res != AST_VALID) break;
 		if(cypher_astnode_type(clause) == CYPHER_AST_WITH) {
-			// Each WITH clause marks the beginning of a new scope for defined aliases.
-			raxFree(defined_aliases);
-			defined_aliases = raxNew();
+			// each WITH clause marks the beginning of a new scope for defined aliases
+			// if the WITH clause contains a star projection, all variables from
+			// the previous scope are carried over
+			if(!cypher_ast_with_has_include_existing(clause)) {
+				raxFree(defined_aliases);
+				defined_aliases = raxNew();
+			}
 			_AST_GetDefinedIdentifiers(clause, defined_aliases);
 		}
 	}
@@ -1367,33 +1462,32 @@ static AST_Validation _Validate_Aliases_Defined(const AST *ast) {
 }
 
 // Report encountered errors by libcypher-parser.
-static void _AST_ReportErrors(const cypher_parse_result_t *result) {
-	uint nerrors = cypher_parse_result_nerrors(result);
-	// We are currently only reporting the first error to simplify the response.
-	if(nerrors > 1) nerrors = 1;
-	for(uint i = 0; i < nerrors; i++) {
-		const cypher_parse_error_t *error = cypher_parse_result_get_error(result, i);
+void AST_ReportErrors(const cypher_parse_result_t *result) {
+	ASSERT(cypher_parse_result_nerrors(result) > 0);
 
-		// Get the position of an error.
-		struct cypher_input_position errPos = cypher_parse_error_position(error);
+	// report first encountered error
+	const cypher_parse_error_t *error =
+		cypher_parse_result_get_error(result, 0);
 
-		// Get the error message of an error.
-		const char *errMsg = cypher_parse_error_message(error);
+	// Get the position of an error.
+	struct cypher_input_position errPos = cypher_parse_error_position(error);
 
-		// Get the error context of an error.
-		// This returns a pointer to a null-terminated string, which contains a
-		// section of the input around where the error occurred, that is limited
-		// in length and suitable for presentation to a user.
-		const char *errCtx = cypher_parse_error_context(error);
+	// Get the error message of an error.
+	const char *errMsg = cypher_parse_error_message(error);
 
-		// Get the offset into the context of an error.
-		// Identifies the point of the error within the context string, allowing
-		// this to be reported to the user, typically with an arrow pointing to the
-		// invalid character.
-		size_t errCtxOffset = cypher_parse_error_context_offset(error);
-		ErrorCtx_SetError("errMsg: %s line: %u, column: %u, offset: %zu errCtx: %s errCtxOffset: %zu",
-						  errMsg, errPos.line, errPos.column, errPos.offset, errCtx, errCtxOffset);
-	}
+	// Get the error context of an error.
+	// This returns a pointer to a null-terminated string, which contains a
+	// section of the input around where the error occurred, that is limited
+	// in length and suitable for presentation to a user.
+	const char *errCtx = cypher_parse_error_context(error);
+
+	// Get the offset into the context of an error.
+	// Identifies the point of the error within the context string, allowing
+	// this to be reported to the user, typically with an arrow pointing to the
+	// invalid character.
+	size_t errCtxOffset = cypher_parse_error_context_offset(error);
+	ErrorCtx_SetError("errMsg: %s line: %u, column: %u, offset: %zu errCtx: %s errCtxOffset: %zu",
+					  errMsg, errPos.line, errPos.column, errPos.offset, errCtx, errCtxOffset);
 }
 
 // checks if set items contains non-alias referenes in lhs
@@ -1659,10 +1753,7 @@ bool AST_ContainsErrors(const cypher_parse_result_t *result) {
 static AST_Validation _AST_Validate_ParseResultRoot(const cypher_parse_result_t *result,
 													int *index) {
 	// Check for failures in libcypher-parser
-	if(AST_ContainsErrors(result)) {
-		_AST_ReportErrors(result);
-		return AST_INVALID;
-	}
+	ASSERT(AST_ContainsErrors(result) == false);
 
 	uint nroots = cypher_parse_result_nroots(result);
 	for(uint i = 0; i < nroots; i++) {
@@ -1775,3 +1866,4 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 
 	return res;
 }
+

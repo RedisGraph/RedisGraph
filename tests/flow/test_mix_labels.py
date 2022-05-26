@@ -1,22 +1,16 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
+from common import *
 
 redis_graph = None
 male = ["Roi", "Alon", "Omri"]
 female = ["Hila", "Lucy"]
+
 
 class testGraphMixLabelsFlow(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph("G", redis_con)
+        redis_graph = Graph(redis_con, "G")
         self.populate_graph()
 
     def populate_graph(self):

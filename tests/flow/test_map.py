@@ -1,17 +1,15 @@
-import redis
-from RLTest import Env
-from base import FlowTestsBase
-from redisgraph import Graph, Node, Edge
+from common import *
 
 redis_graph = None
 GRAPH_ID = "map_test"
+
 
 class testMap(FlowTestsBase):
     def __init__(self):
         global redis_graph
         self.env = Env(decodeResponses=True)
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
         self.populate_graph()
 
     def populate_graph(self):
@@ -146,3 +144,14 @@ class testMap(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             self.env.assertIn("Encountered unhandled type", str(e))
 
+    # validate that function accesses of scalar-reducible maps do not access invalid memory
+    def test08_map_safe_return_value(self):
+        query = """RETURN {a: 5, b: 'xx'}.b"""
+        query_result = redis_graph.query(query)
+        expected_result = [['xx']]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        query = """RETURN {a: 5, b: toUpper('xx')}.b"""
+        query_result = redis_graph.query(query)
+        expected_result = [['XX']]
+        self.env.assertEquals(query_result.result_set, expected_result)

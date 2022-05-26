@@ -18,15 +18,15 @@
 
 // avarage context
 typedef struct {
-	size_t count;    // number of elements summed
-	double total;    // sum of all elements
-	bool overflow;   // track numeric overflow
+	size_t count;       // number of elements summed
+	long double total;  // sum of all elements
+	bool overflow;      // track numeric overflow
 } AvgCtx;
 
 // return true if adding a and b will overflow
 // values have the same MSB, adding will enlarge the total
 #define ABOUT_TO_OVERFLOW(a, b) (signbit((a)) == signbit((b)) && \
-	   (fabs((a)) > (DBL_MAX - fabs((b))))) 
+	   (fabsl((a)) > (DBL_MAX - fabsl((b)))))
 
 // avarage "step" function expects 2 arguments:
 // 1. aggregation context
@@ -112,12 +112,14 @@ AggregateCtx *Avg_PrivateData(void)
 
 void Register_AVG(void) {
 	SIType *types;
+	SIType ret_type;
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_INT64 | T_DOUBLE);
-	func_desc = AR_AggFuncDescNew("avg", AGG_AVG, 1, 1, types, rm_free,
-			Avg_Finalize, Avg_PrivateData);
+	ret_type = T_NULL | T_DOUBLE;
+	func_desc = AR_AggFuncDescNew("avg", AGG_AVG, 1, 1, types, ret_type,
+			rm_free, Avg_Finalize, Avg_PrivateData);
 
 	AR_RegFunc(func_desc);
 }

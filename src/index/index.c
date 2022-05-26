@@ -227,7 +227,10 @@ void Index_AddField
 	ASSERT(idx != NULL);
 	ASSERT(field != NULL);
 
-	if(Index_ContainsAttribute(idx, field->id)) return;
+	if(Index_ContainsAttribute(idx, field->id)) {
+		IndexField_Free(field);
+		return;
+	}
 
 	array_append(idx->fields, *field);
 }

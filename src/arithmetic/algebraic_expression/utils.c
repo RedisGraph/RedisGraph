@@ -32,9 +32,13 @@ void _AlgebraicExpression_InplaceRepurpose
 ) {
 	ASSERT(exp && replacement && AlgebraicExpression_ChildCount(exp) == 0);
 	// Free internals.
-	if(exp->type == AL_OPERATION) _AlgebraicExpression_FreeOperation(exp);
-	else if(exp->type == AL_OPERAND) _AlgebraicExpression_FreeOperand(exp);
-	else ASSERT("Unknown algebraic expression type" && false);
+	if(exp->type == AL_OPERATION) {
+		_AlgebraicExpression_FreeOperation(exp);
+	} else if(exp->type == AL_OPERAND) {
+		_AlgebraicExpression_FreeOperand(exp);
+	} else {
+		ASSERT("Unknown algebraic expression type" && false);
+	}
 
 	// Replace.
 	memcpy(exp, replacement, sizeof(AlgebraicExpression));

@@ -67,7 +67,7 @@ cleanup:
 	if(ErrorCtx_EncounteredError()) ErrorCtx_EmitException();
 	if(lock_acquired) Graph_ReleaseLock(gc->g);
 	ExecutionCtx_Free(exec_ctx);
-	GraphContext_Release(gc);
+	GraphContext_DecreaseRefCount(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 	ErrorCtx_Clear();

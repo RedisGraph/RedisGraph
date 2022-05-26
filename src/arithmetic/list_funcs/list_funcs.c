@@ -314,7 +314,7 @@ SIValue AR_REDUCE
 	if(SI_TYPE(argv[1]) == T_NULL) return SI_NullVal();
 
 	// set arguments
-	SIValue        accum  =  SI_CloneValue(argv[0]); // clone accumulator
+	SIValue        accum  =  SI_ShareValue(argv[0]);
 	SIValue        list   =  argv[1];
 	Record         rec    =  argv[2].ptrval;
 	ListReduceCtx  *ctx   =  private_data;
@@ -338,9 +338,10 @@ SIValue AR_REDUCE
 
 		// set current element to the record
 		Record_AddScalar(r, ctx->variable_idx, elem);
-
 		// compute sum = sum + i
-		accum = AR_EXP_Evaluate(ctx->exp, r);
+		SIValue new_accum = AR_EXP_Evaluate(ctx->exp, r);
+		SIValue_Free(accum);
+		accum = new_accum;
 		// update accumulator within internal record
 		Record_AddScalar(r, ctx->accumulator_idx, accum);
 	}
@@ -349,64 +350,75 @@ SIValue AR_REDUCE
 	Record_Remove(r, ctx->variable_idx);
 	Record_Remove(r, ctx->accumulator_idx);
 
+	SIValue_Persist(&accum);
 	return accum;
 }
 
 void Register_ListFuncs() {
 	SIType *types;
+	SIType ret_type;
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 1);
 	array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("tolist", AR_TOLIST, 0, VAR_ARG_LEN, types, true);
+	ret_type = T_ARRAY;
+	func_desc = AR_FuncDescNew("tolist", AR_TOLIST, 0, VAR_ARG_LEN, types, ret_type, true, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	array_append(types, T_ARRAY | T_MAP | SI_GRAPHENTITY | T_NULL);
 	array_append(types, T_INT64 | T_STRING | T_NULL);
-	func_desc = AR_FuncDescNew("subscript", AR_SUBSCRIPT, 2, 2, types, true);
+	ret_type = SI_ALL;
+	func_desc = AR_FuncDescNew("subscript", AR_SUBSCRIPT, 2, 2, types, ret_type, true, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
 	array_append(types, T_ARRAY | T_NULL);
 	array_append(types, T_INT64 | T_NULL);
 	array_append(types, T_INT64 | T_NULL);
-	func_desc = AR_FuncDescNew("slice", AR_SLICE, 3, 3, types, true);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("slice", AR_SLICE, 3, 3, types, ret_type, true, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
 	array_append(types, T_INT64);
 	array_append(types, T_INT64);
 	array_append(types, T_INT64);
-	func_desc = AR_FuncDescNew("range", AR_RANGE, 2, 3, types, true);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("range", AR_RANGE, 2, 3, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	array_append(types, SI_ALL);
 	array_append(types, T_ARRAY | T_NULL);
-	func_desc = AR_FuncDescNew("in", AR_IN, 2, 2, types, true);
+	ret_type = T_NULL | T_BOOL;
+	func_desc = AR_FuncDescNew("in", AR_IN, 2, 2, types, ret_type, true, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_STRING | T_ARRAY | T_NULL);
-	func_desc = AR_FuncDescNew("size", AR_SIZE, 1, 1, types, true);
+	ret_type = T_NULL | T_INT64;
+	func_desc = AR_FuncDescNew("size", AR_SIZE, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_ARRAY | T_NULL);
-	func_desc = AR_FuncDescNew("head", AR_HEAD, 1, 1, types, true);
+	ret_type = SI_ALL;
+	func_desc = AR_FuncDescNew("head", AR_HEAD, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_ARRAY | T_NULL);
-	func_desc = AR_FuncDescNew("tail", AR_TAIL, 1, 1, types, true);
+	ret_type = SI_ALL;
+	func_desc = AR_FuncDescNew("tail", AR_TAIL, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 4);
 	array_append(types, SI_ALL);            // accumulator initial value
 	array_append(types, T_ARRAY | T_NULL);  // array to iterate over
 	array_append(types, T_PTR);             // input record
-	func_desc = AR_FuncDescNew("reduce", AR_REDUCE, 3, 3, types, true);
+	ret_type = SI_ALL;
+	func_desc = AR_FuncDescNew("reduce", AR_REDUCE, 3, 3, types, ret_type, false, true);
 	AR_SetPrivateDataRoutines(func_desc, ListReduceCtx_Free,
 							  ListReduceCtx_Clone);
 	AR_RegFunc(func_desc);

@@ -11,8 +11,8 @@
 
 typedef struct {
 	OpBase op;
-    OpBase *stream;     // Current stream to pull from.
-    int streamIdx;      // Current stream index.
+	OpBase *stream;          // Current stream to pull from.
+	int streamIdx;           // Current stream index.
 } OpJoin;
 
 OpBase *NewJoinOp(const ExecutionPlan *plan);

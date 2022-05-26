@@ -248,7 +248,7 @@ static void _ExecuteQuery(void *args) {
 
 	// clean up
 	ExecutionCtx_Free(exec_ctx);
-	GraphContext_Release(gc);
+	GraphContext_DecreaseRefCount(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // reset the QueryCtx and free its allocations
 	ErrorCtx_Clear();
@@ -275,7 +275,7 @@ static void _DelegateWriter(GraphQueryCtx *gq_ctx) {
 	gq_ctx->command_ctx->thread = EXEC_THREAD_WRITER;
 
 	// dispatch work to the writer thread
-	int res = ThreadPools_AddWorkWriter(_ExecuteQuery, gq_ctx);
+	int res = ThreadPools_AddWorkWriter(_ExecuteQuery, gq_ctx, 0);
 	ASSERT(res == 0);
 }
 
@@ -348,7 +348,7 @@ cleanup:
 
 	// Cleanup routine invoked after encountering errors in this function.
 	ExecutionCtx_Free(exec_ctx);
-	GraphContext_Release(gc);
+	GraphContext_DecreaseRefCount(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 	ErrorCtx_Clear();

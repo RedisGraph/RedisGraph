@@ -12,19 +12,19 @@
 #include <math.h>
 #include <stdbool.h>
 
-// Computes the number of blocks required to accommodate n items.
+// computes the number of blocks required to accommodate n items.
 #define ITEM_COUNT_TO_BLOCK_COUNT(n, cap) \
     ceil((double)n / cap)
 
-// Computes block index from item index.
+// computes block index from item index.
 #define ITEM_INDEX_TO_BLOCK_INDEX(idx, cap) \
     (idx / cap)
 
-// Computes item position within a block.
+// computes item position within a block.
 #define ITEM_POSITION_WITHIN_BLOCK(idx, cap) \
     (idx % cap)
 
-// Retrieves block in which item with index resides.
+// retrieves block in which item with index resides.
 #define GET_ITEM_BLOCK(dataBlock, idx) \
     dataBlock->blocks[ITEM_INDEX_TO_BLOCK_INDEX(idx, dataBlock->blockCap)]
 
@@ -112,6 +112,14 @@ DataBlockIterator *DataBlock_Scan(const DataBlock *dataBlock) {
 	// Deleted items are skipped, we're about to perform
 	// array_len(dataBlock->deletedIdx) skips during out scan.
 	int64_t endPos = dataBlock->itemCount + array_len(dataBlock->deletedIdx);
+	return DataBlockIterator_New(startBlock, dataBlock->blockCap, endPos);
+}
+
+DataBlockIterator *DataBlock_FullScan(const DataBlock *dataBlock) {
+	ASSERT(dataBlock != NULL);
+	Block *startBlock = dataBlock->blocks[0];
+
+	int64_t endPos = dataBlock->blockCount * dataBlock->blockCap;
 	return DataBlockIterator_New(startBlock, dataBlock->blockCap, endPos);
 }
 

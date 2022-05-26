@@ -40,12 +40,14 @@ AggregateCtx *Min_PrivateData(void)
 
 void Register_MIN(void) {
 	SIType *types;
+	SIType ret_type;
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 2);
 	array_append(types, SI_ALL);
-	func_desc = AR_AggFuncDescNew("min", AGG_MIN, 1, 1, types, NULL, NULL,
-			Min_PrivateData);
+	ret_type = SI_ALL;
+	func_desc = AR_AggFuncDescNew("min", AGG_MIN, 1, 1, types, ret_type, NULL,
+			NULL, Min_PrivateData);
 	AR_RegFunc(func_desc);
 }
 

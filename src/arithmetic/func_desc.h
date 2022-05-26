@@ -45,8 +45,10 @@ typedef struct {
 typedef struct {
 	AR_Func func;          // function pointer to scalar or aggregate function routine
 	SIType *types;         // types of arguments
+	SIType ret_type;       // return type
 	uint min_argc;         // minimal number of arguments function expects
 	uint max_argc;         // maximal number of arguments function expects
+	bool internal;         // is function internal
 	bool reducible;        // can be reduced using static evaluation
 	bool aggregate;        // true if the function is an aggregation
 	const char *name;      // function name
@@ -61,6 +63,8 @@ AR_FuncDesc *AR_FuncDescNew
 	uint min_argc,        // minimum number of arguments
 	uint max_argc,        // maximum number of arguments
 	SIType *types,        // acceptable types
+	SIType ret_type,      // return type
+	bool internal,        // is function internal
 	bool reducible        // is function reducible
 );
 
@@ -70,18 +74,25 @@ void AR_RegFunc
 	AR_FuncDesc *func
 );
 
-// retrieves an arithmetic function by its name
-AR_FuncDesc *AR_GetFunc
-(
-	const char *func_name
-);
-
 // set the function pointers for cloning and freeing a function's private data
 void AR_SetPrivateDataRoutines
 (
 	AR_FuncDesc *func_desc,
 	AR_Func_Free free,
 	AR_Func_Clone clone
+);
+
+// retrieves an arithmetic function by its name
+AR_FuncDesc *AR_GetFunc
+(
+	const char *func_name,
+	bool include_internal
+);
+
+// get function return type
+SIType AR_FuncDesc_RetType
+(
+	const AR_FuncDesc *func	
 );
 
 // check to see if function exists

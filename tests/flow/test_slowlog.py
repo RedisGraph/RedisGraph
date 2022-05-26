@@ -1,11 +1,9 @@
-from RLTest import Env
-from redisgraph import Graph
-from base import FlowTestsBase
-from redis import ResponseError
+from common import *
 
 GRAPH_ID = "slowlog_test"
 redis_con = None
 redis_graph = None
+
 
 class testSlowLog(FlowTestsBase):
     def __init__(self):
@@ -14,7 +12,7 @@ class testSlowLog(FlowTestsBase):
         global redis_graph
 
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
 
     def test_slowlog(self):
         # Slowlog should fail when graph doesn't exists.

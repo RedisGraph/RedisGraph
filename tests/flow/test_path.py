@@ -1,24 +1,19 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node, Edge, Path
+from common import *
 from collections import Counter
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../..')
 from demo import QueryInfo
 
 GRAPH_ID = "G"
 redis_graph = None
+
 
 class testPath(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
 
     def path_to_string(self, path):
         str_path = ", ".join([str(obj) for obj in path])

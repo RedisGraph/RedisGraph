@@ -89,11 +89,6 @@ static inline size_t _Graph_NodeCap(const Graph *g) {
 	return g->nodes->itemCap;
 }
 
-// return number of edges graph can contain
-static inline size_t _Graph_EdgeCap(const Graph *g) {
-	return g->edges->itemCap;
-}
-
 static void _CollectEdgesFromEntry
 (
 	const Graph *g,
@@ -254,10 +249,15 @@ MATRIX_POLICY Graph_GetMatrixPolicy
 	MATRIX_POLICY policy = SYNC_POLICY_UNKNOWN;
 	SyncMatrixFunc f = g->SynchronizeMatrix;
 
-	if(f == _MatrixSynchronize)           policy = SYNC_POLICY_FLUSH_RESIZE;
-	else if(f == _MatrixResizeToCapacity) policy = SYNC_POLICY_RESIZE;
-	else if(f == _MatrixNOP)              policy = SYNC_POLICY_NOP;
-	else ASSERT(false);
+	if(f == _MatrixSynchronize) {
+		policy = SYNC_POLICY_FLUSH_RESIZE;
+	} else if(f == _MatrixResizeToCapacity) {
+		policy = SYNC_POLICY_RESIZE;
+	} else if(f == _MatrixNOP) {
+		policy = SYNC_POLICY_NOP;
+	} else {
+		ASSERT(false);
+	}
 
 	return policy;
 }
@@ -488,7 +488,7 @@ int Graph_GetEdge
 ) {
 	ASSERT(g);
 	ASSERT(e);
-	ASSERT(id < _Graph_EdgeCap(g));
+	ASSERT(id < g->edges->itemCap);
 
 	e->id = id;
 	e->entity = _Graph_GetEntity(g->edges, id);
@@ -870,32 +870,6 @@ inline bool Graph_EntityIsDeleted(Entity *e) {
 	return DataBlock_ItemIsDeleted(e);
 }
 
-void Graph_DeleteNode
-(
-	Graph *g,
-	Node *n
-) {
-	// assumption, node is completely detected,
-	// there are no incoming nor outgoing edges
-	// leading to / from node
-	ASSERT(g != NULL);
-	ASSERT(n != NULL);
-
-	uint label_count;
-	NODE_GET_LABELS(g, n, label_count);
-	for(uint i = 0; i < label_count; i++) {
-		int label_id = labels[i];
-		RG_Matrix M = Graph_GetLabelMatrix(g, label_id);
-		// clear label matrix at position node ID
-		GrB_Info res = RG_Matrix_removeElement_BOOL(M, ENTITY_GET_ID(n),
-													ENTITY_GET_ID(n));
-		// update statistics
-		GraphStatistics_DecNodeCount(&g->stats, label_id, 1);
-	}
-
-	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
-}
-
 static void _Graph_FreeRelationMatrices
 (
 	const Graph *g
@@ -924,12 +898,14 @@ static void _BulkDeleteNodes
 	Edge *edges = array_new(Edge, 1);
 
 	// removing duplicates
-#define is_edge_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
-	QSORT(Node, nodes, node_count, is_edge_lt);
+#define is_id_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
+	QSORT(Node, nodes, node_count, is_id_lt);
 
 	for(uint i = 0; i < node_count; i++) {
 		while(i < node_count - 1 && ENTITY_GET_ID(nodes + i) == ENTITY_GET_ID(nodes + i + 1)) i++;
 
+		// skip nodes that have already been deleted
+		if(!DataBlock_GetItem(g->nodes, ENTITY_GET_ID(nodes + i))) continue;
 		array_append(distinct_nodes, *(nodes + i));
 	}
 
@@ -962,7 +938,7 @@ static void _BulkDeleteNodes
 	int edge_count = array_len(edges);
 
 	// removing duplicates
-	QSORT(Edge, edges, edge_count, is_edge_lt);
+	QSORT(Edge, edges, edge_count, is_id_lt);
 
 	for(int i = 0; i < edge_count; i++) {
 		// As long as current is the same as follows.
@@ -1005,7 +981,7 @@ static void _BulkDeleteNodes
 		for(int i = 0; i < label_count; i++) {
 			RG_Matrix L = Graph_GetLabelMatrix(g, labels[i]);
 			RG_Matrix_removeElement_BOOL(L, entity_id, entity_id);
-			RG_Matrix_removeElement_BOOL(M, entity_id, i);
+			RG_Matrix_removeElement_BOOL(M, entity_id, labels[i]);
 			// update statistics for label of deleted node
 			GraphStatistics_DecNodeCount(&g->stats, labels[i], 1);
 		}
@@ -1096,15 +1072,17 @@ void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges, uint 
 		}
 
 		// removing duplicates
-#define is_edge_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
-		QSORT(Edge, edges, edge_count, is_edge_lt);
+#define is_id_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
+		QSORT(Edge, edges, edge_count, is_id_lt);
 
 		size_t uniqueIdx = 0;
 		for(int i = 0; i < edge_count; i++) {
 			// As long as current is the same as follows.
 			while(i < edge_count - 1 && ENTITY_GET_ID(edges + i) == ENTITY_GET_ID(edges + i + 1)) i++;
 
-			if(uniqueIdx < i) edges[uniqueIdx] = edges[i];
+			// skip edges that have already been deleted
+			if(!DataBlock_GetItem(g->edges, ENTITY_GET_ID(edges + i))) continue;
+			edges[uniqueIdx] = edges[i];
 			uniqueIdx++;
 		}
 
@@ -1257,11 +1235,16 @@ RG_Matrix Graph_GetZeroMatrix
 	return z;
 }
 
-void Graph_Free(Graph *g) {
+static void _Graph_Free
+(
+	Graph *g,
+	bool is_full_graph
+) {
 	ASSERT(g);
 	// free matrices
 	Entity *en;
 	DataBlockIterator *it;
+
 	RG_Matrix_free(&g->_zero_matrix);
 	RG_Matrix_free(&g->adjacency_matrix);
 
@@ -1274,15 +1257,16 @@ void Graph_Free(Graph *g) {
 	array_free(g->labels);
 	RG_Matrix_free(&g->node_labels);
 
-	it = Graph_ScanNodes(g);
+	it = is_full_graph ? Graph_ScanNodes(g) : DataBlock_FullScan(g->nodes);
 	while((en = (Entity *)DataBlockIterator_Next(it, NULL)) != NULL) {
 		FreeEntity(en);
 	}
 	DataBlockIterator_Free(it);
 
-	it = Graph_ScanEdges(g);
+	it = is_full_graph ? Graph_ScanEdges(g) : DataBlock_FullScan(g->edges);
 	while((en = DataBlockIterator_Next(it, NULL)) != NULL) FreeEntity(en);
 	DataBlockIterator_Free(it);
+
 
 	// free blocks
 	DataBlock_Free(g->nodes);
@@ -1298,3 +1282,16 @@ void Graph_Free(Graph *g) {
 	rm_free(g);
 }
 
+void Graph_Free
+(
+	Graph *g
+) {
+	_Graph_Free(g, true);
+}
+
+void Graph_PartialFree
+(
+	Graph *g
+) {
+	_Graph_Free(g, false);
+}

@@ -8,7 +8,6 @@
 #include "array.h"
 #include "../util/arr.h"
 #include "../util/qsort.h"
-#include "../util/strcmp.h"
 #include "../util/rmalloc.h"
 #include "../util/strutil.h"
 
@@ -45,7 +44,7 @@ static int Map_KeyIdx
 	// search for key in map
 	for(uint i = 0; i < n; i++) {
 		Pair pair = m[i];
-		if(RG_STRCMP(pair.key.stringval, key.stringval) == 0) {
+		if(strcmp(pair.key.stringval, key.stringval) == 0) {
 			return i;
 		}
 	}

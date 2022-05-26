@@ -33,6 +33,10 @@ typedef struct {
 // Checks to see if libcypher-parser reported any errors.
 bool AST_ContainsErrors(const cypher_parse_result_t *result);
 
+// reports first encountered error
+// asserts if there are no errors!
+void AST_ReportErrors(const cypher_parse_result_t *result);
+
 // Make sure the parse result and the AST tree pass all validations.
 AST_Validation AST_Validate_Query(const cypher_parse_result_t *result);
 

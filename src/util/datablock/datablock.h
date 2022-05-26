@@ -77,6 +77,9 @@ void DataBlock_Ensure(DataBlock *dataBlock, uint64_t idx);
 // Returns an iterator which scans entire datablock.
 DataBlockIterator *DataBlock_Scan(const DataBlock *dataBlock);
 
+// Returns an iterator which scans entire out of order datablock.
+DataBlockIterator *DataBlock_FullScan(const DataBlock *dataBlock);
+
 // Get item at position idx
 void *DataBlock_GetItem(const DataBlock *dataBlock, uint64_t idx);
 
