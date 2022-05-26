@@ -79,7 +79,9 @@ GrB_Info RG_Matrix_dup
 
 	if(RG_MATRIX_MAINTAIN_TRANSPOSE(A)) {
 		// assign clone's transposed matrix
-		RG_Matrix_free(&clone->transposed);
+		if(clone->transposed) {
+			RG_Matrix_free(&clone->transposed);
+		}
 		clone->transposed = C_t;
 	}
 

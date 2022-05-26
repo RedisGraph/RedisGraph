@@ -57,6 +57,7 @@ GraphContext *GraphContext_Clone
 (
 	const char *graph_name,
 	const GraphContext *gc
+);
 
 // increase graph context ref count by 1
 void GraphContext_IncreaseRefCount
