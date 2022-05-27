@@ -34,7 +34,6 @@ typedef struct {
 	char **string_mapping;                  // from attribute IDs to strings
 	Schema **node_schemas;                  // array of schemas for each node label
 	Schema **relation_schemas;              // array of schemas for each relation type
-	unsigned short index_count;             // number of indicies
 	SlowLog *slowlog;                       // slowlog associated with graph
 	GraphEncodeContext *encoding_context;   // encode context of the graph
 	GraphDecodeContext *decoding_context;   // decode context of the graph

@@ -59,8 +59,14 @@ void static inline GraphQueryCtx_Free(GraphQueryCtx *ctx) {
 	rm_free(ctx);
 }
 
-static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
-							 ExecutionType exec_type) {
+static void _index_operation
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc,
+	AST *ast,
+	ExecutionType exec_type
+) {
+	Graph       *g           =  gc->g;
 	Index       *idx         =  NULL;
 	SchemaType  schema_type  =  SCHEMA_NODE;
 	IndexType   idx_type     =  IDX_EXACT_MATCH;
@@ -100,7 +106,7 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 		}
 
 		// populate the index only when at least one attribute was introduced
-		if(index_added) Index_Construct(idx);
+		if(index_added) Index_Construct(idx, g);
 
 		QueryCtx_UnlockCommit(NULL);
 	} else if(exec_type == EXECUTION_TYPE_INDEX_DROP) {

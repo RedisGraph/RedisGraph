@@ -15,8 +15,8 @@
 #include "../graph/entities/node.h"
 #include "../graph/rg_matrix/rg_matrix_iter.h"
 
-extern void populateEdgeIndex(Index *idx);
-extern void populateNodeIndex(Index *idx);
+extern void populateEdgeIndex(Index *idx, const Graph *g);
+extern void populateNodeIndex(Index *idx, const Graph *g);
 
 RSDoc *Index_IndexGraphEntity
 (
@@ -225,8 +225,6 @@ Index *Index_Clone
 
 	array_clone_with_cb(clone->fields, idx->fields, IndexField_Clone);
 
-	Index_Construct(clone);
-
 	return clone;
 }
 
@@ -275,7 +273,8 @@ void Index_RemoveField
 // constructs index
 void Index_Construct
 (
-	Index *idx
+	Index *idx,
+	const Graph *g
 ) {
 	ASSERT(idx != NULL);
 
@@ -343,8 +342,12 @@ void Index_Construct
 	}
 
 	idx->idx = rsIdx;
-	if(idx->entity_type == GETYPE_NODE) populateNodeIndex(idx);
-	else populateEdgeIndex(idx);
+	if(idx->entity_type == GETYPE_NODE) {
+		populateNodeIndex(idx, g);
+	}
+	else {
+		populateEdgeIndex(idx, g);
+	}
 }
 
 // query index

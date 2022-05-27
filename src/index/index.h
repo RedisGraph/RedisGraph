@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../graph/graph.h"
 #include "../graph/entities/node.h"
 #include "../graph/entities/edge.h"
 #include "../graph/entities/graph_entity.h"
@@ -88,7 +89,8 @@ Index *Index_New
 // constructs index
 void Index_Construct
 (
-	Index *idx
+	Index *idx,
+	const Graph *g
 );
 
 // clone an existing index
