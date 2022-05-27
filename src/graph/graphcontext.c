@@ -141,7 +141,7 @@ GraphContext *GraphContext_Clone
 	clone->encoding_context = GraphEncodeContext_New();
 	clone->decoding_context = GraphDecodeContext_New();
 
-	array_clone(clone->string_mapping, gc->string_mapping);
+	array_clone_with_cb(clone->string_mapping, gc->string_mapping, rm_strdup);
 
 	clone->g = Graph_Clone(gc->g);
 	clone->graph_name = rm_strdup(graph_name);
@@ -174,6 +174,9 @@ GraphContext *GraphContext_Clone
 						  (CacheEntryCopyFunc)ExecutionCtx_Clone);
 
 	Graph_SetMatrixPolicy(clone->g, SYNC_POLICY_FLUSH_RESIZE);
+
+	// register cloned graph-context at the module level
+	GraphContext_RegisterWithModule(clone);
 
 	return clone;
 }

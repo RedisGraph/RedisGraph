@@ -11,8 +11,8 @@ class testGraphCopy():
 
     # assert graph A and B are the same
     def assert_graphs_eq(self, A, B):
-        A = Graph(A, self.redis_con)
-        B = Graph(B, self.redis_con)
+        A = Graph(self.redis_con, A)
+        B = Graph(self.redis_con, B)
 
         #-----------------------------------------------------------------------
         # validations queries
@@ -33,73 +33,39 @@ class testGraphCopy():
             B_res = B.query(q)
             self.env.assertEquals(A_res.result_set, B_res.result_set)
 
-    def test00_copy_empty_graph(self):
-        g = Graph("empty", self.redis_con)
+    def populate_and_compare(self, graph_name, queries):
+        g = Graph(self.redis_con, graph_name)
 
-        # create an empty graph
-        g.query("RETURN 1")
+        for q in queries:
+            g.query(q)
 
         # copy graph
-        self.env.execute_command("COPY", "empty", "clone")
+        self.env.execute_command("COPY", graph_name, graph_name + "_copy")
 
-        self.assert_graphs_eq(self, "empty", "clone")
+        self.assert_graphs_eq(graph_name, graph_name + "_copy")
 
-    def test01_empty_graph_with_indices(self):
-        pass
+    def test00_copy_empty_graph(self):
+        q = "RETURN 1"
+        self.populate_and_compare("empty", [q])
 
-    def test02_single_node_graph(self):
-        pass
+    def test01_single_node_graph(self):
+        # create a graph with a single node
+        q = "CREATE (:N{num:1, str:'str', arr:[1,2,3], p:point({latitude: 60, longitude: 60})})"
+        self.populate_and_compare("single_node", [q])
 
-    def test03_single_edge_graph(self):
-        pass
+    def test02_single_edge_graph(self):
+        # create a graph with a single node
+        q = "CREATE (:A{v:0})-[:E{num:1, str:'str', arr:[1,2,3], p:point({latitude: 60, longitude: 60})}]->(:Z{v:9})"
+        self.populate_and_compare("single_edge", [q])
 
-    def test04_copy_empty_graph(self):
-        pass
-        # populate the source graph
-        self.populate_graph("FROM")
-        # copy the source graph to the key "TO"
-        self.env.execute_command("COPY FROM TO")
-        # connect to the new graph
-        graph = Graph("TO", redis_con)
-
-        # expecting 5 person entities
-        query = """MATCH (p:person) RETURN COUNT(p)"""
-        actual_result = graph.query(query)
-        nodeCount = actual_result.result_set[0][0]
-        self.env.assertEquals(nodeCount, 5)
-
-        query = """MATCH (p:person) WHERE p.name='Alon' RETURN COUNT(p)"""
-        actual_result = graph.query(query)
-        nodeCount = actual_result.result_set[0][0]
-        self.env.assertEquals(nodeCount, 1)
-
-        # expecting 3 country entities
-        query = """MATCH (c:country) RETURN COUNT(c)"""
-        actual_result = graph.query(query)
-        nodeCount = actual_result.result_set[0][0]
-        self.env.assertEquals(nodeCount, 3)
-
-        query = """MATCH (c:country) WHERE c.name = 'Israel' RETURN COUNT(c)"""
-        actual_result = graph.query(query)
-        nodeCount = actual_result.result_set[0][0]
-        self.env.assertEquals(nodeCount, 1)
-
-        # expecting 2 visit edges
-        query = """MATCH (n:person)-[e:visit]->(c:country) WHERE e.purpose='pleasure' RETURN COUNT(e)"""
-        actual_result = graph.query(query)
-        edgeCount = actual_result.result_set[0][0]
-        self.env.assertEquals(edgeCount, 2)
-
-        # verify indexes exist
-        indices = graph.query("""CALL db.indexes()""").result_set
-        expected_indices = [
-                ['exact-match', 'country', ['name', 'population'], 'english', [], 'NODE'],
-                ['exact-match', 'person', ['name', 'height'], 'english', [], 'NODE'],
-                ['full-text', 'person', ['text'], 'english', ['a', 'b'], 'NODE'],
-                ['exact-match', 'visit', ['_src_id', '_dest_id', 'purpose'], 'english', [], 'RELATIONSHIP']
-        ]
-
-        self.env.assertEquals(len(indices), len(expected_indices))
-        for index in indices:
-            self.env.assertIn(index, indices)
+    def test03_empty_graph_with_indices(self):
+        # create a graph 3 indices
+        # two exact match
+        # one full-text
+        queries = [
+                "CREATE INDEX FOR (p:Person) ON (p.age)",
+                "CREATE INDEX FOR ()-[e:E]->() ON (e.weight)",
+                "CALL db.idx.fulltext.createNodeIndex('Movie', 'title')"
+                ]
+        self.populate_and_compare("indices", queries)
 

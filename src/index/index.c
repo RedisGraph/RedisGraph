@@ -204,14 +204,26 @@ Index *Index_Clone
 	clone->type        = idx->type;
 	clone->label       = rm_strdup(idx->label);
 	clone->label_id    = idx->label_id;
+	clone->language    = NULL;
+	clone->stopwords   = NULL;
 	clone->entity_type = idx->entity_type;
 
 	if(idx->language) {
 		clone->language = rm_strdup(idx->language);
 	}
 
+	// clone index stopwords
+	size_t n_stopwords = 0;
+	char **stopwords = Index_GetStopwords(idx, &n_stopwords);
+	if(stopwords != NULL) {
+		clone->stopwords = array_new(char*, n_stopwords);
+		for(int i = 0; i < n_stopwords; i++) {
+			array_append(clone->stopwords, stopwords[i]);
+		}
+		rm_free(stopwords);
+	}
+
 	array_clone_with_cb(clone->fields, idx->fields, IndexField_Clone);
-	array_clone_with_cb(clone->stopwords, idx->stopwords, rm_strdup);
 
 	Index_Construct(clone);
 

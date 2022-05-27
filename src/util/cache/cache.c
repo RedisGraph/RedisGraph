@@ -54,20 +54,26 @@ static bool _Cache_SetValue(Cache *cache, const char *key, void *value,
 	return true;
 }
 
-Cache *Cache_New(uint cap, CacheEntryFreeFunc freeFunc, CacheEntryCopyFunc copyFunc) {
+Cache *Cache_New
+(
+	uint cap,
+	CacheEntryFreeFunc freeFunc,
+	CacheEntryCopyFunc copyFunc
+) {
 	ASSERT(cap > 0);
 	ASSERT(copyFunc != NULL);
 
-	Cache *cache     = rm_malloc(sizeof(Cache));
-	cache->cap       = cap;
-	cache->size      = 0;
-	cache->lookup    = raxNew();       // Instantiate key entry mapping.
-	cache->counter   = 0;             // Initialize counter to zero.
-	cache->copy_item = copyFunc;
-	cache->free_item = freeFunc;
-	cache->arr = rm_calloc(cap, sizeof(CacheEntry)); // Array of cached values.
+	Cache *cache = rm_malloc(sizeof(Cache));
 
-	// Initialize the read-write lock to protect access to the cache.
+	cache->cap        =  cap;
+	cache->size       =  0;
+	cache->lookup     =  raxNew();  // instantiate key entry mapping
+	cache->counter    =  0;         // initialize counter to zero
+	cache->copy_item  =  copyFunc;
+	cache->free_item  =  freeFunc;
+	cache->arr        =  rm_calloc(cap, sizeof(CacheEntry));  // array of cached values
+
+	// initialize the read-write lock to protect access to the cache
 	int res = pthread_rwlock_init(&cache->_cache_rwlock, NULL);
 	UNUSED(res);
 	ASSERT(res == 0);
