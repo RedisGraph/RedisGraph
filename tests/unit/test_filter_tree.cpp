@@ -47,9 +47,6 @@ class FilterTreeTest: public ::testing::Test {
 		gc->attributes = raxNew();
 		pthread_rwlock_init(&gc->_attribute_rwlock, NULL);
 
-		// No indicies.
-		gc->index_count = 0;
-
 		ASSERT_TRUE(QueryCtx_Init());
 		QueryCtx_SetGraphCtx(gc);
 		AR_RegisterFuncs();
