@@ -389,12 +389,6 @@ RG_Matrix Graph_GetZeroMatrix
 	const Graph *g
 );
 
-RG_Matrix Graph_GetLabelRGMatrix
-(
-	const Graph *g,
-	int label_idx
-);
-
 // free partial graph
 void Graph_PartialFree
 (

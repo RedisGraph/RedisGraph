@@ -7,6 +7,7 @@
 #include "RG.h"
 #include "graph.h"
 #include "../configuration/config.h"
+#include "./rg_matrix/rg_matrix_iter.h"
 #include "../util/datablock/oo_datablock.h"
 
 // clones a graph object
@@ -144,7 +145,38 @@ Graph *Graph_Clone
 		RG_Matrix R_clone;
 		RG_Matrix R = Graph_GetRelationMatrix(g, i, false);
 		if(Graph_RelationshipContainsMultiEdge(g, i, false)) {
-			// TODO: clone multi-edge matrix	
+			GrB_Type            t;
+			uint64_t            val;
+			GrB_Index           row;
+			GrB_Index           col;
+			GrB_Index           nrows;
+			GrB_Index           ncols;
+			RG_MatrixTupleIter  it;
+
+			RG_Matrix_type(&t, R);
+			RG_Matrix_nrows(&nrows, R);
+			RG_Matrix_ncols(&ncols, R);
+
+			RG_Matrix_new(&R_clone, t, nrows, ncols);
+
+			// clone multi-edge matrix
+			RG_MatrixTupleIter_attach(&it, R);
+			while(RG_MatrixTupleIter_next_UINT64(&it, &row, &col, &val)
+					== GrB_SUCCESS) {
+				if(SINGLE_EDGE(val)) {
+					RG_Matrix_setElement_UINT64(R_clone, val, row, col);
+				} else {
+					// multiple edges connecting src to dest,
+					// entry is a pointer to an array of edge IDs
+					EdgeID *edgeIds = (EdgeID *)(CLEAR_MSB(val));
+					uint edgeCount = array_len(edgeIds);
+					for(uint j = 0; j < edgeCount; j++) {
+						EdgeID edgeId = edgeIds[j];
+						RG_Matrix_setElement_UINT64(R_clone, edgeId, row, col);
+					}
+				}
+				RG_MatrixTupleIter_detach(&it);
+			}
 		} else {
 			RG_Matrix_dup(&R_clone, R);
 		}

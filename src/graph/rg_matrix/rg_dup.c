@@ -87,6 +87,6 @@ GrB_Info RG_Matrix_dup
 
 	*C = clone;
 
-    return GrB_SUCCESS;
+    return info;
 }
 
