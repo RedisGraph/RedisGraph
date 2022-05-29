@@ -13,18 +13,17 @@
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
 #include "../datatypes/datatypes.h"
-#include "../algorithms/all_paths.h"
 
 #include <float.h>
 
 // MATCH (n:L {v: 1})
 // CALL algo.SSpaths({sourceNode: n,
-//						  relTypes: ['E'],
-//						  maxLen: 3,
-//						  weightProp: 'weight',
-//						  costProp: 'cost',
-//						  maxCost: 4,
-//						  pathCount: 1}) YIELD path, pathWeight, pathCost
+//					  relTypes: ['E'],
+//					  maxLen: 3,
+//					  weightProp: 'weight',
+//					  costProp: 'cost',
+//					  maxCost: 4,
+//					  pathCount: 1}) YIELD path, pathWeight, pathCost
 // RETURN path, pathWeight, pathCost
 
 typedef struct {
@@ -34,7 +33,20 @@ typedef struct {
 } WeightedPath;
 
 typedef struct {
-	AllPathsCtx *all_paths_ctx;  // path traverse details
+	Node node;
+	Edge edge;
+} LevelConnection;
+
+typedef struct {
+	LevelConnection **levels;    // nodes reached at depth i, and edges leading to them.
+	Path *path;                  // current path.
+	Graph *g;                    // graph to traverse.
+	Edge *neighbors;             // reusable buffer of edges along the current path.
+	int *relationIDs;            // edge type(s) to traverse.
+	int relationCount;           // length of relationIDs.
+	GRAPH_EDGE_DIR dir;          // traverse direction.
+	uint minLen;                 // path minimum length.
+	uint maxLen;                 // path max length.
 	Attribute_ID weight_prop;    // weight attribute id
 	Attribute_ID cost_prop;      // cost attribuite id
 	double max_cost;             // maximum cost of path
@@ -48,19 +60,23 @@ typedef struct {
 	SIValue *yield_path;         // yield path
 	SIValue *yield_path_weight;  // yield path weight
 	SIValue *yield_path_cost;    // yield path cost
-} SSctx;
+} SingleSourceCtx;
 
-// free SSctx
-static void SSctx_Free
+// free SingleSourceCtx
+static void SingleSourceCtx_Free
 (
-	SSctx *ctx
+	SingleSourceCtx *ctx
 ) {
 	if(ctx == NULL) return;
 
-	if(ctx->all_paths_ctx && ctx->all_paths_ctx->relationIDs) {
-		array_free(ctx->all_paths_ctx->relationIDs);
+	uint32_t levelsCount = array_len(ctx->levels);
+	for(int i = 0; i < levelsCount; i++) array_free(ctx->levels[i]);
+	if(ctx->levels) array_free(ctx->levels);
+	if(ctx->path) Path_Free(ctx->path);
+	if(ctx->neighbors) array_free(ctx->neighbors);
+	if(ctx->relationIDs) {
+		array_free(ctx->relationIDs);
 	}
-	AllPathsCtx_Free(ctx->all_paths_ctx);
 	if(ctx->path_count == 0 && ctx->array != NULL) array_free(ctx->array);
 	else if(ctx->path_count > 1 && ctx->heap != NULL) Heap_free(ctx->heap);
 	array_free(ctx->output);
@@ -70,7 +86,7 @@ static void SSctx_Free
 // initialize returned values pointers
 static void _process_yield
 (
-	SSctx *ctx,
+	SingleSourceCtx *ctx,
 	const char **yield
 ) {
 	ctx->yield_path         = NULL;
@@ -99,8 +115,73 @@ static void _process_yield
 	}
 }
 
-// validate config map and initialize SSctx
-static ProcedureResult validate_config(SIValue config, SSctx *ctx) {
+// make sure context level array have 'cap' available entries.
+static void _SingleSourceCtx_EnsureLevelArrayCap
+(
+	SingleSourceCtx *ctx,
+	uint level,
+	uint cap
+) {
+	uint len = array_len(ctx->levels);
+	if(level < len) {
+		LevelConnection *current = ctx->levels[level];
+		ctx->levels[level] = array_ensure_cap(current, array_len(current) + cap);
+		return;
+	}
+
+	ASSERT(level == len);
+	array_append(ctx->levels, array_new(LevelConnection, cap));
+}
+
+// append given 'node' to given 'level' array.
+static void _SingleSourceCtx_AddConnectionToLevel
+(
+	SingleSourceCtx *ctx,
+	uint level,
+	Node *node,
+	Edge *edge
+) {
+	ASSERT(level < array_len(ctx->levels));
+	LevelConnection connection;
+	connection.node = *node;
+	if(edge) connection.edge = *edge;
+	array_append(ctx->levels[level], connection);
+}
+
+static void SingleSourceCtx_New
+(
+	SingleSourceCtx *ctx,
+	Node *src,
+	Graph *g,
+	int *relationIDs,
+	int relationCount,
+	GRAPH_EDGE_DIR dir,
+	uint minLen,
+	uint maxLen
+) {
+	ASSERT(src != NULL);
+
+	ctx->g              =  g;
+	ctx->dir            =  dir;
+	ctx->minLen         =  minLen + 1;
+	ctx->maxLen         =  maxLen + 1;
+	ctx->relationIDs    =  relationIDs;
+	ctx->relationCount  =  relationCount;
+	ctx->levels         =  array_new(LevelConnection *, 1);
+	ctx->path           =  Path_New(1);
+	ctx->neighbors      =  array_new(Edge, 32);
+
+	_SingleSourceCtx_EnsureLevelArrayCap(ctx, 0, 1);
+	_SingleSourceCtx_AddConnectionToLevel(ctx, 0, src, NULL);
+}
+
+
+// validate config map and initialize SingleSourceCtx
+static ProcedureResult validate_config
+(
+	SIValue config,
+	SingleSourceCtx *ctx
+) {
 	SIValue start;                // start node
 	SIValue relationships;        // relationship types allowed
 	SIValue dir;                  // direction
@@ -180,9 +261,8 @@ static ProcedureResult validate_config(SIValue config, SSctx *ctx) {
 		}
 	}
 
-	ctx->all_paths_ctx = AllPathsCtx_New((Node *)start.ptrval,
-		NULL, g, types, types_count, direction, 1,
-		max_length_val, NULL, NULL, 0, false);
+	SingleSourceCtx_New(ctx, (Node *)start.ptrval, g, types, types_count,
+		direction, 1, max_length_val);
 
 	ctx->weight_prop = ATTRIBUTE_NOTFOUND;
 	ctx->cost_prop = ATTRIBUTE_NOTFOUND;
@@ -224,9 +304,98 @@ static ProcedureResult validate_config(SIValue config, SSctx *ctx) {
 	return true;
 }
 
-// Check to see if context levels array has entries at position 'level'.
-static bool _AllPathsCtx_LevelNotEmpty(const AllPathsCtx *ctx, uint level) {
+// check to see if context levels array has entries at position 'level'.
+static bool _SingleSourceCtx_LevelNotEmpty
+(
+	const SingleSourceCtx *ctx,
+	uint level
+) {
 	return (level < array_len(ctx->levels) && array_len(ctx->levels[level]) > 0);
+}
+
+static void addOutgoingNeighbors
+(
+	SingleSourceCtx *ctx,
+	LevelConnection *frontier,
+	uint32_t depth
+) {
+	EntityID frontierId = INVALID_ENTITY_ID;
+	if(depth > 1) frontierId = ENTITY_GET_ID(&frontier->edge);
+
+	// Get frontier neighbors.
+	for(int i = 0; i < ctx->relationCount; i++) {
+		Graph_GetNodeEdges(ctx->g, &frontier->node, GRAPH_EDGE_DIR_OUTGOING, ctx->relationIDs[i], &ctx->neighbors);
+	}
+
+	// Add unvisited neighbors to next level.
+	uint32_t neighborsCount = array_len(ctx->neighbors);
+
+	_SingleSourceCtx_EnsureLevelArrayCap(ctx, depth, neighborsCount);
+	for(uint32_t i = 0; i < neighborsCount; i++) {
+		// Don't follow the frontier edge again.
+		if(frontierId == ENTITY_GET_ID(ctx->neighbors + i)) continue;
+		// Set the neighbor by following the edge in the correct directoin.
+		Node neighbor = GE_NEW_NODE();
+		Graph_GetNode(ctx->g, Edge_GetDestNodeID(ctx->neighbors + i), &neighbor);
+		// Add the node and edge to the frontier.
+		_SingleSourceCtx_AddConnectionToLevel(ctx, depth, &neighbor, (ctx->neighbors + i));
+	}
+	array_clear(ctx->neighbors);
+}
+
+static void addIncomingNeighbors
+(
+	SingleSourceCtx *ctx,
+	LevelConnection *frontier,
+	uint32_t depth
+) {
+	EntityID frontierId = INVALID_ENTITY_ID;
+	if(depth > 1) frontierId = ENTITY_GET_ID(&frontier->edge);
+
+	// Get frontier neighbors.
+	for(int i = 0; i < ctx->relationCount; i++) {
+		Graph_GetNodeEdges(ctx->g, &frontier->node, GRAPH_EDGE_DIR_INCOMING, ctx->relationIDs[i], &ctx->neighbors);
+	}
+
+	// Add unvisited neighbors to next level.
+	uint32_t neighborsCount = array_len(ctx->neighbors);
+
+	_SingleSourceCtx_EnsureLevelArrayCap(ctx, depth, neighborsCount);
+	for(uint32_t i = 0; i < neighborsCount; i++) {
+		// Don't follow the frontier edge again.
+		if(frontierId == ENTITY_GET_ID(ctx->neighbors + i)) continue;
+		// Set the neighbor by following the edge in the correct directoin.
+		Node neighbor = GE_NEW_NODE();
+		Graph_GetNode(ctx->g, Edge_GetSrcNodeID(ctx->neighbors + i), &neighbor);
+		// Add the node and edge to the frontier.
+		_SingleSourceCtx_AddConnectionToLevel(ctx, depth, &neighbor, (ctx->neighbors + i));
+	}
+	array_clear(ctx->neighbors);
+}
+
+// traverse from the frontier node in the specified direction and add all encountered nodes and edges.
+static void addNeighbors
+(
+	SingleSourceCtx *ctx,
+	LevelConnection *frontier,
+	uint32_t depth,
+	GRAPH_EDGE_DIR dir
+) {
+	switch(dir) {
+		case GRAPH_EDGE_DIR_OUTGOING:
+			addOutgoingNeighbors(ctx, frontier, depth);
+			break;
+		case GRAPH_EDGE_DIR_INCOMING:
+			addIncomingNeighbors(ctx, frontier, depth);
+			break;
+		case GRAPH_EDGE_DIR_BOTH:
+			addIncomingNeighbors(ctx, frontier, depth);
+			addOutgoingNeighbors(ctx, frontier, depth);
+			break;
+		default:
+			ASSERT(false && "encountered unexpected traversal direction in AllPaths");
+			break;
+	}
 }
 
 // get numeric attribute value of an entity otherwise return default value
@@ -247,20 +416,18 @@ static inline SIValue _get_value_or_defualt
 // use DFS to find all paths from src tracking cost and weight
 static void SSpaths_next
 (
-	SSctx *ctx,
+	SingleSourceCtx *ctx,
 	WeightedPath *p,
 	double max_weight
 ) {
-	AllPathsCtx *allPathsCtx = ctx->all_paths_ctx;
-
 	// As long as path is not empty OR there are neighbors to traverse.
-	while(Path_NodeCount(allPathsCtx->path) || _AllPathsCtx_LevelNotEmpty(allPathsCtx, 0)) {
-		uint32_t depth = Path_NodeCount(allPathsCtx->path);
+	while(Path_NodeCount(ctx->path) || _SingleSourceCtx_LevelNotEmpty(ctx, 0)) {
+		uint32_t depth = Path_NodeCount(ctx->path);
 
 		// Can we advance?
-		if(_AllPathsCtx_LevelNotEmpty(allPathsCtx, depth)) {
+		if(_SingleSourceCtx_LevelNotEmpty(ctx, depth)) {
 			// Get a new frontier.
-			LevelConnection frontierConnection = array_pop(allPathsCtx->levels[depth]);
+			LevelConnection frontierConnection = array_pop(ctx->levels[depth]);
 			Node frontierNode = frontierConnection.node;
 
 			/* See if frontier is already on path,
@@ -268,12 +435,12 @@ static void SSpaths_next
 			 * such as in the case of a cycle, but in such case we
 			 * won't expand frontier.
 			 * i.e. closing a cycle and continuing traversal. */
-			bool frontierAlreadyOnPath = Path_ContainsNode(allPathsCtx->path, &frontierNode);
+			bool frontierAlreadyOnPath = Path_ContainsNode(ctx->path, &frontierNode);
 
 			if(frontierAlreadyOnPath) continue;
 
 			// Add frontier to path.
-			Path_AppendNode(allPathsCtx->path, frontierNode);
+			Path_AppendNode(ctx->path, frontierNode);
 
 			/* If depth is 0 this is the source node, there is no leading edge to it.
 			 * For depth > 0 for each frontier node, there is a leading edge. */
@@ -283,9 +450,9 @@ static void SSpaths_next
 				if(p->cost + SI_GET_NUMERIC(c) <= ctx->max_cost && p->weight + SI_GET_NUMERIC(w) <= max_weight) {
 					p->cost += SI_GET_NUMERIC(c);
 					p->weight += SI_GET_NUMERIC(w);
-					Path_AppendEdge(allPathsCtx->path, frontierConnection.edge);
+					Path_AppendEdge(ctx->path, frontierConnection.edge);
 				} else {
-					Path_PopNode(allPathsCtx->path);
+					Path_PopNode(ctx->path);
 					continue;
 				}
 			}
@@ -295,20 +462,20 @@ static void SSpaths_next
 
 			/* Introduce neighbors only if path depth < maximum path length.
 			 * and frontier wasn't already expanded. */
-			if(depth < allPathsCtx->maxLen) {
-				addNeighbors(allPathsCtx, &frontierConnection, depth, allPathsCtx->dir);
+			if(depth < ctx->maxLen) {
+				addNeighbors(ctx, &frontierConnection, depth, ctx->dir);
 			}
 
 			// See if we can return path.
-			if(depth >= allPathsCtx->minLen && depth <= allPathsCtx->maxLen) {
-				p->path = allPathsCtx->path;
+			if(depth >= ctx->minLen && depth <= ctx->maxLen) {
+				p->path = ctx->path;
 				return;
 			}
 		} else {
 			// No way to advance, backtrack.
-			Path_PopNode(allPathsCtx->path);
-			if(Path_EdgeCount(allPathsCtx->path)) {
-				Edge e = Path_PopEdge(allPathsCtx->path);
+			Path_PopNode(ctx->path);
+			if(Path_EdgeCount(ctx->path)) {
+				Edge e = Path_PopEdge(ctx->path);
 				SIValue c = _get_value_or_defualt((GraphEntity *)&e, ctx->cost_prop, SI_LongVal(1));
 				SIValue w = _get_value_or_defualt((GraphEntity *)&e, ctx->weight_prop, SI_LongVal(1));
 				p->cost -= SI_GET_NUMERIC(c);
@@ -323,7 +490,12 @@ static void SSpaths_next
 }
 
 // compare path by weight, cost and path length
-static int path_cmp(const void *a, const void *b, const void *udata) {
+static int path_cmp
+(
+	const void *a,
+	const void *b,
+	const void *udata
+) {
 	WeightedPath *da = (WeightedPath *)a;
 	WeightedPath *db = (WeightedPath *)b;
 	if(da->weight == db->weight) {
@@ -338,7 +510,7 @@ static int path_cmp(const void *a, const void *b, const void *udata) {
 // get all minimal paths (all paths with the same weight)
 static void SSpaths_all_minimal
 (
-	SSctx *ctx
+	SingleSourceCtx *ctx
 ) {
 	// initialize array that contains the result
 	ctx->array = array_new(WeightedPath, 0);
@@ -374,7 +546,7 @@ static void SSpaths_all_minimal
 // find the single minimal weighted path
 static void SSpaths_single_minimal
 (
-	SSctx *ctx
+	SingleSourceCtx *ctx
 ) {
 	// initialize the result path to worst path
 	ctx->single.path   = NULL;
@@ -405,7 +577,11 @@ static void SSpaths_single_minimal
 	}
 }
 
-static void inline _add_path(heap_t **heap, WeightedPath *p) {
+static void inline _add_path
+(
+	heap_t **heap,
+	WeightedPath *p
+) {
 	WeightedPath *pp = rm_malloc(sizeof(WeightedPath));
 	pp->path = Path_Clone(p->path);
 	pp->weight = p->weight;
@@ -416,7 +592,7 @@ static void inline _add_path(heap_t **heap, WeightedPath *p) {
 // find k minimal weighted path (path can have different weight)
 static void SSpaths_k_minimal
 (
-	SSctx *ctx
+	SingleSourceCtx *ctx
 ) {
 	// initialize heap that contains the result where top path is the highest weight
 	ctx->heap = Heap_new(path_cmp, NULL);
@@ -461,7 +637,6 @@ static void SSpaths_k_minimal
 			pp->weight = p.weight;
 			pp->cost = p.cost;
 			Heap_offer(&ctx->heap, pp);
-			RedisModule_Log(NULL, "notice", "%f %f", pp->weight, pp->cost);
 
 			// update the max weight so we will get better paths
 			pp = Heap_peek(ctx->heap);
@@ -479,19 +654,19 @@ static ProcedureResult Proc_SSpathsInvoke
 	const SIValue *args,
 	const char **yield
 ) {
-	SSctx *ss_ctx = rm_calloc(1, sizeof(SSctx));
-	if(!validate_config(args[0], ss_ctx)) {
-		SSctx_Free(ss_ctx);
+	SingleSourceCtx *single_source_ctx = rm_calloc(1, sizeof(SingleSourceCtx));
+	if(!validate_config(args[0], single_source_ctx)) {
+		SingleSourceCtx_Free(single_source_ctx);
 		return PROCEDURE_ERR;
 	}
-	ctx->privateData = ss_ctx;
+	ctx->privateData = single_source_ctx;
 
-	ss_ctx->output = array_new(SIValue, 3);
-	_process_yield(ss_ctx, yield);
+	single_source_ctx->output = array_new(SIValue, 3);
+	_process_yield(single_source_ctx, yield);
 
-	if(ss_ctx->path_count == 0) SSpaths_all_minimal(ss_ctx);
-	else if(ss_ctx->path_count == 1) SSpaths_single_minimal(ss_ctx);
-	else SSpaths_k_minimal(ss_ctx);
+	if(single_source_ctx->path_count == 0) SSpaths_all_minimal(single_source_ctx);
+	else if(single_source_ctx->path_count == 1) SSpaths_single_minimal(single_source_ctx);
+	else SSpaths_k_minimal(single_source_ctx);
 
 	return PROCEDURE_OK;
 }
@@ -502,42 +677,42 @@ static SIValue *Proc_SSpathsStep
 ) {
 	ASSERT(ctx->privateData != NULL);
 	
-	SSctx *ss_ctx = ctx->privateData;
+	SingleSourceCtx *single_source_ctx = ctx->privateData;
 	WeightedPath p;
 
-	if(ss_ctx->path_count == 0) {
-		if(array_len(ss_ctx->array) == 0) return NULL;
+	if(single_source_ctx->path_count == 0) {
+		if(array_len(single_source_ctx->array) == 0) return NULL;
 
-		p = array_pop(ss_ctx->array);
-	} else if(ss_ctx->path_count == 1) {
-		p = ss_ctx->single;
+		p = array_pop(single_source_ctx->array);
+	} else if(single_source_ctx->path_count == 1) {
+		p = single_source_ctx->single;
 		if(p.path == NULL) return NULL;
 
-		ss_ctx->single.path = NULL;
+		single_source_ctx->single.path = NULL;
 	} else {
-		WeightedPath *pp = Heap_poll(ss_ctx->heap);
+		WeightedPath *pp = Heap_poll(single_source_ctx->heap);
 		if(pp == NULL) return NULL;
 		
 		p = *pp;
 		rm_free(pp);
 	}
 	
-	if(ss_ctx->yield_path) {
-		*ss_ctx->yield_path = SI_Path(p.path);
+	if(single_source_ctx->yield_path) {
+		*single_source_ctx->yield_path = SI_Path(p.path);
 		Path_Free(p.path);
 	}
-	if(ss_ctx->yield_path_weight) *ss_ctx->yield_path_weight = SI_DoubleVal(p.weight);
-	if(ss_ctx->yield_path_cost)   *ss_ctx->yield_path_cost   = SI_DoubleVal(p.cost);
+	if(single_source_ctx->yield_path_weight) *single_source_ctx->yield_path_weight = SI_DoubleVal(p.weight);
+	if(single_source_ctx->yield_path_cost)   *single_source_ctx->yield_path_cost   = SI_DoubleVal(p.cost);
 
-	return ss_ctx->output;
+	return single_source_ctx->output;
 }
 
 static ProcedureResult Proc_SSpathsFree
 (
 	ProcedureCtx *ctx
 ) {
-	SSctx *ss_ctx = ctx->privateData;
-	SSctx_Free(ss_ctx);
+	SingleSourceCtx *single_source_ctx = ctx->privateData;
+	SingleSourceCtx_Free(single_source_ctx);
 	return PROCEDURE_OK;
 }
 
