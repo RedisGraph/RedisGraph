@@ -54,12 +54,10 @@ void Index_IndexEdge
 
 void populateEdgeIndex
 (
-	Index *idx
+	Index *idx,
+	const Graph *g
 ) {
 	ASSERT(idx != NULL);
-
-	GraphContext  *gc  =  QueryCtx_GetGraphCtx();
-	Graph         *g   =  gc->g;
 
 	const RG_Matrix m = Graph_GetRelationMatrix(g, idx->label_id, false);
 	ASSERT(m != NULL);

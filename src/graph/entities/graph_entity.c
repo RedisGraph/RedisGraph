@@ -126,6 +126,24 @@ bool GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue
 	return true;
 }
 
+void GraphEntity_Clone
+(
+	const Entity *e,
+	Entity *clone
+) {
+	clone->properties = NULL;
+	clone->prop_count = e->prop_count;
+
+	if(e->prop_count > 0) {
+		// clone properties
+		clone->properties = rm_malloc(clone->prop_count * sizeof(EntityProperty));
+		for(int i = 0; i < clone->prop_count; i ++) {
+			clone->properties[i].id = e->properties[i].id;
+			clone->properties[i].value = SI_CloneValue(e->properties[i].value);
+		}
+	}
+}
+
 SIValue GraphEntity_Keys(const GraphEntity *e) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	SIValue keys = SIArray_New(ENTITY_PROP_COUNT(e));

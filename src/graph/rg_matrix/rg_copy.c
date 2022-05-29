@@ -11,11 +11,11 @@
 
 static void _copyMatrix
 (
-	const GrB_Matrix in,
-	GrB_Matrix out
+	GrB_Matrix out,
+	const GrB_Matrix in
 ) {
-	GrB_Index   nvals;
-	GrB_Info    info =  GrB_SUCCESS;
+	GrB_Index nvals;
+	GrB_Info info = GrB_SUCCESS;
 
 	UNUSED(info);
 
@@ -39,17 +39,17 @@ GrB_Info RG_Matrix_copy
 	const RG_Matrix A
 ) {
 	RG_Matrix_checkCompatible(C, A);
-	
-	GrB_Matrix  in_m             =  RG_MATRIX_M(A);
-	GrB_Matrix  out_m            =  RG_MATRIX_M(C);
-	GrB_Matrix  in_delta_plus    =  RG_MATRIX_DELTA_PLUS(A);
-	GrB_Matrix  in_delta_minus   =  RG_MATRIX_DELTA_MINUS(A);
-	GrB_Matrix  out_delta_plus   =  RG_MATRIX_DELTA_PLUS(C);
-	GrB_Matrix  out_delta_minus  =  RG_MATRIX_DELTA_MINUS(C);
 
-	_copyMatrix(in_m, out_m);
-	_copyMatrix(in_delta_plus, out_delta_plus);
-	_copyMatrix(in_delta_minus, out_delta_minus);
+	GrB_Matrix in_m            = RG_MATRIX_M(A);
+	GrB_Matrix out_m           = RG_MATRIX_M(C);
+	GrB_Matrix in_delta_plus   = RG_MATRIX_DELTA_PLUS(A);
+	GrB_Matrix in_delta_minus  = RG_MATRIX_DELTA_MINUS(A);
+	GrB_Matrix out_delta_plus  = RG_MATRIX_DELTA_PLUS(C);
+	GrB_Matrix out_delta_minus = RG_MATRIX_DELTA_MINUS(C);
+
+	_copyMatrix(out_m, in_m);
+	_copyMatrix(out_delta_plus, in_delta_plus);
+	_copyMatrix(out_delta_minus, in_delta_minus);
 
 	return GrB_SUCCESS;
 }

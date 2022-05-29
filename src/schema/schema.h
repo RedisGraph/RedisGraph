@@ -36,6 +36,12 @@ Schema *Schema_New
 	const char *name
 );
 
+// clones an existing schema
+Schema *Schema_Clone
+(
+	const Schema *s
+);
+
 /* Return the given schema's name. */
 const char *Schema_GetName(const Schema *s);
 

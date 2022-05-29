@@ -34,7 +34,6 @@ typedef struct {
 	char **string_mapping;                  // from attribute IDs to strings
 	Schema **node_schemas;                  // array of schemas for each node label
 	Schema **relation_schemas;              // array of schemas for each relation type
-	unsigned short index_count;             // number of indicies
 	SlowLog *slowlog;                       // slowlog associated with graph
 	GraphEncodeContext *encoding_context;   // encode context of the graph
 	GraphDecodeContext *decoding_context;   // decode context of the graph
@@ -50,6 +49,13 @@ typedef struct {
 GraphContext *GraphContext_New
 (
 	const char *graph_name
+);
+
+// perform a deep copy of a graph context, providing it with a new name
+GraphContext *GraphContext_Clone
+(
+	const char *graph_name,
+	const GraphContext *gc
 );
 
 // increase graph context ref count by 1

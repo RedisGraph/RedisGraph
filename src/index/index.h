@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../graph/graph.h"
 #include "../graph/entities/node.h"
 #include "../graph/entities/edge.h"
 #include "../graph/entities/graph_entity.h"
@@ -23,12 +24,12 @@
 // creates a new index field and initialize it to default values
 // returns a pointer to the field
 #define INDEX_FIELD_DEFAULT(field)                                      \
-	({                                                                  \
-		IndexField field;                                               \
-		IndexField_New(&field, #field, INDEX_FIELD_DEFAULT_WEIGHT,      \
-			INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);  \
-		&field;                                                         \
-	})
+    ({                                                                  \
+        IndexField field;                                               \
+        IndexField_New(&field, #field, INDEX_FIELD_DEFAULT_WEIGHT,      \
+            INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);  \
+        &field;                                                         \
+    })
 
 typedef enum {
 	IDX_ANY          =  0,
@@ -88,7 +89,14 @@ Index *Index_New
 // constructs index
 void Index_Construct
 (
-	Index *idx
+	Index *idx,
+	const Graph *g
+);
+
+// clone an existing index
+Index *Index_Clone
+(
+	const Index *idx
 );
 
 // adds field to index
@@ -196,3 +204,4 @@ void Index_Free
 (
 	Index *idx
 );
+

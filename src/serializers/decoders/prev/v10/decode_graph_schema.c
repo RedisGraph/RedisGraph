@@ -6,7 +6,13 @@
 
 #include "decode_v10.h"
 
-static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type, bool already_loaded) {
+static Schema *_RdbLoadSchema
+(
+	RedisModuleIO *rdb,
+	GraphContext *gc,
+	SchemaType type,
+	bool already_loaded
+) {
 	/* Format:
 	 * id
 	 * name
@@ -33,8 +39,9 @@ static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type, bool already_
 	}
 	if(s) {
 		// no entities are expected to be in the graph in this point in time
-		if(s->index) Index_Construct(s->index);
-		if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
+		Graph *g = gc->g;
+		if(s->index) Index_Construct(s->index, g);
+		if(s->fulltextIdx) Index_Construct(s->fulltextIdx, g);
 	}
 
 	return s;
@@ -75,7 +82,7 @@ void RdbLoadGraphSchema_v10(RedisModuleIO *rdb, GraphContext *gc) {
 	// Load each node schema
 	gc->node_schemas = array_ensure_cap(gc->node_schemas, schema_count);
 	for(uint i = 0; i < schema_count; i ++) {
-		Schema *s = _RdbLoadSchema(rdb, SCHEMA_NODE, already_loaded);
+		Schema *s = _RdbLoadSchema(rdb, gc, SCHEMA_NODE, already_loaded);
 		if(!already_loaded) array_append(gc->node_schemas, s);
 	}
 
@@ -85,7 +92,7 @@ void RdbLoadGraphSchema_v10(RedisModuleIO *rdb, GraphContext *gc) {
 	// Load each edge schema
 	gc->relation_schemas = array_ensure_cap(gc->relation_schemas, schema_count);
 	for(uint i = 0; i < schema_count; i ++) {
-		Schema *s = _RdbLoadSchema(rdb, SCHEMA_EDGE, already_loaded);
+		Schema *s = _RdbLoadSchema(rdb, gc, SCHEMA_EDGE, already_loaded);
 		if(!already_loaded) array_append(gc->relation_schemas, s);
 	}
 }

@@ -414,3 +414,4 @@ class testGraphPersistency():
         for q in queries:
             actual_result = g.query(q)
             self.env.assertEquals(actual_result.result_set[0], [1])
+

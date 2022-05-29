@@ -92,7 +92,6 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		GraphContext *gc = (GraphContext *)malloc(sizeof(GraphContext));
 
 		gc->g = Graph_New(16, 16);
-		gc->index_count = 0;
 		gc->graph_name = strdup("G");
 		gc->attributes = raxNew();
 		pthread_rwlock_init(&gc->_attribute_rwlock, NULL);

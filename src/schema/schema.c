@@ -29,6 +29,28 @@ Schema *Schema_New
 	return s;
 }
 
+Schema *Schema_Clone
+(
+	const Schema *s
+) {
+	Schema *clone = rm_calloc(1, sizeof(Schema));
+
+	clone->id   = s->id;
+	clone->type = s->type;
+	clone->name = rm_strdup(s->name);
+
+	// clone indices
+	if(s->index) {
+		clone->index = Index_Clone(s->index);
+	}
+
+	if(s->fulltextIdx) {
+		clone->fulltextIdx = Index_Clone(s->fulltextIdx);
+	}
+
+	return clone;
+}
+
 int Schema_ID
 (
 	const Schema *s

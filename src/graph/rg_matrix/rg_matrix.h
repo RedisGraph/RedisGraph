@@ -141,6 +141,12 @@ GrB_Info RG_Matrix_new
 	GrB_Index ncols
 );
 
+GrB_Info RG_Matrix_dup       // make an exact copy of a matrix
+(
+    RG_Matrix *C,            // handle of output matrix to create
+    const RG_Matrix A        // input matrix to copy
+) ;
+
 // returns transposed matrix of C
 RG_Matrix RG_Matrix_getTranspose
 (
@@ -169,6 +175,12 @@ void RG_Matrix_Unlock
 (
 	RG_Matrix C
 );
+
+GrB_Info RG_Matrix_type // get the type of a matrix
+(
+    GrB_Type *type,     // returns the type of the matrix
+    const RG_Matrix A   // matrix to query
+) ;
 
 GrB_Info RG_Matrix_nrows
 (

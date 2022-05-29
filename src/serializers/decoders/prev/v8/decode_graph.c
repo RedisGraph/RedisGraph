@@ -185,8 +185,8 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 			GraphStatistics_IncNodeCount(&g->stats, i, nvals);
 
 			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
-			if(s->index) Index_Construct(s->index);
-			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
+			if(s->index) Index_Construct(s->index, g);
+			if(s->fulltextIdx) Index_Construct(s->fulltextIdx, g);
 		}
 
 		// make sure graph doesn't contains may pending changes

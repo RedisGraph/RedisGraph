@@ -14,6 +14,7 @@
 #include "../redismodule.h"
 #include "../util/rmalloc.h"
 #include "../util/thpool/pools.h"
+#include "../util/rax_extensions.h"
 #include "../serializers/graphcontext_type.h"
 #include "../commands/execution_ctx.h"
 
@@ -88,7 +89,6 @@ GraphContext *GraphContext_New
 	gc->slowlog          = SlowLog_New();
 	gc->ref_count        = 0;  // no refences
 	gc->attributes       = raxNew();
-	gc->index_count      = 0;  // no indicies
 	gc->string_mapping   = array_new(char *, 64);
 	gc->encoding_context = GraphEncodeContext_New();
 	gc->decoding_context = GraphDecodeContext_New();
@@ -379,11 +379,11 @@ bool GraphContext_HasIndices(GraphContext *gc) {
 	for(uint i = 0; i < schema_count; i++) {
 		if(Schema_HasIndices(gc->relation_schemas[i])) return true;
 	}
-	
+
 	return false;
 }
 Index *GraphContext_GetIndexByID(const GraphContext *gc, int id,
-					Attribute_ID *attribute_id, IndexType type, SchemaType t) {
+								 Attribute_ID *attribute_id, IndexType type, SchemaType t) {
 
 	ASSERT(gc     !=  NULL);
 
@@ -427,7 +427,7 @@ int GraphContext_AddExactMatchIndex
 
 	IndexField idx_field;
 	IndexField_New(&idx_field, field, INDEX_FIELD_DEFAULT_WEIGHT,
-			INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
+				   INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
 
 	int res = Schema_AddIndex(idx, s, &idx_field, IDX_EXACT_MATCH);
 

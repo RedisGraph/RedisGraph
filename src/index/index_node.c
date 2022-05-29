@@ -43,12 +43,10 @@ void Index_IndexNode
 
 void populateNodeIndex
 (
-	Index *idx
+	Index *idx,
+	const Graph *g
 ) {
 	ASSERT(idx != NULL);
-
-	GraphContext  *gc  =  QueryCtx_GetGraphCtx();
-	Graph         *g   =  gc->g;
 
 	const RG_Matrix m = Graph_GetLabelMatrix(g, idx->label_id);
 	ASSERT(m != NULL);
