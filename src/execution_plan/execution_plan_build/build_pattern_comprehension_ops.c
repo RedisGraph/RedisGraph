@@ -44,7 +44,6 @@ void buildPatternComprehensionOps
 	ASSERT(ast  != NULL);
 	ASSERT(root->type == OPType_PROJECT || root->type == OPType_AGGREGATE);
 
-
 	// search for pattern comprehension AST nodes
 	// quickly return if none been found
 	const cypher_astnode_t **pcs =
@@ -88,7 +87,7 @@ void buildPatternComprehensionOps
 		AR_ExpNode *eval_exp = AR_EXP_FromASTNode(eval_node);
 
 		// collect evaluation results into an array using `collect`
-		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", 1);
+		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", false, 1);
 		collect_exp->op.children[0] = eval_exp;
 		collect_exp->resolved_name = AST_ToString(pc);
 
@@ -105,8 +104,17 @@ void buildPatternComprehensionOps
 			// build filter tree
 			FT_FilterNode *filter_tree = NULL;
 			AST_ConvertFilters(&filter_tree, predicate);
-			// place filters
-			ExecutionPlan_PlaceFilterOps(plan, aggregate, NULL, filter_tree);
+
+			if(!FilterTree_Valid(filter_tree)) {
+				// Invalid filter tree structure, a compile-time error has been set.
+				FilterTree_Free(filter_tree);
+			} else {
+				// Apply De Morgan's laws
+				FilterTree_DeMorgan(&filter_tree);
+
+				// place filters
+				ExecutionPlan_PlaceFilterOps(plan, aggregate, NULL, filter_tree);
+			}
 		}
 
 		// in case the execution-plan had child operations we need to combine
@@ -220,7 +228,7 @@ void buildPatternPathOps
 		// count number of elements in path
 		// construct a `topath` expression combining elements into a PATH object
 		uint path_len = cypher_ast_pattern_path_nelements(path);
-		AR_ExpNode *path_exp = AR_EXP_NewOpNode("topath", 1 + path_len);
+		AR_ExpNode *path_exp = AR_EXP_NewOpNode("topath", true, 1 + path_len);
 		path_exp->op.children[0] =
 			AR_EXP_NewConstOperandNode(SI_PtrVal((void *)path));
 		for(uint j = 0; j < path_len; j ++) {
@@ -229,7 +237,7 @@ void buildPatternPathOps
 		}
 
 		// we're require to return an ARRAY of paths, use `collect` to aggregate paths
-		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", 1);
+		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", false, 1);
 		collect_exp->op.children[0] = path_exp;
 		collect_exp->resolved_name = AST_ToString(path);
 

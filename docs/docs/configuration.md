@@ -1,6 +1,10 @@
-# Run-time Configuration
-
-RedisGraph supports a few run-time configuration options that can be defined when loading the module. In the future more options will be added.
+---
+title: "Run-time Configuration"
+linkTitle: "Configuration"
+weight: 3
+description: >
+    RedisGraph supports a few run-time configuration options that can be defined when loading the module. In the future more options will be added.
+---
 
 ## Passing configuration options on module load
 
@@ -39,14 +43,14 @@ GRAPH.CONFIG GET *
 
 | Configuration                                 | Load-time          | Run-time             |
 | :-------                                      | :-----             | :-----------         |
-| [THREAD_COUNT](#THREAD_COUNT)                 | :white_check_mark: | :white_large_square: |
-| [CACHE_SIZE](#CACHE_SIZE)                     | :white_check_mark: | :white_large_square: |
-| [OMP_THREAD_COUNT](#OMP_THREAD_COUNT)         | :white_check_mark: | :white_large_square: |
-| [NODE_CREATION_BUFFER](#NODE_CREATION_BUFFER) | :white_check_mark: | :white_large_square: |
-| [MAX_QUEUED_QUERIES](#MAX_QUEUED_QUERIES)     | :white_check_mark: | :white_check_mark:   |
-| [TIMEOUT](#TIMEOUT)                           | :white_check_mark: | :white_check_mark:   |
-| [RESULTSET_SIZE](#RESULTSET_SIZE)             | :white_check_mark: | :white_check_mark:   |
-| [QUERY_MEM_CAPACITY](#QUERY_MEM_CAPACITY)     | :white_check_mark: | :white_check_mark:   |
+| [THREAD_COUNT](#thread_count)                 | :white_check_mark: | :white_large_square: |
+| [CACHE_SIZE](#cache_size)                     | :white_check_mark: | :white_large_square: |
+| [OMP_THREAD_COUNT](#omp_thread_count)         | :white_check_mark: | :white_large_square: |
+| [NODE_CREATION_BUFFER](#node_creation_buffer) | :white_check_mark: | :white_large_square: |
+| [MAX_QUEUED_QUERIES](#max_queued_queries)     | :white_check_mark: | :white_check_mark:   |
+| [TIMEOUT](#timeout)                           | :white_check_mark: | :white_check_mark:   |
+| [RESULTSET_SIZE](#resultset_size)             | :white_check_mark: | :white_check_mark:   |
+| [QUERY_MEM_CAPACITY](#query_mem_capacity)     | :white_check_mark: | :white_check_mark:   |
 
 
 ## THREAD_COUNT
@@ -107,6 +111,20 @@ Conversely, increasing it might improve performance for write-heavy workloads bu
 
 If the passed argument was not a power of 2, it will be rounded to the next-greatest power of 2 to improve memory alignment.
 
+### Default
+
+`NODE_CREATION_BUFFER` is 16,384 by default.
+
+### Minimum
+
+The minimum value for `NODE_CREATION_BUFFER` is 128. Values lower than this will be accepted as arguments, but will internally be converted to 128.
+
+### Example
+
+```
+$ redis-server --loadmodule ./redisgraph.so NODE_CREATION_BUFFER 200
+```
+
 ---
 
 ## MAX_QUEUED_QUERIES
@@ -125,20 +143,6 @@ $ redis-server --loadmodule ./redisgraph.so MAX_QUEUED_QUERIES 500
 $ redis-cli GRAPH.CONFIG SET MAX_QUEUED_QUERIES 500
 ```
 
-### Default
-
-`NODE_CREATION_BUFFER` is 16,384 by default.
-
-### Minimum
-
-The minimum value for `NODE_CREATION_BUFFER` is 128. Values lower than this will be accepted as arguments, but will internally be converted to 128.
-
-### Example
-
-```
-$ redis-server --loadmodule ./redisgraph.so NODE_CREATION_BUFFER 200
-```
-
 ---
 
 ## TIMEOUT
@@ -154,8 +158,6 @@ Timeout is a flag that specifies the maximum runtime for read queries in millise
 ```
 $ redis-server --loadmodule ./redisgraph.so TIMEOUT 1000
 ```
-
----
 
 ---
 
@@ -207,7 +209,7 @@ The query timeout configuration may also be set per query in the form of additio
 
 ## Query Timeout
 
-The query flag `timeout` allows the user to specify a timeout as described in [TIMEOUT](#TIMEOUT) for a single query.
+The query flag `timeout` allows the user to specify a timeout as described in [TIMEOUT](#timeout) for a single query.
 
 ### Example
 

@@ -1,48 +1,44 @@
 
 MAKEFLAGS += --no-builtin-rules
 
+ROOT:=$(realpath ..)
+
 .PHONY: test unit flow tck memcheck benchmark fuzz clean
 
-TEST_ARGS+=--clear-logs
-
-# check verbose flag
-ifneq ($(V),)
-	TEST_ARGS += --verbose
-endif
+TARGET:=$(ROOT)/src/redisgraph.so
 
 ifneq ($(REMOTE),)
-	BENCHMARK_ARGS = redisbench-admin run-remote 
+BENCHMARK_ARGS=run-remote
 else
-	BENCHMARK_ARGS = redisbench-admin run-local 
+BENCHMARK_ARGS=run-local
 endif
 
-BENCHMARK_ARGS += --module_path $(shell pwd)/../src/redisgraph.so \
-	--required-module graph
+BENCHMARK_ARGS += --module_path $(TARGET) --required-module graph
 ifneq ($(BENCHMARK),)
-	BENCHMARK_ARGS += --test $(BENCHMARK)
+BENCHMARK_ARGS += --test $(BENCHMARK)
 endif
 
 # check environment flag
 ifneq ($(ENV),)
-	TEST_ARGS += --env $(ENV)
+TEST_ARGS += --env $(ENV)
 endif
 
-# If the Valgrind flag is set, check for memory access errors.
-ifneq ($(VALGRIND),)
-	TEST_ARGS += --vg --vg-no-leakcheck --vg-verbose --vg-suppressions=$(shell pwd)/../src/valgrind.supp
+ifneq ($(filter memcheck,$(MAKECMDGOALS)),)
+FLOW ?= 1
+GEN ?= 1
+AOF ?= 1
+TCK ?= 1
 endif
 
-# Set the RLTest arguments to check for memory leaks.
-MEMCHECK_ARGS = $(TEST_ARGS) --vg --vg-no-fail-on-errors --vg-suppressions=$(shell pwd)/../src/valgrind.supp
-
-ifeq ($(UNIT),1)
+TESTS=
+ifneq ($(UNIT),0)
 TESTS += unit
-else ifeq ($(FLOW),1)
+endif
+ifneq ($(FLOW),0)
 TESTS += flow
-else ifeq ($(TCK),1)
+endif
+ifneq ($(TCK),0)
 TESTS += tck
-else
-TESTS=unit flow tck
 endif
 
 test: $(TESTS)
@@ -53,21 +49,18 @@ unit:
 
 flow:
 	### flow tests
-	@$(MAKE) -C flow TEST_ARGS="$(TEST_ARGS)"
+	@MODULE=$(TARGET) ./flow/tests.sh
 
 tck:
 	### Cypher Technology Compatibility Kit (TCK)
-	@$(MAKE) -C tck TEST_ARGS="$(TEST_ARGS)"
+	@GEN=0 AOF=0 TCK=1 MODULE=$(TARGET) ./flow/tests.sh
 
-memcheck: export RS_GLOBAL_DTORS = 1
-memcheck: export VALGRIND = 1
 memcheck:
-	@$(MAKE) -C flow TEST_ARGS="$(MEMCHECK_ARGS)"
-	@$(MAKE) -C tck TEST_ARGS="$(MEMCHECK_ARGS)"
+	@VG=1 VG_ACCESS=1 VG_LEAKS=1 MODULE=$(TARGET) ./flow/tests.sh
 	./memcheck.sh
 
 benchmark:
-	cd benchmarks; $(BENCHMARK_ARGS) ; cd ..
+	@cd benchmarks && redisbench-admin $(BENCHMARK_ARGS)
 
 fuzz:
 	@$(MAKE) -C fuzz FUZZ_TIMEOUT="$(FUZZ_TIMEOUT)"

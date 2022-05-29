@@ -1,8 +1,11 @@
-# Technical specification for writing RedisGraph client libraries
-
-By design, there is not a full standard for RedisGraph clients to adhere to. Areas such as pretty-print formatting, query validation, and transactional and multithreaded capabilities have no canonically correct behavior, and the implementer is free to choose the approach and complexity that suits them best.
-
-RedisGraph does, however, provide a compact result set format for clients that minimizes the amount of redundant data transmitted from the server. Implementers are encouraged to take advantage of this format, as it provides better performance and removes ambiguity from decoding certain data. This approach requires clients to be capable of issuing procedure calls to the server and performing a small amount of client-side caching.
+---
+title: "Technical specification for writing RedisGraph client libraries"
+linkTitle: "Client Specification"
+weight: 10
+description: >
+    By design, there is not a full standard for RedisGraph clients to adhere to. Areas such as pretty-print formatting, query validation, and transactional and multithreaded capabilities have no canonically correct behavior, and the implementer is free to choose the approach and complexity that suits them best.
+    RedisGraph does, however, provide a compact result set format for clients that minimizes the amount of redundant data transmitted from the server. Implementers are encouraged to take advantage of this format, as it provides better performance and removes ambiguity from decoding certain data. This approach requires clients to be capable of issuing procedure calls to the server and performing a small amount of client-side caching.
+---
 
 ## Retrieving the compact result set
 
@@ -12,8 +15,6 @@ GRAPH.QUERY demo "MATCH (a) RETURN a" --compact
 ```
 
 ## Formatting differences in the compact result set
-
-The result set has the same overall structure as described in the [Result Set documentation](result_structure.md#top-level-members).
 
 Certain values are emitted as integer IDs rather than strings:
 
@@ -141,7 +142,7 @@ The first element is the [ColumnType enum](https://github.com/RedisGraph/RedisGr
 
 ### Reading result rows
 
-The entity representations in this section will closely resemble those found in [Result Set Graph Entities](result_structure.md#graph-entities).
+The entity representations in this section will closely resemble those found in [Result Set Graph Entities](result_structure#graph-entities).
 
 Our query produced one row of results with 3 columns (as described by the header):
 ```sh
@@ -225,7 +226,7 @@ Property keys, node labels, and relationship types are all returned as IDs rathe
 
 As such, the client should store an string array for each of these 3 mappings, and print the appropriate string for the user by checking an array at position _ID_. If an ID greater than the array length is encountered, the local array should be updated with a procedure call.
 
-These calls are described generally in the [Procedures documentation](commands.md#procedures).
+These calls are described generally in the [Procedures documentation](/commands/graph.query/#procedures).
 
 To retrieve each full mapping, the appropriate calls are:
 
@@ -267,5 +268,5 @@ In the case of an IndexError, it issues a procedure call to fully refresh its la
 
 ## Reference clients
 
-All the logic described in this document has been implemented in most of the clients listed in [Client Libraries](clients.md#currently-available-libraries). Among these, `redisgraph-py` and `JRedisGraph` are currently the most sophisticated.
+All the logic described in this document has been implemented in most of the clients listed in [Client Libraries](clients). Among these, `node-redis`, `redis-py` and `jedis` are currently the most sophisticated.
 

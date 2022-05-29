@@ -21,5 +21,5 @@ capabilities:
     - intershard_tls
     - intershard_tls_pass
 exclude_commands:
-    - GRAPH.CONFIG
-    - GRAPH.DEBUG
+    - graph.CONFIG
+    - graph.DEBUG

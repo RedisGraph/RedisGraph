@@ -16,10 +16,12 @@ SIValue AR_TIMESTAMP(SIValue *argv, int argc, void *private_data) {
 
 void Register_TimeFuncs() {
 	SIType *types;
+	SIType ret_type;
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 0);
-	func_desc = AR_FuncDescNew("timestamp", AR_TIMESTAMP, 0, 0, types, false);
+	ret_type = T_INT64;
+	func_desc = AR_FuncDescNew("timestamp", AR_TIMESTAMP, 0, 0, types, ret_type, false, false);
 	AR_RegFunc(func_desc);
 }
 

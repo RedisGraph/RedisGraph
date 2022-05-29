@@ -1,17 +1,13 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/')
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from common import *
 
 from reversepattern import ReversePattern
-from base import FlowTestsBase
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/')
 import social_queries as queries
 import social_utils
 
 redis_graph = None
+
 
 class testSocialFlow(FlowTestsBase):
 
@@ -19,7 +15,7 @@ class testSocialFlow(FlowTestsBase):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(social_utils.graph_name, redis_con)
+        redis_graph = Graph(redis_con, social_utils.graph_name)
         social_utils.populate_graph(redis_con, redis_graph)
  
     def assert_reversed_pattern(self, query, resultset):
