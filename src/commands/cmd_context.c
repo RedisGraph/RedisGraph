@@ -39,6 +39,10 @@ CommandCtx *CommandCtx_New
 	context->graph_ctx = graph_ctx;
 	context->replicated_command = replicated_command;
 
+	if(bc) {
+		RedisModule_BlockedClientMeasureTimeStart(bc);
+	}
+
 	if(cmd_name) {
 		// Make a copy of command name.
 		const char *command_name = RedisModule_StringPtrLen(cmd_name, NULL);
@@ -133,6 +137,7 @@ void CommandCtx_ThreadSafeContextUnlock(const CommandCtx *command_ctx) {
 
 void CommandCtx_Free(CommandCtx *command_ctx) {
 	if(command_ctx->bc) {
+		RedisModule_BlockedClientMeasureTimeEnd(command_ctx->bc);
 		RedisModule_UnblockClient(command_ctx->bc, NULL);
 		if(command_ctx->ctx) {
 			RedisModule_FreeThreadSafeContext(command_ctx->ctx);
