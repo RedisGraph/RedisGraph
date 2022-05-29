@@ -84,7 +84,8 @@ static uint64_t _GraphContext_RequiredMetaKeys(const GraphContext *gc) {
 	gc->encoding_context->vkey_entity_count = vkey_entity_count;
 
 	uint64_t entities_count = Graph_NodeCount(gc->g) + Graph_EdgeCount(gc->g) +
-		Graph_DeletedNodeCount(gc->g) + Graph_DeletedEdgeCount(gc->g);
+		Graph_DeletedNodeCount(gc->g) + Graph_DeletedEdgeCount(gc->g) +
+		Graph_TopologyEdgeCount(gc->g);
 
 	if(entities_count == 0) return 0;
 

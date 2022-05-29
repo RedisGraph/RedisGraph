@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "encode_v11.h"
+#include "encode_v12.h"
 
 extern bool process_is_child; // Global variable declared in module.c
 
@@ -58,7 +58,7 @@ static void _RdbSaveHeader
 	RedisModule_SaveUnsigned(rdb, header->key_count);
 
 	// save graph schemas
-	RdbSaveGraphSchema_v11(rdb, gc);
+	RdbSaveGraphSchema_v12(rdb, gc);
 }
 
 // returns a state information regarding the number of entities required
@@ -86,6 +86,9 @@ static PayloadInfo _StatePayloadInfo
 		break;
 	case ENCODE_STATE_GRAPH_SCHEMA:
 		required_entities_count = 1;
+		break;
+	case ENCODE_STATE_GRAPH_TOPOLOGY:
+		required_entities_count = Graph_TopologyEdgeCount(gc->g);
 		break;
 	default:
 		ASSERT(false && "Unknown encoding state in _CurrentStatePayloadInfo");
@@ -161,7 +164,7 @@ static PayloadInfo *_RdbSaveKeySchema
 	return payloads;
 }
 
-void RdbSaveGraph_v11
+void RdbSaveGraph_v12
 (
 	RedisModuleIO *rdb,
 	void *value
@@ -214,19 +217,22 @@ void RdbSaveGraph_v11
 		PayloadInfo payload = key_schema[i];
 		switch(payload.state) {
 		case ENCODE_STATE_NODES:
-			RdbSaveNodes_v11(rdb, gc, payload.entities_count);
+			RdbSaveNodes_v12(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_NODES:
-			RdbSaveDeletedNodes_v11(rdb, gc, payload.entities_count);
+			RdbSaveDeletedNodes_v12(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_EDGES:
-			RdbSaveEdges_v11(rdb, gc, payload.entities_count);
+			RdbSaveEdges_v12(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_EDGES:
-			RdbSaveDeletedEdges_v11(rdb, gc, payload.entities_count);
+			RdbSaveDeletedEdges_v12(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_GRAPH_SCHEMA:
 			// skip, handled in _RdbSaveHeader
+			break;
+		case ENCODE_STATE_GRAPH_TOPOLOGY:
+			RdbSaveGraphTopology_v12(rdb, gc, payload.entities_count);
 			break;
 		default:
 			ASSERT(false && "Unknown encoding phase");

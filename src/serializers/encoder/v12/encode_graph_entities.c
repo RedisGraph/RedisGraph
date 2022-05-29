@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "encode_v11.h"
+#include "encode_v12.h"
 #include "../../../datatypes/datatypes.h"
 
 // forword decleration
@@ -86,12 +86,10 @@ static void _RdbSaveEntity
 	}
 }
 
-static void _RdbSaveEdge
+static void _RdbSaveEdge_v12
 (
 	RedisModuleIO *rdb,
-	const Graph *g,
-	const Edge *e,
-	int r
+	const GraphEntity *e
 ) {
 
 	// Format:
@@ -103,20 +101,11 @@ static void _RdbSaveEdge
 
 	RedisModule_SaveUnsigned(rdb, ENTITY_GET_ID(e));
 
-	// source node ID
-	RedisModule_SaveUnsigned(rdb, Edge_GetSrcNodeID(e));
-
-	// destination node ID
-	RedisModule_SaveUnsigned(rdb, Edge_GetDestNodeID(e));
-
-	// relation type
-	RedisModule_SaveUnsigned(rdb, r);
-
 	// edge properties
 	_RdbSaveEntity(rdb, e->entity);
 }
 
-static void _RdbSaveNode_v11
+static void _RdbSaveNode_v12
 (
 	RedisModuleIO *rdb,
 	GraphContext *gc,
@@ -146,7 +135,7 @@ static void _RdbSaveNode_v11
 	_RdbSaveEntity(rdb, n->entity);
 }
 
-static void _RdbSaveDeletedEntities_v11
+static void _RdbSaveDeletedEntities_v12
 (
 	RedisModuleIO *rdb,
 	GraphContext *gc,
@@ -162,7 +151,7 @@ static void _RdbSaveDeletedEntities_v11
 	}
 }
 
-void RdbSaveDeletedNodes_v11
+void RdbSaveDeletedNodes_v12
 (
 	RedisModuleIO *rdb,
 	GraphContext *gc,
@@ -174,10 +163,10 @@ void RdbSaveDeletedNodes_v11
 	if(deleted_nodes_to_encode == 0) return;
 	// get deleted nodes list
 	uint64_t *deleted_nodes_list = Serializer_Graph_GetDeletedNodesList(gc->g);
-	_RdbSaveDeletedEntities_v11(rdb, gc, deleted_nodes_to_encode, deleted_nodes_list);
+	_RdbSaveDeletedEntities_v12(rdb, gc, deleted_nodes_to_encode, deleted_nodes_list);
 }
 
-void RdbSaveDeletedEdges_v11
+void RdbSaveDeletedEdges_v12
 (
 	RedisModuleIO *rdb,
 	GraphContext *gc,
@@ -190,10 +179,10 @@ void RdbSaveDeletedEdges_v11
 
 	// get deleted edges list
 	uint64_t *deleted_edges_list = Serializer_Graph_GetDeletedEdgesList(gc->g);
-	_RdbSaveDeletedEntities_v11(rdb, gc, deleted_edges_to_encode, deleted_edges_list);
+	_RdbSaveDeletedEntities_v12(rdb, gc, deleted_edges_to_encode, deleted_edges_list);
 }
 
-void RdbSaveNodes_v11
+void RdbSaveNodes_v12
 (
 	RedisModuleIO *rdb,
 	GraphContext *gc,
@@ -224,7 +213,7 @@ void RdbSaveNodes_v11
 	for(uint64_t i = 0; i < nodes_to_encode; i++) {
 		GraphEntity e;
 		e.entity = (Entity *)DataBlockIterator_Next(iter, &e.id);
-		_RdbSaveNode_v11(rdb, gc, &e);
+		_RdbSaveNode_v12(rdb, gc, &e);
 	}
 
 	// check if done encodeing nodes
@@ -235,45 +224,7 @@ void RdbSaveNodes_v11
 	}
 }
 
-// Auxilary function to encode a multiple edges array,
-// while consdirating the allowed number of edges to encode
-// returns true if the number of encoded edges has reached the capacity
-static void _RdbSaveMultipleEdges
-(
-	RedisModuleIO *rdb,                  // RDB IO.
-	GraphContext *gc,                    // Graph context.
-	uint r,                              // Edges relation id.
-	EdgeID *multiple_edges_array,        // Multiple edges array (passed by ref).
-	uint *multiple_edges_current_index,  // Current index of the array to start encoding from (passed by ref).
-	uint64_t *encoded_edges,             // Number of encoded edges in this phase (passed by ref).
-	uint64_t edges_to_encode,            // Allowed capacity for encoding edges.
-	NodeID src,                          // Edges source node id.
-	NodeID dest                          // Edges destination node id.
-) {
-	uint edgeCount = array_len(multiple_edges_array);
-
-	// define function local variables from passed-by-reference parameters.
-	uint i = *multiple_edges_current_index;
-	uint encoded_edges_count = *encoded_edges;
-
-	// add edges as long the number of encoded edges is in the allowed range
-	// and the array is not depleted
-	while(i < edgeCount && encoded_edges_count < edges_to_encode) {
-		Edge e;
-		EdgeID edgeID = multiple_edges_array[i++];
-		e.srcNodeID = src;
-		e.destNodeID = dest;
-		Graph_GetEdge(gc->g, edgeID, &e);
-		_RdbSaveEdge(rdb, gc->g, &e, r);
-		encoded_edges_count++;
-	}
-
-	// update passed-by-reference parameters
-	*encoded_edges = encoded_edges_count;
-	*multiple_edges_current_index = i;
-}
-
-void RdbSaveEdges_v11
+void RdbSaveEdges_v12
 (
 	RedisModuleIO *rdb,
 	GraphContext *gc,
@@ -282,10 +233,54 @@ void RdbSaveEdges_v11
 	// Format:
 	// Edge format * edges_to_encode:
 	//  edge ID
+	//  edge properties
+
+	GrB_Info info;
+	UNUSED(info);
+
+	if(edges_to_encode == 0) return;
+
+	// get graph's edge count
+	uint64_t graph_edges = Graph_EdgeCount(gc->g);
+
+	// get the number of edges already encoded
+	uint64_t offset = GraphEncodeContext_GetProcessedEntitiesOffset(gc->encoding_context);
+
+	// get datablock iterator from context,
+	// already set to offset by a previous encodeing of nodes, or create new one
+	DataBlockIterator *iter = GraphEncodeContext_GetDatablockIterator(gc->encoding_context);
+	if(!iter) {
+		iter = Graph_ScanEdges(gc->g);
+		GraphEncodeContext_SetDatablockIterator(gc->encoding_context, iter);
+	}
+
+	for(uint64_t i = 0; i < edges_to_encode; i++) {
+		GraphEntity e;
+		e.entity = (Entity *)DataBlockIterator_Next(iter, &e.id);
+		_RdbSaveEdge_v12(rdb, &e);
+	}
+
+	// check if done encodeing nodes
+	if(offset + edges_to_encode == graph_edges) {
+		DataBlockIterator_Free(iter);
+		iter = NULL;
+		GraphEncodeContext_SetDatablockIterator(gc->encoding_context, iter);
+	}
+}
+
+void RdbSaveGraphTopology_v12
+(
+	RedisModuleIO *rdb,
+	GraphContext *gc,
+	uint64_t edges_to_encode
+) {
+	// Format:
+	// Edge format * edges_to_encode:
+	//  relation type
 	//  source node ID
 	//  destination node ID
-	//  relation type
-	//  edge properties
+	//  # edge count
+	//  edge ID * N
 
 	GrB_Info info;
 	UNUSED(info);
@@ -315,31 +310,12 @@ void RdbSaveEdges_v11
 		ASSERT(info == GrB_SUCCESS);
 	}
 
-	// first, see if the last edges encoding stopped at multiple edges array
-	EdgeID *multiple_edges_array = GraphEncodeContext_GetMultipleEdgesArray(gc->encoding_context);
-	NodeID src = GraphEncodeContext_GetMultipleEdgesSourceNode(gc->encoding_context);
-	NodeID dest = GraphEncodeContext_GetMultipleEdgesDestinationNode(gc->encoding_context);
-	uint multiple_edges_current_index = GraphEncodeContext_GetMultipleEdgesCurrentIndex(
-											gc->encoding_context);
-	if(multiple_edges_array) {
-		_RdbSaveMultipleEdges(rdb, gc, r, multiple_edges_array,
-							  &multiple_edges_current_index,
-							  &encoded_edges, edges_to_encode, src, dest);
-		// if the multiple edges array filled the capacity of entities allowed
-		// to be encoded, finish encoding
-		if(encoded_edges == edges_to_encode) {
-			goto finish;
-		} else {
-			// reset the multiple edges context for re-use
-			multiple_edges_array = NULL;
-			multiple_edges_current_index = 0;
-		}
-	}
+	NodeID src;
+	NodeID dest;
 
 	uint relation_count = Graph_RelationTypeCount(gc->g);
 	// write the required number of edges
 	while(encoded_edges < edges_to_encode) {
-		Edge e;
 		EdgeID edgeID;
 
 		// try to get next tuple
@@ -363,26 +339,22 @@ void RdbSaveEdges_v11
 		
 		ASSERT(info == GrB_SUCCESS);
 
-		e.srcNodeID = src;
-		e.destNodeID = dest;
+		RedisModule_SaveUnsigned(rdb, r);
+		RedisModule_SaveUnsigned(rdb, src);
+		RedisModule_SaveUnsigned(rdb, dest);
 		if(SINGLE_EDGE(edgeID)) {
-			Graph_GetEdge(gc->g, edgeID, &e);
-			_RdbSaveEdge(rdb, gc->g, &e, r);
-			encoded_edges++;
+			RedisModule_SaveUnsigned(rdb, 1);
+			RedisModule_SaveUnsigned(rdb, edgeID);
 		} else {
-			multiple_edges_array = (EdgeID *)(CLEAR_MSB(edgeID));
-			_RdbSaveMultipleEdges(rdb, gc, r, multiple_edges_array,
-								  &multiple_edges_current_index, &encoded_edges, edges_to_encode, src, dest);
-			// if the multiple edges array filled the capacity of entities
-			// allowed to be encoded, finish encoding
-			if(encoded_edges == edges_to_encode) {
-				goto finish;
-			} else {
-				// reset the multiple edges context for re-use
-				multiple_edges_array = NULL;
-				multiple_edges_current_index = 0;
+			EdgeID * edges_array = (EdgeID *)(CLEAR_MSB(edgeID));
+			uint edge_count = array_len(edges_array);
+			RedisModule_SaveUnsigned(rdb, edge_count);
+			for (uint i = 0; i < edge_count; i++) {
+				RedisModule_SaveUnsigned(rdb, edges_array[i]);
 			}
 		}
+
+		encoded_edges++;
 	}
 
 finish:
@@ -393,6 +365,4 @@ finish:
 
 	// update context
 	GraphEncodeContext_SetCurrentRelationID(gc->encoding_context, r);
-	GraphEncodeContext_SetMutipleEdgesArray(gc->encoding_context, multiple_edges_array,
-											multiple_edges_current_index, src, dest);
 }

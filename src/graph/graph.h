@@ -252,6 +252,12 @@ size_t Graph_EdgeCount
 	const Graph *g
 );
 
+// returns number of entiries in all relation matrices
+uint64_t Graph_TopologyEdgeCount
+(
+	const Graph *g
+);
+
 // returns number of edges of a specific relation type
 uint64_t Graph_RelationEdgeCount
 (

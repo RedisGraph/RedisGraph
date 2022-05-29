@@ -62,3 +62,24 @@ uint64_t *Serializer_Graph_GetDeletedEdgesList
 	Graph *g
 );
 
+// optimized version of Graph_FormConnection
+// used only when matrix not contains multi edge values
+void FormSingleConnection
+(
+	Graph *g,
+	NodeID src,
+	NodeID dest,
+	EdgeID edge_id,
+	int r
+);
+
+// optimized version of Graph_FormConnection
+// used only when matrix contains multi edge values
+void FormMultiConnection
+(
+	Graph *g,
+	NodeID src,
+	NodeID dest,
+	EdgeID *edge_ids,
+	int r
+);

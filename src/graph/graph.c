@@ -440,6 +440,20 @@ size_t Graph_EdgeCount(const Graph *g) {
 	return g->edges->itemCount;
 }
 
+uint64_t Graph_TopologyEdgeCount(const Graph *g) {
+	ASSERT(g);
+	uint64_t count = 0;
+	GrB_Index nvals;
+	uint relationCount = Graph_RelationTypeCount(g);
+	for(uint i = 0; i < relationCount; i++) {
+		if(RG_Matrix_nvals(&nvals, g->relations[i]) == GrB_SUCCESS) {
+			count += nvals;
+		}
+	}
+	
+	return count;
+}
+
 uint64_t Graph_RelationEdgeCount(const Graph *g, int relation_idx) {
 	return GraphStatistics_EdgeCount(&g->stats, relation_idx);
 }

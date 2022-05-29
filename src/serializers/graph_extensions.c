@@ -94,7 +94,7 @@ void Serializer_Graph_SetNodeLabels
 
 // optimized version of Graph_FormConnection
 // used only when matrix not contains multi edge values
-static void _OptimizedSingleEdgeFormConnection
+void FormSingleConnection
 (
 	Graph *g,
 	NodeID src,
@@ -129,13 +129,57 @@ static void _OptimizedSingleEdgeFormConnection
 
 	info = GrB_Matrix_setElement_UINT64(m, edge_id, src, dest);
 	ASSERT(info == GrB_SUCCESS);
-	info = GrB_Matrix_setElement_UINT64(tm, edge_id, dest, src);
+	info = GrB_Matrix_setElement_BOOL(tm, true, dest, src);
 	ASSERT(info == GrB_SUCCESS);
 
 	// an edge of type r has just been created, update statistics
-	// TODO: stats->edge_count[relation_idx] += nvals;
 	GraphStatistics_IncEdgeCount(&g->stats, r, 1);
 }
+
+// optimized version of Graph_FormConnection
+// used only when matrix contains multi edge values
+void FormMultiConnection
+(
+	Graph *g,
+	NodeID src,
+	NodeID dest,
+	EdgeID *edge_ids,
+	int r
+) {
+	GrB_Info info;
+	RG_Matrix  M      =  Graph_GetRelationMatrix(g, r, false);
+	RG_Matrix  adj    =  Graph_GetAdjacencyMatrix(g, false);
+	GrB_Matrix m      =  RG_MATRIX_M(M);
+	GrB_Matrix tm     =  RG_MATRIX_TM(M);
+	GrB_Matrix adj_m  =  RG_MATRIX_M(adj);
+	GrB_Matrix adj_tm =  RG_MATRIX_TM(adj);
+
+	UNUSED(info);
+
+	// rows represent source nodes, columns represent destination nodes
+
+	//--------------------------------------------------------------------------
+	// update adjacency matrix
+	//--------------------------------------------------------------------------
+
+	info = GrB_Matrix_setElement_BOOL(adj_m, true, src, dest);
+	ASSERT(info == GrB_SUCCESS);
+	info = GrB_Matrix_setElement_BOOL(adj_tm, true, dest, src);
+	ASSERT(info == GrB_SUCCESS);
+
+	//--------------------------------------------------------------------------
+	// update relationship matrix
+	//--------------------------------------------------------------------------
+
+	info = GrB_Matrix_setElement_UINT64(m, (uint64_t)SET_MSB(edge_ids), src, dest);
+	ASSERT(info == GrB_SUCCESS);
+	info = GrB_Matrix_setElement_BOOL(tm, true, dest, src);
+	ASSERT(info == GrB_SUCCESS);
+
+	// an edge of type r has just been created, update statistics
+	GraphStatistics_IncEdgeCount(&g->stats, r, array_len(edge_ids));
+}
+
 
 // set a given edge in the graph - Used for deserialization of graph
 void Serializer_Graph_SetEdge
@@ -148,8 +192,6 @@ void Serializer_Graph_SetEdge
 	int r,
 	Edge *e
 ) {
-	GrB_Info info;
-
 	Entity *en = DataBlock_AllocateItemOutOfOrder(g->edges, edge_id);
 	en->prop_count = 0;
 	en->properties = NULL;
@@ -162,7 +204,7 @@ void Serializer_Graph_SetEdge
 	if(multi_edge) {
 		Graph_FormConnection(g, src, dest, edge_id, r);
 	} else {
-		_OptimizedSingleEdgeFormConnection(g, src, dest, edge_id, r);
+		FormSingleConnection(g, src, dest, edge_id, r);
 	}
 }
 
@@ -181,4 +223,3 @@ uint64_t *Serializer_Graph_GetDeletedEdgesList
 ) {
 	return g->edges->deletedIdx;
 }
-
