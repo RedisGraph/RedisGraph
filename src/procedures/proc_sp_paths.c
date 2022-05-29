@@ -425,30 +425,26 @@ static void SPpaths_next
 	WeightedPath *p,
 	double max_weight
 ) {
-	// As long as path is not empty OR there are neighbors to traverse.
+	// as long as path is not empty OR there are neighbors to traverse.
 	while(Path_NodeCount(ctx->path) || _SinglePairCtx_LevelNotEmpty(ctx, 0)) {
 		uint32_t depth = Path_NodeCount(ctx->path);
 
-		// Can we advance?
+		// can we advance?
 		if(_SinglePairCtx_LevelNotEmpty(ctx, depth)) {
-			// Get a new frontier.
+			// get a new frontier.
 			LevelConnection frontierConnection = array_pop(ctx->levels[depth]);
 			Node frontierNode = frontierConnection.node;
 
-			/* See if frontier is already on path,
-			 * it is OK for a path to contain an entity twice,
-			 * such as in the case of a cycle, but in such case we
-			 * won't expand frontier.
-			 * i.e. closing a cycle and continuing traversal. */
 			bool frontierAlreadyOnPath = Path_ContainsNode(ctx->path, &frontierNode);
 
+			// don't allow cycles
 			if(frontierAlreadyOnPath) continue;
 
-			// Add frontier to path.
+			// add frontier to path.
 			Path_AppendNode(ctx->path, frontierNode);
 
-			/* If depth is 0 this is the source node, there is no leading edge to it.
-			 * For depth > 0 for each frontier node, there is a leading edge. */
+			// if depth is 0 this is the source node, there is no leading edge to it.
+			// For depth > 0 for each frontier node, there is a leading edge.
 			if(depth > 0) {
 				SIValue c = _get_value_or_defualt((GraphEntity *)&frontierConnection.edge, ctx->cost_prop, SI_LongVal(1));
 				SIValue w = _get_value_or_defualt((GraphEntity *)&frontierConnection.edge, ctx->weight_prop, SI_LongVal(1));
@@ -462,16 +458,16 @@ static void SPpaths_next
 				}
 			}
 
-			// Update path depth.
+			// update path depth.
 			depth++;
 
-			/* Introduce neighbors only if path depth < maximum path length.
-			 * and frontier wasn't already expanded. */
+			// introduce neighbors only if path depth < maximum path length.
+			// and frontier wasn't already expanded.
 			if(depth < ctx->maxLen) {
 				addNeighbors(ctx, &frontierConnection, depth, ctx->dir);
 			}
 
-			// See if we can return path.
+			// see if we can return path.
 			if(depth >= ctx->minLen && depth <= ctx->maxLen) {
 				Node dst = Path_Head(ctx->path);
 				if(ENTITY_GET_ID(ctx->dst) != ENTITY_GET_ID(&dst)) {
@@ -481,7 +477,7 @@ static void SPpaths_next
 				return;
 			}
 		} else {
-			// No way to advance, backtrack.
+			// no way to advance, backtrack.
 			Path_PopNode(ctx->path);
 			if(Path_EdgeCount(ctx->path)) {
 				Edge e = Path_PopEdge(ctx->path);
@@ -493,7 +489,7 @@ static void SPpaths_next
 		}
 	}
 
-	// Couldn't find a path.
+	// couldn't find a path.
 	p->path = NULL;
 	return;
 }
