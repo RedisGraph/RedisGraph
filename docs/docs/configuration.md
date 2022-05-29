@@ -111,6 +111,20 @@ Conversely, increasing it might improve performance for write-heavy workloads bu
 
 If the passed argument was not a power of 2, it will be rounded to the next-greatest power of 2 to improve memory alignment.
 
+### Default
+
+`NODE_CREATION_BUFFER` is 16,384 by default.
+
+### Minimum
+
+The minimum value for `NODE_CREATION_BUFFER` is 128. Values lower than this will be accepted as arguments, but will internally be converted to 128.
+
+### Example
+
+```
+$ redis-server --loadmodule ./redisgraph.so NODE_CREATION_BUFFER 200
+```
+
 ---
 
 ## MAX_QUEUED_QUERIES
@@ -129,20 +143,6 @@ $ redis-server --loadmodule ./redisgraph.so MAX_QUEUED_QUERIES 500
 $ redis-cli GRAPH.CONFIG SET MAX_QUEUED_QUERIES 500
 ```
 
-### Default
-
-`NODE_CREATION_BUFFER` is 16,384 by default.
-
-### Minimum
-
-The minimum value for `NODE_CREATION_BUFFER` is 128. Values lower than this will be accepted as arguments, but will internally be converted to 128.
-
-### Example
-
-```
-$ redis-server --loadmodule ./redisgraph.so NODE_CREATION_BUFFER 200
-```
-
 ---
 
 ## TIMEOUT
@@ -158,8 +158,6 @@ Timeout is a flag that specifies the maximum runtime for read queries in millise
 ```
 $ redis-server --loadmodule ./redisgraph.so TIMEOUT 1000
 ```
-
----
 
 ---
 
