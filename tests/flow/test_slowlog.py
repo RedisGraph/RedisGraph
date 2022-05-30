@@ -48,7 +48,8 @@ class testSlowLog(FlowTestsBase):
 
         # get redis slowlog
         slowlog = redis_con.slowlog_get()
+        slowlog_commands = [log["command"] for log in slowlog]
 
         # validate the command added to redis slowlog
-        self.env.assertEquals(len(slowlog), 1)
-        self.env.assertEquals(slowlog[0]["command"], b"GRAPH.QUERY slowlog_test MATCH (n), (m) WHERE n.v > 0 AND n.v < 500 SET m.v = rand() WITH n, m RETURN SUM(n.v + m.v) --compact")
+        self.env.assertGreater(len(slowlog), 0)
+        self.env.assertContains(b"GRAPH.QUERY slowlog_test MATCH (n), (m) WHERE n.v > 0 AND n.v < 500 SET m.v = rand() WITH n, m RETURN SUM(n.v + m.v) --compact", slowlog_commands)
