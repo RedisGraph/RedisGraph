@@ -51,6 +51,7 @@ GRAPH.CONFIG GET *
 | [TIMEOUT](#timeout)                           | :white_check_mark: | :white_check_mark:   |
 | [RESULTSET_SIZE](#resultset_size)             | :white_check_mark: | :white_check_mark:   |
 | [QUERY_MEM_CAPACITY](#query_mem_capacity)     | :white_check_mark: | :white_check_mark:   |
+| [VKEY_MAX_ENTITY_COUNT](#vkey_max_entity_count)     | :white_check_mark: | :white_check_mark:   |
 
 
 ## THREAD_COUNT
