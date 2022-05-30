@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -71,6 +71,6 @@ void _reduceFilters(OpBase *op) {
 }
 
 void reduceFilters(ExecutionPlan *plan) {
-	return _reduceFilters(plan->root);
+	_reduceFilters(plan->root);
 }
 

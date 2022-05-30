@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -13,7 +13,7 @@ static GraphContext *_GetOrCreateGraphContext
 	GraphContext *gc = GraphContext_GetRegisteredGraphContext(graph_name);
 	if(!gc) {
 		// New graph is being decoded. Inform the module and create new graph context.
-		gc = GraphContext_New(graph_name, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
+		gc = GraphContext_New(graph_name);
 		// While loading the graph, minimize matrix realloc and synchronization calls.
 		Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_RESIZE);
 	}
@@ -125,7 +125,7 @@ GraphContext *RdbLoadGraphContext_v10(RedisModuleIO *rdb) {
 	 * */
 
 	GraphContext *gc = _DecodeHeader(rdb);
-		
+
 	// load the key schema
 	PayloadInfo *key_schema = _RdbLoadKeySchema(rdb);
 
@@ -189,10 +189,13 @@ GraphContext *RdbLoadGraphContext_v10(RedisModuleIO *rdb) {
 	if(GraphDecodeContext_Finished(gc->decoding_context)) {
 		Graph *g = gc->g;
 
+		// set the node label matrix
+		Serializer_Graph_SetNodeLabels(g);
+
 		// revert to default synchronization behavior
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 		Graph_ApplyAllPending(g, true);
-		
+
 		uint label_count = Graph_LabelTypeCount(g);
 		// update the node statistics
 		for(uint i = 0; i < label_count; i++) {

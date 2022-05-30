@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -50,7 +50,9 @@ static AST *_ExecutionCtx_ParseAST(const char *query_string,
 								   cypher_parse_result_t *params_parse_result) {
 	cypher_parse_result_t *query_parse_result = parse_query(query_string);
 	// If no output from the parser, the query is not valid.
-	if(!query_parse_result) {
+	if(ErrorCtx_EncounteredError() || query_parse_result == NULL) {
+		parse_result_free(query_parse_result);
+		query_parse_result = NULL;
 		parse_result_free(params_parse_result);
 		return NULL;
 	}
@@ -75,6 +77,16 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 
 	// Parameter parsing failed, return NULL.
 	if(params_parse_result == NULL) return NULL;
+
+	// query included only params e.g. 'cypher a=1' was provided
+	if(strlen(query_string) == 0) {
+		parse_result_free(params_parse_result);
+		ErrorCtx_SetError("Error: empty query.");
+		return NULL;
+	}
+	// update query context with the query without params
+	QueryCtx *ctx = QueryCtx_GetQueryCtx();
+	ctx->query_data.query_no_params = query_string;
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Cache *cache = GraphContext_GetCache(gc);

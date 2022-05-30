@@ -1,17 +1,15 @@
-import redis
-from RLTest import Env
-from base import FlowTestsBase
-from redisgraph import Graph, Node, Edge
+from common import *
 
 graph = None
 GRAPH_ID = "multi_label"
+
 
 class testMultiLabel():
     def __init__(self):
         global graph
         self.env = Env(decodeResponses=True)
         self.redis_con = self.env.getConnection()
-        graph = Graph(GRAPH_ID, self.redis_con)
+        graph = Graph(self.redis_con, GRAPH_ID)
         self.populate_graph()
 
     def populate_graph(self):
@@ -209,7 +207,7 @@ class testMultiLabel():
         self.env.assertEquals(query_result.result_set, expected_result)
 
     def test09_test_query_graph_populate_nodes_labels(self):
-        graph = Graph('G', self.redis_con)
+        graph = Graph(self.redis_con, 'G')
 
         # create node with label L1 for the test in the next query
         # we need to make sure we replace the starting point of the traversal
@@ -231,3 +229,33 @@ class testMultiLabel():
         self.env.assertEquals(query_result.nodes_created, 2)
         self.env.assertEquals(query_result.relationships_created, 2)
 
+    def test10_test_delete_label(self):
+        graph = Graph(self.redis_con, 'delete_multi_label')
+
+        query = """CREATE (a:L1) RETURN labels(a)"""
+        query_result = graph.query(query)
+        self.env.assertEquals(query_result.labels_added, 1)
+        self.env.assertEquals(query_result.nodes_created, 1)
+        self.env.assertEquals(query_result.result_set[0][0], ["L1"])
+
+        query = """CREATE (a:L2) RETURN labels(a)"""
+        query_result = graph.query(query)
+        self.env.assertEquals(query_result.labels_added, 1)
+        self.env.assertEquals(query_result.nodes_created, 1)
+        self.env.assertEquals(query_result.result_set[0][0], ["L2"])
+
+        query = """CREATE (a:L3) RETURN labels(a)"""
+        query_result = graph.query(query)
+        self.env.assertEquals(query_result.labels_added, 1)
+        self.env.assertEquals(query_result.nodes_created, 1)
+        self.env.assertEquals(query_result.result_set[0][0], ["L3"])
+
+        query = """MATCH (a) DELETE a"""
+        query_result = graph.query(query)
+        self.env.assertEquals(query_result.nodes_deleted, 3)
+
+        query = """CREATE (a:L4) RETURN labels(a)"""
+        query_result = graph.query(query)
+        self.env.assertEquals(query_result.labels_added, 1)
+        self.env.assertEquals(query_result.nodes_created, 1)
+        self.env.assertEquals(query_result.result_set[0][0], ["L4"])

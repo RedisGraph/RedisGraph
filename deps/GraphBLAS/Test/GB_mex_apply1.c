@@ -2,7 +2,7 @@
 // GB_mex_apply1: C<Mask> = accum(C,op(x,A)) or op(x,A')
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -139,79 +139,79 @@ GrB_Info apply1 (bool is_matrix)
         {
             bool x = *((bool *) (scalar->x)) ;  // OK
             info = GrB_Vector_apply_BinaryOp1st_BOOL_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GrB_INT8)
         {
             int8_t x = *((int8_t *) (scalar->x)) ;  // OK
             info = GrB_Vector_apply_BinaryOp1st_INT8_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GrB_INT16)
         {
             int16_t x = *((int16_t *) (scalar->x)) ;    // OK
             info = GrB_Vector_apply_BinaryOp1st_INT16_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GrB_INT32)
         {
             int32_t x = *((int32_t *) (scalar->x)) ;    // OK
             info = GrB_Vector_apply_BinaryOp1st_INT32_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GrB_INT64)
         {
             int64_t x = *((int64_t *) (scalar->x)) ;    // OK
             info = GrB_Vector_apply_BinaryOp1st_INT64_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GrB_UINT8)
         {
             uint8_t x = *((uint8_t *) (scalar->x)) ;    // OK
             info = GrB_Vector_apply_BinaryOp1st_UINT8_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GrB_UINT16)
         {
             uint16_t x = *((uint16_t *) (scalar->x)) ;  // OK
             info = GrB_Vector_apply_BinaryOp1st_UINT16_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GrB_UINT32)
         {
             uint32_t x = *((uint32_t *) (scalar->x)) ;  // OK
             info = GrB_Vector_apply_BinaryOp1st_UINT32_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GrB_UINT64)
         {
             uint64_t x = *((uint64_t *) (scalar->x)) ;  // OK
             info = GrB_Vector_apply_BinaryOp1st_UINT64_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GrB_FP32)
         {
             float x = *((float *) (scalar->x)) ;    // OK
             info = GrB_Vector_apply_BinaryOp1st_FP32_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GrB_FP64)
         {
             double x = *((double *) (scalar->x)) ;  // OK
             info = GrB_Vector_apply_BinaryOp1st_FP64_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GxB_FC32)
         {
             GxB_FC32_t x = *((GxB_FC32_t *) (scalar->x)) ;  // OK
             info = GxB_Vector_apply_BinaryOp1st_FC32_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GxB_FC64)
         {
             GxB_FC64_t x = *((GxB_FC64_t *) (scalar->x)) ;  // OK
             info = GxB_Vector_apply_BinaryOp1st_FC64_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
     }
     else if (!is_matrix && how == 0)

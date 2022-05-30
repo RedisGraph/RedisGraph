@@ -1,6 +1,7 @@
 #!/bin/bash
 
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+PROGNAME="${BASH_SOURCE[0]}"
+HERE="$(cd "$(dirname "$PROGNAME")" &>/dev/null && pwd)"
 ROOT=$(cd $HERE/.. && pwd)
 export READIES=$ROOT/deps/readies
 . $READIES/shibumi/defs
@@ -49,8 +50,6 @@ INSTALL_DIR=$(cd $INSTALL_DIR && pwd)
 mkdir -p $BINDIR
 BINDIR=$(cd $BINDIR && pwd)
 
-. $READIES/bin/enable-utf8
-
 export ARCH=$($READIES/bin/platform --arch)
 [[ $ARCH == x64 ]] && ARCH=x86_64
 
@@ -64,6 +63,8 @@ export OSNICK=$($READIES/bin/platform --osnick)
 [[ $OSNICK == focal ]]   && OSNICK=ubuntu20.04
 [[ $OSNICK == centos7 ]] && OSNICK=rhel7
 [[ $OSNICK == centos8 ]] && OSNICK=rhel8
+[[ $OSNICK == ol8 ]]     && OSNICK=rhel8
+[[ $OSNICK == rocky8 ]]  && OSNICK=rhel8
 
 export PRODUCT=redisgraph
 export PRODUCT_LIB=$PRODUCT.so

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -100,6 +100,9 @@ static Record UpdateConsume(OpBase *opBase) {
 	// release lock
 	QueryCtx_UnlockCommit(opBase);
 
+	array_clear(op->node_updates);
+	array_clear(op->edge_updates);
+
 	op->updates_committed = true;
 
 	return _handoff(op);
@@ -127,11 +130,19 @@ static void UpdateFree(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 
 	if(op->node_updates) {
+		uint update_count = array_len(op->node_updates);
+		for (uint i = 0; i < update_count; i++) {
+			SIValue_Free(op->node_updates[i].new_value);
+		}
 		array_free(op->node_updates);
 		op->node_updates = NULL;
 	}
 
 	if(op->edge_updates) {
+		uint update_count = array_len(op->edge_updates);
+		for (uint i = 0; i < update_count; i++) {
+			SIValue_Free(op->edge_updates[i].new_value);
+		}
 		array_free(op->edge_updates);
 		op->edge_updates = NULL;
 	}

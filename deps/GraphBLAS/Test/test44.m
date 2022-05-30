@@ -1,7 +1,7 @@
 function test44(longtests)
 %TEST44 test qsort
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\ntest44\n------------------------------------- qsort tests\n') ;

@@ -1,7 +1,4 @@
-from RLTest import Env
-from base import FlowTestsBase
-from redis import ResponseError
-from redisgraph import Graph, Node, Edge
+from common import *
 from pathos.pools import ProcessPool as Pool
 from pathos.helpers import mp as pathos_multiprocess
 
@@ -9,10 +6,11 @@ GRAPH_ID = "G"                      # Graph identifier.
 CLIENT_COUNT = 16                   # Number of concurrent connections.
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
 
+
 def thread_run_query(query, barrier):
     env = Env(decodeResponses=True)
     conn = env.getConnection()
-    graph = Graph(GRAPH_ID, conn)
+    graph = Graph(conn, GRAPH_ID)
 
     if barrier is not None:
         barrier.wait()
@@ -28,7 +26,7 @@ def thread_run_query(query, barrier):
 def delete_graph(graph_id):
     env = Env(decodeResponses=True)
     conn = env.getConnection()
-    graph = Graph(graph_id, conn)
+    graph = Graph(conn, graph_id)
 
     # Try to delete graph.
     try:
@@ -56,7 +54,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
             self.env.skip() # valgrind is not working correctly with multi processing
 
         self.conn = self.env.getConnection()
-        self.graph = Graph(GRAPH_ID, self.conn)
+        self.graph = Graph(self.conn, GRAPH_ID)
         self.populate_graph()
 
     def populate_graph(self):
@@ -265,7 +263,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
 
     def test_09_concurrent_multiple_readers_after_big_write(self):
         # Test issue #890
-        self.graph = Graph(GRAPH_ID, self.conn)
+        self.graph = Graph(self.conn, GRAPH_ID)
         self.graph.query("""UNWIND(range(0,999)) as x CREATE()-[:R]->()""")
         read_query = """MATCH (n)-[r:R]->(m) RETURN count(r) AS res UNION RETURN 0 AS res"""
 
@@ -277,3 +275,59 @@ class testConcurrentQueryFlow(FlowTestsBase):
                 self.env.assertEquals(0, result)
             else:
                 self.env.assertEquals(1000, result["result_set"][0][0])
+
+    def test_10_write_starvation(self):
+        # make sure write query do not starve
+        # when issuing a large number of read queries
+        # alongside a single write query
+        # we dont want the write query to have to wait for
+        # too long, consider the following sequence:
+        # R, W, R, R, R, R, R, R, R...
+        # if write is starved our write query might have to wait
+        # for all queued read queries to complete while holding
+        # Redis global lock, this will hurt performance
+        #
+        # this test issues a similar sequence of queries and
+        # validates that the write query wasn't delayed too much
+
+        self.graph = Graph(self.conn, GRAPH_ID)
+        pool = Pool(nodes=CLIENT_COUNT)
+
+        Rq = "UNWIND range(0, 10000) AS x WITH x WHERE x = 9999 RETURN 'R', timestamp()"
+        Wq = "UNWIND range(0, 1000) AS x WITH x WHERE x = 27 CREATE ({v:1}) RETURN 'W', timestamp()"
+        Slowq = "UNWIND range(0, 100000) AS x WITH x WHERE (x % 73) = 0 RETURN count(1)"
+
+        # issue a number of slow queries, this will give us time to fill up
+        # RedisGraph internal threadpool queue
+        queries = [Slowq] * CLIENT_COUNT * 5
+        nulls = [None] * CLIENT_COUNT * 5
+
+        # issue queries asynchronously
+        pool.imap(thread_run_query, queries, nulls)
+
+        # create a long sequence of read queries
+        queries = [Rq] * CLIENT_COUNT * 10
+        nulls = [None] * CLIENT_COUNT * 10
+
+        # inject a single write query close to the begining on the sequence
+        queries[CLIENT_COUNT] = Wq
+
+        # invoke queries
+        # execute queries in parallel
+        results = pool.map(thread_run_query, queries, nulls)
+
+        # count how many queries completed before the write query
+        count = 0
+        write_ts = results[CLIENT_COUNT]["result_set"][0][1]
+        for result in results:
+            row = result["result_set"][0]
+            ts = row[1]
+            if ts < write_ts:
+                count += 1
+
+        # make sure write query wasn't starved
+        self.env.assertLessEqual(count, len(queries) * 0.3)
+
+        # delete the key
+        self.conn.delete(GRAPH_ID)
+

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -61,11 +61,11 @@ static int _GraphContextType_AuxLoad(RedisModuleIO *rdb, int encver, int when) {
 	if(when == REDISMODULE_AUX_BEFORE_RDB) ModuleEventHandler_AUXBeforeKeyspaceEvent();
 	else ModuleEventHandler_AUXAfterKeyspaceEvent();
 	return REDISMODULE_OK;
-};
+}
 
 static void _GraphContextType_Free(void *value) {
 	GraphContext *gc = value;
-	GraphContext_Delete(gc);
+	GraphContext_DecreaseRefCount(gc);
 }
 
 int GraphContextType_Register(RedisModuleCtx *ctx) {

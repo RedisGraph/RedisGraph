@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -196,10 +196,10 @@ static void _QueryCtx_UnlockCommit(QueryCtx *ctx) {
 	GraphContext *gc = ctx->gc;
 	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
 
-	if(ResultSetStat_IndicateModification(ctx->internal_exec_ctx.result_set->stats)) {
+	if(ResultSetStat_IndicateModification(&ctx->internal_exec_ctx.result_set->stats)) {
 		// Replicate only in case of changes.
-		RedisModule_Replicate(redis_ctx, ctx->global_exec_ctx.command_name, "cc!", gc->graph_name,
-							  ctx->query_data.query);
+		RedisModule_Replicate(redis_ctx, ctx->global_exec_ctx.command_name,
+				"cc!", gc->graph_name, ctx->query_data.query);
 	}
 
 	ctx->internal_exec_ctx.locked_for_commit = false;

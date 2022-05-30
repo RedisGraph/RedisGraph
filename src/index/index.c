@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -18,36 +18,6 @@
 extern void populateEdgeIndex(Index *idx); 
 extern void populateNodeIndex(Index *idx);
 
-// TODO: Remove this comment when https://github.com/RediSearch/RediSearch/issues/1100 is closed
-// static int _getNodeAttribute(void *ctx, const char *fieldName, const void *id, char **strVal,
-// 							 double *doubleVal) {
-// 	Node n = GE_NEW_NODE();
-// 	NodeID nId = *(NodeID *)id;
-// 	GraphContext *gc = (GraphContext *)ctx;
-// 	Graph *g = gc->g;
-
-// 	int node_found = Graph_GetNode(g, nId, &n);
-// 	UNUSED(node_found);
-// 	ASSERT(node_found != 0);
-
-// 	Attribute_ID attrId = GraphContext_GetAttributeID(gc, fieldName);
-// 	SIValue *v = GraphEntity_GetProperty((GraphEntity *)&n, attrId);
-// 	int ret;
-// 	if(v == PROPERTY_NOTFOUND) {
-// 		ret = RSVALTYPE_NOTFOUND;
-// 	} else if(v->type & T_STRING) {
-// 		*strVal = v->stringval;
-// 		ret = RSVALTYPE_STRING;
-// 	} else if(v->type & SI_NUMERIC) {
-// 		*doubleVal = SI_GET_NUMERIC(*v);
-// 		ret = RSVALTYPE_DOUBLE;
-// 	} else {
-// 		// Skiping booleans.
-// 		ret = RSVALTYPE_NOTFOUND;
-// 	}
-// 	return ret;
-// }
-
 RSDoc *Index_IndexGraphEntity
 (
 	Index *idx,
@@ -63,7 +33,7 @@ RSDoc *Index_IndexGraphEntity
 	ASSERT(key_len          >   0);
 
 	double      score            = 1;     // default score
-	const char  *field_name      = NULL;  // name of current indexed field
+	IndexField  *field           = NULL;  // current indexed field
 	SIValue     *v               = NULL;  // current indexed value
 	RSIndex     *rsIdx           = idx->idx;
 	EntityID    id               = ENTITY_GET_ID(e);
@@ -75,14 +45,16 @@ RSDoc *Index_IndexGraphEntity
 	uint none_indexable_fields_count = 0; // number of none indexed fields
 	const char *none_indexable_fields[field_count]; // none indexed fields
 
-	// create a document out of node
-	RSDoc *doc = RediSearch_CreateDocument2(key, key_len, rsIdx, score, idx->language);
+	// create an empty document
+	RSDoc *doc = RediSearch_CreateDocument2(key, key_len, rsIdx, score,
+			idx->language);
 
 	// add document field for each indexed property
 	if(idx->type == IDX_FULLTEXT) {
 		for(uint i = 0; i < field_count; i++) {
-			field_name = idx->fields[i];
-			v = GraphEntity_GetProperty(e, idx->fields_ids[i]);
+			field = idx->fields + i;
+			const char *field_name = field->name;
+			v = GraphEntity_GetProperty(e, field->id);
 			if(v == PROPERTY_NOTFOUND) continue;
 
 			SIType t = SI_TYPE(*v);
@@ -96,8 +68,9 @@ RSDoc *Index_IndexGraphEntity
 		}
 	} else {
 		for(uint i = 0; i < field_count; i++) {
-			field_name = idx->fields[i];
-			v = GraphEntity_GetProperty(e, idx->fields_ids[i]);
+			field = idx->fields + i;
+			const char *field_name = field->name;
+			v = GraphEntity_GetProperty(e, field->id);
 			if(v == PROPERTY_NOTFOUND) continue;
 
 			SIType t = SI_TYPE(*v);
@@ -152,6 +125,37 @@ RSDoc *Index_IndexGraphEntity
 	return doc;
 }
 
+void IndexField_New
+(
+	IndexField *field,
+	const char *name,
+	double weight,
+	bool nostem,
+	const char *phonetic
+) {
+	ASSERT(name      !=  NULL);
+	ASSERT(field     !=  NULL);
+	ASSERT(phonetic  !=  NULL);
+
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+
+	field->id       = GraphContext_FindOrAddAttribute(gc, name);
+	field->name     = rm_strdup(name);
+	field->weight   = weight;
+	field->nostem   = nostem;
+	field->phonetic = rm_strdup(phonetic);
+}
+
+void IndexField_Free
+(
+	IndexField *field
+) {
+	ASSERT(field != NULL);
+
+	rm_free(field->name);
+	rm_free(field->phonetic);
+}
+
 // create a new index
 Index *Index_New
 (
@@ -165,9 +169,8 @@ Index *Index_New
 	idx->idx           =  NULL;
 	idx->type          =  type;
 	idx->label         =  rm_strdup(label);
-	idx->fields        =  array_new(char *, 0);
+	idx->fields        =  array_new(IndexField, 1);
 	idx->label_id      =  label_id;
-	idx->fields_ids    =  array_new(Attribute_ID, 0);
 	idx->language      =  NULL;
 	idx->stopwords     =  NULL;
 	idx->entity_type   =  entity_type;
@@ -179,16 +182,17 @@ Index *Index_New
 void Index_AddField
 (
 	Index *idx,
-	const char *field
+	IndexField *field
 ) {
 	ASSERT(idx != NULL);
+	ASSERT(field != NULL);
 
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Attribute_ID fieldID = GraphContext_FindOrAddAttribute(gc, field);
-	if(Index_ContainsAttribute(idx, fieldID)) return;
+	if(Index_ContainsAttribute(idx, field->id)) {
+		IndexField_Free(field);
+		return;
+	}
 
-	array_append(idx->fields, rm_strdup(field));
-	array_append(idx->fields_ids, fieldID);
+	array_append(idx->fields, *field);
 }
 
 // removes fields from index
@@ -198,18 +202,19 @@ void Index_RemoveField
 	const char *field
 ) {
 	ASSERT(idx != NULL);
+	ASSERT(field != NULL);
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
 	ASSERT(attribute_id != ATTRIBUTE_NOTFOUND);
-	if(!Index_ContainsAttribute(idx, attribute_id)) return;
 
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
-		if(idx->fields_ids[i] == attribute_id) {
-			rm_free(idx->fields[i]);
+		IndexField *field = idx->fields + i;
+		if(field->id == attribute_id) {
+			// free field
+			IndexField_Free(field);
 			array_del_fast(idx->fields, i);
-			array_del_fast(idx->fields_ids, i);
 			break;
 		}
 	}
@@ -230,7 +235,7 @@ void Index_Construct
 
 	RSIndex *rsIdx = NULL;
 	RSIndexOptions *idx_options = RediSearch_CreateIndexOptions();
-	idx_options->lang = RSLanguage_Find(idx->language);
+	RediSearch_IndexOptionsSetLanguage(idx_options, idx->language);
 	// TODO: Remove this comment when https://github.com/RediSearch/RediSearch/issues/1100 is closed
 	// RediSearch_IndexOptionsSetGetValueCallback(idx_options, _getNodeAttribute, gc);
 
@@ -250,14 +255,25 @@ void Index_Construct
 	uint fields_count = array_len(idx->fields);
 	if(idx->type == IDX_FULLTEXT) {
 		for(uint i = 0; i < fields_count; i++) {
+			IndexField *field = idx->fields + i;
 			// introduce text field
-			RediSearch_CreateTextField(rsIdx, idx->fields[i]);
+			unsigned options = RSFLDOPT_NONE;
+			if(field->nostem) options |= RSFLDOPT_TXTNOSTEM;
+
+			if(strcmp(field->phonetic, INDEX_FIELD_DEFAULT_PHONETIC) != 0) {
+				options |= RSFLDOPT_TXTPHONETIC;
+			}
+
+			RSFieldID fieldID = RediSearch_CreateField(rsIdx, field->name,
+					RSFLDTYPE_FULLTEXT, options);
+			RediSearch_TextFieldSetWeight(rsIdx, fieldID, field->weight);
 		}
 	} else {
 		for(uint i = 0; i < fields_count; i++) {
+			IndexField *field = idx->fields+i;
 			// introduce both text, numeric and geo fields
 			unsigned types = RSFLDTYPE_NUMERIC | RSFLDTYPE_GEO | RSFLDTYPE_TAG;
-			RSFieldID fieldID = RediSearch_CreateField(rsIdx, idx->fields[i],
+			RSFieldID fieldID = RediSearch_CreateField(rsIdx, field->name,
 					types, RSFLDOPT_NONE);
 
 			RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
@@ -303,13 +319,13 @@ uint Index_FieldsCount
 }
 
 // returns indexed fields
-const char **Index_GetFields
+const IndexField *Index_GetFields
 (
 	const Index *idx
 ) {
 	ASSERT(idx != NULL);
 
-	return (const char **)idx->fields;
+	return (const IndexField *)idx->fields;
 }
 
 bool Index_ContainsAttribute
@@ -323,7 +339,8 @@ bool Index_ContainsAttribute
 	
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
-		if(idx->fields_ids[i] == attribute_id) return true;
+		IndexField *field = idx->fields + i;
+		if(field->id == attribute_id) return true;
 	}
 
 	return false;
@@ -392,10 +409,9 @@ void Index_Free(Index *idx) {
 
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
-		rm_free(idx->fields[i]);
+		IndexField_Free(idx->fields + i);
 	}
 	array_free(idx->fields);
-	array_free(idx->fields_ids);
 
 	if(idx->stopwords) {
 		uint stopwords_count = array_len(idx->stopwords);

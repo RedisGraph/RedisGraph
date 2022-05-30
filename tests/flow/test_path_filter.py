@@ -1,19 +1,14 @@
+from common import *
 import re
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
 from collections import Counter
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../..')
 from demo import QueryInfo
 
 GRAPH_ID = "G"
 redis_con = None
 redis_graph = None
+
 
 class testPathFilter(FlowTestsBase):
     def __init__(self):
@@ -23,7 +18,7 @@ class testPathFilter(FlowTestsBase):
 
     def setUp(self):
         global redis_graph
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
         self.env.flush()
 
     def test00_simple_path_filter(self):

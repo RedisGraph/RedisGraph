@@ -30,7 +30,6 @@
 
 Feature: ReturnSkipLimit1 - Skip
 
-  @skip
   Scenario: [1] Start the result from the second row
     Given an empty graph
     And having executed:
@@ -55,7 +54,6 @@ Feature: ReturnSkipLimit1 - Skip
       | ({name: 'E'}) |
     And no side effects
 
-  @skip
   Scenario: [2] Start the result from the second row by param
     Given an empty graph
     And having executed:
@@ -102,7 +100,6 @@ Feature: ReturnSkipLimit1 - Skip
       | true     |
     And no side effects
 
-  @skip
   Scenario: [4] Accept skip zero
     Given any graph
     When executing query:
@@ -116,7 +113,6 @@ Feature: ReturnSkipLimit1 - Skip
     And no side effects
 
   @NegativeTest
-  @skip
   Scenario: [5] SKIP with an expression that depends on variables should fail
     Given any graph
     When executing query:
@@ -145,7 +141,6 @@ Feature: ReturnSkipLimit1 - Skip
     Then a SyntaxError should be raised at runtime: NegativeIntegerArgument
 
   @NegativeTest
-  @skip
   Scenario: [7] Negative SKIP should fail
     Given any graph
     And having executed:
@@ -198,7 +193,6 @@ Feature: ReturnSkipLimit1 - Skip
     Then a SyntaxError should be raised at compile time: InvalidArgumentType
 
   @NegativeTest
-  @skip
   Scenario: [10] Fail when using non-constants in SKIP
     Given any graph
     When executing query:
@@ -210,7 +204,6 @@ Feature: ReturnSkipLimit1 - Skip
     Then a SyntaxError should be raised at compile time: NonConstantExpression
 
   @NegativeTest
-  @skip
   Scenario: [11] Fail when using negative value in SKIP
     Given any graph
     When executing query:

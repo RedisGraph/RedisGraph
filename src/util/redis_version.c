@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -27,14 +27,14 @@ Redis_Version RG_GetRedisVersion() {
 		const char *server_version;
 		RedisModuleServerInfoData *info = RedisModule_GetServerInfo(ctx, "Server");
 		server_version = RedisModule_ServerInfoGetFieldC(info, "redis_version");
-		sscanf(server_version, "%d.%d.%d", &_redis_version.major, &_redis_version.minor,
+		sscanf(server_version, "%u.%u.%u", &_redis_version.major, &_redis_version.minor,
 			   &_redis_version.patch);
 		RedisModule_FreeServerInfo(ctx, info);
 	} else {
 		RedisModuleCallReply *reply = RedisModule_Call(ctx, "info", "c", "server");
 		size_t len;
 		const char *replyStr = RedisModule_CallReplyStringPtr(reply, &len);
-		sscanf(replyStr, "# Server\nredis_version:%d.%d.%d", &_redis_version.major, &_redis_version.minor,
+		sscanf(replyStr, "# Server\nredis_version:%u.%u.%u", &_redis_version.major, &_redis_version.minor,
 			   &_redis_version.patch);
 		RedisModule_FreeCallReply(reply);
 	}

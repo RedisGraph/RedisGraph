@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -7,6 +7,8 @@
 #pragma once
 
 #include <stdbool.h>
+#include "../redismodule.h"
+
 #define STAT_NOT_SET -1
 
 typedef struct {
@@ -22,5 +24,21 @@ typedef struct {
 } ResultSetStatistics;
 
 // Checks to see if resultset-statistics indicate that a modification was made
-bool ResultSetStat_IndicateModification(ResultSetStatistics stats);
+bool ResultSetStat_IndicateModification
+(
+	const ResultSetStatistics *stats // resultset statistics to inquery
+);
+
+// initialize resultset statistics
+void ResultSetStat_init
+(
+	ResultSetStatistics *stats  // resultset statistics to initialize
+);
+
+// emit resultset statistics
+void ResultSetStat_emit
+(
+	RedisModuleCtx *ctx,              // redis module context
+	const ResultSetStatistics *stats  // statistics to emit
+);
 

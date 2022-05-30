@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -49,9 +49,19 @@ typedef struct {
 // Creates and initializes a graph context struct.
 GraphContext *GraphContext_New
 (
-	const char *graph_name,
-	size_t node_cap,
-	size_t edge_cap
+	const char *graph_name
+);
+
+// increase graph context ref count by 1
+void GraphContext_IncreaseRefCount
+(
+	GraphContext *gc
+);
+
+// decrease graph context ref count by 1
+void GraphContext_DecreaseRefCount
+(
+	GraphContext *gc
 );
 
 // retrive the graph context according to the graph name
@@ -64,22 +74,10 @@ GraphContext *GraphContext_Retrieve
 	bool shouldCreate
 );
 
-// graphContext_Retrieve counterpart, releases a retrieved GraphContext
-void GraphContext_Release
-(
-	GraphContext *gc
-);
-
 // mark graph key as "dirty" for Redis to pick up on
 void GraphContext_MarkWriter
 (
 	RedisModuleCtx *ctx,
-	GraphContext *gc
-);
-
-// mark graph as deleted, reduce graph reference count by 1
-void GraphContext_Delete
-(
 	GraphContext *gc
 );
 
@@ -209,15 +207,27 @@ Index *GraphContext_GetIndex
 	SchemaType schema_type
 );
 
-// create an index for the given label and attribute
-int GraphContext_AddIndex
+// create an exact match index for the given label and attribute
+int GraphContext_AddExactMatchIndex
+(
+	Index **idx,
+	GraphContext *gc,
+	SchemaType schema_type,
+	const char *label,
+	const char *field
+);
+
+// create a full text index for the given label and attribute
+int GraphContext_AddFullTextIndex
 (
 	Index **idx,
 	GraphContext *gc,
 	SchemaType schema_type,
 	const char *label,
 	const char *field,
-	IndexType index_type
+	double weight,
+	bool nostem,
+	const char *phonetic
 );
 
 // remove and free an index
@@ -255,12 +265,6 @@ void GraphContext_RegisterWithModule
 GraphContext *GraphContext_GetRegisteredGraphContext
 (
 	const char *graph_name
-);
-
-// remove GraphContext from global array
-void GraphContext_RemoveFromRegistry
-(
-	GraphContext *gc
 );
 
 //------------------------------------------------------------------------------

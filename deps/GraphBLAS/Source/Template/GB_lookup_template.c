@@ -2,6 +2,11 @@
 // GB_lookup_template: find k so that j == Ah [k]
 //------------------------------------------------------------------------------
 
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
+//------------------------------------------------------------------------------
+
 // For a sparse, bitmap, or full matrix j == k.
 // For a hypersparse matrix, find k so that j == Ah [k], if it
 // appears in the list.
@@ -15,12 +20,12 @@
 // This fine is #included' by GB.h, so the #include'ing file does either:
 //      #include "GB.h"
 // or
-//      #define GB_KERNEL
+//      #define GB_CUDA_KERNEL
 //      #include "GB.h"
 
-#ifdef GB_KERNEL
+#ifdef GB_CUDA_KERNEL
 __device__
-static inline bool GB_lookup_device
+static inline bool GB_lookup_device // FIXME for CUDA: use name "GB_lookup"
 #else
 static inline bool GB_lookup        // find j = Ah [k] in a hyperlist
 #endif

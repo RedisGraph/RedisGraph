@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -294,7 +294,7 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **node_updates,
 				SIValue value = ENTITY_PROPS(ge)[j].value;
 
 				update = _PreparePendingUpdate(gc, accepted_properties, entity,
-											   attr_id, value, st);
+											   attr_id, SI_CloneValue(value), st);
 				// enqueue the current update
 				array_append(*updates, update);
 			}

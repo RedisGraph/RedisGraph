@@ -2,7 +2,7 @@
 // GB_subassign_symbolic: S = C(I,J)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -34,7 +34,7 @@ GrB_Info GB_subassign_symbolic
 
     GrB_Info info ;
     ASSERT (!GB_IS_BITMAP (C)) ;    // the caller cannot tolerate C bitmap
-    ASSERT (S != NULL && S->static_header) ;
+    ASSERT (S != NULL && (S->static_header || GBNSTATIC)) ;
 
     //--------------------------------------------------------------------------
     // extract the pattern: S = C(I,J) for S_Extraction method, and quick mask

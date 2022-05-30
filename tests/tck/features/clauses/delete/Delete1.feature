@@ -60,7 +60,6 @@ Feature: Delete1 - Deleting nodes
     And the side effects should be:
       | -nodes | 1 |
 
-  @skip
   Scenario: [3] Detach deleting connected nodes and relationships
     Given an empty graph
     And having executed:

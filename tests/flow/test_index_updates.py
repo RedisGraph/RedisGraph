@@ -1,13 +1,6 @@
-import os
-import sys
+from common import *
 import random
 import string
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
 
 GRAPH_ID = "G"
 redis_graph = None
@@ -16,12 +9,13 @@ fields = ['unique', 'group', 'doubleval', 'intval', 'stringval']
 groups = ["Group A", "Group B", "Group C","Group D", "Group E"]
 node_ctr = 0
 
+
 class testIndexUpdatesFlow(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_graph
-        redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        self.redis_con = self.env.getConnection()
+        redis_graph = Graph(self.redis_con, GRAPH_ID)
         self.populate_graph()
         self.build_indices()
 
@@ -184,9 +178,10 @@ class testIndexUpdatesFlow(FlowTestsBase):
     # index does not track the property.
     def test07_update_property_only_on_fulltext_index(self):
         # Remove the exact-match index on a property
-        redis_graph.redis_con.execute_command("GRAPH.QUERY", GRAPH_ID, "DROP INDEX ON :label_a(group)")
+        self.redis_con.execute_command("GRAPH.QUERY", GRAPH_ID, "DROP INDEX ON :label_a(group)")
         # Add a full-text index on the property
-        redis_graph.query("CALL db.idx.fulltext.createNodeIndex('label_a', 'group')")
+        result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex('label_a', 'group')")
+        self.env.assertEquals(result.indices_created, 1)
 
         # Modify the values of the property
         result = redis_graph.query("MATCH (a:label_a) WHERE a.group = 'Group C' SET a.group = 'Group NEW'")

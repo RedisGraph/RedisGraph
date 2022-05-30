@@ -2,7 +2,7 @@
 // GB_mex_init: initialize GraphBLAS
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -25,11 +25,7 @@ void mexFunction
 {
     mexPrintf ("usage:\n%s\n", USAGE) ;
 
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    GxB_init (GrB_NONBLOCKING, mxMalloc, NULL, NULL, mxFree, false) ;
-    #else
     GxB_init (GrB_NONBLOCKING, mxMalloc, NULL, NULL, mxFree) ;
-    #endif
 
     // mxMalloc, mxCalloc, mxRealloc, and mxFree are not thread safe
     GB_Global_malloc_is_thread_safe_set (false) ;

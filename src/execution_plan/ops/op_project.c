@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -13,6 +13,7 @@
 
 /* Forward declarations. */
 static Record ProjectConsume(OpBase *opBase);
+static OpResult ProjectReset(OpBase *opBase);
 static OpBase *ProjectClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void ProjectFree(OpBase *opBase);
 
@@ -27,7 +28,7 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", NULL, ProjectConsume,
-				NULL, NULL, ProjectClone, ProjectFree, false, plan);
+				ProjectReset, NULL, ProjectClone, ProjectFree, false, plan);
 
 	for(uint i = 0; i < op->exp_count; i ++) {
 		// The projected record will associate values with their resolved name
@@ -80,6 +81,12 @@ static Record ProjectConsume(OpBase *opBase) {
 	Record projection = op->projection;
 	op->projection = NULL;
 	return projection;
+}
+
+static OpResult ProjectReset(OpBase *opBase) {
+	OpProject *op = (OpProject *)opBase;
+	op->singleResponse = false;
+	return OP_OK;
 }
 
 static OpBase *ProjectClone(const ExecutionPlan *plan, const OpBase *opBase) {

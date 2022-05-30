@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -17,7 +17,7 @@ static OpBase *AllNodeScanClone(const ExecutionPlan *plan, const OpBase *opBase)
 static void AllNodeScanFree(OpBase *opBase);
 
 static inline void AllNodeScanToString(const OpBase *ctx, sds *buf) {
-	return ScanToString(ctx, buf, ((AllNodeScan *)ctx)->alias, NULL);
+	ScanToString(ctx, buf, ((AllNodeScan *)ctx)->alias, NULL);
 }
 
 OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const char *alias) {

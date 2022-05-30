@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -18,14 +18,14 @@
 #include "../../graph/entities/graph_entity.h"
 
 // returns the id of a relationship or node
-SIValue AR_ID(SIValue *argv, int argc) {
+SIValue AR_ID(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	GraphEntity *graph_entity = (GraphEntity *)argv[0].ptrval;
 	return SI_LongVal(ENTITY_GET_ID(graph_entity));
 }
 
 // returns an array of string representations of each label of a node
-SIValue AR_LABELS(SIValue *argv, int argc) {
+SIValue AR_LABELS(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 
 	Node *node = argv[0].ptrval;
@@ -46,7 +46,7 @@ SIValue AR_LABELS(SIValue *argv, int argc) {
 }
 
 // returns true if input node contains all specified labels, otherwise false
-SIValue AR_HAS_LABELS(SIValue *argv, int argc) {
+SIValue AR_HAS_LABELS(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 
 	bool         res       =  true;
@@ -88,7 +88,7 @@ SIValue AR_HAS_LABELS(SIValue *argv, int argc) {
 }
 
 /* returns a string representation of the type of a relation. */
-SIValue AR_TYPE(SIValue *argv, int argc) {
+SIValue AR_TYPE(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	char *type = "";
 	Edge *e = argv[0].ptrval;
@@ -99,7 +99,7 @@ SIValue AR_TYPE(SIValue *argv, int argc) {
 }
 
 /* returns the start node of a relationship. */
-SIValue AR_STARTNODE(SIValue *argv, int argc) {
+SIValue AR_STARTNODE(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	Edge *e = argv[0].ptrval;
 	NodeID start_id = Edge_GetSrcNodeID(e);
@@ -115,7 +115,7 @@ SIValue AR_STARTNODE(SIValue *argv, int argc) {
 }
 
 /* returns the end node of a relationship. */
-SIValue AR_ENDNODE(SIValue *argv, int argc) {
+SIValue AR_ENDNODE(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	Edge *e = argv[0].ptrval;
 	NodeID end_id = Edge_GetDestNodeID(e);
@@ -131,7 +131,7 @@ SIValue AR_ENDNODE(SIValue *argv, int argc) {
 }
 
 /* returns true if the specified property exists in the node, or relationship. */
-SIValue AR_EXISTS(SIValue *argv, int argc) {
+SIValue AR_EXISTS(SIValue *argv, int argc, void *private_data) {
 	/* MATCH (n) WHERE EXISTS(n.name) RETURN n
 	 * If property n.name does not exists
 	 * SIValue representing NULL is returned.
@@ -169,18 +169,18 @@ SIValue _AR_NodeDegree(SIValue *argv, int argc, GRAPH_EDGE_DIR dir) {
 }
 
 /* Returns the number of incoming edges for given node. */
-SIValue AR_INCOMEDEGREE(SIValue *argv, int argc) {
+SIValue AR_INCOMEDEGREE(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	return _AR_NodeDegree(argv, argc, GRAPH_EDGE_DIR_INCOMING);
 }
 
 /* Returns the number of outgoing edges for given node. */
-SIValue AR_OUTGOINGDEGREE(SIValue *argv, int argc) {
+SIValue AR_OUTGOINGDEGREE(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	return _AR_NodeDegree(argv, argc, GRAPH_EDGE_DIR_OUTGOING);
 }
 
-SIValue AR_PROPERTY(SIValue *argv, int argc) {
+SIValue AR_PROPERTY(SIValue *argv, int argc, void *private_data) {
 	// return NULL for missing graph entity
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 
@@ -218,7 +218,7 @@ SIValue AR_PROPERTY(SIValue *argv, int argc) {
 
 		// Retrieve the property.
 		SIValue *value = GraphEntity_GetProperty(graph_entity, prop_idx);
-		return SI_ConstValue(*value);
+		return SI_ConstValue(value);
 	} else {
 		// retrieve map key
 		SIValue key = argv[1];
@@ -232,61 +232,72 @@ SIValue AR_PROPERTY(SIValue *argv, int argc) {
 
 void Register_EntityFuncs() {
 	SIType *types;
+	SIType ret_type;
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_NODE | T_EDGE);
-	func_desc = AR_FuncDescNew("id", AR_ID, 1, 1, types, true, false);
+	ret_type = T_NULL | T_INT64;
+	func_desc = AR_FuncDescNew("id", AR_ID, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_NODE);
-	func_desc = AR_FuncDescNew("labels", AR_LABELS, 1, 1, types, true, false);
+	ret_type = T_NULL | T_ARRAY;
+	func_desc = AR_FuncDescNew("labels", AR_LABELS, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	array_append(types, T_NULL | T_NODE);
 	array_append(types, T_ARRAY);
-	func_desc = AR_FuncDescNew("hasLabels", AR_HAS_LABELS, 2, 2, types, false, false);
+	ret_type = T_NULL | T_BOOL;
+	func_desc = AR_FuncDescNew("hasLabels", AR_HAS_LABELS, 2, 2, types, ret_type, false, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_EDGE);
-	func_desc = AR_FuncDescNew("type", AR_TYPE, 1, 1, types, true, false);
+	ret_type = T_NULL | T_STRING;
+	func_desc = AR_FuncDescNew("type", AR_TYPE, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_EDGE);
-	func_desc = AR_FuncDescNew("startNode", AR_STARTNODE, 1, 1, types, true, false);
+	ret_type = T_NULL | T_NODE;
+	func_desc = AR_FuncDescNew("startNode", AR_STARTNODE, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_EDGE);
-	func_desc = AR_FuncDescNew("endNode", AR_ENDNODE, 1, 1, types, true, false);
+	ret_type = T_NULL | T_NODE;
+	func_desc = AR_FuncDescNew("endNode", AR_ENDNODE, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | SI_ALL);
-	func_desc = AR_FuncDescNew("exists", AR_EXISTS, 1, 1, types, true, false);
+	ret_type = T_NULL | T_BOOL;
+	func_desc = AR_FuncDescNew("exists", AR_EXISTS, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	array_append(types, T_NULL | T_NODE);
 	array_append(types, T_STRING);
-	func_desc = AR_FuncDescNew("indegree", AR_INCOMEDEGREE, 1, VAR_ARG_LEN, types, true, false);
+	ret_type = T_NULL | T_INT64;
+	func_desc = AR_FuncDescNew("indegree", AR_INCOMEDEGREE, 1, VAR_ARG_LEN, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	array_append(types, T_NULL | T_NODE);
 	array_append(types, T_STRING);
-	func_desc = AR_FuncDescNew("outdegree", AR_OUTGOINGDEGREE, 1, VAR_ARG_LEN, types, true, false);
+	ret_type = T_NULL | T_INT64;
+	func_desc = AR_FuncDescNew("outdegree", AR_OUTGOINGDEGREE, 1, VAR_ARG_LEN, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
 	array_append(types, T_NULL | T_NODE | T_EDGE | T_MAP);
 	array_append(types, T_STRING);
 	array_append(types, T_INT64);
-	func_desc = AR_FuncDescNew("property", AR_PROPERTY, 3, 3, types, true, false);
+	ret_type = SI_ALL;
+	func_desc = AR_FuncDescNew("property", AR_PROPERTY, 3, 3, types, ret_type, true, true);
 	AR_RegFunc(func_desc);
 }
 

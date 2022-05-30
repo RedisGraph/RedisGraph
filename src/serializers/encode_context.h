@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -51,7 +51,7 @@ typedef struct {
 	uint current_relation_matrix_id;            // Current encoded relationship matrix.
 	uint multiple_edges_current_index;          // The current index of the encoded edges array.
 	DataBlockIterator *datablock_iterator;      // Datablock iterator to be saved in the context.
-	RG_MatrixTupleIter *matrix_tuple_iterator; // Matrix tuple iterator to be saved in the context.
+	RG_MatrixTupleIter matrix_tuple_iterator;   // Matrix tuple iterator to be saved in the context.
 } GraphEncodeContext;
 
 // Creates a new graph encoding context.
@@ -104,10 +104,7 @@ void GraphEncodeContext_SetCurrentRelationID(GraphEncodeContext *ctx,
 											 uint current_relation_matrix_id);
 
 // Retrieve stored matrix tuple iterator.
-RG_MatrixTupleIter *GraphEncodeContext_GetMatrixTupleIterator(const GraphEncodeContext *ctx);
-
-// Set graph encoding context matrix tuple iterator - keep iterator state for further usage.
-void GraphEncodeContext_SetMatrixTupleIterator(GraphEncodeContext *ctx, RG_MatrixTupleIter *iter);
+RG_MatrixTupleIter *GraphEncodeContext_GetMatrixTupleIterator(GraphEncodeContext *ctx);
 
 // Sets a multiple edges array and the current index, for saving the state of multiple edges encoding.
 void GraphEncodeContext_SetMutipleEdgesArray(GraphEncodeContext *ctx, EdgeID *edges,

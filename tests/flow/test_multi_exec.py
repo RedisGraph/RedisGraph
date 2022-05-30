@@ -1,10 +1,4 @@
-import os
-import sys
-from RLTest import Env
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
+from common import *
 
 GRAPH_ID = "multiexec-graph"
 redis_con = None
@@ -24,6 +18,7 @@ DEL_QUERY = """MATCH (al:person {name:'Al'})-[e:knows]->(b:person {name:'Betty'}
 
 # Change Al name from Al to Steve.
 UPDATE_QUERY = "MATCH (al:person {name:'Al'}) SET al.name = 'Steve'"
+
 
 class testMultiExecFlow(FlowTestsBase):
     def __init__(self):

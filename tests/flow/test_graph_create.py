@@ -1,20 +1,15 @@
-import os
-import sys
-import redis
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
-
-from base import FlowTestsBase
+from common import *
 
 GRAPH_ID = "G"
 redis_graph = None
+
 
 class testGraphCreationFlow(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
 
     def test01_create_return(self):
         query = """CREATE (a:person {name:'A'}), (b:person {name:'B'})"""
@@ -117,3 +112,42 @@ class testGraphCreationFlow(FlowTestsBase):
                 self.env.assertTrue(False)
             except redis.exceptions.ResponseError as e:
                 self.env.assertContains("Property values can only be of primitive types or arrays of primitive types", str(e))
+
+    # test creating a node with multiple attributes with the same name
+    # expecting node with single attribute 'name' with the last mentioned value 'B'
+    def test08_create_node_with_2_attr_same_name(self):
+        query = """CREATE (a:N {name:'A', name:'B'})"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.nodes_created, 1)
+        self.env.assertEquals(result.properties_set, 1)
+
+        query = """MATCH (a:N) RETURN a.name"""
+        result = redis_graph.query(query)
+        expected_result = [['B']]
+        self.env.assertEquals(result.result_set, expected_result)
+
+    # test creating a node with some alias, and then creating an edge that touches that node
+    # "variable redeclared" error should return only if the relation alias was already declared
+    # also, a node cannot be redeclared unless it is used to create new edges in a pattern
+    def test09_create_use_alias_in_many_clauses(self):
+        query = """CREATE (n1:Node1) CREATE (n2:Node1) CREATE (n1)-[r:Rel1]->(n2)"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.nodes_created, 2)
+        self.env.assertEquals(result.relationships_created, 1)
+
+        # This is a valid query, even though 'n1' is redeclared in the CREATE clause
+        query = """MATCH (n1:Node1) CREATE (n1)-[r:Rel1]->(n2)"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.nodes_created, 2)
+        self.env.assertEquals(result.relationships_created, 2)
+
+        queries = ["CREATE (n1)-[r:Rel1]->(n2) CREATE (n2)-[r:Rel1]->(n1)",
+                   "CREATE (n1)-[r:Rel1]->(n2), (n2)-[r:Rel1]->(n1)",
+                   "CREATE (n1)-[r:Rel1]->(n2) CREATE (n2)-[r2:Rel1]->(n3), (n3)-[r:Rel1]->(n2)",
+                   "MATCH (r) CREATE (r)"]
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("The bound variable 'r' can't be redeclared in a CREATE clause", str(e))

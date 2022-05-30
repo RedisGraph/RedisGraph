@@ -18,20 +18,25 @@ class RedisGraphSetup(paella.Setup):
 
     def common_first(self):
         self.install_downloaders()
-        self.pip_install("wheel virtualenv")
-        self.pip_install("setuptools --upgrade")
 
-        self.run("%s/bin/enable-utf8" % READIES)
+        self.run("%s/bin/enable-utf8" % READIES, sudo=self.os != 'macos')
         self.install("git automake libtool autoconf")
 
     def debian_compat(self):
         self.install("locales")
-        self.run("%s/bin/getgcc" % READIES)
+        if self.platform.is_arm():
+            self.run("%s/bin/getgcc --modern" % READIES)
+        else:
+            self.run("%s/bin/getgcc" % READIES)
         self.install("peg")
 
     def redhat_compat(self):
         self.install("redhat-lsb-core")
-        self.run("%s/bin/getepel" % READIES)
+        if not self.platform.is_arm():
+            self.install_linux_gnu_tar()
+        if self.osnick == 'ol8':
+            self.install("which") # for automake
+        self.run("%s/bin/getepel" % READIES, sudo=True)
         self.run("%s/bin/getgcc --modern" % READIES)
         self.install("m4 libgomp")
         self.install_peg()
@@ -42,7 +47,8 @@ class RedisGraphSetup(paella.Setup):
 
     def macos(self):
         self.install_gnu_utils()
-        self.run("%s/bin/getgcc --modern" % READIES)
+        # self.run("%s/bin/getgcc --modern" % READIES)
+        self.run("brew install libomp")
         self.install("redis")
         self.install_peg()
 
@@ -56,10 +62,18 @@ class RedisGraphSetup(paella.Setup):
 
     def common_last(self):
         self.install("astyle", _try=True) # fails for centos7
-        self.run("%s/bin/getcmake" % READIES)
-        self.run("{PYTHON} {READIES}/bin/getrmpytools".format(PYTHON=self.python, READIES=READIES))
+        self.run("{PYTHON} {READIES}/bin/getcmake --usr".format(PYTHON=self.python, READIES=READIES),
+                 sudo=self.os != 'macos')
+        if self.dist != "arch":
+            self.install("lcov")
+        else:
+            self.install("lcov-git", aur=True)
 
+        self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall".format(PYTHON=self.python, READIES=READIES))
+        self.pip_install("awscli")
         self.pip_install("-r tests/requirements.txt")
+        self.pip_install("-r tests/fuzz/requirements.txt")
+        self.run("%s/bin/getpy2" % READIES) # for RediSearch build
 
     def install_peg(self):
         self.run(r"""
@@ -70,7 +84,7 @@ class RedisGraphSetup(paella.Setup):
             tar xzf peg.tar.gz
             cd peg-0.1.18
             make
-            make install MANDIR=.
+            $(command -v sudo) make install MANDIR=.
             cd /tmp
             rm -rf $build_dir
             """)

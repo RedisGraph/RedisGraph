@@ -2,7 +2,7 @@
 // GB_mex_about2: more basic tests
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -36,7 +36,7 @@ void mexFunction
     GrB_Vector victor = NULL ;
     GrB_Descriptor desc = NULL ;
     GrB_Type Wild = NULL ;
-    char *err ;
+    const char *err ;
 
     //--------------------------------------------------------------------------
     // startup GraphBLAS
@@ -91,13 +91,10 @@ void mexFunction
 
     // force a zombie into the scalar
     OK (GrB_Scalar_setElement_INT32 (scalar, 707)) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Scalar_wait (&scalar)) ;
-    #else
     OK (GrB_Scalar_wait (scalar, GrB_MATERIALIZE)) ;
-    #endif
     OK (GxB_Scalar_fprint (scalar, "scalar after wait", 3, NULL)) ;
-    OK (GxB_Matrix_Option_set (scalar, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
+    OK (GxB_Matrix_Option_set ((GrB_Matrix) scalar, GxB_SPARSITY_CONTROL,
+        GxB_SPARSE)) ;
     CHECK (scalar->i != NULL) ;
     scalar->i [0] = GB_FLIP (0) ;
     scalar->nzombies = 1 ;
@@ -123,7 +120,7 @@ void mexFunction
     OK (GrB_Scalar_new (&scalar, GxB_FC32)) ;
     expected = GrB_DOMAIN_MISMATCH ;
     ERR (GxB_Matrix_select (C, NULL, NULL, GxB_LT_THUNK, A, scalar, NULL)) ;
-    char *message = NULL ;
+    const char *message = NULL ;
     OK (GrB_Matrix_error (&message, C)) ;
     printf ("expected error: %s\n", message) ;
     GrB_Matrix_free_(&C) ;
@@ -158,11 +155,7 @@ void mexFunction
     OK (GxB_Matrix_Option_set_(A, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
     OK (GrB_Matrix_assign_INT32 (A, NULL, NULL, 3, GrB_ALL, n, GrB_ALL, n,
         NULL)) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Matrix_wait (&A)) ;
-    #else
     OK (GrB_Matrix_wait (A, GrB_MATERIALIZE)) ;
-    #endif
     OK (GxB_Matrix_fprint (A, "valid matrix", GxB_SHORT, NULL)) ;
     // mangle the matrix
     GB_FREE (&(A->p), A->p_size) ;
@@ -179,11 +172,7 @@ void mexFunction
     OK (GrB_Matrix_new (&A, GrB_INT32, n, n)) ;
     OK (GrB_Matrix_assign_INT32 (A, NULL, NULL, 3, GrB_ALL, n, GrB_ALL, n,
         NULL)) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Matrix_wait (&A)) ;
-    #else
     OK (GrB_Matrix_wait (A, GrB_MATERIALIZE)) ;
-    #endif
 
     A->jumbled = true ;
     ERR (GxB_Matrix_fprint (A, "full matrix cannot be jumbled", GxB_SHORT,
@@ -240,6 +229,7 @@ void mexFunction
     OK (GxB_Global_Option_set_(GxB_BURBLE, true)) ;
     OK (GrB_Matrix_new (&A, GrB_INT32, n, n)) ;
     GrB_Index I [3] = { 1, 1, 0 } ;
+    int32_t I32 [3] = { 1, 1, 0 } ;
     OK (GrB_Matrix_new (&C, GrB_INT32, n, 0)) ;
     OK (GrB_Matrix_extract_(C, NULL, NULL, A, GrB_ALL, n, I, GxB_STRIDE,
         NULL)) ;
@@ -321,14 +311,14 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     OK (GrB_Matrix_new (&A, GrB_INT32, n, n)) ;
-    OK (GrB_Matrix_build_INT32 (A, I, I, I, 0, GrB_PLUS_INT32)) ;
+    OK (GrB_Matrix_build_INT32 (A, I, I, I32, 0, GrB_PLUS_INT32)) ;
     OK (GxB_Matrix_fprint (A, "empty", GxB_COMPLETE, NULL)) ;
     CHECK (!GB_is_shallow (A)) ;
     GrB_Matrix_free_(&A) ;
 
     OK (GrB_Matrix_new (&A, GrB_INT32, n, n)) ;
     expected = GrB_DOMAIN_MISMATCH ;
-    ERR (GrB_Matrix_build_INT32 (A, I, I, I, 0, GxB_FIRSTI_INT32)) ;
+    ERR (GrB_Matrix_build_INT32 (A, I, I, I32, 0, GxB_FIRSTI_INT32)) ;
     OK (GrB_Matrix_error (&message, A)) ;
     printf ("expected error: %s\n", message) ;
     GrB_Matrix_free_(&A) ;
@@ -345,7 +335,7 @@ void mexFunction
     expected = GrB_NOT_IMPLEMENTED ;
     ERR (GrB_Matrix_reduce_BinaryOp (victor, NULL, NULL, GxB_FIRSTI_INT32,
         A, NULL)) ;
-    OK (GrB_Matrix_error (&message, victor)) ;
+    OK (GrB_Vector_error (&message, victor)) ;
     printf ("error expected: %s\n", message) ;
     GrB_Matrix_free_(&A) ;
     GrB_Vector_free_(&victor) ;
@@ -378,11 +368,7 @@ void mexFunction
     OK (GxB_Matrix_fprint (C, "wild matrix jumbled", GxB_SHORT, NULL)) ;
 
     // unjumble the matrix
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Matrix_wait (&C)) ;
-    #else
     OK (GrB_Matrix_wait (C, GrB_MATERIALIZE)) ;
-    #endif
     OK (GxB_Matrix_fprint (C, "wild matrix unjumbled", GxB_SHORT, NULL)) ;
 
     GrB_Matrix_free_(&C) ;
@@ -400,7 +386,7 @@ void mexFunction
     CHECK (ok) ;
     p = GB_realloc_memory (4, GB_NMAX + 1, p, &nbytes, &ok, NULL) ;
     CHECK (!ok) ;
-    GB_free_memory (&p, nbytes) ;
+    GB_free_memory ((void **) &p, nbytes) ;
 
     //--------------------------------------------------------------------------
     // try to import a huge full matrix (this will fail):
@@ -429,11 +415,7 @@ void mexFunction
 
     OK (GrB_Matrix_new (&C, GrB_FP32, GB_NMAX, GB_NMAX)) ;
     OK (GrB_Matrix_setElement_FP32 (C, (double) 3, 0, 0)) ;
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Matrix_wait (&C)) ;
-    #else
     OK (GrB_Matrix_wait (C, GrB_MATERIALIZE)) ;
-    #endif
     OK (GxB_Matrix_fprint (C, "huge matrix", GxB_SHORT, NULL)) ;
     C->nvec_nonempty = -1 ;
     OK (GB_hypermatrix_prune (C, NULL)) ;
@@ -595,11 +577,7 @@ void mexFunction
     {
         OK (GrB_Matrix_setElement_UDT (C, &ww, kk, kk)) ;
     }
-    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
-    OK (GrB_Matrix_wait (&C)) ;
-    #else
     OK (GrB_Matrix_wait (C, GrB_MATERIALIZE)) ;
-    #endif
     info = GrB_Matrix_assign_UDT (C, C, NULL, &w2, GrB_ALL, 20, GrB_ALL, 20,
         GrB_DESC_S) ;
     wild w3 ;

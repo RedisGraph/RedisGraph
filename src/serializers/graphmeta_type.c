@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -44,7 +44,8 @@ static void _GraphMetaType_RdbSave(RedisModuleIO *rdb, void *value) {
 }
 
 static void _GraphMetaType_Free(void *value) {
-	// No-Op in this type.
+	GraphContext *gc = value;
+	GraphContext_DecreaseRefCount(gc);
 }
 
 int GraphMetaType_Register(RedisModuleCtx *ctx) {

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -18,9 +18,10 @@
 extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
 
 typedef struct {
-	AST *ast;       // The scoped AST associated with this query.
-	rax *params;    // Query parameters.
-	const char *query;    // Query string.
+	AST *ast;                     // The scoped AST associated with this query.
+	rax *params;                  // Query parameters.
+	const char *query;            // Query string.
+	const char *query_no_params;  // Query string without parameters part.
 } QueryCtx_QueryData;
 
 typedef struct {
@@ -89,7 +90,7 @@ ResultSet *QueryCtx_GetResultSet(void);
 /* Retrive the resultset statistics. */
 ResultSetStatistics *QueryCtx_GetResultSetStatistics(void);
 
-/* Print the current query. */
+// print the current query
 void QueryCtx_PrintQuery(void);
 
 /* Starts a locking flow before commiting changes in the graph and Redis keyspace.

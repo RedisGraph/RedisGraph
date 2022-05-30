@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -13,15 +13,19 @@
 #include "../execution_plan/record.h"
 #include "../arithmetic/arithmetic_expression.h"
 
-#define FILTER_FAIL 0
-#define FILTER_PASS 1
-
-/* Nodes within the filter tree are one of two types
- * Either a predicate node or a condition node. */
+// filter tree evaluation return values
 typedef enum {
-	FT_N_EXP,   // Expression node.
-	FT_N_PRED,  // Predicate node.
-	FT_N_COND,  // Conditional node.
+	FILTER_NULL = -1,  // indicates filter evaluated to NULL
+	FILTER_FAIL =  0,  // indicates filter evaluated to FALSE
+	FILTER_PASS =  1   // indicates filter evaluated to TRUE
+} FT_Result;
+
+// nodes within the filter tree are one of two types
+// either a predicate node or a condition node
+typedef enum {
+	FT_N_EXP,   // Expression node
+	FT_N_PRED,  // Predicate node
+	FT_N_COND,  // Conditional node
 } FT_FilterNodeType;
 
 struct FT_FilterNode;
@@ -83,7 +87,7 @@ FT_FilterNode *FilterTree_CreatePredicateFilter(AST_Operator op, AR_ExpNode *lhs
 FT_FilterNode *FilterTree_CreateConditionFilter(AST_Operator op);
 
 /* Runs val through the filter tree. */
-int FilterTree_applyFilters(const FT_FilterNode *root, const Record r);
+FT_Result FilterTree_applyFilters(const FT_FilterNode *root, const Record r);
 
 /* Extract every modified record ID mentioned in the tree
  * without duplications. */

@@ -2,7 +2,7 @@
 // GB_concat_sparse: concatenate an array of matrices into a sparse matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -65,10 +65,9 @@ GrB_Info GB_concat_sparse           // concatenate into a sparse matrix
     float hyper_switch = C->hyper_switch ;
     float bitmap_switch = C->bitmap_switch ;
     int sparsity_control = C->sparsity_control ;
-    bool static_header = C->static_header ;
     GB_phbix_free (C) ;
     // set C->iso = C_iso   OK
-    GB_OK (GB_new_bix (&C, static_header,   // prior static or dynamic header
+    GB_OK (GB_new_bix (&C, // existing header
         ctype, cvlen, cvdim, GB_Ap_malloc, csc, GxB_SPARSE, false,
         hyper_switch, cvdim, cnz, true, C_iso, Context)) ;
     C->bitmap_switch = bitmap_switch ;
@@ -118,7 +117,7 @@ GrB_Info GB_concat_sparse           // concatenate into a sparse matrix
             if (csc != A->is_csc)
             {
                 // T = (ctype) A', not in-place, using a dynamic header
-                GB_OK (GB_new (&T, false,   // auto sparsity, new header
+                GB_OK (GB_new (&T, // auto sparsity, new header
                     A->type, A->vdim, A->vlen, GB_Ap_null, csc,
                     GxB_AUTO_SPARSITY, -1, 1, Context)) ;
                 // save T in array S

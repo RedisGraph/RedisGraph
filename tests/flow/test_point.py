@@ -1,7 +1,4 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph
+from common import *
 
 GRAPH_ID = "point"
 redis_graph = None
@@ -11,7 +8,7 @@ class testPath():
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
 
     def setUp(self):
         self.env.flush()
@@ -142,4 +139,48 @@ class testPath():
         self.env.assertEquals(idx_res, none_idx_res)
         self.env.assertEquals(len(idx_res), 1)
         self.env.assertEquals(idx_res[0][0], 'univ')
+
+    def test_nested_point(self):
+        expected_value = [{'latitude':32, 'longitude':34}]
+        # point as an array element
+        q = "RETURN [point({latitude:32, longitude:34})]" 
+        res = redis_graph.query(q)
+        self.env.assertEquals(res.result_set[0][0], expected_value)
+
+        # test setting an array with a point as an entity attribute
+        q = "CREATE (n:L {v: [point({latitude:32, longitude:34})]}) RETURN n.v"
+        res = redis_graph.query(q)
+        self.env.assertEquals(res.result_set[0][0], expected_value)
+
+        # update expected value
+        expected_value = [{'latitude':34, 'longitude':35}]
+        # update existing node, place a different point in its array
+        q = "MATCH (n:L) SET n.v = [point({latitude:34, longitude:35})] RETURN n.v"
+        res = redis_graph.query(q)
+        self.env.assertEquals(res.result_set[0][0], expected_value)
+
+        # order a list of points
+        expected_value = [
+        {'latitude':32, 'longitude':31},
+        {'latitude':31, 'longitude':32},
+        {'latitude':32, 'longitude':32},
+        {'latitude':33, 'longitude':35},
+        {'latitude':29, 'longitude':36}
+        ]
+
+        q = """UNWIND [
+        point({latitude:33, longitude:35}),
+        point({latitude:32, longitude:31}),
+        point({latitude:32, longitude:32}),
+        point({latitude:31, longitude:32}),
+        point({latitude:29, longitude:36})] AS p
+        WITH p ORDER BY p RETURN collect(p)"""
+
+        res = redis_graph.query(q)
+        self.env.assertEquals(res.result_set[0][0], expected_value)
+
+        expected_value = "point({latitude: 32.000000, longitude: 34.000000})"
+        q = "RETURN tostring(point({latitude:32, longitude:34}))"
+        res = redis_graph.query(q)
+        self.env.assertEquals(res.result_set[0][0], expected_value)
 

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -153,12 +153,13 @@ int ThreadPools_AddWorkReader
 int ThreadPools_AddWorkWriter
 (
 	void (*function_p)(void *),
-	void *arg_p
+	void *arg_p,
+	int force
 ) {
 	ASSERT(_writers_thpool != NULL);
 
 	// make sure there's enough room in thread pool queue
-	if(thpool_queue_full(_writers_thpool)) return THPOOL_QUEUE_FULL;
+	if(thpool_queue_full(_writers_thpool) && !force) return THPOOL_QUEUE_FULL;
 
 	return thpool_add_work(_writers_thpool, function_p, arg_p);
 }

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -37,7 +37,7 @@ static void _removeTrueFilter(ExecutionPlan *plan, OpBase *op) {
 		SIValue_Free(bool_val);
 		return;
 	}
-	if(SIValue_IsTrue(bool_val)) {
+	if(!SIValue_IsNull(bool_val) && SIValue_IsTrue(bool_val)) {
 		ExecutionPlan_RemoveOp(plan, op);
 		OpBase_Free(op);
 	}

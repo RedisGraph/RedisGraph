@@ -62,7 +62,7 @@ def step_impl(context):
         query = params + query
 
     try:
-        resultset = graphs.query(query)
+        resultset = graphs.query(query.replace("\r", ""))
     except Exception as error:
         resultset = None
         exception = error
@@ -263,3 +263,21 @@ def step_impl(context):
     global exception
     assert exception != None
     assert "Only directed relationships" in str(exception)
+
+@then(u'a SyntaxError should be raised at compile time: RelationshipUniquenessViolation')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Cannot use the same relationship variable" in str(exception)
+
+@then(u'a SyntaxError should be raised at compile time: NoVariablesInScope')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "RETURN * is not allowed when there are no variables in scope" in str(exception)
+
+@then(u'a TypeError should be raised at runtime: InvalidPropertyType')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Property values can only be of primitive types or arrays of primitive types" in str(exception)

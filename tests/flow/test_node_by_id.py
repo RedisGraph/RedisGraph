@@ -1,21 +1,15 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
+from common import *
 
 GRAPH_ID = "g"
 redis_graph = None
+
 
 class testNodeByIDFlow(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
         self.populate_graph()
 
     def populate_graph(self):
@@ -239,3 +233,4 @@ class testNodeByIDFlow(FlowTestsBase):
             resultset = redis_graph.query(query).result_set        
             self.env.assertEquals(len(resultset), 0)    # Expecting no results.
             self.env.assertIn("Node By Label and ID Scan", redis_graph.execution_plan(query))
+

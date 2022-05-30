@@ -2,18 +2,18 @@
 // GrB_transpose: transpose a sparse matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 // C<M> = accum (C,A') or accum (C,A)
 
+#define GB_FREE_ALL GB_Matrix_free (&T) ;
+
 #include "GB_transpose.h"
 #include "GB_accum_mask.h"
 #include "GB_get_mask.h"
-
-#define GB_FREE_ALL ;
 
 GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
 (
@@ -30,7 +30,7 @@ GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
     //--------------------------------------------------------------------------
 
     struct GB_Matrix_opaque T_header ;
-    GrB_Matrix T = GB_clear_static_header (&T_header) ;
+    GrB_Matrix T = NULL ;
 
     // C may be aliased with M and/or A
 
@@ -76,6 +76,7 @@ GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
     // T = A or A', where T can have the type of C or the type of A
     //--------------------------------------------------------------------------
 
+    GB_CLEAR_STATIC_HEADER (T, &T_header) ;
     bool C_is_csc = C->is_csc ;
     if (C_is_csc != A->is_csc)
     { 
@@ -142,6 +143,7 @@ GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
     }
 
     GB_BURBLE_END ;
+    GB_FREE_ALL ;
     return (info) ;
 }
 

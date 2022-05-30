@@ -1,11 +1,4 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
+from common import *
 
 graph = None
 redis_con = None
@@ -19,7 +12,7 @@ class testResultSetFlow(FlowTestsBase):
         global graph
         global redis_con
         redis_con = self.env.getConnection()
-        graph = Graph("G", redis_con)
+        graph = Graph(redis_con, "G")
         self.populate_graph()
 
     def populate_graph(self):
@@ -83,7 +76,7 @@ class testResultSetFlow(FlowTestsBase):
 
     # Verify that the DISTINCT operator works with full entity returns
     def test05_distinct_full_entities(self):
-        graph2 = Graph("H", redis_con)
+        graph2 = Graph(redis_con, "H")
         query = """CREATE (a)-[:e]->(), (a)-[:e]->()"""
         result = graph2.query(query)
         self.env.assertEquals(result.nodes_created, 3)
@@ -130,7 +123,7 @@ class testResultSetFlow(FlowTestsBase):
         # Avarage default value is 0.
         query = """MATCH (a) return avg(a.missing_field)"""
         result = graph.query(query)
-        self.env.assertEqual(0, result.result_set[0][0])
+        self.env.assertEqual(None, result.result_set[0][0])
 
         # Collect default value is an empty array.
         query = """MATCH (a) return collect(a.missing_field)"""
@@ -154,19 +147,15 @@ class testResultSetFlow(FlowTestsBase):
 
     # Test returning multiple occurrence of an expression.
     def test08_return_duplicate_expression(self):
-        query = """MATCH (a) RETURN max(a.val), max(a.val)"""
+        query = """MATCH (a) return max(a.val) as x, max(a.val) as y"""
         result = graph.query(query)
         self.env.assertEqual(result.result_set[0][0], result.result_set[0][1])
 
-        query = """MATCH (a) return max(a.val) as x, max(a.val) as x"""
+        query = """MATCH (a) return a.val as x, a.val as y LIMIT 1"""
         result = graph.query(query)
         self.env.assertEqual(result.result_set[0][0], result.result_set[0][1])
 
-        query = """MATCH (a) RETURN a.val, a.val LIMIT 1"""
-        result = graph.query(query)
-        self.env.assertEqual(result.result_set[0][0], result.result_set[0][1])
-
-        query = """MATCH (a) return a.val as x, a.val as x LIMIT 1"""
+        query = """return 1 as x, 1 as y"""
         result = graph.query(query)
         self.env.assertEqual(result.result_set[0][0], result.result_set[0][1])
 

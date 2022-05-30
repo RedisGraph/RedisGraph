@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -55,13 +55,12 @@ static RSQNode *_StringRangeToQueryNode
 
 	if(max != NULL && min != NULL && strcmp(max, min) == 0) {
 		// exact match
-		child = RediSearch_CreateTokenNode(idx, field, max);
+		child = RediSearch_CreateTagTokenNode(idx, max);
 	} else {
 		// range search
 		max = (max == NULL) ? RSLECRANGE_INF     : max;
 		min = (min == NULL) ? RSLEXRANGE_NEG_INF : min;
-
-		child = RediSearch_CreateLexRangeNode(idx, field, min, max,
+		child = RediSearch_CreateTagLexRangeNode(idx, min, max,
 				range->include_min, range->include_max);
 	}
 
@@ -513,8 +512,13 @@ static bool _FilterTreeToQueryNode
 	*root = NULL;
 
 	if(isInFilter(tree)) {
-		*root = _FilterTreeToInQueryNode(tree, idx);
-		return true;
+		bool attribute = AR_EXP_IsAttribute(tree->exp.exp->op.children[0], NULL);
+		if(attribute) {
+			*root = _FilterTreeToInQueryNode(tree, idx);
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	if(isDistanceFilter(tree)) {
@@ -571,8 +575,7 @@ RSQNode *FilterTreeToQueryNode
 	for(uint i = 0; i < tree_count; i++) {
 		RSQNode *node = NULL;
 		bool resolved_filter = _FilterTreeToQueryNode(&node, trees[i], idx);
-		ASSERT(node != NULL);
-		array_append(nodes, node);
+		if(node != NULL) array_append(nodes, node);
 		if(resolved_filter) {
 			FilterTree_Free(trees[i]);
 			// remove converted filter from filters array
