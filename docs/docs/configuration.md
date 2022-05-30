@@ -203,6 +203,20 @@ $ redis-server --loadmodule ./redisgraph.so QUERY_MEM_CAPACITY 1048576 // 1 mega
 $ redis-cli GRAPH.CONFIG SET QUERY_MEM_CAPACITY 1048576
 ```
 
+---
+
+## VKEY_MAX_ENTITY_COUNT
+
+To lower the memory overhead of replication, RedisGraph serializes the graph in a number of virtual keys.
+
+One virtual key is created for every N graph entities, where N is the value defined by this configuration.
+
+This configuration can be set when the module loads or at runtime.
+
+### Default
+
+`VKEY_MAX_ENTITY_COUNT` is 100,000 by default.
+
 # Query Configurations
 
 The query timeout configuration may also be set per query in the form of additional arguments after the query string. This configuration is unset by default unless using a language-specific client, which may establish its own defaults.
