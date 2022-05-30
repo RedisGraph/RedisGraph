@@ -10,6 +10,7 @@
 #include "../util/rmalloc.h"
 #include "../util/thpool/pools.h"
 #include "../slow_log/slow_log.h"
+#include "../util/blocked_client.h"
 
 /* Array with one entry per worker thread
  * keeps track after currently executing commands
@@ -133,7 +134,7 @@ void CommandCtx_ThreadSafeContextUnlock(const CommandCtx *command_ctx) {
 
 void CommandCtx_Free(CommandCtx *command_ctx) {
 	if(command_ctx->bc) {
-		RedisModule_UnblockClient(command_ctx->bc, NULL);
+		RedisGraph_UnblockClient(command_ctx->bc);
 		if(command_ctx->ctx) {
 			RedisModule_FreeThreadSafeContext(command_ctx->ctx);
 		}
