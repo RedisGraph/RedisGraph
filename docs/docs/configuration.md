@@ -41,16 +41,16 @@ GRAPH.CONFIG GET *
 
 # RedisGraph configuration options
 
-| Configuration                                 | Load-time          | Run-time             |
-| :-------                                      | :-----             | :-----------         |
-| [THREAD_COUNT](#thread_count)                 | :white_check_mark: | :white_large_square: |
-| [CACHE_SIZE](#cache_size)                     | :white_check_mark: | :white_large_square: |
-| [OMP_THREAD_COUNT](#omp_thread_count)         | :white_check_mark: | :white_large_square: |
-| [NODE_CREATION_BUFFER](#node_creation_buffer) | :white_check_mark: | :white_large_square: |
-| [MAX_QUEUED_QUERIES](#max_queued_queries)     | :white_check_mark: | :white_check_mark:   |
-| [TIMEOUT](#timeout)                           | :white_check_mark: | :white_check_mark:   |
-| [RESULTSET_SIZE](#resultset_size)             | :white_check_mark: | :white_check_mark:   |
-| [QUERY_MEM_CAPACITY](#query_mem_capacity)     | :white_check_mark: | :white_check_mark:   |
+| Configuration                                       | Load-time          | Run-time             |
+| :-------                                            | :-----             | :-----------         |
+| [THREAD_COUNT](#thread_count)                       | :white_check_mark: | :white_large_square: |
+| [CACHE_SIZE](#cache_size)                           | :white_check_mark: | :white_large_square: |
+| [OMP_THREAD_COUNT](#omp_thread_count)               | :white_check_mark: | :white_large_square: |
+| [NODE_CREATION_BUFFER](#node_creation_buffer)       | :white_check_mark: | :white_large_square: |
+| [MAX_QUEUED_QUERIES](#max_queued_queries)           | :white_check_mark: | :white_check_mark:   |
+| [TIMEOUT](#timeout)                                 | :white_check_mark: | :white_check_mark:   |
+| [RESULTSET_SIZE](#resultset_size)                   | :white_check_mark: | :white_check_mark:   |
+| [QUERY_MEM_CAPACITY](#query_mem_capacity)           | :white_check_mark: | :white_check_mark:   |
 | [VKEY_MAX_ENTITY_COUNT](#vkey_max_entity_count)     | :white_check_mark: | :white_check_mark:   |
 
 
