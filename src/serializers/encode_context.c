@@ -28,11 +28,6 @@ static void _GraphEncodeContext_ResetHeader(GraphEncodeContext *ctx) {
 	header->graph_name = NULL;
 	header->label_matrix_count = 0;
 	header->relationship_matrix_count = 0;
-
-	if(header->multi_edge != NULL) {
-		rm_free(header->multi_edge);
-		header->multi_edge = NULL;
-	}
 }
 
 void GraphEncodeContext_Reset(GraphEncodeContext *ctx) {
@@ -71,15 +66,6 @@ void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, const char *graph_na
 	header->relationship_matrix_count  =  r_count;
 	header->label_matrix_count         =  Graph_LabelTypeCount(g);
 	header->key_count                  =  GraphEncodeContext_GetKeyCount(ctx);
-	header->multi_edge                 =  rm_malloc(sizeof(bool) * r_count);
-
-	// denote for each relationship matrix Ri if it contains muti-edge entries
-	// this information alows for an optimization when loading the data
-	// as construction of a matrix without multiple edge entry is cheaper
-	for(uint i = 0; i < r_count; i++) {
-		bool multi_edge = Graph_RelationshipContainsMultiEdge(g, i, false);
-		header->multi_edge[i] = multi_edge;
-	}
 }
 
 EncodeState GraphEncodeContext_GetEncodeState(const GraphEncodeContext *ctx) {
@@ -169,13 +155,8 @@ void GraphEncodeContext_IncreaseProcessedKeyCount(GraphEncodeContext *ctx) {
 	ctx->keys_processed++;
 }
 
-static void GraphEncodeContext_FreeHeader(GraphEncodeContext *ctx) {
-	if(ctx->header.multi_edge != NULL) rm_free(ctx->header.multi_edge);
-}
-
 void GraphEncodeContext_Free(GraphEncodeContext *ctx) {
 	if(ctx) {
-		GraphEncodeContext_FreeHeader(ctx);
 		raxFree(ctx->meta_keys);
 		rm_free(ctx);
 	}

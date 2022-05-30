@@ -29,7 +29,6 @@ typedef enum {
 
 // Header information encoded for every payload
 typedef struct {
-	bool *multi_edge;                // true if R[i] contain a multi edge entry
 	uint64_t key_count;              // number of virtual keys + primary key
 	uint64_t node_count;             // number of nodes
 	uint64_t edge_count;             // number of edges

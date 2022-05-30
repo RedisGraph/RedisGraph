@@ -48,12 +48,6 @@ static void _RdbSaveHeader
 	// relation matrix count
 	RedisModule_SaveUnsigned(rdb, header->relationship_matrix_count);
 
-	// does relationship Ri holds mutiple edges under a single entry X N
-	for(int i = 0; i < header->relationship_matrix_count; i++) {
-		// true if R[i] contain a multi edge entry
-		RedisModule_SaveUnsigned(rdb, header->multi_edge[i]);
-	}
-
 	// number of keys
 	RedisModule_SaveUnsigned(rdb, header->key_count);
 
