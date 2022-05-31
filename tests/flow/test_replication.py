@@ -110,4 +110,3 @@ class testReplication(FlowTestsBase):
         result = graph.query(q).result_set
         replica_result = replica.query(q).result_set
         env.assertEquals(replica_result, result)
-

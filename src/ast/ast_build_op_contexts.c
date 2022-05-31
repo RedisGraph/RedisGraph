@@ -53,7 +53,7 @@ static void _ConvertSetItem(GraphContext *gc, rax *updates,
 	const  cypher_astnode_t  *ast_value  =  NULL;  // AST node value set
 
 	UPDATE_MODE update_mode = UPDATE_MERGE;
-	Attribute_ID attribute_id = ATTRIBUTE_NOTFOUND;
+	Attribute_ID attribute_id = ATTRIBUTE_ID_NONE;
 	const cypher_astnode_type_t type = cypher_astnode_type(set_item);
 
 	if(type == CYPHER_AST_SET_ALL_PROPERTIES) {
@@ -66,7 +66,7 @@ static void _ConvertSetItem(GraphContext *gc, rax *updates,
 		alias = cypher_ast_identifier_get_name(prop_expr);
 
 		// attribute
-		attribute_id = ATTRIBUTE_ALL;
+		attribute_id = ATTRIBUTE_ID_ALL;
 
 		// value
 		ast_value = cypher_ast_set_all_properties_get_expression(set_item);
@@ -78,7 +78,7 @@ static void _ConvertSetItem(GraphContext *gc, rax *updates,
 		alias = cypher_ast_identifier_get_name(prop_expr);
 
 		// attribute
-		attribute_id = ATTRIBUTE_ALL;
+		attribute_id = ATTRIBUTE_ID_ALL;
 
 		// value
 		ast_value = cypher_ast_merge_properties_get_expression(set_item);

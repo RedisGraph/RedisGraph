@@ -18,7 +18,7 @@ static void CreateFree(OpBase *opBase);
 OpBase *NewCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
 	OpCreate *op = rm_calloc(1, sizeof(OpCreate));
 	op->records = NULL;
-	op->pending = NewPendingCreationsContainer(nodes, edges); // Prepare all creation variables.
+	NewPendingCreationsContainer(&op->pending, nodes, edges); // Prepare all creation variables.
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CREATE, "Create", NULL, CreateConsume,
 				NULL, NULL, CreateClone, CreateFree, true, plan);
@@ -59,15 +59,18 @@ static void _CreateNodes(OpCreate *op, Record r) {
 		Node *node_ref = Record_AddNode(r, op->pending.nodes_to_create[i].node_idx, newNode);
 
 		// convert query-level properties
-		PendingProperties *converted_properties = NULL;
+		AttributeSet converted_attr = NULL;
 		PropertyMap *map = op->pending.nodes_to_create[i].properties;
-		if(map) converted_properties = ConvertPropertyMap(r, map, false);
+		if(map != NULL) {
+			converted_attr = AttributeSet_New();
+			ConvertPropertyMap(&converted_attr, r, map, false);
+		}
 
 		// save node for later insertion
 		array_append(op->pending.created_nodes, node_ref);
 
-		// save properties to insert with node
-		array_append(op->pending.node_properties, converted_properties);
+		// save attributes to insert with node
+		array_append(op->pending.node_attributes, converted_attr);
 
 		// save labels to assigned to node
 		array_append(op->pending.node_labels, n->labelsId);
@@ -98,14 +101,17 @@ static void _CreateEdges(OpCreate *op, Record r) {
 
 		// convert query-level properties
 		PropertyMap *map = op->pending.edges_to_create[i].properties;
-		PendingProperties *converted_properties = NULL;
-		if(map) converted_properties = ConvertPropertyMap(r, map, false);
+		AttributeSet converted_attr = NULL;
+		if(map != NULL) {
+			converted_attr = AttributeSet_New();
+			ConvertPropertyMap(&converted_attr, r, map, false);
+		}
 
 		// save edge for later insertion
 		array_append(op->pending.created_edges, edge_ref);
 
-		// save properties to insert with node
-		array_append(op->pending.edge_properties, converted_properties);
+		// save attributes to insert with node
+		array_append(op->pending.edge_attributes, converted_attr);
 	}
 }
 

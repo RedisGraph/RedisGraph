@@ -8,6 +8,8 @@
 #include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
+#include "../../util/qsort.h"
+#include "../../graph/graph_hub.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
 /* Forward declarations. */
@@ -17,50 +19,73 @@ static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void DeleteFree(OpBase *opBase);
 
 void _DeleteEntities(OpDelete *op) {
-	Graph  *g                     =  op->gc->g;
-	uint   node_deleted           =  0;
 	uint   edge_deleted           =  0;
 	uint   implicit_edge_deleted  =  0;
 	uint   node_count             =  array_len(op->deleted_nodes);
 	uint   edge_count             =  array_len(op->deleted_edges);
 
 	// nothing to delete, quickly return
-	if((node_count + edge_count) == 0) goto cleanup;
+	if((node_count + edge_count) == 0) return;
+
+	//--------------------------------------------------------------------------
+	// removing duplicates
+	//--------------------------------------------------------------------------
+
+	// remove node duplicates
+	Node *nodes = op->deleted_nodes;
+	Node *distinct_nodes = array_new(Node, 1);
+
+#define is_entity_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
+	QSORT(Node, nodes, node_count, is_entity_lt);
+
+	for(uint i = 0; i < node_count; i++) {
+		while(i < node_count - 1 && ENTITY_GET_ID(nodes + i) == ENTITY_GET_ID(nodes + i + 1)) i++;
+
+		if(DataBlock_ItemIsDeleted((nodes + i)->attributes)) continue;
+		array_append(distinct_nodes, *(nodes + i));
+	}
+
+	node_count = array_len(distinct_nodes);
+
+	// remove edge duplicates
+	Edge *edges = op->deleted_edges;
+	Edge *distinct_edges = array_new(Edge, 1);
+
+	QSORT(Edge, edges, edge_count, is_entity_lt);
+
+	for(uint i = 0; i < edge_count; i++) {
+		while(i < edge_count - 1 && ENTITY_GET_ID(edges + i) == ENTITY_GET_ID(edges + i + 1)) i++;
+
+		array_append(distinct_edges, *(edges + i));
+	}
+
+	edge_count = array_len(distinct_edges);
 
 	// lock everything
-	QueryCtx_LockForCommit();
-
-	if(GraphContext_HasIndices(op->gc)) {
-		for(int i = 0; i < node_count; i++) {
-			Node *n = op->deleted_nodes + i;
-			GraphContext_DeleteNodeFromIndices(op->gc, n);
-		}
-
-		for(int i = 0; i < edge_count; i++) {
-			Edge *e = op->deleted_edges + i;
-			GraphContext_DeleteEdgeFromIndices(op->gc, e);
-		}
-	}
-
-	if(edge_count <= EDGE_BULK_DELETE_THRESHOLD) {
+	QueryCtx_LockForCommit(); {
+		// delete edges
 		for(uint i = 0; i < edge_count; i++) {
-			edge_deleted += Graph_DeleteEdge(g, op->deleted_edges + i);
+			edge_deleted += DeleteEdge(op->gc, distinct_edges + i);
 		}
-		edge_count = 0;
+
+		// delete nodes
+		for(uint i = 0; i < node_count; i++) {
+			implicit_edge_deleted += DeleteNode(op->gc, distinct_nodes + i);
+		}
+
+		// stats must be updated befor releasing the commit for replication
+		if(op->stats != NULL) {
+			op->stats->nodes_deleted          +=  node_count;
+			op->stats->relationships_deleted  +=  edge_deleted;
+			op->stats->relationships_deleted  +=  implicit_edge_deleted;
+		}
 	}
-
-	Graph_BulkDelete(g, op->deleted_nodes, node_count, op->deleted_edges,
-					 edge_count, &node_deleted, &implicit_edge_deleted);
-
-	if(op->stats != NULL) {
-		op->stats->nodes_deleted          +=  node_deleted;
-		op->stats->relationships_deleted  +=  edge_deleted;
-		op->stats->relationships_deleted  +=  implicit_edge_deleted;
-	}
-
-cleanup:
-	// release lock, no harm in trying to release an unlocked lock
+	// release lock
 	QueryCtx_UnlockCommit(&op->op);
+
+	// clean up
+	array_free(distinct_nodes);
+	array_free(distinct_edges);
 }
 
 OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps) {

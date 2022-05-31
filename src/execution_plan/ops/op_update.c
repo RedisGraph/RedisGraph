@@ -100,6 +100,18 @@ static Record UpdateConsume(OpBase *opBase) {
 	// release lock
 	QueryCtx_UnlockCommit(opBase);
 
+	uint node_updates_count = array_len(op->node_updates);
+	for(uint i = 0; i < node_updates_count; i ++) {
+		PendingUpdateCtx *pending_update = op->node_updates + i;
+		AttributeSet_Free(&pending_update->attributes);
+	}
+
+	uint edge_updates_count = array_len(op->edge_updates);
+	for(uint i = 0; i < edge_updates_count; i ++) {
+		PendingUpdateCtx *pending_update = op->edge_updates + i;
+		AttributeSet_Free(&pending_update->attributes);
+	}
+
 	array_clear(op->node_updates);
 	array_clear(op->edge_updates);
 
@@ -118,10 +130,23 @@ static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase) {
 
 static OpResult UpdateReset(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
+
+	uint node_updates_count = array_len(op->node_updates);
+	for(uint i = 0; i < node_updates_count; i ++) {
+		PendingUpdateCtx *pending_update = op->node_updates + i;
+		AttributeSet_Free(&pending_update->attributes);
+	}
 	array_free(op->node_updates);
 	op->node_updates = NULL;
+
+	uint edge_updates_count = array_len(op->edge_updates);
+	for(uint i = 0; i < edge_updates_count; i ++) {
+		PendingUpdateCtx *pending_update = op->edge_updates + i;
+		AttributeSet_Free(&pending_update->attributes);
+	}
 	array_free(op->edge_updates);
 	op->edge_updates = NULL;
+
 	op->updates_committed = false;
 	return OP_OK;
 }
@@ -130,24 +155,26 @@ static void UpdateFree(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 
 	if(op->node_updates) {
-		uint update_count = array_len(op->node_updates);
-		for (uint i = 0; i < update_count; i++) {
-			SIValue_Free(op->node_updates[i].new_value);
+		uint node_updates_count = array_len(op->node_updates);
+		for(uint i = 0; i < node_updates_count; i ++) {
+			PendingUpdateCtx *pending_update = op->node_updates + i;
+			AttributeSet_Free(&pending_update->attributes);
 		}
 		array_free(op->node_updates);
 		op->node_updates = NULL;
 	}
 
 	if(op->edge_updates) {
-		uint update_count = array_len(op->edge_updates);
-		for (uint i = 0; i < update_count; i++) {
-			SIValue_Free(op->edge_updates[i].new_value);
+		uint edge_updates_count = array_len(op->edge_updates);
+		for(uint i = 0; i < edge_updates_count; i ++) {
+			PendingUpdateCtx *pending_update = op->edge_updates + i;
+			AttributeSet_Free(&pending_update->attributes);
 		}
 		array_free(op->edge_updates);
 		op->edge_updates = NULL;
 	}
 
-	// Free each update context.
+	// free each update context
 	if(op->update_ctxs) {
 		raxFreeWithCallback(op->update_ctxs, (void(*)(void *))UpdateCtx_Free);
 		op->update_ctxs = NULL;
