@@ -170,6 +170,11 @@ static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	ExecutionPlan_UpdateRoot(plan, op);
 }
 
+static inline void _buildRemoveOp(ExecutionPlan *plan, const cypher_astnode_t *clause) {
+	OpBase* op = NewRemoveOp(plan);
+	ExecutionPlan_UpdateRoot(plan, op);
+}
+
 void ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 										const cypher_astnode_t *clause) {
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
@@ -196,6 +201,8 @@ void ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, ExecutionPla
 	} else if(t == CYPHER_AST_WITH) {
 		// Converting a WITH clause can create multiple operations.
 		buildWithOps(plan, clause);
+	} else if(t == CYPHER_AST_REMOVE) {
+		_buildRemoveOp(plan, clause);
 	}
 }
 
