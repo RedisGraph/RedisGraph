@@ -100,6 +100,20 @@ void Schema_AddEdgeToIndices
 	const Edge *e
 );
 
+// remove node from schema indicies
+void Schema_RemoveNodeFromIndices
+(
+	const Schema *s,
+	const Node *n
+);
+
+// remove edge from schema indicies
+void Schema_RemoveEdgeFromIndices
+(
+	const Schema *s,
+	const Edge *e
+);
+
 // Free schema
 void Schema_Free
 (

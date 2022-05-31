@@ -42,3 +42,8 @@ void ResultSetStat_emit
 	const ResultSetStatistics *stats  // statistics to emit
 );
 
+// Clear result-set statistics
+void ResultSetStat_Clear
+(
+	ResultSetStatistics *stats
+);

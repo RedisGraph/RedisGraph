@@ -71,18 +71,21 @@ static void _RdbSaveSIValue
 static void _RdbSaveEntity
 (
 	RedisModuleIO *rdb,
-	const Entity *e
+	const GraphEntity *e
 ) {
 	// Format:
 	// #attributes N
 	// (name, value type, value) X N 
 
-	RedisModule_SaveUnsigned(rdb, e->prop_count);
+	const AttributeSet set = GraphEntity_GetAttributes(e);
 
-	for(int i = 0; i < e->prop_count; i++) {
-		EntityProperty attr = e->properties[i];
-		RedisModule_SaveUnsigned(rdb, attr.id);
-		_RdbSaveSIValue(rdb, &attr.value);
+	RedisModule_SaveUnsigned(rdb, ATTRIBUTE_SET_COUNT(set));
+
+	for(int i = 0; i < ATTRIBUTE_SET_COUNT(set); i++) {
+		Attribute_ID attr_id;
+		SIValue value = AttributeSet_GetIdx(set, i, &attr_id);
+		RedisModule_SaveUnsigned(rdb, attr_id);
+		_RdbSaveSIValue(rdb, &value);
 	}
 }
 
@@ -102,7 +105,7 @@ static void _RdbSaveEdge_v12
 	RedisModule_SaveUnsigned(rdb, ENTITY_GET_ID(e));
 
 	// edge properties
-	_RdbSaveEntity(rdb, e->entity);
+	_RdbSaveEntity(rdb, (GraphEntity *)e);
 }
 
 static void _RdbSaveNode_v12
@@ -132,7 +135,7 @@ static void _RdbSaveNode_v12
 
 	// properties N
 	// (name, value type, value) X N
-	_RdbSaveEntity(rdb, n->entity);
+	_RdbSaveEntity(rdb, (GraphEntity *)n);
 }
 
 static void _RdbSaveDeletedEntities_v12
@@ -212,7 +215,7 @@ void RdbSaveNodes_v12
 
 	for(uint64_t i = 0; i < nodes_to_encode; i++) {
 		GraphEntity e;
-		e.entity = (Entity *)DataBlockIterator_Next(iter, &e.id);
+		e.attributes = (AttributeSet *)DataBlockIterator_Next(iter, &e.id);
 		_RdbSaveNode_v12(rdb, gc, &e);
 	}
 
@@ -256,7 +259,7 @@ void RdbSaveEdges_v12
 
 	for(uint64_t i = 0; i < edges_to_encode; i++) {
 		GraphEntity e;
-		e.entity = (Entity *)DataBlockIterator_Next(iter, &e.id);
+		e.attributes = (AttributeSet *)DataBlockIterator_Next(iter, &e.id);
 		_RdbSaveEdge_v12(rdb, &e);
 	}
 

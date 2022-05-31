@@ -6,7 +6,13 @@
 
 #include "decode_v10.h"
 
-static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type, bool already_loaded) {
+static Schema *_RdbLoadSchema
+(
+	RedisModuleIO *rdb,
+	GraphContext *gc,
+	SchemaType type,
+	bool already_loaded
+) {
 	/* Format:
 	 * id
 	 * name
@@ -25,7 +31,8 @@ static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type, bool already_
 		char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
 		if(!already_loaded) {
 			IndexField field;
-			IndexField_New(&field, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
+			Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field_name);
+			IndexField_New(&field, field_id, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
 					INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
 			Schema_AddIndex(&idx, s, &field, type);
 		}
@@ -33,14 +40,18 @@ static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type, bool already_
 	}
 	if(s) {
 		// no entities are expected to be in the graph in this point in time
-		if(s->index) Index_Construct(s->index);
-		if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
+		if(s->index) Index_Construct(s->index, gc->g);
+		if(s->fulltextIdx) Index_Construct(s->fulltextIdx, gc->g);
 	}
 
 	return s;
 }
 
-static void _RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
+static void _RdbLoadAttributeKeys
+(
+	RedisModuleIO *rdb,
+	GraphContext *gc
+) {
 	/* Format:
 	 * #attribute keys
 	 * attribute keys
@@ -54,7 +65,11 @@ static void _RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	}
 }
 
-void RdbLoadGraphSchema_v10(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbLoadGraphSchema_v10
+(
+	RedisModuleIO *rdb,
+	GraphContext *gc
+) {
 	/* Format:
 	 * attributes
 	 * #node schemas - N
@@ -75,7 +90,7 @@ void RdbLoadGraphSchema_v10(RedisModuleIO *rdb, GraphContext *gc) {
 	// Load each node schema
 	gc->node_schemas = array_ensure_cap(gc->node_schemas, schema_count);
 	for(uint i = 0; i < schema_count; i ++) {
-		Schema *s = _RdbLoadSchema(rdb, SCHEMA_NODE, already_loaded);
+		Schema *s = _RdbLoadSchema(rdb, gc, SCHEMA_NODE, already_loaded);
 		if(!already_loaded) array_append(gc->node_schemas, s);
 	}
 
@@ -85,7 +100,7 @@ void RdbLoadGraphSchema_v10(RedisModuleIO *rdb, GraphContext *gc) {
 	// Load each edge schema
 	gc->relation_schemas = array_ensure_cap(gc->relation_schemas, schema_count);
 	for(uint i = 0; i < schema_count; i ++) {
-		Schema *s = _RdbLoadSchema(rdb, SCHEMA_EDGE, already_loaded);
+		Schema *s = _RdbLoadSchema(rdb, gc, SCHEMA_EDGE, already_loaded);
 		if(!already_loaded) array_append(gc->relation_schemas, s);
 	}
 }
