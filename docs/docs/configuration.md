@@ -41,16 +41,17 @@ GRAPH.CONFIG GET *
 
 # RedisGraph configuration options
 
-| Configuration                                 | Load-time          | Run-time             |
-| :-------                                      | :-----             | :-----------         |
-| [THREAD_COUNT](#thread_count)                 | :white_check_mark: | :white_large_square: |
-| [CACHE_SIZE](#cache_size)                     | :white_check_mark: | :white_large_square: |
-| [OMP_THREAD_COUNT](#omp_thread_count)         | :white_check_mark: | :white_large_square: |
-| [NODE_CREATION_BUFFER](#node_creation_buffer) | :white_check_mark: | :white_large_square: |
-| [MAX_QUEUED_QUERIES](#max_queued_queries)     | :white_check_mark: | :white_check_mark:   |
-| [TIMEOUT](#timeout)                           | :white_check_mark: | :white_check_mark:   |
-| [RESULTSET_SIZE](#resultset_size)             | :white_check_mark: | :white_check_mark:   |
-| [QUERY_MEM_CAPACITY](#query_mem_capacity)     | :white_check_mark: | :white_check_mark:   |
+| Configuration                                       | Load-time          | Run-time             |
+| :-------                                            | :-----             | :-----------         |
+| [THREAD_COUNT](#thread_count)                       | :white_check_mark: | :white_large_square: |
+| [CACHE_SIZE](#cache_size)                           | :white_check_mark: | :white_large_square: |
+| [OMP_THREAD_COUNT](#omp_thread_count)               | :white_check_mark: | :white_large_square: |
+| [NODE_CREATION_BUFFER](#node_creation_buffer)       | :white_check_mark: | :white_large_square: |
+| [MAX_QUEUED_QUERIES](#max_queued_queries)           | :white_check_mark: | :white_check_mark:   |
+| [TIMEOUT](#timeout)                                 | :white_check_mark: | :white_check_mark:   |
+| [RESULTSET_SIZE](#resultset_size)                   | :white_check_mark: | :white_check_mark:   |
+| [QUERY_MEM_CAPACITY](#query_mem_capacity)           | :white_check_mark: | :white_check_mark:   |
+| [VKEY_MAX_ENTITY_COUNT](#vkey_max_entity_count)     | :white_check_mark: | :white_check_mark:   |
 
 
 ## THREAD_COUNT
@@ -111,6 +112,20 @@ Conversely, increasing it might improve performance for write-heavy workloads bu
 
 If the passed argument was not a power of 2, it will be rounded to the next-greatest power of 2 to improve memory alignment.
 
+### Default
+
+`NODE_CREATION_BUFFER` is 16,384 by default.
+
+### Minimum
+
+The minimum value for `NODE_CREATION_BUFFER` is 128. Values lower than this will be accepted as arguments, but will internally be converted to 128.
+
+### Example
+
+```
+$ redis-server --loadmodule ./redisgraph.so NODE_CREATION_BUFFER 200
+```
+
 ---
 
 ## MAX_QUEUED_QUERIES
@@ -129,20 +144,6 @@ $ redis-server --loadmodule ./redisgraph.so MAX_QUEUED_QUERIES 500
 $ redis-cli GRAPH.CONFIG SET MAX_QUEUED_QUERIES 500
 ```
 
-### Default
-
-`NODE_CREATION_BUFFER` is 16,384 by default.
-
-### Minimum
-
-The minimum value for `NODE_CREATION_BUFFER` is 128. Values lower than this will be accepted as arguments, but will internally be converted to 128.
-
-### Example
-
-```
-$ redis-server --loadmodule ./redisgraph.so NODE_CREATION_BUFFER 200
-```
-
 ---
 
 ## TIMEOUT
@@ -158,8 +159,6 @@ Timeout is a flag that specifies the maximum runtime for read queries in millise
 ```
 $ redis-server --loadmodule ./redisgraph.so TIMEOUT 1000
 ```
-
----
 
 ---
 
@@ -204,6 +203,22 @@ $ redis-server --loadmodule ./redisgraph.so QUERY_MEM_CAPACITY 1048576 // 1 mega
 
 $ redis-cli GRAPH.CONFIG SET QUERY_MEM_CAPACITY 1048576
 ```
+
+---
+
+## VKEY_MAX_ENTITY_COUNT
+
+To lower the time Redis is blocked when replicating large graphs,
+RedisGraph serializes the graph in a number of virtual keys.
+
+One virtual key is created for every N graph entities,
+where N is the value defined by this configuration.
+
+This configuration can be set when the module loads or at runtime.
+
+### Default
+
+`VKEY_MAX_ENTITY_COUNT` is 100,000 by default.
 
 # Query Configurations
 

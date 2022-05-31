@@ -89,7 +89,7 @@ We do not support any of these properties at the type level, meaning nodes and r
 + coalesce
 + startNode
 + endNode
-+ [list comprehensions](commands#list-comprehensions)
++ [list comprehensions](/commands/graph.query/#list-comprehensions)
 
   **Unsupported:**
 

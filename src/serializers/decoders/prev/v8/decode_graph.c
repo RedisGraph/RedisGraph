@@ -17,9 +17,6 @@ static GraphContext *_GetOrCreateGraphContext(char *graph_name) {
 	// Free the name string, as it either not in used or copied.
 	RedisModule_Free(graph_name);
 
-	// Set the GraphCtx in thread-local storage.
-	QueryCtx_SetGraphCtx(gc);
-
 	return gc;
 }
 
@@ -185,8 +182,8 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 			GraphStatistics_IncNodeCount(&g->stats, i, nvals);
 
 			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
-			if(s->index) Index_Construct(s->index);
-			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
+			if(s->index) Index_Construct(s->index, g);
+			if(s->fulltextIdx) Index_Construct(s->fulltextIdx, g);
 		}
 
 		// make sure graph doesn't contains may pending changes
@@ -197,9 +194,6 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
 		RedisModule_Log(ctx, "notice", "Done decoding graph %s", GraphContext_GetName(gc));
 	}
-
-	// release thread-local variables
-	QueryCtx_Free();
 
 	return gc;
 }

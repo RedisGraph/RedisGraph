@@ -48,55 +48,10 @@ class testQueryTimeout(FlowTestsBase):
         except ResponseError as error:
             self.env.assertContains("Query timed out", str(error))
 
-    def test03_write_query_ignore_timeout(self):
-        #----------------------------------------------------------------------
-        # verify that the timeout argument is ignored by write queries
-        #----------------------------------------------------------------------
-        write_queries = [
-            # create query
-            "UNWIND range(0, 10000) AS x CREATE (a:M)",
-            # update query
-            "MATCH (a:M) SET a.v = 2",
-            # delete query
-            "MATCH (a:M) DELETE a"
-        ]
+    def test03_timeout_index_scan(self):
+        # set timeout to unlimited
+        redis_con.execute_command("GRAPH.CONFIG SET timeout 0")
 
-        # queries should complete successfully
-        for q in write_queries:
-            try:
-                result = redis_graph.query(q, timeout=1)
-                # the query should have taken longer than the timeout value
-                self.env.assertGreater(result.run_time_ms, 2)
-            except ResponseError:
-                assert(False)
-
-        #----------------------------------------------------------------------
-        # index creation should ignore timeouts
-        #----------------------------------------------------------------------
-        query = "UNWIND range (0, 100000) AS x CREATE (:M {v:x})"
-        redis_graph.query(query)
-
-        # create index
-        query = "CREATE INDEX ON :M(v)"
-        try:
-            # the query should complete successfully
-            result = redis_graph.query(query, timeout=1)
-            self.env.assertEquals(result.indices_created, 1)
-        except ResponseError:
-            assert(False)
-
-        #----------------------------------------------------------------------
-        # index deletion should ignore timeouts
-        #----------------------------------------------------------------------
-        query = "DROP INDEX ON :M(v)"
-        try:
-            # the query should complete successfully
-            result = redis_graph.query(query, timeout=1)
-            self.env.assertEquals(result.indices_deleted, 1)
-        except ResponseError:
-            assert(False)
-
-    def test04_timeout_index_scan(self):
         # construct a graph and create multiple indices
         query = """UNWIND range(0, 500000) AS x CREATE (p:Person {age: x%90, height: x%200, weight: x%80})"""
         redis_graph.query(query)
@@ -136,9 +91,6 @@ class testQueryTimeout(FlowTestsBase):
                 assert(False)
             except ResponseError as error:
                 self.env.assertContains("Query timed out", str(error))
-
-        # validate that server didn't crash
-        redis_con.ping()
 
         # rerun each query with timeout and limit
         # expecting queries to run to completion
