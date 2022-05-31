@@ -4,10 +4,35 @@
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
-#include "decode_graph.h"
+#include "decode_io.h"
 #include "current/v11/decode_v11.h"
 
-GraphContext *RdbLoadGraph(RedisModuleIO *rdb) {
-	return RdbLoadGraphContext_v11(rdb);
+static inline GraphContext *_LoadGraph
+(
+	IODecoder *decoder
+) {
+	return RdbLoadGraphContext_v11(decoder);
+}
+
+// load graph from pipe
+GraphContext *PipeLoadGraph
+(
+	Pipe *p
+) { 
+	IODecoder *decoder = IODecoder_New(IODecoderType_Pipe, p);
+	GraphContext *gc = _LoadGraph(decoder);
+	IODecoder_Free(decoder);
+	return gc;
+}
+
+// load graph from RDB
+GraphContext *RdbLoadGraph
+(
+	RedisModuleIO *rdb
+) {
+	IODecoder *decoder = IODecoder_New(IODecoderType_RDB, rdb);
+	GraphContext *gc = _LoadGraph(decoder);
+	IODecoder_Free(decoder);
+	return gc;
 }
 

@@ -8,5 +8,17 @@
 
 #include "../serializers_include.h"
 
-void RdbSaveGraph(RedisModuleIO *rdb, void *value);
+// graph encoder used by the GRAPH.COPY command to clone a graph
+void PipeSaveGraph
+(
+	Pipe *pipe,  // pipe to write graph binary representation to
+	void *value  // graph to encode
+);
+
+// graph encoder used by Redis to produce RDB
+void RdbSaveGraph
+(
+	RedisModuleIO *rdb,  // RDB io to write graph binary representation to
+	void *value          // graph to encode
+);
 

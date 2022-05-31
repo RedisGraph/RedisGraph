@@ -6,44 +6,46 @@
 
 #pragma once
 
+#include "../encode_io.h"
 #include "../../serializers_include.h"
 
 void RdbSaveGraph_v11
 (
-	RedisModuleIO *rdb,
+	IOEncoder *io,
 	void *value
 );
 
 void RdbSaveNodes_v11
 (
-	RedisModuleIO *rdb,
+	IOEncoder *io,
 	GraphContext *gc,
 	uint64_t nodes_to_encode
 );
 
 void RdbSaveDeletedNodes_v11
 (
-	RedisModuleIO *rdb,
+	IOEncoder *io,
 	GraphContext *gc,
 	uint64_t deleted_nodes_to_encode
 );
 
 void RdbSaveEdges_v11
 (
-	RedisModuleIO *rdb,
+	IOEncoder *io,
 	GraphContext *gc,
 	uint64_t edges_to_encode
 );
 
 void RdbSaveDeletedEdges_v11
 (
-	RedisModuleIO *rdb,
+	IOEncoder *io,
 	GraphContext *gc,
 	uint64_t deleted_edges_to_encode
 );
 
 void RdbSaveGraphSchema_v11
 (
-	RedisModuleIO *rdb,
+	IOEncoder *io,
 	GraphContext *gc
 );
+

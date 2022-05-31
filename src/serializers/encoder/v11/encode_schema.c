@@ -8,7 +8,7 @@
 
 static void _RdbSaveAttributeKeys
 (
-	RedisModuleIO *rdb,
+	IOEncoder *io,
 	GraphContext *gc
 ) {
 	/* Format:
@@ -17,16 +17,16 @@ static void _RdbSaveAttributeKeys
 	*/
 
 	uint count = GraphContext_AttributeCount(gc);
-	RedisModule_SaveUnsigned(rdb, count);
+	IOEncoder_SaveUnsigned(io, count);
 	for(uint i = 0; i < count; i ++) {
 		char *key = gc->string_mapping[i];
-		RedisModule_SaveStringBuffer(rdb, key, strlen(key) + 1);
+		IOEncoder_SaveStringBuffer(io, key, strlen(key) + 1);
 	}
 }
 
 static inline void _RdbSaveFullTextIndexData
 (
-	RedisModuleIO *rdb,
+	IOEncoder *io,
 	Index *idx
 ) {
 	/* Format:
@@ -38,35 +38,35 @@ static inline void _RdbSaveFullTextIndexData
 
 	// encode language
 	const char *language = Index_GetLanguage(idx);
-	RedisModule_SaveStringBuffer(rdb, language, strlen(language) + 1);
+	IOEncoder_SaveStringBuffer(io, language, strlen(language) + 1);
 
 	size_t stopwords_count;
 	char **stopwords = Index_GetStopwords(idx, &stopwords_count);
 	// encode stopwords count
-	RedisModule_SaveUnsigned(rdb, stopwords_count);
+	IOEncoder_SaveUnsigned(io, stopwords_count);
 	for (size_t i = 0; i < stopwords_count; i++) {
 		char *stopword = stopwords[i];
-		RedisModule_SaveStringBuffer(rdb, stopword, strlen(stopword) + 1);
+		IOEncoder_SaveStringBuffer(io, stopword, strlen(stopword) + 1);
 		rm_free(stopword);
 	}
 	rm_free(stopwords);
 
 	// encode field count
 	uint fields_count = Index_FieldsCount(idx);
-	RedisModule_SaveUnsigned(rdb, fields_count);
+	IOEncoder_SaveUnsigned(io, fields_count);
 	for(uint i = 0; i < fields_count; i++) {
 		// encode field
-		RedisModule_SaveStringBuffer(rdb, idx->fields[i].name, strlen(idx->fields[i].name) + 1);
-		RedisModule_SaveDouble(rdb, idx->fields[i].weight);
-		RedisModule_SaveUnsigned(rdb, idx->fields[i].nostem);
-		RedisModule_SaveStringBuffer(rdb, idx->fields[i].phonetic, 
+		IOEncoder_SaveStringBuffer(io, idx->fields[i].name, strlen(idx->fields[i].name) + 1);
+		IOEncoder_SaveDouble(io, idx->fields[i].weight);
+		IOEncoder_SaveUnsigned(io, idx->fields[i].nostem);
+		IOEncoder_SaveStringBuffer(io, idx->fields[i].phonetic, 
 			strlen(idx->fields[i].phonetic) + 1);
 	}
 }
 
 static inline void _RdbSaveExactMatchIndex
 (
-	RedisModuleIO *rdb,
+	IOEncoder *io,
 	SchemaType type,
 	Index *idx
 ) {
@@ -82,7 +82,7 @@ static inline void _RdbSaveExactMatchIndex
 		type == SCHEMA_EDGE ? fields_count - 2 : fields_count;
 
 	// encode field count
-	RedisModule_SaveUnsigned(rdb, encode_fields_count);
+	IOEncoder_SaveUnsigned(io, encode_fields_count);
 	for(uint i = 0; i < fields_count; i++) {
 		char *field_name = idx->fields[i].name;
 
@@ -94,13 +94,13 @@ static inline void _RdbSaveExactMatchIndex
 		    strcmp(field_name, "_dest_id") == 0)) continue;
 
 		// encode field
-		RedisModule_SaveStringBuffer(rdb, field_name, strlen(field_name) + 1);
+		IOEncoder_SaveStringBuffer(io, field_name, strlen(field_name) + 1);
 	}
 }
 
 static inline void _RdbSaveIndexData
 (
-	RedisModuleIO *rdb,
+	IOEncoder *io,
 	SchemaType type,
 	Index *idx
 ) {
@@ -111,13 +111,13 @@ static inline void _RdbSaveIndexData
 	if(!idx) return;
 
 	// index type
-	RedisModule_SaveUnsigned(rdb, idx->type);
+	IOEncoder_SaveUnsigned(io, idx->type);
 
-	if(idx->type == IDX_FULLTEXT) _RdbSaveFullTextIndexData(rdb, idx);
-	else _RdbSaveExactMatchIndex(rdb, type, idx);
+	if(idx->type == IDX_FULLTEXT) _RdbSaveFullTextIndexData(io, idx);
+	else _RdbSaveExactMatchIndex(io, type, idx);
 }
 
-static void _RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
+static void _RdbSaveSchema(IOEncoder *io, Schema *s) {
 	/* Format:
 	 * id
 	 * name
@@ -125,22 +125,26 @@ static void _RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
 	 * (index type, indexed property) X M */
 
 	// Schema ID.
-	RedisModule_SaveUnsigned(rdb, s->id);
+	IOEncoder_SaveUnsigned(io, s->id);
 
 	// Schema name.
-	RedisModule_SaveStringBuffer(rdb, s->name, strlen(s->name) + 1);
+	IOEncoder_SaveStringBuffer(io, s->name, strlen(s->name) + 1);
 
 	// Number of indices.
-	RedisModule_SaveUnsigned(rdb, Schema_IndexCount(s));
+	IOEncoder_SaveUnsigned(io, Schema_IndexCount(s));
 
 	// Exact match indices.
-	_RdbSaveIndexData(rdb, s->type, s->index);
+	_RdbSaveIndexData(io, s->type, s->index);
 
 	// Fulltext indices.
-	_RdbSaveIndexData(rdb, s->type, s->fulltextIdx);
+	_RdbSaveIndexData(io, s->type, s->fulltextIdx);
 }
 
-void RdbSaveGraphSchema_v11(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbSaveGraphSchema_v11
+(
+	IOEncoder *io,
+	GraphContext *gc
+) {
 	/* Format:
 	 * attribute keys (unified schema)
 	 * #node schemas
@@ -150,25 +154,26 @@ void RdbSaveGraphSchema_v11(RedisModuleIO *rdb, GraphContext *gc) {
 	*/
 
 	// Serialize all attribute keys
-	_RdbSaveAttributeKeys(rdb, gc);
+	_RdbSaveAttributeKeys(io, gc);
 
 	// #Node schemas.
 	unsigned short schema_count = GraphContext_SchemaCount(gc, SCHEMA_NODE);
-	RedisModule_SaveUnsigned(rdb, schema_count);
+	IOEncoder_SaveUnsigned(io, schema_count);
 
 	// Name of label X #node schemas.
 	for(int i = 0; i < schema_count; i++) {
 		Schema *s = gc->node_schemas[i];
-		_RdbSaveSchema(rdb, s);
+		_RdbSaveSchema(io, s);
 	}
 
 	// #Relation schemas.
 	unsigned short relation_count = GraphContext_SchemaCount(gc, SCHEMA_EDGE);
-	RedisModule_SaveUnsigned(rdb, relation_count);
+	IOEncoder_SaveUnsigned(io, relation_count);
 
 	// Name of label X #relation schemas.
 	for(unsigned short i = 0; i < relation_count; i++) {
 		Schema *s = gc->relation_schemas[i];
-		_RdbSaveSchema(rdb, s);
+		_RdbSaveSchema(io, s);
 	}
 }
+

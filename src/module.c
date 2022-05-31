@@ -183,6 +183,11 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
+	if(RedisModule_CreateCommand(ctx, "graph.COPY", Graph_Copy, "readonly", 0, 0,
+								 0) == REDISMODULE_ERR) {
+		return REDISMODULE_ERR;
+	}
+
 	if(RedisModule_CreateCommand(ctx, "graph.DEBUG", Graph_Debug, "readonly", 0, 0,
 								 0) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;

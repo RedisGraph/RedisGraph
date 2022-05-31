@@ -4,6 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include "../encode_io.h"
 #include "encode_v11.h"
 
 extern bool process_is_child; // Global variable declared in module.c
@@ -16,7 +17,7 @@ static inline bool _shouldAcquireLocks(void) {
 
 static void _RdbSaveHeader
 (
-	RedisModuleIO *rdb,
+	IOEncoder *io,
 	GraphContext *gc
 ) {
 	// Header format:
@@ -34,31 +35,31 @@ static void _RdbSaveHeader
 	GraphEncodeHeader *header = &(gc->encoding_context->header);
 
 	// graph name
-	RedisModule_SaveStringBuffer(rdb, header->graph_name, strlen(header->graph_name) + 1);
+	IOEncoder_SaveStringBuffer(io, header->graph_name, strlen(header->graph_name) + 1);
 
 	// node count
-	RedisModule_SaveUnsigned(rdb, header->node_count);
+	IOEncoder_SaveUnsigned(io, header->node_count);
 
 	// edge count
-	RedisModule_SaveUnsigned(rdb, header->edge_count);
+	IOEncoder_SaveUnsigned(io, header->edge_count);
 
 	// label matrix count
-	RedisModule_SaveUnsigned(rdb, header->label_matrix_count);
+	IOEncoder_SaveUnsigned(io, header->label_matrix_count);
 
 	// relation matrix count
-	RedisModule_SaveUnsigned(rdb, header->relationship_matrix_count);
+	IOEncoder_SaveUnsigned(io, header->relationship_matrix_count);
 
 	// does relationship Ri holds mutiple edges under a single entry X N
 	for(int i = 0; i < header->relationship_matrix_count; i++) {
 		// true if R[i] contain a multi edge entry
-		RedisModule_SaveUnsigned(rdb, header->multi_edge[i]);
+		IOEncoder_SaveUnsigned(io, header->multi_edge[i]);
 	}
 
 	// number of keys
-	RedisModule_SaveUnsigned(rdb, header->key_count);
+	IOEncoder_SaveUnsigned(io, header->key_count);
 
 	// save graph schemas
-	RdbSaveGraphSchema_v11(rdb, gc);
+	RdbSaveGraphSchema_v11(io, gc);
 }
 
 // returns a state information regarding the number of entities required
@@ -105,7 +106,7 @@ static PayloadInfo _StatePayloadInfo
 // and returns it so the encoder can know how to encode the key
 static PayloadInfo *_RdbSaveKeySchema
 (
-	RedisModuleIO *rdb,
+	IOEncoder *io,
 	GraphContext *gc
 ) {
 	//  Format:
@@ -149,13 +150,13 @@ static PayloadInfo *_RdbSaveKeySchema
 
 	// save the number of payloads
 	uint payloads_count = array_len(payloads);
-	RedisModule_SaveUnsigned(rdb, payloads_count);
+	IOEncoder_SaveUnsigned(io, payloads_count);
 	for(uint i = 0; i < payloads_count; i++) {
 		// for each payload
 		// save its type and the number of entities it contains
 		PayloadInfo payload_info = payloads[i];
-		RedisModule_SaveUnsigned(rdb, payload_info.state);
-		RedisModule_SaveUnsigned(rdb, payload_info.entities_count);
+		IOEncoder_SaveUnsigned(io, payload_info.state);
+		IOEncoder_SaveUnsigned(io, payload_info.entities_count);
 	}
 
 	return payloads;
@@ -163,7 +164,7 @@ static PayloadInfo *_RdbSaveKeySchema
 
 void RdbSaveGraph_v11
 (
-	RedisModuleIO *rdb,
+	IOEncoder *io,
 	void *value
 ) {
 	// Encoding format for graph context and graph meta key:
@@ -201,10 +202,10 @@ void RdbSaveGraph_v11
 	}
 
 	// save header
-	_RdbSaveHeader(rdb, gc);
+	_RdbSaveHeader(io, gc);
 
 	// save payloads info for this key and retrive the key schema
-	PayloadInfo *key_schema = _RdbSaveKeySchema(rdb, gc);
+	PayloadInfo *key_schema = _RdbSaveKeySchema(io, gc);
 
 	uint payloads_count = array_len(key_schema);
 	for(uint i = 0; i < payloads_count; i++) {
@@ -214,16 +215,16 @@ void RdbSaveGraph_v11
 		PayloadInfo payload = key_schema[i];
 		switch(payload.state) {
 		case ENCODE_STATE_NODES:
-			RdbSaveNodes_v11(rdb, gc, payload.entities_count);
+			RdbSaveNodes_v11(io, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_NODES:
-			RdbSaveDeletedNodes_v11(rdb, gc, payload.entities_count);
+			RdbSaveDeletedNodes_v11(io, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_EDGES:
-			RdbSaveEdges_v11(rdb, gc, payload.entities_count);
+			RdbSaveEdges_v11(io, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_EDGES:
-			RdbSaveDeletedEdges_v11(rdb, gc, payload.entities_count);
+			RdbSaveDeletedEdges_v11(io, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_GRAPH_SCHEMA:
 			// skip, handled in _RdbSaveHeader
@@ -246,8 +247,7 @@ void RdbSaveGraph_v11
 	GraphEncodeContext_IncreaseProcessedKeyCount(gc->encoding_context);
 	if(GraphEncodeContext_Finished(gc->encoding_context)) {
 		GraphEncodeContext_Reset(gc->encoding_context);
-		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
-		RedisModule_Log(ctx, "notice", "Done encoding graph %s", gc->graph_name);
+		RedisModule_Log(NULL, "notice", "Done encoding graph %s", gc->graph_name);
 	}
 
 	// if a lock was acquired, release it

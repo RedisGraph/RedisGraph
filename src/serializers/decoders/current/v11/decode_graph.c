@@ -48,7 +48,7 @@ static void _InitGraphDataStructure
 
 static GraphContext *_DecodeHeader
 (
-	RedisModuleIO *rdb
+	IODecoder *io
 ) {
 	// Header format:
 	// Graph name
@@ -61,22 +61,22 @@ static GraphContext *_DecodeHeader
 	// Schema
 
 	// graph name
-	char *graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
+	char *graph_name = IODecoder_LoadStringBuffer(io, NULL);
 
 	// each key header contains the following:
 	// #nodes, #edges, #labels matrices, #relation matrices
-	uint64_t  node_count      =  RedisModule_LoadUnsigned(rdb);
-	uint64_t  edge_count      =  RedisModule_LoadUnsigned(rdb);
-	uint64_t  label_count     =  RedisModule_LoadUnsigned(rdb);
-	uint64_t  relation_count  =  RedisModule_LoadUnsigned(rdb);
+	uint64_t  node_count      =  IODecoder_LoadUnsigned(io);
+	uint64_t  edge_count      =  IODecoder_LoadUnsigned(io);
+	uint64_t  label_count     =  IODecoder_LoadUnsigned(io);
+	uint64_t  relation_count  =  IODecoder_LoadUnsigned(io);
 	uint64_t  multi_edge[relation_count];
 
 	for(uint i = 0; i < relation_count; i++) {
-		multi_edge[i] = RedisModule_LoadUnsigned(rdb);
+		multi_edge[i] = IODecoder_LoadUnsigned(io);
 	}
 
 	// total keys representing the graph
-	uint64_t key_number = RedisModule_LoadUnsigned(rdb);
+	uint64_t key_number = IODecoder_LoadUnsigned(io);
 
 	GraphContext *gc = _GetOrCreateGraphContext(graph_name);
 	Graph *g = gc->g;
@@ -98,14 +98,14 @@ static GraphContext *_DecodeHeader
 	}
 
 	// decode graph schemas
-	RdbLoadGraphSchema_v11(rdb, gc);
+	RdbLoadGraphSchema_v11(io, gc);
 
 	return gc;
 }
 
 static PayloadInfo *_RdbLoadKeySchema
 (
-	RedisModuleIO *rdb
+	IODecoder *io
 ) {
 	// Format:
 	// #Number of payloads info - N
@@ -113,15 +113,15 @@ static PayloadInfo *_RdbLoadKeySchema
 	//     Encode state
 	//     Number of entities encoded in this state.
 
-	uint64_t payloads_count = RedisModule_LoadUnsigned(rdb);
+	uint64_t payloads_count = IODecoder_LoadUnsigned(io);
 	PayloadInfo *payloads = array_new(PayloadInfo, payloads_count);
 
 	for(uint i = 0; i < payloads_count; i++) {
 		// for each payload
 		// load its type and the number of entities it contains
 		PayloadInfo payload_info;
-		payload_info.state =  RedisModule_LoadUnsigned(rdb);
-		payload_info.entities_count =  RedisModule_LoadUnsigned(rdb);
+		payload_info.state =  IODecoder_LoadUnsigned(io);
+		payload_info.entities_count =  IODecoder_LoadUnsigned(io);
 		array_append(payloads, payload_info);
 	}
 	return payloads;
@@ -129,7 +129,7 @@ static PayloadInfo *_RdbLoadKeySchema
 
 GraphContext *RdbLoadGraphContext_v11
 (
-	RedisModuleIO *rdb
+	IODecoder *io
 ) {
 
 	// Key format:
@@ -140,10 +140,10 @@ GraphContext *RdbLoadGraphContext_v11
 	//      Entities in payload
 	//  Payload(s) X N
 
-	GraphContext *gc = _DecodeHeader(rdb);
+	GraphContext *gc = _DecodeHeader(io);
 
 	// load the key schema
-	PayloadInfo *key_schema = _RdbLoadKeySchema(rdb);
+	PayloadInfo *key_schema = _RdbLoadKeySchema(io);
 
 	// The decode process contains the decode operation of many meta keys, representing independent parts of the graph
 	// Each key contains data on one or more of the following:
@@ -159,17 +159,17 @@ GraphContext *RdbLoadGraphContext_v11
 		switch(payload.state) {
 			case ENCODE_STATE_NODES:
 				Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
-				RdbLoadNodes_v11(rdb, gc, payload.entities_count);
+				RdbLoadNodes_v11(io, gc, payload.entities_count);
 				break;
 			case ENCODE_STATE_DELETED_NODES:
-				RdbLoadDeletedNodes_v11(rdb, gc, payload.entities_count);
+				RdbLoadDeletedNodes_v11(io, gc, payload.entities_count);
 				break;
 			case ENCODE_STATE_EDGES:
 				Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
-				RdbLoadEdges_v11(rdb, gc, payload.entities_count);
+				RdbLoadEdges_v11(io, gc, payload.entities_count);
 				break;
 			case ENCODE_STATE_DELETED_EDGES:
-				RdbLoadDeletedEdges_v11(rdb, gc, payload.entities_count);
+				RdbLoadDeletedEdges_v11(io, gc, payload.entities_count);
 				break;
 			case ENCODE_STATE_GRAPH_SCHEMA:
 				// skip, handled in _DecodeHeader
@@ -185,7 +185,7 @@ GraphContext *RdbLoadGraphContext_v11
 	GraphDecodeContext_IncreaseProcessedKeyCount(gc->decoding_context);
 
 	// before finalizing keep encountered meta keys names, for future deletion
-	const RedisModuleString *rm_key_name = RedisModule_GetKeyNameFromIO(rdb);
+	const RedisModuleString *rm_key_name = RedisModule_GetKeyNameFromIO(io);
 	const char *key_name = RedisModule_StringPtrLen(rm_key_name, NULL);
 
 	// the virtual key name is not equal the graph name
@@ -217,8 +217,7 @@ GraphContext *RdbLoadGraphContext_v11
 
 		GraphDecodeContext_Reset(gc->decoding_context);
 
-		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
-		RedisModule_Log(ctx, "notice", "Done decoding graph %s", gc->graph_name);
+		RedisModule_Log(NULL, "notice", "Done decoding graph %s", gc->graph_name);
 	}
 
 	// release thread-local variables
@@ -226,3 +225,4 @@ GraphContext *RdbLoadGraphContext_v11
 
 	return gc;
 }
+
