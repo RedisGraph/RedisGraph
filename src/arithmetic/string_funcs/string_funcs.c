@@ -46,6 +46,11 @@ SIValue AR_RIGHT(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
 	int64_t newlen = argv[1].longval;
+
+	if(newlen < 0) {
+		ErrorCtx_SetError("negative length");
+		return SI_NullVal();
+	}
 	int64_t start = strlen(argv[0].stringval) - newlen;
 
 	if(start <= 0) {
@@ -119,13 +124,13 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 	int64_t length;
 
 	/* Make sure start doesn't overreach. */
-	ASSERT(start < original_len && start >= 0);
+	if(start >= original_len || start < 0) return SI_ConstStringVal("");
 
 	if(argc == 2) {
 		length = original_len - start;
 	} else {
 		length = argv[2].longval;
-		ASSERT(length >= 0);
+		if(length < 0)  return SI_ConstStringVal("");
 
 		/* Make sure length does not overreach. */
 		if(start + length > original_len) {

@@ -708,6 +708,13 @@ TEST_F(ArithmeticTest, ToIntegerTest) {
 	expected = SI_NullVal();
 	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
+
+	/* toInteger('') */
+	query = "RETURN toInteger('')";
+	arExp = _exp_from_query(query);
+	expected = SI_NullVal();
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
 }
 
 TEST_F(ArithmeticTest, ReverseTest) {
@@ -794,6 +801,13 @@ TEST_F(ArithmeticTest, RightTest) {
 
 	/* RIGHT(NULL, 100) */
 	query = "RETURN RIGHT(NULL, 100)";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	ASSERT_EQ(result.type, T_NULL);
+	AR_EXP_Free(arExp);
+
+	/* RIGHT("", -100) */
+	query = "RETURN RIGHT('', -100)";
 	arExp = _exp_from_query(query);
 	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.type, T_NULL);
@@ -982,6 +996,13 @@ TEST_F(ArithmeticTest, SubstringTest) {
 
 	/* SUBSTRING(NULL, 3, 20) */
 	query = "RETURN SUBSTRING(NULL, 3, 20)";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	ASSERT_EQ(result.type, T_NULL);
+	AR_EXP_Free(arExp);
+
+	/* SUBSTRING(NULL, 3, -20) */
+	query = "RETURN SUBSTRING(NULL, 3, -20)";
 	arExp = _exp_from_query(query);
 	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.type, T_NULL);

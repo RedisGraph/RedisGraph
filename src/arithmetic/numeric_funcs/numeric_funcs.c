@@ -115,6 +115,7 @@ SIValue AR_TOINTEGER(SIValue *argv, int argc, void *private_data) {
 		// Remove floating point.
 		return SI_LongVal(floor(arg.doubleval));
 	case T_STRING:
+		if(strlen(arg.stringval) == 0) return SI_NullVal();
 		errno = 0;
 		double parsedval = strtod(arg.stringval, &sEnd);
 		/* The input was not a complete number or represented a number that
