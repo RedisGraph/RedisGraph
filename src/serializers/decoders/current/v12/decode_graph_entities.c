@@ -112,7 +112,7 @@ void RdbLoadNodes_v12
 		uint64_t nodeLabelCount = RedisModule_LoadUnsigned(rdb);
 
 		// * (labels) x M
-		uint64_t labels[nodeLabelCount];
+		LabelID labels[nodeLabelCount];
 		for(uint64_t i = 0; i < nodeLabelCount; i ++){
 			labels[i] = RedisModule_LoadUnsigned(rdb);
 		}
@@ -160,12 +160,11 @@ void RdbLoadEdges_v12
 	// construct edge properties
 	for(uint64_t i = 0; i < edge_count; i++) {
 		Edge e;
-		EdgeID  edgeId  =  RedisModule_LoadUnsigned(rdb);
-		Entity *en      =  DataBlock_AllocateItemOutOfOrder(gc->g->edges, edgeId);
-		en->prop_count = 0;
-		en->properties = NULL;
+		EdgeID  edgeId    =  RedisModule_LoadUnsigned(rdb);
+		AttributeSet *set =  DataBlock_AllocateItemOutOfOrder(gc->g->edges, edgeId);
+		*set = NULL;
 		e.id = edgeId;
-		e.entity = en;
+		e.attributes = set;
 		_RdbLoadEntity(rdb, gc, (GraphEntity *)&e);
 	}
 }

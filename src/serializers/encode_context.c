@@ -58,7 +58,6 @@ void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, const char *graph_na
 
 	int r_count = Graph_RelationTypeCount(g);
 	GraphEncodeHeader *header = &(ctx->header);
-	ASSERT(header->multi_edge == NULL);
 
 	header->graph_name                 =  graph_name;
 	header->node_count                 =  Graph_NodeCount(g);
