@@ -211,11 +211,14 @@ void RdbLoadGraphTopology_v12
 		Schema *s = GraphContext_GetSchemaByID(gc, relation, SCHEMA_EDGE);
 		ASSERT(s != NULL);
 
+		e.relationID = relation;
 		if(ids_count == 1) {
 			EdgeID edgeId = RedisModule_LoadUnsigned(rdb);
 			
 			FormSingleConnection(gc->g, srcId, destId, edgeId, relation);
 
+			e.srcNodeID = srcId;
+			e.destNodeID = destId;
 			Graph_GetEdge(gc->g, edgeId, &e);
 			if(s->index) Index_IndexEdge(s->index, &e);
 			if(s->fulltextIdx) Index_IndexEdge(s->fulltextIdx, &e);
@@ -225,6 +228,8 @@ void RdbLoadGraphTopology_v12
 				EdgeID edgeId = RedisModule_LoadUnsigned(rdb);
 				array_append(edgeIds, edgeId);
 
+				e.srcNodeID = srcId;
+				e.destNodeID = destId;
 				Graph_GetEdge(gc->g, edgeId, &e);
 				if(s->index) Index_IndexEdge(s->index, &e);
 				if(s->fulltextIdx) Index_IndexEdge(s->fulltextIdx, &e);
