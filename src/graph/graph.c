@@ -758,6 +758,7 @@ void Graph_GetNodeEdges
 
 		while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, NULL) == GrB_SUCCESS) {
 			RG_Matrix_extractElement_UINT64(&edgeID, M, destID, srcID);
+			if(dir == GRAPH_EDGE_DIR_BOTH && srcID == destID) continue;
 			// collect all edges connecting destId to srcId
 			if(edgeType != GRAPH_NO_RELATION) {
 				_CollectEdgesFromEntry(g, destID, srcID, edgeType, edgeID, edges);
