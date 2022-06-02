@@ -52,6 +52,13 @@ GraphContext *GraphContext_New
 	const char *graph_name
 );
 
+// register graph context within Redis keyspace
+void GraphContext_RegisterInKeyspace
+(
+	RedisModuleCtx *ctx,  // Redis module context
+	GraphContext *gc      // graph object to register
+);
+
 // increase graph context ref count by 1
 void GraphContext_IncreaseRefCount
 (

@@ -11,6 +11,25 @@
 #include "../serializers/decoders/decode_graph.h"
 #include <stdbool.h>
 
+// clone graph
+static GraphContext *_Graph_Clone
+(
+	const GraphContext *src  // source graph to clone
+) {
+	// create pipe
+	Pipe *p = Pipe_Create();
+	
+	// encode to pipe
+	PipeSaveGraph(p, (void*)src);
+
+	// decode from pipe
+	GraphContext *clone = PipeLoadGraph(p);
+	
+	Pipe_Free(p);
+
+	return clone;
+}
+
 int Graph_Copy
 (
 	RedisModuleCtx *ctx,
@@ -40,31 +59,18 @@ int Graph_Copy
 	}
 
 	// make sure destination graph doesn't already exists
-	GraphContext *dest = GraphContext_Retrieve(ctx, destGraphID, readOnly,
+	GraphContext *clone = GraphContext_Retrieve(ctx, destGraphID, readOnly,
 			shouldCreate);
 
-	if(dest != NULL) {
+	if(clone != NULL) {
 		// destination graph already exists
 		goto cleanup;
 	}
 
-	// create pipe
-	Pipe *p = Pipe_Create();
-	
-	//--------------------------------------------------------------------------
-	// encode to pipe
-	//--------------------------------------------------------------------------
+	clone = _Graph_Clone(src);
 
-	PipeSaveGraph(p, src);
-
-	//--------------------------------------------------------------------------
-	// decode from pipe
-	//--------------------------------------------------------------------------
-
-	GraphContext *clone = PipeLoadGraph (p);
-	// save graph to key space
-	
-	Pipe_Free(p);
+	// register cloned graph in keyspace
+	GraphContext_RegisterInKeyspace(ctx, clone);
 
 cleanup:
 	if(src) {

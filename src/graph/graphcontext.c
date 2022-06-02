@@ -77,6 +77,23 @@ inline void GraphContext_DecreaseRefCount
 // GraphContext API
 //------------------------------------------------------------------------------
 
+// _GraphContext_Create tries to get a graph context,
+// and if it does not exists, create a new one
+// The try-get-create flow is done when module global lock is acquired
+// to enforce consistency while BGSave is called
+static GraphContext *_GraphContext_Create
+(
+	RedisModuleCtx *ctx,
+	const char *graph_name
+) {
+	// create and initialize a graph context
+	GraphContext *gc = GraphContext_New(graph_name);
+
+	GraphContext_RegisterInKeyspace(ctx, gc);
+
+	return gc;
+}
+
 // creates and initializes a graph context struct
 GraphContext *GraphContext_New
 (
@@ -124,17 +141,18 @@ GraphContext *GraphContext_New
 	return gc;
 }
 
-/* _GraphContext_Create tries to get a graph context, and if it does not exists, create a new one.
- * The try-get-create flow is done when module global lock is acquired, to enforce consistency
- * while BGSave is called. */
-static GraphContext *_GraphContext_Create
+// register graph context within Redis keyspace
+void GraphContext_RegisterInKeyspace
 (
-	RedisModuleCtx *ctx,
-	const char *graph_name
+	RedisModuleCtx *ctx,  // Redis module context
+	GraphContext *gc      // graph object to register
 ) {
-	// Create and initialize a graph context.
-	GraphContext *gc = GraphContext_New(graph_name);
-	RedisModuleString *graphID = RedisModule_CreateString(ctx, graph_name, strlen(graph_name));
+	ASSERT(gc  != NULL);
+	ASSERT(ctx != NULL);
+
+	const char *graph_name = gc->graph_name;
+	RedisModuleString *graphID = RedisModule_CreateString(ctx, graph_name,
+			strlen(graph_name));
 
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_WRITE);
 
@@ -146,7 +164,6 @@ static GraphContext *_GraphContext_Create
 
 	RedisModule_FreeString(ctx, graphID);
 	RedisModule_CloseKey(key);
-	return gc;
 }
 
 GraphContext *GraphContext_Retrieve

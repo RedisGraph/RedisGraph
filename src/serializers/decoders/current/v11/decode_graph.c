@@ -185,12 +185,17 @@ GraphContext *RdbLoadGraphContext_v11
 	GraphDecodeContext_IncreaseProcessedKeyCount(gc->decoding_context);
 
 	// before finalizing keep encountered meta keys names, for future deletion
-	const RedisModuleString *rm_key_name = RedisModule_GetKeyNameFromIO(io);
-	const char *key_name = RedisModule_StringPtrLen(rm_key_name, NULL);
+	if(io->t == IODecoderType_RDB) {
+		RedisModuleIO *rdb_io = (RedisModuleIO*)io->io;
+		const RedisModuleString *rm_key_name =
+			RedisModule_GetKeyNameFromIO(rdb_io);
+		const char *key_name =
+			RedisModule_StringPtrLen(rm_key_name, NULL);
 
-	// the virtual key name is not equal the graph name
-	if(strcmp(key_name, gc->graph_name) != 0) {
-		GraphDecodeContext_AddMetaKey(gc->decoding_context, key_name);
+		// the virtual key name is not equal the graph name
+		if(strcmp(key_name, gc->graph_name) != 0) {
+			GraphDecodeContext_AddMetaKey(gc->decoding_context, key_name);
+		}
 	}
 
 	if(GraphDecodeContext_Finished(gc->decoding_context)) {
