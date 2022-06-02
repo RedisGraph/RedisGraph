@@ -47,3 +47,4 @@ void RdbSaveGraphSchema_v12
 	RedisModuleIO *rdb,
 	GraphContext *gc
 );
+

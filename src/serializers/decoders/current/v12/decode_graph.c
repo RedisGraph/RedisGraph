@@ -56,6 +56,8 @@ static GraphContext *_DecodeHeader
 	// Graph name
 	// Node count
 	// Edge count
+	// Deleted node count
+	// Deleted edge count
 	// Label matrix count
 	// Relation matrix count - N
 	// Does relationship matrix Ri holds mutiple edges under a single entry X N
