@@ -214,3 +214,27 @@ class test_v7_encode_decode(FlowTestsBase):
         matches = re.findall("Deleted (.) virtual keys for graph vkey_max_entity_count", log)
 
         self.env.assertEqual(matches, ['3', '6'])
+
+    def test10_load_with_large_deleted_nodes(self):
+        redis_con.flushall()
+
+        # Set configuration
+        response = redis_con.execute_command("GRAPH.CONFIG SET VKEY_MAX_ENTITY_COUNT 20000")
+        self.env.assertEqual(response, "OK")
+
+        graph_name = "large_deleted_nodes"
+        redis_graph = Graph(redis_con, graph_name)
+        
+        # Create 60000 nodes and 30000 edges
+        redis_graph.query("UNWIND range(0, 30000) as v CREATE (:L {v: v})-[:R]->(:M {v: v})")
+
+        # Delete 20000 nodes and 10000 edges
+        redis_graph.query("MATCH (n:L)-[:R]->(m:M) WHERE id(n) <= 20000 DELETE n, m")
+        
+        # Save RDB & Load from RDB
+        redis_con.execute_command("DEBUG", "RELOAD")
+
+        # Validate all data lodaed correctly
+        res = redis_graph.query("MATCH (n:L)-[r:R]->(m:M) RETURN id(n), id(r), id(m)")
+        self.env.assertEquals(len(res.result_set), 20000)
+        self.env.assertEquals(res.result_set, [[20002 + i*2, 10001 + i, 20003 + i * 2] for i in range(0, 20000)])

@@ -74,6 +74,8 @@ void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, const char *graph_na
 	header->graph_name                 =  graph_name;
 	header->node_count                 =  Graph_NodeCount(g);
 	header->edge_count                 =  Graph_EdgeCount(g);
+	header->deleted_node_count         =  Graph_DeletedNodeCount(g);
+	header->deleted_edge_count         =  Graph_DeletedEdgeCount(g);
 	header->relationship_matrix_count  =  r_count;
 	header->label_matrix_count         =  Graph_LabelTypeCount(g);
 	header->key_count                  =  GraphEncodeContext_GetKeyCount(ctx);
