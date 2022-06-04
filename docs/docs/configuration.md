@@ -1,14 +1,14 @@
 ---
-title: "Run-time Configuration"
+title: "Configuration Parameters"
 linkTitle: "Configuration"
 weight: 3
 description: >
-    RedisGraph supports a few run-time configuration options that can be defined when loading the module. In the future more options will be added.
+    RedisGraph supports a few module load-time and a few run-time configuration parameters. 
 ---
 
-## Passing configuration options on module load
+## Passing load-time configuration parameter values on module load
 
-Passing configuration options is done by appending arguments after the `--loadmodule` argument when starting a server from the command line or after the `loadmodule` directive in a Redis config file. For example:
+Passing load-time configuration parameters is done by appending arguments after the `--loadmodule` argument when starting a server from the command line or after the `loadmodule` directive in a Redis config file. For example:
 
 In redis.conf:
 
@@ -22,26 +22,26 @@ From the command line:
 $ redis-server --loadmodule ./redisgraph.so OPT1 VAL1
 ```
 
-## Passing configuration options at run-time
+## Setting run-time configuration parameters at run-time
 
-RedisGraph exposes the `GRAPH.CONFIG` endpoint to allowing for the setting and retrieval of configurations at run-time.
+RedisGraph exposes the `GRAPH.CONFIG` endpoint to allowing for the setting and retrieval of configuration parameters at run-time.
 
-To set a config, simply run:
+To set a run-time configuration parameter, simply run:
 
 ```sh
 GRAPH.CONFIG SET OPT1 VAL1
 ```
 
-Similarly, the current configurations can be retrieved using the syntax:
+Similarly, current configuration parameter values can be retrieved using:
 
 ```sh
 GRAPH.CONFIG GET OPT1
 GRAPH.CONFIG GET *
 ```
 
-# RedisGraph configuration options
+# RedisGraph configuration parameters
 
-| Configuration                                       | Load-time          | Run-time             |
+| Configuration Parameter                             | Load-time          | Run-time             |
 | :-------                                            | :-----             | :-----------         |
 | [THREAD_COUNT](#thread_count)                       | :white_check_mark: | :white_large_square: |
 | [CACHE_SIZE](#cache_size)                           | :white_check_mark: | :white_large_square: |
@@ -53,6 +53,7 @@ GRAPH.CONFIG GET *
 | [QUERY_MEM_CAPACITY](#query_mem_capacity)           | :white_check_mark: | :white_check_mark:   |
 | [VKEY_MAX_ENTITY_COUNT](#vkey_max_entity_count)     | :white_check_mark: | :white_check_mark:   |
 
+---
 
 ## THREAD_COUNT
 
