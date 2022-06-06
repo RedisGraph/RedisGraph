@@ -18,6 +18,12 @@ SIValue AR_LEFT(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
 
 	int64_t newlen = argv[1].longval;
+
+	if(newlen < 0) {
+		ErrorCtx_SetError("length must be positive integer");
+		return SI_NullVal();
+	}
+
 	if(strlen(argv[0].stringval) <= newlen) {
 		// No need to truncate this string based on the requested length
 		return SI_DuplicateStringVal(argv[0].stringval);
@@ -48,9 +54,10 @@ SIValue AR_RIGHT(SIValue *argv, int argc, void *private_data) {
 	int64_t newlen = argv[1].longval;
 
 	if(newlen < 0) {
-		ErrorCtx_SetError("negative length");
+		ErrorCtx_SetError("length must be positive integer");
 		return SI_NullVal();
 	}
+
 	int64_t start = strlen(argv[0].stringval) - newlen;
 
 	if(start <= 0) {
