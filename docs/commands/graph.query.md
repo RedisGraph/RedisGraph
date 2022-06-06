@@ -616,15 +616,28 @@ MATCH (n:Movie) RETURN n.title AS name"
 
 This section contains information on all supported functions from the Cypher query language.
 
-* [Predicate functions](#predicate-functions)
-* [Scalar functions](#scalar-functions)
-* [Aggregating functions](#aggregating-functions)
-* [List functions](#list-functions)
-* [Mathematical functions](#mathematical-functions)
-* [String functions](#string-functions)
-* [Point functions](#point-functions)
-* [Node functions](#node-functions)
-* [Path functions](#path-functions)
+- [Predicate functions](#predicate-functions)
+- [Scalar functions](#scalar-functions)
+- [Aggregating functions](#aggregating-functions)
+- [List functions](#list-functions)
+- [Mathematical functions](#mathematical-functions)
+- [String functions](#string-functions)
+- [Point functions](#point-functions)
+- [Node functions](#node-functions)
+- [Path functions](#path-functions)
+  - [List comprehensions](#list-comprehensions)
+    - [Existential comprehension functions](#existential-comprehension-functions)
+  - [Pattern comprehensions](#pattern-comprehensions)
+  - [CASE WHEN](#case-when)
+    - [Reduce](#reduce)
+  - [Point](#point)
+  - [shortestPath](#shortestpath)
+  - [JSON format](#json-format)
+- [Procedures](#procedures)
+  - [Algorithms](#algorithms)
+    - [BFS](#bfs)
+- [Indexing](#indexing)
+- [Full-text indexes](#full-text-indexes)
 
 ## Predicate functions
 
@@ -648,7 +661,7 @@ This section contains information on all supported functions from the Cypher que
 | keys()                 | Returns the array of keys contained in the given map, node, or edge.        |
 | labels()               | Returns a string representation of the label of a node.                     |
 | startNode()            | Returns the source node of a relationship.                                  |
-| timestamp()            | Returns the the amount of milliseconds since epoch.                         |
+| timestamp()            | Returns the amount of milliseconds since epoch.                         |
 | type()                 | Returns a string representation of the type of a relation.                  |
 | list comprehensions    | [See documentation](#list-comprehensions)                                   |
 | pattern comprehensions | [See documentation](#pattern-comprehensions)                                |
@@ -1059,7 +1072,7 @@ GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex({ label: 'Movie', l
 
 RediSearch provide 3 additional field configuration options:
 1. Weight - The importance of the text in the field
-2. Nostem - Skip setemming when indexing text
+2. Nostem - Skip stemming when indexing text
 3. Phonetic - Enable phonetic search on the text
 
 To construct a full-text index on the `title` property with phonetic search of all nodes with label `Movie`, use the syntax:

@@ -2,7 +2,7 @@ Returns a list containing up to 10 of the slowest queries issued against the giv
 
 Each item in the list has the following structure:
 
-1. A unix timestamp at which the log entry was processed.
+1. A Unix timestamp at which the log entry was processed.
 2. The issued command.
 3. The issued query.
 4. The amount of time needed for its execution, in milliseconds.
