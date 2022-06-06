@@ -3,12 +3,12 @@ title: "Configuration Parameters"
 linkTitle: "Configuration"
 weight: 3
 description: >
-    RedisGraph supports a few module load-time and a few run-time configuration parameters. 
+    RedisGraph supports multiple module configuration parameters. Some of these parameters can only be set at load-time, while other parameters can be set either on load-time or on run-time.
 ---
 
-## Passing load-time configuration parameter values on module load
+## Setting load-time configuration parameters on module load
 
-Passing load-time configuration parameters is done by appending arguments after the `--loadmodule` argument when starting a server from the command line or after the `loadmodule` directive in a Redis config file. For example:
+Setting configuration parameters at load-time is done by appending arguments after the `--loadmodule` argument when starting a server from the command line or after the `loadmodule` directive in a Redis config file. For example:
 
 In redis.conf:
 
@@ -22,11 +22,11 @@ From the command line:
 $ redis-server --loadmodule ./redisgraph.so OPT1 VAL1
 ```
 
-## Setting run-time configuration parameters at run-time
+## Setting configuration parameters at run-time (for supported parameters)
 
 RedisGraph exposes the `GRAPH.CONFIG` endpoint to allowing for the setting and retrieval of configuration parameters at run-time.
 
-To set a run-time configuration parameter, simply run:
+To set the value of a configuration parameter at run-time (for supported parameters), simply run:
 
 ```sh
 GRAPH.CONFIG SET OPT1 VAL1
@@ -40,6 +40,9 @@ GRAPH.CONFIG GET *
 ```
 
 # RedisGraph configuration parameters
+
+The following table summerizes which configuration parameters can be set at module load-time and which can be set on run-time:
+
 
 | Configuration Parameter                             | Load-time          | Run-time             |
 | :-------                                            | :-----             | :-----------         |
