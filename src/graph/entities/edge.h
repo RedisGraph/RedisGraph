@@ -31,7 +31,7 @@
 // instantiate a new edge with relation data
 #define GE_NEW_LABELED_EDGE(r_str, r_id)    \
 (Edge) {                                    \
-	.entity = NULL,                         \
+	.attributes = NULL,                     \
 	.id = INVALID_ENTITY_ID,                \
 	.relationship = (r_str),                \
 	.relationID = (r_id),                   \
@@ -42,20 +42,20 @@
 	.mat = NULL                             \
 }
 
-// resolves to the label ID of the given Node.
-// we first attempt to retrieve it from the local entity, then check the graph if not found.
-// if the Node is unlabeled, the return value will be GRAPH_NO_LABEL. */
+// resolves to relationship-type ID of the given edge
+// we first attempt to retrieve it from the given entity
+// then check the graph if relationship-type isn't set
 #define EDGE_GET_RELATION_ID(e, g)                                                         \
-__extension__({                                                                                         \
+__extension__({                                                                            \
 	if ((e)->relationID == GRAPH_UNKNOWN_RELATION || (e)->relationID == GRAPH_NO_RELATION) \
-		 (e)->relationID = Graph_GetEdgeRelation((g), (e));                   \
+		 (e)->relationID = Graph_GetEdgeRelation((g), (e));                                \
 	(e)->relationID;                                                                       \
 })
 
 /* TODO: note it is possible to get into an inconsistency
  * if we set src and srcNodeID to different nodes. */
 struct Edge {
-	Entity *entity;             // MUST be the first member
+	AttributeSet *attributes;   // MUST be the first member
 	EntityID id;                // Unique id, MUST be the second member
 	const char *relationship;   // Label attached to edge
 	int relationID;             // Relation ID
@@ -68,40 +68,75 @@ struct Edge {
 
 typedef struct Edge Edge;
 
-/* Creates a new edge, connecting src to dest node. */
-// Edge* Edge_New(Node *src, Node *dest, const char *relationship, const char *alias);
+// retrieve edge source node ID
+NodeID Edge_GetSrcNodeID
+(
+	const Edge *edge
+);
 
-// Retrieve edge source node ID.
-NodeID Edge_GetSrcNodeID(const Edge *edge); // graph.c, serializer, all_paths, replies
+// retrieve edge destination node ID
+NodeID Edge_GetDestNodeID
+(
+	const Edge *edge
+);
 
-// Retrieve edge destination node ID.
-NodeID Edge_GetDestNodeID(const Edge *edge); // graph.c, serializer, all_paths, replies
+// retrieve edge relation ID
+int Edge_GetRelationID
+(
+	const Edge *edge
+);
 
-// Retrieve edge relation ID.
-int Edge_GetRelationID(const Edge *edge); // graph.c, replies
+// retrieve edge source node
+Node *Edge_GetSrcNode
+(
+	Edge *e
+);
 
-// Retrieve edge source node.
-Node *Edge_GetSrcNode(Edge *e); // opcreate
+// retrieve edge destination node
+Node *Edge_GetDestNode
+(
+	Edge *e
+);
 
-// Retrieve edge destination node. // opcreate
-Node *Edge_GetDestNode(Edge *e);
+// retrieves edge matrix
+RG_Matrix Edge_GetMatrix
+(
+	Edge *e
+);
 
-// Retrieves edge matrix.
-RG_Matrix Edge_GetMatrix(Edge *e); // AE
+// sets edge source node
+void Edge_SetSrcNode
+(
+	Edge *e,
+	Node *src
+);
 
-// Sets edge source node.
-void Edge_SetSrcNode(Edge *e, Node *src); // QG
+// sets edge destination node
+void Edge_SetDestNode
+(
+	Edge *e,
+	Node *dest
+);
 
-// Sets edge destination node.
-void Edge_SetDestNode(Edge *e, Node *dest); // QG
+// sets edge relation type
+void Edge_SetRelationID
+(
+	Edge *e,
+	int relationID
+);
 
-// Sets edge relation type.
-void Edge_SetRelationID(Edge *e, int relationID); // QG, graph.c
+// constructs a string representation of edge
+void Edge_ToString
+(
+	const Edge *e,
+	char **buffer,
+	size_t *bufferLen,
+	size_t *bytesWritten,
+	GraphEntityStringFromat format
+);
 
-/* Prints a string representation of the edge to buffer, return the string length. */
-void Edge_ToString(const Edge *e, char **buffer, size_t *bufferLen, size_t *bytesWritten,
-				   GraphEntityStringFromat format);
-
-// Frees allocated space by given edge
-void Edge_Free(Edge *edge);
-
+// frees allocated space by given edge
+void Edge_Free
+(
+	Edge *edge
+);

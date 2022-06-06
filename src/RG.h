@@ -75,3 +75,14 @@
 	    ASSERT ( (info == GrB_SUCCESS || info == GrB_NO_VALUE)) \
 }
 
+// use likely and unlikely to provide the compiler with branch prediction information
+// for example:
+// if (likely(x > 0))
+//         foo ();
+#if defined(__GNUC__)
+#define likely(x)       __builtin_expect((x),1)
+#define unlikely(x)     __builtin_expect((x),0)
+#else
+#define likely(x)       (x)
+#define unlikely(x)     (x)
+#endif

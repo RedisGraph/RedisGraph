@@ -105,9 +105,9 @@ static void _CollectEdgesFromEntry
 	e.destNodeID  =  dest;
 
 	if(SINGLE_EDGE(edgeId)) {
-		e.id      =  edgeId;
-		e.entity  =  DataBlock_GetItem(g->edges, edgeId);
-		ASSERT(e.entity);
+		e.id          =  edgeId;
+		e.attributes  =  DataBlock_GetItem(g->edges, edgeId);
+		ASSERT(e.attributes);
 		array_append(*edges, e);
 	} else {
 		// multiple edges connecting src to dest,
@@ -116,10 +116,10 @@ static void _CollectEdgesFromEntry
 		uint edgeCount = array_len(edgeIds);
 
 		for(uint i = 0; i < edgeCount; i++) {
-			edgeId = edgeIds[i];
-			e.entity = DataBlock_GetItem(g->edges, edgeId);
-			e.id = edgeId;
-			ASSERT(e.entity);
+			edgeId       = edgeIds[i];
+			e.id         = edgeId;
+			e.attributes = DataBlock_GetItem(g->edges, edgeId);
+			ASSERT(e.attributes);
 			array_append(*edges, e);
 		}
 	}
@@ -151,7 +151,7 @@ void _Graph_GetEdgesConnectingNodes
 	_CollectEdgesFromEntry(g, src, dest, r, id, edges);
 }
 
-static inline Entity *_Graph_GetEntity(const DataBlock *entities, EntityID id) {
+static inline AttributeSet *_Graph_GetEntity(const DataBlock *entities, EntityID id) {
 	return DataBlock_GetItem(entities, id);
 }
 
@@ -377,11 +377,11 @@ Graph *Graph_New
 	size_t edge_cap
 ) {
 
-	fpDestructor cb = (fpDestructor)FreeEntity;
+	fpDestructor cb = (fpDestructor)AttributeSet_Free;
 	Graph *g = rm_calloc(1, sizeof(Graph));
 
-	g->nodes      =  DataBlock_New(node_cap, node_cap, sizeof(Entity), cb);
-	g->edges      =  DataBlock_New(edge_cap, edge_cap, sizeof(Entity), cb);
+	g->nodes      =  DataBlock_New(node_cap, node_cap, sizeof(AttributeSet), cb);
+	g->edges      =  DataBlock_New(edge_cap, edge_cap, sizeof(AttributeSet), cb);
 	g->labels     =  array_new(RG_Matrix, GRAPH_DEFAULT_LABEL_CAP);
 	g->relations  =  array_new(RG_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 
@@ -473,11 +473,13 @@ int Graph_GetNode
 	NodeID id,
 	Node *n
 ) {
-	ASSERT(g);
-	ASSERT(n);
-	n->entity = _Graph_GetEntity(g->nodes, id);
-	n->id = id;
-	return (n->entity != NULL);
+	ASSERT(g != NULL);
+	ASSERT(n != NULL);
+
+	n->id         = id;
+	n->attributes = _Graph_GetEntity(g->nodes, id);
+
+	return (n->attributes != NULL);
 }
 
 int Graph_GetEdge
@@ -486,13 +488,14 @@ int Graph_GetEdge
 	EdgeID id,
 	Edge *e
 ) {
-	ASSERT(g);
-	ASSERT(e);
+	ASSERT(g != NULL);
+	ASSERT(e != NULL);
 	ASSERT(id < g->edges->itemCap);
 
-	e->id = id;
-	e->entity = _Graph_GetEntity(g->edges, id);
-	return (e->entity != NULL);
+	e->id         = id;
+	e->attributes = _Graph_GetEntity(g->edges, id);
+
+	return (e->attributes != NULL);
 }
 
 int Graph_GetEdgeRelation
@@ -617,20 +620,19 @@ void Graph_CreateNode
 (
 	Graph *g,
 	Node *n,
-	int *labels,
+	LabelID *labels,
 	uint label_count
 ) {
-	ASSERT(g);
-	ASSERT(n);
+	ASSERT(g != NULL);
+	ASSERT(n != NULL);
 	ASSERT(label_count == 0 || (label_count > 0 && labels != NULL));
 
 	NodeID id;
-	Entity *en = DataBlock_AllocateItem(g->nodes, &id);
+	AttributeSet *set = DataBlock_AllocateItem(g->nodes, &id);
+	*set = NULL;
 
-	n->id           =  id;
-	n->entity       =  en;
-	en->prop_count  =  0;
-	en->properties  =  NULL;
+	n->id            =  id;
+	n->attributes    =  set;
 
 	if(label_count > 0) _Graph_LabelNode(g, n->id, labels, label_count);
 }
@@ -669,7 +671,7 @@ void Graph_CreateEdge
 	int r,
 	Edge *e
 ) {
-	ASSERT(g);
+	ASSERT(g != NULL);
 	ASSERT(r < Graph_RelationTypeCount(g));
 
 #ifdef RG_DEBUG
@@ -680,15 +682,15 @@ void Graph_CreateEdge
 #endif
 
 	EdgeID id;
-	Entity *en = DataBlock_AllocateItem(g->edges, &id);
+	AttributeSet *set = DataBlock_AllocateItem(g->edges, &id);
+	*set = NULL;
 
-	e->id           =  id;
-	e->entity       =  en;
-	e->srcNodeID    =  src;
-	e->destNodeID   =  dest;
-	e->relationID   =  r;
-	en->prop_count  =  0;
-	en->properties  =  NULL;
+	e->id            =  id;
+	e->attributes    =  set;
+	e->srcNodeID     =  src;
+	e->destNodeID    =  dest;
+	e->relationID    =  r;
+
 
 	Graph_FormConnection(g, src, dest, id, r);
 }
@@ -756,6 +758,7 @@ void Graph_GetNodeEdges
 
 		while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, NULL) == GrB_SUCCESS) {
 			RG_Matrix_extractElement_UINT64(&edgeID, M, destID, srcID);
+			if(dir == GRAPH_EDGE_DIR_BOTH && srcID == destID) continue;
 			// collect all edges connecting destId to srcId
 			if(edgeType != GRAPH_NO_RELATION) {
 				_CollectEdgesFromEntry(g, destID, srcID, edgeType, edgeID, edges);
@@ -797,7 +800,9 @@ uint Graph_GetNodeLabels
 	uint i = 0;
 
 	for(; i < label_count; i++) {
-		res = RG_MatrixTupleIter_next_BOOL(&iter, NULL, labels + i, NULL);
+		GrB_Index col;
+		res = RG_MatrixTupleIter_next_BOOL(&iter, NULL, &col, NULL);
+		labels[i] = col;
 
 		if(res == GxB_EXHAUSTED) break;
 	}
@@ -805,6 +810,34 @@ uint Graph_GetNodeLabels
 	RG_MatrixTupleIter_detach(&iter);
 
 	return i;
+}
+
+// removes node and all of its connections within the graph
+void Graph_DeleteNode
+(
+	Graph *g,
+	Node *n
+) {
+	// assumption, node is completely detected,
+	// there are no incoming nor outgoing edges
+	// leading to / from node
+	ASSERT(g != NULL);
+	ASSERT(n != NULL);
+
+	RG_Matrix N = Graph_GetNodeLabelMatrix(g);
+	uint label_count;
+	NODE_GET_LABELS(g, n, label_count);
+	for(uint i = 0; i < label_count; i++) {
+		int label_id = labels[i];
+		RG_Matrix M = Graph_GetLabelMatrix(g, label_id);
+		// clear label matrix at position node ID
+		RG_Matrix_removeElement_BOOL(M, ENTITY_GET_ID(n), ENTITY_GET_ID(n));
+		RG_Matrix_removeElement_BOOL(N, ENTITY_GET_ID(n), labels[i]);
+		// update statistics
+		GraphStatistics_DecNodeCount(&g->stats, label_id, 1);
+	}
+
+	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
 }
 
 // removes an edge from Graph and updates graph relevent matrices
@@ -863,11 +896,15 @@ int Graph_DeleteEdge
 
 	// free and remove edges from datablock.
 	DataBlock_DeleteItem(g->edges, ENTITY_GET_ID(e));
+	
 	return 1;
 }
 
-inline bool Graph_EntityIsDeleted(Entity *e) {
-	return DataBlock_ItemIsDeleted(e);
+inline bool Graph_EntityIsDeleted
+(
+	const GraphEntity *e
+) {
+	return DataBlock_ItemIsDeleted(e->attributes);
 }
 
 static void _Graph_FreeRelationMatrices
@@ -878,221 +915,37 @@ static void _Graph_FreeRelationMatrices
 	for(uint i = 0; i < relationCount; i++) RG_Matrix_free(&g->relations[i]);
 }
 
-static void _BulkDeleteNodes
+// update entity's attribute with given value
+int Graph_UpdateEntity
 (
-	Graph *g,
-	Node *nodes,
-	uint node_count,
-	uint *node_deleted,
-	uint *edge_deleted
+	GraphEntity *ge,             // entity yo update
+	Attribute_ID attr_id,        // attribute to update
+	SIValue value,               // value to be set
+	GraphEntityType entity_type  // type of the entity node/edge
 ) {
-	ASSERT(g != NULL);
-	ASSERT(nodes != NULL);
-	ASSERT(g->_writelocked);
-	ASSERT(node_count > 0);
+	ASSERT(ge != NULL);
 
-	RG_Matrix adj; // adjacency matrix
-	adj = Graph_GetAdjacencyMatrix(g, false);
+	int res = 0;
 
-	Node *distinct_nodes = array_new(Node, 1);
-	Edge *edges = array_new(Edge, 1);
-
-	// removing duplicates
-#define is_id_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
-	QSORT(Node, nodes, node_count, is_id_lt);
-
-	for(uint i = 0; i < node_count; i++) {
-		while(i < node_count - 1 && ENTITY_GET_ID(nodes + i) == ENTITY_GET_ID(nodes + i + 1)) i++;
-
-		// skip nodes that have already been deleted
-		if(!DataBlock_GetItem(g->nodes, ENTITY_GET_ID(nodes + i))) continue;
-		array_append(distinct_nodes, *(nodes + i));
+	// handle the case in which we are deleting all attributes
+	if(attr_id == ATTRIBUTE_ID_ALL) {
+		return GraphEntity_ClearAttributes(ge);
 	}
 
-	node_count = array_len(distinct_nodes);
+	// try to get current attribute value
+	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
 
-	//--------------------------------------------------------------------------
-	// collect edges to delete
-	//--------------------------------------------------------------------------
-
-	for(uint i = 0; i < node_count; i++) {
-		Node *n = distinct_nodes + i;
-		GrB_Index src;
-		GrB_Index dest;
-		NodeID ID = ENTITY_GET_ID(n);
-
-		// collect edges
-		Graph_GetNodeEdges(g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, &edges);
-	}
-
-	//--------------------------------------------------------------------------
-	// remove edges from matrices
-	//--------------------------------------------------------------------------
-
-	uint _edge_deleted = Graph_EdgeCount(g);
-
-	int relation_count = Graph_RelationTypeCount(g);
-	int edge_deletion_count[relation_count];
-	memset(edge_deletion_count, 0, relation_count * sizeof(edge_deletion_count[0]));
-
-	int edge_count = array_len(edges);
-
-	// removing duplicates
-	QSORT(Edge, edges, edge_count, is_id_lt);
-
-	for(int i = 0; i < edge_count; i++) {
-		// As long as current is the same as follows.
-		while(i < edge_count - 1 && ENTITY_GET_ID(edges + i) == ENTITY_GET_ID(edges + i + 1)) i++;
-
-		Edge       *e       =  edges + i;
-		NodeID     src      =  Edge_GetSrcNodeID(e);
-		NodeID     dest     =  Edge_GetDestNodeID(e);
-		EdgeID     edge_id  =  ENTITY_GET_ID(e);
-		RG_Matrix  R        =  Graph_GetRelationMatrix(g, e->relationID, false);
-
-		RG_Matrix_removeElement_BOOL(adj, src, dest);
-		RG_Matrix_removeElement_UINT64(R, src, dest);
-		DataBlock_DeleteItem(g->edges, edge_id);
-		edge_deletion_count[e->relationID]++;
-	}
-
-	for(int i = 0; i < relation_count; i++) {
-		// multiple edges of type i has just been deleted, update statistics
-		if(edge_deletion_count[i])
-			GraphStatistics_DecEdgeCount(&g->stats, i, edge_deletion_count[i]);
-	}
-
-	*edge_deleted += _edge_deleted - Graph_EdgeCount(g);
-
-	//--------------------------------------------------------------------------
-	// remove nodes from label matrices
-	//--------------------------------------------------------------------------
-
-	uint _node_deleted = Graph_NodeCount(g);
-	// all nodes marked for deletion are detected (no incoming/outgoing edges)
-	RG_Matrix M = Graph_GetNodeLabelMatrix(g);
-	int node_type_count = Graph_LabelTypeCount(g);
-	for(int i = 0; i < node_count; i++) {
-		Node *n = distinct_nodes + i;
-		NodeID entity_id = ENTITY_GET_ID(n);
-		uint label_count;
-		NODE_GET_LABELS(g, n, label_count);
-
-		for(int i = 0; i < label_count; i++) {
-			RG_Matrix L = Graph_GetLabelMatrix(g, labels[i]);
-			RG_Matrix_removeElement_BOOL(L, entity_id, entity_id);
-			RG_Matrix_removeElement_BOOL(M, entity_id, labels[i]);
-			// update statistics for label of deleted node
-			GraphStatistics_DecNodeCount(&g->stats, labels[i], 1);
+	if(old_value == ATTRIBUTE_NOTFOUND) {
+		// adding a new attribute; do nothing if its value is NULL
+		if(SI_TYPE(value) != T_NULL) {
+			res = GraphEntity_AddProperty(ge, attr_id, value);
 		}
-
-		DataBlock_DeleteItem(g->nodes, entity_id);
+	} else {
+		// update attribute
+		res = GraphEntity_SetProperty(ge, attr_id, value);
 	}
 
-	// update deleted node count
-	*node_deleted += _node_deleted - Graph_NodeCount(g);
-
-	// clean up
-	array_free(edges);
-	array_free(distinct_nodes);
-}
-
-static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
-	ASSERT(g);
-	ASSERT(g->_writelocked);
-	ASSERT(edges);
-	ASSERT(edge_count > 0);
-
-	int        relationCount  =  Graph_RelationTypeCount(g);
-	GrB_Index  n              =  Graph_RequiredMatrixDim(g);
-	RG_Matrix  adj            =  Graph_GetAdjacencyMatrix(g,  false);
-
-	for(int i = 0; i < edge_count; i++) {
-		Edge       *e       =  edges + i;
-		int        r        =  Edge_GetRelationID(e);
-		RG_Matrix  R        =  Graph_GetRelationMatrix(g, r, false);
-		NodeID     src_id   =  Edge_GetSrcNodeID(e);
-		NodeID     dest_id  =  Edge_GetDestNodeID(e);
-		EdgeID     edge_id  =  ENTITY_GET_ID(e);
-
-		GrB_Info info = RG_Matrix_removeEntry(R, src_id, dest_id, edge_id);
-
-		// edge of type r has just been deleted, update statistics
-		GraphStatistics_DecEdgeCount(&g->stats, r, 1);
-
-		// free and remove edges from datablock
-		DataBlock_DeleteItem(g->edges, edge_id);
-
-		int j = 0;
-		for(; j < relationCount; j++) {
-			GrB_Index e;
-			RG_Matrix r = Graph_GetRelationMatrix(g, j, false);
-			info = RG_Matrix_extractElement_UINT64(&e, r, src_id, dest_id);
-			if(info == GrB_SUCCESS) break;
-		}
-
-		// no additional connection between src to dest
-		// remove entry from adj matrix
-		if(j == relationCount) {
-			RG_Matrix_removeElement_BOOL(adj, src_id, dest_id);
-		}
-	}
-}
-
-/* Removes both nodes and edges from graph. */
-void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges, uint edge_count,
-					  uint *node_deleted, uint *edge_deleted) {
-	ASSERT(g);
-
-	uint _edge_deleted = 0;
-	uint _node_deleted = 0;
-
-	if(node_count) {
-		_BulkDeleteNodes(g, nodes, node_count, &_node_deleted, &_edge_deleted);
-	}
-
-	if(edge_count) {
-		// Filter out explicit edges which were removed by _BulkDeleteNodes.
-		if(node_count) {
-			for(int i = 0; i < edge_count; i++) {
-				Edge *e = edges + i;
-				NodeID src = Edge_GetSrcNodeID(e);
-				NodeID dest = Edge_GetDestNodeID(e);
-
-				if(!DataBlock_GetItem(g->nodes, src) || !DataBlock_GetItem(g->nodes, dest)) {
-					// edge already removed due to node removal
-					// replace current edge with last edge
-					edges[i] = edges[edge_count - 1];
-
-					// Update indices.
-					i--;
-					edge_count--;
-				}
-			}
-		}
-
-		// removing duplicates
-#define is_id_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
-		QSORT(Edge, edges, edge_count, is_id_lt);
-
-		size_t uniqueIdx = 0;
-		for(int i = 0; i < edge_count; i++) {
-			// As long as current is the same as follows.
-			while(i < edge_count - 1 && ENTITY_GET_ID(edges + i) == ENTITY_GET_ID(edges + i + 1)) i++;
-
-			// skip edges that have already been deleted
-			if(!DataBlock_GetItem(g->edges, ENTITY_GET_ID(edges + i))) continue;
-			edges[uniqueIdx] = edges[i];
-			uniqueIdx++;
-		}
-
-		edge_count = uniqueIdx;
-		if(edge_count > 0) _BulkDeleteEdges(g, edges, edge_count);
-	}
-	_edge_deleted += edge_count;
-
-	if(node_deleted != NULL) *node_deleted = _node_deleted;
-	if(edge_deleted != NULL) *edge_deleted = _edge_deleted;
+	return res;
 }
 
 DataBlockIterator *Graph_ScanNodes(const Graph *g) {
@@ -1242,7 +1095,7 @@ static void _Graph_Free
 ) {
 	ASSERT(g);
 	// free matrices
-	Entity *en;
+	AttributeSet *set;
 	DataBlockIterator *it;
 
 	RG_Matrix_free(&g->_zero_matrix);
@@ -1258,13 +1111,19 @@ static void _Graph_Free
 	RG_Matrix_free(&g->node_labels);
 
 	it = is_full_graph ? Graph_ScanNodes(g) : DataBlock_FullScan(g->nodes);
-	while((en = (Entity *)DataBlockIterator_Next(it, NULL)) != NULL) {
-		FreeEntity(en);
+	while((set = (AttributeSet *)DataBlockIterator_Next(it, NULL)) != NULL) {
+		if(*set != NULL) {
+			AttributeSet_Free(set);
+		}
 	}
 	DataBlockIterator_Free(it);
 
 	it = is_full_graph ? Graph_ScanEdges(g) : DataBlock_FullScan(g->edges);
-	while((en = DataBlockIterator_Next(it, NULL)) != NULL) FreeEntity(en);
+	while((set = DataBlockIterator_Next(it, NULL)) != NULL) {
+		if(*set != NULL) {
+			AttributeSet_Free(set);
+		}
+	}
 	DataBlockIterator_Free(it);
 
 

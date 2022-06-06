@@ -129,11 +129,11 @@ TEST_F(ValueTest, TestHashDouble) {
 }
 
 TEST_F(ValueTest, TestEdge) {
-	Entity entity;
+	AttributeSet attr;
 
 	Edge e0;
 	e0.id = 0;
-	e0.entity = &entity;
+	e0.attributes = &attr;
 	SIValue edge = SI_Edge(&e0);
 
 	Edge e0Other = e0;
@@ -153,11 +153,11 @@ TEST_F(ValueTest, TestEdge) {
 }
 
 TEST_F(ValueTest, TestNode) {
-	Entity entity;
+	AttributeSet attr;
 
 	Node n0;
 	n0.id = 0;
-	n0.entity = &entity;
+	n0.attributes = &attr;
 	SIValue node = SI_Node(&n0);
 
 	Node n0Other = n0;
@@ -247,15 +247,15 @@ TEST_F(ValueTest, TestHashLongAndDouble) {
 
 // Test for entities with same id, different types
 TEST_F(ValueTest, TestEdgeAndNode) {
-	Entity entity;
+	AttributeSet attr;
 
 	Edge e0;
 	e0.id = 0;
-	e0.entity = &entity;
+	e0.attributes = &attr;
 	SIValue edge = SI_Edge(&e0);
 
 	Node n0;
-	n0.entity = &entity;
+	n0.attributes = &attr;
 	SIValue node = SI_Node(&n0);
 
 	ASSERT_NE(SIValue_HashCode(node), SIValue_HashCode(edge));
@@ -271,11 +271,11 @@ TEST_F(ValueTest, TestSet) {
 	// Populate set.
 	Node n;
 	Edge e;
-	Entity entity;
+	AttributeSet attr;
 	n.id = 0;
-	n.entity = &entity;
+	n.attributes = &attr;
 	e.id = 0;
-	e.entity = &entity;
+	e.attributes = &attr;
 	SIValue arr = SI_Array(2);
 
 	Set_Add(set, arr);

@@ -113,3 +113,15 @@ void ResultSetStat_emit
 	RedisModule_ReplyWithStringBuffer(ctx, buff, buflen);
 }
 
+void ResultSetStat_Clear(ResultSetStatistics *stats) {
+	ASSERT(stats != NULL);
+
+	stats->labels_added           =  0;
+	stats->nodes_deleted          =  0;
+	stats->nodes_created          =  0;
+	stats->properties_set         =  0;
+	stats->indices_created        =  STAT_NOT_SET;
+	stats->indices_deleted        =  STAT_NOT_SET;
+	stats->relationships_created  =  0;
+	stats->relationships_deleted  =  0;
+}
