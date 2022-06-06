@@ -64,8 +64,8 @@ class testReplication(FlowTestsBase):
         q = "MATCH (n:L {id:0}) DELETE n"
         graph.query(q)
 
-        # give replica some time to catch up
-        time.sleep(1)
+        # the WAIT command forces master slave sync to complete
+        source_con.execute_command("WAIT", "1", "0")
 
         # make sure index is available on replica
         q = "MATCH (s:L {id:2}) RETURN s.name"
@@ -93,7 +93,7 @@ class testReplication(FlowTestsBase):
         self.env.assertEquals(replica_result, result)
 
         # make sure both primary and replica have the same set of indexes
-        q = "CALL db.indexes()"
+        q = "CALL db.indexes() YIELD type, label, properties, language, stopwords, entitytype"
         result = graph.query(q).result_set
         replica_result = replica.query(q).result_set
         self.env.assertEquals(replica_result, result)
@@ -102,11 +102,11 @@ class testReplication(FlowTestsBase):
         q = "CALL db.idx.fulltext.drop('L')"
         graph.query(q)
 
-        # give replica some time to catch up
-        time.sleep(1)
+        # the WAIT command forces master slave sync to complete
+        source_con.execute_command("WAIT", "1", "0")
 
         # make sure both primary and replica have the same set of indexes
-        q = "CALL db.indexes()"
+        q = "CALL db.indexes() YIELD type, label, properties, language, stopwords, entitytype"
         result = graph.query(q).result_set
         replica_result = replica.query(q).result_set
         self.env.assertEquals(replica_result, result)

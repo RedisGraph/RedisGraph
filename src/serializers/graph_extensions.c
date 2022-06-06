@@ -129,7 +129,7 @@ static void _OptimizedSingleEdgeFormConnection
 
 	info = GrB_Matrix_setElement_UINT64(m, edge_id, src, dest);
 	ASSERT(info == GrB_SUCCESS);
-	info = GrB_Matrix_setElement_UINT64(tm, edge_id, dest, src);
+	info = GrB_Matrix_setElement_BOOL(tm, true, dest, src);
 	ASSERT(info == GrB_SUCCESS);
 
 	// an edge of type r has just been created, update statistics
