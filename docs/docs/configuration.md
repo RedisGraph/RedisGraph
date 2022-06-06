@@ -1,14 +1,14 @@
 ---
-title: "Run-time Configuration"
+title: "Configuration Parameters"
 linkTitle: "Configuration"
 weight: 3
 description: >
-    RedisGraph supports a few run-time configuration options that can be defined when loading the module. In the future more options will be added.
+    RedisGraph supports multiple module configuration parameters. Some of these parameters can only be set at load-time, while other parameters can be set either on load-time or on run-time.
 ---
 
-## Passing configuration options on module load
+## Setting load-time configuration parameters on module load
 
-Passing configuration options is done by appending arguments after the `--loadmodule` argument when starting a server from the command line or after the `loadmodule` directive in a Redis config file. For example:
+Setting configuration parameters at load-time is done by appending arguments after the `--loadmodule` argument when starting a server from the command line or after the `loadmodule` directive in a Redis config file. For example:
 
 In redis.conf:
 
@@ -22,26 +22,29 @@ From the command line:
 $ redis-server --loadmodule ./redisgraph.so OPT1 VAL1
 ```
 
-## Passing configuration options at run-time
+## Setting configuration parameters at run-time (for supported parameters)
 
-RedisGraph exposes the `GRAPH.CONFIG` endpoint to allowing for the setting and retrieval of configurations at run-time.
+RedisGraph exposes the `GRAPH.CONFIG` endpoint to allowing for the setting and retrieval of configuration parameters at run-time.
 
-To set a config, simply run:
+To set the value of a configuration parameter at run-time (for supported parameters), simply run:
 
 ```sh
 GRAPH.CONFIG SET OPT1 VAL1
 ```
 
-Similarly, the current configurations can be retrieved using the syntax:
+Similarly, current configuration parameter values can be retrieved using:
 
 ```sh
 GRAPH.CONFIG GET OPT1
 GRAPH.CONFIG GET *
 ```
 
-# RedisGraph configuration options
+# RedisGraph configuration parameters
 
-| Configuration                                       | Load-time          | Run-time             |
+The following table summerizes which configuration parameters can be set at module load-time and which can be set on run-time:
+
+
+| Configuration Parameter                             | Load-time          | Run-time             |
 | :-------                                            | :-----             | :-----------         |
 | [THREAD_COUNT](#thread_count)                       | :white_check_mark: | :white_large_square: |
 | [CACHE_SIZE](#cache_size)                           | :white_check_mark: | :white_large_square: |
@@ -53,6 +56,7 @@ GRAPH.CONFIG GET *
 | [QUERY_MEM_CAPACITY](#query_mem_capacity)           | :white_check_mark: | :white_check_mark:   |
 | [VKEY_MAX_ENTITY_COUNT](#vkey_max_entity_count)     | :white_check_mark: | :white_check_mark:   |
 
+---
 
 ## THREAD_COUNT
 
