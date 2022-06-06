@@ -15,9 +15,15 @@
 
 // returns a string containing the specified number of leftmost characters of the original string.
 SIValue AR_LEFT(SIValue *argv, int argc, void *private_data) {
-	if(SIValue_IsNull(argv[0])) return SI_NullVal();
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
 
 	int64_t newlen = argv[1].longval;
+
+	if(newlen < 0) {
+		ErrorCtx_SetError("length must be positive integer");
+		return SI_NullVal();
+	}
+
 	if(strlen(argv[0].stringval) <= newlen) {
 		// No need to truncate this string based on the requested length
 		return SI_DuplicateStringVal(argv[0].stringval);
@@ -43,9 +49,15 @@ SIValue AR_LTRIM(SIValue *argv, int argc, void *private_data) {
 
 // returns a string containing the specified number of rightmost characters of the original string.
 SIValue AR_RIGHT(SIValue *argv, int argc, void *private_data) {
-	if(SIValue_IsNull(argv[0])) return SI_NullVal();
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[0])) return SI_NullVal();
 
 	int64_t newlen = argv[1].longval;
+
+	if(newlen < 0) {
+		ErrorCtx_SetError("length must be positive integer");
+		return SI_NullVal();
+	}
+
 	int64_t start = strlen(argv[0].stringval) - newlen;
 
 	if(start <= 0) {
@@ -119,13 +131,20 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 	int64_t length;
 
 	/* Make sure start doesn't overreach. */
-	ASSERT(start < original_len && start >= 0);
+	if(start < 0) {
+		ErrorCtx_SetError("start must be positive integer");
+		return SI_NullVal();
+	}
+	if(start >= original_len) return SI_ConstStringVal("");
 
 	if(argc == 2) {
 		length = original_len - start;
 	} else {
 		length = argv[2].longval;
-		ASSERT(length >= 0);
+		if(length < 0) {
+			ErrorCtx_SetError("length must be positive integer");
+			return SI_ConstStringVal("");
+		}
 
 		/* Make sure length does not overreach. */
 		if(start + length > original_len) {
@@ -343,7 +362,7 @@ void Register_StringFuncs() {
 
 	types = array_new(SIType, 2);
 	array_append(types, (T_STRING | T_NULL));
-	array_append(types, T_INT64);
+	array_append(types, T_INT64 | T_NULL);
 	ret_type = T_STRING | T_NULL;
 	func_desc = AR_FuncDescNew("left", AR_LEFT, 2, 2, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
@@ -356,7 +375,7 @@ void Register_StringFuncs() {
 
 	types = array_new(SIType, 2);
 	array_append(types, (T_STRING | T_NULL));
-	array_append(types, T_INT64);
+	array_append(types, T_INT64 | T_NULL);
 	ret_type = T_STRING | T_NULL;
 	func_desc = AR_FuncDescNew("right", AR_RIGHT, 2, 2, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
