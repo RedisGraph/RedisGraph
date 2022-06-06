@@ -485,6 +485,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.env.assertEquals(len(actual_result.result_set[0][0]), 1000000)
     
     def test23_toInteger(self):
+        # expect calling toInteger to succeed
         queries = [
             """RETURN toInteger(1)""",
             """RETURN toInteger(1.1)""",
@@ -497,6 +498,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             actual_result = graph.query(query)
             self.env.assertEquals(actual_result.result_set[0][0], 1)
 
+        # expect calling toInteger to return NULL
         queries = [
             """RETURN toInteger('z')""",
             """RETURN toInteger(NULL)""",
