@@ -625,19 +625,6 @@ This section contains information on all supported functions from the Cypher que
 - [Point functions](#point-functions)
 - [Node functions](#node-functions)
 - [Path functions](#path-functions)
-  - [List comprehensions](#list-comprehensions)
-    - [Existential comprehension functions](#existential-comprehension-functions)
-  - [Pattern comprehensions](#pattern-comprehensions)
-  - [CASE WHEN](#case-when)
-    - [Reduce](#reduce)
-  - [Point](#point)
-  - [shortestPath](#shortestpath)
-  - [JSON format](#json-format)
-- [Procedures](#procedures)
-  - [Algorithms](#algorithms)
-    - [BFS](#bfs)
-- [Indexing](#indexing)
-- [Full-text indexes](#full-text-indexes)
 
 ## Predicate functions
 
