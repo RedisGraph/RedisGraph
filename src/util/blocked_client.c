@@ -13,8 +13,10 @@ RedisModuleBlockedClient *RedisGraph_BlockClient
     ASSERT(ctx != NULL);
 
     RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
-    // report block client start time
-    RedisModule_BlockedClientMeasureTimeStart(bc);
+    if(RedisModule_BlockedClientMeasureTimeStart) {
+        // report block client start time
+        RedisModule_BlockedClientMeasureTimeStart(bc);
+    }
     return bc;
 }
 
@@ -24,7 +26,9 @@ void RedisGraph_UnblockClient
 ) {
     ASSERT(bc != NULL);
 
-    // report block client end time
-    RedisModule_BlockedClientMeasureTimeEnd(bc);
+    if(RedisModule_BlockedClientMeasureTimeEnd) {
+        // report block client end time
+        RedisModule_BlockedClientMeasureTimeEnd(bc);
+    }
     RedisModule_UnblockClient(bc, NULL);
 }
