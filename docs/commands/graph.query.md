@@ -616,15 +616,15 @@ MATCH (n:Movie) RETURN n.title AS name"
 
 This section contains information on all supported functions from the Cypher query language.
 
-- [Predicate functions](#predicate-functions)
-- [Scalar functions](#scalar-functions)
-- [Aggregating functions](#aggregating-functions)
-- [List functions](#list-functions)
-- [Mathematical functions](#mathematical-functions)
-- [String functions](#string-functions)
-- [Point functions](#point-functions)
-- [Node functions](#node-functions)
-- [Path functions](#path-functions)
+* [Predicate functions](#predicate-functions)
+* [Scalar functions](#scalar-functions)
+* [Aggregating functions](#aggregating-functions)
+* [List functions](#list-functions)
+* [Mathematical functions](#mathematical-functions)
+* [String functions](#string-functions)
+* [Point functions](#point-functions)
+* [Node functions](#node-functions)
+* [Path functions](#path-functions)
 
 ## Predicate functions
 
