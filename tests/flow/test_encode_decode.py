@@ -4,7 +4,7 @@ import re
 redis_con = None
 
 
-class test_v7_encode_decode(FlowTestsBase):
+class test_encode_decode(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True, moduleArgs='VKEY_MAX_ENTITY_COUNT 10')
         global redis_con
@@ -215,7 +215,7 @@ class test_v7_encode_decode(FlowTestsBase):
 
         self.env.assertEqual(matches, ['3', '6'])
 
-    def test10_load_with_large_deleted_nodes(self):
+    def test10_decode_single_edge_relation_with_deleted_nodes(self):
         redis_con.flushall()
 
         # Set configuration
@@ -231,10 +231,36 @@ class test_v7_encode_decode(FlowTestsBase):
         # Delete 20000 nodes and 10000 edges
         redis_graph.query("MATCH (n:L)-[:R]->(m:M) WHERE id(n) <= 20000 DELETE n, m")
         
+        res_before = redis_graph.query("MATCH (n:L)-[r:R]->(m:M) RETURN id(n), id(r), id(m)")
+
         # Save RDB & Load from RDB
         redis_con.execute_command("DEBUG", "RELOAD")
 
         # Validate all data lodaed correctly
-        res = redis_graph.query("MATCH (n:L)-[r:R]->(m:M) RETURN id(n), id(r), id(m)")
-        self.env.assertEquals(len(res.result_set), 20000)
-        self.env.assertEquals(res.result_set, [[20002 + i*2, 10001 + i, 20003 + i * 2] for i in range(0, 20000)])
+        res_after = redis_graph.query("MATCH (n:L)-[r:R]->(m:M) RETURN id(n), id(r), id(m)")
+        self.env.assertEquals(res_before.result_set, res_after.result_set)
+
+    def test11_decode_multi_edge_relation_with_deleted_nodes(self):
+        redis_con.flushall()
+
+        # Set configuration
+        response = redis_con.execute_command("GRAPH.CONFIG SET VKEY_MAX_ENTITY_COUNT 20000")
+        self.env.assertEqual(response, "OK")
+
+        graph_name = "large_deleted_nodes"
+        redis_graph = Graph(redis_con, graph_name)
+        
+        # Create 60000 nodes and 60000 edges
+        redis_graph.query("UNWIND range(0, 30000) as v CREATE (n:L {v: v}), (m:M {v: v}) WITH n, m CREATE (n)-[:R]->(m), (n)-[:R]->(m)")
+
+        # Delete 20000 nodes and 40000 edges
+        redis_graph.query("MATCH (n:L)-[:R]->(m:M) WHERE id(n) <= 20000 DELETE n, m")
+        
+        res_before = redis_graph.query("MATCH (n:L)-[r:R]->(m:M) RETURN id(n), id(r), id(m)")
+
+        # Save RDB & Load from RDB
+        redis_con.execute_command("DEBUG", "RELOAD")
+
+        # Validate all data lodaed correctly
+        res_after = redis_graph.query("MATCH (n:L)-[r:R]->(m:M) RETURN id(n), id(r), id(m)")
+        self.env.assertEquals(res_before.result_set, res_after.result_set)

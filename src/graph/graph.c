@@ -635,7 +635,7 @@ void Graph_CreateNode
 	if(label_count > 0) _Graph_LabelNode(g, n->id, labels, label_count);
 }
 
-void Graph_FormConnection
+bool Graph_FormConnection
 (
 	Graph *g,
 	NodeID src,
@@ -652,6 +652,10 @@ void Graph_FormConnection
 
 	// rows represent source nodes, columns represent destination nodes
 	info = RG_Matrix_setElement_BOOL(adj, src, dest);
+	// incase of decoding it is possible to write outside of matrix bounds
+	// exit early
+	if(info == GrB_INVALID_INDEX) return false;
+
 	ASSERT(info == GrB_SUCCESS);
 
 	info = RG_Matrix_setElement_UINT64(M, edge_id, src, dest);
@@ -659,6 +663,8 @@ void Graph_FormConnection
 
 	// an edge of type r has just been created, update statistics
 	GraphStatistics_IncEdgeCount(&g->stats, r, 1);
+
+	return true;
 }
 
 void Graph_CreateEdge

@@ -9,7 +9,7 @@
 #include "../util/datablock/oo_datablock.h"
 
 // functions declerations - implemented in graph.c
-void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int r);
+bool Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int r);
 
 inline void Serializer_Graph_MarkEdgeDeleted
 (
@@ -51,6 +51,13 @@ void Serializer_Graph_SetNode
 		RG_Matrix  M  =  Graph_GetLabelMatrix(g, label);
 		GrB_Matrix m  =  RG_MATRIX_M(M);
 		info = GrB_Matrix_setElement_BOOL(m, true, id, id);
+		if(info == GrB_INVALID_INDEX) {
+			DataBlock_Ensure(g->nodes, id);
+			GrB_Index dim = Graph_RequiredMatrixDim(g);
+			RedisModule_Log(NULL, "notice", "RESIZE LABEL MATRIX %lld", dim);
+			RG_Matrix_resize(M, dim, dim);
+			info = GrB_Matrix_setElement_BOOL(m, true, id, id);
+		}
 		ASSERT(info == GrB_SUCCESS);
 	}
 }
@@ -119,6 +126,18 @@ static void _OptimizedSingleEdgeFormConnection
 	//--------------------------------------------------------------------------
 
 	info = GrB_Matrix_setElement_BOOL(adj_m, true, src, dest);
+	if(info == GrB_INVALID_INDEX) {
+		// in case of writing out of matrix bounds resize the matrices
+		RedisModule_Log(NULL, "notice", "RESIZE MATRIX SINGLE EDGE");
+
+		uint64_t max = (src < dest ? dest : src);
+		DataBlock_Ensure(g->nodes, max);
+
+		GrB_Index dim = Graph_RequiredMatrixDim(g);
+		RG_Matrix_resize(adj, dim, dim);
+		RG_Matrix_resize(M, dim, dim);
+		info = GrB_Matrix_setElement_BOOL(adj_m, true, src, dest);
+	}
 	ASSERT(info == GrB_SUCCESS);
 	info = GrB_Matrix_setElement_BOOL(adj_tm, true, dest, src);
 	ASSERT(info == GrB_SUCCESS);
@@ -160,7 +179,20 @@ void Serializer_Graph_SetEdge
 	e->destNodeID = dest;
 
 	if(multi_edge) {
-		Graph_FormConnection(g, src, dest, edge_id, r);
+		if(!Graph_FormConnection(g, src, dest, edge_id, r)) {
+			// resize matrices
+			RedisModule_Log(NULL, "notice", "RESIZE MATRIX MULTI EDGE");
+
+			uint64_t max = (src < dest ? dest : src);
+			DataBlock_Ensure(g->nodes, max);
+
+			GrB_Index  dim    =  Graph_RequiredMatrixDim(g);
+			RG_Matrix  M      =  Graph_GetRelationMatrix(g, r, false);
+			RG_Matrix  adj    =  Graph_GetAdjacencyMatrix(g, false);
+			RG_Matrix_resize(adj, dim, dim);
+			RG_Matrix_resize(M, dim, dim);
+			Graph_FormConnection(g, src, dest, edge_id, r);
+		}
 	} else {
 		_OptimizedSingleEdgeFormConnection(g, src, dest, edge_id, r);
 	}
