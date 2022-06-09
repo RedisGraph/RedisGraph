@@ -158,8 +158,8 @@ static void _OptimizedSingleEdgeFormConnection
 		// in case of writing out of matrix bounds resize the matrices
 		RedisModule_Log(NULL, "notice", "RESIZE MATRIX SINGLE EDGE");
 
-		uint64_t max = MAX(src, dest);
-		Graph_EnsureNodeCap(g, max);
+		uint64_t max_id = MAX(src, dest);
+		Graph_EnsureNodeCap(g, max_id);
 		info = GrB_Matrix_setElement_BOOL(adj_m, true, src, dest);
 	}
 	ASSERT(info == GrB_SUCCESS);
@@ -207,8 +207,8 @@ void Serializer_Graph_SetEdge
 			// resize matrices
 			RedisModule_Log(NULL, "notice", "RESIZE MATRIX MULTI EDGE");
 
-			uint64_t max = MAX(src, dest);
-			Graph_EnsureNodeCap(g, max);
+			uint64_t max_id = MAX(src, dest);
+			Graph_EnsureNodeCap(g, max_id);
 			Graph_FormConnection(g, src, dest, edge_id, r);
 		}
 	} else {
