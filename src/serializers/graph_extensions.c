@@ -9,7 +9,37 @@
 #include "../util/datablock/oo_datablock.h"
 
 // functions declerations - implemented in graph.c
-void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int r);
+bool Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int r);
+
+void Graph_EnsureNodeCap
+(
+	Graph *g,
+	uint64_t cap
+) {
+	DataBlock_Ensure(g->nodes, cap);
+
+	uint       n;
+	GrB_Index  dim = Graph_RequiredMatrixDim(g);
+	RG_Matrix  M   =  NULL;
+
+	M = Graph_GetAdjacencyMatrix(g, false);
+	RG_Matrix_resize(M, dim, dim);
+
+	M = Graph_GetNodeLabelMatrix(g);
+	RG_Matrix_resize(M, dim, dim);
+
+	n = array_len(g->labels);
+	for(int i = 0; i < n; i ++) {
+		M = Graph_GetLabelMatrix(g, i);
+		RG_Matrix_resize(M, dim, dim);
+	}
+
+	n = array_len(g->relations);
+	for(int i = 0; i < n; i ++) {
+		M = Graph_GetRelationMatrix(g, i, false);
+		RG_Matrix_resize(M, dim, dim);
+	}
+}
 
 inline void Serializer_Graph_MarkEdgeDeleted
 (
@@ -51,6 +81,11 @@ void Serializer_Graph_SetNode
 		RG_Matrix  M  =  Graph_GetLabelMatrix(g, label);
 		GrB_Matrix m  =  RG_MATRIX_M(M);
 		info = GrB_Matrix_setElement_BOOL(m, true, id, id);
+		if(info == GrB_INVALID_INDEX) {
+			RedisModule_Log(NULL, "notice", "RESIZE LABEL MATRIX");
+			Graph_EnsureNodeCap(g, id);
+			info = GrB_Matrix_setElement_BOOL(m, true, id, id);
+		}
 		ASSERT(info == GrB_SUCCESS);
 	}
 }
@@ -119,6 +154,14 @@ static void _OptimizedSingleEdgeFormConnection
 	//--------------------------------------------------------------------------
 
 	info = GrB_Matrix_setElement_BOOL(adj_m, true, src, dest);
+	if(info == GrB_INVALID_INDEX) {
+		// in case of writing out of matrix bounds resize the matrices
+		RedisModule_Log(NULL, "notice", "RESIZE MATRIX SINGLE EDGE");
+
+		uint64_t max_id = MAX(src, dest);
+		Graph_EnsureNodeCap(g, max_id);
+		info = GrB_Matrix_setElement_BOOL(adj_m, true, src, dest);
+	}
 	ASSERT(info == GrB_SUCCESS);
 	info = GrB_Matrix_setElement_BOOL(adj_tm, true, dest, src);
 	ASSERT(info == GrB_SUCCESS);
@@ -160,7 +203,15 @@ void Serializer_Graph_SetEdge
 	e->destNodeID = dest;
 
 	if(multi_edge) {
-		Graph_FormConnection(g, src, dest, edge_id, r);
+		if(!Graph_FormConnection(g, src, dest, edge_id, r)) {
+			// resize matrices
+			RedisModule_Log(NULL, "notice", "RESIZE MATRIX MULTI EDGE");
+
+			uint64_t max_id = MAX(src, dest);
+			Graph_EnsureNodeCap(g, max_id);
+			bool res = Graph_FormConnection(g, src, dest, edge_id, r);
+			ASSERT(res == true);
+		}
 	} else {
 		_OptimizedSingleEdgeFormConnection(g, src, dest, edge_id, r);
 	}
