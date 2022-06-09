@@ -654,12 +654,10 @@ bool Graph_FormConnection
 	info = RG_Matrix_setElement_BOOL(adj, src, dest);
 	// incase of decoding it is possible to write outside of matrix bounds
 	// exit early
-	if(info == GrB_INVALID_INDEX) return false;
-
-	ASSERT(info == GrB_SUCCESS);
+	if(info != GrB_SUCCESS) return false;
 
 	info = RG_Matrix_setElement_UINT64(M, edge_id, src, dest);
-	ASSERT(info == GrB_SUCCESS);
+	if(info != GrB_SUCCESS) return false;
 
 	// an edge of type r has just been created, update statistics
 	GraphStatistics_IncEdgeCount(&g->stats, r, 1);
