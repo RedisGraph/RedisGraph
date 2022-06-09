@@ -209,7 +209,8 @@ void Serializer_Graph_SetEdge
 
 			uint64_t max_id = MAX(src, dest);
 			Graph_EnsureNodeCap(g, max_id);
-			Graph_FormConnection(g, src, dest, edge_id, r);
+			bool res = Graph_FormConnection(g, src, dest, edge_id, r);
+			ASSERT(res == true);
 		}
 	} else {
 		_OptimizedSingleEdgeFormConnection(g, src, dest, edge_id, r);
