@@ -237,7 +237,7 @@ def create_random_schema():
         count = randint(10, 100)
         properties = randint(0, 10)
         labels = [f"N{i}"]
-        for j in range(0, randint(0, 20)):
+        for j in range(0, randint(0, 5)):
             l = randint(1, labels_count)
             labels.append(f"N{l}")
 
