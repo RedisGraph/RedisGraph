@@ -2,7 +2,7 @@
 
 fuzz:
 ifneq ($(FUZZ_TIMEOUT), )
-	@./process.py -t $(FUZZ_TIMEOUT)
+	@python3 ./process.py -t $(FUZZ_TIMEOUT)
 else
-	@./process.py
+	@python3 ./process.py
 endif
