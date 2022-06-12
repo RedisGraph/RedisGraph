@@ -8,6 +8,7 @@
 #include "commands.h"
 #include "cmd_context.h"
 #include "../util/thpool/pools.h"
+#include "../util/blocked_client.h"
 #include "../configuration/config.h"
 
 #define GRAPH_VERSION_MISSING -1
@@ -213,7 +214,7 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		handler(context);
 	} else {
 		// run query on a dedicated thread
-		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
+		RedisModuleBlockedClient *bc = RedisGraph_BlockClient(ctx);
 		context = CommandCtx_New(NULL, bc, argv[0], query, gc, exec_thread,
 								 is_replicated, compact, timeout);
 

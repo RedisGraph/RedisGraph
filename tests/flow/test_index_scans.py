@@ -368,6 +368,15 @@ class testIndexScanFlow():
         self.env.assertEqual(plan.count("Label Scan"), 1)
         self.env.assertEqual(plan.count("Node By Index Scan"), 0)
 
+        # Querying indexed properties using IN a with array with stop word.
+        query = "MATCH (a:country) WHERE a.name IN ['a'] RETURN a.name ORDER BY a.name"
+        plan = redis_graph.execution_plan(query)
+        # One index scan should be performed.
+        self.env.assertEqual(plan.count("Node By Index Scan"), 1)
+        query_result = redis_graph.query(query)
+        expected_result = []
+        self.env.assertEquals(query_result.result_set, expected_result)
+
     # Test fulltext result scoring
     def test15_fulltext_result_scoring(self):
         g = Graph(self.env.getConnection(), 'fulltext_scoring')
@@ -483,6 +492,29 @@ class testIndexScanFlow():
         self.env.assertIn('Node By Index Scan', plan)
         query_result = redis_graph.query(q)
         expected_result = [["Noam Nativ"]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        q = """MATCH (a:person {name: 'Omri Traub'})
+        WITH a AS a
+        MATCH (b:person)
+        WHERE a.age < b.age
+        RETURN b.name
+        ORDER BY b.name"""
+        plan = redis_graph.execution_plan(q)
+        self.env.assertIn('Node By Index Scan', plan)
+        query_result = redis_graph.query(q)
+        expected_result = [["Noam Nativ"]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        # check that the value is evaluated before sending it to index query
+        q = """MATCH (a:person)
+        WHERE a.age = toInteger('32')
+        RETURN a.name
+        ORDER BY a.name"""
+        plan = redis_graph.execution_plan(q)
+        self.env.assertIn('Node By Index Scan', plan)
+        query_result = redis_graph.query(q)
+        expected_result = [['Ailon Velger'], ['Alon Fital'], ['Ori Laslo'], ['Roi Lipman'], ['Tal Doron']]
         self.env.assertEquals(query_result.result_set, expected_result)
 
         # TODO: The following query uses the "Value Hash Join" where it would be

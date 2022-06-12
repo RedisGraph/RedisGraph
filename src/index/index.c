@@ -246,6 +246,8 @@ void Index_Construct
 	if(idx->stopwords) {
 		RediSearch_IndexOptionsSetStopwords(idx_options,
 				(const char**)idx->stopwords, array_len(idx->stopwords));
+	} else if(idx->type == IDX_EXACT_MATCH) {
+		RediSearch_IndexOptionsSetStopwords(idx_options, NULL, 0);
 	}
 
 	rsIdx = RediSearch_CreateIndex(idx->label, idx_options);

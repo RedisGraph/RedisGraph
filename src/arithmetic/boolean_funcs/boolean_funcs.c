@@ -90,16 +90,16 @@ SIValue AR_GE(SIValue *argv, int argc, void *private_data) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	// Emit error when attempting to compare invalid types
-	if(!SI_VALUES_ARE_COMPARABLE(a, b)) {
+	int disjointOrNull = 0;
+	int res = SIValue_Compare(a, b, &disjointOrNull);
+	if(disjointOrNull == COMPARED_NULL) {
+		// Comparisons with NULL values always return NULL.
+		return SI_NullVal();
+	} else if(disjointOrNull == DISJOINT) {
+		// Emit error when attempting to compare invalid types
 		Error_SITypeMismatch(b, SI_TYPE(a));
 		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
-
-	int disjointOrNull = 0;
-	int res = SIValue_Compare(a, b, &disjointOrNull);
-	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
-	ASSERT(disjointOrNull != DISJOINT);
 
 	return SI_BoolVal(res >= 0);
 }
