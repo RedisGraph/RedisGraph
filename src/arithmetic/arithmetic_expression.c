@@ -307,8 +307,6 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val) {
 		root->operand.type = AR_EXP_CONSTANT;
 		root->operand.constant = v;
 		return true;
-		// Root is an aggregation function, can't reduce.
-		return false;
 	}
 }
 
