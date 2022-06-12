@@ -10,15 +10,17 @@ description: >
 
 Setting configuration parameters at load-time is done by appending arguments after the `--loadmodule` argument when starting a server from the command line or after the `loadmodule` directive in a Redis config file. For example:
 
-In redis.conf:
+In [redis.conf](/docs/manual/config/):
 
 ```sh
 loadmodule ./redisgraph.so [OPT VAL]...
 ```
 
-From redis-cli:
+From the [Redis CLI](/docs/manual/cli/), using the [MODULE LOAD](/commands/module-load/) command:
 
-127.0.0.6379> MODULE load redisgraph.so [OPT VAL]...
+```
+127.0.0.6379> MODULE LOAD redisgraph.so [OPT VAL]...
+```
 
 From the command line:
 
