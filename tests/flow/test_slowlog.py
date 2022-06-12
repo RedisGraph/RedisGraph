@@ -1,3 +1,4 @@
+from distutils.version import StrictVersion
 from common import *
 
 GRAPH_ID = "slowlog_test"
@@ -38,6 +39,11 @@ class testSlowLog(FlowTestsBase):
 
         # Calling slowlog multiple times should preduce the same result.
         self.env.assertEquals(A, B)
+
+        server = redis_con.info("Server")
+        if StrictVersion(server["redis_version"]) < StrictVersion("6.2.0"):
+            # redis < 6.2.0 not support slowlog time measure
+            return
 
         # Issue a long running query, this should replace an existing entry in the slowlog.
         q = """MATCH (n), (m) WHERE n.v > 0 AND n.v < 500 SET m.v = rand() WITH n, m RETURN SUM(n.v + m.v)"""
