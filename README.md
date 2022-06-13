@@ -4,7 +4,7 @@
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/RedisGraph/RedisGraph.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/RedisGraph/RedisGraph/alerts/)
 [![Codecov](https://codecov.io/gh/RedisGraph/RedisGraph/branch/master/graph/badge.svg)](https://codecov.io/gh/RedisGraph/RedisGraph)
 
-# RedisGraph 
+# RedisGraph
 ## A graph database module for Redis
 [![Forum](https://img.shields.io/badge/Forum-RedisGraph-blue)](https://forum.redislabs.com/c/modules/redisgraph)
 [![Discord](https://img.shields.io/discord/697882427875393627?style=flat-square)](https://discord.gg/gWBRT6P)
@@ -40,7 +40,7 @@ To try RedisGraph, either use the RedisGraph Docker image, or [create a free Red
 To quickly tryout RedisGraph, launch an instance using docker:
 
 ```sh
-docker run -p 6379:6379 -it --rm redislabs/redisgraph
+docker run -p 6379:6379 -it --rm redis/redis-stack-server:latest
 ```
 
 ### Give it a try
