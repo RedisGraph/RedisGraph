@@ -133,11 +133,14 @@ static sds _JsonEncoder_Path(SIValue p, sds s) {
 static sds _JsonEncoder_Point(SIValue point, sds s) {
 	ASSERT(SI_TYPE(point) & T_POINT);
 
-	s = sdscat(s, "{\"crs\":\"wgs-84\",");
-	s = sdscat(s, "{\"latitude\":");
+	// default crs == wgs-84 till we support other CRS formats 
+	s = sdscat(s, "{\"crs\":\"wgs-84\",\"latitude\":");
+	
 	s = sdscatprintf(s, "%f", point.point.latitude);
 	s = sdscat(s, ",\"longitude\":");
 	s = sdscatprintf(s, "%f", point.point.longitude);
+
+	// height is not supported yet
 	s = sdscat(s, ",\"height\":null");
 	s = sdscat(s, "}");
 	return s;
