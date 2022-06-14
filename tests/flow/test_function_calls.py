@@ -394,7 +394,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """RETURN toJSON(point({ longitude: 167.697555, latitude: 0.402313 }))"""
         actual_result = graph.query(query)
         parsed = json.loads(actual_result.result_set[0][0])
-        self.env.assertEquals(parsed, {"latitude": 0.402313, "longitude": 167.697556})
+        self.env.assertEquals(parsed, {"crs": "wgs-84", "latitude": 0.402313, "longitude": 167.697556, "height": None})
 
     # Memory should be freed properly when the key values are heap-allocated.
     def test18_allocated_keys(self):
