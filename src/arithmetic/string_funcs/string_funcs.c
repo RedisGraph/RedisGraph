@@ -125,9 +125,9 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 	*/
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
-	char *original = argv[0].stringval;
-	int64_t original_len = strlen(original);
-	int64_t start = argv[1].longval;
+	const char *original = argv[0].stringval;
+	const int64_t original_len = strlen(original);
+	const int64_t start = argv[1].longval;
 	int64_t length;
 
 	/* Make sure start doesn't overreach. */
@@ -137,7 +137,7 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 	}
 	if(start >= original_len) return SI_ConstStringVal("");
 
-	int64_t suffix_len = original_len - start;
+	const int64_t suffix_len = original_len - start;
 	if(argc == 2) {
 		length = suffix_len;
 	} else {
