@@ -130,6 +130,17 @@ static sds _JsonEncoder_Path(SIValue p, sds s) {
 	return s;
 }
 
+static sds _JsonEncoder_Point(SIValue point, sds s) {
+	ASSERT(SI_TYPE(point) & T_POINT);
+
+	s = sdscat(s, "{\"latitude\": ");
+	s = sdscatprintf(s, "%f", point.point.latitude);
+	s = sdscat(s, ", \"longitude\": ");
+	s = sdscatprintf(s, "%f", point.point.longitude);
+	s = sdscat(s, "}");
+	return s;
+}
+
 static sds _JsonEncoder_Array(SIValue list, sds s) {
 	// open array with "["
 	s = sdscat(s, "[");
@@ -201,6 +212,9 @@ sds _JsonEncoder_SIValue(SIValue v, sds s) {
 	case T_NULL:
 		s = sdscat(s, "null");
 		break;
+	case T_POINT:
+		s = _JsonEncoder_Point(v, s);
+		break;		
 	default:
 		// unrecognized type
 		ErrorCtx_RaiseRuntimeException("JSON encoder encountered unrecognized type: %d\n", v.type);
