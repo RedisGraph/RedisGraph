@@ -137,8 +137,9 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 	}
 	if(start >= original_len) return SI_ConstStringVal("");
 
+	int64_t suffix_len = original_len - start;
 	if(argc == 2) {
-		length = original_len - start;
+		length = suffix_len;
 	} else {
 		length = argv[2].longval;
 		if(length < 0) {
@@ -147,8 +148,8 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 		}
 
 		/* Make sure length does not overreach. */
-		if(start + length > original_len) {
-			length = original_len - start;
+		if(length > suffix_len) {
+			length = suffix_len;
 		}
 	}
 
