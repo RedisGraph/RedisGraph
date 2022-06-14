@@ -52,6 +52,7 @@ typedef enum {
 	OPType_OR_APPLY_MULTIPLEXER,
 	OPType_AND_APPLY_MULTIPLEXER,
 	OPType_OPTIONAL,
+	OpType_SET_LABELS,
 } OPType;
 
 typedef enum {
