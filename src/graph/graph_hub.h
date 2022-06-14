@@ -67,10 +67,17 @@ int DeleteEdge
 // update the relevant indexes of the entity
 // add entity update operations to undo log
 // return the # of properties updated
-int UpdateEntity
+int UpdateEntityProperties
 (
 	GraphContext *gc,            // graph context to update the entity
 	GraphEntity *ge,             // the entity to be updated
 	const AttributeSet set,      // attributes to update
 	GraphEntityType entity_type  // the entity type (node/edge)
+);
+
+
+int UpdateNodeLabels(
+	GraphContext *gc,            // graph context to update the entity
+	Node *node,            		 // the node to be updated
+	const char **labels     	 // labels to update
 );

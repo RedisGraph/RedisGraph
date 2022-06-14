@@ -225,7 +225,7 @@ int DeleteEdge
 
 // update entity attributes and update undo log
 // in case attr_id is ATTRIBUTE_ID_ALL clear all attributes values
-static int _Update_Entity
+static int _Update_Entity_Property
 (
 	GraphContext *gc,
 	GraphEntity *ge,
@@ -254,7 +254,7 @@ static int _Update_Entity
 	return Graph_UpdateEntity(ge, attr_id, new_value, entity_type);
 }
 
-int UpdateEntity
+int UpdateEntityProperties
 (
 	GraphContext *gc,
 	GraphEntity *ge,
@@ -267,7 +267,7 @@ int UpdateEntity
 	int updates = 0;
 	for (uint i = 0; i < ATTRIBUTE_SET_COUNT(set); i++) {
 		Attribute *prop = set->attributes + i;
-		updates += _Update_Entity(gc, ge, prop->id, prop->value, entity_type);
+		updates += _Update_Entity_Property(gc, ge, prop->id, prop->value, entity_type);
 	}
 
 	if(entity_type == GETYPE_NODE) {
@@ -277,4 +277,42 @@ int UpdateEntity
 	}
 
 	return updates;
+}
+
+int UpdateNodeLabels(
+	GraphContext *gc,            // graph context to update the entity
+	Node *node,             	 // the node to be updated
+	const char **labels      	 // labels to update
+) {
+	ASSERT(gc != NULL);
+	ASSERT(node != NULL);
+
+	int new_labels = 0;
+	uint label_count = array_len(labels);
+	int *label_ids = array_new(int, label_count);
+	for(uint i = 0; i < label_count; i++) {
+		// Get label string.
+		const char *label = labels[i];
+
+		// Get or create label matrix
+		const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+		if(s == NULL) {
+			s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+			new_labels++;
+		}
+		// sync matrix, make sure label matrix is of the right dimensions
+		Graph_GetLabelMatrix(gc->g, Schema_GetID(s));
+
+		// Append label id.
+		array_append(label_ids, Schema_GetID(s));
+		// Add to index.
+		Schema_AddNodeToIndices(s, node);
+	}
+
+	// Update label matrixes.
+	Graph_LabelNode(gc->g, node->id ,label_ids, label_count);
+
+	// Cleanup
+	array_free(label_ids);
+	return new_labels;
 }

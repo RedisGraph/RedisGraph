@@ -72,47 +72,45 @@ void CommitUpdates
 		if(GraphEntity_IsDeleted(update->ge)) continue;
 
 		// update the attributes on the graph entity
-		properties_set += UpdateEntity(gc, update->ge, update->attributes,
+		properties_set += UpdateEntityProperties(gc, update->ge, update->attributes,
 				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE);
 	}
 
 	if(stats) stats->properties_set += properties_set;
 }
 
-void EvalEntityUpdates
+// commits delayed label updates
+void CommitLabelUpdates
 (
 	GraphContext *gc,
-	PendingUpdateCtx **node_updates,
-	PendingUpdateCtx **edge_updates,
-	const Record r,
-	const EntityUpdateEvalCtx *ctx,
-	bool allow_null
+	ResultSetStatistics *stats,
+	PendingUpdateCtx *updates
 ) {
-	Schema *s         = NULL;
+	ASSERT(gc      != NULL);
+	ASSERT(stats   != NULL);
+	ASSERT(updates != NULL);
 
-	//--------------------------------------------------------------------------
-	// validate entity type
-	//--------------------------------------------------------------------------
+	uint  labels_added  =  0;
+	uint  update_count    =  array_len(updates);
 
-	// get the type of the entity to update
-	// if the expected entity was not found, make no updates but do not error
-	RecordEntryType t = Record_GetType(r, ctx->record_idx);
-	if(t == REC_TYPE_UNKNOWN) return;
+	// return early if no updates are enqueued
+	if(update_count == 0) return;
 
-	// make sure we're updating either a node or an edge
-	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
-		ErrorCtx_RaiseRuntimeException(
-			"Update error: alias '%s' did not resolve to a graph entity",
-			ctx->alias);
+	for(uint i = 0; i < update_count; i++) {
+		PendingUpdateCtx *update = updates + i;
+
+		// if entity has been deleted, perform no updates
+		if(GraphEntity_IsDeleted(update->ge)) continue;
+
+		labels_added += UpdateNodeLabels(gc, (Node*)update->ge, update->labels);
+
 	}
+	if(stats) stats->labels_added += labels_added;
+}
 
-	PendingUpdateCtx **updates = t == REC_TYPE_NODE
-		? node_updates
-		: edge_updates;
+static PendingUpdateCtx _prepareUpdateEntityProperties(GraphContext *gc, const Record r, const EntityUpdateEvalCtx *ctx, GraphEntity *entity, bool allow_null) {
 
-	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
-
-	PendingUpdateCtx  update = {0};
+	PendingUpdateCtx update = {0};
 	update.ge = entity;
 	update.attributes = AttributeSet_New();
 
@@ -188,6 +186,59 @@ void EvalEntityUpdates
 
 		_PreparePendingUpdate(&update.attributes, accepted_properties, attr_id, new_value);
 	}
+	return update;
+}
+
+static PendingUpdateCtx _prepareUpdateEntityLabels(const EntityUpdateEvalCtx *ctx, GraphEntity *entity) {
+	PendingUpdateCtx update = {0};
+	update.ge = entity;
+	array_clone(update.labels, ctx->labels);
+	return update;
+}
+
+void EvalEntityUpdates
+(
+	GraphContext *gc,
+	PendingUpdateCtx **node_updates,
+	PendingUpdateCtx **edge_updates,
+	const Record r,
+	const EntityUpdateEvalCtx *ctx,
+	bool allow_null
+) {
+	Schema *s         = NULL;
+
+	//--------------------------------------------------------------------------
+	// validate entity type
+	//--------------------------------------------------------------------------
+
+	// get the type of the entity to update
+	// if the expected entity was not found, make no updates but do not error
+	RecordEntryType t = Record_GetType(r, ctx->record_idx);
+	if(t == REC_TYPE_UNKNOWN) return;
+
+	// make sure we're updating either a node or an edge
+	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
+		ErrorCtx_RaiseRuntimeException(
+			"Update error: alias '%s' did not resolve to a graph entity",
+			ctx->alias);
+	}
+
+	PendingUpdateCtx **updates = t == REC_TYPE_NODE
+		? node_updates
+		: edge_updates;
+
+	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
+	PendingUpdateCtx update = {0};
+	if(ctx->mode == UPDATE_MERGE || ctx->mode == UPDATE_REPLACE) {
+		update = _prepareUpdateEntityProperties(gc, r, ctx, entity, allow_null);
+	}
+	else if(ctx->mode == SET_LABELS) {
+		update = _prepareUpdateEntityLabels(ctx, entity);
+	}
+	else {
+		ASSERT(false && "Got wrong update mode");
+	}
+
 	// enqueue the current update
 	array_append(*updates, update);
 }

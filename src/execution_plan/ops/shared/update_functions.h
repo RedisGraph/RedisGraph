@@ -11,7 +11,10 @@
 // context representing a single update to perform on an entity
 typedef struct {
 	GraphEntity *ge;       // entity to be updated
-	AttributeSet attributes;
+	union {
+		AttributeSet attributes;
+		const char** labels;
+	};
 } PendingUpdateCtx;
 
 // commit all updates described in the array of pending updates
@@ -21,6 +24,20 @@ void CommitUpdates
 	ResultSetStatistics *stats,
 	PendingUpdateCtx *updates,
 	EntityType type
+);
+
+/**
+ * @brief Commit label updates
+ * 
+ * @param gc graph context
+ * @param stats statistics
+ * @param updates array of pending label updates
+ */
+void CommitLabelUpdates
+(
+	GraphContext *gc,
+	ResultSetStatistics *stats,
+	PendingUpdateCtx *updates
 );
 
 /* build pending updates in the 'updates' array to match all
