@@ -521,6 +521,11 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], None)
 
+        # the requested length is too long and overflowing
+        query = """RETURN SUBSTRING('ab', 1, 999999999999999999999999999999999999999999999)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], "b")
+
         try:
             query = """RETURN SUBSTRING("muchacho", 3, -20)"""
             graph.query(query)
