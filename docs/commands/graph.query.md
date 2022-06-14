@@ -695,6 +695,7 @@ This section contains information on all supported functions from the Cypher que
 | sqrt()      | Returns the square root of a number                                                                                      |
 | pow()       | Returns base raised to the power of exponent, base^exponent                                                              |
 | toInteger() | Converts a floating point or string value to an integer value.                                                           |
+| toFloat()   | Converts a integer or string value to a floating point value.                                                            |
 
 ## String functions
 
