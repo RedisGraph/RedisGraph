@@ -343,7 +343,7 @@ class testEntityUpdate(FlowTestsBase):
         result = multiple_entity_graph.query("MATCH (n:TestLabel8) RETURN n")
         self.env.assertEqual(len(result.result_set), 2)
 
-    def test22_update_connected_nodes_labels_and_properties(self):
+    def test23_update_connected_nodes_labels_and_properties(self):
         result = multiple_entity_graph.query("MATCH (n:TestLabel9) RETURN n")
         self.env.assertEqual(len(result.result_set), 0)
         result = multiple_entity_graph.query("MATCH (n:TestLabel10) RETURN n")
