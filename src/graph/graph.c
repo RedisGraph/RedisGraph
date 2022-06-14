@@ -637,6 +637,16 @@ void Graph_CreateNode
 	if(label_count > 0) _Graph_LabelNode(g, n->id, labels, label_count);
 }
 
+void Graph_LabelNode
+(
+	Graph *g,
+	NodeID id,
+	int *labels,
+	uint label_count
+) {
+	if(label_count > 0) _Graph_LabelNode(g, id, labels, label_count);
+}
+
 void Graph_FormConnection
 (
 	Graph *g,
