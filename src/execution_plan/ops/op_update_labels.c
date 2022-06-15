@@ -86,10 +86,6 @@ static Record UpdateLabelsConsume(OpBase *opBase) {
 	QueryCtx_UnlockCommit(opBase);
 
 	uint node_updates_count = array_len(op->node_updates);
-	for(uint i = 0; i < node_updates_count; i ++) {
-		PendingUpdateCtx *pending_update = op->node_updates + i;
-		array_free(pending_update->labels);
-	}
 
 	array_clear(op->node_updates);
 

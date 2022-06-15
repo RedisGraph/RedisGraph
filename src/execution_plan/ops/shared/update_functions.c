@@ -192,7 +192,7 @@ static PendingUpdateCtx _prepareUpdateEntityProperties(GraphContext *gc, const R
 static PendingUpdateCtx _prepareUpdateEntityLabels(const EntityUpdateEvalCtx *ctx, GraphEntity *entity) {
 	PendingUpdateCtx update = {0};
 	update.ge = entity;
-	array_clone(update.labels, ctx->labels);
+	update.labels = ctx->labels;
 	return update;
 }
 
