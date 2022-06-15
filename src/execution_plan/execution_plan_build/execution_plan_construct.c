@@ -160,10 +160,14 @@ static inline void _buildUpdateOp(GraphContext *gc, ExecutionPlan *plan,
 	if(raxSize(property_updates) != 0) {
 		OpBase *op = NewUpdateOp(plan, property_updates);
 		ExecutionPlan_UpdateRoot(plan, op);
+	} else {
+		raxFree(property_updates);
 	}
 	if(raxSize(label_updates) != 0) {
 		OpBase *op = NewUpdateLabelsOp(plan, label_updates);
 		ExecutionPlan_UpdateRoot(plan, op);
+	} else {
+		raxFree(label_updates);
 	}
 }
 
