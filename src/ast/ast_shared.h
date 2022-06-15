@@ -54,7 +54,7 @@ typedef enum {
 	UPDATE_UNSET   = 0,    // default, should not be encountered
 	UPDATE_MERGE   = 1,    // merge new properties into existing property map
 	UPDATE_REPLACE = 2,    // replace existing property map with new properties
-	SET_LABELS = 3,		   // add labels to the entity.
+	SET_LABELS 	   = 3,		   // add labels to the entity.
 } UPDATE_MODE;
 
 // Key-value pair of an attribute ID and the value to be associated with it
