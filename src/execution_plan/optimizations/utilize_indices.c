@@ -141,7 +141,6 @@ static bool _applicable_predicate(const char* filtered_entity,
 		}
 
 		if(AR_EXP_IsAttribute(lhs_exp, NULL)) exp = rhs_exp;      // n.v = exp
-		else if(AR_EXP_IsAttribute(rhs_exp, NULL)) exp = lhs_exp; // exp = n.v
 		// filter is not of the form n.v = exp or exp = n.v
 		if(exp == NULL) {
 			res = false;
@@ -183,6 +182,9 @@ bool _applicableFilter
 	rax            *entities     =  NULL;
 	FT_FilterNode  *filter_tree  =  *filter;
 
+	// prepare it befor checking if applicable.
+	_normalize_filter(filtered_entity, filter);
+
 	// make sure the filter root is not a function, other then IN or distance
 	// make sure the "not equal, <>" operator isn't used
 	if(FilterTree_containsOp(filter_tree, OP_NEQUAL)) {
@@ -221,9 +223,6 @@ bool _applicableFilter
 		res = false;
 		goto cleanup;
 	}
-
-	// Filter is applicable, prepare it to use in index.
-	_normalize_filter(filtered_entity, filter);
 
 cleanup:
 	if(attr) raxFree(attr);
