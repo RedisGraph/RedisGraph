@@ -141,7 +141,6 @@ static bool _applicable_predicate(const char* filtered_entity,
 		}
 
 		if(AR_EXP_IsAttribute(lhs_exp, NULL)) exp = rhs_exp;      // n.v = exp
-		else if(AR_EXP_IsAttribute(rhs_exp, NULL)) exp = lhs_exp; // exp = n.v
 		// filter is not of the form n.v = exp or exp = n.v
 		if(exp == NULL) {
 			res = false;
