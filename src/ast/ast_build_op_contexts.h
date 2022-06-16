@@ -21,9 +21,7 @@ typedef struct {
 
 typedef struct {
 	rax *on_match;                   // rax of updates to make for ON MATCH directives
-	rax *on_match_update_labels;     // rax of label updates to make for ON MATCH directives
 	rax *on_create;                  // rax of updates to make for ON CREATE directives
-	rax *on_create_update_labels;    // rax of label updates to make for ON CREATE directives
 	NodeCreateCtx *nodes_to_merge;   // blueprints of nodes in MERGE pattern
 	EdgeCreateCtx *edges_to_merge;   // blueprints of edges in MERGE pattern
 } AST_MergeContext;
