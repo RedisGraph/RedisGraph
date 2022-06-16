@@ -37,7 +37,7 @@ typedef struct {
 PropertyMap *AST_ConvertPropertiesMap(const cypher_astnode_t *props);
 
 // Extract the necessary information to populate an update operation from a SET clause.
-void AST_PrepareUpdateOp(GraphContext *gc, const cypher_astnode_t *set_clause, rax* property_updates, rax* label_updates);
+rax *AST_PrepareUpdateOp(GraphContext *gc, const cypher_astnode_t *set_clause);
 
 // Extract the necessary information to populate a delete operation from a DELETE clause.
 AR_ExpNode **AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause);

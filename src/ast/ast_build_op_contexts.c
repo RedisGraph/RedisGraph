@@ -289,12 +289,15 @@ AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, GraphC
 // UPDATE operation
 //------------------------------------------------------------------------------
 
-void AST_PrepareUpdateOp(GraphContext *gc, const cypher_astnode_t *set_clause, rax* property_updates, rax* label_updates) {
+rax *AST_PrepareUpdateOp(GraphContext *gc, const cypher_astnode_t *set_clause) {
+	rax *updates = raxNew(); // entity alias -> EntityUpdateEvalCtx
 	uint nitems = cypher_ast_set_nitems(set_clause);
 	for(uint i = 0; i < nitems; i++) {
 		const cypher_astnode_t *set_item = cypher_ast_set_get_item(set_clause, i);
-		_ConvertSetItem(gc, property_updates, set_item);
+		_ConvertSetItem(gc, updates, set_item);
 	}
+
+	return updates;
 }
 
 //------------------------------------------------------------------------------
