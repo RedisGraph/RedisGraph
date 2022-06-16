@@ -207,6 +207,13 @@ class testFunctionCallsFlow(FlowTestsBase):
         expected_result = [[-0.5]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
+        # Validate modulo on edge case -LONG_MIN%-1.
+        # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=30484
+        query = "RETURN toInteger(1.2289948315394e+19) % -1"
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
         # Validate modulo by 0
         query = "RETURN 3 % 0"
         try:
