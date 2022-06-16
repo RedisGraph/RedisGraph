@@ -449,7 +449,14 @@ SIValue SIValue_Modulo(const SIValue a, const SIValue n) {
 	bool inputs_are_integers = SI_TYPE(a) & SI_TYPE(n) & T_INT64;
 	if(inputs_are_integers) {
 		// The modulo machine instruction may be used if a and n are both integers.
-		return SI_LongVal(a.longval % n.longval);
+
+		int64_t res = 0;
+		// workaround for https://gcc.gnu.org/bugzilla/show_bug.cgi?id=30484
+		if (a.longval != LONG_MIN || n.longval != -1){
+			res = (int64_t)a.longval % (int64_t)n.longval;
+		}
+
+		return SI_LongVal(res);
 	} else {
 		// Otherwise, use the library function fmod to calculate the modulo and return a double.
 		return SI_DoubleVal(fmod(SI_GET_NUMERIC(a), SI_GET_NUMERIC(n)));
