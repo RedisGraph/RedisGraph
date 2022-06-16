@@ -452,7 +452,7 @@ SIValue SIValue_Modulo(const SIValue a, const SIValue n) {
 
 		int64_t res = 0;
 		// workaround for https://gcc.gnu.org/bugzilla/show_bug.cgi?id=30484
-		if (a.longval != LONG_MIN || n.longval != -1){
+		if (n.longval != -1){ // % -1 is always return 0
 			res = (int64_t)a.longval % (int64_t)n.longval;
 		}
 
