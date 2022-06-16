@@ -494,16 +494,15 @@ class testIndexScanFlow():
         expected_result = [["Noam Nativ"]]
         self.env.assertEquals(query_result.result_set, expected_result)
 
-        q = """MATCH (a:person {name: 'Omri Traub'})
-        WITH a AS a
-        MATCH (b:person)
-        WHERE a.age < b.age
+        # check that the value is evaluated before sending it to index query
+        q = """MATCH (b:person)
+        WHERE b.age = rand()*0 + 32
         RETURN b.name
         ORDER BY b.name"""
         plan = redis_graph.execution_plan(q)
         self.env.assertIn('Node By Index Scan', plan)
         query_result = redis_graph.query(q)
-        expected_result = [["Noam Nativ"]]
+        expected_result = [['Ailon Velger'], ['Alon Fital'], ['Ori Laslo'], ['Roi Lipman'], ['Tal Doron']]
         self.env.assertEquals(query_result.result_set, expected_result)
 
         # check that the value is evaluated before sending it to index query
@@ -514,7 +513,6 @@ class testIndexScanFlow():
         plan = redis_graph.execution_plan(q)
         self.env.assertIn('Node By Index Scan', plan)
         query_result = redis_graph.query(q)
-        expected_result = [['Ailon Velger'], ['Alon Fital'], ['Ori Laslo'], ['Roi Lipman'], ['Tal Doron']]
         self.env.assertEquals(query_result.result_set, expected_result)
 
         # TODO: The following query uses the "Value Hash Join" where it would be

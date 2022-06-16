@@ -161,6 +161,7 @@ static bool _predicateTreeToRange
 	// TODO: we might not need this check
 	if(!AR_EXP_IsAttribute(tree->pred.lhs, &prop)) return false;
 
+	ASSERT(!AR_EXP_ContainsVariadic(tree->pred.rhs));
 	SIValue c = AR_EXP_Evaluate(tree->pred.rhs, NULL);
 	SIType  t = SI_TYPE(c);
 
