@@ -592,3 +592,9 @@ class testFunctionCallsFlow(FlowTestsBase):
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertEqual(str(e), "length must be positive integer")
+
+    def test27_string_concat(self):
+        larg_double = 1.123456e300
+        query = f"""RETURN '' + {larg_double} + {larg_double}"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], "%f%f" % (larg_double, larg_double))
