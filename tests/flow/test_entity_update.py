@@ -1,3 +1,4 @@
+from cmath import exp
 from common import *
 
 graph = None
@@ -235,128 +236,153 @@ class testEntityUpdate(FlowTestsBase):
             except ResponseError as e:
                 self.env.assertContains("Property values can only be of primitive types or arrays of primitive types", str(e))
 
+
+    def validate_node_labels(self, graph, labels, expected_count):
+        for label in labels:
+            result = graph.query(f"MATCH (n:{label}) RETURN n")
+            self.env.assertEqual(len(result.result_set), expected_count)
+            if expected_count > 0:
+                for record in result.result_set:
+                    self.env.assertTrue(label in record[0].labels)
+
+
     def test18_update_node_label(self):
-        result = graph.query("MATCH (n:TestLabel) RETURN n")
-        self.env.assertEqual(len(result.result_set), 0)
-        result = graph.query("MATCH (n) SET n:TestLabel")
+        labels = ["TestLabel"]
+        
+        self.validate_node_labels(graph, labels, 0)
+        result = graph.query(f"MATCH (n) SET n:{labels[0]}")
         self.env.assertEqual(result.labels_added, 1)
-        result = graph.query("MATCH (n:TestLabel) RETURN n")
-        self.env.assertEqual(len(result.result_set), 1)
+        self.validate_node_labels(graph, labels, 1)
 
         # multiple node updates
-        result = multiple_entity_graph.query("MATCH (n:TestLabel) RETURN n")
-        self.env.assertEqual(len(result.result_set), 0)
-        result = multiple_entity_graph.query("MATCH (n) SET n:TestLabel")
+        self.validate_node_labels(multiple_entity_graph, labels, 0)
+        result = multiple_entity_graph.query(f"MATCH (n) SET n:{labels[0]}")
         self.env.assertEqual(result.labels_added, 1)
-        result = multiple_entity_graph.query("MATCH (n:TestLabel) RETURN n")
-        self.env.assertEqual(len(result.result_set), 2)
+        self.validate_node_labels(multiple_entity_graph, labels, 2)
+
 
     def test19_update_node_multiple_label(self):
-        result = graph.query("MATCH (n:TestLabel2) RETURN n")
-        self.env.assertEqual(len(result.result_set), 0)
-        result = graph.query("MATCH (n:TestLabel3) RETURN n")
-        self.env.assertEqual(len(result.result_set), 0)
-        result = graph.query("MATCH (n) SET n:TestLabel2:TestLabel3")
+        labels = ["TestLabel2", "TestLabel3"]
+
+        self.validate_node_labels(graph, labels, 0)   
+        result = graph.query(f"MATCH (n) SET n:{':'.join(labels)}")
         self.env.assertEqual(result.labels_added, 2)
-        result = graph.query("MATCH (n:TestLabel2) RETURN n")
-        self.env.assertEqual(len(result.result_set), 1)
-        result = graph.query("MATCH (n:TestLabel3) RETURN n")
-        self.env.assertEqual(len(result.result_set), 1)
+        self.validate_node_labels(graph, labels, 1)
 
         # multiple node updates
-        result = multiple_entity_graph.query("MATCH (n:TestLabel2) RETURN n")
-        self.env.assertEqual(len(result.result_set), 0)
-        result = multiple_entity_graph.query("MATCH (n:TestLabel3) RETURN n")
-        self.env.assertEqual(len(result.result_set), 0)
-        result = multiple_entity_graph.query("MATCH (n) SET n:TestLabel2:TestLabel3")
+        self.validate_node_labels(multiple_entity_graph, labels, 0)   
+        result = multiple_entity_graph.query(f"MATCH (n) SET n:{':'.join(labels)}")
         self.env.assertEqual(result.labels_added, 2)
-        result = multiple_entity_graph.query("MATCH (n:TestLabel2) RETURN n")
-        self.env.assertEqual(len(result.result_set), 2)
-        result = multiple_entity_graph.query("MATCH (n:TestLabel3) RETURN n")
-        self.env.assertEqual(len(result.result_set), 2)
+        self.validate_node_labels(multiple_entity_graph, labels, 2)
     
+
     def test20_update_node_comma_separated_labels(self):
-        result = graph.query("MATCH (n:TestLabel4) RETURN n")
-        self.env.assertEqual(len(result.result_set), 0)
-        result = graph.query("MATCH (n:TestLabel5) RETURN n")
-        self.env.assertEqual(len(result.result_set), 0)
-        result = graph.query("MATCH (n) SET n:TestLabel4, n:TestLabel5")
+        labels = ["TestLabel4", "TestLabel5"]
+
+        self.validate_node_labels(graph, labels, 0)
+        result = graph.query(f"MATCH (n) SET n:{labels[0]}, n:{labels[1]}")
         self.env.assertEqual(result.labels_added, 2)
-        result = graph.query("MATCH (n:TestLabel2) RETURN n")
-        self.env.assertEqual(len(result.result_set), 1)
-        result = graph.query("MATCH (n:TestLabel3) RETURN n")
-        self.env.assertEqual(len(result.result_set), 1)
+        self.validate_node_labels(graph, labels, 1)
 
         # multiple node updates
-        result = multiple_entity_graph.query("MATCH (n:TestLabel4) RETURN n")
-        self.env.assertEqual(len(result.result_set), 0)
-        result = multiple_entity_graph.query("MATCH (n:TestLabel5) RETURN n")
-        self.env.assertEqual(len(result.result_set), 0)
-        result = multiple_entity_graph.query("MATCH (n) SET n:TestLabel4, n:TestLabel5")
+        self.validate_node_labels(multiple_entity_graph, labels, 0)
+        result = multiple_entity_graph.query(f"MATCH (n) SET n:{labels[0]}, n:{labels[1]}")
         self.env.assertEqual(result.labels_added, 2)
-        result = multiple_entity_graph.query("MATCH (n:TestLabel4) RETURN n")
-        self.env.assertEqual(len(result.result_set), 2)
-        result = multiple_entity_graph.query("MATCH (n:TestLabel5) RETURN n")
-        self.env.assertEqual(len(result.result_set), 2)
+        self.validate_node_labels(multiple_entity_graph, labels, 2)
+
 
     def test21_update_node_label_and_property(self):
-        result = graph.query("MATCH (n:TestLabel6) RETURN n")
-        self.env.assertEqual(len(result.result_set), 0)
+        labels = ["TestLabel6"]
+       
+        self.validate_node_labels(graph, labels, 0)
         result = graph.query("MATCH (n {testprop:'testvalue'}) RETURN n")
         self.env.assertEqual(len(result.result_set), 0)
-        result = graph.query("MATCH (n) SET n:TestLabel6, n.testprop='testvalue'")
+        result = graph.query(f"MATCH (n) SET n:{labels[0]}, n.testprop='testvalue'")
         self.env.assertEqual(result.labels_added, 1)
         self.env.assertEqual(result.properties_set, 1)
-        result = graph.query("MATCH (n:TestLabel6) RETURN n")
-        self.env.assertEqual(len(result.result_set), 1)
+        self.validate_node_labels(graph, labels, 1)
         result = graph.query("MATCH (n {testprop:'testvalue'}) RETURN n")
         self.env.assertEqual(len(result.result_set), 1)
 
         # multiple node updates
-        result = multiple_entity_graph.query("MATCH (n:TestLabel6) RETURN n")
-        self.env.assertEqual(len(result.result_set), 0)
+        self.validate_node_labels(multiple_entity_graph, labels, 0)
         result = multiple_entity_graph.query("MATCH (n {testprop:'testvalue'}) RETURN n")
         self.env.assertEqual(len(result.result_set), 0)
-        result = multiple_entity_graph.query("MATCH (n) SET n:TestLabel6, n.testprop='testvalue'")
+        result = multiple_entity_graph.query(f"MATCH (n) SET n:{labels[0]}, n.testprop='testvalue'")
         self.env.assertEqual(result.labels_added, 1)
         self.env.assertEqual(result.properties_set, 2)
-        result = multiple_entity_graph.query("MATCH (n:TestLabel6) RETURN n")
-        self.env.assertEqual(len(result.result_set), 2)
+        self.validate_node_labels(multiple_entity_graph, labels, 2)
         result = multiple_entity_graph.query("MATCH (n {testprop:'testvalue'}) RETURN n")
         self.env.assertEqual(len(result.result_set), 2)
     
+
     def test22_update_cp_nodes_labels_and_properties(self):
-        result = multiple_entity_graph.query("MATCH (n:TestLabel7) RETURN n")
-        self.env.assertEqual(len(result.result_set), 0)
-        result = multiple_entity_graph.query("MATCH (n:TestLabel8) RETURN n")
-        self.env.assertEqual(len(result.result_set), 0)
+        labels = ["TestLabel7", "TestLabel8"]
+        self.validate_node_labels(multiple_entity_graph, labels, 0)
         result = multiple_entity_graph.query("MATCH (n {testprop2:'testvalue'}) RETURN n")
         self.env.assertEqual(len(result.result_set), 0)
 
-        result = multiple_entity_graph.query("MATCH (n), (m) SET n:TestLabel7, n.testprop2='testvalue', m:TestLabel8")
+        result = multiple_entity_graph.query(f"MATCH (n), (m) SET n:{labels[0]}, n.testprop2='testvalue', m:{labels[1]}")
         self.env.assertEqual(result.labels_added, 2)
         self.env.assertEqual(result.properties_set, 2)
-        result = multiple_entity_graph.query("MATCH (n:TestLabel7) RETURN n")
-        self.env.assertEqual(len(result.result_set), 2)
+        self.validate_node_labels(multiple_entity_graph, labels, 2)
         result = multiple_entity_graph.query("MATCH (n {testprop2:'testvalue'}) RETURN n")
         self.env.assertEqual(len(result.result_set), 2)
-        result = multiple_entity_graph.query("MATCH (n:TestLabel8) RETURN n")
-        self.env.assertEqual(len(result.result_set), 2)
+
 
     def test23_update_connected_nodes_labels_and_properties(self):
-        result = multiple_entity_graph.query("MATCH (n:TestLabel9) RETURN n")
-        self.env.assertEqual(len(result.result_set), 0)
-        result = multiple_entity_graph.query("MATCH (n:TestLabel10) RETURN n")
-        self.env.assertEqual(len(result.result_set), 0)
+        labels = ["TestLabel9", "TestLabel10"]
+        self.validate_node_labels(multiple_entity_graph, labels, 0)
         result = multiple_entity_graph.query("MATCH (n {testprop3:'testvalue'}) RETURN n")
         self.env.assertEqual(len(result.result_set), 0)
 
-        result = multiple_entity_graph.query("MATCH (n)-->(m) SET n:TestLabel9, n.testprop3='testvalue', m:TestLabel10")
+        result = multiple_entity_graph.query(f"MATCH (n)-->(m) SET n:{labels[0]}, n.testprop3='testvalue', m:{labels[1]}")
         self.env.assertEqual(result.labels_added, 2)
         self.env.assertEqual(result.properties_set, 1)
-        result = multiple_entity_graph.query("MATCH (n:TestLabel9) RETURN n")
-        self.env.assertEqual(len(result.result_set), 1)
+        self.validate_node_labels(multiple_entity_graph, labels, 1)
         result = multiple_entity_graph.query("MATCH (n {testprop3:'testvalue'}) RETURN n")
         self.env.assertEqual(len(result.result_set), 1)
-        result = multiple_entity_graph.query("MATCH (n:TestLabel10) RETURN n")
-        self.env.assertEqual(len(result.result_set), 1)
+
+
+    def test_24_fail_update_non_matched_nodes(self):
+        queries = ["MATCH (n) SET x:L", "MATCH (n) SET x:L:L:L"]
+        for query in queries:
+            try:
+                graph.query(query)
+                self.env.assertTrue(False)
+            except ResponseError as e:
+                self.env.assertContains("x not defined", str(e))
+
+
+    def test_25_fail_update_labels_for_edge(self):
+        queries = ["MATCH ()-[r]->() SET r:L", "MATCH (n)-[r]->(m) WITH n, r, m UNWIND [n, r, m] AS x SET x:L"]
+        for query in queries:
+            try:
+                multiple_entity_graph.query(query)
+                self.env.assertTrue(False)
+            except ResponseError as e:
+                self.env.assertContains("Type mismatch: expected Node but was Relationship", str(e))
+    
+
+    def test_26_fail_update_label_for_constant(self):
+        queries = ["WITH 1 AS x SET x:L"]
+        for query in queries:
+            try:
+                graph.query(query)
+                self.env.assertTrue(False)
+            except ResponseError as e:
+                self.env.assertContains("Update error: alias 'x' did not resolve to a graph entity", str(e))
+    
+
+    def test_27_set_label_on_merge(self):
+        # on match
+        labels = ["Trigger", "TestLabel11", "TestLabel12"]
+        self.validate_node_labels(graph, labels, 0)
+        # This will create a node with Trigger label, and set the label TestLabel11
+        result = graph.query(f"MERGE(n:{labels[0]}) ON CREATE SET n:{labels[1]} ON MATCH SET n:{labels[2]}")
+        self.env.assertEqual(result.labels_added, 2)
+        self.validate_node_labels(graph, labels[0:1], 1)
+        # This will find a node with Trigger label and set the label TestLabel12
+        result = graph.query(f"MERGE(n:{labels[0]}) ON CREATE SET n:{labels[1]} ON MATCH SET n:{labels[2]}")
+        self.env.assertEqual(result.labels_added, 1)
+        self.validate_node_labels(graph, labels, 1)

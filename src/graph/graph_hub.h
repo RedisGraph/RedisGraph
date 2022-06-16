@@ -76,6 +76,14 @@ int UpdateEntityProperties
 );
 
 
+/**
+ * @brief This function sets the labels given in the array "labels" to the given node
+ * 
+ * @param gc  Graph context
+ * @param node Node
+ * @param labels Labels array (human readable strings)
+ * @return int 
+ */
 int UpdateNodeLabels(
 	GraphContext *gc,            // graph context to update the entity
 	Node *node,            		 // the node to be updated

@@ -137,11 +137,8 @@ EntityUpdateEvalCtx *UpdateCtx_New(UPDATE_MODE mode, uint update_count, const ch
 	ctx->mode = mode;
 	ctx->alias = alias;
 	ctx->record_idx = INVALID_INDEX;
-	if(mode == SET_LABELS) {
-		ctx->labels = array_new(const char *, update_count);
-	} else {
-		ctx->properties = array_new(PropertySetCtx, update_count);
-	}
+	ctx->labels = array_new(const char *, update_count);
+	ctx->properties = array_new(PropertySetCtx, update_count);
 
 	return ctx;
 }
@@ -152,19 +149,15 @@ EntityUpdateEvalCtx *UpdateCtx_Clone(const EntityUpdateEvalCtx *orig) {
 	clone->alias = orig->alias;
 	clone->record_idx = orig->record_idx;
 	uint count = array_len(orig->properties);
-	if(clone->mode == SET_LABELS) {
-		array_clone(clone->labels, orig->labels);
-	} else {
-		clone->properties = array_new(PropertySetCtx, count);
-		for(uint i = 0; i < count; i ++) {
-			PropertySetCtx update = {
-			.id = orig->properties[i].id,
-			.exp = AR_EXP_Clone(orig->properties[i].exp),
-			};
-			array_append(clone->properties, update);
-		}
+	array_clone(clone->labels, orig->labels);
+	clone->properties = array_new(PropertySetCtx, count);
+	for(uint i = 0; i < count; i ++) {
+		PropertySetCtx update = {
+		.id = orig->properties[i].id,
+		.exp = AR_EXP_Clone(orig->properties[i].exp),
+		};
+		array_append(clone->properties, update);
 	}
-
 	return clone;
 }
 
@@ -174,23 +167,16 @@ void UpdateCtx_SetMode(EntityUpdateEvalCtx *ctx, UPDATE_MODE mode) {
 }
 
 void UpdateCtx_Clear(EntityUpdateEvalCtx *ctx) {
-	if(ctx->mode == UPDATE_MERGE || ctx->mode == UPDATE_REPLACE) {
-		uint count = array_len(ctx->properties);
-		for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].exp);
-		array_clear(ctx->properties);
-	} else {
-		array_clear(ctx->labels);
-	}
+	uint count = array_len(ctx->properties);
+	for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].exp);
+	array_clear(ctx->properties);
 }
 
 void UpdateCtx_Free(EntityUpdateEvalCtx *ctx) {
-	if(ctx->mode == UPDATE_MERGE || ctx->mode == UPDATE_REPLACE) {
-		uint count = array_len(ctx->properties);
-		for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].exp);
-		array_free(ctx->properties);
-	} else {
-		array_free(ctx->labels);
-	}
+	uint count = array_len(ctx->properties);
+	for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].exp);
+	array_free(ctx->properties);
+	array_free(ctx->labels);
 
 	rm_free(ctx);
 }

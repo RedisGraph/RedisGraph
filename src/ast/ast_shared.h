@@ -54,7 +54,6 @@ typedef enum {
 	UPDATE_UNSET   = 0,    // default, should not be encountered
 	UPDATE_MERGE   = 1,    // merge new properties into existing property map
 	UPDATE_REPLACE = 2,    // replace existing property map with new properties
-	SET_LABELS 	   = 3,		   // add labels to the entity.
 } UPDATE_MODE;
 
 // Key-value pair of an attribute ID and the value to be associated with it
@@ -66,10 +65,8 @@ typedef struct {
 
 // Context describing an update expression.
 typedef struct {
-	union {
-		PropertySetCtx *properties; // properties to set
-		const char **labels;		// Labels to update the entity with (add/remove according to the update mode).
-	};
+	PropertySetCtx *properties; // properties to set
+	const char **labels;		// Labels to update the entity with (add/remove according to the update mode).
 	int record_idx;             // record offset this entity is stored at
 	UPDATE_MODE mode;           // Whether the entity's property map should be updated or replaced
 	const char *alias;          // Access-safe alias of the entity being updated

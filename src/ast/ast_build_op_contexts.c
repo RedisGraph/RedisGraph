@@ -39,10 +39,10 @@ static inline NodeCreateCtx _NewNodeCreateCtx(GraphContext *gc, const QGNode *n,
 }
 
 // Set a single property
-static void _ConvertSetItem(GraphContext *gc, rax *property_updates, rax* label_updates,
+static void _ConvertSetItem(GraphContext *gc, rax *updates,
 		const cypher_astnode_t *set_item) {
 	ASSERT(gc        !=  NULL);
-	ASSERT(property_updates   !=  NULL);
+	ASSERT(updates   !=  NULL);
 	ASSERT(set_item  !=  NULL);
 
 	const  char              *alias      =  NULL;  // entity being updated
@@ -55,7 +55,7 @@ static void _ConvertSetItem(GraphContext *gc, rax *property_updates, rax* label_
 	UPDATE_MODE update_mode = UPDATE_MERGE;
 	Attribute_ID attribute_id = ATTRIBUTE_ID_NONE;
 	const cypher_astnode_type_t type = cypher_astnode_type(set_item);
-	uint prop_count = 1;
+	bool set_labels = false;
 
 	if(type == CYPHER_AST_SET_ALL_PROPERTIES) {
 		// MATCH (a) SET a = {v: 5}
@@ -102,22 +102,21 @@ static void _ConvertSetItem(GraphContext *gc, rax *property_updates, rax* label_
 	}
 	else if(type == CYPHER_AST_SET_LABELS) {
 		// MATCH (a) SET a:Label1:Label2
-		update_mode = SET_LABELS;
 		const cypher_astnode_t *identifier = cypher_ast_set_labels_get_identifier(set_item);
 		ASSERT(cypher_astnode_type(identifier) == CYPHER_AST_IDENTIFIER);
 		alias = cypher_ast_identifier_get_name(identifier);
-		
+		set_labels = true;
 	} else {
 		ASSERT(false);
 	}
 
 	int len = strlen(alias);
 
-	if(update_mode == SET_LABELS) {
-		EntityUpdateEvalCtx *ctx = raxFind(label_updates, (unsigned char *)alias, len);
+	if(set_labels) {
+		EntityUpdateEvalCtx *ctx = raxFind(updates, (unsigned char *)alias, len);
 		if(ctx == raxNotFound) {
 			ctx = UpdateCtx_New(update_mode, 1, alias);
-			raxInsert(label_updates, (unsigned char *)alias, len, ctx, NULL);
+			raxInsert(updates, (unsigned char *)alias, len, ctx, NULL);
 		} 
 		uint label_count = cypher_ast_set_labels_nlabels(set_item);
 		for (uint i = 0; i < label_count; i++) {
@@ -127,10 +126,10 @@ static void _ConvertSetItem(GraphContext *gc, rax *property_updates, rax* label_
 		}
 	} else {
 		// create update context
-		EntityUpdateEvalCtx *ctx = raxFind(property_updates, (unsigned char *)alias, len);
+		EntityUpdateEvalCtx *ctx = raxFind(updates, (unsigned char *)alias, len);
 		if(ctx == raxNotFound) {
 			ctx = UpdateCtx_New(update_mode, 1, alias);
-			raxInsert(property_updates, (unsigned char *)alias, len, ctx, NULL);
+			raxInsert(updates, (unsigned char *)alias, len, ctx, NULL);
 		} else {
 			if(update_mode == UPDATE_REPLACE) {
 				UpdateCtx_Clear(ctx);
@@ -265,14 +264,14 @@ AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, GraphC
 			if(on_create_items == NULL) on_create_items = raxNew();
 			for(uint j = 0; j < create_prop_count; j ++) {
 				const cypher_astnode_t *create_item = cypher_ast_on_create_get_item(directive, j);
-				_ConvertSetItem(gc, on_create_items, NULL, create_item);
+				_ConvertSetItem(gc, on_create_items, create_item);
 			}
 		} else if(type == CYPHER_AST_ON_MATCH) {
 			uint match_prop_count = cypher_ast_on_match_nitems(directive);
 			if(on_match_items == NULL) on_match_items = raxNew();
 			for(uint j = 0; j < match_prop_count; j ++) {
 				const cypher_astnode_t *match_item = cypher_ast_on_match_get_item(directive, j);
-				_ConvertSetItem(gc, on_match_items, NULL, match_item);
+				_ConvertSetItem(gc, on_match_items, match_item);
 			}
 		} else {
 			ASSERT(false);
@@ -294,7 +293,7 @@ void AST_PrepareUpdateOp(GraphContext *gc, const cypher_astnode_t *set_clause, r
 	uint nitems = cypher_ast_set_nitems(set_clause);
 	for(uint i = 0; i < nitems; i++) {
 		const cypher_astnode_t *set_item = cypher_ast_set_get_item(set_clause, i);
-		_ConvertSetItem(gc, property_updates, label_updates, set_item);
+		_ConvertSetItem(gc, property_updates, set_item);
 	}
 }
 

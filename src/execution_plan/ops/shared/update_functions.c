@@ -222,6 +222,10 @@ void EvalEntityUpdates
 			"Update error: alias '%s' did not resolve to a graph entity",
 			ctx->alias);
 	}
+	bool update_labels = array_len(ctx->labels) > 0;
+	if (update_labels && t != REC_TYPE_NODE) {
+		ErrorCtx_RaiseRuntimeException("Type mismatch: expected Node but was Relationship");
+	}
 
 	PendingUpdateCtx **updates = t == REC_TYPE_NODE
 		? node_updates
@@ -232,11 +236,12 @@ void EvalEntityUpdates
 	if(ctx->mode == UPDATE_MERGE || ctx->mode == UPDATE_REPLACE) {
 		update = _prepareUpdateEntityProperties(gc, r, ctx, entity, allow_null);
 	}
-	else if(ctx->mode == SET_LABELS) {
-		update = _prepareUpdateEntityLabels(ctx, entity);
-	}
 	else {
 		ASSERT(false && "Got wrong update mode");
+	}
+	
+	if(update_labels) {
+		update.labels = ctx->labels;
 	}
 
 	// enqueue the current update

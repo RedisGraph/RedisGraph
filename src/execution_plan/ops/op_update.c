@@ -95,6 +95,7 @@ static Record UpdateConsume(OpBase *opBase) {
 	QueryCtx_LockForCommit();
 	{
 		CommitUpdates(op->gc, op->stats, op->node_updates, ENTITY_NODE);
+		CommitLabelUpdates(op->gc, op->stats, op->node_updates);
 		CommitUpdates(op->gc, op->stats, op->edge_updates, ENTITY_EDGE);
 	}
 	// release lock
