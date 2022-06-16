@@ -108,7 +108,42 @@ void CommitLabelUpdates
 	if(stats) stats->labels_added += labels_added;
 }
 
-static PendingUpdateCtx _prepareUpdateEntityProperties(GraphContext *gc, const Record r, const EntityUpdateEvalCtx *ctx, GraphEntity *entity, bool allow_null) {
+void EvalEntityUpdates
+(
+	GraphContext *gc,
+	PendingUpdateCtx **node_updates,
+	PendingUpdateCtx **edge_updates,
+	const Record r,
+	const EntityUpdateEvalCtx *ctx,
+	bool allow_null
+) {
+	Schema *s         = NULL;
+
+	//--------------------------------------------------------------------------
+	// validate entity type
+	//--------------------------------------------------------------------------
+
+	// get the type of the entity to update
+	// if the expected entity was not found, make no updates but do not error
+	RecordEntryType t = Record_GetType(r, ctx->record_idx);
+	if(t == REC_TYPE_UNKNOWN) return;
+
+	// make sure we're updating either a node or an edge
+	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
+		ErrorCtx_RaiseRuntimeException(
+			"Update error: alias '%s' did not resolve to a graph entity",
+			ctx->alias);
+	}
+	bool update_labels = array_len(ctx->labels) > 0;
+	if (update_labels && t != REC_TYPE_NODE) {
+		ErrorCtx_RaiseRuntimeException("Type mismatch: expected Node but was Relationship");
+	}
+
+	PendingUpdateCtx **updates = t == REC_TYPE_NODE
+		? node_updates
+		: edge_updates;
+
+	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
 
 	PendingUpdateCtx update = {0};
 	update.ge = entity;
@@ -186,60 +221,7 @@ static PendingUpdateCtx _prepareUpdateEntityProperties(GraphContext *gc, const R
 
 		_PreparePendingUpdate(&update.attributes, accepted_properties, attr_id, new_value);
 	}
-	return update;
-}
 
-static PendingUpdateCtx _prepareUpdateEntityLabels(const EntityUpdateEvalCtx *ctx, GraphEntity *entity) {
-	PendingUpdateCtx update = {0};
-	update.ge = entity;
-	update.labels = ctx->labels;
-	return update;
-}
-
-void EvalEntityUpdates
-(
-	GraphContext *gc,
-	PendingUpdateCtx **node_updates,
-	PendingUpdateCtx **edge_updates,
-	const Record r,
-	const EntityUpdateEvalCtx *ctx,
-	bool allow_null
-) {
-	Schema *s         = NULL;
-
-	//--------------------------------------------------------------------------
-	// validate entity type
-	//--------------------------------------------------------------------------
-
-	// get the type of the entity to update
-	// if the expected entity was not found, make no updates but do not error
-	RecordEntryType t = Record_GetType(r, ctx->record_idx);
-	if(t == REC_TYPE_UNKNOWN) return;
-
-	// make sure we're updating either a node or an edge
-	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
-		ErrorCtx_RaiseRuntimeException(
-			"Update error: alias '%s' did not resolve to a graph entity",
-			ctx->alias);
-	}
-	bool update_labels = array_len(ctx->labels) > 0;
-	if (update_labels && t != REC_TYPE_NODE) {
-		ErrorCtx_RaiseRuntimeException("Type mismatch: expected Node but was Relationship");
-	}
-
-	PendingUpdateCtx **updates = t == REC_TYPE_NODE
-		? node_updates
-		: edge_updates;
-
-	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
-	PendingUpdateCtx update = {0};
-	if(ctx->mode == UPDATE_MERGE || ctx->mode == UPDATE_REPLACE) {
-		update = _prepareUpdateEntityProperties(gc, r, ctx, entity, allow_null);
-	}
-	else {
-		ASSERT(false && "Got wrong update mode");
-	}
-	
 	if(update_labels) {
 		update.labels = ctx->labels;
 	}
