@@ -706,6 +706,18 @@ bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
 	return false;
 }
 
+bool AR_EXP_ContainsVariadic(const AR_ExpNode *root) {
+	if(root == NULL) return false;
+	if(AR_EXP_IsOperation(root)) {
+		for(int i = 0; i < root->op.child_count; i++) {
+			if(AR_EXP_ContainsVariadic(root->op.children[i])) return true;
+		}
+	} else if(AR_EXP_IsVariadic(exp)) {
+		return true;
+	}
+	return false;
+}
+
 // return type of expression
 // e.g. the expression: `1+3` return type is SI_NUMERIC
 // e.g. the expression : `ToString(4+3)` return type is T_STRING
