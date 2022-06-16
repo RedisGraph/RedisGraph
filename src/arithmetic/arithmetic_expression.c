@@ -712,7 +712,7 @@ bool AR_EXP_ContainsVariadic(const AR_ExpNode *root) {
 		for(int i = 0; i < root->op.child_count; i++) {
 			if(AR_EXP_ContainsVariadic(root->op.children[i])) return true;
 		}
-	} else if(AR_EXP_IsVariadic(exp)) {
+	} else if(AR_EXP_IsVariadic(root)) {
 		return true;
 	}
 	return false;
