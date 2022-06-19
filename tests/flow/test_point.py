@@ -140,6 +140,14 @@ class testPath():
         self.env.assertEquals(len(idx_res), 1)
         self.env.assertEquals(idx_res[0][0], 'univ')
 
+
+        # return all nodes
+        q = """MATCH (n:N) WHERE  %d < distance(n.loc, point({latitude:%f, longitude:%f})) RETURN n.name"""
+        distance = 0
+        res = redis_graph.query(q % (distance, austin['lat'], austin['lon'])).result_set
+        self.env.assertEquals(len(res), 2)
+        self.env.assertEquals(res, [['home'], ['univ']])
+
     def test_nested_point(self):
         expected_value = [{'latitude':32, 'longitude':34}]
         # point as an array element

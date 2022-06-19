@@ -207,6 +207,13 @@ class testFunctionCallsFlow(FlowTestsBase):
         expected_result = [[-0.5]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
+        # Validate modulo on edge case -LONG_MIN%-1.
+        # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=30484
+        query = "RETURN toInteger(1.2289948315394e+19) % -1"
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
         # Validate modulo by 0
         query = "RETURN 3 % 0"
         try:
@@ -390,6 +397,12 @@ class testFunctionCallsFlow(FlowTestsBase):
         parsed = json.loads(actual_result.result_set[0][0])
         self.env.assertEquals(parsed, expected)
 
+        # Test JSON literal values in an point.
+        query = """RETURN toJSON(point({ longitude: 167.697555, latitude: 0.402313 }))"""
+        actual_result = graph.query(query)
+        parsed = json.loads(actual_result.result_set[0][0])
+        self.env.assertEquals(parsed, {"crs": "wgs-84", "latitude": 0.402313, "longitude": 167.697556, "height": None})
+
     # Memory should be freed properly when the key values are heap-allocated.
     def test18_allocated_keys(self):
         query = """UNWIND ['str1', 'str1', 'str2', 'str1'] AS key UNWIND [1, 2, 3] as agg RETURN toUpper(key) AS key, collect(DISTINCT agg) ORDER BY key"""
@@ -521,6 +534,11 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], None)
 
+        # the requested length is too long and overflowing
+        query = """RETURN SUBSTRING('ab', 1, 999999999999999999999999999999999999999999999)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], "b")
+
         try:
             query = """RETURN SUBSTRING("muchacho", 3, -20)"""
             graph.query(query)
@@ -574,3 +592,9 @@ class testFunctionCallsFlow(FlowTestsBase):
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertEqual(str(e), "length must be positive integer")
+
+    def test27_string_concat(self):
+        larg_double = 1.123456e300
+        query = f"""RETURN '' + {larg_double} + {larg_double}"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], "%f%f" % (larg_double, larg_double))
