@@ -644,7 +644,10 @@ void Graph_LabelNode
 	int *labels,
 	uint label_count
 ) {
-	if(label_count > 0) _Graph_LabelNode(g, id, labels, label_count);
+	ASSERT(g);
+	ASSERT(labels);
+	ASSERT(label_count > 0);
+	_Graph_LabelNode(g, id, labels, label_count);
 }
 
 void Graph_FormConnection

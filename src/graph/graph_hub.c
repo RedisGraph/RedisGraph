@@ -279,10 +279,11 @@ int UpdateEntityProperties
 	return updates;
 }
 
-int UpdateNodeLabels(
+int UpdateNodeLabels
+(
 	GraphContext *gc,            // graph context to update the entity
-	Node *node,             	 // the node to be updated
-	const char **labels      	 // labels to update
+	Node *node,                  // the node to be updated
+	const char **labels          // labels to update
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(node != NULL);

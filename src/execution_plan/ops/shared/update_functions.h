@@ -24,13 +24,7 @@ void CommitUpdates
 	EntityType type
 );
 
-/**
- * @brief Commit label updates
- * 
- * @param gc graph context
- * @param stats statistics
- * @param updates array of pending label updates
- */
+// Commit label updates described in the array of pending updates
 void CommitLabelUpdates
 (
 	GraphContext *gc,

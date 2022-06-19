@@ -112,37 +112,29 @@ static void _ConvertSetItem(GraphContext *gc, rax *updates,
 
 	int len = strlen(alias);
 
+	EntityUpdateEvalCtx *ctx = raxFind(updates, (unsigned char *)alias, len);
+	if(ctx == raxNotFound) {
+		ctx = UpdateCtx_New(update_mode, 1, alias);
+		raxInsert(updates, (unsigned char *)alias, len, ctx, NULL);
+	} 
+
 	if(set_labels) {
-		EntityUpdateEvalCtx *ctx = raxFind(updates, (unsigned char *)alias, len);
-		if(ctx == raxNotFound) {
-			ctx = UpdateCtx_New(update_mode, 1, alias);
-			raxInsert(updates, (unsigned char *)alias, len, ctx, NULL);
-		} 
 		uint label_count = cypher_ast_set_labels_nlabels(set_item);
 		for (uint i = 0; i < label_count; i++) {
 			const cypher_astnode_t * label_node = cypher_ast_set_labels_get_label(set_item, i);
 			const char* label = cypher_ast_label_get_name(label_node);
 			array_append(ctx->labels, label);
 		}
-	} else {
-		// create update context
-		EntityUpdateEvalCtx *ctx = raxFind(updates, (unsigned char *)alias, len);
-		if(ctx == raxNotFound) {
-			ctx = UpdateCtx_New(update_mode, 1, alias);
-			raxInsert(updates, (unsigned char *)alias, len, ctx, NULL);
-		} else {
-			if(update_mode == UPDATE_REPLACE) {
-				UpdateCtx_Clear(ctx);
-				UpdateCtx_SetMode(ctx, UPDATE_REPLACE);
-			}
-		}
-
-		// updated value
-		AR_ExpNode *exp = AR_EXP_FromASTNode(ast_value);
-
-		PropertySetCtx update = { .id  = attribute_id, .exp = exp };
-		array_append(ctx->properties, update);
+	} else if(update_mode == UPDATE_REPLACE) {
+		UpdateCtx_Clear(ctx);
+		UpdateCtx_SetMode(ctx, UPDATE_REPLACE);
 	}
+
+	// updated value
+	AR_ExpNode *exp = AR_EXP_FromASTNode(ast_value);
+
+	PropertySetCtx update = { .id  = attribute_id, .exp = exp };
+	array_append(ctx->properties, update);
 }
 
 void AST_PreparePathCreation(const cypher_astnode_t *path, const QueryGraph *qg,
@@ -292,6 +284,7 @@ AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, GraphC
 rax *AST_PrepareUpdateOp(GraphContext *gc, const cypher_astnode_t *set_clause) {
 	rax *updates = raxNew(); // entity alias -> EntityUpdateEvalCtx
 	uint nitems = cypher_ast_set_nitems(set_clause);
+
 	for(uint i = 0; i < nitems; i++) {
 		const cypher_astnode_t *set_item = cypher_ast_set_get_item(set_clause, i);
 		_ConvertSetItem(gc, updates, set_item);
