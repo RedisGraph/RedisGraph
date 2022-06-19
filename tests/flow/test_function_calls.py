@@ -207,6 +207,13 @@ class testFunctionCallsFlow(FlowTestsBase):
         expected_result = [[-0.5]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
+        # Validate modulo on edge case -LONG_MIN%-1.
+        # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=30484
+        query = "RETURN toInteger(1.2289948315394e+19) % -1"
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
         # Validate modulo by 0
         query = "RETURN 3 % 0"
         try:
@@ -585,3 +592,9 @@ class testFunctionCallsFlow(FlowTestsBase):
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertEqual(str(e), "length must be positive integer")
+
+    def test27_string_concat(self):
+        larg_double = 1.123456e300
+        query = f"""RETURN '' + {larg_double} + {larg_double}"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], "%f%f" % (larg_double, larg_double))

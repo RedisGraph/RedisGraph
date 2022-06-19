@@ -148,9 +148,7 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 		}
 
 		/* Make sure length does not overreach. */
-		if(length > suffix_len) {
-			length = suffix_len;
-		}
+		length = MIN(length, suffix_len);
 	}
 
 	char *substring = rm_malloc((length + 1) * sizeof(char));
