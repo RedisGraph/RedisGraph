@@ -648,7 +648,7 @@ This section contains information on all supported functions from the Cypher que
 | keys()                 | Returns the array of keys contained in the given map, node, or edge.        |
 | labels()               | Returns a string representation of the label of a node.                     |
 | startNode()            | Returns the source node of a relationship.                                  |
-| timestamp()            | Returns the the amount of milliseconds since epoch.                         |
+| timestamp()            | Returns the amount of milliseconds since epoch.                         |
 | type()                 | Returns a string representation of the type of a relation.                  |
 | list comprehensions    | [See documentation](#list-comprehensions)                                   |
 | pattern comprehensions | [See documentation](#pattern-comprehensions)                                |
@@ -1060,7 +1060,7 @@ GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex({ label: 'Movie', l
 
 RediSearch provide 3 additional field configuration options:
 1. Weight - The importance of the text in the field
-2. Nostem - Skip setemming when indexing text
+2. Nostem - Skip stemming when indexing text
 3. Phonetic - Enable phonetic search on the text
 
 To construct a full-text index on the `title` property with phonetic search of all nodes with label `Movie`, use the syntax:
