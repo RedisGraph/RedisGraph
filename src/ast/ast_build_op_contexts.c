@@ -123,18 +123,18 @@ static void _ConvertSetItem(GraphContext *gc, rax *updates,
 		for (uint i = 0; i < label_count; i++) {
 			const cypher_astnode_t * label_node = cypher_ast_set_labels_get_label(set_item, i);
 			const char* label = cypher_ast_label_get_name(label_node);
-			array_append(ctx->labels, label);
+			raxInsert(ctx->labels, (unsigned char *)label, strlen(label), NULL, NULL);
 		}
-	} else if(update_mode == UPDATE_REPLACE) {
-		UpdateCtx_Clear(ctx);
-		UpdateCtx_SetMode(ctx, UPDATE_REPLACE);
+	} else {
+		if(update_mode == UPDATE_REPLACE) {
+			UpdateCtx_Clear(ctx);
+			UpdateCtx_SetMode(ctx, UPDATE_REPLACE);
+		}
+		// updated value
+		AR_ExpNode *exp = AR_EXP_FromASTNode(ast_value);
+		PropertySetCtx update = { .id  = attribute_id, .exp = exp };
+		array_append(ctx->properties, update);
 	}
-
-	// updated value
-	AR_ExpNode *exp = AR_EXP_FromASTNode(ast_value);
-
-	PropertySetCtx update = { .id  = attribute_id, .exp = exp };
-	array_append(ctx->properties, update);
 }
 
 void AST_PreparePathCreation(const cypher_astnode_t *path, const QueryGraph *qg,

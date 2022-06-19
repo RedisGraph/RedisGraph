@@ -12,7 +12,7 @@
 typedef struct {
 	GraphEntity *ge;       // entity to be updated
 	AttributeSet attributes;
-	const char** labels;
+	rax *labels;
 } PendingUpdateCtx;
 
 // commit all updates described in the array of pending updates
@@ -22,14 +22,6 @@ void CommitUpdates
 	ResultSetStatistics *stats,
 	PendingUpdateCtx *updates,
 	EntityType type
-);
-
-// Commit label updates described in the array of pending updates
-void CommitLabelUpdates
-(
-	GraphContext *gc,
-	ResultSetStatistics *stats,
-	PendingUpdateCtx *updates
 );
 
 /* build pending updates in the 'updates' array to match all

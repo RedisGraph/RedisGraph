@@ -76,7 +76,7 @@ int UpdateEntityProperties
 );
 
 
-// This function sets the labels given in the array "labels" to the given node
+// This function sets the labels given in the rax "labels" to the given node
 // creates the label matrix if not exists
 // adds node to the label matrix
 // updates the relevant indexes of the entity
@@ -84,5 +84,5 @@ int UpdateNodeLabels
 (
 	GraphContext *gc,            // graph context to update the entity
 	Node *node,            		 // the node to be updated
-	const char **labels     	 // labels to update
+	rax *labels     	         // labels to update
 );

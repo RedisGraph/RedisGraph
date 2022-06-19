@@ -283,17 +283,30 @@ int UpdateNodeLabels
 (
 	GraphContext *gc,            // graph context to update the entity
 	Node *node,                  // the node to be updated
-	const char **labels          // labels to update
+	rax *labels                  // labels to update
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(node != NULL);
+	ASSERT(labels != NULL);
+	// early exit
+	if(raxSize(labels) == 0) return 0;
 
 	int new_labels = 0;
-	uint label_count = array_len(labels);
+	uint label_count = raxSize(labels);
 	int *label_ids = array_new(int, label_count);
-	for(uint i = 0; i < label_count; i++) {
+	raxIterator it;
+	raxStart(&it, labels);
+	// Iterate over all keys in the rax.
+	raxSeek(&it, "^", NULL, 0);
+	while(raxNext(&it)) {
 		// Get label string.
-		const char *label = labels[i];
+		unsigned char *raw_label = it.key;
+		// Avoid rax not null terminating strings
+		size_t len = it.key_len;
+		char label[len];
+		memcpy(label, raw_label, len);
+		label[len] = 0;
+
 
 		// Get or create label matrix
 		const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
@@ -309,6 +322,7 @@ int UpdateNodeLabels
 		// Add to index.
 		Schema_AddNodeToIndices(s, node);
 	}
+	raxStop(&it);
 
 	// Update label matrixes.
 	Graph_LabelNode(gc->g, node->id ,label_ids, label_count);

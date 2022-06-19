@@ -646,7 +646,7 @@ void Graph_LabelNode
 ) {
 	ASSERT(g);
 	ASSERT(labels);
-	ASSERT(label_count > 0);
+	ASSERT(label_count == 0 || (label_count > 0 && labels != NULL));
 	_Graph_LabelNode(g, id, labels, label_count);
 }
 
