@@ -76,8 +76,7 @@ void CommitUpdates
 		properties_set += UpdateEntityProperties(gc, update->ge, update->attributes,
 				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE);
 
-		if (update->labels)
-			labels_added += UpdateNodeLabels(gc, (Node*)update->ge, update->labels);
+		labels_added += UpdateNodeLabels(gc, (Node*)update->ge, update->labels);
 	}
 
 	if(stats) {

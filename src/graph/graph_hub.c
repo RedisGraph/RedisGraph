@@ -287,9 +287,9 @@ int UpdateNodeLabels
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(node != NULL);
-	ASSERT(labels != NULL);
+
 	// early exit
-	if(raxSize(labels) == 0) return 0;
+	if(labels == NULL || raxSize(labels) == 0) return 0;
 
 	int new_labels = 0;
 	uint label_count = raxSize(labels);
