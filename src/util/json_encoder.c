@@ -195,7 +195,7 @@ sds _JsonEncoder_SIValue(SIValue v, sds s) {
 		else s = sdscat(s, "false");
 		break;
 	case T_DOUBLE:
-		s = sdscatprintf(s, "%f", v.doubleval);
+		s = sdscatprintf(s, "%.15g", v.doubleval);
 		break;
 	case T_NODE:
 		s = _JsonEncoder_GraphEntity(v.ptrval, s, GETYPE_NODE);
