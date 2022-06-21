@@ -158,6 +158,15 @@ static void _AST_MapSetPropertyReferences(AST *ast, const cypher_astnode_t *set_
 	_AST_MapExpression(ast, set_exp);
 }
 
+// Maps entities in SET clauses that update labels.
+static void _AST_MapSetLabelsReferences(AST *ast, const cypher_astnode_t *set_item) {
+	ASSERT(cypher_astnode_type(set_item) == CYPHER_AST_SET_LABELS);
+	const cypher_astnode_t *identifier = cypher_ast_set_labels_get_identifier(set_item);
+	ASSERT(cypher_astnode_type(identifier) == CYPHER_AST_IDENTIFIER);
+	const char *alias = cypher_ast_identifier_get_name(identifier);
+	_AST_UpdateRefMap(ast, alias);
+}
+
 // Maps entities in SET clauses that replace all properties.
 static void _AST_MapSetAllPropertiesReferences(AST *ast, const cypher_astnode_t *set_item) {
 	// Retrieve the alias being modified.
@@ -194,6 +203,8 @@ static void _AST_MapSetItemReferences(AST *ast, const cypher_astnode_t *set_item
 		_AST_MapSetAllPropertiesReferences(ast, set_item);
 	} else if(type == CYPHER_AST_MERGE_PROPERTIES) {
 		_AST_MapMergePropertiesReferences(ast, set_item);
+	} else if(type == CYPHER_AST_SET_LABELS) {
+		_AST_MapSetLabelsReferences(ast, set_item);
 	} else {
 		ASSERT(false);
 	}

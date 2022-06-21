@@ -209,7 +209,7 @@ int DeleteEdge
 
 // update entity attributes and update undo log
 // in case attr_id is ATTRIBUTE_ID_ALL clear all attributes values
-static int _Update_Entity
+static int _Update_Entity_Property
 (
 	GraphContext *gc,
 	GraphEntity *ge,
@@ -238,7 +238,7 @@ static int _Update_Entity
 	return Graph_UpdateEntity(ge, attr_id, new_value, entity_type);
 }
 
-int UpdateEntity
+int UpdateEntityProperties
 (
 	GraphContext *gc,
 	GraphEntity *ge,
@@ -251,7 +251,7 @@ int UpdateEntity
 	int updates = 0;
 	for (uint i = 0; i < ATTRIBUTE_SET_COUNT(set); i++) {
 		Attribute *prop = set->attributes + i;
-		updates += _Update_Entity(gc, ge, prop->id, prop->value, entity_type);
+		updates += _Update_Entity_Property(gc, ge, prop->id, prop->value, entity_type);
 	}
 
 	if(entity_type == GETYPE_NODE) {
@@ -261,4 +261,57 @@ int UpdateEntity
 	}
 
 	return updates;
+}
+
+int UpdateNodeLabels
+(
+	GraphContext *gc,            // graph context to update the entity
+	Node *node,                  // the node to be updated
+	rax *labels                  // labels to update
+) {
+	ASSERT(gc != NULL);
+	ASSERT(node != NULL);
+
+	// early exit
+	if(labels == NULL || raxSize(labels) == 0) return 0;
+
+	int new_labels = 0;
+	uint label_count = raxSize(labels);
+	int *label_ids = array_new(int, label_count);
+	raxIterator it;
+	raxStart(&it, labels);
+	// Iterate over all keys in the rax.
+	raxSeek(&it, "^", NULL, 0);
+	while(raxNext(&it)) {
+		// Get label string.
+		unsigned char *raw_label = it.key;
+		// Avoid rax not null terminating strings
+		size_t len = it.key_len;
+		char label[len];
+		memcpy(label, raw_label, len);
+		label[len] = 0;
+
+
+		// Get or create label matrix
+		const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+		if(s == NULL) {
+			s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+			new_labels++;
+		}
+		// sync matrix, make sure label matrix is of the right dimensions
+		Graph_GetLabelMatrix(gc->g, Schema_GetID(s));
+
+		// Append label id.
+		array_append(label_ids, Schema_GetID(s));
+		// Add to index.
+		Schema_AddNodeToIndices(s, node);
+	}
+	raxStop(&it);
+
+	// Update label matrixes.
+	Graph_LabelNode(gc->g, node->id ,label_ids, label_count);
+
+	// Cleanup
+	array_free(label_ids);
+	return new_labels;
 }

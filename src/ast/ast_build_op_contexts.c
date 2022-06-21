@@ -55,6 +55,7 @@ static void _ConvertSetItem(GraphContext *gc, rax *updates,
 	UPDATE_MODE update_mode = UPDATE_MERGE;
 	Attribute_ID attribute_id = ATTRIBUTE_ID_NONE;
 	const cypher_astnode_type_t type = cypher_astnode_type(set_item);
+	bool set_labels = false;
 
 	if(type == CYPHER_AST_SET_ALL_PROPERTIES) {
 		// MATCH (a) SET a = {v: 5}
@@ -98,29 +99,42 @@ static void _ConvertSetItem(GraphContext *gc, rax *updates,
 
 		// updated value
 		ast_value = cypher_ast_set_property_get_expression(set_item);
+	}
+	else if(type == CYPHER_AST_SET_LABELS) {
+		// MATCH (a) SET a:Label1:Label2
+		const cypher_astnode_t *identifier = cypher_ast_set_labels_get_identifier(set_item);
+		ASSERT(cypher_astnode_type(identifier) == CYPHER_AST_IDENTIFIER);
+		alias = cypher_ast_identifier_get_name(identifier);
+		set_labels = true;
 	} else {
 		ASSERT(false);
 	}
 
 	int len = strlen(alias);
 
-	// create update context
 	EntityUpdateEvalCtx *ctx = raxFind(updates, (unsigned char *)alias, len);
 	if(ctx == raxNotFound) {
 		ctx = UpdateCtx_New(update_mode, 1, alias);
 		raxInsert(updates, (unsigned char *)alias, len, ctx, NULL);
+	} 
+
+	if(set_labels) {
+		uint label_count = cypher_ast_set_labels_nlabels(set_item);
+		for (uint i = 0; i < label_count; i++) {
+			const cypher_astnode_t * label_node = cypher_ast_set_labels_get_label(set_item, i);
+			const char* label = cypher_ast_label_get_name(label_node);
+			raxInsert(ctx->labels, (unsigned char *)label, strlen(label), NULL, NULL);
+		}
 	} else {
 		if(update_mode == UPDATE_REPLACE) {
 			UpdateCtx_Clear(ctx);
 			UpdateCtx_SetMode(ctx, UPDATE_REPLACE);
 		}
+		// updated value
+		AR_ExpNode *exp = AR_EXP_FromASTNode(ast_value);
+		PropertySetCtx update = { .id  = attribute_id, .exp = exp };
+		array_append(ctx->properties, update);
 	}
-
-	// updated value
-	AR_ExpNode *exp = AR_EXP_FromASTNode(ast_value);
-
-	PropertySetCtx update = { .id  = attribute_id, .exp = exp };
-	array_append(ctx->properties, update);
 }
 
 void AST_PreparePathCreation(const cypher_astnode_t *path, const QueryGraph *qg,
