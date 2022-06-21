@@ -111,7 +111,7 @@ void RdbLoadNodes_v12
 		uint64_t nodeLabelCount = RedisModule_LoadUnsigned(rdb);
 
 		// * (labels) x M
-		uint64_t labels[nodeLabelCount];
+		LabelID labels[nodeLabelCount];
 		for(uint64_t i = 0; i < nodeLabelCount; i ++){
 			labels[i] = RedisModule_LoadUnsigned(rdb);
 		}
