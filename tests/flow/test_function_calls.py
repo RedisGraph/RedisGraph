@@ -353,10 +353,10 @@ class testFunctionCallsFlow(FlowTestsBase):
 
     def test17_to_json(self):
         # Test JSON literal values in an array.
-        query = """RETURN toJSON([1, 'str', true, NULL])"""
+        query = """RETURN toJSON([1, 0.000000000000001, 'str', true, NULL])"""
         actual_result = graph.query(query)
         parsed = json.loads(actual_result.result_set[0][0])
-        self.env.assertEquals(parsed, [1, "str", True, None])
+        self.env.assertEquals(parsed, [1, 0.000000000000001, "str", True, None])
 
         # Test JSON an empty array value.
         query = """WITH [] AS arr RETURN toJSON(arr)"""
