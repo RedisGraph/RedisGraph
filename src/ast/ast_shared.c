@@ -2,6 +2,7 @@
 #include "../RG.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
+#include "../util/rax_extensions.h"
 #include "../arithmetic/arithmetic_expression_construct.h"
 
 AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op) {
@@ -138,6 +139,7 @@ EntityUpdateEvalCtx *UpdateCtx_New(UPDATE_MODE mode, uint prop_count, const char
 	ctx->alias = alias;
 	ctx->record_idx = INVALID_INDEX;
 	ctx->properties = array_new(PropertySetCtx, prop_count);
+	ctx->labels = raxNew();
 
 	return ctx;
 }
@@ -148,6 +150,7 @@ EntityUpdateEvalCtx *UpdateCtx_Clone(const EntityUpdateEvalCtx *orig) {
 	clone->alias = orig->alias;
 	clone->record_idx = orig->record_idx;
 	uint count = array_len(orig->properties);
+	clone->labels = raxClone(orig->labels);
 	clone->properties = array_new(PropertySetCtx, count);
 	for(uint i = 0; i < count; i ++) {
 		PropertySetCtx update = {
@@ -156,7 +159,6 @@ EntityUpdateEvalCtx *UpdateCtx_Clone(const EntityUpdateEvalCtx *orig) {
 		};
 		array_append(clone->properties, update);
 	}
-
 	return clone;
 }
 
@@ -175,6 +177,8 @@ void UpdateCtx_Free(EntityUpdateEvalCtx *ctx) {
 	uint count = array_len(ctx->properties);
 	for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].exp);
 	array_free(ctx->properties);
+	raxFree(ctx->labels);
+
 	rm_free(ctx);
 }
 
