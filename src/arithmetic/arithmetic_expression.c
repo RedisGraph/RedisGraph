@@ -307,8 +307,6 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val) {
 		root->operand.type = AR_EXP_CONSTANT;
 		root->operand.constant = v;
 		return true;
-		// Root is an aggregation function, can't reduce.
-		return false;
 	}
 }
 
@@ -704,6 +702,18 @@ bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
 		for(int i = 0; i < root->op.child_count; i++) {
 			if(AR_EXP_ContainsFunc(root->op.children[i], func)) return true;
 		}
+	}
+	return false;
+}
+
+bool AR_EXP_ContainsVariadic(const AR_ExpNode *root) {
+	if(root == NULL) return false;
+	if(AR_EXP_IsOperation(root)) {
+		for(int i = 0; i < root->op.child_count; i++) {
+			if(AR_EXP_ContainsVariadic(root->op.children[i])) return true;
+		}
+	} else if(AR_EXP_IsVariadic(root)) {
+		return true;
 	}
 	return false;
 }
