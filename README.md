@@ -4,7 +4,7 @@
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/RedisGraph/RedisGraph.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/RedisGraph/RedisGraph/alerts/)
 [![Codecov](https://codecov.io/gh/RedisGraph/RedisGraph/branch/master/graph/badge.svg)](https://codecov.io/gh/RedisGraph/RedisGraph)
 
-# RedisGraph 
+# RedisGraph
 ## A graph database module for Redis
 [![Forum](https://img.shields.io/badge/Forum-RedisGraph-blue)](https://forum.redislabs.com/c/modules/redisgraph)
 [![Discord](https://img.shields.io/discord/697882427875393627?style=flat-square)](https://discord.gg/gWBRT6P)
@@ -93,7 +93,7 @@ Requirements:
 
 * The RedisGraph repository: `git clone --recurse-submodules -j8 https://github.com/RedisGraph/RedisGraph.git`
 
-* On Ubuntu Linux, run: `apt-get install build-essential cmake m4 automake peg libtool autoconf`
+* On Ubuntu Linux, run: `apt-get install build-essential cmake m4 automake peg libtool autoconf python3`
 
 * On OS X, verify that `homebrew` is installed and run: `brew install cmake m4 automake peg libtool autoconf`.
     * The version of Clang that ships with the OS X toolchain does not support OpenMP, which is a requirement for RedisGraph. One way to resolve this is to run `brew install gcc g++` and follow the on-screen instructions to update the symbolic links. Note that this is a system-wide change - setting the environment variables for `CC` and `CXX` will work if that is not an option.

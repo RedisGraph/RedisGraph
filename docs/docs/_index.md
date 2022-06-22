@@ -88,7 +88,7 @@ Congratulations! You can find the compiled binary at: `src/redisgraph.so`
 
 ## Installing RedisGraph
 
-RedisGraph is part of [Redis Stack](/docs/stack). See the [Redis Stack download page](/download) for installaton options.
+RedisGraph is part of [Redis Stack](/docs/stack). See the [Redis Stack download page](/download) for installation options.
 
 ## Using RedisGraph
 
