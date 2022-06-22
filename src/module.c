@@ -148,6 +148,11 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
+	if(RedisModule_CreateCommand(ctx, "graph.JIT", CommandDispatch, "write deny-oom", 1, 1,
+								 1) == REDISMODULE_ERR) {
+		return REDISMODULE_ERR;
+	}
+
 	if(RedisModule_CreateCommand(ctx, "graph.DELETE", Graph_Delete, "write", 1, 1,
 								 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;

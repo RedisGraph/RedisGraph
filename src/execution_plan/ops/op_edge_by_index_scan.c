@@ -166,7 +166,7 @@ static inline void _UpdateRecord
 		Node src = GE_NEW_NODE();
 		res = Graph_GetNode(op->g, src_id, &src);
 		ASSERT(res != 0);
-		Record_AddNode(r, op->srcRecIdx, src);
+		Record_AddNode(r, op->srcRecIdx, &src);
 		Edge_SetSrcNode(&e, &src);
 	} else {
 		Node *src = Record_GetNode(r,  op->srcRecIdx);
@@ -177,7 +177,7 @@ static inline void _UpdateRecord
 		Node dest = GE_NEW_NODE();
 		res = Graph_GetNode(op->g, dest_id, &dest);
 		ASSERT(res != 0);
-		Record_AddNode(r, op->destRecIdx, dest);
+		Record_AddNode(r, op->destRecIdx, &dest);
 		Edge_SetDestNode(&e, &dest);
 	} else {
 		Node *dest = Record_GetNode(r,  op->destRecIdx);

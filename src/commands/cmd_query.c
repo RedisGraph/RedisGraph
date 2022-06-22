@@ -28,6 +28,7 @@ typedef struct {
 	bool readonly_query;      // read only query
 	bool profile;             // profile query
 	CronTaskHandle timeout;   // timeout cron task
+	bool jit;
 } GraphQueryCtx;
 
 static GraphQueryCtx *GraphQueryCtx_New
@@ -38,7 +39,8 @@ static GraphQueryCtx *GraphQueryCtx_New
 	CommandCtx *command_ctx,
 	bool readonly_query,
 	bool profile,
-	CronTaskHandle timeout
+	CronTaskHandle timeout,
+	bool jit
 ) {
 	GraphQueryCtx *ctx = rm_malloc(sizeof(GraphQueryCtx));
 
@@ -50,6 +52,7 @@ static GraphQueryCtx *GraphQueryCtx_New
 	ctx->readonly_query  =  readonly_query;
 	ctx->profile         =  profile;
 	ctx->timeout         =  timeout;
+	ctx->jit             =  jit;
 
 	return ctx;
 }
@@ -161,6 +164,7 @@ static void _ExecuteQuery(void *args) {
 	QueryCtx        *query_ctx    =  gq_ctx->query_ctx;
 	GraphContext    *gc           =  gq_ctx->graph_ctx;
 	RedisModuleCtx  *rm_ctx       =  gq_ctx->rm_ctx;
+	bool            jit           =  gq_ctx->jit;
 	bool            profile       =  gq_ctx->profile;
 	bool            readonly      =  gq_ctx->readonly_query;
 	ExecutionCtx    *exec_ctx     =  gq_ctx->exec_ctx;
@@ -211,8 +215,9 @@ static void _ExecuteQuery(void *args) {
 		if(profile) {
 			ExecutionPlan_Profile(plan);
 			if(!ErrorCtx_EncounteredError()) ExecutionPlan_Print(plan, rm_ctx);
-		}
-		else {
+		} else if(jit) {
+			result_set = ExecutionPlan_JIT(plan);
+		} else {
 			result_set = ExecutionPlan_Execute(plan);
 		}
 
@@ -286,7 +291,7 @@ static void _DelegateWriter(GraphQueryCtx *gq_ctx) {
 	ASSERT(res == 0);
 }
 
-void _query(bool profile, void *args) {
+void _query(bool profile, bool jit, void *args) {
 	CommandCtx     *command_ctx = (CommandCtx *)args;
 	RedisModuleCtx *ctx         = CommandCtx_GetRedisCtx(command_ctx);
 	GraphContext   *gc          = CommandCtx_GetGraphContext(command_ctx);
@@ -332,7 +337,7 @@ void _query(bool profile, void *args) {
 
 	// populate the container struct for invoking _ExecuteQuery.
 	GraphQueryCtx *gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, command_ctx,
-											  readonly, profile, timeout_task);
+											  readonly, profile, timeout_task, jit);
 
 	// if 'thread' is redis main thread, continue running
 	// if readonly is true we're executing on a worker thread from
@@ -358,9 +363,13 @@ cleanup:
 }
 
 void Graph_Profile(void *args) {
-	_query(true, args);
+	_query(true, false, args);
 }
 
 void Graph_Query(void *args) {
-	_query(false, args);
+	_query(false, false, args);
+}
+
+void Graph_Jit(void *args) {
+	_query(false, true, args);
 }

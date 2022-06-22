@@ -79,6 +79,7 @@ CFLAGS=\
 	$(CFLAGS.opt) \
 	$(CFLAGS.warnings) \
 	$(CFLAGS.debug)
+CFLAGS += -g `llvm-config --cflags --link-static --libs --system-libs`
 
 ifeq ($(OS),macos)
 	ifeq ($(STATIC_OMP),1)
@@ -94,6 +95,7 @@ LDFLAGS.linux=-Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthrea
 LDFLAGS.macos=-bundle -undefined dynamic_lookup -ldl -lpthread $(LIBOMP)
 
 SHOBJ_LDFLAGS += $(LDFLAGS) $(LDFLAGS.$(OS))
+SHOBJ_LDFLAGS += -g `llvm-config --ldflags --link-static --libs --system-libs`
 
 # if DEBUG env var is set, we compile with "debug" cflags
 ifeq ($(DEBUG),1)
@@ -210,6 +212,7 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/decoders/prev/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/decoders/prev/*/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/grouping/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/index/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/jit/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/ast/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/ast/enrichment/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/resultset/*.c)

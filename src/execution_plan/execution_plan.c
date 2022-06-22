@@ -8,6 +8,7 @@
 #include "../RG.h"
 #include "./ops/ops.h"
 #include "../errors.h"
+#include "../jit/jit.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
@@ -427,6 +428,39 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 	Record r = NULL;
 	// Execute the root operation and free the processed Record until the data stream is depleted.
 	while((r = OpBase_Consume(plan->root)) != NULL) ExecutionPlan_ReturnRecord(r->owner, r);
+
+	return QueryCtx_GetResultSet();
+}
+
+static void *_SymbolResolve(const char *name) {
+	//[ _op, _project_expr_0, _iter, _rs ]
+	if(strcmp(name, "_Record_Add") == 0) return Record_Add;
+	if(strcmp(name, "_Record_AddNode") == 0) return Record_AddNode;
+	if(strcmp(name, "_Graph_GetNode") == 0) return Graph_GetNode;
+	if(strcmp(name, "_AR_EXP_Evaluate") == 0) return AR_EXP_Evaluate;
+	if(strcmp(name, "_RG_MatrixTupleIter_next") == 0) return RG_MatrixTupleIter_next_BOOL;
+	if(strcmp(name, "_RG_MatrixTupleIter_reset") == 0) return RG_MatrixTupleIter_reset;
+	if(strcmp(name, "_OpBase_CreateRecord") == 0) return OpBase_CreateRecord;
+	if(strcmp(name, "_ResultSet_AddRecord") == 0) return ResultSet_AddRecord;
+
+	return NULL;
+}
+
+ResultSet *ExecutionPlan_JIT(ExecutionPlan *plan) {
+	ASSERT(plan->prepared)
+
+	ExecutionPlan_Init(plan);
+
+	EmitCtx_Init();
+
+	EmitCtx *emit_ctx = EmitCtx_Get();
+
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	JIT_Init(gc->g);
+	OpBase_Emit(plan->root);
+	JIT_End();
+
+	JIT_Run(_SymbolResolve);
 
 	return QueryCtx_GetResultSet();
 }

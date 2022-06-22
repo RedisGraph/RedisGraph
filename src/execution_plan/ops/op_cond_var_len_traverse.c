@@ -242,7 +242,7 @@ static Record CondVarLenTraverseOptimizedConsume(OpBase *opBase) {
 
 	// add destination node to record
 	Record r = OpBase_CloneRecord(op->r);
-	Record_AddNode(r, op->destNodeIdx, dest);
+	Record_AddNode(r, op->destNodeIdx, &dest);
 
 	return r;
 }
@@ -296,7 +296,8 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 	Record r = OpBase_CloneRecord(op->r);
 
 	// add destination node to record
-	if(!op->expandInto) Record_AddNode(r, op->destNodeIdx, Path_Head(p));
+	Node n = Path_Head(p);
+	if(!op->expandInto) Record_AddNode(r, op->destNodeIdx, &n);
 
 	// add new path to record
 	if(op->edgesIdx >= 0) Record_AddScalar(r, op->edgesIdx, SI_Path(p));

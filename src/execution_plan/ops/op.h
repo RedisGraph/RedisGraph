@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../record.h"
+#include "../../jit/jit.h"
 #include "../../util/arr.h"
 #include "../../redismodule.h"
 #include "../../schema/schema.h"
@@ -104,6 +105,7 @@ static const OPType EAGER_OPERATIONS[] = {
 struct OpBase;
 struct ExecutionPlan;
 
+typedef bool (*fpEmit)(struct OpBase *);
 typedef void (*fpFree)(struct OpBase *);
 typedef OpResult(*fpInit)(struct OpBase *);
 typedef Record(*fpConsume)(struct OpBase *);
@@ -126,6 +128,8 @@ struct OpBase {
 	fpConsume consume;          // Produce next record.
 	fpConsume profile;          // Profiled version of consume.
 	fpToString toString;        // Operation string representation.
+	fpEmit emit;
+	int emit_phase;
 	const char *name;           // Operation name.
 	int childCount;             // Number of children.
 	bool op_initialized;        // True if the operation has already been initialized.
@@ -142,9 +146,12 @@ typedef struct OpBase OpBase;
 void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsume consume,
 				 fpReset reset, fpToString toString, fpClone, fpFree free, bool writer,
 				 const struct ExecutionPlan *plan);
+
+void OpBase_SetEmit(OpBase *op, fpEmit emit);
 void OpBase_Free(OpBase *op);       // Free op.
 Record OpBase_Consume(OpBase *op);  // Consume op.
 Record OpBase_Profile(OpBase *op);  // Profile op.
+bool OpBase_Emit(OpBase *op);
 
 void OpBase_ToString(const OpBase *op, sds *buff);
 

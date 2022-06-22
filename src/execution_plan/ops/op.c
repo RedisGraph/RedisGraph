@@ -39,10 +39,20 @@ void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsu
 	op->clone = clone;
 	op->free = free;
 	op->profile = NULL;
+	op->emit = NULL;
+}
+
+void OpBase_SetEmit(OpBase *op, fpEmit emit) {
+	op->emit = emit;
+	op->emit_phase = 0;
 }
 
 inline Record OpBase_Consume(OpBase *op) {
 	return op->consume(op);
+}
+
+inline bool OpBase_Emit(OpBase *op) {
+	return op->emit(op);
 }
 
 int OpBase_Modifies(OpBase *op, const char *alias) {
@@ -156,7 +166,7 @@ void OpBase_UpdateConsume(OpBase *op, fpConsume consume) {
 	else op->consume = consume;
 }
 
-inline Record OpBase_CreateRecord(const OpBase *op) {
+Record OpBase_CreateRecord(const OpBase *op) {
 	return ExecutionPlan_BorrowRecord((struct ExecutionPlan *)op->plan);
 }
 

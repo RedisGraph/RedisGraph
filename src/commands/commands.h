@@ -24,13 +24,15 @@ typedef enum {
 	CMD_PROFILE        = 6,
 	CMD_BULK_INSERT    = 7,
 	CMD_SLOWLOG        = 8,
-	CMD_LIST           = 9
+	CMD_LIST           = 9,
+	CMD_JIT            = 10
 } GRAPH_Commands;
 
 //------------------------------------------------------------------------------
 // graph commands
 //------------------------------------------------------------------------------
 
+void Graph_Jit(void *args);
 void Graph_Query(void *args);
 void Graph_Slowlog(void *args);
 void Graph_Profile(void *args);

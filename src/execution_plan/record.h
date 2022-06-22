@@ -86,7 +86,7 @@ void Record_Add(Record r, uint idx, SIValue v);
 SIValue *Record_AddScalar(Record r, uint idx, SIValue v);
 
 // Add a node to record at position idx and return a reference to it.
-Node *Record_AddNode(Record r, uint idx, Node node);
+Node *Record_AddNode(Record r, uint idx, Node *node);
 
 // Add an edge to record at position idx and return a reference to it.
 Edge *Record_AddEdge(Record r, uint idx, Edge edge);

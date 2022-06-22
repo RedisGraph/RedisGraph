@@ -166,7 +166,7 @@ void Record_Add(Record r, uint idx, SIValue v) {
 	ASSERT(idx < Record_length(r));
 	switch(SI_TYPE(v)) {
 		case T_NODE:
-			Record_AddNode(r, idx, *(Node *)v.ptrval);
+			Record_AddNode(r, idx, (Node *)v.ptrval);
 			break;
 		case T_EDGE:
 			Record_AddEdge(r, idx, *(Edge *)v.ptrval);
@@ -183,8 +183,8 @@ SIValue *Record_AddScalar(Record r, uint idx, SIValue v) {
 	return &(r->entries[idx].value.s);
 }
 
-Node *Record_AddNode(Record r, uint idx, Node node) {
-	r->entries[idx].value.n = node;
+Node *Record_AddNode(Record r, uint idx, Node *node) {
+	r->entries[idx].value.n = *node;
 	r->entries[idx].type = REC_TYPE_NODE;
 	return &(r->entries[idx].value.n);
 }

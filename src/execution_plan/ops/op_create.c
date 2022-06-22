@@ -56,7 +56,7 @@ static void _CreateNodes(OpCreate *op, Record r) {
 		Node newNode = GE_NEW_NODE();
 
 		// add new node to Record and save a reference to it
-		Node *node_ref = Record_AddNode(r, op->pending.nodes_to_create[i].node_idx, newNode);
+		Node *node_ref = Record_AddNode(r, op->pending.nodes_to_create[i].node_idx, &newNode);
 
 		// convert query-level properties
 		AttributeSet converted_attr = NULL;

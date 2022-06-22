@@ -16,6 +16,7 @@
 static Record ResultsConsume(OpBase *opBase);
 static OpResult ResultsInit(OpBase *opBase);
 static OpBase *ResultsClone(const ExecutionPlan *plan, const OpBase *opBase);
+static bool Emit(OpBase *opBase);
 
 OpBase *NewResultsOp(const ExecutionPlan *plan) {
 	Results *op = rm_malloc(sizeof(Results));
@@ -23,8 +24,20 @@ OpBase *NewResultsOp(const ExecutionPlan *plan) {
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_RESULTS, "Results", ResultsInit, ResultsConsume,
 				NULL, NULL, ResultsClone, NULL, false, plan);
+	OpBase_SetEmit((OpBase *)op, Emit);
 
 	return (OpBase *)op;
+}
+
+static bool Emit(OpBase *opBase) {
+	Results *op = (Results *)opBase;
+
+	JIT_CreateRecord(opBase);
+	while(OpBase_Emit(opBase->children[0])) {
+		JIT_Result(op->result_set);
+	}
+
+	return false;
 }
 
 static OpResult ResultsInit(OpBase *opBase) {

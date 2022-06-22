@@ -58,6 +58,8 @@ void ExecutionPlan_Init(ExecutionPlan *plan);
 /* Executes plan */
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan);
 
+ResultSet *ExecutionPlan_JIT(ExecutionPlan *plan);
+
 /* Checks if execution plan been drained */
 bool ExecutionPlan_Drained(ExecutionPlan *plan);
 
