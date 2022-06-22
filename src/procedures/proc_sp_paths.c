@@ -269,8 +269,8 @@ static ProcedureResult validate_config
 	SinglePairCtx_New(ctx, (Node *)start.ptrval, (Node *)end.ptrval, g, types,
 		types_count, direction, 1, max_length_val);
 
-	ctx->weight_prop = ATTRIBUTE_NOTFOUND;
-	ctx->cost_prop = ATTRIBUTE_NOTFOUND;
+	ctx->weight_prop = ATTRIBUTE_ID_NONE;
+	ctx->cost_prop = ATTRIBUTE_ID_NONE;
 	ctx->max_cost = DBL_MAX;
 	ctx->path_count = 1;
 	
@@ -411,7 +411,7 @@ static inline SIValue _get_value_or_defualt
 	SIValue default_value
 ) {
 	SIValue *v = GraphEntity_GetProperty(ge, id);
-	if(v == PROPERTY_NOTFOUND) return default_value;
+	if(v == ATTRIBUTE_NOTFOUND) return default_value;
 
 	if(SI_TYPE(*v) & SI_NUMERIC) return *v;
 
