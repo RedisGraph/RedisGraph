@@ -310,6 +310,8 @@ class test_encode_decode(FlowTestsBase):
         self.env.assertEquals(res_before.result_set, res_after.result_set)
 
     def test12_random_graph(self):
+        redis_con.flushall()
+
         graph_name = "random_graph"
         redis_graph = Graph(redis_con, graph_name)
 
