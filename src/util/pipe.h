@@ -8,54 +8,60 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <sys/types.h>
 
-//typedef int Pipe[2];
 typedef struct Pipe { int fd[2]; } Pipe;
 
 Pipe *Pipe_Create(void);
+
+// close write end of pipe
+void Pipe_CloseWriteEnd
+(
+	Pipe *p
+);
+
+// close read end of pipe
+void Pipe_CloseReadEnd
+(
+	Pipe *p
+);
 
 //------------------------------------------------------------------------------
 // Pipe WRITE
 //------------------------------------------------------------------------------
 
-void Pipe_WriteUnsigned
+ssize_t Pipe_WriteUnsigned
 (
 	Pipe *p,
 	uint64_t value
 );
 
-void Pipe_WriteSigned
+ssize_t Pipe_WriteSigned
 (
 	Pipe *p,
 	int64_t value
 );
 
-//void Pipe_WriteString
-//(
-//	Pipe p,
-//	RedisModuleString *s
-//);
-
-void Pipe_WriteStringBuffer
+ssize_t Pipe_WriteStringBuffer
 (
 	Pipe *p,
 	const char *str,
-	size_t len
+	uint64_t len
 );
 
-void Pipe_WriteDouble
+ssize_t Pipe_WriteDouble
 (
 	Pipe *p,
 	double value
 );
 
-void Pipe_WriteFloat
+ssize_t Pipe_WriteFloat
 (
 	Pipe *p,
 	float value
 );
 
-void Pipe_WriteLongDouble
+ssize_t Pipe_WriteLongDouble
 (
 	Pipe *p,
 	long double value
@@ -65,40 +71,41 @@ void Pipe_WriteLongDouble
 // Pipe READ
 //------------------------------------------------------------------------------
 
-uint64_t Pipe_ReadUnsigned
-(
-	Pipe *p
-);
-
-int64_t Pipe_ReadSigned
-(
-	Pipe *p
-);
-
-char *Pipe_ReadStringBuffer
+ssize_t Pipe_ReadUnsigned
 (
 	Pipe *p,
-	size_t *lenptr
+	uint64_t *value
 );
 
-//RedisModuleString *Pipe_ReadString
-//(
-//	Pipe p
-//);
-
-double Pipe_ReadDouble
+ssize_t Pipe_ReadSigned
 (
-	Pipe *p
+	Pipe *p,
+	int64_t *value
 );
 
-float Pipe_ReadFloat
+ssize_t Pipe_ReadStringBuffer
 (
-	Pipe *p
+	Pipe *p,
+	uint64_t *lenptr,
+	char **value
 );
 
-long double Pipe_ReadLongDouble
+ssize_t Pipe_ReadDouble
 (
-	Pipe *p
+	Pipe *p,
+	double *value
+);
+
+ssize_t Pipe_ReadFloat
+(
+	Pipe *p,
+	float *value
+);
+
+ssize_t Pipe_ReadLongDouble
+(
+	Pipe *p,
+	long double *value
 );
 
 void Pipe_Free

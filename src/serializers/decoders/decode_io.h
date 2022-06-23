@@ -8,6 +8,7 @@
 
 #include "../../util/pipe.h"
 #include "../../redismodule.h"
+#include <stdbool.h>
 
 typedef enum {
 	IODecoderType_RDB,
@@ -16,13 +17,14 @@ typedef enum {
 
 typedef struct IODecoder {
 	void *io;
+	bool IOError;
 	IODecoderType t;
-	float(*LoadFloat)(const struct IODecoder *io);
-	double(*LoadDouble)(const struct IODecoder *io);
-	int64_t(*LoadSigned)(const struct IODecoder *io);
-	uint64_t(*LoadUnsigned)(const struct IODecoder *io);
-	long double(*LoadLongDouble)(const struct IODecoder *io);
-	char*(*LoadStringBuffer)(const struct IODecoder *io, size_t *len);
+	float(*LoadFloat)(struct IODecoder *io);
+	double(*LoadDouble)(struct IODecoder *io);
+	int64_t(*LoadSigned)(struct IODecoder *io);
+	uint64_t(*LoadUnsigned)(struct IODecoder *io);
+	long double(*LoadLongDouble)(struct IODecoder *io);
+	char*(*LoadStringBuffer)(struct IODecoder *io, uint64_t *len);
 } IODecoder;
 
 IODecoder *IODecoder_New
@@ -33,33 +35,33 @@ IODecoder *IODecoder_New
 
 uint64_t IODecoder_LoadUnsigned
 (
-	const IODecoder *io
+	IODecoder *io
 );
 
 int64_t IODecoder_LoadSigned
 (
-	const IODecoder *io
+	IODecoder *io
 );
 
 double IODecoder_LoadDouble
 (
-	const IODecoder *io
+	IODecoder *io
 );
 
 float IODecoder_LoadFloat
 (
-	const IODecoder *io
+	IODecoder *io
 );
 
 long double IODecoder_LoadLongDouble
 (
-	const IODecoder *io
+	IODecoder *io
 );
 
 char *IODecoder_LoadStringBuffer
 (
-	const IODecoder *io,
-	size_t *len
+	IODecoder *io,
+	uint64_t *len
 );
 
 void IODecoder_Free

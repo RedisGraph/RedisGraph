@@ -9,14 +9,13 @@
 #include "rmalloc.h"
 #include <unistd.h>
 
-// get read end of pipe
-#define PIPE_READ_END(p) (p)[0]
+// pipe read end
+#define PIPE_READ_END(p) ((p)->fd)[0]
 
-// get write end of pipe
-#define PIPE_WRITE_END(p) (p)[1]
+// pipe write end
+#define PIPE_WRITE_END(p) ((p)->fd)[1]
 
-Pipe *Pipe_Create(void)
-{
+Pipe *Pipe_Create(void) {
 	Pipe *p = rm_malloc(sizeof(Pipe));
 	int res = pipe((int*)p);
 
@@ -25,11 +24,29 @@ Pipe *Pipe_Create(void)
 	return p;
 }
 
+// close write end of pipe
+void Pipe_CloseWriteEnd
+(
+	Pipe *p
+) {
+	ASSERT(p != NULL);
+	close(PIPE_WRITE_END(p));
+}
+
+// close read end of pipe
+void Pipe_CloseReadEnd
+(
+	Pipe *p
+) {
+	ASSERT(p != NULL);
+	close(PIPE_READ_END(p));
+}
+
 //------------------------------------------------------------------------------
 // Pipe WRITE
 //------------------------------------------------------------------------------
 
-static void Pipe_Write
+static ssize_t Pipe_Write
 (
 	Pipe *p,
 	const void *buf,
@@ -38,17 +55,17 @@ static void Pipe_Write
 	ASSERT(buf != NULL);
 	ASSERT(count > 0);
 
-	ssize_t n = write(PIPE_WRITE_END(p->fd), buf, count);
-	ASSERT(n == count);
+	return write(PIPE_WRITE_END(p), buf, count);
 }
 
+// macro for Pipe_Write* functions
 #define PIPE_WRITE(name, type)                                              \
-void Pipe_Write##name                                                       \
+ssize_t Pipe_Write##name                                                    \
 (                                                                           \
-	Pipe *p,                                                           \
+	Pipe *p,                                                                \
 	type value                                                              \
 ) {                                                                         \
-	Pipe_Write(p, &value, sizeof(type));                                    \
+	return Pipe_Write(p, &value, sizeof(type));                             \
 }
 
 PIPE_WRITE (Unsigned  , uint64_t   )
@@ -57,21 +74,18 @@ PIPE_WRITE (LongDouble, long double)
 PIPE_WRITE (Float     , float      )
 PIPE_WRITE (Signed    , int64_t    )
 
-void Pipe_WriteString
-(
-	Pipe *p,
-	RedisModuleString *s
-) {
-	ASSERT(false);
-}
-
-void Pipe_WriteStringBuffer
+ssize_t Pipe_WriteStringBuffer
 (
 	Pipe *p,
 	const char *str,
-	size_t len
+	uint64_t len
 ) {
-	Pipe_Write(p, str, sizeof(char)*len);
+	// write both string length and string to pipe
+	ssize_t res = Pipe_WriteUnsigned(p, len);
+	if(res != -1) {
+		res = Pipe_Write(p, str, sizeof(char)*len);
+	}
+	return res;
 }
 
 //------------------------------------------------------------------------------
@@ -87,20 +101,20 @@ size_t Pipe_Read
 	ASSERT(buf != NULL);
 	ASSERT(count > 0);
 
-	ssize_t n = read(PIPE_READ_END(p->fd), buf, count);
+	ssize_t n = read(PIPE_READ_END(p), buf, count);
 	ASSERT(n == count);
 
 	return n;
 }
 
+// macro for Pipe_Read* functions
 #define PIPE_READ(name, type)                                               \
-type Pipe_Read##name                                                        \
+ssize_t Pipe_Read##name                                                     \
 (                                                                           \
-	Pipe *p                                                            \
+	Pipe *p,                                                                \
+	type *value                                                             \
 ) {                                                                         \
-	type value;                                                             \
-	Pipe_Read(p, &value, sizeof(type));                                     \
-	return value;                                                           \
+	return Pipe_Read(p, value, sizeof(type));                               \
 }
 
 PIPE_READ (Float     , float      )
@@ -109,33 +123,46 @@ PIPE_READ (Signed    , int64_t    )
 PIPE_READ (Unsigned  , uint64_t   )
 PIPE_READ (LongDouble, long double)
 
-char *Pipe_ReadStringBuffer
+ssize_t Pipe_ReadStringBuffer
 (
 	Pipe *p,
-	size_t *lenptr
+	uint64_t *lenptr,
+	char **value
 ) {
-	ASSERT(lenptr != NULL);
+	// read string length from pipe
+	uint64_t len;
+	ssize_t res = Pipe_ReadUnsigned(p, &len);
 
-	char *str = rm_calloc(1, *lenptr);
-	*lenptr = Pipe_Read(p, str, *lenptr);
+	// failed to read from pipe
+	if(res == 0) {
+		*value = NULL;
+		return res;
+	}
 
-	return str;
-}
+	// set lenptr if caller requested it
+	if(lenptr != NULL) {
+		*lenptr = len;
+	}
 
-RedisModuleString *Pipe_ReadString
-(
-	Pipe *p
-) {
-	ASSERT(false);
-	return NULL;
+	// allocate buffer for string
+	*value = rm_calloc(1, len);
+	res = Pipe_Read(p, *value, len);
+
+	// failed to read from pipe
+	if(res == 0) {
+		rm_free(*value);
+		*value = NULL;
+	}
+
+	return res;
 }
 
 void Pipe_Free
 (
 	Pipe *p
 ) {
-	close(p->fd[0]);
-	close(p->fd[1]);
+	close(PIPE_READ_END(p));
+	close(PIPE_WRITE_END(p));
 
 	rm_free(p);
 }

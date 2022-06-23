@@ -18,7 +18,7 @@ static GraphContext *_GetOrCreateGraphContext
 		Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_RESIZE);
 	}
 	// Free the name string, as it either not in used or copied.
-	RedisModule_Free(graph_name);
+	rm_free(graph_name);
 
 	// Set the GraphCtx in thread-local storage.
 	QueryCtx_SetGraphCtx(gc);

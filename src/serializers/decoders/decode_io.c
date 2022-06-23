@@ -9,7 +9,7 @@
 #define _IO_RDB_LOAD(name, type)                            \
 type static _IO_RDB_Load##name                              \
 (                                                           \
-	const IODecoder *io                                     \
+	IODecoder *io                                           \
 ) {                                                         \
 	return RedisModule_Load##name((RedisModuleIO*)io->io);  \
 }
@@ -22,10 +22,10 @@ _IO_RDB_LOAD(LongDouble, long double);
 
 static char* _IO_RDB_LoadStringBuffer
 (
-	const IODecoder *io,
-	size_t *len
+	IODecoder *io,
+	uint64_t *len
 ) {
-	return RedisModule_LoadStringBuffer((RedisModuleIO*)io->io, len);
+	return RedisModule_LoadStringBuffer((RedisModuleIO*)io->io, (size_t*)len);
 }
 
 //------------------------------------------------------------------------------
@@ -35,9 +35,12 @@ static char* _IO_RDB_LoadStringBuffer
 #define _IO_PIPE_LOAD(name, type)                           \
 type static _IO_PIPE_Load##name                             \
 (                                                           \
-	const IODecoder *io                                     \
+	IODecoder *io                                           \
 ) {                                                         \
-	return Pipe_Read##name((Pipe*)io->io);                  \
+	type value;                                             \
+	ssize_t res = Pipe_Read##name((Pipe*)io->io, &value);   \
+	io->IOError = (res == 0);                               \
+	return value;                                           \
 }
 
 _IO_PIPE_LOAD(Float     , float      );
@@ -48,10 +51,16 @@ _IO_PIPE_LOAD(LongDouble, long double);
 
 static char* _IO_PIPE_LoadStringBuffer
 (
-	const IODecoder *io,
-	size_t *len
+	IODecoder *io,
+	uint64_t *len
 ) {
-	return Pipe_ReadStringBuffer((Pipe*)io->io, len);
+	char *str;
+	ssize_t res = Pipe_ReadStringBuffer((Pipe*)io->io, len, &str);
+
+	// failed to read from pipe
+	io->IOError = (res == 0);
+
+	return str;
 }
 
 //------------------------------------------------------------------------------
@@ -61,7 +70,7 @@ static char* _IO_PIPE_LoadStringBuffer
 #define _IO_LOAD(name, type)                                \
 type IODecoder_Load##name                                   \
 (                                                           \
-	const IODecoder *io                                     \
+	IODecoder *io                                           \
 ) {                                                         \
 	return io->Load##name(io);                              \
 }
@@ -74,8 +83,8 @@ _IO_LOAD(LongDouble, long double);
 
 char* IODecoder_LoadStringBuffer
 (
-	const IODecoder *io,
-	size_t *len
+	IODecoder *io,
+	uint64_t *len
 ) {
 	return io->LoadStringBuffer(io, len);
 }
@@ -89,8 +98,9 @@ IODecoder *IODecoder_New
 
 	IODecoder *decoder = rm_malloc(sizeof(IODecoder));
 
-	decoder->t  = t;
-	decoder->io = io;
+	decoder->t        =  t;
+	decoder->io       =  io;
+	decoder->IOError  =  false;
 
 	// set function pointers
 	if(t == IODecoderType_RDB) {

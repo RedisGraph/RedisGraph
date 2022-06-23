@@ -166,6 +166,27 @@ void GraphContext_RegisterInKeyspace
 	RedisModule_CloseKey(key);
 }
 
+// returns true if graph with key name: graphID is in the keyspace
+bool GraphContext_Exists
+(
+	RedisModuleCtx *ctx,        // redis module context
+	RedisModuleString *graphID  // graph ID
+)
+{
+	bool exists = false;
+	RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID,
+			REDISMODULE_READ | REDISMODULE_OPEN_KEY_NOTOUCH);
+
+	// if key isn't empty, see if it of graph type
+	if(RedisModule_KeyType(key) != REDISMODULE_KEYTYPE_EMPTY) {
+		exists = (RedisModule_ModuleTypeGetType(key) == GraphContextRedisModuleType);
+	}
+
+	RedisModule_CloseKey(key);
+
+	return exists;
+}
+
 GraphContext *GraphContext_Retrieve
 (
 	RedisModuleCtx *ctx,

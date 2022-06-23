@@ -61,7 +61,12 @@ void GraphEncodeContext_Reset(GraphEncodeContext *ctx) {
 	RG_MatrixTupleIter_detach(&ctx->matrix_tuple_iterator);
 }
 
-void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, const char *graph_name, Graph *g) {
+void GraphEncodeContext_InitHeader
+(
+	GraphEncodeContext *ctx,
+	const char *graph_name,
+	Graph *g
+) {
 	ASSERT(g   != NULL);
 	ASSERT(ctx != NULL);
 

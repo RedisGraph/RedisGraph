@@ -71,6 +71,13 @@ void GraphContext_DecreaseRefCount
 	GraphContext *gc
 );
 
+// returns true if graph with key name: graphID is in the keyspace
+bool GraphContext_Exists
+(
+	RedisModuleCtx *ctx,        // redis module context
+	RedisModuleString *graphID  // graph ID
+);
+
 // retrive the graph context according to the graph name
 // readOnly is the access mode to the graph key
 GraphContext *GraphContext_Retrieve

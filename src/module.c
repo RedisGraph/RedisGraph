@@ -138,43 +138,43 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
 	if(_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
 
-	if(RedisModule_CreateCommand(ctx, "graph.QUERY", CommandDispatch, "write deny-oom", 1, 1,
-								 1) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.QUERY", CommandDispatch,
+				"write deny-oom", 1, 1, 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.RO_QUERY", CommandDispatch, "readonly", 1, 1,
-								 1) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.RO_QUERY", CommandDispatch,
+				"readonly", 1, 1, 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.DELETE", Graph_Delete, "write", 1, 1,
-								 1) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.DELETE", Graph_Delete, "write", 1,
+				1, 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.EXPLAIN", CommandDispatch, "write deny-oom", 1, 1,
-								 1) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.EXPLAIN", CommandDispatch,
+				"write deny-oom", 1, 1, 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.PROFILE", CommandDispatch, "write deny-oom", 1, 1,
-								 1) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.PROFILE", CommandDispatch,
+				"write deny-oom", 1, 1, 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.BULK", Graph_BulkInsert, "write deny-oom", 1, 1,
-								 1) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.BULK", Graph_BulkInsert,
+				"write deny-oom", 1, 1, 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.SLOWLOG", CommandDispatch, "readonly", 1, 1,
-								 1) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.SLOWLOG", CommandDispatch,
+				"readonly", 1, 1, 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.CONFIG", Graph_Config, "readonly", 0, 0,
-								 0) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.CONFIG", Graph_Config, "readonly",
+				0, 0, 0) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
@@ -183,8 +183,8 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.COPY", Graph_Copy, "readonly", 0, 0,
-								 0) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.COPY", Graph_Copy, "write deny-oom", 1,
+				2, 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
