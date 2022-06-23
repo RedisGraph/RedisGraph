@@ -1,9 +1,19 @@
 from common import *
+from pathos.pools import ProcessPool as Pool
 
 GRAPH_ID = "index"
 redis_graph = None
 redis_con = None
 
+def issue_query(i):
+    env = Env(decodeResponses=True)
+    redis_con = env.getConnection()
+    for _ in range(1, 100):
+        pipe = redis_con.pipeline()
+        pipe.execute_command("GRAPH.QUERY", f"x{i}", f"CREATE (a:L), (n:L), (n)-[:T]->(a)")
+        pipe.execute_command("GRAPH.QUERY", f"x{i}", f"CREATE INDEX FOR ()-[n:T]-() ON (n.p)")
+        pipe.execute()
+        redis_con.execute_command("GRAPH.DELETE", f"x{i}")
 
 class testIndexCreationFlow(FlowTestsBase):
     def __init__(self):
@@ -173,3 +183,6 @@ class testIndexCreationFlow(FlowTestsBase):
         result = redis_graph.query("CREATE INDEX FOR ()-[r:follow]-() ON (r.prop1, r.prop2)")
         self.env.assertEquals(result.indices_created, 2)
 
+    def test05_index_delete(self):
+        pool = Pool(nodes=10)
+        pool.map(issue_query, range(1, 100))
