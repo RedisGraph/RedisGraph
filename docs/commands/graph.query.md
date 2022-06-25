@@ -868,7 +868,7 @@ The format for a relationship object in JSON is:
 {
   "type": "relationship",
   "id": id(int),
-  "label": label(string),
+  "relationship": type(string),
   "properties": {
     property_key(string): property_value X N
   }
