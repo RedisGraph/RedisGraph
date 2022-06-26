@@ -562,9 +562,9 @@ static void _GraphContext_Free(void *arg) {
 	Config_Option_get(Config_ASYNC_DELETE, &async_delete);
 	
 	RedisModuleCtx *ctx = NULL;
-	int success = REDISMODULE_ERR;
 	if(async_delete) {
 		ctx = RedisModule_GetThreadSafeContext(NULL);
+		// GIL need to be acquire because RediSearch change Redis global data structure
 		RedisModule_ThreadSafeContextLock(ctx);
 	}
 
