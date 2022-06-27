@@ -612,6 +612,6 @@ class testGraphMergeFlow(FlowTestsBase):
         MERGE (u)-[:matched]->(m)<-[:matched]-(n)
         RETURN m, u, n"""
 
-        graph.query(query)
-
-        graph.query(query)
+        res = graph.query(query)
+        self.env.assertEquals(res.nodes_created, 1)
+        self.env.assertEquals(res.relationships_created, 2)
