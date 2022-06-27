@@ -79,7 +79,7 @@ CFLAGS=\
 	$(CFLAGS.opt) \
 	$(CFLAGS.warnings) \
 	$(CFLAGS.debug)
-CFLAGS += -g `llvm-config --cflags --link-static --libs --system-libs`
+CFLAGS += -g `llvm-config --cflags`
 
 ifeq ($(OS),macos)
 	ifeq ($(STATIC_OMP),1)

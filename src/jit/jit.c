@@ -374,7 +374,7 @@ void JIT_StartLabelScan(void *iter, int nodeIdx) {
 
 	LLVMValueRef g_global = GetOrCreateGlobal(str_g, NULL);
 	LLVMValueRef g_local = LLVMBuildLoad2(ctx->builder, ctx->voidPtr, g_global, "g");
-	LLVMValueRef nodeId_load = LLVMBuildLoad(ctx->builder, nodeId, "nodeId_load");
+	LLVMValueRef nodeId_load = LLVMBuildLoad2(ctx->builder, ctx->i64, nodeId, "nodeId_load");
 	LLVMValueRef getNode_params[] = {g_local, nodeId_load, node};
 	LLVMBuildCall2(ctx->builder, LLVMGetReturnType(LLVMTypeOf(getNode_func)), getNode_func, getNode_params, 3, "call");
 

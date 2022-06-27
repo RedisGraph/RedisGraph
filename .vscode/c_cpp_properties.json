@@ -4,7 +4,7 @@
             "name": "Mac",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/usr/local/opt/llvm@13/include/**"
+                "/usr/local/opt/llvm@14/include/**"
             ],
             "defines": [],
             "macFrameworkPath": [
