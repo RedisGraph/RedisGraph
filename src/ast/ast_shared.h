@@ -66,7 +66,8 @@ typedef struct {
 // Context describing an update expression.
 typedef struct {
 	PropertySetCtx *properties; // properties to set
-	rax *labels;                // Labels to update the entity with (add/remove according to the update mode).
+	rax *add_labels;            // Labels to add to the entity.
+	rax *remove_labels;         // Labels to remove from the entity.
 	int record_idx;             // record offset this entity is stored at
 	UPDATE_MODE mode;           // Whether the entity's property map should be updated or replaced
 	const char *alias;          // Access-safe alias of the entity being updated

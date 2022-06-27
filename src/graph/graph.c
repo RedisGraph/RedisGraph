@@ -616,6 +616,39 @@ static void _Graph_LabelNode
 	}
 }
 
+// remove each label in 'lbls' from the node
+static void _Graph_RemoveLabelNode
+(
+	Graph *g,
+	NodeID id,
+	int *lbls,
+	uint lbl_count
+) {
+	ASSERT(g != NULL);
+	ASSERT(lbls != NULL);
+	ASSERT(lbl_count > 0);
+	ASSERT(id != INVALID_ENTITY_ID);
+
+	GrB_Info info;
+	UNUSED(info);
+
+	RG_Matrix nl = Graph_GetNodeLabelMatrix(g);
+	for(uint i = 0; i < lbl_count; i++) {
+		int l = lbls[i];
+		// remove matrix at position [id, id]
+		RG_Matrix m = Graph_GetLabelMatrix(g, l);
+		info = RG_Matrix_removeElement_BOOL(m, id, id);
+		ASSERT(info == GrB_SUCCESS);
+
+		// remove this label from this node's set of labels
+		info = RG_Matrix_removeElement_BOOL(nl, id, l);
+		ASSERT(info == GrB_SUCCESS);
+
+		// a node with 'label' has just been created, update statistics
+		GraphStatistics_DecNodeCount(&g->stats, l, 1);
+	}
+}
+
 void Graph_CreateNode
 (
 	Graph *g,
@@ -648,6 +681,18 @@ void Graph_LabelNode
 	ASSERT(labels);
 	ASSERT(label_count == 0 || (label_count > 0 && labels != NULL));
 	_Graph_LabelNode(g, id, labels, label_count);
+}
+
+void Graph_RemoveLabelNode
+(
+	Graph *g,
+	NodeID id,
+	int *labels,
+	uint label_count
+) {
+	ASSERT(g);
+	ASSERT(labels);
+	if(label_count > 0) _Graph_RemoveLabelNode(g, id, labels, label_count);	
 }
 
 bool Graph_FormConnection

@@ -84,5 +84,6 @@ int UpdateNodeLabels
 (
 	GraphContext *gc,            // graph context to update the entity
 	Node *node,            		 // the node to be updated
-	rax *labels     	         // labels to update
+	rax *add_labels,     	     // labels to add
+	rax *remove_labels           // labels to remove
 );

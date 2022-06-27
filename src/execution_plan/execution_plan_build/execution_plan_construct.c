@@ -186,7 +186,7 @@ void ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, ExecutionPla
 		_buildUnwindOp(plan, clause);
 	} else if(t == CYPHER_AST_MERGE) {
 		buildMergeOp(plan, ast, clause, gc);
-	} else if(t == CYPHER_AST_SET) {
+	} else if(t == CYPHER_AST_SET || t == CYPHER_AST_REMOVE) {
 		_buildUpdateOp(gc, plan, clause);
 	} else if(t == CYPHER_AST_DELETE) {
 		_buildDeleteOp(plan, clause);

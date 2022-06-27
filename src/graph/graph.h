@@ -133,6 +133,14 @@ void Graph_LabelNode
 	uint label_count
 );
 
+void Graph_RemoveLabelNode
+(
+	Graph *g,
+	NodeID id,
+	int *labels,
+	uint label_count
+);
+
 // creates a new relation matrix, returns id given to relation
 int Graph_AddRelationType
 (
