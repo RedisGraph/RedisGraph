@@ -644,7 +644,7 @@ static void _Graph_RemoveLabelNode
 		info = RG_Matrix_removeElement_BOOL(nl, id, l);
 		ASSERT(info == GrB_SUCCESS);
 
-		// a node with 'label' has just been created, update statistics
+		// a label was removed from the node, update statistics
 		GraphStatistics_DecNodeCount(&g->stats, l, 1);
 	}
 }

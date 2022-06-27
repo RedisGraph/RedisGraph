@@ -133,6 +133,7 @@ void Graph_LabelNode
 	uint label_count
 );
 
+// Remove assocoation of node with labels by removing the value 1 from label matrix L at position [id,id]
 void Graph_RemoveLabelNode
 (
 	Graph *g,

@@ -283,8 +283,8 @@ int UpdateEntityProperties
 static int _SetNodeLabels
 (
 	GraphContext *gc,            // graph context to update the entity
-	Node *node,            		 // the node to be updated
-	rax *add_labels     	     // labels to add
+	Node *node,                  // the node to be updated
+	rax *add_labels              // labels to add
 ) {
 	int new_labels = 0;
 	if(!add_labels) return new_labels;
@@ -379,7 +379,7 @@ static void _RemoveNodeLabels
 int UpdateNodeLabels
 (
 	GraphContext *gc,            // graph context to update the entity
-	Node *node,            		 // the node to be updated
+	Node *node,                  // the node to be updated
 	rax *add_labels,     	     // labels to add
 	rax *remove_labels           // labels to remove
 ) {
