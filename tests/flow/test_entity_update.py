@@ -385,3 +385,49 @@ class testEntityUpdate(FlowTestsBase):
         result = graph.query(f"MERGE(n:{labels[0]}) ON CREATE SET n:{labels[1]} ON MATCH SET n:{labels[2]}")
         self.env.assertEqual(result.labels_added, 1)
         self.validate_node_labels(graph, labels, 1)
+
+    
+    def test_28_remove_node_labels(self):
+        graph.delete()
+        graph.query("CREATE ()")
+        labels = ["Foo", "Bar"]
+        self.validate_node_labels(graph, labels, 0)
+
+        result = graph.query(f"MATCH (n) SET n:{':'.join(labels)}")
+        self.env.assertEqual(result.labels_added, 2)
+        self.validate_node_labels(graph, labels, 1)
+        for label in labels:
+            graph.query(f"MATCH (n:{label}) REMOVE n:{label} RETURN n")
+            self.validate_node_labels(graph, [label], 0)
+        self.validate_node_labels(graph, labels, 0)
+
+    def test_29_mix_add_and_remove_node_labels(self):
+        graph.delete()
+        graph.query("CREATE (:Foo)")
+        labels_to_add = ["Bar"]
+        labels_to_remove = ["Foo"]
+        self.validate_node_labels(graph, labels_to_remove, 1)
+
+        result = graph.query(f"MATCH (n:Foo) SET n:{':'.join(labels_to_add)} REMOVE n:{':'.join(labels_to_remove)} RETURN n")
+        self.env.assertEqual(result.labels_added, 1)
+        self.validate_node_labels(graph, labels_to_remove, 0)
+        self.validate_node_labels(graph, labels_to_add, 1)
+
+    def test_29_mix_merge_and_remove_node_labels(self):
+        graph.delete()
+        labels_to_remove = ["Foo"]
+        self.validate_node_labels(graph, labels_to_remove, 0)
+
+        result = graph.query(f"MERGE (n:{':'.join(labels_to_remove)})  REMOVE n:{':'.join(labels_to_remove)} RETURN n")
+        self.env.assertEqual(result.labels_added, 1)
+        self.validate_node_labels(graph, labels_to_remove, 0)
+
+    def test_30_syntax_error_remove_labels_on_match_on_create(self):
+        queries = ["MERGE (n) ON MATCH REMOVE n:Foo RETURN n", "MERGE (n) ON CREATE REMOVE n:Foo RETURN n"]
+        for query in queries:
+            try:
+                graph.query(query)
+                self.env.assertTrue(False)
+            except ResponseError as e:
+                self.env.assertContains("Invalid input 'R':", str(e))
+
