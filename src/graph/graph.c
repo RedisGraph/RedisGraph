@@ -650,7 +650,7 @@ void Graph_LabelNode
 	_Graph_LabelNode(g, id, labels, label_count);
 }
 
-void Graph_FormConnection
+bool Graph_FormConnection
 (
 	Graph *g,
 	NodeID src,
