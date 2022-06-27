@@ -592,3 +592,26 @@ class testGraphMergeFlow(FlowTestsBase):
         query = """MERGE (a:Person {name: 'a'})-[:FRIEND]->() WITH NULL AS a MATCH (n1:Person), (n2:Person) MERGE (:NEW)"""
         result = graph.query(query)
         self.env.assertEquals(result.nodes_created, 1)
+
+    def test29_merge_resue(self):
+        redis_con = self.env.getConnection()
+        graph = Graph(redis_con, "merge_reuse")
+        query = "CREATE (:L2 {v: 'x'})"
+        graph.query(query)
+
+        query = "CREATE (:L2 {v: 'y'})"
+        graph.query(query)
+        graph.query(query)
+
+        query = """
+        MERGE (m:L1 {v: "abc"})
+        SET m.v = "abc"
+        WITH m
+        MATCH (u:L2 {v: "x"})
+        MATCH (n:L2 {v: "y"})
+        MERGE (u)-[:matched]->(m)<-[:matched]-(n)
+        RETURN m, u, n"""
+
+        graph.query(query)
+
+        graph.query(query)
