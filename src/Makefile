@@ -79,7 +79,6 @@ CFLAGS=\
 	$(CFLAGS.opt) \
 	$(CFLAGS.warnings) \
 	$(CFLAGS.debug)
-CFLAGS += -g `llvm-config --cflags`
 
 ifeq ($(OS),macos)
 	ifeq ($(STATIC_OMP),1)
@@ -95,7 +94,6 @@ LDFLAGS.linux=-Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthrea
 LDFLAGS.macos=-bundle -undefined dynamic_lookup -ldl -lpthread $(LIBOMP)
 
 SHOBJ_LDFLAGS += $(LDFLAGS) $(LDFLAGS.$(OS))
-SHOBJ_LDFLAGS += -g `llvm-config --ldflags --link-static --libs --system-libs`
 
 # if DEBUG env var is set, we compile with "debug" cflags
 ifeq ($(DEBUG),1)
@@ -318,6 +316,9 @@ objcopy --only-keep-debug $1 $1.debug
 objcopy --strip-debug $1
 objcopy --add-gnu-debuglink $1.debug $1
 endef
+
+CFLAGS += -g `llvm-config --cflags`
+SHOBJ_LDFLAGS += -g `llvm-config --ldflags --link-static --libs --system-libs`
 
 # Build the module...
 $(TARGET): $(MODULE_DEPS)
