@@ -293,7 +293,7 @@ commands:
 jobs:
   build-linux-debian:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bullseye
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     parameters:
       redis_version:
         type: string
@@ -319,7 +319,7 @@ jobs:
 
   coverage:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bullseye
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - checkout-all
@@ -342,7 +342,7 @@ jobs:
 
   fuzzer:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bullseye
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - checkout-all
@@ -359,7 +359,7 @@ jobs:
 
   build-memcheck:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.7-x64-bionic
     steps:
       - early-returns
       - checkout-all
@@ -427,7 +427,7 @@ jobs:
         type: string
         default: "0"
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bullseye
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - early-return-for-forked-pull-requests
@@ -448,7 +448,7 @@ jobs:
 
   release-automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bullseye
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - early-return-for-forked-pull-requests
@@ -460,7 +460,7 @@ jobs:
 
   nightly-automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bullseye
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - early-return-for-forked-pull-requests
@@ -476,7 +476,7 @@ jobs:
 
   benchmark:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.7-x64-bionic
     steps:
       - early-returns
       - checkout-all
@@ -493,7 +493,7 @@ jobs:
 
   benchmark-profiler:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.7-x64-bionic
     steps:
       - early-returns
       - checkout-all
