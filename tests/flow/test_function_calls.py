@@ -598,3 +598,32 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = f"""RETURN '' + {larg_double} + {larg_double}"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], "%f%f" % (larg_double, larg_double))
+
+    def test28_sqrt(self):
+        query = """RETURN sqrt(0)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], "0")        
+
+        query = """RETURN sqrt(9801)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], "99")        
+
+        query = """RETURN sqrt(-1)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)        
+
+        query = """RETURN sqrt(-9)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)        
+
+        query = """RETURN sqrt(-0.0000000001)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)        
+
+        query = """RETURN sqrt(null)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)                        
+
+        query = """RETURN sqrt(2540.95581553)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], "50.4078943770715")        
