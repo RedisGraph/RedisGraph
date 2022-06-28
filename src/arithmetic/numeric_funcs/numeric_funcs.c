@@ -159,8 +159,14 @@ SIValue AR_SQRT(SIValue *argv, int argc, void *private_data) {
 	SIValue arg = argv[0];
 	// return NULL if input is none numeric
 	if(SIValue_IsNull(arg)) return SI_NullVal();
+
+	double value = SI_GET_NUMERIC(arg);
+
+	// return NULL if input is negative
+	if(value < 0) return SI_NullVal();
+
 	// return sqrt of input
-	return SI_DoubleVal(sqrt(SI_GET_NUMERIC(arg)));
+	return SI_DoubleVal(sqrt(value));
 }
 
 // returns base^exponent
