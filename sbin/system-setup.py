@@ -29,7 +29,7 @@ class RedisGraphSetup(paella.Setup):
         else:
             self.run("%s/bin/getgcc" % READIES)
         self.install("peg")
-        self.install("openjdk-8-jre")
+        self.install("openjdk-17-jre")
 
     def redhat_compat(self):
         self.install("redhat-lsb-core")
