@@ -36,8 +36,6 @@ class RedisGraphSetup(paella.Setup):
             self.install_linux_gnu_tar()
         if self.osnick == 'ol8':
             self.install("which") # for automake
-        if not self.has_command("sudo"):
-            self.install("sudo") # needed due to SCL sudo script
         self.run("%s/bin/getepel" % READIES, sudo=True)
         self.run("%s/bin/getgcc --modern" % READIES)
         self.install("m4 libgomp")
@@ -61,7 +59,7 @@ class RedisGraphSetup(paella.Setup):
 
     def linux_last(self):
         self.install("valgrind")
-        self.run("{READIES}/bin/getjava".format(READIES=READIES))
+        self.run("{READIES}/bin/getjava".format(READIES=READIES)) # for grammarinator/ANTLR
 
     def common_last(self):
         self.install("astyle", _try=True) # fails for centos7
