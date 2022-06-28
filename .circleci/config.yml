@@ -294,6 +294,7 @@ jobs:
   build-linux-debian:
     docker:
       - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    resource_class: large
     parameters:
       redis_version:
         type: string
@@ -320,6 +321,7 @@ jobs:
   coverage:
     docker:
       - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    resource_class: large
     steps:
       - early-returns
       - checkout-all
@@ -354,6 +356,7 @@ jobs:
   build-memcheck:
     docker:
       - image: redisfab/rmbuilder:6.2.7-x64-bionic
+    resource_class: large
     steps:
       - early-returns
       - checkout-all
@@ -376,7 +379,7 @@ jobs:
     machine:
       enabled: true
       image: ubuntu-2004:202010-01
-      resource_class: xlarge
+      resource_class: large
     steps:
       - vm-build-platforms-steps:
           platform: <<parameters.platform>>

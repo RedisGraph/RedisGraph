@@ -1,1 +1,1 @@
-git+https://github.com/renatahodovan/grammarinator.git@f85b80ce945bb482c038b2c106803e835bc2dc10
+git+https://github.com/renatahodovan/grammarinator.git@7dace5450b7136d641d065f649b406a22ef4d7f7
