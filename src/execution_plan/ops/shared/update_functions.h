@@ -12,8 +12,7 @@
 typedef struct {
 	GraphEntity *ge;       // entity to be updated
 	AttributeSet attributes;
-	rax *add_labels;
-	rax *remove_labels;
+	rax *labels;
 } PendingUpdateCtx;
 
 // commit all updates described in the array of pending updates

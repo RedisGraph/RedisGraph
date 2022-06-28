@@ -139,8 +139,7 @@ EntityUpdateEvalCtx *UpdateCtx_New(UPDATE_MODE mode, uint prop_count, const char
 	ctx->alias = alias;
 	ctx->record_idx = INVALID_INDEX;
 	ctx->properties = array_new(PropertySetCtx, prop_count);
-	ctx->add_labels = raxNew();
-	ctx->remove_labels = raxNew();
+	ctx->labels = raxNew();
 
 	return ctx;
 }
@@ -151,8 +150,7 @@ EntityUpdateEvalCtx *UpdateCtx_Clone(const EntityUpdateEvalCtx *orig) {
 	clone->alias = orig->alias;
 	clone->record_idx = orig->record_idx;
 	uint count = array_len(orig->properties);
-	clone->add_labels = raxClone(orig->add_labels);
-	clone->remove_labels = raxClone(orig->remove_labels);
+	clone->labels = raxClone(orig->labels);
 	clone->properties = array_new(PropertySetCtx, count);
 	for(uint i = 0; i < count; i ++) {
 		PropertySetCtx update = {
@@ -179,8 +177,7 @@ void UpdateCtx_Free(EntityUpdateEvalCtx *ctx) {
 	uint count = array_len(ctx->properties);
 	for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].exp);
 	array_free(ctx->properties);
-	raxFree(ctx->add_labels);
-	raxFree(ctx->remove_labels);
+	raxFree(ctx->labels);
 
 	rm_free(ctx);
 }

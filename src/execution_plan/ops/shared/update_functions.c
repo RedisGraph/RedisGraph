@@ -76,7 +76,7 @@ void CommitUpdates
 		properties_set += UpdateEntityProperties(gc, update->ge, update->attributes,
 				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE);
 
-		labels_added += UpdateNodeLabels(gc, (Node*)update->ge, update->add_labels, update->remove_labels);
+		labels_added += UpdateNodeLabels(gc, (Node*)update->ge, update->labels);
 	}
 
 	if(stats) {
@@ -111,9 +111,8 @@ void EvalEntityUpdates
 			"Update error: alias '%s' did not resolve to a graph entity",
 			ctx->alias);
 	}
-	bool add_labels = raxSize(ctx->add_labels) > 0;
-	bool remove_labels = raxSize(ctx->remove_labels) > 0;
-	if ((add_labels || remove_labels) && t != REC_TYPE_NODE) {
+	bool update_labels = raxSize(ctx->labels) > 0;
+	if (update_labels && t != REC_TYPE_NODE)  {
 		ErrorCtx_RaiseRuntimeException("Type mismatch: expected Node but was Relationship");
 	}
 
@@ -200,8 +199,7 @@ void EvalEntityUpdates
 		_PreparePendingUpdate(&update.attributes, accepted_properties, attr_id, new_value);
 	}
 
-	update.add_labels = add_labels ? ctx->add_labels : NULL;
-	update.remove_labels = remove_labels ? ctx->remove_labels : NULL;
+	update.labels = update_labels ? ctx->labels : NULL;
 
 	// enqueue the current update
 	array_append(*updates, update);

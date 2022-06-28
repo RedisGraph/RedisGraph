@@ -231,11 +231,8 @@ static void _AST_MapRemoveLabelsReferences(AST *ast, const cypher_astnode_t *rem
 
 static void _AST_MapRemoveItemReferences(AST *ast, const cypher_astnode_t *remove_item) {
 	const cypher_astnode_type_t type = cypher_astnode_type(remove_item);
-	if(type == CYPHER_AST_REMOVE_LABELS) {
-		_AST_MapRemoveLabelsReferences(ast, remove_item);
-	} else {
-		ASSERT(false);
-	}
+	ASSERT(type == CYPHER_AST_REMOVE_LABELS);
+	_AST_MapRemoveLabelsReferences(ast, remove_item);
 }
 
 // Maps entities in REMOVE clause.

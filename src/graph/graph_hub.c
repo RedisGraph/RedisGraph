@@ -296,33 +296,37 @@ static int _SetNodeLabels
 	// Iterate over all keys in the rax.
 	raxSeek(&it, "^", NULL, 0);
 	while(raxNext(&it)) {
-		// Get label string.
-		unsigned char *raw_label = it.key;
-		// Avoid rax not null terminating strings
-		size_t len = it.key_len;
-		char label[len];
-		memcpy(label, raw_label, len);
-		label[len] = 0;
+		if(it.data) {
+			// Get label string.
+			unsigned char *raw_label = it.key;
+			// Avoid rax not null terminating strings
+			size_t len = it.key_len;
+			char label[len];
+			memcpy(label, raw_label, len);
+			label[len] = 0;
 
 
-		// Get or create label matrix
-		const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-		if(s == NULL) {
-			s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
-			new_labels++;
+			// Get or create label matrix
+			const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+			if(s == NULL) {
+				s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+				new_labels++;
+			}
+			// sync matrix, make sure label matrix is of the right dimensions
+			Graph_GetLabelMatrix(gc->g, Schema_GetID(s));
+
+			// Append label id.
+			array_append(label_ids, Schema_GetID(s));
+			// Add to index.
+			Schema_AddNodeToIndices(s, node);
 		}
-		// sync matrix, make sure label matrix is of the right dimensions
-		Graph_GetLabelMatrix(gc->g, Schema_GetID(s));
 
-		// Append label id.
-		array_append(label_ids, Schema_GetID(s));
-		// Add to index.
-		Schema_AddNodeToIndices(s, node);
 	}
 	raxStop(&it);
 
 	// Update label matrixes.
-	Graph_LabelNode(gc->g, node->id ,label_ids, label_count);
+	label_count = array_len(label_ids);
+	if(label_count > 0) Graph_LabelNode(gc->g, node->id ,label_ids, label_count);
 	
 	// cleanup
 	array_free(label_ids);
@@ -345,32 +349,36 @@ static void _RemoveNodeLabels
 	raxStart(&it, remove_labels);
 	// Iterate over all keys in the rax.
 	raxSeek(&it, "^", NULL, 0);
-		while(raxNext(&it)) {
-		// Get label string.
-		unsigned char *raw_label = it.key;
-		// Avoid rax not null terminating strings
-		size_t len = it.key_len;
-		char label[len];
-		memcpy(label, raw_label, len);
-		label[len] = 0;
+	while(raxNext(&it)) {
+		if(!it.data) {
+			// Get label string.
+			unsigned char *raw_label = it.key;
+			// Avoid rax not null terminating strings
+			size_t len = it.key_len;
+			char label[len];
+			memcpy(label, raw_label, len);
+			label[len] = 0;
 
 
-		// Get or create label matrix
-		const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-		if(s == NULL) continue;
+			// Get or create label matrix
+			const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+			if(s == NULL) continue;
 
-		// sync matrix, make sure label matrix is of the right dimensions
-		Graph_GetLabelMatrix(gc->g, Schema_GetID(s));
+			// sync matrix, make sure label matrix is of the right dimensions
+			Graph_GetLabelMatrix(gc->g, Schema_GetID(s));
 
-		// Append label id.
-		array_append(label_ids, Schema_GetID(s));
-		// remove node from  index.
-		Schema_RemoveNodeFromIndices(s, node);
+			// Append label id.
+			array_append(label_ids, Schema_GetID(s));
+			// remove node from  index.
+			Schema_RemoveNodeFromIndices(s, node);
+
+		}
 	}
 	raxStop(&it);
 
 	// Update label matrixes.
-	Graph_RemoveLabelNode(gc->g, node->id ,label_ids, array_len(label_ids));
+	uint label_count = array_len(label_ids);
+	if(label_count > 0) Graph_RemoveLabelNode(gc->g, node->id ,label_ids, label_count);
 	// cleanup
 	array_free(label_ids);
 
@@ -380,13 +388,16 @@ int UpdateNodeLabels
 (
 	GraphContext *gc,            // graph context to update the entity
 	Node *node,                  // the node to be updated
-	rax *add_labels,     	     // labels to add
-	rax *remove_labels           // labels to remove
+	rax *labels     	         // labels to update
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(node != NULL);
 
-	int new_labels = _SetNodeLabels(gc, node, add_labels);
-	_RemoveNodeLabels(gc, node, remove_labels);
+	if(!labels) return 0;
+	uint label_count = raxSize(labels);
+	if(label_count == 0) return 0;
+
+	int new_labels = _SetNodeLabels(gc, node, labels);
+	_RemoveNodeLabels(gc, node, labels);
 	return new_labels;
 }

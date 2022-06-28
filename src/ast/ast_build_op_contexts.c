@@ -126,19 +126,21 @@ static void _ConvertUpdateItem(GraphContext *gc, rax *updates,
 		raxInsert(updates, (unsigned char *)alias, len, ctx, NULL);
 	} 
 
+	// Either in set labels or remove labels scenario, the rax will hold a value. If the value is
+	// true, it means to set the label. If the value is false it means to remove the label.
 	if(set_labels) {
 		uint label_count = cypher_ast_set_labels_nlabels(set_item);
 		for (uint i = 0; i < label_count; i++) {
 			const cypher_astnode_t * label_node = cypher_ast_set_labels_get_label(set_item, i);
 			const char* label = cypher_ast_label_get_name(label_node);
-			raxInsert(ctx->add_labels, (unsigned char *)label, strlen(label), NULL, NULL);	
+			raxInsert(ctx->labels, (unsigned char *)label, strlen(label), true, NULL);	
 		}
 	}else if(remove_labels) {
 		uint label_count = cypher_ast_remove_labels_nlabels(set_item);
 		for (uint i = 0; i < label_count; i++) {
 			const cypher_astnode_t * label_node = cypher_ast_remove_labels_get_label(set_item, i);
 			const char* label = cypher_ast_label_get_name(label_node);
-			raxInsert(ctx->remove_labels, (unsigned char *)label, strlen(label), NULL, NULL);	
+			raxInsert(ctx->labels, (unsigned char *)label, strlen(label), false, NULL);	
 		}
 	} else {
 		if(update_mode == UPDATE_REPLACE) {
