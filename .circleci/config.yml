@@ -368,6 +368,8 @@ jobs:
           name: Test for memory leaks
           shell: /bin/bash -l -eo pipefail
           command: make memcheck PARALLEL=8 PLATFORM_MODE=1
+          timeout: 45m
+          no_output_timeout: 45m
       - save-tests-logs
 
   build-platforms:
