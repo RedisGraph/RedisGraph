@@ -59,6 +59,7 @@ class RedisGraphSetup(paella.Setup):
 
     def linux_last(self):
         self.install("valgrind")
+        self.install("java-1.8.0-openjdk")
 
     def common_last(self):
         self.install("astyle", _try=True) # fails for centos7
