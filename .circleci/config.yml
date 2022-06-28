@@ -164,6 +164,14 @@ commands:
           command: make fuzz
       - save-tests-logs
 
+  fuzzer-test-steps:
+    steps:
+      - run:
+          name: Run 30-second fuzz test
+          shell: /bin/bash -l -eo pipefail
+          command: make fuzz
+      - save-tests-logs
+
   platform-build-steps:
     parameters:
       platform:
@@ -332,6 +340,23 @@ jobs:
           no_output_timeout: 45m
       - save-tests-logs
 
+  fuzzer:
+    docker:
+      - image: redisfab/rmbuilder:6.2.5-x64-bullseye
+    steps:
+      - early-returns
+      - checkout-all
+      - install-prerequisites
+      - restore_cache:
+          keys:
+            - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
+      - run:
+          name: Build for coverage
+          shell: /bin/bash -l -eo pipefail
+          command: make
+      - fuzzer-test-steps
+      - save-tests-logs
+
   build-memcheck:
     docker:
       - image: redisfab/rmbuilder:6.2.5-x64-bionic
@@ -357,7 +382,7 @@ jobs:
     machine:
       enabled: true
       image: ubuntu-2004:202010-01
-      resource_class: large
+      resource_class: xlarge
     steps:
       - vm-build-platforms-steps:
           platform: <<parameters.platform>>
@@ -567,7 +592,8 @@ workflows:
           name: build
           <<: *not-on-integ-branch
       - build-platforms:
-          <<: *on-integ-and-version-tags
+          #@@ <<: *on-integ-and-version-tags
+          <<: *on-any-branch
           context: common
           matrix:
             parameters:
@@ -580,7 +606,8 @@ workflows:
               platform: [bionic]
       - build-macos:
           context: common
-          <<: *on-integ-and-version-tags
+          #@@<<: *on-integ-and-version-tags
+          <<: *on-any-branch
       - coverage:
           <<: *on-any-branch
       - build-memcheck:
@@ -630,6 +657,8 @@ workflows:
               redis_version: ["6.0", "7", "unstable"]
       - benchmark:
           context: common
+      - fuzzer:
+          name: nightly-fuzzer
       # disable temporarily due to huge profile overhead in RG
       # - benchmark-profiler:
       #     context: common
