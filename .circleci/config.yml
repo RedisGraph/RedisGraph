@@ -347,13 +347,7 @@ jobs:
       - early-returns
       - checkout-all
       - install-prerequisites
-      - restore_cache:
-          keys:
-            - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
-      - run:
-          name: Build for coverage
-          shell: /bin/bash -l -eo pipefail
-          command: make
+      - build-steps
       - fuzzer-test-steps
       - save-tests-logs
 
