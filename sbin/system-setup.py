@@ -29,7 +29,6 @@ class RedisGraphSetup(paella.Setup):
         else:
             self.run("%s/bin/getgcc" % READIES)
         self.install("peg")
-        self.install("openjdk-17-jre")
 
     def redhat_compat(self):
         self.install("redhat-lsb-core")
@@ -41,7 +40,6 @@ class RedisGraphSetup(paella.Setup):
         self.run("%s/bin/getgcc --modern" % READIES)
         self.install("m4 libgomp")
         self.install_peg()
-        self.install("java-1.8.0-openjdk")
 
     def fedora(self):
         self.run("%s/bin/getgcc" % READIES)
@@ -61,6 +59,7 @@ class RedisGraphSetup(paella.Setup):
 
     def linux_last(self):
         self.install("valgrind")
+        self.run("{READIES}/bin/getjava".format(READIES=READIES))
 
     def common_last(self):
         self.install("astyle", _try=True) # fails for centos7
