@@ -32,6 +32,12 @@
 				"name": "query",
 				"type": "string",
 				"dsl": "cypher"
+			},
+			{
+				"name": "timeout",
+				"type": "integer",
+				"optional": true,
+				"token":"TIMEOUT"
 			}
 		],
 		"since": "2.2.8",
