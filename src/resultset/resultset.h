@@ -16,7 +16,7 @@
 #define RESULTSET_FULL 0
 
 typedef struct {
-	RedisModuleCtx *ctx;            // Redis context
+	RedisModuleCtx *ctx;            // redis context
 	GraphContext *gc;               // context used for mapping attribute strings and IDs
 	uint column_count;              // number of columns in result set
 	const char **columns;           // field names for each column of results
@@ -84,9 +84,14 @@ void ResultSet_Reply
 	ResultSet *set  // resultset to reply with
 );
 
+// clear result set stats
+void ResultSet_Clear
+(
+	ResultSet *set
+);
+
 // free resultset
 void ResultSet_Free
 (
 	ResultSet *set  // resultset to free
 );
-

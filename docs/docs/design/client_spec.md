@@ -224,7 +224,7 @@ The statistics always include query execution time, while any combination of the
 
 Property keys, node labels, and relationship types are all returned as IDs rather than strings in the compact format. For each of these 3 string-ID mappings, IDs start at 0 and increase monotonically.
 
-As such, the client should store an string array for each of these 3 mappings, and print the appropriate string for the user by checking an array at position _ID_. If an ID greater than the array length is encountered, the local array should be updated with a procedure call.
+As such, the client should store a string array for each of these 3 mappings, and print the appropriate string for the user by checking an array at position _ID_. If an ID greater than the array length is encountered, the local array should be updated with a procedure call.
 
 These calls are described generally in the [Procedures documentation](/commands/graph.query/#procedures).
 

@@ -10,6 +10,7 @@
 #include "util/simple_timer.h"
 #include "arithmetic/arithmetic_expression.h"
 #include "serializers/graphcontext_type.h"
+#include "undo_log/undo_log.h"
 
 // GraphContext type as it is registered at Redis.
 extern RedisModuleType *GraphContextRedisModuleType;
@@ -22,6 +23,7 @@ static inline QueryCtx *_QueryCtx_GetCreateCtx(void) {
 	if(!ctx) {
 		// Set a new thread-local QueryCtx if one has not been created.
 		ctx = rm_calloc(1, sizeof(QueryCtx));
+		ctx->undo_log = UndoLog_New();
 		pthread_setspecific(_tlsQueryCtxKey, ctx);
 	}
 	return ctx;
@@ -196,8 +198,9 @@ static void _QueryCtx_UnlockCommit(QueryCtx *ctx) {
 	GraphContext *gc = ctx->gc;
 	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
 
-	if(ResultSetStat_IndicateModification(&ctx->internal_exec_ctx.result_set->stats)) {
-		// Replicate only in case of changes.
+	if(ResultSetStat_IndicateModification(
+				&ctx->internal_exec_ctx.result_set->stats)) {
+		// replicate only in case of changes
 		RedisModule_Replicate(redis_ctx, ctx->global_exec_ctx.command_name,
 				"cc!", gc->graph_name, ctx->query_data.query);
 	}
@@ -250,6 +253,8 @@ double QueryCtx_GetExecutionTime(void) {
 void QueryCtx_Free(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ASSERT(ctx != NULL);
+
+	UndoLog_Free(ctx->undo_log);
 
 	if(ctx->query_data.params) {
 		raxFreeWithCallback(ctx->query_data.params, _ParameterFreeCallback);

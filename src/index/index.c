@@ -15,8 +15,8 @@
 #include "../graph/entities/node.h"
 #include "../graph/rg_matrix/rg_matrix_iter.h"
 
-extern void populateEdgeIndex(Index *idx); 
-extern void populateNodeIndex(Index *idx);
+extern void populateEdgeIndex(Index *idx, Graph *g); 
+extern void populateNodeIndex(Index *idx, Graph *g);
 
 RSDoc *Index_IndexGraphEntity
 (
@@ -55,7 +55,7 @@ RSDoc *Index_IndexGraphEntity
 			field = idx->fields + i;
 			const char *field_name = field->name;
 			v = GraphEntity_GetProperty(e, field->id);
-			if(v == PROPERTY_NOTFOUND) continue;
+			if(v == ATTRIBUTE_NOTFOUND) continue;
 
 			SIType t = SI_TYPE(*v);
 
@@ -71,7 +71,7 @@ RSDoc *Index_IndexGraphEntity
 			field = idx->fields + i;
 			const char *field_name = field->name;
 			v = GraphEntity_GetProperty(e, field->id);
-			if(v == PROPERTY_NOTFOUND) continue;
+			if(v == ATTRIBUTE_NOTFOUND) continue;
 
 			SIType t = SI_TYPE(*v);
 
@@ -128,6 +128,7 @@ RSDoc *Index_IndexGraphEntity
 void IndexField_New
 (
 	IndexField *field,
+	Attribute_ID id,
 	const char *name,
 	double weight,
 	bool nostem,
@@ -137,9 +138,7 @@ void IndexField_New
 	ASSERT(field     !=  NULL);
 	ASSERT(phonetic  !=  NULL);
 
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-
-	field->id       = GraphContext_FindOrAddAttribute(gc, name);
+	field->id       = id;
 	field->name     = rm_strdup(name);
 	field->weight   = weight;
 	field->nostem   = nostem;
@@ -206,7 +205,7 @@ void Index_RemoveField
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
-	ASSERT(attribute_id != ATTRIBUTE_NOTFOUND);
+	ASSERT(attribute_id != ATTRIBUTE_ID_NONE);
 
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
@@ -223,7 +222,8 @@ void Index_RemoveField
 // constructs index
 void Index_Construct
 (
-	Index *idx
+	Index *idx,
+	Graph *g
 ) {
 	ASSERT(idx != NULL);
 
@@ -246,6 +246,8 @@ void Index_Construct
 	if(idx->stopwords) {
 		RediSearch_IndexOptionsSetStopwords(idx_options,
 				(const char**)idx->stopwords, array_len(idx->stopwords));
+	} else if(idx->type == IDX_EXACT_MATCH) {
+		RediSearch_IndexOptionsSetStopwords(idx_options, NULL, 0);
 	}
 
 	rsIdx = RediSearch_CreateIndex(idx->label, idx_options);
@@ -291,8 +293,8 @@ void Index_Construct
 	}
 
 	idx->idx = rsIdx;
-	if(idx->entity_type == GETYPE_NODE) populateNodeIndex(idx);
-	else populateEdgeIndex(idx);
+	if(idx->entity_type == GETYPE_NODE) populateNodeIndex(idx, g);
+	else populateEdgeIndex(idx, g);
 }
 
 // query index
@@ -335,7 +337,7 @@ bool Index_ContainsAttribute
 ) {
 	ASSERT(idx != NULL);
 
-	if(attribute_id == ATTRIBUTE_NOTFOUND) return false;
+	if(attribute_id == ATTRIBUTE_ID_NONE) return false;
 	
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
