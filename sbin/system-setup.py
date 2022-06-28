@@ -36,6 +36,8 @@ class RedisGraphSetup(paella.Setup):
             self.install_linux_gnu_tar()
         if self.osnick == 'ol8':
             self.install("which") # for automake
+        if not self.has_command("sudo"):
+            self.install("sudo") # needed due to SCL sudo script
         self.run("%s/bin/getepel" % READIES, sudo=True)
         self.run("%s/bin/getgcc --modern" % READIES)
         self.install("m4 libgomp")
