@@ -59,6 +59,7 @@ class RedisGraphSetup(paella.Setup):
 
     def linux_last(self):
         self.install("valgrind")
+        self.run("{READIES}/bin/getjava".format(READIES=READIES)) # for grammarinator/ANTLR
 
     def common_last(self):
         self.install("astyle", _try=True) # fails for centos7
