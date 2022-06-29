@@ -144,9 +144,13 @@ RETURN nodes(p) as actors"
 
 This query will produce all the paths matching the pattern contained in the named path `p`. All of these paths will share the same starting point, the actor node representing Charlie Sheen, but will otherwise vary in length and contents. Though the variable-length traversal and `(:Actor)` endpoint are not explicitly aliased, all nodes and edges traversed along the path will be included in `p`. In this case, we are only interested in the nodes of each path, which we'll collect using the built-in function `nodes()`. The returned value will contain, in order, Charlie Sheen, between 0 and 2 intermediate nodes, and the unaliased endpoint.
 
-##### allShortestPaths()
+##### All shortest paths
 
-`allShortestPaths()` is a MATCH mode in which only the shortest paths matching all criteria are captured. Both endpoints must be bound in an earlier WITH-demarcated scope to invoke `allShortestPaths()`.
+The `allShortestPaths` function returns all the shortest paths between a pair of entities.
+
+`allShortestPaths()` is a MATCH mode in which only the shortest paths matching all criteria are captured. Both the source and the target nodes must be bound in an earlier WITH-demarcated scope to invoke `allShortestPaths()`.
+
+A minimal length (must be 1) and maximal length (must be at least 1) for the search may be specified. Zero or more relationship types may be specified (e.g. [:R|Q*1..3]). No property filters may be introduced in the pattern.
 
 `allShortestPaths()` can have any number of hops for its minimum and maximum, including zero. This number represents how many edges can be traversed in fulfilling the pattern, with a value of 0 entailing that the source node will be included in the returned path.
 
@@ -163,6 +167,190 @@ RETURN nodes(p) as actors"
 ```
 
 This query will produce all paths of the minimum length connecting the actor node representing Charlie Sheen to the one representing Kevin Bacon. There are several 2-hop paths between the two actors, and all of these will be returned. The computation of paths then terminates, as we are not interested in any paths of length greater than 2.
+
+##### Single-Pair minimal-weight bounded-cost bounded-length paths
+
+(Since RedisGraph v2.10)
+
+The `SPpaths` function returns one, _n_, or all minimal-weight, [optionally] bounded-cost, [optionally] bounded-length paths between a pair of entities.
+
+`SPpaths()` is a MATCH mode in which only the paths matching all criteria are captured. Both the source and the target nodes must be bound in an earlier WITH-demarcated scope to invoke `SPpaths()`.
+
+Input arguments:
+
+- A map containing:
+  - `sourceNode`: Mandatory. Must be of type node
+  - `targetNode`: Mandatory. Must be of type node
+  - `relLabels`: Optional. Array of zero or more relationship labels. A relationship must have one of these labels to be part of the path. If not specified or empty: the path may contain any relationship.
+  - `relDirection`: Optional. string. one of `'incoming'`, `'outgoing'`, `'both'`. If not specified: `'outgoing'`.
+  - `pathsCount`: Optional. Number of minimal-weight paths to retrieve. Non-negative integer. If not specified: 1
+
+    - `0`: retrieve all minimal-weight paths (all reported paths have the same weight)
+
+      Order: 1st : minimal cost, 2nd: minimal length.
+
+    - `1`: retrieve a single minimal-weight path
+
+      When multiple equal-weight paths exist: (preferences: 1st : minimal cost, 2nd: minimal length)
+
+    - _n_ > 1: retrieve up to _n_ minimal-weight paths (reported paths may have different weights)
+
+      When multiple equal-weight paths exist: (preferences: 1st : minimal cost, 2nd: minimal length)
+
+  - `weightProp`: Optional. If not specified: use the default weight: 1 for each relationship.
+
+    The name of the property that represents the weight of each relationship (integer / float)
+
+    If such property doesn’t exist, of if its value is not a positive numeric - use the default weight: 1
+
+    Note: when all weights are equal: minimal-weight ≡ shortest-path.
+
+  - `costProp`: Optional. If not specified: use the default cost: 1 for each relationship.
+
+    The name of the property that represents the cost of each relationship (integer / float)
+
+    If such property doesn't exist, or if its value is not a positive numeric - use the default cost: 1
+
+  - `maxLen`: Optional. Maximal path length (number of relationships along the path). Positive integer. 
+
+    If not specified: no maximal length constraint.
+
+  - `maxCost`: Optional. Positive numeric. If not specified: no maximal cost constraint.
+
+    The maximal cumulative cost for the relationships along the path.
+    
+Result:
+
+  - Paths conforming to the input arguments. For each reported path:
+
+    - `path` - the path
+
+    - `pathWeight` - the path’s weight
+
+    - `pathCost` - the path’s cost
+
+    To retrieve additional information:
+
+    - The path’s length can be retrieved with `length(path)`
+
+    - An array of the nodes along the path can be retrieved with `nodes(path)`
+
+    - The path’s head-node can be retrieved with `head(nodes(path))`
+
+    - The path’s tail-node can be retrieved with `tail(nodes(path))`
+
+    - An array of the relationship's costs along the path can be retrieved with `[r in relationships(path) | r.cost]` where cost is the name of the cost property
+
+    - An array of the relationship's weights along the path can be retrieved with `[r in relationships(path) | r.weight]` where weight is the name of the weight property
+
+Behavior in presence on multiple-edges:
+
+  - multi-edges are two or more edges connecting the same pair of vertices (possibly with different weights and costs). 
+
+  - All matching edges are considered. Paths with identical vertices and different edges are different paths. The following are 3 different paths (n1, n2, and n3 are nodes; e1, e2, e3, and e4 are edges): (n1)-[e1]-(n2)-[e2]-(n3),  (n1)-[e1]-(n2)-[e3]-(n3),  (n1)-[e4]-(n2)-[e3]-(n3)
+
+Example:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH 
+"MATCH (s:Actor {name: 'Charlie Sheen'}), (t:Actor {name: 'Kevin Bacon'}) 
+CALL SPpaths( {sourceNode: s, targetNode: t, relLabels: ['r1', 'r2', 'r3'], relDirection: 'outgoing', pathsCount: 1, weightProp: 'weight', costProp: 'cost', maxLen: 3, maxCost: 100} ) 
+YIELD path, pathCost, pathWeight
+RETURN path ORDER BY pathCost"
+```
+
+##### Single-Source minimal-weight bounded-cost bounded-length paths
+
+(Since RedisGraph v2.10)
+
+The `SSpaths` function returns one, _n_, or all minimal-weight, [optionally] bounded-cost, [optionally] bounded-length paths from a given entity.
+
+`SSpaths()` is a MATCH mode in which only the paths matching all criteria are captured. The source node must be bound in an earlier WITH-demarcated scope to invoke `SSpaths()`.
+
+Input arguments:
+
+- A map containing:
+  - `sourceNode`: Mandatory. Must be of type node
+  - `relLabels`: Optional. Array of zero or more relationship labels. A relationship must have one of these labels to be part of the path. If not specified or empty: the path may contain any relationship.
+  - `relDirection`: Optional. string. one of `'incoming'`, `'outgoing'`, `'both'`. If not specified: `'outgoing'`.
+  - `pathsCount`: Optional. Number of minimal-weight paths to retrieve. Non-negative integer. If not specified: 1
+
+    This number is global (not per source-target pair); all returned paths may be with the same target.
+
+    - `0`: retrieve all minimal-weight paths (all reported paths have the same weight)
+
+      Order: 1st : minimal cost, 2nd: minimal length.
+
+    - `1`: retrieve a single minimal-weight path
+
+      When multiple equal-weight paths exist: (preferences: 1st : minimal cost, 2nd: minimal length)
+
+    - _n_ > 1: retrieve up to _n_ minimal-weight paths (reported paths may have different weights)
+
+      When multiple equal-weight paths exist: (preferences: 1st : minimal cost, 2nd: minimal length)
+
+  - `weightProp`: Optional. If not specified: use the default weight: 1 for each relationship.
+
+    The name of the property that represents the weight of each relationship (integer / float)
+
+    If such property doesn’t exist, of if its value is not a positive numeric - use the default weight: 1
+
+    Note: when all weights are equal: minimal-weight ≡ shortest-path.
+
+  - `costProp`: Optional. If not specified: use the default cost: 1 for each relationship.
+
+    The name of the property that represents the cost of each relationship (integer / float)
+
+    If such property doesn't exist, or if its value is not a positive numeric - use the default cost: 1
+
+  - `maxLen`: Optional. Maximal path length (number of relationships along the path). Positive integer. 
+
+    If not specified: no maximal length constraint.
+
+  - `maxCost`: Optional. Positive numeric. If not specified: no maximal cost constraint.
+
+    The maximal cumulative cost for the relationships along the path.
+    
+Result:
+
+  - Paths conforming to the input arguments. For each reported path:
+
+    - `path` - the path
+
+    - `pathWeight` - the path’s weight
+
+    - `pathCost` - the path’s cost
+
+    To retrieve additional information:
+
+    - The path’s length can be retrieved with `length(path)`
+
+    - An array of the nodes along the path can be retrieved with `nodes(path)`
+
+    - The path’s head-node can be retrieved with `head(nodes(path))`
+
+    - The path’s tail-node can be retrieved with `tail(nodes(path))`
+
+    - An array of the relationship's costs along the path can be retrieved with `[r in relationships(path) | r.cost]` where cost is the name of the cost property
+
+    - An array of the relationship's weights along the path can be retrieved with `[r in relationships(path) | r.weight]` where weight is the name of the weight property
+
+Behavior in presence on multiple-edges:
+
+  - multi-edges are two or more edges connecting the same pair of vertices (possibly with different weights and costs). 
+
+  - All matching edges are considered. Paths with identical vertices and different edges are different paths. The following are 3 different paths (n1, n2, and n3 are nodes; e1, e2, e3, and e4 are edges): (n1)-[e1]-(n2)-[e2]-(n3),  (n1)-[e1]-(n2)-[e3]-(n3),  (n1)-[e4]-(n2)-[e3]-(n3)
+
+Example:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH 
+"MATCH (s:Actor {name: 'Charlie Sheen'})
+CALL SSpaths( {sourceNode: s, relLabels: ['r1', 'r2', 'r3'], relDirection: 'outgoing', pathsCount: 1, weightProp: 'weight', costProp: 'cost', maxLen: 3, maxCost: 100} ) 
+YIELD path, pathCost, pathWeight
+RETURN path ORDER BY pathCost"
+```
+
 
 #### OPTIONAL MATCH
 
