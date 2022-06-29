@@ -220,6 +220,31 @@ static void _AST_MapSetClauseReferences(AST *ast, const cypher_astnode_t *set_cl
 	}
 }
 
+// Maps entities in REMOVE clauses that update labels.
+static void _AST_MapRemoveLabelsReferences(AST *ast, const cypher_astnode_t *remove_item) {
+	ASSERT(cypher_astnode_type(remove_item) == CYPHER_AST_REMOVE_LABELS);
+	const cypher_astnode_t *identifier = cypher_ast_remove_labels_get_identifier(remove_item);
+	ASSERT(cypher_astnode_type(identifier) == CYPHER_AST_IDENTIFIER);
+	const char *alias = cypher_ast_identifier_get_name(identifier);
+	_AST_UpdateRefMap(ast, alias);
+}
+
+static void _AST_MapRemoveItemReferences(AST *ast, const cypher_astnode_t *remove_item) {
+	const cypher_astnode_type_t type = cypher_astnode_type(remove_item);
+	ASSERT(type == CYPHER_AST_REMOVE_LABELS);
+	_AST_MapRemoveLabelsReferences(ast, remove_item);
+}
+
+// Maps entities in REMOVE clause.
+static void _AST_MapRemoveClauseReferences(AST *ast, const cypher_astnode_t *remove_clause) {
+	uint nitems = cypher_ast_remove_nitems(remove_clause);
+	for(uint i = 0; i < nitems; i++) {
+		// Get the SET directive at this index.
+		const cypher_astnode_t *set_item = cypher_ast_remove_get_item(remove_clause, i);
+		_AST_MapRemoveItemReferences(ast, set_item);
+	}
+}
+
 // Maps entities in DELETE clause.
 static void _AST_MapDeleteClauseReferences(AST *ast, const cypher_astnode_t *delete_clause) {
 	uint nitems = cypher_ast_delete_nexpressions(delete_clause);
@@ -326,6 +351,9 @@ static void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *claus
 	} else if(type == CYPHER_AST_DELETE) {
 		// Add referenced aliases for DELETE clause.
 		_AST_MapDeleteClauseReferences(ast, clause);
+	} else if(type == CYPHER_AST_REMOVE) {
+		// Add referenced aliases for SET clause.
+		_AST_MapRemoveClauseReferences(ast, clause);
 	}
 }
 

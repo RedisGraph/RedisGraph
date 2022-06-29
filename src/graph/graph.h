@@ -125,7 +125,18 @@ int Graph_AddLabel
 );
 
 // Associate node with labels by setting label matrix L to 1 at position [id,id]
+// and sets the value 1 in the nodes label matrix at position [id, l]
 void Graph_LabelNode
+(
+	Graph *g,
+	NodeID id,
+	int *labels,
+	uint label_count
+);
+
+// Remove association of node with labels by removing the value 1 from label matrix L at position [id,id]
+// and removing the value 1 from the nodes label matrix at position [id, l]
+void Graph_RemoveLabelNode
 (
 	Graph *g,
 	NodeID id,

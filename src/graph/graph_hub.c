@@ -283,17 +283,18 @@ int UpdateNodeLabels
 (
 	GraphContext *gc,            // graph context to update the entity
 	Node *node,                  // the node to be updated
-	rax *labels                  // labels to update
+	rax *labels     	         // labels to update
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(node != NULL);
 
-	// early exit
-	if(labels == NULL || raxSize(labels) == 0) return 0;
+	if(!labels) return 0;
+	uint label_count = raxSize(labels);
+	if(label_count == 0) return 0;
 
 	int new_labels = 0;
-	uint label_count = raxSize(labels);
-	int *label_ids = array_new(int, label_count);
+	int *add_labels = array_new(int, label_count);
+	int *remove_labels = array_new(int, label_count);
 	raxIterator it;
 	raxStart(&it, labels);
 	// Iterate over all keys in the rax.
@@ -307,27 +308,43 @@ int UpdateNodeLabels
 		memcpy(label, raw_label, len);
 		label[len] = 0;
 
+		if(it.data) {
+			// Get or create label matrix
+			const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+			if(s == NULL) {
+				s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+				new_labels++;
+			}
+			// sync matrix, make sure label matrix is of the right dimensions
+			Graph_GetLabelMatrix(gc->g, Schema_GetID(s));
 
-		// Get or create label matrix
-		const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-		if(s == NULL) {
-			s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
-			new_labels++;
+			// Append label id.
+			array_append(add_labels, Schema_GetID(s));
+			// Add to index.
+			Schema_AddNodeToIndices(s, node);
+		} else {
+			// Get or create label matrix
+			const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+			if(s == NULL) continue;
+
+			// sync matrix, make sure label matrix is of the right dimensions
+			Graph_GetLabelMatrix(gc->g, Schema_GetID(s));
+
+			// Append label id.
+			array_append(remove_labels, Schema_GetID(s));
+			// remove node from  index.
+			Schema_RemoveNodeFromIndices(s, node);
 		}
-		// sync matrix, make sure label matrix is of the right dimensions
-		Graph_GetLabelMatrix(gc->g, Schema_GetID(s));
-
-		// Append label id.
-		array_append(label_ids, Schema_GetID(s));
-		// Add to index.
-		Schema_AddNodeToIndices(s, node);
 	}
-	raxStop(&it);
+	raxStop(&it); 
 
+	label_count = array_len(add_labels);
 	// Update label matrixes.
-	Graph_LabelNode(gc->g, node->id ,label_ids, label_count);
+	if(label_count > 0) Graph_LabelNode(gc->g, node->id ,add_labels, label_count);
+	array_free(add_labels);
 
-	// Cleanup
-	array_free(label_ids);
+	label_count = array_len(remove_labels);
+	if(label_count > 0) Graph_RemoveLabelNode(gc->g, node->id ,remove_labels, label_count);
+	array_free(remove_labels);
 	return new_labels;
 }
