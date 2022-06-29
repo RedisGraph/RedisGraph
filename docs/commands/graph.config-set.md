@@ -1,11 +1,21 @@
-Retrieves or updates a RedisGraph configuration.
-Arguments: `GET/SET, <config name> [value]`
-`value` should only be specified in `SET` contexts, while `*` may be substituted for an explicit `config name` if all configurations should be returned.
-Only run-time configurations may be `SET`, though all configurations may be retrieved.
-```sh
-127.0.0.1:6379> GRAPH.CONFIG SET RESULTSET_SIZE 1000
+Set the value of a RedisGraph configuration parameter.
+
+RedisGraph configuration parameters are detailed [here](/docs/stack/graph/configuration).
+
+Note: As detailed in the link above, not all RedisGraph configuration parameters can be set at run-time.
+
+```
+127.0.0.1:6379> graph.config get TIMEOUT
+1) "TIMEOUT"
+2) (integer) 0
+127.0.0.1:6379> graph.config set TIMEOUT 10000
 OK
-127.0.0.1:6379> GRAPH.CONFIG GET RESULTSET_SIZE
-1) "RESULTSET_SIZE"
-2) (integer) 1000
+127.0.0.1:6379> graph.config get TIMEOUT
+1) "TIMEOUT"
+2) (integer) 10000
+```
+
+```
+127.0.0.1:6379> graph.config set THREAD_COUNT 10
+(error) Field can not be re-configured
 ```
