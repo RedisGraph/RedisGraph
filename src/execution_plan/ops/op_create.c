@@ -162,7 +162,7 @@ static Record CreateConsume(OpBase *opBase) {
 	/* Done reading, we're not going to call consume any longer
 	 * there might be operations e.g. index scan that need to free
 	 * index R/W lock, as such free all execution plan operation up the chain. */
-	if(child) OpBase_PropagateFree(child);
+	if(child) OpBase_PropagateReset(child);
 
 	// Create entities.
 	CommitNewEntities(opBase, &op->pending);
