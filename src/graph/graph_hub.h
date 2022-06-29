@@ -82,6 +82,6 @@ int UpdateEntityProperties
 int UpdateNodeLabels
 (
 	GraphContext *gc,            // graph context to update the entity
-	Node *node,            		 // the node to be updated
-	rax *labels     	         // labels to update
+	Node *node,                  // the node to be updated
+	rax *labels      	         // labels to update
 );
