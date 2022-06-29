@@ -336,3 +336,58 @@ class testUndoLog():
         result = self.graph.query("MATCH (n:N)-[r:R]->(m:N) RETURN n.v, r.v, m.v")
         self.env.assertEquals(result.result_set, expected_result)
 
+
+    def test16_undo_label_set(self):
+        self.graph.query("CREATE (n:L1)")
+        try:
+            self.graph.query("MATCH (n:L1) SET n:L2 WITH n RETURN 1 * 'a'")
+            # we're not supposed to be here, expecting query to fail
+            self.env.assertTrue(False) 
+        except:
+            pass
+
+        # node label L2 should not be added, expecting an empty result set
+        result = self.graph.query("MATCH (n:L2) RETURN n")
+        self.env.assertEquals(len(result.result_set), 0)
+
+    def test17_undo_remove_label(self):
+        self.graph.query("CREATE (n:L2)")
+        try:
+            self.graph.query("MATCH (n:L2) REMOVE n:L2 WITH n RETURN 1 * 'a'")
+            # we're not supposed to be here, expecting query to fail
+            self.env.assertTrue(False) 
+        except:
+            pass
+
+        # node label L2 not be removed
+        result = self.graph.query("MATCH (n:L2) RETURN labels(n)")
+        self.env.assertEquals(len(result.result_set), 1)
+        self.env.assertEquals(["L2"], result.result_set[0][0])
+
+    def test17_undo_set_remove_label(self):
+        self.graph.query("CREATE (n:L3)")
+        try:
+            self.graph.query("MATCH (n:L3) SET n:L4 REMOVE n:L3 WITH n RETURN 1 * 'a'")
+            # we're not supposed to be here, expecting query to fail
+            self.env.assertTrue(False) 
+        except:
+            pass
+
+        # node label L3 should not be removed, L4 should bot be created
+        result = self.graph.query("MATCH (n:L3) RETURN labels(n)")
+        self.env.assertEquals(len(result.result_set), 1)
+        self.env.assertEquals(["L3"], result.result_set[0][0])
+
+    def test17_undo_remove_set_label(self):
+        self.graph.query("CREATE (n:L4)")
+        try:
+            self.graph.query("MATCH (n:L4) REMOVE n:L4 SET n:L5 WITH n RETURN 1 * 'a'")
+            # we're not supposed to be here, expecting query to fail
+            self.env.assertTrue(False) 
+        except:
+            pass
+
+        # node label L4 should not be removed, L5 should bot be created
+        result = self.graph.query("MATCH (n:L4) RETURN labels(n)")
+        self.env.assertEquals(len(result.result_set), 1)
+        self.env.assertEquals(["L4"], result.result_set[0][0])

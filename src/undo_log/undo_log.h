@@ -57,12 +57,26 @@ typedef struct {
 	AttributeSet set;
 } UndoDeleteEdgeOp;
 
+typedef enum {
+	UNDO_UPDATE_PROPERTY,
+	UNDO_UPDATE_ADD_LABELS,
+	UNDO_UPDATE_REMOVE_LABELS
+
+} UndoUpdateOpType;
+
 // undo graph entity update
 typedef struct {
 	GraphEntity *ge;              // entity updated
 	GraphEntityType entity_type;  // node/edge
-	Attribute_ID attr_id;         // attribute update
-	SIValue orig_value;           // attribute original value
+	union {
+		struct {
+			Attribute_ID attr_id;         // attribute update
+			SIValue orig_value;           // attribute original value
+		};
+		int* label_lds;
+	};
+	UndoUpdateOpType type;
+	
 } UndoUpdateOp;
 
 // Undo operation
@@ -122,6 +136,20 @@ void UndoLog_UpdateEntity
 	Attribute_ID attr_id,        // updated attribute ID
 	SIValue orig_value,          // attribute original value
 	GraphEntityType entity_type  // entity type
+);
+
+void UndoLog_AddLabels
+(
+	UndoLog *log,                // undo log
+	Node *node,                  // updated node
+	int *label_ids               // added labels
+);
+
+void UndoLog_RemoveLabels
+(
+	UndoLog *log,                // undo log
+	Node *node,                  // updated node
+	int *label_ids               // removed label
 );
 
 // rollback all modifications tracked by this undo log
