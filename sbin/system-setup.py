@@ -52,6 +52,7 @@ class RedisGraphSetup(paella.Setup):
         self.run("brew install libomp")
         self.install("redis")
         self.install_peg()
+        self.pip_install("-r tests/fuzz/requirements.txt")
 
     def alpine(self):
         self.install("automake make autoconf libtool m4")
