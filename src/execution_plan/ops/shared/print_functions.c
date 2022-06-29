@@ -16,10 +16,7 @@ static inline void _NodeToString(sds *buf, const char *alias, const char *label)
 }
 
 void TraversalToString(const OpBase *op, sds *buf, AlgebraicExpression *ae) {
-	if(!ae) {
-		*buf = sdscatprintf(*buf, "%s", op->name);
-		return;
-	}
+	ASSERT(ae != NULL);
 
 	*buf = sdscatprintf(*buf, "%s | ", op->name);
 	// This edge should be printed right-to-left if the edge matrix is transposed.

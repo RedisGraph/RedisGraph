@@ -263,8 +263,8 @@ static Record MergeConsume(OpBase *opBase) {
 	//--------------------------------------------------------------------------
 
 	// explicitly free the read streams in case either holds an index read lock
-	if(op->bound_variable_stream) OpBase_PropagateFree(op->bound_variable_stream);
-	OpBase_PropagateFree(op->match_stream);
+	if(op->bound_variable_stream) OpBase_PropagateReset(op->bound_variable_stream);
+	OpBase_PropagateReset(op->match_stream);
 
 	op->node_pending_updates = array_new(PendingUpdateCtx, 0);
 	op->edge_pending_updates = array_new(PendingUpdateCtx, 0);

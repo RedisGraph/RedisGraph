@@ -251,7 +251,7 @@ void MergeCreate_Commit(OpBase *opBase) {
 	/* Done reading, we're not going to call consume any longer
 	 * there might be operations e.g. index scan that need to free
 	 * index R/W lock, as such free all execution plan operation up the chain. */
-	if(opBase->childCount > 0) OpBase_PropagateFree(opBase->children[0]);
+	if(opBase->childCount > 0) OpBase_PropagateReset(opBase->children[0]);
 	// Create entities.
 	CommitNewEntities(opBase, &op->pending);
 }
