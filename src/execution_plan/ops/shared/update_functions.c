@@ -112,7 +112,7 @@ void EvalEntityUpdates
 			ctx->alias);
 	}
 	bool update_labels = raxSize(ctx->labels) > 0;
-	if (update_labels && t != REC_TYPE_NODE) {
+	if (update_labels && t != REC_TYPE_NODE)  {
 		ErrorCtx_RaiseRuntimeException("Type mismatch: expected Node but was Relationship");
 	}
 
@@ -199,11 +199,7 @@ void EvalEntityUpdates
 		_PreparePendingUpdate(&update.attributes, accepted_properties, attr_id, new_value);
 	}
 
-	if(update_labels) {
-		update.labels = ctx->labels;
-	} else {
-		update.labels = NULL;
-	}
+	update.labels = update_labels ? ctx->labels : NULL;
 
 	// enqueue the current update
 	array_append(*updates, update);
