@@ -75,36 +75,48 @@ static void _UndoLog_Rollback_Update_Entity
 	for(int i = seq_start; i > seq_end; --i) {
 		UndoOp *op = undo_list + i;
 		UndoUpdateOp update_op = op->update_op;
-		switch (update_op.type) {
-			case UNDO_UPDATE_PROPERTY: {
-				Graph_UpdateEntity(update_op.ge, update_op.attr_id,
-				update_op.orig_value, update_op.entity_type);
+		Graph_UpdateEntity(update_op.ge, update_op.attr_id,
+		update_op.orig_value, update_op.entity_type);
 
-				// update indices
-				if(update_op.entity_type == GETYPE_NODE) {
-					Node *n = (Node *)update_op.ge;
-					_index_node(ctx, n);
-				} else {
-					Edge *e = (Edge *)update_op.ge;
-					_index_edge(ctx, e);
-				}
-				break;
-			}
-			case UNDO_UPDATE_ADD_LABELS: {
-				Graph* g = QueryCtx_GetGraph();
-				Graph_RemoveLabelNode(g, update_op.ge->id, update_op.label_lds, array_len(update_op.label_lds));
-				_index_delete_node(ctx, (Node*) update_op.ge);
-				break;
-			}
-			case UNDO_UPDATE_REMOVE_LABELS: {
-				Graph* g = QueryCtx_GetGraph();
-				Graph_LabelNode(g, update_op.ge->id, update_op.label_lds, array_len(update_op.label_lds));
-				_index_node(ctx, (Node*) update_op.ge);
-				break;
-			}
-			default:
-				break;
+		// update indices
+		if(update_op.entity_type == GETYPE_NODE) {
+			Node *n = (Node *)update_op.ge;
+			_index_node(ctx, n);
+		} else {
+			Edge *e = (Edge *)update_op.ge;
+			_index_edge(ctx, e);
 		}
+	}
+}
+
+static void _UndoLog_Rollback_Set_Labels(
+	QueryCtx *ctx,
+	int seq_start,
+	int seq_end
+) {
+	UndoOp *undo_list = ctx->undo_log;
+	for(int i = seq_start; i > seq_end; --i) {
+		UndoOp *op = undo_list + i;
+		UndoUpdateOp update_op = op->update_op;
+		UndoSetLabelsOp set_labels_op = op->set_labels;
+		Graph* g = QueryCtx_GetGraph();
+		Graph_RemoveLabelNode(g, set_labels_op.node->id, set_labels_op.label_lds, array_len(set_labels_op.label_lds));
+		_index_delete_node(ctx, set_labels_op.node);
+	}
+}
+
+static void _UndoLog_Rollback_Remove_Labels(
+	QueryCtx *ctx,
+	int seq_start,
+	int seq_end
+) {
+	UndoOp *undo_list = ctx->undo_log;
+	for(int i = seq_start; i > seq_end; --i) {
+		UndoOp *op = undo_list + i;
+		UndoRemoveLabelsOp remove_labels_op = op->remove_labels;
+		Graph* g = QueryCtx_GetGraph();
+		Graph_LabelNode(g, remove_labels_op.node->id, remove_labels_op.label_lds, array_len(remove_labels_op.label_lds));
+		_index_node(ctx, remove_labels_op.node);
 	}
 }
 
@@ -287,7 +299,6 @@ void UndoLog_UpdateEntity
 	op.update_op.attr_id     = attr_id;
 	op.update_op.orig_value  = SI_CloneValue(orig_value);
 	op.update_op.entity_type = entity_type;
-	op.update_op.type        = UNDO_UPDATE_PROPERTY;
 
 	array_append(*log, op);
 }
@@ -305,11 +316,9 @@ void UndoLog_AddLabels
 
 	UndoOp op;
 
-	op.type                  = UNDO_UPDATE;
-	op.update_op.ge          = (GraphEntity*)node;
-	op.update_op.entity_type = GETYPE_NODE;
-	op.update_op.type        = UNDO_UPDATE_ADD_LABELS;
-	array_clone(op.update_op.label_lds, label_ids);
+	op.type                  = UNDO_SET_LABELS;
+	op.set_labels.node       = node;
+	array_clone(op.set_labels.label_lds, label_ids);
 	array_append(*log, op);
 }
 
@@ -325,11 +334,9 @@ void UndoLog_RemoveLabels
 
 	UndoOp op;
 
-	op.type                  = UNDO_UPDATE;
-	op.update_op.ge          = (GraphEntity*)node;
-	op.update_op.entity_type = GETYPE_NODE;
-	op.update_op.type        = UNDO_UPDATE_REMOVE_LABELS;
-	array_clone(op.update_op.label_lds, label_ids);
+	op.type                  = UNDO_REMOVE_LABELS;
+	op.remove_labels.node    = node;
+	array_clone(op.remove_labels.label_lds, label_ids);
 	array_append(*log, op);
 }
 
@@ -375,6 +382,12 @@ void UndoLog_Rollback
 			case UNDO_DELETE_EDGE:
 				_UndoLog_Rollback_Delete_Edge(ctx, seq_start, seq_end);
 				break;
+			case UNDO_SET_LABELS:
+				_UndoLog_Rollback_Set_Labels(ctx, seq_start, seq_end);
+				break;
+			case UNDO_REMOVE_LABELS:
+				_UndoLog_Rollback_Remove_Labels(ctx, seq_start, seq_end);
+				break;
 			default:
 				ASSERT(false);
 		}
@@ -393,8 +406,7 @@ void UndoLog_Free
 		UndoOp *op = log + i;
 		switch(op->type) {
 			case UNDO_UPDATE:
-				if(op->update_op.type == UNDO_UPDATE_PROPERTY) SIValue_Free(op->update_op.orig_value);
-				else array_free(op->update_op.label_lds);
+				SIValue_Free(op->update_op.orig_value);
 				break;
 			case UNDO_CREATE_NODE:
 				break;
@@ -406,6 +418,12 @@ void UndoLog_Free
 				break;
 			case UNDO_DELETE_EDGE:
 				AttributeSet_Free(&op->delete_edge_op.set);
+				break;
+			case UNDO_SET_LABELS:
+				array_free(op->set_labels.label_lds);
+				break;
+			case UNDO_REMOVE_LABELS:
+				array_free(op->remove_labels.label_lds);
 				break;
 			default:
 				ASSERT(false);

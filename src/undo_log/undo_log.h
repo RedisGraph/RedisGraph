@@ -25,7 +25,9 @@ typedef enum {
 	UNDO_CREATE_NODE,       // undo node creation
 	UNDO_CREATE_EDGE,       // undo edge creation
 	UNDO_DELETE_NODE,       // undo node deletion
-	UNDO_DELETE_EDGE        // undo edge deletion
+	UNDO_DELETE_EDGE,       // undo edge deletion
+	UNDO_SET_LABELS,        // undo set labels
+	UNDO_REMOVE_LABELS      // undo remove labels
 } UndoOpType;
 
 //------------------------------------------------------------------------------
@@ -57,27 +59,23 @@ typedef struct {
 	AttributeSet set;
 } UndoDeleteEdgeOp;
 
-typedef enum {
-	UNDO_UPDATE_PROPERTY,
-	UNDO_UPDATE_ADD_LABELS,
-	UNDO_UPDATE_REMOVE_LABELS
-
-} UndoUpdateOpType;
-
 // undo graph entity update
 typedef struct {
 	GraphEntity *ge;              // entity updated
 	GraphEntityType entity_type;  // node/edge
-	union {
-		struct {
-			Attribute_ID attr_id;         // attribute update
-			SIValue orig_value;           // attribute original value
-		};
-		int* label_lds;
-	};
-	UndoUpdateOpType type;
-	
+	Attribute_ID attr_id;         // attribute update
+	SIValue orig_value;           // attribute original value
 } UndoUpdateOp;
+
+typedef struct {
+	Node *node;
+	int* label_lds;
+} UndoSetLabelsOp;
+
+typedef struct {
+	Node *node;
+	int* label_lds;
+} UndoRemoveLabelsOp;
 
 // Undo operation
 typedef struct {
@@ -86,6 +84,8 @@ typedef struct {
 		UndoDeleteNodeOp delete_node_op;
 		UndoDeleteEdgeOp delete_edge_op;
 		UndoUpdateOp update_op;
+		UndoSetLabelsOp set_labels;
+		UndoRemoveLabelsOp remove_labels;
 	};
 	UndoOpType type;  // type of undo operation
 } UndoOp;

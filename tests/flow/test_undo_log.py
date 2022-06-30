@@ -338,7 +338,8 @@ class testUndoLog():
 
 
     def test16_undo_label_set(self):
-        self.graph.query("CREATE (n:L1)")
+        self.graph.query("CREATE INDEX FOR (n:L1) ON (n.v)")
+        self.graph.query("CREATE (n:L1 {v:1})")
         try:
             self.graph.query("MATCH (n:L1) SET n:L2 WITH n RETURN 1 * 'a'")
             # we're not supposed to be here, expecting query to fail
@@ -349,9 +350,16 @@ class testUndoLog():
         # node label L2 should not be added, expecting an empty result set
         result = self.graph.query("MATCH (n:L2) RETURN n")
         self.env.assertEquals(len(result.result_set), 0)
+        # check index is ok
+        query = "MATCH (n:L1 {v: 1}) RETURN n.v"
+        plan = self.graph.execution_plan(query)
+        self.env.assertContains("Node By Index Scan", plan)
+        result = self.graph.query(query)
+        self.env.assertEquals(result.result_set[0][0], 1)
 
     def test17_undo_remove_label(self):
-        self.graph.query("CREATE (n:L2)")
+        self.graph.query("CREATE INDEX FOR (n:L2) ON (n.v)")
+        self.graph.query("CREATE (n:L2 {v:1})")
         try:
             self.graph.query("MATCH (n:L2) REMOVE n:L2 WITH n RETURN 1 * 'a'")
             # we're not supposed to be here, expecting query to fail
@@ -363,8 +371,14 @@ class testUndoLog():
         result = self.graph.query("MATCH (n:L2) RETURN labels(n)")
         self.env.assertEquals(len(result.result_set), 1)
         self.env.assertEquals(["L2"], result.result_set[0][0])
+        # check index is ok
+        query = "MATCH (n:L2 {v: 1}) RETURN n.v"
+        plan = self.graph.execution_plan(query)
+        self.env.assertContains("Node By Index Scan", plan)
+        result = self.graph.query(query)
+        self.env.assertEquals(result.result_set[0][0], 1)
 
-    def test17_undo_set_remove_label(self):
+    def test18_undo_set_remove_label(self):
         self.graph.query("CREATE (n:L3)")
         try:
             self.graph.query("MATCH (n:L3) SET n:L4 REMOVE n:L3 WITH n RETURN 1 * 'a'")
@@ -378,7 +392,7 @@ class testUndoLog():
         self.env.assertEquals(len(result.result_set), 1)
         self.env.assertEquals(["L3"], result.result_set[0][0])
 
-    def test17_undo_remove_set_label(self):
+    def test19_undo_remove_set_label(self):
         self.graph.query("CREATE (n:L4)")
         try:
             self.graph.query("MATCH (n:L4) REMOVE n:L4 SET n:L5 WITH n RETURN 1 * 'a'")
