@@ -17,5 +17,5 @@ OK
 
 ```
 127.0.0.1:6379> graph.config set THREAD_COUNT 10
-(error) Field can not be re-configured
+(error) This configuration parameter cannot be set at run-time
 ```
