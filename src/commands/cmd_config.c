@@ -88,7 +88,7 @@ void _Config_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	
 		// field is not allowed to be reconfigured
 		if(!configurable_field) {
-			RedisModule_ReplyWithError(ctx, "Field can not be re-configured");
+			RedisModule_ReplyWithError(ctx, "This configuration parameter cannot be set at run-time");
 			return;
 		}
 
