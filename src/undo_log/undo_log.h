@@ -70,12 +70,7 @@ typedef struct {
 typedef struct {
 	Node *node;
 	int* label_lds;
-} UndoSetLabelsOp;
-
-typedef struct {
-	Node *node;
-	int* label_lds;
-} UndoRemoveLabelsOp;
+} UndoLabelsOp;
 
 // Undo operation
 typedef struct {
@@ -84,8 +79,7 @@ typedef struct {
 		UndoDeleteNodeOp delete_node_op;
 		UndoDeleteEdgeOp delete_edge_op;
 		UndoUpdateOp update_op;
-		UndoSetLabelsOp set_labels;
-		UndoRemoveLabelsOp remove_labels;
+		UndoLabelsOp labels_op;
 	};
 	UndoOpType type;  // type of undo operation
 } UndoOp;

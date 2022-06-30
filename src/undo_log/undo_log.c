@@ -98,10 +98,10 @@ static void _UndoLog_Rollback_Set_Labels(
 	for(int i = seq_start; i > seq_end; --i) {
 		UndoOp *op = undo_list + i;
 		UndoUpdateOp update_op = op->update_op;
-		UndoSetLabelsOp set_labels_op = op->set_labels;
+		UndoLabelsOp update_labels_op = op->labels_op;
 		Graph* g = QueryCtx_GetGraph();
-		Graph_RemoveLabelNode(g, set_labels_op.node->id, set_labels_op.label_lds, array_len(set_labels_op.label_lds));
-		_index_delete_node(ctx, set_labels_op.node);
+		Graph_RemoveLabelNode(g, update_labels_op.node->id, update_labels_op.label_lds, array_len(update_labels_op.label_lds));
+		_index_delete_node(ctx, update_labels_op.node);
 	}
 }
 
@@ -113,10 +113,10 @@ static void _UndoLog_Rollback_Remove_Labels(
 	UndoOp *undo_list = ctx->undo_log;
 	for(int i = seq_start; i > seq_end; --i) {
 		UndoOp *op = undo_list + i;
-		UndoRemoveLabelsOp remove_labels_op = op->remove_labels;
+		UndoLabelsOp update_labels_op = op->labels_op;
 		Graph* g = QueryCtx_GetGraph();
-		Graph_LabelNode(g, remove_labels_op.node->id, remove_labels_op.label_lds, array_len(remove_labels_op.label_lds));
-		_index_node(ctx, remove_labels_op.node);
+		Graph_LabelNode(g, update_labels_op.node->id, update_labels_op.label_lds, array_len(update_labels_op.label_lds));
+		_index_node(ctx, update_labels_op.node);
 	}
 }
 
@@ -317,8 +317,8 @@ void UndoLog_AddLabels
 	UndoOp op;
 
 	op.type                  = UNDO_SET_LABELS;
-	op.set_labels.node       = node;
-	array_clone(op.set_labels.label_lds, label_ids);
+	op.labels_op.node       = node;
+	array_clone(op.labels_op.label_lds, label_ids);
 	array_append(*log, op);
 }
 
@@ -335,8 +335,8 @@ void UndoLog_RemoveLabels
 	UndoOp op;
 
 	op.type                  = UNDO_REMOVE_LABELS;
-	op.remove_labels.node    = node;
-	array_clone(op.remove_labels.label_lds, label_ids);
+	op.labels_op.node    = node;
+	array_clone(op.labels_op.label_lds, label_ids);
 	array_append(*log, op);
 }
 
@@ -420,10 +420,8 @@ void UndoLog_Free
 				AttributeSet_Free(&op->delete_edge_op.set);
 				break;
 			case UNDO_SET_LABELS:
-				array_free(op->set_labels.label_lds);
-				break;
 			case UNDO_REMOVE_LABELS:
-				array_free(op->remove_labels.label_lds);
+				array_free(op->labels_op.label_lds);
 				break;
 			default:
 				ASSERT(false);
