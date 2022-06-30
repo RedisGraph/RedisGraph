@@ -17,6 +17,7 @@
 static Record DeleteConsume(OpBase *opBase);
 static OpResult DeleteInit(OpBase *opBase);
 static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase);
+static OpResult DeleteReset(OpBase *opBase);
 static void DeleteFree(OpBase *opBase);
 
 static int is_entity_cmp
@@ -110,7 +111,7 @@ OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", DeleteInit, DeleteConsume,
-				NULL, NULL, DeleteClone, DeleteFree, true, plan);
+				DeleteReset, NULL, DeleteClone, DeleteFree, true, plan);
 
 	return (OpBase *)op;
 }
@@ -171,8 +172,24 @@ static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	return NewDeleteOp(plan, exps);
 }
 
-static void DeleteFree(OpBase *ctx) {
-	OpDelete *op = (OpDelete *)ctx;
+static OpResult DeleteReset(OpBase *opBase) {
+	OpDelete *op = (OpDelete *)opBase;
+
+	_DeleteEntities(op);
+
+	if(op->deleted_nodes) {
+		array_clear(op->deleted_nodes);
+	}
+
+	if(op->deleted_edges) {
+		array_clear(op->deleted_edges);
+	}
+
+	return OP_OK;
+}
+
+static void DeleteFree(OpBase *opBase) {
+	OpDelete *op = (OpDelete *)opBase;
 
 	_DeleteEntities(op);
 
