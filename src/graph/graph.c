@@ -7,7 +7,6 @@
 #include "RG.h"
 #include "graph.h"
 #include "../util/arr.h"
-#include "../util/qsort.h"
 #include "../util/rmalloc.h"
 #include "../util/datablock/oo_datablock.h"
 #include "../graph/rg_matrix/rg_matrix_iter.h"

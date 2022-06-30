@@ -8,15 +8,24 @@
 #include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
-#include "../../util/qsort.h"
 #include "../../graph/graph_hub.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-/* Forward declarations. */
+#include <stdlib.h>
+
+// forward declarations
 static Record DeleteConsume(OpBase *opBase);
 static OpResult DeleteInit(OpBase *opBase);
 static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void DeleteFree(OpBase *opBase);
+
+static int is_entity_cmp
+(
+	const GraphEntity *a,
+	const GraphEntity *b
+) {
+	return ENTITY_GET_ID(a) - ENTITY_GET_ID(b);
+}
 
 void _DeleteEntities(OpDelete *op) {
 	uint   edge_deleted           =  0;
@@ -35,8 +44,8 @@ void _DeleteEntities(OpDelete *op) {
 	Node *nodes = op->deleted_nodes;
 	Node *distinct_nodes = array_new(Node, 1);
 
-#define is_entity_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
-	QSORT(Node, nodes, node_count, is_entity_lt);
+	qsort(nodes, node_count, sizeof(Node),
+			(int(*)(const void*, const void*))is_entity_cmp);
 
 	for(uint i = 0; i < node_count; i++) {
 		while(i < node_count - 1 && ENTITY_GET_ID(nodes + i) == ENTITY_GET_ID(nodes + i + 1)) i++;
@@ -51,7 +60,8 @@ void _DeleteEntities(OpDelete *op) {
 	Edge *edges = op->deleted_edges;
 	Edge *distinct_edges = array_new(Edge, 1);
 
-	QSORT(Edge, edges, edge_count, is_entity_lt);
+	qsort(edges, edge_count, sizeof(Edge),
+			(int(*)(const void*, const void*))is_entity_cmp);
 
 	for(uint i = 0; i < edge_count; i++) {
 		while(i < edge_count - 1 && ENTITY_GET_ID(edges + i) == ENTITY_GET_ID(edges + i + 1)) i++;

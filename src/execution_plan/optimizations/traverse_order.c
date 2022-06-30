@@ -6,10 +6,11 @@
 
 #include "RG.h"
 #include "../../util/arr.h"
-#include "../../util/qsort.h"
 #include "../../util/rmalloc.h"
 #include "../../arithmetic/algebraic_expression/utils.h"
 #include "traverse_order_utils.h"
+
+#include <stdlib.h>
 
 // having chosen which algebraic expression will be evaluated first
 // determine whether it is worthwhile to transpose it
@@ -198,6 +199,14 @@ static void _order_expressions
 	ASSERT(res == true);
 }
 
+static inline int _score_cmp
+(
+	const ScoredExp *a,
+	const ScoredExp *b
+) {
+	return b->score - a->score;
+}
+
 // given a set of algebraic expressions representing a graph traversal
 // we pick the order in which the expressions will be evaluated
 // taking into account filters and transposes
@@ -235,10 +244,9 @@ void orderExpressions
 	TraverseOrder_ScoreExpressions(scored_exps, exps, _exp_count, bound_vars,
 								   filtered_entities, qg);
 
-	// Sort scored_exps on score in descending order.
-	// Compare macro used to sort scored expressions.
-#define score_cmp(a,b) ((*a).score > (*b).score)
-	QSORT(ScoredExp, scored_exps, _exp_count, score_cmp);
+	// sort scored_exps on score in descending order
+	qsort(scored_exps, _exp_count, sizeof(ScoredExp),
+			(int(*)(const void*, const void*))_score_cmp);
 
 	//--------------------------------------------------------------------------
 	// Find the highest-scoring valid arrangement

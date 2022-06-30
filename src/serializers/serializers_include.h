@@ -19,7 +19,6 @@
 // Utils.
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
-#include "../util/qsort.h"
 // Non primitive data types.
 #include "../datatypes/array.h"
 // Graph extentions.

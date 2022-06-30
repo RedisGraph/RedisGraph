@@ -16,8 +16,8 @@ struct heap_s
     /* items within heap */
     unsigned int count;
     /**  user data */
-    const void *udata;
-    int (*cmp) (const void *, const void *, const void *);
+    void *udata;
+    int (*cmp) (void *, const void *, const void *);
     void * array[];
 };
 
@@ -41,13 +41,13 @@ static int __parent(const int idx)
     return (idx - 1) / 2;
 }
 
-void Heap_init(heap_t* h,
-               int (*cmp) (const void *,
-                           const void *,
-                           const void *udata),
-               const void *udata,
-               unsigned int size
-               )
+void Heap_init
+(
+	heap_t* h,
+	heap_cmp cmp,
+	void *udata,
+	unsigned int size
+)
 {
     h->cmp = cmp;
     h->udata = udata;
@@ -55,10 +55,11 @@ void Heap_init(heap_t* h,
     h->count = 0;
 }
 
-heap_t *Heap_new(int (*cmp) (const void *,
-                             const void *,
-                             const void *udata),
-                 const void *udata)
+heap_t *Heap_new
+(
+	heap_cmp cmp,
+	void *udata
+)
 {
     heap_t *h = malloc(Heap_sizeof(DEFAULT_CAPACITY));
 
@@ -97,13 +98,13 @@ static void __swap(heap_t * h, const int i1, const int i2)
 
 static int __pushup(heap_t * h, unsigned int idx)
 {
-    /* 0 is the root node */
+    // 0 is the root node
     while (0 != idx)
     {
         int parent = __parent(idx);
 
-        /* we are smaller than the parent */
-        if (h->cmp(h->array[idx], h->array[parent], h->udata) < 0)
+        // we are smaller than the parent
+        if (h->cmp(h->udata, h->array[idx], h->array[parent]) < 0)
             return -1;
         else
             __swap(h, idx, parent);
@@ -131,14 +132,14 @@ static void __pushdown(heap_t * h, unsigned int idx)
 
             child = childl;
         }
-        /* find biggest child */
-        else if (h->cmp(h->array[childl], h->array[childr], h->udata) < 0)
+        // find biggest child
+        else if (h->cmp(h->udata, h->array[childl], h->array[childr]) < 0)
             child = childr;
         else
             child = childl;
 
-        /* idx is smaller than child */
-        if (h->cmp(h->array[idx], h->array[child], h->udata) < 0)
+        // idx is smaller than child
+        if (h->cmp(h->udata, h->array[idx], h->array[child]) < 0)
         {
             __swap(h, idx, child);
             idx = child;
@@ -210,7 +211,7 @@ static int __item_get_idx(const heap_t * h, const void *item)
     unsigned int idx;
 
     for (idx = 0; idx < h->count; idx++)
-        if (0 == h->cmp(h->array[idx], item, h->udata))
+        if (0 == h->cmp(h->udata, h->array[idx], item))
             return idx;
 
     return -1;
