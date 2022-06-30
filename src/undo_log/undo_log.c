@@ -76,7 +76,7 @@ static void _UndoLog_Rollback_Update_Entity
 		UndoOp *op = undo_list + i;
 		UndoUpdateOp update_op = op->update_op;
 		Graph_UpdateEntity(update_op.ge, update_op.attr_id,
-				update_op.orig_value, update_op.entity_type);
+		update_op.orig_value, update_op.entity_type);
 
 		// update indices
 		if(update_op.entity_type == GETYPE_NODE) {
@@ -86,6 +86,37 @@ static void _UndoLog_Rollback_Update_Entity
 			Edge *e = (Edge *)update_op.ge;
 			_index_edge(ctx, e);
 		}
+	}
+}
+
+static void _UndoLog_Rollback_Set_Labels(
+	QueryCtx *ctx,
+	int seq_start,
+	int seq_end
+) {
+	UndoOp *undo_list = ctx->undo_log;
+	for(int i = seq_start; i > seq_end; --i) {
+		UndoOp *op = undo_list + i;
+		UndoUpdateOp update_op = op->update_op;
+		UndoLabelsOp update_labels_op = op->labels_op;
+		Graph* g = QueryCtx_GetGraph();
+		Graph_RemoveLabelNode(g, update_labels_op.node->id, update_labels_op.label_lds, array_len(update_labels_op.label_lds));
+		_index_delete_node(ctx, update_labels_op.node);
+	}
+}
+
+static void _UndoLog_Rollback_Remove_Labels(
+	QueryCtx *ctx,
+	int seq_start,
+	int seq_end
+) {
+	UndoOp *undo_list = ctx->undo_log;
+	for(int i = seq_start; i > seq_end; --i) {
+		UndoOp *op = undo_list + i;
+		UndoLabelsOp update_labels_op = op->labels_op;
+		Graph* g = QueryCtx_GetGraph();
+		Graph_LabelNode(g, update_labels_op.node->id, update_labels_op.label_lds, array_len(update_labels_op.label_lds));
+		_index_node(ctx, update_labels_op.node);
 	}
 }
 
@@ -271,6 +302,44 @@ void UndoLog_UpdateEntity
 
 	array_append(*log, op);
 }
+
+
+void UndoLog_AddLabels
+(
+	UndoLog *log,                // undo log
+	Node *node,                  // updated node
+	int *label_ids               // added labels
+) {
+	ASSERT(log != NULL && *log != NULL);
+	ASSERT(node != NULL);
+	ASSERT(label_ids != NULL);
+
+	UndoOp op;
+
+	op.type                  = UNDO_SET_LABELS;
+	op.labels_op.node       = node;
+	array_clone(op.labels_op.label_lds, label_ids);
+	array_append(*log, op);
+}
+
+void UndoLog_RemoveLabels
+(
+	UndoLog *log,                // undo log
+	Node *node,                  // updated node
+	int *label_ids               // removed labels
+) {
+	ASSERT(log != NULL && *log != NULL);
+	ASSERT(node != NULL);
+	ASSERT(label_ids != NULL);
+
+	UndoOp op;
+
+	op.type                  = UNDO_REMOVE_LABELS;
+	op.labels_op.node    = node;
+	array_clone(op.labels_op.label_lds, label_ids);
+	array_append(*log, op);
+}
+
 //------------------------------------------------------------------------------
 // rollback
 //------------------------------------------------------------------------------
@@ -316,6 +385,12 @@ void UndoLog_Rollback
 			case UNDO_DELETE_EDGE:
 				_UndoLog_Rollback_Delete_Edge(ctx, seq_start, seq_end);
 				break;
+			case UNDO_SET_LABELS:
+				_UndoLog_Rollback_Set_Labels(ctx, seq_start, seq_end);
+				break;
+			case UNDO_REMOVE_LABELS:
+				_UndoLog_Rollback_Remove_Labels(ctx, seq_start, seq_end);
+				break;
 			default:
 				ASSERT(false);
 		}
@@ -349,6 +424,10 @@ void UndoLog_Free
 				break;
 			case UNDO_DELETE_EDGE:
 				AttributeSet_Free(&op->delete_edge_op.set);
+				break;
+			case UNDO_SET_LABELS:
+			case UNDO_REMOVE_LABELS:
+				array_free(op->labels_op.label_lds);
 				break;
 			default:
 				ASSERT(false);
