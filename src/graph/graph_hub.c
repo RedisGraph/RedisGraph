@@ -322,13 +322,20 @@ int UpdateNodeLabels
 	}
 	raxStop(&it); 
 
+	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 	label_count = array_len(add_labels);
 	// Update label matrixes.
-	if(label_count > 0) Graph_LabelNode(gc->g, node->id ,add_labels, label_count);
+	if(label_count > 0) {
+		Graph_LabelNode(gc->g, node->id ,add_labels, label_count);
+		UndoLog_AddLabels(&query_ctx->undo_log, node, add_labels);
+	}
 	array_free(add_labels);
 
 	label_count = array_len(remove_labels);
-	if(label_count > 0) Graph_RemoveLabelNode(gc->g, node->id ,remove_labels, label_count);
+	if(label_count > 0) {
+		Graph_RemoveLabelNode(gc->g, node->id ,remove_labels, label_count);
+		UndoLog_RemoveLabels(&query_ctx->undo_log, node, remove_labels);
+	}
 	array_free(remove_labels);
 	return new_labels;
 }
