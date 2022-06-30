@@ -392,7 +392,7 @@ jobs:
         type: string
     machine:
       image: ubuntu-2004:202101-01
-    resource_class: arm.medium
+    resource_class: arm.large
     steps:
       - vm-build-platforms-steps:
           platform: <<parameters.platform>>
