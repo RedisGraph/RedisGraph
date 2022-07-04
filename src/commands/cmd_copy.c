@@ -260,7 +260,6 @@ error:
 	// an error occurred
 	// either fork or pthread creation failed
 	CopyCtx_Free(copyCtx);
-	RedisModule_AbortBlock(bc);
 	if(pid != -1) {
 		RedisModule_KillForkChild(pid);
 	}
