@@ -181,7 +181,7 @@ Input arguments:
 - A map containing:
   - `sourceNode`: Mandatory. Must be of type node
   - `targetNode`: Mandatory. Must be of type node
-  - `relLabels`: Optional. Array of zero or more relationship labels. A relationship must have one of these labels to be part of the path. If not specified or empty: the path may contain any relationship.
+  - `relTypes`: Optional. Array of zero or more relationship types. A relationship must have one of these types to be part of the path. If not specified or empty: the path may contain any relationship.
   - `relDirection`: Optional. string. one of `'incoming'`, `'outgoing'`, `'both'`. If not specified: `'outgoing'`.
   - `pathsCount`: Optional. Number of minimal-weight paths to retrieve. Non-negative integer. If not specified: 1
 
@@ -254,7 +254,7 @@ Example:
 ```sh
 GRAPH.QUERY DEMO_GRAPH 
 "MATCH (s:Actor {name: 'Charlie Sheen'}), (t:Actor {name: 'Kevin Bacon'}) 
-CALL SPpaths( {sourceNode: s, targetNode: t, relLabels: ['r1', 'r2', 'r3'], relDirection: 'outgoing', pathsCount: 1, weightProp: 'weight', costProp: 'cost', maxLen: 3, maxCost: 100} ) 
+CALL SPpaths( {sourceNode: s, targetNode: t, relTypes: ['r1', 'r2', 'r3'], relDirection: 'outgoing', pathsCount: 1, weightProp: 'weight', costProp: 'cost', maxLen: 3, maxCost: 100} ) 
 YIELD path, pathCost, pathWeight
 RETURN path ORDER BY pathCost"
 ```
@@ -271,7 +271,7 @@ Input arguments:
 
 - A map containing:
   - `sourceNode`: Mandatory. Must be of type node
-  - `relLabels`: Optional. Array of zero or more relationship labels. A relationship must have one of these labels to be part of the path. If not specified or empty: the path may contain any relationship.
+  - `relTypes`: Optional. Array of zero or more relationship types. A relationship must have one of these types to be part of the path. If not specified or empty: the path may contain any relationship.
   - `relDirection`: Optional. string. one of `'incoming'`, `'outgoing'`, `'both'`. If not specified: `'outgoing'`.
   - `pathsCount`: Optional. Number of minimal-weight paths to retrieve. Non-negative integer. If not specified: 1
 
@@ -346,7 +346,7 @@ Example:
 ```sh
 GRAPH.QUERY DEMO_GRAPH 
 "MATCH (s:Actor {name: 'Charlie Sheen'})
-CALL SSpaths( {sourceNode: s, relLabels: ['r1', 'r2', 'r3'], relDirection: 'outgoing', pathsCount: 1, weightProp: 'weight', costProp: 'cost', maxLen: 3, maxCost: 100} ) 
+CALL SSpaths( {sourceNode: s, relTypes: ['r1', 'r2', 'r3'], relDirection: 'outgoing', pathsCount: 1, weightProp: 'weight', costProp: 'cost', maxLen: 3, maxCost: 100} ) 
 YIELD path, pathCost, pathWeight
 RETURN path ORDER BY pathCost"
 ```
