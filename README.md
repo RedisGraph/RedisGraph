@@ -40,7 +40,7 @@ To try RedisGraph, either use the RedisGraph Docker image, or [create a free Red
 To quickly tryout RedisGraph, launch an instance using docker:
 
 ```sh
-docker run -p 6379:6379 -it --rm redislabs/redisgraph
+docker run -p 6379:6379 -it --rm redis/redis-stack-server:latest
 ```
 
 ### Give it a try
