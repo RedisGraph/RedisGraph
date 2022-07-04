@@ -62,6 +62,29 @@ static void _InitializeUpdates(OpMerge *op, rax *updates, raxIterator *it) {
 
 }
 
+// free node and edge pending updates
+static inline void _free_pending_updates(OpMerge *op) {
+	if(op->node_pending_updates) {
+		uint pending_updates_count = array_len(op->node_pending_updates);
+		for(uint i = 0; i < pending_updates_count; i++) {
+			PendingUpdateCtx *pending_update = op->node_pending_updates + i;
+			AttributeSet_Free(&pending_update->attributes);
+		}
+		array_free(op->node_pending_updates);
+		op->node_pending_updates = NULL;
+	}
+
+	if(op->edge_pending_updates) {
+		uint pending_updates_count = array_len(op->edge_pending_updates);
+		for(uint i = 0; i < pending_updates_count; i++) {
+			PendingUpdateCtx *pending_update = op->edge_pending_updates + i;
+			AttributeSet_Free(&pending_update->attributes);
+		}
+		array_free(op->edge_pending_updates);
+		op->edge_pending_updates = NULL;
+	}
+}
+
 OpBase *NewMergeOp(const ExecutionPlan *plan, rax *on_match, rax *on_create) {
 
 	/* merge is an operator with two or three children
@@ -263,8 +286,8 @@ static Record MergeConsume(OpBase *opBase) {
 	//--------------------------------------------------------------------------
 
 	// explicitly free the read streams in case either holds an index read lock
-	if(op->bound_variable_stream) OpBase_PropagateFree(op->bound_variable_stream);
-	OpBase_PropagateFree(op->match_stream);
+	if(op->bound_variable_stream) OpBase_PropagateReset(op->bound_variable_stream);
+	OpBase_PropagateReset(op->match_stream);
 
 	op->node_pending_updates = array_new(PendingUpdateCtx, 0);
 	op->edge_pending_updates = array_new(PendingUpdateCtx, 0);
@@ -307,17 +330,19 @@ static Record MergeConsume(OpBase *opBase) {
 	if(array_len(op->node_pending_updates) > 0 || array_len(op->edge_pending_updates) > 0) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		// lock everything
-		QueryCtx_LockForCommit();
-		CommitUpdates(gc, op->stats, op->node_pending_updates, ENTITY_NODE);
-		CommitUpdates(gc, op->stats, op->edge_pending_updates, ENTITY_EDGE);
+		QueryCtx_LockForCommit(); {
+			CommitUpdates(gc, op->stats, op->node_pending_updates, ENTITY_NODE);
+			CommitUpdates(gc, op->stats, op->edge_pending_updates, ENTITY_EDGE);
+		}
+		// release the lock
+		QueryCtx_UnlockCommit(&op->op);
 	}
 
-	// release the lock
-	QueryCtx_UnlockCommit(&op->op);
-	array_free(op->node_pending_updates);
-	op->node_pending_updates = NULL;
-	array_free(op->edge_pending_updates);
-	op->edge_pending_updates = NULL;
+	//--------------------------------------------------------------------------
+	// free updates
+	//--------------------------------------------------------------------------
+
+	_free_pending_updates(op);
 
 	return _handoff(op);
 }
@@ -354,25 +379,7 @@ static void MergeFree(OpBase *opBase) {
 		op->output_records = NULL;
 	}
 
-	if(op->node_pending_updates) {
-		uint pending_updates_count = array_len(op->node_pending_updates);
-		for(uint i = 0; i < pending_updates_count; i ++) {
-			PendingUpdateCtx pending_update = op->node_pending_updates[i];
-			SIValue_Free(pending_update.new_value);
-		}
-		array_free(op->node_pending_updates);
-		op->node_pending_updates  =  NULL;
-	}
-
-	if(op->edge_pending_updates) {
-		uint pending_updates_count = array_len(op->edge_pending_updates);
-		for(uint i = 0; i < pending_updates_count; i ++) {
-			PendingUpdateCtx pending_update = op->edge_pending_updates[i];
-			SIValue_Free(pending_update.new_value);
-		}
-		array_free(op->edge_pending_updates);
-		op->edge_pending_updates  =  NULL;
-	}
+	_free_pending_updates(op);
 
 	if(op->on_match) {
 		raxFreeWithCallback(op->on_match, (void(*)(void *))UpdateCtx_Free);
@@ -386,4 +393,3 @@ static void MergeFree(OpBase *opBase) {
 		raxStop(&op->on_create_it);
 	}
 }
-

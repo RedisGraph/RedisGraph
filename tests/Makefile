@@ -23,15 +23,19 @@ ifneq ($(ENV),)
 TEST_ARGS += --env $(ENV)
 endif
 
+ifneq ($(filter memcheck,$(MAKECMDGOALS)),)
+FLOW ?= 1
+GEN ?= 1
+AOF ?= 1
+TCK ?= 1
+endif
+
 TESTS=
 ifneq ($(UNIT),0)
 TESTS += unit
 endif
 ifneq ($(FLOW),0)
 TESTS += flow
-endif
-ifneq ($(TCK),0)
-TESTS += tck
 endif
 ifneq ($(TCK),0)
 TESTS += tck
@@ -52,7 +56,7 @@ tck:
 	@GEN=0 AOF=0 TCK=1 MODULE=$(TARGET) ./flow/tests.sh
 
 memcheck:
-	@TCK=1 VG=1 VG_ACCESS=1 VG_LEAKS=1 MODULE=$(TARGET) ./flow/tests.sh
+	@VG=1 VG_ACCESS=1 VG_LEAKS=1 MODULE=$(TARGET) ./flow/tests.sh
 	./memcheck.sh
 
 benchmark:

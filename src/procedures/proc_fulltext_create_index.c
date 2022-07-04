@@ -149,7 +149,7 @@ static ProcedureResult _validateFieldConfigMap
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 		Attribute_ID fieldID = GraphContext_GetAttributeID(gc, field.stringval);
-		if(fieldID != ATTRIBUTE_NOTFOUND && s &&
+		if(fieldID != ATTRIBUTE_ID_NONE && s &&
 				Schema_GetIndex(s, &fieldID, IDX_FULLTEXT)) {
 			ErrorCtx_SetError("Index already exists configuration can't be changed");
 			return PROCEDURE_ERR;
@@ -260,7 +260,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke
 	}
 
 	// build index
-	if(res == INDEX_OK) Index_Construct(idx);
+	if(res == INDEX_OK) Index_Construct(idx, gc->g);
 
 	return PROCEDURE_OK;
 }

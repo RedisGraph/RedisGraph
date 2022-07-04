@@ -66,8 +66,17 @@ commands:
       getredis_params:
         type: string
         default: ""
+      benchmarks:
+        type: string
+        default: "no"
     steps:
       - setup-automation
+      - run:
+          name: Install remote benchmark python dependencies
+          command: |
+            if [[ "<<parameters.benchmarks>>" == "yes" ]]; then
+              python3 -m pip install -r ./tests/benchmarks/requirements.txt
+            fi
       - run:
           name: System setup
           shell: /bin/bash -l -eo pipefail
@@ -80,6 +89,12 @@ commands:
           command: |
             python3 ./deps/readies/bin/getredis -v '<<parameters.redis_version>>' --force <<parameters.getredis_params>>
             redis-server --version
+      - run:
+          name: Install remote benchmark tool dependencies
+          command: |
+            if [[ "<<parameters.benchmarks>>" == "yes" ]]; then
+              VERSION=0.14.8 ./deps/readies/bin/getterraform
+            fi
 
   save-tests-logs:
     steps:
@@ -143,6 +158,14 @@ commands:
           name: Test
           shell: /bin/bash -l -eo pipefail
           command: make test
+      - run:
+          name: Run 30-second fuzz test
+          shell: /bin/bash -l -eo pipefail
+          command: make fuzz
+      - save-tests-logs
+
+  fuzzer-test-steps:
+    steps:
       - run:
           name: Run 30-second fuzz test
           shell: /bin/bash -l -eo pipefail
@@ -237,13 +260,6 @@ commands:
         default: "oss-standalone"
     steps:
       - run:
-          name: Install remote benchmark tool dependencies
-          command: |
-            VERSION=0.14.8 ./deps/readies/bin/getterraform
-      - run:
-          name: Install remote benchmark python dependencies
-          command: python3 -m pip install -r ./tests/benchmarks/requirements.txt
-      - run:
           name: Run CI benchmarks on aws
           no_output_timeout: 30m # given we use very large datasets we need this timeout
           command: |
@@ -277,7 +293,8 @@ commands:
 jobs:
   build-linux-debian:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bullseye
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    resource_class: large
     parameters:
       redis_version:
         type: string
@@ -303,7 +320,8 @@ jobs:
 
   coverage:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bullseye
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    resource_class: large
     steps:
       - early-returns
       - checkout-all
@@ -321,12 +339,24 @@ jobs:
           command: |
             make test COV=1
             make cov-upload
-          no_output_timeout: 30m
+          no_output_timeout: 45m
+      - save-tests-logs
+
+  fuzzer:
+    docker:
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    steps:
+      - early-returns
+      - checkout-all
+      - install-prerequisites
+      - build-steps
+      - fuzzer-test-steps
       - save-tests-logs
 
   build-memcheck:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.7-x64-bionic
+    resource_class: large
     steps:
       - early-returns
       - checkout-all
@@ -338,6 +368,8 @@ jobs:
           name: Test for memory leaks
           shell: /bin/bash -l -eo pipefail
           command: make memcheck PARALLEL=8 PLATFORM_MODE=1
+          timeout: 45m
+          no_output_timeout: 45m
       - save-tests-logs
 
   build-platforms:
@@ -360,7 +392,7 @@ jobs:
         type: string
     machine:
       image: ubuntu-2004:202101-01
-    resource_class: arm.medium
+    resource_class: arm.large
     steps:
       - vm-build-platforms-steps:
           platform: <<parameters.platform>>
@@ -394,7 +426,7 @@ jobs:
         type: string
         default: "0"
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bullseye
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - early-return-for-forked-pull-requests
@@ -415,7 +447,7 @@ jobs:
 
   release-automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bullseye
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - early-return-for-forked-pull-requests
@@ -427,7 +459,7 @@ jobs:
 
   nightly-automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bullseye
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - early-return-for-forked-pull-requests
@@ -443,11 +475,12 @@ jobs:
 
   benchmark:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.7-x64-bionic
     steps:
       - early-returns
       - checkout-all
-      - install-prerequisites
+      - install-prerequisites:
+          benchmarks: "yes"
       - attach_workspace:
           at: ~/workspace
       - run:
@@ -459,11 +492,12 @@ jobs:
 
   benchmark-profiler:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.7-x64-bionic
     steps:
       - early-returns
       - checkout-all
-      - install-prerequisites
+      - install-prerequisites:
+          benchmarks: "yes"
       - attach_workspace:
           at: ~/workspace
       - run:
@@ -561,7 +595,7 @@ workflows:
           context: common
           matrix:
             parameters:
-              platform: [focal, bionic, xenial, centos7, rocky8]
+              platform: [focal, bionic, xenial, centos7, rocky8, bullseye]
       - build-arm-platforms:
           <<: *on-integ-and-version-tags
           context: common
@@ -601,7 +635,7 @@ workflows:
           <<: *on-perf-tags
           context: common
       # disable temporarily due to huge profile overhead in RG
-      # - benchmark-profiler: 
+      # - benchmark-profiler:
       #     <<: *on-perf-tags
       #     context: common
 
@@ -620,6 +654,8 @@ workflows:
               redis_version: ["6.0", "7", "unstable"]
       - benchmark:
           context: common
+      - fuzzer:
+          name: nightly-fuzzer
       # disable temporarily due to huge profile overhead in RG
       # - benchmark-profiler:
       #     context: common

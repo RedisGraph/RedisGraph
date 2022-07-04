@@ -368,7 +368,8 @@ class testQueryValidationFlow(FlowTestsBase):
             """MATCH (a) WHERE -1 OR true RETURN a""",
             """MATCH (a) WHERE true OR -1 RETURN a""",
             """MATCH (a) WHERE true AND -1 RETURN a""",
-            """MATCH (a:Author) WHERE a.name CONTAINS 'Ernest' OR 'Amor' RETURN a"""]
+            """MATCH (a:Author) WHERE a.name CONTAINS 'Ernest' OR 'Amor' RETURN a""",
+            """MATCH () RETURN [()<-[]-() WHERE 1 | TRUE]"""]
 
         for query in queries:
             try:
@@ -499,7 +500,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            self.env.assertIn("undefined property", str(e))
+            self.env.assertIn("undefined attribute", str(e))
 
         # MATCH clauses should be able to use self-referential properties as existential filters.
         query = """MATCH (a {age: a.age}) RETURN a.age"""
@@ -621,6 +622,7 @@ class testQueryValidationFlow(FlowTestsBase):
     def test42_unknown_function(self):
         queries = ["""MATCH (a { v: x()}) RETURN a""",
                 """MERGE (a { v: x()}) RETURN a""",
+                """MERGE (a) ON CREATE SET a.v = x() RETURN a""",
                 """CREATE (a { v: x()}) RETURN a""",
                 """MATCH (n) RETURN shortestPath(n, n)""",
                 """MATCH p=()-[*1..5]->() RETURN shortestPath(p)""",

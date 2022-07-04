@@ -168,7 +168,6 @@ bool OpBase_ChildrenAware(OpBase *op, const char *alias, int *idx);
  * modified by prior operation within its segment. */
 bool OpBase_Aware(OpBase *op, const char *alias, int *idx);
 
-void OpBase_PropagateFree(OpBase *op); // Sends free request to each operation up the chain.
 void OpBase_PropagateReset(OpBase *op); // Sends reset request to each operation up the chain.
 
 // Indicates if the operation is a writer operation.

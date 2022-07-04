@@ -32,6 +32,8 @@ typedef struct {
 	uint64_t key_count;              // number of virtual keys + primary key
 	uint64_t node_count;             // number of nodes
 	uint64_t edge_count;             // number of edges
+	uint64_t deleted_node_count;      // number of deleted nodes
+	uint64_t deleted_edge_count;     // number of deleted edges
 	const char *graph_name;          // name of graph
 	uint label_matrix_count;         // number of label matrices
 	uint relationship_matrix_count;  // number of relation matrices

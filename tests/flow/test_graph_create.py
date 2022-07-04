@@ -80,7 +80,7 @@ class testGraphCreationFlow(FlowTestsBase):
             redis_graph.query(query)
             self.env.assertTrue(False)
         except redis.exceptions.ResponseError as e:
-            self.env.assertIn("undefined property", str(e))
+            self.env.assertIn("undefined attribute", str(e))
 
     def test06_create_project_volatile_value(self):
         # The path e is volatile; verify that it can be projected after entity creation.
@@ -126,3 +126,28 @@ class testGraphCreationFlow(FlowTestsBase):
         expected_result = [['B']]
         self.env.assertEquals(result.result_set, expected_result)
 
+    # test creating a node with some alias, and then creating an edge that touches that node
+    # "variable redeclared" error should return only if the relation alias was already declared
+    # also, a node cannot be redeclared unless it is used to create new edges in a pattern
+    def test09_create_use_alias_in_many_clauses(self):
+        query = """CREATE (n1:Node1) CREATE (n2:Node1) CREATE (n1)-[r:Rel1]->(n2)"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.nodes_created, 2)
+        self.env.assertEquals(result.relationships_created, 1)
+
+        # This is a valid query, even though 'n1' is redeclared in the CREATE clause
+        query = """MATCH (n1:Node1) CREATE (n1)-[r:Rel1]->(n2)"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.nodes_created, 2)
+        self.env.assertEquals(result.relationships_created, 2)
+
+        queries = ["CREATE (n1)-[r:Rel1]->(n2) CREATE (n2)-[r:Rel1]->(n1)",
+                   "CREATE (n1)-[r:Rel1]->(n2), (n2)-[r:Rel1]->(n1)",
+                   "CREATE (n1)-[r:Rel1]->(n2) CREATE (n2)-[r2:Rel1]->(n3), (n3)-[r:Rel1]->(n2)",
+                   "MATCH (r) CREATE (r)"]
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("The bound variable 'r' can't be redeclared in a CREATE clause", str(e))
