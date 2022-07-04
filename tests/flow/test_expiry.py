@@ -37,8 +37,8 @@ class testExpiry():
         redis_con.config_set("maxmemory-policy", "allkeys-lru")
         redis_con.config_set("maxmemory", "2mb")
 
-        redis_graph = Graph(GRAPH_ID, redis_con)
-        redis_graph_new = Graph(GRAPH_ID + "new", redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
+        redis_graph_new = Graph(redis_con, GRAPH_ID + "new")
 
         # create a single node
         redis_graph.query("create ()")
