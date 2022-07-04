@@ -130,6 +130,22 @@ static sds _JsonEncoder_Path(SIValue p, sds s) {
 	return s;
 }
 
+static sds _JsonEncoder_Point(SIValue point, sds s) {
+	ASSERT(SI_TYPE(point) & T_POINT);
+
+	// default crs == wgs-84 till we support other CRS formats 
+	s = sdscat(s, "{\"crs\":\"wgs-84\",\"latitude\":");
+
+	s = sdscatprintf(s, "%f", Point_lat(point));
+	s = sdscat(s, ",\"longitude\":");
+	s = sdscatprintf(s, "%f", Point_lon(point));
+
+	// height is not supported yet
+	s = sdscat(s, ",\"height\":null");
+	s = sdscat(s, "}");
+	return s;
+}
+
 static sds _JsonEncoder_Array(SIValue list, sds s) {
 	// open array with "["
 	s = sdscat(s, "[");
@@ -181,7 +197,7 @@ sds _JsonEncoder_SIValue(SIValue v, sds s) {
 		else s = sdscat(s, "false");
 		break;
 	case T_DOUBLE:
-		s = sdscatprintf(s, "%f", v.doubleval);
+		s = sdscatprintf(s, "%.15g", v.doubleval);
 		break;
 	case T_NODE:
 		s = _JsonEncoder_GraphEntity(v.ptrval, s, GETYPE_NODE);
@@ -201,6 +217,9 @@ sds _JsonEncoder_SIValue(SIValue v, sds s) {
 	case T_NULL:
 		s = sdscat(s, "null");
 		break;
+	case T_POINT:
+		s = _JsonEncoder_Point(v, s);
+		break;		
 	default:
 		// unrecognized type
 		ErrorCtx_RaiseRuntimeException("JSON encoder encountered unrecognized type: %d\n", v.type);

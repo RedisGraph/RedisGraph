@@ -129,13 +129,44 @@ SIValue AR_TOINTEGER(SIValue *argv, int argc, void *private_data) {
 	}
 }
 
+SIValue AR_TOFLOAT(SIValue *argv, int argc, void *private_data) {
+	SIValue arg = argv[0];
+	char *sEnd = NULL;
+
+	switch(SI_TYPE(arg)) {
+	case T_NULL:
+		return SI_NullVal();
+	case T_INT64:
+		return SI_DoubleVal(arg.longval);
+	case T_DOUBLE:
+		return arg;
+	case T_STRING:
+		if(strlen(arg.stringval) == 0) return SI_NullVal();
+		errno = 0;
+		double parsedval = strtof(arg.stringval, &sEnd);
+		/* The input was not a complete number or represented a number that
+		 * cannot be represented as a double. */
+		if(sEnd[0] != '\0' || errno == ERANGE) return SI_NullVal();
+		return SI_DoubleVal(parsedval);
+	default:
+		ASSERT(false);
+		return SI_NullVal();
+	}
+}
+
 // returns the square root of a number
 SIValue AR_SQRT(SIValue *argv, int argc, void *private_data) {
 	SIValue arg = argv[0];
 	// return NULL if input is none numeric
 	if(SIValue_IsNull(arg)) return SI_NullVal();
+
+	double value = SI_GET_NUMERIC(arg);
+
+	// return NULL if input is negative
+	if(value < 0) return SI_NullVal();
+
 	// return sqrt of input
-	return SI_DoubleVal(sqrt(SI_GET_NUMERIC(arg)));
+	return SI_DoubleVal(sqrt(value));
 }
 
 // returns base^exponent
@@ -222,6 +253,12 @@ void Register_NumericFuncs() {
 	array_append(types, (SI_NUMERIC | T_STRING | T_NULL));
 	ret_type = T_INT64 | T_NULL;
 	func_desc = AR_FuncDescNew("tointeger", AR_TOINTEGER, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, (SI_NUMERIC | T_STRING | T_NULL));
+	ret_type = T_DOUBLE | T_NULL;
+	func_desc = AR_FuncDescNew("tofloat", AR_TOFLOAT, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);

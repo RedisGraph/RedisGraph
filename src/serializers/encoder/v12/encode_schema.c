@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "encode_v11.h"
+#include "encode_v12.h"
 
 static void _RdbSaveAttributeKeys
 (
@@ -140,7 +140,7 @@ static void _RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
 	_RdbSaveIndexData(rdb, s->type, s->fulltextIdx);
 }
 
-void RdbSaveGraphSchema_v11(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbSaveGraphSchema_v12(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * attribute keys (unified schema)
 	 * #node schemas

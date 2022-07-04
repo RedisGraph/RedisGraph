@@ -207,6 +207,13 @@ class testFunctionCallsFlow(FlowTestsBase):
         expected_result = [[-0.5]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
+        # Validate modulo on edge case -LONG_MIN%-1.
+        # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=30484
+        query = "RETURN toInteger(1.2289948315394e+19) % -1"
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
         # Validate modulo by 0
         query = "RETURN 3 % 0"
         try:
@@ -346,10 +353,10 @@ class testFunctionCallsFlow(FlowTestsBase):
 
     def test17_to_json(self):
         # Test JSON literal values in an array.
-        query = """RETURN toJSON([1, 'str', true, NULL])"""
+        query = """RETURN toJSON([1, 0.000000000000001, 'str', true, NULL])"""
         actual_result = graph.query(query)
         parsed = json.loads(actual_result.result_set[0][0])
-        self.env.assertEquals(parsed, [1, "str", True, None])
+        self.env.assertEquals(parsed, [1, 0.000000000000001, "str", True, None])
 
         # Test JSON an empty array value.
         query = """WITH [] AS arr RETURN toJSON(arr)"""
@@ -389,6 +396,12 @@ class testFunctionCallsFlow(FlowTestsBase):
         expected = [{'type': 'node', 'id': 0, 'labels': ['person'], 'properties': {'name': 'Roi', 'val': 0}}, {'type': 'relationship', 'id': 12, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 0, 'labels': ['person'], 'properties': {'name': 'Roi', 'val': 0}}, 'end': {'id': 1, 'labels': ['person'], 'properties': {'name': 'Alon', 'val': 1}}}, {'type': 'node', 'id': 1, 'labels': ['person'], 'properties': {'name': 'Alon', 'val': 1}}]
         parsed = json.loads(actual_result.result_set[0][0])
         self.env.assertEquals(parsed, expected)
+
+        # Test JSON literal values in an point.
+        query = """RETURN toJSON(point({ longitude: 167.697555, latitude: 0.402313 }))"""
+        actual_result = graph.query(query)
+        parsed = json.loads(actual_result.result_set[0][0])
+        self.env.assertEquals(parsed, {"crs": "wgs-84", "latitude": 0.402313, "longitude": 167.697556, "height": None})
 
     # Memory should be freed properly when the key values are heap-allocated.
     def test18_allocated_keys(self):
@@ -521,6 +534,11 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], None)
 
+        # the requested length is too long and overflowing
+        query = """RETURN SUBSTRING('ab', 1, 999999999999999999999999999999999999999999999)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], "b")
+
         try:
             query = """RETURN SUBSTRING("muchacho", 3, -20)"""
             graph.query(query)
@@ -574,3 +592,38 @@ class testFunctionCallsFlow(FlowTestsBase):
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertEqual(str(e), "length must be positive integer")
+
+    def test27_string_concat(self):
+        larg_double = 1.123456e300
+        query = f"""RETURN '' + {larg_double} + {larg_double}"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], "%f%f" % (larg_double, larg_double))
+
+    def test28_sqrt(self):
+        query = """RETURN sqrt(0)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], 0)
+
+        query = """RETURN sqrt(9801)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], 99)
+
+        query = """RETURN sqrt(-1)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+        query = """RETURN sqrt(-9)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+        query = """RETURN sqrt(-0.0000000001)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+        query = """RETURN sqrt(null)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+        query = """RETURN sqrt(2540.95581553)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], 50.4078943770715)

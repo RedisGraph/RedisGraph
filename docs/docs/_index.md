@@ -88,7 +88,7 @@ Congratulations! You can find the compiled binary at: `src/redisgraph.so`
 
 ## Installing RedisGraph
 
-RedisGraph is part of [Redis Stack](/docs/stack). See the [Redis Stack download page](/download) for installaton options.
+RedisGraph is part of [Redis Stack](/docs/stack). See the [Redis Stack download page](/download) for installation options.
 
 ## Using RedisGraph
 
@@ -131,7 +131,7 @@ The full list and links can be found on the [Clients](/docs/clients) page.
 
 The RedisGraph team maintains the [redisgraph-bulk-loader](https://github.com/redisgraph/redisgraph-bulk-loader) for importing new graphs from CSV files.
 
-The data format used by this tool is described in the [GRAPH.BULK implementation details](/docs/design/bulk_spec).
+The data format used by this tool is described in the [GRAPH.BULK implementation details](/docs/stack/graph/design/bulk_spec).
 
 ## Mailing List / Forum
 
