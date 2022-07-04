@@ -4,11 +4,12 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "decode_v11.h"
+#include "decode_v12.h"
 
 static void _RdbLoadFullTextIndex
 (
-	IODecoder *io,
+	RedisModuleIO *rdb,
+	GraphContext *gc,
 	Schema *s,
 	bool already_loaded
 ) {
@@ -20,28 +21,29 @@ static void _RdbLoadFullTextIndex
 	 * M * property: {name, weight, nostem, phonetic} */
 
 	Index *idx       = NULL;
-	char *language   = IODecoder_LoadStringBuffer(io, NULL);
+	char *language   = RedisModule_LoadStringBuffer(rdb, NULL);
 	char **stopwords = NULL;
 	
-	uint stopwords_count = IODecoder_LoadUnsigned(io);
+	uint stopwords_count = RedisModule_LoadUnsigned(rdb);
 	if(stopwords_count > 0) {
 		stopwords = array_new(char *, stopwords_count);
 		for (uint i = 0; i < stopwords_count; i++) {
-			char *stopword = IODecoder_LoadStringBuffer(io, NULL);
+			char *stopword = RedisModule_LoadStringBuffer(rdb, NULL);
 			array_append(stopwords, stopword);
 		}
 	}
 
-	uint fields_count = IODecoder_LoadUnsigned(io);
+	uint fields_count = RedisModule_LoadUnsigned(rdb);
 	for(uint i = 0; i < fields_count; i++) {
-		char    *field_name  =  IODecoder_LoadStringBuffer(io, NULL);
-		double  weight       =  IODecoder_LoadDouble(io);
-		bool    nostem       =  IODecoder_LoadUnsigned(io);
-		char    *phonetic    =  IODecoder_LoadStringBuffer(io, NULL);
+		char    *field_name  =  RedisModule_LoadStringBuffer(rdb, NULL);
+		double  weight       =  RedisModule_LoadDouble(rdb);
+		bool    nostem       =  RedisModule_LoadUnsigned(rdb);
+		char    *phonetic    =  RedisModule_LoadStringBuffer(rdb, NULL);
 
 		if(!already_loaded) {
 			IndexField field;
-			IndexField_New(&field, field_name, weight, nostem, phonetic);
+			Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field_name);
+			IndexField_New(&field, field_id, field_name, weight, nostem, phonetic);
 			Schema_AddIndex(&idx, s, &field, IDX_FULLTEXT);
 		}
 
@@ -65,7 +67,8 @@ static void _RdbLoadFullTextIndex
 
 static void _RdbLoadExactMatchIndex
 (
-	IODecoder *io,
+	RedisModuleIO *rdb,
+	GraphContext *gc,
 	Schema *s,
 	bool already_loaded
 ) {
@@ -74,12 +77,13 @@ static void _RdbLoadExactMatchIndex
 	 * M * property */
 
 	Index *idx = NULL;
-	uint fields_count = IODecoder_LoadUnsigned(io);
+	uint fields_count = RedisModule_LoadUnsigned(rdb);
 	for(uint i = 0; i < fields_count; i++) {
-		char *field_name = IODecoder_LoadStringBuffer(io, NULL);
+		char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
 		if(!already_loaded) {
 			IndexField field;
-			IndexField_New(&field, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
+			Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field_name);
+			IndexField_New(&field, field_id, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
 				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
 
 			Schema_AddIndex(&idx, s, &field, IDX_EXACT_MATCH);
@@ -90,7 +94,8 @@ static void _RdbLoadExactMatchIndex
 
 static Schema *_RdbLoadSchema
 (
-	IODecoder *io,
+	RedisModuleIO *rdb,
+	GraphContext *gc,
 	SchemaType type,
 	bool already_loaded
 ) {
@@ -101,21 +106,21 @@ static Schema *_RdbLoadSchema
 	 * index type
 	 * index data */
 
-	int id = IODecoder_LoadUnsigned(io);
-	char *name = IODecoder_LoadStringBuffer(io, NULL);
+	int id = RedisModule_LoadUnsigned(rdb);
+	char *name = RedisModule_LoadStringBuffer(rdb, NULL);
 	Schema *s = already_loaded ? NULL : Schema_New(type, id, name);
 	RedisModule_Free(name);
 
-	uint index_count = IODecoder_LoadUnsigned(io);
+	uint index_count = RedisModule_LoadUnsigned(rdb);
 	for (uint index = 0; index < index_count; index++) {
-		IndexType index_type = IODecoder_LoadUnsigned(io);
+		IndexType index_type = RedisModule_LoadUnsigned(rdb);
 
 		switch(index_type) {
 			case IDX_FULLTEXT:
-				_RdbLoadFullTextIndex(io, s, already_loaded);
+				_RdbLoadFullTextIndex(rdb, gc, s, already_loaded);
 				break;
 			case IDX_EXACT_MATCH:
-				_RdbLoadExactMatchIndex(io, s, already_loaded);
+				_RdbLoadExactMatchIndex(rdb, gc, s, already_loaded);
 				break;
 			default:
 				ASSERT(false);
@@ -125,28 +130,28 @@ static Schema *_RdbLoadSchema
 
 	if(s) {
 		// no entities are expected to be in the graph in this point in time
-		if(s->index) Index_Construct(s->index);
-		if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
+		if(s->index) Index_Construct(s->index, gc->g);
+		if(s->fulltextIdx) Index_Construct(s->fulltextIdx, gc->g);
 	}
 
 	return s;
 }
 
-static void _RdbLoadAttributeKeys(IODecoder *io, GraphContext *gc) {
+static void _RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * #attribute keys
 	 * attribute keys
 	 */
 
-	uint count = IODecoder_LoadUnsigned(io);
+	uint count = RedisModule_LoadUnsigned(rdb);
 	for(uint i = 0; i < count; i ++) {
-		char *attr = IODecoder_LoadStringBuffer(io, NULL);
+		char *attr = RedisModule_LoadStringBuffer(rdb, NULL);
 		GraphContext_FindOrAddAttribute(gc, attr);
 		RedisModule_Free(attr);
 	}
 }
 
-void RdbLoadGraphSchema_v11(IODecoder *io, GraphContext *gc) {
+void RdbLoadGraphSchema_v12(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * attribute keys (unified schema)
 	 * #node schemas
@@ -157,27 +162,27 @@ void RdbLoadGraphSchema_v11(IODecoder *io, GraphContext *gc) {
 	 */
 
 	// Attributes, Load the full attribute mapping.
-	_RdbLoadAttributeKeys(io, gc);
+	_RdbLoadAttributeKeys(rdb, gc);
 
 	// #Node schemas
-	uint schema_count = IODecoder_LoadUnsigned(io);
+	uint schema_count = RedisModule_LoadUnsigned(rdb);
 
 	bool already_loaded = array_len(gc->node_schemas) > 0;
 
 	// Load each node schema
 	gc->node_schemas = array_ensure_cap(gc->node_schemas, schema_count);
 	for(uint i = 0; i < schema_count; i ++) {
-		Schema *s = _RdbLoadSchema(io, SCHEMA_NODE, already_loaded);
+		Schema *s = _RdbLoadSchema(rdb, gc, SCHEMA_NODE, already_loaded);
 		if(!already_loaded) array_append(gc->node_schemas, s);
 	}
 
 	// #Edge schemas
-	schema_count = IODecoder_LoadUnsigned(io);
+	schema_count = RedisModule_LoadUnsigned(rdb);
 
 	// Load each edge schema
 	gc->relation_schemas = array_ensure_cap(gc->relation_schemas, schema_count);
 	for(uint i = 0; i < schema_count; i ++) {
-		Schema *s = _RdbLoadSchema(io, SCHEMA_EDGE, already_loaded);
+		Schema *s = _RdbLoadSchema(rdb, gc, SCHEMA_EDGE, already_loaded);
 		if(!already_loaded) array_append(gc->relation_schemas, s);
 	}
 }

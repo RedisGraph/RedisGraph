@@ -50,6 +50,16 @@ bool SIArray_ContainsType(SIValue siarray, SIType t) {
 	return false;
 }
 
+bool SIArray_AllOfType(SIValue siarray, SIType t) {
+	uint array_len = SIArray_Length(siarray);
+	for(uint i = 0; i < array_len; i++) {
+		SIValue elem = SIArray_Get(siarray, i);
+		if((SI_TYPE(elem) & t) == 0) return false;
+	}
+
+	return true;
+}
+
 SIValue SIArray_Clone(SIValue siarray) {
 	uint arrayLen = SIArray_Length(siarray);
 	SIValue newArray = SIArray_New(arrayLen);

@@ -5,13 +5,13 @@
  */
 
 #include "decode_io.h"
-#include "current/v11/decode_v11.h"
+#include "current/v12/decode_v12.h"
 
 static inline GraphContext *_LoadGraph
 (
 	IODecoder *decoder
 ) {
-	return RdbLoadGraphContext_v11(decoder);
+	return RdbLoadGraphContext_v12(decoder);
 }
 
 // load graph from pipe

@@ -136,7 +136,6 @@ GraphContext *GraphContext_New
 						  (CacheEntryCopyFunc)ExecutionCtx_Clone);
 
 	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_FLUSH_RESIZE);
-	QueryCtx_SetGraphCtx(gc);
 
 	return gc;
 }
@@ -397,7 +396,7 @@ Attribute_ID GraphContext_GetAttributeID(GraphContext *gc, const char *attribute
 	// Release the lock.
 	pthread_rwlock_unlock(&gc->_attribute_rwlock);
 
-	if(id == raxNotFound) return ATTRIBUTE_NOTFOUND;
+	if(id == raxNotFound) return ATTRIBUTE_ID_NONE;
 
 	return (uintptr_t)id;
 }
@@ -417,11 +416,11 @@ bool GraphContext_HasIndices(GraphContext *gc) {
 	for(uint i = 0; i < schema_count; i++) {
 		if(Schema_HasIndices(gc->relation_schemas[i])) return true;
 	}
-	
+
 	return false;
 }
 Index *GraphContext_GetIndexByID(const GraphContext *gc, int id,
-					Attribute_ID *attribute_id, IndexType type, SchemaType t) {
+								 Attribute_ID *attribute_id, IndexType type, SchemaType t) {
 
 	ASSERT(gc     !=  NULL);
 
@@ -464,8 +463,9 @@ int GraphContext_AddExactMatchIndex
 	if(s == NULL) s = GraphContext_AddSchema(gc, label, schema_type);
 
 	IndexField idx_field;
-	IndexField_New(&idx_field, field, INDEX_FIELD_DEFAULT_WEIGHT,
-			INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
+	Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field);
+	IndexField_New(&idx_field, field_id, field, INDEX_FIELD_DEFAULT_WEIGHT,
+				   INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
 
 	int res = Schema_AddIndex(idx, s, &idx_field, IDX_EXACT_MATCH);
 
@@ -495,7 +495,8 @@ int GraphContext_AddFullTextIndex
 	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
 	if(s == NULL) s = GraphContext_AddSchema(gc, label, schema_type);
 	IndexField index_field;
-	IndexField_New(&index_field, field, weight, nostem, phonetic);
+	Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field);
+	IndexField_New(&index_field, field_id, field, weight, nostem, phonetic);
 	int res = Schema_AddIndex(idx, s, &index_field, IDX_FULLTEXT);
 	ResultSet *result_set = QueryCtx_GetResultSet();
 	ResultSet_IndexCreated(result_set, res);
@@ -528,53 +529,6 @@ int GraphContext_DeleteIndex
 	}
 
 	return res;
-}
-
-// delete all references to a node from any indices built upon its properties
-void GraphContext_DeleteNodeFromIndices
-(
-	GraphContext *gc,
-	Node *n
-) {
-	ASSERT(n  != NULL);
-	ASSERT(gc != NULL);
-
-	Schema    *s       =  NULL;
-	Graph     *g       =  gc->g;
-	EntityID  node_id  =  ENTITY_GET_ID(n);
-
-	// retrieve node labels
-	uint label_count;
-	NODE_GET_LABELS(g, n, label_count);
-
-	for(uint i = 0; i < label_count; i++) {
-		int label_id = labels[i];
-		s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
-		ASSERT(s != NULL);
-
-		// Update any indices this entity is represented in
-		Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
-		if(idx) Index_RemoveNode(idx, n);
-
-		idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
-		if(idx) Index_RemoveNode(idx, n);
-	}
-}
-
-void GraphContext_DeleteEdgeFromIndices(GraphContext *gc, Edge *e) {
-	Schema  *s  =  NULL;
-	Graph   *g  =  gc->g;
-
-	int relation_id = EDGE_GET_RELATION_ID(e, g);
-
-	s = GraphContext_GetSchemaByID(gc, relation_id, SCHEMA_EDGE);
-
-	// update any indices this entity is represented in
-	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
-	if(idx) Index_RemoveEdge(idx, e);
-
-	idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
-	if(idx) Index_RemoveEdge(idx, e);
 }
 
 //------------------------------------------------------------------------------
@@ -641,6 +595,17 @@ static void _GraphContext_Free(void *arg) {
 	if(GraphDecodeContext_Finished(gc->decoding_context)) Graph_Free(gc->g);
 	else Graph_PartialFree(gc->g);
 
+
+	bool async_delete;
+	Config_Option_get(Config_ASYNC_DELETE, &async_delete);
+	
+	RedisModuleCtx *ctx = NULL;
+	if(async_delete) {
+		ctx = RedisModule_GetThreadSafeContext(NULL);
+		// GIL need to be acquire because RediSearch change Redis global data structure
+		RedisModule_ThreadSafeContextLock(ctx);
+	}
+
 	//--------------------------------------------------------------------------
 	// Free node schemas
 	//--------------------------------------------------------------------------
@@ -663,6 +628,11 @@ static void _GraphContext_Free(void *arg) {
 			Schema_Free(gc->relation_schemas[i]);
 		}
 		array_free(gc->relation_schemas);
+	}
+
+	if(async_delete) {
+		RedisModule_ThreadSafeContextUnlock(ctx);
+		RedisModule_FreeThreadSafeContext(ctx);
 	}
 
 	//--------------------------------------------------------------------------

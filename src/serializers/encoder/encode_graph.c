@@ -5,14 +5,14 @@
  */
 
 #include "encode_io.h"
-#include "v11/encode_v11.h"
+#include "v12/encode_v12.h"
 
 static inline void _SaveGraph
 (
 	IOEncoder *encoder,
 	void *value
 ) {
-	RdbSaveGraph_v11(encoder, value);
+	RdbSaveGraph_v12(encoder, value);
 }
 
 // graph encoder used by Redis to produce RDB

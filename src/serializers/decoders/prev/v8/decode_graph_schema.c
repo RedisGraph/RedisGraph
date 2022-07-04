@@ -6,7 +6,12 @@
 
 #include "decode_v8.h"
 
-static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
+static Schema *_RdbLoadSchema
+(
+	RedisModuleIO *rdb,
+	GraphContext *gc,
+	SchemaType type
+) {
 	/* Format:
 	 * id
 	 * name
@@ -24,7 +29,8 @@ static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 		IndexType type = RedisModule_LoadUnsigned(rdb);
 		char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
 		IndexField field;
-		IndexField_New(&field, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
+		Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field_name);
+		IndexField_New(&field, field_id, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
 				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
 		Schema_AddIndex(&idx, s, &field, type);
 		RedisModule_Free(field_name);
@@ -66,7 +72,7 @@ void RdbLoadGraphSchema_v8(RedisModuleIO *rdb, GraphContext *gc) {
 	// Load each node schema
 	gc->node_schemas = array_ensure_cap(gc->node_schemas, schema_count);
 	for(uint i = 0; i < schema_count; i ++) {
-		array_append(gc->node_schemas, _RdbLoadSchema(rdb, SCHEMA_NODE));
+		array_append(gc->node_schemas, _RdbLoadSchema(rdb, gc, SCHEMA_NODE));
 	}
 
 	// #Edge schemas
@@ -75,6 +81,6 @@ void RdbLoadGraphSchema_v8(RedisModuleIO *rdb, GraphContext *gc) {
 	// Load each edge schema
 	gc->relation_schemas = array_ensure_cap(gc->relation_schemas, schema_count);
 	for(uint i = 0; i < schema_count; i ++) {
-		array_append(gc->relation_schemas, _RdbLoadSchema(rdb, SCHEMA_EDGE));
+		array_append(gc->relation_schemas, _RdbLoadSchema(rdb, gc, SCHEMA_EDGE));
 	}
 }

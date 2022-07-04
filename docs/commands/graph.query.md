@@ -648,7 +648,7 @@ This section contains information on all supported functions from the Cypher que
 | keys()                 | Returns the array of keys contained in the given map, node, or edge.        |
 | labels()               | Returns a string representation of the label of a node.                     |
 | startNode()            | Returns the source node of a relationship.                                  |
-| timestamp()            | Returns the the amount of milliseconds since epoch.                         |
+| timestamp()            | Returns the amount of milliseconds since epoch.                         |
 | type()                 | Returns a string representation of the type of a relation.                  |
 | list comprehensions    | [See documentation](#list-comprehensions)                                   |
 | pattern comprehensions | [See documentation](#pattern-comprehensions)                                |
@@ -695,6 +695,7 @@ This section contains information on all supported functions from the Cypher que
 | sqrt()      | Returns the square root of a number                                                                                      |
 | pow()       | Returns base raised to the power of exponent, base^exponent                                                              |
 | toInteger() | Converts a floating point or string value to an integer value.                                                           |
+| toFloat()   | Converts an integer or string value to a floating point value.                                                           |
 
 ## String functions
 
@@ -867,7 +868,7 @@ The format for a relationship object in JSON is:
 {
   "type": "relationship",
   "id": id(int),
-  "label": label(string),
+  "relationship": type(string),
   "properties": {
     property_key(string): property_value X N
   }
@@ -989,7 +990,7 @@ GRAPH.QUERY DEMO_GRAPH "DROP INDEX ON :Person(age)"
 
 ## Full-text indexes
 
-RedisGraph leverages the indexing capabilities of [RediSearch](https://oss.redis.com/redisearch/index.html) to provide full-text indices through procedure calls. To construct a full-text index on the `title` property of all nodes with label `Movie`, use the syntax:
+RedisGraph leverages the indexing capabilities of [RediSearch](/docs/stack/search/index.html) to provide full-text indices through procedure calls. To construct a full-text index on the `title` property of all nodes with label `Movie`, use the syntax:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('Movie', 'title')"
@@ -1033,7 +1034,7 @@ RETURN m ORDER BY m.rating"
 3) 1) "Query internal execution time: 0.226914 milliseconds"
 ```
 
-In addition to yielding matching nodes, full-text index scans will return the score of each node. This is the [TF-IDF](https://oss.redis.com/redisearch/Scoring/#tfidf_default) score of the node, which is informed by how many times the search terms appear in the node and how closely grouped they are. This can be observed in the example:
+In addition to yielding matching nodes, full-text index scans will return the score of each node. This is the [TF-IDF](/docs/stack/search/reference/scoring/#tfidf-default) score of the node, which is informed by how many times the search terms appear in the node and how closely grouped they are. This can be observed in the example:
 ```sh
 GRAPH.QUERY DEMO_GRAPH
 "CALL db.idx.fulltext.queryNodes('Node', 'hello world') YIELD node, score RETURN score, node.val"
@@ -1059,7 +1060,7 @@ GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex({ label: 'Movie', l
 
 RediSearch provide 3 additional field configuration options:
 1. Weight - The importance of the text in the field
-2. Nostem - Skip setemming when indexing text
+2. Nostem - Skip stemming when indexing text
 3. Phonetic - Enable phonetic search on the text
 
 To construct a full-text index on the `title` property with phonetic search of all nodes with label `Movie`, use the syntax:

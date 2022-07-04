@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "encode_v11.h"
+#include "encode_v12.h"
 
 static void _RdbSaveAttributeKeys
 (
@@ -117,7 +117,11 @@ static inline void _RdbSaveIndexData
 	else _RdbSaveExactMatchIndex(io, type, idx);
 }
 
-static void _RdbSaveSchema(IOEncoder *io, Schema *s) {
+static void _RdbSaveSchema
+(
+	IOEncoder *io,
+	Schema *s
+) {
 	/* Format:
 	 * id
 	 * name
@@ -140,7 +144,7 @@ static void _RdbSaveSchema(IOEncoder *io, Schema *s) {
 	_RdbSaveIndexData(io, s->type, s->fulltextIdx);
 }
 
-void RdbSaveGraphSchema_v11
+void RdbSaveGraphSchema_v12
 (
 	IOEncoder *io,
 	GraphContext *gc
