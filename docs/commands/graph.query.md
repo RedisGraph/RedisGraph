@@ -247,7 +247,7 @@ Behavior in presence on multiple-edges:
 
   - multi-edges are two or more edges connecting the same pair of vertices (possibly with different weights and costs). 
 
-  - All matching edges are considered. Paths with identical vertices and different edges are different paths. The following are 3 different paths (_n1_, _n2_, and _n3_ are nodes; _e1_, _e2_, _e3_, and _e4_ are edges): (n1)-[e1]-(n2)-[e2]-(n3),  (n1)-[e1]-(n2)-[e3]-(n3),  (n1)-[e4]-(n2)-[e3]-(n3)
+  - All matching edges are considered. Paths with identical vertices and different edges are different paths. The following are 3 different paths ('n1', 'n2', and 'n3' are nodes; 'e1', 'e2', 'e3', and 'e4' are edges): (n1)-[e1]-(n2)-[e2]-(n3),  (n1)-[e1]-(n2)-[e3]-(n3),  (n1)-[e4]-(n2)-[e3]-(n3)
 
 Example:
 
