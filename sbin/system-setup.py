@@ -13,8 +13,8 @@ import paella
 #----------------------------------------------------------------------------------------------
 
 class RedisGraphSetup(paella.Setup):
-    def __init__(self, nop=False):
-        paella.Setup.__init__(self, nop)
+    def __init__(self, args):
+        paella.Setup.__init__(self, args.nop)
 
     def common_first(self):
         self.install_downloaders()
@@ -29,6 +29,7 @@ class RedisGraphSetup(paella.Setup):
         else:
             self.run("%s/bin/getgcc" % READIES)
         self.install("peg")
+        self.pip_install("-r tests/fuzz/requirements.txt")
 
     def redhat_compat(self):
         self.install("redhat-lsb-core")
@@ -51,6 +52,7 @@ class RedisGraphSetup(paella.Setup):
         self.run("brew install libomp")
         self.install("redis")
         self.install_peg()
+        self.pip_install("-r tests/fuzz/requirements.txt")
 
     def alpine(self):
         self.install("automake make autoconf libtool m4")
@@ -73,7 +75,6 @@ class RedisGraphSetup(paella.Setup):
         self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall".format(PYTHON=self.python, READIES=READIES))
         self.pip_install("awscli")
         self.pip_install("-r tests/requirements.txt")
-        self.pip_install("-r tests/fuzz/requirements.txt")
         self.run("%s/bin/getpy2" % READIES) # for RediSearch build
 
     def install_peg(self):
@@ -96,4 +97,4 @@ parser = argparse.ArgumentParser(description='Set up system for build.')
 parser.add_argument('-n', '--nop', action="store_true", help='no operation')
 args = parser.parse_args()
 
-RedisGraphSetup(nop=args.nop).setup()
+RedisGraphSetup(args).setup()
