@@ -23,7 +23,7 @@ class testPendingQueryLimit():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         # skip test if we're running under Valgrind
-        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
+        if self.env.debugger is not None or os.getenv('COV') == '1':
             self.env.skip() # valgrind is not working correctly with multi process
 
         self.conn = self.env.getConnection()
@@ -47,6 +47,7 @@ class testPendingQueryLimit():
 
     def test_01_query_limit_config(self):
         # read max queued queries config
+        self.env.skipOnCluster()
         result = self.conn.execute_command("GRAPH.CONFIG", "GET", "MAX_QUEUED_QUERIES")
         max_queued_queries = result[1]
         self.env.assertEquals(max_queued_queries, 4294967295)
@@ -61,6 +62,7 @@ class testPendingQueryLimit():
 
     def test_02_overflow_no_limit(self):
         # no limit on number of pending queries
+        self.env.skipOnCluster()
         limit = 4294967295
         self.conn.execute_command("GRAPH.CONFIG", "SET", "MAX_QUEUED_QUERIES", limit)
 
@@ -70,6 +72,7 @@ class testPendingQueryLimit():
 
     def test_03_overflow_with_limit(self):
         # limit number of pending queries
+        self.env.skipOnCluster()
         limit = 1
         self.conn.execute_command("GRAPH.CONFIG", "SET", "MAX_QUEUED_QUERIES", limit)
 

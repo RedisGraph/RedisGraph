@@ -8,7 +8,7 @@ class testQueryTimeout(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
         # skip test if we're running under Valgrind
-        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
+        if self.env.debugger is not None or os.getenv('COV') == '1':
             self.env.skip() # queries will be much slower under Valgrind
 
         global redis_con
@@ -32,6 +32,7 @@ class testQueryTimeout(FlowTestsBase):
             assert(False)
 
     def test02_configured_timeout(self):
+        self.env.skipOnCluster()
         # Verify that the module-level timeout is set to the default of 0
         response = redis_con.execute_command("GRAPH.CONFIG GET timeout")
         self.env.assertEquals(response[1], 0)
@@ -49,6 +50,7 @@ class testQueryTimeout(FlowTestsBase):
             self.env.assertContains("Query timed out", str(error))
 
     def test03_timeout_index_scan(self):
+        self.env.skipOnCluster()
         # set timeout to unlimited
         redis_con.execute_command("GRAPH.CONFIG SET timeout 0")
 

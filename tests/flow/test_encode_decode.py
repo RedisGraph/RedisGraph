@@ -23,6 +23,7 @@ class test_encode_decode(FlowTestsBase):
         redis_con = self.env.getConnection()
 
     def test01_nodes_over_multiple_keys(self):
+        self.env.skipOnCluster()
         graph_name = "nodes_over_multiple_keys"
         redis_graph = Graph(redis_con, graph_name)
         # Create 3 nodes meta keys
@@ -36,6 +37,7 @@ class test_encode_decode(FlowTestsBase):
         self.env.assertEquals(expected.result_set, actual.result_set)
 
     def test02_no_compaction_on_nodes_delete(self):
+        self.env.skipOnCluster()
         graph_name = "no_compaction_on_nodes_delete"
         redis_graph = Graph(redis_con, graph_name)
         # Create 20 nodes meta keys
@@ -63,6 +65,7 @@ class test_encode_decode(FlowTestsBase):
             expected_full_graph_nodes_id.result_set, actual.result_set)
 
     def test03_edges_over_multiple_keys(self):
+        self.env.skipOnCluster()
         graph_name = "edges_over_multiple_keys"
         redis_graph = Graph(redis_con, graph_name)
         # Create 3 edges meta keys
@@ -77,6 +80,7 @@ class test_encode_decode(FlowTestsBase):
         self.env.assertEquals(expected.result_set, actual.result_set)
 
     def test04_no_compaction_on_edges_delete(self):
+        self.env.skipOnCluster()
         graph_name = "no_compaction_on_edges_delete"
         redis_graph = Graph(redis_con, graph_name)
         # Create 3 nodes meta keys
@@ -103,6 +107,7 @@ class test_encode_decode(FlowTestsBase):
             expected_full_graph_nodes_id.result_set, actual.result_set)
 
     def test05_multiple_edges_over_multiple_keys(self):
+        self.env.skipOnCluster()
         graph_name = "multiple_edges_over_multiple_keys"
         redis_graph = Graph(redis_con, graph_name)
         # Create 3 edges meta keys
@@ -117,6 +122,7 @@ class test_encode_decode(FlowTestsBase):
         self.env.assertEquals(expected.result_set, actual.result_set)
 
     def test06_no_compaction_on_multiple_edges_delete(self):
+        self.env.skipOnCluster()
         graph_name = "no_compaction_on_multiple_edges_delete"
         redis_graph = Graph(redis_con, graph_name)
         # Create 3 nodes meta keys
@@ -143,6 +149,7 @@ class test_encode_decode(FlowTestsBase):
             expected_full_graph_nodes_id.result_set, actual.result_set)
 
     def test07_index_after_encode_decode_in_v7(self):
+        self.env.skipOnCluster()
         graph_name = "index_after_encode_decode_in_v7"
         redis_graph = Graph(redis_con, graph_name)
         redis_graph.query("CREATE INDEX ON :N(val)")
@@ -158,6 +165,7 @@ class test_encode_decode(FlowTestsBase):
         self.env.assertIn("Index Scan", plan)
 
     def test08_multiple_graphs_with_index(self):
+        self.env.skipOnCluster()
         # Create a multi-key graph.
         graph1_name = "v7_graph_1"
         graph1 = Graph(redis_con, graph1_name)
@@ -184,6 +192,7 @@ class test_encode_decode(FlowTestsBase):
         self.env.assertEquals(actual.result_set, expected)
 
     def test08_multiple_reltypes(self):
+        self.env.skipOnCluster()
         graph_name = "multiple_reltypes"
         redis_graph = Graph(redis_con, graph_name)
         # Create 10 nodes
@@ -209,6 +218,7 @@ class test_encode_decode(FlowTestsBase):
     # test changes to the VKEY_MAX_ENTITY_COUNT configuration are reflected in
     # the number of virtual keys created
     def test09_vkey_max_entity_count(self):
+        self.env.skipOnCluster()
         redis_con.flushall()
 
         logfilename = self.env.envRunner._getFileName("master", ".log")
@@ -250,6 +260,7 @@ class test_encode_decode(FlowTestsBase):
         self.env.assertEqual(matches, ['3', '6'])
 
     def test10_decode_single_edge_relation_with_deleted_nodes(self):
+        self.env.skipOnCluster()
         redis_con.flushall()
 
         # Set configuration
@@ -280,6 +291,7 @@ class test_encode_decode(FlowTestsBase):
         self.env.assertEquals(res_before.result_set, res_after.result_set)
 
     def test11_decode_multi_edge_relation_with_deleted_nodes(self):
+        self.env.skipOnCluster()
         redis_con.flushall()
 
         # Set configuration
@@ -310,6 +322,7 @@ class test_encode_decode(FlowTestsBase):
         self.env.assertEquals(res_before.result_set, res_after.result_set)
 
     def test12_random_graph(self):
+        self.env.skipOnCluster()
         redis_con.flushall()
 
         graph_name = "random_graph"

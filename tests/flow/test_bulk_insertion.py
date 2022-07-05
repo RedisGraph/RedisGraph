@@ -356,7 +356,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
     # Verify that the bulk loader does not block the server
     def test09_large_bulk_insert(self):
         # Skip this test if running under Valgrind, (too slow)
-        if self.env.envRunner.debugger is not None:
+        if self.env.debugger is not None:
             self.env.skip()
 
         graphname = "tmpgraph5"

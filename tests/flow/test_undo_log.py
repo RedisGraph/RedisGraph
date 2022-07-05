@@ -301,6 +301,7 @@ class testUndoLog():
         self.env.assertEquals(len(result.result_set), 2)
 
     def test14_undo_timeout(self):
+        self.env.skipOnCluster()
         # Change timeout value from default
         response = self.redis_con.execute_command("GRAPH.CONFIG SET TIMEOUT 1")
         self.env.assertEqual(response, "OK")

@@ -438,7 +438,7 @@ class testQueryValidationFlow(FlowTestsBase):
 
     def test31_set_invalid_property_type(self):
         # Skip this test if running under Valgrind, as it causes a memory leak.
-        if self.env.envRunner.debugger is not None:
+        if self.env.debugger is not None:
             self.env.skip()
 
         queries = ["""MATCH (a) CREATE (:L {v: a})""",
@@ -490,7 +490,7 @@ class testQueryValidationFlow(FlowTestsBase):
 
     def test34_self_referential_properties(self):
         # Skip this test if running under Valgrind, as it causes a memory leak.
-        if self.env.envRunner.debugger is not None:
+        if self.env.debugger is not None:
             self.env.skip()
 
         try:

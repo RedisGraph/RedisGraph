@@ -161,6 +161,7 @@ class testResultSetFlow(FlowTestsBase):
 
     # Test implicit result-set size limit
     def test09_implicit_resultset_limit(self):
+        self.env.skipOnCluster()
         query = "MATCH (a) RETURN a"
 
         result = graph.query(query)

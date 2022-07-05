@@ -88,6 +88,7 @@ class testGraphPersistency():
         return dense_graph
 
     def test01_save_load(self):
+        self.env.skipOnCluster()
         graph_names = ["G", "{tag}_G"]
         for graph_name in graph_names:
             graph = self.populate_graph(graph_name)
@@ -140,6 +141,7 @@ class testGraphPersistency():
 
     # Verify that edges are not modified after entity deletion
     def test02_deleted_entity_migration(self):
+        self.env.skipOnCluster()
         graph_names = ("H", "{tag}_H")
         for graph_name in graph_names:
             graph = self.populate_dense_graph(graph_name)
@@ -160,6 +162,7 @@ class testGraphPersistency():
 
     # Strings, numerics, booleans, array, and point properties should be properly serialized and reloaded
     def test03_restore_properties(self):
+        self.env.skipOnCluster()
         graph_names = ("simple_props", "{tag}_simple_props")
         for graph_name in graph_names:
             graph = Graph(redis_con, graph_name)
@@ -184,6 +187,7 @@ class testGraphPersistency():
     # Verify multiple edges of the same relation between nodes A and B
     # are saved and restored correctly.
     def test04_repeated_edges(self):
+        self.env.skipOnCluster()
         graph_names = ["repeated_edges", "{tag}_repeated_edges"]
         for graph_name in graph_names:
             graph = Graph(redis_con, graph_name)
@@ -217,6 +221,7 @@ class testGraphPersistency():
     # Verify that graphs larger than the
     # default capacity are persisted correctly.
     def test05_load_large_graph(self):
+        self.env.skipOnCluster()
         graph_name = "LARGE_GRAPH"
         graph = Graph(redis_con, graph_name)
         q = """UNWIND range(1, 50000) AS v CREATE (:L)-[:R {v: v}]->(:L)"""
@@ -241,6 +246,7 @@ class testGraphPersistency():
 
     # Verify that graphs created using the GRAPH.BULK endpoint are persisted correctly
     def test06_bulk_insert(self):
+        self.env.skipOnCluster()
         graphname = "bulk_inserted_graph"
         runner = CliRunner()
 
@@ -376,6 +382,7 @@ class testGraphPersistency():
 
     # Verify that nodes with multiple labels are saved and restored correctly.
     def test07_persist_multiple_labels(self):
+        self.env.skipOnCluster()
         graph_id = "multiple_labels"
         g = Graph(redis_con, graph_id)
         q = "CREATE (a:L0:L1:L2)"

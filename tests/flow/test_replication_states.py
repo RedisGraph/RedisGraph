@@ -31,7 +31,7 @@ class testReplicationState():
         self.connection_state = Connection.Connected
 
         # skip test if we're running under Valgrind
-        if self.env.envRunner.debugger is not None:
+        if self.env.debugger is not None:
             self.env.skip() # valgrind is not working correctly with replication
 
     # check that the expected key count exists in both master and slave
@@ -92,6 +92,7 @@ class testReplicationState():
         return iter
 
     def test_replication_permutations(self):
+        self.env.skipOnCluster()
         for scenario in self._choose_random(permutations(keys.keys()), 2):
             print(f"scenario: {scenario}")
             for connection_permutation in self._choose_random(self._permutation(2, 5), 3):

@@ -22,6 +22,7 @@ class testCache(FlowTestsBase):
         plan_graph.delete()
 
     def test_sanity_check(self):
+        self.env.skipOnCluster()
         graph = Graph(redis_con, 'Cache_Sanity_Check')
         for i in range(CACHE_SIZE + 1):
             result = graph.query("MATCH (n) WHERE n.value = {val} RETURN n".format(val=i))

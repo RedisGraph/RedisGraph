@@ -42,7 +42,8 @@ class testQueryMemoryLimit():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         # skip test if we're running under Valgrind
-        if self.env.envRunner.debugger is not None:
+        self.env.skipOnCluster()
+        if self.env.debugger is not None:
             self.env.skip() # valgrind is not working correctly with multi process
 
         self.conn = self.env.getConnection()
