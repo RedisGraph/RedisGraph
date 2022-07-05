@@ -10,6 +10,8 @@
 
 // Include Redis Modules API.
 #include "../redismodule.h"
+#include "./encoder/encode_io.h"
+#include "./decoders/decode_io.h"
 
 // Include Graph Context.
 #include "../graph/graphcontext.h"

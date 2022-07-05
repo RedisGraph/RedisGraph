@@ -46,10 +46,10 @@ static void _RdbSaveHeader
 	IOEncoder_SaveUnsigned(io, header->edge_count);
 
 	// deleted node count
-	RedisModule_SaveUnsigned(rdb, header->deleted_node_count);
+	IOEncoder_SaveUnsigned(io, header->deleted_node_count);
 
 	// deleted edge count
-	RedisModule_SaveUnsigned(rdb, header->deleted_edge_count);
+	IOEncoder_SaveUnsigned(io, header->deleted_edge_count);
 
 	// label matrix count
 	IOEncoder_SaveUnsigned(io, header->label_matrix_count);

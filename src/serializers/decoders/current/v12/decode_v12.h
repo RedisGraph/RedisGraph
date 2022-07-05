@@ -10,39 +10,40 @@
 
 GraphContext *RdbLoadGraphContext_v12
 (
-	RedisModuleIO *rdb
+	IODecoder *io
 );
 
 void RdbLoadNodes_v12
 (
-	RedisModuleIO *rdb,
+	IODecoder *io,
 	GraphContext *gc,
 	uint64_t node_count
 );
 
 void RdbLoadDeletedNodes_v12
 (
-	RedisModuleIO *rdb,
+	IODecoder *io,
 	GraphContext *gc,
 	uint64_t deleted_node_count
 );
 
 void RdbLoadEdges_v12
 (
-	RedisModuleIO *rdb,
+	IODecoder *io,
 	GraphContext *gc,
 	uint64_t edge_count
 );
 
 void RdbLoadDeletedEdges_v12
 (
-	RedisModuleIO *rdb,
+	IODecoder *io,
 	GraphContext *gc,
 	uint64_t deleted_edge_count
 );
 
 void RdbLoadGraphSchema_v12
 (
-	RedisModuleIO *rdb,
+	IODecoder *io,
 	GraphContext *gc
 );
+
