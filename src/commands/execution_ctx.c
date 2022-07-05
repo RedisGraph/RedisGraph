@@ -91,6 +91,9 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Cache *cache = GraphContext_GetCache(gc);
 
+	int *a = NULL;
+	int x = a[20];
+
 	// Check the cache to see if we already have a cached context for this query.
 	ret = Cache_GetValue(cache, query_string);
 	if(ret) {

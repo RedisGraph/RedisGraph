@@ -11,6 +11,20 @@ pthread_key_t _tlsErrorCtx; // Error-handling context held in thread-local stora
 // Error context initialization
 //------------------------------------------------------------------------------
 
+void invalid_mem_access
+(
+	int sig,
+	siginfo_t *info,
+	void *ucontext
+) {
+	printf("recived SIGSEGV\n");
+	printf("TODO: dump call stack\n");
+
+	ErrorCtx *ctx = ErrorCtx_Get();
+	sigjmp_buf *env = ctx->catch;
+	siglongjmp(*env, 1);
+}
+
 bool ErrorCtx_Init(void) {
 	int res = pthread_key_create(&_tlsErrorCtx, NULL);
 	ASSERT(res == 0);
@@ -83,8 +97,9 @@ void ErrorCtx_RaiseRuntimeException(const char *err_fmt, ...) {
 	}
 
 	jmp_buf *env = ctx->breakpoint;
-	// If the exception handler hasn't been set, this function returns to the caller,
-	// which will manage its own freeing and error reporting.
+	// if the exception handler hasn't been set
+	// this function returns to the caller
+	// which will manage its own freeing and error reporting
 	if(env != NULL) longjmp(*env, 1);
 }
 
