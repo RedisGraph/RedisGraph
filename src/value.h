@@ -197,6 +197,9 @@ void SIValue_HashUpdate(SIValue v, XXH64_state_t *state);
 /* Returns a hash code for a given SIValue. */
 XXH64_hash_t SIValue_HashCode(SIValue v);
 
+// return # of bytes used for a scalar
+size_t SIValue_memoryUsage(SIValue v);
+
 /* Free an SIValue's internal property if that property is a heap allocation owned
  * by this object. */
 void SIValue_Free(SIValue v);

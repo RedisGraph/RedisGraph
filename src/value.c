@@ -700,6 +700,62 @@ XXH64_hash_t SIValue_HashCode(SIValue v) {
 	return XXH64_digest(&state);
 }
 
+// return # of bytes used for a scalar
+size_t SIValue_memoryUsage
+(
+	SIValue v
+) {
+	size_t n = 0;
+	int i = 0;
+	uint element_count = 0;
+	SIValue key;
+	SIValue val;
+
+	switch(v.type) {
+	case T_MAP:
+		element_count = Map_KeyCount(v);
+		for(i = 0; i < element_count; i++) {
+			Map_GetIdx(v, i, &key, &val);
+			n += SIValue_memoryUsage(key);
+			n += SIValue_memoryUsage(val);
+		}
+		n += sizeof(SIValue);
+		break;
+	case T_ARRAY:
+		element_count = SIArray_Length(v);
+		for(i = 0; i < element_count; i++) {
+			n += SIValue_memoryUsage(v.array[i]);
+		}
+		n += sizeof(SIValue);
+		break;
+	case T_STRING:
+		n = strlen(v.stringval) + sizeof(SIValue);
+		break;
+	case T_NODE:
+	case T_EDGE:
+	case T_PATH:
+	case T_DATETIME:
+	case T_LOCALDATETIME:
+	case T_DATE:
+	case T_TIME:
+	case T_LOCALTIME:
+	case T_DURATION:
+	case T_BOOL:
+	case T_INT64:
+	case T_DOUBLE:
+	case T_NULL:
+	case T_PTR:
+	case T_POINT:
+		n = sizeof(SIValue);
+		break;
+	default:
+		// unknown SIValue type
+		ASSERT(false);
+	}
+
+	return n;
+}
+
 void SIValue_Free(SIValue v) {
 	// The free routine only performs work if it owns a heap allocation.
 	if(v.allocation != M_SELF) return;

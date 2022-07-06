@@ -291,6 +291,13 @@ GrB_Info RG_Matrix_pending
 	bool *pending                   // are there any pending operations
 );
 
+// return # of bytes used for a matrix
+GrB_Info RG_Matrix_memoryUsage
+(
+    size_t *size,          // # of bytes used by the matrix A
+    const RG_Matrix A      // matrix to query
+) ;
+
 GrB_Info RG_Matrix_wait
 (
 	RG_Matrix C,
