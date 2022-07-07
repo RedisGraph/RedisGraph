@@ -55,14 +55,14 @@ class testForeach():
 
         self.redis_con.flushall()
 
-        res = self.g.query("CREATE (), ()")
-        q = "MATCH (n) FOREACH (i IN range(1, 10) | CREATE (m:N {v: i})) RETURN n.v"
-        res = self.g.explain(q)
-        self.env.assertEquals(res.structured_plan.name, "Results")
-        self.env.assertEquals(res.structured_plan.children[0].name, "Project")
-        self.env.assertEquals(res.structured_plan.children[0].children[0].name, "Create")
-        self.env.assertEquals(res.structured_plan.children[0].children[0].children[0].name, "Unwind")
-        self.env.assertEquals(res.structured_plan.children[0].children[0].children[0].children[0].name, "All Node Scan")
-        res = self.g.query(q)
-        self.env.assertEquals(res.nodes_created, 20)
-        self.env.assertEquals(res.result_set, [])
+        # res = self.g.query("CREATE (), ()")
+        # q = "MATCH (n) FOREACH (i IN range(1, 10) | CREATE (m:N {v: i})) RETURN n.v"
+        # res = self.g.explain(q)
+        # self.env.assertEquals(res.structured_plan.name, "Results")
+        # self.env.assertEquals(res.structured_plan.children[0].name, "Project")
+        # self.env.assertEquals(res.structured_plan.children[0].children[0].name, "Create")
+        # self.env.assertEquals(res.structured_plan.children[0].children[0].children[0].name, "Unwind")
+        # self.env.assertEquals(res.structured_plan.children[0].children[0].children[0].children[0].name, "All Node Scan")
+        # res = self.g.query(q)
+        # self.env.assertEquals(res.nodes_created, 20)
+        # self.env.assertEquals(res.result_set, [])
