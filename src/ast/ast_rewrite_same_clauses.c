@@ -100,11 +100,14 @@ static bool _Foreach_RewriteSameClauses(const cypher_astnode_t *foreach_clause) 
 			// multiple clauses with same type, replace them
 			foreach_replace_clause(foreach_clause, clauses, i, j);
 			rewritten = true;
+			array_clear(clauses);
 
 			// update clause count
 			clause_count -= j - i;
 		}
 	}
+
+	array_free(clauses);
 
 	return rewritten;
 }
@@ -151,11 +154,14 @@ bool AST_RewriteSameClauses
 			// multiple clauses with same type, replace them
 			replace_clause(root, clauses, i, j);
 			rewritten = true;
+			array_clear(clauses);
 
 			// update clause count
 			clause_count -= j - i;
 		}
 	}
+
+	array_free(clauses);
 
 	return rewritten;
 }
