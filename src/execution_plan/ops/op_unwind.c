@@ -70,7 +70,7 @@ static OpResult UnwindInit(OpBase *opBase) {
 /* Try to generate a new value to return
  * NULL will be returned if dynamic list is not evaluted (listIdx = INDEX_NOT_SET)
  * or in case where the current list is fully consumed. */
-Record _handoff(OpUnwind *op) {
+static Record _handoff(OpUnwind *op) {
 	// If there is a new value ready, return it.
 	if(op->listIdx < SIArray_Length(op->list)) {
 		Record r = OpBase_CloneRecord(op->currentRecord);

@@ -140,8 +140,8 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, OpBase *root, const OpBas
 	_ExecutionPlan_PlaceApplyOps(plan);
 }
 
-static inline void _buildCreateOp(GraphContext *gc, AST *ast, ExecutionPlan *plan) {
-	AST_CreateContext create_ast_ctx = AST_PrepareCreateOp(plan->query_graph, plan->record_map);
+static inline void _buildCreateOp(GraphContext *gc, ExecutionPlan *plan, const cypher_astnode_t *clause) {
+	AST_CreateContext create_ast_ctx = AST_PrepareCreateOp(plan->query_graph, plan->record_map, clause);
 	OpBase *op = NewCreateOp(plan, create_ast_ctx.nodes_to_create, create_ast_ctx.edges_to_create);
 	ExecutionPlan_UpdateRoot(plan, op);
 }
@@ -170,6 +170,14 @@ static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	ExecutionPlan_UpdateRoot(plan, op);
 }
 
+static inline void buildForeachOp(ExecutionPlan *plan, const cypher_astnode_t *clause) {
+	const cypher_astnode_t *exp_node = cypher_ast_foreach_get_expression(clause);
+	AR_ExpNode *exp = AR_EXP_FromASTNode(exp_node);
+	exp->resolved_name = cypher_ast_identifier_get_name(cypher_ast_foreach_get_identifier(clause));
+	OpBase *op = NewUnwindOp(plan, exp);
+	ExecutionPlan_UpdateRoot(plan, op);
+}
+
 void ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 										const cypher_astnode_t *clause) {
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
@@ -179,9 +187,7 @@ void ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, ExecutionPla
 	} else if(t == CYPHER_AST_CALL) {
 		buildCallOp(ast, plan, clause);
 	} else if(t == CYPHER_AST_CREATE) {
-		// Only add at most one Create op per plan. TODO Revisit and improve this logic.
-		if(ExecutionPlan_LocateOp(plan->root, OPType_CREATE)) return;
-		_buildCreateOp(gc, ast, plan);
+		_buildCreateOp(gc, plan, clause);
 	} else if(t == CYPHER_AST_UNWIND) {
 		_buildUnwindOp(plan, clause);
 	} else if(t == CYPHER_AST_MERGE) {
@@ -196,6 +202,13 @@ void ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, ExecutionPla
 	} else if(t == CYPHER_AST_WITH) {
 		// Converting a WITH clause can create multiple operations.
 		buildWithOps(plan, clause);
+	} else if(t == CYPHER_AST_FOREACH) {
+		buildForeachOp(plan, clause);
+		uint nclauses = cypher_ast_foreach_nclauses(clause);
+		for (uint i = 0; i < nclauses; i++) {
+			const cypher_astnode_t *clause_node = cypher_ast_foreach_get_clause(clause, i);
+			ExecutionPlanSegment_ConvertClause(gc, ast, plan, clause_node);
+		}
 	}
 }
 

@@ -278,6 +278,12 @@ static void _AST_MapReturnReferredEntities(AST *ast_segment,
 	if(order_by) _AST_MapOrderByReferences(ast_segment, order_by);
 }
 
+// Maps entities in FOREACH clause.
+static void _AST_MapForeachClauseReferences(AST *ast, const cypher_astnode_t *foreach_clause) {
+	const cypher_astnode_t *identifier = cypher_ast_foreach_get_identifier(foreach_clause);
+	_AST_MapExpression(ast, identifier);
+}
+
 static void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *clause) {
 	if(!clause) return;
 
@@ -315,6 +321,14 @@ static void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *claus
 	} else if(type == CYPHER_AST_DELETE) {
 		// Add referenced aliases for DELETE clause.
 		_AST_MapDeleteClauseReferences(ast, clause);
+	} else if(type == CYPHER_AST_FOREACH) {
+		// Add referenced aliases for FOREACH clause.
+		_AST_MapForeachClauseReferences(ast, clause);
+		uint nclauses = cypher_ast_foreach_nclauses(clause);
+		for (uint i = 0; i < nclauses; i++) {
+			const cypher_astnode_t *clause_node = cypher_ast_foreach_get_clause(clause, i);
+			_ASTClause_BuildReferenceMap(ast, clause_node);
+		}
 	}
 }
 

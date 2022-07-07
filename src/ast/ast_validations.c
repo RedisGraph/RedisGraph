@@ -1225,7 +1225,8 @@ static AST_Validation _ValidateQueryTermination(const AST *ast) {
 	   type != CYPHER_AST_MERGE    &&
 	   type != CYPHER_AST_DELETE   &&
 	   type != CYPHER_AST_SET      &&
-	   type != CYPHER_AST_CALL
+	   type != CYPHER_AST_CALL     &&
+	   type != CYPHER_AST_FOREACH
 	  ) {
 		ErrorCtx_SetError("Query cannot conclude with %s (must be RETURN or an update clause)",
 						  cypher_astnode_typestr(type));
@@ -1383,6 +1384,15 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identi
 		raxInsert(identifiers, (unsigned char *)unwind_alias, strlen(unwind_alias), NULL, NULL);
 	} else if(type == CYPHER_AST_CALL) {
 		_AST_RegisterCallOutputs(node, identifiers);
+	} else if(type == CYPHER_AST_FOREACH) {
+		const cypher_astnode_t *identifier_node = cypher_ast_foreach_get_identifier(node);
+		const char *identifier = cypher_ast_identifier_get_name(identifier_node);
+		raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
+		uint nclauses = cypher_ast_foreach_nclauses(node);
+		for (uint i = 0; i < nclauses; i++) {
+			const cypher_astnode_t *clause_node = cypher_ast_foreach_get_clause(node, i);
+			_AST_GetDefinedIdentifiers(clause_node, identifiers);
+		}
 	} else {
 		uint child_count = cypher_astnode_nchildren(node);
 		for(uint c = 0; c < child_count; c ++) {

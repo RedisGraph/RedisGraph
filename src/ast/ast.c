@@ -13,6 +13,7 @@
 #include "../query_ctx.h"
 #include "../util/qsort.h"
 #include "../procedures/procedure.h"
+#include "ast_rewrite_same_clauses.h"
 #include "ast_rewrite_star_projections.h"
 #include "../arithmetic/arithmetic_expression.h"
 #include "../arithmetic/arithmetic_expression_construct.h"
@@ -589,6 +590,7 @@ cypher_parse_result_t *parse_query(const char *query) {
 	// will be rewritten as:
 	//  MATCH (a), (b) RETURN a, b
 	bool rerun_validation = AST_RewriteStarProjections(result);
+	rerun_validation |= AST_RewriteSameClauses(result);
 
 	// only perform validations again if there's been a rewrite
 	if(rerun_validation && AST_Validate_Query(result) != AST_VALID) {

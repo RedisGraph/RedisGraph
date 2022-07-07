@@ -283,31 +283,24 @@ rax *AST_PrepareUpdateOp(GraphContext *gc, const cypher_astnode_t *set_clause) {
 // CREATE operation
 //------------------------------------------------------------------------------
 
-AST_CreateContext AST_PrepareCreateOp(QueryGraph *qg, rax *bound_vars) {
+AST_CreateContext AST_PrepareCreateOp(QueryGraph *qg, rax *bound_vars, const cypher_astnode_t *clause) {
 	AST *ast = QueryCtx_GetAST();
 
 	// Shouldn't operate on the original bound variables map, as this function may insert aliases.
 	rax *bound_and_introduced_entities = raxClone(bound_vars);
 
-	const cypher_astnode_t **create_clauses = AST_GetClauses(ast, CYPHER_AST_CREATE);
-	uint create_count = (create_clauses) ? array_len(create_clauses) : 0;
-
 	NodeCreateCtx *nodes_to_create = array_new(NodeCreateCtx, 1);
 	EdgeCreateCtx *edges_to_create = array_new(EdgeCreateCtx, 1);
 
-	for(uint i = 0; i < create_count; i++) {
-		const cypher_astnode_t *clause = create_clauses[i];
-		const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clause);
-		uint npaths = cypher_ast_pattern_npaths(pattern);
+	const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clause);
+	uint npaths = cypher_ast_pattern_npaths(pattern);
 
-		for(uint j = 0; j < npaths; j++) {
-			const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
-			AST_PreparePathCreation(path, qg, bound_and_introduced_entities, &nodes_to_create,
-									&edges_to_create);
-		}
+	for(uint j = 0; j < npaths; j++) {
+		const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
+		AST_PreparePathCreation(path, qg, bound_and_introduced_entities, &nodes_to_create,
+								&edges_to_create);
 	}
 
-	array_free(create_clauses);
 	raxFree(bound_and_introduced_entities);
 
 	AST_CreateContext ctx = { .nodes_to_create = nodes_to_create, .edges_to_create = edges_to_create };
