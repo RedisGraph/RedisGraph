@@ -1055,7 +1055,7 @@ int Graph_UpdateEntity
 		res = GraphEntity_SetProperty(ge, attr_id, value);
 	}
 
-	return res;
+	return SIValue_IsNull(value) ? 0 : res;
 }
 
 DataBlockIterator *Graph_ScanNodes(const Graph *g) {
