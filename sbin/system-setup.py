@@ -64,7 +64,6 @@ class RedisGraphSetup(paella.Setup):
 
     def linux_last(self):
         self.install("valgrind")
-        self.run("{READIES}/bin/getjava".format(READIES=READIES)) # for grammarinator/ANTLR
 
     def common_last(self):
         self.run("%s/bin/getaws" % READIES)
