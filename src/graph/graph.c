@@ -738,11 +738,13 @@ void Graph_GetNodeEdges
 		// containing all outgoing edges
 		RG_MatrixTupleIter_attach(&it, M);
 		RG_MatrixTupleIter_iterate_row(&it, srcID);
-		while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, &edgeID) == GrB_SUCCESS) {
-			// collect all edges (src)->(dest)
-			if(edgeType != GRAPH_NO_RELATION) {
+		if(edgeType != GRAPH_NO_RELATION) {
+			while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, &edgeID) == GrB_SUCCESS) {
+				// collect all edges (src)->(dest)
 				_CollectEdgesFromEntry(g, srcID, destID, edgeType, edgeID, edges);
-			} else {
+			}
+		} else {
+			while(RG_MatrixTupleIter_next_BOOL(&it, NULL, &destID, NULL) == GrB_SUCCESS) {
 				Graph_GetEdgesConnectingNodes(g, srcID, destID, edgeType, edges);
 			}
 		}
@@ -760,13 +762,17 @@ void Graph_GetNodeEdges
 		RG_MatrixTupleIter_attach(&it, TM);
 		RG_MatrixTupleIter_iterate_row(&it, srcID);
 
-		while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, NULL) == GrB_SUCCESS) {
-			RG_Matrix_extractElement_UINT64(&edgeID, M, destID, srcID);
-			if(dir == GRAPH_EDGE_DIR_BOTH && srcID == destID) continue;
-			// collect all edges connecting destId to srcId
-			if(edgeType != GRAPH_NO_RELATION) {
+		if(edgeType != GRAPH_NO_RELATION) {
+			while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, NULL) == GrB_SUCCESS) {
+				RG_Matrix_extractElement_UINT64(&edgeID, M, destID, srcID);
+				if(dir == GRAPH_EDGE_DIR_BOTH && srcID == destID) continue;
+				// collect all edges connecting destId to srcId
 				_CollectEdgesFromEntry(g, destID, srcID, edgeType, edgeID, edges);
-			} else {
+			}
+		} else {
+			while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, NULL) == GrB_SUCCESS) {
+				RG_Matrix_extractElement_BOOL(&edgeID, M, destID, srcID);
+				if(dir == GRAPH_EDGE_DIR_BOTH && srcID == destID) continue;
 				Graph_GetEdgesConnectingNodes(g, destID, srcID, edgeType, edges);
 			}
 		}

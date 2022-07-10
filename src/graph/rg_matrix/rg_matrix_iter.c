@@ -11,6 +11,17 @@
 // returns true if iterator is detached from a matrix
 #define IS_DETACHED(iter) ((iter) == NULL || (iter)->A == NULL)
 
+static inline bool _is_empty(GrB_Matrix m) {
+	GrB_Index nvals ;
+	GrB_Info info ;
+	UNUSED(info) ;
+
+	info = GrB_Matrix_nvals(&nvals, m) ;
+	ASSERT(info == GrB_SUCCESS) ;
+
+	return nvals == 0;
+}
+
 static inline void _set_iter_range
 (
 	GxB_Iterator it,
@@ -62,14 +73,10 @@ static inline void _init_iter
 
 	*depleted = true ; // default
 
-	GrB_Index nvals ;
 	GrB_Info info ;
 	UNUSED(info) ;
 
-	info = GrB_Matrix_nvals(&nvals, m) ;
-	ASSERT(info == GrB_SUCCESS) ;
-
-	if(nvals > 0) {
+	if(!_is_empty(m)) {
 		info = GxB_rowIterator_attach(it, m, NULL) ;
 		ASSERT(info == GrB_SUCCESS) ;
 		_set_iter_range(it, min_row, max_row, depleted) ;
@@ -86,8 +93,10 @@ GrB_Info RG_MatrixTupleIter_iterate_row
 	iter->min_row = rowIdx ;
 	iter->max_row = rowIdx ;
 
-	_set_iter_range(&iter->m_it, iter->min_row, iter->max_row, &iter->m_depleted) ;
-	_set_iter_range(&iter->dp_it, iter->min_row, iter->max_row, &iter->dp_depleted) ;
+	if(!_is_empty(RG_MATRIX_M(iter->A))) _set_iter_range(&iter->m_it, iter->min_row, iter->max_row, &iter->m_depleted) ;
+	if(!_is_empty(RG_MATRIX_DELTA_PLUS(iter->A))) _set_iter_range(&iter->dp_it, iter->min_row, iter->max_row, &iter->dp_depleted) ;
+
+	// RedisModule_Log(NULL, "notice", "iter->m_depleted = %d", iter->m_depleted) ;
 
 	return GrB_SUCCESS ;
 }
@@ -102,8 +111,8 @@ GrB_Info RG_MatrixTupleIter_jump_to_row
 
 	iter->min_row = rowIdx ;
 
-	_set_iter_range(&iter->m_it, iter->min_row, iter->max_row, &iter->m_depleted) ;
-	_set_iter_range(&iter->dp_it, iter->min_row, iter->max_row, &iter->dp_depleted) ;
+	if(!_is_empty(RG_MATRIX_M(iter->A))) _set_iter_range(&iter->m_it, iter->min_row, iter->max_row, &iter->m_depleted) ;
+	if(!_is_empty(RG_MATRIX_DELTA_PLUS(iter->A))) _set_iter_range(&iter->dp_it, iter->min_row, iter->max_row, &iter->dp_depleted) ;
 
 	return GrB_SUCCESS ;
 }
@@ -119,8 +128,8 @@ GrB_Info RG_MatrixTupleIter_iterate_range
 	iter->min_row = startRowIdx ;
 	iter->max_row = endRowIdx ;
 
-	_set_iter_range(&iter->m_it, iter->min_row, iter->max_row, &iter->m_depleted) ;
-	_set_iter_range(&iter->dp_it, iter->min_row, iter->max_row, &iter->dp_depleted) ;
+	if(!_is_empty(RG_MATRIX_M(iter->A))) _set_iter_range(&iter->m_it, iter->min_row, iter->max_row, &iter->m_depleted) ;
+	if(!_is_empty(RG_MATRIX_DELTA_PLUS(iter->A))) _set_iter_range(&iter->dp_it, iter->min_row, iter->max_row, &iter->dp_depleted) ;
 
 	return GrB_SUCCESS ;
 }
@@ -304,8 +313,8 @@ GrB_Info RG_MatrixTupleIter_reset
 
 	if(IS_DETACHED(iter)) return GrB_NULL_POINTER ;
 
-	_set_iter_range(&iter->m_it, iter->min_row, iter->max_row, &iter->m_depleted) ;
-	_set_iter_range(&iter->dp_it, iter->min_row, iter->max_row, &iter->dp_depleted) ;
+	if(!_is_empty(RG_MATRIX_M(iter->A))) _set_iter_range(&iter->m_it, iter->min_row, iter->max_row, &iter->m_depleted) ;
+	if(!_is_empty(RG_MATRIX_DELTA_PLUS(iter->A))) _set_iter_range(&iter->dp_it, iter->min_row, iter->max_row, &iter->dp_depleted) ;
 
 	return info ;
 }
