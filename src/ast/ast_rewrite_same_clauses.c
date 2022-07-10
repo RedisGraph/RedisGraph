@@ -22,7 +22,7 @@ static void replace_clause
 	uint count = array_len(clauses);
 
 	struct cypher_input_range range = cypher_astnode_range(clauses[0]);
-	const cypher_astnode_t **paths = array_new(const cypher_astnode_t *, count);
+	cypher_astnode_t **paths = array_new(cypher_astnode_t *, count);
 	for (uint i = 0; i < count; i++) {
 		const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clauses[i]);
 		uint npaths = cypher_ast_pattern_npaths(pattern);
@@ -53,7 +53,7 @@ static void foreach_replace_clause
 	uint count = array_len(clauses);
 
 	struct cypher_input_range range = cypher_astnode_range(clauses[0]);
-	const cypher_astnode_t **paths = array_new(const cypher_astnode_t *, count);
+	cypher_astnode_t **paths = array_new(cypher_astnode_t *, count);
 	for (uint i = 0; i < count; i++) {
 		const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clauses[i]);
 		uint npaths = cypher_ast_pattern_npaths(pattern);
@@ -78,7 +78,7 @@ static bool _Foreach_RewriteSameClauses(const cypher_astnode_t *foreach_clause) 
 	bool rewritten = false;
 	uint clause_count = cypher_ast_foreach_nclauses(foreach_clause);
 
-	const cypher_astnode_t **clauses = array_new(const cypher_astnode_t *, 0);
+	cypher_astnode_t **clauses = array_new(cypher_astnode_t *, 0);
 	for(uint i = 0; i < clause_count; i++) {
 		const cypher_astnode_t *clause = cypher_ast_foreach_get_clause(foreach_clause, i);
 		cypher_astnode_type_t t = cypher_astnode_type(clause);
@@ -88,21 +88,21 @@ static bool _Foreach_RewriteSameClauses(const cypher_astnode_t *foreach_clause) 
 		}
 		if(t != CYPHER_AST_CREATE) continue;
 
-		array_append(clauses, clause);
+		array_append(clauses, (cypher_astnode_t *)clause);
 
 		uint j = i + 1;
 		for (; j < clause_count; j++) {
 			clause = cypher_ast_foreach_get_clause(foreach_clause, j);
 			t = cypher_astnode_type(clause);
 			if(t != CYPHER_AST_CREATE) break;
-			array_append(clauses, clause);
+			array_append(clauses, (cypher_astnode_t *)clause);
 		}
 		j--;
 		
 
 		if(j - i > 0) {
 			// multiple clauses with same type, replace them
-			foreach_replace_clause(foreach_clause, clauses, i, j);
+			foreach_replace_clause((cypher_astnode_t *)foreach_clause, clauses, i, j);
 			rewritten = true;
 
 			// update clause count
@@ -133,7 +133,7 @@ bool AST_RewriteSameClauses
 	// rewrite all WITH * / RETURN * clauses to include all aliases
 	uint clause_count = cypher_ast_query_nclauses(root);
 
-	const cypher_astnode_t **clauses = array_new(const cypher_astnode_t *, 0);
+	cypher_astnode_t **clauses = array_new(cypher_astnode_t *, 0);
 	for(uint i = 0; i < clause_count; i++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(root, i);
 		cypher_astnode_type_t t = cypher_astnode_type(clause);
@@ -143,21 +143,21 @@ bool AST_RewriteSameClauses
 		}
 		if(t != CYPHER_AST_CREATE) continue;
 
-		array_append(clauses, clause);
+		array_append(clauses, (cypher_astnode_t *)clause);
 
 		uint j = i + 1;
 		for (; j < clause_count; j++) {
 			clause = cypher_ast_query_get_clause(root, j);
 			t = cypher_astnode_type(clause);
 			if(t != CYPHER_AST_CREATE) break;
-			array_append(clauses, clause);
+			array_append(clauses, (cypher_astnode_t *)clause);
 		}
 		j--;
 		
 
 		if(j - i > 0) {
 			// multiple clauses with same type, replace them
-			replace_clause(root, clauses, i, j);
+			replace_clause((cypher_astnode_t *)root, clauses, i, j);
 			rewritten = true;
 
 			// update clause count
