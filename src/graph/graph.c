@@ -721,6 +721,7 @@ void Graph_GetNodeEdges
 	NodeID               srcID    =  ENTITY_GET_ID(n);
 	NodeID               destID   =  INVALID_ENTITY_ID;
 	EdgeID               edgeID   =  INVALID_ENTITY_ID;
+	UNUSED(info);
 
 	if(edgeType == GRAPH_UNKNOWN_RELATION) return;
 
@@ -736,7 +737,7 @@ void Graph_GetNodeEdges
 	M = Graph_GetRelationMatrix(g, edgeType, false);
 
 	if(outgoing) {
-		info = RG_Matrix_type(&t, M)
+		info = RG_Matrix_type(&t, M);
 		ASSERT(info == GrB_SUCCESS);
 		ASSERT(t == GrB_UINT64 || t == GrB_BOOL);
 		// construct an iterator to traverse over the source node row,
