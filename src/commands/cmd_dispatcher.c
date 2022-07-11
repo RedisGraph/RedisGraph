@@ -35,6 +35,13 @@ static int _read_flags
 	*compact = false;  // verbose
 	*graph_version = GRAPH_VERSION_MISSING;
 	Config_Option_get(Config_TIMEOUT_DEFAULT, timeout);
+	if(*timeout != CONFIG_TIMEOUT_NO_TIMEOUT) {
+		*timeout_on_write = true;
+	} else {
+		Config_Option_get(Config_TIMEOUT, timeout);
+		*timeout_on_write = false;
+	}
+
 
 	// GRAPH.QUERY <GRAPH_KEY> <QUERY>
 	// make sure we've got more than 3 arguments
@@ -83,6 +90,7 @@ static int _read_flags
 				if(timeout == CONFIG_TIMEOUT_NO_TIMEOUT) {
 					Config_Option_get(Config_TIMEOUT_DEFAULT, timeout);
 				}
+				*timeout_on_write = true;
 			}
 
 			// Emit error on missing, negative, or non-numeric timeout values.

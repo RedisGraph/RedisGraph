@@ -302,7 +302,7 @@ class testUndoLog():
 
     def test14_undo_timeout(self):
         # Change timeout value from default
-        response = self.redis_con.execute_command("GRAPH.CONFIG SET TIMEOUT 1")
+        response = self.redis_con.execute_command("GRAPH.CONFIG SET TIMEOUT_DEFAULT 1")
         self.env.assertEqual(response, "OK")
 
         try:
@@ -312,13 +312,14 @@ class testUndoLog():
         except Exception as e:
             pass
 
+        # Restore timeout value to default
+        response = self.redis_con.execute_command("GRAPH.CONFIG SET TIMEOUT_DEFAULT 0")
+        self.env.assertEqual(response, "OK")
+
         # node (n:N) should be removed, expecting an empty graph
         result = self.graph.query("MATCH (n:N) RETURN n")
         self.env.assertEquals(len(result.result_set), 0)
 
-        # Restore timeout value to default
-        response = self.redis_con.execute_command("GRAPH.CONFIG SET TIMEOUT 0")
-        self.env.assertEqual(response, "OK")
 
     def test15_complex_undo(self):
         # create a graph

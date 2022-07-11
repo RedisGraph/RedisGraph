@@ -153,9 +153,6 @@ uint Config_max_queued_queries_get(void) {
 
 void Config_timeout_set(uint64_t timeout) {
 	config.timeout = timeout;
-	if(config.timeout != CONFIG_TIMEOUT_NO_TIMEOUT) {
-		config.timeout_default = timeout;
-	}
 }
 
 void Config_log_if_old_and_new_timeout_used() {
