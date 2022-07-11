@@ -133,13 +133,13 @@ GrB_Info RG_Matrix_clear
 	return info;
 }
 
-GrB_Type RG_Matrix_type
+GrB_Info RG_Matrix_type
 (
-	RG_Matrix C
+	GrB_Type *type,
+	RG_Matrix A
 ) {
-	GrB_Type type;
-	GrB_Matrix M = RG_MATRIX_M(C);
-	GrB_Info info = GxB_Matrix_type(&type, M);
+	GrB_Matrix M = RG_MATRIX_M(A);
+	GrB_Info info = GxB_Matrix_type(type, M);
 	ASSERT(info == GrB_SUCCESS)
-	return type;
+	return info;
 }

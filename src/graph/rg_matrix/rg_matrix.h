@@ -297,9 +297,11 @@ GrB_Info RG_Matrix_wait
 	bool force_sync
 );
 
-GrB_Type RG_Matrix_type
+// get the type of the M matrix
+GrB_Info RG_Matrix_type
 (
-	RG_Matrix C
+	GrB_Type *type,
+	RG_Matrix A
 );
 
 void RG_Matrix_free

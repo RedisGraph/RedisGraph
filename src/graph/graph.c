@@ -713,6 +713,8 @@ void Graph_GetNodeEdges
 	ASSERT(n);
 	ASSERT(edges);
 
+	GrB_Type t;
+	GrB_Info info;
 	RG_MatrixTupleIter   it       =  {0};
 	RG_Matrix            M        =  NULL;
 	RG_Matrix            TM       =  NULL;
@@ -734,11 +736,14 @@ void Graph_GetNodeEdges
 	M = Graph_GetRelationMatrix(g, edgeType, false);
 
 	if(outgoing) {
+		info = RG_Matrix_type(&t, M)
+		ASSERT(info == GrB_SUCCESS);
+		ASSERT(t == GrB_UINT64 || t == GrB_BOOL);
 		// construct an iterator to traverse over the source node row,
 		// containing all outgoing edges
 		RG_MatrixTupleIter_attach(&it, M);
 		RG_MatrixTupleIter_iterate_row(&it, srcID);
-		if(RG_Matrix_type(M) == GrB_UINT64) {
+		if(t == GrB_UINT64) {
 			while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, &edgeID) == GrB_SUCCESS) {
 				// collect all edges (src)->(dest)
 				_CollectEdgesFromEntry(g, srcID, destID, edgeType, edgeID, edges);
@@ -757,12 +762,16 @@ void Graph_GetNodeEdges
 		// otherwise use the transposed adjacency matrix
 		TM = Graph_GetRelationMatrix(g, edgeType, true);
 
+		info = RG_Matrix_type(&t, M)
+		ASSERT(info == GrB_SUCCESS);
+		ASSERT(t == GrB_UINT64 || t == GrB_BOOL);
+
 		// construct an iterator to traverse over the source node row,
 		// containing all incoming edges
 		RG_MatrixTupleIter_attach(&it, TM);
 		RG_MatrixTupleIter_iterate_row(&it, srcID);
 
-		if(RG_Matrix_type(M) == GrB_UINT64) {
+		if(t == GrB_UINT64) {
 			while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, NULL) == GrB_SUCCESS) {
 				RG_Matrix_extractElement_UINT64(&edgeID, M, destID, srcID);
 				if(dir == GRAPH_EDGE_DIR_BOTH && srcID == destID) continue;
