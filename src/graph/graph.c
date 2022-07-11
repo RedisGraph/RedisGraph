@@ -763,7 +763,7 @@ void Graph_GetNodeEdges
 		// otherwise use the transposed adjacency matrix
 		TM = Graph_GetRelationMatrix(g, edgeType, true);
 
-		info = RG_Matrix_type(&t, M)
+		info = RG_Matrix_type(&t, M);
 		ASSERT(info == GrB_SUCCESS);
 		ASSERT(t == GrB_UINT64 || t == GrB_BOOL);
 
