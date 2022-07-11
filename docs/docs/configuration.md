@@ -49,17 +49,19 @@ GRAPH.CONFIG GET *
 
 The following table summarizes which configuration parameters can be set at module load-time and which can be set on run-time:
 
-| Configuration Parameter                             | Load-time          | Run-time             |
-| :-------                                            | :-----             | :-----------         |
-| [THREAD_COUNT](#thread_count)                       | :white_check_mark: | :white_large_square: |
-| [CACHE_SIZE](#cache_size)                           | :white_check_mark: | :white_large_square: |
-| [OMP_THREAD_COUNT](#omp_thread_count)               | :white_check_mark: | :white_large_square: |
-| [NODE_CREATION_BUFFER](#node_creation_buffer)       | :white_check_mark: | :white_large_square: |
-| [MAX_QUEUED_QUERIES](#max_queued_queries)           | :white_check_mark: | :white_check_mark:   |
-| [TIMEOUT](#timeout)                                 | :white_check_mark: | :white_check_mark:   |
-| [RESULTSET_SIZE](#resultset_size)                   | :white_check_mark: | :white_check_mark:   |
-| [QUERY_MEM_CAPACITY](#query_mem_capacity)           | :white_check_mark: | :white_check_mark:   |
-| [VKEY_MAX_ENTITY_COUNT](#vkey_max_entity_count)     | :white_check_mark: | :white_check_mark:   |
+| Configuration Parameter                                      | Load-time          | Run-time             |
+| :-------                                                     | :-----             | :-----------         |
+| [THREAD_COUNT](#thread_count)                                | :white_check_mark: | :white_large_square: |
+| [CACHE_SIZE](#cache_size)                                    | :white_check_mark: | :white_large_square: |
+| [OMP_THREAD_COUNT](#omp_thread_count)                        | :white_check_mark: | :white_large_square: |
+| [NODE_CREATION_BUFFER](#node_creation_buffer)                | :white_check_mark: | :white_large_square: |
+| [MAX_QUEUED_QUERIES](#max_queued_queries)                    | :white_check_mark: | :white_check_mark:   |
+| [TIMEOUT](#timeout) (deprecated in RedisGraph v2.10)         | :white_check_mark: | :white_check_mark:   |
+| [TIMEOUT_MAX](#timeout_max) (since RedisGraph v2.10)         | :white_check_mark: | :white_check_mark:   |
+| [TIMEOUT_DEFAULT](#timeout_default) (since RedisGraph v2.10) | :white_check_mark: | :white_check_mark:   |
+| [RESULTSET_SIZE](#resultset_size)                            | :white_check_mark: | :white_check_mark:   |
+| [QUERY_MEM_CAPACITY](#query_mem_capacity)                    | :white_check_mark: | :white_check_mark:   |
+| [VKEY_MAX_ENTITY_COUNT](#vkey_max_entity_count)              | :white_check_mark: | :white_check_mark:   |
 
 ---
 
@@ -157,11 +159,19 @@ $ redis-cli GRAPH.CONFIG SET MAX_QUEUED_QUERIES 500
 
 ### TIMEOUT
 
-Timeout is a flag that specifies the maximum runtime for read queries in milliseconds. This configuration will not be respected by write queries, to avoid leaving the graph in an inconsistent state.
+(Deprecated in RedisGraph v2.10. Use `TIMEOUT_MAX` and `TIMEOUT_DEFAULT` instead)
+
+The `TIMEOUT` configuration parameter specifies the default maximal execution time for read queries, in milliseconds. 
+
+When a read query execution time exceeds the maximal execution time, the query is aborted and the query reply is `(error) Query timed out`.
+
+The `TIMEOUT` query parameter of the `GRAPH.QUERY`, `GRAPH.RO_QUERY`, and `GRAPH.PROFILE` commands can be used to override this value.
+
+This configuration parameter is enforced only for read queries. Prior to RedisGraph v2.10, write queries do not timeout.
 
 #### Default
 
-`TIMEOUT` is off by default (config value of `0`).
+`TIMEOUT` is off by default (by setting `TIMEOUT` to `0`).
 
 #### Example
 
@@ -170,6 +180,49 @@ $ redis-server --loadmodule ./redisgraph.so TIMEOUT 1000
 ```
 
 ---
+
+### TIMEOUT_MAX
+
+(Since RedisGraph v2.10)
+
+The `TIMEOUT_MAX` configuration parameter specifies a maximum execution time for any read and write queries, in milliseconds.
+
+The `TIMEOUT` query parameter value of the `GRAPH.QUERY`, `GRAPH.RO_QUERY`, and `GRAPH.PROFILE` commands cannot exceed the `TIMEOUT_MAX` value (the command would abort with a `(error) The query TIMEOUT parameter value cannot exceed the TIMEOUT_MAX configuration parameter value` reply). Similarly, the `TIMEOUT_DEFAULT` configuration parameter cannot exceed the `TIMEOUT_MAX` value.
+
+When a query execution time exceeds the maximal execution time, the query is aborted and the query reply is `(error) Query timed out`. For a write query - any change to the graph is undone (which may take additional time).
+
+#### Default
+
+`TIMEOUT_MAX` is off by default (by setting `TIMEOUT_MAX` to `0`).
+
+#### Example
+
+```
+$ redis-server --loadmodule ./redisgraph.so TIMEOUT_MAX 1000
+```
+
+---
+
+### TIMEOUT_DEFAULT
+
+(Since RedisGraph v2.10)
+
+The `TIMEOUT_DEFAULT` configuration parameter specifies the default maximal execution time for both read and write queries, in milliseconds.
+
+This default maximal execution time can be overridden by the `TIMEOUT` query parameter of the `GRAPH.QUERY`, `GRAPH.RO_QUERY`, and `GRAPH.PROFILE` commands. However, a query execution time cannot exceed `TIMEOUT_MAX`.
+
+#### Default
+
+`TIMEOUT_DEFAULT` is off by default (by setting `TIMEOUT_DEFAULT` to `0`).
+
+#### Example
+
+```
+$ redis-server --loadmodule ./redisgraph.so TIMEOUT_DEFAULT 1000
+```
+
+---
+
 
 ### RESULTSET_SIZE
 
@@ -233,16 +286,17 @@ This configuration can be set when the module loads or at runtime.
 
 ## Query Configurations
 
-The query timeout configuration may also be set per query in the form of additional arguments after the query string. This configuration is unset by default unless using a language-specific client, which may establish its own defaults.
-
 ### Query Timeout
 
-The query flag `timeout` allows the user to specify a timeout as described in [TIMEOUT](#timeout) for a single query.
+`TIMEOUT` allows overriding the `TIMEOUT_DEFAULT` configuration parameter value for a single `GRAPH.QUERY`, `GRAPH.RO_QUERY`, or `GRAPH.PROFILE` command. The `TIMEOUT` value cannot exceed the `TIMEOUT_MAX` value (the command would abort with a `(error) The query TIMEOUT parameter value cannot exceed the TIMEOUT_MAX configuration parameter value` reply).
+
+Prior to RedisGraph v2.10, `TIMEOUT` was ignored for write queries.
+
 
 #### Example
 
 Retrieve all paths in a graph with a timeout of 1000 milliseconds.
 
 ```
-GRAPH.QUERY wikipedia "MATCH p=()-[*]->() RETURN p" timeout 1000
+GRAPH.QUERY wikipedia "MATCH p=()-[*]->() RETURN p" TIMEOUT 1000
 ```
