@@ -1,4 +1,3 @@
-from random import randint
 from common import *
 
 GRAPH_ID = "G"
@@ -152,15 +151,3 @@ class testGraphCreationFlow(FlowTestsBase):
                 self.env.assertTrue(False)
             except redis.exceptions.ResponseError as e:
                 self.env.assertContains("The bound variable 'r' can't be redeclared in a CREATE clause", str(e))
-
-    def test10_random_delete(self):
-        for i in range(1, 10):
-            self.env.getConnection().flushall()
-
-            query = """UNWIND range(0, 10000) AS x CREATE (src:N {v: x}), (src)-[:R]->(:N), (src)-[:R]->(:N), (src)-[:R]->(:N)"""
-            redis_graph.query(query)
-
-            query = """MATCH (n:N {v: $v}) DELETE n RETURN 1 LIMIT 1"""
-            for _ in range(1, 10):
-                id = randint(0, 10000)
-                redis_graph.query(query, {"v": id})

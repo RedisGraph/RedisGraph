@@ -297,6 +297,11 @@ GrB_Info RG_Matrix_wait
 	bool force_sync
 );
 
+GrB_Type RG_Matrix_type
+(
+	RG_Matrix C
+);
+
 void RG_Matrix_free
 (
 	RG_Matrix *C
