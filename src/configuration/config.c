@@ -49,6 +49,12 @@
 // size of node creation buffer
 #define NODE_CREATION_BUFFER "NODE_CREATION_BUFFER"
 
+// default timeout for read and write queries
+#define TIMEOUT_DEFAULT "TIMEOUT_DEFAULT"
+
+// max timeout that can be enforced
+#define TIMEOUT_MAX "TIMEOUT_MAX"
+
 //------------------------------------------------------------------------------
 // Configuration defaults
 //------------------------------------------------------------------------------
@@ -70,6 +76,8 @@ typedef struct {
 	int64_t query_mem_capacity;        // Max mem(bytes) that query/thread can utilize at any given time
 	uint64_t node_creation_buffer;     // Number of extra node creations to buffer as margin in matrices
 	int64_t delta_max_pending_changes; // number of pending changed befor RG_Matrix flushed
+	uint64_t timeout_default;          // default timeout for read and write queries
+	uint64_t timeout_max;              // max timeout that can be enforced
 	Config_on_change cb;               // callback function which being called when config param changed
 } RG_Config;
 
@@ -145,10 +153,44 @@ uint Config_max_queued_queries_get(void) {
 
 void Config_timeout_set(uint64_t timeout) {
 	config.timeout = timeout;
+	if(config.timeout != CONFIG_TIMEOUT_NO_TIMEOUT) {
+		config.timeout_default = timeout;
+	}
+}
+
+void Config_log_if_old_and_new_timeout_used() {
+	if(config.timeout != CONFIG_TIMEOUT_NO_TIMEOUT && (config.timeout_default != CONFIG_TIMEOUT_NO_TIMEOUT || config.timeout_max != CONFIG_TIMEOUT_NO_TIMEOUT)) {
+		RedisModule_Log(NULL, "warning", "TIMEOUT configuration parameter ignored due to presence of TIMEOUT_DEFAULT / TIMEOUT_MAX");
+	}
+}
+
+void Config_enforce_timeout_max() {
+	if(config.timeout_max != CONFIG_TIMEOUT_NO_TIMEOUT && config.timeout_default > config.timeout_max) {
+		config.timeout_default = config.timeout_max;
+		RedisModule_Log(NULL, "warning", "The TIMEOUT_DEFAULT configuration parameter value is higher than TIMEOUT_MAX. Its value was set to TIMEOUT_MAX");
+	}
+}
+
+void Config_timeout_default_set(uint64_t timeout_default) {
+	config.timeout_default = timeout_default;
+	Config_enforce_timeout_max();
+}
+
+void Config_timeout_max_set(uint64_t timeout_max) {
+	config.timeout_max = timeout_max;
+	Config_enforce_timeout_max();
 }
 
 uint Config_timeout_get(void) {
 	return config.timeout;
+}
+
+uint Config_timeout_default_get(void) {
+	return config.timeout_default;
+}
+
+uint Config_timeout_max_get(void) {
+	return config.timeout_max;
 }
 
 //------------------------------------------------------------------------------
@@ -291,6 +333,10 @@ bool Config_Contains_field(const char *field_str, Config_Option_Field *field) {
 		f = Config_DELTA_MAX_PENDING_CHANGES;
 	} else if(!(strcasecmp(field_str, NODE_CREATION_BUFFER))) {
 		f = Config_NODE_CREATION_BUFFER;
+	} else if(!(strcasecmp(field_str, TIMEOUT_DEFAULT))) {
+		f = Config_TIMEOUT_DEFAULT;
+	} else if(!(strcasecmp(field_str, TIMEOUT_MAX))) {
+		f = Config_TIMEOUT_MAX;
 	} else {
 		return false;
 	}
@@ -346,6 +392,14 @@ const char *Config_Field_name(Config_Option_Field field) {
 			name = NODE_CREATION_BUFFER;
 			break;
 
+		case Config_TIMEOUT_DEFAULT:
+			name = TIMEOUT_DEFAULT;
+			break;
+
+		case Config_TIMEOUT_MAX:
+			name = TIMEOUT_MAX;
+			break;
+
 		//----------------------------------------------------------------------
 		// invalid option
 		//----------------------------------------------------------------------
@@ -398,6 +452,12 @@ void _Config_SetToDefaults(void) {
 
 	// the amount of empty space to reserve for node creations in matrices
 	config.node_creation_buffer = NODE_CREATION_BUFFER_DEFAULT;
+
+	// no query timeout by default
+	config.timeout_default = CONFIG_TIMEOUT_NO_TIMEOUT;
+
+	// no max timeout by default
+	config.timeout_max = CONFIG_TIMEOUT_NO_TIMEOUT;
 }
 
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -414,6 +474,8 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 						"RedisGraph received %d arguments, all configurations should be key-value pairs", argc);
 		return REDISMODULE_ERR;
 	}
+
+	bool warn_timeout_deprecated = true;
 
 	for(int i = 0; i < argc; i += 2) {
 		// each configuration is a key-value pair. (K, V)
@@ -434,12 +496,20 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 			return REDISMODULE_ERR;
 		}
 
+		if(field == Config_TIMEOUT_DEFAULT || field == Config_TIMEOUT_DEFAULT) {
+			warn_timeout_deprecated = false;
+		}
+
 		// exit if encountered an error when setting configuration
 		if(!Config_Option_set(field, val_str)) {
 			RedisModule_Log(ctx, "warning",
 							"Failed setting field '%s'", field_str);
 			return REDISMODULE_ERR;
 		}
+	}
+
+	if(warn_timeout_deprecated) {
+		RedisModule_Log(ctx, "warning", "The TIMEOUT configuration parameter is deprecated. Please set TIMEOUT_MAX and TIMEOUT_DEFAULT instead");
 	}
 
 	return REDISMODULE_OK;
@@ -590,7 +660,6 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 		}
 		break;
 
-
 		//----------------------------------------------------------------------
 		// size of buffer to maintain as margin in matrices
 		//----------------------------------------------------------------------
@@ -602,6 +671,34 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 
 			ASSERT(node_creation_buffer != NULL);
 			(*node_creation_buffer) = Config_node_creation_buffer_get();
+		}
+		break;
+
+		//----------------------------------------------------------------------
+		// timeout default
+		//----------------------------------------------------------------------
+
+		case Config_TIMEOUT_DEFAULT: {
+			va_start(ap, field);
+			uint64_t *timeout_default = va_arg(ap, uint64_t *);
+			va_end(ap);
+
+			ASSERT(timeout_default != NULL);
+			(*timeout_default) = Config_timeout_default_get();
+		}
+		break;
+
+		//----------------------------------------------------------------------
+		// timeout max
+		//----------------------------------------------------------------------
+
+		case Config_TIMEOUT_MAX: {
+			va_start(ap, field);
+			uint64_t *timeout_max = va_arg(ap, uint64_t *);
+			va_end(ap);
+
+			ASSERT(timeout_max != NULL);
+			(*timeout_max) = Config_timeout_max_get();
 		}
 		break;
 
@@ -644,6 +741,7 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 			long long timeout;
 			if(!_Config_ParseNonNegativeInteger(val, &timeout)) return false;
 			Config_timeout_set(timeout);
+			Config_log_if_old_and_new_timeout_used();
 		}
 		break;
 
@@ -765,6 +863,30 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 				node_creation_buffer = 1 << msb;
 			}
 			Config_node_creation_buffer_set(node_creation_buffer);
+		}
+		break;
+
+		//----------------------------------------------------------------------
+		// timeout default
+		//----------------------------------------------------------------------
+
+		case Config_TIMEOUT_DEFAULT: {
+			long long timeout_default;
+			if(!_Config_ParseNonNegativeInteger(val, &timeout_default)) return false;
+			Config_timeout_default_set(timeout_default);
+			Config_log_if_old_and_new_timeout_used();
+		}
+		break;
+
+		//----------------------------------------------------------------------
+		// timeout max
+		//----------------------------------------------------------------------
+
+		case Config_TIMEOUT_MAX: {
+			long long timeout_max;
+			if(!_Config_ParseNonNegativeInteger(val, &timeout_max)) return false;
+			Config_timeout_max_set(timeout_max);
+			Config_log_if_old_and_new_timeout_used();
 		}
 		break;
 

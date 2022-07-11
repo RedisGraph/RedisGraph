@@ -326,7 +326,7 @@ void _query(bool profile, void *args) {
 	CronTaskHandle timeout_task = 0;
 
 	// set the query timeout if one was specified
-	if(command_ctx->timeout != 0) {
+	if(command_ctx->timeout != 0 && (readonly || command_ctx->timeout_on_write)) {
 		timeout_task = Query_SetTimeOut(command_ctx->timeout, exec_ctx->plan);
 	}
 
