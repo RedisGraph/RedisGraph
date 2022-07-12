@@ -112,7 +112,9 @@ GrB_Info RG_Matrix_nvals    // get the number of entries in a matrix
 GrB_Info RG_Matrix_clear
 (
     RG_Matrix A
-) {	
+) {
+	ASSERT(A     !=  NULL);
+
 	GrB_Matrix  m            =  RG_MATRIX_M(A);
 	GrB_Info    info         =  GrB_SUCCESS;
 	GrB_Matrix  delta_plus   =  RG_MATRIX_DELTA_PLUS(A);
@@ -138,6 +140,9 @@ GrB_Info RG_Matrix_type
 	GrB_Type *type,
 	RG_Matrix A
 ) {
+	ASSERT(A     !=  NULL);
+	ASSERT(type  !=  NULL);
+
 	GrB_Matrix M = RG_MATRIX_M(A);
 	GrB_Info info = GxB_Matrix_type(type, M);
 	ASSERT(info == GrB_SUCCESS)
