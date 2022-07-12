@@ -813,6 +813,34 @@ uint Graph_GetNodeLabels
 	return i;
 }
 
+// removes node and all of its connections within the graph
+void Graph_DeleteNode
+(
+	Graph *g,
+	Node *n
+) {
+	// assumption, node is completely detected,
+	// there are no incoming nor outgoing edges
+	// leading to / from node
+	ASSERT(g != NULL);
+	ASSERT(n != NULL);
+
+	RG_Matrix N = Graph_GetNodeLabelMatrix(g);
+	uint label_count;
+	NODE_GET_LABELS(g, n, label_count);
+	for(uint i = 0; i < label_count; i++) {
+		int label_id = labels[i];
+		RG_Matrix M = Graph_GetLabelMatrix(g, label_id);
+		// clear label matrix at position node ID
+		RG_Matrix_removeElement_BOOL(M, ENTITY_GET_ID(n), ENTITY_GET_ID(n));
+		RG_Matrix_removeElement_BOOL(N, ENTITY_GET_ID(n), labels[i]);
+		// update statistics
+		GraphStatistics_DecNodeCount(&g->stats, label_id, 1);
+	}
+
+	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
+}
+
 // removes an edge from Graph and updates graph relevent matrices
 int Graph_DeleteEdge
 (
@@ -1043,62 +1071,6 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 			RG_Matrix_removeElement_BOOL(adj, src_id, dest_id);
 		}
 	}
-}
-
-/* Removes both nodes and edges from graph. */
-void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges, uint edge_count,
-					  uint *node_deleted, uint *edge_deleted) {
-	ASSERT(g);
-
-	uint _edge_deleted = 0;
-	uint _node_deleted = 0;
-
-	if(node_count) {
-		_BulkDeleteNodes(g, nodes, node_count, &_node_deleted, &_edge_deleted);
-	}
-
-	if(edge_count) {
-		// Filter out explicit edges which were removed by _BulkDeleteNodes.
-		if(node_count) {
-			for(int i = 0; i < edge_count; i++) {
-				Edge *e = edges + i;
-				NodeID src = Edge_GetSrcNodeID(e);
-				NodeID dest = Edge_GetDestNodeID(e);
-
-				if(!DataBlock_GetItem(g->nodes, src) || !DataBlock_GetItem(g->nodes, dest)) {
-					// edge already removed due to node removal
-					// replace current edge with last edge
-					edges[i] = edges[edge_count - 1];
-
-					// Update indices.
-					i--;
-					edge_count--;
-				}
-			}
-		}
-
-		// removing duplicates
-#define is_id_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
-		QSORT(Edge, edges, edge_count, is_id_lt);
-
-		size_t uniqueIdx = 0;
-		for(int i = 0; i < edge_count; i++) {
-			// As long as current is the same as follows.
-			while(i < edge_count - 1 && ENTITY_GET_ID(edges + i) == ENTITY_GET_ID(edges + i + 1)) i++;
-
-			// skip edges that have already been deleted
-			if(!DataBlock_GetItem(g->edges, ENTITY_GET_ID(edges + i))) continue;
-			edges[uniqueIdx] = edges[i];
-			uniqueIdx++;
-		}
-
-		edge_count = uniqueIdx;
-		if(edge_count > 0) _BulkDeleteEdges(g, edges, edge_count);
-	}
-	_edge_deleted += edge_count;
-
-	if(node_deleted != NULL) *node_deleted = _node_deleted;
-	if(edge_deleted != NULL) *edge_deleted = _edge_deleted;
 }
 
 DataBlockIterator *Graph_ScanNodes(const Graph *g) {

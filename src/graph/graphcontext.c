@@ -539,6 +539,61 @@ void GraphContext_DeleteEdgeFromIndices(GraphContext *gc, Edge *e) {
 	if(idx) Index_RemoveEdge(idx, e);
 }
 
+uint GraphContext_DeleteNode
+(
+	GraphContext *gc,
+	Node *n
+) {
+	ASSERT(gc != NULL);
+	ASSERT(n != NULL);
+
+	Edge *edges = array_new(Edge, 1);
+
+	GrB_Index src;
+	GrB_Index dest;
+
+	// delete node's incoming and outgoing edges
+	// collect edges
+	Graph_GetNodeEdges(gc->g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, &edges);
+
+	uint edge_count = array_len(edges);
+	for (uint i = 0; i < edge_count; i++) {
+		GraphContext_DeleteEdge(gc, edges + i);
+	}
+
+	array_free(edges);
+
+	// add node deletion operation to undo log	
+	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+
+	if(GraphContext_HasIndices(gc)) {
+		GraphContext_DeleteNodeFromIndices(gc, n);
+	}
+
+	Graph_DeleteNode(gc->g, n);
+
+	return edge_count;
+}
+
+int GraphContext_DeleteEdge
+(
+	GraphContext *gc,
+	Edge *e
+) {
+	ASSERT(gc != NULL);
+	ASSERT(e != NULL);
+
+	// add edge deletion operation to undo log
+	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+
+	if(GraphContext_HasIndices(gc)) {
+		GraphContext_DeleteEdgeFromIndices(gc, e);
+	}
+
+	return Graph_DeleteEdge(gc->g, e);
+}
+
+
 //------------------------------------------------------------------------------
 // Functions for globally tracking GraphContexts
 //------------------------------------------------------------------------------

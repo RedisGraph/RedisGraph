@@ -254,6 +254,26 @@ void GraphContext_DeleteEdgeFromIndices
 	Edge *e
 );
 
+// delete a node
+// delete the node from the graph
+// delete the node from the relevant indexes
+// return the # of implicit edges deleted
+uint GraphContext_DeleteNode
+(
+	GraphContext *gc,
+	Node *n
+);
+
+// delete an edge
+// delete the edge from the graph
+// delete the edge from the relevant indexes
+// return the # of edges deleted
+int GraphContext_DeleteEdge
+(
+	GraphContext *gc,
+	Edge *e
+);
+
 // add GraphContext to global array
 void GraphContext_RegisterWithModule
 (
