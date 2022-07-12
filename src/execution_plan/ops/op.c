@@ -104,11 +104,6 @@ bool OpBase_Aware(OpBase *op, const char *alias, int *idx) {
 	return (rec_idx != raxNotFound);
 }
 
-void OpBase_PropagateFree(OpBase *op) {
-	if(op->free) op->free(op);
-	for(int i = 0; i < op->childCount; i++) OpBase_PropagateFree(op->children[i]);
-}
-
 void OpBase_PropagateReset(OpBase *op) {
 	if(op->reset) {
 		OpResult res = op->reset(op);

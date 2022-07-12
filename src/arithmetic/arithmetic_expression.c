@@ -209,11 +209,11 @@ AR_ExpNode *AR_EXP_NewAttributeAccessNode(AR_ExpNode *entity,
 	// the property using its string representation
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	SIValue prop_idx = SI_LongVal(ATTRIBUTE_NOTFOUND);
+	SIValue prop_idx = SI_LongVal(ATTRIBUTE_ID_NONE);
 	SIValue prop_name = SI_ConstStringVal((char *)attr);
 	Attribute_ID idx = GraphContext_GetAttributeID(gc, attr);
 
-	if(idx != ATTRIBUTE_NOTFOUND) prop_idx = SI_LongVal(idx);
+	if(idx != ATTRIBUTE_ID_NONE) prop_idx = SI_LongVal(idx);
 
 	// entity is an expression which should be evaluated to a graph entity
 	// attr is the name of the attribute we want to extract from entity
@@ -307,8 +307,6 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val) {
 		root->operand.type = AR_EXP_CONSTANT;
 		root->operand.constant = v;
 		return true;
-		// Root is an aggregation function, can't reduce.
-		return false;
 	}
 }
 
@@ -475,7 +473,10 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall
 		// exit with an error
 		res = EVAL_ERR;
 	}
-	if(result) *result = v;
+	if(result) {
+		SIValue_Persist(&v);
+		*result = v;
+	}
 
 cleanup:
 	_AR_EXP_FreeResultsArray(sub_trees, node->op.child_count);
@@ -701,6 +702,18 @@ bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
 		for(int i = 0; i < root->op.child_count; i++) {
 			if(AR_EXP_ContainsFunc(root->op.children[i], func)) return true;
 		}
+	}
+	return false;
+}
+
+bool AR_EXP_ContainsVariadic(const AR_ExpNode *root) {
+	if(root == NULL) return false;
+	if(AR_EXP_IsOperation(root)) {
+		for(int i = 0; i < root->op.child_count; i++) {
+			if(AR_EXP_ContainsVariadic(root->op.children[i])) return true;
+		}
+	} else if(AR_EXP_IsVariadic(root)) {
+		return true;
 	}
 	return false;
 }

@@ -54,8 +54,8 @@ static Record AllNodeScanConsumeFromChild(OpBase *opBase) {
 	}
 
 	Node n = GE_NEW_NODE();
-	n.entity = (Entity *)DataBlockIterator_Next(op->iter, &n.id);
-	if(n.entity == NULL) {
+	n.attributes = DataBlockIterator_Next(op->iter, &n.id);
+	if(n.attributes == NULL) {
 		OpBase_DeleteRecord(op->child_record); // Free old record.
 		// Pull a new record from child.
 		op->child_record = OpBase_Consume(op->op.children[0]);
@@ -63,8 +63,8 @@ static Record AllNodeScanConsumeFromChild(OpBase *opBase) {
 
 		// Reset iterator and evaluate again.
 		DataBlockIterator_Reset(op->iter);
-		n.entity = DataBlockIterator_Next(op->iter, &n.id);
-		if(n.entity == NULL) return NULL; // Iterator was empty; return immediately.
+		n.attributes = DataBlockIterator_Next(op->iter, &n.id);
+		if(n.attributes == NULL) return NULL; // Iterator was empty; return immediately.
 	}
 
 	// Clone the held Record, as it will be freed upstream.
@@ -80,8 +80,8 @@ static Record AllNodeScanConsume(OpBase *opBase) {
 	AllNodeScan *op = (AllNodeScan *)opBase;
 
 	Node n = GE_NEW_NODE();
-	n.entity = (Entity *)DataBlockIterator_Next(op->iter, &n.id);
-	if(n.entity == NULL) return NULL;
+	n.attributes = DataBlockIterator_Next(op->iter, &n.id);
+	if(n.attributes == NULL) return NULL;
 
 	Record r = OpBase_CreateRecord((OpBase *)op);
 	Record_AddNode(r, op->nodeRecIdx, n);

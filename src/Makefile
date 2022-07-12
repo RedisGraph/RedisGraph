@@ -51,12 +51,14 @@ ifeq ($(OS),macos)
 CLANG=1
 endif
 
+ifeq ($(CC),)
 ifeq ($(GCC),1)
 override CC=gcc
 override CXX=g++
 else ifeq ($(CLANG),1)
 override CC=clang
 override CXX=clang++
+endif
 endif
 
 #----------------------------------------------------------------------------------------------
@@ -68,7 +70,8 @@ endif
 
 # Default CFLAGS
 CFLAGS=\
-	-fPIC -fcommon \
+	-fPIC \
+	-fcommon \
 	-D_GNU_SOURCE \
 	-DREDIS_MODULE_TARGET \
 	-DREDISMODULE_EXPERIMENTAL_API \
@@ -82,7 +85,7 @@ ifeq ($(OS),macos)
 		LIBOMP_PREFIX:=$(shell brew --prefix libomp)
 		LIBOMP=$(LIBOMP_PREFIX)/lib/libomp.a
 	else
-		LIBOMP=-lomp
+		LIBOMP=-lomp -L$(shell brew --prefix libomp)/lib -Wl,-no_compact_unwind
 	endif
 endif
 
@@ -213,6 +216,7 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/resultset/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/resultset/formatters/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/schema/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/slow_log/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/undo_log/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/procedures/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/sds/*.c)
@@ -330,6 +334,7 @@ ifeq ($(ALL),1)
 	@$(MAKE) -C $(ROOT)/deps/xxHash clean
 	@$(MAKE) -C $(ROOT)/deps/GraphBLAS clean
 	@$(MAKE) -C $(ROOT)/deps/libcypher-parser clean
+	@cd $(ROOT)/deps/libcypher-parser; git ls-files -o | xargs rm
 	@$(MAKE) -C $(REDISEARCH_DIR) clean ALL=1 BINROOT=$(REDISEARCH_BINROOT)
 endif
 	@$(MAKE) -C $(ROOT)/tests clean

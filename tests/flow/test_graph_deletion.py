@@ -384,3 +384,32 @@ class testGraphDeletionFlow(FlowTestsBase):
                 self.env.assertTrue(False)
             except ResponseError as e:
                 self.env.assertContains("Delete type mismatch", str(e))
+
+    def test18_delete_self_edge(self):
+        self.env.flush()
+        redis_con = self.env.getConnection()
+        redis_graph = Graph(redis_con, "delete_self_edge_test")
+
+        redis_graph.query("CREATE (:person{name:'roi',age:32})")
+        redis_graph.query("CREATE (:person{name:'amit',age:30})")
+        redis_graph.query("MATCH (a:person) WHERE (a.name = 'roi') DELETE a")
+
+        redis_graph.query("CREATE (:person{name:'roi',age:32})")
+        redis_graph.query("MATCH (a:person), (b:person) WHERE (a.name = 'roi' AND b.name='amit')  CREATE (a)-[:knows]->(a)")
+        res = redis_graph.query("MATCH (a:person) WHERE (a.name = 'roi') DELETE a")
+
+        self.env.assertEquals(res.nodes_deleted, 1)
+        self.env.assertEquals(res.relationships_deleted, 1)
+
+    def test10_random_delete(self):
+        # test random graph deletion added as a result of a crash found in Graph_GetNodeEdges
+        # when iterating RG_Matrix of type BOOL with RG_MatrixTupleIter_next_UINT64
+        for i in range(1, 10):
+            self.env.getConnection().flushall()
+
+            query = """UNWIND range(0, 10000) AS x CREATE (src:N {v: x}), (src)-[:R]->(:N), (src)-[:R]->(:N), (src)-[:R]->(:N)"""
+            redis_graph.query(query)
+
+            query = """MATCH (n:N {v: floor(rand()*100001)}) DELETE n RETURN 1 LIMIT 1"""
+            for _ in range(1, 10):
+                redis_graph.query(query)

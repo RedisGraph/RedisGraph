@@ -35,10 +35,6 @@ bool extractOriginAndRadius(const FT_FilterNode *filter, SIValue *origin,
 	   strcasecmp(AR_EXP_GetFuncName(lhs), "distance") == 0) {
 		radius_exp = rhs;
 		distance_exp = lhs;
-	} else if(AR_EXP_IsOperation(rhs) &&
-			  strcasecmp(AR_EXP_GetFuncName(rhs), "distance") == 0) {
-		radius_exp = lhs;
-		distance_exp = rhs;
 	}
 
 	// could not find 'distance' function call

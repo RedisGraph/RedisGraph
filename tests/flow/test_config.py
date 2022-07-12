@@ -92,7 +92,7 @@ class testConfig(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("Field can not be re-configured" in str(e))
+            assert("This configuration parameter cannot be set at run-time" in str(e))
 
         try:
             # Set multiple configuration values, FAKE_CONFIG_NAME is NOT a valid
