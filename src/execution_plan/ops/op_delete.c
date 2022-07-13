@@ -41,7 +41,7 @@ void _DeleteEntities(OpDelete *op) {
 	for(uint i = 0; i < node_count; i++) {
 		while(i < node_count - 1 && ENTITY_GET_ID(nodes + i) == ENTITY_GET_ID(nodes + i + 1)) i++;
 
-		if(DataBlock_ItemIsDeleted((nodes + i)->entity)) continue;
+		if(Graph_EntityIsDeleted((nodes + i)->entity)) continue;
 		array_append(distinct_nodes, *(nodes + i));
 	}
 
@@ -56,6 +56,7 @@ void _DeleteEntities(OpDelete *op) {
 	for(uint i = 0; i < edge_count; i++) {
 		while(i < edge_count - 1 && ENTITY_GET_ID(edges + i) == ENTITY_GET_ID(edges + i + 1)) i++;
 
+		if(Graph_EntityIsDeleted((edges + i)->entity)) continue;
 		array_append(distinct_edges, *(edges + i));
 	}
 
