@@ -255,8 +255,8 @@ void GraphContext_DeleteEdgeFromIndices
 );
 
 // delete a node
-// delete the node from the graph
-// delete the node from the relevant indexes
+// delete the node and all of its incoming/outgoing edges from the graph
+// remove the node from the relevant indexes
 // return the # of implicit edges deleted
 uint GraphContext_DeleteNode
 (
@@ -266,7 +266,7 @@ uint GraphContext_DeleteNode
 
 // delete an edge
 // delete the edge from the graph
-// delete the edge from the relevant indexes
+// remove the edge from the relevant indexes
 // return the # of edges deleted
 int GraphContext_DeleteEdge
 (

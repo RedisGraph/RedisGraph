@@ -544,8 +544,8 @@ uint GraphContext_DeleteNode
 	GraphContext *gc,
 	Node *n
 ) {
-	ASSERT(gc != NULL);
 	ASSERT(n != NULL);
+	ASSERT(gc != NULL);
 
 	Edge *edges = array_new(Edge, 1);
 
@@ -563,9 +563,6 @@ uint GraphContext_DeleteNode
 
 	array_free(edges);
 
-	// add node deletion operation to undo log	
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-
 	if(GraphContext_HasIndices(gc)) {
 		GraphContext_DeleteNodeFromIndices(gc, n);
 	}
@@ -580,11 +577,8 @@ int GraphContext_DeleteEdge
 	GraphContext *gc,
 	Edge *e
 ) {
-	ASSERT(gc != NULL);
 	ASSERT(e != NULL);
-
-	// add edge deletion operation to undo log
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+	ASSERT(gc != NULL);
 
 	if(GraphContext_HasIndices(gc)) {
 		GraphContext_DeleteEdgeFromIndices(gc, e);
@@ -592,7 +586,6 @@ int GraphContext_DeleteEdge
 
 	return Graph_DeleteEdge(gc->g, e);
 }
-
 
 //------------------------------------------------------------------------------
 // Functions for globally tracking GraphContexts

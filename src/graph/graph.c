@@ -825,15 +825,15 @@ void Graph_DeleteNode
 	ASSERT(g != NULL);
 	ASSERT(n != NULL);
 
-	RG_Matrix N = Graph_GetNodeLabelMatrix(g);
+	RG_Matrix lbls = Graph_GetNodeLabelMatrix(g);
 	uint label_count;
 	NODE_GET_LABELS(g, n, label_count);
 	for(uint i = 0; i < label_count; i++) {
 		int label_id = labels[i];
-		RG_Matrix M = Graph_GetLabelMatrix(g, label_id);
+		RG_Matrix L = Graph_GetLabelMatrix(g, label_id);
 		// clear label matrix at position node ID
-		RG_Matrix_removeElement_BOOL(M, ENTITY_GET_ID(n), ENTITY_GET_ID(n));
-		RG_Matrix_removeElement_BOOL(N, ENTITY_GET_ID(n), labels[i]);
+		RG_Matrix_removeElement_BOOL(L, ENTITY_GET_ID(n), ENTITY_GET_ID(n));
+		RG_Matrix_removeElement_BOOL(lbls, ENTITY_GET_ID(n), label_id);
 		// update statistics
 		GraphStatistics_DecNodeCount(&g->stats, label_id, 1);
 	}

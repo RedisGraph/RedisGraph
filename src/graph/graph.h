@@ -175,7 +175,7 @@ void Graph_CreateEdge
 	Edge *e
 );
 
-// removes node and all of its connections within the graph
+// removes node from the graph
 void Graph_DeleteNode
 (
 	Graph *g,
