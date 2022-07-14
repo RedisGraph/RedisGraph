@@ -28,7 +28,7 @@ typedef struct {
 	bool compact;                   // Whether this query was issued with the compact flag.
 	ExecutorThread thread;          // Which thread executes this command
 	long long timeout;              // The query timeout, if specified.
-	bool timeout_on_write;          // Use timeout on write.
+	bool timeout_rw;                // Apply timeout on both read and write queries.
 } CommandCtx;
 
 // Create a new command context.
@@ -43,7 +43,7 @@ CommandCtx *CommandCtx_New
 	bool replicated_command,        // Whether this instance was spawned by a replication command.
 	bool compact,                   // Whether this query was issued with the compact flag.
 	long long timeout,              // The query timeout, if specified.
-	bool timeout_on_write           // Use timeout on write.
+	bool timeout_rw                 // Apply timeout on both read and write queries.
 );
 
 // Tracks given 'ctx' such that in case of a crash we will be able to report

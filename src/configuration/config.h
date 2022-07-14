@@ -18,18 +18,18 @@
 
 typedef enum {
 	Config_TIMEOUT                   = 0,     // timeout value for queries
-	Config_CACHE_SIZE                = 1,     // number of entries in cache
-	Config_ASYNC_DELETE              = 2,     // delete graph asynchronously
-	Config_OPENMP_NTHREAD            = 3,     // max number of OpenMP threads to use
-	Config_THREAD_POOL_SIZE          = 4,     // number of threads in thread pool
-	Config_RESULTSET_MAX_SIZE        = 5,     // max number of records in result-set
-	Config_VKEY_MAX_ENTITY_COUNT     = 6,     // max number of elements in vkey
-	Config_MAX_QUEUED_QUERIES        = 7,     // max number of queued queries
-	Config_QUERY_MEM_CAPACITY        = 8,     // max mem(bytes) that query/thread can utilize at any given time
-	Config_DELTA_MAX_PENDING_CHANGES = 9,     // number of pending changes before RG_Matrix flushed
-	Config_NODE_CREATION_BUFFER      = 10,    // size of buffer to maintain as margin in matrices
-	Config_TIMEOUT_DEFAULT           = 11,    // default timeout for read and write queries
-	Config_TIMEOUT_MAX               = 12,    // max timeout that can be enforced
+	Config_TIMEOUT_DEFAULT           = 1,     // default timeout for read and write queries
+	Config_TIMEOUT_MAX               = 2,     // max timeout that can be enforced
+	Config_CACHE_SIZE                = 3,     // number of entries in cache
+	Config_ASYNC_DELETE              = 4,     // delete graph asynchronously
+	Config_OPENMP_NTHREAD            = 5,     // max number of OpenMP threads to use
+	Config_THREAD_POOL_SIZE          = 6,     // number of threads in thread pool
+	Config_RESULTSET_MAX_SIZE        = 7,     // max number of records in result-set
+	Config_VKEY_MAX_ENTITY_COUNT     = 8,     // max number of elements in vkey
+	Config_MAX_QUEUED_QUERIES        = 9,     // max number of queued queries
+	Config_QUERY_MEM_CAPACITY        = 10,    // max mem(bytes) that query/thread can utilize at any given time
+	Config_DELTA_MAX_PENDING_CHANGES = 11,    // number of pending changes before RG_Matrix flushed
+	Config_NODE_CREATION_BUFFER      = 12,    // size of buffer to maintain as margin in matrices
 	Config_END_MARKER                = 13
 } Config_Option_Field;
 
@@ -42,12 +42,12 @@ typedef void (*Config_on_change)(Config_Option_Field type);
 static const Config_Option_Field RUNTIME_CONFIGS[] = {
 	Config_RESULTSET_MAX_SIZE,
 	Config_TIMEOUT,
+	Config_TIMEOUT_DEFAULT,
+	Config_TIMEOUT_MAX,
 	Config_MAX_QUEUED_QUERIES,
 	Config_QUERY_MEM_CAPACITY,
 	Config_DELTA_MAX_PENDING_CHANGES,
-	Config_VKEY_MAX_ENTITY_COUNT,
-	Config_TIMEOUT_DEFAULT,
-	Config_TIMEOUT_MAX
+	Config_VKEY_MAX_ENTITY_COUNT
 };
 
 // Set module-level configurations to defaults or to user arguments where provided.

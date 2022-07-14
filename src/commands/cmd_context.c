@@ -28,7 +28,7 @@ CommandCtx *CommandCtx_New
 	bool replicated_command,
 	bool compact,
 	long long timeout,
-	bool timeout_on_write
+	bool timeout_rw
 ) {
 	CommandCtx *context = rm_malloc(sizeof(CommandCtx));
 	context->bc                 = bc;
@@ -39,7 +39,7 @@ CommandCtx *CommandCtx_New
 	context->timeout            = timeout;
 	context->graph_ctx          = graph_ctx;
 	context->command_name       = NULL;
-	context->timeout_on_write   = timeout_on_write;
+	context->timeout_rw         = timeout_rw;
 	context->replicated_command = replicated_command;
 
 	if(cmd_name) {

@@ -19,13 +19,13 @@ typedef void(*Command_Handler)(void *args);
 // Read configuration flags, returning REDIS_MODULE_ERR if flag parsing failed.
 static int _read_flags
 (
-	RedisModuleString **argv,
-	int argc,
-	bool *compact,
-	long long *timeout,
-	bool *timeout_on_write,
-	uint *graph_version,
-	char **errmsg
+	RedisModuleString **argv,   // commands arguments
+  	int argc,                   // number of arguments
+  	bool *compact,              // compact result-set format
+  	long long *timeout,         // query level timeout 
+  	bool *timeout_rw,           // apply timeout on both read and write queries
+  	uint *graph_version,        // graph version [UNUSED]
+  	char **errmsg               // reported error message
 ) {
 
 	ASSERT(compact);
@@ -36,10 +36,10 @@ static int _read_flags
 	*graph_version = GRAPH_VERSION_MISSING;
 	Config_Option_get(Config_TIMEOUT_DEFAULT, timeout);
 	if(*timeout != CONFIG_TIMEOUT_NO_TIMEOUT) {
-		*timeout_on_write = true;
+		*timeout_rw = true;
 	} else {
 		Config_Option_get(Config_TIMEOUT, timeout);
-		*timeout_on_write = false;
+		*timeout_rw = false;
 	}
 
 
@@ -90,7 +90,7 @@ static int _read_flags
 				if(timeout == CONFIG_TIMEOUT_NO_TIMEOUT) {
 					Config_Option_get(Config_TIMEOUT_DEFAULT, timeout);
 				}
-				*timeout_on_write = true;
+				*timeout_rw = true;
 			}
 
 			// Emit error on missing, negative, or non-numeric timeout values.
@@ -186,7 +186,7 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	bool compact;
 	uint version;
 	long long timeout;
-	bool timeout_on_write;
+	bool timeout_rw;
 	CommandCtx *context = NULL;
 
 	RedisModuleString *graph_name = argv[1];
@@ -197,8 +197,8 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(_validate_command_arity(cmd, argc) == false) return RedisModule_WrongArity(ctx);
 
 	// parse additional arguments
-	int res = _read_flags(argv, argc, &compact, &timeout, &timeout_on_write, 
-		&version, &errmsg);
+	int res = _read_flags(argv, argc, &compact, &timeout, &timeout_rw, &version,
+		&errmsg);
 	if(res == REDISMODULE_ERR) {
 		// emit error and exit if argument parsing failed
 		RedisModule_ReplyWithError(ctx, errmsg);
@@ -237,13 +237,13 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(exec_thread == EXEC_THREAD_MAIN) {
 		// run query on Redis main thread
 		context = CommandCtx_New(ctx, NULL, argv[0], query, gc, exec_thread,
-								 is_replicated, compact, timeout, timeout_on_write);
+								 is_replicated, compact, timeout, timeout_rw);
 		handler(context);
 	} else {
 		// run query on a dedicated thread
 		RedisModuleBlockedClient *bc = RedisGraph_BlockClient(ctx);
 		context = CommandCtx_New(NULL, bc, argv[0], query, gc, exec_thread,
-								 is_replicated, compact, timeout, timeout_on_write);
+								 is_replicated, compact, timeout, timeout_rw);
 
 		if(ThreadPools_AddWorkReader(handler, context) == THPOOL_QUEUE_FULL) {
 			// Report an error once our workers thread pool internal queue
