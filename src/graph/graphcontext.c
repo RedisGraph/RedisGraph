@@ -547,21 +547,8 @@ uint GraphContext_DeleteNode
 	ASSERT(n != NULL);
 	ASSERT(gc != NULL);
 
-	Edge *edges = array_new(Edge, 1);
-
 	GrB_Index src;
 	GrB_Index dest;
-
-	// delete node's incoming and outgoing edges
-	// collect edges
-	Graph_GetNodeEdges(gc->g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, &edges);
-
-	uint edge_count = array_len(edges);
-	for (uint i = 0; i < edge_count; i++) {
-		GraphContext_DeleteEdge(gc, edges + i);
-	}
-
-	array_free(edges);
 
 	if(GraphContext_HasIndices(gc)) {
 		GraphContext_DeleteNodeFromIndices(gc, n);
@@ -569,7 +556,7 @@ uint GraphContext_DeleteNode
 
 	Graph_DeleteNode(gc->g, n);
 
-	return edge_count;
+	return 1;
 }
 
 int GraphContext_DeleteEdge

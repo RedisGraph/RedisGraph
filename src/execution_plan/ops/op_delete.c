@@ -19,6 +19,7 @@ static OpResult DeleteReset(OpBase *opBase);
 static void DeleteFree(OpBase *opBase);
 
 void _DeleteEntities(OpDelete *op) {
+	uint   node_deleted           =  0;
 	uint   edge_deleted           =  0;
 	uint   implicit_edge_deleted  =  0;
 	uint   node_count             =  array_len(op->deleted_nodes);
@@ -43,9 +44,13 @@ void _DeleteEntities(OpDelete *op) {
 
 		if(Graph_EntityIsDeleted((nodes + i)->entity)) continue;
 		array_append(distinct_nodes, *(nodes + i));
+
+		// delete node's incoming and outgoing edges
+		Graph_GetNodeEdges(op->gc->g, nodes + i, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, &op->deleted_edges);
 	}
 
-	node_count = array_len(distinct_nodes);
+	node_count =  array_len(distinct_nodes);
+	edge_count =  array_len(op->deleted_edges);
 
 	// remove edge duplicates
 	Edge *edges = op->deleted_edges;
@@ -71,12 +76,12 @@ void _DeleteEntities(OpDelete *op) {
 
 		// delete nodes
 		for(uint i = 0; i < node_count; i++) {
-			implicit_edge_deleted += GraphContext_DeleteNode(op->gc, distinct_nodes + i);
+			node_deleted += GraphContext_DeleteNode(op->gc, distinct_nodes + i);
 		}
 
 		// stats must be updated befor releasing the commit for replication
 		if(op->stats != NULL) {
-			op->stats->nodes_deleted          +=  node_count;
+			op->stats->nodes_deleted          +=  node_deleted;
 			op->stats->relationships_deleted  +=  edge_deleted;
 			op->stats->relationships_deleted  +=  implicit_edge_deleted;
 		}

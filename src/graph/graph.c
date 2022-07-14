@@ -833,6 +833,8 @@ void Graph_DeleteNode
 	array_free(edges);
 	#endif
 
+	GrB_Info info;
+	UNUSED(info);
 	RG_Matrix lbls = Graph_GetNodeLabelMatrix(g);
 	uint label_count;
 	NODE_GET_LABELS(g, n, label_count);
@@ -840,8 +842,10 @@ void Graph_DeleteNode
 		int label_id = labels[i];
 		RG_Matrix L = Graph_GetLabelMatrix(g, label_id);
 		// clear label matrix at position node ID
-		RG_Matrix_removeElement_BOOL(L, ENTITY_GET_ID(n), ENTITY_GET_ID(n));
-		RG_Matrix_removeElement_BOOL(lbls, ENTITY_GET_ID(n), label_id);
+		info = RG_Matrix_removeElement_BOOL(L, ENTITY_GET_ID(n), ENTITY_GET_ID(n));
+		ASSERT(info == GrB_SUCCESS);
+		info = RG_Matrix_removeElement_BOOL(lbls, ENTITY_GET_ID(n), label_id);
+		ASSERT(info == GrB_SUCCESS);
 		// update statistics
 		GraphStatistics_DecNodeCount(&g->stats, label_id, 1);
 	}
