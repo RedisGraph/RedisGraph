@@ -73,6 +73,8 @@ static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
 				asprintf(errmsg, "Failed to parse query timeout value");
 				return REDISMODULE_ERR;
 			}
+
+			continue;
 		}
 	}
 	return REDISMODULE_OK;
