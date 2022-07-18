@@ -1229,7 +1229,7 @@ RG_Matrix Graph_GetZeroMatrix
 	const Graph *g
 ) {
 	RG_Matrix z = g->_zero_matrix;
-	_MatrixResizeToCapacity(g, z);
+	g->SynchronizeMatrix(g, z);
 
 #if RG_DEBUG
 	// make sure zero matrix is indeed empty
