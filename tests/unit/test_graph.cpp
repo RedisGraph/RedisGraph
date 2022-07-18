@@ -422,21 +422,6 @@ TEST_F(GraphTest, RemoveMultipleNodes) {
 	int relation = Graph_AddRelationType(g);
 	for(int i = 0; i < 8; i++) Graph_CreateNode(g, &n, NULL, 0);
 
-	// First node.
-	Graph_CreateEdge(g, 0, 2, relation, &e);
-	Graph_CreateEdge(g, 0, 6, relation, &e);
-	Graph_CreateEdge(g, 0, 7, relation, &e);
-
-	// Right before last node.
-	Graph_CreateEdge(g, 6, 0, relation, &e);
-	Graph_CreateEdge(g, 6, 1, relation, &e);
-	Graph_CreateEdge(g, 6, 7, relation, &e);
-
-	// Last node.
-	Graph_CreateEdge(g, 7, 0, relation, &e);
-	Graph_CreateEdge(g, 7, 1, relation, &e);
-	Graph_CreateEdge(g, 7, 6, relation, &e);
-
 	// Delete first and last nodes.
 	simple_tic(tic);
 	Graph_GetNode(g, 0, &n);
