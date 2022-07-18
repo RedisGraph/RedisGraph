@@ -195,25 +195,29 @@ class testEdgeIndexUpdatesFlow(FlowTestsBase):
         expected_result = []
         self.env.assertEquals(result.result_set, expected_result)
 
-    # Validate that after deleting an indexed edge implicitly, that the edge can no longer be found in the index.
+    # validate that implicit edge deletion updates indicies
     def test07_delete_implicit_edge(self):
-        # Create a new edge with a single indexed property
+        # create a new edge with a single indexed property
         query = """CREATE ()-[:NEW {v: 5}]->()"""
         result = redis_graph.query(query)
-        self.env.assertEquals(result.properties_set, 1)
+
+        # index edges of type "NEW" on the 'v' attribute
         redis_graph.query("CREATE INDEX FOR ()-[r:NEW]-() ON (r.v)")
 
-        # Delete the edge implicitly by deleting the node
+        # implicitly delete edge
         query = """MATCH (n)-[a:NEW {v: 5}]->() DELETE n"""
         result = redis_graph.query(query)
         self.env.assertEquals(result.nodes_deleted, 1)
         self.env.assertEquals(result.relationships_deleted, 1)
 
-        # Query the index for the entity
+        # query the index for the entity
         query = """MATCH ()-[a:NEW {v: 5}]->() RETURN a"""
         plan = redis_graph.execution_plan(query)
         self.env.assertIn("Edge By Index Scan", plan)
         result = redis_graph.query(query)
-        # No entities should be returned
+
+        # validate
+        # no entities should be returned
         expected_result = []
         self.env.assertEquals(result.result_set, expected_result)
+

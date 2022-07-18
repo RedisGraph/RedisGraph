@@ -347,7 +347,7 @@ TEST_F(GraphTest, GraphConstruction) {
 }
 
 TEST_F(GraphTest, RemoveNodes) {
-	// Construct graph.
+	// construct graph
 	RG_Matrix M;
 	GrB_Index nnz;
 	Graph *g = Graph_New(32, 32);
@@ -385,18 +385,21 @@ TEST_F(GraphTest, RemoveNodes) {
 	ASSERT_EQ(nnz, 3);
 
 	Edge *edges = (Edge *)array_new(Edge, 3);
-	//==============================================================================
-	//=== Delete node 0 ============================================================
-	//==============================================================================
 
-	// First node should have 2 edges.
+	//--------------------------------------------------------------------------
+	// delete node 0
+	//--------------------------------------------------------------------------
+
+	// first node should have 2 edges.
 	Graph_GetNode(g, 0, &node);
 	Graph_GetNodeEdges(g, &node, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, &edges);
 	uint edge_count = array_len(edges);
 	ASSERT_EQ(edge_count, 2);
 
-	for(uint i = 0; i < edge_count; i ++) Graph_DeleteEdge(g, &edges[i]);
-	Graph_GetNode(g, 0, &node);
+	// delete node's incoming/outgoing edges
+	for(uint i = 0; i < edge_count; i ++) {
+		Graph_DeleteEdge(g, &edges[i]);
+	}
 	Graph_DeleteNode(g, &node);
 	
 	Graph_ReleaseLock(g);
@@ -504,9 +507,9 @@ TEST_F(GraphTest, RemoveEdges) {
 	RG_Matrix_nvals(&nnz, M);
 	ASSERT_EQ(nnz, 3);
 
-	//==============================================================================
-	//=== Delete first edge ========================================================
-	//==============================================================================
+	//--------------------------------------------------------------------------
+	// Delete first edge
+	//--------------------------------------------------------------------------
 	Edge *edges = (Edge *)array_new(Edge, 3);
 	Graph_GetEdgesConnectingNodes(g, 0, 1, GRAPH_NO_RELATION, &edges);
 	ASSERT_EQ(array_len(edges), 1);
@@ -541,9 +544,9 @@ TEST_F(GraphTest, RemoveEdges) {
 	RG_Matrix_nvals(&nnz, M);
 	ASSERT_EQ(nnz, 2);
 
-	//==============================================================================
-	//=== Delete second edge =======================================================
-	//==============================================================================
+	//--------------------------------------------------------------------------
+	// Delete second edge
+	//--------------------------------------------------------------------------
 
 	array_clear(edges);
 	Graph_GetNode(g, 2, &n);
@@ -577,9 +580,9 @@ TEST_F(GraphTest, RemoveEdges) {
 	RG_Matrix_nvals(&nnz, M);
 	ASSERT_EQ(nnz, 1);
 
-	//==============================================================================
-	//=== Delete third edge ========================================================
-	//==============================================================================
+	//--------------------------------------------------------------------------
+	// Delete third edge
+	//--------------------------------------------------------------------------
 
 	// Delete edge.
 	e = edges[1];

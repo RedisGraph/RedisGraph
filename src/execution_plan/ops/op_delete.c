@@ -18,12 +18,15 @@ static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase);
 static OpResult DeleteReset(OpBase *opBase);
 static void DeleteFree(OpBase *opBase);
 
-void _DeleteEntities(OpDelete *op) {
-	uint   node_deleted           =  0;
-	uint   edge_deleted           =  0;
-	uint   implicit_edge_deleted  =  0;
-	uint   node_count             =  array_len(op->deleted_nodes);
-	uint   edge_count             =  array_len(op->deleted_edges);
+static void _DeleteEntities
+(
+	OpDelete *op
+) {
+	uint node_deleted          = 0;
+	uint edge_deleted          = 0;
+	uint implicit_edge_deleted = 0;
+	uint node_count            = array_len(op->deleted_nodes);
+	uint edge_count            = array_len(op->deleted_edges);
 
 	// nothing to delete, quickly return
 	if((node_count + edge_count) == 0) return;
@@ -40,13 +43,23 @@ void _DeleteEntities(OpDelete *op) {
 	QSORT(Node, nodes, node_count, is_entity_lt);
 
 	for(uint i = 0; i < node_count; i++) {
-		while(i < node_count - 1 && ENTITY_GET_ID(nodes + i) == ENTITY_GET_ID(nodes + i + 1)) i++;
+		while(i < node_count - 1 &&
+			  ENTITY_GET_ID(nodes + i) == ENTITY_GET_ID(nodes + i + 1)) {
+			i++;
+		}
 
-		if(Graph_EntityIsDeleted((nodes + i)->entity)) continue;
-		array_append(distinct_nodes, *(nodes + i));
+		Node *n = nodes + i;
 
-		// delete node's incoming and outgoing edges
-		Graph_GetNodeEdges(op->gc->g, nodes + i, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, &op->deleted_edges);
+		// skip already deleted nodes
+		if(Graph_EntityIsDeleted(n->entity)) {
+			continue;
+		}
+
+		array_append(distinct_nodes, *n);
+
+		// mark node's edges for deletion
+		Graph_GetNodeEdges(op->gc->g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION,
+				&op->deleted_edges);
 	}
 
 	node_count =  array_len(distinct_nodes);
@@ -59,16 +72,28 @@ void _DeleteEntities(OpDelete *op) {
 	QSORT(Edge, edges, edge_count, is_entity_lt);
 
 	for(uint i = 0; i < edge_count; i++) {
-		while(i < edge_count - 1 && ENTITY_GET_ID(edges + i) == ENTITY_GET_ID(edges + i + 1)) i++;
+		while(i < edge_count - 1 &&
+			  ENTITY_GET_ID(edges + i) == ENTITY_GET_ID(edges + i + 1)) {
+			i++;
+		}
 
-		if(Graph_EntityIsDeleted((edges + i)->entity)) continue;
-		array_append(distinct_edges, *(edges + i));
+		Edge *e = edges + i;
+
+		// skip already deleted edges
+		if(Graph_EntityIsDeleted((edges + i)->entity)) {
+			continue;
+		}
+
+		array_append(distinct_edges, *e);
 	}
 
 	edge_count = array_len(distinct_edges);
 
 	// lock everything
 	QueryCtx_LockForCommit(); {
+		// NOTE: delete edges before nodes
+		// required as a deleted node must be detached
+
 		// delete edges
 		for(uint i = 0; i < edge_count; i++) {
 			edge_deleted += GraphContext_DeleteEdge(op->gc, distinct_edges + i);
@@ -79,13 +104,14 @@ void _DeleteEntities(OpDelete *op) {
 			node_deleted += GraphContext_DeleteNode(op->gc, distinct_nodes + i);
 		}
 
-		// stats must be updated befor releasing the commit for replication
+		// stats must be updated under lock due to for replication
 		if(op->stats != NULL) {
-			op->stats->nodes_deleted          +=  node_deleted;
-			op->stats->relationships_deleted  +=  edge_deleted;
-			op->stats->relationships_deleted  +=  implicit_edge_deleted;
+			op->stats->nodes_deleted         += node_deleted;
+			op->stats->relationships_deleted += edge_deleted;
+			op->stats->relationships_deleted += implicit_edge_deleted;
 		}
 	}
+
 	// release lock
 	QueryCtx_UnlockCommit(&op->op);
 
