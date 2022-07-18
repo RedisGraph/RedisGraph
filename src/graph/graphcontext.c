@@ -553,9 +553,6 @@ uint GraphContext_DeleteNode
 	ASSERT(n != NULL);
 	ASSERT(gc != NULL);
 
-	GrB_Index src;
-	GrB_Index dest;
-
 	if(GraphContext_HasIndices(gc)) {
 		GraphContext_DeleteNodeFromIndices(gc, n);
 	}

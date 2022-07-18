@@ -80,7 +80,7 @@ static void _DeleteEntities
 		Edge *e = edges + i;
 
 		// skip already deleted edges
-		if(Graph_EntityIsDeleted((edges + i)->entity)) {
+		if(Graph_EntityIsDeleted(e->entity)) {
 			continue;
 		}
 
