@@ -245,6 +245,7 @@ static void _GraphContext_UpdateVersion(GraphContext *gc, const char *str) {
 //------------------------------------------------------------------------------
 // Schema API
 //------------------------------------------------------------------------------
+
 // Find the ID associated with a label for schema and matrix access
 int _GraphContext_GetLabelID(const GraphContext *gc, const char *label, SchemaType t) {
 	// Choose the appropriate schema array given the entity type
@@ -367,6 +368,58 @@ Attribute_ID GraphContext_GetAttributeID(GraphContext *gc, const char *attribute
 //------------------------------------------------------------------------------
 // Index API
 //------------------------------------------------------------------------------
+
+// delete all references to a node from any indices built upon its attributes
+static void GraphContext_DeleteNodeFromIndices
+(
+	GraphContext *gc,
+	Node *n
+) {
+	ASSERT(n  != NULL);
+	ASSERT(gc != NULL);
+
+	Schema    *s       =  NULL;
+	Graph     *g       =  gc->g;
+	EntityID  node_id  =  ENTITY_GET_ID(n);
+
+	// retrieve node labels
+	uint label_count;
+	NODE_GET_LABELS(g, n, label_count);
+
+	for(uint i = 0; i < label_count; i++) {
+		int label_id = labels[i];
+		s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
+		ASSERT(s != NULL);
+
+		// update any indices this entity is represented in
+		Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+		if(idx) Index_RemoveNode(idx, n);
+
+		idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
+		if(idx) Index_RemoveNode(idx, n);
+	}
+}
+
+static void GraphContext_DeleteEdgeFromIndices
+(
+	GraphContext *gc,
+	Edge *e
+) {
+	Schema  *s  =  NULL;
+	Graph   *g  =  gc->g;
+
+	int relation_id = EDGE_GET_RELATION_ID(e, g);
+
+	s = GraphContext_GetSchemaByID(gc, relation_id, SCHEMA_EDGE);
+
+	// update any indices this entity is represented in
+	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+	if(idx) Index_RemoveEdge(idx, e);
+
+	idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
+	if(idx) Index_RemoveEdge(idx, e);
+}
+
 bool GraphContext_HasIndices(GraphContext *gc) {
 	ASSERT(gc != NULL);
 
@@ -492,53 +545,6 @@ int GraphContext_DeleteIndex
 	return res;
 }
 
-// delete all references to a node from any indices built upon its properties
-void GraphContext_DeleteNodeFromIndices
-(
-	GraphContext *gc,
-	Node *n
-) {
-	ASSERT(n  != NULL);
-	ASSERT(gc != NULL);
-
-	Schema    *s       =  NULL;
-	Graph     *g       =  gc->g;
-	EntityID  node_id  =  ENTITY_GET_ID(n);
-
-	// retrieve node labels
-	uint label_count;
-	NODE_GET_LABELS(g, n, label_count);
-
-	for(uint i = 0; i < label_count; i++) {
-		int label_id = labels[i];
-		s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
-		ASSERT(s != NULL);
-
-		// Update any indices this entity is represented in
-		Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
-		if(idx) Index_RemoveNode(idx, n);
-
-		idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
-		if(idx) Index_RemoveNode(idx, n);
-	}
-}
-
-void GraphContext_DeleteEdgeFromIndices(GraphContext *gc, Edge *e) {
-	Schema  *s  =  NULL;
-	Graph   *g  =  gc->g;
-
-	int relation_id = EDGE_GET_RELATION_ID(e, g);
-
-	s = GraphContext_GetSchemaByID(gc, relation_id, SCHEMA_EDGE);
-
-	// update any indices this entity is represented in
-	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
-	if(idx) Index_RemoveEdge(idx, e);
-
-	idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
-	if(idx) Index_RemoveEdge(idx, e);
-}
-
 uint GraphContext_DeleteNode
 (
 	GraphContext *gc,
@@ -559,7 +565,7 @@ uint GraphContext_DeleteNode
 	return 1;
 }
 
-int GraphContext_DeleteEdge
+uint GraphContext_DeleteEdge
 (
 	GraphContext *gc,
 	Edge *e

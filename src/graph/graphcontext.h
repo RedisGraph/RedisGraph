@@ -240,24 +240,9 @@ int GraphContext_DeleteIndex
 	IndexType type
 );
 
-// remove a single node from all indices that refer to it
-void GraphContext_DeleteNodeFromIndices
-(
-	GraphContext *gc,
-	Node *n
-);
-
-// remove a single edge from all indices that refer to it
-void GraphContext_DeleteEdgeFromIndices
-(
-	GraphContext *gc,
-	Edge *e
-);
-
 // delete a node
-// delete the node and all of its incoming/outgoing edges from the graph
-// remove the node from the relevant indexes
-// return 1 if node delete 0 otherwise
+// remove node from the relevant indexes
+// return 1 on success, 0 otherwise
 uint GraphContext_DeleteNode
 (
 	GraphContext *gc,
@@ -265,10 +250,9 @@ uint GraphContext_DeleteNode
 );
 
 // delete an edge
-// delete the edge from the graph
-// remove the edge from the relevant indexes
-// return the # of edges deleted
-int GraphContext_DeleteEdge
+// remove edge from the relevant indexes
+// return 1 on success, 0 otherwise
+uint GraphContext_DeleteEdge
 (
 	GraphContext *gc,
 	Edge *e
