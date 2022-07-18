@@ -338,7 +338,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
         self.graph.query("CREATE (:N)")
 
         def resize_and_query():
-            g = redis.commands.graph.Graph(self.conn, GRAPH_ID)
+            g = redis.commands.graph.Graph(self.env.getConnection(), GRAPH_ID)
 
             for j in range(1, 10):
                 g.query("UNWIND range(1, 10000) AS x CREATE (:M)")
