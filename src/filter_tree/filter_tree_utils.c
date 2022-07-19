@@ -38,7 +38,7 @@ bool extractOriginAndRadius(const FT_FilterNode *filter, SIValue *origin,
 	}
 
 	// could not find 'distance' function call
-	if(distance_exp == NULL || distance_exp->op.child_count != 2) return false;
+	if(distance_exp == NULL) return false;
 
 	// make sure radius is constant
 	bool scalar = AR_EXP_ReduceToScalar(radius_exp, true, &d);
