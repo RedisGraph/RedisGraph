@@ -285,8 +285,6 @@ void UpdateNodeLabels
 	uint label_count = raxSize(labels);
 	if(label_count == 0) return;
 
-	int new_labels = 0;
-	int removed_labels = 0;
 	int *add_labels = array_new(int, label_count);
 	int *remove_labels = array_new(int, label_count);
 	raxIterator it;
@@ -307,15 +305,29 @@ void UpdateNodeLabels
 			const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 			if(s == NULL) {
 				s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
-				new_labels++;
 			}
-			// sync matrix, make sure label matrix is of the right dimensions
-			Graph_GetLabelMatrix(gc->g, Schema_GetID(s));
 
-			// Append label id.
-			array_append(add_labels, Schema_GetID(s));
-			// Add to index.
-			Schema_AddNodeToIndices(s, node);
+			int schema_id = Schema_GetID(s);
+			int graph_labels_count = Graph_LabelTypeCount(gc->g);
+			int labels[graph_labels_count];
+			uint node_labels_count = Graph_GetNodeLabels(gc->g, node, labels, graph_labels_count);
+			bool exists = false;
+			for(uint i = 0; i < node_labels_count; i++) {
+				if(labels[i] == schema_id) {
+					exists = true;
+					break;
+				}
+			}
+			if(!exists) {
+				// sync matrix, make sure label matrix is of the right dimensions
+				RG_Matrix m = Graph_GetLabelMatrix(gc->g, schema_id);
+
+				// Append label id.
+				array_append(add_labels, schema_id);
+				// Add to index.
+				Schema_AddNodeToIndices(s, node);
+			}
+			
 		} else {
 			// Get or create label matrix
 			const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);

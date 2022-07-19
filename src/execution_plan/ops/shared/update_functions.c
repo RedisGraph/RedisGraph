@@ -73,12 +73,20 @@ void CommitUpdates
 
 		// if entity has been deleted, perform no updates
 		if(GraphEntity_IsDeleted(update->ge)) continue;
+		uint loop_labels_added = 0;
+		uint loop_labels_removed = 0;
+		uint loop_props_set = 0;
+		uint loop_props_removed = 0;
 
 		// update the attributes on the graph entity
 		UpdateEntityProperties(gc, update->ge, update->attributes,
-				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE, &properties_set, &properties_removed);
+				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE, &loop_props_set, &loop_props_removed);
 
-		UpdateNodeLabels(gc, (Node*)update->ge, update->labels, &labels_added, &labels_removed);
+		UpdateNodeLabels(gc, (Node*)update->ge, update->labels, &loop_labels_added, &loop_labels_removed);
+		labels_added += loop_labels_added;
+		labels_removed += loop_labels_removed;
+		properties_set += loop_props_set;
+		properties_removed += loop_props_removed;
 	}
 
 	if(stats) {
