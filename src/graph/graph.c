@@ -837,21 +837,41 @@ void Graph_DeleteNode
 	Graph *g,
 	Node *n
 ) {
-	// assumption, node is completely detected,
-	// there are no incoming nor outgoing edges
-	// leading to / from node
+	// assumption, node is detached
+ 	// there are no incoming nor outgoing edges leading to / from node
 	ASSERT(g != NULL);
 	ASSERT(n != NULL);
 
-	RG_Matrix N = Graph_GetNodeLabelMatrix(g);
+	#if RG_DEBUG
+	// validate assumption
+	Edge *edges = array_new(Edge, 0);
+	Graph_GetNodeEdges(g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, &edges);
+	ASSERT(array_len(edges) == 0);
+	array_free(edges);
+	#endif
+
+	GrB_Info info;
 	uint label_count;
+
+	UNUSED(info);
 	NODE_GET_LABELS(g, n, label_count);
+
+	EntityID  n_id = ENTITY_GET_ID(n);
+	RG_Matrix lbls = Graph_GetNodeLabelMatrix(g);
+
 	for(uint i = 0; i < label_count; i++) {
 		int label_id = labels[i];
-		RG_Matrix M = Graph_GetLabelMatrix(g, label_id);
+		RG_Matrix L = Graph_GetLabelMatrix(g, label_id);
+
 		// clear label matrix at position node ID
-		RG_Matrix_removeElement_BOOL(M, ENTITY_GET_ID(n), ENTITY_GET_ID(n));
-		RG_Matrix_removeElement_BOOL(N, ENTITY_GET_ID(n), labels[i]);
+		info = RG_Matrix_removeElement_BOOL(L, n_id, n_id);
+		ASSERT(info == GrB_SUCCESS)
+
+		// clear labels matrix
+ 		// TODO: consider switching to GrB_Row_assign to clear an entire row
+		info = RG_Matrix_removeElement_BOOL(lbls, n_id, label_id);
+		ASSERT(info == GrB_SUCCESS)
+
 		// update statistics
 		GraphStatistics_DecNodeCount(&g->stats, label_id, 1);
 	}
@@ -1095,7 +1115,7 @@ RG_Matrix Graph_GetZeroMatrix
 	const Graph *g
 ) {
 	RG_Matrix z = g->_zero_matrix;
-	_MatrixResizeToCapacity(g, z);
+	g->SynchronizeMatrix(g, z);
 
 #if RG_DEBUG
 	// make sure zero matrix is indeed empty
