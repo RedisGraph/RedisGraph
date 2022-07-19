@@ -240,15 +240,19 @@ int GraphContext_DeleteIndex
 	IndexType type
 );
 
-// remove a single node from all indices that refer to it
-void GraphContext_DeleteNodeFromIndices
+// delete a node
+// remove node from the relevant indexes
+// return 1 on success, 0 otherwise
+uint GraphContext_DeleteNode
 (
 	GraphContext *gc,
 	Node *n
 );
 
-// remove a single edge from all indices that refer to it
-void GraphContext_DeleteEdgeFromIndices
+// delete an edge
+// remove edge from the relevant indexes
+// return 1 on success, 0 otherwise
+uint GraphContext_DeleteEdge
 (
 	GraphContext *gc,
 	Edge *e
