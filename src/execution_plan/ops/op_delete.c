@@ -25,7 +25,6 @@ static void _DeleteEntities
 ) {
 	uint node_deleted          = 0;
 	uint edge_deleted          = 0;
-	uint implicit_edge_deleted = 0;
 	uint node_count            = array_len(op->deleted_nodes);
 	uint edge_count            = array_len(op->deleted_edges);
 
@@ -109,7 +108,6 @@ static void _DeleteEntities
 		if(op->stats != NULL) {
 			op->stats->nodes_deleted         += node_deleted;
 			op->stats->relationships_deleted += edge_deleted;
-			op->stats->relationships_deleted += implicit_edge_deleted;
 		}
 	}
 

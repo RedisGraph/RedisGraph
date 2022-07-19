@@ -172,8 +172,8 @@ uint DeleteNode
 	GraphContext *gc,
 	Node *n
 ) {
-	ASSERT(gc != NULL);
 	ASSERT(n != NULL);
+	ASSERT(gc != NULL);
 
 	// add node deletion operation to undo log	
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
