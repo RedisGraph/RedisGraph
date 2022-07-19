@@ -488,9 +488,9 @@ static void SSpaths_next
 // compare path by weight, cost and path length
 static int path_cmp
 (
-	void *udata,
 	const void *a,
-	const void *b
+	const void *b,
+	void *udata
 ) {
 	WeightedPath *da = (WeightedPath *)a;
 	WeightedPath *db = (WeightedPath *)b;

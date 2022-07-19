@@ -7,6 +7,7 @@
 #include "op_value_hash_join.h"
 #include "../../value.h"
 #include "../../util/arr.h"
+#include "../../util/qsort.h"
 #include "../../util/rmalloc.h"
 
 // forward declarations
@@ -19,11 +20,10 @@ static void ValueHashJoinFree(OpBase *opBase);
 // element stored at postion idx
 static inline int _record_cmp
 (
-	uint *_idx,
 	Record *l,
-	Record *r
-)	{
-
+	Record *r,
+	uint *_idx
+) {
 	uint    idx = *_idx;
 	SIValue lv  = Record_Get(*l, idx);
 	SIValue rv  = Record_Get(*r, idx);
@@ -160,8 +160,13 @@ void _sort_cached_records
 	OpValueHashJoin *op
 ) {
 	uint idx = op->join_value_rec_idx;
-	qsort_r(op->cached_records, array_len(op->cached_records), sizeof(Record),
-			&idx, (int(*)(void*, const void*, const void*))_record_cmp);
+	sort_r(
+			op->cached_records,
+			array_len(op->cached_records),
+			sizeof(Record),
+			(int(*)(const void*, const void*, void*))_record_cmp,
+			&idx
+		);
 }
 
 // caches all records coming from left branch
