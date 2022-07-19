@@ -170,7 +170,9 @@ uint CreateEdge
 uint DeleteNode
 (
 	GraphContext *gc,
-	Node *n
+	Node *n,
+	uint *deleted_labels_count,
+	uint *deleted_properties_count
 ) {
 	ASSERT(n != NULL);
 	ASSERT(gc != NULL);
@@ -183,6 +185,17 @@ uint DeleteNode
 		_DeleteNodeFromIndices(gc, n);
 	}
 
+	if(deleted_labels_count) {
+		uint label_count;
+		NODE_GET_LABELS(gc->g, n, label_count);
+		*deleted_labels_count = label_count;
+	}
+
+	if(deleted_properties_count) {
+		const AttributeSet attributes = GraphEntity_GetAttributes(n);
+		*deleted_properties_count = attributes ? attributes->attr_count : 0;
+	}
+
 	Graph_DeleteNode(gc->g, n);
 
 	return 1;
@@ -191,7 +204,8 @@ uint DeleteNode
 int DeleteEdge
 (
 	GraphContext *gc,
-	Edge *e
+	Edge *e,
+	uint *deleted_properties_count
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(e != NULL);
@@ -203,8 +217,13 @@ int DeleteEdge
 	if(GraphContext_HasIndices(gc)) {
 		_DeleteEdgeFromIndices(gc, e);
 	}
-
-	return Graph_DeleteEdge(gc->g, e);
+	const AttributeSet attributes = GraphEntity_GetAttributes(e);
+	uint properties_count = attributes ? attributes->attr_count : 0;
+	int res = Graph_DeleteEdge(gc->g, e);
+	if(res && deleted_properties_count) {
+		*deleted_properties_count = properties_count;
+	}
+	return res;
 }
 
 // update entity attributes and update undo log
@@ -259,6 +278,10 @@ void UpdateEntityProperties
 		}
 		else {
 			set_props += updates;
+			// When overwriting an exiting property it is considered also as removed.
+			if(GraphEntity_GetProperty(ge, prop->id) != ATTRIBUTE_NOTFOUND) {
+				removed_props +=updates;
+			}
 		}
 	}
 	if(entity_type == GETYPE_NODE) {
@@ -308,9 +331,8 @@ void UpdateNodeLabels
 			}
 
 			int schema_id = Schema_GetID(s);
-			int graph_labels_count = Graph_LabelTypeCount(gc->g);
-			int labels[graph_labels_count];
-			uint node_labels_count = Graph_GetNodeLabels(gc->g, node, labels, graph_labels_count);
+			uint node_labels_count;
+			NODE_GET_LABELS(gc->g, node, node_labels_count);
 			bool exists = false;
 			for(uint i = 0; i < node_labels_count; i++) {
 				if(labels[i] == schema_id) {
