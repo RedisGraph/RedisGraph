@@ -83,5 +83,7 @@ int UpdateNodeLabels
 (
 	GraphContext *gc,            // graph context to update the entity
 	Node *node,                  // the node to be updated
-	rax *labels      	         // labels to update
+	rax *labels,      	         // labels to update
+	uint *labels_added_count,    // number of labels added (out param)
+	uint *labels_removed_count   // number of labels removed (out param)
 );

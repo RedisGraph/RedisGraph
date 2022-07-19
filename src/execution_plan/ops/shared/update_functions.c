@@ -59,8 +59,10 @@ void CommitUpdates
 	ASSERT(updates != NULL);
 	ASSERT(type    != ENTITY_UNKNOWN);
 
-	uint  labels_added      =  0;
-	uint  properties_set  =  0;
+	uint  labels_added        =  0;
+	uint  labels_removed      =  0;
+	uint  properties_set      =  0;
+	uint  properties_removed  =  0;
 	uint  update_count    =  array_len(updates);
 
 	// return early if no updates are enqueued
@@ -76,12 +78,13 @@ void CommitUpdates
 		properties_set += UpdateEntityProperties(gc, update->ge, update->attributes,
 				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE);
 
-		labels_added += UpdateNodeLabels(gc, (Node*)update->ge, update->labels);
+		UpdateNodeLabels(gc, (Node*)update->ge, update->labels, &labels_added, &labels_removed);
 	}
 
 	if(stats) {
 		stats->properties_set += properties_set;
 		stats->labels_added += labels_added;
+		stats->labels_removed += labels_removed;
 	}
 }
 

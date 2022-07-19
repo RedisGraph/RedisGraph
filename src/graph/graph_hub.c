@@ -263,11 +263,13 @@ int UpdateEntityProperties
 	return updates;
 }
 
-int UpdateNodeLabels
+void UpdateNodeLabels
 (
 	GraphContext *gc,            // graph context to update the entity
 	Node *node,                  // the node to be updated
-	rax *labels     	         // labels to update
+	rax *labels,     	         // labels to update
+	uint *labels_added_count,    // number of labels added (out param)
+	uint *labels_removed_count   // number of labels removed (out param)
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(node != NULL);
@@ -277,6 +279,7 @@ int UpdateNodeLabels
 	if(label_count == 0) return 0;
 
 	int new_labels = 0;
+	int removed_labels = 0;
 	int *add_labels = array_new(int, label_count);
 	int *remove_labels = array_new(int, label_count);
 	raxIterator it;
@@ -324,6 +327,7 @@ int UpdateNodeLabels
 
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 	label_count = array_len(add_labels);
+	if(labels_added_count) *labels_added_count = label_count;
 	// Update label matrixes.
 	if(label_count > 0) {
 		Graph_LabelNode(gc->g, node->id ,add_labels, label_count);
@@ -332,6 +336,7 @@ int UpdateNodeLabels
 	array_free(add_labels);
 
 	label_count = array_len(remove_labels);
+	if(labels_removed_count) *labels_removed_count = label_count;
 	if(label_count > 0) {
 		Graph_RemoveLabelNode(gc->g, node->id ,remove_labels, label_count);
 		UndoLog_RemoveLabels(&query_ctx->undo_log, node, remove_labels);
