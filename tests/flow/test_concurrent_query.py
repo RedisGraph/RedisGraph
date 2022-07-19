@@ -333,9 +333,10 @@ class testConcurrentQueryFlow(FlowTestsBase):
         self.conn.delete(GRAPH_ID)
 
     def test_11_concurrent_resize_zero_matrix(self):
-        if "to_thread" in dir(asyncio):
+        if "to_thread" not in dir(asyncio):
             # no need to check
             return
+
         self.graph = Graph(self.conn, GRAPH_ID)
 
         self.graph.query("CREATE (:N)")
