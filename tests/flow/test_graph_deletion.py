@@ -400,3 +400,16 @@ class testGraphDeletionFlow(FlowTestsBase):
 
         self.env.assertEquals(res.nodes_deleted, 1)
         self.env.assertEquals(res.relationships_deleted, 1)
+
+    def test10_random_delete(self):
+        # test random graph deletion added as a result of a crash found in Graph_GetNodeEdges
+        # when iterating RG_Matrix of type BOOL with RG_MatrixTupleIter_next_UINT64
+        for i in range(1, 10):
+            self.env.getConnection().flushall()
+
+            query = """UNWIND range(0, 10000) AS x CREATE (src:N {v: x}), (src)-[:R]->(:N), (src)-[:R]->(:N), (src)-[:R]->(:N)"""
+            redis_graph.query(query)
+
+            query = """MATCH (n:N {v: floor(rand()*100001)}) DELETE n RETURN 1 LIMIT 1"""
+            for _ in range(1, 10):
+                redis_graph.query(query)

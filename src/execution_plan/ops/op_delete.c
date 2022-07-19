@@ -17,6 +17,7 @@
 static Record DeleteConsume(OpBase *opBase);
 static OpResult DeleteInit(OpBase *opBase);
 static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase);
+static OpResult DeleteReset(OpBase *opBase);
 static void DeleteFree(OpBase *opBase);
 
 static int is_entity_cmp
@@ -27,11 +28,14 @@ static int is_entity_cmp
 	return ENTITY_GET_ID(a) - ENTITY_GET_ID(b);
 }
 
-void _DeleteEntities(OpDelete *op) {
-	uint   edge_deleted           =  0;
-	uint   implicit_edge_deleted  =  0;
-	uint   node_count             =  array_len(op->deleted_nodes);
-	uint   edge_count             =  array_len(op->deleted_edges);
+static void _DeleteEntities
+(
+	OpDelete *op
+) {
+	uint node_deleted          = 0;
+	uint edge_deleted          = 0;
+	uint node_count            = array_len(op->deleted_nodes);
+	uint edge_count            = array_len(op->deleted_edges);
 
 	// nothing to delete, quickly return
 	if((node_count + edge_count) == 0) return;
@@ -48,13 +52,27 @@ void _DeleteEntities(OpDelete *op) {
 			(int(*)(const void*, const void*))is_entity_cmp);
 
 	for(uint i = 0; i < node_count; i++) {
-		while(i < node_count - 1 && ENTITY_GET_ID(nodes + i) == ENTITY_GET_ID(nodes + i + 1)) i++;
+		while(i < node_count - 1 &&
+			  ENTITY_GET_ID(nodes + i) == ENTITY_GET_ID(nodes + i + 1)) {
+			i++;
+		}
 
-		if(DataBlock_ItemIsDeleted((nodes + i)->attributes)) continue;
-		array_append(distinct_nodes, *(nodes + i));
+		Node *n = nodes + i;
+
+		// skip already deleted nodes
+		if(Graph_EntityIsDeleted((GraphEntity *)n)) {
+			continue;
+		}
+
+		array_append(distinct_nodes, *n);
+
+		// mark node's edges for deletion
+		Graph_GetNodeEdges(op->gc->g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION,
+				&op->deleted_edges);
 	}
 
-	node_count = array_len(distinct_nodes);
+	node_count =  array_len(distinct_nodes);
+	edge_count =  array_len(op->deleted_edges);
 
 	// remove edge duplicates
 	Edge *edges = op->deleted_edges;
@@ -64,15 +82,28 @@ void _DeleteEntities(OpDelete *op) {
 			(int(*)(const void*, const void*))is_entity_cmp);
 
 	for(uint i = 0; i < edge_count; i++) {
-		while(i < edge_count - 1 && ENTITY_GET_ID(edges + i) == ENTITY_GET_ID(edges + i + 1)) i++;
+		while(i < edge_count - 1 &&
+			  ENTITY_GET_ID(edges + i) == ENTITY_GET_ID(edges + i + 1)) {
+			i++;
+		}
 
-		array_append(distinct_edges, *(edges + i));
+		Edge *e = edges + i;
+
+		// skip already deleted edges
+		if(Graph_EntityIsDeleted((GraphEntity *)e)) {
+			continue;
+		}
+
+		array_append(distinct_edges, *e);
 	}
 
 	edge_count = array_len(distinct_edges);
 
 	// lock everything
 	QueryCtx_LockForCommit(); {
+		// NOTE: delete edges before nodes
+		// required as a deleted node must be detached
+
 		// delete edges
 		for(uint i = 0; i < edge_count; i++) {
 			edge_deleted += DeleteEdge(op->gc, distinct_edges + i);
@@ -80,16 +111,16 @@ void _DeleteEntities(OpDelete *op) {
 
 		// delete nodes
 		for(uint i = 0; i < node_count; i++) {
-			implicit_edge_deleted += DeleteNode(op->gc, distinct_nodes + i);
+			node_deleted += DeleteNode(op->gc, distinct_nodes + i);
 		}
 
-		// stats must be updated befor releasing the commit for replication
+		// stats must be updated under lock due to for replication
 		if(op->stats != NULL) {
-			op->stats->nodes_deleted          +=  node_count;
-			op->stats->relationships_deleted  +=  edge_deleted;
-			op->stats->relationships_deleted  +=  implicit_edge_deleted;
+			op->stats->nodes_deleted         += node_deleted;
+			op->stats->relationships_deleted += edge_deleted;
 		}
 	}
+
 	// release lock
 	QueryCtx_UnlockCommit(&op->op);
 
@@ -110,7 +141,7 @@ OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", DeleteInit, DeleteConsume,
-				NULL, NULL, DeleteClone, DeleteFree, true, plan);
+				DeleteReset, NULL, DeleteClone, DeleteFree, true, plan);
 
 	return (OpBase *)op;
 }
@@ -171,8 +202,24 @@ static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	return NewDeleteOp(plan, exps);
 }
 
-static void DeleteFree(OpBase *ctx) {
-	OpDelete *op = (OpDelete *)ctx;
+static OpResult DeleteReset(OpBase *opBase) {
+	OpDelete *op = (OpDelete *)opBase;
+
+	_DeleteEntities(op);
+
+	if(op->deleted_nodes) {
+		array_clear(op->deleted_nodes);
+	}
+
+	if(op->deleted_edges) {
+		array_clear(op->deleted_edges);
+	}
+
+	return OP_OK;
+}
+
+static void DeleteFree(OpBase *opBase) {
+	OpDelete *op = (OpDelete *)opBase;
 
 	_DeleteEntities(op);
 
@@ -192,4 +239,3 @@ static void DeleteFree(OpBase *ctx) {
 		op->exps = NULL;
 	}
 }
-
