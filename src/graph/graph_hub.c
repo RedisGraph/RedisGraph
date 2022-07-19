@@ -238,29 +238,36 @@ static int _Update_Entity_Property
 	return Graph_UpdateEntity(ge, attr_id, new_value, entity_type);
 }
 
-int UpdateEntityProperties
+void UpdateEntityProperties
 (
 	GraphContext *gc,
 	GraphEntity *ge,
 	const AttributeSet set,
-	GraphEntityType entity_type
+	GraphEntityType entity_type,
+	uint *props_set_count,
+	uint *props_removed_count
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(ge != NULL);
-
-	int updates = 0;
+	int set_props = 0;
+	int removed_props = 0;
 	for (uint i = 0; i < ATTRIBUTE_SET_COUNT(set); i++) {
 		Attribute *prop = set->attributes + i;
-		updates += _Update_Entity_Property(gc, ge, prop->id, prop->value, entity_type);
+		int updates = _Update_Entity_Property(gc, ge, prop->id, prop->value, entity_type);
+		if(SIValue_IsNull(prop->value)) {
+			removed_props +=updates;
+		}
+		else {
+			set_props += updates;
+		}
 	}
-
 	if(entity_type == GETYPE_NODE) {
 		_AddNodeToIndices(gc, (Node *)ge);
 	} else {
 		_AddEdgeToIndices(gc, (Edge *)ge);
 	}
-
-	return updates;
+	if(props_set_count) *props_set_count = set_props;
+	if(props_removed_count) *props_removed_count = removed_props;
 }
 
 void UpdateNodeLabels
@@ -274,9 +281,9 @@ void UpdateNodeLabels
 	ASSERT(gc != NULL);
 	ASSERT(node != NULL);
 
-	if(!labels) return 0;
+	if(!labels) return;
 	uint label_count = raxSize(labels);
-	if(label_count == 0) return 0;
+	if(label_count == 0) return;
 
 	int new_labels = 0;
 	int removed_labels = 0;
@@ -342,5 +349,4 @@ void UpdateNodeLabels
 		UndoLog_RemoveLabels(&query_ctx->undo_log, node, remove_labels);
 	}
 	array_free(remove_labels);
-	return new_labels;
 }

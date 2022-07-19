@@ -75,14 +75,15 @@ void CommitUpdates
 		if(GraphEntity_IsDeleted(update->ge)) continue;
 
 		// update the attributes on the graph entity
-		properties_set += UpdateEntityProperties(gc, update->ge, update->attributes,
-				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE);
+		UpdateEntityProperties(gc, update->ge, update->attributes,
+				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE, &properties_set, &properties_removed);
 
 		UpdateNodeLabels(gc, (Node*)update->ge, update->labels, &labels_added, &labels_removed);
 	}
 
 	if(stats) {
 		stats->properties_set += properties_set;
+		stats->properties_removed += properties_removed;
 		stats->labels_added += labels_added;
 		stats->labels_removed += labels_removed;
 	}
