@@ -23,7 +23,7 @@ bool ResultSetStat_IndicateModification
 			stats->nodes_deleted > 0          ||
 			stats->relationships_deleted > 0  ||
 			stats->labels_added > 0           ||
-			stats->properties_removed > 0     ||
+			stats->labels_removed > 0         ||
 			stats->indices_created > 0        ||
 			stats->indices_deleted > 0
 			);
