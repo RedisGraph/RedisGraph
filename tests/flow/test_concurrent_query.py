@@ -1,3 +1,4 @@
+import asyncio
 from common import *
 from pathos.pools import ProcessPool as Pool
 from pathos.helpers import mp as pathos_multiprocess
@@ -331,3 +332,26 @@ class testConcurrentQueryFlow(FlowTestsBase):
         # delete the key
         self.conn.delete(GRAPH_ID)
 
+    def test_11_concurrent_resize_zero_matrix(self):
+        if "to_thread" not in dir(asyncio):
+            # no need to check
+            return
+
+        self.graph = Graph(self.conn, GRAPH_ID)
+
+        self.graph.query("CREATE (:N)")
+
+        def resize_and_query():
+            g = redis.commands.graph.Graph(self.env.getConnection(), GRAPH_ID)
+
+            for j in range(1, 10):
+                g.query("UNWIND range(1, 10000) AS x CREATE (:M)")
+                for i in range(1, 10):
+                    g.query("MATCH (n:N)-[r:R]->() RETURN r")
+        
+        loop = asyncio.get_event_loop()
+        tasks = []
+        for i in range(1, 10):
+            tasks.append(loop.create_task(asyncio.to_thread(resize_and_query)))
+
+        loop.run_until_complete(asyncio.wait(tasks))
