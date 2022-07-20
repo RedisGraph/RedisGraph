@@ -32,6 +32,7 @@ class testQueryTimeout(FlowTestsBase):
             assert(False)
 
     def test02_configured_timeout(self):
+        # CONFIG command on redis cluster is excluded
         self.env.skipOnCluster()
         # Verify that the module-level timeout is set to the default of 0
         response = redis_con.execute_command("GRAPH.CONFIG GET timeout")
@@ -50,6 +51,7 @@ class testQueryTimeout(FlowTestsBase):
             self.env.assertContains("Query timed out", str(error))
 
     def test03_timeout_index_scan(self):
+        # CONFIG command on redis cluster is excluded
         self.env.skipOnCluster()
         # set timeout to unlimited
         redis_con.execute_command("GRAPH.CONFIG SET timeout 0")

@@ -161,6 +161,7 @@ class testResultSetFlow(FlowTestsBase):
 
     # Test implicit result-set size limit
     def test09_implicit_resultset_limit(self):
+        # CONFIG command on redis cluster is excluded
         self.env.skipOnCluster()
         query = "MATCH (a) RETURN a"
 

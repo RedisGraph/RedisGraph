@@ -47,6 +47,7 @@ class testPendingQueryLimit():
 
     def test_01_query_limit_config(self):
         # read max queued queries config
+        # GRAPH.CONFIG on redis cluster is excluded
         self.env.skipOnCluster()
         result = self.conn.execute_command("GRAPH.CONFIG", "GET", "MAX_QUEUED_QUERIES")
         max_queued_queries = result[1]
@@ -62,6 +63,7 @@ class testPendingQueryLimit():
 
     def test_02_overflow_no_limit(self):
         # no limit on number of pending queries
+        # GRAPH.CONFIG is excluded on redis cluster
         self.env.skipOnCluster()
         limit = 4294967295
         self.conn.execute_command("GRAPH.CONFIG", "SET", "MAX_QUEUED_QUERIES", limit)
@@ -72,6 +74,7 @@ class testPendingQueryLimit():
 
     def test_03_overflow_with_limit(self):
         # limit number of pending queries
+        # GRAPH.CONFIG is excluded on redis cluster
         self.env.skipOnCluster()
         limit = 1
         self.conn.execute_command("GRAPH.CONFIG", "SET", "MAX_QUEUED_QUERIES", limit)

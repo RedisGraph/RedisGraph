@@ -50,6 +50,7 @@ class testKeyspaceAccesses(FlowTestsBase):
 
     # Fail gracefully on attempting a graph deletion of an empty key.
     def test02_graph_delete_on_empty_key(self):
+        # Load time config on redis cluster is excluded
         self.env.skipOnCluster()
         graph = Graph(redis_con, "nonexistent_key")
         try:

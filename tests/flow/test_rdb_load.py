@@ -31,6 +31,7 @@ class testRdbLoad():
         self.env.assertEqual(result[1], expected)
     
     def test_rdb_load(self):
+        # DEBUG command on redis cluster is excluded
         self.env.skipOnCluster()
         aux = self.conn.execute_command("GRAPH.DEBUG", "AUX", "START")
         self.env.assertEqual(aux, 1)

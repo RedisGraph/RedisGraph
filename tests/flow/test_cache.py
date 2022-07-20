@@ -22,6 +22,7 @@ class testCache(FlowTestsBase):
         plan_graph.delete()
 
     def test_sanity_check(self):
+        # Setting the cache size (configuration) on redis cluster is disabled
         self.env.skipOnCluster()
         graph = Graph(redis_con, 'Cache_Sanity_Check')
         for i in range(CACHE_SIZE + 1):

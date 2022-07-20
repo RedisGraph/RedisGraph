@@ -1,6 +1,5 @@
 from common import *
 from pathos.pools import ProcessPool as Pool
-import time
 
 GRAPH_ID = "index"
 redis_graph = None
@@ -175,7 +174,6 @@ class testIndexCreationFlow(FlowTestsBase):
         self.env.assertEquals(result.indices_created, 2)
 
     def test05_index_delete(self):
-        
         def create_drop_index(graph_id):
             env = Env(decodeResponses=True)
             redis_con = env.getConnection()
@@ -185,7 +183,5 @@ class testIndexCreationFlow(FlowTestsBase):
                 pipe.execute_command("GRAPH.QUERY", f"x{graph_id}", "CREATE INDEX FOR ()-[n:T]-() ON (n.p)")
                 pipe.execute()
                 redis_con.execute_command("GRAPH.DELETE", f"x{graph_id}")
-            #time.sleep(30)
-        self.env.getConnection().flushall()
         pool = Pool(nodes=10)
         pool.map(create_drop_index, range(1, 100))

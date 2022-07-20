@@ -13,6 +13,7 @@ class testConfig(FlowTestsBase):
         redis_graph = Graph(redis_con, "config")
 
     def test01_config_get(self):
+        # Getting the configuration on redis cluster is disabled
         self.env.skipOnCluster()
         global redis_graph
 
@@ -29,6 +30,7 @@ class testConfig(FlowTestsBase):
         self.env.assertGreaterEqual(len(response), 9)
 
     def test02_config_get_invalid_name(self):
+        # Getting the configuration on redis cluster is disabled
         self.env.skipOnCluster()
         global redis_graph
 
@@ -44,6 +46,7 @@ class testConfig(FlowTestsBase):
             pass
 
     def test03_config_set(self):
+        # Getting the configuration on redis cluster is disabled
         self.env.skipOnCluster()
         global redis_graph
 
@@ -72,6 +75,7 @@ class testConfig(FlowTestsBase):
         self.env.assertEqual(response, expected_response)
 
     def test04_config_set_multi(self):
+        # Getting the configuration on redis cluster is disabled
         self.env.skipOnCluster()
         # Set multiple configuration values
         response = redis_con.execute_command("GRAPH.CONFIG SET RESULTSET_SIZE 3 QUERY_MEM_CAPACITY 100")
@@ -86,6 +90,7 @@ class testConfig(FlowTestsBase):
             self.env.assertEqual(response, expected_response)
 
     def test05_config_set_invalid_multi(self):
+        # Getting the configuration on redis cluster is disabled
         self.env.skipOnCluster()
         # Get current configuration
         prev_conf = redis_con.execute_command("GRAPH.CONFIG GET *")
@@ -122,6 +127,7 @@ class testConfig(FlowTestsBase):
         self.env.assertEqual(prev_conf, current_conf)
 
     def test06_config_set_invalid_name(self):
+        # Getting the configuration on redis cluster is disabled
         self.env.skipOnCluster()
 
         # Ensure that setter fails on unknown configuration field
@@ -136,6 +142,7 @@ class testConfig(FlowTestsBase):
             pass
 
     def test07_config_invalid_subcommand(self):
+        # Getting the configuration on redis cluster is disabled
         self.env.skipOnCluster()
 
         # Ensure failure on invalid sub-command, e.g. GRAPH.CONFIG DREP...
@@ -148,6 +155,7 @@ class testConfig(FlowTestsBase):
             pass
 
     def test08_config_reset_to_defaults(self):
+        # Getting the configuration on redis cluster is disabled
         self.env.skipOnCluster()
 
         # Revert memory limit to default
@@ -206,6 +214,7 @@ class testConfig(FlowTestsBase):
         self.env.assertEqual(response, expected_response)
 
     def test09_set_invalid_values(self):
+        # Getting the configuration on redis cluster is disabled
         self.env.skipOnCluster()
         # The run-time configurations supported by RedisGraph are:
         # MAX_QUEUED_QUERIES
@@ -244,6 +253,7 @@ class testConfig(FlowTestsBase):
                 assert(("Failed to set config value %s to invalid" % config) in str(e))
 
     def test10_set_get_vkey_max_entity_count(self):
+        # Getting the configuration on redis cluster is disabled
         self.env.skipOnCluster()
         global redis_graph
 
@@ -260,6 +270,7 @@ class testConfig(FlowTestsBase):
         self.env.assertEqual(response, expected_response)
 
     def test11_set_get_node_creation_buffer(self):
+        # Getting the configuration on redis cluster is disabled
         self.env.skipOnCluster()
         # flush and stop is needed for memcheck for clean shutdown
         self.env.flush()
