@@ -400,7 +400,7 @@ jobs:
 
   build-macos:
     macos:
-      xcode: 13.4.1
+      xcode: 12.4.0
     resource_class: macos.x86.medium.gen2
     parameters:
       upload:
@@ -604,11 +604,14 @@ workflows:
               platform: [bionic]
       - build-macos:
           context: common
-          <<: *on-integ-and-version-tags
+          #@@<<: *on-integ-and-version-tags
+          <<: *on-any-branch
       - coverage:
-          <<: *on-any-branch
+          #@@<<: *on-any-branch
+          <<: *never
       - build-memcheck:
-          <<: *on-any-branch
+          #@@<<: *on-any-branch
+          <<: *never
       - upload-artifacts:
           name: upload-artifacts-to-staging-lab
           staging-lab: "1"
