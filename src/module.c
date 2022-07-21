@@ -178,8 +178,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
+	// Use -1 in the key step cause it tells the DMC it should go to a random shard
 	if(RedisModule_CreateCommand(ctx, "graph.LIST", Graph_List, "readonly", 0, 0,
-								 0) == REDISMODULE_ERR) {
+								 -1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 

@@ -1,8 +1,8 @@
 from common import *
 
 redis_graph = None
-GRAPH_ID = "G"
-
+GRAPH_ID = "G{1}"
+shard = 1
 
 # tests the GRAPH.LIST command
 class testGraphList(FlowTestsBase):
@@ -14,39 +14,39 @@ class testGraphList(FlowTestsBase):
 
     def test_graph_list(self):
         # no graphs, expecting an empty array
-        con = self.env.getConnection()
+        con = self.env.getConnection(shard)
         graphs = con.execute_command("GRAPH.LIST")
         self.env.assertEquals(graphs, [])
 
-        # create graph key "G"
-        self.create_graph("G", con)
+        # create graph key "G{1}"
+        self.create_graph("G{1}", con)
         graphs = con.execute_command("GRAPH.LIST")
-        self.env.assertEquals(graphs, ["G"])
+        self.env.assertEquals(graphs, ["G{1}"])
 
         # create a second graph key "X"
-        self.create_graph("X", con)
+        self.create_graph("X{1}", con)
         graphs = con.execute_command("GRAPH.LIST")
         graphs.sort()
-        self.env.assertEquals(graphs, ["G", "X"])
+        self.env.assertEquals(graphs, ["G{1}", "X{1}"])
 
         # create a string key "str", graph list shouldn't be effected
         con.set("str", "some string")
         graphs = con.execute_command("GRAPH.LIST")
         graphs.sort()
-        self.env.assertEquals(graphs, ["G", "X"])
+        self.env.assertEquals(graphs, ["G{1}", "X{1}"])
 
-        # delete graph key "G"
-        con.delete("G")
+        # delete graph key "G{1}"
+        con.delete("G{1}")
         graphs = con.execute_command("GRAPH.LIST")
-        self.env.assertEquals(graphs, ["X"])
+        self.env.assertEquals(graphs, ["X{1}"])
 
         # rename graph key X to Z
-        con.rename("X", "Z")
+        con.rename("X{1}", "Z{1}")
         graphs = con.execute_command("GRAPH.LIST")
-        self.env.assertEquals(graphs, ["Z"])
+        self.env.assertEquals(graphs, ["Z{1}"])
 
         # delete graph key "Z", no graph keys in the keyspace
-        con.execute_command("GRAPH.DELETE", "Z")
+        con.execute_command("GRAPH.DELETE", "Z{1}")
         graphs = con.execute_command("GRAPH.LIST")
         self.env.assertEquals(graphs, [])
 
@@ -55,7 +55,7 @@ class testList(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_graph
-        redis_con = self.env.getConnection()
+        redis_con = self.env.getConnection(shard)
         redis_graph = Graph(redis_con, GRAPH_ID)
 
     def test01_collect(self):
