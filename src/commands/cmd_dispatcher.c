@@ -51,32 +51,11 @@ static int _read_flags
 	for(int i = 3; i < argc; i++) {
 		const char *arg = RedisModule_StringPtrLen(argv[i], NULL);
 
-		// compact result-set
 		if(!strcasecmp(arg, "--compact")) {
+			// compact result-set
 			*compact = true;
-			continue;
-		}
-
-		if(!strcasecmp(arg, "version")) {
-			long long v = GRAPH_VERSION_MISSING;
-			int err = REDISMODULE_ERR;
-			if(i < argc - 1) {
-				i++; // Set the current argument to the version value.
-				err = RedisModule_StringToLongLong(argv[i], &v);
-				*graph_version = v;
-			}
-
-			// Emit error on missing, negative, or non-numeric version values.
-			if(err != REDISMODULE_OK || v < 0 || v > UINT_MAX) {
-				asprintf(errmsg, "Failed to parse graph version value");
-				return REDISMODULE_ERR;
-			}
-
-			continue;
-		}
-
-		// query timeout
-		if(!strcasecmp(arg, "timeout")) {
+		} else if(!strcasecmp(arg, "timeout")) {
+			// query timeout
 			int err = REDISMODULE_ERR;
 			if(i < argc - 1) {
 				i++; // Set the current argument to the timeout value.
@@ -98,6 +77,22 @@ static int _read_flags
 				asprintf(errmsg, "Failed to parse query timeout value");
 				return REDISMODULE_ERR;
 			}
+		} else if(!strcasecmp(arg, "version")) {
+			long long v = GRAPH_VERSION_MISSING;
+			int err = REDISMODULE_ERR;
+			if(i < argc - 1) {
+				i++; // Set the current argument to the version value.
+				err = RedisModule_StringToLongLong(argv[i], &v);
+				*graph_version = v;
+			}
+
+			// Emit error on missing, negative, or non-numeric version values.
+			if(err != REDISMODULE_OK || v < 0 || v > UINT_MAX) {
+				asprintf(errmsg, "Failed to parse graph version value");
+				return REDISMODULE_ERR;
+			}
+
+			continue;
 		}
 	}
 	return REDISMODULE_OK;
