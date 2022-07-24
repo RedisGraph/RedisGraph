@@ -37,6 +37,7 @@ class testGraphMultiPatternQueryFlow(FlowTestsBase):
         # Forevery outgoing edge, we expect len(people) to be matched.
         expected_resultset_size = 6 * len(people)
         queries = ["""MATCH (r:person {name:"Roi"})-[]->(f), (x) RETURN f, x""",
+                   """MATCH (r:person {name:"Roi"})-[]->(f) , (x) RETURN f, x""",
                    """MATCH (x), (r:person {name:"Roi"})-[]->(f) RETURN f, x""",
                    """MATCH (r:person {name:"Roi"})-[]->(f) MATCH (x) RETURN f, x""",
                    """MATCH (x) MATCH (r:person {name:"Roi"})-[]->(f) RETURN f, x"""]
