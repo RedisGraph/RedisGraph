@@ -179,10 +179,11 @@ static OpResult SortReset(OpBase *ctx) {
 
 	if(op->buffer) {
 		recordCount = array_len(op->buffer);
-		for(uint i = 0; i < recordCount; i++) {
-			Record r = array_pop(op->buffer);
+		for(uint i = op->record_idx; i < recordCount; i++) {
+			Record r = op->buffer[i];
 			OpBase_DeleteRecord(r);
 		}
+		array_clear(op->buffer);
 	}
 
 	op->record_idx = 0;
