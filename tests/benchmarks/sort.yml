@@ -1,0 +1,20 @@
+name: "SORT_ENTITIES"
+remote:
+  - setup: redisgraph-r5
+  - type: oss-standalone
+dbconfig:
+  - init_commands:
+    - '"GRAPH.QUERY" "g" "UNWIND range(0, 1000000) AS x CREATE ({v:rand()})"'
+clientconfig:
+  - tool: redisgraph-benchmark-go
+  - parameters:
+    - graph: "g"
+    - rps: 0
+    - clients: 1
+    - threads: 1
+    - connections: 1
+    - requests: 10
+    - queries:
+      - { q: "MATCH (n) WITH n ORDER BY n.v RETURN count(n)" }
+kpis:
+  - le: { $.OverallClientLatencies.Total.q50: 1240 }

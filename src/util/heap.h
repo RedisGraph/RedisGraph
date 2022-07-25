@@ -5,7 +5,7 @@
 typedef struct heap_s heap_t;
 
 // heap element compare function signature
-typedef int (*heap_cmp)(void *udata, const void *, const void *);
+typedef int (*heap_cmp)(const void *, const void *, void *udata);
 
 /**
  * Create new heap and initialise it.

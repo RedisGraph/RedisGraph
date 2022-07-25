@@ -8,10 +8,9 @@
 #include "op_project.h"
 #include "op_aggregate.h"
 #include "../../util/arr.h"
+#include "../../util/qsort.h"
 #include "../../util/rmalloc.h"
 #include "../../query_ctx.h"
-
-#include <stdlib.h>
 
 // forward declarations
 static OpResult SortInit(OpBase *opBase);
@@ -24,9 +23,9 @@ static void SortFree(OpBase *opBase);
 // return value similar to strcmp
 static int _record_cmp
 (
-	OpSort *op,
 	Record a,
-	Record b
+	Record b,
+	OpSort *op
 ) {
 	uint comparison_count = array_len(op->record_offsets);
 	for(uint i = 0; i < comparison_count; i++) {
@@ -41,13 +40,13 @@ static int _record_cmp
 	return 0;
 }
 
-static inline int _buffer_record_cmp
+static int _buffer_elem_cmp
 (
-	OpSort *op,
-	Record *a,
-	Record *b
+	const Record *a,
+	const Record *b,
+	OpSort *op
 ) {
-	return _record_cmp(op, *a, *b);
+	return _record_cmp(*a, *b, op);
 }
 
 static void _accumulate
@@ -66,7 +65,7 @@ static void _accumulate
 	} else {
 		// no room in the heap, see if we need to replace
 		// a heap stored record with the current record
-		if(_record_cmp(op, Heap_peek(op->heap), r) > 0) {
+		if(_record_cmp(Heap_peek(op->heap), r, op) > 0) {
 			Record replaced = Heap_poll(op->heap);
 			OpBase_DeleteRecord(replaced);
 			Heap_offer(&op->heap, r);
@@ -150,8 +149,8 @@ static Record SortConsume(OpBase *opBase) {
 	if(!newData) return NULL;
 
 	if(op->buffer) {
-		qsort_r(op->buffer, array_len(op->buffer), sizeof(Record), op,
-				(heap_cmp)_buffer_record_cmp);
+		sort_r(op->buffer, array_len(op->buffer), sizeof(Record),
+				(heap_cmp)_buffer_elem_cmp, op);
 	} else {
 		// heap
 		int records_count = Heap_count(op->heap);
