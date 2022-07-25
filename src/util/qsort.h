@@ -27,7 +27,7 @@ struct sort_r_data {
 	int (*compar)(const void *_a, const void *_b, void *_arg);
 };
 
-static inline int sort_r_arg_swap
+static int sort_r_arg_swap
 (
 	void *s,
 	const void *a,
