@@ -17,7 +17,7 @@ struct heap_s
     unsigned int count;
     /**  user data */
     void *udata;
-    int (*cmp) (const void *, const void *, void *);
+    heap_cmp cmp;
     void * array[];
 };
 

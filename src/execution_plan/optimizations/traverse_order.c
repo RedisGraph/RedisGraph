@@ -199,7 +199,7 @@ static void _order_expressions
 	ASSERT(res == true);
 }
 
-static inline int _score_cmp
+static int _score_cmp
 (
 	const ScoredExp *a,
 	const ScoredExp *b
