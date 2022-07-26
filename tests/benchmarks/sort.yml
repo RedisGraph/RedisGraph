@@ -17,5 +17,5 @@ clientconfig:
     - queries:
       - { q: "MATCH (n) WITH n ORDER BY n.v RETURN 1 LIMIT 1" }
 kpis:
-  - le: { $.OverallClientLatencies.Total.q50: 124 }
-  - ge: { $.OverallQueryRates.Total: 320 }
+  - le: { $.OverallClientLatencies.Total.q50: 100 }
+  - ge: { $.OverallQueryRates.Total: 90 }
