@@ -50,7 +50,12 @@ static void _SlowLog_Item_Free(SlowLogItem *item) {
 }
 
 // Compares two heap record nodes.
-static int _slowlog_elem_compare(const void *A, const void *B, const void *udata) {
+static int _slowlog_elem_compare
+(
+	const void *A,
+	const void *B,
+	void *udata
+) {
 	SlowLogItem *a = (SlowLogItem *)A;
 	SlowLogItem *b = (SlowLogItem *)B;
 	return b->latency - a->latency;
