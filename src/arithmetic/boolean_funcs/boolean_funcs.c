@@ -174,6 +174,28 @@ SIValue AR_IS_NOT_NULL(SIValue *argv, int argc, void *private_data) {
 	return SI_BoolVal(v.type != T_NULL);
 }
 
+
+// Coverts argv[0] to boolean
+// Integer input will return false if the value is 0, true otherwise
+// String input will return true if value is "true", false if value is "false" (case insensitive), null otherwise
+// Null logic - returns null
+SIValue AR_TO_BOOLEAN(SIValue *argv, int argc, void *private_data) {
+	SIValue v = argv[0];
+	switch (SI_TYPE(v)) {
+		case T_INT64:
+			return SI_BoolVal(v.longval);
+		case T_STRING: {
+			if(!strcasecmp("true", v.stringval)) return SI_BoolVal(true);
+			else if(!strcasecmp("false", v.stringval)) return SI_BoolVal(false);
+			return SI_NullVal();
+		}
+		case T_BOOL:
+		case T_NULL:
+		default:
+			return v;
+	}
+}
+
 void Register_BooleanFuncs() {
 	SIType *types;
 	SIType ret_type = T_BOOL | T_NULL;
@@ -246,5 +268,10 @@ void Register_BooleanFuncs() {
 	types = array_new(SIType, 1);
 	array_append(types, SI_ALL);
 	func_desc = AR_FuncDescNew("is not null", AR_IS_NOT_NULL, 1, 1, types, ret_type, true, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, T_BOOL | T_INT64 | T_STRING | T_NULL);
+	func_desc = AR_FuncDescNew("toBoolean", AR_TO_BOOLEAN, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 }

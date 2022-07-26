@@ -627,3 +627,68 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """RETURN sqrt(2540.95581553)"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], 50.4078943770715)
+    
+    def test29_toBoolean(self):
+        # boolean
+        query = """RETURN toBoolean(true)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], True)
+        query = """RETURN toBoolean(false)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], False)
+
+        # strings
+        query = """RETURN toBoolean('TruE')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], True)
+        query = """RETURN toBoolean('FaLsE')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], False)
+        query = """RETURN toBoolean('not a boolean')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+        # integers
+        query = """RETURN toBoolean(0)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], False)
+        query = """RETURN toBoolean(1)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], True)
+        query = """RETURN toBoolean(-1)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], True)
+
+        # null
+        query = """RETURN toBoolean(null)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+        # errors
+        try:
+            query = """RETURN toBoolean(0.1)"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch", str(e))
+
+        try:
+            query = """RETURN toBoolean([true])"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch", str(e))
+
+        try:
+            query = """CREATE (n) RETURN toBoolean(n)"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch", str(e))
+
+        try:
+            query = """CREATE ()-[r:R]->() RETURN toBoolean(r)"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch", str(e))
