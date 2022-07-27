@@ -25,9 +25,15 @@ static void MergeFree(OpBase *opBase);
 //------------------------------------------------------------------------------
 
 // apply a set of updates to the given records
-static void _UpdateProperties(PendingUpdateCtx **node_pending_updates,
-		PendingUpdateCtx **edge_pending_updates, ResultSetStatistics *stats,
-		raxIterator updates, Record *records, uint record_count) {
+static void _UpdateProperties
+(
+	PendingUpdateCtx **node_pending_updates,
+	PendingUpdateCtx **edge_pending_updates,
+	ResultSetStatistics *stats,
+	raxIterator updates,
+	Record *records,
+	uint record_count
+) {
 	ASSERT(record_count > 0);
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
@@ -37,7 +43,8 @@ static void _UpdateProperties(PendingUpdateCtx **node_pending_updates,
 		raxSeek(&updates, "^", NULL, 0);
 		while(raxNext(&updates)) {
 			EntityUpdateEvalCtx *ctx = updates.data;
-			EvalEntityUpdates(gc, node_pending_updates, edge_pending_updates, r, ctx, false);
+			EvalEntityUpdates(gc, node_pending_updates, edge_pending_updates,
+					r, ctx, false);
 		}
 	}
 }
@@ -45,12 +52,21 @@ static void _UpdateProperties(PendingUpdateCtx **node_pending_updates,
 //------------------------------------------------------------------------------
 // Merge logic
 //------------------------------------------------------------------------------
-static inline Record _pullFromStream(OpBase *branch) {
+static inline Record _pullFromStream
+(
+	OpBase *branch
+) {
 	return OpBase_Consume(branch);
 }
 
-static void _InitializeUpdates(OpMerge *op, rax *updates, raxIterator *it) {
-	// if we have ON MATCH / ON CREATE directives, set the appropriate record IDs of entities to be updated
+static void _InitializeUpdates
+(
+	OpMerge *op,
+	rax *updates,
+	raxIterator *it
+) {
+	// if we have ON MATCH / ON CREATE directives
+	// set the appropriate record IDs of entities to be updated
 	raxStart(it, updates);
 	raxSeek(it, "^", NULL, 0);
 	// iterate over all expressions
@@ -62,21 +78,27 @@ static void _InitializeUpdates(OpMerge *op, rax *updates, raxIterator *it) {
 
 }
 
-OpBase *NewMergeOp(const ExecutionPlan *plan, rax *on_match, rax *on_create) {
-
-	/* merge is an operator with two or three children
-	 * they will be created outside of here,
-	 * as with other multi-stream operators (see CartesianProduct and ValueHashJoin) */
+OpBase *NewMergeOp
+(
+	const ExecutionPlan *plan,
+	rax *on_match,
+	rax *on_create
+) {
+	// merge is an operator with two or three children
+	// they will be created outside of here
+	// as with other multi-stream operators
+	// (see CartesianProduct and ValueHashJoin)
 	OpMerge *op = rm_calloc(1, sizeof(OpMerge));
-	op->stats                 =  NULL;
-	op->on_match              =  on_match;
-	op->on_create             =  on_create;
-	op->node_pending_updates  =  NULL;
-	op->edge_pending_updates  =  NULL;
+
+	op->stats                = NULL;
+	op->on_match             = on_match;
+	op->on_create            = on_create;
+	op->node_pending_updates = NULL;
+	op->edge_pending_updates = NULL;
 	
 	// set our Op operations
-	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume, NULL, NULL, MergeClone,
-				MergeFree, true, plan);
+	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume,
+			NULL, NULL, MergeClone, MergeFree, true, plan);
 
 	if(op->on_match) _InitializeUpdates(op, op->on_match, &op->on_match_it);
 	if(op->on_create) _InitializeUpdates(op, op->on_create, &op->on_create_it);
@@ -84,29 +106,51 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, rax *on_match, rax *on_create) {
 	return (OpBase *)op;
 }
 
-// Modification of ExecutionPlan_LocateOp that only follows LHS child.
-// Otherwise, the assumptions of Merge_SetStreams fail in MERGE..MERGE queries.
-// Match and Create streams are always guaranteed to not branch (have any ops with multiple children).
-static OpBase *_LocateOp(OpBase *root, OPType type) {
-	if(!root) return NULL;
-	if(root->type == type) return root;
-	if(root->childCount > 0) return _LocateOp(root->children[0], type);
-	return NULL;
+// modification of ExecutionPlan_LocateOp that only follows LHS child
+// Otherwise, the assumptions of Merge_SetStreams fail in MERGE..MERGE queries
+// Match and Create streams are always guaranteed to not branch
+// (have any ops with multiple children)
+static OpBase *_LocateOp
+(
+	OpBase *root,
+	OPType type
+) {
+	OpBase *ret;
+
+	if(!root) {
+		ret = NULL;
+	}
+	else if(root->type == type) {
+		ret = root;
+	}
+	else if(root->childCount > 0) {
+		ret = _LocateOp(root->children[0], type);
+	} else {
+		ret = NULL;
+	}
+
+	return ret;
 }
 
-static OpResult MergeInit(OpBase *opBase) {
-	/* Merge has 2 children if it is the first clause, and 3 otherwise
-	 * - If there are 3 children, the first should resolve the Merge pattern's bound variables
-	 * - The next (first if there are 2 children, second otherwise) should attempt to match the pattern
-	 * - The last creates the pattern */
+static OpResult MergeInit
+(
+	OpBase *opBase
+) {
+	// merge has 2 children if it is the first clause, and 3 otherwise
+	// - if there are 3 children
+	//   the first should resolve the Merge pattern's bound variables
+	// - the next (first if there are 2 children, second otherwise)
+	//   should attempt to match the pattern
+	// - the last creates the pattern
 	ASSERT(opBase->childCount == 2 || opBase->childCount == 3);
 	OpMerge *op = (OpMerge *)opBase;
 	op->stats = QueryCtx_GetResultSetStatistics();
 	if(opBase->childCount == 2) {
-		// if we only have 2 streams, we simply need to determine which has a MergeCreate op
+		// if we only have 2 streams
+		// we simply need to determine which has a MergeCreate op
 		if(_LocateOp(opBase->children[0], OPType_MERGE_CREATE)) {
 			// if the Create op is in the first stream, swap the children
-			// Otherwise, the order is already correct
+			// otherwise, the order is already correct
 			OpBase *tmp = opBase->children[0];
 			opBase->children[0] = opBase->children[1];
 			opBase->children[1] = tmp;
@@ -161,25 +205,38 @@ static OpResult MergeInit(OpBase *opBase) {
 	opBase->children[1] = op->match_stream;
 	opBase->children[2] = op->create_stream;
 
-	// Find and store references to the Argument taps for the Match and Create streams.
-	// The Match stream is populated by an Argument tap, store a reference to it.
-	op->match_argument_tap = (Argument *)ExecutionPlan_LocateOp(op->match_stream, OPType_ARGUMENT);
-	// If the create stream is populated by an Argument tap, store a reference to it.
-	op->create_argument_tap = (Argument *)ExecutionPlan_LocateOp(op->create_stream,
-																 OPType_ARGUMENT);
-	// Set up an array to store records produced by the bound variable stream.
+	// find and store references to the:
+	// Argument taps for the Match and Create streams
+	// the Match stream is populated by an Argument tap
+	// store a reference to it
+	op->match_argument_tap =
+		(Argument *)ExecutionPlan_LocateOp(op->match_stream, OPType_ARGUMENT);
+
+	// if the create stream is populated by an Argument tap, store a reference to it.
+	op->create_argument_tap =
+		(Argument *)ExecutionPlan_LocateOp(op->create_stream, OPType_ARGUMENT);
+
+	// set up an array to store records produced by the bound variable stream
 	op->input_records = array_new(Record, 1);
 
 	return OP_OK;
 }
 
-static Record _handoff(OpMerge *op) {
+static Record _handoff
+(
+	OpMerge *op
+) {
 	Record r = NULL;
-	if(array_len(op->output_records)) r = array_pop(op->output_records);
+	if(array_len(op->output_records)) {
+		r = array_pop(op->output_records);
+	}
 	return r;
 }
 
-static Record MergeConsume(OpBase *opBase) {
+static Record MergeConsume
+(
+	OpBase *opBase
+) {
 	OpMerge *op = (OpMerge *)opBase;
 
 	//--------------------------------------------------------------------------
@@ -187,14 +244,17 @@ static Record MergeConsume(OpBase *opBase) {
 	//--------------------------------------------------------------------------
 
 	// return mode, all data was consumed
-	if(op->output_records) return _handoff(op);
+	if(op->output_records) {
+		return _handoff(op);
+	}
 
 	//--------------------------------------------------------------------------
 	// consume bound stream
 	//--------------------------------------------------------------------------
 
 	op->output_records = array_new(Record, 32);
-	// if we have a bound variable stream, pull from it and store records until depleted
+	// if we have a bound variable stream
+	// pull from it and store records until depleted
 	if(op->bound_variable_stream) {
 		Record input_record;
 		while((input_record = _pullFromStream(op->bound_variable_stream))) {
@@ -206,9 +266,9 @@ static Record MergeConsume(OpBase *opBase) {
 	// match pattern
 	//--------------------------------------------------------------------------
 
-	uint  match_count          =  0;
-	bool  reading_matches      =  true;
-	bool  must_create_records  =  false;
+	uint match_count         = 0;
+	bool reading_matches     = true;
+	bool must_create_records = false;
 	// match mode: attempt to resolve the pattern for every record from
 	// the bound variable stream, or once if we have no bound variables
 	while(reading_matches) {
@@ -216,7 +276,9 @@ static Record MergeConsume(OpBase *opBase) {
 		if(op->input_records) {
 			// if we had bound variables but have depleted our input records,
 			// we're done pulling from the Match stream
-			if(array_len(op->input_records) == 0) break;
+			if(array_len(op->input_records) == 0) {
+				break;
+			}
 
 			// pull a new input record
 			lhs_record = array_pop(op->input_records);
@@ -224,7 +286,8 @@ static Record MergeConsume(OpBase *opBase) {
 			// (must clone the Record, as it will be freed in the Match stream)
 			Argument_AddRecord(op->match_argument_tap, OpBase_CloneRecord(lhs_record));
 		} else {
-			// this loop only executes once if we don't have input records resolving bound variables
+			// this loop only executes once if we don't have input records
+			// resolving bound variables
 			reading_matches = false;
 		}
 
@@ -239,10 +302,13 @@ static Record MergeConsume(OpBase *opBase) {
 		}
 
 		if(should_create_pattern) {
-			/* transfer the LHS record to the Create stream to build once we finish reading
-			 * we don't need to clone the record, as it won't be accessed again outside that stream,
-			 * but we must make sure its elements are access-safe, as the input stream will be freed
-			 * before entities are created */
+			// transfer the LHS record to the Create stream
+			// to build once we finish reading
+			// we don't need to clone the record
+			// as it won't be accessed again outside that stream
+			// but we must make sure its elements are access-safe
+			// as the input stream will be freed
+			// before entities are created
 			if(lhs_record) {
 				Record_PersistScalars(lhs_record);
 				Argument_AddRecord(op->create_argument_tap, lhs_record);
@@ -254,8 +320,10 @@ static Record MergeConsume(OpBase *opBase) {
 			must_create_records = true;
 		}
 
-		// Free the LHS Record if we haven't transferred it to the Create stream.
-		if(lhs_record) OpBase_DeleteRecord(lhs_record);
+		// free the LHS Record if we haven't transferred it to the Create stream
+		if(lhs_record) {
+			OpBase_DeleteRecord(lhs_record);
+		}
 	}
 
 	//--------------------------------------------------------------------------
@@ -263,35 +331,42 @@ static Record MergeConsume(OpBase *opBase) {
 	//--------------------------------------------------------------------------
 
 	// explicitly free the read streams in case either holds an index read lock
-	if(op->bound_variable_stream) OpBase_PropagateReset(op->bound_variable_stream);
+	if(op->bound_variable_stream) {
+		OpBase_PropagateReset(op->bound_variable_stream);
+	}
 	OpBase_PropagateReset(op->match_stream);
 
 	op->node_pending_updates = array_new(PendingUpdateCtx, 0);
 	op->edge_pending_updates = array_new(PendingUpdateCtx, 0);
 
 	// if we are setting properties with ON MATCH, compute all pending updates
-	if(op->on_match && match_count > 0)
+	if(op->on_match && match_count > 0) {
 		_UpdateProperties(&op->node_pending_updates, &op->edge_pending_updates,
 			op->stats, op->on_match_it, op->output_records, match_count);
+	}
 
 	if(must_create_records) {
 		// commit all pending changes on the Create stream
 		// 'MergeCreate_Commit' acquire write lock!
 		// write lock is released further down
 		MergeCreate_Commit(op->create_stream);
+
 		// we only need to pull the created records if we're returning results
 		// or performing updates on creation
+		// TODO: isn't op->stats always != NULL ?
 		if(op->stats || op->on_create) {
 			// pull all records from the Create stream
 			uint create_count = 0;
 			Record created_record;
 			while((created_record = _pullFromStream(op->create_stream))) {
-				array_append(op->output_records,
-						created_record);
-				create_count ++;
+				array_append(op->output_records, created_record);
+				create_count++;
 			}
+
 			// if we are setting properties with ON CREATE
 			// compute all pending updates
+			// TODO: note we're under lock at this point! is there a way
+			// to compute these changes before locking ?
 			if(op->on_create) {
 				_UpdateProperties(&op->node_pending_updates,
 					&op->edge_pending_updates, op->stats, op->on_create_it,
@@ -304,16 +379,25 @@ static Record MergeConsume(OpBase *opBase) {
 	// update
 	//--------------------------------------------------------------------------
 
-	if(array_len(op->node_pending_updates) > 0 || array_len(op->edge_pending_updates) > 0) {
+	if(array_len(op->node_pending_updates) > 0 ||
+	   array_len(op->edge_pending_updates) > 0) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		// lock everything
-		QueryCtx_LockForCommit();
-		CommitUpdates(gc, op->stats, op->node_pending_updates, ENTITY_NODE);
-		CommitUpdates(gc, op->stats, op->edge_pending_updates, ENTITY_EDGE);
+		QueryCtx_LockForCommit(); {
+			CommitUpdates(gc, op->stats, op->node_pending_updates, ENTITY_NODE);
+			CommitUpdates(gc, op->stats, op->edge_pending_updates, ENTITY_EDGE);
+		}
 	}
 
-	// release the lock
-	QueryCtx_UnlockCommit(&op->op);
+	// release lock
+	bool lock_acquired = must_create_records |
+		                 (array_len(op->node_pending_updates) > 0) |
+						 (array_len(op->edge_pending_updates) > 0);
+
+	if(lock_acquired) {
+		QueryCtx_UnlockCommit(&op->op);
+	}
+
 	array_free(op->node_pending_updates);
 	op->node_pending_updates = NULL;
 	array_free(op->edge_pending_updates);
@@ -322,20 +406,32 @@ static Record MergeConsume(OpBase *opBase) {
 	return _handoff(op);
 }
 
-static OpBase *MergeClone(const ExecutionPlan *plan, const OpBase *opBase) {
+static OpBase *MergeClone
+(
+	const ExecutionPlan *plan,
+	const OpBase *opBase
+) {
 	ASSERT(opBase->type == OPType_MERGE);
-	OpMerge *op = (OpMerge *)opBase;
-	rax *on_match = NULL;
+
+	OpMerge *op    = (OpMerge *)opBase;
+	rax *on_match  = NULL;
 	rax *on_create = NULL;
+
 	if(op->on_match) on_match = raxCloneWithCallback(op->on_match,
-														 (void *(*)(void *))UpdateCtx_Clone);
+			(void *(*)(void *))UpdateCtx_Clone);
+
 	if(op->on_create) on_create = raxCloneWithCallback(op->on_create,
-														   (void *(*)(void *))UpdateCtx_Clone);
+			(void *(*)(void *))UpdateCtx_Clone);
+
 	return NewMergeOp(plan, on_match, on_create);
 }
 
-static void MergeFree(OpBase *opBase) {
+static void MergeFree
+(
+	OpBase *opBase
+) {
 	OpMerge *op = (OpMerge *)opBase;
+
 	if(op->input_records) {
 		uint input_count = array_len(op->input_records);
 		for(uint i = 0; i < input_count; i ++) {
