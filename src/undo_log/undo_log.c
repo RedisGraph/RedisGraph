@@ -286,6 +286,8 @@ void UndoLog_Rollback
 
 	if(count == 0) return;
 
+	QueryCtx_LockForCommit();
+
 	// apply undo operations in reverse order for rollback correctness
 	// find sequences of the same operation and rollback them as a bulk
 	int seq_end = count - 1;
@@ -317,6 +319,8 @@ void UndoLog_Rollback
 				ASSERT(false);
 		}
  	}
+
+	QueryCtx_ForceUnlockCommit();
 
 	array_clear(log);
 }
