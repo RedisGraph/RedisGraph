@@ -215,9 +215,9 @@ bool AttributeSet_Update
 	SIValue *current = AttributeSet_Get(*set, attr_id);
 	ASSERT(current != ATTRIBUTE_NOTFOUND);
 
-	// compare current value to new value, only update if current != new, otherwise preform shallow update.
+	// compare current value to new value, only update if current != new
 	if(unlikely(SIValue_Compare(*current, value, NULL) == 0)) {
-		return true;
+		return false;
 	}
 
 	// value != current, update entity
