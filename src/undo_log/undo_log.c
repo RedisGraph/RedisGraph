@@ -286,6 +286,7 @@ void UndoLog_Rollback
 
 	if(count == 0) return;
 
+	// acquire lock before making any changes to the graph
 	QueryCtx_LockForCommit();
 
 	// apply undo operations in reverse order for rollback correctness
@@ -320,6 +321,8 @@ void UndoLog_Rollback
 		}
  	}
 
+	// force unlock, as we're not executing within the context of an operation
+	// assumption: no operations should be executing at this point
 	QueryCtx_ForceUnlockCommit();
 
 	array_clear(log);
