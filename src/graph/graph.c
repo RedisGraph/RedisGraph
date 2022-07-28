@@ -704,8 +704,8 @@ bool Graph_IsNodeLabeled
 	RG_Matrix nl = Graph_GetNodeLabelMatrix(g);
 	bool labeled;
 	GrB_Info info = RG_Matrix_extractElement_BOOL(&labeled, nl, id, labelId);
-	ASSERT(info == GrB_SUCCESS);
-	return labeled;
+	ASSERT(info == GrB_SUCCESS || info == GrB_NO_VALUE);
+	return info == GrB_SUCCESS;
 }
 
 bool Graph_FormConnection
