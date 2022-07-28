@@ -9,60 +9,63 @@
 #include "cache_array.h"
 #include "rax.h"
 
-/**
- * @brief Key-value cache, uses LRU policy for eviction.
- * Assumes owership over stored objects.
- */
+ // Key-value cache, uses LRU policy for eviction
+ // assumes owership over stored objects
 typedef struct Cache {
-	uint cap;                          // Cache capacity.
-	uint size;                         // Cache current size.
-	long long counter;                 // Atomic counter for number of reads.
-	rax *lookup;                       // Mapping between keys to entries, for fast lookups.
-	CacheEntry *arr;                   // Array of cache elements.
-	CacheEntryFreeFunc free_item;      // Callback function that free cached value.
-	CacheEntryCopyFunc copy_item;      // Callback function that copies cached value.
-	pthread_rwlock_t _cache_rwlock;    // Read-write lock to protect access to the cache.
+	uint cap;                          // cache capacity
+	uint size;                         // cache current size
+	long long counter;                 // atomic counter for number of reads
+	rax *lookup;                       // mapping between keys to entries
+	CacheEntry *arr;                   // array of cache elements
+	CacheEntryFreeFunc free_item;      // callback that free cached value
+	CacheEntryCopyFunc copy_item;      // callback that copies cached value
+	pthread_rwlock_t _cache_rwlock;    // read-write lock to protect access
 } Cache;
 
-/**
- * @brief  Initialize a cache.
- * @param  size: Number of entries.
- * @param  freeFUnc: callback for freeing the stored values.
- * @param  copyFunc: callback for copying cached items before returning it to the caller.
- * @retval cache pointer - Initialized empty cache.
- */
-Cache *Cache_New(uint size, CacheEntryFreeFunc freeFunc, CacheEntryCopyFunc copyFunc);
+// initialize a cache, returns an empty cache
+Cache *Cache_New
+(
+	uint cap,                     // number of entries
+	CacheEntryFreeFunc freeFunc,  // callback for freeing the stored values
+	CacheEntryCopyFunc copyFunc   // callback for copying cached items
+);
 
-/**
- * @brief  Returns a copy of value if it is cached, NULL otherwise.
- * @param  *cache: cache pointer.
- * @param  *key: Key to look for.
- * @retval  pointer with the cached answer, NULL if the key isn't cached.
- */
-void *Cache_GetValue(Cache *cache, const char *key);
+// clear all entries from cache
+void Cache_Clear
+(
+	Cache *cache  // cache to clear
+);
 
-/**
- * @brief  Stores value under key within the cache.
- * @note   In case the cache is full, this operation causes a cache eviction.
- * @param  *cache: cache pointer.
- * @param  *key: Key for associating with value.
- * @param  *value: pointer with the relevant value.
- */
-void Cache_SetValue(Cache *cache, const char *key, void *item);
+// returns a copy of value if it is cached, NULL otherwise 
+void *Cache_GetValue
+(
+	Cache *cache,    // cache to retrieve value from
+	const char *key  // key to look for
+);
 
-/**
- * @brief  Stores value under key within the cache, and return a copy of that value.
- * @note   In case the cache is full, this operation causes a cache eviction.
- * @param  *cache: cache pointer.
- * @param  *key: Key for associating with value.
- * @param  *value: pointer with the relevant value.
- * @retval A copy of the given value if a new item was added to the cache, the original value if it was already exist.
- */
-void *Cache_SetGetValue(Cache *cache, const char *key, void *value);
+// stores value under key within the cache
+// in case the cache is full, this operation causes a cache eviction
+void Cache_SetValue
+(
+	Cache *cache,     // cache to populate
+	const char *key,  // key associated with value
+	void *value       // value to store
+);
 
-/**
- * @brief  Destroys the cache and free all stored items.
- * @param  *cache: cache pointer
- */
-void Cache_Free(Cache *cache);
+// stores value under key within the cache, and return a copy of that value
+// in case the cache is full, this operation causes a cache eviction
+// returns a copy of the given value if a new item was added to the cache
+// the original value if it was already exist
+void *Cache_SetGetValue
+(
+	Cache *cache,     // cache pointer
+	const char *key,  // key for associating with value
+	void *value       // pointer with the relevant value
+);
+
+// destroys the cache and free all stored items
+void Cache_Free
+(
+	Cache *cache // cache pointer
+);
 

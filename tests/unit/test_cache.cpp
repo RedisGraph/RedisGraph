@@ -62,7 +62,7 @@ TEST_F(CacheTest, ExecutionPlanCache) {
 	const char *key4 = "MATCH (d) RETURN d";
 
 	//--------------------------------------------------------------------------
-	// Check for not existing key.
+	// check for not existing key
 	//--------------------------------------------------------------------------
 
 	ASSERT_FALSE(Cache_GetValue(cache, "None existing"));
@@ -78,7 +78,7 @@ TEST_F(CacheTest, ExecutionPlanCache) {
 	CacheObj_Free(from_cache);
 
 	//--------------------------------------------------------------------------
-	// Set multiple items
+	// set multiple items
 	//--------------------------------------------------------------------------
 
 	CacheObj* to_cache = (CacheObj*)Cache_SetGetValue(cache, key2, item2);
@@ -87,18 +87,80 @@ TEST_F(CacheTest, ExecutionPlanCache) {
 	CacheObj_Free(to_cache);
 	CacheObj_Free(from_cache);
 
-	// Fill up cache
+	// fill up cache
 	to_cache = (CacheObj*)Cache_SetGetValue(cache, key3, item3);
 	CacheObj_Free(to_cache);
 	to_cache = (CacheObj*)Cache_SetGetValue(cache, key4, item4);
 	CacheObj_Free(to_cache);
 
-	// Verify that oldest entry do not exists - queue is [ 4 | 3 | 2 ].
+	// verify that oldest entry do not exists - queue is [ 4 | 3 | 2 ]
 	ASSERT_TRUE(Cache_GetValue(cache, key1) == NULL);
 
 	Cache_Free(cache);
 
-	// Expecting CacheObjFree to be called 9 times.
+	// expecting CacheObjFree to be called 9 times
 	ASSERT_EQ(free_count, 9);
+}
+
+TEST_F(CacheTest, ClearCache) {
+	// build a cache of strings in this case for simplicity
+	Cache *cache = Cache_New(5, (CacheEntryFreeFunc)CacheObj_Free,
+			(CacheEntryCopyFunc)CacheObj_Dup);
+
+	CacheObj *item1 = CacheObj_New("1");
+	CacheObj *item2 = CacheObj_New("2");
+	CacheObj *item3 = CacheObj_New("3");
+	CacheObj *item4 = CacheObj_New("4");
+
+	//--------------------------------------------------------------------------
+	// populate cache
+	//--------------------------------------------------------------------------
+
+	Cache_SetValue(cache, "Key1", item1);
+	Cache_SetValue(cache, "Key2", item2);
+	Cache_SetValue(cache, "Key3", item3);
+	Cache_SetValue(cache, "Key4", item4);
+
+	// verify items are stored in cache
+	ASSERT_TRUE(Cache_GetValue(cache, "Key1") != NULL);
+	ASSERT_TRUE(Cache_GetValue(cache, "Key2") != NULL);
+	ASSERT_TRUE(Cache_GetValue(cache, "Key3") != NULL);
+	ASSERT_TRUE(Cache_GetValue(cache, "Key4") != NULL);
+
+	//--------------------------------------------------------------------------
+	// clear cache
+	//--------------------------------------------------------------------------
+
+	Cache_Clear(cache);
+
+	// verify cache is empty
+	ASSERT_TRUE(Cache_GetValue(cache, "Key1") == NULL);
+	ASSERT_TRUE(Cache_GetValue(cache, "Key2") == NULL);
+	ASSERT_TRUE(Cache_GetValue(cache, "Key3") == NULL);
+	ASSERT_TRUE(Cache_GetValue(cache, "Key4") == NULL);
+
+	// make sure we're able to re-populate the cache
+
+	//--------------------------------------------------------------------------
+	// re-populate cache
+	//--------------------------------------------------------------------------
+
+	item1 = CacheObj_New("1");
+	item2 = CacheObj_New("2");
+	item3 = CacheObj_New("3");
+	item4 = CacheObj_New("4");
+
+	Cache_SetValue(cache, "Key1", item1);
+	Cache_SetValue(cache, "Key2", item2);
+	Cache_SetValue(cache, "Key3", item3);
+	Cache_SetValue(cache, "Key4", item4);
+
+	// verify items are stored in cache
+	ASSERT_TRUE(Cache_GetValue(cache, "Key1") != NULL);
+	ASSERT_TRUE(Cache_GetValue(cache, "Key2") != NULL);
+	ASSERT_TRUE(Cache_GetValue(cache, "Key3") != NULL);
+	ASSERT_TRUE(Cache_GetValue(cache, "Key4") != NULL);
+
+	Cache_Free(cache);
 }
 

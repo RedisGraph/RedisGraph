@@ -47,3 +47,4 @@ void ResultSetStat_Clear
 (
 	ResultSetStatistics *stats
 );
+

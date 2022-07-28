@@ -29,6 +29,13 @@ typedef struct {
 	SIAllocation cells_allocation;  // encountered values allocation
 } ResultSet;
 
+// create a new result set
+ResultSet *NewResultSet
+(
+	RedisModuleCtx *ctx,
+	ResultSetFormatterType format  // resultset format
+);
+
 // map each column to a record index
 // such that when resolving resultset row i column j we'll extract
 // data from record at position columns_record_map[j]
@@ -36,13 +43,6 @@ void ResultSet_MapProjection
 (
 	ResultSet *set,  // resultset to init mappings for
 	rax *mapping     // mapping
-);
-
-// create a new result set
-ResultSet *NewResultSet
-(
-	RedisModuleCtx *ctx,
-	ResultSetFormatterType format  // resultset format
 );
 
 // returns number of rows in result-set
@@ -95,3 +95,4 @@ void ResultSet_Free
 (
 	ResultSet *set  // resultset to free
 );
+

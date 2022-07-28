@@ -253,6 +253,21 @@ static void _ExecuteQuery(void *args) {
 	SlowLog_Add(slowlog, command_ctx->command_name, command_ctx->query,
 				QueryCtx_GetExecutionTime(), NULL);
 
+	// clear query cache in-case of a schema change
+	// as changes in a schema can cause changes in execution-plans
+	// a schma modification occurs when:
+	// 1. a new label or relationship-type been create
+	// 2. an index been created
+	// we don't expect this condition to occur often
+	// schema changes are quite rare
+	// TODO: hint as unlikely
+	if(result_set->stats.labels_added          ||
+	   result_set->stats.relationships_created ||
+	   result_set->stats.indices_created > 0) {
+		Cache *cache = GraphContext_GetCache(gc);
+		Cache_Clear(cache);
+	}
+
 	// clean up
 	ExecutionCtx_Free(exec_ctx);
 	GraphContext_DecreaseRefCount(gc);
