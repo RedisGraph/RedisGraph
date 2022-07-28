@@ -144,6 +144,15 @@ void Graph_RemoveLabelNode
 	uint label_count
 );
 
+
+// Checks if the node is labeled with the label id.
+bool Graph_IsNodeLabeled
+(
+	Graph *g,
+	NodeID id,
+	int labelId
+);
+
 // creates a new relation matrix, returns id given to relation
 int Graph_AddRelationType
 (

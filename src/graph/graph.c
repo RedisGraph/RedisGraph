@@ -694,6 +694,20 @@ void Graph_RemoveLabelNode
 	if(label_count > 0) _Graph_RemoveLabelNode(g, id, labels, label_count);	
 }
 
+bool Graph_IsNodeLabeled
+(
+	Graph *g,
+	NodeID id,
+	int labelId
+) {
+	ASSERT(g);
+	RG_Matrix nl = Graph_GetNodeLabelMatrix(g);
+	bool labeled;
+	GrB_Info info = RG_Matrix_extractElement_BOOL(&labeled, nl, id, labelId);
+	ASSERT(info == GrB_SUCCESS);
+	return labeled;
+}
+
 bool Graph_FormConnection
 (
 	Graph *g,

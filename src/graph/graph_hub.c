@@ -331,15 +331,7 @@ void UpdateNodeLabels
 			}
 
 			int schema_id = Schema_GetID(s);
-			uint node_labels_count;
-			NODE_GET_LABELS(gc->g, node, node_labels_count);
-			bool exists = false;
-			for(uint i = 0; i < node_labels_count; i++) {
-				if(labels[i] == schema_id) {
-					exists = true;
-					break;
-				}
-			}
+			bool exists = Graph_IsNodeLabeled(gc->g, node->id, schema_id);
 			if(!exists) {
 				// sync matrix, make sure label matrix is of the right dimensions
 				RG_Matrix m = Graph_GetLabelMatrix(gc->g, schema_id);
