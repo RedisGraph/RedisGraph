@@ -16,16 +16,16 @@ bool ResultSetStat_IndicateModification
 	ASSERT(stats != NULL);
 
 	return (
-			stats->nodes_created > 0          ||
-			stats->properties_set > 0         ||
-			stats->properties_removed > 0     ||
-			stats->relationships_created > 0  ||
-			stats->nodes_deleted > 0          ||
-			stats->relationships_deleted > 0  ||
-			stats->labels_added > 0           ||
-			stats->labels_removed > 0         ||
-			stats->indices_created > 0        ||
-			stats->indices_deleted > 0
+			stats->nodes_created           |
+			stats->properties_set          |
+			stats->properties_removed      |
+			stats->relationships_created   |
+			stats->nodes_deleted           |
+			stats->relationships_deleted   |
+			stats->labels_added            |
+			stats->labels_removed          |
+			stats->indices_created         |
+			stats->indices_deleted
 			);
 }
 
