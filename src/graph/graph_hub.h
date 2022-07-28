@@ -68,7 +68,6 @@ int DeleteEdge
 // update the entity attributes
 // update the relevant indexes of the entity
 // add entity update operations to undo log
-// return the # of properties updated
 void UpdateEntityProperties
 (
 	GraphContext *gc,            // graph context to update the entity
