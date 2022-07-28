@@ -627,3 +627,16 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """RETURN sqrt(2540.95581553)"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], 50.4078943770715)
+    
+    def test29_toBoolean(self):
+        # all other toBoolean cases (boolean, strings, null, errors) are covered in TCK
+        # integers
+        query = """RETURN toBoolean(0)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], False)
+        query = """RETURN toBoolean(1)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], True)
+        query = """RETURN toBoolean(-1)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], True)
