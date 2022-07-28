@@ -32,19 +32,19 @@ class testEntityUpdate(FlowTestsBase):
     def test03_update_no_change(self):
         # setting 'x' to its current value
         result = graph.query("MATCH (n) SET n.x = 1")
-        self.env.assertEqual(result.properties_set, 1)
+        self.env.assertEqual(result.properties_set, 0)
 
         # setting both 'v' and 'x' to their current values
         result = graph.query("MATCH (n) SET n.v = 2, n.x = 1")
-        self.env.assertEqual(result.properties_set, 2)
+        self.env.assertEqual(result.properties_set, 0)
 
         # update 'v' to a new value, 'x' remains the same
         result = graph.query("MATCH (n) SET n.v = 1, n.x = 1")
-        self.env.assertEqual(result.properties_set, 2)
+        self.env.assertEqual(result.properties_set, 1)
 
         # update 'x' to a new value, 'v' remains the same
         result = graph.query("MATCH (n) SET n.v = 1, n.x = 2")
-        self.env.assertEqual(result.properties_set, 2)
+        self.env.assertEqual(result.properties_set, 1)
 
     def test04_update_remove_attribute(self):
         # remove the 'x' attribute
@@ -325,7 +325,7 @@ class testEntityUpdate(FlowTestsBase):
 
         result = multiple_entity_graph.query(f"MATCH (n), (m) SET n:{labels[0]}, n.testprop2='testvalue', m:{labels[1]}")
         self.env.assertEqual(result.labels_added, 4)
-        self.env.assertEqual(result.properties_set, 4)
+        self.env.assertEqual(result.properties_set, 2)
         self.validate_node_labels(multiple_entity_graph, labels, 2)
         result = multiple_entity_graph.query("MATCH (n {testprop2:'testvalue'}) RETURN n")
         self.env.assertEqual(len(result.result_set), 2)
