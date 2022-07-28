@@ -192,7 +192,7 @@ uint DeleteNode
 	}
 
 	if(deleted_properties_count) {
-		const AttributeSet attributes = GraphEntity_GetAttributes(n);
+		const AttributeSet attributes = GraphEntity_GetAttributes((GraphEntity*)n);
 		*deleted_properties_count = attributes ? attributes->attr_count : 0;
 	}
 
@@ -217,7 +217,7 @@ int DeleteEdge
 	if(GraphContext_HasIndices(gc)) {
 		_DeleteEdgeFromIndices(gc, e);
 	}
-	const AttributeSet attributes = GraphEntity_GetAttributes(e);
+	const AttributeSet attributes = GraphEntity_GetAttributes((GraphEntity*)e);
 	uint properties_count = attributes ? attributes->attr_count : 0;
 	int res = Graph_DeleteEdge(gc->g, e);
 	if(res && deleted_properties_count) {
@@ -228,13 +228,15 @@ int DeleteEdge
 
 // update entity attributes and update undo log
 // in case attr_id is ATTRIBUTE_ID_ALL clear all attributes values
-static int _Update_Entity_Property
+static void _Update_Entity_Property
 (
 	GraphContext *gc,
 	GraphEntity *ge,
 	Attribute_ID attr_id,
 	SIValue new_value,
-	GraphEntityType entity_type
+	GraphEntityType entity_type,
+	uint *props_set_count,
+	uint *props_removed_count
 ) {
 	if(attr_id == ATTRIBUTE_ID_ALL) {
 		// we're requested to clear entitiy's attribute-set
@@ -254,7 +256,18 @@ static int _Update_Entity_Property
 		UndoLog_UpdateEntity(&query_ctx->undo_log, ge, attr_id, *orig_value, entity_type);
 	}
 
-	return Graph_UpdateEntity(ge, attr_id, new_value, entity_type);
+	int updates = Graph_UpdateEntity(ge, attr_id, new_value, entity_type);
+
+	if(SIValue_IsNull(new_value)) {
+		*props_removed_count = updates;
+	}
+	else {
+		*props_set_count = updates;
+		// When overwriting an exiting property it is considered also as removed.
+		if(GraphEntity_GetProperty(ge, attr_id) != ATTRIBUTE_NOTFOUND) {
+			*props_removed_count = updates;
+		}
+	}
 }
 
 void UpdateEntityProperties
@@ -272,17 +285,11 @@ void UpdateEntityProperties
 	int removed_props = 0;
 	for (uint i = 0; i < ATTRIBUTE_SET_COUNT(set); i++) {
 		Attribute *prop = set->attributes + i;
-		int updates = _Update_Entity_Property(gc, ge, prop->id, prop->value, entity_type);
-		if(SIValue_IsNull(prop->value)) {
-			removed_props +=updates;
-		}
-		else {
-			set_props += updates;
-			// When overwriting an exiting property it is considered also as removed.
-			if(GraphEntity_GetProperty(ge, prop->id) != ATTRIBUTE_NOTFOUND) {
-				removed_props +=updates;
-			}
-		}
+		uint loop_set_props = 0;
+		uint loop_removed_props = 0;
+		_Update_Entity_Property(gc, ge, prop->id, prop->value, entity_type, &loop_set_props, &loop_removed_props);
+		set_props += loop_set_props;
+		removed_props += loop_removed_props;
 	}
 	if(entity_type == GETYPE_NODE) {
 		_AddNodeToIndices(gc, (Node *)ge);
