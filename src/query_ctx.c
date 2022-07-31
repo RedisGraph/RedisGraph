@@ -194,16 +194,24 @@ clean_up:
 
 }
 
-static void _QueryCtx_UnlockCommit(QueryCtx *ctx) {
+static void _QueryCtx_Replicate(QueryCtx *ctx, bool lock) {
 	GraphContext *gc = ctx->gc;
 	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
 
 	if(ResultSetStat_IndicateModification(
 				&ctx->internal_exec_ctx.result_set->stats)) {
+		if(lock) _QueryCtx_ThreadSafeContextLock(ctx);
+		
 		// replicate only in case of changes
 		RedisModule_Replicate(redis_ctx, ctx->global_exec_ctx.command_name,
 				"cc!", gc->graph_name, ctx->query_data.query);
+		
+		if(lock) _QueryCtx_ThreadSafeContextUnlock(ctx);
 	}
+}
+
+static void _QueryCtx_UnlockCommit(QueryCtx *ctx) {
+	GraphContext *gc = ctx->gc;
 
 	ctx->internal_exec_ctx.locked_for_commit = false;
 	// Release graph R/W lock.
@@ -221,7 +229,7 @@ void QueryCtx_UnlockCommit(OpBase *writer_op) {
 	if(!ctx) return;
 
 	// check that the writer_op is entitled to release the lock.
-	if(ctx->internal_exec_ctx.last_writer != writer_op) return;
+	if(writer_op != NULL && ctx->internal_exec_ctx.last_writer != writer_op) return;
 
 	// already unlocked?
 	if(!ctx->internal_exec_ctx.locked_for_commit) return;
@@ -234,7 +242,12 @@ void QueryCtx_ForceUnlockCommit() {
 	if(!ctx) return;
 
 	// already unlocked?
-	if(!ctx->internal_exec_ctx.locked_for_commit) return;
+	if(!ctx->internal_exec_ctx.locked_for_commit) {
+		_QueryCtx_Replicate(ctx, true);
+		return;
+	}
+
+	_QueryCtx_Replicate(ctx, false);
 
 	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
 	RedisModule_Log(redis_ctx, "warning",

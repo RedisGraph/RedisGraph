@@ -321,9 +321,8 @@ void UndoLog_Rollback
 		}
  	}
 
-	// force unlock, as we're not executing within the context of an operation
 	// assumption: no operations should be executing at this point
-	QueryCtx_ForceUnlockCommit();
+	QueryCtx_UnlockCommit(NULL);
 
 	array_clear(log);
 }
