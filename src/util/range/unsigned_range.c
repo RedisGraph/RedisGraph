@@ -7,7 +7,7 @@
 #include "unsigned_range.h"
 #include "RG.h"
 #include "../rmalloc.h"
-#include "../../ast/ast_shared.h"
+#include "ast/ast_shared.h"
 #include <math.h>
 
 UnsignedRange *UnsignedRange_New(void) {

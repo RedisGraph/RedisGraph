@@ -10,13 +10,13 @@
 extern "C" {
 #endif
 
-#include "../../src/value.h"
+#include "../../src/storage/datatypes/value.h"
 #include "../../src/util/rmalloc.h"
-#include "../../src/datatypes/set.h"
-#include "../../src/datatypes/array.h"
-#include "../../src/datatypes/path/path.h"
-#include "../../src/graph/entities/node.h"
-#include "../../src/graph/entities/edge.h"
+#include "../../src/storage/datatypes/set.h"
+#include "../../src/storage/datatypes/array.h"
+#include "../../src/storage/datatypes/path/path.h"
+#include "../../src/storage/entities/node.h"
+#include "../../src/storage/entities/edge.h"
 
 
 #ifdef __cplusplus

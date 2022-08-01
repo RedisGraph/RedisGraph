@@ -1,8 +1,8 @@
 #include "ast_shared.h"
-#include "../RG.h"
-#include "../util/arr.h"
-#include "../util/rmalloc.h"
-#include "../arithmetic/arithmetic_expression_construct.h"
+#include "RG.h"
+#include "util/arr.h"
+#include "util/rmalloc.h"
+#include "IR/arithmetic_expression/arithmetic_expression_construct.h"
 
 AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op) {
 	// TODO ordered by precedence, which I don't know if we're managing properly right now

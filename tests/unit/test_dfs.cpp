@@ -12,8 +12,8 @@ extern "C" {
 
 #include "../../src/util/arr.h"
 #include "../../src/util/rmalloc.h"
-#include "../../src/graph/query_graph.h"
-#include "../../src/algorithms/algorithms.h"
+#include "../../src/IR/query_graph/query_graph.h"
+#include "../../src/logic/algorithms/algorithms.h"
 
 #ifdef __cplusplus
 }

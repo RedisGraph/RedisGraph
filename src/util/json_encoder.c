@@ -8,13 +8,13 @@
 #include "sds/sds.h"
 #include "rmalloc.h"
 #include "strutil.h"
-#include "../value.h"
+#include "../storage/datatypes/value.h"
 #include "../errors.h"
 #include "../query_ctx.h"
-#include "../graph/graphcontext.h"
-#include "../graph/entities/node.h"
-#include "../graph/entities/edge.h"
-#include "../datatypes/datatypes.h"
+#include "../storage/graph/graphcontext.h"
+#include "../storage/entities/node.h"
+#include "../storage/entities/edge.h"
+#include "../storage/datatypes/datatypes.h"
 
 // Forward declaration
 sds _JsonEncoder_SIValue(SIValue v, sds s);

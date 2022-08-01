@@ -5,7 +5,7 @@
 */
 
 #include "cmd_context.h"
-#include "../slow_log/slow_log.h"
+#include "slow_log/slow_log.h"
 
 void Graph_Slowlog(void *args) {
 	CommandCtx *command_ctx = (CommandCtx *)args;

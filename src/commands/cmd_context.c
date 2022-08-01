@@ -6,11 +6,11 @@
 
 #include "cmd_context.h"
 #include "RG.h"
-#include "../query_ctx.h"
-#include "../util/rmalloc.h"
-#include "../util/thpool/pools.h"
-#include "../slow_log/slow_log.h"
-#include "../util/blocked_client.h"
+#include "query_ctx.h"
+#include "util/rmalloc.h"
+#include "util/thpool/pools.h"
+#include "slow_log/slow_log.h"
+#include "util/blocked_client.h"
 
 /* Array with one entry per worker thread
  * keeps track after currently executing commands

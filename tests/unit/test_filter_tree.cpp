@@ -15,9 +15,9 @@ extern "C" {
 #include "../../src/query_ctx.h"
 #include "../../src/util/arr.h"
 #include "../../src/util/rmalloc.h"
-#include "../../src/filter_tree/filter_tree.h"
+#include "../../src/IR/filter_tree/filter_tree.h"
 #include "../../src/ast/ast_build_filter_tree.h"
-#include "../../src/arithmetic/funcs.h"
+#include "../../src/IR/function_description/funcs.h"
 
 #ifdef __cplusplus
 }

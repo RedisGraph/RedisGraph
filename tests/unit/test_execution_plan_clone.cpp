@@ -15,9 +15,9 @@ extern "C" {
 #include "../../src/util/arr.h"
 #include "../../src/query_ctx.h"
 #include "../../src/util/rmalloc.h"
-#include "../../src/arithmetic/funcs.h"
-#include "../../src/procedures/procedure.h"
-#include "../../src/execution_plan/execution_plan_clone.h"
+#include "../../src/IR/function_description/funcs.h"
+#include "../../src/logic/procedures/procedure.h"
+#include "../../src/IR/execution_plan/execution_plan_clone.h"
 
 #ifdef __cplusplus
 }

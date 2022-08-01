@@ -4,9 +4,9 @@
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
-#include "../util/arr.h"
-#include "../redismodule.h"
-#include "../graph/graphcontext.h"
+#include "util/arr.h"
+#include "redismodule.h"
+#include "storage/graph/graphcontext.h"
 
 // Global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;

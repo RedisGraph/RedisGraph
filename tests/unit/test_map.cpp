@@ -10,11 +10,11 @@
 extern "C" {
 #endif
 
-#include "../../src/value.h"
+#include "../../src/storage/datatypes/value.h"
 #include "../../src/util/arr.h"
 #include "../../src/util/rmalloc.h"
-#include "../../src/datatypes/map.h"
-#include "../../src/datatypes/array.h"
+#include "../../src/storage/datatypes/map.h"
+#include "../../src/storage/datatypes/array.h"
 
 #ifdef __cplusplus
 }

@@ -5,11 +5,11 @@
  */
 
 #include "ast_build_op_contexts.h"
-#include "../errors.h"
-#include "../util/arr.h"
-#include "../util/rax_extensions.h"
-#include "../arithmetic/arithmetic_expression_construct.h"
-#include "../query_ctx.h"
+#include "errors.h"
+#include "util/arr.h"
+#include "query_ctx.h"
+#include "util/rax_extensions.h"
+#include "IR/arithmetic_expression/arithmetic_expression_construct.h"
 
 static inline EdgeCreateCtx _NewEdgeCreateCtx(GraphContext *gc, const QGEdge *e,
 											  const cypher_astnode_t *edge) {

@@ -7,8 +7,8 @@
 #include "cypher_whitelist.h"
 #include "../../deps/libcypher-parser/lib/src/operators.h" // TODO safe?
 #include "rax.h"
-#include "../errors.h"
-#include "../query_ctx.h"
+#include "errors.h"
+#include "query_ctx.h"
 
 /* Whitelist of all accepted cypher_astnode types:
  * Includes entities like CREATE clauses and node patterns,

@@ -11,9 +11,9 @@ extern "C" {
 #endif
 
 #include <stdio.h>
-#include "../../src/execution_plan/record.h"
+#include "../../src/runtime/record/record.h"
 #include "../../src/util/rmalloc.h"
-#include "../../src/value.h"
+#include "../../src/storage/datatypes/value.h"
 
 #ifdef __cplusplus
 }

@@ -8,7 +8,7 @@
 
 #include "cypher-parser.h"
 #include "../redismodule.h"
-#include "../graph/graphcontext.h"
+#include "../storage/graph/graphcontext.h"
 
 // ExecutorThread lists the diffrent types of threads in the system
 typedef enum {

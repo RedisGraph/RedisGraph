@@ -12,12 +12,12 @@ extern "C"
 #endif
 
 #include "../../src/util/arr.h"
-#include "../../src/graph/graph.h"
+#include "../../src/storage/graph/graph.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/util/simple_timer.h"
 #include "../../src/configuration/config.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
-#include "../../src/util/datablock/datablock_iterator.h"
+#include "../../src/storage/datablock/datablock_iterator.h"
 
 #ifdef __cplusplus
 }

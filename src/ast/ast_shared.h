@@ -6,10 +6,10 @@
 
 #pragma once
 
-#include "../graph/graphcontext.h"
-#include "../graph/entities/qg_node.h"
-#include "../graph/entities/qg_edge.h"
-#include "../arithmetic/arithmetic_expression.h"
+#include "../storage/graph/graphcontext.h"
+#include "../IR/query_graph/qg_node.h"
+#include "../IR/query_graph/qg_edge.h"
+#include "../IR/arithmetic_expression/arithmetic_expression.h"
 #include "ast.h"
 
 struct AR_ExpNode;

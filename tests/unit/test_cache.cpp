@@ -5,7 +5,7 @@ extern "C" {
 #endif
 #include "../../src/util/rmalloc.h"
 #include "../../src/util/cache/cache.h"
-#include "../../src/execution_plan/execution_plan.h"
+#include "../../src/IR/execution_plan/execution_plan.h"
 #ifdef __cplusplus
 }
 #endif

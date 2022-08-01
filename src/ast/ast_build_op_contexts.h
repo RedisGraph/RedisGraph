@@ -8,8 +8,8 @@
 
 #include "ast.h"
 #include "ast_shared.h"
-#include "../graph/query_graph.h"
-#include "../graph/entities/graph_entity.h"
+#include "../IR/query_graph/query_graph.h"
+#include "../storage/entities/graph_entity.h"
 
 #define DIR_DESC -1
 #define DIR_ASC 1

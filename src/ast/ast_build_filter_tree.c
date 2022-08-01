@@ -1,9 +1,9 @@
 #include "ast_build_filter_tree.h"
 #include "ast_shared.h"
-#include "../RG.h"
-#include "../errors.h"
-#include "../util/arr.h"
-#include "../arithmetic/arithmetic_expression_construct.h"
+#include "RG.h"
+#include "errors.h"
+#include "util/arr.h"
+#include "IR/arithmetic_expression/arithmetic_expression_construct.h"
 
 // Forward declaration
 FT_FilterNode *_FilterNode_FromAST(const cypher_astnode_t *expr);

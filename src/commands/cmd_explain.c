@@ -4,13 +4,13 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "../errors.h"
+#include "errors.h"
 #include "cmd_context.h"
-#include "../query_ctx.h"
+#include "query_ctx.h"
 #include "execution_ctx.h"
-#include "../index/index.h"
-#include "../util/rmalloc.h"
-#include "../execution_plan/execution_plan.h"
+#include "storage/index/index.h"
+#include "util/rmalloc.h"
+#include "IR/execution_plan/execution_plan.h"
 
 /* Builds an execution plan but does not execute it
  * reports plan back to the client

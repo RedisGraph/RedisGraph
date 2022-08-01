@@ -13,9 +13,9 @@ extern "C"
 
 #include "../../src/query_ctx.h"
 #include "../../src/util/rmalloc.h"
-#include "../../src/arithmetic/funcs.h"
-#include "../../src/execution_plan/execution_plan.h"
-#include "../../src/arithmetic/arithmetic_expression.h"
+#include "../../src/IR/function_description/funcs.h"
+#include "../../src/IR/execution_plan/execution_plan.h"
+#include "../../src/IR/arithmetic_expression/arithmetic_expression.h"
 #include "../../src/util/arr.h"
 
 // Declaration of used functions not in header files

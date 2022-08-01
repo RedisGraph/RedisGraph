@@ -5,7 +5,7 @@
 */
 
 #include "annotate_projected_named_paths.h"
-#include "../../util/arr.h"
+#include "util/arr.h"
 
 //------------------------------------------------------------------------------
 //  Annotation context - Attach named path projection identifiers their respective ast structure

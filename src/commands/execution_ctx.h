@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../ast/ast.h"
-#include "../execution_plan/execution_plan.h"
+#include "../IR/execution_plan/execution_plan.h"
 
 /**
  * @brief  Execution type derived from a query

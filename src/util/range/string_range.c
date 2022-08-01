@@ -7,7 +7,7 @@
 #include "string_range.h"
 #include "RG.h"
 #include "../rmalloc.h"
-#include "../../ast/ast_shared.h"
+#include "ast/ast_shared.h"
 
 StringRange *StringRange_New(void) {
 	StringRange *range = rm_malloc(sizeof(StringRange));

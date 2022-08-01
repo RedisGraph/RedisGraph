@@ -7,11 +7,11 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "./slow_log.h"
-#include "../util/arr.h"
-#include "../query_ctx.h"
-#include "../util/rmalloc.h"
-#include "../util/thpool/pools.h"
+#include "slow_log.h"
+#include "util/arr.h"
+#include "query_ctx.h"
+#include "util/rmalloc.h"
+#include "util/thpool/pools.h"
 
 /* Redis prints doubles with up to 17 digits of precision, which captures
  * the inaccuracy of many floating-point numbers (such as 0.1).

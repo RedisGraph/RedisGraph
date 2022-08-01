@@ -6,11 +6,11 @@
 
 #pragma once
 
-#include "../value.h"
+#include "../storage/datatypes/value.h"
 #include "cypher-parser.h"
 #include "../redismodule.h"
 #include "ast_annotations_ctx_collection.h"
-#include "../arithmetic/arithmetic_expression.h"
+#include "../IR/arithmetic_expression/arithmetic_expression.h"
 
 #define UNLIMITED UINT_MAX
 #define IDENTIFIER_NOT_FOUND UINT_MAX

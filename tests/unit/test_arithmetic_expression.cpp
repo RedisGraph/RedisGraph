@@ -11,15 +11,15 @@ extern "C"
 {
 #endif
 
-#include "../../src/value.h"
+#include "../../src/storage/datatypes/value.h"
 #include "../../src/query_ctx.h"
-#include "../../src/arithmetic/funcs.h"
-#include "../../src/arithmetic/arithmetic_expression.h"
-#include "../../src/graph/entities/node.h"
-#include "../../src/execution_plan/execution_plan.h"
+#include "../../src/IR/function_description/funcs.h"
+#include "../../src/IR/arithmetic_expression/arithmetic_expression.h"
+#include "../../src/storage/entities/node.h"
+#include "../../src/IR/execution_plan/execution_plan.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/util/arr.h"
-#include "../../src/datatypes/array.h"
+#include "../../src/storage/datatypes/array.h"
 #include <time.h>
 #include <math.h>
 

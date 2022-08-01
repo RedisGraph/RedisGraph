@@ -13,7 +13,7 @@ extern "C"
 
 #include "../../src/util/rmalloc.h"
 #include "../../src/configuration/config.h"
-#include "../../src/algorithms/algorithms.h"
+#include "../../src/logic/algorithms/algorithms.h"
 
 #ifdef __cplusplus
 }

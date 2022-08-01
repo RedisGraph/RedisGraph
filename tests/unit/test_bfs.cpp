@@ -12,10 +12,10 @@ extern "C" {
 
 #include "../../src/util/arr.h"
 #include "../../src/util/rmalloc.h"
-#include "../../src/graph/query_graph.h"
-#include "../../src/graph/entities/qg_node.h"
-#include "../../src/graph/entities/qg_edge.h"
-#include "../../src/algorithms/algorithms.h"
+#include "../../src/IR/query_graph/query_graph.h"
+#include "../../src/IR/query_graph/qg_node.h"
+#include "../../src/IR/query_graph/qg_edge.h"
+#include "../../src/logic/algorithms/algorithms.h"
 
 #ifdef __cplusplus
 }

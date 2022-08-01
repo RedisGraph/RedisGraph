@@ -12,7 +12,7 @@ extern "C" {
 
 #include <stdio.h>
 #include "../../src/util/rmalloc.h"
-#include "../../src/algorithms/pagerank.h"
+#include "../../src/logic/algorithms/pagerank.h"
 
 #ifdef __cplusplus
 }

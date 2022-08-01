@@ -7,8 +7,8 @@
 #pragma once
 
 #include "ast.h"
-#include "../graph/query_graph.h"
-#include "../filter_tree/filter_tree.h"
+#include "../IR/query_graph/query_graph.h"
+#include "../IR/filter_tree/filter_tree.h"
 
 /* Convert the given AST predicate node and its children into a filter tree. */
 void AST_ConvertFilters(FT_FilterNode **root, const cypher_astnode_t *entity);

@@ -13,8 +13,8 @@ extern "C" {
 #include "../../src/util/arr.h"
 #include "../../src/query_ctx.h"
 #include "../../src/util/rmalloc.h"
-#include "../../src/graph/query_graph.h"
-#include "../../src/graph/graphcontext.h"
+#include "../../src/IR/query_graph/query_graph.h"
+#include "../../src/storage/graph/graphcontext.h"
 #ifdef __cplusplus
 }
 #endif

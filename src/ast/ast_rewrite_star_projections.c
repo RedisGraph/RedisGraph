@@ -5,11 +5,11 @@
 */
 
 #include "ast.h"
-#include "../query_ctx.h"
-#include "../errors.h"
-#include "../util/arr.h"
-#include "../util/sds/sds.h"
-#include "../procedures/procedure.h"
+#include "query_ctx.h"
+#include "errors.h"
+#include "util/arr.h"
+#include "util/sds/sds.h"
+#include "logic/procedures/procedure.h"
 
 //------------------------------------------------------------------------------
 //  Annotation context - WITH/RETURN * projections

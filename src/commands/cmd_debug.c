@@ -4,10 +4,10 @@
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
-#include "../util/arr.h"
-#include "../redismodule.h"
-#include "../graph/graphcontext.h"
-#include "../module_event_handlers.h"
+#include "util/arr.h"
+#include "redismodule.h"
+#include "storage/graph/graphcontext.h"
+#include "module_event_handlers.h"
 
 void ModuleEventHandler_AUXBeforeKeyspaceEvent(void);
 void ModuleEventHandler_AUXAfterKeyspaceEvent(void);

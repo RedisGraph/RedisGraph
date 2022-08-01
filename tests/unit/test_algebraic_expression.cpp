@@ -11,18 +11,18 @@ extern "C" {
 #endif
 
 #include "assert.h"
-#include "../../src/value.h"
+#include "../../src/storage/datatypes/value.h"
 #include "../../src/util/arr.h"
 #include "../../src/query_ctx.h"
-#include "../../src/graph/graph.h"
+#include "../../src/storage/graph/graph.h"
 #include "../../src/util/rmalloc.h"
-#include "../../src/graph/query_graph.h"
-#include "../../src/graph/graphcontext.h"
+#include "../../src/IR/query_graph/query_graph.h"
+#include "../../src/storage/graph/graphcontext.h"
 #include "../../src/util/simple_timer.h"
 #include "../../src/configuration/config.h"
-#include "../../src/execution_plan/execution_plan.h"
-#include "../../src/arithmetic/algebraic_expression.h"
-#include "../../src/arithmetic/algebraic_expression/utils.h"
+#include "../../src/IR/execution_plan/execution_plan.h"
+#include "../../src/IR/algebraic_expression/algebraic_expression.h"
+#include "../../src/IR/algebraic_expression/utils.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 extern AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause, AST *ast);

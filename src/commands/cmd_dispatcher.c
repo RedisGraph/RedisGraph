@@ -7,9 +7,9 @@
 #include "RG.h"
 #include "commands.h"
 #include "cmd_context.h"
-#include "../util/thpool/pools.h"
-#include "../util/blocked_client.h"
-#include "../configuration/config.h"
+#include "util/thpool/pools.h"
+#include "util/blocked_client.h"
+#include "configuration/config.h"
 
 #define GRAPH_VERSION_MISSING -1
 

@@ -5,8 +5,8 @@
 */
 
 #include "cmd_bulk_insert.h"
-#include "../query_ctx.h"
-#include "../bulk_insert/bulk_insert.h"
+#include "query_ctx.h"
+#include "logic/bulk_insert/bulk_insert.h"
 
 // process "BEGIN" token, expected to be present only on first bulk-insert
 // batch, make sure graph key doesn't exists, fails if "BEGIN" token is present

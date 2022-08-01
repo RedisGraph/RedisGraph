@@ -1,6 +1,6 @@
 #include "ast.h"
 #include "RG.h"
-#include "../util/arr.h"
+#include "util/arr.h"
 
 // Forward declerations:
 static void _AST_MapReferencedEntitiesInPath(AST *ast, const cypher_astnode_t *path,

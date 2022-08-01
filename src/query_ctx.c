@@ -8,9 +8,9 @@
 #include "RG.h"
 #include "errors.h"
 #include "util/simple_timer.h"
-#include "arithmetic/arithmetic_expression.h"
-#include "serializers/graphcontext_type.h"
-#include "undo_log/undo_log.h"
+#include "IR/arithmetic_expression/arithmetic_expression.h"
+#include "storage/serializers/graphcontext_type.h"
+#include "runtime/undo_log/undo_log.h"
 
 // GraphContext type as it is registered at Redis.
 extern RedisModuleType *GraphContextRedisModuleType;

@@ -12,7 +12,7 @@ extern "C" {
 
 #include "../../src/util/rmalloc.h"
 #include "../../src/configuration/config.h"
-#include "../../src/graph/rg_matrix/rg_matrix.h"
+#include "../../src/storage/rg_matrix/rg_matrix.h"
 #include <time.h>
 
 #ifdef __cplusplus

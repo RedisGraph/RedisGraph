@@ -5,7 +5,7 @@
 */
 
 #include "ast_annotations_ctx_collection.h"
-#include "../util/rmalloc.h"
+#include "util/rmalloc.h"
 
 static void _free_to_string_annotation
 (

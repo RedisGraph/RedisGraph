@@ -5,14 +5,14 @@
  */
 
 #include "ast.h"
-#include "../RG.h"
-#include "../errors.h"
+#include "RG.h"
+#include "errors.h"
 #include "ast_shared.h"
-#include "../util/arr.h"
+#include "util/arr.h"
 #include "cypher_whitelist.h"
-#include "../util/rax_extensions.h"
-#include "../procedures/procedure.h"
-#include "../arithmetic/arithmetic_expression.h"
+#include "util/rax_extensions.h"
+#include "logic/procedures/procedure.h"
+#include "IR/arithmetic_expression/arithmetic_expression.h"
 
 // TODO: generic function should be used to validate different features positions
 // static AST_Validation _NestedIn

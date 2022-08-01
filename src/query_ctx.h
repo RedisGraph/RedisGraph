@@ -9,11 +9,11 @@
 #include "ast/ast.h"
 #include "redismodule.h"
 #include "util/rmalloc.h"
-#include "graph/graphcontext.h"
+#include "storage/graph/graphcontext.h"
 #include "commands/cmd_context.h"
-#include "resultset/resultset.h"
-#include "execution_plan/ops/op.h"
-#include "undo_log/undo_log.h"
+#include "runtime/resultset/resultset.h"
+#include "runtime/ops/op.h"
+#include "runtime/undo_log/undo_log.h"
 #include <pthread.h>
 
 extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.

@@ -7,7 +7,7 @@
 #include "numeric_range.h"
 #include "RG.h"
 #include "../rmalloc.h"
-#include "../../ast/ast_shared.h"
+#include "ast/ast_shared.h"
 #include <math.h>
 
 NumericRange *NumericRange_New(void) {

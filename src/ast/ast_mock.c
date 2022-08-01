@@ -5,8 +5,8 @@
  */
 
 #include "ast_mock.h"
-#include "../query_ctx.h"
-#include "../util/rmalloc.h"
+#include "query_ctx.h"
+#include "util/rmalloc.h"
 
 AST *AST_MockMatchClause(AST *master_ast, cypher_astnode_t *node, bool node_is_path) {
 	/* The AST node and its children must be reused directly,

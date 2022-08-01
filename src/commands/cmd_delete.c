@@ -4,11 +4,11 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "./cmd_context.h"
-#include "../graph/graph.h"
-#include "../graph/graphcontext.h"
-#include "../query_ctx.h"
-#include "../resultset/resultset.h"
+#include "cmd_context.h"
+#include "storage/graph/graph.h"
+#include "storage/graph/graphcontext.h"
+#include "query_ctx.h"
+#include "runtime/resultset/resultset.h"
 
 /* Delete graph, removing the key from Redis and
  * freeing every resource allocated by the graph. */

@@ -9,7 +9,7 @@
 #include <setjmp.h>
 #include <stddef.h>
 #include "rax.h"
-#include "value.h"
+#include "storage/datatypes/value.h"
 #include "cypher-parser.h"
 
 extern pthread_key_t _tlsErrorCtx; // Error-handling context held in thread-local storage.

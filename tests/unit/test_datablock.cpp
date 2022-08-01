@@ -13,8 +13,8 @@ extern "C" {
 #include <stdio.h>
 #include <string.h>
 #include "../../src/util/arr.h"
-#include "../../src/util/datablock/datablock.h"
-#include "../../src/util/datablock/oo_datablock.h"
+#include "../../src/storage/datablock/datablock.h"
+#include "../../src/storage/datablock/oo_datablock.h"
 #include "../../src/util/rmalloc.h"
 
 #ifdef __cplusplus
