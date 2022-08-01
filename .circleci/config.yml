@@ -57,6 +57,7 @@ commands:
             git submodule update --init deps/readies
             ./deps/readies/bin/getpy3
             ./deps/readies/bin/getpy2
+            ./deps/readies/bin/getaws
 
   install-prerequisites:
     parameters:
@@ -591,11 +592,13 @@ workflows:
           name: build
           <<: *not-on-integ-branch
       - build-platforms:
-          <<: *on-integ-and-version-tags
+          #@@<<: *on-integ-and-version-tags
+          <<: *on-any-branch
           context: common
           matrix:
             parameters:
-              platform: [focal, bionic, xenial, centos7, rocky8, bullseye]
+              #@@platform: [focal, bionic, xenial, centos7, rocky8, bullseye]
+              platform: [bionic]
       - build-arm-platforms:
           <<: *on-integ-and-version-tags
           context: common
