@@ -9,7 +9,6 @@
 #include <stdbool.h>
 #include "../redismodule.h"
 
-#define STAT_NOT_SET -1
 
 typedef struct {
 	int labels_added;           // number of labels added as part of a create/update query

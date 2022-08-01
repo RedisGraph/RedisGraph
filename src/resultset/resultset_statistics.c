@@ -38,9 +38,6 @@ void ResultSetStat_init
 	ASSERT(stats != NULL);
 
 	memset(stats, 0, sizeof(ResultSetStatistics));
-
-	stats->indices_created = STAT_NOT_SET;
-	stats->indices_deleted = STAT_NOT_SET;
 }
 
 // emit resultset statistics
@@ -62,9 +59,8 @@ void ResultSetStat_emit
 	if(stats->properties_removed    > 0) resultset_size++;
 	if(stats->relationships_deleted > 0) resultset_size++;
 	if(stats->relationships_created > 0) resultset_size++;
-
-	if(stats->indices_created != STAT_NOT_SET) resultset_size++;
-	if(stats->indices_deleted != STAT_NOT_SET) resultset_size++;
+	if(stats->indices_created       > 0) resultset_size++;
+	if(stats->indices_deleted       > 0) resultset_size++;
 
 	RedisModule_ReplyWithArray(ctx, resultset_size);
 
@@ -108,12 +104,12 @@ void ResultSetStat_emit
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
 
-	if(stats->indices_created != STAT_NOT_SET) {
+	if(stats->indices_created > 0) {
 		buflen = sprintf(buff, "Indices created: %d", stats->indices_created);
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
 
-	if(stats->indices_deleted != STAT_NOT_SET) {
+	if(stats->indices_deleted > 0) {
 		buflen = sprintf(buff, "Indices deleted: %d", stats->indices_deleted);
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
@@ -136,8 +132,8 @@ void ResultSetStat_Clear(ResultSetStatistics *stats) {
 	stats->nodes_created          =  0;
 	stats->properties_set         =  0;
 	stats->properties_removed     =  0;
-	stats->indices_created        =  STAT_NOT_SET;
-	stats->indices_deleted        =  STAT_NOT_SET;
+	stats->indices_created        =  0;
+	stats->indices_deleted        =  0;
 	stats->relationships_created  =  0;
 	stats->relationships_deleted  =  0;
 }
