@@ -490,3 +490,4 @@ class testEntityUpdate(FlowTestsBase):
         graph.query("CREATE ({v:1})")
         result = graph.query("MATCH (n {v:1}) REMOVE n.v SET n.v=1")
         self.env.assertEqual(result.properties_set, 1)
+        self.env.assertEqual(result.properties_removed, 1)

@@ -237,6 +237,9 @@ static void _Update_Entity_Property
 		UndoLog_UpdateEntity(&query_ctx->undo_log, ge, attr_id, *orig_value, entity_type);
 	}
 
+
+	SIValue* old_value = GraphEntity_GetProperty(ge, attr_id);
+
 	int updates = Graph_UpdateEntity(ge, attr_id, new_value, entity_type);
 
 	if(SIValue_IsNull(new_value)) {
@@ -245,7 +248,7 @@ static void _Update_Entity_Property
 	else {
 		*props_set_count = updates;
 		// When overwriting an exiting property it is considered also as removed.
-		if(GraphEntity_GetProperty(ge, attr_id) != ATTRIBUTE_NOTFOUND) {
+		if(old_value != ATTRIBUTE_NOTFOUND) {
 			*props_removed_count = updates;
 		}
 	}
