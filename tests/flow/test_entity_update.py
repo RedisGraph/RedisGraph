@@ -49,7 +49,8 @@ class testEntityUpdate(FlowTestsBase):
     def test04_update_remove_attribute(self):
         # remove the 'x' attribute
         result = graph.query("MATCH (n) SET n.x = NULL")
-        self.env.assertEqual(result.properties_set, 1)
+        self.env.assertEqual(result.properties_set, 0)
+        self.env.assertEqual(result.properties_removed, 1)
 
     def test05_update_from_projection(self):
         result = graph.query("MATCH (n) UNWIND ['Calgary'] as city_name SET n.name = city_name RETURN n.v, n.name")
@@ -63,7 +64,8 @@ class testEntityUpdate(FlowTestsBase):
         result = graph.query("MATCH (n) SET n = {} RETURN n")
         expected_result = [[empty_node]]
         # The node originally had 2 properties, 'name' and 'city_name'
-        self.env.assertEqual(result.properties_set, 2)
+        self.env.assertEqual(result.properties_set, 0)
+        self.env.assertEqual(result.properties_removed, 2)
         self.env.assertEqual(result.result_set, expected_result)
 
     # Update the entity's properties by setting a specific property and merging property maps
@@ -256,7 +258,7 @@ class testEntityUpdate(FlowTestsBase):
         # multiple node updates
         self.validate_node_labels(multiple_entity_graph, labels, 0)
         result = multiple_entity_graph.query(f"MATCH (n) SET n:{labels[0]}")
-        self.env.assertEqual(result.labels_added, 1)
+        self.env.assertEqual(result.labels_added, 2)
         self.validate_node_labels(multiple_entity_graph, labels, 2)
 
 
@@ -271,7 +273,7 @@ class testEntityUpdate(FlowTestsBase):
         # multiple node updates
         self.validate_node_labels(multiple_entity_graph, labels, 0)   
         result = multiple_entity_graph.query(f"MATCH (n) SET n:{':'.join(labels)}")
-        self.env.assertEqual(result.labels_added, 2)
+        self.env.assertEqual(result.labels_added, 4)
         self.validate_node_labels(multiple_entity_graph, labels, 2)
     
 
@@ -286,7 +288,7 @@ class testEntityUpdate(FlowTestsBase):
         # multiple node updates
         self.validate_node_labels(multiple_entity_graph, labels, 0)
         result = multiple_entity_graph.query(f"MATCH (n) SET n:{labels[0]}, n:{labels[1]}")
-        self.env.assertEqual(result.labels_added, 2)
+        self.env.assertEqual(result.labels_added, 4)
         self.validate_node_labels(multiple_entity_graph, labels, 2)
 
 
@@ -308,7 +310,7 @@ class testEntityUpdate(FlowTestsBase):
         result = multiple_entity_graph.query("MATCH (n {testprop:'testvalue'}) RETURN n")
         self.env.assertEqual(len(result.result_set), 0)
         result = multiple_entity_graph.query(f"MATCH (n) SET n:{labels[0]}, n.testprop='testvalue'")
-        self.env.assertEqual(result.labels_added, 1)
+        self.env.assertEqual(result.labels_added, 2)
         self.env.assertEqual(result.properties_set, 2)
         self.validate_node_labels(multiple_entity_graph, labels, 2)
         result = multiple_entity_graph.query("MATCH (n {testprop:'testvalue'}) RETURN n")
@@ -322,7 +324,7 @@ class testEntityUpdate(FlowTestsBase):
         self.env.assertEqual(len(result.result_set), 0)
 
         result = multiple_entity_graph.query(f"MATCH (n), (m) SET n:{labels[0]}, n.testprop2='testvalue', m:{labels[1]}")
-        self.env.assertEqual(result.labels_added, 2)
+        self.env.assertEqual(result.labels_added, 4)
         self.env.assertEqual(result.properties_set, 2)
         self.validate_node_labels(multiple_entity_graph, labels, 2)
         result = multiple_entity_graph.query("MATCH (n {testprop2:'testvalue'}) RETURN n")
@@ -433,6 +435,7 @@ class testEntityUpdate(FlowTestsBase):
         # call set prior to remove
         result = graph.query(f"MATCH (n) SET n:{':'.join(labels)} REMOVE n:{':'.join(labels)} RETURN n")
         self.env.assertEqual(result.labels_added, 1)
+        self.env.assertEqual(result.labels_removed, 1)
         self.validate_node_labels(graph, labels, 0)
 
         graph.delete()
@@ -442,6 +445,7 @@ class testEntityUpdate(FlowTestsBase):
         # call remove prior to set
         result = graph.query(f"MATCH (n) REMOVE n:{':'.join(labels)} SET n:{':'.join(labels)} RETURN n")
         self.env.assertEqual(result.labels_added, 1)
+        self.env.assertEqual(result.labels_removed, 0)
         self.validate_node_labels(graph, labels, 1)
 
     def test_32_mix_merge_and_remove_node_labels(self):
@@ -451,6 +455,7 @@ class testEntityUpdate(FlowTestsBase):
 
         result = graph.query(f"MERGE (n:{':'.join(labels_to_remove)})  REMOVE n:{':'.join(labels_to_remove)} RETURN n")
         self.env.assertEqual(result.labels_added, 1)
+        self.env.assertEqual(result.labels_removed, 1)
         self.validate_node_labels(graph, labels_to_remove, 0)
 
     def test_33_syntax_error_remove_labels_on_match_on_create(self):
