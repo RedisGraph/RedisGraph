@@ -194,22 +194,6 @@ clean_up:
 
 }
 
-static void _QueryCtx_Replicate(QueryCtx *ctx) {
-	GraphContext *gc = ctx->gc;
-	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
-
-	if(ResultSetStat_IndicateModification(
-				&ctx->internal_exec_ctx.result_set->stats)) {
-		_QueryCtx_ThreadSafeContextLock(ctx);
-		
-		// replicate only in case of changes
-		RedisModule_Replicate(redis_ctx, ctx->global_exec_ctx.command_name,
-				"cc!", gc->graph_name, ctx->query_data.query);
-		
-		_QueryCtx_ThreadSafeContextUnlock(ctx);
-	}
-}
-
 static void _QueryCtx_UnlockCommit(QueryCtx *ctx) {
 	GraphContext *gc = ctx->gc;
 
@@ -222,6 +206,23 @@ static void _QueryCtx_UnlockCommit(QueryCtx *ctx) {
 
 	// Unlock GIL.
 	_QueryCtx_ThreadSafeContextUnlock(ctx);
+}
+
+static void _QueryCtx_Replicate(QueryCtx *ctx) {
+	GraphContext *gc = ctx->gc;
+	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
+
+	if(ResultSetStat_IndicateModification(
+				&ctx->internal_exec_ctx.result_set->stats)) {
+		if(!ctx->internal_exec_ctx.locked_for_commit) _QueryCtx_ThreadSafeContextLock(ctx);
+		
+		// replicate only in case of changes
+		RedisModule_Replicate(redis_ctx, ctx->global_exec_ctx.command_name,
+				"cc!", gc->graph_name, ctx->query_data.query);
+		
+		if(!ctx->internal_exec_ctx.locked_for_commit) _QueryCtx_ThreadSafeContextUnlock(ctx);
+		else _QueryCtx_UnlockCommit(ctx);
+	}
 }
 
 void QueryCtx_UnlockCommit(OpBase *writer_op) {
