@@ -484,3 +484,10 @@ class testEntityUpdate(FlowTestsBase):
                 self.env.assertTrue(False)
             except ResponseError as e:
                 self.env.assertContains("Update error: alias 'x' did not resolve to a graph entity", str(e))
+
+    def test_36_mix_add_and_remove_node_properties(self):
+        graph.delete()
+        graph.query("CREATE ({v:1})")
+        result = graph.query("MATCH (n {v:1}) REMOVE n.v SET n.v=1")
+        self.env.assertEqual(result.properties_set, 1)
+        self.env.assertEqual(result.properties_removed, 1)
