@@ -170,8 +170,7 @@ uint CreateEdge
 uint DeleteNode
 (
 	GraphContext *gc,
-	Node *n,
-	uint *deleted_labels_count
+	Node *n
 ) {
 	ASSERT(n != NULL);
 	ASSERT(gc != NULL);
@@ -182,12 +181,6 @@ uint DeleteNode
 
 	if(GraphContext_HasIndices(gc)) {
 		_DeleteNodeFromIndices(gc, n);
-	}
-
-	if(deleted_labels_count) {
-		uint label_count;
-		NODE_GET_LABELS(gc->g, n, label_count);
-		*deleted_labels_count = label_count;
 	}
 
 	Graph_DeleteNode(gc->g, n);

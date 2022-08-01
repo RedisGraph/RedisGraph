@@ -47,8 +47,7 @@ uint CreateEdge
 uint DeleteNode
 (
 	GraphContext *gc,               // graph context to delete the node
-	Node *n,                        // the node to be deleted
-	uint *deleted_labels_count     // amount of labels being deleted as a result from node delete
+	Node *n                         // the node to be deleted
 );
 
 // delete an edge
