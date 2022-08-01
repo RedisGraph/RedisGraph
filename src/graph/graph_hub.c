@@ -171,8 +171,7 @@ uint DeleteNode
 (
 	GraphContext *gc,
 	Node *n,
-	uint *deleted_labels_count,
-	uint *deleted_properties_count
+	uint *deleted_labels_count
 ) {
 	ASSERT(n != NULL);
 	ASSERT(gc != NULL);
@@ -191,11 +190,6 @@ uint DeleteNode
 		*deleted_labels_count = label_count;
 	}
 
-	if(deleted_properties_count) {
-		const AttributeSet attributes = GraphEntity_GetAttributes((GraphEntity*)n);
-		*deleted_properties_count = attributes ? attributes->attr_count : 0;
-	}
-
 	Graph_DeleteNode(gc->g, n);
 
 	return 1;
@@ -204,8 +198,7 @@ uint DeleteNode
 int DeleteEdge
 (
 	GraphContext *gc,
-	Edge *e,
-	uint *deleted_properties_count
+	Edge *e
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(e != NULL);
@@ -217,12 +210,7 @@ int DeleteEdge
 	if(GraphContext_HasIndices(gc)) {
 		_DeleteEdgeFromIndices(gc, e);
 	}
-	const AttributeSet attributes = GraphEntity_GetAttributes((GraphEntity*)e);
-	uint properties_count = attributes ? attributes->attr_count : 0;
 	int res = Graph_DeleteEdge(gc->g, e);
-	if(res && deleted_properties_count) {
-		*deleted_properties_count = properties_count;
-	}
 	return res;
 }
 

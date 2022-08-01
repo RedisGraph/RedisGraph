@@ -48,8 +48,7 @@ uint DeleteNode
 (
 	GraphContext *gc,               // graph context to delete the node
 	Node *n,                        // the node to be deleted
-	uint *deleted_labels_count,     // amount of labels being deleted as a result from node delete
-	uint *deleted_properties_count  // amount of properties being deleted as a result from node delete
+	uint *deleted_labels_count     // amount of labels being deleted as a result from node delete
 );
 
 // delete an edge
@@ -60,8 +59,7 @@ uint DeleteNode
 int DeleteEdge
 (
 	GraphContext *gc,               // graph context to delete the edge
-	Edge *e,                        // the edge to be deleted
-	uint *deleted_properties_count  // amount of properties being deleted as a result from edge delete
+	Edge *e                         // the edge to be deleted
 );
 
 // update an entity(node/edge)

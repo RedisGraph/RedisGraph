@@ -34,7 +34,6 @@ static void _DeleteEntities
 ) {
 	uint node_deleted          = 0;
 	uint edge_deleted          = 0;
-	uint deleted_properties    = 0;
 	uint labels_removed        = 0;
 	uint node_count            = array_len(op->deleted_nodes);
 	uint edge_count            = array_len(op->deleted_edges);
@@ -108,17 +107,13 @@ static void _DeleteEntities
 
 		// delete edges
 		for(uint i = 0; i < edge_count; i++) {
-			uint loop_deleted_properties = 0;
-			edge_deleted += DeleteEdge(op->gc, distinct_edges + i, &loop_deleted_properties);
-			deleted_properties += loop_deleted_properties;
+			edge_deleted += DeleteEdge(op->gc, distinct_edges + i);
 		}
 
 		// delete nodes
 		for(uint i = 0; i < node_count; i++) {
-			uint loop_deleted_properties = 0;
 			uint loop_deleted_labels = 0;
-			node_deleted += DeleteNode(op->gc, distinct_nodes + i, &loop_deleted_labels, &loop_deleted_properties);
-			deleted_properties += loop_deleted_properties;
+			node_deleted += DeleteNode(op->gc, distinct_nodes + i, &loop_deleted_labels);
 			labels_removed += loop_deleted_labels;
 		}
 
@@ -126,7 +121,6 @@ static void _DeleteEntities
 		if(op->stats != NULL) {
 			op->stats->nodes_deleted         += node_deleted;
 			op->stats->relationships_deleted += edge_deleted;
-			op->stats->properties_removed    +=  deleted_properties;
 			op->stats->labels_removed        +=  labels_removed;
 		}
 	}
