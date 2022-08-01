@@ -694,6 +694,20 @@ void Graph_RemoveLabelNode
 	if(label_count > 0) _Graph_RemoveLabelNode(g, id, labels, label_count);	
 }
 
+bool Graph_IsNodeLabeled
+(
+	Graph *g,
+	NodeID id,
+	int labelId
+) {
+	ASSERT(g);
+	RG_Matrix nl = Graph_GetNodeLabelMatrix(g);
+	bool labeled;
+	GrB_Info info = RG_Matrix_extractElement_BOOL(&labeled, nl, id, labelId);
+	ASSERT(info == GrB_SUCCESS || info == GrB_NO_VALUE);
+	return info == GrB_SUCCESS;
+}
+
 bool Graph_FormConnection
 (
 	Graph *g,
@@ -936,7 +950,7 @@ void Graph_DeleteNode
 	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
 }
 
-// removes an edge from Graph and updates graph relevent matrices
+// removes an edge from Graph and updates graph relevant matrices
 int Graph_DeleteEdge
 (
 	Graph *g,

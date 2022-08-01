@@ -59,8 +59,10 @@ void CommitUpdates
 	ASSERT(updates != NULL);
 	ASSERT(type    != ENTITY_UNKNOWN);
 
-	uint  labels_added      =  0;
-	uint  properties_set  =  0;
+	uint  labels_added        =  0;
+	uint  labels_removed      =  0;
+	uint  properties_set      =  0;
+	uint  properties_removed  =  0;
 	uint  update_count    =  array_len(updates);
 
 	// return early if no updates are enqueued
@@ -71,17 +73,27 @@ void CommitUpdates
 
 		// if entity has been deleted, perform no updates
 		if(GraphEntity_IsDeleted(update->ge)) continue;
+		uint loop_labels_added = 0;
+		uint loop_labels_removed = 0;
+		uint loop_props_set = 0;
+		uint loop_props_removed = 0;
 
 		// update the attributes on the graph entity
-		properties_set += UpdateEntityProperties(gc, update->ge, update->attributes,
-				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE);
+		UpdateEntityProperties(gc, update->ge, update->attributes,
+				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE, &loop_props_set, &loop_props_removed);
 
-		labels_added += UpdateNodeLabels(gc, (Node*)update->ge, update->labels);
+		UpdateNodeLabels(gc, (Node*)update->ge, update->labels, &loop_labels_added, &loop_labels_removed);
+		labels_added += loop_labels_added;
+		labels_removed += loop_labels_removed;
+		properties_set += loop_props_set;
+		properties_removed += loop_props_removed;
 	}
 
 	if(stats) {
 		stats->properties_set += properties_set;
+		stats->properties_removed += properties_removed;
 		stats->labels_added += labels_added;
+		stats->labels_removed += labels_removed;
 	}
 }
 

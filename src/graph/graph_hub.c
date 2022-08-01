@@ -203,19 +203,21 @@ int DeleteEdge
 	if(GraphContext_HasIndices(gc)) {
 		_DeleteEdgeFromIndices(gc, e);
 	}
-
-	return Graph_DeleteEdge(gc->g, e);
+	int res = Graph_DeleteEdge(gc->g, e);
+	return res;
 }
 
 // update entity attributes and update undo log
 // in case attr_id is ATTRIBUTE_ID_ALL clear all attributes values
-static int _Update_Entity_Property
+static void _Update_Entity_Property
 (
 	GraphContext *gc,
 	GraphEntity *ge,
 	Attribute_ID attr_id,
 	SIValue new_value,
-	GraphEntityType entity_type
+	GraphEntityType entity_type,
+	uint *props_set_count,
+	uint *props_removed_count
 ) {
 	if(attr_id == ATTRIBUTE_ID_ALL) {
 		// we're requested to clear entitiy's attribute-set
@@ -235,48 +237,65 @@ static int _Update_Entity_Property
 		UndoLog_UpdateEntity(&query_ctx->undo_log, ge, attr_id, *orig_value, entity_type);
 	}
 
-	return Graph_UpdateEntity(ge, attr_id, new_value, entity_type);
+	int updates = Graph_UpdateEntity(ge, attr_id, new_value, entity_type);
+
+	if(SIValue_IsNull(new_value)) {
+		*props_removed_count = updates;
+	}
+	else {
+		*props_set_count = updates;
+		// When overwriting an exiting property it is considered also as removed.
+		if(GraphEntity_GetProperty(ge, attr_id) != ATTRIBUTE_NOTFOUND) {
+			*props_removed_count = updates;
+		}
+	}
 }
 
-int UpdateEntityProperties
+void UpdateEntityProperties
 (
 	GraphContext *gc,
 	GraphEntity *ge,
 	const AttributeSet set,
-	GraphEntityType entity_type
+	GraphEntityType entity_type,
+	uint *props_set_count,
+	uint *props_removed_count
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(ge != NULL);
-
-	int updates = 0;
+	int set_props = 0;
+	int removed_props = 0;
 	for (uint i = 0; i < ATTRIBUTE_SET_COUNT(set); i++) {
 		Attribute *prop = set->attributes + i;
-		updates += _Update_Entity_Property(gc, ge, prop->id, prop->value, entity_type);
+		uint loop_set_props = 0;
+		uint loop_removed_props = 0;
+		_Update_Entity_Property(gc, ge, prop->id, prop->value, entity_type, &loop_set_props, &loop_removed_props);
+		set_props += loop_set_props;
+		removed_props += loop_removed_props;
 	}
-
 	if(entity_type == GETYPE_NODE) {
 		_AddNodeToIndices(gc, (Node *)ge);
 	} else {
 		_AddEdgeToIndices(gc, (Edge *)ge);
 	}
-
-	return updates;
+	if(props_set_count) *props_set_count = set_props;
+	if(props_removed_count) *props_removed_count = removed_props;
 }
 
-int UpdateNodeLabels
+void UpdateNodeLabels
 (
 	GraphContext *gc,            // graph context to update the entity
 	Node *node,                  // the node to be updated
-	rax *labels     	         // labels to update
+	rax *labels,     	         // labels to update
+	uint *labels_added_count,    // number of labels added (out param)
+	uint *labels_removed_count   // number of labels removed (out param)
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(node != NULL);
 
-	if(!labels) return 0;
+	if(!labels) return;
 	uint label_count = raxSize(labels);
-	if(label_count == 0) return 0;
+	if(label_count == 0) return;
 
-	int new_labels = 0;
 	int *add_labels = array_new(int, label_count);
 	int *remove_labels = array_new(int, label_count);
 	raxIterator it;
@@ -297,15 +316,20 @@ int UpdateNodeLabels
 			const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 			if(s == NULL) {
 				s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
-				new_labels++;
 			}
-			// sync matrix, make sure label matrix is of the right dimensions
-			Graph_GetLabelMatrix(gc->g, Schema_GetID(s));
 
-			// Append label id.
-			array_append(add_labels, Schema_GetID(s));
-			// Add to index.
-			Schema_AddNodeToIndices(s, node);
+			int schema_id = Schema_GetID(s);
+			bool exists = Graph_IsNodeLabeled(gc->g, node->id, schema_id);
+			if(!exists) {
+				// sync matrix, make sure label matrix is of the right dimensions
+				RG_Matrix m = Graph_GetLabelMatrix(gc->g, schema_id);
+
+				// Append label id.
+				array_append(add_labels, schema_id);
+				// Add to index.
+				Schema_AddNodeToIndices(s, node);
+			}
+			
 		} else {
 			// Get or create label matrix
 			const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
@@ -324,6 +348,7 @@ int UpdateNodeLabels
 
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 	label_count = array_len(add_labels);
+	if(labels_added_count) *labels_added_count = label_count;
 	// Update label matrixes.
 	if(label_count > 0) {
 		Graph_LabelNode(gc->g, node->id ,add_labels, label_count);
@@ -332,10 +357,10 @@ int UpdateNodeLabels
 	array_free(add_labels);
 
 	label_count = array_len(remove_labels);
+	if(labels_removed_count) *labels_removed_count = label_count;
 	if(label_count > 0) {
 		Graph_RemoveLabelNode(gc->g, node->id ,remove_labels, label_count);
 		UndoLog_RemoveLabels(&query_ctx->undo_log, node, remove_labels);
 	}
 	array_free(remove_labels);
-	return new_labels;
 }
