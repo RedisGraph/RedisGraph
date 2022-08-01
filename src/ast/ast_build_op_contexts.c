@@ -40,10 +40,10 @@ static inline NodeCreateCtx _NewNodeCreateCtx(GraphContext *gc, const QGNode *n,
 
 // Updates a single property or label
 static void _ConvertUpdateItem(GraphContext *gc, rax *updates,
-		const cypher_astnode_t *set_item) {
+		const cypher_astnode_t *update_item) {
 	ASSERT(gc        !=  NULL);
 	ASSERT(updates   !=  NULL);
-	ASSERT(set_item  !=  NULL);
+	ASSERT(update_item  !=  NULL);
 
 	const  char              *alias      =  NULL;  // entity being updated
 	const  char              *attribute  =  NULL;  // attribute being set
@@ -54,7 +54,7 @@ static void _ConvertUpdateItem(GraphContext *gc, rax *updates,
 
 	UPDATE_MODE update_mode = UPDATE_MERGE;
 	Attribute_ID attribute_id = ATTRIBUTE_ID_NONE;
-	const cypher_astnode_type_t type = cypher_astnode_type(set_item);
+	const cypher_astnode_type_t type = cypher_astnode_type(update_item);
 	bool set_labels = false;
 	bool remove_labels = false;
 
@@ -63,7 +63,7 @@ static void _ConvertUpdateItem(GraphContext *gc, rax *updates,
 		update_mode = UPDATE_REPLACE;
 
 		// alias
-		prop_expr = cypher_ast_set_all_properties_get_identifier(set_item);
+		prop_expr = cypher_ast_set_all_properties_get_identifier(update_item);
 		ASSERT(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
 		alias = cypher_ast_identifier_get_name(prop_expr);
 
@@ -71,11 +71,11 @@ static void _ConvertUpdateItem(GraphContext *gc, rax *updates,
 		attribute_id = ATTRIBUTE_ID_ALL;
 
 		// value
-		ast_value = cypher_ast_set_all_properties_get_expression(set_item);
+		ast_value = cypher_ast_set_all_properties_get_expression(update_item);
 	} else if(type == CYPHER_AST_MERGE_PROPERTIES) {
 		// MATCH (a) SET a += {v: 5}
 		// alias
-		prop_expr = cypher_ast_merge_properties_get_identifier(set_item);
+		prop_expr = cypher_ast_merge_properties_get_identifier(update_item);
 		ASSERT(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
 		alias = cypher_ast_identifier_get_name(prop_expr);
 
@@ -83,12 +83,12 @@ static void _ConvertUpdateItem(GraphContext *gc, rax *updates,
 		attribute_id = ATTRIBUTE_ID_ALL;
 
 		// value
-		ast_value = cypher_ast_merge_properties_get_expression(set_item);
+		ast_value = cypher_ast_merge_properties_get_expression(update_item);
 	} else if(type == CYPHER_AST_SET_PROPERTY) {
 		// MATCH (a) SET a.v = 5
 
 		// alias
-		ast_prop = cypher_ast_set_property_get_property(set_item);
+		ast_prop = cypher_ast_set_property_get_property(update_item);
 		prop_expr = cypher_ast_property_operator_get_expression(ast_prop);
 		ASSERT(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
 		alias = cypher_ast_identifier_get_name(prop_expr);
@@ -99,20 +99,34 @@ static void _ConvertUpdateItem(GraphContext *gc, rax *updates,
 		attribute_id = GraphContext_FindOrAddAttribute(gc, attribute);
 
 		// updated value
-		ast_value = cypher_ast_set_property_get_expression(set_item);
+		ast_value = cypher_ast_set_property_get_expression(update_item);
 	}
 	else if(type == CYPHER_AST_SET_LABELS) {
 		// MATCH (a) SET a:Label1:Label2
-		const cypher_astnode_t *identifier = cypher_ast_set_labels_get_identifier(set_item);
+		const cypher_astnode_t *identifier = cypher_ast_set_labels_get_identifier(update_item);
 		ASSERT(cypher_astnode_type(identifier) == CYPHER_AST_IDENTIFIER);
 		alias = cypher_ast_identifier_get_name(identifier);
 		set_labels = true;
 	} else if(type == CYPHER_AST_REMOVE_LABELS){
 		// MATCH (a) REMOVE a:Label1:Label2
-		const cypher_astnode_t *identifier = cypher_ast_remove_labels_get_identifier(set_item);
+		const cypher_astnode_t *identifier = cypher_ast_remove_labels_get_identifier(update_item);
 		ASSERT(cypher_astnode_type(identifier) == CYPHER_AST_IDENTIFIER);
 		alias = cypher_ast_identifier_get_name(identifier);
 		remove_labels = true;
+	} else if(type == CYPHER_AST_REMOVE_PROPERTY){
+		// MATCH (a) REMOVE a.v
+
+		// alias
+		ast_prop = cypher_ast_remove_property_get_property(update_item);
+		prop_expr = cypher_ast_property_operator_get_expression(ast_prop);
+		ASSERT(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
+		alias = cypher_ast_identifier_get_name(prop_expr);
+
+		// attribute
+		ast_key = cypher_ast_property_operator_get_prop_name(ast_prop);
+		attribute = cypher_ast_prop_name_get_value(ast_key);
+		attribute_id = GraphContext_FindOrAddAttribute(gc, attribute);
+
 	}
 	else{
 		ASSERT(false);
@@ -129,16 +143,16 @@ static void _ConvertUpdateItem(GraphContext *gc, rax *updates,
 	// Either in set labels or remove labels scenario, the rax will hold a value. If the value is
 	// true, it means to set the label. If the value is false it means to remove the label.
 	if(set_labels) {
-		uint label_count = cypher_ast_set_labels_nlabels(set_item);
+		uint label_count = cypher_ast_set_labels_nlabels(update_item);
 		for (uint i = 0; i < label_count; i++) {
-			const cypher_astnode_t * label_node = cypher_ast_set_labels_get_label(set_item, i);
+			const cypher_astnode_t * label_node = cypher_ast_set_labels_get_label(update_item, i);
 			const char* label = cypher_ast_label_get_name(label_node);
 			raxInsert(ctx->labels, (unsigned char *)label, strlen(label), true, NULL);	
 		}
 	}else if(remove_labels) {
-		uint label_count = cypher_ast_remove_labels_nlabels(set_item);
+		uint label_count = cypher_ast_remove_labels_nlabels(update_item);
 		for (uint i = 0; i < label_count; i++) {
-			const cypher_astnode_t * label_node = cypher_ast_remove_labels_get_label(set_item, i);
+			const cypher_astnode_t * label_node = cypher_ast_remove_labels_get_label(update_item, i);
 			const char* label = cypher_ast_label_get_name(label_node);
 			raxInsert(ctx->labels, (unsigned char *)label, strlen(label), false, NULL);	
 		}
@@ -148,7 +162,7 @@ static void _ConvertUpdateItem(GraphContext *gc, rax *updates,
 			UpdateCtx_SetMode(ctx, UPDATE_REPLACE);
 		}
 		// updated value
-		AR_ExpNode *exp = AR_EXP_FromASTNode(ast_value);
+		AR_ExpNode *exp = ast_value ? AR_EXP_FromASTNode(ast_value) : AR_EXP_NewConstOperandNode(SI_NullVal());
 		PropertySetCtx update = { .id  = attribute_id, .exp = exp };
 		array_append(ctx->properties, update);
 	}

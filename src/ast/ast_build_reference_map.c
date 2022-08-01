@@ -220,6 +220,15 @@ static void _AST_MapSetClauseReferences(AST *ast, const cypher_astnode_t *set_cl
 	}
 }
 
+static void _AST_MapRemovePropertyReferences(AST *ast, const cypher_astnode_t *remove_item) {
+	ASSERT(cypher_astnode_type(remove_item) == CYPHER_AST_REMOVE_PROPERTY);
+	const cypher_astnode_t * ast_prop = cypher_ast_remove_property_get_property(remove_item);
+	const cypher_astnode_t *ast_entity = cypher_ast_property_operator_get_expression(ast_prop);
+	ASSERT(cypher_astnode_type(ast_entity) == CYPHER_AST_IDENTIFIER);
+	const char *alias = cypher_ast_identifier_get_name(ast_entity);
+	_AST_UpdateRefMap(ast, alias);
+}
+
 // Maps entities in REMOVE clauses that update labels.
 static void _AST_MapRemoveLabelsReferences(AST *ast, const cypher_astnode_t *remove_item) {
 	ASSERT(cypher_astnode_type(remove_item) == CYPHER_AST_REMOVE_LABELS);
@@ -231,8 +240,13 @@ static void _AST_MapRemoveLabelsReferences(AST *ast, const cypher_astnode_t *rem
 
 static void _AST_MapRemoveItemReferences(AST *ast, const cypher_astnode_t *remove_item) {
 	const cypher_astnode_type_t type = cypher_astnode_type(remove_item);
-	ASSERT(type == CYPHER_AST_REMOVE_LABELS);
-	_AST_MapRemoveLabelsReferences(ast, remove_item);
+	if(type == CYPHER_AST_REMOVE_LABELS) {
+		_AST_MapRemoveLabelsReferences(ast, remove_item);
+	} else if(type == CYPHER_AST_REMOVE_PROPERTY) {
+		_AST_MapRemovePropertyReferences(ast, remove_item);
+	} else {
+		ASSERT(false);
+	}
 }
 
 // Maps entities in REMOVE clause.
