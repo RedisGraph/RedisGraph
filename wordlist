@@ -150,11 +150,13 @@ substring
 sudo
 summerizes
 toBoolean
+toBooleanOrNull
 toFloat
 toInteger
 toJSON
 toLower
 toString
+toStringOrNull
 toUpper
 tokenizer
 tombatron

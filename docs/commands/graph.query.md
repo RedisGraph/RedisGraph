@@ -840,6 +840,7 @@ This section contains information on all supported functions from the Cypher que
 | type()                 | Returns a string representation of the type of a relation.                  |
 | list comprehensions    | [See documentation](#list-comprehensions)                                   |
 | pattern comprehensions | [See documentation](#pattern-comprehensions)                                |
+| toBoolean              | Returns a boolean value from boolean type, string type (either `"True"` or `"False"` string values, case insensitive. All other values will return `null`) or integer type (0 for `false`, all other values will return `true`). All other types are not allowed and will cause a type mismatch error to be returned.
 
 ## Aggregating functions
 
