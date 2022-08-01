@@ -118,6 +118,12 @@ bool QueryCtx_LockForCommit(void);
  * 4. Unlock GIL */
 void QueryCtx_UnlockCommit(OpBase *writer_op);
 
+// replicate command to AOF/Replicas
+void QueryCtx_Replicate
+(
+	QueryCtx *ctx
+);
+
 /*
  * -------------------------FOR SAFETY ONLY---------------------------
  *
