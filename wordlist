@@ -74,6 +74,7 @@ ceil
 compton
 config
 crflynn
+dengliming
 dockerfile
 duplications
 endNode
@@ -111,6 +112,8 @@ php-redis-graph-stars
 rTrim
 reachability
 redis-cli
+redis-modules-java
+redis-modules-java-stars
 redis-modules-sdk
 redis-modules-sdk-stars
 redis-py
