@@ -410,7 +410,7 @@ TEST_F(TestReferencedEntities, TestNamedPath) {
 
 	AST *astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
 	ASSERT_EQ(1, raxSize(astSegment->referenced_entities));
-	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"anon_0", 6));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"@anon_0", 6));
 	AST_Free(astSegment);
 
 	q = "MATCH p =()-[]-()";
@@ -420,9 +420,9 @@ TEST_F(TestReferencedEntities, TestNamedPath) {
 
 	astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
 	ASSERT_EQ(3, raxSize(astSegment->referenced_entities));
-	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"anon_0", 6));
-	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"anon_1", 6));
-	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"anon_2", 6));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"@anon_0", 6));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"@anon_1", 6));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"@anon_2", 6));
 	AST_Free(astSegment);
 
 	q = "MATCH p =(n)-[e]-(m)";
@@ -444,7 +444,7 @@ TEST_F(TestReferencedEntities, TestNamedPath) {
 
 	astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
 	ASSERT_EQ(3, raxSize(astSegment->referenced_entities));
-	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"anon_0", 6));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"@anon_0", 6));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
 	AST_Free(astSegment);
