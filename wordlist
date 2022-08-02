@@ -155,6 +155,7 @@ summerizes
 toBoolean
 toBooleanOrNull
 toFloat
+toFloatOrNull
 toInteger
 toJSON
 toLower
