@@ -98,24 +98,33 @@ void Cache_Clear
 ) {
 	ASSERT(cache != NULL);
 
+	// quick return if chache is empty
+	if(cache->size == 0) {
+		return;
+	}
+
 	// acquire WRITE lock
 	int res = pthread_rwlock_wrlock(&cache->_cache_rwlock);
 	UNUSED(res);
 	ASSERT(res == 0);
 
-	// clear lookup
-	raxFree(cache->lookup);
-	cache->lookup = raxNew();
+	// recheck cache item count
+	// it might be that another thread beat us to clearing the cache
+	if(cache->size != 0) {
+		// clear lookup
+		raxFree(cache->lookup);
+		cache->lookup = raxNew();
 
-	// free all cache entries
-	for(size_t i = 0; i < cache->size; i++) {
-		CacheEntry *entry = cache->arr + i;
-		CacheArray_ClearEntry(entry, cache->free_item);
+		// free all cache entries
+		for(size_t i = 0; i < cache->size; i++) {
+			CacheEntry *entry = cache->arr + i;
+			CacheArray_ClearEntry(entry, cache->free_item);
+		}
+
+		// reset size and counter
+		cache->size    = 0;
+		cache->counter = 0;
 	}
-
-	// reset size and counter
-	cache->size    = 0;
-	cache->counter = 0;
 
 	// unlock
 	res = pthread_rwlock_unlock(&cache->_cache_rwlock);
