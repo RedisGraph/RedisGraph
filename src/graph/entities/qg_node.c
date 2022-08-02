@@ -85,13 +85,13 @@ int QGNode_GetLabelID
 
 	// in-case labelId is unknown at time it was created
 	// check if we can resolve it now
-	if(labelId != GRAPH_UNKNOWN_LABEL) {
+	if(labelId == GRAPH_UNKNOWN_LABEL) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		ASSERT(gc != NULL);
 
 		// get schema by name
 		Schema *s = GraphContext_GetSchema(gc, n->labels[idx], SCHEMA_NODE);
-		if(s == NULL) {
+		if(s != NULL) {
 			labelId = Schema_GetID(s);
 			n->labelsID[idx] = labelId;
 		}
