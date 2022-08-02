@@ -11,7 +11,6 @@
 #include "../errors.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
-#include "../util/qsort.h"
 #include "../procedures/procedure.h"
 #include "ast_rewrite_star_projections.h"
 #include "../arithmetic/arithmetic_expression.h"

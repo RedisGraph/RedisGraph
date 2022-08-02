@@ -90,10 +90,12 @@ We do not support any of these properties at the type level, meaning nodes and r
 + startNode
 + endNode
 + [list comprehensions](/commands/graph.query/#list-comprehensions)
++ toBoolean
++ toBooleanOrNull
 
   **Unsupported:**
 
-- Some casting functions (toBoolean)
+- Some casting functions (toFloatOrNull, toIntegerOrNull, toStringOrNull)
 - Temporal arithmetic functions
 - Functions returning maps (properties)
 

@@ -647,4 +647,42 @@ class testIndexScanFlow():
         # expecting no results as stopwords are enforced
         result = redis_graph.query("CALL db.idx.fulltext.queryNodes('User', 'stop')")
         self.env.assertEquals(result.result_set, [])
+    
+    def test21_invalid_distance_query(self):
+        redis_graph = Graph(self.env.getConnection(), 'invalid_distance')
 
+        # create exact match index over User id
+        redis_graph.query("CREATE INDEX ON :User(loc)")
+        
+        # create a node
+        redis_graph.query("CREATE (:User {loc:point({latitude:40.4, longitude:30.3})})")
+
+        # invalid query
+        try:
+            redis_graph.query("MATCH (u:User) WHERE distance(point({latitude:40.5, longitude: 30.4}, u.loc)) < 20000 RETURN u")
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertIn("Received 2 arguments to function 'point', expected at most 1", str(e))
+
+    def test_22_pickup_on_index_creation(self):
+        g = Graph(self.env.getConnection(), 'late_index_creation')
+
+        # issue query which has to potential to utilize an index
+        # this query is going to be cached
+        q = "MATCH (n:N) WHERE n.v = 1 RETURN n"
+        plan = g.execution_plan(q)
+
+        # expecting no index scan operation, as we've yet to create an index
+        self.env.assertNotIn('Node By Index Scan', plan)
+
+        # create an index
+        q = "CREATE INDEX ON :N(v)"
+        resultset = g.query(q)
+        self.env.assertEqual(1, resultset.indices_created)
+
+        # re-issue the same query
+        q = "MATCH (n:N) WHERE n.v = 1 RETURN n"
+        plan = g.execution_plan(q)
+
+        # expecting an index scan operation
+        self.env.assertIn('Node By Index Scan', plan)

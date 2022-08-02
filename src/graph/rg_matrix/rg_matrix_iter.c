@@ -62,18 +62,12 @@ static inline void _init_iter
 
 	*depleted = true ; // default
 
-	GrB_Index nvals ;
 	GrB_Info info ;
 	UNUSED(info) ;
 
-	info = GrB_Matrix_nvals(&nvals, m) ;
+	info = GxB_rowIterator_attach(it, m, NULL) ;
 	ASSERT(info == GrB_SUCCESS) ;
-
-	if(nvals > 0) {
-		info = GxB_rowIterator_attach(it, m, NULL) ;
-		ASSERT(info == GrB_SUCCESS) ;
-		_set_iter_range(it, min_row, max_row, depleted) ;
-	}
+	_set_iter_range(it, min_row, max_row, depleted) ;
 }
 
 GrB_Info RG_MatrixTupleIter_iterate_row

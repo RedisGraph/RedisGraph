@@ -41,10 +41,9 @@ uint CreateEdge
 );
 
 // delete a node
-// delete the node from the graph
-// delete the node from the relevant indexes
+// remove the node from the relevant indexes
 // add node deletion operation to undo-log
-// return the # of implicit edges deleted
+// return 1 on success, 0 otherwise
 uint DeleteNode
 (
 	GraphContext *gc,    // graph context to delete the node
