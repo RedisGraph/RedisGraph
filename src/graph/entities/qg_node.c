@@ -7,7 +7,7 @@
 #include "RG.h"
 #include "qg_node.h"
 #include "qg_edge.h"
-#include "RG.h"
+#include "../../query_ctx.h"
 #include "../../util/arr.h"
 
 static void _QGNode_RemoveEdge
@@ -81,7 +81,18 @@ int QGNode_GetLabelID
 	ASSERT(n != NULL);
 	ASSERT(idx < QGNode_LabelCount(n));
 
-	return n->labelsID[idx];
+	int labelId = n->labelsID[idx];
+	if(labelId != GRAPH_UNKNOWN_LABEL) return labelId;
+	
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	ASSERT(gc != NULL);
+	
+	Schema *s = GraphContext_GetSchema(gc, n->labels[idx], SCHEMA_NODE);
+	if(s == NULL) return labelId;
+
+	labelId = Schema_GetID(s);
+	n->labelsID[idx] = labelId;
+	return labelId;
 }
 
 const char *QGNode_GetLabel
