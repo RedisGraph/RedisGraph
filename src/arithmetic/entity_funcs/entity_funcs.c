@@ -194,7 +194,7 @@ SIValue AR_PROPERTY(SIValue *argv, int argc, void *private_data) {
 	}
 
 	// inputs:
-	// argv[0] - node/edge/map
+	// argv[0] - node/edge/map/point
 	// argv[1] - property string
 	// argv[2] - property index
 
@@ -204,7 +204,15 @@ SIValue AR_PROPERTY(SIValue *argv, int argc, void *private_data) {
 
 	SIValue obj = argv[0];
 
-	if(SI_TYPE(obj) & SI_GRAPHENTITY) {
+	if(SI_TYPE(obj) == T_POINT)
+	{
+		// retrieve property key 
+		SIValue key = argv[1];
+		SIValue value;
+
+		return Point_GetCoordinate(obj, key);
+	}
+	else if(SI_TYPE(obj) & SI_GRAPHENTITY) {
 		// retrieve entity property
 		GraphEntity *graph_entity = (GraphEntity *)obj.ptrval;
 		const char *prop_name     = argv[1].stringval;
