@@ -190,9 +190,9 @@ SIValue AR_TO_BOOLEAN(SIValue *argv, int argc, void *private_data) {
 			return SI_NullVal();
 		}
 		case T_BOOL:
-		case T_NULL:
-		default:
 			return v;
+		default:
+			return SI_NullVal();
 	}
 }
 
@@ -273,5 +273,10 @@ void Register_BooleanFuncs() {
 	types = array_new(SIType, 1);
 	array_append(types, T_BOOL | T_INT64 | T_STRING | T_NULL);
 	func_desc = AR_FuncDescNew("toBoolean", AR_TO_BOOLEAN, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, SI_ALL);
+	func_desc = AR_FuncDescNew("toBooleanOrNull", AR_TO_BOOLEAN, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 }
