@@ -341,7 +341,7 @@ class testUndoLog():
         self.graph.query("CREATE INDEX FOR (n:L1) ON (n.v)")
         self.graph.query("CREATE (n:L1 {v:1})")
         try:
-            self.graph.query("MATCH (n:L1) SET n:L2 WITH n RETURN 1 * 'a'")
+            self.graph.query("MATCH (n:L1) SET n:L2 WITH n RETURN 1 * n")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -361,7 +361,7 @@ class testUndoLog():
         self.graph.query("CREATE INDEX FOR (n:L2) ON (n.v)")
         self.graph.query("CREATE (n:L2 {v:1})")
         try:
-            self.graph.query("MATCH (n:L2) REMOVE n:L2 WITH n RETURN 1 * 'a'")
+            self.graph.query("MATCH (n:L2) REMOVE n:L2 WITH n RETURN 1 * n")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -381,7 +381,7 @@ class testUndoLog():
     def test18_undo_set_remove_label(self):
         self.graph.query("CREATE (n:L3)")
         try:
-            self.graph.query("MATCH (n:L3) SET n:L4 REMOVE n:L3 WITH n RETURN 1 * 'a'")
+            self.graph.query("MATCH (n:L3) SET n:L4 REMOVE n:L3 WITH n RETURN 1 * n")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -395,7 +395,7 @@ class testUndoLog():
     def test19_undo_remove_set_label(self):
         self.graph.query("CREATE (n:L4)")
         try:
-            self.graph.query("MATCH (n:L4) REMOVE n:L4 SET n:L5 WITH n RETURN 1 * 'a'")
+            self.graph.query("MATCH (n:L4) REMOVE n:L4 SET n:L5 WITH n RETURN 1 * n")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:

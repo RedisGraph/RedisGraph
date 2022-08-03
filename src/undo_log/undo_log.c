@@ -25,6 +25,21 @@ static void _index_node
 	}
 }
 
+static void _index_node_with_labels
+(
+	QueryCtx *ctx,
+	Node *n,
+	int *labels,
+	uint label_count
+) {
+	for(uint j = 0; j < label_count; j++) {
+		Schema *s = GraphContext_GetSchemaByID(ctx->gc, labels[j], SCHEMA_NODE);
+		ASSERT(s);
+
+		if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n);
+	}
+}
+
 static void _index_edge
 (
 	QueryCtx *ctx,
@@ -43,6 +58,22 @@ static void _index_delete_node
 ) {
 	uint label_count;
 	NODE_GET_LABELS(ctx->gc->g, n, label_count);
+	for(uint j = 0; j < label_count; j++) {
+		Schema *s = GraphContext_GetSchemaByID(ctx->gc, labels[j], SCHEMA_NODE);
+		ASSERT(s);
+
+		// update any indices this entity is represented in
+		Schema_RemoveNodeFromIndices(s, n);
+	}
+}
+
+static void _index_delete_node_with_labels
+(
+	QueryCtx *ctx,
+	Node *n,
+	int *labels,
+	uint label_count
+) {
 	for(uint j = 0; j < label_count; j++) {
 		Schema *s = GraphContext_GetSchemaByID(ctx->gc, labels[j], SCHEMA_NODE);
 		ASSERT(s);
@@ -96,8 +127,10 @@ static void _UndoLog_Rollback_Set_Labels(
 		UndoUpdateOp update_op = op->update_op;
 		UndoLabelsOp update_labels_op = op->labels_op;
 		Graph* g = QueryCtx_GetGraph();
-		Graph_RemoveLabelNode(g, update_labels_op.node->id, update_labels_op.label_lds, array_len(update_labels_op.label_lds));
-		_index_delete_node(ctx, update_labels_op.node);
+		uint labels_count = array_len(update_labels_op.label_lds);
+		RedisModule_Log(NULL, "warning", "_UndoLog_Rollback_Set_Labels node id %ld", update_labels_op.node->id);
+		Graph_RemoveLabelNode(g, update_labels_op.node->id, update_labels_op.label_lds, labels_count);
+		_index_delete_node_with_labels(ctx, update_labels_op.node, update_labels_op.label_lds, labels_count);
 	}
 }
 
@@ -111,8 +144,9 @@ static void _UndoLog_Rollback_Remove_Labels(
 		UndoOp *op = undo_list + i;
 		UndoLabelsOp update_labels_op = op->labels_op;
 		Graph* g = QueryCtx_GetGraph();
-		Graph_LabelNode(g, update_labels_op.node->id, update_labels_op.label_lds, array_len(update_labels_op.label_lds));
-		_index_node(ctx, update_labels_op.node);
+		uint labels_count = array_len(update_labels_op.label_lds);
+		Graph_LabelNode(g, update_labels_op.node->id, update_labels_op.label_lds, labels_count);
+		_index_node_with_labels(ctx, update_labels_op.node, update_labels_op.label_lds, labels_count);
 	}
 }
 
@@ -317,8 +351,9 @@ void UndoLog_AddLabels
 
 	UndoOp op;
 
-	op.type                  = UNDO_SET_LABELS;
+	op.type                 = UNDO_SET_LABELS;
 	op.labels_op.node       = node;
+	RedisModule_Log(NULL, "warning", "UndoLog_AddLabels node id %ld", op.labels_op.node->id);
 	array_clone(op.labels_op.label_lds, label_ids);
 	array_append(*log, op);
 }
@@ -335,7 +370,7 @@ void UndoLog_RemoveLabels
 
 	UndoOp op;
 
-	op.type                  = UNDO_REMOVE_LABELS;
+	op.type              = UNDO_REMOVE_LABELS;
 	op.labels_op.node    = node;
 	array_clone(op.labels_op.label_lds, label_ids);
 	array_append(*log, op);
