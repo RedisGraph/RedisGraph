@@ -196,6 +196,6 @@ void ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, ExecutionPla
 	} else if(t == CYPHER_AST_WITH) {
 		// Converting a WITH clause can create multiple operations.
 		buildWithOps(plan, clause);
-	} 
+	}
 }
 
