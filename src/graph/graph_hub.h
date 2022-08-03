@@ -46,8 +46,8 @@ uint CreateEdge
 // return 1 on success, 0 otherwise
 uint DeleteNode
 (
-	GraphContext *gc,               // graph context to delete the node
-	Node *n                         // the node to be deleted
+	GraphContext *gc,  // graph context to delete the node
+	Node *n            // the node to be deleted
 );
 
 // delete an edge
@@ -57,8 +57,8 @@ uint DeleteNode
 // return the # of edges deleted
 int DeleteEdge
 (
-	GraphContext *gc,               // graph context to delete the edge
-	Edge *e                         // the edge to be deleted
+	GraphContext *gc,  // graph context to delete the edge
+	Edge *e            // the edge to be deleted
 );
 
 // update an entity(node/edge)
@@ -67,24 +67,25 @@ int DeleteEdge
 // add entity update operations to undo log
 void UpdateEntityProperties
 (
-	GraphContext *gc,            // graph context to update the entity
-	GraphEntity *ge,             // the entity to be updated
-	const AttributeSet set,      // attributes to update
-	GraphEntityType entity_type, // the entity type (node/edge)
-	uint *props_set_count,       // number of properties set (out param)
-	uint *props_removed_count    // number of properties removed (out param)
+	GraphContext *gc,             // graph context to update the entity
+	GraphEntity *ge,              // the entity to be updated
+	const AttributeSet set,       // attributes to update
+	GraphEntityType entity_type,  // the entity type (node/edge)
+	uint *props_set_count,        // number of properties set (out param)
+	uint *props_removed_count     // number of properties removed (out param)
 );
 
 
-// This function sets the labels given in the rax "labels" to the given node
+// this function sets the labels given in the rax "labels" to the given node
 // creates the label matrix if not exists
 // adds node to the label matrix
 // updates the relevant indexes of the entity
 void UpdateNodeLabels
 (
-	GraphContext *gc,            // graph context to update the entity
-	Node *node,                  // the node to be updated
-	rax *labels,      	         // labels to update
-	uint *labels_added_count,    // number of labels added (out param)
-	uint *labels_removed_count   // number of labels removed (out param)
+	GraphContext *gc,           // graph context to update the entity
+	Node *node,                 // the node to be updated
+	rax *labels,      	        // labels to update
+	uint *labels_added_count,   // number of labels added (out param)
+	uint *labels_removed_count  // number of labels removed (out param)
 );
+

@@ -38,26 +38,32 @@ static inline NodeCreateCtx _NewNodeCreateCtx(GraphContext *gc, const QGNode *n,
 	return new_node;
 }
 
-// Updates a single property or label
-static void _ConvertUpdateItem(GraphContext *gc, rax *updates,
-		const cypher_astnode_t *update_item) {
-	ASSERT(gc        !=  NULL);
-	ASSERT(updates   !=  NULL);
-	ASSERT(update_item  !=  NULL);
+// updates a single property or label
+static void _ConvertUpdateItem
+(
+	GraphContext *gc,
+	rax *updates,
+	const cypher_astnode_t *update_item
+) {
+	ASSERT(gc          != NULL);
+	ASSERT(updates     != NULL);
+	ASSERT(update_item != NULL);
 
-	const  char              *alias      =  NULL;  // entity being updated
-	const  char              *attribute  =  NULL;  // attribute being set
-	const  cypher_astnode_t  *prop_expr  =  NULL;
-	const  cypher_astnode_t  *ast_prop   =  NULL;
-	const  cypher_astnode_t  *ast_key    =  NULL;  // AST node attribute set
-	const  cypher_astnode_t  *ast_value  =  NULL;  // AST node value set
+	const char                  *alias     = NULL;  // entity    being updated
+	const char                  *attribute = NULL;  // attribute being set
+	const cypher_astnode_t      *prop_expr = NULL;
+	const cypher_astnode_t      *ast_prop  = NULL;
+	const cypher_astnode_t      *ast_key   = NULL;  // AST node attribute set
+	const cypher_astnode_t      *ast_value = NULL;  // AST node value set
+	const cypher_astnode_type_t type       = cypher_astnode_type(update_item);
 
-	UPDATE_MODE update_mode = UPDATE_MERGE;
-	Attribute_ID attribute_id = ATTRIBUTE_ID_NONE;
-	const cypher_astnode_type_t type = cypher_astnode_type(update_item);
-	bool set_labels = false;
-	bool remove_labels = false;
+	bool         set_labels    = false;
+	bool         remove_labels = false;
+	UPDATE_MODE  update_mode   = UPDATE_MERGE;
+	Attribute_ID attribute_id  = ATTRIBUTE_ID_NONE;
 
+	// TODO: the purpose of these two large if/else if blocks is unclear
+	// why are there two blocks, what each block tries to achieve?
 	if(type == CYPHER_AST_SET_ALL_PROPERTIES) {
 		// MATCH (a) SET a = {v: 5}
 		update_mode = UPDATE_REPLACE;
@@ -100,20 +106,21 @@ static void _ConvertUpdateItem(GraphContext *gc, rax *updates,
 
 		// updated value
 		ast_value = cypher_ast_set_property_get_expression(update_item);
-	}
-	else if(type == CYPHER_AST_SET_LABELS) {
+	} else if(type == CYPHER_AST_SET_LABELS) {
 		// MATCH (a) SET a:Label1:Label2
-		const cypher_astnode_t *identifier = cypher_ast_set_labels_get_identifier(update_item);
-		ASSERT(cypher_astnode_type(identifier) == CYPHER_AST_IDENTIFIER);
-		alias = cypher_ast_identifier_get_name(identifier);
+		const cypher_astnode_t *id =
+			cypher_ast_set_labels_get_identifier(update_item);
+		ASSERT(cypher_astnode_type(id) == CYPHER_AST_IDENTIFIER);
+		alias = cypher_ast_identifier_get_name(id);
 		set_labels = true;
-	} else if(type == CYPHER_AST_REMOVE_LABELS){
+	} else if(type == CYPHER_AST_REMOVE_LABELS) {
 		// MATCH (a) REMOVE a:Label1:Label2
-		const cypher_astnode_t *identifier = cypher_ast_remove_labels_get_identifier(update_item);
-		ASSERT(cypher_astnode_type(identifier) == CYPHER_AST_IDENTIFIER);
-		alias = cypher_ast_identifier_get_name(identifier);
+		const cypher_astnode_t *id =
+			cypher_ast_remove_labels_get_identifier(update_item);
+		ASSERT(cypher_astnode_type(id) == CYPHER_AST_IDENTIFIER);
+		alias = cypher_ast_identifier_get_name(id);
 		remove_labels = true;
-	} else if(type == CYPHER_AST_REMOVE_PROPERTY){
+	} else if(type == CYPHER_AST_REMOVE_PROPERTY) {
 		// MATCH (a) REMOVE a.v
 
 		// alias
@@ -126,9 +133,7 @@ static void _ConvertUpdateItem(GraphContext *gc, rax *updates,
 		ast_key = cypher_ast_property_operator_get_prop_name(ast_prop);
 		attribute = cypher_ast_prop_name_get_value(ast_key);
 		attribute_id = GraphContext_FindOrAddAttribute(gc, attribute);
-
-	}
-	else{
+	} else {
 		ASSERT(false);
 	}
 
@@ -140,21 +145,28 @@ static void _ConvertUpdateItem(GraphContext *gc, rax *updates,
 		raxInsert(updates, (unsigned char *)alias, len, ctx, NULL);
 	} 
 
-	// Either in set labels or remove labels scenario, the rax will hold a value. If the value is
-	// true, it means to set the label. If the value is false it means to remove the label.
+	// either in set labels or remove labels scenario, the rax will hold a value
+	// if the value is true, it means to set the label
+	// if the value is false it means to remove the label
 	if(set_labels) {
 		uint label_count = cypher_ast_set_labels_nlabels(update_item);
 		for (uint i = 0; i < label_count; i++) {
-			const cypher_astnode_t * label_node = cypher_ast_set_labels_get_label(update_item, i);
+			const cypher_astnode_t *label_node =
+				cypher_ast_set_labels_get_label(update_item, i);
 			const char* label = cypher_ast_label_get_name(label_node);
-			raxInsert(ctx->labels, (unsigned char *)label, strlen(label), true, NULL);	
+			// mark label for addition
+			raxInsert(ctx->labels, (unsigned char *)label, strlen(label),
+					true, NULL);
 		}
-	}else if(remove_labels) {
+	} else if(remove_labels) {
 		uint label_count = cypher_ast_remove_labels_nlabels(update_item);
 		for (uint i = 0; i < label_count; i++) {
-			const cypher_astnode_t * label_node = cypher_ast_remove_labels_get_label(update_item, i);
+			const cypher_astnode_t * label_node =
+				cypher_ast_remove_labels_get_label(update_item, i);
 			const char* label = cypher_ast_label_get_name(label_node);
-			raxInsert(ctx->labels, (unsigned char *)label, strlen(label), false, NULL);	
+			// mark label for removal
+			raxInsert(ctx->labels, (unsigned char *)label, strlen(label),
+					false, NULL);
 		}
 	} else {
 		if(update_mode == UPDATE_REPLACE) {
@@ -162,14 +174,22 @@ static void _ConvertUpdateItem(GraphContext *gc, rax *updates,
 			UpdateCtx_SetMode(ctx, UPDATE_REPLACE);
 		}
 		// updated value
-		AR_ExpNode *exp = ast_value ? AR_EXP_FromASTNode(ast_value) : AR_EXP_NewConstOperandNode(SI_NullVal());
+		AR_ExpNode *exp = ast_value ?
+			AR_EXP_FromASTNode(ast_value) :
+			AR_EXP_NewConstOperandNode(SI_NullVal());
 		PropertySetCtx update = { .id  = attribute_id, .exp = exp };
 		array_append(ctx->properties, update);
 	}
 }
 
-void AST_PreparePathCreation(const cypher_astnode_t *path, const QueryGraph *qg,
-		rax *bound_vars, NodeCreateCtx **nodes, EdgeCreateCtx **edges) {
+void AST_PreparePathCreation
+(
+	const cypher_astnode_t *path,
+	const QueryGraph *qg,
+	rax *bound_vars,
+	NodeCreateCtx **nodes,
+	EdgeCreateCtx **edges
+) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
 	QueryGraph *g = QueryGraph_ExtractPaths(qg, &path, 1);
@@ -312,24 +332,28 @@ AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, GraphC
 // UPDATE operation
 //------------------------------------------------------------------------------
 
-rax *AST_PrepareUpdateOp(GraphContext *gc, const cypher_astnode_t *clause) {
+rax *AST_PrepareUpdateOp
+(
+	GraphContext *gc,
+	const cypher_astnode_t *clause
+) {
 	cypher_astnode_type_t type = cypher_astnode_type(clause);
 	ASSERT(type == CYPHER_AST_SET || type == CYPHER_AST_REMOVE);
 
 	rax *updates = raxNew(); // entity alias -> EntityUpdateEvalCtx
 	if(type == CYPHER_AST_SET) {
 		uint nitems = cypher_ast_set_nitems(clause);
-
 		for(uint i = 0; i < nitems; i++) {
-			const cypher_astnode_t *set_item = cypher_ast_set_get_item(clause, i);
+			const cypher_astnode_t *set_item =
+				cypher_ast_set_get_item(clause, i);
 			_ConvertUpdateItem(gc, updates, set_item);
 		}
 	} else {
 		uint nitems = cypher_ast_remove_nitems(clause);
 		for(uint i = 0; i < nitems; i++) {
-			const cypher_astnode_t *remove_item = cypher_ast_remove_get_item(clause, i);
+			const cypher_astnode_t *remove_item =
+				cypher_ast_remove_get_item(clause, i);
 			_ConvertUpdateItem(gc, updates, remove_item);
-
 		}
 	}
 
@@ -345,7 +369,6 @@ AST_CreateContext AST_PrepareCreateOp(QueryGraph *qg, rax *bound_vars) {
 
 	// Shouldn't operate on the original bound variables map, as this function may insert aliases.
 	rax *bound_and_introduced_entities = raxClone(bound_vars);
-
 	const cypher_astnode_t **create_clauses = AST_GetClauses(ast, CYPHER_AST_CREATE);
 	uint create_count = (create_clauses) ? array_len(create_clauses) : 0;
 

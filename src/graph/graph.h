@@ -124,33 +124,30 @@ int Graph_AddLabel
 	Graph *g
 );
 
-// Associate node with labels by setting label matrix L to 1 at position [id,id]
-// and sets the value 1 in the nodes label matrix at position [id, l]
+// label node with each label in 'lbls'
 void Graph_LabelNode
 (
-	Graph *g,
-	NodeID id,
-	int *labels,
-	uint label_count
+	Graph *g,       // graph to operate on
+	NodeID id,      // node ID to update
+	LabelID *lbls,  // set to labels to associate with node
+	uint lbl_count  // number of labels
 );
 
-// Remove association of node with labels by removing the value 1 from label matrix L at position [id,id]
-// and removing the value 1 from the nodes label matrix at position [id, l]
-void Graph_RemoveLabelNode
+// dissociates each label in 'lbls' from given node
+void Graph_RemoveNodeLabels
 (
-	Graph *g,
-	NodeID id,
-	int *labels,
-	uint label_count
+	Graph *g,       // graph to operate against
+	NodeID id,      // node ID to update
+	LabelID *lbls,  // set of labels to remove
+	uint lbl_count  // number of labels to remove
 );
 
-
-// Checks if the node is labeled with the label id.
+// return true if node is labeled as 'l'
 bool Graph_IsNodeLabeled
 (
-	Graph *g,
-	NodeID id,
-	int labelId
+	Graph *g,   // graph to operate on
+	NodeID id,  // node ID to inspect
+	LabelID l   // label to check for
 );
 
 // creates a new relation matrix, returns id given to relation

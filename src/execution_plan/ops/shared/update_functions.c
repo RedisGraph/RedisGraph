@@ -59,11 +59,11 @@ void CommitUpdates
 	ASSERT(updates != NULL);
 	ASSERT(type    != ENTITY_UNKNOWN);
 
-	uint  labels_added        =  0;
-	uint  labels_removed      =  0;
-	uint  properties_set      =  0;
-	uint  properties_removed  =  0;
-	uint  update_count    =  array_len(updates);
+	uint update_count       = array_len(updates);
+	uint labels_added       = 0;
+	uint labels_removed     = 0;
+	uint properties_set     = 0;
+	uint properties_removed = 0;
 
 	// return early if no updates are enqueued
 	if(update_count == 0) return;
@@ -73,27 +73,34 @@ void CommitUpdates
 
 		// if entity has been deleted, perform no updates
 		if(GraphEntity_IsDeleted(update->ge)) continue;
-		uint loop_labels_added = 0;
-		uint loop_labels_removed = 0;
-		uint loop_props_set = 0;
-		uint loop_props_removed = 0;
+		uint _labels_added   = 0;
+		uint _labels_removed = 0;
+		uint _props_set      = 0;
+		uint _props_removed  = 0;
 
 		// update the attributes on the graph entity
 		UpdateEntityProperties(gc, update->ge, update->attributes,
-				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE, &loop_props_set, &loop_props_removed);
+				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE, &_props_set,
+				&_props_removed);
 
-		UpdateNodeLabels(gc, (Node*)update->ge, update->labels, &loop_labels_added, &loop_labels_removed);
-		labels_added += loop_labels_added;
-		labels_removed += loop_labels_removed;
-		properties_set += loop_props_set;
-		properties_removed += loop_props_removed;
+		// TODO: update->ge might be an edge!
+		// I think it would be better to check / validate that we call
+		// UpdateNodeLabels only in-case where the entity is a Node and that
+		// there are labels to be updated
+		UpdateNodeLabels(gc, (Node*)update->ge, update->labels, &_labels_added,
+				&_labels_removed);
+
+		labels_added       += _labels_added;
+		labels_removed     += _labels_removed;
+		properties_set     += _props_set;
+		properties_removed += _props_removed;
 	}
 
 	if(stats) {
-		stats->properties_set += properties_set;
+		stats->labels_added       += labels_added;
+		stats->labels_removed     += labels_removed;
+		stats->properties_set     += properties_set;
 		stats->properties_removed += properties_removed;
-		stats->labels_added += labels_added;
-		stats->labels_removed += labels_removed;
 	}
 }
 
@@ -106,7 +113,7 @@ void EvalEntityUpdates
 	const EntityUpdateEvalCtx *ctx,
 	bool allow_null
 ) {
-	Schema *s         = NULL;
+	Schema *s = NULL;
 
 	//--------------------------------------------------------------------------
 	// validate entity type
@@ -123,9 +130,12 @@ void EvalEntityUpdates
 			"Update error: alias '%s' did not resolve to a graph entity",
 			ctx->alias);
 	}
+
+	// label(s) update can only be performed on nodes
 	bool update_labels = raxSize(ctx->labels) > 0;
 	if (update_labels && t != REC_TYPE_NODE)  {
-		ErrorCtx_RaiseRuntimeException("Type mismatch: expected Node but was Relationship");
+		ErrorCtx_RaiseRuntimeException(
+				"Type mismatch: expected Node but was Relationship");
 	}
 
 	PendingUpdateCtx **updates = t == REC_TYPE_NODE
@@ -135,13 +145,15 @@ void EvalEntityUpdates
 	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
 
 	PendingUpdateCtx update = {0};
-	update.ge = entity;
+	update.ge         = entity;
+	update.labels     = update_labels ? ctx->labels : NULL;
 	update.attributes = AttributeSet_New();
 
 	// if this update replaces all existing properties
 	// enqueue a clear update to do so
 	if(ctx->mode == UPDATE_REPLACE) {
-		AttributeSet_Set_Allow_Null(&update.attributes, ATTRIBUTE_ID_ALL, SI_NullVal());
+		AttributeSet_Set_Allow_Null(&update.attributes, ATTRIBUTE_ID_ALL,
+				SI_NullVal());
 	}
 
 	// if we're converting a SET clause, NULL is acceptable
@@ -156,9 +168,9 @@ void EvalEntityUpdates
 	//--------------------------------------------------------------------------
 
 	for(uint i = 0; i < exp_count; i++) {
-		PropertySetCtx    *property  =  ctx->properties + i;
-		Attribute_ID      attr_id    =  property->id;
-		SIValue           new_value  =  AR_EXP_Evaluate(property->exp,  r);
+		PropertySetCtx *property = ctx->properties + i;
+		Attribute_ID   attr_id   = property->id;
+		SIValue        new_value = AR_EXP_Evaluate(property->exp, r);
 
 		if(attr_id == ATTRIBUTE_ID_ALL &&
 		   !(SI_TYPE(new_value) & (T_NODE | T_EDGE | T_MAP))) {
@@ -208,11 +220,11 @@ void EvalEntityUpdates
 			continue;
 		}
 
-		_PreparePendingUpdate(&update.attributes, accepted_properties, attr_id, new_value);
+		_PreparePendingUpdate(&update.attributes, accepted_properties,
+				attr_id, new_value);
 	}
-
-	update.labels = update_labels ? ctx->labels : NULL;
 
 	// enqueue the current update
 	array_append(*updates, update);
 }
+
