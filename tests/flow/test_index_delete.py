@@ -37,4 +37,7 @@ class testIndexDeletionFlow():
         result = redis_graph.query("DROP INDEX ON :follow(created_at)")
         self.env.assertEquals(result.indices_deleted, 1)
 
+        result = redis_graph.query("CALL db.indexes()")
+        self.env.assertEquals(len(result.result_set), 0)
+
         

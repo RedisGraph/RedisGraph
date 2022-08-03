@@ -173,7 +173,7 @@ static int _Schema_RemoveExactMatchIndex
 	Index_RemoveField(idx, field);
 
 	// if index field count dropped to 0, remove index from schema
-	if(Index_FieldsCount(idx) == 0) {
+	if(Index_FieldsCount(idx) == 0 || (s->type == SCHEMA_EDGE && Index_FieldsCount(idx) == 2)) {
 		Index_Free(idx);
 		s->index = NULL;
 	}
