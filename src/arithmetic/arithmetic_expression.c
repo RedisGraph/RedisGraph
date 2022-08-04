@@ -395,7 +395,6 @@ static bool _AR_EXP_ValidateInvocation
 		if(i < expected_types_count) {
 			expected_type = fdesc->types[i];
 		}
-
 		if(!(actual_type & expected_type)) {
 			/* TODO extend string-building logic to better express multiple acceptable types, like:
 			 * RETURN 'a' * 2
