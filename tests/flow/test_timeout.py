@@ -115,3 +115,13 @@ class testQueryTimeout(FlowTestsBase):
             redis_graph.query(query, timeout=2000)
         except:
             assert(False)
+
+    def test06_ignore_timeout_when_timeout_max_or_timeout_default_set(self):
+        self.env.stop()
+        self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT 10 TIMEOUT_DEFAULT 100 TIMEOUT_MAX 100")
+
+        logfilename = self.env.envRunner._getFileName("master", ".log")
+        logfile = open(f"{self.env.logDir}/{logfilename}")
+        log = logfile.read()
+
+        self.env.assertContains("The deprecated TIMEOUT configuration parameter is ignored. Please remove it from the configuration file", log)
