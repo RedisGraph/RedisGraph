@@ -395,12 +395,6 @@ static bool _AR_EXP_ValidateInvocation
 		if(i < expected_types_count) {
 			expected_type = fdesc->types[i];
 		}
-		
-		/* TODO
-		 * This has not been finished, the comparison should be done correctly when the actual_type is T_POINT and expected type is T_NODE */
-		if(actual_type == T_POINT) {
-			return true;
-		}
 
 		if(!(actual_type & expected_type)) {
 			/* TODO extend string-building logic to better express multiple acceptable types, like:
