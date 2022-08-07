@@ -406,13 +406,6 @@ class testFunctionCallsFlow(FlowTestsBase):
         parsed = json.loads(actual_result.result_set[0][0])
         self.env.assertEquals(parsed, {"crs": "wgs-84", "latitude": 0.402313, "longitude": 167.697556, "height": None})
 
-        # Test JSON multi labels.
-        query = """create (a:A1:A2{aa:1,ab:2}) return toJSON(a)"""
-        actual_result = graph.query(query)
-        parsed = json.loads(actual_result.result_set[0][0])
-        self.env.assertEquals(parsed, {"type": "node", "id": 1, "labels": ["A1", "A2"], "properties": {aa: 1, ab: 2}})
-
-
     # Memory should be freed properly when the key values are heap-allocated.
     def test18_allocated_keys(self):
         query = """UNWIND ['str1', 'str1', 'str2', 'str1'] AS key UNWIND [1, 2, 3] as agg RETURN toUpper(key) AS key, collect(DISTINCT agg) ORDER BY key"""
