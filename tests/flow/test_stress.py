@@ -82,7 +82,7 @@ class testStressFlow():
         self.env = Env(decodeResponses=True)
         # skip test if we're running under Valgrind
         # CONFIG command on redis cluster is excluded
-        self.env.skipOnCluster()
+        self.env.skipOnCluster() # TODO: remove when reconf possible
         if self.env.debugger is not None or os.getenv('COV') == '1':
             self.env.skip() # valgrind is not working correctly with multi process
 

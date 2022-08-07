@@ -3,7 +3,7 @@ from common import *
 from pathos.pools import ProcessPool as Pool
 from pathos.helpers import mp as pathos_multiprocess
 
-GRAPH_ID = "G{1}"                   # Graph identifier.
+GRAPH_ID = "G"                      # Graph identifier.
 CLIENT_COUNT = 16                   # Number of concurrent connections.
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
 
@@ -216,8 +216,8 @@ class testConcurrentQueryFlow(FlowTestsBase):
         self.graph.query("MATCH (n) RETURN n")
 
         pool = Pool(nodes=1)
-        new_graph = GRAPH_ID + "2" + "{1}"
-        # Create new empty graph with id GRAPH_ID + "2" + "{1}"
+        new_graph = GRAPH_ID + "2"
+        # Create new empty graph with id GRAPH_ID + "2"
         self.conn.execute_command("GRAPH.QUERY",new_graph, """MATCH (n) return n""", "--compact")
         heavy_write_query = """UNWIND(range(0,999999)) as x CREATE(n) RETURN count(n)"""
         writer = pool.apipe(thread_run_query, heavy_write_query, None)

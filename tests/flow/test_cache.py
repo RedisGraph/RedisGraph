@@ -23,7 +23,7 @@ class testCache(FlowTestsBase):
 
     def test_sanity_check(self):
         # Setting the cache size (configuration) on redis cluster is disabled
-        self.env.skipOnCluster()
+        self.env.skipOnCluster() # TODO: remove when reconf possible
         graph = Graph(redis_con, 'Cache_Sanity_Check')
         for i in range(CACHE_SIZE + 1):
             result = graph.query("MATCH (n) WHERE n.value = {val} RETURN n".format(val=i))

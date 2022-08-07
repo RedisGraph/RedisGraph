@@ -18,7 +18,8 @@ class testReplication(FlowTestsBase):
             self.env.skip() # valgrind is not working correctly with replication
 
     def test_CRUD_replication(self):
-        self.env.skipOnCluster()
+        # Can't use config_set on 
+        self.env.skipOnCluster() # TODO: remove when reconf possible
         # create a simple graph
         env = self.env
         source_con = env.getConnection()
