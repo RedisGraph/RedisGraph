@@ -19,7 +19,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         nodes = {}
         # Create entities
         for idx, p in enumerate(people):
-            if p % 2 == 1:
+            if idx % 2 == 1:
                 labels = ["person"]
             else:
                 labels = ["person", "student"]
