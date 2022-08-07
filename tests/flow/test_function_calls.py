@@ -19,7 +19,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         nodes = {}
         # Create entities
         for idx, p in enumerate(people):
-            if idx % 2 == 1:
+            if idx % 2 == 0:
                 labels = ["person"]
             else:
                 labels = ["person", "student"]
@@ -443,7 +443,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         # Test multi label
         query = """MATCH (n) WHERE n:person:student RETURN n.name"""
         actual_result = graph.query(query)
-        expected_result = [['Roi'], ['Alon'], ['Ailon'], ['Boaz']]
+        expected_result = [['Alon'], ['Boaz']]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         # Test or between different labels label
