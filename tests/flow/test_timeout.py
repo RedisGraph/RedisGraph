@@ -16,7 +16,14 @@ class testQueryTimeout(FlowTestsBase):
         redis_con = self.env.getConnection()
         redis_graph = Graph(redis_con, "timeout")
 
-    def test01_read_query_timeout(self):
+    def test00_deprecation_message(self):
+        logfilename = self.env.envRunner._getFileName("master", ".log")
+        logfile = open(f"{self.env.logDir}/{logfilename}")
+        log = logfile.read()
+
+        self.env.assertContains("The TIMEOUT configuration parameter is deprecated. Please remove TIMEOUT and set TIMEOUT_MAX and TIMEOUT_DEFAULT instead", log)
+
+    def test01_read_write_query_timeout(self):
         query = "UNWIND range(0,1000000) AS x WITH x AS x WHERE x = 10000 RETURN x"
         try:
             # The query is expected to timeout
@@ -30,6 +37,14 @@ class testQueryTimeout(FlowTestsBase):
             redis_graph.query(query, timeout=2000)
         except:
             assert(False)
+
+        query = "UNWIND range(0,1000000) AS x CREATE (:N {v: x})"
+        try:
+            # The query is expected to timeout
+            redis_graph.query(query, timeout=1)
+            self.env.assertTrue(True)
+        except:
+            self.env.assertTrue(False)
 
     def test02_configured_timeout(self):
         # Verify that the module-level timeout is set to the default of 0
@@ -96,7 +111,7 @@ class testQueryTimeout(FlowTestsBase):
         # expecting queries to run to completion
         for q in queries:
             q += " LIMIT 2"
-            redis_graph.query(q, timeout=10)
+            res = redis_graph.query(q, timeout=20)
 
         # validate that server didn't crash
         redis_con.ping()
@@ -118,10 +133,51 @@ class testQueryTimeout(FlowTestsBase):
 
     def test06_ignore_timeout_when_timeout_max_or_timeout_default_set(self):
         self.env.stop()
-        self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT 10 TIMEOUT_DEFAULT 100 TIMEOUT_MAX 100")
+        self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT 10 TIMEOUT_DEFAULT 10 TIMEOUT_MAX 10")
+        redis_con = self.env.getConnection()
+        redis_graph = Graph(redis_con, "timeout")
 
         logfilename = self.env.envRunner._getFileName("master", ".log")
         logfile = open(f"{self.env.logDir}/{logfilename}")
         log = logfile.read()
 
         self.env.assertContains("The deprecated TIMEOUT configuration parameter is ignored. Please remove it from the configuration file", log)
+    
+    def test07_error_timeout_default_higher_than_timeout_max(self):
+        try:
+            redis_con.execute_command("GRAPH.CONFIG", "SET", "TIMEOUT_DEFAULT", "200")
+            self.env.assertTrue(False)
+        except ResponseError as error:
+                self.env.assertContains("Failed to set config value TIMEOUT_DEFAULT to 200", str(error))
+
+        try:
+            redis_con.execute_command("GRAPH.CONFIG", "SET", "TIMEOUT_MAX", "1")
+            self.env.assertTrue(False)
+        except ResponseError as error:
+                self.env.assertContains("Failed to set config value TIMEOUT_MAX to 1", str(error))
+
+    def test08_read_write_query_timeout_default(self):
+        queries = [
+            "UNWIND range(0,1000000) AS x WITH x AS x WHERE x = 10000 RETURN x",
+            "UNWIND range(0,1000000) AS x CREATE (:N {v: x})"
+        ]
+        for query in queries:
+            try:
+                # The query is expected to timeout
+                redis_graph.query(query)
+                assert(False)
+            except ResponseError as error:
+                self.env.assertContains("Query timed out", str(error))
+
+    def test09_timeout_query_parameter(self):
+        queries = [
+            "UNWIND range(0,1000000) AS x WITH x AS x WHERE x = 10000 RETURN x",
+            "UNWIND range(0,1000000) AS x CREATE (:N {v: x})"
+        ]
+        for query in queries:
+            try:
+                # The query is expected to timeout
+                redis_graph.query(query, timeout=2000)
+                assert(False)
+            except ResponseError as error:
+                self.env.assertContains("The query TIMEOUT parameter value cannot exceed the TIMEOUT_MAX configuration parameter value", str(error))

@@ -154,14 +154,6 @@ class testConfig(FlowTestsBase):
         expected_response = ["TIMEOUT", 5]
         self.env.assertEqual(response, expected_response)
 
-        query = """UNWIND range(1,1000000) AS v RETURN COUNT(v)"""
-        # Ensure long-running query triggers a timeout
-        try:
-            result = redis_graph.query(query)
-            assert(False)
-        except redis.exceptions.ResponseError as e:
-            self.env.assertContains("Query timed out", str(e))
-
         # Revert timeout to unlimited
         response = redis_con.execute_command("GRAPH.CONFIG SET TIMEOUT 0")
         self.env.assertEqual(response, "OK")

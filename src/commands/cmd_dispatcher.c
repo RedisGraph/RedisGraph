@@ -35,7 +35,9 @@ static int _read_flags
 	*compact = false;  // verbose
 	*graph_version = GRAPH_VERSION_MISSING;
 	Config_Option_get(Config_TIMEOUT_DEFAULT, timeout);
-	if(*timeout != CONFIG_TIMEOUT_NO_TIMEOUT) {
+	long long max_timeout;
+	Config_Option_get(Config_TIMEOUT_MAX, &max_timeout);
+	if(*timeout != CONFIG_TIMEOUT_NO_TIMEOUT || max_timeout != CONFIG_TIMEOUT_NO_TIMEOUT) {
 		*timeout_rw = true;
 	} else {
 		Config_Option_get(Config_TIMEOUT, timeout);
@@ -60,16 +62,15 @@ static int _read_flags
 			if(i < argc - 1) {
 				i++; // Set the current argument to the timeout value.
 				err = RedisModule_StringToLongLong(argv[i], timeout);
-				long long max_timeout;
-				Config_Option_get(Config_TIMEOUT_MAX, &max_timeout);
+
 				if(max_timeout != CONFIG_TIMEOUT_NO_TIMEOUT && *timeout > max_timeout) {
 					asprintf(errmsg, "The query TIMEOUT parameter value cannot exceed the TIMEOUT_MAX configuration parameter value");
 					return REDISMODULE_ERR;
 				}
-				if(timeout == CONFIG_TIMEOUT_NO_TIMEOUT) {
+
+				if(timeout == CONFIG_TIMEOUT_NO_TIMEOUT && timeout_rw) {
 					Config_Option_get(Config_TIMEOUT_DEFAULT, timeout);
 				}
-				*timeout_rw = true;
 			}
 
 			// Emit error on missing, negative, or non-numeric timeout values.

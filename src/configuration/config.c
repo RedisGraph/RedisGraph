@@ -189,33 +189,34 @@ static void Config_log_if_old_and_new_timeout_used() {
 	}
 }
 
-static void Config_enforce_timeout_max
+static bool Config_enforce_timeout_max
 (
 	uint64_t timeout_default,
 	uint64_t timeout_max
 ) {
 	if(config.timeout_max != CONFIG_TIMEOUT_NO_TIMEOUT &&
 	   timeout_default > timeout_max) {
-		timeout_default = timeout_max;
 		RedisModule_Log(NULL, "warning", "The TIMEOUT_DEFAULT(%lld) configuration parameter value is higher than TIMEOUT_MAX(%lld). Its value was set to TIMEOUT_MAX", timeout_default, timeout_max);
+		return false;
 	}
 	
 	config.timeout_max     = timeout_max;
 	config.timeout_default = timeout_default;
+	return true;
 }
 
-static void Config_timeout_default_set
+static bool Config_timeout_default_set
 (
 	uint64_t timeout_default
 ) {
-	Config_enforce_timeout_max(timeout_default, config.timeout_max);
+	return Config_enforce_timeout_max(timeout_default, config.timeout_max);
 }
 
-static void Config_timeout_max_set
+static bool Config_timeout_max_set
 (
 	uint64_t timeout_max
 ) {
-	Config_enforce_timeout_max(config.timeout_default, timeout_max);
+	return Config_enforce_timeout_max(config.timeout_default, timeout_max);
 }
 
 static uint Config_timeout_get(void) {
@@ -582,7 +583,7 @@ int Config_Init
 	}
 
 	if(warn_timeout_deprecated) {
-		RedisModule_Log(ctx, "warning", "The TIMEOUT configuration parameter is deprecated. Please set TIMEOUT_MAX and TIMEOUT_DEFAULT instead");
+		RedisModule_Log(ctx, "warning", "The TIMEOUT configuration parameter is deprecated. Please remove TIMEOUT and set TIMEOUT_MAX and TIMEOUT_DEFAULT instead");
 	}
 
 	return REDISMODULE_OK;
@@ -832,7 +833,7 @@ bool Config_Option_set
 		case Config_TIMEOUT_DEFAULT: {
 			long long timeout_default;
 			if(!_Config_ParseNonNegativeInteger(val, &timeout_default)) return false;
-			Config_timeout_default_set(timeout_default);
+			if(!Config_timeout_default_set(timeout_default)) return false;
 			Config_log_if_old_and_new_timeout_used();
 		}
 		break;
@@ -844,7 +845,7 @@ bool Config_Option_set
 		case Config_TIMEOUT_MAX: {
 			long long timeout_max;
 			if(!_Config_ParseNonNegativeInteger(val, &timeout_max)) return false;
-			Config_timeout_max_set(timeout_max);
+			if(!Config_timeout_max_set(timeout_max)) return false;
 			Config_log_if_old_and_new_timeout_used();
 		}
 		break;
