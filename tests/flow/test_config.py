@@ -163,10 +163,6 @@ class testConfig(FlowTestsBase):
         expected_response = ["TIMEOUT", 0]
         self.env.assertEqual(response, expected_response)
 
-        # Issue long-running query to validate the reconfiguration
-        result = redis_graph.query(query)
-        self.env.assertEqual(result.result_set[0][0], 1000000)
-
         # Change resultset_size from default
         response = redis_con.execute_command("GRAPH.CONFIG SET RESULTSET_SIZE 2")
         self.env.assertEqual(response, "OK")
