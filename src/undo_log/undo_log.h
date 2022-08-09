@@ -71,7 +71,7 @@ typedef struct {
 } UndoUpdateOp;
 
 typedef struct {
-	Node *node;
+	Node node;
 	int* label_lds;
 } UndoLabelsOp;
 

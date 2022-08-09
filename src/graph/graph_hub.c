@@ -402,7 +402,7 @@ void UpdateNodeLabels
 	}
 	// update node's labels
 	if(label_count > 0) {
-		Graph_RemoveLabelNode(gc->g, node->id ,remove_labels, label_count);
+		Graph_RemoveNodeLabels(gc->g, node->id ,remove_labels, label_count);
 		UndoLog_RemoveLabels(&query_ctx->undo_log, node, remove_labels);
 	}
 

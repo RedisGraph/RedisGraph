@@ -105,9 +105,13 @@ static void _UndoLog_Rollback_Update_Entity
 	UndoOp *undo_list = ctx->undo_log;
 	for(int i = seq_start; i > seq_end; --i) {
 		UndoOp *op = undo_list + i;
+		UndoUpdateOp *update_op = &op->update_op;
+
+		// update indices
 		if(update_op->entity_type == GETYPE_NODE) {
 			Graph_UpdateEntity((GraphEntity *)&update_op->n, update_op->attr_id,
 				update_op->orig_value, update_op->entity_type);
+			_index_node(ctx, &update_op->n);
 		} else {
 			Graph_UpdateEntity((GraphEntity *)&update_op->e, update_op->attr_id,
 				update_op->orig_value, update_op->entity_type);
@@ -128,9 +132,9 @@ static void _UndoLog_Rollback_Set_Labels(
 		UndoLabelsOp update_labels_op = op->labels_op;
 		Graph* g = QueryCtx_GetGraph();
 		uint labels_count = array_len(update_labels_op.label_lds);
-		RedisModule_Log(NULL, "warning", "_UndoLog_Rollback_Set_Labels node id %ld", update_labels_op.node->id);
-		Graph_RemoveLabelNode(g, update_labels_op.node->id, update_labels_op.label_lds, labels_count);
-		_index_delete_node_with_labels(ctx, update_labels_op.node, update_labels_op.label_lds, labels_count);
+		RedisModule_Log(NULL, "warning", "_UndoLog_Rollback_Set_Labels node id %ld", update_labels_op.node.id);
+		Graph_RemoveNodeLabels(g, update_labels_op.node.id, update_labels_op.label_lds, labels_count);
+		_index_delete_node_with_labels(ctx, &update_labels_op.node, update_labels_op.label_lds, labels_count);
 	}
 }
 
@@ -145,8 +149,8 @@ static void _UndoLog_Rollback_Remove_Labels(
 		UndoLabelsOp update_labels_op = op->labels_op;
 		Graph* g = QueryCtx_GetGraph();
 		uint labels_count = array_len(update_labels_op.label_lds);
-		Graph_LabelNode(g, update_labels_op.node->id, update_labels_op.label_lds, labels_count);
-		_index_node_with_labels(ctx, update_labels_op.node, update_labels_op.label_lds, labels_count);
+		Graph_LabelNode(g, update_labels_op.node.id, update_labels_op.label_lds, labels_count);
+		_index_node_with_labels(ctx, &update_labels_op.node, update_labels_op.label_lds, labels_count);
 	}
 }
 
@@ -352,8 +356,8 @@ void UndoLog_AddLabels
 	UndoOp op;
 
 	op.type                 = UNDO_SET_LABELS;
-	op.labels_op.node       = node;
-	RedisModule_Log(NULL, "warning", "UndoLog_AddLabels node id %ld", op.labels_op.node->id);
+	op.labels_op.node       = *node;
+	RedisModule_Log(NULL, "warning", "UndoLog_AddLabels node id %ld", op.labels_op.node.id);
 	array_clone(op.labels_op.label_lds, label_ids);
 	array_append(*log, op);
 }
@@ -371,7 +375,7 @@ void UndoLog_RemoveLabels
 	UndoOp op;
 
 	op.type              = UNDO_REMOVE_LABELS;
-	op.labels_op.node    = node;
+	op.labels_op.node    = *node;
 	array_clone(op.labels_op.label_lds, label_ids);
 	array_append(*log, op);
 }
