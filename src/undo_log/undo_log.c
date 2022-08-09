@@ -134,7 +134,8 @@ static void _UndoLog_Rollback_Delete_Node
 
 		Graph_CreateNode(ctx->gc->g, &n, delete_op.labels,
 				delete_op.label_count);
-		*n.attributes = delete_op.set;
+		// Pointer ownership - avoid double free
+		*n.attributes = AttributeSet_Clone(delete_op.set);
 
 		// re-introduce node to indices
 		_index_node(ctx, &n);
@@ -156,7 +157,7 @@ static void _UndoLog_Rollback_Delete_Edge
 
 		Graph_CreateEdge(ctx->gc->g, delete_op.srcNodeID, delete_op.destNodeID,
 				delete_op.relationID, &e);
-		*e.attributes = delete_op.set;
+		*e.attributes = AttributeSet_Clone(delete_op.set);
 
 		_index_edge(ctx, &e);
 	}

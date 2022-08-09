@@ -11,7 +11,7 @@
 #include "../../util/rmalloc.h"
 
 // compute size of attribute set in bytes
-#define ATTRIBUTESET_BYTE_SIZE(set) set == NULL ? sizeof(_AttributeSet) : sizeof(_AttributeSet) + sizeof(Attribute) * (set)->attr_count
+#define ATTRIBUTESET_BYTE_SIZE(set) (set) == NULL ? sizeof(_AttributeSet) : sizeof(_AttributeSet) + sizeof(Attribute) * (set)->attr_count
 
 // determine if set is empty
 #define ATTRIBUTESET_EMPTY(set) (set) == NULL
@@ -238,7 +238,7 @@ AttributeSet AttributeSet_Clone
 	AttributeSet clone  = rm_malloc(n);
 	clone->attr_count   = set->attr_count;
 	
-	for (uint i = 0; i < set->attr_count; i++) {
+	for (ushort i = 0; i < set->attr_count; i++) {
 		Attribute *attr        = set->attributes   + i;
 		Attribute *clone_attr  = clone->attributes + i;
 
