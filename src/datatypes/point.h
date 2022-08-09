@@ -14,6 +14,6 @@ float Point_lat(SIValue point);
 // returns longitude of given point
 float Point_lon(SIValue point);
 
-// return coordinate (latitude or longitude) of given point
+// returns a coordinate (latitude or longitude) of a given point
 SIValue Point_GetCoordinate(SIValue point, SIValue key);
 

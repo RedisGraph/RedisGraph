@@ -21,18 +21,13 @@ float Point_lon(SIValue point) {
 
 SIValue Point_GetCoordinate(SIValue point, SIValue key) {
 	ASSERT(SI_TYPE(point) == T_POINT);
-	ASSERT(SI_TYPE(key) & T_STRING);
+	ASSERT(SI_TYPE(key) == T_STRING);
 
-	if(strcmp(key.stringval, "latitude")==0)
-	{
+	if(strcmp(key.stringval, "latitude")==0) {
 		return SI_DoubleVal(Point_lat(point));
-	}
-	else if(strcmp(key.stringval, "longitude")==0)
-	{
+	} else if(strcmp(key.stringval, "longitude")==0) {
 		return SI_DoubleVal(Point_lon(point));
-	}
-	else
-	{
+	} else {
 		return SI_NullVal();
 	}
 
