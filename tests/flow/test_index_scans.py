@@ -667,6 +667,9 @@ class testIndexScanFlow():
     def test_22_pickup_on_index_creation(self):
         g = Graph(self.env.getConnection(), 'late_index_creation')
 
+        # create graph
+        g.query("RETURN 1")
+
         # issue query which has to potential to utilize an index
         # this query is going to be cached
         q = "MATCH (n:N) WHERE n.v = 1 RETURN n"
