@@ -5,7 +5,6 @@ graph = None
 redis_con = None
 people = ["Roi", "Alon", "Ailon", "Boaz"]
 
-
 class testFunctionCallsFlow(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
@@ -20,7 +19,11 @@ class testFunctionCallsFlow(FlowTestsBase):
         nodes = {}
         # Create entities
         for idx, p in enumerate(people):
-            node = Node(label="person", properties={"name": p, "val": idx})
+            if idx % 2 == 0:
+                labels = ["person"]
+            else:
+                labels = ["person", "student"]
+            node = Node(label=labels, properties={"name": p, "val": idx})
             graph.add_node(node)
             nodes[p] = node
 
@@ -380,20 +383,20 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """MATCH (n {val: 1}) RETURN toJSON(n)"""
         actual_result = graph.query(query)
         parsed = json.loads(actual_result.result_set[0][0])
-        self.env.assertEquals(parsed, {"type": "node", "id": 1, "labels": ["person"], "properties": {"name": "Alon", "val": 1}})
+        self.env.assertEquals(parsed, {"type": "node", "id": 1, "labels": ["person", "student"], "properties": {"name": "Alon", "val": 1}})
 
         # Test converting a full edge.
         query = """MATCH ({val: 0})-[e:works_with]->({val: 1}) RETURN toJSON(e)"""
         actual_result = graph.query(query)
         start = {"id": 0, "labels": ["person"], "properties": {"name": "Roi", "val": 0}}
-        end = {"id": 1, "labels": ["person"], "properties": {"name": "Alon", "val": 1}}
+        end = {"id": 1, "labels": ["person", "student"], "properties": {"name": "Alon", "val": 1}}
         parsed = json.loads(actual_result.result_set[0][0])
         self.env.assertEquals(parsed, {"type": "relationship", "id": 12, "relationship": "works_with", "properties": {}, "start": start, "end": end})
 
         # Test converting a path.
         query = """MATCH path=({val: 0})-[e:works_with]->({val: 1}) RETURN toJSON(path)"""
         actual_result = graph.query(query)
-        expected = [{'type': 'node', 'id': 0, 'labels': ['person'], 'properties': {'name': 'Roi', 'val': 0}}, {'type': 'relationship', 'id': 12, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 0, 'labels': ['person'], 'properties': {'name': 'Roi', 'val': 0}}, 'end': {'id': 1, 'labels': ['person'], 'properties': {'name': 'Alon', 'val': 1}}}, {'type': 'node', 'id': 1, 'labels': ['person'], 'properties': {'name': 'Alon', 'val': 1}}]
+        expected = [{'type': 'node', 'id': 0, 'labels': ['person'], 'properties': {'name': 'Roi', 'val': 0}}, {'type': 'relationship', 'id': 12, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 0, 'labels': ['person'], 'properties': {'name': 'Roi', 'val': 0}}, 'end': {'id': 1, 'labels': ['person', 'student'], 'properties': {'name': 'Alon', 'val': 1}}}, {'type': 'node', 'id': 1, 'labels': ['person', 'student'], 'properties': {'name': 'Alon', 'val': 1}}]
         parsed = json.loads(actual_result.result_set[0][0])
         self.env.assertEquals(parsed, expected)
 
@@ -430,6 +433,12 @@ class testFunctionCallsFlow(FlowTestsBase):
         expected_result = []
         self.env.assertEquals(actual_result.result_set, expected_result)
 
+        # Test multi label
+        query = """MATCH (n) WHERE n:person:student RETURN n.name"""
+        actual_result = graph.query(query)
+        expected_result = [['Alon'], ['Boaz']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
         # Test or between different labels label
         query = """MATCH (n) WHERE n:person OR n:L RETURN n.name"""
         actual_result = graph.query(query)
@@ -440,6 +449,12 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """MATCH (n) WHERE hasLabels(n, ['person', 'L']) RETURN n.name"""
         actual_result = graph.query(query)
         expected_result = []
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test multi label using functions
+        query = """MATCH (n) WHERE hasLabels(n, ['person', 'student']) RETURN n.name"""
+        actual_result = graph.query(query)
+        expected_result =  [['Alon'], ['Boaz']]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         # Test has labels using functions mismatch type
@@ -627,3 +642,72 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """RETURN sqrt(2540.95581553)"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], 50.4078943770715)
+    
+    def test29_toBoolean(self):
+        # all other toBoolean cases (boolean, strings, null, errors) are covered in TCK
+        # integers
+        query = """RETURN toBoolean(0)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], False)
+        query = """RETURN toBoolean(1)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], True)
+        query = """RETURN toBoolean(-1)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], True)
+
+    def test29_toBooleanOrNull(self):
+        # boolean
+        query = """RETURN toBooleanOrNull(true)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], True)
+        query = """RETURN toBooleanOrNull(false)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], False)
+
+        # strings
+        query = """RETURN toBooleanOrNull('TruE')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], True)
+        query = """RETURN toBooleanOrNull('FaLsE')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], False)
+        query = """RETURN toBooleanOrNull('not a boolean')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+        # integers
+        query = """RETURN toBooleanOrNull(0)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], False)
+        query = """RETURN toBooleanOrNull(1)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], True)
+        query = """RETURN toBooleanOrNull(-1)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], True)
+
+        # null
+        query = """RETURN toBooleanOrNull(null)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+        # float
+        query = """RETURN toBooleanOrNull(0.1)"""
+        graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+        # list
+        query = """RETURN toBooleanOrNull([true])"""
+        graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+        # node
+        query = """CREATE (n) RETURN toBooleanOrNull(n)"""
+        graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+        # edge
+        query = """CREATE ()-[r:R]->() RETURN toBooleanOrNull(r)"""
+        graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)

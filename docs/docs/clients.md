@@ -12,6 +12,7 @@ description: >
 | Project                                                  | Language   | License      | Author                                      | Stars                                                             |
 | -------------------------------------------------------- | ---------- | ------------ | ------------------------------------------- | ----------------------------------------------------------------- |
 | [Jedis][Jedis-url]                                       | Java       | MIT          | [Redis][Jedis-author]                       | [![Jedis-stars]][Jedis-url]                                       |
+| [redis-modules-java][redis-modules-java-url]              | Java       | Apache 2.0 | [dengliming][redis-modules-java-author]      | [![redis-modules-java-stars]][redis-modules-java-url]           |
 | [redisgraph-py][redisgraph-py-url]                       | Python     | BSD          | [Redis][redisgraph-py-author]               | [![redisgraph-py-stars]][redisgraph-py-url]                       |
 | [JRedisGraph][JRedisGraph-url]                           | Java       | BSD          | [Redis][JRedisGraph-author]                 | [![JRedisGraph-stars]][JRedisGraph-url]                           |
 | [redisgraph-rb][redisgraph-rb-url]                       | Ruby       | BSD          | [Redis][redisgraph-rb-author]               | [![redisgraph-rb-stars]][redisgraph-rb-url]                       |
@@ -107,6 +108,10 @@ description: >
 [RedisGraph.jl-author]: https://github.com/xyxel
 [RedisGraph.jl-url]: https://github.com/xyxel/RedisGraph.jl
 [RedisGraph.jl-stars]: https://img.shields.io/github/stars/xyxel/RedisGraph.jl.svg?style=social&amp;label=Star&amp;maxAge=2592000
+
+[redis-modules-java-author]: https://github.com/dengliming
+[redis-modules-java-url]: https://github.com/dengliming/redis-modules-java
+[redis-modules-java-stars]: https://img.shields.io/github/stars/dengliming/redis-modules-java.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 ## Implementing a client
 

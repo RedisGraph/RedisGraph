@@ -74,17 +74,17 @@ static void _UndoLog_Rollback_Update_Entity
 	UndoOp *undo_list = ctx->undo_log;
 	for(int i = seq_start; i > seq_end; --i) {
 		UndoOp *op = undo_list + i;
-		UndoUpdateOp update_op = op->update_op;
-		Graph_UpdateEntity(update_op.ge, update_op.attr_id,
-				update_op.orig_value, update_op.entity_type);
+		UndoUpdateOp *update_op = &op->update_op;
 
 		// update indices
-		if(update_op.entity_type == GETYPE_NODE) {
-			Node *n = (Node *)update_op.ge;
-			_index_node(ctx, n);
+		if(update_op->entity_type == GETYPE_NODE) {
+			Graph_UpdateEntity((GraphEntity *)&update_op->n, update_op->attr_id,
+				update_op->orig_value, update_op->entity_type);
+			_index_node(ctx, &update_op->n);
 		} else {
-			Edge *e = (Edge *)update_op.ge;
-			_index_edge(ctx, e);
+			Graph_UpdateEntity((GraphEntity *)&update_op->e, update_op->attr_id,
+				update_op->orig_value, update_op->entity_type);
+			_index_edge(ctx, &update_op->e);
 		}
 	}
 }
@@ -174,14 +174,14 @@ UndoLog UndoLog_New(void) {
 void UndoLog_CreateNode
 (
 	UndoLog *log,
-	Node node             // node created
+	Node *node             // node created
 ) {
 	ASSERT(log != NULL && *log != NULL);
 
 	UndoOp op;
 
 	op.type        = UNDO_CREATE_NODE;
-	op.create_op.n = node;
+	op.create_op.n = *node;
 
 	array_append(*log, op);
 }
@@ -190,14 +190,14 @@ void UndoLog_CreateNode
 void UndoLog_CreateEdge
 (
 	UndoLog *log,
-	Edge edge             // edge created
+	Edge *edge             // edge created
 ) {
 	ASSERT(log != NULL && *log != NULL);
 
 	UndoOp op;
 
 	op.type        = UNDO_CREATE_EDGE;
-	op.create_op.e = edge;
+	op.create_op.e = *edge;
 
 	array_append(*log, op);
 }
@@ -264,10 +264,15 @@ void UndoLog_UpdateEntity
 	UndoOp op;
 
 	op.type                  = UNDO_UPDATE;
-	op.update_op.ge          = ge;
 	op.update_op.attr_id     = attr_id;
 	op.update_op.orig_value  = SI_CloneValue(orig_value);
 	op.update_op.entity_type = entity_type;
+
+	if(entity_type == GETYPE_NODE) {
+		op.update_op.n = *(Node *)ge;
+	} else {
+		op.update_op.e = *(Edge *)ge;
+	}
 
 	array_append(*log, op);
 }
@@ -285,6 +290,9 @@ void UndoLog_Rollback
 	uint64_t count = array_len(log);
 
 	if(count == 0) return;
+
+	// acquire lock before making any changes to the graph
+	QueryCtx_LockForCommit();
 
 	// apply undo operations in reverse order for rollback correctness
 	// find sequences of the same operation and rollback them as a bulk
@@ -317,6 +325,9 @@ void UndoLog_Rollback
 				ASSERT(false);
 		}
  	}
+
+	// assumption: no operations should be executing at this point
+	QueryCtx_UnlockCommit(NULL);
 
 	array_clear(log);
 }

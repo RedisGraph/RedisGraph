@@ -57,6 +57,7 @@ commands:
             git submodule update --init deps/readies
             ./deps/readies/bin/getpy3
             ./deps/readies/bin/getpy2
+            ./deps/readies/bin/getaws
 
   install-prerequisites:
     parameters:
@@ -400,7 +401,7 @@ jobs:
 
   build-macos:
     macos:
-      xcode: 12.4.0
+      xcode: 12.5.1
     resource_class: macos.x86.medium.gen2
     parameters:
       upload:

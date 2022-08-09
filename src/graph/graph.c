@@ -7,7 +7,6 @@
 #include "RG.h"
 #include "graph.h"
 #include "../util/arr.h"
-#include "../util/qsort.h"
 #include "../util/rmalloc.h"
 #include "../util/datablock/oo_datablock.h"
 #include "../graph/rg_matrix/rg_matrix_iter.h"
@@ -713,12 +712,15 @@ void Graph_GetNodeEdges
 	ASSERT(n);
 	ASSERT(edges);
 
+	GrB_Type t;
+	GrB_Info info;
 	RG_MatrixTupleIter   it       =  {0};
 	RG_Matrix            M        =  NULL;
 	RG_Matrix            TM       =  NULL;
 	NodeID               srcID    =  ENTITY_GET_ID(n);
 	NodeID               destID   =  INVALID_ENTITY_ID;
 	EdgeID               edgeID   =  INVALID_ENTITY_ID;
+	UNUSED(info);
 
 	if(edgeType == GRAPH_UNKNOWN_RELATION) return;
 
@@ -734,15 +736,20 @@ void Graph_GetNodeEdges
 	M = Graph_GetRelationMatrix(g, edgeType, false);
 
 	if(outgoing) {
+		info = RG_Matrix_type(&t, M);
+		ASSERT(info == GrB_SUCCESS);
+		ASSERT(t == GrB_UINT64 || t == GrB_BOOL);
 		// construct an iterator to traverse over the source node row,
 		// containing all outgoing edges
 		RG_MatrixTupleIter_attach(&it, M);
 		RG_MatrixTupleIter_iterate_row(&it, srcID);
-		while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, &edgeID) == GrB_SUCCESS) {
-			// collect all edges (src)->(dest)
-			if(edgeType != GRAPH_NO_RELATION) {
+		if(t == GrB_UINT64) {
+			while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, &edgeID) == GrB_SUCCESS) {
+				// collect all edges (src)->(dest)
 				_CollectEdgesFromEntry(g, srcID, destID, edgeType, edgeID, edges);
-			} else {
+			}
+		} else {
+			while(RG_MatrixTupleIter_next_BOOL(&it, NULL, &destID, NULL) == GrB_SUCCESS) {
 				Graph_GetEdgesConnectingNodes(g, srcID, destID, edgeType, edges);
 			}
 		}
@@ -755,18 +762,25 @@ void Graph_GetNodeEdges
 		// otherwise use the transposed adjacency matrix
 		TM = Graph_GetRelationMatrix(g, edgeType, true);
 
+		info = RG_Matrix_type(&t, M);
+		ASSERT(info == GrB_SUCCESS);
+		ASSERT(t == GrB_UINT64 || t == GrB_BOOL);
+
 		// construct an iterator to traverse over the source node row,
 		// containing all incoming edges
 		RG_MatrixTupleIter_attach(&it, TM);
 		RG_MatrixTupleIter_iterate_row(&it, srcID);
 
-		while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, NULL) == GrB_SUCCESS) {
-			RG_Matrix_extractElement_UINT64(&edgeID, M, destID, srcID);
-			if(dir == GRAPH_EDGE_DIR_BOTH && srcID == destID) continue;
-			// collect all edges connecting destId to srcId
-			if(edgeType != GRAPH_NO_RELATION) {
+		if(t == GrB_UINT64) {
+			while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, NULL) == GrB_SUCCESS) {
+				RG_Matrix_extractElement_UINT64(&edgeID, M, destID, srcID);
+				if(dir == GRAPH_EDGE_DIR_BOTH && srcID == destID) continue;
+				// collect all edges connecting destId to srcId
 				_CollectEdgesFromEntry(g, destID, srcID, edgeType, edgeID, edges);
-			} else {
+			}
+		} else {
+			while(RG_MatrixTupleIter_next_BOOL(&it, NULL, &destID, NULL) == GrB_SUCCESS) {
+				if(dir == GRAPH_EDGE_DIR_BOTH && srcID == destID) continue;
 				Graph_GetEdgesConnectingNodes(g, destID, srcID, edgeType, edges);
 			}
 		}
@@ -822,21 +836,41 @@ void Graph_DeleteNode
 	Graph *g,
 	Node *n
 ) {
-	// assumption, node is completely detected,
-	// there are no incoming nor outgoing edges
-	// leading to / from node
+	// assumption, node is detached
+ 	// there are no incoming nor outgoing edges leading to / from node
 	ASSERT(g != NULL);
 	ASSERT(n != NULL);
 
-	RG_Matrix N = Graph_GetNodeLabelMatrix(g);
+	#if RG_DEBUG
+	// validate assumption
+	Edge *edges = array_new(Edge, 0);
+	Graph_GetNodeEdges(g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, &edges);
+	ASSERT(array_len(edges) == 0);
+	array_free(edges);
+	#endif
+
+	GrB_Info info;
 	uint label_count;
+
+	UNUSED(info);
 	NODE_GET_LABELS(g, n, label_count);
+
+	EntityID  n_id = ENTITY_GET_ID(n);
+	RG_Matrix lbls = Graph_GetNodeLabelMatrix(g);
+
 	for(uint i = 0; i < label_count; i++) {
 		int label_id = labels[i];
-		RG_Matrix M = Graph_GetLabelMatrix(g, label_id);
+		RG_Matrix L = Graph_GetLabelMatrix(g, label_id);
+
 		// clear label matrix at position node ID
-		RG_Matrix_removeElement_BOOL(M, ENTITY_GET_ID(n), ENTITY_GET_ID(n));
-		RG_Matrix_removeElement_BOOL(N, ENTITY_GET_ID(n), labels[i]);
+		info = RG_Matrix_removeElement_BOOL(L, n_id, n_id);
+		ASSERT(info == GrB_SUCCESS)
+
+		// clear labels matrix
+ 		// TODO: consider switching to GrB_Row_assign to clear an entire row
+		info = RG_Matrix_removeElement_BOOL(lbls, n_id, label_id);
+		ASSERT(info == GrB_SUCCESS)
+
 		// update statistics
 		GraphStatistics_DecNodeCount(&g->stats, label_id, 1);
 	}
@@ -1080,7 +1114,7 @@ RG_Matrix Graph_GetZeroMatrix
 	const Graph *g
 ) {
 	RG_Matrix z = g->_zero_matrix;
-	_MatrixResizeToCapacity(g, z);
+	g->SynchronizeMatrix(g, z);
 
 #if RG_DEBUG
 	// make sure zero matrix is indeed empty

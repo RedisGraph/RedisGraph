@@ -499,7 +499,7 @@ static int path_cmp
 (
 	const void *a,
 	const void *b,
-	const void *udata
+	void *udata
 ) {
 	WeightedPath *da = (WeightedPath *)a;
 	WeightedPath *db = (WeightedPath *)b;

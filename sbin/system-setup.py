@@ -29,6 +29,7 @@ class RedisGraphSetup(paella.Setup):
         else:
             self.run("%s/bin/getgcc" % READIES)
         self.install("peg")
+        self.run("{READIES}/bin/getjava".format(READIES=READIES)) # for grammarinator/ANTLR
         self.pip_install("-r tests/fuzz/requirements.txt")
 
     def redhat_compat(self):
@@ -61,9 +62,9 @@ class RedisGraphSetup(paella.Setup):
 
     def linux_last(self):
         self.install("valgrind")
-        self.run("{READIES}/bin/getjava".format(READIES=READIES)) # for grammarinator/ANTLR
 
     def common_last(self):
+        self.run("%s/bin/getaws" % READIES)
         self.install("astyle", _try=True) # fails for centos7
         self.run("{PYTHON} {READIES}/bin/getcmake --usr".format(PYTHON=self.python, READIES=READIES),
                  sudo=self.os != 'macos')
@@ -73,7 +74,6 @@ class RedisGraphSetup(paella.Setup):
             self.install("lcov-git", aur=True)
 
         self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall".format(PYTHON=self.python, READIES=READIES))
-        self.pip_install("awscli")
         self.pip_install("-r tests/requirements.txt")
         self.run("%s/bin/getpy2" % READIES) # for RediSearch build
 

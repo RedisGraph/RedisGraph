@@ -144,10 +144,10 @@ static GRAPH_Commands determine_command(const char *cmd_name) {
 static bool should_command_create_graph(GRAPH_Commands cmd) {
 	switch(cmd) {
 		case CMD_QUERY:
-		case CMD_RO_QUERY:
 		case CMD_EXPLAIN:
 		case CMD_PROFILE:
 			return true;
+		case CMD_RO_QUERY:
 		case CMD_SLOWLOG:
 			return false;
 		default:

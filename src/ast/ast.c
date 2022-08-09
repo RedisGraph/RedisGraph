@@ -11,7 +11,6 @@
 #include "../errors.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
-#include "../util/qsort.h"
 #include "../procedures/procedure.h"
 #include "ast_rewrite_same_clauses.h"
 #include "ast_rewrite_star_projections.h"
@@ -492,7 +491,7 @@ inline AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast) {
 
 static inline char *_create_anon_alias(int anon_count) {
 	char *alias;
-	asprintf(&alias, "anon_%d", anon_count);
+	asprintf(&alias, "@anon_%d", anon_count);
 	return alias;
 }
 

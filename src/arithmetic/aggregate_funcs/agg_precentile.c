@@ -9,10 +9,16 @@
 #include "../func_desc.h"
 #include "../../errors.h"
 #include "../../util/arr.h"
-#include "../../util/qsort.h"
 #include <math.h>
+#include <stdlib.h>
 
-#define ISLT(a,b) ((*a) < (*b))
+static inline int _cmp
+(
+	const double *a,
+	const double *b
+) {
+	return *a - *b;
+}
 
 //------------------------------------------------------------------------------
 // Precentile
@@ -59,9 +65,11 @@ void PercDiscFinalize(void *ctx_ptr) {
 	if(count == 0) {
 		Aggregate_SetResult(ctx, SI_NullVal());
 	} else {
-		QSORT(double, perc_ctx->values, count, ISLT);
+		qsort(perc_ctx->values, count, sizeof(double),
+				(int(*)(const void*, const void*))_cmp);
 
-		// If perc_ctx->percentile == 0, employing this formula would give an index of -1
+		// if perc_ctx->percentile == 0
+		// employing this formula would give an index of -1
 		int idx = perc_ctx->percentile > 0 ? ceil(perc_ctx->percentile * count) - 1 : 0;
 		double n = perc_ctx->values[idx];
 		Aggregate_SetResult(ctx, SI_DoubleVal(n));
@@ -77,7 +85,8 @@ void PercContFinalize(void *ctx_ptr) {
 	if(count == 0) {
 		Aggregate_SetResult(ctx, SI_NullVal());
 	} else {
-		QSORT(double, perc_ctx->values, count, ISLT);
+		qsort(perc_ctx->values, count, sizeof(double),
+				(int(*)(const void*, const void*))_cmp);
 
 		if(perc_ctx->percentile == 1.0 || count == 1) {
 			Aggregate_SetResult(ctx, SI_DoubleVal(perc_ctx->values[count - 1]));
