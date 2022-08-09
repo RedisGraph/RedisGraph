@@ -439,7 +439,6 @@ void UndoLog_Rollback
 	// assumption: no operations should be executing at this point
 	QueryCtx_UnlockCommit(NULL);
 
-	array_clear(log);
 }
 
 void UndoLog_Free
