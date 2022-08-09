@@ -178,3 +178,20 @@ class testReduce():
         expected = None
         self.env.assertEquals(actual, expected)
 
+    def test_invalid_use(self):
+        queries = [
+            "return reduce(1,[1],{1})",
+            "with 1 as x return reduce(x,x,x)",
+            "with {a:1, b:2} as x return reduce(x,x,x)",
+            "return reduce()",
+            "return reduce(1)"
+        ]
+
+        for query in queries:
+            try:
+                self.graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                # Expecting an error.
+                self.env.assertContains(str(e), "Unknown function 'reduce'")
+                pass

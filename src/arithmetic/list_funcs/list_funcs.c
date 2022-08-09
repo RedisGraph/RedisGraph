@@ -418,7 +418,7 @@ void Register_ListFuncs() {
 	array_append(types, T_ARRAY | T_NULL);  // array to iterate over
 	array_append(types, T_PTR);             // input record
 	ret_type = SI_ALL;
-	func_desc = AR_FuncDescNew("reduce", AR_REDUCE, 3, 3, types, ret_type, false, true);
+	func_desc = AR_FuncDescNew("reduce", AR_REDUCE, 3, 3, types, ret_type, true, true);
 	AR_SetPrivateDataRoutines(func_desc, ListReduceCtx_Free,
 							  ListReduceCtx_Clone);
 	AR_RegFunc(func_desc);
