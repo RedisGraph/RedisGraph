@@ -119,6 +119,7 @@ static void _UndoLog_Rollback_Update_Entity
 				update_op->orig_value, update_op->entity_type);
 			_index_edge(ctx, &update_op->e);
 		}
+		SIValue_Free(update_op->orig_value);
 	}
 }
 
@@ -130,12 +131,17 @@ static void _UndoLog_Rollback_Set_Labels
 ) {
 	UndoOp *undo_list = ctx->undo_log;
 	for(int i = seq_start; i > seq_end; --i) {
-		UndoOp *op = undo_list + i;
+		Graph        *g                = QueryCtx_GetGraph();
+		UndoOp       *op               = undo_list + i;
 		UndoLabelsOp *update_labels_op = &(op->labels_op);
-		Graph* g = QueryCtx_GetGraph();
-		uint labels_count = array_len(update_labels_op->label_lds);
-		Graph_RemoveNodeLabels(g, update_labels_op->node.id, update_labels_op->label_lds, labels_count);
-		_index_delete_node_with_labels(ctx, &(update_labels_op->node), update_labels_op->label_lds, labels_count);
+		uint         labels_count      = array_len(update_labels_op->label_lds);
+
+		Graph_RemoveNodeLabels(g, update_labels_op->node.id,
+				update_labels_op->label_lds, labels_count);
+
+		_index_delete_node_with_labels(ctx, &(update_labels_op->node),
+				update_labels_op->label_lds, labels_count);
+
 		array_free(update_labels_op->label_lds);
 	}
 
@@ -149,12 +155,17 @@ static void _UndoLog_Rollback_Remove_Labels
 ) {
 	UndoOp *undo_list = ctx->undo_log;
 	for(int i = seq_start; i > seq_end; --i) {
-		UndoOp *op = undo_list + i;
+		Graph        *g                = QueryCtx_GetGraph();
+		UndoOp       *op               = undo_list + i;
 		UndoLabelsOp *update_labels_op = &(op->labels_op);
-		Graph* g = QueryCtx_GetGraph();
-		uint labels_count = array_len(update_labels_op->label_lds);
-		Graph_LabelNode(g, update_labels_op->node.id, update_labels_op->label_lds, labels_count);
-		_index_node_with_labels(ctx, &update_labels_op->node, update_labels_op->label_lds, labels_count);
+		uint         labels_count      = array_len(update_labels_op->label_lds);
+
+		Graph_LabelNode(g, update_labels_op->node.id, 
+				update_labels_op->label_lds, labels_count);
+
+		_index_node_with_labels(ctx, &(update_labels_op->node),
+				update_labels_op->label_lds, labels_count);
+
 		array_free(update_labels_op->label_lds);
 	}
 }
@@ -172,6 +183,7 @@ static void _UndoLog_Rollback_Create_Node
 		_index_delete_node(ctx, n);
 		Graph_DeleteNode(ctx->gc->g, n);
 	}
+
 }
 
 // undo edge creation
@@ -200,14 +212,15 @@ static void _UndoLog_Rollback_Delete_Node
 	for(int i = seq_start; i > seq_end; --i) {
 		Node n;
 		UndoOp *op = undo_list + i;
-		UndoDeleteNodeOp delete_op = op->delete_node_op;
+		UndoDeleteNodeOp *delete_op = &(op->delete_node_op);
 
-		Graph_CreateNode(ctx->gc->g, &n, delete_op.labels,
-				delete_op.label_count);
-		*n.attributes = delete_op.set;
+		Graph_CreateNode(ctx->gc->g, &n, delete_op->labels,
+				delete_op->label_count);
+		*n.attributes = delete_op->set;
 
 		// re-introduce node to indices
 		_index_node(ctx, &n);
+		rm_free(delete_op->labels);
 	}
 }
 
