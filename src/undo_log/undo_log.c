@@ -134,7 +134,6 @@ static void _UndoLog_Rollback_Delete_Node
 
 		Graph_CreateNode(ctx->gc->g, &n, delete_op.labels,
 				delete_op.label_count);
-		// Pointer ownership - avoid double free
 		*n.attributes = delete_op.set;
 
 		// re-introduce node to indices
