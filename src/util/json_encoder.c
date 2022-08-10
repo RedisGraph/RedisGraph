@@ -53,6 +53,7 @@ static sds _JsonEncoder_Node(const Node *n, sds s) {
 		const char *label = Schema_GetName(schema);
 		ASSERT(label);
 		s = sdscatfmt(s, "\"%s\"", label);
+		if(i != label_count - 1) s = sdscat(s, ", ");
 	}
 	s = sdscat(s, "], ");
 	s = _JsonEncoder_Properties((const GraphEntity *)n, s);
