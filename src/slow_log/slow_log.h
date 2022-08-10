@@ -43,6 +43,12 @@ void SlowLog_Add
 	time_t *time				// optional time command was issued
 );
 
+// clear all entries from slowlog
+void SlowLog_Clear
+(
+	SlowLog *slowlog  // slowlog to clear
+);
+
 // Replies with slow log content.
 void SlowLog_Replay
 (
