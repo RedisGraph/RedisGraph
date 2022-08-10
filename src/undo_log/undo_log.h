@@ -21,13 +21,13 @@
 
 // UndoLog operation types
 typedef enum {
-	UNDO_UPDATE = 0,        // undo entity update
-	UNDO_CREATE_NODE,       // undo node creation
-	UNDO_CREATE_EDGE,       // undo edge creation
-	UNDO_DELETE_NODE,       // undo node deletion
-	UNDO_DELETE_EDGE,       // undo edge deletion
-	UNDO_SET_LABELS,        // undo set labels
-	UNDO_REMOVE_LABELS      // undo remove labels
+	UNDO_UPDATE = 0,    // undo entity update
+	UNDO_CREATE_NODE,   // undo node creation
+	UNDO_CREATE_EDGE,   // undo edge creation
+	UNDO_DELETE_NODE,   // undo node deletion
+	UNDO_DELETE_EDGE,   // undo edge deletion
+	UNDO_SET_LABELS,    // undo set labels
+	UNDO_REMOVE_LABELS  // undo remove labels
 } UndoOpType;
 
 //------------------------------------------------------------------------------

@@ -32,11 +32,13 @@ static void _index_node_with_labels
 	int *labels,
 	uint label_count
 ) {
-	for(uint j = 0; j < label_count; j++) {
-		Schema *s = GraphContext_GetSchemaByID(ctx->gc, labels[j], SCHEMA_NODE);
-		ASSERT(s);
+	for(uint i = 0; i < label_count; i++) {
+		Schema *s = GraphContext_GetSchemaByID(ctx->gc, labels[i], SCHEMA_NODE);
+		ASSERT(s != NULL);
 
-		if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n);
+		if(Schema_HasIndices(s)) {
+			Schema_AddNodeToIndices(s, n);
+		}
 	}
 }
 
@@ -74,9 +76,9 @@ static void _index_delete_node_with_labels
 	int *labels,
 	uint label_count
 ) {
-	for(uint j = 0; j < label_count; j++) {
-		Schema *s = GraphContext_GetSchemaByID(ctx->gc, labels[j], SCHEMA_NODE);
-		ASSERT(s);
+	for(uint i = 0; i < label_count; i++) {
+		Schema *s = GraphContext_GetSchemaByID(ctx->gc, labels[i], SCHEMA_NODE);
+		ASSERT(s != NULL);
 
 		// update any indices this entity is represented in
 		Schema_RemoveNodeFromIndices(s, n);
@@ -120,7 +122,8 @@ static void _UndoLog_Rollback_Update_Entity
 	}
 }
 
-static void _UndoLog_Rollback_Set_Labels(
+static void _UndoLog_Rollback_Set_Labels
+(
 	QueryCtx *ctx,
 	int seq_start,
 	int seq_end
@@ -139,7 +142,8 @@ static void _UndoLog_Rollback_Set_Labels(
 
 }
 
-static void _UndoLog_Rollback_Remove_Labels(
+static void _UndoLog_Rollback_Remove_Labels
+(
 	QueryCtx *ctx,
 	int seq_start,
 	int seq_end
@@ -229,6 +233,18 @@ static void _UndoLog_Rollback_Delete_Edge
 	}
 }
 
+// add an operation to undo log
+static inline void _UndoLog_AddOperation
+(
+	UndoLog *log,  // undo log
+	UndoOp *op     // undo operation
+) {
+	ASSERT(op != NULL);
+	ASSERT(log != NULL && *log != NULL);
+
+	array_append(*log, *op);
+}
+
 UndoLog UndoLog_New(void) {
 	return (UndoLog)array_new(UndoOp, 0);
 }
@@ -250,7 +266,7 @@ void UndoLog_CreateNode
 	op.type        = UNDO_CREATE_NODE;
 	op.create_op.n = *node;
 
-	array_append(*log, op);
+	_UndoLog_AddOperation(log, &op);
 }
 
 // undo edge creation
@@ -266,7 +282,7 @@ void UndoLog_CreateEdge
 	op.type        = UNDO_CREATE_EDGE;
 	op.create_op.e = *edge;
 
-	array_append(*log, op);
+	_UndoLog_AddOperation(log, &op);
 }
 
 // undo node deletion
@@ -291,7 +307,7 @@ void UndoLog_DeleteNode
 		op.delete_node_op.labels[i] = labels[i];
 	}
 
-	array_append(*log, op);
+	_UndoLog_AddOperation(log, &op);
 }
 
 // undo edge deletion
@@ -312,7 +328,7 @@ void UndoLog_DeleteEdge
 	op.delete_edge_op.destNodeID  = edge->destNodeID;
 	op.delete_edge_op.set         = AttributeSet_Clone(*edge->attributes);
 
-	array_append(*log, op);
+	_UndoLog_AddOperation(log, &op);
 }
 
 // undo entity update
@@ -341,7 +357,7 @@ void UndoLog_UpdateEntity
 		op.update_op.e = *(Edge *)ge;
 	}
 
-	array_append(*log, op);
+	_UndoLog_AddOperation(log, &op);
 }
 
 
@@ -351,17 +367,19 @@ void UndoLog_AddLabels
 	Node *node,                  // updated node
 	int *label_ids               // added labels
 ) {
-	ASSERT(log != NULL && *log != NULL);
 	ASSERT(node != NULL);
 	ASSERT(label_ids != NULL);
 
 	UndoOp op;
 
-	op.type                 = UNDO_SET_LABELS;
-	op.labels_op.node       = *node;
-	RedisModule_Log(NULL, "warning", "UndoLog_AddLabels node id %ld", op.labels_op.node.id);
+	op.type = UNDO_SET_LABELS;
+	op.labels_op.node = *node;
 	array_clone(op.labels_op.label_lds, label_ids);
-	array_append(*log, op);
+
+	RedisModule_Log(NULL, "warning", "UndoLog_AddLabels node id %lld",
+			op.labels_op.node.id);
+
+	_UndoLog_AddOperation(log, &op);
 }
 
 void UndoLog_RemoveLabels
@@ -370,16 +388,19 @@ void UndoLog_RemoveLabels
 	Node *node,                  // updated node
 	int *label_ids               // removed labels
 ) {
-	ASSERT(log != NULL && *log != NULL);
 	ASSERT(node != NULL);
 	ASSERT(label_ids != NULL);
 
 	UndoOp op;
 
-	op.type              = UNDO_REMOVE_LABELS;
-	op.labels_op.node    = *node;
+	op.type = UNDO_REMOVE_LABELS;
+	op.labels_op.node = *node;
 	array_clone(op.labels_op.label_lds, label_ids);
-	array_append(*log, op);
+
+	RedisModule_Log(NULL, "warning", "UndoLog_RemoveLabels node id %lld",
+			op.labels_op.node.id);
+
+	_UndoLog_AddOperation(log, &op);
 }
 
 //------------------------------------------------------------------------------

@@ -9,19 +9,18 @@
 #include <stdbool.h>
 #include "../redismodule.h"
 
-
 typedef struct {
+	bool cached;                // indication for a cached query execution
 	int labels_added;           // number of labels added as part of a create/update query
-	int labels_removed;         // number of labels removed as part of an update query
 	int nodes_created;          // number of nodes created as part of a create query
-	int properties_set;         // number of properties created as part of a create query
-	int properties_removed;     // number of properties removed as part of a remove query
-	int relationships_created;  // number of edges created as part of a create query
 	int nodes_deleted;          // number of nodes removed as part of a delete query
-	int relationships_deleted;  // number of edges removed as part of a delete query
+	int labels_removed;         // number of labels removed as part of an update query
+	int properties_set;         // number of properties created as part of a create query
 	int indices_created;        // number of indices created
 	int indices_deleted;        // number of indices deleted
-	bool cached;                // indication for a cached query execution
+	int properties_removed;     // number of properties removed as part of a remove query
+	int relationships_created;  // number of edges created as part of a create query
+	int relationships_deleted;  // number of edges removed as part of a delete query
 } ResultSetStatistics;
 
 // Checks to see if resultset-statistics indicate that a modification was made
