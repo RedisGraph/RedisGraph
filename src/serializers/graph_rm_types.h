@@ -6,9 +6,10 @@
 
 #pragma once
 
-#include "../redismodule.h"
+#include "serializers_include.h"
 
-int GraphContextType_Register
+// register all graph redis module data types
+int GraphRMTypes_Register
 (
 	RedisModuleCtx *ctx
 );

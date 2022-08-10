@@ -14,13 +14,14 @@
 #include "../redismodule.h"
 #include "../util/rmalloc.h"
 #include "../util/thpool/pools.h"
+#include "../configuration/config.h"
 #include "../serializers/graphcontext_type.h"
 #include "../commands/execution_ctx.h"
 
-// Global array tracking all extant GraphContexts (defined in module.c)
+// global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
 extern uint aux_field_counter;
-// GraphContext type as it is registered at Redis.
+// GraphContext type as it is registered with Redis
 extern RedisModuleType *GraphContextRedisModuleType;
 
 // Forward declarations.

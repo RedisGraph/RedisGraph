@@ -23,9 +23,8 @@
 #include "ast/cypher_whitelist.h"
 #include "procedures/procedure.h"
 #include "module_event_handlers.h"
-#include "serializers/graphmeta_type.h"
+#include "serializers/graph_rm_types.h"
 #include "configuration/reconf_handler.h"
-#include "serializers/graphcontext_type.h"
 #include "arithmetic/arithmetic_expression.h"
 
 //------------------------------------------------------------------------------
@@ -43,16 +42,15 @@ bool process_is_child;              // Flag indicating whether the running proce
 
 extern CommandCtx **command_ctxs;
 
-static int _RegisterDataTypes(RedisModuleCtx *ctx) {
-	if(GraphContextType_Register(ctx) == REDISMODULE_ERR) {
-		printf("Failed to register GraphContext type\n");
+static int _RegisterDataTypes
+(
+	RedisModuleCtx *ctx
+) {
+	if(GraphRMTypes_Register(ctx) == REDISMODULE_ERR) {
+		printf("Failed to register Graph data types\n");
 		return REDISMODULE_ERR;
 	}
 
-	if(GraphMetaType_Register(ctx) == REDISMODULE_ERR) {
-		printf("Failed to register GraphMeta type\n");
-		return REDISMODULE_ERR;
-	}
 	return REDISMODULE_OK;
 }
 
@@ -138,53 +136,58 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
 	if(_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
 
-	if(RedisModule_CreateCommand(ctx, "graph.QUERY", CommandDispatch, "write deny-oom", 1, 1,
-								 1) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.QUERY", CommandDispatch,
+				"write deny-oom", 1, 1, 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.RO_QUERY", CommandDispatch, "readonly", 1, 1,
-								 1) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.RO_QUERY", CommandDispatch,
+				"readonly", 1, 1, 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.DELETE", Graph_Delete, "write", 1, 1,
-								 1) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.DELETE", Graph_Delete,
+				"write", 1, 1, 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.EXPLAIN", CommandDispatch, "write deny-oom", 1, 1,
-								 1) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.EXPLAIN", CommandDispatch,
+				"write deny-oom", 1, 1, 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.PROFILE", CommandDispatch, "write deny-oom", 1, 1,
-								 1) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.PROFILE", CommandDispatch,
+				"write deny-oom", 1, 1, 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.BULK", Graph_BulkInsert, "write deny-oom", 1, 1,
-								 1) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.BULK", Graph_BulkInsert,
+				"write deny-oom", 1, 1, 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.SLOWLOG", CommandDispatch, "readonly", 1, 1,
-								 1) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.SLOWLOG", CommandDispatch,
+				"readonly", 1, 1, 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.CONFIG", Graph_Config, "readonly", 0, 0,
-								 0) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.CONFIG", Graph_Config, "readonly",
+				0, 0, 0) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.LIST", Graph_List, "readonly", 0, 0,
-								 0) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.LIST", Graph_List, "readonly", 0,
+				0, 0) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.DEBUG", Graph_Debug, "readonly", 0, 0,
-								 0) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.DEBUG", Graph_Debug, "readonly",
+				0, 0, 0) == REDISMODULE_ERR) {
+		return REDISMODULE_ERR;
+	}
+
+	if(RedisModule_CreateCommand(ctx, "graph.ALIAS", Graph_Alias,
+				"write deny-oom", 1, 2, 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 

@@ -10,6 +10,7 @@
 #include "../util/thpool/pools.h"
 #include "../util/blocked_client.h"
 #include "../configuration/config.h"
+#include "../serializers/graphalias_type.h"
 
 #define GRAPH_VERSION_MISSING -1
 
@@ -156,7 +157,12 @@ static bool should_command_create_graph(GRAPH_Commands cmd) {
 	return false;
 }
 
-int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+int CommandDispatch
+(
+	RedisModuleCtx *ctx,
+	RedisModuleString **argv,
+	int argc
+) {
 	char *errmsg;
 	bool compact;
 	uint version;
@@ -164,6 +170,13 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	CommandCtx *context = NULL;
 
 	RedisModuleString *graph_name = argv[1];
+	// determine if graph_name is a graph alias
+	GraphAlias *ga = GraphAlias_Retrieve(ctx, graph_name);
+	if(ga != NULL) {
+		// replace graph_name with aliased graph name
+		graph_name = ga->name;
+	}
+
 	RedisModuleString *query = (argc > 2) ? argv[2] : NULL;
 	const char *command_name = RedisModule_StringPtrLen(argv[0], NULL);
 	GRAPH_Commands cmd = determine_command(command_name);
