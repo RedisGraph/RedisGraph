@@ -128,14 +128,15 @@ static void _UndoLog_Rollback_Set_Labels(
 	UndoOp *undo_list = ctx->undo_log;
 	for(int i = seq_start; i > seq_end; --i) {
 		UndoOp *op = undo_list + i;
-		UndoUpdateOp update_op = op->update_op;
-		UndoLabelsOp update_labels_op = op->labels_op;
+		UndoLabelsOp *update_labels_op = &(op->labels_op);
 		Graph* g = QueryCtx_GetGraph();
-		uint labels_count = array_len(update_labels_op.label_lds);
-		RedisModule_Log(NULL, "warning", "_UndoLog_Rollback_Set_Labels node id %ld", update_labels_op.node.id);
-		Graph_RemoveNodeLabels(g, update_labels_op.node.id, update_labels_op.label_lds, labels_count);
-		_index_delete_node_with_labels(ctx, &update_labels_op.node, update_labels_op.label_lds, labels_count);
+		uint labels_count = array_len(update_labels_op->label_lds);
+		RedisModule_Log(NULL, "warning", "_UndoLog_Rollback_Set_Labels node id %ld", update_labels_op->node.id);
+		Graph_RemoveNodeLabels(g, update_labels_op->node.id, update_labels_op->label_lds, labels_count);
+		_index_delete_node_with_labels(ctx, &(update_labels_op->node), update_labels_op->label_lds, labels_count);
+		array_free(update_labels_op->label_lds);
 	}
+
 }
 
 static void _UndoLog_Rollback_Remove_Labels(
@@ -146,11 +147,12 @@ static void _UndoLog_Rollback_Remove_Labels(
 	UndoOp *undo_list = ctx->undo_log;
 	for(int i = seq_start; i > seq_end; --i) {
 		UndoOp *op = undo_list + i;
-		UndoLabelsOp update_labels_op = op->labels_op;
+		UndoLabelsOp *update_labels_op = &(op->labels_op);
 		Graph* g = QueryCtx_GetGraph();
-		uint labels_count = array_len(update_labels_op.label_lds);
-		Graph_LabelNode(g, update_labels_op.node.id, update_labels_op.label_lds, labels_count);
-		_index_node_with_labels(ctx, &update_labels_op.node, update_labels_op.label_lds, labels_count);
+		uint labels_count = array_len(update_labels_op->label_lds);
+		Graph_LabelNode(g, update_labels_op->node.id, update_labels_op->label_lds, labels_count);
+		_index_node_with_labels(ctx, &update_labels_op->node, update_labels_op->label_lds, labels_count);
+		array_free(update_labels_op->label_lds);
 	}
 }
 
@@ -438,6 +440,8 @@ void UndoLog_Rollback
 
 	// assumption: no operations should be executing at this point
 	QueryCtx_UnlockCommit(NULL);
+
+	array_clear(log);
 
 }
 
