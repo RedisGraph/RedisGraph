@@ -228,3 +228,8 @@ class testPath():
         q = "MATCH (e1:Employer) RETURN e1.loc.longitude"
         res = redis_graph.query(q).result_set[0]
         self.env.assertAlmostEqual(float(res[0]), expected_value, 1e-5)
+
+        # read invalid key
+        q = "RETURN point({latitude:32.070794860, longitude:34.820751118}).v"
+        res = redis_graph.query(q)
+        self.env.assertEquals(res.result_set, [[None]])
