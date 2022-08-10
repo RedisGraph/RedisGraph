@@ -164,7 +164,10 @@ void ResultSet_IndexCreated
 	int status_code  // index creation status code
 ) {
 	ASSERT(set != NULL);
-	if(status_code == INDEX_OK) set->stats.indices_created += 1;
+
+	if(status_code == INDEX_OK) {
+		set->stats.indices_created += 1;
+	}
 }
 
 // update resultset index deleted statistics
@@ -175,7 +178,9 @@ void ResultSet_IndexDeleted
 ) {
 	ASSERT(set != NULL);
 
-	if(status_code == INDEX_OK) set->stats.indices_deleted = 1;
+	if(status_code == INDEX_OK) {
+		set->stats.indices_deleted = 1;
+	}
 }
 
 // update resultset cache execution statistics

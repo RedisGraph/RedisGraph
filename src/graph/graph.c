@@ -911,7 +911,7 @@ void Graph_DeleteNode
 	NODE_GET_LABELS(g, n, label_count);
 
 	// update label matrices
-	_Graph_RemoveNodeLabel(g, n_id, labels,label_count);
+	Graph_RemoveNodeLabels(g, n_id, labels, label_count);
 
 	// remove node from datablock
 	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
