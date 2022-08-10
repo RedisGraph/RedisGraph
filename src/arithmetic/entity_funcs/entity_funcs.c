@@ -229,8 +229,6 @@ SIValue AR_PROPERTY(SIValue *argv, int argc, void *private_data) {
 	} else if(SI_TYPE(obj) & T_POINT) {
 		// retrieve property key 
 		SIValue key = argv[1];
-		SIValue value;
-
 		return Point_GetCoordinate(obj, key);
 	} else {
 		// unexpected type SI_TYPE(obj)
