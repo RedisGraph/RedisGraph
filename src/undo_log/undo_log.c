@@ -133,10 +133,14 @@ static void _UndoLog_Rollback_Set_Labels
 		UndoLabelsOp update_labels_op = op->labels_op;
 		uint         labels_count     = array_len(update_labels_op.label_lds);
 
-		RedisModule_Log(NULL, "warning", "_UndoLog_Rollback_Set_Labels node id %ld", update_labels_op.node.id);
-		Graph_RemoveNodeLabels(g, ENTITY_GET_ID(update_labels_op.node),
+		RedisModule_Log(NULL, "warning",
+				"_UndoLog_Rollback_Set_Labels node id %lld",
+				update_labels_op.node.id);
+
+		Graph_RemoveNodeLabels(g, update_labels_op.node.id,
 				update_labels_op.label_lds,
 				array_len(update_labels_op.label_lds));
+
 		_index_delete_node_with_labels(ctx, &update_labels_op.node,
 				update_labels_op.label_lds, labels_count);
 	}
@@ -267,7 +271,7 @@ void UndoLog_CreateNode
 	op.type        = UNDO_CREATE_NODE;
 	op.create_op.n = *node;
 
-	_UndoLog_AddOperation(log, op);
+	_UndoLog_AddOperation(log, &op);
 }
 
 // undo edge creation
@@ -283,7 +287,7 @@ void UndoLog_CreateEdge
 	op.type        = UNDO_CREATE_EDGE;
 	op.create_op.e = *edge;
 
-	_UndoLog_AddOperation(log, op);
+	_UndoLog_AddOperation(log, &op);
 }
 
 // undo node deletion
@@ -308,7 +312,7 @@ void UndoLog_DeleteNode
 		op.delete_node_op.labels[i] = labels[i];
 	}
 
-	_UndoLog_AddOperation(log, op);
+	_UndoLog_AddOperation(log, &op);
 }
 
 // undo edge deletion
@@ -329,7 +333,7 @@ void UndoLog_DeleteEdge
 	op.delete_edge_op.destNodeID  = edge->destNodeID;
 	op.delete_edge_op.set         = AttributeSet_Clone(*edge->attributes);
 
-	_UndoLog_AddOperation(log, op);
+	_UndoLog_AddOperation(log, &op);
 }
 
 // undo entity update
@@ -358,7 +362,7 @@ void UndoLog_UpdateEntity
 		op.update_op.e = *(Edge *)ge;
 	}
 
-	_UndoLog_AddOperation(log, op);
+	_UndoLog_AddOperation(log, &op);
 }
 
 
@@ -376,9 +380,9 @@ void UndoLog_AddLabels
 	op.type           = UNDO_SET_LABELS;
 	op.labels_op.node = *node;
 
-	RedisModule_Log(NULL, "warning", "UndoLog_AddLabels node id %ld", op.labels_op.node.id);
+	RedisModule_Log(NULL, "warning", "UndoLog_AddLabels node id %lld", op.labels_op.node.id);
 	array_clone(op.labels_op.label_lds, label_ids);
-	_UndoLog_AddOperation(log, op);
+	_UndoLog_AddOperation(log, &op);
 }
 
 void UndoLog_RemoveLabels
@@ -397,7 +401,7 @@ void UndoLog_RemoveLabels
 
 	array_clone(op.labels_op.label_lds, label_ids);
 
-	_UndoLog_AddOperation(log, op);
+	_UndoLog_AddOperation(log, &op);
 }
 
 //------------------------------------------------------------------------------

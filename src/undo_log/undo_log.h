@@ -76,7 +76,6 @@ typedef struct {
 } UndoLabelsOp;
 
 // Undo operation
->>>>>>> ea5e4748ab64b712b63a86348b2b2f61944c117a
 typedef struct {
 	union {
 		UndoCreateOp create_op;
