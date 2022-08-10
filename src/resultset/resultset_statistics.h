@@ -19,8 +19,8 @@ typedef struct {
 	int indices_created;        // number of indices created
 	int indices_deleted;        // number of indices deleted
 	int properties_removed;     // number of properties removed as part of a remove query
-	int relationships_deleted;  // number of edges removed as part of a delete query
 	int relationships_created;  // number of edges created as part of a create query
+	int relationships_deleted;  // number of edges removed as part of a delete query
 } ResultSetStatistics;
 
 // Checks to see if resultset-statistics indicate that a modification was made

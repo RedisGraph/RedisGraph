@@ -135,7 +135,7 @@ uint CreateNode
 
 	// add node creation operation to undo log
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-	UndoLog_CreateNode(&query_ctx->undo_log, *n);
+	UndoLog_CreateNode(&query_ctx->undo_log, n);
 
 	return properties_set;
 }
@@ -162,7 +162,7 @@ uint CreateEdge
 
 	// add edge creation operation to undo log
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-	UndoLog_CreateEdge(&query_ctx->undo_log, *e);
+	UndoLog_CreateEdge(&query_ctx->undo_log, e);
 
 	return properties_set;
 }

@@ -16,16 +16,16 @@ bool ResultSetStat_IndicateModification
 	ASSERT(stats != NULL);
 
 	return (
+			stats->labels_added          |
 			stats->nodes_created         |
+			stats->nodes_deleted         |
 			stats->properties_set        |
+			stats->labels_removed        |
+			stats->indices_deleted       |
+			stats->indices_created       |
 			stats->properties_removed    |
 			stats->relationships_created |
-			stats->nodes_deleted         |
-			stats->relationships_deleted |
-			stats->labels_added          |
-			stats->labels_removed        |
-			stats->indices_created       |
-			stats->indices_deleted
+			stats->relationships_deleted
 		);
 }
 
@@ -52,6 +52,7 @@ void ResultSetStat_emit
 
 	// compute required space for resultset statistics
 	if(stats->labels_added          > 0) resultset_size++;
+	if(stats->labels_removed        > 0) resultset_size++;
 	if(stats->nodes_created         > 0) resultset_size++;
 	if(stats->nodes_deleted         > 0) resultset_size++;
 	if(stats->properties_set        > 0) resultset_size++;

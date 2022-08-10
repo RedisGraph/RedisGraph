@@ -25,6 +25,21 @@ static void _index_node
 	}
 }
 
+static void _index_node_with_labels
+(
+	QueryCtx *ctx,
+	Node *n,
+	int *labels,
+	uint label_count
+) {
+	for(uint j = 0; j < label_count; j++) {
+		Schema *s = GraphContext_GetSchemaByID(ctx->gc, labels[j], SCHEMA_NODE);
+		ASSERT(s);
+
+		if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n);
+	}
+}
+
 static void _index_edge
 (
 	QueryCtx *ctx,
@@ -43,6 +58,22 @@ static void _index_delete_node
 ) {
 	uint label_count;
 	NODE_GET_LABELS(ctx->gc->g, n, label_count);
+	for(uint j = 0; j < label_count; j++) {
+		Schema *s = GraphContext_GetSchemaByID(ctx->gc, labels[j], SCHEMA_NODE);
+		ASSERT(s);
+
+		// update any indices this entity is represented in
+		Schema_RemoveNodeFromIndices(s, n);
+	}
+}
+
+static void _index_delete_node_with_labels
+(
+	QueryCtx *ctx,
+	Node *n,
+	int *labels,
+	uint label_count
+) {
 	for(uint j = 0; j < label_count; j++) {
 		Schema *s = GraphContext_GetSchemaByID(ctx->gc, labels[j], SCHEMA_NODE);
 		ASSERT(s);
@@ -74,17 +105,17 @@ static void _UndoLog_Rollback_Update_Entity
 	UndoOp *undo_list = ctx->undo_log;
 	for(int i = seq_start; i > seq_end; --i) {
 		UndoOp *op = undo_list + i;
-		UndoUpdateOp update_op = op->update_op;
-		Graph_UpdateEntity(update_op.ge, update_op.attr_id,
-		update_op.orig_value, update_op.entity_type);
+		UndoUpdateOp *update_op = &op->update_op;
 
 		// update indices
-		if(update_op.entity_type == GETYPE_NODE) {
-			Node *n = (Node *)update_op.ge;
-			_index_node(ctx, n);
+		if(update_op->entity_type == GETYPE_NODE) {
+			Graph_UpdateEntity((GraphEntity *)&update_op->n, update_op->attr_id,
+				update_op->orig_value, update_op->entity_type);
+			_index_node(ctx, &update_op->n);
 		} else {
-			Edge *e = (Edge *)update_op.ge;
-			_index_edge(ctx, e);
+			Graph_UpdateEntity((GraphEntity *)&update_op->e, update_op->attr_id,
+				update_op->orig_value, update_op->entity_type);
+			_index_edge(ctx, &update_op->e);
 		}
 	}
 }
@@ -100,11 +131,14 @@ static void _UndoLog_Rollback_Set_Labels
 		Graph        *g               = QueryCtx_GetGraph();
 		UndoOp       *op              = undo_list + i;
 		UndoLabelsOp update_labels_op = op->labels_op;
+		uint         labels_count     = array_len(update_labels_op.label_lds);
 
+		RedisModule_Log(NULL, "warning", "_UndoLog_Rollback_Set_Labels node id %ld", update_labels_op.node.id);
 		Graph_RemoveNodeLabels(g, ENTITY_GET_ID(update_labels_op.node),
 				update_labels_op.label_lds,
 				array_len(update_labels_op.label_lds));
-		_index_delete_node(ctx, update_labels_op.node);
+		_index_delete_node_with_labels(ctx, &update_labels_op.node,
+				update_labels_op.label_lds, labels_count);
 	}
 }
 
@@ -118,8 +152,12 @@ static void _UndoLog_Rollback_Remove_Labels(
 		UndoOp *op = undo_list + i;
 		UndoLabelsOp update_labels_op = op->labels_op;
 		Graph* g = QueryCtx_GetGraph();
-		Graph_LabelNode(g, update_labels_op.node->id, update_labels_op.label_lds, array_len(update_labels_op.label_lds));
-		_index_node(ctx, update_labels_op.node);
+		uint labels_count = array_len(update_labels_op.label_lds);
+
+		Graph_LabelNode(g, update_labels_op.node.id, update_labels_op.label_lds,
+				labels_count);
+		_index_node_with_labels(ctx, &update_labels_op.node,
+				update_labels_op.label_lds, labels_count);
 	}
 }
 
@@ -220,14 +258,14 @@ UndoLog UndoLog_New(void) {
 void UndoLog_CreateNode
 (
 	UndoLog *log,
-	Node node             // node created
+	Node *node             // node created
 ) {
 	ASSERT(log != NULL && *log != NULL);
 
 	UndoOp op;
 
 	op.type        = UNDO_CREATE_NODE;
-	op.create_op.n = node;
+	op.create_op.n = *node;
 
 	_UndoLog_AddOperation(log, op);
 }
@@ -236,14 +274,14 @@ void UndoLog_CreateNode
 void UndoLog_CreateEdge
 (
 	UndoLog *log,
-	Edge edge             // edge created
+	Edge *edge             // edge created
 ) {
 	ASSERT(log != NULL && *log != NULL);
 
 	UndoOp op;
 
 	op.type        = UNDO_CREATE_EDGE;
-	op.create_op.e = edge;
+	op.create_op.e = *edge;
 
 	_UndoLog_AddOperation(log, op);
 }
@@ -310,10 +348,15 @@ void UndoLog_UpdateEntity
 	UndoOp op;
 
 	op.type                  = UNDO_UPDATE;
-	op.update_op.ge          = ge;
 	op.update_op.attr_id     = attr_id;
 	op.update_op.orig_value  = SI_CloneValue(orig_value);
 	op.update_op.entity_type = entity_type;
+
+	if(entity_type == GETYPE_NODE) {
+		op.update_op.n = *(Node *)ge;
+	} else {
+		op.update_op.e = *(Edge *)ge;
+	}
 
 	_UndoLog_AddOperation(log, op);
 }
@@ -325,14 +368,15 @@ void UndoLog_AddLabels
 	Node *node,                  // updated node
 	int *label_ids               // added labels
 ) {
-	ASSERT(log != NULL && *log != NULL);
 	ASSERT(node != NULL);
 	ASSERT(label_ids != NULL);
 
 	UndoOp op;
 
-	op.type                  = UNDO_SET_LABELS;
-	op.labels_op.node       = node;
+	op.type           = UNDO_SET_LABELS;
+	op.labels_op.node = *node;
+
+	RedisModule_Log(NULL, "warning", "UndoLog_AddLabels node id %ld", op.labels_op.node.id);
 	array_clone(op.labels_op.label_lds, label_ids);
 	_UndoLog_AddOperation(log, op);
 }
@@ -345,12 +389,12 @@ void UndoLog_RemoveLabels
 ) {
 	ASSERT(node != NULL);
 	ASSERT(label_ids != NULL);
-	ASSERT(log != NULL && *log != NULL);
 
 	UndoOp op;
 
 	op.type           = UNDO_REMOVE_LABELS;
-	op.labels_op.node = node;
+	op.labels_op.node = *node;
+
 	array_clone(op.labels_op.label_lds, label_ids);
 
 	_UndoLog_AddOperation(log, op);

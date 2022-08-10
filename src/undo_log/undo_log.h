@@ -61,18 +61,22 @@ typedef struct {
 
 // undo graph entity update
 typedef struct {
-	GraphEntity *ge;              // entity updated
+	union {
+		Node n;
+		Edge e;
+	};
 	GraphEntityType entity_type;  // node/edge
 	Attribute_ID attr_id;         // attribute update
 	SIValue orig_value;           // attribute original value
 } UndoUpdateOp;
 
 typedef struct {
-	Node *node;
+	Node node;
 	int* label_lds;
 } UndoLabelsOp;
 
-// undo operation
+// Undo operation
+>>>>>>> ea5e4748ab64b712b63a86348b2b2f61944c117a
 typedef struct {
 	union {
 		UndoCreateOp create_op;
@@ -98,14 +102,14 @@ UndoLog UndoLog_New(void);
 void UndoLog_CreateNode
 (
 	UndoLog *log,  // undo log
-	Node node     // node created
+	Node *node     // node created
 );
 
 // undo edge creation
 void UndoLog_CreateEdge
 (
 	UndoLog *log,  // undo log
-	Edge edge      // edge created
+	Edge *edge     // edge created
 );
 
 // undo node deletion
