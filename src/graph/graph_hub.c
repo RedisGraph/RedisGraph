@@ -374,9 +374,6 @@ void UpdateNodeLabels
 				continue;
 			}
 
-			// sync matrix, make sure label matrix is of the right dimensions
-			// TODO: not sure why is this needed ?
-			Graph_GetLabelMatrix(gc->g, Schema_GetID(s));
 			// append label id
 			array_append(remove_labels, Schema_GetID(s));
 			// remove node from index
