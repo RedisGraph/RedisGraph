@@ -86,6 +86,8 @@ static void _UndoLog_Rollback_Update_Entity
 				update_op->orig_value, update_op->entity_type);
 			_index_edge(ctx, &update_op->e);
 		}
+		// Cleanup after rollback, as the op D'tor is not being called.
+		SIValue_Free(update_op->orig_value);
 	}
 }
 
@@ -130,14 +132,16 @@ static void _UndoLog_Rollback_Delete_Node
 	for(int i = seq_start; i > seq_end; --i) {
 		Node n;
 		UndoOp *op = undo_list + i;
-		UndoDeleteNodeOp delete_op = op->delete_node_op;
+		UndoDeleteNodeOp *delete_op = &(op->delete_node_op);
 
-		Graph_CreateNode(ctx->gc->g, &n, delete_op.labels,
-				delete_op.label_count);
-		*n.attributes = delete_op.set;
+		Graph_CreateNode(ctx->gc->g, &n, delete_op->labels,
+				delete_op->label_count);
+		*n.attributes = delete_op->set;
 
 		// re-introduce node to indices
 		_index_node(ctx, &n);
+		// Cleanup after undo rollback, as the op D'tor is not called.
+		rm_free(delete_op->labels);
 	}
 }
 
