@@ -30,6 +30,5 @@ SIValue Point_GetCoordinate(SIValue point, SIValue key) {
 	} else {
 		return SI_NullVal();
 	}
-
 }
 
