@@ -14,40 +14,6 @@
 #include "../procedures/procedure.h"
 #include "../arithmetic/arithmetic_expression.h"
 
-// TODO: generic function should be used to validate different features positions
-// static AST_Validation _NestedIn
-// (
-// 	const cypher_astnode_t *root,
-// 	cypher_astnode_type_t search_type,
-// 	cypher_astnode_type_t *whitelist,
-// 	bool is_in_whitelist
-// ) {
-// 	ASSERT(root != NULL);
-// 	ASSERT(whitelist != NULL);
-
-// 	cypher_astnode_type_t t = cypher_astnode_type(root);
-// 	if(t == search_type && is_in_whitelist) return true;
-
-// 	if(!is_in_whitelist) {
-// 		int len = array_len(whitelist);
-// 		for (uint i = 0; i < len; i++) {
-// 			if(t == whitelist[i]) {
-// 				is_in_whitelist = true;
-// 				break;
-// 			}
-// 		}
-// 	}
-
-// 	uint nchildren = cypher_astnode_nchildren(root);
-// 	for(uint i = 0; i < nchildren; i ++) {
-// 		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
-// 		bool res = _NestedIn(child, search_type, whitelist, is_in_whitelist);
-// 		if(res) return true;
-// 	}
-
-// 	return false;
-// }
-
 // validate that allShortestPaths is in a supported places
 static bool _ValidateAllShortestPaths
 (
@@ -1105,12 +1071,6 @@ static AST_Validation _Validate_UNWIND_Clauses(const AST *ast) {
 	uint clause_count = array_len(unwind_clauses);
 	for(uint i = 0; i < clause_count; i++) {
 		const cypher_astnode_t *expression = cypher_ast_unwind_get_expression(unwind_clauses[i]);
-		// Verify that all elements of the UNWIND collection are supported by RedisGraph
-		uint child_count = cypher_astnode_nchildren(expression);
-		for(uint j = 0; j < child_count; j ++) {
-			res = CypherWhitelist_ValidateQuery(cypher_astnode_get_child(expression, j));
-			if(res != AST_VALID) goto cleanup;
-		}
 		// Verify that UNWIND doesn't call non-existent or unsupported functions.
 		res = _ValidateFunctionCalls(expression, true);
 		if(res != AST_VALID) goto cleanup;

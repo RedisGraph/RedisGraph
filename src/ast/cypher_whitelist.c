@@ -5,10 +5,10 @@
  */
 
 #include "cypher_whitelist.h"
-#include "../../deps/libcypher-parser/lib/src/operators.h" // TODO safe?
 #include "rax.h"
 #include "../errors.h"
 #include "../query_ctx.h"
+#include "../../deps/libcypher-parser/lib/src/operators.h" // TODO safe?
 
 /* Whitelist of all accepted cypher_astnode types:
  * Includes entities like CREATE clauses and node patterns,
@@ -209,9 +209,6 @@ static AST_Validation _CypherWhitelist_ValidateQuery(const cypher_astnode_t *ele
 		Error_UnsupportedASTNodeType(elem);
 		return AST_INVALID;
 	}
-
-	// As the UNWIND clause is the only place we currently support COLLECTIONs, validate it separately
-	if(type == CYPHER_AST_UNWIND) return AST_VALID;
 
 	// If the node is an operator call, validate that we support the operator type
 	const cypher_operator_t *operator = NULL;
