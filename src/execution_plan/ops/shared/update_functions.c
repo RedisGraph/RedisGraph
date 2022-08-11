@@ -83,10 +83,6 @@ void CommitUpdates
 				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE, &_props_set,
 				&_props_removed);
 
-		// TODO: update->ge might be an edge!
-		// I think it would be better to check / validate that we call
-		// UpdateNodeLabels only in-case where the entity is a Node and that
-		// there are labels to be updated
 		UpdateNodeLabels(gc, (Node*)update->ge, update->labels, &_labels_added,
 				&_labels_removed);
 

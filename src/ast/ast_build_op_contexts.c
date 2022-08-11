@@ -49,7 +49,7 @@ static void _ConvertUpdateItem
 	ASSERT(updates     != NULL);
 	ASSERT(update_item != NULL);
 
-	const char                  *alias     = NULL;  // entity    being updated
+	const char                  *alias     = NULL;  // entity being updated
 	const char                  *attribute = NULL;  // attribute being set
 	const cypher_astnode_t      *prop_expr = NULL;
 	const cypher_astnode_t      *ast_prop  = NULL;
@@ -62,8 +62,17 @@ static void _ConvertUpdateItem
 	UPDATE_MODE  update_mode   = UPDATE_MERGE;
 	Attribute_ID attribute_id  = ATTRIBUTE_ID_NONE;
 
-	// TODO: the purpose of these two large if/else if blocks is unclear
-	// why are there two blocks, what each block tries to achieve?
+	//--------------------------------------------------------------------------
+	// determine the type of assignment
+	//--------------------------------------------------------------------------
+	// 1. override  - MATCH (a) SET a = {v: 5}
+	// 2. merge     - MATCH (a) SET a += {v: 5}
+	// 3. update    - MATCH (a) SET a.v = 5
+	// 4. label set - MATCH (a) SET a:Label1:Label2
+	// 5. label del - MATCH (a) REMOVE a:Label1:Label2
+	// 6. attr del  - MATCH (a) REMOVE a.v
+	//--------------------------------------------------------------------------
+
 	if(type == CYPHER_AST_SET_ALL_PROPERTIES) {
 		// MATCH (a) SET a = {v: 5}
 		update_mode = UPDATE_REPLACE;
@@ -137,26 +146,30 @@ static void _ConvertUpdateItem
 		ASSERT(false);
 	}
 
+	// see if we need to create an update context for updated entity
 	int len = strlen(alias);
-
 	EntityUpdateEvalCtx *ctx = raxFind(updates, (unsigned char *)alias, len);
 	if(ctx == raxNotFound) {
 		ctx = UpdateCtx_New(update_mode, 1, alias);
 		raxInsert(updates, (unsigned char *)alias, len, ctx, NULL);
 	} 
 
-	// either in set labels or remove labels scenario, the rax will hold a value
-	// if the value is true, it means to set the label
-	// if the value is false it means to remove the label
+	//--------------------------------------------------------------------------
+	// collect update information
+	//--------------------------------------------------------------------------
+	// 1. set of labels to add
+	// 2. set of labels to remove
+	// 3. attribute to set
+	//--------------------------------------------------------------------------
+
 	if(set_labels) {
 		uint label_count = cypher_ast_set_labels_nlabels(update_item);
 		for (uint i = 0; i < label_count; i++) {
 			const cypher_astnode_t *label_node =
 				cypher_ast_set_labels_get_label(update_item, i);
 			const char* label = cypher_ast_label_get_name(label_node);
-			// mark label for addition
 			raxInsert(ctx->labels, (unsigned char *)label, strlen(label),
-					true, NULL);
+					SET_LABEL, NULL);
 		}
 	} else if(remove_labels) {
 		uint label_count = cypher_ast_remove_labels_nlabels(update_item);
@@ -164,9 +177,8 @@ static void _ConvertUpdateItem
 			const cypher_astnode_t * label_node =
 				cypher_ast_remove_labels_get_label(update_item, i);
 			const char* label = cypher_ast_label_get_name(label_node);
-			// mark label for removal
 			raxInsert(ctx->labels, (unsigned char *)label, strlen(label),
-					false, NULL);
+					REMOVE_LABEL, NULL);
 		}
 	} else {
 		if(update_mode == UPDATE_REPLACE) {
@@ -174,9 +186,14 @@ static void _ConvertUpdateItem
 			UpdateCtx_SetMode(ctx, UPDATE_REPLACE);
 		}
 		// updated value
-		AR_ExpNode *exp = ast_value ?
-			AR_EXP_FromASTNode(ast_value) :
-			AR_EXP_NewConstOperandNode(SI_NullVal());
+		AR_ExpNode *exp;
+		if(ast_value != NULL) {
+			exp = AR_EXP_FromASTNode(ast_value);
+		} else {
+			// remove an attribute e.g. REMOVE a.v
+			// this is done by performing a.v = NULL
+			exp = AR_EXP_NewConstOperandNode(SI_NullVal());
+		}
 		PropertySetCtx update = { .id  = attribute_id, .exp = exp };
 		array_append(ctx->properties, update);
 	}

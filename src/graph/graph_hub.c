@@ -219,6 +219,7 @@ static void _Update_Entity_Property
 	uint *props_set_count,
 	uint *props_removed_count
 ) {
+	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 	if(attr_id == ATTRIBUTE_ID_ALL) {
 		// we're requested to clear entitiy's attribute-set
 		// backup entity's attributes in case we'll need to roolback
@@ -227,18 +228,19 @@ static void _Update_Entity_Property
 			Attribute_ID id;
 			// add entity update operation to undo log
 			SIValue value = AttributeSet_GetIdx(set, i, &id);
-			QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-			UndoLog_UpdateEntity(&query_ctx->undo_log, ge, id, value, entity_type);
+			UndoLog_UpdateEntity(&query_ctx->undo_log, ge, id, value,
+					entity_type);
 		}
 	} else {
+		// TODO: what if orig_value returns as 'ATTRIBUTE_NOTFOUND' ?
 		SIValue *orig_value = GraphEntity_GetProperty(ge, attr_id);
 		// add entity update operation to undo log
-		QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-		UndoLog_UpdateEntity(&query_ctx->undo_log, ge, attr_id, *orig_value, entity_type);
+		UndoLog_UpdateEntity(&query_ctx->undo_log, ge, attr_id, *orig_value,
+				entity_type);
 	}
 
 	// TODO: document the general task which the following performs
-	// TODO: what if attr_id is ATTRIBUTE_ID_ALL ?
+	// TODO: what if attr_id is ATTRIBUTE_ID_ALL? I think old_value will be 'ATTRIBUTE_NOTFOUND'
 	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
 	int updates = Graph_UpdateEntity(ge, attr_id, new_value, entity_type);
 
@@ -325,7 +327,7 @@ void UpdateNodeLabels
 	raxIterator it;
 	raxStart(&it, labels);
 
-	// TODO: consider switching to a stack base arrays
+	// TODO: switch to a stack base arrays
 	// int[label_count] add_labels
 	int *add_labels    = array_new(int, label_count);
 	int *remove_labels = array_new(int, label_count);
@@ -343,10 +345,7 @@ void UpdateNodeLabels
 		memcpy(label, raw_label, len);
 		label[len] = 0;
 
-		// TODO:this condition is a bit confusing
-		// consider adding 2 unique pointers
-		// e.g. CREATE_LABEL and REMOVE_LABEL
-		if(it.data) {
+		if(it.data == SET_LABEL) {
 			// get or create label matrix
 			const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 			if(s == NULL) {
@@ -366,7 +365,8 @@ void UpdateNodeLabels
 				Schema_AddNodeToIndices(s, node);
 			}
 		} else {
-			// Label removal
+			ASSERT(it.data == REMOVE_LABEL);
+			// label removal
 			// get or create label matrix
 			const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 			if(s == NULL) {

@@ -601,7 +601,7 @@ void Graph_CreateNode
 	n->attributes = set;
 
 	if(label_count > 0) {
-		Graph_LabelNode(g, n->id, labels, label_count);
+		Graph_LabelNode(g, ENTITY_GET_ID(n), labels, label_count);
 	}
 }
 
