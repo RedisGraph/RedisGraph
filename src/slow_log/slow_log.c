@@ -269,7 +269,10 @@ void SlowLog_Replay
 	SlowLog *aggregated_slowlog = SlowLog_New();
 
 	for(int t_id = 0; t_id < slowlog->count; t_id++) {
-		pthread_mutex_lock(slowlog->locks + t_id);
+		if(pthread_mutex_lock(slowlog->locks + t_id) != 0) {
+			// failed to lock, skip aggregating this thread slowlog entries
+			continue;
+		}
 		{
 			// critical section
 			rax *lookup = slowlog->lookup[t_id];
