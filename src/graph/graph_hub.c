@@ -257,7 +257,8 @@ static void _Update_Entity_Property
 	}
 }
 
-// TODO: missing documentation
+// updates a graph entity attribute set. Returns as out params the number
+// of properties set and removed.
 void UpdateEntityProperties
 (
 	GraphContext *gc,             // graph context
