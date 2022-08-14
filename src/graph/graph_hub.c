@@ -349,8 +349,10 @@ void UpdateNodeLabels
 		if(it.data) {
 			// get or create label matrix
 			const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+			bool schema_created = false;
 			if(s == NULL) {
 				s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+				schema_created = true;
 			}
 
 			int  schema_id = Schema_GetID(s);
@@ -358,8 +360,9 @@ void UpdateNodeLabels
 
 			if(!node_labeled) {
 				// sync matrix, make sure label matrix is of the right dimensions
-				// TODO: this is only required when the schema is created
-				RG_Matrix m = Graph_GetLabelMatrix(gc->g, schema_id);
+				if(schema_created) {
+					RG_Matrix m = Graph_GetLabelMatrix(gc->g, schema_id);
+				}
 				// append label id
 				add_labels[add_labels_index++] = schema_id;
 				// add to index
