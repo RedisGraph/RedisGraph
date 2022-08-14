@@ -1146,12 +1146,6 @@ RG_Matrix Graph_GetNodeLabelMatrix
 
 	RG_Matrix m = g->node_labels;
 
-	// TODO: the node_labels matrix should be of dimensions NxS
-	// where N is the *(number of nodes in the graph) similar to every other
-	// graph matrix but S should be #Schemas
-	// I don't believe this is currently the case 
-	g->SynchronizeMatrix(g, m);
-
 	return m;
 }
 
