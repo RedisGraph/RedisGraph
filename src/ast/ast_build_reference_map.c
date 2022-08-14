@@ -255,6 +255,8 @@ static void _AST_MapRemoveLabelsReferences
 	AST *ast,
 	const cypher_astnode_t *remove_item
 ) {
+	ASSERT(ast != NULL);
+	ASSERT(remove_item != NULL);
 	ASSERT(cypher_astnode_type(remove_item) == CYPHER_AST_REMOVE_LABELS);
 
 	const cypher_astnode_t *identifier =
@@ -270,6 +272,9 @@ static void _AST_MapRemoveItemReferences
 	AST *ast,
 	const cypher_astnode_t *remove_item
 ) {
+	ASSERT(ast != NULL);
+	ASSERT(remove_item != NULL);
+
 	const cypher_astnode_type_t type = cypher_astnode_type(remove_item);
 	if(type == CYPHER_AST_REMOVE_LABELS) {
 		_AST_MapRemoveLabelsReferences(ast, remove_item);
@@ -286,7 +291,9 @@ static void _AST_MapRemoveClauseReferences
 	AST *ast,
 	const cypher_astnode_t *remove_clause
 ) {
-	// TODO: assertions
+	ASSERT(ast != NULL);
+	ASSERT(remove_clause != NULL);
+
 	uint nitems = cypher_ast_remove_nitems(remove_clause);
 	for(uint i = 0; i < nitems; i++) {
 		// get the SET directive at this index
@@ -302,6 +309,9 @@ static void _AST_MapDeleteClauseReferences
 	AST *ast,
 	const cypher_astnode_t *delete_clause
 ) {
+	ASSERT(ast != NULL);
+	ASSERT(delete_clause != NULL);
+
 	uint nitems = cypher_ast_delete_nexpressions(delete_clause);
 	for(uint i = 0; i < nitems; i++) {
 		const cypher_astnode_t *delete_exp =

@@ -232,28 +232,29 @@ inline bool SIValue_IsNullPtr(SIValue *v) {
 }
 
 const char *SIType_ToString(SIType t) {
-	if(t & T_STRING) {
-		return "String";
-	} else if(t & T_INT64) {
-		return "Integer";
-	} else if(t & T_BOOL) {
-		return "Boolean";
-	} else if(t & T_DOUBLE) {
-		return "Float";
-	} else if(t & T_PTR) {
-		return "Pointer";
-	} else if(t & T_NODE) {
-		return "Node";
-	} else if(t & T_EDGE) {
-		return "Edge";
-	} else if(t & T_ARRAY) {
-		return "List";
-	} else if(t & T_PATH) {
-		return "Path";
-	} else if(t & T_NULL) {
-		return "Null";
-	} else {
-		return "Unknown";
+	switch(t) {
+		case T_STRING:
+			return "String";
+		case T_INT64:
+			return "Integer";
+		case T_BOOL:
+			return "Boolean";
+		case T_DOUBLE:
+			return "Float";
+		case T_PTR:
+			return "Pointer";
+		case T_NODE:
+			return "Node";
+		case T_EDGE:
+			return "Edge";
+		case T_ARRAY:
+			return "List";
+		case T_PATH:
+			return "Path";
+		case T_NULL:
+			return "Null";
+		default:
+			return "Unknown";
 	}
 }
 

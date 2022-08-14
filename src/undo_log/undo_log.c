@@ -25,23 +25,6 @@ static void _index_node
 	}
 }
 
-static void _index_node_with_labels
-(
-	QueryCtx *ctx,
-	Node *n,
-	int *labels,
-	uint label_count
-) {
-	for(uint i = 0; i < label_count; i++) {
-		Schema *s = GraphContext_GetSchemaByID(ctx->gc, labels[i], SCHEMA_NODE);
-		ASSERT(s != NULL);
-
-		if(Schema_HasIndices(s)) {
-			Schema_AddNodeToIndices(s, n);
-		}
-	}
-}
-
 static void _index_edge
 (
 	QueryCtx *ctx,
@@ -63,22 +46,6 @@ static void _index_delete_node
 	for(uint j = 0; j < label_count; j++) {
 		Schema *s = GraphContext_GetSchemaByID(ctx->gc, labels[j], SCHEMA_NODE);
 		ASSERT(s);
-
-		// update any indices this entity is represented in
-		Schema_RemoveNodeFromIndices(s, n);
-	}
-}
-
-static void _index_delete_node_with_labels
-(
-	QueryCtx *ctx,
-	Node *n,
-	int *labels,
-	uint label_count
-) {
-	for(uint i = 0; i < label_count; i++) {
-		Schema *s = GraphContext_GetSchemaByID(ctx->gc, labels[i], SCHEMA_NODE);
-		ASSERT(s != NULL);
 
 		// update any indices this entity is represented in
 		Schema_RemoveNodeFromIndices(s, n);
@@ -139,12 +106,12 @@ static void _UndoLog_Rollback_Set_Labels
 		Graph_RemoveNodeLabels(g, update_labels_op->node.id,
 				update_labels_op->label_lds, labels_count);
 
-		_index_delete_node_with_labels(ctx, &(update_labels_op->node),
-				update_labels_op->label_lds, labels_count);
+			// update any indices this entity is represented in
+			Schema_RemoveNodeFromIndices(s, n);
+		}
 
 		array_free(update_labels_op->label_lds);
 	}
-
 }
 
 static void _UndoLog_Rollback_Remove_Labels
@@ -163,10 +130,12 @@ static void _UndoLog_Rollback_Remove_Labels
 		Graph_LabelNode(g, update_labels_op->node.id, 
 				update_labels_op->label_lds, labels_count);
 
-		_index_node_with_labels(ctx, &(update_labels_op->node),
-				update_labels_op->label_lds, labels_count);
+			if(Schema_HasIndices(s)) {
+				Schema_AddNodeToIndices(s, n);
+			}
+		}
 
-		array_free(update_labels_op->label_lds);
+		array_free(labels);
 	}
 }
 
