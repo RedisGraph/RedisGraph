@@ -155,7 +155,7 @@ static void _ConvertUpdateItem
 				cypher_ast_set_labels_get_label(update_item, i);
 			const char* label = cypher_ast_label_get_name(label_node);
 			// mark label for addition
-			raxInsert(ctx->labels, (unsigned char *)label, strlen(label),
+			raxInsert(ctx->labels, (unsigned char *)label, strlen(label)+1,
 					true, NULL);
 		}
 	} else if(remove_labels) {
@@ -165,7 +165,7 @@ static void _ConvertUpdateItem
 				cypher_ast_remove_labels_get_label(update_item, i);
 			const char* label = cypher_ast_label_get_name(label_node);
 			// mark label for removal
-			raxInsert(ctx->labels, (unsigned char *)label, strlen(label),
+			raxInsert(ctx->labels, (unsigned char *)label, strlen(label)+1,
 					false, NULL);
 		}
 	} else {

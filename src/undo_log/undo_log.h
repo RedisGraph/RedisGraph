@@ -73,6 +73,7 @@ typedef struct {
 typedef struct {
 	Node node;
 	int* label_lds;
+	size_t labels_count;
 } UndoLabelsOp;
 
 // Undo operation
@@ -139,14 +140,16 @@ void UndoLog_AddLabels
 (
 	UndoLog *log,                // undo log
 	Node *node,                  // updated node
-	int *label_ids               // added labels
+	int *label_ids,              // added labels
+	size_t labels_count          // number of removed labels
 );
 
 void UndoLog_RemoveLabels
 (
 	UndoLog *log,                // undo log
 	Node *node,                  // updated node
-	int *label_ids               // removed label
+	int *label_ids,              // removed labels
+	size_t labels_count          // number of removed labels
 );
 
 // rollback all modifications tracked by this undo log

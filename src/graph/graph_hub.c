@@ -334,15 +334,7 @@ void UpdateNodeLabels
 	raxSeek(&it, "^", NULL, 0);
 	while(raxNext(&it)) {
 		// get label string
-		unsigned char *raw_label = it.key;
-		// avoid rax not null terminating strings
-		// TODO: insert the keys with their NULL terminator
-		// do not perfome the memcpy below
-		size_t len = it.key_len;
-		char label[len];
-		memcpy(label, raw_label, len);
-		label[len] = 0;
-
+		unsigned char *label = it.key;
 		// TODO:this condition is a bit confusing
 		// consider adding 2 unique pointers
 		// e.g. CREATE_LABEL and REMOVE_LABEL
@@ -391,8 +383,8 @@ void UpdateNodeLabels
 	}
 	// update node's labels
 	if(add_labels_index > 0) {
-		Graph_LabelNode(gc->g, node->id ,add_labels, label_count);
-		UndoLog_AddLabels(&query_ctx->undo_log, node, add_labels);
+		Graph_LabelNode(gc->g, node->id ,add_labels, add_labels_index);
+		UndoLog_AddLabels(&query_ctx->undo_log, node, add_labels, add_labels_index);
 	}
 
 	if(remove_labels_index) {
@@ -401,8 +393,8 @@ void UpdateNodeLabels
 	// update node's labels
 	if(remove_labels_index > 0) {
 		Graph_RemoveNodeLabels(gc->g, ENTITY_GET_ID(node), remove_labels,
-				label_count);
-		UndoLog_RemoveLabels(&query_ctx->undo_log, node, remove_labels);
+				remove_labels_index);
+		UndoLog_RemoveLabels(&query_ctx->undo_log, node, remove_labels, remove_labels_index);
 	}
 }
 

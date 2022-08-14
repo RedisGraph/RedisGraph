@@ -134,7 +134,7 @@ static void _UndoLog_Rollback_Set_Labels
 		Graph        *g                = QueryCtx_GetGraph();
 		UndoOp       *op               = undo_list + i;
 		UndoLabelsOp *update_labels_op = &(op->labels_op);
-		uint         labels_count      = array_len(update_labels_op->label_lds);
+		uint         labels_count      = update_labels_op->labels_count;
 
 		Graph_RemoveNodeLabels(g, update_labels_op->node.id,
 				update_labels_op->label_lds, labels_count);
@@ -158,7 +158,7 @@ static void _UndoLog_Rollback_Remove_Labels
 		Graph        *g                = QueryCtx_GetGraph();
 		UndoOp       *op               = undo_list + i;
 		UndoLabelsOp *update_labels_op = &(op->labels_op);
-		uint         labels_count      = array_len(update_labels_op->label_lds);
+		uint         labels_count      = update_labels_op->labels_count;
 
 		Graph_LabelNode(g, update_labels_op->node.id, 
 				update_labels_op->label_lds, labels_count);
@@ -377,7 +377,8 @@ void UndoLog_AddLabels
 (
 	UndoLog *log,                // undo log
 	Node *node,                  // updated node
-	int *label_ids               // added labels
+	int *label_ids,              // added labels
+	size_t labels_count          // number of removed labels
 ) {
 	ASSERT(node != NULL);
 	ASSERT(label_ids != NULL);
@@ -386,7 +387,9 @@ void UndoLog_AddLabels
 
 	op.type = UNDO_SET_LABELS;
 	op.labels_op.node = *node;
-	array_clone(op.labels_op.label_lds, label_ids);
+	op.labels_op.label_lds = array_new(int, labels_count);
+	memcpy(op.labels_op.label_lds, label_ids, sizeof(int)*labels_count);
+	op.labels_op.labels_count = labels_count;
 	_UndoLog_AddOperation(log, &op);
 }
 
@@ -394,7 +397,8 @@ void UndoLog_RemoveLabels
 (
 	UndoLog *log,                // undo log
 	Node *node,                  // updated node
-	int *label_ids               // removed labels
+	int *label_ids,              // removed labels
+	size_t labels_count          // number of removed labels
 ) {
 	ASSERT(node != NULL);
 	ASSERT(label_ids != NULL);
@@ -403,7 +407,9 @@ void UndoLog_RemoveLabels
 
 	op.type = UNDO_REMOVE_LABELS;
 	op.labels_op.node = *node;
-	array_clone(op.labels_op.label_lds, label_ids);
+	op.labels_op.label_lds = array_new(int, labels_count);
+	memcpy(op.labels_op.label_lds, label_ids, sizeof(int)*labels_count);
+	op.labels_op.labels_count = labels_count;
 	_UndoLog_AddOperation(log, &op);
 }
 

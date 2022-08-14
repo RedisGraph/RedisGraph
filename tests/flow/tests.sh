@@ -142,7 +142,7 @@ fi
 
 setup_redis_server() {
 	if [[ $VALGRIND == 1 ]]; then
-		REDIS_SERVER=${REDIS_SERVER:-redis-server-vg}
+		REDIS_SERVER=${REDIS_SERVER:-redis-server}
 		if ! is_command $REDIS_SERVER; then
 			echo Building Redis for Valgrind ...
 			$READIES/bin/getredis -v $VALGRIND_REDIS_VER --valgrind --suffix vg
