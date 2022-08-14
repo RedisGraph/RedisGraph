@@ -237,15 +237,14 @@ static void _Update_Entity_Property
 		UndoLog_UpdateEntity(&query_ctx->undo_log, ge, attr_id, *orig_value, entity_type);
 	}
 
-	// TODO: document the general task which the following performs
-	// TODO: what if attr_id is ATTRIBUTE_ID_ALL ?
+	// update the property and set the appropriate counter.
+	// TODO: what if attr_id is ATTRIBUTE_ID_ALL ? see graph.c:1008 
 	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
 	int updates = Graph_UpdateEntity(ge, attr_id, new_value, entity_type);
 
 	if(SIValue_IsNull(new_value)) {
-		// TODO: what if old_value == ATTRIBUTE_NOTFOUND
-		// does this still consider a removal ?
-		// removal of an attribute
+		// removal of an attribute. In case the attribute is not present,
+		// the update will not be counted (Graph_UpdateEntity logic).
 		*props_removed_count = updates;
 	} else {
 		// addition of an attribte
