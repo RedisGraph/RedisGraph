@@ -325,10 +325,10 @@ void UpdateNodeLabels
 	raxIterator it;
 	raxStart(&it, labels);
 
-	// TODO: consider switching to a stack base arrays
-	// int[label_count] add_labels
-	int *add_labels    = array_new(int, label_count);
-	int *remove_labels = array_new(int, label_count);
+	int add_labels[label_count];
+	int remove_labels[label_count];
+	size_t add_labels_index = 0;
+	size_t remove_labels_index = 0;
 
 	// iterate over all keys in the rax
 	raxSeek(&it, "^", NULL, 0);
@@ -361,7 +361,7 @@ void UpdateNodeLabels
 				// TODO: this is only required when the schema is created
 				RG_Matrix m = Graph_GetLabelMatrix(gc->g, schema_id);
 				// append label id
-				array_append(add_labels, schema_id);
+				add_labels[add_labels_index++] = schema_id;
 				// add to index
 				Schema_AddNodeToIndices(s, node);
 			}
@@ -375,7 +375,7 @@ void UpdateNodeLabels
 			}
 
 			// append label id
-			array_append(remove_labels, Schema_GetID(s));
+			remove_labels[remove_labels_index++] = Schema_GetID(s);
 			// remove node from index
 			Schema_RemoveNodeFromIndices(s, node);
 		}
@@ -383,29 +383,23 @@ void UpdateNodeLabels
 	raxStop(&it); 
 
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-	label_count = array_len(add_labels);
-	if(labels_added_count) {
-		*labels_added_count = label_count;
+	if(add_labels_index) {
+		*labels_added_count = add_labels_index;
 	}
 	// update node's labels
-	if(label_count > 0) {
+	if(add_labels_index > 0) {
 		Graph_LabelNode(gc->g, node->id ,add_labels, label_count);
 		UndoLog_AddLabels(&query_ctx->undo_log, node, add_labels);
 	}
 
-	label_count = array_len(remove_labels);
-	if(labels_removed_count) {
-		*labels_removed_count = label_count;
+	if(remove_labels_index) {
+		*labels_removed_count = remove_labels_index;
 	}
 	// update node's labels
-	if(label_count > 0) {
+	if(remove_labels_index > 0) {
 		Graph_RemoveNodeLabels(gc->g, ENTITY_GET_ID(node), remove_labels,
 				label_count);
 		UndoLog_RemoveLabels(&query_ctx->undo_log, node, remove_labels);
 	}
-
-	// clean up
-	array_free(add_labels);
-	array_free(remove_labels);
 }
 
