@@ -236,6 +236,11 @@ bool AttributeSet_UpdateNoClone
 	ASSERT(set != NULL && *set != NULL);
 	ASSERT(attr_id != ATTRIBUTE_ID_NONE);
 
+	// setting an attribute value to NULL removes that attribute
+	if(unlikely(SIValue_IsNull(value))) {
+		return _AttributeSet_Remove(set, attr_id);
+	}
+
 	SIValue *current = AttributeSet_Get(*set, attr_id);
 	ASSERT(current != ATTRIBUTE_NOTFOUND);
 	ASSERT(SIValue_Compare(*current, value, NULL) != 0);
