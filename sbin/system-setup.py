@@ -73,7 +73,6 @@ class RedisGraphSetup(paella.Setup):
         else:
             self.install("lcov-git", aur=True)
 
-        self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall".format(PYTHON=self.python, READIES=READIES))
         self.pip_install("-r tests/requirements.txt")
         self.run("%s/bin/getpy2" % READIES) # for RediSearch build
 
