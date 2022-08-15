@@ -10,7 +10,7 @@ class testGraphList(FlowTestsBase):
         self.env = Env(decodeResponses=True)
 
     def create_graph(self, graph_name, con):
-        con.execute_command("GRAPH.EXPLAIN", graph_name, "RETURN 1")
+        con.execute_command("GRAPH.QUERY", graph_name, "RETURN 1")
 
     def test_graph_list(self):
         # no graphs, expecting an empty array
