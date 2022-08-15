@@ -725,7 +725,6 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """RETURN toFloatOrNull('1.2.3')"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], None)
-        query = """RETURN toFloatOrNull('not a boolean')"""
 
         # integers
         query = """RETURN toFloatOrNull(0.1)"""
