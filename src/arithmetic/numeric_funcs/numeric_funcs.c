@@ -107,8 +107,6 @@ SIValue AR_TOINTEGER(SIValue *argv, int argc, void *private_data) {
 	char *sEnd = NULL;
 
 	switch(SI_TYPE(arg)) {
-	case T_NULL:
-		return SI_NullVal();
 	case T_INT64:
 		return arg;
 	case T_DOUBLE:
@@ -124,7 +122,6 @@ SIValue AR_TOINTEGER(SIValue *argv, int argc, void *private_data) {
 		// Remove floating point.
 		return SI_LongVal(floor(parsedval));
 	default:
-		ASSERT(false);
 		return SI_NullVal();
 	}
 }
@@ -250,6 +247,12 @@ void Register_NumericFuncs() {
 	array_append(types, (SI_NUMERIC | T_STRING | T_NULL));
 	ret_type = T_INT64 | T_NULL;
 	func_desc = AR_FuncDescNew("tointeger", AR_TOINTEGER, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+	
+	types = array_new(SIType, 1);
+	array_append(types, SI_ALL);
+	ret_type = T_INT64 | T_NULL;
+	func_desc = AR_FuncDescNew("tointegerornull", AR_TOINTEGER, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
