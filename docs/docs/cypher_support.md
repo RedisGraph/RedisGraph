@@ -95,7 +95,7 @@ We do not support any of these properties at the type level, meaning nodes and r
 
   **Unsupported:**
 
-- Some casting functions (toFloatOrNull, toIntegerOrNull, toStringOrNull)
+- Some casting functions (toIntegerOrNull, toStringOrNull)
 - Temporal arithmetic functions
 - Functions returning maps (properties)
 
@@ -127,6 +127,7 @@ We do not support any of these properties at the type level, meaning nodes and r
 + rand
 + toInteger
 + toFloat
++ toFloatOrNull
 
 ### String functions
 + left
