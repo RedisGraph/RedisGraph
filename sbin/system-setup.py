@@ -29,6 +29,8 @@ class RedisGraphSetup(paella.Setup):
         else:
             self.run("%s/bin/getgcc" % READIES)
         self.install("peg")
+        if self.platform.is_arm():
+            self.install("python3-dev")
         self.run("{READIES}/bin/getjava".format(READIES=READIES)) # for grammarinator/ANTLR
         self.pip_install("-r tests/fuzz/requirements.txt")
 
