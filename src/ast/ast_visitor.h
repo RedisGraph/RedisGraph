@@ -8,9 +8,11 @@
 
 #include "ast.h"
 
-typedef bool (*visit)(const cypher_astnode_t *n, bool start, void *ctx);
+typedef struct ast_visitor ast_visitor;
 
-typedef struct
+typedef bool (*visit)(const cypher_astnode_t *n, bool start, ast_visitor *visitor);
+
+typedef struct ast_visitor
 {
 	void *ctx;
 	visit funcs[];

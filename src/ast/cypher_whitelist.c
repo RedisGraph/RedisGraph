@@ -13,9 +13,9 @@ static bool _visit
 (
 	const cypher_astnode_t *n,
 	bool start,
-	void *ctx
+	ast_visitor *visitor
 ) {
-	AST_Validation *res = ctx;
+	AST_Validation *res = visitor->ctx;
 	*res = AST_INVALID;
 	Error_UnsupportedASTNodeType(n);
 	return false;
@@ -25,9 +25,9 @@ static bool _visit_binary_op
 (
 	const cypher_astnode_t *n,
 	bool start,
-	void *ctx
+	ast_visitor *visitor
 ) {
-	AST_Validation *res = ctx;
+	AST_Validation *res = visitor->ctx;
 	const cypher_operator_t *op = cypher_ast_binary_operator_get_operator(n);
 	if(op == CYPHER_OP_SUBSCRIPT ||
 	   op == CYPHER_OP_MAP_PROJECTION ||

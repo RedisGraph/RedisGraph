@@ -12,7 +12,7 @@ static bool _default_visit
 (
 	const cypher_astnode_t *n,
 	bool start,
-	void *ctx
+	ast_visitor *visitor
 ) {
 	ASSERT(n != NULL);
 
@@ -53,12 +53,12 @@ void AST_Visitor_visit
 	ASSERT(visitor != NULL);
 
 	cypher_astnode_type_t node_type = cypher_astnode_type(node);
-	if(visitor->funcs[node_type](node, true, visitor->ctx)) {
+	if(visitor->funcs[node_type](node, true, visitor)) {
 		uint nchildren = cypher_astnode_nchildren(node);
 		for (uint i = 0; i < nchildren; i++) {
 			AST_Visitor_visit(cypher_astnode_get_child(node, i), visitor);
 		}
-		visitor->funcs[node_type](node, false, visitor->ctx);
+		visitor->funcs[node_type](node, false, visitor);
 	}
 }
 

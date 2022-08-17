@@ -37,8 +37,17 @@ bool AST_ContainsErrors(const cypher_parse_result_t *result);
 // asserts if there are no errors!
 void AST_ReportErrors(const cypher_parse_result_t *result);
 
+AST_Validation AST_Validate_ParseResultRoot
+(
+	const cypher_parse_result_t *result,
+	int *index
+);
+
 // Make sure the parse result and the AST tree pass all validations.
-AST_Validation AST_Validate_Query(const cypher_parse_result_t *result);
+AST_Validation AST_Validate_Query
+(
+	const cypher_astnode_t *root
+);
 
 // Validate query parameters parsing only.
 AST_Validation AST_Validate_QueryParams(const cypher_parse_result_t *result);

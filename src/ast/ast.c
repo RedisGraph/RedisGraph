@@ -579,20 +579,31 @@ cypher_parse_result_t *parse_query(const char *query) {
 		return NULL;
 	}
 
-	if(AST_Validate_Query(result) != AST_VALID) {
+	int index;
+	if(AST_Validate_ParseResultRoot(result, &index) == AST_INVALID) {
 		parse_result_free(result);
 		return NULL;
 	}
 
-	// rewrite '*' projections
-	// e.g. MATCH (a), (b) RETURN *
-	// will be rewritten as:
-	//  MATCH (a), (b) RETURN a, b
-	bool rerun_validation = AST_RewriteStarProjections(result);
-	rerun_validation |= AST_RewriteSameClauses(result);
+	AST_RewriteSameClauses(result);
 
-	// only perform validations again if there's been a rewrite
-	if(rerun_validation && AST_Validate_Query(result) != AST_VALID) {
+	const cypher_astnode_t *root = cypher_parse_result_get_root(result, index);
+
+	if(AST_Validate_Query(root) != AST_VALID) {
+		parse_result_free(result);
+		return NULL;
+	}
+	
+	bool rerun_validation = AST_RewriteStarProjections(result);
+
+	if(ErrorCtx_EncounteredError()) {
+		parse_result_free(result);
+		return NULL;
+	}
+
+	root = cypher_parse_result_get_root(result, index);
+
+	if(rerun_validation && AST_Validate_Query(root) != AST_VALID) {
 		parse_result_free(result);
 		return NULL;
 	}
