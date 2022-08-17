@@ -884,8 +884,10 @@ This section contains information on all supported functions from the Cypher que
 | sign()      | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number          |
 | sqrt()      | Returns the square root of a number                                                                                      |
 | pow()       | Returns base raised to the power of exponent, base^exponent                                                              |
-| toInteger() | Converts a floating point or string value to an integer value.                                                           |
-| toFloat()   | Converts an integer or string value to a floating point value.                                                           |
+| toInteger() | Converts a floating point or string value to an integer value. All other types are not allowed and will cause a type mismatch error to be returned.                                                           |
+| toIntegerOrNull() | Converts a floating point or string value to an integer value.\ All other types will return `null`                                                        | 
+| toFloat()   | Converts an integer or string value to a floating point value. All other types are not allowed and will cause a type mismatch error to be returned.                                                         |
+| toFloatOrNull()   | Converts an integer or string value to a floating point value. All other types will return `null`                                                        |
 
 ## String functions
 

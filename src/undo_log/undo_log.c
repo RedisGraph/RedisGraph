@@ -9,6 +9,7 @@
 #include "query_ctx.h"
 #include "../execution_plan/ops/shared/update_functions.h"
 #include "../execution_plan/ops/shared/create_functions.h"
+#include "../graph/entities/attribute_set.h"
 
 static void _index_node
 (
@@ -64,6 +65,26 @@ static void _index_delete_edge
 	Schema_RemoveEdgeFromIndices(s, e);
 }
 
+static void _UndoLog_Restore_Entity_Property
+(
+	GraphEntity *ge,
+	Attribute_ID attr_id,
+	SIValue value
+) {
+	// try to get current attribute value
+	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
+
+	if(old_value == ATTRIBUTE_NOTFOUND) {
+		// adding a new attribute; do nothing if its value is NULL
+		if(SI_TYPE(value) != T_NULL) {
+			AttributeSet_AddNoClone(ge->attributes, attr_id, value);
+		}
+	} else {
+		// update attribute
+		AttributeSet_UpdateNoClone(ge->attributes, attr_id, value);
+	}
+}
+
 // rollback the updates taken place by current query
 static void _UndoLog_Rollback_Update_Entity
 (
@@ -78,12 +99,12 @@ static void _UndoLog_Rollback_Update_Entity
 
 		// update indices
 		if(update_op->entity_type == GETYPE_NODE) {
-			Graph_UpdateEntity((GraphEntity *)&update_op->n, update_op->attr_id,
-				update_op->orig_value, update_op->entity_type);
+			_UndoLog_Restore_Entity_Property((GraphEntity *)&update_op->n, update_op->attr_id,
+				update_op->orig_value);
 			_index_node(ctx, &update_op->n);
 		} else {
-			Graph_UpdateEntity((GraphEntity *)&update_op->e, update_op->attr_id,
-				update_op->orig_value, update_op->entity_type);
+			_UndoLog_Restore_Entity_Property((GraphEntity *)&update_op->e, update_op->attr_id,
+				update_op->orig_value);
 			_index_edge(ctx, &update_op->e);
 		}
 	}
@@ -130,14 +151,16 @@ static void _UndoLog_Rollback_Delete_Node
 	for(int i = seq_start; i > seq_end; --i) {
 		Node n;
 		UndoOp *op = undo_list + i;
-		UndoDeleteNodeOp delete_op = op->delete_node_op;
+		UndoDeleteNodeOp *delete_op = &(op->delete_node_op);
 
-		Graph_CreateNode(ctx->gc->g, &n, delete_op.labels,
-				delete_op.label_count);
-		*n.attributes = delete_op.set;
+		Graph_CreateNode(ctx->gc->g, &n, delete_op->labels,
+				delete_op->label_count);
+		*n.attributes = delete_op->set;
 
 		// re-introduce node to indices
 		_index_node(ctx, &n);
+		// Cleanup after undo rollback, as the op D'tor is not called.
+		rm_free(delete_op->labels);
 	}
 }
 
