@@ -18,3 +18,11 @@ GRAPH.SLOWLOG graph_id
     3) "MATCH (me:Person)-[:FRIEND]->(:Person)-[:FRIEND]->(fof:Person) RETURN fof.name"
     4) "0.288"
 ```
+
+To reset a graph's slowlog issue the following command:
+
+```sh
+GRAPH.SLOWLOG graph_id RESET
+```
+
+Once cleared the information is lost forever.
