@@ -29,6 +29,9 @@ class RedisGraphSetup(paella.Setup):
         else:
             self.run("%s/bin/getgcc" % READIES)
         self.install("peg")
+        if self.platform.is_arm():
+            self.install("python3-dev")
+        self.run("{READIES}/bin/getjava".format(READIES=READIES)) # for grammarinator/ANTLR
         self.pip_install("-r tests/fuzz/requirements.txt")
 
     def redhat_compat(self):
@@ -61,7 +64,6 @@ class RedisGraphSetup(paella.Setup):
 
     def linux_last(self):
         self.install("valgrind")
-        self.run("{READIES}/bin/getjava".format(READIES=READIES)) # for grammarinator/ANTLR
 
     def common_last(self):
         self.run("%s/bin/getaws" % READIES)

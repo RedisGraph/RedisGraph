@@ -194,7 +194,7 @@ SIValue AR_PROPERTY(SIValue *argv, int argc, void *private_data) {
 	}
 
 	// inputs:
-	// argv[0] - node/edge/map
+	// argv[0] - node/edge/map/point
 	// argv[1] - property string
 	// argv[2] - property index
 
@@ -203,7 +203,6 @@ SIValue AR_PROPERTY(SIValue *argv, int argc, void *private_data) {
 	//--------------------------------------------------------------------------
 
 	SIValue obj = argv[0];
-
 	if(SI_TYPE(obj) & SI_GRAPHENTITY) {
 		// retrieve entity property
 		GraphEntity *graph_entity = (GraphEntity *)obj.ptrval;
@@ -219,7 +218,7 @@ SIValue AR_PROPERTY(SIValue *argv, int argc, void *private_data) {
 		// Retrieve the property.
 		SIValue *value = GraphEntity_GetProperty(graph_entity, prop_idx);
 		return SI_ConstValue(value);
-	} else {
+	} else if(SI_TYPE(obj) & T_MAP) {
 		// retrieve map key
 		SIValue key = argv[1];
 		SIValue value;
@@ -227,6 +226,13 @@ SIValue AR_PROPERTY(SIValue *argv, int argc, void *private_data) {
 		Map_Get(obj, key, &value);
 		// Return a volatile copy of the value, as it may be heap-allocated.
 		return SI_ShareValue(value);
+	} else if(SI_TYPE(obj) & T_POINT) {
+		// retrieve property key 
+		SIValue key = argv[1];
+		return Point_GetCoordinate(obj, key);
+	} else {
+		// unexpected type SI_TYPE(obj)
+		return SI_NullVal();
 	}
 }
 
@@ -293,7 +299,7 @@ void Register_EntityFuncs() {
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
-	array_append(types, T_NULL | T_NODE | T_EDGE | T_MAP);
+	array_append(types, T_NULL | T_NODE | T_EDGE | T_MAP | T_POINT);
 	array_append(types, T_STRING);
 	array_append(types, T_INT64);
 	ret_type = SI_ALL;

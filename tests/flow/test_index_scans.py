@@ -663,3 +663,26 @@ class testIndexScanFlow():
             self.env.assertTrue(False)
         except redis.exceptions.ResponseError as e:
             self.env.assertIn("Received 2 arguments to function 'point', expected at most 1", str(e))
+
+    def test_22_pickup_on_index_creation(self):
+        g = Graph(self.env.getConnection(), 'late_index_creation')
+
+        # issue query which has to potential to utilize an index
+        # this query is going to be cached
+        q = "MATCH (n:N) WHERE n.v = 1 RETURN n"
+        plan = g.execution_plan(q)
+
+        # expecting no index scan operation, as we've yet to create an index
+        self.env.assertNotIn('Node By Index Scan', plan)
+
+        # create an index
+        q = "CREATE INDEX ON :N(v)"
+        resultset = g.query(q)
+        self.env.assertEqual(1, resultset.indices_created)
+
+        # re-issue the same query
+        q = "MATCH (n:N) WHERE n.v = 1 RETURN n"
+        plan = g.execution_plan(q)
+
+        # expecting an index scan operation
+        self.env.assertIn('Node By Index Scan', plan)
