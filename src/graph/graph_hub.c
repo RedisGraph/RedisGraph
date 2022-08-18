@@ -329,22 +329,16 @@ void UpdateNodeLabels
 
 	// TODO: consider switching to a stack base arrays
 	// int[label_count] add_labels
-	int *add_labels    = array_new(int, label_count);
-	int *remove_labels = array_new(int, label_count);
+	int add_labels[label_count];
+	int remove_labels[label_count];
+	uint add_labels_index = 0;
+	uint remove_labels_index = 0;
 
 	// iterate over all keys in the rax
 	raxSeek(&it, "^", NULL, 0);
 	while(raxNext(&it)) {
 		// get label string
-		unsigned char *raw_label = it.key;
-		// avoid rax not null terminating strings
-		// TODO: insert the keys with their NULL terminator
-		// do not perfome the memcpy below
-		size_t len = it.key_len;
-		char label[len];
-		memcpy(label, raw_label, len);
-		label[len] = 0;
-
+		unsigned char *label = it.key;
 		// TODO:this condition is a bit confusing
 		// consider adding 2 unique pointers
 		// e.g. CREATE_LABEL and REMOVE_LABEL
