@@ -257,6 +257,24 @@ static AST_Validation _Validate_referred_identifier
 	return AST_VALID;
 }
 
+static bool _Validate_list_comprehention
+(
+	const cypher_astnode_t *n,
+	bool start,
+	ast_visitor *visitor
+) {
+	validations_ctx *vctx = visitor->ctx;
+	if(vctx->valid == AST_INVALID) return false;
+
+	const cypher_astnode_t *id = cypher_ast_list_comprehension_get_identifier(n);
+	const char *identifier = cypher_ast_identifier_get_name(id);
+	if(start) {
+		raxInsert(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
+	}
+
+	return true;
+}
+
 static bool _Validate_identifier
 (
 	const cypher_astnode_t *n,
@@ -516,27 +534,29 @@ static bool _Validate_shortest_path
 	validations_ctx *vctx = visitor->ctx;
 	if(vctx->valid == AST_INVALID) return false;
 
-	if(cypher_ast_shortest_path_is_single(n)) {
-		// MATCH (a), (b), p = shortestPath((a)-[*]->(b)) RETURN p
-		vctx->valid = AST_INVALID;
-		ErrorCtx_SetError("RedisGraph currently only supports shortestPath in WITH or RETURN clauses");
-	} else {
-		// MATCH (a), (b), p = allShortestPaths((a)-[*2..]->(b)) RETURN p
-		// validate rel pattern range doesn't contains a minimum > 1
-		const cypher_astnode_t **ranges = AST_GetTypedNodes(n, CYPHER_AST_RANGE);
-		int range_count = array_len(ranges);
-		for(int i = 0; i < range_count; i++) {
-			long min_hops = 1;
-			const cypher_astnode_t *r = ranges[i];
-			const cypher_astnode_t *start = cypher_ast_range_get_start(r);
-			if(start) min_hops = AST_ParseIntegerNode(start);
-			if(min_hops != 1) {
-				vctx->valid = AST_INVALID;
-				ErrorCtx_SetError("allShortestPaths(...) does not support a minimal length different from 1");
-				break;
+	if(vctx->clause == CYPHER_AST_MATCH) {
+		if(cypher_ast_shortest_path_is_single(n)) {
+			// MATCH (a), (b), p = shortestPath((a)-[*]->(b)) RETURN p
+			vctx->valid = AST_INVALID;
+			ErrorCtx_SetError("RedisGraph currently only supports shortestPath in WITH or RETURN clauses");
+		} else {
+			// MATCH (a), (b), p = allShortestPaths((a)-[*2..]->(b)) RETURN p
+			// validate rel pattern range doesn't contains a minimum > 1
+			const cypher_astnode_t **ranges = AST_GetTypedNodes(n, CYPHER_AST_RANGE);
+			int range_count = array_len(ranges);
+			for(int i = 0; i < range_count; i++) {
+				long min_hops = 1;
+				const cypher_astnode_t *r = ranges[i];
+				const cypher_astnode_t *start = cypher_ast_range_get_start(r);
+				if(start) min_hops = AST_ParseIntegerNode(start);
+				if(min_hops != 1) {
+					vctx->valid = AST_INVALID;
+					ErrorCtx_SetError("allShortestPaths(...) does not support a minimal length different from 1");
+					break;
+				}
 			}
+			array_free(ranges);
 		}
-		array_free(ranges);
 	}
 
 	return vctx->valid == AST_VALID;
@@ -677,6 +697,7 @@ static bool _Validate_CALL_Clause
 
 	if(start) {
 		vctx->clause = cypher_astnode_type(n);
+		_AST_GetProcCallAliases(n, vctx->defined_identifiers);
 		return true;
 	}
 
@@ -685,7 +706,7 @@ static bool _Validate_CALL_Clause
 	 * 2. number of arguments to procedure is as expected
 	 * 3. yield refers to procedure output */
 
-	ProcedureCtx    *proc         =  NULL;
+	ProcedureCtx *proc = NULL;
 
 	// Make sure procedure exists.
 	const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(n));
@@ -772,6 +793,7 @@ static bool _Validate_WITH_Clause
 
 	if(start) {
 		vctx->clause = cypher_astnode_type(n);
+		_AST_GetWithAliases(n, vctx->defined_identifiers);
 		return true;
 	}
 
@@ -937,6 +959,9 @@ static bool _Validate_UNWIND_Clause
 
 	if(start) {
 		vctx->clause = cypher_astnode_type(n);
+		const cypher_astnode_t *alias = cypher_ast_unwind_get_alias(n);
+		const char *identifier = cypher_ast_identifier_get_name(alias);
+		raxInsert(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
 		return true;
 	}
 
@@ -954,6 +979,15 @@ static bool _Validate_RETURN_Clause
 
 	if(start) {
 		vctx->clause = cypher_astnode_type(n);
+		uint num_return_projections = cypher_ast_return_nprojections(n);
+
+		for(uint i = 0; i < num_return_projections; i ++) {
+			const cypher_astnode_t *child = cypher_ast_return_get_projection(n, i);
+			const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(child);
+			if(alias_node == NULL) continue;
+			const char *alias = cypher_ast_identifier_get_name(alias_node);
+			raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
+		}
 		return true;
 	}
 
@@ -1109,6 +1143,11 @@ static AST_Validation _ValidateClauseOrder
 			}
 			encountered_optional_match |= current_clause_is_optional;
 		}
+
+		if(type == CYPHER_AST_WITH) {
+			encountered_optional_match = false;
+			encountered_updating_clause = false;
+		}
 	}
 
 	return AST_VALID;
@@ -1149,6 +1188,11 @@ static AST_Validation _ValidateScopes
 	AST_Visitor_register(visitor, CYPHER_AST_IDENTIFIER, _Validate_identifier);
 	AST_Visitor_register(visitor, CYPHER_AST_PROJECTION, _Validate_projection);
 	AST_Visitor_register(visitor, CYPHER_AST_MAP, _Validate_map);
+	AST_Visitor_register(visitor, CYPHER_AST_LIST_COMPREHENSION, _Validate_list_comprehention);
+	AST_Visitor_register(visitor, CYPHER_AST_ANY, _Validate_list_comprehention);
+	AST_Visitor_register(visitor, CYPHER_AST_ALL, _Validate_list_comprehention);
+	AST_Visitor_register(visitor, CYPHER_AST_NONE, _Validate_list_comprehention);
+	AST_Visitor_register(visitor, CYPHER_AST_SINGLE, _Validate_list_comprehention);
 	
 	AST_Visitor_visit(ast->root, visitor);
 	
