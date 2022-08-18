@@ -296,7 +296,6 @@ void SlowLog_Replay
 		}
 	}
 
-	int my_t_id = ThreadPools_GetThreadID();
 	heap_t *heap = aggregated_slowlog->min_heap[my_t_id];
 	RedisModule_ReplyWithArray(ctx, Heap_count(heap));
 
