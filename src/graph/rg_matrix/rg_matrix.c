@@ -113,7 +113,7 @@ GrB_Info RG_Matrix_clear
 (
     RG_Matrix A
 ) {
-	ASSERT(A     !=  NULL);
+	ASSERT(A !=  NULL);
 
 	GrB_Matrix  m            =  RG_MATRIX_M(A);
 	GrB_Info    info         =  GrB_SUCCESS;
