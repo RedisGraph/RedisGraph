@@ -106,4 +106,3 @@ class testSlowLog():
         self.populate_slowlog()
         slowlog = self.redis_con.execute_command("GRAPH.SLOWLOG", GRAPH_ID)
         self.env.assertGreater(len(slowlog), 0)
-

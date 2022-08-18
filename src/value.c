@@ -250,6 +250,8 @@ const char *SIType_ToString(SIType t) {
 		return "List";
 	} else if(t & T_PATH) {
 		return "Path";
+	} else if(t & T_POINT) {
+		return "Point";
 	} else if(t & T_NULL) {
 		return "Null";
 	} else {
