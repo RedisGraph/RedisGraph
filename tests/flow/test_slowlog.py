@@ -14,22 +14,21 @@ class testSlowLog():
         self.redis_graph = Graph(self.redis_con, GRAPH_ID)
 
     def populate_slowlog(self):
-        if "to_thread" not in dir(asyncio):
-            # no need to check
-            return
-
         def _run_query():
             g = redis.commands.graph.Graph(self.env.getConnection(), GRAPH_ID)
             for i in range(1, 4):
                 q = """UNWIND range(0, 1000000) AS x WITH x WHERE x % {mod} = 0 RETURN count(x)""".format(mod=i)
                 g.query(q)
 
-        loop = asyncio.get_event_loop()
-        tasks = []
-        for i in range(1, 6):
-            tasks.append(loop.create_task(asyncio.to_thread(_run_query)))
+        if "to_thread" not in dir(asyncio):
+            _run_query()
+        else:
+            loop = asyncio.get_event_loop()
+            tasks = []
+            for i in range(1, 6):
+                tasks.append(loop.create_task(asyncio.to_thread(_run_query)))
 
-        loop.run_until_complete(asyncio.wait(tasks))
+            loop.run_until_complete(asyncio.wait(tasks))
 
     def test01_slowlog(self):
         # Slowlog should fail when graph doesn't exists.
@@ -107,4 +106,3 @@ class testSlowLog():
         self.populate_slowlog()
         slowlog = self.redis_con.execute_command("GRAPH.SLOWLOG", GRAPH_ID)
         self.env.assertGreater(len(slowlog), 0)
-
