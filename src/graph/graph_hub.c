@@ -342,7 +342,7 @@ void UpdateNodeLabels
 		// TODO:this condition is a bit confusing
 		// consider adding 2 unique pointers
 		// e.g. CREATE_LABEL and REMOVE_LABEL
-		if(it.data) {
+		if(it.data == SET_LABEL) {
 			// get or create label matrix
 			const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 			bool schema_created = false;

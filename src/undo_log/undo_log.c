@@ -140,7 +140,6 @@ static void _UndoLog_Rollback_Update_Entity
 				update_op->orig_value);
 			_index_edge(ctx, &update_op->e);
 		}
-		SIValue_Free(update_op->orig_value);
 	}
 }
 

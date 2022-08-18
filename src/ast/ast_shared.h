@@ -65,7 +65,7 @@ typedef struct {
 
 // within EntityUpdateEvalCtx 'labels' rax a value of SET_LABEL donates
 // an addition of a label to a node e.g. SET n:L
-// while REMOVE_LABEL donates a removel of a label from a node e.g. REMOVE n:L
+// while REMOVE_LABEL donates a removal of a label from a node e.g. REMOVE n:L
 static void *SET_LABEL    = (void*)0x10042020;  // set label marker
 static void *REMOVE_LABEL = (void*)0x04081985;  // remove label marker
 
