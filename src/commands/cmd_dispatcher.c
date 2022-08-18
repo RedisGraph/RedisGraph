@@ -101,9 +101,6 @@ static inline bool _validate_command_arity(GRAPH_Commands cmd, int arity) {
 		case CMD_PROFILE:
 			// Expect a command, graph name, a query, and optional config flags.
 			return arity >= 3 && arity <= 8;
-		case CMD_SLOWLOG:
-			// Expect just a command and graph name.
-			return arity == 2;
 		default:
 			ASSERT("encountered unhandled query type" && false);
 			return false;
@@ -120,8 +117,6 @@ static Command_Handler get_command_handler(GRAPH_Commands cmd) {
 			return Graph_Explain;
 		case CMD_PROFILE:
 			return Graph_Profile;
-		case CMD_SLOWLOG:
-			return Graph_Slowlog;
 		default:
 			ASSERT(false);
 	}
@@ -134,7 +129,6 @@ static GRAPH_Commands determine_command(const char *cmd_name) {
 	if(strcasecmp(cmd_name, "graph.RO_QUERY") == 0) return CMD_RO_QUERY;
 	if(strcasecmp(cmd_name, "graph.EXPLAIN")  == 0) return CMD_EXPLAIN;
 	if(strcasecmp(cmd_name, "graph.PROFILE")  == 0) return CMD_PROFILE;
-	if(strcasecmp(cmd_name, "graph.SLOWLOG")  == 0) return CMD_SLOWLOG;
 
 	// we shouldn't reach this point
 	ASSERT(false);
@@ -148,7 +142,6 @@ static bool should_command_create_graph(GRAPH_Commands cmd) {
 			return true;
 		case CMD_EXPLAIN:
 		case CMD_RO_QUERY:
-		case CMD_SLOWLOG:
 			return false;
 		default:
 			ASSERT(false);
