@@ -267,7 +267,7 @@ void SlowLog_Replay
 	RedisModuleCtx *ctx
 ) {
 	int my_t_id = ThreadPools_GetThreadID();
-  SlowLog *aggregated_slowlog = SlowLog_New();
+	SlowLog *aggregated_slowlog = SlowLog_New();
 
 	for(int t_id = 0; t_id < slowlog->count; t_id++) {
 		// don't lock ourselves
