@@ -267,11 +267,15 @@ void SlowLog_Replay
 	RedisModuleCtx *ctx
 ) {
 	SlowLog *aggregated_slowlog = SlowLog_New();
+	int my_t_id = ThreadPools_GetThreadID();
 
 	for(int t_id = 0; t_id < slowlog->count; t_id++) {
-		if(pthread_mutex_lock(slowlog->locks + t_id) != 0) {
-			// failed to lock, skip aggregating this thread slowlog entries
-			continue;
+		// don't lock ourselves
+		if(my_t_id != t_id) {
+			if(pthread_mutex_lock(slowlog->locks + t_id) != 0) {
+				// failed to lock, skip aggregating this thread slowlog entries
+				continue;
+			}
 		}
 		{
 			// critical section
@@ -287,7 +291,9 @@ void SlowLog_Replay
 			raxStop(&iter);
 			// end of critical section
 		}
-		pthread_mutex_unlock(slowlog->locks + t_id);
+		if(my_t_id != t_id) {
+			pthread_mutex_unlock(slowlog->locks + t_id);
+		}
 	}
 
 	int my_t_id = ThreadPools_GetThreadID();
