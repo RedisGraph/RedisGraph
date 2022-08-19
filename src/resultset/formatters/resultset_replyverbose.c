@@ -9,18 +9,52 @@
 #include "../../datatypes/datatypes.h"
 
 // Forward declarations.
-static void _ResultSet_VerboseReplyWithMap(RedisModuleCtx *ctx, SIValue map);
-static void _ResultSet_VerboseReplyWithPath(RedisModuleCtx *ctx, SIValue path);
-static void _ResultSet_VerboseReplyWithPoint(RedisModuleCtx *ctx, SIValue point);
-static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, SIValue array);
-static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n);
-static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e);
+static void _ResultSet_VerboseReplyWithMap
+(
+	RedisModuleCtx *ctx,
+	SIValue map
+);
 
-/* This function has handling for all SIValue scalar types.
- * The current RESP protocol only has unique support for strings, 8-byte integers,
- * and NULL values. */
-static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext *gc,
-											   const SIValue v) {
+static void _ResultSet_VerboseReplyWithPath
+(
+	RedisModuleCtx *ctx,
+	SIValue path
+);
+
+static void _ResultSet_VerboseReplyWithPoint
+(
+	RedisModuleCtx *ctx,
+	SIValue point
+);
+
+static void _ResultSet_VerboseReplyWithArray
+(
+	RedisModuleCtx *ctx,
+	SIValue array
+);
+
+static void _ResultSet_VerboseReplyWithNode
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc,
+	Node *n
+);
+
+static void _ResultSet_VerboseReplyWithEdge
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc,
+	Edge *e
+);
+
+// this function has handling for all SIValue scalar types
+// the current RESP protocol only has unique support for strings, 8-byte integers,
+// and NULL values
+static void _ResultSet_VerboseReplyWithSIValue(
+	RedisModuleCtx *ctx,
+	GraphContext *gc,
+	const SIValue v
+) {
 	switch(SI_TYPE(v)) {
 	case T_STRING:
 		RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
@@ -61,8 +95,12 @@ static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 	}
 }
 
-static void _ResultSet_VerboseReplyWithProperties(RedisModuleCtx *ctx, GraphContext *gc,
-												  const GraphEntity *e) {
+static void _ResultSet_VerboseReplyWithProperties
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc,
+	const GraphEntity *e
+) {
 	const AttributeSet set = GraphEntity_GetAttributes(e);
 	int prop_count = ATTRIBUTE_SET_COUNT(set);
 	RedisModule_ReplyWithArray(ctx, prop_count);
@@ -79,7 +117,12 @@ static void _ResultSet_VerboseReplyWithProperties(RedisModuleCtx *ctx, GraphCont
 	}
 }
 
-static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n) {
+static void _ResultSet_VerboseReplyWithNode
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc,
+	Node *n
+) {
 	/*  Verbose node reply format:
 	 *  [
 	 *      ["id", Node ID (integer)]
@@ -115,7 +158,12 @@ static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	_ResultSet_VerboseReplyWithProperties(ctx, gc, (GraphEntity *)n);
 }
 
-static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e) {
+static void _ResultSet_VerboseReplyWithEdge
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc,
+	Edge *e
+) {
 	/*  Edge reply format:
 	 *  [
 	 *      ["id", Edge ID (integer)]
@@ -157,7 +205,11 @@ static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
 	_ResultSet_VerboseReplyWithProperties(ctx, gc, (GraphEntity *)e);
 }
 
-static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, SIValue array) {
+static void _ResultSet_VerboseReplyWithArray
+(
+	RedisModuleCtx *ctx,
+	SIValue array
+) {
 	size_t bufferLen = 512;
 	char *str = rm_calloc(bufferLen, sizeof(char));
 	size_t bytesWrriten = 0;
@@ -166,13 +218,21 @@ static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, SIValue array)
 	rm_free(str);
 }
 
-static void _ResultSet_VerboseReplyWithPath(RedisModuleCtx *ctx, SIValue path) {
+static void _ResultSet_VerboseReplyWithPath
+(
+	RedisModuleCtx *ctx,
+	SIValue path
+) {
 	SIValue path_array = SIPath_ToList(path);
 	_ResultSet_VerboseReplyWithArray(ctx, path_array);
 	SIValue_Free(path_array);
 }
 
-static void _ResultSet_VerboseReplyWithMap(RedisModuleCtx *ctx, SIValue map) {
+static void _ResultSet_VerboseReplyWithMap
+(
+	RedisModuleCtx *ctx,
+	SIValue map
+) {
 	size_t bufferLen = 512;
 	char *str = rm_calloc(bufferLen, sizeof(char));
 	size_t bytesWrriten = 0;
@@ -181,7 +241,11 @@ static void _ResultSet_VerboseReplyWithMap(RedisModuleCtx *ctx, SIValue map) {
 	rm_free(str);
 }
 
-static void _ResultSet_VerboseReplyWithPoint(RedisModuleCtx *ctx, SIValue point) {
+static void _ResultSet_VerboseReplyWithPoint
+(
+	RedisModuleCtx *ctx,
+	SIValue point
+) {
 	// point({latitude:56.7, longitude:12.78})
 	char buffer[256];
 	int bytes_written = sprintf(buffer, "point({latitude:%f, longitude:%f})",
@@ -190,9 +254,15 @@ static void _ResultSet_VerboseReplyWithPoint(RedisModuleCtx *ctx, SIValue point)
 	RedisModule_ReplyWithStringBuffer(ctx, buffer, bytes_written);
 }
 
-void ResultSet_EmitVerboseRow(RedisModuleCtx *ctx, GraphContext *gc,
-							  SIValue **row, uint numcols) {
-	// Prepare return array sized to the number of RETURN entities
+void ResultSet_EmitVerboseRow
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc,
+	SIValue **row,
+	uint numcols,
+	void *pdata
+) {
+	// prepare return array sized to the number of RETURN entities
 	RedisModule_ReplyWithArray(ctx, numcols);
 
 	for(int i = 0; i < numcols; i++) {
@@ -202,8 +272,13 @@ void ResultSet_EmitVerboseRow(RedisModuleCtx *ctx, GraphContext *gc,
 }
 
 // Emit the alias or descriptor for each column in the header.
-void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns,
-									  uint *col_rec_map) {
+void ResultSet_ReplyWithVerboseHeader
+(
+	RedisModuleCtx *ctx,
+	const char **columns,
+	uint *col_rec_map,
+	void *pdata
+) {
 	uint columns_len = array_len(columns);
 	RedisModule_ReplyWithArray(ctx, columns_len);
 	for(uint i = 0; i < columns_len; i++) {
@@ -211,3 +286,15 @@ void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns,
 		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
 	}
 }
+
+void *ResultSet_CreateVerbosePData(void) {
+	return NULL;
+}
+
+void ResultSet_FreeVerbosePData
+(
+	void *pdata
+) {
+
+}
+

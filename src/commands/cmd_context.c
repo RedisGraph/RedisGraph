@@ -26,7 +26,7 @@ CommandCtx *CommandCtx_New
 	GraphContext *graph_ctx,
 	ExecutorThread thread,
 	bool replicated_command,
-	bool compact,
+	char resultset_format,
 	long long timeout
 ) {
 	CommandCtx *context = rm_malloc(sizeof(CommandCtx));
@@ -34,7 +34,7 @@ CommandCtx *CommandCtx_New
 	context->ctx = ctx;
 	context->query = NULL;
 	context->thread = thread;
-	context->compact = compact;
+	context->resultset_format = resultset_format;
 	context->timeout = timeout;
 	context->command_name = NULL;
 	context->graph_ctx = graph_ctx;

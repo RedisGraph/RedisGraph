@@ -25,7 +25,7 @@ typedef struct {
 	GraphContext *graph_ctx;        // Graph context.
 	RedisModuleBlockedClient *bc;   // Blocked client.
 	bool replicated_command;        // Whether this instance was spawned by a replication command.
-	bool compact;                   // Whether this query was issued with the compact flag.
+	char resultset_format;          // 'v' verbose, 'c' compact, 'b' binary
 	ExecutorThread thread;          // Which thread executes this command
 	long long timeout;              // The query timeout, if specified.
 } CommandCtx;
@@ -40,7 +40,7 @@ CommandCtx *CommandCtx_New
 	GraphContext *graph_ctx,        // Graph context.
 	ExecutorThread thread,          // Which thread executes this command
 	bool replicated_command,        // Whether this instance was spawned by a replication command.
-	bool compact,                   // Whether this query was issued with the compact flag.
+	char resultset_format,          // resultset formatter 'v', 'c', 'b'
 	long long timeout               // The query timeout, if specified.
 );
 

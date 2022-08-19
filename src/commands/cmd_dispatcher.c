@@ -17,14 +17,20 @@
 typedef void(*Command_Handler)(void *args);
 
 // Read configuration flags, returning REDIS_MODULE_ERR if flag parsing failed.
-static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
-					   long long *timeout, uint *graph_version, char **errmsg) {
-
-	ASSERT(compact);
-	ASSERT(timeout);
+static int _read_flags
+(
+	RedisModuleString **argv,
+	int argc,
+	char *resultset_format,
+	long long *timeout,
+	uint *graph_version,
+	char **errmsg
+) {
+	ASSERT(timeout != NULL);
+	ASSERT(resultset_format != NULL);
 
 	// set defaults
-	*compact = false;  // verbose
+	*resultset_format = 'v'; // verbose
 	*graph_version = GRAPH_VERSION_MISSING;
 	Config_Option_get(Config_TIMEOUT, timeout);
 
@@ -38,7 +44,13 @@ static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
 
 		// compact result-set
 		if(!strcasecmp(arg, "--compact")) {
-			*compact = true;
+			*resultset_format = 'c';
+			continue;
+		}
+
+		// binary result-set
+		if(!strcasecmp(arg, "--binary")) {
+			*resultset_format = 'b';
 			continue;
 		}
 
@@ -151,9 +163,9 @@ static bool should_command_create_graph(GRAPH_Commands cmd) {
 
 int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	char *errmsg;
-	bool compact;
 	uint version;
 	long long timeout;
+	char resultset_format;
 	CommandCtx *context = NULL;
 
 	RedisModuleString *graph_name = argv[1];
@@ -164,7 +176,8 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(_validate_command_arity(cmd, argc) == false) return RedisModule_WrongArity(ctx);
 
 	// parse additional arguments
-	int res = _read_flags(argv, argc, &compact, &timeout, &version, &errmsg);
+	int res = _read_flags(argv, argc, &resultset_format, &timeout, &version,
+			&errmsg);
 	if(res == REDISMODULE_ERR) {
 		// emit error and exit if argument parsing failed
 		RedisModule_ReplyWithError(ctx, errmsg);
@@ -203,13 +216,13 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(exec_thread == EXEC_THREAD_MAIN) {
 		// run query on Redis main thread
 		context = CommandCtx_New(ctx, NULL, argv[0], query, gc, exec_thread,
-								 is_replicated, compact, timeout);
+								 is_replicated, resultset_format, timeout);
 		handler(context);
 	} else {
 		// run query on a dedicated thread
 		RedisModuleBlockedClient *bc = RedisGraph_BlockClient(ctx);
 		context = CommandCtx_New(NULL, bc, argv[0], query, gc, exec_thread,
-								 is_replicated, compact, timeout);
+								 is_replicated, resultset_format, timeout);
 
 		if(ThreadPools_AddWorkReader(handler, context) == THPOOL_QUEUE_FULL) {
 			// Report an error once our workers thread pool internal queue

@@ -1,0 +1,47 @@
+/*
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Redis Labs Source Available License Agreement
+*/
+
+#include "../util/uuid.h"
+
+// add result-set to a global hash-table under the provided 'uid' key
+static void _Track_StreaminResultSet
+(
+	ResultSet *set,
+	const char *uid
+) {
+	ASSERT(set != NULL);
+	ASSERT(uid != NULL);
+	ASSERT(streaming_resultsets != NULL);
+
+	// TODO: lock
+	int res = raxTryInsert(streaming_resultsets, uid, strlen(uid), set, NULL);
+	// TODO: unlock
+	ASSERT(res != 0);
+}
+
+// creates a new streaming result-set
+// provides caller with a UID which can be used to reference returned result-set
+ResultSet New_StreamingResultSet
+(
+	RedisModuleCtx *ctx,            // redis module context
+	ResultSetFormatterType format,  // resultset format
+	char **uid                      // result-set ID
+) {
+	ASSERT(ctx != NULL);
+	ASSERT(uid != NULL);
+	ResultSet *resultset = NewResultSet(ctx, format);
+
+	// add result-set to global streaming result-set collection
+	*uid = UUID_New();
+
+	// track result-set within a global container
+	_Track_StreaminResultSet(resultset, *uid);
+
+	// create a Cron job
+
+	return resultset;
+}
+

@@ -32,29 +32,59 @@ typedef enum {
 	VALUE_POINT = 11
 } ValueType;
 
-// Typedef for header formatters.
-typedef void (*EmitHeaderFunc)(RedisModuleCtx *ctx, const char **columns,
-							   uint *col_rec_map);
+// typedef for formatter private data creation
+// this private data will be passed to both EmitHeaderFunc and EmitRowFunc
+typedef void* (*FormatterPDCreateFunc)(void);
 
-// Typedef for row formatters.
-typedef void (*EmitRowFunc)(RedisModuleCtx *ctx, GraphContext *gc,
-		SIValue **row, uint numcols);
+// typedef for formatter private data free
+// called once the result-set had been fully encoded
+typedef void (*FormatterPDFreeFunc)
+(
+	void *pdata
+);
+
+// typedef for header formatters
+typedef void (*EmitHeaderFunc)
+(
+	RedisModuleCtx *ctx,   // redis module context
+	const char **columns,  // result-set columns
+	uint *col_rec_map,     //
+	void *pdata            // formatter private data
+);
+
+// typedef for row formatters
+typedef void (*EmitRowFunc)
+(
+	RedisModuleCtx *ctx,  // redis module context
+	GraphContext *gc,     // graph context
+	SIValue **row,        // row to emit
+	uint numcols,         // length of row
+	void *pdata           // formatter's private data
+);
 							   
+// formatter is a collection of function pointers
 typedef struct {
-	EmitRowFunc    EmitRow;
-	EmitHeaderFunc EmitHeader;
+	EmitRowFunc            EmitRow;      // emit row
+	EmitHeaderFunc         EmitHeader;   // emit header
+	FormatterPDFreeFunc    FreePData;    // create formatter private data
+	FormatterPDCreateFunc  CreatePData;  // free formatter private data
 } ResultSetFormatter;
 
-/* Redis prints doubles with up to 17 digits of precision, which captures
- * the inaccuracy of many floating-point numbers (such as 0.1).
- * By using the %g format and a precision of 15 significant digits, we avoid many
- * awkward representations like RETURN 0.1 emitting "0.10000000000000001",
- * though we're still subject to many of the typical issues with floating-point error. */
-static inline void _ResultSet_ReplyWithRoundedDouble(RedisModuleCtx *ctx, double d) {
-	// Get length required to print number
+// redis prints doubles with up to 17 digits of precision, which captures
+// the inaccuracy of many floating-point numbers (such as 0.1)
+// By using the %g format and a precision of 15 significant digits, we avoid many
+// awkward representations like RETURN 0.1 emitting "0.10000000000000001",
+// though we're still subject to many of the typical issues with floating-point error
+static inline void _ResultSet_ReplyWithRoundedDouble
+(
+	RedisModuleCtx *ctx,
+	double d
+) {
+	// get length required to print number
 	int len = snprintf(NULL, 0, "%.15g", d);
-	char str[len + 1]; // TODO a reusable buffer would be far preferable
+	char str[len + 1]; // TODO: a reusable buffer would be far preferable
 	sprintf(str, "%.15g", d);
-	// Output string-formatted number
+	// output string-formatted number
 	RedisModule_ReplyWithStringBuffer(ctx, str, len);
 }
+

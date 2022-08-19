@@ -25,6 +25,7 @@ typedef struct {
 	double timer[2];                // query runtime tracker
 	ResultSetStatistics stats;      // result set statistics
 	ResultSetFormatterType format;  // result set format; compact/verbose/nop
+	void *formatter_pdata;          // formatter's private data
 	ResultSetFormatter *formatter;  // result set data formatter
 	SIAllocation cells_allocation;  // encountered values allocation
 } ResultSet;

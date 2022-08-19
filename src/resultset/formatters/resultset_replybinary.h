@@ -6,8 +6,8 @@
 
 #pragma once
 
-// formatter for compact (client-parsed) replies
-void ResultSet_ReplyWithCompactHeader
+// formatter for binary replies
+void ResultSet_ReplyWithBinaryHeader
 (
 	RedisModuleCtx *ctx,
 	const char **columns,
@@ -15,7 +15,7 @@ void ResultSet_ReplyWithCompactHeader
 	void *pdata
 );
 
-void ResultSet_EmitCompactRow
+void ResultSet_EmitBinaryRow
 (
 	RedisModuleCtx *ctx,
 	GraphContext *gc,
@@ -24,9 +24,9 @@ void ResultSet_EmitCompactRow
 	void *pdata
 );
 
-void *ResultSet_CreateCompactPData(void);
+void *ResultSet_CreateBinaryPData(void);
 
-void ResultSet_FreeCompactPData
+void ResultSet_FreeBinaryPData
 (
 	void *pdata
 );

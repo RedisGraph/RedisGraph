@@ -177,12 +177,12 @@ static void _ExecuteQuery(void *args) {
 	}
 
 	// instantiate the query ResultSet
-	bool compact = command_ctx->compact;
-	ResultSetFormatterType resultset_format = profile
-		? FORMATTER_NOP 
-		: (compact) 
-			? FORMATTER_COMPACT 
-			: FORMATTER_VERBOSE;
+	char format = command_ctx->resultset_format;
+	ResultSetFormatterType resultset_format = (profile) ?
+		FORMATTER_NOP : (format == 'c') ?
+		FORMATTER_COMPACT : (format == 'b') ?
+		FORMATTER_BINARY : FORMATTER_VERBOSE;
+
 	ResultSet *result_set = NewResultSet(rm_ctx, resultset_format);
 	if(exec_ctx->cached) ResultSet_CachedExecution(result_set); // indicate a cached execution
 

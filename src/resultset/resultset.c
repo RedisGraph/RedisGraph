@@ -22,7 +22,7 @@ static void _ResultSet_ReplyWithPreamble
 		RedisModule_ReplyWithArray(set->ctx, 3);
 		// emit the table header using the appropriate formatter
 		set->formatter->EmitHeader(set->ctx, set->columns,
-				set->columns_record_map);
+				set->columns_record_map, set->formatter_pdata);
 	} else {
 		// prepare a response containing only statistics
 		RedisModule_ReplyWithArray(set->ctx, 1);
@@ -72,6 +72,7 @@ ResultSet *NewResultSet
 	set->columns             =  NULL;
 	set->formatter           =  ResultSetFormatter_GetFormatter(format);
 	set->column_count        =  0;
+	set->formatter_pdata     =  set->formatter->CreatePData();
 	set->cells_allocation    =  M_NONE;
 	set->columns_record_map  =  NULL;
 
@@ -234,7 +235,8 @@ void ResultSet_Reply
 				row[j] = DataBlock_GetItem(set->cells, i + j);
 			}
 
-			set->formatter->EmitRow(set->ctx, set->gc, row, set->column_count);
+			set->formatter->EmitRow(set->ctx, set->gc, row, set->column_count,
+					set->formatter_pdata);
 		}
 	}
 
@@ -260,6 +262,9 @@ void ResultSet_Free
 	if(set->columns_record_map) {
 		rm_free(set->columns_record_map);
 	}
+
+	// free formatter's private data
+	set->formatter->FreePData(set->formatter_pdata);
 
 	// free resultset cells
 	// NOTE: for large result-set containing only NONE heap allocated values

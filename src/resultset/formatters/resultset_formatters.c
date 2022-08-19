@@ -18,6 +18,9 @@ ResultSetFormatter *ResultSetFormatter_GetFormatter(ResultSetFormatterType t) {
 	case FORMATTER_COMPACT:
 		formatter = &ResultSetFormatterCompact;
 		break;
+	case FORMATTER_BINARY:
+		formatter = &ResultSetFormatterBinary;
+		break;
 	default:
 		RedisModule_Assert(false && "Unknown formatter");
 	}
