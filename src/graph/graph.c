@@ -1146,6 +1146,8 @@ RG_Matrix Graph_GetNodeLabelMatrix
 
 	RG_Matrix m = g->node_labels;
 
+	g->SynchronizeMatrix(g, m);
+	
 	return m;
 }
 
