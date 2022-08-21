@@ -662,6 +662,8 @@ static AST_Validation _ValidateUnion_Clauses(const AST *ast) {
 	}
 	array_free(union_indices);
 
+	if(union_clause_count == 0) return AST_VALID; 
+
 	// If we've encountered UNION ALL clause, all UNION clauses should specify ALL.
 	if(has_all_count != 0) {
 		if(has_all_count != union_clause_count) {
@@ -1205,6 +1207,8 @@ static AST_Validation _ValidateScopes
 
 	// Verify that the clause order in the scope is valid.
 	if(_ValidateClauseOrder(ast) != AST_VALID) return AST_INVALID;
+
+	if(_ValidateUnion_Clauses(ast) != AST_VALID) return AST_INVALID;
 
 	validations_ctx ctx;
 	ctx.valid = AST_VALID;
