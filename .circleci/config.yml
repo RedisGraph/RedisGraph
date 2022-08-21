@@ -273,7 +273,7 @@ commands:
             export PROFILE=<< parameters.profile_env >>
             export BENCHMARK_GLOB=<< parameters.benchmark_glob >>
             export PERF_CALLGRAPH_MODE="fp"
-            if [[ -z $CIRCLE_BRANCH ]]; then branch="$CIRCLE_BRANCH"; else branch="$CIRCLE_TAG"; fi
+            if [[ -n $CIRCLE_BRANCH ]]; then branch="$CIRCLE_BRANCH"; else branch="$CIRCLE_TAG"; fi
             redisbench-admin run-remote \
               --module_path << parameters.module_path >> \
               --github_actor << parameters.github_actor >> \
@@ -661,3 +661,4 @@ workflows:
       # disable temporarily due to huge profile overhead in RG
       # - benchmark-profiler:
       #     context: common
+
