@@ -275,6 +275,26 @@ static bool _Validate_list_comprehention
 	return true;
 }
 
+static bool _Validate_pattern_comprehention
+(
+	const cypher_astnode_t *n,
+	bool start,
+	ast_visitor *visitor
+) {
+	validations_ctx *vctx = visitor->ctx;
+	if(vctx->valid == AST_INVALID) return false;
+
+	const cypher_astnode_t *id = cypher_ast_pattern_comprehension_get_identifier(n);
+	if(id == NULL) return true;
+
+	const char *identifier = cypher_ast_identifier_get_name(id);
+	if(start) {
+		raxInsert(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
+	}
+
+	return true;
+}
+
 static bool _Validate_identifier
 (
 	const cypher_astnode_t *n,
@@ -508,16 +528,18 @@ static bool _Validate_node_pattern
 
 		const cypher_astnode_t *alias_node = cypher_ast_node_pattern_get_identifier(n);
 		if(!alias_node) return true;
+		
 		const char *alias = cypher_ast_identifier_get_name(alias_node);
-		void *alias_type = raxFind(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias));
-		if(alias_type != raxNotFound && alias_type != T_NODE) {
-			ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.", alias);
-			vctx->valid = AST_INVALID;
-			return false;
-		}
 		if(vctx->clause == CYPHER_AST_MERGE) {
 			vctx->valid = _ValidateMergeNode(n, vctx->defined_identifiers);
 			if(vctx->valid == AST_INVALID) return false;
+		} else {
+			void *alias_type = raxFind(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias));
+			if(alias_type != raxNotFound && alias_type != NULL && alias_type != T_NODE) {
+				ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.", alias);
+				vctx->valid = AST_INVALID;
+				return false;
+			}
 		}
 		raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), T_NODE, NULL);
 	}
@@ -707,6 +729,7 @@ static bool _Validate_CALL_Clause
 	 * 3. yield refers to procedure output */
 
 	ProcedureCtx *proc = NULL;
+	rax *rax = NULL;
 
 	// Make sure procedure exists.
 	const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(n));
@@ -729,6 +752,8 @@ static bool _Validate_CALL_Clause
 		}
 	}
 
+	rax = raxNew();
+
 	// validate projections
 	uint proj_count = cypher_ast_call_nprojections(n);
 	if(proj_count > 0) {
@@ -740,8 +765,7 @@ static bool _Validate_CALL_Clause
 			const char *identifier = cypher_ast_identifier_get_name(ast_exp);
 
 			// make sure each yield output is mentioned only once
-			if(!raxInsert(vctx->defined_identifiers, (unsigned char *)identifier,
-							strlen(identifier), NULL, NULL)) {
+			if(!raxInsert(rax, (unsigned char *)identifier, strlen(identifier), NULL, NULL)) {
 				ErrorCtx_SetError("Variable `%s` already declared", identifier);
 				vctx->valid = AST_INVALID;
 				goto cleanup;
@@ -759,6 +783,7 @@ static bool _Validate_CALL_Clause
 
 cleanup:
 	if(proc) Proc_Free(proc);
+	if(rax) raxFree(rax);
 	return vctx->valid == AST_VALID;
 }
 
@@ -1189,6 +1214,7 @@ static AST_Validation _ValidateScopes
 	AST_Visitor_register(visitor, CYPHER_AST_PROJECTION, _Validate_projection);
 	AST_Visitor_register(visitor, CYPHER_AST_MAP, _Validate_map);
 	AST_Visitor_register(visitor, CYPHER_AST_LIST_COMPREHENSION, _Validate_list_comprehention);
+	AST_Visitor_register(visitor, CYPHER_AST_PATTERN_COMPREHENSION, _Validate_pattern_comprehention);
 	AST_Visitor_register(visitor, CYPHER_AST_ANY, _Validate_list_comprehention);
 	AST_Visitor_register(visitor, CYPHER_AST_ALL, _Validate_list_comprehention);
 	AST_Visitor_register(visitor, CYPHER_AST_NONE, _Validate_list_comprehention);
