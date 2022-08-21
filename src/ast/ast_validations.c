@@ -584,6 +584,24 @@ static bool _Validate_shortest_path
 	return vctx->valid == AST_VALID;
 }
 
+static bool _Validate_pattern_path
+(
+	const cypher_astnode_t *n,
+	bool start,
+	ast_visitor *visitor
+) {
+	validations_ctx *vctx = visitor->ctx;
+	if(vctx->valid == AST_INVALID) return false;
+
+	if(start && vctx->clause == CYPHER_AST_CREATE) {
+		vctx->valid = _Validate_CREATE_Entities(n, vctx->defined_identifiers);
+		return vctx->valid == AST_VALID;
+	}
+
+	return true;
+}
+
+
 static bool _Validate_named_path
 (
 	const cypher_astnode_t *n,
@@ -1206,6 +1224,7 @@ static AST_Validation _ValidateScopes
 	AST_Visitor_register(visitor, CYPHER_AST_CALL, _Validate_CALL_Clause);
 	AST_Visitor_register(visitor, CYPHER_AST_NAMED_PATH, _Validate_named_path);
 	AST_Visitor_register(visitor, CYPHER_AST_SHORTEST_PATH, _Validate_shortest_path);
+	AST_Visitor_register(visitor, CYPHER_AST_PATTERN_PATH, _Validate_pattern_path);
 	AST_Visitor_register(visitor, CYPHER_AST_NODE_PATTERN, _Validate_node_pattern);
 	AST_Visitor_register(visitor, CYPHER_AST_REL_PATTERN, _Validate_rel_pattern);
 	AST_Visitor_register(visitor, CYPHER_AST_APPLY_OPERATOR, _Validate_apply_operator);

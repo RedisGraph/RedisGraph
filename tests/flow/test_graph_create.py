@@ -105,7 +105,7 @@ class testGraphCreationFlow(FlowTestsBase):
         queries = ["CREATE (a), (b) SET a.v = [b]",
                    "CREATE (a {v: ['str', [1, NULL]]})",
                    "CREATE (a {v: [[{k: 'v'}]]})",
-                   "CREATE (a:L {v: [e]})-[e:R]->(:L)"]
+                   "CREATE (a:L)-[e:R]->(:L {v: [e]})"]
         for query in queries:
             try:
                 redis_graph.query(query)
@@ -148,6 +148,7 @@ class testGraphCreationFlow(FlowTestsBase):
         for query in queries:
             try:
                 redis_graph.query(query)
+                print(query)
                 self.env.assertTrue(False)
             except redis.exceptions.ResponseError as e:
                 self.env.assertContains("The bound variable 'r' can't be redeclared in a CREATE clause", str(e))
