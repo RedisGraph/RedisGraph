@@ -56,10 +56,9 @@ void ResultSetStat_emit
 	if(stats->nodes_created         > 0) resultset_size++;
 	if(stats->nodes_deleted         > 0) resultset_size++;
 	if(stats->properties_set        > 0) resultset_size++;
-	if(stats->labels_removed        > 0) resultset_size++;
+	if(stats->properties_removed    > 0) resultset_size++;
 	if(stats->indices_created       > 0) resultset_size++;
 	if(stats->indices_deleted       > 0) resultset_size++;
-	if(stats->properties_removed    > 0) resultset_size++;
 	if(stats->relationships_deleted > 0) resultset_size++;
 	if(stats->relationships_created > 0) resultset_size++;
 
