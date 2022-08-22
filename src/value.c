@@ -250,6 +250,8 @@ const char *SIType_ToString(SIType t) {
 		return "List";
 	} else if(t & T_PATH) {
 		return "Path";
+	} else if(t & T_POINT) {
+		return "Point";
 	} else if(t & T_NULL) {
 		return "Null";
 	} else {
@@ -345,9 +347,9 @@ SIValue SIValue_FromString(const char *s) {
 
 	errno = 0;
 	double parsedval = strtod(s, &sEnd);
-	/* The input was not a complete number or represented a number that
-	 * cannot be represented as a double.
-	 * Create a string SIValue. */
+	// the input was not a complete number or represented a number that
+	// cannot be represented as a double
+	// create a string SIValue
 	if(sEnd[0] != '\0' || errno == ERANGE) {
 		return SI_DuplicateStringVal(s);
 	}

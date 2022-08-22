@@ -30,47 +30,37 @@ class test_read_only_query(FlowTestsBase):
         self.env.assertEqual(21, result_set[0][0])
         # Try execute write commands with RO_QUERY
         try:
-            master_con.execute_command("GRAPH.RO_QUERY", graph_name, "CREATE()", "--compact")
+            graph.query("CREATE()", read_only=True)
             assert(False)
-        except:
+        except redis.exceptions.ResponseError as e:
             # Expecting an error.
+            self.env.assertContains(str(e), "graph.RO_QUERY is to be executed only on read-only queries")
             pass
     
     def test02_test_RO_QUERY_fail_on_write_operations(self):
         # This test check graph.RO_QUERY to execute read only commands with success.
         graph_name = "Test_RO_QUERY_fail_on_write_command"
         graph = Graph(master_con, graph_name)
+        # Create the graph
+        graph.query("RETURN 1")
+
+        queries = [
+            "CREATE()",
+            "MERGE()",
+            "MATCH(n) DELETE n",
+            "CREATE INDEX ON :person(age)",
+            "DROP INDEX ON :Person(age)"
+        ]
+
         # Try execute write commands with RO_QUERY
-        try:
-            master_con.execute_command("GRAPH.RO_QUERY", graph_name, "CREATE()", "--compact")
-            assert(False)
-        except:
-            # Expecting an error.
-            pass
-        try:
-            master_con.execute_command("GRAPH.RO_QUERY", graph_name, "MERGE()", "--compact")
-            assert(False)
-        except:
-            # Expecting an error.
-            pass
-        try:
-            master_con.execute_command("GRAPH.RO_QUERY", graph_name, "MATCH(n) DELETE n", "--compact")
-            assert(False)
-        except:
-            # Expecting an error.
-            pass
-        try:
-            master_con.execute_command("GRAPH.RO_QUERY", graph_name, "CREATE INDEX ON :person(age)", "--compact")
-            assert(False)
-        except:
-            # Expecting an error.
-            pass
-        try:
-            master_con.execute_command("GRAPH.RO_QUERY", graph_name, "DROP INDEX ON :Person(age)", "--compact")
-            assert(False)
-        except:
-            # Expecting an error.
-            pass
+        for query in queries:
+            try:
+                graph.query(query, read_only=True)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                # Expecting an error.
+                self.env.assertContains(str(e), "graph.RO_QUERY is to be executed only on read-only queries")
+                pass
 
     def test03_test_replica_read_only(self):
         # This test checks that only RO_QUERY is valid on replicas.
@@ -85,6 +75,18 @@ class test_read_only_query(FlowTestsBase):
             # Every GRAPH.QUERY command is a write command, see that replica connection throws an exception.
             slave_con.execute_command("GRAPH.QUERY", graph_name, "MATCH (n) RETURN COUNT(n)", "--compact")
             assert(False)
-        except:
+        except redis.exceptions.ResponseError as e:
             # Expecting an error.
+            self.env.assertContains(str(e), "You can't write against a read only replica.")
+            pass
+
+    def test04_read_only_should_not_create_graph(self):
+        graph_name = "Test_RO_QUERY_should_not_create_graph"
+        graph = Graph(master_con, graph_name)
+        try:
+            graph.query("MATCH (n) RETURN n", read_only=True)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            self.env.assertContains(str(e), "Invalid graph operation on empty key")
             pass

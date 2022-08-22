@@ -19,6 +19,7 @@ typedef struct {
 	uint skip;                  // Total number of records to skip
 	uint limit;                 // Total number of records to produce
 	int *directions;            // Array of sort directions(ascending / desending) for each item.
+	uint record_idx;            // index of current record to return
 	AR_ExpNode **exps;          // Projected expressons.
 } OpSort;
 

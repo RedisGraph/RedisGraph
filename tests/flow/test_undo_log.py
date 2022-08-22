@@ -13,7 +13,7 @@ class testUndoLog():
 
     def test01_undo_create_node(self):
         try:
-            self.graph.query("CREATE (n:N) WITH n RETURN 1 * 'a'")
+            self.graph.query("CREATE (n:N) WITH n RETURN 1 * n")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -29,7 +29,7 @@ class testUndoLog():
             self.graph.query("""MATCH (s:N {v: 1}), (t:N {v: 2})
                                 CREATE (s)-[r:R]->(t)
                                 WITH r
-                                RETURN 1 * 'a'""")
+                                RETURN 1 * r""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -45,7 +45,7 @@ class testUndoLog():
             self.graph.query("""MATCH (n:N)
                                 DELETE n
                                 WITH n
-                                RETURN 1 * 'a'""")
+                                RETURN 1 * n""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -61,7 +61,7 @@ class testUndoLog():
             self.graph.query("""MATCH ()-[r:R]->()
                                 DELETE r
                                 WITH r 
-                                RETURN 1 * 'a'""")
+                                RETURN 1 * r""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -77,7 +77,7 @@ class testUndoLog():
             self.graph.query("""MATCH (n:N {a: 1})
                                 SET n.a = 2, n.b = '', n.c = null, n.d = point({latitude:2, longitude:1})
                                 WITH n
-                                RETURN 1 * 'a'""")
+                                RETURN 1 * n""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -95,7 +95,7 @@ class testUndoLog():
             self.graph.query("""MATCH (n:N {a: 1})
                                 SET n.e = 1
                                 WITH n
-                                RETURN 1 * 'a'""")
+                                RETURN 1 * n""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -110,7 +110,7 @@ class testUndoLog():
             self.graph.query("""MATCH (n:N {a: 1})
                                 SET n:M
                                 WITH n
-                                RETURN 1 * 'a'""")
+                                RETURN 1 * n""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -125,7 +125,7 @@ class testUndoLog():
             self.graph.query("""MATCH (n:N {a: 1})
                                 SET n = {}
                                 WITH n
-                                RETURN 'a' * 1""")
+                                RETURN n * 1""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -142,7 +142,7 @@ class testUndoLog():
             self.graph.query("""MATCH (n:N {a: 1})
                                 SET n += {e: 1}
                                 WITH n
-                                RETURN 'a' * 1""")
+                                RETURN n * 1""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -162,7 +162,7 @@ class testUndoLog():
             self.graph.query("""MATCH ()-[r]->()
                               SET r.v = 2
                               WITH r
-                              RETURN 'a' * 1""")
+                              RETURN r * 1""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -175,7 +175,7 @@ class testUndoLog():
     def test07_undo_create_indexed_node(self):
         self.graph.query("CREATE INDEX FOR (n:N) ON (n.v)")
         try:
-            self.graph.query("CREATE (n:N {v:1}) WITH n RETURN 1 * 'a'")
+            self.graph.query("CREATE (n:N {v:1}) WITH n RETURN 1 * n")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -192,7 +192,7 @@ class testUndoLog():
             self.graph.query("""MATCH (s:N {v: 1}), (t:N {v: 2})
                                 CREATE (s)-[r:R {v:1}]->(t)
                                 WITH r
-                                RETURN 1 * 'a'""")
+                                RETURN 1 * r""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -209,7 +209,7 @@ class testUndoLog():
             self.graph.query("""MATCH (n:N)
                                 DELETE n
                                 WITH n
-                                RETURN 'a' * 1""")
+                                RETURN n * 1""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -229,7 +229,7 @@ class testUndoLog():
             self.graph.query("""MATCH ()-[r:R]->()
                                 DELETE r
                                 WITH r
-                                RETURN 'a' * 1""")
+                                RETURN r * 1""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -249,7 +249,7 @@ class testUndoLog():
             self.graph.query("""MATCH (n:N {v: 1})
                                 SET n.v = 2
                                 WITH n
-                                RETURN 'a' * 1""")
+                                RETURN n * 1""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -269,7 +269,7 @@ class testUndoLog():
             self.graph.query("""MATCH ()-[r]->()
                                 SET r.v = 2
                                 WITH r
-                                RETURN 'a' * 1""")
+                                RETURN r * 1""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
@@ -288,7 +288,7 @@ class testUndoLog():
             self.graph.query("""MATCH (n:N)
                                 DETACH DELETE n
                                 WITH n
-                                RETURN 1 * 'a'""")
+                                RETURN 1 * n""")
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except:
