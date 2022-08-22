@@ -357,22 +357,25 @@ SIValue AR_SPLIT(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) {
 		return SI_NullVal();
 	}
-	const char *str = argv[0].stringval;
+	// strtok should work on a mutable copy.
+	char *str = rm_strdup(argv[0].stringval);
 	const char *delimiter = argv[1].stringval;
+
 	SIValue tokens =  SIArray_New(1);
-	char* token = strtok(str, delimiter);
+	char *token = strtok(str, delimiter);
 	if(!token) {
-		SIValue si_token = SI_DuplicateStringVal(str);
-		SIArray_Append(&tokens, si_token);
+		SIArray_Append(&tokens, argv[0]);
+		rm_free(str);
 		return tokens;
 	}
 
 	while(token) {
-		SIValue si_token = SI_DuplicateStringVal(token);
+		SIValue si_token = SI_ConstStringVal(token);
 		SIArray_Append(&tokens, si_token);
 		token = strtok(NULL, delimiter);
 	}
-
+	
+	rm_free(str);
 	return tokens;
 }
 
