@@ -907,6 +907,7 @@ This section contains information on all supported functions from the Cypher que
 | toUpper()   | Returns the original string in uppercase                                                        |
 | trim()      | Returns the original string with leading and trailing whitespace removed                        |
 | size()      | Returns a string length                                                                         |
+| split()      | Returns a list of strings from splitting a string by a given delimiter                                                                        |
 
 ## Point functions
 
