@@ -12,6 +12,7 @@
 #include "../../util/uuid.h"
 #include "../../util/strutil.h"
 #include "../../util/json_encoder.h"
+#include "../../datatypes/array.h"
 
 #define STRINGABLE (SI_NUMERIC | T_POINT | T_DURATION | T_DATETIME| T_STRING | T_BOOL)
 
@@ -349,6 +350,30 @@ SIValue AR_REPLACE(SIValue *argv, int argc, void *private_data) {
 	array_free(arr);
 
 	return SI_TransferStringVal(buffer);
+}
+
+/* returns a list of strings resulting from the splitting of the original string around matches of the given delimiter. */
+SIValue AR_SPLIT(SIValue *argv, int argc, void *private_data) {
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) {
+		return SI_NullVal();
+	}
+	const char *str = argv[0].stringval;
+	const char *delimiter = argv[1].stringval;
+	SIValue tokens =  SIArray_New(1);
+	char* token = strtok(str, delimiter);
+	if(!token) {
+		SIValue si_token = SI_DuplicateStringVal(str);
+		SIArray_Append(&tokens, si_token);
+		return tokens;
+	}
+
+	while(token) {
+		SIValue si_token = SI_DuplicateStringVal(token);
+		SIArray_Append(&tokens, si_token);
+		token = strtok(NULL, delimiter);
+	}
+
+	return tokens;
 }
 
 //==============================================================================
