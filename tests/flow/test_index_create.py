@@ -174,6 +174,10 @@ class testIndexCreationFlow(FlowTestsBase):
         self.env.assertEquals(result.indices_created, 2)
 
     def test05_index_delete(self):
+
+        # skip on RLEC, because the graph lazy deletion causing the memory to blow and RS mem cap exceeds becasue of it.
+        # when reconf will be possible on RLEC we can unset Config_ASYNC_DELETE to workaround this.
+        self.env.skipOnCluster()
         def create_drop_index(graph_id):
             env = Env(decodeResponses=True)
             redis_con = env.getConnection()
