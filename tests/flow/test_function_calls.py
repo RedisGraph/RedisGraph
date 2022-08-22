@@ -879,3 +879,19 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """CREATE ()-[r:R]->() RETURN toStringOrNull(r)"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], None)
+
+    def test33_split(self):
+        # null string
+        query = "RETURN split(null, ',')"
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+        # null delimiter
+        query = "RETURN split('hello world', null)"
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+        # invalid delimiter
+        query = "RETURN split('hello world', ',')"
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], ["hello world"])
