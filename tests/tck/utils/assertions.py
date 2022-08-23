@@ -7,33 +7,17 @@ from redis.commands.graph.node import Node
 from redis.commands.graph.edge import Edge
 from redis.commands.graph.path import Path
 
-# Returns True if value is a number or string representation of a number.
-
-
 def is_numeric(value):
-    # check for value's type to be a number or a string
-    if not isinstance(value, (Number, str)):
-        return False
-    try:
-        # value is either number or string, try to convert to float
-        float(value)
-        # conversion succeed
+    if isinstance(value, float):
         return True
-    except ValueError:
-        # value was a string not representing a number
-        return False
+    if isinstance(value, int):
+        return True
+    return False
 
 
 def removeQuotes(value):
     value = value.replace("'", "")
     value = value.replace('"', "")
-    return value
-
-
-def toNumeric(value):
-    value = float(value)
-    if value.is_integer():
-        value = int(value)
     return value
 
 
@@ -126,14 +110,10 @@ def toString(value):
     elif value == None:
         return "null"
 
-# prepare the actual value returned from redisgraph to be in
-# comparison vaiable format of the TCK feature files expected values
-
-
 def prepareActualValue(actualValue):
     # if value is a numeric string or a number, transform to numeric value
     if is_numeric(actualValue):
-        actualValue = toNumeric(actualValue)
+        actualValue = actualValue
     # value is string
     elif isinstance(actualValue, str):
         # remove qoutes if any
@@ -159,9 +139,8 @@ def prepareActualValue(actualValue):
 
 
 def prepareExpectedValue(expectedValue):
-    # the expected value is always string. Do a string preparation
-    expectedValue = removeQuotes(expectedValue)
-    # in case of boolean value string
+    # print(expectedValue)
+    # print(type(expectedValue))
     if expectedValue == "true":
         expectedValue = True
     elif expectedValue == "false":
@@ -170,7 +149,15 @@ def prepareExpectedValue(expectedValue):
         expectedValue = None
     # in case of numeric string
     elif is_numeric(expectedValue):
-        expectedValue = toNumeric(expectedValue)
+        expectedValue = expectedValue
+    else:
+        try:
+            expectedValue = int(expectedValue)
+        except:
+            try:
+                expectedValue = float(expectedValue)
+            except:
+                expectedValue = removeQuotes(expectedValue)
     return expectedValue
 
 
@@ -184,9 +171,6 @@ def prepare_expected_row(row):
 
 def assert_empty_resultset(resultset):
     Env.RTestInstance.currEnv.assertEquals(len(resultset.result_set), 0)
-
-# check value of a designated statistic
-
 
 def assert_statistics(resultset, stat, value):
     if stat == "+nodes":
