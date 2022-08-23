@@ -550,7 +550,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set[0][0], None)
 
         # the requested length is too long and overflowing
-        query = """RETURN SUBSTRING('ab', 1, 999999999999999999999999999999999999999999999)"""
+        query = """RETURN SUBSTRING('ab', 1, 999999999999999)"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], "b")
 
@@ -612,7 +612,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         larg_double = 1.123456e300
         query = f"""RETURN '' + {larg_double} + {larg_double}"""
         actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], "%f%f" % (larg_double, larg_double))
+        self.env.assertEquals(actual_result.result_set[0][0], "1.123456e+3001.123456e+300")
 
     def test28_sqrt(self):
         query = """RETURN sqrt(0)"""
@@ -847,10 +847,10 @@ class testFunctionCallsFlow(FlowTestsBase):
         # floats
         query = """RETURN toStringOrNull(0.1)"""
         actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], "0.100000")
+        self.env.assertEquals(actual_result.result_set[0][0], "0.1")
         query = """RETURN toStringOrNull(0.9)"""
         actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], "0.900000")
+        self.env.assertEquals(actual_result.result_set[0][0], "0.9")
 
         # boolean
         query = """RETURN toStringOrNull(true)"""

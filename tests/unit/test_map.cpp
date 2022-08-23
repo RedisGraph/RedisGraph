@@ -172,7 +172,7 @@ TEST_F(MapTest, map_tostring) {
 	Map_Add(&map, k, v);
 
 	k = SI_ConstStringVal("key1");
-	v = SI_DoubleVal(1);
+	v = SI_DoubleVal(1.1);
 	Map_Add(&map, k, v);
 
 	k = SI_ConstStringVal("key2");
@@ -187,7 +187,7 @@ TEST_F(MapTest, map_tostring) {
 	char *buf = (char *)rm_malloc(sizeof(char) * 256);
 	Map_ToString(map, &buf, &buf_len, &bytes_written);
 
-	ASSERT_STREQ(buf, "{key0: 0, key1: 1.000000, key2: val0, key3: {inner_key: NULL}}");
+	ASSERT_STREQ(buf, "{key0: 0, key1: 1.1, key2: val0, key3: {inner_key: NULL}}");
 
 	rm_free(buf);
 	SIValue_Free(map);
