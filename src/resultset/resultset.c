@@ -21,8 +21,7 @@ static void _ResultSet_ReplyWithPreamble
 		// prepare a response containing a header, records, and statistics
 		RedisModule_ReplyWithArray(set->ctx, 3);
 		// emit the table header using the appropriate formatter
-		set->formatter->EmitHeader(set->ctx, set->columns,
-				set->columns_record_map, set->formatter_pdata);
+		set->formatter->EmitHeader(set->ctx, set->columns);
 	} else {
 		// prepare a response containing only statistics
 		RedisModule_ReplyWithArray(set->ctx, 1);
@@ -67,13 +66,11 @@ ResultSet *NewResultSet
 
 	set->gc                  =  QueryCtx_GetGraphCtx();
 	set->ctx                 =  ctx;
-	set->cells               =  NULL;
 	set->format              =  format;
 	set->columns             =  NULL;
 	set->formatter           =  ResultSetFormatter_GetFormatter(format);
 	set->column_count        =  0;
 	set->formatter_pdata     =  set->formatter->CreatePData();
-	set->cells_allocation    =  M_NONE;
 	set->columns_record_map  =  NULL;
 
 	// init resultset statistics
@@ -87,9 +84,8 @@ ResultSet *NewResultSet
 	// allocate space for resultset entries only if data is expected
 	if(set->column_count > 0) {
 		// none empty result-set
-		// allocate enough space for at least 10 rows
-		uint64_t nrows = set->column_count * 10;
-		set->cells = DataBlock_New(16384, nrows, sizeof(SIValue), NULL);
+		// allocate formatter's private data
+		set->formatter_pdata = set->formatter->CreatePData();
 	}
 
 	return set;
@@ -118,17 +114,6 @@ void ResultSet_MapProjection
 	}
 }
 
-// returns number of rows in result-set
-uint64_t ResultSet_RowCount
-(
-	const ResultSet *set  // resultset to inquery
-) {
-	ASSERT(set != NULL);
-
-	if(set->column_count == 0) return 0;
-	return DataBlock_ItemCount(set->cells) / set->column_count;
-}
-
 // add a new row to resultset
 int ResultSet_AddRecord
 (
@@ -138,22 +123,11 @@ int ResultSet_AddRecord
 	ASSERT(r   != NULL);
 	ASSERT(set != NULL);
 
-	// copy projected values from record to resultset
-	for(int i = 0; i < set->column_count; i++) {
-		int idx = set->columns_record_map[i];
-		SIValue *cell = DataBlock_AllocateItem(set->cells, NULL);
-		*cell = Record_Get(r, idx);
-		SIValue_Persist(cell);
-		set->cells_allocation |= SI_ALLOCATION(cell);
-	}
-
-	// remove entry from record in a second pass
-	// this will ensure duplicated projections are not removed
-	// too early, consider: MATCH (a) RETURN max(a.val), max(a.val)
-	for(int i = 0; i < set->column_count; i++) {
-		int idx = set->columns_record_map[i];
-		Record_Remove(r, idx);
-	}
+	// TODO: arrange for the input record to contain
+	// projected values in indices 0..column_count
+	// this way we won't have to use a columns_record_map
+	set->formatter->ProcessRow(r, set->columns_record_map, set->column_count,
+			set->formatter_pdata);
 
 	return RESULTSET_OK;
 }
@@ -211,8 +185,6 @@ void ResultSet_Reply
 ) {
 	ASSERT(set != NULL);
 
-	uint64_t row_count = ResultSet_RowCount(set);
-
 	// check to see if we've encountered a run-time error
 	// if so, emit it as the only response
 	if(ErrorCtx_EncounteredError()) {
@@ -225,22 +197,12 @@ void ResultSet_Reply
 
 	// emit resultset
 	if(set->column_count > 0) {
-		RedisModule_ReplyWithArray(set->ctx, row_count);
-		SIValue *row[set->column_count];
-		uint64_t cells = DataBlock_ItemCount(set->cells);
-		// for each row
-		for(uint64_t i = 0; i < cells; i += set->column_count) {
-			// for each column
-			for(uint j = 0; j < set->column_count; j++) {
-				row[j] = DataBlock_GetItem(set->cells, i + j);
-			}
-
-			set->formatter->EmitRow(set->ctx, set->gc, row, set->column_count,
-					set->formatter_pdata);
-		}
+		set->formatter->EmitData(set->ctx, set->gc, set->column_count,
+			set->formatter_pdata);
 	}
 
-	ResultSetStat_emit(set->ctx, &set->stats); // response with statistics
+	// response with statistics
+	ResultSetStat_emit(set->ctx, &set->stats);
 }
 
 void ResultSet_Clear(ResultSet *set) {
@@ -266,22 +228,6 @@ void ResultSet_Free
 	// free formatter's private data
 	set->formatter->FreePData(set->formatter_pdata);
 
-	// free resultset cells
-	// NOTE: for large result-set containing only NONE heap allocated values
-	// the following is a bit of a waste as there's no real memory to free
-	// at the moment we can't tell rather or not
-	// calling SIValue_Free is required
-	if(set->cells) {
-		// free individual cells if resultset encountered a heap allocated value
-		if(set->cells_allocation & M_SELF) {
-			uint64_t n = DataBlock_ItemCount(set->cells);
-			for(uint64_t i = 0; i < n; i++) {
-				SIValue *v = DataBlock_GetItem(set->cells, i);
-				SIValue_Free(*v);
-			}
-		}
-		DataBlock_Free(set->cells);
-	}
-
 	rm_free(set);
 }
+

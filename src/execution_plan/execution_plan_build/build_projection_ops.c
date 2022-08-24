@@ -99,46 +99,55 @@ AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *clause) {
 	return expressions;
 }
 
-// Merge all order expressions into the projections array without duplicates,
-static void _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **order_exps) {
-	rax *projection_names = raxNew();
-	AR_ExpNode **project_exps = *exps_ptr;
-	uint order_count = array_len(order_exps);
-	uint project_count = array_len(project_exps);
+// merge all order expressions into the projections array without duplicates
+static void _combine_projection_arrays
+(
+	AR_ExpNode ***exps_ptr,
+	AR_ExpNode **order_exps
+) {
+	rax         *projection_names  =  raxNew();
+	AR_ExpNode  **project_exps     =  *exps_ptr;
+	uint        order_count        =  array_len(order_exps);
+	uint        project_count      =  array_len(project_exps);
 
-	// Add all WITH/RETURN projection names to rax.
+	// add all WITH/RETURN projection names to rax
 	for(uint i = 0; i < project_count; i ++) {
 		const char *name = project_exps[i]->resolved_name;
 		raxTryInsert(projection_names, (unsigned char *)name, strlen(name), NULL, NULL);
 	}
 
-	// Merge non-duplicate order expressions into projection array.
+	// merge non-duplicate order expressions into projection array
 	for(uint i = 0; i < order_count; i ++) {
 		const char *name = order_exps[i]->resolved_name;
-		int new_name = raxTryInsert(projection_names, (unsigned char *)name, strlen(name), NULL, NULL);
-		// If it is a new projection, add a clone to the array.
-		if(new_name) array_append(project_exps, AR_EXP_Clone(order_exps[i]));
+		int new_name = raxTryInsert(projection_names, (unsigned char *)name,
+				strlen(name), NULL, NULL);
+		// if it is a new projection, add a clone to the array
+		if(new_name) {
+			array_append(project_exps, AR_EXP_Clone(order_exps[i]));
+		}
 	}
 
 	raxFree(projection_names);
 	*exps_ptr = project_exps;
 }
 
-// Build an aggregate or project operation and any required modifying operations.
-// This logic applies for both WITH and RETURN projections.
-static inline void _buildProjectionOps(ExecutionPlan *plan,
-									   const cypher_astnode_t *clause) {
-
-	OpBase                  *op               =  NULL  ;
-	OpBase                  *distinct_op      =  NULL  ;
-	bool                    distinct          =  false ;
-	bool                    aggregate         =  false ;
-	int                     *sort_directions  =  NULL  ;
-	AR_ExpNode              **order_exps      =  NULL  ;
-	AR_ExpNode              **projections     =  NULL  ;
-	const cypher_astnode_t  *skip_clause      =  NULL  ;
-	const cypher_astnode_t  *limit_clause     =  NULL  ;
-	const cypher_astnode_t  *order_clause     =  NULL  ;
+// build an aggregate or project operation and any required modifying operations
+// this logic applies for both WITH and RETURN projections
+static inline void _buildProjectionOps
+(
+	ExecutionPlan *plan,
+	const cypher_astnode_t *clause
+) {
+	OpBase                 *op              = NULL  ;
+	OpBase                 *distinct_op     = NULL  ;
+	bool                   distinct         = false ;
+	bool                   aggregate        = false ;
+	int                    *sort_directions = NULL  ;
+	AR_ExpNode             **order_exps     = NULL  ;
+	AR_ExpNode             **projections    = NULL  ;
+	const cypher_astnode_t *skip_clause     = NULL  ;
+	const cypher_astnode_t *limit_clause    = NULL  ;
+	const cypher_astnode_t *order_clause    = NULL  ;
 
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
 	ASSERT(t == CYPHER_AST_WITH || t == CYPHER_AST_RETURN);
@@ -159,11 +168,11 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 	}
 
 	if(distinct) {
-		// Prepare the distinct op but do not add it to op tree.
-		// This is required so that it does not operate on order expressions.
+		// prepare the distinct op but do not add it to op tree.
+		// this is required so that it does not operate on order expressions
 		uint n = array_len(projections);
 
-		// Populate a stack array with the aliases to perform Distinct on
+		// populate a stack array with the aliases to perform Distinct on
 		const char *aliases[n];
 		for(uint i = 0; i < n; i ++) aliases[i] = projections[i]->resolved_name;
 		distinct_op = NewDistinctOp(plan, aliases, n);
@@ -172,11 +181,11 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 	if(order_clause) {
 		AST_PrepareSortOp(order_clause, &sort_directions);
 		order_exps = _BuildOrderExpressions(projections, order_clause);
-		// Merge order expressions into the projections array.
+		// merge order expressions into the projections array
 		_combine_projection_arrays(&projections, order_exps);
 	}
 
-	// Our fundamental operation will be a projection or aggregation.
+	// our fundamental operation will be a projection or aggregation
 	if(aggregate) {
 		// An aggregate op's caching policy depends on whether its results will be sorted.
 		bool sorting_after_aggregation = (order_exps != NULL);
@@ -186,15 +195,17 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 	}
 	ExecutionPlan_UpdateRoot(plan, op);
 
-	/* Add modifier operations in order such that the final execution plan will follow the sequence:
-	 * Limit -> Skip -> Sort -> Distinct -> Project/Aggregate */
+	// add modifier operations in order such that the final execution plan
+	// will follow the sequence:
+	// Limit -> Skip -> Sort -> Distinct -> Project/Aggregate
 
 	if(distinct_op) {
 		ExecutionPlan_UpdateRoot(plan, distinct_op);
 	}
 
 	if(sort_directions) {
-		// The sort operation will obey a specified limit, but must account for skipped records
+		// the sort operation will obey a specified limit
+		// but must account for skipped records
 		op = NewSortOp(plan, order_exps, sort_directions);
 		ExecutionPlan_UpdateRoot(plan, op);
 	}
@@ -210,8 +221,12 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 	}
 }
 
-// RETURN builds a subtree of projection ops with Results as the root.
-void buildReturnOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
+// RETURN builds a subtree of projection ops with Results as the root
+void buildReturnOps
+(
+	ExecutionPlan *plan,
+	const cypher_astnode_t *clause
+) {
 	_buildProjectionOps(plan, clause);
 
 	// follow up with a Result operation
@@ -219,8 +234,12 @@ void buildReturnOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
 	ExecutionPlan_UpdateRoot(plan, op);
 }
 
-// RETURN builds a subtree of projection ops.
-void buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
+// RETURN builds a subtree of projection ops
+void buildWithOps
+(
+	ExecutionPlan *plan,
+	const cypher_astnode_t *clause
+) {
 	_buildProjectionOps(plan, clause);
 }
 

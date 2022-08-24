@@ -238,12 +238,11 @@ inline void Record_FreeEntry(Record r, int idx) {
 void Record_FreeEntries(Record r) {
 	uint length = Record_length(r);
 	for(uint i = 0; i < length; i++) {
-		// Free any allocations held by this Record.
+		// free any allocations held by this Record
 		Record_FreeEntry(r, i);
 	}
 }
 
-// This function is currently unused.
 void Record_Free(Record r) {
 	Record_FreeEntries(r);
 	rm_free(r);

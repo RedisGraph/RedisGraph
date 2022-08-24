@@ -87,6 +87,7 @@ DataBlock *DataBlock_New
 	fpDestructor fp
 ) {
 	DataBlock *dataBlock = rm_malloc(sizeof(DataBlock));
+
 	dataBlock->blocks      =  NULL;
 	dataBlock->itemSize    =  itemSize + ITEM_HEADER_SIZE;
 	dataBlock->itemCount   =  0;

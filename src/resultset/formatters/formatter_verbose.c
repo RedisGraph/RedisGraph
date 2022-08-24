@@ -12,25 +12,25 @@
 static void _ResultSet_VerboseReplyWithMap
 (
 	RedisModuleCtx *ctx,
-	SIValue map
+	SIValue *map
 );
 
 static void _ResultSet_VerboseReplyWithPath
 (
 	RedisModuleCtx *ctx,
-	SIValue path
+	SIValue *path
 );
 
 static void _ResultSet_VerboseReplyWithPoint
 (
 	RedisModuleCtx *ctx,
-	SIValue point
+	SIValue *point
 );
 
 static void _ResultSet_VerboseReplyWithArray
 (
 	RedisModuleCtx *ctx,
-	SIValue array
+	SIValue *array
 );
 
 static void _ResultSet_VerboseReplyWithNode
@@ -53,30 +53,30 @@ static void _ResultSet_VerboseReplyWithEdge
 static void _ResultSet_VerboseReplyWithSIValue(
 	RedisModuleCtx *ctx,
 	GraphContext *gc,
-	const SIValue v
+	SIValue *v
 ) {
-	switch(SI_TYPE(v)) {
+	switch(SI_TYPE(*v)) {
 	case T_STRING:
-		RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
+		RedisModule_ReplyWithStringBuffer(ctx, v->stringval, strlen(v->stringval));
 		return;
 	case T_INT64:
-		RedisModule_ReplyWithLongLong(ctx, v.longval);
+		RedisModule_ReplyWithLongLong(ctx, v->longval);
 		return;
 	case T_DOUBLE:
-		_ResultSet_ReplyWithRoundedDouble(ctx, v.doubleval);
+		_ResultSet_ReplyWithRoundedDouble(ctx, v->doubleval);
 		return;
 	case T_BOOL:
-		if(v.longval != 0) RedisModule_ReplyWithStringBuffer(ctx, "true", 4);
+		if(v->longval != 0) RedisModule_ReplyWithStringBuffer(ctx, "true", 4);
 		else RedisModule_ReplyWithStringBuffer(ctx, "false", 5);
 		return;
 	case T_NULL:
 		RedisModule_ReplyWithNull(ctx);
 		return;
 	case T_NODE:
-		_ResultSet_VerboseReplyWithNode(ctx, gc, v.ptrval);
+		_ResultSet_VerboseReplyWithNode(ctx, gc, v->ptrval);
 		return;
 	case T_EDGE:
-		_ResultSet_VerboseReplyWithEdge(ctx, gc, v.ptrval);
+		_ResultSet_VerboseReplyWithEdge(ctx, gc, v->ptrval);
 		return;
 	case T_ARRAY:
 		_ResultSet_VerboseReplyWithArray(ctx, v);
@@ -113,7 +113,7 @@ static void _ResultSet_VerboseReplyWithProperties
 		const char *prop_str = GraphContext_GetAttributeString(gc, attr_id);
 		RedisModule_ReplyWithStringBuffer(ctx, prop_str, strlen(prop_str));
 		// Emit the value
-		_ResultSet_VerboseReplyWithSIValue(ctx, gc, value);
+		_ResultSet_VerboseReplyWithSIValue(ctx, gc, &value);
 	}
 }
 
@@ -208,12 +208,12 @@ static void _ResultSet_VerboseReplyWithEdge
 static void _ResultSet_VerboseReplyWithArray
 (
 	RedisModuleCtx *ctx,
-	SIValue array
+	SIValue *array
 ) {
 	size_t bufferLen = 512;
 	char *str = rm_calloc(bufferLen, sizeof(char));
 	size_t bytesWrriten = 0;
-	SIValue_ToString(array, &str, &bufferLen, &bytesWrriten);
+	SIValue_ToString(*array, &str, &bufferLen, &bytesWrriten);
 	RedisModule_ReplyWithStringBuffer(ctx, str, bytesWrriten);
 	rm_free(str);
 }
@@ -221,22 +221,22 @@ static void _ResultSet_VerboseReplyWithArray
 static void _ResultSet_VerboseReplyWithPath
 (
 	RedisModuleCtx *ctx,
-	SIValue path
+	SIValue *path
 ) {
-	SIValue path_array = SIPath_ToList(path);
-	_ResultSet_VerboseReplyWithArray(ctx, path_array);
+	SIValue path_array = SIPath_ToList(*path);
+	_ResultSet_VerboseReplyWithArray(ctx, &path_array);
 	SIValue_Free(path_array);
 }
 
 static void _ResultSet_VerboseReplyWithMap
 (
 	RedisModuleCtx *ctx,
-	SIValue map
+	SIValue *map
 ) {
 	size_t bufferLen = 512;
 	char *str = rm_calloc(bufferLen, sizeof(char));
 	size_t bytesWrriten = 0;
-	SIValue_ToString(map, &str, &bufferLen, &bytesWrriten);
+	SIValue_ToString(*map, &str, &bufferLen, &bytesWrriten);
 	RedisModule_ReplyWithStringBuffer(ctx, str, bytesWrriten);
 	rm_free(str);
 }
@@ -244,57 +244,120 @@ static void _ResultSet_VerboseReplyWithMap
 static void _ResultSet_VerboseReplyWithPoint
 (
 	RedisModuleCtx *ctx,
-	SIValue point
+	SIValue *point
 ) {
 	// point({latitude:56.7, longitude:12.78})
 	char buffer[256];
 	int bytes_written = sprintf(buffer, "point({latitude:%f, longitude:%f})",
-			Point_lat(point), Point_lon(point));
+			Point_lat(*point), Point_lon(*point));
 
 	RedisModule_ReplyWithStringBuffer(ctx, buffer, bytes_written);
 }
 
-void ResultSet_EmitVerboseRow
-(
-	RedisModuleCtx *ctx,
-	GraphContext *gc,
-	SIValue **row,
-	uint numcols,
-	void *pdata
-) {
-	// prepare return array sized to the number of RETURN entities
-	RedisModule_ReplyWithArray(ctx, numcols);
+typedef struct {
+	DataBlock *cells;
+	bool cells_allocation;
+} FormatterVerboseCtx;
 
-	for(int i = 0; i < numcols; i++) {
-		SIValue v = *row[i];
-		_ResultSet_VerboseReplyWithSIValue(ctx, gc, v);
+void *Formatter_Verbose_CreatePData(void) {
+	FormatterVerboseCtx *ctx = rm_malloc(sizeof(FormatterVerboseCtx));
+	ctx->cells = DataBlock_New(16384, 1, sizeof(SIValue), NULL);
+	ctx->cells_allocation = M_NONE;
+
+	return ctx;
+}
+
+void Formatter_Verbose_ProcessRow
+(
+	Record r,
+	uint *columns_record_map,  //
+	uint ncols,                // length of row
+	void *pdata                // formatter's private data
+) {
+	FormatterVerboseCtx *ctx = (FormatterVerboseCtx*)pdata;
+
+	DataBlock *cells = ctx->cells;
+
+	// copy projected values from record to resultset
+	for(int i = 0; i < ncols; i++) {
+		int idx = columns_record_map[i];
+		SIValue *cell = DataBlock_AllocateItem(cells, NULL);
+		*cell = Record_Get(r, idx);
+		ctx->cells_allocation |= SI_ALLOCATION(cell);
+	}
+
+	// remove entry from record in a second pass
+	// this will ensure duplicated projections are not removed
+	// too early, consider: MATCH (a) RETURN max(a.val), max(a.val)
+	for(int i = 0; i < ncols; i++) {
+		int idx = columns_record_map[i];
+		Record_Remove(r, idx);
 	}
 }
 
-// Emit the alias or descriptor for each column in the header.
-void ResultSet_ReplyWithVerboseHeader
+// emit the alias or descriptor for each column in the header
+void Formatter_Verbose_EmitHeader
 (
 	RedisModuleCtx *ctx,
-	const char **columns,
-	uint *col_rec_map,
-	void *pdata
+	const char **columns
 ) {
 	uint columns_len = array_len(columns);
 	RedisModule_ReplyWithArray(ctx, columns_len);
 	for(uint i = 0; i < columns_len; i++) {
-		// Emit the identifier string associated with the column
+		// emit the identifier string associated with the column
 		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
 	}
 }
 
-void *ResultSet_CreateVerbosePData(void) {
-	return NULL;
+void Formatter_Verbose_EmitData
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc,
+	uint ncols,
+	void *pdata
+) {
+	DataBlock *cells = ((FormatterVerboseCtx*)pdata)->cells;
+	uint64_t nrows = DataBlock_ItemCount(cells) / ncols;
+
+	RedisModule_ReplyWithArray(ctx, nrows);
+
+	// for each row
+	uint64_t idx = 0;
+	for(uint64_t row = 0; row < nrows; row++) {
+		// prepare return array sized to the number of RETURN entities
+		RedisModule_ReplyWithArray(ctx, ncols);	
+
+		// for each column
+		for(uint64_t col = 0; col < ncols; col++) {
+			SIValue *v = DataBlock_GetItem(cells, idx);
+			_ResultSet_VerboseReplyWithSIValue(ctx, gc, v);
+			idx++;
+		}
+	}
 }
 
-void ResultSet_FreeVerbosePData
+void Formatter_Verbose_FreePData
 (
 	void *pdata
 ) {
+	if(pdata == NULL) {
+		return;
+	}
 
+	FormatterVerboseCtx *ctx = (FormatterVerboseCtx*)pdata;
+
+	DataBlock *cells = ctx->cells;
+	bool cells_allocation = ctx->cells_allocation;
+
+	if(cells_allocation & M_SELF) {
+		uint64_t n = DataBlock_ItemCount(cells);
+		for(uint64_t i = 0; i < n; i++) {
+			SIValue *v = DataBlock_GetItem(cells, i);
+			SIValue_Free(*v);
+		}
+	}
+
+	DataBlock_Free(cells);
+	rm_free(ctx);
 }
 

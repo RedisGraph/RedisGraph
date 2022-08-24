@@ -171,9 +171,9 @@ static ExecutionPlan **_process_segments(AST *ast) {
 	// bound segments
 	//--------------------------------------------------------------------------
 
-	/* retrieve the indices of each WITH clause to properly set
-	 * the segment's bounds.
-	 * Every WITH clause demarcates the beginning of a new segment. */
+	// retrieve the indices of each WITH clause to properly set
+	// the segment's bounds
+	// Every WITH clause demarcates the beginning of a new segment
 	segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
 
 	// last segment

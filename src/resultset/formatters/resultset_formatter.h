@@ -32,42 +32,48 @@ typedef enum {
 	VALUE_POINT = 11
 } ValueType;
 
-// typedef for formatter private data creation
+// typedef for formatter private data creation function pointer
 // this private data will be passed to both EmitHeaderFunc and EmitRowFunc
 typedef void* (*FormatterPDCreateFunc)(void);
 
-// typedef for formatter private data free
-// called once the result-set had been fully encoded
-typedef void (*FormatterPDFreeFunc)
+// typedef for formatter row processing function pointer
+typedef void (*FormatterProcessRowFunc)
 (
-	void *pdata
+	Record r,                  // record (row) to process
+	uint *columns_record_map,  // resultset columns - record mapping
+	uint numcols,              // length of row
+	void *pdata                // formatter's private data
 );
 
-// typedef for header formatters
-typedef void (*EmitHeaderFunc)
+// Typedef for header formatters.
+typedef void (*FormatterEmitHeaderFunc)
 (
 	RedisModuleCtx *ctx,   // redis module context
-	const char **columns,  // result-set columns
-	uint *col_rec_map,     //
-	void *pdata            // formatter private data
+	const char **columns   // resultset columns
 );
 
-// typedef for row formatters
-typedef void (*EmitRowFunc)
+// typedef for formatter data emitting function pointer
+typedef void (*FormatterEmitDataFunc)
 (
 	RedisModuleCtx *ctx,  // redis module context
 	GraphContext *gc,     // graph context
-	SIValue **row,        // row to emit
-	uint numcols,         // length of row
+	uint ncols,           // row length
 	void *pdata           // formatter's private data
 );
-							   
-// formatter is a collection of function pointers
+
+// typedef for formatter private data free function pointer
+// called once the result-set had been fully encoded
+typedef void (*FormatterPDFreeFunc)
+(
+	void *pdata  // formatter's private data
+);
+
 typedef struct {
-	EmitRowFunc            EmitRow;      // emit row
-	EmitHeaderFunc         EmitHeader;   // emit header
-	FormatterPDFreeFunc    FreePData;    // create formatter private data
-	FormatterPDCreateFunc  CreatePData;  // free formatter private data
+	FormatterPDCreateFunc   CreatePData;  // free formatter private data
+	FormatterProcessRowFunc ProcessRow;   // process row
+	FormatterEmitHeaderFunc EmitHeader;   // emit header
+	FormatterEmitDataFunc   EmitData;     // emit processed rows
+	FormatterPDFreeFunc     FreePData;    // create formatter private data
 } ResultSetFormatter;
 
 // redis prints doubles with up to 17 digits of precision, which captures

@@ -21,13 +21,11 @@ typedef struct {
 	uint column_count;              // number of columns in result set
 	const char **columns;           // field names for each column of results
 	uint *columns_record_map;       // mapping between column name and record index
-	DataBlock *cells;               // accumulated cells
 	double timer[2];                // query runtime tracker
 	ResultSetStatistics stats;      // result set statistics
 	ResultSetFormatterType format;  // result set format; compact/verbose/nop
 	void *formatter_pdata;          // formatter's private data
 	ResultSetFormatter *formatter;  // result set data formatter
-	SIAllocation cells_allocation;  // encountered values allocation
 } ResultSet;
 
 // map each column to a record index
@@ -44,12 +42,6 @@ ResultSet *NewResultSet
 (
 	RedisModuleCtx *ctx,
 	ResultSetFormatterType format  // resultset format
-);
-
-// returns number of rows in result-set
-uint64_t ResultSet_RowCount
-(
-	const ResultSet *set  // resultset to inquery
 );
 
 // add a new row to resultset

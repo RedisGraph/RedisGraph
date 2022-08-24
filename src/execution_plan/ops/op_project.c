@@ -11,13 +11,17 @@
 #include "../../query_ctx.h"
 #include "../../util/rmalloc.h"
 
-/* Forward declarations. */
+// forward declarations
 static Record ProjectConsume(OpBase *opBase);
 static OpResult ProjectReset(OpBase *opBase);
 static OpBase *ProjectClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void ProjectFree(OpBase *opBase);
 
-OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
+OpBase *NewProjectOp
+(
+	const ExecutionPlan *plan,
+	AR_ExpNode **exps
+) {
 	OpProject *op = rm_malloc(sizeof(OpProject));
 	op->exps = exps;
 	op->singleResponse = false;
@@ -26,14 +30,15 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	op->r = NULL;
 	op->projection = NULL;
 
-	// Set our Op operations
+	// set our op operations
 	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", NULL, ProjectConsume,
 				ProjectReset, NULL, ProjectClone, ProjectFree, false, plan);
 
 	for(uint i = 0; i < op->exp_count; i ++) {
-		// The projected record will associate values with their resolved name
-		// to ensure that space is allocated for each entry.
-		int record_idx = OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
+		// the projected record will associate values with their resolved name
+		// to ensure that space is allocated for each entry
+		int record_idx = OpBase_Modifies((OpBase *)op,
+				op->exps[i]->resolved_name);
 		array_append(op->record_offsets, record_idx);
 	}
 
@@ -61,23 +66,31 @@ static Record ProjectConsume(OpBase *opBase) {
 		AR_ExpNode *exp = op->exps[i];
 		SIValue v = AR_EXP_Evaluate(exp, op->r);
 		int rec_idx = op->record_offsets[i];
-		/* Persisting a value is only necessary here if 'v' refers to a scalar held in Record 'r'.
-		 * Graph entities don't need to be persisted here as Record_Add will copy them internally.
-		 * The RETURN projection here requires persistence:
-		 * MATCH (a) WITH toUpper(a.name) AS e RETURN e
-		 * TODO This is a rare case; the logic of when to persist can be improved.  */
-		if(!(v.type & SI_GRAPHENTITY)) SIValue_Persist(&v);
+		// persisting a value is only necessary here
+		// if 'v' refers to a scalar held in Record 'r'
+		// graph entities don't need to be persisted here
+		// as Record_Add will copy them internally
+		// the RETURN projection here requires persistence:
+		// MATCH (a) WITH toUpper(a.name) AS e RETURN e
+		// TODO: this is a rare case;
+		// the logic of when to persist can be improved
+		if(!(v.type & SI_GRAPHENTITY)) {
+			SIValue_Persist(&v);
+		}
 		Record_Add(op->projection, rec_idx, v);
-		/* If the value was a graph entity with its own allocation, as with a query like:
-		 * MATCH p = (src) RETURN nodes(p)[0]
-		 * Ensure that the allocation is freed here. */
-		if((v.type & SI_GRAPHENTITY)) SIValue_Free(v);
+		// if the value was a graph entity with its own allocation
+		// as with a query like:
+		// MATCH p = (src) RETURN nodes(p)[0]
+		// ensure that the allocation is freed here
+		if((v.type & SI_GRAPHENTITY)) {
+			SIValue_Free(v);
+		}
 	}
 
 	OpBase_DeleteRecord(op->r);
 	op->r = NULL;
 
-	// Emit the projected Record once.
+	// emit the projected record once
 	Record projection = op->projection;
 	op->projection = NULL;
 	return projection;
