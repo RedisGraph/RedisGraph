@@ -219,10 +219,10 @@ void thpool_destroy(thpool_* thpool_p) {
 
 	/* Poll remaining threads */
 	// do not wait forever for threads to complete their work
-	//while(thpool_p->num_threads_alive) {
-	//	bsem_post_all(thpool_p->jobqueue.has_jobs);
-	//	sleep(1);
-	//}
+	while(thpool_p->num_threads_alive) {
+		bsem_post_all(thpool_p->jobqueue.has_jobs);
+		sleep(1);
+	}
 
 	/* Job queue cleanup */
 	jobqueue_destroy(&thpool_p->jobqueue);
