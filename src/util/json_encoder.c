@@ -17,7 +17,7 @@
 #include "../datatypes/datatypes.h"
 
 // Forward declaration
-sds _JsonEncoder_SIValue(SIValue v, sds s);
+sds _JsonEncoder_SIValue(SIValue v, sds s, bool printLabels);
 
 static inline sds _JsonEncoder_String(SIValue v, sds s) {
 	return sdscatfmt(s, "\"%s\"", v.stringval);
@@ -33,34 +33,36 @@ static sds _JsonEncoder_Properties(const GraphEntity *ge, sds s) {
 		SIValue value = AttributeSet_GetIdx(set, i, &attr_id);
 		const char *key = GraphContext_GetAttributeString(gc, attr_id);
 		s = sdscatfmt(s, "\"%s\": ", key);
-		s = _JsonEncoder_SIValue(value, s);
+		s = _JsonEncoder_SIValue(value, s, true);
 		if(i < prop_count - 1) s = sdscat(s, ", ");
 	}
 	s = sdscat(s, "}");
 	return s;
 }
 
-static sds _JsonEncoder_Node(const Node *n, sds s) {
+static sds _JsonEncoder_Node(const Node *n, sds s, bool printLabels) {
 	s = sdscatfmt(s, "\"id\": %U", ENTITY_GET_ID(n));
-	s = sdscat(s, ", \"labels\": [");
-	// Retrieve node labels
-	uint label_count;
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	NODE_GET_LABELS(gc->g, n, label_count);
-	for(uint i = 0; i < label_count; i ++) {
-		Schema *schema = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
-		ASSERT(schema);
-		const char *label = Schema_GetName(schema);
-		ASSERT(label);
-		s = sdscatfmt(s, "\"%s\"", label);
-		if(i != label_count - 1) s = sdscat(s, ", ");
+	if(printLabels) {
+		s = sdscat(s, ", \"labels\": [");
+		// Retrieve node labels
+		uint label_count;
+		GraphContext *gc = QueryCtx_GetGraphCtx();
+		NODE_GET_LABELS(gc->g, n, label_count);
+		for(uint i = 0; i < label_count; i ++) {
+			Schema *schema = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
+			ASSERT(schema);
+			const char *label = Schema_GetName(schema);
+			ASSERT(label);
+			s = sdscatfmt(s, "\"%s\"", label);
+			if(i != label_count - 1) s = sdscat(s, ", ");
+		}
+		s = sdscat(s, "], ");
+		s = _JsonEncoder_Properties((const GraphEntity *)n, s);
 	}
-	s = sdscat(s, "], ");
-	s = _JsonEncoder_Properties((const GraphEntity *)n, s);
 	return s;
 }
 
-static sds _JsonEncoder_Edge(Edge *e, sds s) {
+static sds _JsonEncoder_Edge(Edge *e, sds s, bool printLabels) {
 	s = sdscatfmt(s, "\"id\": %U", ENTITY_GET_ID(e));
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	// Retrieve reltype data.
@@ -77,27 +79,27 @@ static sds _JsonEncoder_Edge(Edge *e, sds s) {
 	// Retrieve source node data.
 	Node src;
 	Graph_GetNode(gc->g, e->srcNodeID, &src);
-	s = _JsonEncoder_Node(&src, s);
+	s = _JsonEncoder_Node(&src, s, printLabels);
 
 	s = sdscat(s, "}, \"end\": {");
 	// Retrieve dest node data.
 	Node dest;
 	Graph_GetNode(gc->g, e->destNodeID, &dest);
-	s = _JsonEncoder_Node(&dest, s);
+	s = _JsonEncoder_Node(&dest, s, printLabels);
 
 	s = sdscat(s, "}");
 	return s;
 }
 
-static sds _JsonEncoder_GraphEntity(GraphEntity *ge, sds s, GraphEntityType type) {
+static sds _JsonEncoder_GraphEntity(GraphEntity *ge, sds s, GraphEntityType type, bool printLabels) {
 	switch(type) {
 	case GETYPE_NODE:
 		s = sdscat(s, "{\"type\": \"node\", ");
-		s = _JsonEncoder_Node((const Node *)ge, s);
+		s = _JsonEncoder_Node((const Node *)ge, s, true);
 		break;
 	case GETYPE_EDGE:
 		s = sdscat(s, "{\"type\": \"relationship\", ");
-		s = _JsonEncoder_Edge((Edge *)ge, s);
+		s = _JsonEncoder_Edge((Edge *)ge, s, printLabels);
 		break;
 	default:
 		ASSERT(false);
@@ -114,16 +116,16 @@ static sds _JsonEncoder_Path(SIValue p, sds s) {
 	for(size_t i = 0; i < nodeCount - 1; i ++) {
 		// write the next value
 		SIValue node = SIPath_GetNode(p, i);
-		s = _JsonEncoder_GraphEntity((GraphEntity *)node.ptrval, s, GETYPE_NODE);
+		s = _JsonEncoder_GraphEntity((GraphEntity *)node.ptrval, s, GETYPE_NODE, true);
 		s = sdscat(s, ", ");
 		SIValue edge = SIPath_GetRelationship(p, i);
-		s = _JsonEncoder_GraphEntity((GraphEntity *)edge.ptrval, s, GETYPE_EDGE);
+		s = _JsonEncoder_GraphEntity((GraphEntity *)edge.ptrval, s, GETYPE_EDGE, true);
 		s = sdscat(s, ", ");
 	}
 	// Handle last node.
 	if(nodeCount > 0) {
 		SIValue node = SIPath_GetNode(p, nodeCount - 1);
-		s = _JsonEncoder_GraphEntity((GraphEntity *)node.ptrval, s, GETYPE_NODE);
+		s = _JsonEncoder_GraphEntity((GraphEntity *)node.ptrval, s, GETYPE_NODE, true);
 	}
 
 	// close array with "]"
@@ -147,13 +149,13 @@ static sds _JsonEncoder_Point(SIValue point, sds s) {
 	return s;
 }
 
-static sds _JsonEncoder_Array(SIValue list, sds s) {
+static sds _JsonEncoder_Array(SIValue list, sds s, bool printLabels) {
 	// open array with "["
 	s = sdscat(s, "[");
 	uint arrayLen = SIArray_Length(list);
 	for(uint i = 0; i < arrayLen; i ++) {
 		// write the next value
-		s = _JsonEncoder_SIValue(SIArray_Get(list, i), s);
+		s = _JsonEncoder_SIValue(SIArray_Get(list, i), s, printLabels);
 		// if it is not the last element, add ", "
 		if(i != arrayLen - 1) s = sdscat(s, ", ");
 	}
@@ -175,7 +177,7 @@ static sds _JsonEncoder_Map(SIValue map, sds s) {
 		// write the next key/value pair
 		s = _JsonEncoder_String(p.key, s);
 		s = sdscat(s, ": ");
-		s = _JsonEncoder_SIValue(p.val, s);
+		s = _JsonEncoder_SIValue(p.val, s, true);
 		// if this is not the last element, add ", "
 		if(i != key_count - 1) s = sdscat(s, ", ");
 	}
@@ -185,7 +187,7 @@ static sds _JsonEncoder_Map(SIValue map, sds s) {
 	return s;
 }
 
-sds _JsonEncoder_SIValue(SIValue v, sds s) {
+sds _JsonEncoder_SIValue(SIValue v, sds s, bool printLabels) {
 	switch(v.type) {
 	case T_STRING:
 		s = _JsonEncoder_String(v, s);
@@ -201,13 +203,13 @@ sds _JsonEncoder_SIValue(SIValue v, sds s) {
 		s = sdscatprintf(s, "%.15g", v.doubleval);
 		break;
 	case T_NODE:
-		s = _JsonEncoder_GraphEntity(v.ptrval, s, GETYPE_NODE);
+		s = _JsonEncoder_GraphEntity(v.ptrval, s, GETYPE_NODE, printLabels);
 		break;
 	case T_EDGE:
-		s = _JsonEncoder_GraphEntity(v.ptrval, s, GETYPE_EDGE);
+		s = _JsonEncoder_GraphEntity(v.ptrval, s, GETYPE_EDGE, printLabels);
 		break;
 	case T_ARRAY:
-		s = _JsonEncoder_Array(v, s);
+		s = _JsonEncoder_Array(v, s, printLabels);
 		break;
 	case T_MAP:
 		s = _JsonEncoder_Map(v, s);
@@ -230,11 +232,11 @@ sds _JsonEncoder_SIValue(SIValue v, sds s) {
 	return s;
 }
 
-char *JsonEncoder_SIValue(SIValue v) {
+char *JsonEncoder_SIValue(SIValue v, bool printLabels) {
 	// Create an empty sds string.
 	sds s = sdsempty();
 	// Populate the sds string with encoded data.
-	s = _JsonEncoder_SIValue(v, s);
+	s = _JsonEncoder_SIValue(v, s, printLabels);
 	// Duplicate the sds string into a standard C string.
 	char *retval = rm_strdup(s);
 	// Free the sds string.

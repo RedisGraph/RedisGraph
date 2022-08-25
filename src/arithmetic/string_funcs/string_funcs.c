@@ -191,7 +191,13 @@ SIValue AR_TOSTRING(SIValue *argv, int argc, void *private_data) {
 // Returns a JSON string representation of a map value.
 SIValue AR_TOJSON(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
-	char *buf = JsonEncoder_SIValue(argv[0]);
+	bool printLabels;
+	if(SIValue_IsFalse(argv[1])) {
+		printLabels = false;
+	} else {
+		printLabels = true;
+	}
+	char *buf = JsonEncoder_SIValue(argv[0], printLabels);
 	return SI_TransferStringVal(buf);
 }
 
@@ -417,10 +423,11 @@ void Register_StringFuncs() {
 	func_desc = AR_FuncDescNew("tostring", AR_TOSTRING, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
-	types = array_new(SIType, 1);
+	types = array_new(SIType, 2);
 	array_append(types, SI_ALL);
+	array_append(types, (T_BOOL| T_NULL));
 	ret_type = T_STRING | T_NULL;
-	func_desc = AR_FuncDescNew("tojson", AR_TOJSON, 1, 1, types, ret_type, false, true);
+	func_desc = AR_FuncDescNew("tojson", AR_TOJSON, 1, 2, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);

@@ -9,5 +9,5 @@
 #include "../value.h"
 
 // Prints the input value to buffer encoded as a JSON string.
-char *JsonEncoder_SIValue(SIValue v);
+char *JsonEncoder_SIValue(SIValue v, bool printLabels);
 
