@@ -407,9 +407,9 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.env.assertEquals(parsed, {"crs": "wgs-84", "latitude": 0.402313, "longitude": 167.697556, "height": None})
 
         # Test JSON option to avoid relationships' nodes' labels and properties
-        query = """MATCH (n) WITH collect(n) AS all_n match (n:person)-[r:works_with]->(m:person) WHERE n.name='Roi' AND m.name='Ailon' WITH all_n, collect(r) AS all_r RETURN toJSON(all_n + all_r, false)"""
+        query = """MATCH (n) WITH collect(n) AS all_n match (n:person)-[r:works_with]->(m:student) WHERE n.name='Roi' AND m.name='Alon' WITH all_n, collect(r) AS all_r WHERE n.name='Roi' RETURN toJSON(all_r, false)"""
         actual_result = graph.query(query)
-        expected =  [{'type': 'node', 'id': 0, 'labels': ['person'], 'properties': {'name': 'Roi', 'val': 0}}, {'type': 'node', 'id': 1, 'labels': ['person', 'student'], 'properties': {'name': 'Alon', 'val': 1}}, {'type': 'node', 'id': 2, 'labels': ['person'], 'properties': {'name': 'Ailon', 'val': 2}}, {'type': 'node', 'id': 3, 'labels': ['person', 'student'], 'properties': {'name': 'Boaz', 'val': 3}}, {'type': 'relationship', 'id': 13, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 0}, 'end': {'id': 2}}]
+        expected = [{'type': 'relationship', 'id': 12, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 0}, 'end': {'id': 1}}] 
         parsed = json.loads(actual_result.result_set[0][0])
         self.env.assertEquals(parsed, expected)
 
