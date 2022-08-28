@@ -549,7 +549,8 @@ int Config_Init
 		return REDISMODULE_ERR;
 	}
 
-	bool warn_timeout_deprecated = true;
+	bool old_timeout_specified = false;
+	bool new_timeout_specified = false;
 
 	for(int i = 0; i < argc; i += 2) {
 		// each configuration is a key-value pair. (K, V)
@@ -571,7 +572,11 @@ int Config_Init
 		}
 
 		if(field == Config_TIMEOUT_DEFAULT || field == Config_TIMEOUT_MAX) {
-			warn_timeout_deprecated = false;
+			new_timeout_specified = true;
+		}
+
+		if(field == Config_TIMEOUT) {
+			old_timeout_specified = true;
 		}
 
 		// exit if encountered an error when setting configuration
@@ -582,7 +587,7 @@ int Config_Init
 		}
 	}
 
-	if(warn_timeout_deprecated) {
+	if(old_timeout_specified && !new_timeout_specified) {
 		RedisModule_Log(ctx, "warning", "The TIMEOUT configuration parameter is deprecated. Please remove TIMEOUT and set TIMEOUT_MAX and TIMEOUT_DEFAULT instead");
 	}
 

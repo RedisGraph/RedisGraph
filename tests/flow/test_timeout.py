@@ -6,7 +6,7 @@ redis_graph = None
 
 class testQueryTimeout(FlowTestsBase):
     def __init__(self):
-        self.env = Env(decodeResponses=True)
+        self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT 1000")
         # skip test if we're running under Valgrind
         if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
             self.env.skip() # queries will be much slower under Valgrind
@@ -28,7 +28,7 @@ class testQueryTimeout(FlowTestsBase):
         try:
             # The query is expected to timeout
             redis_graph.query(query, timeout=1)
-            assert(False)
+            self.env.assertTrue(False)
         except ResponseError as error:
             self.env.assertContains("Query timed out", str(error))
 
@@ -36,11 +36,11 @@ class testQueryTimeout(FlowTestsBase):
             # The query is expected to succeed
             redis_graph.query(query, timeout=2000)
         except:
-            assert(False)
+            self.env.assertTrue(False)
 
-        query = "UNWIND range(0,1000000) AS x CREATE (:N {v: x})"
+        query = "UNWIND range(0, 1000000) AS x CREATE (:N {v: x})"
         try:
-            # The query is expected to timeout
+            # The query is expected to succeed
             redis_graph.query(query, timeout=1)
             self.env.assertTrue(True)
         except:
@@ -49,7 +49,7 @@ class testQueryTimeout(FlowTestsBase):
     def test02_configured_timeout(self):
         # Verify that the module-level timeout is set to the default of 0
         response = redis_con.execute_command("GRAPH.CONFIG GET timeout")
-        self.env.assertEquals(response[1], 0)
+        self.env.assertEquals(response[1], 1000)
         # Set a default timeout of 1 millisecond
         redis_con.execute_command("GRAPH.CONFIG SET timeout 1")
         response = redis_con.execute_command("GRAPH.CONFIG GET timeout")
@@ -59,7 +59,7 @@ class testQueryTimeout(FlowTestsBase):
         query = "UNWIND range(0,1000000) AS x WITH x AS x WHERE x = 10000 RETURN x"
         try:
             redis_graph.query(query)
-            assert(False)
+            self.env.assertTrue(False)
         except ResponseError as error:
             self.env.assertContains("Query timed out", str(error))
 
@@ -103,7 +103,7 @@ class testQueryTimeout(FlowTestsBase):
             try:
                 # query is expected to timeout
                 redis_graph.query(q, timeout=1)
-                assert(False)
+                self.env.assertTrue(False)
             except ResponseError as error:
                 self.env.assertContains("Query timed out", str(error))
 
@@ -121,7 +121,7 @@ class testQueryTimeout(FlowTestsBase):
         try:
             # The query is expected to timeout
             redis_graph.query(query, timeout=10)
-            assert(False)
+            self.env.assertTrue(False)
         except ResponseError as error:
             self.env.assertContains("Query timed out", str(error))
 
@@ -129,7 +129,7 @@ class testQueryTimeout(FlowTestsBase):
             # The query is expected to succeed
             redis_graph.query(query, timeout=2000)
         except:
-            assert(False)
+            self.env.assertTrue(False)
 
     def test06_ignore_timeout_when_timeout_max_or_timeout_default_set(self):
         self.env.stop()
@@ -165,7 +165,7 @@ class testQueryTimeout(FlowTestsBase):
             try:
                 # The query is expected to timeout
                 redis_graph.query(query)
-                assert(False)
+                self.env.assertTrue(False)
             except ResponseError as error:
                 self.env.assertContains("Query timed out", str(error))
 
@@ -178,6 +178,6 @@ class testQueryTimeout(FlowTestsBase):
             try:
                 # The query is expected to timeout
                 redis_graph.query(query, timeout=2000)
-                assert(False)
+                self.env.assertTrue(False)
             except ResponseError as error:
                 self.env.assertContains("The query TIMEOUT parameter value cannot exceed the TIMEOUT_MAX configuration parameter value", str(error))
