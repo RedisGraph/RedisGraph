@@ -29,6 +29,8 @@ class RedisGraphSetup(paella.Setup):
         else:
             self.run("%s/bin/getgcc" % READIES)
         self.install("peg")
+        if self.platform.is_arm():
+            self.install("python3-dev")
         self.run("{READIES}/bin/getjava".format(READIES=READIES)) # for grammarinator/ANTLR
         self.pip_install("-r tests/fuzz/requirements.txt")
 
@@ -73,7 +75,6 @@ class RedisGraphSetup(paella.Setup):
         else:
             self.install("lcov-git", aur=True)
 
-        self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall".format(PYTHON=self.python, READIES=READIES))
         self.pip_install("-r tests/requirements.txt")
         self.run("%s/bin/getpy2" % READIES) # for RediSearch build
 
