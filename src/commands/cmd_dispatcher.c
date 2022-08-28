@@ -13,10 +13,11 @@
 
 #define GRAPH_VERSION_MISSING -1
 
-// Command handler function pointer.
+// command handler function pointer
 typedef void(*Command_Handler)(void *args);
 
-// Read configuration flags, returning REDIS_MODULE_ERR if flag parsing failed.
+// read configuration flags
+// returning REDIS_MODULE_ERR if flag parsing failed
 static int _read_flags
 (
 	RedisModuleString **argv,   // commands arguments
@@ -27,16 +28,17 @@ static int _read_flags
   	uint *graph_version,        // graph version [UNUSED]
   	char **errmsg               // reported error message
 ) {
+	ASSERT(compact != NULL);
+	ASSERT(timeout != NULL);
 
-	ASSERT(compact);
-	ASSERT(timeout);
+	long long max_timeout;
 
 	// set defaults
 	*compact = false;  // verbose
 	*graph_version = GRAPH_VERSION_MISSING;
 	Config_Option_get(Config_TIMEOUT_DEFAULT, timeout);
-	long long max_timeout;
 	Config_Option_get(Config_TIMEOUT_MAX, &max_timeout);
+
 	if(*timeout != CONFIG_TIMEOUT_NO_TIMEOUT || max_timeout != CONFIG_TIMEOUT_NO_TIMEOUT) {
 		*timeout_rw = true;
 	} else {

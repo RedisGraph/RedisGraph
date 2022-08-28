@@ -3,8 +3,9 @@ from common import *
 redis_con = None
 redis_graph = None
 
+GRAPH_ID = "timeout"
 
-class testQueryTimeout(FlowTestsBase):
+class testQueryTimeout():
     def __init__(self):
         self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT 1000")
         # skip test if we're running under Valgrind
@@ -14,7 +15,7 @@ class testQueryTimeout(FlowTestsBase):
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(redis_con, "timeout")
+        redis_graph = Graph(redis_con, GRAPH_ID)
 
     def test00_deprecation_message(self):
         logfilename = self.env.envRunner._getFileName("master", ".log")
@@ -113,10 +114,7 @@ class testQueryTimeout(FlowTestsBase):
             q += " LIMIT 2"
             res = redis_graph.query(q, timeout=20)
 
-        # validate that server didn't crash
-        redis_con.ping()
-
-    def test05_query_timeout_free_resultset(self):
+    def test04_query_timeout_free_resultset(self):
         query = "UNWIND range(0,1000000) AS x RETURN toString(x)"
         try:
             # The query is expected to timeout
@@ -131,7 +129,7 @@ class testQueryTimeout(FlowTestsBase):
         except:
             self.env.assertTrue(False)
 
-    def test06_ignore_timeout_when_timeout_max_or_timeout_default_set(self):
+    def test05_ignore_timeout_when_timeout_max_or_timeout_default_set(self):
         self.env.stop()
         self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT 10 TIMEOUT_DEFAULT 10 TIMEOUT_MAX 10")
         redis_con = self.env.getConnection()
@@ -142,21 +140,27 @@ class testQueryTimeout(FlowTestsBase):
         log = logfile.read()
 
         self.env.assertContains("The deprecated TIMEOUT configuration parameter is ignored. Please remove it from the configuration file", log)
-    
-    def test07_error_timeout_default_higher_than_timeout_max(self):
+
+    def test06_error_timeout_default_higher_than_timeout_max(self):
+        # get current timeout configuration
+        max_timeout = redis_con.execute_command("GRAPH.CONFIG", "GET", "TIMEOUT_MAX")[1]
+        default_timeout = redis_con.execute_command("GRAPH.CONFIG", "GET", "TIMEOUT_DEFAULT")[1]
+
+        # try to set default-timeout to a higher value than max-timeout
         try:
-            redis_con.execute_command("GRAPH.CONFIG", "SET", "TIMEOUT_DEFAULT", "200")
+            redis_con.execute_command("GRAPH.CONFIG", "SET", "TIMEOUT_DEFAULT", max_timeout + 1)
             self.env.assertTrue(False)
         except ResponseError as error:
-                self.env.assertContains("Failed to set config value TIMEOUT_DEFAULT to 200", str(error))
+            self.env.assertContains("Failed to set config value TIMEOUT_DEFAULT", str(error))
 
+        # try to set max-timout to a lower value then default-timout
         try:
-            redis_con.execute_command("GRAPH.CONFIG", "SET", "TIMEOUT_MAX", "1")
+            redis_con.execute_command("GRAPH.CONFIG", "SET", "TIMEOUT_MAX", default_timeout - 1)
             self.env.assertTrue(False)
         except ResponseError as error:
-                self.env.assertContains("Failed to set config value TIMEOUT_MAX to 1", str(error))
+                self.env.assertContains("Failed to set config value TIMEOUT_MAX", str(error))
 
-    def test08_read_write_query_timeout_default(self):
+    def test07_read_write_query_timeout_default(self):
         queries = [
             "UNWIND range(0,1000000) AS x WITH x AS x WHERE x = 10000 RETURN x",
             "UNWIND range(0,1000000) AS x CREATE (:N {v: x})"
@@ -169,15 +173,16 @@ class testQueryTimeout(FlowTestsBase):
             except ResponseError as error:
                 self.env.assertContains("Query timed out", str(error))
 
-    def test09_timeout_query_parameter(self):
-        queries = [
-            "UNWIND range(0,1000000) AS x WITH x AS x WHERE x = 10000 RETURN x",
-            "UNWIND range(0,1000000) AS x CREATE (:N {v: x})"
-        ]
+    def test08_enforce_timeout_configuration(self):
+        read_q = "RETURN 1"
+        write_q = "CREATE ()"
+        queries = [read_q, write_q]
+
         for query in queries:
             try:
-                # The query is expected to timeout
+                # query is expected to fail
                 redis_graph.query(query, timeout=2000)
                 self.env.assertTrue(False)
             except ResponseError as error:
                 self.env.assertContains("The query TIMEOUT parameter value cannot exceed the TIMEOUT_MAX configuration parameter value", str(error))
+
