@@ -10,6 +10,7 @@
 #include "util/simple_timer.h"
 #include "arithmetic/arithmetic_expression.h"
 #include "serializers/graphcontext_type.h"
+#include "undo_log/undo_log.h"
 
 // GraphContext type as it is registered at Redis.
 extern RedisModuleType *GraphContextRedisModuleType;
@@ -22,6 +23,7 @@ static inline QueryCtx *_QueryCtx_GetCreateCtx(void) {
 	if(!ctx) {
 		// Set a new thread-local QueryCtx if one has not been created.
 		ctx = rm_calloc(1, sizeof(QueryCtx));
+		ctx->undo_log = UndoLog_New();
 		pthread_setspecific(_tlsQueryCtxKey, ctx);
 	}
 	return ctx;
@@ -142,7 +144,9 @@ void QueryCtx_PrintQuery(void) {
 }
 
 static void _QueryCtx_ThreadSafeContextLock(QueryCtx *ctx) {
-	if(ctx->global_exec_ctx.bc) RedisModule_ThreadSafeContextLock(ctx->global_exec_ctx.redis_ctx);
+	if(ctx->global_exec_ctx.bc) {
+		RedisModule_ThreadSafeContextLock(ctx->global_exec_ctx.redis_ctx);
+	}
 }
 
 static void _QueryCtx_ThreadSafeContextUnlock(QueryCtx *ctx) {
@@ -194,36 +198,56 @@ clean_up:
 
 static void _QueryCtx_UnlockCommit(QueryCtx *ctx) {
 	GraphContext *gc = ctx->gc;
-	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
-
-	if(ResultSetStat_IndicateModification(&ctx->internal_exec_ctx.result_set->stats)) {
-		// Replicate only in case of changes.
-		RedisModule_Replicate(redis_ctx, ctx->global_exec_ctx.command_name,
-				"cc!", gc->graph_name, ctx->query_data.query);
-	}
 
 	ctx->internal_exec_ctx.locked_for_commit = false;
-	// Release graph R/W lock.
+	// release graph R/W lock
 	Graph_ReleaseLock(gc->g);
 
-	// Close Key.
+	// close Key
 	RedisModule_CloseKey(ctx->internal_exec_ctx.key);
 
-	// Unlock GIL.
+	// unlock GIL
 	_QueryCtx_ThreadSafeContextUnlock(ctx);
 }
 
 void QueryCtx_UnlockCommit(OpBase *writer_op) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	if(!ctx) return;
+	if(!ctx) {
+		return;
+	}
 
 	// check that the writer_op is entitled to release the lock.
-	if(ctx->internal_exec_ctx.last_writer != writer_op) return;
+	if(writer_op != NULL && ctx->internal_exec_ctx.last_writer != writer_op) {
+		return;
+	}
 
-	// already unlocked?
-	if(!ctx->internal_exec_ctx.locked_for_commit) return;
+	// for safety, already unlocked?
+	if(!ctx->internal_exec_ctx.locked_for_commit) {
+		return;
+	}
 
 	_QueryCtx_UnlockCommit(ctx);
+}
+
+// replicate command
+void QueryCtx_Replicate
+(
+	QueryCtx *ctx
+) {
+	ASSERT(ctx != NULL);
+
+	GraphContext   *gc        = ctx->gc;
+	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
+
+	// replication requires GIL
+	_QueryCtx_ThreadSafeContextLock(ctx);
+
+	// replicate
+	RedisModule_Replicate(redis_ctx, ctx->global_exec_ctx.command_name,
+			"cc!", gc->graph_name, ctx->query_data.query);
+
+	// release GIL
+	_QueryCtx_ThreadSafeContextUnlock(ctx);
 }
 
 void QueryCtx_ForceUnlockCommit() {
@@ -250,6 +274,8 @@ double QueryCtx_GetExecutionTime(void) {
 void QueryCtx_Free(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ASSERT(ctx != NULL);
+
+	UndoLog_Free(ctx->undo_log);
 
 	if(ctx->query_data.params) {
 		raxFreeWithCallback(ctx->query_data.params, _ParameterFreeCallback);

@@ -9,6 +9,7 @@
 #include "../graph/entities/node.h"
 #include "../graph/entities/edge.h"
 #include "../graph/entities/graph_entity.h"
+#include "../graph/graph.h"
 #include "redisearch_api.h"
 
 #define INDEX_OK 1
@@ -22,12 +23,12 @@
 
 // creates a new index field and initialize it to default values
 // returns a pointer to the field
-#define INDEX_FIELD_DEFAULT(field)                                      \
-	({                                                                  \
-		IndexField field;                                               \
-		IndexField_New(&field, #field, INDEX_FIELD_DEFAULT_WEIGHT,      \
-			INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);  \
-		&field;                                                         \
+#define INDEX_FIELD_DEFAULT(field)                                                    \
+	({                                                                                \
+		IndexField field;                                                             \
+		IndexField_New(&field, ATTRIBUTE_ID_NONE, #field, INDEX_FIELD_DEFAULT_WEIGHT, \
+			INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);                \
+		&field;                                                                       \
 	})
 
 typedef enum {
@@ -65,6 +66,7 @@ typedef struct {
 void IndexField_New
 (
 	IndexField *field,    // field to initialize
+	Attribute_ID id,      // field id
 	const char *name,     // field name
 	double weight,        // the importance of text
 	bool nostem,          // disable stemming of the text
@@ -88,7 +90,8 @@ Index *Index_New
 // constructs index
 void Index_Construct
 (
-	Index *idx
+	Index *idx,
+	Graph *g
 );
 
 // adds field to index

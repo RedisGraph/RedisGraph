@@ -160,6 +160,24 @@ static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 	return clone;
 }
 
+static void _AR_EXP_ValidateArgsCount
+(
+	AR_FuncDesc *fdesc,
+	uint argc
+) {
+	// Make sure number of arguments is as expected.
+	if(fdesc->min_argc > argc) {
+		// Set the query-level error.
+		ErrorCtx_SetError("Received %d arguments to function '%s', expected at least %d", argc,
+						  fdesc->name, fdesc->min_argc);
+	} else if(fdesc->max_argc < argc) {
+		// Set the query-level error.
+		ErrorCtx_SetError("Received %d arguments to function '%s', expected at most %d", argc,
+						  fdesc->name, fdesc->max_argc);
+		return;
+	}
+}
+
 AR_ExpNode *AR_EXP_NewOpNode
 (
 	const char *func_name,
@@ -169,6 +187,8 @@ AR_ExpNode *AR_EXP_NewOpNode
 	// retrieve function
 	AR_FuncDesc *func = AR_GetFunc(func_name, include_internal);
 	AR_ExpNode *node = _AR_EXP_NewOpNode(child_count);
+
+	if(!func->internal) _AR_EXP_ValidateArgsCount(func, child_count);
 
 	ASSERT(func != NULL);
 	node->op.f = func;
@@ -209,11 +229,11 @@ AR_ExpNode *AR_EXP_NewAttributeAccessNode(AR_ExpNode *entity,
 	// the property using its string representation
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	SIValue prop_idx = SI_LongVal(ATTRIBUTE_NOTFOUND);
+	SIValue prop_idx = SI_LongVal(ATTRIBUTE_ID_NONE);
 	SIValue prop_name = SI_ConstStringVal((char *)attr);
 	Attribute_ID idx = GraphContext_GetAttributeID(gc, attr);
 
-	if(idx != ATTRIBUTE_NOTFOUND) prop_idx = SI_LongVal(idx);
+	if(idx != ATTRIBUTE_ID_NONE) prop_idx = SI_LongVal(idx);
 
 	// entity is an expression which should be evaluated to a graph entity
 	// attr is the name of the attribute we want to extract from entity
@@ -307,8 +327,6 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val) {
 		root->operand.type = AR_EXP_CONSTANT;
 		root->operand.constant = v;
 		return true;
-		// Root is an aggregation function, can't reduce.
-		return false;
 	}
 }
 
@@ -368,21 +386,6 @@ static bool _AR_EXP_ValidateInvocation
 ) {
 	SIType actual_type;
 	SIType expected_type = T_NULL;
-
-	// Make sure number of arguments is as expected.
-	if(fdesc->min_argc > argc) {
-		// Set the query-level error.
-		ErrorCtx_SetError("Received %d arguments to function '%s', expected at least %d", argc,
-						  fdesc->name, fdesc->min_argc);
-		return false;
-	}
-
-	if(fdesc->max_argc < argc) {
-		// Set the query-level error.
-		ErrorCtx_SetError("Received %d arguments to function '%s', expected at most %d", argc,
-						  fdesc->name, fdesc->max_argc);
-		return false;
-	}
 
 	uint expected_types_count = array_len(fdesc->types);
 	for(int i = 0; i < argc; i++) {
@@ -704,6 +707,18 @@ bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
 		for(int i = 0; i < root->op.child_count; i++) {
 			if(AR_EXP_ContainsFunc(root->op.children[i], func)) return true;
 		}
+	}
+	return false;
+}
+
+bool AR_EXP_ContainsVariadic(const AR_ExpNode *root) {
+	if(root == NULL) return false;
+	if(AR_EXP_IsOperation(root)) {
+		for(int i = 0; i < root->op.child_count; i++) {
+			if(AR_EXP_ContainsVariadic(root->op.children[i])) return true;
+		}
+	} else if(AR_EXP_IsVariadic(root)) {
+		return true;
 	}
 	return false;
 }

@@ -31,11 +31,11 @@ class testProfile(FlowTestsBase):
         self.env.assertIn("Filter | Records produced: 2", profile)
         self.env.assertIn("Node By Label Scan | (p:Person) | Records produced: 3", profile)
 
-    def test02_profile_after_op_free(self):
-        # validate that profile works properly on freed operations
+    def test02_profile_after_op_reset(self):
+        # validate that profile works properly on reset operations
         q = """MATCH (a:L)-[*]->() SET a.v = 5"""
         profile = redis_con.execute_command("GRAPH.PROFILE", GRAPH_ID, q)
         profile = [x[0:x.index(',')].strip() for x in profile]
         self.env.assertIn("Update | Records produced: 0", profile)
-        self.env.assertIn("Conditional Variable Length Traverse | Records produced: 0", profile)
+        self.env.assertIn("Conditional Variable Length Traverse | (a:L)-[@anon_1*1..INF]->(@anon_0) | Records produced: 0", profile)
         self.env.assertIn("Node By Label Scan | (a:L) | Records produced: 0", profile)

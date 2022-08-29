@@ -165,15 +165,18 @@ static int _Schema_RemoveExactMatchIndex
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
-	if(attribute_id == ATTRIBUTE_NOTFOUND) return INDEX_FAIL;
+	if(attribute_id == ATTRIBUTE_ID_NONE) return INDEX_FAIL;
 
 	Index *idx = Schema_GetIndex(s, &attribute_id, IDX_EXACT_MATCH);
 	if(idx == NULL) return INDEX_FAIL;
 
 	Index_RemoveField(idx, field);
 
-	// if index field count dropped to 0, remove index from schema
-	if(Index_FieldsCount(idx) == 0) {
+	// if index field count dropped to 0
+	// or it is edge index and it dropped to 2(_src_id, _dest_id)
+	// remove index from schema
+	if(Index_FieldsCount(idx) == 0 ||
+	   (s->type == SCHEMA_EDGE && Index_FieldsCount(idx) == 2)) {
 		Index_Free(idx);
 		s->index = NULL;
 	}
@@ -249,6 +252,42 @@ void Schema_AddEdgeToIndices
 
 	idx = s->index;
 	if(idx) Index_IndexEdge(idx, e);
+}
+
+// remove node from schema indicies
+void Schema_RemoveNodeFromIndices
+(
+	const Schema *s,
+	const Node *n
+) {
+	ASSERT(s != NULL);
+	ASSERT(n != NULL);
+
+	Index *idx = NULL;
+
+	idx = s->fulltextIdx;
+	if(idx) Index_RemoveNode(idx, n);
+
+	idx = s->index;
+	if(idx) Index_RemoveNode(idx, n);
+}
+
+// remove edge from schema indicies
+void Schema_RemoveEdgeFromIndices
+(
+	const Schema *s,
+	const Edge *e
+) {
+	ASSERT(s != NULL);
+	ASSERT(e != NULL);
+
+	Index *idx = NULL;
+
+	idx = s->fulltextIdx;
+	if(idx) Index_RemoveEdge(idx, e);
+
+	idx = s->index;
+	if(idx) Index_RemoveEdge(idx, e);
 }
 
 void Schema_Free

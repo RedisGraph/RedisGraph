@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "encode_v11.h"
+#include "encode_v12.h"
 
 extern bool process_is_child; // Global variable declared in module.c
 
@@ -23,6 +23,8 @@ static void _RdbSaveHeader
 	// Graph name
 	// Node count
 	// Edge count
+	// Deleted node count
+	// Deleted edge count
 	// Label matrix count
 	// Relation matrix count - N
 	// Does relationship Ri holds mutiple edges under a single entry X N 
@@ -42,6 +44,12 @@ static void _RdbSaveHeader
 	// edge count
 	RedisModule_SaveUnsigned(rdb, header->edge_count);
 
+	// deleted node count
+	RedisModule_SaveUnsigned(rdb, header->deleted_node_count);
+
+	// deleted edge count
+	RedisModule_SaveUnsigned(rdb, header->deleted_edge_count);
+
 	// label matrix count
 	RedisModule_SaveUnsigned(rdb, header->label_matrix_count);
 
@@ -58,7 +66,7 @@ static void _RdbSaveHeader
 	RedisModule_SaveUnsigned(rdb, header->key_count);
 
 	// save graph schemas
-	RdbSaveGraphSchema_v11(rdb, gc);
+	RdbSaveGraphSchema_v12(rdb, gc);
 }
 
 // returns a state information regarding the number of entities required
@@ -161,7 +169,7 @@ static PayloadInfo *_RdbSaveKeySchema
 	return payloads;
 }
 
-void RdbSaveGraph_v11
+void RdbSaveGraph_v12
 (
 	RedisModuleIO *rdb,
 	void *value
@@ -214,16 +222,16 @@ void RdbSaveGraph_v11
 		PayloadInfo payload = key_schema[i];
 		switch(payload.state) {
 		case ENCODE_STATE_NODES:
-			RdbSaveNodes_v11(rdb, gc, payload.entities_count);
+			RdbSaveNodes_v12(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_NODES:
-			RdbSaveDeletedNodes_v11(rdb, gc, payload.entities_count);
+			RdbSaveDeletedNodes_v12(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_EDGES:
-			RdbSaveEdges_v11(rdb, gc, payload.entities_count);
+			RdbSaveEdges_v12(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_EDGES:
-			RdbSaveDeletedEdges_v11(rdb, gc, payload.entities_count);
+			RdbSaveDeletedEdges_v12(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_GRAPH_SCHEMA:
 			// skip, handled in _RdbSaveHeader

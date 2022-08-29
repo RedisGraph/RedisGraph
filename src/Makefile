@@ -85,7 +85,7 @@ ifeq ($(OS),macos)
 		LIBOMP_PREFIX:=$(shell brew --prefix libomp)
 		LIBOMP=$(LIBOMP_PREFIX)/lib/libomp.a
 	else
-		LIBOMP=-lomp
+		LIBOMP=-lomp -L$(shell brew --prefix libomp)/lib -Wl,-no_compact_unwind
 	endif
 endif
 
@@ -216,6 +216,7 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/resultset/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/resultset/formatters/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/schema/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/slow_log/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/undo_log/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/procedures/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/sds/*.c)

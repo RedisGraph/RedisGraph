@@ -24,7 +24,6 @@
 #define GRAPH_UNKNOWN_LABEL -2                  // Labels are numbered [0-N], -2 represents an unknown relation.
 #define GRAPH_NO_RELATION -1                    // Relations are numbered [0-N], -1 represents no relation.
 #define GRAPH_UNKNOWN_RELATION -2               // Relations are numbered [0-N], -2 represents an unknown relation.
-#define EDGE_BULK_DELETE_THRESHOLD 4            // Max number of deletions to perform without choosing the bulk delete routine.
 
 typedef enum {
 	GRAPH_EDGE_DIR_INCOMING,
@@ -160,7 +159,7 @@ void Graph_CreateNode
 (
 	Graph *g,
 	Node *n,
-	int *labels,
+	LabelID *labels,
 	uint label_count
 );
 
@@ -189,22 +188,19 @@ int Graph_DeleteEdge
 	Edge *e
 );
 
+// update entity attribute with new value
+int Graph_UpdateEntity
+(
+	GraphEntity *ge,             // entity yo update
+	Attribute_ID attr_id,        // attribute to update
+	SIValue value,               // value to be set
+	GraphEntityType entity_type  // type of the entity node/edge
+);
+
 // returns true if the given entity has been deleted
 bool Graph_EntityIsDeleted
 (
-	Entity *e
-);
-
-// removes both nodes and edges from graph
-void Graph_BulkDelete
-(
-	Graph *g,           // graph to delete entities from
-	Node *nodes,        // nodes to delete
-	uint node_count,    // number of nodes to delete
-	Edge *edges,        // edges to delete
-	uint edge_count,    // number of edges to delete
-	uint *node_deleted, // number of nodes removed
-	uint *edge_deleted  // number of edges removed
+	const GraphEntity *e
 );
 
 // all graph matrices are required to be squared NXN

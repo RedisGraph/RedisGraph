@@ -100,7 +100,7 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 		}
 
 		// populate the index only when at least one attribute was introduced
-		if(index_added) Index_Construct(idx);
+		if(index_added) Index_Construct(idx, gc->g);
 
 		QueryCtx_UnlockCommit(NULL);
 	} else if(exec_type == EXECUTION_TYPE_INDEX_DROP) {
@@ -231,7 +231,19 @@ static void _ExecuteQuery(void *args) {
 		ASSERT("Unhandled query type" && false);
 	}
 
+	// in case of an error, rollback any modifications
+	if(ErrorCtx_EncounteredError()) {
+		UndoLog_Rollback(query_ctx->undo_log);
+		// clear resultset statistics, avoiding commnad being replicated
+		ResultSet_Clear(result_set);
+	}
+	
 	QueryCtx_ForceUnlockCommit();
+
+	// replicate command if graph was modified
+	if(ResultSetStat_IndicateModification(&result_set->stats)) {
+		QueryCtx_Replicate(query_ctx);
+	}
 
 	if(!profile || ErrorCtx_EncounteredError()) {
 		// if we encountered an error, ResultSet_Reply will emit the error
@@ -320,11 +332,7 @@ void _query(bool profile, void *args) {
 
 	// set the query timeout if one was specified
 	if(command_ctx->timeout != 0) {
-		// disallow timeouts on write operations to avoid leaving the graph in an inconsistent state
-		if(readonly) {
-			timeout_task = Query_SetTimeOut(command_ctx->timeout,
-					exec_ctx->plan);
-		}
+		timeout_task = Query_SetTimeOut(command_ctx->timeout, exec_ctx->plan);
 	}
 
 	// populate the container struct for invoking _ExecuteQuery.

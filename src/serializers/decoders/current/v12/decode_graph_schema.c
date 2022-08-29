@@ -4,11 +4,12 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "decode_v11.h"
+#include "decode_v12.h"
 
 static void _RdbLoadFullTextIndex
 (
 	RedisModuleIO *rdb,
+	GraphContext *gc,
 	Schema *s,
 	bool already_loaded
 ) {
@@ -41,7 +42,8 @@ static void _RdbLoadFullTextIndex
 
 		if(!already_loaded) {
 			IndexField field;
-			IndexField_New(&field, field_name, weight, nostem, phonetic);
+			Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field_name);
+			IndexField_New(&field, field_id, field_name, weight, nostem, phonetic);
 			Schema_AddIndex(&idx, s, &field, IDX_FULLTEXT);
 		}
 
@@ -66,6 +68,7 @@ static void _RdbLoadFullTextIndex
 static void _RdbLoadExactMatchIndex
 (
 	RedisModuleIO *rdb,
+	GraphContext *gc,
 	Schema *s,
 	bool already_loaded
 ) {
@@ -79,7 +82,8 @@ static void _RdbLoadExactMatchIndex
 		char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
 		if(!already_loaded) {
 			IndexField field;
-			IndexField_New(&field, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
+			Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field_name);
+			IndexField_New(&field, field_id, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
 				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
 
 			Schema_AddIndex(&idx, s, &field, IDX_EXACT_MATCH);
@@ -91,6 +95,7 @@ static void _RdbLoadExactMatchIndex
 static Schema *_RdbLoadSchema
 (
 	RedisModuleIO *rdb,
+	GraphContext *gc,
 	SchemaType type,
 	bool already_loaded
 ) {
@@ -112,10 +117,10 @@ static Schema *_RdbLoadSchema
 
 		switch(index_type) {
 			case IDX_FULLTEXT:
-				_RdbLoadFullTextIndex(rdb, s, already_loaded);
+				_RdbLoadFullTextIndex(rdb, gc, s, already_loaded);
 				break;
 			case IDX_EXACT_MATCH:
-				_RdbLoadExactMatchIndex(rdb, s, already_loaded);
+				_RdbLoadExactMatchIndex(rdb, gc, s, already_loaded);
 				break;
 			default:
 				ASSERT(false);
@@ -125,8 +130,8 @@ static Schema *_RdbLoadSchema
 
 	if(s) {
 		// no entities are expected to be in the graph in this point in time
-		if(s->index) Index_Construct(s->index);
-		if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
+		if(s->index) Index_Construct(s->index, gc->g);
+		if(s->fulltextIdx) Index_Construct(s->fulltextIdx, gc->g);
 	}
 
 	return s;
@@ -146,7 +151,7 @@ static void _RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	}
 }
 
-void RdbLoadGraphSchema_v11(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbLoadGraphSchema_v12(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * attribute keys (unified schema)
 	 * #node schemas
@@ -167,7 +172,7 @@ void RdbLoadGraphSchema_v11(RedisModuleIO *rdb, GraphContext *gc) {
 	// Load each node schema
 	gc->node_schemas = array_ensure_cap(gc->node_schemas, schema_count);
 	for(uint i = 0; i < schema_count; i ++) {
-		Schema *s = _RdbLoadSchema(rdb, SCHEMA_NODE, already_loaded);
+		Schema *s = _RdbLoadSchema(rdb, gc, SCHEMA_NODE, already_loaded);
 		if(!already_loaded) array_append(gc->node_schemas, s);
 	}
 
@@ -177,7 +182,7 @@ void RdbLoadGraphSchema_v11(RedisModuleIO *rdb, GraphContext *gc) {
 	// Load each edge schema
 	gc->relation_schemas = array_ensure_cap(gc->relation_schemas, schema_count);
 	for(uint i = 0; i < schema_count; i ++) {
-		Schema *s = _RdbLoadSchema(rdb, SCHEMA_EDGE, already_loaded);
+		Schema *s = _RdbLoadSchema(rdb, gc, SCHEMA_EDGE, already_loaded);
 		if(!already_loaded) array_append(gc->relation_schemas, s);
 	}
 }

@@ -25,13 +25,15 @@ static inline sds _JsonEncoder_String(SIValue v, sds s) {
 
 static sds _JsonEncoder_Properties(const GraphEntity *ge, sds s) {
 	s = sdscat(s, "\"properties\": {");
-	uint prop_count = ENTITY_PROP_COUNT(ge);
-	EntityProperty *properties = ENTITY_PROPS(ge);
+	const AttributeSet set = GraphEntity_GetAttributes(ge);
+	uint prop_count = ATTRIBUTE_SET_COUNT(set);
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	for(uint i = 0; i < prop_count; i ++) {
-		const char *key = GraphContext_GetAttributeString(gc, properties[i].id);
+		Attribute_ID attr_id;
+		SIValue value = AttributeSet_GetIdx(set, i, &attr_id);
+		const char *key = GraphContext_GetAttributeString(gc, attr_id);
 		s = sdscatfmt(s, "\"%s\": ", key);
-		s = _JsonEncoder_SIValue(properties[i].value, s);
+		s = _JsonEncoder_SIValue(value, s);
 		if(i < prop_count - 1) s = sdscat(s, ", ");
 	}
 	s = sdscat(s, "}");
@@ -51,6 +53,7 @@ static sds _JsonEncoder_Node(const Node *n, sds s) {
 		const char *label = Schema_GetName(schema);
 		ASSERT(label);
 		s = sdscatfmt(s, "\"%s\"", label);
+		if(i != label_count - 1) s = sdscat(s, ", ");
 	}
 	s = sdscat(s, "], ");
 	s = _JsonEncoder_Properties((const GraphEntity *)n, s);
@@ -128,6 +131,22 @@ static sds _JsonEncoder_Path(SIValue p, sds s) {
 	return s;
 }
 
+static sds _JsonEncoder_Point(SIValue point, sds s) {
+	ASSERT(SI_TYPE(point) & T_POINT);
+
+	// default crs == wgs-84 till we support other CRS formats 
+	s = sdscat(s, "{\"crs\":\"wgs-84\",\"latitude\":");
+
+	s = sdscatprintf(s, "%f", Point_lat(point));
+	s = sdscat(s, ",\"longitude\":");
+	s = sdscatprintf(s, "%f", Point_lon(point));
+
+	// height is not supported yet
+	s = sdscat(s, ",\"height\":null");
+	s = sdscat(s, "}");
+	return s;
+}
+
 static sds _JsonEncoder_Array(SIValue list, sds s) {
 	// open array with "["
 	s = sdscat(s, "[");
@@ -179,7 +198,7 @@ sds _JsonEncoder_SIValue(SIValue v, sds s) {
 		else s = sdscat(s, "false");
 		break;
 	case T_DOUBLE:
-		s = sdscatprintf(s, "%f", v.doubleval);
+		s = sdscatprintf(s, "%.15g", v.doubleval);
 		break;
 	case T_NODE:
 		s = _JsonEncoder_GraphEntity(v.ptrval, s, GETYPE_NODE);
@@ -199,6 +218,9 @@ sds _JsonEncoder_SIValue(SIValue v, sds s) {
 	case T_NULL:
 		s = sdscat(s, "null");
 		break;
+	case T_POINT:
+		s = _JsonEncoder_Point(v, s);
+		break;		
 	default:
 		// unrecognized type
 		ErrorCtx_RaiseRuntimeException("JSON encoder encountered unrecognized type: %d\n", v.type);

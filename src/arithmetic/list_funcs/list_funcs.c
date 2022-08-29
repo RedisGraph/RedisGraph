@@ -124,7 +124,7 @@ SIValue AR_SUBSCRIPT(SIValue *argv, int argc, void *private_data) {
 		 * WITH {val: 5} AS a return a['val']
 		 * MATCH (a) RETURN a['val']
 		 * Pass the arguments to the AR_PROPERTY function. */
-		SIValue property_args[3] = {argv[0], argv[1], SI_LongVal(ATTRIBUTE_NOTFOUND)};
+		SIValue property_args[3] = {argv[0], argv[1], SI_LongVal(ATTRIBUTE_ID_NONE)};
 		return AR_PROPERTY(property_args, 3, NULL);
 	}
 
@@ -418,7 +418,7 @@ void Register_ListFuncs() {
 	array_append(types, T_ARRAY | T_NULL);  // array to iterate over
 	array_append(types, T_PTR);             // input record
 	ret_type = SI_ALL;
-	func_desc = AR_FuncDescNew("reduce", AR_REDUCE, 3, 3, types, ret_type, false, true);
+	func_desc = AR_FuncDescNew("reduce", AR_REDUCE, 3, 3, types, ret_type, true, true);
 	AR_SetPrivateDataRoutines(func_desc, ListReduceCtx_Free,
 							  ListReduceCtx_Clone);
 	AR_RegFunc(func_desc);

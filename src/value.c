@@ -250,6 +250,8 @@ const char *SIType_ToString(SIType t) {
 		return "List";
 	} else if(t & T_PATH) {
 		return "Path";
+	} else if(t & T_POINT) {
+		return "Point";
 	} else if(t & T_NULL) {
 		return "Null";
 	} else {
@@ -259,7 +261,6 @@ const char *SIType_ToString(SIType t) {
 
 void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWritten) {
 	// uint64 max and int64 min string representation requires 21 bytes
-	// float defaults to print 6 digit after the decimal-point
 	// checkt for enough space
 	if(*bufferLen - *bytesWritten < 64) {
 		*bufferLen += 64;
@@ -277,8 +278,20 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%s", v.longval ? "true" : "false");
 		break;
 	case T_DOUBLE:
-		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%f", v.doubleval);
+	{
+		size_t n = snprintf(*buf + *bytesWritten, *bufferLen - *bytesWritten, "%f", v.doubleval);
+		// check if there was enough space in the buffer
+		if(*bytesWritten + n > *bufferLen) {
+			// realloc the buffer
+			*bufferLen = *bytesWritten + n + 1;
+			*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
+
+			// write it again
+			snprintf(*buf + *bytesWritten, *bufferLen - *bytesWritten, "%f", v.doubleval);
+		}
+		*bytesWritten += n;
 		break;
+	}
 	case T_NODE:
 		Node_ToString(v.ptrval, buf, bufferLen, bytesWritten, ENTITY_ID);
 		break;
@@ -301,6 +314,8 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "POINTER");
 		break;
 	case T_POINT:
+		// max string length is 32 chars of string + 10 * 2 chars for the floats
+		// = 52 bytes that already checked in the header of the function
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "point({latitude: %f, longitude: %f})", Point_lat(v), Point_lon(v));
 		break;
 	default:
@@ -332,9 +347,9 @@ SIValue SIValue_FromString(const char *s) {
 
 	errno = 0;
 	double parsedval = strtod(s, &sEnd);
-	/* The input was not a complete number or represented a number that
-	 * cannot be represented as a double.
-	 * Create a string SIValue. */
+	// the input was not a complete number or represented a number that
+	// cannot be represented as a double
+	// create a string SIValue
 	if(sEnd[0] != '\0' || errno == ERANGE) {
 		return SI_DuplicateStringVal(s);
 	}
@@ -449,7 +464,14 @@ SIValue SIValue_Modulo(const SIValue a, const SIValue n) {
 	bool inputs_are_integers = SI_TYPE(a) & SI_TYPE(n) & T_INT64;
 	if(inputs_are_integers) {
 		// The modulo machine instruction may be used if a and n are both integers.
-		return SI_LongVal(a.longval % n.longval);
+
+		int64_t res = 0;
+		// workaround for https://gcc.gnu.org/bugzilla/show_bug.cgi?id=30484
+		if (n.longval != -1){ // % -1 is always return 0
+			res = (int64_t)a.longval % (int64_t)n.longval;
+		}
+
+		return SI_LongVal(res);
 	} else {
 		// Otherwise, use the library function fmod to calculate the modulo and return a double.
 		return SI_DoubleVal(fmod(SI_GET_NUMERIC(a), SI_GET_NUMERIC(n)));
