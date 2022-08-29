@@ -117,4 +117,6 @@ def binary_tree_graph2():
 
 
 def query(q):
+    global redis_graph
+
     return redis_graph.query(q)

@@ -183,20 +183,25 @@ static AR_ExpNode *_AR_EXP_FromIntegerExpression(const cypher_astnode_t *expr) {
 	return AR_EXP_NewConstOperandNode(converted);
 }
 
-static AR_ExpNode *_AR_EXP_FromFloatExpression(const cypher_astnode_t *expr) {
-	const char *value_str = cypher_ast_float_get_valuestr(expr);
+static SIValue _AR_EXP_FromFloatString(const char *value_str) {
 	char *endptr = NULL;
 	double d = strtod(value_str, &endptr);
 	if(endptr[0] != 0) {
 		// Failed to convert integer value; set compile-time error to be raised later.
 		ErrorCtx_SetError("Invalid numeric value '%s'", value_str);
-		return AR_EXP_NewConstOperandNode(SI_NullVal());
+		return SI_NullVal();
 	}
 	if(errno == ERANGE) {
 		ErrorCtx_SetError("Float overflow '%s'", value_str);
-		return AR_EXP_NewConstOperandNode(SI_NullVal());
+		return SI_NullVal();
 	}
 	SIValue converted = SI_DoubleVal(d);
+	return converted;
+}
+
+static AR_ExpNode *_AR_EXP_FromFloatExpression(const cypher_astnode_t *expr) {
+	const char *value_str = cypher_ast_float_get_valuestr(expr);
+	SIValue converted = _AR_EXP_FromFloatString(value_str);
 	return AR_EXP_NewConstOperandNode(converted);
 }
 
@@ -235,6 +240,15 @@ static AR_ExpNode *_AR_EXP_FromUnaryOpExpression(const cypher_astnode_t *expr) {
 			minus_str[0] = '-';
 			minus_str[strlen(value_str) + 1] = '\0';
 			SIValue converted = _AR_EXP_FromIntegerString(minus_str);
+			op = AR_EXP_NewConstOperandNode(converted);
+			rm_free(minus_str);
+		} else if(cypher_astnode_type(arg) == CYPHER_AST_FLOAT) {
+			const char *value_str = cypher_ast_float_get_valuestr(arg);
+			char *minus_str = rm_malloc(sizeof(char) * strlen(value_str) + 2);
+			memcpy(minus_str + 1, value_str, strlen(value_str));
+			minus_str[0] = '-';
+			minus_str[strlen(value_str) + 1] = '\0';
+			SIValue converted = _AR_EXP_FromFloatString(minus_str);
 			op = AR_EXP_NewConstOperandNode(converted);
 			rm_free(minus_str);
 		} else {
