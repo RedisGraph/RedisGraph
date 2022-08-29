@@ -192,6 +192,10 @@ static AR_ExpNode *_AR_EXP_FromFloatExpression(const cypher_astnode_t *expr) {
 		ErrorCtx_SetError("Invalid numeric value '%s'", value_str);
 		return AR_EXP_NewConstOperandNode(SI_NullVal());
 	}
+	if(errno == ERANGE) {
+		ErrorCtx_SetError("Float overflow '%s'", value_str);
+		return AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
 	SIValue converted = SI_DoubleVal(d);
 	return AR_EXP_NewConstOperandNode(converted);
 }
@@ -224,7 +228,6 @@ static AR_ExpNode *_AR_EXP_FromUnaryOpExpression(const cypher_astnode_t *expr) {
 
 	if(operator == CYPHER_OP_UNARY_MINUS) {
 		// This expression can be something like -3 or -a.val
-		// In the former case, we'll reduce the tree to a constant after building it fully.
 		if(cypher_astnode_type(arg) == CYPHER_AST_INTEGER) {
 			const char *value_str = cypher_ast_integer_get_valuestr(arg);
 			char *minus_str = rm_malloc(sizeof(char) * strlen(value_str) + 2);
