@@ -76,7 +76,6 @@ class RedisGraphSetup(paella.Setup):
             self.install("lcov-git", aur=True)
 
         self.pip_install("-r tests/requirements.txt")
-        self.pip_install("-r tests/fuzz/requirements.txt")
 
     def install_peg(self):
         self.run(r"""
