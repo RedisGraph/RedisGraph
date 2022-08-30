@@ -338,7 +338,7 @@ void UpdateNodeLabels
 	raxSeek(&it, "^", NULL, 0);
 	while(raxNext(&it)) {
 		// get label string
-		unsigned char *label = it.key;
+		const char *label = (const char *)it.key;
 		// TODO:this condition is a bit confusing
 		// consider adding 2 unique pointers
 		// e.g. CREATE_LABEL and REMOVE_LABEL
