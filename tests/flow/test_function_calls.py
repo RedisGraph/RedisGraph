@@ -936,3 +936,34 @@ class testFunctionCallsFlow(FlowTestsBase):
             except redis.exceptions.ResponseError as e:
                 # Expecting a type error.
                 self.env.assertIn("Type mismatch", str(e))
+
+    def test34_split(self):
+        # null string
+        query = "RETURN split(null, ',')"
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+        # null delimiter
+        query = "RETURN split('hello world', null)"
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+        # invalid delimiter
+        query = "RETURN split('hello world', ',')"
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], ["hello world"])
+
+        # empty delimiter
+        query = "RETURN split('hello world', '')"
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], ['h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd'])
+
+        # empty string
+        query = "RETURN split('', ',')"
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], [""])
+
+        # empty string and empty delimiter
+        query = "RETURN split('', '')"
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], [""])
