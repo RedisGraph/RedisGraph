@@ -279,7 +279,7 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 		break;
 	case T_DOUBLE:
 	{
-		size_t n = snprintf(*buf + *bytesWritten, *bufferLen - *bytesWritten, "%.15g", v.doubleval);
+		size_t n = snprintf(*buf + *bytesWritten, *bufferLen - *bytesWritten, "%f", v.doubleval);
 		// check if there was enough space in the buffer
 		if(*bytesWritten + n > *bufferLen) {
 			// realloc the buffer
@@ -287,7 +287,7 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 			*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
 
 			// write it again
-			snprintf(*buf + *bytesWritten, *bufferLen - *bytesWritten, "%.15g", v.doubleval);
+			snprintf(*buf + *bytesWritten, *bufferLen - *bytesWritten, "%f", v.doubleval);
 		}
 		*bytesWritten += n;
 		break;

@@ -52,8 +52,8 @@ TEST_F(RecordTest, RecordToString) {
 	char *record_str = NULL;
 	size_t record_str_len = Record_ToString(r, &record_str, &record_str_cap);
 
-	ASSERT_EQ(strcmp(record_str, "Hello,-24,24,0.314,NULL,true"), 0);
-	ASSERT_EQ(record_str_len, 28);
+	ASSERT_EQ(strcmp(record_str, "Hello,-24,24,0.314000,NULL,true"), 0);
+	ASSERT_EQ(record_str_len, 31);
 
 	rm_free(record_str);
 	Record_Free(r);
