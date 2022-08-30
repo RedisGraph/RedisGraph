@@ -16,6 +16,10 @@
 
 #define STRINGABLE (SI_NUMERIC | T_POINT | T_DURATION | T_DATETIME| T_STRING | T_BOOL)
 
+// toString supports only integer, float, string, boolean, point, duration, 
+// date, time, localtime, localdatetime or datetime values
+#define STRINGABLE (SI_NUMERIC | T_POINT | T_DURATION | T_DATETIME | T_STRING | T_BOOL)
+
 // returns a string containing the specified number of leftmost characters of the original string.
 SIValue AR_LEFT(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();

@@ -550,7 +550,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set[0][0], None)
 
         # the requested length is too long and overflowing
-        query = """RETURN SUBSTRING('ab', 1, 999999999999999999999999999999999999999999999)"""
+        query = """RETURN SUBSTRING('ab', 1, 999999999999999)"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], "b")
 
@@ -864,8 +864,8 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """RETURN toStringOrNull(null)"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], None)
-
-        # list
+  
+         # list
         query = """RETURN toStringOrNull([1])"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], None)
@@ -879,8 +879,65 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """CREATE ()-[r:R]->() RETURN toStringOrNull(r)"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], None)
+    
+    def test33_toString(self):
+        # strings
+        query = """RETURN toString('1')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], "1")
+        query = """RETURN toString('1.2')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], "1.2")
+        query = """RETURN toString('hello')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], "hello")
 
-    def test33_split(self):
+        # integers
+        query = """RETURN toString(0)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], "0")
+        query = """RETURN toString(1)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], "1")
+        query = """RETURN toString(-1)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], "-1")
+
+        # floats
+        query = """RETURN toString(0.1)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], "0.100000")
+        query = """RETURN toString(0.9)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], "0.900000")
+
+        # boolean
+        query = """RETURN toString(true)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], "true")
+        query = """RETURN toString(false)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], "false")
+        
+        # null
+        query = """RETURN toString(null)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+        queries = [
+            """RETURN toString([1])""",                   # list
+            """CREATE (n) RETURN toString(n)""",          # node
+            """CREATE ()-[r:R]->() RETURN toString(r)"""  # edge
+            ]
+        for query in queries:
+            try:
+                graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                # Expecting a type error.
+                self.env.assertIn("Type mismatch", str(e))
+
+    def test34_split(self):
         # null string
         query = "RETURN split(null, ',')"
         actual_result = graph.query(query)

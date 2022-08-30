@@ -161,16 +161,25 @@ static AR_ExpNode *_AR_EXP_FromPropertyExpression(const cypher_astnode_t *expr) 
 	return root;
 }
 
-static AR_ExpNode *_AR_EXP_FromIntegerExpression(const cypher_astnode_t *expr) {
-	const char *value_str = cypher_ast_integer_get_valuestr(expr);
+static SIValue _AR_EXP_FromIntegerString(const char *value_str) {
 	char *endptr = NULL;
 	int64_t l = strtol(value_str, &endptr, 0);
 	if(endptr[0] != 0) {
 		// Failed to convert integer value; set compile-time error to be raised later.
 		ErrorCtx_SetError("Invalid numeric value '%s'", value_str);
-		return AR_EXP_NewConstOperandNode(SI_NullVal());
+		return SI_NullVal();
+	}
+	if(errno == ERANGE) {
+		ErrorCtx_SetError("Integer overflow '%s'", value_str);
+		return SI_NullVal();
 	}
 	SIValue converted = SI_LongVal(l);
+	return converted;
+}
+
+static AR_ExpNode *_AR_EXP_FromIntegerExpression(const cypher_astnode_t *expr) {
+	const char *value_str = cypher_ast_integer_get_valuestr(expr);
+	SIValue converted = _AR_EXP_FromIntegerString(value_str);
 	return AR_EXP_NewConstOperandNode(converted);
 }
 
@@ -181,6 +190,10 @@ static AR_ExpNode *_AR_EXP_FromFloatExpression(const cypher_astnode_t *expr) {
 	if(endptr[0] != 0) {
 		// Failed to convert integer value; set compile-time error to be raised later.
 		ErrorCtx_SetError("Invalid numeric value '%s'", value_str);
+		return AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
+	if(errno == ERANGE) {
+		ErrorCtx_SetError("Float overflow '%s'", value_str);
 		return AR_EXP_NewConstOperandNode(SI_NullVal());
 	}
 	SIValue converted = SI_DoubleVal(d);
@@ -215,10 +228,20 @@ static AR_ExpNode *_AR_EXP_FromUnaryOpExpression(const cypher_astnode_t *expr) {
 
 	if(operator == CYPHER_OP_UNARY_MINUS) {
 		// This expression can be something like -3 or -a.val
-		// In the former case, we'll reduce the tree to a constant after building it fully.
-		op = AR_EXP_NewOpNodeFromAST(OP_MULT, 2);
-		op->op.children[0] = AR_EXP_NewConstOperandNode(SI_LongVal(-1));
-		op->op.children[1] = _AR_EXP_FromASTNode(arg);
+		if(cypher_astnode_type(arg) == CYPHER_AST_INTEGER) {
+			const char *value_str = cypher_ast_integer_get_valuestr(arg);
+			char *minus_str = rm_malloc(sizeof(char) * strlen(value_str) + 2);
+			memcpy(minus_str + 1, value_str, strlen(value_str));
+			minus_str[0] = '-';
+			minus_str[strlen(value_str) + 1] = '\0';
+			SIValue converted = _AR_EXP_FromIntegerString(minus_str);
+			op = AR_EXP_NewConstOperandNode(converted);
+			rm_free(minus_str);
+		} else {
+			op = AR_EXP_NewOpNodeFromAST(OP_MULT, 2);
+			op->op.children[0] = AR_EXP_NewConstOperandNode(SI_LongVal(-1));
+			op->op.children[1] = _AR_EXP_FromASTNode(arg);
+		}
 	} else if(operator == CYPHER_OP_UNARY_PLUS) {
 		/* This expression is something like +3 or +a.val.
 		 * I think the + can always be safely ignored. */
