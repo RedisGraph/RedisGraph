@@ -885,7 +885,7 @@ This section contains information on all supported functions from the Cypher que
 | sqrt()      | Returns the square root of a number                                                                                      |
 | pow()       | Returns base raised to the power of exponent, base^exponent                                                              |
 | toInteger() | Converts a floating point or string value to an integer value. All other types are not allowed and will cause a type mismatch error to be returned.                                                           |
-| toIntegerOrNull() | Converts a floating point or string value to an integer value.\ All other types will return `null`                                                        | 
+| toIntegerOrNull() | Converts a floating point or string value to an integer value. All other types will return `null`                                                        | 
 | toFloat()   | Converts an integer or string value to a floating point value. All other types are not allowed and will cause a type mismatch error to be returned.                                                         |
 | toFloatOrNull()   | Converts an integer or string value to a floating point value. All other types will return `null`                                                        |
 
@@ -901,7 +901,8 @@ This section contains information on all supported functions from the Cypher que
 | rTrim()     | Returns the original string with trailing whitespace removed                                    |
 | substring() | Returns a substring of the original string, beginning with a 0-based index start and length     |
 | toLower()   | Returns the original string in lowercase                                                        |
-| toString()  | Returns a string representation of a value                                                      |
+| toString()  | Returns a string representation of a value from the type integer, float, boolean, string, point.All other types are not allowed and will cause a type mismatch error to be returned.                                                    |
+| toStringorNull()  | Returns a string representation of a value from the type integer, float, boolean, string, point. All other types will return `null`                                                     |
 | toJSON()    | Returns a [JSON representation](#json-format) of a value                                        |
 | toUpper()   | Returns the original string in uppercase                                                        |
 | trim()      | Returns the original string with leading and trailing whitespace removed                        |

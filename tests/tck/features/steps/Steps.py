@@ -286,10 +286,10 @@ def step_impl(context):
 def step_impl(context):
     global exception
     assert exception != None
-    assert "Integer overflow" in str(exception) 
+    assert "Integer overflow" in str(exception)
 
 @then(u'a SyntaxError should be raised at compile time: FloatingPointOverflow')
 def step_impl(context):
     global exception
     assert exception != None
-    assert "Float overflow" in str(exception) 
+    assert "Float overflow" in str(exception)

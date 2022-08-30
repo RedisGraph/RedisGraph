@@ -13,6 +13,10 @@
 #include "../../util/strutil.h"
 #include "../../util/json_encoder.h"
 
+// toString supports only integer, float, string, boolean, point, duration, 
+// date, time, localtime, localdatetime or datetime values
+#define STRINGABLE (SI_NUMERIC | T_POINT | T_DURATION | T_DATETIME | T_STRING | T_BOOL)
+
 // returns a string containing the specified number of leftmost characters of the original string.
 SIValue AR_LEFT(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
@@ -180,12 +184,16 @@ SIValue AR_TOUPPER(SIValue *argv, int argc, void *private_data) {
 
 // converts an integer, float or boolean value to a string.
 SIValue AR_TOSTRING(SIValue *argv, int argc, void *private_data) {
-	if(SIValue_IsNull(argv[0])) return SI_NullVal();
-	size_t len = SIValue_StringJoinLen(argv, 1, "");
-	char *str = rm_malloc(len * sizeof(char));
-	size_t bytesWritten = 0;
-	SIValue_ToString(argv[0], &str, &len, &bytesWritten);
-	return SI_TransferStringVal(str);
+	if(SI_TYPE(argv[0]) & STRINGABLE) {
+		size_t len = SIValue_StringJoinLen(argv, 1, "");
+		char *str = rm_malloc(len * sizeof(char));
+		size_t bytesWritten = 0;
+		SIValue_ToString(argv[0], &str, &len, &bytesWritten);
+		return SI_TransferStringVal(str);
+	}
+	else {
+		return SI_NullVal();
+	}
 }
 
 // Returns a JSON string representation of a map value.
@@ -412,9 +420,15 @@ void Register_StringFuncs() {
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	array_append(types, SI_ALL);
+	array_append(types, STRINGABLE | T_NULL);
 	ret_type = T_STRING | T_NULL;
 	func_desc = AR_FuncDescNew("tostring", AR_TOSTRING, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, SI_ALL);
+	ret_type = T_STRING | T_NULL;
+	func_desc = AR_FuncDescNew("tostringornull", AR_TOSTRING, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
