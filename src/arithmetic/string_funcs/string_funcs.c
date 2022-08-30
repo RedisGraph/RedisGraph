@@ -14,8 +14,6 @@
 #include "../../util/json_encoder.h"
 #include "../../datatypes/array.h"
 
-#define STRINGABLE (SI_NUMERIC | T_POINT | T_DURATION | T_DATETIME| T_STRING | T_BOOL)
-
 // toString supports only integer, float, string, boolean, point, duration, 
 // date, time, localtime, localdatetime or datetime values
 #define STRINGABLE (SI_NUMERIC | T_POINT | T_DURATION | T_DATETIME | T_STRING | T_BOOL)
