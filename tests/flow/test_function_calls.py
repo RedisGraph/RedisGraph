@@ -952,3 +952,18 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = "RETURN split('hello world', ',')"
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], ["hello world"])
+
+        # empty delimiter
+        query = "RETURN split('hello world', '')"
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], ['h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd'])
+
+        # empty string
+        query = "RETURN split('', ',')"
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], [""])
+
+        # empty string and empty delimiter
+        query = "RETURN split('', '')"
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], [""])

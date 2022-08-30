@@ -354,30 +354,49 @@ SIValue AR_REPLACE(SIValue *argv, int argc, void *private_data) {
 	return SI_TransferStringVal(buffer);
 }
 
-/* returns a list of strings resulting from the splitting of the original string around matches of the given delimiter. */
+// returns a list of strings resulting from the splitting of the original string around matches of the given delimiter
 SIValue AR_SPLIT(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) {
 		return SI_NullVal();
 	}
-	// strtok should work on a mutable copy.
-	char *str = rm_strdup(argv[0].stringval);
+
+	char       *str       = argv[0].stringval;
 	const char *delimiter = argv[1].stringval;
+	SIValue     tokens    = SIArray_New(1);
 
-	SIValue tokens =  SIArray_New(1);
-	char *token = strtok(str, delimiter);
-	if(!token) {
-		SIArray_Append(&tokens, argv[0]);
+	if(strlen(delimiter) == 0) {
+		if(strlen(str) == 0) {
+			SIArray_Append(&tokens, SI_ConstStringVal(""));
+		} else {
+			char token[2];
+			token[1] = '\0';
+			while(str[0] != '\0') {
+				token[0] = str[0];
+				SIArray_Append(&tokens, SI_ConstStringVal(token));
+				str++;
+			}
+		}
+	} else {
+		// strtok should work on a mutable copy
+		str = rm_strdup(str);
+		
+		char *token  = strtok(str, delimiter);
+
+		if(!token) {
+			SIArray_Append(&tokens, argv[0]);
+			rm_free(str);
+			return tokens;
+		}
+
+		while(token) {
+			SIValue si_token = SI_ConstStringVal(token);
+			SIArray_Append(&tokens, si_token);
+			token = strtok(NULL, delimiter);
+		}
+		
 		rm_free(str);
-		return tokens;
 	}
 
-	while(token) {
-		SIValue si_token = SI_ConstStringVal(token);
-		SIArray_Append(&tokens, si_token);
-		token = strtok(NULL, delimiter);
-	}
-	
-	rm_free(str);
 	return tokens;
 }
 
