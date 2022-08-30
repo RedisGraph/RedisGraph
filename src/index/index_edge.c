@@ -77,8 +77,19 @@ void populateEdgeIndex
 		e.srcNodeID   =  src_id;
 		e.destNodeID  =  dest_id;
 
-		Graph_GetEdge(g, edge_id, &e);
-		Index_IndexEdge(idx, &e);
+		if(SINGLE_EDGE(edge_id)) {
+			Graph_GetEdge(g, edge_id, &e);
+			Index_IndexEdge(idx, &e);
+		} else {
+			EdgeID *edgeIds = (EdgeID *)(CLEAR_MSB(edge_id));
+			uint edgeCount = array_len(edgeIds);
+
+			for(uint i = 0; i < edgeCount; i++) {
+				edge_id       = edgeIds[i];
+				Graph_GetEdge(g, edge_id, &e);
+				Index_IndexEdge(idx, &e);
+			}
+		}
 	}
 
 	RG_MatrixTupleIter_detach(&it);
