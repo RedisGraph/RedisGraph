@@ -136,6 +136,7 @@ void UndoLog_UpdateEntity
 	GraphEntityType entity_type  // entity type
 );
 
+// undo node add label
 void UndoLog_AddLabels
 (
 	UndoLog *log,                // undo log
@@ -144,6 +145,7 @@ void UndoLog_AddLabels
 	size_t labels_count          // number of removed labels
 );
 
+// undo node remove label
 void UndoLog_RemoveLabels
 (
 	UndoLog *log,                // undo log

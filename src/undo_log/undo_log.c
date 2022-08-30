@@ -202,7 +202,6 @@ static void _UndoLog_Rollback_Create_Node
 		_index_delete_node(ctx, n);
 		Graph_DeleteNode(ctx->gc->g, n);
 	}
-
 }
 
 // undo edge creation
@@ -392,7 +391,7 @@ void UndoLog_UpdateEntity
 	_UndoLog_AddOperation(log, &op);
 }
 
-
+// undo node add label
 void UndoLog_AddLabels
 (
 	UndoLog *log,                // undo log
@@ -413,6 +412,7 @@ void UndoLog_AddLabels
 	_UndoLog_AddOperation(log, &op);
 }
 
+// undo node remove label
 void UndoLog_RemoveLabels
 (
 	UndoLog *log,                // undo log
