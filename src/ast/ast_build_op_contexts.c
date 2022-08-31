@@ -166,7 +166,16 @@ static void _ConvertUpdateItem
 		rax *labels      = raxNew();
 		uint label_count = cypher_ast_set_labels_nlabels(update_item);
 
-		ctx->add_labels = array_new(const char *, label_count);
+		if(ctx->add_labels == NULL) {
+			ctx->add_labels = array_new(const char *, label_count);
+		} else {
+			uint count = array_len(ctx->add_labels);
+			for (uint i = 0; i < count; i++) {
+				const char *label = ctx->add_labels[i];
+				raxInsert(labels, (unsigned char *)label, strlen(label)+1,
+					NULL, NULL);
+			}
+		}
 
 		for (uint i = 0; i < label_count; i++) {
 			const cypher_astnode_t *label_node =
@@ -184,7 +193,16 @@ static void _ConvertUpdateItem
 		rax *labels      = raxNew();
 		uint label_count = cypher_ast_remove_labels_nlabels(update_item);
 
-		ctx->remove_labels = array_new(const char *, label_count);
+		if(ctx->remove_labels == NULL) {
+			ctx->remove_labels = array_new(const char *, label_count);
+		} else {
+			uint count = array_len(ctx->remove_labels);
+			for (uint i = 0; i < count; i++) {
+				const char *label = ctx->remove_labels[i];
+				raxInsert(labels, (unsigned char *)label, strlen(label)+1,
+					NULL, NULL);
+			}
+		}
 
 		for (uint i = 0; i < label_count; i++) {
 			const cypher_astnode_t * label_node =
