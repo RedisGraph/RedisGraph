@@ -46,8 +46,8 @@ uint CreateEdge
 // return 1 on success, 0 otherwise
 uint DeleteNode
 (
-	GraphContext *gc,    // graph context to delete the node
-	Node *n              // the node to be deleted
+	GraphContext *gc,  // graph context to delete the node
+	Node *n            // the node to be deleted
 );
 
 // delete an edge
@@ -57,19 +57,36 @@ uint DeleteNode
 // return the # of edges deleted
 int DeleteEdge
 (
-	GraphContext *gc,    // graph context to delete the edge
-	Edge *e              // the edge to be deleted
+	GraphContext *gc,  // graph context to delete the edge
+	Edge *e            // the edge to be deleted
 );
 
 // update an entity(node/edge)
 // update the entity attributes
 // update the relevant indexes of the entity
 // add entity update operations to undo log
-// return the # of properties updated
-int UpdateEntity
+void UpdateEntityProperties
+(
+	GraphContext *gc,             // graph context to update the entity
+	GraphEntity *ge,              // the entity to be updated
+	const AttributeSet set,       // attributes to update
+	GraphEntityType entity_type,  // the entity type (node/edge)
+	uint *props_set_count,        // number of properties set (out param)
+	uint *props_removed_count     // number of properties removed (out param)
+);
+
+
+// this function sets the labels given in the rax "labels" to the given node
+// creates the label matrix if not exists
+// adds node to the label matrix
+// updates the relevant indexes of the entity
+void UpdateNodeLabels
 (
 	GraphContext *gc,            // graph context to update the entity
-	GraphEntity *ge,             // the entity to be updated
-	const AttributeSet set,      // attributes to update
-	GraphEntityType entity_type  // the entity type (node/edge)
+	Node *node,                  // the node to be updated
+	const char **add_labels,     // labels to add to the node
+	const char **remove_labels,  // labels to add to the node
+	uint *labels_added_count,    // number of labels added (out param)
+	uint *labels_removed_count   // number of labels removed (out param)
 );
+
