@@ -21,11 +21,13 @@
 
 // UndoLog operation types
 typedef enum {
-	UNDO_UPDATE = 0,        // undo entity update
-	UNDO_CREATE_NODE,       // undo node creation
-	UNDO_CREATE_EDGE,       // undo edge creation
-	UNDO_DELETE_NODE,       // undo node deletion
-	UNDO_DELETE_EDGE        // undo edge deletion
+	UNDO_UPDATE = 0,    // undo entity update
+	UNDO_CREATE_NODE,   // undo node creation
+	UNDO_CREATE_EDGE,   // undo edge creation
+	UNDO_DELETE_NODE,   // undo node deletion
+	UNDO_DELETE_EDGE,   // undo edge deletion
+	UNDO_SET_LABELS,    // undo set labels
+	UNDO_REMOVE_LABELS  // undo remove labels
 } UndoOpType;
 
 //------------------------------------------------------------------------------
@@ -68,6 +70,12 @@ typedef struct {
 	SIValue orig_value;           // attribute original value
 } UndoUpdateOp;
 
+typedef struct {
+	Node node;
+	int* label_lds;
+	size_t labels_count;
+} UndoLabelsOp;
+
 // Undo operation
 typedef struct {
 	union {
@@ -75,6 +83,7 @@ typedef struct {
 		UndoDeleteNodeOp delete_node_op;
 		UndoDeleteEdgeOp delete_edge_op;
 		UndoUpdateOp update_op;
+		UndoLabelsOp labels_op;
 	};
 	UndoOpType type;  // type of undo operation
 } UndoOp;
@@ -125,6 +134,24 @@ void UndoLog_UpdateEntity
 	Attribute_ID attr_id,        // updated attribute ID
 	SIValue orig_value,          // attribute original value
 	GraphEntityType entity_type  // entity type
+);
+
+// undo node add label
+void UndoLog_AddLabels
+(
+	UndoLog *log,                // undo log
+	Node *node,                  // updated node
+	int *label_ids,              // added labels
+	size_t labels_count          // number of removed labels
+);
+
+// undo node remove label
+void UndoLog_RemoveLabels
+(
+	UndoLog *log,                // undo log
+	Node *node,                  // updated node
+	int *label_ids,              // removed labels
+	size_t labels_count          // number of removed labels
 );
 
 // rollback all modifications tracked by this undo log

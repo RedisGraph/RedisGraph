@@ -92,6 +92,35 @@ class testReplication(FlowTestsBase):
         replica_result = replica.query(q).result_set
         env.assertEquals(replica_result, result)
 
+        # remove label
+        q = "MATCH (s:L {id:2}) REMOVE s:L RETURN s"
+        result = graph.query(q)
+        env.assertEqual(result.labels_removed, 1)
+
+        # the WAIT command forces master slave sync to complete
+        source_con.execute_command("WAIT", "1", "0")
+
+        q = "MATCH (s:L {id:2}) RETURN s"
+        result = graph.query(q).result_set
+        replica_result = replica.query(q).result_set
+        env.assertEquals(replica_result, result)
+        env.assertEqual(len(result), 0)
+
+        # remove property
+        q = "MATCH (s {id:2}) SET s.id = NULL RETURN s"
+        result = graph.query(q)
+        env.assertEqual(result.properties_removed, 1)
+
+        # the WAIT command forces master slave sync to complete
+        source_con.execute_command("WAIT", "1", "0")
+
+        q = "MATCH (s {id:2}) RETURN s"
+        result = graph.query(q).result_set
+        replica_result = replica.query(q).result_set
+        env.assertEquals(replica_result, result)
+        env.assertEqual(len(result), 0)
+
+
         # make sure both primary and replica have the same set of indexes
         q = "CALL db.indexes() YIELD type, label, properties, language, stopwords, entitytype"
         result = graph.query(q).result_set
