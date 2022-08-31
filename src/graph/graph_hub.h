@@ -82,10 +82,11 @@ void UpdateEntityProperties
 // updates the relevant indexes of the entity
 void UpdateNodeLabels
 (
-	GraphContext *gc,           // graph context to update the entity
-	Node *node,                 // the node to be updated
-	rax *labels,                // labels to update
-	uint *labels_added_count,   // number of labels added (out param)
-	uint *labels_removed_count  // number of labels removed (out param)
+	GraphContext *gc,            // graph context to update the entity
+	Node *node,                  // the node to be updated
+	const char **add_labels,     // labels to add to the node
+	const char **remove_labels,  // labels to add to the node
+	uint *labels_added_count,    // number of labels added (out param)
+	uint *labels_removed_count   // number of labels removed (out param)
 );
 

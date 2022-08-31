@@ -164,11 +164,12 @@ EntityUpdateEvalCtx *UpdateCtx_New
 ) {
 	EntityUpdateEvalCtx *ctx = rm_malloc(sizeof(EntityUpdateEvalCtx));
 
-	ctx->mode       = mode;
-	ctx->alias      = alias;
-	ctx->labels     = raxNew();  // TODO: rax seems like an overkill
-	ctx->record_idx = INVALID_INDEX;
-	ctx->properties = array_new(PropertySetCtx, prop_count);
+	ctx->mode          = mode;
+	ctx->alias         = alias;
+	ctx->record_idx    = INVALID_INDEX;
+	ctx->properties    = array_new(PropertySetCtx, prop_count);
+	ctx->add_labels    = NULL;
+	ctx->remove_labels = NULL;
 
 	return ctx;
 }
@@ -181,11 +182,18 @@ EntityUpdateEvalCtx *UpdateCtx_Clone
 
 	uint count = array_len(orig->properties);
 
-	clone->mode       = orig->mode;
-	clone->alias      = orig->alias;
-	clone->labels     = raxClone(orig->labels);
-	clone->record_idx = orig->record_idx;
-	clone->properties = array_new(PropertySetCtx, count);
+	clone->mode          = orig->mode;
+	clone->alias         = orig->alias;
+	clone->record_idx    = orig->record_idx;
+	clone->properties    = array_new(PropertySetCtx, count);
+	clone->add_labels    = NULL;
+	clone->remove_labels = NULL;
+	if(orig->add_labels != NULL) {
+		array_clone(clone->add_labels, orig->add_labels);
+	}
+	if(orig->remove_labels != NULL) {
+		array_clone(clone->remove_labels, orig->remove_labels);
+	}
 
 	for(uint i = 0; i < count; i ++) {
 		PropertySetCtx update = {
@@ -225,9 +233,9 @@ void UpdateCtx_Free
 		AR_EXP_Free(ctx->properties[i].exp);
 	}
 
-	raxFree(ctx->labels);
 	array_free(ctx->properties);
+	if(ctx->add_labels != NULL) array_free(ctx->add_labels);
+	if(ctx->remove_labels != NULL) array_free(ctx->remove_labels);
 
 	rm_free(ctx);
 }
-

@@ -307,7 +307,8 @@ void UpdateNodeLabels
 (
 	GraphContext *gc,            // graph context to update the entity
 	Node *node,                  // the node to be updated
-	rax *labels,     	         // labels to update
+	const char **add_labels,     // labels to add to the node
+	const char **remove_labels,  // labels to add to the node
 	uint *labels_added_count,    // number of labels added (out param)
 	uint *labels_removed_count   // number of labels removed (out param)
 ) {
@@ -315,34 +316,19 @@ void UpdateNodeLabels
 	ASSERT(node != NULL);
 
 	// quick return if there are no labels
-	if(labels == NULL) {
+	if(add_labels == NULL && remove_labels == NULL) {
 		return;
 	}
 
-	uint label_count = raxSize(labels);
-	if(label_count == 0) {
-		return;
-	}
+	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 
-	raxIterator it;
-	raxStart(&it, labels);
+	if(add_labels != NULL) {
+		uint label_count = array_len(add_labels);
+		int add_labels_ids[label_count];
+		uint add_labels_index = 0;
 
-	// TODO: consider switching to a stack base arrays
-	// int[label_count] add_labels
-	int add_labels[label_count];
-	int remove_labels[label_count];
-	uint add_labels_index = 0;
-	uint remove_labels_index = 0;
-
-	// iterate over all keys in the rax
-	raxSeek(&it, "^", NULL, 0);
-	while(raxNext(&it)) {
-		// get label string
-		const char *label = (const char *)it.key;
-		// TODO:this condition is a bit confusing
-		// consider adding 2 unique pointers
-		// e.g. CREATE_LABEL and REMOVE_LABEL
-		if(it.data == SET_LABEL) {
+		for (uint i = 0; i < label_count; i++) {
+			const char *label = add_labels[i];
 			// get or create label matrix
 			const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 			bool schema_created = false;
@@ -360,12 +346,29 @@ void UpdateNodeLabels
 					RG_Matrix m = Graph_GetLabelMatrix(gc->g, schema_id);
 				}
 				// append label id
-				add_labels[add_labels_index++] = schema_id;
+				add_labels_ids[add_labels_index++] = schema_id;
 				// add to index
 				Schema_AddNodeToIndices(s, node);
 			}
-		} else {
-			ASSERT(it.data == REMOVE_LABEL);
+		}
+
+		if(add_labels_index > 0) {
+			*labels_added_count = add_labels_index;
+
+			// update node's labels
+			Graph_LabelNode(gc->g, node->id ,add_labels_ids, add_labels_index);
+			UndoLog_AddLabels(&query_ctx->undo_log, node, add_labels_ids, add_labels_index);
+		}
+	}
+
+	if(remove_labels != NULL) {
+		uint label_count = array_len(remove_labels);
+		int remove_labels_ids[label_count];
+		uint remove_labels_index = 0;
+
+		for (uint i = 0; i < label_count; i++) {
+			const char *label = remove_labels[i];
+
 			// label removal
 			// get or create label matrix
 			const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
@@ -375,31 +378,19 @@ void UpdateNodeLabels
 			}
 
 			// append label id
-			remove_labels[remove_labels_index++] = Schema_GetID(s);
+			remove_labels_ids[remove_labels_index++] = Schema_GetID(s);
 			// remove node from index
 			Schema_RemoveNodeFromIndices(s, node);
 		}
-	}
-	raxStop(&it); 
 
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-	if(add_labels_index) {
-		*labels_added_count = add_labels_index;
-	}
-	// update node's labels
-	if(add_labels_index > 0) {
-		Graph_LabelNode(gc->g, node->id ,add_labels, add_labels_index);
-		UndoLog_AddLabels(&query_ctx->undo_log, node, add_labels, add_labels_index);
-	}
-
-	if(remove_labels_index) {
-		*labels_removed_count = remove_labels_index;
-	}
-	// update node's labels
-	if(remove_labels_index > 0) {
-		Graph_RemoveNodeLabels(gc->g, ENTITY_GET_ID(node), remove_labels,
-				remove_labels_index);
-		UndoLog_RemoveLabels(&query_ctx->undo_log, node, remove_labels, remove_labels_index);
+		if(remove_labels_index > 0) {
+			*labels_removed_count = remove_labels_index;
+			
+			// update node's labels
+			Graph_RemoveNodeLabels(gc->g, ENTITY_GET_ID(node), remove_labels_ids,
+					remove_labels_index);
+			UndoLog_RemoveLabels(&query_ctx->undo_log, node, remove_labels_ids, remove_labels_index);
+		}
 	}
 }
 

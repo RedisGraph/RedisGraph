@@ -10,9 +10,10 @@
 
 // context representing a single update to perform on an entity
 typedef struct {
-	GraphEntity *ge;       // entity to be updated
-	AttributeSet attributes;
-	rax *labels;  // TODO: rax seems like an overkill, maybe the removal of duplicates need to be done at the AST level ?
+	GraphEntity *ge;            // entity to be updated
+	AttributeSet attributes;    // attributes to update
+	const char **add_labels;    // labels to add to the node
+	const char **remove_labels; // labels to add to the node
 } PendingUpdateCtx;
 
 // commit all updates described in the array of pending updates

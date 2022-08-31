@@ -163,25 +163,41 @@ static void _ConvertUpdateItem
 	//--------------------------------------------------------------------------
 
 	if(set_labels) {
+		rax *labels      = raxNew();
 		uint label_count = cypher_ast_set_labels_nlabels(update_item);
+
+		ctx->add_labels = array_new(const char *, label_count);
+
 		for (uint i = 0; i < label_count; i++) {
 			const cypher_astnode_t *label_node =
 				cypher_ast_set_labels_get_label(update_item, i);
 			const char* label = cypher_ast_label_get_name(label_node);
-			// mark label for addition
-			raxInsert(ctx->labels, (unsigned char *)label, strlen(label)+1,
-					SET_LABEL, NULL);
+			if(raxTryInsert(labels, (unsigned char *)label, strlen(label)+1,
+					NULL, NULL) != 0) {
+				// mark label for addition
+				array_append(ctx->add_labels, label);
+			}
 		}
+
+		raxFree(labels);
 	} else if(remove_labels) {
+		rax *labels      = raxNew();
 		uint label_count = cypher_ast_remove_labels_nlabels(update_item);
+
+		ctx->remove_labels = array_new(const char *, label_count);
+
 		for (uint i = 0; i < label_count; i++) {
 			const cypher_astnode_t * label_node =
 				cypher_ast_remove_labels_get_label(update_item, i);
 			const char* label = cypher_ast_label_get_name(label_node);
-			// mark label for removal
-			raxInsert(ctx->labels, (unsigned char *)label, strlen(label)+1,
-					REMOVE_LABEL, NULL);
+			if(raxTryInsert(labels, (unsigned char *)label, strlen(label)+1,
+					NULL, NULL) != 0) {
+				// mark label for removal
+				array_append(ctx->remove_labels, label);
+			}
 		}
+
+		raxFree(labels);
 	} else {
 		if(update_mode == UPDATE_REPLACE) {
 			UpdateCtx_Clear(ctx);

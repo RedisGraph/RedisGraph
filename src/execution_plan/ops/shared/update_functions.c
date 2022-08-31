@@ -84,8 +84,8 @@ void CommitUpdates
 				&_props_removed);
 
 		if(type == ENTITY_NODE) {
-			UpdateNodeLabels(gc, (Node*)update->ge, update->labels, &_labels_added,
-				&_labels_removed);
+			UpdateNodeLabels(gc, (Node*)update->ge, update->add_labels,
+				update->remove_labels, &_labels_added, &_labels_removed);
 		}
 
 		labels_added       += _labels_added;
@@ -130,8 +130,7 @@ void EvalEntityUpdates
 	}
 
 	// label(s) update can only be performed on nodes
-	bool update_labels = raxSize(ctx->labels) > 0;
-	if (update_labels && t != REC_TYPE_NODE)  {
+	if ((ctx->add_labels != NULL || ctx->remove_labels != NULL) && t != REC_TYPE_NODE) {
 		ErrorCtx_RaiseRuntimeException(
 				"Type mismatch: expected Node but was Relationship");
 	}
@@ -143,9 +142,10 @@ void EvalEntityUpdates
 	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
 
 	PendingUpdateCtx update = {0};
-	update.ge         = entity;
-	update.labels     = update_labels ? ctx->labels : NULL;
-	update.attributes = AttributeSet_New();
+	update.ge            = entity;
+	update.attributes    = AttributeSet_New();
+	update.add_labels    = ctx->add_labels;
+	update.remove_labels = ctx->remove_labels;
 
 	// if this update replaces all existing properties
 	// enqueue a clear update to do so

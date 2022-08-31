@@ -63,18 +63,13 @@ typedef struct {
 	struct AR_ExpNode *exp;
 } PropertySetCtx;
 
-// within EntityUpdateEvalCtx 'labels' rax a value of SET_LABEL donates
-// an addition of a label to a node e.g. SET n:L
-// while REMOVE_LABEL donates a removal of a label from a node e.g. REMOVE n:L
-static void *SET_LABEL    = (void*)0x10042020;  // set label marker
-static void *REMOVE_LABEL = (void*)0x04081985;  // remove label marker
-
 // Context describing an update expression.
 typedef struct {
-	rax *labels;                // TODO: rax seems like an overkill here, labels to update the entity with
 	int record_idx;             // record offset this entity is stored at
 	UPDATE_MODE mode;           // whether the entity's property map should be updated or replaced
 	const char *alias;          // access-safe alias of the entity being updated
+	const char **add_labels;    // labels to add to the node
+	const char **remove_labels; // labels to add to the node
 	PropertySetCtx *properties; // properties to set
 } EntityUpdateEvalCtx;
 
