@@ -113,12 +113,14 @@ def assert_statistics(resultset, stat, value):
         Env.RTestInstance.currEnv.assertEquals(resultset.relationships_deleted, value)
     elif stat == "+labels":
         Env.RTestInstance.currEnv.assertEquals(resultset.labels_added, value)
+    elif stat == "-labels":
+        Env.RTestInstance.currEnv.assertEquals(resultset.labels_removed, value)
     elif stat == "+properties":
         Env.RTestInstance.currEnv.assertEquals(resultset.properties_set, value)
+    elif stat == "-properties":
+        Env.RTestInstance.currEnv.assertEquals(resultset.properties_removed, value)
     elif stat == "-nodes":
         Env.RTestInstance.currEnv.assertEquals(resultset.nodes_deleted, value)
-    elif stat == "-labels" or stat == "-properties":
-        pass
     else:
         print(stat)
         Env.RTestInstance.currEnv.assertTrue(False)
