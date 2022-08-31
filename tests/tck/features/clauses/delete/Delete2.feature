@@ -77,7 +77,6 @@ Feature: Delete2 - Deleting relationships
     Then the result should be empty
     And the side effects should be:
       | -relationships | 1 |
-      | -properties    | 1 |
 
 
   Scenario: [4] Ignore null when deleting relationship

@@ -164,14 +164,9 @@ void ResultSet_IndexCreated
 	int status_code  // index creation status code
 ) {
 	ASSERT(set != NULL);
+
 	if(status_code == INDEX_OK) {
-		if(set->stats.indices_created == STAT_NOT_SET) {
-			set->stats.indices_created = 1;
-		} else {
-			set->stats.indices_created += 1;
-		}
-	} else if(set->stats.indices_created == STAT_NOT_SET) {
-		set->stats.indices_created = 0;
+		set->stats.indices_created += 1;
 	}
 }
 
@@ -184,13 +179,7 @@ void ResultSet_IndexDeleted
 	ASSERT(set != NULL);
 
 	if(status_code == INDEX_OK) {
-		if(set->stats.indices_deleted == STAT_NOT_SET) {
-			set->stats.indices_deleted = 1;
-		} else {
-			set->stats.indices_deleted += 1;
-		}
-	} else if(set->stats.indices_deleted == STAT_NOT_SET) {
-		set->stats.indices_deleted = 0;
+		set->stats.indices_deleted = 1;
 	}
 }
 
