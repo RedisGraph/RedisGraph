@@ -486,6 +486,7 @@ void Register_StringFuncs() {
 
 	types = array_new(SIType, 2);
 	array_append(types, SI_ALL);
+	array_append(types, (T_BOOL| T_NULL));
 	ret_type = T_STRING | T_NULL;
 	func_desc = AR_FuncDescNew("tojson", AR_TOJSON, 1, 2, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
