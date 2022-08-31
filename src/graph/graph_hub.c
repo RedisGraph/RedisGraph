@@ -232,7 +232,6 @@ static void _Update_Entity_Property
 					entity_type);
 		}
 	} else {
-		// TODO: what if orig_value returns as 'ATTRIBUTE_NOTFOUND' ?
 		SIValue *orig_value = GraphEntity_GetProperty(ge, attr_id);
 		// add entity update operation to undo log
 		UndoLog_UpdateEntity(&query_ctx->undo_log, ge, attr_id, *orig_value,
@@ -240,7 +239,6 @@ static void _Update_Entity_Property
 	}
 
 	// update the property and set the appropriate counter.
-	// TODO: what if attr_id is ATTRIBUTE_ID_ALL ? see graph.c:1008 
 	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
 	int updates = Graph_UpdateEntity(ge, attr_id, new_value, entity_type);
 
@@ -271,6 +269,8 @@ void UpdateEntityProperties
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(ge != NULL);
+	ASSERT(props_set_count     != NULL);
+	ASSERT(props_removed_count != NULL);
 
 	int set_props     = 0;
 	int removed_props = 0;
@@ -293,14 +293,8 @@ void UpdateEntityProperties
 		_AddEdgeToIndices(gc, (Edge *)ge);
 	}
 
-	// TODO: a bit annoying that we collect `set_props` and `removed_props`
-	// when we might not need them
-	if(props_set_count != NULL) {
-		*props_set_count = set_props;
-	}
-	if(props_removed_count != NULL) {
-		*props_removed_count = removed_props;
-	}
+	*props_set_count = set_props;
+	*props_removed_count = removed_props;
 }
 
 void UpdateNodeLabels
