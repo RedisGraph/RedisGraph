@@ -353,7 +353,7 @@ class testAllShortestPaths():
         
         result = self.graph.query(query)
 
-        self.env.assertEquals(len(result.result_set), 5)
+        self.env.assertEquals(len(result.result_set), expected_len)
         for i in range(0, 5):
             self.env.assertContains(result.result_set[i], self.incoming_sp_paths)
 
