@@ -9,8 +9,8 @@
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../graph/graph_hub.h"
-#include "../../arithmetic/arithmetic_expression.h"
 #include "datatypes/path/sipath.h"
+#include "../../arithmetic/arithmetic_expression.h"
 
 #include <stdlib.h>
 
@@ -184,16 +184,21 @@ static Record DeleteConsume(OpBase *opBase) {
 			size_t nodeCount = Path_NodeCount(p);
 			size_t edgeCount = Path_Len(p);
 
-			for(size_t i = 0; i < nodeCount - 1 ; i++) {
-				Node *n = Path_GetNode(p, i);
-				array_append(op->deleted_nodes, *n);
-				Edge *e = Path_GetEdge(p, i);
-				array_append(op->deleted_edges, *e);
-			}
 			if(nodeCount > 0) {
-				Node *n = Path_GetNode(p, nodeCount - 1);
+				Node *n = Path_GetNode(p, 0);
 				array_append(op->deleted_nodes, *n);
-			}
+				Edge *e = Path_GetEdge(p, 0);
+				array_append(op->deleted_edges, *e);
+
+				for(size_t i = 1; i < nodeCount; i++) {
+					Node *n = Path_GetNode(p, i);
+					array_append(op->deleted_nodes, *n);
+					if(i < edgeCount) {
+						Edge *e = Path_GetEdge(p, i);
+						array_append(op->deleted_edges, *e);
+					}
+				}
+			}	
 			SIValue_Free(value);
 		} else if(!(type & T_NULL)) {
 			/* Expression evaluated to a non-graph entity type
