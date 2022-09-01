@@ -303,3 +303,26 @@ class testPath(FlowTestsBase):
         self.env.assertEquals(result.nodes_deleted, 3)
         self.env.assertEquals(result.relationships_deleted, 2)
         
+        # Test delete nodes, edges and path
+        query = """CREATE (a)-[b:B]->(c)"""
+        redis_graph.query(query)
+        query = """MATCH p = (d)-[e]-(f) DELETE d,e,f,p"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.nodes_deleted, 2)
+        self.env.assertEquals(result.relationships_deleted, 1)
+
+        # Test delete nodes
+        query = """CREATE (a)-[b:B]->(c)"""
+        redis_graph.query(query)
+        query = """MATCH p = (d)-[e]-(f) DELETE d,p"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.nodes_deleted, 2)
+        self.env.assertEquals(result.relationships_deleted, 1)
+
+         # Test delete path duplicated match
+        query = """CREATE (a)-[b:B]->(c)"""
+        redis_graph.query(query)
+        query = """MATCH p = (d)-[e]-(f) MATCH q = (g)-[h]-(i) DELETE p,q"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.nodes_deleted, 2)
+        self.env.assertEquals(result.relationships_deleted, 1)
