@@ -172,9 +172,9 @@ This query will produce all paths of the minimum length connecting the actor nod
 
 (Since RedisGraph v2.10)
 
-The `SPpaths` function returns one, _n_, or all minimal-weight, [optionally] bounded-cost, [optionally] bounded-length paths between a pair of entities.
+The `algo.SPpaths` function returns one, _n_, or all minimal-weight, [optionally] bounded-cost, [optionally] bounded-length paths between a pair of entities.
 
-`SPpaths()` is a MATCH mode in which only the paths matching all criteria are captured. Both the source and the target nodes must be bound in an earlier WITH-demarcated scope to invoke `SPpaths()`.
+`algo.SPpaths()` is a MATCH mode in which only the paths matching all criteria are captured. Both the source and the target nodes must be bound in an earlier WITH-demarcated scope to invoke `algo.SPpaths()`.
 
 Input arguments:
 
@@ -183,7 +183,7 @@ Input arguments:
   - `targetNode`: Mandatory. Must be of type node
   - `relTypes`: Optional. Array of zero or more relationship types. A relationship must have one of these types to be part of the path. If not specified or empty: the path may contain any relationship.
   - `relDirection`: Optional. string. one of `'incoming'`, `'outgoing'`, `'both'`. If not specified: `'outgoing'`.
-  - `pathsCount`: Optional. Number of minimal-weight paths to retrieve. Non-negative integer. If not specified: 1
+  - `pathCount`: Optional. Number of minimal-weight paths to retrieve. Non-negative integer. If not specified: 1
 
     - `0`: retrieve all minimal-weight paths (all reported paths have the same weight)
 
@@ -235,9 +235,9 @@ Result:
 
     - An array of the nodes along the path can be retrieved with `nodes(path)`
 
-    - The path’s head-node can be retrieved with `head(nodes(path))`
+    - The path’s first node can be retrieved with `nodes(path)[0]`
 
-    - The path’s tail-node can be retrieved with `tail(nodes(path))`
+    - The path’s last node can be retrieved with `nodes(path)[-1]`
 
     - An array of the relationship's costs along the path can be retrieved with `[r in relationships(path) | r.cost]` where cost is the name of the cost property
 
@@ -254,7 +254,7 @@ Example:
 ```sh
 GRAPH.QUERY DEMO_GRAPH 
 "MATCH (s:Actor {name: 'Charlie Sheen'}), (t:Actor {name: 'Kevin Bacon'}) 
-CALL SPpaths( {sourceNode: s, targetNode: t, relTypes: ['r1', 'r2', 'r3'], relDirection: 'outgoing', pathsCount: 1, weightProp: 'weight', costProp: 'cost', maxLen: 3, maxCost: 100} ) 
+CALL algo.SPpaths( {sourceNode: s, targetNode: t, relTypes: ['r1', 'r2', 'r3'], relDirection: 'outgoing', pathCount: 1, weightProp: 'weight', costProp: 'cost', maxLen: 3, maxCost: 100} ) 
 YIELD path, pathCost, pathWeight
 RETURN path ORDER BY pathCost"
 ```
@@ -263,9 +263,9 @@ RETURN path ORDER BY pathCost"
 
 (Since RedisGraph v2.10)
 
-The `SSpaths` function returns one, _n_, or all minimal-weight, [optionally] bounded-cost, [optionally] bounded-length paths from a given entity.
+The `algo.SSpaths` function returns one, _n_, or all minimal-weight, [optionally] bounded-cost, [optionally] bounded-length paths from a given entity.
 
-`SSpaths()` is a MATCH mode in which only the paths matching all criteria are captured. The source node must be bound in an earlier WITH-demarcated scope to invoke `SSpaths()`.
+`algo.SSpaths()` is a MATCH mode in which only the paths matching all criteria are captured. The source node must be bound in an earlier WITH-demarcated scope to invoke `algo.SSpaths()`.
 
 Input arguments:
 
@@ -273,7 +273,7 @@ Input arguments:
   - `sourceNode`: Mandatory. Must be of type node
   - `relTypes`: Optional. Array of zero or more relationship types. A relationship must have one of these types to be part of the path. If not specified or empty: the path may contain any relationship.
   - `relDirection`: Optional. string. one of `'incoming'`, `'outgoing'`, `'both'`. If not specified: `'outgoing'`.
-  - `pathsCount`: Optional. Number of minimal-weight paths to retrieve. Non-negative integer. If not specified: 1
+  - `pathCount`: Optional. Number of minimal-weight paths to retrieve. Non-negative integer. If not specified: 1
 
     This number is global (not per source-target pair); all returned paths may be with the same target.
 
@@ -327,9 +327,9 @@ Result:
 
     - An array of the nodes along the path can be retrieved with `nodes(path)`
 
-    - The path’s head-node can be retrieved with `head(nodes(path))`
+    - The path’s first node can be retrieved with `nodes(path)[0]`
 
-    - The path’s tail-node can be retrieved with `tail(nodes(path))`
+    - The path’s last node can be retrieved with `nodes(path)[-1]`
 
     - An array of the relationship's costs along the path can be retrieved with `[r in relationships(path) | r.cost]` where cost is the name of the cost property
 
@@ -339,14 +339,14 @@ Behavior in presence on multiple-edges:
 
   - multi-edges are two or more edges connecting the same pair of vertices (possibly with different weights and costs). 
 
-  - All matching edges are considered. Paths with identical vertices and different edges are different paths. The following are 3 different paths ('n1', 'n2', and 'n3' are nodes; 'e1', 'e2', 'e3', and 'e4' are edges): (n1)-[e1]-(n2)-[e2]-(n3),  (n1)-[e1]-(n2)-[e3]-(n3),  (n1)-[e4]-(n2)-[e3]-(n3)
+  - All matching edges are considered. Paths with identical vertices and different edges are different paths. The following are 3 different paths ('n1', 'n2', and 'n3' are nodes; 'e1', 'e2', 'e3', and 'e4' are edges): (n1)-[e1]-(n2)-[e2]-(n3), (n1)-[e1]-(n2)-[e3]-(n3), (n1)-[e4]-(n2)-[e3]-(n3)
 
 Example:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH 
 "MATCH (s:Actor {name: 'Charlie Sheen'})
-CALL SSpaths( {sourceNode: s, relTypes: ['r1', 'r2', 'r3'], relDirection: 'outgoing', pathsCount: 1, weightProp: 'weight', costProp: 'cost', maxLen: 3, maxCost: 100} ) 
+CALL algo.SSpaths( {sourceNode: s, relTypes: ['r1', 'r2', 'r3'], relDirection: 'outgoing', pathCount: 1, weightProp: 'weight', costProp: 'cost', maxLen: 3, maxCost: 100} ) 
 YIELD path, pathCost, pathWeight
 RETURN path ORDER BY pathCost"
 ```
