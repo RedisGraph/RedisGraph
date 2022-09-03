@@ -172,7 +172,7 @@ This query will produce all paths of the minimum length connecting the actor nod
 
 (Since RedisGraph v2.10)
 
-The `algo.SPpaths` procedure returns one, _n_, or all minimal-weight, [optionally] bounded-cost, [optionally] bounded-length paths between a pair of entities.
+The `algo.SPpaths` procedure returns one, _n_, or all minimal-weight, [optionally] bounded-cost, [optionally] bounded-length distinct paths between a pair of entities. Each path is a sequence of distinct nodes connected by distinct edges.
 
 `algo.SPpaths()` is a MATCH mode in which only the paths matching all criteria are captured. Both the source and the target nodes must be bound in an earlier WITH-demarcated scope to invoke `algo.SPpaths()`.
 
@@ -263,7 +263,7 @@ RETURN path ORDER BY pathCost"
 
 (Since RedisGraph v2.10)
 
-The `algo.SSpaths` procedure returns one, _n_, or all minimal-weight, [optionally] bounded-cost, [optionally] bounded-length paths from a given entity.
+The `algo.SSpaths` procedure returns one, _n_, or all minimal-weight, [optionally] bounded-cost, [optionally] bounded-length distinct paths from a given entity. Each path is a sequence of distinct nodes connected by distinct edges.
 
 `algo.SSpaths()` is a MATCH mode in which only the paths matching all criteria are captured. The source node must be bound in an earlier WITH-demarcated scope to invoke `algo.SSpaths()`.
 
