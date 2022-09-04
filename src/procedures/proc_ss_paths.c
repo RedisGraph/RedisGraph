@@ -298,6 +298,10 @@ static ProcedureResult validate_config
 				ErrorCtx_SetError("pathCount must be integer");
 				return false;
 		}
+		if(path_count.longval < 0) {
+				ErrorCtx_SetError("pathCount must be greater than or equal to 0");
+				return false;
+		}
 		ctx->path_count = SI_GET_NUMERIC(path_count);
 	}
 
