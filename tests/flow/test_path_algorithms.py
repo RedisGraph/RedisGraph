@@ -201,6 +201,13 @@ class testAllShortestPaths():
         except redis.exceptions.ResponseError as e:
             self.env.assertContains("pathCount must be integer", str(e))
 
+        query = """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SPpaths({sourceNode: n, targetNode: m, pathCount: -1})"""
+        try:
+            self.graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertContains("pathCount must be greater than or equal to 0", str(e))
+
     def test01_SSpaths_validations(self):
         query = """CALL algo.SSpaths({})"""
 
@@ -282,6 +289,13 @@ class testAllShortestPaths():
             self.env.assertTrue(False)
         except redis.exceptions.ResponseError as e:
             self.env.assertContains("pathCount must be integer", str(e))
+        
+        query = """MATCH (n:L {v: 1}), (m:L {v: 5}) CALL algo.SSpaths({sourceNode: n, pathCount: -1})"""
+        try:
+            self.graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertContains("pathCount must be greater than or equal to 0", str(e))
 
     def test02_sp_single_path(self):
         query = f"""
