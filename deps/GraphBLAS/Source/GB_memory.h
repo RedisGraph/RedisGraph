@@ -14,7 +14,7 @@
 // memory management
 //------------------------------------------------------------------------------
 
-GrB_Info GB_memoryUsage     // count # allocated blocks and their sizes
+void GB_memoryUsage         // count # allocated blocks and their sizes
 (
     int64_t *nallocs,       // # of allocated memory blocks
     size_t *mem_deep,       // # of bytes in blocks owned by this matrix

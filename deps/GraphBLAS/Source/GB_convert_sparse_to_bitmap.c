@@ -8,7 +8,7 @@
 //------------------------------------------------------------------------------
 
 #include "GB_ek_slice.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_type__include.h"
 #endif
 
@@ -71,7 +71,7 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
     const int64_t anz = GB_nnz (A) ;
     const int64_t avdim = A->vdim ;
     const int64_t avlen = A->vlen ;
-    const int64_t anvec = A->nvec ;
+//  const int64_t anvec = A->nvec ;
     int64_t anzmax ;
     if (!GB_int64_multiply ((GrB_Index *) &anzmax, avdim, avlen))
     { 
@@ -162,7 +162,7 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
         else
         {
 
-            #ifndef GBCOMPACT
+            #ifndef GBCUDA_DEV
             {
                 switch (asize)
                 {
@@ -224,7 +224,7 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
         A->x_shallow = false ;
     }
 
-    GB_phbix_free (A) ;
+    GB_phybix_free (A) ;
     A->iso = A_iso ;        // OK: convert_sparse_to_bitmap, keep iso
 
     A->b = Ab ; A->b_size = Ab_size ; A->b_shallow = false ;

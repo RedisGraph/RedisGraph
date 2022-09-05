@@ -31,8 +31,8 @@
 #define GB_FREE_ALL             \
 {                               \
     GB_FREE_WORKSPACE ;         \
-    GB_phbix_free (C) ;         \
-    GB_phbix_free (MT) ;        \
+    GB_phybix_free (C) ;        \
+    GB_phybix_free (MT) ;       \
 }
 
 #include "GB_mxm.h"
@@ -234,7 +234,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     // B is treated just like A
     if (!B_in->is_csc)
     { 
-        // Flip the sense of A_transpose
+        // Flip the sense of B_transpose
         B_transpose = !B_transpose ;
     }
 

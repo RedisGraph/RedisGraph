@@ -1,3 +1,11 @@
+#-------------------------------------------------------------------------------
+# rmm_wrap/CMakeLists.txt: cmake script for building rmm_wrap
+#-------------------------------------------------------------------------------
+
+# SPDX-License-Identifier: Apache-2.0
+
+#-------------------------------------------------------------------------------
+
 cmake_minimum_required(VERSION 3.20.1)
 project(rmm_wrap VERSION 0.1)
 
@@ -33,6 +41,14 @@ endif()
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/external_includes/rmm/include)
 
 add_library(rmm_wrap rmm_wrap.cpp rmm_wrap.hpp rmm_wrap.h)
+
+SET_TARGET_PROPERTIES (rmm_wrap PROPERTIES
+		VERSION ${GraphBLAS_VERSION_MAJOR}.${GraphBLAS_VERSION_MINOR}.${GraphBLAS_VERSION_SUB}
+		SOVERSION ${GraphBLAS_VERSION_MAJOR}
+		C_STANDARD_REQUIRED 11
+		PUBLIC_HEADER "rmm_wrap.h" )
+
+
 add_executable(rmm_wrap_test rmm_wrap_test.c rmm_wrap.cpp rmm_wrap.hpp rmm_wrap.h)
 
 set(RMM_WRAP_LIBS ${EXTRA_LIBS} ${CUDA_LIBRARIES})
@@ -44,3 +60,7 @@ target_include_directories(rmm_wrap PUBLIC "${RMM_WRAP_INCLUDES}")
 
 target_link_libraries(rmm_wrap_test PUBLIC ${RMM_WRAP_LIBS})
 target_include_directories(rmm_wrap_test PUBLIC "${RMM_WRAP_INCLUDES}")
+
+install (TARGETS rmm_wrap
+		PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+		ARCHIVE       DESTINATION ${CMAKE_INSTALL_LIBDIR} )

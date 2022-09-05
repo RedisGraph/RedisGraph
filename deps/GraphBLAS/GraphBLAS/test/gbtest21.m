@@ -2,7 +2,7 @@ function gbtest21
 %GBTEST21 test isfinite, isinf, isnan
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 for trial = 1:40

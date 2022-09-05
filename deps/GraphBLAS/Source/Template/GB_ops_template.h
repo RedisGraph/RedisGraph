@@ -11,14 +11,14 @@
 // binary functions.
 
 #define GB_UNOP_STRUCT(op,xtype) \
-    GB_PUBLIC struct GB_UnaryOp_opaque GB_OPAQUE (GB_EVAL3 (op, _, xtype)) ; 
+    GB_PUBLIC struct GB_UnaryOp_opaque GB_OPAQUE (GB_EVAL3 (op, _, xtype))
 
 #define GB_BINOP_STRUCT(op,xtype) \
-    GB_PUBLIC struct GB_BinaryOp_opaque GB_OPAQUE (GB_EVAL3 (op, _, xtype)) ; 
+    GB_PUBLIC struct GB_BinaryOp_opaque GB_OPAQUE (GB_EVAL3 (op, _, xtype))
 
 #define GB_IDXOP_STRUCT(op,xtype) \
     GB_PUBLIC struct GB_IndexUnaryOp_opaque \
-        GB_OPAQUE (GB_EVAL3 (op, _, xtype)) ; 
+        GB_OPAQUE (GB_EVAL3 (op, _, xtype))
 
 //------------------------------------------------------------------------------
 // z = one (x)
@@ -253,6 +253,7 @@ GB_UNOP_STRUCT (ABS, GB_XTYPE) ;
     GB_OP (TGAMMA, tgammaf )
     GB_OP (ERF   , erff    )
     GB_OP (ERFC  , erfcf   )
+    GB_OP (CBRT  , cbrtf   )
 
 #elif defined ( GB_DOUBLE )
 
@@ -297,6 +298,7 @@ GB_UNOP_STRUCT (ABS, GB_XTYPE) ;
     GB_OP (TGAMMA, tgamma )
     GB_OP (ERF   , erf    )
     GB_OP (ERFC  , erfc   )
+    GB_OP (CBRT  , cbrt   )
 
 #elif defined ( GB_FLOAT_COMPLEX )
 

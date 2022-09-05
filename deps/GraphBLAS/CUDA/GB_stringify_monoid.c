@@ -29,15 +29,11 @@ void GB_enumify_monoid  // enumerate a monoid
 )
 {
 
-    printf("Calling enumify binop\n");
     GB_enumify_binop (add_ecode, add_opcode, zcode, false) ;
     ASSERT (*add_ecode < 32) ;
-    printf("Calling enumify identity\n");
     GB_enumify_identity (id_ecode, add_opcode, zcode) ;
     bool is_term ;
-    printf("Calling enumify terminal\n");
     GB_enumify_terminal (&is_term, term_ecode, add_opcode, zcode) ;
-    printf("Done enumify monoid\n");
 }
 
 //------------------------------------------------------------------------------

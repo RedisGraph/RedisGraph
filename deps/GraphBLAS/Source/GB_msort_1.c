@@ -15,7 +15,7 @@
 // GB_msort_1_binary_search: binary search for the pivot
 //------------------------------------------------------------------------------
 
-// The Pivot value is Y [pivot], and a binary search for the Pivot is made in
+// The Pivot value is Z [pivot], and a binary search for the Pivot is made in
 // the array X [p_pstart...p_end-1], which is sorted in non-decreasing order on
 // input.  The return value is pleft, where
 //
@@ -30,7 +30,7 @@
 
 static int64_t GB_msort_1_binary_search    // return pleft
 (
-    const int64_t *restrict Y_0,         // Pivot is Y [pivot]
+    const int64_t *restrict Z_0,         // Pivot is Z [pivot]
     const int64_t pivot,
     const int64_t *restrict X_0,         // search in X [p_start..p_end_-1]
     const int64_t p_start,
@@ -50,7 +50,7 @@ static int64_t GB_msort_1_binary_search    // return pleft
         int64_t pmiddle = (pleft + pright) >> 1 ;
         // less = (X [pmiddle] < Pivot)
         bool less = GB_lt_1 (X_0, pmiddle,
-                             Y_0, pivot) ;
+                             Z_0, pivot) ;
         pleft  = less ? (pmiddle+1) : pleft ;
         pright = less ? pright : pmiddle ;
     }
@@ -66,13 +66,13 @@ static int64_t GB_msort_1_binary_search    // return pleft
     //    X [pleft+1 ... p_end-1] > Pivot holds.
     //    The value X [pleft] may be either < or > Pivot.
     bool found = (pleft == pright) && GB_eq_1 (X_0, pleft,
-                                               Y_0, pivot) ;
+                                               Z_0, pivot) ;
 
     // Modify pleft and pright:
     if (!found && (pleft == pright))
     { 
         if (GB_lt_1 (X_0, pleft,
-                     Y_0, pivot))
+                     Z_0, pivot))
         {
             pleft++ ;
         }

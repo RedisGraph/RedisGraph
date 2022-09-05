@@ -18,17 +18,10 @@ message ( STATUS "GrapphBLAS source: " ${CMAKE_SOURCE_DIR} )
 message ( STATUS "GrapphBLAS build:  " ${CMAKE_BINARY_DIR} )
 message ( STATUS "CMake version: " ${CMAKE_VERSION} )
 
-if ( CMAKE_VERSION VERSION_GREATER "3.0" )
-    cmake_policy ( SET CMP0042 NEW )
-    cmake_policy ( SET CMP0048 NEW )
-    cmake_policy ( SET CMP0054 NEW )
-endif ( )
-set ( CMAKE_MACOSX_RPATH TRUE )
-
 # version of SuiteSparse:GraphBLAS
-set ( GraphBLAS_DATE "Feb 14, 2022" )
-set ( GraphBLAS_VERSION_MAJOR 6 )
-set ( GraphBLAS_VERSION_MINOR 2 )
+set ( GraphBLAS_DATE "Sept 1, 2022 (beta2)" )   # FIXME
+set ( GraphBLAS_VERSION_MAJOR 7 )
+set ( GraphBLAS_VERSION_MINOR 3 )
 set ( GraphBLAS_VERSION_SUB   0 )
 
 message ( STATUS "Building SuiteSparse:GraphBLAS version: v" ${GraphBLAS_VERSION_MAJOR}.${GraphBLAS_VERSION_MINOR}.${GraphBLAS_VERSION_SUB}  " date: " ${GraphBLAS_DATE} )
@@ -58,13 +51,12 @@ message ( STATUS "GraphBLAS C API: v" "${GraphBLAS_API_VERSION_MAJOR}.${GraphBLA
 
 # TODO: use something like this:
 # if ( set some flag to ignore cuda )
-#   set ( CMAKE_CUDA off )
+#   ... disable CUDA
 #   message ( STATUS "CUDA: disabled" )
 # elseif ( ${CMAKE_VERSION} VERSION_LESS "3.17.0" )
 #   ...
 
 if ( ${CMAKE_VERSION} VERSION_LESS "3.17.0" )
-
 
     # CUDA requires cmake 3.17 or later
     set ( CMAKE_CUDA off )
@@ -103,17 +95,19 @@ else ( )
 endif ( )
 
 # CUDA is under development for now, and not deployed in production:
-set ( CMAKE_CUDA off)
+  set ( CMAKE_CUDA off )
 
 # Edit these lines for code development only, not for end-users:
-# set ( GBCOMPACT true )
 # set ( CMAKE_BUILD_TYPE Debug )
 
 if ( CMAKE_CUDA )
+    # for CUDA development only; not for production use
+    set ( CMAKE_CUDA_DEV off )
     project ( graphblas
             VERSION "${GraphBLAS_VERSION_MAJOR}.${GraphBLAS_VERSION_MINOR}.${GraphBLAS_VERSION_SUB}"
             LANGUAGES CUDA C )
 else ( )
+    set ( CMAKE_CUDA_DEV off )
     project ( graphblas
             VERSION "${GraphBLAS_VERSION_MAJOR}.${GraphBLAS_VERSION_MINOR}.${GraphBLAS_VERSION_SUB}"
             LANGUAGES C )
@@ -126,25 +120,21 @@ endif ( )
 find_package ( OpenMP )
 
 if ( CMAKE_CUDA )
+    # with CUDA and RMM
+    message ( STATUS "CUDA: enabled" )
     set ( CMAKE_CUDA_FLAG " -DGBCUDA" )
     add_subdirectory ( CUDA )
     set ( GB_CUDA graphblascuda  ${CUDA_LIBRARIES} )
-    link_directories ( "CUDA" ${CUDA_LIBRARIES} )
-else ( )
-    set ( CMAKE_CUDA_FLAG " " )
-    set ( GB_CUDA )
-endif ( )
-
-if ( CMAKE_CUDA )
-    message ( STATUS "CUDA: enabled" )
-    set ( CMAKE_RMM_FLAG " -DGBRMM" )
-    set ( GB_RMM rmm_wrap ${CUDA_LIBRARIES} stdc++ )
+    set ( GB_RMM rmm_wrap ${CUDA_LIBRARIES} )
     add_subdirectory ( rmm_wrap )
     include_directories ( "rmm_wrap" ${CUDA_INCLUDE_DIRS} )
-    link_directories ( "CUDA" "${CUDA_LIBRARIES}" "/usr/local/cuda/lib64/stubs" "rmm_wrap"  )
+    link_directories ( "CUDA" "${CUDA_LIBRARIES}" "/usr/local/cuda/lib64/stubs" "rmm_wrap" "/usr/local/cuda/lib64" )
 else ( )
+    # without CUDA and RMM
     message ( STATUS "CUDA: not enabled" )
+    set ( CMAKE_CUDA_FLAG " " )
     set ( CMAKE_RMM_FLAG " " )
+    set ( GB_CUDA )
     set ( GB_RMM )
 endif ( )
 
@@ -206,8 +196,9 @@ else ( )
     message ( STATUS "Building dynamic GraphBLAS library" )
 endif ( )
 
-if ( GBCOMPACT )
-    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DGBCOMPACT=1 " )
+if ( CMAKE_CUDA_DEV )
+    # for CUDA development only; not for production use
+    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DGBCUDA_DEV=1 " )
 endif ( )
 
 #-------------------------------------------------------------------------------
@@ -252,10 +243,11 @@ message ( STATUS "CMAKE have OpenMP:         " ${OPENMP_FOUND} )
 
 set ( CMAKE_INCLUDE_CURRENT_DIR ON )
 
-if ( GBCOMPACT )
-    include_directories ( Source/Template Source Include Source/Generated1 lz4 Demo/Include rmm_wrap )
+if ( CMAKE_CUDA_DEV )
+    # for CUDA development only; not for production use
+    include_directories ( Source/Template Source Include Source/Generated1 lz4 zstd zstd/zstd_subset Demo/Include rmm_wrap )
 else ( )
-    include_directories ( Source/Template Source Include Source/Generated1 lz4 Source/Generated2 Demo/Include rmm_wrap )
+    include_directories ( Source/Template Source Include Source/Generated1 lz4 zstd zstd/zstd_subset Demo/Include rmm_wrap Source/Generated2 )
 endif ( )
 
 #-------------------------------------------------------------------------------
@@ -268,8 +260,6 @@ if ( "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU" )
     # The -g option is useful for the Intel VTune tool, but it should be
     # removed in production.  Comment this line out if not in use:
     # set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -g" )
-    # cmake 2.8 workaround: gcc needs to be told to do ANSI C11.
-    # cmake 3.0 doesn't have this problem.
     set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -std=c11 -lm -Wno-pragmas " )
     # operations may be carried out in higher precision
     set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -fexcess-precision=fast " )
@@ -280,7 +270,7 @@ if ( "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU" )
     # integer operations wrap
     set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -fwrapv " )
     # check all warnings (uncomment for development only)
-#   set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic -Werror " )
+#   set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic " )
     if ( CMAKE_C_COMPILER_VERSION VERSION_LESS 4.9 )
         message ( FATAL_ERROR "gcc version must be at least 4.9" )
     endif ( )
@@ -352,7 +342,8 @@ set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${CMAKE_CUDA_FLAG}" )
 #   - a public enum is extended (by adding a new item at the end, but without
 #       changing the already existing items)
 
-if ( GBCOMPACT )
+if ( CMAKE_CUDA_DEV )
+    # for CUDA development only; not for production use
     file ( GLOB GRAPHBLAS_SOURCES "Source/*.c" "Source/Generated1/*.c" )
 else ( )
     file ( GLOB GRAPHBLAS_SOURCES "Source/*.c" "Source/Generated1/*.c" "Source/Generated2/*.c" )
@@ -405,17 +396,23 @@ if ( NOT GBNCPUFEAT )
         include ( CheckSymbolExists )
         check_include_file ( dlfcn.h HAVE_DLFCN_H )
         if ( HAVE_DLFCN_H )
+            message ( STATUS "cpu_feautures has dlfcn.h" )
             target_compile_definitions ( graphblas PRIVATE HAVE_DLFCN_H )
             if ( BUILD_GRB_STATIC_LIBRARY )
                 target_compile_definitions ( graphblas_static PRIVATE HAVE_DLFCN_H )
             endif ( )
+        else ( )
+            message ( STATUS "cpu_feautures without dlfcn.h" )
         endif ( )
         check_symbol_exists ( getauxval "sys/auxv.h" HAVE_STRONG_GETAUXVAL )
         if ( HAVE_STRONG_GETAUXVAL )
+            message ( STATUS "cpu_feautures has getauxval from sys/auxv.h" )
             target_compile_definitions ( graphblas PRIVATE HAVE_STRONG_GETAUXVAL )
             if ( BUILD_GRB_STATIC_LIBRARY )
                 target_compile_definitions ( graphblas_static PRIVATE HAVE_STRONG_GETAUXVAL )
             endif ( )
+        else ( )
+            message ( STATUS "cpu_feautures doesn't have getauxval from sys/auxv.h" )
         endif ( )
     endif ( )
 endif ( )
@@ -506,6 +503,7 @@ if ( DEMO )
     add_executable ( wildtype_demo "Demo/Program/wildtype_demo.c" )
     add_executable ( reduce_demo   "Demo/Program/reduce_demo.c" )
     add_executable ( import_demo   "Demo/Program/import_demo.c" )
+    add_executable ( wathen_demo   "Demo/Program/wathen_demo.c" )
 
     # Libraries required for Demo programs
     target_link_libraries ( openmp_demo   PUBLIC graphblas graphblasdemo ${GB_CUDA} ${GB_RMM} )
@@ -515,6 +513,7 @@ if ( DEMO )
     target_link_libraries ( wildtype_demo PUBLIC graphblas ${GB_CUDA} ${GB_RMM} )
     target_link_libraries ( reduce_demo   PUBLIC graphblas ${GB_CUDA} ${GB_RMM} )
     target_link_libraries ( import_demo   PUBLIC graphblas graphblasdemo ${GB_CUDA} ${GB_RMM} )
+    target_link_libraries ( wathen_demo   PUBLIC graphblas graphblasdemo ${GB_CUDA} ${GB_RMM} )
 
 else ( )
 

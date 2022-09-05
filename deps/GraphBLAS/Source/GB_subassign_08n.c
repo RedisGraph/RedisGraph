@@ -127,6 +127,7 @@ GrB_Info GB_subassign_08n
     const int64_t *restrict Ch = C->h ;
     const int64_t *restrict Cp = C->p ;
     const bool C_is_hyper = (Ch != NULL) ;
+    GB_GET_C_HYPER_HASH ;
     GB_GET_MASK ;
     GB_GET_A ;
     const int64_t *restrict Ah = A->h ;
@@ -218,8 +219,9 @@ GrB_Info GB_subassign_08n
             // get jC, the corresponding vector of C
             //------------------------------------------------------------------
 
-            GB_GET_jC ;
+            GB_LOOKUP_VECTOR_jC (fine_task, taskid) ;
             bool cjdense = (pC_end - pC_start == Cvlen) ;
+
 
             //------------------------------------------------------------------
             // C(I,jC)<M(:,j)> += A(:,j) ; no S
@@ -353,7 +355,7 @@ GrB_Info GB_subassign_08n
             // get jC, the corresponding vector of C
             //------------------------------------------------------------------
 
-            GB_GET_jC ;
+            GB_LOOKUP_VECTOR_jC (fine_task, taskid) ;
             bool cjdense = (pC_end - pC_start == Cvlen) ;
             if (cjdense) continue ;
 

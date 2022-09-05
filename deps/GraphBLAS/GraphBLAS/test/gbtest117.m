@@ -2,7 +2,7 @@ function gbtest117
 %GBTEST117 test idxunop in GrB.apply2
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 
@@ -80,5 +80,11 @@ for k = -6:6
     assert (isequal (C1, C2))
 
 end
+
+%   diagindex       j - (i + thunk)
+C1 = GrB.apply2 ('diagindex', 0, 3) ;
+assert (C1 == -3) ;
+C1 = GrB.apply2 ('diagindex', 1, 0) ;
+assert (C1 == 0) ;
 
 fprintf ('gbtest117: all tests passed\n') ;

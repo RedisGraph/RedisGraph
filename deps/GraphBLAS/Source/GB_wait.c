@@ -29,11 +29,15 @@
 
 // If A->nvec_nonempty is unknown (-1) it is computed.
 
+// The A->Y hyper_hash is freed if the A->h hyperlist has to be constructed.
+// Instead, it is not computed and left pending (as NULL).  It is not modified
+// if A->h doesn't change.
+
 // If the method is successful, it does an OpenMP flush just before returning.
 
 #define GB_FREE_ALL                     \
 {                                       \
-    GB_phbix_free (A) ;                 \
+    GB_phybix_free (A) ;                \
     GB_Matrix_free (&T) ;               \
     GB_Matrix_free (&S) ;               \
     GB_Matrix_free (&A1) ;              \
@@ -110,6 +114,7 @@ GrB_Info GB_wait                // finish all pending computations
 
     if (npending == 0 && nzombies == 0 && !A->jumbled)
     {
+        // A->Y is not modified.  If not NULL, it remains valid
         if (A->nvec_nonempty < 0)
         {
             A->nvec_nonempty = GB_nvec_nonempty (A, Context) ;
@@ -125,7 +130,9 @@ GrB_Info GB_wait                // finish all pending computations
     { 
         // A is not conformed, so the sparsity structure of A is not modified.
         // That is, if A has no pending tuples and no zombies, but is just
-        // jumbled, then it stays sparse or hypersparse.
+        // jumbled, then it stays sparse or hypersparse.  A->Y is not modified
+        // nor accessed, and remains NULL if it is NULL on input.  If it is
+        // present, it remains valid.
         GB_OK (GB_unjumble (A, Context)) ;
         ASSERT (GB_IMPLIES (info == GrB_SUCCESS, A->nvec_nonempty >= 0)) ;
         return (info) ;
@@ -178,6 +185,7 @@ GrB_Info GB_wait                // finish all pending computations
             A->Pending->op,         // dup operator for assembling duplicates,
                                     // NULL if A is iso
             stype,                  // type of Pending->x
+            true,                   // burble is allowed
             Context
         ) ;
 
@@ -239,6 +247,8 @@ GrB_Info GB_wait                // finish all pending computations
     if (nzombies > 0)
     { 
         // remove all zombies from A
+        // GB_selector frees A->Y if it changes A->h, or leaves it
+        // unmodified (and valid) otherwise.
         GB_OK (GB_selector (
             NULL,                       // A in-place
             GB_NONZOMBIE_selop_code,    // use the opcode only
@@ -426,6 +436,7 @@ GrB_Info GB_wait                // finish all pending computations
             A1p [a1nvec] = anz1 ;
             A1->nvec = a1nvec ;
             A1->nvec_nonempty = a1nvec ;
+            A1->nvals = anz1 ;
             A1->magic = GB_MAGIC ;
 
             ASSERT_MATRIX_OK (A1, "A1 slice for GB_wait", GB0) ;
@@ -499,6 +510,9 @@ GrB_Info GB_wait                // finish all pending computations
         // need to recompute the # of non-empty vectors in GB_conform
         A->nvec_nonempty = -1 ;     // recomputed just below
 
+        // A->h has been modified so A->Y is now invalid
+        GB_hyper_hash_free (A) ;
+
         ASSERT_MATRIX_OK (A, "A after GB_wait:append", GB0) ;
 
         GB_Matrix_free (&T) ;
@@ -521,6 +535,12 @@ GrB_Info GB_wait                // finish all pending computations
 
         // FUTURE:: if GB_add could tolerate zombies in A, then the initial
         // prune of zombies can be skipped.
+
+        // T->Y is not present (GB_builder does not create it).  The old A->Y
+        // is still valid, if present, for the matrix A prior to added the
+        // pending tuples in T.  GB_add may need A->Y to compute S, but it does
+        // not compute S->Y.  The old A->Y is freed by the transplant.  On
+        // output, after the transplant, the new A has no A->Y hyper_hash.
 
         GB_CLEAR_STATIC_HEADER (S, &S_header) ;
         GB_OK (GB_add (S, A->type, A->is_csc, NULL, 0, 0, &ignore, A, T,

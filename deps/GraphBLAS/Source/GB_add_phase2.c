@@ -31,7 +31,7 @@
 #include "GB_binop.h"
 #include "GB_unused.h"
 #include "GB_ek_slice.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_binop__include.h"
 #endif
 
@@ -47,7 +47,7 @@
 #define GB_FREE_ALL                 \
 {                                   \
     GB_FREE_WORKSPACE ;             \
-    GB_phbix_free (C) ;             \
+    GB_phybix_free (C) ;            \
 }
 
 GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
@@ -125,8 +125,9 @@ GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
     bool op_is_second = (opcode == GB_SECOND_binop_code) ;
     bool op_is_pair   = (opcode == GB_PAIR_binop_code) ;
 
+#ifdef GB_DEBUG
     if (op == NULL)
-    { 
+    {
         // GB_wait does no typecasting.  A and T have the same type when
         // computing A=A+T, and no operator is used since A and T have disjoint
         // nonzero patterns.  No mask is used.
@@ -136,15 +137,23 @@ GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
         ASSERT (C_is_sparse_or_hyper) ;
     }
     else
-    { 
-        ASSERT (GB_Type_compatible (ctype, A->type)) ;
-        ASSERT (GB_Type_compatible (ctype, B->type)) ;
+    {
+        // assert that the op is compatible with A, B, and C
+        if (!(GB_as_if_full (A) && GB_as_if_full (B)))
+        {
+            // eWiseMult uses GB_add when A and B are both as-if-full,
+            // and in this case, the entries of A and B are never typecasted
+            // directly to C.
+            ASSERT (GB_Type_compatible (ctype, A->type)) ;
+            ASSERT (GB_Type_compatible (ctype, B->type)) ;
+        }
         ASSERT (GB_Type_compatible (ctype, op->ztype)) ;
         ASSERT (GB_IMPLIES (!(op_is_second || op_is_pair || op_is_positional),
                 GB_Type_compatible (A->type, op->xtype))) ;
         ASSERT (GB_IMPLIES (!(op_is_first  || op_is_pair || op_is_positional),
                 GB_Type_compatible (B->type, op->ytype))) ;
     }
+#endif
 
     //--------------------------------------------------------------------------
     // get the typecasting functions
@@ -270,6 +279,7 @@ GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
         C->nvec_nonempty = Cnvec_nonempty ;
         C->p = (int64_t *) Cp ; C->p_size = Cp_size ;
         (*Cp_handle) = NULL ;
+        C->nvals = cnz ;
     }
 
     // add Ch as the hypersparse list for C, from GB_add_phase0
@@ -318,7 +328,7 @@ GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
         // C is non-iso
         //----------------------------------------------------------------------
 
-        #ifndef GBCOMPACT
+        #ifndef GBCUDA_DEV
 
             //------------------------------------------------------------------
             // define the worker for the switch factory

@@ -26,7 +26,7 @@
 #include "GB_emult.h"
 #include "GB_binop.h"
 #include "GB_unused.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_binop__include.h"
 #endif
 
@@ -39,7 +39,7 @@
 #define GB_FREE_ALL                         \
 {                                           \
     GB_FREE_WORKSPACE ;                     \
-    GB_phbix_free (C) ;                     \
+    GB_phybix_free (C) ;                    \
 }
 
 GrB_Info GB_emult_04        // C<M>=A.*B, M sparse/hyper, A and B bitmap/full
@@ -234,6 +234,7 @@ GrB_Info GB_emult_04        // C<M>=A.*B, M sparse/hyper, A and B bitmap/full
 
     C->nvec = nvec ;
     C->jumbled = M->jumbled ;
+    C->nvals = cnz ;
     C->magic = GB_MAGIC ;
 
     //--------------------------------------------------------------------------
@@ -292,7 +293,7 @@ GrB_Info GB_emult_04        // C<M>=A.*B, M sparse/hyper, A and B bitmap/full
 
         bool done = false ;
 
-        #ifndef GBCOMPACT
+        #ifndef GBCUDA_DEV
 
             //------------------------------------------------------------------
             // define the worker for the switch factory

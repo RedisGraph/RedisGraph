@@ -25,47 +25,89 @@
 #define GB_CUDA_STRLEN 2048
 
 //------------------------------------------------------------------------------
-// GB_stringify_semiring: build all strings for a semiring
+// left and right shift
 //------------------------------------------------------------------------------
 
-void GB_stringify_semiring     // build a semiring (name and code)
-(
-    // input:
-    FILE *fp,               // File to write macros, assumed open already
-    GrB_Semiring semiring,  // the semiring to stringify
-    bool flipxy,            // multiplier is: mult(a,b) or mult(b,a)
-    GrB_Type ctype,         // the type of C
-    GrB_Type mtype,         // the type of M, or NULL if no mask
-    GrB_Type atype,         // the type of A
-    GrB_Type btype,         // the type of B
-    bool Mask_struct,       // mask is structural
-    bool Mask_comp,         // mask is complemented
-    int C_sparsity,         // sparsity structure of C
-    int M_sparsity,         // sparsity structure of M
-    int A_sparsity,         // sparsity structure of A
-    int B_sparsity          // sparsity structure of B
-) ;
+#define LSHIFT(x,k) (((uint64_t) x) << k)
+#define RSHIFT(x,k,b) ((x >> k) & ((((uint64_t)0x00000001) << b) -1))
 
-void GB_enumify_semiring   // enumerate a semiring
+//------------------------------------------------------------------------------
+// GB_stringify_reduce
+//------------------------------------------------------------------------------
+
+void GB_enumify_reduce      // enumerate a GrB_reduce problem
 (
     // output:
-    uint64_t *scode,        // unique encoding of the entire semiring
+    uint64_t *rcode,        // unique encoding of the entire problem
     // input:
-    GrB_Semiring semiring,  // the semiring to enumify
-    bool flipxy,            // multiplier is: mult(a,b) or mult(b,a)
-    GrB_Type ctype,         // the type of C
-    GrB_Type mtype,         // the type of M, or NULL if no mask
-    GrB_Type atype,         // the type of A
-    GrB_Type btype,         // the type of B
-    bool Mask_struct,       // mask is structural
-    bool Mask_comp,         // mask is complemented
-    int C_sparsity,         // sparsity structure of C
-    int M_sparsity,         // sparsity structure of M
-    int A_sparsity,         // sparsity structure of A
-    int B_sparsity          // sparsity structure of B
+    GrB_Monoid reduce,      // the monoid to enumify
+    GrB_Matrix A
 ) ;
 
-void GB_macrofy_semiring   // construct all macros for a semiring
+void GB_macrofy_reduce      // construct all macros for GrB_reduce to scalar
+(
+    // input:
+    FILE *fp,               // target file to write, already open
+    uint64_t rcode
+) ;
+
+//------------------------------------------------------------------------------
+// GB_stringify_ewise
+//------------------------------------------------------------------------------
+
+void GB_enumify_ewise         // enumerate a GrB_eWise problem
+(
+    // output:    2 x uint64?
+    uint64_t *ecode,        // unique encoding of the entire operation
+    // input:
+    // C matrix:
+    bool C_iso,             // if true, operator is ignored
+    int C_sparsity,         // sparse, hyper, bitmap, or full
+    GrB_Type ctype,         // C=((ctype) T) is the final typecast
+    // M matrix:
+    GrB_Matrix M,           // may be NULL
+    bool Mask_struct,       // mask is structural
+    bool Mask_comp,         // mask is complemented
+    // operator:
+    GrB_BinaryOp binaryop,  // the binary operator to enumify
+    // A and B:
+    GrB_Matrix A,
+    GrB_Matrix B
+) ;
+
+void GB_macrofy_ewise           // construct all macros for GrB_eWise
+(
+    // input:
+    FILE *fp,                   // target file to write, already open
+    uint64_t ecode
+) ;
+
+//------------------------------------------------------------------------------
+// GB_stringify_mxm
+//------------------------------------------------------------------------------
+
+void GB_enumify_mxm         // enumerate a GrB_mxm problem
+(
+    // output:    2 x uint64?
+    uint64_t *scode,        // unique encoding of the entire semiring
+    // input:
+    // C matrix:
+    bool C_iso,             // if true, semiring is ignored
+    int C_sparsity,         // sparse, hyper, bitmap, or full
+    GrB_Type ctype,         // C=((ctype) T) is the final typecast
+    // M matrix:
+    GrB_Matrix M,           // may be NULL
+    bool Mask_struct,       // mask is structural
+    bool Mask_comp,         // mask is complemented
+    // semiring:
+    GrB_Semiring semiring,  // the semiring to enumify
+    bool flipxy,            // multiplier is: mult(a,b) or mult(b,a)
+    // A and B:
+    GrB_Matrix A,
+    GrB_Matrix B
+) ;
+
+void GB_macrofy_mxm        // construct all macros for GrB_mxm
 (
     // input:
     FILE *fp,                   // target file to write, already open
@@ -265,18 +307,6 @@ void GB_macrofy_terminal_statement     // macro for terminal statement
     FILE *fp,                          // File to write macro, assumed open
     const char *terminal_statement_macro_name,
     const char *terminal_statement
-) ;
-
-//------------------------------------------------------------------------------
-// GB_stringify_load: return a string to load/typecast macro
-//------------------------------------------------------------------------------
-
-void GB_stringify_load         // return a string to load/typecast macro
-(
-    // input:
-    FILE *fp,                       // File to write macros, assumed open already
-    const char *load_macro_name,    // name of macro to construct
-    bool is_pattern                 // if true, load/cast does nothing
 ) ;
 
 //------------------------------------------------------------------------------

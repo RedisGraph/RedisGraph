@@ -91,9 +91,10 @@
 #include "GB_AxB_saxpy_generic.h"
 #include "GB_control.h"
 #include "GB_AxB__include1.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_AxB__include2.h"
 #endif
+#include "GB_unused.h"
 
 #define GB_FREE_WORKSPACE                           \
 {                                                   \
@@ -106,7 +107,7 @@
 #define GB_FREE_ALL             \
 {                               \
     GB_FREE_WORKSPACE ;         \
-    GB_phbix_free (C) ;         \
+    GB_phybix_free (C) ;        \
 }
 
 //------------------------------------------------------------------------------
@@ -182,6 +183,16 @@ GrB_Info GB_AxB_saxpy3              // C = A*B using Gustavson+Hash
     int64_t *restrict Hf_all = NULL ; size_t Hf_all_size = 0 ;
     GB_void *restrict Hx_all = NULL ; size_t Hx_all_size = 0 ;
     GB_saxpy3task_struct *SaxpyTasks = NULL ; size_t SaxpyTasks_size = 0 ;
+
+    //--------------------------------------------------------------------------
+    // construct the hyper hashes for M and A
+    //--------------------------------------------------------------------------
+
+// double t = omp_get_wtime ( ) ;
+    GB_OK (GB_hyper_hash_build (M, Context)) ;    // does nothing if M is NULL
+    GB_OK (GB_hyper_hash_build (A, Context)) ;
+// t = omp_get_wtime ( ) - t ;
+// printf ("Hyper time: %g\n", t) ;
 
     //--------------------------------------------------------------------------
     // get the semiring operators
@@ -345,11 +356,12 @@ GrB_Info GB_AxB_saxpy3              // C = A*B using Gustavson+Hash
     //      than cvlen (otherwise, Gustavson's method is used).
     //
     //      A hash function is used for the ith entry:
-    //          hash = GB_HASHF (i) ; in range 0 to hash_size-1
+    //          hash = GB_HASHF (i, hash_bits) ; in range 0 to hash_size-1
     //      If a collision occurs, linear probing is used:
-    //          GB_REHASH (hash, i)
+    //          GB_REHASH (hash, i, hash_bits)
     //      which is:
     //          hash = (hash + 1) & (hash_size-1)
+    //      where hash_bits = hash_size - 1
     //
     //      (Hf [hash] == mark) is true if the position is occupied.
     //      i = Hi [hash] gives the row index i that occupies that position.
@@ -628,7 +640,7 @@ GrB_Info GB_AxB_saxpy3              // C = A*B using Gustavson+Hash
         GBURBLE ("(sparse saxpy) ") ;
         bool done = false ;
 
-        #ifndef GBCOMPACT
+        #ifndef GBCUDA_DEV
 
             //------------------------------------------------------------------
             // define the worker for the switch factory

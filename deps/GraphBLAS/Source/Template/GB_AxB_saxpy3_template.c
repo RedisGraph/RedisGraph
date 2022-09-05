@@ -41,7 +41,6 @@
     const int64_t *restrict Bi = B->i ;
     const bool B_iso = B->iso ;
     const int64_t bvlen = B->vlen ;
-    const bool B_jumbled = B->jumbled ;
     const bool B_is_sparse = GB_IS_SPARSE (B) ;
     const bool B_is_hyper = GB_IS_HYPERSPARSE (B) ;
     const bool B_is_bitmap = GB_IS_BITMAP (B) ;
@@ -61,6 +60,19 @@
     const bool A_ok_for_binary_search = 
         ((A_is_sparse || A_is_hyper) && !A_jumbled) ;
 
+    const int64_t *restrict A_Yp = NULL ;
+    const int64_t *restrict A_Yi = NULL ;
+    const int64_t *restrict A_Yx = NULL ;
+    int64_t A_hash_bits = 0 ;
+    if (A_is_hyper)
+    {
+        ASSERT_MATRIX_OK (A->Y, "A->Y hyper_hash", GB0) ;
+        A_Yp = A->Y->p ;
+        A_Yi = A->Y->i ;
+        A_Yx = A->Y->x ;
+        A_hash_bits = A->Y->vdim - 1 ;
+    }
+
     #if ( !GB_NO_MASK )
     const int64_t *restrict Mp = M->p ;
     const int64_t *restrict Mh = M->h ;
@@ -73,6 +85,21 @@
     size_t msize = M->type->size ;
     int64_t mnvec = M->nvec ;
     int64_t mvlen = M->vlen ;
+    // get the M hyper_hash
+    const int64_t *restrict M_Yp = NULL ;
+    const int64_t *restrict M_Yi = NULL ;
+    const int64_t *restrict M_Yx = NULL ;
+    int64_t M_hash_bits = 0 ;
+    { 
+        if (M_is_hyper)
+        {
+            // mask is present, and hypersparse
+            M_Yp = M->Y->p ;
+            M_Yi = M->Y->i ;
+            M_Yx = M->Y->x ;
+            M_hash_bits = M->Y->vdim - 1 ;
+        }
+    }
     #endif
 
     #if !GB_A_IS_PATTERN
@@ -104,7 +131,6 @@
         bool use_Gustavson = (hash_size == cvlen) ;
         int64_t pB     = SaxpyTasks [taskid].start ;
         int64_t pB_end = SaxpyTasks [taskid].end + 1 ;
-        int64_t pleft = 0, pright = anvec-1 ;
         int64_t j = GBH (Bh, kk) ;
 
         GB_GET_T_FOR_SECONDJ ;
@@ -320,6 +346,7 @@
         // out of memory
         return (GrB_OUT_OF_MEMORY) ;
     }
+    C->nvals = cnz ;
 
     int64_t  *restrict Ci = C->i ;
     #if ( !GB_IS_ANY_PAIR_SEMIRING )

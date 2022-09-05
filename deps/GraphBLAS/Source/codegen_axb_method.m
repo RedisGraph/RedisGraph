@@ -46,12 +46,12 @@ if (is_any_pair)
     terminal = 'break' ;
     omp_atomic = 1 ;
     omp_microsoft_atomic = 0 ;
-    % the any_pair_iso semiring is never disabled by GBCOMPACT
-    fprintf (f, 'define(`ifndef_compact'', `#if 1'')\n') ;
+    % the any_pair_iso semiring is never disabled by GBCUDA_DEV
+    fprintf (f, 'define(`ifndef_GBCUDA_DEV'', `#if 1'')\n') ;
     fprintf (f, 'define(`if_not_any_pair_semiring'', `#if 0'')\n') ;
 else
-    % all other semirings are disabled by GBCOMPACT
-    fprintf (f, 'define(`ifndef_compact'', `#ifndef GBCOMPACT'')\n') ;
+    % all other semirings are disabled by GBCUDA_DEV
+    fprintf (f, 'define(`ifndef_GBCUDA_DEV'', `#ifndef GBCUDA_DEV'')\n') ;
     fprintf (f, 'define(`if_not_any_pair_semiring'', `#if 1'')\n') ;
 end
 

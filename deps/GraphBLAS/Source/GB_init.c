@@ -53,6 +53,21 @@ GrB_Info GB_init            // start up GraphBLAS
     // check inputs
     //--------------------------------------------------------------------------
 
+    #ifdef GBCUDA_DEV
+    printf ("\n==== GBCUDA_DEV enabled: for development only! ====\n") ;
+//  printf ("size of GrB_Matrix header: %d\n",
+//      (int) sizeof (struct GB_Matrix_opaque)) ;
+//  for (int64_t anvec = 0 ; anvec <= 128 ; anvec++)
+//  {
+//      int64_t yvdim = ((uint64_t) 1) << (GB_FLOOR_LOG2 (anvec) + 1) ;
+//      // divide by 4 to get a load faster of 2 to 4:
+//      yvdim = yvdim / 4 ;
+//      yvdim = GB_IMAX (yvdim, 4) ;
+//      printf ("anvec %4ld yvdim %4ld load factor %g\n", anvec, yvdim,
+//          (double) (anvec) / (double) yvdim) ;
+//  }
+    #endif
+
     if (GB_Global_GrB_init_called_get ( ))
     { 
         // GrB_init can only be called once
@@ -61,7 +76,7 @@ GrB_Info GB_init            // start up GraphBLAS
 
     GB_Global_GrB_init_called_set (true) ;
 
-    if (! (mode == GrB_BLOCKING || mode == GrB_NONBLOCKING))
+    if (mode < GrB_NONBLOCKING || mode > GxB_BLOCKING_GPU)
     { 
         // invalid mode
         return (GrB_INVALID_VALUE) ;
@@ -144,53 +159,26 @@ GrB_Info GB_init            // start up GraphBLAS
     // CUDA initializations
     //--------------------------------------------------------------------------
 
-// FIXME for CUDA: MOVE THIS to rmm_wrap (or call it something else)
-
+    GrB_Info info = GrB_SUCCESS ;
     #if defined ( GBCUDA )
+    if (mode == GxB_BLOCKING_GPU || mode == GxB_NONBLOCKING_GPU)
     {
-        // TODO: must NOT be here
-
-        // If CUDA exists (#define GBCUDA) and if the caller is GxB_cuda_init,
-        // then query the system for the # of GPUs available, their memory
-        // sizes, SM counts, and other capabilities.  Unified Memory support is
-        // assumed.  Then warmup each GPU.
-
-        // query the system for the # of GPUs
-        // TODO for GPU: make this a function in the CUDA folder
-        GB_Global_gpu_control_set (GxB_DEFAULT) ;
-        if (!GB_Global_gpu_count_set (true)) return (GrB_PANIC) ;
-        int gpu_count = GB_Global_gpu_count_get ( ) ;
-        for (int device = 0 ; device < 1 ; device++) // TODO for GPU: gpu_count
-        {
-            // query the GPU and then warm it up
-            if (!GB_Global_gpu_device_properties_get (device))
-            {
-                return (GrB_PANIC) ;
-            }
-            if (!GB_cuda_warmup (device))
-            {
-                return (GrB_PANIC) ;
-            }
-        }
-        // make GPU 0 the default device
-        GB_cuda_set_device( 0 );
-
-        // also check for jit cache, pre-load library of common kernels ...
+        // initialize the GPUs
+        info = GB_cuda_init ( ) ;
     }
-    #else
+    else
+    #endif
     { 
-        // CUDA not available at compile-time
+        // CUDA not available at compile-time, or not requested at run time
         GB_Global_gpu_control_set (GxB_GPU_NEVER) ;
         GB_Global_gpu_count_set (0) ;
+        GB_Global_gpu_chunk_set (GxB_DEFAULT) ;
     }
-    #endif
-
-    GB_Global_gpu_chunk_set (GxB_DEFAULT) ;
 
     //--------------------------------------------------------------------------
     // return result
     //--------------------------------------------------------------------------
 
-    return (GrB_SUCCESS) ;
+    return (info) ;
 }
 

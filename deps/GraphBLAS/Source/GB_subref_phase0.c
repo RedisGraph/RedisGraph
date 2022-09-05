@@ -661,8 +661,8 @@ GrB_Info GB_subref_phase0
         int64_t kA = 0 ;
         int64_t pright = A->nvec - 1 ;
         int64_t pA_start_all, pA_end_all ;
-        bool found = GB_lookup (A->h != NULL, A->h, A->p, A->vlen, &kA,
-            pright, jA, &pA_start_all, &pA_end_all) ;
+        bool found = GB_lookup (A->h != NULL,   // for debug only
+            A->h, A->p, A->vlen, &kA, pright, jA, &pA_start_all, &pA_end_all) ;
         if (found && A->h != NULL)
         {
             ASSERT (jA == A->h [kA]) ;

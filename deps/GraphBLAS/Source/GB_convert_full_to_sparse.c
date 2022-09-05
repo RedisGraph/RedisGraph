@@ -54,6 +54,7 @@ GrB_Info GB_convert_full_to_sparse      // convert matrix from full to sparse
     A->plen = avdim ;
     A->nvec = avdim ;
     A->nvec_nonempty = (avlen == 0) ? 0 : avdim ;
+    A->nvals = anz ;
 
     //--------------------------------------------------------------------------
     // determine the number of threads to use

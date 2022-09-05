@@ -736,7 +736,7 @@ void mexFunction
 
     int64_t nallocs ;
     size_t mem_deep, mem_shallow ;
-    OK (GB_memoryUsage (&nallocs, &mem_deep, &mem_shallow, NULL)) ;
+    GB_memoryUsage (&nallocs, &mem_deep, &mem_shallow, NULL) ;
     CHECK (nallocs == 0) ;
     CHECK (mem_deep == 0) ;
     CHECK (mem_shallow == 0) ;

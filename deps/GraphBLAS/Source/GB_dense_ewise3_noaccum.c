@@ -12,7 +12,7 @@
 
 #include "GB_dense.h"
 #include "GB_binop.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_binop__include.h"
 #endif
 
@@ -28,7 +28,7 @@ GrB_Info GB_dense_ewise3_noaccum    // C = A+B
     GB_Context Context
 )
 {
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -85,7 +85,7 @@ GrB_Info GB_dense_ewise3_noaccum    // C = A+B
     { 
         // free the content of C and reallocate it as a non-iso full matrix
         ASSERT (C != A && C != B) ;
-        GB_phbix_free (C) ;
+        GB_phybix_free (C) ;
         // set C->iso = false   OK
         GB_OK (GB_new_bix (&C,  // existing header
             C->type, C->vlen, C->vdim, GB_Ap_null, C->is_csc, GxB_FULL, false,

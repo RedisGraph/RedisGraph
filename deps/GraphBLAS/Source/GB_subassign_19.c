@@ -71,6 +71,7 @@ GrB_Info GB_subassign_19
     const bool C_is_hyper = (Ch != NULL) ;
     const int64_t Cnvec = C->nvec ;
     GB_GET_MASK ;
+    GB_GET_MASK_HYPER_HASH ;
     GB_GET_S ;
     GB_GET_ACCUM_SCALAR ;
 
@@ -121,8 +122,8 @@ GrB_Info GB_subassign_19
             // get S(iA_start:end,j) and M(iA_start:end,j)
             //------------------------------------------------------------------
 
-            GB_GET_VECTOR_FOR_IXJ (S, iA_start) ;
-            GB_GET_VECTOR_FOR_IXJ (M, iA_start) ;
+            GB_LOOKUP_VECTOR_FOR_IXJ (S, iA_start) ;
+            GB_LOOKUP_VECTOR_FOR_IXJ (M, iA_start) ;
 
             //------------------------------------------------------------------
             // C(I(iA_start,iA_end-1),jC)<!M,repl> += scalar
@@ -245,8 +246,8 @@ GrB_Info GB_subassign_19
             // get S(iA_start:end,j) and M(iA_start:end,j)
             //------------------------------------------------------------------
 
-            GB_GET_VECTOR_FOR_IXJ (S, iA_start) ;
-            GB_GET_VECTOR_FOR_IXJ (M, iA_start) ;
+            GB_LOOKUP_VECTOR_FOR_IXJ (S, iA_start) ;
+            GB_LOOKUP_VECTOR_FOR_IXJ (M, iA_start) ;
 
             //------------------------------------------------------------------
             // C(I(iA_start,iA_end-1),jC)<!M,repl> += scalar

@@ -85,6 +85,7 @@ const char *GB_stringify_opcode    // name of unary/binary opcode
         case GB_TGAMMA_unop_code    : return ("tgamma") ;  // z = tgamma (x)
         case GB_ERF_unop_code       : return ("erf") ;     // z = erf (x)
         case GB_ERFC_unop_code      : return ("erfc") ;    // z = erfc (x)
+        case GB_CBRT_unop_code      : return ("cbrt") ;    // z = cbrt (x)
         case GB_FREXPX_unop_code    : return ("frexpx") ;  // z = frexpx (x)
         case GB_FREXPE_unop_code    : return ("frexpe") ;  // z = frexpe (x)
 
@@ -176,18 +177,18 @@ const char *GB_stringify_opcode    // name of unary/binary opcode
         // binary operators for real floating-point types (TxT -> T)
         //----------------------------------------------------------------------
 
-        case GB_ATAN2_binop_code     : return ("atan2") ;       // z = atan2 (x,y)
-        case GB_HYPOT_binop_code     : return ("hypot") ;       // z = hypot (x,y)
-        case GB_FMOD_binop_code      : return ("fmod") ;        // z = fmod (x,y)
-        case GB_REMAINDER_binop_code : return ("remainder") ;   // z=remainder(x,y)
-        case GB_COPYSIGN_binop_code  : return ("copysign") ;    // z=copysign (x,y)
-        case GB_LDEXP_binop_code     : return ("ldexp") ;       // z = ldexp (x,y)
+        case GB_ATAN2_binop_code     : return ("atan2") ;    // z = atan2 (x,y)
+        case GB_HYPOT_binop_code     : return ("hypot") ;    // z = hypot (x,y)
+        case GB_FMOD_binop_code      : return ("fmod") ;     // z = fmod (x,y)
+        case GB_REMAINDER_binop_code : return ("remainder") ;// z=remainder(x,y)
+        case GB_COPYSIGN_binop_code  : return ("copysign") ; // z=copysign (x,y)
+        case GB_LDEXP_binop_code     : return ("ldexp") ;    // z = ldexp (x,y)
 
         //----------------------------------------------------------------------
         // binary operator z=f(x,y) where z is complex, x,y real:
         //----------------------------------------------------------------------
 
-        case GB_CMPLX_binop_code     : return ("cmplx") ;       // z = cmplx (x,y)
+        case GB_CMPLX_binop_code     : return ("cmplx") ;    // z = cmplx (x,y)
 
         //----------------------------------------------------------------------
         // positional binary operators: z is int64, x and y are ignored

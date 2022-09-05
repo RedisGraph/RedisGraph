@@ -6,32 +6,30 @@ function gbmake (what)
 %
 % gbmake compiles the @GrB interface for SuiteSparse:GraphBLAS.  The
 % GraphBLAS library must already be compiled and installed.
-% Octave 7 (recommended) or MATLAB 9.4 (R2018a) or later is required.
+% MATLAB 9.4 (R2018a) or Octave 7 later is required.
 %
 % For the Mac, the GraphBLAS library must be installed in /usr/local/lib/ as
 % libgraphblas.dylib.  It cannot be used where it is created in ../build,
 % because of the default Mac security settings.  For Unix/Linux, the library
 % used is ../build/libgraphblas.so if found, or in /usr/local/lib if not found
-% there.
+% there.  For MATLAB R2021a and later, libgraphblas_renamed is used.
 %
 % See also mex, version, GrB.clear.
 %
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
-fprintf ('Note that this @GrB interface is under the GNU GPLv3 (or later).\n') ;
-input ('Hit enter to confirm and agree; control-C to decline: ') ;
-
+help gbmake
 have_octave = (exist ('OCTAVE_VERSION', 'builtin') == 5) ;
 need_rename = false ;
 
 if (have_octave)
     if verLessThan ('octave', '7')
-        error ('Octave 7 or later is required') ;
+        error ('GrB:mex', 'Octave 7 or later is required') ;
     end
 else
     if verLessThan ('matlab', '9.4')
-        error ('MATLAB 9.4 (R2018a) or later is required') ;
+        error ('GrB:mex', 'MATLAB 9.4 (R2018a) or later is required') ;
     end
     % MATLAB 9.10 (R2021a) and following include a built-in GraphBLAS library
     % that conflicts with this version, so rename this version.
@@ -127,10 +125,6 @@ else
 end
 
 if (need_rename)
-    fprintf ('R2021a and later include an earlier version of\n') ;
-    fprintf ('GraphBLAS, as a built-in library.  This interface to the\n') ;
-    fprintf ('latest version of GraphBLAS links against a library with\n') ;
-    fprintf ('with renamed symbols, to avoid a library conflict.\n') ;
     flags = [flags ' -DGBRENAME=1 ' ] ;
     inc = [inc ' -I../../rename ' ] ;
     libgraphblas = '-lgraphblas_renamed' ;

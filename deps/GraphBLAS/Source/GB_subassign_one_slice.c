@@ -70,6 +70,7 @@ GrB_Info GB_subassign_one_slice
     // check inputs
     //--------------------------------------------------------------------------
 
+    GrB_Info info ;
     ASSERT (p_TaskList != NULL) ;
     ASSERT (p_ntasks != NULL) ;
     ASSERT (p_nthreads != NULL) ;
@@ -123,6 +124,8 @@ GrB_Info GB_subassign_one_slice
     int ntasks = 0 ;
     int ntasks0 = (nthreads == 1) ? 1 : (32 * nthreads) ;
     GB_REALLOC_TASK_WORK (TaskList, ntasks0, max_ntasks) ;
+
+    GB_GET_C_HYPER_HASH ;
 
     //--------------------------------------------------------------------------
     // check for quick return for a single task
@@ -236,7 +239,7 @@ GrB_Info GB_subassign_one_slice
             ASSERT (k >= 0 && k < mnvec) ;
             int64_t j = GBH (Mh, k) ;
             ASSERT (j >= 0 && j < nJ) ;
-            int64_t GB_LOOKUP_jC ;
+            GB_LOOKUP_VECTOR_jC (false, 0) ;
 
             bool jC_dense = (pC_end - pC_start == Cvlen) ;
 

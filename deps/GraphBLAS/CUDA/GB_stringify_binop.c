@@ -37,8 +37,6 @@ void GB_stringify_binop
     // get ecode from opcode, xcode, and for_semiring
     GB_enumify_binop (&ecode, opcode, xcode, for_semiring) ;
 
-    printf("ecode in stringify binop: %d\n", ecode);
-
     // convert ecode to string
     GB_charify_binop (&op_string, ecode) ;
 
@@ -104,7 +102,6 @@ void GB_enumify_binop
 
         case GB_MAX_binop_code :    // z = max(x,y)
 
-            printf("INside max binop code\n");
             switch (xcode)
             {
                 case GB_BOOL_code   : e = 17 ; break ; // x || y
@@ -117,8 +114,6 @@ void GB_enumify_binop
             break ;
 
         case GB_PLUS_binop_code :   // z = x + y
-
-            printf("Inside plus binop code\n");
 
             switch (xcode)
             {
@@ -520,7 +515,6 @@ void GB_enumify_binop
         default : break ;
     }
 
-    printf("e %d\n", e);
     (*ecode) = e ;
 }
 
@@ -538,8 +532,6 @@ void GB_charify_binop
 {
 
     const char *f ;
-
-    printf("ecode in charify binop: %d\n", ecode);
 
     switch (ecode)
     {
@@ -791,7 +783,6 @@ void GB_charify_binop
         default  : f = NULL ;                       ; break ;
     }
 
-    printf("f = %s, %d\n", f, ecode);
     (*op_string) = f ;
 }
 
