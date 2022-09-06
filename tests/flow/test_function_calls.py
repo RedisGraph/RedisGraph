@@ -977,3 +977,14 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = "RETURN split('', '')"
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], [""])
+
+    def test35_min_max(self):
+        query = "UNWIND [[1], [2], [2], [1]] AS x RETURN max(x), min(x)"
+        actual_result = graph.query(query)
+        expected_result = [[[2], [1]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = "UNWIND [1, 2, '1' ,'2' ,[1] ,[2] ,1 ,2, '1', '2', NULL, True] AS x RETURN max(x), min(x)"
+        actual_result = graph.query(query)
+        expected_result = [[2, [1]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
