@@ -92,7 +92,7 @@ GrB_Info GxB_pack_HyperHash         // move Y into A->Y
 
     if ((*Y)->vlen != A->vdim || !GB_IS_POWER_OF_TWO ((*Y)->vdim) ||
         (*Y)->nvals != A->nvec || !GB_IS_SPARSE (*Y) || (*Y)->Y != NULL ||
-        (*Y)->type != GrB_INT64 || !(*Y)->is_csc || GB_ANY_PENDING_WORK (*Y))
+        (*Y)->type != GrB_UINT64 || !(*Y)->is_csc || GB_ANY_PENDING_WORK (*Y))
     { 
         // Y is invalid
         return (GrB_INVALID_OBJECT) ;

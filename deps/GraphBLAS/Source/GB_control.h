@@ -177,7 +177,7 @@
 #define GxB_NO_FC64      1
 #define GxB_NO_INT16     1
 #define GxB_NO_INT32     1
-// #define GxB_NO_INT64     1
+#define GxB_NO_INT64     1
 #define GxB_NO_INT8      1
 #define GxB_NO_UINT16    1
 #define GxB_NO_UINT32    1
@@ -285,7 +285,7 @@
 #define GxB_NO_ISLT      1
 #define GxB_NO_ISLE      1
 // #define GxB_NO_EQ        1
-// #define GxB_NO_NE        1
+#define GxB_NO_NE        1
 #define GxB_NO_GT        1
 #define GxB_NO_LT        1
 #define GxB_NO_LE        1

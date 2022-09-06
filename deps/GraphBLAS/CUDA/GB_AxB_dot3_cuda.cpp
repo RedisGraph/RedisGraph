@@ -38,14 +38,14 @@ void print_array(void *arr, I size, const char *name) {
 #undef  GB_FREE_WORKSPACE
 #define GB_FREE_WORKSPACE                                               \
 {                                                                       \
+    /* FIXME: use a stream pool instead */                              \
     CU_OK (cudaStreamSynchronize(stream));                              \
     CU_OK (cudaStreamDestroy(stream));                                  \
-    /* FIXME: use GB_FREE_WORK */                                       \
-    if (Nanobuckets != NULL) rmm_wrap_free (Nanobuckets) ; Nanobuckets = NULL ;\
-    if (Blockbucket != NULL) rmm_wrap_free (Blockbucket) ; Blockbucket = NULL ;\
-    if (Bucket      != NULL) rmm_wrap_free (Bucket);       Bucket      = NULL ;\
-    if (Bucketp     != NULL) rmm_wrap_free (Bucketp);      Bucketp     = NULL ;\
-    if (offset      != NULL) rmm_wrap_free (offset);       offset      = NULL ;\
+    GB_FREE_WORK (Nanobuckets, Nb_size) ;                               \
+    GB_FREE_WORK (Blockbucket, Bb_size) ;                               \
+    GB_FREE_WORK (Bucketp, Bup_size) ;                                  \
+    GB_FREE_WORK (offset, O_size) ;                                     \
+    GB_FREE_WORK (Bucket, Bu_size) ;                                    \
 }
 
 #undef  GB_FREE_ALL
@@ -114,10 +114,11 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
     // initializations
     //--------------------------------------------------------------------------
 
-    int64_t *Nanobuckets = NULL, *Blockbucket = NULL ;
-    int64_t *Bucket = NULL;
-    int64_t *Bucketp = NULL;
-    int64_t *offset = NULL;
+    int64_t *Nanobuckets = NULL ; size_t Nb_size  = 0 ;
+    int64_t *Blockbucket = NULL ; size_t Bb_size  = 0 ;
+    int64_t *Bucket = NULL      ; size_t Bu_size  = 0 ;
+    int64_t *Bucketp = NULL     ; size_t Bup_size = 0 ;
+    int64_t *offset = NULL      ; size_t O_size   = 0 ;
 
     int device = -1;
 
@@ -168,38 +169,37 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
         return (info) ;
     }
 
+//  try this with GB_Ap_null, above in GB_new_bix
+//  C->p = M->p ; C->p_shallow = true ;
+//  C->h = M->h ; C->h_shallow = true ;
 
     //--------------------------------------------------------------------------
     // Pre-fetch arrays that will be used on the device
     //--------------------------------------------------------------------------
 
+    // GB_cuda_matrix_advise (C, cnvec, cnz, which, what, device)
     // advise C
-    CU_OK (cudaMemAdvise (C->i, (cnz+1) * sizeof ( int64_t),
+    CU_OK (cudaMemAdvise (C->p, (cnvec+1) * sizeof ( int64_t),
         cudaMemAdviseSetPreferredLocation, device)) ;
-    // if (!C_iso)
-    {
-        CU_OK (cudaMemAdvise (C->x, (C_iso ? 1: (cnz+1)) * C->type->size ,
+    if (M_is_hyper)
+    { 
+        CU_OK (cudaMemAdvise (C->h, cnvec * sizeof ( int64_t),
             cudaMemAdviseSetPreferredLocation, device)) ;
     }
+    CU_OK (cudaMemAdvise (C->i, (cnz+1) * sizeof ( int64_t),
+        cudaMemAdviseSetPreferredLocation, device)) ;
+    CU_OK (cudaMemAdvise (C->x, (C_iso ? 1: (cnz+1)) * C->type->size ,
+        cudaMemAdviseSetPreferredLocation, device)) ;
 
     // prefetch M (if M hypersparse: using M->h not M->Y)
     GB_OK (GB_cuda_matrix_prefetch (M,
         Mask_struct ? GB_PREFETCH_PHBI : GB_PREFETCH_PHBIX, device, stream)) ;
 
-    // prefetch C
-    CU_OK (cudaMemPrefetchAsync (C->i, (cnz+1) * sizeof (int64_t),
-        device, stream)) ;
-    if (!C_iso)
-    {
-        // FIXME: why prefetch C->x?
-        CU_OK (cudaMemPrefetchAsync( C->x,
-            (C_iso ? 1 : cnz) * C->type->size, device, stream ));
-    }
-
     //--------------------------------------------------------------------------
     // copy Mp and Mh into C
     //--------------------------------------------------------------------------
 
+    // FIXME: use shallow?
     CU_OK (cudaMemcpyAsync (C->p, M->p, (cnvec+1) * sizeof (int64_t),
         cudaMemcpyDefault, stream)) ;
     if (M_is_hyper)
@@ -362,14 +362,23 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
         int64_t nanobuckets_size = NBUCKETS * nthrd * ntasks;
         int64_t blockbuckets_size = NBUCKETS * ntasks;
 
-        // FIXME: use GB_MALLOC_WORK which calls rmm_wrap_malloc anyway
-        Nanobuckets = (int64_t*)
-        rmm_wrap_malloc(nanobuckets_size * sizeof (int64_t));
-        Blockbucket = (int64_t*)
-        rmm_wrap_malloc(blockbuckets_size * sizeof (int64_t));
-        Bucketp = (int64_t*)rmm_wrap_malloc((NBUCKETS+1) * sizeof (int64_t));
-        offset = (int64_t*)rmm_wrap_malloc(NBUCKETS * sizeof (int64_t));
-        Bucket = (int64_t*)rmm_wrap_malloc(mnz * sizeof (int64_t));
+//      Nanobuckets = (int64_t*)
+//      rmm_wrap_malloc(nanobuckets_size * sizeof (int64_t));
+        Nanobuckets = GB_MALLOC_WORK (nanobuckets_size, int64_t, &Nb_size) ;
+
+//      Blockbucket = (int64_t*)
+//      rmm_wrap_malloc(blockbuckets_size * sizeof (int64_t));
+        Blockbucket = GB_MALLOC_WORK (blockbuckets_size, int64_t, &Bb_size) ;
+
+//      Bucketp = (int64_t*)rmm_wrap_malloc((NBUCKETS+1) * sizeof (int64_t));
+        Bucketp = GB_MALLOC_WORK (NBUCKETS+1, int64_t, &Bup_size) ;
+
+//      offset = (int64_t*)rmm_wrap_malloc(NBUCKETS * sizeof (int64_t));
+        offset = GB_MALLOC_WORK (NBUCKETS, int64_t, &O_size) ;
+
+//      Bucket = (int64_t*)rmm_wrap_malloc(mnz * sizeof (int64_t));
+        Bucket = GB_MALLOC_WORK (mnz, int64_t, &Bu_size) ;
+
         if (Nanobuckets == NULL || Blockbucket == NULL || Bucketp == NULL
             || Bucket == NULL || offset == NULL)
         {
@@ -405,9 +414,9 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
         CU_OK (cudaMemAdvise( offset, NBUCKETS * sizeof ( int64_t),
             cudaMemAdviseSetAccessedBy, device));
 
-        //--------------------------------------------------------------------------
+        //----------------------------------------------------------------------
         // phase1: assign each C(i,j) to a bucket, and count them
-        //--------------------------------------------------------------------------
+        //----------------------------------------------------------------------
 
         GBURBLE ("(GPU phase1 start nblk = %d) ", p1lf.get_number_of_blocks(M)) ;
         kernel_timer.Start();

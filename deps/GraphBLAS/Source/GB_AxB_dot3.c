@@ -199,6 +199,7 @@ GrB_Info GB_AxB_dot3                // C<M> = A'*B using dot product method
 
     // M is sparse or hypersparse; C is the same as M
     nthreads = GB_nthreads (cnvec, chunk, nthreads_max) ;
+    // FIXME: try this with Cp and Ch shallow
     GB_memcpy (Cp, Mp, (cnvec+1) * sizeof (int64_t), nthreads) ;
     if (M_is_hyper)
     { 

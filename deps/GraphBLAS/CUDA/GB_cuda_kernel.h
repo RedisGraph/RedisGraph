@@ -92,7 +92,7 @@
     #define GB_ADD_F( f , s)
     #define GB_C_MULT( c, a, b)
     #define GB_MULTADD( c, a ,b )
-    #define GB_DOT_TERMINAL ( c )   
+    #define GB_DOT_TERMINAL ( c ) break
     #define GB_DOT_MERGE(pA,pB)                                         \
     {                                                                   \
         cij_exists = true ;                                             \
@@ -104,8 +104,7 @@
     #define GB_ADD_F( f , s)  f = GB_ADD ( f, s ) 
     #define GB_C_MULT( c, a, b)  c = GB_MULT( (a), (b) )
     #define GB_MULTADD( c, a ,b ) GB_ADD_F( (c), GB_MULT( (a),(b) ) )
-    #define GB_DOT_TERMINAL ( c )
-    //# if ( c == TERMINAL_VALUE) break;
+    #define GB_DOT_TERMINAL ( c ) GB_IF_TERMINAL_BREAK (c)
 
     #if GB_IS_PLUS_PAIR_REAL_SEMIRING
 

@@ -19,7 +19,7 @@ message ( STATUS "GrapphBLAS build:  " ${CMAKE_BINARY_DIR} )
 message ( STATUS "CMake version: " ${CMAKE_VERSION} )
 
 # version of SuiteSparse:GraphBLAS
-set ( GraphBLAS_DATE "Sept 1, 2022 (beta2)" )   # FIXME
+set ( GraphBLAS_DATE "Sept 5, 2022 (beta4)" )   # FIXME
 set ( GraphBLAS_VERSION_MAJOR 7 )
 set ( GraphBLAS_VERSION_MINOR 3 )
 set ( GraphBLAS_VERSION_SUB   0 )

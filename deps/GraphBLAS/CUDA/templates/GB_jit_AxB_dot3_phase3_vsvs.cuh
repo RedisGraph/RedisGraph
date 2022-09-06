@@ -207,7 +207,9 @@ __global__ void AxB_dot3_phase3_vsvs
 
         GB_DECLAREA (aki) ;
         GB_DECLAREB (bkj) ;
+        #if !GB_C_ISO
         T_Z cij = GB_IDENTITY ;
+        #endif
 
         bool cij_exists = false;
 
@@ -222,7 +224,7 @@ __global__ void AxB_dot3_phase3_vsvs
                 { 
                     // A(k,i) and B(k,j) are the next entries to merge
                     GB_DOT_MERGE (pA, pB) ;
-                    //GB_DOT_TERMINAL (cij) ;   // break if cij == terminal
+                    GB_DOT_TERMINAL (cij) ;   // break if cij == terminal
                 }
             #endif
             pA += ( ia <= ib);  // incr pA if A(ia,i) at or before B(ib,j)

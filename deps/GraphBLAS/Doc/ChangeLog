@@ -1,4 +1,4 @@
-Version 7.3.0, Sept 1, 2022
+Version 7.3.0, Sept 5, 2022
 
     * GrB_Matrix: changes to the internal data structure
         * minor internal changes: A->nvals for sparse/hypersparse
@@ -539,7 +539,7 @@ Version 3.0.1, July 26, 2019
     * new operators and semirings: RDIV (f(x,y)=y/x) and RMINUS (y-x)
         binary operators.
 
-Version 2.3.5, Oct 20, 2019
+Version 2.3.5, July 20, 2019
 
     * minor update: fix for tests in R2019b
 

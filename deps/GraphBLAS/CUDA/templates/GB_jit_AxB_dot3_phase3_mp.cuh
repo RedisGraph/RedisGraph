@@ -45,6 +45,9 @@
 
 using namespace cooperative_groups;
 
+// FIXME: for the ANY monoid, GB_reduce_sum becomes trivial.
+// or, if terminal condition is hit.
+
 template< typename T, int warp_sz>
 __device__ __inline__ 
 T GB_reduce_sum(thread_block_tile<warp_sz> g, T val)
@@ -178,14 +181,12 @@ __global__ void AxB_dot3_phase3_mp
 
         GB_DECLAREA (aki) ;
         GB_DECLAREB (bkj) ;
+        #if !GB_C_ISO
         T_Z cij = GB_IDENTITY ;
+        #endif
 
-        // TODO PLUS_PAIR_INT64, FP32, FP64: no need for cij_exists.
-        // just check if cij > 0
+        int cij_exists = 0 ;       // FIXME: make a bool
 
-        int cij_exists  = 0 ;
-        //printf(" thd%u has init value %f\n",tid, cij);
-         
         #define shared_vector_size 128 
         __shared__ int64_t Ai_s[shared_vector_size];
         int shared_steps_A = (ainz + shared_vector_size -1)/shared_vector_size;
@@ -336,14 +337,14 @@ __global__ void AxB_dot3_phase3_mp
                 int64_t Aind = Ai_s[pA] ;
                 int64_t Bind = Bj_s[pB] ;
                 #if GB_IS_PLUS_PAIR_REAL_SEMIRING && GB_ZTYPE_IGNORE_OVERFLOW
-                cij += (Aind == Bind) ;
+                    cij += (Aind == Bind) ;
                 #else
-                if (Aind == Bind)
-                {
-                    // cij += aki + bkj
-                    GB_DOT_MERGE (pA + pA_start, pB + pB_start) ;
-                    // TODO check terminal condition
-                }
+                    if (Aind == Bind)
+                    {
+                        // cij += aki + bkj
+                        GB_DOT_MERGE (pA + pA_start, pB + pB_start) ;
+                        // TODO check terminal condition, using tile.any
+                    }
                 #endif
                 pA += (Aind <= Bind) ;
                 pB += (Aind >= Bind) ;
@@ -423,8 +424,8 @@ __global__ void AxB_dot3_phase3_mp
         */
 
         // Do vote here for control.
-        cij_exists = tile.any( cij_exists);
-        tile.sync();
+        cij_exists = tile.any (cij_exists) ;
+        tile.sync ( ) ;
 
         #if !GB_C_ISO
         if (cij_exists)

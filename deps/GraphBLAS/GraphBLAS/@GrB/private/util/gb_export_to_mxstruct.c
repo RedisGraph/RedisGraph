@@ -164,13 +164,8 @@ mxArray *gb_export_to_mxstruct  // return exported built-in struct G
         case GxB_HYPERSPARSE :
 
             // export and free the A->Y hyper_hash.  It is always sparse,
-            // GrB_INT64, held by column, and non-iso
-//          printf ("unpacking hypersparse A\n") ;
-//          OK (GxB_print (A, 2)) ;
+            // GrB_UINT64, held by column, and non-iso
             OK (GxB_unpack_HyperHash (A, &Y, NULL)) ;
-//          printf ("did unpacking hypersparse A\n") ;
-//          OK (GxB_print (A, 2)) ;
-//          OK (GxB_print (Y, 2)) ;
             OK (GxB_Matrix_export_CSC (&Y, &ytype, &ynrows, &yvdim,
                 &Yp, &Yi, &Yx, &Yp_size, &Yi_size, &Yx_size,
                 NULL, NULL, NULL)) ;
@@ -328,7 +323,7 @@ mxArray *gb_export_to_mxstruct  // return exported built-in struct G
         mxSetFieldByNumber (G, 0, 7, Yi_mx) ;
 
         // export Yx, of size nvec
-        mxArray *Yx_mx = mxCreateNumericMatrix (1, 0, mxINT64_CLASS, mxREAL) ;
+        mxArray *Yx_mx = mxCreateNumericMatrix (1, 0, mxUINT64_CLASS, mxREAL) ;
         mxSetN (Yx_mx, nvec) ;
         p = (void *) mxGetData (Yx_mx) ; gb_mxfree (&p) ;
         mxSetData (Yx_mx, Yx) ;

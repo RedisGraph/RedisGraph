@@ -10879,6 +10879,7 @@ GrB_Info GxB_unpack_HyperHash       // move A->Y into Y
 // modified after they were exported/unpacked by
 // GxB_Matrix_(export/unpack)_Hyper(CSR/CSC).
 
+GB_PUBLIC
 GrB_Info GxB_pack_HyperHash         // move Y into A->Y
 (
     GrB_Matrix A,                   // matrix to modify

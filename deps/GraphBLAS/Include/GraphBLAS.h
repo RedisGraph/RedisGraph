@@ -221,7 +221,7 @@
 
 // The version of this implementation, and the GraphBLAS API version:
 #define GxB_IMPLEMENTATION_NAME "SuiteSparse:GraphBLAS"
-#define GxB_IMPLEMENTATION_DATE "Sept 1, 2022 (beta2)"
+#define GxB_IMPLEMENTATION_DATE "Sept 5, 2022 (beta4)"
 #define GxB_IMPLEMENTATION_MAJOR 7
 #define GxB_IMPLEMENTATION_MINOR 3
 #define GxB_IMPLEMENTATION_SUB   0
@@ -10879,6 +10879,7 @@ GrB_Info GxB_unpack_HyperHash       // move A->Y into Y
 // modified after they were exported/unpacked by
 // GxB_Matrix_(export/unpack)_Hyper(CSR/CSC).
 
+GB_PUBLIC
 GrB_Info GxB_pack_HyperHash         // move Y into A->Y
 (
     GrB_Matrix A,                   // matrix to modify

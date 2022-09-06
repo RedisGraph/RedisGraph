@@ -850,12 +850,12 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
             return (info) ;
         }
         if (Y->vlen != A->vdim || !GB_IS_POWER_OF_TWO (Y->vdim) ||
-            Y->nvals != A->nvec || !GB_IS_SPARSE (Y) || Y->type != GrB_INT64 ||
+            Y->nvals != A->nvec || !GB_IS_SPARSE (Y) || Y->type != GrB_UINT64 ||
             !Y->is_csc || GB_ANY_PENDING_WORK (Y))
         { 
-            // Y must be sparse, int64, held by column, with A->nvec values,
-            // vector length the same as A->vdim, and with a Y->vdim that is
-            // a power of 2. It cannot have any pending work.
+            // Y must be sparse, uint64, held by column, with A->nvec values,
+            // vector length the same as A->vdim, and with a Y->vdim that is a
+            // power of 2. It cannot have any pending work.
             GBPR0 ("  hyper_hash invalid") ;
             return (GrB_INVALID_OBJECT) ;
         }

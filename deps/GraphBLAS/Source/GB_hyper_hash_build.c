@@ -43,7 +43,7 @@ GrB_Info GB_hyper_hash_build    // construct A->Y if not already constructed
     GrB_Info info ;
     int64_t *restrict I_work = NULL ; size_t I_work_size = 0 ;
     int64_t *restrict J_work = NULL ; size_t J_work_size = 0 ;
-    int64_t *restrict X_work = NULL ; size_t X_work_size = 0 ;
+    uint64_t *restrict X_work = NULL ; size_t X_work_size = 0 ;
 
     ASSERT_MATRIX_OK (A, "A for hyper_hash", GB0) ;
     GB_BURBLE_MATRIX (A, "(build hyper hash) ") ;
@@ -66,7 +66,7 @@ GrB_Info GB_hyper_hash_build    // construct A->Y if not already constructed
     int64_t hash_bits = (yvdim - 1) ;   // yvdim is always a power of 2
 
     GB_OK (GB_new (&(A->Y), // new dynamic header, do not allocate any content
-        GrB_INT64, yvlen, yvdim, GB_Ap_null, true, GxB_SPARSE,
+        GrB_UINT64, yvlen, yvdim, GB_Ap_null, true, GxB_SPARSE,
         -1, 0, Context)) ;
     GrB_Matrix Y = A->Y ;
 
@@ -76,7 +76,7 @@ GrB_Info GB_hyper_hash_build    // construct A->Y if not already constructed
 
     I_work = GB_MALLOC (anvec, int64_t, &I_work_size) ;
     J_work = GB_MALLOC (anvec, int64_t, &J_work_size) ;
-    X_work = GB_MALLOC (anvec, int64_t, &X_work_size) ;
+    X_work = GB_MALLOC (anvec, uint64_t, &X_work_size) ;
     if (I_work == NULL || J_work == NULL || X_work == NULL)
     { 
         // out of memory
@@ -94,7 +94,7 @@ GrB_Info GB_hyper_hash_build    // construct A->Y if not already constructed
         int64_t j = Ah [k] ;
         I_work [k] = j ;
         J_work [k] = GB_HASHF2 (j, hash_bits) ;     // in range 0 to yvdim-1
-        X_work [k] = k ;
+        X_work [k] = (uint64_t) k ;
     }
 
     //--------------------------------------------------------------------------
@@ -103,7 +103,7 @@ GrB_Info GB_hyper_hash_build    // construct A->Y if not already constructed
 
     GB_OK (GB_builder (
         Y,                      // create Y using a dynamic header
-        GrB_INT64,              // Y->type
+        GrB_UINT64,             // Y->type
         yvlen,                  // Y->vlen
         yvdim,                  // Y->vdim
         true,                   // Y->is_csc
@@ -122,7 +122,7 @@ GrB_Info GB_hyper_hash_build    // construct A->Y if not already constructed
         false,                  // Y is never iso
         anvec,                  // # of tuples
         NULL,                   // no duplicates, so dup is NUL
-        GrB_INT64,              // the type of X_work
+        GrB_UINT64,             // the type of X_work
         false,                  // no burble (already burbled above)
         Context
     )) ;

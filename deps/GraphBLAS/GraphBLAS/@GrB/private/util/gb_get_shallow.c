@@ -350,16 +350,14 @@ GrB_Matrix gb_get_shallow   // return a shallow copy of built-in sparse matrix
 
         if (yvdim > 0)
         {
-            // A->Y is sparse, type is int64, (A->vdim)-by-yvdim, held by column
-            OK (GrB_Matrix_new (&Y, GrB_INT64, vdim, yvdim)) ;
+            // A->Y is sparse, uint64, (A->vdim)-by-yvdim, held by column
+            OK (GrB_Matrix_new (&Y, GrB_UINT64, vdim, yvdim)) ;
             OK (GxB_Matrix_Option_set (Y, GxB_FORMAT, GxB_BY_COL)) ;
             OK (GxB_Matrix_pack_CSC (Y,
                 &Yp, &Yi, &Yx, Yp_size, Yi_size, Yx_size, false,
                 false, NULL)) ;
             OK (GxB_Matrix_Option_set (Y, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
-//          OK (GxB_print (Y, 2)) ;
             OK (GxB_pack_HyperHash (A, &Y, NULL)) ;
-//          OK (GxB_print (A, 2)) ;
         }
 
         // tell GraphBLAS the matrix is shallow
