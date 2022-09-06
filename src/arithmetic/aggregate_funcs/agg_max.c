@@ -22,7 +22,8 @@ AggregateResult AGG_MAX(SIValue *argv, int argc, void *private_data) {
 	int compared_null;
 	if((SIValue_Compare(ctx->result, v, &compared_null) < 0) ||
 	   (compared_null == COMPARED_NULL)) {
-		ctx->result = v;
+		SIValue_Free(ctx->result);
+		ctx->result = SI_CloneValue(v);
 	}
 
 	return AGGREGATE_OK;
