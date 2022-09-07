@@ -33,8 +33,7 @@ bool ResultSetStat_IndicateModification
 void ResultSetStat_init
 (
 	ResultSetStatistics *stats  // resultset statistics to initialize
-)
-{
+) {
 	ASSERT(stats != NULL);
 
 	memset(stats, 0, sizeof(ResultSetStatistics));
@@ -123,7 +122,10 @@ void ResultSetStat_emit
 	RedisModule_ReplyWithStringBuffer(ctx, buff, buflen);
 }
 
-void ResultSetStat_Clear(ResultSetStatistics *stats) {
+void ResultSetStat_Clear
+(
+	ResultSetStatistics *stats
+) {
 	ASSERT(stats != NULL);
 
 	stats->labels_added          = 0;
