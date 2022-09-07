@@ -1,0 +1,30 @@
+name: "large_resultset"
+description: "This benchmark measures the time it takes to reply with
+               a large result containing ~1M nodes
+               Dataset: Synthetic graph500 network of scale 18 (262144x262144, 4194304 edges)
+                       - 262017 nodes with label 'Node'
+                       - 4194304 relations of type 'IS_CONNECTED'
+                       - Indexed properties: 
+                       - exact-match: Node; [external_id]"
+remote:
+  - setup: redisgraph-r5
+  - type: oss-standalone
+dbconfig:
+  - init_commands: 
+    - '"GRAPH.QUERY" "g" " UNWIND range(1, 200000) AS x CREATE (:L0 {a: rand() * x, b: x, c:'some string', d:[12,'23'], e:False, f:point({latitude: 22.2, longitude: 12}), g:rand() * x, h:tostring(x)})"'
+    - '"GRAPH.QUERY" "g" " UNWIND range(1, 200000) AS x CREATE (:L1 {a: rand() * x, b: x, c:'some string', d:[12,'23'], e:False, f:point({latitude: 22.2, longitude: 12})})"'
+    - '"GRAPH.QUERY" "g" " UNWIND range(1, 200000) AS x CREATE (:L2 {a: rand() * x, b: x, c:'some string', d:[12,'23'], g:rand() * x, h:tostring(x)})"'
+    - '"GRAPH.QUERY" "g" " UNWIND range(1, 200000) AS x CREATE (:L3 {a: rand() * x, b: x, e:False, f:point({latitude: 22.2, longitude: 12}), g:rand() * x, h:tostring(x)})"'
+    - '"GRAPH.QUERY" "g" " UNWIND range(1, 200000) AS x CREATE (:L4 {c:'some string', d:[12,'23'], e:False, f:point({latitude: 22.2, longitude: 12}), g:rand() * x, h:tostring(x)})"'
+clientconfig:
+  - tool: redisgraph-benchmark-go
+  - parameters:
+    - graph: "g"
+    - rps: 0
+    - clients: 1
+    - threads: 4
+    - connections: 1
+    - requests: 5
+    - queries:
+      - { q: "MATCH (n) RETURN n", ratio: 1.0 }
+
