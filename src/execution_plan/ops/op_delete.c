@@ -183,16 +183,16 @@ static Record DeleteConsume(OpBase *opBase) {
 			size_t nodeCount = Path_NodeCount(p);
 			size_t edgeCount = Path_EdgeCount(p);
 
-			if(nodeCount > 0) {
-				for(size_t i = 0; i < nodeCount; i++) {
-					Node *n = Path_GetNode(p, i);
-					array_append(op->deleted_nodes, *n);
-				}
-				for(size_t i = 0; i < edgeCount; i++) {
-					Edge *e = Path_GetEdge(p, i);
-					array_append(op->deleted_edges, *e);
-				}
+			for(size_t i = 0; i < nodeCount; i++) {
+				Node *n = Path_GetNode(p, i);
+				array_append(op->deleted_nodes, *n);
 			}
+
+			for(size_t i = 0; i < edgeCount; i++) {
+				Edge *e = Path_GetEdge(p, i);
+				array_append(op->deleted_edges, *e);
+			}
+
 			SIValue_Free(value);
 		} else if(!(type & T_NULL)) {
 			/* Expression evaluated to a non-graph entity type
