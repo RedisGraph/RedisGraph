@@ -181,15 +181,15 @@ static Record DeleteConsume(OpBase *opBase) {
 		} else if(type & T_PATH) {
 			Path *p = (Path *)value.ptrval;
 			size_t nodeCount = Path_NodeCount(p);
+			size_t edgeCount = Path_Len(p);
 
 			if(nodeCount > 0) {
-				Node *n = Path_GetNode(p, 0);
-				array_append(op->deleted_nodes, *n);
-
-				for(size_t i = 1; i < nodeCount; i++) {
+				for(size_t i = 0; i < nodeCount; i++) {
 					Node *n = Path_GetNode(p, i);
 					array_append(op->deleted_nodes, *n);
-					Edge *e = Path_GetEdge(p, i - 1);
+				}
+				for(size_t i = 0; i < edgeCount; i++) {
+					Edge *e = Path_GetEdge(p, i);
 					array_append(op->deleted_edges, *e);
 				}
 			}
