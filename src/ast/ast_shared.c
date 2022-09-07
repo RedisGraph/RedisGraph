@@ -2,10 +2,15 @@
 #include "../RG.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
+#include "../util/rax_extensions.h"
 #include "../arithmetic/arithmetic_expression_construct.h"
 
-AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op) {
-	// TODO ordered by precedence, which I don't know if we're managing properly right now
+AST_Operator AST_ConvertOperatorNode
+(
+	const cypher_operator_t *op
+) {
+	// TODO: ordered by precedence
+	// which I don't know if we're managing properly right now
 	if(op == CYPHER_OP_OR) {
 		return OP_OR;
 	} else if(op == CYPHER_OP_XOR) {
@@ -56,7 +61,11 @@ AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op) {
 	return -1;
 }
 
-PropertyMap *PropertyMap_New(GraphContext *gc, const cypher_astnode_t *props) {
+PropertyMap *PropertyMap_New
+(
+	GraphContext *gc,
+	const cypher_astnode_t *props
+) {
 	if(props == NULL) return NULL;
 	ASSERT(cypher_astnode_type(props) == CYPHER_AST_MAP); // TODO add parameter support
 
@@ -96,7 +105,10 @@ PropertyMap *PropertyMap_New(GraphContext *gc, const cypher_astnode_t *props) {
 	return map;
 }
 
-static PropertyMap *_PropertyMap_Clone(PropertyMap *map) {
+static PropertyMap *_PropertyMap_Clone
+(
+	PropertyMap *map
+) {
 	PropertyMap *clone = rm_malloc(sizeof(PropertyMap));
 	array_clone(clone->keys, map->keys);
 	array_clone_with_cb(clone->values, map->values, AR_EXP_Clone);
@@ -104,7 +116,10 @@ static PropertyMap *_PropertyMap_Clone(PropertyMap *map) {
 	return clone;
 }
 
-void PropertyMap_Free(PropertyMap *map) {
+void PropertyMap_Free
+(
+	PropertyMap *map
+) {
 	if(map == NULL) return;
 
 	array_free(map->keys);
@@ -112,7 +127,10 @@ void PropertyMap_Free(PropertyMap *map) {
 	rm_free(map);
 }
 
-NodeCreateCtx NodeCreateCtx_Clone(NodeCreateCtx ctx) {
+NodeCreateCtx NodeCreateCtx_Clone
+(
+	NodeCreateCtx ctx
+) {
 	NodeCreateCtx clone = ctx;
 	array_clone(clone.labels, ctx.labels);
 	array_clone(clone.labelsId, ctx.labelsId);
@@ -120,35 +138,63 @@ NodeCreateCtx NodeCreateCtx_Clone(NodeCreateCtx ctx) {
 	return clone;
 }
 
-void NodeCreateCtx_Free(NodeCreateCtx ctx) {
+void NodeCreateCtx_Free
+(
+	NodeCreateCtx ctx
+) {
 	array_free(ctx.labels);
 	array_free(ctx.labelsId);
 	PropertyMap_Free(ctx.properties);
 }
 
-EdgeCreateCtx EdgeCreateCtx_Clone(EdgeCreateCtx ctx) {
+EdgeCreateCtx EdgeCreateCtx_Clone
+(
+	EdgeCreateCtx ctx
+) {
 	EdgeCreateCtx clone = ctx;
 	if(ctx.properties) clone.properties = _PropertyMap_Clone(ctx.properties);
 	return clone;
 }
 
-EntityUpdateEvalCtx *UpdateCtx_New(UPDATE_MODE mode, uint prop_count, const char *alias) {
+EntityUpdateEvalCtx *UpdateCtx_New
+(
+	UPDATE_MODE mode,
+	uint prop_count,
+	const char *alias
+) {
 	EntityUpdateEvalCtx *ctx = rm_malloc(sizeof(EntityUpdateEvalCtx));
-	ctx->mode = mode;
-	ctx->alias = alias;
-	ctx->record_idx = INVALID_INDEX;
-	ctx->properties = array_new(PropertySetCtx, prop_count);
+
+	ctx->mode          = mode;
+	ctx->alias         = alias;
+	ctx->record_idx    = INVALID_INDEX;
+	ctx->properties    = array_new(PropertySetCtx, prop_count);
+	ctx->add_labels    = NULL;
+	ctx->remove_labels = NULL;
 
 	return ctx;
 }
 
-EntityUpdateEvalCtx *UpdateCtx_Clone(const EntityUpdateEvalCtx *orig) {
+EntityUpdateEvalCtx *UpdateCtx_Clone
+(
+	const EntityUpdateEvalCtx *orig
+) {
 	EntityUpdateEvalCtx *clone = rm_malloc(sizeof(EntityUpdateEvalCtx));
-	clone->mode = orig->mode;
-	clone->alias = orig->alias;
-	clone->record_idx = orig->record_idx;
+
 	uint count = array_len(orig->properties);
-	clone->properties = array_new(PropertySetCtx, count);
+
+	clone->mode          = orig->mode;
+	clone->alias         = orig->alias;
+	clone->record_idx    = orig->record_idx;
+	clone->properties    = array_new(PropertySetCtx, count);
+	clone->add_labels    = NULL;
+	clone->remove_labels = NULL;
+	if(orig->add_labels != NULL) {
+		array_clone(clone->add_labels, orig->add_labels);
+	}
+	if(orig->remove_labels != NULL) {
+		array_clone(clone->remove_labels, orig->remove_labels);
+	}
+
 	for(uint i = 0; i < count; i ++) {
 		PropertySetCtx update = {
 			.id = orig->properties[i].id,
@@ -160,21 +206,36 @@ EntityUpdateEvalCtx *UpdateCtx_Clone(const EntityUpdateEvalCtx *orig) {
 	return clone;
 }
 
-void UpdateCtx_SetMode(EntityUpdateEvalCtx *ctx, UPDATE_MODE mode) {
+void UpdateCtx_SetMode
+(
+	EntityUpdateEvalCtx *ctx,
+	UPDATE_MODE mode
+) {
 	ASSERT(ctx != NULL);
 	ctx->mode = mode;
 }
 
-void UpdateCtx_Clear(EntityUpdateEvalCtx *ctx) {
+void UpdateCtx_Clear
+(
+	EntityUpdateEvalCtx *ctx
+) {
 	uint count = array_len(ctx->properties);
 	for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].exp);
 	array_clear(ctx->properties);
 }
 
-void UpdateCtx_Free(EntityUpdateEvalCtx *ctx) {
+void UpdateCtx_Free
+(
+	EntityUpdateEvalCtx *ctx
+) {
 	uint count = array_len(ctx->properties);
-	for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].exp);
+	for(uint i = 0; i < count; i ++) {
+		AR_EXP_Free(ctx->properties[i].exp);
+	}
+
 	array_free(ctx->properties);
+	if(ctx->add_labels != NULL) array_free(ctx->add_labels);
+	if(ctx->remove_labels != NULL) array_free(ctx->remove_labels);
+
 	rm_free(ctx);
 }
-
