@@ -228,7 +228,7 @@ static ProcedureResult validate_config
 		}
 	}
 
-	int64_t max_length_val = LONG_MAX;
+	int64_t max_length_val = LONG_MAX - 1;
 	if(max_length_exists) {
 		if(SI_TYPE(max_length) != T_INT64) {
 			ErrorCtx_SetError("maxLen must be integer");

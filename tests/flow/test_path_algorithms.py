@@ -387,7 +387,7 @@ class testAllShortestPaths():
 
         for result in results:
             self.env.assertEquals(len(result.result_set), expected_len)
-            for i in range(0, 5):
+            for i in range(0, expected_len):
                 self.env.assertContains(result.result_set[i], self.incoming_sp_paths)
 
     def ss_query(self, source, relTypes, maxLen, maxCost, pathCount, relDirection):
