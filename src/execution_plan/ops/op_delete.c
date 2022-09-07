@@ -181,7 +181,7 @@ static Record DeleteConsume(OpBase *opBase) {
 		} else if(type & T_PATH) {
 			Path *p = (Path *)value.ptrval;
 			size_t nodeCount = Path_NodeCount(p);
-			size_t edgeCount = Path_Len(p);
+			size_t edgeCount = Path_EdgeCount(p);
 
 			if(nodeCount > 0) {
 				for(size_t i = 0; i < nodeCount; i++) {
