@@ -248,6 +248,8 @@ static void _ShutdownEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uin
 	ThreadPools_Destroy();
 	// Server is shutting down, finalize GraphBLAS.
 	GrB_finalize();
+
+    RedisModule_Log(ctx, "notice", "%s", "Clearing RediSearch resources on shutdown");
     RediSearch_CleanupModule();
 }
 

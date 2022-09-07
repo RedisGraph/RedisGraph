@@ -76,7 +76,6 @@ class RedisGraphSetup(paella.Setup):
             self.install("lcov-git", aur=True)
 
         self.pip_install("-r tests/requirements.txt")
-        self.run("%s/bin/getpy2" % READIES) # for RediSearch build
 
     def install_peg(self):
         self.run(r"""

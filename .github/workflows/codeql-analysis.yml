@@ -61,9 +61,7 @@ jobs:
     # If this step fails, then you should remove it and run the build manually (see below)
     - name: Build
       run: |
-        ./deps/readies/bin/getpy3
-        ./deps/readies/bin/getpy2
-        ./sbin/system-setup.py
+        ./sbin/setup
         make TEST=1
 
     # ℹ️ Command-line programs to run using the OS shell.

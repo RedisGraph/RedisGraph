@@ -19,9 +19,7 @@ ADD . /build
 RUN ./deps/readies/bin/getbash
 {% endif %}
 RUN ./deps/readies/bin/getupdates
-RUN ./deps/readies/bin/getpy3
-RUN ./deps/readies/bin/getpy2 # for RediSearch
-RUN ./sbin/system-setup.py
+RUN ./sbin/setup
 
 RUN if command -v apt-get &> /dev/null; then \
         locale-gen --purge en_US.UTF-8 ;\
