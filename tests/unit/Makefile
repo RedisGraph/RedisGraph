@@ -23,6 +23,8 @@ REDISEARCH_DIR = $(DEPS_DIR)/RediSearch
 REDISEARCH_BINROOT=$(ROOT)/bin/$(OS)-$(ARCH)-$(FLAVOR)
 LIBCYPHER_PARSER_DIR = $(DEPS_DIR)/libcypher-parser/lib/src
 
+include $(ROOT)/build/redisearch/Makefile.defs
+
 # Flags passed to the preprocessor.
 # Set Google Test's header directory as a system directory, such that
 # the compiler doesn't generate warnings in Google Test headers.
@@ -89,11 +91,10 @@ gtest_main.a : gtest-all.o gtest_main.o
 CC_OBJECTS:=$(CC_OBJECTS)
 RAX=$(DEPS_DIR)/rax/rax.o
 LIBXXHASH=$(DEPS_DIR)/xxHash/libxxhash.a
-REDISEARCH=$(REDISEARCH_BINROOT)/search-static/libredisearch.a
 LIBGRAPHBLAS=$(DEPS_DIR)/GraphBLAS/build/libgraphblas.a
 LIBCYPHER_PARSER=$(DEPS_DIR)/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
-LIBS=$(LIBGRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER_PARSER)
+LIBS=$(LIBGRAPHBLAS) $(REDISEARCH_LIBS) $(LIBXXHASH) $(LIBCYPHER_PARSER)
 DEPS=$(CC_OBJECTS) $(RAX) $(LIBS)
 
 # Build and run a test for each cpp file in directory

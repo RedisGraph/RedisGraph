@@ -240,17 +240,22 @@ CC_DEPS = $(patsubst %.c, %.d, $(CC_SOURCES) )
 RAX=$(ROOT)/deps/rax/rax.o
 LIBXXHASH=$(ROOT)/deps/xxHash/libxxhash.a
 GRAPHBLAS=$(ROOT)/deps/GraphBLAS/build/libgraphblas.a
-REDISEARCH=$(REDISEARCH_BINROOT)/search-static/libredisearch.a
 LIBCYPHER_PARSER=$(ROOT)/deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
+include $(ROOT)/build/redisearch/Makefile.defs
+
 # Compilation deps for the module
-LIBS=$(RAX) $(GRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER_PARSER)
+LIBS=$(RAX) $(GRAPHBLAS) $(REDISEARCH_LIBS) $(LIBXXHASH) $(LIBCYPHER_PARSER)
 MODULE_DEPS=$(LIBS) $(CC_OBJECTS)
 
 #----------------------------------------------------------------------------------------------
 
 define REDISGRAPH_CC
 $(QUIET_CC); $(CC)
+endef
+
+define REDISGRAPH_CXX
+$(QUIET_CXX); $(CXX)
 endef
 
 CCCOLOR="\033[34m"
@@ -260,6 +265,10 @@ ENDCOLOR="\033[0m"
 ifndef V
 define QUIET_CC
 @printf '    %b %b\n' $(CCCOLOR)CC$(ENDCOLOR) $(SRCCOLOR)$@$(ENDCOLOR) 1>&2
+endef
+
+define QUIET_CXX
+@printf '    %b %b\n' $(CCCOLOR)CXX$(ENDCOLOR) $(SRCCOLOR)$@$(ENDCOLOR) 1>&2
 endef
 endif
 
@@ -280,7 +289,6 @@ all: $(TARGET)
 
 $(RAX):
 	@$(MAKE) -C $(ROOT)/deps/rax -f $(ROOT)/build/rax/Makefile
-# .PHONY: $(RAX)
 
 $(LIBXXHASH):
 	@$(MAKE) -C $(ROOT)/deps/xxHash lib
@@ -291,7 +299,7 @@ ifeq (,$(wildcard $(GRAPHBLAS)))
 	@$(MAKE) -C $(ROOT)/deps/GraphBLAS CMAKE_OPTIONS="-DCMAKE_C_COMPILER='$(CC)'" static_only JOBS=$(JOBS)
 endif
 
-$(REDISEARCH):
+$(REDISEARCH_LIBS):
 ifeq (,$(wildcard $(REDISEARCH)))
 	make -C $(REDISEARCH_DIR) STATIC=1 BINROOT=$(REDISEARCH_BINROOT)
 endif
@@ -318,7 +326,7 @@ endef
 
 # Build the module...
 $(TARGET): $(MODULE_DEPS)
-	$(REDISGRAPH_CC) -o $@ $(CC_OBJECTS) $(LIBS) $(SHOBJ_LDFLAGS) -lc -lm
+	$(REDISGRAPH_CXX) -o $@ $(CC_OBJECTS) $(LIBS) $(SHOBJ_LDFLAGS) -lc -lm
 ifeq ($(OS),linux)
 ifneq ($(DEBUG),1)
 	$(call extract_symbols,$@)
