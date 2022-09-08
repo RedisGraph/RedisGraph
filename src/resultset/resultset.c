@@ -165,6 +165,7 @@ void ResultSet_IndexCreated
 ) {
 	ASSERT(set != NULL);
 
+	set->stats.index_creation = true;
 	if(status_code == INDEX_OK) {
 		set->stats.indices_created += 1;
 	}
@@ -178,6 +179,7 @@ void ResultSet_IndexDeleted
 ) {
 	ASSERT(set != NULL);
 
+	set->stats.index_deletion = true;
 	if(status_code == INDEX_OK) {
 		set->stats.indices_deleted = 1;
 	}
