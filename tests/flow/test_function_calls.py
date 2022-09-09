@@ -1,5 +1,6 @@
 from common import *
 import json
+import math
 
 graph = None
 redis_con = None
@@ -227,12 +228,27 @@ class testFunctionCallsFlow(FlowTestsBase):
         expected_result = [[0]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-        # Validate modulo by 0
+        # Validate integer dividend modulo by 0
         query = "RETURN 3 % 0"
         try:
             actual_result = graph.query(query)
         except redis.ResponseError as e:
             self.env.assertContains("Division by zero", str(e))
+        
+        # Validate floating-point dividend modulo by 0
+        query = "RETURN 1.0 % 0"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
+
+        # Validate integer dividend modulo by 0.0 
+        query = "RETURN 1 % 0.0"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
+
+        # Validate floating-point dividend modulo by 0.0 
+        query = "RETURN 1.0 % 0.0"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
 
     # Aggregate functions should handle null inputs appropriately.
     def test11_null_aggregate_function_inputs(self):
@@ -988,3 +1004,26 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         expected_result = [[2, [1]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test36_division_inputs(self):
+        # Validate integer dividend division by 0
+        query = "RETURN 3 / 0"
+        try:
+            actual_result = graph.query(query)
+        except redis.ResponseError as e:
+            self.env.assertContains("Division by zero", str(e))
+        
+        # Validate floating-point dividend division by 0
+        query = "RETURN 1.0 / 0"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isinf(actual_result.result_set[0][0]))
+
+        # Validate integer dividend division by 0.0 
+        query = "RETURN 1 / 0.0"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isinf(actual_result.result_set[0][0]))
+
+        # Validate floating-point dividend division by 0.0 
+        query = "RETURN 1.0 / 0.0"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isinf(actual_result.result_set[0][0]))
