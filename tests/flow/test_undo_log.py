@@ -23,6 +23,11 @@ class testUndoLog():
         result = self.graph.query("MATCH (n:N) RETURN n")
         self.env.assertEquals(len(result.result_set), 0)
 
+        # no label should be created
+        result = self.graph.query("CALL db.labels")
+        self.env.assertEquals(len(result.result_set), 0)
+
+
     def test02_undo_create_edge(self):
         self.graph.query("CREATE (:N {v: 1}), (:N {v: 2})")
         try:
@@ -37,6 +42,10 @@ class testUndoLog():
 
         # edge [r:R] should have been removed
         result = self.graph.query("MATCH ()-[r:R]->() RETURN r")
+        self.env.assertEquals(len(result.result_set), 0)
+
+        # no relation should be added
+        result = self.graph.query("CALL db.relationshipTypes")
         self.env.assertEquals(len(result.result_set), 0)
 
     def test03_undo_delete_node(self):

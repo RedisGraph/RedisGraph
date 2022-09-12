@@ -1095,7 +1095,7 @@ void Graph_RemoveRelation
 	ASSERT(g != NULL);
 	ASSERT(relation_id < Graph_RelationTypeCount(g));
 	RG_Matrix_free(&g->relations[relation_id]);
-	g->labels = array_del(g->relations, relation_id);
+	g->relations = array_del(g->relations, relation_id);
 }
 
 RG_Matrix Graph_GetLabelMatrix

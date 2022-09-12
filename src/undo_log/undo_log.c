@@ -280,10 +280,12 @@ static void _UndoLog_Rollback_Add_Schema
 		// Every new schema in the query should be deleted
 		// If we encounter a schema id which is << from the schema count
 		// this operation should delete "newer" schemas, in case they are out of order.
+		GraphContext_RemoveSchema(ctx->gc, schema_id, schema_op.t);
 		if(schema_op.t == SCHEMA_NODE) {
 			int labels_count = Graph_LabelTypeCount(ctx->gc->g);
 			if(schema_id < labels_count) {
 				for(schema_id; schema_id < labels_count; schema_id++) {
+					
 					Graph_RemoveLabel(ctx->gc->g, schema_id);
 				}
 			}
@@ -576,6 +578,8 @@ void UndoLog_Free
 			case UNDO_SET_LABELS:
 			case UNDO_REMOVE_LABELS:
 				array_free(op->labels_op.label_lds);
+				break;
+			case UNDO_ADD_SCHEMA:
 				break;
 			default:
 				ASSERT(false);
