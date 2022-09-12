@@ -388,3 +388,18 @@ void UpdateNodeLabels
 	}
 }
 
+
+Schema *AddSchema
+(
+	GraphContext *gc,             // graph context to add the schema
+	const char *label,            // schema label
+	SchemaType t                  // schema type (node/edge)
+) {
+	ASSERT(gc != NULL);
+	ASSERT(label != NULL);
+	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+	Schema *s = GraphContext_AddSchema(gc, label, t);
+	UndoLog_AddSchema(&query_ctx->undo_log, s->id, s->type);
+	return s;
+}
+

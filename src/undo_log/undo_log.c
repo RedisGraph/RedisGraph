@@ -264,6 +264,41 @@ static void _UndoLog_Rollback_Delete_Edge
 	}
 }
 
+// undo schema addition
+static void _UndoLog_Rollback_Add_Schema
+(
+	QueryCtx *ctx,
+	int seq_start,
+	int seq_end
+) {
+	UndoOp *undo_list = ctx->undo_log;
+	for(int i = seq_start; i > seq_end; --i) {
+		Edge e;
+		UndoOp *op = undo_list + i;
+		UndoAddSchemaOp schema_op = op->schema_op;
+		int schema_id = schema_op.schema_id;
+		// Every new schema in the query should be deleted
+		// If we encounter a schema id which is << from the schema count
+		// this operation should delete "newer" schemas, in case they are out of order.
+		if(schema_op.t == SCHEMA_NODE) {
+			int labels_count = Graph_LabelTypeCount(ctx->gc->g);
+			if(schema_id < labels_count) {
+				for(schema_id; schema_id < labels_count; schema_id++) {
+					Graph_RemoveLabel(ctx->gc->g, schema_id);
+				}
+			}
+		} else {
+			int relation_count = Graph_RelationTypeCount(ctx->gc->g);
+			if(schema_id < relation_count) {
+				for(schema_id; schema_id < relation_count; schema_id++) {
+					Graph_RemoveRelation(ctx->gc->g, schema_id);
+				}
+			}
+		}
+		
+	}
+}
+
 // add an operation to undo log
 static inline void _UndoLog_AddOperation
 (
@@ -433,6 +468,22 @@ void UndoLog_RemoveLabels
 	_UndoLog_AddOperation(log, &op);
 }
 
+// undo schema addition
+void UndoLog_AddSchema
+(
+	UndoLog *log,                // undo log
+	int schema_id,               // id of the schema
+	SchemaType t                 // type of the schema
+) {
+	ASSERT(log != NULL);
+	UndoOp op;
+
+	op.type = UNDO_ADD_SCHEMA;
+	op.schema_op.schema_id = schema_id;
+	op.schema_op.t = t;
+	_UndoLog_AddOperation(log, &op);
+}
+
 //------------------------------------------------------------------------------
 // rollback
 //------------------------------------------------------------------------------
@@ -483,6 +534,9 @@ void UndoLog_Rollback
 				break;
 			case UNDO_REMOVE_LABELS:
 				_UndoLog_Rollback_Remove_Labels(ctx, seq_start, seq_end);
+				break;
+			case UNDO_ADD_SCHEMA:
+				_UndoLog_Rollback_Add_Schema(ctx, seq_start, seq_end);
 				break;
 			default:
 				ASSERT(false);

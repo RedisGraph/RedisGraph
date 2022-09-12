@@ -1055,6 +1055,18 @@ int Graph_AddLabel
 	return labelID;
 }
 
+void Graph_RemoveLabel
+(
+	Graph *g,
+	int label_id
+) {
+	ASSERT(g != NULL);
+	ASSERT(label_id < Graph_LabelTypeCount(g));
+	RG_Matrix_free(&g->labels[label_id]);
+	g->labels = array_del(g->labels, label_id);
+}
+
+
 int Graph_AddRelationType
 (
 	Graph *g
@@ -1073,6 +1085,17 @@ int Graph_AddRelationType
 
 	int relationID = Graph_RelationTypeCount(g) - 1;
 	return relationID;
+}
+
+void Graph_RemoveRelation
+(
+	Graph *g,
+	int relation_id
+) {
+	ASSERT(g != NULL);
+	ASSERT(relation_id < Graph_RelationTypeCount(g));
+	RG_Matrix_free(&g->relations[relation_id]);
+	g->labels = array_del(g->relations, relation_id);
 }
 
 RG_Matrix Graph_GetLabelMatrix
