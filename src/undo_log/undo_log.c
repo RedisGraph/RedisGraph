@@ -277,27 +277,18 @@ static void _UndoLog_Rollback_Add_Schema
 		UndoOp *op = undo_list + i;
 		UndoAddSchemaOp schema_op = op->schema_op;
 		int schema_id = schema_op.schema_id;
-		// Every new schema in the query should be deleted
-		// If we encounter a schema id which is << from the schema count
-		// this operation should delete "newer" schemas, in case they are out of order.
+		int schema_count = GraphContext_SchemaCount(ctx->gc, schema_op.t);
+		ASSERT(schema_id == schema_count - 1);
 		GraphContext_RemoveSchema(ctx->gc, schema_id, schema_op.t);
 		if(schema_op.t == SCHEMA_NODE) {
 			int labels_count = Graph_LabelTypeCount(ctx->gc->g);
-			if(schema_id < labels_count) {
-				for(schema_id; schema_id < labels_count; schema_id++) {
-					
-					Graph_RemoveLabel(ctx->gc->g, schema_id);
-				}
-			}
+			ASSERT(schema_id == labels_count - 1);
+			Graph_RemoveLabel(ctx->gc->g, schema_id);
 		} else {
 			int relation_count = Graph_RelationTypeCount(ctx->gc->g);
-			if(schema_id < relation_count) {
-				for(schema_id; schema_id < relation_count; schema_id++) {
-					Graph_RemoveRelation(ctx->gc->g, schema_id);
-				}
-			}
-		}
-		
+			ASSERT(schema_id == relation_count - 1);
+			Graph_RemoveRelation(ctx->gc->g, schema_id);
+		}	
 	}
 }
 

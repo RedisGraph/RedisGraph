@@ -327,7 +327,7 @@ void UpdateNodeLabels
 			const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 			bool schema_created = false;
 			if(s == NULL) {
-				s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+				s = AddSchema(gc, label, SCHEMA_NODE);
 				schema_created = true;
 			}
 

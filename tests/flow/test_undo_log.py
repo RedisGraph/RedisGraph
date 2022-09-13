@@ -366,6 +366,10 @@ class testUndoLog():
         result = self.graph.query(query)
         self.env.assertEquals(result.result_set[0][0], 1)
 
+        # L2 label should be created
+        result = self.graph.query("CALL db.labels")
+        self.env.assertEquals(result.result_set, [["L1"]])
+
     def test17_undo_remove_label(self):
         self.graph.query("CREATE INDEX FOR (n:L2) ON (n.v)")
         self.graph.query("CREATE (n:L2 {v:1})")
