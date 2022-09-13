@@ -366,7 +366,7 @@ class testUndoLog():
         result = self.graph.query(query)
         self.env.assertEquals(result.result_set[0][0], 1)
 
-        # L2 label should be created
+        # L2 label should not be created
         result = self.graph.query("CALL db.labels")
         self.env.assertEquals(result.result_set, [["L1"]])
 

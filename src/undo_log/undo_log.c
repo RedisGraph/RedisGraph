@@ -281,12 +281,8 @@ static void _UndoLog_Rollback_Add_Schema
 		ASSERT(schema_id == schema_count - 1);
 		GraphContext_RemoveSchema(ctx->gc, schema_id, schema_op.t);
 		if(schema_op.t == SCHEMA_NODE) {
-			int labels_count = Graph_LabelTypeCount(ctx->gc->g);
-			ASSERT(schema_id == labels_count - 1);
 			Graph_RemoveLabel(ctx->gc->g, schema_id);
 		} else {
-			int relation_count = Graph_RelationTypeCount(ctx->gc->g);
-			ASSERT(schema_id == relation_count - 1);
 			Graph_RemoveRelation(ctx->gc->g, schema_id);
 		}	
 	}
