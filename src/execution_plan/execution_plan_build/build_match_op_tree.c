@@ -143,6 +143,14 @@ static void _ExecutionPlan_ProcessQueryGraph
 			ExecutionPlan_UpdateRoot(plan, root);
 		}
 	}
+
+	uint count = array_len(qg->paths);
+	if(count > 0) {
+		OpBase *op = NewPathProjectOp(plan, qg->paths);
+		ExecutionPlan_AddOp(op, plan->root);
+		plan->root = op;
+	}
+
 	FilterTree_Free(ft);
 }
 

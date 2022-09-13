@@ -537,9 +537,13 @@ class testGraphMergeFlow(FlowTestsBase):
         redis_con = self.env.getConnection()
         graph = Graph(redis_con, "M")
 
-        query = """MATCH p=() MERGE () ON MATCH SET p.prop4 = 5"""
-        result = graph.query(query)
-        self.env.assertEquals(result.properties_set, 0)
+        try:
+            query = """MATCH p=() MERGE () ON MATCH SET p.prop4 = 5"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            self.env.assertContains("Update error: alias 'p' did not resolve to a graph entity", str(e))
 
     def test27_merge_create_invalid_entity(self):
         # Skip this test if running under Valgrind, as it causes a memory leak.

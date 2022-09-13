@@ -52,6 +52,7 @@ typedef enum {
 	OPType_OR_APPLY_MULTIPLEXER,
 	OPType_AND_APPLY_MULTIPLEXER,
 	OPType_OPTIONAL,
+	OPType_PATH_PROJECT
 } OPType;
 
 typedef enum {
@@ -76,7 +77,7 @@ static const OPType TRAVERSE_OPS[] = {
 	OPType_CONDITIONAL_VAR_LEN_TRAVERSE
 };
 
-#define SCAN_OP_COUNT 5
+#define SCAN_OP_COUNT 6
 static const OPType SCAN_OPS[] = {
 	OPType_ALL_NODE_SCAN,
 	OPType_NODE_BY_LABEL_SCAN,

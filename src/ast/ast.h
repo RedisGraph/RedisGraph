@@ -94,9 +94,6 @@ AST *AST_ShallowCopy(AST *orig);
 // Populate the AST's map of all referenced aliases.
 void AST_BuildReferenceMap(AST *ast, const cypher_astnode_t *project_clause);
 
-// Annotate AST, naming all anonymous graph entities.
-void AST_Enrich(AST *ast);
-
 // Returns true if the given alias is referenced within this AST segment.
 bool AST_AliasIsReferenced(AST *ast, const char *alias);
 

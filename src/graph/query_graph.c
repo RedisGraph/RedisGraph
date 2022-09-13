@@ -37,6 +37,7 @@ static void _QueryGraphSetNodeLabel
 static void _QueryGraphAddNode
 (
 	QueryGraph *qg,
+	QGPath *path,
 	const cypher_astnode_t *ast_entity
 ) {
 	const char *alias = AST_ToString(ast_entity);
@@ -51,6 +52,7 @@ static void _QueryGraphAddNode
 		QueryGraph_AddNode(qg, n);
 	}
 
+	if(path != NULL) QGPath_AddNode(path, n);
 	_QueryGraphSetNodeLabel(n, ast_entity);
 }
 
@@ -58,6 +60,7 @@ static void _QueryGraphAddNode
 static void _QueryGraphAddEdge
 (
 	QueryGraph *qg,                      // query graph to add edge to
+	QGPath *path,
 	const cypher_astnode_t *ast_entity,  // edge entity
 	QGNode *src,                         // src node
 	QGNode *dest,                        // dest node
@@ -105,6 +108,8 @@ static void _QueryGraphAddEdge
 	// swap the source and destination for left-pointing relations
 	if(dir != CYPHER_REL_INBOUND) QueryGraph_ConnectNodes(qg, src, dest, edge);
 	else QueryGraph_ConnectNodes(qg, dest, src, edge);
+
+	if(path != NULL) QGPath_AddEdge(path, edge);
 }
 
 // extracts node from 'qg' and places a copy of into 'graph'
@@ -136,7 +141,7 @@ static void _QueryGraph_ExtractNode
 			// clause scoping only node 'a' is in 'qg' the filtered pattern
 			// which is being extracted from 'qg' has additional entities:
 			// an anonymous edge and node
-			_QueryGraphAddNode(graph, ast_node);
+			_QueryGraphAddNode(graph, NULL, ast_node);
 		} else {
 			// add a clone of the original node
 			n = QGNode_Clone(n);
@@ -173,7 +178,7 @@ static void _QueryGraph_ExtractEdge
 
 	QGEdge *e = QueryGraph_GetEdgeByAlias(qg, alias);
 	bool shortest_path = e ? e->shortest_path : false;
-	_QueryGraphAddEdge(graph, ast_edge, left, right, shortest_path);
+	_QueryGraphAddEdge(graph, NULL, ast_edge, left, right, shortest_path);
 }
 
 // clones path from 'qg' into 'graph'
@@ -190,6 +195,16 @@ static void _QueryGraph_ExtractPath
 	const char *alias;
 	const cypher_astnode_t *ast_node;
 	uint nelems = cypher_ast_pattern_path_nelements(path);
+	if(cypher_astnode_type(path) == CYPHER_AST_NAMED_PATH) {
+		const cypher_astnode_t *id = cypher_ast_named_path_get_identifier(path);
+		const char *path_name = cypher_ast_identifier_get_name(id);
+		for (uint i = 0; i < array_len(qg->paths); i++) {
+			if(strcmp(qg->paths[i]->alias, path_name) == 0) {
+				array_append(graph->paths, qg->paths[i]);
+				break;
+			}
+		}
+	}
 
 	// introduce nodes to graph
 	// nodes are at even indices
@@ -225,6 +240,7 @@ QueryGraph *QueryGraph_New
 
 	qg->nodes = array_new(QGNode *, node_cap);
 	qg->edges = array_new(QGEdge *, edge_cap);
+	qg->paths = array_new(QGPath *, edge_cap);
 	qg->unknown_reltype_ids = false;
 
 	return qg;
@@ -255,17 +271,19 @@ void QueryGraph_AddPath
 (
 	QueryGraph *qg,                // query graph to add path to
 	const cypher_astnode_t *path,  // path to add
-	bool only_shortest             // interested only in the shortest paths
+	bool only_shortest,            // interested only in the shortest paths
+	const char *path_name
 ) {
 	AST *ast = QueryCtx_GetAST();
 	uint nelems = cypher_ast_pattern_path_nelements(path);
+	QGPath *qgpath = path_name != NULL ? QGPath_New(path_name) : NULL;
 	// introduce nodes first
 	// nodes are positioned at every even offset
 	// into the path (0, 2, ...)
 	for(uint i = 0; i < nelems; i += 2) {
 		const cypher_astnode_t *ast_node =
 			cypher_ast_pattern_path_get_element(path, i);
-		_QueryGraphAddNode(qg, ast_node);
+		_QueryGraphAddNode(qg, qgpath, ast_node);
 	}
 
 	// every odd offset corresponds to an edge in a path
@@ -285,8 +303,10 @@ void QueryGraph_AddPath
 		// retrieve the AST reference to this edge
 		const cypher_astnode_t *edge =
 			cypher_ast_pattern_path_get_element(path, i);
-		_QueryGraphAddEdge(qg, edge, left, right, only_shortest);
+		_QueryGraphAddEdge(qg, qgpath, edge, left, right, only_shortest);
 	}
+
+	if(qgpath != NULL) array_append(qg->paths, qgpath);
 }
 
 // clones path from 'qg' into 'graph'
@@ -373,15 +393,21 @@ QueryGraph *BuildQueryGraph
 			// collect path objects
 			const cypher_astnode_t **paths =
 				AST_GetTypedNodes(clause, CYPHER_AST_PATTERN_PATH);
+			const cypher_astnode_t **named_paths =
+				AST_GetTypedNodes(clause, CYPHER_AST_NAMED_PATH);
 			const cypher_astnode_t **shortest_paths =
 				AST_GetTypedNodes(clause, CYPHER_AST_SHORTEST_PATH);
 
 			// differentiate between regular paths and shortest paths
 			// as a path can be marked as shortest
 			uint  path_count           =  array_len(paths);
+			uint  named_path_count     =  array_len(named_paths);
 			uint  shortest_path_count  =  array_len(shortest_paths);
 			bool only_shortest[path_count];
 			memset(only_shortest, 0, path_count);
+			
+			const char *path_name[path_count];
+			memset(path_name, 0, sizeof(const char *) * path_count);
 
 			uint l = 0;  // index to paths array
 			uint k = 0;  // index to shortest paths array
@@ -403,9 +429,32 @@ QueryGraph *BuildQueryGraph
 			}
 			array_free(shortest_paths);
 
+			l = 0;  // index to paths array
+			k = 0;  // index to named paths array
+			for (; k < named_path_count; k++) {
+				const cypher_astnode_t *named = named_paths[k];
+
+				const cypher_astnode_t *path =
+					cypher_ast_named_path_get_path(named);
+
+				if(cypher_astnode_type(path) == CYPHER_AST_SHORTEST_PATH) {
+					if(cypher_ast_shortest_path_is_single(path)) continue;
+					path = cypher_ast_shortest_path_get_path(path);
+				} 
+
+				// seek the matching path in the paths array
+				while(paths[l] != path) l++;
+				ASSERT(l < path_count);
+
+				// each shortest must find its counterpart path
+				path_name[l] = cypher_ast_identifier_get_name(cypher_ast_named_path_get_identifier(named));
+				l++; // advance for next match
+			}
+			array_free(named_paths);
+
 			// introduce each path object to the query graph
 			for(uint k = 0; k < path_count; k ++) {
-				QueryGraph_AddPath(qg, paths[k], only_shortest[k]);
+				QueryGraph_AddPath(qg, paths[k], only_shortest[k], path_name[k]);
 			}
 			array_free(paths);
 		}

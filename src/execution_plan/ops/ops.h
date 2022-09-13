@@ -38,4 +38,5 @@
 #include "op_semi_apply.h"
 #include "op_apply_multiplexer.h"
 #include "op_optional.h"
+#include "op_path_project.h"
 

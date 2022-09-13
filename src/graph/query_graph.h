@@ -12,12 +12,14 @@
 #include "entities/edge.h"
 #include "entities/qg_node.h"
 #include "entities/qg_edge.h"
+#include "entities/qg_path.h"
 #include "../ast/ast_shared.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 typedef struct {
 	QGNode **nodes;             // Nodes contained in QueryGraph
 	QGEdge **edges;             // Edges contained in QueryGraph
+	QGPath **paths;             // Paths contained in QueryGraph
 	bool unknown_reltype_ids;   // Indicates if the query graph contains unknown relationship ids.
 } QueryGraph;
 

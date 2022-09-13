@@ -127,16 +127,6 @@ static AR_ExpNode *_AR_EXP_FromIdentifier(const cypher_astnode_t *expr) {
 		return AR_EXP_NewConstOperandNode(SI_NullVal());
 	}
 
-	// check if the identifier is a named path identifier
-	AnnotationCtx *named_paths_ctx =
-		AST_AnnotationCtxCollection_GetNamedPathsCtx(ast->anot_ctx_collection);
-
-	const cypher_astnode_t *named_path_annotation =
-		cypher_astnode_get_annotation(named_paths_ctx, expr);
-
-	// if the identifier is a named path identifier,
-	// evaluate the path expression accordingly
-	if(named_path_annotation) return _AR_ExpFromNamedPath(named_path_annotation);
 	// else, evalute the identifier
 	return _AR_EXP_FromIdentifierExpression(expr);
 }

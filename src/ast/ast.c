@@ -288,9 +288,6 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	// Set thread-local AST.
 	QueryCtx_SetAST(ast);
 
-	// Augment the AST with annotations for naming entities and populating WITH/RETURN * projections.
-	AST_Enrich(ast);
-
 	return ast;
 }
 
