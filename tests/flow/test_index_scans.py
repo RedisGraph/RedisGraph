@@ -689,3 +689,28 @@ class testIndexScanFlow():
 
         # expecting an index scan operation
         self.env.assertIn('Node By Index Scan', plan)
+
+    def test_23_do_not_utilize_index_(self):
+        g = Graph(self.env.getConnection(), 'late_index_creation')
+
+        # create graph
+        g.query("RETURN 1")
+
+        # issue query which not utilize an index
+        q = "MATCH (n:N) WHERE id(n) IN [0] RETURN n"
+        plan = g.execution_plan(q)
+
+        # expecting no index scan operation, as we've yet to create an index
+        self.env.assertNotIn('Node By Index Scan', plan)
+
+        # create an index
+        q = "CREATE INDEX ON :N(v)"
+        resultset = g.query(q)
+        self.env.assertEqual(1, resultset.indices_created)
+
+        # re-issue the same query
+        q = "MATCH (n:N) WHERE id(n) IN [0] RETURN n"
+        plan = g.execution_plan(q)
+
+        # expecting an no index scan operation
+        self.env.assertNotIn('Node By Index Scan', plan)

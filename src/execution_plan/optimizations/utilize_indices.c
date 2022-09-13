@@ -203,6 +203,12 @@ bool _applicableFilter
 	// make sure all filtered attributes are indexed
 	attr = FilterTree_CollectAttributes(filter_tree);
 	uint filter_attribute_count = raxSize(attr);
+	
+	// No attributes to filter on
+	if(filter_attribute_count == 0) {
+		res = false;
+		goto cleanup;
+	}
 
 	// Filter refers to a greater number of attributes.
 	if(filter_attribute_count > idx_fields_count) {
