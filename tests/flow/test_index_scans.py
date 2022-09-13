@@ -700,7 +700,7 @@ class testIndexScanFlow():
         q = "MATCH (n:N) WHERE id(n) IN [0] RETURN n"
         plan = g.execution_plan(q)
 
-        # expecting no index scan operation, as we've yet to create an index
+        # expecting no index scan operation
         self.env.assertNotIn('Node By Index Scan', plan)
 
         # create an index
