@@ -1062,10 +1062,12 @@ void Graph_RemoveLabel
 ) {
 	ASSERT(g != NULL);
 	ASSERT(label_id == Graph_LabelTypeCount(g) - 1);
+	#ifdef RG_DEBUG
 	GrB_Index nvals;
 	GrB_Info info = RG_Matrix_nvals(&nvals, g->labels[label_id]);
 	ASSERT(info == GrB_SUCCESS);
 	ASSERT(nvals == 0);
+	#endif
 	RG_Matrix_free(&g->labels[label_id]);
 	g->labels = array_del(g->labels, label_id);
 }
@@ -1098,10 +1100,12 @@ void Graph_RemoveRelation
 ) {
 	ASSERT(g != NULL);
 	ASSERT(relation_id == Graph_RelationTypeCount(g) - 1);
+	#ifdef RG_DEBUG
 	GrB_Index nvals;
 	GrB_Info info = RG_Matrix_nvals(&nvals, g->relations[relation_id]);
 	ASSERT(info == GrB_SUCCESS);
 	ASSERT(nvals == 0);
+	#endif
 	RG_Matrix_free(&g->relations[relation_id]);
 	g->relations = array_del(g->relations, relation_id);
 }
