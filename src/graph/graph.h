@@ -124,6 +124,13 @@ int Graph_AddLabel
 	Graph *g
 );
 
+// adds a label from the graph
+void Graph_RemoveLabel
+(
+	Graph *g,
+	int label_id
+);
+
 // label node with each label in 'lbls'
 void Graph_LabelNode
 (
@@ -154,6 +161,13 @@ bool Graph_IsNodeLabeled
 int Graph_AddRelationType
 (
 	Graph *g
+);
+
+// removes a relation from the graph
+void Graph_RemoveRelation
+(
+	Graph *g,
+	int relation_id
 );
 
 // make sure graph can hold an additional N nodes
