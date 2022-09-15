@@ -3,13 +3,13 @@ ifneq ($(filter coverage show-cov upload-cov,$(MAKECMDGOALS)),)
 export COV=1
 endif
 
+ifeq ($(COV),1)
+export DEBUG ?= 1
+endif
+
 ifneq ($(filter memcheck,$(MAKECMDGOALS)),)
 export DEBUG ?= 1
 export MEMCHECK=1
-endif
-
-ifeq ($(COV),1)
-export DEBUG ?= 1
 endif
 
 MK_ALL_TARGETS=bindirs deps build pack
@@ -25,9 +25,7 @@ MK_CUSTOM_CLEAN=1
 
 #----------------------------------------------------------------------------------------------
 
-# export BINROOT
 BINDIR=$(BINROOT)
-SRCDIR=.
 
 export TARGET=$(BINROOT)/redisgraph.so
 
@@ -55,6 +53,8 @@ REDISEARCH_DIR = $(ROOT)/deps/RediSearch
 export REDISEARCH_BINROOT=$(BINROOT)
 include $(ROOT)/build/RediSearch/Makefile.defs
 
+LIBS=$(RAX) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH) $(LIBCYPHER_PARSER)
+
 #----------------------------------------------------------------------------------------------
 
 ifeq ($(OS),macos)
@@ -78,7 +78,6 @@ ifeq ($(PEDANTIC),1)
 CC_FLAGS.warnings += -Wpedantic
 endif
 
-# Default CFLAGS
 CC_FLAGS=\
 	-MMD -MF $(@:.o=.d) \
 	-fPIC \
@@ -90,6 +89,7 @@ CC_FLAGS=\
 	$(CC_FLAGS.opt) \
 	$(CC_FLAGS.warnings) \
 	$(CC_FLAGS.debug) \
+	$(CC_FLAGS.coverage) \
 	-I. \
 	-I$(GRAPHBLAS_DIR)/Include \
 	-I$(RAX_DIR) \
@@ -111,7 +111,7 @@ endif
 LD_FLAGS.linux=-Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
 LD_FLAGS.macos=-bundle -undefined dynamic_lookup -ldl -lpthread $(LIBOMP)
 
-SO_LDFLAGS += $(LD_FLAGS) $(LD_FLAGS.$(OS))
+SO_LDFLAGS += $(LD_FLAGS) $(LD_FLAGS.$(OS)) $(LD_FLAGS.coverage)
 
 # if DEBUG env var is set, we compile with "debug" cflags
 ifeq ($(DEBUG),1)
@@ -127,58 +127,6 @@ else
 	CC_FLAGS.opt += -O3
 	CC_FLAGS.debug += -g -ggdb
 endif
-
-#----------------------------------------------------------------------------------------------
-
-#ifeq ($(COV),1)
-#
-#CFLAGS += --coverage
-#SHOBJ_LDFLAGS += --coverage
-#COV_BINROOT=$(SOURCEDIR)
-#
-#COV_INFO=$(ROOT)/cov/cov.info
-#COV_DIR=$(ROOT)/cov
-#
-#COV_EXCLUDE += \
-#    '/Applications/*' \
-#    '/usr/*' \
-#	'$(ROOT)/deps/*' \
-#	'$(ROOT)/src/util/sds/*'
-#
-#define COVERAGE_RESET
-#set -e ;\
-#echo "Starting coverage analysys ..." ;\
-#mkdir -p $(COV_DIR) ;\
-#lcov --directory $(COV_BINROOT) --base-directory $(SOURCEDIR) -z > /dev/null 2>&1
-#endef
-#
-#define COVERAGE_COLLECT
-#set -e ;\
-#echo "Collecting coverage data ..." ;\
-#lcov --capture --directory $(COV_BINROOT) --base-directory $(SOURCEDIR) --output-file $(COV_INFO) > /dev/null 2>&1 ;\
-#lcov -o $(COV_INFO) -r $(COV_INFO) $(COV_EXCLUDE) > /dev/null 2>&1
-#endef
-#
-#define COVERAGE_REPORT
-#set -e ;\
-#lcov -l $(COV_INFO) ;\
-#genhtml --legend -o $(COV_DIR) $(COV_INFO) > /dev/null 2>&1 ;\
-#echo "Coverage info at $$(realpath $(COV_DIR))/index.html"
-#endef
-#
-#define COVERAGE_COLLECT_REPORT
-#$(COVERAGE_COLLECT)
-#$(COVERAGE_REPORT)
-#endef
-#
-#else
-#
-#COVERAGE_RESET=
-#COVERAGE_COLLECT=
-#COVERAGE_REPORT=
-#COVERAGE_COLLECT_REPORT=
-#
-#endif # COV 
 
 #----------------------------------------------------------------------------------------------
 
@@ -261,12 +209,6 @@ endif
 
 #----------------------------------------------------------------------------------------------
 
-# Compilation deps for the module
-LIBS=$(RAX) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH) $(LIBCYPHER_PARSER)
-MODULE_DEPS=$(LIBS) $(OBJECTS)
-
-#----------------------------------------------------------------------------------------------
-
 .PHONY: all deps clean lint format pack run tests unit_tests flow_tests docker bindirs
 
 all: bindirs $(TARGET)
@@ -275,28 +217,16 @@ include $(MK)/rules
 
 #----------------------------------------------------------------------------------------------
 
-#define REDISGRAPH_CC
-#$(QUIET_CC); $(CC)
-#endef
-#
 CCCOLOR="\033[34m"
 SRCCOLOR="\033[33m"
 ENDCOLOR="\033[0m"
-#
-#ifndef V
-#define QUIET_CC
-#@printf '    %b %b\n' $(CCCOLOR)CC$(ENDCOLOR) $(SRCCOLOR)$@$(ENDCOLOR) 1>&2
-#endef
-#endif
 
-# Include all dependency files for C files
 -include $(CC_DEPS)
 
 %.c: %.y
 
 # Compile C file while generating a .d file for it
 $(BINDIR)/src/%.o: $(SRCDIR)/%.c $(LIBCYPHER_PARSER_BINDIR)/lib/src/cypher-parser.h
-#	$(REDISGRAPH_CC) $(CC_FLAGS) -c $< -o $@
 	@printf '%b %b\n' $(CCCOLOR)CC$(ENDCOLOR) $(SRCCOLOR)$<$(ENDCOLOR)
 	$(SHOW)$(CC) $(CC_FLAGS) -c $< -o $@
 
@@ -385,7 +315,7 @@ objcopy --strip-debug $1
 objcopy --add-gnu-debuglink $1.debug $1
 endef
 
-$(TARGET): $(MODULE_DEPS)
+$(TARGET): $(LIBS) $(OBJECTS)
 	@printf '%b %b\n' $(CCCOLOR)LINK$(ENDCOLOR) $(SRCCOLOR)$@$(ENDCOLOR)
 	$(SHOW)$(CXX) -o $@ $(OBJECTS) $(LIBS) $(SO_LDFLAGS) -lc -lm
 ifeq ($(OS),linux)
@@ -490,14 +420,19 @@ benchmark: $(TARGET)
 
 #----------------------------------------------------------------------------------------------
 
-ifeq ($(COV),1)
+COV_EXCLUDE_DIRS += \
+	deps \
+	tests
 
-upload-cov:
-	$(SHOW)bash -c "bash <(curl -s https://codecov.io/bash) -f $(COV_INFO)"
+COV_EXCLUDE+=$(foreach D,$(COV_EXCLUDE_DIRS),'$(realpath $(ROOT))/$(D)/*')
 
-.PHONY: upload-cov
+coverage:
+	$(SHOW)$(MAKE) build COV=1
+	$(SHOW)$(COVERAGE_RESET)
+	-$(SHOW)$(MAKE) test COV=1
+	$(SHOW)$(COVERAGE_COLLECT_REPORT)
 
-endif # COV
+.PHONY: coverage
 
 #----------------------------------------------------------------------------------------------
 

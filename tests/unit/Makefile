@@ -1,4 +1,21 @@
 
+ifneq ($(filter coverage show-cov upload-cov,$(MAKECMDGOALS)),)
+override COV:=1
+endif
+
+ifeq ($(COV),1)
+override DEBUG:=1
+endif
+
+ifneq ($(filter memcheck,$(MAKECMDGOALS)),)
+override DEBUG:=1
+overide MEMCHECK:=1
+endif
+
+MK_ALL_TARGETS=bindirs deps build test
+
+#----------------------------------------------------------------------------------------------
+
 ROOT=../..
 
 MK.pyver:=3
@@ -75,13 +92,12 @@ _SOURCES=\
 SOURCES=$(addprefix $(SRCDIR)/,$(_SOURCES))
 OBJECTS=$(patsubst $(SRCDIR)/%.cpp,$(BINDIR)/%.o,$(SOURCES))
 
-CC_DEPS = $(patsubst $(SRCDIR)/%.cpp, $(BINDIR)/%.d, $(SOURCES))
+CC_DEPS = $(patsubst $(SRCDIR)/%.cpp,$(BINDIR)/%.d,$(SOURCES))
 
 TARGETS=$(patsubst %.o,%.run,$(OBJECTS))
 
 CC_FLAGS += \
 	-fPIC \
-	-std=gnu99 \
 	-fvisibility=hidden \
 	-MMD -MF $(@:.o=.d) \
 	-I$(SRCDIR) \
@@ -99,7 +115,7 @@ CC_FLAGS += \
 	-I$(GTEST_DIR)/include/gtest \
 	$(CC_FLAGS.coverage)
 
-LD_FLAGS += -ldl
+LD_FLAGS += -ldl $(LD_FLAGS.coverage)
 
 CXX_FLAGS += \
 	-g \
@@ -127,10 +143,25 @@ else
 CXX_FLAGS += $(LIBOMP)
 endif
 
-# ifeq ($(COV),1)
-# CXXFLAGS += --coverage
-# LDFLAGS += --coverage
-# endif
+#----------------------------------------------------------------------------------------------
+
+MISSING_DEPS:=
+
+ifeq ($(wildcard $(GOOGLETEST)),)
+MISSING_DEPS += $(GOOGLETEST)
+endif
+
+ifneq ($(MISSING_DEPS),)
+DEPS=1
+endif
+
+DEPENDENCIES=googletest
+
+ifneq ($(filter all deps $(DEPENDENCIES) pack,$(MAKECMDGOALS)),)
+DEPS=1
+endif
+
+.PHONY: deps $(DEPENDENCIES)
 
 #----------------------------------------------------------------------------------------------
 
@@ -138,22 +169,26 @@ include $(MK)/rules
 
 -include $(CC_DEPS)
 
-all: build test
+all: $(TARGETS) test
 
 $(BINDIR)/%.o: $(SRCDIR)/%.cpp
 	@echo Compiling $<...
-	$(SHOW)$(CC) $(CC_FLAGS) $(CXX_FLAGS) -c $< -o $@
+	$(SHOW)$(CXX) $(CC_FLAGS) $(CXX_FLAGS) -c $< -o $@
 
-$(BINDIR)/%.run: $(BINDIR)/%.o $(LIBS)
+$(TARGETS): $(BINDIR)/%.run: $(BINDIR)/%.o $(LIBS)
 	@echo Building $@ ...
 	$(SHOW)$(CXX) -o $@ $(LD_FLAGS) $(CXX_FLAGS) $^
+
+$(GOOGLETEST):
+	@echo Building $@ ...
+	$(SHOW)$(MAKE) --no-print-directory -C $(ROOT)/build/googletest DEBUG=''
 
 build: $(TARGETS)
 
 clean:
 	$(SHOW)rm -f $(TARGETS) $(OBJECTS)
 
-.PHONY: all build test test_valgrind clean
+.PHONY: all build test clean
 
 #----------------------------------------------------------------------------------------------
 
@@ -171,3 +206,5 @@ else
 		$$t || exit 1; \
 	done
 endif
+
+.PHONY: test

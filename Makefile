@@ -107,8 +107,8 @@ benchmark:
 memcheck:
 	@$(MAKE) -C src memcheck
 
-cov-upload:
-	@$(MAKE) -C src cov-upload
+coverage:
+	@$(MAKE) -C src coverage
 
 fuzz:
 	@$(MAKE) -C src fuzz
