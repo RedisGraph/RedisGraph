@@ -90,3 +90,11 @@ void UpdateNodeLabels
 	uint *labels_removed_count   // number of labels removed (out param)
 );
 
+// Adds a schema to the graph. The schema is tracked by the undo log
+// so in case of error it will be deleted.
+Schema *AddSchema
+(
+	GraphContext *gc,             // graph context to add the schema
+	const char *label,            // schema label
+	SchemaType t                  // schema type (node/edge)
+);
