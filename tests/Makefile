@@ -1,11 +1,11 @@
 
 MAKEFLAGS += --no-builtin-rules
 
-ROOT:=$(realpath ..)
+ROOT?=$(realpath ..)
 
 .PHONY: test unit flow tck memcheck benchmark fuzz clean
 
-TARGET:=$(ROOT)/src/redisgraph.so
+# TARGET:=$(ROOT)/src/redisgraph.so
 
 ifneq ($(REMOTE),)
 BENCHMARK_ARGS=run-remote

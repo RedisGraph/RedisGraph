@@ -1,135 +1,173 @@
 
-ROOT:=$(realpath ../..)
+ROOT=../..
 
-DEPS_DIR:=$(ROOT)/deps
+MK.pyver:=3
+include $(ROOT)/deps/readies/mk/main
 
-override OS:=$(shell $(DEPS_DIR)/readies/bin/platform --os)
-ARCH:=$(shell $(DEPS_DIR)/readies/bin/platform --arch)
+SRCDIR=.
+BINDIR=$(BINROOT)/tests/unit
 
-export OS
-export ARCH
+#----------------------------------------------------------------------------------------------
+# Paths to deps.
 
-ifeq ($(DEBUG),1)
-FLAVOR=debug
-else
-FLAVOR=release
-endif
+RAX_DIR = $(ROOT)/deps/rax
+export RAX_BINDIR=$(ROOT)/bin/$(FULL_VARIANT.release)/rax
+include $(ROOT)/build/rax/Makefile.defs
 
-# Path to Google Test source
-GTEST_DIR = $(DEPS_DIR)/googletest/googletest
-RAX_DIR = $(DEPS_DIR)/rax
-XXHASH_DIR = $(DEPS_DIR)/xxHash
-REDISEARCH_DIR = $(DEPS_DIR)/RediSearch
-REDISEARCH_BINROOT=$(ROOT)/bin/$(OS)-$(ARCH)-$(FLAVOR)
-LIBCYPHER_PARSER_DIR = $(DEPS_DIR)/libcypher-parser/lib/src
+LIBXXHASH_DIR = $(ROOT)/deps/xxHash
+export LIBXXHASH_BINDIR=$(ROOT)/bin/$(FULL_VARIANT.release)/xxHash
+include $(ROOT)/build/xxHash/Makefile.defs
 
-# Flags passed to the preprocessor.
-# Set Google Test's header directory as a system directory, such that
-# the compiler doesn't generate warnings in Google Test headers.
-CPPFLAGS += -isystem $(GTEST_DIR)/include -I$(GTEST_DIR)/include/gtest/
-LDFLAGS += -ldl
+LIBCYPHER_PARSER_DIR = $(ROOT)/deps/libcypher-parser
+LIBCYPHER_PARSER_SRCDIR = $(LIBCYPHER_PARSER_DIR)/lib/src
+export LIBCYPHER_PARSER_BINDIR=$(ROOT)/bin/$(FULL_VARIANT.release)/libcypher-parser
+include $(ROOT)/build/libcypher-parser/Makefile.defs
 
-# Flags passed to the C++ compiler.
-CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11
-CXX_SUPPRESS = -Wno-unused-function -Wno-sign-compare -Wno-format -Wno-write-strings
+GRAPHBLAS_DIR = $(ROOT)/deps/GraphBLAS
+export GRAPHBLAS_BINDIR=$(ROOT)/bin/$(FULL_VARIANT.release)/GraphBLAS
+include $(ROOT)/build/GraphBLAS/Makefile.defs
+
+REDISEARCH_DIR = $(ROOT)/deps/RediSearch
+export REDISEARCH_BINROOT=$(BINROOT)
+include $(ROOT)/build/RediSearch/Makefile.defs
+
+GTEST_DIR=$(ROOT)/deps/googletest/googletest
+export GOOGLETEST_BINDIR=$(ROOT)/bin/$(FULL_VARIANT.release)/googletest
+include $(ROOT)/build/googletest/Makefile.defs
+
+REDISGRAPH=$(ROOT)/bin/$(FULL_VARIANT)/redisgraph.so
+
+LIBS=$(GRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER_PARSER) $(RAX) $(GOOGLETEST) $(REDISGRAPH)
+
+#----------------------------------------------------------------------------------------------
+
+MK_CUSTOM_CLEAN=1
+
+include $(MK)/defs
+
+_SOURCES=\
+	test_aggregate_functions.cpp \
+	test_algebraic_expression.cpp \
+	test_all_paths.cpp \
+	test_arithmetic_expression.cpp \
+	test_arr.cpp \
+	test_bfs.cpp \
+	test_cache.cpp \
+	test_cron.cpp \
+	test_datablock.cpp \
+	test_detect_cycle.cpp \
+	test_dfs.cpp \
+	test_execution_plan_clone.cpp \
+	test_filter_tree.cpp \
+	test_graph.cpp \
+	test_map.cpp \
+	test_object_pool.cpp \
+	test_pagerank.cpp \
+	test_query_graph.cpp \
+	test_range.cpp \
+	test_record.cpp \
+	test_referenced_entities.cpp \
+	test_rg_matrix.cpp \
+	test_rg_matrix_iter.cpp \
+	test_thread_pools.cpp \
+	test_value.cpp
+
+SOURCES=$(addprefix $(SRCDIR)/,$(_SOURCES))
+OBJECTS=$(patsubst $(SRCDIR)/%.cpp,$(BINDIR)/%.o,$(SOURCES))
+
+CC_DEPS = $(patsubst $(SRCDIR)/%.cpp, $(BINDIR)/%.d, $(SOURCES))
+
+TARGETS=$(patsubst %.o,%.run,$(OBJECTS))
+
+CC_FLAGS += \
+	-fPIC \
+	-std=gnu99 \
+	-fvisibility=hidden \
+	-MMD -MF $(@:.o=.d) \
+	-I$(SRCDIR) \
+	-I$(BINDIR) \
+	-I$(ROOT)/deps \
+	-I$(ROOT)/deps/RedisModulesSDK \
+	-I$(ROOT)/src \
+	-I$(ROOT)/deps/minunit \
+	-I$(RAX_DIR) \
+	-I$(LIBCYPHER_PARSER_DIR) \
+	-I$(LIBCYPHER_PARSER_BINDIR)/lib/src \
+	-I$(LIBXXHASH_DIR) \
+	-I$(REDISEARCH_DIR)/src \
+	-I$(GTEST_DIR)/include \
+	-I$(GTEST_DIR)/include/gtest \
+	$(CC_FLAGS.coverage)
+
+LD_FLAGS += -ldl
+
+CXX_FLAGS += \
+	-g \
+	-pthread \
+	-std=c++11 \
+	-Wall \
+	-Wextra \
+	-Wno-unused-function \
+	-Wno-sign-compare \
+	-Wno-format \
+	-Wno-write-strings
 
 ifeq ($(OS),macos)
 	ifeq ($(STATIC_OMP),1)
 		LIBOMP_PREFIX:=$(shell brew --prefix libomp)
 		LIBOMP=$(LIBOMP_PREFIX)/lib/libomp.a
 	else
-		LIBOMP=-lomp
+		LIBOMP=-lomp -L$(shell brew --prefix libomp)/lib -Wl,-no_compact_unwind
 	endif
 endif
 
 ifeq ($(OS),linux)
-CXXFLAGS += -fopenmp
+CXX_FLAGS += -fopenmp
 else
-CXXFLAGS += $(LIBOMP)
+CXX_FLAGS += $(LIBOMP)
 endif
 
-ifeq ($(COV),1)
-CXXFLAGS += --coverage
-LDFLAGS += --coverage
-endif
+# ifeq ($(COV),1)
+# CXXFLAGS += --coverage
+# LDFLAGS += --coverage
+# endif
 
-REDISGRAPH_CXX=$(QUIET_CXX)$(CXX)
+#----------------------------------------------------------------------------------------------
 
-CCCOLOR="\033[34m"
-SRCCOLOR="\033[33m"
-ENDCOLOR="\033[0m"
+include $(MK)/rules
 
-ifndef V
-QUIET_CXX = @printf '    %b %b\n' $(CCCOLOR)CXX$(ENDCOLOR) $(SRCCOLOR)$@$(ENDCOLOR) 1>&2;
-endif
-
-# Google Test headers - do not modify
-GTEST_HEADERS = \
-	$(GTEST_DIR)/include/gtest/*.h \
-	$(GTEST_DIR)/include/gtest/internal/*.h
-
-# Google Test compiler targets
-GTEST_SRCS_ = $(GTEST_DIR)/src/*.cc $(GTEST_DIR)/src/*.h $(GTEST_HEADERS)
-
-gtest-all.o : $(GTEST_SRCS_)
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
-            $(GTEST_DIR)/src/gtest-all.cc
-
-gtest_main.o : $(GTEST_SRCS_)
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
-            $(GTEST_DIR)/src/gtest_main.cc
-
-gtest.a : gtest-all.o
-	@$(AR) $(ARFLAGS) $@ $^
-
-gtest_main.a : gtest-all.o gtest_main.o
-	@$(AR) $(ARFLAGS) $@ $^
-
-# RedisGraph flags and libraries
-CC_OBJECTS:=$(CC_OBJECTS)
-RAX=$(DEPS_DIR)/rax/rax.o
-LIBXXHASH=$(DEPS_DIR)/xxHash/libxxhash.a
-REDISEARCH=$(REDISEARCH_BINROOT)/search-static/libredisearch.a
-LIBGRAPHBLAS=$(DEPS_DIR)/GraphBLAS/build/libgraphblas.a
-LIBCYPHER_PARSER=$(DEPS_DIR)/libcypher-parser/lib/src/.libs/libcypher-parser.a
-
-LIBS=$(LIBGRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER_PARSER)
-DEPS=$(CC_OBJECTS) $(RAX) $(LIBS)
-
-# Build and run a test for each cpp file in directory
-TEST_SOURCES = $(wildcard *.cpp)
-TEST_OBJECTS = $(patsubst %.cpp, %.o, $(TEST_SOURCES))
-TEST_EXECUTABLES = $(patsubst %.cpp, %.run, $(TEST_SOURCES))
-
-# Compile object files from unit test sources
-%.o: %.cpp
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) -I$(RAX_DIR) -I$(LIBCYPHER_PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR)/src -c -o $@ $<
-
-# Build '*.run' binaries for each source
-%.run: %.o gtest_main.a $(DEPS)
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) $^ $(LDFLAGS) -o $@
-
-
-.PHONY: all build test test_valgrind clean
+-include $(CC_DEPS)
 
 all: build test
 
-build: $(TEST_OBJECTS) $(TEST_EXECUTABLES) $(DEPS)
+$(BINDIR)/%.o: $(SRCDIR)/%.cpp
+	@echo Compiling $<...
+	$(SHOW)$(CC) $(CC_FLAGS) $(CXX_FLAGS) -c $< -o $@
+
+$(BINDIR)/%.run: $(BINDIR)/%.o $(LIBS)
+	@echo Building $@ ...
+	$(SHOW)$(CXX) -o $@ $(LD_FLAGS) $(CXX_FLAGS) $^
+
+build: $(TARGETS)
+
+clean:
+	$(SHOW)rm -f $(TARGETS) $(OBJECTS)
+
+.PHONY: all build test test_valgrind clean
+
+#----------------------------------------------------------------------------------------------
 
 test: build
-ifeq ($(V),)
-	@for t in $(TEST_EXECUTABLES); do \
+ifeq ($(V),1)
+	$(SHOW)for t in $(TARGETS); do \
 		echo Running $$t ...; \
 		o1=$$(mktemp) ;\
-		./$$t 2>&1 >$$o1 || { cat $$o1; rm $$o1; exit 1; }; \
+		$$t 2>&1 >$$o1 || { cat $$o1; rm $$o1; exit 1; }; \
 		rm $$o1 ; \
 	done
 else
-	@for t in $(TEST_EXECUTABLES); do \
+	$(SHOW)for t in $(TARGETS); do \
 		echo Running $$t ...; \
-		./$$t || exit 1; \
+		$$t || exit 1; \
 	done
 endif
-
-clean:
-	@rm -f gtest.a gtest_main.a *.o *.run

@@ -13,10 +13,10 @@ MK_ALL_TARGETS=build
 
 #----------------------------------------------------------------------------------------------
 
-BINDIR=$(BINROOT)/rax
-SRCDIR=$(ROOT)/deps/rax
+BINDIR=$(BINROOT)/xxHash
+SRCDIR=$(ROOT)/deps/xxHash
 
-TARGET=$(BINDIR)/librax.a
+TARGET=$(BINDIR)/libxxhash.a
 
 #----------------------------------------------------------------------------------------------
 
@@ -26,7 +26,7 @@ include $(MK)/defs
 
 CC=gcc
 
-_SOURCES=rax.c
+_SOURCES=xxhash.c
 
 SOURCES=$(addprefix $(SRCDIR)/,$(_SOURCES))
 OBJECTS=$(patsubst $(SRCDIR)/%.c,$(BINDIR)/%.o,$(SOURCES))
@@ -43,7 +43,12 @@ CC_FLAGS += \
 	$(CC_FLAGS.coverage)
 
 ifeq ($(DEBUG),1)
-CC_FLAGS += -g -O0
+CC_FLAGS += -g -O0 \
+	-Wall -Wextra -Wconversion -Wcast-qual -Wcast-align -Wshadow \
+	-Wstrict-aliasing=1 -Wswitch-enum -Wdeclaration-after-statement \
+	-Wstrict-prototypes -Wundef -Wpointer-arith -Wformat-security \
+	-Wvla -Wformat=2 -Winit-self -Wfloat-equal -Wwrite-strings \
+	-Wredundant-decls -Wstrict-overflow=5
 LD_FLAGS += -g
 else
 CC_FLAGS += -O3 -Wno-unused-result

@@ -13,10 +13,11 @@ MK_ALL_TARGETS=build
 
 #----------------------------------------------------------------------------------------------
 
-BINDIR=$(BINROOT)/rax
-SRCDIR=$(ROOT)/deps/rax
+BINDIR=$(BINROOT)/googletest
+SRCDIR=$(ROOT)/deps/googletest/googletest/src
+SRCBASEDIR=$(ROOT)/deps/googletest/googletest
 
-TARGET=$(BINDIR)/librax.a
+TARGET=$(BINDIR)/libgtest.a
 
 #----------------------------------------------------------------------------------------------
 
@@ -26,28 +27,33 @@ include $(MK)/defs
 
 CC=gcc
 
-_SOURCES=rax.c
+# _SOURCES=$(notdir $(wildcard $(SRCDIR)/*.cc))
+_SOURCES=gtest-all.cc gtest_main.cc
 
 SOURCES=$(addprefix $(SRCDIR)/,$(_SOURCES))
-OBJECTS=$(patsubst $(SRCDIR)/%.c,$(BINDIR)/%.o,$(SOURCES))
+OBJECTS=$(patsubst $(SRCDIR)/%.cc,$(BINDIR)/%.o,$(SOURCES))
 
-CC_DEPS = $(patsubst $(SRCDIR)/%.c, $(BINDIR)/%.d, $(SOURCES))
+CC_DEPS = $(patsubst $(SRCDIR)/%.cc, $(BINDIR)/%.d, $(SOURCES))
 
 CC_FLAGS += \
+	-g \
 	-fPIC \
-	-std=gnu99 \
+	-fvisibility=hidden \
 	-MMD -MF $(@:.o=.d) \
 	-I$(SRCDIR) \
-	-I$(BINDIR) \
-	-I$(LIBSSL_PREFIX)/include \
+	-I$(SRCBASEDIR)/include \
+	-I$(SRCBASEDIR) \
 	$(CC_FLAGS.coverage)
 
+CXX_FLAGS += \
+	-std=c++11
+
 ifeq ($(DEBUG),1)
-CC_FLAGS += -g -O0
+CC_FLAGS += -O0
 LD_FLAGS += -g
 else
 CC_FLAGS += -O3 -Wno-unused-result
-LD_FLAGS += -lto
+LD_FLAGS += -g -lto
 endif
 
 ifeq ($(OS),macos)
@@ -62,9 +68,9 @@ include $(MK)/rules
 
 -include $(CC_DEPS)
 
-$(BINDIR)/%.o: $(SRCDIR)/%.c
+$(BINDIR)/%.o: $(SRCDIR)/%.cc
 	@echo Compiling $<...
-	$(SHOW)$(CC) $(CC_FLAGS) -fvisibility=hidden -c $< -o $@
+	$(SHOW)$(CXX) $(CC_FLAGS) $(CXX_FLAGS) -c $< -o $@
 
 $(TARGET): $(OBJECTS)
 	@echo Creating $@...

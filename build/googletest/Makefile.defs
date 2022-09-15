@@ -1,0 +1,2 @@
+
+GOOGLETEST=$(GOOGLETEST_BINDIR)/libgtest.a

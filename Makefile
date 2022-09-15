@@ -1,15 +1,28 @@
-MAKEFLAGS += --no-print-directory
+ROOT=.
+
+MK_ALL_TARGETS=bindirs deps build package
+
+ifeq ($(wildcard $(ROOT)/deps/readies/*),)
+___:=$(shell git submodule update --init --recursive &> /dev/null)
+endif
+
+MK.pyver:=3
+include $(ROOT)/deps/readies/mk/main
+
+MK_CUSTOM_CLEAN=1
+BINDIR=$(BINROOT)
 
 .PHONY: all parser clean package docker upload-artifacts upload-release docker_push docker_alpine \
 	builddocs localdocs deploydocs test benchmark test_valgrind fuzz help
 
-define HELP
+define HELPTEXT
 make all                # Build everything
   DEBUG=1                 # Build for debugging
   COV=1                   # Build for coverage analysis (implies DEBUG=1)
   STATIC_OMP=1            # Link OpenMP statically
 make clean              # Clean build artifacts
   ALL=1                   # Completely remove
+make run                # run redis-server with RedisGraph
 make test               # Run tests
   LIST=1                   # List all tests, do not execute
   UNIT=1                   # Run unit tests
@@ -39,8 +52,12 @@ common options for upload operations:
 
 endef
 
+include $(MK)/defs
+
 all:
 	@$(MAKE) -C src all
+
+include $(MK)/rules
 
 clean:
 	@$(MAKE) -C src $@
@@ -53,6 +70,9 @@ clean-graphblas:
 
 pack package: all
 	@$(MAKE) -C src package
+
+run:
+	@$(MAKE) -C src run
 
 upload-release:
 	@RELEASE=1 ./sbin/upload-artifacts
@@ -92,17 +112,4 @@ cov-upload:
 
 fuzz:
 	@$(MAKE) -C src fuzz
-
-ifneq ($(HELP),)
-ifneq ($(filter help,$(MAKECMDGOALS)),)
-HELPFILE:=$(shell mktemp /tmp/make.help.XXXX)
-endif
-endif
-
-help:
-	$(file >$(HELPFILE),$(HELP))
-	@echo
-	@cat $(HELPFILE)
-	@echo
-	@-rm -f $(HELPFILE)
 

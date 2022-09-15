@@ -1,0 +1,2 @@
+
+LIBXXHASH=$(LIBXXHASH_BINDIR)/libxxhash.a

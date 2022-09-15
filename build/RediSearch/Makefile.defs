@@ -1,0 +1,2 @@
+
+REDISEARCH=$(REDISEARCH_BINROOT)/search-static/libredisearch.a
