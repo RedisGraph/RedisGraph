@@ -1,4 +1,6 @@
 
+.NOTPARALLEL:
+
 ROOT=../..
 MK.pyver:=3
 include $(ROOT)/deps/readies/mk/main
@@ -14,12 +16,21 @@ endef
 
 #----------------------------------------------------------------------------------------------
 
+MK_ALL_TARGETS=bindirs build
+
 BINDIR=$(BINROOT)/libcypher-parser
 SRCDIR=$(ROOT)/deps/libcypher-parser
 
 TARGET=$(BINDIR)/lib/src/.libs/libcypher-parser.a
 
-export CFLAGS += -fPIC -O3 -DYY_BUFFER_SIZE=1048576 -I$(BINDIR)/lib/src
+export CFLAGS += \
+	-fPIC \
+	-O3 \
+	-DYY_BUFFER_SIZE=1048576 \
+	-I$(BINDIR)/lib/src \
+	$(CFLAGS.$(OS))
+
+CFLAGS.macos += -mmacosx-version-min=10.15
 
 #----------------------------------------------------------------------------------------------
 

@@ -52,7 +52,11 @@ GTEST_DIR=$(ROOT)/deps/googletest/googletest
 export GOOGLETEST_BINDIR=$(ROOT)/bin/$(FULL_VARIANT.release)/googletest
 include $(ROOT)/build/googletest/Makefile.defs
 
+ifeq ($(OS),macos)
+REDISGRAPH=$(ROOT)/bin/$(FULL_VARIANT)/redisgraph.dylib
+else
 REDISGRAPH=$(ROOT)/bin/$(FULL_VARIANT)/redisgraph.so
+endif
 
 LIBS=$(GRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER_PARSER) $(RAX) $(GOOGLETEST) $(REDISGRAPH)
 
@@ -114,7 +118,9 @@ CC_FLAGS += \
 	-I$(GTEST_DIR)/include \
 	-I$(GTEST_DIR)/include/gtest
 
-LD_FLAGS += -ldl $(LD_FLAGS.coverage)
+LD_FLAGS += \
+	-ldl \
+	$(LD_FLAGS.coverage)
 
 CXX_FLAGS += \
 	-g \
@@ -136,11 +142,9 @@ ifeq ($(OS),macos)
 	endif
 endif
 
-ifeq ($(OS),linux)
-CXX_FLAGS += -fopenmp
-else
-CXX_FLAGS += $(LIBOMP)
-endif
+CXX_FLAGS.linux += -fopenmp
+CXX_FLAGS.macos += $(LIBOMP) -mmacosx-version-min=10.15
+CXX_FLAGS += $(CXX_FLAGS.$(OS))
 
 #----------------------------------------------------------------------------------------------
 

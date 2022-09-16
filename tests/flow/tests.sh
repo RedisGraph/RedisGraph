@@ -298,8 +298,8 @@ if [[ $COLLECT_LOGS == 1 ]]; then
 	OSNICK=`$READIES/bin/platform --osnick`
 	cd $ROOT
 	mkdir -p bin/artifacts/tests
-	find tests/flow/logs -name "*.log" | tar -czf bin/artifacts/tests/tests-flow-logs-${ARCH}-${OSNICK}.tgz -T -
-	find tests/tck/logs -name "*.log" | tar -czf bin/artifacts/tests/tests-tck-logs-${ARCH}-${OSNICK}.tgz -T -
+	{ find tests/flow/logs -name "*.log" | tar -czf bin/artifacts/tests/tests-flow-logs-${ARCH}-${OSNICK}.tgz -T -; } || true
+	{ find tests/tck/logs -name "*.log" | tar -czf bin/artifacts/tests/tests-tck-logs-${ARCH}-${OSNICK}.tgz -T - ; } || true
 fi
 
 if [[ -n $STATFILE ]]; then

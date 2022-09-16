@@ -55,9 +55,12 @@ endef
 include $(MK)/defs
 
 all:
-	@$(MAKE) -C src all
+	@$(MAKE) -C src all -j $(NPROC)
 
 include $(MK)/rules
+
+build:
+	@$(MAKE) -C src build -j $(NPROC)
 
 clean:
 	@$(MAKE) -C src $@

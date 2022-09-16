@@ -333,13 +333,9 @@ jobs:
       - run:
           name: Build for coverage
           shell: /bin/bash -l -eo pipefail
-          command: make COV=1
-      - run:
-          name: Test with coverage
-          shell: /bin/bash -l -eo pipefail
           command: |
-            make test COV=1
-            make cov-upload
+            make coverage
+            make upload-cov
           no_output_timeout: 45m
       - save-tests-logs
 

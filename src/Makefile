@@ -1,18 +1,28 @@
 
-ifneq ($(filter coverage show-cov upload-cov,$(MAKECMDGOALS)),)
-export COV=1
-endif
-
-ifeq ($(COV),1)
-export DEBUG ?= 1
-endif
-
 ifneq ($(filter memcheck,$(MAKECMDGOALS)),)
 export DEBUG ?= 1
 export MEMCHECK=1
 endif
 
-MK_ALL_TARGETS=bindirs deps build pack
+ifneq ($(SAN),)
+override DEBUG ?= 1
+
+ifeq ($(SAN),mem)
+override SAN=memory
+else ifeq ($(SAN),addr)
+override SAN=address
+endif
+
+ifeq ($(SAN),address)
+else ifeq ($(SAN),memory)
+else ifeq ($(SAN),leak)
+else ifeq ($(SAN),thread)
+else
+$(error SAN=mem|addr|leak|thread)
+endif
+
+export SAN
+endif # SAN
 
 #----------------------------------------------------------------------------------------------
 
@@ -58,18 +68,10 @@ LIBS=$(RAX) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH) $(LIBCYPHER_PARSER)
 #----------------------------------------------------------------------------------------------
 
 ifeq ($(OS),macos)
+ifneq ($(GCC),1)
 CLANG=1
 endif
-
-#ifeq ($(CC),)
-#ifeq ($(GCC),1)
-#override CC=gcc
-#override CXX=g++
-#else ifeq ($(CLANG),1)
-#override CC=clang
-#override CXX=clang++
-#endif
-#endif
+endif
 
 #----------------------------------------------------------------------------------------------
 
@@ -90,13 +92,19 @@ CC_FLAGS=\
 	$(CC_FLAGS.warnings) \
 	$(CC_FLAGS.debug) \
 	$(CC_FLAGS.coverage) \
+	$(CC_FLAGS.$(OS)) \
 	-I. \
+	-Igraph \
+	-Iutil/cache \
+	-Iutil/thpool \
 	-I$(GRAPHBLAS_DIR)/Include \
 	-I$(RAX_DIR) \
 	-I$(LIBCYPHER_PARSER_SRCDIR) \
 	-I$(LIBCYPHER_PARSER_BINDIR)/lib/src \
 	-I$(LIBXXHASH_DIR) \
 	-I$(REDISEARCH_DIR)/src
+
+CC_FLAGS.macos += -mmacosx-version-min=10.15
 
 ifeq ($(OS),macos)
 	ifeq ($(STATIC_OMP),1)
@@ -107,13 +115,36 @@ ifeq ($(OS),macos)
 	endif
 endif
 
-# Compile flags for linux / osx
-LD_FLAGS.linux=-Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
-LD_FLAGS.macos=-bundle -undefined dynamic_lookup -ldl -lpthread $(LIBOMP)
+LD_FLAGS += \
+	 -lc \
+	 -lm \
+	-ldl \
+	-lpthread
 
-SO_LDFLAGS += $(LD_FLAGS) $(LD_FLAGS.$(OS)) $(LD_FLAGS.coverage)
+LD_FLAGS.linux=\
+	-Wl,-Bsymbolic,-Bsymbolic-functions \
+	-fopenmp
 
-# if DEBUG env var is set, we compile with "debug" cflags
+LD_FLAGS.macos=\
+	-undefined dynamic_lookup \
+	$(LIBOMP)
+
+SO_LD_FLAGS.linux=-shared
+SO_LD_FLAGS.macos=-bundle
+
+SO_LD_FLAGS += \
+	$(SO_LD_FLAGS.$(OS)) \
+	$(LD_FLAGS) \
+	$(LD_FLAGS.$(OS)) \
+	$(LD_FLAGS.coverage)
+
+DYLIB_LD_FLAGS += \
+	-dynamiclib \
+	$(LD_FLAGS) \
+	$(LD_FLAGS.$(OS)) \
+	$(LD_FLAGS.coverage) \
+	-static
+
 ifeq ($(DEBUG),1)
 	CC_FLAGS.opt += -O0
 	CC_FLAGS.debug += -fno-omit-frame-pointer -g -ggdb
@@ -121,7 +152,7 @@ ifeq ($(DEBUG),1)
 	CC_FLAGS.debug += -DRG_DEBUG
 	ifeq ($(MEMCHECK),1)
 		CC_FLAGS.debug += -DMEMCHECK
-		SO_LDFLAGS += -u RediSearch_CleanupModule
+		# SO_LD_FLAGS += -u RediSearch_CleanupModule
 	endif
 else
 	CC_FLAGS.opt += -O3
@@ -132,38 +163,46 @@ endif
 
 SRCDIR=.
 
-SRC_SUBDIRS= \
-	configuration \
-	algorithms \
-	arithmetic algorithms/LAGraph arithmetic/map_funcs arithmetic/path_funcs arithmetic/list_funcs arithmetic/time_funcs \
-		arithmetic/point_funcs arithmetic/entity_funcs arithmetic/string_funcs arithmetic/boolean_funcs arithmetic/numeric_funcs \
-		arithmetic/aggregate_funcs arithmetic/conditional_funcs arithmetic/placeholder_funcs arithmetic/comprehension_funcs \
-		arithmetic/algebraic_expression \
-	bulk_insert \
-	commands \
-	datatypes \
-	datatypes/path \
-	execution_plan execution_plan/ops execution_plan/ops/shared execution_plan/optimizations execution_plan/execution_plan_build \
-	filter_tree \
-	graph graph/entities graph/rg_matrix \
-	serializers serializers/encoder serializers/encoder/* serializers/decoders serializers/decoders/current \
-		serializers/decoders/current/* serializers/decoders/prev serializers/decoders/prev/* \
-	grouping \
-	index \
-	ast ast/enrichment \
-	resultset resultset/formatters \
-	schema \
-	slow_log \
-	undo_log \
-	procedures \
+define SRC_SUBDIRS:=
+	configuration
+	algorithms
+	arithmetic algorithms/LAGraph arithmetic/map_funcs arithmetic/path_funcs arithmetic/list_funcs
+		arithmetic/time_funcs arithmetic/point_funcs arithmetic/entity_funcs arithmetic/string_funcs
+		arithmetic/boolean_funcs arithmetic/numeric_funcs arithmetic/aggregate_funcs
+		arithmetic/conditional_funcs arithmetic/placeholder_funcs arithmetic/comprehension_funcs
+		arithmetic/algebraic_expression
+	bulk_insert
+	commands
+	datatypes
+	datatypes/path
+	execution_plan execution_plan/ops execution_plan/ops/shared execution_plan/optimizations
+		execution_plan/execution_plan_build
+	filter_tree
+	graph graph/entities graph/rg_matrix
+	serializers serializers/encoder serializers/encoder/* serializers/decoders serializers/decoders/current
+		serializers/decoders/current/* serializers/decoders/prev serializers/decoders/prev/*
+	grouping
+	index
+	ast ast/enrichment
+	resultset resultset/formatters
+	schema
+	slow_log
+	undo_log
+	procedures
 	util util/sds util/datablock util/object_pool util/thpool util/range util/cache
+endef
 
-_SOURCES:=$(wildcard *.c) $(foreach d,$(SRC_SUBDIRS),$(wildcard $(d)/*.c))
+# _SOURCES:=$(wildcard *.c) $(foreach d,$(SRC_SUBDIRS),$(wildcard $(d)/*.c))
+_SOURCES:=$(shell find . -name "*.c" | cut -f2- -d/ | sort)
 
 SOURCES=$(addprefix $(SRCDIR)/,$(_SOURCES))
-OBJECTS=$(patsubst $(SRCDIR)/%.c,$(BINDIR)/src/%.o,$(SOURCES))
+# SOURCES=$(addprefix $(ROOT)/src/,$(_SOURCES))
+OBJECTS=$(patsubst %.c,$(BINDIR)/src/%.o,$(_SOURCES))
 
-CC_DEPS = $(patsubst $(SRCDIR)/%.c,$(BINDIR)/src/%.d,$(SOURCES))
+# $(info $(_SOURCES))
+# $(info $(OBJECTS))
+
+CC_DEPS = $(patsubst %.c,$(BINDIR)/src/%.d,$(_SOURCES))
 
 include $(MK)/defs
 
@@ -207,6 +246,8 @@ endif
 
 #----------------------------------------------------------------------------------------------
 
+MK_ALL_TARGETS=bindirs deps build pack
+
 .PHONY: all deps clean lint format pack run tests unit_tests flow_tests docker bindirs
 
 all: bindirs $(TARGET)
@@ -223,7 +264,7 @@ ENDCOLOR="\033[0m"
 
 %.c: %.y
 
-$(BINDIR)/src/%.o: $(SRCDIR)/%.c $(LIBCYPHER_PARSER_BINDIR)/lib/src/cypher-parser.h
+$(BINDIR)/src/%.o: $(ROOT)/src/%.c $(LIBCYPHER_PARSER_BINDIR)/lib/src/cypher-parser.h
 	@printf '%b %b\n' $(CCCOLOR)CC$(ENDCOLOR) $(SRCCOLOR)$<$(ENDCOLOR)
 	$(SHOW)$(CC) $(CC_FLAGS) -c $< -o $@
 
@@ -287,7 +328,10 @@ endef
 
 $(TARGET): $(LIBS) $(OBJECTS)
 	@printf '%b %b\n' $(CCCOLOR)LINK$(ENDCOLOR) $(SRCCOLOR)$@$(ENDCOLOR)
-	$(SHOW)$(CXX) -o $@ $(OBJECTS) $(LIBS) $(SO_LDFLAGS) -lc -lm
+	$(SHOW)$(CXX) -o $@ $(OBJECTS) $(LIBS) $(SO_LD_FLAGS)
+ifeq ($(OS),macos)
+	$(SHOW)$(CXX) -o $(patsubst %.so,%.dylib,$@) $(OBJECTS) $(LIBS) $(DYLIB_LD_FLAGS)
+endif
 ifeq ($(OS),linux)
 ifneq ($(DEBUG),1)
 	$(SHOW)$(call extract_symbols,$@)
@@ -298,7 +342,7 @@ clean:
 ifeq ($(ALL),1)
 	$(SHOW)-rm -rf $(BINROOT) $(ROOT)/bin/$(FULL_VARIANT.release)
 else
-	$(SHOW)-rm -f $(TARGET) $(OBJECTS)
+	$(SHOW)-rm -f $(TARGET) $(OBJECTS) $(CC_DEPS)
 ifeq ($(DEPS),1)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/rax clean
 	$(SHOW)$(MAKE) -C $(ROOT)/build/xxHash clean
@@ -357,7 +401,6 @@ _RLTEST_PARALLEL=1
 endif
 
 test: $(TARGET)
-# check valgrind flag is not empty
 ifeq ($(VALGRIND),1)
 # valgrind is requested, check that host's os is not Linux
 ifeq ($(OS),macos)
@@ -366,9 +409,7 @@ ifeq ($(OS),macos)
 	docker build -f tests/Dockerfile -t mac_os_test_docker .
 endif
 endif
-	@$(COVERAGE_RESET)
 	@$(MAKE) -C $(ROOT)/tests test PARALLEL=$(_RLTEST_PARALLEL)
-	@$(COVERAGE_COLLECT_REPORT)
 
 .PHONY: test
 
