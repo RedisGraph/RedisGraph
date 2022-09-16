@@ -160,16 +160,14 @@ SRC_SUBDIRS= \
 
 _SOURCES:=$(wildcard *.c) $(foreach d,$(SRC_SUBDIRS),$(wildcard $(d)/*.c))
 
-ifeq ($(DEBUG),1)
-#_SOURCES += deps/readies/cetara/diag/gdb.c
-endif
-
 SOURCES=$(addprefix $(SRCDIR)/,$(_SOURCES))
 OBJECTS=$(patsubst $(SRCDIR)/%.c,$(BINDIR)/src/%.o,$(SOURCES))
 
 CC_DEPS = $(patsubst $(SRCDIR)/%.c,$(BINDIR)/src/%.d,$(SOURCES))
 
 include $(MK)/defs
+
+$(info # Using CC=$(CC))
 
 #----------------------------------------------------------------------------------------------
 
@@ -225,7 +223,6 @@ ENDCOLOR="\033[0m"
 
 %.c: %.y
 
-# Compile C file while generating a .d file for it
 $(BINDIR)/src/%.o: $(SRCDIR)/%.c $(LIBCYPHER_PARSER_BINDIR)/lib/src/cypher-parser.h
 	@printf '%b %b\n' $(CCCOLOR)CC$(ENDCOLOR) $(SRCCOLOR)$<$(ENDCOLOR)
 	$(SHOW)$(CC) $(CC_FLAGS) -c $< -o $@
@@ -278,33 +275,6 @@ endif # DEPS
 
 #----------------------------------------------------------------------------------------------
 
-#$(RAX):
-#	@$(MAKE) -C $(ROOT)/deps/rax -f $(ROOT)/build/rax/Makefile
-#
-#$(LIBXXHASH):
-#	@$(MAKE) -C $(ROOT)/deps/xxHash lib
-
-# Build GraphBLAS only if library does not already exists.
-#$(GRAPHBLAS):
-#ifeq (,$(wildcard $(GRAPHBLAS)))
-#	@$(MAKE) -C $(ROOT)/deps/GraphBLAS CMAKE_OPTIONS="-DCMAKE_C_COMPILER='$(CC)'" static_only JOBS=$(JOBS)
-#endif
-
-#$(REDISEARCH):
-#ifeq (,$(wildcard $(REDISEARCH)))
-#	make -C $(REDISEARCH_DIR) STATIC=1 BINROOT=$(REDISEARCH_BINROOT)
-#endif
-
-# Build libcypher-parser only if library does not already exists.
-#$(LIBCYPHER_PARSER):
-#ifeq (,$(wildcard $(LIBCYPHER_PARSER)))
-#	@set -e ;\
-#	cd $(ROOT)/deps/libcypher-parser ;\
-#	sh ./autogen.sh ;\
-#	./configure --disable-shared
-#	@$(MAKE) CFLAGS="-O3 -fPIC -DYY_BUFFER_SIZE=1048576" clean check -C $(ROOT)/deps/libcypher-parser
-#endif
-
 $(LIBCYPHER_PARSER_BINDIR)/lib/src/cypher-parser.h : $(LIBCYPHER_PARSER)
 
 #----------------------------------------------------------------------------------------------
@@ -325,8 +295,6 @@ endif
 endif
 
 clean:
-#	@find . -name '*.[oad]' -type f -delete
-#	@find . -name '*.gcda' -type f -delete
 ifeq ($(ALL),1)
 	$(SHOW)-rm -rf $(BINROOT) $(ROOT)/bin/$(FULL_VARIANT.release)
 else
@@ -359,7 +327,7 @@ endif
 #----------------------------------------------------------------------------------------------
 
 pack package: $(TARGET)
-	@$(ROOT)/sbin/pack.sh
+	@MODULE=$(TARGET) $(ROOT)/sbin/pack.sh
 
 upload-release:
 	$(SHOW)RELEASE=1 ./sbin/upload-artifacts

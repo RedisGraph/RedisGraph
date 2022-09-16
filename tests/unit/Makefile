@@ -112,8 +112,7 @@ CC_FLAGS += \
 	-I$(LIBXXHASH_DIR) \
 	-I$(REDISEARCH_DIR)/src \
 	-I$(GTEST_DIR)/include \
-	-I$(GTEST_DIR)/include/gtest \
-	$(CC_FLAGS.coverage)
+	-I$(GTEST_DIR)/include/gtest
 
 LD_FLAGS += -ldl $(LD_FLAGS.coverage)
 
