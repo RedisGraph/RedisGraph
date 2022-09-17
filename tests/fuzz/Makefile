@@ -1,8 +1,9 @@
-.PHONY: fuzz
+
+ifneq ($(FUZZ_TIMEOUT), )
+TIMEOUT_ARG=-t $(FUZZ_TIMEOUT)
+endif
 
 fuzz:
-ifneq ($(FUZZ_TIMEOUT), )
-	@./process.py -t $(FUZZ_TIMEOUT)
-else
-	@./process.py
-endif
+	@./process.py -m $(TARGET) $(TIMEOUT_ARG)
+
+.PHONY: fuzz

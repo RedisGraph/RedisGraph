@@ -420,7 +420,7 @@ endif
 
 #----------------------------------------------------------------------------------------------
 
-memcheck: $(TARGET)
+memcheck: bindirs $(TARGET)
 	@$(MAKE) -C $(ROOT)/tests memcheck PARALLEL=$(_RLTEST_PARALLEL)
 
 .PHONY: memcheck
