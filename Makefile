@@ -20,8 +20,9 @@ make all                # Build everything
   DEBUG=1                 # Build for debugging
   COV=1                   # Build for coverage analysis (implies DEBUG=1)
   STATIC_OMP=1            # Link OpenMP statically
-make clean              # Clean build artifacts
+make clean              # Clean build products
   ALL=1                   # Completely remove
+  DEPS=1                  # Also clean dependant modules
 make run                # run redis-server with RedisGraph
 make test               # Run tests
   LIST=1                   # List all tests, do not execute

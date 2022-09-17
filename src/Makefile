@@ -28,7 +28,7 @@ endif # SAN
 
 ROOT=..
 
-MK.pyver:=3
+# MK.pyver:=3
 include $(ROOT)/deps/readies/mk/main
 
 MK_CUSTOM_CLEAN=1
@@ -75,7 +75,11 @@ endif
 
 #----------------------------------------------------------------------------------------------
 
-CC_FLAGS.warnings=-Wall -Wno-unused-variable -Wno-unused-result
+CC_FLAGS.warnings=\
+	-Wall \
+	-Wno-unused-variable \
+	-Wno-unused-result
+
 ifeq ($(PEDANTIC),1)
 CC_FLAGS.warnings += -Wpedantic
 endif
@@ -116,8 +120,8 @@ ifeq ($(OS),macos)
 endif
 
 LD_FLAGS += \
-	 -lc \
-	 -lm \
+	-lc \
+	-lm \
 	-ldl \
 	-lpthread
 
@@ -196,16 +200,15 @@ endef
 _SOURCES:=$(shell find . -name "*.c" | cut -f2- -d/ | sort)
 
 SOURCES=$(addprefix $(SRCDIR)/,$(_SOURCES))
-# SOURCES=$(addprefix $(ROOT)/src/,$(_SOURCES))
 OBJECTS=$(patsubst %.c,$(BINDIR)/src/%.o,$(_SOURCES))
 
-# $(info $(_SOURCES))
-# $(info $(OBJECTS))
+export REDISGRAPH_OBJECTS:=$(OBJECTS)
 
 CC_DEPS = $(patsubst %.c,$(BINDIR)/src/%.d,$(_SOURCES))
 
 include $(MK)/defs
 
+$(info # Building into $(BINDIR))
 $(info # Using CC=$(CC))
 
 #----------------------------------------------------------------------------------------------
@@ -258,14 +261,14 @@ include $(MK)/rules
 
 CCCOLOR="\033[34m"
 SRCCOLOR="\033[33m"
-ENDCOLOR="\033[0m"
+NOCOLOR="\033[0m"
 
 -include $(CC_DEPS)
 
 %.c: %.y
 
 $(BINDIR)/src/%.o: $(ROOT)/src/%.c $(LIBCYPHER_PARSER_BINDIR)/lib/src/cypher-parser.h
-	@printf '%b %b\n' $(CCCOLOR)CC$(ENDCOLOR) $(SRCCOLOR)$<$(ENDCOLOR)
+	@printf '%b %b\n' $(CCCOLOR)CC$(NOCOLOR) $(SRCCOLOR)$<$(NOCOLOR)
 	$(SHOW)$(CC) $(CC_FLAGS) -c $< -o $@
 
 #----------------------------------------------------------------------------------------------
@@ -327,10 +330,12 @@ objcopy --add-gnu-debuglink $1.debug $1
 endef
 
 $(TARGET): $(LIBS) $(OBJECTS)
-	@printf '%b %b\n' $(CCCOLOR)LINK$(ENDCOLOR) $(SRCCOLOR)$@$(ENDCOLOR)
+	@printf '%b %b\n' $(CCCOLOR)LINK$(NOCOLOR) $(SRCCOLOR)$@$(NOCOLOR)
 	$(SHOW)$(CXX) -o $@ $(OBJECTS) $(LIBS) $(SO_LD_FLAGS)
 ifeq ($(OS),macos)
 	$(SHOW)$(CXX) -o $(patsubst %.so,%.dylib,$@) $(OBJECTS) $(LIBS) $(DYLIB_LD_FLAGS)
+	@printf '%b %b\n' $(CCCOLOR)AR$(NOCOLOR) $(SRCCOLOR)$(patsubst %.so,%.a,$@)$(NOCOLOR)
+	$(SHOW)$(AR) rcs $(patsubst %.so,%.a,$@) $(OBJECTS)
 endif
 ifeq ($(OS),linux)
 ifneq ($(DEBUG),1)
@@ -340,7 +345,8 @@ endif
 
 clean:
 ifeq ($(ALL),1)
-	$(SHOW)-rm -rf $(BINROOT) $(ROOT)/bin/$(FULL_VARIANT.release)
+	$(SHOW)-rm -rf $(BINDIR) $(ROOT)/bin/$(FULL_VARIANT.release)
+	$(SHOW)$(MAKE) -C $(ROOT)/build/libcypher-parser clean ALL=1
 else
 	$(SHOW)-rm -f $(TARGET) $(OBJECTS) $(CC_DEPS)
 ifeq ($(DEPS),1)
@@ -348,7 +354,6 @@ ifeq ($(DEPS),1)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/xxHash clean
 	$(SHOW)$(MAKE) -C $(ROOT)/build/GraphBLAS clean
 	$(SHOW)$(MAKE) -C $(ROOT)/build/libcypher-parser clean
-	$(SHOW)cd $(ROOT)/deps/libcypher-parser; git ls-files -o | xargs rm
 	$(SHOW)$(MAKE) -C $(REDISEARCH_DIR) clean ALL=1 BINROOT=$(REDISEARCH_BINROOT)
 	$(SHOW)$(MAKE) -C $(ROOT)/tests clean
 endif
@@ -385,9 +390,9 @@ upload-artifacts:
 
 run:
 ifeq ($(GDB),1)
-	gdb -ex r --args redis-server --loadmodule $(abspath $(TARGET))
+	$(SHOW)gdb -ex r --args redis-server --loadmodule $(abspath $(TARGET))
 else
-	@redis-server --loadmodule $(abspath $(TARGET))
+	$(SHOW)redis-server --loadmodule $(abspath $(TARGET))
 endif
 
 #----------------------------------------------------------------------------------------------
@@ -431,7 +436,7 @@ benchmark: $(TARGET)
 
 COV_EXCLUDE_DIRS += \
 	deps \
-	tests
+	src/util/sds
 
 COV_EXCLUDE+=$(foreach D,$(COV_EXCLUDE_DIRS),'$(realpath $(ROOT))/$(D)/*')
 

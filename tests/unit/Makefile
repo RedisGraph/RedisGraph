@@ -1,11 +1,11 @@
 
-ifneq ($(filter coverage show-cov upload-cov,$(MAKECMDGOALS)),)
-override COV:=1
-endif
+#ifneq ($(filter coverage show-cov upload-cov,$(MAKECMDGOALS)),)
+#override COV:=1
+#endif
 
-ifeq ($(COV),1)
-override DEBUG:=1
-endif
+#ifeq ($(COV),1)
+#override DEBUG:=1
+#endif
 
 ifneq ($(filter memcheck,$(MAKECMDGOALS)),)
 override DEBUG:=1
@@ -18,7 +18,7 @@ MK_ALL_TARGETS=bindirs deps build test
 
 ROOT=../..
 
-MK.pyver:=3
+#MK.pyver:=3
 include $(ROOT)/deps/readies/mk/main
 
 SRCDIR=.
@@ -53,12 +53,16 @@ export GOOGLETEST_BINDIR=$(ROOT)/bin/$(FULL_VARIANT.release)/googletest
 include $(ROOT)/build/googletest/Makefile.defs
 
 ifeq ($(OS),macos)
-REDISGRAPH=$(ROOT)/bin/$(FULL_VARIANT)/redisgraph.dylib
+REDISGRAPH=$(ROOT)/bin/$(FULL_VARIANT)/redisgraph.a
 else
 REDISGRAPH=$(ROOT)/bin/$(FULL_VARIANT)/redisgraph.so
 endif
 
-LIBS=$(GRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER_PARSER) $(RAX) $(GOOGLETEST) $(REDISGRAPH)
+ifeq ($(OS),macos)
+LIBS=$(REDISGRAPH_OBJECTS) $(GRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER_PARSER) $(RAX) $(GOOGLETEST)
+else
+LIBS=$(GRAPHBLAS) $(LIBXXHASH) $(LIBCYPHER_PARSER) $(RAX) $(REDISEARCH) $(REDISGRAPH) $(GOOGLETEST)
+endif
 
 #----------------------------------------------------------------------------------------------
 
@@ -94,9 +98,9 @@ _SOURCES=\
 	test_value.cpp
 
 SOURCES=$(addprefix $(SRCDIR)/,$(_SOURCES))
-OBJECTS=$(patsubst $(SRCDIR)/%.cpp,$(BINDIR)/%.o,$(SOURCES))
+OBJECTS=$(patsubst %.cpp,$(BINDIR)/%.o,$(_SOURCES))
 
-CC_DEPS = $(patsubst $(SRCDIR)/%.cpp,$(BINDIR)/%.d,$(SOURCES))
+CC_DEPS = $(patsubst %.cpp,$(BINDIR)/%.d,$(_SOURCES))
 
 TARGETS=$(patsubst %.o,%.run,$(OBJECTS))
 
