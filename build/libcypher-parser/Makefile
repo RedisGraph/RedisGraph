@@ -50,11 +50,11 @@ $(SRCDIR)/configure: $(SRCDIR)/configure.ac
 	$(SHOW)cd $(SRCDIR); ./autogen.sh
 
 clean:
-if ($(ALL),1)
+ifeq ($(ALL),1)
 	$(SHOW)-rm -rf $(CONFIGURE_BUILD_DIR)
 else
 	$(SHOW)$(MAKE) -C $(CONFIGURE_BUILD_DIR) clean
 endif
-if ($(FORCE),1)
+ifeq ($(FORCE),1)
 	$(SHOW)cd $(SRCDIR); git ls-files -o | xargs rm
 endif

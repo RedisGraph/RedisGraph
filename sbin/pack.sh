@@ -239,7 +239,7 @@ if [[ $RAMP == 1 ]]; then
 		exit 1
 	fi
 
-	echo "Building RAMP $VARIANT files ..."
+	echo "Building RAMP files ..."
 	pack_ramp
 	echo "Done."
 fi
