@@ -331,7 +331,7 @@ jobs:
           keys:
             - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
-          name: Build for coverage
+          name: Test coverage
           shell: /bin/bash -l -eo pipefail
           command: |
             make coverage
