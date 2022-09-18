@@ -43,7 +43,7 @@ export TARGET=$(BINROOT)/redisgraph.so
 # Paths to deps.
 
 ifeq ($(MEMCHECK),1)
-DEPS_BINDIR=$(FULL_VARIANT.release)
+DEPS_BINDIR=$(ROOT)/bin/$(FULL_VARIANT)
 DEPS_DEBUG=1
 else
 export DEPS_BINDIR:=$(ROOT)/bin/$(FULL_VARIANT.release)

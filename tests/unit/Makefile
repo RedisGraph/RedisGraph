@@ -1,12 +1,4 @@
 
-#ifneq ($(filter coverage show-cov upload-cov,$(MAKECMDGOALS)),)
-#override COV:=1
-#endif
-
-#ifeq ($(COV),1)
-#override DEBUG:=1
-#endif
-
 ifneq ($(filter memcheck,$(MAKECMDGOALS)),)
 override DEBUG:=1
 overide MEMCHECK:=1
@@ -18,7 +10,6 @@ MK_ALL_TARGETS=bindirs deps build test
 
 ROOT=../..
 
-#MK.pyver:=3
 include $(ROOT)/deps/readies/mk/main
 
 SRCDIR=.
@@ -27,21 +18,28 @@ BINDIR=$(BINROOT)/tests/unit
 #----------------------------------------------------------------------------------------------
 # Paths to deps.
 
+ifeq ($(MEMCHECK),1)
+DEPS_BINDIR?=$(ROOT)/bin/$(FULL_VARIANT)
+DEPS_DEBUG?=1
+else
+export DEPS_BINDIR?=$(ROOT)/bin/$(FULL_VARIANT.release)
+endif
+
 RAX_DIR = $(ROOT)/deps/rax
-export RAX_BINDIR=$(ROOT)/bin/$(FULL_VARIANT.release)/rax
+export RAX_BINDIR=$(DEPS_BINDIR)/rax
 include $(ROOT)/build/rax/Makefile.defs
 
 LIBXXHASH_DIR = $(ROOT)/deps/xxHash
-export LIBXXHASH_BINDIR=$(ROOT)/bin/$(FULL_VARIANT.release)/xxHash
+export LIBXXHASH_BINDIR=$(DEPS_BINDIR)/xxHash
 include $(ROOT)/build/xxHash/Makefile.defs
 
 LIBCYPHER_PARSER_DIR = $(ROOT)/deps/libcypher-parser
 LIBCYPHER_PARSER_SRCDIR = $(LIBCYPHER_PARSER_DIR)/lib/src
-export LIBCYPHER_PARSER_BINDIR=$(ROOT)/bin/$(FULL_VARIANT.release)/libcypher-parser
+export LIBCYPHER_PARSER_BINDIR=$(DEPS_BINDIR)/libcypher-parser
 include $(ROOT)/build/libcypher-parser/Makefile.defs
 
 GRAPHBLAS_DIR = $(ROOT)/deps/GraphBLAS
-export GRAPHBLAS_BINDIR=$(ROOT)/bin/$(FULL_VARIANT.release)/GraphBLAS
+export GRAPHBLAS_BINDIR=$(DEPS_BINDIR)/GraphBLAS
 include $(ROOT)/build/GraphBLAS/Makefile.defs
 
 REDISEARCH_DIR = $(ROOT)/deps/RediSearch
@@ -49,7 +47,7 @@ export REDISEARCH_BINROOT=$(BINROOT)
 include $(ROOT)/build/RediSearch/Makefile.defs
 
 GTEST_DIR=$(ROOT)/deps/googletest/googletest
-export GOOGLETEST_BINDIR=$(ROOT)/bin/$(FULL_VARIANT.release)/googletest
+export GOOGLETEST_BINDIR=$(DEPS_BINDIR)/googletest
 include $(ROOT)/build/googletest/Makefile.defs
 
 ifeq ($(OS),macos)
