@@ -42,21 +42,29 @@ export TARGET=$(BINROOT)/redisgraph.so
 #----------------------------------------------------------------------------------------------
 # Paths to deps.
 
+ifeq ($(MEMCHECK),1)
+DEPS_BINDIR=$(FULL_VARIANT.release)
+DEPS_DEBUG=1
+else
+export DEPS_BINDIR:=$(ROOT)/bin/$(FULL_VARIANT.release)
+DEPS_DEBUG=
+endif
+
 RAX_DIR = $(ROOT)/deps/rax
-export RAX_BINDIR=$(ROOT)/bin/$(FULL_VARIANT.release)/rax
+export RAX_BINDIR=$(DEPS_BINDIR)/rax
 include $(ROOT)/build/rax/Makefile.defs
 
 LIBXXHASH_DIR = $(ROOT)/deps/xxHash
-export LIBXXHASH_BINDIR=$(ROOT)/bin/$(FULL_VARIANT.release)/xxHash
+export LIBXXHASH_BINDIR=$(DEPS_BINDIR)/xxHash
 include $(ROOT)/build/xxHash/Makefile.defs
 
 LIBCYPHER_PARSER_DIR = $(ROOT)/deps/libcypher-parser
 LIBCYPHER_PARSER_SRCDIR = $(LIBCYPHER_PARSER_DIR)/lib/src
-export LIBCYPHER_PARSER_BINDIR=$(ROOT)/bin/$(FULL_VARIANT.release)/libcypher-parser
+export LIBCYPHER_PARSER_BINDIR=$(DEPS_BINDIR)/libcypher-parser
 include $(ROOT)/build/libcypher-parser/Makefile.defs
 
 GRAPHBLAS_DIR = $(ROOT)/deps/GraphBLAS
-export GRAPHBLAS_BINDIR=$(ROOT)/bin/$(FULL_VARIANT.release)/GraphBLAS
+export GRAPHBLAS_BINDIR=$(DEPS_BINDIR)/GraphBLAS
 include $(ROOT)/build/GraphBLAS/Makefile.defs
 
 REDISEARCH_DIR = $(ROOT)/deps/RediSearch
@@ -156,7 +164,7 @@ ifeq ($(DEBUG),1)
 	CC_FLAGS.debug += -DRG_DEBUG
 	ifeq ($(MEMCHECK),1)
 		CC_FLAGS.debug += -DMEMCHECK
-		# SO_LD_FLAGS += -u RediSearch_CleanupModule
+		SO_LD_FLAGS += -u RediSearch_CleanupModule
 	endif
 else
 	CC_FLAGS.opt += -O3
@@ -283,25 +291,25 @@ libxxhash: $(LIBXXHASH)
 
 $(LIBXXHASH):
 	@echo Building $@ ...
-	$(SHOW)$(MAKE) --no-print-directory -C $(ROOT)/build/xxHash DEBUG=''
+	$(SHOW)$(MAKE) --no-print-directory -C $(ROOT)/build/xxHash DEBUG=$(DEPS_DEBUG)
 
 rax: $(RAX)
 
 $(RAX):
 	@echo Building $@ ...
-	$(SHOW)$(MAKE) --no-print-directory -C $(ROOT)/build/rax DEBUG=''
+	$(SHOW)$(MAKE) --no-print-directory -C $(ROOT)/build/rax DEBUG=$(DEPS_DEBUG)
 
 graphblas: $(GRAPHBLAS)
 
 $(GRAPHBLAS):
 	@echo Building $@ ...
-	$(SHOW)$(MAKE) --no-print-directory -C $(ROOT)/build/GraphBLAS DEBUG=''
+	$(SHOW)$(MAKE) --no-print-directory -C $(ROOT)/build/GraphBLAS DEBUG=$(DEPS_DEBUG)
 
 libcypher-parser: $(LIBCYPHER_PARSER)
 
 $(LIBCYPHER_PARSER):
 	@echo Building $@ ...
-	$(SHOW)$(MAKE) --no-print-directory -C $(ROOT)/build/libcypher-parser DEBUG=''
+	$(SHOW)$(MAKE) --no-print-directory -C $(ROOT)/build/libcypher-parser DEBUG=$(DEPS_DEBUG)
 
 redisearch: $(REDISEARCH)
 
@@ -345,7 +353,7 @@ endif
 
 clean:
 ifeq ($(ALL),1)
-	$(SHOW)-rm -rf $(BINDIR) $(ROOT)/bin/$(FULL_VARIANT.release)
+	$(SHOW)-rm -rf $(BINDIR) $(DEPS_BINDIR)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/libcypher-parser clean ALL=1
 else
 	$(SHOW)-rm -f $(TARGET) $(OBJECTS) $(CC_DEPS)

@@ -3,9 +3,7 @@ MAKEFLAGS += --no-builtin-rules
 
 ROOT?=$(realpath ..)
 
-.PHONY: test unit flow tck memcheck benchmark fuzz clean
-
-# TARGET:=$(ROOT)/src/redisgraph.so
+.PHONY: test unit flow tck memcheck benchmark fuzz
 
 ifneq ($(REMOTE),)
 BENCHMARK_ARGS=run-remote
@@ -64,8 +62,3 @@ benchmark:
 
 fuzz:
 	@$(MAKE) -C fuzz FUZZ_TIMEOUT="$(FUZZ_TIMEOUT)"
-
-clean:
-	@find . -name '*.[oad]' -type f -delete
-	@find . -name '*.run' -type f -delete
-	@find . -name '*.pyc' -type f -delete
