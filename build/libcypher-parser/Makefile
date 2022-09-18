@@ -58,3 +58,6 @@ endif
 ifeq ($(FORCE),1)
 	$(SHOW)cd $(SRCDIR); git ls-files -o | xargs rm
 endif
+
+.PHONY: clean
+

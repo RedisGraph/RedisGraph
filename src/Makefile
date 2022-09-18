@@ -71,7 +71,7 @@ REDISEARCH_DIR = $(ROOT)/deps/RediSearch
 export REDISEARCH_BINROOT=$(BINROOT)
 include $(ROOT)/build/RediSearch/Makefile.defs
 
-LIBS=$(RAX) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH) $(LIBCYPHER_PARSER)
+LIBS=$(RAX) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH_LIBS) $(LIBCYPHER_PARSER)
 
 #----------------------------------------------------------------------------------------------
 
@@ -285,7 +285,7 @@ ifeq ($(DEPS),1)
 
 .PHONY: libcypher-parser graphblas redisearch libxxhash rax
 
-deps: $(LIBCYPHER_PARSER) $(GRAPHBLAS) $(LIBXXXHASH) $(RAX) $(REDISEARCH)
+deps: $(LIBCYPHER_PARSER) $(GRAPHBLAS) $(LIBXXXHASH) $(RAX) $(REDISEARCH_LIBS)
 
 libxxhash: $(LIBXXHASH)
 
@@ -311,9 +311,9 @@ $(LIBCYPHER_PARSER):
 	@echo Building $@ ...
 	$(SHOW)$(MAKE) --no-print-directory -C $(ROOT)/build/libcypher-parser DEBUG=$(DEPS_DEBUG)
 
-redisearch: $(REDISEARCH)
+redisearch: $(REDISEARCH_LIBS)
 
-$(REDISEARCH):
+$(REDISEARCH_LIBS):
 	@echo Building $@ ...
 	$(SHOW)$(MAKE) -C $(REDISEARCH_DIR) STATIC=1 BINROOT=$(REDISEARCH_BINROOT)
 
