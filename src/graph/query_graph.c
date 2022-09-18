@@ -353,6 +353,11 @@ QueryGraph *QueryGraph_ExtractPatterns
 	// extract paths described by each pattern
 	for(uint i = 0; i < n; i++) {
 		const cypher_astnode_t *pattern = patterns[i];
+		if(cypher_astnode_type(pattern) == CYPHER_AST_PATTERN_COMPREHENSION) {
+			pattern = cypher_ast_pattern_comprehension_get_pattern(pattern);
+			_QueryGraph_ExtractPath(qg, graph, pattern);
+			continue;
+		}
 		uint npaths = cypher_ast_pattern_npaths(pattern);
 		for(uint j = 0; j < npaths; j ++) {
 			const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);

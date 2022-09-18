@@ -10,7 +10,6 @@
 #include "../execution_plan.h"
 #include "../ops/ops.h"
 #include "../../query_ctx.h"
-#include "../../ast/ast_mock.h"
 #include "../../util/rax_extensions.h"
 #include "../optimizations/optimizer.h"
 

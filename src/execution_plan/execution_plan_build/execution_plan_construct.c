@@ -170,32 +170,43 @@ static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	ExecutionPlan_UpdateRoot(plan, op);
 }
 
-void ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, ExecutionPlan *plan,
-										const cypher_astnode_t *clause) {
-	cypher_astnode_type_t t = cypher_astnode_type(clause);
+void ExecutionPlanSegment_Convert(GraphContext *gc, AST *ast, ExecutionPlan *plan,
+										const cypher_astnode_t *node) {
+	cypher_astnode_type_t t = cypher_astnode_type(node);
 	// Because 't' is set using the offsetof() call, it cannot be used in switch statements.
 	if(t == CYPHER_AST_MATCH) {
-		buildMatchOpTree(plan, ast, clause);
+		buildMatchOpTree(plan, ast, node);
 	} else if(t == CYPHER_AST_CALL) {
-		buildCallOp(ast, plan, clause);
+		buildCallOp(ast, plan, node);
 	} else if(t == CYPHER_AST_CREATE) {
 		// Only add at most one Create op per plan. TODO Revisit and improve this logic.
 		if(ExecutionPlan_LocateOp(plan->root, OPType_CREATE)) return;
 		_buildCreateOp(gc, ast, plan);
 	} else if(t == CYPHER_AST_UNWIND) {
-		_buildUnwindOp(plan, clause);
+		_buildUnwindOp(plan, node);
 	} else if(t == CYPHER_AST_MERGE) {
-		buildMergeOp(plan, ast, clause, gc);
+		buildMergeOp(plan, ast, node, gc);
 	} else if(t == CYPHER_AST_SET || t == CYPHER_AST_REMOVE) {
-		_buildUpdateOp(gc, plan, clause);
+		_buildUpdateOp(gc, plan, node);
 	} else if(t == CYPHER_AST_DELETE) {
-		_buildDeleteOp(plan, clause);
+		_buildDeleteOp(plan, node);
 	} else if(t == CYPHER_AST_RETURN) {
 		// Converting a RETURN clause can create multiple operations.
-		buildReturnOps(plan, clause);
+		buildReturnOps(plan, node);
 	} else if(t == CYPHER_AST_WITH) {
 		// Converting a WITH clause can create multiple operations.
-		buildWithOps(plan, clause);
+		buildWithOps(plan, node);
+	} else if(t == CYPHER_AST_QUERY) {
+		uint clause_count = cypher_ast_query_nclauses(ast->root);
+		for(uint i = 0; i < clause_count; i ++) {
+			// Build the appropriate operation(s) for each clause in the query.
+			const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
+			ExecutionPlanSegment_Convert(gc, ast, plan, clause);
+		}
+	} else if(t == CYPHER_AST_PATTERN_COMPREHENSION) {
+		printf("");
+	} else {
+		ASSERT(false);
 	}
 }
 

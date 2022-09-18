@@ -71,15 +71,13 @@ void buildPatternComprehensionOps
 	for (uint i = 0; i < count; i++) {
 		OpBase *match_stream;
 		const cypher_astnode_t *pc;
-		const cypher_astnode_t *path;
 		const cypher_astnode_t *eval_node;
 		const cypher_astnode_t *predicate;
 
 		pc = pcs[i];
-		path = cypher_ast_pattern_comprehension_get_pattern(pc);
 
 		// constuct sub execution-plan resolving path
-		match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
+		match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, pc);
 
 		// construct evaluation expression
 		// [(a)-[]->(z) | z.v] `z.v` is the evaluation expression
@@ -222,24 +220,17 @@ void buildPatternPathOps
 		// we already handeled it
 		if(skip_path) continue;
 
+		const char *path_name = AST_ToString(path);
+
 		// construct sub execution-plan resolving path
 		match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
 
-		// count number of elements in path
-		// construct a `topath` expression combining elements into a PATH object
-		uint path_len = cypher_ast_pattern_path_nelements(path);
-		AR_ExpNode *path_exp = AR_EXP_NewOpNode("topath", true, 1 + path_len);
-		path_exp->op.children[0] =
-			AR_EXP_NewConstOperandNode(SI_PtrVal((void *)path));
-		for(uint j = 0; j < path_len; j ++) {
-			path_exp->op.children[j + 1] =
-				AR_EXP_FromASTNode(cypher_ast_pattern_path_get_element(path, j));
-		}
+		AR_ExpNode *path_exp = AR_EXP_NewVariableOperandNode(path_name);
 
 		// we're require to return an ARRAY of paths, use `collect` to aggregate paths
 		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", false, 1);
 		collect_exp->op.children[0] = path_exp;
-		collect_exp->resolved_name = AST_ToString(path);
+		collect_exp->resolved_name = path_name;
 
 		// constuct aggregation operation
 		AR_ExpNode **exps = array_new(AR_ExpNode *, 1);

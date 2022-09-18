@@ -23,7 +23,7 @@ inline ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void) {
 	return rm_calloc(1, sizeof(ExecutionPlan));
 }
 
-void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan) {
+void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, const cypher_astnode_t *node) {
 	AST *ast = QueryCtx_GetAST();
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
@@ -35,12 +35,7 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan) {
 	// Query graph is set if this ExecutionPlan has been created to populate a single stream.
 	if(plan->query_graph == NULL) plan->query_graph = BuildQueryGraph(ast);
 
-	uint clause_count = cypher_ast_query_nclauses(ast->root);
-	for(uint i = 0; i < clause_count; i ++) {
-		// Build the appropriate operation(s) for each clause in the query.
-		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
-		ExecutionPlanSegment_ConvertClause(gc, ast, plan, clause);
-	}
+	ExecutionPlanSegment_Convert(gc, ast, plan, node);
 }
 
 static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
@@ -150,7 +145,7 @@ static ExecutionPlan *_process_segment(AST *ast, uint segment_start_idx,
 	// Construct a new ExecutionPlanSegment.
 	segment = ExecutionPlan_NewEmptyExecutionPlan();
 	segment->ast_segment = ast;
-	ExecutionPlan_PopulateExecutionPlan(segment);
+	ExecutionPlan_PopulateExecutionPlan(segment, ast->root);
 
 	return segment;
 }

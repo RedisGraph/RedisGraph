@@ -34,7 +34,7 @@ void ExecutionPlan_PreparePlan(ExecutionPlan *plan);
 ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void);
 
 /* Build a tree of operations that performs all the work required by the clauses of the current AST. */
-void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan);
+void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, const cypher_astnode_t *node);
 
 /* Re position filter op. */
 void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,

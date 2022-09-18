@@ -38,9 +38,9 @@ void ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpFilter *filter);
 void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, OpBase *root, const OpBase *recurse_limit,
 								  FT_FilterNode *ft);
 
-// Convert a clause into the appropriate sequence of ops
-void ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, ExecutionPlan *plan,
-										const cypher_astnode_t *clause);
+// Convert a node into the appropriate sequence of ops
+void ExecutionPlanSegment_Convert(GraphContext *gc, AST *ast, ExecutionPlan *plan,
+										const cypher_astnode_t *node);
 
 // Build pattern comprehension plan operations
 void buildPatternComprehensionOps(
