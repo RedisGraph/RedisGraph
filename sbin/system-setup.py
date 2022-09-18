@@ -78,7 +78,7 @@ class RedisGraphSetup(paella.Setup):
 
         if not self.no_rmpytools:
             self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall --modern --pypi".format(PYTHON=self.python, READIES=READIES))
-        self.pip_install("-r tests/requirements.txt")
+            self.pip_install("-r tests/requirements.txt")
 
         self.run("%s/bin/getpy2" % READIES) # for RediSearch build
 
