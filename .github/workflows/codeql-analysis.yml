@@ -61,7 +61,7 @@ jobs:
     # If this step fails, then you should remove it and run the build manually (see below)
     - name: Build
       run: |
-        suod ln -sf /usr/bin/gcc /usr/bin/gcc-5
+        sudo ln -sf /usr/bin/gcc /usr/bin/gcc-5
         ./deps/readies/bin/getpy3
         ./sbin/system-setup.py # --no-rmpytools
         make
