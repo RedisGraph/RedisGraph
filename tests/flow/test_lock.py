@@ -24,4 +24,3 @@ class testLock(FlowTestsBase):
 
         log = logfile.read()
         self.env.assertNotContains("forced unlocking commit", log)
-        print(log)
