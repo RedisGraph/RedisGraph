@@ -415,14 +415,9 @@ static Record MergeConsume
 		}
 	}
 
-	// release lock
-	bool lock_acquired = must_create_records |
-		                 (array_len(op->node_pending_updates) > 0) |
-						 (array_len(op->edge_pending_updates) > 0);
-
-	if(lock_acquired) {
-		QueryCtx_UnlockCommit(&op->op);
-	}
+	// release lock, allways release the lock it will not cause harms
+	// needed to avoid force unlocking
+	QueryCtx_UnlockCommit(&op->op);
 
 	//--------------------------------------------------------------------------
 	// free updates
