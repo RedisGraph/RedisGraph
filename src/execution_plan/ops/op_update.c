@@ -114,6 +114,10 @@ static Record UpdateConsume(OpBase *opBase) {
 
 		array_clear(op->node_updates);
 		array_clear(op->edge_updates);
+	} else {
+		// always try to releasing the lock, even though this update operation might not made any changes
+		// this is required in the situation where this update op is the last write operation within the execution-plan.
+		QueryCtx_UnlockCommit(opBase);
 	}
 
 	op->updates_committed = true;

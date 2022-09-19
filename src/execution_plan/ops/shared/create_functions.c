@@ -212,7 +212,8 @@ void CommitNewEntities
 	pending->stats->nodes_created          +=  node_count;
 	pending->stats->relationships_created  +=  edge_count;
 
-	// release lock
+	// always try to releasing the lock, even though this create operation might not made any changes
+	// this is required in the situation where this create op is the last write operation within the execution-plan.
 	QueryCtx_UnlockCommit(op);
 
 	// restore matrix sync policy to default

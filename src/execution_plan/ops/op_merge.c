@@ -415,8 +415,8 @@ static Record MergeConsume
 		}
 	}
 
-	// release lock, allways release the lock it will not cause harms
-	// needed to avoid force unlocking
+	// always try to releasing the lock, even though this merge operation might not made any changes
+	// this is required in the situation where this merge op is the last write operation within the execution-plan.
 	QueryCtx_UnlockCommit(&op->op);
 
 	//--------------------------------------------------------------------------
