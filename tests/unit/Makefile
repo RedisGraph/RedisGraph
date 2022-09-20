@@ -145,7 +145,7 @@ ifeq ($(OS),macos)
 endif
 
 CXX_FLAGS.linux += -fopenmp
-CXX_FLAGS.macos += $(LIBOMP) -mmacosx-version-min=10.15
+CXX_FLAGS.macos += $(LIBOMP)
 CXX_FLAGS += $(CXX_FLAGS.$(OS))
 
 #----------------------------------------------------------------------------------------------

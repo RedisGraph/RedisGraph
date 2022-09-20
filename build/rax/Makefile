@@ -1,6 +1,5 @@
 
 ROOT=../..
-MK.pyver:=3
 include $(ROOT)/deps/readies/mk/main
 
 define HELPTEXT
@@ -36,6 +35,7 @@ CC_DEPS = $(patsubst $(SRCDIR)/%.c, $(BINDIR)/%.d, $(SOURCES))
 CC_FLAGS += \
 	-fPIC \
 	-std=gnu99 \
+	 -fvisibility=hidden \
 	-MMD -MF $(@:.o=.d) \
 	-I$(SRCDIR) \
 	-I$(BINDIR) \
@@ -64,7 +64,7 @@ include $(MK)/rules
 
 $(BINDIR)/%.o: $(SRCDIR)/%.c
 	@echo Compiling $<...
-	$(SHOW)$(CC) $(CC_FLAGS) -fvisibility=hidden -c $< -o $@
+	$(SHOW)$(CC) $(CC_FLAGS) -c $< -o $@
 
 $(TARGET): $(OBJECTS)
 	@echo Creating $@...
@@ -72,8 +72,7 @@ $(TARGET): $(OBJECTS)
 
 clean:
 ifeq ($(ALL),1)
-	$(SHOW)rm -rf $(BINDIR) $(TARGET)
+	$(SHOW)rm -rf $(BINDIR)
 else
-	-$(SHOW)find $(BINDIR) -name '*.[oadh]' -type f -delete
-	$(SHOW)rm -f $(TARGET)
+	$(SHOW)rm -f $(OBJECTS) $(TARGET)
 endif
