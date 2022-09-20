@@ -415,14 +415,9 @@ static Record MergeConsume
 		}
 	}
 
-	// release lock
-	bool lock_acquired = must_create_records |
-		                 (array_len(op->node_pending_updates) > 0) |
-						 (array_len(op->edge_pending_updates) > 0);
-
-	if(lock_acquired) {
-		QueryCtx_UnlockCommit(&op->op);
-	}
+	// always try to releasing the lock, even though this merge operation might not made any changes
+	// this is required in the situation where this merge op is the last write operation within the execution-plan.
+	QueryCtx_UnlockCommit(&op->op);
 
 	//--------------------------------------------------------------------------
 	// free updates
