@@ -84,8 +84,11 @@ static Record UpdateConsume(OpBase *opBase) {
 
 		array_append(op->records, r);
 	}
+	
+	uint node_updates_count = array_len(op->node_updates);
+	uint edge_updates_count = array_len(op->edge_updates);
 
-	if(array_len(op->node_updates) > 0 || array_len(op->edge_updates) > 0) {
+	if(node_updates_count > 0 || edge_updates_count > 0) {
 		// done reading; we're not going to call Consume any longer
 		// there might be operations like "Index Scan" that need to free the
 		// index R/W lock - as such, free all ExecutionPlan operations up the chain.
@@ -93,16 +96,14 @@ static Record UpdateConsume(OpBase *opBase) {
 
 		// lock everything
 		QueryCtx_LockForCommit();
-		{
-			CommitUpdates(op->gc, op->stats, op->node_updates, ENTITY_NODE);
-			CommitUpdates(op->gc, op->stats, op->edge_updates, ENTITY_EDGE);
-		}
-		// release lock
-		QueryCtx_UnlockCommit(opBase);
 
-		array_clear(op->node_updates);
-		array_clear(op->edge_updates);
+		CommitUpdates(op->gc, op->stats, op->node_updates, ENTITY_NODE);
+		CommitUpdates(op->gc, op->stats, op->edge_updates, ENTITY_EDGE);
 	}
+
+	// always try to releasing the lock, even though this update operation might not made any changes
+	// this is required in the situation where this update op is the last write operation within the execution-plan
+	QueryCtx_UnlockCommit(opBase);
 
 	op->updates_committed = true;
 
@@ -162,4 +163,3 @@ static void UpdateFree(OpBase *ctx) {
 
 	raxStop(&op->it);
 }
-

@@ -168,9 +168,19 @@ class testFunctionCallsFlow(FlowTestsBase):
         expected_result = [[2]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
+        query = "RETURN max([2])"
+        actual_result = graph.query(query)
+        expected_result = [[[2]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
         query = "RETURN min(3)"
         actual_result = graph.query(query)
         expected_result = [[3]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = "RETURN min([3])"
+        actual_result = graph.query(query)
+        expected_result = [[[3]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
     def test10_modulo_inputs(self):
@@ -613,3 +623,14 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = f"""RETURN '' + {larg_double} + {larg_double}"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], "%f%f" % (larg_double, larg_double))
+
+    def test28_min_max(self):
+        query = "UNWIND [[1], [2], [2], [1]] AS x RETURN max(x), min(x)"
+        actual_result = graph.query(query)
+        expected_result = [[[2], [1]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = "UNWIND [1, 2, '1' ,'2' ,[1] ,[2] ,1 ,2, '1', '2', NULL, True] AS x RETURN max(x), min(x)"
+        actual_result = graph.query(query)
+        expected_result = [[2, [1]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
