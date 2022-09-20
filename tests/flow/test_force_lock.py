@@ -18,8 +18,8 @@ class test_ForceUnlock():
         logfilename = self.env.envRunner._getFileName("master", ".log")
         logfile = open(f"{self.env.logDir}/{logfilename}")
 
-        query = """MERGE (n:N) RETURN n"""
-        redis_graph.query(query)
+        # populate graph
+        redis_graph.query("CREATE(:N)")
 
         queries = [
             # query is expected to:
