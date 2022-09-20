@@ -327,7 +327,7 @@ void UpdateNodeLabels
 			const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 			bool schema_created = false;
 			if(s == NULL) {
-				s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+				s = AddSchema(gc, label, SCHEMA_NODE);
 				schema_created = true;
 			}
 
@@ -386,5 +386,20 @@ void UpdateNodeLabels
 			UndoLog_RemoveLabels(&query_ctx->undo_log, node, remove_labels_ids, remove_labels_index);
 		}
 	}
+}
+
+
+Schema *AddSchema
+(
+	GraphContext *gc,             // graph context to add the schema
+	const char *label,            // schema label
+	SchemaType t                  // schema type (node/edge)
+) {
+	ASSERT(gc != NULL);
+	ASSERT(label != NULL);
+	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+	Schema *s = GraphContext_AddSchema(gc, label, t);
+	UndoLog_AddSchema(&query_ctx->undo_log, s->id, s->type);
+	return s;
 }
 

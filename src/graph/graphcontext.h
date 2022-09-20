@@ -136,6 +136,14 @@ Schema *GraphContext_AddSchema
 	SchemaType t
 );
 
+// removes a schema with a specific id
+void GraphContext_RemoveSchema
+(
+	GraphContext *gc,
+	int schema_id,
+	SchemaType t
+);
+
 // retrieve the label string for a given Node object
 const char *GraphContext_GetNodeLabel
 (
