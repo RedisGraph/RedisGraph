@@ -105,19 +105,6 @@ static Record UpdateConsume(OpBase *opBase) {
 	// this is required in the situation where this update op is the last write operation within the execution-plan
 	QueryCtx_UnlockCommit(opBase);
 
-	for(uint i = 0; i < node_updates_count; i ++) {
-		PendingUpdateCtx *pending_update = op->node_updates + i;
-		AttributeSet_Free(&pending_update->attributes);
-	}
-		
-	for(uint i = 0; i < edge_updates_count; i ++) {
-		PendingUpdateCtx *pending_update = op->edge_updates + i;
-		AttributeSet_Free(&pending_update->attributes);
-	}
-
-	array_clear(op->node_updates);
-	array_clear(op->edge_updates);
-
 	op->updates_committed = true;
 
 	return _handoff(op);
