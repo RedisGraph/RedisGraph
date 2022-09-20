@@ -1,7 +1,7 @@
 from common import *
 
 redis_graph = None
-GRAPH_ID = "G"
+GRAPH_ID = "force_unlock"
 
 
 class test_ForceUnlock():
