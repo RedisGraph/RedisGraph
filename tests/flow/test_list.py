@@ -143,3 +143,171 @@ class testList(FlowTestsBase):
         expected_result = [[False]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
+    def test04_toBooleanList(self):
+        # NULL input should return NULL
+        expected_result = [None]
+        query = """RETURN toBooleanList(null)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        query = """RETURN toBooleanList([null, null])"""
+        expected_result = [[None, None]]
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        query = """RETURN toBooleanList(['abc', true, 'false', null, ['a','b']])"""
+        expected_result = [[None, True, False, None, None]]
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        try:
+            redis_graph.query("RETURN toBooleanList(true)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was Boolean", str(e))
+
+        try:
+            redis_graph.query("RETURN toBooleanList(7.05)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was Float", str(e))
+
+        try:
+            redis_graph.query("RETURN toBooleanList(7)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was Integer", str(e))
+
+        try:
+            redis_graph.query("RETURN toBooleanList('abc')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was String", str(e))
+        
+    def test05_toFloatList(self):
+        # NULL input should return NULL
+        expected_result = [None]
+        query = """RETURN toFloatList(null)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        query = """RETURN toFloatList([null, null])"""
+        expected_result = [[None, None]]
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        query = """RETURN toFloatList(['abc', 1.5, 7.0578, null, ['a','b']]) """
+        expected_result = [[None, 1.5, 7.0578, None, None]]
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        query = """RETURN toFloatList(['7.0578']) """
+        expected_result = 7.0578
+        actual_result = redis_graph.query(query)
+        self.env.assertAlmostEqual(float(actual_result.result_set[0][0][0]), expected_result, 1e-5)
+
+        try:
+            redis_graph.query("RETURN toFloatList(true)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was Boolean", str(e))
+
+        try:
+            redis_graph.query("RETURN toFloatList(7.05)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was Float", str(e))
+
+        try:
+            redis_graph.query("RETURN toFloatList(7)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was Integer", str(e))
+
+        try:
+            redis_graph.query("RETURN toFloatList('abc')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was String", str(e))
+
+    def test06_toIntegerList(self):
+        # NULL input should return NULL
+        expected_result = [None]
+        query = """RETURN toIntegerList(null)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        query = """RETURN toIntegerList([null, null])"""
+        expected_result = [[None, None]]
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        query = """RETURN toIntegerList(['abc', 7, '5', null, ['a','b']]) """
+        expected_result = [[None, 7, 5, None, None]]
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        try:
+            redis_graph.query("RETURN toIntegerList(true)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was Boolean", str(e))
+
+        try:
+            redis_graph.query("RETURN toIntegerList(7.05)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was Float", str(e))
+
+        try:
+            redis_graph.query("RETURN toIntegerList(7)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was Integer", str(e))
+
+        try:
+            redis_graph.query("RETURN toIntegerList('abc')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was String", str(e))
+
+    def test07_toStringList(self):
+        # NULL input should return NULL
+        expected_result = [None]
+        query = """RETURN toStringList(null)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        query = """RETURN toStringList([null, null])"""
+        expected_result = [[None, None]]
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result) 
+
+        query = """RETURN toStringList(['abc', 7, '5.32', null, ['a','b']]) """
+        expected_result = [['abc', '7', '5.32', None, None]]
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        try:
+            redis_graph.query("RETURN toStringList(true)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was Boolean", str(e))
+
+        try:
+            redis_graph.query("RETURN toStringList(7.05)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was Float", str(e))
+
+        try:
+            redis_graph.query("RETURN toStringList(7)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was Integer", str(e))
+
+        try:
+            redis_graph.query("RETURN toStringList('abc')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was String", str(e))

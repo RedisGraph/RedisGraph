@@ -10,3 +10,4 @@
 
 void Register_BooleanFuncs();
 
+SIValue AR_TO_BOOLEAN(SIValue *argv, int argc, void *private_data);

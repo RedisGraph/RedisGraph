@@ -9,3 +9,5 @@
 #include "../../value.h"
 
 void Register_StringFuncs();
+
+SIValue AR_TOSTRING(SIValue *argv, int argc, void *private_data);

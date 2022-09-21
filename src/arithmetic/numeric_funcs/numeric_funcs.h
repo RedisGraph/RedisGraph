@@ -10,3 +10,6 @@
 
 void Register_NumericFuncs();
 
+SIValue AR_TOFLOAT(SIValue *argv, int argc, void *private_data);
+
+SIValue AR_TOINTEGER(SIValue *argv, int argc, void *private_data);
