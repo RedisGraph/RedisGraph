@@ -104,6 +104,8 @@ CC_FLAGS=\
 	$(CC_FLAGS.debug) \
 	$(CC_FLAGS.coverage) \
 	$(CC_FLAGS.$(OS)) \
+	-include $(SRCDIR)/common.h \
+	-I$(ROOT)/deps \
 	-I. \
 	-Igraph \
 	-Iutil/cache \
@@ -156,7 +158,7 @@ DYLIB_LD_FLAGS += \
 
 ifeq ($(DEBUG),1)
 	CC_FLAGS.opt += -O0
-	CC_FLAGS.debug += -fno-omit-frame-pointer -g -ggdb
+	CC_FLAGS.debug += -fno-omit-frame-pointer -g -ggdb -D_DEBUG
 	# Enable all assertions in debug mode
 	CC_FLAGS.debug += -DRG_DEBUG
 	ifeq ($(MEMCHECK),1)
