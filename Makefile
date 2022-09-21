@@ -21,6 +21,8 @@ make all            # Build everything
   SLOW=1              # Disable parallel build
   STATIC_OMP=1        # Link OpenMP statically
   VARIANT=name        # Add `name` to build products directory
+  GCC=1               # Build with GCC toolchain (default nor Linux)
+  CLANG=1             # Build with CLang toolchain (default for macOS)
 make clean          # Clean build products
   ALL=1               # Completely remove build products
   DEPS=1              # Also clean dependant modules
