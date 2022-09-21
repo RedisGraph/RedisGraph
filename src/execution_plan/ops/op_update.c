@@ -107,6 +107,9 @@ static Record UpdateConsume(OpBase *opBase) {
 
 	op->updates_committed = true;
 
+	array_clear(op->node_updates);
+	array_clear(op->edge_updates);
+
 	return _handoff(op);
 }
 
