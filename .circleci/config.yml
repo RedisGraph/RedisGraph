@@ -158,7 +158,7 @@ commands:
       - run:
           name: Test
           shell: /bin/bash -l -eo pipefail
-          command: make test
+          command: make test PLATFORM_MODE=1
       - run:
           name: Run 30-second fuzz test
           shell: /bin/bash -l -eo pipefail

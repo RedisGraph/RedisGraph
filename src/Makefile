@@ -28,7 +28,6 @@ endif # SAN
 
 ROOT=..
 
-# MK.pyver:=3
 include $(ROOT)/deps/readies/mk/main
 
 MK_CUSTOM_CLEAN=1
@@ -105,6 +104,8 @@ CC_FLAGS=\
 	$(CC_FLAGS.debug) \
 	$(CC_FLAGS.coverage) \
 	$(CC_FLAGS.$(OS)) \
+	-include $(SRCDIR)/common.h \
+	-I$(ROOT)/deps \
 	-I. \
 	-Igraph \
 	-Iutil/cache \
@@ -115,8 +116,6 @@ CC_FLAGS=\
 	-I$(LIBCYPHER_PARSER_BINDIR)/lib/src \
 	-I$(LIBXXHASH_DIR) \
 	-I$(REDISEARCH_DIR)/src
-
-CC_FLAGS.macos += -mmacosx-version-min=10.15
 
 ifeq ($(OS),macos)
 	ifeq ($(STATIC_OMP),1)
@@ -159,7 +158,7 @@ DYLIB_LD_FLAGS += \
 
 ifeq ($(DEBUG),1)
 	CC_FLAGS.opt += -O0
-	CC_FLAGS.debug += -fno-omit-frame-pointer -g -ggdb
+	CC_FLAGS.debug += -fno-omit-frame-pointer -g -ggdb -D_DEBUG
 	# Enable all assertions in debug mode
 	CC_FLAGS.debug += -DRG_DEBUG
 	ifeq ($(MEMCHECK),1)
@@ -175,36 +174,6 @@ endif
 
 SRCDIR=.
 
-define SRC_SUBDIRS:=
-	configuration
-	algorithms
-	arithmetic algorithms/LAGraph arithmetic/map_funcs arithmetic/path_funcs arithmetic/list_funcs
-		arithmetic/time_funcs arithmetic/point_funcs arithmetic/entity_funcs arithmetic/string_funcs
-		arithmetic/boolean_funcs arithmetic/numeric_funcs arithmetic/aggregate_funcs
-		arithmetic/conditional_funcs arithmetic/placeholder_funcs arithmetic/comprehension_funcs
-		arithmetic/algebraic_expression
-	bulk_insert
-	commands
-	datatypes
-	datatypes/path
-	execution_plan execution_plan/ops execution_plan/ops/shared execution_plan/optimizations
-		execution_plan/execution_plan_build
-	filter_tree
-	graph graph/entities graph/rg_matrix
-	serializers serializers/encoder serializers/encoder/* serializers/decoders serializers/decoders/current
-		serializers/decoders/current/* serializers/decoders/prev serializers/decoders/prev/*
-	grouping
-	index
-	ast ast/enrichment
-	resultset resultset/formatters
-	schema
-	slow_log
-	undo_log
-	procedures
-	util util/sds util/datablock util/object_pool util/thpool util/range util/cache
-endef
-
-# _SOURCES:=$(wildcard *.c) $(foreach d,$(SRC_SUBDIRS),$(wildcard $(d)/*.c))
 _SOURCES:=$(shell find . -name "*.c" | cut -f2- -d/ | sort)
 
 SOURCES=$(addprefix $(SRCDIR)/,$(_SOURCES))

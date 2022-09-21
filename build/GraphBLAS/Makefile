@@ -53,9 +53,9 @@ endif
 
 CMAKE_FLAGS=\
 	-Wno-dev \
+	-DBUILD_GRB_STATIC_LIBRARY=1 \
 	-DBUILD_TESTING=off \
-	-DCMAKE_POSITION_INDEPENDENT_CODE=on \
-	-DCMAKE_OSX_DEPLOYMENT_TARGET=10.15
+	-DCMAKE_POSITION_INDEPENDENT_CODE=on
 
 CMAKE_FLAGS += $(CMAKE_ARGS) $(CMAKE_DEBUG) $(CMAKE_STATIC) $(CMAKE_WHY)
 
@@ -82,15 +82,14 @@ ifeq ($(WHY),1)
 	@echo CMake log is in /tmp/cmake-why
 endif
 	$(SHOW)mkdir -p $(BINDIR)
-	$(SHOW)cd $(BINDIR) && cmake $(CMAKE_DIR) $(CMAKE_FLAGS) -DBUILD_GRB_STATIC_LIBRARY=1
+	$(SHOW)cd $(BINDIR) && cmake $(CMAKE_DIR) $(CMAKE_FLAGS)
 
 $(TARGET): $(BINDIR)/Makefile
 	@echo Building $(TARGET) ...
 ifneq ($(DRY_RUN),1)
-	$(SHOW)$(MAKE) -C $(BINDIR) $(MAKE_J)
+	$(SHOW)$(MAKE) -C $(BINDIR) $(MAKE_J) graphblas_static
 else
-	@make -C $(BINDIR) $(MAKE_J) graphblas_static
-
+	$(SHOW)make -C $(BINDIR) $(MAKE_J) graphblas_static
 endif
 
 .PHONY: build clean

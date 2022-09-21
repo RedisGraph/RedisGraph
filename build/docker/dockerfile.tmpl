@@ -21,15 +21,6 @@ RUN ./deps/readies/bin/getbash
 RUN ./deps/readies/bin/getupdates
 RUN ./sbin/setup
 
-#RUN if command -v apt-get &> /dev/null; then \
-#        locale-gen --purge en_US.UTF-8 ;\
-#        dpkg-reconfigure -f noninteractive locales ;\
-#    fi
-#
-#ENV LANG=en_US.UTF-8
-#ENV LANGUAGE=en_US.UTF-8
-#ENV LC_ALL=en_US.UTF-8
-
 RUN make
 
 {% if TEST == "1" %}
