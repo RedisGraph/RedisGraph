@@ -242,8 +242,6 @@ NOCOLOR="\033[0m"
 
 -include $(CC_DEPS)
 
-%.c: %.y
-
 $(BINDIR)/src/%.o: $(ROOT)/src/%.c $(LIBCYPHER_PARSER_BINDIR)/lib/src/cypher-parser.h
 	@printf '%b %b\n' $(CCCOLOR)CC$(NOCOLOR) $(SRCCOLOR)$<$(NOCOLOR)
 	$(SHOW)$(CC) $(CC_FLAGS) -c $< -o $@

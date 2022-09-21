@@ -23,8 +23,6 @@ MK_CUSTOM_CLEAN=1
 
 include $(MK)/defs
 
-CC=gcc
-
 _SOURCES=xxhash.c
 
 SOURCES=$(addprefix $(SRCDIR)/,$(_SOURCES))
