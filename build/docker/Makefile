@@ -1,11 +1,11 @@
 
 ROOT=../..
-MK.pyver:=3
+
 include $(ROOT)/deps/readies/mk/main
 
 REPO=redisgraph
 
-REDIS_VERSION=6.2.6
+REDIS_VERSION=6.2.7
 OSNICK.official=bionic
 
 INT_BRANCHES=2.8 2.6 2.4 2.2 1.2 1.0
