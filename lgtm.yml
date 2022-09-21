@@ -1,7 +1,14 @@
 extraction:
   cpp:
-     after_prepare:
-       - ./sbin/setup
+     prepare:
+        packages: 
+          - build-essential
+          - cmake
+          - m4
+          - automake
+          - peg
+          - libtool
+          - autoconf
      index:
        build_command:
          - make build
