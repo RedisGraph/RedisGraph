@@ -12,9 +12,9 @@
 #include"../../query_ctx.h"
 #include "../../datatypes/array.h"
 #include "../../util/rax_extensions.h"
+#include "../string_funcs/string_funcs.h"
 #include "../boolean_funcs/boolean_funcs.h"
 #include "../numeric_funcs/numeric_funcs.h"
-#include "../string_funcs/string_funcs.h"
 
 //------------------------------------------------------------------------------
 // reduce context
@@ -125,6 +125,7 @@ SIValue AR_TOBOOLEANLIST(SIValue *argv, int argc, void *private_data) {
 	for(uint i = 0; i < arrayLen; i++) {
 		SIValue v = SIArray_Get(originalArray, i);
 		SIArray_Append(&array, AR_TO_BOOLEAN(&v, 0, NULL));
+		SIValue_Free(v);
 	}
 	return array;
 }
@@ -146,6 +147,7 @@ SIValue AR_TOFLOATLIST(SIValue *argv, int argc, void *private_data) {
 	for(uint i = 0; i < arrayLen; i++) {
 		SIValue v = SIArray_Get(originalArray, i);
 		SIArray_Append(&array, AR_TOFLOAT(&v, 0, NULL));
+		SIValue_Free(v);
 	}
 	return array;
 }
@@ -167,6 +169,7 @@ SIValue AR_TOINTEGERLIST(SIValue *argv, int argc, void *private_data) {
 	for(uint i = 0; i < arrayLen; i++) {
 		SIValue v = SIArray_Get(originalArray, i);
 		SIArray_Append(&array, AR_TOINTEGER(&v, 0, NULL));
+		SIValue_Free(v);
 	}
 	return array;
 }
@@ -188,6 +191,7 @@ SIValue AR_TOSTRINGLIST(SIValue *argv, int argc, void *private_data) {
 	for(uint i = 0; i < arrayLen; i++) {
 		SIValue v = SIArray_Get(originalArray, i);
 		SIArray_Append(&array, AR_TOSTRING(&v, 0, NULL));
+		SIValue_Free(v);
 	}
 	return array;
 }
