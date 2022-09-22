@@ -1,4 +1,4 @@
-name: "UPDATE-BASELINE"
+name: "INSPECT-EDGES"
 remote:
   - setup: redisgraph-r5
   - type: oss-standalone
