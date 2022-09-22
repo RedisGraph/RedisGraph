@@ -25,9 +25,6 @@ MK_CUSTOM_CLEAN=1
 
 include $(MK)/defs
 
-CC=gcc
-
-# _SOURCES=$(notdir $(wildcard $(SRCDIR)/*.cc))
 _SOURCES=gtest-all.cc gtest_main.cc
 
 SOURCES=$(addprefix $(SRCDIR)/,$(_SOURCES))
