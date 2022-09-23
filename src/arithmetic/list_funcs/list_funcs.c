@@ -124,7 +124,7 @@ SIValue AR_TOBOOLEANLIST(SIValue *argv, int argc, void *private_data) {
 	SIValue array = SI_Array(arrayLen);
 	for(uint i = 0; i < arrayLen; i++) {
 		SIValue v = SIArray_Get(originalArray, i);
-		SIArray_Append(&array, AR_TO_BOOLEAN(&v, 0, NULL));
+		SIArray_Append(&array, AR_TO_BOOLEAN(&v, 1, NULL));
 		SIValue_Free(v);
 	}
 	return array;
@@ -146,7 +146,7 @@ SIValue AR_TOFLOATLIST(SIValue *argv, int argc, void *private_data) {
 	SIValue array = SI_Array(arrayLen);
 	for(uint i = 0; i < arrayLen; i++) {
 		SIValue v = SIArray_Get(originalArray, i);
-		SIArray_Append(&array, AR_TOFLOAT(&v, 0, NULL));
+		SIArray_Append(&array, AR_TOFLOAT(&v, 1, NULL));
 		SIValue_Free(v);
 	}
 	return array;
@@ -168,7 +168,7 @@ SIValue AR_TOINTEGERLIST(SIValue *argv, int argc, void *private_data) {
 	SIValue array = SI_Array(arrayLen);
 	for(uint i = 0; i < arrayLen; i++) {
 		SIValue v = SIArray_Get(originalArray, i);
-		SIArray_Append(&array, AR_TOINTEGER(&v, 0, NULL));
+		SIArray_Append(&array, AR_TOINTEGER(&v, 1, NULL));
 		SIValue_Free(v);
 	}
 	return array;
@@ -190,7 +190,7 @@ SIValue AR_TOSTRINGLIST(SIValue *argv, int argc, void *private_data) {
 	SIValue array = SI_Array(arrayLen);
 	for(uint i = 0; i < arrayLen; i++) {
 		SIValue v = SIArray_Get(originalArray, i);
-		SIArray_Append(&array, AR_TOSTRING(&v, 0, NULL));
+		SIArray_Append(&array, AR_TOSTRING(&v, 1, NULL));
 		SIValue_Free(v);
 	}
 	return array;
@@ -458,25 +458,25 @@ void Register_ListFuncs() {
 
 	types = array_new(SIType, 1);
 	array_append(types, T_ARRAY | T_NULL);
-	ret_type = T_ARRAY;
+	ret_type = T_ARRAY| T_NULL;
 	func_desc = AR_FuncDescNew("toBooleanList", AR_TOBOOLEANLIST, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_ARRAY | T_NULL);
-	ret_type = T_ARRAY;
+	ret_type = T_ARRAY| T_NULL;
 	func_desc = AR_FuncDescNew("toFloatList", AR_TOFLOATLIST, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_ARRAY | T_NULL);
-	ret_type = T_ARRAY;
+	ret_type = T_ARRAY| T_NULL;
 	func_desc = AR_FuncDescNew("toIntegerList", AR_TOINTEGERLIST, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_ARRAY | T_NULL);
-	ret_type = T_ARRAY;
+	ret_type = T_ARRAY| T_NULL;
 	func_desc = AR_FuncDescNew("toStringList", AR_TOSTRINGLIST, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
