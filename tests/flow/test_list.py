@@ -163,12 +163,12 @@ class testList(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
         # Tests with empty array result
-        query = """MATCH (n) RETURN toBooleanList(n)"""
+        query = """MATCH (n:X) RETURN toBooleanList(n)"""
         expected_result = []
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-        query = """MATCH (n) RETURN toBooleanList([n])"""
+        query = """MATCH (n:X) RETURN toBooleanList([n])"""
         expected_result = []
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set, expected_result)
@@ -314,12 +314,12 @@ class testList(FlowTestsBase):
         self.env.assertAlmostEqual(float(actual_result.result_set[0][0][0]), expected_result, 1e-5)
 
         # Tests with empty array result
-        query = """MATCH (n) RETURN toFloatList(n)"""
+        query = """MATCH (n:X) RETURN toFloatList(n)"""
         expected_result = []
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-        query = """MATCH (n) RETURN toFloatList([n])"""
+        query = """MATCH (n:X) RETURN toFloatList([n])"""
         expected_result = []
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set, expected_result)
@@ -459,12 +459,12 @@ class testList(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
         # Tests with empty array result
-        query = """MATCH (n) RETURN toIntegerList(n)"""
+        query = """MATCH (n:X) RETURN toIntegerList(n)"""
         expected_result = []
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-        query = """MATCH (n) RETURN toIntegerList([n])"""
+        query = """MATCH (n:X) RETURN toIntegerList([n])"""
         expected_result = []
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set, expected_result)
@@ -604,12 +604,12 @@ class testList(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
         # Tests with empty array result
-        query = """MATCH (n) RETURN toStringList(n)"""
+        query = """MATCH (n:X) RETURN toStringList(n)"""
         expected_result = []
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-        query = """MATCH (n) RETURN toStringList([n])"""
+        query = """MATCH (n:X) RETURN toStringList([n])"""
         expected_result = []
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set, expected_result)
