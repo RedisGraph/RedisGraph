@@ -293,6 +293,18 @@ Schema *GraphContext_AddSchema(GraphContext *gc, const char *label, SchemaType t
 	return schema;
 }
 
+void GraphContext_RemoveSchema(GraphContext *gc, int schema_id, SchemaType t) {
+	if(t == SCHEMA_NODE) {
+		Schema *schema = gc->node_schemas[schema_id];
+		Schema_Free(schema);
+		gc->node_schemas = array_del(gc->node_schemas, schema_id);
+	} else {
+		Schema *schema = gc->relation_schemas[schema_id];
+		Schema_Free(schema);
+		gc->relation_schemas = array_del(gc->relation_schemas, schema_id);
+	}
+}
+
 const char *GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e) {
 	int reltype_id = Graph_GetEdgeRelation(gc->g, e);
 	ASSERT(reltype_id != GRAPH_NO_RELATION);
