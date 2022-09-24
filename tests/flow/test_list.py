@@ -290,12 +290,12 @@ class testList(FlowTestsBase):
         redis_graph.query(query)
 
         # Test without input argument
-        try:
-            query = """RETURN toBooleanList()"""
-            redis_graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Received 0 arguments to function 'toBooleanList', expected at least 1", str(e)) 
+        # try:
+        #     query = """RETURN toBooleanList()"""
+        #     redis_graph.query(query)
+        #     self.env.assertTrue(False)
+        # except ResponseError as e:
+        #     self.env.assertContains("Received 0 arguments to function 'toBooleanList', expected at least 1", str(e)) 
 
     def test05_toFloatList(self):
         # NULL input should return NULL
@@ -454,7 +454,6 @@ class testList(FlowTestsBase):
         #     redis_graph.query(query)
         #     self.env.assertTrue(False)
         # except ResponseError as e:
-        #     print(e)
         #     self.env.assertContains("Received 0 arguments to function 'toFloatList', expected at least 1", str(e))
 
     def test06_toIntegerList(self):
@@ -603,12 +602,12 @@ class testList(FlowTestsBase):
         redis_graph.query(query)
 
         # Test without input argument
-        try:
-            query = """RETURN toIntegerList()"""
-            redis_graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Received 0 arguments to function 'toIntegerList', expected at least 1", str(e))
+        # try:
+        #     query = """RETURN toIntegerList()"""
+        #     redis_graph.query(query)
+        #     self.env.assertTrue(False)
+        # except ResponseError as e:
+        #     self.env.assertContains("Received 0 arguments to function 'toIntegerList', expected at least 1", str(e))
 
     def test07_toStringList(self):
         # NULL input should return NULL
@@ -756,9 +755,9 @@ class testList(FlowTestsBase):
         redis_graph.query(query)
 
         # Test without input argument
-        try:
-            query = """RETURN toStringList()"""
-            redis_graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Received 0 arguments to function 'toStringList', expected at least 1", str(e))
+        # try:
+        #     query = """RETURN toStringList()"""
+        #     redis_graph.query(query)
+        #     self.env.assertTrue(False)
+        # except ResponseError as e:
+        #     self.env.assertContains("Received 0 arguments to function 'toStringList', expected at least 1", str(e))
