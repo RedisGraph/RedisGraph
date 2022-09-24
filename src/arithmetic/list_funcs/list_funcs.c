@@ -458,25 +458,25 @@ void Register_ListFuncs() {
 
 	types = array_new(SIType, 1);
 	array_append(types, T_ARRAY | T_NULL);
-	ret_type = T_ARRAY| T_NULL;
+	ret_type = T_ARRAY|  T_NULL;
 	func_desc = AR_FuncDescNew("toBooleanList", AR_TOBOOLEANLIST, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_ARRAY | T_NULL);
-	ret_type = T_ARRAY| T_NULL;
+	ret_type = T_ARRAY | T_NULL;
 	func_desc = AR_FuncDescNew("toFloatList", AR_TOFLOATLIST, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_ARRAY | T_NULL);
-	ret_type = T_ARRAY| T_NULL;
+	ret_type = T_ARRAY | T_NULL;
 	func_desc = AR_FuncDescNew("toIntegerList", AR_TOINTEGERLIST, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	array_append(types, T_ARRAY | T_NULL);
-	ret_type = T_ARRAY| T_NULL;
+	ret_type = T_ARRAY | T_NULL;
 	func_desc = AR_FuncDescNew("toStringList", AR_TOSTRINGLIST, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 

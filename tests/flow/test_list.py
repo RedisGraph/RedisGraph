@@ -287,7 +287,15 @@ class testList(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
         query = """MATCH (a:X),(b:Y) DELETE a, b"""
-        redis_graph.query(query)  
+        redis_graph.query(query)
+
+        # Test without input argument
+        try:
+            query = """RETURN toBooleanList()"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 0 arguments to function 'toBooleanList', expected at least 1", str(e)) 
 
     def test05_toFloatList(self):
         # NULL input should return NULL
@@ -415,7 +423,7 @@ class testList(FlowTestsBase):
         query = """MATCH (a:X) DELETE a"""
         redis_graph.query(query)
 
-        # # List of edge input should return list of NULL
+        # List of edge input should return list of NULL
         query = """CREATE (a:X), (b:Y)"""
         redis_graph.query(query)
         query = """MATCH (a:X), (b:Y) CREATE (a)-[e:R]->(b)"""
@@ -436,8 +444,16 @@ class testList(FlowTestsBase):
         expected_result = [[None]]
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
-        query = """MATCH (a:X),(b:Y) DELETE a, b"""
-        redis_graph.query(query)  
+        query = """MATCH (a:X), (b:Y) DELETE a, b"""
+        redis_graph.query(query)
+
+        # Test without input argument
+        try:
+            query = """RETURN toFloatList()"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 0 arguments to function 'toFloatList', expected at least 1", str(e))
 
     def test06_toIntegerList(self):
         # NULL input should return NULL
@@ -534,7 +550,7 @@ class testList(FlowTestsBase):
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("Type mismatch: expected List but was Edge", str(e))
-            query = """MATCH (a:X),(b:Y) DELETE a, b"""
+            query = """MATCH (a:X), (b:Y) DELETE a, b"""
             redis_graph.query(query)
 
         try:
@@ -581,8 +597,16 @@ class testList(FlowTestsBase):
         expected_result = [[None]]
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
-        query = """MATCH (a:X),(b:Y) DELETE a, b"""
+        query = """MATCH (a:X), (b:Y) DELETE a, b"""
         redis_graph.query(query)
+
+        # Test without input argument
+        try:
+            query = """RETURN toIntegerList()"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 0 arguments to function 'toIntegerList', expected at least 1", str(e))
 
     def test07_toStringList(self):
         # NULL input should return NULL
@@ -726,5 +750,13 @@ class testList(FlowTestsBase):
         expected_result = [[None]]
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
-        query = """MATCH (a:X),(b:Y) DELETE a, b"""
+        query = """MATCH (a:X), (b:Y) DELETE a, b"""
         redis_graph.query(query)
+
+        # Test without input argument
+        try:
+            query = """RETURN toStringList()"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 0 arguments to function 'toStringList', expected at least 1", str(e))
