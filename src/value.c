@@ -262,8 +262,8 @@ const char *SIType_ToString(SIType t) {
 void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWritten) {
 	// uint64 max and int64 min string representation requires 21 bytes
 	// checkt for enough space
-	if(*bufferLen - *bytesWritten < 64) {
-		*bufferLen += 64;
+	if(*bufferLen - *bytesWritten < 21) {
+		*bufferLen += 21;
 		*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
 	}
 
