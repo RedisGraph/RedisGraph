@@ -260,18 +260,17 @@ const char *SIType_ToString(SIType t) {
 }
 
 void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWritten) {
-	// uint64 max and int64 min string representation requires 21 bytes
-	// checkt for enough space
-	if(*bufferLen - *bytesWritten < 21) {
-		*bufferLen += 21;
-		*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
-	}
-
 	switch(v.type) {
 	case T_STRING:
 		_SIString_ToString(v, buf, bufferLen, bytesWritten);
 		break;
 	case T_INT64:
+		// uint64 max and int64 min string representation requires 21 bytes
+		// checkt for enough space
+		if(*bufferLen - *bytesWritten < 21) {
+			*bufferLen += 21;
+			*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
+		}
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%lld", (long long)v.longval);
 		break;
 	case T_BOOL:
@@ -308,14 +307,28 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 		SIPath_ToString(v, buf, bufferLen, bytesWritten);
 		break;
 	case T_NULL:
+		// check if there is enough space in the buffer
+		if(*bufferLen - *bytesWritten < 4) {
+			*bufferLen += 4;
+			*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
+		}
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "NULL");
 		break;
 	case T_PTR:
+		// check if there is enough space in the buffer
+		if(*bufferLen - *bytesWritten < 7) {
+			*bufferLen += 7;
+			*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
+		}
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "POINTER");
 		break;
 	case T_POINT:
-		// max string length is 32 chars of string + 10 * 2 chars for the floats
-		// = 52 bytes that already checked in the header of the function
+		// max string length is 32 chars of string + 10 * 2 chars for the floats = 52 bytes
+		// check if there is enough space in the buffer
+		if(*bufferLen - *bytesWritten < 52) {
+			*bufferLen += 52;
+			*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
+		}
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "point({latitude: %f, longitude: %f})", Point_lat(v), Point_lon(v));
 		break;
 	default:
