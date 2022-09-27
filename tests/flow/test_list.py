@@ -622,6 +622,18 @@ class testList(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result) 
 
+        # Test list with string values
+        query = """RETURN toStringList(['abc', '5.32', 'true', 'this is a test'])"""
+        expected_result = [['abc', '5.32', 'true', 'this is a test']]
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # Test list with float values
+        query = """RETURN toStringList([0.32425, 5.32, 7.1])"""
+        expected_result = [['0.324250', '5.320000', '7.100000']]
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
         # Test list with mixed type values
         query = """RETURN toStringList(['abc', 7, '5.32', null, ['a','b']]) """
         expected_result = [['abc', '7', '5.32', None, None]]
@@ -730,7 +742,7 @@ class testList(FlowTestsBase):
         query = """MATCH (a:X) DELETE a"""
         redis_graph.query(query)
 
-        # # List of edge input should return list of NULL
+        # List of edge input should return list of NULL
         query = """CREATE (a:X), (b:Y)"""
         redis_graph.query(query)
         query = """MATCH (a:X), (b:Y) CREATE (a)-[e:R]->(b)"""

@@ -190,7 +190,9 @@ SIValue AR_TOSTRINGLIST(SIValue *argv, int argc, void *private_data) {
 	SIValue array = SI_Array(arrayLen);
 	for(uint i = 0; i < arrayLen; i++) {
 		SIValue v = SIArray_Get(originalArray, i);
-		SIArray_Append(&array, AR_TOSTRING(&v, 1, NULL));
+		SIValue vstr = AR_TOSTRING(&v, 1, NULL);
+		SIArray_Append(&array, vstr);
+		SIValue_Free(vstr);
 		SIValue_Free(v);
 	}
 	return array;
