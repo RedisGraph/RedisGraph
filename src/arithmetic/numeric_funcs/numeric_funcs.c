@@ -173,6 +173,36 @@ SIValue AR_POW(SIValue *argv, int argc, void *private_data) {
 	return SI_DoubleVal(pow(SI_GET_NUMERIC(base), SI_GET_NUMERIC(exp)));
 }
 
+// returns ln(val)
+SIValue AR_LOG(SIValue *argv, int argc, void *private_data) {
+	SIValue arg = argv[0];
+	// return NULL if input is none numeric
+	if(SIValue_IsNull(arg)) return SI_NullVal();
+
+	double value = SI_GET_NUMERIC(arg);
+
+	// return NULL if input is negative
+	if(value < 0) return SI_NullVal();
+
+	// return ln of input
+	return SI_DoubleVal(log(value));
+}
+
+// returns log10(val)
+SIValue AR_LOG10(SIValue *argv, int argc, void *private_data) {
+	SIValue arg = argv[0];
+	// return NULL if input is none numeric
+	if(SIValue_IsNull(arg)) return SI_NullVal();
+
+	double value = SI_GET_NUMERIC(arg);
+
+	// return NULL if input is negative
+	if(value < 0) return SI_NullVal();
+
+	// return log10 of input
+	return SI_DoubleVal(log10(value));
+}
+
 void Register_NumericFuncs() {
 	SIType *types;
 	SIType ret_type;
@@ -277,5 +307,17 @@ void Register_NumericFuncs() {
 	array_append(types, (SI_NUMERIC | T_NULL));
 	ret_type = T_DOUBLE | T_NULL;
 	func_desc = AR_FuncDescNew("pow", AR_POW, 2, 2, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, (SI_NUMERIC | T_NULL));
+	ret_type = T_DOUBLE | T_NULL;
+	func_desc = AR_FuncDescNew("log", AR_LOG, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, (SI_NUMERIC | T_NULL));
+	ret_type = T_DOUBLE | T_NULL;
+	func_desc = AR_FuncDescNew("log10", AR_LOG10, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 }
