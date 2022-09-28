@@ -66,8 +66,8 @@
 // configuration object
 typedef struct {
 	uint64_t timeout;                  // The timeout for each query in milliseconds.
-	uint64_t timeout_default;          // default timeout for read and write queries
 	uint64_t timeout_max;              // max timeout that can be enforced
+	uint64_t timeout_default;          // default timeout for read and write queries
 	bool async_delete;                 // If true, graph deletion is done asynchronously.
 	uint64_t cache_size;               // The cache size for each thread, per graph.
 	uint thread_pool_size;             // Thread count for thread pool.
@@ -177,16 +177,18 @@ static void Config_timeout_set
 	config.timeout = timeout;
 }
 
-// check if old(TIMEOUT) and new(TIMEOUT_DEFAULT or TIMEOUT_MAX) are used
+// check if new(TIMEOUT_DEFAULT or TIMEOUT_MAX) are used
 // log a deprecation message
-static void Config_log_if_old_and_new_timeout_used() {
-	bool old_timeout_set  = config.timeout         != CONFIG_TIMEOUT_NO_TIMEOUT;
+static bool _Config_check_if_new_timeout_used() {
 	bool new_timeout_set  = config.timeout_default != CONFIG_TIMEOUT_NO_TIMEOUT;
 	new_timeout_set      |= config.timeout_max     != CONFIG_TIMEOUT_NO_TIMEOUT;
 
-	if(old_timeout_set && new_timeout_set) {
-		RedisModule_Log(NULL, "warning", "The deprecated TIMEOUT configuration parameter is ignored. Please remove it from the configuration file");
+	if(new_timeout_set) {
+		RedisModule_Log(NULL, "warning", "The TIMEOUT configuration parameter is deprecated. Please set TIMEOUT_MAX and TIMEOUT_DEFAULT instead");
+		return false;
 	}
+
+	return true;
 }
 
 static bool Config_enforce_timeout_max
@@ -194,9 +196,9 @@ static bool Config_enforce_timeout_max
 	uint64_t timeout_default,
 	uint64_t timeout_max
 ) {
-	if(config.timeout_max != CONFIG_TIMEOUT_NO_TIMEOUT &&
+	if(timeout_max != CONFIG_TIMEOUT_NO_TIMEOUT &&
 	   timeout_default > timeout_max) {
-		RedisModule_Log(NULL, "warning", "The TIMEOUT_DEFAULT(%lld) configuration parameter value is higher than TIMEOUT_MAX(%lld). Its value was set to TIMEOUT_MAX", timeout_default, timeout_max);
+		RedisModule_Log(NULL, "warning", "The TIMEOUT_DEFAULT(%lld) configuration parameter value is higher than TIMEOUT_MAX(%lld).", timeout_default, timeout_max);
 		return false;
 	}
 	
@@ -510,11 +512,11 @@ static void _Config_SetToDefaults(void) {
 	// no query timeout by default
 	config.timeout = CONFIG_TIMEOUT_NO_TIMEOUT;
 
-	// no query timeout by default
-	config.timeout_default = CONFIG_TIMEOUT_NO_TIMEOUT;
-
 	// no max timeout by default
 	config.timeout_max = CONFIG_TIMEOUT_NO_TIMEOUT;
+
+	// no query timeout by default
+	config.timeout_default = CONFIG_TIMEOUT_NO_TIMEOUT;
 
 	// no limit on number of queued queries by default
 	config.max_queued_queries = QUEUED_QUERIES_UNLIMITED;
@@ -566,7 +568,7 @@ int Config_Init
 
 		// exit if configuration is not aware of field
 		if(!Config_Contains_field(field_str, &field)) {
-			RedisModule_Log(ctx, "warning",
+			RedisModule_Log(ctx, "error",
 							"Encountered unknown configuration field '%s'", field_str);
 			return REDISMODULE_ERR;
 		}
@@ -581,14 +583,16 @@ int Config_Init
 
 		// exit if encountered an error when setting configuration
 		if(!Config_Option_set(field, val_str)) {
-			RedisModule_Log(ctx, "warning",
+			RedisModule_Log(ctx, "error",
 							"Failed setting field '%s'", field_str);
 			return REDISMODULE_ERR;
 		}
 	}
 
-	if(old_timeout_specified && !new_timeout_specified) {
-		RedisModule_Log(ctx, "warning", "The TIMEOUT configuration parameter is deprecated. Please remove TIMEOUT and set TIMEOUT_MAX and TIMEOUT_DEFAULT instead");
+	if(old_timeout_specified && new_timeout_specified) {
+		RedisModule_Log(ctx, "error",
+						"The TIMEOUT configuration parameter should be removed when specifying TIMEOUT_DEFAULT and/or TIMEOUT_MAX");
+		return REDISMODULE_ERR;
 	}
 
 	return REDISMODULE_OK;
@@ -826,8 +830,8 @@ bool Config_Option_set
 		case Config_TIMEOUT: {
 			long long timeout;
 			if(!_Config_ParseNonNegativeInteger(val, &timeout)) return false;
+			if(!_Config_check_if_new_timeout_used()) return false;
 			Config_timeout_set(timeout);
-			Config_log_if_old_and_new_timeout_used();
 		}
 		break;
 
@@ -839,7 +843,6 @@ bool Config_Option_set
 			long long timeout_default;
 			if(!_Config_ParseNonNegativeInteger(val, &timeout_default)) return false;
 			if(!Config_timeout_default_set(timeout_default)) return false;
-			Config_log_if_old_and_new_timeout_used();
 		}
 		break;
 
@@ -851,7 +854,6 @@ bool Config_Option_set
 			long long timeout_max;
 			if(!_Config_ParseNonNegativeInteger(val, &timeout_max)) return false;
 			if(!Config_timeout_max_set(timeout_max)) return false;
-			Config_log_if_old_and_new_timeout_used();
 		}
 		break;
 

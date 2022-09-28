@@ -17,13 +17,6 @@ class testQueryTimeout():
         redis_con = self.env.getConnection()
         redis_graph = Graph(redis_con, GRAPH_ID)
 
-    def test00_deprecation_message(self):
-        logfilename = self.env.envRunner._getFileName("master", ".log")
-        logfile = open(f"{self.env.logDir}/{logfilename}")
-        log = logfile.read()
-
-        self.env.assertContains("The TIMEOUT configuration parameter is deprecated. Please remove TIMEOUT and set TIMEOUT_MAX and TIMEOUT_DEFAULT instead", log)
-
     def test01_read_write_query_timeout(self):
         query = "UNWIND range(0,1000000) AS x WITH x AS x WHERE x = 10000 RETURN x"
         try:
@@ -129,19 +122,22 @@ class testQueryTimeout():
         except:
             self.env.assertTrue(False)
 
-    def test05_ignore_timeout_when_timeout_max_or_timeout_default_set(self):
-        self.env.stop()
-        self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT 10 TIMEOUT_DEFAULT 10 TIMEOUT_MAX 10")
-        redis_con = self.env.getConnection()
-        redis_graph = Graph(redis_con, "timeout")
+    # def test05_ignore_timeout_when_timeout_max_or_timeout_default_set(self):
+    #     self.env.stop()
+    #     self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT 10 TIMEOUT_DEFAULT 10 TIMEOUT_MAX 10")
 
-        logfilename = self.env.envRunner._getFileName("master", ".log")
-        logfile = open(f"{self.env.logDir}/{logfilename}")
-        log = logfile.read()
+    #     logfilename = self.env.envRunner._getFileName("master", ".log")
+    #     logfile = open(f"{self.env.logDir}/{logfilename}")
+    #     log = logfile.read()
 
-        self.env.assertContains("The deprecated TIMEOUT configuration parameter is ignored. Please remove it from the configuration file", log)
+    #     self.env.assertContains("The deprecated TIMEOUT configuration parameter is ignored. Please remove it from the configuration file", log)
+
+    #     self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT_DEFAULT 10 TIMEOUT_MAX 10")
 
     def test06_error_timeout_default_higher_than_timeout_max(self):
+        self.env.stop()
+        self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT_DEFAULT 10 TIMEOUT_MAX 10")
+
         # get current timeout configuration
         max_timeout = redis_con.execute_command("GRAPH.CONFIG", "GET", "TIMEOUT_MAX")[1]
         default_timeout = redis_con.execute_command("GRAPH.CONFIG", "GET", "TIMEOUT_DEFAULT")[1]

@@ -39,13 +39,16 @@ static int _read_flags
 	Config_Option_get(Config_TIMEOUT_DEFAULT, timeout);
 	Config_Option_get(Config_TIMEOUT_MAX, &max_timeout);
 
-	if(*timeout != CONFIG_TIMEOUT_NO_TIMEOUT || max_timeout != CONFIG_TIMEOUT_NO_TIMEOUT) {
+	if(max_timeout != CONFIG_TIMEOUT_NO_TIMEOUT ||
+	   *timeout != CONFIG_TIMEOUT_NO_TIMEOUT) {
 		*timeout_rw = true;
+		if(timeout == CONFIG_TIMEOUT_NO_TIMEOUT) {
+			*timeout = max_timeout;
+		}
 	} else {
 		Config_Option_get(Config_TIMEOUT, timeout);
 		*timeout_rw = false;
 	}
-
 
 	// GRAPH.QUERY <GRAPH_KEY> <QUERY>
 	// make sure we've got more than 3 arguments
@@ -65,13 +68,17 @@ static int _read_flags
 				i++; // Set the current argument to the timeout value.
 				err = RedisModule_StringToLongLong(argv[i], timeout);
 
-				if(max_timeout != CONFIG_TIMEOUT_NO_TIMEOUT && *timeout > max_timeout) {
+				if(max_timeout != CONFIG_TIMEOUT_NO_TIMEOUT &&
+				   *timeout > max_timeout) {
 					asprintf(errmsg, "The query TIMEOUT parameter value cannot exceed the TIMEOUT_MAX configuration parameter value");
 					return REDISMODULE_ERR;
 				}
 
 				if(timeout == CONFIG_TIMEOUT_NO_TIMEOUT && timeout_rw) {
 					Config_Option_get(Config_TIMEOUT_DEFAULT, timeout);
+					if(timeout == CONFIG_TIMEOUT_NO_TIMEOUT) {
+						*timeout = max_timeout;
+					}
 				}
 			}
 
@@ -174,10 +181,10 @@ static bool should_command_create_graph(GRAPH_Commands cmd) {
 
 int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	char *errmsg;
-	bool compact;
 	uint version;
-	long long timeout;
+	bool compact;
 	bool timeout_rw;
+	long long timeout;
 	CommandCtx *context = NULL;
 
 	RedisModuleString *graph_name = argv[1];
