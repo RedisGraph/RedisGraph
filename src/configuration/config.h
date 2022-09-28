@@ -82,14 +82,16 @@ bool Config_Option_get
 bool Config_Option_set
 (
 	Config_Option_Field field,
-	const char *val
+	const char *val,
+	char **err
 );
 
 // dryrun configuration
 bool Config_Option_dryrun
 (
 	Config_Option_Field field,
-	const char *val
+	const char *val,
+	char **err
 );
 
 // sets config update callback function

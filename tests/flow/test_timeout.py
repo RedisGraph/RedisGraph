@@ -147,14 +147,14 @@ class testQueryTimeout():
             redis_con.execute_command("GRAPH.CONFIG", "SET", "TIMEOUT_DEFAULT", max_timeout + 1)
             self.env.assertTrue(False)
         except ResponseError as error:
-            self.env.assertContains("Failed to set config value TIMEOUT_DEFAULT", str(error))
+            self.env.assertContains("TIMEOUT_DEFAULT configuration parameter cannot be set to a value higher than TIMEOUT_MAX", str(error))
 
         # try to set max-timeout to a lower value then default-timeout
         try:
             redis_con.execute_command("GRAPH.CONFIG", "SET", "TIMEOUT_MAX", default_timeout - 1)
             self.env.assertTrue(False)
         except ResponseError as error:
-            self.env.assertContains("Failed to set config value TIMEOUT_MAX", str(error))
+            self.env.assertContains("TIMEOUT_MAX configuration parameter cannot be set to a value lower than TIMEOUT_DEFAULT", str(error))
 
         # disable max timeout
         try:
@@ -245,4 +245,4 @@ class testQueryTimeout():
             redis_con.execute_command("GRAPH.CONFIG", "SET", "TIMEOUT", 20)
             self.env.assertTrue(False)
         except ResponseError as error:
-            self.env.assertContains("Failed to set config value TIMEOUT", str(error))
+            self.env.assertContains("The TIMEOUT configuration parameter is deprecated. Please set TIMEOUT_MAX and TIMEOUT_DEFAULT instead", str(error))

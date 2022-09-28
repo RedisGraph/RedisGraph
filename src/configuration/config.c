@@ -582,9 +582,15 @@ int Config_Init
 		}
 
 		// exit if encountered an error when setting configuration
-		if(!Config_Option_set(field, val_str)) {
-			RedisModule_Log(ctx, "error",
-							"Failed setting field '%s'", field_str);
+		char *error = NULL;
+		if(!Config_Option_set(field, val_str, &error)) {
+			if(error != NULL) {
+				RedisModule_Log(ctx, "error",
+							"Failed setting field '%s' with error: %s", field_str, error);
+			} else {
+				RedisModule_Log(ctx, "error",
+							"Failed setting field '%s'", field_str);	
+			}
 			return REDISMODULE_ERR;
 		}
 	}
@@ -803,7 +809,8 @@ bool Config_Option_get
 bool Config_Option_set
 (
 	Config_Option_Field field,
-	const char *val
+	const char *val,
+	char **err
 ) {
 	//--------------------------------------------------------------------------
 	// set the option
@@ -830,7 +837,10 @@ bool Config_Option_set
 		case Config_TIMEOUT: {
 			long long timeout;
 			if(!_Config_ParseNonNegativeInteger(val, &timeout)) return false;
-			if(!_Config_check_if_new_timeout_used()) return false;
+			if(!_Config_check_if_new_timeout_used()) {
+				if(err) *err = "The TIMEOUT configuration parameter is deprecated. Please set TIMEOUT_MAX and TIMEOUT_DEFAULT instead";
+				return false;
+			}
 			Config_timeout_set(timeout);
 		}
 		break;
@@ -842,7 +852,10 @@ bool Config_Option_set
 		case Config_TIMEOUT_DEFAULT: {
 			long long timeout_default;
 			if(!_Config_ParseNonNegativeInteger(val, &timeout_default)) return false;
-			if(!Config_timeout_default_set(timeout_default)) return false;
+			if(!Config_timeout_default_set(timeout_default)) {
+				if(err) *err = "TIMEOUT_DEFAULT configuration parameter cannot be set to a value higher than TIMEOUT_MAX";
+				return false;
+			}
 		}
 		break;
 
@@ -853,7 +866,10 @@ bool Config_Option_set
 		case Config_TIMEOUT_MAX: {
 			long long timeout_max;
 			if(!_Config_ParseNonNegativeInteger(val, &timeout_max)) return false;
-			if(!Config_timeout_max_set(timeout_max)) return false;
+			if(!Config_timeout_max_set(timeout_max)) {
+				if(err) *err = "TIMEOUT_MAX configuration parameter cannot be set to a value lower than TIMEOUT_DEFAULT";
+				return false;
+			}
 		}
 		break;
 
@@ -995,7 +1011,8 @@ bool Config_Option_set
 bool Config_Option_dryrun
 (
 	Config_Option_Field field,
-	const char *val
+	const char *val,
+	char **err
 ) {
 	// clone configuration
 	RG_Config config_clone = config;
@@ -1005,7 +1022,7 @@ bool Config_Option_dryrun
 
 	// NOTE: for a short period of time
 	// whoever might query the configuration WILL see this modification
-	bool valid = Config_Option_set(field, val);
+	bool valid = Config_Option_set(field, val, err);
 
 	// restore original configuration
 	config = config_clone;
