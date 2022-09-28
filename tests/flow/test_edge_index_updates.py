@@ -110,14 +110,14 @@ class testEdgeIndexUpdatesFlow(FlowTestsBase):
 
     # Modify a property, triggering updates to all edges in two indices
     def test01_full_property_update(self):
-        result = redis_graph.query("MATCH ()-[a]->() SET a.doubleval = a.doubleval + 1.1"
+        result = redis_graph.query("MATCH ()-[a]->() SET a.doubleval = a.doubleval + 1.1")
         self.env.assertEquals(result.properties_set, 1000)
         # Verify that index scans still function and return correctly
         self.validate_state()
 
     # Modify a property, triggering updates to a subset of edges in two indices
     def test02_partial_property_update(self):
-        redis_graph.query("MATCH ()-[a]->() WHERE a.doubleval > 0 SET a.doubleval = a.doubleval + 1.1"
+        redis_graph.query("MATCH ()-[a]->() WHERE a.doubleval > 0 SET a.doubleval = a.doubleval + 1.1")
         # Verify that index scans still function and return correctly
         self.validate_state()
 
