@@ -127,7 +127,7 @@ class RGMatrixTest: public ::testing::Test {
 		GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
 
 		// set delta matrix flush threshold
-		Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
+		Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
 	}
 
 	static void TearDownTestCase() {
