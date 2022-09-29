@@ -229,6 +229,9 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         # Validate integer dividend modulo by 0
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 3 % 0"
+        # (error) Division by zero
         query = "RETURN 3 % 0"
         try:
             actual_result = graph.query(query)
@@ -236,19 +239,68 @@ class testFunctionCallsFlow(FlowTestsBase):
             self.env.assertContains("Division by zero", str(e))
         
         # Validate floating-point dividend modulo by 0
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 1.0 % 0"
+        # 1) 1) "1.0 % 0"
+        # 2) 1) 1) "-nan"
         query = "RETURN 1.0 % 0"
         actual_result = graph.query(query)
         self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
 
-        # Validate integer dividend modulo by 0.0 
+        # Validate integer dividend modulo by 0.0
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 1 % 0.0"
+        # 1) 1) "1 % 0.0"
+        # 2) 1) 1) "-nan"
         query = "RETURN 1 % 0.0"
         actual_result = graph.query(query)
         self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
 
         # Validate floating-point dividend modulo by 0.0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 1.0 % 0.0"
+        # 1) 1) "1.0 % 0.0"
+        # 2) 1) 1) "-nan"       
         query = "RETURN 1.0 % 0.0"
         actual_result = graph.query(query)
         self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
+
+        # Validate floating-point 0.0 modulo by floating-point 0.0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN  0.0 % 0.0"
+        # 1) 1) "0.0 % 0.0"
+        # 2) 1) 1) "-nan"
+        query = "RETURN 0.0 % 0.0"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
+
+        # Validate integer 0 modulo by floating 0.0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN  0 % 0.0"
+        # 1) 1) "0 % 0.0"
+        # 2) 1) 1) "-nan"
+        query = "RETURN 0 % 0.0"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
+
+        # Validate floating-point 0.0 modulo by integer 0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN  0.0 % 0"
+        # 1) 1) "0 % 0.0"
+        # 2) 1) 1) "-nan"
+        query = "RETURN  0.0 % 0"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
+
+        # Validate integer 0 modulo by 0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN  0 % 0"
+        # (error) Division by zero
+        query = "RETURN 0 % 0"
+        try:
+            actual_result = graph.query(query)
+        except redis.ResponseError as e:
+            self.env.assertContains("Division by zero", str(e))
 
     # Aggregate functions should handle null inputs appropriately.
     def test11_null_aggregate_function_inputs(self):
@@ -1007,6 +1059,9 @@ class testFunctionCallsFlow(FlowTestsBase):
 
     def test36_division_inputs(self):
         # Validate integer dividend division by 0
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 3 / 0"
+        # (error) Division by zero
         query = "RETURN 3 / 0"
         try:
             actual_result = graph.query(query)
@@ -1014,16 +1069,92 @@ class testFunctionCallsFlow(FlowTestsBase):
             self.env.assertContains("Division by zero", str(e))
         
         # Validate floating-point dividend division by 0
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 1.0 / 0"
+        # 1) 1) "1.0 / 0"
+        # 2) 1) 1) "inf"
         query = "RETURN 1.0 / 0"
         actual_result = graph.query(query)
-        self.env.assertTrue(math.isinf(actual_result.result_set[0][0]))
+        self.env.assertEquals(actual_result.result_set[0][0],float('inf'))
+
+        # Validate negative floating-point dividend division by 0
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN -1.0 / 0"
+        # 1) 1) "-1.0 / 0"
+        # 2) 1) 1) "-inf"
+        query = "RETURN -1.0 / 0"
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0],float('-inf'))
 
         # Validate integer dividend division by 0.0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 1 / 0.0"
+        # 1) 1) "1 / 0.0"
+        # 2) 1) 1) "inf"
         query = "RETURN 1 / 0.0"
         actual_result = graph.query(query)
-        self.env.assertTrue(math.isinf(actual_result.result_set[0][0]))
+        self.env.assertEquals(actual_result.result_set[0][0],float('inf'))
+
+        # Validate negative integer dividend division by 0.0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN -1 / 0.0"
+        # 1) 1) "-1 / 0.0"
+        # 2) 1) 1) "-inf"
+        query = "RETURN -1 / 0.0"
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0],float('-inf'))
 
         # Validate floating-point dividend division by 0.0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 1.0 / 0.0"
+        # 1) 1) "1.0 / 0.0"
+        # 2) 1) 1) "inf"
         query = "RETURN 1.0 / 0.0"
         actual_result = graph.query(query)
-        self.env.assertTrue(math.isinf(actual_result.result_set[0][0]))
+        self.env.assertEquals(actual_result.result_set[0][0],float('inf'))
+
+        # Validate negative floating-point dividend division by 0.0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN -1.0 / 0.0"
+        # 1) 1) "-1.0 / 0.0"
+        # 2) 1) 1) "-inf"
+        query = "RETURN -1.0 / 0.0"
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0],float('-inf'))
+
+        # Validate floating-point 0.0 divided by floating-point 0.0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 0.0 / 0.0"
+        # 1) 1) "0.0 / 0.0"
+        # 2) 1) 1) "-nan"
+        query = "RETURN 0.0 / 0.0"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
+
+        # Validate integer 0 divided by floating 0.0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 0 / 0.0"
+        # 1) 1) "0 / 0.0"
+        # 2) 1) 1) "-nan"
+        query = "RETURN 0 / 0.0"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
+
+        # Validate floating-point 0.0 divided by integer 0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 0.0 / 0"
+        # 1) 1) "0.0 / 0"
+        # 2) 1) 1) "-nan"
+        query = "RETURN  0.0 / 0"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
+
+        # Validate integer 0 divided by 0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 0 / 0"
+        # (error) Division by zero
+        query = "RETURN 0 / 0"
+        try:
+            actual_result = graph.query(query)
+        except redis.ResponseError as e:
+            self.env.assertContains("Division by zero", str(e))
