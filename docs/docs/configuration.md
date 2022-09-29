@@ -103,7 +103,7 @@ The maximum number of threads that OpenMP may use for computation per query. The
 
 #### Default
 
-`OMP_THREAD_COUNT` is defined by GraphBLAS by default.
+`OMP_THREAD_COUNT` is defined by GraphBLAS.
 
 #### Example
 
@@ -125,7 +125,7 @@ If the passed argument was not a power of 2, it will be rounded to the next-grea
 
 #### Default
 
-`NODE_CREATION_BUFFER` is 16,384 by default.
+`NODE_CREATION_BUFFER` is 16,384.
 
 #### Minimum
 
@@ -145,7 +145,7 @@ Setting the maximum number of queued queries allows the server to reject incomin
 
 #### Default
 
-`MAX_QUEUED_QUERIES` is effectively unlimited by default (config value of `UINT64_MAX`).
+`MAX_QUEUED_QUERIES` is effectively unlimited (config value of `UINT64_MAX`).
 
 #### Example
 
@@ -169,7 +169,8 @@ The `TIMEOUT` query parameter of the `GRAPH.QUERY`, `GRAPH.RO_QUERY`, and `GRAPH
 
 #### Default
 
-`TIMEOUT` is off by default (by setting `TIMEOUT` to `0`).
+- Before RedisGraph v2.10: `TIMEOUT` is off (set to `0`).
+- Since RedisGraph v2.10: `TIMEOUT` is not specified; `TIMEOUT_MAX` and `TIMEOUT_DEFAULT` are specified instead.
 
 #### Example
 
@@ -191,7 +192,8 @@ When a query execution time exceeds the maximal execution time, the query is abo
 
 #### Default
 
-`TIMEOUT_MAX` is off by default (by setting `TIMEOUT_MAX` to `0`).
+- Before RedisGraph v2.10: unspecified and unsupported.
+- Since RedisGraph v2.10: `TIMEOUT_MAX` is off (set to `0`).
 
 #### Example
 
@@ -211,7 +213,8 @@ For a given query, this default maximal execution time can be overridden by the 
 
 #### Default
 
-`TIMEOUT_DEFAULT` is equal to `TIMEOUT_MAX` by default (by setting `TIMEOUT_DEFAULT` to either `0` or `TIMEOUT_MAX`).
+- Before RedisGraph v2.10: unspecified and unsupported.
+- Since RedisGraph v2.10: `TIMEOUT_DEFAULT` is equal to `TIMEOUT_MAX` (set to `0`).
 
 #### Example
 
@@ -228,7 +231,7 @@ Result set size is a limit on the number of records that should be returned by a
 
 #### Default
 
-`RESULTSET_SIZE` is unlimited by default (negative config value).
+`RESULTSET_SIZE` is unlimited (negative config value).
 
 #### Example
 
@@ -254,7 +257,7 @@ The configuration argument is the maximum number of bytes that can be allocated 
 
 #### Default
 
-`QUERY_MEM_CAPACITY` is unlimited by default; this default can be restored by setting `QUERY_MEM_CAPACITY` to zero or a negative value.
+`QUERY_MEM_CAPACITY` is unlimited; this default can be restored by setting `QUERY_MEM_CAPACITY` to zero or a negative value.
 
 #### Example
 
@@ -278,7 +281,7 @@ This configuration can be set when the module loads or at runtime.
 
 #### Default
 
-`VKEY_MAX_ENTITY_COUNT` is 100,000 by default.
+`VKEY_MAX_ENTITY_COUNT` is 100,000.
 
 ---
 
