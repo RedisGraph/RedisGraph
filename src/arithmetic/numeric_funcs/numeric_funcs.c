@@ -169,9 +169,111 @@ SIValue AR_POW(SIValue *argv, int argc, void *private_data) {
 	SIValue exp = argv[1];
 	// return NULL if input is NULL
 	if(SIValue_IsNull(base) || SIValue_IsNull(exp)) return SI_NullVal();
-	// return sqrt of input
+
+	// return base^exponent
 	return SI_DoubleVal(pow(SI_GET_NUMERIC(base), SI_GET_NUMERIC(exp)));
 }
+
+// returns sin(x)
+SIValue AR_SIN(SIValue *argv, int argc, void *private_data) {
+	SIValue arg = argv[0];
+	// return NULL if input is none numeric
+	if(SIValue_IsNull(arg)) return SI_NullVal();
+
+	double value = SI_GET_NUMERIC(arg);
+
+	// return sin(x) of input
+	return SI_DoubleVal(sin(value));
+}
+
+// returns cos(x)
+SIValue AR_COS(SIValue *argv, int argc, void *private_data) {
+	SIValue arg = argv[0];
+	// return NULL if input is none numeric
+	if(SIValue_IsNull(arg)) return SI_NullVal();
+
+	double value = SI_GET_NUMERIC(arg);
+
+	// return cos(x) of input
+	return SI_DoubleVal(cos(value));
+}
+
+// returns tan(x)
+SIValue AR_TAN(SIValue *argv, int argc, void *private_data) {
+	SIValue arg = argv[0];
+	// return NULL if input is none numeric
+	if(SIValue_IsNull(arg)) return SI_NullVal();
+
+	double value = SI_GET_NUMERIC(arg);
+
+	// return tan(x) of input
+	return SI_DoubleVal(tan(value));
+}
+
+// returns cot(x) = cos(x)/sin(x)
+SIValue AR_COT(SIValue *argv, int argc, void *private_data) {
+	SIValue arg = argv[0];
+	// return NULL if input is none numeric
+	if(SIValue_IsNull(arg)) return SI_NullVal();
+	
+	double value = SI_GET_NUMERIC(arg);
+
+	// return NULL if input is 0
+	if(value == 0) return SI_NullVal();
+
+	// return cot(x) of input
+	return SI_DoubleVal(cos(value)/sin(value));
+}
+
+// returns asin(x)
+SIValue AR_ASIN(SIValue *argv, int argc, void *private_data) {
+	SIValue arg = argv[0];
+	// return NULL if input is none numeric
+	if(SIValue_IsNull(arg)) return SI_NullVal();
+	
+	double value = SI_GET_NUMERIC(arg);
+	
+	// return NULL if |input|>1
+	if(value < -1 || value > 1) return SI_NullVal();
+
+	// return asin(x) of input
+	return SI_DoubleVal(asin(value));
+}
+
+// returns acos(x)
+SIValue AR_ACOS(SIValue *argv, int argc, void *private_data) {
+	SIValue arg = argv[0];
+	// return NULL if input is none numeric
+	if(SIValue_IsNull(arg)) return SI_NullVal();
+	
+	double value = SI_GET_NUMERIC(arg);
+
+	// return NULL if |input|>1
+	if(value < -1 || value > 1) return SI_NullVal();
+
+	// return acos(x) of input
+	return SI_DoubleVal(acos(value));
+}
+
+// returns atan(x)
+SIValue AR_ATAN(SIValue *argv, int argc, void *private_data) {
+	SIValue arg = argv[0];
+	// return NULL if input is none numeric
+	if(SIValue_IsNull(arg)) return SI_NullVal();
+	
+	double value = SI_GET_NUMERIC(arg);
+
+	// return atan(x) of input
+	return SI_DoubleVal(atan(value));
+}
+
+
+// AR_UNARY_FUNC(AR_ATAN2, atan2)
+// AR_UNARY_FUNC(AR_DEGREES, degrees)
+// AR_UNARY_FUNC(AR_RADIANS, radians)
+// AR_UNARY_FUNC(AR_PI, pi)
+// AR_UNARY_FUNC(AR_HAVERSIN, haversin)
+
 
 void Register_NumericFuncs() {
 	SIType *types;
@@ -278,4 +380,77 @@ void Register_NumericFuncs() {
 	ret_type = T_DOUBLE | T_NULL;
 	func_desc = AR_FuncDescNew("pow", AR_POW, 2, 2, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, (SI_NUMERIC | T_NULL));
+	ret_type = T_DOUBLE | T_NULL;
+	func_desc = AR_FuncDescNew("sin", AR_SIN, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, (SI_NUMERIC | T_NULL));
+	ret_type = T_DOUBLE | T_NULL;
+	func_desc = AR_FuncDescNew("cos", AR_COS, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, (SI_NUMERIC | T_NULL));
+	ret_type = T_DOUBLE | T_NULL;
+	func_desc = AR_FuncDescNew("tan", AR_TAN, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, (SI_NUMERIC | T_NULL));
+	ret_type = T_DOUBLE | T_NULL;
+	func_desc = AR_FuncDescNew("cot", AR_COT, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, (SI_NUMERIC | T_NULL));
+	ret_type = T_DOUBLE | T_NULL;
+	func_desc = AR_FuncDescNew("asin", AR_ASIN, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, (SI_NUMERIC | T_NULL));
+	ret_type = T_DOUBLE | T_NULL;
+	func_desc = AR_FuncDescNew("acos", AR_ACOS, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, (SI_NUMERIC | T_NULL));
+	ret_type = T_DOUBLE | T_NULL;
+	func_desc = AR_FuncDescNew("atan", AR_ATAN, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	// types = array_new(SIType, 1);
+	// array_append(types, (SI_NUMERIC | T_NULL));
+	// ret_type = T_DOUBLE | T_NULL;
+	// func_desc = AR_FuncDescNew("atan2", AR_ATAN2, 1, 1, types, ret_type, false, true);
+	// AR_RegFunc(func_desc);
+
+	// types = array_new(SIType, 1);
+	// array_append(types, (SI_NUMERIC | T_NULL));
+	// ret_type = T_DOUBLE | T_NULL;
+	// func_desc = AR_FuncDescNew("degrees", AR_DEGREES, 1, 1, types, ret_type, false, true);
+	// AR_RegFunc(func_desc);	
+
+	// types = array_new(SIType, 1);
+	// array_append(types, (SI_NUMERIC | T_NULL));
+	// ret_type = T_DOUBLE | T_NULL;
+	// func_desc = AR_FuncDescNew("radians", AR_RADIANS, 1, 1, types, ret_type, false, true);
+	// AR_RegFunc(func_desc);	
+
+	// types = array_new(SIType, 1);
+	// array_append(types, (SI_NUMERIC | T_NULL));
+	// ret_type = T_DOUBLE | T_NULL;
+	// func_desc = AR_FuncDescNew("pi", AR_PI, 0, 0, types, ret_type, false, true);
+	// AR_RegFunc(func_desc);	
+
+	// types = array_new(SIType, 1);
+	// array_append(types, (SI_NUMERIC | T_NULL));
+	// ret_type = T_DOUBLE | T_NULL;
+	// func_desc = AR_FuncDescNew("haversin", AR_HAVERSIN, 1, 1, types, ret_type, false, true);
+	// AR_RegFunc(func_desc);
+
 }
