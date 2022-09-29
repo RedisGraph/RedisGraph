@@ -19,6 +19,12 @@
 // config param, the timeout for each query in milliseconds
 #define TIMEOUT "TIMEOUT"
 
+// default timeout for read and write queries
+#define TIMEOUT_DEFAULT "TIMEOUT_DEFAULT"
+
+// max timeout that can be enforced
+#define TIMEOUT_MAX "TIMEOUT_MAX"
+
 // config param, the size of each thread cache size, per graph
 #define CACHE_SIZE "CACHE_SIZE"
 
@@ -60,6 +66,8 @@
 // configuration object
 typedef struct {
 	uint64_t timeout;                  // The timeout for each query in milliseconds.
+	uint64_t timeout_max;              // max timeout that can be enforced
+	uint64_t timeout_default;          // default timeout for read and write queries
 	bool async_delete;                 // If true, graph deletion is done asynchronously.
 	uint64_t cache_size;               // The cache size for each thread, per graph.
 	uint thread_pool_size;             // Thread count for thread pool.
@@ -81,7 +89,11 @@ RG_Config config; // global module configuration
 
 // parse integer
 // return true if string represents an integer
-static inline bool _Config_ParseInteger(const char *integer_str, long long *value) {
+static inline bool _Config_ParseInteger
+(
+	const char *integer_str,
+	long long *value
+) {
 	char *endptr;
 	errno = 0;    // To distinguish success/failure after call
 	*value = strtoll(integer_str, &endptr, 10);
@@ -92,7 +104,11 @@ static inline bool _Config_ParseInteger(const char *integer_str, long long *valu
 
 // parse positive integer
 // return true if string represents a positive integer > 0
-static inline bool _Config_ParsePositiveInteger(const char *integer_str, long long *value) {
+static inline bool _Config_ParsePositiveInteger
+(
+	const char *integer_str,
+	long long *value
+) {
 	bool res = _Config_ParseInteger(integer_str, value);
 	// Return an error code if integer parsing fails or value is not positive.
 	return (res == true && *value > 0);
@@ -100,7 +116,11 @@ static inline bool _Config_ParsePositiveInteger(const char *integer_str, long lo
 
 // parse non-negative integer
 // return true if string represents an integer >= 0
-static inline bool _Config_ParseNonNegativeInteger(const char *integer_str, long long *value) {
+static inline bool _Config_ParseNonNegativeInteger
+(
+	const char *integer_str,
+	long long *value
+) {
 	bool res = _Config_ParseInteger(integer_str, value);
 	// Return an error code if integer parsing fails or value is negative.
 	return (res == true && *value >= 0);
@@ -109,7 +129,11 @@ static inline bool _Config_ParseNonNegativeInteger(const char *integer_str, long
 // return true if 'str' is either "yes" or "no" otherwise returns false
 // sets 'value' to true if 'str' is "yes"
 // sets 'value to false if 'str' is "no"
-static inline bool _Config_ParseYesNo(const char *str, bool *value) {
+static inline bool _Config_ParseYesNo
+(
+	const char *str,
+	bool *value
+) {
 	bool res = false;
 
 	if(!strcasecmp(str, "yes")) {
@@ -131,11 +155,14 @@ static inline bool _Config_ParseYesNo(const char *str, bool *value) {
 // max queued queries
 //------------------------------------------------------------------------------
 
-void Config_max_queued_queries_set(uint64_t max_queued_queries) {
+static void Config_max_queued_queries_set
+(
+	uint64_t max_queued_queries
+) {
 	config.max_queued_queries = max_queued_queries;
 }
 
-uint Config_max_queued_queries_get(void) {
+static uint Config_max_queued_queries_get(void) {
 	return config.max_queued_queries;
 }
 
@@ -143,23 +170,81 @@ uint Config_max_queued_queries_get(void) {
 // timeout
 //------------------------------------------------------------------------------
 
-void Config_timeout_set(uint64_t timeout) {
+static void Config_timeout_set
+(
+	uint64_t timeout
+) {
 	config.timeout = timeout;
 }
 
-uint Config_timeout_get(void) {
+// check if new(TIMEOUT_DEFAULT or TIMEOUT_MAX) are used
+// log a deprecation message
+static bool _Config_check_if_new_timeout_used() {
+	bool new_timeout_set  = config.timeout_default != CONFIG_TIMEOUT_NO_TIMEOUT;
+	new_timeout_set      |= config.timeout_max     != CONFIG_TIMEOUT_NO_TIMEOUT;
+
+	if(new_timeout_set) {
+		RedisModule_Log(NULL, "warning", "The TIMEOUT configuration parameter is deprecated. Please set TIMEOUT_MAX and TIMEOUT_DEFAULT instead");
+		return false;
+	}
+
+	return true;
+}
+
+static bool Config_enforce_timeout_max
+(
+	uint64_t timeout_default,
+	uint64_t timeout_max
+) {
+	if(timeout_max != CONFIG_TIMEOUT_NO_TIMEOUT &&
+	   timeout_default > timeout_max) {
+		RedisModule_Log(NULL, "warning", "The TIMEOUT_DEFAULT(%lld) configuration parameter value is higher than TIMEOUT_MAX(%lld).", timeout_default, timeout_max);
+		return false;
+	}
+	
+	config.timeout_max     = timeout_max;
+	config.timeout_default = timeout_default;
+	return true;
+}
+
+static bool Config_timeout_default_set
+(
+	uint64_t timeout_default
+) {
+	return Config_enforce_timeout_max(timeout_default, config.timeout_max);
+}
+
+static bool Config_timeout_max_set
+(
+	uint64_t timeout_max
+) {
+	return Config_enforce_timeout_max(config.timeout_default, timeout_max);
+}
+
+static uint Config_timeout_get(void) {
 	return config.timeout;
+}
+
+static uint Config_timeout_default_get(void) {
+	return config.timeout_default;
+}
+
+static uint Config_timeout_max_get(void) {
+	return config.timeout_max;
 }
 
 //------------------------------------------------------------------------------
 // thread count
 //------------------------------------------------------------------------------
 
-void Config_thread_pool_size_set(uint nthreads) {
+static void Config_thread_pool_size_set
+(
+	uint nthreads
+) {
 	config.thread_pool_size = nthreads;
 }
 
-uint Config_thread_pool_size_get(void) {
+static uint Config_thread_pool_size_get(void) {
 	return config.thread_pool_size;
 }
 
@@ -167,11 +252,11 @@ uint Config_thread_pool_size_get(void) {
 // OpenMP thread count
 //------------------------------------------------------------------------------
 
-void Config_OMP_thread_count_set(uint nthreads) {
+static void Config_OMP_thread_count_set(uint nthreads) {
 	config.omp_thread_count = nthreads;
 }
 
-uint Config_OMP_thread_count_get(void) {
+static uint Config_OMP_thread_count_get(void) {
 	return config.omp_thread_count;
 }
 
@@ -179,11 +264,14 @@ uint Config_OMP_thread_count_get(void) {
 // virtual key entity count
 //------------------------------------------------------------------------------
 
-void Config_virtual_key_entity_count_set(uint64_t entity_count) {
+static void Config_virtual_key_entity_count_set
+(
+	uint64_t entity_count
+) {
 	config.vkey_entity_count = entity_count;
 }
 
-uint64_t Config_virtual_key_entity_count_get(void) {
+static uint64_t Config_virtual_key_entity_count_get(void) {
 	return config.vkey_entity_count;
 }
 
@@ -191,11 +279,14 @@ uint64_t Config_virtual_key_entity_count_get(void) {
 // cache size
 //------------------------------------------------------------------------------
 
-void Config_cache_size_set(uint64_t cache_size) {
+static void Config_cache_size_set
+(
+	uint64_t cache_size
+) {
 	config.cache_size = cache_size;
 }
 
-uint64_t Config_cache_size_get(void) {
+static uint64_t Config_cache_size_get(void) {
 	return config.cache_size;
 }
 
@@ -203,11 +294,14 @@ uint64_t Config_cache_size_get(void) {
 // async delete
 //------------------------------------------------------------------------------
 
-void Config_async_delete_set(bool async_delete) {
+static void Config_async_delete_set
+(
+	bool async_delete
+) {
 	config.async_delete = async_delete;
 }
 
-bool Config_async_delete_get(void) {
+static bool Config_async_delete_get(void) {
 	return config.async_delete;
 }
 
@@ -215,12 +309,15 @@ bool Config_async_delete_get(void) {
 // result-set max size
 //------------------------------------------------------------------------------
 
-void Config_resultset_max_size_set(int64_t max_size) {
+static void Config_resultset_max_size_set
+(
+	int64_t max_size
+) {
 	if(max_size < 0) config.resultset_size = RESULTSET_SIZE_UNLIMITED;
 	else config.resultset_size = max_size;
 }
 
-uint64_t Config_resultset_max_size_get(void) {
+static uint64_t Config_resultset_max_size_get(void) {
 	return config.resultset_size;
 }
 
@@ -228,14 +325,17 @@ uint64_t Config_resultset_max_size_get(void) {
 // query mem capacity
 //------------------------------------------------------------------------------
 
-void Config_query_mem_capacity_set(int64_t capacity) {
+static void Config_query_mem_capacity_set
+(
+	int64_t capacity
+) {
 	if(capacity <= 0)
 		config.query_mem_capacity = QUERY_MEM_CAPACITY_UNLIMITED;
 	else
 		config.query_mem_capacity = capacity;
 }
 
-uint64_t Config_query_mem_capacity_get(void) {
+static uint64_t Config_query_mem_capacity_get(void) {
 	return config.query_mem_capacity;
 }
 
@@ -243,14 +343,17 @@ uint64_t Config_query_mem_capacity_get(void) {
 // delta max pending changes
 //------------------------------------------------------------------------------
 
-void Config_delta_max_pending_changes_set(int64_t capacity) {
+static void Config_delta_max_pending_changes_set
+(
+	int64_t capacity
+) {
 	if(capacity == 0)
 		config.delta_max_pending_changes = DELTA_MAX_PENDING_CHANGES_DEFAULT;
 	else
 		config.delta_max_pending_changes = capacity;
 }
 
-uint64_t Config_delta_max_pending_changes_get(void) {
+static uint64_t Config_delta_max_pending_changes_get(void) {
 	return config.delta_max_pending_changes;
 }
 
@@ -258,15 +361,22 @@ uint64_t Config_delta_max_pending_changes_get(void) {
 // node creation buffer
 //------------------------------------------------------------------------------
 
-void Config_node_creation_buffer_set(uint64_t buf_size) {
+static void Config_node_creation_buffer_set
+(
+	uint64_t buf_size
+) {
 	config.node_creation_buffer = buf_size;
 }
 
-uint64_t Config_node_creation_buffer_get(void) {
+static uint64_t Config_node_creation_buffer_get(void) {
 	return config.node_creation_buffer;
 }
 
-bool Config_Contains_field(const char *field_str, Config_Option_Field *field) {
+bool Config_Contains_field
+(
+	const char *field_str,
+	Config_Option_Field *field
+) {
 	ASSERT(field_str != NULL);
 
 	Config_Option_Field f;
@@ -275,6 +385,10 @@ bool Config_Contains_field(const char *field_str, Config_Option_Field *field) {
 		f = Config_THREAD_POOL_SIZE;
 	} else if(!strcasecmp(field_str, TIMEOUT)) {
 		f = Config_TIMEOUT;
+	} else if(!(strcasecmp(field_str, TIMEOUT_DEFAULT))) {
+		f = Config_TIMEOUT_DEFAULT;
+	} else if(!(strcasecmp(field_str, TIMEOUT_MAX))) {
+		f = Config_TIMEOUT_MAX;
 	} else if(!strcasecmp(field_str, OMP_THREAD_COUNT)) {
 		f = Config_OPENMP_NTHREAD;
 	} else if(!strcasecmp(field_str, VKEY_MAX_ENTITY_COUNT)) {
@@ -299,11 +413,22 @@ bool Config_Contains_field(const char *field_str, Config_Option_Field *field) {
 	return true;
 }
 
-const char *Config_Field_name(Config_Option_Field field) {
+const char *Config_Field_name
+(
+	Config_Option_Field field
+) {
 	const char *name = NULL;
 	switch(field) {
 		case Config_TIMEOUT:
 			name = TIMEOUT;
+			break;
+
+		case Config_TIMEOUT_DEFAULT:
+			name = TIMEOUT_DEFAULT;
+			break;
+
+		case Config_TIMEOUT_MAX:
+			name = TIMEOUT_MAX;
 			break;
 
 		case Config_CACHE_SIZE:
@@ -359,7 +484,7 @@ const char *Config_Field_name(Config_Option_Field field) {
 }
 
 // initialize every module-level configuration to its default value
-void _Config_SetToDefaults(void) {
+static void _Config_SetToDefaults(void) {
 	// the thread pool's default size is equal to the system's number of cores
 	int CPUCount = sysconf(_SC_NPROCESSORS_ONLN);
 	config.thread_pool_size = (CPUCount != -1) ? CPUCount : 1;
@@ -387,6 +512,12 @@ void _Config_SetToDefaults(void) {
 	// no query timeout by default
 	config.timeout = CONFIG_TIMEOUT_NO_TIMEOUT;
 
+	// no max timeout by default
+	config.timeout_max = CONFIG_TIMEOUT_NO_TIMEOUT;
+
+	// no query timeout by default
+	config.timeout_default = CONFIG_TIMEOUT_NO_TIMEOUT;
+
 	// no limit on number of queued queries by default
 	config.max_queued_queries = QUEUED_QUERIES_UNLIMITED;
 
@@ -400,7 +531,12 @@ void _Config_SetToDefaults(void) {
 	config.node_creation_buffer = NODE_CREATION_BUFFER_DEFAULT;
 }
 
-int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+int Config_Init
+(
+	RedisModuleCtx *ctx,
+	RedisModuleString **argv,
+	int argc
+) {
 	// make sure reconfiguration callback is already registered
 	ASSERT(config.cb != NULL);
 
@@ -414,6 +550,9 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 						"RedisGraph received %d arguments, all configurations should be key-value pairs", argc);
 		return REDISMODULE_ERR;
 	}
+
+	bool old_timeout_specified = false;
+	bool new_timeout_specified = false;
 
 	for(int i = 0; i < argc; i += 2) {
 		// each configuration is a key-value pair. (K, V)
@@ -429,24 +568,47 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 		// exit if configuration is not aware of field
 		if(!Config_Contains_field(field_str, &field)) {
-			RedisModule_Log(ctx, "warning",
+			RedisModule_Log(ctx, "error",
 							"Encountered unknown configuration field '%s'", field_str);
 			return REDISMODULE_ERR;
 		}
 
+		if(field == Config_TIMEOUT_DEFAULT || field == Config_TIMEOUT_MAX) {
+			new_timeout_specified = true;
+		}
+
+		if(field == Config_TIMEOUT) {
+			old_timeout_specified = true;
+		}
+
 		// exit if encountered an error when setting configuration
-		if(!Config_Option_set(field, val_str)) {
-			RedisModule_Log(ctx, "warning",
-							"Failed setting field '%s'", field_str);
+		char *error = NULL;
+		if(!Config_Option_set(field, val_str, &error)) {
+			if(error != NULL) {
+				RedisModule_Log(ctx, "error",
+							"Failed setting field '%s' with error: %s", field_str, error);
+			} else {
+				RedisModule_Log(ctx, "error",
+							"Failed setting field '%s'", field_str);	
+			}
 			return REDISMODULE_ERR;
 		}
+	}
+
+	if(old_timeout_specified && new_timeout_specified) {
+		RedisModule_Log(ctx, "error",
+						"The TIMEOUT configuration parameter should be removed when specifying TIMEOUT_DEFAULT and/or TIMEOUT_MAX");
+		return REDISMODULE_ERR;
 	}
 
 	return REDISMODULE_OK;
 }
 
-bool Config_Option_get(Config_Option_Field field, ...) {
-
+bool Config_Option_get
+(
+	Config_Option_Field field,
+	...
+) {
 	//--------------------------------------------------------------------------
 	// get the option
 	//--------------------------------------------------------------------------
@@ -475,6 +637,34 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 
 			ASSERT(timeout != NULL);
 			(*timeout) = Config_timeout_get();
+		}
+		break;
+
+		//----------------------------------------------------------------------
+		// timeout default
+		//----------------------------------------------------------------------
+
+		case Config_TIMEOUT_DEFAULT: {
+			va_start(ap, field);
+			uint64_t *timeout_default = va_arg(ap, uint64_t *);
+			va_end(ap);
+
+			ASSERT(timeout_default != NULL);
+			(*timeout_default) = Config_timeout_default_get();
+		}
+		break;
+
+		//----------------------------------------------------------------------
+		// timeout max
+		//----------------------------------------------------------------------
+
+		case Config_TIMEOUT_MAX: {
+			va_start(ap, field);
+			uint64_t *timeout_max = va_arg(ap, uint64_t *);
+			va_end(ap);
+
+			ASSERT(timeout_max != NULL);
+			(*timeout_max) = Config_timeout_max_get();
 		}
 		break;
 
@@ -590,7 +780,6 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 		}
 		break;
 
-
 		//----------------------------------------------------------------------
 		// size of buffer to maintain as margin in matrices
 		//----------------------------------------------------------------------
@@ -617,7 +806,12 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 	return true;
 }
 
-bool Config_Option_set(Config_Option_Field field, const char *val) {
+bool Config_Option_set
+(
+	Config_Option_Field field,
+	const char *val,
+	char **err
+) {
 	//--------------------------------------------------------------------------
 	// set the option
 	//--------------------------------------------------------------------------
@@ -643,7 +837,39 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 		case Config_TIMEOUT: {
 			long long timeout;
 			if(!_Config_ParseNonNegativeInteger(val, &timeout)) return false;
+			if(!_Config_check_if_new_timeout_used()) {
+				if(err) *err = "The TIMEOUT configuration parameter is deprecated. Please set TIMEOUT_MAX and TIMEOUT_DEFAULT instead";
+				return false;
+			}
 			Config_timeout_set(timeout);
+		}
+		break;
+
+		//----------------------------------------------------------------------
+		// timeout default
+		//----------------------------------------------------------------------
+
+		case Config_TIMEOUT_DEFAULT: {
+			long long timeout_default;
+			if(!_Config_ParseNonNegativeInteger(val, &timeout_default)) return false;
+			if(!Config_timeout_default_set(timeout_default)) {
+				if(err) *err = "TIMEOUT_DEFAULT configuration parameter cannot be set to a value higher than TIMEOUT_MAX";
+				return false;
+			}
+		}
+		break;
+
+		//----------------------------------------------------------------------
+		// timeout max
+		//----------------------------------------------------------------------
+
+		case Config_TIMEOUT_MAX: {
+			long long timeout_max;
+			if(!_Config_ParseNonNegativeInteger(val, &timeout_max)) return false;
+			if(!Config_timeout_max_set(timeout_max)) {
+				if(err) *err = "TIMEOUT_MAX configuration parameter cannot be set to a value lower than TIMEOUT_DEFAULT";
+				return false;
+			}
 		}
 		break;
 
@@ -782,7 +1008,12 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 }
 
 // dry run configuration change
-bool Config_Option_dryrun(Config_Option_Field field, const char *val) {
+bool Config_Option_dryrun
+(
+	Config_Option_Field field,
+	const char *val,
+	char **err
+) {
 	// clone configuration
 	RG_Config config_clone = config;
 
@@ -791,7 +1022,7 @@ bool Config_Option_dryrun(Config_Option_Field field, const char *val) {
 
 	// NOTE: for a short period of time
 	// whoever might query the configuration WILL see this modification
-	bool valid = Config_Option_set(field, val);
+	bool valid = Config_Option_set(field, val, err);
 
 	// restore original configuration
 	config = config_clone;
@@ -799,7 +1030,10 @@ bool Config_Option_dryrun(Config_Option_Field field, const char *val) {
 	return valid;
 }
 
-void Config_Subscribe_Changes(Config_on_change cb) {
+void Config_Subscribe_Changes
+(
+	Config_on_change cb
+) {
 	ASSERT(cb != NULL);
 	config.cb = cb;
 }
