@@ -159,15 +159,13 @@ $ redis-cli GRAPH.CONFIG SET MAX_QUEUED_QUERIES 500
 
 ### TIMEOUT
 
-(Deprecated in RedisGraph v2.10. Use `TIMEOUT_MAX` and `TIMEOUT_DEFAULT` instead)
+(Deprecated in RedisGraph v2.10 It is recommended to use `TIMEOUT_MAX` and `TIMEOUT_DEFAULT` instead)
 
-The `TIMEOUT` configuration parameter specifies the default maximal execution time for read queries, in milliseconds. 
+The `TIMEOUT` configuration parameter specifies the default maximal execution time for read queries, in milliseconds. Write queries do not timeout.
 
 When a read query execution time exceeds the maximal execution time, the query is aborted and the query reply is `(error) Query timed out`.
 
 The `TIMEOUT` query parameter of the `GRAPH.QUERY`, `GRAPH.RO_QUERY`, and `GRAPH.PROFILE` commands can be used to override this value.
-
-This configuration parameter is enforced only for read queries. Prior to RedisGraph v2.10, write queries do not timeout.
 
 #### Default
 
@@ -288,10 +286,13 @@ This configuration can be set when the module loads or at runtime.
 
 ### Query Timeout
 
-`TIMEOUT` allows overriding the `TIMEOUT_DEFAULT` configuration parameter value for a single `GRAPH.QUERY`, `GRAPH.RO_QUERY`, or `GRAPH.PROFILE` command. The `TIMEOUT` value cannot exceed the `TIMEOUT_MAX` value (the command would abort with a `(error) The query TIMEOUT parameter value cannot exceed the TIMEOUT_MAX configuration parameter value` reply).
+- Before RedisGraph v2.10, or if `TIMEOUT_DEFAULT` and `TIMEOUT_MAX` are not specified:
 
-Prior to RedisGraph v2.10, `TIMEOUT` was ignored for write queries.
+  `TIMEOUT` allows overriding the `TIMEOUT` configuration parameter for a single read query. Write queries do not timeout.
 
+- Since RedisGraph v2.10, if either `TIMEOUT_DEFAULT` or `TIMEOUT_MAX` are specified:
+
+  `TIMEOUT` allows overriding the `TIMEOUT_DEFAULT` configuration parameter value for a single `GRAPH.QUERY`, `GRAPH.RO_QUERY`, or `GRAPH.PROFILE` command. The `TIMEOUT` value cannot exceed the `TIMEOUT_MAX` value (the command would abort with a `(error) The query TIMEOUT parameter value cannot exceed the TIMEOUT_MAX configuration parameter value` reply).
 
 #### Example
 
