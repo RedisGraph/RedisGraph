@@ -187,9 +187,6 @@ SIValue AR_EXP(SIValue *argv, int argc, void *private_data) {
 
 	double value = SI_GET_NUMERIC(arg);
 
-	// return NULL if input is negative
-	if(value < 0) return SI_NullVal();
-
 	// return log10 of input
 	return SI_DoubleVal(exp(value));
 }

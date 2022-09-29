@@ -1040,6 +1040,12 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         self.env.assertAlmostEqual(actual_result.result_set[0][0], 4.05519996684467, 0.0001)
 
+        # exp(-1.2)
+        query = """RETURN exp(0)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.301194211912202, 0.0001)
+
+
         # e()
         query = """RETURN e()"""
         actual_result = graph.query(query)
