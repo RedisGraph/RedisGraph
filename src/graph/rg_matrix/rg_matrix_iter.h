@@ -10,6 +10,9 @@
 #include "./rg_matrix.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
+#define RG_ITER_MIN_ROW 0
+#define RG_ITER_MAX_ROW ULLONG_MAX
+
 // TuplesIter maintains information required
 // to iterate over a RG_Matrix
 typedef struct
@@ -27,7 +30,9 @@ typedef struct
 GrB_Info RG_MatrixTupleIter_attach
 (
 	RG_MatrixTupleIter *iter,       // iterator to update
-	const RG_Matrix A               // matrix to scan
+	const RG_Matrix A,              // matrix to scan
+	GrB_Index min_row,              // minimum row for iteration
+	GrB_Index max_row               // maximum row for iteration
 );
 
 // free iterator internals, keeping the iterator intact
