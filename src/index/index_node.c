@@ -53,7 +53,7 @@ void populateNodeIndex
 	ASSERT(m != NULL);
 
 	RG_MatrixTupleIter it = {0};
-	RG_MatrixTupleIter_attach(&it, m);
+	RG_MatrixTupleIter_attach(&it, m, RG_ITER_MIN_ROW, RG_ITER_MAX_ROW);
 
 	// iterate over each graph entity
 	EntityID id;

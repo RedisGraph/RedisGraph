@@ -17,7 +17,7 @@ static void _AllNeighborsCtx_CollectNeighbors
 	ctx->current_level++;
 	if(ctx->current_level == array_len(ctx->levels)) {
 		RG_MatrixTupleIter iter = {0};
-		RG_MatrixTupleIter_attach(&iter, ctx->M);
+		RG_MatrixTupleIter_attach(&iter, ctx->M, RG_ITER_MIN_ROW, RG_ITER_MAX_ROW);
 		array_append(ctx->levels, iter);
 	}
 
