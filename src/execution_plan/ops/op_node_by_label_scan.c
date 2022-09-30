@@ -74,7 +74,7 @@ static GrB_Info _ConstructIterator(NodeByLabelScan *op, Schema *schema) {
 	if(op->id_range->include_max) maxId = op->id_range->max;
 	else maxId = op->id_range->max - 1;
 
-	info = RG_MatrixTupleIter_attach(&op->iter, L);
+	info = RG_MatrixTupleIter_attach(&op->iter, L, RG_ITER_MIN_ROW, RG_ITER_MAX_ROW);
 	ASSERT(info == GrB_SUCCESS);
 
 	// use range only when minId and maxId are subset of the entire matrix
