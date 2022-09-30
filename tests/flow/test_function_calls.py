@@ -265,6 +265,95 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
 
+        # Validate floating-point 0.0 modulo by floating-point different from 0
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 0.0 % 5.1"
+        # 1) 1) "0.0 % 5.1"
+        # 2) 1) 1) "0"
+        query = "RETURN 0.0 % 5.1"
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate floating-point 0.0 modulo by integer different from 0
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 0.0 % 7"
+        # 1) 1) "0.0 % 7"
+        # 2) 1) 1) "0"
+        query = "RETURN 0.0 % 7"
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate integer 0 modulo by floating-point different from 0
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 0 % 7.5"
+        # 1) 1) "0 % 7.5"
+        # 2) 1) 1) "0"
+        query = "RETURN 0 % 7.5"
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate integer 0 modulo by integer different from 0
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 0 % 7"
+        # 1) 1) "0 % 7"
+        # 2) 1) 1) (integer) 0
+        query = "RETURN 0 % 7"
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate floating-point 0.0 modulo by infinite
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 0.0 % ( 1 / 0.0 )"
+        # 1) 1) "0.0 % ( 1 / 0.0 )"
+        # 2) 1) 1) "0"
+        query = "RETURN 0.0 % ( 1 / 0.0 )"
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate integer 0 modulo by infinite
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 0 % ( 1 / 0.0 )"
+        # 1) 1) "0 % ( 1 / 0.0 )"
+        # 2) 1) 1) "0"
+        query = "RETURN 0 % ( 1 / 0.0 )"
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate integer modulo by infinite
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 3 % ( 1 / 0.0 )"
+        # 1) 1) "3 % ( 1 / 0.0 )"
+        # 2) 1) 1) "3"
+        query = "RETURN 3 % ( 1 / 0.0 )"
+        actual_result = graph.query(query)
+        expected_result = [[3]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate floating-point modulo by infinite
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 2.5 % ( 1 / 0.0 )"
+        # 1) 1) "2.5 % ( 1 / 0.0 )"
+        # 2) 1) 1) "2.5"
+        query = "RETURN 2.5 % ( 1 / 0.0 )"
+        actual_result = graph.query(query)
+        expected_result = [[2.5]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate infinite modulo by integer 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN ( 1 / 0.0 ) % 7"
+        # 1) 1) "( 1 / 0.0 ) % 7"
+        # 2) 1) 1) "-nan"
+        query = "RETURN ( 1 / 0.0 ) % 7"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
+
         # Validate floating-point 0.0 modulo by floating-point 0.0 
         # redis-cli output example:
         # 127.0.0.1:6379> GRAPH.QUERY g "RETURN  0.0 % 0.0"
@@ -1145,7 +1234,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 0.0 / 0"
         # 1) 1) "0.0 / 0"
         # 2) 1) 1) "-nan"
-        query = "RETURN  0.0 / 0"
+        query = "RETURN 0.0 / 0"
         actual_result = graph.query(query)
         self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
 
