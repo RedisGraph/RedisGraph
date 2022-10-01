@@ -108,6 +108,26 @@ SIValue AR_TOLIST(SIValue *argv, int argc, void *private_data) {
 	return array;
 }
 
+/* Convert a list of values to a list of new type values.
+   Uses the function *converter_ptr to convert each value in input list
+*/
+static SIValue _AR_TOTYPELIST
+(
+    SIValue *list,                    				// list of elements to convert
+    SIValue (*converter_ptr)(SIValue*, int, void*) 	// convert function e.g. AR_TOFLOAT
+) {
+	// get array length
+	uint32_t arrayLen = SIArray_Length(*list);
+
+	SIValue array = SI_Array(arrayLen);
+	for(uint i = 0; i < arrayLen; i++) {
+		SIValue v = SIArray_Get(*list, i);
+		SIArray_Append(&array, converter_ptr(&v, 1, NULL));
+		SIValue_Free(v);
+	}
+	return array;
+}
+
 /* Convert a list of values to a list of boolean values.
    The conversion of each item in list is done using toBooleanOrNull */
 SIValue AR_TOBOOLEANLIST(SIValue *argv, int argc, void *private_data) {
@@ -118,16 +138,7 @@ SIValue AR_TOBOOLEANLIST(SIValue *argv, int argc, void *private_data) {
 	ASSERT(SI_TYPE(argv[0]) == T_ARRAY);
 	SIValue originalArray = argv[0];
 
-	// get array length
-	uint32_t arrayLen = SIArray_Length(originalArray);
-
-	SIValue array = SI_Array(arrayLen);
-	for(uint i = 0; i < arrayLen; i++) {
-		SIValue v = SIArray_Get(originalArray, i);
-		SIArray_Append(&array, AR_TO_BOOLEAN(&v, 1, NULL));
-		SIValue_Free(v);
-	}
-	return array;
+	return _AR_TOTYPELIST(&originalArray, AR_TO_BOOLEAN);
 }
 
 /* Convert a list of values to a list of float values.
@@ -140,16 +151,7 @@ SIValue AR_TOFLOATLIST(SIValue *argv, int argc, void *private_data) {
 	ASSERT(SI_TYPE(argv[0]) == T_ARRAY);
 	SIValue originalArray = argv[0];
 
-	// get array length
-	uint32_t arrayLen = SIArray_Length(originalArray);
-
-	SIValue array = SI_Array(arrayLen);
-	for(uint i = 0; i < arrayLen; i++) {
-		SIValue v = SIArray_Get(originalArray, i);
-		SIArray_Append(&array, AR_TOFLOAT(&v, 1, NULL));
-		SIValue_Free(v);
-	}
-	return array;
+	return _AR_TOTYPELIST(&originalArray, AR_TOFLOAT);
 }
 
 /* Convert a list of values to a list of integer values.
@@ -162,16 +164,7 @@ SIValue AR_TOINTEGERLIST(SIValue *argv, int argc, void *private_data) {
 	ASSERT(SI_TYPE(argv[0]) == T_ARRAY);
 	SIValue originalArray = argv[0];
 
-	// get array length
-	uint32_t arrayLen = SIArray_Length(originalArray);
-
-	SIValue array = SI_Array(arrayLen);
-	for(uint i = 0; i < arrayLen; i++) {
-		SIValue v = SIArray_Get(originalArray, i);
-		SIArray_Append(&array, AR_TOINTEGER(&v, 1, NULL));
-		SIValue_Free(v);
-	}
-	return array;
+	return _AR_TOTYPELIST(&originalArray, AR_TOINTEGER);
 }
 
 /* Convert a list of values to a list of string values.
@@ -460,7 +453,7 @@ void Register_ListFuncs() {
 
 	types = array_new(SIType, 1);
 	array_append(types, T_ARRAY | T_NULL);
-	ret_type = T_ARRAY|  T_NULL;
+	ret_type = T_ARRAY | T_NULL;
 	func_desc = AR_FuncDescNew("toBooleanList", AR_TOBOOLEANLIST, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
