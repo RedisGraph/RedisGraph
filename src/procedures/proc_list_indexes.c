@@ -26,6 +26,7 @@ typedef struct {
 	SIValue *yield_language;    // yield index language
 	SIValue *yield_stopwords;   // yield index stopwords
 	SIValue *yield_entity_type; // yield index entity type
+	SIValue *yield_status;      // yield index status
 	SIValue *yield_info;        // yield info
 } IndexesContext;
 
@@ -40,6 +41,7 @@ static void _process_yield
 	ctx->yield_language    = NULL;
 	ctx->yield_stopwords   = NULL;
 	ctx->yield_entity_type = NULL;
+	ctx->yield_status      = NULL;
 	ctx->yield_info        = NULL;
 
 	int idx = 0;
@@ -76,6 +78,12 @@ static void _process_yield
 
 		if(strcasecmp("entitytype", yield[i]) == 0) {
 			ctx->yield_entity_type = ctx->out + idx;
+			idx++;
+			continue;
+		}
+
+		if(strcasecmp("status", yield[i]) == 0) {
+			ctx->yield_status = ctx->out + idx;
 			idx++;
 			continue;
 		}
@@ -135,6 +143,14 @@ static bool _EmitIndex
 			*ctx->yield_entity_type = SI_ConstStringVal("NODE");
 		} else {
 			*ctx->yield_entity_type = SI_ConstStringVal("RELATIONSHIP");
+		}
+	}
+
+	if(ctx->yield_status != NULL) {
+		if(Index_Enabled(idx)) {
+			*ctx->yield_status = SI_ConstStringVal("OPERATIONAL");
+		} else {
+			*ctx->yield_status = SI_ConstStringVal("UNDER CONSTRUCTION");
 		}
 	}
 
@@ -303,7 +319,7 @@ ProcedureResult Proc_IndexesFree
 ProcedureCtx *Proc_IndexesCtx() {
 	void *privateData = NULL;
 	ProcedureOutput output;
-	ProcedureOutput *outputs = array_new(ProcedureOutput, 7);
+	ProcedureOutput *outputs = array_new(ProcedureOutput, 8);
 
 	// index type (exact-match / fulltext)
 	output = (ProcedureOutput) {
@@ -341,6 +357,12 @@ ProcedureCtx *Proc_IndexesCtx() {
 	};
 	array_append(outputs, output);
 
+	// index status (operational / under construction)
+	output = (ProcedureOutput) {
+		.name = "status", .type = T_STRING
+	};
+	array_append(outputs, output);
+
 	// index info
 	output = (ProcedureOutput) {
 		.name = "info", .type = T_MAP
@@ -357,3 +379,4 @@ ProcedureCtx *Proc_IndexesCtx() {
 								   true);
 	return ctx;
 }
+

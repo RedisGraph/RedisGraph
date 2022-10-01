@@ -13,9 +13,9 @@
  * @brief  Execution type derived from a query
  */
 typedef enum {
-	EXECUTION_TYPE_QUERY,           // Normal query execution.
-	EXECUTION_TYPE_INDEX_CREATE,    // Create index execution.
-	EXECUTION_TYPE_INDEX_DROP       // Drop index execution.
+	EXECUTION_TYPE_QUERY,           // normal query execution
+	EXECUTION_TYPE_INDEX_CREATE,    // create index execution
+	EXECUTION_TYPE_INDEX_DROP       // drop index execution
 } ExecutionType;
 
 /**

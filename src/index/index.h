@@ -37,6 +37,14 @@ typedef enum {
 	IDX_FULLTEXT     =  2,
 } IndexType;
 
+// an index is either under construction
+// or it's fully constructed and operational
+typedef enum {
+	IDX_UNDER_CONSTRUCTION = 0, // index being defined
+	IDX_POPULATING         = 1, // index being populated
+	IDX_OPERATIONAL        = 2, // index fully constructed and operational
+} IndexState;
+
 typedef struct {
 	EntityID src_id;
 	EntityID dest_id;
@@ -59,6 +67,7 @@ typedef struct {
 	char **stopwords;             // stopwords
 	GraphEntityType entity_type;  // entity type (node/edge) indexed
 	IndexType type;               // index type exact-match / fulltext
+	IndexState state;             // index state
 	RSIndex *idx;                 // rediSearch index
 } Index;
 
@@ -73,9 +82,10 @@ void IndexField_New
 	const char *phonetic  // phonetic search of text
 );
 
+// free index field
 void IndexField_Free
 (
-	IndexField *field
+	IndexField *field  // index field to be freed
 );
 
 // create a new index
@@ -87,47 +97,78 @@ Index *Index_New
 	GraphEntityType entity_type  // entity type been indexed
 );
 
-// constructs index
-void Index_Construct
+// update index state atomicly
+// the state is update to 'next_state' only if
+// index current state is 'current_state'
+// returns true if index state been updated false otherwise
+bool Index_UpdateState
 (
-	Index *idx,
-	Graph *g
+	Index *idx,                // index to update
+	IndexState current_state,  // index assumed state
+	IndexState next_state      // index new state
+);
+
+// disable index by marking its state as IDX_UNDER_CONSTRUCTION
+void Index_Disable
+(
+	Index *idx
+);
+
+// enable index by marking its state as IDX_OPERATIONAL
+void Index_Enable
+(
+	Index *idx
+);
+
+// returns true if index state is IDX_OPERATIONAL
+bool Index_Enabled
+(
+	const Index *idx  // index to get state of
+);
+
+// populates index
+void Index_Populate
+(
+	Index *idx,  // index to populate
+	Graph *g     // graph holding entities to index
 );
 
 // adds field to index
 void Index_AddField
 (
-	Index *idx,
-	IndexField *field
+	Index *idx,        // index modified
+	IndexField *field  // field added
 );
 
 // removes field from index
 void Index_RemoveField
 (
-	Index *idx,
+	Index *idx,        // index modified
 	const char *field  // field to remove
 );
 
 // index node
 void Index_IndexNode
 (
-	Index *idx,
+	Index *idx,    // index to populate
 	const Node *n  // node to index
 );
 
 // index edge
 void Index_IndexEdge
 (
-	Index *idx,
+	Index *idx,    // index to populate
 	const Edge *e  // edge to index
 );
 
+// remove node from index
 void Index_RemoveNode
 (
 	Index *idx,    // index to update
 	const Node *n  // node to remove from index
 );
 
+// remove edge from index
 void Index_RemoveEdge
 (
 	Index *idx,    // index to update
@@ -137,7 +178,7 @@ void Index_RemoveEdge
 // query an index
 RSResultsIterator *Index_Query
 (
-	const Index *idx,
+	const Index *idx,   // index to query
 	const char *query,  // query to execute
 	char **err          // [optional] report back error
 );
@@ -145,57 +186,58 @@ RSResultsIterator *Index_Query
 // returns number of fields indexed
 uint Index_FieldsCount
 (
-	const Index *idx
+	const Index *idx  // index to query
 );
 
 // returns a shallow copy of indexed fields
 const IndexField *Index_GetFields
 (
-	const Index *idx
+	const Index *idx  // index to query
 );
 
 // checks if given attribute is indexed
 bool Index_ContainsAttribute
 (
-	const Index *idx,
+	const Index *idx,          // index to query
 	Attribute_ID attribute_id  // attribute id to search
 );
 
 // returns indexed label ID
 int Index_GetLabelID
 (
-	const Index *idx
+	const Index *idx  // index to query
 );
 
 // returns indexed language
 const char *Index_GetLanguage
 (
-	const Index *idx
+	const Index *idx  // index to query
 );
 
 // returns indexed stopwords
 char **Index_GetStopwords
 (
-	const Index *idx,
-	size_t *size
+	const Index *idx,  // index to query
+	size_t *size       // number of stopwords
 );
 
 // set indexed language
 void Index_SetLanguage
 (
-	Index *idx,
-	const char *language
+	Index *idx,           // index modified
+	const char *language  // language to set
 );
 
 // set indexed stopwords
 void Index_SetStopwords
 (
-	Index *idx,
-	char **stopwords
+	Index *idx,       // index modified
+	char **stopwords  // stopwords
 );
 
 // free fulltext index
 void Index_Free
 (
-	Index *idx
+	Index *idx  // index being freed
 );
+

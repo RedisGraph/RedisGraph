@@ -316,13 +316,15 @@ void reduce_scan_op
 		// unknown label
 		if(label_id == GRAPH_UNKNOWN_LABEL) continue;
 
-		idx = GraphContext_GetIndexByID(gc, label_id, NULL, IDX_EXACT_MATCH, SCHEMA_NODE);
+		idx = GraphContext_GetIndexByID(gc, label_id, NULL, IDX_EXACT_MATCH,
+				SCHEMA_NODE);
 
 		// no index for current label
-		if(idx == NULL) continue;
+		if(idx == NULL || !Index_Enabled(idx)) continue;
 
 		// get all applicable filter for index
 		RSIndex *cur_idx = idx->idx;
+
 		// TODO switch to reusable array
 		OpFilter **cur_filters = _applicableFilters((OpBase *)scan, scan->n.alias, idx);
 

@@ -273,7 +273,12 @@ Schema *GraphContext_GetSchema(const GraphContext *gc, const char *label, Schema
 	return GraphContext_GetSchemaByID(gc, id, t);
 }
 
-Schema *GraphContext_AddSchema(GraphContext *gc, const char *label, SchemaType t) {
+Schema *GraphContext_AddSchema
+(
+	GraphContext *gc,
+	const char *label,
+	SchemaType t
+) {
 	int label_id;
 	Schema *schema;
 
@@ -420,7 +425,7 @@ int GraphContext_AddExactMatchIndex
 	ASSERT(label  !=  NULL);
 	ASSERT(field  !=  NULL);
 
-	// Retrieve the schema for this label
+	// retrieve the schema for this label
 	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
 	if(s == NULL) s = GraphContext_AddSchema(gc, label, schema_type);
 

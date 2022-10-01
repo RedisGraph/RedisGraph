@@ -40,8 +40,8 @@ static Schema *_RdbLoadSchema
 	}
 	if(s) {
 		// no entities are expected to be in the graph in this point in time
-		if(s->index) Index_Construct(s->index, gc->g);
-		if(s->fulltextIdx) Index_Construct(s->fulltextIdx, gc->g);
+		if(s->index) Index_Populate(s->index, gc->g);
+		if(s->fulltextIdx) Index_Populate(s->fulltextIdx, gc->g);
 	}
 
 	return s;

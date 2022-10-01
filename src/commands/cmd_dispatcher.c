@@ -212,12 +212,12 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 								 is_replicated, compact, timeout);
 
 		if(ThreadPools_AddWorkReader(handler, context) == THPOOL_QUEUE_FULL) {
-			// Report an error once our workers thread pool internal queue
+			// report an error once our workers thread pool internal queue
 			// is full, this error usually happens when the server is
 			// under heavy load and is unable to catch up
 			RedisModule_ReplyWithError(ctx, "Max pending queries exceeded");
-			// Release the GraphContext, as we increased its reference count
-			// when retrieving it.
+			// release the GraphContext, as we increased its reference count
+			// when retrieving it
 			GraphContext_DecreaseRefCount(gc);
 			CommandCtx_Free(context);
 		}

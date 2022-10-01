@@ -260,7 +260,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke
 	}
 
 	// build index
-	if(res == INDEX_OK) Index_Construct(idx, gc->g);
+	if(res == INDEX_OK) Index_Populate(idx, gc->g);
 
 	return PROCEDURE_OK;
 }

@@ -15,9 +15,6 @@
 #include "../graph/entities/node.h"
 #include "../graph/rg_matrix/rg_matrix_iter.h"
 
-extern void populateEdgeIndex(Index *idx, Graph *g); 
-extern void populateNodeIndex(Index *idx, Graph *g);
-
 RSDoc *Index_IndexGraphEntity
 (
 	Index *idx,
@@ -165,16 +162,53 @@ Index *Index_New
 ) {
 	Index *idx = rm_malloc(sizeof(Index));
 
-	idx->idx           =  NULL;
-	idx->type          =  type;
-	idx->label         =  rm_strdup(label);
-	idx->fields        =  array_new(IndexField, 1);
-	idx->label_id      =  label_id;
-	idx->language      =  NULL;
-	idx->stopwords     =  NULL;
-	idx->entity_type   =  entity_type;
+	idx->idx         = NULL;
+	idx->type        = type;
+	idx->label       = rm_strdup(label);
+	idx->fields      = array_new(IndexField, 1);
+	idx->state       = IDX_UNDER_CONSTRUCTION;
+	idx->label_id    = label_id;
+	idx->language    = NULL;
+	idx->stopwords   = NULL;
+	idx->entity_type = entity_type;
 
 	return idx;
+}
+
+// update index state using atomic compare and swap
+// 'current_state' is required to be one state behind 'next_state'
+// returns true if index state advanced, false otherwise
+bool Index_UpdateState
+(
+	Index *idx,
+	IndexState current_state,
+	IndexState next_state
+) {
+	ASSERT(idx != NULL);
+	ASSERT(current_state + 1 == next_state);
+
+	return __atomic_compare_exchange(&idx->state, &current_state, &next_state,
+			false, __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+}
+
+// disable index by marking its state as UNDER_CONSTRUCTION
+void Index_Disable
+(
+	Index *idx
+) {
+	ASSERT(idx != NULL);
+	idx->state = IDX_UNDER_CONSTRUCTION;
+}
+
+// enable index by marking its state as IDX_OPERATIONAL
+void Index_Enable
+(
+	Index *idx
+) {
+	ASSERT(idx != NULL);
+
+	// enable index only if index state is POPULATING
+	Index_UpdateState(idx, IDX_POPULATING, IDX_OPERATIONAL);
 }
 
 // adds field to index
@@ -183,7 +217,7 @@ void Index_AddField
 	Index *idx,
 	IndexField *field
 ) {
-	ASSERT(idx != NULL);
+	ASSERT(idx   != NULL);
 	ASSERT(field != NULL);
 
 	if(Index_ContainsAttribute(idx, field->id)) {
@@ -192,6 +226,8 @@ void Index_AddField
 	}
 
 	array_append(idx->fields, *field);
+
+	Index_Disable(idx);
 }
 
 // removes fields from index
@@ -214,87 +250,11 @@ void Index_RemoveField
 			// free field
 			IndexField_Free(field);
 			array_del_fast(idx->fields, i);
+
+			Index_Disable(idx);
 			break;
 		}
 	}
-}
-
-// constructs index
-void Index_Construct
-(
-	Index *idx,
-	Graph *g
-) {
-	ASSERT(idx != NULL);
-
-	// RediSearch index already exists, re-construct
-	if(idx->idx) {
-		RediSearch_DropIndex(idx->idx);
-		idx->idx = NULL;
-	}
-
-	RSIndex *rsIdx = NULL;
-	RSIndexOptions *idx_options = RediSearch_CreateIndexOptions();
-	RediSearch_IndexOptionsSetLanguage(idx_options, idx->language);
-	// TODO: Remove this comment when https://github.com/RediSearch/RediSearch/issues/1100 is closed
-	// RediSearch_IndexOptionsSetGetValueCallback(idx_options, _getNodeAttribute, gc);
-
-	// enable GC, every 30 seconds gc will check if there's garbage
-	// if there are over 100 docs to remove GC will perform clean up
-	RediSearch_IndexOptionsSetGCPolicy(idx_options, GC_POLICY_FORK);
-
-	if(idx->stopwords) {
-		RediSearch_IndexOptionsSetStopwords(idx_options,
-				(const char**)idx->stopwords, array_len(idx->stopwords));
-	} else if(idx->type == IDX_EXACT_MATCH) {
-		RediSearch_IndexOptionsSetStopwords(idx_options, NULL, 0);
-	}
-
-	rsIdx = RediSearch_CreateIndex(idx->label, idx_options);
-	RediSearch_FreeIndexOptions(idx_options);
-
-	// create indexed fields
-	uint fields_count = array_len(idx->fields);
-	if(idx->type == IDX_FULLTEXT) {
-		for(uint i = 0; i < fields_count; i++) {
-			IndexField *field = idx->fields + i;
-			// introduce text field
-			unsigned options = RSFLDOPT_NONE;
-			if(field->nostem) options |= RSFLDOPT_TXTNOSTEM;
-
-			if(strcmp(field->phonetic, INDEX_FIELD_DEFAULT_PHONETIC) != 0) {
-				options |= RSFLDOPT_TXTPHONETIC;
-			}
-
-			RSFieldID fieldID = RediSearch_CreateField(rsIdx, field->name,
-					RSFLDTYPE_FULLTEXT, options);
-			RediSearch_TextFieldSetWeight(rsIdx, fieldID, field->weight);
-		}
-	} else {
-		for(uint i = 0; i < fields_count; i++) {
-			IndexField *field = idx->fields+i;
-			// introduce both text, numeric and geo fields
-			unsigned types = RSFLDTYPE_NUMERIC | RSFLDTYPE_GEO | RSFLDTYPE_TAG;
-			RSFieldID fieldID = RediSearch_CreateField(rsIdx, field->name,
-					types, RSFLDOPT_NONE);
-
-			RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
-			RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
-		}
-
-		// for none indexable types e.g. Array introduce an additional field
-		// "none_indexable_fields" which will hold a list of attribute names
-		// that were not indexed
-		RSFieldID fieldID = RediSearch_CreateField(rsIdx,
-				INDEX_FIELD_NONE_INDEXED, RSFLDTYPE_TAG, RSFLDOPT_NONE);
-
-		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
-		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
-	}
-
-	idx->idx = rsIdx;
-	if(idx->entity_type == GETYPE_NODE) populateNodeIndex(idx, g);
-	else populateEdgeIndex(idx, g);
 }
 
 // query index
@@ -399,6 +359,16 @@ void Index_SetStopwords
 	ASSERT(idx->stopwords == NULL);
 
 	array_clone_with_cb(idx->stopwords, stopwords, rm_strdup);
+}
+
+// returns true if index state is IDX_OPERATIONAL
+bool Index_Enabled
+(
+	const Index *idx  // index to get state of
+) {
+	ASSERT(idx != NULL);
+
+	return idx->state == IDX_OPERATIONAL;
 }
 
 // free index

@@ -52,49 +52,6 @@ void Index_IndexEdge
 	}
 }
 
-void populateEdgeIndex
-(
-	Index *idx,
-	Graph *g
-) {
-	ASSERT(idx != NULL);
-	ASSERT(g != NULL);
-
-	const RG_Matrix m = Graph_GetRelationMatrix(g, idx->label_id, false);
-	ASSERT(m != NULL);
-
-	RG_MatrixTupleIter it = {0};
-	RG_MatrixTupleIter_attach(&it, m);
-
-	// iterate over each graph entity
-	EntityID  src_id;
-	EntityID  dest_id;
-	EntityID  edge_id;
-	while(RG_MatrixTupleIter_next_UINT64(&it, &src_id, &dest_id, &edge_id)
-			== GrB_SUCCESS) {
-		Edge e;
-		e.relationID  =  idx->label_id;
-		e.srcNodeID   =  src_id;
-		e.destNodeID  =  dest_id;
-
-		if(SINGLE_EDGE(edge_id)) {
-			Graph_GetEdge(g, edge_id, &e);
-			Index_IndexEdge(idx, &e);
-		} else {
-			EdgeID *edgeIds = (EdgeID *)(CLEAR_MSB(edge_id));
-			uint edgeCount = array_len(edgeIds);
-
-			for(uint i = 0; i < edgeCount; i++) {
-				edge_id       = edgeIds[i];
-				Graph_GetEdge(g, edge_id, &e);
-				Index_IndexEdge(idx, &e);
-			}
-		}
-	}
-
-	RG_MatrixTupleIter_detach(&it);
-}
-
 void Index_RemoveEdge
 (
 	Index *idx,    // index to update

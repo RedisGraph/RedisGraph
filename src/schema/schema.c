@@ -118,8 +118,8 @@ int Schema_AddIndex
 	IndexField *field,
 	IndexType type
 ) {
-	ASSERT(s != NULL);
-	ASSERT(idx != NULL);
+	ASSERT(s     != NULL);
+	ASSERT(idx   != NULL);
 	ASSERT(field != NULL);
 
 	Index *_idx = Schema_GetIndex(s, NULL, type);

@@ -13,6 +13,7 @@
 #include "util/arr.h"
 #include "util/cron.h"
 #include "query_ctx.h"
+#include "index/indexer.h"
 #include "redisearch_api.h"
 #include "arithmetic/funcs.h"
 #include "commands/commands.h"
@@ -116,10 +117,11 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	RegisterEventHandlers(ctx);
 	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
 
-	// Create thread local storage keys for query and error contexts.
+	// create thread local storage keys for query error contexts and indexer.
 	if(!QueryCtx_Init())    return REDISMODULE_ERR;
 	if(!ErrorCtx_Init())    return REDISMODULE_ERR;
 	if(!ThreadPools_Init()) return REDISMODULE_ERR;
+	if(!Indexer_Init())     return REDISMODULE_ERR;
 
 	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.",
 			ThreadPools_ReadersCount());

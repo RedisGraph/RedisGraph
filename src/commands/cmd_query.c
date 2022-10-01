@@ -12,6 +12,7 @@
 #include "../util/cron.h"
 #include "../query_ctx.h"
 #include "../graph/graph.h"
+#include "../index/indexer.h"
 #include "../util/rmalloc.h"
 #include "../util/cache/cache.h"
 #include "../util/thpool/pools.h"
@@ -59,50 +60,87 @@ void static inline GraphQueryCtx_Free(GraphQueryCtx *ctx) {
 	rm_free(ctx);
 }
 
-static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
-							 ExecutionType exec_type) {
-	Index       *idx         =  NULL;
-	SchemaType  schema_type  =  SCHEMA_NODE;
-	IndexType   idx_type     =  IDX_EXACT_MATCH;
+// create index structure
+static bool _index_operation_create
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc,
+	AST *ast,
+	Index **idx
+) {
+	unsigned int nprops = 0;
+	bool index_added = false;
+	const char *label = NULL;
+	SchemaType schema_type = SCHEMA_NODE;
+	const cypher_astnode_t *index_op = ast->root;
+	cypher_astnode_type_t t = cypher_astnode_type(index_op);
+
+	//--------------------------------------------------------------------------
+	// retrieve label and attributes from AST
+	//--------------------------------------------------------------------------
+
+	if(t == CYPHER_AST_CREATE_NODE_PROPS_INDEX) {
+		// old format
+		// CREATE INDEX ON :N(name)
+		nprops = cypher_ast_create_node_props_index_nprops(index_op);
+		label  = cypher_ast_label_get_name(cypher_ast_create_node_props_index_get_label(index_op));
+	} else {
+		// new format
+		// CREATE INDEX FOR (n:N) ON n.name
+		nprops = cypher_ast_create_pattern_props_index_nprops(index_op);
+		label  = cypher_ast_label_get_name(cypher_ast_create_pattern_props_index_get_label(index_op));
+
+		// determine if index is created over node label or edge relationship
+		// default to node
+		if(cypher_ast_create_pattern_props_index_pattern_is_relation(index_op)) {
+			schema_type = SCHEMA_EDGE;
+		}
+	}
+
+	// lock
+	QueryCtx_LockForCommit();
+
+	//--------------------------------------------------------------------------
+	// add attributes to index
+	//--------------------------------------------------------------------------
+
+	for(unsigned int i = 0; i < nprops; i++) {
+		const cypher_astnode_t *prop_name =
+			(t == CYPHER_AST_CREATE_NODE_PROPS_INDEX) ?
+			cypher_ast_create_node_props_index_get_prop_name(index_op, i) :
+			cypher_ast_property_operator_get_prop_name
+			(cypher_ast_create_pattern_props_index_get_property_operator(index_op, i));
+
+		const char *prop = cypher_ast_prop_name_get_value(prop_name);
+
+		index_added |= (GraphContext_AddExactMatchIndex(idx, gc,
+					schema_type, label, prop) == INDEX_OK);
+	}
+
+	// unlock
+	QueryCtx_UnlockCommit(NULL);
+
+	return index_added;
+}
+
+// handle index operation
+// either index creation or index deletion
+static void _index_operation
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc,
+	AST *ast,
+	ExecutionType exec_type
+) {
+	Index      *idx        = NULL;
+	IndexType  idx_type    = IDX_EXACT_MATCH;
+	SchemaType schema_type = SCHEMA_NODE;
 
 	const cypher_astnode_t *index_op = ast->root;
 	if(exec_type == EXECUTION_TYPE_INDEX_CREATE) {
-		// retrieve strings from AST node
-		bool                  index_added = false;
-		const char            *label      = NULL;
-		unsigned int          nprops      = 0;
-		cypher_astnode_type_t t           = cypher_astnode_type(index_op);
-
-		if(t == CYPHER_AST_CREATE_NODE_PROPS_INDEX) {
-			nprops = cypher_ast_create_node_props_index_nprops(index_op);
-			label  = cypher_ast_label_get_name(cypher_ast_create_node_props_index_get_label(index_op));
-		} else {
-			nprops = cypher_ast_create_pattern_props_index_nprops(index_op);
-			label  = cypher_ast_label_get_name(cypher_ast_create_pattern_props_index_get_label(index_op));
-
-			// determine if index is created over node label or edge relationship
-			// default to node
-			if(cypher_ast_create_pattern_props_index_pattern_is_relation(index_op)) {
-				schema_type = SCHEMA_EDGE;
-			}
+		if(_index_operation_create(ctx, gc, ast, &idx)) {
+			Indexer_PopulateIndex(gc->g, idx);
 		}
-	
-		// add index for each property
-		QueryCtx_LockForCommit();
-		for(unsigned int i = 0; i < nprops; i++) {
-			const cypher_astnode_t *prop_name = t == CYPHER_AST_CREATE_NODE_PROPS_INDEX
-				? cypher_ast_create_node_props_index_get_prop_name(index_op, i)
-				: cypher_ast_property_operator_get_prop_name(cypher_ast_create_pattern_props_index_get_property_operator(index_op, i));
-			const char *prop = cypher_ast_prop_name_get_value(prop_name);
-
-			index_added |= (GraphContext_AddExactMatchIndex(&idx, gc,
-						schema_type, label, prop) == INDEX_OK);
-		}
-
-		// populate the index only when at least one attribute was introduced
-		if(index_added) Index_Construct(idx, gc->g);
-
-		QueryCtx_UnlockCommit(NULL);
 	} else if(exec_type == EXECUTION_TYPE_INDEX_DROP) {
 		// retrieve strings from AST node
 		const char *label = cypher_ast_label_get_name(
@@ -151,9 +189,9 @@ inline static bool _readonly_cmd_mode(CommandCtx *ctx) {
 	return strcasecmp(CommandCtx_GetCommandName(ctx), "graph.RO_QUERY") == 0;
 }
 
-/* _ExecuteQuery accepts a GraphQeuryCtx as an argument
- * it may be called directly by a reader thread or the Redis main thread,
- * or dispatched as a worker thread job. */
+// _ExecuteQuery accepts a GraphQeuryCtx as an argument
+// it may be called directly by a reader thread or the Redis main thread,
+// or dispatched as a worker thread job
 static void _ExecuteQuery(void *args) {
 	ASSERT(args != NULL);
 
@@ -305,29 +343,29 @@ void _query(bool profile, void *args) {
 		goto cleanup;
 	}
 
-	QueryCtx_BeginTimer(); // Start query timing.
+	QueryCtx_BeginTimer(); // start query timing
 
 	// parse query parameters and build an execution plan or retrieve it from the cache
 	exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
 	if(exec_ctx == NULL) goto cleanup;
 
 	ExecutionType exec_type = exec_ctx->exec_type;
+	bool readonly = AST_ReadOnly(exec_ctx->ast->root);
+	bool index_op = (exec_type == EXECUTION_TYPE_INDEX_CREATE ||
+	     exec_type == EXECUTION_TYPE_INDEX_DROP);
 
-	if(profile &&
-		(exec_type == EXECUTION_TYPE_INDEX_CREATE ||
-	     exec_type == EXECUTION_TYPE_INDEX_DROP)) {
+	if(profile && index_op) {
 		RedisModule_ReplyWithError(ctx, "Can't profile index operations.");
 		goto cleanup;
 	}
 
-	bool readonly = AST_ReadOnly(exec_ctx->ast->root);
-
 	// write query executing via GRAPH.RO_QUERY isn't allowed
-	if(!profile && !readonly && _readonly_cmd_mode(command_ctx)) {
+	if(_readonly_cmd_mode(command_ctx) && readonly) {
 		ErrorCtx_SetError("graph.RO_QUERY is to be executed only on read-only queries");
 		goto cleanup;
 	}
 
+	// TODO: at the moment we can't timeout index operation
 	CronTaskHandle timeout_task = 0;
 
 	// set the query timeout if one was specified
