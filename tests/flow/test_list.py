@@ -219,28 +219,19 @@ class testList(FlowTestsBase):
             self.env.assertContains("Type mismatch: expected List but was String", str(e))
 
         try:
-            query = """CREATE (a:X)"""
-            redis_graph.query(query)
-            query = """MATCH (n) RETURN toBooleanList(n)"""
+            query = """CREATE (a:X) RETURN toBooleanList(a)"""
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("Type mismatch: expected List but was Node", str(e))
-            query = """MATCH (a:X) DELETE a"""
-            redis_graph.query(query)
 
         try:
-            query = """CREATE (a:X), (b:Y)"""
+            query = """CREATE (a:X)-[r:R]->(b:Y) RETURN toBooleanList(r)"""
             redis_graph.query(query)
-            query = """MATCH (a:X), (b:Y) create (a)-[r:R]->(b)"""
-            redis_graph.query(query)
-            query = """MATCH ()-[e]->() RETURN toBooleanList(e)"""
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("Type mismatch: expected List but was Edge", str(e))
-            query = """MATCH (a:X),(b:Y) DELETE a, b"""
-            redis_graph.query(query)
 
         try:
             query = """CREATE (a:X), (b:Y)"""
@@ -256,21 +247,15 @@ class testList(FlowTestsBase):
             redis_graph.query(query)
 
         # List of node input should return list of NULL
-        query = """CREATE (a:X)"""
-        redis_graph.query(query)
-        query = """MATCH (n) RETURN toBooleanList([n])"""
+        query = """CREATE (a:X) RETURN toBooleanList([a])"""
         expected_result = [[None]]
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
         query = """MATCH (a:X) DELETE a"""
         redis_graph.query(query)
 
-        # # List of edge input should return list of NULL
-        query = """CREATE (a:X), (b:Y)"""
-        redis_graph.query(query)
-        query = """MATCH (a:X), (b:Y) CREATE (a)-[e:R]->(b)"""
-        redis_graph.query(query)
-        query = """MATCH ()-[e]->() RETURN toBooleanList([e])"""
+        # List of edge input should return list of NULL
+        query = """CREATE (a:X)-[r:R]->(b:Y) RETURN toBooleanList([r])"""
         expected_result = [[None]]
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
@@ -377,9 +362,7 @@ class testList(FlowTestsBase):
             self.env.assertContains("Type mismatch: expected List but was String", str(e))
 
         try:
-            query = """CREATE (a:X)"""
-            redis_graph.query(query)
-            query = """MATCH (n) RETURN toFloatList(n)"""
+            query = """CREATE (a:X) RETURN toFloatList(a)"""
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
@@ -388,11 +371,7 @@ class testList(FlowTestsBase):
             redis_graph.query(query)
 
         try:
-            query = """CREATE (a:X), (b:Y)"""
-            redis_graph.query(query)
-            query = """MATCH (a:X), (b:Y) create (a)-[r:R]->(b)"""
-            redis_graph.query(query)
-            query = """MATCH ()-[e]->() RETURN toFloatList(e)"""
+            query = """CREATE (a:X)-[r:R]->(b:Y) RETURN toFloatList(r)"""
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
@@ -414,9 +393,7 @@ class testList(FlowTestsBase):
             redis_graph.query(query)
 
         # List of node input should return list of NULL
-        query = """CREATE (a:X)"""
-        redis_graph.query(query)
-        query = """MATCH (n) RETURN toFloatList([n])"""
+        query = """CREATE (a:X) RETURN toFloatList([a])"""
         expected_result = [[None]]
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
@@ -424,11 +401,7 @@ class testList(FlowTestsBase):
         redis_graph.query(query)
 
         # List of edge input should return list of NULL
-        query = """CREATE (a:X), (b:Y)"""
-        redis_graph.query(query)
-        query = """MATCH (a:X), (b:Y) CREATE (a)-[e:R]->(b)"""
-        redis_graph.query(query)
-        query = """MATCH ()-[e]->() RETURN toFloatList([e])"""
+        query = """CREATE (a:X)-[r:R]->(b:Y) RETURN toFloatList([r])"""
         expected_result = [[None]]
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
@@ -531,9 +504,7 @@ class testList(FlowTestsBase):
             self.env.assertContains("Type mismatch: expected List but was String", str(e))
 
         try:
-            query = """CREATE (a:X)"""
-            redis_graph.query(query)
-            query = """MATCH (n) RETURN toIntegerList(n)"""
+            query = """CREATE (a:X) RETURN toIntegerList(a)"""
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
@@ -542,11 +513,7 @@ class testList(FlowTestsBase):
             redis_graph.query(query)
 
         try:
-            query = """CREATE (a:X), (b:Y)"""
-            redis_graph.query(query)
-            query = """MATCH (a:X), (b:Y) create (a)-[r:R]->(b)"""
-            redis_graph.query(query)
-            query = """MATCH ()-[e]->() RETURN toIntegerList(e)"""
+            query = """CREATE (a:X)-[r:R]->(b:Y) RETURN toIntegerList(r)"""
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
@@ -568,9 +535,7 @@ class testList(FlowTestsBase):
             redis_graph.query(query)
 
         # List of node input should return list of NULL
-        query = """CREATE (a:X)"""
-        redis_graph.query(query)
-        query = """MATCH (n) RETURN toIntegerList([n])"""
+        query = """CREATE (a:X) RETURN toIntegerList([a])"""
         expected_result = [[None]]
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
@@ -578,11 +543,7 @@ class testList(FlowTestsBase):
         redis_graph.query(query)
 
         # # List of edge input should return list of NULL
-        query = """CREATE (a:X), (b:Y)"""
-        redis_graph.query(query)
-        query = """MATCH (a:X), (b:Y) CREATE (a)-[e:R]->(b)"""
-        redis_graph.query(query)
-        query = """MATCH ()-[e]->() RETURN toIntegerList([e])"""
+        query = """CREATE (a:X)-[r:R]->(b:Y) RETURN toIntegerList([r])"""
         expected_result = [[None]]
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
@@ -696,9 +657,7 @@ class testList(FlowTestsBase):
             self.env.assertContains("Type mismatch: expected List but was String", str(e))
 
         try:
-            query = """CREATE (a:X)"""
-            redis_graph.query(query)
-            query = """MATCH (n) RETURN toStringList(n)"""
+            query = """CREATE (a:X) RETURN toStringList(a)"""
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
@@ -707,11 +666,7 @@ class testList(FlowTestsBase):
             redis_graph.query(query)
 
         try:
-            query = """CREATE (a:X), (b:Y)"""
-            redis_graph.query(query)
-            query = """MATCH (a:X), (b:Y) create (a)-[r:R]->(b)"""
-            redis_graph.query(query)
-            query = """MATCH ()-[e]->() RETURN toStringList(e)"""
+            query = """CREATE (a:X)-[r:R]->(b:Y) RETURN toStringList(r)"""
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
@@ -733,9 +688,7 @@ class testList(FlowTestsBase):
             redis_graph.query(query)
 
         # List of node input should return list of NULL
-        query = """CREATE (a:X)"""
-        redis_graph.query(query)
-        query = """MATCH (n) RETURN toStringList([n])"""
+        query = """CREATE (a:X) RETURN toStringList([a])"""
         expected_result = [[None]]
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
@@ -743,11 +696,7 @@ class testList(FlowTestsBase):
         redis_graph.query(query)
 
         # List of edge input should return list of NULL
-        query = """CREATE (a:X), (b:Y)"""
-        redis_graph.query(query)
-        query = """MATCH (a:X), (b:Y) CREATE (a)-[e:R]->(b)"""
-        redis_graph.query(query)
-        query = """MATCH ()-[e]->() RETURN toStringList([e])"""
+        query = """CREATE (a:X)-[r:R]->(b:Y) RETURN toStringList([r])"""
         expected_result = [[None]]
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
