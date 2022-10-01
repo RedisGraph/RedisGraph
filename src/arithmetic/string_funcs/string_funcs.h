@@ -10,4 +10,10 @@
 
 void Register_StringFuncs();
 
-SIValue AR_TOSTRING(SIValue *argv, int argc, void *private_data);
+// tries to convert input to string
+SIValue AR_TOSTRING
+(
+    SIValue *argv,      // arguments
+    int argc,           // number of arguments
+    void *private_data  // private context
+);
