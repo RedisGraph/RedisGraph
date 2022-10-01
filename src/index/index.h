@@ -68,6 +68,7 @@ typedef struct {
 	GraphEntityType entity_type;  // entity type (node/edge) indexed
 	IndexType type;               // index type exact-match / fulltext
 	IndexState state;             // index state
+	uint version;                 // index version
 	RSIndex *idx;                 // rediSearch index
 } Index;
 
@@ -95,6 +96,12 @@ Index *Index_New
 	int label_id,                // indexed label id
 	IndexType type,              // exact match or full text
 	GraphEntityType entity_type  // entity type been indexed
+);
+
+// returns index version
+uint Index_Version
+(
+	const Index *idx  // index to retrieve version from
 );
 
 // update index state atomicly

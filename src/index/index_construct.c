@@ -284,11 +284,11 @@ void Index_Populate
 	ASSERT(g   != NULL);
 	ASSERT(idx != NULL);
 
-	ASSERT(idx->state == IDX_UNDER_CONSTRUCTION);
+	ASSERT(idx->state == IDX_POPULATING);
 
 	// check if RediSearch index already exists
 	// in which case we'll simply drop the index and recreate it
-	if(idx->idx) {
+	if(idx->idx != NULL) {
 		// TODO: do we need to acquire GIL?
 		printf("TODO: do we need to acquire GIL?\n");
 

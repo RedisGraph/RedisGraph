@@ -152,6 +152,16 @@ void IndexField_Free
 	rm_free(field->phonetic);
 }
 
+// increase index version
+// every change to the index structure should increase the index version
+// e.g. addition/removal of a field
+static inline void _Index_IncreaseVersion
+(
+	Index *idx  // index to update version of
+) {
+	idx->version++;
+}
+
 // create a new index
 Index *Index_New
 (
@@ -165,14 +175,24 @@ Index *Index_New
 	idx->idx         = NULL;
 	idx->type        = type;
 	idx->label       = rm_strdup(label);
-	idx->fields      = array_new(IndexField, 1);
 	idx->state       = IDX_UNDER_CONSTRUCTION;
+	idx->fields      = array_new(IndexField, 1);
+	idx->version     = 0;
 	idx->label_id    = label_id;
 	idx->language    = NULL;
 	idx->stopwords   = NULL;
 	idx->entity_type = entity_type;
 
 	return idx;
+}
+
+// returns index version
+uint Index_Version
+(
+	const Index *idx  // index to retrieve version from
+) {
+	ASSERT(idx != NULL);
+	return idx->version;
 }
 
 // update index state using atomic compare and swap
@@ -227,7 +247,9 @@ void Index_AddField
 
 	array_append(idx->fields, *field);
 
+	// disable index and update its version
 	Index_Disable(idx);
+	_Index_IncreaseVersion(idx);
 }
 
 // removes fields from index
@@ -251,7 +273,9 @@ void Index_RemoveField
 			IndexField_Free(field);
 			array_del_fast(idx->fields, i);
 
+			// disable index and update its version
 			Index_Disable(idx);
+			_Index_IncreaseVersion(idx);
 			break;
 		}
 	}

@@ -10,8 +10,9 @@
 
 // index population context
 typedef struct {
-	Index *idx;  // index to populate
-	Graph *g;    // graph holding entities to index
+	uint idx_version;  // index version at the time of creation
+	Index *idx;        // index to populate
+	Graph *g;          // graph holding entities to index
 } IndexPopulateCtx;
 
 typedef struct {
@@ -39,8 +40,23 @@ static void *_index_populate
 		IndexPopulateCtx *ctx = _indexer_PopTask();
 		ASSERT(ctx != NULL);
 
-		// populates index in batches
-		Index_Populate(ctx->idx, ctx->g);
+		// only populate index if the index version at the time of the request
+		// matches the current index version
+		//
+		// consider the following sequance of requests:
+		// 1. CREATE INDEX FOR (n:A) on (n.a)
+		// 2. CREATE INDEX FOR (n:Z) on (n.v)
+		// 3. CREATE INDEX FOR (n:Z) on (n.y)
+		//
+		// when this worker thread gets to handle the second request
+		// the third request already invalidated it
+		// comparing index version at the time of the indexing request against
+		// the current index version alows us to detect and avoid situations
+		// where we will be index the same data multiple times
+		if(ctx->idx_version == Index_Version(ctx->idx)) {
+			// populates index in batches
+			Index_Populate(ctx->idx, ctx->g);
+		}
 
 		// done populating we can discard context
 		rm_free(ctx);
@@ -202,6 +218,7 @@ void Indexer_PopulateIndex
 	IndexPopulateCtx *ctx = rm_malloc(sizeof(IndexPopulateCtx));
 	ctx->g = g;
 	ctx->idx = idx;
+	ctx->idx_version = Index_Version(idx);
 
 	// place task into queue
 	_indexer_AddTask(ctx);
