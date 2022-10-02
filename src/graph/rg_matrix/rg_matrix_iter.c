@@ -319,7 +319,9 @@ bool RG_MatrixTupleIter_is_attached
 GrB_Info RG_MatrixTupleIter_attach
 (
 	RG_MatrixTupleIter *iter,       // iterator to update
-	const RG_Matrix A               // matrix to scan
+	const RG_Matrix A,              // matrix to scan
+	GrB_Index min_row,              // minimum row for iteration
+	GrB_Index max_row               // maximum row for iteration
 ) {
 	if(A == NULL) return GrB_NULL_POINTER ;
 	if(iter == NULL) return GrB_NULL_POINTER ;
@@ -328,8 +330,8 @@ GrB_Info RG_MatrixTupleIter_attach
 	GrB_Matrix DP = RG_MATRIX_DELTA_PLUS(A) ;
 
 	iter->A = A ;
-	iter->min_row = 0 ;
-	iter->max_row = ULLONG_MAX ;
+	iter->min_row = min_row ;
+	iter->max_row = max_row ;
 
 	_init_iter(&iter->m_it, M, iter->min_row, iter->max_row, &iter->m_depleted) ;
 	_init_iter(&iter->dp_it, DP, iter->min_row, iter->max_row, &iter->dp_depleted) ;
