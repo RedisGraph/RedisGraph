@@ -1024,7 +1024,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         # log(True)
         query = """RETURN log(True)"""
         self.expect_type_error(query)
-        
+
         # log10(True)
         query = """RETURN log10(True)"""
         self.expect_type_error(query)
@@ -1033,7 +1033,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         # exp(0)
         query = """RETURN exp(0)"""
         actual_result = graph.query(query)
-        self.env.assertAlmostEqual(actual_result.result_set[0][0], 1, 0.0001)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 1.0, 0.0001)
 
         # exp(1)
         query = """RETURN exp(1)"""
@@ -1048,7 +1048,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         # exp(-1.2)
         query = """RETURN exp(0)"""
         actual_result = graph.query(query)
-        self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.301194211912202, 0.0001)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 1, 0.0001)
 
         # e()
         query = """RETURN e()"""
