@@ -201,10 +201,15 @@ SIValue AR_TOSTRING(SIValue *argv, int argc, void *private_data) {
 SIValue AR_TOJSON(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	bool printLabels;
-	if(SIValue_IsFalse(argv[1])) {
-		printLabels = false;
-	} else {
+	if(argc < 2) {
 		printLabels = true;
+	}
+	else {
+		if(SIValue_IsFalse(argv[1])) {
+			printLabels = false;
+		} else {
+			printLabels = true;
+		}
 	}
 	char *buf = JsonEncoder_SIValue(argv[0], printLabels);
 	return SI_TransferStringVal(buf);
