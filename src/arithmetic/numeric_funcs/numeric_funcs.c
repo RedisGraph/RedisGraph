@@ -175,7 +175,7 @@ SIValue AR_POW(SIValue *argv, int argc, void *private_data) {
 
 // returns the base of the natural logarithm, e.
 SIValue AR_E(SIValue *argv, int argc, void *private_data) {
-	// return log10 of input
+	// base of the natural logarithm (e) == e^1
 	return SI_DoubleVal(exp(1));
 }
 
@@ -187,7 +187,7 @@ SIValue AR_EXP(SIValue *argv, int argc, void *private_data) {
 
 	double value = SI_GET_NUMERIC(arg);
 
-	// return log10 of input
+	// return e^value
 	return SI_DoubleVal(exp(value));
 }
 
@@ -333,9 +333,8 @@ void Register_NumericFuncs() {
 	func_desc = AR_FuncDescNew("exp", AR_EXP, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
-	types = array_new(SIType, 1);
-	array_append(types, (SI_NUMERIC | T_NULL));
-	ret_type = T_DOUBLE | T_NULL;
+	types = array_new(SIType, 0);
+	ret_type = T_DOUBLE;
 	func_desc = AR_FuncDescNew("e", AR_E, 0, 0, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
