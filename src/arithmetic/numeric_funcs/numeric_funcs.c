@@ -14,6 +14,10 @@
 #include <math.h>
 #include <errno.h>
 
+#ifndef M_PI
+#define M_PI (3.14159265358979323846)
+#endif /* M_PI */
+
 /* The '+' operator is overloaded to perform string concatenation
  * as well as arithmetic addition. */
 SIValue AR_ADD(SIValue *argv, int argc, void *private_data) {
@@ -267,13 +271,65 @@ SIValue AR_ATAN(SIValue *argv, int argc, void *private_data) {
 	return SI_DoubleVal(atan(value));
 }
 
+// returns atan2(y, x)
+SIValue AR_ATAN2(SIValue *argv, int argc, void *private_data) {
+	SIValue argY = argv[0];
+	SIValue argX = argv[1];
 
-// AR_UNARY_FUNC(AR_ATAN2, atan2)
-// AR_UNARY_FUNC(AR_DEGREES, degrees)
-// AR_UNARY_FUNC(AR_RADIANS, radians)
-// AR_UNARY_FUNC(AR_PI, pi)
-// AR_UNARY_FUNC(AR_HAVERSIN, haversin)
+	// return NULL if input is NULL
+	if(SIValue_IsNull(argY) || SIValue_IsNull(argX)) return SI_NullVal();
+	
+	double y = SI_GET_NUMERIC(argY);
+	double x = SI_GET_NUMERIC(argX);
+	
+	// return atan2(y, x) of input
+	return SI_DoubleVal(atan2(y, x));
+}
 
+// returns degrees(x)
+SIValue AR_DEGREES(SIValue *argv, int argc, void *private_data) {
+	SIValue arg = argv[0];
+
+	// return NULL if input is NULL
+	if(SIValue_IsNull(arg)) return SI_NullVal();
+	
+	double value = SI_GET_NUMERIC(arg);
+	
+	// return degrees(value) of input
+	return SI_DoubleVal(value * (180/M_PI));
+}
+
+// returns radians(x)
+SIValue AR_RADIANS(SIValue *argv, int argc, void *private_data) {
+	SIValue arg = argv[0];
+
+	// return NULL if input is NULL
+	if(SIValue_IsNull(arg)) return SI_NullVal();
+	
+	double value = SI_GET_NUMERIC(arg);
+	
+	// return radians(value) of input
+	return SI_DoubleVal( value * (M_PI / 180.0));
+}
+
+// returns radians(x)
+SIValue AR_PI(SIValue *argv, int argc, void *private_data) {	
+	// return pi() of input
+	return SI_DoubleVal(M_PI);
+}
+
+// returns haversin(x)
+SIValue AR_HAVERSIN(SIValue *argv, int argc, void *private_data) {
+	SIValue arg = argv[0];
+
+	// return NULL if input is NULL
+	if(SIValue_IsNull(arg)) return SI_NullVal();
+	
+	double value = SI_GET_NUMERIC(arg);
+	
+	// return haversin(y, x) of input
+	return SI_DoubleVal((1-cos(value))/2);
+}
 
 void Register_NumericFuncs() {
 	SIType *types;
@@ -423,34 +479,32 @@ void Register_NumericFuncs() {
 	func_desc = AR_FuncDescNew("atan", AR_ATAN, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
-	// types = array_new(SIType, 1);
-	// array_append(types, (SI_NUMERIC | T_NULL));
-	// ret_type = T_DOUBLE | T_NULL;
-	// func_desc = AR_FuncDescNew("atan2", AR_ATAN2, 1, 1, types, ret_type, false, true);
-	// AR_RegFunc(func_desc);
+	types = array_new(SIType, 2);
+	array_append(types, (SI_NUMERIC | T_NULL));
+	array_append(types, (SI_NUMERIC | T_NULL));
+	ret_type = T_DOUBLE | T_NULL;
+	func_desc = AR_FuncDescNew("atan2", AR_ATAN2, 2, 2, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
 
-	// types = array_new(SIType, 1);
-	// array_append(types, (SI_NUMERIC | T_NULL));
-	// ret_type = T_DOUBLE | T_NULL;
-	// func_desc = AR_FuncDescNew("degrees", AR_DEGREES, 1, 1, types, ret_type, false, true);
-	// AR_RegFunc(func_desc);	
+	types = array_new(SIType, 1);
+	array_append(types, (SI_NUMERIC | T_NULL));
+	ret_type = T_DOUBLE | T_NULL;
+	func_desc = AR_FuncDescNew("degrees", AR_DEGREES, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);	
 
-	// types = array_new(SIType, 1);
-	// array_append(types, (SI_NUMERIC | T_NULL));
-	// ret_type = T_DOUBLE | T_NULL;
-	// func_desc = AR_FuncDescNew("radians", AR_RADIANS, 1, 1, types, ret_type, false, true);
-	// AR_RegFunc(func_desc);	
+	types = array_new(SIType, 1);
+	array_append(types, (SI_NUMERIC | T_NULL));
+	ret_type = T_DOUBLE | T_NULL;
+	func_desc = AR_FuncDescNew("radians", AR_RADIANS, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);	
 
-	// types = array_new(SIType, 1);
-	// array_append(types, (SI_NUMERIC | T_NULL));
-	// ret_type = T_DOUBLE | T_NULL;
-	// func_desc = AR_FuncDescNew("pi", AR_PI, 0, 0, types, ret_type, false, true);
-	// AR_RegFunc(func_desc);	
+	types = array_new(SIType, 0);
+	func_desc = AR_FuncDescNew("pi", AR_PI, 0, 0, types, ret_type, false, true);
+	AR_RegFunc(func_desc);	
 
-	// types = array_new(SIType, 1);
-	// array_append(types, (SI_NUMERIC | T_NULL));
-	// ret_type = T_DOUBLE | T_NULL;
-	// func_desc = AR_FuncDescNew("haversin", AR_HAVERSIN, 1, 1, types, ret_type, false, true);
-	// AR_RegFunc(func_desc);
-
+	types = array_new(SIType, 1);
+	array_append(types, (SI_NUMERIC | T_NULL));
+	ret_type = T_DOUBLE | T_NULL;
+	func_desc = AR_FuncDescNew("haversin", AR_HAVERSIN, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
 }

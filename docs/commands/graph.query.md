@@ -888,6 +888,20 @@ This section contains information on all supported functions from the Cypher que
 | toIntegerOrNull() | Converts a floating point or string value to an integer value. All other types will return `null`                                                        | 
 | toFloat()   | Converts an integer or string value to a floating point value. All other types are not allowed and will cause a type mismatch error to be returned.                                                         |
 | toFloatOrNull()   | Converts an integer or string value to a floating point value. All other types will return `null`                                                        |
+| sin()             |  Returns the sine of a                  |
+| cos()             |  Returns the cosine of a                |
+| tan()             |  Returns the tangent of a               |
+| cot()             |  Returns the cotangent of a             |
+| asin()            |  Returns the arcsine of a in radians    |
+| acos()            |  Returns the arccosine of a in radians  |
+| atan()            |  Returns the arctangent of a in radians |
+| atan2()           |  Returns the arctangent of a coordinate |
+| degrees()         |  Converts radians to degrees            |
+| radians()         |  Converts degrees to radians            |
+| pi()              |  Returns the constant pi                |
+| haversin()        |  Returns the half the versine of a      |
+
+
 
 ## String functions
 
