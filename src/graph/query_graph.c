@@ -354,7 +354,35 @@ QueryGraph *QueryGraph_ExtractPatterns
 	for(uint i = 0; i < n; i++) {
 		const cypher_astnode_t *pattern = patterns[i];
 		if(cypher_astnode_type(pattern) == CYPHER_AST_PATTERN_COMPREHENSION) {
-			pattern = cypher_ast_pattern_comprehension_get_pattern(pattern);
+			const cypher_astnode_t *pp = cypher_ast_pattern_comprehension_get_pattern(pattern);
+			_QueryGraph_ExtractPath(qg, graph, pp);
+			const cypher_astnode_t *id = cypher_ast_pattern_comprehension_get_identifier(pattern);
+			if(id != NULL) {
+				QGPath *p = QGPath_New(cypher_ast_identifier_get_name(id));
+				uint nelems = cypher_ast_pattern_path_nelements(pp);
+				// retrieve the QGNode corresponding to the node left of this edge
+					const cypher_astnode_t *node = cypher_ast_pattern_path_get_element(pp, 0);
+					const char *alias = AST_ToString(node);
+					QGNode *qgnode = QueryGraph_GetNodeByAlias(graph, alias);
+					QGPath_AddNode(p, qgnode);
+				for(uint i = 1; i < nelems; i += 2) {
+					// retrieve the QGNode corresponding to the node left of this edge
+					node = cypher_ast_pattern_path_get_element(pp, i + 1);
+					alias = AST_ToString(node);
+					qgnode = QueryGraph_GetNodeByAlias(graph, alias);
+					QGPath_AddNode(p, qgnode);
+
+					const cypher_astnode_t *ast_node = cypher_ast_pattern_path_get_element(pp, i);
+					const char *e_alias = AST_ToString(ast_node);
+					QGEdge *edge = QueryGraph_GetEdgeByAlias(graph, e_alias);
+					QGPath_AddEdge(p, edge);
+				}
+				array_append(graph->paths, p);
+			}
+			continue;
+		}
+		
+		if(cypher_astnode_type(pattern) == CYPHER_AST_PATTERN_PATH) {
 			_QueryGraph_ExtractPath(qg, graph, pattern);
 			continue;
 		}
@@ -362,6 +390,7 @@ QueryGraph *QueryGraph_ExtractPatterns
 		for(uint j = 0; j < npaths; j ++) {
 			const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
 			_QueryGraph_ExtractPath(qg, graph, path);
+			
 		}
 	}
 

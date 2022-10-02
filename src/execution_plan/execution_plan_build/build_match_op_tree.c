@@ -8,7 +8,7 @@
 #include "../optimizations/optimizations.h"
 #include "../../ast/ast_build_filter_tree.h"
 
-static void _ExecutionPlan_ProcessQueryGraph
+void ExecutionPlan_ProcessQueryGraph
 (
 	ExecutionPlan *plan,
 	QueryGraph *qg,
@@ -146,7 +146,9 @@ static void _ExecutionPlan_ProcessQueryGraph
 
 	uint count = array_len(qg->paths);
 	if(count > 0) {
-		OpBase *op = NewPathProjectOp(plan, qg->paths);
+		QGPath **paths;
+		array_clone_with_cb(paths, qg->paths, QGPath_Clone);
+		OpBase *op = NewPathProjectOp(plan, paths);
 		ExecutionPlan_AddOp(op, plan->root);
 		plan->root = op;
 	}
@@ -225,7 +227,7 @@ void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *cla
 	QueryGraph *sub_qg = QueryGraph_ExtractPatterns(qg, patterns,
 			mandatory_match_count);
 
-	_ExecutionPlan_ProcessQueryGraph(plan, sub_qg, ast);
+	ExecutionPlan_ProcessQueryGraph(plan, sub_qg, ast);
 	if(ErrorCtx_EncounteredError()) goto cleanup;
 
 	// Build the FilterTree to model any WHERE predicates on these clauses and place ops appropriately.

@@ -60,10 +60,10 @@ QGPath *QGPath_Clone
 	ASSERT(p != NULL);
 
 	QGPath *clone = rm_malloc(sizeof(QGPath));
-	memcpy(clone, p, sizeof(QGNode));
+	memcpy(clone, p, sizeof(QGPath));
 
-	array_clone(clone->nodes, p->nodes);
-	array_clone(clone->edges, p->edges);
+	array_clone_with_cb(clone->nodes, p->nodes, QGNode_Clone);
+	array_clone_with_cb(clone->edges, p->edges, QGEdge_Clone);
 
 	return clone;
 }

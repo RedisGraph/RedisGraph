@@ -203,8 +203,8 @@ void ExecutionPlanSegment_Convert(GraphContext *gc, AST *ast, ExecutionPlan *pla
 			const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
 			ExecutionPlanSegment_Convert(gc, ast, plan, clause);
 		}
-	} else if(t == CYPHER_AST_PATTERN_COMPREHENSION) {
-		printf("");
+	} else if(t == CYPHER_AST_PATTERN_COMPREHENSION || t == CYPHER_AST_PATTERN_PATH) {
+		ExecutionPlan_ProcessQueryGraph(plan, plan->query_graph, ast);
 	} else {
 		ASSERT(false);
 	}

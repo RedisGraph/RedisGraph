@@ -42,6 +42,13 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, OpBase *root, const OpBas
 void ExecutionPlanSegment_Convert(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 										const cypher_astnode_t *node);
 
+void ExecutionPlan_ProcessQueryGraph
+(
+	ExecutionPlan *plan,
+	QueryGraph *qg,
+	AST *ast
+);
+
 // Build pattern comprehension plan operations
 void buildPatternComprehensionOps(
 	ExecutionPlan *plan,

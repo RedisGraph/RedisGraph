@@ -375,8 +375,6 @@ OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_v
 	//--------------------------------------------------------------------------
 
 	// Extract pattern from holistic query graph.
-	cypher_astnode_type_t type = cypher_astnode_type(node);
-	RedisModule_Log(NULL, "notice", "PATH TYPE: %s", cypher_astnode_typestr(type));
 	QueryGraph *sub_qg = QueryGraph_ExtractPatterns(plan->query_graph, &node, 1);
 	match_stream_plan->query_graph = sub_qg;
 
