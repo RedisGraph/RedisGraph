@@ -416,10 +416,45 @@ class testFunctionCallsFlow(FlowTestsBase):
         parsed = json.loads(actual_result.result_set[0][0])
         self.env.assertEquals(parsed, {"crs": "wgs-84", "latitude": 0.402313, "longitude": 167.697556, "height": None})
 
-        # Test JSON option to avoid relationships' nodes' labels and properties
-        query = """MATCH (n) WITH collect(n) AS all_n match (n:person)-[r:works_with]->(m:student) WHERE n.name='Roi' AND m.name='Alon' WITH all_n, collect(r) AS all_r WHERE n.name='Roi' RETURN toJSON(all_r, false)"""
+        # Test JSON option to avoid relationships' nodes' labels and properties. Convert nodes and relationship
+        query = """MATCH (n) WITH collect(n) AS all_n MATCH ()-[r:works_with]->(m:student) WITH all_n, collect(r) AS all_r RETURN toJSON(all_n + all_r, false)"""
+        actual_result = graph.query(query)
+        expected = [{'type': 'node', 'id': 0, 'labels': ['person'], 'properties': {'name': 'Roi', 'val': 0}}, {'type': 'node', 'id': 1, 'labels': ['person', 'student'], 'properties': {'name': 'Alon', 'val': 1}}, {'type': 'node', 'id': 2, 'labels': ['person'], 'properties': {'name': 'Ailon', 'val': 2}}, {'type': 'node', 'id': 3, 'labels': ['person', 'student'], 'properties': {'name': 'Boaz', 'val': 3}}, {'type': 'relationship', 'id': 12, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 0}, 'end': {'id': 1}}, {'type': 'relationship', 'id': 19, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 2}, 'end': {'id': 1}}, {'type': 'relationship', 'id': 22, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 3}, 'end': {'id': 1}}, {'type': 'relationship', 'id': 14, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 0}, 'end': {'id': 3}}, {'type': 'relationship', 'id': 17, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 1}, 'end': {'id': 3}}, {'type': 'relationship', 'id': 20, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 2}, 'end': {'id': 3}}]
+        parsed = json.loads(actual_result.result_set[0][0])
+        self.env.assertEquals(parsed, expected)
+
+        # Test JSON with relationships' nodes' labels and properties. Convert nodes and relationship
+        query = """MATCH (n) WITH collect(n) AS all_n MATCH ()-[r:works_with]->(m:student) WITH all_n, collect(r) AS all_r RETURN toJSON(all_n + all_r, true)"""
+        actual_result = graph.query(query)
+        expected = [{'type': 'node', 'id': 0, 'labels': ['person'], 'properties': {'name': 'Roi', 'val': 0}}, {'type': 'node', 'id': 1, 'labels': ['person', 'student'], 'properties': {'name': 'Alon', 'val': 1}}, {'type': 'node', 'id': 2, 'labels': ['person'], 'properties': {'name': 'Ailon', 'val': 2}}, {'type': 'node', 'id': 3, 'labels': ['person', 'student'], 'properties': {'name': 'Boaz', 'val': 3}}, {'type': 'relationship', 'id': 12, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 0, 'labels': ['person'], 'properties': {'name': 'Roi', 'val': 0}}, 'end': {'id': 1, 'labels': ['person', 'student'], 'properties': {'name': 'Alon', 'val': 1}}}, {'type': 'relationship', 'id': 19, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 2, 'labels': ['person'], 'properties': {'name': 'Ailon', 'val': 2}}, 'end': {'id': 1, 'labels': ['person', 'student'], 'properties': {'name': 'Alon', 'val': 1}}}, {'type': 'relationship', 'id': 22, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 3, 'labels': ['person', 'student'], 'properties': {'name': 'Boaz', 'val': 3}}, 'end': {'id': 1, 'labels': ['person', 'student'], 'properties': {'name': 'Alon', 'val': 1}}}, {'type': 'relationship', 'id': 14, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 0, 'labels': ['person'], 'properties': {'name': 'Roi', 'val': 0}}, 'end': {'id': 3, 'labels': ['person', 'student'], 'properties': {'name': 'Boaz', 'val': 3}}}, {'type': 'relationship', 'id': 17, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 1, 'labels': ['person', 'student'], 'properties': {'name': 'Alon', 'val': 1}}, 'end': {'id': 3, 'labels': ['person', 'student'], 'properties': {'name': 'Boaz', 'val': 3}}}, {'type': 'relationship', 'id': 20, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 2, 'labels': ['person'], 'properties': {'name': 'Ailon', 'val': 2}}, 'end': {'id': 3, 'labels': ['person', 'student'], 'properties': {'name': 'Boaz', 'val': 3}}}]
+        parsed = json.loads(actual_result.result_set[0][0])
+        self.env.assertEquals(parsed, expected)
+
+        # Test JSON with relationships' nodes' labels and properties. Convert nodes and relationship, calling toJSON() without optional second argument
+        query = """MATCH (n) WITH collect(n) AS all_n MATCH ()-[r:works_with]->(m:student) WITH all_n, collect(r) AS all_r RETURN toJSON(all_n + all_r)"""
+        actual_result = graph.query(query)
+        expected = [{'type': 'node', 'id': 0, 'labels': ['person'], 'properties': {'name': 'Roi', 'val': 0}}, {'type': 'node', 'id': 1, 'labels': ['person', 'student'], 'properties': {'name': 'Alon', 'val': 1}}, {'type': 'node', 'id': 2, 'labels': ['person'], 'properties': {'name': 'Ailon', 'val': 2}}, {'type': 'node', 'id': 3, 'labels': ['person', 'student'], 'properties': {'name': 'Boaz', 'val': 3}}, {'type': 'relationship', 'id': 12, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 0, 'labels': ['person'], 'properties': {'name': 'Roi', 'val': 0}}, 'end': {'id': 1, 'labels': ['person', 'student'], 'properties': {'name': 'Alon', 'val': 1}}}, {'type': 'relationship', 'id': 19, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 2, 'labels': ['person'], 'properties': {'name': 'Ailon', 'val': 2}}, 'end': {'id': 1, 'labels': ['person', 'student'], 'properties': {'name': 'Alon', 'val': 1}}}, {'type': 'relationship', 'id': 22, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 3, 'labels': ['person', 'student'], 'properties': {'name': 'Boaz', 'val': 3}}, 'end': {'id': 1, 'labels': ['person', 'student'], 'properties': {'name': 'Alon', 'val': 1}}}, {'type': 'relationship', 'id': 14, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 0, 'labels': ['person'], 'properties': {'name': 'Roi', 'val': 0}}, 'end': {'id': 3, 'labels': ['person', 'student'], 'properties': {'name': 'Boaz', 'val': 3}}}, {'type': 'relationship', 'id': 17, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 1, 'labels': ['person', 'student'], 'properties': {'name': 'Alon', 'val': 1}}, 'end': {'id': 3, 'labels': ['person', 'student'], 'properties': {'name': 'Boaz', 'val': 3}}}, {'type': 'relationship', 'id': 20, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 2, 'labels': ['person'], 'properties': {'name': 'Ailon', 'val': 2}}, 'end': {'id': 3, 'labels': ['person', 'student'], 'properties': {'name': 'Boaz', 'val': 3}}}]
+        parsed = json.loads(actual_result.result_set[0][0])
+        self.env.assertEquals(parsed, expected)
+
+        # Test JSON option printing relationships' nodes' labels and properties. Convert only a relationship.
+        query = """MATCH (n) WITH collect(n) AS all_n MATCH (n:person)-[r:works_with]->(m:student) WHERE n.name='Roi' AND m.name='Alon' WITH all_n, collect(r) AS all_r WHERE n.name='Roi' RETURN toJSON(all_r, false)"""
         actual_result = graph.query(query)
         expected = [{'type': 'relationship', 'id': 12, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 0}, 'end': {'id': 1}}] 
+        parsed = json.loads(actual_result.result_set[0][0])
+        self.env.assertEquals(parsed, expected)
+
+        # Test JSON option with relationships' nodes' labels and properties. Convert only a relationship
+        query = """MATCH (n) WITH collect(n) AS all_n MATCH (n:person)-[r:works_with]->(m:student) WHERE n.name='Roi' AND m.name='Alon' WITH all_n, collect(r) AS all_r WHERE n.name='Roi' RETURN toJSON(all_r, true)"""
+        actual_result = graph.query(query)
+        expected = [{'type': 'relationship', 'id': 12, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 0, 'labels': ['person'], 'properties': {'name': 'Roi', 'val': 0}}, 'end': {'id': 1, 'labels': ['person', 'student'], 'properties': {'name': 'Alon', 'val': 1}}}]
+        parsed = json.loads(actual_result.result_set[0][0])
+        self.env.assertEquals(parsed, expected)
+
+        # Test JSON option printing relationships' nodes' labels and properties. Convert only a relationship, calling toJSON() without optional second argument
+        query = """MATCH (n) WITH collect(n) AS all_n MATCH (n:person)-[r:works_with]->(m:student) WHERE n.name='Roi' AND m.name='Alon' WITH all_n, collect(r) AS all_r WHERE n.name='Roi' RETURN toJSON(all_r)"""
+        actual_result = graph.query(query)
+        expected = [{'type': 'relationship', 'id': 12, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 0, 'labels': ['person'], 'properties': {'name': 'Roi', 'val': 0}}, 'end': {'id': 1, 'labels': ['person', 'student'], 'properties': {'name': 'Alon', 'val': 1}}}]
         parsed = json.loads(actual_result.result_set[0][0])
         self.env.assertEquals(parsed, expected)
 
