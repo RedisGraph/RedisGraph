@@ -375,6 +375,16 @@ Attribute_ID GraphContext_GetAttributeID(GraphContext *gc, const char *attribute
 	return (uintptr_t)id;
 }
 
+void GraphContext_RemoveAttribute(GraphContext *gc, Attribute_ID id) {
+	ASSERT(id < array_len(gc->string_mapping));
+	pthread_rwlock_wrlock(&gc->_attribute_rwlock);
+	const char *attribute = gc->string_mapping[id];
+	int ret = raxRemove(gc->attributes,  (unsigned char *)attribute, strlen(attribute), NULL);
+	ASSERT(ret == 1);
+	gc->string_mapping = array_del(gc->string_mapping, id);
+	pthread_rwlock_unlock(&gc->_attribute_rwlock);
+}
+
 //------------------------------------------------------------------------------
 // Index API
 //------------------------------------------------------------------------------

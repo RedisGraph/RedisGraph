@@ -288,6 +288,25 @@ static void _UndoLog_Rollback_Add_Schema
 	}
 }
 
+// undo attribute addition
+static void _UndoLog_Rollback_Add_Attribute
+(
+	QueryCtx *ctx,
+	int seq_start,
+	int seq_end
+) {
+	UndoOp *undo_list = ctx->undo_log;
+	for(int i = seq_start; i > seq_end; --i) {
+		Edge e;
+		UndoOp *op = undo_list + i;
+		UndoAddAttributeOp attribute_op = op->attribute_op;
+		int attribute_id = attribute_op.attribute_id;
+		uint attribute_count = GraphContext_AttributeCount(ctx->gc);
+		ASSERT(attribute_id == attribute_count - 1);
+		GraphContext_RemoveAttribute(ctx->gc, attribute_id);	
+	}
+}
+
 // add an operation to undo log
 static inline void _UndoLog_AddOperation
 (
@@ -473,6 +492,20 @@ void UndoLog_AddSchema
 	_UndoLog_AddOperation(log, &op);
 }
 
+void UndoLog_AddAttribute
+(
+	UndoLog *log,                // undo log
+	Attribute_ID attribute_id             // id of the attribute
+) {
+	ASSERT(log != NULL);
+	UndoOp op;
+
+	op.type = UNDO_ADD_ATTRIBUTE;
+	op.attribute_op.attribute_id = attribute_id;
+	_UndoLog_AddOperation(log, &op);
+}
+
+
 //------------------------------------------------------------------------------
 // rollback
 //------------------------------------------------------------------------------
@@ -527,6 +560,9 @@ void UndoLog_Rollback
 			case UNDO_ADD_SCHEMA:
 				_UndoLog_Rollback_Add_Schema(ctx, seq_start, seq_end);
 				break;
+			case UNDO_ADD_ATTRIBUTE:
+				_UndoLog_Rollback_Add_Attribute(ctx, seq_start, seq_end);
+				break;
 			default:
 				ASSERT(false);
 		}
@@ -567,6 +603,7 @@ void UndoLog_Free
 				array_free(op->labels_op.label_lds);
 				break;
 			case UNDO_ADD_SCHEMA:
+			case UNDO_ADD_ATTRIBUTE:
 				break;
 			default:
 				ASSERT(false);

@@ -158,16 +158,13 @@ EdgeCreateCtx EdgeCreateCtx_Clone
 
 EntityUpdateEvalCtx *UpdateCtx_New
 (
-	UPDATE_MODE mode,
-	uint prop_count,
 	const char *alias
 ) {
 	EntityUpdateEvalCtx *ctx = rm_malloc(sizeof(EntityUpdateEvalCtx));
 
-	ctx->mode          = mode;
 	ctx->alias         = alias;
 	ctx->record_idx    = INVALID_INDEX;
-	ctx->properties    = array_new(PropertySetCtx, prop_count);
+	ctx->properties    = array_new(PropertySetCtx, 1);
 	ctx->add_labels    = NULL;
 	ctx->remove_labels = NULL;
 
@@ -182,7 +179,6 @@ EntityUpdateEvalCtx *UpdateCtx_Clone
 
 	uint count = array_len(orig->properties);
 
-	clone->mode          = orig->mode;
 	clone->alias         = orig->alias;
 	clone->record_idx    = orig->record_idx;
 	clone->properties    = array_new(PropertySetCtx, count);
@@ -197,22 +193,14 @@ EntityUpdateEvalCtx *UpdateCtx_Clone
 
 	for(uint i = 0; i < count; i ++) {
 		PropertySetCtx update = {
-			.id = orig->properties[i].id,
+			.attribute = orig->properties[i].attribute,
 			.exp = AR_EXP_Clone(orig->properties[i].exp),
+			.mode = orig->properties[i].mode,
 		};
 		array_append(clone->properties, update);
 	}
 
 	return clone;
-}
-
-void UpdateCtx_SetMode
-(
-	EntityUpdateEvalCtx *ctx,
-	UPDATE_MODE mode
-) {
-	ASSERT(ctx != NULL);
-	ctx->mode = mode;
 }
 
 void UpdateCtx_Clear

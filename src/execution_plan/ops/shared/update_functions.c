@@ -147,13 +147,6 @@ void EvalEntityUpdates
 	update.add_labels    = ctx->add_labels;
 	update.remove_labels = ctx->remove_labels;
 
-	// if this update replaces all existing properties
-	// enqueue a clear update to do so
-	if(ctx->mode == UPDATE_REPLACE) {
-		AttributeSet_Set_Allow_Null(&update.attributes, ATTRIBUTE_ID_ALL,
-				SI_NullVal());
-	}
-
 	// if we're converting a SET clause, NULL is acceptable
 	// as it indicates a deletion
 	SIType accepted_properties = SI_VALID_PROPERTY_VALUE;
@@ -164,13 +157,32 @@ void EvalEntityUpdates
 	//--------------------------------------------------------------------------
 	// enqueue update
 	//--------------------------------------------------------------------------
-
+	
 	for(uint i = 0; i < exp_count; i++) {
 		PropertySetCtx *property = ctx->properties + i;
-		Attribute_ID   attr_id   = property->id;
 		SIValue        new_value = AR_EXP_Evaluate(property->exp, r);
+		UPDATE_MODE mode = property->mode;
+		const char *attribute = property->attribute;
+		if(attribute == NULL && (SI_TYPE(new_value) & SI_VALID_PROPERTY_VALUE )){
+			AttributeSet_Free(&update.attributes);
+			Error_InvalidPropertyValue();
+			ErrorCtx_RaiseRuntimeException(NULL);
+		}
 
-		if(attr_id == ATTRIBUTE_ID_ALL &&
+		if(attribute != NULL && !((SI_TYPE(new_value) & (SI_VALID_PROPERTY_VALUE | T_NULL) ))){
+			AttributeSet_Free(&update.attributes);
+			Error_InvalidPropertyValue();
+			ErrorCtx_RaiseRuntimeException(NULL);
+		}
+
+		// if this update replaces all existing properties
+		// enqueue a clear update to do so
+		if(mode == UPDATE_REPLACE) {
+			AttributeSet_Set_Allow_Null(&update.attributes, ATTRIBUTE_ID_ALL,
+					SI_NullVal());
+		}
+
+		if(mode == UPDATE_REPLACE &&
 		   !(SI_TYPE(new_value) & (T_NODE | T_EDGE | T_MAP))) {
 			// left-hand side is alias reference but right-hand side is a
 			// scalar, emit an error
@@ -178,35 +190,30 @@ void EvalEntityUpdates
 			Error_InvalidPropertyValue();
 			ErrorCtx_RaiseRuntimeException(NULL);
 		} else if(SI_TYPE(new_value) == T_MAP) {
+			// Map value can only be assigned as the entity property map or added to it
+			// MATCH n SET n.v = {k:v} is not allowed.
+			ASSERT(property->attribute == NULL);
 			// value is of type map e.g. n.v = {a:1, b:2}
 			SIValue m = new_value;
-			if(attr_id != ATTRIBUTE_ID_ALL) {
-				AttributeSet_Free(&update.attributes);
-				Error_InvalidPropertyValue();
-				ErrorCtx_RaiseRuntimeException(NULL);
-			}
 			// iterate over all map elements to build updates
 			uint map_size = Map_KeyCount(m);
 			for(uint j = 0; j < map_size; j ++) {
 				SIValue key;
 				SIValue value;
 				Map_GetIdx(m, j, &key, &value);
-				Attribute_ID attr_id = GraphContext_FindOrAddAttribute(gc,
-					key.stringval);
+				Attribute_ID attr_id = FindOrAddAttribute(gc, key.stringval);
 
 				_PreparePendingUpdate(&update.attributes, accepted_properties,
 					attr_id, value);
 			}
 			continue;
 		} else if(SI_TYPE(new_value) & (T_NODE | T_EDGE)) {
+			// Node or edge property maps can only be assigned as the entity property map or added to it
+			// MATCH n, M SET n.v = m is not allowed.
+			ASSERT(property->attribute == NULL);
 			// value is a node or edge; perform attribute set reassignment
 			GraphEntity *ge = new_value.ptrval;
-			if(attr_id != ATTRIBUTE_ID_ALL) {
-				AttributeSet_Free(&update.attributes);
-				Error_InvalidPropertyValue();
-				ErrorCtx_RaiseRuntimeException(NULL);
-			}
-			// iterate over all entity properties to build updates
+			// // iterate over all entity properties to build updates
 			const AttributeSet set = GraphEntity_GetAttributes(ge);
 			for(uint j = 0; j < ATTRIBUTE_SET_COUNT(set); j ++) {
 				Attribute_ID attr_id;
@@ -217,7 +224,7 @@ void EvalEntityUpdates
 			}
 			continue;
 		}
-
+		Attribute_ID attr_id = FindOrAddAttribute(gc, attribute);
 		_PreparePendingUpdate(&update.attributes, accepted_properties,
 				attr_id, new_value);
 	}

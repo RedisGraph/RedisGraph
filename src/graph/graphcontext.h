@@ -186,6 +186,13 @@ Attribute_ID GraphContext_GetAttributeID
 	const char *str
 );
 
+// removes an attribute from the graph
+void GraphContext_RemoveAttribute
+(
+	GraphContext *gc,
+	Attribute_ID id
+);
+
 //------------------------------------------------------------------------------
 // Index API
 //------------------------------------------------------------------------------
