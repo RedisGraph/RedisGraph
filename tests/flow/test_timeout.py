@@ -105,7 +105,12 @@ class testQueryTimeout():
         # expecting queries to run to completion
         for q in queries:
             q += " LIMIT 2"
-            redis_graph.query(q, timeout=20)
+            try:
+                redis_graph.query(q, timeout=20)
+            except:
+                print(q)
+                self.env.assertTrue(False)
+
 
     def test04_query_timeout_free_resultset(self):
         query = "UNWIND range(0,1000000) AS x RETURN toString(x)"
