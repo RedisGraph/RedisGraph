@@ -541,7 +541,7 @@ class testList(FlowTestsBase):
         query = """MATCH (a:X) DELETE a"""
         redis_graph.query(query)
 
-        # # List of edge input should return list of NULL
+        # List of edge input should return list of NULL
         query = """CREATE (a:X)-[r:R]->(b:Y) RETURN toIntegerList([r])"""
         expected_result = [[None]]
         actual_result = redis_graph.query(query)
