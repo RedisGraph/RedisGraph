@@ -12,10 +12,10 @@
 #ifndef GB_CUDA_H
 #define GB_CUDA_H
 
-#include <cassert>
-#include <cmath>
 extern "C"
 {
+    #include <cassert>
+    #include <cmath>
     #include "GB.h"
 }
 

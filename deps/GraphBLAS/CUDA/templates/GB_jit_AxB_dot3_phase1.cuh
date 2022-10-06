@@ -1,7 +1,9 @@
 //------------------------------------------------------------------------------
-// templates/GB_jit_AxB_phase1.cuh: symbolic load balancing and data partition
-// to assign work to different 'buckets' for later compute
+// template/GB_jit_AxB_dot3_phase1.cuh: build nanobuckets, hunt for pre-zombies
 //------------------------------------------------------------------------------
+
+// dot3, phase1: symbolic load balancing and data partition
+// to assign work to different 'buckets' for later compute
 
 //  This kernel scans the non-zero pattern in A and B, takes into account the
 //  mask and computes total work required to form C. Then it classifies each
@@ -18,10 +20,25 @@
 #include <cub/block/block_scan.cuh>
 #include <cooperative_groups.h>
 
+// FIXME: use #include "GB_is.h"
+// true if A is bitmap
+#define GB_IS_BITMAP(A) ((A) != NULL && ((A)->b != NULL))
+
+// true if A is full (but not bitmap)
+#define GB_IS_FULL(A) \
+    ((A) != NULL && (A)->h == NULL && (A)->p == NULL && (A)->i == NULL \
+        && (A)->b == NULL)
+
+// true if A is hypersparse
+#define GB_IS_HYPERSPARSE(A) ((A) != NULL && ((A)->h != NULL))
+
+// true if A is sparse (but not hypersparse)
+#define GB_IS_SPARSE(A) ((A) != NULL && ((A)->h == NULL) && (A)->p != NULL)
+
 using namespace cooperative_groups;
 
 //------------------------------------------------------------------------------
-// GB_AxB_cuda_phase1: build nanobuckets, hunt for pre-zombies
+// GB_jit_AxB_dot3_phase1: build nanobuckets, hunt for pre-zombies
 //------------------------------------------------------------------------------
 
 // GB_AxB_cuda_dot3_phase1 is a CUDA kernel that scans all entries in C and
@@ -46,7 +63,7 @@ using namespace cooperative_groups;
 // can we skip the bucket creation?
 
 template<typename T_M, uint64_t srcode, int chunk_size = 128>
-__global__ void AxB_phase1
+__global__ void GB_jit_AxB_dot3_phase1
 (
     // outputs, preallocated in global memory:
     int64_t *nanobuckets,   // array of size NBUCKETS-blockDim.x-by-gridDim.x
@@ -67,7 +84,9 @@ __global__ void AxB_phase1
     const int64_t *__restrict__ Mh = M->h ;
     const int64_t *__restrict__ Mp = M->p ;
     const int64_t *__restrict__ Mi = M->i ;
+    #if !GB_MASK_STRUCT
     const T_M *__restrict__ Mx = (T_M*) M->x ; // not accessed if M structural
+    #endif
     const int64_t mnvec = M->nvec ;
     const int64_t mvlen = M->vlen ;
     const int64_t mnz = GB_nnz(M) ;
@@ -79,14 +98,20 @@ __global__ void AxB_phase1
     const int64_t *__restrict__ Ai = A->i ;
     const int64_t avlen = A->vlen ;
     const int64_t anz = GB_nnz(A) ;
-    ASSERT (GB_IS_SPARSE (A) || GB_IS_HYPERSPARSE (A)) ;
+
+//  printf ("\non the GPU: A is %d %d %d %d\n",
+//  GB_IS_SPARSE (A), GB_IS_HYPERSPARSE (A),
+//  GB_IS_BITMAP (A), GB_IS_FULL (A)) ;
+
+//  printf ("\non the GPU: B is %d %d %d %d\n",
+//  GB_IS_SPARSE (B), GB_IS_HYPERSPARSE (B),
+//  GB_IS_BITMAP (B), GB_IS_FULL (B)) ;
 
     const int64_t *__restrict__ Bh = B->h ;
     const int64_t *__restrict__ Bp = B->p ;
     const int64_t *__restrict__ Bi = B->i ;
     const int64_t bvlen = B->vlen ;
     const int64_t bnz = GB_nnz(B);
-    ASSERT (GB_IS_SPARSE (A) || GB_IS_HYPERSPARSE (A)) ;
 
     #if GB_A_IS_HYPER
     const int64_t *__restrict__ A_Yp = A->Y->p ;
@@ -221,9 +246,13 @@ __global__ void AxB_phase1
                 #if GB_B_IS_HYPER
                 GB_hyper_hash_lookup (Bp, B_Yp, B_Yi, B_Yx, B_hash_bits,
                     j, &pB, &pB_end) ;
-                #else
+                #elif GB_B_IS_SPARSE
                 pB       = Bp[j] ;
                 pB_end   = Bp[j+1] ;
+                #else
+                // B is bitmap or full
+                pB       = bvlen * j ;
+                pB_end   = pB + j ;
                 #endif
 
                 int64_t bjnz = pB_end - pB ;
@@ -238,19 +267,40 @@ __global__ void AxB_phase1
                     #if GB_A_IS_HYPER
                     GB_hyper_hash_lookup (Ap, A_Yp, A_Yi, A_Yx, A_hash_bits,
                         i, &pA, &pA_end) ;
-                    #else
+                    #elif GB_A_IS_SPARSE
                     pA       = Ap[i] ;
                     pA_end   = Ap[i+1] ;
+                    #else
+                    // A is bitmap or full
+                    pA       = avlen * i ;
+                    pA_end   = pA + i ;
                     #endif
 
                     int64_t ainz = pA_end - pA ;
                     if (ainz > 0)
                     {
                         // determine the bucket for C(i,j)
+                        #if (GB_A_IS_SPARSE || GB_A_IS_HYPER) && \
+                            (GB_B_IS_SPARSE || GB_B_IS_HYPER)
+                        // A and B are both sparse/hyper
                         bool vsvs = (ainz + bjnz <= 128) ;
                         bucket = (GB_bucket_code)
                            (  ((int) ( vsvs)) * ((int) GB_BUCKET_VSVS)
                             + ((int) (!vsvs)) * ((int) GB_BUCKET_MERGEPATH)) ;
+                        #elif (GB_A_IS_SPARSE || GB_A_IS_HYPER) && \
+                              (GB_B_IS_BITMAP || GB_B_IS_FULL)
+                        // A is sparse/hyper, B is bitmap/full
+                        bool vsvs = (ainz <= 128) ;
+                        bucket = (GB_bucket_code)
+                           (  ((int) ( vsvs)) * ((int) GB_BUCKET_VSDN)
+                            + ((int) (!vsvs)) * ((int) GB_BUCKET_SPDN)) ;
+                        #else
+                        // A is bitmap/full, B is sparse/hyper
+                        bool vsvs = (bjnz <= 128) ;
+                        bucket = (GB_bucket_code)
+                           (  ((int) ( vsvs)) * ((int) GB_BUCKET_VSDN)
+                            + ((int) (!vsvs)) * ((int) GB_BUCKET_SPDN)) ;
+                        #endif
                     }
                 }
             }

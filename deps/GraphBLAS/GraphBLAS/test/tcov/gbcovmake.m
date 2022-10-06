@@ -49,7 +49,7 @@ fclose (f) ;
 % use -R2018a for the new interleaved complex API
 flags = '-g -R2018a -DGBCOV' ;
 
-need_rename = ~verLessThan ('matlab', '9.10') ;
+need_rename = true ; % was: ~verLessThan ('matlab', '9.10') ;
 
 try
     if (strncmp (computer, 'GLNX', 4))
@@ -76,10 +76,12 @@ end
 here = pwd ;
 
 if (need_rename)
+    % use renamed version for all MATLAB versions:
     flags = [flags ' -DGBRENAME=1 ' ] ;
     inc = sprintf ('-I%s/../../rename ', here) ;
-    libraries = '-L../../../../../build -L. -L/usr/local/lib -lgraphblas_renamed' ;
+    libraries = '-L../../../../../build -L. -L/usr/local/lib -lgraphblas_matlab' ;
 else
+    % no longer used:
     inc = [' '] ;
     libraries = '-L../../../../../../build -L. -L/usr/local/lib -lgraphblas' ;
 end

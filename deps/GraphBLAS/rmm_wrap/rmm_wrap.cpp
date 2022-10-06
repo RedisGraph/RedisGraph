@@ -410,7 +410,10 @@ void rmm_wrap_deallocate( void *p, std::size_t size)
     }
     else
     {
-       actual_size = am->at( (std::size_t)(p) )  ;
+       //actual_size = am->at( (std::size_t)(p) )  ;
+       auto iter = am->find( (std::size_t)(p) )  ;
+       if (iter != am->end() ) actual_size = iter->second;
+       else std::cout<< " rmm_wrap:: tried to free unallocated pointer ! " << p ;
     }
 
     if (actual_size == 0)

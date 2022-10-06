@@ -280,16 +280,16 @@
 #define GxB_NO_RDIV      1
 // #define GxB_NO_ISEQ      1
 // #define GxB_NO_ISNE      1
-#define GxB_NO_ISGT      1
-#define GxB_NO_ISGE      1
-#define GxB_NO_ISLT      1
-#define GxB_NO_ISLE      1
+// #define GxB_NO_ISGT      1
+// #define GxB_NO_ISGE      1
+// #define GxB_NO_ISLT      1
+// #define GxB_NO_ISLE      1
 // #define GxB_NO_EQ        1
-#define GxB_NO_NE        1
-#define GxB_NO_GT        1
-#define GxB_NO_LT        1
-#define GxB_NO_LE        1
-#define GxB_NO_GE        1
+// #define GxB_NO_NE        1
+// #define GxB_NO_GT        1
+// #define GxB_NO_LT        1
+// #define GxB_NO_LE        1
+// #define GxB_NO_GE        1
 // #define GxB_NO_LAND      1
 // #define GxB_NO_LOR       1
 #define GxB_NO_LXOR      1
@@ -298,20 +298,20 @@
 // #define GxB_NO_BAND      1
 #define GxB_NO_BXOR      1
 #define GxB_NO_BXNOR     1
-// #define GxB_NO_BGET      1
-// #define GxB_NO_BSET      1
-// #define GxB_NO_BCLR      1
+#define GxB_NO_BGET      1
+#define GxB_NO_BSET      1
+#define GxB_NO_BCLR      1
 #define GxB_NO_BSHIFT    1
 
 #define GxB_NO_ATAN2     1
 #define GxB_NO_HYPOT     1
 #define GxB_NO_FMOD      1
 #define GxB_NO_REMAINDER 1
-#define GxB_NO_COPYSIGN  1
+// #define GxB_NO_COPYSIGN  1
 #define GxB_NO_LDEXP     1
 
 #define GxB_NO_CMPLX     1
-#define GxB_NO_POW       1
+// #define GxB_NO_POW       1
 
 // #define GxB_NO_FIRSTI    1
 // #define GxB_NO_FIRSTI1   1

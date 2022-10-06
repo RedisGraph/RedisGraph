@@ -81,42 +81,75 @@ GrB_Info GB_EXTRACT_ELEMENT     // extract a single entry, x = A(row,col)
     // find the entry A(i,j)
     //--------------------------------------------------------------------------
 
-    int64_t pleft, pright ;
+    int64_t pleft ;
     bool found ;
     const int64_t *restrict Ap = A->p ;
 
     if (Ap != NULL)
     {
+
+        //----------------------------------------------------------------------
         // A is sparse or hypersparse
-        if (A->h != NULL)
+        //----------------------------------------------------------------------
+
+        int64_t pA_start, pA_end ;
+        const int64_t *restrict Ah = A->h ;
+        if (Ah != NULL)
         {
+
+            //------------------------------------------------------------------
             // A is hypersparse: look for j in hyperlist A->h [0 ... A->nvec-1]
-            const int64_t *restrict Ah = A->h ;
-            int64_t k = 0 ;
-            pright = A->nvec-1 ;
-            GB_BINARY_SEARCH (j, Ah, k, pright, found) ;
+            //------------------------------------------------------------------
+
+            int64_t k ;
+            if (A->Y == NULL)
+            { 
+                // A is hypersparse but does not yet have a hyper_hash
+                k = 0 ;
+                found = GB_lookup (true, Ah, Ap, A->vlen, &k,
+                    A->nvec-1, j, &pA_start, &pA_end) ;
+            }
+            else
+            { 
+                // A is hypersparse, with a hyper_hash that is already built
+                k = GB_hyper_hash_lookup (Ap, A->Y->p, A->Y->i, A->Y->x,
+                    A->Y->vdim-1, j, &pA_start, &pA_end) ;
+                found = (k >= 0) ;
+            }
             if (!found)
             { 
                 // vector j is empty
                 return (GrB_NO_VALUE) ;
             }
             ASSERT (j == Ah [k]) ;
-            pleft = Ap [k] ;
-            pright = Ap [k+1] - 1 ;
         }
         else
         { 
+
+            //------------------------------------------------------------------
             // A is sparse: look in the jth vector
-            pleft = Ap [j] ;
-            pright = Ap [j+1] - 1 ;
+            //------------------------------------------------------------------
+
+            pA_start = Ap [j] ;
+            pA_end   = Ap [j+1] ;
         }
+
+        // vector j has been found, now look for index i
+        pleft = pA_start ;
+        int64_t pright = pA_end - 1 ;
+
         // Time taken for this step is at most O(log(nnz(A(:,j))).
         const int64_t *restrict Ai = A->i ;
         GB_BINARY_SEARCH (i, Ai, pleft, pright, found) ;
+
     }
     else
     {
+
+        //----------------------------------------------------------------------
         // A is bitmap or full
+        //----------------------------------------------------------------------
+
         pleft = i + j * vlen ;
         const int8_t *restrict Ab = A->b ;
         if (Ab != NULL)

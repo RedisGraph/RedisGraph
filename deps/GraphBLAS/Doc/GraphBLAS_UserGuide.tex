@@ -14869,7 +14869,7 @@ AVX2 but not AVX512F, and use 40 threads to compile:
     make CMAKE_OPTIONS='-DGBNCPUFEAT=1 -DGBAVX2=1' JOBS=40 \end{verbatim} }
 
 After compiling the library, you can compile the demos with
-\verb'make all' and then \verb'make run' while in the top-level
+\verb'make all' and then \verb'make demo' while in the top-level
 GraphBLAS folder.
 
 If \verb'cmake' or \verb'make' fail, it might be that your default compiler
@@ -14948,8 +14948,8 @@ will allow you to compile the mexFunctions but they will not work properly.
     cd GraphBLAS/GraphBLAS
     make CC=gcc-11 CXX=g++-11 JOBS=8 \end{verbatim} }
 
-The above instructions assume MATLAB R2021a, using
-\verb'libgraphblas_renamed.dylib', since that version of MATLAB includes its
+The above instructions assume MATLAB, using
+\verb'libgraphblas_matlab.dylib', since MATLAB includes its
 own copy of SuiteSparse:GraphBLAS (\verb'libmwgraphblas.dylib') but at version
 v3.3.3, not the latest version.
 
@@ -14962,7 +14962,7 @@ Next, compile the MATLAB mexFunctions.  I had to edit this file first:
 where you would replace \verb'davis' with your MacOS user name.
 Change lines 4 and 18, where both cases of \verb'MACOSX_DEPLOYMENT_TARGET=10.14'
 must become \verb"MACOSX_DEPLOYMENT_TARGET=11.3".  Otherwise, MATLAB
-complains that the \verb'libgraphblas_renamed.dylib' was built for 11.3 but
+complains that the \verb'libgraphblas_matlab.dylib' was built for 11.3 but
 linked for 10.14.
 
 Next, type the following in the MATLAB Command Window:
@@ -15105,7 +15105,7 @@ Visual Studio 2019, but may work for earlier versions.
 \end{enumerate}
 
 %----------------------------------------
-\subsection{Compiling the MATLAB/Octave interface (for Octave, and for MATLAB R2020a and earlier)}
+\subsection{Compiling the MATLAB/Octave interface (for Octave)}
 %----------------------------------------
 \label{gbmake}
 
@@ -15236,7 +15236,7 @@ and \verb'gbmake.m' is modified if needed for Octave 7 on the Mac,
 \end{enumerate}
 
 %----------------------------------------
-\subsection{Compiling the MATLAB/Octave interface (for MATLAB R2021a and later)}
+\subsection{Compiling the MATLAB/Octave interface (for MATLAB)}
 \label{R2021a}
 %----------------------------------------
 
@@ -15254,24 +15254,31 @@ built-in \verb'C=A*B' causes a segfault if it tries to use the newer GraphBLAS
 v4.x (or later) libraries.
 
 To resolve this issue, a second GraphBLAS library must be compiled,
-\verb'libgraphblas_renamed', where the internal symbols are all renamed so they
+\verb'libgraphblas_matlab', where the internal symbols are all renamed so they
 do not conflict with the \verb'libmwgraphblas' library.  Then both libraries
 can co-exist in the same instance of MATLAB.
 
 To do this, go to the \verb'GraphBLAS/GraphBLAS' folder, containing the
 MATLAB interface.  That folder contains a \verb'CMakeLists.txt' file to
-compile the \verb'libgraphblas_renamed' library.  See the instructions
+compile the \verb'libgraphblas_matlab' library.  See the instructions
 for how to compile the C library \verb'libgraphblas', and repeat them but
 using the folder \newline
 \verb'SuiteSparse/GraphBLAS/GraphBLAS/build' instead of \newline
 \verb'SuiteSparse/GraphBLAS/build'.
 
 This will compile the renamed SuiteSparse:GraphBLAS dynamic library
-(\verb'libgraphblas_renamed.so' for Linux, \verb'libgraphblas_renamed.dylib'
-for Mac, or \verb'graphblas_renamed.dll' for Windows).  These can be
+(\verb'libgraphblas_matlab.so' for Linux, \verb'libgraphblas_matlab.dylib'
+for Mac, or \verb'graphblas_matlab.dll' for Windows).  These can be
 placed in the same system-wide location as the standard \verb'libgraphblas'
 libraries, such as \verb'/usr/local/lib' for Linux.  The two pairs of
 libraries share the identical \verb'GraphBLAS.h' include file.
+
+If you do not have system privileges to install the GraphBLAS compiled
+libraries via \verb'sudo make install', then augment your
+\verb'LD_LIBRARY_PATH' (Linux) or \verb'DYLD_LIBRARY_PATH' (MacOS) to point to
+your personal copy \verb'SuiteSparse/GraphBLAS/GraphBLAS/build' folder.  See
+\url{https://www.mathworks.com/help/matlab/matlab_external/building-on-unix-operating-systems.html}
+for details. 
 
 Next, compile the MATLAB interface as described in Section~\ref{gbmake}.  For
 any instructions in that Section that refer to the \verb'GraphBLAS/build'
@@ -15280,8 +15287,7 @@ folder (Linux and Mac) or \verb'GraphBLAS/build/Release' (Windows), use \newline
 \verb'GraphBLAS/GraphBLAS/build/Release' (Windows) instead.
 
 The resulting functions for your \verb'@GrB' object will now work just fine;
-no other changes are needed.  You can even use the GraphBLAS mexFunctions
-compiled in MATLAB R2021a in earlier versions of MATLAB (such as R2020a).
+no other changes are needed.
 
 %----------------------------------------
 \subsection{Setting the C flags and using CMake}
@@ -15331,17 +15337,17 @@ can even compile the entire library with a C++ compiler, which cannot be
 done with \verb'CMake'.
 
 This alternative \verb'Makefile' does not build the
-\verb'libgraphblas_renamed.so' library required for MATLAB R2021a (see
+\verb'libgraphblas_matlab.so' library required for MATLAB (see
 Section~\ref{R2021a}).  This can be done by revising the \verb'Makefile',
-however:  add the \verb'-DGBRENAME=1' flag, and change the library name
-from \verb'libgraphblas' to \verb'libgraphbas_renamed'.
+however:  add the \verb'-DGBRENAME=1' flag, and changing the library name
+from \verb'libgraphblas' to \verb'libgraphbas_matlab'.
 
 %----------------------------------------
 \subsection{Running the Demos}
 %----------------------------------------
 
 After \verb'make' in the top-level directory to compile the library, type
-\verb'make run' to run the demos (also in the top-level directory).
+\verb'make demo' to run the demos (also in the top-level directory).
 You can also run the demos after compiling with \verb'make all':
 
     {\small
@@ -15424,12 +15430,12 @@ Compile the program above, then use this command to ensure
 \subsection{Running the tests}
 %----------------------------------------
 
-To run a short test, type \verb'make run' at the top-level \verb'GraphBLAS'
+To run a short test, type \verb'make demo' at the top-level \verb'GraphBLAS'
 folder.  This will run all the demos in \verb'GraphBLAS/Demos'.  MATLAB is not
 required.
 
 To perform the extensive tests in the \verb'Test' folder, and the statement
-coverage tests in \verb'Tcov', MATLAB R2017A is required.  See the
+coverage tests in \verb'Tcov', MATLAB R2018a or later is required.  See the
 \verb'README.txt' files in those two folders for instructions on how to run the
 tests.  The tests in the \verb'Test' folder have been ported to MATLAB on
 Linux, MacOS, and Windows.  The \verb'Tcov' tests do not work on Windows.  The

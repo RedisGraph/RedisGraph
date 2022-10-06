@@ -53,7 +53,7 @@ To remove all compiled files:
 
 To compile and run the demos:
 
-    make run
+    make demo
 
 See the GraphBLAS/ subfolder for the Octave/MATLAB interface, which contains a
 README.md file with further details.
@@ -92,7 +92,7 @@ Test:           Extensive tests, not meant for general usage.  To compile and
 build:          build directory for CMake, initially empty
 
 alternative:    an alternative to CMake; edit the alternative/Makefile and do
-                "make" or "make run" in the 'alternative' directory.
+                "make" or "make demo" in the 'alternative' directory.
 
 CUDA:           GPU interface, a work in progress.  This is being developed in
                 collaboration with Joe Eaton, Corey Nolet and others at NVIDIA,

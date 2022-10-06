@@ -49,8 +49,8 @@ GrB_Info GB_convert_sparse_to_hyper // convert from sparse to hypersparse
         // determine the number of threads to use
         //----------------------------------------------------------------------
 
-        GBURBLE ("(sparse to hyper) ") ;
         int64_t n = A->vdim ;
+        GB_BURBLE_N (n, "(sparse to hyper) ") ;
         GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
         int nthreads = GB_nthreads (n, chunk, nthreads_max) ;
         int ntasks = (nthreads == 1) ? 1 : (8 * nthreads) ;

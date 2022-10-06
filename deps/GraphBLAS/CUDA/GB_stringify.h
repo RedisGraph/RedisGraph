@@ -109,9 +109,14 @@ void GB_enumify_mxm         // enumerate a GrB_mxm problem
 
 void GB_macrofy_mxm        // construct all macros for GrB_mxm
 (
-    // input:
+    // output:
     FILE *fp,                   // target file to write, already open
-    uint64_t scode
+    // input:
+    uint64_t scode,
+    GrB_Semiring semiring,  // the semiring to macrofy
+    GrB_Type ctype,
+    GrB_Type atype,
+    GrB_Type btype
 ) ;
 
 //------------------------------------------------------------------------------
@@ -163,12 +168,14 @@ void GB_enumify_monoid  // enumerate a monoid
 
 void GB_macrofy_monoid  // construct the macros for a monoid
 (
-    // inputs:
     FILE *fp,           // File to write macros, assumed open already
+    // inputs:
     int add_ecode,      // binary op as an enum
     int id_ecode,       // identity value as an enum
     int term_ecode,     // terminal value as an enum (< 30 is terminal)
-    bool is_term
+    bool is_term,
+    GrB_Monoid monoid,
+    bool skip_defn
 ) ;
 
 //------------------------------------------------------------------------------
@@ -183,7 +190,8 @@ void GB_stringify_binop
     GB_Opcode opcode,   // opcode of GraphBLAS operator to convert into a macro
     GB_Type_code xcode, // op->xtype->code of the operator
     bool for_semiring,  // if true: op is a multiplier in a semiring
-    bool flipxy         // if true, use mult(y,x) else mult(x,y)
+    bool flipxy,        // if true, use mult(y,x) else mult(x,y)
+    GrB_BinaryOp op
 ) ;
 
 void GB_enumify_binop
@@ -211,6 +219,17 @@ void GB_macrofy_binop
     const char *macro_name,     // name of macro to construct
     const char *op_string,            // string defining the operator
     bool flipxy                 // if true, use mult(y,x) else mult(x,y)
+) ;
+
+void GB_charify_and_macrofy_binop
+(
+    FILE *fp,
+    // input:
+    const char *macro_name,
+    bool flipxy,
+    int ecode,
+    GrB_BinaryOp op,
+    bool print_defn
 ) ;
 
 //------------------------------------------------------------------------------
@@ -345,6 +364,18 @@ void GB_macrofy_sparsity    // construct macros for sparsity structure
     FILE *fp,
     char *matrix_name,      // "C", "M", "A", or "B"
     int ecode
+) ;
+
+//------------------------------------------------------------------------------
+// GB_macrofy_type: define macro for the type a matrix or operator input/output
+//------------------------------------------------------------------------------
+
+void GB_macrofy_type        // construct macros for type
+(
+    FILE *fp,
+    // input:
+    char *what,             // "C", "M", "A", "B", "X", "Y", "Z"
+    GrB_Type type
 ) ;
 
 #endif

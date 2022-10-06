@@ -150,7 +150,8 @@ void GB_macrofy_reduce      // construct all macros for GrB_reduce to scalar
     // construct the monoid macros
     //--------------------------------------------------------------------------
 
-    GB_macrofy_monoid (fp, red_ecode, id_ecode, term_ecode, is_term) ;
+    GB_macrofy_monoid (fp, red_ecode, id_ecode, term_ecode, is_term,
+        NULL, false) ; // FIXME: need to include the monoid here
 
     //--------------------------------------------------------------------------
     // macro to typecast the result back into C

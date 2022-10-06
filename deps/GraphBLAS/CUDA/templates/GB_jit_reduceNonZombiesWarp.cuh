@@ -31,24 +31,25 @@ T warp_ReduceSum( thread_block_tile<tile_sz> g, T val)
 {
     // Each iteration halves the number of active threads
     // Each thread adds its partial sum[i] to sum[lane+i]
+
     /*
     #pragma unroll
     for (int i = tile_sz >> 1; i > 0; i >>= 1) {
         T fold = g.shfl_down( val, i);
-        val = GB_ADD( val, fold );
+        GB_ADD( val, val, fold );
         //printf("thd%d   %d OP %d is %d\n", threadIdx.x, val, fold, OP( val, fold));
     }
     */
         T fold = g.shfl_down( val, 16);
-        val = GB_ADD( val, fold );
-         fold = g.shfl_down( val, 8);
-        val = GB_ADD( val, fold );
-         fold = g.shfl_down( val, 4);
-        val = GB_ADD( val, fold );
-         fold = g.shfl_down( val, 2);
-        val = GB_ADD( val, fold );
-         fold = g.shfl_down( val, 1);
-        val = GB_ADD( val, fold );
+        GB_ADD( val, val, fold );
+        fold = g.shfl_down( val, 8);
+        GB_ADD( val, val, fold );
+        fold = g.shfl_down( val, 4);
+        GB_ADD( val, val, fold );
+        fold = g.shfl_down( val, 2);
+        GB_ADD( val, val, fold );
+        fold = g.shfl_down( val, 1);
+        GB_ADD( val, val, fold );
     //if (threadIdx.x ==0) printf("thd%d single warp sum is %d\n", threadIdx.x,  val);
     return val; // note: only thread 0 will return full sum
 }
@@ -123,7 +124,7 @@ __global__ void reduceNonZombiesWarp
         if (is_sparse && index[i] < 0) continue; // skip zombies
         //T fold = index[i] < 0 ? GB_IDENTITY : g_idata[i];
         T fold = g_idata[i];
-        sum = GB_ADD( sum, fold );
+        GB_ADD( sum, sum, fold );
     }
     this_thread_block().sync(); 
 

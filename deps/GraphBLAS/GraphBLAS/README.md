@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 The @GrB class provides an easy-to-use interface to SuiteSparse:GraphBLAS.
 
 To install it for use in MATLAB/Octave, first compile the GraphBLAS library,
--lgraphblas (or -lgraphblas_renamed for MATLAB R2021a and later).  See the
+-lgraphblas (for Octave) or -lgraphblas_matlab (for MATLAB).  See the
 instructions in the top-level GraphBLAS folder for details.  Be sure to use
 OpenMP for best performance.  The default installation process places the
 GraphBLAS library in /usr/local/lib.  If you do not have root access and cannot
@@ -15,10 +15,10 @@ modify your library path, but instead of /usr/local/lib, use
 /home/me/SuiteSparse/GraphBLAS/build, where "/home/me/SuiteSparse/GraphBLAS" is
 where you placed your copy of GraphBLAS.
 
-If you have MATLAB R2021a, the gbmake script will link against the library
--lgraphblas_renamed, not -lgraphblas, because that version of MATLAB includes
+MATLAB (not Octave) the gbmake script will link against the library
+-lgraphblas_matlab, not -lgraphblas, because that version of MATLAB includes
 its own version of SuiteSparse:GraphBLAS (v3.3.3, an earlier one).  To avoid a
-name conflict, you must compile the -lgraphblas_renamed library in
+name conflict, you must compile the -lgraphblas_matlab library in
 /home/me/SuiteSparse/GraphBLAS/GraphBLAS/build.
 
 MATLAB/Octave needs to know where to find the compiled GraphBLAS library.  On
@@ -39,10 +39,10 @@ On the Mac, use the following:
     export DYLD_LIBRARY_PATH
 
 If you don't have system priveledges to change /usr/local/lib, then add the
-build folder to your LD_LIBRARY_PATH instead, either.  For Octave, and MATLAB
-R2020b and earlier: /home/me/SuiteSparse/GraphBLAS/build for libgraphblas.so,
-For R2021a:  /home/me/SuiteSparse/GraphBLAS/GraphBLAS/build for
-libgraphblas_renamed.so.
+build folder to your LD_LIBRARY_PATH instead, either.  For Octave, use
+/home/me/SuiteSparse/GraphBLAS/build for libgraphblas.so,
+For MATLAB, use: /home/me/SuiteSparse/GraphBLAS/GraphBLAS/build for
+libgraphblas_matlab.so.
 
 On Windows 10, on the Search bar type env and hit enter; (or you can
 right-click My Computer or This PC and select Properties, and then select
@@ -50,8 +50,8 @@ Advanced System Settings).  Select "Edit the system environment variables",
 then "Environment Variables".  Under "System Variables" select "Path" and click
 "Edit".  These "New" to add a path and then "Browse".  Browse to the folder
 (for example: C:/Users/me/Documents/SuiteSparse/GraphBLAS/build/Release) and
-add it to your path.  For MATLAB R2021a and later, you must use the
-libgraphblas_renamed.dll, in:
+add it to your path.  For MATLAB, you must use the
+libgraphblas_matlab.dll, in:
 /User/me/SuiteSparse/GraphBLAS/GraphBLAS/build/Release instead.  Then close the
 editor, sign out of Windows and sign back in again.
 

@@ -34,7 +34,7 @@ void GB_convert_any_to_full     // convert any matrix to full
         return ;
     }
 
-    GBURBLE ("(%s to full) ", (A->h != NULL) ? "hypersparse" :
+    GB_BURBLE_N (A->nvals, "(%s to full) ", (A->h != NULL) ? "hypersparse" :
         (GB_IS_BITMAP (A) ? "bitmap" : "sparse")) ;
 
     //--------------------------------------------------------------------------

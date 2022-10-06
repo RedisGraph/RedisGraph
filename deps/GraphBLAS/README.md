@@ -4,7 +4,7 @@ SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 
-VERSION 7.3.0, Sept 5, 2022 (beta4)
+VERSION 7.3.0, Oct 1, 2022 (beta5)
 
 SuiteSparse:GraphBLAS is a complete implementation of the GraphBLAS standard,
 which defines a set of sparse matrix operations on an extended algebra of
@@ -53,7 +53,7 @@ To remove all compiled files:
 
 To compile and run the demos:
 
-    make run
+    make demo
 
 See the GraphBLAS/ subfolder for the Octave/MATLAB interface, which contains a
 README.md file with further details.
@@ -92,7 +92,7 @@ Test:           Extensive tests, not meant for general usage.  To compile and
 build:          build directory for CMake, initially empty
 
 alternative:    an alternative to CMake; edit the alternative/Makefile and do
-                "make" or "make run" in the 'alternative' directory.
+                "make" or "make demo" in the 'alternative' directory.
 
 CUDA:           GPU interface, a work in progress.  This is being developed in
                 collaboration with Joe Eaton, Corey Nolet and others at NVIDIA,

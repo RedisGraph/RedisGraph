@@ -25,8 +25,14 @@
 typedef enum
 {
     GB_BUCKET_ZOMBIE = 0,       // C(i,j) is a zombie (not a bucket)
+    // both A and B are sparse/hyper:
     GB_BUCKET_VSVS = 1,         // vsvs: both A(:,i) and B(:,j) are very sparse
     GB_BUCKET_MERGEPATH = 2,    // mp: use the merge-path method
+    // A is sparse/hyper and B is bitmap/full, or
+    // A is bitmap/full  and B is sparse/hyper
+    GB_BUCKET_VSDN = 1,         // vsdn: the sparse vector is very sparse
+    GB_BUCKET_SPDN = 2,         // spdn: sparse vector has lots of entries;
+                                // use a whole warp for each dot product
 }
 GB_bucket_code ;
 

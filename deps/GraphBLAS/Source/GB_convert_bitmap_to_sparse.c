@@ -36,13 +36,13 @@ GrB_Info GB_convert_bitmap_to_sparse    // convert matrix from bitmap to sparse
     ASSERT (!GB_PENDING (A)) ;      // bitmap never has pending tuples
     ASSERT (!GB_JUMBLED (A)) ;      // bitmap is never jumbled
     ASSERT (!GB_ZOMBIES (A)) ;      // bitmap never has zomies
-    GBURBLE ("(bitmap to sparse) ") ;
 
     //--------------------------------------------------------------------------
     // allocate Ap, Ai, and Ax
     //--------------------------------------------------------------------------
 
     const int64_t anvals = A->nvals ;
+    GB_BURBLE_N (anvals, "(bitmap to sparse) ") ;
     const int64_t anzmax = GB_IMAX (anvals, 1) ;
     int64_t anvec_nonempty ;
     const int64_t avdim = A->vdim ;

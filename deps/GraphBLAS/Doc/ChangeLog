@@ -1,4 +1,4 @@
-Version 7.3.0, Sept 5, 2022
+Version 7.3.0, Oct 1, 2022
 
     * GrB_Matrix: changes to the internal data structure
         * minor internal changes: A->nvals for sparse/hypersparse
@@ -9,6 +9,7 @@ Version 7.3.0, Sept 5, 2022
         * added GxB_unpack_HyperHash and GxB_pack_HyperHash: to pack/unpack
             the A->Y hyper_hash
     * @GrB MATLAB/Octave interface: changed license to Apache-2.0
+    * MATLAB library: renamed to libgraphblas_matlab.so
 
 Version 7.2.0, Aug 8, 2022
 

@@ -76,14 +76,6 @@ GrB_Info GB_AxB_dot3                // C<M> = A'*B using dot product method
     int ntasks, nthreads ;
     GB_task_struct *TaskList = NULL ; size_t TaskList_size = 0 ;
 
-    GBURBLE ("(%s%s%s%s = %s'*%s) ",
-        GB_sparsity_char_matrix (M),    // C has the same sparsity as M
-        Mask_struct ? "{" : "<",
-        GB_sparsity_char_matrix (M),
-        Mask_struct ? "}" : ">",
-        GB_sparsity_char_matrix (A),
-        GB_sparsity_char_matrix (B)) ;
-
     //--------------------------------------------------------------------------
     // get the semiring operators
     //--------------------------------------------------------------------------
@@ -199,7 +191,7 @@ GrB_Info GB_AxB_dot3                // C<M> = A'*B using dot product method
 
     // M is sparse or hypersparse; C is the same as M
     nthreads = GB_nthreads (cnvec, chunk, nthreads_max) ;
-    // FIXME: try this with Cp and Ch shallow
+    // TODO: try this with Cp and Ch shallow
     GB_memcpy (Cp, Mp, (cnvec+1) * sizeof (int64_t), nthreads) ;
     if (M_is_hyper)
     { 

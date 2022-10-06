@@ -42,19 +42,21 @@ void GB_enumify_monoid  // enumerate a monoid
 
 void GB_macrofy_monoid  // construct the macros for a monoid
 (
-    // inputs:
     FILE *fp,           // File to write macros, assumed open already
+    // inputs:
     int add_ecode,      // binary op as an enum
     int id_ecode,       // identity value as an enum
     int term_ecode,     // terminal value as an enum (< 30 is terminal)
-    bool is_term
+    bool is_term,
+    GrB_Monoid monoid,
+    bool skip_defn      // if true, do not include the user-defined add function
 )
 {
 
     const char *s ;
 
-    GB_charify_binop (&s, add_ecode) ;
-    GB_macrofy_binop ( fp, "GB_ADD", s, false) ;
+    GB_charify_and_macrofy_binop (fp, "GB_ADD", false, add_ecode,
+        monoid->op, skip_defn) ;
 
     const char *id_value = GB_charify_identity_or_terminal (id_ecode) ;
     GB_macrofy_identity ( fp, id_value) ;

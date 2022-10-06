@@ -56,8 +56,8 @@ endif
 CPPFLAGS = -I../Include -I../Source -I../Source/Template -I../Source/Generated1 -I../Source/Generated2 -I../lz4 -I../cpu_features/include -I../cpu_features -I../cpu_features/src -I../cpu_features/include/internal -I../rmm_wrap
 CFLAGS += -Wno-pragmas
 
-# To compile the libgraphblas_renamed library, change all occurences of
-# libgraphblas to libgraphblas_renamed, below, and uncomment these 2 lines:
+# To compile the libgraphblas_matlab library, change all occurences of
+# libgraphblas to libgraphblas_matlab, below, and uncomment these 2 lines:
 # CFLAGS += -DGBRENAME=1
 # CPPFLAGS += -I../GraphBLAS/rename
 
@@ -143,8 +143,6 @@ DEMO_PRG = $(notdir $(wildcard ../Demo/Program/*_demo.c))
 DEMO = $(DEMO_PRG:.c=)
 
 demo: $(DEMO)
-
-run: $(DEMO)
 	./altdemo
 
 clean:

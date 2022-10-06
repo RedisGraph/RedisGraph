@@ -53,7 +53,6 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
     GrB_Info info ;
     ASSERT (C != NULL) ;
     GB_RETURN_IF_NULL (scalar) ;
-//  ASSERT_MATRIX_OK (C, "C input for setElement", GB0) ;
 
     if (row >= GB_NROWS (C))
     { 
@@ -203,8 +202,6 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
     bool C_is_bitmap = GB_IS_BITMAP (C) ;
     C_is_full = GB_IS_FULL (C) ;
 
-//  ASSERT_MATRIX_OK (C, "C start the search for setElement", GB0) ;
-
     if (C_is_full || C_is_bitmap)
     { 
 
@@ -221,18 +218,35 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
     {
 
         //----------------------------------------------------------------------
-        // hyper_hash search in C->Y for vector j, or O(1)-time lookup if sparse
+        // C is sparse or hypersparse
         //----------------------------------------------------------------------
 
         int64_t pC_start, pC_end ;
-        if (C->h != NULL)
+        const int64_t *restrict Ch = C->h ;
+        if (C->nvals == 0)
         { 
-            // C is hypersparse
-            GB_OK (GB_hyper_hash_build (C, Context)) ;
-            int64_t k = GB_hyper_hash_lookup (C->p, C->Y->p, C->Y->i, C->Y->x,
-                C->Y->vdim-1, j, &pC_start, &pC_end) ;
-            found = (k >= 0) ;
-            ASSERT (GB_IMPLIES (found, j == C->h [k])) ;
+            // C is empty
+            found = false ;
+        }
+        else if (Ch != NULL)
+        {
+            // C is hypersparse, with at least one entry
+            int64_t k ;
+            if (C->Y == NULL)
+            { 
+                // C is hypersparse but does not yet have a hyper_hash
+                k = 0 ;
+                found = GB_lookup (true, Ch, C->p, C->vlen, &k,
+                    C->nvec-1, j, &pC_start, &pC_end) ;
+            }
+            else
+            { 
+                // C is hypersparse, with a hyper_hash that is already built
+                k = GB_hyper_hash_lookup (C->p, C->Y->p, C->Y->i, C->Y->x,
+                    C->Y->vdim-1, j, &pC_start, &pC_end) ;
+                found = (k >= 0) ;
+            }
+            ASSERT (GB_IMPLIES (found, j == Ch [k])) ;
         }
         else
         { 
@@ -254,8 +268,8 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
 
             // Time taken for this step is at most O(log(nnz(C(:,j))).
             const int64_t *restrict Ci = C->i ;
-            GB_BINARY_SEARCH_ZOMBIE (i, Ci, pleft, pright, found, C->nzombies,
-                is_zombie) ;
+            GB_BINARY_SEARCH_ZOMBIE (i, Ci, pleft, pright, found,
+                C->nzombies, is_zombie) ;
         }
     }
 
@@ -290,11 +304,10 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
                 // C(i,j) += scalar
                 GxB_binary_function faccum = accum->binop_function ;
 
-                // TODO: no need to cast if types match
-                GB_cast_function cast_C_to_xaccum, cast_Z_to_yaccum, cast_zaccum_to_C ;
-                cast_C_to_xaccum = GB_cast_factory (accum->xtype->code, ctype->code) ;
-                cast_Z_to_yaccum = GB_cast_factory (accum->ytype->code, scalar_code) ;
-                cast_zaccum_to_C = GB_cast_factory (ctype->code, accum->ztype->code) ;
+                GB_cast_function cast_C_to_X, cast_Z_to_Y, cast_Z_to_C ;
+                cast_C_to_X = GB_cast_factory (accum->xtype->code, ctype->code);
+                cast_Z_to_Y = GB_cast_factory (accum->ytype->code, scalar_code);
+                cast_Z_to_C = GB_cast_factory (ctype->code, accum->ztype->code);
 
                 // scalar workspace
                 GB_void xaccum [GB_VLA(accum->xtype->size)] ;
@@ -302,16 +315,16 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
                 GB_void zaccum [GB_VLA(accum->ztype->size)] ;
 
                 // xaccum = (accum->xtype) cx
-                cast_C_to_xaccum (xaccum, cx, ctype->size) ;
+                cast_C_to_X (xaccum, cx, ctype->size) ;
 
                 // yaccum = (accum->ytype) scalar
-                cast_Z_to_yaccum (yaccum, scalar, accum->ytype->size) ;
+                cast_Z_to_Y (yaccum, scalar, accum->ytype->size) ;
 
                 // zaccum = xaccum "+" yaccum
                 faccum (zaccum, xaccum, yaccum) ;
 
                 // cx = (ctype) zaccum
-                cast_zaccum_to_C (cx, zaccum, ctype->size) ;
+                cast_Z_to_C (cx, zaccum, ctype->size) ;
             }
         }
 

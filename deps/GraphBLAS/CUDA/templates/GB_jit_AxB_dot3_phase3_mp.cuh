@@ -59,7 +59,7 @@ T GB_reduce_sum(thread_block_tile<warp_sz> g, T val)
     for (int i = warp_sz >> 1; i > 0; i >>= 1)
     {
         T next = g.shfl_down( val, i);
-        val = GB_ADD( val, next ) ;
+        GB_ADD( val, val, next ); 
     }
     return val;
 }
@@ -151,7 +151,7 @@ __global__ void AxB_dot3_phase3_mp
 
     // Main loop over pairs 
     int64_t kk ;
-    for (kk = start+ blockIdx.x; //warp per pair 
+    for (kk = start+ blockIdx.x; // warp per C(i,j)=A(:,i)'*B(:,j) dot product
          kk < end;  
          kk += gridDim.x )
     {
@@ -411,9 +411,9 @@ __global__ void AxB_dot3_phase3_mp
 
         //tile.sync( ) ;
 
-        //--------------------------------------------------------------------------
+        //----------------------------------------------------------------------
         // reduce sum per-thread values to a single scalar, get OR of flag
-        //--------------------------------------------------------------------------
+        //----------------------------------------------------------------------
 
         /*
         if (tid == 0)

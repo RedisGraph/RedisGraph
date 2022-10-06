@@ -300,7 +300,8 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         }
         GBPR (" number of memory blocks: " GBd "\n", nallocs) ;
         GBPR ("  deep: " GBu " shallow: " GBu " total: " GBu "\n",
-            mem_deep, mem_shallow, mem_deep + mem_shallow) ;
+            (uint64_t) mem_deep, (uint64_t) mem_shallow,
+            (uint64_t) (mem_deep + mem_shallow)) ;
     }
     #endif
 
@@ -322,16 +323,16 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     #if GB_DEVELOPER
     if (pr_short || pr_complete)
     {
-        GBPR ("  ->h: %p shallow: %d size: " GBd "\n",
-            A->h, A->h_shallow, A->h_size) ;
-        GBPR ("  ->p: %p shallow: %d size: " GBd "\n",
-            A->p, A->p_shallow, A->p_size) ;
-        GBPR ("  ->i: %p shallow: %d size: " GBd "\n",
-            A->i, A->i_shallow, A->i_size) ;
-        GBPR ("  ->b: %p shallow: %d size: " GBd "\n",
-            A->b, A->b_shallow, A->b_size) ;
-        GBPR ("  ->x: %p shallow: %d size: " GBd "\n",
-            A->x, A->x_shallow, A->x_size) ;
+        GBPR ("  ->h: %p shallow: %d size: " GBu "\n",
+            A->h, A->h_shallow, (uint64_t) A->h_size) ;
+        GBPR ("  ->p: %p shallow: %d size: " GBu "\n",
+            A->p, A->p_shallow, (uint64_t) A->p_size) ;
+        GBPR ("  ->i: %p shallow: %d size: " GBu "\n",
+            A->i, A->i_shallow, (uint64_t) A->i_size) ;
+        GBPR ("  ->b: %p shallow: %d size: " GBu "\n",
+            A->b, A->b_shallow, (uint64_t) A->b_size) ;
+        GBPR ("  ->x: %p shallow: %d size: " GBu "\n",
+            A->x, A->x_shallow, (uint64_t) A->x_size) ;
         GBPR ("  ->Y: %p shallow: %d\n", A->Y, A->Y_shallow) ;
     }
     #endif

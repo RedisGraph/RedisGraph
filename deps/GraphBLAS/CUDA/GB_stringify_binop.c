@@ -10,7 +10,7 @@
 // The binop macro generates an expression, not a full statement.  There
 // is no semicolon or assignment.  For example:
 
-// #define GB_MULT(x,y) ((x) * (y))
+// #define GB_MULT(z,x,y) z = ((x) * (y))
 
 #include "GB.h"
 #include "GB_stringify.h"
@@ -19,7 +19,7 @@
 // GB_stringify_binop: construct the binop macro
 //------------------------------------------------------------------------------
 
-void GB_stringify_binop
+void GB_stringify_binop     // FIXME: not used.  Delete it?
 (
     // input:
     FILE *fp,                 // File to write macros, assumed open already
@@ -27,7 +27,8 @@ void GB_stringify_binop
     GB_Opcode opcode,   // opcode of GraphBLAS operator to convert into a macro
     GB_Type_code xcode, // op->xtype->code of the operator
     bool for_semiring,  // if true: op is a multiplier in a semiring
-    bool flipxy         // if true, use mult(y,x) else mult(x,y)
+    bool flipxy,        // if true, use mult(y,x) else mult(x,y)
+    GrB_BinaryOp op
 )
 {
 
@@ -36,6 +37,8 @@ void GB_stringify_binop
 
     // get ecode from opcode, xcode, and for_semiring
     GB_enumify_binop (&ecode, opcode, xcode, for_semiring) ;
+
+    // FIXME: do user-defined ops
 
     // convert ecode to string
     GB_charify_binop (&op_string, ecode) ;
@@ -543,61 +546,61 @@ void GB_charify_binop
         // f must be defined by a string provided by the user.  This is
         // only a place-holder
 
-        case   0 : f = "user-defined"               ; break ;
+        case   0 : f = "" ;                             ; break ;
 
         //----------------------------------------------------------------------
         // built-in ops, can be used in a monoid
         //----------------------------------------------------------------------
 
         // first
-        case   1 : f = "x"                          ; break ;
+        case   1 : f = "z = x"                          ; break ;
 
         // any, second
-        case   2 : f = "y"                          ; break ;
+        case   2 : f = "z = y"                          ; break ;
 
         // min
-        case   3 : f = "fminf (x,y)"                ; break ;
-        case   4 : f = "fmin (x,y)"                 ; break ;
-        case   5 : f = "GB_IMIN (x,y)"              ; break ;
+        case   3 : f = "z = fminf (x,y)"                ; break ;
+        case   4 : f = "z = fmin (x,y)"                 ; break ;
+        case   5 : f = "z = GB_IMIN (x,y)"              ; break ;
 
         // max
-        case   6 : f = "fmaxf (x,y)"                ; break ;
-        case   7 : f = "fmax (x,y)"                 ; break ;
-        case   8 : f = "GB_IMAX (x,y)"              ; break ;
+        case   6 : f = "z = fmaxf (x,y)"                ; break ;
+        case   7 : f = "z = fmax (x,y)"                 ; break ;
+        case   8 : f = "z = GB_IMAX (x,y)"              ; break ;
 
         // plus
-        case   9 : f = "GB_FC32_add(x,y)"           ; break ;
-        case  10 : f = "GB_FC64_add(x,y)"           ; break ;
-        case  11 : f = "(x) + (y)"                  ; break ;
+        case   9 : f = "z = GB_FC32_add(x,y)"           ; break ;
+        case  10 : f = "z = GB_FC64_add(x,y)"           ; break ;
+        case  11 : f = "z = (x) + (y)"                  ; break ;
 
         // times
-        case  12 : f = "GB_FC32_mul(x,y)"           ; break ;
-        case  13 : f = "GB_FC64_mul(x,y)"           ; break ;
-        case  14 : f = "(x) * (y)"                  ; break ;
+        case  12 : f = "z = GB_FC32_mul(x,y)"           ; break ;
+        case  13 : f = "z = GB_FC64_mul(x,y)"           ; break ;
+        case  14 : f = "z = (x) * (y)"                  ; break ;
 
         // eq, iseq, lxnor
-        case  15 : f = "(x) == (y)"                 ; break ;
+        case  15 : f = "z = ((x) == (y))"               ; break ;
 
         // ne, isne, lxor
-        case  16 : f = "(x) != (y)"                 ; break ;
+        case  16 : f = "z = ((x) != (y))"               ; break ;
 
         // lor
-        case  17 : f = "(x) || (y)"                 ; break ;
+        case  17 : f = "z = ((x) || (y))"               ; break ;
 
         // land
-        case  18 : f = "(x) && (y)"                 ; break ;
+        case  18 : f = "z = ((x) && (y))"               ; break ;
 
         // bor
-        case  19 : f = "(x) | (y)"                  ; break ;
+        case  19 : f = "z = ((x) | (y))"                ; break ;
 
         // band
-        case  20 : f = "(x) & (y)"                  ; break ;
+        case  20 : f = "z = ((x) & (y))"                ; break ;
 
         // bxor
-        case  21 : f = "(x) ^ (y)"                  ; break ;
+        case  21 : f = "z = ((x) ^ (y))"                ; break ;
 
         // bxnor
-        case  22 : f = "~((x) ^ (y))"               ; break ;
+        case  22 : f = "z = (~((x) ^ (y)))"             ; break ;
 
         // 23 to 31 are unused, but reserved for future monoids
 
@@ -606,162 +609,162 @@ void GB_charify_binop
         //----------------------------------------------------------------------
 
         // eq for complex
-        case  32 : f = "GB_FC32_eq(x,y)"            ; break ;
-        case  33 : f = "GB_FC64_eq(x,y)"            ; break ;
+        case  32 : f = "z = GB_FC32_eq(x,y)"            ; break ;
+        case  33 : f = "z = GB_FC64_eq(x,y)"            ; break ;
 
         // iseq for complex
-        case  34 : f = "GB_FC32_iseq(x,y)"          ; break ;
-        case  35 : f = "GB_FC64_iseq(x,y)"          ; break ;
+        case  34 : f = "z = GB_FC32_iseq(x,y)"          ; break ;
+        case  35 : f = "z = GB_FC64_iseq(x,y)"          ; break ;
 
         // ne for complex
-        case  36 : f = "GB_FC32_ne(x,y)"            ; break ;
-        case  37 : f = "GB_FC64_ne(x,y)"            ; break ;
+        case  36 : f = "z = GB_FC32_ne(x,y)"            ; break ;
+        case  37 : f = "z = GB_FC64_ne(x,y)"            ; break ;
 
         // isne for complex
-        case  38 : f = "GB_FC32_isne(x,y)"          ; break ;
-        case  39 : f = "GB_FC64_isne(x,y)"          ; break ;
+        case  38 : f = "z = GB_FC32_isne(x,y)"          ; break ;
+        case  39 : f = "z = GB_FC64_isne(x,y)"          ; break ;
 
         // lor for non-boolean
-        case  40 : f = "((x)!=0) || ((y)!=0)"       ; break ;
+        case  40 : f = "z = (((x)!=0) || ((y)!=0))"     ; break ;
 
         // land for non-boolean
-        case  41 : f = "((x)!=0) && ((y)!=0)"       ; break ;
+        case  41 : f = "z = (((x)!=0) && ((y)!=0))"     ; break ;
 
         // lxor for non-boolean
-        case  42 : f = "((x)!=0) != ((y)!=0)"       ; break ;
+        case  42 : f = "z = (((x)!=0) != ((y)!=0))"     ; break ;
 
         // minus
-        case  43 : f = "GB_FC32_minus(x,y)"         ; break ;
-        case  44 : f = "GB_FC64_minus(x,y)"         ; break ;
-        case  45 : f = "(x) - (y)"                  ; break ;
+        case  43 : f = "z = GB_FC32_minus(x,y)"         ; break ;
+        case  44 : f = "z = GB_FC64_minus(x,y)"         ; break ;
+        case  45 : f = "z = (x) - (y)"                  ; break ;
 
         // rminus
-        case  46 : f = "GB_FC32_minus(y,x)"         ; break ;
-        case  47 : f = "GB_FC64_minus(y,x)"         ; break ;
-        case  48 : f = "(y) - (x)"                  ; break ;
+        case  46 : f = "z = GB_FC32_minus(y,x)"         ; break ;
+        case  47 : f = "z = GB_FC64_minus(y,x)"         ; break ;
+        case  48 : f = "z = (y) - (x)"                  ; break ;
 
-        // div
-        case  49 : f = "GB_IDIV_SIGNED(x,y,8)"      ; break ;
-        case  50 : f = "GB_IDIV_SIGNED(x,y,16)"     ; break ;
-        case  51 : f = "GB_IDIV_SIGNED(x,y,32)"     ; break ;
-        case  52 : f = "GB_IDIV_SIGNED(x,y,64)"     ; break ;
-        case  53 : f = "GB_IDIV_UNSIGNED(x,y,8)"    ; break ;
-        case  54 : f = "GB_IDIV_UNSIGNED(x,y,16)"   ; break ;
-        case  55 : f = "GB_IDIV_UNSIGNED(x,y,32)"   ; break ;
-        case  56 : f = "GB_IDIV_UNSIGNED(x,y,64)"   ; break ;
-        case  57 : f = "GB_FC32_div(x,y)"           ; break ;
-        case  58 : f = "GB_FC64_div(x,y)"           ; break ;
-        case  59 : f = "(x) / (y)"                  ; break ;
+        // div: FIXME: make 8 GB_IDIV_* static inline functions
+        case  49 : f = "z = GB_IDIV_SIGNED(x,y,8)"      ; break ;
+        case  50 : f = "z = GB_IDIV_SIGNED(x,y,16)"     ; break ;
+        case  51 : f = "z = GB_IDIV_SIGNED(x,y,32)"     ; break ;
+        case  52 : f = "z = GB_IDIV_SIGNED(x,y,64)"     ; break ;
+        case  53 : f = "z = GB_IDIV_UNSIGNED(x,y,8)"    ; break ;
+        case  54 : f = "z = GB_IDIV_UNSIGNED(x,y,16)"   ; break ;
+        case  55 : f = "z = GB_IDIV_UNSIGNED(x,y,32)"   ; break ;
+        case  56 : f = "z = GB_IDIV_UNSIGNED(x,y,64)"   ; break ;
+        case  57 : f = "z = GB_FC32_div(x,y)"           ; break ;
+        case  58 : f = "z = GB_FC64_div(x,y)"           ; break ;
+        case  59 : f = "z = (x) / (y)"                  ; break ;
 
         // rdiv
-        case  60 : f = "GB_IDIV_SIGNED(y,x,8)"      ; break ;
-        case  61 : f = "GB_IDIV_SIGNED(y,x,16)"     ; break ;
-        case  62 : f = "GB_IDIV_SIGNED(y,x,32)"     ; break ;
-        case  63 : f = "GB_IDIV_SIGNED(y,x,64)"     ; break ;
-        case  64 : f = "GB_IDIV_UNSIGNED(y,x,8)"    ; break ;
-        case  65 : f = "GB_IDIV_UNSIGNED(y,x,16)"   ; break ;
-        case  66 : f = "GB_IDIV_UNSIGNED(y,x,32)"   ; break ;
-        case  67 : f = "GB_IDIV_UNSIGNED(y,x,64)"   ; break ;
-        case  68 : f = "GB_FC32_div(x,y)"           ; break ;
-        case  69 : f = "GB_FC64_div(x,y)"           ; break ;
-        case  70 : f = "(y) / (x)"                  ; break ;
+        case  60 : f = "z = GB_IDIV_SIGNED(y,x,8)"      ; break ;
+        case  61 : f = "z = GB_IDIV_SIGNED(y,x,16)"     ; break ;
+        case  62 : f = "z = GB_IDIV_SIGNED(y,x,32)"     ; break ;
+        case  63 : f = "z = GB_IDIV_SIGNED(y,x,64)"     ; break ;
+        case  64 : f = "z = GB_IDIV_UNSIGNED(y,x,8)"    ; break ;
+        case  65 : f = "z = GB_IDIV_UNSIGNED(y,x,16)"   ; break ;
+        case  66 : f = "z = GB_IDIV_UNSIGNED(y,x,32)"   ; break ;
+        case  67 : f = "z = GB_IDIV_UNSIGNED(y,x,64)"   ; break ;
+        case  68 : f = "z = GB_FC32_div(x,y)"           ; break ;
+        case  69 : f = "z = GB_FC64_div(x,y)"           ; break ;
+        case  70 : f = "z = (y) / (x)"                  ; break ;
 
         // gt, isgt
-        case  71 : f = "(x) > (y)"                  ; break ;
+        case  71 : f = "z = ((x) > (y))"                ; break ;
 
         // lt, islt
-        case  72 : f = "(x) < (y)"                  ; break ;
+        case  72 : f = "z = ((x) < (y))"                ; break ;
 
         // ge, isget
-        case  73 : f = "(x) >= (y)"                 ; break ;
+        case  73 : f = "z = ((x) >= (y))"               ; break ;
 
         // le, isle
-        case  74 : f = "(x) <= (y)"                 ; break ;
+        case  74 : f = "z = ((x) <= (y))"               ; break ;
 
         // bget
-        case  75 : f = "GB_BITGET(x,y,int8_t, 8)"   ; break ;
-        case  76 : f = "GB_BITGET(x,y,int16_t,16)"  ; break ;
-        case  77 : f = "GB_BITGET(x,y,int32_t,32)"  ; break ;
-        case  78 : f = "GB_BITGET(x,y,int64_t,64)"  ; break ;
-        case  79 : f = "GB_BITGET(x,y,uint8_t,8)"   ; break ;
-        case  80 : f = "GB_BITGET(x,y,uint16_t,16)" ; break ;
-        case  81 : f = "GB_BITGET(x,y,uint32_t,32)" ; break ;
-        case  82 : f = "GB_BITGET(x,y,uint64_t,64)" ; break ;
+        case  75 : f = "z = GB_BITGET(x,y,int8_t, 8)"   ; break ;
+        case  76 : f = "z = GB_BITGET(x,y,int16_t,16)"  ; break ;
+        case  77 : f = "z = GB_BITGET(x,y,int32_t,32)"  ; break ;
+        case  78 : f = "z = GB_BITGET(x,y,int64_t,64)"  ; break ;
+        case  79 : f = "z = GB_BITGET(x,y,uint8_t,8)"   ; break ;
+        case  80 : f = "z = GB_BITGET(x,y,uint16_t,16)" ; break ;
+        case  81 : f = "z = GB_BITGET(x,y,uint32_t,32)" ; break ;
+        case  82 : f = "z = GB_BITGET(x,y,uint64_t,64)" ; break ;
 
         // bset
-        case  83 : f = "GB_BITSET(x,y,int8_t, 8)"   ; break ;
-        case  84 : f = "GB_BITSET(x,y,int16_t,16)"  ; break ;
-        case  85 : f = "GB_BITSET(x,y,int32_t,32)"  ; break ;
-        case  86 : f = "GB_BITSET(x,y,int64_t,64)"  ; break ;
-        case  87 : f = "GB_BITSET(x,y,uint8_t,8)"   ; break ;
-        case  88 : f = "GB_BITSET(x,y,uint16_t,16)" ; break ;
-        case  89 : f = "GB_BITSET(x,y,uint32_t,32)" ; break ;
-        case  90 : f = "GB_BITSET(x,y,uint64_t,64)" ; break ;
+        case  83 : f = "z = GB_BITSET(x,y,int8_t, 8)"   ; break ;
+        case  84 : f = "z = GB_BITSET(x,y,int16_t,16)"  ; break ;
+        case  85 : f = "z = GB_BITSET(x,y,int32_t,32)"  ; break ;
+        case  86 : f = "z = GB_BITSET(x,y,int64_t,64)"  ; break ;
+        case  87 : f = "z = GB_BITSET(x,y,uint8_t,8)"   ; break ;
+        case  88 : f = "z = GB_BITSET(x,y,uint16_t,16)" ; break ;
+        case  89 : f = "z = GB_BITSET(x,y,uint32_t,32)" ; break ;
+        case  90 : f = "z = GB_BITSET(x,y,uint64_t,64)" ; break ;
 
         // bclr
-        case  91 : f = "GB_BITCLR(x,y,int8_t, 8)"   ; break ;
-        case  92 : f = "GB_BITCLR(x,y,int16_t,16)"  ; break ;
-        case  93 : f = "GB_BITCLR(x,y,int32_t,32)"  ; break ;
-        case  94 : f = "GB_BITCLR(x,y,int64_t,64)"  ; break ;
-        case  95 : f = "GB_BITCLR(x,y,uint8_t,8)"   ; break ;
-        case  96 : f = "GB_BITCLR(x,y,uint16_t,16)" ; break ;
-        case  97 : f = "GB_BITCLR(x,y,uint32_t,32)" ; break ;
-        case  98 : f = "GB_BITCLR(x,y,uint64_t,64)" ; break ;
+        case  91 : f = "z = GB_BITCLR(x,y,int8_t, 8)"   ; break ;
+        case  92 : f = "z = GB_BITCLR(x,y,int16_t,16)"  ; break ;
+        case  93 : f = "z = GB_BITCLR(x,y,int32_t,32)"  ; break ;
+        case  94 : f = "z = GB_BITCLR(x,y,int64_t,64)"  ; break ;
+        case  95 : f = "z = GB_BITCLR(x,y,uint8_t,8)"   ; break ;
+        case  96 : f = "z = GB_BITCLR(x,y,uint16_t,16)" ; break ;
+        case  97 : f = "z = GB_BITCLR(x,y,uint32_t,32)" ; break ;
+        case  98 : f = "z = GB_BITCLR(x,y,uint64_t,64)" ; break ;
 
         // bshift
-        case  99 : f = "GB_bitshift_int8(x,y)"      ; break ;
-        case 100 : f = "GB_bitshift_int16(x,y)"     ; break ;
-        case 101 : f = "GB_bitshift_int32(x,y)"     ; break ;
-        case 102 : f = "GB_bitshift_int64(x,y)"     ; break ;
-        case 103 : f = "GB_bitshift_uint8(x,y)"     ; break ;
-        case 104 : f = "GB_bitshift_uint16(x,y)"    ; break ;
-        case 105 : f = "GB_bitshift_uint32(x,y)"    ; break ;
-        case 106 : f = "GB_bitshift_uint64(x,y)"    ; break ;
+        case  99 : f = "z = GB_bitshift_int8(x,y)"      ; break ;
+        case 100 : f = "z = GB_bitshift_int16(x,y)"     ; break ;
+        case 101 : f = "z = GB_bitshift_int32(x,y)"     ; break ;
+        case 102 : f = "z = GB_bitshift_int64(x,y)"     ; break ;
+        case 103 : f = "z = GB_bitshift_uint8(x,y)"     ; break ;
+        case 104 : f = "z = GB_bitshift_uint16(x,y)"    ; break ;
+        case 105 : f = "z = GB_bitshift_uint32(x,y)"    ; break ;
+        case 106 : f = "z = GB_bitshift_uint64(x,y)"    ; break ;
 
         // pow
-        case 107 : f = "GB_pow_int8 (x, y)"         ; break ;
-        case 108 : f = "GB_pow_int16 (x, y)"        ; break ;
-        case 109 : f = "GB_pow_int32 (x, y)"        ; break ;
-        case 110 : f = "GB_pow_int64 (x, y)"        ; break ;
-        case 111 : f = "GB_pow_uint8 (x, y)"        ; break ;
-        case 112 : f = "GB_pow_uint16 (x, y)"       ; break ;
-        case 113 : f = "GB_pow_uint32 (x, y)"       ; break ;
-        case 114 : f = "GB_pow_uint64 (x, y)"       ; break ;
-        case 115 : f = "GB_powf (x, y)"             ; break ;
-        case 116 : f = "GB_pow (x, y)"              ; break ;
-        case 117 : f = "GB_cpowf (x, y)"            ; break ;
-        case 118 : f = "GB_cpow (x, y)"             ; break ;
+        case 107 : f = "z = GB_pow_int8 (x, y)"         ; break ;
+        case 108 : f = "z = GB_pow_int16 (x, y)"        ; break ;
+        case 109 : f = "z = GB_pow_int32 (x, y)"        ; break ;
+        case 110 : f = "z = GB_pow_int64 (x, y)"        ; break ;
+        case 111 : f = "z = GB_pow_uint8 (x, y)"        ; break ;
+        case 112 : f = "z = GB_pow_uint16 (x, y)"       ; break ;
+        case 113 : f = "z = GB_pow_uint32 (x, y)"       ; break ;
+        case 114 : f = "z = GB_pow_uint64 (x, y)"       ; break ;
+        case 115 : f = "z = GB_powf (x, y)"             ; break ;
+        case 116 : f = "z = GB_pow (x, y)"              ; break ;
+        case 117 : f = "z = GB_cpowf (x, y)"            ; break ;
+        case 118 : f = "z = GB_cpow (x, y)"             ; break ;
 
         // atan2
-        case 119 : f = "atan2f (x, y)"              ; break ;
-        case 120 : f = "atan2 (x, y)"               ; break ;
+        case 119 : f = "z = atan2f (x, y)"              ; break ;
+        case 120 : f = "z = atan2 (x, y)"               ; break ;
 
         // hypot
-        case 121 : f = "hypotf (x, y)"              ; break ;
-        case 122 : f = "hypot (x, y)"               ; break ;
+        case 121 : f = "z = hypotf (x, y)"              ; break ;
+        case 122 : f = "z = hypot (x, y)"               ; break ;
 
         // fmod
-        case 123 : f = "fmodf (x, y)"               ; break ;
-        case 124 : f = "fmod (x, y)"                ; break ;
+        case 123 : f = "z = fmodf (x, y)"               ; break ;
+        case 124 : f = "z = fmod (x, y)"                ; break ;
 
         // remainder
-        case 125 : f = "remainderf (x, y)"          ; break ;
-        case 126 : f = "remainder (x, y)"           ; break ;
+        case 125 : f = "z = remainderf (x, y)"          ; break ;
+        case 126 : f = "z = remainder (x, y)"           ; break ;
 
         // copysign
-        case 127 : f = "copysignf (x, y)"           ; break ;
-        case 128 : f = "copysign (x, y)"            ; break ;
+        case 127 : f = "z = copysignf (x, y)"           ; break ;
+        case 128 : f = "z = copysign (x, y)"            ; break ;
 
         // ldexp
-        case 129 : f = "ldexpf (x, y)"              ; break ;
-        case 130 : f = "ldexp (x, y)"               ; break ;
+        case 129 : f = "z = ldexpf (x, y)"              ; break ;
+        case 130 : f = "z = ldexp (x, y)"               ; break ;
 
         // cmplex
-        case 131 : f = "GxB_CMPLXF (x, y)"          ; break ;
-        case 132 : f = "GxB_CMPLX (x, y)"           ; break ;
+        case 131 : f = "z = GxB_CMPLXF (x, y)"          ; break ;
+        case 132 : f = "z = GxB_CMPLX (x, y)"           ; break ;
 
         // pair
-        case 133 : f = "1"                          ; break ;
+        case 133 : f = "z = 1"                          ; break ;
 
         //----------------------------------------------------------------------
         // positional ops
@@ -773,14 +776,14 @@ void GB_charify_binop
         // in an ewise operation:  cij = aij + bij
         //      firsti is i, firstj is j, secondi i, secondj is j
 
-        case 134 : f = "i"                          ; break ;
-        case 135 : f = "k"                          ; break ;
-        case 136 : f = "j"                          ; break ;
-        case 137 : f = "i+1"                        ; break ;
-        case 138 : f = "k+1"                        ; break ;
-        case 139 : f = "j+1"                        ; break ;
+        case 134 : f = "z = i"                          ; break ;
+        case 135 : f = "z = k"                          ; break ;
+        case 136 : f = "z = j"                          ; break ;
+        case 137 : f = "z = (i) + 1"                    ; break ;
+        case 138 : f = "z = (k) + 1"                    ; break ;
+        case 139 : f = "z = (j) + 1"                    ; break ;
 
-        default  : f = NULL ;                       ; break ;
+        default  : f = NULL ;                           ; break ;
     }
 
     (*op_string) = f ;
@@ -803,13 +806,56 @@ void GB_macrofy_binop
     {
         // reverse the x and y arguments to flip the operator
         fprintf ( fp,
-            "#define %s(y,x) (%s)\n", macro_name, op_string) ;
+            "#define %s(z,y,x) (%s)\n", macro_name, op_string) ;
     }
     else
     {
         // operator is not flipped
         fprintf ( fp, 
-            "#define %s(x,y) (%s)\n", macro_name, op_string) ;
+            "#define %s(z,x,y) (%s)\n", macro_name, op_string) ;
+    }
+}
+
+//------------------------------------------------------------------------------
+// GB_charify_and_macrofy_binop: convert an op into a macro
+//------------------------------------------------------------------------------
+
+void GB_charify_and_macrofy_binop
+(
+    FILE *fp,
+    // input:
+    const char *macro_name,
+    bool flipxy,
+    int ecode,
+    GrB_BinaryOp op,
+    bool skip_defn
+)
+{
+
+    const char *s ;
+    if (ecode == 0)
+    {
+        // user-defined operator
+        if (flipxy)
+        {
+            fprintf (fp, "\n#define %s(z,y,x) %s (&(z), &(x), &(y))\n",
+                macro_name, op->name) ;
+        }
+        else
+        {
+            fprintf (fp, "\n#define %s(z,x,y) %s (&(z), &(x), &(y))\n",
+                macro_name, op->name) ;
+        }
+        if (!skip_defn)
+        {
+            fprintf (fp, "%s\n", op->defn) ;
+        }
+    }
+    else
+    {
+        // built-in operator
+        GB_charify_binop (&s, ecode) ;
+        GB_macrofy_binop (fp, macro_name, s, flipxy) ;
     }
 }
 

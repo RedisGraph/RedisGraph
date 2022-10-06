@@ -1015,32 +1015,32 @@ inline void GB_FUNC (NE) (GB_Zbool_X_Y_ARGS)
 #if defined ( GB_SIGNED_INDEX )
 
     //--------------------------------------------------------------------------
-    // z = f (x, i, j, thunk) where z and thunk are both int32 or int64
+    // z = f (x, i, j, y) where z and y are both int32 or int64
     //--------------------------------------------------------------------------
 
     GB_IDXOP_STRUCT (ROWINDEX, GB_XTYPE) ;
     inline void GB_FUNC (ROWINDEX) (GB_TYPE *z, const void *unused,
-        GrB_Index i, GrB_Index j_unused, const GB_TYPE *thunk)
+        GrB_Index i, GrB_Index j_unused, const GB_TYPE *y)
     {
-        (*z) = (GB_TYPE) (((int64_t) i) + (*thunk)) ;
+        (*z) = (GB_TYPE) (((int64_t) i) + (*y)) ;
     }
     GB_IDXOP_STRUCT (COLINDEX, GB_XTYPE) ;
     inline void GB_FUNC (COLINDEX) (GB_TYPE *z, const void *unused,
-        GrB_Index i_unused, GrB_Index j, const GB_TYPE *thunk)
+        GrB_Index i_unused, GrB_Index j, const GB_TYPE *y)
     {
-        (*z) = (GB_TYPE) (((int64_t) j) + (*thunk)) ;
+        (*z) = (GB_TYPE) (((int64_t) j) + (*y)) ;
     }
     GB_IDXOP_STRUCT (DIAGINDEX, GB_XTYPE) ;
     inline void GB_FUNC (DIAGINDEX) (GB_TYPE *z, const void *unused,
-        GrB_Index i, GrB_Index j, const GB_TYPE *thunk)
+        GrB_Index i, GrB_Index j, const GB_TYPE *y)
     {
-        (*z) = (GB_TYPE) (((int64_t) j) - (((int64_t) i) + (*thunk))) ;
+        (*z) = (GB_TYPE) (((int64_t) j) - (((int64_t) i) + (*y))) ;
     }
     GB_IDXOP_STRUCT (FLIPDIAGINDEX, GB_XTYPE) ;
     inline void GB_FUNC (FLIPDIAGINDEX) (GB_TYPE *z, const void *unused,
-        GrB_Index i, GrB_Index j, const GB_TYPE *thunk)
+        GrB_Index i, GrB_Index j, const GB_TYPE *y)
     {
-        (*z) = (GB_TYPE) (((int64_t) i) - (((int64_t) j) + (*thunk))) ;
+        (*z) = (GB_TYPE) (((int64_t) i) - (((int64_t) j) + (*y))) ;
     }
 
 #endif
@@ -1048,129 +1048,129 @@ inline void GB_FUNC (NE) (GB_Zbool_X_Y_ARGS)
 #if defined ( GB_SIGNED_INDEX64 )
 
     //--------------------------------------------------------------------------
-    // z = f (x, i, j, thunk) where z is bool, thunk is type int64
+    // z = f (x, i, j, y) where z is bool, y is type int64
     //--------------------------------------------------------------------------
 
     GB_IDXOP_STRUCT (TRIL, GB_XTYPE) ;
     inline void GB_FUNC (TRIL) (bool *z, const void *unused,
-        GrB_Index i, GrB_Index j, const GB_TYPE *thunk)
+        GrB_Index i, GrB_Index j, const GB_TYPE *y)
     {
-        (*z) = (((int64_t) j) <= (((int64_t) i) + (*thunk))) ;
+        (*z) = (((int64_t) j) <= (((int64_t) i) + (*y))) ;
     }
 
     GB_IDXOP_STRUCT (TRIU, GB_XTYPE) ;
     inline void GB_FUNC (TRIU) (bool *z, const void *unused,
-        GrB_Index i, GrB_Index j, const GB_TYPE *thunk)
+        GrB_Index i, GrB_Index j, const GB_TYPE *y)
     {
-        (*z) = (((int64_t) j) >= (((int64_t) i) + (*thunk))) ;
+        (*z) = (((int64_t) j) >= (((int64_t) i) + (*y))) ;
     }
 
     GB_IDXOP_STRUCT (DIAG, GB_XTYPE) ;
     inline void GB_FUNC (DIAG) (bool *z, const void *unused,
-        GrB_Index i, GrB_Index j, const GB_TYPE *thunk)
+        GrB_Index i, GrB_Index j, const GB_TYPE *y)
     {
-        (*z) = (((int64_t) j) == (((int64_t) i) + (*thunk))) ;
+        (*z) = (((int64_t) j) == (((int64_t) i) + (*y))) ;
     }
 
     GB_IDXOP_STRUCT (OFFDIAG, GB_XTYPE) ;
     inline void GB_FUNC (OFFDIAG) (bool *z, const void *unused,
-        GrB_Index i, GrB_Index j, const GB_TYPE *thunk)
+        GrB_Index i, GrB_Index j, const GB_TYPE *y)
     {
-        (*z) = (((int64_t) j) != (((int64_t) i) + (*thunk))) ;
+        (*z) = (((int64_t) j) != (((int64_t) i) + (*y))) ;
     }
 
     GB_IDXOP_STRUCT (COLLE, GB_XTYPE) ;
     inline void GB_FUNC (COLLE) (bool *z, const void *unused,
-        GrB_Index i_unused, GrB_Index j, const GB_TYPE *thunk)
+        GrB_Index i_unused, GrB_Index j, const GB_TYPE *y)
     {
-        (*z) = (((int64_t) j) <= (*thunk)) ;
+        (*z) = (((int64_t) j) <= (*y)) ;
     }
 
     GB_IDXOP_STRUCT (COLGT, GB_XTYPE) ;
     inline void GB_FUNC (COLGT) (bool *z, const void *unused,
-        GrB_Index i_unused, GrB_Index j, const GB_TYPE *thunk)
+        GrB_Index i_unused, GrB_Index j, const GB_TYPE *y)
     {
-        (*z) = (((int64_t) j) > (*thunk)) ;
+        (*z) = (((int64_t) j) > (*y)) ;
     }
 
     GB_IDXOP_STRUCT (ROWLE, GB_XTYPE) ;
     inline void GB_FUNC (ROWLE) (bool *z, const void *unused,
-        GrB_Index i, GrB_Index j_unused, const GB_TYPE *thunk)
+        GrB_Index i, GrB_Index j_unused, const GB_TYPE *y)
     {
-        (*z) = (((int64_t) i) <= (*thunk)) ;
+        (*z) = (((int64_t) i) <= (*y)) ;
     }
 
     GB_IDXOP_STRUCT (ROWGT, GB_XTYPE) ;
     inline void GB_FUNC (ROWGT) (bool *z, const void *unused,
-        GrB_Index i, GrB_Index j_unused, const GB_TYPE *thunk)
+        GrB_Index i, GrB_Index j_unused, const GB_TYPE *y)
     {
-        (*z) = (((int64_t) i) > (*thunk)) ;
+        (*z) = (((int64_t) i) > (*y)) ;
     }
 
 #endif
 
     //--------------------------------------------------------------------------
-    // z = f (x, i, j, thunk) where z is bool, thunk is any built-in type
+    // z = f (x, i, j, y) where z is bool, y is any built-in type
     //--------------------------------------------------------------------------
 
     GB_IDXOP_STRUCT (VALUEEQ, GB_XTYPE) ;
     inline void GB_FUNC (VALUEEQ) (bool *z, const GB_TYPE *x,
-        GrB_Index i_unused, GrB_Index j_unused, const GB_TYPE *thunk)
+        GrB_Index i_unused, GrB_Index j_unused, const GB_TYPE *y)
     {
         #if defined ( GB_FLOAT_COMPLEX )
-        (*z) = GB_FC32_eq (*x, *thunk) ;
+        (*z) = GB_FC32_eq (*x, *y) ;
         #elif defined ( GB_DOUBLE_COMPLEX )
-        (*z) = GB_FC64_eq (*x, *thunk) ;
+        (*z) = GB_FC64_eq (*x, *y) ;
         #else
-        (*z) = ((*x) == (*thunk)) ;
+        (*z) = ((*x) == (*y)) ;
         #endif
     }
 
     GB_IDXOP_STRUCT (VALUENE, GB_XTYPE) ;
     inline void GB_FUNC (VALUENE) (bool *z, const GB_TYPE *x,
-        GrB_Index i_unused, GrB_Index j_unused, const GB_TYPE *thunk)
+        GrB_Index i_unused, GrB_Index j_unused, const GB_TYPE *y)
     {
         #if defined ( GB_FLOAT_COMPLEX )
-        (*z) = GB_FC32_ne (*x, *thunk) ;
+        (*z) = GB_FC32_ne (*x, *y) ;
         #elif defined ( GB_DOUBLE_COMPLEX )
-        (*z) = GB_FC64_ne (*x, *thunk) ;
+        (*z) = GB_FC64_ne (*x, *y) ;
         #else
-        (*z) = ((*x) != (*thunk)) ;
+        (*z) = ((*x) != (*y)) ;
         #endif
     }
 
 #if defined ( GB_REAL )
 
     //--------------------------------------------------------------------------
-    // z = f (x, i, j, thunk) where z is bool, thunk is any real built-in type
+    // z = f (x, i, j, y) where z is bool, y is any real built-in type
     //--------------------------------------------------------------------------
 
     GB_IDXOP_STRUCT (VALUELT, GB_XTYPE) ;
     inline void GB_FUNC (VALUELT) (bool *z, const GB_TYPE *x,
-        GrB_Index i_unused, GrB_Index j_unused, const GB_TYPE *thunk)
+        GrB_Index i_unused, GrB_Index j_unused, const GB_TYPE *y)
     {
-        (*z) = ((*x) < (*thunk)) ;
+        (*z) = ((*x) < (*y)) ;
     }
 
     GB_IDXOP_STRUCT (VALUELE, GB_XTYPE) ;
     inline void GB_FUNC (VALUELE) (bool *z, const GB_TYPE *x,
-        GrB_Index i_unused, GrB_Index j_unused, const GB_TYPE *thunk)
+        GrB_Index i_unused, GrB_Index j_unused, const GB_TYPE *y)
     {
-        (*z) = ((*x) <= (*thunk)) ;
+        (*z) = ((*x) <= (*y)) ;
     }
 
     GB_IDXOP_STRUCT (VALUEGT, GB_XTYPE) ;
     inline void GB_FUNC (VALUEGT) (bool *z, const GB_TYPE *x,
-        GrB_Index i_unused, GrB_Index j_unused, const GB_TYPE *thunk)
+        GrB_Index i_unused, GrB_Index j_unused, const GB_TYPE *y)
     {
-        (*z) = ((*x) > (*thunk)) ;
+        (*z) = ((*x) > (*y)) ;
     }
 
     GB_IDXOP_STRUCT (VALUEGE, GB_XTYPE) ;
     inline void GB_FUNC (VALUEGE) (bool *z, const GB_TYPE *x,
-        GrB_Index i_unused, GrB_Index j_unused, const GB_TYPE *thunk)
+        GrB_Index i_unused, GrB_Index j_unused, const GB_TYPE *y)
     {
-        (*z) = ((*x) >= (*thunk)) ;
+        (*z) = ((*x) >= (*y)) ;
     }
 
 #endif

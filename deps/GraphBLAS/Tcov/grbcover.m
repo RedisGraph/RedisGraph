@@ -147,7 +147,7 @@ end
 if (ismac)
     objlist = [objlist ' libgraphblas_tcov.dylib '] ;
 end
-objlist = [objlist ' ../cpu_features/build/libcpu_features.a'] ;
+% objlist = [objlist ' ../cpu_features/build/libcpu_features.a'] ;
 
 % compile the mexFunctions
 for k = 1:length (mexfunctions)

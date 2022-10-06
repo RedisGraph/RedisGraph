@@ -260,7 +260,7 @@ void GB_macrofy_ewise           // construct all macros for GrB_eWise
     //--------------------------------------------------------------------------
 
     const char *s ;
-    GB_charify_binop (&s, binaryop_ecode) ;
+    GB_charify_binop (&s, binaryop_ecode) ;   // FIXME do user-defined
     GB_macrofy_binop (fp, "GB_BINOP", s, false) ;
 
     //--------------------------------------------------------------------------

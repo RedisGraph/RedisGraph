@@ -257,12 +257,12 @@ GXB_OP2 (POW    , "pow"   ) ;
 #endif
 
 //------------------------------------------------------------------------------
-// index_unary functions z=f(x,i,j,thunk)
+// index_unary functions z=f(x,i,j,y)
 //------------------------------------------------------------------------------
 
 #if defined ( GB_SIGNED_INDEX )
 
-    // z = f (x, i, j, thunk) where z and thunk have type int32 or int64
+    // z = f (x, i, j, y) where z and y have type int32 or int64
     GRB_IDXOP_POSITIONAL (ROWINDEX,  "rowindex" ) ;
     GRB_IDXOP_POSITIONAL (COLINDEX,  "colindex" ) ;
     GRB_IDXOP_POSITIONAL (DIAGINDEX, "diagindex") ;
@@ -272,7 +272,7 @@ GXB_OP2 (POW    , "pow"   ) ;
 
 #if defined ( GB_SIGNED_INDEX64 )
 
-    // z = f (x, i, j, thunk) where z is bool; thunk has type int64 only
+    // z = f (x, i, j, y) where z is bool; y has type int64 only
     GRB_IDXOP_POSITIONAL_BOOL (TRIL,    "tril" ) ;
     GRB_IDXOP_POSITIONAL_BOOL (TRIU,    "triu" ) ;
     GRB_IDXOP_POSITIONAL_BOOL (DIAG,    "diag" ) ;
@@ -286,13 +286,13 @@ GXB_OP2 (POW    , "pow"   ) ;
 
 #if defined ( GB_COMPLEX )
 
-    // z = f (x, i, j, thunk) where z is bool; thunk is complex
+    // z = f (x, i, j, y) where z is bool; y is complex
     GXB_IDXOP_VALUE (VALUEEQ, "valueeq") ;
     GXB_IDXOP_VALUE (VALUENE, "valuene") ;
 
 #else
 
-    // z = f (x, i, j, thunk) where z is bool; thunk is real
+    // z = f (x, i, j, y) where z is bool; y is real
     GRB_IDXOP_VALUE (VALUEEQ, "valueeq") ;
     GRB_IDXOP_VALUE (VALUENE, "valuene") ;
     GRB_IDXOP_VALUE (VALUELT, "valuelt") ;

@@ -249,9 +249,14 @@ void GB_enumify_mxm         // enumerate a GrB_mxm problem
 
 void GB_macrofy_mxm        // construct all macros for GrB_mxm
 (
-    // input:
+    // output:
     FILE *fp,                   // target file to write, already open
-    uint64_t scode
+    // input:
+    uint64_t scode,
+    GrB_Semiring semiring,  // the semiring to macrofy
+    GrB_Type ctype,
+    GrB_Type atype,
+    GrB_Type btype
 )
 {
 
@@ -264,9 +269,9 @@ void GB_macrofy_mxm        // construct all macros for GrB_mxm
     int B_iso_code  = RSHIFT (scode, 60, 1) ;
 
     // monoid
-    int add_ecode   = RSHIFT (scode, 55, 5) ;
-    int id_ecode    = RSHIFT (scode, 50, 5) ;
-    int term_ecode  = RSHIFT (scode, 45, 5) ;
+    int add_ecode   = RSHIFT (scode, 55, 5) ;   // string: function
+    int id_ecode    = RSHIFT (scode, 50, 5) ;   // string: "0"
+    int term_ecode  = RSHIFT (scode, 45, 5) ;   // string
     bool is_term    = (term_ecode < 30) ;
 
     // multiplier
@@ -290,38 +295,83 @@ void GB_macrofy_mxm        // construct all macros for GrB_mxm
     int asparsity   = RSHIFT (scode,  2, 2) ;
     int bsparsity   = RSHIFT (scode,  0, 2) ;
 
+    //--------------------------------------------------------------------------
+    // construct the semiring name
+    //--------------------------------------------------------------------------
+
+    GrB_Monoid add = semiring->add ;
+    GrB_BinaryOp mult = semiring->multiply ;
+    GrB_BinaryOp addop = add->op ;
+
+    fprintf (fp, "// GB_mxm_%016" PRIX64 ".h, semiring: (%s, %s%s)\n\n",
+        scode, addop->name, mult->name, flipxy ? " (flipped)" : "") ;
+
+    //--------------------------------------------------------------------------
+    // construct the typedefs (not macros)
+    //--------------------------------------------------------------------------
+
+    // need to check if any typedefs are repeated
+    char *defn [6] ;
+    defn [0] = ctype->defn ;
+    defn [1] = atype->defn ;
+    defn [2] = btype->defn ;
+    defn [3] = mult->xtype->defn ;
+    defn [4] = mult->ytype->defn ;
+    defn [5] = mult->ztype->defn ;
+
+    for (int k = 0 ; k <= 5 ; k++)
+    {
+        if (defn [k] != NULL)
+        {
+            // only print this typedef it is unique
+            bool is_unique = true ;
+            for (int j = 0 ; j < k && is_unique ; j++)
+            {
+                if (defn [j] != NULL && strcmp (defn [j], defn [k]) == 0)
+                {
+                    is_unique = false ;
+                }
+            }
+            if (is_unique)
+            {
+                // the typedef is unique: include it in the .h file
+                fprintf (fp, "%s\n\n", defn [k]) ;
+            }
+        }
+    }
 
     //--------------------------------------------------------------------------
     // construct macros to load scalars from A and B (and typecast) them
     //--------------------------------------------------------------------------
 
-    // TODO: these need to be typecasted when loaded.
     // if flipxy false:  A is typecasted to x, and B is typecasted to y.
     // if flipxy true:   A is typecasted to y, and B is typecasted to x.
 
     int A_is_pattern = (acode == 0) ? 1 : 0 ;
     int B_is_pattern = (bcode == 0) ? 1 : 0 ;
-
-    fprintf (fp, "// GB_mxm_%016" PRIX64 ".h\n", scode) ;
     fprintf (fp, "#define GB_A_IS_PATTERN %d\n", A_is_pattern) ;
     fprintf (fp, "#define GB_A_ISO %d\n", A_iso_code) ;
     fprintf (fp, "#define GB_B_IS_PATTERN %d\n", B_is_pattern) ;
     fprintf (fp, "#define GB_B_ISO %d\n", B_iso_code) ;
 
     //--------------------------------------------------------------------------
-    // construct macros for the multiply
-    //--------------------------------------------------------------------------
-
-    const char *s ;
-    GB_charify_binop (&s, mult_ecode) ;
-    GB_macrofy_binop (fp, "GB_MULT", s, flipxy) ;
-    fprintf (fp, "#define GB_FLIPXY %d\n", flipxy ? 1 : 0) ;
-
-    //--------------------------------------------------------------------------
     // construct the monoid macros
     //--------------------------------------------------------------------------
 
-    GB_macrofy_monoid (fp, add_ecode, id_ecode, term_ecode, is_term) ;
+    GB_macrofy_monoid (fp, add_ecode, id_ecode, term_ecode, is_term,
+        add, false) ;
+
+    //--------------------------------------------------------------------------
+    // construct macros for the multiply
+    //--------------------------------------------------------------------------
+
+    // do not print the user-defined multiplicative function if it is identical
+    // to the user-defined additive function.
+    bool skip_defn = (mult->defn != NULL && addop->defn != NULL
+        && strcmp (mult->defn, addop->defn) == 0) ;
+    GB_charify_and_macrofy_binop (fp, "GB_MULT", flipxy, mult_ecode, mult,
+        skip_defn) ;
+    fprintf (fp, "#define GB_FLIPXY %d\n", flipxy ? 1 : 0) ;
 
     //--------------------------------------------------------------------------
     // special cases
@@ -376,6 +426,17 @@ void GB_macrofy_mxm        // construct all macros for GrB_mxm
     GB_macrofy_sparsity (fp, "M", msparsity) ;
     GB_macrofy_sparsity (fp, "A", asparsity) ;
     GB_macrofy_sparsity (fp, "B", bsparsity) ;
+
+    //--------------------------------------------------------------------------
+    // construct the macros for the type names
+    //--------------------------------------------------------------------------
+
+    fprintf (fp, "#define GB_C_TYPENAME %s\n", ctype->name) ;
+    fprintf (fp, "#define GB_A_TYPENAME %s\n", atype->name) ;
+    fprintf (fp, "#define GB_B_TYPENAME %s\n", btype->name) ;
+    fprintf (fp, "#define GB_X_TYPENAME %s\n", mult->xtype->name) ;
+    fprintf (fp, "#define GB_Y_TYPENAME %s\n", mult->ytype->name) ;
+    fprintf (fp, "#define GB_Z_TYPENAME %s\n", mult->ztype->name) ;
 
 }
 

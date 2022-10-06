@@ -15,7 +15,7 @@
 //------------------------------------------------------------------------------
 
 #ifdef GB_CUDA_KERNEL
-// FIXME for CUDA: this could likely be: "__device__ static inline"
+// fixme for CUDA: this could likely be: "__device__ static inline"
 #define GB_MATH_KERNEL __device__ inline
 #else
 #define GB_MATH_KERNEL inline

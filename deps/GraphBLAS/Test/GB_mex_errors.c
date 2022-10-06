@@ -4188,6 +4188,8 @@ void mexFunction
         NULL)) ;
     OK (GB_Matrix_check (A, "valid pending pi", G3, NULL)) ;
     OK (GrB_Matrix_nvals (&nvals, A)) ;
+    OK (GB_Matrix_check (A, "valid pending pi again", G3, NULL)) ;
+    printf ("nvals %ld\n", nvals) ;
     OK (GrB_Matrix_wait_(A, GrB_MATERIALIZE)) ;
     CHECK (nvals == 1) ;
 

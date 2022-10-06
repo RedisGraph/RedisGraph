@@ -141,11 +141,6 @@ void mexFunction
     sparsity = gb_get_sparsity (A, B, sparsity) ;
     C = gb_new (ctype, cnrows, cncols, fmt, sparsity) ;
 
-    // zero = (ctype) 0
-    OK (GrB_Scalar_new (&zero, ctype)) ;
-    OK (GrB_Scalar_setElement_FP64 (zero, 0)) ;
-    OK (GrB_Scalar_wait (zero, GrB_MATERIALIZE)) ;
-
     //--------------------------------------------------------------------------
     // compute C = A*B
     //--------------------------------------------------------------------------
@@ -161,6 +156,9 @@ void mexFunction
         OK (GrB_Scalar_nvals (&nvals, scalar)) ;
         if (nvals == 0)
         {
+            // zero = (ctype) 0
+            OK (GrB_Scalar_new (&zero, ctype)) ;
+            OK (GrB_Scalar_setElement_FP64 (zero, 0)) ;
             scalar = zero ;
         }
         if (binop_bind1st)
@@ -204,6 +202,9 @@ void mexFunction
             sparsity = sparsity | GxB_FULL ;
             OK (GxB_Matrix_Option_set (C, GxB_SPARSITY_CONTROL, sparsity)) ;
             // C = 0
+            // zero = (ctype) 0
+            OK (GrB_Scalar_new (&zero, ctype)) ;
+            OK (GrB_Scalar_setElement_FP64 (zero, 0)) ;
             OK (GrB_Matrix_assign_Scalar (C, NULL, NULL, zero, GrB_ALL, cnrows,
                 GrB_ALL, cncols, NULL)) ;
             // C += A*B

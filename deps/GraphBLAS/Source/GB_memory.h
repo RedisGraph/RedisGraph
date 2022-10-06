@@ -121,7 +121,7 @@ void GB_memset                  // parallel memset
             printf ("dealloc (%s, line %d): %p size %lu\n", \
                 __FILE__, __LINE__, (*p), s) ; \
         } \
-        GB_dealloc_memory (p, s) ; \
+        GB_dealloc_memory ((void **) p, s) ; \
     }
 
     #define GB_CALLOC(n,type,s) \

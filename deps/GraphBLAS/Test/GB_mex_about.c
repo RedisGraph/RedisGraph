@@ -779,6 +779,7 @@ void mexFunction
         }
     }
     OK (GrB_Matrix_wait_(A, GrB_MATERIALIZE)) ;
+    printf ("did setEL loop\n") ;
 
     GrB_Vector_new (&victor, GrB_FP64, 43) ;
     OK (GrB_Vector_setElement_FP64 (victor, 99, 0)) ;
