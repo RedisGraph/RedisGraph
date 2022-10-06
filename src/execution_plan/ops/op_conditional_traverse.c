@@ -66,7 +66,7 @@ void _traverse(OpCondTraverse *op) {
 	// Evaluate expression.
 	AlgebraicExpression_Eval(op->ae, op->M);
 
-	RG_MatrixTupleIter_attach(&op->iter, op->M);
+	RG_MatrixTupleIter_attach(&op->iter, op->M, RG_ITER_MIN_ROW, RG_ITER_MAX_ROW);
 
 	// Clear filter matrix.
 	RG_Matrix_clear(op->F);
