@@ -635,10 +635,9 @@ workflows:
       - benchmark:
           <<: *on-perf-tags
           context: common
-      # disable temporarily due to huge profile overhead in RG
-      # - benchmark-profiler:
-      #     <<: *on-perf-tags
-      #     context: common
+      - benchmark-profiler:
+          <<: *on-perf-tags
+          context: common
 
   nightly:
     triggers:
@@ -657,6 +656,5 @@ workflows:
           context: common
       - fuzzer:
           name: nightly-fuzzer
-      # disable temporarily due to huge profile overhead in RG
-      # - benchmark-profiler:
-      #     context: common
+      - benchmark-profiler:
+          context: common
