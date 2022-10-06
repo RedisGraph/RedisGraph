@@ -174,7 +174,72 @@ endif
 
 SRCDIR=.
 
-_SOURCES:=$(shell find . -name "*.c" | cut -f2- -d/ | sort)
+define SRC_DIRS
+	.
+	algorithms
+	algorithms/LAGraph
+	arithmetic
+	arithmetic/aggregate_funcs
+	arithmetic/algebraic_expression
+	arithmetic/boolean_funcs
+	arithmetic/comprehension_funcs
+	arithmetic/conditional_funcs
+	arithmetic/entity_funcs
+	arithmetic/list_funcs
+	arithmetic/map_funcs
+	arithmetic/numeric_funcs
+	arithmetic/path_funcs
+	arithmetic/placeholder_funcs
+	arithmetic/point_funcs
+	arithmetic/string_funcs
+	arithmetic/time_funcs
+	ast
+	ast/enrichment
+	bulk_insert
+	commands
+	configuration
+	datatypes
+	datatypes/path
+	execution_plan
+	execution_plan/execution_plan_build
+	execution_plan/ops
+	execution_plan/ops/shared
+	execution_plan/optimizations
+	filter_tree
+	graph
+	graph/entities
+	graph/rg_matrix
+	grouping
+	index
+	procedures
+	resultset
+	resultset/formatters
+	schema
+	serializers
+	serializers/decoders
+	serializers/decoders/current
+	serializers/decoders/current/v12
+	serializers/decoders/prev
+	serializers/decoders/prev/v10
+	serializers/decoders/prev/v11
+	serializers/decoders/prev/v8
+	serializers/decoders/prev/v9
+	serializers/encoder
+	serializers/encoder/v12
+	slow_log
+	undo_log
+	util
+	util/cache
+	util/datablock
+	util/object_pool
+	util/range
+	util/sds
+	util/thpool
+endef
+
+_SRC_DIRS:=$(filter %,$(subst $(__NL), ,$(SRC_DIRS)))
+_SOURCES:=$(shell find $(_SRC_DIRS) -maxdepth 1 -name "*.c" | sed -e 's/^.\/\(.*\)/\1/' | sort)
+# _SOURCES:=$(shell find . -name "*.c" | cut -f2- -d/ | sort)
 
 SOURCES=$(addprefix $(SRCDIR)/,$(_SOURCES))
 OBJECTS=$(patsubst %.c,$(BINDIR)/src/%.o,$(_SOURCES))

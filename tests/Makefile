@@ -26,6 +26,11 @@ FLOW ?= 1
 GEN ?= 1
 AOF ?= 1
 TCK ?= 1
+
+export FLOW
+export GEN
+export AOF
+export TCK
 endif
 
 TESTS=
