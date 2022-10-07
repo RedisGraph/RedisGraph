@@ -865,6 +865,10 @@ This section contains information on all supported functions from the Cypher que
 | size()                       | Return a list size                                                                                                                                             |
 | tail()                       | Return a sublist of a list, which contains all the values without the first value                                                                              |
 | [reduce()](#reduce) | Return a scalar produced by evaluating an expression against each list member                                                                                  |
+| toBooleanList() | Converts a list of values and returns a list of boolean values. Each item in list is converted using toBooleanOrNull() |
+| toFloatList()   | Converts a list of values and returns a list of floating point values. Each item in list is converted using toFloatOrNull() |
+| toIntegerList() | Converts a list of values and returns a list of integer values. Each item in list is converted using toIntegerOrNull() |
+| toStringList()  | Converts a list of values and returns a list of string values. Each item in list is converted using toStringOrNull()   |
 
 ## Mathematical functions
 
