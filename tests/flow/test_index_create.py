@@ -242,3 +242,18 @@ class testIndexCreationFlow(FlowTestsBase):
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("Invalid input '1': expected an identifier", str(e))
+
+    def test07_index_creation_undefined_identifier(self):   
+        # create index on undefined identifier
+        try:
+            redis_graph.query("CREATE INDEX FOR (p:Person) ON (a.b)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("a not defined", str(e))
+        
+        # create index for relationship on undefined identifier
+        try:
+            redis_graph.query("CREATE INDEX FOR ()-[n:T]-() ON (a.b)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("a not defined", str(e))
