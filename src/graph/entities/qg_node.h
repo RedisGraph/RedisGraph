@@ -20,8 +20,8 @@ typedef struct {
 	const char *alias;         // user-provided alias associated with this node
 	const char **labels;       // labels string array
 	bool highly_connected;     // node degree > 2
-	struct QGEdge **outgoing_edges;   // array of incoming edges (ME)<-(SRC)
-	struct QGEdge **incoming_edges;   // array of outgoing edges (ME)->(DEST)
+	struct QGEdge **outgoing_edges;   // array of outgoing edges (ME)->(DEST)
+	struct QGEdge **incoming_edges;   // array of incoming edges (ME)<-(SRC)
 } QGNode;
 
 // creates a new node
