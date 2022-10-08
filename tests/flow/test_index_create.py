@@ -1,17 +1,24 @@
 from common import *
+from time import sleep
 from pathos.pools import ProcessPool as Pool
+from execution_plan_util import locate_operation
 
 GRAPH_ID = "index"
 redis_graph = None
 redis_con = None
 
-class testIndexCreationFlow(FlowTestsBase):
+class testIndexCreationFlow():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_graph
         global redis_con
         redis_con = self.env.getConnection()
         redis_graph = Graph(redis_con, GRAPH_ID)
+
+    def index_under_construction(self, g):
+        # validate index is being populated
+        res = g.query("CALL db.indexes() yield status")
+        return "UNDER CONSTRUCTION" in res.result_set[0][0]
 
     # full-text index creation
     def test01_fulltext_index_creation(self):
@@ -185,3 +192,199 @@ class testIndexCreationFlow(FlowTestsBase):
                 redis_con.execute_command("GRAPH.DELETE", f"x{graph_id}")
         pool = Pool(nodes=10)
         pool.map(create_drop_index, range(1, 100))
+
+    def test06_async_index_creation(self):
+        # 1. create a large graph
+        # 2. create an index
+        # 3. while the index is being constructed make sure:
+        # 3.a. we're able to write to the graph
+        # 3.b. we're able to read
+        # 3.c. queries aren't utilizing the index while it is being constructed
+
+        min_node_v = 0
+        max_node_v = 1500000
+
+        g = Graph(self.env.getConnection(), "async-index")
+
+        #-----------------------------------------------------------------------
+        # create a large graph
+        #-----------------------------------------------------------------------
+
+        q = "UNWIND range($min_v, $max_v) AS x CREATE (:L {v:x})"
+        g.query(q, {'min_v': min_node_v, 'max_v': max_node_v})
+
+        #-----------------------------------------------------------------------
+        # create an index
+        #-----------------------------------------------------------------------
+
+        q = "CREATE INDEX FOR (n:L) on (n.v)"
+        res = g.query(q)
+        self.env.assertEquals(res.indices_created, 1)
+
+        #-----------------------------------------------------------------------
+        # validate index is being populated
+        #-----------------------------------------------------------------------
+
+        self.env.assertTrue(self.index_under_construction(g))
+
+        # while the index is being constructed
+        # perform CRUD operations
+
+        #-----------------------------------------------------------------------
+        # read while index is being constructed
+        #-----------------------------------------------------------------------
+
+        q = "MATCH (n:L) WHERE n.v = 41 RETURN n.v LIMIT 1"
+        res = g.query(q)
+        #self.evn.assertEquals(res.result_set[0][0], 41)
+
+        plan = g.explain(q)
+        self.env.assertIsNone(locate_operation(plan.structured_plan, "Node By Index Scan"))
+
+        #-----------------------------------------------------------------------
+        # write while index is being constructed
+        #-----------------------------------------------------------------------
+    
+        # create a new node
+        q = "CREATE (:L {v:$v})"
+        g.query(q, {'v': max_node_v + 10})
+
+        # update a node which had yet to be indexed
+        q = "MATCH (n:L) WHERE ID(n) = $id WITH n LIMIT 1 SET n.v = $new_v"
+        g.query(q, {'id': max_node_v - 10, 'new_v': -max_node_v})
+
+        # update a node which is already indexed
+        g.query(q, {'id': 1, 'new_v': -1})
+
+        # delete a node which had yet to be indexed
+        q = "MATCH (n:L) WHERE ID(n) = $id WITH n LIMIT 1 DELETE n"
+        g.query(q, {'id': max_node_v - 9})
+
+        # delete an indexed node
+        q = "MATCH (n:L) WHERE ID(n) = $id WITH n LIMIT 1 DELETE n"
+        g.query(q, {'id': 2})
+
+        #-----------------------------------------------------------------------
+        # validate index is being populated
+        #-----------------------------------------------------------------------
+
+        self.env.assertTrue(self.index_under_construction(g))
+
+        # wait for index to become operational
+        while self.index_under_construction(g):
+            sleep(0.5) # sleep for .5 seconds
+
+        # index should be operational
+        self.env.assertFalse(self.index_under_construction(g))
+
+    def test07_delete_interrupt_async_index_creation(self):
+        # 1. create a large graph
+        # 2. create an index
+        # 3. delete the graph while the index is being constructed
+
+        key = "async-index"
+        min_node_v = 0
+        max_node_v = 1500000
+        conn = self.env.getConnection()
+
+        # clear DB
+        conn.flushall()
+
+        g = Graph(self.env.getConnection(), key)
+
+        #-----------------------------------------------------------------------
+        # create a large graph
+        #-----------------------------------------------------------------------
+
+        q = "UNWIND range($min_v, $max_v) AS x CREATE (:L {v:x})"
+        g.query(q, {'min_v': min_node_v, 'max_v': max_node_v})
+
+        #-----------------------------------------------------------------------
+        # create an index
+        #-----------------------------------------------------------------------
+
+        q = "CREATE INDEX FOR (n:L) on (n.v)"
+        res = g.query(q)
+        self.env.assertEquals(res.indices_created, 1)
+
+        #-----------------------------------------------------------------------
+        # validate index is being populated
+        #-----------------------------------------------------------------------
+
+        self.env.assertTrue(self.index_under_construction(g))
+
+        #-----------------------------------------------------------------------
+        # delete graph while the index is being constructed 
+        #-----------------------------------------------------------------------
+
+        conn.delete(key)
+
+        # graph key should be removed, index creation should run to completion
+        self.env.assertFalse(conn.exists(key))
+
+        # at the moment there's no way of checking index status once its graph
+        # key had been removed
+
+    def test08_multi_index_creation(self):
+        # interrupt index creation by adding/removing fields
+        #
+        # 1. create a large graph
+        # 2. create an index
+        # 3. modify the index while it is being populated
+
+        key = "async-index"
+        min_node_v = 0
+        max_node_v = 1500000
+        conn = self.env.getConnection()
+
+        # clear DB
+        conn.flushall()
+
+        g = Graph(self.env.getConnection(), key)
+
+        #-----------------------------------------------------------------------
+        # create a large graph
+        #-----------------------------------------------------------------------
+
+        q = "UNWIND range($min_v, $max_v) AS x CREATE (:L {v:x})"
+        g.query(q, {'min_v': min_node_v, 'max_v': max_node_v})
+
+        #-----------------------------------------------------------------------
+        # create an index
+        #-----------------------------------------------------------------------
+
+        # determine how much time does it take to construct our index
+        start = time.time()
+
+        q = "CREATE INDEX FOR (n:L) on (n.v)"
+        res = g.query(q)
+        self.env.assertEquals(res.indices_created, 1)
+
+        # wait for index to become operational
+        while self.index_under_construction(g):
+            sleep(0.5) # sleep for .5 seconds
+
+        # total index creation time
+        elapsed = start - time.time()
+
+        #-----------------------------------------------------------------------
+        # drop the index
+        #-----------------------------------------------------------------------
+
+        # recreate the index, but this time introduce additionl fields
+        # while the index is being populated
+
+        # introduce a new field
+        q = "CREATE INDEX FOR (n:L) on (n.a)"
+        res = g.query(q)
+        self.env.assertEquals(res.indices_created, 1)
+
+        # remove field
+        q = "CREATE INDEX FOR (n:L) on (n.a)"
+        res = g.query(q)
+        self.env.assertEquals(res.indices_created, 1)
+
+        # introduce a new field
+        q = "CREATE INDEX FOR (n:L) on (n.a)"
+        res = g.query(q)
+        self.env.assertEquals(res.indices_created, 1)

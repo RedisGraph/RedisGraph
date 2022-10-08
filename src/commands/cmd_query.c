@@ -139,7 +139,7 @@ static void _index_operation
 	const cypher_astnode_t *index_op = ast->root;
 	if(exec_type == EXECUTION_TYPE_INDEX_CREATE) {
 		if(_index_operation_create(ctx, gc, ast, &idx)) {
-			Indexer_PopulateIndex(gc->g, idx);
+			Indexer_PopulateIndex(gc, idx);
 		}
 	} else if(exec_type == EXECUTION_TYPE_INDEX_DROP) {
 		// retrieve strings from AST node

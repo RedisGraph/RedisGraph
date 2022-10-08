@@ -67,7 +67,7 @@ typedef struct {
 	char **stopwords;             // stopwords
 	GraphEntityType entity_type;  // entity type (node/edge) indexed
 	IndexType type;               // index type exact-match / fulltext
-	IndexState state;             // index state
+	volatile IndexState state;    // index state
 	uint version;                 // index version
 	RSIndex *idx;                 // rediSearch index
 } Index;
@@ -118,13 +118,13 @@ bool Index_UpdateState
 // disable index by marking its state as IDX_UNDER_CONSTRUCTION
 void Index_Disable
 (
-	Index *idx
+	Index *idx  // index to disable
 );
 
 // enable index by marking its state as IDX_OPERATIONAL
 void Index_Enable
 (
-	Index *idx
+	Index *idx  // index to enable
 );
 
 // returns true if index state is IDX_OPERATIONAL

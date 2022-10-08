@@ -10,76 +10,6 @@
 
 #include <assert.h>
 
-// called by Index_Construct
-// responsible for creating the index structure only!
-// e.g. fields, stopwords, language
-RSIndex *_Index_ConstructStructure
-(
-	Index *idx
-) {
-	// TODO: at which point do we need to acquire Redis's GIL?
-	RSIndex *rsIdx = NULL;
-	RSIndexOptions *idx_options = RediSearch_CreateIndexOptions();
-	RediSearch_IndexOptionsSetLanguage(idx_options, idx->language);
-	// TODO: Remove this comment when https://github.com/RediSearch/RediSearch/issues/1100 is closed
-	// RediSearch_IndexOptionsSetGetValueCallback(idx_options, _getNodeAttribute, gc);
-
-	// enable GC, every 30 seconds gc will check if there's garbage
-	// if there are over 100 docs to remove GC will perform clean up
-	RediSearch_IndexOptionsSetGCPolicy(idx_options, GC_POLICY_FORK);
-
-	if(idx->stopwords) {
-		RediSearch_IndexOptionsSetStopwords(idx_options,
-				(const char**)idx->stopwords, array_len(idx->stopwords));
-	} else if(idx->type == IDX_EXACT_MATCH) {
-		RediSearch_IndexOptionsSetStopwords(idx_options, NULL, 0);
-	}
-
-	rsIdx = RediSearch_CreateIndex(idx->label, idx_options);
-	RediSearch_FreeIndexOptions(idx_options);
-
-	// create indexed fields
-	uint fields_count = array_len(idx->fields);
-	if(idx->type == IDX_FULLTEXT) {
-		for(uint i = 0; i < fields_count; i++) {
-			IndexField *field = idx->fields + i;
-			// introduce text field
-			unsigned options = RSFLDOPT_NONE;
-			if(field->nostem) options |= RSFLDOPT_TXTNOSTEM;
-
-			if(strcmp(field->phonetic, INDEX_FIELD_DEFAULT_PHONETIC) != 0) {
-				options |= RSFLDOPT_TXTPHONETIC;
-			}
-
-			RSFieldID fieldID = RediSearch_CreateField(rsIdx, field->name,
-					RSFLDTYPE_FULLTEXT, options);
-			RediSearch_TextFieldSetWeight(rsIdx, fieldID, field->weight);
-		}
-	} else {
-		for(uint i = 0; i < fields_count; i++) {
-			IndexField *field = idx->fields + i;
-			// introduce both text, numeric and geo fields
-			unsigned types = RSFLDTYPE_NUMERIC | RSFLDTYPE_GEO | RSFLDTYPE_TAG;
-			RSFieldID fieldID = RediSearch_CreateField(rsIdx, field->name,
-					types, RSFLDOPT_NONE);
-
-			RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
-			RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
-		}
-
-		// for none indexable types e.g. Array introduce an additional field
-		// "none_indexable_fields" which will hold a list of attribute names
-		// that were not indexed
-		RSFieldID fieldID = RediSearch_CreateField(rsIdx,
-				INDEX_FIELD_NONE_INDEXED, RSFLDTYPE_TAG, RSFLDOPT_NONE);
-
-		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
-		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
-	}
-
-	return rsIdx;
-}
-
 // index nodes in an asynchronous manner
 // nodes are being indexed in batchs while the graph's read lock is held
 // to avoid interfering with the DB ongoing operation after each batch of nodes
@@ -126,9 +56,7 @@ static void _Index_PopulateNodeIndex
 		//----------------------------------------------------------------------
 
 		RG_MatrixTupleIter_attach(&it, m);
-		if(RG_MatrixTupleIter_jump_to_row(&it, rowIdx) != GrB_SUCCESS) {
-			break;
-		}
+		RG_MatrixTupleIter_jump_to_row(&it, rowIdx);
 
 		//----------------------------------------------------------------------
 		// batch index nodes
@@ -217,9 +145,7 @@ static void _Index_PopulateEdgeIndex
 		//----------------------------------------------------------------------
 
 		RG_MatrixTupleIter_attach(&it, m);
-		if(RG_MatrixTupleIter_jump_to_row(&it, src_id) != GrB_SUCCESS) {
-			break;
-		}
+		RG_MatrixTupleIter_jump_to_row(&it, src_id);
 
 		// skip previously indexed edges
 		while((info = RG_MatrixTupleIter_next_UINT64(&it, &src_id, &dest_id,
@@ -229,6 +155,8 @@ static void _Index_PopulateEdgeIndex
 
 		// process only if iterator is on an active entry
 		if(info != GrB_SUCCESS) {
+			// release read lock
+			Graph_ReleaseLock(g);
 			break;
 		}
 
@@ -281,26 +209,10 @@ void Index_Populate
 	Index *idx,
 	Graph *g
 ) {
-	ASSERT(g   != NULL);
-	ASSERT(idx != NULL);
-
+	ASSERT(g        != NULL);
+	ASSERT(idx      != NULL);
+	ASSERT(idx->idx != NULL);
 	ASSERT(idx->state == IDX_POPULATING);
-
-	// check if RediSearch index already exists
-	// in which case we'll simply drop the index and recreate it
-	if(idx->idx != NULL) {
-		// TODO: do we need to acquire GIL?
-		printf("TODO: do we need to acquire GIL?\n");
-
-		RediSearch_DropIndex(idx->idx);
-		idx->idx = NULL;
-	}
-
-	//--------------------------------------------------------------------------
-	// create RediSearch index structure
-	//--------------------------------------------------------------------------
-
-	idx->idx = _Index_ConstructStructure(idx);
 
 	//--------------------------------------------------------------------------
 	// populate index

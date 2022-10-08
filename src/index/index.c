@@ -15,6 +15,76 @@
 #include "../graph/entities/node.h"
 #include "../graph/rg_matrix/rg_matrix_iter.h"
 
+// called by Index_Construct
+// responsible for creating the index structure only!
+// e.g. fields, stopwords, language
+static RSIndex *_Index_ConstructStructure
+(
+	Index *idx
+) {
+	// TODO: at which point do we need to acquire Redis's GIL?
+	RSIndex *rsIdx = NULL;
+	RSIndexOptions *idx_options = RediSearch_CreateIndexOptions();
+	RediSearch_IndexOptionsSetLanguage(idx_options, idx->language);
+	// TODO: Remove this comment when https://github.com/RediSearch/RediSearch/issues/1100 is closed
+	// RediSearch_IndexOptionsSetGetValueCallback(idx_options, _getNodeAttribute, gc);
+
+	// enable GC, every 30 seconds gc will check if there's garbage
+	// if there are over 100 docs to remove GC will perform clean up
+	RediSearch_IndexOptionsSetGCPolicy(idx_options, GC_POLICY_FORK);
+
+	if(idx->stopwords) {
+		RediSearch_IndexOptionsSetStopwords(idx_options,
+				(const char**)idx->stopwords, array_len(idx->stopwords));
+	} else if(idx->type == IDX_EXACT_MATCH) {
+		RediSearch_IndexOptionsSetStopwords(idx_options, NULL, 0);
+	}
+
+	rsIdx = RediSearch_CreateIndex(idx->label, idx_options);
+	RediSearch_FreeIndexOptions(idx_options);
+
+	// create indexed fields
+	uint fields_count = array_len(idx->fields);
+	if(idx->type == IDX_FULLTEXT) {
+		for(uint i = 0; i < fields_count; i++) {
+			IndexField *field = idx->fields + i;
+			// introduce text field
+			unsigned options = RSFLDOPT_NONE;
+			if(field->nostem) options |= RSFLDOPT_TXTNOSTEM;
+
+			if(strcmp(field->phonetic, INDEX_FIELD_DEFAULT_PHONETIC) != 0) {
+				options |= RSFLDOPT_TXTPHONETIC;
+			}
+
+			RSFieldID fieldID = RediSearch_CreateField(rsIdx, field->name,
+					RSFLDTYPE_FULLTEXT, options);
+			RediSearch_TextFieldSetWeight(rsIdx, fieldID, field->weight);
+		}
+	} else {
+		for(uint i = 0; i < fields_count; i++) {
+			IndexField *field = idx->fields + i;
+			// introduce both text, numeric and geo fields
+			unsigned types = RSFLDTYPE_NUMERIC | RSFLDTYPE_GEO | RSFLDTYPE_TAG;
+			RSFieldID fieldID = RediSearch_CreateField(rsIdx, field->name,
+					types, RSFLDOPT_NONE);
+
+			RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
+			RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
+		}
+
+		// for none indexable types e.g. Array introduce an additional field
+		// "none_indexable_fields" which will hold a list of attribute names
+		// that were not indexed
+		RSFieldID fieldID = RediSearch_CreateField(rsIdx,
+				INDEX_FIELD_NONE_INDEXED, RSFLDTYPE_TAG, RSFLDOPT_NONE);
+
+		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
+		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
+	}
+
+	return rsIdx;
+}
+
 RSDoc *Index_IndexGraphEntity
 (
 	Index *idx,
@@ -212,12 +282,24 @@ bool Index_UpdateState
 }
 
 // disable index by marking its state as UNDER_CONSTRUCTION
+// and re-creating the internal RediSearch index
 void Index_Disable
 (
-	Index *idx
+	Index *idx  // index to disable
 ) {
 	ASSERT(idx != NULL);
+
 	idx->state = IDX_UNDER_CONSTRUCTION;
+
+	if(idx->idx != NULL) {
+		RediSearch_DropIndex(idx->idx);
+	}
+
+	// create RediSearch index structure
+	// assuming GIL + WRITE locks are acquired
+	// TODO: validate assumption!
+	// TODO: validate RediSearch_DropIndex isn't an expensive operation
+	idx->idx = _Index_ConstructStructure(idx);
 }
 
 // enable index by marking its state as IDX_OPERATIONAL
@@ -345,6 +427,9 @@ const char *Index_GetLanguage
 (
 	const Index *idx
 ) {
+	ASSERT(idx != NULL);
+	ASSERT(idx->idx != NULL);
+
 	return RediSearch_IndexGetLanguage(idx->idx);
 }
 
@@ -353,9 +438,13 @@ char **Index_GetStopwords
 	const Index *idx,
 	size_t *size
 ) {
-	if(idx->type == IDX_FULLTEXT)
+	ASSERT(idx != NULL);
+	ASSERT(idx->idx != NULL);
+
+	if(idx->type == IDX_FULLTEXT) {
 		return RediSearch_IndexGetStopwords(idx->idx, size);
-	
+	}
+
 	return NULL;
 }
 

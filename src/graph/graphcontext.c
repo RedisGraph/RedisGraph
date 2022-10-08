@@ -453,14 +453,17 @@ int GraphContext_AddFullTextIndex
 	bool nostem,
 	const char *phonetic
 ) {
-	ASSERT(idx    !=  NULL);
-	ASSERT(gc     !=  NULL);
-	ASSERT(label  !=  NULL);
-	ASSERT(field  !=  NULL);
+	ASSERT(idx   != NULL);
+	ASSERT(gc    != NULL);
+	ASSERT(label != NULL);
+	ASSERT(field != NULL);
 
-	// Retrieve the schema for this label
+	// retrieve the schema for this label
 	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
-	if(s == NULL) s = GraphContext_AddSchema(gc, label, schema_type);
+	if(s == NULL) {
+		s = GraphContext_AddSchema(gc, label, schema_type);
+	}
+
 	IndexField index_field;
 	Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field);
 	IndexField_New(&index_field, field_id, field, weight, nostem, phonetic);

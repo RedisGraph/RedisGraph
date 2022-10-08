@@ -138,6 +138,10 @@ static bool _EmitIndex
 	Index *idx = Schema_GetIndex(s, NULL, type);
 	if(idx == NULL) return false;
 
+	//--------------------------------------------------------------------------
+	// index entity type
+	//--------------------------------------------------------------------------
+
 	if(ctx->yield_entity_type != NULL) {
 		if(s->type == SCHEMA_NODE) {
 			*ctx->yield_entity_type = SI_ConstStringVal("NODE");
@@ -145,6 +149,10 @@ static bool _EmitIndex
 			*ctx->yield_entity_type = SI_ConstStringVal("RELATIONSHIP");
 		}
 	}
+
+	//--------------------------------------------------------------------------
+	// index status
+	//--------------------------------------------------------------------------
 
 	if(ctx->yield_status != NULL) {
 		if(Index_Enabled(idx)) {
@@ -154,6 +162,10 @@ static bool _EmitIndex
 		}
 	}
 
+	//--------------------------------------------------------------------------
+	// index type
+	//--------------------------------------------------------------------------
+
 	if(ctx->yield_type != NULL) {
 		if(type == IDX_EXACT_MATCH) {
 			*ctx->yield_type = SI_ConstStringVal("exact-match");
@@ -162,9 +174,17 @@ static bool _EmitIndex
 		}
 	}
 
+	//--------------------------------------------------------------------------
+	// index label
+	//--------------------------------------------------------------------------
+
 	if(ctx->yield_label) {
 		*ctx->yield_label = SI_ConstStringVal((char *)Schema_GetName(s));
 	}
+
+	//--------------------------------------------------------------------------
+	// index fields
+	//--------------------------------------------------------------------------
 
 	if(ctx->yield_properties) {
 		uint fields_count        = Index_FieldsCount(idx);
@@ -177,10 +197,18 @@ static bool _EmitIndex
 		}
 	}
 
+	//--------------------------------------------------------------------------
+	// index language
+	//--------------------------------------------------------------------------
+
 	if(ctx->yield_language) {
 		*ctx->yield_language =
 			SI_ConstStringVal((char *)Index_GetLanguage(idx));
 	}
+
+	//--------------------------------------------------------------------------
+	// index stopwords
+	//--------------------------------------------------------------------------
 
 	if(ctx->yield_stopwords) {
 		size_t stopwords_count;
@@ -198,9 +226,13 @@ static bool _EmitIndex
 		rm_free(stopwords);
 	}
 
+	//--------------------------------------------------------------------------
+	// index info
+	//--------------------------------------------------------------------------
+
 	if(ctx->yield_info) {
 		RSIdxInfo info = { .version = RS_INFO_CURRENT_VERSION };
-		
+
 		RediSearch_IndexInfo(idx->idx, &info);
 		SIValue map = SI_Map(23);
 
@@ -244,9 +276,8 @@ static bool _EmitIndex
 		Map_Add(&map, SI_ConstStringVal("totalMSRun"),       SI_LongVal(info.totalMSRun));
 		Map_Add(&map, SI_ConstStringVal("lastRunTimeMs"),    SI_LongVal(info.lastRunTimeMs));
 
-		*ctx->yield_info = map;
-
 		RediSearch_IndexInfoFree(&info);
+		*ctx->yield_info = map;
 	}
 
 	return true;

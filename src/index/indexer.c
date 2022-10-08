@@ -10,9 +10,9 @@
 
 // index population context
 typedef struct {
-	uint idx_version;  // index version at the time of creation
 	Index *idx;        // index to populate
-	Graph *g;          // graph holding entities to index
+	GraphContext *gc;  // graph holding entities to index
+	uint idx_version;  // index version at the time of creation
 } IndexPopulateCtx;
 
 typedef struct {
@@ -55,8 +55,11 @@ static void *_index_populate
 		// where we will be index the same data multiple times
 		if(ctx->idx_version == Index_Version(ctx->idx)) {
 			// populates index in batches
-			Index_Populate(ctx->idx, ctx->g);
+			Index_Populate(ctx->idx, ctx->gc->g);
 		}
+
+		// decrease graph reference count
+		GraphContext_DecreaseRefCount(ctx->gc);
 
 		// done populating we can discard context
 		rm_free(ctx);
@@ -206,8 +209,8 @@ cleanup:
 // eventually the indexer working thread will pick it up and populate the index
 void Indexer_PopulateIndex
 (
-	Graph *g,   // graph to operate on
-	Index *idx  // index to populate
+	GraphContext *gc, // graph to operate on
+	Index *idx        // index to populate
 ) {
 	ASSERT(indexer != NULL);
 
@@ -216,11 +219,17 @@ void Indexer_PopulateIndex
 
 	// create work item
 	IndexPopulateCtx *ctx = rm_malloc(sizeof(IndexPopulateCtx));
-	ctx->g = g;
+	ctx->gc = gc;
 	ctx->idx = idx;
 	ctx->idx_version = Index_Version(idx);
 
 	// place task into queue
 	_indexer_AddTask(ctx);
+
+	// increase graph reference count
+	// count will be reduced once this task is perfomed
+	// this is done to handle the case where a graph has pending index
+	// population tasks and it is being asked to be deleted
+	GraphContext_IncreaseRefCount(gc);
 }
 

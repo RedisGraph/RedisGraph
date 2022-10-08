@@ -10,6 +10,7 @@
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../index/index.h"
+#include "../index/indexer.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
 #include "../datatypes/datatypes.h"
@@ -260,7 +261,9 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke
 	}
 
 	// build index
-	if(res == INDEX_OK) Index_Populate(idx, gc->g);
+	if(res == INDEX_OK) {
+		Indexer_PopulateIndex(gc, idx);
+	}
 
 	return PROCEDURE_OK;
 }

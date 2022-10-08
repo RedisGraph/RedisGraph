@@ -7,7 +7,7 @@
 #pragma once
 
 #include "./index.h"
-#include "../graph/graph.h"
+#include "../graph/graphcontext.h"
 
 // Indexer handels asynchronously index population
 // in the system there's a single instance of it, initialized on module init
@@ -25,7 +25,7 @@ bool Indexer_Init(void);
 // adds the task for populating the given index to the indexer
 void Indexer_PopulateIndex
 (
-	Graph *g,   // graph to operate on
-	Index *idx  // index to populate
+	GraphContext *gc, // graph to operate on
+	Index *idx        // index to populate
 );
 
