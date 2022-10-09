@@ -228,7 +228,7 @@ static ProcedureResult validate_config
 		}
 	}
 
-	int64_t max_length_val = LONG_MAX;
+	int64_t max_length_val = LONG_MAX - 1;
 	if(max_length_exists) {
 		if(SI_TYPE(max_length) != T_INT64) {
 			ErrorCtx_SetError("maxLen must be integer");
@@ -259,6 +259,10 @@ static ProcedureResult validate_config
 			}
 			types_count = array_len(types);
 		}
+	} else {
+		types_count = 1;
+		types = array_new(int, types_count);
+		array_append(types, GRAPH_NO_RELATION);
 	}
 
 	SingleSourceCtx_New(ctx, (Node *)start.ptrval, g, types, types_count,

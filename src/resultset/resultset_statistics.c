@@ -33,8 +33,7 @@ bool ResultSetStat_IndicateModification
 void ResultSetStat_init
 (
 	ResultSetStatistics *stats  // resultset statistics to initialize
-)
-{
+) {
 	ASSERT(stats != NULL);
 
 	memset(stats, 0, sizeof(ResultSetStatistics));
@@ -51,13 +50,13 @@ void ResultSetStat_emit
 	size_t resultset_size = 2; // execution time, cached
 
 	// compute required space for resultset statistics
+	if(stats->index_creation)            resultset_size++;
+	if(stats->index_deletion)            resultset_size++;
 	if(stats->labels_added          > 0) resultset_size++;
 	if(stats->nodes_created         > 0) resultset_size++;
 	if(stats->nodes_deleted         > 0) resultset_size++;
 	if(stats->labels_removed        > 0) resultset_size++;
 	if(stats->properties_set        > 0) resultset_size++;
-	if(stats->indices_created       > 0) resultset_size++;
-	if(stats->indices_deleted       > 0) resultset_size++;
 	if(stats->properties_removed    > 0) resultset_size++;
 	if(stats->relationships_deleted > 0) resultset_size++;
 	if(stats->relationships_created > 0) resultset_size++;
@@ -104,12 +103,12 @@ void ResultSetStat_emit
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
 
-	if(stats->indices_created > 0) {
+	if(stats->index_creation) {
 		buflen = sprintf(buff, "Indices created: %d", stats->indices_created);
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
 
-	if(stats->indices_deleted > 0) {
+	if(stats->index_deletion) {
 		buflen = sprintf(buff, "Indices deleted: %d", stats->indices_deleted);
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
@@ -123,7 +122,10 @@ void ResultSetStat_emit
 	RedisModule_ReplyWithStringBuffer(ctx, buff, buflen);
 }
 
-void ResultSetStat_Clear(ResultSetStatistics *stats) {
+void ResultSetStat_Clear
+(
+	ResultSetStatistics *stats
+) {
 	ASSERT(stats != NULL);
 
 	stats->labels_added          = 0;

@@ -264,6 +264,10 @@ static ProcedureResult validate_config
 			}
 			types_count = array_len(types);
 		}
+	} else {
+		types_count = 1;
+		types = array_new(int, types_count);
+		array_append(types, GRAPH_NO_RELATION);
 	}
 
 	SinglePairCtx_New(ctx, (Node *)start.ptrval, (Node *)end.ptrval, g, types,
