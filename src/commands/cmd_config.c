@@ -93,12 +93,17 @@ void _Config_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		}
 
 		// make sure value is valid
+		char *error = NULL;
 		const char *val_str = RedisModule_StringPtrLen(val, NULL);
-		if(!Config_Option_dryrun(config_field, val_str)) {
-			char *errmsg;
-			asprintf(&errmsg, "Failed to set config value %s to %s", config_name, val_str);
-			RedisModule_ReplyWithError(ctx, errmsg);
-			free(errmsg);
+		if(!Config_Option_dryrun(config_field, val_str, &error)) {
+			if(error != NULL) {
+				RedisModule_ReplyWithError(ctx, error);
+			} else {
+				char *errmsg;
+				asprintf(&errmsg, "Failed to set config value %s to %s", config_name, val_str);
+				RedisModule_ReplyWithError(ctx, errmsg);
+				free(errmsg);
+			}
 			return;
 		}
 	}
@@ -119,7 +124,7 @@ void _Config_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 		// set configuration
 		const char *val_str = RedisModule_StringPtrLen(val, NULL);
-		res = Config_Option_set(config_field, val_str);
+		res = Config_Option_set(config_field, val_str, NULL);
 		ASSERT(res == true);
 	}
 
