@@ -217,6 +217,7 @@ class testUndoLog():
 
     def test07_undo_create_indexed_node(self):
         self.graph.query("CREATE INDEX FOR (n:N) ON (n.v)")
+        property_keys = self.graph.query("CALL db.propertyKeys").result_set
         try:
             self.graph.query("CREATE (n:N {v:1}) WITH n RETURN 1 * n")
             # we're not supposed to be here, expecting query to fail
@@ -227,10 +228,14 @@ class testUndoLog():
         # node (n:N) should be removed, expecting an empty graph
         result = self.graph.query("MATCH (n:N {v:1}) RETURN n")
         self.env.assertEquals(len(result.result_set), 0)
+        # no new properties should have been created
+        new_property_keys = self.graph.query("CALL db.propertyKeys").result_set
+        self.env.assertEquals(property_keys, new_property_keys)
 
     def test08_undo_create_indexed_edge(self):
         self.graph.query("CREATE INDEX FOR ()-[r:R]->() ON (r.v)")
         self.graph.query("CREATE (:N {v: 1}), (:N {v: 2})")
+        property_keys = self.graph.query("CALL db.propertyKeys").result_set
         try:
             self.graph.query("""MATCH (s:N {v: 1}), (t:N {v: 2})
                                 CREATE (s)-[r:R {v:1}]->(t)
@@ -244,6 +249,9 @@ class testUndoLog():
         # edge [r:R] should have been removed
         result = self.graph.query("MATCH ()-[r:R {v:1}]->() RETURN r")
         self.env.assertEquals(len(result.result_set), 0)
+        # no new properties should have been created
+        new_property_keys = self.graph.query("CALL db.propertyKeys").result_set
+        self.env.assertEquals(property_keys, new_property_keys)
 
     def test09_undo_delete_indexed_node(self):
         self.graph.query("CREATE INDEX FOR (n:N) ON (n.v)")

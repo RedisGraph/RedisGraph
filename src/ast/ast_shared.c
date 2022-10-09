@@ -72,7 +72,7 @@ PropertyMap *PropertyMap_New
 	uint prop_count = cypher_ast_map_nentries(props);
 
 	PropertyMap *map = rm_malloc(sizeof(PropertyMap));
-	map->keys = array_new(Attribute_ID, prop_count);
+	map->keys = array_new(const char *, prop_count);
 	map->values = array_new(AR_ExpNode *, prop_count);
 
 	for(uint prop_idx = 0; prop_idx < prop_count; prop_idx++) {
@@ -82,19 +82,17 @@ PropertyMap *PropertyMap_New
 		const cypher_astnode_t *ast_value = cypher_ast_map_get_value(props, prop_idx);
 		AR_ExpNode *value                 = AR_EXP_FromASTNode(ast_value);
 
-		// Convert the string key to an Attribute ID.
-		Attribute_ID id = GraphContext_FindOrAddAttribute(gc, attribute);
 		// search for duplicate attributes
 		uint count = array_len(map->keys);
 		for (uint i = 0; i < count; i++) {
-			if(map->keys[i] == id) {
+			if(strcmp(attribute, map->keys[i]) == 0) {
 				insert_idx = i;
 				break;
 			}
 		}
 
 		if(insert_idx == prop_idx) {
-			array_append(map->keys, id);			
+			array_append(map->keys, attribute);			
 			array_append(map->values, value);
 		} else {
 			AR_EXP_Free(map->values[insert_idx]);

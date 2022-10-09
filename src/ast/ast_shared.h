@@ -45,7 +45,7 @@ typedef enum {
 } AST_Operator;
 
 typedef struct {
-	Attribute_ID *keys;
+	const char **keys;
 	struct AR_ExpNode **values;
 } PropertyMap;
 
