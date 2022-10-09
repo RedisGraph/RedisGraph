@@ -1,5 +1,5 @@
 from common import *
-from time import sleep
+from time import sleep, time
 from pathos.pools import ProcessPool as Pool
 from execution_plan_util import locate_operation
 
@@ -346,7 +346,7 @@ class testIndexCreationFlow():
         # create a large graph
         #-----------------------------------------------------------------------
 
-        q = "UNWIND range($min_v, $max_v) AS x CREATE (:L {v:x})"
+        q = "UNWIND range($min_v, $max_v) AS x CREATE (:L {v:x, a:x, b:x})"
         g.query(q, {'min_v': min_node_v, 'max_v': max_node_v})
 
         #-----------------------------------------------------------------------
@@ -354,7 +354,7 @@ class testIndexCreationFlow():
         #-----------------------------------------------------------------------
 
         # determine how much time does it take to construct our index
-        start = time.time()
+        start = time()
 
         q = "CREATE INDEX FOR (n:L) on (n.v)"
         res = g.query(q)
@@ -365,26 +365,49 @@ class testIndexCreationFlow():
             sleep(0.5) # sleep for .5 seconds
 
         # total index creation time
-        elapsed = start - time.time()
+        elapsed = time() - start
 
         #-----------------------------------------------------------------------
         # drop the index
         #-----------------------------------------------------------------------
 
+        q = "DROP INDEX ON :L(v)"
+        res = g.query(q)
+        self.env.assertEquals(res.indices_deleted, 1)
+
         # recreate the index, but this time introduce additionl fields
         # while the index is being populated
 
+        start = time()
+
         # introduce a new field
         q = "CREATE INDEX FOR (n:L) on (n.a)"
+        res = g.query(q)
+        self.env.assertEquals(res.indices_created, 1)
+
+        # introduce a new field
+        q = "CREATE INDEX FOR (n:L) on (n.b)"
         res = g.query(q)
         self.env.assertEquals(res.indices_created, 1)
 
         # remove field
-        q = "CREATE INDEX FOR (n:L) on (n.a)"
+        q = "DROP INDEX ON :L(a)"
+        res = g.query(q)
+        self.env.assertEquals(res.indices_deleted, 1)
+
+        # introduce a new field
+        q = "CREATE INDEX FOR (n:L) on (n.v)"
         res = g.query(q)
         self.env.assertEquals(res.indices_created, 1)
 
-        # introduce a new field
-        q = "CREATE INDEX FOR (n:L) on (n.a)"
-        res = g.query(q)
-        self.env.assertEquals(res.indices_created, 1)
+        # wait for index to become operational
+        while self.index_under_construction(g):
+            sleep(0.5) # sleep for .5 seconds
+
+        elapsed_2 = time() - start
+
+        # although we've constructed a larger index
+        # new index includes 2 fields (b,v) while the former index included just
+        # one (v) we're expecting thier overall construction time to be similar
+        self.env.assertTrue(elapsed_2 < elapsed * 1.2)
+

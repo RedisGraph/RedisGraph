@@ -12,6 +12,8 @@
 #include "../graph/graph.h"
 #include "redisearch_api.h"
 
+#include <stdatomic.h>
+
 #define INDEX_OK 1
 #define INDEX_FAIL 0
 #define INDEX_SEPARATOR '\1'  // can't use '\0', RediSearch will terminate on \0
@@ -37,14 +39,6 @@ typedef enum {
 	IDX_FULLTEXT     =  2,
 } IndexType;
 
-// an index is either under construction
-// or it's fully constructed and operational
-typedef enum {
-	IDX_UNDER_CONSTRUCTION = 0, // index being defined
-	IDX_POPULATING         = 1, // index being populated
-	IDX_OPERATIONAL        = 2, // index fully constructed and operational
-} IndexState;
-
 typedef struct {
 	EntityID src_id;
 	EntityID dest_id;
@@ -60,16 +54,15 @@ typedef struct {
 } IndexField;
 
 typedef struct {
-	char *label;                  // indexed label
-	int label_id;                 // indexed label ID
-	IndexField *fields;           // indexed fields
-	char *language;               // language
-	char **stopwords;             // stopwords
-	GraphEntityType entity_type;  // entity type (node/edge) indexed
-	IndexType type;               // index type exact-match / fulltext
-	volatile IndexState state;    // index state
-	uint version;                 // index version
-	RSIndex *idx;                 // rediSearch index
+	char *label;                   // indexed label
+	int label_id;                  // indexed label ID
+	IndexField *fields;            // indexed fields
+	char *language;                // language
+	char **stopwords;              // stopwords
+	GraphEntityType entity_type;   // entity type (node/edge) indexed
+	IndexType type;                // index type exact-match / fulltext
+	RSIndex *idx;                  // rediSearch index
+	uint _Atomic pending_changes;  // number of pending changes
 } Index;
 
 // create new index field
@@ -98,33 +91,11 @@ Index *Index_New
 	GraphEntityType entity_type  // entity type been indexed
 );
 
-// returns index version
-uint Index_Version
-(
-	const Index *idx  // index to retrieve version from
-);
-
-// update index state atomicly
-// the state is update to 'next_state' only if
-// index current state is 'current_state'
-// returns true if index state been updated false otherwise
-bool Index_UpdateState
-(
-	Index *idx,                // index to update
-	IndexState current_state,  // index assumed state
-	IndexState next_state      // index new state
-);
-
-// disable index by marking its state as IDX_UNDER_CONSTRUCTION
+// disable index by increasing the number of pending changes
+// and re-creating the internal RediSearch index
 void Index_Disable
 (
 	Index *idx  // index to disable
-);
-
-// enable index by marking its state as IDX_OPERATIONAL
-void Index_Enable
-(
-	Index *idx  // index to enable
 );
 
 // returns true if index state is IDX_OPERATIONAL

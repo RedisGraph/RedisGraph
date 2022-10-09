@@ -222,16 +222,6 @@ void IndexField_Free
 	rm_free(field->phonetic);
 }
 
-// increase index version
-// every change to the index structure should increase the index version
-// e.g. addition/removal of a field
-static inline void _Index_IncreaseVersion
-(
-	Index *idx  // index to update version of
-) {
-	idx->version++;
-}
-
 // create a new index
 Index *Index_New
 (
@@ -242,46 +232,20 @@ Index *Index_New
 ) {
 	Index *idx = rm_malloc(sizeof(Index));
 
-	idx->idx         = NULL;
-	idx->type        = type;
-	idx->label       = rm_strdup(label);
-	idx->state       = IDX_UNDER_CONSTRUCTION;
-	idx->fields      = array_new(IndexField, 1);
-	idx->version     = 0;
-	idx->label_id    = label_id;
-	idx->language    = NULL;
-	idx->stopwords   = NULL;
-	idx->entity_type = entity_type;
+	idx->idx             = NULL;
+	idx->type            = type;
+	idx->label           = rm_strdup(label);
+	idx->fields          = array_new(IndexField, 1);
+	idx->label_id        = label_id;
+	idx->language        = NULL;
+	idx->stopwords       = NULL;
+	idx->entity_type     = entity_type;
+	idx->pending_changes = ATOMIC_VAR_INIT(0);
 
 	return idx;
 }
 
-// returns index version
-uint Index_Version
-(
-	const Index *idx  // index to retrieve version from
-) {
-	ASSERT(idx != NULL);
-	return idx->version;
-}
-
-// update index state using atomic compare and swap
-// 'current_state' is required to be one state behind 'next_state'
-// returns true if index state advanced, false otherwise
-bool Index_UpdateState
-(
-	Index *idx,
-	IndexState current_state,
-	IndexState next_state
-) {
-	ASSERT(idx != NULL);
-	ASSERT(current_state + 1 == next_state);
-
-	return __atomic_compare_exchange(&idx->state, &current_state, &next_state,
-			false, __ATOMIC_RELAXED, __ATOMIC_RELAXED);
-}
-
-// disable index by marking its state as UNDER_CONSTRUCTION
+// disable index by increasing the number of pending changes
 // and re-creating the internal RediSearch index
 void Index_Disable
 (
@@ -289,7 +253,7 @@ void Index_Disable
 ) {
 	ASSERT(idx != NULL);
 
-	idx->state = IDX_UNDER_CONSTRUCTION;
+	idx->pending_changes++;
 
 	if(idx->idx != NULL) {
 		RediSearch_DropIndex(idx->idx);
@@ -300,17 +264,6 @@ void Index_Disable
 	// TODO: validate assumption!
 	// TODO: validate RediSearch_DropIndex isn't an expensive operation
 	idx->idx = _Index_ConstructStructure(idx);
-}
-
-// enable index by marking its state as IDX_OPERATIONAL
-void Index_Enable
-(
-	Index *idx
-) {
-	ASSERT(idx != NULL);
-
-	// enable index only if index state is POPULATING
-	Index_UpdateState(idx, IDX_POPULATING, IDX_OPERATIONAL);
 }
 
 // adds field to index
@@ -329,9 +282,8 @@ void Index_AddField
 
 	array_append(idx->fields, *field);
 
-	// disable index and update its version
-	Index_Disable(idx);
-	_Index_IncreaseVersion(idx);
+	// disable index
+	// Index_Disable(idx);
 }
 
 // removes fields from index
@@ -355,9 +307,8 @@ void Index_RemoveField
 			IndexField_Free(field);
 			array_del_fast(idx->fields, i);
 
-			// disable index and update its version
-			Index_Disable(idx);
-			_Index_IncreaseVersion(idx);
+			// disable index
+			// Index_Disable(idx);
 			break;
 		}
 	}
@@ -474,14 +425,14 @@ void Index_SetStopwords
 	array_clone_with_cb(idx->stopwords, stopwords, rm_strdup);
 }
 
-// returns true if index state is IDX_OPERATIONAL
+// returns true if index doesn't contains any pending changes
 bool Index_Enabled
 (
 	const Index *idx  // index to get state of
 ) {
 	ASSERT(idx != NULL);
 
-	return idx->state == IDX_OPERATIONAL;
+	return idx->pending_changes == 0;
 }
 
 // free index

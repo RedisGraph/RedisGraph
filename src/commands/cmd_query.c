@@ -113,8 +113,13 @@ static bool _index_operation_create
 
 		const char *prop = cypher_ast_prop_name_get_value(prop_name);
 
-		index_added |= (GraphContext_AddExactMatchIndex(idx, gc,
-					schema_type, label, prop) == INDEX_OK);
+		index_added |= (GraphContext_AddExactMatchIndex(idx, gc, schema_type,
+					label, prop) == INDEX_OK);
+	}
+
+	// disable index if modified
+	if(index_added) {
+		Index_Disable(*idx);
 	}
 
 	// unlock

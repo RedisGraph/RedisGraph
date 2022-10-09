@@ -12,7 +12,6 @@
 typedef struct {
 	Index *idx;        // index to populate
 	GraphContext *gc;  // graph holding entities to index
-	uint idx_version;  // index version at the time of creation
 } IndexPopulateCtx;
 
 typedef struct {
@@ -40,23 +39,7 @@ static void *_index_populate
 		IndexPopulateCtx *ctx = _indexer_PopTask();
 		ASSERT(ctx != NULL);
 
-		// only populate index if the index version at the time of the request
-		// matches the current index version
-		//
-		// consider the following sequance of requests:
-		// 1. CREATE INDEX FOR (n:A) on (n.a)
-		// 2. CREATE INDEX FOR (n:Z) on (n.v)
-		// 3. CREATE INDEX FOR (n:Z) on (n.y)
-		//
-		// when this worker thread gets to handle the second request
-		// the third request already invalidated it
-		// comparing index version at the time of the indexing request against
-		// the current index version alows us to detect and avoid situations
-		// where we will be index the same data multiple times
-		if(ctx->idx_version == Index_Version(ctx->idx)) {
-			// populates index in batches
-			Index_Populate(ctx->idx, ctx->gc->g);
-		}
+		Index_Populate(ctx->idx, ctx->gc->g);
 
 		// decrease graph reference count
 		GraphContext_DecreaseRefCount(ctx->gc);
@@ -212,24 +195,23 @@ void Indexer_PopulateIndex
 	GraphContext *gc, // graph to operate on
 	Index *idx        // index to populate
 ) {
+	ASSERT(gc      != NULL);
+	ASSERT(idx     != NULL);
 	ASSERT(indexer != NULL);
-
-	// update index state from under-construction to populating
-	assert(Index_UpdateState(idx, IDX_UNDER_CONSTRUCTION, IDX_POPULATING));
+	ASSERT(Index_Enabled(idx) == false);
 
 	// create work item
 	IndexPopulateCtx *ctx = rm_malloc(sizeof(IndexPopulateCtx));
-	ctx->gc = gc;
+	ctx->gc  = gc;
 	ctx->idx = idx;
-	ctx->idx_version = Index_Version(idx);
-
-	// place task into queue
-	_indexer_AddTask(ctx);
 
 	// increase graph reference count
 	// count will be reduced once this task is perfomed
 	// this is done to handle the case where a graph has pending index
 	// population tasks and it is being asked to be deleted
 	GraphContext_IncreaseRefCount(gc);
+
+	// place task into queue
+	_indexer_AddTask(ctx);
 }
 

@@ -33,19 +33,22 @@ static void _Index_PopulateNodeIndex
 	RG_MatrixTupleIter it         = {0};
 
 	while(true) {
+		// lock graph for reading
+		Graph_AcquireReadLock(g);
+
 		// index state changed, abort indexing
 		// this can happen if for example the following sequance is issued:
 		// 1. CREATE INDEX FOR (n:Person) ON (n.age)
 		// 2. CREATE INDEX FOR (n:Person) ON (n.height)
-		if(idx->state != IDX_POPULATING) {
+		if(idx->pending_changes > 1) {
+			// release read lock
+			Graph_ReleaseLock(g);
+			printf("detected index state change aborting index population\n");
 			break;
 		}
 
 		// reset number of indexed nodes in batch
 		indexed = 0;
-
-		// lock graph for reading
-		Graph_AcquireReadLock(g);
 
 		// fetch label matrix
 		const RG_Matrix m = Graph_GetLabelMatrix(g, idx->label_id);
@@ -120,11 +123,17 @@ static void _Index_PopulateEdgeIndex
 	RG_MatrixTupleIter it  = {0};
 
 	while(true) {
+		// lock graph for reading
+		Graph_AcquireReadLock(g);
+
 		// index state changed, abort indexing
 		// this can happen if for example the following sequance is issued:
 		// 1. CREATE INDEX FOR (:Person)-[e:WORKS]-(:Company) ON (e.since)
 		// 2. CREATE INDEX FOR (:Person)-[e:WORKS]-(:Company) ON (e.title)
-		if(idx->state != IDX_POPULATING) {
+		if(idx->pending_changes > 1) {
+			// release read lock
+			Graph_ReleaseLock(g);
+			printf("detected index state change aborting index population\n");
 			break;
 		}
 
@@ -132,9 +141,6 @@ static void _Index_PopulateEdgeIndex
 		indexed      = 0;
 		prev_src_id  = src_id;
 		prev_dest_id = dest_id;
-
-		// lock graph for reading
-		Graph_AcquireReadLock(g);
 
 		// fetch relation matrix
 		const RG_Matrix m = Graph_GetRelationMatrix(g, idx->label_id, false);
@@ -212,7 +218,6 @@ void Index_Populate
 	ASSERT(g        != NULL);
 	ASSERT(idx      != NULL);
 	ASSERT(idx->idx != NULL);
-	ASSERT(idx->state == IDX_POPULATING);
 
 	//--------------------------------------------------------------------------
 	// populate index
@@ -224,7 +229,8 @@ void Index_Populate
 		_Index_PopulateEdgeIndex(idx, g);
 	}
 
-	// try to enable index
-	Index_Enable(idx);
+	// task been handled
+	// decrease index number of pending changes by 1
+	idx->pending_changes--;
 }
 

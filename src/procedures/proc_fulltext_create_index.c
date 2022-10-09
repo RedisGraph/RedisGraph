@@ -262,6 +262,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke
 
 	// build index
 	if(res == INDEX_OK) {
+		Index_Disable(idx);
 		Indexer_PopulateIndex(gc, idx);
 	}
 
