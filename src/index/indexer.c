@@ -5,6 +5,7 @@
 */
 
 #include "indexer.h"
+#include "../util/circular_buffer.h"
 #include <assert.h>
 #include <pthread.h>
 
@@ -15,15 +16,15 @@ typedef struct {
 } IndexPopulateCtx;
 
 typedef struct {
-	pthread_t t;          // worker thread handel
-	pthread_mutex_t m;    // queue mutex
-	pthread_mutex_t cm;   // conditional variable mutex
-	pthread_cond_t c;     // conditional variable
-	IndexPopulateCtx **q; // task queue
+	pthread_t t;         // worker thread handel
+	pthread_mutex_t m;   // queue mutex
+	pthread_mutex_t cm;  // conditional variable mutex
+	pthread_cond_t c;    // conditional variable
+	CircularBuffer q;    // task queue
 } Indexer;
 
 // forward declarations
-static IndexPopulateCtx *_indexer_PopTask(void);
+static void _indexer_PopTask(IndexPopulateCtx *task);
 
 static Indexer *indexer = NULL;
 
@@ -36,16 +37,13 @@ static void *_index_populate
 	while(true) {
 		// pop an item from queue
 		// if queue is empty thread will be put to sleep
-		IndexPopulateCtx *ctx = _indexer_PopTask();
-		ASSERT(ctx != NULL);
+		IndexPopulateCtx ctx;
+		_indexer_PopTask(&ctx);
 
-		Index_Populate(ctx->idx, ctx->gc->g);
+		Index_Populate(ctx.idx, ctx.gc->g);
 
 		// decrease graph reference count
-		GraphContext_DecreaseRefCount(ctx->gc);
-
-		// done populating we can discard context
-		rm_free(ctx);
+		GraphContext_DecreaseRefCount(ctx.gc);
 	}
 
 	return NULL;
@@ -61,7 +59,8 @@ static void _indexer_AddTask
 	ASSERT(res == 0);
 
 	// add task to queue
-	array_append(indexer->q, task);
+	res = CircularBuffer_Add(indexer->q, task);
+	ASSERT(res == 1);
 
 	// unlock
 	res = pthread_mutex_unlock(&indexer->m);
@@ -75,15 +74,18 @@ static void _indexer_AddTask
 
 // pops a task from queue
 // if queue is empty caller will be waiting on conditional variable
-static IndexPopulateCtx *_indexer_PopTask(void) {
-	IndexPopulateCtx *task = NULL;
+static void _indexer_PopTask
+(
+	IndexPopulateCtx *task
+) {
+	ASSERT(task != NULL);
 
 	// lock queue
 	int res = pthread_mutex_lock(&indexer->m);
 	ASSERT(res == 0);
 
 	// remove task to queue
-	if(array_len(indexer->q) == 0) {
+	if(CircularBuffer_Empty(indexer->q)) {
 		// waiting for work
 		// lock conditional variable mutex
 		pthread_mutex_lock(&indexer->cm);
@@ -101,13 +103,12 @@ static IndexPopulateCtx *_indexer_PopTask(void) {
 		ASSERT(res == 0);
 	}
 
-	task = array_pop(indexer->q);
+	res = CircularBuffer_Remove(indexer->q, task);
+	ASSERT(res == 1);
 
 	// unlock
 	res = pthread_mutex_unlock(&indexer->m);
 	ASSERT(res == 0);
-
-	return task;
 }
 
 // initialize indexer
@@ -142,7 +143,7 @@ bool Indexer_Init(void) {
 	}
 
 	// create task queue
-	indexer->q = array_new(IndexPopulateCtx*, 1);
+	indexer->q = CircularBuffer_New(sizeof(IndexPopulateCtx), 256);
 
 	// create worker thread
 	pthread_attr_t attr;
@@ -179,7 +180,7 @@ cleanup:
 	}
 
 	if(indexer->q != NULL) {
-		array_free(indexer->q);
+		CircularBuffer_Free(&indexer->q);
 	}
 
 	rm_free(indexer);
@@ -201,9 +202,7 @@ void Indexer_PopulateIndex
 	ASSERT(Index_Enabled(idx) == false);
 
 	// create work item
-	IndexPopulateCtx *ctx = rm_malloc(sizeof(IndexPopulateCtx));
-	ctx->gc  = gc;
-	ctx->idx = idx;
+	IndexPopulateCtx ctx = {.idx = idx, .gc = gc};
 
 	// increase graph reference count
 	// count will be reduced once this task is perfomed
@@ -212,6 +211,6 @@ void Indexer_PopulateIndex
 	GraphContext_IncreaseRefCount(gc);
 
 	// place task into queue
-	_indexer_AddTask(ctx);
+	_indexer_AddTask(&ctx);
 }
 
