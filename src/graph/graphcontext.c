@@ -381,6 +381,7 @@ void GraphContext_RemoveAttribute(GraphContext *gc, Attribute_ID id) {
 	const char *attribute = gc->string_mapping[id];
 	int ret = raxRemove(gc->attributes,  (unsigned char *)attribute, strlen(attribute), NULL);
 	ASSERT(ret == 1);
+	rm_free(gc->string_mapping[id]);
 	gc->string_mapping = array_del(gc->string_mapping, id);
 	pthread_rwlock_unlock(&gc->_attribute_rwlock);
 }
