@@ -9,3 +9,6 @@ extraction:
           - peg
           - libtool
           - autoconf
+     index:
+       build_command:
+         - make build
