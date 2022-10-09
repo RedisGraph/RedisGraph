@@ -232,6 +232,20 @@ class testUndoLog():
         new_property_keys = self.graph.query("CALL db.propertyKeys").result_set
         self.env.assertEquals(property_keys, new_property_keys)
 
+        try:
+            self.graph.query("MERGE (n:N {v:1}) WITH n RETURN 1 * n")
+            # we're not supposed to be here, expecting query to fail
+            self.env.assertTrue(False) 
+        except:
+            pass
+
+        # node (n:N) should be removed, expecting an empty graph
+        result = self.graph.query("MATCH (n:N {v:1}) RETURN n")
+        self.env.assertEquals(len(result.result_set), 0)
+        # no new properties should have been created
+        new_property_keys = self.graph.query("CALL db.propertyKeys").result_set
+        self.env.assertEquals(property_keys, new_property_keys)
+
     def test08_undo_create_indexed_edge(self):
         self.graph.query("CREATE INDEX FOR ()-[r:R]->() ON (r.v)")
         self.graph.query("CREATE (:N {v: 1}), (:N {v: 2})")
@@ -239,6 +253,23 @@ class testUndoLog():
         try:
             self.graph.query("""MATCH (s:N {v: 1}), (t:N {v: 2})
                                 CREATE (s)-[r:R {v:1}]->(t)
+                                WITH r
+                                RETURN 1 * r""")
+            # we're not supposed to be here, expecting query to fail
+            self.env.assertTrue(False) 
+        except:
+            pass
+
+        # edge [r:R] should have been removed
+        result = self.graph.query("MATCH ()-[r:R {v:1}]->() RETURN r")
+        self.env.assertEquals(len(result.result_set), 0)
+        # no new properties should have been created
+        new_property_keys = self.graph.query("CALL db.propertyKeys").result_set
+        self.env.assertEquals(property_keys, new_property_keys)
+
+        try:
+            self.graph.query("""MATCH (s:N {v: 1}), (t:N {v: 2})
+                                MERGE (s)-[r:R {v:1}]->(t)
                                 WITH r
                                 RETURN 1 * r""")
             # we're not supposed to be here, expecting query to fail
