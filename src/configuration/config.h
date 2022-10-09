@@ -10,25 +10,27 @@
 #include "redismodule.h"
 
 #define RESULTSET_SIZE_UNLIMITED           UINT64_MAX
-#define QUERY_MEM_CAPACITY_UNLIMITED       0
 #define CONFIG_TIMEOUT_NO_TIMEOUT          0
 #define VKEY_ENTITY_COUNT_UNLIMITED        UINT64_MAX
-#define DELTA_MAX_PENDING_CHANGES_DEFAULT  10000
+#define QUERY_MEM_CAPACITY_UNLIMITED       0
 #define NODE_CREATION_BUFFER_DEFAULT       16384
+#define DELTA_MAX_PENDING_CHANGES_DEFAULT  10000
 
 typedef enum {
-	Config_TIMEOUT                   = 0,     // timeout value for queries
-	Config_CACHE_SIZE                = 1,     // number of entries in cache
-	Config_ASYNC_DELETE              = 2,     // delete graph asynchronously
-	Config_OPENMP_NTHREAD            = 3,     // max number of OpenMP threads to use
-	Config_THREAD_POOL_SIZE          = 4,     // number of threads in thread pool
-	Config_RESULTSET_MAX_SIZE        = 5,     // max number of records in result-set
-	Config_VKEY_MAX_ENTITY_COUNT     = 6,     // max number of elements in vkey
-	Config_MAX_QUEUED_QUERIES        = 7,     // max number of queued queries
-	Config_QUERY_MEM_CAPACITY        = 8,     // max mem(bytes) that query/thread can utilize at any given time
-	Config_DELTA_MAX_PENDING_CHANGES = 9,     // number of pending changes before RG_Matrix flushed
-	Config_NODE_CREATION_BUFFER      = 10,    // size of buffer to maintain as margin in matrices
-	Config_END_MARKER                = 11
+	Config_TIMEOUT                   = 0,   // timeout value for queries
+	Config_TIMEOUT_DEFAULT           = 1,   // default timeout for read and write queries
+	Config_TIMEOUT_MAX               = 2,   // max timeout that can be enforced
+	Config_CACHE_SIZE                = 3,   // number of entries in cache
+	Config_ASYNC_DELETE              = 4,   // delete graph asynchronously
+	Config_OPENMP_NTHREAD            = 5,   // max number of OpenMP threads to use
+	Config_THREAD_POOL_SIZE          = 6,   // number of threads in thread pool
+	Config_RESULTSET_MAX_SIZE        = 7,   // max number of records in result-set
+	Config_VKEY_MAX_ENTITY_COUNT     = 8,   // max number of elements in vkey
+	Config_MAX_QUEUED_QUERIES        = 9,   // max number of queued queries
+	Config_QUERY_MEM_CAPACITY        = 10,  // max mem(bytes) that query/thread can utilize at any given time
+	Config_DELTA_MAX_PENDING_CHANGES = 11,  // number of pending changes before RG_Matrix flushed
+	Config_NODE_CREATION_BUFFER      = 12,  // size of buffer to maintain as margin in matrices
+	Config_END_MARKER                = 13
 } Config_Option_Field;
 
 // callback function, invoked once configuration changes as a result of
@@ -36,34 +38,65 @@ typedef enum {
 typedef void (*Config_on_change)(Config_Option_Field type);
 
 // Run-time configurable fields
-#define RUNTIME_CONFIG_COUNT 6
+#define RUNTIME_CONFIG_COUNT 8
 static const Config_Option_Field RUNTIME_CONFIGS[] = {
-	Config_RESULTSET_MAX_SIZE,
 	Config_TIMEOUT,
+	Config_TIMEOUT_MAX,
+	Config_TIMEOUT_DEFAULT,
+	Config_RESULTSET_MAX_SIZE,
 	Config_MAX_QUEUED_QUERIES,
 	Config_QUERY_MEM_CAPACITY,
-	Config_DELTA_MAX_PENDING_CHANGES,
-	Config_VKEY_MAX_ENTITY_COUNT
+	Config_VKEY_MAX_ENTITY_COUNT,
+	Config_DELTA_MAX_PENDING_CHANGES
 };
 
 // Set module-level configurations to defaults or to user arguments where provided.
 // returns REDISMODULE_OK on success, emits an error and returns REDISMODULE_ERR on failure.
-int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
+int Config_Init
+(
+	RedisModuleCtx *ctx,
+	RedisModuleString **argv,
+	int argc
+);
 
 // returns true if 'field_str' reffers to a configuration field and sets
 // 'field' accordingly
-bool Config_Contains_field(const char *field_str, Config_Option_Field *field);
+bool Config_Contains_field
+(
+	const char *field_str,
+	Config_Option_Field *field
+);
 
 // returns field name
-const char *Config_Field_name(Config_Option_Field field);
+const char *Config_Field_name
+(
+	Config_Option_Field field
+);
 
-bool Config_Option_get(Config_Option_Field field, ...);
+bool Config_Option_get
+(
+	Config_Option_Field field,
+	...
+);
 
-bool Config_Option_set(Config_Option_Field field, const char *val);
+bool Config_Option_set
+(
+	Config_Option_Field field,
+	const char *val,
+	char **err
+);
 
 // dryrun configuration
-bool Config_Option_dryrun(Config_Option_Field field, const char *val);
+bool Config_Option_dryrun
+(
+	Config_Option_Field field,
+	const char *val,
+	char **err
+);
 
 // sets config update callback function
-void Config_Subscribe_Changes(Config_on_change cb);
+void Config_Subscribe_Changes
+(
+	Config_on_change cb
+);
 
