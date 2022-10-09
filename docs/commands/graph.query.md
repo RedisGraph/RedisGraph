@@ -882,6 +882,10 @@ This section contains information on all supported functions from the Cypher que
 | rand()      | Returns a random floating point number in the range from 0 to 1; i.e. [0,1]                                              |
 | round()     | Returns the value of a number rounded to the nearest integer                                                             |
 | sign()      | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number          |
+| e()         | Returns the constant e, the base of the natural logarithm | 
+| exp()       | Returns e^a, where e is the base of the natural logarithm |
+| log()       | Returns the natural logarithm of a                        |
+| log10()     | Returns the logarithm (base 10) of a                      |
 | sqrt()      | Returns the square root of a number                                                                                      |
 | pow()       | Returns base raised to the power of exponent, base^exponent                                                              |
 | toInteger() | Converts a floating point or string value to an integer value. All other types are not allowed and will cause a type mismatch error to be returned.                                                           |
