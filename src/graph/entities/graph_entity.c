@@ -73,6 +73,26 @@ SIValue GraphEntity_Keys
 	return keys;
 }
 
+// returns an SIArray of all keys and values in graph entity properties. 
+// Keys at even positions, Values at odd position of the array
+SIValue GraphEntity_Properties
+(
+	const GraphEntity *e
+) {
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	const AttributeSet set = GraphEntity_GetAttributes(e);
+	int propCount = ATTRIBUTE_SET_COUNT(set);
+	SIValue properties = SI_Array(propCount);
+	for(int i = 0; i < propCount; i++) {
+		Attribute_ID attr_id;
+		SIValue value = AttributeSet_GetIdx(set, i, &attr_id);
+		const char *key = GraphContext_GetAttributeString(gc, attr_id);
+		SIArray_Append(&properties, SI_ConstStringVal(key));
+		SIArray_Append(&properties, value);
+	}
+	return properties;
+}
+
 // prints the attribute set into a buffer, returns what is the string length
 // buffer can be re-allocated if needed
 size_t GraphEntity_PropertiesToString
