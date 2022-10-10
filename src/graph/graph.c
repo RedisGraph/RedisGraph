@@ -797,7 +797,7 @@ void Graph_GetNodeEdges
 		ASSERT(t == GrB_UINT64 || t == GrB_BOOL);
 		// construct an iterator to traverse over the source node row,
 		// containing all outgoing edges
-		RG_MatrixTupleIter_attach(&it, M, srcID, srcID);
+		RG_MatrixTupleIter_AttachRange(&it, M, srcID, srcID);
 		if(t == GrB_UINT64) {
 			while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, &edgeID) == GrB_SUCCESS) {
 				// collect all edges (src)->(dest)
@@ -823,7 +823,7 @@ void Graph_GetNodeEdges
 
 		// construct an iterator to traverse over the source node row,
 		// containing all incoming edges
-		RG_MatrixTupleIter_attach(&it, TM, srcID, srcID);
+		RG_MatrixTupleIter_AttachRange(&it, TM, srcID, srcID);
 
 		if(t == GrB_UINT64) {
 			while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, NULL) == GrB_SUCCESS) {
@@ -863,7 +863,7 @@ uint Graph_GetNodeLabels
 
 	EntityID id = ENTITY_GET_ID(n);
 	RG_MatrixTupleIter iter = {0};
-	res = RG_MatrixTupleIter_attach(&iter, M, id, id);
+	res = RG_MatrixTupleIter_AttachRange(&iter, M, id, id);
 	ASSERT(res == GrB_SUCCESS);
 
 	uint i = 0;

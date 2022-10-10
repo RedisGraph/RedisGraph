@@ -237,7 +237,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             actual_result = graph.query(query)
         except redis.ResponseError as e:
             self.env.assertContains("Division by zero", str(e))
-        
+
         # Validate floating-point dividend modulo by 0
         # redis-cli output example:
         # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 1.0 % 0"
@@ -1146,7 +1146,76 @@ class testFunctionCallsFlow(FlowTestsBase):
         expected_result = [[2, [1]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-    def test36_division_inputs(self):
+    def test36_log(self):
+        # log(-1)
+        query = """RETURN log(-1)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+        # log(1)
+        query = """RETURN log(1)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 0, 0.0001)
+
+        # log(10)
+        query = """RETURN log(10)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 2.30258509299405, 0.0001)
+
+        # log10(-11.3)
+        query = """RETURN log10(-11.3)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+        # log10(100)
+        query = """RETURN log10(100)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 2, 0.0001)
+
+        # log10(110)
+        query = """RETURN log10(110)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 2.04139268515822, 0.0001)
+
+        # log(True)
+        query = """RETURN log(True)"""
+        self.expect_type_error(query)
+
+        # log10(True)
+        query = """RETURN log10(True)"""
+        self.expect_type_error(query)
+
+    def test37_exp(self):
+        # exp(0)
+        query = """RETURN exp(0)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 1.0, 0.0001)
+
+        # exp(1)
+        query = """RETURN exp(1)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 2.71828182845905, 0.0001)
+
+        # exp(1.4)
+        query = """RETURN exp(1.4)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 4.05519996684467, 0.0001)
+
+        # exp(-1.2)
+        query = """RETURN exp(0)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 1, 0.0001)
+
+        # e()
+        query = """RETURN e()"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 2.71828182845905, 0.0001)
+
+        # exp(True)
+        query = """RETURN exp(True)"""
+        self.expect_type_error(query)
+
+    def test38_division_inputs(self):
         # Validate integer dividend division by 0
         # redis-cli output example:
         # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 3 / 0"
