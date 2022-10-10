@@ -9,10 +9,17 @@
 #include <assert.h>
 #include <pthread.h>
 
+// operations performed by indexer
+typedef enum {
+	INDEXER_DROP,      // drop index
+	INDEXER_POPULATE,  // populate index
+} IndexerOp;
+
 // index population context
 typedef struct {
 	Index *idx;        // index to populate
 	GraphContext *gc;  // graph holding entities to index
+	IndexerOp op;      // operation to perform populate / drop
 } IndexPopulateCtx;
 
 typedef struct {
@@ -40,10 +47,19 @@ static void *_index_populate
 		IndexPopulateCtx ctx;
 		_indexer_PopTask(&ctx);
 
-		Index_Populate(ctx.idx, ctx.gc->g);
-
-		// decrease graph reference count
-		GraphContext_DecreaseRefCount(ctx.gc);
+		switch(ctx.op) {
+			case INDEXER_POPULATE:
+				Index_Populate(ctx.idx, ctx.gc->g);
+				// decrease graph reference count
+				GraphContext_DecreaseRefCount(ctx.gc);
+				break;
+			case INDEXER_DROP:
+				Index_Free(ctx.idx);
+				break;
+			default:
+				assert(false && "unknown indexer operation");
+				break;
+		}
 	}
 
 	return NULL;
@@ -202,13 +218,31 @@ void Indexer_PopulateIndex
 	ASSERT(Index_Enabled(idx) == false);
 
 	// create work item
-	IndexPopulateCtx ctx = {.idx = idx, .gc = gc};
+	IndexPopulateCtx ctx = {.idx = idx, .gc = gc, .op = INDEXER_POPULATE};
 
 	// increase graph reference count
 	// count will be reduced once this task is perfomed
 	// this is done to handle the case where a graph has pending index
 	// population tasks and it is being asked to be deleted
 	GraphContext_IncreaseRefCount(gc);
+
+	// place task into queue
+	_indexer_AddTask(&ctx);
+}
+
+// drops index asynchronously
+// this function simply place the drop request onto a queue
+// eventually the indexer working thread will pick it up and drop the index
+void Indexer_DropIndex
+(
+	Index *idx  // index to drop
+) {
+	ASSERT(idx     != NULL);
+	ASSERT(indexer != NULL);
+	ASSERT(Index_Enabled(idx) == false);
+
+	// create work item
+	IndexPopulateCtx ctx = {.idx = idx, .gc = NULL, .op = INDEXER_DROP};
 
 	// place task into queue
 	_indexer_AddTask(&ctx);

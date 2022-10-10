@@ -165,19 +165,19 @@ static int _Schema_RemoveExactMatchIndex
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
-	if(attribute_id == ATTRIBUTE_ID_NONE) return INDEX_FAIL;
+	ASSERT(attribute_id != ATTRIBUTE_ID_NONE);
 
 	Index *idx = Schema_GetIndex(s, &attribute_id, IDX_EXACT_MATCH);
-	if(idx == NULL) return INDEX_FAIL;
+	ASSERT(idx != NULL);
 
 	Index_RemoveField(idx, field);
 
 	// if index field count dropped to 0
 	// or it is edge index and it dropped to 2(_src_id, _dest_id)
 	// remove index from schema
+	// index will be freed by the indexer thread
 	if(Index_FieldsCount(idx) == 0 ||
 	   (s->type == SCHEMA_EDGE && Index_FieldsCount(idx) == 2)) {
-		Index_Free(idx);
 		s->index = NULL;
 	}
 
@@ -192,9 +192,9 @@ static int _Schema_RemoveFullTextIndex
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
-	if(idx == NULL) return INDEX_FAIL;
+	ASSERT(idx != NULL);
 
-	Index_Free(idx);
+	// index will be freed by indexer
 	s->fulltextIdx = NULL;
 
 	return INDEX_OK;

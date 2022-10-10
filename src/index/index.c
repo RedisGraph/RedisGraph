@@ -292,7 +292,7 @@ void Index_RemoveField
 	Index *idx,
 	const char *field
 ) {
-	ASSERT(idx != NULL);
+	ASSERT(idx   != NULL);
 	ASSERT(field != NULL);
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
@@ -306,9 +306,6 @@ void Index_RemoveField
 			// free field
 			IndexField_Free(field);
 			array_del_fast(idx->fields, i);
-
-			// disable index
-			// Index_Disable(idx);
 			break;
 		}
 	}

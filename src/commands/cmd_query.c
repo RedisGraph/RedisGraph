@@ -60,6 +60,44 @@ void static inline GraphQueryCtx_Free(GraphQueryCtx *ctx) {
 	rm_free(ctx);
 }
 
+static bool _index_operation_delete
+(
+	GraphContext *gc,
+	AST *ast,
+	Index **idx
+) {
+	SchemaType schema_type = SCHEMA_NODE;
+	const cypher_astnode_t *index_op = ast->root;
+
+	// retrieve strings from AST node
+	const char *label = cypher_ast_label_get_name(
+			cypher_ast_drop_props_index_get_label(index_op));
+	const char *prop = cypher_ast_prop_name_get_value(
+			cypher_ast_drop_props_index_get_prop_name(index_op, 0));
+
+	// determine if schema type from which index is removed
+	// default to node
+	// TODO: support index name
+	if(GraphContext_GetSchema(gc, label, schema_type) == NULL) {
+		schema_type = SCHEMA_EDGE;
+	}
+
+	*idx = Schema_GetIndex(s, Attribute_ID *attribute_id, IndexType type);
+
+	QueryCtx_LockForCommit();
+	int res = GraphContext_DeleteIndex(gc, schema_type, label, prop,
+			IDX_EXACT_MATCH);
+
+	// disable index if modified
+	if(res == INDEX_OK) {
+		Index_Disable(*idx);
+	}
+
+	QueryCtx_UnlockCommit(NULL);
+
+	return res == INDEX_OK;
+}
+
 // create index structure
 static bool _index_operation_create
 (
@@ -137,39 +175,23 @@ static void _index_operation
 	AST *ast,
 	ExecutionType exec_type
 ) {
-	Index      *idx        = NULL;
-	IndexType  idx_type    = IDX_EXACT_MATCH;
-	SchemaType schema_type = SCHEMA_NODE;
+	Index *idx = NULL;
 
-	const cypher_astnode_t *index_op = ast->root;
-	if(exec_type == EXECUTION_TYPE_INDEX_CREATE) {
-		if(_index_operation_create(ctx, gc, ast, &idx)) {
-			Indexer_PopulateIndex(gc, idx);
-		}
-	} else if(exec_type == EXECUTION_TYPE_INDEX_DROP) {
-		// retrieve strings from AST node
-		const char *label = cypher_ast_label_get_name(
-				cypher_ast_drop_props_index_get_label(index_op));
-		const char *prop = cypher_ast_prop_name_get_value(
-				cypher_ast_drop_props_index_get_prop_name(index_op, 0));
-
-		// determine if schema type from which index is removed
-		// default to node
-		// TODO: support index name
-		if(GraphContext_GetSchema(gc, label, schema_type) == NULL) {
-			schema_type = SCHEMA_EDGE;
-		}
-
-		QueryCtx_LockForCommit();
-		int res = GraphContext_DeleteIndex(gc, schema_type, label, prop,
-				idx_type);
-		QueryCtx_UnlockCommit(NULL);
-
-		if(res != INDEX_OK) {
-			ErrorCtx_SetError("ERR Unable to drop index on :%s(%s): no such index.", label, prop);
-		}
-	} else {
-		ErrorCtx_SetError("ERR Encountered unknown query execution type.");
+	switch(exec_type) {
+		case EXECUTION_TYPE_INDEX_CREATE:
+			if(_index_operation_create(ctx, gc, ast, &idx)) {
+				Indexer_PopulateIndex(gc, idx);
+			}
+			break;
+		case EXECUTION_TYPE_INDEX_DROP:
+			if(_index_operation_delete(gc, ast &idx)) {
+				Indexer_DropIndex(gc, idx);
+			} else {
+				ErrorCtx_SetError("ERR Unable to drop index on :%s(%s): no such index.", label, prop);
+			}
+			break;
+		default:
+			ErrorCtx_SetError("ERR Encountered unknown query execution type.");
 	}
 }
 
