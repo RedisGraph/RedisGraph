@@ -1101,23 +1101,48 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
         
     def NullArithmetic(self):
-        query = ""
+        query = "RETURN null + 1"
         actual_result = graph.query(query)
-        expected_result = [[3]]
+        expected_result = [[None]]
         self.env.assertEquals(actual_result.result_set, expected_result)
         
-        query = ""
+        query = "RETURN 1 + null"
         actual_result = graph.query(query)
-        expected_result = [[3]]
+        expected_result = [[None]]
         self.env.assertEquals(actual_result.result_set, expected_result)
         
-        query = ""
+        query = "RETURN null - 1"
         actual_result = graph.query(query)
-        expected_result = [[3]]
+        expected_result = [[None]]
         self.env.assertEquals(actual_result.result_set, expected_result)
         
-        query = ""
+        query = "RETURN 1 - null"
         actual_result = graph.query(query)
-        expected_result = [[3]]
+        expected_result = [[None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+        
+        query = "RETURN null * 1"
+        actual_result = graph.query(query)
+        expected_result = [[None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+        
+        query = "RETURN null / 1"
+        actual_result = graph.query(query)
+        expected_result = [[None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+        
+        query = "RETURN  1 / null"
+        actual_result = graph.query(query)
+        expected_result = [[None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+        
+        query = "RETURN 5 % null"
+        actual_result = graph.query(query)
+        expected_result = [[None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+        
+        query = "RETURN null % 5"
+        actual_result = graph.query(query)
+        expected_result = [[None]]
         self.env.assertEquals(actual_result.result_set, expected_result)
         
