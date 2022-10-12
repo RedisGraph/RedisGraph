@@ -152,7 +152,6 @@ Feature: Create1 - Creating nodes
       | +labels     | 1 |
 
   @NegativeTest
-  @skip
   Scenario: [11] Fail when creating a node that is already bound
     Given any graph
     When executing query:
@@ -163,7 +162,6 @@ Feature: Create1 - Creating nodes
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
   @NegativeTest
-  @skip
   Scenario: [12] Fail when creating a node with properties that is already bound
     Given any graph
     When executing query:

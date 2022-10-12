@@ -293,3 +293,9 @@ def step_impl(context):
     global exception
     assert exception != None
     assert "Float overflow" in str(exception)
+
+@then(u'a SyntaxError should be raised at compile time: InvalidDelete')
+def step_imp(context):
+    global exception
+    assert exception != None
+    assert "DELETE can only be called on nodes and relationships"

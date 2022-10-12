@@ -131,7 +131,6 @@ Feature: Delete1 - Deleting nodes
     Then a ConstraintVerificationFailed should be raised at runtime: DeleteConnectedNode
 
   @NegativeTest
-  @skip
   Scenario: [8] Failing when deleting a label
     Given any graph
     When executing query:
