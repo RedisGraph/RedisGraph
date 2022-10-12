@@ -31,34 +31,24 @@ class testFunctionCallsFlow(FlowTestsBase):
         for src in nodes:
             for dest in nodes:
                 if src != dest:
-                    edge = Edge(nodes[src], "know", nodes[dest])
+                    edge = Edge(nodes[src], "knows", nodes[dest])
                     graph.add_edge(edge)
-
-        for src in nodes:
-            for dest in nodes:
-                if src != dest:
-                    edge = Edge(nodes[src], "works_with", nodes[dest])
-                    graph.add_edge(edge)
+                    edge2 = Edge(nodes[src], "works_with", nodes[dest])
+                    graph.add_edge(edge2)
 
         graph.commit()
-        query = """MATCH (a)-[:know]->(b) CREATE (a)-[:know]->(b)"""
+        query = """MATCH (a)-[:knows]->(b) CREATE (a)-[:knows]->(b)"""
         graph.query(query)
-
-    def expect_type_error(self, query):
-        try:
-            graph.query(query)
-            assert(False)
-        except redis.exceptions.ResponseError as e:
-            # Expecting a type error.
-            self.env.assertIn("Type mismatch", str(e))
 
     def expect_error(self, query, expected_err_msg):
         try:
             graph.query(query)
             assert(False)
         except redis.exceptions.ResponseError as e:
-            # Expecting a type error.
             self.env.assertIn(expected_err_msg, str(e))
+
+    def expect_type_error(self, query):
+        self.expect_error(query, "Type mismatch")
 
     # Validate capturing of errors prior to query execution.
     def test01_compile_time_errors(self):
@@ -1058,3 +1048,70 @@ class testFunctionCallsFlow(FlowTestsBase):
         # exp(True)
         query = """RETURN exp(True)"""
         self.expect_type_error(query)
+    
+    def test38_Expression(self):
+        query = "RETURN 'muchacho'"
+        actual_result = graph.query(query)
+        expected_result = [['muchacho']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = "RETURN 1"
+        actual_result = graph.query(query)
+        expected_result = [[1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = "RETURN 1+2*3"
+        actual_result = graph.query(query)
+        expected_result = [[7]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = "RETURN 1 + 1 + 1 + 1 + 1 + 1"
+        actual_result = graph.query(query)
+        expected_result = [[6]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = "RETURN ABS(-5 + 2 * 1)"
+        actual_result = graph.query(query)
+        expected_result = [[3]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = "RETURN 'a' + 'b'"
+        actual_result = graph.query(query)
+        expected_result = [['ab']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = "RETURN 1 + 2 + 'a' + 2 + 1"
+        actual_result = graph.query(query)
+        expected_result = [['3a21']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+        
+        query = "RETURN 2 * 2 + 'a' + 3 * 3"
+        actual_result = graph.query(query)
+        expected_result = [['4a9']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+        
+        query = "RETURN 9 % 5"
+        actual_result = graph.query(query)
+        expected_result = [[4]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+        
+        query = "RETURN 9 % 5 % 3"
+        actual_result = graph.query(query)
+        expected_result = [[1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+        
+        query = ""
+        actual_result = graph.query(query)
+        expected_result = [[3]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+        
+        query = ""
+        actual_result = graph.query(query)
+        expected_result = [[3]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+        
+        query = ""
+        actual_result = graph.query(query)
+        expected_result = [[3]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+        
