@@ -1100,6 +1100,12 @@ class testFunctionCallsFlow(FlowTestsBase):
         expected_result = [[1]]
         self.env.assertEquals(actual_result.result_set, expected_result)
         
+    def NullArithmetic(self):
+        query = ""
+        actual_result = graph.query(query)
+        expected_result = [[3]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+        
         query = ""
         actual_result = graph.query(query)
         expected_result = [[3]]
