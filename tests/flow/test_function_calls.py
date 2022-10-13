@@ -31,13 +31,17 @@ class testFunctionCallsFlow(FlowTestsBase):
         for src in nodes:
             for dest in nodes:
                 if src != dest:
-                    edge = Edge(nodes[src], "knows", nodes[dest])
+                    edge = Edge(nodes[src], "know", nodes[dest])
                     graph.add_edge(edge)
-                    edge2 = Edge(nodes[src], "works_with", nodes[dest])
-                    graph.add_edge(edge2)
+        
+        for src in nodes:
+            for dest in nodes:
+                if src != dest:
+                    edge = Edge(nodes[src], "works_with", nodes[dest])
+                    graph.add_edge(edge)
 
         graph.commit()
-        query = """MATCH (a)-[:knows]->(b) CREATE (a)-[:knows]->(b)"""
+        query = """MATCH (a)-[:know]->(b) CREATE (a)-[:know]->(b)"""
         graph.query(query)
 
     def expect_error(self, query, expected_err_msg):
@@ -49,6 +53,10 @@ class testFunctionCallsFlow(FlowTestsBase):
 
     def expect_type_error(self, query):
         self.expect_error(query, "Type mismatch")
+    
+    def get_res_and_assertEquals(self, query, expected_result):
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
 
     # Validate capturing of errors prior to query execution.
     def test01_compile_time_errors(self):
@@ -1048,10 +1056,6 @@ class testFunctionCallsFlow(FlowTestsBase):
         # exp(True)
         query = """RETURN exp(True)"""
         self.expect_type_error(query)
-
-    def get_res_and_assertEquals(self, query, expected_result):
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set, expected_result)
     
     def test38_Expression(self):
         query_to_expected_result = {"Return 'muchacho'": [['muchacho']],
