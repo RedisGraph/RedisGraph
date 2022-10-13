@@ -91,6 +91,13 @@ Index *Index_New
 	GraphEntityType entity_type  // entity type been indexed
 );
 
+// try to enable index by dropping number of pending changes by 1
+// the index is enabled once there are no pending changes
+void Index_Enable
+(
+	Index *idx // index to enable
+);
+
 // disable index by increasing the number of pending changes
 // and re-creating the internal RediSearch index
 void Index_Disable
@@ -98,7 +105,7 @@ void Index_Disable
 	Index *idx  // index to disable
 );
 
-// returns true if index state is IDX_OPERATIONAL
+// returns true if index doesn't contains any pending changes
 bool Index_Enabled
 (
 	const Index *idx  // index to get state of

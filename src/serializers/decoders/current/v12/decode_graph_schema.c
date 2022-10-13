@@ -186,3 +186,4 @@ void RdbLoadGraphSchema_v12(RedisModuleIO *rdb, GraphContext *gc) {
 		if(!already_loaded) array_append(gc->relation_schemas, s);
 	}
 }
+

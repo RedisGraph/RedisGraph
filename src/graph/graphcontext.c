@@ -355,7 +355,11 @@ const char *GraphContext_GetAttributeString(GraphContext *gc, Attribute_ID id) {
 	return name;
 }
 
-Attribute_ID GraphContext_GetAttributeID(GraphContext *gc, const char *attribute) {
+Attribute_ID GraphContext_GetAttributeID
+(
+	GraphContext *gc,
+	const char *attribute
+) {
 	// Acquire a read lock for looking up the attribute.
 	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
 	// Look up the attribute ID.
@@ -488,15 +492,14 @@ int GraphContext_DeleteIndex
 	// retrieve the schema for this label
 	int res = INDEX_FAIL;
 	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
+	ASSERT(s != NULL);
 
-	if(s != NULL) {
-		res = Schema_RemoveIndex(s, field, type);
-		if(res != INDEX_FAIL) {
-			// update resultset statistics
-			ResultSet *result_set = QueryCtx_GetResultSet();
-			ResultSet_IndexDeleted(result_set, res);
-		}
-	}
+	res = Schema_RemoveIndex(s, field, type);
+	ASSERT(res != INDEX_FAIL);
+
+	// update resultset statistics
+	ResultSet *result_set = QueryCtx_GetResultSet();
+	ResultSet_IndexDeleted(result_set, res);
 
 	return res;
 }

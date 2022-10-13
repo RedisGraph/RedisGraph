@@ -229,8 +229,7 @@ void Index_Populate
 		_Index_PopulateEdgeIndex(idx, g);
 	}
 
-	// task been handled
-	// decrease index number of pending changes by 1
-	idx->pending_changes--;
+	// task been handled, try to enable index
+	Index_Enable(idx);
 }
 

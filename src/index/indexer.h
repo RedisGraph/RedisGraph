@@ -29,3 +29,11 @@ void Indexer_PopulateIndex
 	Index *idx        // index to populate
 );
 
+// drops index asynchronously
+// this function simply place the drop request onto a queue
+// eventually the indexer working thread will pick it up and drop the index
+void Indexer_DropIndex
+(
+	Index *idx  // index to drop
+);
+

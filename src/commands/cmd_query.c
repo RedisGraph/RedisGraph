@@ -66,32 +66,57 @@ static bool _index_operation_delete
 	AST *ast,
 	Index **idx
 ) {
+	*idx = NULL;
+	Schema *s = NULL;
 	SchemaType schema_type = SCHEMA_NODE;
 	const cypher_astnode_t *index_op = ast->root;
 
 	// retrieve strings from AST node
 	const char *label = cypher_ast_label_get_name(
 			cypher_ast_drop_props_index_get_label(index_op));
-	const char *prop = cypher_ast_prop_name_get_value(
+	const char *attr = cypher_ast_prop_name_get_value(
 			cypher_ast_drop_props_index_get_prop_name(index_op, 0));
 
-	// determine if schema type from which index is removed
-	// default to node
-	// TODO: support index name
-	if(GraphContext_GetSchema(gc, label, schema_type) == NULL) {
-		schema_type = SCHEMA_EDGE;
+	// validate field & index exists
+
+	//--------------------------------------------------------------------------
+	// make sure field exists
+	//--------------------------------------------------------------------------
+
+	Attribute_ID attr_id = GraphContext_GetAttributeID(gc, attr);
+	if(attr_id == ATTRIBUTE_ID_NONE) {
+		return false;
 	}
 
-	*idx = Schema_GetIndex(s, Attribute_ID *attribute_id, IndexType type);
+	//--------------------------------------------------------------------------
+	// make sure index exists
+	//--------------------------------------------------------------------------
+
+	// try locating a NODE EXACT-MATCH index
+	s = GraphContext_GetSchema(gc, label, schema_type);
+	if(s != NULL) {
+		*idx = Schema_GetIndex(s, &attr_id, IDX_EXACT_MATCH);
+	}
+
+	// try locating a EDGE EXACT-MATCH index
+	if(idx == NULL) {
+		schema_type = SCHEMA_EDGE;
+		s = GraphContext_GetSchema(gc, label, schema_type);
+		if(s != NULL) {
+			*idx = Schema_GetIndex(s, &attr_id, IDX_EXACT_MATCH);
+		}
+	}
+
+	// no matching index
+	if(*idx == NULL) {
+		ErrorCtx_SetError("ERR Unable to drop index on :%s(%s): no such index.",
+				label, attr);
+		return false;
+	}
 
 	QueryCtx_LockForCommit();
-	int res = GraphContext_DeleteIndex(gc, schema_type, label, prop,
+	int res = GraphContext_DeleteIndex(gc, schema_type, label, attr,
 			IDX_EXACT_MATCH);
-
-	// disable index if modified
-	if(res == INDEX_OK) {
-		Index_Disable(*idx);
-	}
 
 	QueryCtx_UnlockCommit(NULL);
 
@@ -155,11 +180,6 @@ static bool _index_operation_create
 					label, prop) == INDEX_OK);
 	}
 
-	// disable index if modified
-	if(index_added) {
-		Index_Disable(*idx);
-	}
-
 	// unlock
 	QueryCtx_UnlockCommit(NULL);
 
@@ -184,10 +204,14 @@ static void _index_operation
 			}
 			break;
 		case EXECUTION_TYPE_INDEX_DROP:
-			if(_index_operation_delete(gc, ast &idx)) {
-				Indexer_DropIndex(gc, idx);
-			} else {
-				ErrorCtx_SetError("ERR Unable to drop index on :%s(%s): no such index.", label, prop);
+			if(_index_operation_delete(gc, ast, &idx)) {
+				// if idx field count > 0 reindex
+				// otherwise drop
+				if(Index_FieldsCount(idx) > 0) {
+					Indexer_PopulateIndex(gc, idx);
+				}else {
+					Indexer_DropIndex(idx);
+				}
 			}
 			break;
 		default:

@@ -126,26 +126,19 @@ int Schema_AddIndex
 
 	// index exists, make sure attribute isn't already indexed
 	if(_idx != NULL) {
-		if(Index_ContainsAttribute(_idx, field->id)) {
-			IndexField_Free(field);
-			return INDEX_FAIL;
-		}
+		ASSERT(!Index_ContainsAttribute(_idx, field->id));
 	} else {
 		// index doesn't exist, create it
 		// determine index graph entity type
 		GraphEntityType entity_type;
-		if(s->type == SCHEMA_NODE) entity_type = GETYPE_NODE;
-		else entity_type = GETYPE_EDGE;
+		entity_type = (s->type == SCHEMA_NODE) ? GETYPE_NODE : GETYPE_EDGE;
 
 		_idx = Index_New(s->name, s->id, type, entity_type);
-		if(type == IDX_FULLTEXT) s->fulltextIdx = _idx;
-		else s->index = _idx;
 
-		// introduce edge src and dest node ids
-		// as additional index fields
-		if(entity_type == GETYPE_EDGE) {
-			Index_AddField(_idx, INDEX_FIELD_DEFAULT(_src_id));
-			Index_AddField(_idx, INDEX_FIELD_DEFAULT(_dest_id));
+		if(type == IDX_FULLTEXT) {
+			s->fulltextIdx = _idx;
+		} else {
+			s->index = _idx;
 		}
 	}
 
@@ -172,12 +165,9 @@ static int _Schema_RemoveExactMatchIndex
 
 	Index_RemoveField(idx, field);
 
-	// if index field count dropped to 0
-	// or it is edge index and it dropped to 2(_src_id, _dest_id)
-	// remove index from schema
+	// if index field count dropped to 0 remove index from schema
 	// index will be freed by the indexer thread
-	if(Index_FieldsCount(idx) == 0 ||
-	   (s->type == SCHEMA_EDGE && Index_FieldsCount(idx) == 2)) {
+	if(Index_FieldsCount(idx) == 0) {
 		s->index = NULL;
 	}
 
