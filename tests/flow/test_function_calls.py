@@ -1048,101 +1048,42 @@ class testFunctionCallsFlow(FlowTestsBase):
         # exp(True)
         query = """RETURN exp(True)"""
         self.expect_type_error(query)
+
+    def get_res_and_assertEquals(self, query, expected_result):
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
     
     def test38_Expression(self):
-        query = "RETURN 'muchacho'"
-        actual_result = graph.query(query)
-        expected_result = [['muchacho']]
-        self.env.assertEquals(actual_result.result_set, expected_result)
-
-        query = "RETURN 1"
-        actual_result = graph.query(query)
-        expected_result = [[1]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
-
-        query = "RETURN 1+2*3"
-        actual_result = graph.query(query)
-        expected_result = [[7]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
-
-        query = "RETURN 1 + 1 + 1 + 1 + 1 + 1"
-        actual_result = graph.query(query)
-        expected_result = [[6]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
-
-        query = "RETURN ABS(-5 + 2 * 1)"
-        actual_result = graph.query(query)
-        expected_result = [[3]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
-
-        query = "RETURN 'a' + 'b'"
-        actual_result = graph.query(query)
-        expected_result = [['ab']]
-        self.env.assertEquals(actual_result.result_set, expected_result)
-
-        query = "RETURN 1 + 2 + 'a' + 2 + 1"
-        actual_result = graph.query(query)
-        expected_result = [['3a21']]
-        self.env.assertEquals(actual_result.result_set, expected_result)
-        
-        query = "RETURN 2 * 2 + 'a' + 3 * 3"
-        actual_result = graph.query(query)
-        expected_result = [['4a9']]
-        self.env.assertEquals(actual_result.result_set, expected_result)
-        
-        query = "RETURN 9 % 5"
-        actual_result = graph.query(query)
-        expected_result = [[4]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
-        
-        query = "RETURN 9 % 5 % 3"
-        actual_result = graph.query(query)
-        expected_result = [[1]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
+        query_to_expected_result = {"Return 'muchacho'": [['muchacho']],
+        "RETURN 1": [[1]],
+        "RETURN 1+2*3": [[7]],
+        "RETURN 1 + 1 + 1 + 1 + 1 + 1": [[6]],
+        "RETURN ABS(-5 + 2 * 1)": [[3]],
+        "RETURN 'a' + 'b'": [['ab']],
+        "RETURN 1 + 2 + 'a' + 2 + 1": [['3a21']],
+        "RETURN 2 * 2 + 'a' + 3 * 3": [['4a9']],
+        "RETURN 9 % 5": [[4]],
+        "RETURN 9 % 5 % 3": [[1]]
+        }
+        queries = ["RETURN 'muchacho", "RETURN 1", "RETURN 1+2*3", 
+        "RETURN 1 + 1 + 1 + 1 + 1 + 1", "RETURN ABS(-5 + 2 * 1)", "RETURN 'a' + 'b'", "RETURN 1 + 2 + 'a' + 2 + 1",
+        "RETURN 2 * 2 + 'a' + 3 * 3", "RETURN 9 % 5", "RETURN 9 % 5 % 3"]
+        expected_results = [[['muchacho']], [[1]], [[7]], [[6]], [[3]], [['ab']], [['3a21']], 
+        [['4a9']], [[4]], [[1]]]
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
         
     def test39_NullArithmetic(self):
-        query = "RETURN null + 1"
-        actual_result = graph.query(query)
-        expected_result = [[None]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
-        
-        query = "RETURN 1 + null"
-        actual_result = graph.query(query)
-        expected_result = [[None]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
-        
-        query = "RETURN null - 1"
-        actual_result = graph.query(query)
-        expected_result = [[None]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
-        
-        query = "RETURN 1 - null"
-        actual_result = graph.query(query)
-        expected_result = [[None]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
-        
-        query = "RETURN null * 1"
-        actual_result = graph.query(query)
-        expected_result = [[None]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
-        
-        query = "RETURN null / 1"
-        actual_result = graph.query(query)
-        expected_result = [[None]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
-        
-        query = "RETURN  1 / null"
-        actual_result = graph.query(query)
-        expected_result = [[None]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
-        
-        query = "RETURN 5 % null"
-        actual_result = graph.query(query)
-        expected_result = [[None]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
-        
-        query = "RETURN null % 5"
-        actual_result = graph.query(query)
-        expected_result = [[None]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
-        
+        query_to_expected_result = {
+            "RETURN null + 1": [[None]],
+            "RETURN 1 + null": [[None]],
+            "RETURN null - 1": [[None]],
+            "RETURN 1 - null": [[None]],
+            "RETURN 1 * null": [[None]],
+            "RETURN null / 1": [[None]],
+            "RETURN 1 / null": [[None]],
+            "RETURN 5 % null": [[None]],
+            "RETURN null % 5": [[None]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
