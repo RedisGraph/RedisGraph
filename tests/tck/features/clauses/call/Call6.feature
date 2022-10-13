@@ -32,17 +32,16 @@ Feature: Call6 - Call clause interoperation with other clauses
 
   Scenario: [1] Calling the same STRING procedure twice using the same outputs in each call
     Given an empty graph
-    And there exists a procedure db.labels() :: (label :: STRING?):
-      | label |
-      | 'A'   |
-      | 'B'   |
-      | 'C'   |
+    And having executed:
+    """
+    CREATE (:A:B:C)
+    """
     When executing query:
       """
-      CALL db.labels() YIELD label
+      CALL db.labels() YIELD label 
       WITH count(*) AS c
-      CALL db.labels() YIELD label
-      RETURN *
+      CALL db.labels() YIELD label 
+      RETURN * ORDER BY label ASC
       """
     Then the result should be, in order:
       | c | label |
