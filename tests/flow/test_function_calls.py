@@ -1087,3 +1087,13 @@ class testFunctionCallsFlow(FlowTestsBase):
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
+    
+    def test40_Abs(self):
+        query_to_expected_result = {
+            "RETURN ABS(1)": [[1]],
+            "RETURN ABS(-1)": [[1]],
+            "RETURN ABS(0)": [[0]],
+            "RETURN ABS(NULL)": [[None]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)

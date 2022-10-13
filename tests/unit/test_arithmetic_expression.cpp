@@ -104,39 +104,6 @@ TEST_F(ArithmeticTest, AggregateTest) {
 	AR_EXP_Free(arExp);
 }
 
-TEST_F(ArithmeticTest, AbsTest) {
-	const char *query;
-	AR_ExpNode *arExp;
-
-	/* ABS(1) */
-	query = "RETURN ABS(1)";
-	arExp = _exp_from_query(query);
-	SIValue expected = SI_LongVal(1);
-	_test_ar_func(arExp, expected);
-	AR_EXP_Free(arExp);
-
-	/* ABS(-1) */
-	query = "RETURN ABS(-1)";
-	arExp = _exp_from_query(query);
-	expected = SI_LongVal(1);
-	_test_ar_func(arExp, expected);
-	AR_EXP_Free(arExp);
-
-	/* ABS(0) */
-	query = "RETURN ABS(0)";
-	arExp = _exp_from_query(query);
-	expected = SI_LongVal(0);
-	_test_ar_func(arExp, expected);
-	AR_EXP_Free(arExp);
-
-	/* ABS() */
-	query = "RETURN ABS(NULL)";
-	arExp = _exp_from_query(query);
-	expected = SI_NullVal();
-	_test_ar_func(arExp, expected);
-	AR_EXP_Free(arExp);
-}
-
 TEST_F(ArithmeticTest, CeilTest) {
 	SIValue expected;
 	const char *query;
