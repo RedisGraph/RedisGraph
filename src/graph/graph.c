@@ -797,8 +797,7 @@ void Graph_GetNodeEdges
 		ASSERT(t == GrB_UINT64 || t == GrB_BOOL);
 		// construct an iterator to traverse over the source node row,
 		// containing all outgoing edges
-		RG_MatrixTupleIter_attach(&it, M);
-		RG_MatrixTupleIter_iterate_row(&it, srcID);
+		RG_MatrixTupleIter_AttachRange(&it, M, srcID, srcID);
 		if(t == GrB_UINT64) {
 			while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, &edgeID) == GrB_SUCCESS) {
 				// collect all edges (src)->(dest)
@@ -824,8 +823,7 @@ void Graph_GetNodeEdges
 
 		// construct an iterator to traverse over the source node row,
 		// containing all incoming edges
-		RG_MatrixTupleIter_attach(&it, TM);
-		RG_MatrixTupleIter_iterate_row(&it, srcID);
+		RG_MatrixTupleIter_AttachRange(&it, TM, srcID, srcID);
 
 		if(t == GrB_UINT64) {
 			while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, NULL) == GrB_SUCCESS) {
@@ -863,12 +861,9 @@ uint Graph_GetNodeLabels
 	// GrB_Col_extract will iterate over the range of the output size
 	RG_Matrix M = Graph_GetNodeLabelMatrix(g);
 
-	RG_MatrixTupleIter iter = {0};
-	res = RG_MatrixTupleIter_attach(&iter, M);
-	ASSERT(res == GrB_SUCCESS);
-
 	EntityID id = ENTITY_GET_ID(n);
-	res = RG_MatrixTupleIter_iterate_row(&iter, id);
+	RG_MatrixTupleIter iter = {0};
+	res = RG_MatrixTupleIter_AttachRange(&iter, M, id, id);
 	ASSERT(res == GrB_SUCCESS);
 
 	uint i = 0;
@@ -914,7 +909,7 @@ void Graph_DeleteNode
 	if(label_count > 0) Graph_RemoveNodeLabels(g, n_id, labels, label_count);
 
 	// remove node from datablock
-	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
+	DataBlock_DeleteItem(g->nodes, n_id);
 }
 
 // removes an edge from Graph and updates graph relevant matrices
@@ -1055,6 +1050,24 @@ int Graph_AddLabel
 	return labelID;
 }
 
+void Graph_RemoveLabel
+(
+	Graph *g,
+	int label_id
+) {
+	ASSERT(g != NULL);
+	ASSERT(label_id == Graph_LabelTypeCount(g) - 1);
+	#ifdef RG_DEBUG
+	GrB_Index nvals;
+	GrB_Info info = RG_Matrix_nvals(&nvals, g->labels[label_id]);
+	ASSERT(info == GrB_SUCCESS);
+	ASSERT(nvals == 0);
+	#endif
+	RG_Matrix_free(&g->labels[label_id]);
+	g->labels = array_del(g->labels, label_id);
+}
+
+
 int Graph_AddRelationType
 (
 	Graph *g
@@ -1073,6 +1086,23 @@ int Graph_AddRelationType
 
 	int relationID = Graph_RelationTypeCount(g) - 1;
 	return relationID;
+}
+
+void Graph_RemoveRelation
+(
+	Graph *g,
+	int relation_id
+) {
+	ASSERT(g != NULL);
+	ASSERT(relation_id == Graph_RelationTypeCount(g) - 1);
+	#ifdef RG_DEBUG
+	GrB_Index nvals;
+	GrB_Info info = RG_Matrix_nvals(&nvals, g->relations[relation_id]);
+	ASSERT(info == GrB_SUCCESS);
+	ASSERT(nvals == 0);
+	#endif
+	RG_Matrix_free(&g->relations[relation_id]);
+	g->relations = array_del(g->relations, relation_id);
 }
 
 RG_Matrix Graph_GetLabelMatrix

@@ -10,6 +10,7 @@
 #include "../value.h"
 #include "../graph/entities/node.h"
 #include "../graph/entities/edge.h"
+#include "../schema/schema.h"
 
 // UndoLog
 // matains a list of undo operation reverting all changes
@@ -27,7 +28,8 @@ typedef enum {
 	UNDO_DELETE_NODE,   // undo node deletion
 	UNDO_DELETE_EDGE,   // undo edge deletion
 	UNDO_SET_LABELS,    // undo set labels
-	UNDO_REMOVE_LABELS  // undo remove labels
+	UNDO_REMOVE_LABELS, // undo remove labels
+	UNDO_ADD_SCHEMA     // undo schema addition
 } UndoOpType;
 
 //------------------------------------------------------------------------------
@@ -76,6 +78,12 @@ typedef struct {
 	size_t labels_count;
 } UndoLabelsOp;
 
+
+typedef struct {
+	int schema_id;
+	SchemaType t;
+} UndoAddSchemaOp;
+
 // Undo operation
 typedef struct {
 	union {
@@ -84,6 +92,7 @@ typedef struct {
 		UndoDeleteEdgeOp delete_edge_op;
 		UndoUpdateOp update_op;
 		UndoLabelsOp labels_op;
+		UndoAddSchemaOp schema_op;
 	};
 	UndoOpType type;  // type of undo operation
 } UndoOp;
@@ -152,6 +161,14 @@ void UndoLog_RemoveLabels
 	Node *node,                  // updated node
 	int *label_ids,              // removed labels
 	size_t labels_count          // number of removed labels
+);
+
+// undo schema addition
+void UndoLog_AddSchema
+(
+	UndoLog *log,                // undo log
+	int schema_id,               // id of the schema
+	SchemaType t                 // type of the schema
 );
 
 // rollback all modifications tracked by this undo log
