@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_emult_08_meta:  phase1 and phase2 for C=A.*B, C<M>=A.*B, C<!M>=A.*B
+// GB_emult_meta:  phase1 and phase2 for C=A.*B, C<M>=A.*B, C<!M>=A.*B
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
@@ -92,13 +92,13 @@
     #if defined ( GB_PHASE_1_OF_2 )
 
         // phase1: symbolic phase
-        #include "GB_emult_08_template.c"
+        #include "GB_emult_template.c"
 
     #else
 
         // phase2: numerical phase
         ASSERT (C_sparsity == GxB_SPARSE || C_sparsity == GxB_HYPERSPARSE) ;
-        #include "GB_emult_08_template.c"
+        #include "GB_emult_template.c"
 
     #endif
 }

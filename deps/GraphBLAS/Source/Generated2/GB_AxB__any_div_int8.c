@@ -47,7 +47,7 @@
 // B type:     int8_t
 // B pattern?  0
 
-// Multiply: z = GB_IDIV_SIGNED (x, y, 8)
+// Multiply: z = GB_idiv_int8 (x, y)
 // Add:      cij = t
 //    'any' monoid?  1
 //    atomic?        1
@@ -55,7 +55,7 @@
 //    identity:      0
 //    terminal?      1
 //    terminal condition: break ;
-// MultAdd:  { int8_t x_op_y = GB_IDIV_SIGNED (x, y, 8) ; z = x_op_y ; }
+// MultAdd:  { int8_t x_op_y = GB_idiv_int8 (x, y) ; z = x_op_y ; }
 
 #define GB_ATYPE \
     int8_t
@@ -112,7 +112,7 @@
 
 // multiply operator
 #define GB_MULT(z, x, y, i, k, j) \
-    z = GB_IDIV_SIGNED (x, y, 8)
+    z = GB_idiv_int8 (x, y)
 
 // cast from a real scalar (or 2, if C is complex) to the type of C
 #define GB_CTYPE_CAST(x,y) \
@@ -124,7 +124,7 @@
 
 // multiply-add
 #define GB_MULTADD(z, x, y, i, k, j) \
-    { int8_t x_op_y = GB_IDIV_SIGNED (x, y, 8) ; z = x_op_y ; }
+    { int8_t x_op_y = GB_idiv_int8 (x, y) ; z = x_op_y ; }
 
 // monoid identity value
 #define GB_IDENTITY \

@@ -133,7 +133,7 @@ GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
 
     struct GB_BinaryOp_opaque op_header ;
     GrB_BinaryOp op = &op_header ;
-    info = GB_binop_new (op, NULL, ztype, ztype, ztype, "1st_ztype", NULL,
+    info = GB_binop_new (op, NULL, ztype, ztype, ztype, "1st", NULL,
         GB_FIRST_binop_code) ;
 
     // GB_binop_new cannot fail since it doesn't allocate the function defn.

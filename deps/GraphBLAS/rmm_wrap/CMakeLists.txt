@@ -6,7 +6,8 @@
 
 #-------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 3.20.1)
+cmake_minimum_required ( VERSION 3.22 )
+
 project(rmm_wrap VERSION 0.1)
 
 # This build depends upon having RMM cmake installed from https://github.com/rapidsai/rmm.git

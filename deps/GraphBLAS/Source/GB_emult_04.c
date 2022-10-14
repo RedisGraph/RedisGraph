@@ -26,6 +26,7 @@
 #include "GB_emult.h"
 #include "GB_binop.h"
 #include "GB_unused.h"
+#include "GB_stringify.h"
 #ifndef GBCUDA_DEV
 #include "GB_binop__include.h"
 #endif
@@ -118,6 +119,11 @@ GrB_Info GB_emult_04        // C<M>=A.*B, M sparse/hyper, A and B bitmap/full
     const size_t csize = ctype->size ;
     GB_void cscalar [GB_VLA(csize)] ;
     bool C_iso = GB_iso_emult (cscalar, ctype, A, B, op) ;
+
+    #ifdef GB_DEBUGIFY_DEFN
+    GB_debugify_ewise (C_iso, C_sparsity, ctype, M,
+        Mask_struct, false, op, false, A, B) ;
+    #endif
 
     //--------------------------------------------------------------------------
     // allocate C->p and C->h

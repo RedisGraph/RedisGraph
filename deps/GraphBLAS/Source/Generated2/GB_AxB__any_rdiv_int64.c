@@ -47,7 +47,7 @@
 // B type:     int64_t
 // B pattern?  0
 
-// Multiply: z = GB_IDIV_SIGNED (y, x, 64)
+// Multiply: z = GB_idiv_int64 (y, x)
 // Add:      cij = t
 //    'any' monoid?  1
 //    atomic?        1
@@ -55,7 +55,7 @@
 //    identity:      0
 //    terminal?      1
 //    terminal condition: break ;
-// MultAdd:  { int64_t x_op_y = GB_IDIV_SIGNED (y, x, 64) ; z = x_op_y ; }
+// MultAdd:  { int64_t x_op_y = GB_idiv_int64 (y, x) ; z = x_op_y ; }
 
 #define GB_ATYPE \
     int64_t
@@ -112,7 +112,7 @@
 
 // multiply operator
 #define GB_MULT(z, x, y, i, k, j) \
-    z = GB_IDIV_SIGNED (y, x, 64)
+    z = GB_idiv_int64 (y, x)
 
 // cast from a real scalar (or 2, if C is complex) to the type of C
 #define GB_CTYPE_CAST(x,y) \
@@ -124,7 +124,7 @@
 
 // multiply-add
 #define GB_MULTADD(z, x, y, i, k, j) \
-    { int64_t x_op_y = GB_IDIV_SIGNED (y, x, 64) ; z = x_op_y ; }
+    { int64_t x_op_y = GB_idiv_int64 (y, x) ; z = x_op_y ; }
 
 // monoid identity value
 #define GB_IDENTITY \

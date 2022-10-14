@@ -131,7 +131,7 @@ void mexFunction
     {
         // mangle the X vector where entries are not present
         double *Xx = (double *) X->x ;
-        bool *Xb = X->b ;
+        int8_t *Xb = X->b ;
         int64_t n = X->vlen ;
         for (int64_t k = 0 ; k < n ; k++)
         {
@@ -143,7 +143,7 @@ void mexFunction
     {
         // mangle the Y vector where entries are not present
         double *Yx = (double *) Y->x ;
-        bool *Yb = Y->b ;
+        int8_t *Yb = Y->b ;
         int64_t n = Y->vlen ;
         for (int64_t k = 0 ; k < n ; k++)
         {

@@ -24,7 +24,7 @@
 // C=binop(A,B) is defined by the following types and operators:
 
 // A+B function (eWiseAdd):         GB (_AaddB__pow_uint64)
-// A.*B function (eWiseMult):       GB (_AemultB_08__pow_uint64)
+// A.*B function (eWiseMult):       GB (_AemultB__pow_uint64)
 // A.*B function (eWiseMult):       GB (_AemultB_02__pow_uint64)
 // A.*B function (eWiseMult):       GB (_AemultB_04__pow_uint64)
 // A.*B function (eWiseMult):       GB (_AemultB_bitmap__pow_uint64)
@@ -306,7 +306,7 @@ GrB_Info GB (_AaddB__pow_uint64)
 
 
 
-GrB_Info GB (_AemultB_08__pow_uint64)
+GrB_Info GB (_AemultB__pow_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -328,7 +328,7 @@ GrB_Info GB (_AemultB_08__pow_uint64)
     #if GB_DISABLE
     return (GrB_NO_VALUE) ;
     #else
-    #include "GB_emult_08_meta.c"
+    #include "GB_emult_meta.c"
     return (GrB_SUCCESS) ;
     #endif
 }

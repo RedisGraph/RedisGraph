@@ -19,7 +19,7 @@
 # To select a specific BLAS library, edit this file and uncomment one of:
 # set ( BLA_VENDOR ... )
 
-cmake_minimum_required ( VERSION 3.19 )
+cmake_minimum_required ( VERSION 3.22 )
 
 message ( STATUS "Source:        ${CMAKE_SOURCE_DIR} ")
 message ( STATUS "Build:         ${CMAKE_BINARY_DIR} ")
@@ -93,8 +93,9 @@ set ( CMAKE_INCLUDE_CURRENT_DIR ON )
 # CHOLMOD, SPQR, and ParU.  All SuiteSparse packages should use the same
 # BLAS and the same OpenMP library.
 
-# set ( BLA_VENDOR OpenBLAS )
-# set ( BLA_VENDOR Intel10_64ilp )
+# set ( BLA_VENDOR OpenBLAS )       # OpenBLAS with 32-bit integers
+# set ( BLA_VENDOR Intel10_64ilp )  # MKL BLAS with 64-bit integers
+# set ( BLA_VENDOR Intel10_64lp )   # MKL BLAS with 32-bit integers
 
 # The Intel MKL BLAS is recommended.  It is free to download (but be sure to
 # check their license to make sure you accept it).   See:

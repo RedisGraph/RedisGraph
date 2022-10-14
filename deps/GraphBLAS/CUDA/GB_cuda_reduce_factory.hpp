@@ -23,6 +23,7 @@ class GB_cuda_reduce_factory: public jit::File_Desc {
 public:
     uint64_t rcode;
     GrB_Monoid reduce ;
+    GrB_Type atype ;
 
     // file ptr
     FILE *fp;
@@ -51,6 +52,7 @@ public:
 
         this->rcode = rcode;
         this->reduce = reduce ;
+        this->atype = A->type ;
         std::stringstream ss;
         ss << "GB_reduce_" << this->rcode << ".h";
 
@@ -70,7 +72,9 @@ public:
                 // output to file :
                 fp,
                 // input:
-                this->rcode
+                this->rcode,
+                this->reduce,
+                this->atype
         ) ;
     }
 

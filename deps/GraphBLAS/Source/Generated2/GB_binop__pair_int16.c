@@ -328,7 +328,7 @@ GrB_Info GB ((none))
     #if GB_DISABLE
     return (GrB_NO_VALUE) ;
     #else
-    #include "GB_emult_08_meta.c"
+    #include "GB_emult_meta.c"
     return (GrB_SUCCESS) ;
     #endif
 }

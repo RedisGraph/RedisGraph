@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_emult_08_phase2: C=A.*B, C<M>=A.*B, or C<!M>=A.*B
+// GB_emult_phase2: C=A.*B, C<M>=A.*B, or C<!M>=A.*B
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
@@ -7,12 +7,12 @@
 
 //------------------------------------------------------------------------------
 
-// GB_emult_08_phase2 computes C=A.*B, C<M>=A.*B, or C<!M>=A.*B.  It is
-// preceded first by GB_emult_08_phase0, which computes the list of vectors of
+// GB_emult_phase2 computes C=A.*B, C<M>=A.*B, or C<!M>=A.*B.  It is
+// preceded first by GB_emult_phase0, which computes the list of vectors of
 // C to compute (Ch) and their location in M, A, and B (C_to_[MAB]).  Next,
-// GB_emult_08_phase1 counts the entries in each vector C(:,j) and computes Cp.
+// GB_emult_phase1 counts the entries in each vector C(:,j) and computes Cp.
 
-// GB_emult_08_phase2 computes the pattern and values of each vector of C(:,j),
+// GB_emult_phase2 computes the pattern and values of each vector of C(:,j),
 // entirely in parallel.
 
 // C, M, A, and B can be have any sparsity structure.  If M is sparse or
@@ -27,6 +27,7 @@
 #include "GB_emult.h"
 #include "GB_binop.h"
 #include "GB_unused.h"
+#include "GB_stringify.h"
 #ifndef GBCUDA_DEV
 #include "GB_binop__include.h"
 #endif
@@ -36,7 +37,7 @@
     GB_phybix_free (C) ;        \
 }
 
-GrB_Info GB_emult_08_phase2             // C=A.*B or C<M>=A.*B
+GrB_Info GB_emult_phase2             // C=A.*B or C<M>=A.*B
 (
     GrB_Matrix C,           // output matrix, static header
     const GrB_Type ctype,   // type of output matrix C
@@ -126,6 +127,11 @@ GrB_Info GB_emult_08_phase2             // C=A.*B or C<M>=A.*B
     GB_void cscalar [GB_VLA(csize)] ;
     bool C_iso = GB_iso_emult (cscalar, ctype, A, B, op) ;
 
+    #ifdef GB_DEBUGIFY_DEFN
+    GB_debugify_ewise (C_iso, C_sparsity, ctype, M,
+        Mask_struct, Mask_comp, op, false, A, B) ;
+    #endif
+
     //--------------------------------------------------------------------------
     // allocate the output matrix C
     //--------------------------------------------------------------------------
@@ -145,7 +151,7 @@ GrB_Info GB_emult_08_phase2             // C=A.*B or C<M>=A.*B
         return (info) ;
     }
 
-    // transplant Cp into C as the vector pointers, from GB_emult_08_phase1
+    // transplant Cp into C as the vector pointers, from GB_emult_phase1
     if (C_is_sparse_or_hyper)
     { 
         C->nvec_nonempty = Cnvec_nonempty ;
@@ -154,7 +160,7 @@ GrB_Info GB_emult_08_phase2             // C=A.*B or C<M>=A.*B
         (*Cp_handle) = NULL ;
     }
 
-    // add Ch as the hypersparse list for C, from GB_emult_08_phase0
+    // add Ch as the hypersparse list for C, from GB_emult_phase0
     if (C_is_hyper)
     { 
         // C->h is currently shallow; a copy is made at the end
@@ -203,7 +209,7 @@ GrB_Info GB_emult_08_phase2             // C=A.*B or C<M>=A.*B
 
         // pattern of C = set intersection of pattern of A and B
         #define GB_ISO_EMULT
-        #include "GB_emult_08_meta.c"
+        #include "GB_emult_meta.c"
         done = true ;
 
     }
@@ -216,11 +222,11 @@ GrB_Info GB_emult_08_phase2             // C=A.*B or C<M>=A.*B
             // define the worker for the switch factory
             //------------------------------------------------------------------
 
-            #define GB_AemultB_08(mult,xname) GB (_AemultB_08_ ## mult ## xname)
+            #define GB_AemultB(mult,xname) GB (_AemultB_ ## mult ## xname)
 
             #define GB_BINOP_WORKER(mult,xname)                             \
             {                                                               \
-                info = GB_AemultB_08(mult,xname) (C, C_sparsity,            \
+                info = GB_AemultB(mult,xname) (C, C_sparsity,               \
                     ewise_method, M, Mask_struct, Mask_comp,                \
                     A, B, C_to_M, C_to_A, C_to_B,                           \
                     TaskList, C_ntasks, C_nthreads, Context) ;              \

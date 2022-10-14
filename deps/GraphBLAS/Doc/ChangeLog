@@ -1,4 +1,4 @@
-Version 7.3.0, Oct 1, 2022
+Version 7.3.0, Oct 11, 2022
 
     * GrB_Matrix: changes to the internal data structure
         * minor internal changes: A->nvals for sparse/hypersparse
@@ -10,6 +10,8 @@ Version 7.3.0, Oct 1, 2022
             the A->Y hyper_hash
     * @GrB MATLAB/Octave interface: changed license to Apache-2.0
     * MATLAB library: renamed to libgraphblas_matlab.so
+    * performance: faster C=A*B when using a single thread and B is a
+        sparse vector with many entries
 
 Version 7.2.0, Aug 8, 2022
 

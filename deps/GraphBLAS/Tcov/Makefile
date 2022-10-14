@@ -31,7 +31,7 @@ SRC2 = $(notdir $(wildcard $(SRC)))
 OBJ = $(SRC2:.c=.o)
 LIBS = 
 I = -Itmp_include -I../rmm_wrap -I../zstd -I../zstd/zstd_subset -I../lz4
-CPPFLAGS = $(I) -DGBNCPUFEAT -DGBCOVER $(RENAME)
+CPPFLAGS = $(I) -DGBNCPUFEAT -DGBCOVER -DGB_DEBUGIFY_DEFN=1 $(RENAME)
 SO_OPTS = $(LDFLAGS)
 
 ifeq ($(UNAME),Darwin)

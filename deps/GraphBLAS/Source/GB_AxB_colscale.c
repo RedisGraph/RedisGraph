@@ -11,6 +11,7 @@
 #include "GB_binop.h"
 #include "GB_apply.h"
 #include "GB_ek_slice.h"
+#include "GB_stringify.h"
 #ifndef GBCUDA_DEV
 #include "GB_binop__include.h"
 #endif
@@ -86,6 +87,11 @@ GrB_Info GB_AxB_colscale            // C = A*D, column scale with diagonal D
     GB_void cscalar [GB_VLA(zsize)] ;
     bool C_iso = GB_iso_AxB (cscalar, A, D, A->vdim, semiring, flipxy, true) ;
 
+    #ifdef GB_DEBUGIFY_DEFN
+    GB_debugify_mxm (C_iso, GB_sparsity (A), ztype, NULL, false, false,
+        semiring, flipxy, A, D) ;
+    #endif
+
     //--------------------------------------------------------------------------
     // copy the pattern of A into C
     //--------------------------------------------------------------------------
@@ -106,14 +112,8 @@ GrB_Info GB_AxB_colscale            // C = A*D, column scale with diagonal D
         // apply a positional operator: convert C=A*D to C=op(A)
         //----------------------------------------------------------------------
 
-        if (flipxy)
-        { 
-            // the multiplicative operator is fmult(y,x), so flip the opcode
-            bool handled ;
-            opcode = GB_flip_binop_code (opcode, &handled) ;
-            ASSERT (handled) ;      // all positional ops can be flipped
-        }
         // determine unary operator to compute C=A*D
+        ASSERT (!flipxy) ;
         GrB_UnaryOp op = NULL ;
         if (ztype == GrB_INT64)
         {

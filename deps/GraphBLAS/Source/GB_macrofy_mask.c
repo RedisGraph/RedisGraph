@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_stringify_mask: construct macros to access the mask
+// GB_macrofy_mask: return string to define mask macros
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2021, All Rights Reserved.
@@ -12,138 +12,6 @@
 
 #include "GB.h"
 #include "GB_stringify.h"
-
-//------------------------------------------------------------------------------
-// GB_stringify_mask: return string to define mask macros
-//------------------------------------------------------------------------------
-
-void GB_stringify_mask     // return string to define mask macros
-(
-    // input:
-    FILE *fp,                   // File to write macros, assumed open already
-    const GB_Type_code mcode,   // typecode of the mask matrix M,
-                                // or 0 if M is not present
-    bool Mask_struct,           // true if M structural, false if valued
-    bool Mask_comp              // true if M complemented
-)
-{
-
-    int mask_ecode ;
-
-    // get mask_ecode from mask type (mask_ecode) and mask descriptor
-    GB_enumify_mask (&mask_ecode, mcode, Mask_struct, Mask_comp) ;
-
-    // convert ecode to string containing mask macros
-    GB_macrofy_mask ( fp, mask_ecode) ;
-}
-
-//------------------------------------------------------------------------------
-// GB_enumify_mask: return mask_ecode to define mask macros
-//------------------------------------------------------------------------------
-
-void GB_enumify_mask       // return enum to define mask macros
-(
-    // output:
-    int *mask_ecode,            // enumified mask
-    // input
-    const GB_Type_code mcode,   // typecode of the mask matrix M,
-                                // or 0 if M is not present
-    bool Mask_struct,           // true if M structural, false if valued
-    bool Mask_comp              // true if M complemented
-)
-{
-
-    // Mask_comp becomes the least significant bit, so that
-    // Mask_comp = (mask_ecode & 0x1) can be computed later.
-    // Mask_struct = (mask_ecode == 2 || mask_ecode == 3)
-
-    int e = -1 ;
-
-    if (mcode == 0)
-    {
-
-        //----------------------------------------------------------------------
-        // no mask is present
-        //----------------------------------------------------------------------
-
-        // Mask_struct is ignored, but the mask may be complemented or not
-
-        // user-defined types are OK.  The values of M are not accessed.
-        e = (!Mask_comp) ? 0 : 1 ;
-
-    }
-    else if (Mask_struct)
-    {
-
-        //----------------------------------------------------------------------
-        // M is present, and structural (not valued).
-        //----------------------------------------------------------------------
-
-        // user-defined types are OK.  The values of M are not accessed.
-        e = (!Mask_comp) ? 2 : 3 ;
-
-    }
-    else
-    {
-
-        //----------------------------------------------------------------------
-        // M is present, and valued
-        //----------------------------------------------------------------------
-
-        switch (mcode)
-        {
-
-            case GB_BOOL_code:
-            case GB_INT8_code:
-            case GB_UINT8_code:
-
-                // valued mask, values are 1 byte in size
-                e = (!Mask_comp) ? 4 : 5 ;
-                break ;
-
-            case GB_INT16_code:
-            case GB_UINT16_code:
-
-                // valued mask, values are 2 bytes in size
-                e = (!Mask_comp) ? 6 : 7 ;
-                break ;
-
-            case GB_INT32_code:
-            case GB_UINT32_code:
-            case GB_FP32_code:
-
-                // valued mask, values are 4 bytes in size
-                e = (!Mask_comp) ? 8 : 9 ;
-                break ;
-
-            case GB_INT64_code:
-            case GB_UINT64_code:
-            case GB_FC32_code:
-            case GB_FP64_code:
-
-                // valued mask, values are 8 bytes in size
-                e = (!Mask_comp) ? 10 : 11 ;
-                break ;
-
-            case GB_FC64_code:
-
-                // valued mask, values are 16 bytes in size
-                e = (!Mask_comp) ? 12 : 13 ;
-                break ;
-
-            default: ;
-                // user-defined types are not allowed
-                e = -1 ;
-                break ;
-        }
-    }
-
-    (*mask_ecode) = e ;
-}
-
-//------------------------------------------------------------------------------
-// GB_macrofy_mask: return string to define mask macros
-//------------------------------------------------------------------------------
 
 void GB_macrofy_mask       // return enum to define mask macros
 (
@@ -319,6 +187,6 @@ void GB_macrofy_mask       // return enum to define mask macros
             break ;
     }
 
-    fprintf( fp, "%s\n", f ) ;
+    fprintf (fp, "// mask:\n%s\n", f) ;
 }
 

@@ -24,7 +24,7 @@
 // C=binop(A,B) is defined by the following types and operators:
 
 // A+B function (eWiseAdd):         GB (_AaddB__div_uint16)
-// A.*B function (eWiseMult):       GB (_AemultB_08__div_uint16)
+// A.*B function (eWiseMult):       GB (_AemultB__div_uint16)
 // A.*B function (eWiseMult):       GB (_AemultB_02__div_uint16)
 // A.*B function (eWiseMult):       GB (_AemultB_04__div_uint16)
 // A.*B function (eWiseMult):       GB (_AemultB_bitmap__div_uint16)
@@ -45,7 +45,7 @@
 // B type:     uint16_t
 // B pattern?  0
 
-// BinaryOp:   cij = GB_IDIV_UNSIGNED (aij, bij, 16)
+// BinaryOp:   cij = GB_idiv_uint16 (aij, bij)
 
 #define GB_ATYPE \
     uint16_t
@@ -100,7 +100,7 @@
 
 // binary operator
 #define GB_BINOP(z,x,y,i,j) \
-    z = GB_IDIV_UNSIGNED (x, y, 16) ;
+    z = GB_idiv_uint16 (x, y) ;
 
 // true if the binop must be flipped
 #define GB_BINOP_FLIP \
@@ -306,7 +306,7 @@ GrB_Info GB (_AaddB__div_uint16)
 
 
 
-GrB_Info GB (_AemultB_08__div_uint16)
+GrB_Info GB (_AemultB__div_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -328,7 +328,7 @@ GrB_Info GB (_AemultB_08__div_uint16)
     #if GB_DISABLE
     return (GrB_NO_VALUE) ;
     #else
-    #include "GB_emult_08_meta.c"
+    #include "GB_emult_meta.c"
     return (GrB_SUCCESS) ;
     #endif
 }
@@ -472,7 +472,7 @@ GrB_Info GB (_bind1st__div_uint16)
     {
         if (!GBB (Bb, p)) continue ;
         uint16_t bij = GBX (Bx, p, false) ;
-        Cx [p] = GB_IDIV_UNSIGNED (x, bij, 16) ;
+        Cx [p] = GB_idiv_uint16 (x, bij) ;
     }
     return (GrB_SUCCESS) ;
     #endif
@@ -508,7 +508,7 @@ GrB_Info GB (_bind2nd__div_uint16)
     {
         if (!GBB (Ab, p)) continue ;
         uint16_t aij = GBX (Ax, p, false) ;
-        Cx [p] = GB_IDIV_UNSIGNED (aij, y, 16) ;
+        Cx [p] = GB_idiv_uint16 (aij, y) ;
     }
     return (GrB_SUCCESS) ;
     #endif
@@ -527,7 +527,7 @@ GrB_Info GB (_bind2nd__div_uint16)
 #define GB_CAST_OP(pC,pA)                       \
 {                                               \
     uint16_t aij = GBX (Ax, pA, false) ;               \
-    Cx [pC] = GB_IDIV_UNSIGNED (x, aij, 16) ;        \
+    Cx [pC] = GB_idiv_uint16 (x, aij) ;        \
 }
 
 GrB_Info GB (_bind1st_tran__div_uint16)
@@ -571,7 +571,7 @@ GrB_Info GB (_bind1st_tran__div_uint16)
 #define GB_CAST_OP(pC,pA)                       \
 {                                               \
     uint16_t aij = GBX (Ax, pA, false) ;               \
-    Cx [pC] = GB_IDIV_UNSIGNED (aij, y, 16) ;        \
+    Cx [pC] = GB_idiv_uint16 (aij, y) ;        \
 }
 
 GrB_Info GB (_bind2nd_tran__div_uint16)

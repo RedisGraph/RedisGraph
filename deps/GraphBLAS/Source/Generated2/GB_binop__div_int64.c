@@ -24,7 +24,7 @@
 // C=binop(A,B) is defined by the following types and operators:
 
 // A+B function (eWiseAdd):         GB (_AaddB__div_int64)
-// A.*B function (eWiseMult):       GB (_AemultB_08__div_int64)
+// A.*B function (eWiseMult):       GB (_AemultB__div_int64)
 // A.*B function (eWiseMult):       GB (_AemultB_02__div_int64)
 // A.*B function (eWiseMult):       GB (_AemultB_04__div_int64)
 // A.*B function (eWiseMult):       GB (_AemultB_bitmap__div_int64)
@@ -45,7 +45,7 @@
 // B type:     int64_t
 // B pattern?  0
 
-// BinaryOp:   cij = GB_IDIV_SIGNED (aij, bij, 64)
+// BinaryOp:   cij = GB_idiv_int64 (aij, bij)
 
 #define GB_ATYPE \
     int64_t
@@ -100,7 +100,7 @@
 
 // binary operator
 #define GB_BINOP(z,x,y,i,j) \
-    z = GB_IDIV_SIGNED (x, y, 64) ;
+    z = GB_idiv_int64 (x, y) ;
 
 // true if the binop must be flipped
 #define GB_BINOP_FLIP \
@@ -306,7 +306,7 @@ GrB_Info GB (_AaddB__div_int64)
 
 
 
-GrB_Info GB (_AemultB_08__div_int64)
+GrB_Info GB (_AemultB__div_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -328,7 +328,7 @@ GrB_Info GB (_AemultB_08__div_int64)
     #if GB_DISABLE
     return (GrB_NO_VALUE) ;
     #else
-    #include "GB_emult_08_meta.c"
+    #include "GB_emult_meta.c"
     return (GrB_SUCCESS) ;
     #endif
 }
@@ -472,7 +472,7 @@ GrB_Info GB (_bind1st__div_int64)
     {
         if (!GBB (Bb, p)) continue ;
         int64_t bij = GBX (Bx, p, false) ;
-        Cx [p] = GB_IDIV_SIGNED (x, bij, 64) ;
+        Cx [p] = GB_idiv_int64 (x, bij) ;
     }
     return (GrB_SUCCESS) ;
     #endif
@@ -508,7 +508,7 @@ GrB_Info GB (_bind2nd__div_int64)
     {
         if (!GBB (Ab, p)) continue ;
         int64_t aij = GBX (Ax, p, false) ;
-        Cx [p] = GB_IDIV_SIGNED (aij, y, 64) ;
+        Cx [p] = GB_idiv_int64 (aij, y) ;
     }
     return (GrB_SUCCESS) ;
     #endif
@@ -527,7 +527,7 @@ GrB_Info GB (_bind2nd__div_int64)
 #define GB_CAST_OP(pC,pA)                       \
 {                                               \
     int64_t aij = GBX (Ax, pA, false) ;               \
-    Cx [pC] = GB_IDIV_SIGNED (x, aij, 64) ;        \
+    Cx [pC] = GB_idiv_int64 (x, aij) ;        \
 }
 
 GrB_Info GB (_bind1st_tran__div_int64)
@@ -571,7 +571,7 @@ GrB_Info GB (_bind1st_tran__div_int64)
 #define GB_CAST_OP(pC,pA)                       \
 {                                               \
     int64_t aij = GBX (Ax, pA, false) ;               \
-    Cx [pC] = GB_IDIV_SIGNED (aij, y, 64) ;        \
+    Cx [pC] = GB_idiv_int64 (aij, y) ;        \
 }
 
 GrB_Info GB (_bind2nd_tran__div_int64)

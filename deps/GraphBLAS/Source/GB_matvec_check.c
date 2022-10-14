@@ -69,11 +69,27 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     int pr_developer = 0 ;
     #endif
 
-    GBPR0 ("\n  " GBd "x" GBd " GraphBLAS %s %s",
+    GBPR0 ("\n  " GBd "x" GBd " GraphBLAS ",
         (A != NULL) ? GB_NROWS (A) : 0,
-        (A != NULL) ? GB_NCOLS (A) : 0,
-        (A != NULL && A->type != NULL && A->type->name != NULL) ?
-         A->type->name : "", kind) ;
+        (A != NULL) ? GB_NCOLS (A) : 0) ;
+
+    if (A != NULL && A->type != NULL)
+    {
+        if (A->type == GxB_FC32)
+        { 
+            GBPR0 ("float complex") ;
+        }
+        else if (A->type == GxB_FC64)
+        {
+            GBPR0 ("double complex") ;
+        }
+        else
+        {
+            GBPR0 ("%s", A->type->name) ;
+        }
+    }
+
+    GBPR0 (" %s", kind) ;
 
     #if GB_DEVELOPER
     if (phantom) GBPR0 (" (phantom)") ;

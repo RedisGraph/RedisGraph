@@ -35,6 +35,7 @@
 #include "GB_subref.h"
 #include "GB_ek_slice.h"
 #include "GB_bitmap_assign_methods.h"
+#include "GB_stringify.h"
 #include "GB_AxB__include1.h"
 #ifndef GBCUDA_DEV
 #include "GB_AxB__include2.h"
@@ -358,6 +359,11 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<#M>=A'*B, dot product method
         ctype, cvlen, cvdim, GB_Ap_malloc, true, C_sparsity,
         M_is_sparse_or_hyper, B->hyper_switch, cnvec, cnz, true, C_iso,
         Context)) ;
+
+    #ifdef GB_DEBUGIFY_DEFN
+    GB_debugify_mxm (C_iso, C_sparsity, ctype, M,
+        Mask_struct, Mask_comp, semiring, flipxy, A, B) ;
+    #endif
 
     //--------------------------------------------------------------------------
     // if M is sparse/hyper, scatter it into the C bitmap

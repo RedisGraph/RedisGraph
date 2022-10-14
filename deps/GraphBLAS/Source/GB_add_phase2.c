@@ -31,6 +31,7 @@
 #include "GB_binop.h"
 #include "GB_unused.h"
 #include "GB_ek_slice.h"
+#include "GB_stringify.h"
 #ifndef GBCUDA_DEV
 #include "GB_binop__include.h"
 #endif
@@ -168,7 +169,7 @@ GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
 
     if (op == NULL)
     { 
-        // implicit GB_SECOND_[type] operator with no typecasting
+        // GB_wait: implicit GB_SECOND_[type] operator with no typecasting
         ASSERT (!is_eWiseUnion) ;
         fadd = NULL ;               // the operator is not called
         asize = csize ;
@@ -248,6 +249,11 @@ GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
     GB_void cscalar [GB_VLA(csize)] ;
     bool C_iso = GB_iso_add (cscalar, ctype, A, alpha_scalar,
         B, beta_scalar, op, is_eWiseUnion) ;
+
+    #ifdef GB_DEBUGIFY_DEFN
+    GB_debugify_ewise (C_iso, C_sparsity, ctype, M,
+        Mask_struct, Mask_comp, op, false, A, B) ;
+    #endif
 
     //--------------------------------------------------------------------------
     // allocate the output matrix C: hypersparse, sparse, bitmap, or full
@@ -379,7 +385,7 @@ GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
     if (!done)
     {
         GB_BURBLE_MATRIX (C, "(generic add: %s) ",
-            (op == NULL) ? "second" : op->name) ;
+            (op == NULL) ? "2nd" : op->name) ;
 
         // C(i,j) = (ctype) A(i,j), located in Ax [pA]
         #undef  GB_COPY_A_TO_C 

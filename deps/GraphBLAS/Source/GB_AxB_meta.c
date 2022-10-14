@@ -53,7 +53,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     const GrB_BinaryOp accum,       // accum operator for C_in += A*B
     const GrB_Matrix A_in,          // input matrix
     const GrB_Matrix B_in,          // input matrix
-    const GrB_Semiring semiring,    // semiring that defines C=A*B
+    const GrB_Semiring semiring_in, // semiring that defines C=A*B
     bool A_transpose,               // if true, use A', else A
     bool B_transpose,               // if true, use B', else B
     bool flipxy,                    // if true, do z=fmult(b,a) vs fmult(a,b)
@@ -87,7 +87,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     ASSERT (GB_JUMBLED_OK (B_in)) ;
     ASSERT (!GB_PENDING (B_in)) ;
 
-    ASSERT_SEMIRING_OK (semiring, "semiring for numeric A*B", GB0) ;
+    ASSERT_SEMIRING_OK (semiring_in, "semiring_in for numeric A*B", GB0) ;
     ASSERT (mask_applied != NULL) ;
     ASSERT (C  != NULL && ( C->static_header || GBNSTATIC)) ;
     ASSERT (MT != NULL && (MT->static_header || GBNSTATIC)) ;
@@ -104,16 +104,16 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     (*done_in_place) = false ;
 
     //--------------------------------------------------------------------------
-    // get the semiring
+    // get the semiring_in
     //--------------------------------------------------------------------------
 
-    GB_Opcode opcode = semiring->multiply->opcode  ;
+    GB_Opcode opcode = semiring_in->multiply->opcode  ;
     bool op_is_positional = GB_OPCODE_IS_POSITIONAL (opcode) ;
     bool op_is_first  = (opcode == GB_FIRST_binop_code) ;
     bool op_is_second = (opcode == GB_SECOND_binop_code) ;
     bool op_is_pair   = (opcode == GB_PAIR_binop_code) ;
     bool allow_scale = true ;
-    if (semiring->multiply->binop_function == NULL &&
+    if (semiring_in->multiply->binop_function == NULL &&
         (op_is_first || op_is_second))
     { 
         // GB_AxB_rowscale and GB_AxB_colscale do not handle the implicit FIRST
@@ -145,7 +145,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     //      the monoid of the semiring.  C_replace must be false, or
     //      effectively false.
     //
-    //      TODO:  if C is full and accum is not present, it can be quickly
+    //      todo:  if C is full and accum is not present, it can be quickly
     //      converted to bitmap and then done in-place.
     //
     // If C is bitmap:
@@ -154,7 +154,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     //      monoid.  The accum must not be present, or if present it must match
     //      the semiring monoid.  C_replace can be true or false.
     //
-    //      TODO: modify GB_AxB_dot2 so it can compute C in-place,
+    //      todo: modify GB_AxB_dot2 so it can compute C in-place,
     //      or add a bitmap dot product method.  Also modify GB_AxB_saxpy
     //      so it can compute a C bitmap in-place.
     //
@@ -173,8 +173,8 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
             // C is bitmap
             ASSERT (!GB_PENDING (C_in)) ; // no pending tuples in bitmap
             ASSERT (!GB_ZOMBIES (C_in)) ; // bitmap never has zombies
-            can_do_in_place = (C_in->type == semiring->add->op->ztype)
-                && ((accum == NULL) || (accum == semiring->add->op)) ;
+            can_do_in_place = (C_in->type == semiring_in->add->op->ztype)
+                && ((accum == NULL) || (accum == semiring_in->add->op)) ;
         }
         else
         #endif
@@ -186,7 +186,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
 
             // accum must be present, and must match the monoid of the
             // semiring, and the ztype of the monoid must match the type of C
-            bool accum_is_monoid = (accum == semiring->add->op) 
+            bool accum_is_monoid = (accum == semiring_in->add->op)
                 && (C_in->type == accum->ztype) ;
 
             // C += A*B with C_replace ignored (effectively false)
@@ -315,7 +315,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
 
         int tentative_axb_method ;
         GB_AxB_meta_adotb_control (&tentative_axb_method, C_in, M_in,
-            Mask_comp, B_in, A_in, accum, semiring, flipxy, can_do_in_place,
+            Mask_comp, B_in, A_in, accum, semiring_in, flipxy, can_do_in_place,
             allow_scale, A_in_is_diagonal, AxB_method, Context) ;
 
         if (tentative_axb_method == GB_USE_SAXPY)
@@ -385,7 +385,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
 
         int tentative_axb_method ;
         GB_AxB_meta_adotb_control (&tentative_axb_method, C_in, M_in,
-            Mask_comp, A_in, B_in, accum, semiring, flipxy, can_do_in_place,
+            Mask_comp, A_in, B_in, accum, semiring_in, flipxy, can_do_in_place,
             allow_scale, B_in_is_diagonal, AxB_method, Context) ;
 
         if (tentative_axb_method == GB_USE_SAXPY)
@@ -418,6 +418,10 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         swap_rule = false ;
     }
 
+    //--------------------------------------------------------------------------
+    // apply the swap_rule
+    //--------------------------------------------------------------------------
+
     GrB_Matrix A, B ;
     bool atrans, btrans ;
     int A_is_diagonal = -1 ;            // not yet computed
@@ -446,6 +450,25 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
 
     ASSERT_MATRIX_OK (A, "final A for A*B", GB0) ;
     ASSERT_MATRIX_OK (B, "final B for A*B", GB0) ;
+
+    //--------------------------------------------------------------------------
+    // finalize the semiring after flipping the binary multiplicative operator
+    //--------------------------------------------------------------------------
+
+    struct GB_Semiring_opaque semiring_struct ;
+    GrB_Semiring semiring = &semiring_struct ;
+    semiring->magic = GB_MAGIC ;
+    semiring->header_size = 0 ;
+    semiring->add = semiring_in->add ;
+    semiring->multiply = GB_flip_binop (semiring_in->multiply, false, &flipxy) ;
+
+    opcode = semiring->multiply->opcode  ;
+    op_is_first  = (opcode == GB_FIRST_binop_code) ;
+    op_is_second = (opcode == GB_SECOND_binop_code) ;
+
+    // flipxy is now false for all built-in semirings, and for all user-defined
+    // semirings that use built-in multiplicative operators that are handled by
+    // GB_flip_binop.
 
     //--------------------------------------------------------------------------
     // explicitly transpose the mask
@@ -487,7 +510,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         { 
             can_do_in_place = false ;
         }
-        // TODO: A and B can be transposed below, so this check should be
+        // todo: A and B can be transposed below, so this check should be
         // done after any such transposings.
     }
 
@@ -503,7 +526,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     {
         int64_t anz = GB_nnz (A) ;
         int64_t bnz = GB_nnz (B) ;
-        snprintf (A_str, GB_PROP_LEN, "A: " GBd "-by-" GBd ", %s, " GBd 
+        snprintf (A_str, GB_PROP_LEN, "A: " GBd "-by-" GBd ", %s, " GBd
             " entries", GB_NROWS (A), GB_NCOLS (A), A->type->name, anz) ;
         snprintf (B_str, GB_PROP_LEN, "B: " GBd "-by-" GBd ", %s, " GBd
             " entries", GB_NROWS (B), GB_NCOLS (B), B->type->name, bnz) ;
@@ -519,8 +542,10 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     if (flipxy)
     { 
         // A is passed as y, and B as x, in z = mult(x,y)
-        A_is_pattern = op_is_first  || op_is_pair || op_is_positional ;
-        B_is_pattern = op_is_second || op_is_pair || op_is_positional ;
+        // The built-in first, second, pair, and positional ops have all been
+        // renamed, so A and B are not pattern-only if flipxy is still true.
+        A_is_pattern = false ;
+        B_is_pattern = false ;
         atype_cast = semiring->multiply->ytype ;
         btype_cast = semiring->multiply->xtype ;
     }
@@ -638,15 +663,17 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         //----------------------------------------------------------------------
 
         if (allow_scale && M == NULL
-            && !GB_IS_BITMAP (A)     // TODO: A*D colscale with A bitmap
-            && ((B_is_diagonal == -1) ? GB_is_diagonal (B, Context) : B_is_diagonal))
+            && !GB_IS_BITMAP (A)     // todo: A*D colscale with A bitmap
+            && ((B_is_diagonal == -1) ?
+                GB_is_diagonal (B, Context) : B_is_diagonal))
         { 
             // C = A*D, column scale
             axb_method = GB_USE_COLSCALE ;
         }
         else if (allow_scale && M == NULL
-            && !GB_IS_BITMAP (B)     // TODO: D*B' rowscale with B bitmap
-            && ((A_is_diagonal == -1) ? GB_is_diagonal (A, Context) : A_is_diagonal))
+            && !GB_IS_BITMAP (B)     // todo: D*B' rowscale with B bitmap
+            && ((A_is_diagonal == -1) ?
+                GB_is_diagonal (A, Context) : A_is_diagonal))
         { 
             // C = D*B', row scale
             axb_method = GB_USE_ROWSCALE ;
@@ -725,15 +752,17 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         //----------------------------------------------------------------------
 
         if (allow_scale && M == NULL
-            && !GB_IS_BITMAP (A)     // TODO: A*D colscale with A bitmap
-            && ((B_is_diagonal == -1) ? GB_is_diagonal (B, Context) : B_is_diagonal))
+            && !GB_IS_BITMAP (A)     // todo: A*D colscale with A bitmap
+            && ((B_is_diagonal == -1) ?
+                GB_is_diagonal (B, Context) : B_is_diagonal))
         { 
             // C = A*D, column scale
             axb_method = GB_USE_COLSCALE ;
         }
         else if (allow_scale && M == NULL
-            && !GB_IS_BITMAP (B)     // TODO: D*B rowscale with B bitmap
-            && ((A_is_diagonal == -1) ? GB_is_diagonal (A, Context) : A_is_diagonal))
+            && !GB_IS_BITMAP (B)     // todo: D*B rowscale with B bitmap
+            && ((A_is_diagonal == -1) ?
+                GB_is_diagonal (A, Context) : A_is_diagonal))
         { 
             // C = D*B, row scale
             axb_method = GB_USE_ROWSCALE ;

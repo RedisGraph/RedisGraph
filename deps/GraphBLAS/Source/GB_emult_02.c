@@ -71,6 +71,7 @@
 #include "GB_emult.h"
 #include "GB_binop.h"
 #include "GB_unused.h"
+#include "GB_stringify.h"
 #ifndef GBCUDA_DEV
 #include "GB_binop__include.h"
 #endif
@@ -173,12 +174,8 @@ GrB_Info GB_emult_02        // C=A.*B when A is sparse/hyper, B bitmap/full
         }
     }
 
-    if (flipxy)
-    {
-        bool handled ;
-        op = GB_flip_op (op, &handled) ;
-        if (handled) flipxy = false ;
-    }
+    // handle the flipxy
+    op = GB_flip_binop (op, true, &flipxy) ;
     ASSERT_BINARYOP_OK (op, "final op for emult_02", GB0) ;
 
     //--------------------------------------------------------------------------
@@ -218,6 +215,11 @@ GrB_Info GB_emult_02        // C=A.*B when A is sparse/hyper, B bitmap/full
     const size_t csize = ctype->size ;
     GB_void cscalar [GB_VLA(csize)] ;
     bool C_iso = GB_iso_emult (cscalar, ctype, A, B, op) ;
+
+    #ifdef GB_DEBUGIFY_DEFN
+    GB_debugify_ewise (C_iso, C_sparsity, ctype, M,
+        Mask_struct, Mask_comp, op, flipxy, A, B) ;
+    #endif
 
     //--------------------------------------------------------------------------
     // allocate C->p and C->h
@@ -483,6 +485,10 @@ GrB_Info GB_emult_02        // C=A.*B when A is sparse/hyper, B bitmap/full
             //------------------------------------------------------------------
             // launch the switch factory
             //------------------------------------------------------------------
+
+            // flipxy is not passed to GB_binop_builtin, since the unflippable
+            // binary ops (atan2, pow, etc) handle the flip themselves.
+            // See for example Generated2/GB_binop__atan2_fp32.c.
 
             GB_Type_code xcode, ycode, zcode ;
             if (!op_is_positional &&

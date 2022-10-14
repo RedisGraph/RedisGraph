@@ -41,6 +41,7 @@
 // GxB_vxm) and detailed error reports.
 
 #include "GB_mxm.h"
+#include "GB_stringify.h"
 #define GB_FREE_ALL ;
 
 GrB_Info GB_AxB_dot                 // dot product (multiple methods)
@@ -96,6 +97,7 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
     size_t zsize = ztype->size ;
     GB_void cscalar [GB_VLA(zsize)] ;
     bool C_iso = GB_iso_AxB (cscalar, A, B, A->vlen, semiring, flipxy, false) ;
+
     if (C_iso)
     {
         // revise the method if A and B are both iso and full
@@ -133,6 +135,12 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
         // C_in must be as-if-full on input.  M must be NULL and not
         // complemented.  the C iso case is not handled (where C is iso on
         // output), but C_in might be iso on input.
+
+        #ifdef GB_DEBUGIFY_DEFN
+        GB_debugify_mxm (C_iso, GxB_FULL, ztype, M, Mask_struct,
+            Mask_comp, semiring, flipxy, A, B) ;
+        #endif
+
         (*mask_applied) = false ;    // no mask to apply
         info = GB_AxB_dot4 (C_in, A, B, semiring, flipxy, done_in_place,
             Context) ;
@@ -183,6 +191,11 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
             Mask_struct ? "}" : ">",
             GB_sparsity_char_matrix (A),
             GB_sparsity_char_matrix (B)) ;
+
+        #ifdef GB_DEBUGIFY_DEFN
+        GB_debugify_mxm (C_iso, GB_sparsity (M), ztype, M,
+            Mask_struct, Mask_comp, semiring, flipxy, A, B) ;
+        #endif
 
         #if defined ( GBCUDA )
         if (!C_iso &&   // fixme for CUDA, remove and create C iso on output

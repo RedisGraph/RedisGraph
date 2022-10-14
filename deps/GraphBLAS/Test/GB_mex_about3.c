@@ -39,7 +39,10 @@ int myflush (void)
 
 typedef int (* printf_func_t) (const char *restrict format, ...) ;
 typedef int (* flush_func_t)  (void) ;
-typedef struct { int64_t blob [4] ; } myblob_struct ;
+
+ typedef struct { int64_t stuff [4] ; } my4x64 ;
+#define MY4X64 \
+"typedef struct { int64_t stuff [4] ; } my4x64 ;"
 
 void mexFunction
 (
@@ -54,7 +57,7 @@ void mexFunction
     GrB_Matrix C = NULL, A = NULL, M = NULL ;
     GrB_Descriptor desc = NULL ;
     GrB_Vector w = NULL ;
-    GrB_Type myint = NULL, myblob = NULL ;
+    GrB_Type myint = NULL, My4x64 = NULL ;
     GB_void *Null = NULL ;
     char *err ;
 
@@ -321,10 +324,10 @@ void mexFunction
 
     CHECK (sizeof (GB_blob16) == 2 * sizeof (uint64_t)) ;
 
-    OK (GrB_Type_new (&myblob, sizeof (myblob_struct))) ;
-    OK (GxB_Type_fprint (myblob, "myblob", GxB_COMPLETE, NULL)) ;
-    myblob_struct blob_scalar ;
-    OK (GrB_Matrix_new (&C, myblob, 4, 4)) ;
+    OK (GxB_Type_new (&My4x64, sizeof (my4x64), "my4x64", MY4X64)) ;
+    OK (GxB_Type_fprint (My4x64, "My4x64", GxB_COMPLETE, NULL)) ;
+    my4x64 my4x64_scalar ;
+    OK (GrB_Matrix_new (&C, My4x64, 4, 4)) ;
 
     GrB_Matrix Tiles [4]  = { NULL, NULL, NULL, NULL} ;
     GrB_Index Tile_nrows [2] = { 2, 2 } ;
@@ -343,30 +346,30 @@ void mexFunction
             for (int j = 0 ; j < 4 ; j++)
             {
                 if (sparsity_control < 8 && i == j) continue ;
-                blob_scalar.blob [0] = i ;
-                blob_scalar.blob [1] = j ;
-                blob_scalar.blob [2] = 32 ;
-                blob_scalar.blob [3] = 99 ;
-                OK (GrB_Matrix_setElement_UDT (C, &blob_scalar, i, j)) ;
+                my4x64_scalar.stuff [0] = i ;
+                my4x64_scalar.stuff [1] = j ;
+                my4x64_scalar.stuff [2] = 32 ;
+                my4x64_scalar.stuff [3] = 99 ;
+                OK (GrB_Matrix_setElement_UDT (C, &my4x64_scalar, i, j)) ;
             }
         }
         OK (GrB_Matrix_wait (C, GrB_MATERIALIZE)) ;
         OK (GxB_Matrix_Option_set (C, GxB_SPARSITY_CONTROL, sparsity_control)) ;
-        OK (GxB_Matrix_fprint (C, "C blob", GxB_SHORT, NULL)) ;
+        OK (GxB_Matrix_fprint (C, "C stuff", GxB_SHORT, NULL)) ;
 
         for (int i = 0 ; i < 4 ; i++)
         {
             for (int j = 0 ; j < 4 ; j++)
             {
-                OK (GrB_Matrix_extractElement_UDT (&blob_scalar, C, i, j)) ;
+                OK (GrB_Matrix_extractElement_UDT (&my4x64_scalar, C, i, j)) ;
                 if (sparsity_control < 8 && i == j) continue ;
-                CHECK (blob_scalar.blob [0] == i) ;
-                CHECK (blob_scalar.blob [1] == j) ;
-                CHECK (blob_scalar.blob [2] == 32) ;
-                CHECK (blob_scalar.blob [3] == 99) ;
+                CHECK (my4x64_scalar.stuff [0] == i) ;
+                CHECK (my4x64_scalar.stuff [1] == j) ;
+                CHECK (my4x64_scalar.stuff [2] == 32) ;
+                CHECK (my4x64_scalar.stuff [3] == 99) ;
                 printf ("C(%d,%d) = [%d, %d, %d, %d]\n", i, j,
-                    blob_scalar.blob [0], blob_scalar.blob [1],
-                    blob_scalar.blob [2], blob_scalar.blob [3]) ;
+                    my4x64_scalar.stuff [0], my4x64_scalar.stuff [1],
+                    my4x64_scalar.stuff [2], my4x64_scalar.stuff [3]) ;
             }
         }
 
@@ -383,15 +386,15 @@ void mexFunction
                 for (int j = 0 ; j < 2 ; j++)
                 {
                     if (sparsity_control < 8 && i+istart == j+jstart) continue ;
-                    OK (GrB_Matrix_extractElement_UDT (&blob_scalar,
+                    OK (GrB_Matrix_extractElement_UDT (&my4x64_scalar,
                         Tiles [k], i, j)) ;
                     printf ("Tile(%d,%d) = [%d, %d, %d, %d]\n", i, j,
-                        blob_scalar.blob [0], blob_scalar.blob [1],
-                        blob_scalar.blob [2], blob_scalar.blob [3]) ;
-                    CHECK (blob_scalar.blob [0] == i + istart) ;
-                    CHECK (blob_scalar.blob [1] == j + jstart) ;
-                    CHECK (blob_scalar.blob [2] == 32) ;
-                    CHECK (blob_scalar.blob [3] == 99) ;
+                        my4x64_scalar.stuff [0], my4x64_scalar.stuff [1],
+                        my4x64_scalar.stuff [2], my4x64_scalar.stuff [3]) ;
+                    CHECK (my4x64_scalar.stuff [0] == i + istart) ;
+                    CHECK (my4x64_scalar.stuff [1] == j + jstart) ;
+                    CHECK (my4x64_scalar.stuff [2] == 32) ;
+                    CHECK (my4x64_scalar.stuff [3] == 99) ;
                 }
             }
             OK (GrB_Matrix_free_(& (Tiles [k]))) ;
@@ -399,9 +402,9 @@ void mexFunction
     }
 
     // create an iso matrix
-    OK (GrB_Matrix_assign_UDT (C, NULL, NULL, (void *) &blob_scalar,
+    OK (GrB_Matrix_assign_UDT (C, NULL, NULL, (void *) &my4x64_scalar,
         GrB_ALL, 10, GrB_ALL, 10, NULL)) ;
-    OK (GxB_Matrix_fprint (C, "C blob iso", GxB_COMPLETE, NULL)) ;
+    OK (GxB_Matrix_fprint (C, "C stuff iso", GxB_COMPLETE, NULL)) ;
 
     // export as FullC, non-iso
     OK (GxB_Matrix_export_FullC (&C, &type, &nrows, &ncols,
@@ -411,38 +414,38 @@ void mexFunction
     OK (GxB_Matrix_import_FullC (&C, type, nrows, ncols,
         (void **) &Ax, Ax_size, false, NULL)) ;
 
-    OK (GxB_Matrix_fprint (C, "C blob iso imported", GxB_COMPLETE, NULL)) ;
+    OK (GxB_Matrix_fprint (C, "C stuff iso imported", GxB_COMPLETE, NULL)) ;
 
     for (int i = 0 ; i < 4 ; i++)
     {
         for (int j = 0 ; j < 4 ; j++)
         {
-            OK (GrB_Matrix_extractElement_UDT (&blob_scalar, C, i, j)) ;
+            OK (GrB_Matrix_extractElement_UDT (&my4x64_scalar, C, i, j)) ;
             printf ("C(%d,%d) = [%d, %d, %d, %d]\n", i, j,
-                blob_scalar.blob [0], blob_scalar.blob [1],
-                blob_scalar.blob [2], blob_scalar.blob [3]) ;
+                my4x64_scalar.stuff [0], my4x64_scalar.stuff [1],
+                my4x64_scalar.stuff [2], my4x64_scalar.stuff [3]) ;
         }
     }
 
     // change to iso sparse, and test GB_ix_realloc
     OK (GxB_Matrix_Option_set (C, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
-    OK (GrB_Matrix_assign_UDT (C, NULL, NULL, (void *) &blob_scalar,
+    OK (GrB_Matrix_assign_UDT (C, NULL, NULL, (void *) &my4x64_scalar,
         GrB_ALL, 10, GrB_ALL, 10, NULL)) ;
     OK (GB_ix_realloc (C, 32, NULL)) ;
-    OK (GxB_Matrix_fprint (C, "C blob sparse non-iso", GxB_COMPLETE, NULL)) ;
+    OK (GxB_Matrix_fprint (C, "C stuff sparse non-iso", GxB_COMPLETE, NULL)) ;
 
     // test wait on jumbled matrix (non-iso)
-    OK (GrB_Matrix_setElement_UDT (C, &blob_scalar, 0, 0)) ;
-    blob_scalar.blob [0] = 1007 ;
-    OK (GrB_Matrix_setElement_UDT (C, &blob_scalar, 1, 1)) ;
+    OK (GrB_Matrix_setElement_UDT (C, &my4x64_scalar, 0, 0)) ;
+    my4x64_scalar.stuff [0] = 1007 ;
+    OK (GrB_Matrix_setElement_UDT (C, &my4x64_scalar, 1, 1)) ;
     C->jumbled = true ;
-    OK (GxB_Matrix_fprint (C, "C blob jumbled", GxB_COMPLETE, NULL)) ;
+    OK (GxB_Matrix_fprint (C, "C stuff jumbled", GxB_COMPLETE, NULL)) ;
     OK (GrB_Matrix_wait (C, GrB_MATERIALIZE)) ;
-    OK (GxB_Matrix_fprint (C, "C blob wait", GxB_COMPLETE, NULL)) ;
+    OK (GxB_Matrix_fprint (C, "C stuff wait", GxB_COMPLETE, NULL)) ;
 
     // converting a non-iso matrix to non-iso does nothing
     OK (GB_convert_any_to_non_iso (C, true, NULL)) ;
-    OK (GxB_Matrix_fprint (C, "C blob non iso", GxB_COMPLETE, NULL)) ;
+    OK (GxB_Matrix_fprint (C, "C stuff non iso", GxB_COMPLETE, NULL)) ;
     GrB_Matrix_free_(&C) ;
 
     //--------------------------------------------------------------------------
@@ -648,20 +651,20 @@ void mexFunction
     CHECK (GB_iso_check (C, NULL)) ;
     GrB_Matrix_free_(&C) ;
 
-    OK (GrB_Matrix_new (&C, myblob, 10, 10)) ;
+    OK (GrB_Matrix_new (&C, My4x64, 10, 10)) ;
     OK (GxB_Matrix_Option_set (C, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
-    blob_scalar.blob [0] = 1 ;
-    blob_scalar.blob [1] = 2 ;
-    blob_scalar.blob [2] = 3 ;
-    blob_scalar.blob [3] = 4 ;
-    OK (GrB_Matrix_setElement_UDT (C, &blob_scalar, 3, 2)) ;
-    OK (GrB_Matrix_setElement_UDT (C, &blob_scalar, 0, 0)) ;
+    my4x64_scalar.stuff [0] = 1 ;
+    my4x64_scalar.stuff [1] = 2 ;
+    my4x64_scalar.stuff [2] = 3 ;
+    my4x64_scalar.stuff [3] = 4 ;
+    OK (GrB_Matrix_setElement_UDT (C, &my4x64_scalar, 3, 2)) ;
+    OK (GrB_Matrix_setElement_UDT (C, &my4x64_scalar, 0, 0)) ;
     CHECK (!GB_iso_check (C, NULL)) ;
     OK (GrB_Matrix_wait_(C, GrB_MATERIALIZE)) ;
     CHECK (GB_iso_check (C, NULL)) ;
 
-    blob_scalar.blob [0] = 4 ;
-    OK (GrB_Matrix_setElement_UDT (C, &blob_scalar, 4, 4)) ;
+    my4x64_scalar.stuff [0] = 4 ;
+    OK (GrB_Matrix_setElement_UDT (C, &my4x64_scalar, 4, 4)) ;
     CHECK (!GB_iso_check (C, NULL)) ;
     OK (GrB_Matrix_wait_(C, GrB_MATERIALIZE)) ;
     CHECK (!GB_iso_check (C, NULL)) ;
@@ -745,7 +748,7 @@ void mexFunction
     // wrapup
     //--------------------------------------------------------------------------
 
-    GrB_Type_free_(&myblob) ;
+    GrB_Type_free_(&My4x64) ;
     GB_mx_put_global (true) ;   
     fclose (f) ;
     printf ("\nGB_mex_about3: all tests passed\n\n") ;

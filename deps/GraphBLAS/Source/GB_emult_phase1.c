@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_emult_08_phase1: # entries in C=A.*B or C<M or !M>=A.*B (C sparse/hyper)
+// GB_emult_phase1: # entries in C=A.*B or C<M or !M>=A.*B (C sparse/hyper)
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
@@ -7,9 +7,9 @@
 
 //------------------------------------------------------------------------------
 
-// GB_emult_08_phase1 counts the number of entries in each vector of C, for
+// GB_emult_phase1 counts the number of entries in each vector of C, for
 // C=A.*B, C<M>=A.*B, or C<!M>=A.*B and then does a cumulative sum to find Cp.
-// GB_emult_08_phase1 is preceded by GB_emult_08_phase0, which finds the
+// GB_emult_phase1 is preceded by GB_emult_phase0, which finds the
 // non-empty vectors of C.  If the mask M is sparse, it is not complemented;
 // only a bitmap or full M is complemented.
 
@@ -17,11 +17,11 @@
 // M, A, and B can have any sparsity structure, but only a specific set of
 // cases will be used (see GB_emult_sparsity for details).
 
-// Cp is either freed by GB_emult_08_phase2, or transplanted into C.
+// Cp is either freed by GB_emult_phase2, or transplanted into C.
 
 #include "GB_emult.h"
 
-GrB_Info GB_emult_08_phase1                 // count nnz in each C(:,j)
+GrB_Info GB_emult_phase1                 // count nnz in each C(:,j)
 (
     // computed by phase1:
     int64_t **Cp_handle,                    // output of size Cnvec+1
@@ -96,7 +96,7 @@ GrB_Info GB_emult_08_phase1                 // count nnz in each C(:,j)
     //--------------------------------------------------------------------------
 
     #define GB_PHASE_1_OF_2
-    #include "GB_emult_08_meta.c"
+    #include "GB_emult_meta.c"
 
     //--------------------------------------------------------------------------
     // cumulative sum of Cp and fine tasks in TaskList

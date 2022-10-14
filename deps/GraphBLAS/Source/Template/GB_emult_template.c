@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_emult_08_template: C=A.*B, C<M or !M>=A.*B when C is sparse/hyper
+// GB_emult_template: C=A.*B, C<M or !M>=A.*B when C is sparse/hyper
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
@@ -414,7 +414,7 @@
                 //      sparse  sparse      full            sparse  (10 or 3)
 
                 // Methods 9 and 10 are not yet implemented; using Method 8
-                // (GB_emult_08) instead.
+                // (GB_emult_phase[123]) instead.
 
                 // ether A or B are sparse/hyper
                 ASSERT (A_is_sparse || A_is_hyper || B_is_sparse || B_is_hyper);

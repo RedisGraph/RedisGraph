@@ -25,6 +25,7 @@
 #include "GB_reduce.h"
 #include "GB_binop.h"
 #include "GB_atomics.h"
+#include "GB_stringify.h"
 #ifndef GBCUDA_DEV
 #include "GB_red__include.h"
 #endif
@@ -95,6 +96,10 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
     // s = identity
     GB_void s [GB_VLA(zsize)] ;
     memcpy (s, reduce->identity, zsize) ;   // required, if nnz(A) is zero
+
+    #ifdef GB_DEBUGIFY_DEFN
+    GB_debugify_reduce (reduce, A) ;
+    #endif
 
     //--------------------------------------------------------------------------
     // s = reduce_to_scalar (A) on the GPU(s) or CPU

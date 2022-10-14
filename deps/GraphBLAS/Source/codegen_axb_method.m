@@ -470,19 +470,13 @@ else
     fprintf (f, 'define(`GB_cij_write'', `Cx [p] = t'')\n') ;
 end
 
-% type-specific IDIV
-if (~isempty (strfind (mult, 'IDIV')))
+% type-specific idiv
+if (~isempty (strfind (mult, 'idiv')))
     if (unsigned)
-        mult = strrep (mult, 'IDIV', 'IDIV_UNSIGNED') ;
-        % TODO: use this instead
-        % mult = strrep (mult, 'IDIV', 'idiv_uint%d', bits) ;
+        mult = strrep (mult, 'idiv', sprintf ('idiv_uint%d', bits)) ;
     else
-        mult = strrep (mult, 'IDIV', 'IDIV_SIGNED') ;
-        % TODO: use this instead
-        % mult = strrep (mult, 'IDIV', 'idiv_int%d', bits) ;
+        mult = strrep (mult, 'idiv', sprintf ('idiv_int%d', bits)) ;
     end
-    % TODO: remove this
-    mult = strrep (mult, ')', sprintf (', %d)', bits)) ;
 end
 
 % create the multiply operator (assignment)

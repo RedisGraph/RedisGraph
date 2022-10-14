@@ -94,7 +94,7 @@ typedef struct
     // for testing and development
     //--------------------------------------------------------------------------
 
-    int64_t hack [2] ;              // settings for testing/developement only
+    int64_t hack [2] ;              // settings for testing/development only
 
     //--------------------------------------------------------------------------
     // diagnostic output

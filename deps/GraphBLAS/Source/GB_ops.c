@@ -45,19 +45,19 @@
     } ;                                                     \
     GrB_Type prefix ## _ ## type = & GB_OPAQUE (type)
 
-GB_TYPEDEF (GrB, BOOL  , bool      , "bool"          ) ;
-GB_TYPEDEF (GrB, INT8  , int8_t    , "int8_t"        ) ;
-GB_TYPEDEF (GrB, INT16 , int16_t   , "int16_t"       ) ;
-GB_TYPEDEF (GrB, INT32 , int32_t   , "int32_t"       ) ;
-GB_TYPEDEF (GrB, INT64 , int64_t   , "int64_t"       ) ;
-GB_TYPEDEF (GrB, UINT8 , uint8_t   , "uint8_t"       ) ;
-GB_TYPEDEF (GrB, UINT16, uint16_t  , "uint16_t"      ) ;
-GB_TYPEDEF (GrB, UINT32, uint32_t  , "uint32_t"      ) ;
-GB_TYPEDEF (GrB, UINT64, uint64_t  , "uint64_t"      ) ;
-GB_TYPEDEF (GrB, FP32  , float     , "float"         ) ;
-GB_TYPEDEF (GrB, FP64  , double    , "double"        ) ;
-GB_TYPEDEF (GxB, FC32  , GxB_FC32_t, "float complex" ) ;
-GB_TYPEDEF (GxB, FC64  , GxB_FC64_t, "double complex") ;
+GB_TYPEDEF (GrB, BOOL  , bool      , "bool"       ) ;
+GB_TYPEDEF (GrB, INT8  , int8_t    , "int8_t"     ) ;
+GB_TYPEDEF (GrB, INT16 , int16_t   , "int16_t"    ) ;
+GB_TYPEDEF (GrB, INT32 , int32_t   , "int32_t"    ) ;
+GB_TYPEDEF (GrB, INT64 , int64_t   , "int64_t"    ) ;
+GB_TYPEDEF (GrB, UINT8 , uint8_t   , "uint8_t"    ) ;
+GB_TYPEDEF (GrB, UINT16, uint16_t  , "uint16_t"   ) ;
+GB_TYPEDEF (GrB, UINT32, uint32_t  , "uint32_t"   ) ;
+GB_TYPEDEF (GrB, UINT64, uint64_t  , "uint64_t"   ) ;
+GB_TYPEDEF (GrB, FP32  , float     , "float"      ) ;
+GB_TYPEDEF (GrB, FP64  , double    , "double"     ) ;
+GB_TYPEDEF (GxB, FC32  , GxB_FC32_t, "GxB_FC32_t" ) ;
+GB_TYPEDEF (GxB, FC64  , GxB_FC64_t, "GxB_FC64_t" ) ;
 
 //------------------------------------------------------------------------------
 // built-in descriptors

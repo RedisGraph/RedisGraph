@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_emult_08_phase0: find vectors of C to compute for C=A.*B or C<M>=A.*B
+// GB_emult_phase0: find vectors of C to compute for C=A.*B or C<M>=A.*B
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
@@ -45,7 +45,7 @@
 
 #include "GB_emult.h"
 
-GrB_Info GB_emult_08_phase0     // find vectors in C for C=A.*B or C<M>=A.*B
+GrB_Info GB_emult_phase0     // find vectors in C for C=A.*B or C<M>=A.*B
 (
     int64_t *p_Cnvec,           // # of vectors to compute in C
     const int64_t *restrict *Ch_handle,  // Ch is M->h, A->h, B->h, or NULL

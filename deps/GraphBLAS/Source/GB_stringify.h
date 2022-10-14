@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_stringify.h: prototype definitions for using C helpers 
+// GB_stringify.h: prototype definitions construction of *.h definitions
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2021, All Rights Reserved.
@@ -7,32 +7,32 @@
 
 //------------------------------------------------------------------------------
 
-// This file is #include'd only in the GraphBLAS/CUDA/GB*.cu source files.
-
-#ifndef GB_CUDA_STRINGIFY_H
-#define GB_CUDA_STRINGIFY_H
+#ifndef GB_STRINGIFY_H
+#define GB_STRINGIFY_H
 
 //------------------------------------------------------------------------------
-// for GB_binop_flip and related methods
+// dump definitions (for debugging and test coverage only)
+//------------------------------------------------------------------------------
+
+// uncomment this line to dump GB*.h files to /tmp, or compile with
+// -DGB_DEBUGIFY_DEFN=1
+// #define GB_DEBUGIFY_DEFN 1
+
+//------------------------------------------------------------------------------
+// for GB_boolean_rename and related methods
 //------------------------------------------------------------------------------
 
 #include "GB_binop.h"
 
 //------------------------------------------------------------------------------
-// length of strings for building semiring code and names
-//------------------------------------------------------------------------------
-
-#define GB_CUDA_STRLEN 2048
-
-//------------------------------------------------------------------------------
 // left and right shift
 //------------------------------------------------------------------------------
 
-#define LSHIFT(x,k) (((uint64_t) x) << k)
-#define RSHIFT(x,k,b) ((x >> k) & ((((uint64_t)0x00000001) << b) -1))
+#define GB_LSHIFT(x,k) (((uint64_t) x) << k)
+#define GB_RSHIFT(x,k,b) ((x >> k) & ((((uint64_t)0x00000001) << b) -1))
 
 //------------------------------------------------------------------------------
-// GB_stringify_reduce
+// GrB_reduce
 //------------------------------------------------------------------------------
 
 void GB_enumify_reduce      // enumerate a GrB_reduce problem
@@ -46,19 +46,23 @@ void GB_enumify_reduce      // enumerate a GrB_reduce problem
 
 void GB_macrofy_reduce      // construct all macros for GrB_reduce to scalar
 (
-    // input:
     FILE *fp,               // target file to write, already open
-    uint64_t rcode
+    // input:
+    uint64_t rcode,         // encoded problem
+    GrB_Monoid monoid,      // monoid to macrofy
+    GrB_Type atype          // type of the A matrix to reduce
 ) ;
 
 //------------------------------------------------------------------------------
-// GB_stringify_ewise
+// GrB_eWiseAdd, GrB_eWiseMult, GxB_eWiseUnion
 //------------------------------------------------------------------------------
+
+// FUTURE: add accumulator for eWise operations?
 
 void GB_enumify_ewise         // enumerate a GrB_eWise problem
 (
-    // output:    2 x uint64?
-    uint64_t *ecode,        // unique encoding of the entire operation
+    // output:
+    uint64_t *scode,        // unique encoding of the entire operation
     // input:
     // C matrix:
     bool C_iso,             // if true, operator is ignored
@@ -70,6 +74,7 @@ void GB_enumify_ewise         // enumerate a GrB_eWise problem
     bool Mask_comp,         // mask is complemented
     // operator:
     GrB_BinaryOp binaryop,  // the binary operator to enumify
+    bool flipxy,            // multiplier is: op(a,b) or op(b,a)
     // A and B:
     GrB_Matrix A,
     GrB_Matrix B
@@ -77,18 +82,23 @@ void GB_enumify_ewise         // enumerate a GrB_eWise problem
 
 void GB_macrofy_ewise           // construct all macros for GrB_eWise
 (
-    // input:
+    // output:
     FILE *fp,                   // target file to write, already open
-    uint64_t ecode
+    // input:
+    uint64_t scode,
+    GrB_BinaryOp binaryop,      // binaryop to macrofy
+    GrB_Type ctype,
+    GrB_Type atype,
+    GrB_Type btype
 ) ;
 
 //------------------------------------------------------------------------------
-// GB_stringify_mxm
+// GrB_mxm
 //------------------------------------------------------------------------------
 
 void GB_enumify_mxm         // enumerate a GrB_mxm problem
 (
-    // output:    2 x uint64?
+    // output:
     uint64_t *scode,        // unique encoding of the entire semiring
     // input:
     // C matrix:
@@ -120,18 +130,8 @@ void GB_macrofy_mxm        // construct all macros for GrB_mxm
 ) ;
 
 //------------------------------------------------------------------------------
-// GB_stringify_mask: define macros that access the mask matrix M
+// enumify and macrofy the mask matrix M
 //------------------------------------------------------------------------------
-
-void GB_stringify_mask     // return string to define mask macros
-(
-    // input:
-    FILE *fp,                   // File to write macros, assumed open already
-    const GB_Type_code mcode,   // typecode of the mask matrix M,
-                                // or 0 if M is not present
-    bool Mask_struct,           // true if M structural, false if valued
-    bool Mask_comp              // true if M complemented
-) ;
 
 void GB_enumify_mask       // return enum to define mask macros
 (
@@ -152,7 +152,7 @@ void GB_macrofy_mask       // return enum to define mask macros
 ) ;
 
 //------------------------------------------------------------------------------
-// GB_stringify_monoid and supporting methods
+// enumify and macrofy a monoid
 //------------------------------------------------------------------------------
 
 void GB_enumify_monoid  // enumerate a monoid
@@ -173,26 +173,13 @@ void GB_macrofy_monoid  // construct the macros for a monoid
     int add_ecode,      // binary op as an enum
     int id_ecode,       // identity value as an enum
     int term_ecode,     // terminal value as an enum (< 30 is terminal)
-    bool is_term,
-    GrB_Monoid monoid,
-    bool skip_defn
+    GrB_Monoid monoid,  // monoid to macrofy
+    bool skip_defn      // if true, do not include the user-defined add function
 ) ;
 
 //------------------------------------------------------------------------------
-// GB_stringify_binop and supporting methods
+// binary operators
 //------------------------------------------------------------------------------
-
-void GB_stringify_binop
-(
-    // input:
-    FILE *fp,                 // File to write macros, assumed open already
-    const char *macro_name,   // name of macro to construct
-    GB_Opcode opcode,   // opcode of GraphBLAS operator to convert into a macro
-    GB_Type_code xcode, // op->xtype->code of the operator
-    bool for_semiring,  // if true: op is a multiplier in a semiring
-    bool flipxy,        // if true, use mult(y,x) else mult(x,y)
-    GrB_BinaryOp op
-) ;
 
 void GB_enumify_binop
 (
@@ -204,45 +191,21 @@ void GB_enumify_binop
     bool for_semiring   // true for A*B, false for A+B or A.*B
 ) ;
 
-void GB_charify_binop
-(
-    // output:
-    const char **op_string,   // string defining the operator (NULL if failure)
-    // input:
-    int ecode           // from GB_enumify_binop
-) ;
-
 void GB_macrofy_binop
-(
-    // input:
-    FILE *fp,                   // File to write macros, assumed open already
-    const char *macro_name,     // name of macro to construct
-    const char *op_string,            // string defining the operator
-    bool flipxy                 // if true, use mult(y,x) else mult(x,y)
-) ;
-
-void GB_charify_and_macrofy_binop
 (
     FILE *fp,
     // input:
     const char *macro_name,
-    bool flipxy,
+    bool flipxy,                // if true: op is f(y,x), multipicative only
+    bool is_monoid,             // if true: additive operator for monoid
     int ecode,
     GrB_BinaryOp op,
-    bool print_defn
+    bool skip_defn
 ) ;
 
 //------------------------------------------------------------------------------
-// GB_stringify_identity and supporting methods
+// monoid identity and terminal values
 //------------------------------------------------------------------------------
-
-void GB_stringify_identity     // return string for identity value
-(
-    // input:
-    FILE *fp,               // File to write macros, assumed open already
-    GB_Opcode opcode,       // must be a built-in binary operator from a monoid
-    GB_Type_code zcode      // type code of the binary operator
-) ;
 
 void GB_enumify_identity       // return enum of identity value
 (
@@ -259,96 +222,28 @@ const char *GB_charify_identity_or_terminal // return string encoding the value
     int ecode                   // enumerated identity/terminal value
 ) ;
 
-void GB_macrofy_identity
+void GB_macrofy_bytes
 (
     // input:
-    FILE *fp,                   // File to write macros, assumed open already
-    const char *value_string    // string defining the identity value
-) ;
-
-//------------------------------------------------------------------------------
-// GB_stringify_terminal and supporting methods
-//------------------------------------------------------------------------------
-
-void GB_stringify_terminal         // return strings to check terminal
-(
-    // outputs:
-    bool *is_monoid_terminal,           // true if monoid is terminal
-    // inputs:
-    FILE *fp,                           // File to write macros, assumed open
-    const char *terminal_expression_macro_name,     // name of expression macro
-    const char *terminal_statement_macro_name,      // name of statement macro
-    GB_Opcode opcode,    // must be a built-in binary operator from a monoid
-    GB_Type_code zcode   // type code of the binary operator
+    FILE *fp,           // File to write macros, assumed open already
+    const char *Name,         // all-upper-case name
+    const char *type_name,    // name of the type
+    const uint8_t *value,     // array of size nbytes
+    size_t nbytes
 ) ;
 
 void GB_enumify_terminal       // return enum of terminal value
 (
     // output:
-    bool *is_monoid_terminal,   // true if monoid is terminal
     int *ecode,                 // enumerated terminal, 0 to 31 (-1 if fail)
     // input:
     GB_Opcode opcode,           // built-in binary opcode of a monoid
     GB_Type_code zcode          // type code used in the opcode we want
 ) ;
 
-void GB_charify_terminal_expression    // string for terminal expression
-(
-    // output:
-    char *terminal_expression,          // string with terminal expression
-    // input:
-    const char *terminal_string,        // string with terminal value
-    bool is_monoid_terminal,            // true if monoid is terminal
-    int ecode                           // ecode of monoid operator
-) ;
-
-void GB_charify_terminal_statement // string for terminal statement
-(
-    // output:
-    char *terminal_statement,           // string with terminal statement
-    // input:
-    const char *terminal_string,        // string with terminal value
-    bool is_monoid_terminal,            // true if monoid is terminal
-    int ecode                           // ecode of monoid operator
-) ;
-
-void GB_macrofy_terminal_expression    // macro for terminal expression
-(
-    // intput:
-    FILE *fp,                          // File to write macros, assumed open
-    const char *terminal_expression_macro_name,
-    const char *terminal_expression
-) ;
-
-void GB_macrofy_terminal_statement     // macro for terminal statement
-(
-    // intput:
-    FILE *fp,                          // File to write macro, assumed open
-    const char *terminal_statement_macro_name,
-    const char *terminal_statement
-) ;
-
 //------------------------------------------------------------------------------
-// GB_stringify_opcode: name of unary/binary opcode
+// sparsity structure
 //------------------------------------------------------------------------------
-
-const char *GB_stringify_opcode    // name of unary/binary opcode
-(
-    GB_Opcode opcode    // opcode of GraphBLAS unary or binary operator
-) ;
-
-//------------------------------------------------------------------------------
-// GB_stringify_sparsity: define macros for sparsity structure
-//------------------------------------------------------------------------------
-
-void GB_stringify_sparsity  // construct macros for sparsity structure
-(
-    // input:
-    FILE *fp,               // output file for macros that define the sparsity structure
-                            // assumed to be open already
-    char *matrix_name,      // "C", "M", "A", or "B"
-    int A_sparsity          // GxB_SPARSE, GxB_HYPERSPARSE, GxB_BITMAP, GxB_FULL
-) ;
 
 void GB_enumify_sparsity    // enumerate the sparsity structure of a matrix
 (
@@ -367,15 +262,86 @@ void GB_macrofy_sparsity    // construct macros for sparsity structure
 ) ;
 
 //------------------------------------------------------------------------------
-// GB_macrofy_type: define macro for the type a matrix or operator input/output
+// typedefs
 //------------------------------------------------------------------------------
 
-void GB_macrofy_type        // construct macros for type
+void GB_macrofy_types
 (
     FILE *fp,
     // input:
-    char *what,             // "C", "M", "A", "B", "X", "Y", "Z"
-    GrB_Type type
+    const char *ctype_defn,
+    const char *atype_defn,
+    const char *btype_defn,
+    const char *xtype_defn,
+    const char *ytype_defn,
+    const char *ztype_defn
+) ;
+
+//------------------------------------------------------------------------------
+// GB_namify_problem: name a problem
+//------------------------------------------------------------------------------
+
+void GB_namify_problem
+(
+    // output:
+    char *problem_name,     // of size at least 256 + 8*GxB_MAX_NAME_LEN
+    // input:
+    const uint64_t scode,
+    const char *opname1,    // each string has size at most GxB_MAX_NAME_LEN
+    const char *opname2,
+    const char *typename1,
+    const char *typename2,
+    const char *typename3,
+    const char *typename4,
+    const char *typename5,
+    const char *typename6
+) ;
+
+//------------------------------------------------------------------------------
+// GB_debugify_*: dump the definition file to /tmp
+//------------------------------------------------------------------------------
+
+void GB_debugify_mxm
+(
+    // C matrix:
+    bool C_iso,             // if true, operator is ignored
+    int C_sparsity,         // sparse, hyper, bitmap, or full
+    GrB_Type ctype,         // C=((ctype) T) is the final typecast
+    // M matrix:
+    GrB_Matrix M,
+    bool Mask_struct,
+    bool Mask_comp,
+    // semiring:
+    GrB_Semiring semiring,
+    bool flipxy,
+    // A and B matrices:
+    GrB_Matrix A,
+    GrB_Matrix B
+) ;
+
+void GB_debugify_ewise
+(
+    // C matrix:
+    bool C_iso,             // if true, operator is ignored
+    int C_sparsity,         // sparse, hyper, bitmap, or full
+    GrB_Type ctype,         // C=((ctype) T) is the final typecast
+    // M matrix:
+    GrB_Matrix M,
+    bool Mask_struct,
+    bool Mask_comp,
+    // operator:
+    GrB_BinaryOp binaryop,
+    bool flipxy,
+    // A and B matrices:
+    GrB_Matrix A,
+    GrB_Matrix B
+) ;
+
+void GB_debugify_reduce     // enumerate and macrofy a GrB_reduce problem
+(
+    // input:
+    GrB_Monoid monoid,      // the monoid to enumify
+    GrB_Matrix A
 ) ;
 
 #endif

@@ -47,7 +47,7 @@
 // B type:     int16_t
 // B pattern?  0
 
-// Multiply: z = GB_IDIV_SIGNED (x, y, 16)
+// Multiply: z = GB_idiv_int16 (x, y)
 // Add:      if (cij < t) { cij = t ; }
 //    'any' monoid?  0
 //    atomic?        1
@@ -55,7 +55,7 @@
 //    identity:      INT16_MIN
 //    terminal?      1
 //    terminal condition: if (cij == INT16_MAX) { break ; }
-// MultAdd:  { int16_t x_op_y = GB_IDIV_SIGNED (x, y, 16) ; z = GB_IMAX (z, x_op_y) ; }
+// MultAdd:  { int16_t x_op_y = GB_idiv_int16 (x, y) ; z = GB_IMAX (z, x_op_y) ; }
 
 #define GB_ATYPE \
     int16_t
@@ -112,7 +112,7 @@
 
 // multiply operator
 #define GB_MULT(z, x, y, i, k, j) \
-    z = GB_IDIV_SIGNED (x, y, 16)
+    z = GB_idiv_int16 (x, y)
 
 // cast from a real scalar (or 2, if C is complex) to the type of C
 #define GB_CTYPE_CAST(x,y) \
@@ -124,7 +124,7 @@
 
 // multiply-add
 #define GB_MULTADD(z, x, y, i, k, j) \
-    { int16_t x_op_y = GB_IDIV_SIGNED (x, y, 16) ; z = GB_IMAX (z, x_op_y) ; }
+    { int16_t x_op_y = GB_idiv_int16 (x, y) ; z = GB_IMAX (z, x_op_y) ; }
 
 // monoid identity value
 #define GB_IDENTITY \

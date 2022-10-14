@@ -146,7 +146,7 @@ GrB_Info GB_subassign_08n
     // same index i, the entry A(i,j) is accumulated or inserted into C.
 
     // The algorithm is very much like the eWise multiplication of A.*M, so the
-    // parallel scheduling relies on GB_emult_08_phase0 and GB_ewise_slice.
+    // parallel scheduling relies on GB_emult_phase0 and GB_ewise_slice.
 
     //--------------------------------------------------------------------------
     // Parallel: slice the eWiseMult of Z=A.*M (Method 08n only)

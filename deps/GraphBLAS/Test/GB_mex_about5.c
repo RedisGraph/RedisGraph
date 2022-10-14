@@ -18,6 +18,15 @@
 #define GET_DEEP_COPY ;
 #define FREE_DEEP_COPY ;
 
+#define MXFREE(p)           \
+{                           \
+    if (p != NULL)          \
+    {                       \
+        mxFree (p) ;        \
+    }                       \
+    p = NULL ;              \
+}
+
 void banded_idx
 (
     bool *z,
@@ -223,15 +232,15 @@ void mexFunction
     CHECK (type == GrB_BOOL) ;
 
     OK (GxB_BinaryOp_xtype_name (type_name, GxB_PLUS_FC32)) ;
-    CHECK (MATCH (type_name, "float complex")) ;
+    CHECK (MATCH (type_name, "GxB_FC32_t")) ;
     OK (GxB_Type_from_name (&type, type_name)) ;
     CHECK (type == GxB_FC32) ;
     OK (GxB_BinaryOp_ytype_name (type_name, GxB_PLUS_FC64)) ;
-    CHECK (MATCH (type_name, "double complex")) ;
+    CHECK (MATCH (type_name, "GxB_FC64_t")) ;
     OK (GxB_Type_from_name (&type, type_name)) ;
     CHECK (type == GxB_FC64) ;
     OK (GxB_BinaryOp_ztype_name (type_name, GxB_PLUS_FC32)) ;
-    CHECK (MATCH (type_name, "float complex")) ;
+    CHECK (MATCH (type_name, "GxB_FC32_t")) ;
     OK (GxB_Type_from_name (&type, type_name)) ;
     CHECK (type == GxB_FC32) ;
 
@@ -312,9 +321,9 @@ void mexFunction
     CHECK (MATCH (type_name, "double")) ;
 
     OK (GxB_Type_name (type_name, GxB_FC32)) ;
-    CHECK (MATCH (type_name, "float complex")) ;
+    CHECK (MATCH (type_name, "GxB_FC32_t")) ;
     OK (GxB_Type_name (type_name, GxB_FC64)) ;
-    CHECK (MATCH (type_name, "double complex")) ;
+    CHECK (MATCH (type_name, "GxB_FC64_t")) ;
 
     OK (GrB_Matrix_new (&A, GrB_FP32, 5, 5)) ;
     ERR (GxB_Matrix_type_name (NULL, A)) ;
@@ -877,7 +886,8 @@ void mexFunction
     OK (GrB_Matrix_free_ (&A)) ;
     OK (GrB_Matrix_free_ (&C)) ;
     OK (GrB_Type_free_ (&MyType)) ;
-    if (blob != NULL) mxFree (blob) ; blob = NULL ;
+
+    MXFREE (blob) ;
 
 #if 1
     OK (GrB_Matrix_new (&A, GrB_FP32, 3, 4)) ;
@@ -892,7 +902,7 @@ void mexFunction
     OK (GxB_Matrix_fprint (C, "C from deserialize", 3, NULL)) ;
 #endif
 
-    if (blob != NULL) mxFree (blob) ; blob = NULL ;
+    MXFREE (blob) ;
 
 #if 1
     blob_size = 2 ;
@@ -903,7 +913,7 @@ void mexFunction
 
     OK (GrB_Matrix_free_ (&A)) ;
     OK (GrB_Matrix_free_ (&C)) ;
-    if (blob != NULL) mxFree (blob) ; blob = NULL ;
+    MXFREE (blob) ;
 
 
     //--------------------------------------------------------------------------
@@ -1054,9 +1064,9 @@ void mexFunction
         5, 6, 7, GrB_COO_FORMAT)) ;
     CHECK (A == NULL) ;
 
-    if (Ap != NULL) mxFree (Ap) ;   Ap = NULL ;
-    if (Ai != NULL) mxFree (Ai) ;   Ai = NULL ;
-    if (Ax != NULL) mxFree (Ax) ;   Ax = NULL ;
+    MXFREE (Ap) ;
+    MXFREE (Ai) ;
+    MXFREE (Ax) ;
 
     //--------------------------------------------------------------------------
     // build with duplicates
@@ -1069,9 +1079,9 @@ void mexFunction
     expected = GrB_INVALID_VALUE ;
     OK (GrB_Matrix_new (&A, GrB_FP64, 5, 5)) ;
     ERR (GrB_Matrix_build (A, I, J, X, 4, NULL)) ;
-    if (I != NULL) mxFree (I) ; I = NULL ;
-    if (J != NULL) mxFree (J) ; J = NULL ;
-    if (X != NULL) mxFree (X) ; X = NULL ;
+    MXFREE (I) ;
+    MXFREE (J) ;
+    MXFREE (X) ;
     OK (GrB_Matrix_free_ (&A)) ;
 
     //--------------------------------------------------------------------------
@@ -1329,10 +1339,10 @@ void mexFunction
     // wrapup
     //--------------------------------------------------------------------------
 
-    if (blob != NULL) mxFree (blob) ; blob = NULL ;
-    if (Ap != NULL) mxFree (Ap) ;   Ap = NULL ;
-    if (Ai != NULL) mxFree (Ai) ;   Ai = NULL ;
-    if (Ax != NULL) mxFree (Ax) ;   Ax = NULL ;
+    MXFREE (blob) ;
+    MXFREE (Ap) ;
+    MXFREE (Ai) ;
+    MXFREE (Ax) ;
 
 #if 0
     GrB_free (&C) ;

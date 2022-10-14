@@ -358,7 +358,7 @@ GrB_Info GB_emult           // C=A.*B, C<M>=A.*B, or C<!M>=A.*B
     // phase0: finalize the sparsity C and find the vectors in C
     //--------------------------------------------------------------------------
 
-    GB_OK (GB_emult_08_phase0 (
+    GB_OK (GB_emult_phase0 (
         // computed by phase0:
         &Cnvec, &Ch, &Ch_size, &C_to_M, &C_to_M_size, &C_to_A, &C_to_A_size,
         &C_to_B, &C_to_B_size,
@@ -384,7 +384,7 @@ GrB_Info GB_emult           // C=A.*B, C<M>=A.*B, or C<!M>=A.*B
         (apply_mask) ? M : NULL, A, B, Context)) ;
 
     // count the number of entries in each vector of C
-    GB_OK (GB_emult_08_phase1 (
+    GB_OK (GB_emult_phase1 (
         // computed by phase1:
         &Cp, &Cp_size, &Cnvec_nonempty,
         // from phase1a:
@@ -401,7 +401,7 @@ GrB_Info GB_emult           // C=A.*B, C<M>=A.*B, or C<!M>=A.*B
     // Cp is either freed by phase2, or transplanted into C.
     // Either way, it is not freed here.
 
-    GB_OK (GB_emult_08_phase2 (
+    GB_OK (GB_emult_phase2 (
         // computed or used by phase2:
         C, ctype, C_is_csc, op,
         // from phase1:

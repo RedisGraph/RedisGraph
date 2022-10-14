@@ -54,18 +54,7 @@ GrB_Info GB_init            // start up GraphBLAS
     //--------------------------------------------------------------------------
 
     #ifdef GBCUDA_DEV
-    printf ("\n==== GBCUDA_DEV enabled: for development only! ====\n") ;
-//  printf ("size of GrB_Matrix header: %d\n",
-//      (int) sizeof (struct GB_Matrix_opaque)) ;
-//  for (int64_t anvec = 0 ; anvec <= 128 ; anvec++)
-//  {
-//      int64_t yvdim = ((uint64_t) 1) << (GB_FLOOR_LOG2 (anvec) + 1) ;
-//      // divide by 4 to get a load faster of 2 to 4:
-//      yvdim = yvdim / 4 ;
-//      yvdim = GB_IMAX (yvdim, 4) ;
-//      printf ("anvec %4ld yvdim %4ld load factor %g\n", anvec, yvdim,
-//          (double) (anvec) / (double) yvdim) ;
-//  }
+    printf ("\n==== GBCUDA_DEV enabled: for CUDA development only! ====\n") ;
     #endif
 
     if (GB_Global_GrB_init_called_get ( ))

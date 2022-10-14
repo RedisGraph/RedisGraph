@@ -70,7 +70,7 @@ GrB_Info GxB_UnaryOp_new            // create a new user-defined unary operator
     GrB_Info info = GB_op_name_and_defn (op->name, &(op->defn),
         &(op->defn_size), unop_name, unop_defn, "GxB_unary_function", 18) ;
     if (info != GrB_SUCCESS)
-    {
+    { 
         // out of memory
         GB_FREE (unaryop, header_size) ;
         return (info) ;

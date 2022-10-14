@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_flip_op:  flip a binary operator
+// GB_flip_binop:  flip a binary operator for an eWise operation or GrB_mxm
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
@@ -7,22 +7,48 @@
 
 //------------------------------------------------------------------------------
 
-// Positional operators are flipped both in (first,second), but also (i,j).
-// This function is only used for ewise operators.
-
 #include "GB.h"
 #include "GB_binop.h"
 
-GrB_BinaryOp GB_flip_op     // flip a binary operator
+GrB_BinaryOp GB_flip_binop  // flip a binary operator
 (
+    // input:
     GrB_BinaryOp op,        // binary operator to flip
-    bool *handled           // true if operator is handled
+    bool for_ewise,         // if true: flip for eWise, else for semiring
+    // input/output:
+    bool *flipxy            // true on input, set to false if op is flipped
 )
 {
 
-    (*handled) = true ;     // set below to false if the op is not handled
+    //--------------------------------------------------------------------------
+    // quick return if binary op is not flipped
+    //--------------------------------------------------------------------------
+
+    if (!(*flipxy))
+    {
+        // op is not flipped
+        return (op) ;
+    }
+
+    (*flipxy) = false ;     // set below to true if the op is not flipped
+
+    //--------------------------------------------------------------------------
+    // handle positional binary operators for ewise operations
+    //--------------------------------------------------------------------------
+
+    if (for_ewise && GB_IS_BINARYOP_CODE_POSITIONAL (op->opcode))
+    {
+        // built-in positional ops (firsti, firstj, secondi, secondj) are
+        // not flipped for eWise operations
+        return (op) ;
+    }
+
+    //--------------------------------------------------------------------------
+    // handle the general case: both ewise and mxm
+    //--------------------------------------------------------------------------
 
     GB_Type_code xcode = op->xtype->code ;
+    bool int32 = (xcode == GB_INT32_code) ;
 
     switch (op->opcode)
     {
@@ -334,37 +360,32 @@ GrB_BinaryOp GB_flip_op     // flip a binary operator
             break ;
 
         //----------------------------------------------------------------------
-        // positional operators do not need to be flipped for ewise methods
+        // positional operators: flip for mxm methods, not for ewise (see above)
         //----------------------------------------------------------------------
 
-        case GB_FIRSTI_binop_code       :
-        case GB_FIRSTJ_binop_code       :
-        case GB_FIRSTI1_binop_code      :
-        case GB_FIRSTJ1_binop_code      :
-        case GB_SECONDI_binop_code      :
-        case GB_SECONDJ_binop_code      :
-        case GB_SECONDI1_binop_code     :
-        case GB_SECONDJ1_binop_code     :
-            return (op) ;
+        case GB_FIRSTI_binop_code       : 
+            return (int32 ? GxB_SECONDJ_INT32 : GxB_SECONDJ_INT64) ;
 
-        //----------------------------------------------------------------------
-        // these operators are not commutative and do not have flipped ops:
-        //----------------------------------------------------------------------
+        case GB_FIRSTJ_binop_code       : 
+            return (int32 ? GxB_SECONDI_INT32 : GxB_SECONDI_INT64) ;
 
-        case GB_POW_binop_code          :
-        case GB_BGET_binop_code         :
-        case GB_BSET_binop_code         :
-        case GB_BCLR_binop_code         :
-        case GB_BSHIFT_binop_code       :
-        case GB_ATAN2_binop_code        :
-        case GB_FMOD_binop_code         :
-        case GB_REMAINDER_binop_code    :
-        case GB_COPYSIGN_binop_code     :
-        case GB_LDEXP_binop_code        :
-        case GB_CMPLX_binop_code        :
-        case GB_USER_binop_code         :
-            (*handled) = false ;
-            return (op) ;
+        case GB_FIRSTI1_binop_code      : 
+            return (int32 ? GxB_SECONDJ1_INT32 : GxB_SECONDJ1_INT64) ;
+
+        case GB_FIRSTJ1_binop_code      : 
+            return (int32 ? GxB_SECONDI1_INT32 : GxB_SECONDI1_INT64) ;
+
+        case GB_SECONDI_binop_code      : 
+            return (int32 ? GxB_FIRSTJ_INT32 : GxB_FIRSTJ_INT64) ;
+
+        case GB_SECONDJ_binop_code      : 
+            return (int32 ? GxB_FIRSTI_INT32 : GxB_FIRSTI_INT64) ;
+
+        case GB_SECONDI1_binop_code     : 
+            return (int32 ? GxB_FIRSTJ1_INT32 : GxB_FIRSTJ1_INT64) ;
+
+        case GB_SECONDJ1_binop_code     : 
+            return (int32 ? GxB_FIRSTI1_INT32 : GxB_FIRSTI1_INT64) ;
 
         //----------------------------------------------------------------------
         // these operators are commutative; they are their own flipped ops:
@@ -390,14 +411,33 @@ GrB_BinaryOp GB_flip_op     // flip a binary operator
         case GB_HYPOT_binop_code        :
             return (op) ;
 
+        //----------------------------------------------------------------------
+        // these operators are not commutative and do not have flipped ops:
+        //----------------------------------------------------------------------
+
+        // These are the only cases of built-in binary operators that are not
+        // flipped.
+
+        case GB_POW_binop_code          :
+        case GB_BGET_binop_code         :
+        case GB_BSET_binop_code         :
+        case GB_BCLR_binop_code         :
+        case GB_BSHIFT_binop_code       :
+        case GB_ATAN2_binop_code        :
+        case GB_FMOD_binop_code         :
+        case GB_REMAINDER_binop_code    :
+        case GB_COPYSIGN_binop_code     :
+        case GB_LDEXP_binop_code        :
+        case GB_CMPLX_binop_code        :
+        case GB_USER_binop_code         :
         default: ;
     }
 
     //--------------------------------------------------------------------------
-    // invalid operator
+    // operator cannot be flipped
     //--------------------------------------------------------------------------
 
-    (*handled) = false ;
-    return (NULL) ;
+    (*flipxy) = true ;
+    return (op) ;
 }
 

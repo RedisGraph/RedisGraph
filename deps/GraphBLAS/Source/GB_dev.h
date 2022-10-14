@@ -25,6 +25,9 @@
 // (GraphBLAS will be exceedingly slow; this is for development only)
 // #define GB_MEMDUMP
 
+// to turn on diagnostic timings.  See GrB.timing in the @GrB interface.
+// #define GB_TIMING
+
 // By default, many internal temporary matrices use statically allocated
 // headers to reduce the number of calls to malloc/free.  This works fine for
 // matrices on the CPU, but the static headers do not get automatically

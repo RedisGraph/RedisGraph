@@ -110,8 +110,6 @@ void wildtype_print_matrix (GrB_Matrix A, char *name)
 
 void wildtype_add (wildtype *z, const wildtype *x, const wildtype *y)
 {
-    wildtype_print (x, "x for add:") ;
-    wildtype_print (y, "y for add:") ;
     for (int i = 0 ; i < 4 ; i++)
     {
         for (int j = 0 ; j < 4 ; j++)
@@ -120,14 +118,10 @@ void wildtype_add (wildtype *z, const wildtype *x, const wildtype *y)
         }
     }
     strcpy (z->whatstuff, "this was added") ;
-    printf ("\ndo the add:\n    [%s] = [%s] + [%s]\n",
-        z->whatstuff, x->whatstuff, y->whatstuff) ;
-    wildtype_print (z, "z = x+y:") ;
 }
 
 // the newlines (\n) are optional.  They just make GxB_print output readable:
 #define WILDTYPE_ADD_DEFN                                                   \
-"#include <stdio.h> \n"                                                     \
 "void wildtype_add (wildtype *z, const wildtype *x, const wildtype *y) \n"  \
 "{ \n"                                                                      \
 "   for (int i = 0 ; i < 4 ; i++) \n"                                       \
@@ -146,8 +140,6 @@ void wildtype_add (wildtype *z, const wildtype *x, const wildtype *y)
 
 void wildtype_mult (wildtype *z, const wildtype *x, const wildtype *y)
 {
-    wildtype_print (x, "x for multiply:") ;
-    wildtype_print (y, "y for multiply:") ;
     for (int i = 0 ; i < 4 ; i++)
     {
         for (int j = 0 ; j < 4 ; j++)
@@ -160,13 +152,9 @@ void wildtype_mult (wildtype *z, const wildtype *x, const wildtype *y)
         }
     }
     strcpy (z->whatstuff, "this was multiplied") ;
-    printf ("\ndo the multiply:\n   [%s] = [%s] * [%s]\n",
-        z->whatstuff, x->whatstuff, y->whatstuff) ;
-    wildtype_print (z, "z = x*y:") ;
 }
 
 #define WILDTYPE_MULT_DEFN                                                  \
-"#include <stdio.h> \n"                                                     \
 "void wildtype_mult (wildtype *z, const wildtype *x, const wildtype *y) \n" \
 "{ \n"                                                                      \
 "   for (int i = 0 ; i < 4 ; i++) \n"                                       \
@@ -196,7 +184,7 @@ int main (void)
 {
 
     // start GraphBLAS
-    #if 0
+    #if 1
     GrB_init (GrB_NONBLOCKING) ;
     #else
     rmm_wrap_initialize (rmm_wrap_managed, 256 * 1000000L, 256 * 1000000000L) ;
@@ -258,7 +246,6 @@ int main (void)
     fprintf (stderr, "max # of threads used internally: %d\n", nthreads_max) ;
 
     // create the WildType
-//  GrB_Type_new (&WildType, sizeof (wildtype)) ;
     GxB_Type_new (&WildType, sizeof (wildtype), "wildtype", WILDTYPE_DEFN) ;
     GxB_print (WildType, 3) ;
 
@@ -312,8 +299,6 @@ int main (void)
 
     // create the WildAdd operator
     GrB_BinaryOp WildAdd ;
-//  GrB_BinaryOp_new (&WildAdd, 
-//      (GxB_binary_function) wildtype_add, WildType, WildType, WildType) ;
     GxB_BinaryOp_new (&WildAdd, 
         (GxB_binary_function) wildtype_add, WildType, WildType, WildType,
         "wildtype_add", WILDTYPE_ADD_DEFN) ;
@@ -321,8 +306,6 @@ int main (void)
 
     // create the WildMult operator
     GrB_BinaryOp WildMult ;
-//  GrB_BinaryOp_new (&WildMult, 
-//      (GxB_binary_function) wildtype_mult, WildType, WildType, WildType) ;
     GxB_BinaryOp_new (&WildMult, 
         (GxB_binary_function) wildtype_mult, WildType, WildType, WildType,
         "wildtype_mult", WILDTYPE_MULT_DEFN) ;
@@ -357,6 +340,7 @@ int main (void)
     // create the WildAdder monoid 
     GrB_Monoid WildAdder ;
     wildtype scalar_identity ;
+    memset (&scalar_identity, 0, sizeof (wildtype)) ;
     for (int i = 0 ; i < 4 ; i++)
     {
         for (int j = 0 ; j < 4 ; j++)
@@ -399,6 +383,11 @@ int main (void)
     GrB_mxm (C, M, NULL, InTheWild, C, C, GrB_DESC_RST1) ;
     GxB_set (GxB_BURBLE, false) ;
     wildtype_print_matrix (C, "output C") ;
+
+    // reduce C to a scalar using the WildAdder monoid
+    wildtype sum ;
+    GrB_Matrix_reduce_UDT (&sum, NULL, WildAdder, C, NULL) ;
+    wildtype_print (&sum, "sum") ;
 
     // set C to column-oriented format
     GxB_Matrix_Option_set (C, GxB_FORMAT, GxB_BY_COL) ;
