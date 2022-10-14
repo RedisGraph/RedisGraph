@@ -34,7 +34,7 @@ GrB_Info GB_convert_any_to_sparse // convert to sparse
     if (GB_IS_HYPERSPARSE (A))
     { 
         // convert from hypersparse to sparse
-        GB_OK (GB_convert_hyper_to_sparse (A, Context)) ;
+        GB_OK (GB_convert_hyper_to_sparse (A, true, Context)) ;
     }
     else if (GB_IS_FULL (A))
     { 

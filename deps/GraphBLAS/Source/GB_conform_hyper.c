@@ -56,7 +56,7 @@ GrB_Info GB_conform_hyper       // conform a matrix to sparse/hypersparse
         A->nvec_nonempty, A->vdim)) // A->nvec_nonempty used here
     { 
         // A is hypersparse but should be converted to sparse
-        GB_OK (GB_convert_hyper_to_sparse (A, Context)) ;
+        GB_OK (GB_convert_hyper_to_sparse (A, true, Context)) ;
     }
     else
     { 

@@ -24,6 +24,7 @@
 // Compare this function with GB_shallow_op.c.
 
 #include "GB_transpose.h"
+#include "GB_unused.h"
 
 #define GB_FREE_ALL ;
 
@@ -82,6 +83,13 @@ GrB_Info GB_shallow_copy    // create a purely shallow matrix
     { 
         GB_BURBLE_MATRIX (A, "(iso copy) ") ;
     }
+
+    //--------------------------------------------------------------------------
+    // make a shallow copy of the A->Y hyper_hash
+    //--------------------------------------------------------------------------
+
+    C->Y = A->Y ;
+    C->Y_shallow = (A->Y != NULL) ;
 
     //--------------------------------------------------------------------------
     // check for empty matrix

@@ -23,7 +23,7 @@ void GB_iso_reduce_worker
 )
 {
 
-    if (n == 1)
+    if (n <= 1)
     { 
         memcpy (s, a, zsize) ;
     }

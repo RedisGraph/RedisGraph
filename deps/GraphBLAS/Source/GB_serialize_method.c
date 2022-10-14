@@ -40,22 +40,27 @@ void GB_serialize_method
     {
 
         default : 
-            (*algo) = GxB_COMPRESSION_LZ4 ; 
-            (*level) = 0 ;              // level is ignored
+            // The default method has changed to ZSTD, level 1, as of
+            // SuiteSparse:GraphBLAS v7.2.0.
+            (*algo) = GxB_COMPRESSION_ZSTD ; 
+            (*level) = 1 ;              // fast with good compression
             break ;
 
         case GxB_COMPRESSION_LZ4 : 
             (*level) = 0 ;              // level is ignored
             break ;
 
-        case GxB_COMPRESSION_LZ4HC : 
-            // level 1 to 9, with a default of 9.  Note that LZ4HC supports
-            // levels 10, 11, and 12, but these are very slow and do not
-            // provide much benefit over level 9.  Level 10 often results in
-            // a larger blob than level 9.  Level 12 is typically just a tiny
-            // bit more compact than level 9, but can be 10x slower, or worse,
-            // as compared to level 9.
+        case GxB_COMPRESSION_LZ4HC :    // LZ4HC: level 1 to 9; default 9.
+            // Note that LZ4HC supports levels 10, 11, and 12, but these are
+            // very slow and do not provide much benefit over level 9.  Level
+            // 10 often results in a larger blob than level 9.  Level 12 is
+            // typically just a tiny bit more compact than level 9, but can be
+            // 10x slower, or worse, as compared to level 9.
             if ((*level) <= 0 || (*level) > 9) (*level) = 9 ;
+            break ;
+
+        case GxB_COMPRESSION_ZSTD :     // ZSTD: level 1 to 19; default 1.
+            if ((*level) <= 0 || (*level) > 19) (*level) = 1 ;
             break ;
 
 //      These cases will be uncommented when the methods are implemented:

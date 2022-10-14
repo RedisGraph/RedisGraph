@@ -178,7 +178,7 @@ static void GB_SORT (quicksort)    // sort A [0:n-1]
 // GB_SORT (binary_search): binary search for the pivot
 //------------------------------------------------------------------------------
 
-// The Pivot value is Y [pivot], and a binary search for the Pivot is made in
+// The Pivot value is Z [pivot], and a binary search for the Pivot is made in
 // the array X [p_pstart...p_end-1], which is sorted in non-decreasing order on
 // input.  The return value is pleft, where
 //
@@ -193,8 +193,8 @@ static void GB_SORT (quicksort)    // sort A [0:n-1]
 
 static int64_t GB_SORT (binary_search)  // return pleft
 (
-    const GB_TYPE *restrict Y_0,        // Pivot is Y [pivot]
-    const int64_t *restrict Y_1,
+    const GB_TYPE *restrict Z_0,        // Pivot is Z [pivot]
+    const int64_t *restrict Z_1,
     const int64_t pivot,
     const GB_TYPE *restrict X_0,        // search in X [p_start..p_end_-1]
     const int64_t *restrict X_1,
@@ -216,8 +216,8 @@ static int64_t GB_SORT (binary_search)  // return pleft
     // binary search of X [p_start...p_end-1] for the Pivot
     int64_t pleft = p_start ;
     int64_t pright = p_end - 1 ;
-    GB_GET (Pivot0, Y_0, pivot) ;       // Pivot0 = Y_0 [pivot]
-    int64_t Pivot1 = Y_1 [pivot] ;
+    GB_GET (Pivot0, Z_0, pivot) ;       // Pivot0 = Z_0 [pivot]
+    int64_t Pivot1 = Z_1 [pivot] ;
     bool less ;
     while (pleft < pright)
     { 
@@ -721,7 +721,6 @@ static GrB_Info GB_SORT (matrix)
     int ntasks = (nthreads == 1) ? 1 : (32 * nthreads) ;
     ntasks = GB_IMIN (ntasks, cnvec) ;
     ntasks = GB_IMAX (ntasks, 1) ;
-//  printf ("phase1: threads %d tasks %d\n", nthreads, ntasks) ;
 
     GB_WERK_PUSH (Werk, 3*ntasks + 2, int64_t) ;
     if (Werk == NULL)
@@ -752,7 +751,6 @@ static GrB_Info GB_SORT (matrix)
             const int64_t cknz = pC_end - pC_start ;
             if (cknz <= GB_BASECASE || nthreads == 1)
             { 
-//              printf ("\n------------sort: %ld cknz %ld\n", k, cknz)  ;
                 uint64_t seed = k ;
                 GB_SORT (quicksort) (GB_ADDR (Cx, pC_start), Ci + pC_start,
                     cknz, &seed
@@ -763,7 +761,6 @@ static GrB_Info GB_SORT (matrix)
             }
             else
             { 
-//              printf ("\n------------skip: %ld cknz %ld\n", k, cknz)  ;
                 n_skipped++ ;
             }
             task_max_length = GB_IMAX (task_max_length, cknz) ;
@@ -841,8 +838,6 @@ static GrB_Info GB_SORT (matrix)
 
     int kk = (int) (2 + 2 * ceil (log2 ((double) nthreads) / 2)) ;
     int ntasks2 = 1 << kk ;
-//  printf ("phase2: threads %d tasks %d skipped %ld\n", nthreads, ntasks2,
-//      total_skipped) ;
 
     //--------------------------------------------------------------------------
     // allocate workspace

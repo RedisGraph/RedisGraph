@@ -8,7 +8,7 @@ function C = rdivide (A, B)
 % See also GrB/ldivide, GrB.emult, GrB.eadd.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 if (isobject (A))
     A = A.opaque ;
@@ -24,12 +24,17 @@ a_is_scalar = (am == 1) && (an == 1) ;
 b_is_scalar = (bm == 1) && (bn == 1) ;
 ctype = gboptype (atype, btype) ;
 
+if (a_is_scalar && gb_scalar (A) == 0 && gb_isfloat (ctype))
+    A = 0 ;
+end
+
 if (a_is_scalar)
     if (b_is_scalar)
         % both A and B are scalars
-        C = GrB (gbemult (A, '/', B)) ;
+        C = GrB (gbemult (A, '/', gbfull (B))) ;
     else
-        % A is a scalar, B is a matrix.  Expand B to full with type of C
+        % A is a scalar, B is a matrix.
+        % Expand B to full with type of C
         C = GrB (gbapply2 (A, '/', gbfull (B, ctype))) ;
     end
 else
@@ -38,7 +43,7 @@ else
         if (gb_scalar (B) == 0 && gb_isfloat (atype))
             % 0/0 is Nan, and thus must be computed computed if A is
             % floating-point.  The result is a full matrix.
-            % expand B t a full matrix and cast to the type of A
+            % expand B into a full matrix and cast to the type of A
             B = gb_scalar_to_full (am, an, atype, gb_fmt (A), B) ;
             C = GrB (gbemult (A, '/', B)) ;
         else

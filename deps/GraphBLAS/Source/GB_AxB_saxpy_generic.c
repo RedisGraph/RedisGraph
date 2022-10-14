@@ -81,13 +81,7 @@ GrB_Info GB_AxB_saxpy_generic
 
         GB_BURBLE_MATRIX (C, "(generic positional C=A*B) ") ;
 
-        if (flipxy)
-        { 
-            // flip a positional multiplicative operator
-            bool handled ;
-            opcode = GB_flip_binop_code (opcode, &handled) ;
-            ASSERT (handled) ;      // all positional ops can be flipped
-        }
+        ASSERT (!flipxy) ;
 
         // C always has type int64_t or int32_t.  The monoid must be used via
         // its function pointer.  The positional multiply operator must be
@@ -265,109 +259,100 @@ GrB_Info GB_AxB_saxpy_generic
 
         GB_BURBLE_MATRIX (C, "(generic C=A*B) ") ;
 
-        if (opcode == GB_FIRST_binop_code || opcode == GB_SECOND_binop_code)
+        if (opcode == GB_FIRST_binop_code)
         {
+            // t = A(i,k)
             // fmult is not used and can be NULL.  This is required for
             // GB_reduce_to_vector for user-defined types.
-            if (flipxy)
+            ASSERT (!flipxy) ;
+            ASSERT (B_is_pattern) ;
+            if (saxpy_method == GB_SAXPY_METHOD_3)
             { 
-                // flip first and second
-                bool handled ;
-                opcode = GB_flip_binop_code (opcode, &handled) ;
-                ASSERT (handled) ;      // FIRST and SECOND can be flipped
+                // C is sparse or hypersparse
+                info = GB_AxB_saxpy3_generic_first 
+                     (C, M, Mask_comp, Mask_struct, M_in_place,
+                      A, A_is_pattern, B, B_is_pattern, semiring,
+                      SaxpyTasks, ntasks, nfine, nthreads, do_sort,
+                      Context) ;
             }
-            if (opcode == GB_FIRST_binop_code)
-            {
-                // t = A(i,k)
-                ASSERT (B_is_pattern) ;
-                if (saxpy_method == GB_SAXPY_METHOD_3)
-                { 
-                    // C is sparse or hypersparse
-                    info = GB_AxB_saxpy3_generic_first 
-                         (C, M, Mask_comp, Mask_struct, M_in_place,
-                          A, A_is_pattern, B, B_is_pattern, semiring,
-                          SaxpyTasks, ntasks, nfine, nthreads, do_sort,
-                          Context) ;
-                }
-                else
-                { 
-                    // C is bitmap or full
-                    info = GB_bitmap_AxB_saxpy_generic_first 
-                         (C, M, Mask_comp, Mask_struct, M_in_place,
-                          A, A_is_pattern, B, B_is_pattern, semiring,
-                          NULL, 0, 0, 0, 0,
-                          Context) ;
-                }
+            else
+            { 
+                // C is bitmap or full
+                info = GB_bitmap_AxB_saxpy_generic_first 
+                     (C, M, Mask_comp, Mask_struct, M_in_place,
+                      A, A_is_pattern, B, B_is_pattern, semiring,
+                      NULL, 0, 0, 0, 0,
+                      Context) ;
             }
-            else // opcode == GB_SECOND_binop_code
-            {
-                // t = B(i,k)
-                ASSERT (A_is_pattern) ;
-                if (saxpy_method == GB_SAXPY_METHOD_3)
-                { 
-                    // C is sparse or hypersparse
-                    info = GB_AxB_saxpy3_generic_second 
-                         (C, M, Mask_comp, Mask_struct, M_in_place,
-                          A, A_is_pattern, B, B_is_pattern, semiring,
-                          SaxpyTasks, ntasks, nfine, nthreads, do_sort,
-                          Context) ;
-                }
-                else
-                { 
-                    // C is bitmap or full
-                    info = GB_bitmap_AxB_saxpy_generic_second 
-                         (C, M, Mask_comp, Mask_struct, M_in_place,
-                          A, A_is_pattern, B, B_is_pattern, semiring,
-                          NULL, 0, 0, 0, 0,
-                          Context) ;
-                }
+        }
+        else if (opcode == GB_SECOND_binop_code)
+        {
+            // t = B(i,k)
+            // fmult is not used and can be NULL.  This is required for
+            // GB_reduce_to_vector for user-defined types.
+            ASSERT (!flipxy) ;
+            ASSERT (A_is_pattern) ;
+            if (saxpy_method == GB_SAXPY_METHOD_3)
+            { 
+                // C is sparse or hypersparse
+                info = GB_AxB_saxpy3_generic_second 
+                     (C, M, Mask_comp, Mask_struct, M_in_place,
+                      A, A_is_pattern, B, B_is_pattern, semiring,
+                      SaxpyTasks, ntasks, nfine, nthreads, do_sort,
+                      Context) ;
+            }
+            else
+            { 
+                // C is bitmap or full
+                info = GB_bitmap_AxB_saxpy_generic_second 
+                     (C, M, Mask_comp, Mask_struct, M_in_place,
+                      A, A_is_pattern, B, B_is_pattern, semiring,
+                      NULL, 0, 0, 0, 0,
+                      Context) ;
+            }
+        }
+        else if (flipxy)
+        {
+            // t = B(k,j) * A(i,k)
+            if (saxpy_method == GB_SAXPY_METHOD_3)
+            { 
+                // C is sparse or hypersparse, mult is flipped
+                info = GB_AxB_saxpy3_generic_flipped 
+                     (C, M, Mask_comp, Mask_struct, M_in_place,
+                      A, A_is_pattern, B, B_is_pattern, semiring,
+                      SaxpyTasks, ntasks, nfine, nthreads, do_sort,
+                      Context) ;
+            }
+            else
+            { 
+                // C is bitmap or full, mult is flipped
+                info = GB_bitmap_AxB_saxpy_generic_flipped 
+                     (C, M, Mask_comp, Mask_struct, M_in_place,
+                      A, A_is_pattern, B, B_is_pattern, semiring,
+                      NULL, 0, 0, 0, 0,
+                      Context) ;
             }
         }
         else
         {
-            if (flipxy)
-            {
-                // t = B(k,j) * A(i,k)
-                if (saxpy_method == GB_SAXPY_METHOD_3)
-                { 
-                    // C is sparse or hypersparse, mult is flipped
-                    info = GB_AxB_saxpy3_generic_flipped 
-                         (C, M, Mask_comp, Mask_struct, M_in_place,
-                          A, A_is_pattern, B, B_is_pattern, semiring,
-                          SaxpyTasks, ntasks, nfine, nthreads, do_sort,
-                          Context) ;
-                }
-                else
-                { 
-                    // C is bitmap or full, mult is flipped
-                    info = GB_bitmap_AxB_saxpy_generic_flipped 
-                         (C, M, Mask_comp, Mask_struct, M_in_place,
-                          A, A_is_pattern, B, B_is_pattern, semiring,
-                          NULL, 0, 0, 0, 0,
-                          Context) ;
-                }
+            // t = A(i,k) * B(k,j)
+            if (saxpy_method == GB_SAXPY_METHOD_3)
+            { 
+                // C is sparse or hypersparse, mult is unflipped
+                info = GB_AxB_saxpy3_generic_unflipped 
+                     (C, M, Mask_comp, Mask_struct, M_in_place,
+                      A, A_is_pattern, B, B_is_pattern, semiring,
+                      SaxpyTasks, ntasks, nfine, nthreads, do_sort,
+                      Context) ;
             }
             else
-            {
-                // t = A(i,k) * B(k,j)
-                if (saxpy_method == GB_SAXPY_METHOD_3)
-                { 
-                    // C is sparse or hypersparse, mult is unflipped
-                    info = GB_AxB_saxpy3_generic_unflipped 
-                         (C, M, Mask_comp, Mask_struct, M_in_place,
-                          A, A_is_pattern, B, B_is_pattern, semiring,
-                          SaxpyTasks, ntasks, nfine, nthreads, do_sort,
-                          Context) ;
-                }
-                else
-                { 
-                    // C is bitmap or full, mult is unflipped
-                    info = GB_bitmap_AxB_saxpy_generic_unflipped 
-                         (C, M, Mask_comp, Mask_struct, M_in_place,
-                          A, A_is_pattern, B, B_is_pattern, semiring,
-                          NULL, 0, 0, 0, 0,
-                          Context) ;
-                }
+            { 
+                // C is bitmap or full, mult is unflipped
+                info = GB_bitmap_AxB_saxpy_generic_unflipped 
+                     (C, M, Mask_comp, Mask_struct, M_in_place,
+                      A, A_is_pattern, B, B_is_pattern, semiring,
+                      NULL, 0, 0, 0, 0,
+                      Context) ;
             }
         }
     }

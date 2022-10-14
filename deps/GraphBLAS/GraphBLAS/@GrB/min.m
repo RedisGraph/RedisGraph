@@ -19,7 +19,7 @@ function C = min (A, B, option)
 % See also GrB/max, GrB.argmin.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 if (isobject (A))
     A = A.opaque ;
@@ -27,7 +27,7 @@ end
 
 type = gbtype (A) ;
 if (gb_contains (type, 'complex'))
-    error ('complex matrices not yet supported') ;
+    error ('GrB:error', 'complex matrices not yet supported') ;
 elseif (isequal (type, 'logical'))
     op = '&.logical' ;
 else
@@ -46,7 +46,8 @@ elseif (nargin == 2)
 else
     % C = min (A, [ ], option)
     if (~isempty (B))
-        error ('dimension argument not allowed with 2 input matrices') ;
+        error ('GrB:error', ...
+            'dimension argument not allowed with 2 input matrices') ;
     end
     C = GrB (gb_min3 (op, A, option)) ;
 end

@@ -1,10 +1,15 @@
-function testc3
+function testc3(use_builtin)
 %TESTC3 test complex GrB_extract
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
+
+if (nargin < 1)
+    use_builtin = true ;
+end
+GB_builtin_complex_set (use_builtin) ;
 
 d = struct ('outp', 'replace') ;
 seed = 1 ;
@@ -97,3 +102,4 @@ fprintf ('All complex extract C = A(I,J) tests passed\n') ;
 
 fprintf ('\ntestc3: all tests passed\n') ;
 
+GB_builtin_complex_set (true) ;

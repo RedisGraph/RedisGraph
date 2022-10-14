@@ -12,8 +12,9 @@
 GrB_Info GxB_Matrix_pack_HyperCSC      // pack a hypersparse CSC matrix
 (
     GrB_Matrix A,       // matrix to create (type, nrows, ncols unchanged)
-    GrB_Index **Ap,     // col "pointers", Ap_size >= (nvec+1)*sizeof(int64_t)
-    GrB_Index **Ah,     // column indices, Ah_size >= nvec*sizeof(int64_t)
+    GrB_Index **Ap,     // col "pointers", Ap_size >= (plen+1)*sizeof(int64_t)
+    GrB_Index **Ah,     // column indices, Ah_size >= plen*sizeof(int64_t)
+                        // where plen = 1 if ncols = 1, or nvec otherwise.
     GrB_Index **Ai,     // row indices, Ai_size >= nvals(A)*sizeof(int64_t)
     void **Ax,          // values, Ax_size >= nvals(A)*(type size)
                         // or Ax_size >= (type size), if iso is true
@@ -26,7 +27,7 @@ GrB_Info GxB_Matrix_pack_HyperCSC      // pack a hypersparse CSC matrix
     bool jumbled,       // if true, indices in each column may be unsorted
     const GrB_Descriptor desc
 )
-{ 
+{
 
     //--------------------------------------------------------------------------
     // check inputs and get the descriptor

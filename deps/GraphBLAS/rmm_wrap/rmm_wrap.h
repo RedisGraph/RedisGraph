@@ -1,4 +1,33 @@
 //------------------------------------------------------------------------------
+// rmm_wrap/rmm_wrap.h: include file for rmm_wrap
+//------------------------------------------------------------------------------
+
+// SPDX-License-Identifier: Apache-2.0
+
+//------------------------------------------------------------------------------
+
+// example usage in GraphBLAS:
+
+/*
+    GrB_init (mode) ;       // ANSI C11 malloc/calloc/realloc/free, no PMR
+    GxB_init (mode, mymalloc, mycalloc, myrealloc, myfree) ;
+
+    GxB_init (mode, mymalloc, NULL, NULL, myfree) ;
+
+    GxB_init (mode, mxMalloc, NULL, NULL, mxFree) ;
+    GxB_init (mode, pymalloc, pycalloc, pyrealloc, pyfree) ;
+    GxB_init (mode, jl_malloc, jl_calloc, jl_realloc, jl_free) ;
+    GxB_init (mode, RedisModule_malloc, RedisModule_calloc,
+        RedisModule_realloc, RedisModule_realloc) ;
+
+    // using the RMM functions:
+    rmm_wrap_initialize (rmm_wrap_managed, 256 * 1000000L, 256 * 1000000000L) ;
+    GxB_init (GxB_NONBLOCKING_GPU, rmm_wrap_malloc, rmm_wrap_calloc,
+        rmm_wrap_realloc, rmm_wrap_free) ;
+    // ... use GraphBLAS on the GPU
+    rmm_wrap_finalize ( ) ;
+*/
+
 //------------------------------------------------------------------------------
 
 #ifndef RMM_WRAP_H
@@ -12,14 +41,30 @@ extern "C" {
 #endif
 
 // TODO describe the modes
-typedef enum { rmm_wrap_host=0, rmm_wrap_host_pinned=1, rmm_wrap_device=2, rmm_wrap_managed=3 } RMM_MODE ;
+typedef enum
+{
+    rmm_wrap_host = 0,
+    rmm_wrap_host_pinned = 1,
+    rmm_wrap_device = 2,
+    rmm_wrap_managed = 3
+}
+RMM_MODE ;
 
+// create an RMM resource
+int rmm_wrap_initialize
+(
+    RMM_MODE mode,
+    size_t init_pool_size,
+    size_t max_pool_size
+) ;
+
+// destroy an RMM resource
 void rmm_wrap_finalize (void) ;
-int rmm_wrap_initialize (RMM_MODE mode, size_t init_pool_size, size_t max_pool_size) ;
 
 // example usage:
     //  rmm_wrap_initialize (rmm_wrap_managed, INT32_MAX, INT64_MAX) ;
-    //  GxB_init (GrB_NONBLOCKING, rmm_wrap_malloc, rmm_wrap_calloc, rmm_wrap_realloc, rmm_wrap_free) ;
+    //  GxB_init (GrB_NONBLOCKING, rmm_wrap_malloc, rmm_wrap_calloc,
+    //      rmm_wrap_realloc, rmm_wrap_free) ;
     //  use GraphBLAS ...
     //  GrB_finalize ( ) ;
     //  rmm_wrap_finalize ( ) ;
