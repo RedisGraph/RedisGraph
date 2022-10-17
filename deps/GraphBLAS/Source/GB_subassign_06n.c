@@ -77,12 +77,19 @@ GrB_Info GB_subassign_06n
     const int64_t *restrict Ch = C->h ;
     const int64_t *restrict Cp = C->p ;
     const bool C_is_hyper = (Ch != NULL) ;
+    GB_GET_C_HYPER_HASH ;
     GB_GET_MASK ;
     GB_GET_A ;
     const int64_t *restrict Ah = A->h ;
     const int64_t Anvec = A->nvec ;
     const bool A_is_hyper = (Ah != NULL) ;
     GrB_BinaryOp accum = NULL ;
+
+    GB_OK (GB_hyper_hash_build (A, Context)) ;
+    const int64_t *restrict A_Yp = (A_is_hyper) ? A->Y->p : NULL ;
+    const int64_t *restrict A_Yi = (A_is_hyper) ? A->Y->i : NULL ;
+    const int64_t *restrict A_Yx = (A_is_hyper) ? A->Y->x : NULL ;
+    const int64_t A_hash_bits = (A_is_hyper) ? (A->Y->vdim - 1) : 0 ;
 
     //--------------------------------------------------------------------------
     // Method 06n: C(I,J)<M> = A ; no S
@@ -140,7 +147,7 @@ GrB_Info GB_subassign_06n
             //------------------------------------------------------------------
 
             int64_t pA, pA_end ;
-            GB_VECTOR_LOOKUP (pA, pA_end, A, j) ;
+            GB_LOOKUP_VECTOR (pA, pA_end, A, j) ;
             int64_t ajnz = pA_end - pA ;
             bool ajdense = (ajnz == Avlen) ;
             int64_t pA_start = pA ;
@@ -149,7 +156,7 @@ GrB_Info GB_subassign_06n
             // get jC, the corresponding vector of C
             //------------------------------------------------------------------
 
-            GB_GET_jC ;
+            GB_LOOKUP_VECTOR_jC (fine_task, taskid) ;
             int64_t cjnz = pC_end - pC_start ;
             if (cjnz == 0 && ajnz == 0) continue ;
             bool cjdense = (cjnz == Cvlen) ;
@@ -370,7 +377,7 @@ GrB_Info GB_subassign_06n
             //------------------------------------------------------------------
 
             int64_t pA, pA_end ;
-            GB_VECTOR_LOOKUP (pA, pA_end, A, j) ;
+            GB_LOOKUP_VECTOR (pA, pA_end, A, j) ;
             int64_t ajnz = pA_end - pA ;
             if (ajnz == 0) continue ;
             bool ajdense = (ajnz == Avlen) ;
@@ -380,7 +387,7 @@ GrB_Info GB_subassign_06n
             // get jC, the corresponding vector of C
             //------------------------------------------------------------------
 
-            GB_GET_jC ;
+            GB_LOOKUP_VECTOR_jC (fine_task, taskid) ;
             bool cjdense = ((pC_end - pC_start) == Cvlen) ;
 
             //------------------------------------------------------------------

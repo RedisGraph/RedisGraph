@@ -12,7 +12,7 @@
 // (it is auto-generated from Generator/*).
 
 #include "GB.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_emult.h"
 #include "GB_control.h"
 #include "GB_ek_slice.h"
@@ -328,7 +328,7 @@ GrB_Info GB ((none))
     #if GB_DISABLE
     return (GrB_NO_VALUE) ;
     #else
-    #include "GB_emult_08_meta.c"
+    #include "GB_emult_meta.c"
     return (GrB_SUCCESS) ;
     #endif
 }

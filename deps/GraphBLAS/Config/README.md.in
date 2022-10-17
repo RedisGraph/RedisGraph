@@ -4,10 +4,6 @@ SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 
-For the GraphBLAS/GraphBLAS Octave/MATLAB interface *only*:
-SPDX-License-Identifier: GPL-3.0-or-later
-(see below for a discussion of the licensing of this package).
-
 VERSION @GraphBLAS_VERSION_MAJOR@.@GraphBLAS_VERSION_MINOR@.@GraphBLAS_VERSION_SUB@, @GraphBLAS_DATE@
 
 SuiteSparse:GraphBLAS is a complete implementation of the GraphBLAS standard,
@@ -24,8 +20,8 @@ built-in sparse matrix multiply in MATLAB R2021a, where `C=A*B` is now up to
 30x faster than in prior versions of MATLAB (on my 20-core NVIDIA DGX Station).
 
 The development of this package is supported by Intel, NVIDIA (including the
-donation of the 20-core DGX Station), Redis, MIT Lincoln Lab, IBM, and Julia
-Computing.
+donation of the 20-core DGX Station), Redis, MIT Lincoln Lab, MathWorks,
+IBM, and Julia Computing.
 
 See the user guide in `Doc/GraphBLAS_UserGuide.pdf` for documentation on the
 SuiteSparse implementation of GraphBLAS, and how to use it in your
@@ -55,9 +51,9 @@ To remove all compiled files:
 
     make clean
 
-To compile the demos:
+To compile and run the demos:
 
-    make all
+    make demo
 
 See the GraphBLAS/ subfolder for the Octave/MATLAB interface, which contains a
 README.md file with further details.
@@ -76,11 +72,7 @@ Doc:            SuiteSparse:GraphBLAS User Guide and license
 GraphBLAS:      the @GrB Octave/MATLAB interface, including its test suite and
                 demos.  This folder is called 'GraphBLAS' so that typing 'help
                 graphblas' or 'doc graphblas' in the Octave or MATLAB Command
-                Window can locate the Contents.m file.  Note that this folder
-                and all its contents are under the GNU GPLv3 (or later), not
-                Apache-2.0.  All other components of GraphBLAS (in particular,
-                all code in libgraphblas.so, and the entire CUDA folder) are
-                licensed as Apache-2.0.
+                Window can locate the Contents.m file.
 
 Include:        user-accessible include file, GraphBLAS.h
 
@@ -100,7 +92,7 @@ Test:           Extensive tests, not meant for general usage.  To compile and
 build:          build directory for CMake, initially empty
 
 alternative:    an alternative to CMake; edit the alternative/Makefile and do
-                "make" or "make run" in the 'alternative' directory.
+                "make" or "make demo" in the 'alternative' directory.
 
 CUDA:           GPU interface, a work in progress.  This is being developed in
                 collaboration with Joe Eaton, Corey Nolet and others at NVIDIA,
@@ -188,21 +180,12 @@ create.  If you are using GraphBLAS in a commercial closed-source product and
 are not supporting its development, please consider supporting this project
 to ensure that it will continue to be developed and enhanced in the future.
 
-The Octave/MATLAB interface is now licensed under the GNU GPLv3.0 (or later)
-license, so if any code from the GraphBLAS/GraphBLAS folder is needed in a
-commercial closed-source application, you will either need to license your
-commercial application as GNU GPLv3.0, or you can ask me for a non-GNU and
-non-Apache license.
-
-This licensing change has no impact at all on the use of GraphBLAS in Octave,
-since Octave itself is already under the GNU GPLv3.0 license.
-
 To support the development of GraphBLAS, contact the author (davis@tamu.edu) or
 the Texas A&M Foundation (True Brown, tbrown@txamfoundation.com; or Kevin
 McGinnis, kmcginnis@txamfoundation.com) for details.
 
 SuiteSparse:GraphBLAS, is copyrighted by Timothy A. Davis, (c) 2017-2022, All
-Rights Reserved.  davis@tamu.edu.  Contact me if you need a non-GNU license.
+Rights Reserved.  davis@tamu.edu.
 
 --------------------------------------------------------------------------------
 

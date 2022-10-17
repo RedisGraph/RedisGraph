@@ -2,7 +2,7 @@ function gbtest12
 %GBTEST12 test GrB.eadd, GrB.emult, GrB.eunion
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 A = sparse (rand (2)) ;
@@ -104,6 +104,18 @@ C (M) = T (M) ;
 G = GrB.emult (G, M, '*', A, B) ;
 err = norm (C-G, 1) ;
 assert (err < 1e-12)
+
+C1 = 2 - C ;
+C2 = 2 - G ;
+assert (isequal (C1, C2)) ;
+
+C1 = 0 - C ;
+C2 = 0 - G ;
+assert (isequal (C1, C2)) ;
+
+C1 = C - 2 ;
+C2 = C - 2 ;
+assert (isequal (C1, C2)) ;
 
 fprintf ('gbtest12: all tests passed\n') ;
 

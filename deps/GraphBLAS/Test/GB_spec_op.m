@@ -20,7 +20,7 @@ function C = GB_spec_op (op, A, B)
 % 'round', ('trunc' or 'fix'), 'exp2', 'expm1', 'log10', 'log2', ('lgamma' or
 % 'gammaln'), ('tgamma' or 'gamma'), 'erf', 'erfc', 'frexpx', 'frexpe', 'conj',
 % ('creal' or 'real'), ('cimag' or 'imag'), ('carg' or 'angle'), 'isinf',
-% 'isnan', 'isfinite'.
+% 'isnan', 'isfinite', 'cbrt'.
 %
 % op.optype: 'logical', 'int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32',
 % 'int64', 'uint64', 'single', 'double', 'single complex' or 'double complex'.
@@ -356,6 +356,9 @@ switch opname
 
     case 'erfc'
         z = erfc (x) ;
+
+    case 'cbrt'
+        z = nthroot (x, 3) ;
 
     case 'frexpx'
         [z,~] = log2 (x) ;

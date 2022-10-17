@@ -6,36 +6,39 @@ function gbmake (what)
 %
 % gbmake compiles the @GrB interface for SuiteSparse:GraphBLAS.  The
 % GraphBLAS library must already be compiled and installed.
-% Octave 7 (recommended) or MATLAB 9.4 (R2018a) or later is required.
+% MATLAB 9.4 (R2018a) or Octave 7 later is required.
 %
 % For the Mac, the GraphBLAS library must be installed in /usr/local/lib/ as
-% libgraphblas.dylib.  It cannot be used where it is created in ../build,
-% because of the default Mac security settings.  For Unix/Linux, the library
-% used is ../build/libgraphblas.so if found, or in /usr/local/lib if not found
-% there.
+% libgraphblas_matlab.dylib.  It cannot be used where it is created in
+% ../build, because of the default Mac security settings.  For Unix/Linux, the
+% library used is ../build/libgraphblas_matlab.so if found, or in
+% /usr/local/lib if not found there.
 %
 % See also mex, version, GrB.clear.
 %
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
-fprintf ('Note that this @GrB interface is under the GNU GPLv3 (or later).\n') ;
-input ('Hit enter to confirm and agree; control-C to decline: ') ;
+fprintf ('Note: the libgraphblas_matlab dynamic library must already be\n') ;
+fprintf ('compiled prior to running this script.\n') ;
 
 have_octave = (exist ('OCTAVE_VERSION', 'builtin') == 5) ;
-need_rename = false ;
 
 if (have_octave)
+    % Octave can use the normal libgraphblas.so
+    need_rename = false ;
     if verLessThan ('octave', '7')
-        error ('Octave 7 or later is required') ;
+        error ('GrB:mex', 'Octave 7 or later is required') ;
     end
 else
     if verLessThan ('matlab', '9.4')
-        error ('MATLAB 9.4 (R2018a) or later is required') ;
+        error ('GrB:mex', 'MATLAB 9.4 (R2018a) or later is required') ;
     end
     % MATLAB 9.10 (R2021a) and following include a built-in GraphBLAS library
     % that conflicts with this version, so rename this version.
-    need_rename = ~verLessThan ('matlab', '9.10') ;
+    % Earlier versions of MATLAB can use this renamed version too, so
+    % for simplicity, use libgraphblas_matlab.so for all MATLAB versions.
+    need_rename = true ;
 end
 
 if (nargin < 1)
@@ -127,13 +130,9 @@ else
 end
 
 if (need_rename)
-    fprintf ('R2021a and later include an earlier version of\n') ;
-    fprintf ('GraphBLAS, as a built-in library.  This interface to the\n') ;
-    fprintf ('latest version of GraphBLAS links against a library with\n') ;
-    fprintf ('with renamed symbols, to avoid a library conflict.\n') ;
     flags = [flags ' -DGBRENAME=1 ' ] ;
     inc = [inc ' -I../../rename ' ] ;
-    libgraphblas = '-lgraphblas_renamed' ;
+    libgraphblas = '-lgraphblas_matlab' ;
 else
     libgraphblas = '-lgraphblas' ;
 end

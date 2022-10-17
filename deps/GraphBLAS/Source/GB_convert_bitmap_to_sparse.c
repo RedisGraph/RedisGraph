@@ -36,14 +36,14 @@ GrB_Info GB_convert_bitmap_to_sparse    // convert matrix from bitmap to sparse
     ASSERT (!GB_PENDING (A)) ;      // bitmap never has pending tuples
     ASSERT (!GB_JUMBLED (A)) ;      // bitmap is never jumbled
     ASSERT (!GB_ZOMBIES (A)) ;      // bitmap never has zomies
-    GBURBLE ("(bitmap to sparse) ") ;
 
     //--------------------------------------------------------------------------
     // allocate Ap, Ai, and Ax
     //--------------------------------------------------------------------------
 
-    const int64_t anz = GB_nnz (A) ;
-    const int64_t anzmax = GB_IMAX (anz, 1) ;
+    const int64_t anvals = A->nvals ;
+    GB_BURBLE_N (anvals, "(bitmap to sparse) ") ;
+    const int64_t anzmax = GB_IMAX (anvals, 1) ;
     int64_t anvec_nonempty ;
     const int64_t avdim = A->vdim ;
     const size_t asize = A->type->size ;
@@ -64,7 +64,7 @@ GrB_Info GB_convert_bitmap_to_sparse    // convert matrix from bitmap to sparse
     if (A_iso)
     { 
         // A is iso.  Remove A->x from the matrix so it is not freed by
-        // GB_phbix_free.  It is not modified by GB_convert_bitmap_worker, and
+        // GB_phybix_free.  It is not modified by GB_convert_bitmap_worker, and
         // is transplanted back into A, below.
         Ax = (GB_void *) A->x ;
         Ax_shallow = A->x_shallow ;
@@ -97,12 +97,13 @@ GrB_Info GB_convert_bitmap_to_sparse    // convert matrix from bitmap to sparse
     // free prior content of A and transplant the new content
     //--------------------------------------------------------------------------
 
-    GB_phbix_free (A) ;
+    GB_phybix_free (A) ;         // clears A->nvals
     A->p = Ap ; A->p_size = Ap_size ; A->p_shallow = false ;
     A->i = Ai ; A->i_size = Ai_size ; A->i_shallow = false ;
     A->x = Ax ; A->x_size = Ax_size ; A->x_shallow = Ax_shallow ;
     A->iso = A_iso ;            // OK: convert_bitmap_to_sparse, keep iso
-    A->nvals = 0 ;              // only used when A is bitmap
+    A->nvals = anvals ;
+    ASSERT (A->nvals == Ap [avdim]) ;
     A->plen = avdim ;
     A->nvec = avdim ;
     A->nvec_nonempty = anvec_nonempty ;

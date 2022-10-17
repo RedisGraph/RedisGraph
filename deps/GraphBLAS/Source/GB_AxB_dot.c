@@ -41,6 +41,7 @@
 // GxB_vxm) and detailed error reports.
 
 #include "GB_mxm.h"
+#include "GB_stringify.h"
 #define GB_FREE_ALL ;
 
 GrB_Info GB_AxB_dot                 // dot product (multiple methods)
@@ -96,6 +97,7 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
     size_t zsize = ztype->size ;
     GB_void cscalar [GB_VLA(zsize)] ;
     bool C_iso = GB_iso_AxB (cscalar, A, B, A->vlen, semiring, flipxy, false) ;
+
     if (C_iso)
     {
         // revise the method if A and B are both iso and full
@@ -133,6 +135,12 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
         // C_in must be as-if-full on input.  M must be NULL and not
         // complemented.  the C iso case is not handled (where C is iso on
         // output), but C_in might be iso on input.
+
+        #ifdef GB_DEBUGIFY_DEFN
+        GB_debugify_mxm (C_iso, GxB_FULL, ztype, M, Mask_struct,
+            Mask_comp, semiring, flipxy, A, B) ;
+        #endif
+
         (*mask_applied) = false ;    // no mask to apply
         info = GB_AxB_dot4 (C_in, A, B, semiring, flipxy, done_in_place,
             Context) ;
@@ -170,33 +178,45 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
         GBURBLE ("(%sdot3) ", iso_kind) ;
         (*mask_applied) = true ;    // mask is always applied
         (*done_in_place) = false ;
+        GrB_Info info ;
+
+        // construct the hyper hashes for A and B
+        GB_OK (GB_hyper_hash_build (A, Context)) ;
+        GB_OK (GB_hyper_hash_build (B, Context)) ;
+
+        GBURBLE ("(%s%s%s%s = %s'*%s) ",
+            GB_sparsity_char_matrix (M),    // C has the same sparsity as M
+            Mask_struct ? "{" : "<",
+            GB_sparsity_char_matrix (M),
+            Mask_struct ? "}" : ">",
+            GB_sparsity_char_matrix (A),
+            GB_sparsity_char_matrix (B)) ;
+
+        #ifdef GB_DEBUGIFY_DEFN
+        GB_debugify_mxm (C_iso, GB_sparsity (M), ztype, M,
+            Mask_struct, Mask_comp, semiring, flipxy, A, B) ;
+        #endif
 
         #if defined ( GBCUDA )
-        if (!C_iso &&   // FIXME for CUDA, remove and create C iso on output
+        if (!C_iso &&   // fixme for CUDA, remove and create C iso on output
             GB_AxB_dot3_cuda_branch (M, Mask_struct, A, B, semiring,
             flipxy, Context))
         {
-            // FIXME for CUDA: can M be jumbled for the CUDA kernel?
-            GB_MATRIX_WAIT (M) ;    // make sure it's not jumbled
-            if (GB_AxB_dot3_control (M, Mask_comp)
-                && !GB_IS_HYPERSPARSE (M)   // FIXME for CUDA, remove this
-            )
-            {
-                return (GB_AxB_dot3_cuda (C, M, Mask_struct, A, B, semiring,
-                    flipxy, Context)) ;
-            }
+            info = (GB_AxB_dot3_cuda (C, M, Mask_struct, A, B, semiring,
+                flipxy, Context)) ;
         }
         else
         #endif
         { 
             // use the CPU
-            return (GB_AxB_dot3 (C, C_iso, cscalar, M, Mask_struct, A, B,
+            info = (GB_AxB_dot3 (C, C_iso, cscalar, M, Mask_struct, A, B,
                 semiring, flipxy, Context)) ;
         }
+        return (info) ;
     }
 
     //--------------------------------------------------------------------------
-    // general case: C<M>=A'*B, C<!M>=A'B*, or C=A'*B, not in-place
+    // general case: C<M>=A'*B, C<!M>=A'*B, or C=A'*B, not in-place
     //--------------------------------------------------------------------------
 
     GBURBLE ("(%sdot2) ", iso_kind) ;
