@@ -43,7 +43,7 @@ static void _Index_PopulateNodeIndex
 		if(idx->pending_changes > 1) {
 			// release read lock
 			Graph_ReleaseLock(g);
-			printf("detected index state change aborting index population\n");
+			//printf("detected index state change aborting index population\n");
 			break;
 		}
 
@@ -133,7 +133,7 @@ static void _Index_PopulateEdgeIndex
 		if(idx->pending_changes > 1) {
 			// release read lock
 			Graph_ReleaseLock(g);
-			printf("detected index state change aborting index population\n");
+			//printf("detected index state change aborting index population\n");
 			break;
 		}
 

@@ -1,9 +1,9 @@
+import asyncio
 from common import *
 from time import sleep, time
-from pathos.pools import ProcessPool as Pool
 from execution_plan_util import locate_operation
 
-GRAPH_ID = "index"
+GRAPH_ID = "index_create"
 redis_graph = None
 redis_con = None
 
@@ -181,17 +181,23 @@ class testIndexCreationFlow():
         self.env.assertEquals(result.indices_created, 2)
 
     def test05_index_delete(self):
-        def create_drop_index(graph_id):
+        def _create_drop_index(graph_id):
             env = Env(decodeResponses=True)
             redis_con = env.getConnection()
             for _ in range(1, 100):
-                pipe = redis_con.pipeline()
-                pipe.execute_command("GRAPH.QUERY", f"x{graph_id}", "CREATE (a:L), (n:L), (n)-[:T]->(a)")
-                pipe.execute_command("GRAPH.QUERY", f"x{graph_id}", "CREATE INDEX FOR ()-[n:T]-() ON (n.p)")
-                pipe.execute()
-                redis_con.execute_command("GRAPH.DELETE", f"x{graph_id}")
-        pool = Pool(nodes=10)
-        pool.map(create_drop_index, range(1, 100))
+                redis_con.execute_command("GRAPH.QUERY", graph_id, "CREATE (a:L), (n:L), (n)-[:T]->(a)")
+                redis_con.execute_command("GRAPH.QUERY", graph_id, "CREATE INDEX FOR ()-[n:T]-() ON (n.p)")
+                redis_con.execute_command("GRAPH.DELETE", graph_id)
+
+        if "to_thread" not in dir(asyncio):
+            _create_drop_index(1)
+        else:
+            loop = asyncio.get_event_loop()
+            tasks = []
+            for i in range(1, 20):
+                tasks.append(loop.create_task(asyncio.to_thread(_create_drop_index, i)))
+
+            loop.run_until_complete(asyncio.wait(tasks))
 
     def test06_async_index_creation(self):
         # 1. create a large graph

@@ -126,7 +126,10 @@ int Schema_AddIndex
 
 	// index exists, make sure attribute isn't already indexed
 	if(_idx != NULL) {
-		ASSERT(!Index_ContainsAttribute(_idx, field->id));
+		if(Index_ContainsAttribute(_idx, field->id)) {
+			IndexField_Free(field);
+			return INDEX_FAIL;
+		}
 	} else {
 		// index doesn't exist, create it
 		// determine index graph entity type
@@ -158,10 +161,14 @@ static int _Schema_RemoveExactMatchIndex
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
-	ASSERT(attribute_id != ATTRIBUTE_ID_NONE);
+	if(attribute_id == ATTRIBUTE_ID_NONE) {
+		return INDEX_FAIL;
+	}
 
 	Index *idx = Schema_GetIndex(s, &attribute_id, IDX_EXACT_MATCH);
-	ASSERT(idx != NULL);
+	if(idx == NULL) {
+		return INDEX_FAIL;
+	}
 
 	Index_RemoveField(idx, field);
 
@@ -182,7 +189,9 @@ static int _Schema_RemoveFullTextIndex
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
-	ASSERT(idx != NULL);
+	if(idx == NULL) {
+		return INDEX_FAIL;
+	}
 
 	// index will be freed by indexer
 	s->fulltextIdx = NULL;

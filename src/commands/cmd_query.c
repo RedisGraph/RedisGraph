@@ -77,16 +77,7 @@ static bool _index_operation_delete
 	const char *attr = cypher_ast_prop_name_get_value(
 			cypher_ast_drop_props_index_get_prop_name(index_op, 0));
 
-	// validate field & index exists
-
-	//--------------------------------------------------------------------------
-	// make sure field exists
-	//--------------------------------------------------------------------------
-
 	Attribute_ID attr_id = GraphContext_GetAttributeID(gc, attr);
-	if(attr_id == ATTRIBUTE_ID_NONE) {
-		return false;
-	}
 
 	//--------------------------------------------------------------------------
 	// make sure index exists
@@ -99,7 +90,7 @@ static bool _index_operation_delete
 	}
 
 	// try locating a EDGE EXACT-MATCH index
-	if(idx == NULL) {
+	if(*idx == NULL) {
 		schema_type = SCHEMA_EDGE;
 		s = GraphContext_GetSchema(gc, label, schema_type);
 		if(s != NULL) {

@@ -492,14 +492,15 @@ int GraphContext_DeleteIndex
 	// retrieve the schema for this label
 	int res = INDEX_FAIL;
 	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
-	ASSERT(s != NULL);
 
-	res = Schema_RemoveIndex(s, field, type);
-	ASSERT(res != INDEX_FAIL);
-
-	// update resultset statistics
-	ResultSet *result_set = QueryCtx_GetResultSet();
-	ResultSet_IndexDeleted(result_set, res);
+	if(s != NULL) {
+		res = Schema_RemoveIndex(s, field, type);
+		if(res != INDEX_FAIL) {
+			// update resultset statistics
+			ResultSet *result_set = QueryCtx_GetResultSet();
+			ResultSet_IndexDeleted(result_set, res);
+		}
+	}
 
 	return res;
 }

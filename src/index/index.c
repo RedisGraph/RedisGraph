@@ -287,7 +287,7 @@ void Index_Disable
 	ASSERT(idx != NULL);
 
 	idx->pending_changes++;
-	printf("Disable, pending_changes: %d\n", idx->pending_changes);
+	//printf("Disable, pending_changes: %d\n", idx->pending_changes);
 
 	if(idx->idx != NULL) {
 		RediSearch_DropIndex(idx->idx);
@@ -309,7 +309,7 @@ void Index_Enable
 	ASSERT(idx != NULL);
 
 	idx->pending_changes--;
-	printf("Enable, pending_changes: %d\n", idx->pending_changes);
+	//printf("Enable, pending_changes: %d\n", idx->pending_changes);
 }
 
 // adds field to index
@@ -353,9 +353,6 @@ void Index_RemoveField
 			break;
 		}
 	}
-
-	// not expecting to reach this point
-	assert(false);
 }
 
 // query index
