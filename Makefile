@@ -1,6 +1,8 @@
+.NOTPARALLEL:
+
 ROOT=.
 
-MK_ALL_TARGETS=bindirs deps build package
+MK_ALL_TARGETS=build pack
 
 ifeq ($(wildcard $(ROOT)/deps/readies/*),)
 ___:=$(shell git submodule update --init --recursive &> /dev/null)
@@ -73,11 +75,16 @@ endef
 include $(MK)/defs
 
 all:
-	@$(MAKE) -C src all -j $(NPROC)
+	@$(MAKE) -C src bindirs
+	@$(MAKE) -C src deps NOPAR=1 -j $(NPROC)
+	@$(MAKE) -C src build -j $(NPROC)
+	@$(MAKE) -C src pack
 
 include $(MK)/rules
 
 build:
+	@$(MAKE) -C src bindirs
+	@$(MAKE) -C src deps NOPAR=1 -j $(NPROC)
 	@$(MAKE) -C src build -j $(NPROC)
 
 clean:
@@ -88,6 +95,9 @@ clean-parser:
 
 clean-graphblas:
 	$(MAKE) -C build/GraphBLAS clean
+
+clean-search:
+	$(MAKE) -C src clean-search
 
 pack package: all
 	@$(MAKE) -C src package

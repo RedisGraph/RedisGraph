@@ -1,4 +1,14 @@
 
+ifeq ($(DEPS),1)
+$(info NOTPARALLEL)
+# .NOTPARALLEL: ;
+endif
+
+ifeq ($(NOPAR),1)
+.NOTPARALLEL:
+
+endif
+
 ifneq ($(filter memcheck,$(MAKECMDGOALS)),)
 export DEBUG ?= 1
 export MEMCHECK=1
@@ -29,6 +39,8 @@ endif # SAN
 ROOT=..
 
 include $(ROOT)/deps/readies/mk/main
+
+MK_ALL_TARGETS=bindirs deps build
 
 MK_CUSTOM_CLEAN=1
 
@@ -70,7 +82,10 @@ REDISEARCH_DIR = $(ROOT)/deps/RediSearch
 export REDISEARCH_BINROOT=$(BINROOT)
 include $(ROOT)/build/RediSearch/Makefile.defs
 
+BIN_DIRS += $(REDISEARCH_BINROOT)/search-static
+
 LIBS=$(RAX) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH_LIBS) $(LIBCYPHER_PARSER)
+# $(info LIBS=$(LIBS))
 
 #----------------------------------------------------------------------------------------------
 
@@ -153,8 +168,9 @@ DYLIB_LD_FLAGS += \
 	-dynamiclib \
 	$(LD_FLAGS) \
 	$(LD_FLAGS.$(OS)) \
-	$(LD_FLAGS.coverage) \
-	-static
+	$(LD_FLAGS.coverage)
+
+#	-static
 
 ifeq ($(DEBUG),1)
 	CC_FLAGS.opt += -O0
@@ -250,8 +266,10 @@ CC_DEPS = $(patsubst %.c,$(BINDIR)/src/%.d,$(_SOURCES))
 
 include $(MK)/defs
 
+ifneq ($(filter all build,$(MAKECMDGOALS)),)
 $(info # Building into $(BINDIR))
 $(info # Using CC=$(CC))
+endif
 
 #----------------------------------------------------------------------------------------------
 
@@ -347,7 +365,8 @@ redisearch: $(REDISEARCH_LIBS)
 
 $(REDISEARCH_LIBS):
 	@echo Building $@ ...
-	$(SHOW)$(MAKE) -C $(REDISEARCH_DIR) STATIC=1 BINROOT=$(REDISEARCH_BINROOT)
+#	$(SHOW)CC=$(CC) CXX=$(CXX) $(MAKE) -C $(REDISEARCH_DIR) STATIC=1 BINROOT=$(REDISEARCH_BINROOT) $(REDISEARCH_BINROOT)/search-static/Makefile
+	$(SHOW)CC=$(CC) CXX=$(CXX) $(MAKE) -C $(REDISEARCH_DIR) STATIC=1 BINROOT=$(REDISEARCH_BINROOT)  CC=$(CC) CXX=$(CXX)
 
 #----------------------------------------------------------------------------------------------
 
@@ -397,6 +416,13 @@ ifeq ($(DEPS),1)
 	$(SHOW)$(MAKE) -C $(REDISEARCH_DIR) clean ALL=1 BINROOT=$(REDISEARCH_BINROOT)
 	$(SHOW)$(MAKE) -C $(ROOT)/tests clean
 endif
+endif
+
+clean-search:
+ifeq ($(ALL),1)
+	$(SHOW)rm -rf $(REDISEARCH_BINROOT)/search-static
+else
+	$(SHOW)$(MAKE) -C $(REDISEARCH_DIR) clean BINROOT=$(REDISEARCH_BINROOT)
 endif
 
 #----------------------------------------------------------------------------------------------
