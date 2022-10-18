@@ -24,8 +24,8 @@ class testConfig(FlowTestsBase):
         # Try reading all configurations
         config_name = "*"
         response = redis_con.execute_command("GRAPH.CONFIG GET " + config_name)
-        # At least 9 configurations should be reported
-        self.env.assertGreaterEqual(len(response), 9)
+        # 12 configurations should be reported
+        self.env.assertEquals(len(response), 13)
 
     def test02_config_get_invalid_name(self):
         global redis_graph
@@ -154,14 +154,6 @@ class testConfig(FlowTestsBase):
         expected_response = ["TIMEOUT", 5]
         self.env.assertEqual(response, expected_response)
 
-        query = """UNWIND range(1,1000000) AS v RETURN COUNT(v)"""
-        # Ensure long-running query triggers a timeout
-        try:
-            result = redis_graph.query(query)
-            assert(False)
-        except redis.exceptions.ResponseError as e:
-            self.env.assertContains("Query timed out", str(e))
-
         # Revert timeout to unlimited
         response = redis_con.execute_command("GRAPH.CONFIG SET TIMEOUT 0")
         self.env.assertEqual(response, "OK")
@@ -171,9 +163,41 @@ class testConfig(FlowTestsBase):
         expected_response = ["TIMEOUT", 0]
         self.env.assertEqual(response, expected_response)
 
-        # Issue long-running query to validate the reconfiguration
-        result = redis_graph.query(query)
-        self.env.assertEqual(result.result_set[0][0], 1000000)
+        # Change timeout_default value from default
+        response = redis_con.execute_command("GRAPH.CONFIG SET TIMEOUT_DEFAULT 5")
+        self.env.assertEqual(response, "OK")
+
+        # Make sure config been updated.
+        response = redis_con.execute_command("GRAPH.CONFIG GET TIMEOUT_DEFAULT")
+        expected_response = ["TIMEOUT_DEFAULT", 5]
+        self.env.assertEqual(response, expected_response)
+
+        # Revert timeout_default to unlimited
+        response = redis_con.execute_command("GRAPH.CONFIG SET TIMEOUT_DEFAULT 0")
+        self.env.assertEqual(response, "OK")
+
+        # Make sure config been updated.
+        response = redis_con.execute_command("GRAPH.CONFIG GET TIMEOUT_DEFAULT")
+        expected_response = ["TIMEOUT_DEFAULT", 0]
+        self.env.assertEqual(response, expected_response)
+
+        # Change timeout_max value from default
+        response = redis_con.execute_command("GRAPH.CONFIG SET TIMEOUT_MAX 5")
+        self.env.assertEqual(response, "OK")
+
+        # Make sure config been updated.
+        response = redis_con.execute_command("GRAPH.CONFIG GET TIMEOUT_MAX")
+        expected_response = ["TIMEOUT_MAX", 5]
+        self.env.assertEqual(response, expected_response)
+
+        # Revert timeout_max to unlimited
+        response = redis_con.execute_command("GRAPH.CONFIG SET TIMEOUT_MAX 0")
+        self.env.assertEqual(response, "OK")
+
+        # Make sure config been updated.
+        response = redis_con.execute_command("GRAPH.CONFIG GET TIMEOUT_MAX")
+        expected_response = ["TIMEOUT_MAX", 0]
+        self.env.assertEqual(response, expected_response)
 
         # Change resultset_size from default
         response = redis_con.execute_command("GRAPH.CONFIG SET RESULTSET_SIZE 2")
