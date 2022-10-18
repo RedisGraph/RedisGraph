@@ -410,10 +410,11 @@ Attribute_ID FindOrAddAttribute
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(attribute != NULL);
-	uint attribute_count = GraphContext_AttributeCount(gc);
-	Attribute_ID attr_id = GraphContext_FindOrAddAttribute(gc, attribute);
+
+	bool created;
+	Attribute_ID attr_id = GraphContext_FindOrAddAttribute(gc, attribute, &created);
 	// In case there was an append, the latest id should be tracked
-	if(attr_id == attribute_count) {
+	if(created) {
 		QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 		UndoLog_AddAttribute(&query_ctx->undo_log, attr_id);
 	}

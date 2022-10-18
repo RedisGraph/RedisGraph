@@ -301,8 +301,6 @@ static void _UndoLog_Rollback_Add_Attribute
 		UndoOp *op = undo_list + i;
 		UndoAddAttributeOp attribute_op = op->attribute_op;
 		int attribute_id = attribute_op.attribute_id;
-		uint attribute_count = GraphContext_AttributeCount(ctx->gc);
-		ASSERT(attribute_id == attribute_count - 1);
 		GraphContext_RemoveAttribute(ctx->gc, attribute_id);	
 	}
 }

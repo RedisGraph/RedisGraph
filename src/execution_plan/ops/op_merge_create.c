@@ -12,6 +12,7 @@
 /* Forward declarations. */
 static Record MergeCreateConsume(OpBase *opBase);
 static OpBase *MergeCreateClone(const ExecutionPlan *plan, const OpBase *opBase);
+static OpResult MergeCreateInit(OpBase* opBase);
 static void MergeCreateFree(OpBase *opBase);
 
 // convert a graph entity's components into an identifying hash code
@@ -75,7 +76,7 @@ OpBase *NewMergeCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCr
 	op->records = array_new(Record, 32);
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_MERGE_CREATE, "MergeCreate", NULL, MergeCreateConsume,
+	OpBase_Init((OpBase *)op, OPType_MERGE_CREATE, "MergeCreate", MergeCreateInit, MergeCreateConsume,
 				NULL, NULL, MergeCreateClone, MergeCreateFree, true, plan);
 
 	uint node_blueprint_count = array_len(nodes);
@@ -98,6 +99,12 @@ OpBase *NewMergeCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCr
 	}
 
 	return (OpBase *)op;
+}
+
+static OpResult MergeCreateInit(OpBase* opBase) {
+	OpMergeCreate *op = (OpMergeCreate *)opBase;
+	op->gc = QueryCtx_GetGraphCtx();
+	return OP_OK;
 }
 
 // prepare all creations associated with the current Record
@@ -226,14 +233,13 @@ static Record MergeCreateConsume(OpBase *opBase) {
 	if(op->handoff_mode) return _handoff(op);
 
 	// Consume mode.
-	GraphContext *gc = QueryCtx_GetGraphCtx();
 	if(!opBase->childCount) {
 		// No child operation to call.
 		r = OpBase_CreateRecord(opBase);
 
 		/* Buffer all entity creations.
 		 * If this operation has no children, it should always have unique creations. */
-		bool entities_created = _CreateEntities(op, r, gc);
+		bool entities_created = _CreateEntities(op, r, op->gc);
 		ASSERT(entities_created == true);
 
 		// Save record for later use.
@@ -243,7 +249,7 @@ static Record MergeCreateConsume(OpBase *opBase) {
 		r = OpBase_Consume(opBase->children[0]);
 		if(r) {
 			/* Create entities. */
-			if(_CreateEntities(op, r, gc)) {
+			if(_CreateEntities(op, r, op->gc)) {
 				// Save record for later use.
 				array_append(op->records, r);
 			} else {
