@@ -45,8 +45,8 @@ GrB_Info GB_split_sparse            // split a sparse matrix
     float hyper_switch = A->hyper_switch ;
     bool csc = A->is_csc ;
     GrB_Type atype = A->type ;
-    int64_t avlen = A->vlen ;
-    int64_t avdim = A->vdim ;
+//  int64_t avlen = A->vlen ;
+//  int64_t avdim = A->vdim ;
     size_t asize = atype->size ;
 
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
@@ -210,6 +210,7 @@ GrB_Info GB_split_sparse            // split a sparse matrix
             GB_OK (GB_bix_alloc (C, cnz, GxB_SPARSE, false, true, A_iso,
                 Context)) ;
             int64_t *restrict Ci = C->i ;
+            C->nvals = cnz ;
             C->magic = GB_MAGIC ;       // for GB_nnz_held(C), to slice C
 
             //------------------------------------------------------------------
@@ -243,7 +244,7 @@ GrB_Info GB_split_sparse            // split a sparse matrix
                 // split a non-iso matrix A into an non-iso tile C
                 //--------------------------------------------------------------
 
-                #ifndef GBCOMPACT
+                #ifndef GBCUDA_DEV
                 // no typecasting needed
                 switch (asize)
                 {
@@ -273,11 +274,13 @@ GrB_Info GB_split_sparse            // split a sparse matrix
 
                     case GB_16BYTE : // double complex or 16-byte user-defined
                         #define GB_CTYPE GB_blob16
-//                      #define GB_CTYPE uint64_t
-//                      #undef  GB_COPY
-//                      #define GB_COPY(pC,pA)                  \
-//                          Cx [2*pC  ] = Ax [2*pA  ] ;         \
-//                          Cx [2*pC+1] = Ax [2*pA+1] ;
+                        /*
+                        #define GB_CTYPE uint64_t
+                        #undef  GB_COPY
+                        #define GB_COPY(pC,pA)                  \
+                            Cx [2*pC  ] = Ax [2*pA  ] ;         \
+                            Cx [2*pC+1] = Ax [2*pA+1] ;
+                        */
                         #include "GB_split_sparse_template.c"
                         break ;
 

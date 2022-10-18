@@ -19,6 +19,16 @@ typedef enum                    // input parameter to GB_new and GB_new_bix
 GB_Ap_code ;
 
 GB_PUBLIC
+GrB_Info GB_Matrix_new          // create a new matrix with no entries
+(
+    GrB_Matrix *A,              // handle of matrix to create
+    GrB_Type type,              // type of matrix to create
+    GrB_Index nrows,            // matrix dimension is nrows-by-ncols
+    GrB_Index ncols,
+    GB_Context Context
+) ;
+
+GB_PUBLIC
 GrB_Info GB_new                 // create matrix, except for indices & values
 (
     GrB_Matrix *Ahandle,        // handle of matrix to create
@@ -82,12 +92,18 @@ void GB_bix_free                // free A->b, A->i, and A->x of a matrix
 ) ;
 
 GB_PUBLIC
-void GB_ph_free                 // free A->p and A->h of a matrix
+void GB_phy_free                // free A->p, A->h, and A->Y of a matrix
 (
     GrB_Matrix A                // matrix with content to free
 ) ;
 
-void GB_phbix_free              // free all content of a matrix
+GB_PUBLIC
+void GB_hyper_hash_free         // free the A->Y hyper_hash of a matrix
+(
+    GrB_Matrix A                // matrix with content to free
+) ;
+
+void GB_phybix_free             // free all content of a matrix
 (
     GrB_Matrix A                // matrix with content to free
 ) ;

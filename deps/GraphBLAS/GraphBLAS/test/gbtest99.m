@@ -2,7 +2,7 @@ function gbtest99
 %GBTEST99 test performance of C=A'*B and C=A'
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 fprintf ('# of threads in @GrB: %d\n', GrB.threads) ;
 n = 10 * 1e6 ;

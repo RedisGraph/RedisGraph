@@ -9,23 +9,23 @@ function test16
 for k = [false true]
     GB_builtin_complex_set (k) ;
     if (k)
-        fprintf ('\nTesting GxB_FC64 complex type:\n') ;
+        fprintf ('\nTesting built-in GxB_FC64 complex type:\n') ;
     else
         fprintf ('\nTesting user-defined Complex type:\n') ;
     end
 
-    testc1  % test ops
-    testc2  % A'*B, A+B, A*B
-    testc3  % extract column, extract submatrix
-    testc4  % extractElement, setElement
-    testc5  % subref
-    testc6  % apply
-    testc7  % assign
-    testc8  % eWise
-    testc9  % extractTuples
-    testca  % mxm, mxv, vxm
-    testcb  % reduce
-    testcc  % transpose
+    testc1 (k)      % test ops
+    testc2 (0,k)    % A'*B, A+B, A*B
+    testc3 (k)      % extract column, extract submatrix
+    testc4 (k)      % extractElement, setElement
+    testc5 (k)      % subref
+    testc6 (k)      % apply
+    testc7 (k)      % assign
+    testc8 (k)      % eWise
+    testc9 (k)      % extractTuples
+    testca (k)      % mxm, mxv, vxm
+    testcb (k)      % reduce
+    testcc (k)      % transpose
 end
 
 GB_builtin_complex_set (true) ;

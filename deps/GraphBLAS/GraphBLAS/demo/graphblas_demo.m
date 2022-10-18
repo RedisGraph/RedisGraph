@@ -7,7 +7,7 @@
 % http://faculty.cse.tamu.edu/davis
 %
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 %% GraphBLAS: faster and more general sparse matrices for MATLAB
 % GraphBLAS is not only useful for creating graph algorithms; it also
@@ -827,25 +827,8 @@ fprintf ('Results of GrB and %s match perfectly.\n', demo_whoami)
 % the equivalent built-in operators and functions in MATLAB.
 %
 % There are few notable exceptions; these will be addressed in the future.
-% These include bandwidth, istriu, istril, isdiag, reshape, issymmetric,
-% and ishermitian, all of which should be faster in a future release.
-
-%%
-% Here is an example that illustrates the performance of istril.
-A = sparse (rand (2000)) ;
-tic
-c1 = istril (A) ;
-builtin_time = toc ;
-A = GrB (A) ;
-tic
-c2 = istril (A) ;
-gb_time = toc ;
-fprintf ('\n%s: %g sec, GraphBLAS: %g sec\n', ...
-    demo_whoami, builtin_time, gb_time) ;
-if (gb_time > builtin_time)
-    fprintf ('GraphBLAS is slower by a factor of %g\n', ...
-        gb_time / builtin_time) ;
-end
+% These include reshape, issymmetric, and ishermitian, all of which should
+% be faster in a future release.
 
 %%
 % (4) Linear indexing:
@@ -853,15 +836,15 @@ end
 % If A is an m-by-n 2D MATLAB matrix, with n > 1, A(:) is a column vector
 % of length m*n.  The index operation A(i) accesses the ith entry in the
 % vector A(:).  This is called linear indexing in MATLAB.  It is not yet
-% available for GraphBLAS matrices in this MATLAB interface to GraphBLAS,
-% but will be added in the future.
+% fully available for GraphBLAS matrices in this MATLAB interface to
+% GraphBLAS, but will be added in the future.
 
 %%
 % (5) Implicit singleton dimension expansion 
 %
 % In MATLAB C=A+B where A is m-by-n and B is a 1-by-n row vector
 % implicitly expands B to a matrix, computing C(i,j)=A(i,j)+B(j).  This
-% implicit expansion is not yet suported in GraphBLAS with C=A+B.
+% implicit expansion is not yet supported in GraphBLAS with C=A+B.
 % However, it can be done with C = GrB.mxm ('+.+', A, diag(GrB(B))).
 % That's a nice example of the power of semirings, but it's not
 % immediately obvious, and not as clear a syntax as C=A+B.  The

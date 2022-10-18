@@ -1,10 +1,17 @@
+//------------------------------------------------------------------------------
+// rmm_wrap/rmm_wrap_test.c:  simple main program for testing rmm_wrap
+//------------------------------------------------------------------------------
+
+// SPDX-License-Identifier: Apache-2.0
+
+//------------------------------------------------------------------------------
 
 #include "rmm_wrap.h"
 
 int main()
 {
 
-    size_t init_size, max_size;      
+    size_t init_size, max_size;
     init_size = 256*(1ULL<<10);
     max_size  = 256*(1ULL<<20);
 
@@ -23,7 +30,6 @@ int main()
     rmm_wrap_deallocate( p, buff_size);
     rmm_wrap_finalize();
 
-
     rmm_wrap_initialize( rmm_wrap_device, init_size, max_size );
     printf("RMM initialized!  in device mode\n");
 
@@ -35,6 +41,5 @@ int main()
     fflush(stdout);
     rmm_wrap_deallocate( p, buff_size);
     rmm_wrap_finalize();
-
-
 }
+

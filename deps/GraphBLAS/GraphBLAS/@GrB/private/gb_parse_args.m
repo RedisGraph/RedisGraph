@@ -10,7 +10,7 @@ function [m, n, type] = gb_parse_args (func, varargin)
 %   C = GrB.ones (... , 'int8') ;
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 % parse the type
 type = 'double' ;
@@ -20,7 +20,7 @@ for k = 1:nargs
     if (ischar (arg))
         if (isequal (arg, 'like'))
             if (nargs ~= k+1)
-                error ('usage: GrB.%s (m, n, ''like'', G)', func) ;
+                error ('GrB:error', 'usage: GrB.%s (m, n, ''like'', G)', func) ;
             end
             arg = varargin {k+1} ;
             if (isobject (arg))
@@ -29,7 +29,7 @@ for k = 1:nargs
             type = gbtype (arg) ;
         else
             if (nargs ~= k)
-                error ('usage: GrB.%s (m, n, type)', func) ;
+                error ('GrB:error', 'usage: GrB.%s (m, n, type)', func) ;
             end
             type = arg ;
         end
