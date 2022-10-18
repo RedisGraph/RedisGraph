@@ -33,7 +33,7 @@ class testFunctionCallsFlow(FlowTestsBase):
                 if src != dest:
                     edge = Edge(nodes[src], "know", nodes[dest])
                     graph.add_edge(edge)
-        
+
         for src in nodes:
             for dest in nodes:
                 if src != dest:
