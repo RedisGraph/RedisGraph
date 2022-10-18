@@ -36,18 +36,20 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 	return (OpBase *)op;
 }
 
-/* Evaluate list expression, raise runtime exception
- * if expression did not returned a list type value. */
+/* Evaluate list expression, 
+ * if expression did not returned a list type value, creates a list with that value. */
 static void _initList(OpUnwind *op) {
 	op->list = SI_NullVal(); // Null-set the list value to avoid memory errors if evaluation fails.
 	SIValue new_list = AR_EXP_Evaluate(op->exp, op->currentRecord);
-	if(SI_TYPE(new_list) != T_ARRAY) {
-		Error_SITypeMismatch(new_list, T_ARRAY);
+	if(SI_TYPE(new_list) == T_ARRAY) {
+		// Update the list value.
+		op->list = new_list;
+	} else {
+		SIValue array = SI_Array(1);
+		SIArray_Append(&array, new_list);
 		SIValue_Free(new_list);
-		ErrorCtx_RaiseRuntimeException(NULL);
+		op->list = array;
 	}
-	// Update the list value.
-	op->list = new_list;
 }
 
 static OpResult UnwindInit(OpBase *opBase) {
