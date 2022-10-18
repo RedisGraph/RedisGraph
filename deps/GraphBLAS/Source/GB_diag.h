@@ -11,7 +11,7 @@
 #define GB_DIAG_H
 #include "GB.h"
 
-GrB_Info GB_Matrix_diag     // construct a diagonal matrix from a vector
+GrB_Info GB_Matrix_diag     // build a diagonal matrix from a vector
 (
     GrB_Matrix C,                   // output matrix
     const GrB_Matrix V_input,       // input vector (as an n-by-1 matrix)

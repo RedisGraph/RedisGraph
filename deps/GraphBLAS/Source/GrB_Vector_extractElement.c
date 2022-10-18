@@ -196,3 +196,6 @@ GrB_Info GrB_Vector_extractElement_Scalar   // S = V(i,j)
 #define GB_XCODE GB_UDT_code
 #include "GB_Vector_extractElement.c"
 
+#define GB_EXTRACT_ELEMENT GxB_Vector_isStoredElement
+#include "GB_Vector_extractElement.c"
+

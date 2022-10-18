@@ -1,6 +1,9 @@
 function gbtest96
 %GBTEST96 test GrB.optype
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
+
 fprintf ('Table of types of binary operators when inputs types are\n') ;
 fprintf ('are mixed (the type of C for C=A+B, for example).\n') ;
 fprintf ('\nLegend:\n') ;

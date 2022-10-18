@@ -4,7 +4,7 @@ function mxm_demo
 % See https://sparse.tamu.edu.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 % reset to the default number of threads
 ncores = demo_nproc ;

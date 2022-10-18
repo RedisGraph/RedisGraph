@@ -88,7 +88,7 @@ GrB_Info GB_dup_worker      // make an exact copy of a matrix
 
     C->nvec = anvec ;
     C->nvec_nonempty = anvec_nonempty ;
-    C->nvals = anvals ;             // for bitmap only
+    C->nvals = anvals ;
     C->jumbled = A_jumbled ;        // C is jumbled if A is jumbled
     C->nzombies = A_nzombies ;      // zombies can be duplicated
     C->sparsity_control = sparsity_control ;

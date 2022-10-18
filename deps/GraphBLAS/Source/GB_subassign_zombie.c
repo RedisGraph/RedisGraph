@@ -51,7 +51,7 @@ GrB_Info GB_subassign_zombie
     ASSERT (!GB_IS_BITMAP (C)) ; ASSERT (!GB_IS_FULL (C)) ;
 
     //--------------------------------------------------------------------------
-    // S = C(I,J)
+    // S = C(I,J), but do not construct the S->H hyper_hash
     //--------------------------------------------------------------------------
 
     GrB_Info info ;
@@ -60,6 +60,7 @@ GrB_Info GB_subassign_zombie
     GB_CLEAR_STATIC_HEADER (S, &S_header) ;
     GB_OK (GB_subassign_symbolic (S, C, I, ni, J, nj, false, Context)) ;
     ASSERT (GB_JUMBLED_OK (S)) ;        // S can be returned as jumbled
+    // the S->Y hyper_hash is not needed
 
     //--------------------------------------------------------------------------
     // get inputs

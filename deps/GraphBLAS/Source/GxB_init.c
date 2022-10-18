@@ -42,53 +42,7 @@
 //
 //      GxB_init (mode, rmm_malloc, rmm_calloc, rmm_realloc, rmm_free) ;
 //
-//          mode is GrB_BLOCKING or GrB_NONBLOCKING
-
-#if for_comments_only
-compute_system = rmm_wrap_initialize (mode, initpoolsize, maxpoolsize) ;
-
-    create RMM instance
-    query the GPU(s) available, set their context
-    compute_system: holds 4 RMM contexts, 4 GPUs, how big they are ...
-
-p = rmm_wrap_malloc (42) ;  // needs the GPUs to be warmed up
-...
-
-    // option:
-    GxB_init (GrB_NONBLOCKING, rmm_wrap_malloc, rmm_wrap_calloc,
-        rmm_wrap_realloc, rmm_wrap_free) ;
-
-    // use GrB just on the CPU cores
-    GrB_Matrix_new (&C, ...)
-    GrB_mxm (...)
-
-    GxB_set (GxB_CUDA_SYSTEM_CONTEXT, compute_system) ;   // use the GPUs ...
-    GxB_set (GxB_NTHREDS, 4) ;  // use 4 cpu threads
-
-    GxB_get (GxB_CUDA_NGPUS, &ngpus)
-
-    // use GrB just on the GPU 2
-    GxB_set (GxB_CUDA_SET_DEVICE, 2) ;
-    GrB_mxm (C, ...)
-    GxB_set (C, GxB_SPARSITY, GxB_SPARSE + GxB_HYPERSPARE) ;
-    GxB_Matrix_Option_set
-
-    GrB_mxm (C, ...)
-
-    ...
-    GxB_set (GxB_CUDA, true) ;      // 0 seconds, GPUs already warmed up
-    ...
-    GxB_set (GxB_CUDA, false) ;
-    ...
-    GxB_set (GxB_CUDA, true) ;      // 0 seconds
-    GxB_set (GxB_GPUS, [0 2]) ;
-    ...
-
-GrB_finalize ( ) ;
-rmm_wrap_free (p) ;
-rmm_wrap_finalize ( ) ;
-#endif
-
+//          where mode is GxB_BLOCKING_GPU or GxB_NONBLOCKING_GPU
 //
 // To use user-provided malloc and free functions, but not calloc/realloc:
 //
@@ -98,7 +52,7 @@ rmm_wrap_finalize ( ) ;
 
 GrB_Info GxB_init           // start up GraphBLAS and also define malloc, etc
 (
-    GrB_Mode mode,          // blocking or non-blocking mode
+    GrB_Mode mode,          // blocking or non-blocking mode, GPU or not
 
     // pointers to memory management functions
     void * (* user_malloc_function  ) (size_t),         // required

@@ -67,8 +67,8 @@
 
 #include "GB_mxm.h"
 #include "GB_ek_slice.h"
-#include "GB_bracket.h"
 #include "GB_AxB_saxpy3.h"
+#include "GB_unused.h"
 
 #define GB_FREE_ALL                         \
 {                                           \
@@ -130,8 +130,12 @@ GrB_Info GB_AxB_saxpy3_flopcount
     bool mask_is_M = (M != NULL && !Mask_comp) ;
     const int64_t *restrict Mp = NULL ;
     const int64_t *restrict Mh = NULL ;
+    const int64_t *restrict M_Yp = NULL ;
+    const int64_t *restrict M_Yi = NULL ;
+    const int64_t *restrict M_Yx = NULL ;
     int64_t mnvec = 0 ;
     int64_t mvlen = 0 ;
+    int64_t M_hash_bits = 0 ;
     bool M_is_hyper = GB_IS_HYPERSPARSE (M) ;
     bool M_is_dense = false ;
     if (M != NULL)
@@ -141,6 +145,15 @@ GrB_Info GB_AxB_saxpy3_flopcount
         mnvec = M->nvec ;
         mvlen = M->vlen ;
         M_is_dense = GB_IS_BITMAP (M) || GB_as_if_full (M) ;
+        if (M_is_hyper)
+        {
+            // mask is present, and hypersparse
+            ASSERT_MATRIX_OK (M->Y, "M->Y hyper_hash", GB0) ;
+            M_Yp = M->Y->p ;
+            M_Yi = M->Y->i ;
+            M_Yx = M->Y->x ;
+            M_hash_bits = M->Y->vdim - 1 ;
+        }
     }
 
     //--------------------------------------------------------------------------
@@ -153,6 +166,19 @@ GrB_Info GB_AxB_saxpy3_flopcount
     const int64_t avlen = A->vlen ;
     const bool A_is_hyper = GB_IS_HYPERSPARSE (A) ;
 
+    const int64_t *restrict A_Yp = NULL ;
+    const int64_t *restrict A_Yi = NULL ;
+    const int64_t *restrict A_Yx = NULL ;
+    int64_t A_hash_bits = 0 ;
+    if (A_is_hyper)
+    {
+        ASSERT_MATRIX_OK (A->Y, "A->Y hyper_hash", GB0) ;
+        A_Yp = A->Y->p ;
+        A_Yi = A->Y->i ;
+        A_Yx = A->Y->x ;
+        A_hash_bits = A->Y->vdim - 1 ;
+    }
+
     const int64_t *restrict Bp = B->p ;
     const int64_t *restrict Bh = B->h ;
     const int8_t  *restrict Bb = B->b ;
@@ -161,7 +187,6 @@ GrB_Info GB_AxB_saxpy3_flopcount
     const bool B_is_bitmap = GB_IS_BITMAP (B) ;
     const bool B_is_sparse_or_hyper = B_is_hyper || GB_IS_SPARSE (B) ;
     const int64_t bvlen = B->vlen ;
-    const bool B_jumbled = B->jumbled ;
 
     //--------------------------------------------------------------------------
     // declare workspace
@@ -212,7 +237,6 @@ GrB_Info GB_AxB_saxpy3_flopcount
         int64_t klast  = klast_Bslice  [taskid] ;
         Wfirst [taskid] = 0 ;
         Wlast  [taskid] = 0 ;
-        int64_t mpleft = 0 ;     // for GB_lookup of the mask M
         int64_t task_Mwork = 0 ;
 
         //----------------------------------------------------------------------
@@ -248,10 +272,20 @@ GrB_Info GB_AxB_saxpy3_flopcount
             int64_t mjnz = 0 ;
             if (M != NULL && !M_is_dense)
             {
-                int64_t mpright = mnvec - 1 ;
+                // find M(:,j): only do this if M is sparse or hypersparse
                 int64_t pM, pM_end ;
-                GB_lookup (M_is_hyper, Mh, Mp, mvlen, &mpleft, mpright, j,
-                    &pM, &pM_end) ;
+                if (M_is_hyper)
+                {
+                    // M is hypersparse: find M(:,j) in the M->Y hyper_hash
+                    GB_hyper_hash_lookup (Mp, M_Yp, M_Yi, M_Yx, M_hash_bits,
+                        j, &pM, &pM_end) ;
+                }
+                else
+                {
+                    // M is sparse
+                    pM     = Mp [j] ;
+                    pM_end = Mp [j+1] ;
+                }
                 mjnz = pM_end - pM ;
                 // If M not complemented: C(:,j) is empty if M(:,j) is empty.
                 if (mjnz == 0 && !Mask_comp) continue ;
@@ -275,27 +309,6 @@ GrB_Info GB_AxB_saxpy3_flopcount
             int64_t mjnz_much = 64 * mjnz ;
 
             //------------------------------------------------------------------
-            // trim Ah on right
-            //------------------------------------------------------------------
-
-            // Ah [0..A->nvec-1] holds the set of non-empty vectors of A, but
-            // only vectors k corresponding to nonzero entries B(k,j) are
-            // accessed for this vector B(:,j).  If nnz (B(:,j)) > 2, prune the
-            // search space on the right, so the remaining calls to GB_lookup
-            // will only need to search Ah [pleft...pright-1].  pright does not
-            // change.  pleft is advanced as B(:,j) is traversed, since the
-            // indices in B(:,j) are sorted in ascending order.
-
-            int64_t pleft = 0 ;
-            int64_t pright = anvec-1 ;
-            if (A_is_hyper && B_is_sparse_or_hyper && my_bjnz > 2 && !B_jumbled)
-            { 
-                // trim Ah [0..pright] to remove any entries past last B(:,j)
-                int64_t ilast = Bi [pB_end-1] ;
-                GB_bracket_right (ilast, Ah, 0, &pright) ;
-            }
-
-            //------------------------------------------------------------------
             // count the flops to compute C(:,j)<#M(:,j)> = A*B(:,j)
             //------------------------------------------------------------------
 
@@ -309,14 +322,20 @@ GrB_Info GB_AxB_saxpy3_flopcount
 
                 // B(k,j) is nonzero
 
-                // find A(:,k), reusing pleft if B is not jumbled
-                if (B_jumbled)
-                { 
-                    pleft = 0 ;
-                }
+                // find A(:,k)
                 int64_t pA, pA_end ;
-                GB_lookup (A_is_hyper, Ah, Ap, avlen, &pleft, pright, k,
-                    &pA, &pA_end) ;
+                if (A_is_hyper)
+                {
+                    // A is hypersparse: find A(:,k) in the A->Y hyper_hash
+                    GB_hyper_hash_lookup (Ap, A_Yp, A_Yi, A_Yx, A_hash_bits,
+                        k, &pA, &pA_end) ;
+                }
+                else
+                {
+                    // A is sparse, bitmap, or full
+                    pA     = GBP (Ap, k  , avlen) ;
+                    pA_end = GBP (Ap, k+1, avlen) ;
+                }
 
                 // skip if A(:,k) empty
                 const int64_t aknz = pA_end - pA ;

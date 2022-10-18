@@ -17,7 +17,7 @@
 #include "GB.h"
 #include "GB_binop.h"
 
-void GB_binop_new
+GrB_Info GB_binop_new
 (
     GrB_BinaryOp op,                // new binary operator
     GxB_binary_function function,   // binary function (may be NULL)
@@ -53,14 +53,12 @@ void GB_binop_new
     op->binop_function = function ;       // may be NULL
     op->selop_function = NULL ;
     op->opcode = opcode ;
+
+    //--------------------------------------------------------------------------
     // get the binary op name and defn
-    GB_op_name_and_defn (op->name, &(op->defn), binop_name, binop_defn,
-        "GxB_binary_function", 19) ;
-
-    //--------------------------------------------------------------------------
-    // return result
     //--------------------------------------------------------------------------
 
-    ASSERT_BINARYOP_OK (op, "new user-defined binary op", GB0) ;
+    return (GB_op_name_and_defn (op->name, &(op->defn), &(op->defn_size),
+        binop_name, binop_defn, "GxB_binary_function", 19)) ;
 }
 
