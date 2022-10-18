@@ -1058,22 +1058,18 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.expect_type_error(query)
     
     def test38_Expression(self):
-        query_to_expected_result = {"Return 'muchacho'": [['muchacho']],
-        "RETURN 1": [[1]],
-        "RETURN 1+2*3": [[7]],
-        "RETURN 1 + 1 + 1 + 1 + 1 + 1": [[6]],
-        "RETURN ABS(-5 + 2 * 1)": [[3]],
-        "RETURN 'a' + 'b'": [['ab']],
-        "RETURN 1 + 2 + 'a' + 2 + 1": [['3a21']],
-        "RETURN 2 * 2 + 'a' + 3 * 3": [['4a9']],
-        "RETURN 9 % 5": [[4]],
-        "RETURN 9 % 5 % 3": [[1]]
+        query_to_expected_result = {
+            "RETURN 'muchacho'": [['muchacho']],
+            "RETURN 1": [[1]],
+            "RETURN 1+2*3": [[7]],
+            "RETURN 1 + 1 + 1 + 1 + 1 + 1": [[6]],
+            "RETURN ABS(-5 + 2 * 1)": [[3]],
+            "RETURN 'a' + 'b'": [['ab']],
+            "RETURN 1 + 2 + 'a' + 2 + 1": [['3a21']],
+            "RETURN 2 * 2 + 'a' + 3 * 3": [['4a9']],
+            "RETURN 9 % 5": [[4]],
+            "RETURN 9 % 5 % 3": [[1]]
         }
-        queries = ["RETURN 'muchacho", "RETURN 1", "RETURN 1+2*3", 
-        "RETURN 1 + 1 + 1 + 1 + 1 + 1", "RETURN ABS(-5 + 2 * 1)", "RETURN 'a' + 'b'", "RETURN 1 + 2 + 'a' + 2 + 1",
-        "RETURN 2 * 2 + 'a' + 3 * 3", "RETURN 9 % 5", "RETURN 9 % 5 % 3"]
-        expected_results = [[['muchacho']], [[1]], [[7]], [[6]], [[3]], [['ab']], [['3a21']], 
-        [['4a9']], [[4]], [[1]]]
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
         
