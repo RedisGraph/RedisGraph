@@ -32,7 +32,7 @@ have_octave = (exist ('OCTAVE_VERSION', 'builtin') == 5) ;
 if (have_octave)
     need_rename = false ;
 else
-    need_rename = ~verLessThan ('matlab', '9.10') ;
+    need_rename = true ; % was: ~verLessThan ('matlab', '9.10') ;
 end
 
 try
@@ -77,15 +77,16 @@ if (~have_octave)
 end
 
 mexfunctions = dir ('GB_mex_*.c') ;
-cfiles = [ dir('GB_mx_*.c') ] ;
+cfiles = [ dir('../Demo/Source/usercomplex.c') ; dir('GB_mx_*.c') ] ;
 
 hfiles = [ dir('*.h') ; dir('Template/*.c') ] ;
 inc = '-ITemplate -I../Include -I../Source -I../Source/Template -I../lz4 -I../rmm_wrap' ;
+inc = [inc ' -I../zstd -I../zstd/zstd_subset -I.'] ;
 
 if (ismac)
     % Mac (do 'make install' for GraphBLAS first)
     if (need_rename)
-        libraries = '-L/usr/local/lib -lgraphblas_renamed' ; % -lomp' ;
+        libraries = '-L/usr/local/lib -lgraphblas_matlab' ; % -lomp' ;
     else
         libraries = '-L/usr/local/lib -lgraphblas' ; % -lomp' ;
     end
@@ -95,7 +96,7 @@ if (ismac)
 elseif (ispc)
     % Windows
     if (need_rename)
-        libraries = '-L../GraphBLAS/build/Release -L. -lgraphblas_renamed' ;
+        libraries = '-L../GraphBLAS/build/Release -L. -lgraphblas_matlab' ;
     else
         libraries = '-L../build/Release -L. -lgraphblas' ;
     end
@@ -103,7 +104,7 @@ elseif (ispc)
 else
     % Linux
     if (need_rename)
-        libraries = '-L../GraphBLAS/build -L. -lgraphblas_renamed' ;
+        libraries = '-L../GraphBLAS/build -L. -lgraphblas_matlab' ;
     else
         libraries = '-L../build -L. -lgraphblas' ;
     end
@@ -113,10 +114,10 @@ else
 end
 
 if (need_rename)
-    fprintf ('Linking with -lgraphblas_renamed\n') ;
+    fprintf ('Linking with -lgraphblas_matlab\n') ;
     flags = [flags ' -DGBRENAME=1 ' ] ;
     inc = [inc ' -I../GraphBLAS/rename ' ] ;
-    libgraphblas = '-lgraphblas_renamed' ;
+    libgraphblas = '-lgraphblas_matlab' ;
 else
     libgraphblas = '-lgraphblas' ;
 end

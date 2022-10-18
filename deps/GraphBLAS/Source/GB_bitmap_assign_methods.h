@@ -80,7 +80,7 @@
     GB_SLICE_MATRIX (M, 8, chunk) ;
 
 //------------------------------------------------------------------------------
-// GB_GET_A: get the A matrix or the scalar
+// GB_GET_A_AND_SCALAR: get the A matrix or the scalar
 //------------------------------------------------------------------------------
 
 // ALIAS of C and A for bitmap methods: OK only for C(:,:)=A assignment.

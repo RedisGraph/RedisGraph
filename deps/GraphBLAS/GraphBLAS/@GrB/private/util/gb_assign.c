@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -112,27 +112,45 @@ void gb_assign                  // gbassign or gbsubassign mexFunctions
     GrB_Index *J = (GrB_Index *) GrB_ALL ;
     GrB_Index ni = cnrows, nj = cncols ;
     bool I_allocated = false, J_allocated = false ;
+    int64_t I_max = -1, J_max = -1 ;
 
     if (cnrows > 1 && cncols > 1 && ncells == 1)
     {
-        ERROR ("linear indexing not yet supported") ;
+        ERROR ("Linear indexing not supported") ;
     }
 
     if (cnrows == 1 && ncells == 1)
     { 
         // only J is present
-        J = gb_mxcell_to_index (Cell [0], base, cncols, &J_allocated, &nj) ;
+        J = gb_mxcell_to_index (Cell [0], base, cncols, &J_allocated, &nj,
+            &J_max) ;
     }
     else if (ncells == 1)
     { 
         // only I is present
-        I = gb_mxcell_to_index (Cell [0], base, cnrows, &I_allocated, &ni) ;
+        I = gb_mxcell_to_index (Cell [0], base, cnrows, &I_allocated, &ni,
+            &I_max) ;
     }
     else if (ncells == 2)
     { 
         // both I and J are present
-        I = gb_mxcell_to_index (Cell [0], base, cnrows, &I_allocated, &ni) ;
-        J = gb_mxcell_to_index (Cell [1], base, cncols, &J_allocated, &nj) ;
+        I = gb_mxcell_to_index (Cell [0], base, cnrows, &I_allocated, &ni,
+            &I_max) ;
+        J = gb_mxcell_to_index (Cell [1], base, cncols, &J_allocated, &nj,
+            &J_max) ;
+    }
+
+    //--------------------------------------------------------------------------
+    // expand C if needed
+    //--------------------------------------------------------------------------
+
+    GrB_Index cnrows_required = I_max + 1 ;
+    GrB_Index cncols_required = J_max + 1 ;
+    if (cnrows_required > cnrows || cncols_required > cncols)
+    {
+        GrB_Index cnrows_new = GB_IMAX (cnrows, cnrows_required) ;
+        GrB_Index cncols_new = GB_IMAX (cncols, cncols_required) ;
+        OK (GrB_Matrix_resize (C, cnrows_new, cncols_new)) ;
     }
 
     //--------------------------------------------------------------------------

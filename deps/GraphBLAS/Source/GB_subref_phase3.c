@@ -12,6 +12,7 @@
 
 #include "GB_subref.h"
 #include "GB_sort.h"
+#include "GB_unused.h"
 
 GrB_Info GB_subref_phase3   // C=A(I,J)
 (
@@ -103,6 +104,7 @@ GrB_Info GB_subref_phase3   // C=A(I,J)
     ASSERT ((*Cp_handle) == NULL) ;
     ASSERT ((*Ch_handle) == NULL) ;
     C->nvec_nonempty = Cnvec_nonempty ;
+    C->nvals = cnz ;
     C->magic = GB_MAGIC ;
 
     //--------------------------------------------------------------------------
@@ -185,7 +187,7 @@ GrB_Info GB_subref_phase3   // C=A(I,J)
     if (info != GrB_SUCCESS)
     { 
         // out of memory
-        GB_phbix_free (C) ;
+        GB_phybix_free (C) ;
         return (info) ;
     }
 

@@ -14,8 +14,8 @@
 #include "GB_add.h"
 #include "GB_ij.h"
 #include "GB_Pending.h"
-#include "GB_unused.h"
 #include "GB_subassign_IxJ_slice.h"
+#include "GB_unused.h"
 
 //------------------------------------------------------------------------------
 // free workspace
@@ -77,6 +77,13 @@
     int64_t nzombies = C->nzombies ;                                        \
     const bool is_matrix = (cvdim > 1) ;
 
+#define GB_GET_C_HYPER_HASH                                                 \
+    GB_OK (GB_hyper_hash_build (C, Context)) ;                              \
+    const int64_t *restrict C_Yp = (C_is_hyper) ? C->Y->p : NULL ;          \
+    const int64_t *restrict C_Yi = (C_is_hyper) ? C->Y->i : NULL ;          \
+    const int64_t *restrict C_Yx = (C_is_hyper) ? C->Y->x : NULL ;          \
+    const int64_t C_hash_bits = (C_is_hyper) ? (C->Y->vdim - 1) : 0 ;
+
 //------------------------------------------------------------------------------
 // GB_GET_MASK: get the mask matrix M
 //------------------------------------------------------------------------------
@@ -94,7 +101,14 @@
     const size_t Mvlen = M->vlen ;                                          \
     const int64_t Mnvec = M->nvec ;                                         \
     const bool M_is_hyper = GB_IS_HYPERSPARSE (M) ;                         \
-    const bool M_is_bitmap = GB_IS_BITMAP (M) ;
+    const bool M_is_bitmap = GB_IS_BITMAP (M)
+
+#define GB_GET_MASK_HYPER_HASH                                              \
+    GB_OK (GB_hyper_hash_build (M, Context)) ;                              \
+    const int64_t *restrict M_Yp = (M_is_hyper) ? M->Y->p : NULL ;          \
+    const int64_t *restrict M_Yi = (M_is_hyper) ? M->Y->i : NULL ;          \
+    const int64_t *restrict M_Yx = (M_is_hyper) ? M->Y->x : NULL ;          \
+    const int64_t M_hash_bits = (M_is_hyper) ? (M->Y->vdim - 1) : 0 ;
 
 //------------------------------------------------------------------------------
 // GB_GET_ACCUM: get the accumulator op and its related typecasting functions
@@ -167,7 +181,11 @@
     const int64_t *restrict Sx = (int64_t *) S->x ;                         \
     const int64_t Svlen = S->vlen ;                                         \
     const int64_t Snvec = S->nvec ;                                         \
-    const bool S_is_hyper = GB_IS_HYPERSPARSE (S) ;
+    const bool S_is_hyper = GB_IS_HYPERSPARSE (S) ;                         \
+    const int64_t *restrict S_Yp = (S_is_hyper) ? S->Y->p : NULL ;          \
+    const int64_t *restrict S_Yi = (S_is_hyper) ? S->Y->i : NULL ;          \
+    const int64_t *restrict S_Yx = (S_is_hyper) ? S->Y->x : NULL ;          \
+    const int64_t S_hash_bits = (S_is_hyper) ? (S->Y->vdim - 1) : 0 ;
 
 //------------------------------------------------------------------------------
 // basic actions
@@ -193,36 +211,6 @@
         int64_t iC = GBI (Ci, pC, Cvlen) ;                                  \
         bool is_zombie = GB_IS_ZOMBIE (iC) ;                                \
         if (is_zombie) iC = GB_FLIP (iC) ;
-
-    //--------------------------------------------------------------------------
-    // GB_VECTOR_LOOKUP
-    //--------------------------------------------------------------------------
-
-    // Find pX_start and pX_end for the vector X (:,j)
-
-    #define GB_VECTOR_LOOKUP(pX_start,pX_end,X,j)                           \
-    {                                                                       \
-        int64_t pleft = 0, pright = X ## nvec-1 ;                           \
-        GB_lookup (X ## _is_hyper, X ## h, X ## p, X ## vlen, &pleft,       \
-            pright, j, &pX_start, &pX_end) ;                                \
-    }
-
-    //--------------------------------------------------------------------------
-    // get the C(:,jC) vector where jC = J [j]
-    //--------------------------------------------------------------------------
-
-    // C may be standard sparse, or hypersparse
-    // time: O(1) if standard, O(log(Cnvec)) if hyper
-
-    // This used for GB_subassign_one_slice and GB_subassign_08n_slice,
-    // which compute the parallel schedule for Methods 05, 06n, 07, and 08n.
-
-    #define GB_LOOKUP_jC                                                    \
-        /* lookup jC in C */                                                \
-        /* jC = J [j] ; or J is ":" or jbegin:jend or jbegin:jinc:jend */   \
-        jC = GB_ijlist (J, j, Jkind, Jcolon) ;                              \
-        int64_t pC_start, pC_end ;                                          \
-        GB_VECTOR_LOOKUP (pC_start, pC_end, C, jC) ;
 
     //--------------------------------------------------------------------------
     // C(:,jC) is dense: iC = I [iA], and then look up C(iC,jC)
@@ -1715,23 +1703,6 @@ GrB_Info GB_subassign_08n_slice
     }
 
 //------------------------------------------------------------------------------
-// GB_GET_jC: get the vector C(:,jC)
-//------------------------------------------------------------------------------
-
-#define GB_GET_jC                                                           \
-    int64_t jC = GB_ijlist (J, j, Jkind, Jcolon) ;                          \
-    int64_t pC_start, pC_end ;                                              \
-    if (fine_task)                                                          \
-    {                                                                       \
-        pC_start = TaskList [taskid].pC ;                                   \
-        pC_end   = TaskList [taskid].pC_end ;                               \
-    }                                                                       \
-    else                                                                    \
-    {                                                                       \
-        GB_VECTOR_LOOKUP (pC_start, pC_end, C, jC) ;                        \
-    }
-
-//------------------------------------------------------------------------------
 // GB_GET_IXJ_TASK_DESCRIPTOR*: get the task descriptor for IxJ
 //------------------------------------------------------------------------------
 
@@ -1755,16 +1726,55 @@ GrB_Info GB_subassign_08n_slice
     GB_GET_IXJ_TASK_DESCRIPTOR (iQ_start, iQ_end)                           \
     GB_START_PENDING_INSERTION ;
 
+//--------------------------------------------------------------------------
+// GB_LOOKUP_VECTOR
+//--------------------------------------------------------------------------
+
+// Find pX_start and pX_end for the vector X (:,j)
+
+#define GB_LOOKUP_VECTOR(pX_start,pX_end,X,j)                           \
+{                                                                       \
+    if (X ## _is_hyper)                                                 \
+    {                                                                   \
+        GB_hyper_hash_lookup (X ## p, X ## _Yp, X ## _Yi, X ## _Yx,     \
+            X ## _hash_bits, j, &pX_start, &pX_end) ;                   \
+    }                                                                   \
+    else                                                                \
+    {                                                                   \
+        pX_start = GBP (X ## p, j  , X ## vlen) ;                       \
+        pX_end   = GBP (X ## p, j+1, X ## vlen) ;                       \
+    }                                                                   \
+}
+
 //------------------------------------------------------------------------------
-// GB_GET_VECTOR_FOR_IXJ: get the start of a vector for scalar assignment
+// GB_LOOKUP_VECTOR_jC: get the vector C(:,jC)
+//------------------------------------------------------------------------------
+
+#define GB_LOOKUP_VECTOR_jC(fine_task,taskid)                               \
+    /* lookup jC in C */                                                    \
+    /* jC = J [j] ; or J is ":" or jbegin:jend or jbegin:jinc:jend */       \
+    int64_t jC = GB_ijlist (J, j, Jkind, Jcolon) ;                          \
+    int64_t pC_start, pC_end ;                                              \
+    if (fine_task)                                                          \
+    {                                                                       \
+        pC_start = TaskList [taskid].pC ;                                   \
+        pC_end   = TaskList [taskid].pC_end ;                               \
+    }                                                                       \
+    else                                                                    \
+    {                                                                       \
+        GB_LOOKUP_VECTOR (pC_start, pC_end, C, jC) ;                        \
+    }
+
+//------------------------------------------------------------------------------
+// GB_LOOKUP_VECTOR_FOR_IXJ: get the start of a vector for scalar assignment
 //------------------------------------------------------------------------------
 
 // Find pX and pX_end for the vector X (iQ_start:iQ_end, j), for a scalar
 // assignment method, or a method iterating over all IxJ for a bitmap M or A.
 
-#define GB_GET_VECTOR_FOR_IXJ(X,iQ_start)                                   \
+#define GB_LOOKUP_VECTOR_FOR_IXJ(X,iQ_start)                                \
     int64_t p ## X, p ## X ## _end ;                                        \
-    GB_VECTOR_LOOKUP (p ## X, p ## X ## _end, X, j) ;                       \
+    GB_LOOKUP_VECTOR (p ## X, p ## X ## _end, X, j) ;                       \
     if (iQ_start != 0)                                                      \
     {                                                                       \
         if (X ## i == NULL)                                                 \

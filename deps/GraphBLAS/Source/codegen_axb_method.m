@@ -46,12 +46,12 @@ if (is_any_pair)
     terminal = 'break' ;
     omp_atomic = 1 ;
     omp_microsoft_atomic = 0 ;
-    % the any_pair_iso semiring is never disabled by GBCOMPACT
-    fprintf (f, 'define(`ifndef_compact'', `#if 1'')\n') ;
+    % the any_pair_iso semiring is never disabled by GBCUDA_DEV
+    fprintf (f, 'define(`ifndef_GBCUDA_DEV'', `#if 1'')\n') ;
     fprintf (f, 'define(`if_not_any_pair_semiring'', `#if 0'')\n') ;
 else
-    % all other semirings are disabled by GBCOMPACT
-    fprintf (f, 'define(`ifndef_compact'', `#ifndef GBCOMPACT'')\n') ;
+    % all other semirings are disabled by GBCUDA_DEV
+    fprintf (f, 'define(`ifndef_GBCUDA_DEV'', `#ifndef GBCUDA_DEV'')\n') ;
     fprintf (f, 'define(`if_not_any_pair_semiring'', `#if 1'')\n') ;
 end
 
@@ -470,19 +470,13 @@ else
     fprintf (f, 'define(`GB_cij_write'', `Cx [p] = t'')\n') ;
 end
 
-% type-specific IDIV
-if (~isempty (strfind (mult, 'IDIV')))
+% type-specific idiv
+if (~isempty (strfind (mult, 'idiv')))
     if (unsigned)
-        mult = strrep (mult, 'IDIV', 'IDIV_UNSIGNED') ;
-        % TODO: use this instead
-        % mult = strrep (mult, 'IDIV', 'idiv_uint%d', bits) ;
+        mult = strrep (mult, 'idiv', sprintf ('idiv_uint%d', bits)) ;
     else
-        mult = strrep (mult, 'IDIV', 'IDIV_SIGNED') ;
-        % TODO: use this instead
-        % mult = strrep (mult, 'IDIV', 'idiv_int%d', bits) ;
+        mult = strrep (mult, 'idiv', sprintf ('idiv_int%d', bits)) ;
     end
-    % TODO: remove this
-    mult = strrep (mult, ')', sprintf (', %d)', bits)) ;
 end
 
 % create the multiply operator (assignment)

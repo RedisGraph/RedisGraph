@@ -15,7 +15,7 @@
 // input). The A->x and A->i content is not changed; it remains in whatever
 // shallow/non-shallow/iso property that it had on input).
 
-// If an out-of-memory condition occurs, all content of the matrix is cleared.
+// If an out-of-memory condition occurs, A is unchanged.
 
 // If the input matrix A is sparse, bitmap or full, it is unchanged.
 
@@ -25,6 +25,7 @@ GB_PUBLIC
 GrB_Info GB_convert_hyper_to_sparse // convert hypersparse to sparse
 (
     GrB_Matrix A,           // matrix to convert to non-hypersparse
+    bool do_burble,         // if true, then burble is allowed
     GB_Context Context
 )
 {
@@ -38,19 +39,59 @@ GrB_Info GB_convert_hyper_to_sparse // convert hypersparse to sparse
     ASSERT (GB_JUMBLED_OK (A)) ;
     ASSERT (GB_PENDING_OK (A)) ;
 
+    if (!GB_IS_HYPERSPARSE (A))
+    { 
+        // nothing to do
+        return (GrB_SUCCESS) ;
+    }
+
     //--------------------------------------------------------------------------
     // convert A from hypersparse to sparse
     //--------------------------------------------------------------------------
 
-    if (GB_IS_HYPERSPARSE (A))
+    if (do_burble) GBURBLE ("(hyper to sparse) ") ;
+    int64_t n = A->vdim ;
+    int64_t anz = GB_nnz (A) ;
+
+    if (n == 1)
+    { 
+
+        //----------------------------------------------------------------------
+        // A is a single hypersparse vector
+        //----------------------------------------------------------------------
+
+        // This cannot fail, since no memory is allocated.  It must succeed if
+        // A is a typecasted GrB_Vector, or else it will be returned to the
+        // user as an invalid GrB_Vector.
+
+        ASSERT (A->plen == 1) ;
+        ASSERT (A->p_size >= 2 * sizeof (int64_t)) ;
+        ASSERT (A->nvec == 0 || A->nvec == 1) ;
+        if (A->nvec == 0)
+        { 
+            A->p [0] = 0 ;
+            A->p [1] = 0 ;
+            A->nvec = 1 ;
+        }
+        A->nvec_nonempty = (anz > 0) ? 1 : 0 ;
+
+        // free A->h unless it is shallow
+        if (!A->h_shallow)
+        { 
+            GB_FREE (&(A->h), A->h_size) ;
+        }
+        A->h = NULL ;
+        A->h_size = 0 ;
+        A->h_shallow = false ;
+        GB_hyper_hash_free (A) ;
+
+    }
+    else
     {
 
         //----------------------------------------------------------------------
         // determine the number of threads to use
         //----------------------------------------------------------------------
-
-        GBURBLE ("(hyper to sparse) ") ;
-        int64_t n = A->vdim ;
 
         GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
         int nthreads = GB_nthreads (n, chunk, nthreads_max) ;
@@ -83,7 +124,6 @@ GrB_Info GB_convert_hyper_to_sparse // convert hypersparse to sparse
         int64_t *restrict Ap_old = A->p ;   // size nvec+1
         int64_t *restrict Ah_old = A->h ;   // size nvec
         int64_t nvec_nonempty = 0 ;         // recompute A->nvec_nonempty
-        int64_t anz = GB_nnz (A) ;
 
         //----------------------------------------------------------------------
         // construct the new vector pointers
@@ -197,9 +237,9 @@ GrB_Info GB_convert_hyper_to_sparse // convert hypersparse to sparse
             }
         }
 
-        // free the old A->p and A->h hyperlist content.
+        // free the old A->p, A->h, and A->H hyperlist content.
         // this clears A->nvec_nonempty so it must be restored below.
-        GB_ph_free (A) ;
+        GB_phy_free (A) ;
 
         // transplant the new vector pointers; matrix is no longer hypersparse
         A->p = Ap_new ; A->p_size = Ap_new_size ;
@@ -209,22 +249,19 @@ GrB_Info GB_convert_hyper_to_sparse // convert hypersparse to sparse
         A->plen = n ;
         A->p_shallow = false ;
         A->h_shallow = false ;
-        A->magic = GB_MAGIC ;
-        ASSERT (anz == GB_nnz (A)) ;
-
-        //----------------------------------------------------------------------
-        // A is now sparse
-        //----------------------------------------------------------------------
-
-        ASSERT (GB_IS_SPARSE (A)) ;
+        A->nvals = anz ;
     }
 
+    A->magic = GB_MAGIC ;
+
     //--------------------------------------------------------------------------
-    // A is now in sparse form (or left as full or bitmap)
+    // A is now sparse
     //--------------------------------------------------------------------------
 
-    ASSERT_MATRIX_OK (A, "A converted to sparse (or left as-is)", GB0) ;
-    ASSERT (!GB_IS_HYPERSPARSE (A)) ;
+    ASSERT (anz == A->p [n]) ;
+    ASSERT (anz == GB_nnz (A)) ;
+    ASSERT_MATRIX_OK (A, "A converted to sparse", GB0) ;
+    ASSERT (GB_IS_SPARSE (A)) ;
     ASSERT (GB_ZOMBIES_OK (A)) ;
     ASSERT (GB_JUMBLED_OK (A)) ;
     ASSERT (GB_PENDING_OK (A)) ;

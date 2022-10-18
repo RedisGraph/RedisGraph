@@ -272,7 +272,7 @@ commands:
             export EC2_PRIVATE_PEM=$PERFORMANCE_EC2_PRIVATE_PEM
             export PROFILE=<< parameters.profile_env >>
             export BENCHMARK_GLOB=<< parameters.benchmark_glob >>
-            export PERF_CALLGRAPH_MODE="fp"
+            export PERF_CALLGRAPH_MODE="dwarf"
             redisbench-admin run-remote \
               --module_path << parameters.module_path >> \
               --github_actor << parameters.github_actor >> \
@@ -503,6 +503,7 @@ jobs:
       - benchmark-steps:
           profile_env: "1"
           module_path: "/root/project/src/$PACKAGE_NAME.so"
+          benchmark_glob: "graph500-scale18-ef16_1hop.yml"
           triggering_env: "circleci.profilers" # results generated with profilers attached are not mixed with the ones without it
 
 #----------------------------------------------------------------------------------------------------------------------------------
@@ -634,6 +635,10 @@ workflows:
       # - benchmark-profiler:
       #     <<: *on-perf-tags
       #     context: common
+      # enable temporarily to understand overhead of GB
+      - benchmark-profiler:
+          <<: *on-perf-tags
+          context: common
 
   nightly:
     triggers:

@@ -129,10 +129,12 @@ GrB_Info GB_serialize               // serialize a matrix into a blob
     int32_t algo, level ;
     GB_serialize_method (&algo, &level, method) ;
     method = algo + level ;
-    GBURBLE ("(compression: %s%s%s:%d) ",
+    GBURBLE ("(compression: %s%s%s%s:%d) ",
         (algo == GxB_COMPRESSION_NONE ) ? "none" : "",
         (algo == GxB_COMPRESSION_LZ4  ) ? "LZ4" : "",
-        (algo == GxB_COMPRESSION_LZ4HC) ? "LZ4HC" : "", level) ;
+        (algo == GxB_COMPRESSION_LZ4HC) ? "LZ4HC" : "",
+        (algo == GxB_COMPRESSION_ZSTD ) ? "ZSTD" : "",
+        level) ;
 
     //--------------------------------------------------------------------------
     // get the content of the matrix
@@ -169,6 +171,7 @@ GrB_Info GB_serialize               // serialize a matrix into a blob
     {
         case GxB_HYPERSPARSE : 
             Ah_len = sizeof (GrB_Index) * nvec ;
+            // fall through to the sparse case
         case GxB_SPARSE :
             Ap_len = sizeof (GrB_Index) * (nvec+1) ;
             Ai_len = sizeof (GrB_Index) * anz ;
@@ -176,6 +179,7 @@ GrB_Info GB_serialize               // serialize a matrix into a blob
             break ;
         case GxB_BITMAP : 
             Ab_len = sizeof (int8_t) * anz_held ;
+            // fall through to the full case
         case GxB_FULL : 
             Ax_len = typesize * (iso ? 1 : anz_held) ;
             break ;
@@ -323,6 +327,11 @@ GrB_Info GB_serialize               // serialize a matrix into a blob
     { 
         // only copy the type_name for user-defined types
         memset (blob + s, 0, GxB_MAX_NAME_LEN) ;
+        #if GB_COMPILER_GCC
+        #if (__GNUC__ > 5)
+        #pragma GCC diagnostic ignored "-Wstringop-truncation"
+        #endif
+        #endif
         strncpy ((char *) (blob + s), atype->name, GxB_MAX_NAME_LEN-1) ;
         s += GxB_MAX_NAME_LEN ;
     }

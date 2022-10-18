@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -20,6 +20,9 @@
 // GraphBLASv5 and GraphBLASv5_1 are identical, except that s [9] is present
 // but always false for GraphBLASv5.
 
+// GraphBLASv7_3 is identical to GraphBLASv5_1, except that it adds the Y
+// hyper_hash with 3 components: Yp, Yi, and Yx.
+
 // mxGetData and mxSetData are used instead of the MATLAB-recommended
 // mxGetDoubles, etc, because mxGetData and mxSetData work best for Octave, and
 // they work fine for MATLAB since GraphBLAS requires R2018a with the
@@ -28,22 +31,28 @@
 #include "gb_interface.h"
 
 // for hypersparse, sparse, or full matrices
-static const char *MatrixFields [6] =
+static const char *MatrixFields [9] =
 {
-    "GraphBLASv5_1",    // 0: "logical", "int8", ... "double",
+    // these fields are identical to GraphBLASv5_1, except for the name
+    // of the first field
+    "GraphBLASv7_3",    // 0: "logical", "int8", ... "double",
                         //    "single complex", or "double complex"
     "s",                // 1: all scalar info goes here
     "x",                // 2: array of uint8, size (sizeof(type)*nzmax), or
                         //    just sizeof(type) if the matrix is uniform-valued
     "p",                // 3: array of int64_t, size plen+1
     "i",                // 4: array of int64_t, size nzmax
-    "h"                 // 5: array of int64_t, size plen if hypersparse
+    "h",                // 5: array of int64_t, size plen if hypersparse
+    // added for v7.2: for hypersparse matrices only:
+    "Yp",               // 6: Y->p, a uint64_t array of size Y->vdim+1
+    "Yi",               // 7: Y->i, a uint64_t array of size nvec (s[3])
+    "Yx"                // 8: Y->x, an int64_t array of size nvec
 } ;
 
 // for bitmap matrices only
 static const char *Bitmap_MatrixFields [4] =
 {
-    "GraphBLASv5_1",    // 0: "logical", "int8", ... "double",
+    "GraphBLASv7_3",    // 0: "logical", "int8", ... "double",
                         //    "single complex", or "double complex"
     "s",                // 1: all scalar info goes here
     "x",                // 2: array of uint8, size (sizeof(type)*nzmax), or
@@ -75,9 +84,10 @@ mxArray *gb_export_to_mxstruct  // return exported built-in struct G
     }
 
     GrB_Matrix A = (*A_handle) ;
+    GrB_Matrix Y = NULL ;
 
     //--------------------------------------------------------------------------
-    // make sure the matrix is finished
+    // make sure the matrix is finished, including the creation of A->Y
     //--------------------------------------------------------------------------
 
     OK1 (A, GrB_Matrix_wait (A, GrB_MATERIALIZE)) ;
@@ -110,10 +120,16 @@ mxArray *gb_export_to_mxstruct  // return exported built-in struct G
     int8_t *Ab = NULL ;
     uint64_t *Ap = NULL, *Ah = NULL, *Ai = NULL ;
     void *Ax = NULL ;
-    int64_t Ap_size = 0, Ah_size = 0, Ab_size = 0, Ai_size = 0, Ax_size = 0 ;
+    GrB_Index Ap_size = 0, Ah_size = 0, Ab_size = 0, Ai_size = 0, Ax_size = 0 ;
     int64_t nvals = 0, nvec = 0 ;
     bool by_col = (fmt == GxB_BY_COL) ;
     bool iso = false ;
+
+    GrB_Type ytype = NULL ;
+    uint64_t *Yp = NULL ; GrB_Index Yp_size = 0 ;
+    uint64_t *Yi = NULL ; GrB_Index Yi_size = 0 ;
+    void     *Yx = NULL ; GrB_Index Yx_size = 0 ;
+    uint64_t yvdim, ynrows ;
 
     switch (sparsity_status)
     {
@@ -146,6 +162,15 @@ mxArray *gb_export_to_mxstruct  // return exported built-in struct G
             break ;
 
         case GxB_HYPERSPARSE :
+
+            // export and free the A->Y hyper_hash.  It is always sparse,
+            // GrB_UINT64, held by column, and non-iso
+            OK (GxB_unpack_HyperHash (A, &Y, NULL)) ;
+            OK (GxB_Matrix_export_CSC (&Y, &ytype, &ynrows, &yvdim,
+                &Yp, &Yi, &Yx, &Yp_size, &Yi_size, &Yx_size,
+                NULL, NULL, NULL)) ;
+
+            // export and free the rest of the hypersparse matrix
             if (by_col)
             {
                 OK (GxB_Matrix_export_HyperCSC (&A, &type, &nrows, &ncols,
@@ -198,8 +223,9 @@ mxArray *gb_export_to_mxstruct  // return exported built-in struct G
             break ;
 
         case GxB_HYPERSPARSE :
-            // A is hypersparse, with 6 fields: GraphBLAS*, s, x, p, i, h
-            G = mxCreateStructMatrix (1, 1, 6, MatrixFields) ;
+            // A is hypersparse, with 9 fields: GraphBLAS*, s, x, p, i, h,
+            // Yp, Yi, Yx
+            G = mxCreateStructMatrix (1, 1, 9, MatrixFields) ;
             break ;
 
         case GxB_BITMAP :
@@ -281,6 +307,27 @@ mxArray *gb_export_to_mxstruct  // return exported built-in struct G
             mxSetData (Ah_mx, Ah) ;
         }
         mxSetFieldByNumber (G, 0, 5, Ah_mx) ;
+
+        // export Yp, of size yvdim+1
+        mxArray *Yp_mx = mxCreateNumericMatrix (1, 0, mxUINT64_CLASS, mxREAL) ;
+        mxSetN (Yp_mx, yvdim+1) ;
+        void *p = (void *) mxGetData (Yp_mx) ; gb_mxfree (&p) ;
+        mxSetData (Yp_mx, Yp) ;
+        mxSetFieldByNumber (G, 0, 6, Yp_mx) ;
+
+        // export Yi, of size nvec
+        mxArray *Yi_mx = mxCreateNumericMatrix (1, 0, mxUINT64_CLASS, mxREAL) ;
+        mxSetN (Yi_mx, nvec) ;
+        p = (void *) mxGetData (Yi_mx) ; gb_mxfree (&p) ;
+        mxSetData (Yi_mx, Yi) ;
+        mxSetFieldByNumber (G, 0, 7, Yi_mx) ;
+
+        // export Yx, of size nvec
+        mxArray *Yx_mx = mxCreateNumericMatrix (1, 0, mxUINT64_CLASS, mxREAL) ;
+        mxSetN (Yx_mx, nvec) ;
+        p = (void *) mxGetData (Yx_mx) ; gb_mxfree (&p) ;
+        mxSetData (Yx_mx, Yx) ;
+        mxSetFieldByNumber (G, 0, 8, Yx_mx) ;
     }
 
     if (sparsity_status == GxB_BITMAP)

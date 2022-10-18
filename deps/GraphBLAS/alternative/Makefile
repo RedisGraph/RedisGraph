@@ -19,8 +19,8 @@
 default: library
 
 # This version info must match ../CMakeLists.txt 
-VER1 = 6
-VER2 = 2
+VER1 = 7
+VER2 = 3
 VER3 = 0
 
 # pick your compiler:
@@ -33,43 +33,63 @@ VER3 = 0
 # CC = icc -mp1
 # CC = c++
 
+# when using clang
+# CFLAGS += -Xclang
+
 SRC = ../Source/*.c ../Source/Generated1/*.c ../Source/Generated2/*.c
-INC = ../Include/*.h ../Source/*.h ../Source/Template/* ../Source/Generated1/*.h ../Source/Generated2/*.h
+INC = ../Include/*.h ../Source/*.h ../Source/Template/* ../Source/Generated1/*.h ../Source/Generated2/*.h ../rmm_wrap/*.h*
 SRC2 = $(notdir $(wildcard $(SRC)))
 OBJ = $(SRC2:.c=.o)
-LDFLAGS = -fopenmp -lm
-CFLAGS = -fopenmp -fexceptions -fPIC
+
+# pick OpenMP options:
+# LDFLAGS = -fopenmp -lm
+# LDFLAGS = -openmp -lm
+CFLAGS += -fopenmp -fexceptions -fPIC
+
 # pick the optimization level:
   CFLAGS += -O3
 # CFLAGS += -g
-# to compile GraphBLAS as compact (fast to compile, small libgraphblas.so,
-# but slow at run time), uncomment this line:
-# CFLAGS += -DGBCOMPACT=1
+
 ifneq ($(CC),c++)
     CFLAGS += -std=c11
 endif
-CPPFLAGS = -I../Include -I../Source -I../Source/Template -I../Source/Generated1 -I../Source/Generated2 -I../lz4 -I../cpu_features/include
-SO_OPTS = $(LDFLAGS)
+CPPFLAGS = -I../Include -I../Source -I../Source/Template -I../Source/Generated1 -I../Source/Generated2 -I../lz4 -I../cpu_features/include -I../cpu_features -I../cpu_features/src -I../cpu_features/include/internal -I../rmm_wrap
 CFLAGS += -Wno-pragmas
 
-# To compile the libgraphblas_renamed library, change all occurences of
-# libgraphblas to libgraphblas_renamed, below, and uncomment these 2 lines:
+# To compile the libgraphblas_matlab library, change all occurences of
+# libgraphblas to libgraphblas_matlab, below, and uncomment these 2 lines:
 # CFLAGS += -DGBRENAME=1
 # CPPFLAGS += -I../GraphBLAS/rename
+
+# Select options for cpu_features:
+# no cpu_features:
+#   CFLAGS += -DGBNCPUFEAT=1
+# cpu_features with getauxval (does not work on the Mac):
+#   CFLAGS += -DHAVE_STRONG_GETAUXVAL=1
+# cpu_features with dlfcn.h (works on the Mac):
+#   CFLAGS += -DHAVE_DLFCN_H=1
+# To enable X86, and AVX2 and/or AVX512 when not using cpu_features:
+#   CFLAGS += -DGBX86=1
+#   CFLAGS += -DGBAVX2=1
+#   CFLAGS += -DGBAVX512=1
 
 UNAME := $(shell uname)
 ifeq ($(UNAME),Darwin)
     # Mac
+    CFLAGS += -DHAVE_DLFCN_H=1
     CFLAGS += -fno-common
     SO_NAME = libgraphblas.dylib.$(VER1).$(VER2).$(VER3)
     SO_NAME0 = libgraphblas.dylib
     SO_NAME1 = libgraphblas.dylib.$(VER1)
+    SO_OPTS = $(LDFLAGS)
     SO_OPTS += -dynamiclib -shared  -Wl,-install_name -Wl,$(SO_NAME1) -undefined dynamic_lookup
 else
     # Linux
+    CFLAGS += -DHAVE_DLFCN_H=1 -DHAVE_STRONG_GETAUXVAL=1
     SO_NAME = libgraphblas.so.$(VER1).$(VER2).$(VER3)
     SO_NAME0 = libgraphblas.so
     SO_NAME1 = libgraphblas.so.$(VER1)
+    SO_OPTS = $(LDFLAGS)
     SO_OPTS += -shared -Wl,-soname -Wl,$(SO_NAME1)
 endif
 
@@ -117,14 +137,12 @@ DOBJ = $(DSRC2:.c=.o)
 	$(CC) -c $(CFLAGS) $(DCPPFLAGS) $< -o $(notdir $@)
 
 %_demo: ../Demo/Program/%_demo.c $(SO_NAME) $(DINC) $(DOBJ)
-	$(CC) $(CFLAGS) $(DCPPFLAGS) $< $(DOBJ) $(DLIBS) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $(DCPPFLAGS) $< $(DOBJ) $(DLIBS) -o $@
 
 DEMO_PRG = $(notdir $(wildcard ../Demo/Program/*_demo.c))
 DEMO = $(DEMO_PRG:.c=)
 
 demo: $(DEMO)
-
-run: $(DEMO)
 	./altdemo
 
 clean:
