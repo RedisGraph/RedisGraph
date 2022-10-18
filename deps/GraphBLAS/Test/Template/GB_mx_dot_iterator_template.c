@@ -129,16 +129,19 @@
             if (i < j)
             {
                 // consume x(i)
+                // printf ("skip x, i = %ld\n", i) ;
                 X_info = GxB_Vector_Iterator_next (X_iterator) ;
             }
             else if (i > j)
             {
                 // consume y(j)
+                // printf ("skip y,                 j = %ld\n", j) ;
                 Y_info = GxB_Vector_Iterator_next (Y_iterator) ;
             }
             else // i == j
             {
                 // s += x(i) * y(i)
+                // printf ("multadd at i = %ld\n", i) ;
                 MULTADD ;
                 // consume both x(i) and y(i)
                 X_info = GxB_Vector_Iterator_next (X_iterator) ;

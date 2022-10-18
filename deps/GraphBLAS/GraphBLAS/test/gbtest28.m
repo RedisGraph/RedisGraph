@@ -2,7 +2,7 @@ function gbtest28
 %GBTEST28 test GrB.build
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\ngbtest28: testing GrB.build and compare with A=sparse(i,j,x)\n') ;
 nthreads = GrB.threads ;

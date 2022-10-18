@@ -11,7 +11,7 @@
 // (it is auto-generated from Generator/*).
 
 #include "GB.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_atomics.h"
 #include "GB_control.h" 
 #include "GB_red__include.h"

@@ -859,13 +859,14 @@ This section contains information on all supported functions from the Cypher que
 |stDev() | Returns the standard deviation for the given value over a group|
 
 ## List functions
-| Function                     | Description                                                                                                                                                    |
-| -------                      | :-----------                                                                                                                                                   |
-| head()                       | Return the first member of a list                                                                                                                              |
-| range()                      | Create a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval. |
-| size()                       | Return a list size                                                                                                                                             |
-| tail()                       | Return a sublist of a list, which contains all the values without the first value                                                                              |
-| [reduce()](#reduce) | Return a scalar produced by evaluating an expression against each list member                                                                                  |
+| Function             | Description                                                                              |
+| -------              | :-----------                                                                             |
+| head()               | Returns the first member of a list                                                       |
+| last()               | Returns the last member of a list                                                        |
+| range()              | Creates a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval. |
+| size()               | Returns a list size                                                                      |
+| tail()               | Returns a sublist of a list, which contains all the values without the first value       |
+| [reduce()](#reduce)  | Returns a scalar produced by evaluating an expression against each list member           |
 
 ## Mathematical functions
 

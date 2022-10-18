@@ -18,6 +18,15 @@
 #define GET_DEEP_COPY ;
 #define FREE_DEEP_COPY ;
 
+#define MXFREE(p)           \
+{                           \
+    if (p != NULL)          \
+    {                       \
+        mxFree (p) ;        \
+    }                       \
+    p = NULL ;              \
+}
+
 void banded_idx
 (
     bool *z,
@@ -172,6 +181,10 @@ void mexFunction
     mytype scalar1 ;
     scalar1.x = 4 ;
     scalar1.y = 3 ;
+    GrB_Index *Ap = NULL ;
+    GrB_Index *Ai = NULL ;
+    float *Ax = NULL  ;
+    void *blob = NULL ;
 
     //--------------------------------------------------------------------------
     // startup GraphBLAS
@@ -219,15 +232,15 @@ void mexFunction
     CHECK (type == GrB_BOOL) ;
 
     OK (GxB_BinaryOp_xtype_name (type_name, GxB_PLUS_FC32)) ;
-    CHECK (MATCH (type_name, "float complex")) ;
+    CHECK (MATCH (type_name, "GxB_FC32_t")) ;
     OK (GxB_Type_from_name (&type, type_name)) ;
     CHECK (type == GxB_FC32) ;
     OK (GxB_BinaryOp_ytype_name (type_name, GxB_PLUS_FC64)) ;
-    CHECK (MATCH (type_name, "double complex")) ;
+    CHECK (MATCH (type_name, "GxB_FC64_t")) ;
     OK (GxB_Type_from_name (&type, type_name)) ;
     CHECK (type == GxB_FC64) ;
     OK (GxB_BinaryOp_ztype_name (type_name, GxB_PLUS_FC32)) ;
-    CHECK (MATCH (type_name, "float complex")) ;
+    CHECK (MATCH (type_name, "GxB_FC32_t")) ;
     OK (GxB_Type_from_name (&type, type_name)) ;
     CHECK (type == GxB_FC32) ;
 
@@ -308,9 +321,9 @@ void mexFunction
     CHECK (MATCH (type_name, "double")) ;
 
     OK (GxB_Type_name (type_name, GxB_FC32)) ;
-    CHECK (MATCH (type_name, "float complex")) ;
+    CHECK (MATCH (type_name, "GxB_FC32_t")) ;
     OK (GxB_Type_name (type_name, GxB_FC64)) ;
-    CHECK (MATCH (type_name, "double complex")) ;
+    CHECK (MATCH (type_name, "GxB_FC64_t")) ;
 
     OK (GrB_Matrix_new (&A, GrB_FP32, 5, 5)) ;
     ERR (GxB_Matrix_type_name (NULL, A)) ;
@@ -784,6 +797,7 @@ void mexFunction
     ERR (GrB_Matrix_eWiseAdd_BinaryOp (A, NULL, NULL, GxB_IGNORE_DUP, A, A,
         NULL)) ;
     OK (GrB_Matrix_free_ (&A)) ;
+#endif
 
     //--------------------------------------------------------------------------
     // apply with user idxunop
@@ -828,7 +842,7 @@ void mexFunction
     // serialize
     //--------------------------------------------------------------------------
 
-    void *blob = NULL ;
+    blob = NULL ;
     GrB_Index blob_size = 0, blob_size2 = 0 ;
     OK (GxB_Matrix_serialize (&blob, &blob_size, A, NULL)) ;
     OK (GxB_Matrix_deserialize (&C, MyType, blob, blob_size, NULL)) ;
@@ -872,8 +886,10 @@ void mexFunction
     OK (GrB_Matrix_free_ (&A)) ;
     OK (GrB_Matrix_free_ (&C)) ;
     OK (GrB_Type_free_ (&MyType)) ;
-    mxFree (blob) ;
 
+    MXFREE (blob) ;
+
+#if 1
     OK (GrB_Matrix_new (&A, GrB_FP32, 3, 4)) ;
     OK (GrB_Matrix_setElement_FP32 (A, (float) 1.1, 2, 2)) ;
     OK (GrB_Matrix_setElement_FP32 (A, (float) 9.1, 1, 1)) ;
@@ -884,19 +900,21 @@ void mexFunction
     ERR (GxB_Matrix_deserialize (&C, GrB_INT32, blob, blob_size, NULL)) ;
     OK (GxB_Matrix_deserialize (&C, GrB_FP32, blob, blob_size, NULL)) ;
     OK (GxB_Matrix_fprint (C, "C from deserialize", 3, NULL)) ;
+#endif
 
-    mxFree (blob) ;
+    MXFREE (blob) ;
 
+#if 1
     blob_size = 2 ;
     blob = mxMalloc (2) ;
     expected = GrB_INSUFFICIENT_SPACE ;
     ERR (GrB_Matrix_serialize (blob, &blob_size, A)) ;
+#endif
 
     OK (GrB_Matrix_free_ (&A)) ;
     OK (GrB_Matrix_free_ (&C)) ;
-    mxFree (blob) ;
+    MXFREE (blob) ;
 
-#endif
 
     //--------------------------------------------------------------------------
     // descriptor
@@ -989,9 +1007,9 @@ void mexFunction
     GrB_Index Ap_len = 5 ;
     GrB_Index Ai_len = 16 ;
     GrB_Index Ax_len = 16 ;
-    GrB_Index *Ap = mxCalloc (Ap_len , sizeof (GrB_Index)) ;
-    GrB_Index *Ai = mxCalloc (Ax_len, sizeof (GrB_Index)) ;
-    float *Ax = mxCalloc (Ax_len, sizeof (float))  ;
+    Ap = mxCalloc (Ap_len , sizeof (GrB_Index)) ;
+    Ai = mxCalloc (Ax_len, sizeof (GrB_Index)) ;
+    Ax = mxCalloc (Ax_len, sizeof (float))  ;
     OK (GrB_Matrix_new (&A, GrB_FP32, 4, 4)) ;
     OK (GrB_Matrix_setElement_FP32 (A, 1, 0, 0)) ;
     OK (GrB_Matrix_assign_FP32 (A, NULL, NULL, (float) 2.0, GrB_ALL, 4,
@@ -1046,9 +1064,9 @@ void mexFunction
         5, 6, 7, GrB_COO_FORMAT)) ;
     CHECK (A == NULL) ;
 
-    mxFree (Ap) ;
-    mxFree (Ai) ;
-    mxFree (Ax) ;
+    MXFREE (Ap) ;
+    MXFREE (Ai) ;
+    MXFREE (Ax) ;
 
     //--------------------------------------------------------------------------
     // build with duplicates
@@ -1061,9 +1079,9 @@ void mexFunction
     expected = GrB_INVALID_VALUE ;
     OK (GrB_Matrix_new (&A, GrB_FP64, 5, 5)) ;
     ERR (GrB_Matrix_build (A, I, J, X, 4, NULL)) ;
-    mxFree (I) ;
-    mxFree (J) ;
-    mxFree (X) ;
+    MXFREE (I) ;
+    MXFREE (J) ;
+    MXFREE (X) ;
     OK (GrB_Matrix_free_ (&A)) ;
 
     //--------------------------------------------------------------------------
@@ -1320,6 +1338,30 @@ void mexFunction
     //--------------------------------------------------------------------------
     // wrapup
     //--------------------------------------------------------------------------
+
+    MXFREE (blob) ;
+    MXFREE (Ap) ;
+    MXFREE (Ai) ;
+    MXFREE (Ax) ;
+
+#if 0
+    GrB_free (&C) ;
+    GrB_free (&A) ;
+    GrB_free (&M) ;
+    GrB_free (&S) ;
+    GrB_free (&E) ;
+    GrB_free (&desc) ;
+    GrB_free (&w) ;
+    GrB_free (&scalar) ;
+    GrB_free (&Banded) ;
+    GrB_free (&UpperBanded) ;
+    GrB_free (&UpperBanded_int64) ;
+    GrB_free (&Gunk) ;
+    GrB_free (&Banded32) ;
+    GrB_free (&type) ;
+    GrB_free (&MyType) ;
+    GrB_free (&MyInt64) ;
+#endif
 
     GB_mx_put_global (true) ;
     printf ("\nGB_mex_about5: all tests passed\n\n") ;

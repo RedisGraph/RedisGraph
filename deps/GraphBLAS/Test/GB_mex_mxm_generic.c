@@ -31,29 +31,56 @@ void My_Plus_int64 (void *z, const void *x, const void *y) ;
 void My_Plus_int32 (void *z, const void *x, const void *y) ;
 void My_Plus_fp64  (void *z, const void *x, const void *y) ;
 
-void My_Plus_int64 (void *z, const void *x, const void *y)
-{
-    int64_t a = (*((int64_t *) x)) ;
-    int64_t b = (*((int64_t *) y)) ;
-    int64_t c = a + b ;
-    (*((int64_t *) z)) = c ;
-}
+    void My_Plus_int64 (void *z, const void *x, const void *y)
+    {
+        int64_t a = (*((int64_t *) x)) ;
+        int64_t b = (*((int64_t *) y)) ;
+        int64_t c = a + b ;
+        (*((int64_t *) z)) = c ;
+    }
 
-void My_Plus_int32 (void *z, const void *x, const void *y)
-{
-    int32_t a = (*((int32_t *) x)) ;
-    int32_t b = (*((int32_t *) y)) ;
-    int32_t c = a + b ;
-    (*((int32_t *) z)) = c ;
-}
+#define  MY_PLUS_INT64                                              \
+"   void My_Plus_int64 (void *z, const void *x, const void *y)  \n" \
+"   {                                                           \n" \
+"       int64_t a = (*((int64_t *) x)) ;                        \n" \
+"       int64_t b = (*((int64_t *) y)) ;                        \n" \
+"       int64_t c = a + b ;                                     \n" \
+"       (*((int64_t *) z)) = c ;                                \n" \
+"   }"
 
-void My_Plus_fp64  (void *z, const void *x, const void *y)
-{
-    double a = (*((double *) x)) ;
-    double b = (*((double *) y)) ;
-    double c = a + b ;
-    (*((double *) z)) = c ;
-}
+    void My_Plus_int32 (void *z, const void *x, const void *y)
+    {
+        int32_t a = (*((int32_t *) x)) ;
+        int32_t b = (*((int32_t *) y)) ;
+        int32_t c = a + b ;
+        (*((int32_t *) z)) = c ;
+    }
+
+#define  MY_PLUS_INT32                                              \
+"   void My_Plus_int32 (void *z, const void *x, const void *y)  \n" \
+"   {                                                           \n" \
+"       int32_t a = (*((int32_t *) x)) ;                        \n" \
+"       int32_t b = (*((int32_t *) y)) ;                        \n" \
+"       int32_t c = a + b ;                                     \n" \
+"       (*((int32_t *) z)) = c ;                                \n" \
+"   }"
+
+    void My_Plus_fp64  (void *z, const void *x, const void *y)
+    {
+        double a = (*((double *) x)) ;
+        double b = (*((double *) y)) ;
+        double c = a + b ;
+        (*((double *) z)) = c ;
+    }
+
+#define  MY_PLUS_FP64                                               \
+"   void My_Plus_fp64  (void *z, const void *x, const void *y)  \n" \
+"   {                                                           \n" \
+"       double a = (*((double *) x)) ;                          \n" \
+"       double b = (*((double *) y)) ;                          \n" \
+"       double c = a + b ;                                      \n" \
+"       (*((double *) z)) = c ;                                 \n" \
+"   }"
 
 void mexFunction
 (
@@ -131,8 +158,11 @@ void mexFunction
         GrB_BinaryOp mult = semiring->multiply ;
         GrB_Monoid_free_(&(semiring->add)) ;
         GrB_Semiring_free_(&semiring) ;
-        GrB_BinaryOp_new (&myplus, My_Plus_int64,
-            GrB_INT64, GrB_INT64, GrB_INT64) ;
+//      GrB_BinaryOp_new (&myplus, My_Plus_int64,
+//          GrB_INT64, GrB_INT64, GrB_INT64) ;
+        GxB_BinaryOp_new (&myplus, My_Plus_int64,
+            GrB_INT64, GrB_INT64, GrB_INT64,
+            "My_Plus_int64", MY_PLUS_INT64) ;
         // add a spurious terminal value
         GxB_Monoid_terminal_new_INT64 (&myplus_monoid, myplus,
             (int64_t) 0, (int64_t) -111) ;
@@ -144,8 +174,11 @@ void mexFunction
         GrB_BinaryOp mult = semiring->multiply ;
         GrB_Monoid_free_(&(semiring->add)) ;
         GrB_Semiring_free_(&semiring) ;
-        GrB_BinaryOp_new (&myplus, My_Plus_int32,
-            GrB_INT32, GrB_INT32, GrB_INT32) ;
+//      GrB_BinaryOp_new (&myplus, My_Plus_int32,
+//          GrB_INT32, GrB_INT32, GrB_INT32) ;
+        GxB_BinaryOp_new (&myplus, My_Plus_int32,
+            GrB_INT32, GrB_INT32, GrB_INT32,
+            "My_Plus_int32", MY_PLUS_INT32) ;
         // add a spurious terminal value
         GxB_Monoid_terminal_new_INT32 (&myplus_monoid, myplus,
             (int32_t) 0, (int32_t) -111) ;
@@ -157,8 +190,11 @@ void mexFunction
         GrB_BinaryOp mult = semiring->multiply ;
         GrB_Monoid_free_(&(semiring->add)) ;
         GrB_Semiring_free_(&semiring) ;
-        GrB_BinaryOp_new (&myplus, My_Plus_fp64,
-            GrB_FP64, GrB_FP64, GrB_FP64) ;
+//      GrB_BinaryOp_new (&myplus, My_Plus_fp64,
+//          GrB_FP64, GrB_FP64, GrB_FP64) ;
+        GxB_BinaryOp_new (&myplus, My_Plus_fp64,
+            GrB_FP64, GrB_FP64, GrB_FP64,
+            "My_Plus_fp64", MY_PLUS_FP64) ;
         GrB_Monoid_new_FP64 (&myplus_monoid, myplus, (double) 0) ;
         GrB_Semiring_new (&semiring, myplus_monoid, mult) ;
     }

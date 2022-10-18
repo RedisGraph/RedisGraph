@@ -60,8 +60,6 @@ static void _ConvertUpdateItem
 	bool         set_labels    = false;
 	bool         remove_labels = false;
 	UPDATE_MODE  update_mode   = UPDATE_MERGE;
-	Attribute_ID attribute_id  = ATTRIBUTE_ID_NONE;
-
 	//--------------------------------------------------------------------------
 	// determine the type of assignment
 	//--------------------------------------------------------------------------
@@ -81,10 +79,6 @@ static void _ConvertUpdateItem
 		prop_expr = cypher_ast_set_all_properties_get_identifier(update_item);
 		ASSERT(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
 		alias = cypher_ast_identifier_get_name(prop_expr);
-
-		// attribute
-		attribute_id = ATTRIBUTE_ID_ALL;
-
 		// value
 		ast_value = cypher_ast_set_all_properties_get_expression(update_item);
 	} else if(type == CYPHER_AST_MERGE_PROPERTIES) {
@@ -93,10 +87,6 @@ static void _ConvertUpdateItem
 		prop_expr = cypher_ast_merge_properties_get_identifier(update_item);
 		ASSERT(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
 		alias = cypher_ast_identifier_get_name(prop_expr);
-
-		// attribute
-		attribute_id = ATTRIBUTE_ID_ALL;
-
 		// value
 		ast_value = cypher_ast_merge_properties_get_expression(update_item);
 	} else if(type == CYPHER_AST_SET_PROPERTY) {
@@ -111,7 +101,6 @@ static void _ConvertUpdateItem
 		// attribute
 		ast_key = cypher_ast_property_operator_get_prop_name(ast_prop);
 		attribute = cypher_ast_prop_name_get_value(ast_key);
-		attribute_id = GraphContext_FindOrAddAttribute(gc, attribute);
 
 		// updated value
 		ast_value = cypher_ast_set_property_get_expression(update_item);
@@ -141,7 +130,6 @@ static void _ConvertUpdateItem
 		// attribute
 		ast_key = cypher_ast_property_operator_get_prop_name(ast_prop);
 		attribute = cypher_ast_prop_name_get_value(ast_key);
-		attribute_id = GraphContext_FindOrAddAttribute(gc, attribute);
 	} else {
 		ASSERT(false);
 	}
@@ -150,7 +138,7 @@ static void _ConvertUpdateItem
 	int len = strlen(alias);
 	EntityUpdateEvalCtx *ctx = raxFind(updates, (unsigned char *)alias, len);
 	if(ctx == raxNotFound) {
-		ctx = UpdateCtx_New(update_mode, 1, alias);
+		ctx = UpdateCtx_New(alias);
 		raxInsert(updates, (unsigned char *)alias, len, ctx, NULL);
 	} 
 
@@ -219,7 +207,6 @@ static void _ConvertUpdateItem
 	} else {
 		if(update_mode == UPDATE_REPLACE) {
 			UpdateCtx_Clear(ctx);
-			UpdateCtx_SetMode(ctx, UPDATE_REPLACE);
 		}
 		// updated value
 		AR_ExpNode *exp;
@@ -230,7 +217,7 @@ static void _ConvertUpdateItem
 			// this is done by performing a.v = NULL
 			exp = AR_EXP_NewConstOperandNode(SI_NullVal());
 		}
-		PropertySetCtx update = { .id  = attribute_id, .exp = exp };
+		PropertySetCtx update = { .attribute  = attribute, .exp = exp, .mode = update_mode };
 		array_append(ctx->properties, update);
 	}
 }

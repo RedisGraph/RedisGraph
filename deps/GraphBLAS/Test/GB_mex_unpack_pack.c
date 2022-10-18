@@ -7,11 +7,32 @@
 
 //------------------------------------------------------------------------------
 
-// format:
-//  0: standard CSR
-//  1: standard CSC
-//  3: hyper CSR
-//  4: hyper CSC
+// For matrices:
+
+    // format_matrix:
+    //      case 1 :    // standard CSR
+    //      case 2 :    // standard CSC
+    //      case 3 :    // hypersparse CSR
+    //      case 4 :    // hypersparse CSC
+    //      case 5 :    // bitmapR
+    //      case 6 :    // bitmapC
+    //      case 7 :    // FullR
+    //      case 8 :    // FullC
+    //      case 9 :    // to bitmap then (hyper+sparse+full)
+
+    // format_export:
+    //      case 0 :    // standard CSR
+    //      case 1 :    // standard CSC
+    //      case 2 :    // hypersparse CSR
+    //      case 3 :    // hypersparse CSC
+    //      case 4 :    // bitmapR
+    //      case 5 :    // bitmapC
+    //      case 6 :    // FullR
+    //      case 7 :    // FullC
+    //      case 8 :    // standard CSR, not jumbled
+    //      case 9 :    // standard CSC, not jumbled
+    //      case 10 :   // hypersparse CSR, not jumbled
+    //      case 11 :   // hypersparse CSC, not jumbled
 
 #include "GB_mex.h"
 
@@ -46,6 +67,7 @@
 
 GrB_Matrix A = NULL ;
 GrB_Matrix C = NULL ;
+GrB_Matrix Y = NULL ;
 GrB_Index *Cp = NULL, *Ch = NULL, *Ci = NULL ;
 void *Cx = NULL ;
 int8_t *Cb = NULL ;
@@ -106,7 +128,10 @@ void mexFunction
     // get export/import format (0 to 11)
     int GET_SCALAR (2, int, format_export, 0) ;
 
-    #define GET_DEEP_COPY   GrB_Matrix_dup (&C, A) ;
+    #define GET_DEEP_COPY           \
+        GrB_Matrix_dup (&C, A) ;    \
+        GrB_Matrix_wait (C, GrB_MATERIALIZE) ;
+
     #define FREE_DEEP_COPY  GrB_Matrix_free (&C) ;
 
     // C = deep copy of A
@@ -221,7 +246,7 @@ GrB_Info unpack_pack
             break ;
 
         //----------------------------------------------------------------------
-        case 9 :    // to control == 11, then bitmap
+        case 9 :    // to bitmap then (hyper+sparse+full)
         //----------------------------------------------------------------------
 
             OK (GxB_Matrix_Option_set_(C, GxB_SPARSITY_CONTROL, GxB_BITMAP)) ;
@@ -272,6 +297,8 @@ GrB_Info unpack_pack
         case 2 :    // hypersparse CSR
         //----------------------------------------------------------------------
 
+            OK (GxB_unpack_HyperHash (C, &Y, NULL)) ;
+
             OK (GxB_Matrix_unpack_HyperCSR (C,
                 &Cp, &Ch, &Ci, &Cx,
                 &Cp_size, &Ch_size, &Ci_size, &Cx_size, &iso,
@@ -282,11 +309,18 @@ GrB_Info unpack_pack
                 Cp_size, Ch_size, Ci_size, Cx_size, iso,
                 nvec, jumbled, NULL)) ;
 
+            OK (GxB_pack_HyperHash (C, &Y, NULL)) ;
+
+            // silently check the result to make sure the hyper_hash is valid
+            OK (GxB_Matrix_fprint (C, "C", GxB_SILENT, stdout)) ;
+
             break ;
 
         //----------------------------------------------------------------------
         case 3 :    // hypersparse CSC
         //----------------------------------------------------------------------
+
+            OK (GxB_unpack_HyperHash (C, &Y, NULL)) ;
 
             OK (GxB_Matrix_unpack_HyperCSC (C,
                 &Cp, &Ch, &Ci, &Cx,
@@ -298,6 +332,10 @@ GrB_Info unpack_pack
                 Cp_size, Ch_size, Ci_size, Cx_size, iso,
                 nvec, jumbled, NULL)) ;
 
+            // silently check the result to make sure the hyper_hash is valid
+            OK (GxB_pack_HyperHash (C, &Y, NULL)) ;
+
+            OK (GxB_Matrix_fprint (C, "C", GxB_SILENT, stdout)) ;
             break ;
 
         //----------------------------------------------------------------------
@@ -370,6 +408,8 @@ GrB_Info unpack_pack
         case 10 :    // hypersparse CSR, not jumbled
         //----------------------------------------------------------------------
 
+            OK (GxB_unpack_HyperHash (C, &Y, NULL)) ;
+
             OK (GxB_Matrix_unpack_HyperCSR (C,
                 &Cp, &Ch, &Ci, &Cx,
                 &Cp_size, &Ch_size, &Ci_size, &Cx_size, &iso,
@@ -379,11 +419,15 @@ GrB_Info unpack_pack
                 &Cp, &Ch, &Ci, &Cx, Cp_size, Ch_size, Ci_size, Cx_size,
                 iso, nvec, false, NULL)) ;
 
+            OK (GxB_pack_HyperHash (C, &Y, NULL)) ;
+
             break ;
 
         //----------------------------------------------------------------------
         case 11 :    // hypersparse CSC, not jumbled
         //----------------------------------------------------------------------
+
+            OK (GxB_unpack_HyperHash (C, &Y, NULL)) ;
 
             OK (GxB_Matrix_unpack_HyperCSC (C,
                 &Cp, &Ch, &Ci, &Cx,
@@ -393,6 +437,8 @@ GrB_Info unpack_pack
             OK (GxB_Matrix_pack_HyperCSC (C,
                 &Cp, &Ch, &Ci, &Cx, Cp_size, Ch_size, Ci_size, Cx_size, iso,
                 nvec, false, NULL)) ;
+
+            OK (GxB_pack_HyperHash (C, &Y, NULL)) ;
 
             break ;
 

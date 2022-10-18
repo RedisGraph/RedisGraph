@@ -2,7 +2,7 @@ function [complex_binaryops, complex_unaryops] = gbtest_complex
 %GBTEST_COMPLEX return list of complex operators
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 complex_binaryops = {
     % x,y,z all the same type:

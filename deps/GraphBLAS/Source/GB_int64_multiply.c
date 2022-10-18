@@ -42,7 +42,7 @@ bool GB_int64_multiply      // true if ok, false if overflow
         return (false) ;
     }
 
-#ifndef GB_CUDA_KERNEL // FIXME for CUDA
+#ifndef GB_CUDA_KERNEL // fixme for CUDA
     if (GB_CEIL_LOG2 (a) + GB_CEIL_LOG2 (b) > 60)
     { 
         // a * b may overflow
