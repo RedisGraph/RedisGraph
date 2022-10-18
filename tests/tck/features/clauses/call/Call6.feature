@@ -29,6 +29,7 @@
 #encoding: utf-8
 
 Feature: Call6 - Call clause interoperation with other clauses
+
   @skip
   Scenario: [1] Calling the same STRING procedure twice using the same outputs in each call
     Given an empty graph
