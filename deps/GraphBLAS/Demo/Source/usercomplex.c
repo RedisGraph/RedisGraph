@@ -102,7 +102,7 @@ GrB_Semiring Complex_plus_times = NULL ;
  }
 
 #define COMPLEX_SECOND                                                        \
-"void"                                                                        \
+"void "                                                                       \
 "complex_second (GxB_FC64_t *z, const GxB_FC64_t *x, const GxB_FC64_t *y) \n" \
 "{                                                                        \n" \
 "   (*z) = (*y) ;                                                         \n" \
@@ -114,19 +114,20 @@ GrB_Semiring Complex_plus_times = NULL ;
  }
 
 #define COMPLEX_PAIR                                                          \
-"void"                                                                        \
+"void "                                                                       \
 "complex_pair (GxB_FC64_t *z, const GxB_FC64_t *x, const GxB_FC64_t *y)   \n" \
 "{                                                                        \n" \
 "   (*z) = GxB_CMPLX (1,0) ;                                              \n" \
 "}"
 
- void complex_plus (GxB_FC64_t *z, const GxB_FC64_t *x, const GxB_FC64_t *y)
+ void
+ complex_plus (GxB_FC64_t *z, const GxB_FC64_t *x, const GxB_FC64_t *y)
  {
     (*z) = (*x) + (*y) ;
  }
 
 #define COMPLEX_PLUS                                                          \
-"void"                                                                        \
+"void "                                                                       \
 "complex_plus (GxB_FC64_t *z, const GxB_FC64_t *x, const GxB_FC64_t *y)   \n" \
 "{                                                                        \n" \
 "   (*z) = (*x) + (*y) ;                                                  \n" \
@@ -138,7 +139,7 @@ GrB_Semiring Complex_plus_times = NULL ;
  }
 
 #define COMPLEX_MINUS                                                         \
-"void"                                                                        \
+"void "                                                                       \
 "complex_minus (GxB_FC64_t *z, const GxB_FC64_t *x, const GxB_FC64_t *y)  \n" \
 "{                                                                        \n" \
 "   (*z) = (*x) - (*y) ;                                                  \n" \
@@ -150,7 +151,7 @@ GrB_Semiring Complex_plus_times = NULL ;
  }
 
 #define COMPLEX_RMINUS                                                        \
-"void"                                                                        \
+"void "                                                                       \
 "complex_rminus (GxB_FC64_t *z, const GxB_FC64_t *x, const GxB_FC64_t *y) \n" \
 "{                                                                        \n" \
 "   (*z) = (*y) - (*x) ;                                                  \n" \
@@ -162,7 +163,7 @@ GrB_Semiring Complex_plus_times = NULL ;
  }
 
 #define COMPLEX_TIMES                                                         \
-"void"                                                                        \
+"void "                                                                       \
 "complex_times (GxB_FC64_t *z, const GxB_FC64_t *x, const GxB_FC64_t *y)  \n" \
 "{                                                                        \n" \
 "   (*z) = (*x) * (*y) ;                                                  \n" \
@@ -174,7 +175,7 @@ GrB_Semiring Complex_plus_times = NULL ;
  }
 
 #define COMPLEX_DIV                                                           \
-"void"                                                                        \
+"void "                                                                       \
 "complex_div (GxB_FC64_t *z, const GxB_FC64_t *x, const GxB_FC64_t *y)    \n" \
 "{                                                                        \n" \
 "   (*z) = (*x) / (*y) ;                                                  \n" \
@@ -186,7 +187,7 @@ GrB_Semiring Complex_plus_times = NULL ;
  }
 
 #define COMPLEX_RDIV                                                          \
-"void"                                                                        \
+"void "                                                                       \
 "complex_rdiv (GxB_FC64_t *z, const GxB_FC64_t *x, const GxB_FC64_t *y)   \n" \
 "{                                                                        \n" \
 "   (*z) = (*y) / (*x) ;                                                  \n" \
@@ -214,7 +215,7 @@ GrB_Semiring Complex_plus_times = NULL ;
  }
 
 #define COMPLEX_MIN                                                           \
-"void"                                                                        \
+"void "                                                                       \
 "complex_min (GxB_FC64_t *z, const GxB_FC64_t *x, const GxB_FC64_t *y)    \n" \
 "{                                                                        \n" \
 "   double absx = cabs (*x) ;                                             \n" \
@@ -255,7 +256,7 @@ GrB_Semiring Complex_plus_times = NULL ;
  }
 
 #define COMPLEX_MAX                                                           \
-"void"                                                                        \
+"void "                                                                       \
 "complex_max (GxB_FC64_t *z, const GxB_FC64_t *x, const GxB_FC64_t *y)    \n" \
 "{                                                                        \n" \
 "   double absx = cabs (*x) ;                                             \n" \
@@ -285,7 +286,7 @@ GrB_Semiring Complex_plus_times = NULL ;
  }
 
 #define COMPLEX_ISEQ                                                          \
-"void"                                                                        \
+"void "                                                                       \
 "complex_iseq (GxB_FC64_t *z, const GxB_FC64_t *x, const GxB_FC64_t *y)   \n" \
 "{                                                                        \n" \
 "   bool eq = (creal (*x) == creal (*y) && cimag (*x) == cimag (*y)) ;    \n" \
@@ -299,7 +300,7 @@ GrB_Semiring Complex_plus_times = NULL ;
  }
 
 #define COMPLEX_ISNE                                                          \
-"void"                                                                        \
+"void "                                                                       \
 "complex_isne (GxB_FC64_t *z, const GxB_FC64_t *x, const GxB_FC64_t *y)   \n" \
 "{                                                                        \n" \
 "   bool ne = (creal (*x) != creal (*y) || cimag (*x) != cimag (*y)) ;    \n" \
@@ -313,7 +314,7 @@ GrB_Semiring Complex_plus_times = NULL ;
  }
 
 #define COMPLEX_ISGT                                                          \
-"void"                                                                        \
+"void "                                                                       \
 "complex_isgt (GxB_FC64_t *z, const GxB_FC64_t *x, const GxB_FC64_t *y)   \n" \
 "{                                                                        \n" \
 "   bool gt = (creal (*x) > creal (*y)) ;                                 \n" \
@@ -327,7 +328,7 @@ GrB_Semiring Complex_plus_times = NULL ;
  }
 
 #define COMPLEX_ISLT                                                          \
-"void"                                                                        \
+"void "                                                                       \
 "complex_islt (GxB_FC64_t *z, const GxB_FC64_t *x, const GxB_FC64_t *y)   \n" \
 "{                                                                        \n" \
 "   bool lt = (creal (*x) < creal (*y)) ;                                 \n" \
@@ -341,7 +342,7 @@ GrB_Semiring Complex_plus_times = NULL ;
  }
 
 #define COMPLEX_ISGE                                                          \
-"void"                                                                        \
+"void "                                                                       \
 "complex_isge (GxB_FC64_t *z, const GxB_FC64_t *x, const GxB_FC64_t *y)   \n" \
 "{                                                                        \n" \
 "   bool ge = (creal (*x) >= creal (*y)) ;                                \n" \
@@ -355,7 +356,7 @@ GrB_Semiring Complex_plus_times = NULL ;
  }
 
 #define COMPLEX_ISLE                                                          \
-"void"                                                                        \
+"void "                                                                       \
 "complex_isle (GxB_FC64_t *z, const GxB_FC64_t *x, const GxB_FC64_t *y)   \n" \
 "{                                                                        \n" \
 "   bool le = (creal (*x) <= creal (*y)) ;                                \n" \
@@ -374,7 +375,7 @@ GrB_Semiring Complex_plus_times = NULL ;
  }
 
 #define COMPLEX_OR                                                            \
-"void"                                                                        \
+"void "                                                                       \
 "complex_or (GxB_FC64_t *z, const GxB_FC64_t *x, const GxB_FC64_t *y)     \n" \
 "{                                                                        \n" \
 "   bool xbool = (creal (*x) != 0 || cimag (*x) != 0) ;                   \n" \
@@ -390,7 +391,7 @@ GrB_Semiring Complex_plus_times = NULL ;
  }
 
 #define COMPLEX_AND                                                           \
-"void"                                                                        \
+"void "                                                                       \
 "complex_and (GxB_FC64_t *z, const GxB_FC64_t *x, const GxB_FC64_t *y)    \n" \
 "{                                                                        \n" \
 "   bool xbool = (creal (*x) != 0 || cimag (*x) != 0) ;                   \n" \
@@ -406,7 +407,7 @@ GrB_Semiring Complex_plus_times = NULL ;
  }
 
 #define COMPLEX_XOR                                                           \
-"void"                                                                        \
+"void "                                                                       \
 "complex_xor (GxB_FC64_t *z, const GxB_FC64_t *x, const GxB_FC64_t *y)    \n" \
 "{                                                                        \n" \
 "   bool xbool = (creal (*x) != 0 || cimag (*x) != 0) ;                   \n" \
@@ -708,6 +709,13 @@ GrB_Info Complex_init (bool builtin_complex)
         // create user-defined versions
         OK (GxB_BinaryOp_new (&Complex_first  , B complex_first  ,
             Complex, Complex, Complex, "complex_first", COMPLEX_FIRST)) ;
+
+        // FUTURE C API suggestion:
+//      OK (GrB_BinaryOp_new (&Complex_first  , B complex_first  ,
+//          Complex, Complex, Complex)) ;
+//      GrB_set (Complex_first, GRB_NAME, "complex_first") ;
+//      GrB_set (Complex_first, GRB_DEFN, COMPLEX_FIRST) ;
+
         OK (GxB_BinaryOp_new (&Complex_second , B complex_second ,
             Complex, Complex, Complex, "complex_second", COMPLEX_SECOND)) ;
         OK (GxB_BinaryOp_new (&Complex_pair   , B complex_pair   ,

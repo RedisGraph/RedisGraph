@@ -238,8 +238,8 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
     //--------------------------------------------------------------------------
 
     // FIXME: add acode, bcode to the GB_cuda_mxm_factory object
-    int acode = RSHIFT (my_mxm_spec.sr_code, 12, 4) ;   // if 0: A is pattern
-    int bcode = RSHIFT (my_mxm_spec.sr_code,  8, 4) ;   // if 0: B is pattern
+    int acode = GB_RSHIFT (my_mxm_spec.sr_code, 12, 4) ;   // if 0: A is pattern
+    int bcode = GB_RSHIFT (my_mxm_spec.sr_code,  8, 4) ;   // if 0: B is pattern
 
     bool A_is_sparse = GB_IS_SPARSE (A) ;
     bool A_is_hyper  = GB_IS_HYPERSPARSE (A) ;
