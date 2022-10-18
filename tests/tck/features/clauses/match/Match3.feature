@@ -202,7 +202,6 @@ Feature: Match3 - Match fixed length patterns
       | b |
     And no side effects
 
-  @skip
   Scenario: [11] Undirected match in self-relationship graph
     Given an empty graph
     And having executed:
@@ -219,7 +218,6 @@ Feature: Match3 - Match fixed length patterns
       | (:A) | [:LOOP] | (:A) |
     And no side effects
 
-  @skip
   Scenario: [12] Undirected match of self-relationship in self-relationship graph
     Given an empty graph
     And having executed:
