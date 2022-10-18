@@ -40,6 +40,8 @@
     #pragma GCC diagnostic ignored "-Wint-in-bool-context"
     #pragma GCC diagnostic ignored "-Wformat-truncation="
     #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+    #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+    #pragma GCC diagnostic ignored "-Wtype-limits"
     // enable these warnings as errors
     #pragma GCC diagnostic error "-Wmisleading-indentation"
     #endif

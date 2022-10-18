@@ -21,7 +21,7 @@ for k1 = 1:length (types)
                 A.sparsity = A_sparsity ;
                 C = GB_mex_serialize (A, -2) ;      % GrB_serialize
                 GB_spec_compare (A, C) ;
-                for method = [-1 0 1000 2000:2009]
+                for method = [-1 0 1000 2000:2009 3000:3019]
                     C = GB_mex_serialize (A, method) ;
                     GB_spec_compare (A, C) ;
                 end

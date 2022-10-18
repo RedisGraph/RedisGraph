@@ -6,7 +6,7 @@ function C = log1p (G)
 % See also GrB/log, GrB/log2, GrB/log10, GrB/exp.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 G = G.opaque ;
 C = GrB (gb_trig ('log1p', G)) ;

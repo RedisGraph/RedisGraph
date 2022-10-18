@@ -1,10 +1,15 @@
-function testc8
+function testc8(use_builtin)
 %TESTC8 test complex eWiseAdd and eWiseMult
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 fprintf ('testc8: test complex eWiseAdd and eWiseMult\n') ;
+
+if (nargin < 1)
+    use_builtin = true ;
+end
+GB_builtin_complex_set (use_builtin) ;
 
 rng ('default')
 seed = 1 ;
@@ -41,3 +46,4 @@ end
 
 fprintf ('testc8: all complex eWise tests passed\n') ;
 
+GB_builtin_complex_set (true) ;

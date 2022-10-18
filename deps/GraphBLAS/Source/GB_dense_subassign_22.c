@@ -14,7 +14,7 @@
 #include "GB_dense.h"
 #include "GB_binop.h"
 #include "GB_unused.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_binop__include.h"
 #endif
 
@@ -73,7 +73,7 @@ GrB_Info GB_dense_subassign_22      // C += b where C is dense and b is a scalar
     int nthreads = GB_nthreads (cnz, chunk, nthreads_max) ;
 
     //--------------------------------------------------------------------------
-    // typecast the scalar into the same type as Y
+    // typecast the scalar into the same type as the y input of the binary op
     //--------------------------------------------------------------------------
 
     int64_t csize = C->type->size ;
@@ -89,7 +89,7 @@ GrB_Info GB_dense_subassign_22      // C += b where C is dense and b is a scalar
 
     bool done = false ;
 
-    #ifndef GBCOMPACT
+    #ifndef GBCUDA_DEV
 
         //----------------------------------------------------------------------
         // define the worker for the switch factory

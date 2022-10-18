@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -50,7 +50,6 @@ void mexFunction
         //----------------------------------------------------------------------
 
         // get the global format
-        gb_usage (nargout <= 1, USAGE) ;
         OK (GxB_Global_Option_get (GxB_FORMAT, &fmt)) ;
 
     }
@@ -60,11 +59,11 @@ void mexFunction
         if (mxIsChar (pargin [0]))
         { 
 
+
             //------------------------------------------------------------------
             // GrB.format (format)
             //------------------------------------------------------------------
 
-            gb_usage (nargout <= 1, USAGE) ;
             // parse the format string
             int ignore ;
             bool ok = gb_mxstring_to_format (pargin [0], &fmt, &ignore) ;
@@ -81,9 +80,15 @@ void mexFunction
             //------------------------------------------------------------------
 
             // get the type
-            mxArray *mx_type = mxGetField (pargin [0], 0, "GraphBLASv5_1") ;
+            mxArray *mx_type = mxGetField (pargin [0], 0, "GraphBLASv7_3") ;
+            if (mx_type == NULL)
+            {
+                // check if it is a GraphBLASv5_1 struct
+                mx_type = mxGetField (pargin [0], 0, "GraphBLASv5_1") ;
+            }
             if (mx_type != NULL)
             {
+                // v5_1 or v7_3
                 v5_1_or_later = true ;
             }
             if (mx_type == NULL)
@@ -118,6 +123,7 @@ void mexFunction
                 case 3 : sparsity = GxB_FULL ;        break ;
                 case 4 : sparsity = GxB_BITMAP ;      break ;
                 case 5 : sparsity = GxB_SPARSE ;      break ;
+                case 9 : // fall through to hypersparse
                 case 6 : sparsity = GxB_HYPERSPARSE ; break ;
                 default: ERROR ("invalid GraphBLAS struct") ;
             }
@@ -157,7 +163,7 @@ void mexFunction
         pargout [1] = mxCreateString (s) ;
     }
     if (nargout > 2)
-    {
+    { 
         pargout [2] = mxCreateString (iso ? "iso-valued" : "non-iso-valued") ;
     }
 

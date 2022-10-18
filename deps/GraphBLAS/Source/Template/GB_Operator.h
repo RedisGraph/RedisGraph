@@ -15,8 +15,8 @@
 
     GrB_Type ztype ;        // type of z
     GrB_Type xtype ;        // type of x
-    GrB_Type ytype ;        // type of y for binop, thunk for IndexUnaryOp
-                            // and SelectOp.  NULL for unaryop
+    GrB_Type ytype ;        // type of y for binop and IndexUnaryOp,
+                            // thunk for SelectOp.  NULL for unaryop
 
     // function pointers:
     GxB_unary_function       unop_function ;
@@ -26,5 +26,6 @@
 
     char name [GxB_MAX_NAME_LEN] ;       // name of the unary operator
     GB_Opcode opcode ;      // operator opcode
-    char *defn ;            // function definition (currently unused)
+    char *defn ;            // function definition
+    size_t defn_size ;      // size of the definition
 

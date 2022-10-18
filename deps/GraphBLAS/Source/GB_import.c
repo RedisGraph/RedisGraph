@@ -98,7 +98,7 @@ GrB_Info GB_import      // import/pack a matrix in any format
         case GxB_HYPERSPARSE : 
             // check Ap and get nvals
             if (nvec > vdim) return (GrB_INVALID_VALUE) ;
-            if (Ap_size < (nvec+1) * sizeof (int64_t))
+            if (Ap_size < (((vdim == 1) ? 1 : nvec)+1) * sizeof (int64_t))
             { 
                 return (GrB_INVALID_VALUE) ;
             }
@@ -201,7 +201,7 @@ GrB_Info GB_import      // import/pack a matrix in any format
     if (packing)
     { 
         // clear the content and reuse the header
-        GB_phbix_free (*A) ;
+        GB_phybix_free (*A) ;
         ASSERT (!((*A)->static_header)) ;
     }
 
@@ -242,10 +242,12 @@ GrB_Info GB_import      // import/pack a matrix in any format
                 #endif
                 GB_Global_memtable_add ((*A)->h, (*A)->h_size) ;
             }
+            // fall through to the sparse case
 
         case GxB_SPARSE : 
             (*A)->jumbled = jumbled ;   // import jumbled status
             (*A)->nvec_nonempty = -1 ;  // not computed; delay until required
+            (*A)->nvals = nvals ;
 
             if (is_sparse_vector)
             { 
