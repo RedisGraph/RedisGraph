@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -30,9 +30,7 @@ void gb_mxstring_to_binop_or_idxunop    // binop or idxunop from a string
 
     if (gb_mxarray_is_empty (mxstring))
     { 
-        // no operator is present, or present and empty; this is not yet an
-        // error, since many uses of GraphBLAS functions use an optional accum
-        // operator.
+        // no operator is present, or present and empty
         return ;
     }
 
@@ -45,7 +43,7 @@ void gb_mxstring_to_binop_or_idxunop    // binop or idxunop from a string
     gb_mxstring_to_string (opstring, LEN, mxstring, "binary/index operator") ;
 
     //--------------------------------------------------------------------------
-    // convert the string to a binary operator
+    // convert the string to a binary operator or index unary operator
     //--------------------------------------------------------------------------
 
     (*op2) = gb_string_to_binop_or_idxunop (opstring, atype, btype, idxunop,

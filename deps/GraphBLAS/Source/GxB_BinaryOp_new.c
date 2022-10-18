@@ -56,8 +56,15 @@ GrB_Info GxB_BinaryOp_new
     // create the binary op
     //--------------------------------------------------------------------------
 
-    GB_binop_new (*op, function, ztype, xtype, ytype, binop_name, binop_defn,
-        GB_USER_binop_code) ;
+    GrB_Info info = GB_binop_new (*op, function, ztype, xtype, ytype,
+        binop_name, binop_defn, GB_USER_binop_code) ;
+    if (info != GrB_SUCCESS)
+    { 
+        // out of memory
+        GB_FREE (op, header_size) ;
+        return (info) ;
+    }
+
     return (GrB_SUCCESS) ;
 }
 

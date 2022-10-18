@@ -35,5 +35,5 @@ to compile the static library:        make static
 to compile in parallel with 4 cores:  make -j4
 to install in /usr/local/*:           sudo make install
 to cleanup:                           make distclean
-to compile and run the demos:         make run
+to compile and run the demos:         make demo
 

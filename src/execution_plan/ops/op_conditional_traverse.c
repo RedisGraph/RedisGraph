@@ -26,50 +26,47 @@ static void CondTraverseToString(const OpBase *ctx, sds *buf) {
 static void _populate_filter_matrix(OpCondTraverse *op) {
 	GrB_Matrix FM = RG_MATRIX_M(op->F);
 
+	// clear filter matrix
+	GrB_Matrix_clear(FM);
+
+	// update filter matrix F, set row i at position srcId
+	// F[i, srcId] = true
 	for(uint i = 0; i < op->record_count; i++) {
 		Record r = op->records[i];
-		/* Update filter matrix F, set row i at position srcId
-		 * F[i, srcId] = true. */
 		Node *n = Record_GetNode(r, op->srcNodeIdx);
 		NodeID srcId = ENTITY_GET_ID(n);	
 		GrB_Matrix_setElement_BOOL(FM, true, i, srcId);
 	}
-
-	GrB_Matrix_wait(FM, GrB_MATERIALIZE);
 }
 
-/* Evaluate algebraic expression:
- * prepends filter matrix as the left most operand
- * perform multiplications
- * set iterator over result matrix
- * removed filter matrix from original expression
- * clears filter matrix. */
+// evaluate algebraic expression:
+// prepends filter matrix as the left most operand
+// perform multiplications
+// set iterator over result matrix
+// removed filter matrix from original expression
+// clears filter matrix
 void _traverse(OpCondTraverse *op) {
-	// If op->F is null, this is the first time we are traversing.
+	// if op->F is null, this is the first time we are traversing
 	if(op->F == NULL) {
-		/* Create both filter and result matrices.
-		 * make sure M's format is SPARSE, required by the matrix iterator */
+		// create both filter and result matrices
 		size_t required_dim = Graph_RequiredMatrixDim(op->graph);
 		RG_Matrix_new(&op->M, GrB_BOOL, op->record_cap, required_dim);
 		RG_Matrix_new(&op->F, GrB_BOOL, op->record_cap, required_dim);
 
-		// Prepend the filter matrix to algebraic expression as the leftmost operand.
+		// prepend filter matrix to algebraic expression as the leftmost operand
 		AlgebraicExpression_MultiplyToTheLeft(&op->ae, op->F);
 
-		// Optimize the expression tree.
+		// optimize the expression tree
 		AlgebraicExpression_Optimize(&op->ae);
 	}
 
-	// Populate filter matrix.
+	// populate filter matrix
 	_populate_filter_matrix(op);
 
-	// Evaluate expression.
+	// evaluate expression
 	AlgebraicExpression_Eval(op->ae, op->M);
 
 	RG_MatrixTupleIter_attach(&op->iter, op->M);
-
-	// Clear filter matrix.
-	RG_Matrix_clear(op->F);
 }
 
 OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {

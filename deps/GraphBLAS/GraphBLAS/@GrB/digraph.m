@@ -25,13 +25,13 @@ function DiGraph = digraph (G, option)
 % See also graph, digraph, GrB/graph.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 G = G.opaque ;
 
 [m, n, type] = gbsize (G) ;
 if (m ~= n)
-    error ('G must be square') ;
+    error ('GrB:error', 'G must be square') ;
 end
 
 % get the string options
@@ -40,7 +40,7 @@ if (nargin > 1)
     if (isequal (lower (option), 'omitselfloops'))
         omitself = true ;
     else
-        error ('unknown option') ;
+        error ('GrB:error', 'unknown option') ;
     end
 end
 

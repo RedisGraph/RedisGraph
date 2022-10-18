@@ -25,7 +25,6 @@ GrB_Info GrB_Matrix_exportSize  // determine sizes of user arrays for export
     //--------------------------------------------------------------------------
 
     GB_WHERE1 ("GrB_Matrix_exportSize (&Ap_len, &Ai_len, &Ax_len, format, A)") ;
-    GB_BURBLE_START ("GrB_Matrix_exportSize") ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
     GB_RETURN_IF_NULL (Ap_len) ;
     GB_RETURN_IF_NULL (Ai_len) ;

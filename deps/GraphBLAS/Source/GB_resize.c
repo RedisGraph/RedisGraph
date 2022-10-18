@@ -13,7 +13,7 @@
 {                                       \
     GB_FREE (&Ax_new, Ax_new_size) ;    \
     GB_FREE (&Ab_new, Ab_new_size) ;    \
-    GB_phbix_free (A) ;                 \
+    GB_phybix_free (A) ;                \
 }
 
 //------------------------------------------------------------------------------
@@ -244,6 +244,9 @@ GrB_Info GB_resize              // change the size of a matrix
         GB_OK (GB_convert_any_to_hyper (A, Context)) ;
         ASSERT (GB_IS_HYPERSPARSE (A)) ;
 
+        // A->Y will be invalidated, so free it
+        GB_hyper_hash_free (A) ;
+
         // resize the number of sparse vectors
         int64_t *restrict Ah = A->h ;
         int64_t *restrict Ap = A->p ;
@@ -267,10 +270,8 @@ GrB_Info GB_resize              // change the size of a matrix
             bool found ;
             GB_SPLIT_BINARY_SEARCH (vdim_new, Ah, pleft, pright, found) ;
             A->nvec = pleft ;
-        }
+            A->nvals = Ap [A->nvec] ;
 
-        if (vdim_new < vdim_old)
-        { 
             // number of vectors is decreasing, need to count the new number of
             // non-empty vectors: done during pruning or by selector, below.
             A->nvec_nonempty = -1 ;     // recomputed just below

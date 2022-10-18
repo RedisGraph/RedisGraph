@@ -11,6 +11,7 @@
 // phase4: cumulative sum of C->p
 
 #include "GB_AxB_saxpy3.h"
+#include "GB_unused.h"
 
 void GB_AxB_saxpy3_cumsum
 (

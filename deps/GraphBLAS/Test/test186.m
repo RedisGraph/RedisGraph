@@ -1,4 +1,4 @@
-function test186
+function test186 (dohack)
 %TEST186 test saxpy for all sparsity formats
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
@@ -7,6 +7,15 @@ function test186
 fprintf ('test186 --------------- C<!M>A*B for all sparsity formats\n') ;
 
 rng ('default') ;
+
+% save current global settings, then modify them
+save = GB_mex_hack ;
+hack = save ;
+if (nargin < 1)
+    dohack = 2 ;
+end
+hack (1) = dohack ;     % modify "very_costly" in GxB_AxB_saxpy3_slice_balanced
+GB_mex_hack (hack) ;
 
 load west0479 ;
 A.matrix = west0479 ;
@@ -97,6 +106,10 @@ for A_sparsity = [1 2 4 8]
         assert (err < 1e-12) ;
     end
 end
+
+% restore global settings
+GrB.burble (0) ;
+GB_mex_hack (save) ;
 
 fprintf ('\n') ;
 fprintf ('maxerr: %g\n', maxerr) ;

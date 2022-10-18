@@ -2,7 +2,7 @@ function gbtest74
 %GBTEST74 test bitwise operators
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 int_types = {
 'int8'
@@ -131,6 +131,10 @@ for k = 1:8
 
         C1 = bitshift (A, B, type) ;
         C2 = bitshift (A2, B2, type) ;
+        assert (isequal (C1, C2)) ;
+
+        C1 = bitshift (A, 2, type) ;
+        C2 = bitshift (A2, 2, type) ;
         assert (isequal (C1, C2)) ;
 
         % sparse case
