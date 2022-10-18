@@ -220,8 +220,8 @@ The statistics always include query execution time, while any combination of the
 6. "Properties removed: (integer)"    (since RedisGraph 2.10)
 7. "Relationships created: (integer)"
 8. "Relationships deleted: (integer)"
-9. "Indices created: (integer)"    (since RedisGraph 2.10)
-10. "Indices deleted: (integer)"    (since RedisGraph 2.10)
+9. "Indices created: (integer)"
+10. "Indices deleted: (integer)"
 11. "Query internal execution time: (float) milliseconds"
 
 ## Procedure Calls
