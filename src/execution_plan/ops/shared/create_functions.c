@@ -222,6 +222,7 @@ void CommitNewEntities
 // resolve the properties specified in the query into constant values
 void ConvertPropertyMap
 (
+	GraphContext* gc,
 	AttributeSet *attributes,
 	Record r,
 	PropertyMap *map,
@@ -271,7 +272,8 @@ void ConvertPropertyMap
 		}
 
 		// set the converted attribute
-		AttributeSet_Add(attributes, map->keys[i], val);
+		Attribute_ID attribute_id = FindOrAddAttribute(gc, map->keys[i]);
+		AttributeSet_Add(attributes, attribute_id, val);
 		SIValue_Free(val);
 	}
 }

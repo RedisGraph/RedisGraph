@@ -41,6 +41,7 @@ void CommitNewEntities
 // resolve the properties specified in the query into constant values
 void ConvertPropertyMap
 (
+	GraphContext* gc,
 	AttributeSet *attributes,
 	Record r,
 	PropertyMap *map,
