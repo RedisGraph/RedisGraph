@@ -12,6 +12,7 @@
 /* Forward declarations. */
 static Record MergeCreateConsume(OpBase *opBase);
 static OpBase *MergeCreateClone(const ExecutionPlan *plan, const OpBase *opBase);
+static OpResult MergeCreateInit(OpBase* opBase);
 static void MergeCreateFree(OpBase *opBase);
 
 // convert a graph entity's components into an identifying hash code
@@ -75,7 +76,7 @@ OpBase *NewMergeCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCr
 	op->records = array_new(Record, 32);
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_MERGE_CREATE, "MergeCreate", NULL, MergeCreateConsume,
+	OpBase_Init((OpBase *)op, OPType_MERGE_CREATE, "MergeCreate", MergeCreateInit, MergeCreateConsume,
 				NULL, NULL, MergeCreateClone, MergeCreateFree, true, plan);
 
 	uint node_blueprint_count = array_len(nodes);
@@ -100,10 +101,16 @@ OpBase *NewMergeCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCr
 	return (OpBase *)op;
 }
 
+static OpResult MergeCreateInit(OpBase* opBase) {
+	OpMergeCreate *op = (OpMergeCreate *)opBase;
+	op->gc = QueryCtx_GetGraphCtx();
+	return OP_OK;
+}
+
 // prepare all creations associated with the current Record
 // returns false and do not buffer data if every entity to create for this Record
 // has been created in a previous call
-static bool _CreateEntities(OpMergeCreate *op, Record r) {
+static bool _CreateEntities(OpMergeCreate *op, Record r, GraphContext *gc) {
 	XXH_errorcode res = XXH64_reset(op->hash_state, 0); // reset hash state
 	UNUSED(res);
 	ASSERT(res != XXH_ERROR);
@@ -124,7 +131,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		AttributeSet converted_attr = NULL;
 		if(map != NULL) {
 			converted_attr = AttributeSet_New();
-			ConvertPropertyMap(&converted_attr, r, map, true);
+			ConvertPropertyMap(gc, &converted_attr, r, map, true);
 		}
 
 		// update the hash code with this entity
@@ -169,7 +176,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		AttributeSet converted_attr = NULL;
 		if(map != NULL) {
 			converted_attr = AttributeSet_New();
-			ConvertPropertyMap(&converted_attr, r, map, true);
+			ConvertPropertyMap(gc, &converted_attr, r, map, true);
 		}
 
 		// Update the hash code with this entity, an edge is represented by its
@@ -232,7 +239,7 @@ static Record MergeCreateConsume(OpBase *opBase) {
 
 		/* Buffer all entity creations.
 		 * If this operation has no children, it should always have unique creations. */
-		bool entities_created = _CreateEntities(op, r);
+		bool entities_created = _CreateEntities(op, r, op->gc);
 		ASSERT(entities_created == true);
 
 		// Save record for later use.
@@ -242,7 +249,7 @@ static Record MergeCreateConsume(OpBase *opBase) {
 		r = OpBase_Consume(opBase->children[0]);
 		if(r) {
 			/* Create entities. */
-			if(_CreateEntities(op, r)) {
+			if(_CreateEntities(op, r, op->gc)) {
 				// Save record for later use.
 				array_append(op->records, r);
 			} else {

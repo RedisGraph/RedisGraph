@@ -168,7 +168,8 @@ uint GraphContext_AttributeCount
 Attribute_ID GraphContext_FindOrAddAttribute
 (
 	GraphContext *gc,
-	const char *attribute
+	const char *attribute,
+	bool* created
 );
 
 // retrieve an attribute string given an ID
@@ -184,6 +185,13 @@ Attribute_ID GraphContext_GetAttributeID
 (
 	GraphContext *gc,
 	const char *str
+);
+
+// removes an attribute from the graph
+void GraphContext_RemoveAttribute
+(
+	GraphContext *gc,
+	Attribute_ID id
 );
 
 //------------------------------------------------------------------------------
