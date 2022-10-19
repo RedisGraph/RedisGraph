@@ -65,17 +65,8 @@ SIValue AR_PROPERTIES(SIValue *argv, int argc, void *private_data) {
 		return SI_NullVal();
 	} else if(SI_TYPE(argv[0]) == T_MAP) {
 		return argv[0];
-	} else if(SI_TYPE(argv[0]) & (T_MAP | SI_GRAPHENTITY)) {
-		SIValue properties = GraphEntity_Properties(argv[0].ptrval);
-		int propCount = SIArray_Length(properties)/2;
-		SIValue map = SI_Map(propCount);
-		for(int i = 0; i < propCount; i++) {
-			SIValue key = SIArray_Get(properties, (i*2));
-			SIValue val = SIArray_Get(properties, (i*2)+1);
-			Map_Add(&map, key, val);
-		}
-		SIArray_Free(properties);
-		return map;
+	} else if(SI_TYPE(argv[0]) & SI_GRAPHENTITY) {
+		return GraphEntity_Properties(argv[0].ptrval);
 	} else {
 		return SI_NullVal();
 	}
