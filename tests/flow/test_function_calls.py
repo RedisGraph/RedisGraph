@@ -1461,3 +1461,23 @@ class testFunctionCallsFlow(FlowTestsBase):
             actual_result2 = graph.query(query2).result_set[0][0]
             expected2 = False
             self.env.assertEquals(expected2, actual_result2)
+    
+    def test68_Coalesce(self):
+        query_to_expected_result = {
+            "RETURN coalesce(1)": [[1]],
+            "RETURN coalesce(NULL, 1)": [[1]],
+            "RETURN coalesce(NULL, NULL, 500, NULL)": [[500]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+    
+    def test69_Replace(self):
+        query_to_expected_result = {
+            "RETURN replace('abcabc', 'a', '00')": [["00bc00bc"]],
+            "RETURN replace('abcabc', 'bc', '0')": [["a0a0"]],
+            "RETURN replace('abcabc', 'abc', '')": [[""]],
+            "RETURN replace('abcabc', 'ab', '')": [["cc"]],
+            "RETURN replace('abcabc', '', '0')": [["0a0b0c0a0b0c0"]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
