@@ -27,7 +27,6 @@ void GB_serialize_to_blob
     // check inputs
     //--------------------------------------------------------------------------
 
-    GrB_Info info ;
     ASSERT (blob != NULL) ;
     ASSERT (s_handle != NULL) ;
     ASSERT (nblocks >= 0) ;

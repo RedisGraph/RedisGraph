@@ -83,13 +83,7 @@
         // generic semirings with positional multiply operators
         //----------------------------------------------------------------------
 
-        if (flipxy)
-        { 
-            // flip a positional multiplicative operator
-            bool handled ;
-            opcode = GB_flip_binop_code (opcode, &handled) ;
-            ASSERT (handled) ;      // all positional ops can be flipped
-        }
+        ASSERT (!flipxy) ;
 
         // aki = A(i,k), located in Ax [A_iso?0:(pA)], but value not used
         #define GB_A_IS_PATTERN 1
@@ -271,65 +265,55 @@
         #undef  GB_CTYPE
         #define GB_CTYPE GB_void
 
-        if (opcode == GB_FIRST_binop_code || opcode == GB_SECOND_binop_code)
-        {
+        if (opcode == GB_FIRST_binop_code)
+        { 
+            // t = A(i,k)
             // fmult is not used and can be NULL (for user-defined types)
-            if (flipxy)
-            { 
-                // flip first and second
-                bool handled ;
-                opcode = GB_flip_binop_code (opcode, &handled) ;
-                ASSERT (handled) ; // FIRST and SECOND ops can be flipped
-            }
-            if (opcode == GB_FIRST_binop_code)
-            { 
-                // t = A(i,k)
-                ASSERT (B_is_pattern) ;
-                #undef  GB_MULT
-                #define GB_MULT(t, aik, bkj, i, k, j) memcpy (t, aik, csize)
-                #if defined ( GB_DOT2_GENERIC )
-                #include "GB_AxB_dot2_meta.c"
-                #elif defined ( GB_DOT3_GENERIC )
-                #include "GB_AxB_dot3_meta.c"
-                #endif
-            }
-            else // opcode == GB_SECOND_binop_code
-            { 
-                // t = B(i,k)
-                ASSERT (A_is_pattern) ;
-                #undef  GB_MULT
-                #define GB_MULT(t, aik, bkj, i, k, j) memcpy (t, bkj, csize)
-                #if defined ( GB_DOT2_GENERIC )
-                #include "GB_AxB_dot2_meta.c"
-                #elif defined ( GB_DOT3_GENERIC )
-                #include "GB_AxB_dot3_meta.c"
-                #endif
-            }
+            ASSERT (!flipxy) ;
+            ASSERT (B_is_pattern) ;
+            #undef  GB_MULT
+            #define GB_MULT(t, aik, bkj, i, k, j) memcpy (t, aik, csize)
+            #if defined ( GB_DOT2_GENERIC )
+            #include "GB_AxB_dot2_meta.c"
+            #elif defined ( GB_DOT3_GENERIC )
+            #include "GB_AxB_dot3_meta.c"
+            #endif
+        }
+        else if (opcode == GB_SECOND_binop_code)
+        { 
+            // t = B(i,k)
+            // fmult is not used and can be NULL (for user-defined types)
+            ASSERT (!flipxy) ;
+            ASSERT (A_is_pattern) ;
+            #undef  GB_MULT
+            #define GB_MULT(t, aik, bkj, i, k, j) memcpy (t, bkj, csize)
+            #if defined ( GB_DOT2_GENERIC )
+            #include "GB_AxB_dot2_meta.c"
+            #elif defined ( GB_DOT3_GENERIC )
+            #include "GB_AxB_dot3_meta.c"
+            #endif
+        }
+        else if (flipxy)
+        { 
+            // t = B(k,j) * (A')(i,k)
+            #undef  GB_MULT
+            #define GB_MULT(t, aki, bkj, i, k, j) fmult (t, bkj, aki)
+            #if defined ( GB_DOT2_GENERIC )
+            #include "GB_AxB_dot2_meta.c"
+            #elif defined ( GB_DOT3_GENERIC )
+            #include "GB_AxB_dot3_meta.c"
+            #endif
         }
         else
-        {
-            if (flipxy)
-            { 
-                // t = B(k,j) * (A')(i,k)
-                #undef  GB_MULT
-                #define GB_MULT(t, aki, bkj, i, k, j) fmult (t, bkj, aki)
-                #if defined ( GB_DOT2_GENERIC )
-                #include "GB_AxB_dot2_meta.c"
-                #elif defined ( GB_DOT3_GENERIC )
-                #include "GB_AxB_dot3_meta.c"
-                #endif
-            }
-            else
-            { 
-                // t = (A')(i,k) * B(k,j)
-                #undef  GB_MULT
-                #define GB_MULT(t, aki, bkj, i, k, j) fmult (t, aki, bkj)
-                #if defined ( GB_DOT2_GENERIC )
-                #include "GB_AxB_dot2_meta.c"
-                #elif defined ( GB_DOT3_GENERIC )
-                #include "GB_AxB_dot3_meta.c"
-                #endif
-            }
+        { 
+            // t = (A')(i,k) * B(k,j)
+            #undef  GB_MULT
+            #define GB_MULT(t, aki, bkj, i, k, j) fmult (t, aki, bkj)
+            #if defined ( GB_DOT2_GENERIC )
+            #include "GB_AxB_dot2_meta.c"
+            #elif defined ( GB_DOT3_GENERIC )
+            #include "GB_AxB_dot3_meta.c"
+            #endif
         }
     }
 }

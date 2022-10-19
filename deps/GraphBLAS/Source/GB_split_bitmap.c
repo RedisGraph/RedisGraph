@@ -37,11 +37,11 @@ GrB_Info GB_split_bitmap            // split a bitmap matrix
     bool csc = A->is_csc ;
     GrB_Type atype = A->type ;
     int64_t avlen = A->vlen ;
-    int64_t avdim = A->vdim ;
+//  int64_t avdim = A->vdim ;
     size_t asize = atype->size ;
     const int8_t *restrict Ab = A->b ;
     const bool A_iso = A->iso ;
-    int64_t anz = GB_nnz (A) ;
+//  int64_t anz = GB_nnz (A) ;
 
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
 
@@ -115,7 +115,7 @@ GrB_Info GB_split_bitmap            // split a bitmap matrix
                 // split a non-iso matrix A into an non-iso tile C
                 //--------------------------------------------------------------
 
-                #ifndef GBCOMPACT
+                #ifndef GBCUDA_DEV
                 // no typecasting needed
                 switch (asize)
                 {
@@ -145,11 +145,13 @@ GrB_Info GB_split_bitmap            // split a bitmap matrix
 
                     case GB_16BYTE : // double complex or 16-byte user-defined
                         #define GB_CTYPE GB_blob16
-//                      #define GB_CTYPE uint64_t
-//                      #undef  GB_COPY
-//                      #define GB_COPY(pC,pA)                      \
-//                          Cx [2*pC  ] = Ax [2*pA  ] ;             \
-//                          Cx [2*pC+1] = Ax [2*pA+1] ;
+                        /*
+                        #define GB_CTYPE uint64_t
+                        #undef  GB_COPY
+                        #define GB_COPY(pC,pA)                      \
+                            Cx [2*pC  ] = Ax [2*pA  ] ;             \
+                            Cx [2*pC+1] = Ax [2*pA+1] ;
+                        */
                         #include "GB_split_bitmap_template.c"
                         break ;
 

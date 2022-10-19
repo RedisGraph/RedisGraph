@@ -858,13 +858,14 @@ This section contains information on all supported functions from the Cypher que
 |stDev() | Returns the standard deviation for the given value over a group|
 
 ## List functions
-| Function                     | Description                                                                                                                                                    |
-| -------                      | :-----------                                                                                                                                                   |
-| head()                       | Return the first member of a list                                                                                                                              |
-| range()                      | Create a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval. |
-| size()                       | Return a list size                                                                                                                                             |
-| tail()                       | Return a sublist of a list, which contains all the values without the first value                                                                              |
-| [reduce()](#reduce) | Return a scalar produced by evaluating an expression against each list member                                                                                  |
+| Function             | Description                                                                              |
+| -------              | :-----------                                                                             |
+| head()               | Returns the first member of a list                                                       |
+| last()               | Returns the last member of a list                                                        |
+| range()              | Creates a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval. |
+| size()               | Returns a list size                                                                      |
+| tail()               | Returns a sublist of a list, which contains all the values without the first value       |
+| [reduce()](#reduce)  | Returns a scalar produced by evaluating an expression against each list member           |
 
 ## Mathematical functions
 
@@ -882,6 +883,10 @@ This section contains information on all supported functions from the Cypher que
 | rand()      | Returns a random floating point number in the range from 0 to 1; i.e. [0,1]                                              |
 | round()     | Returns the value of a number rounded to the nearest integer                                                             |
 | sign()      | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number          |
+| e()         | Returns the constant e, the base of the natural logarithm | 
+| exp()       | Returns e^a, where e is the base of the natural logarithm |
+| log()       | Returns the natural logarithm of a                        |
+| log10()     | Returns the logarithm (base 10) of a                      |
 | sqrt()      | Returns the square root of a number                                                                                      |
 | pow()       | Returns base raised to the power of exponent, base^exponent                                                              |
 | toInteger() | Converts a floating point or string value to an integer value. All other types are not allowed and will cause a type mismatch error to be returned.                                                           |

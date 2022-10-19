@@ -98,3 +98,11 @@ Schema *AddSchema
 	const char *label,            // schema label
 	SchemaType t                  // schema type (node/edge)
 );
+
+// Find or adding attribute. If there is a need to add an attribute to the graph
+// the attribute is tracked by the undo log so in case of error it will be deleted.
+Attribute_ID FindOrAddAttribute
+(
+	GraphContext *gc,             // graph context to add the attribute
+	const char *attribute         // attribute name
+);

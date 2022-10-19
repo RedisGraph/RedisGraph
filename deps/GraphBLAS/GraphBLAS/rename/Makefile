@@ -3,14 +3,14 @@
 #-------------------------------------------------------------------------------
 
 # SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 
 #-------------------------------------------------------------------------------
 
 # Linux is required, but the result (GB_rename.h) is then used for all
 # platforms.  This Makefile onstructs the GB_rename.h file from the compiled
 # ../../build/libgraphblas.so, which is then used to compile
-# libgraphblas_renamed.so with renamed symbols, to avoid conflicting with the
+# libgraphblas_matlab.so with renamed symbols, to avoid conflicting with the
 # built-in libmwgraphblas.so (v3.3.3) in MATLAB R2021a and later.
 
 # GrB_Type_new, GrB_UnaryOp_new, GrB_BinaryOp_new, GxB_SelectOp_new, and

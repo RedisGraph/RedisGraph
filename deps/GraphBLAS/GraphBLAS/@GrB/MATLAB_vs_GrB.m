@@ -44,8 +44,9 @@
 % ------------------------------------------------
 %
 %     In Octave/MATLAB, as in A = rand (3) ; X = A (1:6) extracts the
-%     first two columns of A as a 6-by-1 vector.  This is not yet
-%     supported in GraphBLAS, but may be added in the future.
+%     first two columns of A as a 6-by-1 vector.  Except for C=A(:),
+%     this is not yet supported in GraphBLAS, but will be added in
+%     the future.
 %
 % ------------------------------------------------
 %% Increasing/decreasing the size of a matrix:
@@ -264,7 +265,7 @@
 % See also GrB, sparse.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 help GrB.MATLAB_vs_GrB ;
 

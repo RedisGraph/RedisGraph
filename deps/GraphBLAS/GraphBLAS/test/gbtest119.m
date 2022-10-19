@@ -8,7 +8,7 @@ function gbtest119
 % C = GrB.eunion (C, M, accum, op, A, alpha, B, beta, desc)
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default')
 
@@ -170,6 +170,10 @@ C1 = GrB.eunion (accum, c, op, m, a, alpha, b, beta, desc) ; assert (isequal (C1
 C1 = GrB.eunion (accum, c, m, op, a, alpha, b, beta, desc) ; assert (isequal (C1, C2)) ;
 C1 = GrB.eunion (accum, c, m, a, alpha, op, b, beta, desc) ; assert (isequal (C1, C2)) ;
 C1 = GrB.eunion (accum, c, m, a, alpha, b, beta, op, desc) ; assert (isequal (C1, C2)) ;
+
+beta = GrB (beta) ;
+alpha = GrB (alpha) ;
+C1 = GrB.eunion (accum, c, m, a, alpha, op, b, beta, desc) ; assert (isequal (C1, C2)) ;
 
 fprintf ('gbtest119: all tests passed\n') ;
 

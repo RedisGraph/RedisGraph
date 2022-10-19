@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -124,7 +124,7 @@ void mexFunction
     gb_get_mxargs (nargin, pargin, USAGE, Matrix, &nmatrices, String, &nstrings,
         Cell, &ncells, &desc, &base, &kind, &fmt, &sparsity) ;
 
-    CHECK_ERROR (nmatrices < 1 || nmatrices > 4 || nstrings < 1 || ncells > 0,  
+    CHECK_ERROR (nmatrices < 1 || nmatrices > 4 || nstrings < 1 || ncells > 0,
         USAGE) ;
 
     //--------------------------------------------------------------------------

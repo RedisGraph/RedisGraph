@@ -11,7 +11,7 @@
 #include "GB_subref.h"
 
 #undef  GB_FREE_ALL
-#define GB_FREE_ALL GB_phbix_free (S) ;
+#define GB_FREE_ALL GB_phybix_free (S) ;
 
 GrB_Info GB_subassign_symbolic
 (
@@ -68,13 +68,14 @@ GrB_Info GB_subassign_symbolic
     ASSERT (GB_JUMBLED_OK (S)) ;    // GB_subref can return S as unsorted
 
     //--------------------------------------------------------------------------
-    // sort S if requested
+    // sort S and compute S->Y if requested
     //--------------------------------------------------------------------------
 
     if (S_must_not_be_jumbled)
     { 
         GB_MATRIX_WAIT_IF_JUMBLED (S) ; // but the caller requires S sorted
         ASSERT (!GB_JUMBLED (S)) ;
+        GB_OK (GB_hyper_hash_build (S, Context)) ;    // construct S->Y
     }
 
     //--------------------------------------------------------------------------
@@ -124,8 +125,8 @@ GrB_Info GB_subassign_symbolic
             int64_t p = Sx [pS] ;
             ASSERT (p >= 0 && p < GB_nnz (C)) ;
             int64_t pC_start, pC_end, pleft = 0, pright = C->nvec-1 ;
-            bool found = GB_lookup (C->h != NULL, C->h, C->p, C->vlen,
-                &pleft, pright, jC, &pC_start, &pC_end) ;
+            bool found = GB_lookup (C->h != NULL, // for debug only
+                C->h, C->p, C->vlen, &pleft, pright, jC, &pC_start, &pC_end) ;
             ASSERT (found) ;
             // If iC == I [inew] and jC == J [jnew], (or the equivaleent
             // for GB_ALL, GB_RANGE, GB_STRIDE) then A(inew,jnew) will be

@@ -12,7 +12,7 @@
     GB_FREE (&Wi, Wi_size) ;        \
     GB_FREE_WORK (&Wj, Wj_size) ;   \
     GB_FREE_WORK (&Wx, Wx_size) ;   \
-    GB_phbix_free (C) ;             \
+    GB_phybix_free (C) ;            \
 }
 
 #include "GB_concat.h"
@@ -55,7 +55,7 @@ GrB_Info GB_concat_hyper            // concatenate into a hypersparse matrix
     float bitmap_switch = C->bitmap_switch ;
     int sparsity_control = C->sparsity_control ;
 
-    GB_phbix_free (C) ;
+    GB_phybix_free (C) ;
 
     Wi = GB_MALLOC (cnz, int64_t, &Wi_size) ;               // becomes C->i
     Wj = GB_MALLOC_WORK (cnz, int64_t, &Wj_size) ;          // freed below
@@ -205,6 +205,7 @@ GrB_Info GB_concat_hyper            // concatenate into a hypersparse matrix
         cnz,                    // # of tuples
         NULL,                   // no duplicates, so dup is NUL
         ctype,                  // the type of Wx (no typecasting)
+        true,                   // burble is allowed
         Context
     )) ;
 
