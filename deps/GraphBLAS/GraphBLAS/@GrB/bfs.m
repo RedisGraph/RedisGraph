@@ -59,7 +59,7 @@ function [v, parent] = bfs (A, s, varargin)
 % See also graph/bfsearch, graph/shortestpathtree, treeplot.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 % NOTE: this is a high-level algorithm that uses GrB objects.
 
@@ -69,7 +69,7 @@ function [v, parent] = bfs (A, s, varargin)
 
 [m, n] = size (A) ;
 if (m ~= n)
-    error ('A must be square') ;
+    error ('GrB:error', 'A must be square') ;
 end
 
 % get the string options
@@ -85,7 +85,7 @@ for k = 1:nargin-2
         case { 'check' }
             check = true ;
         otherwise
-            error ('unknown option') ;
+            error ('GrB:error', 'unknown option') ;
     end
 end
 
@@ -97,7 +97,7 @@ desc_s.mask = 'structural' ;
 % determine the method to use, and convert A if necessary
 if (isequal (kind, 'undirected'))
     if (check && ~issymmetric (A))
-        error ('A must be symmetric') ;
+        error ('GrB:error', 'A must be symmetric') ;
     end
     if (GrB.isbycol (A))
         % A is stored by column but undirected, so use q*A' instead of q*A

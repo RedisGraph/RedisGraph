@@ -97,6 +97,11 @@ class testList(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set, expected_result)
 
+        # NULL list argument to LAST.
+        query = """WITH NULL as list RETURN last(list)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
         # NULL list argument to TAIL.
         query = """WITH NULL as list RETURN tail(list)"""
         actual_result = redis_graph.query(query)
@@ -143,7 +148,107 @@ class testList(FlowTestsBase):
         expected_result = [[False]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-    def test04_toBooleanList(self):
+    def test04_head_function(self):
+        # Test empty list input
+        query = """RETURN head([])"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test integer list input
+        query = """WITH [1, 2, 3] as list RETURN head(list)"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test string list input
+        query = """WITH ['a', 'b', 'c'] as list RETURN head(list)"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['a']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test NULL value in list input
+        query = """WITH [NULL, 'b', NULL] as list RETURN head(list)"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test wrong type inputs
+        try:
+            query = """RETURN head(1)"""
+            redis_graph.query(query)
+            actual_result = redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was Integer", str(e))
+
+        try:
+            query = """RETURN head('a')"""
+            redis_graph.query(query)
+            actual_result = redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was String", str(e))
+
+        try:
+            query = """RETURN head(true)"""
+            redis_graph.query(query)
+            actual_result = redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was Boolean", str(e))
+
+    def test05_last_function(self):
+        # Test empty list input
+        query = """RETURN last([])"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test integer list input
+        query = """WITH [1, 2, 3] as list RETURN last(list)"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[3]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test string list input
+        query = """WITH ['a', 'b', 'c'] as list RETURN last(list)"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['c']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test NULL value in list input
+        query = """WITH [NULL, 'b', NULL] as list RETURN last(list)"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test wrong type inputs
+        try:
+            query = """RETURN last(1)"""
+            redis_graph.query(query)
+            actual_result = redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was Integer", str(e))
+
+        try:
+            query = """RETURN last('a')"""
+            redis_graph.query(query)
+            actual_result = redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was String", str(e))
+
+        try:
+            query = """RETURN last(true)"""
+            redis_graph.query(query)
+            actual_result = redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List but was Boolean", str(e))
+
+    def test06_toBooleanList(self):
         # NULL input should return NULL
         expected_result = [None]
         query = """RETURN toBooleanList(null)"""
@@ -282,7 +387,7 @@ class testList(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("Received 0 arguments to function 'toBooleanList', expected at least 1", str(e)) 
 
-    def test05_toFloatList(self):
+    def test07_toFloatList(self):
         # NULL input should return NULL
         expected_result = [None]
         query = """RETURN toFloatList(null)"""
@@ -428,7 +533,7 @@ class testList(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("Received 0 arguments to function 'toFloatList', expected at least 1", str(e))
 
-    def test06_toIntegerList(self):
+    def test08_toIntegerList(self):
         # NULL input should return NULL
         expected_result = [None]
         query = """RETURN toIntegerList(null)"""
@@ -569,7 +674,7 @@ class testList(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("Received 0 arguments to function 'toIntegerList', expected at least 1", str(e))
 
-    def test07_toStringList(self):
+    def test09_toStringList(self):
         # NULL input should return NULL
         expected_result = [None]
         query = """RETURN toStringList(null)"""

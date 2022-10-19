@@ -3,7 +3,7 @@ function C = gb_min2 (op, A, B)
 % Implements C = min (A,B)
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 [am, an, atype] = gbsize (A) ;
 [bm, bn, btype] = gbsize (B) ;
@@ -23,7 +23,7 @@ if (a_is_scalar)
             C = gbeadd (A, op, B) ;
         else
             % since A >= 0, the result is sparse.
-            C = gbapply2 (A, op, B) ;
+            C = gbapply2 (gbfull (A), op, B) ;
         end
     end
 else
@@ -35,7 +35,7 @@ else
             C = gbeadd (A, op, B) ;
         else
             % since B >= 0, the result is sparse.
-            C = gbapply2 (A, op, B) ;
+            C = gbapply2 (A, op, gbfull (B)) ;
         end
     else
         % both A and B are matrices.  Result is sparse.

@@ -24,4 +24,7 @@
 %
 % Tim Davis, Texas A&M University,
 % http://faculty.cse.tamu.edu/davis/GraphBLAS
+%
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 

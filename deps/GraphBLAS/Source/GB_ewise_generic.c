@@ -23,7 +23,7 @@
 #undef  GB_FREE_ALL
 #define GB_FREE_ALL             \
 {                               \
-    GB_phbix_free (C) ;         \
+    GB_phybix_free (C) ;        \
 }
 
 void GB_ewise_generic       // generic ewise
@@ -186,7 +186,7 @@ void GB_ewise_generic       // generic ewise
             }
             else
             {
-                #include "GB_emult_08_meta.c"
+                #include "GB_emult_meta.c"
             }
         }
         else
@@ -210,7 +210,7 @@ void GB_ewise_generic       // generic ewise
             }
             else
             {
-                #include "GB_emult_08_meta.c"
+                #include "GB_emult_meta.c"
             }
         }
 
@@ -256,7 +256,7 @@ void GB_ewise_generic       // generic ewise
         }
         else
         { 
-            #include "GB_emult_08_meta.c"
+            #include "GB_emult_meta.c"
         }
     }
 

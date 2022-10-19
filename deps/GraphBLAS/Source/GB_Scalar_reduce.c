@@ -9,7 +9,7 @@
 
 #include "GB_reduce.h"
 
-#define GB_FREE_ALL GB_phbix_free ((GrB_Matrix) S) ;
+#define GB_FREE_ALL GB_phybix_free ((GrB_Matrix) S) ;
 
 GrB_Info GB_Scalar_reduce
 (

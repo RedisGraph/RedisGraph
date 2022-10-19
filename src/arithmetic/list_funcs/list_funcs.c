@@ -369,6 +369,20 @@ SIValue AR_HEAD(SIValue *argv, int argc, void *private_data) {
 	return retval;
 }
 
+/* Return the last member of a list.
+   "RETURN last([1, 2, 3])" will return 3 */
+SIValue AR_LAST(SIValue *argv, int argc, void *private_data) {
+	ASSERT(argc == 1);
+	SIValue value = argv[0];
+	if(SI_TYPE(value) == T_NULL) return SI_NullVal();
+	ASSERT(SI_TYPE(value) == T_ARRAY);
+	uint arrayLen = SIArray_Length(value);
+	if(arrayLen == 0) return SI_NullVal();
+	SIValue retval = SIArray_Get(value, arrayLen-1);
+	SIValue_Persist(&retval);
+	return retval;
+}
+
 /* Return a sublist of a list, which contains all the values withiout the first value.
    "RETURN tail([1, 2, 3])" will return [2, 3] */
 SIValue AR_TAIL(SIValue *argv, int argc, void *private_data) {
@@ -515,6 +529,12 @@ void Register_ListFuncs() {
 	array_append(types, T_ARRAY | T_NULL);
 	ret_type = SI_ALL;
 	func_desc = AR_FuncDescNew("head", AR_HEAD, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, T_ARRAY | T_NULL);
+	ret_type = SI_ALL;
+	func_desc = AR_FuncDescNew("last", AR_LAST, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);

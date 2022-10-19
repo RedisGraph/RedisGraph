@@ -107,6 +107,7 @@ GrB_Info GB_subassign_08n_slice
     const int64_t *restrict Ch = C->h ;
     const int64_t *restrict Cp = C->p ;
     const bool C_is_hyper = (Ch != NULL) ;
+    GB_GET_C_HYPER_HASH ;
 
     const int64_t *restrict Mp = M->p ;
     const int64_t *restrict Mh = M->h ;
@@ -128,7 +129,7 @@ GrB_Info GB_subassign_08n_slice
     int64_t Znvec ;
     const int64_t *restrict Zh_shallow = NULL ;
     int Z_sparsity = GxB_SPARSE ;
-    GB_OK (GB_emult_08_phase0 (&Znvec, &Zh_shallow, &Zh_size, NULL, NULL,
+    GB_OK (GB_emult_phase0 (&Znvec, &Zh_shallow, &Zh_size, NULL, NULL,
         &Z_to_A, &Z_to_A_size, &Z_to_M, &Z_to_M_size, &Z_sparsity, NULL, A, M,
         Context)) ;
 
@@ -197,7 +198,7 @@ GrB_Info GB_subassign_08n_slice
             // get jC, the corresponding vector of C
             //------------------------------------------------------------------
 
-            int64_t GB_LOOKUP_jC ;
+            GB_LOOKUP_VECTOR_jC (false, 0) ;
             bool cjdense = (pC_end - pC_start == Cvlen) ;
 
             //------------------------------------------------------------------

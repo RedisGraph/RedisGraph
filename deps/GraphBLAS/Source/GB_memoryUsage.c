@@ -9,7 +9,7 @@
 
 #include "GB.h"
 
-GrB_Info GB_memoryUsage     // count # allocated blocks and their sizes
+void GB_memoryUsage         // count # allocated blocks and their sizes
 (
     int64_t *nallocs,       // # of allocated memory blocks
     size_t *mem_deep,       // # of bytes in blocks owned by this matrix
@@ -30,7 +30,8 @@ GrB_Info GB_memoryUsage     // count # allocated blocks and their sizes
     // count the allocated blocks and their sizes
     //--------------------------------------------------------------------------
 
-    // a matrix contains 0 to 10 dynamically malloc'd blocks
+    // a matrix contains 0 to 10 dynamically malloc'd blocks, not including
+    // A->Y
     (*nallocs) = 0 ;
     (*mem_deep) = 0 ;
     (*mem_shallow) = 0 ;
@@ -38,7 +39,7 @@ GrB_Info GB_memoryUsage     // count # allocated blocks and their sizes
     if (A == NULL)
     { 
         #pragma omp flush
-        return (GrB_SUCCESS) ;
+        return ;
     }
 
     GB_Pending Pending = A->Pending ;
@@ -138,7 +139,27 @@ GrB_Info GB_memoryUsage     // count # allocated blocks and their sizes
         (*mem_deep) += Pending->x_size ;
     }
 
+    if (A->Y != NULL)
+    {
+        int64_t Y_nallocs = 0 ;
+        size_t Y_mem_deep = 0 ;
+        size_t Y_mem_shallow = 0 ;
+        GB_memoryUsage (&Y_nallocs, &Y_mem_deep, &Y_mem_shallow, A->Y) ;
+        if (A->Y_shallow)
+        { 
+            // all of A->Y is shallow
+            (*mem_shallow) += Y_mem_shallow + Y_mem_deep ;
+        }
+        else
+        { 
+            // A->Y itself is not shallow, but may contain shallow content
+            (*nallocs) += Y_nallocs ;
+            (*mem_deep) += Y_mem_deep ;
+            (*mem_shallow) += Y_mem_shallow ;
+        }
+    }
+
     #pragma omp flush
-    return (GrB_SUCCESS) ;
+    return ;
 }
 

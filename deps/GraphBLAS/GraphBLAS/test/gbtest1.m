@@ -2,7 +2,7 @@ function gbtest1
 %GBTEST1 test GrB
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 X = 100 * sprand (3, 4, 0.4) %#ok<*NOPRT>

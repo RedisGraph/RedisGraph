@@ -2,12 +2,12 @@ function [err, errnan] = gbtest_err (A, B)
 %GBTEST_ERR compare two matrices
 %
 % err = gbtest_err (A, B)
-%  
+%
 % Returns the norm (A-B,1), ignoring inf's and nan's.
 % Also tests the result of isinf and isnan for A and B.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 err = 0 ; %#ok<*NASGU>
 errnan = false ;
