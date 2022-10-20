@@ -1091,3 +1091,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         # integer input
         query = """RETURN properties(1)"""
         self.expect_type_error(query)
+
+        # list input
+        query = """RETURN properties([1, 2, 3])"""
+        self.expect_type_error(query)
