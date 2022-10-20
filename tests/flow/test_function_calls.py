@@ -1095,3 +1095,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         # list input
         query = """RETURN properties([1, 2, 3])"""
         self.expect_type_error(query)
+
+        # call without input arguments
+        query = """RETURN properties()"""
+        self.expect_error(query, "Received 0 arguments")

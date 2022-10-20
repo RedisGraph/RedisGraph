@@ -60,16 +60,18 @@ SIValue AR_KEYS(SIValue *argv, int argc, void *private_data) {
 
 SIValue AR_PROPERTIES(SIValue *argv, int argc, void *private_data) {
 	ASSERT(argc == 1);
-
-	if(SI_TYPE(argv[0]) == T_NULL) {
-		return SI_NullVal();
-	} else if(SI_TYPE(argv[0]) == T_MAP) {
-		return argv[0];
-	} else if(SI_TYPE(argv[0]) & SI_GRAPHENTITY) {
-		return GraphEntity_Properties(argv[0].ptrval);
-	} else {
-		return SI_NullVal();
+	switch(SI_TYPE(argv[0])) {
+		case T_NULL:
+			return SI_NullVal();
+		case T_NODE:
+		case T_EDGE:
+			return GraphEntity_Properties(argv[0].ptrval);
+		case T_MAP:
+			return argv[0];
+		default:
+			ASSERT(false);
 	}
+	return SI_NullVal();
 }
 
 void Register_MapFuncs() {
