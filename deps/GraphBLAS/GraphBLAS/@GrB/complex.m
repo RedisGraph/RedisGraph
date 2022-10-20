@@ -25,7 +25,7 @@ function C = complex (A, B)
 % GrB/uint64.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 if (nargin == 1)
 
@@ -54,7 +54,7 @@ else
     b_is_scalar = (bm == 1) && (bn == 1) ;
 
     if (gb_contains (atype, 'complex') || gb_contains (btype, 'complex'))
-        error ('inputs must be real') ;
+        error ('GrB:error', 'inputs must be real') ;
     end
 
     if (a_is_scalar)
@@ -94,7 +94,7 @@ else
         else
             % both A and B are matrices.  C is sparse or full.
             desc.kind = 'builtin' ;
-            C = gbeadd (A, '+', gbapply2 (1i, '*', B), desc) ;
+            C = gbeadd (A, '+', gbapply2 (B, '*', 1i), desc) ;
         end
     end
 

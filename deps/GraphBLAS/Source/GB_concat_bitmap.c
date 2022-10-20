@@ -13,9 +13,10 @@
 
 #define GB_FREE_ALL         \
     GB_FREE_WORKSPACE ;     \
-    GB_phbix_free (C) ;
+    GB_phybix_free (C) ;
 
 #include "GB_concat.h"
+#include "GB_unused.h"
 
 GrB_Info GB_concat_bitmap           // concatenate into a bitmap matrix
 (
@@ -51,7 +52,7 @@ GrB_Info GB_concat_bitmap           // concatenate into a bitmap matrix
     if (!GB_IS_BITMAP (C))
     { 
         // set C->iso = C_iso   OK
-        GB_phbix_free (C) ;
+        GB_phybix_free (C) ;
         GB_OK (GB_bix_alloc (C, GB_nnz_full (C), GxB_BITMAP, true, true, C_iso,
             Context)) ;
         C->plen = -1 ;
@@ -154,7 +155,7 @@ GrB_Info GB_concat_bitmap           // concatenate into a bitmap matrix
                 // C is not iso, but A might be
                 //--------------------------------------------------------------
 
-                #ifndef GBCOMPACT
+                #ifndef GBCUDA_DEV
                 if (ccode == acode)
                 {
                     // no typecasting needed

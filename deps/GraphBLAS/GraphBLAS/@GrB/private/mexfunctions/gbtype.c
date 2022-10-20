@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -43,8 +43,13 @@ void mexFunction
 
     if (class == mxSTRUCT_CLASS)
     {
-        // get the content of a GraphBLASv5_1 struct
-        mxArray *mx_type = mxGetField (pargin [0], 0, "GraphBLASv5_1") ;
+        // get the content of a GraphBLASv7_3 struct
+        mxArray *mx_type = mxGetField (pargin [0], 0, "GraphBLASv7_3") ;
+        if (mx_type == NULL)
+        { 
+            // check if it is a GraphBLASv5_1 struct
+            mx_type = mxGetField (pargin [0], 0, "GraphBLASv5_1") ;
+        }
         if (mx_type == NULL)
         { 
             // check if it is a GraphBLASv5 struct
@@ -62,7 +67,8 @@ void mexFunction
         }
         if (mx_type != NULL)
         {
-            // matrix is a GraphBLAS v3, v4, v5, or v5_1 struct; get its type
+            // the mxArray is a struct containing a GraphBLAS GrB_matrix;
+            // get its type
             c = mxDuplicateArray (mx_type) ;
         }
     }

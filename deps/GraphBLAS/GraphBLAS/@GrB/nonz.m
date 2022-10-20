@@ -53,7 +53,7 @@ function result = nonz (A, varargin)
 % See also GrB.entries, GrB/nnz, GrB/nonzeros, GrB.prune.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 builtin_sparse = false ;
 if (isobject (A))
