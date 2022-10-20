@@ -101,6 +101,11 @@ GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
         }
     }
 
+    if (op->defn != NULL)
+    { 
+        GBPR0 ("%s\n", op->defn) ;
+    }
+
     return (GrB_SUCCESS) ;
 }
 

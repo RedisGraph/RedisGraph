@@ -1,8 +1,19 @@
-function test195
+function test195 (dohack)
 %TEST195 test all variants of saxpy3
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
+
+rng ('default') ;
+
+% save current global settings, then modify them
+save = GB_mex_hack ;
+hack = save ;
+if (nargin < 1)
+    dohack = 2 ;
+end
+hack (1) = dohack ;     % modify "very_costly" in GxB_AxB_saxpy3_slice_balanced
+GB_mex_hack (hack) ;
 
 k = 3 ;
 n = 4 ;
@@ -77,6 +88,10 @@ for asparsity = [1 2 4 8]
         end
     end
 end
+
+% restore global settings
+GrB.burble (0) ;
+GB_mex_hack (save) ;
 
 fprintf ('\ntest195: all tests passed\n') ;
 

@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -49,13 +49,18 @@ void mexFunction
         {
             method = GxB_COMPRESSION_NONE ;
         }
-        else if (MATCH (method_name, "default") || MATCH (method_name, "lz4"))
+        else if (MATCH (method_name, "lz4"))
         { 
             method = GxB_COMPRESSION_LZ4 ;
         }
         else if (MATCH (method_name, "lz4hc"))
         { 
             method = GxB_COMPRESSION_LZ4HC ;
+        }
+        else if (MATCH (method_name, "default") || MATCH (method_name, "zstd"))
+        {
+            // the default is ZSTD, with level 1
+            method = GxB_COMPRESSION_ZSTD ;
         }
         else if (MATCH (method_name, "debug"))
         { 
@@ -82,11 +87,11 @@ void mexFunction
             method = GxB_COMPRESSION_LZSS ;
         }
         else if (MATCH (method_name, "intel:lz4"))
-        { 
+        {
             method = GxB_COMPRESSION_INTEL + GxB_COMPRESSION_LZ4 ;
         }
         else if (MATCH (method_name, "intel:lz4hc"))
-        { 
+        {
             method = GxB_COMPRESSION_INTEL + GxB_COMPRESSION_LZ4HC ;
         }
         else if (MATCH (method_name, "intel:zlib"))
@@ -112,10 +117,10 @@ void mexFunction
         }
         // get the method level
         if (nargin > 2)
-        {
+        { 
             level = (int) mxGetScalar (pargin [2]) ;
         }
-        if (level < 0 || level > 9) level = 0 ;
+        if (level < 0 || level > 999) level = 0 ;
         // set the descriptor
         OK (GxB_Desc_set (desc, GxB_COMPRESSION, method + level)) ;
     }
@@ -128,7 +133,7 @@ void mexFunction
     GrB_Index blob_size ;
 
     if (debug)
-    {
+    { 
         // debug GrB_Matrix_serializeSize and GrB_Matrix_serialize
         OK (GrB_Matrix_serializeSize (&blob_size, A)) ;
         blob = mxMalloc (blob_size) ;
@@ -137,7 +142,7 @@ void mexFunction
         blob = mxRealloc (blob, blob_size) ;
     }
     else
-    {
+    { 
         // use GxB_Matrix_serialize by default
         OK (GxB_Matrix_serialize (&blob, &blob_size, A, desc)) ;
     }

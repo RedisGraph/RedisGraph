@@ -46,7 +46,7 @@ OpBase *NewCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateC
 }
 
 // Prepare to create all nodes for the current Record.
-static void _CreateNodes(OpCreate *op, Record r) {
+static void _CreateNodes(OpCreate *op, Record r, GraphContext *gc) {
 	uint nodes_to_create_count = array_len(op->pending.nodes_to_create);
 	for(uint i = 0; i < nodes_to_create_count; i++) {
 		// get specified node to create
@@ -63,7 +63,7 @@ static void _CreateNodes(OpCreate *op, Record r) {
 		PropertyMap *map = op->pending.nodes_to_create[i].properties;
 		if(map != NULL) {
 			converted_attr = AttributeSet_New();
-			ConvertPropertyMap(&converted_attr, r, map, false);
+			ConvertPropertyMap(gc, &converted_attr, r, map, false);
 		}
 
 		// save node for later insertion
@@ -78,7 +78,7 @@ static void _CreateNodes(OpCreate *op, Record r) {
 }
 
 // Prepare to create all edges for the current Record.
-static void _CreateEdges(OpCreate *op, Record r) {
+static void _CreateEdges(OpCreate *op, Record r, GraphContext *gc) {
 	uint edges_to_create_count = array_len(op->pending.edges_to_create);
 	for(uint i = 0; i < edges_to_create_count; i++) {
 		// get specified edge to create
@@ -104,7 +104,7 @@ static void _CreateEdges(OpCreate *op, Record r) {
 		AttributeSet converted_attr = NULL;
 		if(map != NULL) {
 			converted_attr = AttributeSet_New();
-			ConvertPropertyMap(&converted_attr, r, map, false);
+			ConvertPropertyMap(gc, &converted_attr, r, map, false);
 		}
 
 		// save edge for later insertion
@@ -132,13 +132,14 @@ static Record CreateConsume(OpBase *opBase) {
 	// Consume mode.
 	op->records = array_new(Record, 32);
 
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	OpBase *child = NULL;
 	if(!op->op.childCount) {
 		// No child operation to call.
 		r = OpBase_CreateRecord(opBase);
 		/* Create entities. */
-		_CreateNodes(op, r);
-		_CreateEdges(op, r);
+		_CreateNodes(op, r, gc);
+		_CreateEdges(op, r, gc);
 
 		// Save record for later use.
 		array_append(op->records, r);
@@ -151,8 +152,8 @@ static Record CreateConsume(OpBase *opBase) {
 			Record_PersistScalars(r);
 
 			// create entities
-			_CreateNodes(op, r);
-			_CreateEdges(op, r);
+			_CreateNodes(op, r, gc);
+			_CreateEdges(op, r, gc);
 
 			// save record for later use
 			array_append(op->records, r);

@@ -4,8 +4,9 @@ function gbcovmake
 % See also: gbcover, gbcov_edit
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
+fprintf ('Compiling @GrB interface for mexFunction statement coverage...\n') ;
 warning ('off', 'MATLAB:MKDIR:DirectoryExists') ;
 mkdir ('tmp/@GrB/') ;
 mkdir ('tmp/@GrB/private') ;
@@ -48,7 +49,7 @@ fclose (f) ;
 % use -R2018a for the new interleaved complex API
 flags = '-g -R2018a -DGBCOV' ;
 
-need_rename = ~verLessThan ('matlab', '9.10') ;
+need_rename = true ; % was: ~verLessThan ('matlab', '9.10') ;
 
 try
     if (strncmp (computer, 'GLNX', 4))
@@ -75,14 +76,12 @@ end
 here = pwd ;
 
 if (need_rename)
-    fprintf ('R2021a and later include an earlier version of\n') ;
-    fprintf ('GraphBLAS, as a built-in library.  This interface to the\n') ;
-    fprintf ('latest version of GraphBLAS links against a library with\n') ;
-    fprintf ('with renamed symbols, to avoid a library conflict.\n') ;
+    % use renamed version for all MATLAB versions:
     flags = [flags ' -DGBRENAME=1 ' ] ;
     inc = sprintf ('-I%s/../../rename ', here) ;
-    libraries = '-L../../../../../build -L. -L/usr/local/lib -lgraphblas_renamed' ;
+    libraries = '-L../../../../../build -L. -L/usr/local/lib -lgraphblas_matlab' ;
 else
+    % no longer used:
     inc = [' '] ;
     libraries = '-L../../../../../../build -L. -L/usr/local/lib -lgraphblas' ;
 end
@@ -94,7 +93,7 @@ if (~ismac && isunix)
     flags = [ flags  ' LDFLAGS="$LDFLAGS  -fopenmp -fPIC" '] ;
 end
 
-inc = [ inc '-I. -I../util -I../../../../../../Include -I../../../../../../Source -I../../../../../../Source/Template' ] ;
+inc = [ inc '-I. -I../util -I../../../../../../Include -I../../../../../../Source -I../../../../../../Source/Template -I../../../../../../cpu_features/include ' ] ;
 
 cd tmp/@GrB/private
 try

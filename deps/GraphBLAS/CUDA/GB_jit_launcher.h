@@ -125,8 +125,8 @@ class launcher {
    * @tparam grid and block sizes 
    * @return Return launcher reference if successful
    */
-  jitify::experimental::KernelLauncher configure( dim3 grid, dim3 block){
-    return get_kernel().configure( grid, block); 
+  jitify::experimental::KernelLauncher configure( dim3 grid, dim3 block, unsigned int smem = 0, cudaStream_t stream = 0){
+    return get_kernel().configure( grid, block, smem, stream);
     //return get_kernel().configure_1d_max_occupancy( max_block_size=block.x); 
   }
 

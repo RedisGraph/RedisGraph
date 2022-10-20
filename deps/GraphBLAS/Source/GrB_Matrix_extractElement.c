@@ -197,3 +197,6 @@ GrB_Info GrB_Matrix_extractElement_Scalar   // S = A(i,j)
 #define GB_XCODE GB_UDT_code
 #include "GB_Matrix_extractElement.c"
 
+#define GB_EXTRACT_ELEMENT GxB_Matrix_isStoredElement
+#include "GB_Matrix_extractElement.c"
+
