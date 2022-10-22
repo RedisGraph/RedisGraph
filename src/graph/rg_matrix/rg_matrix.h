@@ -125,7 +125,7 @@ typedef _RG_Matrix *RG_Matrix;
 //------------------------------------------------------------------------------
 
 struct _RG_Matrix {
-	bool dirty;                         // Indicates if matrix requires sync
+	volatile bool dirty;                // Indicates if matrix requires sync
 	GrB_Matrix matrix;                  // Underlying GrB_Matrix
 	GrB_Matrix delta_plus;              // Pending additions
 	GrB_Matrix delta_minus;             // Pending deletions
@@ -156,6 +156,14 @@ void RG_Matrix_setDirty
 bool RG_Matrix_isDirty
 (
 	const RG_Matrix C
+);
+
+// checks if C is fully synced
+// a synced delta matrix does not contains any entries in
+// either its delta-plus and delta-minus internal matrices
+bool RG_Matrix_Synced
+(
+	const RG_Matrix C  // matrix to inquery
 );
 
 // locks the matrix
