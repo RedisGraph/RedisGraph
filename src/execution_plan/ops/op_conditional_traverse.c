@@ -69,18 +69,26 @@ void _traverse(OpCondTraverse *op) {
 	RG_MatrixTupleIter_attach(&op->iter, op->M);
 }
 
-OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
+OpBase *NewCondTraverseOp
+(
+	const ExecutionPlan *plan,
+	Graph *g,
+	AlgebraicExpression *ae
+) {
 	OpCondTraverse *op = rm_calloc(sizeof(OpCondTraverse), 1);
-	op->graph = g;
-	op->ae = ae;
+
+	op->ae         = ae;
+	op->graph      = g;
 	op->record_cap = BATCH_SIZE;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", CondTraverseInit,
-				CondTraverseConsume, CondTraverseReset, CondTraverseToString, CondTraverseClone, CondTraverseFree,
-				false, plan);
+	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE,
+			"Conditional Traverse", CondTraverseInit, CondTraverseConsume,
+			CondTraverseReset, CondTraverseToString, CondTraverseClone,
+			CondTraverseFree, false, plan);
 
-	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Src(ae), &op->srcNodeIdx);
+	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Src(ae),
+			&op->srcNodeIdx);
 	UNUSED(aware);
 	ASSERT(aware == true);
 
@@ -89,8 +97,8 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 
 	const char *edge = AlgebraicExpression_Edge(ae);
 	if(edge) {
-		/* This operation will populate an edge in the Record.
-		 * Prepare all necessary information for collecting matching edges. */
+		// this operation will populate an edge in the Record
+		// prepare all necessary information for collecting matching edges
 		uint edge_idx = OpBase_Modifies((OpBase *)op, edge);
 		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
 		op->edge_ctx = EdgeTraverseCtx_New(ae, e, edge_idx);
