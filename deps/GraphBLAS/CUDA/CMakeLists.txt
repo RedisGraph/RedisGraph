@@ -1,4 +1,4 @@
-cmake_minimum_required ( VERSION 3.22 )
+cmake_minimum_required ( VERSION 3.19 )
 
 # CMake build for generating googletest c++ files that can be compiled and executed in parallel.
 # Build can be customized to speed up development by allowing the targeting of specific
@@ -58,10 +58,46 @@ set_target_properties(graphblascuda PROPERTIES CUDA_ARCHITECTURES "75")
 
 target_link_libraries(graphblascuda CUDA::nvrtc CUDA::cudart_static CUDA::nvToolsExt )
 
-install ( TARGETS graphblascuda
+#-------------------------------------------------------------------------------
+# installation location
+#-------------------------------------------------------------------------------
+
+# use "cmake -DSUITESPARSE_LOCAL=1" to install only in ../lib and
+# ../include.  
+
+if ( NOT SUITESPARSE_LOCAL )
+    # install in /usr/local/lib and /usr/local/include.
+    # requires "sudo make install"
+    message ( STATUS "Installation will be system-wide (requires 'sudo make install')" )
+    install ( TARGETS graphblascuda
         LIBRARY       DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-        ARCHIVE       DESTINATION ${CMAKE_INSTALL_LIBDIR} )
+        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} )
+#   if ( BUILD_GRB_STATIC_LIBRARY )
+#       install ( TARGETS graphblas_static
+#           ARCHIVE       DESTINATION ${CMAKE_INSTALL_LIBDIR} )
+#   endif ( )
+endif ( )
+
+if ( INSIDE_SUITESPARSE )
+    # also install in SuiteSparse/lib and SuiteSparse/include;
+    # does not require "sudo make install", just "make install"
+    message ( STATUS "Installation in ../../lib and ../../include," )
+    message ( STATUS "  with 'make local ; make install'. No 'sudo' required." )
+    install ( TARGETS graphblascuda
+        LIBRARY       DESTINATION ${SUITESPARSE_LIBDIR}
+        PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR} )
+#   if ( BUILD_GRB_STATIC_LIBRARY )
+#       install ( TARGETS graphblas_static
+#           ARCHIVE       DESTINATION ${SUITESPARSE_LIBDIR} )
+#   endif ( )
+endif ( )
+
+# install ( TARGETS graphblascuda
+#         LIBRARY       DESTINATION ${CMAKE_INSTALL_LIBDIR}
+#         PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+#         ARCHIVE       DESTINATION ${CMAKE_INSTALL_LIBDIR} )
+
+#-------------------------------------------------------------------------------
 
 # 1. Execute enumify/stringify/jitify logic to compile ptx kernels and compile/link w/ relevant *.cu files.
 

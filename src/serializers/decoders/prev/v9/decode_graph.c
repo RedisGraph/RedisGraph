@@ -181,9 +181,10 @@ GraphContext *RdbLoadGraphContext_v9(RedisModuleIO *rdb) {
 		// set the node label matrix
 		Serializer_Graph_SetNodeLabels(g);
 
+		Graph_ApplyAllPending(g, true);
+
 		// revert to default synchronization behavior
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
-		Graph_ApplyAllPending(g, true);
 
 		uint node_schemas_count = array_len(gc->node_schemas);
 		// update the node statistics
