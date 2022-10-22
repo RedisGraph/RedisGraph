@@ -52,6 +52,13 @@ class testEntityUpdate(FlowTestsBase):
         self.env.assertEqual(result.properties_set, 0)
         self.env.assertEqual(result.properties_removed, 1)
 
+        # remove the 'x' attribute using MERGE...ON MATCH SET
+        result = graph.query("CREATE (n:N {x:5})")
+        result = graph.query("MERGE (n:N) ON MATCH SET n.x=null RETURN n")
+        self.env.assertEqual(result.properties_set, 0)
+        self.env.assertEqual(result.properties_removed, 1)
+        result = graph.query("MATCH (n:N) DELETE(n)")
+
     def test05_update_from_projection(self):
         result = graph.query("MATCH (n) UNWIND ['Calgary'] as city_name SET n.name = city_name RETURN n.v, n.name")
         expected_result = [[1, 'Calgary']]
