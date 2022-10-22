@@ -19,7 +19,7 @@
 # To select a specific BLAS library, edit this file and uncomment one of:
 # set ( BLA_VENDOR ... )
 
-cmake_minimum_required ( VERSION 3.22 )
+cmake_minimum_required ( VERSION 3.19 )
 
 message ( STATUS "Source:        ${CMAKE_SOURCE_DIR} ")
 message ( STATUS "Build:         ${CMAKE_BINARY_DIR} ")

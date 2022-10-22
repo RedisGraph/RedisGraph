@@ -96,7 +96,7 @@ public:
     filecache.getFile (mxm_factory_) ;
 
     uint64_t sr_code = mxm_factory_.sr_code  ;
-    int mask_ecode = RSHIFT (sr_code, 20, 4) ;
+    int mask_ecode = GB_RSHIFT (sr_code, 20, 4) ;
     bool mask_no_type = (mask_ecode < 4) ;
     auto sr_code_str = std::to_string(sr_code) ;
     std::vector<std::string> template_types = {
@@ -177,7 +177,7 @@ public:
     filecache.getFile (mxm_factory_) ;
 
     uint64_t sr_code = mxm_factory_.sr_code ;
-    int mask_ecode = RSHIFT (sr_code, 20, 4) ;
+    int mask_ecode = GB_RSHIFT (sr_code, 20, 4) ;
     bool mask_no_type = (mask_ecode < 4) ;
     auto sr_code_str = std::to_string(sr_code) ;
     std::vector<std::string> template_types = {
@@ -657,8 +657,8 @@ private:
     int work_per_thread;
 
     // 0:hyper, 1:sparse, 2:bitmap, 3:full
-    int asparsity   = RSHIFT (sr_code,  2, 2) ;
-    int bsparsity   = RSHIFT (sr_code,  0, 2) ;
+    int asparsity   = GB_RSHIFT (sr_code,  2, 2) ;
+    int bsparsity   = GB_RSHIFT (sr_code,  0, 2) ;
 
     if (asparsity <= 1 && bsparsity <= 1)
     {
