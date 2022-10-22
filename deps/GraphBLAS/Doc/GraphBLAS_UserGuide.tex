@@ -15455,7 +15455,7 @@ GraphBLAS folder.
 
 \begin{itemize}
 
-\item Version 7.3.0 (Oct 8, 2022)
+\item Version 7.3.0 (Oct 14, 2022)
 
     \begin{packed_itemize}
     \item \verb'GrB_Matrix': changes to the internal data structure
@@ -15467,6 +15467,8 @@ GraphBLAS folder.
             to pack/unpack the hyper-hash
     \item \verb'@GrB' MATLAB/Octave interface: changed license to Apache-2.0.
     \item MATLAB library: renamed to \verb'libgraphblas_matlab.so'
+    \item performance: faster \verb'C=A*B' when using a single thread and
+        \verb'B' is a sparse vector with many entries.
     \end{packed_itemize}
 
 \item Version 7.2.0 (Aug 8, 2022)

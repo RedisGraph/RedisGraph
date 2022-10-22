@@ -9,6 +9,7 @@
 #pragma once
 
 #include "stddef.h"
+#include <cuda.h>
 //#include <rmm/cuda_stream.hpp>
 //#include <rmm/device_buffer.hpp>
 //#include <rmm/detail/aligned.hpp>
@@ -23,6 +24,8 @@
 #include <rmm/mr/device/managed_memory_resource.hpp>
 #include <rmm/mr/device/pool_memory_resource.hpp>
 #include <rmm/mr/device/limiting_resource_adaptor.hpp>
+#include <rmm/cuda_stream_view.hpp>
+#include <rmm/cuda_stream_pool.hpp>
 #include <cstdint>
 #include <memory>
 #include <memory_resource>
@@ -41,4 +44,7 @@ typedef rmm::mr::pool_memory_resource<device_mr> device_pool_mr;
 typedef rmm::mr::pool_memory_resource<managed_mr> managed_pool_mr;
 
 typedef std::unordered_map< std::size_t, std::size_t> alloc_map;
+
+typedef rmm::cuda_stream_pool cuda_stream_pool;
+typedef rmm::cuda_stream_view cuda_stream_view;
 
