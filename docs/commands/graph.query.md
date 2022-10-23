@@ -806,7 +806,7 @@ This section contains information on all supported functions from the Cypher que
 
 * [Predicate functions](#predicate-functions)
 * [Scalar functions](#scalar-functions)
-* [Aggregation functions](#aggregation-functions)
+* [Aggregating functions](#aggregating-functions)
 * [List functions](#list-functions)
 * [Mathematical operators](#mathematical-operators)
 * [Mathematical functions](#mathematical-functions)
@@ -844,7 +844,7 @@ This section contains information on all supported functions from the Cypher que
 | list comprehensions    | [See documentation](#list-comprehensions)                                   |
 | pattern comprehensions | [See documentation](#pattern-comprehensions)                                |
 
-## Aggregation functions
+## Aggregating functions
 
 |Function         | Description|
 | --------------- |:-----------|
@@ -856,7 +856,8 @@ This section contains information on all supported functions from the Cypher que
 |sum()            | Returns the sum of a set of numeric values                                                   |
 |percentileDisc() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0    |
 |percentileCont() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0    |
-|stDev()          | Returns the standard deviation for the given value over a group                              |
+|stDev()          | Returns the standard deviation for the given value over a group over a sample                |
+|stDevP()         | Returns the standard deviation for the given value over a group over an entire population    |
 
 ## List functions
 
