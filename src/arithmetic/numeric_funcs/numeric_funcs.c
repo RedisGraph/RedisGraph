@@ -106,6 +106,7 @@ SIValue AR_SIGN(SIValue *argv, int argc, void *private_data) {
 	return SI_LongVal(sign);
 }
 
+// tries to convert input to integer
 SIValue AR_TOINTEGER(SIValue *argv, int argc, void *private_data) {
 	SIValue arg = argv[0];
 	char *sEnd = NULL;
@@ -130,6 +131,7 @@ SIValue AR_TOINTEGER(SIValue *argv, int argc, void *private_data) {
 	}
 }
 
+// tries to convert input to float
 SIValue AR_TOFLOAT(SIValue *argv, int argc, void *private_data) {
 	SIValue arg = argv[0];
 	char *sEnd = NULL;
