@@ -832,15 +832,15 @@ This section contains information on all supported functions from the Cypher que
 
 | Function               | Description                                                                 |
 | -------                | :-----------                                                                |
+| coalesce()             | Returns the first non-null argument                                         |
 | endNode()              | Returns the destination node of a relationship                              |
 | id()                   | Returns the internal ID of a relationship or node (which is not immutable.) |
 | hasLabels()            | Returns true if input node contains all specified labels, otherwise false   |
-| keys()                 | Returns the array of keys contained in the given map, node, or edge         |
 | labels()               | Returns a string representation of the label of a node                      |
 | properties()           | Returns a map containing all the properties in the given map, node, or edge. In case of map, it is returned without any change |
 | startNode()            | Returns the source node of a relationship                                   |
 | timestamp()            | Returns the amount of milliseconds since epoch                              |
-| type()                 | Returns a string representation of the type of a relation                   |
+| type()                 | Returns a string representation of the type of a relationship type          |
 | list comprehensions    | [See documentation](#list-comprehensions)                                   |
 | pattern comprehensions | [See documentation](#pattern-comprehensions)                                |
 
@@ -864,6 +864,7 @@ This section contains information on all supported functions from the Cypher que
 | Function            | Description                                                                              |
 | ------------------- | :-----------                                                                             |
 | head()              | Returns the first member of a list                                                       |
+| keys()              | Returns a list of keys containing all properties names in a given map, node, or edge     |
 | last()              | Returns the last member of a list                                                        |
 | range()             | Creates a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval. |
 | size()              | Returns a list size                                                                      |
@@ -925,13 +926,13 @@ This section contains information on all supported functions from the Cypher que
 | reverse()   | Returns a string in which the order of all characters in the original string are reversed       |
 | right()     | Returns a string containing the specified number of rightmost characters of the original string |
 | rTrim()     | Returns the original string with trailing whitespace removed                                    |
+| split()     | Returns a list of strings from splitting a string by a given delimiter                          |
 | substring() | Returns a substring of the original string, beginning with a 0-based index start and length     |
 | toLower()   | Returns the original string in lowercase                                                        |
 | toJSON()    | Returns a [JSON representation](#json-format) of a value                                        |
 | toUpper()   | Returns the original string in uppercase                                                        |
 | trim()      | Returns the original string with leading and trailing whitespace removed                        |
 | size()      | Returns a string length                                                                         |
-| split()     | Returns a list of strings from splitting a string by a given delimiter                          |
 
 ## Point functions
 
