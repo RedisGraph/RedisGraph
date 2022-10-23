@@ -174,7 +174,6 @@ static void _AR_EXP_ValidateArgsCount
 		// Set the query-level error.
 		ErrorCtx_SetError("Received %d arguments to function '%s', expected at most %d", argc,
 						  fdesc->name, fdesc->max_argc);
-		return;
 	}
 }
 
