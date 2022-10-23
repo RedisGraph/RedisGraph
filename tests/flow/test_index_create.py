@@ -185,3 +185,89 @@ class testIndexCreationFlow(FlowTestsBase):
                 redis_con.execute_command("GRAPH.DELETE", f"x{graph_id}")
         pool = Pool(nodes=10)
         pool.map(create_drop_index, range(1, 100))
+
+    def test06_syntax_error_index_creation(self):
+        # create index on invalid property name
+        try:
+            redis_graph.query("CREATE INDEX FOR (p:Person) ON (p.m.n, p.p.q)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Invalid input '.': expected ',' or ')'", str(e))
+
+        # create index on invalid identifier
+        try:
+            redis_graph.query("CREATE INDEX FOR (p:Person) ON (1.b)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Invalid input '1': expected an identifier", str(e))
+
+        # create index on invalid property name: number
+        try:
+            redis_graph.query("CREATE INDEX FOR (p:Person) ON (b.1)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Invalid input '1': expected a property name", str(e))
+
+        # create index without label
+        try:
+            redis_graph.query("CREATE INDEX FOR (Person) ON (surname)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Invalid input ')': expected a label", str(e))
+
+        # create index without property name
+        try:
+            redis_graph.query("CREATE INDEX FOR (p:Person) ON (surname)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Invalid input ')': expected '.'", str(e))
+
+        # create index without identifier
+        try:
+            redis_graph.query("CREATE INDEX FOR (p:Person) ON ()")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Invalid input ')': expected an identifier", str(e))
+
+        # create index for relationship on invalid property name
+        try:
+            redis_graph.query("CREATE INDEX FOR ()-[n:T]-() ON (n.p.q)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Invalid input '.': expected ',' or ')'", str(e))
+
+        # create index for relationship on invalid identifier
+        try:
+            redis_graph.query("CREATE INDEX FOR ()-[n:T]-() ON (1.b)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Invalid input '1': expected an identifier", str(e))
+
+    def test07_index_creation_undefined_identifier(self):   
+        # create index on undefined identifier
+        try:
+            redis_graph.query("CREATE INDEX FOR (p:Person) ON (a.b)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("a not defined", str(e))
+
+        # create index on undefined identifier after defined identifier
+        try:
+            redis_graph.query("CREATE INDEX FOR (p:Person) ON (p.x, a.b)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("a not defined", str(e))
+        
+        # create index for relationship on undefined identifier
+        try:
+            redis_graph.query("CREATE INDEX FOR ()-[n:T]-() ON (a.b)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("a not defined", str(e))
+
+        # create index for relationship on undefined identifier after defined identifier
+        try:
+            redis_graph.query("CREATE INDEX FOR ()-[n:T]-() ON (p.x, a.b)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("a not defined", str(e))
