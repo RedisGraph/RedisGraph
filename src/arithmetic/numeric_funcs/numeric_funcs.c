@@ -270,9 +270,6 @@ SIValue AR_COT(SIValue *argv, int argc, void *private_data) {
 	
 	double value = SI_GET_NUMERIC(arg);
 
-	// return NULL if input is 0
-	if(value == 0) return SI_NullVal();
-
 	// return cot(x) of input
 	return SI_DoubleVal(cos(value)/sin(value));
 }
