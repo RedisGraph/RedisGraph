@@ -43,7 +43,7 @@ void GB_macrofy_bytes
     fprintf (fp,
         "  \\\n"
         "        } ;                                                 \\\n"
-        "        memcpy (z, bytes, %d) ;                             \\\n"
+        "        memcpy (&z, bytes, %d) ;                            \\\n"
         "    }\n",
         (int) nbytes) ;
 }
