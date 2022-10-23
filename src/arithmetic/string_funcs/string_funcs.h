@@ -9,3 +9,11 @@
 #include "../../value.h"
 
 void Register_StringFuncs();
+
+// tries to convert input to string
+SIValue AR_TOSTRING
+(
+    SIValue *argv,      // arguments
+    int argc,           // number of arguments
+    void *private_data  // private context
+);
