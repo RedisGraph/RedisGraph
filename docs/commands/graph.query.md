@@ -835,6 +835,7 @@ This section contains information on all supported functions from the Cypher que
 | hasLabels()            | Returns true if input node contains all specified labels, otherwise false.  |
 | keys()                 | Returns the array of keys contained in the given map, node, or edge.        |
 | labels()               | Returns a string representation of the label of a node.                     |
+| properties()           | Returns a map containing all the properties in the given map, node, or edge. In case of map, it is returned without any change. | 
 | startNode()            | Returns the source node of a relationship.                                  |
 | timestamp()            | Returns the amount of milliseconds since epoch.                         |
 | type()                 | Returns a string representation of the type of a relation.                  |
@@ -866,6 +867,10 @@ This section contains information on all supported functions from the Cypher que
 | size()               | Returns a list size                                                                      |
 | tail()               | Returns a sublist of a list, which contains all the values without the first value       |
 | [reduce()](#reduce)  | Returns a scalar produced by evaluating an expression against each list member           |
+| toBooleanList() | Converts a list of values and returns a list of boolean values. Each item in list is converted using toBooleanOrNull() |
+| toFloatList()   | Converts a list of values and returns a list of floating point values. Each item in list is converted using toFloatOrNull() |
+| toIntegerList() | Converts a list of values and returns a list of integer values. Each item in list is converted using toIntegerOrNull() |
+| toStringList()  | Converts a list of values and returns a list of string values. Each item in list is converted using toStringOrNull()   |
 
 ## Mathematical functions
 
@@ -893,6 +898,20 @@ This section contains information on all supported functions from the Cypher que
 | toIntegerOrNull() | Converts a floating point or string value to an integer value. All other types will return `null`                                                        | 
 | toFloat()   | Converts an integer or string value to a floating point value. All other types are not allowed and will cause a type mismatch error to be returned.                                                         |
 | toFloatOrNull()   | Converts an integer or string value to a floating point value. All other types will return `null`                                                        |
+| sin()             |  Returns the sine of a                  |
+| cos()             |  Returns the cosine of a                |
+| tan()             |  Returns the tangent of a               |
+| cot()             |  Returns the cotangent of a             |
+| asin()            |  Returns the arcsine of a in radians    |
+| acos()            |  Returns the arccosine of a in radians  |
+| atan()            |  Returns the arctangent of a in radians |
+| atan2()           |  Returns the arctangent of a coordinate |
+| degrees()         |  Converts radians to degrees            |
+| radians()         |  Converts degrees to radians            |
+| pi()              |  Returns the constant pi                |
+| haversin()        |  Returns the half the versine of a      |
+
+
 
 ## String functions
 

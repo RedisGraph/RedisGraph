@@ -10,3 +10,18 @@
 
 void Register_NumericFuncs();
 
+// tries to convert input to float
+SIValue AR_TOFLOAT
+(
+    SIValue *argv,      // arguments
+    int argc,           // number of arguments
+    void *private_data  // private context
+);
+
+// tries to convert input to integer
+SIValue AR_TOINTEGER
+(
+    SIValue *argv,      // arguments
+    int argc,           // number of arguments
+    void *private_data  // private context
+);

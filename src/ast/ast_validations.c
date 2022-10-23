@@ -1346,6 +1346,19 @@ static void _AST_Pattern_GetDefinedIdentifiers(const cypher_astnode_t *pattern, 
 	}
 }
 
+static void _AST_CreateIndex_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identifiers) {
+	uint child_count = cypher_astnode_nchildren(node);
+	for(uint c = 0; c < child_count; c ++) {
+		const cypher_astnode_t *child = cypher_astnode_get_child(node, c);
+		cypher_astnode_type_t type = cypher_astnode_type(child);
+		if(type == CYPHER_AST_IDENTIFIER) {
+			const char *identifier = cypher_ast_identifier_get_name(child);
+			raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
+			return;
+		}
+	}
+}
+
 static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identifiers) {
 	if(!node) return;
 	cypher_astnode_type_t type = cypher_astnode_type(node);
@@ -1383,7 +1396,12 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identi
 		raxInsert(identifiers, (unsigned char *)unwind_alias, strlen(unwind_alias), NULL, NULL);
 	} else if(type == CYPHER_AST_CALL) {
 		_AST_RegisterCallOutputs(node, identifiers);
-	} else {
+	} else if(type == CYPHER_AST_CREATE_NODE_PROPS_INDEX || 
+		type == CYPHER_AST_CREATE_PATTERN_PROPS_INDEX ||
+		type == CYPHER_AST_DROP_PROPS_INDEX) {
+		_AST_CreateIndex_GetDefinedIdentifiers(node, identifiers);
+	}
+	else {
 		uint child_count = cypher_astnode_nchildren(node);
 		for(uint c = 0; c < child_count; c ++) {
 			const cypher_astnode_t *child = cypher_astnode_get_child(node, c);
@@ -1835,14 +1853,18 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 	// Verify that the query does not contain any expressions not in the
 	// RedisGraph support whitelist
 	if(CypherWhitelist_ValidateQuery(root) != AST_VALID) return AST_INVALID;
-
+	
+	AST_Validation res;
 	const cypher_astnode_t *body = cypher_ast_statement_get_body(root);
 	cypher_astnode_type_t body_type = cypher_astnode_type(body);
 	if(body_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX    ||
 	   body_type == CYPHER_AST_CREATE_PATTERN_PROPS_INDEX ||
 	   body_type == CYPHER_AST_DROP_PROPS_INDEX) {
-		// Index operation; validations are handled elsewhere.
-		return AST_VALID;
+		// Index operation
+		rax *defined_aliases = raxNew();
+		res = _Validate_Aliases_DefinedInClause(body, defined_aliases);
+		raxFree(defined_aliases);
+		return res;
 	}
 
 	// validate positions of allShortestPaths
@@ -1856,7 +1878,6 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 	mock_ast.root = body;
 
 	// Check for invalid queries not captured by libcypher-parser
-	AST_Validation res;
 	if(AST_ContainsClause(&mock_ast, CYPHER_AST_UNION)) {
 		// If the query contains a UNION clause, it has nested scopes that should be checked separately.
 		res = _AST_ValidateUnionQuery(&mock_ast);
