@@ -75,6 +75,13 @@ SIValue GraphEntity_Keys
 	const GraphEntity *e
 );
 
+// returns an SIArray of all keys and values in graph entity properties. 
+// Keys at even positions, Values at odd position of the array
+SIValue GraphEntity_Properties
+(
+	const GraphEntity *e
+);
+
 // prints the graph entity into a buffer, returns what is the string length
 // buffer can be re-allocated if needed
 void GraphEntity_ToString
