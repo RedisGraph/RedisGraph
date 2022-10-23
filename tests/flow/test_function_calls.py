@@ -1060,7 +1060,48 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """RETURN exp(True)"""
         self.expect_type_error(query)
 
-    def test38_sin(self):
+    def test38_properties(self):
+        # null input
+        query = """RETURN properties(null)"""
+        query_result = graph.query(query)
+        expected_result = [[None]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        # map input
+        query = """WITH {val: 5, nested: {nested_val: 'nested_str'}} AS map RETURN properties(map)"""
+        query_result = graph.query(query)
+        expected_result = [[{'val': 5, 'nested': {'nested_val': 'nested_str'}}]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        # node input
+        query = """CREATE (p:Person {name: 'Alexa', city: 'Buga', age: 44}) RETURN properties(p)"""
+        query_result = graph.query(query)
+        expected_result = [[{'name': 'Alexa', 'city': 'Buga', 'age': 44}]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        # edge input
+        query = """CREATE (a:X)-[r:R {name:'R1', len:5}]->(b:Y) RETURN properties(r)"""
+        query_result = graph.query(query)
+        expected_result = [[{'name': 'R1', 'len': 5}]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        # string input
+        query = """RETURN properties('a')"""
+        self.expect_type_error(query)
+
+        # integer input
+        query = """RETURN properties(1)"""
+        self.expect_type_error(query)
+
+        # list input
+        query = """RETURN properties([1, 2, 3])"""
+        self.expect_type_error(query)
+
+        # call without input arguments
+        query = """RETURN properties()"""
+        self.expect_error(query, "Received 0 arguments")
+
+    def test39_sin(self):
         # sin(0)
         query = """RETURN sin(0)"""
         actual_result = graph.query(query)
@@ -1089,7 +1130,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """RETURN sin(2,3)"""
         self.expect_error(query, "Received 2 arguments to function 'sin', expected at most 1")
 
-    def test39_cos(self):
+    def test40_cos(self):
         # cos(0)
         query = """RETURN cos(0)"""
         actual_result = graph.query(query)
@@ -1118,7 +1159,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """RETURN cos(2,3)"""
         self.expect_error(query, "Received 2 arguments to function 'cos', expected at most 1")
 
-    def test40_tan(self):
+    def test41_tan(self):
         # tan(0)
         query = """RETURN tan(0)"""
         actual_result = graph.query(query)
@@ -1147,7 +1188,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """RETURN tan(2,3)"""
         self.expect_error(query, "Received 2 arguments to function 'tan', expected at most 1")
 
-    def test41_cot(self):
+    def test42_cot(self):
         # cot(0)
         query = """RETURN cot(0)"""
         actual_result = graph.query(query)
@@ -1176,7 +1217,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """RETURN cot(2,3)"""
         self.expect_error(query, "Received 2 arguments to function 'cot', expected at most 1")
 
-    def test42_asin(self):
+    def test43_asin(self):
         # asin(0)
         query = """RETURN asin(0)"""
         actual_result = graph.query(query)
@@ -1215,7 +1256,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """RETURN asin(2,3)"""
         self.expect_error(query, "Received 2 arguments to function 'asin', expected at most 1")
 
-    def test43_acos(self):
+    def test44_acos(self):
         # acos(0)
         query = """RETURN acos(0)"""
         actual_result = graph.query(query)
