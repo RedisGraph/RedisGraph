@@ -33,8 +33,21 @@
 #ifndef RMM_WRAP_H
 #define RMM_WRAP_H
 
+#include <cuda_runtime.h>
 #include <stddef.h>
 #include <stdio.h>
+
+#define RMM_WRAP_CHECK_CUDA(call)                                         \
+  do {                                                                    \
+    cudaError_t err = call;                                               \
+    if (err != cudaSuccess) {                                             \
+      const char* str = cudaGetErrorName( err);                           \
+      std::cout << "(CUDA runtime) returned " << str;                     \
+      std::cout << " (" << __FILE__ << ":" << __LINE__ << ":" << __func__ \
+                << "())" << std::endl;                                    \
+    }                                                                     \
+  } while (0)
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -55,7 +68,8 @@ int rmm_wrap_initialize
 (
     RMM_MODE mode,
     size_t init_pool_size,
-    size_t max_pool_size
+    size_t max_pool_size,
+    size_t stream_pool_size
 ) ;
 
 // destroy an RMM resource
@@ -78,6 +92,10 @@ void *rmm_wrap_malloc (size_t size) ;
 void *rmm_wrap_calloc (size_t n, size_t size) ;
 void *rmm_wrap_realloc (void *p, size_t newsize) ;
 void  rmm_wrap_free (void *p) ;
+
+cudaStream_t get_next_stream_from_pool();
+cudaStream_t get_stream_from_pool(size_t stream_id);
+cudaStream_t get_main_stream();
 
 #ifdef __cplusplus
 }

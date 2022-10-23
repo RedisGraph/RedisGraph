@@ -21,6 +21,7 @@ typedef struct {
 	rax *unique_entities;      // A map of each unique pending set of creations.
 	XXH64_state_t *hash_state; // Reusable hash state for determining creation uniqueness.
 	PendingCreations pending;  // Container struct for all graph changes to be committed.
+	GraphContext *gc;
 } OpMergeCreate;
 
 OpBase *NewMergeCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateCtx *edges);
