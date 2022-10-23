@@ -1240,7 +1240,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """RETURN asin(-1.21)"""
         actual_result = graph.query(query)
         self.env.assertTrue(isnan(actual_result.result_set[0][0]))
-        
+
         # acos(null)
         query = """RETURN acos(null)"""
         actual_result = graph.query(query)
@@ -1260,15 +1260,15 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.0, 0.0001)
 
-    #     # atan(1.5)
-    #     query = """RETURN atan(1.5)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.997494986604054, 0.0001)
+        # atan(6.95)
+        query = """RETURN atan(6.95)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 1.42789222318575, 0.0001)
 
-    #     # atan(1.5)
-    #     query = """RETURN atan(-2.45)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], -0.637764702134504, 0.0001)
+        # atan(-7.43)
+        query = """RETURN atan(-7.43)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], -1.43701077132559, 0.0001)
 
         # atan(null)
         query = """RETURN atan(null)"""
@@ -1289,15 +1289,15 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.0, 0.0001)
 
-    #     # atan2(1.5)
-    #     query = """RETURN atan2(1.5)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.997494986604054, 0.0001)
+        # atan2(1.7, -2.3)
+        query = """RETURN atan2(1.7, -2.3)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 2.50508443780184, 0.0001)
 
-    #     # atan2(1.5)
-    #     query = """RETURN atan2(-2.45)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], -0.637764702134504, 0.0001)
+        # atan2(-3.2, 7.3)
+        query = """RETURN atan2(-3.2, 7.3)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], -0.413128832278401, 0.0001)
 
         # atan2(1,null)
         query = """RETURN atan2(1,null)"""
@@ -1328,15 +1328,15 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.0, 0.0001)
 
-    #     # degrees(1.5)
-    #     query = """RETURN degrees(1.5)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.997494986604054, 0.0001)
+        # degrees(45.67)
+        query = """RETURN degrees(45.67)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 2616.69825036247, 0.0001)
 
-    #     # degrees(1.5)
-    #     query = """RETURN degrees(-2.45)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], -0.637764702134504, 0.0001)
+        # degrees(-44.56)
+        query = """RETURN degrees(-44.56)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], -2553.09993510295, 0.0001)
 
         # degrees(null)
         query = """RETURN degrees(null)"""
@@ -1357,15 +1357,15 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.0, 0.0001)
 
-    #     # radians(1.5)
-    #     query = """RETURN radians(1.5)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.997494986604054, 0.0001)
+        # radians(65.78)
+        query = """RETURN radians(65.78)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 1.14807758196187, 0.0001)
 
-    #     # radians(1.5)
-    #     query = """RETURN radians(-2.45)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], -0.637764702134504, 0.0001)
+        # radians(-99.33)
+        query = """RETURN radians(-99.33)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], -1.73363554600597, 0.0001)
 
         # radians(null)
         query = """RETURN radians(null)"""
@@ -1397,15 +1397,15 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.0, 0.0001)
 
-    #     # haversin(1.5)
-    #     query = """RETURN haversin(1.5)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.997494986604054, 0.0001)
+        # haversin(6.59)
+        query = """RETURN haversin(6.59)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.0233497787816533, 0.0001)
 
-    #     # haversin(1.5)
-    #     query = """RETURN haversin(-2.45)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], -0.637764702134504, 0.0001)
+        # haversin(-78.53)
+        query = """RETURN haversin(-78.53)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.999975910061948, 0.0001)
 
         # haversin(null)
         query = """RETURN haversin(null)"""
