@@ -1150,7 +1150,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         # cot(0)
         query = """RETURN cot(0)"""
         actual_result = graph.query(query)
-        self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.0, 0.0001)
+        self.env.assertEqual(actual_result.result_set[0][0], "inf")
 
         # cot(5.77)
         query = """RETURN cot(5.77)"""
@@ -1175,63 +1175,83 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """RETURN cot(2,3)"""
         self.expect_error(query, "Received 2 arguments to function 'cot', expected at most 1")
 
-    # def test42_asin(self):
-    #     # asin(0)
-    #     query = """RETURN asin(0)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.0, 0.0001)
+    def test42_asin(self):
+        # asin(0)
+        query = """RETURN asin(0)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.0, 0.0001)
 
-    #     # asin(1.5)
-    #     query = """RETURN asin(1.5)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.997494986604054, 0.0001)
+        # asin(0.89)
+        query = """RETURN asin(0.89)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 1.09734516952283, 0.0001)
 
-    #     # asin(1.5)
-    #     query = """RETURN asin(-2.45)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], -0.637764702134504, 0.0001)
+        # asin(-0.38)
+        query = """RETURN asin(-0.38)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], -0.389796296474261, 0.0001)
 
-    #     # asin(null)
-    #     query = """RETURN asin(null)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertIsNone(actual_result.result_set[0][0])
+        # asin(1.3)
+        query = """RETURN asin(1.3)"""
+        actual_result = graph.query(query)
+        self.env.assertEqual(actual_result.result_set[0][0], "nan")
 
-    #     # asin(True)
-    #     query = """RETURN asin(True)"""
-    #     self.expect_type_error(query)
+        # asin(-1.1)
+        query = """RETURN asin(-1.1)"""
+        actual_result = graph.query(query)
+        self.env.assertEqual(actual_result.result_set[0][0], "nan")
 
-    #     # asin(2,3)
-    #     query = """RETURN asin(2,3)"""
-    #     self.expect_error(query, "Received 2 arguments to function 'asin', expected at most 1")
+        # asin(null)
+        query = """RETURN asin(null)"""
+        actual_result = graph.query(query)
+        self.env.assertIsNone(actual_result.result_set[0][0])
 
-    # def test43_acos(self):
-    #     # acos(0)
-    #     query = """RETURN acos(0)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.0, 0.0001)
+        # asin(True)
+        query = """RETURN asin(True)"""
+        self.expect_type_error(query)
 
-    #     # acos(1.5)
-    #     query = """RETURN acos(1.5)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.997494986604054, 0.0001)
+        # asin(2,3)
+        query = """RETURN asin(2,3)"""
+        self.expect_error(query, "Received 2 arguments to function 'asin', expected at most 1")
 
-    #     # acos(1.5)
-    #     query = """RETURN acos(-2.45)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], -0.637764702134504, 0.0001)
+    def test43_acos(self):
+        # acos(0)
+        query = """RETURN acos(0)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 1.5707963267949, 0.0001)
 
-    #     # acos(null)
-    #     query = """RETURN acos(null)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertIsNone(actual_result.result_set[0][0])
+        # acos(0.45)
+        query = """RETURN acos(0.45)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 1.1040309877476, 0.0001)
 
-    #     # acos(True)
-    #     query = """RETURN acos(True)"""
-    #     self.expect_type_error(query)
+        # acos(-0.39)
+        query = """RETURN acos(-0.39)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 1.97142791949627, 0.0001)
 
-    #     # acos(2,3)
-    #     query = """RETURN acos(2,3)"""
-    #     self.expect_error(query, "Received 2 arguments to function 'acos', expected at most 1")
+        # asin(1.12)
+        query = """RETURN asin(1.12)"""
+        actual_result = graph.query(query)
+        self.env.assertEqual(actual_result.result_set[0][0], "nan")
+
+        # asin(-1.21)
+        query = """RETURN asin(-1.21)"""
+        actual_result = graph.query(query)
+        self.env.assertEqual(actual_result.result_set[0][0], "nan")
+
+        # acos(null)
+        query = """RETURN acos(null)"""
+        actual_result = graph.query(query)
+        self.env.assertIsNone(actual_result.result_set[0][0])
+
+        # acos(True)
+        query = """RETURN acos(True)"""
+        self.expect_type_error(query)
+
+        # acos(2,3)
+        query = """RETURN acos(2,3)"""
+        self.expect_error(query, "Received 2 arguments to function 'acos', expected at most 1")
     
     # def test45_atan(self):
     #     # atan(0)

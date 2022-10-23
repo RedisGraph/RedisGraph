@@ -282,9 +282,6 @@ SIValue AR_ASIN(SIValue *argv, int argc, void *private_data) {
 	
 	double value = SI_GET_NUMERIC(arg);
 	
-	// return NULL if |input|>1
-	if(value < -1 || value > 1) return SI_NullVal();
-
 	// return asin(x) of input
 	return SI_DoubleVal(asin(value));
 }
