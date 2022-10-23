@@ -1,3 +1,4 @@
+from cmath import isinf, isnan
 from common import *
 import json
 
@@ -1150,7 +1151,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         # cot(0)
         query = """RETURN cot(0)"""
         actual_result = graph.query(query)
-        self.env.assertEqual(actual_result.result_set[0][0], "inf")
+        self.env.assertTrue(isinf(actual_result.result_set[0][0]))
 
         # cot(5.77)
         query = """RETURN cot(5.77)"""
@@ -1194,12 +1195,12 @@ class testFunctionCallsFlow(FlowTestsBase):
         # asin(1.3)
         query = """RETURN asin(1.3)"""
         actual_result = graph.query(query)
-        self.env.assertEqual(actual_result.result_set[0][0], "nan")
+        self.env.assertTrue(isnan(actual_result.result_set[0][0]))
 
         # asin(-1.1)
         query = """RETURN asin(-1.1)"""
         actual_result = graph.query(query)
-        self.env.assertEqual(actual_result.result_set[0][0], "nan")
+        self.env.assertTrue(isnan(actual_result.result_set[0][0]))
 
         # asin(null)
         query = """RETURN asin(null)"""
@@ -1233,13 +1234,13 @@ class testFunctionCallsFlow(FlowTestsBase):
         # asin(1.12)
         query = """RETURN asin(1.12)"""
         actual_result = graph.query(query)
-        self.env.assertEqual(actual_result.result_set[0][0], "nan")
+        self.env.assertTrue(isnan(actual_result.result_set[0][0]))
 
         # asin(-1.21)
         query = """RETURN asin(-1.21)"""
         actual_result = graph.query(query)
-        self.env.assertEqual(actual_result.result_set[0][0], "nan")
-
+        self.env.assertTrue(isnan(actual_result.result_set[0][0]))
+        
         # acos(null)
         query = """RETURN acos(null)"""
         actual_result = graph.query(query)
@@ -1253,11 +1254,11 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """RETURN acos(2,3)"""
         self.expect_error(query, "Received 2 arguments to function 'acos', expected at most 1")
     
-    # def test45_atan(self):
-    #     # atan(0)
-    #     query = """RETURN atan(0)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.0, 0.0001)
+    def test45_atan(self):
+        # atan(0)
+        query = """RETURN atan(0)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.0, 0.0001)
 
     #     # atan(1.5)
     #     query = """RETURN atan(1.5)"""
@@ -1269,24 +1270,24 @@ class testFunctionCallsFlow(FlowTestsBase):
     #     actual_result = graph.query(query)
     #     self.env.assertAlmostEqual(actual_result.result_set[0][0], -0.637764702134504, 0.0001)
 
-    #     # atan(null)
-    #     query = """RETURN atan(null)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertIsNone(actual_result.result_set[0][0])
+        # atan(null)
+        query = """RETURN atan(null)"""
+        actual_result = graph.query(query)
+        self.env.assertIsNone(actual_result.result_set[0][0])
 
-    #     # atan(True)
-    #     query = """RETURN atan(True)"""
-    #     self.expect_type_error(query)
+        # atan(True)
+        query = """RETURN atan(True)"""
+        self.expect_type_error(query)
 
-    #     # atan(2,3)
-    #     query = """RETURN atan(2,3)"""
-    #     self.expect_error(query, "Received 2 arguments to function 'atan', expected at most 1")
+        # atan(2,3)
+        query = """RETURN atan(2,3)"""
+        self.expect_error(query, "Received 2 arguments to function 'atan', expected at most 1")
 
-    # def test46_atan2(self):
-    #     # atan2(0)
-    #     query = """RETURN atan2(0)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.0, 0.0001)
+    def test46_atan2(self):
+        # atan2(0,0)
+        query = """RETURN atan2(0,0)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.0, 0.0001)
 
     #     # atan2(1.5)
     #     query = """RETURN atan2(1.5)"""
@@ -1298,24 +1299,34 @@ class testFunctionCallsFlow(FlowTestsBase):
     #     actual_result = graph.query(query)
     #     self.env.assertAlmostEqual(actual_result.result_set[0][0], -0.637764702134504, 0.0001)
 
-    #     # atan2(null)
-    #     query = """RETURN atan2(null)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertIsNone(actual_result.result_set[0][0])
+        # atan2(1,null)
+        query = """RETURN atan2(1,null)"""
+        actual_result = graph.query(query)
+        self.env.assertIsNone(actual_result.result_set[0][0])
 
-    #     # atan2(True)
-    #     query = """RETURN atan2(True)"""
-    #     self.expect_type_error(query)
+        # atan2(null,2)
+        query = """RETURN atan2(null,2)"""
+        actual_result = graph.query(query)
+        self.env.assertIsNone(actual_result.result_set[0][0])
 
-    #     # atan2(2,3)
-    #     query = """RETURN atan2(2,3)"""
-    #     self.expect_error(query, "Received 2 arguments to function 'atan2', expected at most 1")
+        # atan2(3,True)
+        query = """RETURN atan2(3,True)"""
+        self.expect_type_error(query)
 
-    # def test47_degrees(self):
-    #     # degrees(0)
-    #     query = """RETURN degrees(0)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.0, 0.0001)
+        # atan2(2)
+        query = """RETURN atan2(2)"""
+        self.expect_error(query, "Received 1 arguments to function 'atan2', expected at least 2")
+        
+        # atan2(2,3,4)
+        query = """RETURN atan2(2,3,4)"""
+        self.expect_error(query, "Received 3 arguments to function 'atan2', expected at most 2")
+
+
+    def test47_degrees(self):
+        # degrees(0)
+        query = """RETURN degrees(0)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.0, 0.0001)
 
     #     # degrees(1.5)
     #     query = """RETURN degrees(1.5)"""
@@ -1327,24 +1338,24 @@ class testFunctionCallsFlow(FlowTestsBase):
     #     actual_result = graph.query(query)
     #     self.env.assertAlmostEqual(actual_result.result_set[0][0], -0.637764702134504, 0.0001)
 
-    #     # degrees(null)
-    #     query = """RETURN degrees(null)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertIsNone(actual_result.result_set[0][0])
+        # degrees(null)
+        query = """RETURN degrees(null)"""
+        actual_result = graph.query(query)
+        self.env.assertIsNone(actual_result.result_set[0][0])
 
-    #     # degrees(True)
-    #     query = """RETURN degrees(True)"""
-    #     self.expect_type_error(query)
+        # degrees(True)
+        query = """RETURN degrees(True)"""
+        self.expect_type_error(query)
 
-    #     # degrees(2,3)
-    #     query = """RETURN degrees(2,3)"""
-    #     self.expect_error(query, "Received 2 arguments to function 'degrees', expected at most 1")   
+        # degrees(2,3)
+        query = """RETURN degrees(2,3)"""
+        self.expect_error(query, "Received 2 arguments to function 'degrees', expected at most 1")   
 
-    # def test48_radians(self):
-    #     # radians(0)
-    #     query = """RETURN radians(0)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.0, 0.0001)
+    def test48_radians(self):
+        # radians(0)
+        query = """RETURN radians(0)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.0, 0.0001)
 
     #     # radians(1.5)
     #     query = """RETURN radians(1.5)"""
@@ -1356,54 +1367,35 @@ class testFunctionCallsFlow(FlowTestsBase):
     #     actual_result = graph.query(query)
     #     self.env.assertAlmostEqual(actual_result.result_set[0][0], -0.637764702134504, 0.0001)
 
-    #     # radians(null)
-    #     query = """RETURN radians(null)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertIsNone(actual_result.result_set[0][0])
+        # radians(null)
+        query = """RETURN radians(null)"""
+        actual_result = graph.query(query)
+        self.env.assertIsNone(actual_result.result_set[0][0])
 
-    #     # radians(True)
-    #     query = """RETURN radians(True)"""
-    #     self.expect_type_error(query)
+        # radians(True)
+        query = """RETURN radians(True)"""
+        self.expect_type_error(query)
 
-    #     # radians(2,3)
-    #     query = """RETURN radians(2,3)"""
-    #     self.expect_error(query, "Received 2 arguments to function 'radians', expected at most 1")
+        # radians(2,3)
+        query = """RETURN radians(2,3)"""
+        self.expect_error(query, "Received 2 arguments to function 'radians', expected at most 1")
 
 
-    # def test49_pi(self):
-    #     # pi(0)
-    #     query = """RETURN pi(0)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.0, 0.0001)
+    def test49_pi(self):
+        # pi()
+        query = """RETURN pi()"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 3.14159265358979, 0.0001)
 
-    #     # pi(1.5)
-    #     query = """RETURN pi(1.5)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.997494986604054, 0.0001)
+        # pi(2)
+        query = """RETURN pi(null)"""
+        self.expect_error(query, "Received 1 arguments to function 'pi', expected at most 0")
 
-    #     # pi(1.5)
-    #     query = """RETURN pi(-2.45)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], -0.637764702134504, 0.0001)
-
-    #     # pi(null)
-    #     query = """RETURN pi(null)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertIsNone(actual_result.result_set[0][0])
-
-    #     # pi(True)
-    #     query = """RETURN pi(True)"""
-    #     self.expect_type_error(query)
-
-    #     # pi(2,3)
-    #     query = """RETURN pi(2,3)"""
-    #     self.expect_error(query, "Received 2 arguments to function 'pi', expected at most 1")
-
-    # def test50_haversin(self):
-    #     # haversin(0)
-    #     query = """RETURN haversin(0)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.0, 0.0001)
+    def test50_haversin(self):
+        # haversin(0)
+        query = """RETURN haversin(0)"""
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(actual_result.result_set[0][0], 0.0, 0.0001)
 
     #     # haversin(1.5)
     #     query = """RETURN haversin(1.5)"""
@@ -1415,15 +1407,15 @@ class testFunctionCallsFlow(FlowTestsBase):
     #     actual_result = graph.query(query)
     #     self.env.assertAlmostEqual(actual_result.result_set[0][0], -0.637764702134504, 0.0001)
 
-    #     # haversin(null)
-    #     query = """RETURN haversin(null)"""
-    #     actual_result = graph.query(query)
-    #     self.env.assertIsNone(actual_result.result_set[0][0])
+        # haversin(null)
+        query = """RETURN haversin(null)"""
+        actual_result = graph.query(query)
+        self.env.assertIsNone(actual_result.result_set[0][0])
 
-    #     # haversin(True)
-    #     query = """RETURN haversin(True)"""
-    #     self.expect_type_error(query)
+        # haversin(True)
+        query = """RETURN haversin(True)"""
+        self.expect_type_error(query)
 
-    #     # haversin(2,3)
-    #     query = """RETURN haversin(2,3)"""
-    #     self.expect_error(query, "Received 2 arguments to function 'haversin', expected at most 1")           
+        # haversin(2,3)
+        query = """RETURN haversin(2,3)"""
+        self.expect_error(query, "Received 2 arguments to function 'haversin', expected at most 1")           

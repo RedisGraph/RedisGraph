@@ -564,6 +564,7 @@ void Register_NumericFuncs() {
 	AR_RegFunc(func_desc);	
 
 	types = array_new(SIType, 0);
+	ret_type = T_DOUBLE;
 	func_desc = AR_FuncDescNew("pi", AR_PI, 0, 0, types, ret_type, false, true);
 	AR_RegFunc(func_desc);	
 
