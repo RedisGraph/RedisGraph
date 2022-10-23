@@ -160,7 +160,7 @@ static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 	return clone;
 }
 
-static bool _AR_EXP_ValidateArgsCount
+static void _AR_EXP_ValidateArgsCount
 (
 	AR_FuncDesc *fdesc,
 	uint argc
@@ -170,14 +170,11 @@ static bool _AR_EXP_ValidateArgsCount
 		// Set the query-level error.
 		ErrorCtx_SetError("Received %d arguments to function '%s', expected at least %d", argc,
 						  fdesc->name, fdesc->min_argc);
-		return false;
 	} else if(fdesc->max_argc < argc) {
 		// Set the query-level error.
 		ErrorCtx_SetError("Received %d arguments to function '%s', expected at most %d", argc,
 						  fdesc->name, fdesc->max_argc);
-		return false;
 	}
-	return true;
 }
 
 AR_ExpNode *AR_EXP_NewOpNode
@@ -463,12 +460,6 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall
 	}
 
 	if(param_found) res = EVAL_FOUND_PARAM;
-
-	if(!_AR_EXP_ValidateArgsCount(node->op.f, child_count)) {
-		// the arg count failed its validations and set an error message
-		res = EVAL_ERR;
-		goto cleanup;
-	}
 
 	// validate before evaluation
 	if(!_AR_EXP_ValidateInvocation(node->op.f, sub_trees, child_count)) {

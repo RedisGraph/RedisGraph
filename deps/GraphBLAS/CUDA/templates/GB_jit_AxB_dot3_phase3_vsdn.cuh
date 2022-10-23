@@ -174,7 +174,8 @@ __global__ void AxB_dot3_phase3_vsdn
         GB_DECLAREA (aki) ;
         GB_DECLAREB (bkj) ;
         #if !GB_C_ISO
-        T_Z cij = GB_IDENTITY ;
+//      T_Z cij = GB_IDENTITY ;
+        GB_DECLARE_MONOID_IDENTITY (cij) ;
         #endif
         bool cij_exists = false ;
 

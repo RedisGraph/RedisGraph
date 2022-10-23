@@ -42,6 +42,8 @@ typedef struct
     std::shared_ptr<rmm::mr::device_memory_resource>   resource;
     std::shared_ptr<std::pmr::memory_resource>         host_resource;
     std::shared_ptr<alloc_map>                         size_map ;
+    std::shared_ptr<cuda_stream_pool>                  stream_pool;
+    cudaStream_t                                       main_stream;
 }
 RMM_Wrap_Handle ;
 
@@ -129,6 +131,20 @@ inline auto make_and_set_managed_pool
     return resource;
 }
 
+inline std::shared_ptr<rmm::cuda_stream_pool> make_and_set_cuda_stream_pool
+(
+    std::size_t num_streams
+)
+{
+    return std::make_shared<rmm::cuda_stream_pool>(num_streams);
+}
+
+inline cudaStream_t make_cuda_stream()
+{
+    cudaStream_t user_stream;
+    RMM_WRAP_CHECK_CUDA(cudaStreamCreate(&user_stream));
+    return user_stream;
+}
 //------------------------------------------------------------------------------
 // rmm_wrap_finalize: destroy the global rmm_wrap_context
 //------------------------------------------------------------------------------
@@ -141,6 +157,7 @@ void rmm_wrap_finalize (void)
 {
     if (rmm_wrap_context != NULL)
     {
+        RMM_WRAP_CHECK_CUDA(cudaStreamDestroy(rmm_wrap_context->main_stream));
         delete (rmm_wrap_context) ;
         rmm_wrap_context = NULL ;
     }
@@ -154,7 +171,8 @@ int rmm_wrap_initialize             // returns -1 on error, 0 on success
 (
     RMM_MODE mode,                  // TODO: describe
     std::size_t init_pool_size,     // TODO: describe
-    std::size_t max_pool_size       // TODO: describe
+    std::size_t max_pool_size,       // TODO: describe
+    std::size_t stream_pool_size
 )
 {
 
@@ -168,6 +186,13 @@ int rmm_wrap_initialize             // returns -1 on error, 0 on success
         return (-1) ;
     }
 
+    if(stream_pool_size <= 0)
+    {
+        std::cout << "Stream pool size must be >=0" << std::endl;
+        // failed to create the alloc_map
+        return (-1) ;
+    }
+
     // create the RMM wrap handle and save it as a global pointer.
     rmm_wrap_context = new RMM_Wrap_Handle() ;
 
@@ -177,6 +202,10 @@ int rmm_wrap_initialize             // returns -1 on error, 0 on success
     //--------------------------------------------------------------------------
     // Construct a resource that uses a coalescing best-fit pool allocator
     //--------------------------------------------------------------------------
+
+    // Set CUDA stream pool
+    rmm_wrap_context->stream_pool = make_and_set_cuda_stream_pool(stream_pool_size);
+    rmm_wrap_context->main_stream = make_cuda_stream();
 
     if (mode == rmm_wrap_host )
     {
@@ -225,6 +254,17 @@ int rmm_wrap_initialize             // returns -1 on error, 0 on success
     return (0) ;
 }
 
+cudaStream_t get_next_stream_from_pool() {
+    return rmm_wrap_context->stream_pool->get_stream();
+}
+
+cudaStream_t get_stream_from_pool(std::size_t stream_id) {
+    return rmm_wrap_context->stream_pool->get_stream(stream_id);
+}
+
+cudaStream_t get_main_stream() {
+    return rmm_wrap_context->main_stream;
+}
 //------------------------------------------------------------------------------
 // rmm_wrap_malloc: malloc-equivalent method using RMM
 //------------------------------------------------------------------------------
@@ -355,6 +395,7 @@ void *rmm_wrap_allocate( std::size_t *size)
     }
 
 //  printf(" rmm_wrap_alloc %ld bytes\n",*size) ;
+
 
     rmm::mr::device_memory_resource *memoryresource =
         rmm::mr::get_current_device_resource() ;

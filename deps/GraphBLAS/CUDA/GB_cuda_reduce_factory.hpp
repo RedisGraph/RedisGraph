@@ -53,6 +53,8 @@ public:
         this->rcode = rcode;
         this->reduce = reduce ;
         this->atype = A->type ;
+
+        // FIXME: use GB_namify_problem
         std::stringstream ss;
         ss << "GB_reduce_" << this->rcode << ".h";
 

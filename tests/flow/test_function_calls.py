@@ -1058,3 +1058,44 @@ class testFunctionCallsFlow(FlowTestsBase):
         # exp(True)
         query = """RETURN exp(True)"""
         self.expect_type_error(query)
+
+    def test38_properties(self):
+        # null input
+        query = """RETURN properties(null)"""
+        query_result = graph.query(query)
+        expected_result = [[None]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        # map input
+        query = """WITH {val: 5, nested: {nested_val: 'nested_str'}} AS map RETURN properties(map)"""
+        query_result = graph.query(query)
+        expected_result = [[{'val': 5, 'nested': {'nested_val': 'nested_str'}}]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        # node input
+        query = """CREATE (p:Person {name: 'Alexa', city: 'Buga', age: 44}) RETURN properties(p)"""
+        query_result = graph.query(query)
+        expected_result = [[{'name': 'Alexa', 'city': 'Buga', 'age': 44}]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        # edge input
+        query = """CREATE (a:X)-[r:R {name:'R1', len:5}]->(b:Y) RETURN properties(r)"""
+        query_result = graph.query(query)
+        expected_result = [[{'name': 'R1', 'len': 5}]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        # string input
+        query = """RETURN properties('a')"""
+        self.expect_type_error(query)
+
+        # integer input
+        query = """RETURN properties(1)"""
+        self.expect_type_error(query)
+
+        # list input
+        query = """RETURN properties([1, 2, 3])"""
+        self.expect_type_error(query)
+
+        # call without input arguments
+        query = """RETURN properties()"""
+        self.expect_error(query, "Received 0 arguments")
