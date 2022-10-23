@@ -6,7 +6,7 @@
 
 #-------------------------------------------------------------------------------
 
-cmake_minimum_required ( VERSION 3.22 )
+cmake_minimum_required ( VERSION 3.19 )
 
 project(rmm_wrap VERSION 0.1)
 
@@ -35,7 +35,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/external_includes/spdlog/include
 
 IF(NOT EXISTS ${EXTERNAL_INCLUDES_DIRECTORY}/rmm)
 execute_process(
-		COMMAND git clone "https://github.com/rapidsai/rmm.git" --branch branch-21.08 --recursive rmm
+		COMMAND git clone "https://github.com/rapidsai/rmm.git" --branch branch-21.10 --recursive rmm
 		WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/external_includes)
 endif()
 
@@ -62,6 +62,35 @@ target_include_directories(rmm_wrap PUBLIC "${RMM_WRAP_INCLUDES}")
 target_link_libraries(rmm_wrap_test PUBLIC ${RMM_WRAP_LIBS})
 target_include_directories(rmm_wrap_test PUBLIC "${RMM_WRAP_INCLUDES}")
 
-install (TARGETS rmm_wrap
-		PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-		ARCHIVE       DESTINATION ${CMAKE_INSTALL_LIBDIR} )
+#-------------------------------------------------------------------------------
+# installation location
+#-------------------------------------------------------------------------------
+
+# use "cmake -DSUITESPARSE_LOCAL=1" to install only in ../lib and
+# ../include.  
+
+if ( NOT SUITESPARSE_LOCAL )
+    # install in /usr/local/lib and /usr/local/include.
+    # requires "sudo make install"
+    message ( STATUS "Installation will be system-wide (requires 'sudo make install')" )
+    install ( TARGETS rmm_wrap
+        LIBRARY       DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        ARCHIVE       DESTINATION ${CMAKE_INSTALL_LIBDIR} )
+endif ( )
+
+if ( INSIDE_SUITESPARSE )
+    # also install in SuiteSparse/lib and SuiteSparse/include;
+    # does not require "sudo make install", just "make install"
+    message ( STATUS "Installation in ../../lib and ../../include," )
+    message ( STATUS "  with 'make local ; make install'. No 'sudo' required." )
+    install ( TARGETS rmm_wrap
+        LIBRARY       DESTINATION ${SUITESPARSE_LIBDIR}
+        PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR}
+        ARCHIVE       DESTINATION ${SUITESPARSE_LIBDIR} )
+endif ( )
+
+# install (TARGETS rmm_wrap
+#		PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+#		ARCHIVE       DESTINATION ${CMAKE_INSTALL_LIBDIR} )
+

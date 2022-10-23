@@ -196,9 +196,10 @@ GraphContext *RdbLoadGraphContext_v11
 		// set the node label matrix
 		Serializer_Graph_SetNodeLabels(g);
 
+		Graph_ApplyAllPending(g, true);
+
 		// revert to default synchronization behavior
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
-		Graph_ApplyAllPending(g, true);
 
 		uint label_count = Graph_LabelTypeCount(g);
 		// update the node statistics

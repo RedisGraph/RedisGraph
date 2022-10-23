@@ -108,6 +108,7 @@ class GB_cuda_mxm_factory: public jit::File_Desc {
        this->ctype = ctype ;
 
        std::stringstream ss;
+       // FIXME: use GB_namify_problem here:
        ss << "GB_mxm_" << this->sr_code << ".h";
 
        std::string new_filename = ss.str();
