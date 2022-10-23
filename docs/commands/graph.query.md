@@ -826,7 +826,6 @@ This section contains information on all supported functions from the Cypher que
 | [all()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for all elements in the input array     |
 | [none()](#existential-comprehension-functions)   | Returns true if the inner WHERE predicate holds false for all elements in the input array    |
 | [single()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for 1 element only in the input array   |
-| [single()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for 1 element only in the input array   |
 | [CASE...WHEN](#case-when)                        | Evaluates the CASE expression and returns the value indicated by the matching WHEN statement |
 
 ## Scalar functions
