@@ -11,6 +11,7 @@
 #include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
+#include "../../datatypes/map.h"
 #include "../../datatypes/array.h"
 #include "../../util/rax_extensions.h"
 #include "../../execution_plan/record.h"
@@ -248,6 +249,27 @@ SIValue AR_LIST_COMPREHENSION(SIValue *argv, int argc, void *private_data) {
 	return retval;
 }
 
+SIValue AR_ISEMPTY(SIValue *argv, int argc, void *private_data) {
+	printf("AR_ISEMPTY\n");
+	ASSERT(argc == 1);
+	switch(SI_TYPE(argv[0])) {
+		case T_NULL:
+			return SI_NullVal();
+		case T_ARRAY:
+			if(SIArray_Length(argv[0]) == 0) return SI_BoolVal(true);
+			break;
+		case T_MAP:
+			if(array_len(argv[0].map) == 0) return SI_BoolVal(true);
+			break;
+		case T_STRING:
+			if(strlen(argv[0].stringval) == 0) return SI_BoolVal(true);
+			break;
+		default:
+			ASSERT(false);
+	}
+	return SI_BoolVal(false);
+}
+
 void Register_ComprehensionFuncs() {
 	SIType *types;
 	SIType ret_type = T_BOOL | T_NULL;
@@ -287,5 +309,10 @@ void Register_ComprehensionFuncs() {
 	ret_type = T_ARRAY | T_NULL;
 	func_desc = AR_FuncDescNew("list_comprehension", AR_LIST_COMPREHENSION, 2, 2, types, ret_type, true, true);
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, T_ARRAY | T_MAP | T_NULL | T_STRING);
+	func_desc = AR_FuncDescNew("isempty", AR_ISEMPTY, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 }

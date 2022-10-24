@@ -1460,3 +1460,45 @@ class testFunctionCallsFlow(FlowTestsBase):
         # haversin(2,3)
         query = """RETURN haversin(2,3)"""
         self.expect_error(query, "Received 2 arguments to function 'haversin', expected at most 1")           
+
+    def test51_isempty(self):
+        # null input, the expected result is null
+        query = "RETURN isEmpty(null)"
+        actual_result = graph.query(query)
+        self.env.assertIsNone(actual_result.result_set[0][0])
+
+        # inputs with expected result = True
+        queries = [
+            """RETURN isEmpty('')""",
+            """RETURN isEmpty([])""",
+            """WITH {} AS map RETURN isEmpty(map)"""
+        ]
+        for query in queries:
+            actual_result = graph.query(query)
+            self.env.assertEquals(actual_result.result_set, [[True]])
+
+        # inputs with expected result = False
+        queries = [
+            """RETURN isEmpty('abc')""",
+            """RETURN isEmpty(['a', 'b', 'c'])""",
+            """RETURN isEmpty([null])""",
+            """WITH {val: 1, nested: {nested_val: 'nested_str'}} AS map RETURN isEmpty(map)"""
+        ]
+        for query in queries:
+            actual_result = graph.query(query)
+            self.env.assertEquals(actual_result.result_set, [[False]])
+
+        # invalid input types
+        queries = [
+            """RETURN isEmpty(true)""",
+            """RETURN isEmpty(0)""",
+            """RETURN isEmpty(1.3)""",
+            """CREATE (n) RETURN isEmpty(n)""",
+            """CREATE (a:X)-[r:R]->(b:Y) RETURN isEmpty(r)"""
+        ]
+        for query in queries:
+            self.expect_type_error(query)
+
+        # No input arguments
+        query = """RETURN isEmpty()"""
+        self.expect_error(query, "Received 0 arguments")
