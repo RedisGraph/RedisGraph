@@ -80,7 +80,6 @@ static void _Index_ConstructExactMatchStructure
 	RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
 }
 
-// called by Index_Construct
 // responsible for creating the index structure only!
 // e.g. fields, stopwords, language
 static RSIndex *_Index_ConstructStructure
@@ -315,17 +314,14 @@ void Index_Enable
 // adds field to index
 void Index_AddField
 (
-	Index *idx,
-	IndexField *field
+	Index *idx,        // index to update
+	IndexField *field  // field to add
 ) {
 	ASSERT(idx   != NULL);
 	ASSERT(field != NULL);
 	ASSERT(!Index_ContainsAttribute(idx, field->id));
 
 	array_append(idx->fields, *field);
-
-	// disable index
-	Index_Disable(idx);
 }
 
 // removes fields from index

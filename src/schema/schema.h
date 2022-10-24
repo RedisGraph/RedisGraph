@@ -72,10 +72,10 @@ Index *Schema_GetIndex
 // attribute must already exists and not associated with an index
 int Schema_AddIndex
 (
-	Index **idx,
-	Schema *s,
-	IndexField *field,
-	IndexType type
+	Index **idx,        // [input/output] index to create
+	Schema *s,          // schema holding the index
+	IndexField *field,  // field to index
+	IndexType type      // type of entities to index
 );
 
 // removes index

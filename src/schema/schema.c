@@ -111,22 +111,26 @@ Index *Schema_GetIndex
 	return NULL;
 }
 
+// assign a new index to attribute
+// attribute must already exists and not associated with an index
 int Schema_AddIndex
 (
-	Index **idx,
-	Schema *s,
-	IndexField *field,
-	IndexType type
+	Index **idx,        // [input/output] index to create
+	Schema *s,          // schema holding the index
+	IndexField *field,  // field to index
+	IndexType type      // type of entities to index
 ) {
 	ASSERT(s     != NULL);
 	ASSERT(idx   != NULL);
 	ASSERT(field != NULL);
 
+	// see if index already exists
 	Index *_idx = Schema_GetIndex(s, NULL, type);
 
 	// index exists, make sure attribute isn't already indexed
 	if(_idx != NULL) {
 		if(Index_ContainsAttribute(_idx, field->id)) {
+			// field already indexed, quick return
 			IndexField_Free(field);
 			return INDEX_FAIL;
 		}

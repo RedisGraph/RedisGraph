@@ -208,26 +208,28 @@ Index *GraphContext_GetIndex
 );
 
 // create an exact match index for the given label and attribute
-int GraphContext_AddExactMatchIndex
+bool GraphContext_AddExactMatchIndex
 (
-	Index **idx,
-	GraphContext *gc,
-	SchemaType schema_type,
-	const char *label,
-	const char *field
+	Index **idx,             // [input/output] index created
+	GraphContext *gc,        // graph context
+	SchemaType schema_type,  // type of entities to index nodes/edges
+	const char *label,       // label of indexed entities
+	const char **fields,     // fields to index
+	uint fields_count        // number of fields to index
 );
 
 // create a full text index for the given label and attribute
-int GraphContext_AddFullTextIndex
+bool GraphContext_AddFullTextIndex
 (
-	Index **idx,
-	GraphContext *gc,
-	SchemaType schema_type,
-	const char *label,
-	const char *field,
-	double weight,
-	bool nostem,
-	const char *phonetic
+	Index **idx,             // [input/output] index created
+	GraphContext *gc,        // graph context
+	SchemaType schema_type,  // type of entities to index nodes/edges
+	const char *label,       // label of indexed entities
+	const char **fields,     // fields to index
+	uint fields_count,       // number of fields to index
+	double *weights,         // fields weights
+	bool *nostems,           //
+	const char **phonetics   //
 );
 
 // remove and free an index

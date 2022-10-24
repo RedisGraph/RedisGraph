@@ -123,7 +123,6 @@ static bool _index_operation_create
 	Index **idx
 ) {
 	unsigned int nprops = 0;
-	bool index_added = false;
 	const char *label = NULL;
 	SchemaType schema_type = SCHEMA_NODE;
 	const cypher_astnode_t *index_op = ast->root;
@@ -151,13 +150,7 @@ static bool _index_operation_create
 		}
 	}
 
-	// lock
-	QueryCtx_LockForCommit();
-
-	//--------------------------------------------------------------------------
-	// add attributes to index
-	//--------------------------------------------------------------------------
-
+	const char *fields[nprops];
 	for(unsigned int i = 0; i < nprops; i++) {
 		const cypher_astnode_t *prop_name =
 			(t == CYPHER_AST_CREATE_NODE_PROPS_INDEX) ?
@@ -165,11 +158,15 @@ static bool _index_operation_create
 			cypher_ast_property_operator_get_prop_name
 			(cypher_ast_create_pattern_props_index_get_property_operator(index_op, i));
 
-		const char *prop = cypher_ast_prop_name_get_value(prop_name);
-
-		index_added |= (GraphContext_AddExactMatchIndex(idx, gc, schema_type,
-					label, prop) == INDEX_OK);
+		fields[i] = cypher_ast_prop_name_get_value(prop_name);
 	}
+
+	// lock
+	QueryCtx_LockForCommit();
+
+	// add fields to index
+	bool index_added = GraphContext_AddExactMatchIndex(idx, gc, schema_type,
+					label, fields, nprops);
 
 	// unlock
 	QueryCtx_UnlockCommit(NULL);

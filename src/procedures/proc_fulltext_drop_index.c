@@ -7,6 +7,7 @@
 #include "proc_fulltext_drop_index.h"
 #include "../query_ctx.h"
 #include "../value.h"
+#include "../errors.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
@@ -23,9 +24,13 @@ ProcedureResult Proc_FulltextDropIndexInvoke(ProcedureCtx *ctx,
 	if(array_len((SIValue *)args) != 1) return PROCEDURE_ERR;
 	if(!(SI_TYPE(args[0]) & T_STRING)) return PROCEDURE_ERR;
 
-	const char *label = args[0].stringval;
+	const char *l = args[0].stringval;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	GraphContext_DeleteIndex(gc, SCHEMA_NODE, label, NULL, IDX_FULLTEXT);
+	int res = GraphContext_DeleteIndex(gc, SCHEMA_NODE, l, NULL, IDX_FULLTEXT);
+
+	if(res != INDEX_OK) {
+		ErrorCtx_SetError("ERR Unable to drop index on :%s: no such index.", l);
+	}
 
 	return PROCEDURE_OK;
 }
