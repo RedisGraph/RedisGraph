@@ -28,7 +28,7 @@ function C = vreduce (arg1, arg2, arg3, arg4, arg5, arg6)
 % See also GrB.reduce, GrB/sum, GrB/prod, GrB/max, GrB/min.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 if (isobject (arg1))
     arg1 = arg1.opaque ;

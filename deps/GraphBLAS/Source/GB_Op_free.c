@@ -24,6 +24,11 @@ GrB_Info GB_Op_free             // free a user-created op
             size_t header_size = op->header_size ;
             if (header_size > 0)
             { 
+                size_t defn_size = op->defn_size ;
+                if (defn_size > 0)
+                { 
+                    GB_FREE (&(op->defn), defn_size) ;
+                }
                 op->magic = GB_FREED ;  // to help detect dangling pointers
                 op->header_size = 0 ;
                 GB_FREE (op_handle, header_size) ;

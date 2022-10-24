@@ -19,9 +19,9 @@
 #define GB_EMULT_METHOD5     5      /* use GB_emult_bitmap Method5 */
 #define GB_EMULT_METHOD6     6      /* use GB_emult_bitmap Method6 */
 #define GB_EMULT_METHOD7     7      /* use GB_emult_bitmap Method7 */
-#define GB_EMULT_METHOD8     8      /* use GB_emult_08 */
-#define GB_EMULT_METHOD9     9      /* use GB_emult_08 for now */
-#define GB_EMULT_METHOD10    10     /* use GB_emult_08 for now */
+#define GB_EMULT_METHOD8     8      /* use GB_emult_phase[123] */
+#define GB_EMULT_METHOD9     9      /* use GB_emult_phase[123] for now */
+#define GB_EMULT_METHOD10    10     /* use GB_emult_phase[123] for now */
 
 GrB_Info GB_emult           // C=A.*B or C<M>=A.*B
 (
@@ -50,7 +50,7 @@ int GB_emult_sparsity       // return the sparsity structure for C
     const GrB_Matrix B      // input B matrix
 ) ;
 
-GrB_Info GB_emult_08_phase0     // find vectors in C for C=A.*B or C<M>=A.*B
+GrB_Info GB_emult_phase0     // find vectors in C for C=A.*B or C<M>=A.*B
 (
     int64_t *p_Cnvec,           // # of vectors to compute in C
     const int64_t *restrict *Ch_handle,  // Ch is M->h, A->h, B->h, or NULL
@@ -69,7 +69,7 @@ GrB_Info GB_emult_08_phase0     // find vectors in C for C=A.*B or C<M>=A.*B
     GB_Context Context
 ) ;
 
-GrB_Info GB_emult_08_phase1                 // count nnz in each C(:,j)
+GrB_Info GB_emult_phase1                 // count nnz in each C(:,j)
 (
     // computed by phase1:
     int64_t **Cp_handle,                    // output of size Cnvec+1
@@ -94,7 +94,7 @@ GrB_Info GB_emult_08_phase1                 // count nnz in each C(:,j)
     GB_Context Context
 ) ;
 
-GrB_Info GB_emult_08_phase2             // C=A.*B or C<M>=A.*B
+GrB_Info GB_emult_phase2             // C=A.*B or C<M>=A.*B
 (
     GrB_Matrix C,           // output matrix, static header
     const GrB_Type ctype,   // type of output matrix C

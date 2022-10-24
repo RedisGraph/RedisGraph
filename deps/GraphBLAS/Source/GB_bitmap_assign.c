@@ -17,7 +17,7 @@
 #include "GB_bitmap_assign_methods.h"
 #include "GB_dense.h"
 
-#define GB_FREE_ALL GB_phbix_free (C) ;
+#define GB_FREE_ALL GB_phybix_free (C) ;
 
 GrB_Info GB_bitmap_assign
 (

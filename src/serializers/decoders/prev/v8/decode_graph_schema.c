@@ -29,7 +29,7 @@ static Schema *_RdbLoadSchema
 		IndexType type = RedisModule_LoadUnsigned(rdb);
 		char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
 		IndexField field;
-		Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field_name);
+		Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field_name, NULL);
 		IndexField_New(&field, field_id, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
 				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
 		Schema_AddIndex(&idx, s, &field, type);
@@ -48,7 +48,7 @@ static void _RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	uint count = RedisModule_LoadUnsigned(rdb);
 	for(uint i = 0; i < count; i ++) {
 		char *attr = RedisModule_LoadStringBuffer(rdb, NULL);
-		GraphContext_FindOrAddAttribute(gc, attr);
+		GraphContext_FindOrAddAttribute(gc, attr, NULL);
 		RedisModule_Free(attr);
 	}
 }

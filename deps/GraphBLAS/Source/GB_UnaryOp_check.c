@@ -80,6 +80,11 @@ GrB_Info GB_UnaryOp_check   // check a GraphBLAS unary operator
         }
     }
 
+    if (op->defn != NULL)
+    { 
+        GBPR0 ("%s\n", op->defn) ;
+    }
+
     return (GrB_SUCCESS) ;
 }
 

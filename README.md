@@ -3,6 +3,7 @@
 [![Dockerhub](https://img.shields.io/badge/dockerhub-redislabs%2Fredisgraph-blue)](https://hub.docker.com/r/redislabs/redisgraph/tags/)
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/RedisGraph/RedisGraph.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/RedisGraph/RedisGraph/alerts/)
 [![Codecov](https://codecov.io/gh/RedisGraph/RedisGraph/branch/master/graph/badge.svg)](https://codecov.io/gh/RedisGraph/RedisGraph)
+[![Bounty](https://img.shields.io/bountysource/team/redislabsmodules/activity)](https://app.bountysource.com/teams/redislabsmodules/issues)
 
 # RedisGraph
 ## A graph database module for Redis
@@ -191,6 +192,7 @@ Some languages have client libraries that provide support for RedisGraph's comma
 | Project                                                   | Language   | License | Author                                      | Stars                                                             | Comment    |
 | --------------------------------------------------------- | ---------- | ------- | ------------------------------------------- | ----------------------------------------------------------------- | ---------- |
 | [Jedis][Jedis-url]                                        | Java       | MIT     | [Redis][Jedis-author]                       | [![Jedis-stars]][Jedis-url]                                       |
+| [redis-modules-java][redis-modules-java-url]              | Java       | Apache 2.0 | [dengliming][redis-modules-java-author]               | [![redis-modules-java-stars]][redis-modules-java-url]                       |
 | [redisgraph-py][redisgraph-py-url]                        | Python     | BSD     | [Redis Labs][redisgraph-py-author]          | [![redisgraph-py-stars]][redisgraph-py-url]                       |
 | [JRedisGraph][JRedisGraph-url]                            | Java       | BSD     | [Redis Labs][JRedisGraph-author]            | [![JRedisGraph-stars]][JRedisGraph-url]                           | Deprecated |
 | [redisgraph-rb][redisgraph-rb-url]                        | Ruby       | BSD     | [Redis Labs][redisgraph-rb-author]          | [![redisgraph-rb-stars]][redisgraph-rb-url]                       |
@@ -286,6 +288,10 @@ Some languages have client libraries that provide support for RedisGraph's comma
 [RedisGraph.jl-author]: https://github.com/xyxel
 [RedisGraph.jl-url]: https://github.com/xyxel/RedisGraph.jl
 [RedisGraph.jl-stars]: https://img.shields.io/github/stars/xyxel/RedisGraph.jl.svg?style=social&amp;label=Star&amp;maxAge=2592000
+
+[redis-modules-java-author]: https://github.com/dengliming
+[redis-modules-java-url]: https://github.com/dengliming/redis-modules-java
+[redis-modules-java-stars]: https://img.shields.io/github/stars/dengliming/redis-modules-java.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 ## Documentation
 

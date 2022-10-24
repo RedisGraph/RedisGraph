@@ -17,11 +17,11 @@ static void _AllNeighborsCtx_CollectNeighbors
 	ctx->current_level++;
 	if(ctx->current_level == array_len(ctx->levels)) {
 		RG_MatrixTupleIter iter = {0};
-		RG_MatrixTupleIter_attach(&iter, ctx->M);
+		RG_MatrixTupleIter_AttachRange(&iter, ctx->M, id, id);
 		array_append(ctx->levels, iter);
+	} else {
+		RG_MatrixTupleIter_iterate_row(&ctx->levels[ctx->current_level], id);
 	}
-
-	RG_MatrixTupleIter_iterate_row(&ctx->levels[ctx->current_level], id);
 }
 
 static bool _AllNeighborsCtx_Visited

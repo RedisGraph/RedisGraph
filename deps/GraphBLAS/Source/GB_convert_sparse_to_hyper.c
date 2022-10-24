@@ -49,8 +49,8 @@ GrB_Info GB_convert_sparse_to_hyper // convert from sparse to hypersparse
         // determine the number of threads to use
         //----------------------------------------------------------------------
 
-        GBURBLE ("(sparse to hyper) ") ;
         int64_t n = A->vdim ;
+        GB_BURBLE_N (n, "(sparse to hyper) ") ;
         GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
         int nthreads = GB_nthreads (n, chunk, nthreads_max) ;
         int ntasks = (nthreads == 1) ? 1 : (8 * nthreads) ;
@@ -102,8 +102,9 @@ GrB_Info GB_convert_sparse_to_hyper // convert from sparse to hypersparse
 
         int64_t *restrict Ap_new = NULL ; size_t Ap_new_size = 0 ;
         int64_t *restrict Ah_new = NULL ; size_t Ah_new_size = 0 ;
-        Ap_new = GB_MALLOC (nvec_nonempty+1, int64_t, &Ap_new_size) ;
-        Ah_new = GB_MALLOC (nvec_nonempty  , int64_t, &Ah_new_size) ;
+        int64_t plen_new = (n == 1) ? 1 : nvec_nonempty ;
+        Ap_new = GB_MALLOC (plen_new+1, int64_t, &Ap_new_size) ;
+        Ah_new = GB_MALLOC (plen_new  , int64_t, &Ah_new_size) ;
         if (Ap_new == NULL || Ah_new == NULL)
         { 
             // out of memory
@@ -117,7 +118,7 @@ GrB_Info GB_convert_sparse_to_hyper // convert from sparse to hypersparse
         // transplant the new A->p and A->h into the matrix
         //----------------------------------------------------------------------
 
-        A->plen = nvec_nonempty ;
+        A->plen = plen_new ;
         A->nvec = nvec_nonempty ;
         A->p = Ap_new ; A->p_size = Ap_new_size ;
         A->h = Ah_new ; A->h_size = Ah_new_size ;
@@ -160,10 +161,11 @@ GrB_Info GB_convert_sparse_to_hyper // convert from sparse to hypersparse
         }
 
         //----------------------------------------------------------------------
-        // A is now hypersparse
+        // A is now hypersparse, but A->Y is not yet constructed
         //----------------------------------------------------------------------
 
         ASSERT (GB_IS_HYPERSPARSE (A)) ;
+        ASSERT (A->Y == NULL && A->Y_shallow == false) ;
     }
 
     //--------------------------------------------------------------------------

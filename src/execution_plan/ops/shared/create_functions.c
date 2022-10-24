@@ -37,7 +37,7 @@ static void _CommitNodesBlueprint
 			Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 
 			if(s == NULL) {
-				s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+				s = AddSchema(gc, label, SCHEMA_NODE);
 				pending->stats->labels_added++;
 			}
 
@@ -98,7 +98,7 @@ static void _CommitEdgesBlueprint
 
 		const char *relation = edge_ctx->relation;
 		Schema *s = GraphContext_GetSchema(gc, relation, SCHEMA_EDGE);
-		if(s == NULL) s = GraphContext_AddSchema(gc, relation, SCHEMA_EDGE);
+		if(s == NULL) s = AddSchema(gc, relation, SCHEMA_EDGE);
 
 		// calling Graph_GetRelationMatrix will make sure relationship matrix
 		// is of the right dimensions
@@ -222,6 +222,7 @@ void CommitNewEntities
 // resolve the properties specified in the query into constant values
 void ConvertPropertyMap
 (
+	GraphContext* gc,
 	AttributeSet *attributes,
 	Record r,
 	PropertyMap *map,
@@ -271,7 +272,8 @@ void ConvertPropertyMap
 		}
 
 		// set the converted attribute
-		AttributeSet_Add(attributes, map->keys[i], val);
+		Attribute_ID attribute_id = FindOrAddAttribute(gc, map->keys[i]);
+		AttributeSet_Add(attributes, attribute_id, val);
 		SIValue_Free(val);
 	}
 }

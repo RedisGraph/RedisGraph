@@ -30,7 +30,7 @@ bool GB_transpose_method        // if true: use GB_builder, false: use bucket
     int64_t anvec = (A->nvec_nonempty < 0) ? A->nvec : A->nvec_nonempty ;
     int64_t anz = GB_nnz (A) ;
     int64_t avlen = A->vlen ;
-    int64_t avdim = A->vdim ;
+//  int64_t avdim = A->vdim ;
     int anzlog = (anz   == 0) ? 1 : (int) GB_CEIL_LOG2 (anz) ;
     int mlog   = (avlen == 0) ? 1 : (int) GB_CEIL_LOG2 (avlen) ;
     double bucket_factor ;
@@ -44,9 +44,10 @@ bool GB_transpose_method        // if true: use GB_builder, false: use bucket
     //--------------------------------------------------------------------------
 
     bool atomics ;
-    if (nthreads == 1)
+    if (nthreads <= 2)
     { 
-        // sequential bucket method, no atomics needed
+        // sequential bucket method: no atomics needed
+        // 2 threads: always use non-atomic method
         atomics = false ;
     }
     else if ((double) nthreads * (double) avlen > (double) anz)
@@ -70,7 +71,7 @@ bool GB_transpose_method        // if true: use GB_builder, false: use bucket
         { 
             switch (anzlog)
             {
-                case 14: atol = -4 ; break ;        // 16K entried in A
+                case 14: atol = -4 ; break ;        // 16K entries in A
                 case 15: atol = -3 ; break ;        // 32K
                 case 16: atol = -2 ; break ;        // 64K
                 case 17: atol = -1 ; break ;        // 128K
@@ -159,6 +160,7 @@ bool GB_transpose_method        // if true: use GB_builder, false: use bucket
     // select the method with the least amount of work
     //--------------------------------------------------------------------------
 
-    return (builder_work < bucket_work) ;
+    bool use_builder = (builder_work < bucket_work) ;
+    return (use_builder) ;
 }
 

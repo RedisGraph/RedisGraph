@@ -71,7 +71,7 @@ GrB_Info GB (_AaddB)
 ) ;
 
 if_binop_emult_is_enabled
-GrB_Info GB (_AemultB_08)
+GrB_Info GB (_AemultB)
 (
     GrB_Matrix C,
     const int C_sparsity,

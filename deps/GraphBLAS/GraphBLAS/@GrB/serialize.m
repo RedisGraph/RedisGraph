@@ -12,21 +12,23 @@ function blob = serialize (G, method, level)
 % more compact blob at the cost of higher run time.  Levels outside
 % the allowable range are changed to the default level.
 %
-%   'lz4'    LZ4, with no level setting.  This is the default if the
-%            method is not specified.  Very fast with good compression.
-%            For large problems, lz4 can be faster than no compression,
-%            and it cuts the size of the blob by about 3x on average.
+%   'zstd'  ZSTD.  The level can be 1 to 19 with 1 the default.
+%           This is the default method if no method is specified.
 %
-%   'none'   no compression.
+%   'lz4'   LZ4, with no level setting. Fast with decent compression.
+%           For large problems, lz4 can be faster than no compression,
+%           and it cuts the size of the blob by about 3x on average.
 %
-%   'lz4hc'  LZ4HC, much slower than LZ4 but results in a more compact blob.
-%            The level can be 1 to 9 with 9 the default.  LZ4HC level 1
-%            provides excellent compression compared with LZ4, and higher
-%            levels of LZ4HC only slightly improve compression quality.
+%   'none'  no compression.
+%
+%   'lz4hc' LZ4HC, much slower than LZ4 but results in a more compact blob.
+%           The level can be 1 to 9 with 9 the default.  LZ4HC level 1
+%           provides excellent compression compared with LZ4, and higher
+%           levels of LZ4HC only slightly improve compression quality.
 %
 % Example:
 %   G = GrB (magic (5))
-%   blob = GrB.serialize (G) ;      % compressed via LZ4
+%   blob = GrB.serialize (G) ;      % compressed via ZSTD, level 1
 %   f = fopen ('G.bin', 'wb') ;
 %   fwrite (f, blob) ;
 %   fclose (f)
@@ -38,7 +40,7 @@ function blob = serialize (G, method, level)
 % See also GrB.deserialize, GrB.load, GrB.save, GrB/struct.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 if (isobject (G))
     % extract the contents of a GraphBLAS matrix

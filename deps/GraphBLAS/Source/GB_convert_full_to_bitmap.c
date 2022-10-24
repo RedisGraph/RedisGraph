@@ -28,13 +28,13 @@ GrB_Info GB_convert_full_to_bitmap      // convert matrix from full to bitmap
     ASSERT (!GB_ZOMBIES (A)) ;
     ASSERT (!GB_JUMBLED (A)) ;
     ASSERT (!GB_PENDING (A)) ;
-    GBURBLE ("(full to bitmap) ") ;
 
     //--------------------------------------------------------------------------
     // allocate A->b
     //--------------------------------------------------------------------------
 
     int64_t anz = GB_nnz_full (A) ;
+    GB_BURBLE_N (anz, "(full to bitmap) ") ;
     A->b = GB_MALLOC (anz, int8_t, &(A->b_size)) ;
     if (A->b == NULL)
     { 

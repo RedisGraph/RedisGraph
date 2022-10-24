@@ -94,14 +94,14 @@ class testIndexUpdatesFlow(FlowTestsBase):
 
     # Modify a property, triggering updates to all nodes in two indices
     def test01_full_property_update(self):
-        result = redis_graph.query("MATCH (a) SET a.doubleval = a.doubleval + %f" % (round(random.uniform(-1, 1), 2)))
+        result = redis_graph.query("MATCH (a) SET a.doubleval = a.doubleval + 1.1")
         self.env.assertEquals(result.properties_set, 1000)
         # Verify that index scans still function and return correctly
         self.validate_state()
 
     # Modify a property, triggering updates to a subset of nodes in two indices
     def test02_partial_property_update(self):
-        redis_graph.query("MATCH (a) WHERE a.doubleval > 0 SET a.doubleval = a.doubleval + %f" % (round(random.uniform(-1, 1), 2)))
+        redis_graph.query("MATCH (a) WHERE a.doubleval > 0 SET a.doubleval = a.doubleval + 1.1")
         # Verify that index scans still function and return correctly
         self.validate_state()
 
@@ -159,7 +159,8 @@ class testIndexUpdatesFlow(FlowTestsBase):
         # Delete the entity's property
         query = """MATCH (a:NEW {v: 5}) SET a.v = NULL"""
         result = redis_graph.query(query)
-        self.env.assertEquals(result.properties_set, 1)
+        self.env.assertEquals(result.properties_set, 0)
+        self.env.assertEquals(result.properties_removed, 1)
 
         # Query the index for the entity
         query = """MATCH (a:NEW {v: 5}) RETURN a"""

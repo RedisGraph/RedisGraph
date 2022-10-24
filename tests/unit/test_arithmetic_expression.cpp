@@ -848,36 +848,6 @@ TEST_F(ArithmeticTest, ToUpperTest) {
 	AR_EXP_Free(arExp);
 }
 
-TEST_F(ArithmeticTest, ToStringTest) {
-	SIValue result;
-	const char *expected;
-	const char *query;
-	AR_ExpNode *arExp;
-
-	/* toString("muchacho") */
-	query = "RETURN toString('muchacho')";
-	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, NULL);
-	expected = "muchacho";
-	ASSERT_STREQ(result.stringval, expected);
-	AR_EXP_Free(arExp);
-
-	/* toString("3.14") */
-	query = "RETURN toString(3.14)";
-	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, NULL);
-	expected = "3.140000";
-	ASSERT_STREQ(result.stringval, expected);
-	AR_EXP_Free(arExp);
-
-	/* toString() */
-	query = "RETURN toString(NULL)";
-	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, NULL);
-	ASSERT_EQ(result.type, T_NULL);
-	AR_EXP_Free(arExp);
-}
-
 TEST_F(ArithmeticTest, ExistsTest) {
 	/* Although EXISTS is supposed to be called
 	* using entity alias and property, to make things easy

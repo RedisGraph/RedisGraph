@@ -26,7 +26,7 @@
 //      This method is parallel and fully scalable.
 
 #include "GB_transpose.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_unop__include.h"
 #endif
 
@@ -83,7 +83,7 @@ void GB_transpose_ix            // transpose the pattern and values of a matrix
         // transpose the values and pattern
         //----------------------------------------------------------------------
 
-        #ifndef GBCOMPACT
+        #ifndef GBCUDA_DEV
 
             //------------------------------------------------------------------
             // define the worker for the switch factory

@@ -3,7 +3,7 @@ function C = gb_minall (op, A)
 % Implements C = min (A, [ ], 'all') ;
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 C = gbreduce (op, A) ;
 [m, n] = gbsize (A) ;

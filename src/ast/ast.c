@@ -114,6 +114,7 @@ bool AST_ReadOnly(const cypher_astnode_t *root) {
 	   type == CYPHER_AST_MERGE                      ||
 	   type == CYPHER_AST_DELETE                     ||
 	   type == CYPHER_AST_SET                        ||
+	   type == CYPHER_AST_REMOVE                     ||
 	   type == CYPHER_AST_CREATE_NODE_PROPS_INDEX    ||
 	   type == CYPHER_AST_CREATE_PATTERN_PROPS_INDEX ||
 	   type == CYPHER_AST_DROP_PROPS_INDEX) {
@@ -490,7 +491,7 @@ inline AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast) {
 
 static inline char *_create_anon_alias(int anon_count) {
 	char *alias;
-	asprintf(&alias, "anon_%d", anon_count);
+	asprintf(&alias, "@anon_%d", anon_count);
 	return alias;
 }
 

@@ -60,10 +60,7 @@
     const bool B_iso = B->iso ;
     const int64_t bvlen = B->vlen ;
     const int64_t bvdim = B->vdim ;
-
-    const bool B_jumbled = B->jumbled ;
     const int64_t bnz = GB_nnz_held (B) ;
-
     const bool B_is_bitmap = GB_IS_BITMAP (B) ;
     ASSERT (!GB_IS_SPARSE (B)) ;
     ASSERT (!GB_IS_HYPERSPARSE (B)) ;
@@ -76,10 +73,8 @@
     const int64_t anvec = A->nvec ;
     const int64_t avlen = A->vlen ;
     const int64_t avdim = A->vdim ;
-
     const bool A_jumbled = A->jumbled ;
     const int64_t anz = GB_nnz_held (A) ;
-
     const bool A_is_sparse = GB_IS_SPARSE (A) ;
     const bool A_is_hyper = GB_IS_HYPERSPARSE (A) ;
     const bool A_is_bitmap = GB_IS_BITMAP (A) ;
@@ -100,7 +95,6 @@
     const bool M_is_full   = GB_IS_FULL (M) ;
     int M_nthreads = 0 ;
     int M_ntasks = 0 ;
-
     if (M != NULL)
     {
         ASSERT (C->vlen == M->vlen) ;

@@ -22,11 +22,6 @@
 // few operations will be 10x slower, such as GrB_reduce to scalar using the
 // GrB_MAX_FP64 operator.
 
-// Enabling the "#define GBCOMPACT" option is the same as uncommenting this
-// entire file.  This file provides a more concise control over which
-// types, operators, and semirings are given fast hard-coded versions in
-// Source/Generated2, and which use the slower generic methods.
-
 // However, the code size can be reduced significantly.  Uncommenting all of
 // the options below cuts the code from 55MB to under 2.7MB, on a MacBook Pro
 // using gcc 8.2.0 (as of the draft V3.0.0 version, June 18, 2019).  Disabling
@@ -228,10 +223,10 @@
 #define GxB_NO_ACOSH     1
 #define GxB_NO_ATANH     1
 
-#define GxB_NO_SIGNUM    1
-#define GxB_NO_CEIL      1
-#define GxB_NO_FLOOR     1
-#define GxB_NO_ROUND     1
+// #define GxB_NO_SIGNUM    1
+// #define GxB_NO_CEIL      1
+// #define GxB_NO_FLOOR     1
+// #define GxB_NO_ROUND     1
 #define GxB_NO_TRUNC     1
 
 #define GxB_NO_EXP2      1
@@ -244,6 +239,7 @@
 #define GxB_NO_TGAMMA    1
 #define GxB_NO_ERF       1
 #define GxB_NO_ERFC      1
+#define GxB_NO_CBRT      1
 
 #define GxB_NO_FREXPX    1
 #define GxB_NO_FREXPE    1
@@ -253,9 +249,9 @@
 #define GxB_NO_CIMAG     1
 #define GxB_NO_CARG      1
 
-#define GxB_NO_ISINF     1
-#define GxB_NO_ISNAN     1
-#define GxB_NO_ISFINITE  1
+// #define GxB_NO_ISINF     1
+// #define GxB_NO_ISNAN     1
+// #define GxB_NO_ISFINITE  1
 
 //------------------------------------------------------------------------------
 // uncomment any of these lines to disable the binary operators for all types
@@ -274,29 +270,29 @@
 // #define GxB_NO_SECOND    1
 // #define GxB_NO_PAIR      1
 // #define GxB_NO_ANY       1
-#define GxB_NO_MIN       1
-#define GxB_NO_MAX       1
+// #define GxB_NO_MIN       1
+// #define GxB_NO_MAX       1
 // #define GxB_NO_PLUS      1
-#define GxB_NO_MINUS     1
+// #define GxB_NO_MINUS     1
 #define GxB_NO_RMINUS    1
 // #define GxB_NO_TIMES     1
 #define GxB_NO_DIV       1
 #define GxB_NO_RDIV      1
 // #define GxB_NO_ISEQ      1
 // #define GxB_NO_ISNE      1
-#define GxB_NO_ISGT      1
-#define GxB_NO_ISGE      1
-#define GxB_NO_ISLT      1
-#define GxB_NO_ISLE      1
+// #define GxB_NO_ISGT      1
+// #define GxB_NO_ISGE      1
+// #define GxB_NO_ISLT      1
+// #define GxB_NO_ISLE      1
 // #define GxB_NO_EQ        1
-#define GxB_NO_NE        1
-#define GxB_NO_GT        1
-#define GxB_NO_LT        1
-#define GxB_NO_LE        1
-#define GxB_NO_GE        1
+// #define GxB_NO_NE        1
+// #define GxB_NO_GT        1
+// #define GxB_NO_LT        1
+// #define GxB_NO_LE        1
+// #define GxB_NO_GE        1
 // #define GxB_NO_LAND      1
 // #define GxB_NO_LOR       1
-#define GxB_NO_LXOR      1
+// #define GxB_NO_LXOR      1
 
 // #define GxB_NO_BOR       1
 // #define GxB_NO_BAND      1
@@ -309,9 +305,9 @@
 
 #define GxB_NO_ATAN2     1
 #define GxB_NO_HYPOT     1
-#define GxB_NO_FMOD      1
-#define GxB_NO_REMAINDER 1
-#define GxB_NO_COPYSIGN  1
+// #define GxB_NO_FMOD      1
+// #define GxB_NO_REMAINDER 1
+// #define GxB_NO_COPYSIGN  1
 #define GxB_NO_LDEXP     1
 
 #define GxB_NO_CMPLX     1

@@ -264,6 +264,10 @@ static ProcedureResult validate_config
 			}
 			types_count = array_len(types);
 		}
+	} else {
+		types_count = 1;
+		types = array_new(int, types_count);
+		array_append(types, GRAPH_NO_RELATION);
 	}
 
 	SinglePairCtx_New(ctx, (Node *)start.ptrval, (Node *)end.ptrval, g, types,
@@ -301,6 +305,10 @@ static ProcedureResult validate_config
 	if(path_count_exists) {
 		if(SI_TYPE(path_count) != T_INT64) {
 				ErrorCtx_SetError("pathCount must be integer");
+				return false;
+		}
+		if(path_count.longval < 0) {
+				ErrorCtx_SetError("pathCount must be greater than or equal to 0");
 				return false;
 		}
 		ctx->path_count = SI_GET_NUMERIC(path_count);

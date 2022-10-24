@@ -281,3 +281,15 @@ def step_impl(context):
     global exception
     assert exception != None
     assert "Property values can only be of primitive types or arrays of primitive types" in str(exception)
+
+@then(u'a SyntaxError should be raised at compile time: IntegerOverflow')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Integer overflow" in str(exception)
+
+@then(u'a SyntaxError should be raised at compile time: FloatingPointOverflow')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Float overflow" in str(exception)
