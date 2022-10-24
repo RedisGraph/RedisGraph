@@ -44,9 +44,11 @@ void mexFunction
     pargout [0] = mxCreateDoubleScalar (0) ;
     #endif
 
-    #ifdef GBCUDA_DEV
-    #error "CUDA development not yet enabled for @GrB interface"
+    #ifdef GBCOMPACT
+    if (pr) printf ("GBCOMPACT:    enabled: fast compile but slow C=A*B\n") ;
+    pargout [1] = mxCreateDoubleScalar (1) ;
     #else
+    if (pr) printf ("GBCOMPACT:    normal: slow compile but fast C=A*B\n") ;
     pargout [1] = mxCreateDoubleScalar (0) ;
     #endif
 

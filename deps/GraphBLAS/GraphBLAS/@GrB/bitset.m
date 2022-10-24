@@ -42,7 +42,7 @@ function C = bitset (A, B, arg3, arg4)
 % GrB/bitset, GrB/bitclr.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (isobject (A))
     A = A.opaque ;
@@ -56,11 +56,11 @@ end
 [bm, bn, btype] = gbsize (B) ;
 
 if (gb_contains (atype, 'complex') || gb_contains (btype, 'complex'))
-    error ('GrB:error', 'inputs must be real') ;
+    error ('inputs must be real') ;
 end
 
 if (isequal (atype, 'logical') || isequal (btype, 'logical'))
-    error ('GrB:error', 'inputs must not be logical') ;
+    error ('inputs must not be logical') ;
 end
 
 a_is_scalar = (am == 1) && (an == 1) ;
@@ -84,7 +84,7 @@ else
 end
 
 if (~gb_contains (assumedtype, 'int'))
-    error ('GrB:error', 'assumedtype must be an integer type') ;
+    error ('assumedtype must be an integer type') ;
 end
 
 % C will have the same type as A on input
@@ -126,13 +126,13 @@ if (V_is_scalar)
             C = gbeunion (op, A, 0, B, 0) ;
         else
             % A is a scalar, B is a matrix
-            C = gbapply2 (op, gbfull (A), B) ;
+            C = gbapply2 (op, A, B) ;
         end
     else
         % A is a matrix
         if (b_is_scalar)
             % A is a matrix, B is scalar
-            C = gbapply2 (op, A, gbfull (B)) ;
+            C = gbapply2 (op, A, B) ;
         else
             % both A and B are matrices
             C = gbeunion (op, A, 0, B, 0) ;

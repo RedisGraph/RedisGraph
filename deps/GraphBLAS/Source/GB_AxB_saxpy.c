@@ -9,7 +9,6 @@
 
 #include "GB_mxm.h"
 #include "GB_bitmap_AxB_saxpy.h"
-#include "GB_stringify.h"
 
 // TODO: allow bitmap multiply to work in-place as well
 
@@ -110,12 +109,6 @@ GrB_Info GB_AxB_saxpy               // C = A*B using Gustavson/Hash/Bitmap
             // atomically without a critical section are supported.  The method
             // is not used if A*B is iso; C may be iso on input but it is
             // non-iso on output.
-
-            #ifdef GB_DEBUGIFY_DEFN
-            GB_debugify_mxm (C_iso, GB_sparsity (C_in), ztype, M,
-                Mask_struct, Mask_comp, semiring, flipxy, A, B) ;
-            #endif
-
             info = GB_AxB_saxpy4 (C_in, A, B, semiring, flipxy, done_in_place,
                 Context) ;
             if (info != GrB_NO_VALUE)
@@ -134,12 +127,6 @@ GrB_Info GB_AxB_saxpy               // C = A*B using Gustavson/Hash/Bitmap
             // Only built-in semirings are supported, except for the ANY
             // monoid.  Unlike GB_AxB_saxpy4, built-in monoids without their
             // own atomics (TIMES for complex) are supported.
-
-            #ifdef GB_DEBUGIFY_DEFN
-            GB_debugify_mxm (C_iso, GB_sparsity (C_in), ztype, M,
-                Mask_struct, Mask_comp, semiring, flipxy, A, B) ;
-            #endif
-
             info = GB_AxB_saxpy5 (C_in, A, B, semiring, flipxy, done_in_place,
                 Context) ;
             if (info != GrB_NO_VALUE)
@@ -214,11 +201,6 @@ GrB_Info GB_AxB_saxpy               // C = A*B using Gustavson/Hash/Bitmap
         // high enough so that the time to initialize the space.  C is sparse
         // or hypersparse.
 
-        #ifdef GB_DEBUGIFY_DEFN
-        GB_debugify_mxm (C_iso, C_sparsity, ztype, M,
-            Mask_struct, Mask_comp, semiring, flipxy, A, B) ;
-        #endif
-
         ASSERT (C_sparsity == GxB_HYPERSPARSE || C_sparsity == GxB_SPARSE) ;
         info = GB_AxB_saxpy3 (C, C_iso, cscalar, C_sparsity, M, Mask_comp,
             Mask_struct, A, B, semiring, flipxy, mask_applied, AxB_method,
@@ -260,12 +242,6 @@ GrB_Info GB_AxB_saxpy               // C = A*B using Gustavson/Hash/Bitmap
         }
         else
         { 
-
-            #ifdef GB_DEBUGIFY_DEFN
-            GB_debugify_mxm (C_iso, GxB_BITMAP, ztype, M,
-                Mask_struct, Mask_comp, semiring, flipxy, A, B) ;
-            #endif
-
             // C<#M> = A*B via bitmap saxpy method
             info = GB_bitmap_AxB_saxpy (C, C_iso, cscalar, M,
                 Mask_comp, Mask_struct, A, B, semiring, flipxy, Context) ;

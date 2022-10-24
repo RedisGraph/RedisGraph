@@ -59,8 +59,6 @@ alternative/*.out
 alternative/*_out.m
 alternative/*_out2.m
 alternative/*_demo
-alternative/*.so*
-alternative/*.dylib*
 
 Test/*.log
 Test/errlog.txt

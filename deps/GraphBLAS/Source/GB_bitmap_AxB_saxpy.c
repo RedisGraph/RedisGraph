@@ -10,11 +10,11 @@
 #include "GB_bitmap_AxB_saxpy.h"
 #include "GB_AxB_saxpy_generic.h"
 #include "GB_AxB__include1.h"
-#ifndef GBCUDA_DEV
+#ifndef GBCOMPACT
 #include "GB_AxB__include2.h"
 #endif
 
-#define GB_FREE_ALL GB_phybix_free (C) ;
+#define GB_FREE_ALL GB_phbix_free (C) ;
 
 //------------------------------------------------------------------------------
 // GB_bitmap_AxB_saxpy: compute C=A*B, C<M>=A*B, or C<!M>=A*B
@@ -90,8 +90,8 @@ GrB_Info GB_bitmap_AxB_saxpy        // C = A*B where C is bitmap
     //--------------------------------------------------------------------------
 
     GrB_BinaryOp mult = semiring->multiply ;
-//  GrB_Monoid add = semiring->add ;
-    ASSERT (mult->ztype == semiring->add->op->ztype) ;
+    GrB_Monoid add = semiring->add ;
+    ASSERT (mult->ztype == add->op->ztype) ;
     bool A_is_pattern, B_is_pattern ;
     GB_binop_pattern (&A_is_pattern, &B_is_pattern, flipxy, mult->opcode) ;
 
@@ -122,7 +122,7 @@ GrB_Info GB_bitmap_AxB_saxpy        // C = A*B where C is bitmap
         GBURBLE ("(bitmap saxpy) ") ;
         bool done = false ;
 
-        #ifndef GBCUDA_DEV
+        #ifndef GBCOMPACT
 
             //------------------------------------------------------------------
             // define the worker for the switch factory

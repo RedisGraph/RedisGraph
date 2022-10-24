@@ -28,8 +28,7 @@ int64_t GB_nnz      // return nnz(A) or INT64_MAX if integer overflow
     else if (A->p != NULL)
     { 
         // A is sparse or hypersparse
-        ASSERT (A->nvals == A->p [A->nvec]) ;
-        return (A->nvals) ;
+        return (A->p [A->nvec]) ;
     }
     else if (A->b != NULL)
     { 

@@ -56,13 +56,13 @@ function C = cell2mat (A)
 % See also GrB/horzcat, GrB/vertcat, GrB/cat, GrB/mat2cell, GrB/num2cell.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (~iscell (A))
-    error ('GrB:error', 'input must be a cell array') ;
+    error ('input must be a cell array') ;
 end
 if (ndims (A) > 2) %#ok<ISMAT>
-    error ('GrB:error', 'only 2D cell arrays are supported') ;
+    error ('only 2D cell arrays are supported') ;
 end
 
 % get the input matrices

@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
@@ -84,7 +84,14 @@ void mexFunction
     // compute C = diag (v, k)
     //--------------------------------------------------------------------------
 
-    OK1 (C, GxB_Matrix_diag (C, (GrB_Vector) V, k, desc)) ;
+    if (desc == NULL)
+    { 
+        OK1 (C, GrB_Matrix_diag (C, (GrB_Vector) V, k)) ;
+    }
+    else
+    {
+        OK1 (C, GxB_Matrix_diag (C, (GrB_Vector) V, k, desc)) ;
+    }
 
     //--------------------------------------------------------------------------
     // free shallow copies

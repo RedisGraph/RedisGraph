@@ -5,7 +5,9 @@ function s = isbanded (A, lo, hi)
 % See also GrB/istril, GrB/istriu, GrB/bandwidth.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
+
+% FUTURE: this will be much faster when 'gb_bandwidth' is a mexFunction.
 
 if (isobject (A))
     A = A.opaque ;
@@ -14,6 +16,6 @@ end
 lo = gb_get_scalar (lo) ;
 hi = gb_get_scalar (hi) ;
 
-[alo, ahi] = gbbandwidth (A, 1, 1) ;
+[alo, ahi] = gb_bandwidth (A) ;
 s = (alo <= lo) & (ahi <= hi) ;
 

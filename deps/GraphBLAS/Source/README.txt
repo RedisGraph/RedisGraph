@@ -17,3 +17,5 @@ modified then type:
 
 in Octave to construct the Generated1/* and Generated2/* files.
 
+When GBCOMPACT is enabled, only the Generated1/* files are needed.
+

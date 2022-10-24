@@ -151,9 +151,7 @@
 #define JITIFY_PRINT_LOG 1
 #endif
 
-#define JITIFY_PRINT_ALL 0
-
-#if JITIFY_PRINT_ALL
+//#if JITIFY_PRINT_ALL
 #define JITIFY_PRINT_INSTANTIATION 1
 #define JITIFY_PRINT_SOURCE 1
 #define JITIFY_PRINT_LOG 1
@@ -161,7 +159,7 @@
 #define JITIFY_PRINT_LINKER_LOG 1
 #define JITIFY_PRINT_LAUNCH 1
 #define JITIFY_PRINT_HEADER_PATHS 1
-#endif
+//#endif
 
 #if JITIFY_ENABLE_EMBEDDED_FILES
 #define JITIFY_FORCE_UNDEFINED_SYMBOL(x) void* x##_forced = (void*)&x
@@ -197,6 +195,7 @@ namespace jitify {
  */
 typedef std::istream* (*file_callback_type)(std::string filename,
                                             std::iostream& tmp_stream);
+
 // Exclude from Doxygen
 //! \cond
 

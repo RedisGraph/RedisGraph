@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
@@ -32,11 +32,6 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     gb_usage (nargin == 3 && (nargout == 2 || nargout == 1), USAGE) ;
-
-    //--------------------------------------------------------------------------
-    // find the arguments and determine the sort direction
-    //--------------------------------------------------------------------------
-
     GrB_Matrix A = gb_get_shallow (pargin [0]) ;
     int dim = (int) mxGetScalar (pargin [1]) ;
     CHECK_ERROR (dim < 0 || dim > 2, "invalid dim") ;
@@ -50,7 +45,7 @@ void mexFunction
 
     GrB_BinaryOp op ;
     if (MATCH (direction, "ascend"))
-    { 
+    {
         // ascending sort
         if      (type == GrB_BOOL  ) op = GrB_LT_BOOL   ;
         else if (type == GrB_INT8  ) op = GrB_LT_INT8   ;
@@ -66,7 +61,7 @@ void mexFunction
         else ERROR ("unsupported type") ;
     }
     else if (MATCH (direction, "descend"))
-    { 
+    {
         // descending sort
         if      (type == GrB_BOOL  ) op = GrB_GT_BOOL   ;
         else if (type == GrB_INT8  ) op = GrB_GT_INT8   ;
@@ -82,18 +77,18 @@ void mexFunction
         else ERROR ("unsupported type") ;
     }
     else
-    { 
+    {
         ERROR2 ("unrecognized direction: %s\n", direction) ;
     }
 
     GrB_Descriptor desc ;
     if (dim == 1)
-    { 
+    {
         // sort the columns of A
         desc = GrB_DESC_T0 ;
     }
     else // dim == 2
-    { 
+    {
         // sort the rows of A
         desc = NULL ;
     }
@@ -116,14 +111,22 @@ void mexFunction
     // sort the matrix
     //--------------------------------------------------------------------------
 
-    OK (GxB_Matrix_sort (C, P, op, A, desc)) ;
+    // GxB_print (A, 3) ;
+    // GxB_print (op, 3) ;
+    // GxB_print (desc, 3) ;
+    // GxB_print (P, 3) ;
+    GrB_Info info = (GxB_Matrix_sort (C, P, op, A, desc)) ;
+    // printf ("info: %d\n", info) ;
+    // GxB_print (C, 3) ;
+    // GxB_print (P, 3) ;
+    OK (info) ;
 
     //--------------------------------------------------------------------------
     // add 1 to the entries in P, to convert to 1-based indexing
     //--------------------------------------------------------------------------
 
     if (P != NULL)
-    { 
+    {
         OK (GrB_Matrix_apply_BinaryOp2nd_INT64 (P, NULL, NULL, GrB_PLUS_INT64,
             P, (int64_t) 1, NULL)) ;
     }
@@ -132,12 +135,10 @@ void mexFunction
     // return result
     //--------------------------------------------------------------------------
 
-    OK (GrB_Matrix_free (&A)) ;
     pargout [0] = gb_export (&C, KIND_GRB) ;
     if (nargout > 1)
-    { 
+    {
         pargout [1] = gb_export (&P, KIND_GRB) ;
     }
-    GB_WRAPUP ;
 }
 

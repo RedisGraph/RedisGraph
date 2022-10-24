@@ -24,7 +24,7 @@ function C = bitcmp (A, assumedtype)
 % GrB/bitset, GrB/bitclr.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (nargin < 2)
     assumedtype = 'uint64' ;
@@ -37,15 +37,15 @@ end
 atype = gbtype (A) ;
 
 if (gb_contains (atype, 'complex'))
-    error ('GrB:error', 'inputs must be real') ;
+    error ('inputs must be real') ;
 end
 
 if (isequal (atype, 'logical'))
-    error ('GrB:error', 'inputs must not be logical') ;
+    error ('inputs must not be logical') ;
 end
 
 if (~gb_contains (assumedtype, 'int'))
-    error ('GrB:error', 'assumedtype must be an integer type') ;
+    error ('assumedtype must be an integer type') ;
 end
 
 % C will have the same type as A on input

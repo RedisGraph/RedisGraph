@@ -13,7 +13,7 @@
 
 #define GB_FREE_ALL                     \
     GB_FREE_WORKSPACE ;                 \
-    GB_phybix_free (C) ;
+    GB_phbix_free (C) ;
 
 #include "GB_concat.h"
 

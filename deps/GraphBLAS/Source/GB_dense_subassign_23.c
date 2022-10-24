@@ -22,10 +22,9 @@
 
 #include "GB_dense.h"
 #include "GB_binop.h"
-#ifndef GBCUDA_DEV
+#ifndef GBCOMPACT
 #include "GB_binop__include.h"
 #endif
-#include "GB_unused.h"
 
 #define GB_FREE_ALL                         \
 {                                           \
@@ -121,7 +120,7 @@ GrB_Info GB_dense_subassign_23      // C += B; C is dense, B is sparse or dense
 
     bool done = false ;
 
-    #ifndef GBCUDA_DEV
+    #ifndef GBCOMPACT
 
         //----------------------------------------------------------------------
         // define the worker for the switch factory

@@ -70,7 +70,6 @@ function unopinfo (op, type)
 %   tgamma      z = tgamma (x)  gamma function, also 'gamma'
 %   erf         z = erf (x)     error function
 %   erfc        z = erfc (x)    complementary error function
-%   cbrt        z = cbrt (x)    cube root
 %   frexpx      z = frexpx (x)  mantissa from ANSI C11 frexp function
 %   frexpe      z = frexpe (x)  exponent from ANSI C11 frexp function;
 %                               the built-in [f,e]=log2(x) returns
@@ -101,7 +100,7 @@ function unopinfo (op, type)
 % GrB.selectopinfo, GrB.semiringinfo.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (nargin == 0)
     help GrB.unopinfo

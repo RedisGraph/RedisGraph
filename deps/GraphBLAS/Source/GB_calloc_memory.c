@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_calloc_memory: wrapper for calloc (actually uses malloc and memset)
+// GB_calloc_memory: wrapper for calloc
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
@@ -12,7 +12,7 @@
 #include "GB.h"
 
 //------------------------------------------------------------------------------
-// GB_calloc_helper:  malloc/memset to allocate an initialized block
+// GB_calloc_helper:  use calloc or malloc/memset to allocate initialized block
 //------------------------------------------------------------------------------
 
 static inline void *GB_calloc_helper

@@ -1,9 +1,9 @@
 #-------------------------------------------------------------------------------
-# GraphBLAS/GraphBLAS/Makefile: compile libgraphblas_matlab for use in MATLAB
+# GraphBLAS/GraphBLAS/Makefile
 #-------------------------------------------------------------------------------
 
 # SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 #-------------------------------------------------------------------------------
 
@@ -18,10 +18,6 @@ default: library
 library:
 	( cd build ; cmake $(CMAKE_OPTIONS) .. ; $(MAKE) --jobs=$(JOBS) )
 
-# install only in SuiteSparse/lib and SuiteSparse/include
-local:
-	( cd build && cmake $(CMAKE_OPTIONS) -DSUITESPARSE_LOCAL=1 .. && $(MAKE) --jobs=${JOBS} )
-
 # compile with -g 
 debug:
 	( cd build ; cmake -DCMAKE_BUILD_TYPE=Debug $(CMAKE_OPTIONS) .. ; $(MAKE) --jobs=$(JOBS) )
@@ -31,7 +27,7 @@ remake:
 	( cd build ; $(MAKE) --jobs=$(JOBS) )
 
 # just run cmake; do not compile
-setup:
+cmake:
 	( cd build ; cmake $(CMAKE_OPTIONS) .. ; )
 
 # installs GraphBLAS to the install location defined by cmake, usually

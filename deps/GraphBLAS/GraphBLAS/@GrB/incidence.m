@@ -37,7 +37,7 @@ function C = incidence (A, varargin)
 % See also graph/incidence, digraph/incidence.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (isobject (A))
     A = A.opaque ;
@@ -45,7 +45,7 @@ end
 
 [m, n] = gbsize (A) ;
 if (m ~= n)
-    error ('GrB:error', 'A must be square') ;
+    error ('A must be square') ;
 end
 
 % get the string options
@@ -60,9 +60,9 @@ for k = 1:nargin-1
         case { 'double', 'single', 'int8', 'int16', 'int32', 'int64' }
             type = arg ;
         case { 'uint8', 'uint16', 'uint32', 'uint64', 'logical' }
-            error ('GrB:error', 'type must be signed') ;
+            error ('type must be signed') ;
         otherwise
-            error ('GrB:error', 'unknown option') ;
+            error ('unknown option') ;
     end
 end
 

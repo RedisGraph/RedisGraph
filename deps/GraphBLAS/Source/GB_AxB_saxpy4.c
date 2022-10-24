@@ -20,7 +20,7 @@
 
 #include "GB_mxm.h"
 #include "GB_control.h"
-#ifndef GBCUDA_DEV
+#ifndef GBCOMPACT
 #include "GB_AxB__include2.h"
 #endif
 
@@ -32,7 +32,7 @@
 #define GB_FREE_ALL             \
 {                               \
     GB_FREE_WORKSPACE ;         \
-    GB_phybix_free (C) ;        \
+    GB_phbix_free (C) ;         \
 }
 
 //------------------------------------------------------------------------------
@@ -55,7 +55,7 @@ GrB_Info GB_AxB_saxpy4              // C += A*B
     // saxpy4 is disabled if GraphBLAS is compiled as compact
     //--------------------------------------------------------------------------
 
-    #ifdef GBCUDA_DEV
+    #ifdef GBCOMPACT
     return (GrB_NO_VALUE) ;
     #else
 
@@ -92,8 +92,8 @@ GrB_Info GB_AxB_saxpy4              // C += A*B
     //--------------------------------------------------------------------------
 
     GrB_BinaryOp mult = semiring->multiply ;
-//  GrB_Monoid add = semiring->add ;
-    ASSERT (mult->ztype == semiring->add->op->ztype) ;
+    GrB_Monoid add = semiring->add ;
+    ASSERT (mult->ztype == add->op->ztype) ;
     bool A_is_pattern, B_is_pattern ;
     GB_binop_pattern (&A_is_pattern, &B_is_pattern, flipxy, mult->opcode) ;
 

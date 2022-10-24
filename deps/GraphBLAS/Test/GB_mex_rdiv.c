@@ -44,29 +44,20 @@ GrB_Info axb (GB_Context Context, bool cprint) ;
 GrB_Semiring My_plus_rdiv = NULL ;
 GrB_BinaryOp My_rdiv = NULL ;
 
- void my_rdiv (double *z, const double *x, const double *y) ;
+void my_rdiv (double *z, const double *x, const double *y) ;
 
- void my_rdiv (double *z, const double *x, const double *y)
- {
-     (*z) = (*y) / (*x) ;
- }
-
-#define MY_RDIV                                                 \
-"void my_rdiv (double *z, const double *x, const double *y)\n"  \
-"{\n"                                                           \
-"    (*z) = (*y) / (*x) ;\n"                                    \
-"}"
+void my_rdiv (double *z, const double *x, const double *y)
+{
+    (*z) = (*y) / (*x) ;
+}
 
 //------------------------------------------------------------------------------
 
 GrB_Info axb (GB_Context Context, bool cprint)
 {
     // create the rdiv operator
-//  info = GrB_BinaryOp_new (&My_rdiv,
-//      (GxB_binary_function) my_rdiv, GrB_FP64, GrB_FP64, GrB_FP64) ;
-    info = GxB_BinaryOp_new (&My_rdiv,
-        (GxB_binary_function) my_rdiv, GrB_FP64, GrB_FP64, GrB_FP64,
-        "my_rdiv", MY_RDIV) ;
+    info = GrB_BinaryOp_new (&My_rdiv,
+        (GxB_binary_function) my_rdiv, GrB_FP64, GrB_FP64, GrB_FP64) ;
     if (info != GrB_SUCCESS) return (info) ;
     GrB_BinaryOp_wait_(My_rdiv, GrB_MATERIALIZE) ;
     if (info != GrB_SUCCESS) return (info) ;

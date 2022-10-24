@@ -22,7 +22,7 @@
 #include "GB_subassign_methods.h"
 #include "GB_dense.h"
 #include "GB_unused.h"
-#ifndef GBCUDA_DEV
+#ifndef GBCOMPACT
 #include "GB_type__include.h"
 #endif
 
@@ -108,7 +108,7 @@ GrB_Info GB_dense_subassign_05d
 
     bool done = false ;
 
-    #ifndef GBCUDA_DEV
+    #ifndef GBCOMPACT
 
         //----------------------------------------------------------------------
         // define the worker for the switch factory

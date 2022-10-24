@@ -8,7 +8,7 @@
 //------------------------------------------------------------------------------
 
 #include "GB_ek_slice.h"
-#ifndef GBCUDA_DEV
+#ifndef GBCOMPACT
 #include "GB_type__include.h"
 #endif
 
@@ -47,6 +47,7 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
     ASSERT (!GB_PENDING (A)) ;
     ASSERT (GB_JUMBLED_OK (A)) ;        // A can be jumbled on input
     ASSERT (GB_ZOMBIES_OK (A)) ;        // A can have zombies on input
+    GBURBLE ("(sparse to bitmap) ") ;
 
     //--------------------------------------------------------------------------
     // determine the maximum number of threads to use
@@ -68,9 +69,9 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
     //--------------------------------------------------------------------------
 
     const int64_t anz = GB_nnz (A) ;
-    GB_BURBLE_N (anz, "(sparse to bitmap) ") ;
     const int64_t avdim = A->vdim ;
     const int64_t avlen = A->vlen ;
+    const int64_t anvec = A->nvec ;
     int64_t anzmax ;
     if (!GB_int64_multiply ((GrB_Index *) &anzmax, avdim, avlen))
     { 
@@ -161,7 +162,7 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
         else
         {
 
-            #ifndef GBCUDA_DEV
+            #ifndef GBCOMPACT
             {
                 switch (asize)
                 {
@@ -223,7 +224,7 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
         A->x_shallow = false ;
     }
 
-    GB_phybix_free (A) ;
+    GB_phbix_free (A) ;
     A->iso = A_iso ;        // OK: convert_sparse_to_bitmap, keep iso
 
     A->b = Ab ; A->b_size = Ab_size ; A->b_shallow = false ;

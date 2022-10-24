@@ -26,13 +26,16 @@ bool GB_binop_builtin               // true if binary operator is builtin
     GB_Type_code *zcode             // type code for z output
 ) ;
 
-GrB_BinaryOp GB_flip_binop  // flip a binary operator
+GB_Opcode GB_flip_binop_code    // flipped binary opcode, or -1 on error
 (
-    // input:
+    GB_Opcode opcode,       // binary opcode to flip
+    bool *handled           // true if opcode is handled by flipping the opcode
+) ;
+
+GrB_BinaryOp GB_flip_op     // flip a binary operator, or NULL on error
+(
     GrB_BinaryOp op,        // binary operator to flip
-    bool for_ewise,         // if true: flip for eWise, else for semiring
-    // input/output:
-    bool *flipxy            // true on input, set to false if op is flipped
+    bool *handled           // true if operator is handled
 ) ;
 
 GB_PUBLIC
@@ -46,7 +49,7 @@ GrB_BinaryOp GB_boolean_rename_op   // return renamed op
     const GrB_BinaryOp op           // op to rename
 ) ;
 
-GrB_Info GB_binop_new
+void GB_binop_new
 (
     GrB_BinaryOp op,                // new binary operator
     GxB_binary_function function,   // binary function (may be NULL)

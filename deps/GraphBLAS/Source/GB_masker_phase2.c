@@ -39,7 +39,7 @@
 #define GB_FREE_ALL                         \
 {                                           \
     GB_FREE_WORKSPACE ;                     \
-    GB_phybix_free (R) ;                    \
+    GB_phbix_free (R) ;                     \
 }
 
 GrB_Info GB_masker_phase2           // phase2 for R = masker (C,M,Z)
@@ -157,7 +157,6 @@ GrB_Info GB_masker_phase2           // phase2 for R = masker (C,M,Z)
     { 
         R->nvec_nonempty = Rnvec_nonempty ;
         R->p = (int64_t *) Rp ; R->p_size = Rp_size ;
-        R->nvals = rnz ;
         (*Rp_handle) = NULL ;
     }
 

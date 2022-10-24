@@ -11,8 +11,7 @@
 
 #include "GB_dense.h"
 #include "GB_binop.h"
-#include "GB_stringify.h"
-#ifndef GBCUDA_DEV
+#ifndef GBCOMPACT
 #include "GB_binop__include.h"
 #endif
 
@@ -25,7 +24,7 @@ void GB_dense_ewise3_accum          // C += A+B, all matrices dense
     GB_Context Context
 )
 {
-#ifndef GBCUDA_DEV
+#ifndef GBCOMPACT
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -71,11 +70,6 @@ void GB_dense_ewise3_accum          // C += A+B, all matrices dense
     GB_ENSURE_FULL (C) ;    // convert C to full, if sparsity control allows it
 
     // FUTURE::: handle IS*, LOR, LAND, LXOR operators
-
-    #ifdef GB_DEBUGIFY_DEFN
-    GB_debugify_ewise (false, GxB_FULL, C->type, NULL,
-        false, false, op, false, A, B) ;
-    #endif
 
     //--------------------------------------------------------------------------
     // determine the number of threads to use

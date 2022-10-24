@@ -163,7 +163,6 @@ static inline void GB_jwrapup
     }
 
     // C->p and C->h are now valid
-    C->nvals = cnz ;
     C->magic = GB_MAGIC ;
 }
 

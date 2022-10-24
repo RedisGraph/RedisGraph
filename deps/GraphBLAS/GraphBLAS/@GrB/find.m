@@ -22,10 +22,12 @@ function [I, J, X] = find (G, k, search)
 % See also sparse, GrB.build, GrB.extracttuples.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
-% FUTURE: find (G,k,'first') and find (G,k,'last') are slow.
-% They are currently implemented, all entries are extracted and then the
+% FUTURE: add linear indexing
+
+% FUTURE: find (G,k,'first') and find (G,k,'last') are slow, since as
+% they are currently implemented, all entries are extracted and then the
 % first or last k are selected from the extracted tuples.  It would be
 % faster to use a mexFunction that directly accesses the opaque content
 % of G, instead of using GrB_Matrix_extractTuples_*, which always extracts
@@ -38,7 +40,7 @@ end
 if (nargin > 1)
     k = ceil (double (gb_get_scalar (k))) ;
     if (k < 1)
-        error ('GrB:error', 'k must be positive') ;
+        error ('k must be positive') ;
     end
     if (~isequal (gbformat (G), 'by col'))
         % find (G, k) assumes the matrix is stored by column, so reformat G
@@ -74,10 +76,10 @@ else
         % extract indices from a column vector
         I = gbextracttuples (G) ;
     else
-        % extract linear indices from a matrix
-        [I, J] = gbextracttuples (G) ;
-        % use the built-in sub2ind to convert the 2D indices to linear indices
-        I = sub2ind ([m n], I, J) ;
+        % FUTURE: this does not return the same thing as I = find (G)
+        % for the built-in find (..). (need to add 1D linear indexing)
+        error ('Linear indexing not yet supported') ;
+        % I = gbextracttuples (G) ;
     end
 end
 
@@ -109,8 +111,7 @@ if (nargin > 1)
             X = X (n-k+1:n) ;
         end
     else
-        error ('GrB:error', ...
-            'invalid search option; must be ''first'' or ''last''') ;
+        error ('invalid search option; must be ''first'' or ''last''') ;
     end
 end
 

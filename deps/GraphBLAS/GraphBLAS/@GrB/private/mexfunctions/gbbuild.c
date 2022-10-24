@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
@@ -163,7 +163,8 @@ void mexFunction
     else
     { 
         // m is provided on input
-        nrows = gb_mxget_uint64_scalar (pargin [3], "m") ;
+        CHECK_ERROR (!gb_mxarray_is_scalar (pargin [3]), "m must be a scalar") ;
+        nrows = (GrB_Index) mxGetScalar (pargin [3]) ;
     }
 
     if (nargin < 5)
@@ -183,7 +184,8 @@ void mexFunction
     else
     { 
         // n is provided on input
-        ncols = gb_mxget_uint64_scalar (pargin [4], "n") ;
+        CHECK_ERROR (!gb_mxarray_is_scalar (pargin [4]), "n must be a scalar") ;
+        ncols = (GrB_Index) mxGetScalar (pargin [4]) ;
     }
 
     //--------------------------------------------------------------------------

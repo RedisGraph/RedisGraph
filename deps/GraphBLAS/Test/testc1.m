@@ -1,15 +1,10 @@
-function testc1(use_builtin)
+function testc1
 %TESTC1 test complex operators
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 rng 'default'
-
-if (nargin < 1)
-    use_builtin = true ;
-end
-GB_builtin_complex_set (use_builtin) ;
 
 A = sparse (rand (2) + 1i * rand (2))  ;
 C = GB_mex_dump (A,0) ;
@@ -104,4 +99,3 @@ end
 
 fprintf ('testc1: all complex operator tests passed\n') ;
 
-GB_builtin_complex_set (true) ;

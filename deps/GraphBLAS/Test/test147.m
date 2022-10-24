@@ -17,8 +17,7 @@ semiring.add = 'plus' ;
 semiring.multiply = 'times' ;
 semiring.class = 'double' ;
 
-% also create the /tmp/GB_mxm_[code].h file, flipxy = false
-C1 = GB_mex_mxm (S, M, [ ], semiring, A, A, [ ], 0) ;
+C1 = GB_mex_mxm (S, M, [ ], semiring, A, A, [ ]) ;
 C2 = (A*A) .* M ;
 
 assert (norm (C1.matrix - C2, 1) < 1e-12)

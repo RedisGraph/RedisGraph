@@ -6,7 +6,7 @@ function C = gt (A, B)
 % See also GrB/lt, GrB/le, GrB/ge, GrB/ne, GrB/eq.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 C = lt (B, A) ;
 

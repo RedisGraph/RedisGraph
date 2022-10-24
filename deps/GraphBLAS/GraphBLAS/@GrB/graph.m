@@ -24,13 +24,13 @@ function Graph = graph (G, varargin)
 % See also graph, digraph, GrB/digraph.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 G = G.opaque ;
 
 [m, n, type] = gbsize (G) ;
 if (m ~= n)
-    error ('GrB:error', 'G must be square') ;
+    error ('G must be square') ;
 end
 
 % get the string options
@@ -44,7 +44,7 @@ for k = 1:nargin-1
         case { 'omitselfloops' }
             omitself = true ;
         otherwise
-            error ('GrB:error', 'unknown option') ;
+            error ('unknown option') ;
     end
 end
 

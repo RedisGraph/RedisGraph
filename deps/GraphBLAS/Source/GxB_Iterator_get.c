@@ -99,7 +99,7 @@ GxB_FC64_t GxB_Iterator_get_FC64 (GxB_Iterator iterator)
 
 void GxB_Iterator_get_UDT (GxB_Iterator iterator, void *value)
 { 
-    memcpy (value, ((const uint8_t *) (iterator->Ax)) +
+    memcpy (value, iterator->Ax +
         (iterator->iso ? 0 : (iterator->type_size * iterator->p)),
         iterator->type_size) ;
 }
