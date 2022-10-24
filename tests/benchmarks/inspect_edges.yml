@@ -4,7 +4,7 @@ remote:
   - type: oss-standalone
 dbconfig:
   - init_commands:
-    - '"GRAPH.QUERY" "g" "UNWIND range(1, 1000000) AS x CREATE (src:N {v: x}), (src)-[:R]->(:N)"'
+    - '"GRAPH.QUERY" "g" "UNWIND range(1, 1000) AS x CREATE (src:N {v: x}), (src)-[:R]->(:N)"'
 clientconfig:
   - tool: redisgraph-benchmark-go
   - parameters:
@@ -13,9 +13,6 @@ clientconfig:
     - clients: 32
     - threads: 4
     - connections: 32
-    - requests: 1000000
+    - requests: 50000
     - queries:
       - { q: "MATCH ()-[e]->() RETURN max(ID(e))", ratio: 1 }
-kpis:
-  - le: { $.OverallClientLatencies.Total.q50: 7000.0 }
-  - ge: { $.OverallQueryRates.Total: 0.5 }
