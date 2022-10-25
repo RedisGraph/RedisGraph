@@ -167,7 +167,6 @@ Feature: Unwind1
       | empty |
     And no side effects
 
-  @skip
   Scenario: [9] Unwinding null
     Given any graph
     When executing query:

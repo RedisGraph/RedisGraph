@@ -30,14 +30,14 @@
 //          then no AVX acceleration is used.  default: not #define'd (using
 //          Google's cpu_features).
 
+#ifndef GB_CPU_FEATURES_H
+#define GB_CPU_FEATURES_H
+
 //------------------------------------------------------------------------------
 // GB_compiler.h: determine the compiler and architecture
 //------------------------------------------------------------------------------
 
 #include "GB_compiler.h"
-
-#ifndef GB_CPU_FEATURES_H
-#define GB_CPU_FEATURES_H
 
 //------------------------------------------------------------------------------
 // determine the target architecture
