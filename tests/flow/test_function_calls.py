@@ -1499,7 +1499,3 @@ class testFunctionCallsFlow(FlowTestsBase):
         ]
         for query in queries:
             self.expect_type_error(query)
-
-        # No input arguments
-        query = """RETURN isEmpty()"""
-        self.expect_error(query, "Received 0 arguments")
