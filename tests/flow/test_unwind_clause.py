@@ -12,10 +12,10 @@ class testUnwindClause():
         redis_con = self.env.getConnection()
         redis_graph = Graph(redis_con, GRAPH_ID)
  
-    def test01_unwind_null_output(self):
+    def test01_unwind_null(self):
         query = """UNWIND null AS x RETURN x"""
         actual_result = redis_graph.query(query)
-        expected = [[None]]
+        expected = []
         self.env.assertEqual(actual_result.result_set, expected)
 
     def test02_unwind_input_types(self):
