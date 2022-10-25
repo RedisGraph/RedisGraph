@@ -475,7 +475,7 @@ jobs:
 
   benchmark:
     docker:
-      - image: redisfab/rmbuilder:6.2.7-x64-bionic
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - checkout-all
@@ -492,7 +492,7 @@ jobs:
 
   benchmark-profiler:
     docker:
-      - image: redisfab/rmbuilder:6.2.7-x64-bionic
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - checkout-all
