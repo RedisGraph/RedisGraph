@@ -1482,7 +1482,8 @@ class testFunctionCallsFlow(FlowTestsBase):
             """RETURN isEmpty('abc')""",
             """RETURN isEmpty(['a', 'b', 'c'])""",
             """RETURN isEmpty([null])""",
-            """WITH {val: 1, nested: {nested_val: 'nested_str'}} AS map RETURN isEmpty(map)"""
+            """WITH {val: 1, nested: {nested_val: 'nested_str'}} AS map RETURN isEmpty(map)""",
+            """WITH {x:null} AS map RETURN isEmpty(map)"""
         ]
         for query in queries:
             actual_result = graph.query(query)

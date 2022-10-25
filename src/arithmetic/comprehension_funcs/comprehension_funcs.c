@@ -250,7 +250,6 @@ SIValue AR_LIST_COMPREHENSION(SIValue *argv, int argc, void *private_data) {
 }
 
 SIValue AR_ISEMPTY(SIValue *argv, int argc, void *private_data) {
-	printf("AR_ISEMPTY\n");
 	ASSERT(argc == 1);
 	switch(SI_TYPE(argv[0])) {
 		case T_NULL:
