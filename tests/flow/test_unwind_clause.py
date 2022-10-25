@@ -2,21 +2,17 @@ from common import *
 import re
 
 redis_graph = None
+GRAPH_ID = "unwind"
 
-class testUnwindClause(FlowTestsBase):
+class testUnwindClause():
     
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(redis_con, "G")
+        redis_graph = Graph(redis_con, GRAPH_ID)
  
     def test01_unwind_null_output(self):
-        query = """UNWIND ({x:null}) AS q RETURN q.x"""
-        actual_result = redis_graph.query(query)
-        expected = [[None]]
-        self.env.assertEqual(actual_result.result_set, expected)
-
         query = """UNWIND null AS x RETURN x"""
         actual_result = redis_graph.query(query)
         expected = [[None]]
@@ -33,6 +29,12 @@ class testUnwindClause(FlowTestsBase):
         query = """UNWIND ({x:3, y:5}) AS q RETURN q"""
         actual_result = redis_graph.query(query)
         expected = [[{'x': 3, 'y': 5}]]
+        self.env.assertEqual(actual_result.result_set, expected)
+
+        # map containing a key with the value NULL
+        query = """UNWIND ({x:null}) AS q RETURN q"""
+        actual_result = redis_graph.query(query)
+        expected = [[{'x': None}]]
         self.env.assertEqual(actual_result.result_set, expected)
 
         # integer input
@@ -71,10 +73,22 @@ class testUnwindClause(FlowTestsBase):
         expected = []
         self.env.assertEqual(actual_result.result_set, expected)
 
-        # list including null
+        # list with null at the last position
         query = """UNWIND [1, 2, null] AS x RETURN x"""
         actual_result = redis_graph.query(query)
         expected = [[1], [2], [None]]
+        self.env.assertEqual(actual_result.result_set, expected)
+
+        # list with null before the last position
+        query = """UNWIND [1, null, 2] AS x RETURN x"""
+        actual_result = redis_graph.query(query)
+        expected = [[1], [None], [2]]
+        self.env.assertEqual(actual_result.result_set, expected)
+
+        # list with null at first position
+        query = """UNWIND [null, 1, 2] AS x RETURN x"""
+        actual_result = redis_graph.query(query)
+        expected = [[None], [1], [2]]
         self.env.assertEqual(actual_result.result_set, expected)
 
     def test02_unwind_set(self):
@@ -84,5 +98,3 @@ class testUnwindClause(FlowTestsBase):
         query = """UNWIND ({x:null}) AS q MATCH (n:N) SET n.x= q.x RETURN n"""
         actual_result = redis_graph.query(query)
         self.env.assertEqual(actual_result.properties_removed, 1)
-        query = """MATCH (n:N) DELETE n"""
-        redis_graph.query(query)
