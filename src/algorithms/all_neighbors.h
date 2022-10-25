@@ -25,7 +25,7 @@ typedef struct {
 	RG_Matrix M;                   // adjacency matrix
 	uint minLen;                   // minimum required depth
 	uint maxLen;                   // maximum allowed depth
-	int current_level;             // cuurent depth
+	int current_level;             // current depth
 	bool first_pull;               // first call to Next
 	EntityID *visited;             // visited nodes
 	RG_MatrixTupleIter *levels;    // array of neighbors iterator
