@@ -99,8 +99,8 @@ class RedisGraphSetup(paella.Setup):
 #----------------------------------------------------------------------------------------------
 
 parser = argparse.ArgumentParser(description='Set up system for build.')
-parser.add_argument('-n', '--nop', action="store_true", help='no operation')
-parser.add_argument('--no-rmpytools', action="store_true", help='no operation')
+parser.add_argument('-n', '--nop', action="store_true", help='No operation')
+parser.add_argument('--no-rmpytools', action="store_true", help='Do not install Python tools')
 args = parser.parse_args()
 
 RedisGraphSetup(args).setup()
