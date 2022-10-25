@@ -9,7 +9,7 @@
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 
-// run BFS from `src` untill `dest` is rached
+// run BFS from `src` until `dest` is reached
 // add all nodes visited during traversal except for nodes in
 // `dest` level, so it can be used later on in `AllShortestPaths_NextPath`
 int AllShortestPaths_FindMinimumLength
