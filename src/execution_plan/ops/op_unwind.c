@@ -41,14 +41,14 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 static void _initList(OpUnwind *op) {
 	op->list = SI_NullVal(); // Null-set the list value to avoid memory errors if evaluation fails.
 	SIValue new_list = AR_EXP_Evaluate(op->exp, op->currentRecord);
-	if(SI_TYPE(new_list) == T_ARRAY) {
+	if(SI_TYPE(new_list) == T_ARRAY || SI_TYPE(new_list) == T_NULL) {
 		// Update the list value.
 		op->list = new_list;
 	} else {
-		SIValue array = SI_Array(1);
-		SIArray_Append(&array, new_list);
+		// Create a list of size 1 and initialize it with the input expression value
+		op->list = SI_Array(1);
+		SIArray_Append(&op->list, new_list);
 		SIValue_Free(new_list);
-		op->list = array;
 	}
 }
 
