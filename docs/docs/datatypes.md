@@ -123,7 +123,7 @@ $ redis-cli GRAPH.QUERY G "WITH {key1: 'stringval', key2: 10} AS map RETURN map.
       2) (integer) 10
 ```
 
-This aligns with way that the properties of nodes and relationships can be accessed.
+This aligns with the way that the properties of nodes and relationships can be accessed.
 
 Maps cannot be stored as property values.
 
