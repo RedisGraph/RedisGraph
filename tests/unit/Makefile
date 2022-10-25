@@ -38,7 +38,7 @@ ifeq ($(OS),macos)
 		LIBOMP_PREFIX:=$(shell brew --prefix libomp)
 		LIBOMP=$(LIBOMP_PREFIX)/lib/libomp.a
 	else
-		LIBOMP=-lomp
+		LIBOMP=-lomp -L$(shell brew --prefix libomp)/lib -Wl,-no_compact_unwind
 	endif
 endif
 
