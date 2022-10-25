@@ -822,6 +822,7 @@ This section contains information on all supported functions from the Cypher que
 | Function                                         | Description                                                                                  |
 | -------                                          | :-----------                                                                                 |
 | exists()                                         | Returns true if the specified property exists in the node or relationship                    |
+| isEmpty()                                        | Returns true if the input list or map contains no elements or if the input string contains no characters. |
 | [any()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for any element in the input array      |
 | [all()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for all elements in the input array     |
 | [none()](#existential-comprehension-functions)   | Returns true if the inner WHERE predicate holds false for all elements in the input array    |
