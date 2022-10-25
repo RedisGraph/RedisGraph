@@ -1158,20 +1158,21 @@ It can yield two outputs:
 `edges` - An array of all edges traversed during the search. This does not necessarily contain all edges connecting nodes in the tree, as cycles or multiple edges connecting the same source and destination do not have a bearing on the reachability this algorithm tests for. These can be used to construct the directed acyclic graph that represents the BFS tree. Emitting edges incurs a small performance penalty.
 
 ## Indexing
-RedisGraph supports single-property indexes for node labels.
 
-String, numeric, and geospatial data types can be indexed.
+RedisGraph supports single-property indexes for node labels and for relationship type. String, numeric, and geospatial data types can be indexed.
 
-The creation syntax is:
+### Creating an index for a node label
 
-```sh
-GRAPH.QUERY DEMO_GRAPH "CREATE INDEX ON :Person(age)"
-```
-
-On the master branch, a newer syntax is also supported. This will be the standard in future versions:
+For a node label, the index creation syntax is:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH "CREATE INDEX FOR (p:Person) ON (p.age)"
+```
+
+An old syntax is also supported:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "CREATE INDEX ON :Person(age)"
 ```
 
 After an index is explicitly created, it will automatically be used by queries that reference that label and any indexed property in a filter.
@@ -1199,9 +1200,9 @@ GRAPH.QUERY DEMO_GRAPH
 
 Geospatial indexes can currently only be leveraged with `<` and `<=` filters; matching nodes outside of the given radius is performed using conventional matching.
 
-Indexing relationship property
+### Creating an index for a relationship type
 
-The creation syntax is:
+For a relationship type, the index creation syntax is:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH "CREATE INDEX FOR ()-[f:FOLLOW]-() ON (f.created_at)"
@@ -1219,13 +1220,24 @@ GRAPH.EXPLAIN DEMO_GRAPH "MATCH (p:Person {id: 0})-[f:FOLLOW]->(fp) WHERE 0 < f.
 
 This can significantly improve the runtime of queries that traverse super nodes or when we want to start traverse from relationships.
 
-Individual indexes can be deleted using the matching syntax:
+### Deleting an index for a node label
+
+For a node label, the index deletion syntax is:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH "DROP INDEX ON :Person(age)"
 ```
 
-## Full-text indexes
+### Deleting an index for a relationship type
+
+For a relationship type, the index deletion syntax is:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "DROP INDEX ON :FOLLOW(created_at)"
+```
+
+
+### Full-text indexing
 
 RedisGraph leverages the indexing capabilities of [RediSearch](/docs/stack/search/index.html) to provide full-text indices through procedure calls. To construct a full-text index on the `title` property of all nodes with label `Movie`, use the syntax:
 
