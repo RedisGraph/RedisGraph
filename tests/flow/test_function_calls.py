@@ -1886,7 +1886,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             self.get_res_and_assertEquals(query, expected_result)
 
     def test81_ISNULL(self):
-        arr = ["NULL", "NOT NULL", "1", "1.2", "TRUE", "FALSE", "'string'", "[1,2,3]"]
+        arr = ["NULL", "1", "1.2", "TRUE", "FALSE", "'string'", "[1,2,3]"]
         for ind, s in enumerate(arr):
             query1 = f'RETURN {s} IS NOT NULL'
             expected1 = [[True]] if ind!=0 else [[False]]
