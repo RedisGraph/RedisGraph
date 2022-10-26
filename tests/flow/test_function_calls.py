@@ -1922,3 +1922,14 @@ class testFunctionCallsFlow(FlowTestsBase):
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
+
+    def test84_RandomUUID(self):
+        query = "RETURN randomUUID()"
+        actual_result = graph.query(query).result_set[0][0]
+        self.env.assertEquals(actual_result[8], '-')
+        self.env.assertEquals(actual_result[13], '-')
+        self.env.assertEquals(actual_result[14], '4')
+        self.env.assertEquals(actual_result[18], '-')
+        if not actual_result[19] in ['8', '9', 'a', 'b']:
+            assert(False)
+        self.env.assertEquals(actual_result[23], '-')
