@@ -13,6 +13,7 @@
 
 #include <math.h>
 #include <errno.h>
+#include <float.h>
 
 #ifndef M_PI
 #define M_PI (3.14159265358979323846)
@@ -92,9 +93,130 @@ SIValue AR_RAND(SIValue *argv, int argc, void *private_data) {
 /* returns the value of the given number rounded to the nearest integer. */
 SIValue AR_ROUND(SIValue *argv, int argc, void *private_data) {
 	SIValue result = argv[0];
+	SIValue numOfPrecision;
+	SIValue mode;
+	
 	if(SIValue_IsNull(result)) return SI_NullVal();
 	// No modification is required for non-decimal values
-	if(SI_TYPE(result) == T_DOUBLE) result.doubleval = round(result.doubleval);
+	if(argc >= 1) {
+		if(SI_TYPE(result) == T_DOUBLE) result.doubleval = round(result.doubleval);
+	}
+
+	if(argc >= 2) {
+		result = argv[0];
+		numOfPrecision = argv[1];
+		// Precision type must be integer and greater than zero, otherwise null value returns.
+		if(SI_TYPE(numOfPrecision) == T_INT64 && numOfPrecision.longval > 0) {
+			char buf[64] = {0};
+			char *sEnd = NULL;
+			snprintf(buf, 64, "%.*f", (int)numOfPrecision.longval, result.doubleval);
+
+			double parsedval = strtod(buf, &sEnd);
+			/* The input was not a complete number or represented a number that
+			* cannot be represented as a double. */
+			if(sEnd[0] != '\0' || errno == ERANGE) return SI_NullVal();
+			
+			result.doubleval = parsedval;
+		}
+		else {
+			return SI_NullVal();
+		}
+	}
+
+	if(argc >= 3) {
+		result = argv[0];
+		mode = argv[2];
+		char buf[64] = {0};
+		char *sEnd = NULL;
+
+		if(strlen(mode.stringval) == 0) return SI_NullVal();
+
+		if(strncmp(mode.stringval, "CEILING", strlen(mode.stringval)) == 0) {
+			snprintf(buf, 64, "%.*f", (int)numOfPrecision.longval - 1, result.doubleval);
+			result.doubleval = strtod(buf, &sEnd);
+			if(SIGN(SI_GET_NUMERIC(result)) > 0) {
+				result.doubleval += pow(10, -numOfPrecision.longval + 1);
+				snprintf(buf, 64, "%.*f", (int)numOfPrecision.longval - 1, result.doubleval);
+				result.doubleval = strtod(buf, &sEnd);
+			}
+		}
+		else if(strncmp(mode.stringval, "FLOOR", strlen(mode.stringval)) == 0) {
+			snprintf(buf, 64, "%.*f", (int)numOfPrecision.longval - 1, result.doubleval);
+			result.doubleval = strtod(buf, &sEnd);
+			if(SIGN(SI_GET_NUMERIC(result)) < 0) {
+				result.doubleval -= pow(10, -numOfPrecision.longval + 1);
+				snprintf(buf, 64, "%.*f", (int)numOfPrecision.longval - 1, result.doubleval);
+				result.doubleval = strtod(buf, &sEnd);
+			}
+		}
+		else if(strncmp(mode.stringval, "DOWN", strlen(mode.stringval)) == 0) {
+			snprintf(buf, 64, "%.*f", (int)numOfPrecision.longval - 1, result.doubleval);
+			result.doubleval = strtod(buf, &sEnd);
+		}
+		else if(strncmp(mode.stringval, "UP", strlen(mode.stringval)) == 0) {	
+			snprintf(buf, 64, "%.*f", (int)numOfPrecision.longval - 1, result.doubleval);		
+			result.doubleval = strtod(buf, &sEnd);
+
+			if(SIGN(SI_GET_NUMERIC(result)) > 0) {
+				result.doubleval += pow(10, -numOfPrecision.longval + 1);
+			}
+			else if(SIGN(SI_GET_NUMERIC(result)) < 0) {
+				result.doubleval -= pow(10, -numOfPrecision.longval + 1);
+			}
+		}
+		else if(strncmp(mode.stringval, "HALF_UP", strlen(mode.stringval)) == 0) {
+			snprintf(buf, 64, "%.*f", (int)numOfPrecision.longval - 1, result.doubleval);
+			result.doubleval = strtod(buf, &sEnd);
+
+			if(SIGN(SI_GET_NUMERIC(result)) > 0) {
+				result.doubleval += pow(10, -numOfPrecision.longval + 1);
+			}
+		}
+		else if(strncmp(mode.stringval, "HALF_DOWN", strlen(mode.stringval)) == 0) {
+			snprintf(buf, 64, "%.*f", (int)numOfPrecision.longval - 1, result.doubleval);
+			result.doubleval = strtod(buf, &sEnd);
+
+			if(SIGN(SI_GET_NUMERIC(result)) < 0) {
+				result.doubleval -= pow(10, -numOfPrecision.longval + 1);
+			}
+		}
+		else if(strncmp(mode.stringval, "HALF_EVEN", strlen(mode.stringval)) == 0) {
+
+			int64_t temp_base_value = result.doubleval * pow(10, numOfPrecision.longval);
+
+			if(temp_base_value % 5 == 0) {
+				temp_base_value /= 10;
+				if(temp_base_value % 2) { // Odd values
+					snprintf(buf, 64, "%.*f", (int)numOfPrecision.longval - 1, result.doubleval);
+					result.doubleval = strtod(buf, &sEnd);
+				}
+				else { //Even values
+					snprintf(buf, 64, "%.*f", (int)numOfPrecision.longval - 1, result.doubleval);
+					result.doubleval = strtod(buf, &sEnd);
+					if(SIGN(SI_GET_NUMERIC(result)) > 0) {
+						result.doubleval -= pow(10, -numOfPrecision.longval + 1);
+					}
+					else {
+						result.doubleval += pow(10, -numOfPrecision.longval + 1);
+					}
+					snprintf(buf, 64, "%.*f", (int)numOfPrecision.longval - 1, result.doubleval);
+					result.doubleval = strtod(buf, &sEnd);
+				}
+			}
+			else if(temp_base_value % 10 > 5) {
+				snprintf(buf, 64, "%.*f", (int)numOfPrecision.longval - 1, result.doubleval);
+				result.doubleval = strtod(buf, &sEnd);
+			}
+			else {
+				snprintf(buf, 64, "%.*f", (int)numOfPrecision.longval - 1, result.doubleval);
+				result.doubleval = strtod(buf, &sEnd);
+			}
+		}
+		else {
+			// Unknown / unsupported mode returns null
+			return SI_NullVal();
+		}
+	}
 
 	return result;
 }
@@ -433,10 +555,12 @@ void Register_NumericFuncs() {
 	func_desc = AR_FuncDescNew("rand", AR_RAND, 0, 0, types, ret_type, false, false);
 	AR_RegFunc(func_desc);
 
-	types = array_new(SIType, 1);
+	types = array_new(SIType, 3);
 	array_append(types, (SI_NUMERIC | T_NULL));
+	array_append(types, (SI_NUMERIC | T_NULL));
+	array_append(types, (SI_NUMERIC | T_STRING | T_NULL));
 	ret_type = SI_NUMERIC | T_NULL;
-	func_desc = AR_FuncDescNew("round", AR_ROUND, 1, 1, types, ret_type, false, true);
+	func_desc = AR_FuncDescNew("round", AR_ROUND, 1, 3, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);

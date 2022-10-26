@@ -20,7 +20,6 @@ extern "C"
 #include "../../src/util/rmalloc.h"
 #include "../../src/util/arr.h"
 #include "../../src/datatypes/array.h"
-#include "../../src/errors.h"
 #include <time.h>
 #include <math.h>
 
@@ -36,8 +35,6 @@ class ArithmeticTest: public ::testing::Test {
 	static void SetUpTestCase() {
 		// Use the malloc family for allocations
 		Alloc_Reset();
-
-		ASSERT_TRUE(ErrorCtx_Init());
 
 		// Prepare thread-local variables
 		ASSERT_TRUE(QueryCtx_Init());
@@ -405,6 +402,181 @@ TEST_F(ArithmeticTest, RoundTest) {
 	query = "RETURN ROUND(NULL)";
 	arExp = _exp_from_query(query);
 	expected = SI_NullVal();
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(26.141592, -3) */
+	query = "RETURN ROUND(26.141592, -3)";
+	arExp = _exp_from_query(query);
+	expected = SI_NullVal();
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(25.141592, 3.2) */
+	query = "RETURN ROUND(25.141592, 3.2)";
+	arExp = _exp_from_query(query);
+	expected = SI_NullVal();
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(24.142592, 0) */
+	query = "RETURN ROUND(24.142592, 0)";
+	arExp = _exp_from_query(query);
+	expected = SI_NullVal();
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(23.142592, 4) */
+	query = "RETURN ROUND(23.142592, 4)";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(23.1426);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(22.142592, 10) */
+	query = "RETURN ROUND(22.142592, 10)";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(22.1425920000);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(21.142592, 3, '') */
+	query = "RETURN ROUND(21.142592, 3, '')";
+	arExp = _exp_from_query(query);
+	expected = SI_NullVal();
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(20.142592, 3, 'nonsupported') */
+	query = "RETURN ROUND(20.142592, 3, 'nonsupported')";
+	arExp = _exp_from_query(query);
+	expected = SI_NullVal();
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(19.142592, 3, 'CEILING') */
+	query = "RETURN ROUND(19.142592, 3, 'CEILING')";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(19.15);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(-18.142592, 3, 'CEILING') */
+	query = "RETURN ROUND(-18.142592, 3, 'CEILING')";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(-18.14);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(17.142592, 3, 'FLOOR') */
+	query = "RETURN ROUND(17.142592, 3, 'FLOOR')";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(17.14);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(-16.142592, 3, 'FLOOR') */
+	query = "RETURN ROUND(-16.142592, 3, 'FLOOR')";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(-16.15);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(15.142692, 3, 'DOWN') */
+	query = "RETURN ROUND(15.142692, 3, 'DOWN')";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(15.14);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(-14.142692, 3, 'DOWN') */
+	query = "RETURN ROUND(-14.142692, 3, 'DOWN')";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(-14.14);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(14.142692, 3, 'UP') */
+	query = "RETURN ROUND(14.142692, 3, 'UP')";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(14.15);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(-11.142692, 3, 'UP') */
+	query = "RETURN ROUND(-11.142692, 3, 'UP')";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(-11.15);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(13.142692, 3, 'HALF_DOWN') */
+	query = "RETURN ROUND(13.142692, 3, 'HALF_DOWN')";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(13.14);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(-3.142692, 3, 'HALF_DOWN') */
+	query = "RETURN ROUND(-3.142692, 3, 'HALF_DOWN')";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(-3.15);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(2.142692, 3, 'HALF_UP') */
+	query = "RETURN ROUND(2.142692, 3, 'HALF_UP')";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(2.15);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(-3.142692, 3, 'HALF_UP') */
+	query = "RETURN ROUND(-3.142692, 3, 'HALF_UP')";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(-3.14);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(4.142692, 3, 'HALF_EVEN') */
+	query = "RETURN ROUND(4.142692, 3, 'HALF_EVEN')";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(4.14);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(5.148692, 3, 'HALF_EVEN') */
+	query = "RETURN ROUND(5.148692, 3, 'HALF_EVEN')";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(5.15);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(6.145692, 3, 'HALF_EVEN') */
+	query = "RETURN ROUND(6.145692, 3, 'HALF_EVEN')";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(6.14);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(7.155692, 3, 'HALF_EVEN') */
+	query = "RETURN ROUND(7.155692, 3, 'HALF_EVEN')";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(7.16);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(-8.145692, 3, 'HALF_EVEN') */
+	query = "RETURN ROUND(-8.145692, 3, 'HALF_EVEN')";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(-8.14);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* ROUND(-9.155692, 3, 'HALF_EVEN') */
+	query = "RETURN ROUND(-9.155692, 3, 'HALF_EVEN')";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(-9.16);
 	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 }
