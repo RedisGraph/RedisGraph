@@ -20,6 +20,7 @@ extern "C"
 #include "../../src/util/rmalloc.h"
 #include "../../src/util/arr.h"
 #include "../../src/datatypes/array.h"
+#include "../../src/errors.h"
 #include <time.h>
 #include <math.h>
 
@@ -35,6 +36,8 @@ class ArithmeticTest: public ::testing::Test {
 	static void SetUpTestCase() {
 		// Use the malloc family for allocations
 		Alloc_Reset();
+
+		ASSERT_TRUE(ErrorCtx_Init());
 
 		// Prepare thread-local variables
 		ASSERT_TRUE(QueryCtx_Init());

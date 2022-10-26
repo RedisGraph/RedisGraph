@@ -223,10 +223,10 @@
 #define GxB_NO_ACOSH     1
 #define GxB_NO_ATANH     1
 
-#define GxB_NO_SIGNUM    1
-#define GxB_NO_CEIL      1
-#define GxB_NO_FLOOR     1
-#define GxB_NO_ROUND     1
+// #define GxB_NO_SIGNUM    1
+// #define GxB_NO_CEIL      1
+// #define GxB_NO_FLOOR     1
+// #define GxB_NO_ROUND     1
 #define GxB_NO_TRUNC     1
 
 #define GxB_NO_EXP2      1
@@ -249,9 +249,9 @@
 #define GxB_NO_CIMAG     1
 #define GxB_NO_CARG      1
 
-#define GxB_NO_ISINF     1
-#define GxB_NO_ISNAN     1
-#define GxB_NO_ISFINITE  1
+// #define GxB_NO_ISINF     1
+// #define GxB_NO_ISNAN     1
+// #define GxB_NO_ISFINITE  1
 
 //------------------------------------------------------------------------------
 // uncomment any of these lines to disable the binary operators for all types
@@ -274,7 +274,7 @@
 // #define GxB_NO_MAX       1
 // #define GxB_NO_PLUS      1
 // #define GxB_NO_MINUS     1
-// #define GxB_NO_RMINUS    1
+#define GxB_NO_RMINUS    1
 // #define GxB_NO_TIMES     1
 #define GxB_NO_DIV       1
 #define GxB_NO_RDIV      1
@@ -292,7 +292,7 @@
 // #define GxB_NO_GE        1
 // #define GxB_NO_LAND      1
 // #define GxB_NO_LOR       1
-#define GxB_NO_LXOR      1
+// #define GxB_NO_LXOR      1
 
 // #define GxB_NO_BOR       1
 // #define GxB_NO_BAND      1
@@ -305,13 +305,13 @@
 
 #define GxB_NO_ATAN2     1
 #define GxB_NO_HYPOT     1
-#define GxB_NO_FMOD      1
-#define GxB_NO_REMAINDER 1
+// #define GxB_NO_FMOD      1
+// #define GxB_NO_REMAINDER 1
 // #define GxB_NO_COPYSIGN  1
 #define GxB_NO_LDEXP     1
 
 #define GxB_NO_CMPLX     1
-// #define GxB_NO_POW       1
+#define GxB_NO_POW       1
 
 // #define GxB_NO_FIRSTI    1
 // #define GxB_NO_FIRSTI1   1

@@ -72,6 +72,14 @@ static AR_ExpNode *_AR_EXP_FromApplyExpression(const cypher_astnode_t *expr) {
 	bool                    aggregate   =  AR_FuncIsAggregate(func_name);
 
 	op = AR_EXP_NewOpNode(func_name, false, arg_count);
+
+	if(ErrorCtx_EncounteredError()) {
+		// no children to free
+		op->op.child_count = 0;
+		AR_EXP_Free(op);
+		return AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
+
 	if(op->op.f->internal) {
 		ErrorCtx_SetError("Attempted to access variable before it has been defined");
 		return AR_EXP_NewConstOperandNode(SI_NullVal());

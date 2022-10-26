@@ -18,6 +18,7 @@ extern "C" {
 #include "../../src/filter_tree/filter_tree.h"
 #include "../../src/ast/ast_build_filter_tree.h"
 #include "../../src/arithmetic/funcs.h"
+#include "../../src/errors.h"
 
 #ifdef __cplusplus
 }
@@ -29,6 +30,7 @@ class FilterTreeTest: public ::testing::Test {
 	static void SetUpTestCase() {
 		// Use the malloc family for allocations
 		Alloc_Reset();
+		ASSERT_TRUE(ErrorCtx_Init());
 		_fake_graph_context();
 	}
 
