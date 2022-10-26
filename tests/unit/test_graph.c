@@ -4,6 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include "acutest.h"
 #include "../../src/util/arr.h"
 #include "../../src/graph/graph.h"
 #include "../../src/util/rmalloc.h"
@@ -41,8 +42,8 @@ void _test_node_creation(Graph *g, size_t node_count) {
 	TEST_ASSERT(RG_Matrix_nvals(&nvals, adj) == GrB_SUCCESS);
 
 	TEST_ASSERT(nvals == 0);                  // No connection were formed.
-	TEST_ASSERT(ncols == Graph_NodeCount(g)); // Graph's adjacency matrix dimensions.
-	TEST_ASSERT(nrows == Graph_NodeCount(g));
+	TEST_ASSERT(ncols >= Graph_NodeCount(g)); // Graph's adjacency matrix dimensions.
+	TEST_ASSERT(nrows >= Graph_NodeCount(g));
 	TEST_ASSERT(Graph_NodeCount(g) == node_count);
 }
 
@@ -210,7 +211,7 @@ void test_newGraph() {
 	TEST_ASSERT(g->relations != NULL);
 	TEST_ASSERT(g->labels != NULL);
 	TEST_ASSERT(g->adjacency_matrix != NULL);
-	ASSERT_EQ(Graph_NodeCount(g), 0);
+	TEST_ASSERT(Graph_NodeCount(g) == 0);
 
 	GrB_Index n = Graph_RequiredMatrixDim(g);
 	TEST_ASSERT(nrows == n);
@@ -242,7 +243,7 @@ void test_graphConstruction() {
 	Graph_ReleaseLock(g);
 	Graph_Free(g);
 
-	Grb_finalize();
+	GrB_finalize();
 }
 
 void test_removeNodes() {
@@ -355,7 +356,7 @@ void test_getNode() {
 	GrB_finalize();
 }
 
-void test_getedge() {
+void test_getEdge() {
 	// Use the malloc family for allocations
 	Alloc_Reset();
 
@@ -481,5 +482,6 @@ TEST_LIST = {
 	{"graphConstruction", test_graphConstruction},
 	{"removeNodes", test_removeNodes},
 	{"getNode", test_getNode},
+	{"getEdge", test_getEdge},
 	{NULL, NULL}
-}
+};
