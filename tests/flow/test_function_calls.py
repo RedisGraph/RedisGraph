@@ -1889,13 +1889,11 @@ class testFunctionCallsFlow(FlowTestsBase):
         arr = ["NULL", "NOT NULL", "1", "1.2", "TRUE", "FALSE", "'string'", "[1,2,3]"]
         for ind, s in enumerate(arr):
             query1 = f'RETURN {s} IS NOT NULL'
-            actual_result1 = graph.query(query1).result_set[0][0]
-            expected1 = True if ind!=0 else False
-            self.env.assertEquals(expected1, actual_result1)
+            expected1 = [[True]] if ind!=0 else [[False]]
+            self.get_res_and_assertEquals(query1, expected1)
             query2 = f'RETURN {s} IS NULL'
-            actual_result2 = graph.query(query2).result_set[0][0]
-            expected2 = False if ind!=0 else True
-            self.env.assertEquals(expected2, actual_result2)
+            expected2 = [[False]] if ind!=0 else [[True]]
+            self.get_res_and_assertEquals(query2, expected2)
     
     def test82_Coalesce(self):
         query_to_expected_result = {
