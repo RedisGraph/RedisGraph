@@ -166,13 +166,15 @@ void _MatrixSynchronize
 	const Graph *g,
 	RG_Matrix m
 ) {
-	bool dirty = RG_Matrix_isDirty(m);
-	GrB_Info info;
+	GrB_Info  info;
 	GrB_Index n_rows;
 	GrB_Index n_cols;
+
 	RG_Matrix_nrows(&n_rows, m);
 	RG_Matrix_ncols(&n_cols, m);
-	GrB_Index dims = Graph_RequiredMatrixDim(g);
+
+	bool      dirty = RG_Matrix_isDirty(m);
+	GrB_Index dims  = Graph_RequiredMatrixDim(g);
 
 	UNUSED(info);
 
@@ -180,19 +182,24 @@ void _MatrixSynchronize
 	bool require_resize = (n_rows != dims || n_cols != dims);
 
 	// matrix fully synced, nothing to do
-	if(!require_resize && !RG_Matrix_isDirty(m)) return;
+	if(!require_resize && !RG_Matrix_isDirty(m)) {
+		return;
+	}
 
-	// lock the matrix
+	// lock matrix
 	RG_Matrix_Lock(m);
 
 	// recheck
 	RG_Matrix_nrows(&n_rows, m);
 	RG_Matrix_ncols(&n_cols, m);
+	dirty = RG_Matrix_isDirty(m);
 	dims = Graph_RequiredMatrixDim(g);
 	require_resize = (n_rows != dims || n_cols != dims);
 
 	// some other thread performed sync
-	if(!require_resize && !RG_Matrix_isDirty(m)) goto cleanup;
+	if(!require_resize && !dirty) {
+		goto cleanup;
+	}
 
 	// resize if required
 	if(require_resize) {
@@ -201,13 +208,17 @@ void _MatrixSynchronize
 	}
 
 	// flush pending changes if dirty
+	// we need to call 'RG_Matrix_isDirty' again
+	// as 'RG_Matrix_resize' might require 'wait' for HyperSparse matrices
 	if(RG_Matrix_isDirty(m)) {
 		info = RG_Matrix_wait(m, false);
 		ASSERT(info == GrB_SUCCESS);
 	}
 
+	ASSERT(RG_Matrix_isDirty(m) == false);
+
 cleanup:
-	// Unlock matrix mutex.
+	// unlock matrix mutex
 	RG_Matrix_Unlock(m);
 }
 
@@ -298,23 +309,44 @@ void Graph_ApplyAllPending
 	uint       n  =  0;
 	RG_Matrix  M  =  NULL;
 
+	// backup previous sync policy
+	MATRIX_POLICY policy = Graph_GetMatrixPolicy(g);
+
+	// set matrix sync policy
+	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
+
+	//--------------------------------------------------------------------------
+	// sync every matrix
+	//--------------------------------------------------------------------------
+
+	// sync the adjacency matrix
 	M = Graph_GetAdjacencyMatrix(g, false);
 	RG_Matrix_wait(M, force_flush);
 
+	// sync node labels matrix
 	M = Graph_GetNodeLabelMatrix(g);
 	RG_Matrix_wait(M, force_flush);
 
+	// sync the zero matrix
+	M = Graph_GetZeroMatrix(g);
+	RG_Matrix_wait(M, force_flush);
+
+	// sync each label matrix
 	n = array_len(g->labels);
 	for(int i = 0; i < n; i ++) {
 		M = Graph_GetLabelMatrix(g, i);
 		RG_Matrix_wait(M, force_flush);
 	}
 
+	// sync each relation matrix
 	n = array_len(g->relations);
 	for(int i = 0; i < n; i ++) {
 		M = Graph_GetRelationMatrix(g, i, false);
 		RG_Matrix_wait(M, force_flush);
 	}
+
+	// restore previous matrix sync policy
+	Graph_SetMatrixPolicy(g, policy);
 }
 
 bool Graph_Pending
@@ -337,7 +369,31 @@ bool Graph_Pending
 	M = g->adjacency_matrix;
 	info = RG_Matrix_pending(M, &pending);
 	ASSERT(info == GrB_SUCCESS);
-	if(pending) return true;
+	if(pending) {
+		return true;
+	}
+
+	//--------------------------------------------------------------------------
+	// see if node_labels matrix contains pending changes
+	//--------------------------------------------------------------------------
+
+	M = g->node_labels;
+	info = RG_Matrix_pending(M, &pending);
+	ASSERT(info == GrB_SUCCESS);
+	if(pending) {
+		return true;
+	}
+
+	//--------------------------------------------------------------------------
+	// see if the zero matrix contains pending changes
+	//--------------------------------------------------------------------------
+
+	M = g->_zero_matrix;
+	info = RG_Matrix_pending(M, &pending);
+	ASSERT(info == GrB_SUCCESS);
+	if(pending) {
+		return true;
+	}
 
 	//--------------------------------------------------------------------------
 	// see if any label matrix contains pending changes
@@ -348,7 +404,9 @@ bool Graph_Pending
 		M = g->labels[i];
 		info = RG_Matrix_pending(M, &pending);
 		ASSERT(info == GrB_SUCCESS);
-		if(pending) return true;
+		if(pending) {
+			return true;
+		}
 	}
 
 	//--------------------------------------------------------------------------
@@ -360,7 +418,9 @@ bool Graph_Pending
 		M = g->relations[i];
 		info = RG_Matrix_pending(M, &pending);
 		ASSERT(info == GrB_SUCCESS);
-		if(pending) return true;
+		if(pending) {
+			return true;
+		}
 	}
 
 	return false;
@@ -582,39 +642,6 @@ void Graph_GetEdgesConnectingNodes
 	}
 }
 
-// label node id with each label in 'lbls'
-static void _Graph_LabelNode
-(
-	Graph *g,
-	NodeID id,
-	int *lbls,
-	uint lbl_count
-) {
-	ASSERT(g != NULL);
-	ASSERT(lbls != NULL);
-	ASSERT(lbl_count > 0);
-	ASSERT(id != INVALID_ENTITY_ID);
-
-	GrB_Info info;
-	UNUSED(info);
-
-	RG_Matrix nl = Graph_GetNodeLabelMatrix(g);
-	for(uint i = 0; i < lbl_count; i++) {
-		int l = lbls[i];
-		// set matrix at position [id, id]
-		RG_Matrix m = Graph_GetLabelMatrix(g, l);
-		info = RG_Matrix_setElement_BOOL(m, id, id);
-		ASSERT(info == GrB_SUCCESS);
-
-		// map this label in this node's set of labels
-		info = RG_Matrix_setElement_BOOL(nl, id, l);
-		ASSERT(info == GrB_SUCCESS);
-
-		// a node with 'label' has just been created, update statistics
-		GraphStatistics_IncNodeCount(&g->stats, l, 1);
-	}
-}
-
 void Graph_CreateNode
 (
 	Graph *g,
@@ -630,10 +657,99 @@ void Graph_CreateNode
 	AttributeSet *set = DataBlock_AllocateItem(g->nodes, &id);
 	*set = NULL;
 
-	n->id            =  id;
-	n->attributes    =  set;
+	n->id         = id;
+	n->attributes = set;
 
-	if(label_count > 0) _Graph_LabelNode(g, n->id, labels, label_count);
+	if(label_count > 0) {
+		Graph_LabelNode(g, ENTITY_GET_ID(n), labels, label_count);
+	}
+}
+
+// label node with each label in 'lbls'
+void Graph_LabelNode
+(
+	Graph *g,       // graph to operate on
+	NodeID id,      // node ID to update
+	LabelID *lbls,  // set to labels to associate with node
+	uint lbl_count  // number of labels
+) {
+	// validations
+	ASSERT(g != NULL);
+	ASSERT(lbls != NULL);
+	ASSERT(lbl_count > 0);
+	ASSERT(id != INVALID_ENTITY_ID);
+
+	GrB_Info info;
+	UNUSED(info);
+
+	RG_Matrix nl = Graph_GetNodeLabelMatrix(g);
+	for(uint i = 0; i < lbl_count; i++) {
+		LabelID l = lbls[i];
+		RG_Matrix L = Graph_GetLabelMatrix(g, l);
+
+		// set matrix at position [id, id]
+		info = RG_Matrix_setElement_BOOL(L, id, id);
+		ASSERT(info == GrB_SUCCESS);
+
+		// map this label in this node's set of labels
+		info = RG_Matrix_setElement_BOOL(nl, id, l);
+		ASSERT(info == GrB_SUCCESS);
+
+		// update labels statistics
+		GraphStatistics_IncNodeCount(&g->stats, l, 1);
+	}
+}
+
+// return true if node is labeled as 'l'
+bool Graph_IsNodeLabeled
+(
+	Graph *g,   // graph to operate on
+	NodeID id,  // node ID to inspect
+	LabelID l   // label to check for
+) {
+	ASSERT(g  != NULL);
+	ASSERT(id != INVALID_ENTITY_ID);
+
+	bool x;
+	// consult with labels matrix
+	RG_Matrix nl = Graph_GetNodeLabelMatrix(g);
+	GrB_Info info = RG_Matrix_extractElement_BOOL(&x, nl, id, l);
+	ASSERT(info == GrB_SUCCESS || info == GrB_NO_VALUE);
+	return info == GrB_SUCCESS;
+}
+
+// dissociates each label in 'lbls' from given node
+void Graph_RemoveNodeLabels
+(
+	Graph *g,       // graph to operate against
+	NodeID id,      // node ID to update
+	LabelID  *lbls, // set of labels to remove
+	uint lbl_count  // number of labels to remove
+) {
+	ASSERT(g != NULL);
+	ASSERT(id != INVALID_ENTITY_ID);
+	ASSERT(lbls != NULL);
+	ASSERT(lbl_count > 0);
+
+	GrB_Info info;
+	UNUSED(info);
+
+	RG_Matrix nl = Graph_GetNodeLabelMatrix(g);
+	for(uint i = 0; i < lbl_count; i++) {
+		LabelID   l = lbls[i];
+		RG_Matrix M = Graph_GetLabelMatrix(g, l);
+
+		// remove matrix at position [id, id]
+		info = RG_Matrix_removeElement_BOOL(M, id, id);
+		ASSERT(info == GrB_SUCCESS);
+
+		// remove this label from node's set of labels
+		info = RG_Matrix_removeElement_BOOL(nl, id, l);
+		ASSERT(info == GrB_SUCCESS);
+
+		// a label was removed from node, update statistics
+		GraphStatistics_DecNodeCount(&g->stats, l, 1);
+	}
 }
 
 bool Graph_FormConnection
@@ -741,8 +857,7 @@ void Graph_GetNodeEdges
 		ASSERT(t == GrB_UINT64 || t == GrB_BOOL);
 		// construct an iterator to traverse over the source node row,
 		// containing all outgoing edges
-		RG_MatrixTupleIter_attach(&it, M);
-		RG_MatrixTupleIter_iterate_row(&it, srcID);
+		RG_MatrixTupleIter_AttachRange(&it, M, srcID, srcID);
 		if(t == GrB_UINT64) {
 			while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, &edgeID) == GrB_SUCCESS) {
 				// collect all edges (src)->(dest)
@@ -768,8 +883,7 @@ void Graph_GetNodeEdges
 
 		// construct an iterator to traverse over the source node row,
 		// containing all incoming edges
-		RG_MatrixTupleIter_attach(&it, TM);
-		RG_MatrixTupleIter_iterate_row(&it, srcID);
+		RG_MatrixTupleIter_AttachRange(&it, TM, srcID, srcID);
 
 		if(t == GrB_UINT64) {
 			while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, NULL) == GrB_SUCCESS) {
@@ -807,12 +921,9 @@ uint Graph_GetNodeLabels
 	// GrB_Col_extract will iterate over the range of the output size
 	RG_Matrix M = Graph_GetNodeLabelMatrix(g);
 
-	RG_MatrixTupleIter iter = {0};
-	res = RG_MatrixTupleIter_attach(&iter, M);
-	ASSERT(res == GrB_SUCCESS);
-
 	EntityID id = ENTITY_GET_ID(n);
-	res = RG_MatrixTupleIter_iterate_row(&iter, id);
+	RG_MatrixTupleIter iter = {0};
+	res = RG_MatrixTupleIter_AttachRange(&iter, M, id, id);
 	ASSERT(res == GrB_SUCCESS);
 
 	uint i = 0;
@@ -849,36 +960,19 @@ void Graph_DeleteNode
 	array_free(edges);
 	#endif
 
-	GrB_Info info;
 	uint label_count;
+	EntityID n_id = ENTITY_GET_ID(n);
 
-	UNUSED(info);
 	NODE_GET_LABELS(g, n, label_count);
 
-	EntityID  n_id = ENTITY_GET_ID(n);
-	RG_Matrix lbls = Graph_GetNodeLabelMatrix(g);
+	// update label matrices
+	if(label_count > 0) Graph_RemoveNodeLabels(g, n_id, labels, label_count);
 
-	for(uint i = 0; i < label_count; i++) {
-		int label_id = labels[i];
-		RG_Matrix L = Graph_GetLabelMatrix(g, label_id);
-
-		// clear label matrix at position node ID
-		info = RG_Matrix_removeElement_BOOL(L, n_id, n_id);
-		ASSERT(info == GrB_SUCCESS)
-
-		// clear labels matrix
- 		// TODO: consider switching to GrB_Row_assign to clear an entire row
-		info = RG_Matrix_removeElement_BOOL(lbls, n_id, label_id);
-		ASSERT(info == GrB_SUCCESS)
-
-		// update statistics
-		GraphStatistics_DecNodeCount(&g->stats, label_id, 1);
-	}
-
-	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
+	// remove node from datablock
+	DataBlock_DeleteItem(g->nodes, n_id);
 }
 
-// removes an edge from Graph and updates graph relevent matrices
+// removes an edge from Graph and updates graph relevant matrices
 int Graph_DeleteEdge
 (
 	Graph *g,
@@ -1016,6 +1110,24 @@ int Graph_AddLabel
 	return labelID;
 }
 
+void Graph_RemoveLabel
+(
+	Graph *g,
+	int label_id
+) {
+	ASSERT(g != NULL);
+	ASSERT(label_id == Graph_LabelTypeCount(g) - 1);
+	#ifdef RG_DEBUG
+	GrB_Index nvals;
+	GrB_Info info = RG_Matrix_nvals(&nvals, g->labels[label_id]);
+	ASSERT(info == GrB_SUCCESS);
+	ASSERT(nvals == 0);
+	#endif
+	RG_Matrix_free(&g->labels[label_id]);
+	g->labels = array_del(g->labels, label_id);
+}
+
+
 int Graph_AddRelationType
 (
 	Graph *g
@@ -1034,6 +1146,23 @@ int Graph_AddRelationType
 
 	int relationID = Graph_RelationTypeCount(g) - 1;
 	return relationID;
+}
+
+void Graph_RemoveRelation
+(
+	Graph *g,
+	int relation_id
+) {
+	ASSERT(g != NULL);
+	ASSERT(relation_id == Graph_RelationTypeCount(g) - 1);
+	#ifdef RG_DEBUG
+	GrB_Index nvals;
+	GrB_Info info = RG_Matrix_nvals(&nvals, g->relations[relation_id]);
+	ASSERT(info == GrB_SUCCESS);
+	ASSERT(nvals == 0);
+	#endif
+	RG_Matrix_free(&g->relations[relation_id]);
+	g->relations = array_del(g->relations, relation_id);
 }
 
 RG_Matrix Graph_GetLabelMatrix
@@ -1099,7 +1228,10 @@ bool Graph_RelationshipContainsMultiEdge
 	return (Graph_RelationEdgeCount(g, r) > nvals);
 }
 
-RG_Matrix Graph_GetNodeLabelMatrix(const Graph *g) {
+RG_Matrix Graph_GetNodeLabelMatrix
+(
+	const Graph *g
+) {
 	ASSERT(g != NULL);
 
 	RG_Matrix m = g->node_labels;

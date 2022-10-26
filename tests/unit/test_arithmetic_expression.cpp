@@ -20,6 +20,7 @@ extern "C"
 #include "../../src/util/rmalloc.h"
 #include "../../src/util/arr.h"
 #include "../../src/datatypes/array.h"
+#include "../../src/errors.h"
 #include <time.h>
 #include <math.h>
 
@@ -35,6 +36,8 @@ class ArithmeticTest: public ::testing::Test {
 	static void SetUpTestCase() {
 		// Use the malloc family for allocations
 		Alloc_Reset();
+
+		ASSERT_TRUE(ErrorCtx_Init());
 
 		// Prepare thread-local variables
 		ASSERT_TRUE(QueryCtx_Init());
@@ -842,36 +845,6 @@ TEST_F(ArithmeticTest, ToUpperTest) {
 
 	/* toUpper("mUcHaChO") */
 	query = "RETURN toUpper(NULL)";
-	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, NULL);
-	ASSERT_EQ(result.type, T_NULL);
-	AR_EXP_Free(arExp);
-}
-
-TEST_F(ArithmeticTest, ToStringTest) {
-	SIValue result;
-	const char *expected;
-	const char *query;
-	AR_ExpNode *arExp;
-
-	/* toString("muchacho") */
-	query = "RETURN toString('muchacho')";
-	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, NULL);
-	expected = "muchacho";
-	ASSERT_STREQ(result.stringval, expected);
-	AR_EXP_Free(arExp);
-
-	/* toString("3.14") */
-	query = "RETURN toString(3.14)";
-	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, NULL);
-	expected = "3.140000";
-	ASSERT_STREQ(result.stringval, expected);
-	AR_EXP_Free(arExp);
-
-	/* toString() */
-	query = "RETURN toString(NULL)";
 	arExp = _exp_from_query(query);
 	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.type, T_NULL);

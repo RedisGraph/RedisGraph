@@ -172,9 +172,9 @@ This query will produce all paths of the minimum length connecting the actor nod
 
 (Since RedisGraph v2.10)
 
-The `SPpaths` function returns one, _n_, or all minimal-weight, [optionally] bounded-cost, [optionally] bounded-length paths between a pair of entities.
+The `algo.SPpaths` procedure returns one, _n_, or all minimal-weight, [optionally] bounded-cost, [optionally] bounded-length distinct paths between a pair of entities. Each path is a sequence of distinct nodes connected by distinct edges.
 
-`SPpaths()` is a MATCH mode in which only the paths matching all criteria are captured. Both the source and the target nodes must be bound in an earlier WITH-demarcated scope to invoke `SPpaths()`.
+`algo.SPpaths()` is a MATCH mode in which only the paths matching all criteria are captured. Both the source and the target nodes must be bound in an earlier WITH-demarcated scope to invoke `algo.SPpaths()`.
 
 Input arguments:
 
@@ -183,7 +183,7 @@ Input arguments:
   - `targetNode`: Mandatory. Must be of type node
   - `relTypes`: Optional. Array of zero or more relationship types. A relationship must have one of these types to be part of the path. If not specified or empty: the path may contain any relationship.
   - `relDirection`: Optional. string. one of `'incoming'`, `'outgoing'`, `'both'`. If not specified: `'outgoing'`.
-  - `pathsCount`: Optional. Number of minimal-weight paths to retrieve. Non-negative integer. If not specified: 1
+  - `pathCount`: Optional. Number of minimal-weight paths to retrieve. Non-negative integer. If not specified: 1
 
     - `0`: retrieve all minimal-weight paths (all reported paths have the same weight)
 
@@ -235,9 +235,9 @@ Result:
 
     - An array of the nodes along the path can be retrieved with `nodes(path)`
 
-    - The path’s head-node can be retrieved with `head(nodes(path))`
+    - The path’s first node can be retrieved with `nodes(path)[0]`
 
-    - The path’s tail-node can be retrieved with `tail(nodes(path))`
+    - The path’s last node can be retrieved with `nodes(path)[-1]`
 
     - An array of the relationship's costs along the path can be retrieved with `[r in relationships(path) | r.cost]` where cost is the name of the cost property
 
@@ -254,7 +254,7 @@ Example:
 ```sh
 GRAPH.QUERY DEMO_GRAPH 
 "MATCH (s:Actor {name: 'Charlie Sheen'}), (t:Actor {name: 'Kevin Bacon'}) 
-CALL SPpaths( {sourceNode: s, targetNode: t, relTypes: ['r1', 'r2', 'r3'], relDirection: 'outgoing', pathsCount: 1, weightProp: 'weight', costProp: 'cost', maxLen: 3, maxCost: 100} ) 
+CALL algo.SPpaths( {sourceNode: s, targetNode: t, relTypes: ['r1', 'r2', 'r3'], relDirection: 'outgoing', pathCount: 1, weightProp: 'weight', costProp: 'cost', maxLen: 3, maxCost: 100} ) 
 YIELD path, pathCost, pathWeight
 RETURN path ORDER BY pathCost"
 ```
@@ -263,9 +263,9 @@ RETURN path ORDER BY pathCost"
 
 (Since RedisGraph v2.10)
 
-The `SSpaths` function returns one, _n_, or all minimal-weight, [optionally] bounded-cost, [optionally] bounded-length paths from a given entity.
+The `algo.SSpaths` procedure returns one, _n_, or all minimal-weight, [optionally] bounded-cost, [optionally] bounded-length distinct paths from a given entity. Each path is a sequence of distinct nodes connected by distinct edges.
 
-`SSpaths()` is a MATCH mode in which only the paths matching all criteria are captured. The source node must be bound in an earlier WITH-demarcated scope to invoke `SSpaths()`.
+`algo.SSpaths()` is a MATCH mode in which only the paths matching all criteria are captured. The source node must be bound in an earlier WITH-demarcated scope to invoke `algo.SSpaths()`.
 
 Input arguments:
 
@@ -273,7 +273,7 @@ Input arguments:
   - `sourceNode`: Mandatory. Must be of type node
   - `relTypes`: Optional. Array of zero or more relationship types. A relationship must have one of these types to be part of the path. If not specified or empty: the path may contain any relationship.
   - `relDirection`: Optional. string. one of `'incoming'`, `'outgoing'`, `'both'`. If not specified: `'outgoing'`.
-  - `pathsCount`: Optional. Number of minimal-weight paths to retrieve. Non-negative integer. If not specified: 1
+  - `pathCount`: Optional. Number of minimal-weight paths to retrieve. Non-negative integer. If not specified: 1
 
     This number is global (not per source-target pair); all returned paths may be with the same target.
 
@@ -327,9 +327,9 @@ Result:
 
     - An array of the nodes along the path can be retrieved with `nodes(path)`
 
-    - The path’s head-node can be retrieved with `head(nodes(path))`
+    - The path’s first node can be retrieved with `nodes(path)[0]`
 
-    - The path’s tail-node can be retrieved with `tail(nodes(path))`
+    - The path’s last node can be retrieved with `nodes(path)[-1]`
 
     - An array of the relationship's costs along the path can be retrieved with `[r in relationships(path) | r.cost]` where cost is the name of the cost property
 
@@ -339,14 +339,14 @@ Behavior in presence on multiple-edges:
 
   - multi-edges are two or more edges connecting the same pair of vertices (possibly with different weights and costs). 
 
-  - All matching edges are considered. Paths with identical vertices and different edges are different paths. The following are 3 different paths ('n1', 'n2', and 'n3' are nodes; 'e1', 'e2', 'e3', and 'e4' are edges): (n1)-[e1]-(n2)-[e2]-(n3),  (n1)-[e1]-(n2)-[e3]-(n3),  (n1)-[e4]-(n2)-[e3]-(n3)
+  - All matching edges are considered. Paths with identical vertices and different edges are different paths. The following are 3 different paths ('n1', 'n2', and 'n3' are nodes; 'e1', 'e2', 'e3', and 'e4' are edges): (n1)-[e1]-(n2)-[e2]-(n3), (n1)-[e1]-(n2)-[e3]-(n3), (n1)-[e4]-(n2)-[e3]-(n3)
 
 Example:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH 
 "MATCH (s:Actor {name: 'Charlie Sheen'})
-CALL SSpaths( {sourceNode: s, relTypes: ['r1', 'r2', 'r3'], relDirection: 'outgoing', pathsCount: 1, weightProp: 'weight', costProp: 'cost', maxLen: 3, maxCost: 100} ) 
+CALL algo.SSpaths( {sourceNode: s, relTypes: ['r1', 'r2', 'r3'], relDirection: 'outgoing', pathCount: 1, weightProp: 'weight', costProp: 'cost', maxLen: 3, maxCost: 100} ) 
 YIELD path, pathCost, pathWeight
 RETURN path ORDER BY pathCost"
 ```
@@ -808,83 +808,115 @@ This section contains information on all supported functions from the Cypher que
 * [Scalar functions](#scalar-functions)
 * [Aggregating functions](#aggregating-functions)
 * [List functions](#list-functions)
+* [Mathematical operators](#mathematical-operators)
 * [Mathematical functions](#mathematical-functions)
+* [Trigonometric functions](#trigonometric-functions)
 * [String functions](#string-functions)
 * [Point functions](#point-functions)
+* [Type conversion functions](#type-conversion-functions)
 * [Node functions](#node-functions)
 * [Path functions](#path-functions)
 
 ## Predicate functions
 
-| Function                                         | Description                                                                                   |
-| -------                                          | :-----------                                                                                  |
-| exists()                                         | Returns true if the specified property exists in the node or relationship.                    |
-| [any()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for any element in the input array.      |
-| [all()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for all elements in the input array.     |
-| [none()](#existential-comprehension-functions)   | Returns true if the inner WHERE predicate holds false for all elements in the input array.    |
-| [single()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for 1 element only in the input array.   |
-| [single()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for 1 element only in the input array.   |
-| [CASE...WHEN](#case-when)                        | Evaluates the CASE expression and returns the value indicated by the matching WHEN statement. |
+| Function                                         | Description                                                                                  |
+| -------                                          | :-----------                                                                                 |
+| exists()                                         | Returns true if the specified property exists in the node or relationship                    |
+| isEmpty()                                        | Returns true if the input list or map contains no elements or if the input string contains no characters. |
+| [any()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for any element in the input array      |
+| [all()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for all elements in the input array     |
+| [none()](#existential-comprehension-functions)   | Returns true if the inner WHERE predicate holds false for all elements in the input array    |
+| [single()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for 1 element only in the input array   |
+| [CASE...WHEN](#case-when)                        | Evaluates the CASE expression and returns the value indicated by the matching WHEN statement |
 
 ## Scalar functions
 
 | Function               | Description                                                                 |
 | -------                | :-----------                                                                |
-| endNode()              | Returns the destination node of a relationship.                             |
+| coalesce()             | Returns the first non-null argument                                         |
+| endNode()              | Returns the destination node of a relationship                              |
 | id()                   | Returns the internal ID of a relationship or node (which is not immutable.) |
-| hasLabels()            | Returns true if input node contains all specified labels, otherwise false.  |
-| keys()                 | Returns the array of keys contained in the given map, node, or edge.        |
-| labels()               | Returns a string representation of the label of a node.                     |
-| startNode()            | Returns the source node of a relationship.                                  |
-| timestamp()            | Returns the amount of milliseconds since epoch.                         |
-| type()                 | Returns a string representation of the type of a relation.                  |
+| hasLabels()            | Returns true if input node contains all specified labels, otherwise false   |
+| labels()               | Returns a string representation of the label of a node                      |
+| properties()           | Returns a map containing all the properties in the given map, node, or edge. In case of map, it is returned without any change |
+| startNode()            | Returns the source node of a relationship                                   |
+| timestamp()            | Returns the amount of milliseconds since epoch                              |
+| type()                 | Returns a string representation of the type of a relationship type          |
 | list comprehensions    | [See documentation](#list-comprehensions)                                   |
 | pattern comprehensions | [See documentation](#pattern-comprehensions)                                |
 | toBoolean              | Returns a boolean value from boolean type, string type (either `"True"` or `"False"` string values, case insensitive. All other values will return `null`) or integer type (0 for `false`, all other values will return `true`). All other types are not allowed and will cause a type mismatch error to be returned.
 
 ## Aggregating functions
 
-|Function | Description|
-| ------- |:-----------|
-|avg() | Returns the average of a set of numeric values|
-|collect() | Returns a list containing all elements which evaluated from a given expression|
-|count() | Returns the number of values or rows|
-|max() | Returns the maximum value in a set of values|
-|min() | Returns the minimum value in a set of values|
-|sum() | Returns the sum of a set of numeric values|
-|percentileDisc() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0|
-|percentileCont() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0|
-|stDev() | Returns the standard deviation for the given value over a group|
+|Function         | Description|
+| --------------- |:-----------|
+|avg()            | Returns the average of a set of numeric values                                               |
+|collect()        | Returns a list containing all elements which evaluated from a given expression               |
+|count()          | Returns the number of values or rows                                                         |
+|max()            | Returns the maximum value in a set of values                                                 |
+|min()            | Returns the minimum value in a set of values                                                 |
+|sum()            | Returns the sum of a set of numeric values                                                   |
+|percentileDisc() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0    |
+|percentileCont() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0    |
+|stDev()          | Returns the standard deviation for the given value over a group over a sample                |
+|stDevP()         | Returns the standard deviation for the given value over a group over an entire population    |
 
 ## List functions
-| Function                     | Description                                                                                                                                                    |
-| -------                      | :-----------                                                                                                                                                   |
-| head()                       | Return the first member of a list                                                                                                                              |
-| range()                      | Create a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval. |
-| size()                       | Return a list size                                                                                                                                             |
-| tail()                       | Return a sublist of a list, which contains all the values without the first value                                                                              |
-| [reduce()](#reduce) | Return a scalar produced by evaluating an expression against each list member                                                                                  |
+
+| Function            | Description                                                                              |
+| ------------------- | :-----------                                                                             |
+| head()              | Returns the first member of a list                                                       |
+| keys()              | Returns a list of keys containing all properties names in a given map, node, or edge     |
+| last()              | Returns the last member of a list                                                        |
+| range()             | Creates a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval. |
+| size()              | Returns a list size                                                                      |
+| tail()              | Returns a sublist of a list, which contains all the values without the first value       |
+| [reduce()](#reduce) | Returns a scalar produced by evaluating an expression against each list member           |
+
+## Mathematical operators
+
+|Function     | Description|
+| ----------- |:-----------|
+| +           | Add two values                                                                                   |
+| -           | Subtract second value from first                                                                 |
+| *           | Multiply two values                                                                              |
+| /           | Divide first value by the second                                                                 |
+| ^           | Raise the first value to the power of the second                                                 |
+| %           | Perform modulo division of the first value by the second                                         |
 
 ## Mathematical functions
 
-|Function    | Description|
-| ---------- |:-----------|
-| +           | Add two values                                                                                                          |
-| -           | Subtract second value from first                                                                                        |
-| *           | Multiply two values                                                                                                     |
-| /           | Divide first value by the second                                                                                         |
-| ^           | Raise the first value to the power of the second                                                                         |
-| %           | Perform modulo division of the first value by the second                                                                 |
+|Function     | Description|
+| ----------- |:-----------|
 | abs()       | Returns the absolute value of a number                                                                                   |
 | ceil()      | Returns the smallest floating point number that is greater than or equal to a number and equal to a mathematical integer |
 | floor()     | Returns the largest floating point number that is less than or equal to a number and equal to a mathematical integer     |
 | rand()      | Returns a random floating point number in the range from 0 to 1; i.e. [0,1]                                              |
 | round()     | Returns the value of a number rounded to the nearest integer                                                             |
 | sign()      | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number          |
+| e()         | Returns the constant _e_, the base of the natural logarithm                                                              |
+| exp()       | Returns _e_^a, where _e_ is the base of the natural logarithm                                                            |
+| log()       | Returns the natural logarithm of a                                                                                       |
+| log10()     | Returns the logarithm (base 10) of a                                                                                     |
 | sqrt()      | Returns the square root of a number                                                                                      |
 | pow()       | Returns base raised to the power of exponent, base^exponent                                                              |
-| toInteger() | Converts a floating point or string value to an integer value.                                                           |
-| toFloat()   | Converts an integer or string value to a floating point value.                                                           |
+
+## Trigonometric functions
+
+|Function    | Description|
+| ---------- |:-----------|
+| sin()      |  Returns the sine of a numeric expression that represents an angle in radians                            |
+| cos()      |  Returns the cosine of a numeric expression that represents an angle in radians                          |
+| haversin() |  Returns half the versine of a numeric expression that represents an angle in radians                    |
+| tan()      |  Returns the tangent of a numeric expression that represents an angle in radians                         |
+| cot()      |  Returns the cotangent of a numeric expression that represents an angle in radians                       |
+| asin()     |  Returns the arcsine, in radians, of a numeric expression                                                |
+| acos()     |  Returns the arccosine, in radians, of a numeric expression                                              |
+| atan()     |  Returns the arctangent, in radians, of a numeric expression                                             |
+| atan2()    |  Returns the 2-argument arctangent, in radians, of a pair of numeric expressions (Cartesian coordinates) |
+| degrees()  |  Converts a numeric expression from radians to degrees                                                   |
+| radians()  |  Converts a numeric expression from degrees to radians                                                   |
+| pi()       |  Returns the mathematical constant _pi_                                                                  |
 
 ## String functions
 
@@ -896,9 +928,9 @@ This section contains information on all supported functions from the Cypher que
 | reverse()   | Returns a string in which the order of all characters in the original string are reversed       |
 | right()     | Returns a string containing the specified number of rightmost characters of the original string |
 | rTrim()     | Returns the original string with trailing whitespace removed                                    |
+| split()     | Returns a list of strings from splitting a string by a given delimiter                          |
 | substring() | Returns a substring of the original string, beginning with a 0-based index start and length     |
 | toLower()   | Returns the original string in lowercase                                                        |
-| toString()  | Returns a string representation of a value                                                      |
 | toJSON()    | Returns a [JSON representation](#json-format) of a value                                        |
 | toUpper()   | Returns the original string in uppercase                                                        |
 | trim()      | Returns the original string with leading and trailing whitespace removed                        |
@@ -911,19 +943,36 @@ This section contains information on all supported functions from the Cypher que
 | [point()](#point) | Returns a Point type representing the given lat/lon coordinates |
 | distance()        | Returns the distance in meters between the two given points     |
 
+## Type conversion functions
+
+|Function    | Description|
+| ---------- |:-----------|
+| toInteger() | Converts a floating point or string value to an integer value. All other types are not allowed and will cause a type mismatch error to be returned |
+| toIntegerOrNull() | Converts a floating point or string value to an integer value. All other types will return `null`                                            | 
+| toIntegerList()   | Converts a list of values to a list of integer values. Each item in the list is converted using toIntegerOrNull()      |
+| toFloat()   | Converts an integer or string value to a floating point value. All other types are not allowed and will cause a type mismatch error to be returned |
+| toFloatOrNull()   | Converts an integer or string value to a floating point value. All other types will return `null`                                            |
+| toFloatList()     | Converts a list of values to a list of floating point values. Each item in the list is converted using toFloatOrNull() |
+| toString()  | Returns a string representation of a value from the type integer, float, boolean, string, point.All other types are not allowed and will cause a type mismatch error to be returned. |
+| toStringorNull()  | Returns a string representation of a value from the type integer, float, boolean, string, point. All other types will return `null` |
+| toStringList()    | Converts a list of values to a list of string values. Each item in the list is converted using toStringOrNull()        | 
+| toBoolean         | Returns a boolean value from boolean type, string type (either `"True"` or `"False"` string values, case insensitive. All other values will return `null`) or integer type (0 for `false`, all other values will return `true`). All other types are not allowed and will cause a type mismatch error to be returned.
+| toBooleanOrNull   | Returns a boolean value from boolean type, string type (either `"True"` or `"False"` string values, case insensitive. All other values will return `null`) or integer type (0 for `false`, all other values will return `true`). All other types will return `null`.
+| toBooleanList()   | Converts a list of values to a list of boolean values. Each item in the list is converted using toBooleanOrNull()      |
+
 ## Node functions
 |Function | Description|
 | ------- |:-----------|
-|indegree() | Returns the number of node's incoming edges. |
-|outdegree() | Returns the number of node's outgoing edges. |
+|indegree()  | Returns the number of node's incoming edges |
+|outdegree() | Returns the number of node's outgoing edges |
 
 ## Path functions
-| Function                        | Description                                               |
-| -------                         | :-----------                                              |
-| nodes()                         | Return a new list of nodes, of a given path.              |
-| relationships()                 | Return a new list of edges, of a given path.              |
-| length()                        | Return the length (number of edges) of the path.          |
-| [shortestPath()](#shortestPath) | Return the shortest path that resolves the given pattern. |
+| Function                        | Description                                              |
+| -------                         | :-----------                                             |
+| nodes()                         | Return a new list of nodes, of a given path              |
+| relationships()                 | Return a new list of edges, of a given path              |
+| length()                        | Return the length (number of edges) of the path          |
+| [shortestPath()](#shortestPath) | Return the shortest path that resolves the given pattern |
 
 ### List comprehensions
 List comprehensions are a syntactical construct that accepts an array and produces another based on the provided map and filter directives.
@@ -1110,20 +1159,21 @@ It can yield two outputs:
 `edges` - An array of all edges traversed during the search. This does not necessarily contain all edges connecting nodes in the tree, as cycles or multiple edges connecting the same source and destination do not have a bearing on the reachability this algorithm tests for. These can be used to construct the directed acyclic graph that represents the BFS tree. Emitting edges incurs a small performance penalty.
 
 ## Indexing
-RedisGraph supports single-property indexes for node labels.
 
-String, numeric, and geospatial data types can be indexed.
+RedisGraph supports single-property indexes for node labels and for relationship type. String, numeric, and geospatial data types can be indexed.
 
-The creation syntax is:
+### Creating an index for a node label
 
-```sh
-GRAPH.QUERY DEMO_GRAPH "CREATE INDEX ON :Person(age)"
-```
-
-On the master branch, a newer syntax is also supported. This will be the standard in future versions:
+For a node label, the index creation syntax is:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH "CREATE INDEX FOR (p:Person) ON (p.age)"
+```
+
+An old syntax is also supported:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "CREATE INDEX ON :Person(age)"
 ```
 
 After an index is explicitly created, it will automatically be used by queries that reference that label and any indexed property in a filter.
@@ -1151,9 +1201,9 @@ GRAPH.QUERY DEMO_GRAPH
 
 Geospatial indexes can currently only be leveraged with `<` and `<=` filters; matching nodes outside of the given radius is performed using conventional matching.
 
-Indexing relationship property
+### Creating an index for a relationship type
 
-The creation syntax is:
+For a relationship type, the index creation syntax is:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH "CREATE INDEX FOR ()-[f:FOLLOW]-() ON (f.created_at)"
@@ -1171,13 +1221,24 @@ GRAPH.EXPLAIN DEMO_GRAPH "MATCH (p:Person {id: 0})-[f:FOLLOW]->(fp) WHERE 0 < f.
 
 This can significantly improve the runtime of queries that traverse super nodes or when we want to start traverse from relationships.
 
-Individual indexes can be deleted using the matching syntax:
+### Deleting an index for a node label
+
+For a node label, the index deletion syntax is:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH "DROP INDEX ON :Person(age)"
 ```
 
-## Full-text indexes
+### Deleting an index for a relationship type
+
+For a relationship type, the index deletion syntax is:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "DROP INDEX ON :FOLLOW(created_at)"
+```
+
+
+### Full-text indexing
 
 RedisGraph leverages the indexing capabilities of [RediSearch](/docs/stack/search/index.html) to provide full-text indices through procedure calls. To construct a full-text index on the `title` property of all nodes with label `Movie`, use the syntax:
 

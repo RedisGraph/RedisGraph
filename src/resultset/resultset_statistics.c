@@ -16,29 +16,27 @@ bool ResultSetStat_IndicateModification
 	ASSERT(stats != NULL);
 
 	return (
-			stats->nodes_created > 0          ||
-			stats->properties_set > 0         ||
-			stats->relationships_created > 0  ||
-			stats->nodes_deleted > 0          ||
-			stats->relationships_deleted > 0  ||
-			stats->labels_added > 0           ||
-			stats->indices_created > 0        ||
-			stats->indices_deleted > 0
-			);
+			stats->labels_added          |
+			stats->nodes_created         |
+			stats->nodes_deleted         |
+			stats->properties_set        |
+			stats->labels_removed        |
+			stats->indices_deleted       |
+			stats->indices_created       |
+			stats->properties_removed    |
+			stats->relationships_created |
+			stats->relationships_deleted
+		);
 }
 
 // initialize resultset statistics
 void ResultSetStat_init
 (
 	ResultSetStatistics *stats  // resultset statistics to initialize
-)
-{
+) {
 	ASSERT(stats != NULL);
 
 	memset(stats, 0, sizeof(ResultSetStatistics));
-
-	stats->indices_created = STAT_NOT_SET;
-	stats->indices_deleted = STAT_NOT_SET;
 }
 
 // emit resultset statistics
@@ -52,20 +50,26 @@ void ResultSetStat_emit
 	size_t resultset_size = 2; // execution time, cached
 
 	// compute required space for resultset statistics
+	if(stats->index_creation)            resultset_size++;
+	if(stats->index_deletion)            resultset_size++;
 	if(stats->labels_added          > 0) resultset_size++;
 	if(stats->nodes_created         > 0) resultset_size++;
 	if(stats->nodes_deleted         > 0) resultset_size++;
+	if(stats->labels_removed        > 0) resultset_size++;
 	if(stats->properties_set        > 0) resultset_size++;
+	if(stats->properties_removed    > 0) resultset_size++;
 	if(stats->relationships_deleted > 0) resultset_size++;
 	if(stats->relationships_created > 0) resultset_size++;
-
-	if(stats->indices_created != STAT_NOT_SET) resultset_size++;
-	if(stats->indices_deleted != STAT_NOT_SET) resultset_size++;
 
 	RedisModule_ReplyWithArray(ctx, resultset_size);
 
 	if(stats->labels_added > 0) {
 		buflen = sprintf(buff, "Labels added: %d", stats->labels_added);
+		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
+	}
+
+	if(stats->labels_removed > 0) {
+		buflen = sprintf(buff, "Labels removed: %d", stats->labels_removed);
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
 
@@ -76,6 +80,11 @@ void ResultSetStat_emit
 
 	if(stats->properties_set > 0) {
 		buflen = sprintf(buff, "Properties set: %d", stats->properties_set);
+		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
+	}
+
+	if(stats->properties_removed > 0) {
+		buflen = sprintf(buff, "Properties removed: %d", stats->properties_removed);
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
 
@@ -94,12 +103,12 @@ void ResultSetStat_emit
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
 
-	if(stats->indices_created != STAT_NOT_SET) {
+	if(stats->index_creation) {
 		buflen = sprintf(buff, "Indices created: %d", stats->indices_created);
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
 
-	if(stats->indices_deleted != STAT_NOT_SET) {
+	if(stats->index_deletion) {
 		buflen = sprintf(buff, "Indices deleted: %d", stats->indices_deleted);
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
@@ -113,15 +122,21 @@ void ResultSetStat_emit
 	RedisModule_ReplyWithStringBuffer(ctx, buff, buflen);
 }
 
-void ResultSetStat_Clear(ResultSetStatistics *stats) {
+void ResultSetStat_Clear
+(
+	ResultSetStatistics *stats
+) {
 	ASSERT(stats != NULL);
 
-	stats->labels_added           =  0;
-	stats->nodes_deleted          =  0;
-	stats->nodes_created          =  0;
-	stats->properties_set         =  0;
-	stats->indices_created        =  STAT_NOT_SET;
-	stats->indices_deleted        =  STAT_NOT_SET;
-	stats->relationships_created  =  0;
-	stats->relationships_deleted  =  0;
+	stats->labels_added          = 0;
+	stats->nodes_deleted         = 0;
+	stats->nodes_created         = 0;
+	stats->properties_set        = 0;
+	stats->labels_removed        = 0;
+	stats->indices_created       = 0;
+	stats->indices_deleted       = 0;
+	stats->properties_removed    = 0;
+	stats->relationships_created = 0;
+	stats->relationships_deleted = 0;
 }
+

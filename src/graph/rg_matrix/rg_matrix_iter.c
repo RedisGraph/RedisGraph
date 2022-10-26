@@ -86,22 +86,6 @@ GrB_Info RG_MatrixTupleIter_iterate_row
 	return GrB_SUCCESS ;
 }
 
-GrB_Info RG_MatrixTupleIter_jump_to_row
-(
-	RG_MatrixTupleIter *iter,
-	GrB_Index rowIdx
-) {
-	if(IS_DETACHED(iter)) return GrB_NULL_POINTER ;
-	if(iter->max_row < rowIdx) return GrB_INVALID_INDEX ;
-
-	iter->min_row = rowIdx ;
-
-	_set_iter_range(&iter->m_it, iter->min_row, iter->max_row, &iter->m_depleted) ;
-	_set_iter_range(&iter->dp_it, iter->min_row, iter->max_row, &iter->dp_depleted) ;
-
-	return GrB_SUCCESS ;
-}
-
 GrB_Info RG_MatrixTupleIter_iterate_range
 (
 	RG_MatrixTupleIter *iter,   // iterator to use
@@ -319,7 +303,19 @@ bool RG_MatrixTupleIter_is_attached
 GrB_Info RG_MatrixTupleIter_attach
 (
 	RG_MatrixTupleIter *iter,       // iterator to update
-	const RG_Matrix A               // matrix to scan
+	const RG_Matrix A              // matrix to scan
+) {
+	return RG_MatrixTupleIter_AttachRange(iter, A, RG_ITER_MIN_ROW,
+		RG_ITER_MAX_ROW);
+}
+
+// update iterator to scan given matrix
+GrB_Info RG_MatrixTupleIter_AttachRange
+(
+	RG_MatrixTupleIter *iter,       // iterator to update
+	const RG_Matrix A,              // matrix to scan
+	GrB_Index min_row,              // minimum row for iteration
+	GrB_Index max_row               // maximum row for iteration
 ) {
 	if(A == NULL) return GrB_NULL_POINTER ;
 	if(iter == NULL) return GrB_NULL_POINTER ;
@@ -328,8 +324,8 @@ GrB_Info RG_MatrixTupleIter_attach
 	GrB_Matrix DP = RG_MATRIX_DELTA_PLUS(A) ;
 
 	iter->A = A ;
-	iter->min_row = 0 ;
-	iter->max_row = ULLONG_MAX ;
+	iter->min_row = min_row ;
+	iter->max_row = max_row ;
 
 	_init_iter(&iter->m_it, M, iter->min_row, iter->max_row, &iter->m_depleted) ;
 	_init_iter(&iter->dp_it, DP, iter->min_row, iter->max_row, &iter->dp_depleted) ;
