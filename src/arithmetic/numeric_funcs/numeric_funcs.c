@@ -112,58 +112,55 @@ SIValue AR_ROUND(SIValue *argv, int argc, void *private_data) {
 		if(argc == 1)
 			result.doubleval = round(result.doubleval);
 		else if(argc >= 2) {
+
 			SIValue origdouble = argv[0];
 			SIValue precision = argv[1];
 			char prcnum[40];
 			int rdd;
+
 			if(origdouble.longval > 0)
 				rdd = floor((origdouble.doubleval * pow(10, precision.longval)));
 			else
 				rdd = ceil((origdouble.doubleval * pow(10, precision.longval)));
+			
 			double urddigits = ((double)rdd)/(pow(10, precision.longval));
 
 			sprintf(prcnum, "\%.*f", (int)precision.longval, result.doubleval);
 			sscanf(prcnum, "%lf", &result.doubleval);
 
-			if(isHalfValue(origdouble.doubleval, precision.longval) && argc == 2){  //DONE
-				if(rdd > 0)
-					result.doubleval = (rdd+1)/pow(10, precision.longval);
-				else
-					result.doubleval = (rdd-1)/pow(10, precision.longval);
-			}
+			// Rounding with no mode parameter is the same as rounding with 'HALF_UP' mode
 
 			if (argc == 3)
 			{
 				SIValue mode = argv[2];
 				if(urddigits != argv[0].doubleval) {
-					if (strcmp(mode.stringval, "UP") == 0) {           //DONE
-						int64_t sgn = SIGN(SI_GET_NUMERIC(argv[0]));
-						double incr = 0;
-						if(sgn > 0) {
-							incr = 1;
-						} else {
-							incr = -1;
-						}
-						incr = incr/pow(10, precision.longval);
-						result.doubleval = urddigits + incr;
-					} else if((strcmp(mode.stringval, "DOWN") == 0)  || (strcmp(mode.stringval, "FLOOR") == 0)) {       //DONE
+					if((strcmp(mode.stringval, "TOWARD_ZERO") == 0))
+					{       
 						result.doubleval = urddigits;
-					} else if(strcmp(mode.stringval, "CEILING") == 0) {    //DONE
+					} 
+					else if(strcmp(mode.stringval, "CEILING") == 0) 
+					{    
 						if(urddigits<0)
 							result.doubleval = urddigits;
 						else
 							result.doubleval = urddigits + 1.0/pow(10,precision.longval);
-					// } else if(strcmp(mode.stringval, "FLOOR") == 0) {
-						// result.doubleval = urddigits;
-						// if(urddigits > 0)
-							// result.doubleval = urddigits;
-						// else
-						// 	result.doubleval = urddigits - 1.0/pow(10,precision.longval);
-					} else if(strcmp(mode.stringval, "HALF_DOWN") == 0) {					//DONE
+					} 
+					else if(strcmp(mode.stringval, "FLOOR") == 0) 
+					{
+						result.doubleval = urddigits;
+						if(urddigits > 0)
+							result.doubleval = urddigits;
+						else
+							result.doubleval = urddigits - 1.0/pow(10,precision.longval);
+					}
+					else if(strcmp(mode.stringval, "HALF_DOWN") == 0) 
+					{					
 						if(isHalfValue(origdouble.doubleval, precision.longval)){
 							result.doubleval = urddigits;
 						}
-					} else if(strcmp(mode.stringval, "HALF_EVEN") == 0) {					//DONE
+					} 
+					else if(strcmp(mode.stringval, "HALF_EVEN") == 0) 
+					{				
 						if(isHalfValue(origdouble.doubleval, precision.longval)){
 							if((rdd%2) == 0){
 								result.doubleval = urddigits;
@@ -175,7 +172,19 @@ SIValue AR_ROUND(SIValue *argv, int argc, void *private_data) {
 									result.doubleval = (rdd-1)/pow(10, precision.longval);
 							}
 						} 
-					}
+					} 
+					else if (strcmp(mode.stringval, "AWAY_FROM_ZERO") == 0)
+					{           
+						int64_t sgn = SIGN(SI_GET_NUMERIC(argv[0]));
+						double incr = 0;
+						if(sgn > 0) {
+							incr = 1;
+						} else {
+							incr = -1;
+						}
+						incr = incr/pow(10, precision.longval);
+						result.doubleval = urddigits + incr;
+					} 
 				}
 			}
 		}
