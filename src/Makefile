@@ -47,10 +47,6 @@ LIBCYPHER_PARSER_DIR = $(ROOT)/deps/libcypher-parser/lib/src
 
 #----------------------------------------------------------------------------------------------
 
-ifeq ($(OS),macos)
-CLANG=1
-endif
-
 ifeq ($(CC),)
 ifeq ($(GCC),1)
 override CC=gcc
@@ -79,15 +75,6 @@ CFLAGS=\
 	$(CFLAGS.opt) \
 	$(CFLAGS.warnings) \
 	$(CFLAGS.debug)
-
-ifeq ($(OS),macos)
-	ifeq ($(STATIC_OMP),1)
-		LIBOMP_PREFIX:=$(shell brew --prefix libomp)
-		LIBOMP=$(LIBOMP_PREFIX)/lib/libomp.a
-	else
-		LIBOMP=-lomp -L$(shell brew --prefix libomp)/lib -Wl,-no_compact_unwind
-	endif
-endif
 
 # Compile flags for linux / osx
 LDFLAGS.linux=-Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
@@ -324,6 +311,10 @@ ifneq ($(DEBUG),1)
 	$(call extract_symbols,$@)
 endif
 endif
+
+dynamic: $(MODULE_DEPS)
+	$(REDISGRAPH_CC) -o $@ $(CC_OBJECTS) $(LIBS) -W -fopenmp -dynamiclib -lpthread -o libredisgraph.dylib
+.PHONY: dynamic
 
 clean:
 	@find . -name '*.[oad]' -type f -delete

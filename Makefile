@@ -90,6 +90,9 @@ memcheck:
 cov-upload:
 	@$(MAKE) -C src cov-upload
 
+dynamic:
+	@$(MAKE) -C src dynamic
+
 fuzz:
 	@$(MAKE) -C src fuzz
 
