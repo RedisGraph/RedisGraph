@@ -1886,21 +1886,15 @@ class testFunctionCallsFlow(FlowTestsBase):
             self.get_res_and_assertEquals(query, expected_result)
 
     def test81_ISNULL(self):
-        arr = ["1", "1.2", "TRUE", "FALSE", "'string'", "[1,2,3]"]
-        query_to_expected_result = {
-            "RETURN null IS NULL": [[True]], 
-            "RETURN null IS NOT NULL": [[False]]
-        }
-        for query, expected_result in query_to_expected_result.items():
-            self.get_res_and_assertEquals(query, expected_result)
-        for s in arr:
+        arr = ["NULL", "NOT NULL", "1", "1.2", "TRUE", "FALSE", "'string'", "[1,2,3]"]
+        for ind, s in enumerate(arr):
             query1 = f'RETURN {s} IS NOT NULL'
             actual_result1 = graph.query(query1).result_set[0][0]
-            expected1 = True
+            expected1 = True if ind!=0 else False
             self.env.assertEquals(expected1, actual_result1)
             query2 = f'RETURN {s} IS NULL'
             actual_result2 = graph.query(query2).result_set[0][0]
-            expected2 = False
+            expected2 = False if ind!=0 else True
             self.env.assertEquals(expected2, actual_result2)
     
     def test82_Coalesce(self):
