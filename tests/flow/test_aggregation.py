@@ -9,6 +9,10 @@ class testAggregations():
         self.env = Env(decodeResponses=True)
         graph = Graph(self.env.getConnection(), GRAPH_ID)
 
+    def get_res_and_assertEquals(self, query, expected_result):
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
     # test aggregation default values
     # default values should be returned when the aggregation operation
     # was not given any data to process
@@ -44,4 +48,11 @@ class testAggregations():
 
         result = graph.query(query)
         self.env.assertEquals(result.result_set[0], expected_result)
+    
+    def test02_countTest(self):
+        query = "UNWIND [NULL, NULL, NULL, NULL, NULL] AS x RETURN count(1)"
+        expected = 5
+        actual_result = graph.query(query).result_set[0][0]
+        self.env.assertEquals(actual_result, expected)
+    
 

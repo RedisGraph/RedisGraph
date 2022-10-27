@@ -52,23 +52,6 @@ AR_ExpNode *_exp_from_query(const char *query) {
 	return _BuildProjectionExpressions(ret_clause, ast)[0];
 }
 
-// Count valid entities
-TEST_F(AggregateTest, CountTest) {
-	SIValue result;
-	const char *query;
-	AR_ExpNode *arExp;
-
-	/* count(1) */
-	query = "RETURN count(1)";
-	arExp = _exp_from_query(query);
-
-	int num_values = 5;
-	for(int i = 0; i < num_values; i++) AR_EXP_Aggregate(arExp, NULL);
-	result = AR_EXP_FinalizeAggregations(arExp, NULL);
-	ASSERT_EQ(result.longval, num_values);
-	AR_EXP_Free(arExp);
-}
-
 // Count a mix of valid and invalid entities
 TEST_F(AggregateTest, PartialCountTest) {
 	const char *query;
