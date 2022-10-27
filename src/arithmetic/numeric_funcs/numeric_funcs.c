@@ -89,20 +89,6 @@ SIValue AR_RAND(SIValue *argv, int argc, void *private_data) {
 	return SI_DoubleVal((double)rand() / (double)RAND_MAX);
 }
 
-bool isHalfValue(double d, double precision) {
-	int rdd;
-	double eps;
-	double n = (d * pow(10, precision));
-	if(d > 0){
-		rdd = floor(n);
-		eps = fabs((rdd+1 - n) - (n-rdd));
-	} else {
-		rdd = ceil(n);
-		eps = fabs((rdd-n) - (n-(rdd-1)));
-	}
-	return eps < 1e-8;
-}
-
 /* returns the value of the given number rounded to the nearest integer. */
 SIValue AR_ROUND(SIValue *argv, int argc, void *private_data) {
 	SIValue result = argv[0];
@@ -117,18 +103,29 @@ SIValue AR_ROUND(SIValue *argv, int argc, void *private_data) {
 			SIValue precision = argv[1];
 			char prcnum[40];
 			int rdd;
+			bool isHalfValue = false;
+			double n = origdouble.doubleval * pow(10, precision.longval);
+			double eps;
 
-			if(origdouble.longval > 0)
+			if(origdouble.longval > 0) {
 				rdd = floor((origdouble.doubleval * pow(10, precision.longval)));
-			else
+				eps = fabs((rdd+1 - n) - (n-rdd));
+			}
+			else {
 				rdd = ceil((origdouble.doubleval * pow(10, precision.longval)));
-			
+				eps = fabs((rdd-n) - (n-(rdd-1)))
+			}
+
+			if(eps < 1e-8)
+				isHalfValue = true;
+
 			double urddigits = ((double)rdd)/(pow(10, precision.longval));
 
 			sprintf(prcnum, "\%.*f", (int)precision.longval, result.doubleval);
 			sscanf(prcnum, "%lf", &result.doubleval);
 
-			if(isHalfValue(origdouble.doubleval, precision.longval)){  
+
+			if(isHalfValue){  
 				if(rdd > 0)
 					result.doubleval = (rdd+1)/pow(10, precision.longval);
 				else
@@ -172,13 +169,13 @@ SIValue AR_ROUND(SIValue *argv, int argc, void *private_data) {
 					} 
 					else if(strcmp(mode.stringval, "HALF_DOWN") == 0) 
 					{					
-						if(isHalfValue(origdouble.doubleval, precision.longval)){
+						if(isHalfValue){
 							result.doubleval = urddigits;
 						}
 					} 
 					else if(strcmp(mode.stringval, "HALF_EVEN") == 0) 
 					{				
-						if(isHalfValue(origdouble.doubleval, precision.longval)){
+						if(isHalfValue){
 							if((rdd%2) == 0){
 								result.doubleval = urddigits;
 							}
