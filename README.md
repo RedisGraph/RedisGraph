@@ -18,8 +18,8 @@ Primary features:
   * Nodes that can be labeled
   * Relationships have a relationship type
 * Graphs represented as sparse adjacency matrices
-* [Cypher](http://www.opencypher.org/) as query language
-  * Cypher queries translated into linear algebra expressions
+* [OpenCypher](http://www.opencypher.org/) with proprietary extensions as a query language
+  * Queries are translated into linear algebra expressions
 
 To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGraph/tree/master/demo).
 To read the docs, visit [redisgraph.io](http://redisgraph.io).
