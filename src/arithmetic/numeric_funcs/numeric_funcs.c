@@ -113,7 +113,7 @@ SIValue AR_ROUND(SIValue *argv, int argc, void *private_data) {
 			}
 			else {
 				rdd = ceil((origdouble.doubleval * pow(10, precision.longval)));
-				eps = fabs((rdd-n) - (n-(rdd-1)))
+				eps = fabs((rdd-n) - (n-(rdd-1)));
 			}
 
 			if(eps < 1e-8)
