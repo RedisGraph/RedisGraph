@@ -403,3 +403,21 @@ Schema *AddSchema
 	return s;
 }
 
+Attribute_ID FindOrAddAttribute
+(
+	GraphContext *gc,             // graph context to add the attribute
+	const char *attribute         // attribute name
+) {
+	ASSERT(gc != NULL);
+	ASSERT(attribute != NULL);
+
+	bool created;
+	Attribute_ID attr_id = GraphContext_FindOrAddAttribute(gc, attribute, &created);
+	// In case there was an append, the latest id should be tracked
+	if(created) {
+		QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+		UndoLog_AddAttribute(&query_ctx->undo_log, attr_id);
+	}
+	return attr_id;
+}
+

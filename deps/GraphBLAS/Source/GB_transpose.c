@@ -47,7 +47,7 @@
     GB_FREE_WORKSPACE ;                 \
     GB_Matrix_free (&T) ;               \
     /* freeing C also frees A if transpose is done in-place */ \
-    GB_phbix_free (C) ;                 \
+    GB_phybix_free (C) ;                \
 }
 
 #include "GB_transpose.h"
@@ -122,12 +122,8 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
     //--------------------------------------------------------------------------
 
     GrB_Type atype = A->type ;
-    size_t asize = atype->size ;
-    GB_Type_code acode = atype->code ;
-
     bool A_is_bitmap = GB_IS_BITMAP (A) ;
     bool A_is_hyper  = GB_IS_HYPERSPARSE (A) ;
-
     int64_t anz = GB_nnz (A) ;
     int64_t anz_held = GB_nnz_held (A) ;
     int64_t anvec = A->nvec ;
@@ -267,6 +263,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
         // with all entries present, no zombies, no pending tuples, and not
         // jumbled).  T = A' is either bitmap or full.
 
+        GBURBLE ("(bitmap/full transpose) ") ;
         int T_sparsity = (A_is_bitmap) ? GxB_BITMAP : GxB_FULL ;
         bool T_cheap =                  // T can be done quickly if:
             (avlen == 1 || avdim == 1)      // A is a row or column vector,
@@ -351,6 +348,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
         // transpose a vector (avlen-by-1) into a "row" matrix (1-by-avlen).
         // A must be sorted first.
 
+        GBURBLE ("(sparse vector transpose (a)) ") ;
         ASSERT_MATRIX_OK (A, "the vector A must already be sorted", GB0) ;
         ASSERT (!GB_JUMBLED (A)) ;
 
@@ -367,8 +365,9 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
         ASSERT (info == GrB_SUCCESS) ;
 
         // allocate T->p, T->i, and optionally T->x, but not T->h
-        T->p = GB_MALLOC (anz+1, int64_t, &(T->p_size)) ;
-        T->i = GB_MALLOC (anz  , int64_t, &(T->i_size)) ;
+        int64_t tplen = GB_IMAX (1, anz) ;
+        T->p = GB_MALLOC (tplen+1, int64_t, &(T->p_size)) ;
+        T->i = GB_MALLOC (anz    , int64_t, &(T->i_size)) ;
         bool allocate_Tx = (op != NULL || C_iso) || (ctype != atype) ;
         if (allocate_Tx)
         { 
@@ -436,7 +435,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
         }
 
         // T->p = 0:anz and T->i = zeros (1,anz), newly allocated
-        T->plen = anz ;
+        T->plen = tplen ;
         T->nvec = anz ;
         T->nvec_nonempty = anz ;
 
@@ -452,6 +451,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
         T->p [anz] = anz ;
 
         T->iso = C_iso ;
+        T->nvals = anz ;
         T->magic = GB_MAGIC ;
 
     }
@@ -464,6 +464,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
 
         // transpose a "row" matrix (1-by-avdim) into a vector (avdim-by-1).
         // if A->vlen is 1, all vectors of A are implicitly sorted
+        GBURBLE ("(sparse vector transpose (b)) ") ;
         ASSERT_MATRIX_OK (A, "1-by-n input A already sorted", GB0) ;
 
         //----------------------------------------------------------------------
@@ -668,6 +669,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
         ASSERT (T->nvec == 1) ;
         T->nvec_nonempty = (anz == 0) ? 0 : 1 ;
         T->p [1] = anz ;
+        T->nvals = anz ;
         T->magic = GB_MAGIC ;
         ASSERT (!GB_JUMBLED (T)) ;
 
@@ -702,6 +704,8 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
             // transpose via GB_builder
             //------------------------------------------------------------------
 
+            GBURBLE ("(builder transpose) ") ;
+
             //------------------------------------------------------------------
             // allocate and create iwork
             //------------------------------------------------------------------
@@ -724,8 +728,8 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
             // allocate the output matrix and additional space (jwork and Swork)
             //------------------------------------------------------------------
 
-            // initialize the header of T, with no content
-            // content, and initialize the type and dimension of T.
+            // initialize the header of T, with no content,
+            // and initialize the type and dimension of T.
 
             info = GB_new (&T, // hyper, existing header
                 ctype, avdim, avlen, GB_Ap_null, C_is_csc,
@@ -853,6 +857,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
                 anz,        // number of tuples
                 NULL,       // no dup operator needed (input has no duplicates)
                 stype,      // type of S_input or Swork
+                false,      // no burble (already burbled above)
                 Context
             )) ;
 
@@ -893,7 +898,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
     if (in_place)
     { 
         // free prior space of A, if transpose is done in-place
-        GB_phbix_free (A) ;
+        GB_phybix_free (A) ;
     }
 
     //--------------------------------------------------------------------------

@@ -84,8 +84,6 @@ void mexFunction
     OK (GrB_Vector_size (&ny, Y)) ;
 
     GB_Global_print_one_based_set (0) ;
-    // GxB_print (X, 3) ;
-    // GxB_print (Y, 3) ;
 
     if (n != ny)
     {
@@ -126,6 +124,32 @@ void mexFunction
     GrB_Index xnvals, ynvals ;
     OK (GrB_Vector_nvals (&xnvals, X)) ;
     OK (GrB_Vector_nvals (&ynvals, Y)) ;
+
+//  if (kind == 0) { GxB_print (X, 3) ; GxB_print (Y, 3) ; }
+
+    if (X->b != NULL && X->type == GrB_FP64)
+    {
+        // mangle the X vector where entries are not present
+        double *Xx = (double *) X->x ;
+        int8_t *Xb = X->b ;
+        int64_t n = X->vlen ;
+        for (int64_t k = 0 ; k < n ; k++)
+        {
+            if (!Xb [k]) Xx [k] = 42 ;
+        }
+    }
+
+    if (Y->b != NULL && Y->type == GrB_FP64)
+    {
+        // mangle the Y vector where entries are not present
+        double *Yx = (double *) Y->x ;
+        int8_t *Yb = Y->b ;
+        int64_t n = Y->vlen ;
+        for (int64_t k = 0 ; k < n ; k++)
+        {
+            if (!Yb [k]) Yx [k] = 42 ;
+        }
+    }
 
     if (use_macros)
     {

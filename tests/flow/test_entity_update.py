@@ -52,6 +52,24 @@ class testEntityUpdate(FlowTestsBase):
         self.env.assertEqual(result.properties_set, 0)
         self.env.assertEqual(result.properties_removed, 1)
 
+        # remove null attribute using MERGE...ON CREATE SET
+        result = graph.query("UNWIND [{id: 1, aField: 'withValue', andOneWithout: null}] AS item MERGE (m:X{id: item.id}) ON CREATE SET m += item RETURN properties(m)")
+        self.env.assertEqual(result.labels_added, 1)
+        self.env.assertEqual(result.nodes_created, 1)
+        self.env.assertEqual(result.properties_set, 2)
+        expected_result = [[{'id': 1, 'aField': 'withValue'}]]
+        self.env.assertEqual(result.result_set, expected_result)
+        result = graph.query("MATCH (m:X) DELETE(m)")
+        self.env.assertEqual(result.nodes_deleted, 1)
+
+        # remove the 'x' attribute using MERGE...ON MATCH SET
+        result = graph.query("CREATE (n:N {x:5})")
+        result = graph.query("MERGE (n:N) ON MATCH SET n.x=null RETURN n")
+        self.env.assertEqual(result.properties_set, 0)
+        self.env.assertEqual(result.properties_removed, 1)
+        result = graph.query("MATCH (n:N) DELETE(n)")
+        self.env.assertEqual(result.nodes_deleted, 1)
+
     def test05_update_from_projection(self):
         result = graph.query("MATCH (n) UNWIND ['Calgary'] as city_name SET n.name = city_name RETURN n.v, n.name")
         expected_result = [[1, 'Calgary']]

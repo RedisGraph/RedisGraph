@@ -71,6 +71,11 @@ GrB_Info GB_Type_check      // check a GraphBLAS Type
         return (GrB_INVALID_OBJECT) ;
     }
 
+    if (type->defn != NULL)
+    { 
+        GBPR0 ("    %s\n", type->defn) ;
+    }
+
     return (GrB_SUCCESS) ;
 }
 

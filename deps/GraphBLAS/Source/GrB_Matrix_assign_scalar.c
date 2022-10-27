@@ -106,6 +106,8 @@ GrB_Info GrB_Matrix_assign_Scalar   // C<Mask>(I,J) = accum (C(I,J),s)
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;
     GB_RETURN_IF_NULL_OR_FAULTY (scalar) ;
     GB_RETURN_IF_FAULTY (M_in) ;
+    GB_RETURN_IF_NULL (I) ;
+    GB_RETURN_IF_NULL (J) ;
 
     // get the descriptor
     GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, Mask_struct,
@@ -120,7 +122,30 @@ GrB_Info GrB_Matrix_assign_Scalar   // C<Mask>(I,J) = accum (C(I,J),s)
 
     GrB_Index nvals ;
     GB_OK (GB_nvals (&nvals, (GrB_Matrix) scalar, Context)) ;
-    if (nvals == 1)
+
+    if (M == NULL && !Mask_comp && ni == 1 && nj == 1 && !C_replace)
+    {
+
+        //----------------------------------------------------------------------
+        // scalar assignment
+        //----------------------------------------------------------------------
+
+        const GrB_Index row = I [0] ;
+        const GrB_Index col = J [0] ;
+        if (nvals == 1)
+        { 
+            // set the element: C(row,col) += scalar or C(row,col) = scalar
+            info = GB_setElement (C, accum, scalar->x, row, col,
+                scalar->type->code, Context) ;
+        }
+        else if (accum == NULL)
+        { 
+            // delete the C(row,col) element
+            info = GB_Matrix_removeElement (C, row, col, Context) ;
+        }
+
+    }
+    else if (nvals == 1)
     { 
 
         //----------------------------------------------------------------------
@@ -129,7 +154,7 @@ GrB_Info GrB_Matrix_assign_Scalar   // C<Mask>(I,J) = accum (C(I,J),s)
 
         // This is identical to non-opaque scalar assignment
 
-        info = (GB_assign (
+        info = GB_assign (
             C, C_replace,               // C matrix and its descriptor
             M, Mask_comp, Mask_struct,  // mask matrix and its descriptor
             false,                      // do not transpose the mask
@@ -141,7 +166,7 @@ GrB_Info GrB_Matrix_assign_Scalar   // C<Mask>(I,J) = accum (C(I,J),s)
             scalar->x,                  // scalar to assign, expands to become A
             scalar->type->code,         // type code of scalar to expand
             GB_ASSIGN,
-            Context)) ;
+            Context) ;
 
     }
     else

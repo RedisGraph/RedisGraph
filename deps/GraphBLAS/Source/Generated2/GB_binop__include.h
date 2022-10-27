@@ -81,7 +81,7 @@ GrB_Info GB (_AaddB__first_bool)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__first_bool)
+GrB_Info GB (_AemultB__first_bool)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -251,7 +251,7 @@ GrB_Info GB (_AaddB__first_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__first_int8)
+GrB_Info GB (_AemultB__first_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -421,7 +421,7 @@ GrB_Info GB (_AaddB__first_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__first_int16)
+GrB_Info GB (_AemultB__first_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -591,7 +591,7 @@ GrB_Info GB (_AaddB__first_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__first_int32)
+GrB_Info GB (_AemultB__first_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -761,7 +761,7 @@ GrB_Info GB (_AaddB__first_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__first_int64)
+GrB_Info GB (_AemultB__first_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -931,7 +931,7 @@ GrB_Info GB (_AaddB__first_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__first_uint8)
+GrB_Info GB (_AemultB__first_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -1101,7 +1101,7 @@ GrB_Info GB (_AaddB__first_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__first_uint16)
+GrB_Info GB (_AemultB__first_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -1271,7 +1271,7 @@ GrB_Info GB (_AaddB__first_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__first_uint32)
+GrB_Info GB (_AemultB__first_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -1441,7 +1441,7 @@ GrB_Info GB (_AaddB__first_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__first_uint64)
+GrB_Info GB (_AemultB__first_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -1611,7 +1611,7 @@ GrB_Info GB (_AaddB__first_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__first_fp32)
+GrB_Info GB (_AemultB__first_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -1781,7 +1781,7 @@ GrB_Info GB (_AaddB__first_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__first_fp64)
+GrB_Info GB (_AemultB__first_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -1951,7 +1951,7 @@ GrB_Info GB (_AaddB__first_fc32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__first_fc32)
+GrB_Info GB (_AemultB__first_fc32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -2121,7 +2121,7 @@ GrB_Info GB (_AaddB__first_fc64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__first_fc64)
+GrB_Info GB (_AemultB__first_fc64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -2291,7 +2291,7 @@ GrB_Info GB (_AaddB__second_bool)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__second_bool)
+GrB_Info GB (_AemultB__second_bool)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -2461,7 +2461,7 @@ GrB_Info GB (_AaddB__second_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__second_int8)
+GrB_Info GB (_AemultB__second_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -2631,7 +2631,7 @@ GrB_Info GB (_AaddB__second_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__second_int16)
+GrB_Info GB (_AemultB__second_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -2801,7 +2801,7 @@ GrB_Info GB (_AaddB__second_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__second_int32)
+GrB_Info GB (_AemultB__second_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -2971,7 +2971,7 @@ GrB_Info GB (_AaddB__second_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__second_int64)
+GrB_Info GB (_AemultB__second_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -3141,7 +3141,7 @@ GrB_Info GB (_AaddB__second_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__second_uint8)
+GrB_Info GB (_AemultB__second_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -3311,7 +3311,7 @@ GrB_Info GB (_AaddB__second_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__second_uint16)
+GrB_Info GB (_AemultB__second_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -3481,7 +3481,7 @@ GrB_Info GB (_AaddB__second_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__second_uint32)
+GrB_Info GB (_AemultB__second_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -3651,7 +3651,7 @@ GrB_Info GB (_AaddB__second_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__second_uint64)
+GrB_Info GB (_AemultB__second_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -3821,7 +3821,7 @@ GrB_Info GB (_AaddB__second_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__second_fp32)
+GrB_Info GB (_AemultB__second_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -3991,7 +3991,7 @@ GrB_Info GB (_AaddB__second_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__second_fp64)
+GrB_Info GB (_AemultB__second_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -4161,7 +4161,7 @@ GrB_Info GB (_AaddB__second_fc32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__second_fc32)
+GrB_Info GB (_AemultB__second_fc32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -4331,7 +4331,7 @@ GrB_Info GB (_AaddB__second_fc64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__second_fc64)
+GrB_Info GB (_AemultB__second_fc64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -6711,7 +6711,7 @@ GrB_Info GB (_AaddB__min_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__min_int8)
+GrB_Info GB (_AemultB__min_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -6881,7 +6881,7 @@ GrB_Info GB (_AaddB__min_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__min_int16)
+GrB_Info GB (_AemultB__min_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -7051,7 +7051,7 @@ GrB_Info GB (_AaddB__min_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__min_int32)
+GrB_Info GB (_AemultB__min_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -7221,7 +7221,7 @@ GrB_Info GB (_AaddB__min_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__min_int64)
+GrB_Info GB (_AemultB__min_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -7391,7 +7391,7 @@ GrB_Info GB (_AaddB__min_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__min_uint8)
+GrB_Info GB (_AemultB__min_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -7561,7 +7561,7 @@ GrB_Info GB (_AaddB__min_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__min_uint16)
+GrB_Info GB (_AemultB__min_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -7731,7 +7731,7 @@ GrB_Info GB (_AaddB__min_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__min_uint32)
+GrB_Info GB (_AemultB__min_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -7901,7 +7901,7 @@ GrB_Info GB (_AaddB__min_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__min_uint64)
+GrB_Info GB (_AemultB__min_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -8071,7 +8071,7 @@ GrB_Info GB (_AaddB__min_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__min_fp32)
+GrB_Info GB (_AemultB__min_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -8241,7 +8241,7 @@ GrB_Info GB (_AaddB__min_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__min_fp64)
+GrB_Info GB (_AemultB__min_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -8411,7 +8411,7 @@ GrB_Info GB (_AaddB__max_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__max_int8)
+GrB_Info GB (_AemultB__max_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -8581,7 +8581,7 @@ GrB_Info GB (_AaddB__max_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__max_int16)
+GrB_Info GB (_AemultB__max_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -8751,7 +8751,7 @@ GrB_Info GB (_AaddB__max_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__max_int32)
+GrB_Info GB (_AemultB__max_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -8921,7 +8921,7 @@ GrB_Info GB (_AaddB__max_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__max_int64)
+GrB_Info GB (_AemultB__max_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -9091,7 +9091,7 @@ GrB_Info GB (_AaddB__max_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__max_uint8)
+GrB_Info GB (_AemultB__max_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -9261,7 +9261,7 @@ GrB_Info GB (_AaddB__max_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__max_uint16)
+GrB_Info GB (_AemultB__max_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -9431,7 +9431,7 @@ GrB_Info GB (_AaddB__max_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__max_uint32)
+GrB_Info GB (_AemultB__max_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -9601,7 +9601,7 @@ GrB_Info GB (_AaddB__max_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__max_uint64)
+GrB_Info GB (_AemultB__max_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -9771,7 +9771,7 @@ GrB_Info GB (_AaddB__max_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__max_fp32)
+GrB_Info GB (_AemultB__max_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -9941,7 +9941,7 @@ GrB_Info GB (_AaddB__max_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__max_fp64)
+GrB_Info GB (_AemultB__max_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -10111,7 +10111,7 @@ GrB_Info GB (_AaddB__plus_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__plus_int8)
+GrB_Info GB (_AemultB__plus_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -10281,7 +10281,7 @@ GrB_Info GB (_AaddB__plus_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__plus_int16)
+GrB_Info GB (_AemultB__plus_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -10451,7 +10451,7 @@ GrB_Info GB (_AaddB__plus_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__plus_int32)
+GrB_Info GB (_AemultB__plus_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -10621,7 +10621,7 @@ GrB_Info GB (_AaddB__plus_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__plus_int64)
+GrB_Info GB (_AemultB__plus_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -10791,7 +10791,7 @@ GrB_Info GB (_AaddB__plus_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__plus_uint8)
+GrB_Info GB (_AemultB__plus_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -10961,7 +10961,7 @@ GrB_Info GB (_AaddB__plus_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__plus_uint16)
+GrB_Info GB (_AemultB__plus_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -11131,7 +11131,7 @@ GrB_Info GB (_AaddB__plus_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__plus_uint32)
+GrB_Info GB (_AemultB__plus_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -11301,7 +11301,7 @@ GrB_Info GB (_AaddB__plus_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__plus_uint64)
+GrB_Info GB (_AemultB__plus_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -11471,7 +11471,7 @@ GrB_Info GB (_AaddB__plus_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__plus_fp32)
+GrB_Info GB (_AemultB__plus_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -11641,7 +11641,7 @@ GrB_Info GB (_AaddB__plus_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__plus_fp64)
+GrB_Info GB (_AemultB__plus_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -11811,7 +11811,7 @@ GrB_Info GB (_AaddB__plus_fc32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__plus_fc32)
+GrB_Info GB (_AemultB__plus_fc32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -11981,7 +11981,7 @@ GrB_Info GB (_AaddB__plus_fc64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__plus_fc64)
+GrB_Info GB (_AemultB__plus_fc64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -12151,7 +12151,7 @@ GrB_Info GB (_AaddB__minus_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__minus_int8)
+GrB_Info GB (_AemultB__minus_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -12321,7 +12321,7 @@ GrB_Info GB (_AaddB__minus_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__minus_int16)
+GrB_Info GB (_AemultB__minus_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -12491,7 +12491,7 @@ GrB_Info GB (_AaddB__minus_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__minus_int32)
+GrB_Info GB (_AemultB__minus_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -12661,7 +12661,7 @@ GrB_Info GB (_AaddB__minus_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__minus_int64)
+GrB_Info GB (_AemultB__minus_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -12831,7 +12831,7 @@ GrB_Info GB (_AaddB__minus_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__minus_uint8)
+GrB_Info GB (_AemultB__minus_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -13001,7 +13001,7 @@ GrB_Info GB (_AaddB__minus_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__minus_uint16)
+GrB_Info GB (_AemultB__minus_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -13171,7 +13171,7 @@ GrB_Info GB (_AaddB__minus_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__minus_uint32)
+GrB_Info GB (_AemultB__minus_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -13341,7 +13341,7 @@ GrB_Info GB (_AaddB__minus_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__minus_uint64)
+GrB_Info GB (_AemultB__minus_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -13511,7 +13511,7 @@ GrB_Info GB (_AaddB__minus_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__minus_fp32)
+GrB_Info GB (_AemultB__minus_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -13681,7 +13681,7 @@ GrB_Info GB (_AaddB__minus_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__minus_fp64)
+GrB_Info GB (_AemultB__minus_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -13851,7 +13851,7 @@ GrB_Info GB (_AaddB__minus_fc32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__minus_fc32)
+GrB_Info GB (_AemultB__minus_fc32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -14021,7 +14021,7 @@ GrB_Info GB (_AaddB__minus_fc64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__minus_fc64)
+GrB_Info GB (_AemultB__minus_fc64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -14191,7 +14191,7 @@ GrB_Info GB (_AaddB__rminus_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rminus_int8)
+GrB_Info GB (_AemultB__rminus_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -14361,7 +14361,7 @@ GrB_Info GB (_AaddB__rminus_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rminus_int16)
+GrB_Info GB (_AemultB__rminus_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -14531,7 +14531,7 @@ GrB_Info GB (_AaddB__rminus_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rminus_int32)
+GrB_Info GB (_AemultB__rminus_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -14701,7 +14701,7 @@ GrB_Info GB (_AaddB__rminus_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rminus_int64)
+GrB_Info GB (_AemultB__rminus_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -14871,7 +14871,7 @@ GrB_Info GB (_AaddB__rminus_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rminus_uint8)
+GrB_Info GB (_AemultB__rminus_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -15041,7 +15041,7 @@ GrB_Info GB (_AaddB__rminus_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rminus_uint16)
+GrB_Info GB (_AemultB__rminus_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -15211,7 +15211,7 @@ GrB_Info GB (_AaddB__rminus_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rminus_uint32)
+GrB_Info GB (_AemultB__rminus_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -15381,7 +15381,7 @@ GrB_Info GB (_AaddB__rminus_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rminus_uint64)
+GrB_Info GB (_AemultB__rminus_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -15551,7 +15551,7 @@ GrB_Info GB (_AaddB__rminus_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rminus_fp32)
+GrB_Info GB (_AemultB__rminus_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -15721,7 +15721,7 @@ GrB_Info GB (_AaddB__rminus_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rminus_fp64)
+GrB_Info GB (_AemultB__rminus_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -15891,7 +15891,7 @@ GrB_Info GB (_AaddB__rminus_fc32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rminus_fc32)
+GrB_Info GB (_AemultB__rminus_fc32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -16061,7 +16061,7 @@ GrB_Info GB (_AaddB__rminus_fc64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rminus_fc64)
+GrB_Info GB (_AemultB__rminus_fc64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -16231,7 +16231,7 @@ GrB_Info GB (_AaddB__times_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__times_int8)
+GrB_Info GB (_AemultB__times_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -16401,7 +16401,7 @@ GrB_Info GB (_AaddB__times_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__times_int16)
+GrB_Info GB (_AemultB__times_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -16571,7 +16571,7 @@ GrB_Info GB (_AaddB__times_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__times_int32)
+GrB_Info GB (_AemultB__times_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -16741,7 +16741,7 @@ GrB_Info GB (_AaddB__times_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__times_int64)
+GrB_Info GB (_AemultB__times_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -16911,7 +16911,7 @@ GrB_Info GB (_AaddB__times_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__times_uint8)
+GrB_Info GB (_AemultB__times_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -17081,7 +17081,7 @@ GrB_Info GB (_AaddB__times_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__times_uint16)
+GrB_Info GB (_AemultB__times_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -17251,7 +17251,7 @@ GrB_Info GB (_AaddB__times_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__times_uint32)
+GrB_Info GB (_AemultB__times_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -17421,7 +17421,7 @@ GrB_Info GB (_AaddB__times_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__times_uint64)
+GrB_Info GB (_AemultB__times_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -17591,7 +17591,7 @@ GrB_Info GB (_AaddB__times_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__times_fp32)
+GrB_Info GB (_AemultB__times_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -17761,7 +17761,7 @@ GrB_Info GB (_AaddB__times_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__times_fp64)
+GrB_Info GB (_AemultB__times_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -17931,7 +17931,7 @@ GrB_Info GB (_AaddB__times_fc32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__times_fc32)
+GrB_Info GB (_AemultB__times_fc32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -18101,7 +18101,7 @@ GrB_Info GB (_AaddB__times_fc64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__times_fc64)
+GrB_Info GB (_AemultB__times_fc64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -18271,7 +18271,7 @@ GrB_Info GB (_AaddB__div_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__div_int8)
+GrB_Info GB (_AemultB__div_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -18441,7 +18441,7 @@ GrB_Info GB (_AaddB__div_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__div_int16)
+GrB_Info GB (_AemultB__div_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -18611,7 +18611,7 @@ GrB_Info GB (_AaddB__div_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__div_int32)
+GrB_Info GB (_AemultB__div_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -18781,7 +18781,7 @@ GrB_Info GB (_AaddB__div_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__div_int64)
+GrB_Info GB (_AemultB__div_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -18951,7 +18951,7 @@ GrB_Info GB (_AaddB__div_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__div_uint8)
+GrB_Info GB (_AemultB__div_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -19121,7 +19121,7 @@ GrB_Info GB (_AaddB__div_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__div_uint16)
+GrB_Info GB (_AemultB__div_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -19291,7 +19291,7 @@ GrB_Info GB (_AaddB__div_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__div_uint32)
+GrB_Info GB (_AemultB__div_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -19461,7 +19461,7 @@ GrB_Info GB (_AaddB__div_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__div_uint64)
+GrB_Info GB (_AemultB__div_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -19631,7 +19631,7 @@ GrB_Info GB (_AaddB__div_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__div_fp32)
+GrB_Info GB (_AemultB__div_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -19801,7 +19801,7 @@ GrB_Info GB (_AaddB__div_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__div_fp64)
+GrB_Info GB (_AemultB__div_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -19971,7 +19971,7 @@ GrB_Info GB (_AaddB__div_fc32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__div_fc32)
+GrB_Info GB (_AemultB__div_fc32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -20141,7 +20141,7 @@ GrB_Info GB (_AaddB__div_fc64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__div_fc64)
+GrB_Info GB (_AemultB__div_fc64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -20311,7 +20311,7 @@ GrB_Info GB (_AaddB__rdiv_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rdiv_int8)
+GrB_Info GB (_AemultB__rdiv_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -20481,7 +20481,7 @@ GrB_Info GB (_AaddB__rdiv_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rdiv_int16)
+GrB_Info GB (_AemultB__rdiv_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -20651,7 +20651,7 @@ GrB_Info GB (_AaddB__rdiv_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rdiv_int32)
+GrB_Info GB (_AemultB__rdiv_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -20821,7 +20821,7 @@ GrB_Info GB (_AaddB__rdiv_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rdiv_int64)
+GrB_Info GB (_AemultB__rdiv_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -20991,7 +20991,7 @@ GrB_Info GB (_AaddB__rdiv_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rdiv_uint8)
+GrB_Info GB (_AemultB__rdiv_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -21161,7 +21161,7 @@ GrB_Info GB (_AaddB__rdiv_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rdiv_uint16)
+GrB_Info GB (_AemultB__rdiv_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -21331,7 +21331,7 @@ GrB_Info GB (_AaddB__rdiv_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rdiv_uint32)
+GrB_Info GB (_AemultB__rdiv_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -21501,7 +21501,7 @@ GrB_Info GB (_AaddB__rdiv_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rdiv_uint64)
+GrB_Info GB (_AemultB__rdiv_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -21671,7 +21671,7 @@ GrB_Info GB (_AaddB__rdiv_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rdiv_fp32)
+GrB_Info GB (_AemultB__rdiv_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -21841,7 +21841,7 @@ GrB_Info GB (_AaddB__rdiv_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rdiv_fp64)
+GrB_Info GB (_AemultB__rdiv_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -22011,7 +22011,7 @@ GrB_Info GB (_AaddB__rdiv_fc32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rdiv_fc32)
+GrB_Info GB (_AemultB__rdiv_fc32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -22181,7 +22181,7 @@ GrB_Info GB (_AaddB__rdiv_fc64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__rdiv_fc64)
+GrB_Info GB (_AemultB__rdiv_fc64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -22351,7 +22351,7 @@ GrB_Info GB (_AaddB__iseq_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__iseq_int8)
+GrB_Info GB (_AemultB__iseq_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -22521,7 +22521,7 @@ GrB_Info GB (_AaddB__iseq_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__iseq_int16)
+GrB_Info GB (_AemultB__iseq_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -22691,7 +22691,7 @@ GrB_Info GB (_AaddB__iseq_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__iseq_int32)
+GrB_Info GB (_AemultB__iseq_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -22861,7 +22861,7 @@ GrB_Info GB (_AaddB__iseq_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__iseq_int64)
+GrB_Info GB (_AemultB__iseq_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -23031,7 +23031,7 @@ GrB_Info GB (_AaddB__iseq_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__iseq_uint8)
+GrB_Info GB (_AemultB__iseq_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -23201,7 +23201,7 @@ GrB_Info GB (_AaddB__iseq_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__iseq_uint16)
+GrB_Info GB (_AemultB__iseq_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -23371,7 +23371,7 @@ GrB_Info GB (_AaddB__iseq_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__iseq_uint32)
+GrB_Info GB (_AemultB__iseq_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -23541,7 +23541,7 @@ GrB_Info GB (_AaddB__iseq_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__iseq_uint64)
+GrB_Info GB (_AemultB__iseq_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -23711,7 +23711,7 @@ GrB_Info GB (_AaddB__iseq_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__iseq_fp32)
+GrB_Info GB (_AemultB__iseq_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -23881,7 +23881,7 @@ GrB_Info GB (_AaddB__iseq_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__iseq_fp64)
+GrB_Info GB (_AemultB__iseq_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -24051,7 +24051,7 @@ GrB_Info GB (_AaddB__iseq_fc32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__iseq_fc32)
+GrB_Info GB (_AemultB__iseq_fc32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -24221,7 +24221,7 @@ GrB_Info GB (_AaddB__iseq_fc64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__iseq_fc64)
+GrB_Info GB (_AemultB__iseq_fc64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -24391,7 +24391,7 @@ GrB_Info GB (_AaddB__isne_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isne_int8)
+GrB_Info GB (_AemultB__isne_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -24561,7 +24561,7 @@ GrB_Info GB (_AaddB__isne_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isne_int16)
+GrB_Info GB (_AemultB__isne_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -24731,7 +24731,7 @@ GrB_Info GB (_AaddB__isne_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isne_int32)
+GrB_Info GB (_AemultB__isne_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -24901,7 +24901,7 @@ GrB_Info GB (_AaddB__isne_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isne_int64)
+GrB_Info GB (_AemultB__isne_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -25071,7 +25071,7 @@ GrB_Info GB (_AaddB__isne_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isne_uint8)
+GrB_Info GB (_AemultB__isne_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -25241,7 +25241,7 @@ GrB_Info GB (_AaddB__isne_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isne_uint16)
+GrB_Info GB (_AemultB__isne_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -25411,7 +25411,7 @@ GrB_Info GB (_AaddB__isne_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isne_uint32)
+GrB_Info GB (_AemultB__isne_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -25581,7 +25581,7 @@ GrB_Info GB (_AaddB__isne_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isne_uint64)
+GrB_Info GB (_AemultB__isne_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -25751,7 +25751,7 @@ GrB_Info GB (_AaddB__isne_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isne_fp32)
+GrB_Info GB (_AemultB__isne_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -25921,7 +25921,7 @@ GrB_Info GB (_AaddB__isne_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isne_fp64)
+GrB_Info GB (_AemultB__isne_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -26091,7 +26091,7 @@ GrB_Info GB (_AaddB__isne_fc32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isne_fc32)
+GrB_Info GB (_AemultB__isne_fc32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -26261,7 +26261,7 @@ GrB_Info GB (_AaddB__isne_fc64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isne_fc64)
+GrB_Info GB (_AemultB__isne_fc64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -26431,7 +26431,7 @@ GrB_Info GB (_AaddB__isgt_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isgt_int8)
+GrB_Info GB (_AemultB__isgt_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -26601,7 +26601,7 @@ GrB_Info GB (_AaddB__isgt_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isgt_int16)
+GrB_Info GB (_AemultB__isgt_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -26771,7 +26771,7 @@ GrB_Info GB (_AaddB__isgt_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isgt_int32)
+GrB_Info GB (_AemultB__isgt_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -26941,7 +26941,7 @@ GrB_Info GB (_AaddB__isgt_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isgt_int64)
+GrB_Info GB (_AemultB__isgt_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -27111,7 +27111,7 @@ GrB_Info GB (_AaddB__isgt_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isgt_uint8)
+GrB_Info GB (_AemultB__isgt_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -27281,7 +27281,7 @@ GrB_Info GB (_AaddB__isgt_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isgt_uint16)
+GrB_Info GB (_AemultB__isgt_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -27451,7 +27451,7 @@ GrB_Info GB (_AaddB__isgt_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isgt_uint32)
+GrB_Info GB (_AemultB__isgt_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -27621,7 +27621,7 @@ GrB_Info GB (_AaddB__isgt_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isgt_uint64)
+GrB_Info GB (_AemultB__isgt_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -27791,7 +27791,7 @@ GrB_Info GB (_AaddB__isgt_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isgt_fp32)
+GrB_Info GB (_AemultB__isgt_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -27961,7 +27961,7 @@ GrB_Info GB (_AaddB__isgt_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isgt_fp64)
+GrB_Info GB (_AemultB__isgt_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -28131,7 +28131,7 @@ GrB_Info GB (_AaddB__islt_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__islt_int8)
+GrB_Info GB (_AemultB__islt_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -28301,7 +28301,7 @@ GrB_Info GB (_AaddB__islt_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__islt_int16)
+GrB_Info GB (_AemultB__islt_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -28471,7 +28471,7 @@ GrB_Info GB (_AaddB__islt_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__islt_int32)
+GrB_Info GB (_AemultB__islt_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -28641,7 +28641,7 @@ GrB_Info GB (_AaddB__islt_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__islt_int64)
+GrB_Info GB (_AemultB__islt_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -28811,7 +28811,7 @@ GrB_Info GB (_AaddB__islt_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__islt_uint8)
+GrB_Info GB (_AemultB__islt_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -28981,7 +28981,7 @@ GrB_Info GB (_AaddB__islt_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__islt_uint16)
+GrB_Info GB (_AemultB__islt_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -29151,7 +29151,7 @@ GrB_Info GB (_AaddB__islt_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__islt_uint32)
+GrB_Info GB (_AemultB__islt_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -29321,7 +29321,7 @@ GrB_Info GB (_AaddB__islt_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__islt_uint64)
+GrB_Info GB (_AemultB__islt_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -29491,7 +29491,7 @@ GrB_Info GB (_AaddB__islt_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__islt_fp32)
+GrB_Info GB (_AemultB__islt_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -29661,7 +29661,7 @@ GrB_Info GB (_AaddB__islt_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__islt_fp64)
+GrB_Info GB (_AemultB__islt_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -29831,7 +29831,7 @@ GrB_Info GB (_AaddB__isge_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isge_int8)
+GrB_Info GB (_AemultB__isge_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -30001,7 +30001,7 @@ GrB_Info GB (_AaddB__isge_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isge_int16)
+GrB_Info GB (_AemultB__isge_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -30171,7 +30171,7 @@ GrB_Info GB (_AaddB__isge_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isge_int32)
+GrB_Info GB (_AemultB__isge_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -30341,7 +30341,7 @@ GrB_Info GB (_AaddB__isge_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isge_int64)
+GrB_Info GB (_AemultB__isge_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -30511,7 +30511,7 @@ GrB_Info GB (_AaddB__isge_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isge_uint8)
+GrB_Info GB (_AemultB__isge_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -30681,7 +30681,7 @@ GrB_Info GB (_AaddB__isge_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isge_uint16)
+GrB_Info GB (_AemultB__isge_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -30851,7 +30851,7 @@ GrB_Info GB (_AaddB__isge_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isge_uint32)
+GrB_Info GB (_AemultB__isge_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -31021,7 +31021,7 @@ GrB_Info GB (_AaddB__isge_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isge_uint64)
+GrB_Info GB (_AemultB__isge_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -31191,7 +31191,7 @@ GrB_Info GB (_AaddB__isge_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isge_fp32)
+GrB_Info GB (_AemultB__isge_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -31361,7 +31361,7 @@ GrB_Info GB (_AaddB__isge_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isge_fp64)
+GrB_Info GB (_AemultB__isge_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -31531,7 +31531,7 @@ GrB_Info GB (_AaddB__isle_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isle_int8)
+GrB_Info GB (_AemultB__isle_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -31701,7 +31701,7 @@ GrB_Info GB (_AaddB__isle_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isle_int16)
+GrB_Info GB (_AemultB__isle_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -31871,7 +31871,7 @@ GrB_Info GB (_AaddB__isle_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isle_int32)
+GrB_Info GB (_AemultB__isle_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -32041,7 +32041,7 @@ GrB_Info GB (_AaddB__isle_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isle_int64)
+GrB_Info GB (_AemultB__isle_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -32211,7 +32211,7 @@ GrB_Info GB (_AaddB__isle_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isle_uint8)
+GrB_Info GB (_AemultB__isle_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -32381,7 +32381,7 @@ GrB_Info GB (_AaddB__isle_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isle_uint16)
+GrB_Info GB (_AemultB__isle_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -32551,7 +32551,7 @@ GrB_Info GB (_AaddB__isle_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isle_uint32)
+GrB_Info GB (_AemultB__isle_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -32721,7 +32721,7 @@ GrB_Info GB (_AaddB__isle_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isle_uint64)
+GrB_Info GB (_AemultB__isle_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -32891,7 +32891,7 @@ GrB_Info GB (_AaddB__isle_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isle_fp32)
+GrB_Info GB (_AemultB__isle_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -33061,7 +33061,7 @@ GrB_Info GB (_AaddB__isle_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__isle_fp64)
+GrB_Info GB (_AemultB__isle_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -33231,7 +33231,7 @@ GrB_Info GB (_AaddB__eq_bool)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__eq_bool)
+GrB_Info GB (_AemultB__eq_bool)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -33401,7 +33401,7 @@ GrB_Info GB (_AaddB__eq_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__eq_int8)
+GrB_Info GB (_AemultB__eq_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -33571,7 +33571,7 @@ GrB_Info GB (_AaddB__eq_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__eq_int16)
+GrB_Info GB (_AemultB__eq_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -33741,7 +33741,7 @@ GrB_Info GB (_AaddB__eq_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__eq_int32)
+GrB_Info GB (_AemultB__eq_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -33911,7 +33911,7 @@ GrB_Info GB (_AaddB__eq_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__eq_int64)
+GrB_Info GB (_AemultB__eq_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -34081,7 +34081,7 @@ GrB_Info GB (_AaddB__eq_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__eq_uint8)
+GrB_Info GB (_AemultB__eq_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -34251,7 +34251,7 @@ GrB_Info GB (_AaddB__eq_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__eq_uint16)
+GrB_Info GB (_AemultB__eq_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -34421,7 +34421,7 @@ GrB_Info GB (_AaddB__eq_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__eq_uint32)
+GrB_Info GB (_AemultB__eq_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -34591,7 +34591,7 @@ GrB_Info GB (_AaddB__eq_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__eq_uint64)
+GrB_Info GB (_AemultB__eq_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -34761,7 +34761,7 @@ GrB_Info GB (_AaddB__eq_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__eq_fp32)
+GrB_Info GB (_AemultB__eq_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -34931,7 +34931,7 @@ GrB_Info GB (_AaddB__eq_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__eq_fp64)
+GrB_Info GB (_AemultB__eq_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -35101,7 +35101,7 @@ GrB_Info GB (_AaddB__eq_fc32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__eq_fc32)
+GrB_Info GB (_AemultB__eq_fc32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -35271,7 +35271,7 @@ GrB_Info GB (_AaddB__eq_fc64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__eq_fc64)
+GrB_Info GB (_AemultB__eq_fc64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -35441,7 +35441,7 @@ GrB_Info GB (_AaddB__ne_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ne_int8)
+GrB_Info GB (_AemultB__ne_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -35611,7 +35611,7 @@ GrB_Info GB (_AaddB__ne_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ne_int16)
+GrB_Info GB (_AemultB__ne_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -35781,7 +35781,7 @@ GrB_Info GB (_AaddB__ne_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ne_int32)
+GrB_Info GB (_AemultB__ne_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -35951,7 +35951,7 @@ GrB_Info GB (_AaddB__ne_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ne_int64)
+GrB_Info GB (_AemultB__ne_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -36121,7 +36121,7 @@ GrB_Info GB (_AaddB__ne_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ne_uint8)
+GrB_Info GB (_AemultB__ne_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -36291,7 +36291,7 @@ GrB_Info GB (_AaddB__ne_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ne_uint16)
+GrB_Info GB (_AemultB__ne_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -36461,7 +36461,7 @@ GrB_Info GB (_AaddB__ne_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ne_uint32)
+GrB_Info GB (_AemultB__ne_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -36631,7 +36631,7 @@ GrB_Info GB (_AaddB__ne_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ne_uint64)
+GrB_Info GB (_AemultB__ne_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -36801,7 +36801,7 @@ GrB_Info GB (_AaddB__ne_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ne_fp32)
+GrB_Info GB (_AemultB__ne_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -36971,7 +36971,7 @@ GrB_Info GB (_AaddB__ne_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ne_fp64)
+GrB_Info GB (_AemultB__ne_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -37141,7 +37141,7 @@ GrB_Info GB (_AaddB__ne_fc32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ne_fc32)
+GrB_Info GB (_AemultB__ne_fc32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -37311,7 +37311,7 @@ GrB_Info GB (_AaddB__ne_fc64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ne_fc64)
+GrB_Info GB (_AemultB__ne_fc64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -37481,7 +37481,7 @@ GrB_Info GB (_AaddB__gt_bool)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__gt_bool)
+GrB_Info GB (_AemultB__gt_bool)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -37651,7 +37651,7 @@ GrB_Info GB (_AaddB__gt_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__gt_int8)
+GrB_Info GB (_AemultB__gt_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -37821,7 +37821,7 @@ GrB_Info GB (_AaddB__gt_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__gt_int16)
+GrB_Info GB (_AemultB__gt_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -37991,7 +37991,7 @@ GrB_Info GB (_AaddB__gt_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__gt_int32)
+GrB_Info GB (_AemultB__gt_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -38161,7 +38161,7 @@ GrB_Info GB (_AaddB__gt_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__gt_int64)
+GrB_Info GB (_AemultB__gt_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -38331,7 +38331,7 @@ GrB_Info GB (_AaddB__gt_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__gt_uint8)
+GrB_Info GB (_AemultB__gt_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -38501,7 +38501,7 @@ GrB_Info GB (_AaddB__gt_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__gt_uint16)
+GrB_Info GB (_AemultB__gt_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -38671,7 +38671,7 @@ GrB_Info GB (_AaddB__gt_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__gt_uint32)
+GrB_Info GB (_AemultB__gt_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -38841,7 +38841,7 @@ GrB_Info GB (_AaddB__gt_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__gt_uint64)
+GrB_Info GB (_AemultB__gt_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -39011,7 +39011,7 @@ GrB_Info GB (_AaddB__gt_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__gt_fp32)
+GrB_Info GB (_AemultB__gt_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -39181,7 +39181,7 @@ GrB_Info GB (_AaddB__gt_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__gt_fp64)
+GrB_Info GB (_AemultB__gt_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -39351,7 +39351,7 @@ GrB_Info GB (_AaddB__lt_bool)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lt_bool)
+GrB_Info GB (_AemultB__lt_bool)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -39521,7 +39521,7 @@ GrB_Info GB (_AaddB__lt_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lt_int8)
+GrB_Info GB (_AemultB__lt_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -39691,7 +39691,7 @@ GrB_Info GB (_AaddB__lt_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lt_int16)
+GrB_Info GB (_AemultB__lt_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -39861,7 +39861,7 @@ GrB_Info GB (_AaddB__lt_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lt_int32)
+GrB_Info GB (_AemultB__lt_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -40031,7 +40031,7 @@ GrB_Info GB (_AaddB__lt_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lt_int64)
+GrB_Info GB (_AemultB__lt_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -40201,7 +40201,7 @@ GrB_Info GB (_AaddB__lt_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lt_uint8)
+GrB_Info GB (_AemultB__lt_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -40371,7 +40371,7 @@ GrB_Info GB (_AaddB__lt_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lt_uint16)
+GrB_Info GB (_AemultB__lt_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -40541,7 +40541,7 @@ GrB_Info GB (_AaddB__lt_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lt_uint32)
+GrB_Info GB (_AemultB__lt_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -40711,7 +40711,7 @@ GrB_Info GB (_AaddB__lt_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lt_uint64)
+GrB_Info GB (_AemultB__lt_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -40881,7 +40881,7 @@ GrB_Info GB (_AaddB__lt_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lt_fp32)
+GrB_Info GB (_AemultB__lt_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -41051,7 +41051,7 @@ GrB_Info GB (_AaddB__lt_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lt_fp64)
+GrB_Info GB (_AemultB__lt_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -41221,7 +41221,7 @@ GrB_Info GB (_AaddB__ge_bool)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ge_bool)
+GrB_Info GB (_AemultB__ge_bool)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -41391,7 +41391,7 @@ GrB_Info GB (_AaddB__ge_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ge_int8)
+GrB_Info GB (_AemultB__ge_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -41561,7 +41561,7 @@ GrB_Info GB (_AaddB__ge_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ge_int16)
+GrB_Info GB (_AemultB__ge_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -41731,7 +41731,7 @@ GrB_Info GB (_AaddB__ge_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ge_int32)
+GrB_Info GB (_AemultB__ge_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -41901,7 +41901,7 @@ GrB_Info GB (_AaddB__ge_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ge_int64)
+GrB_Info GB (_AemultB__ge_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -42071,7 +42071,7 @@ GrB_Info GB (_AaddB__ge_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ge_uint8)
+GrB_Info GB (_AemultB__ge_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -42241,7 +42241,7 @@ GrB_Info GB (_AaddB__ge_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ge_uint16)
+GrB_Info GB (_AemultB__ge_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -42411,7 +42411,7 @@ GrB_Info GB (_AaddB__ge_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ge_uint32)
+GrB_Info GB (_AemultB__ge_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -42581,7 +42581,7 @@ GrB_Info GB (_AaddB__ge_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ge_uint64)
+GrB_Info GB (_AemultB__ge_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -42751,7 +42751,7 @@ GrB_Info GB (_AaddB__ge_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ge_fp32)
+GrB_Info GB (_AemultB__ge_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -42921,7 +42921,7 @@ GrB_Info GB (_AaddB__ge_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ge_fp64)
+GrB_Info GB (_AemultB__ge_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -43091,7 +43091,7 @@ GrB_Info GB (_AaddB__le_bool)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__le_bool)
+GrB_Info GB (_AemultB__le_bool)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -43261,7 +43261,7 @@ GrB_Info GB (_AaddB__le_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__le_int8)
+GrB_Info GB (_AemultB__le_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -43431,7 +43431,7 @@ GrB_Info GB (_AaddB__le_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__le_int16)
+GrB_Info GB (_AemultB__le_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -43601,7 +43601,7 @@ GrB_Info GB (_AaddB__le_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__le_int32)
+GrB_Info GB (_AemultB__le_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -43771,7 +43771,7 @@ GrB_Info GB (_AaddB__le_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__le_int64)
+GrB_Info GB (_AemultB__le_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -43941,7 +43941,7 @@ GrB_Info GB (_AaddB__le_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__le_uint8)
+GrB_Info GB (_AemultB__le_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -44111,7 +44111,7 @@ GrB_Info GB (_AaddB__le_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__le_uint16)
+GrB_Info GB (_AemultB__le_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -44281,7 +44281,7 @@ GrB_Info GB (_AaddB__le_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__le_uint32)
+GrB_Info GB (_AemultB__le_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -44451,7 +44451,7 @@ GrB_Info GB (_AaddB__le_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__le_uint64)
+GrB_Info GB (_AemultB__le_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -44621,7 +44621,7 @@ GrB_Info GB (_AaddB__le_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__le_fp32)
+GrB_Info GB (_AemultB__le_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -44791,7 +44791,7 @@ GrB_Info GB (_AaddB__le_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__le_fp64)
+GrB_Info GB (_AemultB__le_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -44961,7 +44961,7 @@ GrB_Info GB (_AaddB__lor_bool)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lor_bool)
+GrB_Info GB (_AemultB__lor_bool)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -45131,7 +45131,7 @@ GrB_Info GB (_AaddB__lor_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lor_int8)
+GrB_Info GB (_AemultB__lor_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -45301,7 +45301,7 @@ GrB_Info GB (_AaddB__lor_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lor_int16)
+GrB_Info GB (_AemultB__lor_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -45471,7 +45471,7 @@ GrB_Info GB (_AaddB__lor_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lor_int32)
+GrB_Info GB (_AemultB__lor_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -45641,7 +45641,7 @@ GrB_Info GB (_AaddB__lor_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lor_int64)
+GrB_Info GB (_AemultB__lor_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -45811,7 +45811,7 @@ GrB_Info GB (_AaddB__lor_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lor_uint8)
+GrB_Info GB (_AemultB__lor_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -45981,7 +45981,7 @@ GrB_Info GB (_AaddB__lor_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lor_uint16)
+GrB_Info GB (_AemultB__lor_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -46151,7 +46151,7 @@ GrB_Info GB (_AaddB__lor_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lor_uint32)
+GrB_Info GB (_AemultB__lor_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -46321,7 +46321,7 @@ GrB_Info GB (_AaddB__lor_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lor_uint64)
+GrB_Info GB (_AemultB__lor_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -46491,7 +46491,7 @@ GrB_Info GB (_AaddB__lor_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lor_fp32)
+GrB_Info GB (_AemultB__lor_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -46661,7 +46661,7 @@ GrB_Info GB (_AaddB__lor_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lor_fp64)
+GrB_Info GB (_AemultB__lor_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -46831,7 +46831,7 @@ GrB_Info GB (_AaddB__land_bool)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__land_bool)
+GrB_Info GB (_AemultB__land_bool)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -47001,7 +47001,7 @@ GrB_Info GB (_AaddB__land_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__land_int8)
+GrB_Info GB (_AemultB__land_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -47171,7 +47171,7 @@ GrB_Info GB (_AaddB__land_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__land_int16)
+GrB_Info GB (_AemultB__land_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -47341,7 +47341,7 @@ GrB_Info GB (_AaddB__land_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__land_int32)
+GrB_Info GB (_AemultB__land_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -47511,7 +47511,7 @@ GrB_Info GB (_AaddB__land_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__land_int64)
+GrB_Info GB (_AemultB__land_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -47681,7 +47681,7 @@ GrB_Info GB (_AaddB__land_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__land_uint8)
+GrB_Info GB (_AemultB__land_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -47851,7 +47851,7 @@ GrB_Info GB (_AaddB__land_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__land_uint16)
+GrB_Info GB (_AemultB__land_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -48021,7 +48021,7 @@ GrB_Info GB (_AaddB__land_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__land_uint32)
+GrB_Info GB (_AemultB__land_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -48191,7 +48191,7 @@ GrB_Info GB (_AaddB__land_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__land_uint64)
+GrB_Info GB (_AemultB__land_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -48361,7 +48361,7 @@ GrB_Info GB (_AaddB__land_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__land_fp32)
+GrB_Info GB (_AemultB__land_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -48531,7 +48531,7 @@ GrB_Info GB (_AaddB__land_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__land_fp64)
+GrB_Info GB (_AemultB__land_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -48701,7 +48701,7 @@ GrB_Info GB (_AaddB__lxor_bool)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lxor_bool)
+GrB_Info GB (_AemultB__lxor_bool)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -48871,7 +48871,7 @@ GrB_Info GB (_AaddB__lxor_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lxor_int8)
+GrB_Info GB (_AemultB__lxor_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -49041,7 +49041,7 @@ GrB_Info GB (_AaddB__lxor_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lxor_int16)
+GrB_Info GB (_AemultB__lxor_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -49211,7 +49211,7 @@ GrB_Info GB (_AaddB__lxor_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lxor_int32)
+GrB_Info GB (_AemultB__lxor_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -49381,7 +49381,7 @@ GrB_Info GB (_AaddB__lxor_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lxor_int64)
+GrB_Info GB (_AemultB__lxor_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -49551,7 +49551,7 @@ GrB_Info GB (_AaddB__lxor_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lxor_uint8)
+GrB_Info GB (_AemultB__lxor_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -49721,7 +49721,7 @@ GrB_Info GB (_AaddB__lxor_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lxor_uint16)
+GrB_Info GB (_AemultB__lxor_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -49891,7 +49891,7 @@ GrB_Info GB (_AaddB__lxor_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lxor_uint32)
+GrB_Info GB (_AemultB__lxor_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -50061,7 +50061,7 @@ GrB_Info GB (_AaddB__lxor_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lxor_uint64)
+GrB_Info GB (_AemultB__lxor_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -50231,7 +50231,7 @@ GrB_Info GB (_AaddB__lxor_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lxor_fp32)
+GrB_Info GB (_AemultB__lxor_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -50401,7 +50401,7 @@ GrB_Info GB (_AaddB__lxor_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__lxor_fp64)
+GrB_Info GB (_AemultB__lxor_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -50571,7 +50571,7 @@ GrB_Info GB (_AaddB__atan2_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__atan2_fp32)
+GrB_Info GB (_AemultB__atan2_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -50741,7 +50741,7 @@ GrB_Info GB (_AaddB__atan2_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__atan2_fp64)
+GrB_Info GB (_AemultB__atan2_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -50911,7 +50911,7 @@ GrB_Info GB (_AaddB__hypot_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__hypot_fp32)
+GrB_Info GB (_AemultB__hypot_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -51081,7 +51081,7 @@ GrB_Info GB (_AaddB__hypot_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__hypot_fp64)
+GrB_Info GB (_AemultB__hypot_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -51251,7 +51251,7 @@ GrB_Info GB (_AaddB__fmod_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__fmod_fp32)
+GrB_Info GB (_AemultB__fmod_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -51421,7 +51421,7 @@ GrB_Info GB (_AaddB__fmod_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__fmod_fp64)
+GrB_Info GB (_AemultB__fmod_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -51591,7 +51591,7 @@ GrB_Info GB (_AaddB__remainder_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__remainder_fp32)
+GrB_Info GB (_AemultB__remainder_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -51761,7 +51761,7 @@ GrB_Info GB (_AaddB__remainder_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__remainder_fp64)
+GrB_Info GB (_AemultB__remainder_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -51931,7 +51931,7 @@ GrB_Info GB (_AaddB__copysign_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__copysign_fp32)
+GrB_Info GB (_AemultB__copysign_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -52101,7 +52101,7 @@ GrB_Info GB (_AaddB__copysign_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__copysign_fp64)
+GrB_Info GB (_AemultB__copysign_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -52271,7 +52271,7 @@ GrB_Info GB (_AaddB__ldexp_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ldexp_fp32)
+GrB_Info GB (_AemultB__ldexp_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -52441,7 +52441,7 @@ GrB_Info GB (_AaddB__ldexp_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__ldexp_fp64)
+GrB_Info GB (_AemultB__ldexp_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -52611,7 +52611,7 @@ GrB_Info GB (_AaddB__cmplx_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__cmplx_fp32)
+GrB_Info GB (_AemultB__cmplx_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -52781,7 +52781,7 @@ GrB_Info GB (_AaddB__cmplx_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__cmplx_fp64)
+GrB_Info GB (_AemultB__cmplx_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -52951,7 +52951,7 @@ GrB_Info GB (_AaddB__bor_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bor_int8)
+GrB_Info GB (_AemultB__bor_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -53121,7 +53121,7 @@ GrB_Info GB (_AaddB__bor_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bor_int16)
+GrB_Info GB (_AemultB__bor_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -53291,7 +53291,7 @@ GrB_Info GB (_AaddB__bor_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bor_int32)
+GrB_Info GB (_AemultB__bor_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -53461,7 +53461,7 @@ GrB_Info GB (_AaddB__bor_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bor_int64)
+GrB_Info GB (_AemultB__bor_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -53631,7 +53631,7 @@ GrB_Info GB (_AaddB__bor_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bor_uint8)
+GrB_Info GB (_AemultB__bor_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -53801,7 +53801,7 @@ GrB_Info GB (_AaddB__bor_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bor_uint16)
+GrB_Info GB (_AemultB__bor_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -53971,7 +53971,7 @@ GrB_Info GB (_AaddB__bor_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bor_uint32)
+GrB_Info GB (_AemultB__bor_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -54141,7 +54141,7 @@ GrB_Info GB (_AaddB__bor_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bor_uint64)
+GrB_Info GB (_AemultB__bor_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -54311,7 +54311,7 @@ GrB_Info GB (_AaddB__band_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__band_int8)
+GrB_Info GB (_AemultB__band_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -54481,7 +54481,7 @@ GrB_Info GB (_AaddB__band_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__band_int16)
+GrB_Info GB (_AemultB__band_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -54651,7 +54651,7 @@ GrB_Info GB (_AaddB__band_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__band_int32)
+GrB_Info GB (_AemultB__band_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -54821,7 +54821,7 @@ GrB_Info GB (_AaddB__band_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__band_int64)
+GrB_Info GB (_AemultB__band_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -54991,7 +54991,7 @@ GrB_Info GB (_AaddB__band_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__band_uint8)
+GrB_Info GB (_AemultB__band_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -55161,7 +55161,7 @@ GrB_Info GB (_AaddB__band_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__band_uint16)
+GrB_Info GB (_AemultB__band_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -55331,7 +55331,7 @@ GrB_Info GB (_AaddB__band_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__band_uint32)
+GrB_Info GB (_AemultB__band_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -55501,7 +55501,7 @@ GrB_Info GB (_AaddB__band_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__band_uint64)
+GrB_Info GB (_AemultB__band_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -55671,7 +55671,7 @@ GrB_Info GB (_AaddB__bxor_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bxor_int8)
+GrB_Info GB (_AemultB__bxor_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -55841,7 +55841,7 @@ GrB_Info GB (_AaddB__bxor_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bxor_int16)
+GrB_Info GB (_AemultB__bxor_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -56011,7 +56011,7 @@ GrB_Info GB (_AaddB__bxor_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bxor_int32)
+GrB_Info GB (_AemultB__bxor_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -56181,7 +56181,7 @@ GrB_Info GB (_AaddB__bxor_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bxor_int64)
+GrB_Info GB (_AemultB__bxor_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -56351,7 +56351,7 @@ GrB_Info GB (_AaddB__bxor_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bxor_uint8)
+GrB_Info GB (_AemultB__bxor_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -56521,7 +56521,7 @@ GrB_Info GB (_AaddB__bxor_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bxor_uint16)
+GrB_Info GB (_AemultB__bxor_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -56691,7 +56691,7 @@ GrB_Info GB (_AaddB__bxor_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bxor_uint32)
+GrB_Info GB (_AemultB__bxor_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -56861,7 +56861,7 @@ GrB_Info GB (_AaddB__bxor_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bxor_uint64)
+GrB_Info GB (_AemultB__bxor_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -57031,7 +57031,7 @@ GrB_Info GB (_AaddB__bxnor_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bxnor_int8)
+GrB_Info GB (_AemultB__bxnor_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -57201,7 +57201,7 @@ GrB_Info GB (_AaddB__bxnor_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bxnor_int16)
+GrB_Info GB (_AemultB__bxnor_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -57371,7 +57371,7 @@ GrB_Info GB (_AaddB__bxnor_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bxnor_int32)
+GrB_Info GB (_AemultB__bxnor_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -57541,7 +57541,7 @@ GrB_Info GB (_AaddB__bxnor_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bxnor_int64)
+GrB_Info GB (_AemultB__bxnor_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -57711,7 +57711,7 @@ GrB_Info GB (_AaddB__bxnor_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bxnor_uint8)
+GrB_Info GB (_AemultB__bxnor_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -57881,7 +57881,7 @@ GrB_Info GB (_AaddB__bxnor_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bxnor_uint16)
+GrB_Info GB (_AemultB__bxnor_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -58051,7 +58051,7 @@ GrB_Info GB (_AaddB__bxnor_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bxnor_uint32)
+GrB_Info GB (_AemultB__bxnor_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -58221,7 +58221,7 @@ GrB_Info GB (_AaddB__bxnor_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bxnor_uint64)
+GrB_Info GB (_AemultB__bxnor_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -58391,7 +58391,7 @@ GrB_Info GB (_AaddB__bget_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bget_int8)
+GrB_Info GB (_AemultB__bget_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -58561,7 +58561,7 @@ GrB_Info GB (_AaddB__bget_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bget_int16)
+GrB_Info GB (_AemultB__bget_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -58731,7 +58731,7 @@ GrB_Info GB (_AaddB__bget_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bget_int32)
+GrB_Info GB (_AemultB__bget_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -58901,7 +58901,7 @@ GrB_Info GB (_AaddB__bget_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bget_int64)
+GrB_Info GB (_AemultB__bget_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -59071,7 +59071,7 @@ GrB_Info GB (_AaddB__bget_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bget_uint8)
+GrB_Info GB (_AemultB__bget_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -59241,7 +59241,7 @@ GrB_Info GB (_AaddB__bget_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bget_uint16)
+GrB_Info GB (_AemultB__bget_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -59411,7 +59411,7 @@ GrB_Info GB (_AaddB__bget_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bget_uint32)
+GrB_Info GB (_AemultB__bget_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -59581,7 +59581,7 @@ GrB_Info GB (_AaddB__bget_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bget_uint64)
+GrB_Info GB (_AemultB__bget_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -59751,7 +59751,7 @@ GrB_Info GB (_AaddB__bset_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bset_int8)
+GrB_Info GB (_AemultB__bset_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -59921,7 +59921,7 @@ GrB_Info GB (_AaddB__bset_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bset_int16)
+GrB_Info GB (_AemultB__bset_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -60091,7 +60091,7 @@ GrB_Info GB (_AaddB__bset_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bset_int32)
+GrB_Info GB (_AemultB__bset_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -60261,7 +60261,7 @@ GrB_Info GB (_AaddB__bset_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bset_int64)
+GrB_Info GB (_AemultB__bset_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -60431,7 +60431,7 @@ GrB_Info GB (_AaddB__bset_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bset_uint8)
+GrB_Info GB (_AemultB__bset_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -60601,7 +60601,7 @@ GrB_Info GB (_AaddB__bset_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bset_uint16)
+GrB_Info GB (_AemultB__bset_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -60771,7 +60771,7 @@ GrB_Info GB (_AaddB__bset_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bset_uint32)
+GrB_Info GB (_AemultB__bset_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -60941,7 +60941,7 @@ GrB_Info GB (_AaddB__bset_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bset_uint64)
+GrB_Info GB (_AemultB__bset_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -61111,7 +61111,7 @@ GrB_Info GB (_AaddB__bclr_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bclr_int8)
+GrB_Info GB (_AemultB__bclr_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -61281,7 +61281,7 @@ GrB_Info GB (_AaddB__bclr_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bclr_int16)
+GrB_Info GB (_AemultB__bclr_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -61451,7 +61451,7 @@ GrB_Info GB (_AaddB__bclr_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bclr_int32)
+GrB_Info GB (_AemultB__bclr_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -61621,7 +61621,7 @@ GrB_Info GB (_AaddB__bclr_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bclr_int64)
+GrB_Info GB (_AemultB__bclr_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -61791,7 +61791,7 @@ GrB_Info GB (_AaddB__bclr_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bclr_uint8)
+GrB_Info GB (_AemultB__bclr_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -61961,7 +61961,7 @@ GrB_Info GB (_AaddB__bclr_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bclr_uint16)
+GrB_Info GB (_AemultB__bclr_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -62131,7 +62131,7 @@ GrB_Info GB (_AaddB__bclr_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bclr_uint32)
+GrB_Info GB (_AemultB__bclr_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -62301,7 +62301,7 @@ GrB_Info GB (_AaddB__bclr_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bclr_uint64)
+GrB_Info GB (_AemultB__bclr_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -62471,7 +62471,7 @@ GrB_Info GB (_AaddB__bshift_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bshift_int8)
+GrB_Info GB (_AemultB__bshift_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -62641,7 +62641,7 @@ GrB_Info GB (_AaddB__bshift_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bshift_int16)
+GrB_Info GB (_AemultB__bshift_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -62811,7 +62811,7 @@ GrB_Info GB (_AaddB__bshift_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bshift_int32)
+GrB_Info GB (_AemultB__bshift_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -62981,7 +62981,7 @@ GrB_Info GB (_AaddB__bshift_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bshift_int64)
+GrB_Info GB (_AemultB__bshift_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -63151,7 +63151,7 @@ GrB_Info GB (_AaddB__bshift_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bshift_uint8)
+GrB_Info GB (_AemultB__bshift_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -63321,7 +63321,7 @@ GrB_Info GB (_AaddB__bshift_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bshift_uint16)
+GrB_Info GB (_AemultB__bshift_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -63491,7 +63491,7 @@ GrB_Info GB (_AaddB__bshift_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bshift_uint32)
+GrB_Info GB (_AemultB__bshift_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -63661,7 +63661,7 @@ GrB_Info GB (_AaddB__bshift_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__bshift_uint64)
+GrB_Info GB (_AemultB__bshift_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -63831,7 +63831,7 @@ GrB_Info GB (_AaddB__pow_int8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__pow_int8)
+GrB_Info GB (_AemultB__pow_int8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -64001,7 +64001,7 @@ GrB_Info GB (_AaddB__pow_int16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__pow_int16)
+GrB_Info GB (_AemultB__pow_int16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -64171,7 +64171,7 @@ GrB_Info GB (_AaddB__pow_int32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__pow_int32)
+GrB_Info GB (_AemultB__pow_int32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -64341,7 +64341,7 @@ GrB_Info GB (_AaddB__pow_int64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__pow_int64)
+GrB_Info GB (_AemultB__pow_int64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -64511,7 +64511,7 @@ GrB_Info GB (_AaddB__pow_uint8)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__pow_uint8)
+GrB_Info GB (_AemultB__pow_uint8)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -64681,7 +64681,7 @@ GrB_Info GB (_AaddB__pow_uint16)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__pow_uint16)
+GrB_Info GB (_AemultB__pow_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -64851,7 +64851,7 @@ GrB_Info GB (_AaddB__pow_uint32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__pow_uint32)
+GrB_Info GB (_AemultB__pow_uint32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -65021,7 +65021,7 @@ GrB_Info GB (_AaddB__pow_uint64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__pow_uint64)
+GrB_Info GB (_AemultB__pow_uint64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -65191,7 +65191,7 @@ GrB_Info GB (_AaddB__pow_fp32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__pow_fp32)
+GrB_Info GB (_AemultB__pow_fp32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -65361,7 +65361,7 @@ GrB_Info GB (_AaddB__pow_fp64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__pow_fp64)
+GrB_Info GB (_AemultB__pow_fp64)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -65531,7 +65531,7 @@ GrB_Info GB (_AaddB__pow_fc32)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__pow_fc32)
+GrB_Info GB (_AemultB__pow_fc32)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -65701,7 +65701,7 @@ GrB_Info GB (_AaddB__pow_fc64)
 ) ;
 
 
-GrB_Info GB (_AemultB_08__pow_fc64)
+GrB_Info GB (_AemultB__pow_fc64)
 (
     GrB_Matrix C,
     const int C_sparsity,

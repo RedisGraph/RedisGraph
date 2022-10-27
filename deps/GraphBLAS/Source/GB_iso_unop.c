@@ -35,7 +35,7 @@ void GB_iso_unop            // Cx [0] = unop (A), binop (s,A) or binop (A,s)
     ASSERT (Cx != NULL) ;
 
     GrB_Type stype = (scalar != NULL) ? scalar->type : GrB_BOOL ;
-    const size_t csize = ctype->size ;
+//  const size_t csize = ctype->size ;
     const size_t asize = A->type->size ;
     const size_t ssize = stype->size ;
     const GB_Type_code ccode = ctype->code ;

@@ -314,7 +314,7 @@ void RdbSaveEdges_v12
 	// for previous edge encide or create new one
 	RG_MatrixTupleIter *iter = GraphEncodeContext_GetMatrixTupleIterator(gc->encoding_context);
 	if(!RG_MatrixTupleIter_is_attached(iter, M)) {
-		info = RG_MatrixTupleIter_attach(iter, M, RG_ITER_MIN_ROW, RG_ITER_MAX_ROW);
+		info = RG_MatrixTupleIter_attach(iter, M);
 		ASSERT(info == GrB_SUCCESS);
 	}
 
@@ -359,7 +359,7 @@ void RdbSaveEdges_v12
 
 			// get matrix and set iterator
 			M = Graph_GetRelationMatrix(gc->g, r, false);
-			info = RG_MatrixTupleIter_attach(iter, M, RG_ITER_MIN_ROW, RG_ITER_MAX_ROW);
+			info = RG_MatrixTupleIter_attach(iter, M);
 			ASSERT(info == GrB_SUCCESS);
 			info = RG_MatrixTupleIter_next_UINT64(iter, &src, &dest, &edgeID);
 		}

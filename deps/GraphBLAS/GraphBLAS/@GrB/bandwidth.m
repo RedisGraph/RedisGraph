@@ -7,28 +7,24 @@ function [arg1, arg2] = bandwidth (G, uplo)
 % See also GrB/isbanded, GrB/isdiag, GrB/istril, GrB/istriu.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
-% FUTURE: this will be much faster when implemented in a mexFunction.
-% It is currently much slower than the built-in bandwidth function.
-
-% compute the bandwidth
-G = G.opaque ;
-[lo, hi] = gb_bandwidth (G) ;
-
-% return the result
 if (nargin == 1)
-   arg1 = lo ;
-   arg2 = hi ;
+    % compute lo, and compute hi if present in output argument list
+    [lo, hi] = gbbandwidth (G.opaque, 1, nargout > 1) ;
+    arg1 = lo ;
+    arg2 = hi ;
 else
     if (nargout > 1)
-        error ('too many output arguments') ;
+        error ('GrB:error', 'too many output arguments') ;
     elseif isequal (uplo, 'lower')
+        [lo, ~] = gbbandwidth (G.opaque, 1, 0) ;
         arg1 = lo ;
     elseif isequal (uplo, 'upper')
+        [~, hi] = gbbandwidth (G.opaque, 0, 1) ;
         arg1 = hi ;
     else
-        error ('unrecognized option') ;
+        error ('GrB:error', 'unrecognized option') ;
     end
 end
 

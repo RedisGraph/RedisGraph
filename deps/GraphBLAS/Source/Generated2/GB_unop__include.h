@@ -7423,6 +7423,50 @@ GrB_Info GB (_unop_tran__erfc_fp64_fp64)
 
 // SPDX-License-Identifier: Apache-2.0
 
+GrB_Info GB (_unop_apply__cbrt_fp32_fp32)
+(
+    float *Cx,
+    const float *Ax,
+    const int8_t *restrict Ab,
+    int64_t anz,
+    int nthreads
+) ;
+
+
+GrB_Info GB (_unop_tran__cbrt_fp32_fp32)
+(
+    GrB_Matrix C,
+    const GrB_Matrix A,
+    int64_t *restrict *Workspaces,
+    const int64_t *restrict A_slice,
+    int nworkspaces,
+    int nthreads
+) ;
+
+// SPDX-License-Identifier: Apache-2.0
+
+GrB_Info GB (_unop_apply__cbrt_fp64_fp64)
+(
+    double *Cx,
+    const double *Ax,
+    const int8_t *restrict Ab,
+    int64_t anz,
+    int nthreads
+) ;
+
+
+GrB_Info GB (_unop_tran__cbrt_fp64_fp64)
+(
+    GrB_Matrix C,
+    const GrB_Matrix A,
+    int64_t *restrict *Workspaces,
+    const int64_t *restrict A_slice,
+    int nworkspaces,
+    int nthreads
+) ;
+
+// SPDX-License-Identifier: Apache-2.0
+
 GrB_Info GB (_unop_apply__conj_fc32_fc32)
 (
     GxB_FC32_t *Cx,

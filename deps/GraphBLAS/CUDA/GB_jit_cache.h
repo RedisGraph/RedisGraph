@@ -31,6 +31,7 @@
 namespace jit {
 
 std::string get_user_home_cache_dir();
+std::string get_user_graphblas_source_path();
 std::string getCacheDir(void);
 
 template <typename Tv>
@@ -45,6 +46,7 @@ public:
    virtual void macrofy() {
 
        printf("Uh oh. this isn't good\n");
+
    }
    std::string filename;
 };
@@ -202,13 +204,13 @@ private:
         umap_str_shptr<T>& map )
     {
 
-        printf("INside get cached file\n");
+//        printf("INside get cached file\n");
         std::string name = file_object.filename;
 
         // Find memory cached T object
         auto it = map.find(name);
         if ( it != map.end()) {
-            std::cout<<"found memory-cached file "<<name<<std::endl;
+//            std::cout<<"found memory-cached file "<<name<<std::endl;
             return std::make_pair(name, it->second);
         }
         else { // Find file cached T object
@@ -218,27 +220,27 @@ private:
             std::string file_name = cache_dir + "/" + name;
             if (not cache_dir.empty() ) {
                 // TODO: Use OS-agnostic path separator here
-                std::cout<<"looking for prog in file "<<file_name<<std::endl;
+//                std::cout<<"looking for prog in file "<<file_name<<std::endl;
                 file_object.open(file_name.c_str(), "r");
                 cacheFile file{file_name};
                 serialized = file.read_file();
                 successful_read = file.is_read_successful();
-                std::cout << "successful_read: " << successful_read << std::endl;
+//                std::cout << "successful_read: " << successful_read << std::endl;
                 if(successful_read) {
                     file_object.close();
-                    std::cout << "Just closed" << std::endl;
+//                    std::cout << "Just closed" << std::endl;
                 }
             }
             if (not successful_read) {
                 // JIT compile and write to file if possible
-                std::cout << "not successful read. macrofying" << std::endl;
+//                std::cout << "not successful read. macrofying" << std::endl;
                 file_object.open(file_name.c_str(), "w");
                 file_object.macrofy();
-                std::cout<<" got fresh content for "<<name<<std::endl;
+//                std::cout<<" got fresh content for "<<name<<std::endl;
                 file_object.close();
 
                 if (not cache_dir.empty()) {
-                    std::cout<<"writing in file "<<file_name<<std::endl;
+//                    std::cout<<"writing in file "<<file_name<<std::endl;
                     cacheFile file{file_name};
 
                     cacheFile macrofied{name};
@@ -267,7 +269,7 @@ private:
         // Find memory cached T object
         auto it = map.find(name);
         if ( it != map.end()) {
-            std::cout<<"found memory-cached prog "<<name<<std::endl;
+//            std::cout<<"found memory-cached prog "<<name<<std::endl;
             return std::make_pair(name, it->second);
         }
         else { // Find file cached T object
@@ -287,17 +289,17 @@ private:
             #endif
             if (not successful_read) {
                 // JIT compile and write to file if possible
-                    std::cout << "compiling now" << std::endl;
+//                    std::cout << "compiling now" << std::endl;
                 auto f = func();
 
-                    std::cout << "completed func()" << std::endl;
+//                    std::cout << "completed func()" << std::endl;
                 serialized = f.serialize();
-                std::cout<<" compiled serialized prog "<<name<<std::endl;
+//                std::cout<<" compiled serialized prog "<<name<<std::endl;
 
                 #if defined(JITIFY_USE_CACHE)
                     if (not cache_dir.empty()) {
                         std::string file_name = cache_dir + "/" + name;
-                        std::cout<<"writing prog in file "<<file_name<<std::endl;
+//                        std::cout<<"writing prog in file "<<file_name<<std::endl;
                         cacheFile file{file_name};
                         file.write(serialized);
                     }
