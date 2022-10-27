@@ -1621,7 +1621,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             "RETURN ROUND(3.745, 2, 'HALF_EVEN')": [[3.74]],
             "RETURN ROUND(-3.745, 2, 'HALF_EVEN')": [[-3.74]],
             "RETURN ROUND(3.715, 2, 'HALF_EVEN')": [[3.72]],
-            "RETURN ROUND(3.715, 2, 'HALF_EVEN')": [[-3.72]],
+            "RETURN ROUND(-3.715, 2, 'HALF_EVEN')": [[-3.72]],
             "RETURN ROUND(3.748, 2, 'HALF_EVEN')": [[3.75]],
             "RETURN ROUND(-3.748, 2, 'HALF_EVEN')": [[-3.75]]
         }
