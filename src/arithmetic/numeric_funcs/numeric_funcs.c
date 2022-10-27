@@ -5,7 +5,7 @@
 */
 
 #include "numeric_funcs.h"
-#include "RG.h"
+#include "../../RG.h"
 #include "../../errors.h"
 #include "../func_desc.h"
 #include "../../util/arr.h"
@@ -89,13 +89,111 @@ SIValue AR_RAND(SIValue *argv, int argc, void *private_data) {
 	return SI_DoubleVal((double)rand() / (double)RAND_MAX);
 }
 
+bool isHalfValue(double d, double precision) {
+	int rdd;
+	double eps;
+	double n = (d * pow(10, precision));
+	if(d > 0){
+		rdd = floor(n);
+		eps = fabs((rdd+1 - n) - (n-rdd));
+	} else {
+		rdd = ceil(n);
+		eps = fabs((rdd-n) - (n-(rdd-1)));
+	}
+	return eps < 1e-8;
+}
+
 /* returns the value of the given number rounded to the nearest integer. */
 SIValue AR_ROUND(SIValue *argv, int argc, void *private_data) {
 	SIValue result = argv[0];
 	if(SIValue_IsNull(result)) return SI_NullVal();
 	// No modification is required for non-decimal values
-	if(SI_TYPE(result) == T_DOUBLE) result.doubleval = round(result.doubleval);
+	if(SI_TYPE(result) == T_DOUBLE) {
+		if(argc == 1)
+			result.doubleval = round(result.doubleval);
+		else if(argc >= 2) {
 
+			SIValue origdouble = argv[0];
+			SIValue precision = argv[1];
+			char prcnum[40];
+			int rdd;
+
+			if(origdouble.longval > 0)
+				rdd = floor((origdouble.doubleval * pow(10, precision.longval)));
+			else
+				rdd = ceil((origdouble.doubleval * pow(10, precision.longval)));
+			
+			double urddigits = ((double)rdd)/(pow(10, precision.longval));
+
+			sprintf(prcnum, "\%.*f", (int)precision.longval, result.doubleval);
+			sscanf(prcnum, "%lf", &result.doubleval);
+
+			if(isHalfValue(origdouble.doubleval, precision.longval)){  
+				if(rdd > 0)
+					result.doubleval = (rdd+1)/pow(10, precision.longval);
+				else
+					result.doubleval = (rdd-1)/pow(10, precision.longval);
+			}
+
+			if (argc == 3)
+			{
+				SIValue mode = argv[2];
+				if(urddigits != argv[0].doubleval) {
+					if((strcmp(mode.stringval, "TOWARD_ZERO") == 0))
+					{       
+						result.doubleval = urddigits;
+					} 
+					else if(strcmp(mode.stringval, "CEILING") == 0) 
+					{    
+						if(urddigits<0)
+							result.doubleval = urddigits;
+						else
+							result.doubleval = urddigits + 1.0/pow(10,precision.longval);
+					} 
+					else if(strcmp(mode.stringval, "FLOOR") == 0) 
+					{
+						result.doubleval = urddigits;
+						if(urddigits > 0)
+							result.doubleval = urddigits;
+						else
+							result.doubleval = urddigits - 1.0/pow(10,precision.longval);
+					}
+					else if (strcmp(mode.stringval, "AWAY_FROM_ZERO") == 0)
+					{           
+						int64_t sgn = SIGN(SI_GET_NUMERIC(argv[0]));
+						double incr = 0;
+						if(sgn > 0) {
+							incr = 1;
+						} else {
+							incr = -1;
+						}
+						incr = incr/pow(10, precision.longval);
+						result.doubleval = urddigits + incr;
+					} 
+					else if(strcmp(mode.stringval, "HALF_DOWN") == 0) 
+					{					
+						if(isHalfValue(origdouble.doubleval, precision.longval)){
+							result.doubleval = urddigits;
+						}
+					} 
+					else if(strcmp(mode.stringval, "HALF_EVEN") == 0) 
+					{				
+						if(isHalfValue(origdouble.doubleval, precision.longval)){
+							if((rdd%2) == 0){
+								result.doubleval = urddigits;
+							}
+							else {
+								if(rdd > 0)
+									result.doubleval = (rdd + 1)/pow(10, precision.longval);
+								else
+									result.doubleval = (rdd-1)/pow(10, precision.longval);
+							}
+						} 
+					} 
+				}
+			}
+		}
+	}
 	return result;
 }
 
@@ -434,9 +532,9 @@ void Register_NumericFuncs() {
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	array_append(types, (SI_NUMERIC | T_NULL));
+	array_append(types, (SI_NUMERIC | T_STRING | T_NULL));
 	ret_type = SI_NUMERIC | T_NULL;
-	func_desc = AR_FuncDescNew("round", AR_ROUND, 1, 1, types, ret_type, false, true);
+	func_desc = AR_FuncDescNew("round", AR_ROUND, 1, 3, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
