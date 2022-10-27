@@ -355,3 +355,4 @@ class testConcurrentQueryFlow(FlowTestsBase):
             tasks.append(loop.create_task(asyncio.to_thread(resize_and_query)))
 
         loop.run_until_complete(asyncio.wait(tasks))
+

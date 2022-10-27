@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -18,8 +18,9 @@
 // C = gbapply2 (Cin, M, op, A, B, desc)
 // C = gbapply2 (Cin, M, accum, op, A, B, desc)
 
-// Either A or B (or both) must be a scalar (1-by-1, with 0 or 1 entries).
-// If the scalar has no entry, it is treated as the value zero.
+// Either A or B (or both) must be a non-empty scalar (1-by-1, with 1 entry).
+// If both A and B are non-empty scalars, then A is treated as the input
+// 'matrix' and B is treated as the scalar.
 
 // If Cin is not present then it is implicitly a matrix with no entries, of the
 // right size (which depends on A, B, and the descriptor).
@@ -96,48 +97,41 @@ void mexFunction
     // determine which input is the scalar and which is the matrix
     //--------------------------------------------------------------------------
 
-    GrB_Index anrows, ancols, bnrows, bncols ;
+    GrB_Index anrows, ancols, bnrows, bncols, anvals, bnvals ;
 
     // get the size of A and B
     OK (GrB_Matrix_nrows (&anrows, A)) ;
     OK (GrB_Matrix_ncols (&ancols, A)) ;
+    OK (GrB_Matrix_nvals (&anvals, A)) ;
     OK (GrB_Matrix_nrows (&bnrows, B)) ;
     OK (GrB_Matrix_ncols (&bncols, B)) ;
+    OK (GrB_Matrix_nvals (&bnvals, B)) ;
 
-    GrB_Scalar scalar = NULL, scalar0 = NULL ;
+    GrB_Scalar scalar = NULL ;
     bool binop_bind1st ;
-    if (anrows == 1 && ancols == 1)
-    {
-        // A is the scalar and B is the matrix
-        binop_bind1st = true ;
-        scalar = (GrB_Scalar) A ;   // NOTE: this is not allowed by the spec
-    }
-    else if (bnrows == 1 && bncols == 1)
+    bool A_is_scalar = (anrows == 1 && ancols == 1 && anvals == 1) ;
+    bool B_is_scalar = (bnrows == 1 && bncols == 1 && bnvals == 1) ;
+
+    if (B_is_scalar)
     {
         // A is the matrix and B is the scalar
         binop_bind1st = false ;
         scalar = (GrB_Scalar) B ;   // NOTE: this is not allowed by the spec
     }
+    else if (A_is_scalar)
+    {
+        // A is the scalar and B is the matrix
+        binop_bind1st = true ;
+        scalar = (GrB_Scalar) A ;   // NOTE: this is not allowed by the spec
+    }
     else
     {
-        ERROR ("either A or B must be a scalar") ;
+        ERROR ("either A or B must be a non-empty scalar") ;
     }
 
     //--------------------------------------------------------------------------
     // make sure the scalar has one entry
     //--------------------------------------------------------------------------
-
-    GrB_Index nvals ;
-    OK (GrB_Scalar_nvals (&nvals, scalar)) ;
-    if (nvals == 0)
-    {
-        // scalar must have an entry.  Create a new scalar zero.
-        OK (GrB_Scalar_dup (&scalar0, scalar)) ;
-        // the scalar need not be int32; this will typecast as needed
-        OK (GrB_Scalar_setElement_INT32 (scalar0, 0)) ;
-        OK (GrB_Scalar_wait (scalar0, GrB_MATERIALIZE)) ;
-        scalar = scalar0 ;
-    }
 
     // extract the int64 value of the scalar
     int64_t ithunk = 0 ;
@@ -245,7 +239,6 @@ void mexFunction
     OK (GrB_Matrix_free (&M)) ;
     OK (GrB_Matrix_free (&A)) ;
     OK (GrB_Matrix_free (&B)) ;
-    OK (GrB_Scalar_free (&scalar0)) ;
     OK (GrB_Scalar_free (&Thunk)) ;
     OK (GrB_Descriptor_free (&desc)) ;
 

@@ -29,8 +29,9 @@ function C = extract (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 %
 %       The J argument is identical, except that it is a list of column
 %       indices of A.  If only one cell array is provided, J = {  } is
-%       implied, refering to all n columns of A, like A(I,:).  1D
-%       indexing of a matrix A, as in C = A(I), is not yet supported.
+%       implied, refering to all n columns of A, like A(I,:).
+%       GrB.extract does not support linear indexing of a 2D matrix,
+%       as in C=A(I) when A is a 2D matrix.
 %
 %       If neither I nor J are provided on input, then this implies both
 %       I = { } and J = { }, or A(:,:) refering to all rows and columns
@@ -65,7 +66,7 @@ function C = extract (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 % See also GrB/subsref.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 if (isobject (arg1))
     arg1 = arg1.opaque ;

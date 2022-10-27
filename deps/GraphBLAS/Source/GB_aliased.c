@@ -76,6 +76,12 @@ bool GB_aliased             // determine if A and B are aliased
         aliased = true ;
     }
 
+    if (GB_aliased (A->Y, B->Y))
+    { 
+        ASSERT (A->Y_shallow || B->Y_shallow) ;
+        aliased = true ;
+    }
+
     //--------------------------------------------------------------------------
     // return result
     //--------------------------------------------------------------------------

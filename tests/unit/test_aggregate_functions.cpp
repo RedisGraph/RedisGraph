@@ -17,6 +17,7 @@ extern "C"
 #include "../../src/execution_plan/execution_plan.h"
 #include "../../src/arithmetic/arithmetic_expression.h"
 #include "../../src/util/arr.h"
+#include "../../src/errors.h"
 
 // Declaration of used functions not in header files
 extern AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *ret_clause, AST *ast);
@@ -31,6 +32,8 @@ class AggregateTest: public ::testing::Test {
 	static void SetUpTestCase() {
 		// Use the malloc family for allocations
 		Alloc_Reset();
+		
+		ASSERT_TRUE(ErrorCtx_Init());
 
 		// Prepare thread-local variables
 		ASSERT_TRUE(QueryCtx_Init());

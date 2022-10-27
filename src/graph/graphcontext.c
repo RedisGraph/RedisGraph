@@ -293,6 +293,18 @@ Schema *GraphContext_AddSchema(GraphContext *gc, const char *label, SchemaType t
 	return schema;
 }
 
+void GraphContext_RemoveSchema(GraphContext *gc, int schema_id, SchemaType t) {
+	if(t == SCHEMA_NODE) {
+		Schema *schema = gc->node_schemas[schema_id];
+		Schema_Free(schema);
+		gc->node_schemas = array_del(gc->node_schemas, schema_id);
+	} else {
+		Schema *schema = gc->relation_schemas[schema_id];
+		Schema_Free(schema);
+		gc->relation_schemas = array_del(gc->relation_schemas, schema_id);
+	}
+}
+
 const char *GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e) {
 	int reltype_id = Graph_GetEdgeRelation(gc->g, e);
 	ASSERT(reltype_id != GRAPH_NO_RELATION);
@@ -306,7 +318,9 @@ uint GraphContext_AttributeCount(GraphContext *gc) {
 	return size;
 }
 
-Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attribute) {
+Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attribute, bool* created) {
+	bool created_flag = false;
+	
 	// Acquire a read lock for looking up the attribute.
 	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
 
@@ -331,6 +345,7 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 					  attribute_id,
 					  NULL);
 			array_append(gc->string_mapping, rm_strdup(attribute));
+			created_flag = true;
 
 			// new attribute been added, update graph version
 			_GraphContext_UpdateVersion(gc, attribute);
@@ -339,6 +354,9 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 
 	// Release the lock.
 	pthread_rwlock_unlock(&gc->_attribute_rwlock);
+	if(created) {
+		*created = created_flag;
+	}
 	return (uintptr_t)attribute_id;
 }
 
@@ -361,6 +379,17 @@ Attribute_ID GraphContext_GetAttributeID(GraphContext *gc, const char *attribute
 	if(id == raxNotFound) return ATTRIBUTE_ID_NONE;
 
 	return (uintptr_t)id;
+}
+
+void GraphContext_RemoveAttribute(GraphContext *gc, Attribute_ID id) {
+	ASSERT(id == array_len(gc->string_mapping) - 1);
+	pthread_rwlock_wrlock(&gc->_attribute_rwlock);
+	const char *attribute = gc->string_mapping[id];
+	int ret = raxRemove(gc->attributes,  (unsigned char *)attribute, strlen(attribute), NULL);
+	ASSERT(ret == 1);
+	rm_free(gc->string_mapping[id]);
+	gc->string_mapping = array_del(gc->string_mapping, id);
+	pthread_rwlock_unlock(&gc->_attribute_rwlock);
 }
 
 //------------------------------------------------------------------------------
@@ -425,7 +454,7 @@ int GraphContext_AddExactMatchIndex
 	if(s == NULL) s = GraphContext_AddSchema(gc, label, schema_type);
 
 	IndexField idx_field;
-	Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field);
+	Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field, NULL);
 	IndexField_New(&idx_field, field_id, field, INDEX_FIELD_DEFAULT_WEIGHT,
 				   INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
 
@@ -457,7 +486,7 @@ int GraphContext_AddFullTextIndex
 	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
 	if(s == NULL) s = GraphContext_AddSchema(gc, label, schema_type);
 	IndexField index_field;
-	Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field);
+	Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field, NULL);
 	IndexField_New(&index_field, field_id, field, weight, nostem, phonetic);
 	int res = Schema_AddIndex(idx, s, &index_field, IDX_FULLTEXT);
 	ResultSet *result_set = QueryCtx_GetResultSet();

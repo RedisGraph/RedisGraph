@@ -78,7 +78,7 @@ class testStarProjections():
         self.env.assertEqual(actual_result.result_set, expected)
 
         # call expressions in RETURN *
-        redis_graph.query("CREATE INDEX FOR (n:L) ON (l.v)")
+        redis_graph.query("CREATE INDEX FOR (n:L) ON (n.v)")
         query = "CALL db.indexes() YIELD label RETURN *"
         actual_result = redis_graph.query(query)
         expected = [['L']]

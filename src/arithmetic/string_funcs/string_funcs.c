@@ -12,6 +12,11 @@
 #include "../../util/uuid.h"
 #include "../../util/strutil.h"
 #include "../../util/json_encoder.h"
+#include "../../datatypes/array.h"
+
+// toString supports only integer, float, string, boolean, point, duration, 
+// date, time, localtime, localdatetime or datetime values
+#define STRINGABLE (SI_NUMERIC | T_POINT | T_DURATION | T_DATETIME | T_STRING | T_BOOL)
 
 // returns a string containing the specified number of leftmost characters of the original string.
 SIValue AR_LEFT(SIValue *argv, int argc, void *private_data) {
@@ -180,12 +185,16 @@ SIValue AR_TOUPPER(SIValue *argv, int argc, void *private_data) {
 
 // converts an integer, float or boolean value to a string.
 SIValue AR_TOSTRING(SIValue *argv, int argc, void *private_data) {
-	if(SIValue_IsNull(argv[0])) return SI_NullVal();
-	size_t len = SIValue_StringJoinLen(argv, 1, "");
-	char *str = rm_malloc(len * sizeof(char));
-	size_t bytesWritten = 0;
-	SIValue_ToString(argv[0], &str, &len, &bytesWritten);
-	return SI_TransferStringVal(str);
+	if(SI_TYPE(argv[0]) & STRINGABLE) {
+		size_t len = SIValue_StringJoinLen(argv, 1, "");
+		char *str = rm_malloc(len * sizeof(char));
+		size_t bytesWritten = 0;
+		SIValue_ToString(argv[0], &str, &len, &bytesWritten);
+		return SI_TransferStringVal(str);
+	}
+	else {
+		return SI_NullVal();
+	}
 }
 
 // Returns a JSON string representation of a map value.
@@ -200,6 +209,7 @@ SIValue AR_TRIM(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	SIValue ltrim = AR_LTRIM(argv, argc, NULL);
 	SIValue trimmed = AR_RTRIM(&ltrim, 1, NULL);
+	SIValue_Free(ltrim);
 	return trimmed;
 }
 
@@ -345,6 +355,52 @@ SIValue AR_REPLACE(SIValue *argv, int argc, void *private_data) {
 	return SI_TransferStringVal(buffer);
 }
 
+// returns a list of strings resulting from the splitting of the original string around matches of the given delimiter
+SIValue AR_SPLIT(SIValue *argv, int argc, void *private_data) {
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) {
+		return SI_NullVal();
+	}
+
+	char       *str       = argv[0].stringval;
+	const char *delimiter = argv[1].stringval;
+	SIValue     tokens    = SIArray_New(1);
+
+	if(strlen(delimiter) == 0) {
+		if(strlen(str) == 0) {
+			SIArray_Append(&tokens, SI_ConstStringVal(""));
+		} else {
+			char token[2];
+			token[1] = '\0';
+			while(str[0] != '\0') {
+				token[0] = str[0];
+				SIArray_Append(&tokens, SI_ConstStringVal(token));
+				str++;
+			}
+		}
+	} else {
+		// strtok should work on a mutable copy
+		str = rm_strdup(str);
+		
+		char *token  = strtok(str, delimiter);
+
+		if(!token) {
+			SIArray_Append(&tokens, argv[0]);
+			rm_free(str);
+			return tokens;
+		}
+
+		while(token) {
+			SIValue si_token = SI_ConstStringVal(token);
+			SIArray_Append(&tokens, si_token);
+			token = strtok(NULL, delimiter);
+		}
+		
+		rm_free(str);
+	}
+
+	return tokens;
+}
+
 //==============================================================================
 //=== Scalar functions =========================================================
 //==============================================================================
@@ -412,9 +468,15 @@ void Register_StringFuncs() {
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	array_append(types, SI_ALL);
+	array_append(types, STRINGABLE | T_NULL);
 	ret_type = T_STRING | T_NULL;
 	func_desc = AR_FuncDescNew("tostring", AR_TOSTRING, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, SI_ALL);
+	ret_type = T_STRING | T_NULL;
+	func_desc = AR_FuncDescNew("tostringornull", AR_TOSTRING, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
@@ -461,5 +523,12 @@ void Register_StringFuncs() {
 	array_append(types, (T_STRING | T_NULL));
 	ret_type = T_STRING | T_NULL;
 	func_desc = AR_FuncDescNew("replace", AR_REPLACE, 3, 3, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 2);
+	array_append(types, (T_STRING | T_NULL));
+	array_append(types, (T_STRING | T_NULL));
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("split", AR_SPLIT, 2, 2, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 }

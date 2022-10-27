@@ -30,7 +30,6 @@
 
 Feature: Merge2 - Merge node - on create
 
-  @skip
   Scenario: [1] Merge node with label add label on create
     Given an empty graph
     When executing query:

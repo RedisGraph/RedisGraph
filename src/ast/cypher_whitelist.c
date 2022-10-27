@@ -66,11 +66,7 @@ AST_Validation CypherWhitelist_ValidateQuery(const cypher_astnode_t *root) {
 	AST_Visitor_register(visitor, CYPHER_AST_USING_INDEX, _visit);
 	AST_Visitor_register(visitor, CYPHER_AST_USING_JOIN, _visit);
 	AST_Visitor_register(visitor, CYPHER_AST_USING_SCAN, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_SET_LABELS, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_REMOVE, _visit);
 	AST_Visitor_register(visitor, CYPHER_AST_REMOVE_ITEM, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_REMOVE_LABELS, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_REMOVE_PROPERTY, _visit);
 	AST_Visitor_register(visitor, CYPHER_AST_FILTER, _visit);  // Deprecated, will not be supported
 	AST_Visitor_register(visitor, CYPHER_AST_EXTRACT, _visit); // Deprecated, will not be supported
 	AST_Visitor_register(visitor, CYPHER_AST_INDEX_NAME, _visit);

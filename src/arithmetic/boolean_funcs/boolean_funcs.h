@@ -10,3 +10,10 @@
 
 void Register_BooleanFuncs();
 
+// tries to convert input to boolean
+SIValue AR_TO_BOOLEAN
+(
+    SIValue *argv,      // arguments
+    int argc,           // number of arguments
+    void *private_data  // private context
+);

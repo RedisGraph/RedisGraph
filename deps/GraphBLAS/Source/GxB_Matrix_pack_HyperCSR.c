@@ -12,8 +12,9 @@
 GrB_Info GxB_Matrix_pack_HyperCSR      // pack a hypersparse CSR matrix
 (
     GrB_Matrix A,       // matrix to create (type, nrows, ncols unchanged)
-    GrB_Index **Ap,     // row "pointers", Ap_size >= (nvec+1)*sizeof(int64_t)
-    GrB_Index **Ah,     // row indices, Ah_size >= nvec*sizeof(int64_t)
+    GrB_Index **Ap,     // row "pointers", Ap_size >= (plen+1)*sizeof(int64_t)
+    GrB_Index **Ah,     // row indices, Ah_size >= plen*sizeof(int64_t)
+                        // where plen = 1 if nrows = 1, or nvec otherwise.
     GrB_Index **Aj,     // column indices, Aj_size >= nvals(A)*sizeof(int64_t)
     void **Ax,          // values, Ax_size >= nvals(A) * (type size)
                         // or Ax_size >= (type size), if iso is true
