@@ -167,6 +167,8 @@ class testGraphCreationFlow(FlowTestsBase):
                    "MATCH (a:A)-[r:R1|R1|R1|R1]->(b:B) RETURN count(r)",
                    "MATCH (a:A)-[r:R2]->(b:B) RETURN count(r)",
                    "MATCH (a:A)-[r:R2|R2]->(b:B) RETURN count(r)",
+                   "MATCH (a:A)-[r:R2|R2|R3]->(b:B) RETURN count(r)",
+                   "MATCH (a:A)-[r:R2|R2|R3|R4|R4]->(b:B) RETURN count(r)",
                    ]
         for query in queries:
             result = redis_graph.query(query)
@@ -189,6 +191,8 @@ class testGraphCreationFlow(FlowTestsBase):
         # These queries should not report results
         queries = ["MATCH (a:A)<-[r:R1|R2]-(b:B) RETURN count(r)",
                    "MATCH (a:A)-[r:R3]->(b:B) RETURN count(r)",
+                   "MATCH (a:A)-[r:R3|R3]->(b:B) RETURN count(r)",
+                   "MATCH (a:A)-[r:R3|R3|R4|R4]->(b:B) RETURN count(r)",
                    ]
         for query in queries:
             result = redis_graph.query(query)
