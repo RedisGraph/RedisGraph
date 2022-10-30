@@ -5,7 +5,7 @@ function C = sqrt (G)
 % See also GrB.apply, GrB/hypot.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 G = G.opaque ;
 C = GrB (gb_check_imag_zero (gb_trig ('sqrt', G))) ;

@@ -416,7 +416,7 @@ endif
 #----------------------------------------------------------------------------------------------
 
 pack package: $(TARGET)
-	@MODULE=$(TARGET) $(ROOT)/sbin/pack.sh
+	@MODULE=$(realpath $(TARGET)) $(ROOT)/sbin/pack.sh
 
 upload-release:
 	$(SHOW)RELEASE=1 ./sbin/upload-artifacts
@@ -424,7 +424,7 @@ upload-release:
 upload-artifacts:
 	$(SHOW)SNAPSHOT=1 ./sbin/upload-artifacts
 
-.PHONY: pack upload-artifacts upload-release
+.PHONY: pack pakcage upload-artifacts upload-release
 
 #----------------------------------------------------------------------------------------------
 

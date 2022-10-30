@@ -35,7 +35,7 @@
 
 #include "GB_transpose.h"
 #include "GB_binop.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_unop__include.h"
 #include "GB_binop__include.h"
 #endif
@@ -110,7 +110,7 @@ void GB_transpose_op    // transpose, typecast, and apply operator to a matrix
         // transpose the matrix; apply the unary op to all values if non-iso
         //----------------------------------------------------------------------
 
-        #ifndef GBCOMPACT
+        #ifndef GBCUDA_DEV
         if (Atype == op->xtype || opcode == GB_IDENTITY_unop_code)
         { 
 
@@ -233,7 +233,7 @@ void GB_transpose_op    // transpose, typecast, and apply operator to a matrix
         // transpose the matrix; apply the binary op to all values if non-iso
         //----------------------------------------------------------------------
 
-        #ifndef GBCOMPACT
+        #ifndef GBCUDA_DEV
         if (binop_bind1st)
         {
 

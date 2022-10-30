@@ -143,12 +143,12 @@ GrB_Info wathen             // construct a random Wathen matrix
 
         case 0:
         {
-            // This method is fastest, but only 20% faster than methods 2 and
-            // 3.  It is about 15% to 20% faster than the wathen.m function,
-            // and uses the identical algorithm.  The code here is nearly
-            // identical to the wathen.m M-file, except that here an adjustment
-            // to the indices must be made since GraphBLAS matrices are indexed
-            // starting at row and column 0, not 1.
+            // This method is fastest of the 4 methods here.  The code here is
+            // nearly identical to the wathen.m M-file, except that here an
+            // adjustment to the indices must be made since GraphBLAS matrices
+            // are indexed starting at row and column 0, not 1.  It requires
+            // more code on the part of the user application, however, as
+            // compared to methods 1, 2, and 3.
 
             // allocate the tuples
             int64_t ntriplets = nx*ny*64 ;
@@ -202,27 +202,8 @@ GrB_Info wathen             // construct a random Wathen matrix
 
         case 1:
         {
-
-            // This method takes about 1.8x the time as other three methods,
-            // for both small and large problems.  The difference in
-            // performance is likely because GrB_Matrix_assign_FP64 is
-            // expecting to write its double scalar to a submatrix of A, not a
-            // single scalar.  It has some extra overhead as a result, which is
-            // not needed.  GrB_Matrix_setElement cannot be used because that
-            // method does not allow for an accumulator function to be
-            // specified; its implicit accum operator is SECOND, not PLUS.
-            // Future versions of SuiteSparse:GraphBLAS may correct this
-            // performance discrepancy, so that this method is just as fast as
-            // the other three methods here.
-
-            // This method is the same as the older version of wathen.m, before
-            // it was updated to use the sparse function.  That older wathen.m
-            // function was asymptotically slower, and 300x slower in practice
-            // for moderate sized problems.  The performance difference
-            // increases greatly as the problem gets larger, as well.  By
-            // contrast, this method is asympotically just as fast as the other
-            // methods here, it's just a constant times slower (by a typical
-            // factor of just under 2).
+            // This method is the simplest, and only takes about 2x the time as
+            // method 0.  It would be impossibly slow in the equivalent MATLAB.
 
             for (int j = 1 ; j <= ny ; j++)
             {
@@ -259,11 +240,8 @@ GrB_Info wathen             // construct a random Wathen matrix
 
         case 2:
         {
-            // This method is about 20% slower than method 0, but it has the
-            // advantage of not requiring the number of tuples to be known in
-            // advance.  Method 3 is just as fast as this method.  This method
-            // is typically about 5% to 10% slower than wathen.m regardless of
-            // the problem size.
+            // This method constructs F and then assigns it all at once into A.
+            // It is about 2x to 3x slower than method 1.
 
             // create a single 8-by-8 finite-element matrix F
             OK (GrB_Matrix_new (&F, GrB_FP64, 8, 8)) ;
@@ -306,11 +284,10 @@ GrB_Info wathen             // construct a random Wathen matrix
 
         case 3:
         {
-            // This method is as fast as method 2.  It is very flexible since
-            // any method can be used to construct the finite-element matrix.
-            // Then A(nn,nn)+=F is very efficient when F is a matrix.  This
-            // method is typically about 5% to 10% slower than wathen.m
-            // regardless of the problem size.
+            // This method is as fast as method 2 (that is, 2x to 3x slower
+            // than method 1).  It is very flexible since any method can be
+            // used to construct the finite-element matrix.  Then A(nn,nn)+=F
+            // is very efficient when F is a matrix.
 
             // create a single 8-by-8 finite-element matrix F
             OK (GrB_Matrix_new (&F, GrB_FP64, 8, 8)) ;
@@ -390,8 +367,7 @@ GrB_Info wathen             // construct a random Wathen matrix
     }
 
     // force completion
-    GrB_Index nvals ;
-    OK (GrB_Matrix_nvals (&nvals, A)) ;
+    OK (GrB_Matrix_wait (A, GrB_MATERIALIZE)) ;
 
     //--------------------------------------------------------------------------
     // free workspace and return the result

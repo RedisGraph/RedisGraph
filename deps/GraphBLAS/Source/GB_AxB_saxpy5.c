@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_AxB_saxpy5: compute C+=A*B
+// GB_AxB_saxpy5: compute C+=A*B where A is bitmap/full and B is sparse/hyper
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
@@ -28,7 +28,7 @@
 
 #include "GB_mxm.h"
 #include "GB_control.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_AxB__include2.h"
 #endif
 
@@ -40,7 +40,7 @@
 #define GB_FREE_ALL             \
 {                               \
     GB_FREE_WORKSPACE ;         \
-    GB_phbix_free (C) ;         \
+    GB_phybix_free (C) ;        \
 }
 
 //------------------------------------------------------------------------------
@@ -63,7 +63,7 @@ GrB_Info GB_AxB_saxpy5              // C += A*B
     // saxpy5 is disabled if GraphBLAS is compiled as compact
     //--------------------------------------------------------------------------
 
-    #ifdef GBCOMPACT
+    #ifdef GBCUDA_DEV
     return (GrB_NO_VALUE) ;
     #else
 
@@ -100,8 +100,8 @@ GrB_Info GB_AxB_saxpy5              // C += A*B
     //--------------------------------------------------------------------------
 
     GrB_BinaryOp mult = semiring->multiply ;
-    GrB_Monoid add = semiring->add ;
-    ASSERT (mult->ztype == add->op->ztype) ;
+//  GrB_Monoid add = semiring->add ;
+    ASSERT (mult->ztype == semiring->add->op->ztype) ;
     bool A_is_pattern, B_is_pattern ;
     GB_binop_pattern (&A_is_pattern, &B_is_pattern, flipxy, mult->opcode) ;
 

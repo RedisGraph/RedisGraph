@@ -9,6 +9,7 @@
 
 // Removes a single entry, C (row,col), from the matrix C.
 
+#define GB_DEBUG
 #include "GB.h"
 
 #define GB_FREE_ALL ;
@@ -65,36 +66,55 @@ static inline bool GB_removeElement     // return true if found
 
         const int64_t *restrict Cp = C->p ;
         const int64_t *restrict Ci = C->i ;
+        const int64_t *restrict Ch = C->h ;
         bool found ;
-        int64_t k ;
+        int64_t pC_start, pC_end ;
 
-        if (GB_IS_HYPERSPARSE (C))
+        if (Ch != NULL)
         {
-            // binary search in C->h for vector j
-            const int64_t *restrict Ch = C->h ;
-            // find vector j as the kth vector in C
-            // look for vector j in hyperlist C->h [0 ... C->nvec-1]
-            int64_t pleft = 0 ;
-            int64_t pright = C->nvec-1 ;
-            GB_BINARY_SEARCH (j, Ch, pleft, pright, found) ;
+
+            //------------------------------------------------------------------
+            // C is hypersparse: look for j in hyperlist C->h [0 ... C->nvec-1]
+            //------------------------------------------------------------------
+
+            int64_t k ;
+            if (C->Y == NULL)
+            { 
+                // C is sparse but does not yet have a hyper_hash
+                k = 0 ;
+                found = GB_lookup (true, Ch, Cp, C->vlen, &k,
+                    C->nvec-1, j, &pC_start, &pC_end) ;
+            }
+            else
+            { 
+                // C is sparse, with a hyper_hash that is already built
+                k = GB_hyper_hash_lookup (Cp, C->Y->p, C->Y->i, C->Y->x,
+                    C->Y->vdim-1, j, &pC_start, &pC_end) ;
+                found = (k >= 0) ;
+            }
             if (!found)
             { 
                 // vector j is empty
                 return (false) ;
             }
-            ASSERT (j == Ch [pleft]) ;
-            k = pleft ;
+            ASSERT (j == Ch [k]) ;
+
         }
         else
         { 
+
+            //------------------------------------------------------------------
             // C is sparse, C(:,j) is the jth vector of C
-            k = j ;
+            //------------------------------------------------------------------
+
+            pC_start = Cp [j] ;
+            pC_end   = Cp [j+1] ;
         }
 
         // look in C(:,k), the kth vector of C
-        int64_t pleft = Cp [k] ;
-        int64_t pright = Cp [k+1] ;
-        int64_t cknz = pright - pleft ;
+        int64_t pleft = pC_start ;
+        int64_t pright = pC_end-1 ;
+        int64_t cknz = pC_end - pC_start ;
 
         bool is_zombie ;
         if (cknz == cvlen)
@@ -109,7 +129,6 @@ static inline bool GB_removeElement     // return true if found
         { 
             // binary search for C(i,k): time is O(log(cknz))
             int64_t nzombies = C->nzombies ;
-            pright-- ;
             GB_BINARY_SEARCH_ZOMBIE (i, Ci, pleft, pright, found,
                 nzombies, is_zombie) ;
         }
@@ -243,7 +262,7 @@ GrB_Info GrB_Matrix_removeElement
     GrB_Index row,              // row index
     GrB_Index col               // column index
 )
-{
+{ 
     GB_WHERE (C, "GrB_Matrix_removeElement (C, row, col)") ;
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;
     return (GB_Matrix_removeElement (C, row, col, Context)) ;

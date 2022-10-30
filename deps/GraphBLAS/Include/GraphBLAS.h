@@ -221,9 +221,9 @@
 
 // The version of this implementation, and the GraphBLAS API version:
 #define GxB_IMPLEMENTATION_NAME "SuiteSparse:GraphBLAS"
-#define GxB_IMPLEMENTATION_DATE "Feb 14, 2022"
-#define GxB_IMPLEMENTATION_MAJOR 6
-#define GxB_IMPLEMENTATION_MINOR 2
+#define GxB_IMPLEMENTATION_DATE "Oct 14, 2022"
+#define GxB_IMPLEMENTATION_MAJOR 7
+#define GxB_IMPLEMENTATION_MINOR 3
 #define GxB_IMPLEMENTATION_SUB   0
 #define GxB_SPEC_DATE "Nov 15, 2021"
 #define GxB_SPEC_MAJOR 2
@@ -285,7 +285,7 @@ typedef uint64_t GrB_Index ;
 
 // GxB_INDEX_MAX is historical; use GrB_INDEX_MAX+1 instead.  It differs by one
 // from GrB_INDEX_MAX, since it defined the largest valid matrix or vector
-// dimension. 
+// dimension.
 #define GxB_INDEX_MAX ((GrB_Index) (1ULL << 60))
 
 //==============================================================================
@@ -352,21 +352,25 @@ GrB_Info ;
 
 typedef enum
 {
-    GrB_NONBLOCKING = 0,    // methods may return with pending computations
-    GrB_BLOCKING = 1        // no computations are ever left pending
+    GrB_NONBLOCKING = 0,        // methods may return with pending computations
+    GrB_BLOCKING = 1,           // no computations are ever left pending
+//  DRAFT: in progress, do not use:
+    GxB_NONBLOCKING_GPU = 2,    // non-blocking mode, allow use of GPU(s)
+    GxB_BLOCKING_GPU = 3,       // blocking mode, allow use of GPU(s)
 }
 GrB_Mode ;
 
 GB_PUBLIC
 GrB_Info GrB_init           // start up GraphBLAS
 (
-    GrB_Mode mode           // blocking or non-blocking mode
+    GrB_Mode mode           // blocking or non-blocking mode, no GPU
 ) ;
 
 GB_PUBLIC
 GrB_Info GxB_init           // start up GraphBLAS and also define malloc, etc
 (
-    GrB_Mode mode,          // blocking or non-blocking mode
+    GrB_Mode mode,          // blocking or non-blocking mode,
+                            // with or without GPU
     // pointers to memory management functions
     void * (* user_malloc_function  ) (size_t),
     void * (* user_calloc_function  ) (size_t, size_t),
@@ -467,7 +471,7 @@ GrB_Info GrB_getVersion         // runtime access to C API version number
 //      done, and this setting has no effect.
 //
 // GxB_COMPRESSION: compression method for GxB_Matrix_serialize and
-//      GxB_Vector_serialize.  The default is LZ4.
+//      GxB_Vector_serialize.  The default is ZSTD (level 1).
 //
 // GxB_IMPORT:  GxB_FAST_IMPORT (faster, for trusted input data) or
 //      GxB_SECURE_IMPORT (slower, for untrusted input data), for the
@@ -945,6 +949,10 @@ GB_PUBLIC GrB_UnaryOp
     GxB_LGAMMA_FP32,    GxB_TGAMMA_FP32,    GxB_ERF_FP32,       GxB_ERFC_FP32,
     GxB_LGAMMA_FP64,    GxB_TGAMMA_FP64,    GxB_ERF_FP64,       GxB_ERFC_FP64,
 
+    // z = cbrt (x)
+    GxB_CBRT_FP32,
+    GxB_CBRT_FP64,
+
     // frexpx and frexpe return the mantissa and exponent, respectively,
     // from the ANSI C11 frexp function.  The exponent is returned as a
     // floating-point value, not an integer.
@@ -1148,18 +1156,18 @@ GB_PUBLIC GrB_BinaryOp
     // the same type.  The value z is either 1 for true or 0 for false, but it
     // is a value with the same type as x and y.
 
-    // z = (x == y)     z = (x != y)        
-    GxB_ISEQ_BOOL,      GxB_ISNE_BOOL,      
-    GxB_ISEQ_INT8,      GxB_ISNE_INT8,      
-    GxB_ISEQ_INT16,     GxB_ISNE_INT16,     
-    GxB_ISEQ_INT32,     GxB_ISNE_INT32,     
-    GxB_ISEQ_INT64,     GxB_ISNE_INT64,     
-    GxB_ISEQ_UINT8,     GxB_ISNE_UINT8,     
-    GxB_ISEQ_UINT16,    GxB_ISNE_UINT16,    
-    GxB_ISEQ_UINT32,    GxB_ISNE_UINT32,    
-    GxB_ISEQ_UINT64,    GxB_ISNE_UINT64,    
-    GxB_ISEQ_FP32,      GxB_ISNE_FP32,      
-    GxB_ISEQ_FP64,      GxB_ISNE_FP64,      
+    // z = (x == y)     z = (x != y)
+    GxB_ISEQ_BOOL,      GxB_ISNE_BOOL,
+    GxB_ISEQ_INT8,      GxB_ISNE_INT8,
+    GxB_ISEQ_INT16,     GxB_ISNE_INT16,
+    GxB_ISEQ_INT32,     GxB_ISNE_INT32,
+    GxB_ISEQ_INT64,     GxB_ISNE_INT64,
+    GxB_ISEQ_UINT8,     GxB_ISNE_UINT8,
+    GxB_ISEQ_UINT16,    GxB_ISNE_UINT16,
+    GxB_ISEQ_UINT32,    GxB_ISNE_UINT32,
+    GxB_ISEQ_UINT64,    GxB_ISNE_UINT64,
+    GxB_ISEQ_FP32,      GxB_ISNE_FP32,
+    GxB_ISEQ_FP64,      GxB_ISNE_FP64,
     // complex:
     GxB_ISEQ_FC32,      GxB_ISNE_FC32,
     GxB_ISEQ_FC64,      GxB_ISNE_FC64,
@@ -1758,8 +1766,8 @@ GrB_Info GxB_IndexUnaryOp_new   // create a named user-created IndexUnaryOp
     GrB_IndexUnaryOp *op,           // handle for the new IndexUnary operator
     GxB_index_unary_function function,    // pointer to index_unary function
     GrB_Type ztype,                 // type of output z
-    GrB_Type xtype,                 // type of input x
-    GrB_Type ytype,                 // type of input y
+    GrB_Type xtype,                 // type of input x (the A(i,j) entry)
+    GrB_Type ytype,                 // type of input y (the scalar)
     const char *idxop_name,         // name of the user function
     const char *idxop_defn          // definition of the user function
 ) ;
@@ -3196,6 +3204,17 @@ GrB_Info GrB_Vector_extractElement  // x = v(i)
     (x, v, i)
 #endif
 
+// GxB_Vector_isStoredElement determines if v(i) is present in the structure
+// of the vector v, as a stored element.  It does not return the value.  It
+// returns GrB_SUCCESS if the element is present, or GrB_NO_VALUE otherwise.
+
+GB_PUBLIC
+GrB_Info GxB_Vector_isStoredElement // determine if v(i) is a stored element
+(
+    const GrB_Vector v,             // vector to check
+    GrB_Index i                     // row index
+) ;
+
 //------------------------------------------------------------------------------
 // GrB_Vector_removeElement
 //------------------------------------------------------------------------------
@@ -3994,6 +4013,18 @@ GrB_Info GrB_Matrix_extractElement      // x = A(i,j)
     (x, A, i, j)
 #endif
 
+// GxB_Matrix_isStoredElement determines if A(i,j) is present in the structure
+// of the matrix A, as a stored element.  It does not return the value.  It
+// returns GrB_SUCCESS if the element is present, or GrB_NO_VALUE otherwise.
+
+GB_PUBLIC
+GrB_Info GxB_Matrix_isStoredElement // determine if A(i,j) is a stored element
+(
+    const GrB_Matrix A,                 // matrix to check
+    GrB_Index i,                        // row index
+    GrB_Index j                         // column index
+) ;
+
 //------------------------------------------------------------------------------
 // GrB_Matrix_removeElement
 //------------------------------------------------------------------------------
@@ -4251,16 +4282,26 @@ GrB_Info GxB_Matrix_split           // split a matrix into 2D array of matrices
 // GxB_Matrix_diag, GxB_Vector_diag, GrB_Matrix_diag
 //------------------------------------------------------------------------------
 
-// GxB_Matrix_diag constructs a matrix from a vector.  Let n be the length of
-// the v vector, from GrB_Vector_size (&n, v).  If k = 0, then C is an n-by-n
-// diagonal matrix with the entries from v along the main diagonal of C, with
-// C(i,i) = v(i).  If k is nonzero, C is square with dimension n+abs(k).  If k
-// is positive, it denotes diagonals above the main diagonal, with C(i,i+k) =
-// v(i).  If k is negative, it denotes diagonals below the main diagonal of C,
-// with C(i-k,i) = v(i).
+// GrB_Matrix_diag constructs a new matrix from a vector.  Let n be the length
+// of the v vector, from GrB_Vector_size (&n, v).  If k = 0, then C is an
+// n-by-n diagonal matrix with the entries from v along the main diagonal of C,
+// with C(i,i) = v(i).  If k is nonzero, C is square with dimension n+abs(k).
+// If k is positive, it denotes diagonals above the main diagonal, with
+// C(i,i+k) = v(i).  If k is negative, it denotes diagonals below the main
+// diagonal of C, with C(i-k,i) = v(i).  C is constructed with the same type
+// as v.
 
-// C must already exist on input, of the correct size.  Any existing entries in
-// C are discarded.  The type of C is preserved, so that if the type of C and v
+GB_PUBLIC
+GrB_Info GrB_Matrix_diag    // build a diagonal matrix from a vector
+(
+    GrB_Matrix *C,                  // output matrix
+    const GrB_Vector v,             // input vector
+    int64_t k
+) ;
+
+// GrB_Matrix_diag is like GxB_Matrix_diag (&C, v, k, NULL), except that C must
+// already exist on input, of the correct size.  Any existing entries in C are
+// discarded.  The type of C is preserved, so that if the type of C and v
 // differ, the entries are typecasted into the type of C.  Any settings made to
 // C by GxB_Matrix_Option_set (format by row or by column, bitmap switch, hyper
 // switch, and sparsity control) are unchanged.
@@ -4274,22 +4315,11 @@ GrB_Info GxB_Matrix_diag    // construct a diagonal matrix from a vector
     const GrB_Descriptor desc       // to specify # of threads
 ) ;
 
-// GrB_Matrix_diag is identical to GxB_Matrix_diag (C, v, k, NULL),
-// using the default # of threads from the global setting.
-
-GB_PUBLIC
-GrB_Info GrB_Matrix_diag    // construct a diagonal matrix from a vector
-(
-    GrB_Matrix C,                   // output matrix
-    const GrB_Vector v,             // input vector
-    int64_t k 
-) ;
-
 // GxB_Vector_diag extracts a vector v from an input matrix A, which may be
 // rectangular.  If k = 0, the main diagonal of A is extracted; k > 0 denotes
 // diagonals above the main diagonal of A, and k < 0 denotes diagonals below
 // the main diagonal of A.  Let A have dimension m-by-n.  If k is in the range
-// 0 to n-1, then v has length min(m,n-k).  If k is negative and in the range 
+// 0 to n-1, then v has length min(m,n-k).  If k is negative and in the range
 // -1 to -m+1, then v has length min(m+k,n).  If k is outside these ranges,
 // v has length 0 (this is not an error).
 
@@ -5116,8 +5146,9 @@ GrB_Info GrB_Matrix_eWiseAdd_BinaryOp       // C<Mask> = accum (C, A+B)
 // GxB_eWiseUnion: a variant of GrB_eWiseAdd
 //==============================================================================
 
-// GxB_eWiseUnion is a variant of eWiseAdd.  They differ when an entry is
-// present in A but not B, or in B but not A.
+// GxB_eWiseUnion is a variant of eWiseAdd.  The methods create a result with
+// the same sparsity structure.  They differ when an entry is present in A but
+// not B, or in B but not A.
 
 // eWiseAdd does the following, for a matrix, where "+" is the add binary op:
 
@@ -5128,7 +5159,7 @@ GrB_Info GrB_Matrix_eWiseAdd_BinaryOp       // C<Mask> = accum (C, A+B)
 //      else if B(i,j) is present but not A(i,j)
 //          C(i,j) = B(i,j)
 
-// by constrast, eWiseUnion always applies the operator:
+// by contrast, eWiseUnion always applies the operator:
 
 //      if A(i,j) and B(i,j) are both present:
 //          C(i,j) = A(i,j) + B(i,j)
@@ -9268,8 +9299,8 @@ GB_PUBLIC GrB_Semiring
 // 64 bitwise semirings
 //------------------------------------------------------------------------------
 
-    // monoids: (BOR, BAND, BXOR, BXNOR) x 
-    // mult:    (BOR, BAND, BXOR, BXNOR) x 
+    // monoids: (BOR, BAND, BXOR, BXNOR) x
+    // mult:    (BOR, BAND, BXOR, BXNOR) x
     // types:   (UINT8, UINT16, UINT32, UINT64)
 
     GxB_BOR_BOR_UINT8      , GxB_BOR_BOR_UINT16     , GxB_BOR_BOR_UINT32     , GxB_BOR_BOR_UINT64     ,
@@ -9364,7 +9395,7 @@ GB_PUBLIC GrB_Semiring
     // MIN_PLUS, MIN_TIMES, MIN_FIRST, MIN_SECOND, MIN_MAX,
     // MAX_PLUS, MAX_TIMES, MAX_FIRST, MAX_SECOND, MAX_MIN
 
-// and 4 semirings for boolean only: 
+// and 4 semirings for boolean only:
 
     // LOR_LAND, LAND_LOR, LXOR_LAND, LXNOR_LOR.
 
@@ -9386,8 +9417,8 @@ GB_PUBLIC GrB_Semiring
     GrB_PLUS_TIMES_SEMIRING_UINT16,     // GxB_PLUS_TIMES_UINT16
     GrB_PLUS_TIMES_SEMIRING_UINT32,     // GxB_PLUS_TIMES_UINT32
     GrB_PLUS_TIMES_SEMIRING_UINT64,     // GxB_PLUS_TIMES_UINT64
-    GrB_PLUS_TIMES_SEMIRING_FP32,       // GxB_PLUS_TIMES_FP32  
-    GrB_PLUS_TIMES_SEMIRING_FP64,       // GxB_PLUS_TIMES_FP64  
+    GrB_PLUS_TIMES_SEMIRING_FP32,       // GxB_PLUS_TIMES_FP32
+    GrB_PLUS_TIMES_SEMIRING_FP64,       // GxB_PLUS_TIMES_FP64
 
     // PLUS_MIN semirings for all 10 real, non-boolean types:
     GrB_PLUS_MIN_SEMIRING_INT8,         // GxB_PLUS_MIN_INT8
@@ -9398,8 +9429,8 @@ GB_PUBLIC GrB_Semiring
     GrB_PLUS_MIN_SEMIRING_UINT16,       // GxB_PLUS_MIN_UINT16
     GrB_PLUS_MIN_SEMIRING_UINT32,       // GxB_PLUS_MIN_UINT32
     GrB_PLUS_MIN_SEMIRING_UINT64,       // GxB_PLUS_MIN_UINT64
-    GrB_PLUS_MIN_SEMIRING_FP32,         // GxB_PLUS_MIN_FP32  
-    GrB_PLUS_MIN_SEMIRING_FP64,         // GxB_PLUS_MIN_FP64  
+    GrB_PLUS_MIN_SEMIRING_FP32,         // GxB_PLUS_MIN_FP32
+    GrB_PLUS_MIN_SEMIRING_FP64,         // GxB_PLUS_MIN_FP64
 
     //--------------------------------------------------------------------------
     // 50 semirings with MIN monoids
@@ -9414,8 +9445,8 @@ GB_PUBLIC GrB_Semiring
     GrB_MIN_PLUS_SEMIRING_UINT16,       // GxB_MIN_PLUS_UINT16
     GrB_MIN_PLUS_SEMIRING_UINT32,       // GxB_MIN_PLUS_UINT32
     GrB_MIN_PLUS_SEMIRING_UINT64,       // GxB_MIN_PLUS_UINT64
-    GrB_MIN_PLUS_SEMIRING_FP32,         // GxB_MIN_PLUS_FP32  
-    GrB_MIN_PLUS_SEMIRING_FP64,         // GxB_MIN_PLUS_FP64  
+    GrB_MIN_PLUS_SEMIRING_FP32,         // GxB_MIN_PLUS_FP32
+    GrB_MIN_PLUS_SEMIRING_FP64,         // GxB_MIN_PLUS_FP64
 
     // MIN_TIMES semirings for all 10 real, non-boolean types:
     GrB_MIN_TIMES_SEMIRING_INT8,        // GxB_MIN_TIMES_INT8
@@ -9426,8 +9457,8 @@ GB_PUBLIC GrB_Semiring
     GrB_MIN_TIMES_SEMIRING_UINT16,      // GxB_MIN_TIMES_UINT16
     GrB_MIN_TIMES_SEMIRING_UINT32,      // GxB_MIN_TIMES_UINT32
     GrB_MIN_TIMES_SEMIRING_UINT64,      // GxB_MIN_TIMES_UINT64
-    GrB_MIN_TIMES_SEMIRING_FP32,        // GxB_MIN_TIMES_FP32  
-    GrB_MIN_TIMES_SEMIRING_FP64,        // GxB_MIN_TIMES_FP64  
+    GrB_MIN_TIMES_SEMIRING_FP32,        // GxB_MIN_TIMES_FP32
+    GrB_MIN_TIMES_SEMIRING_FP64,        // GxB_MIN_TIMES_FP64
 
     // MIN_FIRST semirings for all 10 real, non-boolean types:
     GrB_MIN_FIRST_SEMIRING_INT8,        // GxB_MIN_FIRST_INT8
@@ -9438,8 +9469,8 @@ GB_PUBLIC GrB_Semiring
     GrB_MIN_FIRST_SEMIRING_UINT16,      // GxB_MIN_FIRST_UINT16
     GrB_MIN_FIRST_SEMIRING_UINT32,      // GxB_MIN_FIRST_UINT32
     GrB_MIN_FIRST_SEMIRING_UINT64,      // GxB_MIN_FIRST_UINT64
-    GrB_MIN_FIRST_SEMIRING_FP32,        // GxB_MIN_FIRST_FP32  
-    GrB_MIN_FIRST_SEMIRING_FP64,        // GxB_MIN_FIRST_FP64  
+    GrB_MIN_FIRST_SEMIRING_FP32,        // GxB_MIN_FIRST_FP32
+    GrB_MIN_FIRST_SEMIRING_FP64,        // GxB_MIN_FIRST_FP64
 
     // MIN_SECOND semirings for all 10 real, non-boolean types:
     GrB_MIN_SECOND_SEMIRING_INT8,       // GxB_MIN_SECOND_INT8
@@ -9450,8 +9481,8 @@ GB_PUBLIC GrB_Semiring
     GrB_MIN_SECOND_SEMIRING_UINT16,     // GxB_MIN_SECOND_UINT16
     GrB_MIN_SECOND_SEMIRING_UINT32,     // GxB_MIN_SECOND_UINT32
     GrB_MIN_SECOND_SEMIRING_UINT64,     // GxB_MIN_SECOND_UINT64
-    GrB_MIN_SECOND_SEMIRING_FP32,       // GxB_MIN_SECOND_FP32  
-    GrB_MIN_SECOND_SEMIRING_FP64,       // GxB_MIN_SECOND_FP64  
+    GrB_MIN_SECOND_SEMIRING_FP32,       // GxB_MIN_SECOND_FP32
+    GrB_MIN_SECOND_SEMIRING_FP64,       // GxB_MIN_SECOND_FP64
 
     // MIN_MAX semirings for all 10 real, non-boolean types:
     GrB_MIN_MAX_SEMIRING_INT8,          // GxB_MIN_MAX_INT8
@@ -9462,8 +9493,8 @@ GB_PUBLIC GrB_Semiring
     GrB_MIN_MAX_SEMIRING_UINT16,        // GxB_MIN_MAX_UINT16
     GrB_MIN_MAX_SEMIRING_UINT32,        // GxB_MIN_MAX_UINT32
     GrB_MIN_MAX_SEMIRING_UINT64,        // GxB_MIN_MAX_UINT64
-    GrB_MIN_MAX_SEMIRING_FP32,          // GxB_MIN_MAX_FP32  
-    GrB_MIN_MAX_SEMIRING_FP64,          // GxB_MIN_MAX_FP64  
+    GrB_MIN_MAX_SEMIRING_FP32,          // GxB_MIN_MAX_FP32
+    GrB_MIN_MAX_SEMIRING_FP64,          // GxB_MIN_MAX_FP64
 
     //--------------------------------------------------------------------------
     // 50 semirings with MAX monoids
@@ -9478,8 +9509,8 @@ GB_PUBLIC GrB_Semiring
     GrB_MAX_PLUS_SEMIRING_UINT16,       // GxB_MAX_PLUS_UINT16
     GrB_MAX_PLUS_SEMIRING_UINT32,       // GxB_MAX_PLUS_UINT32
     GrB_MAX_PLUS_SEMIRING_UINT64,       // GxB_MAX_PLUS_UINT64
-    GrB_MAX_PLUS_SEMIRING_FP32,         // GxB_MAX_PLUS_FP32  
-    GrB_MAX_PLUS_SEMIRING_FP64,         // GxB_MAX_PLUS_FP64  
+    GrB_MAX_PLUS_SEMIRING_FP32,         // GxB_MAX_PLUS_FP32
+    GrB_MAX_PLUS_SEMIRING_FP64,         // GxB_MAX_PLUS_FP64
 
     // MAX_TIMES semirings for all 10 real, non-boolean types:
     GrB_MAX_TIMES_SEMIRING_INT8,        // GxB_MAX_TIMES_INT8
@@ -9490,8 +9521,8 @@ GB_PUBLIC GrB_Semiring
     GrB_MAX_TIMES_SEMIRING_UINT16,      // GxB_MAX_TIMES_UINT16
     GrB_MAX_TIMES_SEMIRING_UINT32,      // GxB_MAX_TIMES_UINT32
     GrB_MAX_TIMES_SEMIRING_UINT64,      // GxB_MAX_TIMES_UINT64
-    GrB_MAX_TIMES_SEMIRING_FP32,        // GxB_MAX_TIMES_FP32  
-    GrB_MAX_TIMES_SEMIRING_FP64,        // GxB_MAX_TIMES_FP64  
+    GrB_MAX_TIMES_SEMIRING_FP32,        // GxB_MAX_TIMES_FP32
+    GrB_MAX_TIMES_SEMIRING_FP64,        // GxB_MAX_TIMES_FP64
 
     // MAX_FIRST semirings for all 10 real, non-boolean types:
     GrB_MAX_FIRST_SEMIRING_INT8,        // GxB_MAX_FIRST_INT8
@@ -9502,8 +9533,8 @@ GB_PUBLIC GrB_Semiring
     GrB_MAX_FIRST_SEMIRING_UINT16,      // GxB_MAX_FIRST_UINT16
     GrB_MAX_FIRST_SEMIRING_UINT32,      // GxB_MAX_FIRST_UINT32
     GrB_MAX_FIRST_SEMIRING_UINT64,      // GxB_MAX_FIRST_UINT64
-    GrB_MAX_FIRST_SEMIRING_FP32,        // GxB_MAX_FIRST_FP32  
-    GrB_MAX_FIRST_SEMIRING_FP64,        // GxB_MAX_FIRST_FP64  
+    GrB_MAX_FIRST_SEMIRING_FP32,        // GxB_MAX_FIRST_FP32
+    GrB_MAX_FIRST_SEMIRING_FP64,        // GxB_MAX_FIRST_FP64
 
     // MAX_SECOND semirings for all 10 real, non-boolean types:
     GrB_MAX_SECOND_SEMIRING_INT8,       // GxB_MAX_SECOND_INT8
@@ -9514,8 +9545,8 @@ GB_PUBLIC GrB_Semiring
     GrB_MAX_SECOND_SEMIRING_UINT16,     // GxB_MAX_SECOND_UINT16
     GrB_MAX_SECOND_SEMIRING_UINT32,     // GxB_MAX_SECOND_UINT32
     GrB_MAX_SECOND_SEMIRING_UINT64,     // GxB_MAX_SECOND_UINT64
-    GrB_MAX_SECOND_SEMIRING_FP32,       // GxB_MAX_SECOND_FP32  
-    GrB_MAX_SECOND_SEMIRING_FP64,       // GxB_MAX_SECOND_FP64  
+    GrB_MAX_SECOND_SEMIRING_FP32,       // GxB_MAX_SECOND_FP32
+    GrB_MAX_SECOND_SEMIRING_FP64,       // GxB_MAX_SECOND_FP64
 
     // MAX_MIN semirings for all 10 real, non-boolean types:
     GrB_MAX_MIN_SEMIRING_INT8,          // GxB_MAX_MIN_INT8
@@ -9526,8 +9557,8 @@ GB_PUBLIC GrB_Semiring
     GrB_MAX_MIN_SEMIRING_UINT16,        // GxB_MAX_MIN_UINT16
     GrB_MAX_MIN_SEMIRING_UINT32,        // GxB_MAX_MIN_UINT32
     GrB_MAX_MIN_SEMIRING_UINT64,        // GxB_MAX_MIN_UINT64
-    GrB_MAX_MIN_SEMIRING_FP32,          // GxB_MAX_MIN_FP32  
-    GrB_MAX_MIN_SEMIRING_FP64,          // GxB_MAX_MIN_FP64  
+    GrB_MAX_MIN_SEMIRING_FP32,          // GxB_MAX_MIN_FP32
+    GrB_MAX_MIN_SEMIRING_FP64,          // GxB_MAX_MIN_FP64
 
     //--------------------------------------------------------------------------
     // 4 boolean semirings:
@@ -10764,6 +10795,98 @@ GrB_Info GxB_Vector_unpack_Full   // unpack a full vector
     const GrB_Descriptor desc
 ) ;
 
+//------------------------------------------------------------------------------
+// GxB hyper_hash pack/unpack
+//------------------------------------------------------------------------------
+
+// SuiteSparse:GraphBLAS v7.3.0 adds a new internal component to the
+// hypersparse matrix format: the hyper_hash GrB_Matrix A->Y.  The matrix
+// provides a fast lookup into the hyperlist Ah.
+
+// GxB_unpack_HyperHash unpacks the hyper_hash from the hypersparse matrix A.
+// Normally, this method is called immediately before calling one of the four
+// methods GxB_Matrix_(export/unpack)_Hyper(CSR/CSC).  For example, to unpack
+// then pack a hypersparse CSC matrix:
+
+//      GrB_Matrix Y = NULL ;
+//
+//      // to unpack all of A:
+//      GxB_unpack_HyperHash (A, &Y, desc) ;    // first unpack A->Y into Y
+//      GxB_Matrix_unpack_HyperCSC (A,          // then unpack the rest of A
+//          &Ap, &Ah, &Ai, &Ax, &Ap_size, &Ah_size, &Ai_size, &Ax_size,
+//          &iso, &nvec, &jumbled, descriptor) ;
+//
+//      // use the unpacked contents of A here, but do not change Ah or nvec.
+//      ...
+//      
+//      // to pack the data back into A:
+//      GxB_Matrix_pack_HyperCSC (A, ...) ;     // pack most of A, except A->Y 
+//      GxB_pack_HyperHash (A, &Y, desc) ;      // then pack A->Y
+
+// The same process is used with GxB_Matrix_unpack_HyperCSR,
+// an the GxB_Matrix_export_Hyper* and GxB_Matrix_import_Hyper* methods.
+
+// If A is not hypersparse on input to GxB_unpack_HyperHash, or if A is
+// hypersparse but does yet not have a hyper_hash, then Y is returned as NULL.
+// This is not an error condition, and GrB_SUCCESS is returned.  The hyper_hash
+// of a hypersparse matrix A is a matrix that provides quick access to the
+// inverse of Ah.  It is not always needed and may not be present.  It is left
+// as pending work to be computed when needed.  GrB_Matrix_wait (A) will ensure
+// that the hyper_hash is constructed, if A is hypersparse.
+
+// If Y is moved from A and returned as non-NULL to the caller, then it is
+// the responsibility of the user application to free it, or to re-pack it back
+// into A via GxB_pack_HyperHash, as shown in the example above.
+
+// If this method is called to remove the hyper_hash Y from the hypersparse
+// matrix A, and then GrB_Matrix_wait (A) is called, a new hyper_hash matrix is
+// constructed for A.
+
+GB_PUBLIC
+GrB_Info GxB_unpack_HyperHash       // move A->Y into Y
+(
+    GrB_Matrix A,                   // matrix to modify
+    GrB_Matrix *Y,                  // hyper_hash matrix to move from A
+    const GrB_Descriptor desc       // unused
+) ;
+
+// GxB_pack_HyperHash assigns the input Y matrix as the A->Y hyper_hash of the
+// hypersparse matrix A.  Normally, this method is called immediately after
+// calling one of the four methods GxB_Matrix_(import/pack)_Hyper(CSR/CSC).
+
+// If A is not hypersparse on input to GxB_pack_HyperHash, or if A already has
+// a hyper_hash matrix, or if Y is NULL on input, then nothing happens and Y is
+// unchanged.  This is not an error condition and this method returns
+// GrB_SUCCESS.  In this case, if Y is non-NULL after calling this method, it
+// owned by the user application and freeing it is the responsibility of the
+// user application.
+
+// Basic checks are perfomed on Y: Y must have the right dimensions:  if A is
+// HyperCSR and m-by-n with nvec vectors present in Ah, then Y must be n-by-v
+// where v is a power of 2; if A is HyperCSR and m-by-n, then Y must be m-by-v.
+// nvals(Y) must equal nvec.  Y must be sparse, held by column, and have type
+// int64.  It cannot have any pending work.  It cannot have a hyper_hash
+// of its own.  If any of these conditions hold, GrB_INVALID is returned and
+// A and Y are unchanged.
+
+// If Y is moved into A as its hyper_hash, then the caller's Y is set to NULL
+// to indicate that it has been moved into A.  It is no longer owned by the
+// caller, but is instead an opaque component of the A matrix.  It will be
+// freed by SuiteSparse:GraphBLAS if A is modified or freed.
+
+// Results are undefined if the input Y was not created by GxB_unpack_HyperHash
+// (see the example above) or if the Ah contents or nvec of the matrix A are
+// modified after they were exported/unpacked by
+// GxB_Matrix_(export/unpack)_Hyper(CSR/CSC).
+
+GB_PUBLIC
+GrB_Info GxB_pack_HyperHash         // move Y into A->Y
+(
+    GrB_Matrix A,                   // matrix to modify
+    GrB_Matrix *Y,                  // hyper_hash matrix to pack into A
+    const GrB_Descriptor desc       // unused
+) ;
+
 //==============================================================================
 // GrB import/export
 //==============================================================================
@@ -11257,10 +11380,10 @@ GrB_Info GrB_Matrix_exportHint  // suggest the best export format
 
 // GrB_Matrix_serialize/deserialize are slightly different from their GxB*
 // counterparts.  The blob is allocated by GxB_Matrix_serialize, and must be
-// freed by GxB_serialize_free (which calls the ANSI C11 free if GrB_init was
-// used).  By contrast, the GrB* methods require the user application to pass
-// in a preallocated blob to GrB_Matrix_serialize, whose size can be given by
-// GrB_Matrix_serializeSize (as a loose upper bound).
+// freed by the same free() method passed to GxB_init (or the ANSI C11 free()
+// if GrB_init was used).  By contrast, the GrB* methods require the user
+// application to pass in a preallocated blob to GrB_Matrix_serialize, whose
+// size can be given by GrB_Matrix_serializeSize (as a loose upper bound).
 
 // The GrB* and GxB* methods can be mixed.  GrB_Matrix_serialize and
 // GxB_Matrix_serialize construct the same blob (assuming they are given the
@@ -11302,7 +11425,8 @@ GrB_Info GrB_Matrix_exportHint  // suggest the best export format
     FILE *f = fopen ("myblob", "r") ;
     fread (&blob_size, sizeof (size_t), 1, f) ;
     blob = malloc (blob_size) ;
-    fread (&blob, sizeof (uint8_t), 1, f) ;
+    fread (blob, sizeof (uint8_t), blob_size, f) ;
+    fclose (f) ;
     char type_name [GxB_MAX_NAME_LEN] ;
     GxB_deserialize_type_name (type_name, blob, blob_size) ;
     printf ("blob type is: %s\n", type_name) ;
@@ -11341,26 +11465,21 @@ GrB_Info GrB_Matrix_exportHint  // suggest the best export format
     FILE *f = fopen ("myblob", "r") ;
     fread (&blob_size, sizeof (size_t), 1, f) ;
     blob = malloc (blob_size) ;
-    fread (&blob, sizeof (uint8_t), 1, f) ;
+    fread (blob, sizeof (uint8_t), blob_size, f) ;
+    fclose (f) ;
     // the user must know the type of A is MyQType
     GrB_Matrix_deserialize (&A, MyQtype, blob, blob_size) ;
     free (blob) ;
 */
 
-// Three methods are currently implemented: no compression, LZ4, and LZ4HC
+// Currently implemented: no compression, LZ4, LZ4HC, and ZSTD
 #define GxB_COMPRESSION_NONE -1     // no compression
-#define GxB_COMPRESSION_DEFAULT 0   // LZ4
+#define GxB_COMPRESSION_DEFAULT 0   // ZSTD (level 1)
 #define GxB_COMPRESSION_LZ4   1000  // LZ4
 #define GxB_COMPRESSION_LZ4HC 2000  // LZ4HC, with default level 9
+#define GxB_COMPRESSION_ZSTD  3000  // ZSTD, with default level 1
 
-// possible future methods that could be added:
-// #define GxB_COMPRESSION_ZLIB  3000  // ZLIB, with default level 6
-// #define GxB_COMPRESSION_LZO   4000  // LZO, with default level 2
-// #define GxB_COMPRESSION_BZIP2 5000  // BZIP2, with default level 9
-// #define GxB_COMPRESSION_LZSS  6000  // LZSS
-
-// using the Intel IPP versions, if available (not yet supported);
-#define GxB_COMPRESSION_INTEL   1000000
+#define GxB_COMPRESSION_INTEL   1000000 // not yet supported
 
 // Most of the above methods have a level parameter that controls the tradeoff
 // between run time and the amount of compression obtained.  Higher levels
@@ -11368,31 +11487,16 @@ GrB_Info GrB_Matrix_exportHint  // suggest the best export format
 
 //  LZ4     no level setting
 //  LZ4HC   1: fast, 9: default, 9: max
-
-//  these methos are not yet supported but may be added in the future:
-//  ZLIB    1: fast, 6: default, 9: max
-//  LZO     1: fast (X1ST), 2: default (XST)
-//  BZIP2   1: fast, 9: default, 9: max
-//  LZSS    no level setting
+//  ZSTD:   1: fast, 1: default, 19: max
 
 // For all methods, a level of zero results in the default level setting.
 // These settings can be added, so to use LZ4HC at level 5, use method =
 // GxB_COMPRESSION_LZ4HC + 5.
 
-// If the Intel IPPS compression methods are available, they can be selected
-// by adding GxB_COMPRESSION_INTEL.  For example, to use the Intel IPPS
-// implementation of LZ4HC at level 9, use method = GxB_COMPRESSION_INTEL +
-// GxB_COMPRESSION_LZ4HC + 9 = 1,002,009.  If the Intel methods are requested
-// but not available, this setting is ignored and the non-Intel methods are
-// used instead.
-
 // If the level setting is out of range, the default is used for that method.
 // If the method is negative, no compression is performed.  If the method is
-// positive but unrecognized, the default is used (GxB_COMPRESSION_LZ4, with no
-// level setting, and the non-Intel version).
-
-// If a method is not implemented, LZ4 is used instead, and the level setting
-// is ignored.
+// positive but unrecognized, the default is used (GxB_COMPRESSION_ZSTD,
+// level 1).
 
 GB_PUBLIC
 GrB_Info GxB_Matrix_serialize       // serialize a GrB_Matrix to a blob
@@ -11544,6 +11648,65 @@ GrB_Info GxB_Matrix_sort
     )                                                       \
     (arg1, __VA_ARGS__)
 
+//==============================================================================
+// GxB_Matrix_reshape and GxB_Matrix_reshapeDup:  reshape a matrix
+//==============================================================================
+
+// GxB_Matrix_reshape changes the dimensions of a matrix, reshaping the entries
+// by row or by column.
+
+// For example, if C is 3-by-4 on input, and is reshaped by column to have
+// dimensions 2-by-6:
+
+//      C on input      C on output (by_col true)
+//      00 01 02 03     00 20 11 02 22 13
+//      10 11 12 13     10 01 21 12 03 23
+//      20 21 22 23
+
+// If the same C on input is reshaped by row to dimensions 2-by-6:
+
+//      C on input      C on output (by_col false)
+//      00 01 02 03     00 01 02 03 10 11
+//      10 11 12 13     12 13 20 21 22 23
+//      20 21 22 23
+
+// If the input matrix is nrows-by-ncols, and the size of the reshaped matrix
+// is nrows_new-by-ncols_new, then nrows*ncols must equal nrows_new*ncols_new.
+// The format of the input matrix (by row or by column) is unchanged; this
+// format need not match the by_col input parameter.
+
+GB_PUBLIC
+GrB_Info GxB_Matrix_reshape     // reshape a GrB_Matrix in place
+(
+    // input/output:
+    GrB_Matrix C,               // input/output matrix, reshaped in place
+    // input:
+    bool by_col,                // true if reshape by column, false if by row
+    GrB_Index nrows_new,        // new number of rows of C
+    GrB_Index ncols_new,        // new number of columns of C
+    const GrB_Descriptor desc   // to control # of threads used
+) ;
+
+// GxB_Matrix_reshapeDup reshapes a matrix into another matrix.
+
+// If the input matrix A is nrows-by-ncols, and the size of the newly-created
+// matrix C is nrows_new-by-ncols_new, then nrows*ncols must equal
+// nrows_new*ncols_new.  The format of the input matrix A (by row or by column)
+// determines the format of the output matrix C, which need not match the
+// by_col input parameter.
+
+GB_PUBLIC
+GrB_Info GxB_Matrix_reshapeDup // reshape a GrB_Matrix into another GrB_Matrix
+(
+    // output:
+    GrB_Matrix *C,              // newly created output matrix, not in place
+    // input:
+    GrB_Matrix A,               // input matrix, not modified
+    bool by_col,                // true if reshape by column, false if by row
+    GrB_Index nrows_new,        // number of rows of C
+    GrB_Index ncols_new,        // number of columns of C
+    const GrB_Descriptor desc   // to control # of threads used
+) ;
 
 //==============================================================================
 // GxB_Iterator: an object that iterates over the entries of a matrix or vector
@@ -11644,7 +11807,7 @@ struct GB_Iterator_opaque
     // only changes when the iterator is created:
     size_t header_size ;        // size of this iterator object
 
-    // these components only change when the iterator is attached:  
+    // these components only change when the iterator is attached:
     int64_t pmax ;              // avlen*avdim for bitmap; nvals(A) otherwise
     int64_t avlen ;             // length of each vector in the matrix
     int64_t avdim ;             // number of vectors in the matrix dimension
@@ -11905,7 +12068,7 @@ GrB_Index GxB_rowIterator_kount (GxB_Iterator iterator) ;
 
 // For SuiteSparse:GraphBLAS: If the matrix is hypersparse, and the row
 // does not appear in the hyperlist, then the iterator is moved to the first
-// row after the given row that does appear in the hyperlist.  
+// row after the given row that does appear in the hyperlist.
 
 // The method is always successful; the following are conditions are returned:
 // GxB_EXHAUSTED:   if the row index is >= nrows(A); the row iterator is
@@ -12233,7 +12396,7 @@ GrB_Info GxB_Matrix_Iterator_next (GxB_Iterator iterator) ;
 // GxB_Matrix_Iterator_next.  Results are undefined if these conditions are not
 // met.
 
-GB_PUBLIC 
+GB_PUBLIC
 GrB_Index GxB_Matrix_Iterator_getp (GxB_Iterator iterator) ;
 
 //------------------------------------------------------------------------------
@@ -12246,7 +12409,7 @@ GrB_Index GxB_Matrix_Iterator_getp (GxB_Iterator iterator) ;
 // GxB_Matrix_Iterator_next, with a return value of GrB_SUCCESS.  Results are
 // undefined if these conditions are not met.
 
-GB_PUBLIC 
+GB_PUBLIC
 void GxB_Matrix_Iterator_getIndex
 (
     GxB_Iterator iterator,
@@ -12351,7 +12514,8 @@ GrB_Index GxB_Vector_Iterator_getpmax (GxB_Iterator iterator) ;
 // vector, or GxB_EXHAUSTED if the iterator is exhausted.
 
 GB_PUBLIC
-GrB_Info GB_Vector_Iterator_bitmap_seek (GxB_Iterator iterator, GrB_Index p) ;
+GrB_Info GB_Vector_Iterator_bitmap_seek (GxB_Iterator iterator,
+    GrB_Index unused) ; // unused parameter to be removed in v8.x
 
 GB_PUBLIC
 GrB_Info GxB_Vector_Iterator_seek (GxB_Iterator iterator, GrB_Index p) ;
@@ -12370,7 +12534,7 @@ GrB_Info GxB_Vector_Iterator_seek (GxB_Iterator iterator, GrB_Index p) ;
         iterator->p = q,                                                    \
         (iterator->A_sparsity == GxB_BITMAP) ?                              \
         (                                                                   \
-            GB_Vector_Iterator_bitmap_seek (iterator, q)                    \
+            GB_Vector_Iterator_bitmap_seek (iterator, 0)                    \
         )                                                                   \
         :                                                                   \
         (                                                                   \
@@ -12411,7 +12575,16 @@ GrB_Info GxB_Vector_Iterator_next (GxB_Iterator iterator) ;
     )                                                                       \
     :                                                                       \
     (                                                                       \
-        GrB_SUCCESS                                                         \
+        (iterator->A_sparsity == GxB_BITMAP) ?                              \
+        (                                                                   \
+            /* bitmap: seek to the next entry present in the bitmap */      \
+            GB_Vector_Iterator_bitmap_seek (iterator, 0)                    \
+        )                                                                   \
+        :                                                                   \
+        (                                                                   \
+            /* other formats: already at the next entry */                  \
+            GrB_SUCCESS                                                     \
+        )                                                                   \
     )                                                                       \
 )
 
@@ -12520,10 +12693,62 @@ GB_PUBLIC void       GxB_Iterator_get_UDT    (GxB_Iterator iterator,
 
 #define GxB_Iterator_get_UDT(iterator, value)                               \
 (                                                                           \
-    (void) memcpy ((void *) value, (iterator)->Ax +                         \
+    (void) memcpy ((void *) value, ((const uint8_t *) ((iterator)->Ax)) +   \
         ((iterator)->iso ? 0 : ((iterator)->type_size * (iterator)->p)),    \
         (iterator)->type_size)                                              \
 )
+
+//------------------------------------------------------------------------------
+// Rapids Memory Manager wrappers for SuiteSparse:GraphBLAS
+//------------------------------------------------------------------------------
+
+#ifndef RMM_WRAP_H
+#define RMM_WRAP_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// TODO describe the modes
+typedef enum
+{
+    rmm_wrap_host = 0,
+    rmm_wrap_host_pinned = 1,
+    rmm_wrap_device = 2,
+    rmm_wrap_managed = 3
+} RMM_MODE ;
+
+void rmm_wrap_finalize (void) ;
+
+int rmm_wrap_initialize
+(
+    RMM_MODE mode,
+    size_t init_pool_size,
+    size_t max_pool_size
+) ;
+
+// example usage:
+    //  rmm_wrap_initialize (rmm_wrap_managed, INT32_MAX, INT64_MAX) ;
+    //  GxB_init (GxB_NONBLOCKING_GPU, rmm_wrap_malloc, rmm_wrap_calloc,
+    //      rmm_wrap_realloc, rmm_wrap_free) ;
+    //  use GraphBLAS ... with the GPU
+    //  GrB_finalize ( ) ;
+    //  rmm_wrap_finalize ( ) ;
+
+// The two PMR-based allocate/deallocate signatures (C-style):
+void *rmm_wrap_allocate (size_t *size) ;
+void  rmm_wrap_deallocate (void *p, size_t size) ;
+
+// The four malloc/calloc/realloc/free signatures:
+void *rmm_wrap_malloc (size_t size) ;
+void *rmm_wrap_calloc (size_t n, size_t size) ;
+void *rmm_wrap_realloc (void *p, size_t newsize) ;
+void  rmm_wrap_free (void *p) ;
+
+#ifdef __cplusplus
+}
+#endif
+#endif
 
 #endif
 

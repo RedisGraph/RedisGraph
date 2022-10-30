@@ -213,12 +213,16 @@ The final top-level member of the GRAPH.QUERY reply is the execution statistics.
 The statistics always include query execution time, while any combination of the other elements may be included depending on how the graph was modified.
 
 1. "Labels added: (integer)"
-2. "Nodes created: (integer)"
-3. "Properties set: (integer)"
+2. "Labels removed: (integer)"    (since RedisGraph 2.10)
+3. "Nodes created: (integer)"
 4. "Nodes deleted: (integer)"
-5. "Relationships deleted: (integer)"
-6. "Relationships created: (integer)"
-7. "Query internal execution time: (float) milliseconds"
+5. "Properties set: (integer)"
+6. "Properties removed: (integer)"    (since RedisGraph 2.10)
+7. "Relationships created: (integer)"
+8. "Relationships deleted: (integer)"
+9. "Indices created: (integer)"
+10. "Indices deleted: (integer)"
+11. "Query internal execution time: (float) milliseconds"
 
 ## Procedure Calls
 

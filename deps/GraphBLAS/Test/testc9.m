@@ -1,8 +1,13 @@
-function testc9
+function testc9(use_builtin)
 %TESTC9 test complex extractTuples
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
+
+if (nargin < 1)
+    use_builtin = true ;
+end
+GB_builtin_complex_set (use_builtin) ;
 
 seed = 1 ;
 for m = [1 5 10 100]
@@ -28,3 +33,4 @@ end
 
 fprintf ('testc9: all complex extractTuples tests passed\n') ;
 
+GB_builtin_complex_set (true) ;

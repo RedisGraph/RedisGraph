@@ -84,19 +84,19 @@ GrB_Info GB_EVAL3 (prefix, _Vector_select_, T)                              \
     return (GB_sel (w, M, accum, op, u, Thunk, desc, Context)) ;            \
 }
 
-GB_SEL (GrB, bool      , BOOL  ) ;
-GB_SEL (GrB, int8_t    , INT8  ) ;
-GB_SEL (GrB, int16_t   , INT16 ) ;
-GB_SEL (GrB, int32_t   , INT32 ) ;
-GB_SEL (GrB, int64_t   , INT64 ) ;
-GB_SEL (GrB, uint8_t   , UINT8 ) ;
-GB_SEL (GrB, uint16_t  , UINT16) ;
-GB_SEL (GrB, uint32_t  , UINT32) ;
-GB_SEL (GrB, uint64_t  , UINT64) ;
-GB_SEL (GrB, float     , FP32  ) ;
-GB_SEL (GrB, double    , FP64  ) ;
-GB_SEL (GxB, GxB_FC32_t, FC32  ) ;
-GB_SEL (GxB, GxB_FC64_t, FC64  ) ;
+GB_SEL (GrB, bool      , BOOL  )
+GB_SEL (GrB, int8_t    , INT8  )
+GB_SEL (GrB, int16_t   , INT16 )
+GB_SEL (GrB, int32_t   , INT32 )
+GB_SEL (GrB, int64_t   , INT64 )
+GB_SEL (GrB, uint8_t   , UINT8 )
+GB_SEL (GrB, uint16_t  , UINT16)
+GB_SEL (GrB, uint32_t  , UINT32)
+GB_SEL (GrB, uint64_t  , UINT64)
+GB_SEL (GrB, float     , FP32  )
+GB_SEL (GrB, double    , FP64  )
+GB_SEL (GxB, GxB_FC32_t, FC32  )
+GB_SEL (GxB, GxB_FC64_t, FC64  )
 
 //------------------------------------------------------------------------------
 // GrB_Vector_select_UDT: select entries from vector (thunk: user-defined type)

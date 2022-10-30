@@ -136,7 +136,7 @@ GrB_Info GB_subassign_04
                 // get S(iA_start:iA_end,j)
                 //--------------------------------------------------------------
 
-                GB_GET_VECTOR_FOR_IXJ (S, iA_start) ;
+                GB_LOOKUP_VECTOR_FOR_IXJ (S, iA_start) ;
                 int64_t pA_start = j * Avlen ;
 
                 //--------------------------------------------------------------
@@ -298,7 +298,7 @@ GrB_Info GB_subassign_04
                 // get S(iA_start:iA_end,j)
                 //--------------------------------------------------------------
 
-                GB_GET_VECTOR_FOR_IXJ (S, iA_start) ;
+                GB_LOOKUP_VECTOR_FOR_IXJ (S, iA_start) ;
                 int64_t pA_start = j * Avlen ;
 
                 //--------------------------------------------------------------

@@ -15,12 +15,15 @@
 
 // This template constructs GrB_Vector_extractElement_[TYPE], for each of the
 // 13 built-in types, and the _UDT method for all user-defined types.
+// It also constructs GxB_Vector_isStoredElement.
 
 // FUTURE: tolerate zombies
 
 GrB_Info GB_EXTRACT_ELEMENT     // extract a single entry, x = V(i)
 (
+    #ifdef GB_XTYPE
     GB_XTYPE *x,                // scalar to extract, not modified if not found
+    #endif
     const GrB_Vector V,         // vector to extract a scalar from
     GrB_Index i                 // index
 )
@@ -31,7 +34,9 @@ GrB_Info GB_EXTRACT_ELEMENT     // extract a single entry, x = V(i)
     //--------------------------------------------------------------------------
 
     GB_RETURN_IF_NULL_OR_FAULTY (V) ;
+    #ifdef GB_XTYPE
     GB_RETURN_IF_NULL (x) ;
+    #endif
 
     // delete any lingering zombies, assemble any pending tuples, and unjumble
     if (GB_ANY_PENDING_WORK (V))
@@ -51,19 +56,6 @@ GrB_Info GB_EXTRACT_ELEMENT     // extract a single entry, x = V(i)
         return (GrB_INVALID_INDEX) ;
     }
 
-    // GB_XCODE and V must be compatible
-    GB_Type_code vcode = V->type->code ;
-    if (!GB_code_compatible (GB_XCODE, vcode))
-    { 
-        return (GrB_DOMAIN_MISMATCH) ;
-    }
-
-    if (GB_nnz ((GrB_Matrix) V) == 0)
-    { 
-        // quick return
-        return (GrB_NO_VALUE) ;
-    }
-
     //--------------------------------------------------------------------------
     // find the entry V(i)
     //--------------------------------------------------------------------------
@@ -75,13 +67,10 @@ GrB_Info GB_EXTRACT_ELEMENT     // extract a single entry, x = V(i)
     if (Vp != NULL)
     { 
         // V is sparse
-        const int64_t *restrict Vi = V->i ;
-
         pleft = 0 ;
         int64_t pright = Vp [1] - 1 ;
-
-        // binary search for index i
         // Time taken for this step is at most O(log(nnz(V))).
+        const int64_t *restrict Vi = V->i ;
         GB_BINARY_SEARCH (i, Vi, pleft, pright, found) ;
     }
     else
@@ -107,29 +96,37 @@ GrB_Info GB_EXTRACT_ELEMENT     // extract a single entry, x = V(i)
 
     if (found)
     {
+        // entry found
+        #ifdef GB_XTYPE
+        GB_Type_code vcode = V->type->code ;
         #if !defined ( GB_UDT_EXTRACT )
         if (GB_XCODE == vcode)
         { 
-            // copy the value from V [...] into the scalar x, no typecasting,
-            // for built-in types only.
+            // copy Vx [pleft] into x, no typecasting, for built-in types only.
             GB_XTYPE *restrict Vx = ((GB_XTYPE *) (V->x)) ;
             (*x) = Vx [V->iso ? 0:pleft] ;
         }
         else
         #endif
         { 
-            // typecast the value from V [...] into the scalar x
+            // typecast the value from Vx [pleft] into x
+            if (!GB_code_compatible (GB_XCODE, vcode))
+            { 
+                // x (GB_XCODE) and V (vcode) must be compatible
+                return (GrB_DOMAIN_MISMATCH) ;
+            }
             size_t vsize = V->type->size ;
             void *vx = ((GB_void *) V->x) + (V->iso ? 0 : (pleft*vsize)) ;
             GB_cast_scalar (x, GB_XCODE, vx, vcode, vsize) ;
         }
         // TODO: do not flush if extracting to GrB_Scalar
         #pragma omp flush
+        #endif
         return (GrB_SUCCESS) ;
     }
     else
     { 
-        // Entry not found.
+        // entry not found
         return (GrB_NO_VALUE) ;
     }
 }
