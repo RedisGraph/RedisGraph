@@ -88,7 +88,19 @@ static void _QueryGraphAddEdge
 			qg->unknown_reltype_ids = true;
 			continue;
 		}
-		array_append(edge->reltypeIDs, s->id);
+		// search if s-id exists in edge->reltypeIDs to don't insert duplicates ids
+		bool found = false;
+		int len = array_len(edge->reltypeIDs);
+		for (int i = 0; i < len; i++) {
+			if(edge->reltypeIDs[i] == s->id) {
+				found = true;
+				break;
+			}
+		}
+		if(!found) {
+			array_append(edge->reltypeIDs, s->id);
+		}
+
 	}
 
 	// incase of a variable length edge, set edge min/max hops
