@@ -229,7 +229,7 @@ commands:
           name: Upload artifacts to S3
           command: |
             if [[ -n $CIRCLE_BRANCH ]]; then
-                make upload-artifacts OSNICK=<<parameters.platform>>
+                make upload-artifacts OSNICK=<<parameters.platform>> SHOW=1 VERBOSE=1
             fi
       - run:
           name: Publish container
@@ -416,10 +416,9 @@ jobs:
           name: Upload artifacts to S3
           command: |
             if [[ -n $CIRCLE_BRANCH && "<<parameters.upload>>" == "yes" ]]; then
-                make upload-artifacts
+                make upload-artifacts SHOW=1 VERBOSE=1
             fi
       - persist-artifacts
-
 
   upload-artifacts:
     parameters:
@@ -476,7 +475,7 @@ jobs:
 
   benchmark:
     docker:
-      - image: redisfab/rmbuilder:6.2.7-x64-bionic
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - checkout-all
@@ -493,7 +492,7 @@ jobs:
 
   benchmark-profiler:
     docker:
-      - image: redisfab/rmbuilder:6.2.7-x64-bionic
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - checkout-all
@@ -597,13 +596,13 @@ workflows:
           context: common
           matrix:
             parameters:
-              platform: [focal, bionic, xenial, centos7, rocky8, bullseye]
+              platform: [jammy, focal, bionic, xenial, centos7, rocky8, bullseye]
       - build-arm-platforms:
           <<: *on-integ-and-version-tags
           context: common
           matrix:
             parameters:
-              platform: [bionic]
+              platform: [jammy, focal, bionic]
       - build-macos:
           context: common
           <<: *on-integ-and-version-tags
