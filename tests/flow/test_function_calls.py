@@ -791,15 +791,15 @@ class testFunctionCallsFlow(FlowTestsBase):
 
         query = """RETURN sqrt(-1)"""
         actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], None)
+        self.env.assertTrue(isnan(actual_result.result_set[0][0]))
 
         query = """RETURN sqrt(-9)"""
         actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], None)
+        self.env.assertTrue(isnan(actual_result.result_set[0][0]))
 
         query = """RETURN sqrt(-0.0000000001)"""
         actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], None)
+        self.env.assertTrue(isnan(actual_result.result_set[0][0]))
 
         query = """RETURN sqrt(null)"""
         actual_result = graph.query(query)
@@ -1146,10 +1146,16 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
     def test36_log(self):
+
+        # log(0)
+        query = """RETURN log(0)"""
+        actual_result = graph.query(query)
+        self.env.assertTrue(isinf(-actual_result.result_set[0][0]))
+
         # log(-1)
         query = """RETURN log(-1)"""
         actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], None)
+        self.env.assertTrue(isnan(actual_result.result_set[0][0]))
 
         # log(1)
         query = """RETURN log(1)"""
@@ -1161,10 +1167,15 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         self.env.assertAlmostEqual(actual_result.result_set[0][0], 2.30258509299405, 0.0001)
 
+        # log10(0)
+        query = """RETURN log10(0)"""
+        actual_result = graph.query(query)
+        self.env.assertTrue(isinf(-actual_result.result_set[0][0]))
+
         # log10(-11.3)
         query = """RETURN log10(-11.3)"""
         actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], None)
+        self.env.assertTrue(isnan(actual_result.result_set[0][0]))
 
         # log10(100)
         query = """RETURN log10(100)"""
