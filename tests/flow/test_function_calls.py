@@ -1,6 +1,7 @@
 from cmath import isinf, isnan
 from common import *
 import json
+import math
 
 graph = None
 redis_con = None
@@ -45,21 +46,19 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """MATCH (a)-[:know]->(b) CREATE (a)-[:know]->(b)"""
         graph.query(query)
 
-    def expect_type_error(self, query):
-        try:
-            graph.query(query)
-            assert(False)
-        except redis.exceptions.ResponseError as e:
-            # Expecting a type error.
-            self.env.assertIn("Type mismatch", str(e))
-
     def expect_error(self, query, expected_err_msg):
         try:
             graph.query(query)
             assert(False)
         except redis.exceptions.ResponseError as e:
-            # Expecting a type error.
             self.env.assertIn(expected_err_msg, str(e))
+
+    def expect_type_error(self, query):
+        self.expect_error(query, "Type mismatch")
+    
+    def get_res_and_assertEquals(self, query, expected_result):
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
 
     # Validate capturing of errors prior to query execution.
     def test01_compile_time_errors(self):
@@ -228,8 +227,164 @@ class testFunctionCallsFlow(FlowTestsBase):
         expected_result = [[0]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-        # Validate modulo by 0
+        # Validate integer dividend modulo by 0
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 3 % 0"
+        # (error) Division by zero
         query = "RETURN 3 % 0"
+        try:
+            actual_result = graph.query(query)
+        except redis.ResponseError as e:
+            self.env.assertContains("Division by zero", str(e))
+
+        # Validate floating-point dividend modulo by 0
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 1.0 % 0"
+        # 1) 1) "1.0 % 0"
+        # 2) 1) 1) "-nan"
+        query = "RETURN 1.0 % 0"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
+
+        # Validate integer dividend modulo by 0.0
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 1 % 0.0"
+        # 1) 1) "1 % 0.0"
+        # 2) 1) 1) "-nan"
+        query = "RETURN 1 % 0.0"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
+
+        # Validate floating-point dividend modulo by 0.0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 1.0 % 0.0"
+        # 1) 1) "1.0 % 0.0"
+        # 2) 1) 1) "-nan"       
+        query = "RETURN 1.0 % 0.0"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
+
+        # Validate floating-point 0.0 modulo by floating-point different from 0
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 0.0 % 5.1"
+        # 1) 1) "0.0 % 5.1"
+        # 2) 1) 1) "0"
+        query = "RETURN 0.0 % 5.1"
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate floating-point 0.0 modulo by integer different from 0
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 0.0 % 7"
+        # 1) 1) "0.0 % 7"
+        # 2) 1) 1) "0"
+        query = "RETURN 0.0 % 7"
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate integer 0 modulo by floating-point different from 0
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 0 % 7.5"
+        # 1) 1) "0 % 7.5"
+        # 2) 1) 1) "0"
+        query = "RETURN 0 % 7.5"
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate integer 0 modulo by integer different from 0
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 0 % 7"
+        # 1) 1) "0 % 7"
+        # 2) 1) 1) (integer) 0
+        query = "RETURN 0 % 7"
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate floating-point 0.0 modulo by infinite
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 0.0 % ( 1 / 0.0 )"
+        # 1) 1) "0.0 % ( 1 / 0.0 )"
+        # 2) 1) 1) "0"
+        query = "RETURN 0.0 % ( 1 / 0.0 )"
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate integer 0 modulo by infinite
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 0 % ( 1 / 0.0 )"
+        # 1) 1) "0 % ( 1 / 0.0 )"
+        # 2) 1) 1) "0"
+        query = "RETURN 0 % ( 1 / 0.0 )"
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate integer modulo by infinite
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 3 % ( 1 / 0.0 )"
+        # 1) 1) "3 % ( 1 / 0.0 )"
+        # 2) 1) 1) "3"
+        query = "RETURN 3 % ( 1 / 0.0 )"
+        actual_result = graph.query(query)
+        expected_result = [[3]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate floating-point modulo by infinite
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 2.5 % ( 1 / 0.0 )"
+        # 1) 1) "2.5 % ( 1 / 0.0 )"
+        # 2) 1) 1) "2.5"
+        query = "RETURN 2.5 % ( 1 / 0.0 )"
+        actual_result = graph.query(query)
+        expected_result = [[2.5]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate infinite modulo by integer 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN ( 1 / 0.0 ) % 7"
+        # 1) 1) "( 1 / 0.0 ) % 7"
+        # 2) 1) 1) "-nan"
+        query = "RETURN ( 1 / 0.0 ) % 7"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
+
+        # Validate floating-point 0.0 modulo by floating-point 0.0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN  0.0 % 0.0"
+        # 1) 1) "0.0 % 0.0"
+        # 2) 1) 1) "-nan"
+        query = "RETURN 0.0 % 0.0"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
+
+        # Validate integer 0 modulo by floating 0.0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN  0 % 0.0"
+        # 1) 1) "0 % 0.0"
+        # 2) 1) 1) "-nan"
+        query = "RETURN 0 % 0.0"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
+
+        # Validate floating-point 0.0 modulo by integer 0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN  0.0 % 0"
+        # 1) 1) "0 % 0.0"
+        # 2) 1) 1) "-nan"
+        query = "RETURN  0.0 % 0"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
+
+        # Validate integer 0 modulo by 0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN  0 % 0"
+        # (error) Division by zero
+        query = "RETURN 0 % 0"
         try:
             actual_result = graph.query(query)
         except redis.ResponseError as e:
@@ -990,7 +1145,6 @@ class testFunctionCallsFlow(FlowTestsBase):
         expected_result = [[2, [1]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-
     def test36_log(self):
         # log(-1)
         query = """RETURN log(-1)"""
@@ -1499,3 +1653,558 @@ class testFunctionCallsFlow(FlowTestsBase):
         ]
         for query in queries:
             self.expect_type_error(query)
+
+    def test52_Expression(self):
+        query_to_expected_result = {
+            "RETURN 'muchacho'": [['muchacho']],
+            "RETURN 1": [[1]],
+            "RETURN 1+2*3": [[7]],
+            "RETURN 1 + 1 + 1 + 1 + 1 + 1": [[6]],
+            "RETURN ABS(-5 + 2 * 1)": [[3]],
+            "RETURN 'a' + 'b'": [['ab']],
+            "RETURN 1 + 2 + 'a' + 2 + 1": [['3a21']],
+            "RETURN 2 * 2 + 'a' + 3 * 3": [['4a9']],
+            "RETURN 9 % 5": [[4]],
+            "RETURN 9 % 5 % 3": [[1]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+        
+    def test53_NullArithmetic(self):
+        query_to_expected_result = {
+            "RETURN null + 1": [[None]],
+            "RETURN 1 + null": [[None]],
+            "RETURN null - 1": [[None]],
+            "RETURN 1 - null": [[None]],
+            "RETURN 1 * null": [[None]],
+            "RETURN null / 1": [[None]],
+            "RETURN 1 / null": [[None]],
+            "RETURN 5 % null": [[None]],
+            "RETURN null % 5": [[None]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+    
+    def test54_Abs(self):
+        query_to_expected_result = {
+            "RETURN ABS(1)": [[1]],
+            "RETURN ABS(-1)": [[1]],
+            "RETURN ABS(0)": [[0]],
+            "RETURN ABS(NULL)": [[None]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+    
+    def test55_Aggregate(self):
+        query_to_expected_result = {
+            "UNWIND [1, 1, 1] AS one RETURN SUM(one)": [[3]],
+            "UNWIND [1, 1, 1] AS one WITH SUM(one) AS s RETURN s+2": [[5]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+    
+    def test56_Ciel(self):
+        query_to_expected_result = {
+            "RETURN CEIL(0.5)": [[1]],
+            "RETURN CEIL(1)": [[1]],
+            "RETURN CEIL(0.1)": [[1]],
+            "RETURN CEIL(NULL)": [[None]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+    
+    def test57_Floor(self):
+        query_to_expected_result = {
+            "RETURN FLOOR(0.5)": [[0]], 
+            "RETURN FLOOR(1)": [[1]], 
+            "RETURN FLOOR(0.1)": [[0]], 
+            "RETURN FLOOR(NULL)": [[None]] 
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+    
+    def test58_Round(self):
+        query_to_expected_result = {
+            "RETURN ROUND(0)": [[0]], 
+            "RETURN ROUND(0.49)": [[0]], 
+            "RETURN ROUND(0.5)": [[1]], 
+            "RETURN ROUND(1)": [[1]], 
+            "RETURN ROUND(NULL)": [[None]],
+            "RETURN ROUND(26.141592, -3)": [[None]],
+            "RETURN ROUND(25.141592, 3.2)": [[None]],
+            "RETURN ROUND(24.142592, 0)": [[None]],
+            "RETURN ROUND(23.142592, 4)": [[23.1426]],
+            "RETURN ROUND(22.142592, 10)": [[22.1425920000]],
+            "RETURN ROUND(21.142592, 3, '')": [[None]],
+            "RETURN ROUND(20.142592, 3, 'nonsupported')": [[None]],
+            "RETURN ROUND(19.142592, 3, 'CEILING')": [[19.15]],
+            "RETURN ROUND(-18.142592, 3, 'CEILING')": [[-18.14]],
+            "RETURN ROUND(17.142592, 3, 'FLOOR')": [[17.14]],
+            "RETURN ROUND(-16.142592, 3, 'FLOOR')": [[-16.15]],
+            "RETURN ROUND(15.142692, 3, 'DOWN')": [[15.14]],
+            "RETURN ROUND(-14.142692, 3, 'DOWN')": [[-14.14]],
+            "RETURN ROUND(14.142692, 3, 'UP')": [[14.15]],
+            "RETURN ROUND(-11.142692, 3, 'UP')": [[-11.15]],
+            "RETURN ROUND(13.142692, 3, 'HALF_DOWN')": [[13.14]],
+            "RETURN ROUND(-3.142692, 3, 'HALF_DOWN')": [[-3.15]],
+            "RETURN ROUND(2.142692, 3, 'HALF_UP')": [[2.15]],
+            "RETURN ROUND(-3.142692, 3, 'HALF_UP')": [[-3.14]],
+            "RETURN ROUND(4.142692, 3, 'HALF_EVEN')": [[4.14]],
+            "RETURN ROUND(5.148692, 3, 'HALF_EVEN')": [[5.15]],
+            "RETURN ROUND(6.145692, 3, 'HALF_EVEN')": [[6.14]],
+            "RETURN ROUND(7.155692, 3, 'HALF_EVEN')": [[7.16]],
+            "RETURN ROUND(-8.145692, 3, 'HALF_EVEN')": [[-8.14]],
+            "RETURN ROUND(-9.155692, 3, 'HALF_EVEN')": [[-9.16]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+
+    def test59_Sign(self):
+        query_to_expected_result = {
+            "RETURN SIGN(0)": [[0]], 
+            "RETURN SIGN(-1)": [[-1]], 
+            "RETURN SIGN(1)": [[1]], 
+            "RETURN SIGN(NULL)": [[None]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+
+    def test60_Pow(self):
+        query_to_expected_result = {
+            "RETURN pow(1,0)": [[1]], 
+            "RETURN 1^0": [[1]], 
+            "RETURN pow(0,1)": [[0]], 
+            "RETURN 0^1": [[0]], 
+            "RETURN pow(0,0)": [[1]], 
+            "RETURN 0^0": [[1]], 
+            "RETURN pow(2,3)": [[8]], 
+            "RETURN 2^3": [[8]], 
+            "RETURN pow(2,-3)": [[0.125]], 
+            "RETURN 2^-3": [[0.125]], 
+            "RETURN 2^(-3)": [[0.125]], 
+            "RETURN pow(0.5,2)": [[0.25]], 
+            "RETURN 0.5^2": [[0.25]], 
+            "RETURN pow(-1,2)": [[1]], 
+            "RETURN -1^2": [[1]], 
+            "RETURN (-1)^2": [[1]], 
+            "RETURN pow(NULL,1)": [[None]], 
+            "RETURN NULL^1": [[None]], 
+            "RETURN pow(1,NULL)": [[None]], 
+            "RETURN 1^NULL": [[None]], 
+            "RETURN pow(NULL,NULL)": [[None]], 
+            "RETURN NULL^NULL": [[None]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+    
+    def test61_Reverse(self):
+        query_to_expected_result = {
+            "RETURN REVERSE('muchacho')": [["ohcahcum"]], 
+            "RETURN REVERSE('')": [[""]], 
+            "RETURN REVERSE(NULL)": [[None]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+    
+    def test62_LTrim(self):
+        query_to_expected_result = {
+            "RETURN lTrim('   muchacho')": [["muchacho"]], 
+            "RETURN lTrim('muchacho   ')": [["muchacho   "]], 
+            "RETURN lTrim('   much   acho   ')": [["much   acho   "]], 
+            "RETURN lTrim('muchacho')": [["muchacho"]], 
+            "RETURN lTrim(NULL)": [[None]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+    
+    def test63_RTrim(self):
+        query_to_expected_result = {
+            "RETURN rTrim('   muchacho')": [["   muchacho"]], 
+            "RETURN rTrim('muchacho   ')": [["muchacho"]], 
+            "RETURN rTrim('   much   acho   ')": [["   much   acho"]], 
+            "RETURN rTrim('muchacho')": [["muchacho"]], 
+            "RETURN rTrim(NULL)": [[None]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+    
+    def test64_Trim(self):
+        query_to_expected_result = {
+            "RETURN trim('   muchacho')": [["muchacho"]],
+            "RETURN trim('muchacho   ')": [["muchacho"]],
+            "RETURN trim('   much   acho   ')": [["much   acho"]],
+            "RETURN trim('muchacho')": [["muchacho"]],
+            "RETURN trim(NULL)": [[None]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+    
+    def test65_ToLower(self):
+        query_to_expected_result = {
+            "RETURN toLower('MuChAcHo')": [['muchacho']],
+            "RETURN toLower('mUcHaChO')": [['muchacho']],
+            "RETURN toLower(NULL)": [[None]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+    
+    def test66_ToUpper(self):
+        query_to_expected_result = {
+            "RETURN toUpper('MuChAcHo')": [['MUCHACHO']],
+            "RETURN toUpper('mUcHaChO')": [['MUCHACHO']],
+            "RETURN toUpper(NULL)": [[None]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+    
+    def test67_Exists(self):
+        query_to_expected_result = {
+            "RETURN EXISTS(null)": [[0]],
+            "RETURN EXISTS(1)": [[1]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+    
+    def test68_Case(self):
+        query_to_expected_result = {
+            "RETURN CASE 'brown' WHEN 'blue' THEN 1+0 WHEN 'brown' THEN 2-0 ELSE 3*1 END": [[2]],
+            "RETURN CASE 'green' WHEN 'blue' THEN 1+0 WHEN 'brown' THEN 2-0 ELSE 3*1 END": [[3]],
+            "RETURN CASE WHEN NULL THEN 1+0 WHEN true THEN 2-0 END": [[2]],
+            "RETURN CASE WHEN NULL THEN 1+0 WHEN NULL THEN 2-0 ELSE 3*1 END": [[3]],
+            "RETURN CASE WHEN NULL THEN 1+0 WHEN NULL THEN 2-0 END": [[None]],
+            "RETURN CASE NULL WHEN NULL THEN NULL ELSE 'else' END AS result": [[None]],
+            "RETURN CASE NULL WHEN 'value' THEN 'value' WHEN NULL THEN NULL ELSE 'else' END AS result": [[None]],
+            "RETURN CASE NULL WHEN 'when' THEN 'then' ELSE NULL END AS result": [[None]],
+            "RETURN CASE 'value' WHEN NULL THEN NULL ELSE true END AS result": [[True]],
+            "RETURN CASE 'value' WHEN NULL THEN NULL WHEN 'value' THEN true ELSE false END AS result": [[True]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+    
+    def test69_AND(self):
+        scenarios = [
+            ['TRUE', 'FALSE', False],
+            ['FALSE', 'TRUE', False],
+            ['TRUE', 'TRUE', True],
+            ['FALSE', 'FALSE', False],
+            ['NULL', 'FALSE', None],
+            ['FALSE', 'NULL', None],
+            ['TRUE', 'NULL', None],
+            ['NULL', 'TRUE', None],
+            ['NULL', 'NULL', None]
+        ]
+        for i in range(0, len(scenarios), 3):
+            lhs = scenarios[i][0]
+            rhs = scenarios[i][1]
+            expected = scenarios[i][2]
+            actual_result = graph.query(f"RETURN {lhs} AND {rhs}").result_set[0][0]
+            self.env.assertEquals(actual_result, expected)
+    
+    def test70_OR(self):
+        scenarios = [
+            ['TRUE', 'FALSE', True],
+            ['FALSE', 'TRUE', True],
+            ['TRUE', 'TRUE', True],
+            ['FALSE', 'FALSE', False],
+            ['NULL', 'FALSE', None],
+            ['FALSE', 'NULL', None],
+            ['TRUE', 'NULL', True],
+            ['NULL', 'TRUE', True],
+            ['NULL', 'NULL', None]
+        ]
+        for i in range(len(scenarios)):
+            lhs = scenarios[i][0]
+            rhs = scenarios[i][1]
+            expected = scenarios[i][2]
+            actual_result = graph.query(f"RETURN {lhs} OR {rhs}").result_set[0][0]
+            self.env.assertEquals(actual_result, expected)
+    
+    def test71_XOR(self):
+        scenarios = [
+            ['TRUE', 'FALSE', True],
+            ['FALSE', 'TRUE', True],
+            ['TRUE', 'TRUE', False],
+            ['FALSE', 'FALSE', False],
+            ['NULL', 'FALSE', None],
+            ['FALSE', 'NULL', None],
+            ['TRUE', 'NULL', None],
+            ['NULL', 'TRUE', None],
+            ['NULL', 'NULL', None]
+        ]
+        for i in range(len(scenarios)):
+            lhs = scenarios[i][0]
+            rhs = scenarios[i][1]
+            expected = scenarios[i][2]
+            actual_result = graph.query(f"RETURN {lhs} XOR {rhs}").result_set[0][0]
+            self.env.assertEquals(actual_result, expected)
+
+    def test72_NOT(self):
+        scenarios = [
+            ['TRUE', False],
+            ['FALSE', True],
+            ['NULL', None]
+        ]
+        for i in range(len(scenarios)):
+            b = scenarios[i][0]
+            expected = scenarios[i][1]
+            actual_result = graph.query(f"RETURN NOT {b}").result_set[0][0]
+            self.env.assertEquals(actual_result, expected)
+    
+    def test73_LT(self):
+        scenarios = [
+            ['1','1', False],
+            ['1', '2', True],
+            ['2', '1', False],
+            ['2', 'NULL', None],
+            ['2', '2', False],
+            ['1', 'NULL', None],
+            ['NULL', '2', None],
+            ['NULL', '1', None],
+            ['NULL', 'NULL', None]
+        ]
+        for i in range(len(scenarios)):
+            lhs = scenarios[i][0]
+            rhs = scenarios[i][1]
+            expected = scenarios[i][2]
+            actual_result = graph.query(f"RETURN {lhs} < {rhs}").result_set[0][0]
+            self.env.assertEquals(actual_result, expected)
+    
+    def test74_LE(self):
+        scenarios = [
+            ['1','1', True],
+            ['1', '2', True],
+            ['2', '1', False],
+            ['2', 'NULL', None],
+            ['2', '2', True],
+            ['1', 'NULL', None],
+            ['NULL', '2', None],
+            ['NULL', '1', None],
+            ['NULL', 'NULL', None]
+        ]
+        for i in range(len(scenarios)):
+            lhs = scenarios[i][0]
+            rhs = scenarios[i][1]
+            expected = scenarios[i][2]
+            actual_result = graph.query(f"RETURN {lhs} <= {rhs}").result_set[0][0]
+            self.env.assertEquals(actual_result, expected)
+
+    def test75_EQ(self):
+        scenarios = [
+            ['1','1', True],
+            ['1', '2', False],
+            ['2', '1', False],
+            ['2', 'NULL', None],
+            ['2', '2', True],
+            ['1', 'NULL', None],
+            ['NULL', '2', None],
+            ['NULL', '1', None],
+            ['NULL', 'NULL', None]
+        ]
+        for i in range(len(scenarios)):
+            lhs = scenarios[i][0]
+            rhs = scenarios[i][1]
+            expected = scenarios[i][2]
+            actual_result = graph.query(f"RETURN {lhs} = {rhs}").result_set[0][0]
+            self.env.assertEquals(actual_result, expected)
+    
+    def test76_NE(self):
+        scenarios = [
+            ['1','1', False],
+            ['1', '2', True],
+            ['2', '1', True],
+            ['2', 'NULL', None],
+            ['2', '2', False],
+            ['1', 'NULL', None],
+            ['NULL', '2', None],
+            ['NULL', '1', None],
+            ['NULL', 'NULL', None]
+        ]
+        for i in range(len(scenarios)):
+            lhs = scenarios[i][0]
+            rhs = scenarios[i][1]
+            expected = scenarios[i][2]
+            actual_result = graph.query(f"RETURN {lhs} <> {rhs}").result_set[0][0]
+            self.env.assertEquals(actual_result, expected)
+    
+    def test77_List(self):
+        arr = [1, 2.3, '4', True, False, None]
+        query = "RETURN [1,2.3,'4',TRUE,FALSE, NULL]"
+        actual_result = graph.query(query).result_set[0][0]
+        if not type(actual_result) is list:
+            assert(False)                   # Fail if the record returned is not a list.
+        for i in range(len(arr)):
+            self.env.assertEquals(actual_result[i], arr[i])
+
+    def test78_ListSlice(self):
+        arr = [0,1,2,3,4,5,6,7,8,9,10]
+        query_to_expected_result = {
+            "RETURN [0,1,2,3,4,5,6,7,8,9,10][3]": [[arr[3]]],
+            "RETURN [0,1,2,3,4,5,6,7,8,9,10][-3]": [[arr[-3]]],
+            "RETURN [0,1,2,3,4,5,6,7,8,9,10][0..3]": [[arr[0:3]]],
+            "RETURN [0,1,2,3,4,5,6,7,8,9,10][0..-5]": [[arr[0:-5]]],
+            "RETURN [0,1,2,3,4,5,6,7,8,9,10][-5..]": [[arr[-5:]]],
+            "RETURN [0,1,2,3,4,5,6,7,8,9,10][..4]": [[arr[:4]]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+    
+    def test79_Range(self):
+        query_to_expected_result = {
+            "RETURN range(0,10)": [[[i for i in range(11)]]],
+            "RETURN range(2,18,3)": [[[i for i in range(2, 18, 3)]]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+    
+    def test80_IN(self):
+        query_to_expected_result = {
+            "RETURN 3 IN [1,2,3]": [[True]],
+            "RETURN 4 IN [1,2,3]": [[False]],
+            "RETURN [1,2] IN [1,2,3]": [[False]],
+            "RETURN [1,2] IN [[1,2],3]": [[True]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+
+    def test81_ISNULL(self):
+        arr = ["NULL", "1", "1.2", "TRUE", "FALSE", "'string'", "[1,2,3]"]
+        for ind, s in enumerate(arr):
+            query1 = f'RETURN {s} IS NOT NULL'
+            expected1 = [[True]] if ind!=0 else [[False]]
+            self.get_res_and_assertEquals(query1, expected1)
+            query2 = f'RETURN {s} IS NULL'
+            expected2 = [[False]] if ind!=0 else [[True]]
+            self.get_res_and_assertEquals(query2, expected2)
+    
+    def test82_Coalesce(self):
+        query_to_expected_result = {
+            "RETURN coalesce(1)": [[1]],
+            "RETURN coalesce(NULL, 1)": [[1]],
+            "RETURN coalesce(NULL, NULL, 500, NULL)": [[500]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+    
+    def test83_Replace(self):
+        query_to_expected_result = {
+            "RETURN replace('abcabc', 'a', '00')": [["00bc00bc"]],
+            "RETURN replace('abcabc', 'bc', '0')": [["a0a0"]],
+            "RETURN replace('abcabc', 'abc', '')": [[""]],
+            "RETURN replace('abcabc', 'ab', '')": [["cc"]],
+            "RETURN replace('abcabc', '', '0')": [["0a0b0c0a0b0c0"]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+
+    def test84_RandomUUID(self):
+        query = "RETURN randomUUID()"
+        actual_result = graph.query(query).result_set[0][0]
+        self.env.assertEquals(actual_result[8], '-')
+        self.env.assertEquals(actual_result[13], '-')
+        self.env.assertEquals(actual_result[14], '4')
+        self.env.assertEquals(actual_result[18], '-')
+        if not actual_result[19] in ['8', '9', 'a', 'b']:
+            assert(False)
+        self.env.assertEquals(actual_result[23], '-')
+
+    def test85_division_inputs(self):
+        # Validate integer dividend division by 0
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 3 / 0"
+        # (error) Division by zero
+        query = "RETURN 3 / 0"
+        try:
+            actual_result = graph.query(query)
+        except redis.ResponseError as e:
+            self.env.assertContains("Division by zero", str(e))
+        
+        # Validate floating-point dividend division by 0
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 1.0 / 0"
+        # 1) 1) "1.0 / 0"
+        # 2) 1) 1) "inf"
+        query = "RETURN 1.0 / 0"
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0],float('inf'))
+
+        # Validate negative floating-point dividend division by 0
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN -1.0 / 0"
+        # 1) 1) "-1.0 / 0"
+        # 2) 1) 1) "-inf"
+        query = "RETURN -1.0 / 0"
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0],float('-inf'))
+
+        # Validate integer dividend division by 0.0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 1 / 0.0"
+        # 1) 1) "1 / 0.0"
+        # 2) 1) 1) "inf"
+        query = "RETURN 1 / 0.0"
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0],float('inf'))
+
+        # Validate negative integer dividend division by 0.0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN -1 / 0.0"
+        # 1) 1) "-1 / 0.0"
+        # 2) 1) 1) "-inf"
+        query = "RETURN -1 / 0.0"
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0],float('-inf'))
+
+        # Validate floating-point dividend division by 0.0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 1.0 / 0.0"
+        # 1) 1) "1.0 / 0.0"
+        # 2) 1) 1) "inf"
+        query = "RETURN 1.0 / 0.0"
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0],float('inf'))
+
+        # Validate negative floating-point dividend division by 0.0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN -1.0 / 0.0"
+        # 1) 1) "-1.0 / 0.0"
+        # 2) 1) 1) "-inf"
+        query = "RETURN -1.0 / 0.0"
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0],float('-inf'))
+
+        # Validate floating-point 0.0 divided by floating-point 0.0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 0.0 / 0.0"
+        # 1) 1) "0.0 / 0.0"
+        # 2) 1) 1) "-nan"
+        query = "RETURN 0.0 / 0.0"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
+
+        # Validate integer 0 divided by floating 0.0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 0 / 0.0"
+        # 1) 1) "0 / 0.0"
+        # 2) 1) 1) "-nan"
+        query = "RETURN 0 / 0.0"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
+
+        # Validate floating-point 0.0 divided by integer 0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 0.0 / 0"
+        # 1) 1) "0.0 / 0"
+        # 2) 1) 1) "-nan"
+        query = "RETURN 0.0 / 0"
+        actual_result = graph.query(query)
+        self.env.assertTrue(math.isnan(actual_result.result_set[0][0]))
+
+        # Validate integer 0 divided by 0 
+        # redis-cli output example:
+        # 127.0.0.1:6379> GRAPH.QUERY g "RETURN 0 / 0"
+        # (error) Division by zero
+        query = "RETURN 0 / 0"
+        try:
+            actual_result = graph.query(query)
+        except redis.ResponseError as e:
+            self.env.assertContains("Division by zero", str(e))

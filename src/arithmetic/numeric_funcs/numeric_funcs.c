@@ -13,7 +13,6 @@
 
 #include <math.h>
 #include <errno.h>
-#include <float.h>
 
 #ifndef M_PI
 #define M_PI (3.14159265358979323846)
@@ -40,18 +39,23 @@ SIValue AR_MUL(SIValue *argv, int argc, void *private_data) {
 /* returns the division of given values. */
 SIValue AR_DIV(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
+
+	// check for division by zero e.g. n / 0
+	if((SI_TYPE(argv[0]) & SI_TYPE(argv[1]) & T_INT64) && SI_GET_NUMERIC(argv[1]) == 0) {
+		Error_DivisionByZero();
+		return SI_NullVal();
+	}
 	return SIValue_Divide(argv[0], argv[1]);
 }
 
 SIValue AR_MODULO(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
 
-	// check for division by zero e.g. n % 0
-	if(SI_GET_NUMERIC(argv[1]) == 0) {
+	// check for modulo by zero e.g. n % 0
+	if((SI_TYPE(argv[0]) & SI_TYPE(argv[1]) & T_INT64) && SI_GET_NUMERIC(argv[1]) == 0) {
 		Error_DivisionByZero();
 		return SI_NullVal();
 	}
-
 	return SIValue_Modulo(argv[0], argv[1]);
 }
 

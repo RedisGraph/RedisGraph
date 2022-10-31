@@ -839,6 +839,7 @@ This section contains information on all supported functions from the Cypher que
 | hasLabels()            | Returns true if input node contains all specified labels, otherwise false   |
 | labels()               | Returns a string representation of the label of a node                      |
 | properties()           | Returns a map containing all the properties in the given map, node, or edge. In case of map, it is returned without any change |
+| randomUUID()           | Returns a random UUID (Universal Unique IDentifier)                         |
 | startNode()            | Returns the source node of a relationship                                   |
 | timestamp()            | Returns the amount of milliseconds since epoch                              |
 | type()                 | Returns a string representation of the type of a relationship type          |

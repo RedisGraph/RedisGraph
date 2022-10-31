@@ -82,6 +82,7 @@ Ducati
 toolchain
 conf
 Cypher
+OpenCypher
 cli
 Quickstart
 queryable
