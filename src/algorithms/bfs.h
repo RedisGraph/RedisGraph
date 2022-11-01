@@ -6,10 +6,12 @@
 
 #pragma once
 
-#include "../graph/entities/qg_node.h"
 #include <limits.h>
 
 #define BFS_LOWEST_LEVEL INT_MAX    // Return leaf nodes at deepest level.
+
+// Forward declaration
+struct QGNode;
 
 /* Perform BFS scan from node S,
  * Returns a set of nodes reached at given level.

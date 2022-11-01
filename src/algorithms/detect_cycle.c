@@ -8,6 +8,7 @@
 #include "rax.h"
 #include "../util/arr.h"
 #include "../graph/entities/qg_node.h"
+#include "../graph/query_graph.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 bool IsAcyclicGraph(const QueryGraph *qg) {

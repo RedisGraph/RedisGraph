@@ -8,6 +8,7 @@
 #include "../util/arr.h"
 #include "rax.h"
 #include "../graph/entities/qg_edge.h"
+#include "../graph/entities/qg_node.h"
 
 bool _DFS(QGNode *n, int level, bool close_cycle, int current_level, rax *visited, rax *used_edges,
 		  QGEdge ***path) {

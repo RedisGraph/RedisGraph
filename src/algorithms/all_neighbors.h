@@ -6,10 +6,11 @@
 
 #pragma once
 
-#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
+#include "../graph/entities/graph_entity.h"
 #include "../graph/rg_matrix/rg_matrix.h"
-#include "../graph/rg_matrix/rg_matrix_iter.h"
-#include "../graph/entities/node.h"
+
+// Forward declaration
+struct RG_MatrixTupleIter;
 
 // performs iterative DFS from 'src'
 // each iteration (call to AllNeighborsCtx_NextNeighbor)
