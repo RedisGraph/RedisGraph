@@ -1437,13 +1437,13 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         self.env.assertAlmostEqual(actual_result.result_set[0][0], 1.97142791949627, 0.0001)
 
-        # asin(1.12)
-        query = """RETURN asin(1.12)"""
+        # acos(1.12)
+        query = """RETURN acos(1.12)"""
         actual_result = graph.query(query)
         self.env.assertTrue(isnan(actual_result.result_set[0][0]))
 
-        # asin(-1.21)
-        query = """RETURN asin(-1.21)"""
+        # acos(-1.21)
+        query = """RETURN acos(-1.21)"""
         actual_result = graph.query(query)
         self.env.assertTrue(isnan(actual_result.result_set[0][0]))
 
