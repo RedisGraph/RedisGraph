@@ -209,6 +209,7 @@ SIValue AR_TRIM(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	SIValue ltrim = AR_LTRIM(argv, argc, NULL);
 	SIValue trimmed = AR_RTRIM(&ltrim, 1, NULL);
+	SIValue_Free(ltrim);
 	return trimmed;
 }
 

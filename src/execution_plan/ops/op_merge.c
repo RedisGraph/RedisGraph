@@ -44,7 +44,7 @@ static void _UpdateProperties
 		while(raxNext(&updates)) {
 			EntityUpdateEvalCtx *ctx = updates.data;
 			EvalEntityUpdates(gc, node_pending_updates, edge_pending_updates,
-					r, ctx, false);
+					r, ctx, true);
 		}
 	}
 }
