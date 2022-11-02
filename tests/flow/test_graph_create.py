@@ -151,3 +151,50 @@ class testGraphCreationFlow(FlowTestsBase):
                 self.env.assertTrue(False)
             except redis.exceptions.ResponseError as e:
                 self.env.assertContains("The bound variable 'r' can't be redeclared in a CREATE clause", str(e))
+
+    # test creating queries with matching relationship type :R|R
+    # the results can't report duplicates
+    def test10_match_duplicated_reltype(self):
+        query = """CREATE (a:A)-[r1:R1]->(b:B), (a:A)-[r2:R2]->(b:B)"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.nodes_created, 2)
+        self.env.assertEquals(result.relationships_created, 2)
+        self.env.assertEquals(result.labels_added, 2)
+
+        # search for same relationship multiple times, should report one relationship
+        queries = ["MATCH (a:A)-[r:R1]->(b:B) RETURN count(r)",
+                   "MATCH (a:A)-[r:R1|R1]->(b:B) RETURN count(r)",
+                   "MATCH (a:A)-[r:R1|R1|R1|R1]->(b:B) RETURN count(r)",
+                   "MATCH (a:A)-[r:R2]->(b:B) RETURN count(r)",
+                   "MATCH (a:A)-[r:R2|R2]->(b:B) RETURN count(r)",
+                   "MATCH (a:A)-[r:R2|R2|R3]->(b:B) RETURN count(r)",
+                   "MATCH (a:A)-[r:R2|R2|R3|R4|R4]->(b:B) RETURN count(r)",
+                   ]
+        for query in queries:
+            result = redis_graph.query(query)
+            expected_result = [[1]]
+            self.env.assertEquals(result.result_set, expected_result)
+
+        # search for two relationship multiple times, should report two relationships
+        queries = ["MATCH (a:A)-[r:R1|R2]->(b:B) RETURN count(r)",
+                   "MATCH (a:A)-[r:R1|R2|R1|R2]->(b:B) RETURN count(r)",
+                   "MATCH (a:A)-[r:R1|R1|R2|R2]->(b:B) RETURN count(r)",
+                   "MATCH (a:A)-[r:R1|R2|R2|R2]->(b:B) RETURN count(r)",
+                   "MATCH (a:A)-[r:R2|R1|R1|R1]->(b:B) RETURN count(r)",
+                   "MATCH (a:A)-[r:R2|R2|R1|R1]->(b:B) RETURN count(r)",
+                   ]
+        for query in queries:
+            result = redis_graph.query(query)
+            expected_result = [[2]]
+            self.env.assertEquals(result.result_set, expected_result)
+
+        # These queries should not report results
+        queries = ["MATCH (a:A)<-[r:R1|R2]-(b:B) RETURN count(r)",
+                   "MATCH (a:A)-[r:R3]->(b:B) RETURN count(r)",
+                   "MATCH (a:A)-[r:R3|R3]->(b:B) RETURN count(r)",
+                   "MATCH (a:A)-[r:R3|R3|R4|R4]->(b:B) RETURN count(r)",
+                   ]
+        for query in queries:
+            result = redis_graph.query(query)
+            expected_result = [[0]]
+            self.env.assertEquals(result.result_set, expected_result)
