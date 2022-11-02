@@ -21,7 +21,7 @@ void test_RGMatrixTupleIter_attach() {
 	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
 
 	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
+	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
 
 	RG_Matrix          A                   =  NULL;
 	GrB_Type           t                   =  GrB_UINT64;
@@ -57,7 +57,7 @@ void test_RGMatrixTupleIter_next() {
 	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
 
 	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
+	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
 
 	RG_Matrix          A                   =  NULL;
 	GrB_Type           t                   =  GrB_UINT64;
@@ -133,7 +133,7 @@ void test_RGMatrixTupleIter_next_sparse() {
 	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
 
 	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
+	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
 
 	RG_Matrix          A                   =  NULL;
 	GrB_Type           t                   =  GrB_UINT64;
@@ -209,7 +209,7 @@ void test_RGMatrixTupleIter_reuse() {
 	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
 
 	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
+	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
 	
 	RG_Matrix          A                   =  NULL;
 	RG_Matrix          B                   =  NULL;
@@ -282,7 +282,7 @@ void test_RGMatrixTupleIter_iterate_row() {
 	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
 
 	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
+	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
 
 	RG_Matrix          A                   =  NULL;
 	GrB_Type           t                   =  GrB_UINT64;
@@ -362,84 +362,6 @@ void test_RGMatrixTupleIter_iterate_row() {
 	GrB_finalize();
 }
 
-// test RGMatrixTupleiIter_jump_to_row
-void test_RGMatrixTupleIter_jump_to_row() {
-	Alloc_Reset();	
-
-	// initialize GraphBLAS
-	GrB_init(GrB_NONBLOCKING);
-
-	// all matrices in CSR format
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
-
-	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
-
-	RG_Matrix          A                   =  NULL;
-	GrB_Type           t                   =  GrB_UINT64;
-	GrB_Info           info                =  GrB_SUCCESS;
-	GrB_Index          i                   =  1;
-	GrB_Index          j                   =  2;
-	GrB_Index          row                 =  0;
-	GrB_Index          col                 =  0;
-	GrB_Index          nrows               =  100;
-	GrB_Index          ncols               =  100;
-	uint64_t           val                 =  0;
-	bool               sync                =  false;
-	RG_MatrixTupleIter iter;
-	memset(&iter, 0, sizeof(RG_MatrixTupleIter));
-
-	info = RG_Matrix_new(&A, t, nrows, ncols);
-	TEST_ASSERT(info == GrB_SUCCESS);
-
-	// set element at position i,j
-	info = RG_Matrix_setElement_UINT64(A, 0, i, j);
-	TEST_ASSERT(info == GrB_SUCCESS);
-
-	//--------------------------------------------------------------------------
-	// flush matrix, sync
-	//--------------------------------------------------------------------------
-	
-	// wait, force sync
-	sync = true;
-	RG_Matrix_wait(A, sync);
-
-	//--------------------------------------------------------------------------
-	// set pending changes
-	//--------------------------------------------------------------------------
-
-	// remove element at position i,j
-	info = RG_Matrix_removeElement_UINT64(A, i, j);
-	TEST_ASSERT(info == GrB_SUCCESS);
-
-	// set element at position i+1,j+1
-	info = RG_Matrix_setElement_UINT64(A, 1, i+1, j+1);
-	TEST_ASSERT(info == GrB_SUCCESS);
-
-	info = RG_MatrixTupleIter_attach(&iter, A);
-	TEST_ASSERT(RG_MatrixTupleIter_is_attached(&iter, A));
-
-	info = RG_MatrixTupleIter_jump_to_row(&iter, i+1);
-	TEST_ASSERT(info == GrB_SUCCESS);
-
-	info = RG_MatrixTupleIter_next_UINT64(&iter, &row, &col, &val);
-
-	TEST_ASSERT(info == GrB_SUCCESS);
-	TEST_ASSERT(row == i+1);
-	TEST_ASSERT(col == j+1);
-	TEST_ASSERT(val == 1);
-
-	info = RG_MatrixTupleIter_next_UINT64(&iter, &row, &col, &val);
-	TEST_ASSERT(info == GxB_EXHAUSTED);
-
-	RG_Matrix_free(&A);
-	TEST_ASSERT(A == NULL);
-	RG_MatrixTupleIter_detach(&iter);
-	TEST_ASSERT(iter.A == NULL);
-
-	GrB_finalize();
-}
-
 // test RGMatrixTupleiIter_iterate_range
 void test_RGMatrixTupleIter_iterate_range() {
 	Alloc_Reset();	
@@ -451,7 +373,7 @@ void test_RGMatrixTupleIter_iterate_range() {
 	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
 
 	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
+	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
 
 	RG_Matrix          A                   =  NULL;
 	GrB_Type           t                   =  GrB_UINT64;
@@ -524,7 +446,6 @@ TEST_LIST = {
 	{"RGMatrixTupleIter_next_sparse", test_RGMatrixTupleIter_next_sparse},
 	{"RGMatrixTupleIter_reuse", test_RGMatrixTupleIter_reuse},
 	{"RGMatrixTupleIter_iterate_row", test_RGMatrixTupleIter_iterate_row},
-	{"RGMatrixTupleIter_jump_to_row", test_RGMatrixTupleIter_jump_to_row},
 	{"RGMatrixTupleIter_iterate_range", test_RGMatrixTupleIter_iterate_range},
 	{NULL, NULL}
 };

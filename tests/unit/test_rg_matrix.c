@@ -119,7 +119,7 @@ void test_RGMatrix_new() {
 	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
 
 	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
+	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
 
 	RG_Matrix   A                   =  NULL;
 	GrB_Matrix  M                   =  NULL;
@@ -223,7 +223,7 @@ void test_RGMatrix_simple_set() {
 	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
 
 	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
+	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
 
 	GrB_Type    t                   =  GrB_UINT64;
 	RG_Matrix   A                   =  NULL;
@@ -321,7 +321,7 @@ void test_RGMatrix_del() {
 	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
 
 	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
+	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
 
 	GrB_Type    t                   =  GrB_UINT64;
 	RG_Matrix   A                   =  NULL;
@@ -535,7 +535,7 @@ void test_RGMatrix_del_entry() {
 	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
 
 	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
+	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
 
 	GrB_Type    t                   =  GrB_UINT64;
 	RG_Matrix   A                   =  NULL;
@@ -744,7 +744,7 @@ void test_RGMatrix_set() {
 	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
 
 	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
+	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
 
 	GrB_Type    t                   =  GrB_BOOL;
 	RG_Matrix   A                   =  NULL;
@@ -826,7 +826,7 @@ void test_RGMatrix_flus() {
 	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
 
 	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
+	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
 
 	GrB_Type    t                   =  GrB_BOOL;
 	RG_Matrix   A                   =  NULL;
@@ -913,7 +913,7 @@ void test_GRMatrix_managed_transposed() {
 	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
 
 	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
+	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
 
 	GrB_Type    t                   =  GrB_UINT64;
 	RG_Matrix   A                   =  NULL;
@@ -1119,7 +1119,7 @@ void test_RGMatrix_fuzzy() {
 	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
 
 	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
+	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
 
 	GrB_Type    t                   =  GrB_BOOL;
 	RG_Matrix   A                   =  NULL;
@@ -1251,7 +1251,7 @@ void test_RGMatrix_export_no_changes() {
 	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
 
 	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
+	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
 
 	GrB_Type    t                   =  GrB_BOOL;
 	RG_Matrix   A                   =  NULL; 
@@ -1333,7 +1333,7 @@ void test_RGMatrix_export_pending_changes() {
 	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
 
 	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
+	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
 
 	GrB_Type    t                   =  GrB_BOOL;
 	RG_Matrix   A                   =  NULL;
@@ -1416,7 +1416,7 @@ void test_RGMatrix_copy() {
 	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
 
 	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
+	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
 
 	GrB_Type    t                   =  GrB_BOOL;
 	RG_Matrix   A                   =  NULL;
@@ -1506,7 +1506,7 @@ void test_RGMatrix_mxm() {
 	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
 
 	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
+	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
 
 	GrB_Type    t                   =  GrB_BOOL;
 	RG_Matrix   A                   =  NULL;
@@ -1606,7 +1606,7 @@ void test_RGMatrix_resize() {
 	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
 
 	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
+	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
 
 	RG_Matrix  A        =  NULL;
 	RG_Matrix  T        =  NULL;
