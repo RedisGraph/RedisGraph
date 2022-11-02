@@ -52,131 +52,6 @@ AR_ExpNode *_exp_from_query(const char *query) {
 	return _BuildProjectionExpressions(ret_clause, ast)[0];
 }
 
-// Count a mix of valid and invalid entities
-TEST_F(AggregateTest, PartialCountTest) {
-	const char *query;
-	AR_ExpNode *arExp;
-	AR_ExpNode *arExpOne;
-	AR_ExpNode *arExpNULL;
-
-	query = "RETURN 1";
-	arExpOne = _exp_from_query(query);
-
-	query = "RETURN NULL";
-	arExpNULL = _exp_from_query(query);
-
-	/* count(1) */
-	query = "RETURN count(1)";
-	arExp = _exp_from_query(query);
-
-	int num_values = 10;
-	for(int i = 0; i < num_values; i++) {
-		// Every odd entity will be a valid numeric,
-		// and every even entity will be a null value
-		if(i % 2)
-			arExp->op.children[0] = arExpOne;
-		else
-			arExp->op.children[0] = arExpNULL;
-		AR_EXP_Aggregate(arExp, NULL);
-	}
-	SIValue res = AR_EXP_FinalizeAggregations(arExp, NULL);
-
-	// The counted result should be half the number of inserted entities,
-	// as the null values are ignored.
-	ASSERT_EQ(res.longval, num_values / 2);
-	AR_EXP_Free(arExp);
-}
-
-TEST_F(AggregateTest, PercentileContTest) {
-	// Percentiles to check
-	AR_ExpNode *zero = AR_EXP_NewConstOperandNode(SI_DoubleVal(0));
-	AR_ExpNode *dot_one = AR_EXP_NewConstOperandNode(SI_DoubleVal(0.1));
-	AR_ExpNode *one_third = AR_EXP_NewConstOperandNode(SI_DoubleVal(0.33));
-	AR_ExpNode *half = AR_EXP_NewConstOperandNode(SI_DoubleVal(0.5));
-	AR_ExpNode *one = AR_EXP_NewConstOperandNode(SI_DoubleVal(1));
-
-	AR_ExpNode *test_percentiles[5] = {zero, dot_one, one_third, half, one};
-	/*
-	 * The correct value for each percentile will be:
-	 * x = percentile * (count - 1)
-	 * if x is an integer return value[x]
-	 * else:
-	 * (value[floor(x)] * fraction(x)) + (value[ceil(x)] * (1 - fraction(x)))
-	 */
-	double expected_values[5];
-	double arr[5] = {2, 4, 6, 8, 10};
-	int count = 5;
-
-	double percentile_doubles[5] = {0, 0.1, 0.33, 0.5, 1};
-	double x;
-	int lower_idx, upper_idx;
-	double lower, upper;
-
-	for(int i = 0; i < 5; i++) {
-		x = percentile_doubles[i] * (count - 1);
-		lower_idx = floor(x);
-		upper_idx = ceil(x);
-
-		if(lower_idx == upper_idx || lower_idx == (count - 1)) {
-			expected_values[i] = arr[lower_idx];
-			continue;
-		}
-
-		lower = arr[lower_idx];
-		upper = arr[upper_idx];
-
-		expected_values[i] = (lower * ((double)upper_idx - x)) + (upper * (x - (double)lower_idx));
-	}
-
-	AR_ExpNode *perc;
-	SIValue result;
-	for(int i = 0; i < 5; i++) {
-		perc = _exp_from_query("RETURN percentileCont(1, 1)");
-		for(int j = 1; j <= 5; j++) {
-			perc->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(j * 2));
-			// The last child of this node will be the requested percentile
-			perc->op.children[1] = test_percentiles[i];
-			AR_EXP_Aggregate(perc, NULL);
-		}
-		result = AR_EXP_FinalizeAggregations(perc, NULL);
-		ASSERT_EQ(result.doubleval, expected_values[i]);
-		AR_EXP_Free(perc);
-	}
-}
-
-TEST_F(AggregateTest, PercentileDiscTest) {
-	// Percentiles to check
-	AR_ExpNode *zero = AR_EXP_NewConstOperandNode(SI_DoubleVal(0));
-	AR_ExpNode *dot_one = AR_EXP_NewConstOperandNode(SI_DoubleVal(0.1));
-	AR_ExpNode *one_third = AR_EXP_NewConstOperandNode(SI_DoubleVal(0.33));
-	AR_ExpNode *half = AR_EXP_NewConstOperandNode(SI_DoubleVal(0.5));
-	AR_ExpNode *one = AR_EXP_NewConstOperandNode(SI_DoubleVal(1));
-
-	AR_ExpNode *test_percentiles[5] = {zero, dot_one, one_third, half, one};
-	// percentileDisc should always return a value actually contained in the set
-	int expected[5] = {0, 0, 1, 2, 4};
-	AR_ExpNode *expectedResults[5];
-	for(int i = 1; i <= 5; i ++) {
-		expectedResults[i - 1] = AR_EXP_NewConstOperandNode(SI_DoubleVal(i * 2));
-	}
-	SIValue expected_outcome;
-	AR_ExpNode *perc;
-	for(int i = 0; i < 5; i++) {
-		perc = _exp_from_query("RETURN percentileDisc(1, 1)");
-		for(int j = 1; j <= 5; j++) {
-			perc->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(j * 2));
-			// The last child of this node will be the requested percentile
-			perc->op.children[1] = test_percentiles[i];
-			AR_EXP_Aggregate(perc, NULL);
-		}
-		// Reduce sorts the list and applies the percentile formula
-		SIValue res = AR_EXP_FinalizeAggregations(perc, NULL);
-		expected_outcome = AR_EXP_Evaluate(expectedResults[expected[i]], NULL);
-		ASSERT_EQ(res.doubleval, expected_outcome.doubleval);
-		AR_EXP_Free(perc);
-	}
-}
-
 // Tests both stDev and stDevP
 TEST_F(AggregateTest, StDevTest) {
 	// Edge case - operation called on < 2 values
@@ -253,28 +128,28 @@ TEST_F(AggregateTest, AverageDoubleOverflowTest) {
 	AR_EXP_Free(max);
 }
 
-TEST_F(AggregateTest, AverageLongOverflowTest) {
-	// values to average
-	AR_ExpNode *max = AR_EXP_NewConstOperandNode(SI_LongVal(LONG_MAX));
-	AR_ExpNode *half_max = AR_EXP_NewConstOperandNode(SI_LongVal(LONG_MAX / 2));
+// TEST_F(AggregateTest, AverageLongOverflowTest) {
+// 	// values to average
+// 	AR_ExpNode *max = AR_EXP_NewConstOperandNode(SI_LongVal(LONG_MAX));
+// 	AR_ExpNode *half_max = AR_EXP_NewConstOperandNode(SI_LongVal(LONG_MAX / 2));
 
-	// build new average function
-	AR_ExpNode *avg = _exp_from_query("RETURN avg(1)");
+// 	// build new average function
+// 	AR_ExpNode *avg = _exp_from_query("RETURN avg(1)");
 
-	// first value to average is DBL_MAX
-	avg->op.children[0] = max;
-	AR_EXP_Aggregate(avg, NULL);
+// 	// first value to average is DBL_MAX
+// 	avg->op.children[0] = max;
+// 	AR_EXP_Aggregate(avg, NULL);
 
-	// second value is DBL_MAX / 2, causing overflow
-	avg->op.children[0] = half_max;
-	AR_EXP_Aggregate(avg, NULL);
+// 	// second value is DBL_MAX / 2, causing overflow
+// 	avg->op.children[0] = half_max;
+// 	AR_EXP_Aggregate(avg, NULL);
 
-	// test average of DBL_MAX and DBL_MAX / 2
-	SIValue res = AR_EXP_FinalizeAggregations(avg, NULL);
-	SIValue expected_outcome = SI_DoubleVal((LONG_MAX / 2) + ((LONG_MAX / 2) / 2));
-	ASSERT_EQ(res.doubleval, expected_outcome.doubleval);
+// 	// test average of DBL_MAX and DBL_MAX / 2
+// 	SIValue res = AR_EXP_FinalizeAggregations(avg, NULL);
+// 	SIValue expected_outcome = SI_DoubleVal((LONG_MAX / 2) + ((LONG_MAX / 2) / 2));
+// 	ASSERT_EQ(res.doubleval, expected_outcome.doubleval);
 
-	AR_EXP_Free(avg);
-	AR_EXP_Free(max);
-}
+// 	AR_EXP_Free(avg);
+// 	AR_EXP_Free(max);
+// }
 
