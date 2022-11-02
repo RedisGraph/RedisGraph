@@ -115,7 +115,6 @@ Feature: Match4 - Match variable length patterns scenarios
       | ({var: 'end'}) |
     And no side effects
 
-  @skip
   Scenario: [5] Matching variable length pattern with property predicate
     Given an empty graph
     And having executed:
