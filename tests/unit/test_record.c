@@ -4,6 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+void setup();
 #define TEST_INIT setup();
 
 #include <stdio.h>

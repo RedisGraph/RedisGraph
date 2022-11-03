@@ -4,6 +4,9 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+void setup();
+void tearDown();
+
 #define TEST_INIT setup();
 #define TEST_FINI tearDown();
 

@@ -4,6 +4,8 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+void setup();
+void tearDown();
 #define TEST_INIT setup();
 #define TEST_FINI tearDown();
 
@@ -153,8 +155,9 @@ void test_RGMatrix_new() {
 	// uint64 matrix always multi edge
 	TEST_ASSERT(RG_MATRIX_MULTI_EDGE(A));
 
-	// matrix shouldn't be dirty
-	TEST_ASSERT(!RG_Matrix_isDirty(A));
+	// a new empty matrix should be synced
+	// no data in either DP or DM
+	TEST_ASSERT(RG_Matrix_Synced(A));
 
 	// test M, DP and DM hyper switch
 	int format;
@@ -162,7 +165,7 @@ void test_RGMatrix_new() {
 
 	// M should be either hyper-sparse or sparse
 	GxB_Matrix_Option_get(M, GxB_SPARSITY_CONTROL, &format);
-	TEST_ASSERT(format == GxB_SPARSE | format == GxB_HYPERSPARSE);
+	TEST_ASSERT(format == (GxB_SPARSE | GxB_HYPERSPARSE));
 
 	// DP should always be hyper
 	GxB_Matrix_Option_get(DP, GxB_HYPER_SWITCH, &hyper_switch);
@@ -202,8 +205,9 @@ void test_RGMatrix_new() {
 	// bool matrix always not multi edge
 	TEST_ASSERT(!RG_MATRIX_MULTI_EDGE(A));
 
-	// matrix shouldn't be dirty
-	TEST_ASSERT(!RG_Matrix_isDirty(A));
+	// a new empty matrix should be synced
+	// no data in either DP or DM
+	TEST_ASSERT(RG_Matrix_Synced(A));
 
 	// matrix should be empty
 	M_EMPTY();
@@ -331,8 +335,8 @@ void test_RGMatrix_del() {
 	info = RG_Matrix_removeElement_UINT64(A, i, j);
 	TEST_ASSERT(info == GrB_NO_VALUE);
 
-	// matrix should not be dirty
-	TEST_ASSERT(!RG_Matrix_isDirty(A));
+	// matrix should not contain any entries in either DP or DM
+	TEST_ASSERT(RG_Matrix_Synced(A));
 
 	//--------------------------------------------------------------------------
 	// remove none flushed addition
@@ -531,8 +535,8 @@ void test_RGMatrix_del_entry() {
 	info = RG_Matrix_removeEntry(A, i, j, x);
 	TEST_ASSERT(info == GrB_NO_VALUE);
 
-	// matrix should not be dirty
-	TEST_ASSERT(!RG_Matrix_isDirty(A));
+	// matrix should not contain any entries in either DP or DM
+	TEST_ASSERT(RG_Matrix_Synced(A));
 
 	//--------------------------------------------------------------------------
 	// remove none flushed addition
