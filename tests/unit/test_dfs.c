@@ -4,6 +4,8 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#define TEST_INIT setup();
+
 #include "acutest.h"
 #include "../../src/util/arr.h"
 #include "../../src/util/rmalloc.h"
@@ -50,9 +52,11 @@ static QueryGraph *BuildGraph() {
 	return g;
 }
 
-void test_DFSLevels() {
+void setup() {
 	Alloc_Reset();
+}
 
+void test_DFSLevels() {
 	QGNode *S;      // DFS starts here.
 	QGEdge **path;  // Path reached by DFS.
 	QueryGraph *g;  // Graph traversed.

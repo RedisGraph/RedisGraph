@@ -4,15 +4,19 @@
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
+#define TEST_INIT setup();
+
 #include <stdio.h>
 #include "acutest.h"
 #include "../../src/util/arr.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/util/object_pool/object_pool.h"
 
-void test_objectPoolNew() {
+void setup() {
 	Alloc_Reset();
+}
 
+void test_objectPoolNew() {
 	// Create a new ObjectPool capable of holding at least 1024 integer items.
 	uint item_size = sizeof(uint);
 	ObjectPool *object_pool = ObjectPool_New(1024, item_size, NULL);
@@ -39,8 +43,6 @@ void test_objectPoolNew() {
 }
 
 void test_objectPoolAddItem() {
-	Alloc_Reset();
-
 	ObjectPool *object_pool = ObjectPool_New(256, sizeof(uint), NULL);
 	uint item_count = 128;
 	uint final_item_count = item_count *= 16;
@@ -67,12 +69,11 @@ void test_objectPoolAddItem() {
 	for(uint i = 0; i < item_count; i++) {
 		TEST_ASSERT(*item_pointers[i] == i);
 	}
+
 	ObjectPool_Free(object_pool);
 }
 
 void test_objectPoolRemoveItem() {
-	Alloc_Reset();
-
 	ObjectPool *object_pool = ObjectPool_New(1024, sizeof(uint), NULL);
 	uint item_count = 32;
 
@@ -104,7 +105,7 @@ void test_objectPoolRemoveItem() {
 	// Verify that the new entry is zeroed.
 	TEST_ASSERT(*new_item == 0);
 
-	// Cleanup.
+	// cleanup
 	ObjectPool_Free(object_pool);
 }
 

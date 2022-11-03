@@ -4,6 +4,8 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#define TEST_INIT setup();
+
 #include <stdio.h>
 #include <string.h>
 #include "acutest.h"
@@ -22,23 +24,31 @@ void _fake_graph_context() {
 	GraphContext *gc = (GraphContext *)calloc(1, sizeof(GraphContext));
 	gc->attributes = raxNew();
 	pthread_rwlock_init(&gc->_attribute_rwlock, NULL);
-
-	// No indicies.
-	gc->index_count = 0;
-
-	TEST_ASSERT(QueryCtx_Init());
 	QueryCtx_SetGraphCtx(gc);
-	AR_RegisterFuncs();
 }
 
-AST *_build_ast(const char *query) {
+void setup() {
+	Alloc_Reset();
+	QueryCtx_Init();
+	ErrorCtx_Init();
+	AR_RegisterFuncs();
+	_fake_graph_context();
+}
+
+AST *_build_ast
+(
+	const char *query
+) {
 	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL,
 			CYPHER_PARSE_ONLY_STATEMENTS);
 	AST *ast = AST_Build(parse_result);
 	return ast;
 }
 
-FT_FilterNode *build_tree_from_query(const char *q) {
+FT_FilterNode *build_tree_from_query
+(
+	const char *q
+) {
 	AST *ast = _build_ast(q);
 	FT_FilterNode *tree = AST_BuildFilterTree(ast);
 	return tree;
@@ -54,7 +64,10 @@ FT_FilterNode *_build_simple_varying_tree() {
 	return build_tree_from_query(q);
 }
 
-FT_FilterNode *_build_cond_tree(int cond) {
+FT_FilterNode *_build_cond_tree
+(
+	int cond
+) {
 	const char *q;
 	if(cond == OP_AND) q = "MATCH (me) WHERE me.age > 34 AND me.height <= 188 RETURN me";
 	else if(cond == OP_XOR) q = "MATCH (me) WHERE me.age > 34 XOR me.height <= 188 RETURN me";
@@ -62,77 +75,119 @@ FT_FilterNode *_build_cond_tree(int cond) {
 	return build_tree_from_query(q);
 }
 
-FT_FilterNode *_build_explicit_true_tree(FT_FilterNode **expected) {
+FT_FilterNode *_build_explicit_true_tree
+(
+	FT_FilterNode **expected
+) {
 	SIValue true_val = SI_BoolVal(true);
-	*expected = FilterTree_CreateExpressionFilter(AR_EXP_NewConstOperandNode(true_val));
+	*expected = FilterTree_CreateExpressionFilter(
+			AR_EXP_NewConstOperandNode(true_val));
 	const char *q = "MATCH (n) WHERE TRUE n";
 	return build_tree_from_query(q);
 }
 
-FT_FilterNode *_build_explicit_false_tree(FT_FilterNode **expected) {
+FT_FilterNode *_build_explicit_false_tree
+(
+	FT_FilterNode **expected
+) {
 	SIValue false_val = SI_BoolVal(false);
-	*expected = FilterTree_CreateExpressionFilter(AR_EXP_NewConstOperandNode(false_val));
+	*expected = FilterTree_CreateExpressionFilter(
+			AR_EXP_NewConstOperandNode(false_val));
 	const char *q = "MATCH (n) WHERE FALSE n";
 	return build_tree_from_query(q);
 }
 
-FT_FilterNode *_build_true_tree(FT_FilterNode **expected) {
+FT_FilterNode *_build_true_tree
+(
+	FT_FilterNode **expected
+) {
 	SIValue true_val = SI_BoolVal(true);
-	*expected = FilterTree_CreateExpressionFilter(AR_EXP_NewConstOperandNode(true_val));
+	*expected = FilterTree_CreateExpressionFilter(
+			AR_EXP_NewConstOperandNode(true_val));
 	const char *q = "MATCH (n) WHERE 1 = 1 RETURN n";
 	return build_tree_from_query(q);
 }
 
-FT_FilterNode *_build_compactable_or_true_tree(FT_FilterNode **expected) {
+FT_FilterNode *_build_compactable_or_true_tree
+(
+	FT_FilterNode **expected
+) {
 	SIValue true_val = SI_BoolVal(true);
-	*expected = FilterTree_CreateExpressionFilter(AR_EXP_NewConstOperandNode(true_val));
+	*expected = FilterTree_CreateExpressionFilter(
+			AR_EXP_NewConstOperandNode(true_val));
 	const char *q = "MATCH (n) WHERE n.val = n.val2 OR 1 = 1 RETURN n";
 	return build_tree_from_query(q);
 }
 
-FT_FilterNode *_build_deep_compactable_or_true_tree(FT_FilterNode **expected) {
+FT_FilterNode *_build_deep_compactable_or_true_tree
+(
+	FT_FilterNode **expected
+) {
 	SIValue true_val = SI_BoolVal(true);
-	*expected = FilterTree_CreateExpressionFilter(AR_EXP_NewConstOperandNode(true_val));
+	*expected = FilterTree_CreateExpressionFilter(
+			AR_EXP_NewConstOperandNode(true_val));
 	const char *q = "MATCH (n) WHERE n.val = n.val2 OR ( 1 = 1 AND 1 = 1) RETURN n";
 	return build_tree_from_query(q);
 }
 
-FT_FilterNode *_build_deep_non_compactable_or_true_tree(FT_FilterNode **expected) {
+FT_FilterNode *_build_deep_non_compactable_or_true_tree
+(
+	FT_FilterNode **expected
+) {
 	const char *expected_q = "MATCH (n) WHERE n.val = n.val2 OR n.val3 = n.val4 RETURN n";
 	*expected = build_tree_from_query(expected_q);
 	const char *q = "MATCH (n) WHERE n.val = n.val2 OR ( n.val3 = n.val4 AND 1 = 1) RETURN n";
 	return build_tree_from_query(q);
 }
 
-FT_FilterNode *_build_false_tree(FT_FilterNode **expected) {
+FT_FilterNode *_build_false_tree
+(
+	FT_FilterNode **expected
+) {
 	SIValue false_val = SI_BoolVal(false);
-	*expected = FilterTree_CreateExpressionFilter(AR_EXP_NewConstOperandNode(false_val));
+	*expected = FilterTree_CreateExpressionFilter(
+			AR_EXP_NewConstOperandNode(false_val));
 	const char *q = "MATCH (n) WHERE 1 > 1 RETURN n";
 	return build_tree_from_query(q);
 }
 
-FT_FilterNode *_build_compactable_or_false_tree(FT_FilterNode **expected) {
+FT_FilterNode *_build_compactable_or_false_tree
+(
+	FT_FilterNode **expected
+) {
 	SIValue false_val = SI_BoolVal(false);
-	*expected = FilterTree_CreateExpressionFilter(AR_EXP_NewConstOperandNode(false_val));
+	*expected = FilterTree_CreateExpressionFilter(
+			AR_EXP_NewConstOperandNode(false_val));
 	const char *q = "MATCH (n) WHERE 1 = 2 OR 1 > 1 RETURN n";
 	return build_tree_from_query(q);
 }
 
-FT_FilterNode *_build_non_compactable_or_false_tree(FT_FilterNode **expected) {
+FT_FilterNode *_build_non_compactable_or_false_tree
+(
+	FT_FilterNode **expected
+) {
 	const char *expected_q = "MATCH (n) WHERE n.val = n.val2 RETURN n";
 	*expected = build_tree_from_query(expected_q);
 	const char *q = "MATCH (n) WHERE n.val = n.val2 OR 1 > 1 RETURN n";
 	return build_tree_from_query(q);
 }
 
-FT_FilterNode *_build_deep_compactable_or_false_tree(FT_FilterNode **expected) {
+FT_FilterNode *_build_deep_compactable_or_false_tree
+(
+	FT_FilterNode **expected
+) {
 	SIValue false_val = SI_BoolVal(false);
-	*expected = FilterTree_CreateExpressionFilter(AR_EXP_NewConstOperandNode(false_val));
+	*expected = FilterTree_CreateExpressionFilter(
+			AR_EXP_NewConstOperandNode(false_val));
+
 	const char *q = "MATCH (n) WHERE 1 > 1 OR ( n.val3 = n.val4 AND 1 > 1) RETURN n";
 	return build_tree_from_query(q);
 }
 
-FT_FilterNode *_build_deep_non_compactable_or_false_tree(FT_FilterNode **expected) {
+FT_FilterNode *_build_deep_non_compactable_or_false_tree
+(
+	FT_FilterNode **expected
+) {
 	const char *expected_q = "MATCH (n) WHERE n.val = n.val2 RETURN n";
 	*expected = build_tree_from_query(expected_q);
 	const char *q = "MATCH (n) WHERE n.val = n.val2 OR ( n.val3 = n.val4 AND 1 > 1) RETURN n";
@@ -152,15 +207,19 @@ FT_FilterNode *_build_OR_cond_tree() {
 }
 
 FT_FilterNode *_build_deep_tree() {
-	/* Build a tree with an OP_AND at the root
-	* OP_AND as a left child
-	* OP_OR as a right child */
+	// build a tree with an OP_AND at the root
+	// OP_AND as a left child
+	// OP_OR as a right child
 	const char *q =
 		"MATCH (me),(he),(she),(theirs) WHERE (me.age > 34 AND he.height <= 188) AND (she.age > 34 OR theirs.height <= 188) RETURN me, he, she, theirs";
 	return build_tree_from_query(q);
 }
 
-void _compareExpressions(AR_ExpNode *a, AR_ExpNode *b) {
+void _compareExpressions
+(
+	AR_ExpNode *a,
+	AR_ExpNode *b
+) {
 	char *a_variable;
 	char *b_variable;
 	AR_EXP_ToString(a, &a_variable);
@@ -171,7 +230,11 @@ void _compareExpressions(AR_ExpNode *a, AR_ExpNode *b) {
 	free(b_variable);
 }
 
-void _compareFilterTreePredicateNode(const FT_FilterNode *a, const FT_FilterNode *b) {
+void _compareFilterTreePredicateNode
+(
+	const FT_FilterNode *a,
+	const FT_FilterNode *b
+) {
 	TEST_ASSERT(a->t == b->t);
 	TEST_ASSERT(a->t == FT_N_PRED);
 	TEST_ASSERT(a->pred.op == b->pred.op);
@@ -179,7 +242,11 @@ void _compareFilterTreePredicateNode(const FT_FilterNode *a, const FT_FilterNode
 	_compareExpressions(a->pred.rhs, b->pred.rhs);
 }
 
-void compareFilterTrees(const FT_FilterNode *a, const FT_FilterNode *b) {
+void compareFilterTrees
+(
+	const FT_FilterNode *a,
+	const FT_FilterNode *b
+) {
 	TEST_ASSERT(a->t == b->t);
 
 	if(a->t == FT_N_PRED) {
@@ -193,16 +260,12 @@ void compareFilterTrees(const FT_FilterNode *a, const FT_FilterNode *b) {
 }
 
 void test_subTrees() {
-	Alloc_Reset();
-	_fake_graph_context();
-
 	FT_FilterNode *tree = _build_simple_const_tree();
 	FT_FilterNode **sub_trees = FilterTree_SubTrees(tree);
 	TEST_ASSERT(array_len(sub_trees) == 1);
 
 	FT_FilterNode *sub_tree = sub_trees[0];
 	compareFilterTrees(tree, sub_tree);
-
 
 	FilterTree_Free(tree);
 	array_free(sub_trees);
@@ -219,7 +282,7 @@ void test_subTrees() {
 	array_free(sub_trees);
 	FilterTree_Free(tree);
 
-	//------------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
 
 	FT_FilterNode *original_tree = _build_AND_cond_tree();
 	tree = _build_AND_cond_tree(); // TODO memory leak
@@ -235,7 +298,7 @@ void test_subTrees() {
 	array_free(sub_trees);
 	FilterTree_Free(original_tree);
 
-	//------------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
 
 	tree = _build_XOR_cond_tree();
 	sub_trees = FilterTree_SubTrees(tree);
@@ -247,7 +310,7 @@ void test_subTrees() {
 	array_free(sub_trees);
 	FilterTree_Free(tree);
 
-	//------------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
 
 	tree = _build_OR_cond_tree();
 	sub_trees = FilterTree_SubTrees(tree);
@@ -259,7 +322,7 @@ void test_subTrees() {
 	array_free(sub_trees);
 	FilterTree_Free(tree);
 
-	//------------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
 
 	original_tree = _build_deep_tree();
 	tree = _build_deep_tree(); // TODO memory leak
@@ -278,14 +341,12 @@ void test_subTrees() {
 	array_free(sub_trees);
 	FilterTree_Free(original_tree);
 
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	free(gc);
+	//teardown();
+	//GraphContext *gc = QueryCtx_GetGraphCtx();
+	//free(gc);
 }
 
 void test_collectModified() {
-	Alloc_Reset();
-	_fake_graph_context();
-
 	FT_FilterNode *tree = _build_deep_tree();
 	rax *aliases = FilterTree_CollectModified(tree);
 	TEST_ASSERT(raxSize(aliases) == 4);
@@ -293,21 +354,16 @@ void test_collectModified() {
 	char *expectation[4] = {"me", "he", "she", "theirs"};
 	for(int i = 0; i < 4; i++) {
 		char *expected = expectation[i];
-		TEST_ASSERT(raxFind(aliases, (unsigned char *)expected, strlen(expected)) != raxNotFound);
+		TEST_ASSERT(raxFind(aliases, (unsigned char *)expected,
+					strlen(expected)) != raxNotFound);
 	}
 
-	/* Clean up. */
+	// clean up
 	raxFree(aliases);
 	FilterTree_Free(tree);
-
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	free(gc);
 }
 
 void test_NOTReduction() {
-	Alloc_Reset();
-	_fake_graph_context();
-
 	const char *filters[8] = {
 		"MATCH (n) WHERE NOT n.v = 1 RETURN n",
 		"MATCH (n) WHERE NOT NOT n.v = 1 RETURN n",
@@ -342,15 +398,9 @@ void test_NOTReduction() {
 		FilterTree_Free(actual_tree);
 		FilterTree_Free(expected_tree);
 	}
-
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	free(gc);
 }
 
 void test_containsFunc() {
-	Alloc_Reset();
-	_fake_graph_context();
-
 	bool found = false;
 	FT_FilterNode *node = NULL;
 	const char *q = "MATCH (n) WHERE tolower(n.name) = 'alex' RETURN n";
@@ -366,7 +416,7 @@ void test_containsFunc() {
 	TEST_ASSERT(node == NULL);
 
 	FilterTree_Free(tree);
-	//------------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
 
 	q = "MATCH (n) WHERE tolower(toupper(n.name)) = 'alex' RETURN n";
 	tree = build_tree_from_query(q);
@@ -381,14 +431,9 @@ void test_containsFunc() {
 	TEST_ASSERT(node != NULL);
 
 	FilterTree_Free(tree);
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	free(gc);
 }
 
 void test_clone() {
-	Alloc_Reset();
-	_fake_graph_context();
-
 	FT_FilterNode *expected;
 	FT_FilterNode *actual;
 
@@ -427,15 +472,9 @@ void test_clone() {
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(expected);
 	FilterTree_Free(actual);
-
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	free(gc);
 }
 
 void test_compact() {
-	Alloc_Reset();
-	_fake_graph_context();
-
 	FT_FilterNode *actual;
 	FT_FilterNode *expected;
 
@@ -508,9 +547,6 @@ void test_compact() {
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
 	FilterTree_Free(expected);
-
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	free(gc);
 }
 
 TEST_LIST = {
@@ -522,3 +558,4 @@ TEST_LIST = {
 	{"compact", test_compact},
 	{NULL, NULL}
 };
+

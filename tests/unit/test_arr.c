@@ -4,17 +4,21 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#define TEST_INIT setup();
+
 #include "acutest.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/util/arr.h"
+
+void setup() {
+	Alloc_Reset();
+}
 
 int int_identity(int x) {
 	return x;
 }
 
 void test_arrCloneWithCB() {
-	Alloc_Reset();
-
 	int *arr = array_new(int, 10);
 	for(int i = 0; i < 10; i++) {
 		array_append(arr, i);

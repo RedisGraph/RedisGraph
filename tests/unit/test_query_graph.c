@@ -4,6 +4,8 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#define TEST_INIT setup();
+
 #include "acutest.h"
 #include "../../src/ast/ast.h"
 #include "../../src/util/arr.h"
@@ -16,6 +18,11 @@ static void _fake_graph_context() {
 	TEST_ASSERT(QueryCtx_Init());
 	GraphContext *gc = (GraphContext *)calloc(1, sizeof(GraphContext));
 	QueryCtx_SetGraphCtx(gc);
+}
+
+void setup() {
+	Alloc_Reset();
+	_fake_graph_context();
 }
 
 void compare_nodes(const QGNode *a, const QGNode *b) {
@@ -59,12 +66,12 @@ bool contains_edge(const QueryGraph *qg, const QGEdge *e) {
 }
 
 QueryGraph *SingleNodeGraph() {
-	// Create a single node graph
+	// create a single node graph
 	// (A)
 	size_t node_cap = 1;
 	size_t edge_cap = 0;
 
-	// Create nodes.
+	// create nodes
 	QGNode *A = QGNode_New("A");
 	QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
 	QueryGraph_AddNode(g, A);
@@ -73,12 +80,12 @@ QueryGraph *SingleNodeGraph() {
 }
 
 QueryGraph *TriangleGraph() {
-	// Create a triangle graph
+	// create a triangle graph
 	// (A)->(B)->(C)->(A)
 	size_t node_cap = 3;
 	size_t edge_cap = 3;
 
-	// Create nodes.
+	// create nodes
 	const char *relation = "R";
 
 	QGNode *A = QGNode_New("A");
@@ -102,12 +109,12 @@ QueryGraph *TriangleGraph() {
 }
 
 QueryGraph *DisjointGraph() {
-	// Create a disjoint graph
+	// create a disjoint graph
 	// (A)->(B) (C)
 	size_t node_cap = 3;
 	size_t edge_cap = 1;
 
-	// Create nodes.
+	// create nodes
 	const char *relation = "R";
 
 	QGNode *A = QGNode_New("A");
@@ -127,12 +134,12 @@ QueryGraph *DisjointGraph() {
 }
 
 QueryGraph *SingleNodeCycleGraph() {
-	// Create a disjoint graph
+	// create a disjoint graph
 	// (A)->(A)
 	size_t node_cap = 1;
 	size_t edge_cap = 1;
 
-	// Create nodes.
+	// create nodes
 	const char *relation = "R";
 
 	QGNode *A = QGNode_New("A");
@@ -146,15 +153,12 @@ QueryGraph *SingleNodeCycleGraph() {
 }
 
 void test_QueryGraphClone() {
-	Alloc_Reset();
-	_fake_graph_context();
-
-	// Create a triangle graph
+	// create a triangle graph
 	// (A)->(B)->(C)->(A)
 	size_t node_cap = 3;
 	size_t edge_cap = 3;
 
-	// Create nodes.
+	// create nodes
 	const char *relation = "R";
 
 	QGNode *A = QGNode_New("A");
@@ -176,40 +180,37 @@ void test_QueryGraphClone() {
 
 	QueryGraph *clone = QueryGraph_Clone(g);
 
-	// Validations.
+	// validations
 	TEST_ASSERT(QueryGraph_NodeCount(g) == QueryGraph_NodeCount(clone));
 	TEST_ASSERT(QueryGraph_EdgeCount(g) == QueryGraph_EdgeCount(clone));
 
-	// Validate nodes.
+	// validate nodes
 	for(int i = 0; i < QueryGraph_NodeCount(g); i++) {
 		QGNode *a = g->nodes[i];
 		QGNode *b = clone->nodes[i];
 		compare_nodes(a, b);
 	}
 
-	// Validate edges.
+	// validate edges
 	for(int i = 0; i < QueryGraph_EdgeCount(g); i++) {
 		QGEdge *a = g->edges[i];
 		QGEdge *b = clone->edges[i];
 		compare_edges(a, b);
 	}
 
-	// Clean up.
+	// clean up
 	QueryGraph_Free(g);
 	QueryGraph_Free(clone);
 }
 
 
 void test_QueryGraphRemoveEntities() {
-	Alloc_Reset();
-	_fake_graph_context();
-
-	// Create a triangle graph
+	// create a triangle graph
 	// (A)->(B)->(C)->(A)
 	size_t node_cap = 3;
 	size_t edge_cap = 3;
 
-	// Create nodes.
+	// create nodes
 	const char *relation = "R";
 
 	QGNode *A = QGNode_New("A");
@@ -229,16 +230,16 @@ void test_QueryGraphRemoveEntities() {
 	QueryGraph_ConnectNodes(g, B, C, BC);
 	QueryGraph_ConnectNodes(g, C, A, CA);
 
-	// Remove an edge.
+	// remove an edge
 	TEST_ASSERT(contains_edge(g, AB));
 	TEST_ASSERT(QueryGraph_GetEdgeByAlias(g, "AB") != NULL);
 
 	QueryGraph_RemoveEdge(g, AB);
 
 	TEST_ASSERT(!contains_edge(g, AB));
-	TEST_ASSERT(QueryGraph_GetEdgeByAlias(g, "AB") != NULL);
+	TEST_ASSERT(QueryGraph_GetEdgeByAlias(g, "AB") == NULL);
 
-	// Remove node.
+	// remove node
 	TEST_ASSERT(contains_node(g, C));
 	TEST_ASSERT(QueryGraph_GetNodeByAlias(g, "C") != NULL);
 
@@ -247,39 +248,36 @@ void test_QueryGraphRemoveEntities() {
 	TEST_ASSERT(!contains_node(g, C));
 	TEST_ASSERT(QueryGraph_GetNodeByAlias(g, "C") == NULL);
 
-	// Both CA BC edges should be removed.
+	// both CA BC edges should be removed
 	TEST_ASSERT(!contains_edge(g, CA));
 	TEST_ASSERT(QueryGraph_GetEdgeByAlias(g, "CA") == NULL);
 
 	TEST_ASSERT(!contains_edge(g, BC));
 	TEST_ASSERT(QueryGraph_GetEdgeByAlias(g, "BC") == NULL);
 
-	/* Assert entity count:
-	 * Nodes - A was removed.
-	 * Edges - AB explicitly removed, BC and CA implicitly removed. */
+	// assert entity count:
+	// nodes - A was removed
+	// edges - AB explicitly removed, BC and CA implicitly removed
 	TEST_ASSERT(QueryGraph_NodeCount(g) == 2);
 	TEST_ASSERT(QueryGraph_EdgeCount(g) == 0);
 
-	// Assert remaining entities,
+	// assert remaining entities
 	TEST_ASSERT(contains_node(g, A));
 	TEST_ASSERT(QueryGraph_GetNodeByAlias(g, "A") != NULL);
 	TEST_ASSERT(contains_node(g, B));
 	TEST_ASSERT(QueryGraph_GetNodeByAlias(g, "B") != NULL);
 
-	// Clean up.
+	// clean up
 	QueryGraph_Free(g);
 }
 
 void test_QueryGraphConnectedComponents() {
-	Alloc_Reset();
-	_fake_graph_context();
-	
 	QueryGraph *g;
 	QueryGraph **connected_components;
 
-	//------------------------------------------------------------------------------
-	// Single node graph
-	//------------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
+	// single node graph
+	//--------------------------------------------------------------------------
 	g = SingleNodeGraph();
 	connected_components = QueryGraph_ConnectedComponents(g);
 
@@ -292,41 +290,41 @@ void test_QueryGraphConnectedComponents() {
 	}
 	array_free(connected_components);
 
-	//------------------------------------------------------------------------------
-	// Triangle graph
-	//------------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
+	// triangle graph
+	//--------------------------------------------------------------------------
 
 	g = TriangleGraph();
 	connected_components = QueryGraph_ConnectedComponents(g);
 
 	TEST_ASSERT(array_len(connected_components) == 1);
 
-	// Clean up.
+	// clean up
 	QueryGraph_Free(g);
 	for(int i = 0; i < array_len(connected_components); i++) {
 		QueryGraph_Free(connected_components[i]);
 	}
 	array_free(connected_components);
 
-	//------------------------------------------------------------------------------
-	// Disjoint graph
-	//------------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
+	// disjoint graph
+	//--------------------------------------------------------------------------
 
 	g = DisjointGraph();
 	connected_components = QueryGraph_ConnectedComponents(g);
 
 	TEST_ASSERT(array_len(connected_components) == 2);
 
-	// Clean up.
+	// clean up
 	QueryGraph_Free(g);
 	for(int i = 0; i < array_len(connected_components); i++) {
 		QueryGraph_Free(connected_components[i]);
 	}
 	array_free(connected_components);
 
-	//------------------------------------------------------------------------------
-	// Single node cycle graph
-	//------------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
+	// single node cycle graph
+	//--------------------------------------------------------------------------
 
 	g = SingleNodeCycleGraph();
 	connected_components = QueryGraph_ConnectedComponents(g);
@@ -342,11 +340,8 @@ void test_QueryGraphConnectedComponents() {
 }
 
 void test_QueryGraphExtractSubGraph() {
-	Alloc_Reset();
-	_fake_graph_context();
-
 	//--------------------------------------------------------------------------
-	// Construct graph
+	// construct graph
 	//--------------------------------------------------------------------------
 
 	// (A)->(B)->(C)->(D)
@@ -374,7 +369,7 @@ void test_QueryGraphExtractSubGraph() {
 	QueryGraph_ConnectNodes(qg, C, A, CD);
 
 	//--------------------------------------------------------------------------
-	// Extract portions of the original query graph
+	// extract portions of the original query graph
 	//--------------------------------------------------------------------------
 
 	const char *query =
@@ -386,20 +381,20 @@ void test_QueryGraphExtractSubGraph() {
 	const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
 	const cypher_astnode_t *patterns[3];
 
-	// Extract patterns, one per MATCH clause
+	// extract patterns, one per MATCH clause
 	patterns[0] = cypher_ast_match_get_pattern(match_clauses[0]);
 	patterns[1] = cypher_ast_match_get_pattern(match_clauses[1]);
 	patterns[2] = cypher_ast_match_get_pattern(match_clauses[2]);
 
-	// Empty sub graph, as the number of patterns specified is 0.
+	// empty sub graph, as the number of patterns specified is 0
 	QueryGraph *sub = QueryGraph_ExtractPatterns(qg, patterns, 0);
 
-	// Validation, expecting an empty query graph.
+	// validation, expecting an empty query graph
 	TEST_ASSERT(QueryGraph_NodeCount(sub) == 0);
 	TEST_ASSERT(QueryGraph_EdgeCount(sub) == 0);
 	QueryGraph_Free(sub);
 
-	// Single pattern, 2 paths, sub graph: a->b->c
+	// single pattern, 2 paths, sub graph: a->b->c
 	sub = QueryGraph_ExtractPatterns(qg, patterns, 1);
 	TEST_ASSERT(QueryGraph_NodeCount(sub) == 3);
 	TEST_ASSERT(QueryGraph_EdgeCount(sub) == 2);
@@ -410,7 +405,7 @@ void test_QueryGraphExtractSubGraph() {
 	TEST_ASSERT(QueryGraph_GetEdgeByAlias(sub, "BC") != NULL);
 	QueryGraph_Free(sub);
 
-	// Multi path sub graph a->b->c->d
+	// multi path sub graph a->b->c->d
 	sub = QueryGraph_ExtractPatterns(qg, patterns, 2);
 	TEST_ASSERT(QueryGraph_NodeCount(sub) == 4);
 	TEST_ASSERT(QueryGraph_EdgeCount(sub) == 3);
@@ -423,8 +418,8 @@ void test_QueryGraphExtractSubGraph() {
 	TEST_ASSERT(QueryGraph_GetEdgeByAlias(sub, "CD") != NULL);
 	QueryGraph_Free(sub);
 
-	/* Extract path which is partially contained in 'qg'
-	 * d->e where only 'd' is in 'qg' */
+	// extract path which is partially contained in 'qg'
+	// d->e where only 'd' is in 'qg'
 	sub = QueryGraph_ExtractPatterns(qg, &patterns[2], 1);
 	TEST_ASSERT(QueryGraph_NodeCount(sub) == 2);
 	TEST_ASSERT(QueryGraph_EdgeCount(sub) == 1);
@@ -433,7 +428,7 @@ void test_QueryGraphExtractSubGraph() {
 	TEST_ASSERT(QueryGraph_GetEdgeByAlias(sub, "DE") != NULL);
 	QueryGraph_Free(sub);
 
-	// Clean up
+	// clean up
 	array_free(match_clauses);
 	QueryGraph_Free(qg);
 	AST_Free(ast);

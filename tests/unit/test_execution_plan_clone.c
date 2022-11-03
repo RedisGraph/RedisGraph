@@ -4,6 +4,8 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#define TEST_INIT setup();
+
 #include "acutest.h"
 #include <stdio.h>
 #include <string.h>
@@ -14,7 +16,12 @@
 #include "../../src/procedures/procedure.h"
 #include "../../src/execution_plan/execution_plan_clone.h"
 
-static void build_ast_and_plan(const char *query, AST **ast, ExecutionPlan **plan) {
+static void build_ast_and_plan
+(
+	const char *query,
+	AST **ast,
+	ExecutionPlan **plan
+) {
 	QueryCtx *ctx = QueryCtx_GetQueryCtx();
 	ctx->query_data.query_no_params = query;
 	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
@@ -36,8 +43,13 @@ static void _fake_graph_context() {
 	QueryCtx_SetGraphCtx(gc);
 }
 
-static void ExecutionPlan_OpsEqual(const ExecutionPlan *plan_a,
-		const ExecutionPlan *plan_b, const OpBase *op_a, const OpBase *op_b) {
+static void ExecutionPlan_OpsEqual
+(
+	const ExecutionPlan *plan_a,
+	const ExecutionPlan *plan_b,
+	const OpBase *op_a,
+	const OpBase *op_b
+) {
 	// If both ops are NULL, there is nothing to compare.
 	if(op_a == NULL && op_b == NULL) return;
 	// In case one of the ops is NULL.
@@ -52,7 +64,10 @@ static void ExecutionPlan_OpsEqual(const ExecutionPlan *plan_a,
 	}
 }
 
-static void validate_query_plans_clone(const char **queries) {
+static void validate_query_plans_clone
+(
+	const char **queries
+) {
 	uint query_count = array_len(queries);
 	for(uint i = 0; i < query_count; i++) {
 		const char *query = queries[i];
@@ -69,36 +84,42 @@ static void validate_query_plans_clone(const char **queries) {
 	}
 }
 
-void test_createClause() {
-	// Use the malloc family for allocations
+void setup() {
+	// use the malloc family for allocations
 	Alloc_Reset();
-	// Init query context.
-	TEST_ASSERT(QueryCtx_Init());
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-	Proc_Register();         // Register procedures.
-	AR_RegisterFuncs();      // Register arithmetic functions.
 
-	// Create a graphcontext
+	// init query context
+	TEST_ASSERT(QueryCtx_Init());
+
+	// initialize GraphBLAS
+	GrB_init(GrB_NONBLOCKING);
+	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
+
+	Proc_Register();     // register procedures
+	AR_RegisterFuncs();  // register arithmetic functions
+
+	// create a graphcontext
 	_fake_graph_context();
-	
+}
+
+void test_createClause() {
 	const char **queries = array_new(const char *, 12);
-	// Anonymous nodes create clauses.
+	// anonymous nodes create clauses
 	array_append(queries, "CREATE ()");
 	array_append(queries, "CREATE (:N)");
 	array_append(queries, "CREATE (:N {val:1})");
-	// Referenced nodes create clauses.
+
+	// referenced nodes create clauses
 	array_append(queries, "CREATE (n) RETURN n");
 	array_append(queries, "CREATE (n:N) RETURN n");
 	array_append(queries, "CREATE (n:N {val:1}) RETURN n");
 
-	// Anonymous edges create clauses.
+	// anonymous edges create clauses
 	array_append(queries, "CREATE ()-[]->()");
 	array_append(queries, "CREATE ()-[:E]->()");
 	array_append(queries, "CREATE ()-[:E {val:1}]->()");
-	// Referenced edges create clauses.
+
+	// referenced edges create clauses
 	array_append(queries, "CREATE ()-[e]->() RETURN e");
 	array_append(queries, "CREATE ()-[e:E]->() RETURN e");
 	array_append(queries, "CREATE ()-[e:E {val:1}]->()");
@@ -107,56 +128,22 @@ void test_createClause() {
 }
 
 void test_matchClause() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-	// Init query context.
-	TEST_ASSERT(QueryCtx_Init());
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-	Proc_Register();         // Register procedures.
-	AR_RegisterFuncs();      // Register arithmetic functions.
-
-	// Create a graphcontext
-	_fake_graph_context();
-
 	const char **queries = array_new(const char *, 9);
 	array_append(queries, "MATCH (n) RETURN n");  // All node scan
 	array_append(queries, "MATCH (n:N) RETURN n");    // Label scan
 	array_append(queries, "MATCH (n) WHERE id(n) = 0 RETURN n");  // ID Scan
-	array_append(queries,
-						   "MATCH (n)-[]->() RETURN n");    // Conditional traverse, referenced src node.
-	array_append(queries,
-						   "MATCH (n)-[e]->() RETURN n");   // Conditional traverse, referenced src node and edge.
-	array_append(queries,
-						   "MATCH p = ()-[]->() RETURN p"); // Named path, conditional traverse
-	array_append(queries,
-						   "MATCH (n)-[*]->() RETURN n");   // Variable length traverse.
-	array_append(queries,
-						   "MATCH p = ()-[*]->() return p");    // Named path, variable length traverse.
-	array_append(queries,
-						   "MATCH (n) WHERE (n)-[:R]->() AND NOT (n)-[:R2]->() RETURN n");   // Apply ops.
+	array_append(queries, "MATCH (n)-[]->() RETURN n");    // Conditional traverse, referenced src node.
+	array_append(queries, "MATCH (n)-[e]->() RETURN n");   // Conditional traverse, referenced src node and edge.
+	array_append(queries, "MATCH p = ()-[]->() RETURN p"); // Named path, conditional traverse
+	array_append(queries, "MATCH (n)-[*]->() RETURN n");   // Variable length traverse.
+	array_append(queries, "MATCH p = ()-[*]->() return p");    // Named path, variable length traverse.
+	array_append(queries, "MATCH (n) WHERE (n)-[:R]->() AND NOT (n)-[:R2]->() RETURN n");   // Apply ops.
 
 	validate_query_plans_clone(queries);
 	array_free(queries);
 }
 
 void test_updateClause() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-	// Init query context.
-	TEST_ASSERT(QueryCtx_Init());
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-	Proc_Register();         // Register procedures.
-	AR_RegisterFuncs();      // Register arithmetic functions.
-
-	// Create a graphcontext
-	_fake_graph_context();
-
 	const char **queries = array_new(const char *, 2);
 	array_append(queries, "MATCH (n) SET n.v = 1");
 	array_append(queries, "MATCH ()-[e]->() SET e.v = 1");
@@ -166,20 +153,6 @@ void test_updateClause() {
 }
 
 void test_deleteClause() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-	// Init query context.
-	TEST_ASSERT(QueryCtx_Init());
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-	Proc_Register();         // Register procedures.
-	AR_RegisterFuncs();      // Register arithmetic functions.
-
-	// Create a graphcontext
-	_fake_graph_context();
-
 	const char **queries = array_new(const char *, 2);
 	array_append(queries, "MATCH (n) DELETE n");
 	array_append(queries, "MATCH ()-[e]->() DELETE e");
@@ -189,20 +162,6 @@ void test_deleteClause() {
 }
 
 void test_mergeClause() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-	// Init query context.
-	TEST_ASSERT(QueryCtx_Init());
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-	Proc_Register();         // Register procedures.
-	AR_RegisterFuncs();      // Register arithmetic functions.
-
-	// Create a graphcontext
-	_fake_graph_context();
-
 	const char **queries = array_new(const char *, 9);
 	array_append(queries, "MERGE ()");
 	array_append(queries, "MERGE (:N)");
@@ -221,20 +180,6 @@ void test_mergeClause() {
 }
 
 void test_cartesProduct() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-	// Init query context.
-	TEST_ASSERT(QueryCtx_Init());
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-	Proc_Register();         // Register procedures.
-	AR_RegisterFuncs();      // Register arithmetic functions.
-
-	// Create a graphcontext
-	_fake_graph_context();
-
 	const char **queries = array_new(const char *, 1);
 	array_append(queries, "MATCH (a), (b) RETURN a, b");
 
@@ -243,20 +188,6 @@ void test_cartesProduct() {
 }
 
 void test_skipLimitSort() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-	// Init query context.
-	TEST_ASSERT(QueryCtx_Init());
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-	Proc_Register();         // Register procedures.
-	AR_RegisterFuncs();      // Register arithmetic functions.
-
-	// Create a graphcontext
-	_fake_graph_context();
-
 	const char **queries = array_new(const char *, 5);
 	array_append(queries, "MATCH (n) RETURN n SKIP 5");
 	array_append(queries, "MATCH (n) RETURN n LIMIT 5");
@@ -269,20 +200,6 @@ void test_skipLimitSort() {
 }
 
 void test_optionalMatch() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-	// Init query context.
-	TEST_ASSERT(QueryCtx_Init());
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-	Proc_Register();         // Register procedures.
-	AR_RegisterFuncs();      // Register arithmetic functions.
-
-	// Create a graphcontext
-	_fake_graph_context();
-
 	const char **queries = array_new(const char *, 3);
 	array_append(queries, "OPTIONAL MATCH (n) RETURN n");
 	array_append(queries, "MATCH (a) OPTIONAL MATCH (b) RETURN a, b");
@@ -293,102 +210,38 @@ void test_optionalMatch() {
 }
 
 void test_procCall() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-	// Init query context.
-	TEST_ASSERT(QueryCtx_Init());
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-	Proc_Register();         // Register procedures.
-	AR_RegisterFuncs();      // Register arithmetic functions.
-
-	// Create a graphcontext
-	_fake_graph_context();
-
 	const char **queries = array_new(const char *, 1);
 	array_append(queries,
-						   "CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node RETURN node");
+			"CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node RETURN node");
 
 	validate_query_plans_clone(queries);
 	array_free(queries);
 }
 
 void test_unwind() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-	// Init query context.
-	TEST_ASSERT(QueryCtx_Init());
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-	Proc_Register();         // Register procedures.
-	AR_RegisterFuncs();      // Register arithmetic functions.
-
-	// Create a graphcontext
-	_fake_graph_context();
-	
 	const char **queries = array_new(const char *, 1);
-	array_append(queries,
-						   "UNWIND [1,2,3] as x RETURN x");
+	array_append(queries, "UNWIND [1,2,3] as x RETURN x");
 
 	validate_query_plans_clone(queries);
 	array_free(queries);
 }
 
 void test_with() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-	// Init query context.
-	TEST_ASSERT(QueryCtx_Init());
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-	Proc_Register();         // Register procedures.
-	AR_RegisterFuncs();      // Register arithmetic functions.
-
-	// Create a graphcontext
-	_fake_graph_context();
-
 	const char **queries = array_new(const char *, 6);
-	array_append(queries,
-						   "MATCH (n) WITH n RETURN n");
-	array_append(queries,
-						   "MATCH (n) WITH n AS m RETURN m");
-	array_append(queries,
-						   "MATCH (n) WITH n AS m SKIP 5 RETURN m");
-	array_append(queries,
-						   "MATCH (n) WITH n AS m LIMIT 5 RETURN m");
-	array_append(queries,
-						   "MATCH (n) WITH n AS m ORDER BY n.val RETURN m");
-	array_append(queries,
-						   "MATCH (n) WITH n AS m WHERE n.val < 5 RETURN m");
+	array_append(queries, "MATCH (n) WITH n RETURN n");
+	array_append(queries, "MATCH (n) WITH n AS m RETURN m");
+	array_append(queries, "MATCH (n) WITH n AS m SKIP 5 RETURN m");
+	array_append(queries, "MATCH (n) WITH n AS m LIMIT 5 RETURN m");
+	array_append(queries, "MATCH (n) WITH n AS m ORDER BY n.val RETURN m");
+	array_append(queries, "MATCH (n) WITH n AS m WHERE n.val < 5 RETURN m");
 
 	validate_query_plans_clone(queries);
 	array_free(queries);
 }
 
 void test_union() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-	// Init query context.
-	TEST_ASSERT(QueryCtx_Init());
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-	Proc_Register();         // Register procedures.
-	AR_RegisterFuncs();      // Register arithmetic functions.
-
-	// Create a graphcontext
-	_fake_graph_context();
-
 	const char **queries = array_new(const char *, 1);
-	array_append(queries,
-						   "MATCH (n) RETURN n UNION MATCH (n) RETURN n");
+	array_append(queries, "MATCH (n) RETURN n UNION MATCH (n) RETURN n");
 
 	validate_query_plans_clone(queries);
 	array_free(queries);

@@ -4,6 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#define TEST_INIT setup();
 
 #include "acutest.h"
 #include "../../src/value.h"
@@ -14,9 +15,11 @@
 #include "../../src/graph/entities/node.h"
 #include "../../src/graph/entities/edge.h"
 
-void test_numerics() {
+void setup() {
 	Alloc_Reset();
+}
 
+void test_numerics() {
 	SIValue v;
 	char const *str = "12345";
 	v = SIValue_FromString(str);
@@ -44,8 +47,6 @@ void test_numerics() {
 }
 
 void test_strings() {
-	Alloc_Reset();
-
 	SIValue v;
 	char const *str = "Test!";
 	v = SIValue_FromString(str);
@@ -64,8 +65,6 @@ void test_strings() {
 // idempotence and correctness tests for:
 // null, bool, long, double, edge, node, array.
 void test_null() {
-	Alloc_Reset();
-
 	SIValue siNull = SI_NullVal();
 	SIValue siNullOther = SI_NullVal();
 	uint64_t origHashCode = SIValue_HashCode(siNull);
@@ -74,8 +73,6 @@ void test_null() {
 }
 
 void test_hashBool() {
-	Alloc_Reset();
-
 	SIValue siBool = SI_BoolVal(true);
 	SIValue siBoolOther = SI_BoolVal(true);
 	uint64_t origHashCode = SIValue_HashCode(siBool);
@@ -92,8 +89,6 @@ void test_hashBool() {
 }
 
 void test_hashLong() {
-	Alloc_Reset();
-
 	// INT32 and INT64 tests take too long
 	for(int64_t i = 0; i < 100; i++) {
 		int num = rand();
@@ -106,8 +101,6 @@ void test_hashLong() {
 }
 
 void test_hashDouble() {
-	Alloc_Reset();
-
 	SIValue siDouble = SI_DoubleVal(3.14);
 	SIValue siDoubleOther = SI_DoubleVal(3.14);
 	uint64_t origHashCode = SIValue_HashCode(siDouble);
@@ -124,8 +117,6 @@ void test_hashDouble() {
 }
 
 void test_edge() {
-	Alloc_Reset();
-
 	AttributeSet attr;
 
 	Edge e0;
@@ -150,8 +141,6 @@ void test_edge() {
 }
 
 void test_node() {
-	Alloc_Reset();
-
 	AttributeSet attr;
 
 	Node n0;
@@ -176,8 +165,6 @@ void test_node() {
 }
 
 void test_array() {
-	Alloc_Reset();
-
 	SIValue arr = SI_EmptyArray();
 	SIValue arrOther = SI_EmptyArray();
 
@@ -223,8 +210,6 @@ void test_array() {
 // have the same binary representation. Given that, their types are different,
 // so this test makes sure that their hash code is different
 void test_hashLongAndBool() {
-	Alloc_Reset();
-
 	SIValue siInt64 = SI_LongVal(1);
 	SIValue siBool = SI_BoolVal(true);
 	uint64_t longHashCode = SIValue_HashCode(siInt64);
@@ -241,8 +226,6 @@ void test_hashLongAndBool() {
 
 // Test for the same hash code for same semantic value.
 void test_hashLongAndDouble() {
-	Alloc_Reset();
-
 	SIValue siInt64 = SI_LongVal(1);
 	SIValue siDouble = SI_DoubleVal(1.0);
 	uint64_t longHashCode = SIValue_HashCode(siInt64);
@@ -252,8 +235,6 @@ void test_hashLongAndDouble() {
 
 // Test for entities with same id, different types
 void test_edgeAndNode() {
-	Alloc_Reset();
-
 	AttributeSet attr;
 
 	Edge e0;
@@ -269,8 +250,6 @@ void test_edgeAndNode() {
 }
 
 void test_set() {
-	Alloc_Reset();
-
 	set *set = Set_New();
 
 	// Set should be empty.
@@ -357,8 +336,6 @@ void test_set() {
 }
 
 void test_path() {
-	Alloc_Reset();
-
 	Path *path = Path_New(3);
 	Path *clone;
 	Node *n;
@@ -482,3 +459,4 @@ TEST_LIST = {
 	{"path", test_path},
 	{NULL, NULL}
 };
+

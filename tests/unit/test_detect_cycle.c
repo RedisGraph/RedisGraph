@@ -4,6 +4,9 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#define TEST_INIT setup();
+#define TEST_FINI tearDown();
+
 #include "acutest.h"
 #include "../../src/util/rmalloc.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
@@ -90,43 +93,38 @@ QueryGraph *CyclicBuildGraph() {
 	return g;
 }
 
-void test_acyclicGraph() {
-	// Initialize GraphBLAS
-	GrB_init(GrB_NONBLOCKING);
-	GxB_set(GxB_FORMAT, GxB_BY_ROW);
-
+void setup() {
 	// Use the malloc family for allocations
 	Alloc_Reset();
 
-	QueryGraph *g = AcyclicBuildGraph();  // Graph traversed.
-	TEST_ASSERT(IsAcyclicGraph(g) == true);
+	// Initialize GraphBLAS
+	GrB_init(GrB_NONBLOCKING);
+	GxB_set(GxB_FORMAT, GxB_BY_ROW);
+}
 
-	// Clean up.
-	QueryGraph_Free(g);
-
+void tearDown() {
 	GrB_finalize();
 }
 
+void test_acyclicGraph() {
+	QueryGraph *g = AcyclicBuildGraph();  // Graph traversed.
+	TEST_ASSERT(IsAcyclicGraph(g) == true);
+
+	// clean up
+	QueryGraph_Free(g);
+}
+
 void test_cyclicGraph() {
-	// Initialize GraphBLAS
-	GrB_init(GrB_NONBLOCKING);
-	GxB_set(GxB_FORMAT, GxB_BY_ROW);
-
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
 	QueryGraph *g = CyclicBuildGraph();  // Graph traversed.
 	TEST_ASSERT(IsAcyclicGraph(g) == false);
 
-	// Clean up.
+	// clean up
 	QueryGraph_Free(g);
-
-	GrB_finalize();
 }
 
 TEST_LIST = {
 	{ "acyclicGraph", test_acyclicGraph},
-	//{ "cyclicGraph", test_cyclicGraph},
+	{ "cyclicGraph", test_cyclicGraph},
 	{ NULL, NULL }
 };
 

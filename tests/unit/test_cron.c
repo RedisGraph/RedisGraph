@@ -4,6 +4,9 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#define TEST_INIT setup();
+#define TEST_FINI tearDown();
+
 #include <time.h>
 #include "acutest.h"
 #include "../../src/util/cron.h"
@@ -30,11 +33,17 @@ void long_running_task(void *pdata) {
 	sleep(*sec);
 }
 
-void test_cronExec() {
+void setup() {
 	// Use the malloc family for allocations
 	Alloc_Reset();
 	Cron_Start();
+}
 
+void tearDown() {
+	Cron_Stop();
+}
+
+void test_cronExec() {
 	// Add two tasks to CRON
 	// one adds 2 to X
 	// second multiply X by 2
@@ -57,15 +66,9 @@ void test_cronExec() {
 
 	// verify X = (X * 2) + 2
 	TEST_ASSERT(X == 4);
-
-	Cron_Stop();
 }
 
 void test_cronAbort() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-	Cron_Start();
-
 	// reset X = 1
 	// issue a task X += 2
 	// abort task
@@ -85,15 +88,9 @@ void test_cronAbort() {
 	// task should have been aborted prior to its execution
 	// expecting X = 1
 	TEST_ASSERT(X == 1);
-
-	Cron_Stop();
 }
 
 void test_cronLateAbort() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-	Cron_Start();
-
 	// reset X = 1
 	// issue a task X += 2
 	// abort task AFTER task been performed
@@ -112,15 +109,9 @@ void test_cronLateAbort() {
 
 	// abort task, should note hang/crash
 	Cron_AbortTask(task_handle);
-
-	Cron_Stop();
 }
 
 void test_MultiAbort() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-	Cron_Start();
-
 	// reset X = 1
 	// issue a task X += 2
 	// abort task multiple times
@@ -142,15 +133,9 @@ void test_MultiAbort() {
 	// task should have been aborted prior to its execution
 	// expecting X = 1
 	TEST_ASSERT(X == 1);
-
-	Cron_Stop();
 }
 
 void test_abortNoneExistingTask() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-	Cron_Start();
-
 	// reset X = 1
 	// issue a task X += 2
 	// abort none existing task
@@ -171,15 +156,9 @@ void test_abortNoneExistingTask() {
 	// task should have been executed
 	// expecting X = 3
 	TEST_ASSERT(X == 3);
-
-	Cron_Stop();
 }
 
 void test_AbortRunningTask() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-	Cron_Start();
-
 	// issue a long running task ~4 seconds
 	// issue abort 1 second into execution
 	// validate call to Cron_AbortTask returns after ~2 seconds
@@ -201,8 +180,6 @@ void test_AbortRunningTask() {
 	
 	// expecting Cron_AbortTask to return after at-least 2 seconds
 	TEST_ASSERT(time_taken_sec > 2);
-
-	Cron_Stop();
 }
 
 TEST_LIST = {

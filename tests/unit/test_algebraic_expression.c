@@ -4,11 +4,15 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#define TEST_INIT setup();
+#define TEST_FINI tearDown();
+
 #include "acutest.h"
 #include "assert.h"
 #include "../../src/value.h"
 #include "../../src/util/arr.h"
 #include "../../src/query_ctx.h"
+#include "../../src/redismodule.h"
 #include "../../src/graph/graph.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/graph/query_graph.h"
@@ -19,6 +23,8 @@
 #include "../../src/arithmetic/algebraic_expression.h"
 #include "../../src/arithmetic/algebraic_expression/utils.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
+
+#include <stdlib.h>
 
 extern AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause, AST *ast);
 
@@ -176,6 +182,8 @@ AlgebraicExpression **build_algebraic_expression(const char *query) {
 		AlgebraicExpression_Optimize(ae + i);
 	}
 
+	QueryGraph_Free(qg);
+
 	return ae;
 }
 
@@ -283,14 +291,18 @@ void free_algebraic_expressions(AlgebraicExpression **exps, uint count) {
 	}
 }
 
-void test_algebraicExpression() {
+void setup() {
 	// Use the malloc family for allocations
 	Alloc_Reset();
 
 	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
+	GrB_Info info;
+	info = GrB_init(GrB_NONBLOCKING);
+	TEST_ASSERT(info == GrB_SUCCESS);
+
+	// all matrices in CSR format
+	info = GxB_set(GxB_FORMAT, GxB_BY_ROW);
+	TEST_ASSERT(info == GrB_SUCCESS);
 
 	// Create a graph
 	_fake_graph_context();
@@ -298,7 +310,14 @@ void test_algebraicExpression() {
 	_bind_matrices();
 
 	qg = QueryGraph_New(16, 16);
+}
 
+void tearDown() {
+	TEST_ASSERT(GrB_finalize() == GrB_SUCCESS);
+	QueryGraph_Free(qg);
+}
+
+void test_algebraicExpression() {
 	RG_Matrix matrix = NULL;
 	bool diagonal = false;
 	const char *src = "src";
@@ -340,27 +359,9 @@ void test_algebraicExpression() {
 
 	// Will free `operand` aswell.
 	AlgebraicExpression_Free(operation);
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_algebraicExpression_domains() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
-
 	GrB_Matrix A;
 	GrB_Matrix B;
 	const char *src_domain;     // Row domain of expression
@@ -533,27 +534,9 @@ void test_algebraicExpression_domains() {
 	raxFree(matrices);
 	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&B);
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_algebraicExpression_Clone() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
-
 	AlgebraicExpression *exp = NULL;
 	AlgebraicExpression *clone = NULL;
 	const char *expressions[13] = {"A", "A*B", "A*B*C", "A+B", "A+B+C", "A*B+C", "A+B*C",
@@ -567,27 +550,9 @@ void test_algebraicExpression_Clone() {
 		AlgebraicExpression_Free(clone);
 		AlgebraicExpression_Free(exp);
 	}
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_algebraicExpression_Transpose() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
-	
 	AlgebraicExpression *exp = NULL;
 	AlgebraicExpression *transposed_exp = NULL;
 
@@ -605,27 +570,9 @@ void test_algebraicExpression_Transpose() {
 		AlgebraicExpression_Free(exp);
 		AlgebraicExpression_Free(transposed_exp);
 	}
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_Exp_OP_ADD() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
-
 	// Exp = A + B
 	RG_Matrix A;
 	RG_Matrix B;
@@ -676,27 +623,9 @@ void test_Exp_OP_ADD() {
 	RG_Matrix_free(&res);
 	GrB_Matrix_free(&expected);
 	AlgebraicExpression_Free(exp);
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_Exp_OP_MUL() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
-
 	// Exp = A * I
 	RG_Matrix A;
 	RG_Matrix I;
@@ -739,27 +668,9 @@ void test_Exp_OP_MUL() {
 	RG_Matrix_free(&res);
 	GrB_Matrix_free(&expected);
 	AlgebraicExpression_Free(exp);
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_Exp_OP_ADD_Transpose() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
-
 	// Exp = A + Transpose(A)
 	RG_Matrix res;
 	GrB_Matrix expected;
@@ -810,27 +721,9 @@ void test_Exp_OP_ADD_Transpose() {
 	RG_Matrix_free(&res);
 	GrB_Matrix_free(&expected);
 	AlgebraicExpression_Free(exp);
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_Exp_OP_MUL_Transpose() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
-
 	// Exp = Transpose(A) * A
 	GrB_Matrix B;
 	RG_Matrix res;
@@ -882,26 +775,9 @@ void test_Exp_OP_MUL_Transpose() {
 	GrB_Matrix_free(&B);
 	RG_Matrix_free(&res);
 	AlgebraicExpression_Free(exp);
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_Exp_OP_A_MUL_B_Plus_C() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
 
 	// Exp = A*(B+C) = A*B + A*C
 	RG_Matrix A;
@@ -957,27 +833,9 @@ void test_Exp_OP_A_MUL_B_Plus_C() {
 	RG_Matrix_free(&res);
 	GrB_Matrix_free(&expected);
 	AlgebraicExpression_Free(exp);
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_ExpTransform_A_Times_B_Plus_C() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
-
 	// Test Mul / Add transformation:
 	// A*(B+C) -> A*B + A*C
 	RG_Matrix A;
@@ -1023,27 +881,9 @@ void test_ExpTransform_A_Times_B_Plus_C() {
 	RG_Matrix_free(&B);
 	RG_Matrix_free(&C);
 	AlgebraicExpression_Free(exp);
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_ExpTransform_AB_Times_C_Plus_D() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
-
 	// Test Mul / Add transformation:
 	// A*B*(C+D) -> A*B*C + A*B*D
 	RG_Matrix A;
@@ -1102,27 +942,9 @@ void test_ExpTransform_AB_Times_C_Plus_D() {
 	RG_Matrix_free(&C);
 	RG_Matrix_free(&D);
 	AlgebraicExpression_Free(exp);
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_ExpTransform_A_Plus_B_Times_C_Plus_D() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
-
 	// Test Mul / Add transformation:
 	// (A+B)*(C+D) -> A*C + A*D + B*C + B*D
 	RG_Matrix A;
@@ -1170,27 +992,9 @@ void test_ExpTransform_A_Plus_B_Times_C_Plus_D() {
 	RG_Matrix_free(&C);
 	RG_Matrix_free(&D);
 	AlgebraicExpression_Free(exp);
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_MultipleIntermidiateReturnNodes() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
-
 	// "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, f, c, e";
 	const char *q = query_multiple_intermidate_return_nodes;
 	AlgebraicExpression **actual = build_algebraic_expression(q);
@@ -1214,27 +1018,9 @@ void test_MultipleIntermidiateReturnNodes() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_OneIntermidiateReturnNode() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
-
 	const char *q = query_one_intermidate_return_nodes;
 	AlgebraicExpression **actual = build_algebraic_expression(q);
 	uint exp_count = array_len(actual);
@@ -1254,27 +1040,9 @@ void test_OneIntermidiateReturnNode() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_NoIntermidiateReturnNodes() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
-
 	const char *q = query_no_intermidate_return_nodes;
 	AlgebraicExpression **actual = build_algebraic_expression(q);
 	uint exp_count = array_len(actual);
@@ -1289,27 +1057,9 @@ void test_NoIntermidiateReturnNodes() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_ONeIntermidiateReturnEdge() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
-
 	const char *q;
 	AlgebraicExpression **actual;
 
@@ -1367,27 +1117,9 @@ void test_ONeIntermidiateReturnEdge() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_BothDirections() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
-
 	const char *q =
 		"MATCH (p:Person)-[ef:friend]->(f:Person)<-[ev:visit]-(c:City)-[ew:war]->(e:City) RETURN p,e";
 	AlgebraicExpression **actual = build_algebraic_expression(q);
@@ -1402,27 +1134,9 @@ void test_BothDirections() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_SingleNode() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
-
 	const char *q = "MATCH (p:Person) RETURN p";
 	AlgebraicExpression **actual = build_algebraic_expression(q);
 	uint exp_count = array_len(actual);
@@ -1436,27 +1150,9 @@ void test_SingleNode() {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	array_free(actual);
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_ShareableEntity() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
-
 	const char *q =
 		"MATCH (p:Person)-[ef:friend]->(f:Person) MATCH (f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p,e";
 	AlgebraicExpression **actual = build_algebraic_expression(q);
@@ -1710,27 +1406,9 @@ void test_ShareableEntity() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_VariableLength() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
-
 	const char *q =
 		"MATCH (p:Person)-[ef:friend]->(f:Person)-[:visit*1..3]->(c:City)-[ew:war]->(e:City) RETURN p,e";
 	AlgebraicExpression **actual = build_algebraic_expression(q);
@@ -1764,27 +1442,9 @@ void test_VariableLength() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_ExpressionExecute() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
-
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Graph *g = gc->g;
 
@@ -1825,27 +1485,9 @@ void test_ExpressionExecute() {
 	GrB_Matrix_free(&expected);
 	free_algebraic_expressions(ae, exp_count);
 	array_free(ae);
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_RemoveOperand() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
-
 	GrB_Matrix A                          = GrB_NULL;
 	GrB_Matrix B                          = GrB_NULL;
 	AlgebraicExpression *exp              = NULL;
@@ -2048,27 +1690,9 @@ void test_RemoveOperand() {
 			AlgebraicExpression_Free(expected);
 		}
 	}
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 void test_LocateOperand() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-	// Create a graph
-	_fake_graph_context();
-	_build_graph();
-	_bind_matrices();
-
-	qg = QueryGraph_New(16, 16);
-
 	// construct algebraic expression
 	bool                 located  =  false;
 	RG_Matrix            mat      =  NULL;
@@ -2108,9 +1732,6 @@ void test_LocateOperand() {
 	TEST_ASSERT(!AlgebraicExpression_LocateOperand(r, &op, &p, "a", "b", NULL, NULL));
 
 	AlgebraicExpression_Free(r);
-
-	QueryGraph_Free(qg);
-	GrB_finalize();
 }
 
 TEST_LIST = {

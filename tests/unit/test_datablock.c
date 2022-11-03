@@ -4,6 +4,8 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#define TEST_INIT setup();
+
 #include "acutest.h"
 #include <stdio.h>
 #include <string.h>
@@ -14,9 +16,11 @@
 
 #define DATABLOCK_BLOCK_CAP 16384
 
-void test_dataBlockNew() {
+void setup() {
 	Alloc_Reset();
+}
 
+void test_dataBlockNew() {
 	// create a new data block, which can hold at least 1024 items
 	// each item is an integer.
 	size_t itemSize = sizeof(int);

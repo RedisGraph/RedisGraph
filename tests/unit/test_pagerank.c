@@ -4,17 +4,25 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#define TEST_INIT setup();
+#define TEST_FINI tearDown();
+
 #include "acutest.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include "../../src/util/rmalloc.h"
 #include "../../src/algorithms/pagerank.h"
 
-void test_pagerank() {
+void setup() {
 	Alloc_Reset();
-
 	GrB_init(GrB_NONBLOCKING);
+}
 
+void tearDown() {
+	GrB_finalize();
+}
+
+void test_pagerank() {
 	GrB_Matrix A;
 	double tol = 1e-4 ;
 	int iters, itermax = 100 ;
@@ -47,15 +55,14 @@ void test_pagerank() {
 
 	Pagerank(&ranking, A, itermax, tol, &iters);
 
-	/*
-	Page:5, pagerank:0.392289
-	Page:2, pagerank:0.387241
-	Page:3, pagerank:0.050505
-	Page:4, pagerank:0.049130
-	Page:0, pagerank:0.042893
-	Page:1, pagerank:0.039658
-	Page:6, pagerank:0.038283
-	*/
+	// Page:5, pagerank:0.392289
+	// Page:2, pagerank:0.387241
+	// Page:3, pagerank:0.050505
+	// Page:4, pagerank:0.049130
+	// Page:0, pagerank:0.042893
+	// Page:1, pagerank:0.039658
+	// Page:6, pagerank:0.038283
+
 	LAGraph_PageRank expectations[7] = {
 		{5, 0.392289},
 		{2, 0.387241},
@@ -70,11 +77,10 @@ void test_pagerank() {
 		TEST_ASSERT(fabs((double)ranking[i].page - expectations[i].page) < 0.000001);
 		TEST_ASSERT(fabs((double)ranking[i].pagerank - expectations[i].pagerank) < 0.000001);
 	}
-
-	GrB_finalize();
 }
 
 TEST_LIST = {
 	{"pagerank", test_pagerank},
 	{NULL, NULL}
 };
+

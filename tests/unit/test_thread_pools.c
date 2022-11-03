@@ -4,6 +4,8 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#define TEST_INIT setup();
+
 #include "acutest.h"
 #include "assert.h"
 #include "../../src/util/rmalloc.h"
@@ -13,13 +15,16 @@
 #define READER_COUNT 4
 #define WRITER_COUNT 1
 
+void setup() {
+	Alloc_Reset();
+}
+
 static void get_thread_friendly_id(void *arg) {
 	int *threadID = (int*)arg;
 	*threadID = ThreadPools_GetThreadID();	
 }
 
 void test_threadPools_threadID() {
-	Alloc_Reset();
 	ThreadPools_CreatePools(READER_COUNT, WRITER_COUNT, UINT64_MAX);
 
 	// verify thread count equals to the number of reader and writer threads
@@ -72,3 +77,4 @@ TEST_LIST = {
 	{"threadPools_threadID", test_threadPools_threadID},
 	{NULL, NULL}
 };
+

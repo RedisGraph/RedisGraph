@@ -439,10 +439,10 @@ Graph *Graph_New
 	fpDestructor cb = (fpDestructor)AttributeSet_Free;
 	Graph *g = rm_calloc(1, sizeof(Graph));
 
-	g->nodes      =  DataBlock_New(node_cap, node_cap, sizeof(AttributeSet), cb);
-	g->edges      =  DataBlock_New(edge_cap, edge_cap, sizeof(AttributeSet), cb);
-	g->labels     =  array_new(RG_Matrix, GRAPH_DEFAULT_LABEL_CAP);
-	g->relations  =  array_new(RG_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
+	g->nodes     = DataBlock_New(node_cap, node_cap, sizeof(AttributeSet), cb);
+	g->edges     = DataBlock_New(edge_cap, edge_cap, sizeof(AttributeSet), cb);
+	g->labels    = array_new(RG_Matrix, GRAPH_DEFAULT_LABEL_CAP);
+	g->relations = array_new(RG_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 
 	GrB_Info info;
 	UNUSED(info);

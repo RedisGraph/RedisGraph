@@ -1,3 +1,11 @@
+/*
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Redis Labs Source Available License Agreement
+*/
+
+#define TEST_INIT setup();
+
 #include "acutest.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/util/cache/cache.h"
@@ -31,9 +39,11 @@ void CacheObj_Free(CacheObj *obj) {
 	rm_free(obj);
 }
 
-void test_executionPlanCache() {
+void setup() {
 	Alloc_Reset();
+}
 
+void test_executionPlanCache() {
 	// build a cache of strings in this case for simplicity
 	Cache *cache = Cache_New(3, (CacheEntryFreeFunc)CacheObj_Free,
 			(CacheEntryCopyFunc)CacheObj_Dup);

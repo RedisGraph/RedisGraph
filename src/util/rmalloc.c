@@ -135,3 +135,4 @@ void Alloc_Reset() {
   RedisModule_Free = free;
   RedisModule_Strdup = strdup;
 }
+

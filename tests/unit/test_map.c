@@ -3,6 +3,9 @@
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
+
+#define TEST_INIT setup();
+
 #include "acutest.h"
 #include "../../src/value.h"
 #include "../../src/util/arr.h"
@@ -10,9 +13,11 @@
 #include "../../src/datatypes/map.h"
 #include "../../src/datatypes/array.h"
 
-void test_empty_map() {
+void setup() {
 	Alloc_Reset();
+}
 
+void test_empty_map() {
 	SIValue map = Map_New(2);
 
 	//--------------------------------------------------------------------------
@@ -45,8 +50,6 @@ void test_empty_map() {
 }
 
 void test_map_add() {
-	Alloc_Reset();
-
 	SIValue map = Map_New(2);
 
 	SIValue  k0  =  SI_ConstStringVal("key0");
@@ -98,8 +101,6 @@ void test_map_add() {
 }
 
 void test_map_remove() {
-	Alloc_Reset();
-
 	SIValue map = Map_New(2);
 
 	SIValue  k0  =  SI_ConstStringVal("key0");
@@ -147,8 +148,6 @@ void test_map_remove() {
 }
 
 void test_map_tostring() {
-	Alloc_Reset();
-	
 	SIValue  k;
 	SIValue  v;
 	SIValue map = Map_New(3);
@@ -192,3 +191,4 @@ TEST_LIST = {
 	{"map_tostring", test_map_tostring},
 	{NULL, NULL}
 };
+
