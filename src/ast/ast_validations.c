@@ -1029,13 +1029,13 @@ static AST_Validation _Validate_DELETE_Clauses(const AST *ast) {
 			const cypher_astnode_t *exp = cypher_ast_delete_get_expression(clause, j);
 			cypher_astnode_type_t type = cypher_astnode_type(exp);
 			// expecting an identifier or a function call
-			// identifiers and calls that don't resolve to a node or edge
+			// identifiers and calls that don't resolve to a node, path or edge
 			// will raise an error at run-time
 			if(type != CYPHER_AST_IDENTIFIER &&
 			   type != CYPHER_AST_APPLY_OPERATOR &&
 			   type != CYPHER_AST_APPLY_ALL_OPERATOR &&
 			   type != CYPHER_AST_SUBSCRIPT_OPERATOR) {
-				ErrorCtx_SetError("DELETE can only be called on nodes and relationships");
+				ErrorCtx_SetError("DELETE can only be called on nodes, paths and relationships");
 				res = AST_INVALID;
 				goto cleanup;
 			}

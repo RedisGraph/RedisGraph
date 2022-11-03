@@ -298,4 +298,4 @@ def step_impl(context):
 def step_imp(context):
     global exception
     assert exception != None
-    assert "DELETE can only be called on nodes and relationships" in str(exception)
+    assert "DELETE can only be called on nodes, paths and relationships" in str(exception)
