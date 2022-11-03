@@ -232,7 +232,9 @@ inline bool SIValue_IsNullPtr(SIValue *v) {
 }
 
 const char *SIType_ToString(SIType t) {
-	if(t & T_STRING) {
+	if (t & T_MAP) {
+		return "Map";
+	} else if(t & T_STRING) {
 		return "String";
 	} else if(t & T_INT64) {
 		return "Integer";
@@ -250,12 +252,54 @@ const char *SIType_ToString(SIType t) {
 		return "List";
 	} else if(t & T_PATH) {
 		return "Path";
+	} else if(t & T_DATETIME) {
+		return "Datetime";
+	} else if(t & T_LOCALDATETIME) {
+		return "Local Datetime";
+	} else if(t & T_DATE) {
+		return "Date";
+	} else if(t & T_TIME) {
+		return "Time";
+	} else if(t & T_LOCALTIME) {
+		return "Local Time";
+	} else if(t & T_DURATION) {
+		return "Duration";
 	} else if(t & T_POINT) {
 		return "Point";
 	} else if(t & T_NULL) {
 		return "Null";
 	} else {
 		return "Unknown";
+	}
+}
+
+void SIType_ToMultipleTypeString(SIType t, char **buf, size_t *bufferLen, size_t *bytesWritten) {
+	SIType remainingTypes = t;
+	SIType currentType;
+	// Allocate space
+	// Worst case: Len(SIType names) + 19*Len(", ") + Len("Or") = 177 + 38 + 2 = 217
+	if(*bufferLen - *bytesWritten < 256) {
+		*bufferLen += 256;
+		*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
+	}
+	// Iterate over the possible SITypes
+	for(int i = 0; i < 18; i ++) {
+		currentType = (1 << i);
+		if(t & currentType) {
+			if(t == remainingTypes) {
+				remainingTypes &= (~currentType);
+			} 
+			else if (remainingTypes) {
+				*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ", ");
+				remainingTypes &= (~currentType);
+				// There is no more types, then concatenate "or" before the SIType name
+				if(!remainingTypes)
+				{
+					*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "or ");
+				}
+			}
+			*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%s", SIType_ToString(currentType));
+		}
 	}
 }
 

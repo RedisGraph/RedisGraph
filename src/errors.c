@@ -133,8 +133,14 @@ void Error_InvalidFilterPlacement(rax *entitiesRax) {
 }
 
 void Error_SITypeMismatch(SIValue received, SIType expected) {
-	ErrorCtx_SetError("Type mismatch: expected %s but was %s", SIType_ToString(expected),
+	char *buf = rm_malloc(256 * sizeof(char));
+	size_t bufferLen=256;
+	size_t bytesWritten=0;
+
+	SIType_ToMultipleTypeString(expected, &buf, &bufferLen, &bytesWritten);
+	ErrorCtx_SetError("Type mismatch: expected %s but was %s", buf,
 					  SIType_ToString(SI_TYPE(received)));
+	rm_free(buf);
 }
 
 void Error_UnsupportedASTNodeType(const cypher_astnode_t *node) {

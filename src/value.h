@@ -153,7 +153,12 @@ bool SIValue_IsTrue(SIValue v);
 
 const char *SIType_ToString(SIType t);
 
-// Prints an SIValue to a given buffer, with length (bufferLen), sets bytesWritten to the actuall length
+// Prints the SIType_ToString(), separated by comma, of all the possible types that matches with SIType t 
+// to a given buffer, with length (bufferLen), sets bytesWritten to the actual length
+// of string representation
+void SIType_ToMultipleTypeString(SIType t, char **buf, size_t *bufferLen, size_t *bytesWritten);
+
+// Prints an SIValue to a given buffer, with length (bufferLen), sets bytesWritten to the actual length
 // of string representation
 // if there is not enough space for the value to be printed, the buffer will be re allocated with
 // more space, and bufferLen will change accordingly
