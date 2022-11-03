@@ -114,7 +114,7 @@ class testQueryTimeout():
 
 
     def test04_query_timeout_free_resultset(self):
-        query = "UNWIND range(0,1000000) AS x RETURN toString(x)"
+        query = "UNWIND range(0,2000000) AS x RETURN toString(x)"
         try:
             # The query is expected to timeout
             redis_graph.query(query, timeout=10)
@@ -124,7 +124,7 @@ class testQueryTimeout():
 
         try:
             # The query is expected to succeed
-            redis_graph.query(query, timeout=2000)
+            redis_graph.query(query, timeout=3000)
         except:
             self.env.assertTrue(False)
 
