@@ -2194,3 +2194,44 @@ class testFunctionCallsFlow(FlowTestsBase):
             actual_result = graph.query(query)
         except redis.ResponseError as e:
             self.env.assertContains("Division by zero", str(e))
+
+    def test86_type_mismatch_message(self):
+        query = "CREATE ()-[r:R]->() RETURN toString(r)"
+        try:
+            actual_result = graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting a type error.
+            self.env.assertContains("Type mismatch: expected Datetime, Duration, String, Boolean, Integer, Float, Null, or Point but was Edge", str(e))
+
+        query = "RETURN isEmpty(1)"
+        try:
+            actual_result = graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting a type error.
+            self.env.assertContains("Type mismatch: expected Map, List, String, or Null but was Integer", str(e))
+
+        query = "RETURN toBoolean(1.2)"
+        try:
+            actual_result = graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting a type error.
+            self.env.assertContains("Type mismatch: expected String, Boolean, Integer, or Null but was Float", str(e))
+
+        query = "CREATE ()-[r:R]->() RETURN hasLabels(r, ['abc', 'def'])"
+        try:
+            actual_result = graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting a type error.
+            self.env.assertContains("Type mismatch: expected Node, or Null but was Edge", str(e))
+
+        query = "MATCH (n) RETURN hasLabels(n, 1)"
+        try:
+            actual_result = graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting a type error.
+            self.env.assertContains("Type mismatch: expected List but was Integer", str(e))
