@@ -4,18 +4,19 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-void setup();
-#define TEST_INIT setup();
-
 #include <stdio.h>
 #include <string.h>
-#include "acutest.h"
+#include "../../src/errors.h"
 #include "../../src/query_ctx.h"
 #include "../../src/util/arr.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/filter_tree/filter_tree.h"
 #include "../../src/ast/ast_build_filter_tree.h"
 #include "../../src/arithmetic/funcs.h"
+
+void setup();
+#define TEST_INIT setup();
+#include "acutest.h"
 
 void _fake_graph_context() {
 	// filter tree construction requires access to schemas,

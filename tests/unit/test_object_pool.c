@@ -4,11 +4,7 @@
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
-void setup();
-#define TEST_INIT setup();
-
 #include <stdio.h>
-#include "acutest.h"
 #include "../../src/util/arr.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/util/object_pool/object_pool.h"
@@ -16,6 +12,8 @@ void setup();
 void setup() {
 	Alloc_Reset();
 }
+#define TEST_INIT setup();
+#include "acutest.h"
 
 void test_objectPoolNew() {
 	// Create a new ObjectPool capable of holding at least 1024 integer items.

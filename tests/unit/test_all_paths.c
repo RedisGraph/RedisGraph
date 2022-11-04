@@ -4,6 +4,10 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include "../../src/util/rmalloc.h"
+#include "../../src/configuration/config.h"
+#include "../../src/algorithms/algorithms.h"
+
 void setup();
 void tearDown();
 
@@ -11,9 +15,6 @@ void tearDown();
 #define TEST_FINI tearDown();
 
 #include "acutest.h"
-#include "../../src/util/rmalloc.h"
-#include "../../src/configuration/config.h"
-#include "../../src/algorithms/algorithms.h"
 
 static Graph *BuildGraph() {
 	Edge e;

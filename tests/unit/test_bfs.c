@@ -4,16 +4,19 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-void setup();
-#define TEST_INIT setup();
-
-#include "acutest.h"
 #include "../../src/util/arr.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/graph/query_graph.h"
 #include "../../src/graph/entities/qg_node.h"
 #include "../../src/graph/entities/qg_edge.h"
 #include "../../src/algorithms/algorithms.h"
+
+void setup() {
+	Alloc_Reset();
+}
+
+#define TEST_INIT setup();
+#include "acutest.h"
 
 static QGNode *A;
 static QGNode *B;
@@ -53,10 +56,6 @@ static QueryGraph *BuildGraph() {
 	QueryGraph_ConnectNodes(g, B, D, BD);
 
 	return g;
-}
-
-void setup() {
-	Alloc_Reset();
 }
 
 void test_BFSLevels() {

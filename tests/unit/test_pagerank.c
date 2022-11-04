@@ -4,12 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-void setup();
-void tearDown();
-#define TEST_INIT setup();
-#define TEST_FINI tearDown();
-
-#include "acutest.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include "../../src/util/rmalloc.h"
@@ -23,6 +17,10 @@ void setup() {
 void tearDown() {
 	GrB_finalize();
 }
+
+#define TEST_INIT setup();
+#define TEST_FINI tearDown();
+#include "acutest.h"
 
 void test_pagerank() {
 	GrB_Matrix A;

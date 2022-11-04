@@ -4,10 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-void setup();
-#define TEST_INIT setup();
-
-#include "acutest.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/ast/ast_shared.h"
 #include "../../src/util/range/string_range.h"
@@ -18,6 +14,9 @@ void setup();
 void setup() {
 	Alloc_Reset();
 }
+
+#define TEST_INIT setup();
+#include "acutest.h"
 
 //------------------------------------------------------------------------------
 // Numeric range

@@ -4,13 +4,16 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-void setup();
-#define TEST_INIT setup();
-
-#include "acutest.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/util/cache/cache.h"
 #include "../../src/execution_plan/execution_plan.h"
+
+void setup() {
+	Alloc_Reset();
+}
+
+#define TEST_INIT setup();
+#include "acutest.h"
 
 static int free_count = 0;  // count how many cache objects been freed
 
@@ -38,10 +41,6 @@ bool CacheObj_EQ(const CacheObj *a, const CacheObj *b) {
 void CacheObj_Free(CacheObj *obj) {
 	free_count++;
 	rm_free(obj);
-}
-
-void setup() {
-	Alloc_Reset();
 }
 
 void test_executionPlanCache() {

@@ -4,10 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-void setup();
-#define TEST_INIT setup();
-
-#include "acutest.h"
 #include "../../src/value.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/datatypes/set.h"
@@ -19,6 +15,9 @@ void setup();
 void setup() {
 	Alloc_Reset();
 }
+
+#define TEST_INIT setup();
+#include "acutest.h"
 
 void test_numerics() {
 	SIValue v;

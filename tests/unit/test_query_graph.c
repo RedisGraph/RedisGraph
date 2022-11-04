@@ -4,16 +4,16 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-void setup();
-#define TEST_INIT setup();
-
-#include "acutest.h"
 #include "../../src/ast/ast.h"
 #include "../../src/util/arr.h"
 #include "../../src/query_ctx.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/graph/query_graph.h"
 #include "../../src/graph/graphcontext.h"
+
+void setup();
+#define TEST_INIT setup();
+#include "acutest.h"
 
 static void _fake_graph_context() {
 	TEST_ASSERT(QueryCtx_Init());

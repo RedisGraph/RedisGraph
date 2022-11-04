@@ -4,16 +4,16 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include <time.h>
+#include "../../src/util/cron.h"
+#include "../../src/util/rmalloc.h"
+
 void setup();
 void tearDown();
 
 #define TEST_INIT setup();
 #define TEST_FINI tearDown();
-
-#include <time.h>
 #include "acutest.h"
-#include "../../src/util/cron.h"
-#include "../../src/util/rmalloc.h"
 
 int X = 1;
 

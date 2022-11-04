@@ -4,9 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#define TEST_INIT setup();
-
-#include "acutest.h"
 #include <stdio.h>
 #include <string.h>
 #include "../../src/util/arr.h"
@@ -14,11 +11,13 @@
 #include "../../src/util/datablock/oo_datablock.h"
 #include "../../src/util/rmalloc.h"
 
-#define DATABLOCK_BLOCK_CAP 16384
-
 void setup() {
 	Alloc_Reset();
 }
+#define TEST_INIT setup();
+#include "acutest.h"
+
+#define DATABLOCK_BLOCK_CAP 16384
 
 void test_dataBlockNew() {
 	// create a new data block, which can hold at least 1024 items

@@ -4,12 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-void setup();
-void tearDown();
-#define TEST_INIT setup();
-#define TEST_FINI tearDown();
-
-#include "acutest.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/configuration/config.h"
 #include "../../src/graph/rg_matrix/rg_matrix.h"
@@ -31,6 +25,10 @@ void setup() {
 void tearDown() {
 	GrB_finalize();
 }
+
+#define TEST_INIT setup();
+#define TEST_FINI tearDown();
+#include "acutest.h"
 
 // test RGMatrixTupleIter initialization
 void test_RGMatrixTupleIter_attach() {

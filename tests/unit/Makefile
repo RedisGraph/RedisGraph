@@ -1,17 +1,13 @@
 
 ROOT:=$(realpath ../..)
 
+DEPS_DIR:=$(ROOT)/deps
+
 override OS:=$(shell $(DEPS_DIR)/readies/bin/platform --os)
 ARCH:=$(shell $(DEPS_DIR)/readies/bin/platform --arch)
 
 export OS
 export ARCH
-
-ifeq ($(DEBUG),1)
-FLAVOR=debug
-else
-FLAVOR=release
-endif
 
 define REDISGRAPH_CC
 $(QUIET_CC); $(CC)
@@ -28,29 +24,21 @@ endef
 endif
 
 # Flags passed to the preprocessor.
-LDFLAGS += -ldl
-
 ifeq ($(OS),macos)
-	ifeq ($(STATIC_OMP),1)
-		LIBOMP_PREFIX:=$(shell brew --prefix libomp)
-		LIBOMP=$(LIBOMP_PREFIX)/lib/libomp.a
-	else
-		LIBOMP=-lomp -L$(shell brew --prefix libomp)/lib -Wl,-no_compact_unwind
-	endif
+	LIBOMP=-lomp -L$(shell brew --prefix libomp)/lib
 endif
 
 ifeq ($(OS),linux)
-CXXFLAGS += -fopenmp
+	CFLAGS=-fopenmp
 else
-CXXFLAGS += $(LIBOMP)
+	CFLAGS=$(LIBOMP)
 endif
 
 ifeq ($(COV),1)
-CXXFLAGS += --coverage
-LDFLAGS += --coverage
+	CFLAGS += --coverage
 endif
 
-#----------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 # Paths to deps.
 RAX_DIR = $(ROOT)/deps/rax
@@ -59,7 +47,7 @@ GRAPHBLAS_DIR = $(ROOT)/deps/GraphBLAS
 REDISEARCH_DIR = $(ROOT)/deps/RediSearch
 LIBCYPHER_PARSER_DIR = $(ROOT)/deps/libcypher-parser/lib/src
 
-#----------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 # Build and run a test for each cpp file in directory
 TEST_SOURCES = $(wildcard *.c)
@@ -67,19 +55,17 @@ TEST_OBJECTS = $(patsubst %.c, %.o, $(TEST_SOURCES))
 TEST_EXECUTABLES = $(patsubst %.c, %.run, $(TEST_SOURCES))
 
 # Include header directories
-INCLUDE_DEPS = -I$(REDISEARCH_DIR)/src -I$(RAX_DIR) -I$(XXHASH_DIR) -I$(LIBCYPHER_PARSER_DIR) 
+INCLUDE_DEPS = -I$(GRAPHBLAS_DIR)/Include -I$(REDISEARCH_DIR)/src -I$(RAX_DIR) -I$(XXHASH_DIR) -I$(LIBCYPHER_PARSER_DIR) 
 
 # Build '*.run' binaries for each source
 %.run: %.c
-	@$(REDISGRAPH_CC) $(INCLUDE_DEPS) -fopenmp -L. -lredisgraph -lgraphblas $< -o $@ 
+	@$(CC) $(INCLUDE_DEPS) $(CFLAGS) -L$(ROOT)/src -L$(GRAPHBLAS_DIR)/build -lredisgraph -lgraphblas $< -o $@
 
 .PHONY: all build test test_valgrind clean
 
-all: build test
-
-build: $(TEST_EXECUTABLES) $(DEPS)
-
-test: build
+test: $(TEST_EXECUTABLES)
+# create symbolic link to redisgraph.so
+	@ln -f -s $(ROOT)/src/redisgraph.so ./redisgraph.so
 ifeq ($(V),)
 	@for t in $(TEST_EXECUTABLES); do \
 		echo Running $$t ...; \
@@ -93,6 +79,8 @@ else
 		./$$t || exit 1; \
 	done
 endif
+
+all: test
 
 clean:
 	@rm -f *.o *.run

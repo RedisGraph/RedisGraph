@@ -4,10 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-void setup();
-#define TEST_INIT setup();
-
-#include "acutest.h"
 #include <stdio.h>
 #include "../../src/util/rmalloc.h"
 #include "../../src/util/arr.h"
@@ -16,6 +12,9 @@ void setup();
 void setup() {
 	Alloc_Reset();
 }
+
+#define TEST_INIT setup();
+#include "acutest.h"
 
 // parse query to AST
 AST *buildAST

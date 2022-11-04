@@ -4,13 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-void setup();
-void tearDown();
-
-#define TEST_INIT setup();
-#define TEST_FINI tearDown();
-
-#include "acutest.h"
 #include "../../src/util/arr.h"
 #include "../../src/graph/graph.h"
 #include "../../src/util/rmalloc.h"
@@ -18,6 +11,13 @@ void tearDown();
 #include "../../src/configuration/config.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "../../src/util/datablock/datablock_iterator.h"
+
+void setup();
+void tearDown();
+
+#define TEST_INIT setup();
+#define TEST_FINI tearDown();
+#include "acutest.h"
 
 // Console text colors for benchmark printing
 #define KGRN "\x1B[32m"

@@ -4,10 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-void setup();
-#define TEST_INIT setup();
-
-#include "acutest.h"
 #include <stdio.h>
 #include <string.h>
 #include "../../src/util/arr.h"
@@ -16,6 +12,11 @@ void setup();
 #include "../../src/arithmetic/funcs.h"
 #include "../../src/procedures/procedure.h"
 #include "../../src/execution_plan/execution_plan_clone.h"
+
+void setup();
+
+#define TEST_INIT setup();
+#include "acutest.h"
 
 static void build_ast_and_plan
 (
@@ -71,14 +72,17 @@ static void validate_query_plans_clone
 ) {
 	uint query_count = array_len(queries);
 	for(uint i = 0; i < query_count; i++) {
-		const char *query = queries[i];
 		AST *ast = NULL;
 		ExecutionPlan *plan = NULL;
+		const char *query = queries[i];
+
 		build_ast_and_plan(query, &ast, &plan);
-		TEST_ASSERT(ast);
-		TEST_ASSERT(plan);
+		TEST_ASSERT(ast != NULL);
+		TEST_ASSERT(plan != NULL);
+
 		ExecutionPlan *clone = ExecutionPlan_Clone(plan);
 		ExecutionPlan_OpsEqual(plan, clone, plan->root, clone->root);
+
 		AST_Free(ast);
 		ExecutionPlan_Free(clone);
 		ExecutionPlan_Free(plan);

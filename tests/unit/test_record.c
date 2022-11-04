@@ -4,11 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-void setup();
-#define TEST_INIT setup();
-
 #include <stdio.h>
-#include "acutest.h"
 #include "../../src/value.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/execution_plan/record.h"
@@ -16,6 +12,9 @@ void setup();
 void setup() {
 	Alloc_Reset();
 }
+
+#define TEST_INIT setup();
+#include "acutest.h"
 
 void test_recordToString() {
 	rax *_rax = raxNew();

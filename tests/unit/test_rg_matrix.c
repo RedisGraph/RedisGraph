@@ -4,16 +4,17 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-void setup();
-void tearDown();
-#define TEST_INIT setup();
-#define TEST_FINI tearDown();
-
-#include "acutest.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/configuration/config.h"
 #include "../../src/graph/rg_matrix/rg_matrix.h"
 #include <time.h>
+
+void setup();
+void tearDown();
+
+#define TEST_INIT setup();
+#define TEST_FINI tearDown();
+#include "acutest.h"
 
 #define MATRIX_EMPTY(M)               \
 	({                                \
@@ -199,8 +200,8 @@ void test_RGMatrix_new() {
 	DP  =  RG_MATRIX_DELTA_PLUS(A);
 	DM  =  RG_MATRIX_DELTA_MINUS(A);
 
-	// bool matrix always not maintain transpose
-	TEST_ASSERT(!RG_MATRIX_MAINTAIN_TRANSPOSE(A));
+	// bool matrix do not maintain transpose
+	TEST_ASSERT(!(RG_MATRIX_MAINTAIN_TRANSPOSE(A)));
 
 	// bool matrix always not multi edge
 	TEST_ASSERT(!RG_MATRIX_MULTI_EDGE(A));

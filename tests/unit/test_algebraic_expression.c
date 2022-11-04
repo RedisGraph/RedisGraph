@@ -4,13 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-void setup();
-void tearDown();
-
-#define TEST_INIT setup();
-#define TEST_FINI tearDown();
-
-#include "acutest.h"
 #include "assert.h"
 #include "../../src/value.h"
 #include "../../src/util/arr.h"
@@ -28,6 +21,14 @@ void tearDown();
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 #include <stdlib.h>
+
+void setup();
+void tearDown();
+
+#define TEST_INIT setup();
+#define TEST_FINI tearDown();
+
+#include "acutest.h"
 
 extern AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause, AST *ast);
 

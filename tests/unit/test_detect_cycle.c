@@ -4,17 +4,17 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include "../../src/util/rmalloc.h"
+#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
+#include "../../src/graph/query_graph.h"
+#include "../../src/algorithms/algorithms.h"
+
 void setup();
 void tearDown();
 
 #define TEST_INIT setup();
 #define TEST_FINI tearDown();
-
 #include "acutest.h"
-#include "../../src/util/rmalloc.h"
-#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
-#include "../../src/graph/query_graph.h"
-#include "../../src/algorithms/algorithms.h"
 
 QueryGraph *AcyclicBuildGraph() {
 	// (A)->(B)->(C)
