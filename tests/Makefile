@@ -45,6 +45,9 @@ test: $(TESTS)
 
 unit:
 	### unit tests
+# create symbolic link to redisgraph.so
+	@ln -f -s $(ROOT)/src/redisgraph.so ./unit/redisgraph.so
+	@ln -f -s $(ROOT)/src/redisgraph.so ./unit/libredisgraph.so
 	@$(MAKE) -C unit all
 
 flow:

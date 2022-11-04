@@ -59,13 +59,11 @@ INCLUDE_DEPS = -I$(GRAPHBLAS_DIR)/Include -I$(REDISEARCH_DIR)/src -I$(RAX_DIR) -
 
 # Build '*.run' binaries for each source
 %.run: %.c
-	@$(CC) $(INCLUDE_DEPS) $(CFLAGS) -L$(ROOT)/src -L$(GRAPHBLAS_DIR)/build -lredisgraph -lgraphblas $< -o $@
+	@$(CC) $(INCLUDE_DEPS) $(CFLAGS) -L. -L$(GRAPHBLAS_DIR)/build $< -o $@ -lredisgraph -lgraphblas
 
 .PHONY: all build test test_valgrind clean
 
 test: $(TEST_EXECUTABLES)
-# create symbolic link to redisgraph.so
-	@ln -f -s $(ROOT)/src/redisgraph.so ./redisgraph.so
 ifeq ($(V),)
 	@for t in $(TEST_EXECUTABLES); do \
 		echo Running $$t ...; \
