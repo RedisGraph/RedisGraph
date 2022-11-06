@@ -209,8 +209,99 @@ static void _AST_MapSetClauseReferences(AST *ast, const cypher_astnode_t *set_cl
 	}
 }
 
-// Maps entities in DELETE clause.
-static void _AST_MapDeleteClauseReferences(AST *ast, const cypher_astnode_t *delete_clause) {
+static void _AST_MapRemovePropertyReferences
+(
+	AST *ast,
+	const cypher_astnode_t *remove_item
+) {
+	ASSERT(cypher_astnode_type(remove_item) == CYPHER_AST_REMOVE_PROPERTY);
+
+	const cypher_astnode_t *ast_prop =
+		cypher_ast_remove_property_get_property(remove_item);
+	const cypher_astnode_t *ast_entity =
+		cypher_ast_property_operator_get_expression(ast_prop);
+	ASSERT(cypher_astnode_type(ast_entity) == CYPHER_AST_IDENTIFIER);
+
+	const char *alias = cypher_ast_identifier_get_name(ast_entity);
+	_AST_UpdateRefMap(ast, alias);
+}
+
+// maps entities in REMOVE clauses that update labels
+static void _AST_MapRemoveLabelsReferences
+(
+	AST *ast,
+	const cypher_astnode_t *remove_item
+) {
+	ASSERT(ast != NULL);
+	ASSERT(remove_item != NULL);
+	ASSERT(cypher_astnode_type(remove_item) == CYPHER_AST_REMOVE_LABELS);
+
+	const cypher_astnode_t *identifier =
+		cypher_ast_remove_labels_get_identifier(remove_item);
+	ASSERT(cypher_astnode_type(identifier) == CYPHER_AST_IDENTIFIER);
+
+	const char *alias = cypher_ast_identifier_get_name(identifier);
+	_AST_UpdateRefMap(ast, alias);
+}
+
+static void _AST_MapRemoveItemReferences
+(
+	AST *ast,
+	const cypher_astnode_t *remove_item
+) {
+	ASSERT(ast != NULL);
+	ASSERT(remove_item != NULL);
+
+	const cypher_astnode_type_t type = cypher_astnode_type(remove_item);
+	if(type == CYPHER_AST_REMOVE_LABELS) {
+		_AST_MapRemoveLabelsReferences(ast, remove_item);
+	} else if(type == CYPHER_AST_REMOVE_PROPERTY) {
+		_AST_MapRemovePropertyReferences(ast, remove_item);
+	} else {
+		ASSERT(false);
+	}
+}
+
+// maps entities in REMOVE clause
+static void _AST_MapRemoveClauseReferences
+(
+	AST *ast,
+	const cypher_astnode_t *remove_clause
+) {
+	ASSERT(ast != NULL);
+	ASSERT(remove_clause != NULL);
+
+	uint nitems = cypher_ast_remove_nitems(remove_clause);
+	for(uint i = 0; i < nitems; i++) {
+		// get the SET directive at this index
+		const cypher_astnode_t *set_item =
+			cypher_ast_remove_get_item(remove_clause, i);
+		_AST_MapRemoveItemReferences(ast, set_item);
+	}
+}
+
+// maps entities in UNWIND clause
+static void _AST_MapUnwindClauseReferences
+(
+	AST *ast,
+	const cypher_astnode_t *unwind_clause
+) {
+	ASSERT(ast != NULL);
+	ASSERT(unwind_clause != NULL);
+
+	const cypher_astnode_t * expr = cypher_ast_unwind_get_expression(unwind_clause);
+	_AST_MapExpression(ast, expr);
+}
+
+// maps entities in DELETE clause
+static void _AST_MapDeleteClauseReferences
+(
+	AST *ast,
+	const cypher_astnode_t *delete_clause
+) {
+	ASSERT(ast != NULL);
+	ASSERT(delete_clause != NULL);
+
 	uint nitems = cypher_ast_delete_nexpressions(delete_clause);
 	for(uint i = 0; i < nitems; i++) {
 		const cypher_astnode_t *delete_exp = cypher_ast_delete_get_expression(delete_clause, i);
@@ -315,6 +406,12 @@ static void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *claus
 	} else if(type == CYPHER_AST_DELETE) {
 		// Add referenced aliases for DELETE clause.
 		_AST_MapDeleteClauseReferences(ast, clause);
+	} else if(type == CYPHER_AST_REMOVE) {
+		// add referenced aliases for REMOVE clause
+		_AST_MapRemoveClauseReferences(ast, clause);
+	} else if(type == CYPHER_AST_UNWIND) {
+		// add referenced aliases for UNWIND clause
+		_AST_MapUnwindClauseReferences(ast, clause);
 	}
 }
 
