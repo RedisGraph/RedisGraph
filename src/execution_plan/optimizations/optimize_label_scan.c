@@ -67,6 +67,19 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 		}
 	}
 
+	// in-case label_id is unknown at time it was created
+	// check if we can resolve it now
+	if(scan->n.label_id == GRAPH_UNKNOWN_LABEL) {
+		GraphContext *gc = QueryCtx_GetGraphCtx();
+		ASSERT(gc != NULL);
+
+		// get schema by name
+		Schema *s = GraphContext_GetSchema(gc, scan->n.label, SCHEMA_NODE);
+		if(s != NULL) {
+			scan->n.label_id = Schema_GetID(s);
+		}
+	}
+
 	// scanned label has the minimum number of entries
 	// no switching required
 	if(min_label_id == scan->n.label_id) return;

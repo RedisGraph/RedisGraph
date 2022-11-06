@@ -1225,6 +1225,7 @@ static AST_Validation _ValidateQueryTermination(const AST *ast) {
 	   type != CYPHER_AST_MERGE    &&
 	   type != CYPHER_AST_DELETE   &&
 	   type != CYPHER_AST_SET      &&
+	   type != CYPHER_AST_REMOVE   &&
 	   type != CYPHER_AST_CALL
 	  ) {
 		ErrorCtx_SetError("Query cannot conclude with %s (must be RETURN or an update clause)",
