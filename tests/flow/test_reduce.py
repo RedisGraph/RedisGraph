@@ -180,7 +180,7 @@ class testReduce():
 
     def test_invalid_use(self):
         queries = [
-            "return reduce(1,[1],{1})",
+            "return reduce(1,[1],$a)",
             "with 1 as x return reduce(x,x,x)",
             "with {a:1, b:2} as x return reduce(x,x,x)",
             "return reduce()",
