@@ -621,6 +621,15 @@ class testGraphMergeFlow(FlowTestsBase):
         self.env.assertEquals(res.result_set, [['abcd', 'x', 'y']])
 
     def test30_record_clone_under_merge(self):
+        # the following operations
+        # 1. node label scan
+        # 2. all node scan
+        # 3. node by id seek
+        # hold the child record clone and enrich it before returning to parent
+        # if the parent is eager then these operation delete the child record
+        # this can lead to free values that is used in other operation
+        # this tests check that this operations using deep clone
+
         redis_con = self.env.getConnection()
         graph = Graph(redis_con, "node_label_scan_under_merge")
 
