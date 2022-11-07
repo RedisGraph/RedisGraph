@@ -861,6 +861,17 @@ static AST_Validation _ValidateMergeNode(const cypher_astnode_t *entity, rax *de
 	return AST_VALID;
 }
 
+// Validate SET property.
+static AST_Validation Validate_SETProperty(const cypher_astnode_t *set_item) {
+	const cypher_astnode_t *ast_prop = cypher_ast_set_property_get_property(set_item);
+	const cypher_astnode_t *ast_entity = cypher_ast_property_operator_get_expression(ast_prop);
+	if(cypher_astnode_type(ast_entity) != CYPHER_AST_IDENTIFIER) {
+		ErrorCtx_SetError("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions");
+		return AST_INVALID;
+	}
+	return AST_VALID;
+}
+
 static AST_Validation _Validate_MERGE_Clauses(const AST *ast) {
 	AST_Validation res = AST_VALID;
 	uint *merge_clause_indices = AST_GetClauseIndices(ast, CYPHER_AST_MERGE);
@@ -904,6 +915,31 @@ static AST_Validation _Validate_MERGE_Clauses(const AST *ast) {
 		for (uint j = 0; j < action_count; j++) {
 			const cypher_astnode_t *action = cypher_ast_merge_get_action(merge_clause, j);
 			_ValidateFunctionCalls(action, false);
+
+			cypher_astnode_type_t type = cypher_astnode_type(action);
+			if(type == CYPHER_AST_ON_CREATE) {
+				// ON CREATE.
+				uint n_set_items = cypher_ast_on_create_nitems(action);
+				for(uint j = 0; j < n_set_items; j ++) {
+					const cypher_astnode_t *set_item = cypher_ast_on_create_get_item(action, j);
+					if(cypher_astnode_type(set_item) == CYPHER_AST_SET_PROPERTY) {
+						res = Validate_SETProperty(set_item);
+						if(res != AST_VALID) goto cleanup;
+					}
+				}
+			} else if(type == CYPHER_AST_ON_MATCH) {
+				// ON MATCH.
+				uint n_set_items = cypher_ast_on_match_nitems(action);
+				for(uint j = 0; j < n_set_items; j ++) {
+					const cypher_astnode_t *set_item = cypher_ast_on_match_get_item(action, j);
+					if(cypher_astnode_type(set_item) == CYPHER_AST_SET_PROPERTY) {
+						res = Validate_SETProperty(set_item);
+						if(res != AST_VALID) goto cleanup;
+					}
+				}
+			} else {
+				ASSERT(false);
+			}
 		}
 	}
 
@@ -1516,12 +1552,8 @@ static AST_Validation _Validate_SETItems(const cypher_astnode_t *set_clause) {
 		const cypher_astnode_t *set_item = cypher_ast_set_get_item(set_clause, i);
 		const cypher_astnode_type_t type = cypher_astnode_type(set_item);
 		if(type == CYPHER_AST_SET_PROPERTY) {
-			const cypher_astnode_t *ast_prop = cypher_ast_set_property_get_property(set_item);
-			const cypher_astnode_t *ast_entity = cypher_ast_property_operator_get_expression(ast_prop);
-			if(cypher_astnode_type(ast_entity) != CYPHER_AST_IDENTIFIER) {
-				ErrorCtx_SetError("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions");
-				return AST_INVALID;
-			}
+			AST_Validation res = Validate_SETProperty(set_item);
+			if(res != AST_VALID) return res;
 		}
 	}
 	return AST_VALID;
