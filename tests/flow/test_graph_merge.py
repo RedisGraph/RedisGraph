@@ -619,3 +619,43 @@ class testGraphMergeFlow(FlowTestsBase):
         self.env.assertEquals(res.nodes_created, 0)
         self.env.assertEquals(res.relationships_created, 0)
         self.env.assertEquals(res.result_set, [['abcd', 'x', 'y']])
+
+    def test30_record_clone_under_merge(self):
+        redis_con = self.env.getConnection()
+        graph = Graph(redis_con, "node_label_scan_under_merge")
+
+        # Create data
+        graph.query("""CREATE (:A {name:"A"}), (:B {id:"B"}), (:B {id:"B"})""")
+
+        expected = {"name": "A", "id": "C"}
+        
+        # node label scan under merge
+        query = """UNWIND [{name: "A", id: "C"}] AS x
+                   MATCH (i:A {name:x.name})
+                   WITH *
+                   MATCH (m:B {id:"B"})
+                   MERGE (m)-[:R]->(i)
+                   RETURN x"""
+        res = graph.query(query)
+        self.env.assertEquals(res.result_set[0][0], expected)
+
+        # all node scan under merge
+        query = """UNWIND [{name: "A", id: "C"}] AS x
+                   MATCH (i:A {name:x.name})
+                   WITH *
+                   MATCH (m)
+                   MERGE (m)-[:R]->(i)
+                   RETURN x"""
+        res = graph.query(query)
+        self.env.assertEquals(res.result_set[0][0], expected)
+
+        # node by id seek under merge
+        query = """UNWIND [{name: "A", id: "C"}] AS x
+                   MATCH (i:A {name:x.name})
+                   WITH *
+                   MATCH (m)
+                   WHERE id(m) > 0
+                   MERGE (m)-[:R]->(i)
+                   RETURN x"""
+        res = graph.query(query)
+        self.env.assertEquals(res.result_set[0][0], expected)
