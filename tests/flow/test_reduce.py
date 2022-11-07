@@ -195,3 +195,21 @@ class testReduce():
                 # Expecting an error.
                 self.env.assertContains(str(e), "Unknown function 'reduce'")
                 pass
+    
+    def test_aggregate_in_reduce(self):
+        queries = [
+            "RETURN reduce(x = 0, n in [1] | min(n))",
+            "WITH [1,2,3] as l RETURN reduce(x = 0, n in l | min(n))",
+            "WITH [1,2,3] as l RETURN reduce(x = 0, n in l | min(n))",
+            "WITH [1,2,3] as l RETURN reduce(x = min(l), n in l | n)",
+            "WITH [1,2,3] as l RETURN reduce(x = 0, n in min(l) | n)"
+        ]
+
+        for query in queries:
+            try:
+                self.graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                # Expecting an error.
+                self.env.assertContains(str(e), "Invalid use of aggregating function 'min'")
+                pass
