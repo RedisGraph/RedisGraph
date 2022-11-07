@@ -73,7 +73,7 @@ Feature: WithWhere2 - Filter multiple variables
       """
     And parameters are:
       | a | 0 |
-      | B | 1 |
+      | b | 1 |
     When executing query:
       """
       MATCH (advertiser)-[:ADV_HAS_PRODUCT]->(out)-[:AP_HAS_VALUE]->(red)<-[:AA_HAS_VALUE]-(a)
