@@ -430,6 +430,11 @@ static AR_ExpNode *_AR_ExpFromMapProjection(const cypher_astnode_t *expr) {
 			children[i * 2] = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char *)prop_name));
 
 			children[i * 2 + 1] = AR_EXP_NewVariableOperandNode(prop_name);
+		} else if(t == CYPHER_AST_MAP_PROJECTION_ALL_PROPERTIES) {
+			AR_ExpNode *op2 = AR_EXP_NewOpNode("properties", false, 1);
+			AR_ExpNode **children2 = op2->op.children;
+			children2[0] = AR_EXP_NewVariableOperandNode(entity_name);
+			return op2;
 		} else {
 			ASSERT("Unexpected AST node type" && false);
 		}
