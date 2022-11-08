@@ -54,6 +54,35 @@ class testMap(FlowTestsBase):
                            [{'val': 3, 'literal': 'lit'}]]
         self.env.assertEquals(query_result.result_set, expected_result)
 
+        # map projection unexisting property
+        query = """CREATE (a:A {name: 'abc', y: 3, z: 43}) RETURN a{.h}"""
+        query_result = redis_graph.query(query)
+        expected_result = [[{'h': None}]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        # map projection all properties
+        queries = [
+            """CREATE (a:A {name: 'abc', y: 3, z: 43}) RETURN a{.*}""",
+            """CREATE (a:A {name: 'abc', y: 3, z: 43}) RETURN a{.*, .*}""",
+            """CREATE (a:A {name: 'abc', y: 3, z: 43}) RETURN a{.z, .*}""",
+            """CREATE (a:A {name: 'abc', y: 3, z: 43}) RETURN a{.z, .*, .y}""",
+        ]
+        expected_result = [[{'name':'abc', 'y': 3, 'z': 43}]]
+        for query in queries:
+            query_result = redis_graph.query(query)
+            self.env.assertEquals(query_result.result_set, expected_result)
+
+        # map projection all properties and unexisting property
+        queries = [
+            """CREATE (a:A {name: 'abc', y: 3, z: 43}) RETURN a{.*, .h}""",
+            """CREATE (a:A {name: 'abc', y: 3, z: 43}) RETURN a{.h, .*}""",
+            """CREATE (a:A {name: 'abc', y: 3, z: 43}) RETURN a{.*, .z, .h, .*}""",
+        ]
+        expected_result = [[{'name':'abc', 'y': 3, 'z': 43, 'h': None}]]
+        for query in queries:
+            query_result = redis_graph.query(query)
+            self.env.assertEquals(query_result.result_set, expected_result)
+
     # Validate behaviors of nested maps
     def test03_nested_maps(self):
         # Return a map with nesting

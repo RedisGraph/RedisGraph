@@ -397,9 +397,24 @@ static AR_ExpNode *_AR_ExpFromMapProjection(const cypher_astnode_t *expr) {
 	const cypher_astnode_t *selector = NULL;
 	unsigned int n_selectors = cypher_ast_map_projection_nselectors(expr);
 
-	AR_ExpNode *op = AR_EXP_NewOpNode("tomap", true, n_selectors * 2);
-	AR_ExpNode **children = op->op.children;
+	AR_ExpNode *propertiesOp = NULL;
+	AR_ExpNode *tomapOp = NULL;
 
+	// Count the number of selectors of type CYPHER_AST_MAP_PROJECTION_ALL_PROPERTIES, because these are not children of tomap OpNode
+	uint allProps_selectors = 0;
+	for(uint i = 0; i < n_selectors; i++) {
+		selector = cypher_ast_map_projection_get_selector(expr, i);
+		t = cypher_astnode_type(selector);
+		if(t == CYPHER_AST_MAP_PROJECTION_ALL_PROPERTIES) {
+			// { .* }
+			allProps_selectors++;
+		}
+	}
+
+	tomapOp = AR_EXP_NewOpNode("tomap", true, (n_selectors - allProps_selectors) * 2);
+	AR_ExpNode **children = tomapOp->op.children;
+
+	uint j = 0;
 	for(uint i = 0; i < n_selectors; i++) {
 		selector = cypher_ast_map_projection_get_selector(expr, i);
 
@@ -411,36 +426,49 @@ static AR_ExpNode *_AR_ExpFromMapProjection(const cypher_astnode_t *expr) {
 			// { .name }
 			prop = cypher_ast_map_projection_property_get_prop_name(selector);
 			prop_name = cypher_ast_prop_name_get_value(prop);
-			children[i * 2] = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char *)prop_name));
+			children[j * 2] = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char *)prop_name));
 			AR_ExpNode *entity = AR_EXP_NewVariableOperandNode(entity_name);
-			children[i * 2 + 1] = AR_EXP_NewAttributeAccessNode(entity, prop_name);
+			children[j * 2 + 1] = AR_EXP_NewAttributeAccessNode(entity, prop_name);
+			j++;
 		} else if(t == CYPHER_AST_MAP_PROJECTION_LITERAL) {
 			// { v: n.v }
 			prop = cypher_ast_map_projection_literal_get_prop_name(selector);
 			prop_name = cypher_ast_prop_name_get_value(prop);
 			const cypher_astnode_t *literal_exp =
 				cypher_ast_map_projection_literal_get_expression(selector);
-			children[i * 2] = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char *)prop_name));
-			children[i * 2 + 1] = AR_EXP_FromASTNode(literal_exp);
+			children[j * 2] = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char *)prop_name));
+			children[j * 2 + 1] = AR_EXP_FromASTNode(literal_exp);
+			j++;
 		} else if(t == CYPHER_AST_MAP_PROJECTION_IDENTIFIER) {
 			// { v }
 			prop = cypher_ast_map_projection_identifier_get_identifier(selector);
 			prop_name = cypher_ast_identifier_get_name(prop);
-
-			children[i * 2] = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char *)prop_name));
-
-			children[i * 2 + 1] = AR_EXP_NewVariableOperandNode(prop_name);
+			children[j * 2] = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char *)prop_name));
+			children[j * 2 + 1] = AR_EXP_NewVariableOperandNode(prop_name);
+			j++;
 		} else if(t == CYPHER_AST_MAP_PROJECTION_ALL_PROPERTIES) {
-			AR_ExpNode *op2 = AR_EXP_NewOpNode("properties", false, 1);
-			AR_ExpNode **children2 = op2->op.children;
-			children2[0] = AR_EXP_NewVariableOperandNode(entity_name);
-			return op2;
+			// { .* }
+			// Use properties() to get a map with all properties
+			propertiesOp = AR_EXP_NewOpNode("properties", true, 1);
+			AR_ExpNode **propertiesChildren = propertiesOp->op.children;
+			propertiesChildren[0] = AR_EXP_NewVariableOperandNode(entity_name);
 		} else {
 			ASSERT("Unexpected AST node type" && false);
 		}
 	}
 
-	return op;
+	if(propertiesOp && tomapOp) {
+		// To support case like: CREATE (a:A {z:1}) RETURN a{.*, .undefinedProp}
+		AR_ExpNode *opAddMap = AR_EXP_NewOpNode("addmap", true, 2);
+		AR_ExpNode **childrenAddMapp = opAddMap->op.children;
+		childrenAddMapp[0] = tomapOp;
+		childrenAddMapp[1] = propertiesOp;
+		return opAddMap;
+	} else if (propertiesOp) {
+		return propertiesOp;
+	} else {
+		return tomapOp;
+	}
 }
 
 static AR_ExpNode *_AR_ExpFromSubscriptExpression(const cypher_astnode_t *expr) {

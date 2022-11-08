@@ -74,6 +74,39 @@ SIValue AR_PROPERTIES(SIValue *argv, int argc, void *private_data) {
 	return SI_NullVal();
 }
 
+// Receives two maps and returns a new map adding them in a single map
+SIValue AR_ADDMAP(SIValue *argv, int argc, void *private_data) {
+	ASSERT(argc == 2);
+
+	SIValue map0 = argv[0];
+	SIValue map1 = argv[1];
+
+	if ((SI_TYPE(map0) & T_NULL) && (SI_TYPE(map1) & T_NULL)) {
+		return SI_NullVal();
+	} else if (SI_TYPE(map0) & T_NULL) {
+		return map1;
+	} else if (SI_TYPE(map1) & T_NULL) {
+		return map0;
+	} else {
+		uint keyCount0 = Map_KeyCount(map0);
+		uint keyCount1 = Map_KeyCount(map1);
+
+		if(keyCount0 > keyCount1) {
+			for(int i=0; i < keyCount1; i++) {
+				Pair p = map1.map[i];
+				Map_Add(&map0, p.key, p.val);
+			}
+			return map0;
+		} else {
+			for(int i=0; i < keyCount0; i++) {
+				Pair p = map0.map[i];
+				Map_Add(&map1, p.key, p.val);
+			}
+			return map1;
+		}
+	}
+}
+
 void Register_MapFuncs() {
 	SIType *types;
 	SIType ret_type;
@@ -95,6 +128,13 @@ void Register_MapFuncs() {
 	array_append(types, T_NULL | T_MAP | T_NODE | T_EDGE);
 	ret_type = T_NULL | T_MAP;
 	func_desc = AR_FuncDescNew("properties", AR_PROPERTIES, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 2);
+	array_append(types, T_NULL | T_MAP);
+	array_append(types, T_NULL | T_MAP);
+	ret_type = T_NULL | T_MAP;
+	func_desc = AR_FuncDescNew("addmap", AR_ADDMAP, 2, 2, types, ret_type, true, true);
 	AR_RegFunc(func_desc);
 }
 
