@@ -2244,3 +2244,4 @@ class testFunctionCallsFlow(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             # Expecting a type error.
             self.env.assertContains("Type mismatch: expected List or Null but was Integer", str(e))
+
