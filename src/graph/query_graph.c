@@ -15,7 +15,8 @@
 static void _QueryGraphSetNodeLabel
 (
 	QGNode *n,
-	const cypher_astnode_t *ast_entity
+	const cypher_astnode_t *ast_entity,
+	bool optional
 ) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
@@ -29,7 +30,7 @@ static void _QueryGraphSetNodeLabel
 		// if a schema is found, the AST refers to an existing label
 		Schema *s = GraphContext_GetSchema(gc, l, SCHEMA_NODE);
 		int l_id = (s) ? Schema_GetID(s) : GRAPH_UNKNOWN_LABEL;
-		QGNode_AddLabel(n, l, l_id);
+		QGNode_AddLabel(n, l, l_id, optional);
 	}
 }
 
@@ -37,7 +38,8 @@ static void _QueryGraphSetNodeLabel
 static void _QueryGraphAddNode
 (
 	QueryGraph *qg,
-	const cypher_astnode_t *ast_entity
+	const cypher_astnode_t *ast_entity,
+	bool optional
 ) {
 	const char *alias = AST_ToString(ast_entity);
 
@@ -51,7 +53,7 @@ static void _QueryGraphAddNode
 		QueryGraph_AddNode(qg, n);
 	}
 
-	_QueryGraphSetNodeLabel(n, ast_entity);
+	_QueryGraphSetNodeLabel(n, ast_entity, optional);
 }
 
 // adds edge to query graph
@@ -160,7 +162,7 @@ static void _QueryGraph_ExtractNode
 			// clause scoping only node 'a' is in 'qg' the filtered pattern
 			// which is being extracted from 'qg' has additional entities:
 			// an anonymous edge and node
-			_QueryGraphAddNode(graph, ast_node);
+			_QueryGraphAddNode(graph, ast_node, false);
 		} else {
 			// add a clone of the original node
 			n = QGNode_Clone(n);
@@ -171,11 +173,11 @@ static void _QueryGraph_ExtractNode
 
 			QueryGraph_AddNode(graph, n);
 			// set node label information
-			_QueryGraphSetNodeLabel(n, ast_node);
+			_QueryGraphSetNodeLabel(n, ast_node, false);
 		}
 	} else {
 		// set node label information
-		_QueryGraphSetNodeLabel(n, ast_node);
+		_QueryGraphSetNodeLabel(n, ast_node, false);
 	}
 }
 
@@ -279,7 +281,8 @@ void QueryGraph_AddPath
 (
 	QueryGraph *qg,                // query graph to add path to
 	const cypher_astnode_t *path,  // path to add
-	bool only_shortest             // interested only in the shortest paths
+	bool only_shortest,             // interested only in the shortest paths
+	bool optional
 ) {
 	AST *ast = QueryCtx_GetAST();
 	uint nelems = cypher_ast_pattern_path_nelements(path);
@@ -289,7 +292,7 @@ void QueryGraph_AddPath
 	for(uint i = 0; i < nelems; i += 2) {
 		const cypher_astnode_t *ast_node =
 			cypher_ast_pattern_path_get_element(path, i);
-		_QueryGraphAddNode(qg, ast_node);
+		_QueryGraphAddNode(qg, ast_node, optional);
 	}
 
 	// every odd offset corresponds to an edge in a path
@@ -390,10 +393,15 @@ QueryGraph *BuildQueryGraph
 		const cypher_astnode_t **clauses = AST_GetTypedNodes(ast->root,
 															 clause_type);
 		uint clause_count = array_len(clauses);
+		bool optional;
 
 		// for each clause of the current type
 		for(uint j = 0; j < clause_count; j ++) {
 			const cypher_astnode_t *clause = clauses[j];
+			
+			// Is the clause optional (relevant only for match)
+			optional = i == 0 ? cypher_ast_match_is_optional(clause) : false;
+
 			// collect path objects
 			const cypher_astnode_t **paths =
 				AST_GetTypedNodes(clause, CYPHER_AST_PATTERN_PATH);
@@ -429,7 +437,7 @@ QueryGraph *BuildQueryGraph
 
 			// introduce each path object to the query graph
 			for(uint k = 0; k < path_count; k ++) {
-				QueryGraph_AddPath(qg, paths[k], only_shortest[k]);
+				QueryGraph_AddPath(qg, paths[k], only_shortest[k], optional);
 			}
 			array_free(paths);
 		}
@@ -740,7 +748,7 @@ GrB_Matrix QueryGraph_MatrixRepresentation
 	uint node_count = QueryGraph_NodeCount(qg_clone);
 	for(uint i = 0; i < node_count; i++) {
 		QGNode *n = qg_clone->nodes[i];
-		if(QGNode_LabelCount(n) == 0) QGNode_AddLabel(n, "", i);
+		if(QGNode_LabelCount(n) == 0) QGNode_AddLabel(n, "", i, false);
 		else n->labelsID[0] = i;
 	}
 

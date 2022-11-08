@@ -39,6 +39,7 @@ QGNode *QGNode_New
 	n->alias             =  alias;
 	n->labels            =  array_new(const char *, 0);
 	n->labelsID          =  array_new(int, 0);
+	n->optional			 = 	array_new(bool, 0);
 	n->incoming_edges    =  array_new(QGEdge *, 0);
 	n->outgoing_edges    =  array_new(QGEdge *, 0);
 	n->highly_connected  =  false;
@@ -100,6 +101,17 @@ int QGNode_GetLabelID
 	return labelId;
 }
 
+bool QGNode_IsOptional
+(
+	const QGNode *n,
+	uint idx
+) {
+	ASSERT(n != NULL);
+	ASSERT(idx < QGNode_LabelCount(n));
+
+	return n->optional[idx];
+}
+
 const char *QGNode_GetLabel
 (
 	const QGNode *n,
@@ -131,7 +143,8 @@ void QGNode_AddLabel
 (
 	QGNode *n,
 	const char *l,
-	int l_id
+	int l_id,
+	bool optional
 ) {
 	ASSERT(n != NULL);
 	ASSERT(l != NULL);
@@ -141,6 +154,7 @@ void QGNode_AddLabel
 
 	array_append(n->labels, l);
 	array_append(n->labelsID, l_id);
+	array_append(n->optional, optional);
 }
 
 inline bool QGNode_HighlyConnected
