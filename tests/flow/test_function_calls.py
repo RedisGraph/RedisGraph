@@ -102,22 +102,18 @@ class testFunctionCallsFlow(FlowTestsBase):
         expected_result = [[True]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
+    def test03_boolean_errors(self):
         query = """RETURN 'str' < 5.5"""
-        actual_result = graph.query(query)
         expected_result = [[None]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
+        self.get_res_and_assertEquals(query, expected_result)
 
         query = """RETURN true > 5"""
-        actual_result = graph.query(query)
-        expected_result = [[None]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
+        self.get_res_and_assertEquals(query, expected_result)
 
         query = """MATCH (a) RETURN a < 'anything' LIMIT 1"""
-        actual_result = graph.query(query)
-        expected_result = [[None]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
+        self.get_res_and_assertEquals(query, expected_result)
 
-    def test03_entity_functions(self):
+    def test04_entity_functions(self):
         query = "RETURN ID(5)"
         self.expect_type_error(query)
 
@@ -141,11 +137,11 @@ class testFunctionCallsFlow(FlowTestsBase):
         expected_result = [[True]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-    def test04_nonmap_errors(self):
+    def test07_nonmap_errors(self):
         query = """MATCH (a) WITH a.name AS scalar RETURN scalar.name"""
         self.expect_type_error(query)
 
-    def test05_apply_all_function(self):
+    def test08_apply_all_function(self):
         query = "MATCH () RETURN COUNT(*)"
         actual_result = graph.query(query)
         expected_result = [[4]]
@@ -396,7 +392,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             self.env.assertContains("Division by zero", str(e))
 
     # Aggregate functions should handle null inputs appropriately.
-    def test8_null_aggregate_function_inputs(self):
+    def test11_null_aggregate_function_inputs(self):
         # SUM should sum all non-null inputs.
         query = """UNWIND [1, NULL, 3] AS a RETURN sum(a)"""
         actual_result = graph.query(query)
@@ -434,7 +430,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
     # Verify that nested functions that perform heap allocations return properly.
-    def test9_nested_heap_functions(self):
+    def test12_nested_heap_functions(self):
         query = """MATCH p = (n) WITH head(nodes(p)) AS node RETURN node.name ORDER BY node.name"""
         actual_result = graph.query(query)
         expected_result = [['Ailon'],
@@ -444,7 +440,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
     # CASE...WHEN statements should properly handle NULL, false, and true evaluations.
-    def test10_case_when_inputs(self):
+    def test13_case_when_inputs(self):
         # Simple case form: single value evaluation.
         query = """UNWIND [NULL, true, false] AS v RETURN v, CASE v WHEN true THEN v END"""
         actual_result = graph.query(query)
@@ -478,7 +474,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
     # CASE...WHEN statements should manage allocated values properly.
-    def test11_case_when_memory_management(self):
+    def test14_case_when_memory_management(self):
         # Simple case form: single value evaluation.
         query = """WITH 'A' AS a WITH CASE a WHEN 'A' THEN toString(a) END AS key RETURN toLower(key)"""
         actual_result = graph.query(query)
@@ -490,7 +486,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         expected_result = [['a']]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-    def test12_aggregate_error_handling(self):
+    def test15_aggregate_error_handling(self):
         functions = ["avg",
                      "collect",
                      "count",
@@ -518,14 +514,14 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.expect_error(query, "must be a number in the range 0.0 to 1.0")
 
     # startNode and endNode calls should return the appropriate nodes.
-    def test13_edge_endpoints(self):
+    def test16_edge_endpoints(self):
         query = """MATCH (a)-[e]->(b) RETURN a.name, startNode(e).name, b.name, endNode(e).name"""
         actual_result = graph.query(query)
         for row in actual_result.result_set:
             self.env.assertEquals(row[0], row[1])
             self.env.assertEquals(row[2], row[3])
 
-    def test14_to_json(self):
+    def test17_to_json(self):
         # Test JSON literal values in an array.
         query = """RETURN toJSON([1, 0.000000000000001, 'str', true, NULL])"""
         actual_result = graph.query(query)
@@ -578,7 +574,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.env.assertEquals(parsed, {"crs": "wgs-84", "latitude": 0.402313, "longitude": 167.697556, "height": None})
 
     # Memory should be freed properly when the key values are heap-allocated.
-    def test15_allocated_keys(self):
+    def test18_allocated_keys(self):
         query = """UNWIND ['str1', 'str1', 'str2', 'str1'] AS key UNWIND [1, 2, 3] as agg RETURN toUpper(key) AS key, collect(DISTINCT agg) ORDER BY key"""
         actual_result = graph.query(query)
         expected_result = [['STR1', [1, 2, 3]],
