@@ -2226,7 +2226,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             self.env.assertTrue(False)
         except redis.exceptions.ResponseError as e:
             # Expecting a type error.
-            self.env.assertContains("Type mismatch: expected Node, or Null but was Edge", str(e))
+            self.env.assertContains("Type mismatch: expected Node or Null but was Edge", str(e))
 
         query = "MATCH (n) RETURN hasLabels(n, 1)"
         try:
