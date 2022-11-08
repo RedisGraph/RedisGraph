@@ -164,16 +164,11 @@ FT_FilterNode **FilterTree_SubTrees(FT_FilterNode *root) {
 int _applyFilter(SIValue *aVal, SIValue *bVal, AST_Operator op) {
 	int disjointOrNull = 0;
 	int rel = SIValue_Compare(*aVal, *bVal, &disjointOrNull);
-	// If there was null comparison, return false.
+	// If there was null comparison, return false
 	if(disjointOrNull == COMPARED_NULL) return false;
-	/* Values are of disjoint types */
-	if(disjointOrNull == DISJOINT) {
-		/* The filter passes if we're testing for inequality, and fails otherwise. */
-		return (op == OP_NEQUAL);
-	}
-
-	if(disjointOrNull == COMPARED_NAN) {
-		/* The filter passes if we're testing for inequality, and fails otherwise. */
+	// Values are of disjoint types
+	if(disjointOrNull == DISJOINT || disjointOrNull == COMPARED_NAN) {
+		// The filter passes if we're testing for inequality, and fails otherwise
 		return (op == OP_NEQUAL);
 	}
 
