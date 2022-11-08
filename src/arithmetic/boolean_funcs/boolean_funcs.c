@@ -76,12 +76,14 @@ SIValue AR_GT(SIValue *argv, int argc, void *private_data) {
 
 	int disjointOrNull = 0;
 	int res = SIValue_Compare(a, b, &disjointOrNull);
-	if(disjointOrNull == COMPARED_NULL) {
-		// Comparisons with NULL values always return NULL.
+	if(disjointOrNull == COMPARED_NULL || disjointOrNull == DISJOINT) {
+		// comparisons with NULL or different types values always return NULL
 		return SI_NullVal();
 	}
-	if(disjointOrNull == COMPARED_NAN) return SI_BoolVal(false);
-	if(disjointOrNull == DISJOINT) return SI_NullVal();
+	if(disjointOrNull == COMPARED_NAN) {
+		// comparisons with NaN values always return false
+		return SI_BoolVal(false);
+	}
 
 	return SI_BoolVal(res > 0);
 }
@@ -266,7 +268,7 @@ void Register_BooleanFuncs() {
 	func_desc = AR_FuncDescNew("le", AR_LE, 2, 2, types, ret_type, true, true);
 	AR_RegFunc(func_desc);
 
-	types = array_new(SIType, 1);
+	types = array_new(SIType, 2);
 	array_append(types, SI_ALL);
 	array_append(types, SI_ALL);
 	func_desc = AR_FuncDescNew("eq", AR_EQ, 2, 2, types, ret_type, true, true);

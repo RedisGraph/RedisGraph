@@ -14,19 +14,33 @@
 #include "../ast/ast_shared.h"
 #include "../datatypes/array.h"
 
-/* forward declarations */
-void _FilterTree_DeMorgan(FT_FilterNode **root, uint negate_count);
+// forward declarations
+void _FilterTree_DeMorgan
+(
+	FT_FilterNode **root,
+	uint negate_count
+);
 
-static inline FT_FilterNode *LeftChild(const FT_FilterNode *node) {
+static inline FT_FilterNode *LeftChild
+(
+	const FT_FilterNode *node
+) {
 	return node->cond.left;
 }
-static inline FT_FilterNode *RightChild(const FT_FilterNode *node) {
+
+static inline FT_FilterNode *RightChild
+(
+	const FT_FilterNode *node
+) {
 	return node->cond.right;
 }
 
-/* Returns the negated operator of given op.
- * for example NOT(a > b) === a <= b */
-static AST_Operator _NegateOperator(AST_Operator op) {
+// returns the negated operator of given op
+// for example NOT(a > b) === a <= b
+static AST_Operator _NegateOperator
+(
+	AST_Operator op
+) {
 	switch(op) {
 		case OP_AND:
 			return OP_OR;
@@ -54,28 +68,45 @@ static AST_Operator _NegateOperator(AST_Operator op) {
 	}
 }
 
-/* Negate expression by wrapping it with a NOT function, NOT(exp) */
-static void _NegateExpression(AR_ExpNode **exp) {
+// negate expression by wrapping it with a NOT function, NOT(exp)
+static void _NegateExpression
+(
+	AR_ExpNode **exp
+) {
 	AR_ExpNode *root = AR_EXP_NewOpNode("not", true, 1);
 	root->op.children[0] = *exp;
 	*exp = root;
 }
 
-int IsNodePredicate(const FT_FilterNode *node) {
+int IsNodePredicate
+(
+	const FT_FilterNode *node
+) {
 	return node->t == FT_N_PRED;
 }
 
-FT_FilterNode *FilterTree_AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child) {
+FT_FilterNode *FilterTree_AppendLeftChild
+(
+	FT_FilterNode *root,
+	FT_FilterNode *child
+) {
 	root->cond.left = child;
 	return root->cond.left;
 }
 
-FT_FilterNode *FilterTree_AppendRightChild(FT_FilterNode *root, FT_FilterNode *child) {
+FT_FilterNode *FilterTree_AppendRightChild
+(
+	FT_FilterNode *root,
+	FT_FilterNode *child
+) {
 	root->cond.right = child;
 	return root->cond.right;
 }
 
-FT_FilterNode *FilterTree_CreateExpressionFilter(AR_ExpNode *exp) {
+FT_FilterNode *FilterTree_CreateExpressionFilter
+(
+	AR_ExpNode *exp
+) {
 	ASSERT(exp != NULL);
 	FT_FilterNode *node = rm_malloc(sizeof(FT_FilterNode));
 	node->t = FT_N_EXP;
@@ -83,7 +114,12 @@ FT_FilterNode *FilterTree_CreateExpressionFilter(AR_ExpNode *exp) {
 	return node;
 }
 
-FT_FilterNode *FilterTree_CreatePredicateFilter(AST_Operator op, AR_ExpNode *lhs, AR_ExpNode *rhs) {
+FT_FilterNode *FilterTree_CreatePredicateFilter
+(
+	AST_Operator op,
+	AR_ExpNode *lhs,
+	AR_ExpNode *rhs
+) {
 	FT_FilterNode *filterNode = rm_malloc(sizeof(FT_FilterNode));
 	filterNode->t = FT_N_PRED;
 	filterNode->pred.op = op;
@@ -92,26 +128,33 @@ FT_FilterNode *FilterTree_CreatePredicateFilter(AST_Operator op, AR_ExpNode *lhs
 	return filterNode;
 }
 
-FT_FilterNode *FilterTree_CreateConditionFilter(AST_Operator op) {
+FT_FilterNode *FilterTree_CreateConditionFilter
+(
+	AST_Operator op
+) {
 	FT_FilterNode *filterNode = rm_malloc(sizeof(FT_FilterNode));
 	filterNode->t = FT_N_COND;
 	filterNode->cond.op = op;
 	return filterNode;
 }
 
-void _FilterTree_SubTrees(FT_FilterNode *root, FT_FilterNode ***sub_trees) {
+void _FilterTree_SubTrees
+(
+	FT_FilterNode *root,
+	FT_FilterNode ***sub_trees
+) {
 	if(root == NULL) return;
 
 	switch(root->t) {
 		case FT_N_EXP:
 		case FT_N_PRED:
-			/* This is a simple predicate tree, can not traverse further. */
+			// this is a simple predicate tree, can not traverse further
 			array_append(*sub_trees, root);
 			break;
 		case FT_N_COND:
 			switch(root->cond.op) {
 				case OP_AND:
-					// Break AND down to its components.
+					// break AND down to its components
 					_FilterTree_SubTrees(root->cond.left, sub_trees);
 					_FilterTree_SubTrees(root->cond.right, sub_trees);
 					rm_free((FT_FilterNode *)root);
@@ -119,7 +162,7 @@ void _FilterTree_SubTrees(FT_FilterNode *root, FT_FilterNode ***sub_trees) {
 				case OP_OR:
 				case OP_XOR:
 				case OP_XNOR:
-					/* OR, XOR, and XNOR trees must be return as is. */
+					// OR, XOR, and XNOR trees must be return as is
 					array_append(*sub_trees, root);
 					break;
 				default:
@@ -135,7 +178,11 @@ void _FilterTree_SubTrees(FT_FilterNode *root, FT_FilterNode ***sub_trees) {
 
 // combine filters into a single filter tree using AND conditions
 // filters[0] AND filters[1] AND ... filters[count]
-FT_FilterNode *FilterTree_Combine(FT_FilterNode **filters, uint count) {
+FT_FilterNode *FilterTree_Combine
+(
+	FT_FilterNode **filters,
+	uint count
+) {
 	ASSERT(filters != NULL);
 
 	FT_FilterNode *root = NULL;
@@ -153,22 +200,30 @@ FT_FilterNode *FilterTree_Combine(FT_FilterNode **filters, uint count) {
 	return root;
 }
 
-FT_FilterNode **FilterTree_SubTrees(FT_FilterNode *root) {
+FT_FilterNode **FilterTree_SubTrees
+(
+	FT_FilterNode *root
+) {
 	FT_FilterNode **sub_trees = array_new(FT_FilterNode *, 1);
 	_FilterTree_SubTrees(root, &sub_trees);
 	return sub_trees;
 }
 
-/* Applies a single filter to a single result.
- * Compares given values, tests if values maintain desired relation (op) */
-int _applyFilter(SIValue *aVal, SIValue *bVal, AST_Operator op) {
+// applies a single filter to a single result
+// compares given values, tests if values maintain desired relation (op)
+int _applyFilter
+(
+	SIValue *aVal,
+	SIValue *bVal,
+	AST_Operator op
+) {
 	int disjointOrNull = 0;
 	int rel = SIValue_Compare(*aVal, *bVal, &disjointOrNull);
-	// If there was null comparison, return false
+	// if there was null comparison, return false
 	if(disjointOrNull == COMPARED_NULL) return false;
-	// Values are of disjoint types
+	// values are of disjoint types
 	if(disjointOrNull == DISJOINT || disjointOrNull == COMPARED_NAN) {
-		// The filter passes if we're testing for inequality, and fails otherwise
+		// the filter passes if we're testing for inequality, and fails otherwise
 		return (op == OP_NEQUAL);
 	}
 
@@ -186,19 +241,23 @@ int _applyFilter(SIValue *aVal, SIValue *bVal, AST_Operator op) {
 		case OP_LE:
 			return rel <= 0;
 		default:
-			/* Op should be enforced by AST. */
+			// op should be enforced by AST
 			ASSERT(0);
 			break;
 	}
 
-	/* We shouldn't reach this point. */
+	// we shouldn't reach this point
 	return 0;
 }
 
-FT_Result _applyPredicateFilters(const FT_FilterNode *root, const Record r) {
-	/* A op B
-	 * Evaluate the left and right sides of the predicate to obtain
-	 * comparable SIValues. */
+FT_Result _applyPredicateFilters
+(
+	const FT_FilterNode *root,
+	const Record r
+) {
+	// A op B
+	// Evaluate the left and right sides of the predicate to obtain
+	// comparable SIValues
 	SIValue lhs = AR_EXP_Evaluate(root->pred.lhs, r);
 	SIValue rhs = AR_EXP_Evaluate(root->pred.rhs, r);
 
@@ -384,7 +443,11 @@ FT_Result FilterTree_applyFilters
 	return FILTER_FAIL;
 }
 
-void _FilterTree_CollectModified(const FT_FilterNode *root, rax *modified) {
+void _FilterTree_CollectModified
+(
+	const FT_FilterNode *root,
+	rax *modified
+) {
 	if(root == NULL) return;
 
 	switch(root->t) {
@@ -394,16 +457,16 @@ void _FilterTree_CollectModified(const FT_FilterNode *root, rax *modified) {
 			break;
 		}
 		case FT_N_PRED: {
-			/* Traverse left and right-hand expressions, adding all encountered modified
-			 * to the triemap.
-			 * We'll typically encounter 0 or 1 modified in each expression,
-			 * but there are multi-argument exceptions. */
+			// traverse left and right-hand expressions,
+			// adding all encountered modified to the triemap
+			// we'll typically encounter 0 or 1 modified in each expression,
+			// but there are multi-argument exceptions
 			AR_EXP_CollectEntities(root->pred.lhs, modified);
 			AR_EXP_CollectEntities(root->pred.rhs, modified);
 			break;
 		}
 		case FT_N_EXP: {
-			/* Traverse expression, adding all encountered modified to the triemap. */
+			// traverse expression, adding all encountered modified to the triemap
 			AR_EXP_CollectEntities(root->exp.exp, modified);
 			break;
 		}
@@ -414,14 +477,21 @@ void _FilterTree_CollectModified(const FT_FilterNode *root, rax *modified) {
 	}
 }
 
-rax *FilterTree_CollectModified(const FT_FilterNode *root) {
+rax *FilterTree_CollectModified
+(
+	const FT_FilterNode *root
+) {
 	rax *modified = raxNew();
 	_FilterTree_CollectModified(root, modified);
 
 	return modified;
 }
 
-void _FilterTree_CollectAttributes(const FT_FilterNode *root, rax *attributes) {
+void _FilterTree_CollectAttributes
+(
+	const FT_FilterNode *root,
+	rax *attributes
+) {
 	if(root == NULL) return;
 
 	switch(root->t) {
@@ -431,8 +501,8 @@ void _FilterTree_CollectAttributes(const FT_FilterNode *root, rax *attributes) {
 			break;
 		}
 		case FT_N_PRED: {
-			/* Traverse left and right-hand expressions, adding all encountered attributes
-			* to the triemap. */
+			// traverse left and right-hand expressions,
+			// adding all encountered attributes to the triemap
 			AR_EXP_CollectAttributes(root->pred.lhs, attributes);
 			AR_EXP_CollectAttributes(root->pred.rhs, attributes);
 			break;
@@ -448,13 +518,20 @@ void _FilterTree_CollectAttributes(const FT_FilterNode *root, rax *attributes) {
 	}
 }
 
-rax *FilterTree_CollectAttributes(const FT_FilterNode *root) {
+rax *FilterTree_CollectAttributes
+(
+	const FT_FilterNode *root
+) {
 	rax *attributes = raxNew();
 	_FilterTree_CollectAttributes(root, attributes);
 	return attributes;
 }
 
-bool FilterTree_FiltersAlias(const FT_FilterNode *root, const cypher_astnode_t *ast) {
+bool FilterTree_FiltersAlias
+(
+	const FT_FilterNode *root,
+	const cypher_astnode_t *ast
+) {
 	// Collect all filtered variables.
 	rax *filtered_variables = FilterTree_CollectModified(root);
 	raxIterator it;
@@ -479,7 +556,11 @@ bool FilterTree_FiltersAlias(const FT_FilterNode *root, const cypher_astnode_t *
 	return alias_is_filtered;
 }
 
-bool FilterTree_containsOp(const FT_FilterNode *root, AST_Operator op) {
+bool FilterTree_containsOp
+(
+	const FT_FilterNode *root,
+	AST_Operator op
+) {
 	switch(root->t) {
 		case FT_N_COND:
 			if(FilterTree_containsOp(root->cond.left, op)) return true;
@@ -495,7 +576,12 @@ bool FilterTree_containsOp(const FT_FilterNode *root, AST_Operator op) {
 	}
 }
 
-bool _FilterTree_ContainsFunc(const FT_FilterNode *root, const char *func, FT_FilterNode **node) {
+bool _FilterTree_ContainsFunc
+(
+	const FT_FilterNode *root,
+	const char *func,
+	FT_FilterNode **node
+) {
 	if(root == NULL) return false;
 	switch(root->t) {
 		case FT_N_COND: {
@@ -523,13 +609,22 @@ bool _FilterTree_ContainsFunc(const FT_FilterNode *root, const char *func, FT_Fi
 	return false;
 }
 
-bool FilterTree_ContainsFunc(const FT_FilterNode *root, const char *func, FT_FilterNode **node) {
+bool FilterTree_ContainsFunc
+(
+	const FT_FilterNode *root,
+	const char *func,
+	FT_FilterNode **node
+) {
 	ASSERT(root && func && node);
 	*node = NULL;
 	return _FilterTree_ContainsFunc(root, func, node);
 }
 
-void _FilterTree_ApplyNegate(FT_FilterNode **root, uint negate_count) {
+void _FilterTree_ApplyNegate
+(
+	FT_FilterNode **root,
+	uint negate_count
+) {
 	switch((*root)->t) {
 		case FT_N_EXP:
 			if(negate_count % 2 == 1) {
@@ -543,7 +638,7 @@ void _FilterTree_ApplyNegate(FT_FilterNode **root, uint negate_count) {
 			break;
 		case FT_N_COND:
 			if((*root)->cond.op == OP_NOT) {
-				// _FilterTree_DeMorgan will increase negate_count by 1.
+				// _FilterTree_DeMorgan will increase negate_count by 1
 				_FilterTree_DeMorgan(root, negate_count);
 			} else {
 				if(negate_count % 2 == 1) {
@@ -570,7 +665,10 @@ static inline bool _FilterTree_ValidExpressionNode
 	return valid;
 }
 
-bool FilterTree_Valid(const FT_FilterNode *root) {
+bool FilterTree_Valid
+(
+	const FT_FilterNode *root
+) {
 	// An empty tree is has a valid structure.
 	if(!root) return true;
 
@@ -607,15 +705,19 @@ bool FilterTree_Valid(const FT_FilterNode *root) {
 	return true;
 }
 
-void _FilterTree_DeMorgan(FT_FilterNode **root, uint negate_count) {
-	/* Search for NOT nodes and reduce using DeMorgan. */
+void _FilterTree_DeMorgan
+(
+	FT_FilterNode **root,
+	uint negate_count
+) {
+	// search for NOT nodes and reduce using DeMorgan
 	if(*root == NULL || (*root)->t == FT_N_PRED || (*root)->t == FT_N_EXP) return;
 
-	// Node is of type condition.
+	// node is of type condition
 	if((*root)->cond.op == OP_NOT) {
 		ASSERT((*root)->cond.right == NULL);
 		_FilterTree_ApplyNegate(&(*root)->cond.left, negate_count + 1);
-		// Replace NOT node with only child
+		// replace NOT node with only child
 		FT_FilterNode *child = (*root)->cond.left;
 		(*root)->cond.left = NULL;
 		FilterTree_Free(*root);
@@ -626,23 +728,36 @@ void _FilterTree_DeMorgan(FT_FilterNode **root, uint negate_count) {
 	}
 }
 
-void FilterTree_DeMorgan(FT_FilterNode **root) {
+void FilterTree_DeMorgan
+(
+	FT_FilterNode **root
+) {
 	_FilterTree_DeMorgan(root, 0);
 }
 
 // return if this node can be used in compression - constant expression
-static inline bool _FilterTree_Compact_Exp(FT_FilterNode *node) {
+static inline bool _FilterTree_Compact_Exp
+(
+	FT_FilterNode *node
+) {
 	return AR_EXP_IsConstant(node->exp.exp) || AR_EXP_IsParameter(node->exp.exp);
 }
 
-// In place set an existing filter tree node to expression node.
-static inline void _FilterTree_In_Place_Set_Exp(FT_FilterNode *node, SIValue v) {
+// in place set an existing filter tree node to expression node
+static inline void _FilterTree_In_Place_Set_Exp
+(
+	FT_FilterNode *node,
+	SIValue v
+) {
 	node->t = FT_N_EXP;
 	node->exp.exp = AR_EXP_NewConstOperandNode(v);
 }
 
 // compacts 'AND' condition node
-static bool _FilterTree_Compact_And(FT_FilterNode *node) {
+static bool _FilterTree_Compact_And
+(
+	FT_FilterNode *node
+) {
 	// try to compact left and right children
 	bool is_lhs_const = FilterTree_Compact(node->cond.left);
 	bool is_rhs_const = FilterTree_Compact(node->cond.right);
@@ -712,7 +827,10 @@ static bool _FilterTree_Compact_And(FT_FilterNode *node) {
 }
 
 // Compacts 'OR' condition node.
-static bool _FilterTree_Compact_Or(FT_FilterNode *node) {
+static bool _FilterTree_Compact_Or
+(
+	FT_FilterNode *node
+) {
 	// try to compact left and right children
 	bool is_lhs_const = FilterTree_Compact(node->cond.left);
 	bool is_rhs_const = FilterTree_Compact(node->cond.right);
@@ -771,8 +889,12 @@ static bool _FilterTree_Compact_Or(FT_FilterNode *node) {
 	}
 }
 
-// Compacts 'XOR' and 'XNOR' condition nodes.
-static bool _FilterTree_Compact_XOr(FT_FilterNode *node, bool xnor) {
+// compacts 'XOR' and 'XNOR' condition nodes.
+static bool _FilterTree_Compact_XOr
+(
+	FT_FilterNode *node,
+	bool xnor
+) {
 	// try to compact left and right children
 	bool is_lhs_const = FilterTree_Compact(node->cond.left);
 	bool is_rhs_const = FilterTree_Compact(node->cond.right);
@@ -830,7 +952,10 @@ static bool _FilterTree_Compact_XOr(FT_FilterNode *node, bool xnor) {
 }
 
 // compacts a condition node if possible
-static inline bool _FilterTree_Compact_Cond(FT_FilterNode *node) {
+static inline bool _FilterTree_Compact_Cond
+(
+	FT_FilterNode *node
+) {
 	switch(node->cond.op) {
 		case OP_AND:
 			return _FilterTree_Compact_And(node);
@@ -846,8 +971,11 @@ static inline bool _FilterTree_Compact_Cond(FT_FilterNode *node) {
 	}
 }
 
-// Compacts a predicate node if possible,
-static bool _FilterTree_Compact_Pred(FT_FilterNode *node) {
+// compacts a predicate node if possible
+static bool _FilterTree_Compact_Pred
+(
+	FT_FilterNode *node
+) {
 	// check if both sides are constant expressions
 	if((AR_EXP_IsConstant(node->pred.lhs) || AR_EXP_IsParameter(node->pred.lhs)) &&
 	   (AR_EXP_IsConstant(node->pred.rhs) || AR_EXP_IsParameter(node->pred.rhs))) {
@@ -866,7 +994,10 @@ static bool _FilterTree_Compact_Pred(FT_FilterNode *node) {
 	return false;
 }
 
-bool FilterTree_Compact(FT_FilterNode *root) {
+bool FilterTree_Compact
+(
+	FT_FilterNode *root
+) {
 	if(!root) return true;
 	switch(root->t) {
 		case FT_N_EXP:
@@ -885,7 +1016,11 @@ bool FilterTree_Compact(FT_FilterNode *root) {
 // Resolve unknows
 //------------------------------------------------------------------------------
 
-static void _FilterTree_ResolveVariables(FT_FilterNode *root, const Record r) {
+static void _FilterTree_ResolveVariables
+(
+	FT_FilterNode *root,
+	const Record r
+) {
 	ASSERT(root != NULL);
 
 	switch(root->t) {
@@ -906,19 +1041,29 @@ static void _FilterTree_ResolveVariables(FT_FilterNode *root, const Record r) {
 	}
 }
 
-void FilterTree_ResolveVariables(FT_FilterNode *root, const Record r) {
+void FilterTree_ResolveVariables
+(
+	FT_FilterNode *root,
+	const Record r
+) {
 	_FilterTree_ResolveVariables(root, r);
 	FilterTree_Compact(root);
 }
 
-// Clone an expression node.
-static inline FT_FilterNode *_FilterTree_Clone_Exp(const FT_FilterNode *node) {
+// clone an expression node
+static inline FT_FilterNode *_FilterTree_Clone_Exp
+(
+	const FT_FilterNode *node
+) {
 	AR_ExpNode *exp_clone = AR_EXP_Clone(node->exp.exp);
 	return FilterTree_CreateExpressionFilter(exp_clone);
 }
 
-// Clones a condition node.
-static inline FT_FilterNode *_FilterTree_Clone_Cond(const FT_FilterNode *node) {
+// clones a condition node
+static inline FT_FilterNode *_FilterTree_Clone_Cond
+(
+	const FT_FilterNode *node
+) {
 	FT_FilterNode *clone = FilterTree_CreateConditionFilter(node->cond.op);
 	FT_FilterNode *left_child_clone = FilterTree_Clone(node->cond.left);
 	FilterTree_AppendLeftChild(clone, left_child_clone);
@@ -927,15 +1072,21 @@ static inline FT_FilterNode *_FilterTree_Clone_Cond(const FT_FilterNode *node) {
 	return clone;
 }
 
-// Clones a predicate node.
-static inline FT_FilterNode *_FilterTree_Clone_Pred(const FT_FilterNode *node) {
+// clones a predicate node
+static inline FT_FilterNode *_FilterTree_Clone_Pred
+(
+	const FT_FilterNode *node
+) {
 	AST_Operator op = node->pred.op;
 	AR_ExpNode *lhs_exp_clone = AR_EXP_Clone(node->pred.lhs);
 	AR_ExpNode *rhs_exp_clone = AR_EXP_Clone(node->pred.rhs);
 	return FilterTree_CreatePredicateFilter(op, lhs_exp_clone, rhs_exp_clone);
 }
 
-FT_FilterNode *FilterTree_Clone(const FT_FilterNode *root) {
+FT_FilterNode *FilterTree_Clone
+(
+	const FT_FilterNode *root
+) {
 	if(!root) return NULL;
 	switch(root->t) {
 		case FT_N_EXP:
@@ -950,13 +1101,17 @@ FT_FilterNode *FilterTree_Clone(const FT_FilterNode *root) {
 	}
 }
 
-void _FilterTree_Print(const FT_FilterNode *root, int ident) {
+void _FilterTree_Print
+(
+	const FT_FilterNode *root,
+	int ident
+) {
 	char *exp = NULL;
 	char *left = NULL;
 	char *right = NULL;
 
 	if(root == NULL) return;
-	// Ident
+	// ident
 	printf("%*s", ident, "");
 
 	switch(root->t) {
@@ -983,7 +1138,10 @@ void _FilterTree_Print(const FT_FilterNode *root, int ident) {
 	}
 }
 
-void FilterTree_Print(const FT_FilterNode *root) {
+void FilterTree_Print
+(
+	const FT_FilterNode *root
+) {
 	if(root == NULL) {
 		printf("empty filter tree\n");
 		return;
@@ -991,7 +1149,10 @@ void FilterTree_Print(const FT_FilterNode *root) {
 	_FilterTree_Print(root, 0);
 }
 
-void FilterTree_Free(FT_FilterNode *root) {
+void FilterTree_Free
+(
+	FT_FilterNode *root
+) {
 	if(root == NULL) return;
 	switch(root->t) {
 		case FT_N_EXP:
