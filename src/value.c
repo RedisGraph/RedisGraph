@@ -252,18 +252,6 @@ const char *SIType_ToString(SIType t) {
 		return "List";
 	} else if(t & T_PATH) {
 		return "Path";
-	} else if(t & T_DATETIME) {
-		return "Datetime";
-	} else if(t & T_LOCALDATETIME) {
-		return "Local Datetime";
-	} else if(t & T_DATE) {
-		return "Date";
-	} else if(t & T_TIME) {
-		return "Time";
-	} else if(t & T_LOCALTIME) {
-		return "Local Time";
-	} else if(t & T_DURATION) {
-		return "Duration";
 	} else if(t & T_POINT) {
 		return "Point";
 	} else if(t & T_NULL) {
@@ -274,7 +262,7 @@ const char *SIType_ToString(SIType t) {
 }
 
 void SIType_ToMultipleTypeString(SIType t, char **buf, size_t *bufferLen, size_t *bytesWritten) {
-	SIType remainingTypes = t;
+	SIType remainingTypes;
 	SIType currentType;
 	// Allocate space
 	// Worst case: Len(SIType names) + 19*Len(", ") + Len("Or") = 177 + 38 + 2 = 217
@@ -282,14 +270,23 @@ void SIType_ToMultipleTypeString(SIType t, char **buf, size_t *bufferLen, size_t
 		*bufferLen += 256;
 		*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
 	}
+
+	// Remove from remainingTypes the types which are not used currently
+	remainingTypes = t & (~0x7E0);
+
+	bool firstTypeDetected = true;
 	// Iterate over the possible SITypes
 	for(int i = 0; i < 18; i ++) {
+		// Skip types which are not used currently
+		if(i == 5) i = 11;
+
 		currentType = (1 << i);
 		if(t & currentType) {
-			if(t == remainingTypes) {
+			if(firstTypeDetected) {
+				// For the first type detected, there is not need to add neither "," nor "or"
 				remainingTypes &= (~currentType);
-			} 
-			else if (remainingTypes) {
+				firstTypeDetected = false;
+			} else {
 				*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ", ");
 				remainingTypes &= (~currentType);
 				// There is no more types, then concatenate "or" before the SIType name
@@ -300,6 +297,8 @@ void SIType_ToMultipleTypeString(SIType t, char **buf, size_t *bufferLen, size_t
 			}
 			*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%s", SIType_ToString(currentType));
 		}
+		if(!remainingTypes)
+			break;
 	}
 }
 
