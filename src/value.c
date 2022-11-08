@@ -565,7 +565,7 @@ int SIArray_Compare(SIValue arrayA, SIValue arrayB, int *disjointOrNull) {
 	// If all the elements in the shared range yielded false comparisons.
 	if(notEqualCounter == minLength && notEqualCounter > nullCounter) return notEqual;
 	// If there was a null comperison on non disjoint arrays.
-	if(nullCounter) {
+	if(nullCounter && arrayALen == arrayBLen) {
 		if(disjointOrNull) *disjointOrNull = COMPARED_NULL;
 		return notEqual;
 	}
@@ -588,6 +588,10 @@ int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull) {
 		case T_BOOL:
 			return SAFE_COMPARISON_RESULT(a.longval - b.longval);
 		case T_DOUBLE:
+			if(isnan(a.doubleval) || isnan(b.doubleval)) {
+				if(disjointOrNull) *disjointOrNull = COMPARED_NAN;
+			}
+
 			return SAFE_COMPARISON_RESULT(a.doubleval - b.doubleval);
 		case T_STRING:
 			return strcmp(a.stringval, b.stringval);
@@ -619,6 +623,10 @@ int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull) {
 	/* The inputs have different SITypes - compare them if they
 	 * are both numerics of differing types. */
 	if(SI_TYPE(a) & SI_NUMERIC && SI_TYPE(b) & SI_NUMERIC) {
+		if(isnan(SI_GET_NUMERIC(a)) || isnan(SI_GET_NUMERIC(b))) {
+			if(disjointOrNull) *disjointOrNull = COMPARED_NAN;
+		}
+
 		double diff = SI_GET_NUMERIC(a) - SI_GET_NUMERIC(b);
 		return SAFE_COMPARISON_RESULT(diff);
 	}

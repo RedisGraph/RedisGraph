@@ -86,3 +86,12 @@ class testFilters():
                             if result.result_set != expected:
                                 print(q)
                             self.env.assertEqual(result.result_set,  expected)
+
+    def test02_filter_with_nan(self):
+        g = Graph(self.env.getConnection(), "g")
+
+        res = g.query("WITH 1 AS x WHERE 0.0 / 0.0 = 0.0 / 0.0 RETURN x")
+        self.env.assertEquals(res.result_set, [])
+
+        res = g.query("WITH 1 AS x WHERE 0.0 / 0.0 <> 0.0 / 0.0 RETURN x")
+        self.env.assertEquals(res.result_set, [[1]])
