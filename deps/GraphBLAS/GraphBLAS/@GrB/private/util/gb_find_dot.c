@@ -2,8 +2,8 @@
 // gb_find_dot:  find the first two occurences of '.' in a string
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -40,13 +40,13 @@ typedef enum {
 	OP_ENDSWITH = 20,
 	OP_IN = 21,
 	OP_IS_NULL = 22,
-	OP_IS_NOT_NULL = 23
+	OP_IS_NOT_NULL = 23,
+	OP_XNOR = 24
 } AST_Operator;
 
 typedef struct {
-	Attribute_ID *keys;
+	const char **keys;
 	struct AR_ExpNode **values;
-	int property_count;
 } PropertyMap;
 
 // Enum describing how a SET directive should treat pre-existing properties
@@ -59,16 +59,18 @@ typedef enum {
 // Key-value pair of an attribute ID and the value to be associated with it
 // TODO Consider replacing contents of PropertyMap (for ops like Create) with this
 typedef struct {
-	Attribute_ID id;
+	const char *attribute;
 	struct AR_ExpNode *exp;
+	UPDATE_MODE mode;
 } PropertySetCtx;
 
 // Context describing an update expression.
 typedef struct {
-	PropertySetCtx *properties; // properties to set
 	int record_idx;             // record offset this entity is stored at
-	UPDATE_MODE mode;           // Whether the entity's property map should be updated or replaced
-	const char *alias;          // Access-safe alias of the entity being updated
+	const char *alias;          // access-safe alias of the entity being updated
+	const char **add_labels;    // labels to add to the node
+	const char **remove_labels; // labels to add to the node
+	PropertySetCtx *properties; // properties to set
 } EntityUpdateEvalCtx;
 
 // Context describing a node in a CREATE or MERGE clause
@@ -86,10 +88,10 @@ typedef struct {
 
 // Context describing a relationship in a CREATE or MERGE clause
 typedef struct {
-	int labelId;                // node label id
 	int node_idx;               // node record index
+	int *labelsId;              // array of node labels id
 	const char *alias;          // node alias
-	const char *label;          // node label
+	const char **labels;        // node labels
 	PropertyMap *properties;    // node properties set
 } NodeCreateCtx;
 
@@ -101,14 +103,16 @@ PropertyMap *PropertyMap_New(GraphContext *gc, const cypher_astnode_t *props);
 // Clone NodeCreateCtx.
 NodeCreateCtx NodeCreateCtx_Clone(NodeCreateCtx ctx);
 
+// Free NodeCreateCtx.
+void NodeCreateCtx_Free(NodeCreateCtx ctx);
+
 // Clone EdgeCreateCtx.
 EdgeCreateCtx EdgeCreateCtx_Clone(EdgeCreateCtx ctx);
 
 void PropertyMap_Free(PropertyMap *map);
 
-EntityUpdateEvalCtx *UpdateCtx_New(UPDATE_MODE mode, uint prop_count, const char *alias);
+EntityUpdateEvalCtx *UpdateCtx_New(const char *alias);
 EntityUpdateEvalCtx *UpdateCtx_Clone(const EntityUpdateEvalCtx *ctx);
-void UpdateCtx_SetMode(EntityUpdateEvalCtx *ctx, UPDATE_MODE mode);
 void UpdateCtx_Clear(EntityUpdateEvalCtx *ctx);
 void UpdateCtx_Free(EntityUpdateEvalCtx *ctx);
 

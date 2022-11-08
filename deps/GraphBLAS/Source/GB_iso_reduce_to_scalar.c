@@ -2,7 +2,7 @@
 // GB_iso_reduce_to_scalar: reduce an iso matrix to a scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -39,7 +39,7 @@ void GB_iso_reduce_to_scalar        // s = reduce (A) where A is iso
     ASSERT (n > 0) ;
 
     // get the monoid
-    GxB_binary_function freduce = reduce->op->function ;
+    GxB_binary_function freduce = reduce->op->binop_function ;
     GrB_Type ztype = reduce->op->ztype ;
     size_t zsize = ztype->size ;
     GB_Type_code zcode = ztype->code ;

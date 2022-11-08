@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -18,7 +18,8 @@ typedef struct {
 	GraphContext *gc;
 	rax *update_ctxs;               // Entities to update and their expressions
 	bool updates_committed;         // True if we've already committed updates and are now in handoff mode.
-	PendingUpdateCtx *updates;      // Enqueued updates
+	PendingUpdateCtx *node_updates; // Enqueued node updates
+	PendingUpdateCtx *edge_updates; // Enqueued edge updates
 	ResultSetStatistics *stats;
 } OpUpdate;
 

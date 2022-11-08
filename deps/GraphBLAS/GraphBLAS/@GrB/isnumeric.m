@@ -7,8 +7,8 @@ function s = isnumeric (G) %#ok<INUSD>
 % See also GrB/isfloat, GrB/isreal, GrB/isinteger, GrB/islogical,
 % GrB.type, GrB/isa, GrB.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 s = true ;
 

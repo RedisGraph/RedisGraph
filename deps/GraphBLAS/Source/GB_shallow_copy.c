@@ -2,7 +2,7 @@
 // GB_shallow_copy: create a shallow copy of a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -24,6 +24,7 @@
 // Compare this function with GB_shallow_op.c.
 
 #include "GB_transpose.h"
+#include "GB_unused.h"
 
 #define GB_FREE_ALL ;
 
@@ -41,7 +42,7 @@ GrB_Info GB_shallow_copy    // create a purely shallow matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (C != NULL && C->static_header) ;
+    ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
     ASSERT_MATRIX_OK (A, "A for shallow copy", GB0) ;
     GB_MATRIX_WAIT_IF_PENDING_OR_ZOMBIES (A) ;
     ASSERT (!GB_PENDING (A)) ;
@@ -55,7 +56,7 @@ GrB_Info GB_shallow_copy    // create a purely shallow matrix
     // allocate the struct for C, but do not allocate C->[p,h,b,i,x].
     // C has the exact same sparsity structure as A.
     GrB_Info info ;
-    info = GB_new (&C, true, // sparse or hyper, static header
+    info = GB_new (&C, // sparse or hyper, existing header
         A->type, A->vlen, A->vdim, GB_Ap_null, C_is_csc,
         GB_sparsity (A), A->hyper_switch, 0, Context) ;
     ASSERT (info == GrB_SUCCESS) ;
@@ -82,6 +83,13 @@ GrB_Info GB_shallow_copy    // create a purely shallow matrix
     { 
         GB_BURBLE_MATRIX (A, "(iso copy) ") ;
     }
+
+    //--------------------------------------------------------------------------
+    // make a shallow copy of the A->Y hyper_hash
+    //--------------------------------------------------------------------------
+
+    C->Y = A->Y ;
+    C->Y_shallow = (A->Y != NULL) ;
 
     //--------------------------------------------------------------------------
     // check for empty matrix

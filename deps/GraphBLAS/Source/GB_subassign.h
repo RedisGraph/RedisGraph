@@ -2,7 +2,7 @@
 // GB_subassign.h: definitions for GB_subassign
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -186,7 +186,7 @@ GrB_Info GB_assign_prep
 #define GB_SUBASSIGN_METHOD_16  16     // C(I,J)<!M> += A
 #define GB_SUBASSIGN_METHOD_17  17     // C(I,J)<!M,replace> = scalar
 #define GB_SUBASSIGN_METHOD_18  18     // C(I,J)<!M,replace> = A
-#define GB_SUBASSIGN_METHOD_19  19     // C(I,J)<!M,replace> = scalar
+#define GB_SUBASSIGN_METHOD_19  19     // C(I,J)<!M,replace> += scalar
 #define GB_SUBASSIGN_METHOD_20  20     // C(I,J)<!M,replace> += A
 #define GB_SUBASSIGN_METHOD_21  21     // C(:,:) = scalar ; C becomes full
 #define GB_SUBASSIGN_METHOD_22  22     // C += scalar ; C is dense

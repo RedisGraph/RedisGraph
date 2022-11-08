@@ -1,7 +1,7 @@
 function test227
 %TEST227 test kron
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 [binops, ~, ~, ~, ~, ~] = GB_spec_opsall ;
@@ -31,7 +31,7 @@ Cx = sparse (cm,cn) ;
 AT = Ax' ;
 BT = Bx' ;
 
-for k2 = [4 7 44:51 ]
+for k2 = [4 7 45:52 ]
     for k1 = 1:4
 
         type = types {k1} ;

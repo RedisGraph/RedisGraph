@@ -1,6 +1,6 @@
-SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-The following Apache-2.0 applies to all of SuiteSparse:GraphBLAS except for the
-@GrB interface:
+SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+The following Apache-2.0 applies to all of SuiteSparse:GraphBLAS,
+including the @GrB interface:
 
     SPDX-License-Identifier: Apache-2.0
 
@@ -16,23 +16,113 @@ The following Apache-2.0 applies to all of SuiteSparse:GraphBLAS except for the
     See the License for the specific language governing permissions and
     limitations under the License.
 
-No files that are compiled and packaged as part of the libgraphblas.so or
-libgraphblas.a libraries are licensed under the GNU GPLv3.  All of those files
-are licensed under the Apache-2.0 license.
-
+================================================================================
+Dependencies:
 ================================================================================
 
-The @GrB interface, including its test suite and demos (all files in the
-GraphBLAS/GraphBLAS folder) are not under the above Apache-2.0 license, but
-under the GNU GPLv3 (or later) license instead.  Refer to the file
-GraphBLAS/GraphBLAS/@GrB/LICENSE for details.
+--------------------------------------------------------------------------------
+LZ4:  SPDX-License-Identifier: BSD-2-Clause
+--------------------------------------------------------------------------------
 
-All files throughout this package and the @GrB interface are tagged
-with an SPDX license identifier, file by file.  Either:
+LZ4 Library
+Copyright (c) 2011-2016, Yann Collet
+All rights reserved.
 
-    SPDX-License-Identifier: Apache-2.0
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
 
-or, for the @GrB interface, its test suite, and demos:
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
 
-    SPDX-License-Identifier: GPL-3.0-or-later
+* Redistributions in binary form must reproduce the above copyright notice, this
+  list of conditions and the following disclaimer in the documentation and/or
+  other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+--------------------------------------------------------------------------------
+cpu_features: SPDX-License-Identifier: Apache-2.0
+--------------------------------------------------------------------------------
+
+Copyright 2017 Google LLC, Apache 2.0 license
+
+With additional files from IBM and Intel (also Apache 2.0):
+
+    cpu_features/include/cpuinfo_ppc.h:1:// Copyright 2018 IBM (Apache 2.0)
+    cpu_features/src/impl_ppc_linux.c:1:// Copyright 2018 IBM. (Apache 2.0)
+    cpu_features/include/cpuinfo_x86.h:2:// Copyright 2020 Intel Corporation
+    cpu_features/src/impl_x86__base_implementation.inl:2:// Copyright 2020 Intel Corporation
+
+--------------------------------------------------------------------------------
+cpu_features/ndk_compat: SPDX-License-Identifier: BSD-2-Clause
+--------------------------------------------------------------------------------
+
+    Copyright (C) 2010 The Android Open Source Project
+    All rights reserved.
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+     * Redistributions of source code must retain the above copyright
+       notice, this list of conditions and the following disclaimer.
+     * Redistributions in binary form must reproduce the above copyright
+       notice, this list of conditions and the following disclaimer in
+       the documentation and/or other materials provided with the
+       distribution.
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+    FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+    COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+    INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+    BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+    OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+    AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+    OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+    OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+    SUCH DAMAGE.
+
+
+--------------------------------------------------------------------------------
+ZSTD:  SPDX-License-Identifier: BSD-3-Clause
+--------------------------------------------------------------------------------
+
+BSD License
+
+For Zstandard software
+
+Copyright (c) 2016-present, Facebook, Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+ * Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+ * Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+ * Neither the name Facebook nor the names of its contributors may be used to
+   endorse or promote products derived from this software without specific
+   prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 

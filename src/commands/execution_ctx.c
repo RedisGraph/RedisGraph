@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -14,7 +14,8 @@ static ExecutionType _GetExecutionTypeFromAST(AST *ast) {
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
 	if(root_type == CYPHER_AST_QUERY) return EXECUTION_TYPE_QUERY;
 	if(root_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX) return EXECUTION_TYPE_INDEX_CREATE;
-	if(root_type == CYPHER_AST_DROP_NODE_PROPS_INDEX) return EXECUTION_TYPE_INDEX_DROP;
+	if(root_type == CYPHER_AST_CREATE_PATTERN_PROPS_INDEX) return EXECUTION_TYPE_INDEX_CREATE;
+	if(root_type == CYPHER_AST_DROP_PROPS_INDEX) return EXECUTION_TYPE_INDEX_DROP;
 	ASSERT(false && "Unknown execution type");
 	return 0;
 }
@@ -49,7 +50,9 @@ static AST *_ExecutionCtx_ParseAST(const char *query_string,
 								   cypher_parse_result_t *params_parse_result) {
 	cypher_parse_result_t *query_parse_result = parse_query(query_string);
 	// If no output from the parser, the query is not valid.
-	if(!query_parse_result) {
+	if(ErrorCtx_EncounteredError() || query_parse_result == NULL) {
+		parse_result_free(query_parse_result);
+		query_parse_result = NULL;
 		parse_result_free(params_parse_result);
 		return NULL;
 	}
@@ -75,6 +78,16 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 	// Parameter parsing failed, return NULL.
 	if(params_parse_result == NULL) return NULL;
 
+	// query included only params e.g. 'cypher a=1' was provided
+	if(strlen(query_string) == 0) {
+		parse_result_free(params_parse_result);
+		ErrorCtx_SetError("Error: empty query.");
+		return NULL;
+	}
+	// update query context with the query without params
+	QueryCtx *ctx = QueryCtx_GetQueryCtx();
+	ctx->query_data.query_no_params = query_string;
+
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Cache *cache = GraphContext_GetCache(gc);
 
@@ -89,8 +102,14 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 
 	// No cached execution plan, try to parse the query.
 	AST *ast = _ExecutionCtx_ParseAST(query_string, params_parse_result);
-	// If query parsing failed, return NULL.
-	if(!ast) return NULL;
+	// if query parsing failed, return NULL
+	if(!ast) {
+		// if no error has been set, emit one now
+		if(!ErrorCtx_EncounteredError()) {
+			ErrorCtx_SetError("Error: could not parse query");
+		}
+		return NULL;
+	}
 
 	ExecutionType exec_type = _GetExecutionTypeFromAST(ast);
 	// In case of valid query, create execution plan, and cache it and the AST.

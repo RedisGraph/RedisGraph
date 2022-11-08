@@ -1,4 +1,4 @@
-SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 
 This folder, GraphBLAS/Source, contains all the primary source files for
@@ -16,6 +16,4 @@ modified then type:
     codegen
 
 in Octave to construct the Generated1/* and Generated2/* files.
-
-When GBCOMPACT is enabled, only the Generated1/* files are needed.
 

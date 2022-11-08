@@ -2,8 +2,8 @@
 // gb_usage: check usage and make sure GrB.init has been called
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -26,15 +26,17 @@ void gb_usage       // check usage and make sure GrB.init has been called
     // make sure GrB.init has been called
     //--------------------------------------------------------------------------
 
-    if (!GB_Global_GrB_init_called_get ( )) // TODO::: add this as GxB_get
+    if (!GB_Global_GrB_init_called_get ( ))
     {
 
         //----------------------------------------------------------------------
         // initialize GraphBLAS
         //----------------------------------------------------------------------
 
-        OK (GxB_init (GrB_NONBLOCKING, mxMalloc, mxCalloc, mxRealloc, mxFree,
-            false)) ;
+        OK (GxB_init (GrB_NONBLOCKING, mxMalloc, mxCalloc, mxRealloc, mxFree)) ;
+
+        // mxMalloc, mxCalloc, mxRealloc, and mxFree are not thread safe
+        GB_Global_malloc_is_thread_safe_set (false) ;
 
         // must use mexPrintf to print to Command Window
         OK (GxB_Global_Option_set (GxB_PRINTF, mexPrintf)) ;
@@ -53,7 +55,7 @@ void gb_usage       // check usage and make sure GrB.init has been called
         OK (GxB_Global_Option_set (GxB_PRINT_1BASED, true)) ;
 
         // for debug only
-        GB_Global_abort_function_set (gb_abort) ;   // TODO:: add as GxB_set/get
+        GB_Global_abort_function_set (gb_abort) ;
 
         // for printing memory sizes of matrices
         GB_Global_print_mem_shallow_set (true) ;

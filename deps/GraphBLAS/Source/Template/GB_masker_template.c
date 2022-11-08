@@ -2,7 +2,7 @@
 // GB_masker_template:  R = masker (C, M, Z)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -74,9 +74,7 @@
     #if defined ( GB_PHASE_2_OF_2 )
     const bool Z_iso = Z->iso ;
     const bool C_iso = C->iso ;
-    #ifdef GB_ISO_MASKER
-    ASSERT (C_iso && Z_iso) ;
-    #else
+    #ifndef GB_ISO_MASKER
     const GB_void *restrict Cx = (GB_void *) C->x ;
     const GB_void *restrict Zx = (GB_void *) Z->x ;
           GB_void *restrict Rx = (GB_void *) R->x ;

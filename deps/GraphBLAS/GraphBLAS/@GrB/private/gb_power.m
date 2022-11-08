@@ -2,8 +2,8 @@ function C = gb_power (A, B)
 %GB_POWER .^ Array power.
 % C = A.^B computes element-wise powers.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 [am, an, atype] = gbsize (A) ;
 [bm, bn, btype] = gbsize (B) ;
@@ -92,6 +92,6 @@ end
 
 % convert C to real if imaginary part is zero
 if (~c_is_real)
-    C = gb_to_real_if_imag_zero (C) ;
+    C = gb_check_imag_zero (C) ;
 end
 

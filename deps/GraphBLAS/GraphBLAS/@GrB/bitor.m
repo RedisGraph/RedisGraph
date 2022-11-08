@@ -27,8 +27,8 @@ function C = bitor (A, B, assumedtype)
 % See also GrB/bitand, GrB/bitxor, GrB/bitcmp, GrB/bitshift, GrB/bitget,
 % GrB/bitset, GrB/bitclr.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 if (nargin < 3)
     assumedtype = 'uint64' ;

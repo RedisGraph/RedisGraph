@@ -2,7 +2,7 @@
 // GB_cast_array: typecast an array
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -13,7 +13,7 @@
 // iso expansion is done.
 
 #include "GB.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_unop__include.h"
 #endif
 
@@ -52,7 +52,7 @@ void GB_cast_array              // typecast an array
     // typecast the array
     //--------------------------------------------------------------------------
 
-    #ifndef GBCOMPACT
+    #ifndef GBCUDA_DEV
 
         //----------------------------------------------------------------------
         // define the worker for the switch factory
@@ -79,7 +79,7 @@ void GB_cast_array              // typecast an array
     #endif
 
     //--------------------------------------------------------------------------
-    // generic worker: only used for GBCOMPACT case
+    // generic worker: only used for GBCUDA_DEV case
     //--------------------------------------------------------------------------
 
     int64_t csize = GB_code_size (code1, 0) ;

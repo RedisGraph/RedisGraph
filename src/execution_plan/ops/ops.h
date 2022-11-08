@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -11,9 +11,10 @@
 #include "op_all_node_scan.h"
 #include "op_create.h"
 #include "op_delete.h"
+#include "op_edge_by_index_scan.h"
 #include "op_filter.h"
 #include "op_node_by_label_scan.h"
-#include "op_index_scan.h"
+#include "op_node_by_index_scan.h"
 #include "op_update.h"
 #include "op_conditional_traverse.h"
 #include "op_cartesian_product.h"

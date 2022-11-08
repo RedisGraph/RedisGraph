@@ -2,7 +2,7 @@
 // GB_iso_reduce_worker: reduce n entries, all equal to a, to the scalar s
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -23,7 +23,7 @@ void GB_iso_reduce_worker
 )
 {
 
-    if (n == 1)
+    if (n <= 1)
     { 
         memcpy (s, a, zsize) ;
     }

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -22,7 +22,6 @@ void SIArray_Append(SIValue *siarray, SIValue value) {
 	SIValue clone = SI_CloneValue(value);
 	// append
 	array_append(siarray->array, clone);
-
 }
 
 SIValue SIArray_Get(SIValue siarray, uint32_t index) {
@@ -33,6 +32,32 @@ SIValue SIArray_Get(SIValue siarray, uint32_t index) {
 
 uint32_t SIArray_Length(SIValue siarray) {
 	return array_len(siarray.array);
+}
+
+bool SIArray_ContainsType(SIValue siarray, SIType t) {
+	uint array_len = SIArray_Length(siarray);
+	for(uint i = 0; i < array_len; i++) {
+		SIValue elem = SIArray_Get(siarray, i);
+		if(SI_TYPE(elem) & t) return true;
+
+		// recursively check nested arrays
+		if(SI_TYPE(elem) == T_ARRAY) {
+			bool type_is_nested = SIArray_ContainsType(elem, t);
+			if(type_is_nested) return true;
+		}
+	}
+
+	return false;
+}
+
+bool SIArray_AllOfType(SIValue siarray, SIType t) {
+	uint array_len = SIArray_Length(siarray);
+	for(uint i = 0; i < array_len; i++) {
+		SIValue elem = SIArray_Get(siarray, i);
+		if((SI_TYPE(elem) & t) == 0) return false;
+	}
+
+	return true;
 }
 
 SIValue SIArray_Clone(SIValue siarray) {

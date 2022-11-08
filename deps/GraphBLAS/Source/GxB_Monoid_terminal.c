@@ -2,7 +2,7 @@
 // GxB_Monoid_terminal: return the terminal of a monoid (if any)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -37,6 +37,7 @@ GrB_Info GxB_Monoid_terminal        // return the monoid terminal
     { 
         memcpy (terminal, monoid->terminal, monoid->op->ztype->size) ;
     }
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

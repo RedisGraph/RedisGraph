@@ -2,17 +2,21 @@
 // GB_Vector_diag: extract a diagonal from a matrix, as a vector
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
-#define GB_FREE_WORK        \
-    GB_phbix_free (T) ;
+#define GB_FREE_WORKSPACE   \
+{                           \
+    GB_Matrix_free (&T) ;   \
+}
 
 #define GB_FREE_ALL         \
-    GB_FREE_WORK ;          \
-    GB_phbix_free (V) ;
+{                           \
+    GB_FREE_WORKSPACE ;     \
+    GB_phybix_free (V) ;    \
+}
 
 #include "GB_diag.h"
 #include "GB_select.h"
@@ -38,7 +42,7 @@ GrB_Info GB_Vector_diag     // extract a diagonal from a matrix, as a vector
     ASSERT (!GB_IS_HYPERSPARSE (V)) ;       // vectors cannot be hypersparse
 
     struct GB_Matrix_opaque T_header ;
-    GrB_Matrix T = GB_clear_static_header (&T_header) ;
+    GrB_Matrix T = NULL ;
 
     GrB_Type atype = A->type ;
     GrB_Type vtype = V->type ;
@@ -79,7 +83,7 @@ GrB_Info GB_Vector_diag     // extract a diagonal from a matrix, as a vector
     //--------------------------------------------------------------------------
 
     GB_MATRIX_WAIT (A) ;
-    GB_phbix_free (V) ;
+    GB_phybix_free (V) ;
 
     //--------------------------------------------------------------------------
     // handle the CSR/CSC format of A
@@ -98,8 +102,17 @@ GrB_Info GB_Vector_diag     // extract a diagonal from a matrix, as a vector
     // extract the kth diagonal of A into the temporary hypersparse matrix T
     //--------------------------------------------------------------------------
 
-    // FUTURE: if A is bitmap or full, do not use GB_selector
-    GB_OK (GB_selector (T, GB_DIAG_opcode, NULL, false, A, k, NULL, Context)) ;
+    GB_CLEAR_STATIC_HEADER (T, &T_header) ;
+    GB_OK (GB_selector (
+        T,                      // output matrix
+        GB_DIAG_selop_code,     // just use the DIAG opcode
+        NULL,                   // do not use the GB_Operator
+        false,                  // flipij is false
+        A,                      // input matrix
+        k,                      // ithunk = k
+        NULL,                   // no GrB_Scalar Thunk
+        Context)) ;
+
     GB_OK (GB_convert_any_to_hyper (T, Context)) ;
     GB_MATRIX_WAIT (T) ;
     ASSERT_MATRIX_OK (T, "T = diag (A,k)", GB0) ;
@@ -111,9 +124,8 @@ GrB_Info GB_Vector_diag     // extract a diagonal from a matrix, as a vector
     int64_t vnz = GB_nnz (T) ;
     float bitmap_switch = V->bitmap_switch ;
     int sparsity_control = V->sparsity_control ;
-    bool static_header = V->static_header ;
 
-    GB_OK (GB_new (&V, static_header,   // prior static or dynamic header
+    GB_OK (GB_new (&V, // existing header
         vtype, n, 1, GB_Ap_malloc, true, GxB_SPARSE,
         GxB_NEVER_HYPER, 1, Context)) ;
 
@@ -127,6 +139,7 @@ GrB_Info GB_Vector_diag     // extract a diagonal from a matrix, as a vector
 
     V->p [0] = 0 ;
     V->p [1] = vnz ;
+    V->nvals = vnz ;
     if (k >= 0)
     { 
         // transplant T->i into V->i
@@ -158,7 +171,8 @@ GrB_Info GB_Vector_diag     // extract a diagonal from a matrix, as a vector
     else
     {
         // V->x = (vtype) T->x
-        V->x = GB_XALLOC (V->iso, vnz, vtype->size, &(V->x_size)) ;
+        // V is sparse so malloc is OK
+        V->x = GB_XALLOC (false, V->iso, vnz, vtype->size, &(V->x_size)) ;
         if (V->x == NULL)
         { 
             // out of memory
@@ -180,7 +194,7 @@ GrB_Info GB_Vector_diag     // extract a diagonal from a matrix, as a vector
     // free workspace, conform V to its desired format, and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     ASSERT_MATRIX_OK (V, "V before conform for GB_Vector_diag", GB0) ;
     GB_OK (GB_conform (V, Context)) ;
     ASSERT_MATRIX_OK (V, "V output for GB_Vector_diag", GB0) ;

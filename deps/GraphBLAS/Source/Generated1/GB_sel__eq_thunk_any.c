@@ -2,7 +2,7 @@
 // GB_sel:  hard-coded functions for selection operators
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -33,12 +33,8 @@
     GB_void
 
 // test value of Ax [p]
-#define GB_TEST_VALUE_OF_ENTRY(p)                       \
-    memcmp (Ax +((p)*asize), xthunk, asize) == 0
-
-// get the vector index (user select operators only)
-#define GB_GET_J                                        \
-    ;
+#define GB_TEST_VALUE_OF_ENTRY(keep,p)                  \
+    bool keep = (memcmp (Ax +((p)*asize), athunk, asize) == 0)
 
 // Cx [pC] = Ax [pA], no typecast
 #define GB_SELECT_ENTRY(Cx,pC,Ax,pA)                    \
@@ -59,12 +55,15 @@ void GB (_sel_phase1__eq_thunk_any)
     const GrB_Matrix A,
     const bool flipij,
     const int64_t ithunk,
-    const GB_void *restrict xthunk,
-    const GxB_select_function user_select,
+    const GB_void *restrict athunk,
+    const GB_void *restrict ythunk,
+    const GB_Operator op,
     const int64_t *A_ek_slicing, const int A_ntasks, const int A_nthreads
 )
 { 
-    ;
+    
+    
+    
     #include "GB_select_phase1.c"
 }
 
@@ -73,6 +72,8 @@ void GB (_sel_phase1__eq_thunk_any)
 //------------------------------------------------------------------------------
 // GB_sel_phase2
 //------------------------------------------------------------------------------
+
+
 
 void GB (_sel_phase2__eq_thunk_any)
 (
@@ -84,14 +85,19 @@ void GB (_sel_phase2__eq_thunk_any)
     const GrB_Matrix A,
     const bool flipij,
     const int64_t ithunk,
-    const GB_void *restrict xthunk,
-    const GxB_select_function user_select,
+    const GB_void *restrict athunk,
+    const GB_void *restrict ythunk,
+    const GB_Operator op,
     const int64_t *A_ek_slicing, const int A_ntasks, const int A_nthreads
 )
 { 
-    ;
+    
+    
+    
     #include "GB_select_phase2.c"
 }
+
+
 
 //------------------------------------------------------------------------------
 // GB_sel_bitmap
@@ -107,12 +113,15 @@ void GB (_sel_bitmap__eq_thunk_any)
     GrB_Matrix A,
     const bool flipij,
     const int64_t ithunk,
-    const GB_void *restrict xthunk,
-    const GxB_select_function user_select,
+    const GB_void *restrict athunk,
+    const GB_void *restrict ythunk,
+    const GB_Operator op,
     const int nthreads
 )
 { 
-    ;
+    
+    
+    
     #include "GB_bitmap_select_template.c"
 }
 

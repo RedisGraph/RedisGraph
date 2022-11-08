@@ -1,7 +1,7 @@
 function test200
 %TEST200 test iso full matrix multiply
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
@@ -55,7 +55,7 @@ assert (err < 1e-12) ;
 
 % using other semirings
 
-for op = { 'plus', 'pair', 'first', 'second' }
+for op = { 'plus', 'pair', 'first', 'second' }  % pair == oneb
     for add = { 'plus', 'times', 'max', 'any' }
 
         fprintf ('.') ;

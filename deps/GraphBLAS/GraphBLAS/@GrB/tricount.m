@@ -13,14 +13,14 @@ function s = tricount (A, arg2, arg3)
 %
 % See also GrB.ktruss, GrB.entries.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 % NOTE: this is a high-level algorithm that uses GrB objects.
 
 [m, n] = size (A) ;
 if (m ~= n)
-    error ('A must be square') ;
+    error ('GrB:error', 'A must be square') ;
 end
 
 d = [ ] ;
@@ -47,7 +47,7 @@ elseif (nargin == 3)
 end
 
 if (check && ~issymmetric (spones (A)))
-    error ('pattern of A must be symmetric') ;
+    error ('GrB:error', 'pattern of A must be symmetric') ;
 end
 
 if (isequal (class (d), 'GrB'))
@@ -92,11 +92,11 @@ desc.mask = 'structural' ;
 if (GrB.isbyrow (A))
     % C<U> = U*L': SandiaDot2 method
     desc.in1 = 'transpose' ;
-    C = GrB.mxm (C, U, '+.pair.int64', U, L, desc) ;
+    C = GrB.mxm (C, U, '+.oneb.int64', U, L, desc) ;
 else
     % C<U> = L'*U: SandiaDot2 method
     desc.in0 = 'transpose' ;
-    C = GrB.mxm (C, U, '+.pair.int64', L, U, desc) ;
+    C = GrB.mxm (C, U, '+.oneb.int64', L, U, desc) ;
 end
 
 s = full (double (GrB.reduce ('+.int64', C))) ;

@@ -2,8 +2,8 @@ function C = gb_speye (func, varargin)
 %GB_SPEYE Sparse identity matrix, of any type supported by GraphBLAS.
 % Implements C = GrB.eye (...) and GrB.speye (...).
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 % get the size and type
 [m, n, type] = gb_parse_args (func, varargin {:}) ;

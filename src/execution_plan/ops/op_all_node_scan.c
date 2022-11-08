@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -17,7 +17,7 @@ static OpBase *AllNodeScanClone(const ExecutionPlan *plan, const OpBase *opBase)
 static void AllNodeScanFree(OpBase *opBase);
 
 static inline void AllNodeScanToString(const OpBase *ctx, sds *buf) {
-	return ScanToString(ctx, buf, ((AllNodeScan *)ctx)->alias, NULL);
+	ScanToString(ctx, buf, ((AllNodeScan *)ctx)->alias, NULL);
 }
 
 OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const char *alias) {
@@ -54,8 +54,8 @@ static Record AllNodeScanConsumeFromChild(OpBase *opBase) {
 	}
 
 	Node n = GE_NEW_NODE();
-	n.entity = (Entity *)DataBlockIterator_Next(op->iter, &n.id);
-	if(n.entity == NULL) {
+	n.attributes = DataBlockIterator_Next(op->iter, &n.id);
+	if(n.attributes == NULL) {
 		OpBase_DeleteRecord(op->child_record); // Free old record.
 		// Pull a new record from child.
 		op->child_record = OpBase_Consume(op->op.children[0]);
@@ -63,12 +63,12 @@ static Record AllNodeScanConsumeFromChild(OpBase *opBase) {
 
 		// Reset iterator and evaluate again.
 		DataBlockIterator_Reset(op->iter);
-		n.entity = DataBlockIterator_Next(op->iter, &n.id);
-		if(n.entity == NULL) return NULL; // Iterator was empty; return immediately.
+		n.attributes = DataBlockIterator_Next(op->iter, &n.id);
+		if(n.attributes == NULL) return NULL; // Iterator was empty; return immediately.
 	}
 
 	// Clone the held Record, as it will be freed upstream.
-	Record r = OpBase_CloneRecord(op->child_record);
+	Record r = OpBase_DeepCloneRecord(op->child_record);
 
 	// Populate the Record with the graph entity data.
 	Record_AddNode(r, op->nodeRecIdx, n);
@@ -80,8 +80,8 @@ static Record AllNodeScanConsume(OpBase *opBase) {
 	AllNodeScan *op = (AllNodeScan *)opBase;
 
 	Node n = GE_NEW_NODE();
-	n.entity = (Entity *)DataBlockIterator_Next(op->iter, &n.id);
-	if(n.entity == NULL) return NULL;
+	n.attributes = DataBlockIterator_Next(op->iter, &n.id);
+	if(n.attributes == NULL) return NULL;
 
 	Record r = OpBase_CreateRecord((OpBase *)op);
 	Record_AddNode(r, op->nodeRecIdx, n);

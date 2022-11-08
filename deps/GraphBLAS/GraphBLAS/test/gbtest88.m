@@ -7,10 +7,9 @@ function gbtest88
 % C = GrB.emult (C, M, op, A, B, desc)
 % C = GrB.emult (C, M, accum, op, A, B, desc)
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-% fprintf ('gbtest88: test GrB.emult\n') ;
 rng ('default')
 
 C     = GrB.random (9, 9, 0.5) ;

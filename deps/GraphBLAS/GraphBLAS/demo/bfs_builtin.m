@@ -11,8 +11,8 @@ function v = bfs_builtin (A, s)
 % kth level, where the shortest path (in terms of # of edges) from  s to j has
 % length k+1.  The source node s defaults to 1.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 [m, n] = size (A) ;
 if (m ~= n)

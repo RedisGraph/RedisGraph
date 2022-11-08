@@ -1,15 +1,16 @@
 /*
- * Copyright 2018-2021 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
 #include "RG.h"
 #include "../../util/arr.h"
-#include "../../util/qsort.h"
-#include "../../util/strcmp.h"
 #include "../../util/rmalloc.h"
+#include "../../arithmetic/algebraic_expression/utils.h"
 #include "traverse_order_utils.h"
+
+#include <stdlib.h>
 
 // having chosen which algebraic expression will be evaluated first
 // determine whether it is worthwhile to transpose it
@@ -28,8 +29,8 @@ static bool _should_transpose_entry_point
 
 
 	// consider src and dest as stand-alone expressions
-	const char *src  = AlgebraicExpression_Source(ae);
-	const char *dest = AlgebraicExpression_Destination(ae);
+	const char *src  = AlgebraicExpression_Src(ae);
+	const char *dest = AlgebraicExpression_Dest(ae);
 
 	ScoredExp scored_exp[2];
 	AlgebraicExpression *exps[2];
@@ -73,13 +74,13 @@ static void _resolve_winning_sequence
 	for(uint i = 1; i < exp_count; i ++) {
 		bool src_resolved = false;
 		AlgebraicExpression *exp = exps[i];
-		const char *src = AlgebraicExpression_Source(exp);
+		const char *src = AlgebraicExpression_Src(exp);
 
 		// see if source is already resolved
 		for(int j = i - 1; j >= 0; j--) {
 			AlgebraicExpression *prev_exp = exps[j];
-			if(!RG_STRCMP(AlgebraicExpression_Source(prev_exp), src) ||
-			   !RG_STRCMP(AlgebraicExpression_Destination(prev_exp), src)) {
+			if(!strcmp(AlgebraicExpression_Src(prev_exp), src) ||
+			   !strcmp(AlgebraicExpression_Dest(prev_exp), src)) {
 				src_resolved = true;
 				break;
 			}
@@ -118,19 +119,19 @@ static AlgebraicExpression **_valid_expressions
 		if(!valid) continue;
 
 		// see if either exp source or destination were already encountered
-		const char *src  = AlgebraicExpression_Source(exp);
-		const char *dest = AlgebraicExpression_Destination(exp);
+		const char *src  = AlgebraicExpression_Src(exp);
+		const char *dest = AlgebraicExpression_Dest(exp);
 
 		for(uint j = 0; j < nrestricted; j++) {
 			valid = false;
 			AlgebraicExpression *used = restricted[j];
-			const char *used_src = AlgebraicExpression_Source(used);
-			const char *used_dest  = AlgebraicExpression_Destination(used);
+			const char *used_src = AlgebraicExpression_Src(used);
+			const char *used_dest  = AlgebraicExpression_Dest(used);
 
-			if(RG_STRCMP(src, used_src)   == 0  ||
-			   RG_STRCMP(src, used_dest)  == 0  ||
-			   RG_STRCMP(dest, used_src)  == 0  ||
-			   RG_STRCMP(dest, used_dest) == 0) {
+			if(strcmp(src, used_src)   == 0  ||
+			   strcmp(src, used_dest)  == 0  ||
+			   strcmp(dest, used_src)  == 0  ||
+			   strcmp(dest, used_dest) == 0) {
 				valid = true;
 				break;
 			}
@@ -187,8 +188,8 @@ static bool _arrangement_set_expression
 static void _order_expressions
 (
 	AlgebraicExpression **arrangement,   // arrangement of expressions
-	const ScoredExp *exps,              // input list of expressions
-	uint nexp                           // number of expressions
+	const ScoredExp *exps,               // input list of expressions
+	uint nexp                            // number of expressions
 ) {
 	// collect all possible expression for first position in arrangement
 	AlgebraicExpression **options = _valid_expressions(exps, nexp, NULL, 0);
@@ -198,24 +199,34 @@ static void _order_expressions
 	ASSERT(res == true);
 }
 
-/* Given a set of algebraic expressions representing a graph traversal
- * we pick the order in which the expressions will be evaluated
- * taking into account filters and transposes.
- * 'exps' will be reordered. */
+static int _score_cmp
+(
+	const ScoredExp *a,
+	const ScoredExp *b
+) {
+	return b->score - a->score;
+}
+
+// given a set of algebraic expressions representing a graph traversal
+// we pick the order in which the expressions will be evaluated
+// taking into account filters and transposes
+// 'exps' will be reordered
 void orderExpressions
 (
 	const QueryGraph *qg,
 	AlgebraicExpression **exps,
-	uint exp_count,
+	uint *exp_count,
 	const FT_FilterNode *ft,
 	rax *bound_vars
 ) {
 	// Validate inputs
-	ASSERT(qg   != NULL);
-	ASSERT(exps != NULL && exp_count > 0);
+	ASSERT(qg          != NULL);
+	ASSERT(exps        != NULL);
+	ASSERT(exp_count   != NULL);
 
-	ScoredExp scored_exps[exp_count];
-	AlgebraicExpression *arrangement[exp_count];
+	uint _exp_count = *exp_count;
+	ScoredExp scored_exps[_exp_count];
+	AlgebraicExpression *arrangement[_exp_count];
 
 	// collect all filtered aliases
 	rax *filtered_entities = NULL;
@@ -230,26 +241,25 @@ void orderExpressions
 	//--------------------------------------------------------------------------
 
 	// associate each expression with a score
-	TraverseOrder_ScoreExpressions(scored_exps, exps, exp_count, bound_vars,
+	TraverseOrder_ScoreExpressions(scored_exps, exps, _exp_count, bound_vars,
 								   filtered_entities, qg);
 
-	// Sort scored_exps on score in descending order.
-	// Compare macro used to sort scored expressions.
-#define score_cmp(a,b) ((*a).score > (*b).score)
-	QSORT(ScoredExp, scored_exps, exp_count, score_cmp);
+	// sort scored_exps on score in descending order
+	qsort(scored_exps, _exp_count, sizeof(ScoredExp),
+			(int(*)(const void*, const void*))_score_cmp);
 
 	//--------------------------------------------------------------------------
 	// Find the highest-scoring valid arrangement
 	//--------------------------------------------------------------------------
 
-	_order_expressions(arrangement, scored_exps, exp_count);
+	_order_expressions(arrangement, scored_exps, _exp_count);
 
 	// overwrite the original expressions array with the optimal arrangement
-	memcpy(exps, arrangement, exp_count * sizeof(AlgebraicExpression *));
+	memcpy(exps, arrangement, _exp_count * sizeof(AlgebraicExpression *));
 
 	// transpose expressions as necessary so that the traversals will work in
 	// the selected order
-	_resolve_winning_sequence(exps, exp_count);
+	_resolve_winning_sequence(exps, _exp_count);
 
 	// transpose the winning expression if the destination node is a more
 	// efficient starting point
@@ -258,7 +268,23 @@ void orderExpressions
 		AlgebraicExpression_Transpose(exps);
 	}
 
+	// remove redundent operands from expressions
+	// MATCH (a:A)-[:R]->(b:B), (a)-[:R]->(c:C), (a:A)-[:R]->(d:D)
+	// will result in 2 expressions:
+	// 1. A*R*B
+	// 2. A*R*C
+	// 3. A*R*D
+	//
+	// as we're dealing with the same 'a' node there's no need to multiply
+	// expressions 2 and 3 by 'A'
+	//
+	// RemoveRedundentOperands will remove label operands from already resolved
+	// nodes, this might reduce numder of expressions in 'exps'
+	_AlgebraicExpression_RemoveRedundentOperands(exps, qg);
+	*exp_count = array_len(exps);
+
 	if(filtered_entities) {
 		raxFree(filtered_entities);
 	}
 }
+

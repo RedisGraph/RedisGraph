@@ -2,17 +2,17 @@
 // GB_split: split a matrix into an array of matrices
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
-#define GB_FREE_WORK                        \
+#define GB_FREE_WORKSPACE                   \
     GB_WERK_POP (Tile_cols, int64_t) ;      \
     GB_WERK_POP (Tile_rows, int64_t) ;
 
 #define GB_FREE_ALL                         \
-    GB_FREE_WORK ;                          \
+    GB_FREE_WORKSPACE ;                     \
     for (int64_t k = 0 ; k < m*n ; k++)     \
     {                                       \
         GB_Matrix_free (&(Tiles [k])) ;     \
@@ -131,7 +131,7 @@ GrB_Info GB_split                   // split a matrix
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     return (GrB_SUCCESS) ;
 }
 

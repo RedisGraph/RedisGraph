@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -23,13 +23,11 @@ static GrB_Info _RG_Matrix_init
 	//--------------------------------------------------------------------------
 
 	//--------------------------------------------------------------------------
-	// m, never hypersparse
+	// m, can be either hypersparse or sparse
 	//--------------------------------------------------------------------------
 	info = GrB_Matrix_new(&A->matrix, type, nrows, ncols);
 	ASSERT(info == GrB_SUCCESS);
-	info = GxB_set(A->matrix, GxB_SPARSITY_CONTROL, GxB_SPARSE);
-	ASSERT(info == GrB_SUCCESS);
-	info = GxB_set(A->matrix, GxB_HYPER_SWITCH, GxB_NEVER_HYPER);
+	info = GxB_set(A->matrix, GxB_SPARSITY_CONTROL, GxB_SPARSE | GxB_HYPERSPARSE);
 	ASSERT(info == GrB_SUCCESS);
 
 	//--------------------------------------------------------------------------
@@ -76,13 +74,13 @@ GrB_Info RG_Matrix_new
 	info = _RG_Matrix_init(matrix, type, nrows, ncols);
 	ASSERT(info == GrB_SUCCESS);
 
-	//----------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
 	// create transpose matrix if required
-	//----------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
 
 	if(type == GrB_UINT64) {
 		matrix->transposed = rm_calloc(1, sizeof(_RG_Matrix));
-		info = _RG_Matrix_init(matrix->transposed, GrB_BOOL, nrows, ncols);
+		info = _RG_Matrix_init(matrix->transposed, GrB_BOOL, ncols, nrows);
 		ASSERT(info == GrB_SUCCESS);
 	}
 

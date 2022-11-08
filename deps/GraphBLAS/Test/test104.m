@@ -1,7 +1,7 @@
 function test104
 %TEST104 export/import
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 rng ('default')
@@ -19,17 +19,23 @@ for m = [0 1 5 100]
             nz = nnz (A.pattern) ;
             is_sparse = (nz < m*n) ;
             fprintf ('.') ;
-            for fmt_matrix = fmts
-                for fmt_export = 0:11
+            for fmat = fmts
+                for fexport = 0:14
                     try
-                        C = GB_mex_export_import (A, fmt_matrix, fmt_export) ;
-                        GB_spec_compare (C, A) ;
+                        C1 = GB_mex_export_import (A, fmat, fexport) ;
+                        GB_spec_compare (C1, A) ;
+                        C2 = GB_mex_export_import (A, fmat, fexport, 1) ;
+                        GB_spec_compare (C2, A) ;
+                        C3 = GB_mex_export_import (A, fmat, fexport, 502) ;
+                        GB_spec_compare (C3, A) ;
                     catch me
                         % should fail if A is sparse and it is attempted to
                         % be exported as full
                         ok = is_sparse && ...
-                            (fmt_export == 6 || fmt_export == 7 || ...
-                             fmt_export == -6 || fmt_export == -7) ;
+                            (fexport == 6 || fexport == 7 || ...
+                             fexport == -6 || fexport == -7 || ...
+                             fexport == 16 || fexport == 15 || ...
+                             fexport == -16 || fexport == -15) ;
                         if (~ok)
                             % this should not have failed
                             me

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -10,6 +10,7 @@
 #include "../util/rmalloc.h"
 #include "../util/thpool/pools.h"
 #include "../slow_log/slow_log.h"
+#include "../util/blocked_client.h"
 
 /* Array with one entry per worker thread
  * keeps track after currently executing commands
@@ -26,17 +27,19 @@ CommandCtx *CommandCtx_New
 	ExecutorThread thread,
 	bool replicated_command,
 	bool compact,
-	long long timeout
+	long long timeout,
+	bool timeout_rw
 ) {
 	CommandCtx *context = rm_malloc(sizeof(CommandCtx));
-	context->bc = bc;
-	context->ctx = ctx;
-	context->query = NULL;
-	context->thread = thread;
-	context->compact = compact;
-	context->timeout = timeout;
-	context->command_name = NULL;
-	context->graph_ctx = graph_ctx;
+	context->bc                 = bc;
+	context->ctx                = ctx;
+	context->query              = NULL;
+	context->thread             = thread;
+	context->compact            = compact;
+	context->timeout            = timeout;
+	context->graph_ctx          = graph_ctx;
+	context->command_name       = NULL;
+	context->timeout_rw         = timeout_rw;
 	context->replicated_command = replicated_command;
 
 	if(cmd_name) {
@@ -133,7 +136,7 @@ void CommandCtx_ThreadSafeContextUnlock(const CommandCtx *command_ctx) {
 
 void CommandCtx_Free(CommandCtx *command_ctx) {
 	if(command_ctx->bc) {
-		RedisModule_UnblockClient(command_ctx->bc, NULL);
+		RedisGraph_UnblockClient(command_ctx->bc);
 		if(command_ctx->ctx) {
 			RedisModule_FreeThreadSafeContext(command_ctx->ctx);
 		}

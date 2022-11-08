@@ -1,20 +1,16 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
+from common import *
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-from base import FlowTestsBase
-
 redis_graph = None
+
 
 class testBoundVariables(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph("G", redis_con)
+        redis_graph = Graph(redis_con, "G")
         self.populate_graph()
 
     def populate_graph(self):
@@ -91,3 +87,10 @@ class testBoundVariables(FlowTestsBase):
         expected_result = [['v1', 'v2']]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
+    def test05_unwind_reference_entities(self):
+        query = """MATCH ()-[a]->() UNWIND a as x RETURN id(x)"""
+        actual_result = redis_graph.query(query)
+
+        # Verify results.
+        expected_result = [[0], [1], [2]]
+        self.env.assertEquals(actual_result.result_set, expected_result)

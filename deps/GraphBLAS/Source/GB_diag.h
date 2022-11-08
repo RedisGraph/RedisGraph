@@ -2,7 +2,7 @@
 // GB_diag: definitions for GxB_Matrix_diag and GxB_Vector_diag
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -11,7 +11,7 @@
 #define GB_DIAG_H
 #include "GB.h"
 
-GrB_Info GB_Matrix_diag     // construct a diagonal matrix from a vector
+GrB_Info GB_Matrix_diag     // build a diagonal matrix from a vector
 (
     GrB_Matrix C,                   // output matrix
     const GrB_Matrix V_input,       // input vector (as an n-by-1 matrix)

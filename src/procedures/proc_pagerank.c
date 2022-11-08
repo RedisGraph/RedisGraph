@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -19,50 +19,79 @@
 // CALL algo.pageRank('Page', 'LINKS') YIELD node, score
 
 typedef struct {
-	int n;                          // Number of nodes to rank.
-	int i;                          // Current node to return.
-	Graph *g;                       // Graph.
-	Node node;                      // Node.
-	GrB_Index *mapping;             // Mapping between extracted matrix rows and node ids.
-	LAGraph_PageRank *ranking;      // Nodes ranking.
-	SIValue *output;                // Array with 4 entries ["node", node, "score", score].
+	int n;                          // number of nodes to rank
+	int i;                          // current node to return
+	Graph *g;                       // graph
+	Node node;                      // node
+	GrB_Index *mapping;             // mapping between extracted matrix rows and node ids
+	LAGraph_PageRank *ranking;      // nodes ranking
+	SIValue *output;                // array with up to 2 entries [node, score]
+	SIValue *yield_node;            // yield node
+	SIValue *yield_score;           // yield score
 } PagerankContext;
 
-ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
-									const SIValue *args, const char **yield) {
-	// Expecting 2 arguments.
+static void _process_yield
+(
+	PagerankContext *ctx,
+	const char **yield
+) {
+	int idx = 0;
+	for(uint i = 0; i < array_len(yield); i++) {
+		if(strcasecmp("node", yield[i]) == 0) {
+			ctx->yield_node = ctx->output + idx;
+			idx++;
+			continue;
+		}
+
+		if(strcasecmp("score", yield[i]) == 0) {
+			ctx->yield_score = ctx->output + idx;
+			idx++;
+			continue;
+		}
+	}
+}
+
+ProcedureResult Proc_PagerankInvoke
+(
+	ProcedureCtx *ctx,
+	const SIValue *args,
+	const char **yield
+) {
+	// expecting 2 arguments
 	if(array_len((SIValue *)args) != 2) return PROCEDURE_ERR;
+
 	// arg0 and arg1 can be either String or NULL
 	SIType arg0_t = SI_TYPE(args[0]);
 	SIType arg1_t = SI_TYPE(args[1]);
 	if(!(arg0_t & (T_STRING | T_NULL))) return PROCEDURE_ERR;
 	if(!(arg1_t & (T_STRING | T_NULL))) return PROCEDURE_ERR;
 
-	// Read arguments.
-	const char *label = NULL;    // Node filter.
-	const char *relation = NULL; // Edge filter.
+	// read arguments
+	const char *label = NULL;    // node filter
+	const char *relation = NULL; // edge filter
 	if(arg0_t == T_STRING) label = args[0].stringval;
 	if(arg1_t == T_STRING) relation = args[1].stringval;
 
-	// Pagerank config arguments
-	int iters;         // iterations performed
+	// pagerank config arguments
+	int iters;               // iterations performed
 	const double tol = 1e-4; // tolerance
 	const int itermax = 100; // max iterations
 
 	GrB_Info info;
 	UNUSED(info);
-	GrB_Index n = 0;               // Node count
-	GrB_Index nvals;               // Number of entries in 'r'
-	GrB_Index nrows;               // Relation matrix row count
+
+	GrB_Index n = 0;               // node count
+	GrB_Index nvals;               // number of entries in 'r'
+	GrB_Index nrows;               // relation matrix row count
 	Schema *s = NULL;
-	GrB_Matrix l = NULL;           // Label matrix
-	GrB_Matrix r = NULL;           // Relation matrix
-	GrB_Index *mapping = NULL;     // Mapping, array for returning row indices of tuples
+	GrB_Matrix l = NULL;           // label matrix
+	GrB_Matrix r = NULL;           // relation matrix
+	GrB_Index *mapping = NULL;     // mapping, array for returning row indices of tuples
 	Graph *g = QueryCtx_GetGraph();
 	LAGraph_PageRank *ranking = NULL;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
-	// Setup context.
+	// setup context
 	PagerankContext *pdata = rm_malloc(sizeof(PagerankContext));
 	pdata->n = n;
 	pdata->i = 0;
@@ -70,25 +99,23 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
 	pdata->node = GE_NEW_NODE();
 	pdata->mapping = mapping;
 	pdata->ranking = ranking;
-	pdata->output = array_new(SIValue, 4);
-	array_append(pdata->output, SI_ConstStringVal("node"));
-	array_append(pdata->output, SI_Node(NULL)); // Place holder.
-	array_append(pdata->output, SI_ConstStringVal("score"));
-	array_append(pdata->output, SI_DoubleVal(0.0)); // Place holder.
+	pdata->output = array_new(SIValue, 2);
+	_process_yield(pdata, yield);
+
 	ctx->privateData = pdata;
 
-	// Get label matrix.
+	// get label matrix
 	if(label) {
 		s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-		// Unknown label, quickly return.
+		// unknown label, quickly return
 		if(!s) return PROCEDURE_OK;
 		RG_Matrix_export(&l, Graph_GetLabelMatrix(g, s->id));
 	}
 
-	// Get relation matrix.
+	// get relation matrix
 	if(relation) {
 		s = GraphContext_GetSchema(gc, relation, SCHEMA_EDGE);
-		// Unknown relation, quickly return.
+		// unknown relation, quickly return
 		if(!s) return PROCEDURE_OK;
 		RG_Matrix_export(&r, Graph_GetRelationMatrix(g, s->id, false));
 
@@ -96,27 +123,27 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
 		info = GrB_Matrix_apply(r, NULL, NULL, GxB_ONE_BOOL, r, GrB_DESC_R);
 		ASSERT(info == GrB_SUCCESS);
 	} else {
-		// Relation isn't specified, 'r' is the adjacency matrix.
+		// relation isn't specified, 'r' is the adjacency matrix
 		RG_Matrix_export(&r, Graph_GetAdjacencyMatrix(g, false));
 	}
-	/* if label is specified:
-	 * filter 'r' to contain only rows and columns associated with
-	 * nodes of type 'l' */
+	// if label is specified:
+	// filter 'r' to contain only rows and columns associated with
+	// nodes of type 'l'
 	if(label != NULL) {
 		//----------------------------------------------------------------------
-		// Create a NxN matrix, one row for each labeled entity
+		// create a NxN matrix, one row for each labeled entity
 		//----------------------------------------------------------------------
 		info = GrB_Matrix_nvals(&n, l);
 		ASSERT(info == GrB_SUCCESS);
 
-		GrB_Matrix reduced; // Relation matrix reduced to only 'l' rows/cols
+		GrB_Matrix reduced; // relation matrix reduced to only 'l' rows/cols
 		info = GrB_Matrix_new(&reduced, GrB_BOOL, n, n);
 		ASSERT(info == GrB_SUCCESS);
 
-		// Discard rows of 'r' associated with nodes of a different type than 'l'
-		// this will also perform casting to boolean.
+		// discard rows of 'r' associated with nodes of a different type than 'l'
+		// this will also perform casting to boolean
 		mapping = rm_malloc(sizeof(GrB_Index) * n);
-		// Extract row indecies from 'l', coresponding to node IDs.
+		// extract row indecies from 'l', coresponding to node IDs
 		info = GrB_Matrix_extractTuples_BOOL(mapping, GrB_NULL, GrB_NULL, &n, l);
 		ASSERT(info == GrB_SUCCESS);
 
@@ -127,12 +154,12 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
 		GrB_free(&r);
 		r = reduced;
 	} else {
-		// Resize to remove unused rows.
+		// resize to remove unused rows
 		n = Graph_UncompactedNodeCount(g);
 		GxB_Matrix_resize(r, n, n);
 	}
 
-	// Invoke Pagerank only if 'r' contains entries.
+	// invoke Pagerank only if 'r' contains entries
 	info = GrB_Matrix_nvals(&nvals, r);
 	ASSERT(info == GrB_SUCCESS);
 
@@ -141,44 +168,51 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
 		ASSERT(info == GrB_SUCCESS);
 	}
 
-	// Clean up.
+	// clean up
 	GrB_free(&r);
 	if(label) {
 		GrB_free(&l);
 	}
 
-	// Update context.
-	pdata->n = n;
-	pdata->mapping = mapping;
-	pdata->ranking = ranking;
+	// update context
+	pdata->n        =  n;
+	pdata->mapping  =  mapping;
+	pdata->ranking  =  ranking;
+
 	return PROCEDURE_OK;
 }
 
-SIValue *Proc_PagerankStep(ProcedureCtx *ctx) {
+SIValue *Proc_PagerankStep
+(
+	ProcedureCtx *ctx
+) {
 	ASSERT(ctx->privateData);
 
 	PagerankContext *pdata = (PagerankContext *)ctx->privateData;
 
-	// Depleted/no results
+	// depleted/no results
 	if(pdata->i >= pdata->n || pdata->ranking == NULL) return NULL;
 
 	LAGraph_PageRank rank = pdata->ranking[pdata->i++];
 	NodeID node_id = (pdata->mapping) ? pdata->mapping[rank.page] : rank.page;
 
 	Graph_GetNode(pdata->g, node_id, &pdata->node);
-	pdata->output[1] = SI_Node(&pdata->node);
-	pdata->output[3] = SI_DoubleVal(rank.pagerank);
+	if(pdata->yield_node)   *pdata->yield_node   =  SI_Node(&pdata->node);
+	if(pdata->yield_score)  *pdata->yield_score  =  SI_DoubleVal(rank.pagerank);
 
 	return pdata->output;
 }
 
-ProcedureResult Proc_PagerankFree(ProcedureCtx *ctx) {
-	// Clean up.
+ProcedureResult Proc_PagerankFree
+(
+	ProcedureCtx *ctx
+) {
+	// clean up
 	if(ctx->privateData) {
 		PagerankContext *pdata = ctx->privateData;
-		if(pdata->output) array_free(pdata->output);
-		if(pdata->mapping) rm_free(pdata->mapping);
-		if(pdata->ranking) rm_free(pdata->ranking);
+		if(pdata->output)   array_free(pdata->output);
+		if(pdata->mapping)  rm_free(pdata->mapping);
+		if(pdata->ranking)  rm_free(pdata->ranking);
 		rm_free(ctx->privateData);
 	}
 

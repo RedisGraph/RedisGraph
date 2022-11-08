@@ -2,8 +2,8 @@
 // gbbinopinfo : print a GraphBLAS binary op (for illustration only)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -46,8 +46,21 @@ void mexFunction
         CHECK_ERROR (type == NULL, "unknown type") ;
     }
 
-    GrB_BinaryOp op = gb_mxstring_to_binop (pargin [0], type, type) ;
-    OK (GxB_BinaryOp_fprint (op, opstring, GxB_COMPLETE, NULL)) ;
+    GrB_BinaryOp op2 = NULL ;
+    GrB_IndexUnaryOp idxunop = NULL ;
+    int64_t ithunk = 0 ;
+
+    gb_mxstring_to_binop_or_idxunop (pargin [0], type, type,
+        &op2, &idxunop, &ithunk) ;
+
+    if (idxunop != NULL)
+    {
+        OK (GxB_IndexUnaryOp_fprint (idxunop, opstring, GxB_COMPLETE, NULL)) ;
+    }
+    else
+    {
+        OK (GxB_BinaryOp_fprint (op2, opstring, GxB_COMPLETE, NULL)) ;
+    }
     GB_WRAPUP ;
 }
 

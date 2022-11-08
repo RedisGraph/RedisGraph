@@ -2,7 +2,7 @@
 // GB_Scalar_wrap: wrap a C scalar inside a GraphBLAS scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -10,13 +10,16 @@
 // This method construct a shallow statically-defined scalar, with no memory
 // allocations.  The scalar is iso full, with a single entry.
 
+// Note that since the header is statically allocated, it cannot be transfered
+// automatically to the GPU when using CUDA.
+
 #include "GB.h"
 #include "GB_scalar.h"
 
-GxB_Scalar GB_Scalar_wrap   // create a new GxB_Scalar with one entry
+GrB_Scalar GB_Scalar_wrap   // create a new GrB_Scalar with one entry
 (
-    GxB_Scalar s,           // GxB_Scalar to create
-    GrB_Type type,          // type of GxB_Scalar to create
+    GrB_Scalar s,           // GrB_Scalar to create
+    GrB_Type type,          // type of GrB_Scalar to create
     void *Sx                // becomes S->x, an array of size 1 * type->size
 )
 { 
@@ -28,7 +31,7 @@ GxB_Scalar GB_Scalar_wrap   // create a new GxB_Scalar with one entry
     ASSERT (s != NULL) ;
 
     //--------------------------------------------------------------------------
-    // create the GxB_Scalar
+    // create the GrB_Scalar
     //--------------------------------------------------------------------------
 
     s->magic = GB_MAGIC ;
@@ -49,6 +52,9 @@ GxB_Scalar GB_Scalar_wrap   // create a new GxB_Scalar with one entry
     s->b = NULL ; s->b_size = 0 ; s->b_shallow = false ;
     s->i = NULL ; s->i_size = 0 ; s->i_shallow = false ;
     s->x = Sx   ; s->x_size = type->size ; s->x_shallow = true ;
+
+    s->Y = NULL ;
+    s->Y_shallow = false ;
 
     s->nvals = 0 ;
 

@@ -2,7 +2,7 @@
 // GB_mx_mxArray_to_Matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -138,6 +138,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
         {
             mxArray *s = mxGetFieldByNumber (A_builtin, 0, fieldnumber) ;
             atype_out = GB_mx_string_to_Type (s, atype_in) ;
+            if (atype_out == NULL) mexErrMsgTxt ("unknown class") ;
         }
 
         // get the iso property (false if not present)
@@ -197,6 +198,11 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
     }
 
     GB_void *Mx = mxGetData (Amatrix) ;
+    if (anz == 0)
+    {
+        // an empty matrix cannot be iso
+        A_iso = false ;
+    }
 
     //--------------------------------------------------------------------------
     // look for A.values
@@ -247,7 +253,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
     {
 
         // create the GraphBLAS matrix
-        info = GB_new (&A, false, // sparse or full, new mx header
+        info = GB_new (&A, // sparse or full, new header
             atype_out, (GrB_Index) nrows, (GrB_Index) ncols,
             GB_Ap_calloc, is_csc, sparsity, GxB_HYPER_DEFAULT, 0, Context) ;
         if (info != GrB_SUCCESS)
@@ -270,6 +276,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
         {
             memcpy (A->p, Mp, (ncols+1) * sizeof (int64_t)) ;
             memcpy (A->i, Mi, anz * sizeof (int64_t)) ;
+            A->nvals = A->p [ncols] ;
         }
         A->magic = GB_MAGIC ;
 
@@ -281,7 +288,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
         // built-in matrix and must not be modified.
 
         // [ create the GraphBLAS matrix, do not allocate A->p
-        info = GB_new (&A, false, // sparse or full, new mx header
+        info = GB_new (&A, // sparse or full, new header
             atype_out, (GrB_Index) nrows, (GrB_Index) ncols,
             GB_Ap_null, is_csc, sparsity, GxB_HYPER_DEFAULT, 0, Context) ;
         if (info != GrB_SUCCESS)
@@ -299,6 +306,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
             A->i_size = GB_IMAX (anz, 1) * sizeof (int64_t) ;
             A->p_shallow = true ;
             A->i_shallow = true ;
+            A->nvals = A->p [ncols] ;
         }
         else
         {
@@ -400,15 +408,14 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
             {
                 // use the first entry of A->x as the iso value of A
                 A->iso = true ;
-                GB_convert_any_to_iso (A, NULL, true, NULL) ;
             }
             else
             {
                 // A is converted to iso, but it doesn't have enough space in
                 // A->x for the iso value, so set it to zero
                 A->iso = false ;
-                GB_convert_any_to_iso (A, NULL, true, NULL) ;
             }
+            GB_convert_any_to_iso (A, NULL, NULL) ;
         }
         else
         {
@@ -485,7 +492,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
         {
             bool burble = GB_Global_burble_get ( ) ;
             if (burble) printf (" [ GB_mx_mxArray_to_Matrix ") ;
-            GB_convert_hyper_to_sparse (A, Context) ;
+            GB_convert_hyper_to_sparse (A, true, Context) ;
             if (burble) printf ("]\n") ;
         }
         ASSERT (!A->is_csc) ;
@@ -537,7 +544,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
     // return the GraphBLAS matrix
     //--------------------------------------------------------------------------
 
-    info = GrB_Matrix_wait (&A) ;
+    info = GrB_Matrix_wait (A, GrB_MATERIALIZE) ;
     if (info != GrB_SUCCESS)
     {
         FREE_ALL ;

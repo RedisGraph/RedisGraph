@@ -510,7 +510,6 @@ Feature: Match3 - Match fixed length patterns
       | a1 | r | b2 |
     And no side effects
 
-  @skip
   Scenario: [26] Matching twice with a duplicate predicate
     Given an empty graph
     And having executed:
@@ -560,7 +559,6 @@ Feature: Match3 - Match fixed length patterns
     And no side effects
 
   @NegativeTest
-  @skip
   Scenario: [29] Fail when re-using a relationship in the same pattern
     Given any graph
     When executing query:

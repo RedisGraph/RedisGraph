@@ -2,7 +2,7 @@
 // GB_dense_subassign_05d: C(:,:)<M> = scalar where C is as-if-full
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -22,18 +22,18 @@
 #include "GB_subassign_methods.h"
 #include "GB_dense.h"
 #include "GB_unused.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_type__include.h"
 #endif
 
-#undef  GB_FREE_WORK
-#define GB_FREE_WORK                        \
+#undef  GB_FREE_WORKSPACE
+#define GB_FREE_WORKSPACE                   \
 {                                           \
     GB_WERK_POP (M_ek_slicing, int64_t) ;   \
 }
 
 #undef  GB_FREE_ALL
-#define GB_FREE_ALL GB_FREE_WORK
+#define GB_FREE_ALL GB_FREE_WORKSPACE
 
 GrB_Info GB_dense_subassign_05d
 (
@@ -108,7 +108,7 @@ GrB_Info GB_dense_subassign_05d
 
     bool done = false ;
 
-    #ifndef GBCOMPACT
+    #ifndef GBCUDA_DEV
 
         //----------------------------------------------------------------------
         // define the worker for the switch factory
@@ -180,7 +180,7 @@ GrB_Info GB_dense_subassign_05d
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     ASSERT_MATRIX_OK (C, "C output for subassign method_05d", GB0) ;
     return (GrB_SUCCESS) ;
 }

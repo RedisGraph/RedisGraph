@@ -1,23 +1,22 @@
 //------------------------------------------------------------------------------
-// GB_iso_unop_code: determine if C = A, C = op1(A), or C = op2(A) is iso
+// GB_iso_unop_code: determine if C = A, C = unop(A), or C = binop(A) is iso
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 #include "GB.h"
 
-// C = A, C = op1(A), C = op2(A,scalar), or C = op2(scalar,A) is being
+// C = A, C = unop(A), C = binop(A,scalar), or C = binop(scalar,A) is being
 // computed, with A optionally transposed.  Determine if C is iso.
 
 GB_iso_code GB_iso_unop_code
 (
     GrB_Matrix A,           // input matrix
-    GrB_UnaryOp op1,        // unary operator, if present
-    GrB_BinaryOp op2,       // binary operator, if present
-    bool binop_bind1st      // if true, C = op2(x,A), otherwise C = op2(A,y)
+    GB_Operator op,         // unary/idxunop/binop, if present
+    bool binop_bind1st      // if true, C = binop(x,A), else C = binop(A,y)
 )
 {
 
@@ -31,42 +30,47 @@ GB_iso_code GB_iso_unop_code
     // get the opcode
     //--------------------------------------------------------------------------
 
-    GB_Opcode opcode = GB_NOP_opcode ;
-    if (op1 != NULL) opcode = op1->opcode ;
-    if (op2 != NULL) opcode = op2->opcode ;
+    GB_Opcode opcode = GB_NOP_code ;
+    if (op != NULL) opcode = op->opcode ;
 
     //--------------------------------------------------------------------------
-    // positional ops never result in an iso matrix
+    // positional ops or user-defined idxunops never result in an iso matrix
     //--------------------------------------------------------------------------
 
-    if (GB_OPCODE_IS_POSITIONAL (opcode))
+    // idxunops are either positional, valued, or user-defined.  Positional and
+    // user-defined ops lead to a non-iso result even if the input is iso.  A
+    // valued idxunop (such as GrB_VALUENE_FP32) has been renamed as a binary
+    // op, with bind_1st false.  As a result, no remaining idxunops result in
+    // an iso-valued output.
+
+    if (GB_OPCODE_IS_POSITIONAL (opcode) || GB_IS_INDEXUNARYOP_CODE (opcode))
     { 
         // this is the only case where C is non-iso even if A is iso
         return (GB_NON_ISO) ;
     }
 
     //--------------------------------------------------------------------------
-    // C = op1 (A) or pair (...)
+    // C = unop (A) or pair (...)
     //--------------------------------------------------------------------------
 
-    if ((opcode == GB_ONE_opcode) || (opcode == GB_PAIR_opcode))
+    if ((opcode == GB_ONE_unop_code) || (opcode == GB_PAIR_binop_code))
     { 
-        // if op1 is ONE or op2 is PAIR, then C is iso, with a value
+        // if unop is ONE or binop is PAIR, then C is iso, with a value
         // equal to 1
         return (GB_ISO_1) ;
     }
 
     //--------------------------------------------------------------------------
-    // C = op2 (scalar,A) or op2 (A,scalar)
+    // C = binop (scalar,A) or binop (A,scalar)
     //--------------------------------------------------------------------------
 
-    if ((opcode == GB_ANY_opcode) ||                        // C = any(...)
-        (opcode == GB_FIRST_opcode  &&  binop_bind1st) ||   // C = first(x,A)
-        (opcode == GB_SECOND_opcode && !binop_bind1st))     // C = second(A,y)
+    if ((opcode == GB_ANY_binop_code) ||                      // C = any(...)
+        (opcode == GB_FIRST_binop_code  &&  binop_bind1st) || // C = first(x,A)
+        (opcode == GB_SECOND_binop_code && !binop_bind1st))   // C = second(A,y)
     { 
-        // if op2 is FIRST and binop_bind1st is true, or if op2 is SECOND and
-        // binop_bind1st is false, or if op2 is ANY, then C is iso, with a
-        // value equal to the scalar
+        // if binop is FIRST and binop_bind1st is true, or if binop is SECOND
+        // and binop_bind1st is false, or if binop is ANY, then C is iso, with
+        // a value equal to the scalar
         return (GB_ISO_S) ;
     }
 
@@ -76,24 +80,24 @@ GB_iso_code GB_iso_unop_code
 
     if (A->iso)
     {
-        if (opcode == GB_NOP_opcode || opcode == GB_IDENTITY_opcode)
+        if (opcode == GB_NOP_code || opcode == GB_IDENTITY_unop_code)
         { 
             // C = (ctype) A
             return (GB_ISO_A) ;
         }
-        else if (op1 != NULL)
+        else if (GB_IS_UNARYOP_CODE (opcode))
         { 
-            // C = op1 (A)
+            // C = unop (A)
             return (GB_ISO_OP1_A) ;
         }
         else if (binop_bind1st)
         { 
-            // C = op2 (scalar, A)
+            // C = binop (scalar, A)
             return (GB_ISO_OP2_SA) ;
         }
         else
         { 
-            // C = op2 (A, scalar)
+            // C = binop (A, scalar)
             return (GB_ISO_OP2_AS) ;
         }
     }

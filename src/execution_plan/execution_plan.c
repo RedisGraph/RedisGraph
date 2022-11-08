@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -13,8 +13,8 @@
 #include "../util/rmalloc.h"
 #include "./optimizations/optimizer.h"
 #include "../ast/ast_build_filter_tree.h"
-#include "execution_plan_build/execution_plan_construct.h"
 #include "execution_plan_build/execution_plan_modify.h"
+#include "execution_plan_build/execution_plan_construct.h"
 
 #include <setjmp.h>
 
@@ -209,14 +209,17 @@ static ExecutionPlan **_process_segments(AST *ast) {
 	return segments;
 }
 
-static ExecutionPlan *_tie_segments(ExecutionPlan **segments,
-									uint segment_count) {
-	FT_FilterNode *ft = NULL;            // filters following WITH
-	OpBase *connecting_op = NULL;        // op connecting one segment to another
-	OpBase *prev_connecting_op = NULL;   // root of previous segment
-	ExecutionPlan *prev_segment = NULL;
-	ExecutionPlan *current_segment = NULL;
-	AST *master_ast = QueryCtx_GetAST(); // top-level AST of plan
+static ExecutionPlan *_tie_segments
+(
+	ExecutionPlan **segments,
+	uint segment_count
+) {
+	FT_FilterNode  *ft                  =  NULL; // filters following WITH
+	OpBase         *connecting_op       =  NULL; // op connecting one segment to another
+	OpBase         *prev_connecting_op  =  NULL; // root of previous segment
+	ExecutionPlan  *prev_segment        =  NULL;
+	ExecutionPlan  *current_segment     =  NULL;
+	AST            *master_ast          =  QueryCtx_GetAST();  // top-level AST of plan
 
 	//--------------------------------------------------------------------------
 	// merge segments
@@ -235,13 +238,43 @@ static ExecutionPlan *_tie_segments(ExecutionPlan **segments,
 
 		// tie the current segment's tap to the previous segment's root op
 		if(prev_segment != NULL) {
-			// Validate the connecting operation.
-			// The connecting operation may already have children
-			// if it's been attached to a previous scope.
+			// validate the connecting operation
+			// the connecting operation may already have children
+			// if it's been attached to a previous scope
 			ASSERT(connecting_op->type == OPType_PROJECT ||
-				   connecting_op->type == OPType_AGGREGATE);
+			       connecting_op->type == OPType_AGGREGATE);
 
 			ExecutionPlan_AddOp(connecting_op, prev_segment->root);
+		}
+
+		//----------------------------------------------------------------------
+		// build pattern comprehension ops
+		//----------------------------------------------------------------------
+
+		// WITH projections
+		if(prev_segment != NULL) {
+			const cypher_astnode_t *opening_clause = cypher_ast_query_get_clause(ast->root, 0);
+			ASSERT(cypher_astnode_type(opening_clause) == CYPHER_AST_WITH);
+			uint projections = cypher_ast_with_nprojections(opening_clause);
+			for (uint j = 0; j < projections; j++) {
+				const cypher_astnode_t *projection = cypher_ast_with_get_projection(opening_clause, j);
+				buildPatternComprehensionOps(prev_segment, connecting_op, projection);
+				buildPatternPathOps(prev_segment, connecting_op, projection);
+			}
+		}
+
+		// RETURN projections
+		if (segment->root->type == OPType_RESULTS) {
+			uint clause_count = cypher_ast_query_nclauses(ast->root);
+			const cypher_astnode_t *closing_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
+			OpBase *op = segment->root;
+			while(op->type != OPType_PROJECT && op->type != OPType_AGGREGATE) op = op->children[0];
+			uint projections = cypher_ast_return_nprojections(closing_clause);
+			for (uint j = 0; j < projections; j++) {
+				const cypher_astnode_t *projection = cypher_ast_return_get_projection(closing_clause, j);
+				buildPatternComprehensionOps(segment, op, projection);
+				buildPatternPathOps(segment, op, projection);
+			}
 		}
 
 		prev_segment = segment;
@@ -342,7 +375,7 @@ Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan) {
 	return r;
 }
 
-void ExecutionPlan_ReturnRecord(ExecutionPlan *plan, Record r) {
+void ExecutionPlan_ReturnRecord(const ExecutionPlan *plan, Record r) {
 	ASSERT(plan && r);
 	ObjectPool_DeleteItem(plan->record_pool, r);
 }
@@ -475,7 +508,9 @@ static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
 
 	if(plan->connected_components) {
 		uint connected_component_count = array_len(plan->connected_components);
-		for(uint i = 0; i < connected_component_count; i ++) QueryGraph_Free(plan->connected_components[i]);
+		for(uint i = 0; i < connected_component_count; i ++) {
+			QueryGraph_Free(plan->connected_components[i]);
+		}
 		array_free(plan->connected_components);
 	}
 

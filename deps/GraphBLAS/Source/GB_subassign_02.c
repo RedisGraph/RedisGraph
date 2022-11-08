@@ -2,7 +2,7 @@
 // GB_subassign_02: C(I,J) = A ; using S
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -52,6 +52,7 @@ GrB_Info GB_subassign_02
     //--------------------------------------------------------------------------
 
     GB_EMPTY_TASKLIST ;
+    GB_CLEAR_STATIC_HEADER (S, &S_header) ;
     GB_OK (GB_subassign_symbolic (S, C, I, ni, J, nj, true, Context)) ;
 
     //--------------------------------------------------------------------------
@@ -126,7 +127,7 @@ GrB_Info GB_subassign_02
                 // get S(iA_start:iA_end,j)
                 //--------------------------------------------------------------
 
-                GB_GET_VECTOR_FOR_IXJ (S, iA_start) ;
+                GB_LOOKUP_VECTOR_FOR_IXJ (S, iA_start) ;
                 int64_t pA_start = j * Avlen ;
 
                 //--------------------------------------------------------------
@@ -303,7 +304,7 @@ GrB_Info GB_subassign_02
                 // get S(iA_start:iA_end,j)
                 //--------------------------------------------------------------
 
-                GB_GET_VECTOR_FOR_IXJ (S, iA_start) ;
+                GB_LOOKUP_VECTOR_FOR_IXJ (S, iA_start) ;
                 int64_t pA_start = j * Avlen ;
 
                 //--------------------------------------------------------------

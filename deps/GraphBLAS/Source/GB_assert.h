@@ -2,7 +2,7 @@
 // GB_assert.h: assertions
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -100,6 +100,9 @@
 #define ASSERT_BINARYOP_OK(op,name,pr)  \
     ASSERT_OK (GB_BinaryOp_check (op, name, pr, NULL))
 
+#define ASSERT_INDEXUNARYOP_OK(op,name,pr)  \
+    ASSERT_OK (GB_IndexUnaryOp_check (op, name, pr, NULL))
+
 #define ASSERT_BINARYOP_OK_OR_NULL(op,name,pr)  \
     ASSERT_OK_OR_NULL (GB_BinaryOp_check (op, name, pr, NULL))
 
@@ -114,6 +117,12 @@
 
 #define ASSERT_SELECTOP_OK_OR_NULL(op,name,pr)  \
     ASSERT_OK_OR_NULL (GB_SelectOp_check (op, name, pr, NULL))
+
+#define ASSERT_OP_OK(op,name,pr) \
+    ASSERT_OK (GB_Operator_check (op, name, pr, NULL))
+
+#define ASSERT_OP_OK_OR_NULL(op,name,pr) \
+    ASSERT_OK_OR_NULL (GB_Operator_check (op, name, pr, NULL))
 
 #define ASSERT_MONOID_OK(mon,name,pr)  \
     ASSERT_OK (GB_Monoid_check (mon, name, pr, NULL))

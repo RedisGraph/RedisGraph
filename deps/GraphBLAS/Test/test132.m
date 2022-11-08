@@ -1,7 +1,7 @@
 function test132
 %TEST132 test GrB_*_setElement and GrB_*_*build
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 % simplified from test45
@@ -27,7 +27,7 @@ A = sprand (67, 67, 0.1) ;
 [m n] = size (A) ;
 
 ntuples = 1000 ;
-A1 = A ;
+C1 = A ;
 I = 1 + floor (m * rand (ntuples, 1)) ;
 J = 1 + floor (n * rand (ntuples, 1)) ;
 X = 100 * rand (ntuples, 1) ;
@@ -35,14 +35,17 @@ I0 = uint64 (I)-1 ;
 J0 = uint64 (J)-1 ;
 
 for k = 1:ntuples
-    A1 (I (k), J (k)) =  X (k) ;
+    C1 (I (k), J (k)) =  X (k) ;
 end
 
 A2 = A ;
-A3 = GB_mex_setElement (A2, I0, J0, X, true) ;
-assert (GB_spok (A3.matrix) == 1)
+C3 = GB_mex_setElement (A2, I0, J0, X, true) ;
+C4 = GB_mex_setElement (A2, I0, J0, X, true, true) ;
+assert (GB_spok (C3.matrix) == 1)
+assert (GB_spok (C4.matrix) == 1)
 
-assert (isequal (A3.matrix, A1)) ;
+assert (isequal (C3.matrix, C1)) ;
+assert (isequal (C4.matrix, C1)) ;
 
 ntuples = 10 ;
 I = (m * ones (ntuples, 1)) ;
@@ -54,17 +57,19 @@ X = pi * ones (ntuples, 1) ;
 A (m,n) = 0 ;
 A (:, 5:67) = 0 ;
 
-A1 = A ;
+C1 = A ;
 for k = 1:ntuples
-    A1 (I (k), J (k)) =  X (k) ;
+    C1 (I (k), J (k)) =  X (k) ;
 end
 
 clear A2
 A2.matrix = A ;
 A2.is_hyper = true ;
-A3 = GB_mex_setElement (A2, I0, J0, X, true) ;
-assert (GB_spok (A3.matrix) == 1)
-assert (isequal (A3.matrix, A1)) ;
+C3 = GB_mex_setElement (A2, I0, J0, X, true) ;
+C4 = GB_mex_setElement (A2, I0, J0, X, true) ;
+assert (GB_spok (C3.matrix) == 1)
+assert (isequal (C3.matrix, C1)) ;
+assert (isequal (C4.matrix, C1)) ;
 
 fprintf ('\ntest132: all tests passed\n') ;
 

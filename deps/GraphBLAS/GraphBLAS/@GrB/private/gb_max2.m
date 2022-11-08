@@ -2,8 +2,8 @@ function C = gb_max2 (op, A, B)
 %GB_MAX2 2-input max
 % Implements C = max (A,B)
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 [am, an, atype] = gbsize (A) ;
 [bm, bn, btype] = gbsize (B) ;
@@ -14,7 +14,7 @@ ctype = gboptype (atype, btype) ;
 if (a_is_scalar)
     if (b_is_scalar)
         % both A and B are scalars.  Result is also a scalar.
-        C = gb_union_op (op, A, B) ;
+        C = gbeunion (op, A, 0, B, 0) ;
     else
         % A is a scalar, B is a matrix
         if (gb_scalar (A) > 0)
@@ -23,7 +23,7 @@ if (a_is_scalar)
             C = gbeadd (A, op, B) ;
         else
             % since A <= 0, the result is sparse.
-            C = gbapply2 (A, op, B) ;
+            C = gbapply2 (gbfull (A), op, B) ;
         end
     end
 else
@@ -35,11 +35,11 @@ else
             C = gbeadd (A, op, B) ;
         else
             % since B <= 0, the result is sparse.
-            C = gbapply2 (A, op, B) ;
+            C = gbapply2 (A, op, gbfull (B)) ;
         end
     else
         % both A and B are matrices.  Result is sparse.
-        C = gb_union_op (op, A, B) ;
+        C = gbeunion (op, A, 0, B, 0) ;
     end
 end
 

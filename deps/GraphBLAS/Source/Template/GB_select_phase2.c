@@ -2,7 +2,7 @@
 // GB_select_phase2: C=select(A,thunk)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -66,14 +66,15 @@
 
             #if defined ( GB_ENTRY_SELECTOR )
 
-                GB_GET_J ;
+                int64_t j = GBH (Ah, k) ;
                 for (int64_t pA = pA_start ; pA < pA_end ; pA++)
                 {
                     // A is never full; that case is now handled by the
                     // bitmap selector instead.
                     ASSERT (Ai != NULL) ;
                     int64_t i = Ai [pA] ;
-                    if (GB_TEST_VALUE_OF_ENTRY (pA))
+                    GB_TEST_VALUE_OF_ENTRY (keep, pA) ;
+                    if (keep)
                     { 
                         ASSERT (pC >= Cp [k] && pC < Cp [k+1]) ;
                         Ci [pC] = i ;
@@ -83,8 +84,26 @@
                     }
                 }
 
-            #elif defined ( GB_TRIU_SELECTOR ) \
-              ||  defined ( GB_RESIZE_SELECTOR )
+            #elif defined ( GB_TRIL_SELECTOR  ) || \
+                  defined ( GB_ROWGT_SELECTOR )
+
+                // keep Zp [k] to pA_end-1
+                int64_t p = GB_IMAX (Zp [k], pA_start) ;
+                int64_t mynz = pA_end - p ;
+                if (mynz > 0)
+                { 
+                    // A and C are both sparse or hypersparse
+                    ASSERT (pA_start <= p && p + mynz <= pA_end) ;
+                    ASSERT (pC >= Cp [k] && pC + mynz <= Cp [k+1]) ;
+                    ASSERT (Ai != NULL) ;
+                    memcpy (Ci +pC, Ai +p, mynz*sizeof (int64_t)) ;
+                    #if !GB_ISO_SELECT
+                    memcpy (Cx +pC*asize, Ax +p*asize, mynz*asize) ;
+                    #endif
+                }
+
+            #elif defined ( GB_TRIU_SELECTOR  ) || \
+                  defined ( GB_ROWLE_SELECTOR )
 
                 // keep pA_start to Zp[k]-1
                 int64_t p = GB_IMIN (Zp [k], pA_end) ;
@@ -114,7 +133,8 @@
                     #endif
                 }
 
-            #elif defined ( GB_OFFDIAG_SELECTOR )
+            #elif defined ( GB_OFFDIAG_SELECTOR  ) || \
+                  defined ( GB_ROWINDEX_SELECTOR )
 
                 // keep pA_start to Zp[k]-1
                 int64_t p = GB_IMIN (Zp [k], pA_end) ;
@@ -138,23 +158,6 @@
                 { 
                     // A and C are both sparse or hypersparse
                     ASSERT (pA_start <= p && p < pA_end) ;
-                    ASSERT (pC >= Cp [k] && pC + mynz <= Cp [k+1]) ;
-                    ASSERT (Ai != NULL) ;
-                    memcpy (Ci +pC, Ai +p, mynz*sizeof (int64_t)) ;
-                    #if !GB_ISO_SELECT
-                    memcpy (Cx +pC*asize, Ax +p*asize, mynz*asize) ;
-                    #endif
-                }
-
-            #elif defined ( GB_TRIL_SELECTOR )
-
-                // keep Zp [k] to pA_end-1
-                int64_t p = GB_IMAX (Zp [k], pA_start) ;
-                int64_t mynz = pA_end - p ;
-                if (mynz > 0)
-                { 
-                    // A and C are both sparse or hypersparse
-                    ASSERT (pA_start <= p && p + mynz <= pA_end) ;
                     ASSERT (pC >= Cp [k] && pC + mynz <= Cp [k+1]) ;
                     ASSERT (Ai != NULL) ;
                     memcpy (Ci +pC, Ai +p, mynz*sizeof (int64_t)) ;

@@ -2,7 +2,7 @@
 // GrB_Matrix_extractTuples: extract all tuples from a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -38,6 +38,7 @@ GrB_Info GB_EVAL3 (prefix, _Matrix_extractTuples_, T) /* [I,J,X] = find (A) */\
     GrB_Info info = GB_extractTuples (I, J, X, p_nvals, GB_ ## T ## _code, A, \
         Context) ;                                                            \
     GB_BURBLE_END ;                                                           \
+    GB_PRAGMA (omp flush)                                                     \
     return (info) ;                                                           \
 }
 

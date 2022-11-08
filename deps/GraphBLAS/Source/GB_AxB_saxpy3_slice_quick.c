@@ -2,7 +2,7 @@
 // GB_AxB_saxpy3_slice_quick: construct a single task for GB_AxB_saxpy3
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -43,7 +43,7 @@ GrB_Info GB_AxB_saxpy3_slice_quick
     //--------------------------------------------------------------------------
 
     size_t SaxpyTasks_size = 0 ;
-    GB_saxpy3task_struct *SaxpyTasks = GB_MALLOC_WERK (1, GB_saxpy3task_struct,
+    GB_saxpy3task_struct *SaxpyTasks = GB_MALLOC_WORK (1, GB_saxpy3task_struct,
         &SaxpyTasks_size) ;
     if (SaxpyTasks == NULL)
     { 
@@ -55,7 +55,7 @@ GrB_Info GB_AxB_saxpy3_slice_quick
     memset (SaxpyTasks, 0, SaxpyTasks_size) ;
 
     //--------------------------------------------------------------------------
-    // create a single Gustavson task
+    // create a single coarse Gustavson task
     //--------------------------------------------------------------------------
 
     SaxpyTasks [0].start   = 0 ;
@@ -68,15 +68,6 @@ GrB_Info GB_AxB_saxpy3_slice_quick
     SaxpyTasks [0].my_cjnz = 0 ;         // unused
     SaxpyTasks [0].leader  = 0 ;
     SaxpyTasks [0].team_size = 1 ;
-
-    if (bnvec == 1)
-    { 
-        // convert the single coarse task into a single fine task
-        SaxpyTasks [0].start  = 0 ;                   // first entry in B(:,0)
-        SaxpyTasks [0].end = GB_nnz_held (B) - 1 ;    // last entry in B(:,0)
-        SaxpyTasks [0].vector = 0 ;
-        (*nfine) = 1 ;
-    }
 
     //--------------------------------------------------------------------------
     // return result

@@ -2,7 +2,7 @@
 // GB_mex_offdiag: compute C=offdiag(A,1)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -15,7 +15,7 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GxB_Scalar_free_(&Thunk) ;          \
+    GrB_Scalar_free_(&Thunk) ;          \
     GrB_Matrix_free_(&A) ;              \
     GrB_Matrix_free_(&C) ;              \
     GB_mx_put_global (true) ;           \
@@ -33,7 +33,7 @@ void mexFunction
 
     bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Matrix A = NULL, C = NULL ;
-    GxB_Scalar Thunk = NULL ;
+    GrB_Scalar Thunk = NULL ;
 
     // check inputs
     if (nargout > 1 || nargin < 1 || nargin > 2)
@@ -71,9 +71,9 @@ void mexFunction
     #define GET_DEEP_COPY  GrB_Matrix_new (&C, GrB_FP64, A->vlen, A->vdim) ;
     #define FREE_DEEP_COPY GrB_Matrix_free_(&C) ;
 
-    GxB_Scalar_new (&Thunk, GrB_INT64) ;
-    GxB_Scalar_setElement_INT64_(Thunk, k) ;
-    GxB_Scalar_wait (&Thunk) ;
+    GrB_Scalar_new (&Thunk, GrB_INT64) ;
+    GrB_Scalar_setElement_INT64_(Thunk, k) ;
+    GrB_Scalar_wait (Thunk, GrB_MATERIALIZE) ;
 
     // C = offdiag (A,k)
     METHOD (GxB_Matrix_select_(C, NULL, NULL, GxB_OFFDIAG, A, Thunk, NULL)) ;

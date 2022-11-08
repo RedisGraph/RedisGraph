@@ -2,7 +2,7 @@
 // GB_mex_edit: add/remove entries from a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -111,6 +111,8 @@ void mexFunction
 
     bool save = GB_Global_malloc_debug_get ( ) ;
     GB_Global_malloc_debug_set (false) ;
+    GrB_Scalar Scalar = NULL ;
+    OK (GrB_Scalar_new (&Scalar, GrB_FP64)) ;   // create an empty scalar
 
     //--------------------------------------------------------------------------
     // edit the matrix
@@ -122,7 +124,7 @@ void mexFunction
         int64_t j = J [k] - 1 ;
         double x = X [k] ;
         double action = Action [k] ;
-        if (action == 0)
+        if (action <= 0.2)
         {
             // remove the (i,j) entry
             if (is_vector)
@@ -132,6 +134,18 @@ void mexFunction
             else
             {
                 OK (GrB_Matrix_removeElement (C, i, j)) ;
+            }
+        }
+        else if (action <= 0.4)
+        {
+            // remove the (i,j) entry using setElement_Scalar
+            if (is_vector)
+            {
+                OK (GrB_Vector_setElement_Scalar ((GrB_Vector) C, Scalar, i)) ;
+            }
+            else
+            {
+                OK (GrB_Matrix_setElement_Scalar (C, Scalar, i, j)) ;
             }
         }
         else
@@ -152,6 +166,7 @@ void mexFunction
     // restore malloc debugging to test the method
     //--------------------------------------------------------------------------
 
+    OK (GrB_Scalar_free (&Scalar)) ;
     GB_Global_malloc_debug_set (save) ;
 
     //--------------------------------------------------------------------------

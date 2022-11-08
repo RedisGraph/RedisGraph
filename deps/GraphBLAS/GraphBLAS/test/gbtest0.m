@@ -1,10 +1,11 @@
 function gbtest0
 %GBTEST0 test GrB.clear
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 GrB.clear
+GrB.init
 
 assert (isequal (GrB.format, 'by col')) ;
 assert (isequal (GrB.chunk, 64*1024)) ;

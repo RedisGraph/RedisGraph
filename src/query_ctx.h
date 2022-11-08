@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -13,14 +13,16 @@
 #include "commands/cmd_context.h"
 #include "resultset/resultset.h"
 #include "execution_plan/ops/op.h"
+#include "undo_log/undo_log.h"
 #include <pthread.h>
 
 extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
 
 typedef struct {
-	AST *ast;       // The scoped AST associated with this query.
-	rax *params;    // Query parameters.
-	const char *query;    // Query string.
+	AST *ast;                     // The scoped AST associated with this query.
+	rax *params;                  // Query parameters.
+	const char *query;            // Query string.
+	const char *query_no_params;  // Query string without parameters part.
 } QueryCtx_QueryData;
 
 typedef struct {
@@ -42,6 +44,7 @@ typedef struct {
 	QueryCtx_InternalExecCtx internal_exec_ctx; // The data related to internal query execution.
 	QueryCtx_GlobalExecCtx global_exec_ctx;     // The data rlated to global redis execution.
 	GraphContext *gc;                           // The GraphContext associated with this query's graph.
+	UndoLog undo_log;                           // Undo log for updates, used in the case of write query can fail and rollback is needed.
 } QueryCtx;
 
 /* Instantiate the thread-local QueryCtx on module load. */
@@ -68,13 +71,15 @@ void QueryCtx_SetAST(AST *ast);
 void QueryCtx_SetGraphCtx(GraphContext *gc);
 /* Set the resultset. */
 void QueryCtx_SetResultSet(ResultSet *result_set);
+/* Set the parameters map. */
+void QueryCtx_SetParams(rax *params);
 /* Set the last writer which needs to commit */
 void QueryCtx_SetLastWriter(OpBase *op);
 
 /* Getters */
 /* Retrieve the AST. */
 AST *QueryCtx_GetAST(void);
-/* Retrive the query parameters values map. */
+/* Retrieve the query parameters values map. */
 rax *QueryCtx_GetParams(void);
 /* Retrieve the Graph object. */
 Graph *QueryCtx_GetGraph(void);
@@ -87,7 +92,7 @@ ResultSet *QueryCtx_GetResultSet(void);
 /* Retrive the resultset statistics. */
 ResultSetStatistics *QueryCtx_GetResultSetStatistics(void);
 
-/* Print the current query. */
+// print the current query
 void QueryCtx_PrintQuery(void);
 
 /* Starts a locking flow before commiting changes in the graph and Redis keyspace.
@@ -113,6 +118,12 @@ bool QueryCtx_LockForCommit(void);
  * 4. Unlock GIL */
 void QueryCtx_UnlockCommit(OpBase *writer_op);
 
+// replicate command to AOF/Replicas
+void QueryCtx_Replicate
+(
+	QueryCtx *ctx
+);
+
 /*
  * -------------------------FOR SAFETY ONLY---------------------------
  *
@@ -125,4 +136,3 @@ double QueryCtx_GetExecutionTime(void);
 
 /* Free the allocations within the QueryCtx and reset it for the next query. */
 void QueryCtx_Free(void);
-

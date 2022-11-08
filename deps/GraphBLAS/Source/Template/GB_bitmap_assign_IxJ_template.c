@@ -2,7 +2,7 @@
 // GB_bitmap_assign_IxJ_template: iterate over all of C(I,J)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -92,6 +92,6 @@
     // free workpace
     //--------------------------------------------------------------------------
 
-    GB_FREE_WERK (&TaskList, TaskList_size) ;
+    GB_FREE_WORK (&TaskList, TaskList_size) ;
 }
 

@@ -30,7 +30,6 @@
 
 Feature: ReturnSkipLimit3 - Skip and limit
 
-  @skip
   Scenario: [1] Get rows in the middle
     Given an empty graph
     And having executed:
@@ -55,7 +54,6 @@ Feature: ReturnSkipLimit3 - Skip and limit
       | ({name: 'D'}) |
     And no side effects
 
-  @skip
   Scenario: [2] Get rows in the middle by param
     Given an empty graph
     And having executed:
@@ -83,7 +81,6 @@ Feature: ReturnSkipLimit3 - Skip and limit
       | ({name: 'D'}) |
     And no side effects
 
-  @skip
   Scenario: [3] Limiting amount of rows when there are fewer left than the LIMIT argument
     Given an empty graph
     And having executed:

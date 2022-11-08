@@ -2,7 +2,7 @@
 // GB_subassign_19: C(I,J)<!M,repl> += scalar ; using S
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -56,6 +56,7 @@ GrB_Info GB_subassign_19
     //--------------------------------------------------------------------------
 
     GB_EMPTY_TASKLIST ;
+    GB_CLEAR_STATIC_HEADER (S, &S_header) ;
     GB_OK (GB_subassign_symbolic (S, C, I, ni, J, nj, true, Context)) ;
 
     //--------------------------------------------------------------------------
@@ -70,6 +71,7 @@ GrB_Info GB_subassign_19
     const bool C_is_hyper = (Ch != NULL) ;
     const int64_t Cnvec = C->nvec ;
     GB_GET_MASK ;
+    GB_GET_MASK_HYPER_HASH ;
     GB_GET_S ;
     GB_GET_ACCUM_SCALAR ;
 
@@ -120,8 +122,8 @@ GrB_Info GB_subassign_19
             // get S(iA_start:end,j) and M(iA_start:end,j)
             //------------------------------------------------------------------
 
-            GB_GET_VECTOR_FOR_IXJ (S, iA_start) ;
-            GB_GET_VECTOR_FOR_IXJ (M, iA_start) ;
+            GB_LOOKUP_VECTOR_FOR_IXJ (S, iA_start) ;
+            GB_LOOKUP_VECTOR_FOR_IXJ (M, iA_start) ;
 
             //------------------------------------------------------------------
             // C(I(iA_start,iA_end-1),jC)<!M,repl> += scalar
@@ -244,8 +246,8 @@ GrB_Info GB_subassign_19
             // get S(iA_start:end,j) and M(iA_start:end,j)
             //------------------------------------------------------------------
 
-            GB_GET_VECTOR_FOR_IXJ (S, iA_start) ;
-            GB_GET_VECTOR_FOR_IXJ (M, iA_start) ;
+            GB_LOOKUP_VECTOR_FOR_IXJ (S, iA_start) ;
+            GB_LOOKUP_VECTOR_FOR_IXJ (M, iA_start) ;
 
             //------------------------------------------------------------------
             // C(I(iA_start,iA_end-1),jC)<!M,repl> += scalar

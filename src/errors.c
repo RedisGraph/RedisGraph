@@ -155,3 +155,7 @@ inline void Error_InvalidPropertyValue(void) {
 	ErrorCtx_SetError("Property values can only be of primitive types or arrays of primitive types");
 }
 
+void Error_DivisionByZero(void) {
+	ErrorCtx_SetError("Division by zero");
+}
+

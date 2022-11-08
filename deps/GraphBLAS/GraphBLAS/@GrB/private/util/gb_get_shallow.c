@@ -2,8 +2,8 @@
 // gb_get_shallow: create a shallow copy of a built-in sparse matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -19,12 +19,14 @@
 // For v4, iso is false, and the s component has length 9.
 // For v5, iso is present but false, and the s component has length 10.
 // For v5_1, iso is true/false, and the s component has length 10.
+// For v7_3: the same content as v5_1, except that Yp, Yi, and Yx are added.
 
 // mxGetData is used instead of the MATLAB-recommended mxGetDoubles, etc,
 // because mxGetData works best for Octave, and it works fine for MATLAB
 // since GraphBLAS requires R2018a with the interleaved complex data type.
 
 #include "gb_interface.h"
+#include "GB_make_shallow.h"
 
 #define IF(error,message) \
     CHECK_ERROR (error, "invalid GraphBLAS struct (" message ")" ) ;
@@ -45,7 +47,7 @@ GrB_Matrix gb_get_shallow   // return a shallow copy of built-in sparse matrix
     // construct the shallow GrB_Matrix
     //--------------------------------------------------------------------------
 
-    GrB_Matrix A = NULL ;
+    GrB_Matrix A = NULL, Y = NULL ;
 
     if (gb_mxarray_is_empty (X))
     { 
@@ -70,7 +72,12 @@ GrB_Matrix gb_get_shallow   // return a shallow copy of built-in sparse matrix
         bool GraphBLASv3 = false ;
 
         // get the type
-        mxArray *mx_type = mxGetField (X, 0, "GraphBLASv5_1") ;
+        mxArray *mx_type = mxGetField (X, 0, "GraphBLASv7_3") ;
+        if (mx_type == NULL)
+        {
+            // check if it is a GraphBLASv5_1 struct
+            mx_type = mxGetField (X, 0, "GraphBLASv5_1") ;
+        }
         if (mx_type == NULL)
         {
             // check if it is a GraphBLASv5 struct
@@ -162,7 +169,9 @@ GrB_Matrix gb_get_shallow   // return a shallow copy of built-in sparse matrix
                 break ;
 
             case 6 :
+            case 9 :
                 // A is hypersparse, with 6 fields: GraphBLAS*, s, x, p, i, h
+                // or with 9 fields: Yp, Yi, and Yx added.
                 sparsity_status = GxB_HYPERSPARSE ;
                 break ;
 
@@ -175,16 +184,15 @@ GrB_Matrix gb_get_shallow   // return a shallow copy of built-in sparse matrix
         }
 
         // each component
-        int64_t *Ap = NULL, *Ai = NULL, *Ah = NULL ;
-        int8_t *Ab = NULL ;
-        void *Ax = NULL ;
-
-        // size of each component
-        size_t Ap_size = 0 ;
-        size_t Ah_size = 0 ;
-        size_t Ab_size = 0 ;
-        size_t Ai_size = 0 ;
-        size_t Ax_size = 0 ;
+        uint64_t *Ap = NULL ; size_t Ap_size = 0 ;
+        uint64_t *Ah = NULL ; size_t Ah_size = 0 ;
+        int8_t   *Ab = NULL ; size_t Ab_size = 0 ;
+        uint64_t *Ai = NULL ; size_t Ai_size = 0 ;
+        void     *Ax = NULL ; size_t Ax_size = 0 ; 
+        uint64_t *Yp = NULL ; size_t Yp_size = 0 ;
+        uint64_t *Yi = NULL ; size_t Yi_size = 0 ;
+        void     *Yx = NULL ; size_t Yx_size = 0 ;
+        int64_t yvdim = 0 ; 
 
         if (sparsity_status == GxB_HYPERSPARSE || sparsity_status == GxB_SPARSE)
         {
@@ -195,7 +203,6 @@ GrB_Matrix gb_get_shallow   // return a shallow copy of built-in sparse matrix
             IF (Ap_mx == NULL, ".p missing") ;
             IF (mxGetM (Ap_mx) != 1, ".p wrong size") ;
             Ap = (int64_t *) mxGetData (Ap_mx) ;
-            IF (Ap == NULL, ".p wrong type") ;
             Ap_size = mxGetN (Ap_mx) * sizeof (int64_t) ;
 
             // get Ai
@@ -204,7 +211,6 @@ GrB_Matrix gb_get_shallow   // return a shallow copy of built-in sparse matrix
             IF (mxGetM (Ai_mx) != 1, ".i wrong size") ;
             Ai_size = mxGetN (Ai_mx) * sizeof (int64_t) ;
             Ai = (Ai_size == 0) ? NULL : ((int64_t *) mxGetData (Ai_mx)) ;
-            IF (Ai == NULL && Ai_size > 0, ".i wrong type") ;
         }
 
         // get the values
@@ -213,7 +219,6 @@ GrB_Matrix gb_get_shallow   // return a shallow copy of built-in sparse matrix
         IF (mxGetM (Ax_mx) != 1, ".x wrong size") ;
         Ax_size = mxGetN (Ax_mx) ;
         Ax = (Ax_size == 0) ? NULL : ((void *) mxGetData (Ax_mx)) ;
-        IF (Ax == NULL && Ax_size > 0, ".x wrong type") ;
 
         if (sparsity_status == GxB_HYPERSPARSE)
         { 
@@ -222,9 +227,39 @@ GrB_Matrix gb_get_shallow   // return a shallow copy of built-in sparse matrix
             mxArray *Ah_mx = mxGetField (X, 0, "h") ;
             IF (Ah_mx == NULL, ".h missing") ;
             IF (mxGetM (Ah_mx) != 1, ".h wrong size") ;
-            Ah_size = mxGetN (Ah_mx) * sizeof (int64_t) ;
-            Ah = (Ah_size == 0) ? NULL : ((int64_t *) mxGetData (Ah_mx)) ;
-            IF (Ah == NULL && Ah_size > 0, ".h wrong type") ;
+            Ah_size = mxGetN (Ah_mx) * sizeof (uint64_t) ;
+            Ah = (Ah_size == 0) ? NULL : ((uint64_t *) mxGetData (Ah_mx)) ;
+
+            // get the A->Y hyper_hash, if it exists
+
+            if (nfields == 9)
+            {
+                // get Yp, Yi, and Yx
+
+                // Yp must be 1-by-(yvdim+1)
+                mxArray *Yp_mx = mxGetField (X, 0, "Yp") ;
+                IF (Yp_mx == NULL, ".Yp missing") ;
+                IF (mxGetM (Yp_mx) != 1, ".Yp wrong size") ;
+                yvdim = mxGetN (Yp_mx) - 1 ;
+                Yp_size = mxGetN (Yp_mx) * sizeof (uint64_t) ;
+                Yp = (Yp_size == 0) ? NULL : ((uint64_t *) mxGetData (Yp_mx)) ;
+
+                // Yi must be 1-by-nvec
+                mxArray *Yi_mx = mxGetField (X, 0, "Yi") ;
+                IF (Yi_mx == NULL, ".Yi missing") ;
+                IF (mxGetM (Yi_mx) != 1, ".Yi wrong size") ;
+                IF (mxGetN (Yi_mx) != nvec, ".Yi wrong size") ;
+                Yi_size = mxGetN (Yi_mx) * sizeof (uint64_t) ;
+                Yi = (Yi_size == 0) ? NULL : ((uint64_t *) mxGetData (Yi_mx)) ;
+
+                // Yx must be 1-by-nvec
+                mxArray *Yx_mx = mxGetField (X, 0, "Yx") ;
+                IF (Yx_mx == NULL, ".Yx missing") ;
+                IF (mxGetM (Yx_mx) != 1, ".Yx wrong size") ;
+                IF (mxGetN (Yx_mx) != nvec, ".Yx wrong size") ;
+                Yx_size = mxGetN (Yx_mx) * sizeof (int64_t) ;
+                Yx = (Yx_size == 0) ? NULL : ((void *) mxGetData (Yx_mx)) ;
+            }
         }
 
         if (sparsity_status == GxB_BITMAP)
@@ -236,7 +271,6 @@ GrB_Matrix gb_get_shallow   // return a shallow copy of built-in sparse matrix
             IF (mxGetM (Ab_mx) != 1, ".b wrong size") ;
             Ab_size = mxGetN (Ab_mx) ;
             Ab = (Ab_size == 0) ? NULL : ((int8_t *) mxGetData (Ab_mx)) ;
-            IF (Ab == NULL && Ab_size > 0, ".b wrong type") ;
         }
 
         //----------------------------------------------------------------------
@@ -245,18 +279,19 @@ GrB_Matrix gb_get_shallow   // return a shallow copy of built-in sparse matrix
 
         int64_t nrows = (by_col) ? vlen : vdim ;
         int64_t ncols = (by_col) ? vdim : vlen ;
+        OK (GrB_Matrix_new (&A, type, nrows, ncols)) ;
 
         switch (sparsity_status)
         {
             case GxB_FULL :
                 if (by_col)
                 {
-                    OK (GxB_Matrix_import_FullC (&A, type, nrows, ncols,
+                    OK (GxB_Matrix_pack_FullC (A,
                         &Ax, Ax_size, iso, NULL)) ;
                 }
                 else
                 {
-                    OK (GxB_Matrix_import_FullR (&A, type, nrows, ncols,
+                    OK (GxB_Matrix_pack_FullR (A,
                         &Ax, Ax_size, iso, NULL)) ;
                 }
                 break ;
@@ -264,13 +299,13 @@ GrB_Matrix gb_get_shallow   // return a shallow copy of built-in sparse matrix
             case GxB_SPARSE :
                 if (by_col)
                 {
-                    OK (GxB_Matrix_import_CSC (&A, type, nrows, ncols,
+                    OK (GxB_Matrix_pack_CSC (A,
                         &Ap, &Ai, &Ax, Ap_size, Ai_size, Ax_size, iso,
                         false, NULL)) ;
                 }
                 else
                 {
-                    OK (GxB_Matrix_import_CSR (&A, type, nrows, ncols,
+                    OK (GxB_Matrix_pack_CSR (A,
                         &Ap, &Ai, &Ax, Ap_size, Ai_size, Ax_size, iso,
                         false, NULL)) ;
                 }
@@ -279,14 +314,14 @@ GrB_Matrix gb_get_shallow   // return a shallow copy of built-in sparse matrix
             case GxB_HYPERSPARSE :
                 if (by_col)
                 {
-                    OK (GxB_Matrix_import_HyperCSC (&A, type, nrows, ncols,
+                    OK (GxB_Matrix_pack_HyperCSC (A,
                         &Ap, &Ah, &Ai, &Ax,
                         Ap_size, Ah_size, Ai_size, Ax_size, iso,
                         nvec, false, NULL)) ;
                 }
                 else
                 {
-                    OK (GxB_Matrix_import_HyperCSR (&A, type, nrows, ncols,
+                    OK (GxB_Matrix_pack_HyperCSR (A,
                         &Ap, &Ah, &Ai, &Ax,
                         Ap_size, Ah_size, Ai_size, Ax_size, iso,
                         nvec, false, NULL)) ;
@@ -296,18 +331,37 @@ GrB_Matrix gb_get_shallow   // return a shallow copy of built-in sparse matrix
             case GxB_BITMAP :
                 if (by_col)
                 {
-                    OK (GxB_Matrix_import_BitmapC (&A, type, nrows, ncols,
+                    OK (GxB_Matrix_pack_BitmapC (A,
                         &Ab, &Ax, Ab_size, Ax_size, iso, nvals, NULL)) ;
                 }
                 else
                 {
-                    OK (GxB_Matrix_import_BitmapR (&A, type, nrows, ncols,
+                    OK (GxB_Matrix_pack_BitmapR (A,
                         &Ab, &Ax, Ab_size, Ax_size, iso, nvals, NULL)) ;
                 }
                 break ;
 
             default: ;
         }
+
+        //----------------------------------------------------------------------
+        // import the A->Y hyper_hash
+        //----------------------------------------------------------------------
+
+        if (yvdim > 0)
+        {
+            // A->Y is sparse, uint64, (A->vdim)-by-yvdim, held by column
+            OK (GrB_Matrix_new (&Y, GrB_UINT64, vdim, yvdim)) ;
+            OK (GxB_Matrix_Option_set (Y, GxB_FORMAT, GxB_BY_COL)) ;
+            OK (GxB_Matrix_pack_CSC (Y,
+                &Yp, &Yi, &Yx, Yp_size, Yi_size, Yx_size, false,
+                false, NULL)) ;
+            OK (GxB_Matrix_Option_set (Y, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
+            OK (GxB_pack_HyperHash (A, &Y, NULL)) ;
+        }
+
+        // tell GraphBLAS the matrix is shallow
+        GB (make_shallow) (A) ;
 
     }
     else
@@ -323,6 +377,7 @@ GrB_Matrix gb_get_shallow   // return a shallow copy of built-in sparse matrix
         GrB_Type type = gb_mxarray_type (X) ;
         GrB_Index nrows = (GrB_Index) mxGetM (X) ;
         GrB_Index ncols = (GrB_Index) mxGetN (X) ;
+        OK (GrB_Matrix_new (&A, type, nrows, ncols)) ;
 
         // get Xp, Xi, nzmax, or create them
         GrB_Index *Xp, *Xi, nzmax ;
@@ -436,7 +491,8 @@ GrB_Matrix gb_get_shallow   // return a shallow copy of built-in sparse matrix
         { 
             // import the matrix in CSC format.  This sets Xp, Xi, and Xx to
             // NULL, but it does not change the built-in matrix they came from.
-            OK (GxB_Matrix_import_CSC (&A, type, nrows, ncols, &Xp, &Xi, &Xx,
+            OK (GxB_Matrix_pack_CSC (A,
+                &Xp, &Xi, &Xx,
                 (ncols+1) * sizeof (int64_t),
                 nzmax * sizeof (int64_t),
                 nzmax * type_size, false, false, NULL)) ;
@@ -444,30 +500,13 @@ GrB_Matrix gb_get_shallow   // return a shallow copy of built-in sparse matrix
         else
         { 
             // import a full matrix
-            OK (GxB_Matrix_import_FullC (&A, type, nrows, ncols, &Xx,
-                nzmax * type_size, false, NULL)) ;
+            OK (GxB_Matrix_pack_FullC (A,
+                &Xx, nzmax * type_size, false, NULL)) ;
         }
+
+        // tell GraphBLAS the matrix is shallow
+        GB (make_shallow) (A) ;
     }
-
-    //-------------------------------------------------------------------------
-    // tell GraphBLAS the matrix is shallow
-    //-------------------------------------------------------------------------
-
-    // TODO need a shallow import
-    A->p_shallow = (A->p != NULL) ;
-    A->h_shallow = (A->h != NULL) ;
-    A->b_shallow = (A->b != NULL) ;
-    A->i_shallow = (A->i != NULL) ;
-    A->x_shallow = (A->x != NULL) ;
-    #ifdef GB_MEMDUMP
-    printf ("remove from memtable: p:%p h:%p b:%p i:%p x:%p\n",
-        A->p, A->h, A->b, A->i, A->x) ;
-    #endif
-    if (A->p != NULL) GB_Global_memtable_remove (A->p) ;
-    if (A->h != NULL) GB_Global_memtable_remove (A->h) ;
-    if (A->b != NULL) GB_Global_memtable_remove (A->b) ;
-    if (A->i != NULL) GB_Global_memtable_remove (A->i) ;
-    if (A->x != NULL) GB_Global_memtable_remove (A->x) ;
 
     //--------------------------------------------------------------------------
     // return the result

@@ -3,8 +3,8 @@ function mxm_demo
 % Requires the ssget interface to the SuiteSparse Matrix Collection.
 % See https://sparse.tamu.edu.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 % reset to the default number of threads
 ncores = demo_nproc ;
@@ -27,7 +27,7 @@ G = GrB (1) ;
 G = G*G ;
 clear G
 
-if (have_octave)
+if (demo_octave)
     thread_list = ncores ;
 else
     thread_list = [ 1 ncores 2*ncores] ;

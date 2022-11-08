@@ -2,7 +2,7 @@
 // GB_mex_mdiag: compute C=diag(v,k)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -60,9 +60,9 @@ void mexFunction
     int64_t GET_SCALAR (1, int64_t, k, 0) ;
 
     // get the type
-    GrB_Type ctype ;
-    GxB_Matrix_type (&ctype, V) ;
-    ctype = GB_mx_string_to_Type (PARGIN (2), ctype) ;
+    GrB_Type ctype, vtype ;
+    GxB_Matrix_type (&vtype, V) ;
+    ctype = GB_mx_string_to_Type (PARGIN (2), vtype) ;
 
     // get fmt
     int GET_SCALAR (3, int, fmt, GxB_BY_COL) ;
@@ -72,19 +72,25 @@ void mexFunction
     GrB_Matrix_nrows (&n, V) ;
     n += GB_IABS (k) ;
 
-    #undef GET_DEEP_COPY
     #undef FREE_DEEP_COPY
-
-    #define GET_DEEP_COPY                               \
-        GrB_Matrix_new (&C, ctype, n, n) ;              \
-        GxB_Matrix_Option_set (C, GxB_FORMAT, fmt) ;
-
     #define FREE_DEEP_COPY GrB_Matrix_free_(&C) ;
 
-    GET_DEEP_COPY ;
-
-    // C = diag (v,k)
-    METHOD (GxB_Matrix_diag (C, (GrB_Vector) V, k, NULL)) ;
+    // C = diag (v,k), using either GrB_Matrix_diag or GxB_Matrix_diag.
+    // The two methods do the same thing.  This is just to test.
+    if (k % 2 == 0 && ctype == vtype)
+    {
+        // GrB_Matrix_diag does not handle typecasting
+        METHOD (GrB_Matrix_diag (&C, (GrB_Vector) V, k)) ;
+    }
+    else
+    {
+        #undef GET_DEEP_COPY
+        #define GET_DEEP_COPY                               \
+            GrB_Matrix_new (&C, ctype, n, n) ;              \
+            GxB_Matrix_Option_set (C, GxB_FORMAT, fmt) ;
+        GET_DEEP_COPY ;
+        METHOD (GxB_Matrix_diag (C, (GrB_Vector) V, k, NULL)) ;
+    }
 
     // return C as a struct
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C=diag(v,k)", true) ;

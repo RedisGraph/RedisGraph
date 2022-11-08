@@ -2,7 +2,7 @@
 // GB_subassign_IxJ_slice: slice IxJ for subassign
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -31,7 +31,7 @@
         //  M   c   r   +   -   S       19:  C(I,J)<!M,repl> += x, with S
 
 // There are 10 methods that perform scalar assignment: the 6 listed above, and
-// Methods 05, 07, 09, and 11.  The latter 4 methods do do not need to iterate
+// Methods 05, 07, 09, and 11.  The latter 4 methods do not need to iterate
 // over the entire IxJ space, because of the mask M:
 
         //  M   -   -   -   -   -       05:  C(I,J)<M> = x
@@ -48,7 +48,7 @@
 #undef  GB_FREE_ALL
 #define GB_FREE_ALL                             \
 {                                               \
-    GB_FREE_WERK (&TaskList, TaskList_size) ;   \
+    GB_FREE_WORK (&TaskList, TaskList_size) ;   \
 }
 
 //------------------------------------------------------------------------------
@@ -104,7 +104,7 @@ GrB_Info GB_subassign_IxJ_slice
     double work = ((double) nI) * ((double) nJ) ;
     nthreads = GB_nthreads (work, chunk, nthreads_max) ;
     int ntasks0 = (nthreads == 1) ? 1 : (32 * nthreads) ;
-    GB_REALLOC_TASK_WERK (TaskList, ntasks0, max_ntasks) ;
+    GB_REALLOC_TASK_WORK (TaskList, ntasks0, max_ntasks) ;
 
     //--------------------------------------------------------------------------
     // check for quick return for a single task
@@ -163,7 +163,7 @@ GrB_Info GB_subassign_IxJ_slice
         nI_fine_tasks = GB_IMAX (nI_fine_tasks, 2) ;
         ntasks = 0 ;
 
-        GB_REALLOC_TASK_WERK (TaskList, nJ * nI_fine_tasks, max_ntasks) ;
+        GB_REALLOC_TASK_WORK (TaskList, nJ * nI_fine_tasks, max_ntasks) ;
 
         //----------------------------------------------------------------------
         // construct fine tasks for index j

@@ -2,7 +2,7 @@
 // GxB_Vector_select: select entries from a vector
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -17,7 +17,7 @@ GrB_Info GxB_Vector_select          // w<M> = accum (w, select(u,k))
     const GrB_BinaryOp accum,       // optional accum for z=accum(w,t)
     const GxB_SelectOp op,          // operator to apply to the entries
     const GrB_Vector u,             // first input:  vector u
-    const GxB_Scalar Thunk,         // optional input for select operator
+    const GrB_Scalar Thunk,         // optional input for select operator
     const GrB_Descriptor desc       // descriptor for w and mask
 )
 { 
@@ -47,7 +47,7 @@ GrB_Info GxB_Vector_select          // w<M> = accum (w, select(u,k))
         (GrB_Matrix) w, C_replace,          // w and its descriptor
         M, Mask_comp, Mask_struct,          // mask and its descriptor
         accum,                              // optional accum for Z=accum(C,T)
-        op,                                 // operator to select the entries
+        (GB_Operator) op,                   // operator to select the entries
         (GrB_Matrix) u,                     // first input: u
         Thunk,                              // optional input for select op
         false,                              // u, not transposed

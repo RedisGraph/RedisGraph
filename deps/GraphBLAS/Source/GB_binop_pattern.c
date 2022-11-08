@@ -2,7 +2,7 @@
 // GB_binop_pattern: determine if values of A and B will be used by C=op(A,B)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -31,9 +31,9 @@ void GB_binop_pattern
     //--------------------------------------------------------------------------
 
     bool op_is_positional = GB_OPCODE_IS_POSITIONAL (opcode) ;
-    bool op_is_first  = (opcode == GB_FIRST_opcode) ;
-    bool op_is_second = (opcode == GB_SECOND_opcode) ;
-    bool op_is_pair   = (opcode == GB_PAIR_opcode) ;
+    bool op_is_first  = (opcode == GB_FIRST_binop_code) ;
+    bool op_is_second = (opcode == GB_SECOND_binop_code) ;
+    bool op_is_pair   = (opcode == GB_PAIR_binop_code) ;
 
     if (op_is_positional || op_is_pair)
     { 

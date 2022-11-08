@@ -2,7 +2,7 @@
 // GB_AxB_saxpy3_coarseGus_noM_phase1: symbolic coarse Gustavson, no mask
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -37,12 +37,12 @@
         #endif
 
         //----------------------------------------------------------------------
-        // count nnz in C(:,j)
+        // count nnz in C(:,j), terminating early if C(:,j) becomes dense
         //----------------------------------------------------------------------
 
         const int64_t f = (++mark) ;
         int64_t cjnz = 0 ;
-        for ( ; pB < pB_end ; pB++)     // scan B(:,j)
+        for ( ; pB < pB_end && cjnz < cvlen ; pB++)     // scan B(:,j)
         {
             GB_GET_B_kj_INDEX ;         // get index k of entry B(k,j)
             GB_GET_A_k ;                // get A(:,k)

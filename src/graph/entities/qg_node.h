@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -12,54 +12,132 @@
 #include <sys/types.h>
 #include "../../util/sds/sds.h"
 
-/* Forward declaration of edge */
+// forward declaration of edge
 struct QGEdge;
 
 typedef struct {
-	int labelID;               // Label ID
-	const char *label;         // Label string
-	const char *alias;         // User-provided alias associated with this node
-	bool highly_connected;     // Node degree > 2
-	struct QGEdge **outgoing_edges;   // Array of incoming edges (ME)<-(SRC)
-	struct QGEdge **incoming_edges;   // Array of outgoing edges (ME)->(DEST)
+	int *labelsID;             // labels ID array
+	const char *alias;         // user-provided alias associated with this node
+	const char **labels;       // labels string array
+	bool highly_connected;     // node degree > 2
+	struct QGEdge **outgoing_edges;   // array of outgoing edges (ME)->(DEST)
+	struct QGEdge **incoming_edges;   // array of incoming edges (ME)<-(SRC)
 } QGNode;
 
-/* Creates a new node. */
-QGNode *QGNode_New(const char *alias);
+// creates a new node
+QGNode *QGNode_New
+(
+	const char *alias
+);
+
+// returns the alias of the node
+const char *QGNode_Alias
+(
+	const QGNode *n
+);
+
+// returns true if the node is labeled
+bool QGNode_Labeled
+(
+	const QGNode *n
+);
 
 // returns number of labels attached to node
-uint QGNode_LabelCount(const QGNode *n);
+uint QGNode_LabelCount
+(
+	const QGNode *n
+);
 
-/* Returns true if node is highly connected, false otherwise */
-bool QGNode_HighlyConnected(const QGNode *n);
+// returns the 'idx' label ID of 'n'
+int QGNode_GetLabelID
+(
+	const QGNode *n,
+	uint idx
+);
 
-/* Returns the number of both incoming and outgoing edges. */
-int QGNode_Degree(const QGNode *n);
+// returns the 'idx' label of 'n'
+const char *QGNode_GetLabel
+(
+	const QGNode *n,
+	uint idx
+);
 
-/* Returns number of edges pointing into node. */
-int QGNode_IncomeDegree(const QGNode *n);
+// label 'n' as 'l'
+void QGNode_AddLabel
+(
+	QGNode *n,
+	const char *l,
+	int l_id
+);
 
-/* Returns number of edges pointing out of node. */
-int QGNode_OutgoingDegree(const QGNode *n);
+// returns true if node is highly connected, false otherwise
+bool QGNode_HighlyConnected
+(
+	const QGNode *n
+);
 
-/* Returns to total number of edges (Incoming&Outgoing). */
-int QGNode_EdgeCount(const QGNode *n);
+// returns the number of both incoming and outgoing edges
+int QGNode_Degree
+(
+	const QGNode *n
+);
 
-/* Connects source node to destination node by edge. */
-void QGNode_ConnectNode(QGNode *src, QGNode *dest, struct QGEdge *e);
+// returns number of edges pointing into node
+int QGNode_IncomeDegree
+(
+	const QGNode *n
+);
 
-/* Removes given Incoming edge from node. */
-void QGNode_RemoveIncomingEdge(QGNode *n, struct QGEdge *e);
+// returns number of edges pointing out of node
+int QGNode_OutgoingDegree
+(
+	const QGNode *n
+);
 
-/* Removes given Outgoing edge from node. */
-void QGNode_RemoveOutgoingEdge(QGNode *n, struct QGEdge *e);
+// returns to total number of edges (incoming & outgoing)
+int QGNode_EdgeCount
+(
+	const QGNode *n
+);
 
-/* Clones given node. */
-QGNode *QGNode_Clone(const QGNode *n);
+// connects source node to destination node by edge
+void QGNode_ConnectNode
+(
+	QGNode *src,
+	QGNode *dest,
+	struct QGEdge *e
+);
+
+// removes given incoming edge from node
+void QGNode_RemoveIncomingEdge
+(
+	QGNode *n,
+	struct QGEdge *e
+);
+
+// removes given outgoing edge from node
+void QGNode_RemoveOutgoingEdge
+(
+	QGNode *n,
+	struct QGEdge *e
+);
+
+// clones given node
+QGNode *QGNode_Clone
+(
+	const QGNode *n
+);
 
 /* Gets a string representation of given node. */
-void QGNode_ToString(const QGNode *n, sds *buff);
+void QGNode_ToString
+(
+	const QGNode *n,
+	sds *buff
+);
 
-/* Frees allocated space by given node. */
-void QGNode_Free(QGNode *node);
+// frees allocated space by given node
+void QGNode_Free
+(
+	QGNode *node
+);
 

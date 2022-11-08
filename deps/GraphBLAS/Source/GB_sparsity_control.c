@@ -2,7 +2,7 @@
 // GB_sparsity_control: ensure the sparsity_control is in the proper range
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -33,7 +33,7 @@ int GB_sparsity_control     // revised sparsity_control
 
     if ((vdim == 0 || vdim == 1) && (sparsity_control & GxB_HYPERSPARSE))
     { 
-        // a GxB_Scalar, GrB_Vector, or a GrB_Matrix with a single vector,
+        // a GrB_Scalar, GrB_Vector, or a GrB_Matrix with a single vector,
         // cannot be converted to hypersparse.  If the sparsity_control allows
         // for the hypersparse case, disable it and enable the sparse case
         // instead.

@@ -1,26 +1,28 @@
 [![Release](https://img.shields.io/github/release/RedisGraph/RedisGraph.svg?sort=semver)](https://github.com/RedisGraph/RedisGraph/releases/latest)
 [![CircleCI](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master.svg?style=svg)](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master)
-[![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/redislabs/redisgraph.svg)](https://hub.docker.com/r/redislabs/redisgraph/builds/)
+[![Dockerhub](https://img.shields.io/badge/dockerhub-redislabs%2Fredisgraph-blue)](https://hub.docker.com/r/redislabs/redisgraph/tags/)
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/RedisGraph/RedisGraph.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/RedisGraph/RedisGraph/alerts/)
 [![Codecov](https://codecov.io/gh/RedisGraph/RedisGraph/branch/master/graph/badge.svg)](https://codecov.io/gh/RedisGraph/RedisGraph)
+[![Bounty](https://img.shields.io/bountysource/team/redislabsmodules/activity)](https://app.bountysource.com/teams/redislabsmodules/issues)
+
+# RedisGraph
+## A graph database module for Redis
 [![Forum](https://img.shields.io/badge/Forum-RedisGraph-blue)](https://forum.redislabs.com/c/modules/redisgraph)
 [![Discord](https://img.shields.io/discord/697882427875393627?style=flat-square)](https://discord.gg/gWBRT6P)
-
-# RedisGraph - A graph database module for Redis
 
 RedisGraph is the first queryable [Property Graph](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc) database to use [sparse matrices](https://en.wikipedia.org/wiki/Sparse_matrix) to represent the [adjacency matrix](https://en.wikipedia.org/wiki/Adjacency_matrix) in graphs and [linear algebra](http://faculty.cse.tamu.edu/davis/GraphBLAS.html) to query the graph.
 
 Primary features:
 * Adopting the [Property Graph Model](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc)
   * Nodes (vertices) and Relationships (edges) that may have attributes
-  * Nodes that can be labeled
+  * Nodes can have multiple labels
   * Relationships have a relationship type
 * Graphs represented as sparse adjacency matrices
-* [Cypher](http://www.opencypher.org/) as query language
-  * Cypher queries translated into linear algebra expressions
+* [OpenCypher](http://www.opencypher.org/) with proprietary extensions as a query language
+  * Queries are translated into linear algebra expressions
 
 To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGraph/tree/master/demo).
-To read the docs, visit [redisgraph.io](http://redisgraph.io).
+To read the docs, visit [redis.io](https://redis.io/docs/stack/graph/).
 
 ## Quickstart
 
@@ -39,7 +41,7 @@ To try RedisGraph, either use the RedisGraph Docker image, or [create a free Red
 To quickly tryout RedisGraph, launch an instance using docker:
 
 ```sh
-docker run -p 6379:6379 -it --rm redislabs/redisgraph
+docker run -p 6379:6379 -it --rm redis/redis-stack-server:latest
 ```
 
 ### Give it a try
@@ -51,7 +53,7 @@ once created we'll start querying our data.
 
 ### With `redis-cli`
 
-The format of results through `redis-cli` is described in [the RedisGraph documentation](https://oss.redislabs.com/redisgraph/result_structure).
+The format of results through `redis-cli` is described in [the RedisGraph documentation](https://redis.io/docs/stack/graph/design/result_structure/).
 
 ```sh
 $ redis-cli
@@ -92,7 +94,7 @@ Requirements:
 
 * The RedisGraph repository: `git clone --recurse-submodules -j8 https://github.com/RedisGraph/RedisGraph.git`
 
-* On Ubuntu Linux, run: `apt-get install build-essential cmake m4 automake peg libtool autoconf`
+* On Ubuntu Linux, run: `apt-get install build-essential cmake m4 automake peg libtool autoconf python3`
 
 * On OS X, verify that `homebrew` is installed and run: `brew install cmake m4 automake peg libtool autoconf`.
     * The version of Clang that ships with the OS X toolchain does not support OpenMP, which is a requirement for RedisGraph. One way to resolve this is to run `brew install gcc g++` and follow the on-screen instructions to update the symbolic links. Note that this is a system-wide change - setting the environment variables for `CC` and `CXX` will work if that is not an option.
@@ -110,6 +112,10 @@ If you've got ```redis-server``` in PATH, just invoke ```make test```.
 Otherwise, invoke ```REDIS_SERVER=<redis-server-location> make test```.
 
 For more verbose output, run ```make test V=1```.
+
+### Building in a docker
+
+The RedisGraph build system runs within docker. For detailed instructions on building, please [see here](docs/docker-examples/README.md).
 
 ## Loading RedisGraph into Redis
 
@@ -183,12 +189,15 @@ reply = r.execute_command('GRAPH.QUERY', 'social', "CREATE (:person {name:'roi',
 
 Some languages have client libraries that provide support for RedisGraph's commands:
 
-| Project                                                   | Language   | License | Author                                      | Stars                                                             | 
-| --------------------------------------------------------- | ---------- | ------- | ------------------------------------------- | ------------------------------------------------------------------|
-| [redisgraph-py][redisgraph-py-url]                        | Python     | BSD     | [Redis Labs][redisgraph-py-author]          | [![redisgraph-py-stars]][redisgraph-py-url]                       |     
-| [JRedisGraph][JRedisGraph-url]                            | Java       | BSD     | [Redis Labs][JRedisGraph-author]            | [![JRedisGraph-stars]][JRedisGraph-url]                           |
+| Project                                                   | Language   | License | Author                                      | Stars                                                             | Comment    |
+| --------------------------------------------------------- | ---------- | ------- | ------------------------------------------- | ----------------------------------------------------------------- | ---------- |
+| [Jedis][Jedis-url]                                        | Java       | MIT     | [Redis][Jedis-author]                       | [![Jedis-stars]][Jedis-url]                                       |
+| [redis-modules-java][redis-modules-java-url]              | Java       | Apache 2.0 | [dengliming][redis-modules-java-author]               | [![redis-modules-java-stars]][redis-modules-java-url]                       |
+| [redisgraph-py][redisgraph-py-url]                        | Python     | BSD     | [Redis Labs][redisgraph-py-author]          | [![redisgraph-py-stars]][redisgraph-py-url]                       |
+| [JRedisGraph][JRedisGraph-url]                            | Java       | BSD     | [Redis Labs][JRedisGraph-author]            | [![JRedisGraph-stars]][JRedisGraph-url]                           | Deprecated |
 | [redisgraph-rb][redisgraph-rb-url]                        | Ruby       | BSD     | [Redis Labs][redisgraph-rb-author]          | [![redisgraph-rb-stars]][redisgraph-rb-url]                       |
 | [redisgraph-go][redisgraph-go-url]                        | Go         | BSD     | [Redis Labs][redisgraph-go-author]          | [![redisgraph-go-stars]][redisgraph-go-url]                       |
+| [rueidis][rueidis-url]                                    | Go         | Apache 2.0 | [Rueian][rueidis-author]          | [![rueidis-stars]][rueidis-url]                       |
 | [redisgraph.js][redisgraph.js-url]                        | JavaScript | BSD     | [Redis Labs][redisgraph.js-author]          | [![redisgraph.js-stars]][redisgraph.js-url]                       |
 | [ioredisgraph][ioredisgraph-url]                          | JavaScript | ISC     | [Jonah][ioredisgraph-author]                | [![ioredisgraph-stars]][ioredisgraph-url]                         |
 | [@hydre/rgraph][rgraph-url]                               | JavaScript | MIT     | [Sceat][rgraph-author]                      | [![rgraph-stars]][rgraph-url]                                     |
@@ -203,6 +212,10 @@ Some languages have client libraries that provide support for RedisGraph's comma
 | [RedisGraphDotNet.Client][RedisGraphDotNet.Client-url]    | C#         | BSD     | [Sgawrys][RedisGraphDotNet.Client-author]   | [![RedisGraphDotNet.Client-stars]][RedisGraphDotNet.Client-url]   |
 | [RedisGraph.jl][RedisGraph.jl-url]                        | Julia      | MIT     | [xyxel][RedisGraph.jl-author]               | [![RedisGraph.jl-stars]][RedisGraph.jl-url]                       |
 
+
+[Jedis-author]: https://redis.com
+[Jedis-url]: https://github.com/redis/jedis
+[Jedis-stars]: https://img.shields.io/github/stars/redis/jedis.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 [redisgraph-py-author]: https://redislabs.com
 [redisgraph-py-url]: https://github.com/RedisGraph/redisgraph-py
@@ -219,6 +232,10 @@ Some languages have client libraries that provide support for RedisGraph's comma
 [redisgraph-go-author]: https://redislabs.com
 [redisgraph-go-url]: https://github.com/RedisGraph/redisgraph-go
 [redisgraph-go-stars]: https://img.shields.io/github/stars/RedisGraph/redisgraph-go.svg?style=social&amp;label=Star&amp;maxAge=2592000
+
+[rueidis-url]: https://github.com/rueian/rueidis
+[rueidis-author]: https://github.com/rueian
+[rueidis-stars]: https://img.shields.io/github/stars/rueian/rueidis.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 [redisgraph.js-author]: https://redislabs.com
 [redisgraph.js-url]: https://github.com/RedisGraph/redisgraph.js
@@ -271,6 +288,10 @@ Some languages have client libraries that provide support for RedisGraph's comma
 [RedisGraph.jl-author]: https://github.com/xyxel
 [RedisGraph.jl-url]: https://github.com/xyxel/RedisGraph.jl
 [RedisGraph.jl-stars]: https://img.shields.io/github/stars/xyxel/RedisGraph.jl.svg?style=social&amp;label=Star&amp;maxAge=2592000
+
+[redis-modules-java-author]: https://github.com/dengliming
+[redis-modules-java-url]: https://github.com/dengliming/redis-modules-java
+[redis-modules-java-stars]: https://img.shields.io/github/stars/dengliming/redis-modules-java.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 ## Documentation
 

@@ -1,7 +1,7 @@
 function test144
 %TEST144 test GB_cumsum
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 fprintf ('test144 ---------------------- test GB_cumsum\n') ;
@@ -16,15 +16,15 @@ for nthreads = 1:8
 
     % fprintf ('nthreads: %d\n', nthreads) ;
 
-    for nmalloc = 0:2
+    for malloc_debug_count = 0:2
 
-        [p1, k1] = GB_mex_cumsum (c, nthreads, nmalloc) ;
+        [p1, k1] = GB_mex_cumsum (c, nthreads, malloc_debug_count) ;
         p = cumsum ([0 c]) ;
         k = sum (c ~= 0) ;
         assert (isequal (p, p1)) ;
         assert (k == k1) ;
 
-        p1 = GB_mex_cumsum (c, nthreads, nmalloc) ;
+        p1 = GB_mex_cumsum (c, nthreads, malloc_debug_count) ;
         p = cumsum ([0 c]) ;
         assert (isequal (p, p1)) ;
 

@@ -29,8 +29,9 @@ function C = build (varargin)
 %   C (i,j) = x ;
 %
 % For example, if the dup operator is '1st', then C(i,j)=X(k1) is set,
-% and the subsequent entries are ignored.  If dup is '2nd', then
-% C(i,j)=X(k3), and the preceding entries are ignored.
+% and the subsequent entries are ignored.  If dup is '2nd' or 'ignore'
+% then C(i,j)=X(k3), and the preceding entries are ignored.  If dup
+% is the empty string ('') then duplicates result in an error.
 %
 % type is a string that defines the type of C (see 'help GrB' for a list
 % of types).  If the type is not specified, it defaults to the type of X.
@@ -49,11 +50,13 @@ function C = build (varargin)
 % if building a built-in sparse matrix.  If desc.format is 'by row', then
 % GrB.build is fastest if I and J are in row-major order.
 %
-% If desc.base is 'zero-based', then I and J are treated as zero-based,
-% where (0,0) is the first entry in the top left of S, and (m-1,n-1)
-% is the position in the bottom right corner of S.  GrB.build is fastest
-% if I and J are int64 or uint64, and desc.base is 'zero-based'.  The
-% default is the same as built-in indexing, which is 'one-based'.
+% If desc.base is 'zero-based', and I and J are int64 or uint64, then I
+% and J are treated as zero-based, where (0,0) is the first entry in the
+% top left of S, and (m-1,n-1) is the position in the bottom right corner
+% of S.  GrB.build is fastest if I and J are int64 or uint64, and
+% desc.base is 'zero-based'.  The default is the same as built-in
+% indexing, which is 'one-based'.  desc.base is ignored if I and J are
+% double.
 %
 % If I, J, and/or X are scalars, and any of I, J, or X is a vector of
 % length e, the scalars are expanded into vectors of length e.  Any
@@ -65,8 +68,8 @@ function C = build (varargin)
 %
 % See also sparse, GrB/sparse, GrB/find, GrB.extracttuples.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 [C, k] = gbbuild (varargin {:}) ;
 if (k == 0)

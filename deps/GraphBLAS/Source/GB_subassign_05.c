@@ -2,7 +2,7 @@
 // GB_subassign_05: C(I,J)<M> = scalar ; no S
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -62,6 +62,7 @@ GrB_Info GB_subassign_05
     const int64_t *restrict Cp = C->p ;
     const bool C_is_hyper = (Ch != NULL) ;
     const int64_t Cnvec = C->nvec ;
+    GB_GET_C_HYPER_HASH ;
     GB_GET_MASK ;
     GB_GET_SCALAR ;
     GrB_BinaryOp accum = NULL ;
@@ -123,7 +124,7 @@ GrB_Info GB_subassign_05
             // get jC, the corresponding vector of C
             //------------------------------------------------------------------
 
-            GB_GET_jC ;
+            GB_LOOKUP_VECTOR_jC (fine_task, taskid) ;
             int64_t cjnz = pC_end - pC_start ;
             bool cjdense = (cjnz == Cvlen) ;
 
@@ -239,7 +240,7 @@ GrB_Info GB_subassign_05
             // get jC, the corresponding vector of C
             //------------------------------------------------------------------
 
-            GB_GET_jC ;
+            GB_LOOKUP_VECTOR_jC (fine_task, taskid) ;
             bool cjdense = ((pC_end - pC_start) == Cvlen) ;
 
             //------------------------------------------------------------------

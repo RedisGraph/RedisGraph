@@ -2,7 +2,7 @@
 // GB_ewise.h: definitions for GB_ewise
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -26,6 +26,9 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
     bool B_transpose,               // if true, use B' instead of B
     bool eWiseAdd,                  // if true, do set union (like A+B),
                                     // otherwise do intersection (like A.*B)
+    const bool is_eWiseUnion,       // if true, eWiseUnion, else eWiseAdd
+    const GrB_Scalar alpha,         // alpha and beta ignored for eWiseAdd,
+    const GrB_Scalar beta,          // nonempty scalars for GxB_eWiseUnion
     GB_Context Context
 ) ;
 
@@ -46,7 +49,7 @@ void GB_ewise_generic       // generic ewise
     const int C_sparsity,
     // from GB_emult_sparsity or GB_add_sparsity:
     const int ewise_method,
-    // from GB_emult_03 and GB_emult_02:
+    // from GB_emult_04 and GB_emult_02:
     const int64_t *restrict Cp_kfirst,
     // to slice M, A, and/or B,
     const int64_t *M_ek_slicing, const int M_ntasks, const int M_nthreads,

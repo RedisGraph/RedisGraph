@@ -2,7 +2,7 @@
 // GB_memory.h: memory allocation
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -14,7 +14,7 @@
 // memory management
 //------------------------------------------------------------------------------
 
-GrB_Info GB_memoryUsage     // count # allocated blocks and their sizes
+void GB_memoryUsage         // count # allocated blocks and their sizes
 (
     int64_t *nallocs,       // # of allocated memory blocks
     size_t *mem_deep,       // # of bytes in blocks owned by this matrix
@@ -79,12 +79,33 @@ void GB_free_pool_finalize (void) ;
 void *GB_xalloc_memory      // return the newly-allocated space
 (
     // input
+    bool use_calloc,        // if true, use calloc
     bool iso,               // if true, only allocate a single entry
     int64_t n,              // # of entries to allocate if non iso
     size_t type_size,       // size of each entry
     // output
     size_t *size,           // resulting size
     GB_Context Context
+) ;
+
+//------------------------------------------------------------------------------
+// parallel memcpy and memset
+//------------------------------------------------------------------------------
+
+void GB_memcpy                  // parallel memcpy
+(
+    void *dest,                 // destination
+    const void *src,            // source
+    size_t n,                   // # of bytes to copy
+    int nthreads                // # of threads to use
+) ;
+
+void GB_memset                  // parallel memset
+(
+    void *dest,                 // destination
+    const int c,                // value to to set
+    size_t n,                   // # of bytes to set
+    int nthreads                // # of threads to use
 ) ;
 
 //------------------------------------------------------------------------------
@@ -100,7 +121,7 @@ void *GB_xalloc_memory      // return the newly-allocated space
             printf ("dealloc (%s, line %d): %p size %lu\n", \
                 __FILE__, __LINE__, (*p), s) ; \
         } \
-        GB_dealloc_memory (p, s) ; \
+        GB_dealloc_memory ((void **) p, s) ; \
     }
 
     #define GB_CALLOC(n,type,s) \
@@ -119,8 +140,8 @@ void *GB_xalloc_memory      // return the newly-allocated space
         ; printf ("realloc (%s, line %d): size %lu\n", \
             __FILE__, __LINE__, *(s)) ; \
 
-    #define GB_XALLOC(iso,n,type_size,s) \
-        GB_xalloc_memory (iso, n, type_size, s, Context) ; \
+    #define GB_XALLOC(use_calloc,iso,n,type_size,s) \
+        GB_xalloc_memory (use_calloc, iso, n, type_size, s, Context) ; \
         ; printf ("xalloc (%s, line %d): size %lu\n", \
             __FILE__, __LINE__, *(s)) ; \
 
@@ -139,8 +160,8 @@ void *GB_xalloc_memory      // return the newly-allocated space
         p = (type *) GB_realloc_memory (nnew, sizeof (type), \
             (void *) p, s, ok, Context)
 
-    #define GB_XALLOC(iso,n,type_size,s) \
-        GB_xalloc_memory (iso, n, type_size, s, Context)
+    #define GB_XALLOC(use_calloc,iso,n,type_size,s) \
+        GB_xalloc_memory (use_calloc, iso, n, type_size, s, Context)
 
 #endif
 
@@ -153,11 +174,11 @@ void *GB_xalloc_memory      // return the newly-allocated space
 // tag the source code for the allocation of workspace differently from the
 // allocation of permament space for a GraphBLAS object, such as a GrB_Matrix.
 
-#define GB_CALLOC_WERK(n,type,s) GB_CALLOC(n,type,s)
-#define GB_MALLOC_WERK(n,type,s) GB_MALLOC(n,type,s)
-#define GB_REALLOC_WERK(p,nnew,type,s,ok,Context) \
+#define GB_CALLOC_WORK(n,type,s) GB_CALLOC(n,type,s)
+#define GB_MALLOC_WORK(n,type,s) GB_MALLOC(n,type,s)
+#define GB_REALLOC_WORK(p,nnew,type,s,ok,Context) \
              GB_REALLOC(p,nnew,type,s,ok,Context) 
-#define GB_FREE_WERK(p,s) GB_FREE(p,s)
+#define GB_FREE_WORK(p,s) GB_FREE(p,s)
 
 #endif
 

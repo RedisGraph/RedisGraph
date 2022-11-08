@@ -2,8 +2,8 @@
 // gbfull: add identity values to a matrix so all entries are present
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -55,7 +55,7 @@ void mexFunction
     // get the type of C
     //--------------------------------------------------------------------------
 
-    GrB_Matrix type ;
+    GrB_Type type ;
     if (nargin > 1)
     { 
         type = gb_mxstring_to_type (pargin [1]) ;
@@ -116,7 +116,7 @@ void mexFunction
 
     GrB_Matrix C = gb_expand_to_full (A, type, fmt, id) ;
     OK (GrB_Matrix_free (&A)) ;
-    OK (GxB_Scalar_free (&id)) ;
+    OK (GrB_Matrix_free (&id)) ;
 
     //--------------------------------------------------------------------------
     // export C

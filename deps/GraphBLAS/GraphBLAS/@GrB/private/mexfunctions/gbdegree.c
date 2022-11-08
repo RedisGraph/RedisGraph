@@ -2,8 +2,8 @@
 // gbdegree: number of entries in each vector of a GraphBLAS matrix struct
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -36,7 +36,7 @@ void mexFunction
     // get the inputs 
     //--------------------------------------------------------------------------
 
-    GrB_Vector d = NULL, x = NULL ;
+    GrB_Matrix d = NULL, x = NULL ;
     GrB_Matrix A = gb_get_shallow (pargin [0]) ;
     GrB_Index nrows, ncols ;
     OK (GrB_Matrix_nrows (&nrows, A)) ;
@@ -58,11 +58,12 @@ void mexFunction
         //----------------------------------------------------------------------
 
         // x = ones (ncols,1) ;
-        OK (GrB_Vector_new (&x, GrB_INT64, ncols)) ;
-        OK (GrB_Vector_assign_INT64 (x, NULL, NULL, 1, GrB_ALL, ncols, NULL)) ;
+        OK (GrB_Matrix_new (&x, GrB_INT64, ncols, 1)) ;
+        OK (GrB_Matrix_assign_INT64 (x, NULL, NULL, 1, GrB_ALL, ncols,
+            GrB_ALL, 1, NULL)) ;
         // d = A*x using the PLUS_PAIR semiring
-        OK (GrB_Vector_new (&d, GrB_INT64, nrows)) ;
-        OK (GrB_mxv (d, NULL, NULL, GxB_PLUS_PAIR_INT64, A, x, NULL)) ;
+        OK (GrB_Matrix_new (&d, GrB_INT64, nrows, 1)) ;
+        OK (GrB_mxm (d, NULL, NULL, GxB_PLUS_PAIR_INT64, A, x, NULL)) ;
 
     }
     else
@@ -73,14 +74,15 @@ void mexFunction
         //----------------------------------------------------------------------
 
         // x = ones (nrows,1) ;
-        OK (GrB_Vector_new (&x, GrB_INT64, nrows)) ;
-        OK (GrB_Vector_assign_INT64 (x, NULL, NULL, 1, GrB_ALL, nrows, NULL)) ;
-        // d = x'*A = A'*x using the PLUS_PAIR semiring
-        OK (GrB_Vector_new (&d, GrB_INT64, ncols)) ;
-        OK (GrB_vxm (d, NULL, NULL, GxB_PLUS_PAIR_INT64, x, A, NULL)) ;
+        OK (GrB_Matrix_new (&x, GrB_INT64, nrows, 1)) ;
+        OK (GrB_Matrix_assign_INT64 (x, NULL, NULL, 1, GrB_ALL, nrows,
+            GrB_ALL, 1, NULL)) ;
+        // d = A'*x using the PLUS_PAIR semiring
+        OK (GrB_Matrix_new (&d, GrB_INT64, ncols, 1)) ;
+        OK (GrB_mxm (d, NULL, NULL, GxB_PLUS_PAIR_INT64, A, x, GrB_DESC_T0)) ;
     }
 
-    OK (GrB_Vector_free (&x)) ;
+    OK (GrB_Matrix_free (&x)) ;
     OK (GrB_Matrix_free (&A)) ;
     pargout [0] = gb_export ((GrB_Matrix *) &d, KIND_GRB) ;
     GB_WRAPUP ;

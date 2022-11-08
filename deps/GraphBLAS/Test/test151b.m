@@ -1,12 +1,12 @@
 function test151b
 %TEST151B test bitshift operators
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 fprintf ('test151b: test bshift operator\n') ;
 
-[binops, ~, ~, types, ~, ~,] = GB_spec_opsall ;
+[~, ~, ~, types, ~, ~,] = GB_spec_opsall ;
 types = types.int ;
 ops2 = { 'bshift' } ;
 
@@ -51,20 +51,39 @@ for k = 1:8
             C1 = GB_spec_Matrix_eWiseMult(Cin, [ ], [ ], op, A2, B2, [ ]) ;
             C2 = GB_mex_Matrix_eWiseMult (Cin, [ ], [ ], op, A2, B2, [ ]) ;
             GB_spec_compare (C1, C2) ;
+
             C1 = GB_spec_Matrix_eWiseAdd (Cin, [ ], [ ], op, A2, B2, [ ]) ;
             C2 = GB_mex_Matrix_eWiseAdd  (Cin, [ ], [ ], op, A2, B2, [ ]) ;
+            GB_spec_compare (C1, C2) ;
+
+            C1 = GB_spec_Matrix_eWiseUnion(Cin, [ ], [ ], op, A2, 3, B2, 2, [ ]) ;
+            C2 = GB_mex_Matrix_eWiseUnion (Cin, [ ], [ ], op, A2, 3, B2, 2, [ ]) ;
+            GB_spec_compare (C1, C2) ;
+
+            C1 = GB_spec_Matrix_eWiseAdd (Cin, [ ], [ ], op, B2, A2, [ ]) ;
+            C2 = GB_mex_Matrix_eWiseAdd  (Cin, [ ], [ ], op, B2, A2, [ ]) ;
+            GB_spec_compare (C1, C2) ;
+
+            C1 = GB_spec_Matrix_eWiseUnion(Cin, [ ], [ ], op, B2, 3, A2, 2, [ ]) ;
+            C2 = GB_mex_Matrix_eWiseUnion (Cin, [ ], [ ], op, B2, 3, A2, 2, [ ]) ;
             GB_spec_compare (C1, C2) ;
 
             C1 = GB_spec_Matrix_eWiseMult(Cin, M2, [ ], op, A2, B2, [ ]) ;
             C2 = GB_mex_Matrix_eWiseMult (Cin, M2, [ ], op, A2, B2, [ ]) ;
             GB_spec_compare (C1, C2) ;
+
             C1 = GB_spec_Matrix_eWiseAdd (Cin, M2, [ ], op, A2, B2, [ ]) ;
             C2 = GB_mex_Matrix_eWiseAdd  (Cin, M2, [ ], op, A2, B2, [ ]) ;
+            GB_spec_compare (C1, C2) ;
+
+            C1 = GB_spec_Matrix_eWiseUnion (Cin, M2, [ ], op, A2, 1, B2, 3, [ ]) ;
+            C2 = GB_mex_Matrix_eWiseUnion  (Cin, M2, [ ], op, A2, 1, B2, 3, [ ]) ;
             GB_spec_compare (C1, C2) ;
 
             C1 = GB_spec_Matrix_eWiseMult(Cin, M2, [ ], op, A2, B2, desc) ;
             C2 = GB_mex_Matrix_eWiseMult (Cin, M2, [ ], op, A2, B2, desc) ;
             GB_spec_compare (C1, C2) ;
+
             C1 = GB_spec_Matrix_eWiseAdd (Cin, M2, [ ], op, A2, B2, desc) ;
             C2 = GB_mex_Matrix_eWiseAdd  (Cin, M2, [ ], op, A2, B2, desc) ;
             GB_spec_compare (C1, C2) ;

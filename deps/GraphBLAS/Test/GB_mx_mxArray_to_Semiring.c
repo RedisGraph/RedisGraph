@@ -2,7 +2,7 @@
 // GB_mx_mxArray_to_Semiring
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -77,18 +77,18 @@ bool GB_mx_mxArray_to_Semiring          // true if successful
 
     // find the corresponding GraphBLAS add operator
     GrB_BinaryOp add = NULL ;
-    if (!GB_mx_string_to_BinaryOp (&add, multiply->ztype,
-        add_mx, NULL, user_complex) || add == NULL)
+    if (!GB_mx_mxArray_to_BinaryOp (&add, add_mx, "add", multiply->ztype,
+        user_complex) || add == NULL)
     {
         mexWarnMsgIdAndTxt ("GB:warn", "add missing or failed") ;
         return (false) ;
     }
-
     ASSERT_BINARYOP_OK (add, "semiring add", GB0) ;
-    ASSERT_BINARYOP_OK (multiply, "semiring multiply", GB0) ;
 
     // create the monoid with the add operator and its identity value
     GrB_Monoid monoid = GB_mx_BinaryOp_to_Monoid (add) ;
+    ASSERT_MONOID_OK (monoid, "semiring monoid", GB0) ;
+
     if (monoid == NULL)
     {
         mexWarnMsgIdAndTxt ("GB:warn", "monoid missing or failed") ;

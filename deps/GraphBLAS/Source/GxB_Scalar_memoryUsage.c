@@ -2,7 +2,7 @@
 // GxB_Scalar_memoryUsage: # of bytes used for a scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -12,7 +12,7 @@
 GrB_Info GxB_Scalar_memoryUsage  // return # of bytes used for a scalar
 (
     size_t *size,           // # of bytes used by the scalar s
-    const GxB_Scalar s      // GxB_Scalar to query
+    const GrB_Scalar s      // GrB_Scalar to query
 )
 {
 
@@ -30,6 +30,7 @@ GrB_Info GxB_Scalar_memoryUsage  // return # of bytes used for a scalar
 
     int64_t nallocs ;
     size_t mem_shallow ;
-    return (GB_memoryUsage (&nallocs, size, &mem_shallow, (GrB_Matrix) s)) ;
+    GB_memoryUsage (&nallocs, size, &mem_shallow, (GrB_Matrix) s) ;
+    return (GrB_SUCCESS) ;
 }
 

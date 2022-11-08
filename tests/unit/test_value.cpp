@@ -14,6 +14,7 @@ extern "C" {
 #include "../../src/util/rmalloc.h"
 #include "../../src/datatypes/set.h"
 #include "../../src/datatypes/array.h"
+#include "../../src/datatypes/path/path.h"
 #include "../../src/graph/entities/node.h"
 #include "../../src/graph/entities/edge.h"
 
@@ -128,11 +129,11 @@ TEST_F(ValueTest, TestHashDouble) {
 }
 
 TEST_F(ValueTest, TestEdge) {
-	Entity entity;
+	AttributeSet attr;
 
 	Edge e0;
 	e0.id = 0;
-	e0.entity = &entity;
+	e0.attributes = &attr;
 	SIValue edge = SI_Edge(&e0);
 
 	Edge e0Other = e0;
@@ -152,11 +153,11 @@ TEST_F(ValueTest, TestEdge) {
 }
 
 TEST_F(ValueTest, TestNode) {
-	Entity entity;
+	AttributeSet attr;
 
 	Node n0;
 	n0.id = 0;
-	n0.entity = &entity;
+	n0.attributes = &attr;
 	SIValue node = SI_Node(&n0);
 
 	Node n0Other = n0;
@@ -203,6 +204,17 @@ TEST_F(ValueTest, TestArray) {
 	SIArray_Append(&arrOther, nestedArr);
 	otherHashCode = SIValue_HashCode(arrOther);
 	ASSERT_EQ(origHashCode, otherHashCode);
+
+	// Test logic for nested type-checking
+	bool contains_double = SIArray_ContainsType(arr, T_DOUBLE);
+	ASSERT_TRUE(contains_double);
+
+	bool contains_string = SIArray_ContainsType(arr, T_STRING);
+	ASSERT_FALSE(contains_string);
+
+	// Checking for multiple types should return true if any match is found
+	bool contains = SIArray_ContainsType(arr, (SIType)(T_DOUBLE | T_STRING));
+	ASSERT_TRUE(contains);
 }
 
 /* Test for difference in hash code for the same binary representation
@@ -235,15 +247,15 @@ TEST_F(ValueTest, TestHashLongAndDouble) {
 
 // Test for entities with same id, different types
 TEST_F(ValueTest, TestEdgeAndNode) {
-	Entity entity;
+	AttributeSet attr;
 
 	Edge e0;
 	e0.id = 0;
-	e0.entity = &entity;
+	e0.attributes = &attr;
 	SIValue edge = SI_Edge(&e0);
 
 	Node n0;
-	n0.entity = &entity;
+	n0.attributes = &attr;
 	SIValue node = SI_Node(&n0);
 
 	ASSERT_NE(SIValue_HashCode(node), SIValue_HashCode(edge));
@@ -259,11 +271,11 @@ TEST_F(ValueTest, TestSet) {
 	// Populate set.
 	Node n;
 	Edge e;
-	Entity entity;
+	AttributeSet attr;
 	n.id = 0;
-	n.entity = &entity;
+	n.attributes = &attr;
 	e.id = 0;
-	e.entity = &entity;
+	e.attributes = &attr;
 	SIValue arr = SI_Array(2);
 
 	Set_Add(set, arr);
@@ -336,3 +348,109 @@ TEST_F(ValueTest, TestSet) {
 	Set_Free(set);
 }
 
+TEST_F(ValueTest, TestPath) {
+	Path *path = Path_New(3);
+	Path *clone;
+	Node *n;
+	Edge *e;
+
+	// Path should be empty.
+	ASSERT_EQ(Path_NodeCount(path), 0);
+	ASSERT_EQ(Path_EdgeCount(path), 0);
+	ASSERT_EQ(Path_Len(path), 0);
+
+	// Populate path.
+	Node ns[3];
+	Edge es[2];
+	for (uint i = 0; i < 2; i++) {
+		ns[i].id = i;
+				
+		es[i].id = i;
+		es[i].srcNodeID = i;
+		es[i].destNodeID = i + 1;
+	}
+	ns[2].id = 2;
+
+	for (uint i = 0; i < 2; i++) {
+		Path_AppendNode(path, ns[i]);	
+		Path_AppendEdge(path, es[i]);
+	}
+	Path_AppendNode(path, ns[2]);
+
+	ASSERT_EQ(Path_NodeCount(path), 3);
+	ASSERT_EQ(Path_EdgeCount(path), 2);
+	ASSERT_EQ(Path_Len(path), 2);
+
+	// Make sure all nodes and edges are in path.
+	for (uint i = 0; i < 2; i++) {
+		n = Path_GetNode(path, i);
+		ASSERT_EQ(n->id, i);		
+		e = Path_GetEdge(path, i);
+		ASSERT_EQ(e->id, i);
+	}
+	n = Path_GetNode(path, 2);
+	ASSERT_EQ(n->id, 2);
+
+	clone = Path_Clone(path);
+	// Make sure all nodes and edges are in path.
+	for (uint i = 0; i < 2; i++) {
+		n = Path_GetNode(clone, i);
+		ASSERT_EQ(n->id, i);
+		e = Path_GetEdge(clone, i);
+		ASSERT_EQ(e->id, i);
+	}
+	n = Path_GetNode(clone, 2);
+	ASSERT_EQ(n->id, 2);
+
+	Node head = Path_Head(path);
+	ASSERT_EQ(head.id, 2);
+
+	Path_Reverse(path);
+
+	// Make sure all nodes and edges are reversed in path.
+	for (uint i = 0; i < 2; i++) {
+		n = Path_GetNode(path, i);
+		ASSERT_EQ(n->id, 2 - i);
+		e = Path_GetEdge(path, i);
+		ASSERT_EQ(e->id, 1 - i);
+	}
+	n = Path_GetNode(path, 2);
+	ASSERT_EQ(n->id, 0);
+
+	Path_Reverse(path);
+
+	// Remove node from path.
+	Node pop_n = Path_PopNode(path);
+	ASSERT_EQ(pop_n.id, 2);
+	ASSERT_EQ(Path_NodeCount(path), 2);
+
+	// Remove edge from path.
+	Edge pop_e = Path_PopEdge(path);
+	ASSERT_EQ(pop_e.id, 1);
+	ASSERT_EQ(Path_EdgeCount(path), 1);
+
+	// Make sure removed node not in path
+	bool res = Path_ContainsNode(path, &pop_n);
+	ASSERT_FALSE(res);
+
+	// Make sure node is in path
+	pop_n.id = 0;
+	res = Path_ContainsNode(path, &pop_n);
+	ASSERT_TRUE(res);
+
+	Path_SetNode(path, 1, pop_n);
+	Node *n1 = Path_GetNode(path, 1);
+	ASSERT_EQ(n1->id, pop_n.id);
+
+	Path_SetEdge(path, 0, pop_e);
+	Edge *e1 = Path_GetEdge(path, 0);
+	ASSERT_EQ(e1->id, pop_e.id);
+
+	// Make sure clear path clear all nodes and edges
+	Path_Clear(path);
+	ASSERT_EQ(Path_NodeCount(path), 0);
+	ASSERT_EQ(Path_EdgeCount(path), 0);
+
+	Path_Free(path);
+	Path_Free(clone);
+}

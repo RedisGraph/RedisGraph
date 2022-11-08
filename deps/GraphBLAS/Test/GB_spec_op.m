@@ -8,11 +8,11 @@ function C = GB_spec_op (op, A, B)
 % op or op.opname is a string with just the operator name.  Valid names of
 % binary operators are 'first', 'second', 'min', 'max', 'plus', 'minus',
 % 'rminus', 'times', 'div', 'rdiv', 'eq', 'ne', 'gt', 'lt', 'ge', 'le', 'or',
-% 'and', 'xor'.  'iseq', 'isne', 'isgt', 'islt', 'isge', 'le', 'pair', 'any',
-% 'pow', ('bitget' or 'bget'), ('bitset' or 'bset'), ('bitclr' or 'bclr'),
-% ('bitand' or 'band'), ('bitor' or 'bor'), ('bitxor' or 'bxor'), ('bitxnor',
-% 'bxnor'), ('bitshift' or 'bshift'), ('bitnot' or 'bitcmp'), 'atan2', 'hypot',
-% ('ldexp' or 'pow2'), ('complex', 'cmplx').  
+% 'and', 'xor'.  'iseq', 'isne', 'isgt', 'islt', 'isge', 'le', 'pair' (same
+% as 'oneb'), 'any', 'pow', ('bitget' or 'bget'), ('bitset' or 'bset'),
+% ('bitclr' or 'bclr'), ('bitand' or 'band'), ('bitor' or 'bor'), ('bitxor' or
+% 'bxor'), ('bitxnor', 'bxnor'), ('bitshift' or 'bshift'), ('bitnot' or
+% 'bitcmp'), 'atan2', 'hypot', ('ldexp' or 'pow2'), ('complex', 'cmplx').  
 %
 % Unary operators are 'one', 'identity', 'ainv', 'abs', 'minv', 'not', 'bnot',
 % 'sqrt', 'log', 'exp', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh',
@@ -20,7 +20,7 @@ function C = GB_spec_op (op, A, B)
 % 'round', ('trunc' or 'fix'), 'exp2', 'expm1', 'log10', 'log2', ('lgamma' or
 % 'gammaln'), ('tgamma' or 'gamma'), 'erf', 'erfc', 'frexpx', 'frexpe', 'conj',
 % ('creal' or 'real'), ('cimag' or 'imag'), ('carg' or 'angle'), 'isinf',
-% 'isnan', 'isfinite'.
+% 'isnan', 'isfinite', 'cbrt'.
 %
 % op.optype: 'logical', 'int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32',
 % 'int64', 'uint64', 'single', 'double', 'single complex' or 'double complex'.
@@ -36,7 +36,7 @@ function C = GB_spec_op (op, A, B)
 %
 % Positional ops are not computed by this function.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 % get the operator name and class
@@ -74,7 +74,7 @@ switch opname
         z = y ;
     case 'any'
         z = y ;
-    case 'pair'
+    case { 'pair', 'oneb' }
         z = GB_spec_ones (size (x), ztype) ;
     case 'min'
         % min(x,y) in SuiteSparse:GraphBLAS is min(x,y,'omitnan') with built-in.
@@ -153,6 +153,20 @@ switch opname
     case 'ge'
         z = (x >= y) ;
     case 'le'
+        z = (x <= y) ;
+
+    % 6 index_unop comparators (result is boolean)
+    case 'valueeq'
+        z = (x == y) ;
+    case 'valuene'
+        z = (x ~= y) ;
+    case 'valuegt'
+        z = (x >  y) ;
+    case 'valuelt'
+        z = (x <  y) ;
+    case 'valuege'
+        z = (x >= y) ;
+    case 'valuele'
         z = (x <= y) ;
 
     % 3 binary logical operators (result is ztype)
@@ -342,6 +356,9 @@ switch opname
 
     case 'erfc'
         z = erfc (x) ;
+
+    case 'cbrt'
+        z = nthroot (x, 3) ;
 
     case 'frexpx'
         [z,~] = log2 (x) ;

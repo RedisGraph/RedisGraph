@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -13,8 +13,15 @@ void Serializer_Graph_SetNode
 (
 	Graph *g,               // graph to add node to
 	NodeID id,              // node ID
-	int label,              // node label
+	LabelID *labels,        // node labels
+	uint label_count,       // label count
 	Node *n                 // pointer to node
+);
+
+// sets graph's node labels matrix
+void Serializer_Graph_SetNodeLabels
+(
+	Graph *g
 );
 
 // set a given edge in the graph

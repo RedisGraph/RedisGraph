@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -50,9 +50,9 @@ static void _filterVariableLengthEdges(ExecutionPlan *plan,
 
 	// retrieve the aliases of the traversed source, destination, and edge
 	OpBase *parent     = traverse_op->op.parent;
-	const char *src    = AlgebraicExpression_Source(traverse_op->ae);
+	const char *src    = AlgebraicExpression_Src(traverse_op->ae);
 	const char *edge   = AlgebraicExpression_Edge(traverse_op->ae);
-	const char *dest   = AlgebraicExpression_Destination(traverse_op->ae);
+	const char *dest   = AlgebraicExpression_Dest(traverse_op->ae);
 	OpFilter **filters = array_new(OpFilter *, 0);
 
 	// collect applicable filters

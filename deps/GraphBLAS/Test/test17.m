@@ -1,7 +1,7 @@
 function test17
 %TEST17 test GrB_*_extractElement
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\n ------------ testing GrB_extractElement\n') ;
@@ -42,9 +42,14 @@ for k1 = 1:length (types)
                     iu = uint64 (i) ;
                     for j = 0:n-1
                         ju = uint64 (j) ;
-                        x1 = GB_mex_Matrix_extractElement  (A, iu, ju, xtype) ;
-                        x2 = GB_spec_Matrix_extractElement (A, i, j, xtype) ;
+                        use_scalar = (rand (1) > 0.9) ;
+                        x1 = GB_mex_Matrix_extractElement  (A, iu, ju, ...
+                                xtype, use_scalar) ;
+                        [x2 noval] = ...
+                            GB_spec_Matrix_extractElement (A, i, j, xtype) ;
                         assert (isequal (x1,x2))
+                        x3 = GB_mex_Matrix_isStoredElement (A, iu, ju) ;
+                        assert (isequal (~noval,x3))
                     end
                 end
                 end
@@ -52,9 +57,14 @@ for k1 = 1:length (types)
 
                 for i = 0:(m*n)-1
                     iu = uint64 (i) ;
-                    x1 = GB_mex_Vector_extractElement  (B, iu, xtype) ;
-                    x2 = GB_spec_Vector_extractElement (B, i, xtype) ;
+                    use_scalar = (rand (1) > 0.9) ;
+                    x1 = GB_mex_Vector_extractElement  (B, iu, xtype, ...
+                        use_scalar) ;
+                    [x2 noval] = ...
+                        GB_spec_Vector_extractElement (B, i, xtype) ;
                     assert (isequal (x1,x2))
+                    x3 = GB_mex_Vector_isStoredElement (B, iu) ;
+                    assert (isequal (~noval,x3))
                 end
             end
         end

@@ -2,8 +2,8 @@
 // gb_string_to_type: return the GraphBLAS type from a string
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -27,7 +27,8 @@ GrB_Type gb_string_to_type      // return the GrB_Type from a string
     if (MATCH (typename, "single"  )) return (GrB_FP32) ;
     if (MATCH (typename, "double"  )) return (GrB_FP64) ;
 
-    if (MATCH (typename, "single complex"))
+    if (MATCH (typename, "single complex") ||
+        MATCH (typename, "float complex"))
     { 
         return (GxB_FC32) ;
     }

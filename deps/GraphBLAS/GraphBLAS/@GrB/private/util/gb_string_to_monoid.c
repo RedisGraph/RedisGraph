@@ -2,8 +2,8 @@
 // gb_string_to_monoid: get a GraphBLAS monoid from a string
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -21,6 +21,7 @@ GrB_Monoid gb_string_to_monoid          // return monoid from a string
 { 
 
     // get the binary operator and convert to a monoid
-    return (gb_binop_to_monoid (gb_string_to_binop (opstring, type, type))) ;
+    return (gb_binop_to_monoid (gb_string_to_binop_or_idxunop (opstring,
+        type, type, NULL, NULL))) ;
 }
 

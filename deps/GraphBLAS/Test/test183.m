@@ -1,11 +1,10 @@
 function test183
 %TEST183 test GrB_eWiseMult with a hypersparse mask 
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
-[binops, ~, ~, types, ~, ~] = GB_spec_opsall ;
-binops = binops.all ;
+[~, ~, ~, types, ~, ~] = GB_spec_opsall ;
 types = types.all ;
 
 fprintf ('test183 -----------eWiseMult with hypersparse mask\n') ;

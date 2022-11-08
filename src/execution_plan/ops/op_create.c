@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -18,7 +18,7 @@ static void CreateFree(OpBase *opBase);
 OpBase *NewCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
 	OpCreate *op = rm_calloc(1, sizeof(OpCreate));
 	op->records = NULL;
-	op->pending = NewPendingCreationsContainer(nodes, edges); // Prepare all creation variables.
+	NewPendingCreationsContainer(&op->pending, nodes, edges); // Prepare all creation variables.
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CREATE, "Create", NULL, CreateConsume,
 				NULL, NULL, CreateClone, CreateFree, true, plan);
@@ -46,33 +46,39 @@ OpBase *NewCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateC
 }
 
 // Prepare to create all nodes for the current Record.
-static void _CreateNodes(OpCreate *op, Record r) {
+static void _CreateNodes(OpCreate *op, Record r, GraphContext *gc) {
 	uint nodes_to_create_count = array_len(op->pending.nodes_to_create);
 	for(uint i = 0; i < nodes_to_create_count; i++) {
 		// get specified node to create
 		NodeCreateCtx *n = op->pending.nodes_to_create + i;
 
 		// create a new node
-		Node newNode = GE_NEW_LABELED_NODE(n->label, n->labelId);
+		Node newNode = GE_NEW_NODE();
 
 		// add new node to Record and save a reference to it
 		Node *node_ref = Record_AddNode(r, op->pending.nodes_to_create[i].node_idx, newNode);
 
 		// convert query-level properties
+		AttributeSet converted_attr = NULL;
 		PropertyMap *map = op->pending.nodes_to_create[i].properties;
-		PendingProperties *converted_properties = NULL;
-		if(map) converted_properties = ConvertPropertyMap(r, map, false);
+		if(map != NULL) {
+			converted_attr = AttributeSet_New();
+			ConvertPropertyMap(gc, &converted_attr, r, map, false);
+		}
 
 		// save node for later insertion
 		array_append(op->pending.created_nodes, node_ref);
 
-		// save properties to insert with node
-		array_append(op->pending.node_properties, converted_properties);
+		// save attributes to insert with node
+		array_append(op->pending.node_attributes, converted_attr);
+
+		// save labels to assigned to node
+		array_append(op->pending.node_labels, n->labelsId);
 	}
 }
 
 // Prepare to create all edges for the current Record.
-static void _CreateEdges(OpCreate *op, Record r) {
+static void _CreateEdges(OpCreate *op, Record r, GraphContext *gc) {
 	uint edges_to_create_count = array_len(op->pending.edges_to_create);
 	for(uint i = 0; i < edges_to_create_count; i++) {
 		// get specified edge to create
@@ -95,14 +101,17 @@ static void _CreateEdges(OpCreate *op, Record r) {
 
 		// convert query-level properties
 		PropertyMap *map = op->pending.edges_to_create[i].properties;
-		PendingProperties *converted_properties = NULL;
-		if(map) converted_properties = ConvertPropertyMap(r, map, false);
+		AttributeSet converted_attr = NULL;
+		if(map != NULL) {
+			converted_attr = AttributeSet_New();
+			ConvertPropertyMap(gc, &converted_attr, r, map, false);
+		}
 
 		// save edge for later insertion
 		array_append(op->pending.created_edges, edge_ref);
 
-		// save properties to insert with node
-		array_append(op->pending.edge_properties, converted_properties);
+		// save attributes to insert with node
+		array_append(op->pending.edge_attributes, converted_attr);
 	}
 }
 
@@ -123,13 +132,14 @@ static Record CreateConsume(OpBase *opBase) {
 	// Consume mode.
 	op->records = array_new(Record, 32);
 
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	OpBase *child = NULL;
 	if(!op->op.childCount) {
 		// No child operation to call.
 		r = OpBase_CreateRecord(opBase);
 		/* Create entities. */
-		_CreateNodes(op, r);
-		_CreateEdges(op, r);
+		_CreateNodes(op, r, gc);
+		_CreateEdges(op, r, gc);
 
 		// Save record for later use.
 		array_append(op->records, r);
@@ -142,8 +152,8 @@ static Record CreateConsume(OpBase *opBase) {
 			Record_PersistScalars(r);
 
 			// create entities
-			_CreateNodes(op, r);
-			_CreateEdges(op, r);
+			_CreateNodes(op, r, gc);
+			_CreateEdges(op, r, gc);
 
 			// save record for later use
 			array_append(op->records, r);
@@ -153,7 +163,7 @@ static Record CreateConsume(OpBase *opBase) {
 	/* Done reading, we're not going to call consume any longer
 	 * there might be operations e.g. index scan that need to free
 	 * index R/W lock, as such free all execution plan operation up the chain. */
-	if(child) OpBase_PropagateFree(child);
+	if(child) OpBase_PropagateReset(child);
 
 	// Create entities.
 	CommitNewEntities(opBase, &op->pending);

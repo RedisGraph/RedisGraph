@@ -2,24 +2,24 @@
 // GB_convert_sparse_to_bitmap: convert from sparse/hypersparse to bitmap
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 #include "GB_ek_slice.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_type__include.h"
 #endif
 
-#define GB_FREE_WORK                        \
+#define GB_FREE_WORKSPACE                   \
 {                                           \
     GB_WERK_POP (A_ek_slicing, int64_t) ;   \
 }
 
 #define GB_FREE_ALL                         \
 {                                           \
-    GB_FREE_WORK ;                          \
+    GB_FREE_WORKSPACE ;                     \
     GB_FREE (&Ax_new, Ax_size) ;            \
     GB_FREE (&Ab, Ab_size) ;                \
 }
@@ -47,7 +47,6 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
     ASSERT (!GB_PENDING (A)) ;
     ASSERT (GB_JUMBLED_OK (A)) ;        // A can be jumbled on input
     ASSERT (GB_ZOMBIES_OK (A)) ;        // A can have zombies on input
-    GBURBLE ("(sparse to bitmap) ") ;
 
     //--------------------------------------------------------------------------
     // determine the maximum number of threads to use
@@ -69,11 +68,11 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
     //--------------------------------------------------------------------------
 
     const int64_t anz = GB_nnz (A) ;
+    GB_BURBLE_N (anz, "(sparse to bitmap) ") ;
     const int64_t avdim = A->vdim ;
     const int64_t avlen = A->vlen ;
-    const int64_t anvec = A->nvec ;
     int64_t anzmax ;
-    if (!GB_Index_multiply ((GrB_Index *) &anzmax, avdim, avlen))
+    if (!GB_int64_multiply ((GrB_Index *) &anzmax, avdim, avlen))
     { 
         // problem too large
         return (GrB_OUT_OF_MEMORY) ;
@@ -101,8 +100,10 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
     }
     else
     {
-        // A->x must be modified to fit the bitmap structure
-        Ax_new = GB_MALLOC (anzmax * asize, GB_void, &Ax_size) ;
+        // A->x must be modified to fit the bitmap structure.  A->x is calloc'd
+        // since otherwise it would contain uninitialized values where A->b is
+        // false and entries are not present.
+        Ax_new = GB_CALLOC (anzmax * asize, GB_void, &Ax_size) ; // x:OK:calloc
         Ax_shallow = false ;
         if (Ax_new == NULL)
         { 
@@ -160,7 +161,7 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
         else
         {
 
-            #ifndef GBCOMPACT
+            #ifndef GBCUDA_DEV
             {
                 switch (asize)
                 {
@@ -191,11 +192,6 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
 
                     case GB_16BYTE : // double complex or 16-byte user-defined
                         #define GB_ATYPE GB_blob16
-//                      #define GB_ATYPE uint64_t
-//                      #undef  GB_COPY
-//                      #define GB_COPY(Axnew,pnew,Axold,p)     \
-//                          Axnew [2*pnew  ] = Axold [2*p  ] ;  \
-//                          Axnew [2*pnew+1] = Axold [2*p+1] ;
                         #include "GB_convert_sparse_to_bitmap_template.c"
                         break ;
 
@@ -227,7 +223,7 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
         A->x_shallow = false ;
     }
 
-    GB_phbix_free (A) ;
+    GB_phybix_free (A) ;
     A->iso = A_iso ;        // OK: convert_sparse_to_bitmap, keep iso
 
     A->b = Ab ; A->b_size = Ab_size ; A->b_shallow = false ;
@@ -248,7 +244,7 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     ASSERT_MATRIX_OK (A, "A converted from sparse to bitmap", GB0) ;
     ASSERT (GB_IS_BITMAP (A)) ;
     ASSERT (!GB_ZOMBIES (A)) ;

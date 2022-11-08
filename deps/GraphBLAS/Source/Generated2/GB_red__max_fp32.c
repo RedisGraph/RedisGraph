@@ -2,7 +2,7 @@
 // GB_red:  hard-coded functions for reductions
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -11,7 +11,7 @@
 // (it is auto-generated from Generator/*).
 
 #include "GB.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_atomics.h"
 #include "GB_control.h" 
 #include "GB_red__include.h"
@@ -26,7 +26,7 @@
 
 // Reduce:   if ((aij > s) || (s != s)) { s = aij ; }
 // Identity: (-INFINITY)
-// Terminal: if (s == INFINITY) { break ; }
+// Terminal: ;
 
 #define GB_ATYPE \
     float
@@ -77,13 +77,13 @@
 // break the loop if terminal condition reached
 
     #define GB_HAS_TERMINAL                         \
-        1
+        0
 
     #define GB_IS_TERMINAL(s)                       \
-        (s == INFINITY)
+        (none)
 
     #define GB_TERMINAL_VALUE                       \
-        INFINITY
+        (none)
 
 // panel size for built-in operators
 

@@ -2,7 +2,7 @@
 // GB_new: create a new GraphBLAS matrix, but do not allocate A->{b,i,x}
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -37,7 +37,6 @@ GB_PUBLIC
 GrB_Info GB_new                 // create matrix, except for indices & values
 (
     GrB_Matrix *Ahandle,        // handle of matrix to create
-    const bool A_static_header, // true if Ahandle is statically allocated
     const GrB_Type type,        // matrix type
     const int64_t vlen,         // length of each vector
     const int64_t vdim,         // number of vectors
@@ -57,8 +56,8 @@ GrB_Info GB_new                 // create matrix, except for indices & values
 
     ASSERT (Ahandle != NULL) ;
     ASSERT_TYPE_OK (type, "type for GB_new", GB0) ;
-    ASSERT (vlen >= 0 && vlen <= GxB_INDEX_MAX)
-    ASSERT (vdim >= 0 && vdim <= GxB_INDEX_MAX) ;
+    ASSERT (vlen >= 0 && vlen <= GB_NMAX)
+    ASSERT (vdim >= 0 && vdim <= GB_NMAX) ;
 
     //--------------------------------------------------------------------------
     // allocate the matrix header, if not already allocated on input
@@ -78,12 +77,12 @@ GrB_Info GB_new                 // create matrix, except for indices & values
         (*Ahandle)->static_header = false ;  // header of A has been malloc'd
         (*Ahandle)->header_size = header_size ;
     }
-    else
-    { 
-        // the header of A has been provided on input.  It may already be
-        // malloc'd, or it might be statically allocated in the caller. 
-        (*Ahandle)->static_header = A_static_header ;
-    }
+//  else
+//  { 
+//      // the header of A has been provided on input.  It may already be
+//      // malloc'd, or it might be statically allocated in the caller. 
+//      // (*Ahandle)->static_header is not modified.
+//  }
 
     GrB_Matrix A = *Ahandle ;
 
@@ -132,7 +131,7 @@ GrB_Info GB_new                 // create matrix, except for indices & values
     A->vlen = vlen ;
     A->vdim = vdim ;
 
-    // content that is freed or reset in GB_ph_free
+    // content that is freed or reset in GB_phy_free
     if (A_is_full_or_bitmap)
     { 
         // A is full or bitmap
@@ -144,7 +143,7 @@ GrB_Info GB_new                 // create matrix, except for indices & values
     else if (A_is_hyper)
     { 
         // A is hypersparse
-        A->plen = GB_IMIN (plen, vdim) ;
+        A->plen = (vdim == 1) ? 1 : GB_IMIN (plen, vdim) ;
         A->nvec = 0 ;                   // no vectors present
         A->nvec_nonempty = 0 ;
     }
@@ -159,11 +158,12 @@ GrB_Info GB_new                 // create matrix, except for indices & values
     // no content yet
     A->p = NULL ; A->p_shallow = false ; A->p_size = 0 ;
     A->h = NULL ; A->h_shallow = false ; A->h_size = 0 ;
+    A->Y = NULL ; A->Y_shallow = false ;
     A->b = NULL ; A->b_shallow = false ; A->b_size = 0 ;
     A->i = NULL ; A->i_shallow = false ; A->i_size = 0 ;
     A->x = NULL ; A->x_shallow = false ; A->x_size = 0 ;
 
-    A->nvals = 0 ;              // for bitmapped matrices only
+    A->nvals = 0 ;
     A->nzombies = 0 ;
     A->jumbled = false ;
     A->Pending = NULL ;
@@ -224,7 +224,7 @@ GrB_Info GB_new                 // create matrix, except for indices & values
         else
         { 
             // the header was not allocated here; only free the content of A
-            GB_phbix_free (A) ;
+            GB_phybix_free (A) ;
         }
         return (GrB_OUT_OF_MEMORY) ;
     }

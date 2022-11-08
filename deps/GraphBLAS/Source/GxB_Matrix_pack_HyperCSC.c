@@ -2,7 +2,7 @@
 // GxB_Matrix_pack_HyperCSC: pack a matrix in hypersparse CSC format
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -12,8 +12,9 @@
 GrB_Info GxB_Matrix_pack_HyperCSC      // pack a hypersparse CSC matrix
 (
     GrB_Matrix A,       // matrix to create (type, nrows, ncols unchanged)
-    GrB_Index **Ap,     // col "pointers", Ap_size >= (nvec+1)*sizeof(int64_t)
-    GrB_Index **Ah,     // column indices, Ah_size >= nvec*sizeof(int64_t)
+    GrB_Index **Ap,     // col "pointers", Ap_size >= (plen+1)*sizeof(int64_t)
+    GrB_Index **Ah,     // column indices, Ah_size >= plen*sizeof(int64_t)
+                        // where plen = 1 if ncols = 1, or nvec otherwise.
     GrB_Index **Ai,     // row indices, Ai_size >= nvals(A)*sizeof(int64_t)
     void **Ax,          // values, Ax_size >= nvals(A)*(type size)
                         // or Ax_size >= (type size), if iso is true
@@ -26,7 +27,7 @@ GrB_Info GxB_Matrix_pack_HyperCSC      // pack a hypersparse CSC matrix
     bool jumbled,       // if true, indices in each column may be unsorted
     const GrB_Descriptor desc
 )
-{ 
+{
 
     //--------------------------------------------------------------------------
     // check inputs and get the descriptor
@@ -38,6 +39,7 @@ GrB_Info GxB_Matrix_pack_HyperCSC      // pack a hypersparse CSC matrix
     GB_BURBLE_START ("GxB_Matrix_pack_HyperCSC") ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
     GB_GET_DESCRIPTOR (info, desc, xx1, xx2, xx3, xx4, xx5, xx6, xx7) ;
+    GB_GET_DESCRIPTOR_IMPORT (desc, fast_import) ;
 
     //--------------------------------------------------------------------------
     // pack the matrix
@@ -51,7 +53,7 @@ GrB_Info GxB_Matrix_pack_HyperCSC      // pack a hypersparse CSC matrix
         Ax,   Ax_size,  // Ax
         0, jumbled, nvec,                   // jumbled or not
         GxB_HYPERSPARSE, true,              // hypersparse by col
-        iso, Context) ;
+        iso, fast_import, true, Context) ;
 
     GB_BURBLE_END ;
     return (info) ;

@@ -8,11 +8,8 @@ function C = pow2 (A, B)
 %
 % See also GrB/log2, GrB/power, GrB/exp.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
-
-% FUTURE: pow2(A,B) for two matrices A and B is slower than it could be.
-% See comments in gb_union_op.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 if (isobject (A))
     A = A.opaque ;
@@ -36,6 +33,6 @@ else
     else
         type = 'double' ;
     end
-    C = GrB (gb_union_op (['pow2.' type], A, B)) ;
+    C = GrB (gb_eunion (A, ['pow2.' type], B)) ;
 end
 

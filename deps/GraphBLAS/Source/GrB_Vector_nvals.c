@@ -2,7 +2,7 @@
 // GrB_Vector_nvals: number of entries in a sparse vector
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -31,6 +31,7 @@ GrB_Info GrB_Vector_nvals   // get the number of entries in a vector
 
     GrB_Info info = GB_nvals (nvals, (GrB_Matrix) v, Context) ;
     GB_BURBLE_END ;
+    #pragma omp flush
     return (info) ;
 }
 

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -25,7 +25,7 @@ ProcedureResult Proc_FulltextDropIndexInvoke(ProcedureCtx *ctx,
 
 	const char *label = args[0].stringval;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	GraphContext_DeleteIndex(gc, label, NULL, IDX_FULLTEXT);
+	GraphContext_DeleteIndex(gc, SCHEMA_NODE, label, NULL, IDX_FULLTEXT);
 
 	return PROCEDURE_OK;
 }

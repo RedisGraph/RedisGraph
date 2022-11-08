@@ -2,8 +2,8 @@ function gbtest80
 %GBTEST80 test complex division and power
 % Tests all real, inf, and nan cases.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 list = [-2:0.5:2 inf -inf nan] ;
 

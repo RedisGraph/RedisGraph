@@ -14,7 +14,7 @@
 %  gbtest9   - test eye and speye
 %  gbtest10  - test GrB.assign
 %  gbtest11  - test GrB, sparse
-%  gbtest12  - test GrB.eadd, GrB.emult
+%  gbtest12  - test GrB.eadd, GrB.emult, GrB.eunion
 %  gbtest13  - test find and GrB.extracttuples
 %  gbtest14  - test kron and GrB.kronecker
 %  gbtest15  - list all unary operators
@@ -117,6 +117,14 @@
 %  gbtest111 - test argmin
 %  gbtest112 - test load and save
 %  gbtest113 - test ones and eq
+%  gbtest114 - test kron with iso matrices
+%  gbtest115 - test serialize/deserialize
+%  gbtest116 - list all idxunop operators for GrB.apply2
+%  gbtest117 - test idxunop in GrB.apply2
+%  gbtest118 - test GrB.argsort
+%  gbtest119 - test GrB.eunion
+%  gbtest120 - test subsref
+%  gbtest121 - test times with scalars
 %
 % Utilities and other tests:
 %
@@ -129,7 +137,8 @@
 %  gbtest_complex - return list of complex operators
 %  gbtest_err     - compare two matrices
 %  gb_contains    - same as contains (text, pattern)
+%  gb_octave      - return true if Octave is in use, false for MATLAB
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 

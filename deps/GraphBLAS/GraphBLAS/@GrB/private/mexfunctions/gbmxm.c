@@ -2,8 +2,8 @@
 // gbmxm: sparse matrix-matrix multiplication
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -43,7 +43,7 @@ void mexFunction
     // find the arguments
     //--------------------------------------------------------------------------
 
-    mxArray *Matrix [4], *String [2], *Cell [2] ;
+    mxArray *Matrix [6], *String [2], *Cell [2] ;
     base_enum_t base ;
     kind_enum_t kind ;
     GxB_Format_Value fmt ;
@@ -52,7 +52,8 @@ void mexFunction
     gb_get_mxargs (nargin, pargin, USAGE, Matrix, &nmatrices, String, &nstrings,
         Cell, &ncells, &desc, &base, &kind, &fmt, &sparsity) ;
 
-    CHECK_ERROR (nmatrices < 2 || nstrings < 1 || ncells > 0, USAGE) ;
+    CHECK_ERROR (nmatrices < 2 || nmatrices > 4 || nstrings < 1 || ncells > 0,
+        USAGE) ;
 
     // ensure the descriptor is present, and set GxB_SORT to true
     if (desc == NULL)

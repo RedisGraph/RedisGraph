@@ -1,8 +1,9 @@
+
 //------------------------------------------------------------------------------
 // GB_binop:  hard-coded functions for each built-in binary operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -11,7 +12,7 @@
 // (it is auto-generated from Generator/*).
 
 #include "GB.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_emult.h"
 #include "GB_control.h"
 #include "GB_ek_slice.h"
@@ -38,10 +39,13 @@
 // C=A+scalar                       GB ((none))
 // C=A'+scalar                      GB ((none))
 
-// C type:   GxB_FC64_t
-// A type:   GxB_FC64_t
-// B,b type: GxB_FC64_t
-// BinaryOp: cij = GxB_CMPLX(1,0)
+// C type:     GxB_FC64_t
+// A type:     GxB_FC64_t
+// A pattern?  1
+// B type:     GxB_FC64_t
+// B pattern?  1
+
+// BinaryOp:   cij = GxB_CMPLX(1,0)
 
 #define GB_ATYPE \
     GxB_FC64_t
@@ -68,9 +72,17 @@
 #define GB_GETA(aij,Ax,pA,A_iso)  \
     ;
 
+// true if values of A are not used
+#define GB_A_IS_PATTERN \
+    1 \
+
 // bij = Bx [pB]
 #define GB_GETB(bij,Bx,pB,B_iso)  \
     ;
+
+// true if values of B are not used
+#define GB_B_IS_PATTERN \
+    1 \
 
 // declare scalar of the same type as C
 #define GB_CTYPE_SCALAR(t)  \
@@ -133,7 +145,7 @@ void GB ((none))
 // C = A+B, all 3 matrices dense
 //------------------------------------------------------------------------------
 
-GrB_Info GB (_Cdense_ewise3_noaccum__pair_fc64)
+void GB (_Cdense_ewise3_noaccum__pair_fc64)
 (
     GrB_Matrix C,
     const GrB_Matrix A,
@@ -141,12 +153,7 @@ GrB_Info GB (_Cdense_ewise3_noaccum__pair_fc64)
     const int nthreads
 )
 { 
-    #if GB_DISABLE
-    return (GrB_NO_VALUE) ;
-    #else
     #include "GB_dense_ewise3_noaccum_template.c"
-    return (GrB_SUCCESS) ;
-    #endif
 }
 
 //------------------------------------------------------------------------------
@@ -207,8 +214,8 @@ GrB_Info GB (_Cdense_accumb__pair_fc64)
 GrB_Info GB ((none))
 (
     GrB_Matrix C,
-    const GrB_Matrix A, bool A_is_pattern,
-    const GrB_Matrix D, bool D_is_pattern,
+    const GrB_Matrix A,
+    const GrB_Matrix D,
     const int64_t *A_ek_slicing, const int A_ntasks, const int A_nthreads
 )
 { 
@@ -232,8 +239,8 @@ GrB_Info GB ((none))
 GrB_Info GB ((none))
 (
     GrB_Matrix C,
-    const GrB_Matrix D, bool D_is_pattern,
-    const GrB_Matrix B, bool B_is_pattern,
+    const GrB_Matrix D,
+    const GrB_Matrix B,
     int nthreads
 )
 { 
@@ -249,7 +256,7 @@ GrB_Info GB ((none))
 #endif
 
 //------------------------------------------------------------------------------
-// eWiseAdd: C = A+B or C<M> = A+B
+// eWiseAdd: C=A+B, C<M>=A+B, C<!M>=A+B
 //------------------------------------------------------------------------------
 
 GrB_Info GB (_AaddB__pair_fc64)
@@ -261,6 +268,9 @@ GrB_Info GB (_AaddB__pair_fc64)
     const bool Mask_comp,
     const GrB_Matrix A,
     const GrB_Matrix B,
+    const bool is_eWiseUnion,
+    const GB_void *alpha_scalar_in,
+    const GB_void *beta_scalar_in,
     const bool Ch_is_Mh,
     const int64_t *restrict C_to_M,
     const int64_t *restrict C_to_A,
@@ -277,14 +287,21 @@ GrB_Info GB (_AaddB__pair_fc64)
     GB_WERK_DECLARE (M_ek_slicing, int64_t) ;
     GB_WERK_DECLARE (A_ek_slicing, int64_t) ;
     GB_WERK_DECLARE (B_ek_slicing, int64_t) ;
+    GxB_FC64_t alpha_scalar ;
+    GxB_FC64_t beta_scalar ;
+    if (is_eWiseUnion)
+    {
+        alpha_scalar = (*((GxB_FC64_t *) alpha_scalar_in)) ;
+        beta_scalar  = (*((GxB_FC64_t *) beta_scalar_in )) ;
+    }
     #include "GB_add_template.c"
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     return (GrB_SUCCESS) ;
     #endif
 }
 
 //------------------------------------------------------------------------------
-// eWiseMult: C = A.*B or C<M> = A.*B
+// eWiseMult: C=A.*B, C<M>=A.*B, or C<M!>=A.*B where C is sparse/hyper
 //------------------------------------------------------------------------------
 
 #if 0
@@ -311,7 +328,7 @@ GrB_Info GB ((none))
     #if GB_DISABLE
     return (GrB_NO_VALUE) ;
     #else
-    #include "GB_emult_01_meta.c"
+    #include "GB_emult_meta.c"
     return (GrB_SUCCESS) ;
     #endif
 }
@@ -390,7 +407,7 @@ GrB_Info GB ((none))
     #if GB_DISABLE
     return (GrB_NO_VALUE) ;
     #else
-    #include "GB_emult_03_template.c"
+    #include "GB_emult_04_template.c"
     return (GrB_SUCCESS) ;
     #endif
 }

@@ -37,9 +37,11 @@ my_*.out
 .pyc
 *.tmp
 gunk*
+errlog*.txt
+fprint.txt
+log.txt
 
 Demo/bfs_demo.out
-Demo/mis_demo.out
 Demo/openmp_demo.out
 Demo/pagerank_demo.out
 Demo/pthread_demo.out
@@ -57,6 +59,8 @@ alternative/*.out
 alternative/*_out.m
 alternative/*_out2.m
 alternative/*_demo
+alternative/*.so*
+alternative/*.dylib*
 
 Test/*.log
 Test/errlog.txt
@@ -79,6 +83,9 @@ Doc/html
 CUDA/test/googletest/*
 
 desktop.ini
+
+.idea/
+cmake-build-debug/
 
 # Do not ignore this file
 !.gitignore

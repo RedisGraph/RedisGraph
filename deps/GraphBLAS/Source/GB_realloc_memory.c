@@ -2,7 +2,7 @@
 // GB_realloc_memory: wrapper for realloc
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -84,7 +84,7 @@ void *GB_realloc_memory     // pointer to reallocated block of memory, or
     (*ok) = GB_size_t_multiply (&newsize, nitems_new, size_of_item)
          && GB_size_t_multiply (&oldsize, nitems_old, size_of_item) ;
 
-    if (!(*ok) || nitems_new > GxB_INDEX_MAX || size_of_item > GxB_INDEX_MAX)
+    if (!(*ok) || nitems_new > GB_NMAX || size_of_item > GB_NMAX)
     { 
         // overflow
         (*ok) = false ;

@@ -2,8 +2,8 @@ function result = gb_entries (A, varargin)
 %GB_ENTRIES count or query the entries of a matrix.
 % Implements GrB.entries (A, ...) and GrB.nonz (A, ...).
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 % get the string arguments
 dim = 'all' ;           % 'all', 'row', or 'col'
@@ -16,7 +16,7 @@ for k = 1:nargin-1
         case { 'count', 'list', 'degree' }
             kind = arg ;
         otherwise
-            error ('unknown option') ;
+            error ('GrB:error', 'unknown option') ;
     end
 end
 
@@ -32,7 +32,7 @@ if (isequal (dim, 'all'))
             % X = GrB.entries (A, 'list')
             result = unique (gbextractvalues (A)) ;
         otherwise
-            error ('''all'' and ''degree'' cannot be combined') ;
+            error ('GrB:error', '''all'' and ''degree'' cannot be combined') ;
     end
 
 else

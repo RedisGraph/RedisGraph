@@ -2,7 +2,7 @@
 // GB_mx_object_to_mxArray
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -27,6 +27,12 @@
 // GraphBLAS matrix .
 
 #include "GB_mex.h"
+
+#define GB_AS_IF_FREE(p)                \
+{                                       \
+    GB_Global_memtable_remove (p) ;     \
+    (p) = NULL ;                        \
+}
 
 static const char *MatrixFields [ ] = { "matrix", "class", "iso", "values" } ;
 
@@ -64,7 +70,7 @@ mxArray *GB_mx_object_to_mxArray   // returns the built-in mxArray
     else
     {
         // this may convert C to full
-        GrB_Matrix_wait (&C) ;
+        GrB_Matrix_wait (C, GrB_MATERIALIZE) ;
         C = (*handle) ;
     }
 
@@ -92,7 +98,7 @@ mxArray *GB_mx_object_to_mxArray   // returns the built-in mxArray
 
     // setting to CSC may have transposed the matrix
     ASSERT (GB_JUMBLED_OK (C)) ;
-    GrB_Matrix_wait (&C) ;
+    GrB_Matrix_wait (C, GrB_MATERIALIZE) ;
     ASSERT (!GB_JUMBLED (C)) ;
     cnz = GB_nnz (C) ;
 
@@ -280,7 +286,8 @@ mxArray *GB_mx_object_to_mxArray   // returns the built-in mxArray
         double *Sx = (double *) GB_malloc_memory (cnz+1, sizeof (double),
             &Sx_size) ;
         if (Sx == NULL && cnz > 0) mexErrMsgTxt ("Sx is NULL!\n") ;
-        GB_cast_array (Sx, GB_FP64_code, C->x, C->type->code, NULL, cnz, 1) ;
+        GB_cast_array ((GB_void *) Sx, GB_FP64_code, C->x, C->type->code,
+            NULL, cnz, 1) ;
         mexMakeMemoryPersistent (Sx) ;
         mxSetPr (A, Sx) ;
 

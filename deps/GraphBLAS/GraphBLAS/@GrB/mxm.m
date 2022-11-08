@@ -57,8 +57,8 @@ function C = mxm (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 %
 % See also GrB.descriptorinfo, GrB.add, GrB/mtimes.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 if (isobject (arg1))
     arg1 = arg1.opaque ;

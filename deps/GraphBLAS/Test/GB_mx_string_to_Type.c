@@ -2,7 +2,7 @@
 // GB_mx_string_to_Type.c: return the GrB_type from a string
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -23,7 +23,7 @@ GrB_Type GB_mx_string_to_Type       // GrB_Type from the string
     char type [LEN+2] ;
     int len = GB_mx_mxArray_to_string (type, LEN, type_mx) ;
 
-    if (len <  0) return (NULL) ;
+    if (len <  0) mexErrMsgTxt ("unknown class") ;
     if (len == 0) return (default_type) ;
     if (MATCH (type, "logical")) return (GrB_BOOL) ;
     if (MATCH (type, "bool"   )) return (GrB_BOOL) ;
@@ -42,6 +42,7 @@ GrB_Type GB_mx_string_to_Type       // GrB_Type from the string
     if (MATCH (type, "GxB_FC32_t" )) return (GxB_FC32) ;
     if (MATCH (type, "GxB_FC64_t" )) return (GxB_FC64) ;
 
+    mexErrMsgTxt ("unknown class") ;
     return (NULL) ;
 }
 

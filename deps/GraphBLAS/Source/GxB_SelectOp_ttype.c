@@ -2,10 +2,12 @@
 // GxB_SelectOp_ttype: return the type of thunk for z=f(x,thunk)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
+
+// NOTE: this function is historical.  Use a GrB_IndexUnaryOp instead.
 
 #include "GB.h"
 
@@ -29,7 +31,7 @@ GrB_Info GxB_SelectOp_ttype         // return type of thunk or NULL if generic
     // return the ttype
     //--------------------------------------------------------------------------
 
-    (*ttype) = selectop->ttype ;
+    (*ttype) = selectop->ytype ;
     return (GrB_SUCCESS) ;
 }
 

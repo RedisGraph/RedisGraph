@@ -253,7 +253,6 @@
 %   testall3  - run testall with different # of threads
 %   tt        - test eWiseMult and A+B
 %   ttest     - test GrB_extractTuples
-%   ttt       - various tests
 %   xtest     - test GrB_extract
 %   ztest     - test zombie deletion
 %   testsort  - test qsort and msort
@@ -279,6 +278,6 @@
 %   flopcount        - cumulative sum of flop counts for A*B, C<M>=A*B, C<!M>=A*B
 %   floptest         - compare flopcount with GB_mex_mxm_flops
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 

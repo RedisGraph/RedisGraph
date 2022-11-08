@@ -2,7 +2,7 @@
 // GB_subassign_05e: C(:,:)<M,struct> = scalar ; no S, C empty, M structural
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -78,7 +78,7 @@ GrB_Info GB_subassign_05e
     // scalar.
 
     bool C_is_csc = C->is_csc ;
-    GB_phbix_free (C) ;
+    GB_phybix_free (C) ;
     // set C->iso = true    OK
     GB_OK (GB_dup_worker (&C, true, M, false, C->type, Context)) ;
     C->is_csc = C_is_csc ;

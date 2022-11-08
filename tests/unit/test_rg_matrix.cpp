@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -13,6 +13,7 @@ extern "C" {
 #include "../../src/util/rmalloc.h"
 #include "../../src/configuration/config.h"
 #include "../../src/graph/rg_matrix/rg_matrix.h"
+#include <time.h>
 
 #ifdef __cplusplus
 }
@@ -126,7 +127,7 @@ class RGMatrixTest: public ::testing::Test {
 		GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
 
 		// set delta matrix flush threshold
-		Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
+		Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
 	}
 
 	static void TearDownTestCase() {
@@ -136,15 +137,15 @@ class RGMatrixTest: public ::testing::Test {
 
 // test RGMatrix initialization
 TEST_F(RGMatrixTest, RGMatrix_new) {
-	RG_Matrix   A                   =  NULL;
-	GrB_Matrix  M                   =  NULL;
-	GrB_Matrix  DP                  =  NULL;
-	GrB_Matrix  DM                  =  NULL;
-	GrB_Type    t                   =  GrB_UINT64;
-	GrB_Info    info                =  GrB_SUCCESS;
-	GrB_Index   nvals               =  0;
-	GrB_Index   nrows               =  100;
-	GrB_Index   ncols               =  100;
+	RG_Matrix  A     = NULL;
+	GrB_Matrix M     = NULL;
+	GrB_Matrix DP    = NULL;
+	GrB_Matrix DM    = NULL;
+	GrB_Type   t     = GrB_UINT64;
+	GrB_Info   info  = GrB_SUCCESS;
+	GrB_Index  nvals = 0;
+	GrB_Index  nrows = 100;
+	GrB_Index  ncols = 100;
 
 	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
@@ -160,18 +161,17 @@ TEST_F(RGMatrixTest, RGMatrix_new) {
 	// uint64 matrix always multi edge
 	ASSERT_TRUE(RG_MATRIX_MULTI_EDGE(A));
 
-	// matrix shouldn't be dirty
-	ASSERT_FALSE(RG_Matrix_isDirty(A));
+	// a new empty matrix should be synced
+	// no data in either DP or DM
+	ASSERT_TRUE(RG_Matrix_Synced(A));
 
 	// test M, DP and DM hyper switch
 	int format;
 	double hyper_switch;
 
-	// M should always never be hyper
-	GxB_Matrix_Option_get(M, GxB_HYPER_SWITCH, &hyper_switch);
-	ASSERT_EQ(hyper_switch, GxB_NEVER_HYPER);
+	// M should be either hyper-sparse or sparse
 	GxB_Matrix_Option_get(M, GxB_SPARSITY_CONTROL, &format);
-	ASSERT_EQ(format, GxB_SPARSE);
+	ASSERT_EQ(format, GxB_SPARSE | GxB_HYPERSPARSE);
 
 	// DP should always be hyper
 	GxB_Matrix_Option_get(DP, GxB_HYPER_SWITCH, &hyper_switch);
@@ -211,8 +211,9 @@ TEST_F(RGMatrixTest, RGMatrix_new) {
 	// bool matrix always not multi edge
 	ASSERT_FALSE(RG_MATRIX_MULTI_EDGE(A));
 
-	// matrix shouldn't be dirty
-	ASSERT_FALSE(RG_Matrix_isDirty(A));
+	// a new empty matrix should be synced
+	// no data in either DP or DM
+	ASSERT_TRUE(RG_Matrix_Synced(A));
 
 	// matrix should be empty
 	M_EMPTY();
@@ -226,7 +227,6 @@ TEST_F(RGMatrixTest, RGMatrix_new) {
 }
 
 // setting an empty entry
-// M[i,j] = 1
 // M[i,j] = 1
 TEST_F(RGMatrixTest, RGMatrix_simple_set) {
 	GrB_Type    t                   =  GrB_UINT64;
@@ -313,18 +313,18 @@ TEST_F(RGMatrixTest, RGMatrix_simple_set) {
 
 // multiple delete scenarios
 TEST_F(RGMatrixTest, RGMatrix_del) {
-	GrB_Type    t                   =  GrB_UINT64;
-	RG_Matrix   A                   =  NULL;
-	GrB_Matrix  M                   =  NULL;
-	GrB_Matrix  DP                  =  NULL;
-	GrB_Matrix  DM                  =  NULL;
-	GrB_Info    info                =  GrB_SUCCESS;
-	GrB_Index   nvals               =  0;
-	GrB_Index   nrows               =  100;
-	GrB_Index   ncols               =  100;
-	GrB_Index   i                   =  0;
-	GrB_Index   j                   =  1;
-	uint64_t    x                   =  1;
+	GrB_Type   t     = GrB_UINT64;
+	RG_Matrix  A     = NULL;
+	GrB_Matrix M     = NULL;
+	GrB_Matrix DP    = NULL;
+	GrB_Matrix DM    = NULL;
+	GrB_Info   info  = GrB_SUCCESS;
+	GrB_Index  nvals = 0;
+	GrB_Index  nrows = 100;
+	GrB_Index  ncols = 100;
+	GrB_Index  i     = 0;
+	GrB_Index  j     = 1;
+	uint64_t   x     = 1;
 
 	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
@@ -341,8 +341,8 @@ TEST_F(RGMatrixTest, RGMatrix_del) {
 	info = RG_Matrix_removeElement_UINT64(A, i, j);
 	ASSERT_EQ(info, GrB_NO_VALUE);
 
-	// matrix should not be dirty
-	ASSERT_FALSE(RG_Matrix_isDirty(A));
+	// matrix should not contain any entries in either DP or DM
+	ASSERT_TRUE(RG_Matrix_Synced(A));
 
 	//--------------------------------------------------------------------------
 	// remove none flushed addition
@@ -495,6 +495,10 @@ TEST_F(RGMatrixTest, RGMatrix_del) {
 	// M[i,j] = 2, DP[i,j] = 0, DM[i,j] = 0
 	//--------------------------------------------------------------------------
 
+	info = RG_Matrix_extractElement_UINT64(&x, A, i, j);
+	ASSERT_TRUE(info == GrB_SUCCESS);
+	ASSERT_EQ(2, x);
+
 	M_NOT_EMPTY();
 	DP_EMPTY();
 	DM_EMPTY();
@@ -509,26 +513,26 @@ TEST_F(RGMatrixTest, RGMatrix_del) {
 
 // multiple delete entry scenarios
 TEST_F(RGMatrixTest, RGMatrix_del_entry) {
-	GrB_Type    t                   =  GrB_UINT64;
-	RG_Matrix   A                   =  NULL;
-	GrB_Matrix  M                   =  NULL;
-	GrB_Matrix  DP                  =  NULL;
-	GrB_Matrix  DM                  =  NULL;
-	GrB_Info    info                =  GrB_SUCCESS;
-	GrB_Index   nvals               =  0;
-	GrB_Index   nrows               =  100;
-	GrB_Index   ncols               =  100;
-	GrB_Index   i                   =  0;
-	GrB_Index   j                   =  1;
-	uint64_t    x                   =  1;
+	GrB_Type   t     = GrB_UINT64;
+	RG_Matrix  A     = NULL;
+	GrB_Matrix M     = NULL;
+	GrB_Matrix DP    = NULL;
+	GrB_Matrix DM    = NULL;
+	GrB_Info   info  = GrB_SUCCESS;
+	GrB_Index  nvals = 0;
+	GrB_Index  nrows = 100;
+	GrB_Index  ncols = 100;
+	GrB_Index  i     = 0;
+	GrB_Index  j     = 1;
+	uint64_t   x     = 1;
 
 	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// get internal matrices
-	M   =  RG_MATRIX_M(A);
-	DP  =  RG_MATRIX_DELTA_PLUS(A);
-	DM  =  RG_MATRIX_DELTA_MINUS(A);
+	M  = RG_MATRIX_M(A);
+	DP = RG_MATRIX_DELTA_PLUS(A);
+	DM = RG_MATRIX_DELTA_MINUS(A);
 
 	//--------------------------------------------------------------------------
 	// remove none existing entry
@@ -537,8 +541,8 @@ TEST_F(RGMatrixTest, RGMatrix_del_entry) {
 	info = RG_Matrix_removeEntry(A, i, j, x);
 	ASSERT_EQ(info, GrB_NO_VALUE);
 
-	// matrix should not be dirty
-	ASSERT_FALSE(RG_Matrix_isDirty(A));
+	// matrix should not contain any entries in either DP or DM
+	ASSERT_TRUE(RG_Matrix_Synced(A));
 
 	//--------------------------------------------------------------------------
 	// remove none flushed addition
@@ -1057,11 +1061,13 @@ TEST_F(RGMatrixTest, RGMatrix_fuzzy) {
 	// create RGMatrix
 	//--------------------------------------------------------------------------
 
+	srand(time(0));
+
 	I = (GrB_Index*) malloc(sizeof(GrB_Index) * operations);
 	J = (GrB_Index*) malloc(sizeof(GrB_Index) * operations);
 
 	info = RG_Matrix_new(&A, t, nrows, ncols);
-	info = RG_Matrix_new(&A->transposed, t, nrows, ncols);
+	info = RG_Matrix_new(&A->transposed, t, ncols, nrows);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// make sure transposed was created
@@ -1076,7 +1082,7 @@ TEST_F(RGMatrixTest, RGMatrix_fuzzy) {
 	info = GrB_Matrix_new(&N, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	info = GrB_Matrix_new(&NT, t, nrows, ncols);
+	info = GrB_Matrix_new(&NT, t, ncols, nrows);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	uint additions = 0;
@@ -1449,6 +1455,88 @@ TEST_F(RGMatrixTest, RGMatrix_mxm) {
 	ASSERT_TRUE(C == NULL);
 	RG_Matrix_free(&D);
 	ASSERT_TRUE(C == NULL);
+}
+
+TEST_F(RGMatrixTest, RGMatrix_resize) {
+	RG_Matrix  A        =  NULL;
+	RG_Matrix  T        =  NULL;
+	GrB_Info   info     =  GrB_SUCCESS;
+	GrB_Type   t        =  GrB_UINT64;
+	GrB_Index  nrows    =  10;
+	GrB_Index  ncols    =  20;
+
+	info = RG_Matrix_new(&A, t, nrows, ncols);
+	T = RG_Matrix_getTranspose(A);
+
+	GrB_Index  A_nrows;
+	GrB_Index  A_ncols;
+	GrB_Index  T_nrows;
+	GrB_Index  T_ncols;
+
+	// verify A and T dimensions
+	RG_Matrix_nrows(&A_nrows, A);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	RG_Matrix_ncols(&A_ncols, A);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	ASSERT_EQ(A_nrows, nrows);
+	ASSERT_EQ(A_ncols, ncols);
+
+	RG_Matrix_nrows(&T_nrows, T);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	RG_Matrix_ncols(&T_ncols, T);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	ASSERT_EQ(T_nrows, ncols);
+	ASSERT_EQ(T_ncols, nrows);
+
+	// resize matrix, increase size by 2
+	nrows *= 2;
+	ncols *= 2;
+
+	info = RG_Matrix_resize(A, nrows, ncols);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// verify A and T dimensions
+	RG_Matrix_nrows(&A_nrows, A);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	RG_Matrix_ncols(&A_ncols, A);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	ASSERT_EQ(A_nrows, nrows);
+	ASSERT_EQ(A_ncols, ncols);
+
+	RG_Matrix_nrows(&T_nrows, T);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	RG_Matrix_ncols(&T_ncols, T);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	ASSERT_EQ(T_nrows, ncols);
+	ASSERT_EQ(T_ncols, nrows);
+
+	// resize matrix decrease size by 2
+	nrows /= 2;
+	ncols /= 2;
+
+	info = RG_Matrix_resize(A, nrows, ncols);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// verify A and T dimensions
+	RG_Matrix_nrows(&A_nrows, A);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	RG_Matrix_ncols(&A_ncols, A);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	ASSERT_EQ(A_nrows, nrows);
+	ASSERT_EQ(A_ncols, ncols);
+
+	RG_Matrix_nrows(&T_nrows, T);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	RG_Matrix_ncols(&T_ncols, T);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	ASSERT_EQ(T_nrows, ncols);
+	ASSERT_EQ(T_ncols, nrows);
 }
 
 //#ifndef RG_DEBUG

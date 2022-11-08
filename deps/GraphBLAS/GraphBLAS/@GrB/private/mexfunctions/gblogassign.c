@@ -2,8 +2,8 @@
 // gblogassign: logical assignment: C(M) = A
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -39,7 +39,7 @@
     [m n] = size (C) ;
     mnz = nnz (M) ;         % A must be mnz-by-1
     if (~isequal (size (A), [mnz 1]))
-        error ('A must be nnz(M)-by-1')
+        error ('GrB:error', 'A must be nnz(M)-by-1')
     end
 
     [ai,  ~, ax] = GrB.extracttuples (A) ;
@@ -156,7 +156,7 @@ void mexFunction
             A_copy = gb_new (atype, mnz, 1, GxB_BY_COL, 
                 GxB_SPARSE + GxB_HYPERSPARSE + GxB_FULL) ;
             OK1 (A_copy, GrB_transpose (A_copy, NULL, NULL, A, NULL)) ;
-            OK1 (A_copy, GrB_Matrix_wait (&A_copy)) ;
+            OK1 (A_copy, GrB_Matrix_wait (A_copy, GrB_MATERIALIZE)) ;
             A = A_copy ;
         }
     }
@@ -171,7 +171,7 @@ void mexFunction
             A_copy = gb_new (atype, 1, mnz, GxB_BY_ROW,
                 GxB_SPARSE + GxB_HYPERSPARSE + GxB_FULL) ;
             OK1 (A_copy, GrB_transpose (A_copy, NULL, NULL, A, NULL)) ;
-            OK1 (A_copy, GrB_Matrix_wait (&A_copy)) ;
+            OK1 (A_copy, GrB_Matrix_wait (A_copy, GrB_MATERIALIZE)) ;
             A = A_copy ;
         }
     }
@@ -184,7 +184,7 @@ void mexFunction
     // extract the values and pattern of A; handle iso case
     //--------------------------------------------------------------------------
 
-    // TODO: use a shallow variant of GxB*export to access content of M and A
+    // Tim: use a shallow variant of GxB*export to access content of M and A
     GrB_Index *Ai =            							
         (GrB_Index *) A->i ;   	             	 	                 	
     void *Ax = A->x ;          		 	 	 	 	 	
@@ -212,65 +212,66 @@ void mexFunction
     if (A->iso)
     {
         // build S as an iso matrix
-        GxB_Scalar s = NULL ;
-        OK (GxB_Scalar_new (&s, atype)) ;
+        GrB_Scalar s = NULL ;
+        OK (GrB_Scalar_new (&s, atype)) ;
         if (atype == GrB_BOOL)
         { 
-            OK1 (s, GxB_Scalar_setElement_BOOL (s, (* ((bool *) Ax)))) ;
+            OK (GrB_Scalar_setElement_BOOL (s, (* ((bool *) Ax)))) ;
         }
         else if (atype == GrB_INT8)
         { 
-            OK1 (s, GxB_Scalar_setElement_INT8 (s, (* ((int8_t *) Ax)))) ;
+            OK (GrB_Scalar_setElement_INT8 (s, (* ((int8_t *) Ax)))) ;
         }
         else if (atype == GrB_INT16)
         { 
-            OK1 (s, GxB_Scalar_setElement_INT16 (s, (* ((int16_t *) Ax)))) ;
+            OK (GrB_Scalar_setElement_INT16 (s, (* ((int16_t *) Ax)))) ;
         }
         else if (atype == GrB_INT32)
         { 
-            OK1 (s, GxB_Scalar_setElement_INT32 (s, (* ((int32_t *) Ax)))) ;
+            OK (GrB_Scalar_setElement_INT32 (s, (* ((int32_t *) Ax)))) ;
         }
         else if (atype == GrB_INT64)
         { 
-            OK1 (s, GxB_Scalar_setElement_INT64 (s, (* ((int64_t *) Ax)))) ;
+            OK (GrB_Scalar_setElement_INT64 (s, (* ((int64_t *) Ax)))) ;
         }
         else if (atype == GrB_UINT8)
         { 
-            OK1 (s, GxB_Scalar_setElement_UINT8 (s, (* ((uint8_t *) Ax)))) ;
+            OK (GrB_Scalar_setElement_UINT8 (s, (* ((uint8_t *) Ax)))) ;
         }
         else if (atype == GrB_UINT16)
         { 
-            OK1 (s, GxB_Scalar_setElement_UINT16 (s, (* ((uint16_t *) Ax)))) ;
+            OK (GrB_Scalar_setElement_UINT16 (s, (* ((uint16_t *) Ax)))) ;
         }
         else if (atype == GrB_UINT32)
         { 
-            OK1 (s, GxB_Scalar_setElement_UINT32 (s, (* ((uint32_t *) Ax)))) ;
+            OK (GrB_Scalar_setElement_UINT32 (s, (* ((uint32_t *) Ax)))) ;
         }
         else if (atype == GrB_UINT64)
         { 
-            OK1 (s, GxB_Scalar_setElement_UINT64 (s, (* ((uint64_t *) Ax)))) ;
+            OK (GrB_Scalar_setElement_UINT64 (s, (* ((uint64_t *) Ax)))) ;
         }
         else if (atype == GrB_FP32)
         { 
-            OK1 (s, GxB_Scalar_setElement_FP32 (s, (* ((float *) Ax)))) ;
+            OK (GrB_Scalar_setElement_FP32 (s, (* ((float *) Ax)))) ;
         }
         else if (atype == GrB_FP64)
         { 
-            OK1 (s, GxB_Scalar_setElement_FP64 (s, (* ((double *) Ax)))) ;
+            OK (GrB_Scalar_setElement_FP64 (s, (* ((double *) Ax)))) ;
         }
         else if (atype == GxB_FC32)
         { 
-            OK1 (s, GxB_Scalar_setElement_FC32 (s, (* ((GxB_FC32_t *) Ax)))) ;
+            OK (GxB_Scalar_setElement_FC32 (s, (* ((GxB_FC32_t *) Ax)))) ;
         }
         else if (atype == GxB_FC64)
         { 
-            OK1 (s, GxB_Scalar_setElement_FC64 (s, (* ((GxB_FC64_t *) Ax)))) ;
+            OK (GxB_Scalar_setElement_FC64 (s, (* ((GxB_FC64_t *) Ax)))) ;
         }
         else
         {
             ERROR ("unsupported type") ;
         }
         OK1 (S, GxB_Matrix_build_Scalar (S, Si, Sj, s, anz)) ;
+        OK (GrB_Scalar_free (&s)) ;
     }
     else if (atype == GrB_BOOL)
     { 
@@ -345,9 +346,9 @@ void mexFunction
 
     // OK: Si, Sj, and Mj were allocated above from mxMalloc, never in a
     // GrB_Matrix
-    gb_mxfree (&Si) ;
-    gb_mxfree (&Sj) ;
-    gb_mxfree (&Mj) ;
+    gb_mxfree ((void **) (&Si)) ;
+    gb_mxfree ((void **) (&Sj)) ;
+    gb_mxfree ((void **) (&Mj)) ;
     OK (GrB_Matrix_free (&S)) ;
     OK (GrB_Matrix_free (&M)) ;
     OK (GrB_Matrix_free (&A_input)) ;

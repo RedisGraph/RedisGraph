@@ -16,7 +16,7 @@ function C = GB_spec_assign (C, Mask, accum, A, I, J, descriptor, scalar)
 % not affect any part of C outside that row or column.  Those two functions
 % have their own GB_spec_Row_assign.m and GB_spec_Col_assign.m functions.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 %-------------------------------------------------------------------------------
@@ -70,7 +70,7 @@ if (scalar)
     ni = length (I) ;
     nj = length (J) ;
     A.matrix  (1:ni, 1:nj) = A.matrix (1,1) ;
-    A.pattern (1:ni, 1:nj) = true ;
+    A.pattern (1:ni, 1:nj) = A.pattern (1,1) ;
 end
 
 %-------------------------------------------------------------------------------

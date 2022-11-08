@@ -2,7 +2,7 @@
 // GB_mex_AplusB: compute C=A+B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -71,8 +71,8 @@ void mexFunction
 
     // C = A+B using the op.  No mask
     bool ignore ;
-    METHOD (GB_add (C, A->type, true, NULL, false, false, &ignore, A, B, op,
-        Context)) ;
+    METHOD (GB_add (C, A->type, true, NULL, false, false, &ignore, A, B,
+        false, NULL, NULL, op, Context)) ;
 
     // return C as a plain sparse matrix
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C AplusB result", false) ;

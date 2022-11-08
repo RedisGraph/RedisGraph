@@ -2,7 +2,7 @@
 // GB_mex_AdotB: compute C=spones(Mask).*(A'*B)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -42,6 +42,12 @@ GrB_Info adotb_complex (GB_Context Context)
 {
     GrB_Info info = GrB_Matrix_new (&Aconj, Complex, anrows, ancols) ;
     if (info != GrB_SUCCESS) return (info) ;
+    info = GxB_Matrix_Option_set (Aconj, GxB_FORMAT, GxB_BY_COL) ;
+    if (info != GrB_SUCCESS)
+    { 
+        GrB_Matrix_free_(&Aconj) ;
+        return (info) ;
+    }
     info = GrB_Matrix_apply_(Aconj, NULL, NULL, Complex_conj, A, NULL) ;
     if (info != GrB_SUCCESS)
     {
@@ -50,7 +56,7 @@ GrB_Info adotb_complex (GB_Context Context)
     }
 
     // force completion
-    info = GrB_Matrix_wait_(&Aconj) ;
+    info = GrB_Matrix_wait_(Aconj, GrB_MATERIALIZE) ;
     if (info != GrB_SUCCESS)
     {
         GrB_Matrix_free_(&Aconj) ;
@@ -72,8 +78,8 @@ GrB_Info adotb_complex (GB_Context Context)
     {
         // C = A'*B using dot product method
         mask_applied = false ;  // no mask to apply
-        info = GB_AxB_dot2 (C, false, NULL, NULL, false, false, Aconj, B,
-            semiring, flipxy, Context) ;
+        info = GB_AxB_dot2 (C, false, NULL, NULL, false, false,
+            false, Aconj, B, semiring, flipxy, Context) ;
     }
 
     GrB_Matrix_free_(&Aconj) ;
@@ -107,8 +113,8 @@ GrB_Info adotb (GB_Context Context)
     else
     {
         mask_applied = false ;  // no mask to apply
-        info = GB_AxB_dot2 (C, false, NULL, NULL, false, false, A, B,
-            semiring /* GxB_PLUS_TIMES_FP64 */, flipxy, Context) ;
+        info = GB_AxB_dot2 (C, false, NULL, NULL, false, false,
+            false, A, B, semiring /* GxB_PLUS_TIMES_FP64 */, flipxy, Context) ;
     }
 
     GrB_Monoid_free_(&add) ;

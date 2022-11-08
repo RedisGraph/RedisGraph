@@ -1,7 +1,7 @@
 function test14
 %TEST14 test GrB_reduce
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\ntest14: reduce to column and scalar\n') ;
@@ -22,6 +22,17 @@ for k1 = 1:length(types)
     B = GB_spec_random (n, m, 0.3, 100, atype) ;
     w = GB_spec_random (m, 1, 0.3, 100, atype) ;
     cin = GB_mex_cast (0, atype) ;
+
+    clear S_input
+    S_input.matrix = cin ;
+    S_input.pattern = true ;
+    S_input.class = atype ;
+
+    clear E_input
+    E_input.matrix = sparse (0) ;
+    E_input.pattern = false ;
+    E_input.class = atype ;
+
     mask = GB_random_mask (m, 1, 0.5, true, false) ;
 
     if (isequal (atype, 'logical'))
@@ -136,6 +147,51 @@ for k1 = 1:length(types)
             end
         end
 
+        % to GrB_Scalar
+        S = GB_mex_reduce_to_GrB_Scalar (S_input, [ ], op, A) ;
+        c2 = S.matrix ;
+        if (isequal (op, 'any'))
+            X = GB_mex_cast (full (A.matrix (A.pattern)), A.class) ;
+            assert (any (X == c2)) ;
+        else
+            c1 = GB_spec_reduce_to_scalar (cin, [ ], op, A_flip) ;
+            if (is_float)
+                assert (abs (c1-c2) < tol *  (abs(c1) + 1))
+            else
+                assert (isequal (c1, c2)) ;
+            end
+        end
+
+        % to GrB_Scalar
+        S = GB_mex_reduce_to_GrB_Scalar (E_input, [ ], op, A) ;
+        c2 = S.matrix ;
+        if (isequal (op, 'any'))
+            X = GB_mex_cast (full (A.matrix (A.pattern)), A.class) ;
+            assert (any (X == c2)) ;
+        else
+            c1 = GB_spec_reduce_to_scalar (cin, [ ], op, A_flip) ;
+            if (is_float)
+                assert (abs (c1-c2) < tol *  (abs(c1) + 1))
+            else
+                assert (isequal (c1, c2)) ;
+            end
+        end
+
+        % vector to GrB_Scalar
+        S = GB_mex_reduce_to_GrB_Scalar (S_input, [ ], op, w) ;
+        c2 = S.matrix ;
+        if (isequal (op, 'any'))
+            X = GB_mex_cast (full (w.matrix (w.pattern)), w.class) ;
+            assert (any (X == c2)) ;
+        else
+            c1 = GB_spec_reduce_to_scalar (cin, [ ], op, w) ;
+            if (is_float)
+                assert (abs (c1-c2) < tol *  (abs(c1) + 1))
+            else
+                assert (isequal (c1, c2)) ;
+            end
+        end
+
         % to scalar, with accum
         c2 = GB_mex_reduce_to_scalar (cin, 'plus', op, A) ;
         if (~isequal (op, 'any'))
@@ -146,10 +202,49 @@ for k1 = 1:length(types)
                 assert (isequal (c1, c2)) ;
             end
         end
+
+        % to GrB_Scalar, with accum
+        S = GB_mex_reduce_to_GrB_Scalar (S_input, 'plus', op, A) ;
+        c2 = S.matrix ;
+        if (~isequal (op, 'any'))
+            c1 = GB_spec_reduce_to_scalar (cin, 'plus', op, A_flip) ;
+            if (is_float)
+                assert (abs (c1-c2) < tol *  (abs(c1) + 1))
+            else
+                assert (isequal (c1, c2)) ;
+            end
+        end
+
+        % vector to GrB_Scalar, with accum
+        S = GB_mex_reduce_to_GrB_Scalar (S_input, 'plus', op, w) ;
+        c2 = S.matrix ;
+        if (~isequal (op, 'any'))
+            c1 = GB_spec_reduce_to_scalar (cin, 'plus', op, w) ;
+            if (is_float)
+                assert (abs (c1-c2) < tol *  (abs(c1) + 1))
+            else
+                assert (isequal (c1, c2)) ;
+            end
+        end
+
     end
     end
     end
 end
+
+clear A
+A.matrix = sparse (4,5) ;
+A.pattern = false (4,5) ;
+A.class = 'double' ;
+
+clear S_input
+S_input.matrix = 1 ;
+S_input.pattern = true ;
+S_input.class = 'double' ;
+
+% empty matrix to GrB_Scalar
+S = GB_mex_reduce_to_GrB_Scalar (S_input, [ ], 'plus', A) ;
+assert (nnz (S.matrix) == 0) ;
 
 fprintf ('\ntest14: all tests passed\n') ;
 

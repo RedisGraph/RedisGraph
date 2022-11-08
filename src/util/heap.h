@@ -4,6 +4,9 @@
 
 typedef struct heap_s heap_t;
 
+// heap element compare function signature
+typedef int (*heap_cmp)(const void *, const void *, void *udata);
+
 /**
  * Create new heap and initialise it.
  *
@@ -12,10 +15,7 @@ typedef struct heap_s heap_t;
  * @param[in] cmp Callback used to get an item's priority
  * @param[in] udata User data passed through to cmp callback
  * @return initialised heap */
-heap_t *Heap_new(int (*cmp) (const void *,
-                             const void *,
-                             const void *udata),
-                 const void *udata);
+heap_t *Heap_new(heap_cmp cmp, void *udata);
 
 /**
  * Initialise heap. Use memory passed by user.
@@ -25,12 +25,7 @@ heap_t *Heap_new(int (*cmp) (const void *,
  * @param[in] cmp Callback used to get an item's priority
  * @param[in] udata User data passed through to cmp callback
  * @param[in] size Initial size of the heap's array */
-void Heap_init(heap_t* h,
-               int (*cmp) (const void *,
-                           const void *,
-                           const void *udata),
-               const void *udata,
-               unsigned int size);
+void Heap_init(heap_t* h, heap_cmp cmp, void *udata, unsigned int size);
 
 void Heap_free(heap_t * hp);
 

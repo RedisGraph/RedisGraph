@@ -1,13 +1,13 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
 #include "decode_graph.h"
-#include "current/v9/decode_v9.h"
+#include "current/v12/decode_v12.h"
 
 GraphContext *RdbLoadGraph(RedisModuleIO *rdb) {
-	return RdbLoadGraph_v9(rdb);
+	return RdbLoadGraphContext_v12(rdb);
 }
 

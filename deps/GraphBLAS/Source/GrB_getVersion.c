@@ -2,7 +2,7 @@
 // GrB_getVersion: get the version number of the GraphBLAS C API standard
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -25,6 +25,7 @@ GrB_Info GrB_getVersion         // runtime access to C API version number
     if (version    != NULL) (*version   ) = GRB_VERSION ;
     if (subversion != NULL) (*subversion) = GRB_SUBVERSION ;
 
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

@@ -13,25 +13,35 @@ import paella
 #----------------------------------------------------------------------------------------------
 
 class RedisGraphSetup(paella.Setup):
-    def __init__(self, nop=False):
-        paella.Setup.__init__(self, nop)
+    def __init__(self, args):
+        paella.Setup.__init__(self, args.nop)
+        self.no_rmpytools = args.no_rmpytools
 
     def common_first(self):
         self.install_downloaders()
-        self.pip_install("wheel virtualenv")
-        self.pip_install("setuptools --upgrade")
 
-        self.run("%s/bin/enable-utf8" % READIES)
+        self.run("%s/bin/enable-utf8" % READIES, sudo=self.os != 'macos')
         self.install("git automake libtool autoconf")
 
     def debian_compat(self):
         self.install("locales")
-        self.run("%s/bin/getgcc" % READIES)
+        if self.platform.is_arm():
+            self.run("%s/bin/getgcc --modern" % READIES)
+        else:
+            self.run("%s/bin/getgcc" % READIES)
         self.install("peg")
+        if self.platform.is_arm():
+            self.install("python3-dev")
+        self.run("{READIES}/bin/getjava".format(READIES=READIES)) # for grammarinator/ANTLR
+        self.pip_install("-r tests/fuzz/requirements.txt")
 
     def redhat_compat(self):
         self.install("redhat-lsb-core")
-        self.run("%s/bin/getepel" % READIES)
+        if not self.platform.is_arm():
+            self.install_linux_gnu_tar()
+        if self.osnick == 'ol8':
+            self.install("which") # for automake
+        self.run("%s/bin/getepel" % READIES, sudo=True)
         self.run("%s/bin/getgcc --modern" % READIES)
         self.install("m4 libgomp")
         self.install_peg()
@@ -42,19 +52,35 @@ class RedisGraphSetup(paella.Setup):
 
     def macos(self):
         self.install_gnu_utils()
-        self.run("%s/bin/getgcc --modern" % READIES)
+        # self.run("%s/bin/getgcc --modern" % READIES)
+        self.run("brew install libomp")
         self.install("redis")
+        self.install_peg()
+        self.pip_install("-r tests/fuzz/requirements.txt")
+
+    def alpine(self):
+        self.install("automake make autoconf libtool m4")
+        self.run("%s/bin/getgcc" % READIES)
         self.install_peg()
 
     def linux_last(self):
         self.install("valgrind")
 
     def common_last(self):
+        self.run("%s/bin/getaws" % READIES)
         self.install("astyle", _try=True) # fails for centos7
-        self.run("%s/bin/getcmake" % READIES)
-        self.run("{PYTHON} {READIES}/bin/getrmpytools".format(PYTHON=self.python, READIES=READIES))
+        self.run("{PYTHON} {READIES}/bin/getcmake --usr".format(PYTHON=self.python, READIES=READIES),
+                 sudo=self.os != 'macos')
+        if self.dist != "arch":
+            self.install("lcov")
+        else:
+            self.install("lcov-git", aur=True)
 
-        self.pip_install("-r tests/requirements.txt")
+        if not self.no_rmpytools:
+            self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall --modern --redispy-version a246f40".format(PYTHON=self.python, READIES=READIES))
+            self.pip_install("-r tests/requirements.txt")
+
+        self.run("%s/bin/getpy2" % READIES) # for RediSearch build
 
     def install_peg(self):
         self.run(r"""
@@ -65,7 +91,7 @@ class RedisGraphSetup(paella.Setup):
             tar xzf peg.tar.gz
             cd peg-0.1.18
             make
-            make install MANDIR=.
+            $(command -v sudo) make install MANDIR=.
             cd /tmp
             rm -rf $build_dir
             """)
@@ -73,7 +99,8 @@ class RedisGraphSetup(paella.Setup):
 #----------------------------------------------------------------------------------------------
 
 parser = argparse.ArgumentParser(description='Set up system for build.')
-parser.add_argument('-n', '--nop', action="store_true", help='no operation')
+parser.add_argument('-n', '--nop', action="store_true", help='No operation')
+parser.add_argument('--no-rmpytools', action="store_true", help='Do not install Python tools')
 args = parser.parse_args()
 
-RedisGraphSetup(nop=args.nop).setup()
+RedisGraphSetup(args).setup()

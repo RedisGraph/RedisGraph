@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -98,17 +98,19 @@ static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 
 static void _ResultSet_CompactReplyWithProperties(RedisModuleCtx *ctx, GraphContext *gc,
 												  const GraphEntity *e) {
-	int prop_count = ENTITY_PROP_COUNT(e);
+	const AttributeSet set = GraphEntity_GetAttributes(e);
+	int prop_count = ATTRIBUTE_SET_COUNT(set);
 	RedisModule_ReplyWithArray(ctx, prop_count);
 	// Iterate over all properties stored on entity
 	for(int i = 0; i < prop_count; i ++) {
 		// Compact replies include the value's type; verbose replies do not
 		RedisModule_ReplyWithArray(ctx, 3);
-		EntityProperty prop = ENTITY_PROPS(e)[i];
+		Attribute_ID attr_id;
+		SIValue value = AttributeSet_GetIdx(set, i, &attr_id);
 		// Emit the string index
-		RedisModule_ReplyWithLongLong(ctx, prop.id);
+		RedisModule_ReplyWithLongLong(ctx, attr_id);
 		// Emit the value
-		_ResultSet_CompactReplyWithSIValue(ctx, gc, prop.value);
+		_ResultSet_CompactReplyWithSIValue(ctx, gc, value);
 	}
 }
 
@@ -116,7 +118,7 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	/*  Compact node reply format:
 	 *  [
 	 *      Node ID (integer),
-	        [label string index (integer)],
+	        [label string index (integer) X N],
 	 *      [[name, value, value type] X N]
 	 *  ]
 	 */
@@ -127,15 +129,13 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	EntityID id = ENTITY_GET_ID(n);
 	RedisModule_ReplyWithLongLong(ctx, id);
 
-	// [label string index]
-	int label_id = NODE_GET_LABEL_ID(n, gc->g);
-	if(label_id == GRAPH_NO_LABEL) {
-		// Emit an empty array for unlabeled nodes.
-		RedisModule_ReplyWithArray(ctx, 0);
-	} else {
-		// Print label in nested array for multi-label support.
-		RedisModule_ReplyWithArray(ctx, 1);
-		RedisModule_ReplyWithLongLong(ctx, label_id);
+	// [label string index X N]
+	// Retrieve node labels
+	uint lbls_count;
+	NODE_GET_LABELS(gc->g, n, lbls_count);
+	RedisModule_ReplyWithArray(ctx, lbls_count);
+	for(int i = 0; i < lbls_count; i++) {
+		RedisModule_ReplyWithLongLong(ctx, labels[i]);
 	}
 
 	// [properties]
@@ -276,7 +276,7 @@ static void _ResultSet_CompactReplyWithPoint(RedisModuleCtx *ctx, GraphContext *
 }
 
 void ResultSet_EmitCompactRow(RedisModuleCtx *ctx, GraphContext *gc,
-		SIValue **row, uint numcols) {
+							  SIValue **row, uint numcols) {
 	// Prepare return array sized to the number of RETURN entities
 	RedisModule_ReplyWithArray(ctx, numcols);
 

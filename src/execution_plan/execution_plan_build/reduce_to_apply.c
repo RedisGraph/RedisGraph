@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -38,7 +38,7 @@ static void _CreateBoundBranch(OpBase *op, ExecutionPlan *plan, const char **var
 static OpBase *_ApplyOpFromPathExpression(ExecutionPlan *plan, const char **vars,
 										  AR_ExpNode *expression) {
 	bool anti = false;
-	if(strcasecmp(expression->op.func_name, "not") == 0) {
+	if(strcasecmp(AR_EXP_GetFuncName(expression), "not") == 0) {
 		anti = true;
 		expression = expression->op.children[0];
 	}

@@ -2,7 +2,7 @@
 // GB_kron: C<M> = accum (C, kron(A,B))
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -11,22 +11,22 @@
 
 // The input matrices A and B are optionally transposed.
 
-#include "GB_kron.h"
-#include "GB_mxm.h"
-#include "GB_transpose.h"
-#include "GB_accum_mask.h"
-
-#define GB_FREE_WORK        \
+#define GB_FREE_WORKSPACE   \
 {                           \
-    GB_phbix_free (AT) ;    \
-    GB_phbix_free (BT) ;    \
+    GB_Matrix_free (&AT) ;  \
+    GB_Matrix_free (&BT) ;  \
 }
 
 #define GB_FREE_ALL         \
 {                           \
-    GB_FREE_WORK ;          \
-    GB_phbix_free (T) ;     \
+    GB_FREE_WORKSPACE ;     \
+    GB_Matrix_free (&T) ;   \
 }
+
+#include "GB_kron.h"
+#include "GB_mxm.h"
+#include "GB_transpose.h"
+#include "GB_accum_mask.h"
 
 GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
 (
@@ -53,9 +53,7 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
 
     GrB_Info info ;
     struct GB_Matrix_opaque T_header, AT_header, BT_header ;
-    GrB_Matrix T  = GB_clear_static_header (&T_header) ;
-    GrB_Matrix AT = GB_clear_static_header (&AT_header) ;
-    GrB_Matrix BT = GB_clear_static_header (&BT_header) ;
+    GrB_Matrix T = NULL, AT = NULL, BT = NULL ;
     GrB_BinaryOp op = op_in ;
 
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;
@@ -92,9 +90,9 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     int64_t bnrows = (B_transpose) ? GB_NCOLS (B) : GB_NROWS (B) ;
     int64_t bncols = (B_transpose) ? GB_NROWS (B) : GB_NCOLS (B) ;
     GrB_Index cnrows, cncols, cnz = 0 ;
-    bool ok = GB_Index_multiply (&cnrows, anrows,  bnrows) ;
-    ok = ok && GB_Index_multiply (&cncols, ancols,  bncols) ;
-    ok = ok && GB_Index_multiply (&cnz, GB_nnz (A), GB_nnz (B)) ;
+    bool ok = GB_int64_multiply (&cnrows, anrows,  bnrows) ;
+    ok = ok && GB_int64_multiply (&cncols, ancols,  bncols) ;
+    ok = ok && GB_int64_multiply (&cnz, GB_nnz (A), GB_nnz (B)) ;
     if (!ok || GB_NROWS (C) != cnrows || GB_NCOLS (C) != cncols)
     { 
         GB_ERROR (GrB_DIMENSION_MISMATCH, "%s:\n"
@@ -141,6 +139,7 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     { 
         // AT = A' and typecast to op->xtype
         GBURBLE ("(A transpose) ") ;
+        GB_CLEAR_STATIC_HEADER (AT, &AT_header) ;
         GB_OK (GB_transpose_cast (AT, op->xtype, T_is_csc, A, A_is_pattern,
             Context)) ;
         ASSERT_MATRIX_OK (AT, "AT kron", GB0) ;
@@ -150,6 +149,7 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     { 
         // BT = B' and typecast to op->ytype
         GBURBLE ("(B transpose) ") ;
+        GB_CLEAR_STATIC_HEADER (BT, &BT_header) ;
         GB_OK (GB_transpose_cast (BT, op->ytype, T_is_csc, B, B_is_pattern,
             Context)) ;
         ASSERT_MATRIX_OK (BT, "BT kron", GB0) ;
@@ -159,11 +159,12 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     // T = kron(A,B)
     //--------------------------------------------------------------------------
 
+    GB_CLEAR_STATIC_HEADER (T, &T_header) ;
     GB_OK (GB_kroner (T, T_is_csc, op,
         A_transpose ? AT : A, A_is_pattern,
         B_transpose ? BT : B, B_is_pattern, Context)) ;
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     ASSERT_MATRIX_OK (T, "T = kron(A,B)", GB0) ;
 
     //--------------------------------------------------------------------------

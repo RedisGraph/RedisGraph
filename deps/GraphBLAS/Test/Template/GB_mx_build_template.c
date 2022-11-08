@@ -2,7 +2,7 @@
 // GB_mx_build_template: build a sparse vector or matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -55,7 +55,7 @@
 #define CSC_ARG 7
 #define FREE_WORK                   \
 {                                   \
-    GxB_Scalar_free_(&scalar) ;     \
+    GrB_Scalar_free_(&scalar) ;     \
     GrB_Matrix_free_(&C) ;          \
 }
 #else
@@ -69,7 +69,7 @@
 #define TYPE_ARG 4
 #define FREE_WORK                   \
 {                                   \
-    GxB_Scalar_free_(&scalar) ;     \
+    GrB_Scalar_free_(&scalar) ;     \
     GrB_Vector_free_(&C) ;          \
 }
 #endif
@@ -139,7 +139,7 @@ GrB_Info builder
 {
 
     GrB_Info info ;
-    GxB_Scalar scalar = NULL ;
+    GrB_Scalar scalar = NULL ;
     (*Chandle) = NULL ;
 
     // create the GraphBLAS output object C
@@ -148,14 +148,14 @@ GrB_Info builder
     if (C_is_csc)
     {
         // create a hypersparse CSC matrix
-        info = GB_new (Chandle, false, // sparse/hyper, new mx header
+        info = GB_new (Chandle, // sparse/hyper, new header
             ctype, nrows, ncols, GB_Ap_calloc,
             true, sparsity, GxB_HYPER_DEFAULT, 1, Context) ;
     }
     else
     {
         // create a hypersparse CSR matrix
-        info = GB_new (Chandle, false, // sparse/hyper, new mx header
+        info = GB_new (Chandle, // sparse/hyper, new header
             ctype, ncols, nrows, GB_Ap_calloc,
             false, sparsity, GxB_HYPER_DEFAULT, 1, Context) ;
     }
@@ -177,16 +177,16 @@ GrB_Info builder
     if (scalar_build)
     {
 
-        OK1 (GxB_Scalar_new (&scalar, xtype)) ;
+        OK1 (GrB_Scalar_new (&scalar, xtype)) ;
 
         // build an iso matrix or vector from the tuples and the scalar
         #ifdef MATRIX
         #define BUILD(prefix,suffix,type)                                   \
-            OK1 (GxB_Scalar_setElement ## suffix (scalar, * (type *) X)) ;  \
+            OK1 (prefix ## Scalar_setElement ## suffix (scalar, * (type *) X)) ;  \
             OK1 (GxB_Matrix_build_Scalar (C, I, J, scalar, ni)) ;
         #else
         #define BUILD(prefix,suffix,type)                                   \
-            OK1 (GxB_Scalar_setElement ## suffix (scalar, * (type *) X)) ;  \
+            OK1 (prefix ## Scalar_setElement ## suffix (scalar, * (type *) X)) ;  \
             OK1 (GxB_Vector_build_Scalar (C, I,    scalar, ni)) ;
         #endif
 
@@ -247,7 +247,7 @@ GrB_Info builder
         }
     }
 
-    GxB_Scalar_free_(&scalar) ;
+    GrB_Scalar_free_(&scalar) ;
     return (GrB_SUCCESS) ;
 }
 
@@ -266,7 +266,7 @@ void mexFunction
     malloc_debug = GB_mx_get_global (true) ;
     GrB_Index *I = NULL, ni = 0, I_range [3] ;
     GrB_Index *J = NULL, nj = 0, J_range [3] ;
-    GxB_Scalar scalar = NULL ;
+    GrB_Scalar scalar = NULL ;
     bool is_list ; 
     #ifdef MATRIX
     GrB_Matrix C = NULL ;

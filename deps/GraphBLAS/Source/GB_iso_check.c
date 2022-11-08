@@ -2,7 +2,7 @@
 // GB_iso_check: check if all entries in a matrix are identical
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -75,7 +75,7 @@ bool GB_iso_check               // return true if A is iso, false otherwise
 
     bool done = false ;
 
-    #ifndef GBCOMPACT
+    #ifndef GBCUDA_DEV
     {
 
         #define GB_GET_FIRST_VALUE(atype_t, a, Ax)                      \

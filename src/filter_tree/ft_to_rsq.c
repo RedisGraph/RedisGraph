@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -55,13 +55,12 @@ static RSQNode *_StringRangeToQueryNode
 
 	if(max != NULL && min != NULL && strcmp(max, min) == 0) {
 		// exact match
-		child = RediSearch_CreateTokenNode(idx, field, max);
+		child = RediSearch_CreateTagTokenNode(idx, max);
 	} else {
 		// range search
 		max = (max == NULL) ? RSLECRANGE_INF     : max;
 		min = (min == NULL) ? RSLEXRANGE_NEG_INF : min;
-
-		child = RediSearch_CreateLexRangeNode(idx, field, min, max,
+		child = RediSearch_CreateTagLexRangeNode(idx, min, max,
 				range->include_min, range->include_max);
 	}
 
@@ -157,15 +156,13 @@ static bool _predicateTreeToRange
 	ASSERT(string_ranges  != NULL);
 	ASSERT(numeric_ranges != NULL);
 
-	// simple predicate trees are used to build up a range object
-	ASSERT(AR_EXP_IsConstant(tree->pred.rhs));
-
 	// handel filters of form: 'n.v op constant'
 	char *prop = NULL;
 	// TODO: we might not need this check
 	if(!AR_EXP_IsAttribute(tree->pred.lhs, &prop)) return false;
 
-	SIValue c = tree->pred.rhs->operand.constant;
+	ASSERT(!AR_EXP_ContainsVariadic(tree->pred.rhs));
+	SIValue c = AR_EXP_Evaluate(tree->pred.rhs, NULL);
 	SIType  t = SI_TYPE(c);
 
 	// make sure constant is an indexable type
@@ -179,6 +176,10 @@ static bool _predicateTreeToRange
 	// get or create range object for alias.prop
 	// constant is either numeric or boolean
 	if(t & SI_NUMERIC || t == T_BOOL) {
+		// TODO: remove when RediSearch INT64 indexing bug fixed
+		if(t == T_INT64 && c.longval & 0x7FF0000000000000) {
+			return false;
+		}
 		nr = raxFind(numeric_ranges, (unsigned char *)prop, prop_len);
 		// create if doesn't exists
 		if(nr == raxNotFound) {
@@ -409,14 +410,14 @@ static bool _FilterTreePredicateToQueryNode
 	*root = NULL;
 
 	// expecting left hand side to be an attribute access
+	bool     res        =  true;
 	RSQNode  *node      =  NULL;
 	char     *field     =  NULL;
 	bool     attribute  =  AR_EXP_IsAttribute(tree->pred.lhs,  &field);
 	ASSERT(attribute == true);
 
 	// validate const type
-	ASSERT(AR_EXP_IsConstant(tree->pred.rhs));
-	SIValue v = tree->pred.rhs->operand.constant;
+	SIValue v = AR_EXP_Evaluate(tree->pred.rhs, NULL);
 	SIType t = SI_TYPE(v);
 	if(!(t & SI_INDEXABLE)) {
 		// none indexable type, consult with the none indexed field
@@ -479,6 +480,10 @@ static bool _FilterTreePredicateToQueryNode
 				break;
 			case OP_EQUAL:  // ==
 				node = RediSearch_CreateNumericNode(idx, field, d, d, true, true);
+				// TODO: remove when RediSearch INT64 indexing bug fixed
+				if(t == T_INT64 && v.longval & 0x7FF0000000000000) {
+					res = false;
+				}
 				break;
 			default:
 				ASSERT(false && "unexpected operation");
@@ -486,7 +491,7 @@ static bool _FilterTreePredicateToQueryNode
 	}
 
 	*root = node;
-	return true;
+	return res;
 }
 
 // returns true if 'tree' been converted into an index query, false otherwise
@@ -504,8 +509,13 @@ static bool _FilterTreeToQueryNode
 	*root = NULL;
 
 	if(isInFilter(tree)) {
-		*root = _FilterTreeToInQueryNode(tree, idx);
-		return true;
+		bool attribute = AR_EXP_IsAttribute(tree->exp.exp->op.children[0], NULL);
+		if(attribute) {
+			*root = _FilterTreeToInQueryNode(tree, idx);
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	if(isDistanceFilter(tree)) {
@@ -562,8 +572,7 @@ RSQNode *FilterTreeToQueryNode
 	for(uint i = 0; i < tree_count; i++) {
 		RSQNode *node = NULL;
 		bool resolved_filter = _FilterTreeToQueryNode(&node, trees[i], idx);
-		ASSERT(node != NULL);
-		array_append(nodes, node);
+		if(node != NULL) array_append(nodes, node);
 		if(resolved_filter) {
 			FilterTree_Free(trees[i]);
 			// remove converted filter from filters array

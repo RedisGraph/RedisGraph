@@ -2,7 +2,7 @@
 // GB_hyper_prune: remove empty vectors from a hypersparse Ap, Ah list
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -17,9 +17,10 @@
 GrB_Info GB_hyper_prune
 (
     // output, not allocated on input:
-    int64_t *restrict *p_Ap, size_t *p_Ap_size,      // size nvec+1
-    int64_t *restrict *p_Ah, size_t *p_Ah_size,      // size nvec
+    int64_t *restrict *p_Ap, size_t *p_Ap_size,      // size plen+1
+    int64_t *restrict *p_Ah, size_t *p_Ah_size,      // size plen
     int64_t *p_nvec,                // # of vectors, all nonempty
+    int64_t *p_plen,                // size of Ap and Ah
     // input, not modified
     const int64_t *Ap_old,          // size nvec_old+1
     const int64_t *Ah_old,          // size nvec_old
@@ -57,7 +58,7 @@ GrB_Info GB_hyper_prune
     // allocate workspace
     //--------------------------------------------------------------------------
 
-    W = GB_MALLOC_WERK (nvec_old+1, int64_t, &W_size) ;
+    W = GB_MALLOC_WORK (nvec_old+1, int64_t, &W_size) ;
     if (W == NULL)
     { 
         // out of memory
@@ -83,12 +84,13 @@ GrB_Info GB_hyper_prune
     // allocate the result
     //--------------------------------------------------------------------------
 
-    Ap = GB_MALLOC (nvec+1, int64_t, &Ap_size) ;
-    Ah = GB_MALLOC (nvec  , int64_t, &Ah_size) ;
+    int64_t plen = GB_IMAX (1, nvec) ;
+    Ap = GB_MALLOC (plen+1, int64_t, &Ap_size) ;
+    Ah = GB_MALLOC (plen  , int64_t, &Ah_size) ;
     if (Ap == NULL || Ah == NULL)
     { 
         // out of memory
-        GB_FREE_WERK (&W, W_size) ;
+        GB_FREE_WORK (&W, W_size) ;
         GB_FREE (&Ap, Ap_size) ;
         GB_FREE (&Ah, Ah_size) ;
         return (GrB_OUT_OF_MEMORY) ;
@@ -115,10 +117,11 @@ GrB_Info GB_hyper_prune
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WERK (&W, W_size) ;
+    GB_FREE_WORK (&W, W_size) ;
     (*p_Ap) = Ap ; (*p_Ap_size) = Ap_size ;
     (*p_Ah) = Ah ; (*p_Ah_size) = Ah_size ;
     (*p_nvec) = nvec ;
+    (*p_plen) = plen ;
     return (GrB_SUCCESS) ;
 }
 

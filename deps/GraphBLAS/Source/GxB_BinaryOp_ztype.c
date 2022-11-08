@@ -2,10 +2,12 @@
 // GxB_BinaryOp_ztype: return the type of z for z=f(x,y)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
+
+// NOTE: this function is historical.  Use GxB_BinaryOp_ztype_name instead.
 
 #include "GB.h"
 
@@ -30,6 +32,7 @@ GrB_Info GxB_BinaryOp_ztype         // return the type of z
     //--------------------------------------------------------------------------
 
     (*ztype) = binaryop->ztype ;
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

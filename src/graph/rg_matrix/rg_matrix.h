@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -34,7 +34,7 @@ typedef _RG_Matrix *RG_Matrix;
 
 #define RG_MATRIX_MAINTAIN_TRANSPOSE(C) (C)->transposed != NULL
 
-#define RG_MATRIX_MULTI_EDGE(M) ({ \
+#define RG_MATRIX_MULTI_EDGE(M) __extension__({ \
 	GrB_Type t;                    \
 	GrB_Matrix m = RG_MATRIX_M(M); \
 	GxB_Matrix_type(&t, m);        \
@@ -125,7 +125,7 @@ typedef _RG_Matrix *RG_Matrix;
 //------------------------------------------------------------------------------
 
 struct _RG_Matrix {
-	bool dirty;                         // Indicates if matrix requires sync
+	volatile bool dirty;                // Indicates if matrix requires sync
 	GrB_Matrix matrix;                  // Underlying GrB_Matrix
 	GrB_Matrix delta_plus;              // Pending additions
 	GrB_Matrix delta_minus;             // Pending deletions
@@ -156,6 +156,14 @@ void RG_Matrix_setDirty
 bool RG_Matrix_isDirty
 (
 	const RG_Matrix C
+);
+
+// checks if C is fully synced
+// a synced delta matrix does not contains any entries in
+// either its delta-plus and delta-minus internal matrices
+bool RG_Matrix_Synced
+(
+	const RG_Matrix C  // matrix to inquery
 );
 
 // locks the matrix
@@ -295,6 +303,13 @@ GrB_Info RG_Matrix_wait
 (
 	RG_Matrix C,
 	bool force_sync
+);
+
+// get the type of the M matrix
+GrB_Info RG_Matrix_type
+(
+	GrB_Type *type,
+	RG_Matrix A
 );
 
 void RG_Matrix_free

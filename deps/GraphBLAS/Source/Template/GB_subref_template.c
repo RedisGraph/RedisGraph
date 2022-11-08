@@ -2,7 +2,7 @@
 // GB_subref_template: C = A(I,J)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -90,7 +90,7 @@
             // get C(:,kC)
             //------------------------------------------------------------------
 
-            #if defined ( GB_PHASE_1_OF_2 )
+            #if defined ( GB_ANALYSIS_PHASE )
             // phase1 simply counts the # of entries in C(*,kC).
             int64_t clen = 0 ;
             #else
@@ -193,7 +193,7 @@
                     ASSERT (pA     == Ap_start [kC]) ;
                     ASSERT (pA_end == Ap_end   [kC]) ;
                     // copy the entire vector and construct indices
-                    #if defined ( GB_PHASE_1_OF_2 )
+                    #if defined ( GB_ANALYSIS_PHASE )
                     clen = ilen ;
                     #else
                     for (int64_t k = 0 ; k < ilen ; k++)
@@ -216,7 +216,7 @@
                     ASSERT (pA     == Ap_start [kC]) ;
                     ASSERT (pA_end == Ap_end   [kC]) ;
                     // scan I and get the entry in A(:,kA) via direct lookup
-                    #if defined ( GB_PHASE_1_OF_2 )
+                    #if defined ( GB_ANALYSIS_PHASE )
                     clen = ilen ;
                     #else
                     for (int64_t k = 0 ; k < ilen ; k++)
@@ -246,7 +246,7 @@
                     ASSERT (alen == 1) ;
                     ASSERT (nI == 1) ;
                     ASSERT (GB_Ai (pA) == GB_ijlist (I, 0, Ikind, Icolon)) ;
-                    #if defined ( GB_PHASE_1_OF_2 )
+                    #if defined ( GB_ANALYSIS_PHASE )
                     clen = 1 ;
                     #else
                     Ci [pC] = 0 ;
@@ -262,7 +262,7 @@
                     // Probably memory bound since it is just memcpy's.
 
                     ASSERT (Ikind == GB_ALL && ibegin == 0) ;
-                    #if defined ( GB_PHASE_1_OF_2 )
+                    #if defined ( GB_ANALYSIS_PHASE )
                     clen = alen ;
                     #else
                     #if defined ( GB_SYMBOLIC )
@@ -295,7 +295,7 @@
                     // Time: much faster.  Good speedup too.
 
                     ASSERT (Ikind == GB_RANGE) ;
-                    #if defined ( GB_PHASE_1_OF_2 )
+                    #if defined ( GB_ANALYSIS_PHASE )
                     clen = alen ;
                     #else
                     for (int64_t k = 0 ; k < alen ; k++)
@@ -354,7 +354,7 @@
                         if (found)
                         { 
                             ASSERT (i == GB_Ai (pleft)) ;
-                            #if defined ( GB_PHASE_1_OF_2 )
+                            #if defined ( GB_ANALYSIS_PHASE )
                             clen++ ;
                             #else
                             ASSERT (pC < pC_end) ;
@@ -387,7 +387,7 @@
                         if (i % iinc == 0)
                         { 
                             // i is in the sequence ibegin:iinc:iend
-                            #if defined ( GB_PHASE_1_OF_2 )
+                            #if defined ( GB_ANALYSIS_PHASE )
                             clen++ ;
                             #else
                             int64_t inew = i / iinc ;
@@ -421,7 +421,7 @@
                         if (i % inc == 0)
                         { 
                             // i is in the sequence ibegin:iinc:iend
-                            #if defined ( GB_PHASE_1_OF_2 )
+                            #if defined ( GB_ANALYSIS_PHASE )
                             clen++ ;
                             #else
                             int64_t inew = i / inc ;
@@ -444,7 +444,7 @@
                     // Time: much faster.  Good speedup.
 
                     ASSERT (Ikind == GB_STRIDE && iinc == -1) ;
-                    #if defined ( GB_PHASE_1_OF_2 )
+                    #if defined ( GB_ANALYSIS_PHASE )
                     clen = alen ;
                     #else
                     for (int64_t k = alen - 1 ; k >= 0 ; k--)
@@ -483,7 +483,7 @@
                         { 
                             ASSERT (inew >= 0 && inew < nI) ;
                             ASSERT (i == GB_ijlist (I, inew, Ikind, Icolon)) ;
-                            #if defined ( GB_PHASE_1_OF_2 )
+                            #if defined ( GB_ANALYSIS_PHASE )
                             clen++ ;
                             #else
                             Ci [pC] = inew ;
@@ -539,7 +539,7 @@
                         { 
                             ASSERT (inew >= 0 && inew < nI) ;
                             ASSERT (i == GB_ijlist (I, inew, Ikind, Icolon)) ;
-                            #if defined ( GB_PHASE_1_OF_2 )
+                            #if defined ( GB_ANALYSIS_PHASE )
                             clen++ ;
                             #else
                             Ci [pC] = inew ;
@@ -574,7 +574,7 @@
                         { 
                             ASSERT (inew >= 0 && inew < nI) ;
                             ASSERT (i == GB_ijlist (I, inew, Ikind, Icolon)) ;
-                            #if defined ( GB_PHASE_1_OF_2 )
+                            #if defined ( GB_ANALYSIS_PHASE )
                             clen++ ;
                             #else
                             Ci [pC] = inew ;
@@ -598,7 +598,7 @@
             // final count of nnz (C (:,j))
             //------------------------------------------------------------------
 
-            #if defined ( GB_PHASE_1_OF_2 )
+            #if defined ( GB_ANALYSIS_PHASE )
             if (fine_task)
             { 
                 TaskList [taskid].pC = clen ;

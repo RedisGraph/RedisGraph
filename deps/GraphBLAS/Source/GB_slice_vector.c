@@ -2,7 +2,7 @@
 // GB_slice_vector:  slice a vector for GB_add, GB_emult, and GB_mask
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -81,13 +81,13 @@ void GB_slice_vector
     int64_t iright = vlen-1 ;
     int64_t i = 0 ;
 
-    int64_t aknz = pA_end - pA_start ;
-    int64_t bknz = pB_end - pB_start ;
-    int64_t mknz = pM_end - pM_start ;      // zero if M not present
+    const int64_t aknz = pA_end - pA_start ;
+    const int64_t bknz = pB_end - pB_start ;
+    const int64_t mknz = pM_end - pM_start ;      // zero if M not present
 
-    bool a_empty = (aknz == 0) ;
-    bool b_empty = (bknz == 0) ;
-    bool m_empty = (mknz == 0) ;
+    const bool a_empty = (aknz == 0) ;
+    const bool b_empty = (bknz == 0) ;
+    const bool m_empty = (mknz == 0) ;
 
     int64_t pM = (m_empty) ? -1 : pM_start ;
     int64_t pA = (a_empty) ? -1 : pA_start ;

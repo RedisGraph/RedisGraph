@@ -42,6 +42,8 @@ class ExecutionPlanCloneTest: public ::testing::Test {
 	}
 
 	static void build_ast_and_plan(const char *query, AST **ast, ExecutionPlan **plan) {
+		QueryCtx *ctx = QueryCtx_GetQueryCtx();
+		ctx->query_data.query_no_params = query;
 		cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 		*ast = AST_Build(parse_result);
 		*plan = NewExecutionPlan();

@@ -1,8 +1,7 @@
-import os
-from RLTest import Env
-from redisgraph import Graph
+from common import *
 
 graph = None
+
 
 class testTraversalConstruction():
     def __init__(self):
@@ -10,7 +9,9 @@ class testTraversalConstruction():
 
         self.env = Env(decodeResponses=True)
         redis_con = self.env.getConnection()
-        graph = Graph("TraversalConstruction", redis_con)
+        graph = Graph(redis_con, "TraversalConstruction")
+        # Create the graph
+        graph.query("RETURN 1")
 
     # Test differing starting points for the same search pattern
     def test_starting_point(self):
@@ -132,3 +133,22 @@ class testTraversalConstruction():
         ops.reverse()
         self.env.assertTrue("Index Scan" in ops[0]) # start with index scan
 
+    def test_variable_length_traversal_placement(self):
+        # cyclic traversal followed by variable-length traversal
+        q = """MATCH (b)<-[*]-(a:L {v: 5})<--(a) WHERE b.v = 10 RETURN a"""
+        plan = graph.execution_plan(q)
+        ops = plan.split(os.linesep)
+        ops.reverse()
+        self.env.assertTrue("Node By Label Scan | (a:L)" in ops[0]) # scan A
+        self.env.assertTrue("Filter" in ops[1]) # filter A
+        self.env.assertTrue("Expand Into" in ops[2]) # traverse from A to itself
+        self.env.assertTrue("Conditional Variable Length Traverse" in ops[3]) # var-len traverse from A to B
+
+        # bidirectional variable-length traversal
+        q = """MATCH (a:L {v: 5})-[*]-(b:L) WHERE a <> b RETURN b"""
+        plan = graph.execution_plan(q)
+        ops = plan.split(os.linesep)
+        ops.reverse()
+        self.env.assertTrue("Node By Label Scan | (a:L)" in ops[0]) # scan A
+        self.env.assertTrue("Filter" in ops[1]) # filter A
+        self.env.assertTrue("Conditional Variable Length Traverse" in ops[2]) # bidirectional var-len traverse from A to B

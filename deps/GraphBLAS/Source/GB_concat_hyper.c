@@ -2,7 +2,7 @@
 // GB_concat_hyper: concatenate an array of matrices into a hypersparse matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -10,9 +10,9 @@
 #define GB_FREE_ALL                 \
 {                                   \
     GB_FREE (&Wi, Wi_size) ;        \
-    GB_FREE_WERK (&Wj, Wj_size) ;   \
-    GB_FREE_WERK (&Wx, Wx_size) ;   \
-    GB_phbix_free (C) ;             \
+    GB_FREE_WORK (&Wj, Wj_size) ;   \
+    GB_FREE_WORK (&Wx, Wx_size) ;   \
+    GB_phybix_free (C) ;            \
 }
 
 #include "GB_concat.h"
@@ -55,14 +55,13 @@ GrB_Info GB_concat_hyper            // concatenate into a hypersparse matrix
     float bitmap_switch = C->bitmap_switch ;
     int sparsity_control = C->sparsity_control ;
 
-    bool static_header = C->static_header ;
-    GB_phbix_free (C) ;
+    GB_phybix_free (C) ;
 
     Wi = GB_MALLOC (cnz, int64_t, &Wi_size) ;               // becomes C->i
-    Wj = GB_MALLOC_WERK (cnz, int64_t, &Wj_size) ;          // freed below
+    Wj = GB_MALLOC_WORK (cnz, int64_t, &Wj_size) ;          // freed below
     if (!C_iso)
     { 
-        Wx = GB_MALLOC_WERK (cnz * csize, GB_void, &Wx_size) ;  // freed below
+        Wx = GB_MALLOC_WORK (cnz * csize, GB_void, &Wx_size) ;  // freed below
     }
     if (Wi == NULL || Wj == NULL || (!C_iso && Wx == NULL))
     { 
@@ -206,13 +205,13 @@ GrB_Info GB_concat_hyper            // concatenate into a hypersparse matrix
         cnz,                    // # of tuples
         NULL,                   // no duplicates, so dup is NUL
         ctype,                  // the type of Wx (no typecasting)
+        true,                   // burble is allowed
         Context
     )) ;
 
     C->hyper_switch = hyper_switch ;
     C->bitmap_switch = bitmap_switch ;
     C->sparsity_control = sparsity_control ;
-    ASSERT (C->static_header == static_header) ;
     ASSERT (GB_IS_HYPERSPARSE (C)) ;
     ASSERT_MATRIX_OK (C, "C from concat hyper", GB0) ;
 

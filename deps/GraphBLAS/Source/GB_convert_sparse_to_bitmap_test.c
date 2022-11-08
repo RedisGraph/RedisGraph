@@ -2,7 +2,7 @@
 // GB_convert_sparse_to_bitmap_test: test conversion of hyper/sparse to bitmap
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -35,7 +35,6 @@ bool GB_convert_sparse_to_bitmap_test    // test for hyper/sparse to bitmap
     float nnz_dense = ((float) vlen) * ((float) vdim) ;
 
     // A should switch to bitmap if the following condition is true:
-    return (nnz > bitmap_switch * nnz_dense &&
-            nnz_dense < (float) GxB_INDEX_MAX) ;
+    return (nnz > bitmap_switch * nnz_dense && nnz_dense < (float) GB_NMAX) ;
 }
 

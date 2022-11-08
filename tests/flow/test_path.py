@@ -1,24 +1,19 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node, Edge, Path
+from common import *
 from collections import Counter
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../..')
 from demo import QueryInfo
 
 GRAPH_ID = "G"
 redis_graph = None
+
 
 class testPath(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
 
     def path_to_string(self, path):
         str_path = ", ".join([str(obj) for obj in path])
@@ -235,3 +230,99 @@ class testPath(FlowTestsBase):
         result = redis_graph.query(query)
         expected_result = [[1, 'new']]
         self.env.assertEqual(result.result_set, expected_result)
+
+    # Test path deletion
+    def test_path_deletion(self):
+        # Test delete empty path
+        query = """CREATE (a:X), (b:Y)"""
+        redis_graph.query(query)
+        query = """MATCH p = (a:X)-[r:R]-(b:Y) DELETE p"""
+        result = redis_graph.query(query)
+        expected_result = []
+        self.env.assertEquals(result.result_set, expected_result)
+        query = """MATCH (a:X) DELETE a"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.nodes_deleted, 1)
+        query = """MATCH (b:Y) DELETE b"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.nodes_deleted, 1)
+
+        # Test delete empty path
+        query = """MATCH p = (a:X)-[r:R]-(b:Y) DELETE p"""
+        result = redis_graph.query(query)
+        expected_result = []
+        self.env.assertEquals(result.result_set, expected_result)
+
+        # Test delete simple path
+        query = """CREATE (a:X), (b:Y)"""
+        redis_graph.query(query)
+        query = """MATCH (a:X), (b:Y) create (a)-[r:R]->(b)"""
+        redis_graph.query(query)
+        query = """MATCH p = (a:X)-[r:R]-(b:Y) DELETE p"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.nodes_deleted, 2)
+        self.env.assertEquals(result.relationships_deleted, 1)
+
+        # Test delete 2 nodes, 2 relationships
+        query = """CREATE (a:X), (b:Y)"""
+        redis_graph.query(query)
+        query = """MATCH (a:X), (b:Y) create (a)-[r:R]->(b)"""
+        redis_graph.query(query)
+        query = """MATCH (a:X), (b:Y) create (a)<-[r:R]-(b)"""
+        redis_graph.query(query)
+        query = """MATCH p = (a:X)-[r:R]-(b:Y) DELETE p"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.nodes_deleted, 2)
+        self.env.assertEquals(result.relationships_deleted, 2)
+
+        # Test delete multiple paths
+        query = """CREATE (a:X), (b:Y), (c:Z), (d:W)"""
+        redis_graph.query(query)
+        query = """MATCH (a:X), (b:Y) create (a:X)-[r:R]->(b:Y)"""
+        redis_graph.query(query)
+        query = """MATCH (a:X), (c:Z) create (a:X)-[r:R]->(c:Z)"""
+        redis_graph.query(query)
+        query = """MATCH (c:Z), (d:W) create (a:X)-[r:R]->(c:Z)"""
+        redis_graph.query(query)
+        query = """MATCH p = (n)-[r:R]-(m) DELETE p"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.nodes_deleted, 4)
+        self.env.assertEquals(result.relationships_deleted, 3)
+
+        # Test delete path length 3
+        query = """CREATE (a:X), (b:Y), (c:Z)"""
+        redis_graph.query(query)
+        query = """MATCH (a:X), (b:Y), (c:Z) create (a:X)-[r1:R1]->(b:Y)-[r2:R2]->(c:Z)"""
+        redis_graph.query(query)
+        query = """MATCH p = (n)<-[r1:R1]-(m)-[r2:R2]->(o) DELETE p"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.nodes_deleted, 0)
+        self.env.assertEquals(result.relationships_deleted, 0)
+        query = """MATCH p = (n)-[r1:R1]-(m)-[r2:R2]-(o) DELETE p"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.nodes_deleted, 3)
+        self.env.assertEquals(result.relationships_deleted, 2)
+        
+        # Test delete nodes, edges and path
+        query = """CREATE (a)-[b:B]->(c)"""
+        redis_graph.query(query)
+        query = """MATCH p = (d)-[e]-(f) DELETE d,e,f,p"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.nodes_deleted, 2)
+        self.env.assertEquals(result.relationships_deleted, 1)
+
+        # Test delete nodes
+        query = """CREATE (a)-[b:B]->(c)"""
+        redis_graph.query(query)
+        query = """MATCH p = (d)-[e]-(f) DELETE d,p"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.nodes_deleted, 2)
+        self.env.assertEquals(result.relationships_deleted, 1)
+
+         # Test delete path duplicated match
+        query = """CREATE (a)-[b:B]->(c)"""
+        redis_graph.query(query)
+        query = """MATCH p = (d)-[e]-(f) MATCH q = (g)-[h]-(i) DELETE p,q"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.nodes_deleted, 2)
+        self.env.assertEquals(result.relationships_deleted, 1)

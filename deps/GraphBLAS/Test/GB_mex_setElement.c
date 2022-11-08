@@ -2,7 +2,7 @@
 // GB_mex_setElement: interface for A(i,j) = x
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -14,9 +14,11 @@
 
 #include "GB_mex.h"
 
-#define USAGE "A = GB_mex_setElement (A, I, J, X, debug_wait)"
+#define USAGE "A = GB_mex_setElement (A, I, J, X, debug_wait,scalar)"
 
 bool debug_wait = false ;
+bool do_scalar = false ;
+GrB_Type xtype = NULL ;
 
 #define FREE_ALL                        \
 {                                       \
@@ -28,25 +30,60 @@ bool debug_wait = false ;
 #pragma GCC diagnostic ignored "-Wmissing-prototypes"
 #endif
 
+#define Return(info) { GrB_Scalar_free (&Scalar) ; return (info) ; }
+
+//------------------------------------------------------------------------------
 // set all elements of a matrix and return if an error is encountered
+//------------------------------------------------------------------------------
+
 #define setEl(prefix,name,type)                                             \
 GrB_Info set_ ## name                                                       \
 (GrB_Matrix A, type *X, GrB_Index *I, GrB_Index *J, GrB_Index ni)           \
 {                                                                           \
+    GrB_Info info ;                                                         \
+    GrB_Scalar Scalar = NULL ;                                              \
+    if (do_scalar)                                                          \
+    {                                                                       \
+        info = GrB_Scalar_new (&Scalar, xtype) ;                            \
+        if (info != GrB_SUCCESS)                                            \
+        {                                                                   \
+            Return (info) ;                                                 \
+        }                                                                   \
+    }                                                                       \
     for (int64_t k = 0 ; k < ni ; k++)                                      \
     {                                                                       \
-        GrB_Info info = prefix ## Matrix_setElement_ ## name                \
-            (A, AMPERSAND (X [k]), I [k], J [k]) ;                          \
-        if (info != GrB_SUCCESS) return (info) ;                            \
+        if (do_scalar)                                                      \
+        {                                                                   \
+            info = prefix ## Scalar_setElement_ ## name                     \
+                (Scalar, AMPERSAND (X [k])) ;                               \
+            if (info != GrB_SUCCESS)                                        \
+            {                                                               \
+                Return (info) ;                                             \
+            }                                                               \
+            info = GrB_Matrix_setElement_Scalar                             \
+                (A, Scalar, I [k], J [k]) ;                                 \
+        }                                                                   \
+        else                                                                \
+        {                                                                   \
+            info = prefix ## Matrix_setElement_ ## name                     \
+                (A, AMPERSAND (X [k]), I [k], J [k]) ;                      \
+        }                                                                   \
+        if (info != GrB_SUCCESS)                                            \
+        {                                                                   \
+            Return (info) ;                                                 \
+        }                                                                   \
     }                                                                       \
     if (debug_wait)                                                         \
     {                                                                       \
-        return (GB_wait (A, "A", NULL)) ;                                   \
+        Return (GB_wait (A, "A", NULL)) ;                                   \
     }                                                                       \
-    return (GrB_SUCCESS) ;                                                  \
+    Return (GrB_SUCCESS) ;                                                  \
 }
 
+//------------------------------------------------------------------------------
 // create all the local set_TYPE functions
+//------------------------------------------------------------------------------
+
 #define AMPERSAND(x) x
 setEl (GrB_, BOOL   , bool          ) ;
 setEl (GrB_, INT8   , int8_t        ) ;
@@ -66,26 +103,50 @@ setEl (GxB_, FC64   , GxB_FC64_t    ) ;
 setEl (GrB_, UDT    , GxB_FC64_t) ;
 #undef  AMPERSAND
 
+//------------------------------------------------------------------------------
 // set all elements of a vector and return if an error is encountered
+//------------------------------------------------------------------------------
+
 #define vsetEl(prefix,name,type)                                            \
 GrB_Info vset_ ## name                                                      \
 (GrB_Matrix A, type *X, GrB_Index *I, GrB_Index ni)                         \
 {                                                                           \
+    GrB_Info info ;                                                         \
+    GrB_Scalar Scalar = NULL ;                                              \
+    if (do_scalar)                                                          \
+    {                                                                       \
+        info = GrB_Scalar_new (&Scalar, xtype) ;                            \
+        if (info != GrB_SUCCESS) Return (info) ;                            \
+    }                                                                       \
     GrB_Vector w = (GrB_Vector) A ;                                         \
     for (int64_t k = 0 ; k < ni ; k++)                                      \
     {                                                                       \
-        GrB_Info info = prefix ## Vector_setElement_ ## name                \
-            (w, AMPERSAND (X [k]), I [k]) ;                                 \
-        if (info != GrB_SUCCESS) return (info) ;                            \
+        if (do_scalar)                                                      \
+        {                                                                   \
+            info = prefix ## Scalar_setElement_ ## name                     \
+                (Scalar, AMPERSAND (X [k])) ;                               \
+            if (info != GrB_SUCCESS) Return (info) ;                        \
+            info = GrB_Vector_setElement_Scalar                             \
+                (w, Scalar, I [k]) ;                                        \
+        }                                                                   \
+        else                                                                \
+        {                                                                   \
+            info = prefix ## Vector_setElement_ ## name                     \
+                (w, AMPERSAND (X [k]), I [k]) ;                             \
+        }                                                                   \
+        if (info != GrB_SUCCESS) Return (info) ;                            \
     }                                                                       \
     if (debug_wait)                                                         \
     {                                                                       \
-        return (GB_wait (A, "A", NULL)) ;                                   \
+        Return (GB_wait (A, "A", NULL)) ;                                   \
     }                                                                       \
-    return (GrB_SUCCESS) ;                                                  \
+    Return (GrB_SUCCESS) ;                                                  \
 }
 
+//------------------------------------------------------------------------------
 // create all the local set_TYPE functions
+//------------------------------------------------------------------------------
+
 #define AMPERSAND(x) x
 vsetEl (GrB_, BOOL   , bool          ) ;
 vsetEl (GrB_, INT8   , int8_t        ) ;
@@ -105,6 +166,10 @@ vsetEl (GxB_, FC64   , GxB_FC64_t    ) ;
 vsetEl (GrB_, UDT    , GxB_FC64_t) ;
 #undef  AMPERSAND
 
+//------------------------------------------------------------------------------
+// GB_mex_setElement
+//------------------------------------------------------------------------------
+
 void mexFunction
 (
     int nargout,
@@ -118,13 +183,12 @@ void mexFunction
 
     GrB_Matrix A = NULL ;
     GB_void *Y ;
-    GrB_Type xtype ;
     GrB_Index *I = NULL, ni = 0, I_range [3] ;
     GrB_Index *J = NULL, nj = 0, J_range [3] ;
     bool is_list ;
 
     // check inputs
-    if (nargout > 1 || nargin < 4 || nargin > 5)
+    if (nargout > 1 || nargin < 4 || nargin > 6)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
     }
@@ -188,10 +252,13 @@ void mexFunction
     // get debug_wait (if true, to GB_wait after setElements)
     GET_SCALAR (4, bool, debug_wait, false) ;
 
+    // get do_scalar (if true use GrB_*_setElement_Scalar)
+    GET_SCALAR (5, bool, do_scalar, false) ;
+
     if (mxIsComplex (pargin [3]))
     {
         xtype = Complex ;
-        Y = mxGetComplexDoubles (pargin [3]) ;
+        Y = (GB_void *) mxGetComplexDoubles (pargin [3]) ;
     }
     else
     {

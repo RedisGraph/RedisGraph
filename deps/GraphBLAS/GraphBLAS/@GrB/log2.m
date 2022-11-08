@@ -11,14 +11,14 @@ function [F, E] = log2 (G)
 %
 % See also GrB/pow2, GrB/log, GrB/log1p, GrB/log10, GrB/exp.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 G = G.opaque ;
 
 if (nargout == 1)
     % C = log2 (G)
-    F = GrB (gb_to_real_if_imag_zero (gb_trig ('log2', gbfull (G)))) ;
+    F = GrB (gb_check_imag_zero (gb_trig ('log2', gbfull (G)))) ;
 else
     % [F,E] = log2 (G)
     type = gbtype (G) ;

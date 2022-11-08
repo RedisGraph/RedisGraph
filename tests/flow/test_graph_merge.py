@@ -1,13 +1,9 @@
-import os
+from common import *
 import re
-import sys
-import redis
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
-from base import FlowTestsBase
 
 redis_graph = None
 graph_2 = None
+
 
 class testGraphMergeFlow(FlowTestsBase):
     def __init__(self):
@@ -15,8 +11,8 @@ class testGraphMergeFlow(FlowTestsBase):
         global redis_graph
         global graph_2
         redis_con = self.env.getConnection()
-        redis_graph = Graph("G", redis_con)
-        graph_2 = Graph("H", redis_con)
+        redis_graph = Graph(redis_con, "G")
+        graph_2 = Graph(redis_con, "H")
 
     # Create a single node without any labels or properties.
     def test01_single_node_with_label(self):
@@ -140,6 +136,7 @@ class testGraphMergeFlow(FlowTestsBase):
         self.env.assertEquals(result.labels_added, 0)
         self.env.assertEquals(result.nodes_created, 0)
         self.env.assertEquals(result.properties_set, 1)
+        self.env.assertEquals(result.properties_removed, 1)
         self.env.assertEquals(result.relationships_created, 0)
 
         query = """MATCH (franklin:ACTOR { name: 'Franklin Cover' })-[r:ACTED_IN {rate:5.9, date:1998}]->(almostHeroes:MOVIE) RETURN franklin.name, franklin.age, r.rate, r.date"""
@@ -367,7 +364,7 @@ class testGraphMergeFlow(FlowTestsBase):
 
     def test19_merge_dependency(self):
         redis_con = self.env.getConnection()
-        graph = Graph("M", redis_con)
+        graph = Graph(redis_con, "M")
 
         # Starting with an empty graph.
         # Create 2 nodes and connect them to one another.
@@ -390,7 +387,7 @@ class testGraphMergeFlow(FlowTestsBase):
 
     def test20_merge_edge_dependency(self):
         redis_con = self.env.getConnection()
-        graph = Graph("M", redis_con)
+        graph = Graph(redis_con, "M")
 
         # Starting with an empty graph.
         # Make sure the pattern ()-[]->()-[]->()-[]->() exists.
@@ -413,7 +410,7 @@ class testGraphMergeFlow(FlowTestsBase):
 
     def test21_merge_scan(self):
         redis_con = self.env.getConnection()
-        graph = Graph("M", redis_con)
+        graph = Graph(redis_con, "M")
 
         # Starting with an empty graph.
         # All node scan should see created nodes.
@@ -439,7 +436,7 @@ class testGraphMergeFlow(FlowTestsBase):
 
     def test22_merge_label_scan(self):
         redis_con = self.env.getConnection()
-        graph = Graph("M", redis_con)
+        graph = Graph(redis_con, "M")
 
         # Starting with an empty graph.
         # Make sure the pattern ()-[]->()-[]->()-[]->() exists.
@@ -462,7 +459,7 @@ class testGraphMergeFlow(FlowTestsBase):
 
     def test23_merge_var_traverse(self):
         redis_con = self.env.getConnection()
-        graph = Graph("M", redis_con)
+        graph = Graph(redis_con, "M")
 
         # Starting with an empty graph.
         # Make sure the pattern ()-[]->()-[]->()-[]->() exists.
@@ -485,7 +482,7 @@ class testGraphMergeFlow(FlowTestsBase):
 
     def test24_merge_merge_delete(self):
         redis_con = self.env.getConnection()
-        graph = Graph("M", redis_con)
+        graph = Graph(redis_con, "M")
 
         # Merge followed by an additional merge and ending with a deletion
         # which doesn't have any data to operate on,
@@ -509,7 +506,7 @@ class testGraphMergeFlow(FlowTestsBase):
 
     def test25_merge_with_where(self):
         redis_con = self.env.getConnection()
-        graph = Graph("M", redis_con)
+        graph = Graph(redis_con, "M")
 
         # Index the "L:prop) combination so that the MERGE tree will not have a filter op.
         query = """CREATE INDEX ON :L(prop)"""
@@ -538,7 +535,7 @@ class testGraphMergeFlow(FlowTestsBase):
 
     def test26_merge_set_invalid_property(self):
         redis_con = self.env.getConnection()
-        graph = Graph("M", redis_con)
+        graph = Graph(redis_con, "M")
 
         query = """MATCH p=() MERGE () ON MATCH SET p.prop4 = 5"""
         result = graph.query(query)
@@ -546,11 +543,11 @@ class testGraphMergeFlow(FlowTestsBase):
 
     def test27_merge_create_invalid_entity(self):
         # Skip this test if running under Valgrind, as it causes a memory leak.
-        if Env().envRunner.debugger is not None:
-            Env().skip()
+        if self.env.envRunner.debugger is not None:
+            self.env.skip()
 
         redis_con = self.env.getConnection()
-        graph = Graph("N", redis_con) # Instantiate a new graph.
+        graph = Graph(redis_con, "N") # Instantiate a new graph.
 
         try:
             # Try to create a node with an invalid NULL property.
@@ -574,4 +571,100 @@ class testGraphMergeFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            self.env.assertIn("undefined property", str(e))
+            self.env.assertIn("undefined attribute", str(e))
+
+    def test28_merge_reset_label_scan(self):
+        redis_con = self.env.getConnection()
+        graph = Graph(redis_con, "M")
+
+        # Starting with an empty graph.
+        # Create 2 nodes and connect them to one another.
+        self.env.flush()
+        query = """MERGE (a:Person {name: 'a'}) MERGE (b:Person {name: 'b'}) MERGE (a)-[:FRIEND]->(b)"""
+        result = graph.query(query)
+
+        # Verify that every entity was created.
+        self.env.assertEquals(result.nodes_created, 2)
+        self.env.assertEquals(result.relationships_created, 1)
+        self.env.assertEquals(result.properties_set, 2)
+
+        # Issue a query that forces a Cartesian Product to reset a Node by Label Scan
+        # after a Merge operation has freed that scan once.
+        query = """MERGE (a:Person {name: 'a'})-[:FRIEND]->() WITH NULL AS a MATCH (n1:Person), (n2:Person) MERGE (:NEW)"""
+        result = graph.query(query)
+        self.env.assertEquals(result.nodes_created, 1)
+
+    def test29_merge_resue(self):
+        redis_con = self.env.getConnection()
+        graph = Graph(redis_con, "merge_reuse")
+        query = """
+        CREATE (m:L1 {v: "abc"})
+        CREATE (u:L2 {v: "x"})
+        CREATE (n:L2 {v: "y"})
+        CREATE (:L2 {v: 'y'})
+        CREATE (u)-[:R]->(m), (u)-[:R]->(m)
+        CREATE (n)-[:R]->(m), (n)-[:R]->(m)"""
+        graph.query(query)
+
+        query = """
+        MERGE (m:L1 {v: "abc"})
+        SET m.v = "abcd"
+        WITH m
+        MATCH (u:L2 {v: "x"})
+        MATCH (n:L2 {v: "y"})
+        MERGE (u)-[:R]->(m)<-[:R]-(n)
+        RETURN m.v, u.v, n.v"""
+
+        res = graph.query(query)
+        self.env.assertEquals(res.nodes_created, 0)
+        self.env.assertEquals(res.relationships_created, 0)
+        self.env.assertEquals(res.result_set, [['abcd', 'x', 'y']])
+
+    def test30_record_clone_under_merge(self):
+        # the following operations
+        # 1. node label scan
+        # 2. all node scan
+        # 3. node by id seek
+        # hold the child record clone and enrich it before returning to parent
+        # if the parent is eager then these operation delete the child record
+        # this can lead to free values that is used in other operation
+        # this tests check that this operations using deep clone
+
+        redis_con = self.env.getConnection()
+        graph = Graph(redis_con, "node_label_scan_under_merge")
+
+        # Create data
+        graph.query("""CREATE (:A {name:"A"}), (:B {id:"B"}), (:B {id:"B"})""")
+
+        expected = {"name": "A", "id": "C"}
+        
+        # node label scan under merge
+        query = """UNWIND [{name: "A", id: "C"}] AS x
+                   MATCH (i:A {name:x.name})
+                   WITH *
+                   MATCH (m:B {id:"B"})
+                   MERGE (m)-[:R]->(i)
+                   RETURN x"""
+        res = graph.query(query)
+        self.env.assertEquals(res.result_set[0][0], expected)
+
+        # all node scan under merge
+        query = """UNWIND [{name: "A", id: "C"}] AS x
+                   MATCH (i:A {name:x.name})
+                   WITH *
+                   MATCH (m)
+                   MERGE (m)-[:R]->(i)
+                   RETURN x"""
+        res = graph.query(query)
+        self.env.assertEquals(res.result_set[0][0], expected)
+
+        # node by id seek under merge
+        query = """UNWIND [{name: "A", id: "C"}] AS x
+                   MATCH (i:A {name:x.name})
+                   WITH *
+                   MATCH (m)
+                   WHERE id(m) > 0
+                   MERGE (m)-[:R]->(i)
+                   RETURN x"""
+        res = graph.query(query)
+        self.env.assertEquals(res.result_set[0][0], expected)

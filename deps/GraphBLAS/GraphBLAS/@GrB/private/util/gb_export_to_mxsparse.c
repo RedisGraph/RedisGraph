@@ -2,8 +2,8 @@
 // gb_export_to_mxsparse: export a GrB_Matrix to a built-in sparse matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -141,7 +141,7 @@ mxArray *gb_export_to_mxsparse  // return exported built-in sparse matrix S
         //----------------------------------------------------------------------
 
         GrB_Index Tp_size, Ti_size, Tx_size, type_size ;
-        int64_t nonempty, *Tp, *Ti ;
+        uint64_t *Tp, *Ti ;
         void *Tx ;
 
         // pass jumbled as NULL to indicate the matrix must be sorted
@@ -182,11 +182,11 @@ mxArray *gb_export_to_mxsparse  // return exported built-in sparse matrix S
 
         // set the column pointers
         void *p = mxGetJc (S) ; gb_mxfree (&p) ;
-        mxSetJc (S, Tp) ;
+        mxSetJc (S, (mwIndex *) Tp) ;
 
         // set the row indices
         p = mxGetIr (S) ; gb_mxfree (&p) ;
-        mxSetIr (S, Ti) ;
+        mxSetIr (S, (mwIndex *) Ti) ;
 
         // set the values
         // use mxGetData and mxSetData (best for Octave, fine for MATLAB)

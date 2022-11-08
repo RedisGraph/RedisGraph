@@ -2,7 +2,7 @@
 // GB_convert.h: converting between sparsity structures
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -66,6 +66,7 @@ GB_PUBLIC
 GrB_Info GB_convert_hyper_to_sparse // convert hypersparse to sparse
 (
     GrB_Matrix A,           // matrix to convert from hypersparse to sparse
+    bool do_burble,         // if true, then burble is allowed
     GB_Context Context
 ) ;
 
@@ -264,7 +265,7 @@ GrB_Info GB_conform     // conform a matrix to its desired sparsity structure
     GB_Context Context
 ) ;
 
-static inline char *GB_sparsity_char (int sparsity)
+static inline const char *GB_sparsity_char (int sparsity)
 {
     switch (sparsity)
     {

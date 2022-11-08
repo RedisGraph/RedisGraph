@@ -1,4 +1,4 @@
-function [f,s] = format (arg)
+function [f,s,iso] = format (arg)
 %GRB.FORMAT get/set the default GraphBLAS matrix format.
 %
 % In its ANSI C interface, SuiteSparse:GraphBLAS stores its matrices by
@@ -63,10 +63,10 @@ function [f,s] = format (arg)
 %
 % To query the format for a given GraphBLAS matrix G, use the following
 % (which does not affect the global format setting).  The return value f
-% is 'by row' or 'by col', and s is 'hypersparse', 'sparse', 'bitmap',
-% or 'full'.
+% is 'by row' or 'by col', s is 'hypersparse', 'sparse', 'bitmap',
+% or 'full', and iso is 'iso-valued' or 'non-iso-valued'.
 %
-%   [f,s] = GrB.format (G)
+%   [f,s,iso] = GrB.format (G)
 %
 % Use G = GrB (G, 'by row') or G = GrB (G, 'by col') to change the format
 % of G after it is constructed.
@@ -110,15 +110,20 @@ function [f,s] = format (arg)
 %   GrB.format (G)
 %   GrB.format ('by row') ;      % set the default format to 'by row'
 %   G = GrB.build (1:3, 1:3, 1:3)
-%   [f,s] = GrB.format (G)       % query the format of G
+%   [f,s,iso] = GrB.format (G)   % query the format of G
+%   C = GrB.ones (2^60)          % now that's a big matrix
+%   [f,s,iso] = GrB.format (C)
 %
 % See also GrB.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 if (nargin == 0)
     % f = GrB.format ; get the global format
+    if (nargout > 1)
+        error ('GrB:error', 'usage: f = GrB.format') ;
+    end
     f = gbformat ;
 else
     if (isobject (arg))
@@ -127,6 +132,10 @@ else
     end
     % f = GrB.format (A) ; get the format of A (built-in or GraphBLAS)
     % f = GrB.format (f) ; set the global format for all matrices.
-    [f,s] = gbformat (arg) ;
+    if (nargout <= 1)
+        f = gbformat (arg) ;
+    else
+        [f,s,iso] = gbformat (arg) ;
+    end
 end
 

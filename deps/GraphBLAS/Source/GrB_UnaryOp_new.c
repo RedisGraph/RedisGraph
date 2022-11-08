@@ -2,7 +2,7 @@
 // GrB_UnaryOp_new: create a new user-defined unary operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -25,6 +25,6 @@ GrB_Info GRB (UnaryOp_new)          // create a new user-defined unary operator
     GrB_Type xtype                  // type of input x
 )
 { 
-    return (GB_UnaryOp_new (unaryop, function, ztype, xtype, NULL)) ;
+    return (GxB_UnaryOp_new (unaryop, function, ztype, xtype, NULL, NULL)) ;
 }
 

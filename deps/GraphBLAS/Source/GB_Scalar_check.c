@@ -1,20 +1,20 @@
 //------------------------------------------------------------------------------
-// GB_Scalar_check: print a GraphBLAS GxB_Scalar and check if it is valid
+// GB_Scalar_check: print a GraphBLAS GrB_Scalar and check if it is valid
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
-// GxB_Scalar: same as a GrB_Vector of length 1
+// GrB_Scalar: same as a GrB_Vector of length 1
 
 #include "GB.h"
 
-GrB_Info GB_Scalar_check    // check a GraphBLAS GxB_Scalar
+GrB_Info GB_Scalar_check    // check a GraphBLAS GrB_Scalar
 (
-    const GxB_Scalar s,     // GraphBLAS GxB_Scalar to print and check
-    const char *name,       // name of the GxB_Scalar
+    const GrB_Scalar s,     // GraphBLAS GrB_Scalar to print and check
+    const char *name,       // name of the GrB_Scalar
     int pr,                 // print level
     FILE *f                 // file for output
 )
@@ -32,12 +32,12 @@ GrB_Info GB_Scalar_check    // check a GraphBLAS GxB_Scalar
     }
 
     //--------------------------------------------------------------------------
-    // check GxB_Scalar specific conditions
+    // check GrB_Scalar specific conditions
     //--------------------------------------------------------------------------
 
     if (!GB_SCALAR_OK (s))
     { 
-        GBPR0 ("    GxB_Scalar is invalid [%s]\n", name) ;
+        GBPR0 ("    GrB_Scalar is invalid [%s]\n", name) ;
         return (GrB_INVALID_OBJECT) ;
     }
 

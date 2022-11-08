@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -24,6 +24,12 @@ typedef struct Pair {
 } Pair;
 
 typedef Pair *Map;
+
+// retrieves value under key, map[key]
+// where key is const string 
+// return true and set 'value' if key is in map
+// otherwise return false
+#define MAP_GET(map, key, value) Map_Get(map, SI_ConstStringVal(key), &value)
 
 // create a new map
 SIValue Map_New
@@ -75,9 +81,9 @@ uint Map_KeyCount
 	SIValue map  // map to count number of keys in
 );
 
-// return all keys in map
-// caller should free returned array with array_free
-SIValue *Map_Keys
+// return an SIArray of all keys in map
+// caller should free returned array with SIArray_Free
+SIValue Map_Keys
 (
 	SIValue map  // map to extract keys from
 );

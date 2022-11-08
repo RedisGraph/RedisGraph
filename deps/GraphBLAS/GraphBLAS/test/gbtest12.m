@@ -1,8 +1,8 @@
 function gbtest12
-%GBTEST12 test GrB.eadd, GrB.emult
+%GBTEST12 test GrB.eadd, GrB.emult, GrB.eunion
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 A = sparse (rand (2)) ;
@@ -10,6 +10,7 @@ B = sparse (rand (2)) ;
 
 C = A+B ;
 D = A.*B ;
+F = A-B ;
 
 G = GrB.eadd ('+', A, B) ;
 err = norm (C-G, 1) %#ok<*NOPRT>
@@ -17,6 +18,10 @@ assert (logical (err < 1e-12))
 
 H = GrB.emult ('*', A, B) ;
 err = norm (D-H, 1)
+assert (logical (err < 1e-12))
+
+G = GrB.eunion ('-', A, 0, B, 0) ;
+err = norm (F-G, 1) %#ok<*NOPRT>
 assert (logical (err < 1e-12))
 
 d.kind = 'sparse' ;
@@ -87,6 +92,11 @@ C (M) = T (M) ;
 err = norm (C-G, 1) ;
 assert (err < 1e-12)
 
+G = GrB.eunion ('-', A, 0, B, 0) ;
+F = A-B ;
+err = norm (F-G, 1) ;
+assert (err < 1e-12)
+
 C = sprand (m, n, 0.5) ;
 G = GrB (C) ;
 T = A .* B ;
@@ -94,6 +104,18 @@ C (M) = T (M) ;
 G = GrB.emult (G, M, '*', A, B) ;
 err = norm (C-G, 1) ;
 assert (err < 1e-12)
+
+C1 = 2 - C ;
+C2 = 2 - G ;
+assert (isequal (C1, C2)) ;
+
+C1 = 0 - C ;
+C2 = 0 - G ;
+assert (isequal (C1, C2)) ;
+
+C1 = C - 2 ;
+C2 = C - 2 ;
+assert (isequal (C1, C2)) ;
 
 fprintf ('gbtest12: all tests passed\n') ;
 

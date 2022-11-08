@@ -2,8 +2,8 @@ function C = gb_spones (G, type)
 %GB_SPONES return pattern of GraphBLAS matrix.
 % Implements C = spones (G).
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 if (nargin == 1)
     switch (gbtype (G))
@@ -16,7 +16,7 @@ if (nargin == 1)
     end
 else
     if (~ischar (type))
-        error ('type must be a string') ;
+        error ('GrB:error', 'type must be a string') ;
     end
     op = ['1.' type] ;
 end

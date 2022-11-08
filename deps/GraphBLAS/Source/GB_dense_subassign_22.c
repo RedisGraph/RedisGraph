@@ -2,7 +2,7 @@
 // GB_dense_subassign_22: C += b where C is dense and b is a scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -14,7 +14,7 @@
 #include "GB_dense.h"
 #include "GB_binop.h"
 #include "GB_unused.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_binop__include.h"
 #endif
 
@@ -52,7 +52,7 @@ GrB_Info GB_dense_subassign_22      // C += b where C is dense and b is a scalar
     // get the operator
     //--------------------------------------------------------------------------
 
-    if (accum->opcode == GB_FIRST_opcode || C->iso)
+    if (accum->opcode == GB_FIRST_binop_code || C->iso)
     { 
         // nothing to do
         return (GrB_SUCCESS) ;
@@ -73,7 +73,7 @@ GrB_Info GB_dense_subassign_22      // C += b where C is dense and b is a scalar
     int nthreads = GB_nthreads (cnz, chunk, nthreads_max) ;
 
     //--------------------------------------------------------------------------
-    // typecast the scalar into the same type as Y
+    // typecast the scalar into the same type as the y input of the binary op
     //--------------------------------------------------------------------------
 
     int64_t csize = C->type->size ;
@@ -89,7 +89,7 @@ GrB_Info GB_dense_subassign_22      // C += b where C is dense and b is a scalar
 
     bool done = false ;
 
-    #ifndef GBCOMPACT
+    #ifndef GBCUDA_DEV
 
         //----------------------------------------------------------------------
         // define the worker for the switch factory
@@ -132,7 +132,7 @@ GrB_Info GB_dense_subassign_22      // C += b where C is dense and b is a scalar
         // get operators, functions, workspace, contents of b and C
         //----------------------------------------------------------------------
 
-        GxB_binary_function fadd = accum->function ;
+        GxB_binary_function fadd = accum->binop_function ;
 
         //----------------------------------------------------------------------
         // C += b via function pointers, and typecasting

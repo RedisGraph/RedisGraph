@@ -1,12 +1,11 @@
 /*
- * Copyright 2018-2021 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
 #include "../../util/arr.h"
 #include "../ops/op_filter.h"
-#include "../ops/op_index_scan.h"
 #include "../ops/op_all_node_scan.h"
 #include "../ops/op_node_by_id_seek.h"
 #include "../ops/op_node_by_label_scan.h"
@@ -52,7 +51,7 @@ static bool _idFilter(FT_FilterNode *f, AST_Operator *rel, EntityID *id, bool *r
 	*id = SI_GET_NUMERIC(val);
 
 	// Make sure applied function is ID.
-	if(strcasecmp(op->func_name, "id")) return false;
+	if(strcasecmp(op->f->name, "id")) return false;
 
 	return true;
 }

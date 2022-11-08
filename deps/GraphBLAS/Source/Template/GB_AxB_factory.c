@@ -2,14 +2,14 @@
 // GB_AxB_factory: switch factory for C=A*B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
-// This is used by GB_AxB_saxpy3.c and GB_AxB_dot[234].c to create the
-// built-in versions of sparse matrix-matrix multiplication.  The #include'ing
-// file defines the GB_AxB_WORKER macro, and mult_opcode, add_opcode, xcode,
+// This is used by GB_AxB_saxpy3.c and GB_AxB_dot[234].c to create the built-in
+// versions of sparse matrix-matrix multiplication.  The #include'ing file
+// defines the GB_AxB_WORKER macro, and mult_binop_code, add_binop_code, xcode,
 // ycode, and zcode.
 
 // Three 2nd level switch factories are used:
@@ -35,18 +35,18 @@
 
 // This switch factory is not used to call the ANY_PAIR iso semiring.
 
-ASSERT (mult_opcode != GB_ANY_opcode) ;
+ASSERT (mult_binop_code != GB_ANY_binop_code) ;
 
 {
     //--------------------------------------------------------------------------
     // launch the switch factory
     //--------------------------------------------------------------------------
 
-    switch (mult_opcode)
+    switch (mult_binop_code)
     {
 
         //----------------------------------------------------------------------
-        case GB_FIRST_opcode   :    // z = x
+        case GB_FIRST_binop_code   :    // z = x
         //----------------------------------------------------------------------
 
             // 61 semirings with FIRST:
@@ -59,7 +59,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_SECOND_opcode  :    // z = y
+        case GB_SECOND_binop_code  :    // z = y
         //----------------------------------------------------------------------
 
             // 61 semirings with SECOND:
@@ -72,7 +72,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_MIN_opcode     :    // z = min(x,y)
+        case GB_MIN_binop_code     :    // z = min(x,y)
         //----------------------------------------------------------------------
 
             // 50 semirings: (min,max,plus,times,any) for 10 real non-boolean
@@ -83,7 +83,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_MAX_opcode     :    // z = max(x,y)
+        case GB_MAX_binop_code     :    // z = max(x,y)
         //----------------------------------------------------------------------
 
             // 50 semirings: (min,max,plus,times,any) for 10 real non-boolean
@@ -94,7 +94,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_PLUS_opcode    :    // z = x + y
+        case GB_PLUS_binop_code    :    // z = x + y
         //----------------------------------------------------------------------
 
             // 56 semirings:
@@ -108,7 +108,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_MINUS_opcode   :    // z = x - y
+        case GB_MINUS_binop_code   :    // z = x - y
         //----------------------------------------------------------------------
 
             // 56 semirings:
@@ -122,7 +122,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_RMINUS_opcode   :    // z = y - x (reverse minus)
+        case GB_RMINUS_binop_code   :    // z = y - x (reverse minus)
         //----------------------------------------------------------------------
 
             // 56 semirings:
@@ -135,7 +135,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_TIMES_opcode   :    // z = x * y
+        case GB_TIMES_binop_code   :    // z = x * y
         //----------------------------------------------------------------------
 
             // 56 semirings:
@@ -148,7 +148,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_DIV_opcode   :      // z = x / y
+        case GB_DIV_binop_code   :      // z = x / y
         //----------------------------------------------------------------------
 
             // 56 semirings:
@@ -162,7 +162,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_RDIV_opcode   :     // z = y / x (reverse division)
+        case GB_RDIV_binop_code   :     // z = y / x (reverse division)
         //----------------------------------------------------------------------
 
             // 56 semirings:
@@ -176,7 +176,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_EQ_opcode      :    // z = (x == y)
+        case GB_EQ_binop_code      :    // z = (x == y)
         //----------------------------------------------------------------------
 
             // 55 semirings: (and,or,xor,eq,any) * 11 types (all but complex)
@@ -185,7 +185,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_NE_opcode      :    // z = (x != y)
+        case GB_NE_binop_code      :    // z = (x != y)
         //----------------------------------------------------------------------
 
             // 50 semirings: (and,or,xor,eq,any) * (10 real non-boolean types)
@@ -196,7 +196,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_GT_opcode      :    // z = (x >  y)
+        case GB_GT_binop_code      :    // z = (x >  y)
         //----------------------------------------------------------------------
 
             // 55 semirings: (and,or,xor,eq,any) * 11 types (all but complex)
@@ -205,7 +205,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_LT_opcode      :    // z = (x <  y)
+        case GB_LT_binop_code      :    // z = (x <  y)
         //----------------------------------------------------------------------
 
             // 55 semirings: (and,or,xor,eq,any) * 11 types (all but complex)
@@ -214,7 +214,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_GE_opcode      :    // z = (x >= y)
+        case GB_GE_binop_code      :    // z = (x >= y)
         //----------------------------------------------------------------------
 
             // 55 semirings: (and,or,xor,eq,any) * 11 types (all but complex)
@@ -223,7 +223,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_LE_opcode      :    // z = (x <= y)
+        case GB_LE_binop_code      :    // z = (x <= y)
         //----------------------------------------------------------------------
 
             // 55 semirings: (and,or,xor,eq,any) * 11 types (all but complex)
@@ -232,7 +232,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_PAIR_opcode   :    // z = 1
+        case GB_PAIR_binop_code   :    // z = 1
         //----------------------------------------------------------------------
 
             // 13 semirings with PAIR: (not including ANY_PAIR)
@@ -246,7 +246,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_LOR_opcode     :    // z = x || y
+        case GB_LOR_binop_code     :    // z = x || y
         //----------------------------------------------------------------------
 
             // 15 semirings:
@@ -258,7 +258,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_LAND_opcode    :    // z = x && y
+        case GB_LAND_binop_code    :    // z = x && y
         //----------------------------------------------------------------------
 
             // 15 semirings: same as LOR
@@ -268,7 +268,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_LXOR_opcode    :    // z = x != y
+        case GB_LXOR_binop_code    :    // z = x != y
         //----------------------------------------------------------------------
 
             // 15 semirings: same as LOR
@@ -278,7 +278,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_BOR_opcode :     // z = (x | y), bitwise or
+        case GB_BOR_binop_code :     // z = (x | y), bitwise or
         //----------------------------------------------------------------------
 
             // 16 semirings: (bor,band,bxor,bxnor) * (uint8,16,32,64)
@@ -287,7 +287,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_BAND_opcode :    // z = (x & y), bitwise and
+        case GB_BAND_binop_code :    // z = (x & y), bitwise and
         //----------------------------------------------------------------------
 
             // 16 semirings: (bor,band,bxor,bxnor) * (uint8,16,32,64)
@@ -296,7 +296,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_BXOR_opcode :    // z = (x ^ y), bitwise xor
+        case GB_BXOR_binop_code :    // z = (x ^ y), bitwise xor
         //----------------------------------------------------------------------
 
             // 16 semirings: (bor,band,bxor,bxnor) * (uint8,16,32,64)
@@ -305,7 +305,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_BXNOR_opcode :   // z = ~(x ^ y), bitwise xnor
+        case GB_BXNOR_binop_code :   // z = ~(x ^ y), bitwise xnor
         //----------------------------------------------------------------------
 
             // 16 semirings: (bor,band,bxor,bxnor) * (uint8,16,32,64)
@@ -314,7 +314,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_FIRSTI_opcode   :   // z = first_i(A(i,k),y) == i
+        case GB_FIRSTI_binop_code   :   // z = first_i(A(i,k),y) == i
         //----------------------------------------------------------------------
 
             // 10 semirings: (min,max,times,plus,any) * (int32,int64)
@@ -323,7 +323,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_FIRSTI1_opcode  :   // z = first_i1(A(i,k),y) == i+1
+        case GB_FIRSTI1_binop_code  :   // z = first_i1(A(i,k),y) == i+1
         //----------------------------------------------------------------------
 
             // 10 semirings: (min,max,times,plus,any) * (int32,int64)
@@ -332,8 +332,8 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_FIRSTJ_opcode   :   // z = first_j(A(i,k),y) == k
-        case GB_SECONDI_opcode  :   // z = second_i(x,B(k,j)) == k
+        case GB_FIRSTJ_binop_code   :   // z = first_j(A(i,k),y) == k
+        case GB_SECONDI_binop_code  :   // z = second_i(x,B(k,j)) == k
         //----------------------------------------------------------------------
 
             // 10 semirings: (min,max,times,plus,any) * (int32,int64)
@@ -343,8 +343,8 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_FIRSTJ1_opcode  :   // z = first_j1(A(i,k),y) == k+1
-        case GB_SECONDI1_opcode :   // z = second_i1(x,B(k,j)) == k+1
+        case GB_FIRSTJ1_binop_code  :   // z = first_j1(A(i,k),y) == k+1
+        case GB_SECONDI1_binop_code :   // z = second_i1(x,B(k,j)) == k+1
         //----------------------------------------------------------------------
 
             // 10 semirings: (min,max,times,plus,any) * (int32,int64)
@@ -354,7 +354,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_SECONDJ_opcode  :   // z = second_j(x,B(i,j)) == j
+        case GB_SECONDJ_binop_code  :   // z = second_j(x,B(i,j)) == j
         //----------------------------------------------------------------------
 
             // 10 semirings: (min,max,times,plus,any) * (int32,int64)
@@ -363,7 +363,7 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_SECONDJ1_opcode :   // z = second_j1(x,B(i,j)) == j+1
+        case GB_SECONDJ1_binop_code :   // z = second_j1(x,B(i,j)) == j+1
         //----------------------------------------------------------------------
 
             // 10 semirings: (min,max,times,plus,any) * (int32,int64)

@@ -2,7 +2,7 @@
 // GB_mx_BinaryOp_to_Monoid: convert a binary op to a monoid
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -32,7 +32,7 @@ GrB_Monoid GB_mx_BinaryOp_to_Monoid // monoid, or NULL if error
     {
 
         //----------------------------------------------------------------------
-        case GB_MIN_opcode     :
+        case GB_MIN_binop_code     :
         //----------------------------------------------------------------------
 
             // 11 MIN monoids
@@ -57,7 +57,7 @@ GrB_Monoid GB_mx_BinaryOp_to_Monoid // monoid, or NULL if error
             break ;
 
         //----------------------------------------------------------------------
-        case GB_MAX_opcode     :
+        case GB_MAX_binop_code     :
         //----------------------------------------------------------------------
 
             // 11 MAX monoids
@@ -82,7 +82,7 @@ GrB_Monoid GB_mx_BinaryOp_to_Monoid // monoid, or NULL if error
             break ;
 
         //----------------------------------------------------------------------
-        case GB_PLUS_opcode    :
+        case GB_PLUS_binop_code    :
         //----------------------------------------------------------------------
 
             // 11 PLUS monoids
@@ -109,7 +109,7 @@ GrB_Monoid GB_mx_BinaryOp_to_Monoid // monoid, or NULL if error
             break ;
 
         //----------------------------------------------------------------------
-        case GB_TIMES_opcode   :
+        case GB_TIMES_binop_code   :
         //----------------------------------------------------------------------
 
             // 11 TIMES monoids
@@ -136,7 +136,7 @@ GrB_Monoid GB_mx_BinaryOp_to_Monoid // monoid, or NULL if error
             break ;
 
         //----------------------------------------------------------------------
-        case GB_ANY_opcode   :
+        case GB_ANY_binop_code   :
         //----------------------------------------------------------------------
 
             // 11 ANY monoids
@@ -162,7 +162,7 @@ GrB_Monoid GB_mx_BinaryOp_to_Monoid // monoid, or NULL if error
             break ;
 
         //----------------------------------------------------------------------
-        case GB_LOR_opcode      :
+        case GB_LOR_binop_code      :
         //----------------------------------------------------------------------
 
             // 2 OR boolean monoids
@@ -177,7 +177,7 @@ GrB_Monoid GB_mx_BinaryOp_to_Monoid // monoid, or NULL if error
             break ;
 
         //----------------------------------------------------------------------
-        case GB_LAND_opcode     :
+        case GB_LAND_binop_code     :
         //----------------------------------------------------------------------
 
             // 2 AND boolean monoids
@@ -192,7 +192,7 @@ GrB_Monoid GB_mx_BinaryOp_to_Monoid // monoid, or NULL if error
             break ;
 
         //----------------------------------------------------------------------
-        case GB_LXOR_opcode     : // GrB_LXOR and GxB_LXOR_BOOL (same opcode)
+        case GB_LXOR_binop_code     : // GrB_LXOR and GxB_LXOR_BOOL (same opcode)
         //----------------------------------------------------------------------
 
             // 2 XOR boolean monoids
@@ -207,8 +207,8 @@ GrB_Monoid GB_mx_BinaryOp_to_Monoid // monoid, or NULL if error
 
 
         //----------------------------------------------------------------------
-        case GB_ISEQ_opcode     : // both GrB_EQ_BOOL and GxB_ISEQ_BOOL
-        case GB_EQ_opcode       : // (different opcode)
+        case GB_ISEQ_binop_code     : // both GrB_EQ_BOOL and GxB_ISEQ_BOOL
+        case GB_EQ_binop_code       : // (different opcode)
         //----------------------------------------------------------------------
 
             // EQ and ISEQ boolean monoids
@@ -222,7 +222,7 @@ GrB_Monoid GB_mx_BinaryOp_to_Monoid // monoid, or NULL if error
             break ;
 
         //----------------------------------------------------------------------
-        case GB_BOR_opcode :     // z = (x | y), bitwise or
+        case GB_BOR_binop_code :     // z = (x | y), bitwise or
         //----------------------------------------------------------------------
 
             switch (add->xtype->code)
@@ -236,7 +236,7 @@ GrB_Monoid GB_mx_BinaryOp_to_Monoid // monoid, or NULL if error
             break ;
 
         //----------------------------------------------------------------------
-        case GB_BAND_opcode :    // z = (x & y), bitwise and
+        case GB_BAND_binop_code :    // z = (x & y), bitwise and
         //----------------------------------------------------------------------
 
             switch (add->xtype->code)
@@ -250,7 +250,7 @@ GrB_Monoid GB_mx_BinaryOp_to_Monoid // monoid, or NULL if error
             break ;
 
         //----------------------------------------------------------------------
-        case GB_BXOR_opcode :    // z = (x ^ y), bitwise xor
+        case GB_BXOR_binop_code :    // z = (x ^ y), bitwise xor
         //----------------------------------------------------------------------
 
             switch (add->xtype->code)
@@ -264,7 +264,7 @@ GrB_Monoid GB_mx_BinaryOp_to_Monoid // monoid, or NULL if error
             break ;
 
         //----------------------------------------------------------------------
-        case GB_BXNOR_opcode :   // z = ~(x ^ y), bitwise xnor
+        case GB_BXNOR_binop_code :   // z = ~(x ^ y), bitwise xnor
         //----------------------------------------------------------------------
 
             switch (add->xtype->code)

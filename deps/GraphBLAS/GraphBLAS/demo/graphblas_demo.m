@@ -6,8 +6,8 @@
 %
 % http://faculty.cse.tamu.edu/davis
 %
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 %% GraphBLAS: faster and more general sparse matrices for MATLAB
 % GraphBLAS is not only useful for creating graph algorithms; it also
@@ -73,7 +73,7 @@ tic
 X2 = X*X ;
 builtin_time = toc ;
 fprintf ('\nGraphBLAS time: %g sec (in single)\n', gb_time) ;
-fprintf ('%s time:    %g sec (in double)\n', builtin_time, demo_whoami) ;
+fprintf ('%s time:    %g sec (in double)\n', demo_whoami, builtin_time) ;
 fprintf ('Speedup of GraphBLAS over %s: %g\n', ...
     demo_whoami, builtin_time / gb_time) ;
 fprintf ('\n# of threads used by GraphBLAS: %d\n', GrB.threads) ;
@@ -100,7 +100,7 @@ G2 = G*G ;
 gb_time = toc ;
 err = norm (X2 - G2, 1) / norm (X2,1)
 fprintf ('\nGraphBLAS time: %g sec (in double)\n', gb_time) ;
-fprintf ('%s time:    %g sec (in double)\n', builtin_time, demo_whoami) ;
+fprintf ('%s time:    %g sec (in double)\n', demo_whoami, builtin_time) ;
 fprintf ('Speedup of GraphBLAS over %s: %g\n', ...
     demo_whoami, builtin_time / gb_time) ;
 fprintf ('\n# of threads used by GraphBLAS: %d\n', GrB.threads) ;
@@ -234,11 +234,16 @@ C1 = A-B
 C2 = GrB.eadd ('-', A, B)
 
 %% 
-% But these give the same result
+% But these give the same result.  GrB.eunion applies the operator
+% as op(alpha,B) when A(i,j) is not present but B(i,j) is, and
+% as op(A,beta) when A(i,j) is present but B(i,j) is not.
+% In this case, both alpha and beta are zero.
 
 C1 = A-B 
 C2 = GrB.eadd ('+', A, GrB.apply ('-', B))
+C3 = GrB.eunion ('-', A, 0, B, 0)
 err = norm (C1-C2,1)
+err = norm (C1-C3,1)
 
 %% Element-wise 'multiplication'
 % For C = A.*B, the result C is the set intersection of the pattern of A
@@ -250,7 +255,7 @@ C2 = GrB.emult ('*', A, B)
 C3 = double (A) .* double (B)
 
 %%
-% Just as in GrB.eadd, any operator can be used in GrB.emult:
+% Just as in GrB.eadd and GrB.eunion, any operator can be used in GrB.emult:
 
 A
 B
@@ -392,7 +397,7 @@ err = norm (H-G,1)
 % vectors, but not huge matrices (when n is huge).
 
 clear
-huge = 2^48 ;
+huge = 2^48 - 1 ;
 C = sparse (huge, 1)    % MATLAB can create a huge-by-1 sparse column
 try
     C = sparse (huge, huge)     % but this fails
@@ -405,7 +410,7 @@ end
 % O(nnz(A)) space.  The difference can be huge if nnz (A) << n.
 
 clear
-huge = 2^48 ;
+huge = 2^48 - 1 ;
 G = GrB (huge, 1)            % no problem for GraphBLAS
 H = GrB (huge, huge)         % this works in GraphBLAS too
 
@@ -822,25 +827,8 @@ fprintf ('Results of GrB and %s match perfectly.\n', demo_whoami)
 % the equivalent built-in operators and functions in MATLAB.
 %
 % There are few notable exceptions; these will be addressed in the future.
-% These include bandwidth, istriu, istril, isdiag, reshape, issymmetric,
-% and ishermitian, all of which should be faster in a future release.
-
-%%
-% Here is an example that illustrates the performance of istril.
-A = sparse (rand (2000)) ;
-tic
-c1 = istril (A) ;
-builtin_time = toc ;
-A = GrB (A) ;
-tic
-c2 = istril (A) ;
-gb_time = toc ;
-fprintf ('\n%s: %g sec, GraphBLAS: %g sec\n', ...
-    demo_whoami, builtin_time, gb_time) ;
-if (gb_time > builtin_time)
-    fprintf ('GraphBLAS is slower by a factor of %g\n', ...
-        gb_time / builtin_time) ;
-end
+% These include reshape, issymmetric, and ishermitian, all of which should
+% be faster in a future release.
 
 %%
 % (4) Linear indexing:
@@ -848,15 +836,15 @@ end
 % If A is an m-by-n 2D MATLAB matrix, with n > 1, A(:) is a column vector
 % of length m*n.  The index operation A(i) accesses the ith entry in the
 % vector A(:).  This is called linear indexing in MATLAB.  It is not yet
-% available for GraphBLAS matrices in this MATLAB interface to GraphBLAS,
-% but will be added in the future.
+% fully available for GraphBLAS matrices in this MATLAB interface to
+% GraphBLAS, but will be added in the future.
 
 %%
 % (5) Implicit singleton dimension expansion 
 %
 % In MATLAB C=A+B where A is m-by-n and B is a 1-by-n row vector
 % implicitly expands B to a matrix, computing C(i,j)=A(i,j)+B(j).  This
-% implicit expansion is not yet suported in GraphBLAS with C=A+B.
+% implicit expansion is not yet supported in GraphBLAS with C=A+B.
 % However, it can be done with C = GrB.mxm ('+.+', A, diag(GrB(B))).
 % That's a nice example of the power of semirings, but it's not
 % immediately obvious, and not as clear a syntax as C=A+B.  The

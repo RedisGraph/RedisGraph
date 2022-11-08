@@ -2,7 +2,7 @@
 // GB_mex_op: apply a built-in GraphBLAS operator to built-in arrays
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -188,7 +188,7 @@ void mexFunction
     if (nargin > 2)
     {
         // Z = f (X,Y)
-        GxB_binary_function f_binary = op2->function ;
+        GxB_binary_function f_binary = op2->binop_function ;
 
         GB_cast_function cast_Y = GB_cast_factory (op_ytype->code,Y_type->code);
         for (int64_t k = 0 ; k < nx ; k++)
@@ -206,7 +206,7 @@ void mexFunction
     else
     {
         // Z = f (X)
-        GxB_unary_function f_unary = op1->function ;
+        GxB_unary_function f_unary = op1->unop_function ;
         for (int64_t k = 0 ; k < nx ; k++)
         {
             cast_X (xwork, X +(k*X_size), X_size) ;

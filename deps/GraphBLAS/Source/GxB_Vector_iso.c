@@ -2,7 +2,7 @@
 // GxB_Vector_iso: report if a vector is iso-valued or not
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -30,6 +30,7 @@ GrB_Info GxB_Vector_iso     // return iso status of a vector
     //--------------------------------------------------------------------------
 
     (*iso) = v->iso ;
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

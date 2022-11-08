@@ -2,7 +2,7 @@
 // GB_split_full: split a full matrix into an array of matrices
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -37,7 +37,7 @@ GrB_Info GB_split_full              // split a full matrix
     bool csc = A->is_csc ;
     GrB_Type atype = A->type ;
     int64_t avlen = A->vlen ;
-    int64_t avdim = A->vdim ;
+//  int64_t avdim = A->vdim ;
     size_t asize = atype->size ;
     const bool A_iso = A->iso ;
 
@@ -77,7 +77,7 @@ GrB_Info GB_split_full              // split a full matrix
 
             C = NULL ;
             // set C->iso = A_iso       OK
-            GB_OK (GB_new_bix (&C, false,      // new header
+            GB_OK (GB_new_bix (&C, // new header
                 atype, cvlen, cvdim, GB_Ap_null, csc, GxB_FULL, false,
                 hyper_switch, 0, cnz, true, A_iso, Context)) ;
             C->sparsity_control = sparsity_control ;
@@ -107,7 +107,7 @@ GrB_Info GB_split_full              // split a full matrix
                 //--------------------------------------------------------------
 
                 bool done = false ;
-                #ifndef GBCOMPACT
+                #ifndef GBCUDA_DEV
                 {
                     // no typecasting needed
                     switch (asize)
@@ -137,11 +137,13 @@ GrB_Info GB_split_full              // split a full matrix
 
                         case GB_16BYTE : // double complex or 16-byte user
                             #define GB_CTYPE GB_blob16
-//                          #define GB_CTYPE uint64_t
-//                          #undef  GB_COPY
-//                          #define GB_COPY(pC,pA)                          \
-//                              Cx [2*pC  ] = Ax [2*pA  ] ;                 \
-//                              Cx [2*pC+1] = Ax [2*pA+1] ;
+                            /*
+                            #define GB_CTYPE uint64_t
+                            #undef  GB_COPY
+                            #define GB_COPY(pC,pA)                          \
+                                Cx [2*pC  ] = Ax [2*pA  ] ;                 \
+                                Cx [2*pC+1] = Ax [2*pA+1] ;
+                            */
                             #include "GB_split_full_template.c"
                             break ;
 

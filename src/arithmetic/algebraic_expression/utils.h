@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -116,5 +116,14 @@ void _AlgebraicExpression_PopulateOperands
 (
 	AlgebraicExpression *exp,   // Expression to resolve operands for.
 	const GraphContext *gc      // Graph context.
+);
+
+// given a list of algebraic expressions remove redundent label operands
+// a redundent label operand is one which is already resolved by a previoius
+// expression
+void _AlgebraicExpression_RemoveRedundentOperands
+(
+	AlgebraicExpression **exps,
+	const QueryGraph *qg
 );
 

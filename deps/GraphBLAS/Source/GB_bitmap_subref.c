@@ -2,7 +2,7 @@
 // GB_bitmap_subref: C = A(I,J) where A is bitmap or full
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -15,7 +15,7 @@
 
 #define GB_FREE_ALL             \
 {                               \
-    GB_phbix_free (C) ;         \
+    GB_phybix_free (C) ;        \
 }
 
 GrB_Info GB_bitmap_subref       // C = A(I,J): either symbolic or numeric
@@ -41,7 +41,7 @@ GrB_Info GB_bitmap_subref       // C = A(I,J): either symbolic or numeric
     //--------------------------------------------------------------------------
 
     GrB_Info info ;
-    ASSERT (C != NULL && C->static_header) ;
+    ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
     ASSERT_MATRIX_OK (A, "A for C=A(I,J) bitmap subref", GB0) ;
     ASSERT (GB_IS_BITMAP (A) || GB_IS_FULL (A)) ;
     ASSERT (!GB_IS_SPARSE (A)) ;
@@ -93,12 +93,12 @@ GrB_Info GB_bitmap_subref       // C = A(I,J): either symbolic or numeric
     //--------------------------------------------------------------------------
 
     int64_t cnzmax ;
-    bool ok = GB_Index_multiply ((GrB_Index *) (&cnzmax), nI, nJ) ;
+    bool ok = GB_int64_multiply ((GrB_Index *) (&cnzmax), nI, nJ) ;
     if (!ok) cnzmax = INT64_MAX ;
     GrB_Type ctype = symbolic ? GrB_INT64 : A->type ;
     int sparsity = GB_IS_BITMAP (A) ? GxB_BITMAP : GxB_FULL ;
     // set C->iso = C_iso   OK
-    GB_OK (GB_new_bix (&C, true, // bitmap or full, static header
+    GB_OK (GB_new_bix (&C, // bitmap or full, existing header
         ctype, nI, nJ, GB_Ap_null, C_is_csc,
         sparsity, true, A->hyper_switch, -1, cnzmax, true, C_iso, Context)) ;
 

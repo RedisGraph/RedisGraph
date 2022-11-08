@@ -2,7 +2,7 @@
 // GB_mex_assign: C<Mask>(I,J) = accum (C (I,J), A)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // This function is a wrapper for GrB_Matrix_assign, GrB_Matrix_assign_T
@@ -123,8 +123,7 @@ GrB_Info assign ( )
             ASSERT_MATRIX_OK (C, "C after setElement", GB0) ;
 
         }
-
-        if (C->vdim == 1)
+        else if (C->vdim == 1)
         {
 
             // test GrB_Vector_assign_scalar functions
@@ -218,7 +217,7 @@ GrB_Info assign ( )
     }
 
     ASSERT_MATRIX_OK (C, "Final C before wait", GB0) ;
-    OK (GrB_Matrix_wait_(&C)) ;
+    OK (GrB_Matrix_wait (C, GrB_MATERIALIZE)) ;
     return (info) ;
 }
 
@@ -342,7 +341,7 @@ GrB_Info many_assign
     }
 
     ASSERT_MATRIX_OK (C, "Final C before wait", GB0) ;
-    OK (GrB_Matrix_wait_(&C)) ;
+    OK (GrB_Matrix_wait_(C, GrB_MATERIALIZE)) ;
     return (info) ;
 }
 

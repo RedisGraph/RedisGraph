@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -85,8 +85,8 @@ void RdbLoadNodes_v8(RedisModuleIO *rdb, GraphContext *gc, uint64_t node_count) 
 
 		// * (labels) x M
 		// M will currently always be 0 or 1
-		uint64_t l = (nodeLabelCount) ? RedisModule_LoadUnsigned(rdb) : GRAPH_NO_LABEL;
-		Serializer_Graph_SetNode(gc->g, id, l, &n);
+		LabelID l = (nodeLabelCount) ? RedisModule_LoadUnsigned(rdb) : GRAPH_NO_LABEL;
+		Serializer_Graph_SetNode(gc->g, id, &l, nodeLabelCount, &n);
 
 		_RdbLoadEntity(rdb, gc, (GraphEntity *)&n);
 	}
@@ -133,3 +133,4 @@ void RdbLoadDeletedEdges_v8(RedisModuleIO *rdb, GraphContext *gc, uint64_t delet
 		Serializer_Graph_MarkEdgeDeleted(gc->g, id);
 	}
 }
+

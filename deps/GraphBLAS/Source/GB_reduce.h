@@ -2,7 +2,7 @@
 // GB_reduce.h: definitions for GB_reduce
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -47,6 +47,15 @@ void GB_iso_reduce_worker
     GB_void *restrict a,            // iso value of A
     uint64_t n,                     // number of entries in A to reduce
     size_t zsize                    // size of s and a
+) ;
+
+GrB_Info GB_Scalar_reduce
+(
+    GrB_Scalar S,                   // result scalar
+    const GrB_BinaryOp accum,       // optional accum for c=accum(c,t)
+    const GrB_Monoid monoid,        // monoid to do the reduction
+    const GrB_Matrix A,             // matrix to reduce
+    GB_Context Context
 ) ;
 
 #endif

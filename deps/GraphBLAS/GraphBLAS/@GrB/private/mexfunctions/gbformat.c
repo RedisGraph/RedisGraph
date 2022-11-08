@@ -2,21 +2,21 @@
 // gbformat: get/set the matrix format to use in GraphBLAS
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 // Usage
 
-// fmt = gbformat ;                 get the global default format (row/col)
-// fmt = gbformat (fmt) ;           set the global default format
-// [f,sparsity] = gbformat (G) ;    get the format and sparsity of a matrix
-//                                  (either GraphBLAS or built-in)
+// fmt = gbformat ;                   get the global default format (row/col)
+// fmt = gbformat (fmt) ;             set the global default format
+// [f,sparsity,iso] = gbformat (G) ;  get the format, sparsity, and iso status
+//                                    of a matrix (either @GrB or built-in)
 
 #include "gb_interface.h"
 
-#define USAGE "usage: [f,s] = GrB.format, GrB.format (f), GrB.format (G)"
+#define USAGE "usage: [f,s,iso] = GrB.format(G), f = GrB.format (f), or f = GrB.format"
 
 void mexFunction
 (
@@ -31,7 +31,7 @@ void mexFunction
     // check inputs
     //--------------------------------------------------------------------------
 
-    gb_usage (nargin <= 1 && nargout <= 2, USAGE) ;
+    gb_usage (nargin <= 1 && nargout <= 3, USAGE) ;
 
     //--------------------------------------------------------------------------
     // get/set the format
@@ -39,6 +39,8 @@ void mexFunction
 
     GxB_Format_Value fmt = GxB_BY_COL ;
     int sparsity = GxB_AUTO_SPARSITY ;
+    bool iso = false ;
+    bool v5_1_or_later = false ;
 
     if (nargin == 0)
     { 
@@ -56,6 +58,7 @@ void mexFunction
 
         if (mxIsChar (pargin [0]))
         { 
+
 
             //------------------------------------------------------------------
             // GrB.format (format)
@@ -77,7 +80,17 @@ void mexFunction
             //------------------------------------------------------------------
 
             // get the type
-            mxArray *mx_type = mxGetField (pargin [0], 0, "GraphBLASv5_1") ;
+            mxArray *mx_type = mxGetField (pargin [0], 0, "GraphBLASv7_3") ;
+            if (mx_type == NULL)
+            {
+                // check if it is a GraphBLASv5_1 struct
+                mx_type = mxGetField (pargin [0], 0, "GraphBLASv5_1") ;
+            }
+            if (mx_type != NULL)
+            {
+                // v5_1 or v7_3
+                v5_1_or_later = true ;
+            }
             if (mx_type == NULL)
             {
                 // check if it is a GraphBLASv5 struct
@@ -102,6 +115,7 @@ void mexFunction
             int64_t *s = (int64_t *) mxGetData (opaque) ;
             bool is_csc = (bool) (s [6]) ;
             fmt = (is_csc) ? GxB_BY_COL : GxB_BY_ROW ;
+            iso = (v5_1_or_later) ? ((bool) s [9]) : false ;
 
             // get the current sparsity status of the input matrix G
             switch (mxGetNumberOfFields (pargin [0]))
@@ -109,6 +123,7 @@ void mexFunction
                 case 3 : sparsity = GxB_FULL ;        break ;
                 case 4 : sparsity = GxB_BITMAP ;      break ;
                 case 5 : sparsity = GxB_SPARSE ;      break ;
+                case 9 : // fall through to hypersparse
                 case 6 : sparsity = GxB_HYPERSPARSE ; break ;
                 default: ERROR ("invalid GraphBLAS struct") ;
             }
@@ -125,6 +140,7 @@ void mexFunction
             fmt = GxB_BY_COL ;
             // built-in matrices are sparse or full, never hypersparse or bitmap
             sparsity = mxIsSparse (pargin [0]) ? GxB_SPARSE : GxB_FULL ;
+
         }
     }
 
@@ -145,6 +161,10 @@ void mexFunction
             default :              s = ""            ; break ;
         }
         pargout [1] = mxCreateString (s) ;
+    }
+    if (nargout > 2)
+    { 
+        pargout [2] = mxCreateString (iso ? "iso-valued" : "non-iso-valued") ;
     }
 
     GB_WRAPUP ;

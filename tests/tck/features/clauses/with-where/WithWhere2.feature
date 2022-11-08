@@ -56,7 +56,6 @@ Feature: WithWhere2 - Filter multiple variables
       | (:D) |
     And no side effects
 
-  @skip
   Scenario: [2] Filter node with conjunctive multi-part property predicates on multi variables with multiple bindings
     Given an empty graph
     And having executed:
@@ -73,14 +72,14 @@ Feature: WithWhere2 - Filter multiple variables
              (p2)-[:AP_HAS_VALUE]->(red)
       """
     And parameters are:
-      | 1 | 0 |
-      | 2 | 1 |
+      | a | 0 |
+      | b | 1 |
     When executing query:
       """
       MATCH (advertiser)-[:ADV_HAS_PRODUCT]->(out)-[:AP_HAS_VALUE]->(red)<-[:AA_HAS_VALUE]-(a)
       WITH a, advertiser, red, out
-      WHERE advertiser.id = $1
-        AND a.id = $2
+      WHERE advertiser.id = $a
+        AND a.id = $b
         AND red.name = 'red'
         AND out.name = 'product1'
       RETURN out.name

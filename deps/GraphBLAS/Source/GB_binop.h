@@ -2,7 +2,7 @@
 // GB_binop.h: definitions for binary operators
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -26,16 +26,13 @@ bool GB_binop_builtin               // true if binary operator is builtin
     GB_Type_code *zcode             // type code for z output
 ) ;
 
-GB_Opcode GB_flip_opcode    // flipped opcode, or -1 on error
+GrB_BinaryOp GB_flip_binop  // flip a binary operator
 (
-    GB_Opcode opcode,       // opcode to flip
-    bool *handled           // true if opcode is handled by flipping the opcode
-) ;
-
-GrB_BinaryOp GB_flip_op     // flip a binary operator, or NULL on error
-(
+    // input:
     GrB_BinaryOp op,        // binary operator to flip
-    bool *handled           // true if operator is handled
+    bool for_ewise,         // if true: flip for eWise, else for semiring
+    // input/output:
+    bool *flipxy            // true on input, set to false if op is flipped
 ) ;
 
 GB_PUBLIC
@@ -49,14 +46,15 @@ GrB_BinaryOp GB_boolean_rename_op   // return renamed op
     const GrB_BinaryOp op           // op to rename
 ) ;
 
-void GB_binop_new
+GrB_Info GB_binop_new
 (
     GrB_BinaryOp op,                // new binary operator
     GxB_binary_function function,   // binary function (may be NULL)
     GrB_Type ztype,                 // type of output z
     GrB_Type xtype,                 // type of input x
     GrB_Type ytype,                 // type of input y
-    const char *name,               // name of the function (may be NULL)
+    const char *binop_name,         // name of the user function
+    const char *binop_defn,         // definition of the user function
     const GB_Opcode opcode          // opcode for the function
 ) ;
 
@@ -67,8 +65,7 @@ GrB_Monoid GB_binop_to_monoid       // return the corresponding monoid, or NULL
 
 void GB_binop_rename            // rename a bound binary op
 (
-    GrB_UnaryOp *op1,           // set to new unary op, if op2 is renamed
-    GrB_BinaryOp *op2,          // set to NULL if op2 is renamed
+    GB_Operator *op,            // operator to rename
     bool binop_bind1st
 ) ;
 

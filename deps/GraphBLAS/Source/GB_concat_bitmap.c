@@ -2,20 +2,21 @@
 // GB_concat_bitmap: concatenate an array of matrices into a bitmap matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
-#define GB_FREE_WORK                        \
+#define GB_FREE_WORKSPACE                   \
     GB_WERK_POP (A_ek_slicing, int64_t) ;   \
-    GB_phbix_free (T) ;
+    GB_Matrix_free (&T) ;
 
 #define GB_FREE_ALL         \
-    GB_FREE_WORK ;          \
-    GB_phbix_free (C) ;
+    GB_FREE_WORKSPACE ;     \
+    GB_phybix_free (C) ;
 
 #include "GB_concat.h"
+#include "GB_unused.h"
 
 GrB_Info GB_concat_bitmap           // concatenate into a bitmap matrix
 (
@@ -40,7 +41,7 @@ GrB_Info GB_concat_bitmap           // concatenate into a bitmap matrix
     GrB_Matrix A = NULL ;
     GB_WERK_DECLARE (A_ek_slicing, int64_t) ;
     struct GB_Matrix_opaque T_header ;
-    GrB_Matrix T = GB_clear_static_header (&T_header) ;
+    GrB_Matrix T = NULL ;
 
     GrB_Type ctype = C->type ;
     int64_t cvlen = C->vlen ;
@@ -51,7 +52,7 @@ GrB_Info GB_concat_bitmap           // concatenate into a bitmap matrix
     if (!GB_IS_BITMAP (C))
     { 
         // set C->iso = C_iso   OK
-        GB_phbix_free (C) ;
+        GB_phybix_free (C) ;
         GB_OK (GB_bix_alloc (C, GB_nnz_full (C), GxB_BITMAP, true, true, C_iso,
             Context)) ;
         C->plen = -1 ;
@@ -87,6 +88,7 @@ GrB_Info GB_concat_bitmap           // concatenate into a bitmap matrix
             if (csc != A->is_csc)
             { 
                 // T = (ctype) A'
+                GB_CLEAR_STATIC_HEADER (T, &T_header) ;
                 GB_OK (GB_transpose_cast (T, ctype, csc, A, false, Context)) ;
                 A = T ;
                 GB_MATRIX_WAIT (A) ;
@@ -153,7 +155,7 @@ GrB_Info GB_concat_bitmap           // concatenate into a bitmap matrix
                 // C is not iso, but A might be
                 //--------------------------------------------------------------
 
-                #ifndef GBCOMPACT
+                #ifndef GBCUDA_DEV
                 if (ccode == acode)
                 {
                     // no typecasting needed
@@ -186,11 +188,6 @@ GrB_Info GB_concat_bitmap           // concatenate into a bitmap matrix
 
                         case GB_16BYTE : // double complex or 16-byte user
                             #define GB_CTYPE GB_blob16
-//                          #define GB_CTYPE uint64_t
-//                          #undef  GB_COPY
-//                          #define GB_COPY(pC,pA,A_iso)                    \
-//                              Cx [2*pC  ] = Ax [A_iso ? 0 : (2*pA)] ;     \
-//                              Cx [2*pC+1] = Ax [A_iso ? 1 : (2*pA+1)] ;
                             #include "GB_concat_bitmap_template.c"
                             break ;
 
@@ -213,7 +210,7 @@ GrB_Info GB_concat_bitmap           // concatenate into a bitmap matrix
                 #include "GB_concat_bitmap_template.c"
             }
 
-            GB_FREE_WORK ;
+            GB_FREE_WORKSPACE ;
         }
     }
 

@@ -2,7 +2,7 @@
 // GxB_init: initialize GraphBLAS and declare malloc/calloc/realloc/free to use
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -25,45 +25,40 @@
 //      // either use:
 //      GrB_init (mode) ;
 //      // or use this (but not both):
-//      GxB_init (mode, malloc, calloc, realloc, free, true) ;
+//      GxB_init (mode, malloc, calloc, realloc, free) ;
 //
 // To use GraphBLAS from within a mexFunction:
 //
 //      #include "mex.h"
-//      GxB_init (mode, mxMalloc, mxCalloc, mxRealloc, mxFree, false) ;
+//      GxB_init (mode, mxMalloc, mxCalloc, mxRealloc, mxFree) ;
 //
 // To use the C interface to the Intel TBB scalable allocators:
 //
 //      #include "tbb/scalable_allocator.h"
 //      GxB_init (mode, scalable_malloc, scalable_calloc, scalable_realloc,
-//          scalable_free, true) ;
+//          scalable_free) ;
 //
-// To use CUDA, do not use this function.  Instead use the following:
+// To use CUDA and its RMM memory manager:
 //
-//      GxB_cuda_init (mode) ;
+//      GxB_init (mode, rmm_malloc, rmm_calloc, rmm_realloc, rmm_free) ;
 //
-//      // All GraphBLAS objects are allocated with GxB_cuda_malloc, and
-//      // GxB_cuda_free.  This function can still be used if CUDA is not
-//      // available at compile-time; in this case, it acts just like GrB_init
-//      // (mode).  The memory allocators GxB_cuda_malloc, etc., just call the
-//      // ANSI C malloc/free functions.
+//          where mode is GxB_BLOCKING_GPU or GxB_NONBLOCKING_GPU
 //
 // To use user-provided malloc and free functions, but not calloc/realloc:
 //
-//      GxB_init (mode, my_malloc, NULL, NULL, my_free, true) ;
+//      GxB_init (mode, my_malloc, NULL, NULL, my_free) ;
 
 #include "GB.h"
 
 GrB_Info GxB_init           // start up GraphBLAS and also define malloc, etc
 (
-    GrB_Mode mode,          // blocking or non-blocking mode
+    GrB_Mode mode,          // blocking or non-blocking mode, GPU or not
 
     // pointers to memory management functions
     void * (* user_malloc_function  ) (size_t),         // required
     void * (* user_calloc_function  ) (size_t, size_t), // no longer used
     void * (* user_realloc_function ) (void *, size_t), // optional, can be NULL
-    void   (* user_free_function    ) (void *),         // required
-    bool user_malloc_is_thread_safe
+    void   (* user_free_function    ) (void *)          // required
 )
 {
 
@@ -71,7 +66,7 @@ GrB_Info GxB_init           // start up GraphBLAS and also define malloc, etc
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_CONTEXT ("GxB_init (mode, malloc, calloc, realloc, free, thread_safe)") ;
+    GB_CONTEXT ("GxB_init (mode, malloc, calloc, realloc, free)") ;
     if (user_malloc_function == NULL || user_free_function == NULL)
     { 
         // only malloc and free are required.  calloc and/or realloc may be
@@ -86,11 +81,8 @@ GrB_Info GxB_init           // start up GraphBLAS and also define malloc, etc
     return (GB_init
         (mode,                          // blocking or non-blocking mode
         user_malloc_function,           // user-defined malloc, required
-        NULL,                           // user-defined calloc, ignored
         user_realloc_function,          // user-defined realloc, may be NULL
         user_free_function,             // user-defined free, required
-        user_malloc_is_thread_safe,     // true if all functions are thread-safe
-        false,                          // do not use CUDA
         Context)) ;
 }
 

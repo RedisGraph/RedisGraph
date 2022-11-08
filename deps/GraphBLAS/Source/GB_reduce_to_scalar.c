@@ -2,7 +2,7 @@
 // GB_reduce_to_scalar: reduce a matrix to a scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -25,7 +25,8 @@
 #include "GB_reduce.h"
 #include "GB_binop.h"
 #include "GB_atomics.h"
-#ifndef GBCOMPACT
+#include "GB_stringify.h"
+#ifndef GBCUDA_DEV
 #include "GB_red__include.h"
 #endif
 
@@ -96,12 +97,16 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
     GB_void s [GB_VLA(zsize)] ;
     memcpy (s, reduce->identity, zsize) ;   // required, if nnz(A) is zero
 
+    #ifdef GB_DEBUGIFY_DEFN
+    GB_debugify_reduce (reduce, A) ;
+    #endif
+
     //--------------------------------------------------------------------------
     // s = reduce_to_scalar (A) on the GPU(s) or CPU
     //--------------------------------------------------------------------------
 
     #if defined ( GBCUDA )
-    if (!A->iso && GB_reduce_to_scalar_cuda_branch (reduce, A, Context))
+    if (GB_reduce_to_scalar_cuda_branch (reduce, A, Context))
     {
 
         //----------------------------------------------------------------------
@@ -176,7 +181,7 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
 
             bool done = false ;
 
-            #ifndef GBCOMPACT
+            #ifndef GBCUDA_DEV
 
                 //--------------------------------------------------------------
                 // define the worker for the switch factory
@@ -216,7 +221,7 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
                     reduce->op->name) ;
 
                 // the switch factory didn't handle this case
-                GxB_binary_function freduce = reduce->op->function ;
+                GxB_binary_function freduce = reduce->op->binop_function ;
 
                 #define GB_ATYPE GB_void
 
@@ -260,7 +265,7 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
             GB_BURBLE_MATRIX (A, "(generic reduce to scalar, with typecast:"
                 " %s) ", reduce->op->name) ;
 
-            GxB_binary_function freduce = reduce->op->function ;
+            GxB_binary_function freduce = reduce->op->binop_function ;
             GB_cast_function
                 cast_A_to_Z = GB_cast_factory (ztype->code, A->type->code) ;
 
@@ -291,7 +296,7 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
     }
     else
     { 
-        GxB_binary_function faccum = accum->function ;
+        GxB_binary_function faccum = accum->binop_function ;
 
         GB_cast_function cast_C_to_xaccum, cast_Z_to_yaccum, cast_zaccum_to_C ;
         cast_C_to_xaccum = GB_cast_factory (accum->xtype->code, ctype->code) ;
@@ -321,6 +326,7 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
     //--------------------------------------------------------------------------
 
     GB_FREE_ALL ;
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

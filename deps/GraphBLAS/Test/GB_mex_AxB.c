@@ -2,7 +2,7 @@
 // GB_mex_AxB: compute C=A*B, A'*B, A*B', or A'*B'
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -142,7 +142,7 @@ GrB_Info axb_complex (GB_Context Context)
     // force completion
     if (Aconj != NULL)
     {
-        info = GrB_Matrix_wait_(&Aconj) ;
+        info = GrB_Matrix_wait_(Aconj, GrB_MATERIALIZE) ;
         if (info != GrB_SUCCESS)
         {
             GrB_Matrix_free_(&Aconj) ;
@@ -153,7 +153,7 @@ GrB_Info axb_complex (GB_Context Context)
 
     if (Bconj != NULL)
     {
-        info = GrB_Matrix_wait_(&Bconj) ;
+        info = GrB_Matrix_wait_(Bconj, GrB_MATERIALIZE) ;
         if (info != GrB_SUCCESS)
         {
             GrB_Matrix_free_(&Aconj) ;

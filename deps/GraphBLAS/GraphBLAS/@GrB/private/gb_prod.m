@@ -2,8 +2,8 @@ function C = gb_prod (op, type, G, option)
 %GB_PROD C = prod (G), using the given operator and type
 % Implements C = prod (G) and C = all (G).
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 [m, n] = gbsize (G) ;
 
@@ -33,7 +33,7 @@ switch (option)
         % C = prod (G,1) reduces each column to a scalar,
         % giving a 1-by-n row vector.
         % M = find (column degree of G == m)
-        M = gbselect (gbdegree (G, 'col'), '==', m) ;
+        M = gbselect (gbdegree (G, 'col'), '==', int64 (m)) ;
         Cin = gbnew (n, 1, type) ;
         % C<M> = op (G')
         desc.in0 = 'transpose' ;
@@ -44,14 +44,14 @@ switch (option)
         % C = prod (G,2) reduces each row to a scalar,
         % giving an m-by-1 column vector.
         % M = find (row degree of G == n)
-        M = gbselect (gbdegree (G, 'row'), '==', n) ;
+        M = gbselect (gbdegree (G, 'row'), '==', int64 (n)) ;
         % C<M> = op (G)
         Cin = gbnew (m, 1, type) ;
         C = gbvreduce (Cin, M, op, G) ;
 
     otherwise
 
-        error ('unknown option') ;
+        error ('GrB:error', 'unknown option') ;
 end
 
 

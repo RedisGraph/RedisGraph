@@ -2,7 +2,7 @@
 // GB_dup: make a deep copy of a sparse matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -51,7 +51,7 @@ GrB_Info GB_dup             // make an exact copy of a matrix
     // delete any lingering zombies and assemble any pending tuples
     //--------------------------------------------------------------------------
 
-    GB_MATRIX_WAIT (A) ;        // TODO: keep zombies and jumbled
+    GB_MATRIX_WAIT (A) ;
 
     //--------------------------------------------------------------------------
     // C = A

@@ -2,7 +2,7 @@
 // GB_math.h: definitions for complex types, and mathematical operators
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -11,10 +11,21 @@
 #define GB_MATH_H
 
 //------------------------------------------------------------------------------
+// CUDA vs CPU math functions
+//------------------------------------------------------------------------------
+
+#ifdef GB_CUDA_KERNEL
+// fixme for CUDA: this could likely be: "__device__ static inline"
+#define GB_MATH_KERNEL __device__ inline
+#else
+#define GB_MATH_KERNEL inline
+#endif
+
+//------------------------------------------------------------------------------
 // complex macros
 //------------------------------------------------------------------------------
 
-#if ( _MSC_VER && !__INTEL_COMPILER )
+#if GB_COMPILER_MSC
 
     //--------------------------------------------------------------------------
     // Microsoft Visual Studio compiler with its own complex type
@@ -122,16 +133,16 @@
 #include "GB_imin.h"
 
 // ceiling of a/b for two integers a and b
-#define GB_ICEIL(a,b) (((a) + (b) - 1) / (b))
+#include "GB_iceil.h"
 
 //------------------------------------------------------------------------------
 // division by zero
 //------------------------------------------------------------------------------
 
-// Integer division by zero is done os that GraphBLAS does not terminate the
-// user's application on divide-by-zero.  To compute X/0: if X is zero, the
-// result is zero (like NaN).  if X is negative, the result is the negative
-// integer with biggest magnitude (like -infinity).  if X is positive, the
+// Integer division is done carefully so that GraphBLAS does not terminate the
+// user's application on divide-by-zero.  To compute x/0: if x is zero, the
+// result is zero (like NaN).  if x is negative, the result is the negative
+// integer with biggest magnitude (like -infinity).  if x is positive, the
 // result is the biggest positive integer (like +infinity).
 
 // For places affected by this decision in the code do:
@@ -184,6 +195,26 @@
     )                                                                       \
 )
 
+GB_MATH_KERNEL int8_t GB_idiv_int8 (int8_t x, int8_t y)
+{
+    return (GB_IDIV_SIGNED (x, y, 8)) ;
+}
+
+GB_MATH_KERNEL int16_t GB_idiv_int16 (int16_t x, int16_t y)
+{
+    return (GB_IDIV_SIGNED (x, y, 16)) ;
+}
+
+GB_MATH_KERNEL int32_t GB_idiv_int32 (int32_t x, int32_t y)
+{
+    return (GB_IDIV_SIGNED (x, y, 32)) ;
+}
+
+GB_MATH_KERNEL int64_t GB_idiv_int64 (int64_t x, int64_t y)
+{
+    return (GB_IDIV_SIGNED (x, y, 64)) ;
+}
+
 // x/y when x and y are unsigned integers
 #define GB_IDIV_UNSIGNED(x,y,bits)                                          \
 (                                                                           \
@@ -207,6 +238,26 @@
         (x) / (y)                                                           \
     )                                                                       \
 )
+
+GB_MATH_KERNEL uint8_t GB_idiv_uint8 (uint8_t x, uint8_t y)
+{
+    return (GB_IDIV_UNSIGNED (x, y, 8)) ;
+}
+
+GB_MATH_KERNEL uint16_t GB_idiv_uint16 (uint16_t x, uint16_t y)
+{
+    return (GB_IDIV_UNSIGNED (x, y, 16)) ;
+}
+
+GB_MATH_KERNEL uint32_t GB_idiv_uint32 (uint32_t x, uint32_t y)
+{
+    return (GB_IDIV_UNSIGNED (x, y, 32)) ;
+}
+
+GB_MATH_KERNEL uint64_t GB_idiv_uint64 (uint64_t x, uint64_t y)
+{
+    return (GB_IDIV_UNSIGNED (x, y, 64)) ;
+}
 
 // 1/y when y is a signed integer
 #define GB_IMINV_SIGNED(y,bits)                                             \
@@ -260,7 +311,7 @@
 // dividing by zero (boolean false) will typically terminate an application.
 // In this GraphBLAS implementation, boolean division is treated as if it were
 // int1, where 1/1 = 1, 0/1 = 0, 0/0 = integer NaN = 0, 1/0 = +infinity = 1.
-// Thus Z=X/Y is Z=X.  This is arbitrary, but it allows all operators to work
+// Thus z=x/y is z=x.  This is arbitrary, but it allows all operators to work
 // on all types without causing run time exceptions.  It also means that
 // GrB_DIV(x,y) is the same as GrB_FIRST(x,y) for boolean x and y.  See for
 // example GB_boolean_rename and Template/GB_ops_template.c.  Similarly,
@@ -282,7 +333,7 @@
 //
 // Note that this function has the same signature as SuiteSparse_divcomplex.
 
-inline int GB_divcomplex
+GB_MATH_KERNEL int GB_divcomplex
 (
     double xr, double xi,       // real and imaginary parts of x
     double yr, double yi,       // real and imaginary parts of y
@@ -358,17 +409,18 @@ inline int GB_divcomplex
     return (den == 0) ;
 }
 
-inline GxB_FC64_t GB_FC64_div (GxB_FC64_t x, GxB_FC64_t y)
+GB_MATH_KERNEL GxB_FC64_t GB_FC64_div (GxB_FC64_t x, GxB_FC64_t y)
 {
     double zr, zi ;
     GB_divcomplex (creal (x), cimag (x), creal (y), cimag (y), &zr, &zi) ;
     return (GxB_CMPLX (zr, zi)) ;
 }
 
-inline GxB_FC32_t GB_FC32_div (GxB_FC32_t x, GxB_FC32_t y)
+GB_MATH_KERNEL GxB_FC32_t GB_FC32_div (GxB_FC32_t x, GxB_FC32_t y)
 {
-    // single complex division: typecast to double complex, do the division,
-    // and then typecast back to single complex
+    // single complex division is slow but as accurate as possible: typecast to
+    // double complex, do the division, and then typecast back to single
+    // complex.
     double zr, zi ;
     GB_divcomplex ((double) crealf (x), (double) cimagf (x),
                    (double) crealf (y), (double) cimagf (y), &zr, &zi) ;
@@ -385,7 +437,7 @@ inline GxB_FC32_t GB_FC32_div (GxB_FC32_t x, GxB_FC32_t y)
 //          (x >= 0 or if y is an integer, NaN, or Inf)), then z is real
 //      else use the built-in C library function, z = pow (x,y)
 
-inline float GB_powf (float x, float y)
+GB_MATH_KERNEL float GB_powf (float x, float y)
 {
     int xr_class = fpclassify (x) ;
     int yr_class = fpclassify (y) ;
@@ -403,7 +455,7 @@ inline float GB_powf (float x, float y)
     return (powf (x, y)) ;
 }
 
-inline double GB_pow (double x, double y)
+GB_MATH_KERNEL double GB_pow (double x, double y)
 {
     int xr_class = fpclassify (x) ;
     int yr_class = fpclassify (y) ;
@@ -421,7 +473,7 @@ inline double GB_pow (double x, double y)
     return (pow (x, y)) ;
 }
 
-inline GxB_FC32_t GB_cpowf (GxB_FC32_t x, GxB_FC32_t y)
+GB_MATH_KERNEL GxB_FC32_t GB_cpowf (GxB_FC32_t x, GxB_FC32_t y)
 {
     float xr = crealf (x) ;
     float yr = crealf (y) ;
@@ -453,7 +505,7 @@ inline GxB_FC32_t GB_cpowf (GxB_FC32_t x, GxB_FC32_t y)
     return (cpowf (x, y)) ;
 }
 
-inline GxB_FC64_t GB_cpow (GxB_FC64_t x, GxB_FC64_t y)
+GB_MATH_KERNEL GxB_FC64_t GB_cpow (GxB_FC64_t x, GxB_FC64_t y)
 {
     double xr = creal (x) ;
     double yr = creal (y) ;
@@ -485,42 +537,42 @@ inline GxB_FC64_t GB_cpow (GxB_FC64_t x, GxB_FC64_t y)
     return (cpow (x, y)) ;
 }
 
-inline int8_t GB_pow_int8 (int8_t x, int8_t y)
+GB_MATH_KERNEL int8_t GB_pow_int8 (int8_t x, int8_t y)
 {
     return (GB_cast_to_int8_t (GB_pow ((double) x, (double) y))) ;
 }
 
-inline int16_t GB_pow_int16 (int16_t x, int16_t y)
+GB_MATH_KERNEL int16_t GB_pow_int16 (int16_t x, int16_t y)
 {
     return (GB_cast_to_int16_t (GB_pow ((double) x, (double) y))) ;
 }
 
-inline int32_t GB_pow_int32 (int32_t x, int32_t y)
+GB_MATH_KERNEL int32_t GB_pow_int32 (int32_t x, int32_t y)
 {
     return (GB_cast_to_int32_t (GB_pow ((double) x, (double) y))) ;
 }
 
-inline int64_t GB_pow_int64 (int64_t x, int64_t y)
+GB_MATH_KERNEL int64_t GB_pow_int64 (int64_t x, int64_t y)
 {
     return (GB_cast_to_int64_t (GB_pow ((double) x, (double) y))) ;
 }
 
-inline uint8_t GB_pow_uint8 (uint8_t x, uint8_t y)
+GB_MATH_KERNEL uint8_t GB_pow_uint8 (uint8_t x, uint8_t y)
 {
     return (GB_cast_to_uint8_t (GB_pow ((double) x, (double) y))) ;
 }
 
-inline uint16_t GB_pow_uint16 (uint16_t x, uint16_t y)
+GB_MATH_KERNEL uint16_t GB_pow_uint16 (uint16_t x, uint16_t y)
 {
     return (GB_cast_to_uint16_t (GB_pow ((double) x, (double) y))) ;
 }
 
-inline uint32_t GB_pow_uint32 (uint32_t x, uint32_t y)
+GB_MATH_KERNEL uint32_t GB_pow_uint32 (uint32_t x, uint32_t y)
 {
     return (GB_cast_to_uint32_t (GB_pow ((double) x, (double) y))) ;
 }
 
-inline uint64_t GB_pow_uint64 (uint64_t x, uint64_t y)
+GB_MATH_KERNEL uint64_t GB_pow_uint64 (uint64_t x, uint64_t y)
 {
     return (GB_cast_to_uint64_t (GB_pow ((double) x, (double) y))) ;
 }
@@ -529,14 +581,14 @@ inline uint64_t GB_pow_uint64 (uint64_t x, uint64_t y)
 // frexp for float and double
 //------------------------------------------------------------------------------
 
-inline float GB_frexpxf (float x)
+GB_MATH_KERNEL float GB_frexpxf (float x)
 {
     // ignore the exponent and just return the mantissa
     int exp_ignored ;
     return (frexpf (x, &exp_ignored)) ;
 }
 
-inline float GB_frexpef (float x)
+GB_MATH_KERNEL float GB_frexpef (float x)
 {
     // ignore the mantissa and just return the exponent
     int exp ;
@@ -544,14 +596,14 @@ inline float GB_frexpef (float x)
     return ((float) exp) ;
 }
 
-inline double GB_frexpx (double x)
+GB_MATH_KERNEL double GB_frexpx (double x)
 {
     // ignore the exponent and just return the mantissa
     int exp_ignored ;
     return (frexp (x, &exp_ignored)) ;
 }
 
-inline double GB_frexpe (double x)
+GB_MATH_KERNEL double GB_frexpe (double x)
 {
     // ignore the mantissa and just return the exponent
     int exp ;
@@ -563,26 +615,26 @@ inline double GB_frexpe (double x)
 // signum functions
 //------------------------------------------------------------------------------
 
-inline float GB_signumf (float x)
+GB_MATH_KERNEL float GB_signumf (float x)
 {
     if (isnan (x)) return (x) ;
     return ((float) ((x < 0) ? (-1) : ((x > 0) ? 1 : 0))) ;
 }
 
-inline double GB_signum (double x)
+GB_MATH_KERNEL double GB_signum (double x)
 {
     if (isnan (x)) return (x) ;
     return ((double) ((x < 0) ? (-1) : ((x > 0) ? 1 : 0))) ;
 }
 
-inline GxB_FC32_t GB_csignumf (GxB_FC32_t x)
+GB_MATH_KERNEL GxB_FC32_t GB_csignumf (GxB_FC32_t x)
 {
     if (crealf (x) == 0 && cimagf (x) == 0) return (GxB_CMPLXF (0,0)) ;
     float y = cabsf (x) ;
     return (GxB_CMPLXF (crealf (x) / y, cimagf (x) / y)) ;
 }
 
-inline GxB_FC64_t GB_csignum (GxB_FC64_t x)
+GB_MATH_KERNEL GxB_FC64_t GB_csignum (GxB_FC64_t x)
 {
     if (creal (x) == 0 && cimag (x) == 0) return (GxB_CMPLX (0,0)) ;
     double y = cabs (x) ;
@@ -602,7 +654,7 @@ inline GxB_FC64_t GB_csignum (GxB_FC64_t x)
 // z = ceil (x) for float complex
 //------------------------------------------------------------------------------
 
-inline GxB_FC32_t GB_cceilf (GxB_FC32_t x)
+GB_MATH_KERNEL GxB_FC32_t GB_cceilf (GxB_FC32_t x)
 {
     return (GxB_CMPLXF (ceilf (crealf (x)), ceilf (cimagf (x)))) ;
 }
@@ -611,7 +663,7 @@ inline GxB_FC32_t GB_cceilf (GxB_FC32_t x)
 // z = ceil (x) for double complex
 //------------------------------------------------------------------------------
 
-inline GxB_FC64_t GB_cceil (GxB_FC64_t x)
+GB_MATH_KERNEL GxB_FC64_t GB_cceil (GxB_FC64_t x)
 {
     return (GxB_CMPLX (ceil (creal (x)), ceil (cimag (x)))) ;
 }
@@ -620,7 +672,7 @@ inline GxB_FC64_t GB_cceil (GxB_FC64_t x)
 // z = floor (x) for float complex
 //------------------------------------------------------------------------------
 
-inline GxB_FC32_t GB_cfloorf (GxB_FC32_t x)
+GB_MATH_KERNEL GxB_FC32_t GB_cfloorf (GxB_FC32_t x)
 {
     return (GxB_CMPLXF (floorf (crealf (x)), floorf (cimagf (x)))) ;
 }
@@ -629,7 +681,7 @@ inline GxB_FC32_t GB_cfloorf (GxB_FC32_t x)
 // z = floor (x) for double complex
 //------------------------------------------------------------------------------
 
-inline GxB_FC64_t GB_cfloor (GxB_FC64_t x)
+GB_MATH_KERNEL GxB_FC64_t GB_cfloor (GxB_FC64_t x)
 {
     return (GxB_CMPLX (floor (creal (x)), floor (cimag (x)))) ;
 }
@@ -638,7 +690,7 @@ inline GxB_FC64_t GB_cfloor (GxB_FC64_t x)
 // z = round (x) for float complex
 //------------------------------------------------------------------------------
 
-inline GxB_FC32_t GB_croundf (GxB_FC32_t x)
+GB_MATH_KERNEL GxB_FC32_t GB_croundf (GxB_FC32_t x)
 {
     return (GxB_CMPLXF (roundf (crealf (x)), roundf (cimagf (x)))) ;
 }
@@ -647,7 +699,7 @@ inline GxB_FC32_t GB_croundf (GxB_FC32_t x)
 // z = round (x) for double complex
 //------------------------------------------------------------------------------
 
-inline GxB_FC64_t GB_cround (GxB_FC64_t x)
+GB_MATH_KERNEL GxB_FC64_t GB_cround (GxB_FC64_t x)
 {
     return (GxB_CMPLX (round (creal (x)), round (cimag (x)))) ;
 }
@@ -656,7 +708,7 @@ inline GxB_FC64_t GB_cround (GxB_FC64_t x)
 // z = trunc (x) for float complex
 //------------------------------------------------------------------------------
 
-inline GxB_FC32_t GB_ctruncf (GxB_FC32_t x)
+GB_MATH_KERNEL GxB_FC32_t GB_ctruncf (GxB_FC32_t x)
 {
     return (GxB_CMPLXF (truncf (crealf (x)), truncf (cimagf (x)))) ;
 }
@@ -665,7 +717,7 @@ inline GxB_FC32_t GB_ctruncf (GxB_FC32_t x)
 // z = trunc (x) for double complex
 //------------------------------------------------------------------------------
 
-inline GxB_FC64_t GB_ctrunc (GxB_FC64_t x)
+GB_MATH_KERNEL GxB_FC64_t GB_ctrunc (GxB_FC64_t x)
 {
     return (GxB_CMPLX (trunc (creal (x)), trunc (cimag (x)))) ;
 }
@@ -674,7 +726,7 @@ inline GxB_FC64_t GB_ctrunc (GxB_FC64_t x)
 // z = exp2 (x) for float complex
 //------------------------------------------------------------------------------
 
-inline GxB_FC32_t GB_cexp2f (GxB_FC32_t x)
+GB_MATH_KERNEL GxB_FC32_t GB_cexp2f (GxB_FC32_t x)
 {
     if (fpclassify (cimagf (x)) == FP_ZERO)
     {
@@ -688,7 +740,7 @@ inline GxB_FC32_t GB_cexp2f (GxB_FC32_t x)
 // z = exp2 (x) for double complex
 //------------------------------------------------------------------------------
 
-inline GxB_FC64_t GB_cexp2 (GxB_FC64_t x)
+GB_MATH_KERNEL GxB_FC64_t GB_cexp2 (GxB_FC64_t x)
 {
     if (fpclassify (cimag (x)) == FP_ZERO)
     {
@@ -702,7 +754,7 @@ inline GxB_FC64_t GB_cexp2 (GxB_FC64_t x)
 // z = expm1 (x) for double complex
 //------------------------------------------------------------------------------
 
-inline GxB_FC64_t GB_cexpm1 (GxB_FC64_t x)
+GB_MATH_KERNEL GxB_FC64_t GB_cexpm1 (GxB_FC64_t x)
 {
     // FUTURE: GB_cexpm1 is not accurate
     // z = cexp (x) - 1
@@ -714,7 +766,7 @@ inline GxB_FC64_t GB_cexpm1 (GxB_FC64_t x)
 // z = expm1 (x) for float complex
 //------------------------------------------------------------------------------
 
-inline GxB_FC32_t GB_cexpm1f (GxB_FC32_t x)
+GB_MATH_KERNEL GxB_FC32_t GB_cexpm1f (GxB_FC32_t x)
 {
     // typecast to double and use GB_cexpm1
     GxB_FC64_t z = GxB_CMPLX ((double) crealf (x), (double) cimagf (x)) ;
@@ -726,7 +778,7 @@ inline GxB_FC32_t GB_cexpm1f (GxB_FC32_t x)
 // z = log1p (x) for double complex
 //------------------------------------------------------------------------------
 
-inline GxB_FC64_t GB_clog1p (GxB_FC64_t x)
+GB_MATH_KERNEL GxB_FC64_t GB_clog1p (GxB_FC64_t x)
 {
     // FUTURE: GB_clog1p is not accurate
     // z = clog (1+x)
@@ -737,7 +789,7 @@ inline GxB_FC64_t GB_clog1p (GxB_FC64_t x)
 // z = log1p (x) for float complex
 //------------------------------------------------------------------------------
 
-inline GxB_FC32_t GB_clog1pf (GxB_FC32_t x)
+GB_MATH_KERNEL GxB_FC32_t GB_clog1pf (GxB_FC32_t x)
 {
     // typecast to double and use GB_clog1p
     GxB_FC64_t z = GxB_CMPLX ((double) crealf (x), (double) cimagf (x)) ;
@@ -752,7 +804,7 @@ inline GxB_FC32_t GB_clog1pf (GxB_FC32_t x)
 // log_e (10) in single precision
 #define GB_LOG10EF 2.3025851f
 
-inline GxB_FC32_t GB_clog10f (GxB_FC32_t x)
+GB_MATH_KERNEL GxB_FC32_t GB_clog10f (GxB_FC32_t x)
 {
     // z = log (x) / log (10)
     return (GB_FC32_div (clogf (x), GxB_CMPLXF (GB_LOG10EF, 0))) ;
@@ -765,7 +817,7 @@ inline GxB_FC32_t GB_clog10f (GxB_FC32_t x)
 // log_e (10) in double precision
 #define GB_LOG10E 2.302585092994045901
 
-inline GxB_FC64_t GB_clog10 (GxB_FC64_t x)
+GB_MATH_KERNEL GxB_FC64_t GB_clog10 (GxB_FC64_t x)
 {
     // z = log (x) / log (10)
     return (GB_FC64_div (clog (x), GxB_CMPLX (GB_LOG10E, 0))) ;
@@ -778,7 +830,7 @@ inline GxB_FC64_t GB_clog10 (GxB_FC64_t x)
 // log_e (2) in single precision
 #define GB_LOG2EF 0.69314718f
 
-inline GxB_FC32_t GB_clog2f (GxB_FC32_t x)
+GB_MATH_KERNEL GxB_FC32_t GB_clog2f (GxB_FC32_t x)
 {
     // z = log (x) / log (2)
     return (GB_FC32_div (clogf (x), GxB_CMPLXF (GB_LOG2EF, 0))) ;
@@ -791,7 +843,7 @@ inline GxB_FC32_t GB_clog2f (GxB_FC32_t x)
 // log_e (2) in double precision
 #define GB_LOG2E 0.693147180559945286
 
-inline GxB_FC64_t GB_clog2 (GxB_FC64_t x)
+GB_MATH_KERNEL GxB_FC64_t GB_clog2 (GxB_FC64_t x)
 {
     // z = log (x) / log (2)
     return (GB_FC64_div (clog (x), GxB_CMPLX (GB_LOG2E, 0))) ;
@@ -801,7 +853,7 @@ inline GxB_FC64_t GB_clog2 (GxB_FC64_t x)
 // z = isinf (x) for float complex
 //------------------------------------------------------------------------------
 
-inline bool GB_cisinff (GxB_FC32_t x)
+GB_MATH_KERNEL bool GB_cisinff (GxB_FC32_t x)
 {
     return (isinf (crealf (x)) || isinf (cimagf (x))) ;
 }
@@ -810,7 +862,7 @@ inline bool GB_cisinff (GxB_FC32_t x)
 // z = isinf (x) for double complex
 //------------------------------------------------------------------------------
 
-inline bool GB_cisinf (GxB_FC64_t x)
+GB_MATH_KERNEL bool GB_cisinf (GxB_FC64_t x)
 {
     return (isinf (creal (x)) || isinf (cimag (x))) ;
 }
@@ -819,7 +871,7 @@ inline bool GB_cisinf (GxB_FC64_t x)
 // z = isnan (x) for float complex
 //------------------------------------------------------------------------------
 
-inline bool GB_cisnanf (GxB_FC32_t x)
+GB_MATH_KERNEL bool GB_cisnanf (GxB_FC32_t x)
 {
     return (isnan (crealf (x)) || isnan (cimagf (x))) ;
 }
@@ -828,7 +880,7 @@ inline bool GB_cisnanf (GxB_FC32_t x)
 // z = isnan (x) for double complex
 //------------------------------------------------------------------------------
 
-inline bool GB_cisnan (GxB_FC64_t x)
+GB_MATH_KERNEL bool GB_cisnan (GxB_FC64_t x)
 {
     return (isnan (creal (x)) || isnan (cimag (x))) ;
 }
@@ -837,7 +889,7 @@ inline bool GB_cisnan (GxB_FC64_t x)
 // z = isfinite (x) for float complex
 //------------------------------------------------------------------------------
 
-inline bool GB_cisfinitef (GxB_FC32_t x)
+GB_MATH_KERNEL bool GB_cisfinitef (GxB_FC32_t x)
 {
     return (isfinite (crealf (x)) && isfinite (cimagf (x))) ;
 }
@@ -846,10 +898,11 @@ inline bool GB_cisfinitef (GxB_FC32_t x)
 // z = isfinite (x) for double complex
 //------------------------------------------------------------------------------
 
-inline bool GB_cisfinite (GxB_FC64_t x)
+GB_MATH_KERNEL bool GB_cisfinite (GxB_FC64_t x)
 {
     return (isfinite (creal (x)) && isfinite (cimag (x))) ;
 }
 
+#undef GB_MATH_KERNEL
 #endif
 

@@ -2,8 +2,8 @@
 // gbselectopinfo : print a GraphBLAS selectop (for illustration only)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -13,7 +13,7 @@
 
 #include "gb_interface.h"
 
-#define USAGE "usage: GrB.selectopinfo (selectop)"
+#define USAGE "usage: GrB.selectopinfo (selectop) or GrB.selectopinfo (op,type)"
 
 void mexFunction
 (
@@ -28,7 +28,7 @@ void mexFunction
     // check inputs
     //--------------------------------------------------------------------------
 
-    gb_usage (nargin == 1 && nargout == 0, USAGE) ;
+    gb_usage (nargin >= 1 && nargin <= 2 && nargout == 0, USAGE) ;
 
     //--------------------------------------------------------------------------
     // construct the GraphBLAS selectop and print it
@@ -38,8 +38,30 @@ void mexFunction
     char opstring [LEN+2] ;
     gb_mxstring_to_string (opstring, LEN, pargin [0], "select operator") ;
 
-    GxB_SelectOp op = gb_mxstring_to_selectop (pargin [0]) ;
-    OK (GxB_SelectOp_fprint (op, opstring, GxB_COMPLETE, NULL)) ;
+    GrB_Type type = NULL ;
+    if (nargin > 1)
+    { 
+        type = gb_mxstring_to_type (pargin [1]) ;
+        CHECK_ERROR (type == NULL, "unknown type") ;
+    }
+
+    GxB_SelectOp selop = NULL ;
+    GrB_IndexUnaryOp idxunop = NULL ;
+    bool ignore1, ignore2 ;
+    int64_t ignore3 = 0 ;
+
+    gb_mxstring_to_selectop (&idxunop, &selop, &ignore1, &ignore2, &ignore3,
+        pargin [0], type) ;
+
+    if (selop != NULL)
+    { 
+        OK (GxB_SelectOp_fprint (selop, opstring, GxB_COMPLETE, NULL)) ;
+    }
+    else
+    { 
+        OK (GxB_IndexUnaryOp_fprint (idxunop, opstring, GxB_COMPLETE, NULL)) ;
+    }
+
     GB_WRAPUP ;
 }
 

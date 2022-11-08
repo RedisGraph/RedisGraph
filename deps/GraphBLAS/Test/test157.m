@@ -1,7 +1,7 @@
 function test157
 %TEST157 test sparsity formats
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
@@ -41,8 +41,8 @@ for k1 = 1:length(types)
     end
 end
 
-A = GrB (rand (40)) ;
-A (1,1) = sparse (0)
+% A = GrB (rand (40)) ;
+% A (1,1) = sparse (0)
 
 fprintf ('test157: all tests passed\n') ;
 

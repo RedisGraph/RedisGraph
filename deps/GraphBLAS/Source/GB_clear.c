@@ -2,7 +2,7 @@
 // GB_clear: clears the content of a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -66,7 +66,7 @@ GrB_Info GB_clear           // clear a matrix, type and dimensions unchanged
     //--------------------------------------------------------------------------
 
     // free all content
-    GB_phbix_free (A) ;
+    GB_phybix_free (A) ;
 
     // no more zombies or pending tuples
     ASSERT (!GB_ZOMBIES (A)) ;
@@ -97,7 +97,7 @@ GrB_Info GB_clear           // clear a matrix, type and dimensions unchanged
         if (A->p == NULL)
         { 
             // out of memory
-            GB_phbix_free (A) ;
+            GB_phybix_free (A) ;
             return (GrB_OUT_OF_MEMORY) ;
         }
         GB_memset (A->p, 0, (plen+1) * sizeof (int64_t), nthreads_max) ;
@@ -118,7 +118,7 @@ GrB_Info GB_clear           // clear a matrix, type and dimensions unchanged
         if (A->p == NULL || A->h == NULL)
         { 
             // out of memory
-            GB_phbix_free (A) ;
+            GB_phybix_free (A) ;
             return (GrB_OUT_OF_MEMORY) ;
         }
         A->p [0] = 0 ;

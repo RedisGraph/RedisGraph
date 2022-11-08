@@ -2,7 +2,7 @@
 // GxB_Descriptor_get: get a field in a descriptor
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -51,13 +51,14 @@ GrB_Info GxB_Descriptor_get     // get a parameter from a descriptor
 
         case GxB_AxB_METHOD : 
 
-            (*val) = (desc == NULL) ? GxB_DEFAULT : desc->axb  ; break;
+            (*val) = (desc == NULL) ? GxB_DEFAULT : desc->axb  ; break ;
 
         default : 
 
             return (GrB_INVALID_VALUE) ;
     }
 
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

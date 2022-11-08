@@ -2,14 +2,14 @@
 // GB_mex_cumsum: cumulative using GB_cumsum
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 #include "GB_mex.h"
 
-#define USAGE "[p,k] = GB_mex_cumsum (c,nthreads,nmalloc)"
+#define USAGE "[p,k] = GB_mex_cumsum (c,nthreads,malloc_debug_count)"
 
 void mexFunction
 (
@@ -37,7 +37,7 @@ void mexFunction
 
     int GET_SCALAR (1, int, nthreads, 1) ;
 
-    int GET_SCALAR (2, int, nmalloc, 2) ;
+    int GET_SCALAR (2, int, malloc_debug_count, 2) ;
 
     // make a copy of the input array (as a row vector)
     pargout [0] = GB_mx_create_full (1, n+1, GrB_INT64) ;
@@ -61,9 +61,9 @@ void mexFunction
     else
     {
         // test with malloc failures
-        // printf ("test cumsum with nmalloc: %d\n", nmalloc) ;
+        // printf ("test cumsum with malloc_debug_count: %d\n", malloc_debug_count) ;
         GB_Global_malloc_debug_set (true) ;
-        GB_Global_malloc_debug_count_set (nmalloc) ;
+        GB_Global_malloc_debug_count_set (malloc_debug_count) ;
         GB_cumsum (p, n, kresult, nthreads, NULL) ;
         GB_Global_malloc_debug_set (false) ;
     }

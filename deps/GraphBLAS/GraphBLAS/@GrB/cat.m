@@ -29,8 +29,8 @@ function C = cat (dim, varargin)
 % See also GrB/horzcat, GrB/vertcat, GrB.cell2mat, GrB/mat2cell,
 % GrB/num2cell.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 % get the input matrices
 nmatrices = length (varargin) ;

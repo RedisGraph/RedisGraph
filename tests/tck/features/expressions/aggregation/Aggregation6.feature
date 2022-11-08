@@ -30,7 +30,6 @@
 
 Feature: Aggregation6 - Percentiles
 
-  @skip
   Scenario Outline: [1] `percentileDisc()`
     Given an empty graph
     And having executed:
@@ -57,7 +56,6 @@ Feature: Aggregation6 - Percentiles
       | 0.5 | 20.0   |
       | 1.0 | 30.0   |
 
-  @skip
   Scenario Outline: [2] `percentileCont()`
     Given an empty graph
     And having executed:
@@ -84,7 +82,6 @@ Feature: Aggregation6 - Percentiles
       | 0.5 | 20.0   |
       | 1.0 | 30.0   |
 
-  @skip
   @NegativeTest
   Scenario Outline: [3] `percentileCont()` failing on bad arguments
     Given an empty graph
@@ -107,7 +104,6 @@ Feature: Aggregation6 - Percentiles
       | -1         |
       | 1.1        |
 
-  @skip
   @NegativeTest
   Scenario Outline: [4] `percentileDisc()` failing on bad arguments
     Given an empty graph
@@ -130,7 +126,6 @@ Feature: Aggregation6 - Percentiles
       | -1         |
       | 1.1        |
 
-  @skip
   @NegativeTest
   Scenario: [5] `percentileDisc()` failing in more involved query
     Given an empty graph

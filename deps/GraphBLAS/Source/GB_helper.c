@@ -2,12 +2,10 @@
 // GB_helper.c: helper functions for @GrB interface
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
-
-// TODO::: move these into the @GrB interface instead
 
 // These functions are only used by the @GrB interface for
 // SuiteSparse:GraphBLAS.
@@ -29,15 +27,24 @@
 
 #define GB_ALLOCATE_WORK(work_type)                                         \
     size_t Work_size ;                                                      \
-    work_type *Work = GB_MALLOC (nthreads, work_type, &Work_size) ;         \
+    work_type *Work = GB_MALLOC_WORK (nthreads, work_type, &Work_size) ;    \
     if (Work == NULL) return (false) ;
 
 //------------------------------------------------------------------------------
-// GB_FREE_WORK: free per-thread workspace
+// GB_FREE_WORKSPACE: free per-thread workspace
 //------------------------------------------------------------------------------
 
-#define GB_FREE_WORK(work_type)                                             \
-    GB_FREE (&Work, Work_size) ;
+#define GB_FREE_WORKSPACE                                                   \
+    GB_FREE_WORK (&Work, Work_size) ;
+
+//------------------------------------------------------------------------------
+// GB_helper0: get the current wall-clock time from OpenMP
+//------------------------------------------------------------------------------
+
+double GB_helper0 (void)
+{
+    return (GB_OPENMP_GET_WTIME) ;
+}
 
 //------------------------------------------------------------------------------
 // GB_helper1: convert 0-based indices to 1-based for gbextracttuples
@@ -86,12 +93,12 @@ void GB_helper1i             // convert zero-based indices to one-based
 // GB_helper3: convert 1-based indices to 0-based for gb_mxarray_to_list
 //------------------------------------------------------------------------------
 
-bool GB_helper3              // return true if OK, false on error
+bool GB_helper3             // return true if OK, false on error
 (
     int64_t *restrict List,             // size len, output array
     const double *restrict List_double, // size len, input array
     int64_t len,
-    int64_t *List_max               // also compute the max entry in the list
+    int64_t *List_max       // also compute the max entry in the list (1-based)
 )
 {
 
@@ -134,7 +141,7 @@ bool GB_helper3              // return true if OK, false on error
         ok = ok && (Work [tid] != INT64_MIN) ;
     }
 
-    GB_FREE_WORK (int64_t) ;
+    GB_FREE_WORKSPACE ;
 
     (*List_max) = listmax ;
     return (ok) ;
@@ -144,12 +151,12 @@ bool GB_helper3              // return true if OK, false on error
 // GB_helper3i: convert 1-based indices to 0-based for gb_mxarray_to_list
 //------------------------------------------------------------------------------
 
-bool GB_helper3i             // return true if OK, false on error
+bool GB_helper3i        // return true if OK, false on error
 (
     int64_t *restrict List,             // size len, output array
     const int64_t *restrict List_int64, // size len, input array
     int64_t len,
-    int64_t *List_max               // also compute the max entry in the list
+    int64_t *List_max   // also compute the max entry in the list (1-based)
 )
 {
 
@@ -180,21 +187,22 @@ bool GB_helper3i             // return true if OK, false on error
         listmax = GB_IMAX (listmax, Work [tid]) ;
     }
 
-    GB_FREE_WORK (int64_t) ;
+    GB_FREE_WORKSPACE ;
 
     (*List_max) = listmax ;
     return (true) ;
 }
 
 //------------------------------------------------------------------------------
-// GB_helper4: find the max entry in an index list for gbbuild
+// GB_helper4: find the max entry in a list of type GrB_Index
 //------------------------------------------------------------------------------
 
-bool GB_helper4              // return true if OK, false on error
+bool GB_helper4             // return true if OK, false on error
 (
     const GrB_Index *restrict I,    // array of size len
     const int64_t len,
-    GrB_Index *List_max             // find max (I) + 1
+    GrB_Index *List_max     // also compute the max entry in the list (1-based,
+                            // which is max(I)+1)
 )
 {
 
@@ -224,7 +232,7 @@ bool GB_helper4              // return true if OK, false on error
         listmax = GB_IMAX (listmax, Work [tid]) ;
     }
 
-    GB_FREE_WORK (GrB_Index) ;
+    GB_FREE_WORKSPACE ;
 
     if (len > 0) listmax++ ;
     (*List_max) = listmax ;
@@ -358,8 +366,8 @@ double GB_helper10       // norm (x-y,p), or -1 on error
     GB_NTHREADS (n) ;
     GB_ALLOCATE_WORK (double) ;
 
-    #define X(k) x [x_iso ? 0 : k]
-    #define Y(k) y [y_iso ? 0 : k]
+    #define xx(k) x [x_iso ? 0 : k]
+    #define yy(k) y [y_iso ? 0 : k]
 
     //--------------------------------------------------------------------------
     // each thread computes its partial norm
@@ -391,7 +399,7 @@ double GB_helper10       // norm (x-y,p), or -1 on error
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            float t = X (k) ;
+                            float t = xx (k) ;
                             my_s += (t*t) ;
                         }
                     }
@@ -399,7 +407,7 @@ double GB_helper10       // norm (x-y,p), or -1 on error
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            float t = (X (k) - Y (k)) ;
+                            float t = (xx (k) - yy (k)) ;
                             my_s += (t*t) ;
                         }
                     }
@@ -412,14 +420,14 @@ double GB_helper10       // norm (x-y,p), or -1 on error
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s += fabsf (X (k)) ;
+                            my_s += fabsf (xx (k)) ;
                         }
                     }
                     else
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s += fabsf (X (k) - Y (k)) ;
+                            my_s += fabsf (xx (k) - yy (k)) ;
                         }
                     }
                 }
@@ -431,14 +439,14 @@ double GB_helper10       // norm (x-y,p), or -1 on error
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s = fmaxf (my_s, fabsf (X (k))) ;
+                            my_s = fmaxf (my_s, fabsf (xx (k))) ;
                         }
                     }
                     else
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s = fmaxf (my_s, fabsf (X (k) - Y (k))) ;
+                            my_s = fmaxf (my_s, fabsf (xx (k) - yy (k))) ;
                         }
                     }
                 }
@@ -451,14 +459,14 @@ double GB_helper10       // norm (x-y,p), or -1 on error
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s = fminf (my_s, fabsf (X (k))) ;
+                            my_s = fminf (my_s, fabsf (xx (k))) ;
                         }
                     }
                     else
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s = fminf (my_s, fabsf (X (k) - Y (k))) ;
+                            my_s = fminf (my_s, fabsf (xx (k) - yy (k))) ;
                         }
                     }
                 }
@@ -488,7 +496,7 @@ double GB_helper10       // norm (x-y,p), or -1 on error
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            double t = X (k) ;
+                            double t = xx (k) ;
                             my_s += (t*t) ;
                         }
                     }
@@ -496,7 +504,7 @@ double GB_helper10       // norm (x-y,p), or -1 on error
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            double t = (X (k) - Y (k)) ;
+                            double t = (xx (k) - yy (k)) ;
                             my_s += (t*t) ;
                         }
                     }
@@ -509,14 +517,14 @@ double GB_helper10       // norm (x-y,p), or -1 on error
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s += fabs (X (k)) ;
+                            my_s += fabs (xx (k)) ;
                         }
                     }
                     else
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s += fabs (X (k) - Y (k)) ;
+                            my_s += fabs (xx (k) - yy (k)) ;
                         }
                     }
                 }
@@ -528,14 +536,14 @@ double GB_helper10       // norm (x-y,p), or -1 on error
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s = fmax (my_s, fabs (X (k))) ;
+                            my_s = fmax (my_s, fabs (xx (k))) ;
                         }
                     }
                     else
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s = fmax (my_s, fabs (X (k) - Y (k))) ;
+                            my_s = fmax (my_s, fabs (xx (k) - yy (k))) ;
                         }
                     }
                 }
@@ -548,14 +556,14 @@ double GB_helper10       // norm (x-y,p), or -1 on error
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s = fmin (my_s, fabs (X (k))) ;
+                            my_s = fmin (my_s, fabs (xx (k))) ;
                         }
                     }
                     else
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s = fmin (my_s, fabs (X (k) - Y (k))) ;
+                            my_s = fmin (my_s, fabs (xx (k) - yy (k))) ;
                         }
                     }
                 }
@@ -622,7 +630,7 @@ double GB_helper10       // norm (x-y,p), or -1 on error
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK (double) ;
+    GB_FREE_WORKSPACE ;
     return (s) ;
 }
 

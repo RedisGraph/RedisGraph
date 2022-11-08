@@ -4,7 +4,7 @@ function codegen_unop
 % This function creates all files of the form GB_unop__*.[ch],
 % and the include file GB_unop__include.h.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\nunary operators:\n') ;
@@ -14,7 +14,7 @@ fprintf (f, '//-----------------------------------------------------------------
 fprintf (f, '// GB_unop__include.h: definitions for GB_unop__*.c\n') ;
 fprintf (f, '//------------------------------------------------------------------------------\n') ;
 fprintf (f, '\n') ;
-fprintf (f, '// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.\n') ;
+fprintf (f, '// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.\n') ;
 fprintf (f, '// SPDX-License-Identifier: Apache-2.0\n\n') ;
 fprintf (f, '// This file has been automatically generated from Generator/GB_unop.h') ;
 fprintf (f, '\n\n') ;
@@ -351,6 +351,15 @@ codegen_unop_template ('erfc', ...
     [ ],                        ... % uint
     'erfcf (xarg)',             ... % float
     'erfc (xarg)',              ... % double
+    [ ],                        ... % GxB_FC32_t
+    [ ]) ;                      ... % GxB_FC64_t
+
+codegen_unop_template ('cbrt', ...
+    [ ],                        ... % bool
+    [ ],                        ... % int
+    [ ],                        ... % uint
+    'cbrtf (xarg)',             ... % float
+    'cbrt (xarg)',              ... % double
     [ ],                        ... % GxB_FC32_t
     [ ]) ;                      ... % GxB_FC64_t
 

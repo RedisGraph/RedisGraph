@@ -28,8 +28,8 @@ function [I, whole] = gb_index (I)
 % If I is a built-in matrix or vector (not a cell array), then it is
 % wrapped in a cell array, { I }, to denote A(I).
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 whole = false ;
 
@@ -50,7 +50,7 @@ elseif (iscell (I))
     % C ({ }), C ({ I }), C ({start,fini}), or C ({start,inc,fini}).
     len = length (I) ;
     if (len > 3)
-        error ('invalid indexing: usage is A ({start,inc,fini})') ;
+        error ('GrB:error', 'invalid indexing: usage is A ({start,inc,fini})') ;
     elseif (len == 0)
         % C ({ })
         whole = true ;

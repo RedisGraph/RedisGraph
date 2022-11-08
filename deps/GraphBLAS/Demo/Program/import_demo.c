@@ -2,14 +2,14 @@
 // GraphBLAS/Demo/Program/import_demo.c: test import/export
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 // Read a graph from a file and test import/export. Usage:
 //
-//  mis_demo < infile
+//  import_demo < infile
 
 // macro used by OK(...) to free workspace if an error occurs
 #define FREE_ALL            \
@@ -54,7 +54,6 @@ int main (int argc, char **argv)
 
             for (int format = 0 ; format <= 3 ; format++)
             {
-
                 OK (GxB_Matrix_Option_set (A, GxB_HYPER_SWITCH, h)) ;
                 OK (GxB_Matrix_Option_set (A, GxB_FORMAT, f)) ;
                 OK (import_test (&A, format, dump)) ;

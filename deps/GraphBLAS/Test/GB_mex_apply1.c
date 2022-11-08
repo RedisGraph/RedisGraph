@@ -2,7 +2,7 @@
 // GB_mex_apply1: C<Mask> = accum(C,op(x,A)) or op(x,A')
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -13,7 +13,7 @@
 
 #define USAGE "C = GB_mex_apply1 (C, Mask, accum, op, how, x, A, desc)"
 
-// if how == 0: use the GxB_Scalar and GxB_Matrix/Vector_apply_BinaryOp1st
+// if how == 0: use the GrB_Scalar and GxB_Matrix/Vector_apply_BinaryOp1st
 // if how == 1: use the C scalar   and GrB_Matrix/Vector_apply_BinaryOp1st_T
 
 #define FREE_ALL                        \
@@ -27,7 +27,7 @@
 }
 
 GrB_Matrix C = NULL, S = NULL ;
-GxB_Scalar scalar = NULL ;
+GrB_Scalar scalar = NULL ;
 GrB_Matrix Mask = NULL ;
 GrB_Matrix A = NULL ;
 GrB_Descriptor desc = NULL ;
@@ -127,7 +127,7 @@ GrB_Info apply1 (bool is_matrix)
     }
     else if (is_matrix && how == 0)
     {
-        info = GxB_Matrix_apply_BinaryOp1st_
+        info = GrB_Matrix_apply_BinaryOp1st_Scalar_
             (C, Mask, accum, op, scalar, A, desc) ;
     }
     else if (!is_matrix && how == 1)
@@ -139,79 +139,79 @@ GrB_Info apply1 (bool is_matrix)
         {
             bool x = *((bool *) (scalar->x)) ;  // OK
             info = GrB_Vector_apply_BinaryOp1st_BOOL_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GrB_INT8)
         {
             int8_t x = *((int8_t *) (scalar->x)) ;  // OK
             info = GrB_Vector_apply_BinaryOp1st_INT8_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GrB_INT16)
         {
             int16_t x = *((int16_t *) (scalar->x)) ;    // OK
             info = GrB_Vector_apply_BinaryOp1st_INT16_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GrB_INT32)
         {
             int32_t x = *((int32_t *) (scalar->x)) ;    // OK
             info = GrB_Vector_apply_BinaryOp1st_INT32_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GrB_INT64)
         {
             int64_t x = *((int64_t *) (scalar->x)) ;    // OK
             info = GrB_Vector_apply_BinaryOp1st_INT64_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GrB_UINT8)
         {
             uint8_t x = *((uint8_t *) (scalar->x)) ;    // OK
             info = GrB_Vector_apply_BinaryOp1st_UINT8_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GrB_UINT16)
         {
             uint16_t x = *((uint16_t *) (scalar->x)) ;  // OK
             info = GrB_Vector_apply_BinaryOp1st_UINT16_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GrB_UINT32)
         {
             uint32_t x = *((uint32_t *) (scalar->x)) ;  // OK
             info = GrB_Vector_apply_BinaryOp1st_UINT32_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GrB_UINT64)
         {
             uint64_t x = *((uint64_t *) (scalar->x)) ;  // OK
             info = GrB_Vector_apply_BinaryOp1st_UINT64_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GrB_FP32)
         {
             float x = *((float *) (scalar->x)) ;    // OK
             info = GrB_Vector_apply_BinaryOp1st_FP32_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GrB_FP64)
         {
             double x = *((double *) (scalar->x)) ;  // OK
             info = GrB_Vector_apply_BinaryOp1st_FP64_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GxB_FC32)
         {
             GxB_FC32_t x = *((GxB_FC32_t *) (scalar->x)) ;  // OK
             info = GxB_Vector_apply_BinaryOp1st_FC32_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
         else if (stype == GxB_FC64)
         {
             GxB_FC64_t x = *((GxB_FC64_t *) (scalar->x)) ;  // OK
             info = GxB_Vector_apply_BinaryOp1st_FC64_
-                (w, Mask, accum, op, x, A, desc) ;
+                (w, m, accum, op, x, a, desc) ;
         }
     }
     else if (!is_matrix && how == 0)
@@ -219,7 +219,7 @@ GrB_Info apply1 (bool is_matrix)
         GrB_Vector w = (GrB_Vector) C ;
         GrB_Vector m = (GrB_Vector) Mask ;
         GrB_Vector a = (GrB_Vector) A ;
-        info = GxB_Vector_apply_BinaryOp1st_
+        info = GrB_Vector_apply_BinaryOp1st_Scalar_
             (w, m, accum, op, scalar, a, desc) ;
     }
 
@@ -264,7 +264,7 @@ void mexFunction
         mexErrMsgTxt ("Mask failed") ;
     }
 
-    // get how.  0: use GxB_Scalar, 1: use bare C scalar
+    // get how.  0: use GrB_Scalar, 1: use bare C scalar
     GET_SCALAR (4, int, how, 0) ;
 
     // get scalar (shallow copy)
@@ -285,7 +285,7 @@ void mexFunction
         FREE_ALL ;
         mexErrMsgTxt ("scalar failed") ;
     }
-    scalar = (GxB_Scalar) S ;
+    scalar = (GrB_Scalar) S ;
     GrB_Info info = GxB_Scalar_fprint (scalar, "scalar", GxB_SILENT, NULL) ;
     if (info != GrB_SUCCESS)
     {

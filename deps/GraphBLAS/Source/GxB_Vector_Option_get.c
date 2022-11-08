@@ -2,7 +2,7 @@
 // GxB_Vector_Option_get: get an option in a vector
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -96,6 +96,8 @@ GrB_Info GxB_Vector_Option_get      // gets the current option of a vector
             return (GrB_INVALID_VALUE) ;
 
     }
+
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

@@ -46,7 +46,7 @@ function C = random (varargin)
 %           matrix C, with a uniform distribution of values.  To create a
 %           matrix like C = srandsym (n,d) with the built-in sprandym, use
 %           C = GrB.random (n, d, 'symmetric', 'normal').  Note that the
-%           pair of arguments (m, n, ...) do not appear; just a single
+%           arguments (m, n, ...) do not appear; just a single
 %           dimension (n, ...).
 %
 %   To construct a Hermitian matrix instead, use 'hermitian' in place of
@@ -93,8 +93,8 @@ function C = random (varargin)
 %
 % See also GrB/sprand, GrB/sprandn, GrB/sprandsym.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 C = GrB (gb_random (varargin {:})) ;
 

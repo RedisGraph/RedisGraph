@@ -2,8 +2,8 @@
 // gbdescriptorinfo: print a GraphBLAS descriptor (for illustration only)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -67,7 +67,7 @@ void mexFunction
     {
         case KIND_SPARSE  : printf ("sparse\n")  ; break ;
         case KIND_FULL    : printf ("full\n")    ; break ;
-        case KIND_BUILTIN : printf ("builtin\n")  ; break ;
+        case KIND_BUILTIN : printf ("builtin\n") ; break ;
         case KIND_GRB     :
         default           : printf ("GrB\n")     ; break ;
     }

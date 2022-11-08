@@ -2,7 +2,7 @@
 // GB_printf.h: definitions for printing from GraphBLAS
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -91,7 +91,7 @@
 }
 
 // check object->magic and print an error if invalid
-#define GB_CHECK_MAGIC(object,kind)                                     \
+#define GB_CHECK_MAGIC(object)                                          \
 {                                                                       \
     switch (object->magic)                                              \
     {                                                                   \
@@ -120,11 +120,9 @@
 // burble
 //------------------------------------------------------------------------------
 
-// GB_BURBLE provides diagnostic output.
+// GBURBLE and the GB_BURBLE_* methods provide diagnostic output.
 // Use GxB_set (GxB_BURBLE, true) to turn it on
 // and GxB_set (GxB_BURBLE, false) to turn it off.
-
-#if GB_BURBLE
 
 void GB_burble_assign
 (
@@ -139,9 +137,18 @@ void GB_burble_assign
     const int assign_kind       // row assign, col assign, assign, or subassign
 ) ;
 
+#if defined ( GBCUDA ) && defined ( GBNVTX )
+// enable nvtxMark for CUDA
+#include <nvToolsExt.h>
+#define GB_NVTX { nvtxMark ("nvtx:" __FILE__ ":" GB_XSTR(__LINE__)) ; }
+#else
+#define GB_NVTX
+#endif
+
 // define the function to use to burble
 #define GBURBLE(...)                                \
 {                                                   \
+    GB_NVTX                                         \
     if (GB_Global_burble_get ( ))                   \
     {                                               \
         GBDUMP (__VA_ARGS__) ;                      \
@@ -171,6 +178,7 @@ void GB_burble_assign
     #define GB_BURBLE_START(func)                       \
     double t_burble = 0 ;                               \
     {                                                   \
+        GB_NVTX                                         \
         if (GB_Global_burble_get ( ))                   \
         {                                               \
             GBURBLE (" [ " func " ") ;                  \
@@ -180,6 +188,7 @@ void GB_burble_assign
 
     #define GB_BURBLE_END                               \
     {                                                   \
+        GB_NVTX                                         \
         if (GB_Global_burble_get ( ))                   \
         {                                               \
             t_burble = GB_OPENMP_GET_WTIME - t_burble ; \
@@ -209,16 +218,5 @@ void GB_burble_assign
     if (!(A->vlen <= 1 && A->vdim <= 1)) GBURBLE (__VA_ARGS__)      \
 }
 
-#else
-
-// no burble
-#define GBURBLE(...)
-#define GB_BURBLE_START(func)
-#define GB_BURBLE_END
-#define GB_BURBLE_N(n,...)
-#define GB_BURBLE_MATRIX(A,...)
-#define GB_BURBLE_DENSE(A,format)
-
-#endif
 #endif
 

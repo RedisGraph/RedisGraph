@@ -2,7 +2,7 @@
 // GB_mx_semiring: get a built-in semiring
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -33,8 +33,8 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
     }
 
     GrB_BinaryOp add = add_monoid->op ;         // add operator
-    GB_Opcode add_opcode  = add->opcode ;       // add opcode
-    GB_Opcode mult_opcode = mult->opcode ;      // multiply opcode
+    GB_Opcode add_binop_code  = add->opcode ;       // add opcode
+    GB_Opcode mult_binop_code = mult->opcode ;      // multiply opcode
 
     // add is a monoid
     ASSERT (add->xtype == add->ztype && add->ytype == add->ztype) ;
@@ -46,7 +46,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
     // or not this function handles the semiring as hard-coded.  Now return for
     // cases this function does not handle.
 
-    if (add_opcode >= GB_USER_opcode || mult_opcode >= GB_USER_opcode)
+    if (add_binop_code == GB_USER_binop_code || mult_binop_code == GB_USER_binop_code)
     {
         return (NULL) ;
     }
@@ -74,14 +74,14 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
         // ISLT becomes LT
         // ISGE becomes GE
         // ISLE becomes LE
-        mult_opcode = GB_boolean_rename (mult_opcode) ;
+        mult_binop_code = GB_boolean_rename (mult_binop_code) ;
     }
 
     if (zcode == GB_BOOL_code)
     { 
         // Only the LAND, LOR, LXOR, and EQ monoids remain if z is
         // Boolean.  MIN, MAX, PLUS, and TIMES are renamed.
-        add_opcode = GB_boolean_rename (add_opcode) ;
+        add_binop_code = GB_boolean_rename (add_binop_code) ;
     }
 
     //--------------------------------------------------------------------------
@@ -95,104 +95,104 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
         // 27 single complex semirings
         //----------------------------------------------------------------------
 
-        switch (mult_opcode)
+        switch (mult_binop_code)
         {
 
-            case GB_FIRST_opcode :
+            case GB_FIRST_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_PLUS_opcode  : return (GxB_PLUS_FIRST_FC32 ) ;
-                    case GB_TIMES_opcode : return (GxB_TIMES_FIRST_FC32) ;
-                    case GB_ANY_opcode   : return (GxB_ANY_FIRST_FC32  ) ;
+                    case GB_PLUS_binop_code  : return (GxB_PLUS_FIRST_FC32 ) ;
+                    case GB_TIMES_binop_code : return (GxB_TIMES_FIRST_FC32) ;
+                    case GB_ANY_binop_code   : return (GxB_ANY_FIRST_FC32  ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_SECOND_opcode :
+            case GB_SECOND_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_PLUS_opcode  : return (GxB_PLUS_SECOND_FC32 ) ;
-                    case GB_TIMES_opcode : return (GxB_TIMES_SECOND_FC32) ;
-                    case GB_ANY_opcode   : return (GxB_ANY_SECOND_FC32  ) ;
+                    case GB_PLUS_binop_code  : return (GxB_PLUS_SECOND_FC32 ) ;
+                    case GB_TIMES_binop_code : return (GxB_TIMES_SECOND_FC32) ;
+                    case GB_ANY_binop_code   : return (GxB_ANY_SECOND_FC32  ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_PAIR_opcode :
+            case GB_PAIR_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_PLUS_opcode  : return (GxB_PLUS_PAIR_FC32 ) ;
-                    case GB_TIMES_opcode : return (GxB_TIMES_PAIR_FC32) ;
-                    case GB_ANY_opcode   : return (GxB_ANY_PAIR_FC32  ) ;
+                    case GB_PLUS_binop_code  : return (GxB_PLUS_PAIR_FC32 ) ;
+                    case GB_TIMES_binop_code : return (GxB_TIMES_PAIR_FC32) ;
+                    case GB_ANY_binop_code   : return (GxB_ANY_PAIR_FC32  ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_PLUS_opcode :
+            case GB_PLUS_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_PLUS_opcode  : return (GxB_PLUS_PLUS_FC32 ) ;
-                    case GB_TIMES_opcode : return (GxB_TIMES_PLUS_FC32) ;
-                    case GB_ANY_opcode   : return (GxB_ANY_PLUS_FC32  ) ;
+                    case GB_PLUS_binop_code  : return (GxB_PLUS_PLUS_FC32 ) ;
+                    case GB_TIMES_binop_code : return (GxB_TIMES_PLUS_FC32) ;
+                    case GB_ANY_binop_code   : return (GxB_ANY_PLUS_FC32  ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_MINUS_opcode :
+            case GB_MINUS_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_PLUS_opcode  : return (GxB_PLUS_MINUS_FC32 ) ;
-                    case GB_TIMES_opcode : return (GxB_TIMES_MINUS_FC32) ;
-                    case GB_ANY_opcode   : return (GxB_ANY_MINUS_FC32  ) ;
+                    case GB_PLUS_binop_code  : return (GxB_PLUS_MINUS_FC32 ) ;
+                    case GB_TIMES_binop_code : return (GxB_TIMES_MINUS_FC32) ;
+                    case GB_ANY_binop_code   : return (GxB_ANY_MINUS_FC32  ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_TIMES_opcode :
+            case GB_TIMES_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_PLUS_opcode  : return (GxB_PLUS_TIMES_FC32 ) ;
-                    case GB_TIMES_opcode : return (GxB_TIMES_TIMES_FC32) ;
-                    case GB_ANY_opcode   : return (GxB_ANY_TIMES_FC32  ) ;
+                    case GB_PLUS_binop_code  : return (GxB_PLUS_TIMES_FC32 ) ;
+                    case GB_TIMES_binop_code : return (GxB_TIMES_TIMES_FC32) ;
+                    case GB_ANY_binop_code   : return (GxB_ANY_TIMES_FC32  ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_DIV_opcode :
+            case GB_DIV_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_PLUS_opcode  : return (GxB_PLUS_DIV_FC32 ) ;
-                    case GB_TIMES_opcode : return (GxB_TIMES_DIV_FC32) ;
-                    case GB_ANY_opcode   : return (GxB_ANY_DIV_FC32  ) ;
+                    case GB_PLUS_binop_code  : return (GxB_PLUS_DIV_FC32 ) ;
+                    case GB_TIMES_binop_code : return (GxB_TIMES_DIV_FC32) ;
+                    case GB_ANY_binop_code   : return (GxB_ANY_DIV_FC32  ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_RDIV_opcode :
+            case GB_RDIV_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_PLUS_opcode  : return (GxB_PLUS_RDIV_FC32 ) ;
-                    case GB_TIMES_opcode : return (GxB_TIMES_RDIV_FC32) ;
-                    case GB_ANY_opcode   : return (GxB_ANY_RDIV_FC32  ) ;
+                    case GB_PLUS_binop_code  : return (GxB_PLUS_RDIV_FC32 ) ;
+                    case GB_TIMES_binop_code : return (GxB_TIMES_RDIV_FC32) ;
+                    case GB_ANY_binop_code   : return (GxB_ANY_RDIV_FC32  ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_RMINUS_opcode :
+            case GB_RMINUS_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_PLUS_opcode  : return (GxB_PLUS_RMINUS_FC32 ) ;
-                    case GB_TIMES_opcode : return (GxB_TIMES_RMINUS_FC32) ;
-                    case GB_ANY_opcode   : return (GxB_ANY_RMINUS_FC32  ) ;
+                    case GB_PLUS_binop_code  : return (GxB_PLUS_RMINUS_FC32 ) ;
+                    case GB_TIMES_binop_code : return (GxB_TIMES_RMINUS_FC32) ;
+                    case GB_ANY_binop_code   : return (GxB_ANY_RMINUS_FC32  ) ;
                     default : ;
                 }
                 break ;
@@ -207,104 +207,104 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
         // 27 double complex semirings
         //----------------------------------------------------------------------
 
-        switch (mult_opcode)
+        switch (mult_binop_code)
         {
 
-            case GB_FIRST_opcode :
+            case GB_FIRST_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_PLUS_opcode  : return (GxB_PLUS_FIRST_FC64 ) ;
-                    case GB_TIMES_opcode : return (GxB_TIMES_FIRST_FC64) ;
-                    case GB_ANY_opcode   : return (GxB_ANY_FIRST_FC64  ) ;
+                    case GB_PLUS_binop_code  : return (GxB_PLUS_FIRST_FC64 ) ;
+                    case GB_TIMES_binop_code : return (GxB_TIMES_FIRST_FC64) ;
+                    case GB_ANY_binop_code   : return (GxB_ANY_FIRST_FC64  ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_SECOND_opcode :
+            case GB_SECOND_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_PLUS_opcode  : return (GxB_PLUS_SECOND_FC64 ) ;
-                    case GB_TIMES_opcode : return (GxB_TIMES_SECOND_FC64) ;
-                    case GB_ANY_opcode   : return (GxB_ANY_SECOND_FC64  ) ;
+                    case GB_PLUS_binop_code  : return (GxB_PLUS_SECOND_FC64 ) ;
+                    case GB_TIMES_binop_code : return (GxB_TIMES_SECOND_FC64) ;
+                    case GB_ANY_binop_code   : return (GxB_ANY_SECOND_FC64  ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_PAIR_opcode :
+            case GB_PAIR_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_PLUS_opcode  : return (GxB_PLUS_PAIR_FC64 ) ;
-                    case GB_TIMES_opcode : return (GxB_TIMES_PAIR_FC64) ;
-                    case GB_ANY_opcode   : return (GxB_ANY_PAIR_FC64  ) ;
+                    case GB_PLUS_binop_code  : return (GxB_PLUS_PAIR_FC64 ) ;
+                    case GB_TIMES_binop_code : return (GxB_TIMES_PAIR_FC64) ;
+                    case GB_ANY_binop_code   : return (GxB_ANY_PAIR_FC64  ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_PLUS_opcode :
+            case GB_PLUS_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_PLUS_opcode  : return (GxB_PLUS_PLUS_FC64 ) ;
-                    case GB_TIMES_opcode : return (GxB_TIMES_PLUS_FC64) ;
-                    case GB_ANY_opcode   : return (GxB_ANY_PLUS_FC64  ) ;
+                    case GB_PLUS_binop_code  : return (GxB_PLUS_PLUS_FC64 ) ;
+                    case GB_TIMES_binop_code : return (GxB_TIMES_PLUS_FC64) ;
+                    case GB_ANY_binop_code   : return (GxB_ANY_PLUS_FC64  ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_MINUS_opcode :
+            case GB_MINUS_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_PLUS_opcode  : return (GxB_PLUS_MINUS_FC64 ) ;
-                    case GB_TIMES_opcode : return (GxB_TIMES_MINUS_FC64) ;
-                    case GB_ANY_opcode   : return (GxB_ANY_MINUS_FC64  ) ;
+                    case GB_PLUS_binop_code  : return (GxB_PLUS_MINUS_FC64 ) ;
+                    case GB_TIMES_binop_code : return (GxB_TIMES_MINUS_FC64) ;
+                    case GB_ANY_binop_code   : return (GxB_ANY_MINUS_FC64  ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_TIMES_opcode :
+            case GB_TIMES_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_PLUS_opcode  : return (GxB_PLUS_TIMES_FC64 ) ;
-                    case GB_TIMES_opcode : return (GxB_TIMES_TIMES_FC64) ;
-                    case GB_ANY_opcode   : return (GxB_ANY_TIMES_FC64  ) ;
+                    case GB_PLUS_binop_code  : return (GxB_PLUS_TIMES_FC64 ) ;
+                    case GB_TIMES_binop_code : return (GxB_TIMES_TIMES_FC64) ;
+                    case GB_ANY_binop_code   : return (GxB_ANY_TIMES_FC64  ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_DIV_opcode :
+            case GB_DIV_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_PLUS_opcode  : return (GxB_PLUS_DIV_FC64 ) ;
-                    case GB_TIMES_opcode : return (GxB_TIMES_DIV_FC64) ;
-                    case GB_ANY_opcode   : return (GxB_ANY_DIV_FC64  ) ;
+                    case GB_PLUS_binop_code  : return (GxB_PLUS_DIV_FC64 ) ;
+                    case GB_TIMES_binop_code : return (GxB_TIMES_DIV_FC64) ;
+                    case GB_ANY_binop_code   : return (GxB_ANY_DIV_FC64  ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_RDIV_opcode :
+            case GB_RDIV_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_PLUS_opcode  : return (GxB_PLUS_RDIV_FC64 ) ;
-                    case GB_TIMES_opcode : return (GxB_TIMES_RDIV_FC64) ;
-                    case GB_ANY_opcode   : return (GxB_ANY_RDIV_FC64  ) ;
+                    case GB_PLUS_binop_code  : return (GxB_PLUS_RDIV_FC64 ) ;
+                    case GB_TIMES_binop_code : return (GxB_TIMES_RDIV_FC64) ;
+                    case GB_ANY_binop_code   : return (GxB_ANY_RDIV_FC64  ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_RMINUS_opcode :
+            case GB_RMINUS_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_PLUS_opcode  : return (GxB_PLUS_RMINUS_FC64 ) ;
-                    case GB_TIMES_opcode : return (GxB_TIMES_RMINUS_FC64) ;
-                    case GB_ANY_opcode   : return (GxB_ANY_RMINUS_FC64  ) ;
+                    case GB_PLUS_binop_code  : return (GxB_PLUS_RMINUS_FC64 ) ;
+                    case GB_TIMES_binop_code : return (GxB_TIMES_RMINUS_FC64) ;
+                    case GB_ANY_binop_code   : return (GxB_ANY_RMINUS_FC64  ) ;
                     default : ;
                 }
                 break ;
@@ -321,15 +321,15 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
 
         // x,y,z are all the same non-Boolean type
 
-        switch (mult_opcode)
+        switch (mult_binop_code)
         {
 
-            case GB_FIRST_opcode : // with (5 monoids) x (10 nonboolean types)
+            case GB_FIRST_binop_code : // with (5 monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_MIN_opcode :
+                    case GB_MIN_binop_code :
 
                         switch (zcode)
                         {
@@ -347,7 +347,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_MAX_opcode :
+                    case GB_MAX_binop_code :
 
                         switch (zcode)
                         {
@@ -365,7 +365,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_PLUS_opcode :
+                    case GB_PLUS_binop_code :
 
                         switch (zcode)
                         {
@@ -383,7 +383,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_TIMES_opcode :
+                    case GB_TIMES_binop_code :
 
                         switch (zcode)
                         {
@@ -401,7 +401,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (zcode)
                         {
@@ -423,12 +423,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_SECOND_opcode : // with (5 monoids) x (10 nonboolean types)
+            case GB_SECOND_binop_code : // with (5 monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_MIN_opcode :
+                    case GB_MIN_binop_code :
 
                         switch (zcode)
                         {
@@ -446,7 +446,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_MAX_opcode :
+                    case GB_MAX_binop_code :
 
                         switch (zcode)
                         {
@@ -464,7 +464,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_PLUS_opcode :
+                    case GB_PLUS_binop_code :
 
                         switch (zcode)
                         {
@@ -482,7 +482,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_TIMES_opcode :
+                    case GB_TIMES_binop_code :
 
                         switch (zcode)
                         {
@@ -500,7 +500,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (zcode)
                         {
@@ -522,12 +522,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_PAIR_opcode : // with (5 monoids) x (10 nonboolean types)
+            case GB_PAIR_binop_code : // with (5 monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_MIN_opcode :
+                    case GB_MIN_binop_code :
 
                         switch (zcode)
                         {
@@ -545,7 +545,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_MAX_opcode :
+                    case GB_MAX_binop_code :
 
                         switch (zcode)
                         {
@@ -563,7 +563,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_PLUS_opcode :
+                    case GB_PLUS_binop_code :
 
                         switch (zcode)
                         {
@@ -581,7 +581,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_TIMES_opcode :
+                    case GB_TIMES_binop_code :
 
                         switch (zcode)
                         {
@@ -599,7 +599,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (zcode)
                         {
@@ -621,12 +621,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_MIN_opcode : // with (5 monoids) x (10 nonboolean types)
+            case GB_MIN_binop_code : // with (5 monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_MIN_opcode :
+                    case GB_MIN_binop_code :
 
                         switch (zcode)
                         {
@@ -644,7 +644,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_MAX_opcode :
+                    case GB_MAX_binop_code :
 
                         switch (zcode)
                         {
@@ -662,7 +662,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_PLUS_opcode :
+                    case GB_PLUS_binop_code :
 
                         switch (zcode)
                         {
@@ -680,7 +680,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_TIMES_opcode :
+                    case GB_TIMES_binop_code :
 
                         switch (zcode)
                         {
@@ -698,7 +698,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (zcode)
                         {
@@ -720,12 +720,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_MAX_opcode : // with (5 monoids) x (10 nonboolean types)
+            case GB_MAX_binop_code : // with (5 monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_MIN_opcode :
+                    case GB_MIN_binop_code :
 
                         switch (zcode)
                         {
@@ -743,7 +743,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_MAX_opcode :
+                    case GB_MAX_binop_code :
 
                         switch (zcode)
                         {
@@ -761,7 +761,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_PLUS_opcode :
+                    case GB_PLUS_binop_code :
 
                         switch (zcode)
                         {
@@ -779,7 +779,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_TIMES_opcode :
+                    case GB_TIMES_binop_code :
 
                         switch (zcode)
                         {
@@ -797,7 +797,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (zcode)
                         {
@@ -819,12 +819,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_PLUS_opcode : // with (5 monoids) x (10 nonboolean types)
+            case GB_PLUS_binop_code : // with (5 monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_MIN_opcode :
+                    case GB_MIN_binop_code :
 
                         switch (zcode)
                         {
@@ -842,7 +842,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_MAX_opcode :
+                    case GB_MAX_binop_code :
 
                         switch (zcode)
                         {
@@ -860,7 +860,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_PLUS_opcode :
+                    case GB_PLUS_binop_code :
 
                         switch (zcode)
                         {
@@ -878,7 +878,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_TIMES_opcode :
+                    case GB_TIMES_binop_code :
 
                         switch (zcode)
                         {
@@ -896,7 +896,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (zcode)
                         {
@@ -918,12 +918,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_MINUS_opcode : // with (5 monoids) x (10 nonboolean types)
+            case GB_MINUS_binop_code : // with (5 monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_MIN_opcode :
+                    case GB_MIN_binop_code :
 
                         switch (zcode)
                         {
@@ -941,7 +941,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_MAX_opcode :
+                    case GB_MAX_binop_code :
 
                         switch (zcode)
                         {
@@ -959,7 +959,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_PLUS_opcode :
+                    case GB_PLUS_binop_code :
 
                         switch (zcode)
                         {
@@ -977,7 +977,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_TIMES_opcode :
+                    case GB_TIMES_binop_code :
 
                         switch (zcode)
                         {
@@ -995,7 +995,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (zcode)
                         {
@@ -1017,12 +1017,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_RMINUS_opcode : // with (5 monoids) x (10 nonboolean types)
+            case GB_RMINUS_binop_code : // with (5 monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_MIN_opcode :
+                    case GB_MIN_binop_code :
 
                         switch (zcode)
                         {
@@ -1040,7 +1040,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_MAX_opcode :
+                    case GB_MAX_binop_code :
 
                         switch (zcode)
                         {
@@ -1058,7 +1058,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_PLUS_opcode :
+                    case GB_PLUS_binop_code :
 
                         switch (zcode)
                         {
@@ -1076,7 +1076,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_TIMES_opcode :
+                    case GB_TIMES_binop_code :
 
                         switch (zcode)
                         {
@@ -1094,7 +1094,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (zcode)
                         {
@@ -1116,12 +1116,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_TIMES_opcode : // with (5 monoids) x (10 nonboolean types)
+            case GB_TIMES_binop_code : // with (5 monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_MIN_opcode :
+                    case GB_MIN_binop_code :
 
                         switch (zcode)
                         {
@@ -1139,7 +1139,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_MAX_opcode :
+                    case GB_MAX_binop_code :
 
                         switch (zcode)
                         {
@@ -1157,7 +1157,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_PLUS_opcode :
+                    case GB_PLUS_binop_code :
 
                         switch (zcode)
                         {
@@ -1175,7 +1175,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_TIMES_opcode :
+                    case GB_TIMES_binop_code :
 
                         switch (zcode)
                         {
@@ -1193,7 +1193,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (zcode)
                         {
@@ -1215,12 +1215,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_DIV_opcode : // with (5 monoids) x (10 nonboolean types)
+            case GB_DIV_binop_code : // with (5 monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_MIN_opcode :
+                    case GB_MIN_binop_code :
 
                         switch (zcode)
                         {
@@ -1238,7 +1238,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_MAX_opcode :
+                    case GB_MAX_binop_code :
 
                         switch (zcode)
                         {
@@ -1256,7 +1256,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_PLUS_opcode :
+                    case GB_PLUS_binop_code :
 
                         switch (zcode)
                         {
@@ -1274,7 +1274,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_TIMES_opcode :
+                    case GB_TIMES_binop_code :
 
                         switch (zcode)
                         {
@@ -1292,7 +1292,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (zcode)
                         {
@@ -1314,12 +1314,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_RDIV_opcode : // with (5 monoids) x (10 nonboolean types)
+            case GB_RDIV_binop_code : // with (5 monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_MIN_opcode :
+                    case GB_MIN_binop_code :
 
                         switch (zcode)
                         {
@@ -1337,7 +1337,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_MAX_opcode :
+                    case GB_MAX_binop_code :
 
                         switch (zcode)
                         {
@@ -1355,7 +1355,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_PLUS_opcode :
+                    case GB_PLUS_binop_code :
 
                         switch (zcode)
                         {
@@ -1373,7 +1373,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_TIMES_opcode :
+                    case GB_TIMES_binop_code :
 
                         switch (zcode)
                         {
@@ -1391,7 +1391,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (zcode)
                         {
@@ -1413,12 +1413,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_ISEQ_opcode : // with (5 monoids) x (10 nonboolean types)
+            case GB_ISEQ_binop_code : // with (5 monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_MIN_opcode :
+                    case GB_MIN_binop_code :
 
                         switch (zcode)
                         {
@@ -1436,7 +1436,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_MAX_opcode :
+                    case GB_MAX_binop_code :
 
                         switch (zcode)
                         {
@@ -1454,7 +1454,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_PLUS_opcode :
+                    case GB_PLUS_binop_code :
 
                         switch (zcode)
                         {
@@ -1472,7 +1472,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_TIMES_opcode :
+                    case GB_TIMES_binop_code :
 
                         switch (zcode)
                         {
@@ -1490,7 +1490,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (zcode)
                         {
@@ -1512,12 +1512,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_ISNE_opcode : // with (5 monoids) x (10 nonboolean types)
+            case GB_ISNE_binop_code : // with (5 monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_MIN_opcode :
+                    case GB_MIN_binop_code :
 
                         switch (zcode)
                         {
@@ -1535,7 +1535,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_MAX_opcode :
+                    case GB_MAX_binop_code :
 
                         switch (zcode)
                         {
@@ -1553,7 +1553,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_PLUS_opcode :
+                    case GB_PLUS_binop_code :
 
                         switch (zcode)
                         {
@@ -1571,7 +1571,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_TIMES_opcode :
+                    case GB_TIMES_binop_code :
 
                         switch (zcode)
                         {
@@ -1589,7 +1589,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (zcode)
                         {
@@ -1611,12 +1611,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_ISGT_opcode : // with (5 monoids) x (10 nonboolean types)
+            case GB_ISGT_binop_code : // with (5 monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_MIN_opcode :
+                    case GB_MIN_binop_code :
 
                         switch (zcode)
                         {
@@ -1634,7 +1634,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_MAX_opcode :
+                    case GB_MAX_binop_code :
 
                         switch (zcode)
                         {
@@ -1652,7 +1652,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_PLUS_opcode :
+                    case GB_PLUS_binop_code :
 
                         switch (zcode)
                         {
@@ -1670,7 +1670,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_TIMES_opcode :
+                    case GB_TIMES_binop_code :
 
                         switch (zcode)
                         {
@@ -1688,7 +1688,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (zcode)
                         {
@@ -1710,12 +1710,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_ISLT_opcode : // with (5 monoids) x (10 nonboolean types)
+            case GB_ISLT_binop_code : // with (5 monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_MIN_opcode :
+                    case GB_MIN_binop_code :
 
                         switch (zcode)
                         {
@@ -1733,7 +1733,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_MAX_opcode :
+                    case GB_MAX_binop_code :
 
                         switch (zcode)
                         {
@@ -1751,7 +1751,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_PLUS_opcode :
+                    case GB_PLUS_binop_code :
 
                         switch (zcode)
                         {
@@ -1769,7 +1769,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_TIMES_opcode :
+                    case GB_TIMES_binop_code :
 
                         switch (zcode)
                         {
@@ -1787,7 +1787,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (zcode)
                         {
@@ -1809,12 +1809,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_ISGE_opcode : // with (5 monoids) x (10 nonboolean types)
+            case GB_ISGE_binop_code : // with (5 monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_MIN_opcode :
+                    case GB_MIN_binop_code :
 
                         switch (zcode)
                         {
@@ -1832,7 +1832,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_MAX_opcode :
+                    case GB_MAX_binop_code :
 
                         switch (zcode)
                         {
@@ -1850,7 +1850,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_PLUS_opcode :
+                    case GB_PLUS_binop_code :
 
                         switch (zcode)
                         {
@@ -1868,7 +1868,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_TIMES_opcode :
+                    case GB_TIMES_binop_code :
 
                         switch (zcode)
                         {
@@ -1886,7 +1886,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (zcode)
                         {
@@ -1908,12 +1908,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_ISLE_opcode : // with (5 monoids) x (10 nonboolean types)
+            case GB_ISLE_binop_code : // with (5 monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_MIN_opcode :
+                    case GB_MIN_binop_code :
 
                         switch (zcode)
                         {
@@ -1931,7 +1931,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_MAX_opcode :
+                    case GB_MAX_binop_code :
 
                         switch (zcode)
                         {
@@ -1949,7 +1949,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_PLUS_opcode :
+                    case GB_PLUS_binop_code :
 
                         switch (zcode)
                         {
@@ -1967,7 +1967,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_TIMES_opcode :
+                    case GB_TIMES_binop_code :
 
                         switch (zcode)
                         {
@@ -1985,7 +1985,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (zcode)
                         {
@@ -2007,12 +2007,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_LOR_opcode : // with (5 monoids) x (10 nonboolean types)
+            case GB_LOR_binop_code : // with (5 monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_MIN_opcode :
+                    case GB_MIN_binop_code :
 
                         switch (zcode)
                         {
@@ -2030,7 +2030,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_MAX_opcode :
+                    case GB_MAX_binop_code :
 
                         switch (zcode)
                         {
@@ -2048,7 +2048,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_PLUS_opcode :
+                    case GB_PLUS_binop_code :
 
                         switch (zcode)
                         {
@@ -2066,7 +2066,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_TIMES_opcode :
+                    case GB_TIMES_binop_code :
 
                         switch (zcode)
                         {
@@ -2084,7 +2084,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (zcode)
                         {
@@ -2106,12 +2106,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_LAND_opcode : // with (5 monoids) x (10 nonboolean types)
+            case GB_LAND_binop_code : // with (5 monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_MIN_opcode :
+                    case GB_MIN_binop_code :
 
                         switch (zcode)
                         {
@@ -2129,7 +2129,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_MAX_opcode :
+                    case GB_MAX_binop_code :
 
                         switch (zcode)
                         {
@@ -2147,7 +2147,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_PLUS_opcode :
+                    case GB_PLUS_binop_code :
 
                         switch (zcode)
                         {
@@ -2165,7 +2165,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_TIMES_opcode :
+                    case GB_TIMES_binop_code :
 
                         switch (zcode)
                         {
@@ -2183,7 +2183,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (zcode)
                         {
@@ -2205,12 +2205,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_LXOR_opcode : // with (5 monoids) x (10 nonboolean types)
+            case GB_LXOR_binop_code : // with (5 monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_MIN_opcode :
+                    case GB_MIN_binop_code :
 
                         switch (zcode)
                         {
@@ -2228,7 +2228,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_MAX_opcode :
+                    case GB_MAX_binop_code :
 
                         switch (zcode)
                         {
@@ -2246,7 +2246,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_PLUS_opcode :
+                    case GB_PLUS_binop_code :
 
                         switch (zcode)
                         {
@@ -2264,7 +2264,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_TIMES_opcode :
+                    case GB_TIMES_binop_code :
 
                         switch (zcode)
                         {
@@ -2282,7 +2282,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (zcode)
                         {
@@ -2311,14 +2311,14 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
         // 64 bitwise semirings
         //----------------------------------------------------------------------
 
-        switch (mult_opcode)
+        switch (mult_binop_code)
         {
 
-            case GB_BOR_opcode :
+            case GB_BOR_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_BOR_opcode :
+                    case GB_BOR_binop_code :
 
                         switch (zcode)
                         {
@@ -2330,7 +2330,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_BAND_opcode :
+                    case GB_BAND_binop_code :
 
                         switch (zcode)
                         {
@@ -2342,7 +2342,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_BXOR_opcode :
+                    case GB_BXOR_binop_code :
 
                         switch (zcode)
                         {
@@ -2354,7 +2354,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_BXNOR_opcode :
+                    case GB_BXNOR_binop_code :
 
                         switch (zcode)
                         {
@@ -2370,11 +2370,11 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_BAND_opcode :
+            case GB_BAND_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_BOR_opcode :
+                    case GB_BOR_binop_code :
 
                         switch (zcode)
                         {
@@ -2386,7 +2386,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_BAND_opcode :
+                    case GB_BAND_binop_code :
 
                         switch (zcode)
                         {
@@ -2398,7 +2398,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_BXOR_opcode :
+                    case GB_BXOR_binop_code :
 
                         switch (zcode)
                         {
@@ -2410,7 +2410,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_BXNOR_opcode :
+                    case GB_BXNOR_binop_code :
 
                         switch (zcode)
                         {
@@ -2426,11 +2426,11 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_BXOR_opcode :
+            case GB_BXOR_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_BOR_opcode :
+                    case GB_BOR_binop_code :
 
                         switch (zcode)
                         {
@@ -2442,7 +2442,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_BAND_opcode :
+                    case GB_BAND_binop_code :
 
                         switch (zcode)
                         {
@@ -2454,7 +2454,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_BXOR_opcode :
+                    case GB_BXOR_binop_code :
 
                         switch (zcode)
                         {
@@ -2466,7 +2466,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_BXNOR_opcode :
+                    case GB_BXNOR_binop_code :
 
                         switch (zcode)
                         {
@@ -2482,11 +2482,11 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_BXNOR_opcode :
+            case GB_BXNOR_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_BOR_opcode :
+                    case GB_BOR_binop_code :
 
                         switch (zcode)
                         {
@@ -2498,7 +2498,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_BAND_opcode :
+                    case GB_BAND_binop_code :
 
                         switch (zcode)
                         {
@@ -2510,7 +2510,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_BXOR_opcode :
+                    case GB_BXOR_binop_code :
 
                         switch (zcode)
                         {
@@ -2522,7 +2522,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_BXNOR_opcode :
+                    case GB_BXNOR_binop_code :
 
                         switch (zcode)
                         {
@@ -2545,228 +2545,228 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
         // 80 positional semirings
         //----------------------------------------------------------------------
 
-        switch (mult_opcode)
+        switch (mult_binop_code)
         {
 
-            case GB_FIRSTI_opcode   :   // z = first_i(A(i,k),y) == i
+            case GB_FIRSTI_binop_code   :   // z = first_i(A(i,k),y) == i
 
                 if (zcode == GB_INT64_code)
                 {
-                    switch (add_opcode)
+                    switch (add_binop_code)
                     {
-                        case GB_MIN_opcode   : return (GxB_MIN_FIRSTI_INT64) ;
-                        case GB_MAX_opcode   : return (GxB_MAX_FIRSTI_INT64) ;
-                        case GB_TIMES_opcode : return (GxB_TIMES_FIRSTI_INT64) ;
-                        case GB_PLUS_opcode  : return (GxB_PLUS_FIRSTI_INT64) ;
-                        case GB_ANY_opcode   : return (GxB_ANY_FIRSTI_INT64) ;
+                        case GB_MIN_binop_code   : return (GxB_MIN_FIRSTI_INT64) ;
+                        case GB_MAX_binop_code   : return (GxB_MAX_FIRSTI_INT64) ;
+                        case GB_TIMES_binop_code : return (GxB_TIMES_FIRSTI_INT64) ;
+                        case GB_PLUS_binop_code  : return (GxB_PLUS_FIRSTI_INT64) ;
+                        case GB_ANY_binop_code   : return (GxB_ANY_FIRSTI_INT64) ;
                         default: ;
                     }
                 }
                 else
                 {
-                    switch (add_opcode)
+                    switch (add_binop_code)
                     {
-                        case GB_MIN_opcode   : return (GxB_MIN_FIRSTI_INT32) ;
-                        case GB_MAX_opcode   : return (GxB_MAX_FIRSTI_INT32) ;
-                        case GB_TIMES_opcode : return (GxB_TIMES_FIRSTI_INT32) ;
-                        case GB_PLUS_opcode  : return (GxB_PLUS_FIRSTI_INT32) ;
-                        case GB_ANY_opcode   : return (GxB_ANY_FIRSTI_INT32) ;
+                        case GB_MIN_binop_code   : return (GxB_MIN_FIRSTI_INT32) ;
+                        case GB_MAX_binop_code   : return (GxB_MAX_FIRSTI_INT32) ;
+                        case GB_TIMES_binop_code : return (GxB_TIMES_FIRSTI_INT32) ;
+                        case GB_PLUS_binop_code  : return (GxB_PLUS_FIRSTI_INT32) ;
+                        case GB_ANY_binop_code   : return (GxB_ANY_FIRSTI_INT32) ;
                         default: ;
                     }
                 }
                 break ;
 
-            case GB_FIRSTI1_opcode  :   // z = first_i1(A(i,k),y) == i+1
+            case GB_FIRSTI1_binop_code  :   // z = first_i1(A(i,k),y) == i+1
 
                 if (zcode == GB_INT64_code)
                 {
-                    switch (add_opcode)
+                    switch (add_binop_code)
                     {
-                        case GB_MIN_opcode   : return (GxB_MIN_FIRSTI1_INT64) ;
-                        case GB_MAX_opcode   : return (GxB_MAX_FIRSTI1_INT64) ;
-                        case GB_TIMES_opcode : return (GxB_TIMES_FIRSTI1_INT64) ;
-                        case GB_PLUS_opcode  : return (GxB_PLUS_FIRSTI1_INT64) ;
-                        case GB_ANY_opcode   : return (GxB_ANY_FIRSTI1_INT64) ;
+                        case GB_MIN_binop_code   : return (GxB_MIN_FIRSTI1_INT64) ;
+                        case GB_MAX_binop_code   : return (GxB_MAX_FIRSTI1_INT64) ;
+                        case GB_TIMES_binop_code : return (GxB_TIMES_FIRSTI1_INT64) ;
+                        case GB_PLUS_binop_code  : return (GxB_PLUS_FIRSTI1_INT64) ;
+                        case GB_ANY_binop_code   : return (GxB_ANY_FIRSTI1_INT64) ;
                         default: ;
                     }
                 }
                 else
                 {
-                    switch (add_opcode)
+                    switch (add_binop_code)
                     {
-                        case GB_MIN_opcode   : return (GxB_MIN_FIRSTI1_INT32) ;
-                        case GB_MAX_opcode   : return (GxB_MAX_FIRSTI1_INT32) ;
-                        case GB_TIMES_opcode : return (GxB_TIMES_FIRSTI1_INT32) ;
-                        case GB_PLUS_opcode  : return (GxB_PLUS_FIRSTI1_INT32) ;
-                        case GB_ANY_opcode   : return (GxB_ANY_FIRSTI1_INT32) ;
+                        case GB_MIN_binop_code   : return (GxB_MIN_FIRSTI1_INT32) ;
+                        case GB_MAX_binop_code   : return (GxB_MAX_FIRSTI1_INT32) ;
+                        case GB_TIMES_binop_code : return (GxB_TIMES_FIRSTI1_INT32) ;
+                        case GB_PLUS_binop_code  : return (GxB_PLUS_FIRSTI1_INT32) ;
+                        case GB_ANY_binop_code   : return (GxB_ANY_FIRSTI1_INT32) ;
                         default: ;
                     }
                 }
                 break ;
 
-            case GB_FIRSTJ_opcode   :   // z = first_j(A(i,k),y) == k
+            case GB_FIRSTJ_binop_code   :   // z = first_j(A(i,k),y) == k
 
                 if (zcode == GB_INT64_code)
                 {
-                    switch (add_opcode)
+                    switch (add_binop_code)
                     {
-                        case GB_MIN_opcode   : return (GxB_MIN_FIRSTJ_INT64) ;
-                        case GB_MAX_opcode   : return (GxB_MAX_FIRSTJ_INT64) ;
-                        case GB_TIMES_opcode : return (GxB_TIMES_FIRSTJ_INT64) ;
-                        case GB_PLUS_opcode  : return (GxB_PLUS_FIRSTJ_INT64) ;
-                        case GB_ANY_opcode   : return (GxB_ANY_FIRSTJ_INT64) ;
+                        case GB_MIN_binop_code   : return (GxB_MIN_FIRSTJ_INT64) ;
+                        case GB_MAX_binop_code   : return (GxB_MAX_FIRSTJ_INT64) ;
+                        case GB_TIMES_binop_code : return (GxB_TIMES_FIRSTJ_INT64) ;
+                        case GB_PLUS_binop_code  : return (GxB_PLUS_FIRSTJ_INT64) ;
+                        case GB_ANY_binop_code   : return (GxB_ANY_FIRSTJ_INT64) ;
                         default: ;
                     }
                 }
                 else
                 {
-                    switch (add_opcode)
+                    switch (add_binop_code)
                     {
-                        case GB_MIN_opcode   : return (GxB_MIN_FIRSTJ_INT32) ;
-                        case GB_MAX_opcode   : return (GxB_MAX_FIRSTJ_INT32) ;
-                        case GB_TIMES_opcode : return (GxB_TIMES_FIRSTJ_INT32) ;
-                        case GB_PLUS_opcode  : return (GxB_PLUS_FIRSTJ_INT32) ;
-                        case GB_ANY_opcode   : return (GxB_ANY_FIRSTJ_INT32) ;
+                        case GB_MIN_binop_code   : return (GxB_MIN_FIRSTJ_INT32) ;
+                        case GB_MAX_binop_code   : return (GxB_MAX_FIRSTJ_INT32) ;
+                        case GB_TIMES_binop_code : return (GxB_TIMES_FIRSTJ_INT32) ;
+                        case GB_PLUS_binop_code  : return (GxB_PLUS_FIRSTJ_INT32) ;
+                        case GB_ANY_binop_code   : return (GxB_ANY_FIRSTJ_INT32) ;
                         default: ;
                     }
                 }
                 break ;
 
-            case GB_FIRSTJ1_opcode  :   // z = first_j1(A(i,k),y) == k+1
+            case GB_FIRSTJ1_binop_code  :   // z = first_j1(A(i,k),y) == k+1
 
                 if (zcode == GB_INT64_code)
                 {
-                    switch (add_opcode)
+                    switch (add_binop_code)
                     {
-                        case GB_MIN_opcode   : return (GxB_MIN_FIRSTJ1_INT64) ;
-                        case GB_MAX_opcode   : return (GxB_MAX_FIRSTJ1_INT64) ;
-                        case GB_TIMES_opcode : return (GxB_TIMES_FIRSTJ1_INT64) ;
-                        case GB_PLUS_opcode  : return (GxB_PLUS_FIRSTJ1_INT64) ;
-                        case GB_ANY_opcode   : return (GxB_ANY_FIRSTJ1_INT64) ;
+                        case GB_MIN_binop_code   : return (GxB_MIN_FIRSTJ1_INT64) ;
+                        case GB_MAX_binop_code   : return (GxB_MAX_FIRSTJ1_INT64) ;
+                        case GB_TIMES_binop_code : return (GxB_TIMES_FIRSTJ1_INT64) ;
+                        case GB_PLUS_binop_code  : return (GxB_PLUS_FIRSTJ1_INT64) ;
+                        case GB_ANY_binop_code   : return (GxB_ANY_FIRSTJ1_INT64) ;
                         default: ;
                     }
                 }
                 else
                 {
-                    switch (add_opcode)
+                    switch (add_binop_code)
                     {
-                        case GB_MIN_opcode   : return (GxB_MIN_FIRSTJ1_INT32) ;
-                        case GB_MAX_opcode   : return (GxB_MAX_FIRSTJ1_INT32) ;
-                        case GB_TIMES_opcode : return (GxB_TIMES_FIRSTJ1_INT32) ;
-                        case GB_PLUS_opcode  : return (GxB_PLUS_FIRSTJ1_INT32) ;
-                        case GB_ANY_opcode   : return (GxB_ANY_FIRSTJ1_INT32) ;
+                        case GB_MIN_binop_code   : return (GxB_MIN_FIRSTJ1_INT32) ;
+                        case GB_MAX_binop_code   : return (GxB_MAX_FIRSTJ1_INT32) ;
+                        case GB_TIMES_binop_code : return (GxB_TIMES_FIRSTJ1_INT32) ;
+                        case GB_PLUS_binop_code  : return (GxB_PLUS_FIRSTJ1_INT32) ;
+                        case GB_ANY_binop_code   : return (GxB_ANY_FIRSTJ1_INT32) ;
                         default: ;
                     }
                 }
                 break ;
 
-            case GB_SECONDI_opcode  :   // z = second_i(x,B(k,j)) == k
+            case GB_SECONDI_binop_code  :   // z = second_i(x,B(k,j)) == k
 
                 if (zcode == GB_INT64_code)
                 {
-                    switch (add_opcode)
+                    switch (add_binop_code)
                     {
-                        case GB_MIN_opcode   : return (GxB_MIN_SECONDI_INT64) ;
-                        case GB_MAX_opcode   : return (GxB_MAX_SECONDI_INT64) ;
-                        case GB_TIMES_opcode : return (GxB_TIMES_SECONDI_INT64) ;
-                        case GB_PLUS_opcode  : return (GxB_PLUS_SECONDI_INT64) ;
-                        case GB_ANY_opcode   : return (GxB_ANY_SECONDI_INT64) ;
+                        case GB_MIN_binop_code   : return (GxB_MIN_SECONDI_INT64) ;
+                        case GB_MAX_binop_code   : return (GxB_MAX_SECONDI_INT64) ;
+                        case GB_TIMES_binop_code : return (GxB_TIMES_SECONDI_INT64) ;
+                        case GB_PLUS_binop_code  : return (GxB_PLUS_SECONDI_INT64) ;
+                        case GB_ANY_binop_code   : return (GxB_ANY_SECONDI_INT64) ;
                         default: ;
                     }
                 }
                 else
                 {
-                    switch (add_opcode)
+                    switch (add_binop_code)
                     {
-                        case GB_MIN_opcode   : return (GxB_MIN_SECONDI_INT32) ;
-                        case GB_MAX_opcode   : return (GxB_MAX_SECONDI_INT32) ;
-                        case GB_TIMES_opcode : return (GxB_TIMES_SECONDI_INT32) ;
-                        case GB_PLUS_opcode  : return (GxB_PLUS_SECONDI_INT32) ;
-                        case GB_ANY_opcode   : return (GxB_ANY_SECONDI_INT32) ;
+                        case GB_MIN_binop_code   : return (GxB_MIN_SECONDI_INT32) ;
+                        case GB_MAX_binop_code   : return (GxB_MAX_SECONDI_INT32) ;
+                        case GB_TIMES_binop_code : return (GxB_TIMES_SECONDI_INT32) ;
+                        case GB_PLUS_binop_code  : return (GxB_PLUS_SECONDI_INT32) ;
+                        case GB_ANY_binop_code   : return (GxB_ANY_SECONDI_INT32) ;
                         default: ;
                     }
                 }
                 break ;
 
-            case GB_SECONDI1_opcode :   // z = second_i1(x,B(k,j)) == k+1
+            case GB_SECONDI1_binop_code :   // z = second_i1(x,B(k,j)) == k+1
 
                 if (zcode == GB_INT64_code)
                 {
-                    switch (add_opcode)
+                    switch (add_binop_code)
                     {
-                        case GB_MIN_opcode   : return (GxB_MIN_SECONDI1_INT64) ;
-                        case GB_MAX_opcode   : return (GxB_MAX_SECONDI1_INT64) ;
-                        case GB_TIMES_opcode : return (GxB_TIMES_SECONDI1_INT64) ;
-                        case GB_PLUS_opcode  : return (GxB_PLUS_SECONDI1_INT64) ;
-                        case GB_ANY_opcode   : return (GxB_ANY_SECONDI1_INT64) ;
+                        case GB_MIN_binop_code   : return (GxB_MIN_SECONDI1_INT64) ;
+                        case GB_MAX_binop_code   : return (GxB_MAX_SECONDI1_INT64) ;
+                        case GB_TIMES_binop_code : return (GxB_TIMES_SECONDI1_INT64) ;
+                        case GB_PLUS_binop_code  : return (GxB_PLUS_SECONDI1_INT64) ;
+                        case GB_ANY_binop_code   : return (GxB_ANY_SECONDI1_INT64) ;
                         default: ;
                     }
                 }
                 else
                 {
-                    switch (add_opcode)
+                    switch (add_binop_code)
                     {
-                        case GB_MIN_opcode   : return (GxB_MIN_SECONDI1_INT32) ;
-                        case GB_MAX_opcode   : return (GxB_MAX_SECONDI1_INT32) ;
-                        case GB_TIMES_opcode : return (GxB_TIMES_SECONDI1_INT32) ;
-                        case GB_PLUS_opcode  : return (GxB_PLUS_SECONDI1_INT32) ;
-                        case GB_ANY_opcode   : return (GxB_ANY_SECONDI1_INT32) ;
+                        case GB_MIN_binop_code   : return (GxB_MIN_SECONDI1_INT32) ;
+                        case GB_MAX_binop_code   : return (GxB_MAX_SECONDI1_INT32) ;
+                        case GB_TIMES_binop_code : return (GxB_TIMES_SECONDI1_INT32) ;
+                        case GB_PLUS_binop_code  : return (GxB_PLUS_SECONDI1_INT32) ;
+                        case GB_ANY_binop_code   : return (GxB_ANY_SECONDI1_INT32) ;
                         default: ;
                     }
                 }
                 break ;
 
-            case GB_SECONDJ_opcode  :   // z = second_j(x,B(i,j)) == j
+            case GB_SECONDJ_binop_code  :   // z = second_j(x,B(i,j)) == j
 
                 if (zcode == GB_INT64_code)
                 {
-                    switch (add_opcode)
+                    switch (add_binop_code)
                     {
-                        case GB_MIN_opcode   : return (GxB_MIN_SECONDJ_INT64) ;
-                        case GB_MAX_opcode   : return (GxB_MAX_SECONDJ_INT64) ;
-                        case GB_TIMES_opcode : return (GxB_TIMES_SECONDJ_INT64) ;
-                        case GB_PLUS_opcode  : return (GxB_PLUS_SECONDJ_INT64) ;
-                        case GB_ANY_opcode   : return (GxB_ANY_SECONDJ_INT64) ;
+                        case GB_MIN_binop_code   : return (GxB_MIN_SECONDJ_INT64) ;
+                        case GB_MAX_binop_code   : return (GxB_MAX_SECONDJ_INT64) ;
+                        case GB_TIMES_binop_code : return (GxB_TIMES_SECONDJ_INT64) ;
+                        case GB_PLUS_binop_code  : return (GxB_PLUS_SECONDJ_INT64) ;
+                        case GB_ANY_binop_code   : return (GxB_ANY_SECONDJ_INT64) ;
                         default: ;
                     }
                 }
                 else
                 {
-                    switch (add_opcode)
+                    switch (add_binop_code)
                     {
-                        case GB_MIN_opcode   : return (GxB_MIN_SECONDJ_INT32) ;
-                        case GB_MAX_opcode   : return (GxB_MAX_SECONDJ_INT32) ;
-                        case GB_TIMES_opcode : return (GxB_TIMES_SECONDJ_INT32) ;
-                        case GB_PLUS_opcode  : return (GxB_PLUS_SECONDJ_INT32) ;
-                        case GB_ANY_opcode   : return (GxB_ANY_SECONDJ_INT32) ;
+                        case GB_MIN_binop_code   : return (GxB_MIN_SECONDJ_INT32) ;
+                        case GB_MAX_binop_code   : return (GxB_MAX_SECONDJ_INT32) ;
+                        case GB_TIMES_binop_code : return (GxB_TIMES_SECONDJ_INT32) ;
+                        case GB_PLUS_binop_code  : return (GxB_PLUS_SECONDJ_INT32) ;
+                        case GB_ANY_binop_code   : return (GxB_ANY_SECONDJ_INT32) ;
                         default: ;
                     }
                 }
                 break ;
 
-            case GB_SECONDJ1_opcode :   // z = second_j1(x,B(i,j)) == j+1
+            case GB_SECONDJ1_binop_code :   // z = second_j1(x,B(i,j)) == j+1
 
                 if (zcode == GB_INT64_code)
                 {
-                    switch (add_opcode)
+                    switch (add_binop_code)
                     {
-                        case GB_MIN_opcode   : return (GxB_MIN_SECONDJ1_INT64) ;
-                        case GB_MAX_opcode   : return (GxB_MAX_SECONDJ1_INT64) ;
-                        case GB_TIMES_opcode : return (GxB_TIMES_SECONDJ1_INT64) ;
-                        case GB_PLUS_opcode  : return (GxB_PLUS_SECONDJ1_INT64) ;
-                        case GB_ANY_opcode   : return (GxB_ANY_SECONDJ1_INT64) ;
+                        case GB_MIN_binop_code   : return (GxB_MIN_SECONDJ1_INT64) ;
+                        case GB_MAX_binop_code   : return (GxB_MAX_SECONDJ1_INT64) ;
+                        case GB_TIMES_binop_code : return (GxB_TIMES_SECONDJ1_INT64) ;
+                        case GB_PLUS_binop_code  : return (GxB_PLUS_SECONDJ1_INT64) ;
+                        case GB_ANY_binop_code   : return (GxB_ANY_SECONDJ1_INT64) ;
                         default: ;
                     }
                 }
                 else
                 {
-                    switch (add_opcode)
+                    switch (add_binop_code)
                     {
-                        case GB_MIN_opcode   : return (GxB_MIN_SECONDJ1_INT32) ;
-                        case GB_MAX_opcode   : return (GxB_MAX_SECONDJ1_INT32) ;
-                        case GB_TIMES_opcode : return (GxB_TIMES_SECONDJ1_INT32) ;
-                        case GB_PLUS_opcode  : return (GxB_PLUS_SECONDJ1_INT32) ;
-                        case GB_ANY_opcode   : return (GxB_ANY_SECONDJ1_INT32) ;
+                        case GB_MIN_binop_code   : return (GxB_MIN_SECONDJ1_INT32) ;
+                        case GB_MAX_binop_code   : return (GxB_MAX_SECONDJ1_INT32) ;
+                        case GB_TIMES_binop_code : return (GxB_TIMES_SECONDJ1_INT32) ;
+                        case GB_PLUS_binop_code  : return (GxB_PLUS_SECONDJ1_INT32) ;
+                        case GB_ANY_binop_code   : return (GxB_ANY_SECONDJ1_INT32) ;
                         default: ;
                     }
                 }
@@ -2785,15 +2785,15 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
 
         // x,y are one of the 10 non-Boolean types, z is Boolean
 
-        switch (mult_opcode)
+        switch (mult_binop_code)
         {
 
-            case GB_EQ_opcode : // with (5 bool monoids) x (10 nonboolean types)
+            case GB_EQ_binop_code : // with (5 bool monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_LOR_opcode :
+                    case GB_LOR_binop_code :
 
                         switch (xcode)
                         {
@@ -2811,7 +2811,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_LAND_opcode :
+                    case GB_LAND_binop_code :
 
                         switch (xcode)
                         {
@@ -2829,7 +2829,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_LXOR_opcode :
+                    case GB_LXOR_binop_code :
 
                         switch (xcode)
                         {
@@ -2847,7 +2847,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_EQ_opcode :
+                    case GB_EQ_binop_code :
 
                         switch (xcode)
                         {
@@ -2865,7 +2865,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (xcode)
                         {
@@ -2887,12 +2887,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_NE_opcode : // with (5 bool monoids) x (10 nonboolean types)
+            case GB_NE_binop_code : // with (5 bool monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_LOR_opcode :
+                    case GB_LOR_binop_code :
 
                         switch (xcode)
                         {
@@ -2910,7 +2910,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_LAND_opcode :
+                    case GB_LAND_binop_code :
 
                         switch (xcode)
                         {
@@ -2928,7 +2928,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_LXOR_opcode :
+                    case GB_LXOR_binop_code :
 
                         switch (xcode)
                         {
@@ -2946,7 +2946,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_EQ_opcode :
+                    case GB_EQ_binop_code :
 
                         switch (xcode)
                         {
@@ -2964,7 +2964,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (xcode)
                         {
@@ -2986,12 +2986,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_GT_opcode : // with (5 bool monoids) x (10 nonboolean types)
+            case GB_GT_binop_code : // with (5 bool monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_LOR_opcode :
+                    case GB_LOR_binop_code :
 
                         switch (xcode)
                         {
@@ -3009,7 +3009,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_LAND_opcode :
+                    case GB_LAND_binop_code :
 
                         switch (xcode)
                         {
@@ -3027,7 +3027,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_LXOR_opcode :
+                    case GB_LXOR_binop_code :
 
                         switch (xcode)
                         {
@@ -3045,7 +3045,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_EQ_opcode :
+                    case GB_EQ_binop_code :
 
                         switch (xcode)
                         {
@@ -3063,7 +3063,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (xcode)
                         {
@@ -3085,12 +3085,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_LT_opcode : // with (5 bool monoids) x (10 nonboolean types)
+            case GB_LT_binop_code : // with (5 bool monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_LOR_opcode :
+                    case GB_LOR_binop_code :
 
                         switch (xcode)
                         {
@@ -3108,7 +3108,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_LAND_opcode :
+                    case GB_LAND_binop_code :
 
                         switch (xcode)
                         {
@@ -3126,7 +3126,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_LXOR_opcode :
+                    case GB_LXOR_binop_code :
 
                         switch (xcode)
                         {
@@ -3144,7 +3144,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_EQ_opcode :
+                    case GB_EQ_binop_code :
 
                         switch (xcode)
                         {
@@ -3162,7 +3162,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (xcode)
                         {
@@ -3184,12 +3184,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_GE_opcode : // with (5 bool monoids) x (10 nonboolean types)
+            case GB_GE_binop_code : // with (5 bool monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_LOR_opcode :
+                    case GB_LOR_binop_code :
 
                         switch (xcode)
                         {
@@ -3207,7 +3207,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_LAND_opcode :
+                    case GB_LAND_binop_code :
 
                         switch (xcode)
                         {
@@ -3225,7 +3225,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_LXOR_opcode :
+                    case GB_LXOR_binop_code :
 
                         switch (xcode)
                         {
@@ -3243,7 +3243,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_EQ_opcode :
+                    case GB_EQ_binop_code :
 
                         switch (xcode)
                         {
@@ -3261,7 +3261,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (xcode)
                         {
@@ -3283,12 +3283,12 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                 }
                 break ;
 
-            case GB_LE_opcode : // with (5 bool monoids) x (10 nonboolean types)
+            case GB_LE_binop_code : // with (5 bool monoids) x (10 nonboolean types)
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
 
-                    case GB_LOR_opcode :
+                    case GB_LOR_binop_code :
 
                         switch (xcode)
                         {
@@ -3306,7 +3306,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_LAND_opcode :
+                    case GB_LAND_binop_code :
 
                         switch (xcode)
                         {
@@ -3324,7 +3324,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_LXOR_opcode :
+                    case GB_LXOR_binop_code :
 
                         switch (xcode)
                         {
@@ -3342,7 +3342,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_EQ_opcode :
+                    case GB_EQ_binop_code :
 
                         switch (xcode)
                         {
@@ -3360,7 +3360,7 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
                         }
                         break ;
 
-                    case GB_ANY_opcode :
+                    case GB_ANY_binop_code :
 
                         switch (xcode)
                         {
@@ -3394,148 +3394,148 @@ GrB_Semiring GB_mx_semiring         // semiring, or NULL if error
 
         // x,y,z are all Boolean, and all operators are Boolean
 
-        switch (mult_opcode)
+        switch (mult_binop_code)
         {
 
-            case GB_FIRST_opcode :
+            case GB_FIRST_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_LOR_opcode        : return (GxB_LOR_FIRST_BOOL  ) ;
-                    case GB_LAND_opcode       : return (GxB_LAND_FIRST_BOOL ) ;
-                    case GB_LXOR_opcode       : return (GxB_LXOR_FIRST_BOOL ) ;
-                    case GB_EQ_opcode         : return (GxB_EQ_FIRST_BOOL   ) ;
-                    case GB_ANY_opcode        : return (GxB_ANY_FIRST_BOOL  ) ;
+                    case GB_LOR_binop_code        : return (GxB_LOR_FIRST_BOOL  ) ;
+                    case GB_LAND_binop_code       : return (GxB_LAND_FIRST_BOOL ) ;
+                    case GB_LXOR_binop_code       : return (GxB_LXOR_FIRST_BOOL ) ;
+                    case GB_EQ_binop_code         : return (GxB_EQ_FIRST_BOOL   ) ;
+                    case GB_ANY_binop_code        : return (GxB_ANY_FIRST_BOOL  ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_SECOND_opcode :
+            case GB_SECOND_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_LOR_opcode        : return (GxB_LOR_SECOND_BOOL ) ;
-                    case GB_LAND_opcode       : return (GxB_LAND_SECOND_BOOL) ;
-                    case GB_LXOR_opcode       : return (GxB_LXOR_SECOND_BOOL) ;
-                    case GB_EQ_opcode         : return (GxB_EQ_SECOND_BOOL  ) ;
-                    case GB_ANY_opcode        : return (GxB_ANY_SECOND_BOOL ) ;
+                    case GB_LOR_binop_code        : return (GxB_LOR_SECOND_BOOL ) ;
+                    case GB_LAND_binop_code       : return (GxB_LAND_SECOND_BOOL) ;
+                    case GB_LXOR_binop_code       : return (GxB_LXOR_SECOND_BOOL) ;
+                    case GB_EQ_binop_code         : return (GxB_EQ_SECOND_BOOL  ) ;
+                    case GB_ANY_binop_code        : return (GxB_ANY_SECOND_BOOL ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_PAIR_opcode :
+            case GB_PAIR_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_LOR_opcode        : return (GxB_LOR_PAIR_BOOL  ) ;
-                    case GB_LAND_opcode       : return (GxB_LAND_PAIR_BOOL ) ;
-                    case GB_LXOR_opcode       : return (GxB_LXOR_PAIR_BOOL ) ;
-                    case GB_EQ_opcode         : return (GxB_EQ_PAIR_BOOL   ) ;
-                    case GB_ANY_opcode        : return (GxB_ANY_PAIR_BOOL  ) ;
+                    case GB_LOR_binop_code        : return (GxB_LOR_PAIR_BOOL  ) ;
+                    case GB_LAND_binop_code       : return (GxB_LAND_PAIR_BOOL ) ;
+                    case GB_LXOR_binop_code       : return (GxB_LXOR_PAIR_BOOL ) ;
+                    case GB_EQ_binop_code         : return (GxB_EQ_PAIR_BOOL   ) ;
+                    case GB_ANY_binop_code        : return (GxB_ANY_PAIR_BOOL  ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_LOR_opcode :
+            case GB_LOR_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_LOR_opcode        : return (GxB_LOR_LOR_BOOL   ) ;
-                    case GB_LAND_opcode       : return (GrB_LAND_LOR_SEMIRING_BOOL ) ;
-                    case GB_LXOR_opcode       : return (GxB_LXOR_LOR_BOOL  ) ;
-                    case GB_EQ_opcode         : return (GrB_LXNOR_LOR_SEMIRING_BOOL) ;
-                    case GB_ANY_opcode        : return (GxB_ANY_LOR_BOOL   ) ;
+                    case GB_LOR_binop_code        : return (GxB_LOR_LOR_BOOL   ) ;
+                    case GB_LAND_binop_code       : return (GrB_LAND_LOR_SEMIRING_BOOL ) ;
+                    case GB_LXOR_binop_code       : return (GxB_LXOR_LOR_BOOL  ) ;
+                    case GB_EQ_binop_code         : return (GrB_LXNOR_LOR_SEMIRING_BOOL) ;
+                    case GB_ANY_binop_code        : return (GxB_ANY_LOR_BOOL   ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_LAND_opcode :
+            case GB_LAND_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_LOR_opcode        : return (GrB_LOR_LAND_SEMIRING_BOOL ) ;
-                    case GB_LAND_opcode       : return (GxB_LAND_LAND_BOOL ) ;
-                    case GB_LXOR_opcode       : return (GrB_LXOR_LAND_SEMIRING_BOOL) ;
-                    case GB_EQ_opcode         : return (GxB_EQ_LAND_BOOL   ) ;
-                    case GB_ANY_opcode        : return (GxB_ANY_LAND_BOOL  ) ;
+                    case GB_LOR_binop_code        : return (GrB_LOR_LAND_SEMIRING_BOOL ) ;
+                    case GB_LAND_binop_code       : return (GxB_LAND_LAND_BOOL ) ;
+                    case GB_LXOR_binop_code       : return (GrB_LXOR_LAND_SEMIRING_BOOL) ;
+                    case GB_EQ_binop_code         : return (GxB_EQ_LAND_BOOL   ) ;
+                    case GB_ANY_binop_code        : return (GxB_ANY_LAND_BOOL  ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_LXOR_opcode :
+            case GB_LXOR_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_LOR_opcode        : return (GxB_LOR_LXOR_BOOL  ) ;
-                    case GB_LAND_opcode       : return (GxB_LAND_LXOR_BOOL ) ;
-                    case GB_LXOR_opcode       : return (GxB_LXOR_LXOR_BOOL ) ;
-                    case GB_EQ_opcode         : return (GxB_EQ_LXOR_BOOL   ) ;
-                    case GB_ANY_opcode        : return (GxB_ANY_LXOR_BOOL  ) ;
+                    case GB_LOR_binop_code        : return (GxB_LOR_LXOR_BOOL  ) ;
+                    case GB_LAND_binop_code       : return (GxB_LAND_LXOR_BOOL ) ;
+                    case GB_LXOR_binop_code       : return (GxB_LXOR_LXOR_BOOL ) ;
+                    case GB_EQ_binop_code         : return (GxB_EQ_LXOR_BOOL   ) ;
+                    case GB_ANY_binop_code        : return (GxB_ANY_LXOR_BOOL  ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_EQ_opcode :
+            case GB_EQ_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_LOR_opcode        : return (GxB_LOR_EQ_BOOL ) ;
-                    case GB_LAND_opcode       : return (GxB_LAND_EQ_BOOL) ;
-                    case GB_LXOR_opcode       : return (GxB_LXOR_EQ_BOOL) ;
-                    case GB_EQ_opcode         : return (GxB_EQ_EQ_BOOL  ) ;
-                    case GB_ANY_opcode        : return (GxB_ANY_EQ_BOOL ) ;
+                    case GB_LOR_binop_code        : return (GxB_LOR_EQ_BOOL ) ;
+                    case GB_LAND_binop_code       : return (GxB_LAND_EQ_BOOL) ;
+                    case GB_LXOR_binop_code       : return (GxB_LXOR_EQ_BOOL) ;
+                    case GB_EQ_binop_code         : return (GxB_EQ_EQ_BOOL  ) ;
+                    case GB_ANY_binop_code        : return (GxB_ANY_EQ_BOOL ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_GT_opcode :
+            case GB_GT_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_LOR_opcode        : return (GxB_LOR_GT_BOOL ) ;
-                    case GB_LAND_opcode       : return (GxB_LAND_GT_BOOL) ;
-                    case GB_LXOR_opcode       : return (GxB_LXOR_GT_BOOL) ;
-                    case GB_EQ_opcode         : return (GxB_EQ_GT_BOOL  ) ;
-                    case GB_ANY_opcode        : return (GxB_ANY_GT_BOOL ) ;
+                    case GB_LOR_binop_code        : return (GxB_LOR_GT_BOOL ) ;
+                    case GB_LAND_binop_code       : return (GxB_LAND_GT_BOOL) ;
+                    case GB_LXOR_binop_code       : return (GxB_LXOR_GT_BOOL) ;
+                    case GB_EQ_binop_code         : return (GxB_EQ_GT_BOOL  ) ;
+                    case GB_ANY_binop_code        : return (GxB_ANY_GT_BOOL ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_LT_opcode :
+            case GB_LT_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_LOR_opcode        : return (GxB_LOR_LT_BOOL ) ;
-                    case GB_LAND_opcode       : return (GxB_LAND_LT_BOOL) ;
-                    case GB_LXOR_opcode       : return (GxB_LXOR_LT_BOOL) ;
-                    case GB_EQ_opcode         : return (GxB_EQ_LT_BOOL  ) ;
-                    case GB_ANY_opcode        : return (GxB_ANY_LT_BOOL ) ;
+                    case GB_LOR_binop_code        : return (GxB_LOR_LT_BOOL ) ;
+                    case GB_LAND_binop_code       : return (GxB_LAND_LT_BOOL) ;
+                    case GB_LXOR_binop_code       : return (GxB_LXOR_LT_BOOL) ;
+                    case GB_EQ_binop_code         : return (GxB_EQ_LT_BOOL  ) ;
+                    case GB_ANY_binop_code        : return (GxB_ANY_LT_BOOL ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_GE_opcode :
+            case GB_GE_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_LOR_opcode        : return (GxB_LOR_GE_BOOL ) ;
-                    case GB_LAND_opcode       : return (GxB_LAND_GE_BOOL) ;
-                    case GB_LXOR_opcode       : return (GxB_LXOR_GE_BOOL) ;
-                    case GB_EQ_opcode         : return (GxB_EQ_GE_BOOL  ) ;
-                    case GB_ANY_opcode        : return (GxB_ANY_GE_BOOL ) ;
+                    case GB_LOR_binop_code        : return (GxB_LOR_GE_BOOL ) ;
+                    case GB_LAND_binop_code       : return (GxB_LAND_GE_BOOL) ;
+                    case GB_LXOR_binop_code       : return (GxB_LXOR_GE_BOOL) ;
+                    case GB_EQ_binop_code         : return (GxB_EQ_GE_BOOL  ) ;
+                    case GB_ANY_binop_code        : return (GxB_ANY_GE_BOOL ) ;
                     default : ;
                 }
                 break ;
 
-            case GB_LE_opcode :
+            case GB_LE_binop_code :
 
-                switch (add_opcode)
+                switch (add_binop_code)
                 {
-                    case GB_LOR_opcode        : return (GxB_LOR_LE_BOOL ) ;
-                    case GB_LAND_opcode       : return (GxB_LAND_LE_BOOL) ;
-                    case GB_LXOR_opcode       : return (GxB_LXOR_LE_BOOL) ;
-                    case GB_EQ_opcode         : return (GxB_EQ_LE_BOOL  ) ;
-                    case GB_ANY_opcode        : return (GxB_ANY_LE_BOOL ) ;
+                    case GB_LOR_binop_code        : return (GxB_LOR_LE_BOOL ) ;
+                    case GB_LAND_binop_code       : return (GxB_LAND_LE_BOOL) ;
+                    case GB_LXOR_binop_code       : return (GxB_LXOR_LE_BOOL) ;
+                    case GB_EQ_binop_code         : return (GxB_EQ_LE_BOOL  ) ;
+                    case GB_ANY_binop_code        : return (GxB_ANY_LE_BOOL ) ;
                     default : ;
                 }
                 break ;

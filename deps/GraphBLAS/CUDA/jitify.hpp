@@ -151,6 +151,8 @@
 #define JITIFY_PRINT_LOG 1
 #endif
 
+#define JITIFY_PRINT_ALL 0
+
 #if JITIFY_PRINT_ALL
 #define JITIFY_PRINT_INSTANTIATION 1
 #define JITIFY_PRINT_SOURCE 1
@@ -195,7 +197,6 @@ namespace jitify {
  */
 typedef std::istream* (*file_callback_type)(std::string filename,
                                             std::iostream& tmp_stream);
-
 // Exclude from Doxygen
 //! \cond
 
@@ -2741,6 +2742,7 @@ inline void instantiate_kernel(
   detail::split_compiler_and_linker_options(options, &compiler_options,
                                             linker_files, linker_paths);
 
+  std::cout << "ABout to compile kernel" << std::endl;
   nvrtcResult ret =
       detail::compile_kernel(program_name, program_sources, compiler_options,
                              instantiation, log, ptx, mangled_instantiation);
@@ -2753,6 +2755,7 @@ inline void instantiate_kernel(
     throw std::runtime_error(std::string("NVRTC error: ") +
                              nvrtcGetErrorString(ret));
   }
+    std::cout << "done compilling" << std::endl;
 
 #if JITIFY_PRINT_PTX
   std::cout << "---------------------------------------" << std::endl;
@@ -3940,10 +3943,13 @@ class KernelInstantiation {
 
     std::string log, ptx, mangled_instantiation;
     std::vector<std::string> linker_files, linker_paths;
+
+    std::cout << "About to instantiate kernel" << std::endl;
     detail::instantiate_kernel(program->_name, program->_sources, instantiation,
                                options, &log, &ptx, &mangled_instantiation,
                                &linker_files, &linker_paths);
 
+    std::cout << "instantiated kernel" << std::endl;
     _cuda_kernel.reset(new detail::CUDAKernel(mangled_instantiation.c_str(),
                                               ptx.c_str(), linker_files,
                                               linker_paths));
@@ -3980,6 +3986,8 @@ class KernelInstantiation {
    */
   std::string serialize() const {
     // Note: Must update kSerializationVersion if this is changed.
+
+    std::cout << "Inside serialize!!!!" << std::endl;
     return serialization::serialize(
         _cuda_kernel->function_name(), _cuda_kernel->ptx(),
         _cuda_kernel->link_files(), _cuda_kernel->link_paths());
@@ -4121,6 +4129,7 @@ class KernelLauncher {
               << _stream << ">>>"
               << "(" << arg_types_string << ")" << std::endl;
 #endif
+
     return _kernel_inst->_cuda_kernel->launch(_grid, _block, _smem, _stream,
                                               arg_ptrs);
   }

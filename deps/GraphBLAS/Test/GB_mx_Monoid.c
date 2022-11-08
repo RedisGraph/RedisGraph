@@ -2,7 +2,7 @@
 // GB_mx_Monoid: construct a monoid from a built-in operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -33,7 +33,7 @@ bool GB_mx_Monoid               // true if successful, false otherwise
 
     switch (add->opcode)
     {
-        case GB_MIN_opcode     :
+        case GB_MIN_binop_code     :
 
             // 11 MIN monoids
             switch (add->xtype->code)
@@ -56,7 +56,7 @@ bool GB_mx_Monoid               // true if successful, false otherwise
             }
             break ;
 
-        case GB_MAX_opcode     :
+        case GB_MAX_binop_code     :
 
             // 11 MAX monoids
             switch (add->xtype->code)
@@ -79,7 +79,7 @@ bool GB_mx_Monoid               // true if successful, false otherwise
             }
             break ;
 
-        case GB_PLUS_opcode    :
+        case GB_PLUS_binop_code    :
 
             // 13 PLUS monoids
             switch (add->xtype->code)
@@ -104,7 +104,7 @@ bool GB_mx_Monoid               // true if successful, false otherwise
             }
             break ;
 
-        case GB_TIMES_opcode   :
+        case GB_TIMES_binop_code   :
 
             // 13 TIMES monoids
             switch (add->xtype->code)
@@ -129,7 +129,7 @@ bool GB_mx_Monoid               // true if successful, false otherwise
             }
             break ;
 
-        case GB_ANY_opcode   :
+        case GB_ANY_binop_code   :
 
             // 13 ANY monoids
             switch (add->xtype->code)
@@ -153,7 +153,7 @@ bool GB_mx_Monoid               // true if successful, false otherwise
             }
             break ;
 
-        case GB_LOR_opcode      :
+        case GB_LOR_binop_code      :
 
             // both GrB_LOR and GxB_LOR_BOOL (same opcode)
             switch (add->xtype->code)
@@ -165,7 +165,7 @@ bool GB_mx_Monoid               // true if successful, false otherwise
             }
             break ;
 
-        case GB_LAND_opcode     :
+        case GB_LAND_binop_code     :
 
             // both GrB_LAND and GxB_LAND_BOOL (same opcode)
             switch (add->xtype->code)
@@ -177,7 +177,7 @@ bool GB_mx_Monoid               // true if successful, false otherwise
             }
             break ;
 
-        case GB_LXOR_opcode     :
+        case GB_LXOR_binop_code     :
 
             // both GrB_LXOR and GxB_LXOR_BOOL (same opcode)
             switch (add->xtype->code)
@@ -189,8 +189,8 @@ bool GB_mx_Monoid               // true if successful, false otherwise
             }
             break ;
 
-        case GB_ISEQ_opcode     :
-        case GB_EQ_opcode     :
+        case GB_ISEQ_binop_code     :
+        case GB_EQ_binop_code     :
 
             // both GrB_EQ_BOOL and GxB_ISEQ_BOOL (same opcode), also GrB_LXNOR
             switch (add->xtype->code)
@@ -202,7 +202,7 @@ bool GB_mx_Monoid               // true if successful, false otherwise
             }
             break ;
 
-        case GB_BOR_opcode     :
+        case GB_BOR_binop_code     :
 
             // BOR monoids (bitwise or):
             // GxB_BOR_UINT8_MONOID,         // identity: 0   terminal: 0xFF
@@ -222,7 +222,7 @@ bool GB_mx_Monoid               // true if successful, false otherwise
             }
             break ;
 
-        case GB_BAND_opcode     :
+        case GB_BAND_binop_code     :
 
             // BAND monoids (bitwise and):
             // GxB_BAND_UINT8_MONOID,        // identity: 0xFF               terminal: 0
@@ -242,7 +242,7 @@ bool GB_mx_Monoid               // true if successful, false otherwise
             }
             break ;
 
-        case GB_BXOR_opcode     :
+        case GB_BXOR_binop_code     :
 
             // BXOR monoids (bitwise xor):
             // GxB_BXOR_UINT8_MONOID,        // identity: 0
@@ -262,7 +262,7 @@ bool GB_mx_Monoid               // true if successful, false otherwise
             }
             break ;
 
-        case GB_BXNOR_opcode     :
+        case GB_BXNOR_binop_code     :
 
             // BXNOR monoids (bitwise xnor):
             // GxB_BXNOR_UINT8_MONOID,       // identity: 0xFF

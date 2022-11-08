@@ -1,8 +1,13 @@
-function testca
+function testca(use_builtin)
 %TESTCA test complex mxm, mxv, and vxm
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
+
+if (nargin < 1)
+    use_builtin = true ;
+end
+GB_builtin_complex_set (use_builtin) ;
 
 fprintf ('testca: test complex mxm, mxv, and vxm\n') ;
 rng ('default') ;
@@ -53,7 +58,6 @@ for m = [1 5 10 100]
                 if (n == 1)
                     C2 = GB_mex_mxv (S, [], [], semiring, A, B, dnn) ;
                     assert (isequal_roundoff (C, C2.matrix)) ;
-
                     C2 = GB_mex_vxm (S, [], [], semiring, B, A.', dnn) ;
                     assert (isequal_roundoff (C, C2.matrix)) ;
                 end
@@ -103,4 +107,6 @@ end
 end
 
 fprintf ('\ntestca: all complex mxm, mxv, vxm tests passed\n') ;
+
+GB_builtin_complex_set (true) ;
 

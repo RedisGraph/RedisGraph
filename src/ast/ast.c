@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -7,11 +7,12 @@
 #include "ast.h"
 #include <pthread.h>
 
-#include "../RG.h"
+#include "RG.h"
+#include "../errors.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
-#include "../util/qsort.h"
 #include "../procedures/procedure.h"
+#include "ast_rewrite_star_projections.h"
 #include "../arithmetic/arithmetic_expression.h"
 #include "../arithmetic/arithmetic_expression_construct.h"
 
@@ -78,7 +79,7 @@ static void _AST_Extract_Params(const cypher_parse_result_t *parse_result) {
 	const cypher_astnode_t *statement = _AST_parse_result_root(parse_result);
 	uint noptions = cypher_ast_statement_noptions(statement);
 	if(noptions == 0) return;
-	rax *params = QueryCtx_GetParams();
+	rax *params = raxNew();
 	for(uint i = 0; i < noptions; i++) {
 		const cypher_astnode_t *option = cypher_ast_statement_get_option(statement, i);
 		uint nparams = cypher_ast_cypher_option_nparams(option);
@@ -90,6 +91,8 @@ static void _AST_Extract_Params(const cypher_parse_result_t *parse_result) {
 			raxInsert(params, (unsigned char *) paramName, strlen(paramName), (void *)exp, NULL);
 		}
 	}
+	// Add the parameters map to the QueryCtx.
+	QueryCtx_SetParams(params);
 }
 
 static void AST_IncreaseRefCount(AST *ast) {
@@ -103,30 +106,39 @@ static int AST_DecRefCount(AST *ast) {
 }
 
 bool AST_ReadOnly(const cypher_astnode_t *root) {
-	// Check for empty query
+	// check for empty query
 	if(root == NULL) return true;
+
 	cypher_astnode_type_t type = cypher_astnode_type(root);
-	if(type == CYPHER_AST_CREATE                      ||
-	   type == CYPHER_AST_MERGE                  ||
-	   type == CYPHER_AST_DELETE                 ||
-	   type == CYPHER_AST_SET                    ||
-	   type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
-	   type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {
+	if(type == CYPHER_AST_CREATE                     ||
+	   type == CYPHER_AST_MERGE                      ||
+	   type == CYPHER_AST_DELETE                     ||
+	   type == CYPHER_AST_SET                        ||
+	   type == CYPHER_AST_REMOVE                     ||
+	   type == CYPHER_AST_CREATE_NODE_PROPS_INDEX    ||
+	   type == CYPHER_AST_CREATE_PATTERN_PROPS_INDEX ||
+	   type == CYPHER_AST_DROP_PROPS_INDEX) {
 		return false;
 	}
-	// In case of procedure call which modifies the graph/indices.
+
+	// in case of procedure call which modifies the graph/indices
 	if(type == CYPHER_AST_CALL) {
-		const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(root));
+		const char *proc_name = cypher_ast_proc_name_get_value(
+									cypher_ast_call_get_proc_name(root));
+
 		ProcedureCtx *proc = Proc_Get(proc_name);
 		bool read_only = Procedure_IsReadOnly(proc);
 		Proc_Free(proc);
+
 		if(!read_only) return false;
 	}
+
 	uint num_children = cypher_astnode_nchildren(root);
 	for(uint i = 0; i < num_children; i ++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
 		if(!AST_ReadOnly(child)) return false;
 	}
+
 	return true;
 }
 
@@ -207,15 +219,17 @@ uint AST_GetClauseCount(const AST *ast, cypher_astnode_type_t clause_type) {
 
 /* Collect references to all clauses of the specified type in the query. Since clauses
  * cannot be nested, we only need to check the immediate children of the query node. */
-const cypher_astnode_t **AST_GetClauses(const AST *ast, cypher_astnode_type_t type) {
-	const cypher_astnode_t **clauses = NULL;
-
+const cypher_astnode_t **AST_GetClauses
+(
+	const AST *ast,
+	cypher_astnode_type_t type
+) {
+	const cypher_astnode_t **clauses = array_new(const cypher_astnode_t *, 0);
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
+
 	for(uint i = 0; i < clause_count; i ++) {
 		const cypher_astnode_t *child = cypher_ast_query_get_clause(ast->root, i);
 		if(cypher_astnode_type(child) != type) continue;
-
-		if(clauses == NULL) clauses = array_new(const cypher_astnode_t *, 1);
 		array_append(clauses, child);
 	}
 
@@ -258,7 +272,6 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	ast->params_parse_result = NULL;
 	ast->referenced_entities = NULL;
 	ast->parse_result = parse_result;
-	ast->canonical_entity_names = raxNew();
 	ast->anot_ctx_collection = AST_AnnotationCtxCollection_New();
 
 	*(ast->ref_count) = 1;
@@ -284,7 +297,6 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->anot_ctx_collection = master_ast->anot_ctx_collection;
-	ast->canonical_entity_names = master_ast->canonical_entity_names;
 	ast->free_root = true;
 	ast->ref_count = rm_malloc(sizeof(uint));
 	ast->parse_result = NULL;
@@ -296,7 +308,7 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	for(uint i = 0; i < n; i ++) {
 		clauses[i] = cypher_ast_query_get_clause(master_ast->root, i + start_offset);
 	}
-	struct cypher_input_range range = {};
+	struct cypher_input_range range = {0};
 	ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n,
 								 (cypher_astnode_t **)clauses, n, range);
 
@@ -406,30 +418,13 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 	return aggregated;
 }
 
-const char *AST_GetEntityName(const AST *ast, const cypher_astnode_t *entity) {
-	AnnotationCtx *name_ctx = AST_AnnotationCtxCollection_GetNameCtx(ast->anot_ctx_collection);
-	return cypher_astnode_get_annotation(name_ctx, entity);
-}
-
-const char **AST_GetProjectAll(const cypher_astnode_t *projection_clause) {
-	AST *ast = QueryCtx_GetAST();
-	AnnotationCtx *project_all_ctx = AST_AnnotationCtxCollection_GetProjectAllCtx(
-										 ast->anot_ctx_collection);
-	return cypher_astnode_get_annotation(project_all_ctx, projection_clause);
-}
-
 const char **AST_BuildReturnColumnNames(const cypher_astnode_t *return_clause) {
-	const char **columns;
-	if(cypher_ast_return_has_include_existing(return_clause)) {
-		// If this is a RETURN *, the column names should be retrieved from the clause annotation.
-		const char **projection_names = AST_GetProjectAll(return_clause);
-		array_clone(columns, projection_names);
-		return columns;
-	}
+	// all RETURN * clauses should have been converted to explicit lists
+	ASSERT(cypher_ast_return_has_include_existing(return_clause) == false);
 
 	// Collect every alias from the RETURN projections.
 	uint projection_count = cypher_ast_return_nprojections(return_clause);
-	columns = array_new(const char *, projection_count);
+	const char **columns = array_new(const char *, projection_count);
 	for(uint i = 0; i < projection_count; i++) {
 		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
 		const cypher_astnode_t *ast_alias = cypher_ast_projection_get_alias(projection);
@@ -494,6 +489,43 @@ inline AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast) {
 	return ast->anot_ctx_collection;
 }
 
+static inline char *_create_anon_alias(int anon_count) {
+	char *alias;
+	asprintf(&alias, "@anon_%d", anon_count);
+	return alias;
+}
+
+const char *AST_ToString(const cypher_astnode_t *node) {
+	QueryCtx *ctx = QueryCtx_GetQueryCtx();
+	AST *ast = QueryCtx_GetAST();
+	AnnotationCtx *to_string_ctx = AST_AnnotationCtxCollection_GetToStringCtx(ast->anot_ctx_collection);
+
+	char *str = (char *)cypher_astnode_get_annotation(to_string_ctx, node);
+	if(str == NULL) {
+		cypher_astnode_type_t t = cypher_astnode_type(node);
+		const cypher_astnode_t *ast_identifier = NULL;
+		if(t == CYPHER_AST_NODE_PATTERN) {
+			ast_identifier = cypher_ast_node_pattern_get_identifier(node);
+		} else if(t == CYPHER_AST_REL_PATTERN) {
+			ast_identifier = cypher_ast_rel_pattern_get_identifier(node);
+		} else {
+			struct cypher_input_range range = cypher_astnode_range(node);
+			uint length = range.end.offset - range.start.offset + 1;
+			str = malloc(sizeof(char) * length);
+			strncpy(str, ctx->query_data.query_no_params + range.start.offset, length - 1);
+			str[length - 1] = '\0';
+		}
+		if(ast_identifier) {
+			// Graph entity has a user-defined alias return it.
+			return cypher_ast_identifier_get_name(ast_identifier);
+		} else if(str == NULL) {
+			str = _create_anon_alias(ast->anot_ctx_collection->anon_count++);
+		}
+		cypher_astnode_attach_annotation(to_string_ctx, node, (void *)str, NULL);
+	}
+	return str;
+}
+
 void AST_Free(AST *ast) {
 	if(ast == NULL) return;
 
@@ -515,7 +547,6 @@ void AST_Free(AST *ast) {
 			/* this is the master AST,
 			 * free the annotation contexts that have been constructed */
 			AST_AnnotationCtxCollection_Free(ast->anot_ctx_collection);
-			raxFreeWithCallback(ast->canonical_entity_names, rm_free);
 			parse_result_free(ast->parse_result);
 		}
 
@@ -529,16 +560,44 @@ void AST_Free(AST *ast) {
 
 cypher_parse_result_t *parse_query(const char *query) {
 	FILE *f = fmemopen((char *)query, strlen(query), "r");
-	cypher_parse_result_t *result = cypher_fparse(f, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+	cypher_parse_result_t *result = cypher_fparse(f, NULL, NULL, CYPHER_PARSE_SINGLE);
 	fclose(f);
+
 	if(!result) return NULL;
+
+	// check that the parser parse the entire query
+	if(!cypher_parse_result_eof(result)) {
+		ErrorCtx_SetError("Error: query with more than one statement is not supported.");
+		parse_result_free(result);
+		return NULL;
+	}
+
+	// in case ast contains any errors, report them and return
+	if(AST_ContainsErrors(result)) {
+		AST_ReportErrors(result);
+		parse_result_free(result);
+		return NULL;
+	}
+
 	if(AST_Validate_Query(result) != AST_VALID) {
 		parse_result_free(result);
 		return NULL;
 	}
+
+	// rewrite '*' projections
+	// e.g. MATCH (a), (b) RETURN *
+	// will be rewritten as:
+	//  MATCH (a), (b) RETURN a, b
+	bool rerun_validation = AST_RewriteStarProjections(result);
+
+	// only perform validations again if there's been a rewrite
+	if(rerun_validation && AST_Validate_Query(result) != AST_VALID) {
+		parse_result_free(result);
+		return NULL;
+	}
+
 	return result;
 }
-
 
 cypher_parse_result_t *parse_params(const char *query, const char **query_body) {
 	FILE *f = fmemopen((char *)query, strlen(query), "r");

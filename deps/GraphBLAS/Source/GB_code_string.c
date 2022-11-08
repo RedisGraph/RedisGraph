@@ -2,7 +2,7 @@
 // GB_code_string: convert a type code into a string
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -34,7 +34,7 @@ char *GB_code_string            // return a static string for a type name
         case GB_FC32_code   : return ("float complex" ) ;
         case GB_FC64_code   : return ("double complex") ;
         case GB_UDT_code    : return ("user-defined"  ) ;
-        default             : return ("unknown!"      ) ;
+        default             : return ("unknown type!" ) ;
     }
 }
 

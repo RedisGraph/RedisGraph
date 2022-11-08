@@ -2,7 +2,7 @@
 // GB_AxB_bitwise_factory.c: switch factory for C=A*B (bitwise monoids)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -12,11 +12,11 @@
 // as defined by GB_MNAME.
 
 {
-    switch (add_opcode)
+    switch (add_binop_code)
     {
 
         //----------------------------------------------------------------------
-        case GB_BOR_opcode :     // z = (x | y), bitwise or
+        case GB_BOR_binop_code :     // z = (x | y), bitwise or
         //----------------------------------------------------------------------
 
             switch (zcode)
@@ -30,7 +30,7 @@
             break ;
 
         //----------------------------------------------------------------------
-        case GB_BAND_opcode :    // z = (x & y), bitwise and
+        case GB_BAND_binop_code :    // z = (x & y), bitwise and
         //----------------------------------------------------------------------
 
             switch (zcode)
@@ -44,7 +44,7 @@
             break ;
 
         //----------------------------------------------------------------------
-        case GB_BXOR_opcode :    // z = (x ^ y), bitwise xor
+        case GB_BXOR_binop_code :    // z = (x ^ y), bitwise xor
         //----------------------------------------------------------------------
 
             switch (zcode)
@@ -58,7 +58,7 @@
             break ;
 
         //----------------------------------------------------------------------
-        case GB_BXNOR_opcode :   // z = ~(x ^ y), bitwise xnor
+        case GB_BXNOR_binop_code :   // z = ~(x ^ y), bitwise xnor
         //----------------------------------------------------------------------
 
             switch (zcode)

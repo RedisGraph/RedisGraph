@@ -2,7 +2,7 @@
 // GB_cast_matrix: copy or typecast the values from A into C
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -77,7 +77,7 @@ void GB_cast_matrix         // copy or typecast the values from A into C
         if (A->iso)
         { 
             // Cx [0] = (ctype) Ax [0]
-            GB_iso_unop (Cx, C->type, GB_ISO_A, NULL, NULL, A, NULL) ;
+            GB_iso_unop (Cx, C->type, GB_ISO_A, NULL, A, NULL) ;
         }
         else
         { 

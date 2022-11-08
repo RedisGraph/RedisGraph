@@ -2,7 +2,7 @@
 // GB_iso_unop: apply a unary or binary op (with scalar) with an iso result
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -11,20 +11,18 @@
 // transposing the matrix in place, which case the contents of A have already
 // been transplanted into T, and only A->x remains.
 
-
 #include "GB.h"
 
-void GB_iso_unop            // Cx [0] = op1 (A), op2 (s,A) or op2 (A,s)
+void GB_iso_unop            // Cx [0] = unop (A), binop (s,A) or binop (A,s)
 (
     // output
     GB_void *restrict Cx,   // output scalar of iso array
     // input
     GrB_Type ctype,         // type of Cx
     GB_iso_code C_code_iso, // defines how C iso value is to be computed
-    GrB_UnaryOp op1,        // unary operator, if present
-    GrB_BinaryOp op2,       // binary operator, if present
+    GB_Operator op,         // unary/binop operator, if present
     GrB_Matrix A,           // input matrix
-    GxB_Scalar scalar       // input scalar (may be NULL)
+    GrB_Scalar scalar       // input scalar (may be NULL)
 )
 {
 
@@ -37,7 +35,7 @@ void GB_iso_unop            // Cx [0] = op1 (A), op2 (s,A) or op2 (A,s)
     ASSERT (Cx != NULL) ;
 
     GrB_Type stype = (scalar != NULL) ? scalar->type : GrB_BOOL ;
-    const size_t csize = ctype->size ;
+//  const size_t csize = ctype->size ;
     const size_t asize = A->type->size ;
     const size_t ssize = stype->size ;
     const GB_Type_code ccode = ctype->code ;
@@ -92,19 +90,19 @@ void GB_iso_unop            // Cx [0] = op1 (A), op2 (s,A) or op2 (A,s)
         { 
 
             //------------------------------------------------------------------
-            // Cx [0] = op1 (A)
+            // Cx [0] = unop (A)
             //------------------------------------------------------------------
 
-            ASSERT_UNARYOP_OK (op1, "op1 for GB_iso_unop", GB0) ;
+            ASSERT_UNARYOP_OK (op, "op for GB_iso_unop", GB0) ;
 
             // x = (xtype) Ax [0]
-            GB_Type_code xcode = op1->xtype->code ;
-            size_t xsize = op1->xtype->size ;
+            GB_Type_code xcode = op->xtype->code ;
+            size_t xsize = op->xtype->size ;
             GB_void x [GB_VLA(xsize)] ;
             GB_cast_scalar (x, xcode, A->x, acode, asize) ;
 
-            // Cx [0] = op1 (x)
-            GxB_unary_function fop = op1->function ;
+            // Cx [0] = op (x)
+            GxB_unary_function fop = op->unop_function ;
             fop (Cx, x) ;
 
         }
@@ -112,16 +110,16 @@ void GB_iso_unop            // Cx [0] = op1 (A), op2 (s,A) or op2 (A,s)
         { 
 
             //------------------------------------------------------------------
-            // Cx [0] = op2 (scalar,A) or op2 (A,scalar)
+            // Cx [0] = binop (scalar,A) or binop (A,scalar)
             //------------------------------------------------------------------
 
-            ASSERT_BINARYOP_OK (op2, "op2 for GB_iso_unop", GB0) ;
-            ASSERT_SCALAR_OK (scalar, "scalar for GB_iso_unop, for op2", GB0) ;
-            GB_Type_code xcode = op2->xtype->code ;
-            GB_Type_code ycode = op2->ytype->code ;
-            size_t xsize = op2->xtype->size ;
-            size_t ysize = op2->ytype->size ;
-            GxB_binary_function fop = op2->function ;
+            ASSERT_BINARYOP_OK (op, "op for GB_iso_unop", GB0) ;
+            ASSERT_SCALAR_OK (scalar, "scalar for GB_iso_unop binop", GB0) ;
+            GB_Type_code xcode = op->xtype->code ;
+            GB_Type_code ycode = op->ytype->code ;
+            size_t xsize = op->xtype->size ;
+            size_t ysize = op->ytype->size ;
+            GxB_binary_function fop = op->binop_function ;
             GB_void x [GB_VLA(xsize)] ;
             GB_void y [GB_VLA(ysize)] ;
 
@@ -129,7 +127,7 @@ void GB_iso_unop            // Cx [0] = op1 (A), op2 (s,A) or op2 (A,s)
             { 
 
                 //--------------------------------------------------------------
-                // Cx [0] = op2 (scalar, A)
+                // Cx [0] = binop (scalar, A)
                 //--------------------------------------------------------------
 
                 GB_cast_scalar (x, xcode, scalar->x, scode, ssize) ;
@@ -140,7 +138,7 @@ void GB_iso_unop            // Cx [0] = op1 (A), op2 (s,A) or op2 (A,s)
             { 
 
                 //--------------------------------------------------------------
-                // Cx [0] = op2 (A, scalar)
+                // Cx [0] = binop (A, scalar)
                 //--------------------------------------------------------------
 
                 GB_cast_scalar (x, xcode, A->x, acode, asize) ;
@@ -148,7 +146,7 @@ void GB_iso_unop            // Cx [0] = op1 (A), op2 (s,A) or op2 (A,s)
 
             }
 
-            // Cx [0] = op2 (x, y)
+            // Cx [0] = binop (x, y)
             fop (Cx, x, y) ;
         }
     }

@@ -1,7 +1,7 @@
 function test53(fulltests)
 %TEST53 test GrB_Matrix_extract
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 if (nargin < 1)
@@ -151,6 +151,10 @@ for k0 = 1:size (problems,1) ;
             for k3 = k3_list
                 op = accum_ops {k3} ;
                 fprintf ('.') ;
+                if (isequal (op, 'hypot'))
+                    continue
+                end
+                % op
 
                 if (fulltests)
                     k4_list = [1:length(types)] ;
@@ -246,6 +250,7 @@ for k0 = 1:size (problems,1) ;
                             C = GB_mex_Matrix_extract  (Csub, [ ], accum, ...
                                 A, I-1, J-1, [ ]) ;
                             assert (GB_spok (C.matrix*1) == 1) ;
+                            C.matrix = C.matrix * 1 ;
                             S = GB_spec_Matrix_extract (Csub, [ ], accum,  ...
                                 A, I, J, [ ]) ;
                             assert (isequal (C.class, cintype)) ;

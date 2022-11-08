@@ -2,13 +2,13 @@
 // gbextract: extract entries into a GraphBLAS matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
-// gbextract is an interface to GrB_Matrix_extract and GrB_Matrix_extract_[TYPE],
-// computing the GraphBLAS expression:
+// gbextract is an interface to GrB_Matrix_extract and
+// GrB_Matrix_extract_[TYPE], computing the GraphBLAS expression:
 
 //      C<#M,replace> = accum (C, A (I,J)) or
 //      C<#M,replace> = accum (C, AT (I,J))
@@ -44,7 +44,7 @@ void mexFunction
     // find the arguments
     //--------------------------------------------------------------------------
 
-    mxArray *Matrix [4], *String [2], *Cell [2] ;
+    mxArray *Matrix [6], *String [2], *Cell [2] ;
     base_enum_t base ;
     kind_enum_t kind ;
     GxB_Format_Value fmt ;
@@ -130,18 +130,22 @@ void mexFunction
     if (anrows == 1 && ncells == 1)
     { 
         // only J is present
-        J = gb_mxcell_to_index (Cell [0], base, ancols, &J_allocated, &nj) ;
+        J = gb_mxcell_to_index (Cell [0], base, ancols, &J_allocated, &nj,
+            NULL) ;
     }
     else if (ncells == 1)
     { 
         // only I is present
-        I = gb_mxcell_to_index (Cell [0], base, anrows, &I_allocated, &ni) ;
+        I = gb_mxcell_to_index (Cell [0], base, anrows, &I_allocated, &ni,
+            NULL) ;
     }
     else if (ncells == 2)
     { 
         // both I and J are present
-        I = gb_mxcell_to_index (Cell [0], base, anrows, &I_allocated, &ni) ;
-        J = gb_mxcell_to_index (Cell [1], base, ancols, &J_allocated, &nj) ;
+        I = gb_mxcell_to_index (Cell [0], base, anrows, &I_allocated, &ni,
+            NULL) ;
+        J = gb_mxcell_to_index (Cell [1], base, ancols, &J_allocated, &nj,
+            NULL) ;
     }
 
     //--------------------------------------------------------------------------
@@ -179,8 +183,8 @@ void mexFunction
     OK (GrB_Matrix_free (&M)) ;
     OK (GrB_Matrix_free (&A)) ;
     OK (GrB_Descriptor_free (&desc)) ;
-    if (I_allocated) gb_mxfree (&I) ;
-    if (J_allocated) gb_mxfree (&J) ;
+    if (I_allocated) gb_mxfree ((void **) (&I)) ;
+    if (J_allocated) gb_mxfree ((void **) (&J)) ;
 
     //--------------------------------------------------------------------------
     // export the output matrix C

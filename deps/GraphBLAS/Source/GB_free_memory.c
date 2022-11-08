@@ -2,7 +2,7 @@
 // GB_free_memory: wrapper for free
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -26,25 +26,11 @@ void GB_free_memory         // free memory, bypassing the free_pool
 
     if (p != NULL && (*p) != NULL)
     {
-        if (GB_Global_malloc_tracking_get ( ))
-        {
-            // for memory usage testing only
-            GB_Global_nmalloc_decrement ( ) ;
-        }
         ASSERT (size_allocated == GB_Global_memtable_size (*p)) ;
         #ifdef GB_MEMDUMP
         printf ("\nhard free %p %ld\n", *p, size_allocated) ;
         #endif
-
-//      if (GB_Global_I_have_RMM ( ))
-//      {
-//          rmmdealloc (*p, size_allocated) ;
-//      }
-//      else
-
-        { 
-            GB_Global_free_function (*p) ;
-        }
+        GB_Global_free_function (*p) ;
         #ifdef GB_MEMDUMP
         GB_Global_free_pool_dump (2) ; GB_Global_memtable_dump ( ) ;
         #endif

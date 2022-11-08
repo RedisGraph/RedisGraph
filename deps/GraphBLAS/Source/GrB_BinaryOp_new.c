@@ -2,7 +2,7 @@
 // GrB_BinaryOp_new: create a new user-defined binary operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -26,6 +26,7 @@ GrB_Info GRB (BinaryOp_new)
     GrB_Type ytype                  // type of input y
 )
 { 
-    return (GB_BinaryOp_new (binaryop, function, ztype, xtype, ytype, NULL)) ;
+    return (GxB_BinaryOp_new (binaryop, function, ztype, xtype, ytype,
+        NULL, NULL)) ;
 }
 

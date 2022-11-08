@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -35,6 +35,8 @@ void Proc_Register() {
 	// Register graph algorithms.
 	_procRegister("algo.BFS", Proc_BFS_Ctx);
 	_procRegister("algo.pageRank", Proc_PagerankCtx);
+	_procRegister("algo.SPpaths", Proc_SPpathCtx);
+	_procRegister("algo.SSpaths", Proc_SSpathCtx);
 
 	// Register FullText Search generator.
 	_procRegister("db.idx.fulltext.drop", Proc_FulltextDropIdxGen);

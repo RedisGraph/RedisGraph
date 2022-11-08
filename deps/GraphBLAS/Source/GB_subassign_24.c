@@ -2,7 +2,7 @@
 // GB_subassign_24: make a deep copy of a sparse or dense matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -116,7 +116,7 @@ GrB_Info GB_subassign_24    // C = A, copy A into an existing matrix C
 
         // clear prior content of C, but keep the CSR/CSC format and its type
         bool C_is_csc = C->is_csc ;
-        GB_phbix_free (C) ;
+        GB_phybix_free (C) ;
         // copy the pattern, not the values
         // set C->iso = C_iso   OK
         GB_OK (GB_dup_worker (&C, C_iso, A, false, C->type, Context)) ;

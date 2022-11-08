@@ -1,18 +1,20 @@
 //------------------------------------------------------------------------------
-// GxB_Scalar_type: return the type of a GxB_Scalar
+// GxB_Scalar_type: return the type of a GrB_Scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
+// NOTE: this function is historical.  Use GxB_Scalar_type_name instead.
+
 #include "GB.h"
 
-GrB_Info GxB_Scalar_type    // get the type of a GxB_Scalar
+GrB_Info GxB_Scalar_type    // get the type of a GrB_Scalar
 (
-    GrB_Type *type,         // returns the type of the GxB_Scalar
-    const GxB_Scalar s      // GxB_Scalar to query
+    GrB_Type *type,         // returns the type of the GrB_Scalar
+    const GrB_Scalar s      // GrB_Scalar to query
 )
 { 
 

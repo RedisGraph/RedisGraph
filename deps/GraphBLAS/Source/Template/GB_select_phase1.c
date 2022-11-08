@@ -2,20 +2,30 @@
 // GB_select_phase1: count entries in each vector for C=select(A,thunk)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
+
+    //--------------------------------------------------------------------------
+    // get A and its slicing
+    //--------------------------------------------------------------------------
 
     const int64_t *restrict kfirst_Aslice = A_ek_slicing ;
     const int64_t *restrict klast_Aslice  = A_ek_slicing + A_ntasks ;
     const int64_t *restrict pstart_Aslice = A_ek_slicing + A_ntasks * 2 ;
 
+    const int64_t *restrict Ap = A->p ;
+    const int64_t *restrict Ah = A->h ;
+    const int64_t *restrict Ai = A->i ;
+    int64_t avlen = A->vlen ;
+    int64_t anvec = A->nvec ;
+
 #if defined ( GB_ENTRY_SELECTOR )
 
-    //--------------------------------------------------------------------------
+    //==========================================================================
     // entry selector
-    //--------------------------------------------------------------------------
+    //==========================================================================
 
     ASSERT (GB_JUMBLED_OK (A)) ;
 
@@ -34,12 +44,8 @@
     // get A
     //--------------------------------------------------------------------------
 
-    const int64_t  *restrict Ap = A->p ;
-    const int64_t  *restrict Ah = A->h ;
-    const int64_t  *restrict Ai = A->i ;
     const GB_ATYPE *restrict Ax = (GB_ATYPE *) A->x ;
     size_t  asize = A->type->size ;
-    int64_t avlen = A->vlen ;
     int64_t avdim = A->vdim ;
     ASSERT (GB_JUMBLED_OK (A)) ;
 
@@ -70,7 +76,7 @@
             // find the part of A(:,k) to be reduced by this thread
             //------------------------------------------------------------------
 
-            GB_GET_J ; // int64_t j = GBH (Ah, k) ; but for user selectop only
+            int64_t j = GBH (Ah, k) ;
             int64_t pA, pA_end ;
             GB_get_pA (&pA, &pA_end, tid, k,
                 kfirst, klast, pstart_Aslice, Ap, avlen) ;
@@ -82,7 +88,10 @@
             int64_t cjnz = 0 ;
             for ( ; pA < pA_end ; pA++)
             { 
-                if (GB_TEST_VALUE_OF_ENTRY (pA)) cjnz++ ;
+                ASSERT (Ai != NULL) ;
+                int64_t i = Ai [pA] ;
+                GB_TEST_VALUE_OF_ENTRY (keep, pA) ;
+                if (keep) cjnz++ ;
             }
             if (k == kfirst)
             { 
@@ -107,15 +116,10 @@
 
 #else
 
-    //--------------------------------------------------------------------------
-    // positional selector (tril, triu, diag, offdiag, resize)
-    //--------------------------------------------------------------------------
+    //==========================================================================
+    // positional selector (tril, triu, diag, offdiag, resize, row*)
+    //==========================================================================
 
-    const int64_t *restrict Ap = A->p ;
-    const int64_t *restrict Ah = A->h ;
-    const int64_t *restrict Ai = A->i ;
-    int64_t anvec = A->nvec ;
-    int64_t avlen = A->vlen ;
     ASSERT (!GB_JUMBLED (A)) ;
 
     //--------------------------------------------------------------------------
@@ -148,9 +152,12 @@
             int64_t ifirst = GBI (Ai, pA_start, avlen) ;
             int64_t ilast  = GBI (Ai, pA_end-1, avlen) ;
 
-            #if defined ( GB_RESIZE_SELECTOR )
+            #if defined ( GB_ROWINDEX_SELECTOR )
+            int64_t i = -ithunk ;
+            #elif defined ( GB_ROWLE_SELECTOR ) || defined ( GB_ROWGT_SELECTOR )
             int64_t i = ithunk ;
             #else
+            // TRIL, TRIU, DIAG, OFFDIAG
             int64_t j = GBH (Ah, k) ;
             int64_t i = j-ithunk ;
             #endif
@@ -184,8 +191,20 @@
                 // keep p to pA_end-1
                 cjnz = pA_end - p ;
 
-            #elif defined ( GB_TRIU_SELECTOR ) \
-               || defined ( GB_RESIZE_SELECTOR )
+            #elif defined ( GB_ROWGT_SELECTOR  )
+
+                // if found, keep p+1 to pA_end-1
+                // else keep p to pA_end-1
+                if (found)
+                { 
+                    p++ ;
+                    // now in both cases, keep p to pA_end-1
+                }
+                // keep p to pA_end-1
+                cjnz = pA_end - p ;
+
+            #elif defined ( GB_TRIU_SELECTOR   ) \
+               || defined ( GB_ROWLE_SELECTOR  )
 
                 // if found, keep pA_start to p
                 // else keep pA_start to p-1
@@ -205,7 +224,8 @@
                 if (!found) p = -1 ;
                 // if (cjnz >= 0) keep p, else keep nothing
 
-            #elif defined ( GB_OFFDIAG_SELECTOR )
+            #elif defined ( GB_OFFDIAG_SELECTOR  ) || \
+                  defined ( GB_ROWINDEX_SELECTOR )
 
                 // if found, keep pA_start to p-1 and p+1 to pA_end-1
                 // else keep pA_start to pA_end
@@ -254,14 +274,15 @@
             pA_end = GB_IMIN (pA_end, pstart_Aslice [tid+1]) ;
             if (pA_start < pA_end)
             { 
-                #if defined ( GB_TRIL_SELECTOR )
+                #if defined ( GB_TRIL_SELECTOR  ) || \
+                    defined ( GB_ROWGT_SELECTOR )
 
                     // keep Zp [kfirst] to pA_end-1
                     int64_t p = GB_IMAX (Zp [kfirst], pA_start) ;
                     Wfirst [tid] = GB_IMAX (0, pA_end - p) ;
 
-                #elif defined ( GB_TRIU_SELECTOR ) \
-                   || defined ( GB_RESIZE_SELECTOR )
+                #elif defined ( GB_TRIU_SELECTOR  ) || \
+                      defined ( GB_ROWLE_SELECTOR )
 
                     // keep pA_start to Zp [kfirst]-1
                     int64_t p = GB_IMIN (Zp [kfirst], pA_end) ;
@@ -273,7 +294,8 @@
                     int64_t p = Zp [kfirst] ;
                     Wfirst [tid] = (pA_start <= p && p < pA_end) ? 1 : 0 ;
 
-                #elif defined ( GB_OFFDIAG_SELECTOR )
+                #elif defined ( GB_OFFDIAG_SELECTOR  ) || \
+                      defined ( GB_ROWINDEX_SELECTOR )
 
                     // keep pA_start to Zp [kfirst]-1
                     int64_t p = GB_IMIN (Zp [kfirst], pA_end) ;
@@ -293,14 +315,15 @@
             int64_t pA_end   = pstart_Aslice [tid+1] ;
             if (pA_start < pA_end)
             { 
-                #if defined ( GB_TRIL_SELECTOR )
+                #if defined ( GB_TRIL_SELECTOR  ) || \
+                    defined ( GB_ROWGT_SELECTOR )
 
                     // keep Zp [klast] to pA_end-1
                     int64_t p = GB_IMAX (Zp [klast], pA_start) ;
                     Wlast [tid] = GB_IMAX (0, pA_end - p) ;
 
-                #elif defined ( GB_TRIU_SELECTOR ) \
-                   || defined ( GB_RESIZE_SELECTOR )
+                #elif defined ( GB_TRIU_SELECTOR  ) || \
+                      defined ( GB_ROWLE_SELECTOR )
 
                     // keep pA_start to Zp [klast]-1
                     int64_t p = GB_IMIN (Zp [klast], pA_end) ;
@@ -312,7 +335,8 @@
                     int64_t p = Zp [klast] ;
                     Wlast [tid] = (pA_start <= p && p < pA_end) ? 1 : 0 ;
 
-                #elif defined ( GB_OFFDIAG_SELECTOR )
+                #elif defined ( GB_OFFDIAG_SELECTOR  ) || \
+                      defined ( GB_ROWINDEX_SELECTOR )
 
                     // keep pA_start to Zp [klast]-1
                     int64_t p = GB_IMIN (Zp [klast], pA_end) ;

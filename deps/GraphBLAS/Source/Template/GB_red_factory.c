@@ -2,7 +2,7 @@
 // GB_red_factory.c: switch factory for reduction operators
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -27,7 +27,7 @@ if (typecode != GB_BOOL_code)
     switch (opcode)
     {
 
-        case GB_MIN_opcode   :
+        case GB_MIN_binop_code   :
 
             switch (typecode)
             {
@@ -45,7 +45,7 @@ if (typecode != GB_BOOL_code)
             }
             break ;
 
-        case GB_MAX_opcode   :
+        case GB_MAX_binop_code   :
 
             switch (typecode)
             {
@@ -63,7 +63,7 @@ if (typecode != GB_BOOL_code)
             }
             break ;
 
-        case GB_PLUS_opcode  :
+        case GB_PLUS_binop_code  :
 
             switch (typecode)
             {
@@ -83,7 +83,7 @@ if (typecode != GB_BOOL_code)
             }
             break ;
 
-        case GB_TIMES_opcode :
+        case GB_TIMES_binop_code :
 
             switch (typecode)
             {
@@ -103,7 +103,7 @@ if (typecode != GB_BOOL_code)
             }
             break ;
 
-        case GB_ANY_opcode :
+        case GB_ANY_binop_code :
 
             switch (typecode)
             {
@@ -129,7 +129,7 @@ if (typecode != GB_BOOL_code)
 
         #ifdef GB_INCLUDE_SECOND_OPERATOR
 
-        case GB_FIRST_opcode :
+        case GB_FIRST_binop_code :
 
             switch (typecode)
             {
@@ -149,7 +149,7 @@ if (typecode != GB_BOOL_code)
             }
             break ;
 
-        case GB_SECOND_opcode :
+        case GB_SECOND_binop_code :
 
             switch (typecode)
             {
@@ -187,14 +187,14 @@ else
 
     switch (GB_boolean_rename (opcode))
     {
-        case GB_LOR_opcode    : GB_RED_WORKER (_lor,    _bool, bool)
-        case GB_LAND_opcode   : GB_RED_WORKER (_land,   _bool, bool)
-        case GB_LXOR_opcode   : GB_RED_WORKER (_lxor,   _bool, bool)
-        case GB_EQ_opcode     : GB_RED_WORKER (_eq,     _bool, bool)
-        case GB_ANY_opcode    : GB_RED_WORKER (_any,    _bool, bool)
+        case GB_LOR_binop_code    : GB_RED_WORKER (_lor,    _bool, bool)
+        case GB_LAND_binop_code   : GB_RED_WORKER (_land,   _bool, bool)
+        case GB_LXOR_binop_code   : GB_RED_WORKER (_lxor,   _bool, bool)
+        case GB_EQ_binop_code     : GB_RED_WORKER (_eq,     _bool, bool)
+        case GB_ANY_binop_code    : GB_RED_WORKER (_any,    _bool, bool)
         #ifdef GB_INCLUDE_SECOND_OPERATOR
-        case GB_FIRST_opcode  : GB_RED_WORKER (_first,  _bool, bool)
-        case GB_SECOND_opcode : GB_RED_WORKER (_second, _bool, bool)
+        case GB_FIRST_binop_code  : GB_RED_WORKER (_first,  _bool, bool)
+        case GB_SECOND_binop_code : GB_RED_WORKER (_second, _bool, bool)
         #endif
         default: ;
     }

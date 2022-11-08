@@ -2,7 +2,7 @@
 // GB_dense_subassign_23: C += B where C is dense and B is sparse or dense
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -22,9 +22,10 @@
 
 #include "GB_dense.h"
 #include "GB_binop.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_binop__include.h"
 #endif
+#include "GB_unused.h"
 
 #define GB_FREE_ALL                         \
 {                                           \
@@ -73,7 +74,7 @@ GrB_Info GB_dense_subassign_23      // C += B; C is dense, B is sparse or dense
     // get the operator
     //--------------------------------------------------------------------------
 
-    if (accum->opcode == GB_FIRST_opcode || C->iso)
+    if (accum->opcode == GB_FIRST_binop_code || C->iso)
     { 
         // nothing to do
         return (GrB_SUCCESS) ;
@@ -120,7 +121,7 @@ GrB_Info GB_dense_subassign_23      // C += B; C is dense, B is sparse or dense
 
     bool done = false ;
 
-    #ifndef GBCOMPACT
+    #ifndef GBCUDA_DEV
 
         //----------------------------------------------------------------------
         // define the worker for the switch factory
@@ -165,7 +166,7 @@ GrB_Info GB_dense_subassign_23      // C += B; C is dense, B is sparse or dense
 
         GB_BURBLE_MATRIX (B, "(generic C+=B) ") ;
 
-        GxB_binary_function fadd = accum->function ;
+        GxB_binary_function fadd = accum->binop_function ;
 
         size_t csize = C->type->size ;
         size_t bsize = B->type->size ;

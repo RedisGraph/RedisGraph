@@ -1,8 +1,8 @@
 function gbtest44
 %GBTEST44 test subsasgn, mtimes, plus, false, ...
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 
@@ -20,6 +20,11 @@ assert (isequal (C, pi^2))
 A = pi ;
 B = rand (2) ;
 G = GrB (B) ;
+A
+B
+G
+A*B
+A*G
 assert (isequal (A*B, A*G))
 assert (isequal (A.*B, A.*G))
 assert (isequal (B.*A, G.*A))
@@ -43,6 +48,19 @@ assert (isequal (C, G))
 G = true (3, 4, 'like', H) ;
 C = sparse (true (3, 4)) ;
 assert (isequal (C, G))
+
+% test linear indexing for subsasgn
+A = sprand (4, 3, 0.5) ;
+G = GrB (A) ;
+C1 = A ; C1 (:) = pi ;
+C2 = G ; C2 (:) = pi ;
+assert (isequal (C1, C2)) ;
+X = sprand (12, 1, 0.5) ;
+X
+C1 = A ; C1 (:) = X
+C2 = G ; C2 (:) = X
+whos
+assert (isequal (C1, C2)) ;
 
 fprintf ('gbtest44: all tests passed\n') ;
 

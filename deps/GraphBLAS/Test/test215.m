@@ -1,7 +1,7 @@
 function test215
 %TEST215 test C<M>=A'*B (dot2, ANY_PAIR semiring)
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
@@ -27,6 +27,11 @@ semiring.add = 'any' ;          % ANY monoid
 semiring.multiply = 'pair' ;
 semiring.class = 'double' ;
 
+C1 = GB_mex_mxm  (Cin, M, [ ], semiring, A, B, desc) ;
+C2 = GB_spec_mxm (Cin, M, [ ], semiring, A, B, desc) ;
+GB_spec_compare (C1, C2) ;
+
+semiring.multiply = 'oneb' ;
 C1 = GB_mex_mxm  (Cin, M, [ ], semiring, A, B, desc) ;
 C2 = GB_spec_mxm (Cin, M, [ ], semiring, A, B, desc) ;
 GB_spec_compare (C1, C2) ;

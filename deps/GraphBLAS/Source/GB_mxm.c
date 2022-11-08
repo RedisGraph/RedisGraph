@@ -2,7 +2,7 @@
 // GB_mxm: matrix-matrix multiply for GrB_mxm, GrB_mxv, and GrB_vxm
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -12,14 +12,14 @@
 // This function is not user-callable.  It does the work for user-callable
 // functions GrB_mxm, GrB_mxv, and GrB_vxm.
 
-#include "GB_mxm.h"
-#include "GB_accum_mask.h"
-
 #define GB_FREE_ALL         \
 {                           \
-    GB_phbix_free (MT) ;    \
-    GB_phbix_free (T) ;     \
+    GB_Matrix_free (&MT) ;  \
+    GB_Matrix_free (&T) ;   \
 }
+
+#include "GB_mxm.h"
+#include "GB_accum_mask.h"
 
 GrB_Info GB_mxm                     // C<M> = A*B
 (
@@ -41,6 +41,10 @@ GrB_Info GB_mxm                     // C<M> = A*B
 )
 {
 
+    #ifdef GB_TIMING
+    double ttt = omp_get_wtime ( ) ;
+    #endif
+
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
@@ -49,10 +53,8 @@ GrB_Info GB_mxm                     // C<M> = A*B
 
     GrB_Info info ;
 
-    // RMM note: header of MT and T on the stack
     struct GB_Matrix_opaque MT_header, T_header ;
-    GrB_Matrix MT = GB_clear_static_header (&MT_header) ;
-    GrB_Matrix T  = GB_clear_static_header (&T_header) ;
+    GrB_Matrix MT = NULL, T = NULL ;
 
     GB_RETURN_IF_FAULTY_OR_POSITIONAL (accum) ;
     GB_RETURN_IF_NULL_OR_FAULTY (semiring) ;
@@ -111,6 +113,7 @@ GrB_Info GB_mxm                     // C<M> = A*B
         // ignore the mask if all entries present and not complemented
         M = NULL ;
     }
+
     // quick return if a NULL mask is complemented
     GB_RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp, Mask_struct) ;
     GB_MATRIX_WAIT_IF_PENDING_OR_ZOMBIES (A) ;
@@ -136,6 +139,9 @@ GrB_Info GB_mxm                     // C<M> = A*B
     // semiring->add->ztype if accum is not present.  To compute in-place,
     // C must also not be transposed, and it cannot be aliased with M, A, or B.
 
+    GB_CLEAR_STATIC_HEADER (MT, &MT_header) ;
+    GB_CLEAR_STATIC_HEADER (T, &T_header) ;
+
 // for (int k = 0 ; k < 40 ; k++) GB_Global_timing_clear (k) ;
 
     bool mask_applied = false ;
@@ -155,8 +161,15 @@ GrB_Info GB_mxm                     // C<M> = A*B
     if (done_in_place)
     { 
         // C has been computed in-place; no more work to do
-        GB_phbix_free (MT) ;
+        GB_FREE_ALL ;
+        GB_OK (GB_conform (C, Context)) ;
         ASSERT_MATRIX_OK (C, "C from GB_mxm (in-place)", GB0) ;
+
+        #ifdef GB_TIMING
+        ttt = omp_get_wtime ( ) - ttt ;
+        GB_Global_timing_add (0, ttt) ;
+        #endif
+
         return (info) ;
     }
 
@@ -181,7 +194,7 @@ GrB_Info GB_mxm                     // C<M> = A*B
         // needed.  If no typecasting is done then this takes no time at all
         // and is a pure transplant.  Also conform C to its desired
         // hypersparsity.
-        GB_phbix_free (MT) ;
+        GB_Matrix_free (&MT) ;
         if (GB_ZOMBIES (T) && T->type != C->type)
         { 
             // T = A*B can be constructed with zombies, using the dot3 method.
@@ -201,7 +214,8 @@ GrB_Info GB_mxm                     // C<M> = A*B
         ASSERT (GB_ZOMBIES_OK (C)) ;
         ASSERT (GB_JUMBLED_OK (C)) ;
         ASSERT (!GB_PENDING (C)) ;
-        return (GB_block (C, Context)) ;
+        info = GB_block (C, Context) ;
+
     }
     else
     { 
@@ -209,7 +223,7 @@ GrB_Info GB_mxm                     // C<M> = A*B
         // GB_accum_mask also conforms C to its desired hypersparsity.
         info = GB_accum_mask (C, M, (M_transposed) ? MT : NULL, accum, &T,
             C_replace, Mask_comp, Mask_struct, Context) ;
-        GB_phbix_free (MT) ;
+        GB_Matrix_free (&MT) ;
         #ifdef GB_DEBUG
         if (info == GrB_SUCCESS)
         {
@@ -220,7 +234,13 @@ GrB_Info GB_mxm                     // C<M> = A*B
             ASSERT (GB_PENDING_OK (C)) ;
         }
         #endif
-        return (info) ;
     }
+
+    #ifdef GB_TIMING
+    ttt = omp_get_wtime ( ) - ttt ;
+    GB_Global_timing_add (0, ttt) ;
+    #endif
+
+    return (info) ;
 }
 

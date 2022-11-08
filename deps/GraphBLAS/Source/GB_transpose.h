@@ -2,7 +2,7 @@
 // GB_transpose.h:  definitions for GB_transpose
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -27,11 +27,11 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
                                 // ignored if op is present (cast to op->ztype)
     const bool C_is_csc,        // desired CSR/CSC format of C
     const GrB_Matrix A,         // input matrix; C == A if done in place
-        // no operator is applied if both op1 and op2 are NULL
-        const GrB_UnaryOp op1_in,       // unary operator to apply
-        const GrB_BinaryOp op2_in,      // binary operator to apply
-        const GxB_Scalar scalar,        // scalar to bind to binary operator
-        bool binop_bind1st,             // if true, binop(x,A) else binop(A,y)
+        // no operator is applied if op is NULL
+        const GB_Operator op_in,    // unary/idxunop/binop to apply
+        const GrB_Scalar scalar,    // scalar to bind to binary operator
+        bool binop_bind1st,         // if true, binop(x,A) else binop(A,y)
+        bool flipij,                // if true, flip i,j for user idxunop
     GB_Context Context
 ) ;
 
@@ -60,11 +60,10 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     const GrB_Type ctype,       // type of output matrix C
     const bool C_is_csc,        // format of output matrix C
     const GrB_Matrix A,         // input matrix
-        // no operator is applied if both op1 and op2 are NULL
-        const GrB_UnaryOp op1,          // unary operator to apply
-        const GrB_BinaryOp op2,         // binary operator to apply
-        const GxB_Scalar scalar,        // scalar to bind to binary operator
-        bool binop_bind1st,             // if true, binop(x,A) else binop(A,y)
+        // no operator is applied if op is NULL
+        const GB_Operator op,       // unary/idxunop/binop to apply
+        const GrB_Scalar scalar,    // scalar to bind to binary operator
+        bool binop_bind1st,         // if true, binop(x,A) else binop(A,y)
     const int nworkspaces,      // # of workspaces to use
     const int nthreads,         // # of threads to use
     GB_Context Context
@@ -86,10 +85,9 @@ void GB_transpose_op    // transpose, typecast, and apply operator to a matrix
 (
     GrB_Matrix C,                       // output matrix
     const GB_iso_code C_code_iso,       // iso code for C
-        // no operator is applied if both op1 and op2 are NULL
-        const GrB_UnaryOp op1,          // unary operator to apply
-        const GrB_BinaryOp op2,         // binary operator to apply
-        const GxB_Scalar scalar,        // scalar to bind to binary operator
+        // no operator is applied if op is NULL
+        const GB_Operator op,           // unary/idxunop/binop to apply
+        const GrB_Scalar scalar,        // scalar to bind to binary operator
         bool binop_bind1st,             // if true, binop(x,A) else binop(A,y)
     const GrB_Matrix A,                 // input matrix
     // for sparse or hypersparse case:

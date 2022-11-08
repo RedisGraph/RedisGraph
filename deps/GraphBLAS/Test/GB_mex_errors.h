@@ -2,7 +2,7 @@
 // GB_mex_errors.h: error handling macros
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -30,13 +30,13 @@
 }
 
 // assert that a method should return a particular error code: with logger,
-// for a GrB_Matrix, GrB_Vector, or GxB_Scalar
+// for a GrB_Matrix, GrB_Vector, or GrB_Scalar
 #define ERR1(C,method)                                                      \
 {                                                                           \
     info = method ;                                                         \
     if (info != expected)                                                   \
     {                                                                       \
-        char *error_logger = NULL ;                                         \
+        const char *error_logger = NULL ;                                   \
         GrB_Matrix_error_(&error_logger, ((GrB_Matrix) C)) ;                \
         if (error_logger != NULL) mexPrintf ("[%s]\n", error_logger) ;      \
         mexPrintf ("got %d expected %d\n", info, expected) ;                \
@@ -51,7 +51,7 @@
     info = method ;                                                         \
     if (info != expected)                                                   \
     {                                                                       \
-        char *error_logger = NULL ;                                         \
+        const char *error_logger = NULL ;                                   \
         GrB_Descriptor_error_(&error_logger, descriptor) ;                  \
         if (error_logger != NULL) mexPrintf ("[%s]\n", error_logger) ;      \
         mexPrintf ("got %d expected %d\n", info, expected) ;                \
@@ -63,7 +63,7 @@
 #define OK(method)                                                          \
 {                                                                           \
     info = method ;                                                         \
-    if (! (info == GrB_SUCCESS || info == GrB_NO_VALUE))                    \
+    if (info < 0)                                                           \
     {                                                                       \
         mexPrintf ("[%d] Test failed\n", info) ;                            \
         FAIL (method) ;                                                     \

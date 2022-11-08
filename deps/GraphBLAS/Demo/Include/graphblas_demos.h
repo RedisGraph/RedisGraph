@@ -2,7 +2,7 @@
 // GraphBLAS/Demo/Include/graphblas_demos.h: include file for all demo programs
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -56,7 +56,6 @@
 #include "GraphBLAS.h"
 #include "simple_rand.h"
 #include "usercomplex.h"
-#include "prand.h"
 
 #undef MIN
 #undef MAX
@@ -74,28 +73,6 @@ GrB_Info read_matrix        // read a double-precision matrix
     bool boolean,           // if true, input is GrB_BOOL, otherwise GrB_FP64
     bool printstuff         // if true, print status to stdout
 ) ;
-
-GB_PUBLIC
-GrB_Info mis                    // compute a maximal independent set
-(
-    GrB_Vector *iset_output,    // iset(i) = true if i is in the set
-    const GrB_Matrix A,         // symmetric Boolean matrix
-    int64_t seed                // random number seed
-) ;
-
-GB_PUBLIC
-GrB_Info mis_check              // compute a maximal independent set
-(
-    GrB_Vector *iset_output,    // iset(i) = true if i is in the set
-    const GrB_Matrix A,         // symmetric Boolean matrix
-    int64_t seed                // random number seed
-) ;
-
-GB_PUBLIC
-void mis_score  (void *result, const void *degree) ;
-
-GB_PUBLIC
-void mis_score2 (void *result, const void *degree, const void *xrand) ;
 
 GB_PUBLIC
 GrB_Info random_matrix      // create a random double-precision matrix
@@ -157,71 +134,6 @@ GrB_Info isequal            // return GrB_SUCCESS if successful
     GrB_BinaryOp userop     // for A and B with user-defined types.  ignored
                             // if A and B are of built-in types
 ) ;
-
-//------------------------------------------------------------------------------
-// page rank
-//------------------------------------------------------------------------------
-
-// dpagerank computes an array of structs for its result
-typedef struct
-{
-    double pagerank ;   // the pagerank of a node
-    GrB_Index page ;    // the node number itself
-}
-PageRank ;
-
-// ipagerank computes an array of structs for its result
-typedef struct
-{
-    uint64_t pagerank ;     // the pagerank of a node
-    GrB_Index page ;        // the node number itself
-}
-iPageRank ;
-
-// using a standard semiring and FP64 arithmetic
-GB_PUBLIC
-GrB_Info dpagerank          // GrB_SUCCESS or error condition
-(
-    PageRank **Phandle,     // output: pointer to array of PageRank structs
-    GrB_Matrix A
-) ;
-
-// like dpagerank but with user-defined type, operators, and semiring;
-// also a stopping critirion
-GB_PUBLIC
-GrB_Info dpagerank2         // GrB_SUCCESS or error condition
-(
-    PageRank **Phandle,     // output: pointer to array of PageRank structs
-    GrB_Matrix A,           // input graph, not modified
-    int itermax,            // max number of iterations
-    double tol,             // stop when norm (r-rnew,2) < tol
-    int *iters,             // number of iterations taken
-    GrB_Desc_Value method   // method to use for GrB_vxm (for testing only)
-) ;
-
-GB_PUBLIC
-GrB_Info drowscale          // GrB_SUCCESS or error condition
-(
-    GrB_Matrix *Chandle,    // output matrix C = rowscale (A)
-    GrB_Matrix A            // input matrix, not modified
-) ;
-
-GB_PUBLIC
-GrB_Info ipagerank          // GrB_SUCCESS or error condition
-(
-    iPageRank **Phandle,    // output: pointer to array of iPageRank structs
-    GrB_Matrix A            // input graph, not modified
-) ;
-
-GB_PUBLIC
-GrB_Info irowscale          // GrB_SUCCESS or error condition
-(
-    GrB_Matrix *Chandle,    // output matrix C = rowscale (A)
-    GrB_Matrix A            // input matrix, not modified
-) ;
-
-// multiplicative scaling factor for ipagerank, ZSCALE = 2^30
-#define ZSCALE ((uint64_t) 1073741824)
 
 //------------------------------------------------------------------------------
 // import/export test

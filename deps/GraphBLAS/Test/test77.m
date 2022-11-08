@@ -1,7 +1,7 @@
 function test77 (fulltest)
 %TEST77 test GrB_kronecker
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 % TODO: this test takes too long; cut it down
@@ -38,7 +38,7 @@ for k1 = k1test
     if (fulltest)
         k2test = 1:length(binops) ;
     else
-        k2test = [44:51 44 4 7] ;
+        k2test = [45:52 45 4 7] ;
     end
 
     for k2 = k2test

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -29,14 +29,23 @@ static OpResult JoinInit(OpBase *opBase) {
 	// Start pulling from first stream.
 	op->streamIdx = 0;
 	op->stream = op->op.children[op->streamIdx];
+
+	// map first stream resultset mapping
+	ResultSet *result_set = QueryCtx_GetResultSet();
+	if(result_set != NULL) {
+		OpBase *child = op->stream;
+		rax *mapping = ExecutionPlan_GetMappings(child->plan);
+		ResultSet_MapProjection(result_set, mapping);
+	}
+
 	return OP_OK;
 }
 
 static Record JoinConsume(OpBase *opBase) {
 	OpJoin *op = (OpJoin *)opBase;
 	Record r = NULL;
-
 	bool update_column_map = false;
+
 	while(!r) {
 		// Try pulling from current stream.
 		r = OpBase_Consume(op->stream);
@@ -54,8 +63,7 @@ static Record JoinConsume(OpBase *opBase) {
 
 		if(update_column_map) {
 			// We have a new record mapping, update the ResultSet column map to match it.
-			ResultSet_MapProjection(QueryCtx_GetResultSet(), r);
-			update_column_map = false;
+			ResultSet_MapProjection(QueryCtx_GetResultSet(), r->mapping);
 		}
 	}
 

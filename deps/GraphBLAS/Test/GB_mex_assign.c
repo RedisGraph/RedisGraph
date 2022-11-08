@@ -2,7 +2,7 @@
 // GB_mex_assign: C<Mask>(I,J) = accum (C (I,J), A)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // This function is a wrapper for GrB_Matrix_assign, GrB_Matrix_assign_T
@@ -22,7 +22,7 @@
 
 #include "GB_mex.h"
 
-#define USAGE "C = GB_mex_assign (C,Mask,accum,A,I,J,desc,kind) or (C, Work)"
+#define USAGE "C = GB_mex_assign(C,Mask,acc,A,I,J,desc,kind) or (C,Work,ctrl)"
 
 #define FREE_ALL                        \
 {                                       \
@@ -57,6 +57,7 @@ GrB_Info assign (void) ;
 int C_sparsity_control ;
 int M_sparsity_control ;
 bool have_sparsity_control = false ;
+bool use_GrB_Scalar = false ;
 
 GrB_Info many_assign
 (
@@ -67,6 +68,7 @@ GrB_Info many_assign
     int faccum,
     int fMask,
     int fdesc,
+    int fscalar,
     int fkind,
     const mxArray *pargin [ ]
 ) ;
@@ -117,6 +119,21 @@ GrB_Info assign ( )
         OK (GrB_Row_assign_(C, (GrB_Vector) Mask, accum, (GrB_Vector) A,
             I [0], J, nj, desc)) ;
     }
+    else if (GB_NROWS (A) == 1 && GB_NCOLS (A) == 1 && use_GrB_Scalar)
+    {
+        // use GrB_Matrix_assign_Scalar or GrB_Vector_assign_Scalar
+        GrB_Scalar S = (GrB_Scalar) A ;
+        if (GB_VECTOR_OK (C) && GB_VECTOR_OK (Mask))
+        {
+            OK (GrB_Vector_assign_Scalar ((GrB_Vector) C, (GrB_Vector) Mask,
+                accum, S, I, ni, desc)) ;
+        }
+        else
+        {
+            OK (GrB_Matrix_assign_Scalar ((GrB_Matrix) C, (GrB_Matrix) Mask,
+                accum, S, I, ni, J, nj, desc)) ;
+        }
+    }
     else if (GB_NROWS (A) == 1 && GB_NCOLS (A) == 1 && GB_nnz (A) == 1)
     {
         GB_void *Ax = A->x ; // OK: A is a scalar with exactly one entry
@@ -125,6 +142,7 @@ GrB_Info assign ( )
             && GB_op_is_second (accum, C->type) && A->type->code <= GB_FC64_code
             && desc == NULL)
         {
+
             // test GrB_Matrix_setElement
             #define ASSIGN(prefix,suffix, type)                         \
             {                                                           \
@@ -157,8 +175,7 @@ GrB_Info assign ( )
             ASSERT_MATRIX_OK (C, "C after setElement", GB0) ;
 
         }
-
-        if (GB_VECTOR_OK (C) && (Mask == NULL || GB_VECTOR_OK (Mask)))
+        else if (GB_VECTOR_OK (C) && (Mask == NULL || GB_VECTOR_OK (Mask)))
         {
 
             // test GrB_Vector_assign_scalar functions
@@ -251,7 +268,7 @@ GrB_Info assign ( )
     }
 
     ASSERT_MATRIX_OK (C, "Final C before wait", GB0) ;
-    OK (GrB_Matrix_wait_(&C)) ;
+    OK (GrB_Matrix_wait_(C, GrB_MATERIALIZE)) ;
     return (info) ;
 }
 
@@ -270,6 +287,7 @@ GrB_Info many_assign
     int faccum,
     int fMask,
     int fdesc,
+    int fscalar,
     int fkind,
     const mxArray *pargin [ ]
 )
@@ -361,6 +379,14 @@ GrB_Info many_assign
             }
         }
 
+        // get use_GrB_Scalar
+        use_GrB_Scalar = false ;
+        if (fscalar > 0)
+        {
+            p = mxGetFieldByNumber (pargin [1], k, fscalar) ;
+            use_GrB_Scalar = (bool) (mxGetScalar (p) == 2) ;
+        }
+
         // get kind
         kind = 0 ;
         if (fkind > 0)
@@ -389,7 +415,7 @@ GrB_Info many_assign
     }
 
     ASSERT_MATRIX_OK (C, "Final C before wait", GB0) ;
-    OK (GrB_Matrix_wait_(&C)) ;
+    OK (GrB_Matrix_wait_(C, GrB_MATERIALIZE)) ;
     return (info) ;
 }
 
@@ -438,11 +464,11 @@ void mexFunction
         mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
-    // get sparsity control if present
+    // get control if present: [C_sparsity_control M_sparsity_control]
     if (nargin == 3)
     {
         int n = mxGetNumberOfElements (pargin [2]) ;
-        if (n != 2) mexErrMsgTxt ("invalid sparsity control") ;
+        if (n != 2) mexErrMsgTxt ("invalid control") ;
         have_sparsity_control = true ;
         double *p = mxGetDoubles (pargin [2]) ;
         C_sparsity_control = (int) p [0] ;
@@ -494,11 +520,12 @@ void mexFunction
         int fMask = mxGetFieldNumber (pargin [1], "Mask") ;
         int fdesc = mxGetFieldNumber (pargin [1], "desc") ;
         int fkind = mxGetFieldNumber (pargin [1], "kind") ;
+        int fscalar = mxGetFieldNumber (pargin [1], "scalar") ;
 
         if (fA < 0 || fI < 0 || fJ < 0) mexErrMsgTxt ("A,I,J required") ;
 
-        METHOD (many_assign (nwork, fA, fI, fJ, faccum, fMask, fdesc, fkind,
-            pargin)) ;
+        METHOD (many_assign (nwork, fA, fI, fJ, faccum, fMask, fdesc,
+            fscalar, fkind, pargin)) ;
 
     }
     else

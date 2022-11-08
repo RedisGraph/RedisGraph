@@ -1,7 +1,7 @@
 function test40
 %TEST40 test GrB_Matrix_extractElement
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\n ------ quick test of GrB_Matrix_extractElement\n') ;
@@ -13,7 +13,8 @@ A = Prob.A ;
 for i = double (1:500:m)
     for j = double (1:500:n)
         x1 = full (A (i,j)) ;
-        x2 = GB_mex_Matrix_extractElement (A, uint64 (i-1), uint64 (j-1)) ;
+        use_scalar = (rand (1) > 0.5) ;
+        x2 = GB_mex_Matrix_extractElement (A, uint64 (i-1), uint64 (j-1), '', use_scalar) ;
         assert (isequal (x1,x2)) ;
     end
 end
@@ -57,10 +58,10 @@ I = uint64 (I-1) ;
 J = uint64 (J-1) ;
 X1 = zeros (ni, 1) ;
 
-% this is about 3x slower than built-in loop 1 and 2
 tic
 for k = 1:ni
-    X1 (k) = GB_mex_Matrix_extractElement (A, I (k), J (k)) ;
+    use_scalar = (rand (1) > 0.5) ;
+    X1 (k) = GB_mex_Matrix_extractElement (A, I (k), J (k), '', use_scalar) ;
 end
 t3 = toc ;
 fprintf ('GrB     single A(i,j): %g sec speedup: %g\n', t3, t0/ t3) ;
@@ -78,6 +79,9 @@ fprintf ('GrB     many   A(i,j): %g sec speedup: %g\n', t4, t0/ t4) ;
 
 assert (isequal (X, X2)) ;
 assert (isequal (X, X1)) ;
+
+X2 = GB_mex_Matrix_extractElement (A, I, J, '', true) ;
+assert (isequal (X, X2)) ;
 
 
 tic
@@ -107,7 +111,9 @@ tic
 X2 = GB_mex_Matrix_extractElement (A, I2, J2) ;
 t6 = toc ;
 fprintf ('GrB     many   A(i,j): %g sec (all entries) speedup: %g\n', t6, t5/ t6) ;
+assert (isequal (X, X2)) ;
 
+X2 = GB_mex_Matrix_extractElement (A, I2, J2, '', true) ;
 assert (isequal (X, X2)) ;
 
 %-------------------------------------------------------------------------------

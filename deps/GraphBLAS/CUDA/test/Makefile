@@ -14,7 +14,6 @@ CUDA_OPTS = -O2 --cudart=shared --gpu-architecture=compute_75\
         --relocatable-device-code true --device-c\
         --std=c++11 -Xcompiler -fPIC
 
-
 %.o: %.cu
 	nvcc -c $(I) $(CUDA_OPTS) $(INC)  -o $@ $< 
 
@@ -109,7 +108,7 @@ cu_link.o: $(CU_OBJS)
 	nvcc --gpu-architecture=compute_75 --device-link $(CU_OBJS)  --output-file cu_link.o
 
 
-testJit: testJit.cpp $(OBJS) $(HEADERS) $(JIT_TEMP) 
+testJit: ../tofix/testJit.cpp $(OBJS) $(HEADERS) $(JIT_TEMP)
 	$(GXX) -o $@ $< $(CXXFLAGS) $(INC) $(OBJS) $(LIB)
 
 AxB_dot3_test_instances.hpp:  testGen.py
@@ -119,7 +118,7 @@ AxB_dot3_test_instances.hpp:  testGen.py
 instances :=  AxB_dot3_test_instances.hpp 
 
 
-cudaTest: cudaTest.cpp $(COBJS) $(OBJS) $(HEADERS) $(JIT_TEMP) cu_link.o AxB_dot3_cuda_tests.hpp  $(instances)
+cudaTest: cudaTest.cpp.bak $(COBJS) $(OBJS) $(HEADERS) $(JIT_TEMP) cu_link.o AxB_dot3_cuda_tests.hpp.bak  $(instances)
 	$(GXX) -o $@ $< $(CXXFLAGS) $(INC) $(COBJS) $(CU_OBJS) cu_link.o $(LIB) $(GTEST_LIB)
 
 %.cu: %.cutmp

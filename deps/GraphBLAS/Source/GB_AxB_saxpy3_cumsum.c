@@ -2,7 +2,7 @@
 // GB_AxB_saxpy3_cumsum: finalize nnz(C(:,j)) and find cumulative sum of Cp
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -11,6 +11,7 @@
 // phase4: cumulative sum of C->p
 
 #include "GB_AxB_saxpy3.h"
+#include "GB_unused.h"
 
 void GB_AxB_saxpy3_cumsum
 (

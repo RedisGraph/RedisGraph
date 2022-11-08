@@ -2,7 +2,7 @@
 // GB_subassigner: C(I,J)<#M> = accum (C(I,J), A)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -61,7 +61,7 @@
 #include "GB_bitmap_assign.h"
 
 #undef  GB_FREE_ALL
-#define GB_FREE_ALL GB_phbix_free (C) ;
+#define GB_FREE_ALL GB_phybix_free (C) ;
 
 GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
 (

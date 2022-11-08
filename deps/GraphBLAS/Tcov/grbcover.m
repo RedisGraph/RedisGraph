@@ -6,7 +6,7 @@ function grbcover (what)
 %
 % See also: grbcover_edit, grbmake
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 if (ispc)
@@ -34,13 +34,15 @@ for k = nmex:-1:1
 end
 
 % list of C files to compile
-cfiles = [ dir('../Test/GB_mx_*.c') ; dir('GB_cover_util.c') ; ] ;
+cfiles = [ dir('../Test/GB_mx_*.c') ; dir('GB_cover_util.c') ; ...
+    dir('../Demo/Source/usercomplex.c') ] ;
 
 % list of *.h and template file dependencies
 hfiles = [ dir('../Test/*.h') ; dir('../Test/Template/*.c') ] ;
 
 % list of include directories
-inc = '-Itmp_include -I../Test -I../Test/Template' ;
+inc = '-Itmp_include -I../Test -I../Test/Template -I../lz4 -I../rmm_wrap' ;
+inc = [inc ' -I../zstd -I../zstd/zstd_subset -I.'] ;
 
 have_octave = (exist ('OCTAVE_VERSION', 'builtin') == 5) ;
 if (have_octave)
@@ -52,7 +54,7 @@ end
 addpath ../Test
 addpath ../Test/spok
 
-flags = '-g -DGBCOVER -R2018a' ;
+flags = '-g -DGBCOVER -R2018a -DGBNCPUFEAT' ;
 if (need_rename)
     flags = [flags ' -DGBRENAME=1 '] ;
 end
@@ -144,8 +146,9 @@ for k = 1:length (cfiles)
 end
 
 if (ismac)
-    objlist = [objlist ' libgraphblas_tcov.dylib'] ;
+    objlist = [objlist ' libgraphblas_tcov.dylib '] ;
 end
+% objlist = [objlist ' ../cpu_features/build/libcpu_features.a'] ;
 
 % compile the mexFunctions
 for k = 1:length (mexfunctions)

@@ -2,8 +2,8 @@
 // gblogextract: logical extraction: C = A(M)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -77,8 +77,6 @@
 
 // C is always returned as a GrB matrix.
 
-// TODO:: do not directly access opaque content
-
 #include "gb_interface.h"
 #include "GB_transpose.h"
 
@@ -98,7 +96,7 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     gb_usage (nargin == 2 && nargout <= 1, USAGE) ;
-    GB_CONTEXT ("gblogextract") ;       // TODO: remove this
+    GB_CONTEXT ("gblogextract") ;
 
     //--------------------------------------------------------------------------
     // get A
@@ -153,25 +151,26 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     GrB_Index gnvals ;
-    OK1 (G, GrB_Matrix_wait (&G)) ;
+    OK1 (G, GrB_Matrix_wait (G, GrB_MATERIALIZE)) ;
     OK (GrB_Matrix_nvals (&gnvals, G)) ;
     OK (GxB_Matrix_Option_get (G, GxB_SPARSITY_STATUS, &sparsity)) ;
     CHECK_ERROR (sparsity == GxB_BITMAP, "internal error 0") ;
 
     // Remove G->x from G
-    // TODO: use GxB*export to access the content of G
     void *Gx = G->x ;
     size_t Gx_size = G->x_size ;
     #ifdef GB_MEMDUMP
     printf ("remove G->x from memtable: %p\n", G->x) ;
     #endif
-    GB_Global_memtable_remove (G->x) ; G->x = NULL ; G->x_size = 0 ;
+    GB_Global_memtable_remove (G->x) ;
+    G->x = NULL ; G->x_size = 0 ;
     bool G_iso = G->iso  ;            	
 
     //--------------------------------------------------------------------------
-    // change G to boolean (all true and iso) TODO: use G as structural instead
+    // change G to boolean (all true and iso)
     //--------------------------------------------------------------------------
 
+    // Tim: use G as structural instead
     bool Gbool = true ;        							
     G->type = GrB_BOOL ;       	             	 	                 	
     G->x = &Gbool ;            		 	 	 	 	 	
@@ -220,14 +219,15 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     GrB_Index tnvals ;
-    OK1 (T, GrB_Matrix_wait (&T)) ;
+    OK1 (T, GrB_Matrix_wait (T, GrB_MATERIALIZE)) ;
     OK (GrB_Matrix_nvals (&tnvals, T)) ;
     uint64_t *Tx = T->x ;
     size_t Tx_size = T->x_size ;
     #ifdef GB_MEMDUMP
     printf ("remove T->x from memtable: %p\n", T->x) ;
     #endif
-    GB_Global_memtable_remove (T->x) ; T->x = NULL ; T->x_size = 0 ;
+    GB_Global_memtable_remove (T->x) ;
+    T->x = NULL ; T->x_size = 0 ;
 
     // gnvals and tnvals are identical, by construction
     CHECK_ERROR (gnvals != tnvals, "internal error 1") ;
@@ -242,14 +242,16 @@ void mexFunction
 
     GrB_Vector V ;
     OK (GrB_Vector_new (&V, type, mnz)) ;
-    OK1 (V, GxB_Vector_Option_set (V, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
+    OK (GxB_Vector_Option_set (V, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
 
     #ifdef GB_MEMDUMP
     printf ("remove V->i from memtable: %p\n", V->i) ;
     printf ("remove V->x from memtable: %p\n", V->x) ;
     #endif
-    GB_Global_memtable_remove (V->i) ; gb_mxfree (&V->i) ;
-    GB_Global_memtable_remove (V->x) ; gb_mxfree (&V->x) ;
+    GB_Global_memtable_remove (V->i) ;
+    gb_mxfree ((void **) (&V->i)) ;
+    GB_Global_memtable_remove (V->x) ;
+    gb_mxfree ((void **) (&V->x)) ;
 
     // transplant values of T as the row indices of V
     V->i = (int64_t *) Tx ;
@@ -273,6 +275,7 @@ void mexFunction
     int64_t *Vp = V->p ;
     Vp [0] = 0 ;
     Vp [1] = tnvals ;
+    V->nvals = tnvals ;
     V->magic = GB_MAGIC ;
     V->nvec_nonempty = (tnvals > 0) ? 1 : 0 ;
 

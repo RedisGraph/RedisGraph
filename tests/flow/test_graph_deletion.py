@@ -1,21 +1,18 @@
-import os
-import sys
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
+from common import *
 
-from base import FlowTestsBase
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../..')
 from demo import QueryInfo
 
 GRAPH_ID = "G"
 redis_graph = None
+
 
 class testGraphDeletionFlow(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
         self.populate_graph()
 
     def populate_graph(self):
@@ -88,7 +85,7 @@ class testGraphDeletionFlow(FlowTestsBase):
                     WHERE d.name = "Boaz" AND d.name = "Ori"
                     RETURN COUNT(s)"""
         actual_result = redis_graph.query(query)
-        self.env.assertEquals(len(actual_result.result_set), 0)
+        self.env.assertEquals(actual_result.result_set[0][0], 0)
 
     # Remove 'know' edge connecting Roi to Alon
     # Leaving a single edge of type SameBirthday
@@ -118,7 +115,7 @@ class testGraphDeletionFlow(FlowTestsBase):
         query = """MATCH (s:person {name: "Roi"})-[e:know]->(d:person {name: "Alon"})
                    RETURN COUNT(s)"""
         actual_result = redis_graph.query(query)
-        self.env.assertEquals(len(actual_result.result_set), 0)
+        self.env.assertEquals(actual_result.result_set[0][0], 0)
 
     # Remove both Alon and Boaz from the graph.
     def test06_delete_nodes(self):
@@ -182,8 +179,7 @@ class testGraphDeletionFlow(FlowTestsBase):
         self._assert_run_time(result, query_info)
 
     def test11_delete_entity_type_validation(self):
-        # Currently we only support deletion of either nodes or edges
-        # we've yet to introduce deletion of Path.
+        # Currently we only support deletion of either nodes, edges or paths
 
         # Try to delete an integer.
         query = """UNWIND [1] AS x DELETE x"""
@@ -193,16 +189,9 @@ class testGraphDeletionFlow(FlowTestsBase):
         except Exception as error:
             self.env.assertTrue("Delete type mismatch" in str(error))
 
-        query = """MATCH p=(n) DELETE p"""
-        try:
-            redis_graph.query(query)
-            self.env.assertTrue(False)
-        except Exception as error:
-            self.env.assertTrue("Delete type mismatch" in str(error))
-
     def test12_delete_unwind_entity(self):
         redis_con = self.env.getConnection()
-        redis_graph = Graph("delete_test", redis_con)
+        redis_graph = Graph(redis_con, "delete_test")
 
         # Create 10 nodes.
         for i in range(10):
@@ -228,7 +217,7 @@ class testGraphDeletionFlow(FlowTestsBase):
     def test13_delete_path_elements(self):
         self.env.flush()
         redis_con = self.env.getConnection()
-        redis_graph = Graph("delete_test", redis_con)
+        redis_graph = Graph(redis_con, "delete_test")
 
         src = Node()
         dest = Node()
@@ -250,7 +239,7 @@ class testGraphDeletionFlow(FlowTestsBase):
     def test14_post_deletion_traversal_directions(self):
         self.env.flush()
         redis_con = self.env.getConnection()
-        redis_graph = Graph("G", redis_con)
+        redis_graph = Graph(redis_con, "G")
 
         nodes = {}
         # Create entities.
@@ -286,7 +275,7 @@ class testGraphDeletionFlow(FlowTestsBase):
     def test15_update_deleted_entities(self):
         self.env.flush()
         redis_con = self.env.getConnection()
-        redis_graph = Graph("delete_test", redis_con)
+        redis_graph = Graph(redis_con, "delete_test")
 
         src = Node()
         dest = Node()
@@ -311,3 +300,108 @@ class testGraphDeletionFlow(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected_result = []
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test16_repeated_entity_deletion(self):
+        self.env.flush()
+        redis_con = self.env.getConnection()
+        redis_graph = Graph(redis_con, "repeated_edge_deletion")
+
+        # create 2 nodes cyclically connected by 2 edges
+        actual_result = redis_graph.query("CREATE (x1:A)-[r:R]->(n2:B)-[t:T]->(x1)")
+        self.env.assertEquals(actual_result.nodes_created, 2)
+        self.env.assertEquals(actual_result.relationships_created, 2)
+
+        # attempt to repeatedly delete edges
+        query = """MATCH ()-[r]-() delete r delete r, r delete r, r"""
+        actual_result = redis_graph.query(query)
+        # 2 edges should be reported as deleted
+        self.env.assertEquals(actual_result.relationships_deleted, 2)
+
+        # attempt to repeatedly delete nodes
+        query = """MATCH (n) delete n delete n, n delete n, n"""
+        actual_result = redis_graph.query(query)
+        # 2 nodes should be reported as deleted
+        self.env.assertEquals(actual_result.nodes_deleted, 2)
+
+    def test17_invalid_deletions(self):
+        self.env.flush()
+        redis_con = self.env.getConnection()
+        redis_graph = Graph(redis_con, "delete_test")
+
+        n = Node()
+        redis_graph.add_node(n)
+        redis_graph.flush()
+
+        # try to delete a value that's not a graph entity
+        try:
+            query = """DELETE 1"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("DELETE can only be called on nodes and relationships", str(e))
+
+        # try to delete the output of a nonexistent function call
+        try:
+            query = """DELETE x()"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Unknown function 'x'", str(e))
+
+        # try to delete with no child op
+        try:
+            query = """DELETE rand()"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Delete was constructed without a child operation", str(e))
+
+        # try to delete a function return that's not a graph entity
+        try:
+            query = """MATCH (a) DELETE rand()"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Delete type mismatch", str(e))
+
+        # try deleting all scalar types at runtime
+        queries = ["WITH 1 AS n DELETE n",
+                   "WITH 'str' AS n DELETE n",
+                   "WITH true AS n DELETE n",
+                   "WITH [] AS n DELETE n",
+                   "WITH {} AS n DELETE n"]
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                self.env.assertTrue(False)
+            except ResponseError as e:
+                self.env.assertContains("Delete type mismatch", str(e))
+
+    def test18_delete_self_edge(self):
+        self.env.flush()
+        redis_con = self.env.getConnection()
+        redis_graph = Graph(redis_con, "delete_self_edge_test")
+
+        redis_graph.query("CREATE (:person{name:'roi',age:32})")
+        redis_graph.query("CREATE (:person{name:'amit',age:30})")
+        redis_graph.query("MATCH (a:person) WHERE (a.name = 'roi') DELETE a")
+
+        redis_graph.query("CREATE (:person{name:'roi',age:32})")
+        redis_graph.query("MATCH (a:person), (b:person) WHERE (a.name = 'roi' AND b.name='amit')  CREATE (a)-[:knows]->(a)")
+        res = redis_graph.query("MATCH (a:person) WHERE (a.name = 'roi') DELETE a")
+
+        self.env.assertEquals(res.nodes_deleted, 1)
+        self.env.assertEquals(res.relationships_deleted, 1)
+
+    def test10_random_delete(self):
+        # test random graph deletion added as a result of a crash found in Graph_GetNodeEdges
+        # when iterating RG_Matrix of type BOOL with RG_MatrixTupleIter_next_UINT64
+        for i in range(1, 10):
+            self.env.getConnection().flushall()
+
+            query = """UNWIND range(0, 10000) AS x CREATE (src:N {v: x}), (src)-[:R]->(:N), (src)-[:R]->(:N), (src)-[:R]->(:N)"""
+            redis_graph.query(query)
+
+            query = """MATCH (n:N {v: floor(rand()*100001)}) DELETE n RETURN 1 LIMIT 1"""
+            for _ in range(1, 10):
+                redis_graph.query(query)

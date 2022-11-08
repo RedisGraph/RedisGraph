@@ -2,7 +2,7 @@
 // GB_dense_ewise3_accum: C += A+B where all 3 matries are dense
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -11,8 +11,10 @@
 
 #include "GB_dense.h"
 #include "GB_binop.h"
-#ifndef GBCOMPACT
+#include "GB_stringify.h"
+#ifndef GBCUDA_DEV
 #include "GB_binop__include.h"
+#endif
 
 void GB_dense_ewise3_accum          // C += A+B, all matrices dense
 (
@@ -23,6 +25,7 @@ void GB_dense_ewise3_accum          // C += A+B, all matrices dense
     GB_Context Context
 )
 {
+#ifndef GBCUDA_DEV
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -62,12 +65,17 @@ void GB_dense_ewise3_accum          // C += A+B, all matrices dense
     ASSERT (op->ztype == B->type) ;
     ASSERT (op->ztype == op->xtype) ;
     ASSERT (op->ztype == op->ytype) ;
-    ASSERT (op->opcode >= GB_MIN_opcode) ;
-    ASSERT (op->opcode <= GB_RDIV_opcode) ;
+    ASSERT (op->opcode >= GB_MIN_binop_code) ;
+    ASSERT (op->opcode <= GB_RDIV_binop_code) ;
 
     GB_ENSURE_FULL (C) ;    // convert C to full, if sparsity control allows it
 
     // FUTURE::: handle IS*, LOR, LAND, LXOR operators
+
+    #ifdef GB_DEBUGIFY_DEFN
+    GB_debugify_ewise (false, GxB_FULL, C->type, NULL,
+        false, false, op, false, A, B) ;
+    #endif
 
     //--------------------------------------------------------------------------
     // determine the number of threads to use
@@ -113,7 +121,6 @@ void GB_dense_ewise3_accum          // C += A+B, all matrices dense
     //--------------------------------------------------------------------------
 
     ASSERT_MATRIX_OK (C, "C+=A+B output", GB0) ;
-}
-
 #endif
+}
 

@@ -2,7 +2,7 @@
 // GB_positional_unop_ijflip: swap i and j in a unary positional op
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -23,25 +23,25 @@ GrB_UnaryOp GB_positional_unop_ijflip   // return flipped operator
     {
         switch (op->opcode)
         {
-            case GB_POSITIONI_opcode  : return (GxB_POSITIONJ_INT64 ) ;
-            case GB_POSITIONI1_opcode : return (GxB_POSITIONJ1_INT64) ;
-            case GB_POSITIONJ_opcode  : return (GxB_POSITIONI_INT64 ) ;
-            case GB_POSITIONJ1_opcode : return (GxB_POSITIONI1_INT64) ;
-            // non-positional op is returned unmodified
-            default                   : return (op) ;
+            case GB_POSITIONI_unop_code  : return (GxB_POSITIONJ_INT64 ) ;
+            case GB_POSITIONI1_unop_code : return (GxB_POSITIONJ1_INT64) ;
+            case GB_POSITIONJ_unop_code  : return (GxB_POSITIONI_INT64 ) ;
+            case GB_POSITIONJ1_unop_code : return (GxB_POSITIONI1_INT64) ;
+            default: ;
         }
     }
     else
     {
         switch (op->opcode)
         {
-            case GB_POSITIONI_opcode  : return (GxB_POSITIONJ_INT32 ) ;
-            case GB_POSITIONI1_opcode : return (GxB_POSITIONJ1_INT32) ;
-            case GB_POSITIONJ_opcode  : return (GxB_POSITIONI_INT32 ) ;
-            case GB_POSITIONJ1_opcode : return (GxB_POSITIONI1_INT32) ;
-            // non-positional op is returned unmodified
-            default                   : return (op) ;
+            case GB_POSITIONI_unop_code  : return (GxB_POSITIONJ_INT32 ) ;
+            case GB_POSITIONI1_unop_code : return (GxB_POSITIONJ1_INT32) ;
+            case GB_POSITIONJ_unop_code  : return (GxB_POSITIONI_INT32 ) ;
+            case GB_POSITIONJ1_unop_code : return (GxB_POSITIONI1_INT32) ;
+            default: ;
         }
     }
+    // non-positional op is returned unmodified
+    return (op) ;
 }
 

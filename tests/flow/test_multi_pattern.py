@@ -1,22 +1,15 @@
-import os
-import sys
-import unittest
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
+from common import *
 
 redis_graph = None
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
+
 
 class testGraphMultiPatternQueryFlow(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph("G", redis_con)
+        redis_graph = Graph(redis_con, "G")
         self.populate_graph()
 
     def populate_graph(self):
@@ -44,6 +37,7 @@ class testGraphMultiPatternQueryFlow(FlowTestsBase):
         # Forevery outgoing edge, we expect len(people) to be matched.
         expected_resultset_size = 6 * len(people)
         queries = ["""MATCH (r:person {name:"Roi"})-[]->(f), (x) RETURN f, x""",
+                   """MATCH (r:person {name:"Roi"})-[]->(f) , (x) RETURN f, x""",
                    """MATCH (x), (r:person {name:"Roi"})-[]->(f) RETURN f, x""",
                    """MATCH (r:person {name:"Roi"})-[]->(f) MATCH (x) RETURN f, x""",
                    """MATCH (x) MATCH (r:person {name:"Roi"})-[]->(f) RETURN f, x"""]

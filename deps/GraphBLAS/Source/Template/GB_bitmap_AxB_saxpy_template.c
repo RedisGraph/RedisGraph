@@ -2,7 +2,7 @@
 // GB_bitmap_AxB_saxpy_template.c: C<#M>+=A*B when C is bitmap
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -14,15 +14,16 @@
 #undef  GB_FREE_ALL
 #define GB_FREE_ALL                         \
 {                                           \
-    GB_FREE_WERK (&Wf, Wf_size) ;           \
-    GB_FREE_WERK (&Wax, Wax_size) ;         \
-    GB_FREE_WERK (&Wbx, Wbx_size) ;         \
-    GB_FREE_WERK (&Wcx, Wcx_size) ;         \
-    GB_WERK_POP (GH_slice, int64_t) ;       \
+    GB_FREE_WORK (&Wf, Wf_size) ;           \
+    GB_FREE_WORK (&Wcx, Wcx_size) ;         \
+    GB_WERK_POP (H_slice, int64_t) ;        \
     GB_WERK_POP (A_slice, int64_t) ;        \
     GB_WERK_POP (B_slice, int64_t) ;        \
     GB_WERK_POP (M_ek_slicing, int64_t) ;   \
 }
+
+#undef  GB_C_IS_BITMAP
+#define GB_C_IS_BITMAP 1
 
 {
 
@@ -31,10 +32,8 @@
     //--------------------------------------------------------------------------
 
     int8_t  *restrict Wf  = NULL ; size_t Wf_size = 0 ;
-    GB_void *restrict Wax = NULL ; size_t Wax_size = 0 ;
-    GB_void *restrict Wbx = NULL ; size_t Wbx_size = 0 ;
     GB_void *restrict Wcx = NULL ; size_t Wcx_size = 0 ;
-    GB_WERK_DECLARE (GH_slice, int64_t) ;
+    GB_WERK_DECLARE (H_slice, int64_t) ;
     GB_WERK_DECLARE (A_slice, int64_t) ;
     GB_WERK_DECLARE (B_slice, int64_t) ;
     GB_WERK_DECLARE (M_ek_slicing, int64_t) ;
@@ -57,22 +56,14 @@
     ASSERT (A->vdim == B->vlen) ;
     int64_t cnvals = C->nvals ;
 
-    const int64_t *restrict Bp = B->p ;
-    const int64_t *restrict Bh = B->h ;
-    const int8_t  *restrict Bb = B->b ;
-    const int64_t *restrict Bi = B->i ;
+    const int8_t *restrict Bb = B->b ;
     const bool B_iso = B->iso ;
     const int64_t bvlen = B->vlen ;
     const int64_t bvdim = B->vdim ;
-    const int64_t bnvec = B->nvec ;
-
-    const bool B_jumbled = B->jumbled ;
     const int64_t bnz = GB_nnz_held (B) ;
-
-    const bool B_is_sparse = GB_IS_SPARSE (B) ;
-    const bool B_is_hyper = GB_IS_HYPERSPARSE (B) ;
     const bool B_is_bitmap = GB_IS_BITMAP (B) ;
-    const bool B_is_sparse_or_hyper = B_is_sparse || B_is_hyper ;
+    ASSERT (!GB_IS_SPARSE (B)) ;
+    ASSERT (!GB_IS_HYPERSPARSE (B)) ;
 
     const int64_t *restrict Ap = A->p ;
     const int64_t *restrict Ah = A->h ;
@@ -82,10 +73,8 @@
     const int64_t anvec = A->nvec ;
     const int64_t avlen = A->vlen ;
     const int64_t avdim = A->vdim ;
-
     const bool A_jumbled = A->jumbled ;
     const int64_t anz = GB_nnz_held (A) ;
-
     const bool A_is_sparse = GB_IS_SPARSE (A) ;
     const bool A_is_hyper = GB_IS_HYPERSPARSE (A) ;
     const bool A_is_bitmap = GB_IS_BITMAP (A) ;
@@ -106,7 +95,6 @@
     const bool M_is_full   = GB_IS_FULL (M) ;
     int M_nthreads = 0 ;
     int M_ntasks = 0 ;
-
     if (M != NULL)
     {
         ASSERT (C->vlen == M->vlen) ;
@@ -138,9 +126,13 @@
         }
     }
 
-    #if ( !GB_IS_ANY_PAIR_SEMIRING )
-    const GB_ATYPE *restrict Ax = (GB_ATYPE *) (A_is_pattern ? NULL : A->x) ;
-    const GB_BTYPE *restrict Bx = (GB_BTYPE *) (B_is_pattern ? NULL : B->x) ;
+    #if !GB_A_IS_PATTERN
+    const GB_ATYPE *restrict Ax = (GB_ATYPE *) A->x ;
+    #endif
+    #if !GB_B_IS_PATTERN
+    const GB_BTYPE *restrict Bx = (GB_BTYPE *) B->x ;
+    #endif
+    #if !GB_IS_ANY_PAIR_SEMIRING
           GB_CTYPE *restrict Cx = (GB_CTYPE *) C->x ;
     #endif
 
@@ -148,174 +140,7 @@
     // select the method
     //--------------------------------------------------------------------------
 
-    if (B_is_sparse_or_hyper)
-    {
-
-        //-----------------------------------------------------
-        // C                =               A     *     B
-        //-----------------------------------------------------
-
-        // bitmap           .               bitmap      hyper
-        // bitmap           .               full        hyper
-        // bitmap           .               bitmap      sparse
-        // bitmap           .               full        sparse
-
-        //-----------------------------------------------------
-        // C               <M>=             A     *     B
-        //-----------------------------------------------------
-
-        // bitmap           any             bitmap      hyper
-        // bitmap           any             full        hyper
-        // bitmap           any             bitmap      sparse
-        // bitmap           any             full        sparse
-
-        //-----------------------------------------------------
-        // C               <!M>=            A     *     B
-        //-----------------------------------------------------
-
-        // bitmap           any             bitmap      hyper
-        // bitmap           any             full        hyper
-        // bitmap           any             bitmap      sparse
-        // bitmap           any             full        sparse
-
-        #undef  GB_PANEL_SIZE
-        #define GB_PANEL_SIZE 64
-
-        ASSERT (GB_IS_BITMAP (A) || GB_IS_FULL (A)) ;
-        double work = ((double) avlen) * ((double) bnz) ;
-        int nthreads = GB_nthreads (work, chunk, nthreads_max) ;
-        int naslice, nbslice, ntasks ;
-
-        if (nthreads == 1 || bnvec == 0)
-        { 
-            // do the entire computation with a single thread
-            naslice = 1 ;
-            nbslice = 1 ;
-        }
-        else
-        { 
-            // determine number of slices for A and B
-            ntasks = 2 * nthreads ;
-            int naslice_max = GB_ICEIL (avlen, GB_PANEL_SIZE) ;
-            int dtasks = floor (sqrt ((double) ntasks)) ;
-            naslice = GB_IMIN (dtasks, naslice_max) ;
-            naslice = GB_IMAX (naslice, 1) ;
-            nbslice = ntasks / naslice ;
-            nbslice = GB_IMIN (nbslice, bnvec) ;
-            if (nbslice > bnvec)
-            {
-                // too few vectors of B; recompute nbslice and naslice
-                nbslice = bnvec ;
-                naslice = ntasks / nbslice ;
-                naslice = GB_IMIN (naslice, naslice_max) ;
-                naslice = GB_IMAX (naslice, 1) ;
-            }
-        }
-
-        ntasks = naslice * nbslice ;
-
-        // slice the matrix B
-        GB_WERK_PUSH (B_slice, nbslice + 1, int64_t) ;
-        if (B_slice == NULL)
-        { 
-            // out of memory
-            GB_FREE_ALL ;
-            return (GrB_OUT_OF_MEMORY) ;
-        }
-        GB_pslice (B_slice, Bp, bnvec, nbslice, false) ;
-
-        if (M == NULL)
-        { 
-
-            //------------------------------------------------------------------
-            // C = A*B, no mask, A bitmap/full, B sparse/hyper
-            //------------------------------------------------------------------
-
-            #define GB_MASK_IS_SPARSE_OR_HYPER 0
-            #define GB_MASK_IS_BITMAP_OR_FULL  0
-            #undef  keep
-            #define keep 1
-            if (A_is_bitmap)
-            {
-                // A is bitmap, B is sparse/hyper, no mask
-                #undef  GB_A_IS_BITMAP
-                #define GB_A_IS_BITMAP 1
-                #include "GB_bitmap_AxB_saxpy_A_bitmap_B_sparse_template.c"
-            }
-            else
-            {
-                // A is full, B is sparse/hyper, no mask
-                #undef  GB_A_IS_BITMAP
-                #define GB_A_IS_BITMAP 0
-                #include "GB_bitmap_AxB_saxpy_A_bitmap_B_sparse_template.c"
-            }
-            #undef GB_MASK_IS_SPARSE_OR_HYPER
-            #undef GB_MASK_IS_BITMAP_OR_FULL
-
-        }
-        else if (M_is_sparse_or_hyper)
-        { 
-
-            //------------------------------------------------------------------
-            // C<M> or <!M>=A*B, M sparse/hyper, A bitmap/full, B sparse/hyper
-            //------------------------------------------------------------------
-
-            #define GB_MASK_IS_SPARSE_OR_HYPER 1
-            #define GB_MASK_IS_BITMAP_OR_FULL  0
-            #undef  keep
-            const int8_t keep = (Mask_comp) ? 1 : 3 ;
-            if (A_is_bitmap)
-            {
-                // A is bitmap, M and B are sparse/hyper
-                #undef  GB_A_IS_BITMAP
-                #define GB_A_IS_BITMAP 1
-                #include "GB_bitmap_AxB_saxpy_A_bitmap_B_sparse_template.c"
-            }
-            else
-            {
-                // A is full, M and B are sparse/hyper
-                #undef  GB_A_IS_BITMAP
-                #define GB_A_IS_BITMAP 0
-                #include "GB_bitmap_AxB_saxpy_A_bitmap_B_sparse_template.c"
-            }
-            #undef GB_MASK_IS_SPARSE_OR_HYPER
-            #undef GB_MASK_IS_BITMAP_OR_FULL
-
-        }
-        else
-        { 
-
-            //------------------------------------------------------------------
-            // C<M> or <!M> = A*B, M bitmap/full, A bitmap/full, B sparse/hyper
-            //------------------------------------------------------------------
-
-            #define GB_MASK_IS_SPARSE_OR_HYPER 0
-            #define GB_MASK_IS_BITMAP_OR_FULL  1
-            #undef  keep
-            #define keep 1
-            if (A_is_bitmap)
-            {
-                // A is bitmap, M is bitmap/full, B is sparse/hyper
-                #undef  GB_A_IS_BITMAP
-                #define GB_A_IS_BITMAP 1
-                #include "GB_bitmap_AxB_saxpy_A_bitmap_B_sparse_template.c"
-            }
-            else
-            {
-                // A is full, M is bitmap/full, B is sparse/hyper
-                #undef  GB_A_IS_BITMAP
-                #define GB_A_IS_BITMAP 0
-                #include "GB_bitmap_AxB_saxpy_A_bitmap_B_sparse_template.c"
-            }
-            #undef GB_MASK_IS_SPARSE_OR_HYPER
-            #undef GB_MASK_IS_BITMAP_OR_FULL
-        }
-
-        #undef GB_PANEL_SIZE
-        #undef GB_A_IS_BITMAP
-
-    }
-    else if (A_is_sparse_or_hyper)
+    if (A_is_sparse_or_hyper)
     {
 
         //-----------------------------------------------------
@@ -345,62 +170,14 @@
         // bitmap           any             hyper       full 
         // bitmap           any             sparse      full
 
+        // construct the tasks
         ASSERT (GB_IS_BITMAP (B) || GB_IS_FULL (B)) ;
-        double work = ((double) anz) * (double) bvdim ;
-        int nthreads = GB_nthreads (work, chunk, nthreads_max) ;
-        int nfine_tasks_per_vector = 0, ntasks ;
-        bool use_coarse_tasks, use_atomics = false ;
-
-        if (nthreads == 1 || bvdim == 0)
-        { 
-            // do the entire computation with a single thread, with coarse task
-            ntasks = 1 ;
-            use_coarse_tasks = true ;
-            GBURBLE ("(coarse, threads: 1) ") ;
-        }
-        else if (nthreads <= bvdim)
-        { 
-            // All tasks are coarse, and each coarse task does 1 or more
-            // whole vectors of B
-            ntasks = GB_IMIN (bvdim, 2 * nthreads) ;
-            use_coarse_tasks = true ;
-            GBURBLE ("(coarse, threads: %d, tasks %d) ", nthreads, ntasks) ;
-        }
-        else
-        { 
-            // All tasks are fine.  Each task does a slice of a single vector
-            // of B, and each vector of B is handled by the same # of fine
-            // tasks.
-            use_coarse_tasks = false ;
-
-            // Select between a non-atomic method with Wf/Wx workspace,
-            // and an atomic method with no workspace.
-            double cnz = ((double) cvlen) * ((double) bvdim) ;
-            double intensity = ((double) work) / fmax (cnz, 1) ;
-            double workspace = ((double) cvlen) * ((double) nthreads) ;
-            double relwspace = workspace / fmax (anz + bnz + cnz, 1) ;
-            GBURBLE ("(fine, threads: %d, relwspace: %0.3g, intensity: %0.3g",
-                nthreads, relwspace, intensity) ;
-            if ((intensity > 64 && relwspace < 0.05) ||
-                (intensity > 16 && intensity <= 64 && relwspace < 0.50))
-            { 
-                // non-atomic method with workspace
-                use_atomics = false ;
-                ntasks = nthreads ;
-                GBURBLE (": non-atomic) ") ;
-            }
-            else
-            { 
-                // atomic method
-                use_atomics = true ;
-                ntasks = 2 * nthreads ;
-                GBURBLE (": atomic) ") ;
-            }
-
-            nfine_tasks_per_vector = ceil ((double) ntasks / (double) bvdim) ;
-            ntasks = bvdim * nfine_tasks_per_vector ;
-            ASSERT (nfine_tasks_per_vector > 1) ;
-
+        int nthreads, ntasks, nfine_tasks_per_vector ;
+        bool use_coarse_tasks, use_atomics ;
+        GB_AxB_saxpy4_tasks (&ntasks, &nthreads, &nfine_tasks_per_vector,
+            &use_coarse_tasks, &use_atomics, anz, bnz, bvdim, cvlen, Context) ;
+        if (!use_coarse_tasks)
+        {
             // slice the matrix A for each team of fine tasks
             GB_WERK_PUSH (A_slice, nfine_tasks_per_vector + 1, int64_t) ;
             if (A_slice == NULL)
@@ -419,6 +196,7 @@
             // C = A*B, no mask, A sparse/hyper, B bitmap/full
             //------------------------------------------------------------------
 
+            #define GB_NO_MASK 1
             #define GB_MASK_IS_SPARSE_OR_HYPER 0
             #define GB_MASK_IS_BITMAP_OR_FULL  0
             #undef  keep
@@ -439,6 +217,7 @@
             }
             #undef GB_MASK_IS_SPARSE_OR_HYPER
             #undef GB_MASK_IS_BITMAP_OR_FULL
+            #undef GB_NO_MASK
 
         }
         else if (M_is_sparse_or_hyper)
@@ -448,6 +227,7 @@
             // C<M> or <!M> = A*B, M and A are sparse/hyper, B bitmap/full
             //------------------------------------------------------------------
 
+            #define GB_NO_MASK 0
             #define GB_MASK_IS_SPARSE_OR_HYPER 1
             #define GB_MASK_IS_BITMAP_OR_FULL  0
             #undef  keep
@@ -461,7 +241,7 @@
             }
             else
             { 
-                // A is sparse/hyper, B is full, no mask
+                // A is sparse/hyper, B is full, M is sparse/hyper
                 #undef  GB_B_IS_BITMAP
                 #define GB_B_IS_BITMAP 0
                 #include "GB_bitmap_AxB_saxpy_A_sparse_B_bitmap_template.c"
@@ -497,6 +277,7 @@
             }
             #undef GB_MASK_IS_SPARSE_OR_HYPER
             #undef GB_MASK_IS_BITMAP_OR_FULL
+            #undef GB_NO_MASK
         }
 
         #undef GB_B_IS_BITMAP
@@ -613,4 +394,5 @@
 }
 
 #undef GB_FREE_ALL
+#undef GB_C_IS_BITMAP
 

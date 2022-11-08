@@ -2,7 +2,7 @@
 // GB_subref.h: definitions for GB_subref_* functions
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ GrB_Info GB_subref_phase0
     GB_Context Context
 ) ;
 
-GrB_Info GB_subref_slice
+GrB_Info GB_subref_slice    // phase 1 of GB_subref
 (
     // output:
     GB_task_struct **p_TaskList,    // array of structs
@@ -81,7 +81,7 @@ GrB_Info GB_subref_slice
     GB_Context Context
 ) ;
 
-GrB_Info GB_subref_phase1               // count nnz in each C(:,j)
+GrB_Info GB_subref_phase2               // count nnz in each C(:,j)
 (
     // computed by phase1:
     int64_t **Cp_handle,                // output of size Cnvec+1
@@ -109,7 +109,7 @@ GrB_Info GB_subref_phase1               // count nnz in each C(:,j)
     GB_Context Context
 ) ;
 
-GrB_Info GB_subref_phase2   // C=A(I,J)
+GrB_Info GB_subref_phase3   // C=A(I,J)
 (
     GrB_Matrix C,               // output matrix, static header
     // from phase1:

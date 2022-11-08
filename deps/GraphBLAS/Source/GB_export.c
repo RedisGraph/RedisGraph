@@ -2,7 +2,7 @@
 // GB_export: export a matrix or vector
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -86,6 +86,7 @@ GrB_Info GB_export      // export/unpack a matrix in any format
         case GxB_HYPERSPARSE : 
             GB_RETURN_IF_NULL (nvec) ;
             GB_RETURN_IF_NULL (Ah) ; GB_RETURN_IF_NULL (Ah_size) ;
+            // fall through to the sparse case
 
         case GxB_SPARSE : 
             if (is_sparse_vector)
@@ -102,6 +103,7 @@ GrB_Info GB_export      // export/unpack a matrix in any format
         case GxB_BITMAP : 
             GB_RETURN_IF_NULL (nvals) ;
             GB_RETURN_IF_NULL (Ab) ; GB_RETURN_IF_NULL (Ab_size) ;
+            // fall through to the full case
 
         case GxB_FULL : 
             break ;
@@ -167,12 +169,10 @@ GrB_Info GB_export      // export/unpack a matrix in any format
     (*vdim) = avdim ;
 
     // export A->x
-    #ifdef GB_DEBUG
     #ifdef GB_MEMDUMP
     printf ("export A->x from memtable: %p\n", (*A)->x) ;
     #endif
     GB_Global_memtable_remove ((*A)->x) ;
-    #endif
     (*Ax) = (*A)->x ; (*A)->x = NULL ;
     (*Ax_size) = (*A)->x_size ;
 
@@ -182,14 +182,13 @@ GrB_Info GB_export      // export/unpack a matrix in any format
             (*nvec) = (*A)->nvec ;
 
             // export A->h
-            #ifdef GB_DEBUG
             #ifdef GB_MEMDUMP
             printf ("export A->h from memtable: %p\n", (*A)->h) ;
             #endif
             GB_Global_memtable_remove ((*A)->h) ;
-            #endif
             (*Ah) = (GrB_Index *) ((*A)->h) ; (*A)->h = NULL ;
             (*Ah_size) = (*A)->h_size ;
+            // fall through to the sparse case
 
         case GxB_SPARSE : 
             if (jumbled != NULL)
@@ -204,23 +203,19 @@ GrB_Info GB_export      // export/unpack a matrix in any format
             }
             else
             {
-                #ifdef GB_DEBUG
                 #ifdef GB_MEMDUMP
                 printf ("export A->p from memtable: %p\n", (*A)->p) ;
                 #endif
                 GB_Global_memtable_remove ((*A)->p) ;
-                #endif
                 (*Ap) = (GrB_Index *) ((*A)->p) ; (*A)->p = NULL ;
                 (*Ap_size) = (*A)->p_size ;
             }
 
             // export A->i
-            #ifdef GB_DEBUG
             #ifdef GB_MEMDUMP
             printf ("export A->i from memtable: %p\n", (*A)->i) ;
             #endif
             GB_Global_memtable_remove ((*A)->i) ;
-            #endif
             (*Ai) = (GrB_Index *) ((*A)->i) ; (*A)->i = NULL ;
             (*Ai_size) = (*A)->i_size ;
             break ;
@@ -229,12 +224,10 @@ GrB_Info GB_export      // export/unpack a matrix in any format
             (*nvals) = (*A)->nvals ;
 
             // export A->b
-            #ifdef GB_DEBUG
             #ifdef GB_MEMDUMP
             printf ("export A->b from memtable: %p\n", (*A)->b) ;
             #endif
             GB_Global_memtable_remove ((*A)->b) ;
-            #endif
             (*Ab) = (*A)->b ; (*A)->b = NULL ;
             (*Ab_size) = (*A)->b_size ;
 
@@ -256,11 +249,13 @@ GrB_Info GB_export      // export/unpack a matrix in any format
     // free or clear the GrB_Matrix
     //--------------------------------------------------------------------------
 
+    // both export and unpack free the hyper_hash, A->Y
+
     if (unpacking)
     { 
         // unpack: clear the matrix, leaving it hypersparse (or sparse if
         // it is a vector (vdim of 1) or has vdim of zero)
-        GB_phbix_free (*A) ;
+        GB_phybix_free (*A) ;
         (*A)->plen = plen_new ;
         (*A)->nvec = nvec_new ;
         (*A)->p = Ap_new ; (*A)->p_size = Ap_new_size ;
@@ -275,6 +270,7 @@ GrB_Info GB_export      // export/unpack a matrix in any format
         ASSERT ((*A) == NULL) ;
     }
 
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

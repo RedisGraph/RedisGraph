@@ -2,7 +2,7 @@
 // GB_dense_subassign_06d: C(:,:)<A> = A; C is full/bitmap, M and A are aliased
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -28,7 +28,7 @@
 
 #include "GB_subassign_methods.h"
 #include "GB_dense.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_type__include.h"
 #endif
 
@@ -113,9 +113,9 @@ GrB_Info GB_dense_subassign_06d
         // C is iso
         //----------------------------------------------------------------------
 
-        // Since C is iso, A must be iso, which is also the mask M.  An iso
-        // mask matrix M is converted into a structural mask by GB_get_mask,
-        // and thus Mask_struct must be true if C is iso.
+        // Since C is iso, A must be iso (or effectively iso), which is also
+        // the mask M.  An iso mask matrix M is converted into a structural
+        // mask by GB_get_mask, and thus Mask_struct must be true if C is iso.
 
         ASSERT (Mask_struct) ;
         #define GB_ISO_ASSIGN
@@ -131,7 +131,7 @@ GrB_Info GB_dense_subassign_06d
 
         bool done = false ;
 
-        #ifndef GBCOMPACT
+        #ifndef GBCUDA_DEV
 
             //------------------------------------------------------------------
             // define the worker for the switch factory

@@ -2,8 +2,8 @@
 // gb_new: create a GraphBLAS matrix with desired format and sparsity control
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -25,7 +25,7 @@ GrB_Matrix gb_new               // create and empty matrix C
 
     // get the default format, if needed
     if (fmt < 0)
-    {
+    { 
         fmt = gb_default_format (nrows, ncols) ;
     }
 
@@ -33,13 +33,13 @@ GrB_Matrix gb_new               // create and empty matrix C
     GxB_Format_Value fmt_current ;
     OK (GxB_Matrix_Option_get (C, GxB_FORMAT, &fmt_current)) ;
     if (fmt != fmt_current)
-    {
+    { 
         OK (GxB_Matrix_Option_set (C, GxB_FORMAT, fmt)) ;
     }
 
     // set the desired sparsity structure
     if (sparsity != 0)
-    {
+    { 
         int current ;
         OK (GxB_Matrix_Option_get (C, GxB_SPARSITY_CONTROL, &current)) ;
         if (current != sparsity)

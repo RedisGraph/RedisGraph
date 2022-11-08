@@ -1,7 +1,7 @@
 function test147
 %TEST147 test C<M>A*B with very sparse M
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 fprintf ('test147 ----------------------------- C<M>A*B with very sparse M\n') ;
@@ -17,7 +17,8 @@ semiring.add = 'plus' ;
 semiring.multiply = 'times' ;
 semiring.class = 'double' ;
 
-C1 = GB_mex_mxm (S, M, [ ], semiring, A, A, [ ]) ;
+% also create the /tmp/GB_mxm_[code].h file, flipxy = false
+C1 = GB_mex_mxm (S, M, [ ], semiring, A, A, [ ], 0) ;
 C2 = (A*A) .* M ;
 
 assert (norm (C1.matrix - C2, 1) < 1e-12)

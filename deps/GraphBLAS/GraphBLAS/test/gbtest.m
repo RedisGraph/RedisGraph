@@ -21,8 +21,8 @@ function gbtest
 %
 % See also GrB.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 % gbtest3 requires ../demo/dnn_builtin.m and ../demo/dnn_builtin2gb.m.
 demo_folder = fullfile (fileparts (mfilename ('fullpath')), '../demo') ;
@@ -43,7 +43,7 @@ gbtest8   % test GrB.select
 gbtest9   % test eye and speye
 gbtest10  % test GrB.assign
 gbtest11  % test GrB, sparse
-gbtest12  % test GrB.eadd, GrB.emult
+gbtest12  % test GrB.eadd, GrB.emult, GrB.eunion
 gbtest13  % test find and GrB.extracttuples
 gbtest14  % test kron and GrB.kronecker
 gbtest15  % list all unary operators
@@ -166,6 +166,14 @@ gbtest111 % test argmin
 gbtest112 % test load and save
 gbtest113 % test ones and eq
 gbtest114 % test kron with iso matrices
+gbtest115 % test serialize/deserialize
+gbtest116 % test GrB.binopinfo for index_unary operators
+gbtest117 % test idxunop in GrB.apply2
+gbtest118 % test GrB.argsort
+gbtest119 % test GrB.eunion
+gbtest120 % test subsref
+gbtest121 % test times with scalars
+gbtest122 % test reshape
 gbtest96  % test GrB.optype
 
 if (~have_octave)

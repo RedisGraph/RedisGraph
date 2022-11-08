@@ -2,7 +2,7 @@
 // GB_type:  hard-coded functions for each built-in type
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -11,7 +11,7 @@
 // (it is auto-generated from Generator/*).
 
 #include "GB.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_control.h"
 #include "GB_ek_slice.h"
 #include "GB_type__include.h"

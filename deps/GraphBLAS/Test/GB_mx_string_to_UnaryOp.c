@@ -2,7 +2,7 @@
 // GB_mx_string_to_UnaryOp.c: get a GraphBLAS operator from built-in strings
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -94,74 +94,75 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
 
         GB_Opcode opcode ;
 
-             if (MATCH (opname, "one"     )) { opcode = GB_ONE_opcode ; }
-        else if (MATCH (opname, "identity")) { opcode = GB_IDENTITY_opcode ; }
-        else if (MATCH (opname, "ainv"    )) { opcode = GB_AINV_opcode ; }
-        else if (MATCH (opname, "abs"     )) { opcode = GB_ABS_opcode ; }
-        else if (MATCH (opname, "minv"    )) { opcode = GB_MINV_opcode ; }
-        else if (MATCH (opname, "not"     )) { opcode = GB_LNOT_opcode ; }
+             if (MATCH (opname, "one"     )) { opcode = GB_ONE_unop_code ; }
+        else if (MATCH (opname, "identity")) { opcode = GB_IDENTITY_unop_code ; }
+        else if (MATCH (opname, "ainv"    )) { opcode = GB_AINV_unop_code ; }
+        else if (MATCH (opname, "abs"     )) { opcode = GB_ABS_unop_code ; }
+        else if (MATCH (opname, "minv"    )) { opcode = GB_MINV_unop_code ; }
+        else if (MATCH (opname, "not"     )) { opcode = GB_LNOT_unop_code ; }
 
-        else if (MATCH (opname, "conj"    )) { opcode = GB_CONJ_opcode ; }
-        else if (MATCH (opname, "real"    )) { opcode = GB_CREAL_opcode ; }
-        else if (MATCH (opname, "imag"    )) { opcode = GB_CIMAG_opcode ; }
-        else if (MATCH (opname, "carg"    )) { opcode = GB_CARG_opcode ; }
+        else if (MATCH (opname, "conj"    )) { opcode = GB_CONJ_unop_code ; }
+        else if (MATCH (opname, "real"    )) { opcode = GB_CREAL_unop_code ; }
+        else if (MATCH (opname, "imag"    )) { opcode = GB_CIMAG_unop_code ; }
+        else if (MATCH (opname, "carg"    )) { opcode = GB_CARG_unop_code ; }
 
-        else if (MATCH (opname, "sqrt"    )) { opcode = GB_SQRT_opcode ; }
-        else if (MATCH (opname, "log"     )) { opcode = GB_LOG_opcode ; }
-        else if (MATCH (opname, "exp"     )) { opcode = GB_EXP_opcode ; }
+        else if (MATCH (opname, "sqrt"    )) { opcode = GB_SQRT_unop_code ; }
+        else if (MATCH (opname, "log"     )) { opcode = GB_LOG_unop_code ; }
+        else if (MATCH (opname, "exp"     )) { opcode = GB_EXP_unop_code ; }
 
-        else if (MATCH (opname, "sin"     )) { opcode = GB_SIN_opcode ; }
-        else if (MATCH (opname, "cos"     )) { opcode = GB_COS_opcode ; }
-        else if (MATCH (opname, "tan"     )) { opcode = GB_TAN_opcode ; }
+        else if (MATCH (opname, "sin"     )) { opcode = GB_SIN_unop_code ; }
+        else if (MATCH (opname, "cos"     )) { opcode = GB_COS_unop_code ; }
+        else if (MATCH (opname, "tan"     )) { opcode = GB_TAN_unop_code ; }
 
-        else if (MATCH (opname, "asin"    )) { opcode = GB_ASIN_opcode ; }
-        else if (MATCH (opname, "acos"    )) { opcode = GB_ACOS_opcode ; }
-        else if (MATCH (opname, "atan"    )) { opcode = GB_ATAN_opcode ; }
+        else if (MATCH (opname, "asin"    )) { opcode = GB_ASIN_unop_code ; }
+        else if (MATCH (opname, "acos"    )) { opcode = GB_ACOS_unop_code ; }
+        else if (MATCH (opname, "atan"    )) { opcode = GB_ATAN_unop_code ; }
 
-        else if (MATCH (opname, "sinh"    )) { opcode = GB_SINH_opcode ; }
-        else if (MATCH (opname, "cosh"    )) { opcode = GB_COSH_opcode ; }
-        else if (MATCH (opname, "tanh"    )) { opcode = GB_TANH_opcode ; }
+        else if (MATCH (opname, "sinh"    )) { opcode = GB_SINH_unop_code ; }
+        else if (MATCH (opname, "cosh"    )) { opcode = GB_COSH_unop_code ; }
+        else if (MATCH (opname, "tanh"    )) { opcode = GB_TANH_unop_code ; }
 
-        else if (MATCH (opname, "asinh"   )) { opcode = GB_ASINH_opcode ; }
-        else if (MATCH (opname, "acosh"   )) { opcode = GB_ACOSH_opcode ; }
-        else if (MATCH (opname, "atanh"   )) { opcode = GB_ATANH_opcode ; }
+        else if (MATCH (opname, "asinh"   )) { opcode = GB_ASINH_unop_code ; }
+        else if (MATCH (opname, "acosh"   )) { opcode = GB_ACOSH_unop_code ; }
+        else if (MATCH (opname, "atanh"   )) { opcode = GB_ATANH_unop_code ; }
 
-        else if (MATCH (opname, "signum"  )) { opcode = GB_SIGNUM_opcode ; }
-        else if (MATCH (opname, "ceil"    )) { opcode = GB_CEIL_opcode ; }
-        else if (MATCH (opname, "floor"   )) { opcode = GB_FLOOR_opcode ; }
-        else if (MATCH (opname, "round"   )) { opcode = GB_ROUND_opcode ; }
-        else if (MATCH (opname, "trunc"   )) { opcode = GB_TRUNC_opcode ; }
+        else if (MATCH (opname, "signum"  )) { opcode = GB_SIGNUM_unop_code ; }
+        else if (MATCH (opname, "ceil"    )) { opcode = GB_CEIL_unop_code ; }
+        else if (MATCH (opname, "floor"   )) { opcode = GB_FLOOR_unop_code ; }
+        else if (MATCH (opname, "round"   )) { opcode = GB_ROUND_unop_code ; }
+        else if (MATCH (opname, "trunc"   )) { opcode = GB_TRUNC_unop_code ; }
 
-        else if (MATCH (opname, "exp2"    )) { opcode = GB_EXP2_opcode ; }
-        else if (MATCH (opname, "expm1"   )) { opcode = GB_EXPM1_opcode ; }
-        else if (MATCH (opname, "log10"   )) { opcode = GB_LOG10_opcode ; }
-        else if (MATCH (opname, "log1p"   )) { opcode = GB_LOG1P_opcode ; }
-        else if (MATCH (opname, "log2"    )) { opcode = GB_LOG2_opcode ; }
+        else if (MATCH (opname, "exp2"    )) { opcode = GB_EXP2_unop_code ; }
+        else if (MATCH (opname, "expm1"   )) { opcode = GB_EXPM1_unop_code ; }
+        else if (MATCH (opname, "log10"   )) { opcode = GB_LOG10_unop_code ; }
+        else if (MATCH (opname, "log1p"   )) { opcode = GB_LOG1P_unop_code ; }
+        else if (MATCH (opname, "log2"    )) { opcode = GB_LOG2_unop_code ; }
 
-        else if (MATCH (opname, "lgamma"  )) { opcode = GB_LGAMMA_opcode ; }
-        else if (MATCH (opname, "tgamma"  )) { opcode = GB_TGAMMA_opcode ; }
-        else if (MATCH (opname, "erf"     )) { opcode = GB_ERF_opcode ; }
-        else if (MATCH (opname, "erfc"    )) { opcode = GB_ERFC_opcode ; }
-        else if (MATCH (opname, "frexpx"  )) { opcode = GB_FREXPX_opcode ; }
-        else if (MATCH (opname, "frexpe"  )) { opcode = GB_FREXPE_opcode ; }
+        else if (MATCH (opname, "lgamma"  )) { opcode = GB_LGAMMA_unop_code ; }
+        else if (MATCH (opname, "tgamma"  )) { opcode = GB_TGAMMA_unop_code ; }
+        else if (MATCH (opname, "erf"     )) { opcode = GB_ERF_unop_code ; }
+        else if (MATCH (opname, "erfc"    )) { opcode = GB_ERFC_unop_code ; }
+        else if (MATCH (opname, "cbrt"    )) { opcode = GB_CBRT_unop_code ; }
+        else if (MATCH (opname, "frexpx"  )) { opcode = GB_FREXPX_unop_code ; }
+        else if (MATCH (opname, "frexpe"  )) { opcode = GB_FREXPE_unop_code ; }
 
-        else if (MATCH (opname, "isinf"   )) { opcode = GB_ISINF_opcode ; }
-        else if (MATCH (opname, "isnan"   )) { opcode = GB_ISNAN_opcode ; }
-        else if (MATCH (opname, "isfinite")) { opcode = GB_ISFINITE_opcode ; }
+        else if (MATCH (opname, "isinf"   )) { opcode = GB_ISINF_unop_code ; }
+        else if (MATCH (opname, "isnan"   )) { opcode = GB_ISNAN_unop_code ; }
+        else if (MATCH (opname, "isfinite")) { opcode = GB_ISFINITE_unop_code ; }
 
-        else if (MATCH (opname, "bitnot"  )) { opcode = GB_BNOT_opcode ; }
-        else if (MATCH (opname, "bitcmp"  )) { opcode = GB_BNOT_opcode ; }
-        else if (MATCH (opname, "bnot"    )) { opcode = GB_BNOT_opcode ; }
-        else if (MATCH (opname, "bcmp"    )) { opcode = GB_BNOT_opcode ; }
+        else if (MATCH (opname, "bitnot"  )) { opcode = GB_BNOT_unop_code ; }
+        else if (MATCH (opname, "bitcmp"  )) { opcode = GB_BNOT_unop_code ; }
+        else if (MATCH (opname, "bnot"    )) { opcode = GB_BNOT_unop_code ; }
+        else if (MATCH (opname, "bcmp"    )) { opcode = GB_BNOT_unop_code ; }
 
-        else if (MATCH (opname, "positioni" )) { opcode = GB_POSITIONI_opcode ; }
-        else if (MATCH (opname, "i"         )) { opcode = GB_POSITIONI_opcode ; }
-        else if (MATCH (opname, "positioni1")) { opcode = GB_POSITIONI1_opcode ; }
-        else if (MATCH (opname, "i1"        )) { opcode = GB_POSITIONI1_opcode ; }
-        else if (MATCH (opname, "positionj" )) { opcode = GB_POSITIONJ_opcode ; }
-        else if (MATCH (opname, "j"         )) { opcode = GB_POSITIONJ_opcode ; }
-        else if (MATCH (opname, "positionj1")) { opcode = GB_POSITIONJ1_opcode ; }
-        else if (MATCH (opname, "j1"        )) { opcode = GB_POSITIONJ1_opcode ; }
+        else if (MATCH (opname, "positioni" )) { opcode = GB_POSITIONI_unop_code ; }
+        else if (MATCH (opname, "i"         )) { opcode = GB_POSITIONI_unop_code ; }
+        else if (MATCH (opname, "positioni1")) { opcode = GB_POSITIONI1_unop_code ; }
+        else if (MATCH (opname, "i1"        )) { opcode = GB_POSITIONI1_unop_code ; }
+        else if (MATCH (opname, "positionj" )) { opcode = GB_POSITIONJ_unop_code ; }
+        else if (MATCH (opname, "j"         )) { opcode = GB_POSITIONJ_unop_code ; }
+        else if (MATCH (opname, "positionj1")) { opcode = GB_POSITIONJ1_unop_code ; }
+        else if (MATCH (opname, "j1"        )) { opcode = GB_POSITIONJ1_unop_code ; }
 
         else
         {
@@ -184,7 +185,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
         switch (opcode)
         {
 
-            case GB_ONE_opcode:
+            case GB_ONE_unop_code:
 
                 switch (xcode)
                 {
@@ -207,7 +208,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_IDENTITY_opcode:
+            case GB_IDENTITY_unop_code:
 
                 switch (xcode)
                 {
@@ -230,7 +231,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_ABS_opcode:
+            case GB_ABS_unop_code:
 
                 switch (xcode)
                 {
@@ -253,7 +254,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_AINV_opcode:
+            case GB_AINV_unop_code:
 
                 switch (xcode)
                 {
@@ -276,7 +277,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_MINV_opcode   :
+            case GB_MINV_unop_code   :
 
                 switch (xcode)
                 {
@@ -299,7 +300,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_LNOT_opcode   :
+            case GB_LNOT_unop_code   :
 
                 switch (xcode)
                 {
@@ -320,7 +321,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_BNOT_opcode   :
+            case GB_BNOT_unop_code   :
 
                 switch (xcode)
                 {
@@ -342,7 +343,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
     // unary operators for floating-point types (real and complex)
     //--------------------------------------------------------------------------
 
-            case GB_SQRT_opcode :    // z = sqrt (x)
+            case GB_SQRT_unop_code :    // z = sqrt (x)
 
                 switch (xcode)
                 {
@@ -356,7 +357,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_LOG_opcode :     // z = log (x)
+            case GB_LOG_unop_code :     // z = log (x)
 
                 switch (xcode)
                 {
@@ -370,7 +371,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_EXP_opcode :     // z = exp (x)
+            case GB_EXP_unop_code :     // z = exp (x)
 
                 switch (xcode)
                 {
@@ -385,7 +386,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 break ;
 
 
-            case GB_SIN_opcode :     // z = sin (x)
+            case GB_SIN_unop_code :     // z = sin (x)
 
                 switch (xcode)
                 {
@@ -399,7 +400,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_COS_opcode :     // z = cos (x)
+            case GB_COS_unop_code :     // z = cos (x)
 
                 switch (xcode)
                 {
@@ -413,7 +414,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_TAN_opcode :     // z = tan (x)
+            case GB_TAN_unop_code :     // z = tan (x)
 
                 switch (xcode)
                 {
@@ -428,7 +429,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 break ;
 
 
-            case GB_ASIN_opcode :    // z = asin (x)
+            case GB_ASIN_unop_code :    // z = asin (x)
 
                 switch (xcode)
                 {
@@ -442,7 +443,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_ACOS_opcode :    // z = acos (x)
+            case GB_ACOS_unop_code :    // z = acos (x)
 
                 switch (xcode)
                 {
@@ -456,7 +457,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_ATAN_opcode :    // z = atan (x)
+            case GB_ATAN_unop_code :    // z = atan (x)
 
                 switch (xcode)
                 {
@@ -471,7 +472,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 break ;
 
 
-            case GB_SINH_opcode :    // z = sinh (x)
+            case GB_SINH_unop_code :    // z = sinh (x)
 
                 switch (xcode)
                 {
@@ -485,7 +486,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_COSH_opcode :    // z = cosh (x)
+            case GB_COSH_unop_code :    // z = cosh (x)
 
                 switch (xcode)
                 {
@@ -499,7 +500,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_TANH_opcode :    // z = tanh (x)
+            case GB_TANH_unop_code :    // z = tanh (x)
 
                 switch (xcode)
                 {
@@ -514,7 +515,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 break ;
 
 
-            case GB_ASINH_opcode :   // z = asinh (x)
+            case GB_ASINH_unop_code :   // z = asinh (x)
 
                 switch (xcode)
                 {
@@ -528,7 +529,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_ACOSH_opcode :   // z = acosh (x)
+            case GB_ACOSH_unop_code :   // z = acosh (x)
 
                 switch (xcode)
                 {
@@ -542,7 +543,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_ATANH_opcode :   // z = atanh (x)
+            case GB_ATANH_unop_code :   // z = atanh (x)
 
                 switch (xcode)
                 {
@@ -557,7 +558,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 break ;
 
 
-            case GB_SIGNUM_opcode :    // z = signum (x)
+            case GB_SIGNUM_unop_code :    // z = signum (x)
 
                 switch (xcode)
                 {
@@ -571,7 +572,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_CEIL_opcode :    // z = ceil (x)
+            case GB_CEIL_unop_code :    // z = ceil (x)
 
                 switch (xcode)
                 {
@@ -585,7 +586,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_FLOOR_opcode :   // z = floor (x)
+            case GB_FLOOR_unop_code :   // z = floor (x)
 
                 switch (xcode)
                 {
@@ -599,7 +600,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_ROUND_opcode :   // z = round (x)
+            case GB_ROUND_unop_code :   // z = round (x)
 
                 switch (xcode)
                 {
@@ -613,7 +614,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_TRUNC_opcode :   // z = trunc (x)
+            case GB_TRUNC_unop_code :   // z = trunc (x)
 
                 switch (xcode)
                 {
@@ -628,7 +629,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 break ;
 
 
-            case GB_EXP2_opcode :    // z = exp2 (x)
+            case GB_EXP2_unop_code :    // z = exp2 (x)
 
                 switch (xcode)
                 {
@@ -642,7 +643,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_EXPM1_opcode :   // z = expm1 (x)
+            case GB_EXPM1_unop_code :   // z = expm1 (x)
 
                 switch (xcode)
                 {
@@ -656,7 +657,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_LOG10_opcode :   // z = log10 (x)
+            case GB_LOG10_unop_code :   // z = log10 (x)
 
                 switch (xcode)
                 {
@@ -670,7 +671,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_LOG1P_opcode :   // z = log1P (x)
+            case GB_LOG1P_unop_code :   // z = log1P (x)
 
                 switch (xcode)
                 {
@@ -684,7 +685,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_LOG2_opcode :    // z = log2 (x)
+            case GB_LOG2_unop_code :    // z = log2 (x)
 
                 switch (xcode)
                 {
@@ -702,7 +703,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
     // unary operators for real floating-point types
     //--------------------------------------------------------------------------
 
-            case GB_LGAMMA_opcode :  // z = lgamma (x)
+            case GB_LGAMMA_unop_code :  // z = lgamma (x)
 
                 switch (xcode)
                 {
@@ -714,7 +715,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_TGAMMA_opcode :  // z = tgamma (x)
+            case GB_TGAMMA_unop_code :  // z = tgamma (x)
 
                 switch (xcode)
                 {
@@ -726,7 +727,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_ERF_opcode :     // z = erf (x)
+            case GB_ERF_unop_code :     // z = erf (x)
 
                 switch (xcode)
                 {
@@ -738,7 +739,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_ERFC_opcode :    // z = erfc (x)
+            case GB_ERFC_unop_code :    // z = erfc (x)
 
                 switch (xcode)
                 {
@@ -750,7 +751,19 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_FREXPX_opcode :  // z = frexpx (x), mantissa from frexp
+            case GB_CBRT_unop_code :    // z = cbrt (x)
+
+                switch (xcode)
+                {
+                    case GB_FP32_code    : op = GxB_CBRT_FP32   ; break ;
+                    case GB_FP64_code    : op = GxB_CBRT_FP64   ; break ;
+                    default              : 
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        return (false) ;
+                }
+                break ;
+
+            case GB_FREXPX_unop_code :  // z = frexpx (x), mantissa from frexp
 
                 switch (xcode)
                 {
@@ -762,7 +775,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_FREXPE_opcode :  // z = frexpe (x), exponent from frexp
+            case GB_FREXPE_unop_code :  // z = frexpe (x), exponent from frexp
 
                 switch (xcode)
                 {
@@ -779,7 +792,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
     // unary operators for complex types only
     //--------------------------------------------------------------------------
 
-            case GB_CONJ_opcode :    // z = conj (x)
+            case GB_CONJ_unop_code :    // z = conj (x)
 
                 switch (xcode)
                 {
@@ -795,7 +808,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
     // unary operators where z is real and x is complex
     //--------------------------------------------------------------------------
 
-            case GB_CREAL_opcode :   // z = creal (x)
+            case GB_CREAL_unop_code :   // z = creal (x)
 
                 switch (xcode)
                 {
@@ -807,7 +820,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_CIMAG_opcode :   // z = cimag (x)
+            case GB_CIMAG_unop_code :   // z = cimag (x)
 
                 switch (xcode)
                 {
@@ -819,7 +832,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_CARG_opcode :    // z = carg (x)
+            case GB_CARG_unop_code :    // z = carg (x)
 
                 switch (xcode)
                 {
@@ -835,7 +848,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
     // unary operators where z is bool and x is any floating-point type
     //--------------------------------------------------------------------------
 
-            case GB_ISINF_opcode :   // z = isinf (x)
+            case GB_ISINF_unop_code :   // z = isinf (x)
 
                 switch (xcode)
                 {
@@ -849,7 +862,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_ISNAN_opcode :   // z = isnan (x)
+            case GB_ISNAN_unop_code :   // z = isnan (x)
 
                 switch (xcode)
                 {
@@ -863,7 +876,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_ISFINITE_opcode: // z = isfinite (x)
+            case GB_ISFINITE_unop_code: // z = isfinite (x)
 
                 switch (xcode)
                 {
@@ -881,10 +894,10 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
     // positional ops
     //--------------------------------------------------------------------------
 
-            case GB_POSITIONI_opcode  : op = is64 ? GxB_POSITIONI_INT64  : GxB_POSITIONI_INT32  ; break ;
-            case GB_POSITIONI1_opcode : op = is64 ? GxB_POSITIONI1_INT64 : GxB_POSITIONI1_INT32 ; break ;
-            case GB_POSITIONJ_opcode  : op = is64 ? GxB_POSITIONJ_INT64  : GxB_POSITIONJ_INT32  ; break ;
-            case GB_POSITIONJ1_opcode : op = is64 ? GxB_POSITIONJ1_INT64 : GxB_POSITIONJ1_INT32 ; break ;
+            case GB_POSITIONI_unop_code  : op = is64 ? GxB_POSITIONI_INT64  : GxB_POSITIONI_INT32  ; break ;
+            case GB_POSITIONI1_unop_code : op = is64 ? GxB_POSITIONI1_INT64 : GxB_POSITIONI1_INT32 ; break ;
+            case GB_POSITIONJ_unop_code  : op = is64 ? GxB_POSITIONJ_INT64  : GxB_POSITIONJ_INT32  ; break ;
+            case GB_POSITIONJ1_unop_code : op = is64 ? GxB_POSITIONJ1_INT64 : GxB_POSITIONJ1_INT32 ; break ;
 
     //--------------------------------------------------------------------------
 

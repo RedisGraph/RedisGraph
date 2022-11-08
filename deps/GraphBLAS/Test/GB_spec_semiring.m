@@ -14,6 +14,7 @@ function [multiply_op add_op identity ztype xtype ytype] = GB_spec_semiring (sem
 %               (default is 'times').
 %
 %   add         a string with the name of the 'add' operator (default is 'plus')
+%               or a monoid struct with add.opname and add.optype.
 %
 %   class       the built-in class of the operators (default is 'double',
 %               unless the multiply operator is 'or', 'and, or 'xor').  Any
@@ -24,7 +25,7 @@ function [multiply_op add_op identity ztype xtype ytype] = GB_spec_semiring (sem
 %               'double' (FP64 in GraphBLAS), 'single complex', and 'double
 %               complex'
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 % set the default semiring

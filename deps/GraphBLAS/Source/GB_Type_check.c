@@ -2,7 +2,7 @@
 // GB_Type_check: check and print a built-in or user-defined type
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -41,7 +41,7 @@ GrB_Info GB_Type_check      // check a GraphBLAS Type
     // check object
     //--------------------------------------------------------------------------
 
-    GB_CHECK_MAGIC (type, "Type") ;
+    GB_CHECK_MAGIC (type) ;
 
     switch (type->code)
     {
@@ -69,6 +69,11 @@ GrB_Info GB_Type_check      // check a GraphBLAS Type
     { 
         GBPR0 ("    Type has an invalid size\n") ;
         return (GrB_INVALID_OBJECT) ;
+    }
+
+    if (type->defn != NULL)
+    { 
+        GBPR0 ("    %s\n", type->defn) ;
     }
 
     return (GrB_SUCCESS) ;

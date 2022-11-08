@@ -2,7 +2,7 @@
 // GrB_Descriptor_new: create a new descriptor
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -52,6 +52,8 @@ GrB_Info GrB_Descriptor_new     // create a new descriptor
     desc->nthreads_max = GxB_DEFAULT ;  // max # of threads to use
     desc->chunk = GxB_DEFAULT ;         // chunk for auto-tuning of # threads
     desc->do_sort = false ;        // do not sort in GrB_mxm and others
+    desc->compression = GxB_DEFAULT ;
+    desc->import = GxB_DEFAULT ;   // trust input data in GxB import/deserialize
     return (GrB_SUCCESS) ;
 }
 

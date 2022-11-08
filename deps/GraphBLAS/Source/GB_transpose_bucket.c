@@ -2,7 +2,7 @@
 // GB_transpose_bucket: transpose and optionally typecast and/or apply operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -35,13 +35,13 @@
 
 #include "GB_transpose.h"
 
-#define GB_FREE_WORK                                                    \
+#define GB_FREE_WORKSPACE                                               \
 {                                                                       \
     if (Workspaces != NULL && Workspaces_size != NULL)                  \
     {                                                                   \
         for (int tid = 0 ; tid < nworkspaces ; tid++)                   \
         {                                                               \
-            GB_FREE_WERK (&(Workspaces [tid]), Workspaces_size [tid]) ; \
+            GB_FREE_WORK (&(Workspaces [tid]), Workspaces_size [tid]) ; \
         }                                                               \
     }                                                                   \
     GB_WERK_POP (A_slice, int64_t) ;                                    \
@@ -51,8 +51,8 @@
 
 #define GB_FREE_ALL                                                     \
 {                                                                       \
-    GB_phbix_free (C) ;                                                 \
-    GB_FREE_WORK ;                                                      \
+    GB_phybix_free (C) ;                                                \
+    GB_FREE_WORKSPACE ;                                                 \
 }
 
 GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
@@ -62,12 +62,11 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     const GrB_Type ctype,       // type of output matrix C
     const bool C_is_csc,        // format of output matrix C
     const GrB_Matrix A,         // input matrix
-        // no operator is applied if both op1 and op2 are NULL
-        const GrB_UnaryOp op1,          // unary operator to apply
-        const GrB_BinaryOp op2,         // binary operator to apply
-        const GxB_Scalar scalar,        // scalar to bind to binary operator
-        bool binop_bind1st,             // if true, binop(x,A) else binop(A,y)
-    const int nworkspaces,      // # of workspaces to use (1, or nthreads)
+        // no operator is applied if op is NULL
+        const GB_Operator op,       // unary/idxunop/binop to apply
+        const GrB_Scalar scalar,    // scalar to bind to binary operator
+        bool binop_bind1st,         // if true, binop(x,A) else binop(A,y)
+    const int nworkspaces,      // # of workspaces to use
     const int nthreads,         // # of threads to use
     GB_Context Context
 )
@@ -77,15 +76,14 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (C != NULL) ;
-    ASSERT (C->static_header) ;
+    ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
     ASSERT_TYPE_OK (ctype, "ctype for transpose", GB0) ;
     ASSERT_MATRIX_OK (A, "A input for transpose_bucket", GB0) ;
     ASSERT (!GB_PENDING (A)) ;
     ASSERT (!GB_ZOMBIES (A)) ;
     ASSERT (GB_JUMBLED_OK (A)) ;
 
-    // if op1 and op2 are NULL, then no operator is applied
+    // if op is NULL, then no operator is applied
 
     // This method is only be used when A is sparse or hypersparse.
     // The full and bitmap cases are handled in GB_transpose.
@@ -123,11 +121,12 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     GrB_Info info ;
     // set C->iso = C_iso   OK
     bool C_iso = (C_code_iso != GB_NON_ISO) ;
-    GB_OK (GB_new_bix (&C, true, // sparse, static header
+    GB_OK (GB_new_bix (&C, // sparse, existing header
         ctype, A->vdim, vlen, GB_Ap_malloc, C_is_csc,
         GxB_SPARSE, true, A->hyper_switch, vlen, anz, true, C_iso, Context)) ;
 
     int64_t *restrict Cp = C->p ;
+    C->nvals = anz ;
 
     //--------------------------------------------------------------------------
     // allocate workspace
@@ -145,7 +144,7 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     bool ok = true ;
     for (int tid = 0 ; tid < nworkspaces ; tid++)
     { 
-        Workspaces [tid] = GB_MALLOC_WERK (vlen + 1, int64_t,
+        Workspaces [tid] = GB_MALLOC_WORK (vlen + 1, int64_t,
             &Workspaces_size [tid]) ;
         ok = ok && (Workspaces [tid] != NULL) ;
     }
@@ -181,6 +180,7 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
 
         // Only requires a single int64 workspace of size vlen for a single
         // thread.  The resulting C matrix is not jumbled.
+        GBURBLE ("(1-thread bucket transpose) ") ;
 
         // compute the row counts of A.  No need to scan the A->p pointers
         ASSERT (nworkspaces == 1) ;
@@ -211,6 +211,8 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
         // because of contention on the atomic workspace.  Otherwise, it is
         // typically faster than the non-atomic method.  The resulting C matrix
         // is jumbled.
+
+        GBURBLE ("(%d-thread atomic bucket transpose) ", nthreads) ;
 
         // compute the row counts of A.  No need to scan the A->p pointers
         int64_t *restrict workspace = Workspaces [0] ;
@@ -246,9 +248,11 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
         // resulting C matrix is not jumbled, so this can save work if C needs
         // to be unjumbled later.
 
+        GBURBLE ("(%d-thread non-atomic bucket transpose) ", nthreads) ;
+
         ASSERT (nworkspaces == nthreads) ;
         const int64_t *restrict Ap = A->p ;
-        const int64_t *restrict Ah = A->h ;
+//      const int64_t *restrict Ah = A->h ;
         const int64_t *restrict Ai = A->i ;
 
         int tid ;
@@ -261,7 +265,7 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
             for (int64_t k = A_slice [tid] ; k < A_slice [tid+1] ; k++)
             {
                 // iterate over the entries in A(:,j)
-                int64_t j = GBH (Ah, k) ;
+                // int64_t j = GBH (Ah, k) ;
                 int64_t pA_start = Ap [k] ;
                 int64_t pA_end = Ap [k+1] ;
                 for (int64_t pA = pA_start ; pA < pA_end ; pA++)
@@ -315,7 +319,7 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     //==========================================================================
 
     // transpose both the pattern and the values
-    if (op1 == NULL && op2 == NULL)
+    if (op == NULL)
     { 
         // do not apply an operator; optional typecast to C->type
         GB_transpose_ix (C, A, Workspaces, A_slice, nworkspaces, nthreads) ;
@@ -323,7 +327,7 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     else
     { 
         // apply an operator, C has type op->ztype
-        GB_transpose_op (C, C_code_iso, op1, op2, scalar, binop_bind1st, A,
+        GB_transpose_op (C, C_code_iso, op, scalar, binop_bind1st, A,
             Workspaces, A_slice, nworkspaces, nthreads) ;
     }
 
@@ -331,7 +335,7 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     ASSERT_MATRIX_OK (C, "C transpose of A", GB0) ;
     ASSERT (C->h == NULL) ;
     return (GrB_SUCCESS) ;

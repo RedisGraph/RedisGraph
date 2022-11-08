@@ -32,6 +32,6 @@ GraphBLAS resides in your file system.
 See the tcov subfolder to run the test with statement coverage of the
 C mexFunctions and utility routines.
 
-SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-SPDX-License-Identifier: GPL-3.0-or-later
+SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
 

@@ -2,7 +2,7 @@
 // GraphBLAS/Demo/Program/openmp_demo: example of user multithreading
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -79,7 +79,7 @@ int worker (GrB_Matrix *Ahandle, int id)
         }
 
         // force completion
-        OK (GrB_Matrix_wait (&A)) ;
+        OK (GrB_Matrix_wait (A, GrB_MATERIALIZE)) ;
     }
 
     // Printing is done in a critical section, just so it is not overly

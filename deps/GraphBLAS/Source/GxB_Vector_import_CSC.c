@@ -2,7 +2,7 @@
 // GxB_Vector_import_CSC: import a vector in CSC format
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -35,6 +35,7 @@ GrB_Info GxB_Vector_import_CSC  // import a vector in CSC format
         "&vi, &vx, vi_size, vx_size, iso, nvals, jumbled, desc)") ;
     GB_BURBLE_START ("GxB_Vector_import_CSC") ;
     GB_GET_DESCRIPTOR (info, desc, xx1, xx2, xx3, xx4, xx5, xx6, xx7) ;
+    GB_GET_DESCRIPTOR_IMPORT (desc, fast_import) ;
 
     //--------------------------------------------------------------------------
     // import the vector
@@ -48,7 +49,7 @@ GrB_Info GxB_Vector_import_CSC  // import a vector in CSC format
         vx,   vx_size,  // Ax
         nvals, jumbled, 0,                  // jumbled or not
         GxB_SPARSE, true,                   // sparse by col
-        iso, Context) ;
+        iso, fast_import, true, Context) ;
 
     GB_BURBLE_END ;
     return (info) ;

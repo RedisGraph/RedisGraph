@@ -50,7 +50,12 @@ static int cmp_timespec(struct timespec a, struct timespec b) {
 }
 
 // minimum heap sort function
-static int CRON_JobCmp(const void *a, const void *b, const void *udata) {
+static int CRON_JobCmp
+(
+	const void *a,
+	const void *b,
+	void *udata
+) {
 	CRON_TASK *_a = (CRON_TASK*)a;
 	CRON_TASK *_b = (CRON_TASK*)b;
 	return cmp_timespec(_b->due, _a->due);

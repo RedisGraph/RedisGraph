@@ -21,7 +21,7 @@ function test182
 %
 % That is, the sparsity control for w allows it to change from sparse/hyper
 % (with pending updates) to/from bitmap.  If 'wait' is true, then GB_mex_gabor
-% does an explicit GrB_Vector_wait (&w) before the w<v>=sum(A) reduction, so
+% does an explicit GrB_Vector_wait on w before the w<v>=sum(A) reduction, so
 % w is converted to bitmap before the assignment, not during, and the internal
 % condition is not triggered.
 %
@@ -33,7 +33,7 @@ function test182
 %
 % This test case comes from Gabor Szarnyas and Marton Elekes.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 I  = [ 1, 2, 4, 5, 7, 11, 12, 13, 15, 18, 19, 20, 27, 32, 33, ...

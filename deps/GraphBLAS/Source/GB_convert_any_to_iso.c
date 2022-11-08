@@ -2,7 +2,7 @@
 // GB_convert_any_to_iso: convert a matrix from non-iso to iso
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -17,7 +17,6 @@ GrB_Info GB_convert_any_to_iso // convert non-iso matrix to iso
 (
     GrB_Matrix A,           // input/output matrix
     GB_void *scalar,        // scalar value, of size A->type->size, or NULL
-    bool compact,           // if true, also reduce the space for A->x
     GB_Context Context
 )
 {
@@ -34,24 +33,17 @@ GrB_Info GB_convert_any_to_iso // convert non-iso matrix to iso
 
     size_t asize = A->type->size ;
     GB_void ascalar [GB_VLA(asize)] ;
-    if (scalar == NULL)
-    {
-        if (A->iso)
-        { 
-            memcpy (ascalar, A->x, asize) ;
-        }
-        else
-        { 
-            memset (ascalar, 0, asize) ;
-        }
+    memset (ascalar, 0, asize) ;
+    if (scalar == NULL && A->iso)
+    { 
+        memcpy (ascalar, A->x, asize) ;
     }
 
     //--------------------------------------------------------------------------
-    // compact the matrix if required or requested
+    // compact the matrix
     //--------------------------------------------------------------------------
 
-    if (A->x_size < asize || A->x_shallow || A->x == NULL
-        || (compact && A->x_size != asize))
+    if (A->x_size != asize || A->x_shallow || A->x == NULL)
     {
 
         //----------------------------------------------------------------------
@@ -65,12 +57,12 @@ GrB_Info GB_convert_any_to_iso // convert non-iso matrix to iso
         }
 
         // allocate the new space
-        A->x = GB_MALLOC (asize, GB_void, &(A->x_size)) ;
+        A->x = GB_MALLOC (asize, GB_void, &(A->x_size)) ; // x:OK
         A->x_shallow = false ;
         if (A->x == NULL)
         { 
             // out of memory
-            GB_phbix_free (A) ;
+            GB_phybix_free (A) ;
             return (GrB_OUT_OF_MEMORY) ;
         }
     }

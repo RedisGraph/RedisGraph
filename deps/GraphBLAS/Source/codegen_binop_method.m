@@ -3,7 +3,7 @@ function codegen_binop_method (binop, op, xtype)
 %
 % codegen_binop_method (binop, op, xtype)
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 f = fopen ('control.m4', 'w') ;
@@ -87,16 +87,16 @@ end
 switch (binop)
     case { 'pair' }
         % no emult for these operators
-        fprintf (f, 'define(`_AemultB_01'', `(none)'')\n') ;
+        fprintf (f, 'define(`_AemultB'', `(none)'')\n') ;
         fprintf (f, 'define(`_AemultB_02'', `(none)'')\n') ;
-        fprintf (f, 'define(`_AemultB_03'', `(none)'')\n') ;
+        fprintf (f, 'define(`_AemultB_04'', `(none)'')\n') ;
         fprintf (f, 'define(`_AemultB_bitmap'', `(none)'')\n') ;
         fprintf (f, 'define(`if_binop_emult_is_enabled'', `#if 0'')\n') ;
         fprintf (f, 'define(`endif_binop_emult_is_enabled'', `#endif'')\n') ;
     otherwise
-        fprintf (f, 'define(`_AemultB_01'', `_AemultB_01__%s'')\n', name) ;
+        fprintf (f, 'define(`_AemultB'', `_AemultB__%s'')\n', name) ;
         fprintf (f, 'define(`_AemultB_02'', `_AemultB_02__%s'')\n', name) ;
-        fprintf (f, 'define(`_AemultB_03'', `_AemultB_03__%s'')\n', name) ;
+        fprintf (f, 'define(`_AemultB_04'', `_AemultB_04__%s'')\n', name) ;
         fprintf (f, 'define(`_AemultB_bitmap'', `_AemultB_bitmap__%s'')\n', name) ;
         fprintf (f, 'define(`if_binop_emult_is_enabled'', `'')\n') ;
         fprintf (f, 'define(`endif_binop_emult_is_enabled'', `'')\n') ;
@@ -155,16 +155,20 @@ end
 if (isequal (binop, 'second') || isequal (binop, 'pair'))
     % the value of A is ignored
     fprintf (f, 'define(`GB_geta'', `;'')\n') ;
+    fprintf (f, 'define(`GB_a_is_pattern'', `1'')\n') ;
 else
     fprintf (f, 'define(`GB_geta'', `%s $1 = GBX ($2, $3, $4)'')\n', xtype) ;
+    fprintf (f, 'define(`GB_a_is_pattern'', `0'')\n') ;
 end
 
 % to get an entry from B
 if (isequal (binop, 'first') || isequal (binop, 'pair'))
     % the value of B is ignored
     fprintf (f, 'define(`GB_getb'', `;'')\n') ;
+    fprintf (f, 'define(`GB_b_is_pattern'', `1'')\n') ;
 else
     fprintf (f, 'define(`GB_getb'', `%s $1 = GBX ($2, $3, $4)'')\n', ytype) ;
+    fprintf (f, 'define(`GB_b_is_pattern'', `0'')\n') ;
 end
 
 % to copy an entry from A to C
@@ -193,14 +197,13 @@ else
     fprintf (f, 'define(`GB_copy_b_to_c'', `$1 = GBX ($2, $3, $4)'')\n') ;
 end
 
-% type-specific IDIV
-if (~isempty (strfind (op, 'IDIV')))
+% type-specific idiv
+if (~isempty (strfind (op, 'idiv')))
     if (unsigned)
-        op = strrep (op, 'IDIV', 'IDIV_UNSIGNED') ;
+        op = strrep (op, 'idiv', sprintf ('idiv_uint%d', bits)) ;
     else
-        op = strrep (op, 'IDIV', 'IDIV_SIGNED') ;
+        op = strrep (op, 'idiv', sprintf ('idiv_int%d', bits)) ;
     end
-    op = strrep (op, ')', sprintf (', %d)', bits)) ;
 end
 
 % create the binary operator
@@ -229,7 +232,7 @@ fprintf (f, 'define(`GB_disable'', `(%s)'')\n', disable) ;
 
 fclose (f) ;
 
-trim = 41 ;
+trim = 42 ;
 
 % construct the *.c file
 cmd = sprintf (...

@@ -1,8 +1,8 @@
 function gbtest64
 %GBTEST64 test GrB.pagerank
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 % load west0479 ; %#ok<*LOAD>
 load west0479_correct ; %#ok<*LOAD>

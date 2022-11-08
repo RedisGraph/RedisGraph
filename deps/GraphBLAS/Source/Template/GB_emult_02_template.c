@@ -2,7 +2,7 @@
 // GB_emult_02_template: C = A.*B when A is sparse/hyper and B is bitmap/full
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -65,7 +65,7 @@
         {
 
             //------------------------------------------------------------------
-            // C=A.*B where A is sparse/hyper and B is bitmap
+            // Method2(a): C=A.*B where A is sparse/hyper and B is bitmap
             //------------------------------------------------------------------
 
             int tid ;
@@ -107,7 +107,7 @@
         {
 
             //------------------------------------------------------------------
-            // C=A.*B where A is sparse/hyper and B is full
+            // Method2(b): C=A.*B where A is sparse/hyper and B is full
             //------------------------------------------------------------------
 
             int tid ;
@@ -148,7 +148,7 @@
     {
 
         //----------------------------------------------------------------------
-        // C<#M>=A.*B where A is sparse/hyper, M and B are bitmap/full
+        // Method2(c): C<#M>=A.*B, A is sparse/hyper, M and B are bitmap/full
         //----------------------------------------------------------------------
 
         const int8_t  *restrict Mb = M->b ;

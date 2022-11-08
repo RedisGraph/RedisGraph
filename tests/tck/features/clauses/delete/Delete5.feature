@@ -30,7 +30,6 @@
 
 Feature: Delete5 - Delete clause interoperation with built-in data types
 
-  @skip
   Scenario: [1] Delete node from a list
     Given an empty graph
     And having executed:
@@ -54,7 +53,6 @@ Feature: Delete5 - Delete clause interoperation with built-in data types
       | -nodes         | 1 |
       | -relationships | 1 |
 
-  @skip
   Scenario: [2] Delete relationship from a list
     Given an empty graph
     And having executed:

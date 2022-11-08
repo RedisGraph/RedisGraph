@@ -2,7 +2,7 @@
 // GB_ops_template.c: built-in unary and binary functions and operators
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -88,6 +88,7 @@ GXB_OP1 (ONE, "one") ;
     GXB_OP1 (TGAMMA   , "tgamma"   ) ;
     GXB_OP1 (ERF      , "erf"      ) ;
     GXB_OP1 (ERFC     , "erfc"     ) ;
+    GXB_OP1 (CBRT     , "cbrt"     ) ;
     GXB_OP1 (FREXPX   , "frexpx"   ) ;
     GXB_OP1 (FREXPE   , "frexpe"   ) ;
     #endif
@@ -149,57 +150,57 @@ GXB_OP1 (ONE, "one") ;
 // binary functions z=f(x,y) where z, x, and y all have the same type
 //------------------------------------------------------------------------------
 
-GXB_OP2 (RMINUS , "rminus")
-GXB_OP2 (RDIV   , "rdiv"  )
-GXB_OP2 (PAIR   , "pair"  )
-GXB_OP2 (ANY    , "any"   )
-GXB_OP2 (ISEQ   , "iseq"  )
-GXB_OP2 (ISNE   , "isne"  )
-GXB_OP2 (POW    , "pow"   )
+GXB_OP2 (RMINUS , "rminus") ;
+GXB_OP2 (RDIV   , "rdiv"  ) ;
+GXB_OP2 (PAIR   , "pair"  ) ;
+GXB_OP2 (ANY    , "any"   ) ;
+GXB_OP2 (ISEQ   , "iseq"  ) ;
+GXB_OP2 (ISNE   , "isne"  ) ;
+GXB_OP2 (POW    , "pow"   ) ;
 
 #if defined ( GB_COMPLEX ) 
 
     // complex types
-    GXB_OP2 (FIRST  , "first" )
-    GXB_OP2 (SECOND , "second")
-    GXB_OP2 (PLUS   , "plus"  )
-    GXB_OP2 (MINUS  , "minus" )
-    GXB_OP2 (TIMES  , "times" )
-    GXB_OP2 (DIV    , "div"   )
+    GXB_OP2 (FIRST  , "first" ) ;
+    GXB_OP2 (SECOND , "second") ;
+    GXB_OP2 (PLUS   , "plus"  ) ;
+    GXB_OP2 (MINUS  , "minus" ) ;
+    GXB_OP2 (TIMES  , "times" ) ;
+    GXB_OP2 (DIV    , "div"   ) ;
 
 #else
 
     // real types
-    GRB_OP2 (FIRST  , "first" )
-    GRB_OP2 (SECOND , "second")
-    GRB_OP2 (PLUS   , "plus"  )
-    GRB_OP2 (MINUS  , "minus" )
-    GRB_OP2 (TIMES  , "times" )
-    GRB_OP2 (DIV    , "div"   )
+    GRB_OP2 (FIRST  , "first" ) ;
+    GRB_OP2 (SECOND , "second") ;
+    GRB_OP2 (PLUS   , "plus"  ) ;
+    GRB_OP2 (MINUS  , "minus" ) ;
+    GRB_OP2 (TIMES  , "times" ) ;
+    GRB_OP2 (DIV    , "div"   ) ;
 
-    GRB_OP2 (MIN    , "min" )
-    GRB_OP2 (MAX    , "max" )
+    GRB_OP2 (MIN    , "min" ) ;
+    GRB_OP2 (MAX    , "max" ) ;
 
-    GXB_OP2 (LOR    , "or"  )
-    GXB_OP2 (LAND   , "and" )
-    GXB_OP2 (LXOR   , "xor" )
+    GXB_OP2 (LOR    , "or"  ) ;
+    GXB_OP2 (LAND   , "and" ) ;
+    GXB_OP2 (LXOR   , "xor" ) ;
 
-    GXB_OP2 (ISGT   , "isgt")
-    GXB_OP2 (ISLT   , "islt")
-    GXB_OP2 (ISGE   , "isge")
-    GXB_OP2 (ISLE   , "isle")
+    GXB_OP2 (ISGT   , "isgt") ;
+    GXB_OP2 (ISLT   , "islt") ;
+    GXB_OP2 (ISGE   , "isge") ;
+    GXB_OP2 (ISLE   , "isle") ;
 
 #endif
 
 #if defined (GB_FLOAT) || defined (GB_DOUBLE)
 
     // these operators are only defined for float and double
-    GXB_OP2 (ATAN2    , "atan2"    )
-    GXB_OP2 (HYPOT    , "hypot"    )
-    GXB_OP2 (FMOD     , "fmod"     )
-    GXB_OP2 (REMAINDER, "remainder")
-    GXB_OP2 (COPYSIGN , "copysign" )
-    GXB_OP2 (LDEXP    , "ldexp"    )
+    GXB_OP2 (ATAN2    , "atan2"    ) ;
+    GXB_OP2 (HYPOT    , "hypot"    ) ;
+    GXB_OP2 (FMOD     , "fmod"     ) ;
+    GXB_OP2 (REMAINDER, "remainder") ;
+    GXB_OP2 (COPYSIGN , "copysign" ) ;
+    GXB_OP2 (LDEXP    , "ldexp"    ) ;
 
 #endif
 
@@ -226,32 +227,78 @@ GXB_OP2 (POW    , "pow"   )
 #if defined ( GB_FLOAT )
 
     // z = cmplx(x,y) where z is float complex, x and y are float
-    GXB_OP2z (CMPLX, "cmplx", GxB_FC32_t, FC32)
+    GXB_OP2z (CMPLX, "cmplx", GxB_FC32_t, FC32) ;
 
 #endif
 
 #if defined ( GB_DOUBLE )
 
     // z = cmplx(x,y) where z is double complex, x and y are double
-    GXB_OP2z (CMPLX, "cmplx", GxB_FC64_t, FC64)
+    GXB_OP2z (CMPLX, "cmplx", GxB_FC64_t, FC64) ;
 
 #endif
 
 #if defined ( GB_COMPLEX )
 
     // complex types
-    GXB_OP2z (EQ, "eq", bool, BOOL)
-    GXB_OP2z (NE, "ne", bool, BOOL)
+    GXB_OP2z (EQ, "eq", bool, BOOL) ;
+    GXB_OP2z (NE, "ne", bool, BOOL) ;
 
 #else
 
     // real types
-    GRB_OP2z (EQ, "eq", bool, BOOL)
-    GRB_OP2z (NE, "ne", bool, BOOL)
-    GRB_OP2z (GT, "gt", bool, BOOL)
-    GRB_OP2z (LT, "lt", bool, BOOL)
-    GRB_OP2z (LE, "le", bool, BOOL)
-    GRB_OP2z (GE, "ge", bool, BOOL)
+    GRB_OP2z (EQ, "eq", bool, BOOL) ;
+    GRB_OP2z (NE, "ne", bool, BOOL) ;
+    GRB_OP2z (GT, "gt", bool, BOOL) ;
+    GRB_OP2z (LT, "lt", bool, BOOL) ;
+    GRB_OP2z (LE, "le", bool, BOOL) ;
+    GRB_OP2z (GE, "ge", bool, BOOL) ;
+
+#endif
+
+//------------------------------------------------------------------------------
+// index_unary functions z=f(x,i,j,y)
+//------------------------------------------------------------------------------
+
+#if defined ( GB_SIGNED_INDEX )
+
+    // z = f (x, i, j, y) where z and y have type int32 or int64
+    GRB_IDXOP_POSITIONAL (ROWINDEX,  "rowindex" ) ;
+    GRB_IDXOP_POSITIONAL (COLINDEX,  "colindex" ) ;
+    GRB_IDXOP_POSITIONAL (DIAGINDEX, "diagindex") ;
+    GXB_IDXOP_POSITIONAL (FLIPDIAGINDEX, "flipdiagindex") ;
+
+#endif
+
+#if defined ( GB_SIGNED_INDEX64 )
+
+    // z = f (x, i, j, y) where z is bool; y has type int64 only
+    GRB_IDXOP_POSITIONAL_BOOL (TRIL,    "tril" ) ;
+    GRB_IDXOP_POSITIONAL_BOOL (TRIU,    "triu" ) ;
+    GRB_IDXOP_POSITIONAL_BOOL (DIAG,    "diag" ) ;
+    GRB_IDXOP_POSITIONAL_BOOL (OFFDIAG, "offdiag" ) ;
+    GRB_IDXOP_POSITIONAL_BOOL (COLLE,   "colle" ) ;
+    GRB_IDXOP_POSITIONAL_BOOL (COLGT,   "colgt" ) ;
+    GRB_IDXOP_POSITIONAL_BOOL (ROWLE,   "rowle" ) ;
+    GRB_IDXOP_POSITIONAL_BOOL (ROWGT,   "rowgt" ) ;
+
+#endif
+
+#if defined ( GB_COMPLEX )
+
+    // z = f (x, i, j, y) where z is bool; y is complex
+    GXB_IDXOP_VALUE (VALUEEQ, "valueeq") ;
+    GXB_IDXOP_VALUE (VALUENE, "valuene") ;
+
+#else
+
+    // z = f (x, i, j, y) where z is bool; y is real
+    GRB_IDXOP_VALUE (VALUEEQ, "valueeq") ;
+    GRB_IDXOP_VALUE (VALUENE, "valuene") ;
+    GRB_IDXOP_VALUE (VALUELT, "valuelt") ;
+    GRB_IDXOP_VALUE (VALUELE, "valuele") ;
+    GRB_IDXOP_VALUE (VALUEGT, "valuegt") ;
+    GRB_IDXOP_VALUE (VALUEGE, "valuege") ;
 
 #endif
 
@@ -269,4 +316,6 @@ GXB_OP2 (POW    , "pow"   )
 #undef GB_DOUBLE_COMPLEX
 #undef GB_SIGNED_INT
 #undef GB_UNSIGNED_INT
+#undef GB_SIGNED_INDEX
+#undef GB_SIGNED_INDEX64
 

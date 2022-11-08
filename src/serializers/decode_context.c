@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -21,7 +21,10 @@ GraphDecodeContext *GraphDecodeContext_New() {
 
 void GraphDecodeContext_Reset(GraphDecodeContext *ctx) {
 	ASSERT(ctx);
-	ctx->keys_processed = 0;
+
+	ctx->keys_processed    =  0;
+	ctx->graph_keys_count  =  1;
+
 	if(ctx->multi_edge) {
 		array_free(ctx->multi_edge);
 		ctx->multi_edge = NULL;
@@ -73,6 +76,12 @@ bool GraphDecodeContext_GetProcessedKeyCount(const GraphDecodeContext *ctx) {
 void GraphDecodeContext_Free(GraphDecodeContext *ctx) {
 	if(ctx) {
 		raxFree(ctx->meta_keys);
+
+		if(ctx->multi_edge) {
+			array_free(ctx->multi_edge);
+			ctx->multi_edge = NULL;
+		}
+
 		rm_free(ctx);
 	}
 }

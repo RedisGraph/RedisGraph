@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -8,21 +8,15 @@
 #include "RG.h"
 #include "../../../errors.h"
 #include "../../../query_ctx.h"
-
-// Add properties to the GraphEntity.
-static inline void _AddProperties(ResultSetStatistics *stats, GraphEntity *ge,
-								  PendingProperties *props) {
-	int failed_updates = 0;
-	for(int i = 0; i < props->property_count; i++) {
-		bool updated = GraphEntity_AddProperty(ge, props->attr_keys[i], props->values[i]);
-		if(!updated) failed_updates++;
-	}
-
-	if(stats) stats->properties_set += props->property_count - failed_updates;
-}
+#include "../../../ast/ast_shared.h"
+#include "../../../datatypes/array.h"
+#include "../../../graph/graph_hub.h"
 
 // commit node blueprints
-static void _CommitNodesBlueprint(PendingCreations *pending) {
+static void _CommitNodesBlueprint
+(
+	PendingCreations *pending
+) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Graph *g = gc->g;
 
@@ -32,27 +26,37 @@ static void _CommitNodesBlueprint(PendingCreations *pending) {
 	// create missing schemas
 	// this loop iterates over the CREATE pattern, e.g.
 	// CREATE (p:Person)
-	// As such we're not expecting a large number of iterations
+	// as such we're not expecting a large number of iterations
 	uint blueprint_node_count = array_len(pending->nodes_to_create);
 	for(uint i = 0; i < blueprint_node_count; i++) {
 		NodeCreateCtx *node_ctx = pending->nodes_to_create + i;
+		uint label_count = array_len(node_ctx->labels);
 
-		const char *label = node_ctx->label;
-		if(label) {
+		for(uint j = 0; j < label_count; j++) {
+			const char *label = node_ctx->labels[j];
 			Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+
 			if(s == NULL) {
-				s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+				s = AddSchema(gc, label, SCHEMA_NODE);
 				pending->stats->labels_added++;
 			}
 
+			node_ctx->labelsId[j] = s->id;
+			pending->node_labels[i][j] = s->id;
+
 			// sync matrix, make sure label matrix is of the right dimensions
-			Graph_GetLabelMatrix(g, s->id);
+			Graph_GetLabelMatrix(g, Schema_GetID(s));
 		}
+		// sync matrix, make sure mapping matrix is of the right dimensions
+		if(label_count > 0) Graph_GetNodeLabelMatrix(g);
 	}
 }
 
 // commit nodes
-static void _CommitNodes(PendingCreations *pending) {
+static void _CommitNodes
+(
+	PendingCreations *pending
+) {
 	Node          *n          =  NULL;
 	GraphContext  *gc         =  QueryCtx_GetGraphCtx();
 	Graph         *g          =  gc->g;
@@ -63,31 +67,21 @@ static void _CommitNodes(PendingCreations *pending) {
 
 	for(uint i = 0; i < node_count; i++) {
 		n = pending->created_nodes[i];
-		Schema *s = NULL;
-
-		// get label ID
-		int labelID = GRAPH_NO_LABEL;
-		if(n->label != NULL) {
-			s = GraphContext_GetSchema(gc, n->label, SCHEMA_NODE);
-			ASSERT(s != NULL);
-			n->labelID = s->id; // update the label ID within the node
-			labelID = s->id;
-		}
+		int *labels = pending->node_labels[i];
+		uint label_count = array_len(labels);
+		AttributeSet attr = pending->node_attributes[i];
 
 		// introduce node into graph
-		Graph_CreateNode(g, labelID, n);
-
-		if(pending->node_properties[i]) {
-			_AddProperties(pending->stats, (GraphEntity *)n,
-					pending->node_properties[i]);
-		}
-
-		if(s && Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n);
+		pending->stats->properties_set += CreateNode(gc, n, labels, label_count,
+				attr);
 	}
 }
 
 // commit edge blueprints
-static void _CommitEdgesBlueprint(EdgeCreateCtx *blueprints) {
+static void _CommitEdgesBlueprint
+(
+	EdgeCreateCtx *blueprints
+) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Graph *g = gc->g;
 
@@ -104,11 +98,11 @@ static void _CommitEdgesBlueprint(EdgeCreateCtx *blueprints) {
 
 		const char *relation = edge_ctx->relation;
 		Schema *s = GraphContext_GetSchema(gc, relation, SCHEMA_EDGE);
-		if(s == NULL) s = GraphContext_AddSchema(gc, relation, SCHEMA_EDGE);
+		if(s == NULL) s = AddSchema(gc, relation, SCHEMA_EDGE);
 
 		// calling Graph_GetRelationMatrix will make sure relationship matrix
 		// is of the right dimensions
-		Graph_GetRelationMatrix(g, s->id, false);
+		Graph_GetRelationMatrix(g, Schema_GetID(s), false);
 	}
 
 	// call Graph_GetAdjacencyMatrix will make sure the adjacency matrix
@@ -117,7 +111,10 @@ static void _CommitEdgesBlueprint(EdgeCreateCtx *blueprints) {
 }
 
 // commit edges
-static void _CommitEdges(PendingCreations *pending) {
+static void _CommitEdges
+(
+	PendingCreations *pending
+) {
 	Edge          *e          =  NULL;
 	GraphContext  *gc         =  QueryCtx_GetGraphCtx();
 	Graph         *g          =  gc->g;
@@ -130,6 +127,7 @@ static void _CommitEdges(PendingCreations *pending) {
 		e = pending->created_edges[i];
 		NodeID srcNodeID;
 		NodeID destNodeID;
+		AttributeSet attr = pending->edge_attributes[i];
 
 		// Nodes which already existed prior to this query would
 		// have their ID set under e->srcNodeID and e->destNodeID
@@ -140,37 +138,41 @@ static void _CommitEdges(PendingCreations *pending) {
 		if(e->destNodeID != INVALID_ENTITY_ID) destNodeID = e->destNodeID;
 		else destNodeID = ENTITY_GET_ID(Edge_GetDestNode(e));
 
-		Schema *schema = GraphContext_GetSchema(gc, e->relationship,
-				SCHEMA_EDGE);
+		Schema *s = GraphContext_GetSchema(gc, e->relationship, SCHEMA_EDGE);
 		// all schemas have been created in the edge blueprint loop or earlier
-		ASSERT(schema);
-		int relation_id = schema->id;
+		ASSERT(s != NULL);
+		int relation_id = Schema_GetID(s);
 
-		Graph_CreateEdge(g, srcNodeID, destNodeID, relation_id, e);
-
-		if(pending->edge_properties[i]) {
-			_AddProperties(pending->stats, (GraphEntity *)e,
-					pending->edge_properties[i]);
-		}
+		pending->stats->properties_set += CreateEdge(gc, e, srcNodeID,
+				destNodeID, relation_id, attr);
 	}
 }
 
 // Initialize all variables for storing pending creations.
-PendingCreations NewPendingCreationsContainer(NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
-	PendingCreations pending;
-	pending.nodes_to_create = nodes;
-	pending.edges_to_create = edges;
-	pending.created_nodes = array_new(Node *, 0);
-	pending.created_edges = array_new(Edge *, 0);
-	pending.node_properties = array_new(PendingProperties *, 0);
-	pending.edge_properties = array_new(PendingProperties *, 0);
-	pending.stats = NULL;
+void NewPendingCreationsContainer
+(
+	PendingCreations *pending,
+	NodeCreateCtx *nodes,
+	EdgeCreateCtx *edges
+) {
+	ASSERT(pending != NULL);
 
-	return pending;
+	pending->nodes_to_create = nodes;
+	pending->edges_to_create = edges;
+	pending->node_labels     = array_new(int *, 0);
+	pending->created_nodes   = array_new(Node *, 0);
+	pending->created_edges   = array_new(Edge *, 0);
+	pending->node_attributes = array_new(AttributeSet, 0);
+	pending->edge_attributes = array_new(AttributeSet, 0);
+	pending->stats = NULL;
 }
 
 // Lock the graph and commit all changes introduced by the operation.
-void CommitNewEntities(OpBase *op, PendingCreations *pending) {
+void CommitNewEntities
+(
+	OpBase *op,
+	PendingCreations *pending
+) {
 	Graph *g = QueryCtx_GetGraph();
 	uint node_count = array_len(pending->created_nodes);
 	uint edge_count = array_len(pending->created_edges);
@@ -206,70 +208,85 @@ void CommitNewEntities(OpBase *op, PendingCreations *pending) {
 		_CommitEdges(pending);
 	}
 
-	// Release lock.
-	pending->stats->nodes_created += node_count;
-	pending->stats->relationships_created += edge_count;
+	// update statistics
+	pending->stats->nodes_created          +=  node_count;
+	pending->stats->relationships_created  +=  edge_count;
+
+	// release lock
+	QueryCtx_UnlockCommit(op);
 
 	// restore matrix sync policy to default
 	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
-
-	QueryCtx_UnlockCommit(op);
 }
 
-// Resolve the properties specified in the query into constant values.
-PendingProperties *ConvertPropertyMap(Record r, PropertyMap *map, bool fail_on_null) {
-	PendingProperties *converted = rm_malloc(sizeof(PendingProperties));
-	converted->values = rm_malloc(sizeof(SIValue) * map->property_count);
-	for(int i = 0; i < map->property_count; i++) {
-		/* Note that AR_EXP_Evaluate may raise a run-time exception, in which case
-		 * the allocations in this function will be memory leaks.
-		 * For example, this occurs in the query:
-		 * CREATE (a {val: 2}), (b {val: a.val}) */
+// resolve the properties specified in the query into constant values
+void ConvertPropertyMap
+(
+	GraphContext* gc,
+	AttributeSet *attributes,
+	Record r,
+	PropertyMap *map,
+	bool fail_on_null
+) {
+	uint property_count = array_len(map->keys);
+	for(int i = 0; i < property_count; i++) {
+		// note that AR_EXP_Evaluate may raise a run-time exception
+		// in which case the allocations in this function will leak
+		// for example, this occurs in the query:
+		// CREATE (a {val: 2}), (b {val: a.val})
 		SIValue val = AR_EXP_Evaluate(map->values[i], r);
 		if(!(SI_TYPE(val) & SI_VALID_PROPERTY_VALUE)) {
-			// This value is of an invalid type.
+			// this value is of an invalid type
 			if(!SIValue_IsNull(val)) {
-				// If the value was a complex type, emit an exception.
-				converted->property_count = i;
-				PendingPropertiesFree(converted);
+				// if the value was a complex type, emit an exception
+				SIValue_Free(val);
+				AttributeSet_Free(attributes);
 				Error_InvalidPropertyValue();
 				ErrorCtx_RaiseRuntimeException(NULL);
 			}
-			/* The value was NULL. If this was prohibited in this context, raise an exception,
-			 * otherwise skip this value. */
+			// the value was NULL
+			// if this was prohibited in this context, raise an exception,
+			// otherwise skip this value
 			if(fail_on_null) {
-				// Emit an error and exit.
-				converted->property_count = i;
-				PendingPropertiesFree(converted);
+				// emit an error and exit
+				AttributeSet_Free(attributes);
 				ErrorCtx_RaiseRuntimeException("Cannot merge node using null property value");
 			}
+
+			// don't add null to attrribute set
+			continue;
 		}
-		// Set the converted property.
-		converted->values[i] = val;
-	}
-	converted->property_count = map->property_count;
-	converted->attr_keys = map->keys; // This pointer can be copied directly.
 
-	return converted;
+		// emit an error and exit if we're trying to add
+		// an array containing an invalid type
+		if(SI_TYPE(val) == T_ARRAY) {
+			SIType invalid_properties = ~SI_VALID_PROPERTY_VALUE;
+			bool res = SIArray_ContainsType(val, invalid_properties);
+			if(res) {
+				// validation failed
+				SIValue_Free(val);
+				AttributeSet_Free(attributes);
+				Error_InvalidPropertyValue();
+				ErrorCtx_RaiseRuntimeException(NULL);
+			}
+		}
+
+		// set the converted attribute
+		Attribute_ID attribute_id = FindOrAddAttribute(gc, map->keys[i]);
+		AttributeSet_Add(attributes, attribute_id, val);
+		SIValue_Free(val);
+	}
 }
 
-// Free the properties that have been committed to the graph
-void PendingPropertiesFree(PendingProperties *props) {
-	if(props == NULL) return;
-	// The 'keys' array belongs to the original PropertyMap, so shouldn't be freed here.
-	for(uint j = 0; j < props->property_count; j ++) {
-		SIValue_Free(props->values[j]);
-	}
-	rm_free(props->values);
-	rm_free(props);
-}
-
-// Free all data associated with a completed create operation.
-void PendingCreationsFree(PendingCreations *pending) {
+// free all data associated with a completed create operation
+void PendingCreationsFree
+(
+	PendingCreations *pending
+) {
 	if(pending->nodes_to_create) {
 		uint nodes_to_create_count = array_len(pending->nodes_to_create);
 		for(uint i = 0; i < nodes_to_create_count; i ++) {
-			PropertyMap_Free(pending->nodes_to_create[i].properties);
+			NodeCreateCtx_Free(pending->nodes_to_create[i]);
 		}
 		array_free(pending->nodes_to_create);
 		pending->nodes_to_create = NULL;
@@ -284,6 +301,11 @@ void PendingCreationsFree(PendingCreations *pending) {
 		pending->edges_to_create = NULL;
 	}
 
+	if(pending->node_labels) {
+		array_free(pending->node_labels);
+		pending->node_labels = NULL;
+	}
+
 	if(pending->created_nodes) {
 		array_free(pending->created_nodes);
 		pending->created_nodes = NULL;
@@ -294,24 +316,23 @@ void PendingCreationsFree(PendingCreations *pending) {
 		pending->created_edges = NULL;
 	}
 
-	// Free all graph-committed properties associated with nodes.
-	if(pending->node_properties) {
-		uint prop_count = array_len(pending->node_properties);
+	// free all graph-committed attributes associated with nodes
+	if(pending->node_attributes) {
+		uint prop_count = array_len(pending->node_attributes);
 		for(uint i = 0; i < prop_count; i ++) {
-			PendingPropertiesFree(pending->node_properties[i]);
+			AttributeSet_Free(pending->node_attributes + i);
 		}
-		array_free(pending->node_properties);
-		pending->node_properties = NULL;
+		array_free(pending->node_attributes);
+		pending->node_attributes = NULL;
 	}
 
-	// Free all graph-committed properties associated with edges.
-	if(pending->edge_properties) {
-		uint prop_count = array_len(pending->edge_properties);
+	// free all graph-committed attributes associated with edges
+	if(pending->edge_attributes) {
+		uint prop_count = array_len(pending->edge_attributes);
 		for(uint i = 0; i < prop_count; i ++) {
-			PendingPropertiesFree(pending->edge_properties[i]);
+			AttributeSet_Free(pending->edge_attributes + i);
 		}
-		array_free(pending->edge_properties);
-		pending->edge_properties = NULL;
+		array_free(pending->edge_attributes);
+		pending->edge_attributes = NULL;
 	}
 }
-

@@ -1,12 +1,4 @@
-import os
-import sys
-import redis
-from RLTest import Env
-from redisgraph import Graph, Node, Edge
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
+from common import *
 
 GRAPH_ID = "procedures"
 redis_graph = None
@@ -18,6 +10,7 @@ node3 = Node(label="fruit", properties={"name": "Orange3", "value": 3})
 node4 = Node(label="fruit", properties={"name": "Orange4", "value": 4})
 node5 = Node(label="fruit", properties={"name": "Banana", "value": 5})
 
+
 # Tests built in procedures,
 # e.g. db.idx.fulltext.queryNodes
 # Test over all procedure behavior in addition to procedure specifics.
@@ -27,7 +20,7 @@ class testProcedures(FlowTestsBase):
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_graph = Graph(redis_con, GRAPH_ID)
         self.populate_graph()
 
     def populate_graph(self):
@@ -64,7 +57,7 @@ class testProcedures(FlowTestsBase):
         self.env.assertEquals(len(actual_resultset), len(expected_results))
         for i in range(len(actual_resultset)):
             self.env.assertTrue(self._inResultSet(expected_results[i], actual_resultset))
-    
+
     # Call procedure, omit yield, expecting all procedure outputs to
     # be included in result-set.
     def test01_no_yield(self):
@@ -94,7 +87,7 @@ class testProcedures(FlowTestsBase):
         except redis.exceptions.ResponseError:
             # Expecting an error.
             pass
-        
+
         # Yield the same output multiple times.
         # Expect an error when trying to use the same output multiple times.
         try:
@@ -103,7 +96,7 @@ class testProcedures(FlowTestsBase):
         except redis.exceptions.ResponseError:
             # Expecting an error.
             pass
-    
+
     def test03_arguments(self):
         # Omit arguments.
         # Expect an error when trying to omit arguments.
@@ -113,7 +106,7 @@ class testProcedures(FlowTestsBase):
         except redis.exceptions.ResponseError:
             # Expecting an error.
             pass
-        
+
         # Omit arguments, queryNodes expecting 2 argument, provide 1.
         # Expect an error when trying to omit arguments.
         try:
@@ -275,14 +268,14 @@ class testProcedures(FlowTestsBase):
 
     def test05_procedure_labels(self):
         actual_resultset = redis_graph.call_procedure("db.labels").result_set
-        expected_results = [["fruit"]]        
+        expected_results = [["fruit"]]
         self.env.assertEquals(actual_resultset, expected_results)
-    
+
     def test06_procedure_relationshipTypes(self):
         actual_resultset = redis_graph.call_procedure("db.relationshipTypes").result_set
         expected_results = [["goWellWith"]]
         self.env.assertEquals(actual_resultset, expected_results)
-    
+
     def test07_procedure_propertyKeys(self):
         actual_resultset = redis_graph.call_procedure("db.propertyKeys").result_set
         expected_results = [["name"], ["value"]]
@@ -363,3 +356,20 @@ class testProcedures(FlowTestsBase):
                             ["fruit"]]
         self.env.assertEquals(actual_resultset, expected_results)
 
+    def test12_procedure_reordered_yields(self):
+        # Yield results of procedure in a non-default sequence
+        actual_resultset = redis_graph.query("CALL dbms.procedures() YIELD mode, name RETURN mode, name ORDER BY name").result_set
+
+        expected_result = [["READ", "algo.BFS"],
+                           ['READ', 'algo.SPpaths'],
+                           ['READ', 'algo.SSpaths'],
+                           ["READ", "algo.pageRank"],
+                           ["WRITE", "db.idx.fulltext.createNodeIndex"],
+                           ["WRITE", "db.idx.fulltext.drop"],
+                           ["READ", "db.idx.fulltext.queryNodes"],
+                           ["READ", "db.indexes"],
+                           ["READ", "db.labels"],
+                           ["READ", "db.propertyKeys"],
+                           ["READ", "db.relationshipTypes"],
+                           ["READ", "dbms.procedures"]]
+        self.env.assertEquals(actual_resultset, expected_result)

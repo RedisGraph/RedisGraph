@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -9,6 +9,8 @@
 #include "proc_bfs.h"
 #include "proc_labels.h"
 #include "proc_pagerank.h"
+#include "proc_sp_paths.h"
+#include "proc_ss_paths.h"
 #include "proc_relations.h"
 #include "proc_procedures.h"
 #include "proc_list_indexes.h"

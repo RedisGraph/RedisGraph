@@ -9,7 +9,7 @@ function [opname optype ztype xtype ytype] = GB_spec_operator (op,optype_default
 % ztype, xtype, and ytype are the types of z, x, and y for z = f(x,y), if
 % f is a binary operator, or z = f(x) if f is a unary operator.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 if (isempty (op))
@@ -108,7 +108,7 @@ switch opname
     %--------------------------------------------------------------------------
 
     case { 'first', 'second', 'pow', 'plus', 'minus', 'times', 'div', ...
-           'rminus', 'rdiv', 'pair', 'any', 'iseq', 'isne' }
+           'rminus', 'rdiv', 'pair', 'oneb', 'any', 'iseq', 'isne' }
         % x,y,z types are all the same.
 
     case { 'eq', 'ne' }
@@ -266,7 +266,7 @@ switch opname
     % unary ops for real floating-point only
     %--------------------------------------------------------------------------
 
-    case { 'lgamma', 'tgamma', 'erf', 'erfc', 'frexpx',  'frexpe' }
+    case { 'lgamma', 'tgamma', 'erf', 'erfc', 'frexpx',  'frexpe', 'cbrt' }
         % x and z have the same type
         if (~is_real_float)
             error ('invalid op') ;
@@ -315,6 +315,44 @@ switch opname
             error ('invalid op') ;
         end
         ytype = optype ;
+
+    %--------------------------------------------------------------------------
+    % idxunop
+    %--------------------------------------------------------------------------
+
+    case { 'rowindex', 'colindex', 'diagindex' }
+        s = strcmp (optype, 'int64') || strcmp (optype, 'int32') ;
+        if (~s)
+            error ('invalid op') ;
+        end
+        xtype = '' ;
+        ytype = optype ;
+        ztype = optype ;
+
+    case { 'tril', 'triu', 'diag', 'offdiag', ...
+        'colle', 'colgt', 'rowle', 'rowgt' }
+        s = strcmp (optype, 'int64') ;
+        if (~s)
+            error ('invalid op') ;
+        end
+        xtype = '' ;
+        ytype = optype ;
+        ztype = 'logical' ;
+
+    case { 'valuene', 'valueeq' }
+        s = true ;
+        xtype = optype ;
+        ytype = optype ;
+        ztype = 'logical' ;
+
+    case { 'valuelt', 'valuele', 'valuegt', 'valuege' }
+        s = ~test_contains (optype, 'complex') ;
+        if (~s)
+            error ('invalid op') ;
+        end
+        xtype = optype ;
+        ytype = optype ;
+        ztype = 'logical' ;
 
     otherwise
         error ('unknown op') ;

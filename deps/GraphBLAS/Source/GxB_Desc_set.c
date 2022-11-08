@@ -2,7 +2,7 @@
 // GxB_Desc_set: set a field in a descriptor
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -176,16 +176,38 @@ GrB_Info GxB_Desc_set           // set a parameter in a descriptor
             }
             break ;
 
+        case GxB_COMPRESSION : 
+
+            {
+                va_start (ap, field) ;
+                desc->compression = va_arg (ap, int) ;
+                va_end (ap) ;
+            }
+            break ;
+
+        case GxB_IMPORT : 
+
+            {
+                // In case the user application does not check the return value
+                // of this method, an error condition is never returned.
+                va_start (ap, field) ;
+                int s = va_arg (ap, int) ;
+                va_end (ap) ;
+                desc->import =
+                    (s == GxB_DEFAULT) ? GxB_FAST_IMPORT : GxB_SECURE_IMPORT ;
+            }
+            break ;
+
         default : 
 
             GB_ERROR (GrB_INVALID_VALUE,
                 "invalid descriptor field [%d], must be one of:\n"
                 "GrB_OUTP [%d], GrB_MASK [%d], GrB_INP0 [%d], GrB_INP1 [%d]\n"
                 "GxB_NTHREADS [%d], GxB_CHUNK [%d], GxB_AxB_METHOD [%d]\n"
-                "or GxB_SORT [%d]\n",
+                "GxB_SORT [%d], or GxB_COMPRESSION [%d]\n",
                 (int) field, (int) GrB_OUTP, (int) GrB_MASK, (int) GrB_INP0,
                 (int) GrB_INP1, (int) GxB_NTHREADS, (int) GxB_CHUNK,
-                (int) GxB_AxB_METHOD, (int) GxB_SORT) ;
+                (int) GxB_AxB_METHOD, (int) GxB_SORT, (int) GxB_COMPRESSION) ;
     }
 
     return (GrB_SUCCESS) ;

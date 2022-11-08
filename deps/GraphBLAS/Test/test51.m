@@ -1,7 +1,7 @@
 function test51
 %TEST51 test GxB_subassign, multiply operations
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\n-----------performance test GB_mex_subassign, multiple ops\n') ;
@@ -124,7 +124,7 @@ for problem = 1:5
             Work2 (k).J = uint64 (Work2 (k).J - 1) ;
         end
         tic
-        C2 = GB_mex_subassign (Corig, Work2) ;
+        C2 = GB_mex_subassign (Corig, Work2) ;  % WORK_ASSIGN
         t1 = toc ;
         fprintf ('GraphBLAS time: %g\n', t1) ;
         fprintf ('final nnz: %d\n', nnz (C2.matrix)) ;

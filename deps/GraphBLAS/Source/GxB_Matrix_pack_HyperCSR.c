@@ -2,7 +2,7 @@
 // GxB_Matrix_pack_HyperCSR: pack a matrix in hypersparse CSR format
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -12,8 +12,9 @@
 GrB_Info GxB_Matrix_pack_HyperCSR      // pack a hypersparse CSR matrix
 (
     GrB_Matrix A,       // matrix to create (type, nrows, ncols unchanged)
-    GrB_Index **Ap,     // row "pointers", Ap_size >= (nvec+1)*sizeof(int64_t)
-    GrB_Index **Ah,     // row indices, Ah_size >= nvec*sizeof(int64_t)
+    GrB_Index **Ap,     // row "pointers", Ap_size >= (plen+1)*sizeof(int64_t)
+    GrB_Index **Ah,     // row indices, Ah_size >= plen*sizeof(int64_t)
+                        // where plen = 1 if nrows = 1, or nvec otherwise.
     GrB_Index **Aj,     // column indices, Aj_size >= nvals(A)*sizeof(int64_t)
     void **Ax,          // values, Ax_size >= nvals(A) * (type size)
                         // or Ax_size >= (type size), if iso is true
@@ -38,6 +39,7 @@ GrB_Info GxB_Matrix_pack_HyperCSR      // pack a hypersparse CSR matrix
     GB_BURBLE_START ("GxB_Matrix_pack_HyperCSR") ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
     GB_GET_DESCRIPTOR (info, desc, xx1, xx2, xx3, xx4, xx5, xx6, xx7) ;
+    GB_GET_DESCRIPTOR_IMPORT (desc, fast_import) ;
 
     //--------------------------------------------------------------------------
     // pack the matrix
@@ -51,7 +53,7 @@ GrB_Info GxB_Matrix_pack_HyperCSR      // pack a hypersparse CSR matrix
         Ax,   Ax_size,  // Ax
         0, jumbled, nvec,                   // jumbled or not
         GxB_HYPERSPARSE, false,             // hypersparse by row
-        iso, Context) ;
+        iso, fast_import, true, Context) ;
 
     GB_BURBLE_END ;
     return (info) ;

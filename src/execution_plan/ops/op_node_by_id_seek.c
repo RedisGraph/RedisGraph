@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -90,7 +90,7 @@ static Record NodeByIdSeekConsumeFromChild(OpBase *opBase) {
 
 	Node n = _SeekNextNode(op);
 
-	if(n.entity == NULL) { // Failed to retrieve a node.
+	if(n.attributes == NULL) { // Failed to retrieve a node.
 		OpBase_DeleteRecord(op->child_record); // Free old record.
 		// Pull a new record from child.
 		op->child_record = OpBase_Consume(op->op.children[0]);
@@ -99,11 +99,11 @@ static Record NodeByIdSeekConsumeFromChild(OpBase *opBase) {
 		// Reset iterator and evaluate again.
 		NodeByIdSeekReset(opBase);
 		n = _SeekNextNode(op);
-		if(n.entity == NULL) return NULL; // Empty iterator; return immediately.
+		if(n.attributes == NULL) return NULL; // Empty iterator; return immediately.
 	}
 
 	// Clone the held Record, as it will be freed upstream.
-	Record r = OpBase_CloneRecord(op->child_record);
+	Record r = OpBase_DeepCloneRecord(op->child_record);
 
 	// Populate the Record with the actual node.
 	Record_AddNode(r, op->nodeRecIdx, n);
@@ -115,7 +115,7 @@ static Record NodeByIdSeekConsume(OpBase *opBase) {
 	NodeByIdSeek *op = (NodeByIdSeek *)opBase;
 
 	Node n = _SeekNextNode(op);
-	if(n.entity == NULL) return NULL; // Failed to retrieve a node.
+	if(n.attributes == NULL) return NULL; // Failed to retrieve a node.
 
 	// Create a new Record.
 	Record r = OpBase_CreateRecord(opBase);

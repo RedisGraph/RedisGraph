@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -10,12 +10,14 @@
 #include "../errors.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
+#include "../datatypes/array.h"
 #include "../configuration/config.h"
 #include "../ast/ast_build_filter_tree.h"
 
 // Forward declaration
 static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr);
 static AR_ExpNode *_AR_ExpNodeFromGraphEntity(const cypher_astnode_t *entity);
+static AR_ExpNode *_AR_ExpFromNamedPath(const cypher_astnode_t *path);
 
 static bool __AR_EXP_ContainsNestedAgg(const AR_ExpNode *root, bool in_agg) {
 	// Is this an aggregation node?
@@ -42,12 +44,12 @@ static bool _AR_EXP_ContainsNestedAgg(const AR_ExpNode *exp) {
 	return __AR_EXP_ContainsNestedAgg(exp, in_agg);
 }
 
-#define OP_COUNT 24
+#define OP_COUNT 25
 // The OpName array is strictly parallel with the AST_Operator enum.
 static const char *OpName[OP_COUNT] = {
 	"UNKNOWN", "NULL", "OR", "XOR", "AND", "NOT", "EQ", "NEQ", "LT", "GT", "LE",  "GE",
 	"ADD", "SUB", "MUL", "DIV", "MOD", "POW", "CONTAINS", "STARTS WITH",
-	"ENDS WITH", "IN", "IS NULL", "IS NOT NULL"
+	"ENDS WITH", "IN", "IS NULL", "IS NOT NULL", "XNOR"
 };
 
 static inline const char *_ASTOpToString(AST_Operator op) {
@@ -57,17 +59,31 @@ static inline const char *_ASTOpToString(AST_Operator op) {
 
 static AR_ExpNode *AR_EXP_NewOpNodeFromAST(AST_Operator op, uint child_count) {
 	const char *func_name = _ASTOpToString(op);
-	return AR_EXP_NewOpNode(func_name, child_count);
+	return AR_EXP_NewOpNode(func_name, true, child_count);
 }
 
 static AR_ExpNode *_AR_EXP_FromApplyExpression(const cypher_astnode_t *expr) {
 	AR_ExpNode *op;
-	bool distinct = cypher_ast_apply_operator_get_distinct(expr);
-	unsigned int arg_count = cypher_ast_apply_operator_narguments(expr);
-	const cypher_astnode_t *func_node = cypher_ast_apply_operator_get_func_name(expr);
-	const char *func_name = cypher_ast_function_name_get_value(func_node);
-	bool aggregate = AR_FuncIsAggregate(func_name);
-	op = AR_EXP_NewOpNode(func_name, arg_count);
+
+	bool                    distinct    =  cypher_ast_apply_operator_get_distinct(expr);
+	uint                    arg_count   =  cypher_ast_apply_operator_narguments(expr);
+	const cypher_astnode_t  *func_node  =  cypher_ast_apply_operator_get_func_name(expr);
+	const char              *func_name  =  cypher_ast_function_name_get_value(func_node);
+	bool                    aggregate   =  AR_FuncIsAggregate(func_name);
+
+	op = AR_EXP_NewOpNode(func_name, false, arg_count);
+
+	if(ErrorCtx_EncounteredError()) {
+		// no children to free
+		op->op.child_count = 0;
+		AR_EXP_Free(op);
+		return AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
+
+	if(op->op.f->internal) {
+		ErrorCtx_SetError("Attempted to access variable before it has been defined");
+		return AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
 
 	for(unsigned int i = 0; i < arg_count; i ++) {
 		const cypher_astnode_t *arg = cypher_ast_apply_operator_get_argument(expr, i);
@@ -75,14 +91,16 @@ static AR_ExpNode *_AR_EXP_FromApplyExpression(const cypher_astnode_t *expr) {
 		op->op.children[i] = _AR_EXP_FromASTNode(arg);
 	}
 
-	if(aggregate) {
-		AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
-		ctx->hashSet = NULL;
-		ctx->private_ctx = NULL;
-		ctx->result = SI_NullVal();
-		if(distinct) ctx->hashSet = Set_New();
-		// Add the context to the function descriptor as the function's private data.
-		op->op.f = AR_SetPrivateData(op->op.f, ctx);
+	if(aggregate && distinct) {
+		// when we aggregating distinct values
+		// for example COUNT(DISTINCT x)
+		// we use distinct function
+		ASSERT(arg_count == 1);
+		AR_ExpNode *distinct = AR_EXP_NewOpNode("distinct", true, arg_count);
+		// move x to be child of distinct
+		distinct->op.children[0] = op->op.children[0];
+		// distinct is child of COUNT
+		op->op.children[0] = distinct;
 	}
 
 	return op;
@@ -93,20 +111,10 @@ static AR_ExpNode *_AR_EXP_FromApplyAllExpression(const cypher_astnode_t *expr) 
 	// that they have no argument accessors - by definition, they have one argument (all/STAR).
 	const cypher_astnode_t *func_node = cypher_ast_apply_all_operator_get_func_name(expr);
 	const char *func_name = cypher_ast_function_name_get_value(func_node);
-	bool aggregate = AR_FuncIsAggregate(func_name);
-	AR_ExpNode *op = AR_EXP_NewOpNode(func_name, 1);
+	AR_ExpNode *op = AR_EXP_NewOpNode(func_name, false, 1);
 
 	// Introduce a fake child constant so that the function always operates on something.
 	op->op.children[0] = AR_EXP_NewConstOperandNode(SI_BoolVal(1));
-
-	if(aggregate) {
-		AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
-		ctx->hashSet = NULL;
-		ctx->private_ctx = NULL;
-		ctx->result = SI_NullVal();
-		// Add the context to the function descriptor as the function's private data.
-		op->op.f = AR_SetPrivateData(op->op.f, ctx);
-	}
 
 	return op;
 }
@@ -136,7 +144,7 @@ static AR_ExpNode *_AR_EXP_FromIdentifier(const cypher_astnode_t *expr) {
 
 	// if the identifier is a named path identifier,
 	// evaluate the path expression accordingly
-	if(named_path_annotation) return _AR_EXP_FromASTNode(named_path_annotation);
+	if(named_path_annotation) return _AR_ExpFromNamedPath(named_path_annotation);
 	// else, evalute the identifier
 	return _AR_EXP_FromIdentifierExpression(expr);
 }
@@ -161,16 +169,25 @@ static AR_ExpNode *_AR_EXP_FromPropertyExpression(const cypher_astnode_t *expr) 
 	return root;
 }
 
-static AR_ExpNode *_AR_EXP_FromIntegerExpression(const cypher_astnode_t *expr) {
-	const char *value_str = cypher_ast_integer_get_valuestr(expr);
+static SIValue _AR_EXP_FromIntegerString(const char *value_str) {
 	char *endptr = NULL;
 	int64_t l = strtol(value_str, &endptr, 0);
 	if(endptr[0] != 0) {
 		// Failed to convert integer value; set compile-time error to be raised later.
 		ErrorCtx_SetError("Invalid numeric value '%s'", value_str);
-		return AR_EXP_NewConstOperandNode(SI_NullVal());
+		return SI_NullVal();
+	}
+	if(errno == ERANGE) {
+		ErrorCtx_SetError("Integer overflow '%s'", value_str);
+		return SI_NullVal();
 	}
 	SIValue converted = SI_LongVal(l);
+	return converted;
+}
+
+static AR_ExpNode *_AR_EXP_FromIntegerExpression(const cypher_astnode_t *expr) {
+	const char *value_str = cypher_ast_integer_get_valuestr(expr);
+	SIValue converted = _AR_EXP_FromIntegerString(value_str);
 	return AR_EXP_NewConstOperandNode(converted);
 }
 
@@ -181,6 +198,10 @@ static AR_ExpNode *_AR_EXP_FromFloatExpression(const cypher_astnode_t *expr) {
 	if(endptr[0] != 0) {
 		// Failed to convert integer value; set compile-time error to be raised later.
 		ErrorCtx_SetError("Invalid numeric value '%s'", value_str);
+		return AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
+	if(errno == ERANGE) {
+		ErrorCtx_SetError("Float overflow '%s'", value_str);
 		return AR_EXP_NewConstOperandNode(SI_NullVal());
 	}
 	SIValue converted = SI_DoubleVal(d);
@@ -215,10 +236,20 @@ static AR_ExpNode *_AR_EXP_FromUnaryOpExpression(const cypher_astnode_t *expr) {
 
 	if(operator == CYPHER_OP_UNARY_MINUS) {
 		// This expression can be something like -3 or -a.val
-		// In the former case, we'll reduce the tree to a constant after building it fully.
-		op = AR_EXP_NewOpNodeFromAST(OP_MULT, 2);
-		op->op.children[0] = AR_EXP_NewConstOperandNode(SI_LongVal(-1));
-		op->op.children[1] = _AR_EXP_FromASTNode(arg);
+		if(cypher_astnode_type(arg) == CYPHER_AST_INTEGER) {
+			const char *value_str = cypher_ast_integer_get_valuestr(arg);
+			char *minus_str = rm_malloc(sizeof(char) * strlen(value_str) + 2);
+			memcpy(minus_str + 1, value_str, strlen(value_str));
+			minus_str[0] = '-';
+			minus_str[strlen(value_str) + 1] = '\0';
+			SIValue converted = _AR_EXP_FromIntegerString(minus_str);
+			op = AR_EXP_NewConstOperandNode(converted);
+			rm_free(minus_str);
+		} else {
+			op = AR_EXP_NewOpNodeFromAST(OP_MULT, 2);
+			op->op.children[0] = AR_EXP_NewConstOperandNode(SI_LongVal(-1));
+			op->op.children[1] = _AR_EXP_FromASTNode(arg);
+		}
 	} else if(operator == CYPHER_OP_UNARY_PLUS) {
 		/* This expression is something like +3 or +a.val.
 		 * I think the + can always be safely ignored. */
@@ -292,7 +323,7 @@ static AR_ExpNode *_AR_EXP_FromCaseExpression(const cypher_astnode_t *expr) {
 	else arg_count = 2 * alternatives + 1;
 
 	// Create Expression and child expressions
-	AR_ExpNode *op = AR_EXP_NewOpNode("case", arg_count);
+	AR_ExpNode *op = AR_EXP_NewOpNode("case", true, arg_count);
 
 	// Value to compare against
 	int offset = 0;
@@ -322,7 +353,7 @@ static AR_ExpNode *_AR_EXP_FromCaseExpression(const cypher_astnode_t *expr) {
 
 static AR_ExpNode *_AR_ExpFromCollectionExpression(const cypher_astnode_t *expr) {
 	uint expCount = cypher_ast_collection_length(expr);
-	AR_ExpNode *op = AR_EXP_NewOpNode("tolist", expCount);
+	AR_ExpNode *op = AR_EXP_NewOpNode("tolist", true, expCount);
 	for(uint i = 0; i < expCount; i ++) {
 		const cypher_astnode_t *exp_node = cypher_ast_collection_get(expr, i);
 		op->op.children[i] = AR_EXP_FromASTNode(exp_node);
@@ -335,7 +366,7 @@ static AR_ExpNode *_AR_ExpFromMapExpression(const cypher_astnode_t *expr) {
 	 * determine number of elements in map
 	 * double argument count to accommodate both key and value */
 	uint element_count = cypher_ast_map_nentries(expr);
-	AR_ExpNode *op = AR_EXP_NewOpNode("tomap", element_count * 2);
+	AR_ExpNode *op = AR_EXP_NewOpNode("tomap", true, element_count * 2);
 
 	// process each key value pair
 	for(uint i = 0; i < element_count; i++) {
@@ -366,7 +397,7 @@ static AR_ExpNode *_AR_ExpFromMapProjection(const cypher_astnode_t *expr) {
 	const cypher_astnode_t *selector = NULL;
 	unsigned int n_selectors = cypher_ast_map_projection_nselectors(expr);
 
-	AR_ExpNode *op = AR_EXP_NewOpNode("tomap", n_selectors * 2);
+	AR_ExpNode *op = AR_EXP_NewOpNode("tomap", true, n_selectors * 2);
 	AR_ExpNode **children = op->op.children;
 
 	for(uint i = 0; i < n_selectors; i++) {
@@ -408,7 +439,7 @@ static AR_ExpNode *_AR_ExpFromMapProjection(const cypher_astnode_t *expr) {
 }
 
 static AR_ExpNode *_AR_ExpFromSubscriptExpression(const cypher_astnode_t *expr) {
-	AR_ExpNode *op = AR_EXP_NewOpNode("subscript", 2);
+	AR_ExpNode *op = AR_EXP_NewOpNode("subscript", true, 2);
 	const cypher_astnode_t *exp_node = cypher_ast_subscript_operator_get_expression(expr);
 	op->op.children[0] = AR_EXP_FromASTNode(exp_node);
 	const cypher_astnode_t *subscript_node = cypher_ast_subscript_operator_get_subscript(expr);
@@ -417,7 +448,7 @@ static AR_ExpNode *_AR_ExpFromSubscriptExpression(const cypher_astnode_t *expr) 
 }
 
 static AR_ExpNode *_AR_ExpFromSliceExpression(const cypher_astnode_t *expr) {
-	AR_ExpNode *op = AR_EXP_NewOpNode("slice", 3);
+	AR_ExpNode *op = AR_EXP_NewOpNode("slice", true, 3);
 	const cypher_astnode_t *exp_node = cypher_ast_slice_operator_get_expression(expr);
 	const cypher_astnode_t *start_node = cypher_ast_slice_operator_get_start(expr);
 	const cypher_astnode_t *end_node = cypher_ast_slice_operator_get_end(expr);
@@ -439,7 +470,7 @@ static AR_ExpNode *_AR_ExpFromNamedPath(const cypher_astnode_t *path) {
 	 * The other parameters are the graph entities (node, edge, path) which the path builder implemented
 	 * in TO_PATH requires in order to build a complete path. The order of the evaluated graph entities
 	 * is the same order in which they apeare in the AST.*/
-	AR_ExpNode *op = AR_EXP_NewOpNode("topath", 1 + path_len);
+	AR_ExpNode *op = AR_EXP_NewOpNode("topath", true, 1 + path_len);
 	// Set path AST as first paramerter.
 	op->op.children[0] = AR_EXP_NewConstOperandNode(SI_PtrVal((void *)path));
 	for(uint i = 0; i < path_len; i ++)
@@ -448,7 +479,13 @@ static AR_ExpNode *_AR_ExpFromNamedPath(const cypher_astnode_t *path) {
 	return op;
 }
 
-static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
+static AR_ExpNode *_AR_ExpFromShortestPath
+(
+	const cypher_astnode_t *path
+) {
+	// allShortestPaths is handled separately
+	ASSERT(cypher_ast_shortest_path_is_single(path) == true);
+
 	uint path_len = cypher_ast_pattern_path_nelements(path);
 	if(path_len != 3) {
 		ErrorCtx_SetError("shortestPath requires a path containing a single relationship");
@@ -481,11 +518,6 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 		}
 	}
 
-	if(!cypher_ast_shortest_path_is_single(path)) {
-		ErrorCtx_SetError("RedisGraph does not currently support allShortestPaths");
-		return AR_EXP_NewConstOperandNode(SI_NullVal());
-	}
-
 	enum cypher_rel_direction dir = cypher_ast_rel_pattern_get_direction(edge);
 	if(dir == CYPHER_REL_BIDIRECTIONAL) {
 		ErrorCtx_SetError("RedisGraph does not currently support undirected shortestPath traversals");
@@ -514,12 +546,11 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 		}
 	}
 
-	AR_ExpNode *op = AR_EXP_NewOpNode("shortestpath", 2);
+	AR_ExpNode *op = AR_EXP_NewOpNode("shortestpath", true, 2);
 
 	// Instantiate a context struct with traversal details.
 	ShortestPathCtx *ctx = rm_malloc(sizeof(ShortestPathCtx));
 	ctx->R              =  GrB_NULL;
-	ctx->TR             =  GrB_NULL;
 	ctx->minHops        =  start;
 	ctx->maxHops        =  end;
 	ctx->reltypes       =  NULL;
@@ -527,8 +558,7 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 	ctx->reltype_count  =  array_len(reltype_names);
 	ctx->free_matrices  =  false;
 
-	// Add the context to the function descriptor as the function's private data.
-	op->op.f = AR_SetPrivateData(op->op.f, ctx);
+	AR_SetPrivateData(op, ctx);
 	AR_ExpNode *src;
 	AR_ExpNode *dest;
 	const cypher_astnode_t *ast_src = cypher_ast_pattern_path_get_element(path, 0);
@@ -549,8 +579,7 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 }
 
 static AR_ExpNode *_AR_ExpNodeFromGraphEntity(const cypher_astnode_t *entity) {
-	AST *ast = QueryCtx_GetAST();
-	const char *alias = AST_GetEntityName(ast, entity);
+	const char *alias = AST_ToString(entity);
 	return AR_EXP_NewVariableOperandNode(alias);
 }
 
@@ -559,8 +588,11 @@ static AR_ExpNode *_AR_ExpNodeFromParameter(const cypher_astnode_t *param) {
 	return AR_EXP_NewParameterOperandNode(identifier);
 }
 
-static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *comp_exp,
-														cypher_astnode_type_t type) {
+static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction
+(
+	const cypher_astnode_t *comp_exp,
+	cypher_astnode_type_t type
+) {
 	// set the appropriate function name according to the node type
 	const char *func_name;
 	if(type == CYPHER_AST_ANY) func_name = "ANY";
@@ -569,12 +601,11 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 	else if(type == CYPHER_AST_NONE) func_name = "NONE";
 	else func_name = "LIST_COMPREHENSION";
 
-	/* Using the sample query:
-	 * WITH [1,2,3] AS arr RETURN [val IN arr WHERE val % 2 = 1 | val * 2] AS comp
-	 */
+	// using the sample query:
+	// WITH [1,2,3] AS arr RETURN [val IN arr WHERE val % 2 = 1 | val * 2] AS comp
 
-	/* The comprehension's local variable, WHERE expression, and eval routine
-	 * do not change for each invocation, so are bundled together in the function's context. */
+	// the comprehension's local variable, WHERE expression, and eval routine
+	// do not change for each invocation, so are bundled together in the function's context
 	ListComprehensionCtx *ctx = rm_malloc(sizeof(ListComprehensionCtx));
 	ctx->ft            =  NULL;
 	ctx->eval_exp      =  NULL;
@@ -582,8 +613,8 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 	ctx->variable_str  =  NULL;
 	ctx->variable_idx  =  INVALID_INDEX;
 
-	/* Retrieve the variable name introduced in this context to iterate over list elements.
-	 * In the above query, this is 'val'. */
+	// retrieve the variable name introduced in this context to iterate over list elements
+	// in the above query, this is 'val'
 	const cypher_astnode_t *variable_node = cypher_ast_list_comprehension_get_identifier(comp_exp);
 	ASSERT(cypher_astnode_type(variable_node) == CYPHER_AST_IDENTIFIER);
 
@@ -614,10 +645,10 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 	if(eval_node) ctx->eval_exp = _AR_EXP_FromASTNode(eval_node);
 
 	// build an operation node to represent the list comprehension
-	AR_ExpNode *op = AR_EXP_NewOpNode(func_name, 2);
+	AR_ExpNode *op = AR_EXP_NewOpNode(func_name, true, 2);
 
-	// add the context to the function descriptor as the function's private data
-	op->op.f = AR_SetPrivateData(op->op.f, ctx);
+	// add the context as function's private data
+	AR_SetPrivateData(op, ctx);
 
 	// 'arr' is the list expression
 	// note that this value could resolve to an alias, a literal array,
@@ -630,6 +661,96 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 
 	// the second child will be a pointer to the Record being evaluated
 	op->op.children[1] = AR_EXP_NewRecordNode();
+
+	return op;
+}
+
+static AR_ExpNode *_AR_ExpNodeFromReduceFunction
+(
+	const cypher_astnode_t *reduce_exp
+) {
+	// reduce(sum = 0, n IN [1,2,3] | sum + n)
+
+	ListReduceCtx *ctx = rm_malloc(sizeof(ListReduceCtx));
+
+	ctx->exp              =  NULL;
+	ctx->record           =  NULL;
+	ctx->variable         =  NULL;
+	ctx->accumulator      =  NULL;
+	ctx->variable_idx     =  INVALID_INDEX;
+	ctx->accumulator_idx  =  INVALID_INDEX;
+
+	// retrieve the accumulator string `sum`
+	const cypher_astnode_t *accumulator_node = cypher_ast_reduce_get_accumulator(reduce_exp);
+	ASSERT(cypher_astnode_type(accumulator_node) == CYPHER_AST_IDENTIFIER);
+	ctx->accumulator = cypher_ast_identifier_get_name(accumulator_node);
+
+	// retrieve the variable name `n`
+	const cypher_astnode_t *identifier_node = cypher_ast_reduce_get_identifier(reduce_exp);
+	ASSERT(cypher_astnode_type(identifier_node) == CYPHER_AST_IDENTIFIER);
+	ctx->variable = cypher_ast_identifier_get_name(identifier_node);
+
+	//--------------------------------------------------------------------------
+	// sub expressions
+	//--------------------------------------------------------------------------
+
+	// accumulator init exp
+	const cypher_astnode_t *init_exp = cypher_ast_reduce_get_init(reduce_exp);
+	AR_ExpNode *init_val = AR_EXP_FromASTNode(init_exp);
+
+	// array exp
+	const cypher_astnode_t *exp_node = cypher_ast_reduce_get_expression(reduce_exp);
+	AR_ExpNode *list = AR_EXP_FromASTNode(exp_node);
+
+	// eval exp
+	const cypher_astnode_t *eval_node = cypher_ast_reduce_get_eval(reduce_exp);
+	ctx->exp = AR_EXP_FromASTNode(eval_node);
+
+	// build an operation node to represent the reduction
+	AR_ExpNode *reduce = AR_EXP_NewOpNode("REDUCE", true, 3);
+
+	// add the context as function's private data
+	AR_SetPrivateData(reduce, ctx);
+
+	//--------------------------------------------------------------------------
+	// set expression child nodes
+	//--------------------------------------------------------------------------
+
+	// accumulator init value
+	reduce->op.children[0] = init_val;
+
+	// list to reduce
+	reduce->op.children[1] = list;
+
+	// record
+	reduce->op.children[2] = AR_EXP_NewRecordNode();
+
+	return reduce;
+}
+
+static AR_ExpNode *_AR_ExpFromLabelsOperatorFunction(const cypher_astnode_t *exp) {
+	const char *func_name = "hasLabels";
+
+	// create node expression
+	const cypher_astnode_t *node = cypher_ast_labels_operator_get_expression(exp);
+	AR_ExpNode *node_exp = _AR_EXP_FromASTNode(node);
+
+	// create labels expression
+	uint nlabels = cypher_ast_labels_operator_nlabels(exp);
+	SIValue labels = SI_Array(nlabels);
+	for(uint i = 0; i < nlabels; i++) {
+		const cypher_astnode_t *label = cypher_ast_labels_operator_get_label(exp, i);
+		const char *label_str = cypher_ast_label_get_name(label);
+		SIArray_Append(&labels, SI_ConstStringVal((char *)label_str));
+	}
+	AR_ExpNode *labels_exp = AR_EXP_NewConstOperandNode(labels);
+
+	// create func expression
+	AR_ExpNode *op = AR_EXP_NewOpNode(func_name, true, 2);
+
+	// set function arguments
+	op->op.children[0] = node_exp;
+	op->op.children[1] = labels_exp;
 
 	return op;
 }
@@ -686,9 +807,9 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 		return _AR_ExpNodeFromGraphEntity(expr);
 	} else if(t == CYPHER_AST_PARAMETER) {
 		return _AR_ExpNodeFromParameter(expr);
-	} else if(t == CYPHER_AST_LIST_COMPREHENSION || 
+	} else if(t == CYPHER_AST_LIST_COMPREHENSION ||
 			  t == CYPHER_AST_ANY ||
-			  t == CYPHER_AST_ALL || 
+			  t == CYPHER_AST_ALL ||
 			  t == CYPHER_AST_SINGLE ||
 			  t == CYPHER_AST_NONE) {
 		return _AR_ExpNodeFromComprehensionFunction(expr, t);
@@ -696,12 +817,17 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 		return _AR_ExpFromMapExpression(expr);
 	} else if(t == CYPHER_AST_MAP_PROJECTION) {
 		return _AR_ExpFromMapProjection(expr);
+	} else if(t == CYPHER_AST_LABELS_OPERATOR) {
+		return _AR_ExpFromLabelsOperatorFunction(expr);
+	} else if(t == CYPHER_AST_REDUCE) {
+		return _AR_ExpNodeFromReduceFunction(expr);
+	} else if(t == CYPHER_AST_PATTERN_PATH || t == CYPHER_AST_PATTERN_COMPREHENSION) {
+		// this variable is assign by operitions that created in build_pattern_comprehension_ops.c
+		const char *alias = AST_ToString(expr);
+		return AR_EXP_NewVariableOperandNode(alias);
 	} else {
 		/*
 		   Unhandled types:
-		   CYPHER_AST_LABELS_OPERATOR
-		   CYPHER_AST_PATTERN_COMPREHENSION
-		   CYPHER_AST_REDUCE
 		*/
 		Error_UnsupportedASTNodeType(expr);
 		return AR_EXP_NewConstOperandNode(SI_NullVal());

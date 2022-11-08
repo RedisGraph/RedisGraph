@@ -2,7 +2,7 @@
 // GB_AxB_colscale: C = A*D where D is diagonal
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -11,19 +11,21 @@
 #include "GB_binop.h"
 #include "GB_apply.h"
 #include "GB_ek_slice.h"
-#ifndef GBCOMPACT
+#include "GB_stringify.h"
+#ifndef GBCUDA_DEV
 #include "GB_binop__include.h"
 #endif
+#include "GB_unused.h"
 
-#define GB_FREE_WORK                        \
+#define GB_FREE_WORKSPACE                   \
 {                                           \
     GB_WERK_POP (A_ek_slicing, int64_t) ;   \
 }
 
 #define GB_FREE_ALL                 \
 {                                   \
-    GB_FREE_WORK ;                  \
-    GB_phbix_free (C) ;             \
+    GB_FREE_WORKSPACE ;             \
+    GB_phybix_free (C) ;            \
 }
 
 GrB_Info GB_AxB_colscale            // C = A*D, column scale with diagonal D
@@ -42,7 +44,7 @@ GrB_Info GB_AxB_colscale            // C = A*D, column scale with diagonal D
     //--------------------------------------------------------------------------
 
     GrB_Info info ;
-    ASSERT (C != NULL && C->static_header) ;
+    ASSERT (C != NULL && (C->static_header || GBNSTATIC)) ;
     ASSERT_MATRIX_OK (A, "A for colscale A*D", GB0) ;
     ASSERT_MATRIX_OK (D, "D for colscale A*D", GB0) ;
     ASSERT (!GB_ZOMBIES (A)) ;
@@ -74,8 +76,8 @@ GrB_Info GB_AxB_colscale            // C = A*D, column scale with diagonal D
     ASSERT (ztype == semiring->add->op->ztype) ;
     GB_Opcode opcode = mult->opcode ;
     // GB_reduce_to_vector does not use GB_AxB_colscale:
-    ASSERT (!(mult->function == NULL &&
-        (opcode == GB_FIRST_opcode || opcode == GB_SECOND_opcode))) ;
+    ASSERT (!(mult->binop_function == NULL &&
+        (opcode == GB_FIRST_binop_code || opcode == GB_SECOND_binop_code))) ;
 
     //--------------------------------------------------------------------------
     // determine if C is iso (ignore the monoid since it isn't used)
@@ -84,6 +86,11 @@ GrB_Info GB_AxB_colscale            // C = A*D, column scale with diagonal D
     size_t zsize = ztype->size ;
     GB_void cscalar [GB_VLA(zsize)] ;
     bool C_iso = GB_iso_AxB (cscalar, A, D, A->vdim, semiring, flipxy, true) ;
+
+    #ifdef GB_DEBUGIFY_DEFN
+    GB_debugify_mxm (C_iso, GB_sparsity (A), ztype, NULL, false, false,
+        semiring, flipxy, A, D) ;
+    #endif
 
     //--------------------------------------------------------------------------
     // copy the pattern of A into C
@@ -105,29 +112,23 @@ GrB_Info GB_AxB_colscale            // C = A*D, column scale with diagonal D
         // apply a positional operator: convert C=A*D to C=op(A)
         //----------------------------------------------------------------------
 
-        if (flipxy)
-        { 
-            // the multiplicative operator is fmult(y,x), so flip the opcode
-            bool handled ;
-            opcode = GB_flip_opcode (opcode, &handled) ; // for positional ops
-            ASSERT (handled) ;      // all positional ops can be flipped
-        }
         // determine unary operator to compute C=A*D
-        GrB_UnaryOp op1 = NULL ;
+        ASSERT (!flipxy) ;
+        GrB_UnaryOp op = NULL ;
         if (ztype == GrB_INT64)
         {
             switch (opcode)
             {
                 // first_op(A,D) becomes position_op(A)
-                case GB_FIRSTI_opcode   : op1 = GxB_POSITIONI_INT64  ; break ;
-                case GB_FIRSTJ_opcode   : op1 = GxB_POSITIONJ_INT64  ; break ;
-                case GB_FIRSTI1_opcode  : op1 = GxB_POSITIONI1_INT64 ; break ;
-                case GB_FIRSTJ1_opcode  : op1 = GxB_POSITIONJ1_INT64 ; break ;
+                case GB_FIRSTI_binop_code   : op = GxB_POSITIONI_INT64 ; break;
+                case GB_FIRSTJ_binop_code   : op = GxB_POSITIONJ_INT64 ; break;
+                case GB_FIRSTI1_binop_code  : op = GxB_POSITIONI1_INT64; break;
+                case GB_FIRSTJ1_binop_code  : op = GxB_POSITIONJ1_INT64; break;
                 // second_op(A,D) becomes position_j(A)
-                case GB_SECONDI_opcode  : 
-                case GB_SECONDJ_opcode  : op1 = GxB_POSITIONJ_INT64  ; break ;
-                case GB_SECONDI1_opcode : 
-                case GB_SECONDJ1_opcode : op1 = GxB_POSITIONJ1_INT64 ; break ;
+                case GB_SECONDI_binop_code  : 
+                case GB_SECONDJ_binop_code  : op = GxB_POSITIONJ_INT64 ; break;
+                case GB_SECONDI1_binop_code : 
+                case GB_SECONDJ1_binop_code : op = GxB_POSITIONJ1_INT64; break;
                 default:  ;
             }
         }
@@ -136,20 +137,21 @@ GrB_Info GB_AxB_colscale            // C = A*D, column scale with diagonal D
             switch (opcode)
             {
                 // first_op(A,D) becomes position_op(A)
-                case GB_FIRSTI_opcode   : op1 = GxB_POSITIONI_INT32  ; break ;
-                case GB_FIRSTJ_opcode   : op1 = GxB_POSITIONJ_INT32  ; break ;
-                case GB_FIRSTI1_opcode  : op1 = GxB_POSITIONI1_INT32 ; break ;
-                case GB_FIRSTJ1_opcode  : op1 = GxB_POSITIONJ1_INT32 ; break ;
+                case GB_FIRSTI_binop_code   : op = GxB_POSITIONI_INT32 ; break;
+                case GB_FIRSTJ_binop_code   : op = GxB_POSITIONJ_INT32 ; break;
+                case GB_FIRSTI1_binop_code  : op = GxB_POSITIONI1_INT32; break;
+                case GB_FIRSTJ1_binop_code  : op = GxB_POSITIONJ1_INT32; break;
                 // second_op(A,D) becomes position_j(A)
-                case GB_SECONDI_opcode  : 
-                case GB_SECONDJ_opcode  : op1 = GxB_POSITIONJ_INT32  ; break ;
-                case GB_SECONDI1_opcode : 
-                case GB_SECONDJ1_opcode : op1 = GxB_POSITIONJ1_INT32 ; break ;
+                case GB_SECONDI_binop_code  : 
+                case GB_SECONDJ_binop_code  : op = GxB_POSITIONJ_INT32 ; break;
+                case GB_SECONDI1_binop_code : 
+                case GB_SECONDJ1_binop_code : op = GxB_POSITIONJ1_INT32; break;
                 default:  ;
             }
         }
-        GB_OK (GB_apply_op (Cx, C->type, GB_NON_ISO, op1,   // positional op
-            NULL, NULL, false, A, Context)) ;
+        GB_OK (GB_apply_op (Cx, C->type, GB_NON_ISO,
+            (GB_Operator) op,   // positional op
+            NULL, false, false, A, Context)) ;
         ASSERT_MATRIX_OK (C, "colscale positional: C = A*D output", GB0) ;
 
     }
@@ -175,9 +177,9 @@ GrB_Info GB_AxB_colscale            // C = A*D, column scale with diagonal D
         // determine if the values are accessed
         //----------------------------------------------------------------------
 
-        bool op_is_first  = (opcode == GB_FIRST_opcode) ;
-        bool op_is_second = (opcode == GB_SECOND_opcode) ;
-        bool op_is_pair   = (opcode == GB_PAIR_opcode) ;
+        bool op_is_first  = (opcode == GB_FIRST_binop_code) ;
+        bool op_is_second = (opcode == GB_SECOND_binop_code) ;
+        bool op_is_pair   = (opcode == GB_PAIR_binop_code) ;
         bool A_is_pattern = false ;
         bool D_is_pattern = false ;
         ASSERT (!op_is_pair) ;
@@ -218,7 +220,7 @@ GrB_Info GB_AxB_colscale            // C = A*D, column scale with diagonal D
 
         bool done = false ;
 
-        #ifndef GBCOMPACT
+        #ifndef GBCUDA_DEV
 
             //------------------------------------------------------------------
             // define the worker for the switch factory
@@ -228,8 +230,8 @@ GrB_Info GB_AxB_colscale            // C = A*D, column scale with diagonal D
 
             #define GB_BINOP_WORKER(mult,xname)                             \
             {                                                               \
-                info = GB_AxD(mult,xname) (C, A, A_is_pattern, D,           \
-                    D_is_pattern, A_ek_slicing, A_ntasks, A_nthreads) ;     \
+                info = GB_AxD(mult,xname) (C, A, D,                         \
+                    A_ek_slicing, A_ntasks, A_nthreads) ;                   \
                 done = (info != GrB_NO_VALUE) ;                             \
             }                                                               \
             break ;
@@ -264,7 +266,7 @@ GrB_Info GB_AxB_colscale            // C = A*D, column scale with diagonal D
 
             GB_BURBLE_MATRIX (C, "(generic C=A*D colscale) ") ;
 
-            GxB_binary_function fmult = mult->function ;
+            GxB_binary_function fmult = mult->binop_function ;
 
             size_t csize = C->type->size ;
             size_t asize = A_is_pattern ? 0 : A->type->size ;
@@ -303,6 +305,7 @@ GrB_Info GB_AxB_colscale            // C = A*D, column scale with diagonal D
             //------------------------------------------------------------------
 
             // aij = A(i,j), located in Ax [pA]
+            #define GB_A_IS_PATTERN 0
             #define GB_GETA(aij,Ax,pA,A_iso)                            \
                 GB_void aij [GB_VLA(aij_size)] ;                        \
                 if (!A_is_pattern)                                      \
@@ -311,6 +314,7 @@ GrB_Info GB_AxB_colscale            // C = A*D, column scale with diagonal D
                 }
 
             // dji = D(j,j), located in Dx [j]
+            #define GB_B_IS_PATTERN 0
             #define GB_GETB(djj,Dx,j,D_iso)                             \
                 GB_void djj [GB_VLA(djj_size)] ;                        \
                 if (!D_is_pattern)                                      \
@@ -348,7 +352,7 @@ GrB_Info GB_AxB_colscale            // C = A*D, column scale with diagonal D
     //--------------------------------------------------------------------------
 
     ASSERT_MATRIX_OK (C, "colscale: C = A*D output", GB0) ;
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     return (GrB_SUCCESS) ;
 }
 

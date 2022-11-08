@@ -1,7 +1,7 @@
 function test03
 %TEST03 test GB_*_check functions
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 [~, ~, ~, types, ~, ~] = GB_spec_opsall ;

@@ -1,8 +1,8 @@
 function gbtest22
 %GBTEST22 test reduce to scalar
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 desc.kind = 'sparse' ;
@@ -59,17 +59,29 @@ for trial = 1:10
             assert (norm (c1-c3,1) <= 1e-12 * norm (c1,1)) ;
 
             % c1 = prod (x, 'all') ;
-            c1 = prod (x) ;
+            if (isempty (x))
+                c1 = sparse (0) ;
+            else
+                c1 = prod (x) ;
+            end
             c2 = GrB.reduce ('*', A) ;
             assert (norm (c1-c2,1) <= 1e-12 * norm (c1,1)) ;
 
             % c1 = prod (A, 'all') ;
-            c1 = prod (prod (A)) ;
+            if (nnz (A) == 0)
+                c1 = sparse (0) ;
+            else
+                c1 = prod (prod (A)) ;
+            end
             c2 = prod (G, 'all') ;
             assert (norm (c1-c2,1) <= 1e-12 * norm (c1,1)) ;
 
             % c1 = pi + prod (x, 'all') ;
-            c1 = pi + prod (x) ;
+            if (nnz (A) == 0)
+                c1 = pi ;
+            else
+                c1 = pi + prod (x) ;
+            end
             c2 = GrB.reduce (pi, '+', '*', A) ;
             assert (norm (c1-c2,1) <= 1e-12 * norm (c1,1)) ;
 
@@ -104,13 +116,21 @@ for trial = 1:10
             assert (c1 == logical (c3)) ;
 
             % c1 = all (A, 'all') ;
-            c1 = all (all (A)) ;
+            if (isempty (A))
+                c1 = sparse (false) ;
+            else
+                c1 = all (all (A)) ;
+            end
             c3 = all (G, 'all') ;
             assert (c1 == logical (c3)) ;
 
             [i, j, x] = find (A) ;
             % c1 = all (x, 'all') ;
-            c1 = all (x) ;
+            if (isempty (x))
+                c1 = 0 ;
+            else
+                c1 = all (x) ;
+            end
             c2 = GrB.reduce ('&.logical', A) ;
             assert (c1 == logical (c2)) ;
 

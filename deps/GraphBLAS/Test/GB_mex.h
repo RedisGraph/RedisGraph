@@ -2,13 +2,10 @@
 // GB_mex.h: definitions for the Test interface to GraphBLAS
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
-
-// to turn on memory usage debug printing, uncomment this line:
-// #define GB_PRINT_MALLOC 1
 
 #ifndef GB_MEXH
 #define GB_MEXH
@@ -25,6 +22,7 @@
 #include "GB_mx_usercomplex.h"
 #include "mex.h"
 #include "matrix.h"
+#include "GB_dev.h"
 
 #define SIMPLE_RAND_MAX 32767
 uint64_t simple_rand (void) ;
@@ -85,6 +83,22 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
     const mxArray *opname_mx,           // built-in string with operator name
     const mxArray *optype_mx,           // built-in string with operator type
     const bool user_complex             // true if X is complex
+) ;
+
+bool GB_mx_mxArray_to_IndexUnaryOp      // true if successful, false otherwise
+(
+    GrB_IndexUnaryOp *op_handle,        // the binary op
+    const mxArray *op_builtin,          // built-in version of op
+    const char *name,                   // name of the argument
+    const GrB_Type default_optype       // default operator type
+) ;
+
+bool GB_mx_string_to_IndexUnaryOp       // true if successful, false otherwise
+(
+    GrB_IndexUnaryOp *op_handle,    // the op
+    const GrB_Type default_optype,  // default operator type
+    const mxArray *opname_mx,       // built-in string with operator name
+    const mxArray *optype_mx        // built-in string with operator type
 ) ;
 
 mxArray *GB_mx_Vector_to_mxArray    // returns the built-in mxArray
@@ -287,30 +301,14 @@ GrB_Info GB_mx_random_matrix      // create a random double-precision matrix
     bool A_complex          // if true, create a Complex matrix
 ) ;
 
+GrB_Scalar GB_mx_get_Scalar
+(
+    const mxArray *mx_scalar
+) ;
+
 //------------------------------------------------------------------------------
 
-// remove a block that had been allocated from within GraphBLAS and then
-// exported.
-#define REMOVE(p)                                       \
-{                                                       \
-    if ((p) != NULL)                                    \
-    {                                                   \
-        GB_Global_nmalloc_decrement ( ) ;               \
-        if (GB_Global_memtable_find (p))                \
-        {                                               \
-            GB_Global_memtable_remove (p) ;             \
-        }                                               \
-    }                                                   \
-}
-
-#define GB_AS_IF_FREE(p)                \
-{                                       \
-    GB_Global_nmalloc_decrement ( ) ;   \
-    GB_Global_memtable_remove (p) ;     \
-    (p) = NULL ;                        \
-}
-
-#ifdef GB_PRINT_MALLOC
+#ifdef GB_MEMDUMP
 
 #define METHOD_START(OP) \
     printf ("\n================================================================================\n") ; \
@@ -334,6 +332,10 @@ GrB_Info GB_mx_random_matrix      // create a random double-precision matrix
 
 #endif
 
+#ifndef GB_DUMP_STUFF
+#define GB_DUMP_STUFF ;
+#endif
+
 // test a GraphBLAS operation with malloc debuging
 #define METHOD(GRAPHBLAS_OPERATION)                                         \
     METHOD_START (GRAPHBLAS_OPERATION) ;                                    \
@@ -345,8 +347,7 @@ GrB_Info GB_mx_random_matrix      // create a random double-precision matrix
         if (! (info == GrB_SUCCESS || info == GrB_NO_VALUE))                \
         {                                                                   \
             FREE_ALL ;                                                      \
-            printf ("info: %d\n", info) ;                                   \
-            mexErrMsgTxt ("method failed") ;                                \
+            mexErrMsgIdAndTxt ("GB:test", "method failed, info: %d", info) ;\
         }                                                                   \
     }                                                                       \
     else                                                                    \
@@ -360,6 +361,7 @@ GrB_Info GB_mx_random_matrix      // create a random double-precision matrix
             /* callocs, and reallocs of larger size, equal to tries */      \
             GB_Global_malloc_debug_count_set (tries) ;                      \
             METHOD_TRY ;                                                    \
+            GB_DUMP_STUFF ;                                                 \
             /* call the method with malloc debug enabled */                 \
             GB_Global_malloc_debug_set (true) ;                             \
             GrB_Info info = GRAPHBLAS_OPERATION ;                           \
@@ -377,6 +379,7 @@ GrB_Info GB_mx_random_matrix      // create a random double-precision matrix
                 /* out of memory; check for leaks */                        \
                 /* output matrix may have changed; recopy for next test */  \
                 /* but turn off malloc debugging to get the copy */         \
+                GB_DUMP_STUFF ;                                             \
                 FREE_DEEP_COPY ;                                            \
                 GET_DEEP_COPY ;                                             \
                 int nmalloc_end = (int) GB_Global_nmalloc_get ( ) ;         \
@@ -405,8 +408,8 @@ GrB_Info GB_mx_random_matrix      // create a random double-precision matrix
             {                                                               \
                 /* another error has occurred */                            \
                 FREE_ALL ;                                                  \
-                printf ("info: %d\n", info) ; \
-                mexErrMsgTxt ("unexpected error in mex brutal malloc debug") ; \
+                mexErrMsgIdAndTxt ("GB:brutal", "unexpected error in mex "  \
+                    "brutal malloc debug, info: %d", info) ;                \
             }                                                               \
         }                                                                   \
     }

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -18,15 +18,12 @@
 #include "../util/datablock/datablock_iterator.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
-#define GRAPH_DEFAULT_NODE_CAP 16384            // Default number of nodes a graph can hold before resizing.
-#define GRAPH_DEFAULT_EDGE_CAP 16384            // Default number of edges a graph can hold before resizing.
 #define GRAPH_DEFAULT_RELATION_TYPE_CAP 16      // Default number of different relationship types a graph can hold before resizing.
 #define GRAPH_DEFAULT_LABEL_CAP 16              // Default number of different labels a graph can hold before resizing.
 #define GRAPH_NO_LABEL -1                       // Labels are numbered [0-N], -1 represents no label.
 #define GRAPH_UNKNOWN_LABEL -2                  // Labels are numbered [0-N], -2 represents an unknown relation.
 #define GRAPH_NO_RELATION -1                    // Relations are numbered [0-N], -1 represents no relation.
 #define GRAPH_UNKNOWN_RELATION -2               // Relations are numbered [0-N], -2 represents an unknown relation.
-#define EDGE_BULK_DELETE_THRESHOLD 4            // Max number of deletions to perform without choosing the bulk delete routine.
 
 typedef enum {
 	GRAPH_EDGE_DIR_INCOMING,
@@ -47,16 +44,17 @@ typedef struct Graph Graph;
 typedef void (*SyncMatrixFunc)(const Graph *, RG_Matrix);
 
 struct Graph {
-	DataBlock *nodes;                   // Graph nodes stored in blocks.
-	DataBlock *edges;                   // Graph edges stored in blocks.
-	RG_Matrix adjacency_matrix;         // Adjacency matrix, holds all graph connections.
-	RG_Matrix *labels;                  // Label matrices.
-	RG_Matrix *relations;               // Relation matrices.
-	RG_Matrix _zero_matrix;             // Zero matrix.
-	pthread_rwlock_t _rwlock;           // Read-write lock scoped to this specific graph
+	DataBlock *nodes;                   // graph nodes stored in blocks
+	DataBlock *edges;                   // graph edges stored in blocks
+	RG_Matrix adjacency_matrix;         // adjacency matrix, holds all graph connections
+	RG_Matrix *labels;                  // label matrices
+	RG_Matrix node_labels;              // mapping of all node IDs to all labels possessed by each node
+	RG_Matrix *relations;               // relation matrices
+	RG_Matrix _zero_matrix;             // zero matrix
+	pthread_rwlock_t _rwlock;           // read-write lock scoped to this specific graph
 	bool _writelocked;                  // true if the read-write lock was acquired by a writer
-	SyncMatrixFunc SynchronizeMatrix;   // Function pointer to matrix synchronization routine.
-	GraphStatistics stats;              // Graph related statistics.
+	SyncMatrixFunc SynchronizeMatrix;   // function pointer to matrix synchronization routine
+	GraphStatistics stats;              // graph related statistics
 };
 
 // graph synchronization functions
@@ -97,14 +95,14 @@ void Graph_ApplyAllPending
 // Retrieve graph matrix synchronization policy
 MATRIX_POLICY Graph_GetMatrixPolicy
 (
-  const Graph *g
+	const Graph *g
 );
 
 // choose the current matrix synchronization policy
 void Graph_SetMatrixPolicy
 (
-  Graph *g,
-  MATRIX_POLICY policy
+	Graph *g,
+	MATRIX_POLICY policy
 );
 
 // checks to see if graph has pending operations
@@ -126,10 +124,50 @@ int Graph_AddLabel
 	Graph *g
 );
 
+// adds a label from the graph
+void Graph_RemoveLabel
+(
+	Graph *g,
+	int label_id
+);
+
+// label node with each label in 'lbls'
+void Graph_LabelNode
+(
+	Graph *g,       // graph to operate on
+	NodeID id,      // node ID to update
+	LabelID *lbls,  // set to labels to associate with node
+	uint lbl_count  // number of labels
+);
+
+// dissociates each label in 'lbls' from given node
+void Graph_RemoveNodeLabels
+(
+	Graph *g,       // graph to operate against
+	NodeID id,      // node ID to update
+	LabelID *lbls,  // set of labels to remove
+	uint lbl_count  // number of labels to remove
+);
+
+// return true if node is labeled as 'l'
+bool Graph_IsNodeLabeled
+(
+	Graph *g,   // graph to operate on
+	NodeID id,  // node ID to inspect
+	LabelID l   // label to check for
+);
+
 // creates a new relation matrix, returns id given to relation
 int Graph_AddRelationType
 (
 	Graph *g
+);
+
+// removes a relation from the graph
+void Graph_RemoveRelation
+(
+	Graph *g,
+	int relation_id
 );
 
 // make sure graph can hold an additional N nodes
@@ -151,8 +189,9 @@ void Graph_AllocateEdges
 void Graph_CreateNode
 (
 	Graph *g,
-	int label,
-	Node *n
+	Node *n,
+	LabelID *labels,
+	uint label_count
 );
 
 // connects source node to destination node
@@ -180,22 +219,19 @@ int Graph_DeleteEdge
 	Edge *e
 );
 
+// update entity attribute with new value
+int Graph_UpdateEntity
+(
+	GraphEntity *ge,             // entity yo update
+	Attribute_ID attr_id,        // attribute to update
+	SIValue value,               // value to be set
+	GraphEntityType entity_type  // type of the entity node/edge
+);
+
 // returns true if the given entity has been deleted
 bool Graph_EntityIsDeleted
 (
-	Entity *e
-);
-
-// removes both nodes and edges from graph
-void Graph_BulkDelete
-(
-	Graph *g,           // graph to delete entities from
-	Node *nodes,        // nodes to delete
-	uint node_count,    // number of nodes to delete
-	Edge *edges,        // edges to delete
-	uint edge_count,    // number of edges to delete
-	uint *node_deleted, // number of nodes removed
-	uint *edge_deleted  // number of edges removed
+	const GraphEntity *e
 );
 
 // all graph matrices are required to be squared NXN
@@ -238,7 +274,7 @@ size_t Graph_UncompactedNodeCount
 );
 
 // returns number of nodes with given label
-size_t Graph_LabeledNodeCount
+uint64_t Graph_LabeledNodeCount
 (
 	const Graph *g,
 	int label
@@ -275,6 +311,15 @@ int Graph_LabelTypeCount
 	const Graph *g
 );
 
+// returns true if relationship matrix 'r' contains multi-edge entries
+// false otherwise
+bool Graph_RelationshipContainsMultiEdge
+(
+	const Graph *g, // Graph containing matrix to inspect
+	int r,          // Relationship ID
+	bool transpose  // false for R, true for transpose R
+);
+
 // retrieves node with given id from graph,
 // returns NULL if node wasn't found
 int Graph_GetNode
@@ -282,14 +327,6 @@ int Graph_GetNode
 	const Graph *g,
 	NodeID id,
 	Node *n
-);
-
-// retrieves node label
-// returns GRAPH_NO_LABEL if node has no label
-int Graph_GetNodeLabel
-(
-	const Graph *g,
-	NodeID nodeID
 );
 
 // retrieves edge with given id from graph,
@@ -331,6 +368,15 @@ void Graph_GetNodeEdges
 	Edge **edges            // array_t incoming/outgoing edges.
 );
 
+// populate array of node's label IDs, return number of labels on node.
+uint Graph_GetNodeLabels
+(
+	const Graph *g,         // graph the node belongs to
+	const Node *n,          // node to extract labels from
+	LabelID *labels,        // array to populate with labels
+	uint label_count        // size of labels array
+);
+
 // retrieves the adjacency matrix
 // matrix is resized if its size doesn't match graph's node count
 RG_Matrix Graph_GetAdjacencyMatrix
@@ -356,13 +402,11 @@ RG_Matrix Graph_GetRelationMatrix
 	bool transposed
 );
 
-// returns true if relationship matrix 'r' contains multi-edge entries
-// false otherwise
-bool Graph_RelationshipContainsMultiEdge
+// retrieves the node-label mapping matrix,
+// matrix is resized if its size doesn't match graph's node count.
+RG_Matrix Graph_GetNodeLabelMatrix
 (
-	const Graph *g, // Graph containing matrix to inspect
-	int r,          // Relationship ID
-	bool transpose  // false for R, true for transpose R
+	const Graph *g
 );
 
 // retrieves the zero matrix
@@ -379,11 +423,10 @@ RG_Matrix Graph_GetLabelRGMatrix
 	int label_idx
 );
 
-RG_Matrix Graph_GetRelationRGMatrix
+// free partial graph
+void Graph_PartialFree
 (
-	const Graph *g,
-	int relation,
-	bool transpose
+	Graph *g
 );
 
 // free graph

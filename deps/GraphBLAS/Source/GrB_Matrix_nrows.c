@@ -2,7 +2,7 @@
 // GrB_Matrix_nrows: number of rows of a sparse matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -29,6 +29,7 @@ GrB_Info GrB_Matrix_nrows   // get the number of rows of a matrix
     //--------------------------------------------------------------------------
 
     (*nrows) = GB_NROWS (A) ;
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

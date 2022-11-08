@@ -7,8 +7,8 @@ function C = times (A, B)
 %
 % See also GrB/mtimes, GrB.emult, GrB.mxm.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 if (isobject (A))
     A = A.opaque ;

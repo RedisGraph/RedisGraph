@@ -2,7 +2,7 @@
 // GB_AxB_dot3_one_slice: slice the entries and vectors of a single matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -13,15 +13,15 @@
 // simple general-purpose method for slicing a single matrix.  It could be
 // called GB_one_slice, and used for other methods as well.
 
-#define GB_FREE_WORK                            \
+#define GB_FREE_WORKSPACE                       \
 {                                               \
     GB_WERK_POP (Coarse, int64_t) ;             \
 }
 
 #define GB_FREE_ALL                             \
 {                                               \
-    GB_FREE_WORK ;                              \
-    GB_FREE_WERK (&TaskList, TaskList_size) ;   \
+    GB_FREE_WORKSPACE ;                         \
+    GB_FREE_WORK (&TaskList, TaskList_size) ;   \
 }
 
 #include "GB_mxm.h"
@@ -93,7 +93,7 @@ GrB_Info GB_AxB_dot3_one_slice
     int max_ntasks = 0 ;
     int ntasks = 0 ;
     int ntasks0 = (nthreads == 1) ? 1 : (GB_NTASKS_PER_THREAD * nthreads) ;
-    GB_REALLOC_TASK_WERK (TaskList, ntasks0, max_ntasks) ;
+    GB_REALLOC_TASK_WORK (TaskList, ntasks0, max_ntasks) ;
 
     //--------------------------------------------------------------------------
     // check for quick return for a single task
@@ -166,7 +166,7 @@ GrB_Info GB_AxB_dot3_one_slice
 
             // This is a non-empty coarse-grain task that does two or more
             // entire vectors of M and C, vectors k:klast, inclusive.
-            GB_REALLOC_TASK_WERK (TaskList, ntasks + 1, max_ntasks) ;
+            GB_REALLOC_TASK_WORK (TaskList, ntasks + 1, max_ntasks) ;
             TaskList [ntasks].kfirst = k ;
             TaskList [ntasks].klast  = klast ;
             ntasks++ ;
@@ -208,7 +208,7 @@ GrB_Info GB_AxB_dot3_one_slice
             nfine = GB_IMAX (nfine, 1) ;
 
             // make the TaskList bigger, if needed
-            GB_REALLOC_TASK_WERK (TaskList, ntasks + nfine, max_ntasks) ;
+            GB_REALLOC_TASK_WORK (TaskList, ntasks + nfine, max_ntasks) ;
 
             //------------------------------------------------------------------
             // create the fine-grain tasks
@@ -264,7 +264,7 @@ GrB_Info GB_AxB_dot3_one_slice
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     (*p_TaskList  ) = TaskList ;
     (*p_TaskList_size) = TaskList_size ;
     (*p_ntasks    ) = ntasks ;

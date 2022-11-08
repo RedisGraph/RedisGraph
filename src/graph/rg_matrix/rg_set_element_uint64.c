@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -125,8 +125,6 @@ GrB_Info RG_Matrix_setElement_UINT64    // C (i,j) = x
 			info = setMultiEdgeEntry(dp, x, i, j);
 		}
 	}
-
-	RG_Matrix_validateState(C, i, j);
 
 	RG_Matrix_setDirty(C);
 

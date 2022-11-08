@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -19,7 +19,6 @@
 // Utils.
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
-#include "../util/qsort.h"
 // Non primitive data types.
 #include "../datatypes/array.h"
 // Graph extentions.

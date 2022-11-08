@@ -2,7 +2,7 @@
 // GB_transpose_cast: transpose and typecast
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -26,10 +26,12 @@ GrB_Info GB_transpose_cast      // C= (ctype) A' or one (A'), not in-place
 { 
     ASSERT (C != A && !GB_aliased (C, A)) ;
 
-    GrB_UnaryOp op1 = (iso_one) ? GB_unop_one (ctype->code) : NULL ;
+    GB_Operator op = (GB_Operator)
+        ((iso_one) ? GB_unop_one (ctype->code) : NULL) ;
 
-    // C = (ctype) A' if op1 is NULL, or C = (ctype) one (A')
-    return (GB_transpose (C, ctype, C_is_csc, A, op1, NULL, NULL,
-        false, Context)) ;
+    // C = (ctype) A' if op is NULL, or C = (ctype) one (A')
+    return (GB_transpose (C, ctype, C_is_csc, A,
+        op, NULL, false, false,     // iso ONE operator or NULL
+        Context)) ;
 }
 

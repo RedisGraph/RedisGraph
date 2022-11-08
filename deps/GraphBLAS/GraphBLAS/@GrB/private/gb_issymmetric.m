@@ -2,8 +2,8 @@ function s = gb_issymmetric (G, option, herm)
 %GB_ISSYMMETRIC check if symmetric or Hermitian
 % Implements issymmetric (G,option) and ishermitian (G,option).
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 % FUTURE: this can be much faster; see spsym in CHOLMOD.
 
@@ -42,7 +42,7 @@ else
 
         otherwise
 
-            error ('invalid option') ;
+            error ('GrB:error', 'invalid option') ;
 
     end
 

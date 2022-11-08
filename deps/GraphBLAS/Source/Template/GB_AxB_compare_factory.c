@@ -2,7 +2,7 @@
 // GB_AxB_compare_factory.c: switch factory for C=A*B with comparator ops
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -33,10 +33,10 @@ ASSERT (zcode == GB_BOOL_code) ;
     // The result of the compare(A,B) operation is boolean.
     // There are 4 monoids available: OR, AND, XOR, EQ
 
-    switch (add_opcode)
+    switch (add_binop_code)
     {
 
-        case GB_LOR_opcode     :
+        case GB_LOR_binop_code     :
 
             switch (xcode)
             {
@@ -57,7 +57,7 @@ ASSERT (zcode == GB_BOOL_code) ;
             }
             break ;
 
-        case GB_LAND_opcode    :
+        case GB_LAND_binop_code    :
 
             switch (xcode)
             {
@@ -79,7 +79,7 @@ ASSERT (zcode == GB_BOOL_code) ;
             }
             break ;
 
-        case GB_LXOR_opcode    :
+        case GB_LXOR_binop_code    :
 
             switch (xcode)
             {
@@ -100,7 +100,7 @@ ASSERT (zcode == GB_BOOL_code) ;
             }
             break ;
 
-        case GB_EQ_opcode    :
+        case GB_EQ_binop_code    :
 
             switch (xcode)
             {
@@ -121,7 +121,8 @@ ASSERT (zcode == GB_BOOL_code) ;
             }
             break ;
 
-        case GB_ANY_opcode    :
+        #ifndef GB_NO_ANY_MONOID
+        case GB_ANY_binop_code    :
 
             switch (xcode)
             {
@@ -141,6 +142,7 @@ ASSERT (zcode == GB_BOOL_code) ;
                 default: ;
             }
             break ;
+        #endif
 
         default: ;
     }

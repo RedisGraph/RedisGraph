@@ -2,8 +2,8 @@
 // gbsize: dimension and type of a GraphBLAS or built-in matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -49,7 +49,12 @@ void mexFunction
         //----------------------------------------------------------------------
 
         // get the type
-        mxArray *mx_type = mxGetField (pargin [0], 0, "GraphBLASv5_1") ;
+        mxArray *mx_type = mxGetField (pargin [0], 0, "GraphBLASv7_3") ;
+        if (mx_type == NULL)
+        {
+            // check if it is a GraphBLASv5_1 struct
+            mx_type = mxGetField (pargin [0], 0, "GraphBLASv5_1") ;
+        }
         if (mx_type == NULL)
         {
             // check if it is a GraphBLASv5 struct

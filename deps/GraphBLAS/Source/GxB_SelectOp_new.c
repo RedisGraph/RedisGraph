@@ -1,23 +1,26 @@
 //------------------------------------------------------------------------------
-// GxB_SelectOp_new: create a new user-defined select operator
+// GxB_SelectOp_new: create a new user-defined select operator (historical)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
-// GxB_SelectOp_new is implemented both as a macro and a function.  Both are
-// user-callable.  The macro is used by default since it can capture the name
-// of the select function.
+// This function is historical.  Use GrB_IndexUnaryOp_new with GrB_select,
+// instead of a user-defined GxB_SelectOp with GxB_select.
+
+// The select function signature must be:
+
+//      bool f (GrB_Index i, GrB_Index j, GrB_Index nrows, GrB_Index ncols,
+//              const void *x, const void *thunk) ;
 
 #include "GB.h"
 
-// the macro version of this function must first be #undefined
 #undef GxB_SelectOp_new
 #undef GxM_SelectOp_new
 
-GrB_Info GXB (SelectOp_new)     // create a new user-defined select operator
+GrB_Info GXB (SelectOp_new)         // create a new user-defined select operator
 (
     GxB_SelectOp *selectop,         // handle for the new select operator
     GxB_select_function function,   // pointer to the select function

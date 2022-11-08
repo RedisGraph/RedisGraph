@@ -1,8 +1,8 @@
 function gbtest81
 %GBTEST81 test complex operators
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 fprintf ('gbtest81: test complex operators\n') ;
 rng ('default')
@@ -122,7 +122,7 @@ for m = [1 5 10 ]
                             C2 = A ;
                         case { '2nd', 'any' }
                             C2 = B ;
-                        case { 'pair' }
+                        case { 'pair', 'oneb' }
                             C2 = complex (ones (m, n), 0) ;
                         case { '+' }
                             C2 = A+B ;

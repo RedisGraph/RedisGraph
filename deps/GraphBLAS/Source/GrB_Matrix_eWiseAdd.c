@@ -2,7 +2,7 @@
 // GrB_Matrix_eWiseAdd: matrix element-wise operations, set union
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -32,6 +32,7 @@
         A,              A_tran,     /* A matrix and its descriptor */       \
         B,              B_tran,     /* B matrix and its descriptor */       \
         true,                       /* eWiseAdd                    */       \
+        false, NULL, NULL,          /* not eWiseUnion              */       \
         Context) ;
 
 //------------------------------------------------------------------------------

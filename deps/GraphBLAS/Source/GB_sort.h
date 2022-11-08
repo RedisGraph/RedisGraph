@@ -2,7 +2,7 @@
 // GB_sort.h: definitions for sorting functions
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -227,6 +227,22 @@ static inline GrB_Index GB_rand (uint64_t *seed)
     i = GB_RAND_MAX * i + GB_rand15 (seed) ;
     return (i) ;
 }
+
+//------------------------------------------------------------------------------
+// matrix sorting (for GxB_Matrix_sort and GxB_Vector_sort)
+//------------------------------------------------------------------------------
+
+GrB_Info GB_sort
+(
+    // output:
+    GrB_Matrix C,               // matrix with sorted vectors on output
+    GrB_Matrix P,               // matrix with permutations on output
+    // input:
+    GrB_BinaryOp op,            // comparator for the sort
+    GrB_Matrix A,               // matrix to sort
+    const bool A_transpose,     // false: sort each row, true: sort each column
+    GB_Context Context
+) ;
 
 #endif
 

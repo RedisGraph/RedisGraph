@@ -37,7 +37,12 @@ def set_params(context):
     global params
 
     params = "CYPHER "
-    for row in context.table.rows:
+    heading_row = context.table.headings
+    if context.active_outline is not None:
+        heading_row = [item if item[0] != "<" else context.active_outline[item[1:-1]] for item in heading_row]
+    params += '='.join(heading_row) + ' '
+
+    for row in context.table:
         params += '='.join(row) + ' '
 
 @given(u'having executed')
@@ -57,7 +62,7 @@ def step_impl(context):
         query = params + query
 
     try:
-        resultset = graphs.query(query)
+        resultset = graphs.query(query.replace("\r", ""))
     except Exception as error:
         resultset = None
         exception = error
@@ -258,3 +263,33 @@ def step_impl(context):
     global exception
     assert exception != None
     assert "Only directed relationships" in str(exception)
+
+@then(u'a SyntaxError should be raised at compile time: RelationshipUniquenessViolation')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Cannot use the same relationship variable" in str(exception)
+
+@then(u'a SyntaxError should be raised at compile time: NoVariablesInScope')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "RETURN * is not allowed when there are no variables in scope" in str(exception)
+
+@then(u'a TypeError should be raised at runtime: InvalidPropertyType')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Property values can only be of primitive types or arrays of primitive types" in str(exception)
+
+@then(u'a SyntaxError should be raised at compile time: IntegerOverflow')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Integer overflow" in str(exception)
+
+@then(u'a SyntaxError should be raised at compile time: FloatingPointOverflow')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Float overflow" in str(exception)

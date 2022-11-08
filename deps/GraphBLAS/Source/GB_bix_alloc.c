@@ -2,7 +2,7 @@
 // GB_bix_alloc: allocate a matrix to hold a given number of entries
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -71,14 +71,16 @@ GrB_Info GB_bix_alloc       // allocate A->b, A->i, and A->x space in a matrix
 
     if (numeric)
     { 
-        A->x = GB_XALLOC (A_iso, nzmax, A->type->size, &(A->x_size)) ;
+        // calloc the space if A is bitmap
+        A->x = GB_XALLOC (sparsity == GxB_BITMAP, A_iso,    // x:OK
+            nzmax, A->type->size, &(A->x_size)) ;
         ok = ok && (A->x != NULL) ;
     }
 
     if (!ok)
     { 
         // out of memory
-        GB_phbix_free (A) ;
+        GB_phybix_free (A) ;
         return (GrB_OUT_OF_MEMORY) ;
     }
 

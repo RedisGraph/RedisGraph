@@ -1,6 +1,11 @@
 from numbers import Number
 from collections import Counter
-from redisgraph import Node, Edge, Path
+from RLTest import Env
+
+from redis.commands.graph import Graph
+from redis.commands.graph.node import Node
+from redis.commands.graph.edge import Edge
+from redis.commands.graph.path import Path
 
 # Returns True if value is a number or string representation of a number.
 
@@ -36,12 +41,12 @@ def nodeToString(value):
     res = '('
     if value.alias:
         res += value.alias
-    if value.label:
-        res += ':' + value.label
+    if value.labels:
+        res += ':' + ":".join(value.labels)
     if value.properties:
         props = ', '.join(key+': '+str(val)
                           for key, val in value.properties.items())
-        if value.label:
+        if value.labels:
             res += " "
         res += '{' + props + '}'
     res += ')'
@@ -147,7 +152,7 @@ def prepareActualValue(actualValue):
         actualValue = dictToString(actualValue)
     else:
         # actual value is null or boolean
-        assert isinstance(actualValue, (type(None), bool))
+        Env.RTestInstance.currEnv.assertTrue(isinstance(actualValue, (type(None), bool)))
     return actualValue
 
 # prepare the expected value to be in comparison vaiable format
@@ -178,36 +183,43 @@ def prepare_expected_row(row):
 
 
 def assert_empty_resultset(resultset):
-    assert len(resultset.result_set) == 0
+    Env.RTestInstance.currEnv.assertEquals(len(resultset.result_set), 0)
 
 # check value of a designated statistic
 
 
 def assert_statistics(resultset, stat, value):
     if stat == "+nodes":
-        assert(resultset.nodes_created == value)
+        Env.RTestInstance.currEnv.assertEquals(resultset.nodes_created, value)
     elif stat == "+relationships":
-        assert(resultset.relationships_created == value)
+        Env.RTestInstance.currEnv.assertEquals(resultset.relationships_created, value)
+    elif stat == "-relationships":
+        Env.RTestInstance.currEnv.assertEquals(resultset.relationships_deleted, value)
     elif stat == "+labels":
-        assert(resultset.labels_added == value)
+        Env.RTestInstance.currEnv.assertEquals(resultset.labels_added, value)
+    elif stat == "-labels":
+        Env.RTestInstance.currEnv.assertEquals(resultset.labels_removed, value)
     elif stat == "+properties":
-        assert(resultset.properties_set == value)
+        Env.RTestInstance.currEnv.assertEquals(resultset.properties_set, value)
+    elif stat == "-properties":
+        Env.RTestInstance.currEnv.assertEquals(resultset.properties_removed, value)
     elif stat == "-nodes":
-        assert(resultset.nodes_deleted == value)
+        Env.RTestInstance.currEnv.assertEquals(resultset.nodes_deleted, value)
     else:
-        assert(False)
+        print(stat)
+        Env.RTestInstance.currEnv.assertTrue(False)
 
 # checks resultset statistics for no graph modifications
 
 
 def assert_no_modifications(resultset):
-    assert(sum([resultset.nodes_created, resultset.nodes_deleted,
+    Env.RTestInstance.currEnv.assertEquals(sum([resultset.nodes_created, resultset.nodes_deleted,
                 resultset.properties_set, resultset.relationships_created,
-                resultset.relationships_deleted]) == 0)
+                resultset.relationships_deleted]), 0)
 
 
 def assert_resultset_length(resultset, length):
-    assert(len(resultset.result_set) == length)
+    Env.RTestInstance.currEnv.assertEquals(len(resultset.result_set), length)
 
 
 def assert_resultsets_equals_in_order(actual, expected):
@@ -218,7 +230,7 @@ def assert_resultsets_equals_in_order(actual, expected):
         actualRow = prepare_actual_row(actual.result_set[rowIdx])
         expectedRow = prepare_expected_row(expected.rows[rowIdx])
         # compare rows
-        assert actualRow == expectedRow
+        Env.RTestInstance.currEnv.assertEquals(actualRow, expectedRow)
 
 
 def assert_resultsets_equals(actual, expected):
@@ -226,4 +238,4 @@ def assert_resultsets_equals(actual, expected):
     actualCtr = Counter(prepare_actual_row(row) for row in actual.result_set)
     expectedCtr = Counter(prepare_expected_row(row) for row in expected)
     # Validate that the constructed Counters are equal
-    assert actualCtr == expectedCtr
+    Env.RTestInstance.currEnv.assertEquals(actualCtr, expectedCtr)

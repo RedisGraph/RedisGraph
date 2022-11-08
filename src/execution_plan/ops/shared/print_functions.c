@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2022 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -16,7 +16,7 @@ static inline void _NodeToString(sds *buf, const char *alias, const char *label)
 }
 
 void TraversalToString(const OpBase *op, sds *buf, AlgebraicExpression *ae) {
-	if(!ae) *buf = sdscatprintf(*buf, "%s", op->name);
+	ASSERT(ae != NULL);
 
 	*buf = sdscatprintf(*buf, "%s | ", op->name);
 	// This edge should be printed right-to-left if the edge matrix is transposed.
@@ -24,9 +24,9 @@ void TraversalToString(const OpBase *op, sds *buf, AlgebraicExpression *ae) {
 	bool transpose = (edge && AlgebraicExpression_Transposed(ae));
 
 	// Retrieve QueryGraph entities.
-	QGNode *src = QueryGraph_GetNodeByAlias(op->plan->query_graph, AlgebraicExpression_Source(ae));
+	QGNode *src = QueryGraph_GetNodeByAlias(op->plan->query_graph, AlgebraicExpression_Src(ae));
 	QGNode *dest = QueryGraph_GetNodeByAlias(op->plan->query_graph,
-											 AlgebraicExpression_Destination(ae));
+											 AlgebraicExpression_Dest(ae));
 	QGEdge *e = (edge) ? QueryGraph_GetEdgeByAlias(op->plan->query_graph, edge) : NULL;
 
 	QGNode_ToString(src, buf);

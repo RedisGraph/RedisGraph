@@ -2,7 +2,7 @@
 // GB_assign_prep: check and prepare inputs for GB_assign and GB_subassign
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -24,11 +24,14 @@
     GB_Matrix_free (&AT) ;          \
     GB_Matrix_free (&M2) ;          \
     GB_Matrix_free (&MT) ;          \
-    GB_FREE_WERK (&I2, I2_size) ;   \
-    GB_FREE_WERK (&J2, J2_size) ;   \
-    GB_FREE_WERK (&I2k, I2k_size) ; \
-    GB_FREE_WERK (&J2k, J2k_size) ; \
+    GB_FREE_WORK (&I2, I2_size) ;   \
+    GB_FREE_WORK (&J2, J2_size) ;   \
+    GB_FREE_WORK (&I2k, I2k_size) ; \
+    GB_FREE_WORK (&J2k, J2k_size) ; \
 }
+
+// redefine to use the revised GB_FREE_ALL above:
+#include "GB_static_header.h"
 
 GrB_Info GB_assign_prep
 (
@@ -528,6 +531,7 @@ GrB_Info GB_assign_prep
                     { 
                         GB_ENSURE_SPARSE (C) ;
                         GBURBLE ("C(:,j)=zombie ") ;
+                        GB_OK (GB_hyper_hash_build (C, Context)) ;
                         GB_assign_zombie1 (C, J [0], Context) ;
                     }
                 }
@@ -675,7 +679,7 @@ GrB_Info GB_assign_prep
         // TODO: if accum is present and it does not depend on the values of
         // A,  construct AT as iso.
         GBURBLE ("(A transpose) ") ;
-        AT = GB_clear_static_header (AT_header_handle) ;
+        GB_CLEAR_STATIC_HEADER (AT, AT_header_handle) ;
         GB_OK (GB_transpose_cast (AT, A->type, C_is_csc, A, false, Context)) ;
         GB_MATRIX_WAIT (AT) ;       // A cannot be jumbled
         A = AT ;
@@ -704,7 +708,7 @@ GrB_Info GB_assign_prep
             // MT = M' to conform M to the same CSR/CSC format as C,
             // and typecast to boolean.
             GBURBLE ("(M transpose) ") ;
-            MT = GB_clear_static_header (MT_header_handle) ;
+            GB_CLEAR_STATIC_HEADER (MT, MT_header_handle) ;
             GB_OK (GB_transpose_cast (MT, GrB_BOOL, C_is_csc, M, Mask_struct,
                 Context)) ;
             GB_MATRIX_WAIT (MT) ;       // M cannot be jumbled
@@ -832,7 +836,7 @@ GrB_Info GB_assign_prep
         if (!scalar_expansion)
         { 
             // A2 = A (Iinv, Jinv)
-            A2 = GB_clear_static_header (A2_header_handle) ;
+            GB_CLEAR_STATIC_HEADER (A2, A2_header_handle) ;
             GB_OK (GB_subref (A2, false,  // TODO::: make A if accum is PAIR
                 A->is_csc, A, Iinv, ni, Jinv, nj, false, Context)) ;
             // GB_subref can return a jumbled result
@@ -849,7 +853,7 @@ GrB_Info GB_assign_prep
         { 
             // M2 = M (Iinv, Jinv)
             // if Mask_struct then M2 is extracted as iso
-            M2 = GB_clear_static_header (M2_header_handle) ;
+            GB_CLEAR_STATIC_HEADER (M2, M2_header_handle) ;
             GB_OK (GB_subref (M2, Mask_struct,
                 M->is_csc, M, Iinv, ni, Jinv, nj, false, Context)) ;
             // GB_subref can return a jumbled result
@@ -862,8 +866,8 @@ GrB_Info GB_assign_prep
             M = M2 ;
         }
 
-        GB_FREE_WERK (&I2k, I2k_size) ;
-        GB_FREE_WERK (&J2k, J2k_size) ;
+        GB_FREE_WORK (&I2k, I2k_size) ;
+        GB_FREE_WORK (&J2k, J2k_size) ;
     }
 
     // I and J are now sorted, with no duplicate entries.  They are either
@@ -979,12 +983,12 @@ GrB_Info GB_assign_prep
     else if (C_aliased)
     {
         // C is aliased with M or A: make a copy of C to assign into
-        C2 = GB_clear_static_header (C2_header_handle) ;
+        GB_CLEAR_STATIC_HEADER (C2, C2_header_handle) ;
         if (C_replace_may_be_done_early)
         { 
             // Instead of duplicating C, create a new empty matrix C2.
             int sparsity = (C->h != NULL) ? GxB_HYPERSPARSE : GxB_SPARSE ;
-            GB_OK (GB_new (&C2, true, // sparse or hyper, static header
+            GB_OK (GB_new (&C2, // sparse or hyper, existing header
                 ctype, C->vlen, C->vdim, GB_Ap_calloc, C_is_csc,
                 sparsity, C->hyper_switch, 1, Context)) ;
             GBURBLE ("(C alias cleared; C_replace early) ") ;
@@ -1005,7 +1009,7 @@ GrB_Info GB_assign_prep
         }
         // C2 must be transplanted back into C when done
         C = C2 ;
-        ASSERT (C->static_header) ;
+        ASSERT (C->static_header || GBNSTATIC) ;
     }
     else
     {
@@ -1134,8 +1138,7 @@ GrB_Info GB_assign_prep
         //----------------------------------------------------------------------
 
         if (!wait)
-        {
-
+        { 
             // ( delete ) will not occur, but new pending tuples may be added
             // via the action: ( insert ).  Check if the accum operator is the
             // same as the prior pending operator and ensure the types are
@@ -1144,33 +1147,18 @@ GrB_Info GB_assign_prep
             ASSERT (C->Pending != NULL) ;
             ASSERT (C->Pending->type != NULL) ;
 
-            if (atype != C->Pending->type)
-            { 
+            wait =
                 // entries in A are copied directly into the list of pending
                 // tuples for C, with no typecasting.  The type of the prior
-                // pending tuples must match the type of A.  Since the types
-                // do not match, prior updates must be assembled first.
-                wait = true ;
-            }
-            else if
-            (
-                // the types match, now check the pending operator
-                ! (
-                    // the operators are the same
-                    (accum == C->Pending->op)
-                    // or both operators are SECOND_Ctype, implicit or explicit
+                // pending tuples must match the type of A.  If the types do
+                // not match, prior updates must be assembled first.
+                (atype != C->Pending->type)
+                // also wait if the pending operator has changed.
+                || !((accum == C->Pending->op)
                     || (GB_op_is_second (accum, ctype) &&
-                        GB_op_is_second (C->Pending->op, ctype))
-                  )
-            )
-            { 
-                wait = true ;
-            }
-            else if (C->iso != C_iso_out)
-            { 
-                // the iso property of C is changing
-                wait = true ;
-            }
+                        GB_op_is_second (C->Pending->op, ctype)))
+                // also wait if the iso property of C changes.
+                || (C->iso != C_iso_out) ;
         }
     }
 
@@ -1202,7 +1190,7 @@ GrB_Info GB_assign_prep
 
     if (C_iso_out)
     {
-        GBURBLE ("(iso assign) ") ;
+        GBURBLE ("(C iso assign) ") ;
     }
 
     //--------------------------------------------------------------------------
@@ -1247,7 +1235,7 @@ GrB_Info GB_assign_prep
         // C is non-iso on input, but iso on output
         // copy the cout scalar into C->x
         // set C->iso = true    OK
-        GB_OK (GB_convert_any_to_iso (C, cout, true, Context)) ;
+        GB_OK (GB_convert_any_to_iso (C, cout, Context)) ;
     }
     else if (C->iso && C_iso_out)
     { 

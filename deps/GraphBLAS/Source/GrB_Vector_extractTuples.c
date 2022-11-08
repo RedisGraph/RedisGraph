@@ -2,7 +2,7 @@
 // GrB_Vector_extractTuples: extract all tuples from a vector
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -38,6 +38,7 @@ GrB_Info GB_EVAL3 (prefix, _Vector_extractTuples_, T)                         \
     GrB_Info info = GB_extractTuples (I, NULL, X, p_nvals, GB_ ## T ## _code, \
         (GrB_Matrix) v, Context) ;                                            \
     GB_BURBLE_END ;                                                           \
+    GB_PRAGMA (omp flush)                                                     \
     return (info) ;                                                           \
 }
 

@@ -2,8 +2,8 @@
 // gbmdiag: construct a diaogonal matrix from a vector
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -61,7 +61,7 @@ void mexFunction
     CHECK_ERROR (s == GxB_HYPERSPARSE, "v cannot be hypersparse") ;
 
     if (nargin > 1)
-    {
+    { 
         CHECK_ERROR (!gb_mxarray_is_scalar (pargin [1]), "k must be a scalar") ;
         double x = mxGetScalar (pargin [1]) ;
         k = (int64_t) x ;

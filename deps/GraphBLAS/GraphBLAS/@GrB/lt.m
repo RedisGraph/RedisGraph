@@ -5,17 +5,14 @@ function C = lt (A, B)
 %
 % See also GrB/le, GrB/gt, GrB/ge, GrB/ne, GrB/eq.
 
-% FUTURE: lt(A,B) for two matrices A and B is slower than it could be.
-% See comments in gb_union_op.
-
 % The pattern of C depends on the type of inputs:
 % A scalar, B scalar:  C is scalar.
 % A scalar, B matrix:  C is full if A<0, otherwise C is a subset of B.
 % B scalar, A matrix:  C is full if B>0, otherwise C is a subset of A.
 % A matrix, B matrix:  C has the pattern of the set union, A+B.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 if (isobject (A))
     A = A.opaque ;
@@ -34,7 +31,7 @@ ctype = gboptype (atype, btype) ;
 if (a_is_scalar)
     if (b_is_scalar)
         % both A and B are scalars
-        C = GrB (gb_union_op ('<', A, B)) ;
+        C = GrB (gbeunion (A, 0, '<', B, 0)) ;
     else
         % A is a scalar, B is a matrix
         if (gb_scalar (A) < 0)
@@ -75,7 +72,7 @@ else
         end
     else
         % both A and B are matrices.  C is the set union of A and B.
-        C = GrB (gb_union_op ('<', A, B)) ;
+        C = GrB (gbeunion (A, 0, '<', B, 0)) ;
     end
 end
 

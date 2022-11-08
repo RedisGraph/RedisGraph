@@ -2,7 +2,7 @@
 // GB_subassign_one_slice: slice the entries and vectors for subassign
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -27,8 +27,8 @@
 
 #include "GB_subassign_methods.h"
 
-#undef  GB_FREE_WORK
-#define GB_FREE_WORK                \
+#undef  GB_FREE_WORKSPACE
+#define GB_FREE_WORKSPACE           \
 {                                   \
     GB_WERK_POP (Coarse, int64_t) ; \
 }
@@ -36,8 +36,8 @@
 #undef  GB_FREE_ALL
 #define GB_FREE_ALL                             \
 {                                               \
-    GB_FREE_WORK ;                              \
-    GB_FREE_WERK (&TaskList, TaskList_size) ;   \
+    GB_FREE_WORKSPACE ;                         \
+    GB_FREE_WORK (&TaskList, TaskList_size) ;   \
 }
 
 //------------------------------------------------------------------------------
@@ -70,6 +70,7 @@ GrB_Info GB_subassign_one_slice
     // check inputs
     //--------------------------------------------------------------------------
 
+    GrB_Info info ;
     ASSERT (p_TaskList != NULL) ;
     ASSERT (p_ntasks != NULL) ;
     ASSERT (p_nthreads != NULL) ;
@@ -122,7 +123,9 @@ GrB_Info GB_subassign_one_slice
     int max_ntasks = 0 ;
     int ntasks = 0 ;
     int ntasks0 = (nthreads == 1) ? 1 : (32 * nthreads) ;
-    GB_REALLOC_TASK_WERK (TaskList, ntasks0, max_ntasks) ;
+    GB_REALLOC_TASK_WORK (TaskList, ntasks0, max_ntasks) ;
+
+    GB_GET_C_HYPER_HASH ;
 
     //--------------------------------------------------------------------------
     // check for quick return for a single task
@@ -196,7 +199,7 @@ GrB_Info GB_subassign_one_slice
 
             // This is a non-empty coarse-grain task that does two or more
             // entire vectors of M, vectors k:klast, inclusive.
-            GB_REALLOC_TASK_WERK (TaskList, ntasks + 1, max_ntasks) ;
+            GB_REALLOC_TASK_WORK (TaskList, ntasks + 1, max_ntasks) ;
             TaskList [ntasks].kfirst = k ;
             TaskList [ntasks].klast  = klast ;
             ntasks++ ;
@@ -236,7 +239,7 @@ GrB_Info GB_subassign_one_slice
             ASSERT (k >= 0 && k < mnvec) ;
             int64_t j = GBH (Mh, k) ;
             ASSERT (j >= 0 && j < nJ) ;
-            int64_t GB_LOOKUP_jC ;
+            GB_LOOKUP_VECTOR_jC (false, 0) ;
 
             bool jC_dense = (pC_end - pC_start == Cvlen) ;
 
@@ -249,7 +252,7 @@ GrB_Info GB_subassign_one_slice
             nfine = GB_IMAX (nfine, 1) ;
 
             // make the TaskList bigger, if needed
-            GB_REALLOC_TASK_WERK (TaskList, ntasks + nfine, max_ntasks) ;
+            GB_REALLOC_TASK_WORK (TaskList, ntasks + nfine, max_ntasks) ;
 
             //------------------------------------------------------------------
             // create the fine-grain tasks
@@ -344,7 +347,7 @@ GrB_Info GB_subassign_one_slice
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     (*p_TaskList  ) = TaskList ;
     (*p_TaskList_size) = TaskList_size ;
     (*p_ntasks    ) = ntasks ;

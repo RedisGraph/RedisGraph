@@ -2,7 +2,7 @@
 // GB_BinaryOp_compatible: check binary operator for type compatibility
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -28,19 +28,19 @@ GrB_Info GB_BinaryOp_compatible     // check for domain mismatch
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (op != NULL) ;
     // ctype and btype may be NULL, but atype is never NULL
+    ASSERT (op != NULL) ;
     ASSERT (atype != NULL) ;
     ASSERT (bcode <= GB_UDT_code) ;
     GB_Opcode opcode = op->opcode ;
-    bool op_is_pair_or_positional = (opcode == GB_PAIR_opcode) 
+    bool op_is_pair_or_positional = (opcode == GB_PAIR_binop_code) 
         || GB_OPCODE_IS_POSITIONAL (opcode) ;
 
     //--------------------------------------------------------------------------
     // first input A is cast into the type of op->xtype
     //--------------------------------------------------------------------------
 
-    if (opcode == GB_SECOND_opcode || op_is_pair_or_positional)
+    if (opcode == GB_SECOND_binop_code || op_is_pair_or_positional)
     { 
         // first input is unused, so A is always compatible
         ;
@@ -58,7 +58,7 @@ GrB_Info GB_BinaryOp_compatible     // check for domain mismatch
     // second input B is cast into the type of op->ytype
     //--------------------------------------------------------------------------
 
-    if (opcode == GB_FIRST_opcode || op_is_pair_or_positional)
+    if (opcode == GB_FIRST_binop_code || op_is_pair_or_positional)
     { 
         // second input is unused, so B is always compatible
         ;

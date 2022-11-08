@@ -2,7 +2,7 @@
 // GB_msort_3: sort a 3-by-n list of integers, using A[0:2][ ] as the key
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -16,7 +16,7 @@
 // GB_msort_3_binary_search: binary search for the pivot
 //------------------------------------------------------------------------------
 
-// The Pivot value is Y [pivot], and a binary search for the Pivot is made in
+// The Pivot value is Z [pivot], and a binary search for the Pivot is made in
 // the array X [p_pstart...p_end-1], which is sorted in non-decreasing order on
 // input.  The return value is pleft, where
 //
@@ -31,9 +31,9 @@
 
 static int64_t GB_msort_3_binary_search    // return pleft
 (
-    const int64_t *restrict Y_0,         // Pivot is Y [pivot]
-    const int64_t *restrict Y_1,
-    const int64_t *restrict Y_2,
+    const int64_t *restrict Z_0,         // Pivot is Z [pivot]
+    const int64_t *restrict Z_1,
+    const int64_t *restrict Z_2,
     const int64_t pivot,
     const int64_t *restrict X_0,         // search in X [p_start..p_end_-1]
     const int64_t *restrict X_1,
@@ -55,7 +55,7 @@ static int64_t GB_msort_3_binary_search    // return pleft
         int64_t pmiddle = (pleft + pright) >> 1 ;
         // less = (X [pmiddle] < Pivot)
         bool less = GB_lt_3 (X_0, X_1, X_2, pmiddle,
-                             Y_0, Y_1, Y_2, pivot) ;
+                             Z_0, Z_1, Z_2, pivot) ;
         pleft  = less ? (pmiddle+1) : pleft ;
         pright = less ? pright : pmiddle ;
     }
@@ -71,13 +71,13 @@ static int64_t GB_msort_3_binary_search    // return pleft
     //    X [pleft+1 ... p_end-1] > Pivot holds.
     //    The value X [pleft] may be either < or > Pivot.
     bool found = (pleft == pright) && GB_eq_3 (X_0, X_1, X_2, pleft,
-                                               Y_0, Y_1, Y_2, pivot) ;
+                                               Z_0, Z_1, Z_2, pivot) ;
 
     // Modify pleft and pright:
     if (!found && (pleft == pright))
     {
         if (GB_lt_3 (X_0, X_1, X_2, pleft,
-                     Y_0, Y_1, Y_2, pivot))
+                     Z_0, Z_1, Z_2, pivot))
         { 
             pleft++ ;
         }
@@ -350,7 +350,7 @@ GrB_Info GB_msort_3    // sort array A of size 3-by-n, using 3 keys (A [0:2][])
     //--------------------------------------------------------------------------
 
     int64_t *restrict W = NULL ; size_t W_size = 0 ;
-    W = GB_MALLOC_WERK (3*n + 6*ntasks + 1, int64_t, &W_size) ;
+    W = GB_MALLOC_WORK (3*n + 6*ntasks + 1, int64_t, &W_size) ;
     if (W == NULL)
     { 
         // out of memory
@@ -455,7 +455,7 @@ GrB_Info GB_msort_3    // sort array A of size 3-by-n, using 3 keys (A [0:2][])
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WERK (&W, W_size) ;
+    GB_FREE_WORK (&W, W_size) ;
     return (GrB_SUCCESS) ;
 }
 

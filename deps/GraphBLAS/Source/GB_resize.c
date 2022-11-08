@@ -2,7 +2,7 @@
 // GB_resize: change the size of a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -13,7 +13,7 @@
 {                                       \
     GB_FREE (&Ax_new, Ax_new_size) ;    \
     GB_FREE (&Ab_new, Ab_new_size) ;    \
-    GB_phbix_free (A) ;                 \
+    GB_phybix_free (A) ;                \
 }
 
 //------------------------------------------------------------------------------
@@ -97,7 +97,7 @@ GrB_Info GB_resize              // change the size of a matrix
 
         // get the old and new dimensions
         int64_t anz_new = 1 ;
-        bool ok = GB_Index_multiply ((GrB_Index *) &anz_new,
+        bool ok = GB_int64_multiply ((GrB_Index *) &anz_new,
             vlen_new, vdim_new) ;
         if (!ok) anz_new = 1 ;
         size_t nzmax_new = GB_IMAX (anz_new, 1) ;
@@ -120,8 +120,10 @@ GrB_Info GB_resize              // change the size of a matrix
             }
             else
             { 
-                // allocate new space for A->x
-                Ax_new = GB_MALLOC (nzmax_new*asize, GB_void, &Ax_new_size) ;
+                // allocate new space for A->x; use calloc to ensure all space
+                // is initialized.
+                Ax_new = GB_CALLOC (nzmax_new*asize, GB_void, // x:OK:calloc
+                    &Ax_new_size) ;
                 ok = (Ax_new != NULL) ;
             }
         }
@@ -242,6 +244,9 @@ GrB_Info GB_resize              // change the size of a matrix
         GB_OK (GB_convert_any_to_hyper (A, Context)) ;
         ASSERT (GB_IS_HYPERSPARSE (A)) ;
 
+        // A->Y will be invalidated, so free it
+        GB_hyper_hash_free (A) ;
+
         // resize the number of sparse vectors
         int64_t *restrict Ah = A->h ;
         int64_t *restrict Ap = A->p ;
@@ -265,10 +270,8 @@ GrB_Info GB_resize              // change the size of a matrix
             bool found ;
             GB_SPLIT_BINARY_SEARCH (vdim_new, Ah, pleft, pright, found) ;
             A->nvec = pleft ;
-        }
+            A->nvals = Ap [A->nvec] ;
 
-        if (vdim_new < vdim_old)
-        { 
             // number of vectors is decreasing, need to count the new number of
             // non-empty vectors: done during pruning or by selector, below.
             A->nvec_nonempty = -1 ;     // recomputed just below
@@ -281,8 +284,15 @@ GrB_Info GB_resize              // change the size of a matrix
         // if vlen is shrinking, delete entries outside the new matrix
         if (vlen_new < vlen_old)
         { 
-            GB_OK (GB_selector (NULL /* A in-place */, GB_RESIZE_opcode, NULL,
-                false, A, vlen_new-1, NULL, Context)) ;
+            GB_OK (GB_selector (
+                NULL,                   // A in-place
+                GB_ROWLE_idxunop_code,  // use the opcode only
+                NULL,                   // no operator, just opcode is needed
+                false,                  // flipij is false
+                A,                      // input/output matrix
+                vlen_new-1,             // ithunk
+                NULL,                   // no Thunk GrB_Scalar
+                Context)) ;
         }
 
         //----------------------------------------------------------------------
@@ -296,7 +306,9 @@ GrB_Info GB_resize              // change the size of a matrix
         // conform the matrix to its desired sparsity structure
         //----------------------------------------------------------------------
 
-        return (GB_conform (A, Context)) ;
+        info = GB_conform (A, Context) ;
+        ASSERT (GB_IMPLIES (info == GrB_SUCCESS, A->nvec_nonempty >= 0)) ;
+        return (info) ;
     }
 }
 

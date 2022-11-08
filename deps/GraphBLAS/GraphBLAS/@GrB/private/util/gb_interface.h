@@ -2,8 +2,8 @@
 // gb_interface.h: definitions the SuiteSparse:GraphBLAS interface
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -58,13 +58,29 @@ void gbcov_put (void) ;
 
 #define CHECK_ERROR(error,message) if (error) ERROR (message) ;
 
-#define OK(method) CHECK_ERROR ((method) != GrB_SUCCESS, "GrB:error") ;
+#define OK(method)                                          \
+{                                                           \
+    GrB_Info info = method ;                                \
+    if (info != GrB_SUCCESS)                                \
+    {                                                       \
+        ERROR (gb_error (info)) ;                           \
+    }                                                       \
+}
+
+#define OK0(method)                                         \
+{                                                           \
+    GrB_Info info = method ;                                \
+    if (!(info == GrB_SUCCESS || info == GrB_NO_VALUE))     \
+    {                                                       \
+        ERROR (gb_error (info)) ;                           \
+    }                                                       \
+}
 
 #define OK1(C,method)                                       \
 {                                                           \
     if ((method) != GrB_SUCCESS)                            \
     {                                                       \
-        char *message ;                                     \
+        const char *message ;                               \
         GrB_Matrix_error (&message, C) ;                    \
         ERROR (message) ;                                   \
     }                                                       \
@@ -173,7 +189,7 @@ GrB_Matrix gb_get_deep      // return a deep GrB_Matrix copy of a built-in X
     const mxArray *X        // input built-in matrix (sparse or struct)
 ) ;
 
-GrB_Type gb_type_to_mxstring    // return the built-in string from a GrB_Type
+mxArray * gb_type_to_mxstring    // return the built-in string from a GrB_Type
 (
     const GrB_Type type
 ) ;
@@ -203,6 +219,11 @@ void gb_usage       // check usage and make sure GxB_init has been called
 (
     bool ok,                // if false, then usage is not correct
     const char *message     // error message if usage is not correct
+) ;
+
+const char *gb_error        // return an error string from a GrB_Info value
+(
+    GrB_Info info
 ) ;
 
 void gb_find_dot            // find 1st and 2nd dot ('.') in a string
@@ -242,18 +263,33 @@ GrB_BinaryOp gb_mxstring_to_binop       // return binary operator from a string
     const GrB_Type btype                // type of B
 ) ;
 
-GrB_BinaryOp gb_string_to_binop         // return binary operator from a string
+void gb_mxstring_to_binop_or_idxunop    // binop or idxunop from a string
+(
+    const mxArray *mxstring,            // built-in string
+    const GrB_Type atype,               // type of A
+    const GrB_Type btype,               // type of B
+    // output:
+    GrB_BinaryOp *op2,                  // binary op
+    GrB_IndexUnaryOp *idxunop,          // idxunop
+    int64_t *ithunk                     // thunk for idxunop
+) ;
+
+GrB_BinaryOp gb_string_to_binop_or_idxunop
 (
     char *opstring,                     // string defining the operator
     const GrB_Type atype,               // type of A
-    const GrB_Type btype                // type of B
+    const GrB_Type btype,               // type of B
+    GrB_IndexUnaryOp *idxunop,          // idxunop from the string
+    int64_t *ithunk                     // thunk for idxunop
 ) ;
 
-GrB_BinaryOp gb_string_and_type_to_binop    // return op from string and type
+GrB_BinaryOp gb_string_and_type_to_binop_or_idxunop
 (
     const char *op_name,        // name of the operator, as a string
     const GrB_Type type,        // type of the x,y inputs to the operator
-    const bool type_not_given   // true if no type present in the string
+    const bool type_not_given,  // true if no type present in the string
+    GrB_IndexUnaryOp *idxunop,          // idxunop from the string
+    int64_t *ithunk                     // thunk for idxunop
 ) ;
 
 GrB_Semiring gb_mxstring_to_semiring    // return semiring from a string
@@ -317,19 +353,43 @@ mxArray *gb_export              // return the exported built-in matrix or struct
     kind_enum_t kind            // GrB, sparse, or full
 ) ;
 
-GxB_SelectOp gb_string_to_selectop      // return select operator from a string
+void gb_string_to_selectop
 (
-    char *opstring                      // string defining the operator
+    // outputs: one of the outputs is non-NULL and the other NULL
+    GrB_IndexUnaryOp *idxunop,          // GrB_IndexUnaryOp, if found
+    GxB_SelectOp *selop,                // GxB_SelectOp if found
+    bool *thunk_required,               // true if op requires a thunk scalar
+    bool *op_is_positional,             // true if op is positional
+    // input/output:
+    int64_t *ithunk,
+    // inputs:
+    char *opstring,                     // string defining the operator
+    const GrB_Type atype                // type of A, or NULL if not present
 ) ;
 
-GxB_SelectOp gb_mxstring_to_selectop    // return select operator from a string
+void gb_mxstring_to_selectop
 (
-    const mxArray *mxstring             // built-in string
+    // outputs: one of the outputs is non-NULL and the other NULL
+    GrB_IndexUnaryOp *idxunop,          // GrB_IndexUnaryOp, if found
+    GxB_SelectOp *selop,                // GxB_SelectOp if found
+    bool *thunk_required,               // true if op requires a thunk scalar
+    bool *op_is_positional,             // true if op is positional
+    // input/output:
+    int64_t *ithunk,
+    // inputs:
+    const mxArray *mxstring,            // built-in string
+    const GrB_Type atype                // type of A, or NULL if not present
 ) ;
 
 bool gb_mxarray_is_scalar   // true if built-in array is a scalar
 (
     const mxArray *S
+) ;
+
+uint64_t gb_mxget_uint64_scalar // return uint64 value of a MATLAB scalar
+(
+    const mxArray *mxscalar,    // MATLAB scalar to extract
+    char *name                  // name of the scalar
 ) ;
 
 bool gb_mxarray_is_empty    // true if built-in array is NULL, or 2D and 0-by-0
@@ -357,7 +417,8 @@ GrB_Index *gb_mxcell_to_index   // return index list I
     base_enum_t base,           // I is one-based or zero-based
     const GrB_Index n,          // dimension of matrix being indexed
     bool *I_allocated,          // true if output array I is allocated
-    GrB_Index *ni               // length (I)
+    GrB_Index *ni,              // length (I)
+    int64_t *I_max              // max (I) is computed if I_max is not NULL
 ) ;
 
 GrB_BinaryOp gb_first_binop         // return GrB_FIRST_[type] operator
@@ -389,20 +450,6 @@ bool gb_mxstring_to_format      // true if a valid format is found
     // output
     GxB_Format_Value *fmt,
     int *sparsity
-) ;
-
-void gb_matrix_assign_scalar
-(
-    GrB_Matrix C,               // C can be of any type
-    const GrB_Matrix M,
-    const GrB_BinaryOp accum,
-    const GrB_Matrix A,
-    const GrB_Index *I,
-    const GrB_Index ni,
-    const GrB_Index *J,
-    const GrB_Index nj,
-    const GrB_Descriptor desc,
-    bool do_subassign           // true: use GxB_subassign, false: GrB_assign
 ) ;
 
 void gb_assign                  // gbassign or gbsubassign mexFunctions
@@ -461,14 +508,22 @@ bool gb_is_all              // true if op (A,B) is all true, false otherwise
     GrB_BinaryOp op
 ) ;
 
-bool gb_isnan32      (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
-bool gb_isnan64      (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
-bool gb_isnotnan32   (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
-bool gb_isnotnan64   (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
-bool gb_isnanfc32    (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
-bool gb_isnanfc64    (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
-bool gb_isnotnanfc32 (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
-bool gb_isnotnanfc64 (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
+void gb_isnan32 (bool *z, const float *aij,
+                 int64_t i, int64_t j, const void *thunk) ;
+void gb_isnan64 (bool *z, const double *aij,
+                 int64_t i, int64_t j, const void *thunk) ;
+void gb_isnotnan32 (bool *z, const float *aij,
+                    int64_t i, int64_t j, const void *thunk) ;
+void gb_isnotnan64 (bool *z, const double *aij,
+                    int64_t i, int64_t j, const void *thunk) ;
+void gb_isnanfc32 (bool *z, const GxB_FC32_t *x,
+                   int64_t i, int64_t j, const void *thunk) ;
+void gb_isnanfc64 (bool *z, const GxB_FC64_t *aij,
+                   int64_t i, int64_t j, const void *thunk) ;
+void gb_isnotnanfc32 (bool *z, const GxB_FC32_t *aij,
+                      int64_t i, int64_t j, const void *thunk) ;
+void gb_isnotnanfc64 (bool *z, const GxB_FC64_t *aij,
+                      int64_t i, int64_t j, const void *thunk) ;
 
 void gb_get_mxargs
 (
@@ -477,11 +532,11 @@ void gb_get_mxargs
     const mxArray *pargin [ ],  // input arguments for mexFunction
     const char *usage,          // usage to print, if too many args appear
     // output:
-    const mxArray *Matrix [4],  // matrix arguments
+    mxArray *Matrix [4],        // matrix arguments
     int *nmatrices,             // # of matrix arguments
-    const mxArray *String [2],  // string arguments
+    mxArray *String [2],        // string arguments
     int *nstrings,              // # of string arguments
-    const mxArray *Cell [2],    // cell array arguments
+    mxArray *Cell [2],          // cell array arguments
     int *ncells,                // # of cell array arguments
     GrB_Descriptor *desc,       // last argument is always the descriptor
     base_enum_t *base,          // desc.base
@@ -508,7 +563,7 @@ bool gb_is_integer (const GrB_Type type) ;
 
 bool gb_is_float (const GrB_Type type) ;
 
-GrB_BinaryOp gb_round_binop (const GrB_Type type) ;
+GrB_UnaryOp gb_round_op (const GrB_Type type) ;
 
 mxArray *gb_mxclass_to_mxstring (mxClassID class, bool is_complex) ;
 

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -81,8 +81,6 @@ GrB_Info RG_Matrix_removeElement_BOOL
 		info = GrB_Matrix_removeElement(dp, i, j);
 		ASSERT(info == GrB_SUCCESS);
 	}
-
-	RG_Matrix_validateState(C, i, j);
 
 	RG_Matrix_setDirty(C);
 	return info;
@@ -173,8 +171,6 @@ GrB_Info RG_Matrix_removeElement_UINT64
 		info = GrB_Matrix_removeElement(dp, i, j);
 		ASSERT(info == GrB_SUCCESS);
 	}
-
-	RG_Matrix_validateState(C, i, j);
 
 	RG_Matrix_setDirty(C);
 	return info;

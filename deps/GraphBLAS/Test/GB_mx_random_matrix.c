@@ -2,7 +2,7 @@
 // GraphBLAS/Test/GB_mx_random_matrix.c: create a random matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -72,6 +72,7 @@ GrB_Info GB_mx_random_matrix      // create a random double-precision matrix
             ncols, nedges, method, false)) ;
         // A = Areal + imag(Aimag)
         OK (GrB_Matrix_new (&A, Complex, nrows, ncols)) ;
+        OK (GxB_Matrix_Option_set (A, GxB_FORMAT, GxB_BY_COL)) ;
         OK (GrB_Matrix_apply (A, NULL, NULL,         Complex_complex_real,
             Areal, NULL)) ;
         OK (GrB_Matrix_apply (A, NULL, Complex_plus, Complex_complex_imag,
@@ -87,6 +88,7 @@ GrB_Info GB_mx_random_matrix      // create a random double-precision matrix
     //--------------------------------------------------------------------------
 
     OK (GrB_Matrix_new (&A, GrB_FP64, nrows, ncols)) ;
+    OK (GxB_Matrix_Option_set (A, GxB_FORMAT, GxB_BY_COL)) ;
 
     if (method == 0)
     {

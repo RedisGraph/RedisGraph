@@ -2,8 +2,8 @@
 // gbextracttuples: extract all entries from a GraphBLAS matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -91,7 +91,8 @@ void mexFunction
         OK (GrB_Matrix_extractTuples_BOOL (I, J, X, &nvals, A)) ;
         if (extract_X)
         { 
-            pargout [2] = gb_export_to_mxfull (&X, nvals, 1, GrB_BOOL) ;
+            pargout [2] = gb_export_to_mxfull ((void **) (&X), nvals, 1,
+                GrB_BOOL) ;
         }
     }
     else if (xtype == GrB_INT8)
@@ -100,7 +101,8 @@ void mexFunction
         OK (GrB_Matrix_extractTuples_INT8 (I, J, X, &nvals, A)) ;
         if (extract_X)
         { 
-            pargout [2] = gb_export_to_mxfull (&X, nvals, 1, GrB_INT8) ;
+            pargout [2] = gb_export_to_mxfull ((void **) (&X), nvals, 1,
+                GrB_INT8) ;
         }
     }
     else if (xtype == GrB_INT16)
@@ -109,7 +111,8 @@ void mexFunction
         OK (GrB_Matrix_extractTuples_INT16 (I, J, X, &nvals, A)) ;
         if (extract_X)
         { 
-            pargout [2] = gb_export_to_mxfull (&X, nvals, 1, GrB_INT16) ;
+            pargout [2] = gb_export_to_mxfull ((void **) (&X), nvals, 1,
+                GrB_INT16) ;
         }
     }
     else if (xtype == GrB_INT32)
@@ -118,7 +121,8 @@ void mexFunction
         OK (GrB_Matrix_extractTuples_INT32 (I, J, X, &nvals, A)) ;
         if (extract_X)
         { 
-            pargout [2] = gb_export_to_mxfull (&X, nvals, 1, GrB_INT32) ;
+            pargout [2] = gb_export_to_mxfull ((void **) (&X), nvals, 1,
+                GrB_INT32) ;
         }
     }
     else if (xtype == GrB_INT64)
@@ -127,7 +131,8 @@ void mexFunction
         OK (GrB_Matrix_extractTuples_INT64 (I, J, X, &nvals, A)) ;
         if (extract_X)
         { 
-            pargout [2] = gb_export_to_mxfull (&X, nvals, 1, GrB_INT64) ;
+            pargout [2] = gb_export_to_mxfull ((void **) (&X), nvals, 1,
+                GrB_INT64) ;
         }
     }
     else if (xtype == GrB_UINT8)
@@ -136,7 +141,8 @@ void mexFunction
         OK (GrB_Matrix_extractTuples_UINT8 (I, J, X, &nvals, A)) ;
         if (extract_X)
         { 
-            pargout [2] = gb_export_to_mxfull (&X, nvals, 1, GrB_UINT8) ;
+            pargout [2] = gb_export_to_mxfull ((void **) (&X), nvals, 1,
+                GrB_UINT8) ;
         }
     }
     else if (xtype == GrB_UINT16)
@@ -145,7 +151,8 @@ void mexFunction
         OK (GrB_Matrix_extractTuples_UINT16 (I, J, X, &nvals, A)) ;
         if (extract_X)
         { 
-            pargout [2] = gb_export_to_mxfull (&X, nvals, 1, GrB_UINT16) ;
+            pargout [2] = gb_export_to_mxfull ((void **) (&X), nvals, 1,
+                GrB_UINT16) ;
         }
     }
     else if (xtype == GrB_UINT32)
@@ -154,7 +161,8 @@ void mexFunction
         OK (GrB_Matrix_extractTuples_UINT32 (I, J, X, &nvals, A)) ;
         if (extract_X)
         { 
-            pargout [2] = gb_export_to_mxfull (&X, nvals, 1, GrB_UINT32) ;
+            pargout [2] = gb_export_to_mxfull ((void **) (&X), nvals, 1,
+                GrB_UINT32) ;
         }
     }
     else if (xtype == GrB_UINT64)
@@ -163,7 +171,8 @@ void mexFunction
         OK (GrB_Matrix_extractTuples_UINT64 (I, J, X, &nvals, A)) ;
         if (extract_X)
         { 
-            pargout [2] = gb_export_to_mxfull (&X, nvals, 1, GrB_UINT64) ;
+            pargout [2] = gb_export_to_mxfull ((void **) (&X), nvals, 1,
+                GrB_UINT64) ;
         }
     }
     else if (xtype == GrB_FP32)
@@ -172,7 +181,8 @@ void mexFunction
         OK (GrB_Matrix_extractTuples_FP32 (I, J, X, &nvals, A)) ;
         if (extract_X)
         { 
-            pargout [2] = gb_export_to_mxfull (&X, nvals, 1, GrB_FP32) ;
+            pargout [2] = gb_export_to_mxfull ((void **) (&X), nvals, 1,
+                GrB_FP32) ;
         }
     }
     else if (xtype == GrB_FP64)
@@ -181,7 +191,8 @@ void mexFunction
         OK (GrB_Matrix_extractTuples_FP64 (I, J, X, &nvals, A)) ;
         if (extract_X)
         { 
-            pargout [2] = gb_export_to_mxfull (&X, nvals, 1, GrB_FP64) ;
+            pargout [2] = gb_export_to_mxfull ((void **) (&X), nvals, 1,
+                GrB_FP64) ;
         }
     }
     else if (xtype == GxB_FC32)
@@ -190,7 +201,8 @@ void mexFunction
         OK (GxB_Matrix_extractTuples_FC32 (I, J, X, &nvals, A)) ;
         if (extract_X)
         { 
-            pargout [2] = gb_export_to_mxfull (&X, nvals, 1, GxB_FC32) ;
+            pargout [2] = gb_export_to_mxfull ((void **) (&X), nvals, 1,
+                GxB_FC32) ;
         }
     }
     else if (xtype == GxB_FC64)
@@ -199,7 +211,8 @@ void mexFunction
         OK (GxB_Matrix_extractTuples_FC64 (I, J, X, &nvals, A)) ;
         if (extract_X)
         { 
-            pargout [2] = gb_export_to_mxfull (&X, nvals, 1, GxB_FC64) ;
+            pargout [2] = gb_export_to_mxfull ((void **) (&X), nvals, 1,
+                GxB_FC64) ;
         }
     }
     else
@@ -247,12 +260,14 @@ void mexFunction
 
         if (extract_I)
         { 
-            pargout [0] = gb_export_to_mxfull (&I, nvals, 1, GrB_INT64) ;
+            pargout [0] = gb_export_to_mxfull ((void **) (&I), nvals, 1,
+                GrB_INT64) ;
         }
 
         if (extract_J)
         { 
-            pargout [1] = gb_export_to_mxfull (&J, nvals, 1, GrB_INT64) ;
+            pargout [1] = gb_export_to_mxfull ((void **) (&J), nvals, 1,
+                GrB_INT64) ;
         }
 
     }
@@ -267,16 +282,18 @@ void mexFunction
         { 
             double *I_double = mxMalloc (s * sizeof (double)) ;
             GB_helper1 (I_double, I, (int64_t) nvals) ;
-            gb_mxfree (&I) ;
-            pargout [0] = gb_export_to_mxfull (&I_double, nvals, 1, GrB_FP64) ;
+            gb_mxfree ((void **) (&I)) ;
+            pargout [0] = gb_export_to_mxfull ((void **) (&I_double), nvals, 1,
+                GrB_FP64) ;
         }
 
         if (extract_J)
         { 
             double *J_double = mxMalloc (s * sizeof (double)) ;
             GB_helper1 (J_double, J, (int64_t) nvals) ;
-            gb_mxfree (&J) ;
-            pargout [1] = gb_export_to_mxfull (&J_double, nvals, 1, GrB_FP64) ;
+            gb_mxfree ((void **) (&J)) ;
+            pargout [1] = gb_export_to_mxfull ((void **) (&J_double), nvals, 1,
+                GrB_FP64) ;
         }
 
     }
@@ -290,13 +307,15 @@ void mexFunction
         if (extract_I)
         { 
             GB_helper1i ((int64_t *) I, (int64_t) nvals) ;
-            pargout [0] = gb_export_to_mxfull (&I, nvals, 1, GrB_INT64) ;
+            pargout [0] = gb_export_to_mxfull ((void **) (&I), nvals, 1,
+                GrB_INT64) ;
         }
 
         if (extract_J)
         { 
             GB_helper1i ((int64_t *) J, (int64_t) nvals) ;
-            pargout [1] = gb_export_to_mxfull (&J, nvals, 1, GrB_INT64) ;
+            pargout [1] = gb_export_to_mxfull ((void **) (&J), nvals, 1,
+                GrB_INT64) ;
         }
     }
 

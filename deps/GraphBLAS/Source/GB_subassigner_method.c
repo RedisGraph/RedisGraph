@@ -2,7 +2,7 @@
 // GB_subassigner_method: determine method for GB_subassign
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -691,7 +691,7 @@ int GB_subassigner_method           // return method to use in GB_subassigner
                 else
                 { 
                     // C is iso and not empty; check the result of accum
-                    GxB_binary_function faccum = accum->function ;
+                    GxB_binary_function faccum = accum->binop_function ;
 
                     size_t xsize = accum->xtype->size ;
                     size_t ysize = accum->ytype->size ;

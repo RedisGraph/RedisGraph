@@ -2,7 +2,7 @@
 // GB_dense_subassign_06d_template: C<A> = A
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -35,8 +35,10 @@
     const bool C_is_bitmap = GB_IS_BITMAP (C) ;
 
     #ifdef GB_ISO_ASSIGN
+    // C is iso, and A is either iso or effectively iso (with a single entry
+    // and not in bitmap form)
     ASSERT (C->iso) ;
-    ASSERT (A->iso) ;
+    ASSERT (A_iso || (GB_nnz (A) == 1 && !A_is_bitmap)) ;
     ASSERT (Mask_struct) ;
     #else
     const GB_ATYPE *restrict Ax = (GB_ATYPE *) A->x ;

@@ -2,7 +2,7 @@
 // GB_convert_bitmap_worker: construct triplets or CSC/CSR from bitmap
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -17,6 +17,7 @@
 
 #include "GB.h"
 #include "GB_partition.h"
+#include "GB_unused.h"
 
 GrB_Info GB_convert_bitmap_worker   // extract CSC/CSR or triplets from bitmap
 (
@@ -87,7 +88,7 @@ GrB_Info GB_convert_bitmap_worker   // extract CSC/CSR or triplets from bitmap
         //----------------------------------------------------------------------
 
         // allocate one row of W per thread, each row of length avdim
-        W = GB_MALLOC_WERK (nthreads * avdim, int64_t, &W_size) ;
+        W = GB_MALLOC_WORK (nthreads * avdim, int64_t, &W_size) ;
         if (W == NULL)
         {
             // out of memory
@@ -140,8 +141,7 @@ GrB_Info GB_convert_bitmap_worker   // extract CSC/CSR or triplets from bitmap
 
     int nth = GB_nthreads (avdim, chunk, nthreads_max) ;
     GB_cumsum (Ap, avdim, anvec_nonempty, nth, Context) ;
-    int64_t anz = Ap [avdim] ;
-    ASSERT (anz == A->nvals) ;
+    ASSERT (Ap [avdim] == A->nvals) ;
 
     //--------------------------------------------------------------------------
     // gather the pattern and values from the bitmap
@@ -233,7 +233,7 @@ GrB_Info GB_convert_bitmap_worker   // extract CSC/CSR or triplets from bitmap
     // free workspace return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WERK (&W, W_size) ;
+    GB_FREE_WORK (&W, W_size) ;
     return (GrB_SUCCESS) ;
 }
 

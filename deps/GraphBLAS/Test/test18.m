@@ -1,7 +1,7 @@
 function test18(fulltest)
-%TEST18 test GrB_eWiseAdd and GrB_eWiseMult
+%TEST18 test GrB_eWiseAdd, GxB_eWiseUnion, and GrB_eWiseMult
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 [binops, ~, ~, types, ~, ~] = GB_spec_opsall ;
@@ -13,14 +13,14 @@ if (nargin < 1)
 end
 
 if (fulltest == 2)
-    fprintf ('test18 ----------lengthy tests of GrB_eWiseAdd and eWiseMult\n') ;
+    fprintf ('test18 --------lengthy tests of GrB_eWiseAdd, eWiseUnion, eWiseMult\n') ;
     k1test = 1:length(types) ;
     k4test = randi([0,length(bin_ops)])
     k6list = [false true] ;
     k7list = [false true] ;
     k8list = 0:1 ;
 elseif (fulltest == 1)
-    fprintf ('test18 ------------tests of GrB_eWiseAdd and eWiseMult\n') ;
+    fprintf ('test18 ------------tests of GrB_eWiseAdd, eWiseUnion, and eWiseMult\n') ;
     % k1test = [1 2 4 10 11] ;
     k1test = [ 1 2 11 ] ;
     k4test = randi([0,length(bin_ops)])
@@ -28,7 +28,7 @@ elseif (fulltest == 1)
     k7list = [false true] ;
     k8list = 0:1 ;
 else
-    fprintf ('test18 ------------quick tests of GrB_eWiseAdd and eWiseMult\n') ;
+    fprintf ('test18 ------quick tests of GrB_eWiseAdd, eWiseUnion, and eWiseMult\n') ;
     k1test = [ 1 2 11 12 13] ;
     k4test = 0 ;
     k6list = [false] ;
@@ -291,6 +291,22 @@ for k1 = k1test % 1:length (types)
                                 GB_spec_compare (w0, w1, 0, tol) ;
 
                                 %---------------------------------------
+                                % A+B with eWiseUnion
+                                %---------------------------------------
+
+                                C0 = GB_spec_Matrix_eWiseUnion ...
+                                    (C, [ ], accum, op, A, 3, B, 2, dnn);
+                                C1 = GB_mex_Matrix_eWiseUnion ...
+                                    (C, [ ], accum, op, A, 3, B, 2, dnn);
+                                GB_spec_compare (C0, C1, 0, tol) ;
+
+                                w0 = GB_spec_Vector_eWiseUnion ...
+                                    (w, [ ], accum, op, u, 3, v, 2, dnn);
+                                w1 = GB_mex_Vector_eWiseUnion ...
+                                    (w, [ ], accum, op, u, 3, v, 2, dnn);
+                                GB_spec_compare (w0, w1, 0, tol) ;
+
+                                %---------------------------------------
                                 % A'+B
                                 %---------------------------------------
 
@@ -400,6 +416,22 @@ for k1 = k1test % 1:length (types)
                                     (w, mask, accum, op, u, v, dnn);
                                 w1 = GB_mex_Vector_eWiseAdd ...
                                     (w, mask, accum, op, u, v, dnn);
+                                GB_spec_compare (w0, w1, 0, tol) ;
+
+                                %---------------------------------------
+                                % A+B, with mask, eWiseUnion
+                                %---------------------------------------
+
+                                C0 = GB_spec_Matrix_eWiseUnion ...
+                                    (C, Mask, accum, op, A, 1, B, 2, dnn);
+                                C1 = GB_mex_Matrix_eWiseUnion ...
+                                    (C, Mask, accum, op, A, 1, B, 2, dnn);
+                                GB_spec_compare (C0, C1, 0, tol) ;
+
+                                w0 = GB_spec_Vector_eWiseUnion ...
+                                    (w, mask, accum, op, u, 1, v, 2, dnn);
+                                w1 = GB_mex_Vector_eWiseUnion ...
+                                    (w, mask, accum, op, u, 1, v, 2, dnn);
                                 GB_spec_compare (w0, w1, 0, tol) ;
 
                                 %---------------------------------------

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -32,11 +32,12 @@ typedef enum {
 //------------------------------------------------------------------------------
 
 void Graph_Query(void *args);
-void Graph_Slowlog(void *args);
 void Graph_Profile(void *args);
 void Graph_Explain(void *args);
 int Graph_List(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
+int Graph_Debug(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Config(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
+int Graph_Slowlog(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 

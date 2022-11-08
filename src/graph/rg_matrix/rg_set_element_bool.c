@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -50,8 +50,6 @@ GrB_Info RG_Matrix_setElement_BOOL      // C (i,j) = x
 			ASSERT(info == GrB_SUCCESS);
 		}
 	}
-
-	RG_Matrix_validateState(C, i, j);
 
 	RG_Matrix_setDirty(C);
 

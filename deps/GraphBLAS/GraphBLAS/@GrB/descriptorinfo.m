@@ -78,8 +78,8 @@ function descriptorinfo (d)
 % See also GrB.binopinfo, GrB.monoidinfo, GrB.selectopinfo,
 % GrB.semiringinfo, GrB.unopinfo.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 % FUTURE: add desc.in* = 'conjugate transpose'
 

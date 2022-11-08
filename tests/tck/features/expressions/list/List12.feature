@@ -76,7 +76,6 @@ Feature: List12 - List Comprehension
       | +properties | 1 |
       | -properties | 1 |
 
-  @skip
   Scenario: [3] Size of list comprehension
     Given an empty graph
     When executing query:
@@ -127,7 +126,6 @@ Feature: List12 - List Comprehension
       | [(:A), (:A)] | 2 |
     And no side effects
 
-  @skip
   Scenario: [6] Using a list comprehension in a WHERE
     Given an empty graph
     And having executed:

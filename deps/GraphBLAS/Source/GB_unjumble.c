@@ -2,7 +2,7 @@
 // GB_unjumble: unjumble the vectors of a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -23,6 +23,11 @@ GrB_Info GB_unjumble        // unjumble a matrix
     ASSERT_MATRIX_OK (A, "A to unjumble", GB0) ;
     ASSERT (!GB_ZOMBIES (A)) ;      // zombies must be killed first
     ASSERT (GB_PENDING_OK (A)) ;    // pending tuples are not modified
+
+    if (A->nvec_nonempty < 0)
+    { 
+        A->nvec_nonempty = GB_nvec_nonempty (A, Context) ;
+    }
 
     if (!A->jumbled)
     { 
@@ -142,6 +147,7 @@ GrB_Info GB_unjumble        // unjumble a matrix
     GB_WERK_POP (A_slice, int64_t) ;
     A->jumbled = false ;        // A has been unjumbled
     ASSERT_MATRIX_OK (A, "A unjumbled", GB0) ;
+    ASSERT (A->nvec_nonempty >= 0)
     return (GrB_SUCCESS) ;
 }
 

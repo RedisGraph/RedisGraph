@@ -2,7 +2,7 @@
 // GB_control.h:  disable hard-coded functions to reduce code size
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -21,11 +21,6 @@
 // 2x or 3x, depending on the operation. but its results will be the same.  A
 // few operations will be 10x slower, such as GrB_reduce to scalar using the
 // GrB_MAX_FP64 operator.
-
-// Enabling the "#define GBCOMPACT" option is the same as uncommenting this
-// entire file.  This file provides a more concise control over which
-// types, operators, and semirings are given fast hard-coded versions in
-// Source/Generated2, and which use the slower generic methods.
 
 // However, the code size can be reduced significantly.  Uncommenting all of
 // the options below cuts the code from 55MB to under 2.7MB, on a MacBook Pro
@@ -176,18 +171,18 @@
 // slower.
 
 // #define GxB_NO_BOOL      1
-	#define GxB_NO_FP32      1
-	#define GxB_NO_FP64      1
-	#define GxB_NO_FC32      1
-	#define GxB_NO_FC64      1
-	#define GxB_NO_INT16     1
-	#define GxB_NO_INT32     1
-	#define GxB_NO_INT64     1
-	#define GxB_NO_INT8      1
-	#define GxB_NO_UINT16    1
-	#define GxB_NO_UINT32    1
+#define GxB_NO_FP32      1
+#define GxB_NO_FP64      1
+#define GxB_NO_FC32      1
+#define GxB_NO_FC64      1
+#define GxB_NO_INT16     1
+#define GxB_NO_INT32     1
+#define GxB_NO_INT64     1
+#define GxB_NO_INT8      1
+#define GxB_NO_UINT16    1
+#define GxB_NO_UINT32    1
 // #define GxB_NO_UINT64    1
-	#define GxB_NO_UINT8     1
+#define GxB_NO_UINT8     1
 
 //------------------------------------------------------------------------------
 // uncomment any of these lines to disable the unary operators
@@ -202,10 +197,10 @@
 
 #define GxB_NO_ABS       1
 #define GxB_NO_AINV      1
-#define GxB_NO_IDENTITY  1
+// #define GxB_NO_IDENTITY  1
 #define GxB_NO_LNOT      1
 #define GxB_NO_MINV      1
-#define GxB_NO_ONE       1
+// #define GxB_NO_ONE       1
 #define GxB_NO_BNOT      1
 
 #define GxB_NO_SQRT      1
@@ -228,10 +223,10 @@
 #define GxB_NO_ACOSH     1
 #define GxB_NO_ATANH     1
 
-#define GxB_NO_SIGNUM    1
-#define GxB_NO_CEIL      1
-#define GxB_NO_FLOOR     1
-#define GxB_NO_ROUND     1
+// #define GxB_NO_SIGNUM    1
+// #define GxB_NO_CEIL      1
+// #define GxB_NO_FLOOR     1
+// #define GxB_NO_ROUND     1
 #define GxB_NO_TRUNC     1
 
 #define GxB_NO_EXP2      1
@@ -244,6 +239,7 @@
 #define GxB_NO_TGAMMA    1
 #define GxB_NO_ERF       1
 #define GxB_NO_ERFC      1
+#define GxB_NO_CBRT      1
 
 #define GxB_NO_FREXPX    1
 #define GxB_NO_FREXPE    1
@@ -253,9 +249,9 @@
 #define GxB_NO_CIMAG     1
 #define GxB_NO_CARG      1
 
-#define GxB_NO_ISINF     1
-#define GxB_NO_ISNAN     1
-#define GxB_NO_ISFINITE  1
+// #define GxB_NO_ISINF     1
+// #define GxB_NO_ISNAN     1
+// #define GxB_NO_ISFINITE  1
 
 //------------------------------------------------------------------------------
 // uncomment any of these lines to disable the binary operators for all types
@@ -274,29 +270,29 @@
 // #define GxB_NO_SECOND    1
 // #define GxB_NO_PAIR      1
 // #define GxB_NO_ANY       1
-#define GxB_NO_MIN       1
-#define GxB_NO_MAX       1
+// #define GxB_NO_MIN       1
+// #define GxB_NO_MAX       1
 // #define GxB_NO_PLUS      1
-#define GxB_NO_MINUS     1
+// #define GxB_NO_MINUS     1
 #define GxB_NO_RMINUS    1
 // #define GxB_NO_TIMES     1
 #define GxB_NO_DIV       1
 #define GxB_NO_RDIV      1
-#define GxB_NO_ISEQ      1
-#define GxB_NO_ISNE      1
-#define GxB_NO_ISGT      1
-#define GxB_NO_ISGE      1
-#define GxB_NO_ISLT      1
-#define GxB_NO_ISLE      1
+// #define GxB_NO_ISEQ      1
+// #define GxB_NO_ISNE      1
+// #define GxB_NO_ISGT      1
+// #define GxB_NO_ISGE      1
+// #define GxB_NO_ISLT      1
+// #define GxB_NO_ISLE      1
 // #define GxB_NO_EQ        1
-#define GxB_NO_NE        1
-#define GxB_NO_GT        1
-#define GxB_NO_LT        1
-#define GxB_NO_LE        1
-#define GxB_NO_GE        1
+// #define GxB_NO_NE        1
+// #define GxB_NO_GT        1
+// #define GxB_NO_LT        1
+// #define GxB_NO_LE        1
+// #define GxB_NO_GE        1
 // #define GxB_NO_LAND      1
 // #define GxB_NO_LOR       1
-#define GxB_NO_LXOR      1
+// #define GxB_NO_LXOR      1
 
 // #define GxB_NO_BOR       1
 // #define GxB_NO_BAND      1
@@ -309,22 +305,22 @@
 
 #define GxB_NO_ATAN2     1
 #define GxB_NO_HYPOT     1
-#define GxB_NO_FMOD      1
-#define GxB_NO_REMAINDER 1
-#define GxB_NO_COPYSIGN  1
+// #define GxB_NO_FMOD      1
+// #define GxB_NO_REMAINDER 1
+// #define GxB_NO_COPYSIGN  1
 #define GxB_NO_LDEXP     1
 
 #define GxB_NO_CMPLX     1
 #define GxB_NO_POW       1
 
-#define GxB_NO_FIRSTI    1
-#define GxB_NO_FIRSTI1   1
-#define GxB_NO_FIRSTJ    1
-#define GxB_NO_FIRSTJ1   1
-#define GxB_NO_SECONDI   1
-#define GxB_NO_SECONDI1  1
-#define GxB_NO_SECONDJ   1
-#define GxB_NO_SECONDJ1  1
+// #define GxB_NO_FIRSTI    1
+// #define GxB_NO_FIRSTI1   1
+// #define GxB_NO_FIRSTJ    1
+// #define GxB_NO_FIRSTJ1   1
+// #define GxB_NO_SECONDI   1
+// #define GxB_NO_SECONDI1  1
+// #define GxB_NO_SECONDJ   1
+// #define GxB_NO_SECONDJ1  1
 
 //------------------------------------------------------------------------------
 // uncomment any of these lines to disable the binary operators for each type
@@ -1738,9 +1734,9 @@
 // semirings with the TIMES monoid
 //------------------------------------------------------------
 
-// No builtin GrB_* semirings use the TIMES monoid, and none are used
-// in LAGraph 0.1 yet.  TIMES_FIRST and TIMES_SECOND are needed by
-// GrB_reduce to vector.
+// No builtin GrB_* semirings use the TIMES monoid, and none are used in
+// LAGraph yet.  TIMES_FIRST and TIMES_SECOND are needed by GrB_reduce to
+// vector.
 
 //  60 semirings with TIMES monoids (10 real types each):
 //
@@ -1955,7 +1951,7 @@
 // #define GxB_NO_TIMES_FIRST_FC32      1
 // #define GxB_NO_TIMES_FIRST_FC64      1
 
-// needed by GrB_reduce to vecto, or s = prod (A) in @GrB interface
+// needed by GrB_reduce to vector, or s = prod (A) in @GrB interface
 // #define GxB_NO_TIMES_SECOND_FC32     1
 // #define GxB_NO_TIMES_SECOND_FC64     1
 
@@ -2331,44 +2327,45 @@
 //      mult:    (FIRSTI, FIRSTI1, FIRSTJ, FIRSTJ1, SECONDJ, SECONDJ1) x
 //      types:   (int32, int64)
 
+// enable GxB_MIN_FIRSTI_INT32 for test coverage:
 // #define GxB_NO_MIN_FIRSTI_INT32      1
-// #define GxB_NO_MIN_FIRSTI_INT64      1
-// #define GxB_NO_MIN_FIRSTI1_INT32     1
-// #define GxB_NO_MIN_FIRSTI1_INT64     1
+   #define GxB_NO_MIN_FIRSTI_INT64      1
+   #define GxB_NO_MIN_FIRSTI1_INT32     1
+   #define GxB_NO_MIN_FIRSTI1_INT64     1
 // #define GxB_NO_MIN_FIRSTJ_INT32      1
 // #define GxB_NO_MIN_FIRSTJ_INT64      1
 // #define GxB_NO_MIN_FIRSTJ1_INT32     1
 // #define GxB_NO_MIN_FIRSTJ1_INT64     1
-// #define GxB_NO_MIN_SECONDJ_INT32     1
-// #define GxB_NO_MIN_SECONDJ_INT64     1
-// #define GxB_NO_MIN_SECONDJ1_INT32    1
-// #define GxB_NO_MIN_SECONDJ1_INT64    1
+   #define GxB_NO_MIN_SECONDJ_INT32     1
+   #define GxB_NO_MIN_SECONDJ_INT64     1
+   #define GxB_NO_MIN_SECONDJ1_INT32    1
+   #define GxB_NO_MIN_SECONDJ1_INT64    1
 
-// #define GxB_NO_MAX_FIRSTI_INT32      1
-// #define GxB_NO_MAX_FIRSTI_INT64      1
-// #define GxB_NO_MAX_FIRSTI1_INT32     1
-// #define GxB_NO_MAX_FIRSTI1_INT64     1
+   #define GxB_NO_MAX_FIRSTI_INT32      1
+   #define GxB_NO_MAX_FIRSTI_INT64      1
+   #define GxB_NO_MAX_FIRSTI1_INT32     1
+   #define GxB_NO_MAX_FIRSTI1_INT64     1
 // #define GxB_NO_MAX_FIRSTJ_INT32      1
 // #define GxB_NO_MAX_FIRSTJ_INT64      1
 // #define GxB_NO_MAX_FIRSTJ1_INT32     1
 // #define GxB_NO_MAX_FIRSTJ1_INT64     1
-// #define GxB_NO_MAX_SECONDJ_INT32     1
-// #define GxB_NO_MAX_SECONDJ_INT64     1
-// #define GxB_NO_MAX_SECONDJ1_INT32    1
-// #define GxB_NO_MAX_SECONDJ1_INT64    1
+   #define GxB_NO_MAX_SECONDJ_INT32     1
+   #define GxB_NO_MAX_SECONDJ_INT64     1
+   #define GxB_NO_MAX_SECONDJ1_INT32    1
+   #define GxB_NO_MAX_SECONDJ1_INT64    1
 
-// #define GxB_NO_ANY_FIRSTI_INT32      1
-// #define GxB_NO_ANY_FIRSTI_INT64      1
-// #define GxB_NO_ANY_FIRSTI1_INT32     1
-// #define GxB_NO_ANY_FIRSTI1_INT64     1
+   #define GxB_NO_ANY_FIRSTI_INT32      1
+   #define GxB_NO_ANY_FIRSTI_INT64      1
+   #define GxB_NO_ANY_FIRSTI1_INT32     1
+   #define GxB_NO_ANY_FIRSTI1_INT64     1
 // #define GxB_NO_ANY_FIRSTJ_INT32      1
 // #define GxB_NO_ANY_FIRSTJ_INT64      1
 // #define GxB_NO_ANY_FIRSTJ1_INT32     1
 // #define GxB_NO_ANY_FIRSTJ1_INT64     1
-// #define GxB_NO_ANY_SECONDJ_INT32     1
-// #define GxB_NO_ANY_SECONDJ_INT64     1
-// #define GxB_NO_ANY_SECONDJ1_INT32    1
-// #define GxB_NO_ANY_SECONDJ1_INT64    1
+   #define GxB_NO_ANY_SECONDJ_INT32     1
+   #define GxB_NO_ANY_SECONDJ_INT64     1
+   #define GxB_NO_ANY_SECONDJ1_INT32    1
+   #define GxB_NO_ANY_SECONDJ1_INT64    1
 
    #define GxB_NO_PLUS_FIRSTI_INT32     1
    #define GxB_NO_PLUS_FIRSTI_INT64     1

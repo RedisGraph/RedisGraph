@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2022 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -58,13 +58,16 @@ void Graph_Explain(void *args) {
 
 	ExecutionPlan_PreparePlan(plan);
 	ExecutionPlan_Init(plan);       // Initialize the plan's ops.
+
+	if(ErrorCtx_EncounteredError()) goto cleanup;
+
 	ExecutionPlan_Print(plan, ctx); // Print the execution plan.
 
 cleanup:
 	if(ErrorCtx_EncounteredError()) ErrorCtx_EmitException();
 	if(lock_acquired) Graph_ReleaseLock(gc->g);
 	ExecutionCtx_Free(exec_ctx);
-	GraphContext_Release(gc);
+	GraphContext_DecreaseRefCount(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 	ErrorCtx_Clear();

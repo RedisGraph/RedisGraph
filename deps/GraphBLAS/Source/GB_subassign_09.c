@@ -2,7 +2,7 @@
 // GB_subassign_09: C(I,J)<M,repl> = scalar ; using S
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -18,8 +18,8 @@
 
 // C: not bitmap or full
 
-#include "GB_unused.h"
 #include "GB_subassign_methods.h"
+#include "GB_unused.h"
 
 GrB_Info GB_subassign_09
 (
@@ -55,6 +55,7 @@ GrB_Info GB_subassign_09
     //--------------------------------------------------------------------------
 
     GB_EMPTY_TASKLIST ;
+    GB_CLEAR_STATIC_HEADER (S, &S_header) ;
     GB_OK (GB_subassign_symbolic (S, C, I, ni, J, nj, true, Context)) ;
 
     //--------------------------------------------------------------------------
@@ -132,7 +133,7 @@ GrB_Info GB_subassign_09
                 // get S(iM_start:iM_end,j)
                 //--------------------------------------------------------------
 
-                GB_GET_VECTOR_FOR_IXJ (S, iM_start) ;
+                GB_LOOKUP_VECTOR_FOR_IXJ (S, iM_start) ;
                 int64_t pM_start = j * Mvlen ;
 
                 //--------------------------------------------------------------
@@ -334,7 +335,7 @@ GrB_Info GB_subassign_09
                 // get S(iM_start:iM_end,j)
                 //--------------------------------------------------------------
 
-                GB_GET_VECTOR_FOR_IXJ (S, iM_start) ;
+                GB_LOOKUP_VECTOR_FOR_IXJ (S, iM_start) ;
                 int64_t pM_start = j * Mvlen ;
 
                 //--------------------------------------------------------------

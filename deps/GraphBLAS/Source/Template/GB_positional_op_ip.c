@@ -2,7 +2,7 @@
 // GB_positional_op_ip: C = positional_op (A), depending only on i
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -19,11 +19,11 @@
     #pragma omp parallel for num_threads(nthreads) schedule(static)
     for (p = 0 ; p < anz ; p++)
     { 
-        // GB_POSITION is either i or i+1
+        // Cx [p] = op (A (i,j))
         int64_t i = GBI (Ai, p, avlen) ;
-        Cx_int [p] = GB_POSITION ;
+        GB_APPLY (p) ;
     }
 }
 
-#undef GB_POSITION
+#undef GB_APPLY
 

@@ -2,7 +2,7 @@
 // GB_build.h: definitions for GB_build
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -21,6 +21,7 @@ GrB_Info GB_build               // build matrix
     const GrB_BinaryOp dup,     // binary op to assemble duplicates
     const GrB_Type xtype,       // type of X array
     const bool is_matrix,       // true if C is a matrix, false if GrB_Vector
+    const bool X_iso,           // if true the C is iso and X has size 1 entry
     GB_Context Context
 ) ;
 
@@ -52,12 +53,8 @@ GrB_Info GB_builder                 // build a matrix from tuples
                                     // if NULL use the SECOND operator to
                                     // keep the most recent duplicate.
     const GrB_Type stype,           // the type of S_work or S_input
+    bool do_burble,                 // if true, then burble is allowed
     GB_Context Context
 ) ;
-
-static inline bool GB_iso_build (GrB_BinaryOp dup)
-{ 
-    return (dup == NULL) ;
-}
 
 #endif
