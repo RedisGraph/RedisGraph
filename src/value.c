@@ -274,31 +274,37 @@ void SIType_ToMultipleTypeString(SIType t, char **buf, size_t *bufferLen, size_t
 	// Remove from remainingTypes the types which are not used currently
 	remainingTypes = t & (~0x7E0);
 
-	bool firstTypeDetected = true;
+	uint typesDetected = 0;
 	// Iterate over the possible SITypes
 	for(int i = 0; i < 18; i ++) {
 		// Skip types which are not used currently
-		if(i == 5) i = 11;
-
+		if(i == 5) {
+			i = 11;
+		}
+		
 		currentType = (1 << i);
 		if(t & currentType) {
-			if(firstTypeDetected) {
-				// For the first type detected, there is not need to add neither "," nor "or"
-				remainingTypes &= (~currentType);
-				firstTypeDetected = false;
-			} else {
-				*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ", ");
-				remainingTypes &= (~currentType);
-				// There is no more types, then concatenate "or" before the SIType name
-				if(!remainingTypes)
-				{
-					*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "or ");
+			remainingTypes &= (~currentType);
+			if(typesDetected > 0) {
+				if(remainingTypes) {
+					*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ", ");
+				} else {
+					// There is no more types, then concatenate "or" before the SIType name
+					if(typesDetected == 1) {
+						// If there are two items, the last comma should be omitted.
+						*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, " or ");
+					} else {
+						// If there are more than two, the last comma should be present
+						*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ", or ");
+					}
 				}
 			}
 			*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%s", SIType_ToString(currentType));
+			typesDetected++;
 		}
-		if(!remainingTypes)
+		if(!remainingTypes) {
 			break;
+		}
 	}
 }
 

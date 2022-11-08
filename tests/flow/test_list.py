@@ -180,7 +180,7 @@ class testList(FlowTestsBase):
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Integer", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Integer", str(e))
 
         try:
             query = """RETURN head('a')"""
@@ -188,7 +188,7 @@ class testList(FlowTestsBase):
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was String", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
 
         try:
             query = """RETURN head(true)"""
@@ -196,7 +196,7 @@ class testList(FlowTestsBase):
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Boolean", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Boolean", str(e))
 
     def test05_last_function(self):
         # Test empty list input
@@ -230,7 +230,7 @@ class testList(FlowTestsBase):
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Integer", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Integer", str(e))
 
         try:
             query = """RETURN last('a')"""
@@ -238,7 +238,7 @@ class testList(FlowTestsBase):
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was String", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
 
         try:
             query = """RETURN last(true)"""
@@ -246,7 +246,7 @@ class testList(FlowTestsBase):
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Boolean", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Boolean", str(e))
 
     def test06_toBooleanList(self):
         # NULL input should return NULL
@@ -303,32 +303,32 @@ class testList(FlowTestsBase):
             redis_graph.query("RETURN toBooleanList(true)")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Boolean", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Boolean", str(e))
 
         try:
             redis_graph.query("RETURN toBooleanList(7.05)")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Float", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Float", str(e))
 
         try:
             redis_graph.query("RETURN toBooleanList(7)")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Integer", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Integer", str(e))
 
         try:
             redis_graph.query("RETURN toBooleanList('abc')")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was String", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
 
         try:
             query = """CREATE (a:X) RETURN toBooleanList(a)"""
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Node", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Node", str(e))
 
         try:
             query = """CREATE (a:X)-[r:R]->(b:Y) RETURN toBooleanList(r)"""
@@ -336,7 +336,7 @@ class testList(FlowTestsBase):
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Edge", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Edge", str(e))
 
         try:
             query = """CREATE (a:X), (b:Y)"""
@@ -347,7 +347,7 @@ class testList(FlowTestsBase):
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Path", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Path", str(e))
             query = """MATCH (a:X),(b:Y) DELETE a, b"""
             redis_graph.query(query)
 
@@ -446,32 +446,32 @@ class testList(FlowTestsBase):
             redis_graph.query("RETURN toFloatList(true)")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Boolean", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Boolean", str(e))
 
         try:
             redis_graph.query("RETURN toFloatList(7.05)")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Float", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Float", str(e))
 
         try:
             redis_graph.query("RETURN toFloatList(7)")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Integer", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Integer", str(e))
 
         try:
             redis_graph.query("RETURN toFloatList('abc')")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was String", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
 
         try:
             query = """CREATE (a:X) RETURN toFloatList(a)"""
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Node", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Node", str(e))
             query = """MATCH (a:X) DELETE a"""
             redis_graph.query(query)
 
@@ -480,7 +480,7 @@ class testList(FlowTestsBase):
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Edge", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Edge", str(e))
             query = """MATCH (a:X),(b:Y) DELETE a, b"""
             redis_graph.query(query)
 
@@ -493,7 +493,7 @@ class testList(FlowTestsBase):
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Path", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Path", str(e))
             query = """MATCH (a:X),(b:Y) DELETE a, b"""
             redis_graph.query(query)
 
@@ -587,32 +587,32 @@ class testList(FlowTestsBase):
             redis_graph.query("RETURN toIntegerList(true)")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Boolean", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Boolean", str(e))
 
         try:
             redis_graph.query("RETURN toIntegerList(7.05)")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Float", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Float", str(e))
 
         try:
             redis_graph.query("RETURN toIntegerList(7)")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Integer", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Integer", str(e))
 
         try:
             redis_graph.query("RETURN toIntegerList('abc')")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was String", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
 
         try:
             query = """CREATE (a:X) RETURN toIntegerList(a)"""
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Node", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Node", str(e))
             query = """MATCH (a:X) DELETE a"""
             redis_graph.query(query)
 
@@ -621,7 +621,7 @@ class testList(FlowTestsBase):
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Edge", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Edge", str(e))
             query = """MATCH (a:X), (b:Y) DELETE a, b"""
             redis_graph.query(query)
 
@@ -634,7 +634,7 @@ class testList(FlowTestsBase):
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Path", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Path", str(e))
             query = """MATCH (a:X),(b:Y) DELETE a, b"""
             redis_graph.query(query)
 
@@ -740,32 +740,32 @@ class testList(FlowTestsBase):
             redis_graph.query("RETURN toStringList(true)")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Boolean", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Boolean", str(e))
 
         try:
             redis_graph.query("RETURN toStringList(7.05)")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Float", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Float", str(e))
 
         try:
             redis_graph.query("RETURN toStringList(7)")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Integer", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Integer", str(e))
 
         try:
             redis_graph.query("RETURN toStringList('abc')")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was String", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
 
         try:
             query = """CREATE (a:X) RETURN toStringList(a)"""
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Node", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Node", str(e))
             query = """MATCH (a:X) DELETE a"""
             redis_graph.query(query)
 
@@ -774,7 +774,7 @@ class testList(FlowTestsBase):
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Edge", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Edge", str(e))
             query = """MATCH (a:X),(b:Y) DELETE a, b"""
             redis_graph.query(query)
 
@@ -787,7 +787,7 @@ class testList(FlowTestsBase):
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List, or Null but was Path", str(e))
+            self.env.assertContains("Type mismatch: expected List or Null but was Path", str(e))
             query = """MATCH (a:X),(b:Y) DELETE a, b"""
             redis_graph.query(query)
 

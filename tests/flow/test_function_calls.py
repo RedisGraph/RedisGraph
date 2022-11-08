@@ -2235,3 +2235,11 @@ class testFunctionCallsFlow(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             # Expecting a type error.
             self.env.assertContains("Type mismatch: expected List but was Integer", str(e))
+
+        query = "RETURN tail(1)"
+        try:
+            actual_result = graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting a type error.
+            self.env.assertContains("Type mismatch: expected List or Null but was Integer", str(e))
