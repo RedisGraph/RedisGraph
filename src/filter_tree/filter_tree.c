@@ -984,6 +984,7 @@ static bool _FilterTree_Compact_Pred
 		SIValue rhs = AR_EXP_Evaluate(node->pred.rhs, NULL);
 		// Evalute result.
 		FT_Result ret = _applyFilter(&lhs, &rhs, node->pred.op);
+		// Result can be NULL like WHERE null <> true otherwise it's bool
 		SIValue v = ret == FILTER_NULL ? SI_NullVal() : SI_BoolVal(ret);
 		// Free resources and do in place replacment.
 		AR_EXP_Free(node->pred.lhs);
