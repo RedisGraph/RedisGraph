@@ -90,11 +90,10 @@ class testMap(FlowTestsBase):
         ]
         for query in queries:
             try:
-                query_result = redis_graph.query(query)
+                redis_graph.query(query)
                 self.env.assertTrue(False)
             except redis.exceptions.ResponseError as e:
-                self.env.assertIn("Invalid input", str(e))
-
+                self.env.assertContains("Invalid input '{': expected ':', ',' or '}'", str(e))
 
     # Validate behaviors of nested maps
     def test03_nested_maps(self):
