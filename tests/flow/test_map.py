@@ -83,6 +83,19 @@ class testMap(FlowTestsBase):
             query_result = redis_graph.query(query)
             self.env.assertEquals(query_result.result_set, expected_result)
 
+        # nested projections
+        queries = [
+            """MATCH (a), (b) RETURN a{.*, b {.*} }""",
+            """MATCH (a) RETURN a{.*, c {.*} }""",
+        ]
+        for query in queries:
+            try:
+                query_result = redis_graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertIn("Invalid input", str(e))
+
+
     # Validate behaviors of nested maps
     def test03_nested_maps(self):
         # Return a map with nesting
