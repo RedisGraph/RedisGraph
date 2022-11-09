@@ -49,7 +49,7 @@ uint QGNode_LabelCount
 	const QGNode *n
 );
 
-// returns the 'idx' label ID of 'n'
+// Returns the 'idx' label ID of 'n'
 int QGNode_GetLabelID
 (
 	const QGNode *n,

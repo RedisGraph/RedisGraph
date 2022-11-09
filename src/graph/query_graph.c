@@ -377,6 +377,7 @@ QueryGraph *BuildQueryGraph
 ) {
 	uint node_count;
 	uint edge_count;
+	bool optional;
 
 	// AST clauses containing path objects
 	cypher_astnode_type_t clause_types [2] = {CYPHER_AST_MATCH, CYPHER_AST_MERGE};
@@ -393,7 +394,6 @@ QueryGraph *BuildQueryGraph
 		const cypher_astnode_t **clauses = AST_GetTypedNodes(ast->root,
 															 clause_type);
 		uint clause_count = array_len(clauses);
-		bool optional;
 
 		// for each clause of the current type
 		for(uint j = 0; j < clause_count; j ++) {
