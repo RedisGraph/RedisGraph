@@ -263,7 +263,7 @@ const char *SIType_ToString(SIType t) {
 
 void SIType_ToMultipleTypeString(SIType t, char **buf, size_t *bufferLen, size_t *bytesWritten) {
 	// Worst case: Len(SIType names) + 19*Len(", ") + Len("Or") = 177 + 38 + 2 = 217
-	ASSERT(bufferLen - bytesWritten >= 256);
+	ASSERT((*bufferLen - *bytesWritten) >= 256);
 
 	SIType currentType;
 	SIType remainingTypes;
@@ -274,7 +274,7 @@ void SIType_ToMultipleTypeString(SIType t, char **buf, size_t *bufferLen, size_t
 	uint typesDetected = 0;
 	// Iterate over the possible SITypes
 	SIType in_use[12] = {T_MAP, T_NODE, T_EDGE, T_ARRAY, T_PATH, T_STRING, T_BOOL, T_INT64, T_DOUBLE, T_NULL, T_PTR, T_POINT};
-	for(int i = 0; i < 12; i ++) {	
+	for(int i = 0; i < 12; i ++) {
 		currentType = in_use[i];
 		if(t & currentType) {
 			remainingTypes &= (~currentType);
