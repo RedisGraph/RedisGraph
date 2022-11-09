@@ -92,7 +92,7 @@ class testMap(FlowTestsBase):
             try:
                 redis_graph.query(query)
                 self.env.assertTrue(False)
-            except redis.exceptions.ResponseError as e:
+            except redis.ResponseError as e:
                 self.env.assertContains("Invalid input '{': expected ':', ',' or '}'", str(e))
 
     # Validate behaviors of nested maps
