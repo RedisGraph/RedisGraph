@@ -308,6 +308,7 @@ void QGNode_Free
 
 	array_free(node->labels);
 	array_free(node->labelsID);
+	array_free(node->optional);
 	array_free(node->outgoing_edges);
 	array_free(node->incoming_edges);
 
