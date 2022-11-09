@@ -262,27 +262,20 @@ const char *SIType_ToString(SIType t) {
 }
 
 void SIType_ToMultipleTypeString(SIType t, char **buf, size_t *bufferLen, size_t *bytesWritten) {
-	SIType remainingTypes;
-	SIType currentType;
-	// Allocate space
 	// Worst case: Len(SIType names) + 19*Len(", ") + Len("Or") = 177 + 38 + 2 = 217
-	if(*bufferLen - *bytesWritten < 256) {
-		*bufferLen += 256;
-		*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
-	}
+	ASSERT(bufferLen - bytesWritten >= 256);
 
+	SIType currentType;
+	SIType remainingTypes;
+	
 	// Remove from remainingTypes the types which are not used currently
-	remainingTypes = t & (~0x7E0);
+	remainingTypes = t & ~(T_DATETIME | T_LOCALDATETIME | T_DATE | T_TIME | T_LOCALTIME | T_DURATION);
 
 	uint typesDetected = 0;
 	// Iterate over the possible SITypes
-	for(int i = 0; i < 18; i ++) {
-		// Skip types which are not used currently
-		if(i == 5) {
-			i = 11;
-		}
-		
-		currentType = (1 << i);
+	SIType in_use[12] = {T_MAP, T_NODE, T_EDGE, T_ARRAY, T_PATH, T_STRING, T_BOOL, T_INT64, T_DOUBLE, T_NULL, T_PTR, T_POINT};
+	for(int i = 0; i < 12; i ++) {	
+		currentType = in_use[i];
 		if(t & currentType) {
 			remainingTypes &= (~currentType);
 			if(typesDetected > 0) {
