@@ -62,7 +62,7 @@ class testQueryTimeout():
         redis_con.execute_command("GRAPH.CONFIG SET timeout 0")
 
         # construct a graph and create multiple indices
-        query = """UNWIND range(0, 20000) AS x CREATE (p:Person {age: x%90, height: x%200, weight: x%80})"""
+        query = """UNWIND range(0, 40000) AS x CREATE (p:Person {age: x%90, height: x%200, weight: x%80})"""
         redis_graph.query(query)
 
         query = """CREATE INDEX ON :Person(age, height, weight)"""
