@@ -211,7 +211,7 @@ FT_FilterNode **FilterTree_SubTrees
 
 // applies a single filter to a single result
 // compares given values, tests if values maintain desired relation (op)
-int _applyFilter
+FT_Result _applyFilter
 (
 	SIValue *aVal,
 	SIValue *bVal,
@@ -220,7 +220,7 @@ int _applyFilter
 	int disjointOrNull = 0;
 	int rel = SIValue_Compare(*aVal, *bVal, &disjointOrNull);
 	// if there was null comparison, return false
-	if(disjointOrNull == COMPARED_NULL) return false;
+	if(disjointOrNull == COMPARED_NULL) return FILTER_NULL;
 	// values are of disjoint types
 	if(disjointOrNull == DISJOINT || disjointOrNull == COMPARED_NAN) {
 		// the filter passes if we're testing for inequality, and fails otherwise
@@ -983,8 +983,8 @@ static bool _FilterTree_Compact_Pred
 		SIValue lhs = AR_EXP_Evaluate(node->pred.lhs, NULL);
 		SIValue rhs = AR_EXP_Evaluate(node->pred.rhs, NULL);
 		// Evalute result.
-		int ret = _applyFilter(&lhs, &rhs, node->pred.op);
-		SIValue v = SI_BoolVal(ret);
+		FT_Result ret = _applyFilter(&lhs, &rhs, node->pred.op);
+		SIValue v = ret == FILTER_NULL ? SI_NullVal() : SI_BoolVal(ret);
 		// Free resources and do in place replacment.
 		AR_EXP_Free(node->pred.lhs);
 		AR_EXP_Free(node->pred.rhs);
