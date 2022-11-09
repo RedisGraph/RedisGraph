@@ -49,6 +49,12 @@ uint QGNode_LabelCount
 	const QGNode *n
 );
 
+// Returns the number of mandatory (non-opioonal) labels attached to n.
+uint QGNode_MandatoryLabelCount
+(
+	const QGNode *n
+);
+
 // Returns the 'idx' label ID of 'n'
 int QGNode_GetLabelID
 (

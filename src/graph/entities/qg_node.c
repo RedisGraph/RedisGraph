@@ -74,6 +74,19 @@ inline uint QGNode_LabelCount
 	return array_len(n->labels);
 }
 
+inline uint QGNode_MandatoryLabelCount
+(
+	const QGNode *n
+) {
+	ASSERT(n != NULL);
+
+	uint optional_count = 0;
+	for(uint i = 0; i < array_len(n->optional); i++) {
+		if(!n->optional[i]) optional_count++;
+	}
+	return optional_count;
+}
+
 int QGNode_GetLabelID
 (
 	const QGNode *n,
@@ -259,6 +272,7 @@ QGNode *QGNode_Clone
 
 	array_clone(clone->labels, orig->labels);
 	array_clone(clone->labelsID, orig->labelsID);
+	array_clone(clone->optional, orig->optional);
 
 	// don't clone edges when duplicating a node
 	clone->incoming_edges = array_new(QGEdge *, 0);

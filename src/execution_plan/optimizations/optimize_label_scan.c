@@ -44,10 +44,12 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	QGNode *qn = QueryGraph_GetNodeByAlias(qg, node_alias);
 	ASSERT(qn != NULL);
 
-	// return if node has only one label
+	// return if node has only one non-optional label
+	uint mand_label_count = QGNode_MandatoryLabelCount(qn);
+	if(mand_label_count == 1) return;
+	
 	uint label_count = QGNode_LabelCount(qn);
 	ASSERT(label_count >= 1);
-	if(label_count == 1) return;
 
 	// node has multiple labels
 	// find label with minimum entities

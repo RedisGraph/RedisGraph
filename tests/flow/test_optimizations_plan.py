@@ -442,14 +442,3 @@ class testOptimizationsPlan(FlowTestsBase):
         graph.query(query)
         query = """MATCH (n:N) OPTIONAL MATCH (n:Q) RETURN n"""
         graph.query(query)
-    
-    def test_30_optimize_label_scan_multiple_match(self):
-        query = """CREATE (:N {name: 'Moshe'}), (:N:Q {name: 'Eran'}), (:Q {name: 'Yossi'})"""
-        graph.query(query)
-        query = """OPTIONAL MATCH (n:N) MATCH (n:N {name: 'Moshe'}) OPTIONAL MATCH (n:Q) RETURN n.name"""
-        res = graph.query(query)
-        self.env.assertEquals(res.result_set[0][0], 'Moshe')
-
-        query = """OPTIONAL MATCH (n:Q) MATCH (n:N {name: 'Moshe'}) OPTIONAL MATCH (n:N) RETURN n.name"""
-        res = graph.query(query)
-        self.env.assertEquals(res.result_set, [])
