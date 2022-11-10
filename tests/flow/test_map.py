@@ -54,6 +54,18 @@ class testMap(FlowTestsBase):
                            [{'val': 3, 'literal': 'lit'}]]
         self.env.assertEquals(query_result.result_set, expected_result)
 
+        query = """MATCH (n) RETURN n {}"""
+        query_result = redis_graph.query(query)
+        expected_result = [[{}],
+                           [{}],
+                           [{}]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        query = """MATCH (n:unexisting) RETURN n {}"""
+        query_result = redis_graph.query(query)
+        expected_result = []
+        self.env.assertEquals(query_result.result_set, expected_result)
+
         # map projection unexisting property
         query = """CREATE (a:A {name: 'abc', y: 3, z: 43}) RETURN a{.h}"""
         query_result = redis_graph.query(query)
