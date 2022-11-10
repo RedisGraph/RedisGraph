@@ -101,7 +101,7 @@ SIValue AR_MERGEMAP(SIValue *argv, int argc, void *private_data) {
 			b = map0;
 		}
 
-		for(int i=0; i < l; i++) {
+		for(int i = 0; i < l; i++) {
 			Pair p = a.map[i];
 			Map_Add(&b, p.key, p.val);
 		}
