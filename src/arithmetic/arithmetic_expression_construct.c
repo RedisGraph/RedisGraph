@@ -383,6 +383,7 @@ static AR_ExpNode *_AR_ExpFromMapExpression(const cypher_astnode_t *expr) {
 
 static AR_ExpNode *_AR_ExpFromMapProjection(const cypher_astnode_t *expr) {
 	// MATCH (n) RETURN n { .name, .age, scores: collect(m.score) }
+	// MATCH (n) RETURN n { .* }
 
 	cypher_astnode_type_t t;
 	const cypher_astnode_t *identifier = cypher_ast_map_projection_get_expression(expr);
@@ -412,10 +413,8 @@ static AR_ExpNode *_AR_ExpFromMapProjection(const cypher_astnode_t *expr) {
 		}
 	}
 
-	if (n_selectors - allProps_selectors > 0) {
-		tomapOp = AR_EXP_NewOpNode("tomap", true, (n_selectors - allProps_selectors) * 2);
-		children = tomapOp->op.children;
-	}
+	tomapOp = AR_EXP_NewOpNode("tomap", true, (n_selectors - allProps_selectors) * 2);
+	children = tomapOp->op.children;
 
 	uint j = 0;
 	for(uint i = 0; i < n_selectors; i++) {
