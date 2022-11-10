@@ -32,7 +32,7 @@ class testQueryTimeout():
         except:
             self.env.assertTrue(False)
 
-        query = "UNWIND range(0, 1000000) AS x CREATE (:N {v: x})"
+        query = """UNWIND range(0, 10000) AS x CREATE (p:Person {age: x%90, height: x%200, weight: x%80})"""
         try:
             # The query is expected to succeed
             redis_graph.query(query, timeout=1)
@@ -60,10 +60,6 @@ class testQueryTimeout():
     def test03_timeout_index_scan(self):
         # set timeout to unlimited
         redis_con.execute_command("GRAPH.CONFIG SET timeout 0")
-
-        # construct a graph and create multiple indices
-        query = """UNWIND range(0, 40000) AS x CREATE (p:Person {age: x%90, height: x%200, weight: x%80})"""
-        redis_graph.query(query)
 
         query = """CREATE INDEX ON :Person(age, height, weight)"""
         redis_graph.query(query)
@@ -114,12 +110,11 @@ class testQueryTimeout():
                 print(res.run_time_ms)
                 self.env.assertTrue(False)
 
-
     def test04_query_timeout_free_resultset(self):
-        query = "UNWIND range(0,2000000) AS x RETURN toString(x)"
+        query = "UNWIND range(0,5000000) AS x RETURN toString(x)"
         try:
             # The query is expected to timeout
-            redis_graph.query(query, timeout=10)
+            res = redis_graph.query(query, timeout=10)
             self.env.assertTrue(False)
         except ResponseError as error:
             self.env.assertContains("Query timed out", str(error))
