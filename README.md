@@ -15,14 +15,14 @@ RedisGraph is the first queryable [Property Graph](https://github.com/opencypher
 Primary features:
 * Adopting the [Property Graph Model](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc)
   * Nodes (vertices) and Relationships (edges) that may have attributes
-  * Nodes that can be labeled
+  * Nodes can have multiple labels
   * Relationships have a relationship type
 * Graphs represented as sparse adjacency matrices
-* [Cypher](http://www.opencypher.org/) as query language
-  * Cypher queries translated into linear algebra expressions
+* [OpenCypher](http://www.opencypher.org/) with proprietary extensions as a query language
+  * Queries are translated into linear algebra expressions
 
 To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGraph/tree/master/demo).
-To read the docs, visit [redisgraph.io](http://redisgraph.io).
+To read the docs, visit [redis.io](https://redis.io/docs/stack/graph/).
 
 ## Quickstart
 

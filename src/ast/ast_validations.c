@@ -275,45 +275,21 @@ static rax *_AST_GetReturnProjections(const cypher_astnode_t *return_clause) {
 }
 
 /* Compares a triemap of user-specified functions with the registered functions we provide. */
-static AST_Validation _ValidateReferredFunctions(rax *referred_functions, bool include_aggregates) {
+static AST_Validation _ValidateReferredFunctions(const char *funcName, bool include_aggregates) {
 	AST_Validation res = AST_VALID;
-	char funcName[32];
-	raxIterator it;
-	_prepareIterateAll(referred_functions, &it);
-	bool found = true;
-	while(raxNext(&it)) {
-		size_t len = it.key_len;
-		// No functions have a name longer than 32 characters
-		if(len >= 32) {
-			res = AST_INVALID;
-			break;
-		}
 
-		// Copy the triemap key so that we can safely add a terinator character
-		memcpy(funcName, it.key, len);
-		funcName[len] = 0;
-
-		if(!include_aggregates && AR_FuncIsAggregate(funcName)) {
-			// Provide a unique error for using aggregate functions from inappropriate contexts
-			ErrorCtx_SetError("Invalid use of aggregating function '%s'", funcName);
-			res = AST_INVALID;
-			break;
-		}
-
-		if(AR_FuncExists(funcName)) continue;
-
-		// If we reach this point, the function was not found
-		found = false;
+	if(!include_aggregates && AR_FuncIsAggregate(funcName)) {
+		// provide a unique error for using aggregate functions from inappropriate contexts
+		ErrorCtx_SetError("Invalid use of aggregating function '%s'", funcName);
 		res = AST_INVALID;
-		break;
 	}
 
-	// If the function was not found, provide a reason if one is not set
-	if(res == AST_INVALID && !found) {
+	if(!AR_FuncExists(funcName)) {
+		// if we reach this point, the function was not found
 		ErrorCtx_SetError("Unknown function '%s'", funcName);
+		res = AST_INVALID;
 	}
 
-	raxStop(&it);
 	return res;
 }
 
@@ -332,8 +308,8 @@ preceding WITH clause and have their aliased values referenced in the map.");
 	return AST_VALID;
 }
 
-// Recursively collect function names and perform validations on functions with STAR arguments.
-static AST_Validation _VisitFunctions(const cypher_astnode_t *node, rax *func_names) {
+static AST_Validation _ValidateFunctionCalls(const cypher_astnode_t *node,
+											 bool include_aggregates) {
 	cypher_astnode_type_t type = cypher_astnode_type(node);
 	if(type == CYPHER_AST_APPLY_ALL_OPERATOR) {
 		// Working with a function call that has * as its argument.
@@ -353,18 +329,15 @@ static AST_Validation _VisitFunctions(const cypher_astnode_t *node, rax *func_na
 			return AST_INVALID;
 		}
 
-		// Collect the function name, which is always "count" here.
-		raxInsert(func_names, (unsigned char *)"count", 5, NULL, NULL);
-
-		// As Apply All operators have no children, we can return here.
-		return AST_VALID;
+		// Validate all provided function names.
+		return _ValidateReferredFunctions(func_name, include_aggregates);
 	}
 
 	if(type == CYPHER_AST_APPLY_OPERATOR) {
 		// Collect the function name.
 		const cypher_astnode_t *func = cypher_ast_apply_operator_get_func_name(node);
 		const char *func_name = cypher_ast_function_name_get_value(func);
-		raxInsert(func_names, (unsigned char *)func_name, strlen(func_name), NULL, NULL);
+		return _ValidateReferredFunctions(func_name, include_aggregates);
 	}
 
 	if(type == CYPHER_AST_MAP) {
@@ -373,31 +346,18 @@ static AST_Validation _VisitFunctions(const cypher_astnode_t *node, rax *func_na
 		if(res != AST_VALID) return res;
 	}
 
+	if(type == CYPHER_AST_REDUCE) {
+		include_aggregates = false;
+	}
+
 	uint child_count = cypher_astnode_nchildren(node);
 	for(uint i = 0; i < child_count; i ++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
-		AST_Validation res = _VisitFunctions(child, func_names);
+		AST_Validation res = _ValidateFunctionCalls(child, include_aggregates);
 		if(res != AST_VALID) return res;
 	}
 
 	return AST_VALID;
-}
-
-static AST_Validation _ValidateFunctionCalls(const cypher_astnode_t *node,
-											 bool include_aggregates) {
-	AST_Validation res = AST_VALID;
-	rax *func_names = raxNew();
-
-	// Collect function names and perform in-place validations.
-	res = _VisitFunctions(node, func_names);
-	if(res != AST_VALID) goto cleanup;
-
-	// Validate all provided function names.
-	res = _ValidateReferredFunctions(func_names, include_aggregates);
-
-cleanup:
-	raxFree(func_names);
-	return res;
 }
 
 static inline bool _AliasIsReturned(rax *projections, const char *identifier) {
@@ -861,6 +821,17 @@ static AST_Validation _ValidateMergeNode(const cypher_astnode_t *entity, rax *de
 	return AST_VALID;
 }
 
+// Validate SET property.
+static AST_Validation Validate_SETProperty(const cypher_astnode_t *set_item) {
+	const cypher_astnode_t *ast_prop = cypher_ast_set_property_get_property(set_item);
+	const cypher_astnode_t *ast_entity = cypher_ast_property_operator_get_expression(ast_prop);
+	if(cypher_astnode_type(ast_entity) != CYPHER_AST_IDENTIFIER) {
+		ErrorCtx_SetError("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions");
+		return AST_INVALID;
+	}
+	return AST_VALID;
+}
+
 static AST_Validation _Validate_MERGE_Clauses(const AST *ast) {
 	AST_Validation res = AST_VALID;
 	uint *merge_clause_indices = AST_GetClauseIndices(ast, CYPHER_AST_MERGE);
@@ -904,6 +875,31 @@ static AST_Validation _Validate_MERGE_Clauses(const AST *ast) {
 		for (uint j = 0; j < action_count; j++) {
 			const cypher_astnode_t *action = cypher_ast_merge_get_action(merge_clause, j);
 			_ValidateFunctionCalls(action, false);
+
+			cypher_astnode_type_t type = cypher_astnode_type(action);
+			if(type == CYPHER_AST_ON_CREATE) {
+				// ON CREATE.
+				uint n_set_items = cypher_ast_on_create_nitems(action);
+				for(uint j = 0; j < n_set_items; j ++) {
+					const cypher_astnode_t *set_item = cypher_ast_on_create_get_item(action, j);
+					if(cypher_astnode_type(set_item) == CYPHER_AST_SET_PROPERTY) {
+						res = Validate_SETProperty(set_item);
+						if(res != AST_VALID) goto cleanup;
+					}
+				}
+			} else if(type == CYPHER_AST_ON_MATCH) {
+				// ON MATCH.
+				uint n_set_items = cypher_ast_on_match_nitems(action);
+				for(uint j = 0; j < n_set_items; j ++) {
+					const cypher_astnode_t *set_item = cypher_ast_on_match_get_item(action, j);
+					if(cypher_astnode_type(set_item) == CYPHER_AST_SET_PROPERTY) {
+						res = Validate_SETProperty(set_item);
+						if(res != AST_VALID) goto cleanup;
+					}
+				}
+			} else {
+				ASSERT(false);
+			}
 		}
 	}
 
@@ -1516,12 +1512,8 @@ static AST_Validation _Validate_SETItems(const cypher_astnode_t *set_clause) {
 		const cypher_astnode_t *set_item = cypher_ast_set_get_item(set_clause, i);
 		const cypher_astnode_type_t type = cypher_astnode_type(set_item);
 		if(type == CYPHER_AST_SET_PROPERTY) {
-			const cypher_astnode_t *ast_prop = cypher_ast_set_property_get_property(set_item);
-			const cypher_astnode_t *ast_entity = cypher_ast_property_operator_get_expression(ast_prop);
-			if(cypher_astnode_type(ast_entity) != CYPHER_AST_IDENTIFIER) {
-				ErrorCtx_SetError("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions");
-				return AST_INVALID;
-			}
+			AST_Validation res = Validate_SETProperty(set_item);
+			if(res != AST_VALID) return res;
 		}
 	}
 	return AST_VALID;

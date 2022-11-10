@@ -68,78 +68,155 @@ struct FT_FilterNode {
 
 typedef struct FT_FilterNode FT_FilterNode;
 
-/* Determines if node is a predicate node. */
-int IsNodePredicate(const FT_FilterNode *node);
+// determines if node is a predicate node
+int IsNodePredicate
+(
+	const FT_FilterNode *node
+);
 
-/* Appends a left hand-side node to root. */
-FT_FilterNode *FilterTree_AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child);
+// appends a left hand-side node to root
+FT_FilterNode *FilterTree_AppendLeftChild
+(
+	FT_FilterNode *root,
+	FT_FilterNode *child
+);
 
-/* Appends a right hand-side node to root. */
-FT_FilterNode *FilterTree_AppendRightChild(FT_FilterNode *root, FT_FilterNode *child);
+// appends a right hand-side node to root
+FT_FilterNode *FilterTree_AppendRightChild
+(
+	FT_FilterNode *root,
+	FT_FilterNode *child
+);
 
-/* Creates a new expression node. */
-FT_FilterNode *FilterTree_CreateExpressionFilter(AR_ExpNode *exp);
+// creates a new expression node
+FT_FilterNode *FilterTree_CreateExpressionFilter
+(
+	AR_ExpNode *exp
+);
 
-/* Creates a new predicate node. */
-FT_FilterNode *FilterTree_CreatePredicateFilter(AST_Operator op, AR_ExpNode *lhs, AR_ExpNode *rhs);
+// creates a new predicate node
+FT_FilterNode *FilterTree_CreatePredicateFilter
+(
+	AST_Operator op,
+	AR_ExpNode *lhs,
+	AR_ExpNode *rhs
+);
 
-/* Creates a new condition node. */
-FT_FilterNode *FilterTree_CreateConditionFilter(AST_Operator op);
+// creates a new condition node
+FT_FilterNode *FilterTree_CreateConditionFilter
+(
+	AST_Operator op
+);
 
-/* Runs val through the filter tree. */
-FT_Result FilterTree_applyFilters(const FT_FilterNode *root, const Record r);
+// runs val through the filter tree
+FT_Result FilterTree_applyFilters
+(
+	const FT_FilterNode *root,
+	const Record r
+);
 
-/* Extract every modified record ID mentioned in the tree
- * without duplications. */
-rax *FilterTree_CollectModified(const FT_FilterNode *root);
+// extract every modified record ID mentioned in the tree
+// without duplications
+rax *FilterTree_CollectModified
+(
+	const FT_FilterNode *root
+);
 
-/* Extract every attribute mentioned in the tree
- * without duplications. */
-rax *FilterTree_CollectAttributes(const FT_FilterNode *root);
+// rxtract every attribute mentioned in the tree
+// without duplications
+rax *FilterTree_CollectAttributes
+(
+	const FT_FilterNode *root
+);
 
-/* Check if any filtered variable is an alias. */
-bool FilterTree_FiltersAlias(const FT_FilterNode *root, const cypher_astnode_t *ast);
+// check if any filtered variable is an alias
+bool FilterTree_FiltersAlias
+(
+	const FT_FilterNode *root,
+	const cypher_astnode_t *ast
+);
 
-/* Checks to see if tree contains given operation. */
-bool FilterTree_containsOp(const FT_FilterNode *root, AST_Operator op);
+// checks to see if tree contains given operation
+bool FilterTree_containsOp
+(
+	const FT_FilterNode *root,
+	AST_Operator op
+);
 
-/* Checks to see if tree contains given function.
- * root - tree root to traverse.
- * func - function name to lookup.
- * node - point to tree node in which func was located, null if func isn't located. */
-bool FilterTree_ContainsFunc(const FT_FilterNode *root, const char *func, FT_FilterNode **node);
+// checks to see if tree contains given function
+// root - tree root to traverse
+// func - function name to lookup
+// node - point to tree node in which func was located, null if func isn't located
+bool FilterTree_ContainsFunc
+(
+	const FT_FilterNode *root,
+	const char *func,
+	FT_FilterNode **node
+);
 
-/* Prints tree. */
-void FilterTree_Print(const FT_FilterNode *root);
+// prints tree
+void FilterTree_Print
+(
+	const FT_FilterNode *root
+);
 
-/* Break filter tree into sub filter trees as follows:
- * sub trees under an OR operator are returned,
- * sub trees under an AND operator are broken down to the smallest
- * components possible following the two rules above. */
-FT_FilterNode **FilterTree_SubTrees(FT_FilterNode *root);
+// break filter tree into sub filter trees as follows:
+// sub trees under an OR operator are returned,
+// sub trees under an AND operator are broken down to the smallest
+// components possible following the two rules above
+FT_FilterNode **FilterTree_SubTrees
+(
+	FT_FilterNode *root
+);
 
-/* Combines filters usign AND conditions */
-FT_FilterNode *FilterTree_Combine(FT_FilterNode **filters, uint count);
+// combines filters usign AND conditions
+FT_FilterNode *FilterTree_Combine
+(
+	FT_FilterNode **filters,
+	uint count
+);
 
-/* Verifies tree structure
- * a condition or predicate node can't be childless. */
-bool FilterTree_Valid(const FT_FilterNode *root);
+// verifies tree structure
+// a condition or predicate node can't be childless
+bool FilterTree_Valid
+(
+	const FT_FilterNode *root
+);
 
-/* Remove NOT nodes by applying DeMorgan laws */
-void FilterTree_DeMorgan(FT_FilterNode **root);
+// remove NOT nodes by applying DeMorgan laws
+void FilterTree_DeMorgan
+(
+	FT_FilterNode **root
+);
 
-/* Try to compress a given filter tree. */
-bool FilterTree_Compact(FT_FilterNode *root);
+// try to compress a given filter tree
+bool FilterTree_Compact
+(
+	FT_FilterNode *root
+);
 
-/* Resolve variables to constants */
-void FilterTree_ResolveVariables(FT_FilterNode *root, const Record r);
+// resolve variables to constants
+void FilterTree_ResolveVariables
+(
+	FT_FilterNode *root,
+	const Record r
+);
 
-/* Clones tree. */
-FT_FilterNode *FilterTree_Clone(const FT_FilterNode *root);
+// clones tree
+FT_FilterNode *FilterTree_Clone
+(
+	const FT_FilterNode *root
+);
 
-/* Prints tree. */
-void FilterTree_Print(const FT_FilterNode *root);
+// prints tree
+void FilterTree_Print
+(
+	const FT_FilterNode *root
+);
 
-/* Free tree. */
-void FilterTree_Free(FT_FilterNode *root);
+// free tree
+void FilterTree_Free
+(
+	FT_FilterNode *root
+);
 

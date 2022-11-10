@@ -80,15 +80,39 @@ static void _QueryGraphAddEdge
 	for(uint i = 0; i < nreltypes; i ++) {
 		const char *reltype = cypher_ast_reltype_get_name(cypher_ast_rel_pattern_get_reltype(ast_entity,
 														  i));
-		array_append(edge->reltypes, reltype);
+		bool found = false;
 		Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
 		if(!s) {
 			// unknown relationship
-			array_append(edge->reltypeIDs, GRAPH_UNKNOWN_RELATION);
-			qg->unknown_reltype_ids = true;
+			// search if reltype exists in edge->reltypes to don't insert duplicated reltype
+			int len = array_len(edge->reltypes);
+			for (int j = 0; j < len; j++) {
+				if(edge->reltypeIDs[j] == GRAPH_UNKNOWN_RELATION) {
+					if(strcasecmp(edge->reltypes[j],reltype) == 0) {
+						found = true;
+						break;
+					}
+				}
+			}
+			if(!found) {
+				array_append(edge->reltypes, reltype);
+				array_append(edge->reltypeIDs, GRAPH_UNKNOWN_RELATION);
+				qg->unknown_reltype_ids = true;
+			}
 			continue;
 		}
-		array_append(edge->reltypeIDs, s->id);
+		// search if s-id exists in edge->reltypeIDs to don't insert duplicated ids
+		int len = array_len(edge->reltypeIDs);
+		for (int j = 0; j < len; j++) {
+			if(edge->reltypeIDs[j] == s->id) {
+				found = true;
+				break;
+			}
+		}
+		if(!found) {
+			array_append(edge->reltypes, reltype);
+			array_append(edge->reltypeIDs, s->id);
+		}
 	}
 
 	// incase of a variable length edge, set edge min/max hops
