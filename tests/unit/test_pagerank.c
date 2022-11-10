@@ -24,9 +24,10 @@ void tearDown() {
 
 void test_pagerank() {
 	GrB_Matrix A;
+	GrB_Info info;
 	double tol = 1e-4 ;
 	int iters, itermax = 100 ;
-	LAGraph_PageRank *ranking;
+	LAGraph_PageRank *ranking = NULL;
 
 	/* Graph on the cover of the book, 'Graph Algorithms in the language of linear algebra'.
 	A = [
@@ -39,19 +40,44 @@ void test_pagerank() {
 	    0 1 0 0 0 0 0 ] ;
 	*/
 
-	GrB_Matrix_new(&A, GrB_BOOL, 7, 7);
-	GrB_Matrix_setElement_BOOL(A, true, 3, 0);
-	GrB_Matrix_setElement_BOOL(A, true, 0, 1);
-	GrB_Matrix_setElement_BOOL(A, true, 3, 2);
-	GrB_Matrix_setElement_BOOL(A, true, 5, 2);
-	GrB_Matrix_setElement_BOOL(A, true, 6, 2);
-	GrB_Matrix_setElement_BOOL(A, true, 0, 3);
-	GrB_Matrix_setElement_BOOL(A, true, 6, 3);
-	GrB_Matrix_setElement_BOOL(A, true, 1, 4);
-	GrB_Matrix_setElement_BOOL(A, true, 6, 4);
-	GrB_Matrix_setElement_BOOL(A, true, 2, 5);
-	GrB_Matrix_setElement_BOOL(A, true, 4, 5);
-	GrB_Matrix_setElement_BOOL(A, true, 1, 6);
+	info = GrB_Matrix_new(&A, GrB_BOOL, 7, 7);
+	TEST_ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_setElement_BOOL(A, true, 3, 0);
+	TEST_ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_setElement_BOOL(A, true, 0, 1);
+	TEST_ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_setElement_BOOL(A, true, 3, 2);
+	TEST_ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_setElement_BOOL(A, true, 5, 2);
+	TEST_ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_setElement_BOOL(A, true, 6, 2);
+	TEST_ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_setElement_BOOL(A, true, 0, 3);
+	TEST_ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_setElement_BOOL(A, true, 6, 3);
+	TEST_ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_setElement_BOOL(A, true, 1, 4);
+	TEST_ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_setElement_BOOL(A, true, 6, 4);
+	TEST_ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_setElement_BOOL(A, true, 2, 5);
+	TEST_ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_setElement_BOOL(A, true, 4, 5);
+	TEST_ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_setElement_BOOL(A, true, 1, 6);
+	TEST_ASSERT(info == GrB_SUCCESS);
 
 	Pagerank(&ranking, A, itermax, tol, &iters);
 

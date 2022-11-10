@@ -28,9 +28,9 @@ void test_threadPools_threadID() {
 	ThreadPools_CreatePools(READER_COUNT, WRITER_COUNT, UINT64_MAX);
 
 	// verify thread count equals to the number of reader and writer threads
-	TEST_ASSERT (READER_COUNT + WRITER_COUNT == ThreadPools_ThreadCount());
+	TEST_ASSERT(READER_COUNT + WRITER_COUNT == ThreadPools_ThreadCount());
 
-	int thread_ids[READER_COUNT + WRITER_COUNT + 1] = {-1, -1, -1, -1, -1, -1};
+	volatile int thread_ids[READER_COUNT + WRITER_COUNT + 1] = {-1, -1, -1, -1, -1, -1};
 
 	// get main thread friendly id
 	thread_ids[0] = ThreadPools_GetThreadID();
@@ -40,7 +40,7 @@ void test_threadPools_threadID() {
 		int offset = i + 1;
 		TEST_ASSERT(0 == 
 				ThreadPools_AddWorkReader(get_thread_friendly_id,
-					thread_ids + offset));
+					(int*)(thread_ids + offset)));
 	}
 
 	// get writer threads friendly ids
@@ -48,7 +48,7 @@ void test_threadPools_threadID() {
 		int offset = i + READER_COUNT + 1;
 		TEST_ASSERT(0 ==
 				ThreadPools_AddWorkWriter(get_thread_friendly_id,
-					thread_ids + offset, 0));
+					(int*)(thread_ids + offset), 0));
 	}
 
 	// wait for all threads
