@@ -282,8 +282,7 @@ void SIType_ToMultipleTypeString(SIType t, char **buf, size_t *bufferLen, size_t
 	
 	uint typesDetected = 0;
 	// Iterate over the possible SITypes
-	for(int i = 0; i < 18; i ++) {
-		currentType = (1 << i);
+	for(currentType = 1; currentType < SI_ALL; currentType = currentType << 1) {
 		if(t & currentType) {
 			remainingTypes &= (~currentType);
 			if(typesDetected > 0) {
