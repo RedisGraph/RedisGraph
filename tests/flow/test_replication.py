@@ -65,7 +65,8 @@ class testReplication(FlowTestsBase):
         graph.query(q)
 
         # the WAIT command forces master slave sync to complete
-        source_con.execute_command("WAIT", "1", "0")
+        res = source_con.execute_command("WAIT", "1", "0")
+        print(res)
 
         # make sure index is available on replica
         q = "MATCH (s:L {id:2}) RETURN s.name"
@@ -98,7 +99,8 @@ class testReplication(FlowTestsBase):
         env.assertEqual(result.labels_removed, 1)
 
         # the WAIT command forces master slave sync to complete
-        source_con.execute_command("WAIT", "1", "0")
+        res = source_con.execute_command("WAIT", "1", "0")
+        print(res)
 
         q = "MATCH (s:L {id:2}) RETURN s"
         result = graph.query(q).result_set
@@ -112,7 +114,8 @@ class testReplication(FlowTestsBase):
         env.assertEqual(result.properties_removed, 1)
 
         # the WAIT command forces master slave sync to complete
-        source_con.execute_command("WAIT", "1", "0")
+        res = source_con.execute_command("WAIT", "1", "0")
+        print(res)
 
         q = "MATCH (s {id:2}) RETURN s"
         result = graph.query(q).result_set
@@ -132,7 +135,8 @@ class testReplication(FlowTestsBase):
         graph.query(q)
 
         # the WAIT command forces master slave sync to complete
-        source_con.execute_command("WAIT", "1", "0")
+        res = source_con.execute_command("WAIT", "1", "0")
+        print(res)
 
         # make sure both primary and replica have the same set of indexes
         q = "CALL db.indexes() YIELD type, label, properties, language, stopwords, entitytype"
