@@ -2203,7 +2203,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             self.env.assertTrue(False)
         except redis.exceptions.ResponseError as e:
             # Expecting a type error.
-            self.env.assertContains("Type mismatch: expected String, Boolean, Integer, Float, Null, or Point but was Edge", str(e))
+            self.env.assertContains("Type mismatch: expected Datetime, Duration, String, Boolean, Integer, Float, Null, or Point but was Edge", str(e))
 
         query = "RETURN isEmpty(1)"
         try:

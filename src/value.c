@@ -252,6 +252,18 @@ const char *SIType_ToString(SIType t) {
 		return "List";
 	} else if(t & T_PATH) {
 		return "Path";
+	} else if(t & T_DATETIME) {
+		return "Datetime";
+	} else if(t & T_LOCALDATETIME) {
+		return "Local Datetime";
+	} else if(t & T_DATE) {
+		return "Date";
+	} else if(t & T_TIME) {
+		return "Time";
+	} else if(t & T_LOCALTIME) {
+		return "Local Time";
+	} else if(t & T_DURATION) {
+		return "Duration";
 	} else if(t & T_POINT) {
 		return "Point";
 	} else if(t & T_NULL) {
@@ -266,16 +278,12 @@ void SIType_ToMultipleTypeString(SIType t, char **buf, size_t *bufferLen, size_t
 	ASSERT((*bufferLen - *bytesWritten) >= 256);
 
 	SIType currentType;
-	SIType remainingTypes;
+	SIType remainingTypes = t;
 	
-	// Remove from remainingTypes the types which are not used currently
-	remainingTypes = t & ~(T_DATETIME | T_LOCALDATETIME | T_DATE | T_TIME | T_LOCALTIME | T_DURATION);
-
 	uint typesDetected = 0;
 	// Iterate over the possible SITypes
-	SIType in_use[12] = {T_MAP, T_NODE, T_EDGE, T_ARRAY, T_PATH, T_STRING, T_BOOL, T_INT64, T_DOUBLE, T_NULL, T_PTR, T_POINT};
-	for(int i = 0; i < 12; i ++) {
-		currentType = in_use[i];
+	for(int i = 0; i < 18; i ++) {
+		currentType = (1 << i);
 		if(t & currentType) {
 			remainingTypes &= (~currentType);
 			if(typesDetected > 0) {
