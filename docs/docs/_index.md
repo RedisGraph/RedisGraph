@@ -12,14 +12,16 @@ RedisGraph is a graph database built on Redis. This graph database uses [GraphBl
 
 ## Primary features
 
-* Based on the [property graph model](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc)
-* Nodes can have any number of labels
-* Relationships have a relationship type
+* Adopting the [Property Graph Model](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc)
+  * Nodes (vertices) and Relationships (edges) that may have attributes
+  * Nodes can have multiple labels
+  * Relationships have a relationship type
 * Graphs represented as sparse adjacency matrices
-* [Cypher](http://www.opencypher.org/) as the query language
-* Cypher queries translate into linear algebra expressions
+* [OpenCypher](http://www.opencypher.org/) with proprietary extensions as a query language
+  * Queries are translated into linear algebra expressions
 
-To see RedisGraph in action, [explore our demos](https://github.com/RedisGraph/RedisGraph/tree/master/demo).
+To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGraph/tree/master/demo).
+To read the docs, visit [redis.io](https://redis.io/docs/stack/graph/).
 
 ## Docker
 
@@ -77,7 +79,7 @@ Requirements:
 
 * The RedisGraph repository: `git clone --recurse-submodules -j8 https://github.com/RedisGraph/RedisGraph.git`
 
-* On Ubuntu Linux, run: `apt-get install build-essential cmake m4 automake peg libtool autoconf`
+* On Ubuntu Linux, run: `apt-get install build-essential cmake m4 automake peg libtool autoconf python3`
 
 * On OS X, verify that `homebrew` is installed and run: `brew install cmake m4 automake peg libtool autoconf`.
     * The version of Clang that ships with the OS X toolchain does not support OpenMP, which is a requirement for RedisGraph. One way to resolve this is to run `brew install gcc g++` and follow the on-screen instructions to update the symbolic links. Note that this is a system-wide change - setting the environment variables for `CC` and `CXX` will work if that is not an option.
