@@ -448,12 +448,14 @@ static AR_ExpNode *_AR_ExpFromMapProjection(const cypher_astnode_t *expr) {
 			children[j * 2] = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char *)prop_name));
 			children[j * 2 + 1] = AR_EXP_NewVariableOperandNode(prop_name);
 			j++;
-		} else if(t == CYPHER_AST_MAP_PROJECTION_ALL_PROPERTIES && propertiesOp == NULL) {
+		} else if(t == CYPHER_AST_MAP_PROJECTION_ALL_PROPERTIES) {
 			// { .* }
 			// Use properties() to get a map with all properties
-			propertiesOp = AR_EXP_NewOpNode("properties", true, 1);
-			AR_ExpNode **propertiesChildren = propertiesOp->op.children;
-			propertiesChildren[0] = AR_EXP_NewVariableOperandNode(entity_name);
+			if(propertiesOp == NULL) {
+				propertiesOp = AR_EXP_NewOpNode("properties", false, 1);
+				AR_ExpNode **propertiesChildren = propertiesOp->op.children;
+				propertiesChildren[0] = AR_EXP_NewVariableOperandNode(entity_name);
+			}
 		} else {
 			ASSERT("Unexpected AST node type" && false);
 		}
