@@ -61,6 +61,26 @@ class testMap(FlowTestsBase):
                            [{}]]
         self.env.assertEquals(query_result.result_set, expected_result)
 
+        query = """MATCH (n) RETURN n {.*}  ORDER BY n.val"""
+        query_result = redis_graph.query(query)
+        expected_result =  [[{'val': 1}],
+                            [{'val': 2}],
+                            [{'val': 3}]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        queries = [
+            """MATCH (n) RETURN n {.*, .h}  ORDER BY n.val""",
+            """MATCH (n) RETURN n {.h, .*}  ORDER BY n.val""",
+            """MATCH (n) RETURN n {.*, .h, .*}  ORDER BY n.val""",
+            """MATCH (n) RETURN n {.h, .*, .h}  ORDER BY n.val""",
+        ]
+        expected_result =  [[{'val': 1, 'h': None}],
+                            [{'val': 2, 'h': None}],
+                            [{'val': 3, 'h': None}]]
+        for query in queries:
+            query_result = redis_graph.query(query)
+            self.env.assertEquals(query_result.result_set, expected_result)
+
         query = """MATCH (n:unexisting) RETURN n {}"""
         query_result = redis_graph.query(query)
         expected_result = []
