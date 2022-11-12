@@ -89,23 +89,12 @@ SIValue AR_MERGEMAP(SIValue *argv, int argc, void *private_data) {
 		return map0;
 	} else {
 		uint keyCount0 = Map_KeyCount(map0);
-		uint keyCount1 = Map_KeyCount(map1);
-
-		int l = keyCount0;
-		SIValue a = map0;
-		SIValue b = map1;
-
-		if(keyCount0 > keyCount1) {
-			l = keyCount1;
-			a = map1;
-			b = map0;
+		SIValue map = Map_Clone(map1);
+		for(int i = 0; i < keyCount0; i++) {
+			Pair p = map0.map[i];
+			Map_Add(&map, p.key, p.val);
 		}
-
-		for(int i = 0; i < l; i++) {
-			Pair p = a.map[i];
-			Map_Add(&b, p.key, p.val);
-		}
-		return b;
+		return map;
 	}
 }
 
