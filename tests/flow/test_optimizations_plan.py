@@ -428,17 +428,19 @@ class testOptimizationsPlan(FlowTestsBase):
         self.env.assertEqual(resultset, expected)
 
     def test28_optimize_label_scan_cached_label_id(self):
-        query = """CREATE (n:Q)"""
+        query = """CREATE (n:Q {v: 1})"""
         graph.query(query)
         query = """MATCH (n:N:Q) RETURN n"""
         graph.query(query)
         query = """MATCH (n:Q) SET n:N"""
         graph.query(query)
-        query = """MATCH (n:N:Q) RETURN n"""
-        graph.query(query)
+        query = """MATCH (n:N:Q) RETURN n.v"""
+        res = graph.query(query)
+        self.env.assertEquals(res.result_set, [[1]])
     
     def test29_optimize_label_scan_optional_match(self):
-        query = """CREATE (n:N)"""
+        query = """CREATE (n:M {v: 1})"""
         graph.query(query)
-        query = """MATCH (n:N) OPTIONAL MATCH (n:Q) RETURN n"""
-        graph.query(query)
+        query = """MATCH (n:M) OPTIONAL MATCH (n:Q) RETURN n.v"""
+        res = graph.query(query)
+        self.env.assertEquals(res.result_set, [[1]])

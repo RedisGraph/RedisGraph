@@ -182,8 +182,20 @@ void QGNode_AddLabel
 	ASSERT(n != NULL);
 	ASSERT(l != NULL);
 
-	// node already labeled as l
-	if(QGNode_HasLabel(n, l)) return;
+	// Mandatory > Optional label (stronger) --> If n already has label 
+	// l , and it is non optional, and optional=false update n's optional entry
+	// corresponding to l.
+	if(QGNode_HasLabel(n, l)) {
+		if(QGNode_IsLabelOptional(n, l) && !optional) {
+			int label_count = QGNode_LabelCount(n);
+			for (uint i = 0; i < label_count; i++) {
+				if (n->labels[i] == l) {
+					n->optional[i] = optional;
+				}
+			}
+		}
+		return;
+	}
 
 	array_append(n->labels, l);
 	array_append(n->labelsID, l_id);

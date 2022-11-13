@@ -133,7 +133,7 @@ static void _QueryGraphAddEdge
 	else QueryGraph_ConnectNodes(qg, dest, src, edge);
 }
 
-// extracts node from 'qg' and places a copy of into 'graph'
+// extracts node from 'qg' and places a copy of it in 'graph'
 static void _QueryGraph_ExtractNode
 (
 	const QueryGraph *qg,
@@ -170,6 +170,7 @@ static void _QueryGraph_ExtractNode
 			// clear node label information
 			array_clear(n->labels);
 			array_clear(n->labelsID);
+			array_clear(n->optional);
 
 			QueryGraph_AddNode(graph, n);
 			// set node label information
@@ -281,8 +282,8 @@ void QueryGraph_AddPath
 (
 	QueryGraph *qg,                // query graph to add path to
 	const cypher_astnode_t *path,  // path to add
-	bool only_shortest,             // interested only in the shortest paths
-	bool optional
+	bool only_shortest,            // interested only in the shortest paths
+	bool optional                  // part of an optional clause
 ) {
 	AST *ast = QueryCtx_GetAST();
 	uint nelems = cypher_ast_pattern_path_nelements(path);
