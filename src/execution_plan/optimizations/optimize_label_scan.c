@@ -45,10 +45,10 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	ASSERT(qn != NULL);
 
 	// return if node has only one non-optional label
-	uint mand_label_count = QGNode_MandatoryLabelCount(qn);
-	if(mand_label_count == 1) return;
+	uint label_count = QGNode_MandatoryLabelCount(qn);
+	if(label_count == 1) return;
 	
-	uint label_count = QGNode_LabelCount(qn);
+	label_count = QGNode_LabelCount(qn);
 	ASSERT(label_count >= 1);
 
 	// node has multiple labels
@@ -56,23 +56,13 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	uint64_t    min_nnz       = UINT64_MAX; // tracks min entries
 	int         min_label_id  = 0;          // tracks min label ID
 	const char *min_label_str = NULL;       // tracks min label name
-	
-	// Is scan->n.label optional
-	bool optional, found;
-	for (uint i = 0; i < label_count; i++){
-		found = QGNode_GetLabel(qn, i) == scan->n.label;
-		if (found){
-			optional = qn->optional[i];
-			break;
-		}
-	}
-	ASSERT(found == true);
+
 	// Don't perform the optimization on a plan where the label is optional.
-	if (optional) return;
+	if (QGNode_IsLabelOptional(qn, scan->n.label)) return;
 
 	for(uint i = 0; i < label_count; i++) {
 		// Don't consider optional labels.
-		if (QGNode_IsOptional(qn, i)) continue;
+		if (QGNode_IsLabelIdxOptional(qn, i)) continue;
 		uint64_t nnz;
 		int label_id = QGNode_GetLabelID(qn, i);
 		nnz = Graph_LabeledNodeCount(g, label_id);
@@ -81,19 +71,6 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 			min_nnz        =  nnz;
 			min_label_id   =  label_id;
 			min_label_str  =  QGNode_GetLabel(qn, i);
-		}
-	}
-
-	// in-case label_id is unknown at time it was created
-	// check if we can resolve it now
-	if(scan->n.label_id == GRAPH_UNKNOWN_LABEL) {
-		GraphContext *gc = QueryCtx_GetGraphCtx();
-		ASSERT(gc != NULL);
-
-		// get schema by name
-		Schema *s = GraphContext_GetSchema(gc, scan->n.label, SCHEMA_NODE);
-		if(s != NULL) {
-			scan->n.label_id = Schema_GetID(s);
 		}
 	}
 
@@ -117,7 +94,7 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	const char *row_domain = scan->n.alias;
 	const char *column_domain = scan->n.alias;
 
-	found = AlgebraicExpression_LocateOperand(ae, &operand, NULL,
+	bool found = AlgebraicExpression_LocateOperand(ae, &operand, NULL,
 			row_domain, column_domain, NULL, min_label_str);
 	ASSERT(found == true);
 
