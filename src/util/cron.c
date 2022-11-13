@@ -252,7 +252,4 @@ void Cron_AbortTask(CronTaskHandle t) {
 	if(abort) {
 		CRON_RemoveTask(task);
 	}
-
-	ASSERT(task->state == TASK_COMPLETED || task->state == TASK_ABORT);
 }
-
