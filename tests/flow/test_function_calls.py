@@ -104,13 +104,14 @@ class testFunctionCallsFlow(FlowTestsBase):
 
     def test03_boolean_errors(self):
         query = """RETURN 'str' < 5.5"""
-        self.expect_type_error(query)
+        expected_result = [[None]]
+        self.get_res_and_assertEquals(query, expected_result)
 
         query = """RETURN true > 5"""
-        self.expect_type_error(query)
+        self.get_res_and_assertEquals(query, expected_result)
 
         query = """MATCH (a) RETURN a < 'anything' LIMIT 1"""
-        self.expect_type_error(query)
+        self.get_res_and_assertEquals(query, expected_result)
 
     def test04_entity_functions(self):
         query = "RETURN ID(5)"

@@ -69,7 +69,6 @@ Feature: Comparison2 - Half-bounded Range
       | null  |
     And no side effects
 
-  @skip
   Scenario Outline: [3] Comparing across types yields null, except numbers
     Given an empty graph
     And having executed:
@@ -119,7 +118,6 @@ Feature: Comparison2 - Half-bounded Range
       | [1, 'a']  | [1, null] | null   |
       | [1, 2]    | [3, null] | false  |
 
-  @skip
   Scenario Outline: [5] Comparing NaN
     Given an empty graph
     When executing query:
@@ -138,7 +136,6 @@ Feature: Comparison2 - Half-bounded Range
       | 0.0 / 0.0 | 0.0 / 0.0 | false  |
       | 0.0 / 0.0 | 'a'       | null   |
 
-  @skip
   Scenario Outline: [6] Comparability between numbers and strings
     Given any graph
     When executing query:

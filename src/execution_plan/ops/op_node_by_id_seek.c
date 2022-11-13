@@ -103,7 +103,7 @@ static Record NodeByIdSeekConsumeFromChild(OpBase *opBase) {
 	}
 
 	// Clone the held Record, as it will be freed upstream.
-	Record r = OpBase_CloneRecord(op->child_record);
+	Record r = OpBase_DeepCloneRecord(op->child_record);
 
 	// Populate the Record with the actual node.
 	Record_AddNode(r, op->nodeRecIdx, n);
