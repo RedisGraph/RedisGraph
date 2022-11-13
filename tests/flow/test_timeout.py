@@ -32,7 +32,7 @@ class testQueryTimeout():
         except:
             self.env.assertTrue(False)
 
-        query = """UNWIND range(0, 40000) AS x CREATE (p:Person {age: x%90, height: x%200, weight: x%80})"""
+        query = """UNWIND range(0, 100000) AS x CREATE (p:Person {age: x%90, height: x%200, weight: x%80})"""
         try:
             # The query is expected to succeed
             redis_graph.query(query, timeout=1)
@@ -94,7 +94,7 @@ class testQueryTimeout():
         # run each query with timeout and limit
         # expecting queries to run to completion
         for q in queries:
-            q += " LIMIT 2"
+            q += " LIMIT 10"
             try:
                 res = redis_graph.query(q, timeout=20)
                 timeouts.append(res.run_time_ms)

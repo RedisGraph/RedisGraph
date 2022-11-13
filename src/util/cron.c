@@ -256,6 +256,7 @@ void Cron_AbortTask(CronTaskHandle t) {
 				volatile CRON_TASK *task_pending = task;
 				while(task_pending->state != TASK_COMPLETED);
 			}
+			Heap_remove_item(cron->tasks, task);
 		}
 
 		state = task->state;
