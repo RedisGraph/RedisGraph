@@ -242,6 +242,11 @@ void Cron_AbortTask(CronTaskHandle t) {
 
 	CRON_TASK *task = (CRON_TASK *)t;
 
+	pthread_mutex_lock(&cron->mutex);
+	int contains = Heap_contains_item(cron->tasks, task);
+	pthread_mutex_unlock(&cron->mutex);
+	if(!contains) return;
+
 	// try marking task as aborted
 	bool abort = CRON_TaskAdvanceState(task, TASK_PENDING, TASK_ABORT);
 	if(abort) {
