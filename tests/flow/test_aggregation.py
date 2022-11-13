@@ -126,3 +126,11 @@ class testAggregations():
         query = f'UNWIND [{long_max}, {long_max / 2}] AS x RETURN avg(x)'
         expected = [[long_max / 2 + long_max / 4]]
         self.get_res_and_assertAlmostEquals(query, expected)
+    
+    def test09_AggregateWithNullFilter(self):
+        query = 'CREATE (:L {p:0.0/0.0})'
+        graph.query(query)
+
+        query = 'MATCH (n:L) WHERE (null <> false) XOR true RETURN COUNT(n)'
+        expected = [[0]]
+        self.get_res_and_assertAlmostEquals(query, expected)
