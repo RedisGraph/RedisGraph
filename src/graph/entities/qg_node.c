@@ -121,7 +121,6 @@ bool QGNode_IsLabelOptional
 	const char *label
 ) {
 	ASSERT(n != NULL);
-	ASSERT(idx < QGNode_LabelCount(n));
 
 	int label_count = QGNode_LabelCount(n);
 	for (uint i = 0; i < label_count; i++) {
