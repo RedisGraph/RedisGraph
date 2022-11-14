@@ -68,10 +68,10 @@ static int CRON_JobCmp
 // compute now + ms
 static struct timespec due_in_ms(uint ms) {
 	struct timespec due;
-    clock_gettime(CLOCK_REALTIME, &due);
+	clock_gettime(CLOCK_REALTIME, &due);
 
 	due.tv_sec += ms / 1000;
-    due.tv_nsec += (ms % 1000) * 1000000;
+	due.tv_nsec += (ms % 1000) * 1000000;
 
 	return due;
 }
@@ -88,7 +88,7 @@ static bool CRON_TaskDue(const CRON_TASK *t) {
 	ASSERT(t != NULL);
 
 	struct timespec now;
-    clock_gettime(CLOCK_REALTIME, &now);
+	clock_gettime(CLOCK_REALTIME, &now);
 	return cmp_timespec(now, t->due) >= 0;
 }
 
