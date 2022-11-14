@@ -99,11 +99,12 @@ static CRON_TASK *CRON_Peek() {
 	return task;
 }
 
-static void CRON_RemoveTask(const CRON_TASK *t) {
+static bool CRON_RemoveTask(const CRON_TASK *t) {
 	ASSERT(t != NULL);
 	pthread_mutex_lock(&cron->mutex);
-	Heap_remove_item(cron->tasks, t);
+	void *res = Heap_remove_item(cron->tasks, t);
 	pthread_mutex_unlock(&cron->mutex);
+	return res != NULL;
 }
 
 static void CRON_InsertTask(CRON_TASK *t) {
@@ -170,10 +171,10 @@ static void *Cron_Run(void *arg) {
 				// set state to completed
 				// frees any threads waiting on task to complete
 				task->state = TASK_COMPLETED;
-			}
 
-			CRON_RemoveTask(task);
-			CRON_FreeTask(task);
+				CRON_RemoveTask(task);
+				CRON_FreeTask(task);
+			}
 		}
 
 		// sleep
@@ -242,14 +243,11 @@ void Cron_AbortTask(CronTaskHandle t) {
 
 	CRON_TASK *task = (CRON_TASK *)t;
 
-	pthread_mutex_lock(&cron->mutex);
-	int contains = Heap_contains_item(cron->tasks, task);
-	pthread_mutex_unlock(&cron->mutex);
-	if(!contains) return;
-
+	// try remove the task
+	if(!CRON_RemoveTask(task)) return;
+	
 	// try marking task as aborted
-	bool abort = CRON_TaskAdvanceState(task, TASK_PENDING, TASK_ABORT);
-	if(abort) {
-		CRON_RemoveTask(task);
+	if(CRON_TaskAdvanceState(task, TASK_PENDING, TASK_ABORT)) {
+		CRON_FreeTask(task);
 	}
 }
