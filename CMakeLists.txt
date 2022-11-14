@@ -105,7 +105,7 @@ enable_testing ( )
 
 add_subdirectory ( src )
 add_subdirectory ( tests/unit )
-add_subdirectory ( tests/flow )
+#add_subdirectory ( tests/flow )
 
 #-------------------------------------------------------------------------------
 # xxHash

@@ -58,7 +58,8 @@ target_link_libraries( redisgraph PRIVATE ${CMAKE_SOURCE_DIR}/deps/xxHash/libxxh
 # GraphBLAS
 target_link_libraries ( redisgraph PUBLIC ${CMAKE_SOURCE_DIR}/deps/GraphBLAS/build/libgraphblas.a )
 # redisearch
-target_link_libraries( redisgraph PRIVATE ${CMAKE_SOURCE_DIR}/bin/macos-arm64v8-release/search-static/libredisearch.a )
+#target_link_libraries( redisgraph PRIVATE ${CMAKE_SOURCE_DIR}/bin/macos-arm64v8-release/search-static/libredisearch.a )
+target_link_libraries( redisgraph PRIVATE ${CMAKE_SOURCE_DIR}/bin/macos-arm64v8-debug/search-static/libredisearch.a )
 # libcypher-parser
 target_link_libraries( redisgraph PRIVATE ${CMAKE_SOURCE_DIR}/deps/libcypher-parser/lib/src/.libs/libcypher-parser.a )
 
