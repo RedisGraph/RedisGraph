@@ -1187,7 +1187,7 @@ static AST_Validation _Validate_LIMIT_SKIP_Modifiers(const AST *ast) {
 }
 
 // A query must end in a RETURN clause, a procedure, or an updating clause
-// (CREATE, MERGE, DELETE, SET, or REMOVE once supported)
+// (CREATE, MERGE, DELETE, SET or REMOVE)
 static AST_Validation _ValidateQueryTermination(const AST *ast) {
 	ASSERT(ast != NULL);
 

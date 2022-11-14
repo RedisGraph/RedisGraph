@@ -74,16 +74,16 @@ inline uint QGNode_LabelCount
 	return array_len(n->labels);
 }
 
-inline uint QGNode_MandatoryLabelCount
+uint QGNode_MandatoryLabelCount
 (
 	const QGNode *n
 ) {
 	ASSERT(n != NULL);
 
-	uint count          = array_len(n->optional);
+	uint count = QGNode_LabelCount(n);
 	uint optional_count = 0;
 	for(uint i = 0; i < count; i++) {
-		if(!n->optional[i]) optional_count++;
+		optional_count += n->optional[i];
 	}
 	return optional_count;
 }
@@ -123,8 +123,8 @@ bool QGNode_IsLabelOptional
 	ASSERT(n != NULL);
 
 	int label_count = QGNode_LabelCount(n);
-	for (uint i = 0; i < label_count; i++) {
-		if (strcmp(n->labels[i], label) == 0) {
+	for(uint i = 0; i < label_count; i++) {
+		if(strcmp(n->labels[i], label) == 0) {
 			return n->optional[i];
 		}
 	}
@@ -158,14 +158,20 @@ const char *QGNode_GetLabel
 bool QGNode_HasLabel
 (
 	const QGNode *n,
-	const char *l
+	const char *l,
+	uint *idx,          // [OPTIONAL] set to label idx if located
+	bool *optional      // [OPTIONAL] set to optional value of label l if located
 ) {
 	ASSERT(n != NULL);
 	ASSERT(l != NULL);
 
 	uint label_count = QGNode_LabelCount(n);
 	for(uint i = 0; i < label_count; i++) {
-		if(strcmp(n->labels[i], l) == 0) return true;
+		if(strcmp(n->labels[i], l) == 0) {
+			if(idx != NULL) *idx = i;
+			if(optional != NULL) *optional = n->optional[i];
+			return true;
+		}
 	}
 
 	return false;
@@ -181,21 +187,16 @@ void QGNode_AddLabel
 	ASSERT(n != NULL);
 	ASSERT(l != NULL);
 
-	// Mandatory > Optional label (stronger) --> If n already has label 
-	// l, and it is non optional, and optional=false update n's optional entry
-	// corresponding to l.
-	if(QGNode_HasLabel(n, l)) {
-		if(QGNode_IsLabelOptional(n, l) && !optional) {
-			int label_count = QGNode_LabelCount(n);
-			for (uint i = 0; i < label_count; i++) {
-				if (n->labels[i] == l) {
-					n->optional[i] = optional;
-				}
-			}
-		}
+	bool isOptional;
+	uint idx;
+
+	// n->optional[i] = n->optional[i] & optional for i corresponding to l
+	if(QGNode_HasLabel(n, l, &idx, &isOptional)) {
+		n->optional[idx] = n->optional[idx] & optional;
 		return;
 	}
 
+	// new label, add it
 	array_append(n->labels, l);
 	array_append(n->labelsID, l_id);
 	array_append(n->optional, optional);

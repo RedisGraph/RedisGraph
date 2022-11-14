@@ -427,20 +427,30 @@ class testOptimizationsPlan(FlowTestsBase):
                     [0, 3]]
         self.env.assertEqual(resultset, expected)
 
+    # Label_id of a label in a cached execution plan should be updated properly.
+    # The label with less nodes should be traversed first.
     def test28_optimize_label_scan_cached_label_id(self):
+        self.env.flush()
         query = """CREATE (n:Q {v: 1})"""
         graph.query(query)
         query = """MATCH (n:N:Q) RETURN n"""
+        plan = graph.execution_plan(query)
+        # Make sure Q is traversed first, as it has less nodes.
+        self.env.assertIn("Node By Label Scan | (n:N)", plan)
         graph.query(query)
         query = """MATCH (n:Q) SET n:N"""
         graph.query(query)
         query = """MATCH (n:N:Q) RETURN n.v"""
         res = graph.query(query)
         self.env.assertEquals(res.result_set, [[1]])
-    
+
+    # Q should not be traversed first even though it has less nodes, as it is optional.
     def test29_optimize_label_scan_optional_match(self):
+        self.env.flush()
         query = """CREATE (n:M {v: 1})"""
         graph.query(query)
         query = """MATCH (n:M) OPTIONAL MATCH (n:Q) RETURN n.v"""
+        plan = graph.execution_plan(query)
+        self.env.assertIn("Node By Label Scan | (n:M)", plan)
         res = graph.query(query)
         self.env.assertEquals(res.result_set, [[1]])
