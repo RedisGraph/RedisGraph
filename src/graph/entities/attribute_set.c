@@ -11,7 +11,7 @@
 #include "../../util/rmalloc.h"
 
 // compute size of attribute set in bytes
-#define ATTRIBUTESET_BYTE_SIZE(set) (set) == NULL ? sizeof(_AttributeSet) : sizeof(_AttributeSet) + sizeof(Attribute) * (set)->attr_count
+#define ATTRIBUTESET_BYTE_SIZE(set) ((set) == NULL ? sizeof(_AttributeSet) : sizeof(_AttributeSet) + sizeof(Attribute) * (set)->attr_count)
 
 // determine if set is empty
 #define ATTRIBUTESET_EMPTY(set) (set) == NULL
@@ -195,7 +195,7 @@ void AttributeSet_Set_Allow_Null
 	Attribute_ID attr_id,  // attribute identifier
 	SIValue value          // attribute value
 ) {
-	ASSERT(set != NULL && *set != NULL);
+	ASSERT(set != NULL);
 	ASSERT(attr_id != ATTRIBUTE_ID_NONE);
 
 	AttributeSet _set = *set;
@@ -212,10 +212,11 @@ void AttributeSet_Set_Allow_Null
 		return;
 	}
 
+	size_t n = ATTRIBUTESET_BYTE_SIZE(_set) + sizeof(Attribute);
+	_set = rm_realloc(_set, n);
+
 	// allocate room for new attribute
 	_set->attr_count++;
-	size_t n = ATTRIBUTESET_BYTE_SIZE(_set);
-	_set = rm_realloc(_set, n);
 
 	// set attribute
 	Attribute *attr = _set->attributes + _set->attr_count - 1;
@@ -233,7 +234,7 @@ bool AttributeSet_UpdateNoClone
 	Attribute_ID attr_id,  // attribute identifier
 	SIValue value          // new value
 ) {
-	ASSERT(set != NULL && *set != NULL);
+	ASSERT(set != NULL);
 	ASSERT(attr_id != ATTRIBUTE_ID_NONE);
 
 	// setting an attribute value to NULL removes that attribute
@@ -259,7 +260,7 @@ bool AttributeSet_Update
 	Attribute_ID attr_id,  // attribute identifier
 	SIValue value          // new value
 ) {
-	ASSERT(set != NULL && *set != NULL);
+	ASSERT(set != NULL);
 	ASSERT(attr_id != ATTRIBUTE_ID_NONE);
 
 	// setting an attribute value to NULL removes that attribute
