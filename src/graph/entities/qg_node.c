@@ -124,7 +124,7 @@ bool QGNode_IsLabelOptional
 
 	int label_count = QGNode_LabelCount(n);
 	for (uint i = 0; i < label_count; i++) {
-		if (n->labels[i] == label) {
+		if (strcmp(n->labels[i], label) == 0) {
 			return n->optional[i];
 		}
 	}
@@ -182,7 +182,7 @@ void QGNode_AddLabel
 	ASSERT(l != NULL);
 
 	// Mandatory > Optional label (stronger) --> If n already has label 
-	// l , and it is non optional, and optional=false update n's optional entry
+	// l, and it is non optional, and optional=false update n's optional entry
 	// corresponding to l.
 	if(QGNode_HasLabel(n, l)) {
 		if(QGNode_IsLabelOptional(n, l) && !optional) {
