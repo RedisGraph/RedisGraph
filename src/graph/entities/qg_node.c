@@ -115,24 +115,6 @@ int QGNode_GetLabelID
 	return labelId;
 }
 
-bool QGNode_IsLabelOptional
-(
-	const QGNode *n,
-	const char *label
-) {
-	ASSERT(n != NULL);
-
-	int label_count = QGNode_LabelCount(n);
-	for(uint i = 0; i < label_count; i++) {
-		if(strcmp(n->labels[i], label) == 0) {
-			return n->optional[i];
-		}
-	}
-	
-	ASSERT(false);
-	return false;
-}
-
 bool QGNode_IsLabelIdxOptional
 (
 	const QGNode *n,

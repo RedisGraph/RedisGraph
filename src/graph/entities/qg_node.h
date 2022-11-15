@@ -62,13 +62,6 @@ int QGNode_GetLabelID
 	uint idx
 );
 
-// returns whether the 'label' is optional
-bool QGNode_IsLabelOptional
-(
-	const QGNode *n,
-	const char *label
-);
-
 // returns whether the 'idx' label is optional
 bool QGNode_IsLabelIdxOptional
 (
@@ -81,6 +74,17 @@ const char *QGNode_GetLabel
 (
 	const QGNode *n,
 	uint idx
+);
+
+// returns whether n has label l
+// if optional arguments idx, optional are not NULL
+// they are set to their corresponding values
+bool QGNode_HasLabel
+(
+	const QGNode *n,
+	const char *l,
+	uint *idx,
+	bool *optional
 );
 
 // label 'n' as 'l'

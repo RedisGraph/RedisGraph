@@ -58,7 +58,8 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	const char *min_label_str = NULL;       // tracks min label name
 
 	// Don't perform the optimization on a plan where the label is optional.
-	if (QGNode_IsLabelOptional(qn, scan->n.label)) return;
+	bool optional;
+	if(QGNode_HasLabel(qn, scan->n.label, NULL, &optional) && optional) return;
 
 	for(uint i = 0; i < label_count; i++) {
 		// Don't consider optional labels.
