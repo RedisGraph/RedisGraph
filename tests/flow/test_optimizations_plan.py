@@ -431,26 +431,41 @@ class testOptimizationsPlan(FlowTestsBase):
     # The label with less nodes should be traversed first.
     def test28_optimize_label_scan_cached_label_id(self):
         self.env.flush()
-        query = """CREATE (n:Q {v: 1})"""
-        graph.query(query)
-        query = """MATCH (n:N:Q) RETURN n"""
-        plan = graph.execution_plan(query)
-        # Make sure Q is traversed first, as it has less nodes.
+
+        # Create node with label Q
+        graph.query("CREATE (n:Q {v: 1})")
+
+        # Make sure N is traversed first, as it has less nodes.
+        plan = graph.execution_plan("MATCH (n:N:Q) RETURN n.v")
         self.env.assertIn("Node By Label Scan | (n:N)", plan)
-        graph.query(query)
+
+        # Add label `N` to only node in the graph
         query = """MATCH (n:Q) SET n:N"""
         graph.query(query)
+
+        # Make sure #nodes labeled as Q > #nodes labeled as N
+        graph.query("CREATE (n:Q {v: 1})")
+
+        # Make sure N is traversed first, N is now associated with an ID
+        # |N| < |Q|
         query = """MATCH (n:N:Q) RETURN n.v"""
         res = graph.query(query)
         self.env.assertEquals(res.result_set, [[1]])
 
-    # Q should not be traversed first even though it has less nodes, as it is optional.
+        plan = graph.execution_plan(query)
+        self.env.assertIn("Node By Label Scan | (n:N)", plan)
+
+    # Q should not be traversed first even though it has less nodes
+    # as it is optional
     def test29_optimize_label_scan_optional_match(self):
         self.env.flush()
-        query = """CREATE (n:M {v: 1})"""
+
+        query = """CREATE (n:N {v: 1})"""
         graph.query(query)
-        query = """MATCH (n:M) OPTIONAL MATCH (n:Q) RETURN n.v"""
+
+        query = """MATCH (n:N) OPTIONAL MATCH (n:Q) RETURN n.v"""
         plan = graph.execution_plan(query)
-        self.env.assertIn("Node By Label Scan | (n:M)", plan)
+        self.env.assertIn("Node By Label Scan | (n:N)", plan)
         res = graph.query(query)
         self.env.assertEquals(res.result_set, [[1]])
+
