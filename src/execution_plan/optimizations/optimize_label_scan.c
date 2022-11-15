@@ -14,8 +14,8 @@
 // this optimization scans through each label-scan operation
 // in case the node being scanned is associated with multiple labels
 // e.g. MATCH (n:A:B) RETURN n
-// we will prefer to first scan through the label with the least amount of nodes
-// for the above example if NNZ(A) < NNZ(B) we will want to iterate over A first.
+// we will prefer to start scanning the label with the least amount of nodes
+// for the above example if NNZ(A) < NNZ(B) we will want to iterate over A first
 //
 // in-case this optimization changed the label scanned e.g. from A to B
 // it will have to patch the following conditional traversal removing B operand
@@ -35,9 +35,9 @@
 static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	ASSERT(scan != NULL);	
 
-	OpBase      *op  =  (OpBase*)scan;
-	Graph       *g   =  QueryCtx_GetGraph();
-	QueryGraph  *qg  =  op->plan->query_graph;
+	OpBase      *op = (OpBase*)scan;
+	Graph       *g  = QueryCtx_GetGraph();
+	QueryGraph  *qg = op->plan->query_graph;
 
 	// see if scanned node has multiple labels
 	const char *node_alias = scan->n.alias;
@@ -49,7 +49,7 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	if(label_count == 1) return;
 	
 	label_count = QGNode_LabelCount(qn);
-	ASSERT(label_count >= 1);
+	ASSERT(label_count > 1);
 
 	// node has multiple labels
 	// find label with minimum entities
@@ -57,12 +57,13 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	int         min_label_id  = 0;          // tracks min label ID
 	const char *min_label_str = NULL;       // tracks min label name
 
-	// Don't perform the optimization on a plan where the label is optional.
+	// don't perform the optimization on a plan where the label is optional
 	bool optional;
-	if(QGNode_HasLabel(qn, scan->n.label, NULL, &optional) && optional) return;
+	QGNode_HasLabel(qn, scan->n.label, NULL,  &optional);
+	if(optional) return;
 
 	for(uint i = 0; i < label_count; i++) {
-		// Don't consider optional labels.
+		// don't consider optional labels
 		if (QGNode_IsLabelIdxOptional(qn, i)) continue;
 		uint64_t nnz;
 		int label_id = QGNode_GetLabelID(qn, i);

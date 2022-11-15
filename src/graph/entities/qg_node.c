@@ -36,13 +36,13 @@ QGNode *QGNode_New
 ) {
 	QGNode *n = rm_malloc(sizeof(QGNode));
 
-	n->alias             =  alias;
-	n->labels            =  array_new(const char *, 0);
-	n->labelsID          =  array_new(int, 0);
-	n->optional          =  array_new(bool, 0);
-	n->incoming_edges    =  array_new(QGEdge *, 0);
-	n->outgoing_edges    =  array_new(QGEdge *, 0);
-	n->highly_connected  =  false;
+	n->alias            = alias;
+	n->labels           = array_new(const char *, 0);
+	n->labelsID         = array_new(int, 0);
+	n->optional         = array_new(bool, 0);
+	n->incoming_edges   = array_new(QGEdge *, 0);
+	n->outgoing_edges   = array_new(QGEdge *, 0);
+	n->highly_connected = false;
 
 	return n;
 }
@@ -82,9 +82,11 @@ uint QGNode_MandatoryLabelCount
 
 	uint count = QGNode_LabelCount(n);
 	uint optional_count = 0;
+
 	for(uint i = 0; i < count; i++) {
 		optional_count += n->optional[i];
 	}
+
 	return optional_count;
 }
 
@@ -139,10 +141,10 @@ const char *QGNode_GetLabel
 
 bool QGNode_HasLabel
 (
-	const QGNode *n,
-	const char *l,
-	uint *idx,          // [OPTIONAL] set to label idx if located
-	bool *optional      // [OPTIONAL] set to optional value of label l if located
+	const QGNode *n,  // node to inspect
+	const char *l,    // label to query
+	uint *idx,        // [OPTIONAL] set to label idx if located
+	bool *optional    // [OPTIONAL] set to optional value of label l if located
 ) {
 	ASSERT(n != NULL);
 	ASSERT(l != NULL);
@@ -161,18 +163,18 @@ bool QGNode_HasLabel
 
 void QGNode_AddLabel
 (
-	QGNode *n,
-	const char *l,
-	int l_id,
-	bool optional
+	QGNode *n,      // node to modify
+	const char *l,  // label to add
+	int l_id,       // label ID
+	bool optional   // is label optional
 ) {
 	ASSERT(n != NULL);
 	ASSERT(l != NULL);
 
-	bool isOptional;
 	uint idx;
+	bool isOptional;
 
-	// n->optional[i] = n->optional[i] & optional for i corresponding to l
+	// n->optional[idx] = n->optional[idx] & optional for idx corresponding to l
 	if(QGNode_HasLabel(n, l, &idx, &isOptional)) {
 		n->optional[idx] = n->optional[idx] & optional;
 		return;

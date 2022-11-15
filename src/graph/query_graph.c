@@ -11,7 +11,7 @@
 #include "../schema/schema.h"
 #include "../../deps/rax/rax.h"
 
-// sets node label and label ID
+// sets node label(s)
 static void _QueryGraphSetNodeLabel
 (
 	QGNode *n,
@@ -37,9 +37,9 @@ static void _QueryGraphSetNodeLabel
 // adds node to query graph
 static void _QueryGraphAddNode
 (
-	QueryGraph *qg,
-	const cypher_astnode_t *ast_entity,
-	bool optional
+	QueryGraph *qg,                      // query graph to modify
+	const cypher_astnode_t *ast_entity,  // AST node representation
+	bool optional                        // is node part of OPTIONAL pattern
 ) {
 	const char *alias = AST_ToString(ast_entity);
 
@@ -142,9 +142,9 @@ static void _QueryGraph_ExtractNode
 ) {
 
 	// validate inputs
-	ASSERT(qg        !=  NULL);
-	ASSERT(graph     !=  NULL);
-	ASSERT(ast_node  !=  NULL);
+	ASSERT(qg       != NULL);
+	ASSERT(graph    != NULL);
+	ASSERT(ast_node != NULL);
 
 	// see if node is already in 'graph'
 	const char *alias = AST_ToString(ast_node);
@@ -376,9 +376,9 @@ QueryGraph *BuildQueryGraph
 (
 	const AST *ast
 ) {
+	bool optional;
 	uint node_count;
 	uint edge_count;
-	bool optional;
 
 	// AST clauses containing path objects
 	cypher_astnode_type_t clause_types [2] = {CYPHER_AST_MATCH, CYPHER_AST_MERGE};
@@ -393,15 +393,18 @@ QueryGraph *BuildQueryGraph
 		const uint8_t clause_type = clause_types[i];
 		// collect all path objects
 		const cypher_astnode_t **clauses = AST_GetTypedNodes(ast->root,
-															 clause_type);
+				clause_type);
 		uint clause_count = array_len(clauses);
 
 		// for each clause of the current type
 		for(uint j = 0; j < clause_count; j ++) {
 			const cypher_astnode_t *clause = clauses[j];
-			
-			// Is the clause optional (relevant only for match)
-			optional = i == 0 ? cypher_ast_match_is_optional(clause) : false;
+
+			// is the clause optional (relevant only for match clauses)
+			optional = false;
+			if (clause_type == CYPHER_AST_MATCH) {
+				optional = cypher_ast_match_is_optional(clause);
+			}
 
 			// collect path objects
 			const cypher_astnode_t **paths =

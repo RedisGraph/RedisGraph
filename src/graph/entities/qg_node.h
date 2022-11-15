@@ -81,19 +81,19 @@ const char *QGNode_GetLabel
 // they are set to their corresponding values
 bool QGNode_HasLabel
 (
-	const QGNode *n,
-	const char *l,
-	uint *idx,
-	bool *optional
+	const QGNode *n,  // node to inspect
+	const char *l,    // label to query
+	uint *idx,        // [OPTIONAL] set to label idx if located
+	bool *optional    // [OPTIONAL] set to optional value of label l if located
 );
 
 // label 'n' as 'l'
 void QGNode_AddLabel
 (
-	QGNode *n,
-	const char *l,
-	int l_id,
-	bool optional
+	QGNode *n,      // node to modify
+	const char *l,  // label to add
+	int l_id,       // label ID
+	bool optional   // is label optional
 );
 
 // returns true if node is highly connected, false otherwise
