@@ -141,4 +141,4 @@ Got questions? Feel free to ask at the [RedisGraph forum](https://forum.redis.co
 
 ## License
 
-RedisBloom is licensed under the [Redis Source Available License Agreement](https://redis.com/legal/licenses/).
+RedisGraph is licensed under the [Redis Source Available License 2.0 (RSALv2) or the Server Side Public License v1 (SSPLv1)](https://redis.com/legal/licenses/).
