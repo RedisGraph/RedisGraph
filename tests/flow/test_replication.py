@@ -17,10 +17,6 @@ class testReplication(FlowTestsBase):
         if self.env.envRunner.debugger is not None:
             self.env.skip() # valgrind is not working correctly with replication
 
-    def _wait_sync(self, con):
-        for i in range(1, 5):
-            con.execute_command("WAIT", "1", "0")
-
     def test_CRUD_replication(self):
         # create a simple graph
         env = self.env
@@ -69,7 +65,7 @@ class testReplication(FlowTestsBase):
         graph.query(q)
 
         # the WAIT command forces master slave sync to complete
-        self._wait_sync(source_con)
+        source_con.execute_command("WAIT", "1", "0")
 
         # make sure index is available on replica
         q = "MATCH (s:L {id:2}) RETURN s.name"
@@ -102,7 +98,7 @@ class testReplication(FlowTestsBase):
         env.assertEqual(result.labels_removed, 1)
 
         # the WAIT command forces master slave sync to complete
-        self._wait_sync(source_con)
+        source_con.execute_command("WAIT", "1", "0")
 
         q = "MATCH (s:L {id:2}) RETURN s"
         result = graph.query(q).result_set
@@ -116,7 +112,7 @@ class testReplication(FlowTestsBase):
         env.assertEqual(result.properties_removed, 1)
 
         # the WAIT command forces master slave sync to complete
-        self._wait_sync(source_con)
+        source_con.execute_command("WAIT", "1", "0")
 
         q = "MATCH (s {id:2}) RETURN s"
         result = graph.query(q).result_set
@@ -136,7 +132,7 @@ class testReplication(FlowTestsBase):
         graph.query(q)
 
         # the WAIT command forces master slave sync to complete
-        self._wait_sync(source_con)
+        source_con.execute_command("WAIT", "1", "0")
 
         # make sure both primary and replica have the same set of indexes
         q = "CALL db.indexes() YIELD type, label, properties, language, stopwords, entitytype"

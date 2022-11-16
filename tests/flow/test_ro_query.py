@@ -5,8 +5,7 @@ slave_con = None
 master_con = None
 
 def checkSlaveSynced(env, masterConn, slaveConn, graph_name):
-    for i in range(1, 5):
-        masterConn.execute_command("WAIT", "1", "0")
+    masterConn.execute_command("WAIT", "1", "0")
     res = slaveConn.execute_command("keys", graph_name)
     env.assertEqual(res, [graph_name])
 
