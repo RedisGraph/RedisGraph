@@ -416,6 +416,10 @@ static AR_ExpNode *_AR_ExpFromMapProjection(const cypher_astnode_t *expr) {
 		// Use properties() to get a map with all properties
 		propertiesOp = AR_EXP_NewOpNode("properties", false, 1);
 		propertiesOp->op.children[0] = AR_EXP_NewVariableOperandNode(entity_name);
+
+		if(n_selectors == allProps_selectors) {
+			return propertiesOp;
+		}
 	}
 
 	tomapOp = AR_EXP_NewOpNode("tomap", true, (n_selectors - allProps_selectors) * 2);
