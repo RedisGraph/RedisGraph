@@ -426,3 +426,31 @@ class testOptimizationsPlan(FlowTestsBase):
                     [0, 3],
                     [0, 3]]
         self.env.assertEqual(resultset, expected)
+
+    # Label_id of a label in a cached execution plan should be updated properly.
+    # The label with less nodes should be traversed first.
+    def test28_optimize_label_scan_cached_label_id(self):
+        self.env.flush()
+
+        # Create node with label Q
+        graph.query("CREATE (n:Q {v: 1})")
+
+        # Make sure N is traversed first, as it has less nodes.
+        plan = graph.execution_plan("MATCH (n:N:Q) RETURN n.v")
+        self.env.assertIn("Node By Label Scan | (n:N)", plan)
+
+        # Add label `N` to only node in the graph
+        query = """MATCH (n:Q) SET n:N"""
+        graph.query(query)
+
+        # Make sure #nodes labeled as Q > #nodes labeled as N
+        graph.query("CREATE (n:Q {v: 1})")
+
+        # Make sure N is traversed first, N is now associated with an ID
+        # |N| < |Q|
+        query = """MATCH (n:N:Q) RETURN n.v"""
+        res = graph.query(query)
+        self.env.assertEquals(res.result_set, [[1]])
+
+        plan = graph.execution_plan(query)
+        self.env.assertIn("Node By Label Scan | (n:N)", plan)

@@ -24,13 +24,21 @@ static inline void NodeByLabelScanToString(const OpBase *ctx, sds *buf) {
 	ScanToString(ctx, buf, op->n.alias, op->n.label);
 }
 
+static void _update_label_id(NodeByLabelScan *op) {
+	if(op->n.label_id != GRAPH_UNKNOWN_LABEL) return;
+
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Schema *s = GraphContext_GetSchema(gc, op->n.label, SCHEMA_NODE);
+	if(s != NULL) op->n.label_id = Schema_GetID(s);
+}
+
 OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, NodeScanCtx n) {
 	NodeByLabelScan *op = rm_calloc(sizeof(NodeByLabelScan), 1);
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	op->g = gc->g;
+	op->g = QueryCtx_GetGraph();
 	op->n = n;
 	// Defaults to [0...UINT64_MAX].
 	op->id_range = UnsignedRange_New();
+	_update_label_id(op);
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_NODE_BY_LABEL_SCAN, "Node By Label Scan", NodeByLabelScanInit,
@@ -50,14 +58,14 @@ void NodeByLabelScanOp_SetIDRange(NodeByLabelScan *op, UnsignedRange *id_range) 
 	op->op.name = "Node By Label and ID Scan";
 }
 
-static GrB_Info _ConstructIterator(NodeByLabelScan *op, Schema *schema) {
+static GrB_Info _ConstructIterator(NodeByLabelScan *op) {
 	NodeID minId;
 	NodeID maxId;
 	GrB_Info info;
 	GrB_Index nrows;
 
 	GraphContext  *gc  =  QueryCtx_GetGraphCtx();
-	RG_Matrix     L    =  Graph_GetLabelMatrix(gc->g, schema->id);
+	RG_Matrix     L    =  Graph_GetLabelMatrix(gc->g, op->n.label_id);
 
 	info = RG_Matrix_nrows(&nrows, L);
 	ASSERT(info == GrB_SUCCESS);
@@ -90,19 +98,17 @@ static OpResult NodeByLabelScanInit(OpBase *opBase) {
 		return OP_OK;
 	}
 
-	// If we have no children, we can build the iterator now.
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Schema *schema = GraphContext_GetSchema(gc, op->n.label, SCHEMA_NODE);
-	if(!schema) {
+	// resolve label ID at runtime
+	_update_label_id(op);
+
+	if(op->n.label_id == GRAPH_UNKNOWN_LABEL) {
 		// Missing schema, use the NOP consume function.
 		OpBase_UpdateConsume(opBase, NodeByLabelScanNoOp);
 		return OP_OK;
-	}
-	// Resolve label ID at runtime.
-	op->n.label_id = schema->id;
+	}	
 
 	// The iterator build may fail if the ID range does not match the matrix dimensions.
-	GrB_Info iterator_built = _ConstructIterator(op, schema);
+	GrB_Info iterator_built = _ConstructIterator(op);
 	if(iterator_built != GrB_SUCCESS) {
 		// Invalid range, use the NOP consume function.
 		OpBase_UpdateConsume(opBase, NodeByLabelScanNoOp);
@@ -126,13 +132,10 @@ static inline void _ResetIterator(NodeByLabelScan *op) {
 		NodeID maxId = op->id_range->include_max ? op->id_range->max : op->id_range->max - 1 ;
 		RG_MatrixTupleIter_iterate_range(&op->iter, minId, maxId);
 	} else {
-		// id_range is NULL, this operation must have been freed previously
-		// rebuild the range iterator
-		GraphContext *gc = QueryCtx_GetGraphCtx();
-		Schema *schema = GraphContext_GetSchema(gc, op->n.label, SCHEMA_NODE);
-		if(!schema) return; // invalid schema, our consume function is NOP
+		_update_label_id(op);
+		// invalid schema, our consume function is NOP
 		op->id_range = UnsignedRange_New();
-		GrB_Info iterator_built = _ConstructIterator(op, schema);
+		GrB_Info iterator_built = _ConstructIterator(op);
 		// if the iterator is invalid, our consume function is NOP
 		if(iterator_built != GrB_SUCCESS) return;
 	}
@@ -152,12 +155,8 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 
 		// Got a record.
 		if(info == GrB_NULL_POINTER) {
-			// Iterator wasn't set up until now.
-			GraphContext *gc = QueryCtx_GetGraphCtx();
-			Schema *schema = GraphContext_GetSchema(gc, op->n.label, SCHEMA_NODE);
-			// No label matrix, it might be created in the next iteration.
-			if(!schema) continue;
-			if(_ConstructIterator(op, schema) != GrB_SUCCESS) continue;
+			_update_label_id(op);
+			if(_ConstructIterator(op) != GrB_SUCCESS) continue;
 		} else {
 			// Iterator depleted - reset.
 			_ResetIterator(op);
