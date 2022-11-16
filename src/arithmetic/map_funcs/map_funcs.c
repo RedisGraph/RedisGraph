@@ -91,8 +91,10 @@ SIValue AR_MERGEMAP(SIValue *argv, int argc, void *private_data) {
 		uint keyCount0 = Map_KeyCount(map0);
 		SIValue map = Map_Clone(map1);
 		for(int i = 0; i < keyCount0; i++) {
-			Pair p = map0.map[i];
-			Map_Add(&map, p.key, p.val);
+			SIValue key;
+			SIValue value;
+			Map_GetIdx(map0, i, &key, &value);
+			Map_Add(&map, key, value);
 		}
 		return map;
 	}

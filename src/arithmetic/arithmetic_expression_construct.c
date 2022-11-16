@@ -411,6 +411,12 @@ static AR_ExpNode *_AR_ExpFromMapProjection(const cypher_astnode_t *expr) {
 			allProps_selectors++;
 		}
 	}
+	if(allProps_selectors > 0) {
+		// { .* }
+		// Use properties() to get a map with all properties
+		propertiesOp = AR_EXP_NewOpNode("properties", false, 1);
+		propertiesOp->op.children[0] = AR_EXP_NewVariableOperandNode(entity_name);
+	}
 
 	tomapOp = AR_EXP_NewOpNode("tomap", true, (n_selectors - allProps_selectors) * 2);
 
@@ -447,12 +453,7 @@ static AR_ExpNode *_AR_ExpFromMapProjection(const cypher_astnode_t *expr) {
 			tomapOp->op.children[j * 2 + 1] = AR_EXP_NewVariableOperandNode(prop_name);
 			j++;
 		} else if(t == CYPHER_AST_MAP_PROJECTION_ALL_PROPERTIES) {
-			// { .* }
-			// Use properties() to get a map with all properties
-			if(propertiesOp == NULL) {
-				propertiesOp = AR_EXP_NewOpNode("properties", false, 1);
-				propertiesOp->op.children[0] = AR_EXP_NewVariableOperandNode(entity_name);
-			}
+			continue;
 		} else {
 			ASSERT("Unexpected AST node type" && false);
 		}
