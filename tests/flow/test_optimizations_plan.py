@@ -426,3 +426,20 @@ class testOptimizationsPlan(FlowTestsBase):
                     [0, 3],
                     [0, 3]]
         self.env.assertEqual(resultset, expected)
+
+    # Labels' order should be replaced properly.
+    def test28_optimize_label_scan_switch_labels(self):
+        self.env.flush()
+
+        # Create three nodes with label N, two with label M, one of them in common.
+        query = """CREATE (:N), (:N), (:N:M), (:M)"""
+        graph.query(query)
+
+        # Make sure that the M is traversed first.
+        query = """MATCH (n:N:M) RETURN n"""
+        plan = graph.execution_plan(query)
+        self.env.assertIn("Node By Label Scan | (n:M)", plan)
+
+        # Make sure that N is traversed as well.
+        res = graph.query(query)
+        self.env.assertEquals(res.result_set[0][0], Node(alias='n', label=['N', 'M']))
