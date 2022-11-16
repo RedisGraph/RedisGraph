@@ -30,7 +30,6 @@ typedef struct {
 	RedisModuleKey *key;        // Saves an open key value, for later extraction and closing.
 	ResultSet *result_set;      // Save the execution result set.
 	bool locked_for_commit;     // Indicates if a call for QueryCtx_LockForCommit issued before.
-	OpBase *last_writer;        // The last writer operation which indicates the need for commit.
 } QueryCtx_InternalExecCtx;
 
 typedef struct {
@@ -73,8 +72,6 @@ void QueryCtx_SetGraphCtx(GraphContext *gc);
 void QueryCtx_SetResultSet(ResultSet *result_set);
 /* Set the parameters map. */
 void QueryCtx_SetParams(rax *params);
-/* Set the last writer which needs to commit */
-void QueryCtx_SetLastWriter(OpBase *op);
 
 /* Getters */
 /* Retrieve the AST. */

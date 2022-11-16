@@ -91,11 +91,6 @@ void QueryCtx_SetParams(rax *params) {
 	ctx->query_data.params = params;
 }
 
-void QueryCtx_SetLastWriter(OpBase *last_writer) {
-	QueryCtx *ctx = _QueryCtx_GetCreateCtx();
-	ctx->internal_exec_ctx.last_writer = last_writer;
-}
-
 AST *QueryCtx_GetAST(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ASSERT(ctx != NULL);
