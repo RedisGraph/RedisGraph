@@ -72,8 +72,9 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	if(min_label_id == scan->n.label_id) return;
 
 	// swap current label with minimum label
-	scan->n.label     =  min_label_str;
-	scan->n.label_id  =  min_label_id;
+	const char *original_label = scan->n.label;
+	scan->n.label    = min_label_str;
+	scan->n.label_id = min_label_id;
 
 	// patch following traversal, skip filters
 	OpBase *parent = op->parent;
@@ -93,7 +94,7 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 
 	AlgebraicExpression *replacement = AlgebraicExpression_NewOperand(NULL,
 			true, AlgebraicExpression_Src(operand),
-			AlgebraicExpression_Dest(operand), NULL, min_label_str);
+			AlgebraicExpression_Dest(operand), NULL, original_label);
 
 	_AlgebraicExpression_InplaceRepurpose(operand, replacement);
 }
