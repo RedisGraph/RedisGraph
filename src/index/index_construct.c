@@ -41,9 +41,6 @@ static void _Index_PopulateNodeIndex
 		// 1. CREATE INDEX FOR (n:Person) ON (n.age)
 		// 2. CREATE INDEX FOR (n:Person) ON (n.height)
 		if(idx->pending_changes > 1) {
-			// release read lock
-			Graph_ReleaseLock(g);
-			//printf("detected index state change aborting index population\n");
 			break;
 		}
 
@@ -75,13 +72,17 @@ static void _Index_PopulateNodeIndex
 			indexed++;
 		}
 
-		// release read lock
-		Graph_ReleaseLock(g);
+		//----------------------------------------------------------------------
+		// done with current batch
+		//----------------------------------------------------------------------
 
 		if(indexed != batch_size) {
 			// iterator depleted, no more nodes to index
 			break;
 		} else {
+			// release read lock
+			Graph_ReleaseLock(g);
+
 			// finished current batch
 			RG_MatrixTupleIter_detach(&it);
 
@@ -91,6 +92,8 @@ static void _Index_PopulateNodeIndex
 		}
 	}
 
+	// release read lock
+	Graph_ReleaseLock(g);
 	RG_MatrixTupleIter_detach(&it);
 }
 
@@ -131,9 +134,6 @@ static void _Index_PopulateEdgeIndex
 		// 1. CREATE INDEX FOR (:Person)-[e:WORKS]-(:Company) ON (e.since)
 		// 2. CREATE INDEX FOR (:Person)-[e:WORKS]-(:Company) ON (e.title)
 		if(idx->pending_changes > 1) {
-			// release read lock
-			Graph_ReleaseLock(g);
-			//printf("detected index state change aborting index population\n");
 			break;
 		}
 
@@ -161,8 +161,6 @@ static void _Index_PopulateEdgeIndex
 
 		// process only if iterator is on an active entry
 		if(info != GrB_SUCCESS) {
-			// release read lock
-			Graph_ReleaseLock(g);
 			break;
 		}
 
@@ -189,23 +187,28 @@ static void _Index_PopulateEdgeIndex
 					Index_IndexEdge(idx, &e);
 				}
 			}
-			indexed++;
+			indexed++; // single/multi edge are counted similarly
 		} while(indexed < batch_size &&
 			  RG_MatrixTupleIter_next_UINT64(&it, &src_id, &dest_id, &edge_id)
 				== GrB_SUCCESS);
 
-		// release read lock
-		Graph_ReleaseLock(g);
+		//----------------------------------------------------------------------
+		// done with current batch
+		//----------------------------------------------------------------------
 
 		if(indexed != batch_size) {
 			// iterator depleted, no more edges to index
 			break;
 		} else {
 			// finished current batch
+			// release read lock
+			Graph_ReleaseLock(g);
 			RG_MatrixTupleIter_detach(&it);
 		}
 	}
 
+	// release read lock
+	Graph_ReleaseLock(g);
 	RG_MatrixTupleIter_detach(&it);
 }
 

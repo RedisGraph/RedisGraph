@@ -473,12 +473,19 @@ bool Index_Enabled
 }
 
 // free index
-void Index_Free(Index *idx) {
+void Index_Free
+(
+	Index *idx
+) {
 	ASSERT(idx != NULL);
 
-	if(idx->idx) RediSearch_DropIndex(idx->idx);
+	if(idx->idx) {
+		RediSearch_DropIndex(idx->idx);
+	}
 
-	if(idx->language) rm_free(idx->language);
+	if(idx->language) {
+		rm_free(idx->language);
+	}
 
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {

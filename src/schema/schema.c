@@ -72,43 +72,34 @@ unsigned short Schema_IndexCount
 Index *Schema_GetIndex
 (
 	const Schema *s,
-	Attribute_ID *attribute_id,
+	Attribute_ID *attr_id,
 	IndexType type
 ) {
 	ASSERT(s != NULL);
 
-	if(type == IDX_EXACT_MATCH) {
+	Index *idx = NULL;
+	if(type != IDX_ANY) {
+		idx = (type == IDX_EXACT_MATCH) ? s->index : s->fulltextIdx;
 		// return NULL if the index does not exist, or an attribute was
 		// specified but does not reside on the index
-		if(s->index == NULL ||
-		   (attribute_id && !Index_ContainsAttribute(s->index, *attribute_id))) {
-			return NULL;
+		if(idx != NULL && (attr_id && !Index_ContainsAttribute(idx, *attr_id))) {
+			idx = NULL;
 		}
-		return s->index;
-	} else if(type ==  IDX_FULLTEXT) {
-		// return NULL if the index does not exist, or an attribute was
-		// specified but does not reside on the index
-		if(s->fulltextIdx == NULL ||
-		   (attribute_id && !Index_ContainsAttribute(s->fulltextIdx, *attribute_id))) {
-			return NULL;
+	} else if(attr_id) {
+		// ANY index, specified attribute id
+		// return the first index containing attribute
+		if(s->index && Index_ContainsAttribute(s->index, *attr_id)) {
+			idx = s->index;
 		}
-		return s->fulltextIdx;
-	} else if(type == IDX_ANY && attribute_id) {
-		// if an attribute was specified
-		// return the first index that contains it
-		if(s->index && Index_ContainsAttribute(s->index, *attribute_id)) {
-			return s->index;
+		if(s->fulltextIdx && Index_ContainsAttribute(s->fulltextIdx, *attr_id)) {
+			idx = s->fulltextIdx;
 		}
-		if(s->fulltextIdx && Index_ContainsAttribute(s->fulltextIdx, *attribute_id)) {
-			return s->fulltextIdx;
-		}
-	} else if(type == IDX_ANY && attribute_id == NULL) {
-		// if no attribute was specified, return the first extant index
-		if(s->index) return s->index;
-		if(s->fulltextIdx) return s->fulltextIdx;
+	} else {
+		// ANY index, unspecified attribute id, return the first extant index
+		idx = (s->index != NULL) ? s->index : s->fulltextIdx;
 	}
 
-	return NULL;
+	return idx;
 }
 
 // assign a new index to attribute
@@ -196,6 +187,8 @@ static int _Schema_RemoveFullTextIndex
 	if(idx == NULL) {
 		return INDEX_FAIL;
 	}
+
+	Index_Disable(idx);
 
 	// index will be freed by indexer
 	s->fulltextIdx = NULL;

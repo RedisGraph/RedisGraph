@@ -186,8 +186,8 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke
 		return PROCEDURE_ERR;
 	}
 
-	const char *label     = NULL;
-	SIValue label_config  = args[0];
+	const char *label    = NULL;
+	SIValue label_config = args[0];
 
 	if(SI_TYPE(label_config) == T_STRING) {
 		label = label_config.stringval;
@@ -286,17 +286,10 @@ ProcedureResult Proc_FulltextCreateNodeIdxFree(ProcedureCtx *ctx) {
 }
 
 ProcedureCtx *Proc_FulltextCreateNodeIdxGen() {
-	void *privateData = NULL;
 	ProcedureOutput *output = array_new(ProcedureOutput, 0);
-	ProcedureCtx *ctx = ProcCtxNew("db.idx.fulltext.createNodeIndex",
-								   PROCEDURE_VARIABLE_ARG_COUNT,
-								   output,
-								   Proc_FulltextCreateNodeIdxStep,
-								   Proc_FulltextCreateNodeIdxInvoke,
-								   Proc_FulltextCreateNodeIdxFree,
-								   privateData,
-								   false);
-
-	return ctx;
+	return ProcCtxNew("db.idx.fulltext.createNodeIndex",
+			PROCEDURE_VARIABLE_ARG_COUNT, output,
+			Proc_FulltextCreateNodeIdxStep, Proc_FulltextCreateNodeIdxInvoke,
+			Proc_FulltextCreateNodeIdxFree, NULL, false);
 }
 

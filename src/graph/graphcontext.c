@@ -402,11 +402,16 @@ Index *GraphContext_GetIndexByID(const GraphContext *gc, int id,
 	return Schema_GetIndex(s, attribute_id, type);
 }
 
-Index *GraphContext_GetIndex(const GraphContext *gc, const char *label,
-							 Attribute_ID *attribute_id, IndexType type,
-							 SchemaType schema_type) {
+Index *GraphContext_GetIndex
+(
+	const GraphContext *gc,
+	const char *label,
+	Attribute_ID *attribute_id,
+	IndexType type,
+	SchemaType schema_type
+) {
 
-	ASSERT(gc != NULL);
+	ASSERT(gc    != NULL);
 	ASSERT(label != NULL);
 
 	// Retrieve the schema for this label
@@ -457,7 +462,10 @@ bool GraphContext_AddExactMatchIndex
 		}
 	}
 
-	// diable index if it was created
+	// disable index if it was created
+	// we don't call Index_Disable within Schema_AddIndex as multiple
+	// field additions are still considered as a "single" modification
+	// of the index
 	if(index_created) {
 		Index_Disable(*idx);
 	}
@@ -525,8 +533,8 @@ int GraphContext_DeleteIndex
 	const char *field,
 	IndexType type
 ) {
-	ASSERT(gc     !=  NULL);
-	ASSERT(label  !=  NULL);
+	ASSERT(gc    != NULL);
+	ASSERT(label != NULL);
 
 	// retrieve the schema for this label
 	int res = INDEX_FAIL;
