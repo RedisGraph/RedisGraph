@@ -294,42 +294,67 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	return ast;
 }
 
-AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
+AST *AST_FromClauses
+(
+	AST *master_ast,
+	const cypher_astnode_t **clauses,
+	uint n
+) {
 	AST *ast = rm_malloc(sizeof(AST));
+
 	ast->anot_ctx_collection = master_ast->anot_ctx_collection;
-	ast->free_root = true;
-	ast->ref_count = rm_malloc(sizeof(uint));
-	ast->parse_result = NULL;
+	ast->free_root           = true;
+	ast->ref_count           = rm_malloc(sizeof(uint));
+	ast->parse_result        = NULL;
 	ast->params_parse_result = NULL;
-	uint n = end_offset - start_offset;
 
 	*(ast->ref_count) = 1;
-	const cypher_astnode_t *clauses[n];
-	for(uint i = 0; i < n; i ++) {
-		clauses[i] = cypher_ast_query_get_clause(master_ast->root, i + start_offset);
-	}
+
 	struct cypher_input_range range = {0};
 	ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n,
 								 (cypher_astnode_t **)clauses, n, range);
+	return ast;
+}
 
-	// TODO This overwrites the previously-held AST pointer, which could lead to inconsistencies
-	// in the future if we expect the variable to hold a different AST.
+AST *AST_NewSegment
+(
+	AST *master_ast,
+	uint start_offset,
+	uint end_offset
+) {
+	uint n = end_offset - start_offset;
+	const cypher_astnode_t *clauses[n];
+
+	for(uint i = 0; i < n; i ++) {
+		clauses[i] =
+			cypher_ast_query_get_clause(master_ast->root, i + start_offset);
+	}
+
+	AST *ast = AST_FromClauses(master_ast, clauses, n);
+
+	// TODO: this overwrites the previously-held AST pointer
+	// which could lead to inconsistencies
+	// in the future if we expect the variable to hold a different AST
 	QueryCtx_SetAST(ast);
 
-	// If the segments are split, the next clause is either RETURN or WITH,
+	// if the segments are split, the next clause is either RETURN or WITH,
 	// and its references should be included in this segment's map.
 	const cypher_astnode_t *project_clause = NULL;
 	uint clause_count = cypher_ast_query_nclauses(master_ast->root);
-	if(end_offset == clause_count) end_offset = clause_count - 1;
+	if(end_offset == clause_count) {
+		end_offset = clause_count - 1;
+	}
 
 	project_clause = cypher_ast_query_get_clause(master_ast->root, end_offset);
-	/* Last clause is not necessarily a projection clause,
-	 * [MATCH (a) RETURN a UNION] MATCH (a) RETURN a
-	 * In this case project_clause = UNION, which is not a projection clause. */
+	// last clause is not necessarily a projection clause
+	// [MATCH (a) RETURN a UNION] MATCH (a) RETURN a
+	// in this case project_clause = UNION, which is not a projection clause
 	cypher_astnode_type_t project_type = cypher_astnode_type(project_clause);
-	if(project_type != CYPHER_AST_WITH && project_type != CYPHER_AST_RETURN) project_clause = NULL;
+	if(project_type != CYPHER_AST_WITH && project_type != CYPHER_AST_RETURN) {
+		project_clause = NULL;
+	}
 
-	// Build the map of referenced entities in this AST segment.
+	// build the map of referenced entities in this AST segment
 	AST_BuildReferenceMap(ast, project_clause);
 
 	return ast;

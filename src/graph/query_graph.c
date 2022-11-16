@@ -209,7 +209,9 @@ static void _QueryGraph_ExtractPath
 ) {
 
 	// validate input
-	ASSERT(qg != NULL && graph != NULL && path != NULL);
+	ASSERT(qg    != NULL);
+	ASSERT(path  != NULL);
+	ASSERT(graph != NULL);
 
 	const char *alias;
 	const cypher_astnode_t *ast_node;
@@ -394,6 +396,14 @@ QueryGraph *BuildQueryGraph
 		// for each clause of the current type
 		for(uint j = 0; j < clause_count; j ++) {
 			const cypher_astnode_t *clause = clauses[j];
+
+			// skip OPTIONAL MATCH
+			if(clause_type == CYPHER_AST_MATCH) {
+				if(cypher_ast_match_is_optional(clause)) {
+					continue;
+				}
+			}
+
 			// collect path objects
 			const cypher_astnode_t **paths =
 				AST_GetTypedNodes(clause, CYPHER_AST_PATTERN_PATH);

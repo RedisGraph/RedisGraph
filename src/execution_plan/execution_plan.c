@@ -18,27 +18,37 @@
 
 #include <setjmp.h>
 
-// Allocate a new ExecutionPlan segment.
+// allocate a new ExecutionPlan segment
 inline ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void) {
 	return rm_calloc(1, sizeof(ExecutionPlan));
 }
 
-void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan) {
+void ExecutionPlan_PopulateExecutionPlan
+(
+	ExecutionPlan *plan
+) {
 	AST *ast = QueryCtx_GetAST();
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
-	// Initialize the plan's record mapping if necessary.
-	// It will already be set if this ExecutionPlan has been created to populate a single stream.
-	if(plan->record_map == NULL) plan->record_map = raxNew();
+	// initialize the plan's record mapping if necessary
+	// it will already be set if this ExecutionPlan has been created
+	// to populate a single stream
+	if(plan->record_map == NULL) {
+		plan->record_map = raxNew();
+	}
 
-	// Build query graph
-	// Query graph is set if this ExecutionPlan has been created to populate a single stream.
-	if(plan->query_graph == NULL) plan->query_graph = BuildQueryGraph(ast);
+	// build query graph
+	// query graph is set if this ExecutionPlan has been created
+	// to populate a single stream
+	if(plan->query_graph == NULL) {
+		plan->query_graph = BuildQueryGraph(ast);
+	}
 
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	for(uint i = 0; i < clause_count; i ++) {
-		// Build the appropriate operation(s) for each clause in the query.
-		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
+		// build the appropriate operation(s) for each clause in the query
+		const cypher_astnode_t *clause =
+			cypher_ast_query_get_clause(ast->root, i);
 		ExecutionPlanSegment_ConvertClause(gc, ast, plan, clause);
 	}
 }

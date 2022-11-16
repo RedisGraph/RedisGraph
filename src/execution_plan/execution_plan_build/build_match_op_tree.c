@@ -146,29 +146,38 @@ static void _ExecutionPlan_ProcessQueryGraph
 	FilterTree_Free(ft);
 }
 
-static void _buildOptionalMatchOps(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause) {
+static void _buildOptionalMatchOps
+(
+	ExecutionPlan *plan,
+	AST *ast,
+	const cypher_astnode_t *clause
+) {
 	const char **arguments = NULL;
 	OpBase *optional = NewOptionalOp(plan);
 	rax *bound_vars = NULL;
 
-	// The root will be non-null unless the first clause is an OPTIONAL MATCH.
+	// the root will be non-null unless the first clause is an OPTIONAL MATCH
 	if(plan->root) {
-		// Collect the variables that are bound at this point.
+		// collect the variables that are bound at this point
 		bound_vars = raxNew();
-		// Rather than cloning the record map, collect the bound variables along with their
-		// parser-generated constant strings.
+
+		// rather than cloning the record map
+		// collect the bound variables along with their
+		// parser-generated constant strings
 		ExecutionPlan_BoundVariables(plan->root, bound_vars);
-		// Collect the variable names from bound_vars to populate the Argument op we will build.
+
+		// collect the variable names from bound_vars to populate
+		// the Argument op we will build
 		arguments = (const char **)raxValues(bound_vars);
 		raxFree(bound_vars);
 	}
 
-	// Build the new Match stream and add it to the Optional stream.
+	// build the new Match stream and add it to the Optional stream
 	OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, clause);
 	array_free(arguments);
 	ExecutionPlan_AddOp(optional, match_stream);
 
-	// The root will be non-null unless the first clause is an OPTIONAL MATCH.
+	// the root will be non-null unless the first clause is an OPTIONAL MATCH
 	if(plan->root) {
 		// Create an Apply operator and make it the new root.
 		OpBase *apply_op = NewApplyOp(plan);
@@ -182,7 +191,12 @@ static void _buildOptionalMatchOps(ExecutionPlan *plan, AST *ast, const cypher_a
 	}
 }
 
-void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause) {
+void buildMatchOpTree
+(
+	ExecutionPlan *plan,
+	AST *ast,
+	const cypher_astnode_t *clause
+) {
 	if(cypher_ast_match_is_optional(clause)) {
 		_buildOptionalMatchOps(plan, ast, clause);
 		return;
