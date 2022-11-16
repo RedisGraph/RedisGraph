@@ -72,7 +72,7 @@ class testMap(FlowTestsBase):
             """MATCH (n) RETURN n {.*, .h}  ORDER BY n.val""",
             """MATCH (n) RETURN n {.h, .*}  ORDER BY n.val""",
             """MATCH (n) RETURN n {.*, .h, .*}  ORDER BY n.val""",
-            """MATCH (n) RETURN n {.h, .*, .h}  ORDER BY n.val""",
+            """MATCH (n) RETURN n {.h, .*, .h, .val}  ORDER BY n.val""",
         ]
         expected_result =  [[{'val': 1, 'h': None}],
                             [{'val': 2, 'h': None}],
@@ -91,18 +91,6 @@ class testMap(FlowTestsBase):
         query_result = redis_graph.query(query)
         expected_result = [[{'h': None}]]
         self.env.assertEquals(query_result.result_set, expected_result)
-
-        # map projection all properties
-        queries = [
-            """CREATE (a:A {name: 'abc', y: 3, z: 43}) RETURN a{.*}""",
-            """CREATE (a:A {name: 'abc', y: 3, z: 43}) RETURN a{.*, .*}""",
-            """CREATE (a:A {name: 'abc', y: 3, z: 43}) RETURN a{.z, .*}""",
-            """CREATE (a:A {name: 'abc', y: 3, z: 43}) RETURN a{.z, .*, .y}""",
-        ]
-        expected_result = [[{'name':'abc', 'y': 3, 'z': 43}]]
-        for query in queries:
-            query_result = redis_graph.query(query)
-            self.env.assertEquals(query_result.result_set, expected_result)
 
         # map projection all properties and unexisting property
         queries = [
