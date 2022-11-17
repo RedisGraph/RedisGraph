@@ -1070,7 +1070,6 @@ int Graph_UpdateEntity
 	if(old_value == ATTRIBUTE_NOTFOUND) {
 		// adding a new attribute; do nothing if its value is NULL
 		if(SI_TYPE(value) != T_NULL) {
-			RedisModule_Log(NULL, "notice", "SI_TYPE: %d", SI_TYPE(value));
 			res = GraphEntity_AddProperty(ge, attr_id, value);
 		}
 	} else {
