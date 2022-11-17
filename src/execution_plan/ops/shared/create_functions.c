@@ -212,9 +212,6 @@ void CommitNewEntities
 	pending->stats->nodes_created          +=  node_count;
 	pending->stats->relationships_created  +=  edge_count;
 
-	// release lock
-	QueryCtx_UnlockCommit(op);
-
 	// restore matrix sync policy to default
 	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 }
