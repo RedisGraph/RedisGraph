@@ -103,7 +103,7 @@ class testMap(FlowTestsBase):
             query_result = redis_graph.query(query)
             self.env.assertEquals(query_result.result_set, expected_result)
 
-        # map projection literal
+        # map projection attributes
         query = """CREATE (a:A {name: 'abc', y: 3, z: 43}) RETURN a{vname: a.name, vy: a.y, vz: a.z}"""
         expected_result = [[{'vname': 'abc', 'vy': 3, 'vz': 43}]]
         query_result = redis_graph.query(query)
