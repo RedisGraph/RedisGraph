@@ -9,7 +9,7 @@ port = None
 
 class testGraphPersistency():
     def __init__(self):
-        self.env = Env(decodeResponses=True)
+        self.env = Env(decodeResponses=True, enableDebugCommand=True)
         global redis_con
         redis_con = self.env.getConnection()
         global port
