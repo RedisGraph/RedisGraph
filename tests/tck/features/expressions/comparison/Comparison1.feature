@@ -123,7 +123,6 @@ Feature: Comparison1 - Equality
       | 1        |
     And no side effects
 
-  @skip
   Scenario Outline: [6] Comparing lists to lists
     Given an empty graph
     When executing query:
@@ -174,7 +173,6 @@ Feature: Comparison1 - Equality
       | {k: 1, l: null} | {k: null, l: 1}    | null   |
       | {k: 1, l: null} | {k: 1, l: 1}       | null   |
 
-  @skip
   Scenario Outline: [8] Equality and inequality of NaN
     Given any graph
     When executing query:

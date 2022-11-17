@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "arithmetic_expression_construct.h"
 #include "RG.h"
@@ -72,6 +72,14 @@ static AR_ExpNode *_AR_EXP_FromApplyExpression(const cypher_astnode_t *expr) {
 	bool                    aggregate   =  AR_FuncIsAggregate(func_name);
 
 	op = AR_EXP_NewOpNode(func_name, false, arg_count);
+
+	if(ErrorCtx_EncounteredError()) {
+		// no children to free
+		op->op.child_count = 0;
+		AR_EXP_Free(op);
+		return AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
+
 	if(op->op.f->internal) {
 		ErrorCtx_SetError("Attempted to access variable before it has been defined");
 		return AR_EXP_NewConstOperandNode(SI_NullVal());

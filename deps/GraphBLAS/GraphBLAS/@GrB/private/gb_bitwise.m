@@ -2,7 +2,7 @@ function C = gb_bitwise (op, A, B, assumedtype)
 %GB_BITWISE bitwise AND, OR, XOR, ...
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 if (isobject (A))
     A = A.opaque ;
@@ -16,15 +16,15 @@ atype = gbtype (A) ;
 btype = gbtype (B) ;
 
 if (gb_contains (atype, 'complex') || gb_contains (btype, 'complex'))
-    error ('inputs must be real') ;
+    error ('GrB:error', 'inputs must be real') ;
 end
 
 if (isequal (atype, 'logical') || isequal (btype, 'logical'))
-    error ('inputs must not be logical') ;
+    error ('GrB:error', 'inputs must not be logical') ;
 end
 
 if (~gb_contains (assumedtype, 'int'))
-    error ('assumedtype must be an integer type') ;
+    error ('GrB:error', 'assumedtype must be an integer type') ;
 end
 
 % C will have the same type as A on input
@@ -48,11 +48,17 @@ if (isequal (op, 'bitshift'))
         B = gbnew (B, 'int8') ;
     end
 
-    if (gb_isscalar (A) || gb_isscalar (B))
-        % either A or B are scalars
-        C = gbapply2 (['bitshift.' atype], A, B) ;
+    a_is_scalar = gb_isscalar (A) ;
+    b_is_scalar = gb_isscalar (B) ;
+
+    if (a_is_scalar && ~b_is_scalar)
+        % A is a scalar, B is a matrix
+        C = gbapply2 (['bitshift.' atype], gbfull (A), B) ;
+    elseif (~a_is_scalar && b_is_scalar)
+        % A is a matrix, B is a scalar
+        C = gbapply2 (['bitshift.' atype], A, gbfull (B)) ;
     else
-        % both A and B are matrices.
+        % both A and B are matrices, or both are scalars
         % expand B by padding it with zeros from the pattern of A
         B = gbeadd ('1st.int8', B, gb_expand (0, A, 'int8')) ;
         C = gbemult (['bitshift.' atype], A, B) ;
@@ -65,7 +71,7 @@ else
         btype = assumedtype ;
     end
     if (~isequal (atype, btype))
-        error ('integer inputs must have the same type') ;
+        error ('GrB:error', 'integer inputs must have the same type') ;
     end
 
     switch (op)

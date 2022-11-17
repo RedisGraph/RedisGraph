@@ -11,7 +11,7 @@ function C = empty (varargin)
 % See also GrB.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 if (nargin == 0)
     m = 0 ;
@@ -21,7 +21,7 @@ else
     m = max (m, 0) ;
     n = max (n, 0) ;
     if (~ ((m == 0) || (n == 0)))
-        error ('at least one dimension must be zero') ;
+        error ('GrB:error', 'at least one dimension must be zero') ;
     end
 end
 

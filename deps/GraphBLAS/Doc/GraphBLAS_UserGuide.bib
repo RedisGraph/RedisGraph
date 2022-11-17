@@ -30,7 +30,8 @@
         publisher={SIAM},
         year={2006},
         address={Philadelphia, PA},
-        annotate={\footnotesize
+        note={\href{https://dx.doi.org/10.1137/1.9780898718881}{https://dx.doi.org/10.1137/1.9780898718881}},
+        abstract={
         Provides a basic overview of many sparse matrix algorithms
         and a simple sparse matrix data structure.
         A series of 42 lectures are available on YouTube; see the link at
@@ -49,7 +50,8 @@
         year={2016},
         pages={383--566},
         numpages = {184},
-        annotate = {\footnotesize
+        note={\href{https://dx.doi.org/10.1017/S0962492916000076}{https://dx.doi.org/10.1017/S0962492916000076}},
+        abstract = {
         Abstract: Wilkinson defined a sparse matrix as one with
         enough zeros that it pays to take advantage of them.  This informal yet
         practical definition captures the essence of the goal of direct methods
@@ -109,7 +111,7 @@
         simplicity and generality. Graph algorithms are one of the pillars of
         mathematics, informing research in such diverse areas as combinatorial
         optimization, complexity theory, and topology. Algorithms on graphs are
-        applied in many ways in today's world—from Web rankings to metabolic
+        applied in many ways in today's world -- from Web rankings to metabolic
         networks, from finite element meshes to semantic graphs.
         The current exponential growth in graph data has forced a shift to
         parallel computing for executing graph algorithms. Implementing
@@ -149,6 +151,7 @@ address = {New York, NY, USA},
 volume = {45},
 number = {4},
 issn = {0098-3500},
+note = {\href{https://doi.org/10.1145/3322125}{https://doi.org/10.1145/3322125}},
 url = {https://doi.org/10.1145/3322125},
 doi = {10.1145/3322125},
 abstract = {SuiteSparse:GraphBLAS is a full implementation of the GraphBLAS standard, which defines a set of sparse matrix operations on an extended algebra of semirings using an almost unlimited variety of operators and types. When applied to sparse adjacency matrices, these algebraic operations are equivalent to computations on graphs. GraphBLAS provides a powerful and expressive framework for creating graph algorithms based on the elegant mathematics of sparse matrix operations on a semiring. An overview of the GraphBLAS specification is given, followed by a description of the key features and performance of its implementation in the SuiteSparse:GraphBLAS package.},
@@ -159,12 +162,12 @@ numpages = {25},
 keywords = {sparse matrices, GraphBLAS, Graph algorithms}
 }
 
-@article{Davis21,
+@article{Davis22,
 author = {Davis, Timothy A.},
 title = {Algorithm 10xx: {SuiteSparse:GraphBLAS}: Parallel Graph Algorithms in the Language of Sparse Linear Algebra},
 journal = {ACM Trans. Math. Softw.},
-year = {2021},
-annote = {(submitted)}
+year = {2022},
+note = {(submitted, revised Apr 3, 2022)}
 }
 
 
@@ -268,12 +271,13 @@ annote = {(submitted)}
 
 @inproceedings{10.1145/3229710.3229720,
 author = {Nagasaka, Yusuke and Matsuoka, Satoshi and Azad, Ariful and Bulu\c{c}, Ayd\i{}n},
-title = {High-Performance Sparse Matrix-Matrix Products on Intel KNL and Multicore Architectures},
+title = {High-Performance Sparse Matrix-Matrix Products on {Intel} {KNL} and Multicore Architectures},
 year = {2018},
 isbn = {9781450365239},
 publisher = {Association for Computing Machinery},
 address = {New York, NY, USA},
 url = {https://doi.org/10.1145/3229710.3229720},
+note ={ \href{https://doi.org/10.1145/3229710.3229720}{https://doi.org/10.1145/3229710.3229720}},
 doi = {10.1145/3229710.3229720},
 booktitle = {Proceedings of the 47th International Conference on Parallel Processing Companion},
 articleno = {Article 34},
@@ -281,5 +285,40 @@ numpages = {10},
 keywords = {Intel KNL, SpGEMM, Sparse matrix},
 location = {Eugene, OR, USA},
 series = {ICPP ’18}
+}
+
+@misc{Green19_arxiv,
+  doi = {10.48550/ARXIV.1907.02900},
+  url = {https://arxiv.org/abs/1907.02900},
+  author = {Green, Oded},
+  keywords = {Data Structures and Algorithms (cs.DS), Databases (cs.DB),
+  Distributed, Parallel, and Cluster Computing (cs.DC), FOS: Computer and
+  information sciences, FOS: Computer and information sciences},
+  title = {{HashGraph} -- Scalable Hash Tables Using A Sparse Graph Data Structure},
+  publisher = {arXiv},
+  year = {2019},
+  copyright = {arXiv.org perpetual, non-exclusive license},
+  note ={\href{https://arxiv.org/abs/1907.02900}{https://arxiv.org/abs/1907.02900}},
+}
+
+@article{Green19,
+author = {Green, Oded},
+title = {{HashGraph} -- Scalable Hash Tables Using a Sparse Graph Data Structure},
+year = {2021},
+issue_date = {June 2021},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {8},
+number = {2},
+issn = {2329-4949},
+note = {\href{https://doi.org/10.1145/3460872}{https://doi.org/10.1145/3460872}},
+url = {https://doi.org/10.1145/3460872},
+doi = {10.1145/3460872},
+abstract = {In this article, we introduce HashGraph, a new scalable approach for building hash tables that uses concepts taken from sparse graph representations—hence, the name HashGraph. HashGraph introduces a new way to deal with hash-collisions that does not use “open-addressing” or “separate-chaining,” yet it has the benefits of both these approaches. HashGraph currently works for static inputs. Recent progress with dynamic graph data structures suggests that HashGraph might be extendable to dynamic inputs as well. We show that HashGraph can deal with a large number of hash values per entry without loss of performance. Last, we show a new querying algorithm for value lookups. We experimentally compare HashGraph to several state-of-the-art implementations and find that it outperforms them on average 2\texttimes{} when the inputs are unique and by as much as 40\texttimes{} when the input contains duplicates. The implementation of HashGraph in this article is for NVIDIA GPUs. HashGraph can build a hash table at a rate of 2.5 billion keys per second on a NVIDIA GV100 GPU and can query at nearly the same rate.},
+journal = {ACM Trans. Parallel Comput.},
+month = {July},
+articleno = {11},
+numpages = {17},
+keywords = {Hash table, sparse data structures, graph data structure}
 }
 

@@ -3,7 +3,7 @@ function C = gb_max1 (op, A)
 % Implements C = max (A)
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 [m, n] = gbsize (A) ;
 if (m == 1 || n == 1)

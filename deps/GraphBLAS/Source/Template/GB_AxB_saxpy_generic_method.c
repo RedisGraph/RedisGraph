@@ -59,7 +59,6 @@
 #include "GB_mxm.h"
 #include "GB_ek_slice.h"
 #include "GB_binop.h"
-#include "GB_bracket.h"
 #include "GB_sort.h"
 #include "GB_atomics.h"
 #include "GB_ek_slice_search.c"

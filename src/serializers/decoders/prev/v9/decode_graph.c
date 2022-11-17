@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "decode_v9.h"
 
@@ -181,9 +181,10 @@ GraphContext *RdbLoadGraphContext_v9(RedisModuleIO *rdb) {
 		// set the node label matrix
 		Serializer_Graph_SetNodeLabels(g);
 
+		Graph_ApplyAllPending(g, true);
+
 		// revert to default synchronization behavior
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
-		Graph_ApplyAllPending(g, true);
 
 		uint node_schemas_count = array_len(gc->node_schemas);
 		// update the node statistics

@@ -10,7 +10,7 @@ function C = flip (A, dim)
 % See also GrB/transpose.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 a_is_object = isobject (A) ;
 if (a_is_object)
@@ -33,7 +33,7 @@ end
 
 dim = floor (double (dim)) ;
 if (dim <= 0)
-    error ('dim must be positive') ;
+    error ('GrB:error', 'dim must be positive') ;
 end
 
 if (dim == 1 && m ~= 1)

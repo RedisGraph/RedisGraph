@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "RG.h"
 #include "../errors.h"
@@ -407,8 +407,9 @@ void _query(bool profile, void *args) {
 	// TODO: at the moment we can't timeout index operation
 	CronTaskHandle timeout_task = 0;
 
-	// set the query timeout if one was specified
-	if(command_ctx->timeout != 0) {
+	// enforce specified timeout when query is readonly
+	// or timeout applies to both read and write
+	if(command_ctx->timeout != 0 && (readonly || command_ctx->timeout_rw)) {
 		timeout_task = Query_SetTimeOut(command_ctx->timeout, exec_ctx->plan);
 	}
 

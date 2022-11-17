@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "RG.h"
 #include "../../value.h"
@@ -203,6 +203,12 @@ bool _applicableFilter
 	// make sure all filtered attributes are indexed
 	attr = FilterTree_CollectAttributes(filter_tree);
 	uint filter_attribute_count = raxSize(attr);
+	
+	// No attributes to filter on
+	if(filter_attribute_count == 0) {
+		res = false;
+		goto cleanup;
+	}
 
 	// Filter refers to a greater number of attributes.
 	if(filter_attribute_count > idx_fields_count) {

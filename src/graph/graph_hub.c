@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "graph_hub.h"
 #include "../query_ctx.h"
@@ -327,7 +327,7 @@ void UpdateNodeLabels
 			const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 			bool schema_created = false;
 			if(s == NULL) {
-				s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+				s = AddSchema(gc, label, SCHEMA_NODE);
 				schema_created = true;
 			}
 
@@ -386,5 +386,38 @@ void UpdateNodeLabels
 			UndoLog_RemoveLabels(&query_ctx->undo_log, node, remove_labels_ids, remove_labels_index);
 		}
 	}
+}
+
+
+Schema *AddSchema
+(
+	GraphContext *gc,             // graph context to add the schema
+	const char *label,            // schema label
+	SchemaType t                  // schema type (node/edge)
+) {
+	ASSERT(gc != NULL);
+	ASSERT(label != NULL);
+	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+	Schema *s = GraphContext_AddSchema(gc, label, t);
+	UndoLog_AddSchema(&query_ctx->undo_log, s->id, s->type);
+	return s;
+}
+
+Attribute_ID FindOrAddAttribute
+(
+	GraphContext *gc,             // graph context to add the attribute
+	const char *attribute         // attribute name
+) {
+	ASSERT(gc != NULL);
+	ASSERT(attribute != NULL);
+
+	bool created;
+	Attribute_ID attr_id = GraphContext_FindOrAddAttribute(gc, attribute, &created);
+	// In case there was an append, the latest id should be tracked
+	if(created) {
+		QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+		UndoLog_AddAttribute(&query_ctx->undo_log, attr_id);
+	}
+	return attr_id;
 }
 

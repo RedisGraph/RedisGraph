@@ -80,6 +80,18 @@
     const bool A_is_sparse = GB_IS_SPARSE (A) ;
     const bool A_iso = A->iso ;
 
+    const GrB_Matrix A_Y = A->Y ;
+    const int64_t *restrict A_Yp = (A_is_hyper) ? A_Y->p : NULL ;
+    const int64_t *restrict A_Yi = (A_is_hyper) ? A_Y->i : NULL ;
+    const int64_t *restrict A_Yx = (A_is_hyper) ? A_Y->x : NULL ;
+    const int64_t A_hash_bits = (A_is_hyper) ? (A_Y->vdim - 1) : 0 ;
+
+    const GrB_Matrix B_Y = B->Y ;
+    const int64_t *restrict B_Yp = (B_is_hyper) ? B_Y->p : NULL ;
+    const int64_t *restrict B_Yi = (B_is_hyper) ? B_Y->i : NULL ;
+    const int64_t *restrict B_Yx = (B_is_hyper) ? B_Y->x : NULL ;
+    const int64_t B_hash_bits = (B_is_hyper) ? (B_Y->vdim - 1) : 0 ;
+
     #if !GB_A_IS_PATTERN
     const GB_ATYPE *restrict Ax = (GB_ATYPE *) A->x ;
     #endif

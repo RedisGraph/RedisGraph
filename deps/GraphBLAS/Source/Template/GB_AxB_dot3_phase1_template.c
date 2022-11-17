@@ -25,7 +25,6 @@
             // a fine task operates on a slice of a single vector
             klast = kfirst ;
         }
-        int64_t bpleft = 0 ;    // Ch is not jumbled
 
         //----------------------------------------------------------------------
         // compute all vectors in this task
@@ -53,10 +52,10 @@
             //------------------------------------------------------------------
 
             #if GB_B_IS_HYPER
-                // B is hyper
+                // B is hyper: find B(:,j) using the B->Y hyper hash
                 int64_t pB_start, pB_end ;
-                GB_lookup (true, Bh, Bp, vlen, &bpleft, bnvec-1, j,
-                    &pB_start, &pB_end) ;
+                GB_hyper_hash_lookup (Bp, B_Yp, B_Yi, B_Yx, B_hash_bits,
+                    j, &pB_start, &pB_end) ;
             #elif GB_B_IS_SPARSE
                 // B is sparse
                 const int64_t pB_start = Bp [j] ;
@@ -102,11 +101,10 @@
                     { 
                         const int64_t i = Mi [pM] ;
                         #if GB_A_IS_HYPER
-                        // A is hyper
+                        // A is hyper: find A(:,i) using the A->Y hyper hash
                         int64_t pA, pA_end ;
-                        int64_t apleft = 0 ;    // M might be jumbled
-                        GB_lookup (true, Ah, Ap, vlen, &apleft, anvec-1, i,
-                            &pA, &pA_end) ;
+                        GB_hyper_hash_lookup (Ap, A_Yp, A_Yi, A_Yx, A_hash_bits,
+                            i, &pA, &pA_end) ;
                         const int64_t ainz = pA_end - pA ;
                         work += GB_IMIN (ainz, bjnz) ;
                         #elif GB_A_IS_SPARSE

@@ -8,10 +8,17 @@
 //------------------------------------------------------------------------------
 
 // for code development only:
-// #define GB_DEVELOPER 1
+#ifdef GBCUDA
+// CUDA kernels enabled: turn on developer flag
+#define GB_DEVELOPER 1
+#else
+// in production: turn off developer flag
+#define GB_DEVELOPER 0
+#endif
 
 #include "GB_Pending.h"
 #include "GB.h"
+#include "GB_hash.h"
 
 GB_PUBLIC
 GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
@@ -29,6 +36,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     // decide what to print
     //--------------------------------------------------------------------------
 
+    GrB_Info info ;
     bool is_hyper = GB_IS_HYPERSPARSE (A) ;
     bool is_full = GB_IS_FULL (A) ;
     bool is_bitmap = GB_IS_BITMAP (A) ;
@@ -56,16 +64,32 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     bool pr_mem_shallow = GB_Global_print_mem_shallow_get ( ) ;
     int64_t offset = (one_based) ? 1 : 0 ;
     #if GB_DEVELOPER
-    int pr_type = pr ;
+    int pr_developer = pr ;
     #else
-    int pr_type = 0 ;
+    int pr_developer = 0 ;
     #endif
 
-    GBPR0 ("\n  " GBd "x" GBd " GraphBLAS %s %s",
+    GBPR0 ("\n  " GBd "x" GBd " GraphBLAS ",
         (A != NULL) ? GB_NROWS (A) : 0,
-        (A != NULL) ? GB_NCOLS (A) : 0,
-        (A != NULL && A->type != NULL && A->type->name != NULL) ?
-         A->type->name : "", kind) ;
+        (A != NULL) ? GB_NCOLS (A) : 0) ;
+
+    if (A != NULL && A->type != NULL)
+    {
+        if (A->type == GxB_FC32)
+        { 
+            GBPR0 ("float complex") ;
+        }
+        else if (A->type == GxB_FC64)
+        {
+            GBPR0 ("double complex") ;
+        }
+        else
+        {
+            GBPR0 ("%s", A->type->name) ;
+        }
+    }
+
+    GBPR0 (" %s", kind) ;
 
     #if GB_DEVELOPER
     if (phantom) GBPR0 (" (phantom)") ;
@@ -276,13 +300,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
 
     int64_t nallocs ;
     size_t mem_deep, mem_shallow, memsize ;
-    GrB_Info info = GB_memoryUsage (&nallocs, &mem_deep, &mem_shallow, A) ;
-    if (info != GrB_SUCCESS)
-    {
-        GBPR0 ("  internal memory error\n") ;
-        return (info) ;
-    }
-
+    GB_memoryUsage (&nallocs, &mem_deep, &mem_shallow, A) ;
     memsize = mem_deep + (pr_mem_shallow ? mem_shallow : 0) ;
 
     #if GB_DEVELOPER
@@ -298,7 +316,8 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         }
         GBPR (" number of memory blocks: " GBd "\n", nallocs) ;
         GBPR ("  deep: " GBu " shallow: " GBu " total: " GBu "\n",
-            mem_deep, mem_shallow, mem_deep + mem_shallow) ;
+            (uint64_t) mem_deep, (uint64_t) mem_shallow,
+            (uint64_t) (mem_deep + mem_shallow)) ;
     }
     #endif
 
@@ -306,7 +325,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     // check the type
     //--------------------------------------------------------------------------
 
-    info = GB_Type_check (A->type, "", pr_type, f) ;
+    info = GB_Type_check (A->type, "", pr_developer, f) ;
     if (info != GrB_SUCCESS)
     { 
         GBPR0 ("  %s has an invalid type\n", kind) ;
@@ -320,16 +339,17 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     #if GB_DEVELOPER
     if (pr_short || pr_complete)
     {
-        GBPR ("  ->h: %p shallow: %d size: " GBd "\n",
-            A->h, A->h_shallow, A->h_size) ;
-        GBPR ("  ->p: %p shallow: %d size: " GBd "\n",
-            A->p, A->p_shallow, A->p_size) ;
-        GBPR ("  ->i: %p shallow: %d size: " GBd "\n",
-            A->i, A->i_shallow, A->i_size) ;
-        GBPR ("  ->b: %p shallow: %d size: " GBd "\n",
-            A->b, A->b_shallow, A->b_size) ;
-        GBPR ("  ->x: %p shallow: %d size: " GBd "\n",
-            A->x, A->x_shallow, A->x_size) ;
+        GBPR ("  ->h: %p shallow: %d size: " GBu "\n",
+            A->h, A->h_shallow, (uint64_t) A->h_size) ;
+        GBPR ("  ->p: %p shallow: %d size: " GBu "\n",
+            A->p, A->p_shallow, (uint64_t) A->p_size) ;
+        GBPR ("  ->i: %p shallow: %d size: " GBu "\n",
+            A->i, A->i_shallow, (uint64_t) A->i_size) ;
+        GBPR ("  ->b: %p shallow: %d size: " GBu "\n",
+            A->b, A->b_shallow, (uint64_t) A->b_size) ;
+        GBPR ("  ->x: %p shallow: %d size: " GBu "\n",
+            A->x, A->x_shallow, (uint64_t) A->x_size) ;
+        GBPR ("  ->Y: %p shallow: %d\n", A->Y, A->Y_shallow) ;
     }
     #endif
 
@@ -510,7 +530,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         }
     }
 
-    if (!ignore_zombies && (A->nzombies < 0 || A->nzombies > anz))
+    if (!ignore_zombies && (A->nzombies > anz))
     { 
         GBPR0 ("  invalid number of zombies: " GBd " "
             "must be >= 0 and <= # entries (" GBd ")\n", A->nzombies, anz) ;
@@ -672,6 +692,13 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
             " A->nvals = " GBd "\n", anz_actual, anz) ;
         return (GrB_INVALID_OBJECT) ;
     }
+    else if ((is_sparse || is_hyper) && anz != anz_actual)
+    {
+        // sparse/hypersparse with invalid nvals
+        GBPR0 ("  invalid sparse/hypersparse entry count: " GBd " exist but"
+            " A->nvals = " GBd "\n", anz_actual, anz) ;
+        return (GrB_INVALID_OBJECT) ;
+    }
 
     //--------------------------------------------------------------------------
     // check the zombie count
@@ -721,7 +748,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         // matrix has tuples, arrays and type must not be NULL
         // Pending->x must be NULL if and only if A is iso
         // Pending->x must be non-NULL if and only if A is non-iso
-        if (Pending->i == NULL || (Pending->x == NULL != (A->iso)) ||
+        if (Pending->i == NULL || ((Pending->x == NULL) != (A->iso)) ||
             (A->vdim > 1 && Pending->j == NULL))
         { 
             GBPR0 ("  invalid pending tuples\n") ;
@@ -816,6 +843,69 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         // invalid nvec_nonempty
         GBPR0 ("  invalid count of non-empty vectors\n") ;
         return (GrB_INVALID_OBJECT) ;
+    }
+
+    //--------------------------------------------------------------------------
+    // check A->Y
+    //--------------------------------------------------------------------------
+
+    GrB_Matrix Y = A->Y ;
+    if (Y != NULL)
+    {
+
+        if (!is_hyper)
+        { 
+            // A->Y is optional, but A must be hypersparse for A->Y to exist
+            GBPR0 ("  hyper_hash invalid\n") ;
+            return (GrB_INVALID_OBJECT) ;
+        }
+        info = GB_matvec_check (Y, "Y hyper_hash", pr_developer, f, "matrix") ;
+        if (info != GrB_SUCCESS)
+        { 
+            // A->Y fails the tests in GB_matvec_check
+            GBPR0 ("  hyper_hash invalid") ;
+            return (info) ;
+        }
+        if (Y->vlen != A->vdim || !GB_IS_POWER_OF_TWO (Y->vdim) ||
+            Y->nvals != A->nvec || !GB_IS_SPARSE (Y) || Y->type != GrB_UINT64 ||
+            !Y->is_csc || GB_ANY_PENDING_WORK (Y))
+        { 
+            // Y must be sparse, uint64, held by column, with A->nvec values,
+            // vector length the same as A->vdim, and with a Y->vdim that is a
+            // power of 2. It cannot have any pending work.
+            GBPR0 ("  hyper_hash invalid") ;
+            return (GrB_INVALID_OBJECT) ;
+        }
+        // ensure that Y is the inverse of A->h
+        int64_t hash_bits = Y->vdim - 1 ;
+        const int64_t *restrict Yx = (int64_t *) Y->x ;
+        for (int64_t k = 0 ; k < A->nvec ; k++)
+        {
+            // look for j in the hyper_hash; it must be at position k
+            int64_t j = A->h [k] ;
+            int64_t jhash = GB_HASHF2 (j, hash_bits) ;
+            bool found = false ;
+            for (int64_t p = Y->p [jhash] ; p < Y->p [jhash+1] ; p++)
+            {
+                if (j == Y->i [p])
+                {
+                    if (k != Yx [p])
+                    { 
+                        // j is found but not with the right value of k
+                        GBPR0 ("  hyper_hash invalid\n") ;
+                        return (GrB_INVALID_OBJECT) ;
+                    }
+                    found = true ;
+                    break ;
+                }
+            }
+            if (!found)
+            { 
+                // j must appear in the hyper_hash
+                GBPR0 ("  hyper_hash invalid\n") ;
+                return (GrB_INVALID_OBJECT) ;
+            }
+        }
     }
 
     //--------------------------------------------------------------------------

@@ -4,35 +4,34 @@ function C = reshape (G, varargin)
 % matrix whose elements are taken columnwise from G.  The matrix G must
 % have numel (G) == m*n.  That is numel (G) == numel (C) must be true.
 %
+% An optional parameter allows G to be to be reshaped row-wise instead
+% of columnwise:  C = reshape (G, m, n, 'by row') or C = 
+% reshape (G, [m n], 'by row').  The default is 'by column'.
+%
 % See also GrB/numel, squeeze.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
-
-% FUTURE: this would be faster as a built-in GxB_reshape function.
+% SPDX-License-Identifier: Apache-2.0
 
 if (isobject (G))
     G = G.opaque ;
 end
 
-[mold, nold, ~] = gbsize (G) ;
-mold = int64 (mold) ;
-nold = int64 (nold) ;
-
-[mnew, nnew] = gb_parse_dimensions (varargin {:}) ;
+% the third output of gb_parse_args is not actually a type, but 'by row', 'by
+% col', or 'double' if not present on input.
+[mnew, nnew, type] = gb_parse_args ('reshape', varargin {:}) ;
 mnew = int64 (mnew) ;
 nnew = int64 (nnew) ;
 
-if (mold * nold ~= mnew * nnew)
-    error ('number of elements must not change') ;
+switch (type)
+    case 'by row'
+        by_col = false ;
+    case { 'by column', 'double' }
+        % if type is 'double', the row/colwise parameter is not present
+        by_col = true ;
+    otherwise
+        error ('GrB:error', 'unknown reshape option') ;
 end
 
-desc.base = 'zero-based' ;
-[iold, jold, x] = gbextracttuples (G, desc) ;
-% convert i and j from 2D (mold-by-nold) to 1D indices
-k = gb_2d_to_1d (iold, jold, mold) ;
-% convert k from 1D indices to 2D (mnew-by-nnew)
-[inew, jnew] = gb_1d_to_2d (k, mnew) ;
-% rebuild the new matrix
-C = GrB (gbbuild (inew, jnew, x, mnew, nnew, desc)) ;
+C = GrB (gbreshape (G, mnew, nnew, by_col)) ;
 

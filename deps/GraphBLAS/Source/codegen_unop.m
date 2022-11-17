@@ -354,6 +354,15 @@ codegen_unop_template ('erfc', ...
     [ ],                        ... % GxB_FC32_t
     [ ]) ;                      ... % GxB_FC64_t
 
+codegen_unop_template ('cbrt', ...
+    [ ],                        ... % bool
+    [ ],                        ... % int
+    [ ],                        ... % uint
+    'cbrtf (xarg)',             ... % float
+    'cbrt (xarg)',              ... % double
+    [ ],                        ... % GxB_FC32_t
+    [ ]) ;                      ... % GxB_FC64_t
+
 codegen_unop_template ('conj', ...
     [ ],                        ... % bool
     [ ],                        ... % int

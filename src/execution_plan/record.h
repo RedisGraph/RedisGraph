@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #pragma once
 
@@ -40,72 +40,170 @@ typedef struct {
 
 typedef _Record *Record;
 
-// Create a new record sized to accommodate all entries in the given map.
-Record Record_New(rax *mapping);
+// create a new record sized to accommodate all entries in the given map
+Record Record_New
+(
+	rax *mapping
+);
 
-// Clones record.
-void Record_Clone(const Record r, Record clone);
+// clones record
+void Record_Clone
+(
+	const Record r,
+	Record clone
+);
 
-// Merge record b into a, sharing any nested references in b with a.
-void Record_Merge(Record a, const Record b);
+// deep clone record
+void Record_DeepClone
+(
+	const Record r,
+	Record clone
+);
 
-// Merge record b into a, transfer value ownership from b to a.
-void Record_TransferEntries(Record *to, Record from);
+// merge record b into a, sharing any nested references in b with a
+void Record_Merge
+(
+	Record a,
+	const Record b
+);
 
-// Returns number of entries record can hold.
-uint Record_length(const Record r);
+// merge record b into a, transfer value ownership from b to a
+void Record_TransferEntries
+(
+	Record *to,
+	Record from
+);
 
-// Return true if records contains entry at position 'idx'
-bool Record_ContainsEntry(const Record r, uint idx);
+// returns number of entries record can hold
+uint Record_length
+(
+	const Record r
+);
 
-// Return alias position within the record.
-uint Record_GetEntryIdx(Record r, const char *alias);
+// return true if records contains entry at position 'idx'
+bool Record_ContainsEntry
+(
+	const Record r,
+	uint idx
+);
 
-// Get entry type.
-RecordEntryType Record_GetType(const Record r, uint idx);
+// return alias position within the record
+uint Record_GetEntryIdx
+(
+	Record r,
+	const char *alias
+);
 
-// Get a node from record at position idx.
-Node *Record_GetNode(const Record r, uint idx);
+// get entry type
+RecordEntryType Record_GetType
+(
+	const Record r,
+	uint idx
+);
 
-// Get an edge from record at position idx.
-Edge *Record_GetEdge(const Record r, uint idx);
+// get a node from record at position idx
+Node *Record_GetNode
+(
+	const Record r,
+	uint idx
+);
 
-// Get an SIValue containing the entity at position idx.
-SIValue Record_Get(Record r, uint idx);
+// get an edge from record at position idx
+Edge *Record_GetEdge
+(
+	const Record r,
+	uint idx
+);
 
-// Remove item at position idx.
-void Record_Remove(Record r, uint idx);
+// get an SIValue containing the entity at position idx
+SIValue Record_Get
+(
+	Record r,
+	uint idx
+);
 
-// Get a graph entity from record at position idx.
-GraphEntity *Record_GetGraphEntity(const Record r, uint idx);
+// remove item at position idx
+void Record_Remove
+(
+	Record r,
+	uint idx
+);
 
-// Add a scalar, node, or edge to the record, depending on the SIValue type.
-void Record_Add(Record r, uint idx, SIValue v);
+// get a graph entity from record at position idx
+GraphEntity *Record_GetGraphEntity
+(
+	const Record r,
+	uint idx
+);
 
-// Add a scalar to record at position idx and return a reference to it.
-SIValue *Record_AddScalar(Record r, uint idx, SIValue v);
+// add a scalar, node, or edge to the record, depending on the SIValue type
+void Record_Add
+(
+	Record r,
+	uint idx,
+	SIValue v
+);
 
-// Add a node to record at position idx and return a reference to it.
-Node *Record_AddNode(Record r, uint idx, Node node);
+// add a scalar to record at position idx and return a reference to it
+SIValue *Record_AddScalar
+(
+	Record r,
+	uint idx,
+	SIValue v
+);
 
-// Add an edge to record at position idx and return a reference to it.
-Edge *Record_AddEdge(Record r, uint idx, Edge edge);
+// add a node to record at position idx and return a reference to it
+Node *Record_AddNode
+(
+	Record r,
+	uint idx,
+	Node node
+);
 
-// Ensure that all scalar values in record are access-safe.
-void Record_PersistScalars(Record r);
+// add an edge to record at position idx and return a reference to it
+Edge *Record_AddEdge
+(
+	Record r,
+	uint idx,
+	Edge edge
+);
 
-// String representation of record.
-size_t Record_ToString(const Record r, char **buf, size_t *buf_cap);
+// ensure that all scalar values in record are access-safe
+void Record_PersistScalars
+(
+	Record r
+);
+
+// string representation of record
+size_t Record_ToString
+(
+	const Record r,
+	char **buf,
+	size_t *buf_cap
+);
 
 // retrieves mapping associated with record
-rax *Record_GetMappings(const Record r);
+rax *Record_GetMappings
+(
+	const Record r
+);
 
-// Remove and free entry at position idx.
-void Record_FreeEntry(Record r, int idx);
+// remove and free entry at position idx
+void Record_FreeEntry
+(
+	Record r,
+	int idx
+);
 
-// Free record entries.
-void Record_FreeEntries(Record r);
+// free record entries
+void Record_FreeEntries
+(
+	Record r
+);
 
 // Free record.
-void Record_Free(Record r);
+void Record_Free
+(
+	Record r
+);
 

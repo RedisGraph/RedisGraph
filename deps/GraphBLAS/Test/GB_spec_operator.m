@@ -266,7 +266,7 @@ switch opname
     % unary ops for real floating-point only
     %--------------------------------------------------------------------------
 
-    case { 'lgamma', 'tgamma', 'erf', 'erfc', 'frexpx',  'frexpe' }
+    case { 'lgamma', 'tgamma', 'erf', 'erfc', 'frexpx',  'frexpe', 'cbrt' }
         % x and z have the same type
         if (~is_real_float)
             error ('invalid op') ;

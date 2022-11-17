@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "op_node_by_label_scan.h"
 #include "RG.h"
@@ -74,13 +74,8 @@ static GrB_Info _ConstructIterator(NodeByLabelScan *op, Schema *schema) {
 	if(op->id_range->include_max) maxId = op->id_range->max;
 	else maxId = op->id_range->max - 1;
 
-	info = RG_MatrixTupleIter_attach(&op->iter, L);
+	info = RG_MatrixTupleIter_AttachRange(&op->iter, L, minId, maxId);
 	ASSERT(info == GrB_SUCCESS);
-
-	// use range only when minId and maxId are subset of the entire matrix
-	if(minId > 0 || maxId < nrows-1) {
-		info = RG_MatrixTupleIter_iterate_range(&op->iter, minId, maxId);
-	}
 
 	return info;
 }
@@ -173,7 +168,7 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 
 	// We've got a record and NodeID.
 	// Clone the held Record, as it will be freed upstream.
-	Record r = OpBase_CloneRecord(op->child_record);
+	Record r = OpBase_DeepCloneRecord(op->child_record);
 	// Populate the Record with the actual node.
 	_UpdateRecord(op, r, nodeId);
 	return r;

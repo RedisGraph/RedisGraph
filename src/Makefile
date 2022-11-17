@@ -335,7 +335,7 @@ endif
 #----------------------------------------------------------------------------------------------
 
 package: $(TARGET)
-	@$(ROOT)/sbin/pack.sh
+	@MODULE=$(realpath $(TARGET)) $(ROOT)/sbin/pack.sh
 
 .PHONY: package
 

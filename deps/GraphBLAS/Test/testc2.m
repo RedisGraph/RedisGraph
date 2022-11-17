@@ -1,10 +1,15 @@
-function testc2(quick)
+function testc2(quick,use_builtin)
 %TESTC2 test complex A*B, A'*B, A*B', A'*B', A+B
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
+
+if (nargin < 2)
+    use_builtin = true ;
+end
+GB_builtin_complex_set (use_builtin) ;
 
 if (nargin < 1)
     quick = 0 ;
@@ -134,4 +139,5 @@ end
 
 fprintf ('testc2: all complex A*B, A''*B, A*B'', A''*B'' tests passed, maxerr %g\n', maxerr) ;
 
+GB_builtin_complex_set (true) ;
 

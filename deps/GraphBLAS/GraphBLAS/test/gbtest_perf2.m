@@ -2,7 +2,7 @@ function gbtest_perf2
 %GBTEST_PERF2 test A'*x performance
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 max_nthreads = GrB.threads ;
 threads = [1 2 4 8 16 20 32 40 64] ;

@@ -134,7 +134,7 @@ The underlying graph data structure maintains three matrices:
 2. visit matrix - marking visit connections
 3. friend matrix - marking friend connections
 
-A 'visit' relationship E that connects node A to node B, sets THE adjacency matrix at position [A,B] to 1. Also, the visit matrix V sets position V[A,B] to 1.
+A 'visit' relationship E that connects node A to node B, sets THE adjacency matrix at position [A,B] to 1. Also, the visit matrix V sets position V[A,B] to the corresponding relationship-id.
 
 To accommodate typed nodes, one additional matrix is allocated per label, and a label matrix is symmetric with ones along the main diagonal. Assume that node N was labeled as a Person, then the Person matrix P sets position P[N,N] to 1.
 
@@ -209,7 +209,7 @@ RedisGraph is able to create over 1 million nodes under half a second and form 5
 
 ## License
 
-RedisGraph is published under the [Redis Source Available License Agreement](https://redis.com/legal/licenses/).
+RedisGraph is published under the [Redis Source Available License 2.0 (RSALv2) or the Server Side Public License v1 (SSPLv1)](https://redis.com/legal/licenses/).
 
 ## Conclusion
 

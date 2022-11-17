@@ -12,7 +12,7 @@
 
 #define GB_FREE_ALL         \
     GB_FREE_WORKSPACE ;     \
-    GB_phbix_free (C) ;
+    GB_phybix_free (C) ;
 
 #include "GB_concat.h"
 
@@ -48,7 +48,7 @@ GrB_Info GB_concat_full             // concatenate into a full matrix
     if (!GB_IS_FULL (C))
     { 
         // set C->iso = C_iso   OK
-        GB_phbix_free (C) ;
+        GB_phybix_free (C) ;
         GB_OK (GB_bix_alloc (C, GB_nnz_full (C), GxB_FULL, false, true, C_iso,
             Context)) ;
         C->plen = -1 ;
@@ -138,7 +138,7 @@ GrB_Info GB_concat_full             // concatenate into a full matrix
 
             bool done = false ;
 
-            #ifndef GBCOMPACT
+            #ifndef GBCUDA_DEV
                 if (ccode == acode)
                 {
                     // no typecasting needed
@@ -170,11 +170,13 @@ GrB_Info GB_concat_full             // concatenate into a full matrix
 
                         case GB_16BYTE : // double complex or 16-byte user
                             #define GB_CTYPE GB_blob16
-//                          #define GB_CTYPE uint64_t
-//                          #undef  GB_COPY
-//                          #define GB_COPY(pC,pA,A_iso)                    \
-//                              Cx [2*pC  ] = Ax [A_iso ? 0 : (2*pA)] ;     \
-//                              Cx [2*pC+1] = Ax [A_iso ? 1 : (2*pA+1)] ;
+                            /*
+                            #define GB_CTYPE uint64_t
+                            #undef  GB_COPY
+                            #define GB_COPY(pC,pA,A_iso)                    \
+                                Cx [2*pC  ] = Ax [A_iso ? 0 : (2*pA)] ;     \
+                                Cx [2*pC+1] = Ax [A_iso ? 1 : (2*pA+1)] ;
+                            */
                             #include "GB_concat_full_template.c"
                             break ;
 

@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #pragma once
 
@@ -138,50 +138,132 @@ struct OpBase {
 };
 typedef struct OpBase OpBase;
 
-// Initialize op.
-void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsume consume,
-				 fpReset reset, fpToString toString, fpClone, fpFree free, bool writer,
-				 const struct ExecutionPlan *plan);
-void OpBase_Free(OpBase *op);       // Free op.
-Record OpBase_Consume(OpBase *op);  // Consume op.
-Record OpBase_Profile(OpBase *op);  // Profile op.
+// initialize op
+void OpBase_Init
+(
+	OpBase *op,
+	OPType type,
+	const char *name,
+	fpInit init,
+	fpConsume consume,
+	fpReset reset,
+	fpToString toString,
+	fpClone,
+	fpFree free,
+	bool writer,
+	const struct ExecutionPlan *plan
+);
 
-void OpBase_ToString(const OpBase *op, sds *buff);
+// free op
+void OpBase_Free
+(
+	OpBase *op
+);
 
-OpBase *OpBase_Clone(const struct ExecutionPlan *plan, const OpBase *op);
+// consume op
+Record OpBase_Consume
+(
+	OpBase *op
+);
+
+// profile op
+Record OpBase_Profile
+(
+	OpBase *op
+);
+
+void OpBase_ToString
+(
+	const OpBase *op,
+	sds *buff
+);
+
+OpBase *OpBase_Clone
+(
+	const struct ExecutionPlan *plan,
+	const OpBase *op
+);
 
 // returns operation type
-OPType OpBase_Type(const OpBase *op);
+OPType OpBase_Type
+(
+	const OpBase *op
+);
 
-/* Mark alias as being modified by operation.
- * Returns the ID associated with alias. */
-int OpBase_Modifies(OpBase *op, const char *alias);
+// mark alias as being modified by operation
+// returns the ID associated with alias
+int OpBase_Modifies
+(
+	OpBase *op,
+	const char *alias
+);
 
-/* Adds an alias to an existing modifier, such that record[modifier] = record[alias]. */
-int OpBase_AliasModifier(OpBase *op, const char *modifier, const char *alias);
+// adds an alias to an existing modifier
+// such that record[modifier] = record[alias]
+int OpBase_AliasModifier
+(
+	OpBase *op,
+	const char *modifier,
+	const char *alias
+);
 
-/* Returns true if any of an op's children are aware of the given alias. */
-bool OpBase_ChildrenAware(OpBase *op, const char *alias, int *idx);
+// returns true if any of an op's children are aware of the given alias
+bool OpBase_ChildrenAware
+(
+	OpBase *op,
+	const char *alias,
+	int *idx
+);
 
-/* Returns true if op is aware of alias.
- * an operation is aware of all aliases it modifies and all aliases
- * modified by prior operation within its segment. */
-bool OpBase_Aware(OpBase *op, const char *alias, int *idx);
+// returns true if op is aware of alias
+// an operation is aware of all aliases it modifies and all aliases
+// modified by prior operation within its segment
+bool OpBase_Aware
+(
+	OpBase *op,
+	const char *alias,
+	int *idx
+);
 
-void OpBase_PropagateReset(OpBase *op); // Sends reset request to each operation up the chain.
+// sends reset request to each operation up the chain
+void OpBase_PropagateReset
+(
+	OpBase *op
+);
 
-// Indicates if the operation is a writer operation.
-bool OpBase_IsWriter(OpBase *op);
+// indicates if the operation is a writer operation
+bool OpBase_IsWriter
+(
+	OpBase *op
+);
 
-// Update operation consume function.
-void OpBase_UpdateConsume(OpBase *op, fpConsume consume);
+// update operation consume function
+void OpBase_UpdateConsume
+(
+	OpBase *op,
+	fpConsume consume
+);
 
-// Creates a new record that will be populated during execution.
-Record OpBase_CreateRecord(const OpBase *op);
+// creates a new record that will be populated during execution
+Record OpBase_CreateRecord
+(
+	const OpBase *op
+);
 
-// Clones given record.
-Record OpBase_CloneRecord(Record r);
+// clones given record
+Record OpBase_CloneRecord
+(
+	Record r
+);
 
-// Release record.
-void OpBase_DeleteRecord(Record r);
+// deep clones given record
+Record OpBase_DeepCloneRecord
+(
+	Record r
+);
 
+// release record
+void OpBase_DeleteRecord
+(
+	Record r
+);

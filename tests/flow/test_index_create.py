@@ -200,7 +200,93 @@ class testIndexCreationFlow():
 
             loop.run_until_complete(asyncio.wait(tasks))
 
-    def test06_async_index_creation(self):
+    def test06_syntax_error_index_creation(self):
+        # create index on invalid property name
+        try:
+            redis_graph.query("CREATE INDEX FOR (p:Person) ON (p.m.n, p.p.q)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Invalid input '.': expected ',' or ')'", str(e))
+
+        # create index on invalid identifier
+        try:
+            redis_graph.query("CREATE INDEX FOR (p:Person) ON (1.b)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Invalid input '1': expected an identifier", str(e))
+
+        # create index on invalid property name: number
+        try:
+            redis_graph.query("CREATE INDEX FOR (p:Person) ON (b.1)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Invalid input '1': expected a property name", str(e))
+
+        # create index without label
+        try:
+            redis_graph.query("CREATE INDEX FOR (Person) ON (surname)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Invalid input ')': expected a label", str(e))
+
+        # create index without property name
+        try:
+            redis_graph.query("CREATE INDEX FOR (p:Person) ON (surname)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Invalid input ')': expected '.'", str(e))
+
+        # create index without identifier
+        try:
+            redis_graph.query("CREATE INDEX FOR (p:Person) ON ()")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Invalid input ')': expected an identifier", str(e))
+
+        # create index for relationship on invalid property name
+        try:
+            redis_graph.query("CREATE INDEX FOR ()-[n:T]-() ON (n.p.q)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Invalid input '.': expected ',' or ')'", str(e))
+
+        # create index for relationship on invalid identifier
+        try:
+            redis_graph.query("CREATE INDEX FOR ()-[n:T]-() ON (1.b)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Invalid input '1': expected an identifier", str(e))
+
+    def test07_index_creation_undefined_identifier(self):   
+        # create index on undefined identifier
+        try:
+            redis_graph.query("CREATE INDEX FOR (p:Person) ON (a.b)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("a not defined", str(e))
+
+        # create index on undefined identifier after defined identifier
+        try:
+            redis_graph.query("CREATE INDEX FOR (p:Person) ON (p.x, a.b)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("a not defined", str(e))
+        
+        # create index for relationship on undefined identifier
+        try:
+            redis_graph.query("CREATE INDEX FOR ()-[n:T]-() ON (a.b)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("a not defined", str(e))
+
+        # create index for relationship on undefined identifier after defined identifier
+        try:
+            redis_graph.query("CREATE INDEX FOR ()-[n:T]-() ON (p.x, a.b)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("a not defined", str(e))
+
+    def test08_async_index_creation(self):
         # 1. create a large graph
         # 2. create an index
         # 3. while the index is being constructed make sure:
@@ -314,7 +400,7 @@ class testIndexCreationFlow():
         res = g.query(q, {'id': 2}).result_set
         self.env.assertEquals(res[0][0], 0)
 
-    def test07_async_fulltext_index_creation(self):
+    def test09_async_fulltext_index_creation(self):
         # 1. create a large graph
         # 2. create an index
         # 3. while the index is being constructed make sure:
@@ -422,7 +508,7 @@ class testIndexCreationFlow():
             res = g.query(q, {'uid': uid}).result_set
             self.env.assertEquals(res[0][0], 0)
 
-    def test08_delete_interrupt_async_index_creation(self):
+    def test10_delete_interrupt_async_index_creation(self):
         # 1. create a large graph
         # 2. create an index
         # 3. delete the graph while the index is being constructed
@@ -470,7 +556,7 @@ class testIndexCreationFlow():
         # at the moment there's no way of checking index status once its graph
         # key had been removed
 
-    def test09_delete_interrupt_async_fulltext_index_creation(self):
+    def test11_delete_interrupt_async_fulltext_index_creation(self):
         # 1. create a large graph
         # 2. create an index
         # 3. delete the graph while the index is being constructed
@@ -518,7 +604,7 @@ class testIndexCreationFlow():
         # at the moment there's no way of checking index status once its graph
         # key had been removed
 
-    def test10_multi_index_creation(self):
+    def test12_multi_index_creation(self):
         # interrupt index creation by adding/removing fields
         #
         # 1. create a large graph
@@ -604,7 +690,7 @@ class testIndexCreationFlow():
         # one (v) we're expecting thier overall construction time to be similar
         self.env.assertTrue(elapsed_2 < elapsed * 2)
 
-    def test11_multi_fulltext_index_creation(self):
+    def test13_multi_fulltext_index_creation(self):
         # interrupt index creation by adding/removing fields
         #
         # 1. create a large graph
@@ -689,4 +775,3 @@ class testIndexCreationFlow():
         # new index includes 2 fields (b,v) while the former index included just
         # one (v) we're expecting thier overall construction time to be similar
         self.env.assertTrue(elapsed_2 < elapsed * 2)
-

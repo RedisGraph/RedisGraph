@@ -57,6 +57,8 @@ GrB_Type type ;         // the type of each numerical entry
 // vectors, where A->nvec <= A->plen <= A->vdim.  The arrays Ai and Ax define
 // the indices and values in each sparse vector.  The total number of entries
 // in the matrix is Ap [nvec] <= GB_nnz_max (A).
+// A->nvals is equal to Ap [nvec].
+
 // For the bitmap and full sparsity structures, Ap and Ai are NULL.
 
 // For both hypersparse and non-hypersparse matrices, if A->nvec_nonempty is
@@ -217,13 +219,88 @@ int64_t *i ;            // indices:  i_size >= 8*max(anz,1)
 void *x ;               // values:   x_size >= max(anz*A->type->size,1),
                         //           or x_size >= 1 if A is iso
 int8_t *b ;             // bitmap:   b_size >= max(anz,1)
-int64_t nvals ;         // nvals(A) if A is bitmap
+int64_t nvals ;         // nvals(A) if A is sparse, hypersparse, or bitmap
 
 size_t p_size ;         // exact size of A->p in bytes, zero if A->p is NULL
 size_t h_size ;         // exact size of A->h in bytes, zero if A->h is NULL
 size_t b_size ;         // exact size of A->b in bytes, zero if A->b is NULL
 size_t i_size ;         // exact size of A->i in bytes, zero if A->i is NULL
 size_t x_size ;         // exact size of A->x in bytes, zero if A->x is NULL
+
+//------------------------------------------------------------------------------
+// hashing the hypersparse list
+//------------------------------------------------------------------------------
+
+/* The matrix Y is a hashed inverse of the A->h hyperlist, for a hypersparse
+    matrix A.  It allows for fast lookup of entries in Ah.  Given j, the goal
+    is to find k so that j = Ah [k], or to report that j is not in Ah.  The
+    matrix A->Y allows for a fast lookup to compute this, without using a
+    binary search.
+
+        anvec = A->nvec
+        avdim = A->vdim
+        Ah = A->h
+        nhash is the size of the hash table Y, which is always a power of 2.
+            Its size is determined by GB_hyper_hash_build.
+
+    Then A->Y has dimension Y->vdim = nhash (one vector in Y for each hash
+    bucket), and Y->vlen = avdim.  If Y is considered as held in column-format,
+    then Y is avlen-by-nhash.  The row/col format of Y is not important.  Each
+    of its vectors (nhash of them) corresponds to a single hash bucket, and
+    each hash bucket can hold up to avdim entries (assuming worst-case
+    collisions where all entries j land in the same hash bucket).  Y is always
+    in sparse format; never full, bitmap, or hypersparse.  Its type is always
+    GrB_INT64, and it is never iso-valued.  The # of entries in Y is exactly
+    anvec.
+
+    Let f(j) = GB_HASHF2(j,nhash-1) be the hash function for the value j.  Its
+    value is in the range 0 to nhash-1, where nhash is always a power of 2.
+
+    If j = Ah [k], then k = Y (j,f (j)).
+    If j is not in the Ah hyperlist, then Y (j,f(j)) does not appear
+    as an entry in Y.
+
+    Ideally, if the hash function had no collisions, each vector in Y would
+    have length 0 or 1, and k = Y (j,f(j)) would be O(1) time lookup.
+    However, the load factor is normally in the range of 2 to 4, so ideally
+    each bucket will contain about 4 entries on average, if the load factor
+    is 4.
+
+    A->Y is only computed when required, or if GrB_Matrix_wait (Y) is
+    explicitly called.  Once computed, k can be found as follows:
+
+        // This can be done once, and reused for many searches:
+        int64_t nhash = A->Y->vdim ;    // # of buckets in the hash table
+        int64_t hash_bits = nhash-1 ;
+        int64_t *Yp = A->Y->p ;         // pointers to each hash bucket
+                                        // Yp has size nhash+1.
+        int64_t *Yi = A->Y->i ;         // "row" indices j; Yi has size anvec.
+        int64_t *Yx = A->Y->x ;         // values k; Yx has size anvec.
+
+        // Given a value j to find in the list Ah: find the entry k =
+        // Y(j,f(j)), if it exists, or k=-1 if j is not in the Ah
+        // hyperlist.
+        int64_t jhash = GB_HASHF2 (j, hash_bits) ;     // in range 0 to nhash-1
+        int64_t k = -1 ;
+        for (int64_t p = Yp [jhash] ; p < Yp [jhash+1] ; p++)
+        {
+            if (j == Yi [p])
+            {
+                k = Yx [p] ;        // k = Y (j,jhash) has been found
+                break ;
+            }
+            // or this could be done instead:
+            // k = (j == Yi [p]) ? Yx [p] : k ;  // break not needed.
+        }
+
+    The hyper_hash is based on the HashGraph method by Oded Green,
+    ACM Trans. Parallel Computing, June 2021, https://doi.org/10.1145/3460872
+*/
+
+GrB_Matrix Y ;      // Y is a matrix that represents the inverse of A->h.
+                    // It can only be non-NULL if A is hypersparse.  Not all
+                    // hypersparse matrices need the A->Y matrix.  It is
+                    // constructed whenever it is needed.
 
 //------------------------------------------------------------------------------
 // pending tuples
@@ -380,9 +457,10 @@ int sparsity_control ;  // controls sparsity structure: hypersparse,
 
 // Internal matrices in this implementation of GraphBLAS may have "shallow"
 // components.  These are pointers A->p, A->h, A->i, A->b, and A->x that point
-// to the content of another matrix.  Using shallow components speeds up
-// computations and saves memory, but shallow matrices are never passed back to
-// the user application.
+// to the content of another matrix, or A->Y which points to the Y hyper_hash
+// of another matrix.  Using shallow components speeds up computations and
+// saves memory, but shallow matrices are never passed back to the user
+// application.
 
 // If the following are true, then the corresponding component of the
 // object is a pointer into components of another object.  They must not
@@ -393,6 +471,7 @@ bool h_shallow ;        // true if h is a shallow copy
 bool b_shallow ;        // true if b is a shallow copy
 bool i_shallow ;        // true if i is a shallow copy
 bool x_shallow ;        // true if x is a shallow copy
+bool Y_shallow ;        // true if Y is a shallow matrix
 bool static_header ;    // true if this struct is statically allocated
 
 //------------------------------------------------------------------------------

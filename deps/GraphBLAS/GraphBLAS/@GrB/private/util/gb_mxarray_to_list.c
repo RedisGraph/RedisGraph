@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -82,15 +82,9 @@ int64_t *gb_mxarray_to_list     // return List of integers
             bool ok = GB_helper3 (List, List_double, (*len), List_max) ;
             CHECK_ERROR (!ok, "index must be integer") ;
         }
-        else if (class == mxINT64_CLASS)
+        else
         { 
-            // input list is 1-based int64
-            int64_t *List_int64 = (int64_t *) mxGetData (mxList) ;
-            GB_helper3i (List, List_int64, (*len), List_max) ;
-        }
-        else // if (class == mxUINT64_CLASS)
-        { 
-            // input list is 1-based uint64
+            // input list is 1-based int64 or uint64
             int64_t *List_int64 = (int64_t *) mxGetData (mxList) ;
             GB_helper3i (List, List_int64, (*len), List_max) ;
         }

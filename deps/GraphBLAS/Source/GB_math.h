@@ -15,7 +15,7 @@
 //------------------------------------------------------------------------------
 
 #ifdef GB_CUDA_KERNEL
-// FIXME for CUDA: this could likely be: "__device__ static inline"
+// fixme for CUDA: this could likely be: "__device__ static inline"
 #define GB_MATH_KERNEL __device__ inline
 #else
 #define GB_MATH_KERNEL inline
@@ -133,16 +133,16 @@
 #include "GB_imin.h"
 
 // ceiling of a/b for two integers a and b
-#define GB_ICEIL(a,b) (((a) + (b) - 1) / (b))
+#include "GB_iceil.h"
 
 //------------------------------------------------------------------------------
 // division by zero
 //------------------------------------------------------------------------------
 
 // Integer division is done carefully so that GraphBLAS does not terminate the
-// user's application on divide-by-zero.  To compute X/0: if X is zero, the
-// result is zero (like NaN).  if X is negative, the result is the negative
-// integer with biggest magnitude (like -infinity).  if X is positive, the
+// user's application on divide-by-zero.  To compute x/0: if x is zero, the
+// result is zero (like NaN).  if x is negative, the result is the negative
+// integer with biggest magnitude (like -infinity).  if x is positive, the
 // result is the biggest positive integer (like +infinity).
 
 // For places affected by this decision in the code do:
@@ -311,7 +311,7 @@ GB_MATH_KERNEL uint64_t GB_idiv_uint64 (uint64_t x, uint64_t y)
 // dividing by zero (boolean false) will typically terminate an application.
 // In this GraphBLAS implementation, boolean division is treated as if it were
 // int1, where 1/1 = 1, 0/1 = 0, 0/0 = integer NaN = 0, 1/0 = +infinity = 1.
-// Thus Z=X/Y is Z=X.  This is arbitrary, but it allows all operators to work
+// Thus z=x/y is z=x.  This is arbitrary, but it allows all operators to work
 // on all types without causing run time exceptions.  It also means that
 // GrB_DIV(x,y) is the same as GrB_FIRST(x,y) for boolean x and y.  See for
 // example GB_boolean_rename and Template/GB_ops_template.c.  Similarly,

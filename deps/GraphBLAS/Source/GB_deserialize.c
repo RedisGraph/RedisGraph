@@ -144,7 +144,7 @@ GrB_Info GB_deserialize             // deserialize a matrix from a blob
 
     C->nvec = nvec ;
     C->nvec_nonempty = nvec_nonempty ;
-    C->nvals = nvals ;
+    C->nvals = nvals ;      // revised below
     C->bitmap_switch = bitmap_switch ;
     C->sparsity_control = sparsity_control ;
     C->iso = iso ;
@@ -203,6 +203,19 @@ GrB_Info GB_deserialize             // deserialize a matrix from a blob
     // decompress Cx
     GB_OK (GB_deserialize_from_blob ((GB_void **) &(C->x), &(C->x_size), Cx_len,
         blob, blob_size, Cx_Sblocks, Cx_nblocks, Cx_method, &s, Context)) ;
+
+    if (C->p != NULL)
+    { 
+        // C is sparse or hypersparse.  v7.2.1 and later have the new C->nvals
+        // value inside the blob already.  The blob prior to v7.2.1 had nvals
+        // of zero for sparse and hypersparse matrices.  Set it here to the
+        // correct value, so that blobs written by v7.2.0 and earlier can be
+        // read by v7.2.1 and later.  For both variants, ignore nvals in the
+        // blob and use Cp [nvec] when C is sparse or hypersparse.
+        ASSERT (GB_IMPLIES (version > GxB_VERSION (7,2,0),
+            C->nvals == C->p [C->nvec])) ;
+        C->nvals = C->p [C->nvec] ;
+    }
     C->magic = GB_MAGIC ;
 
     //--------------------------------------------------------------------------

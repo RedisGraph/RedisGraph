@@ -2,7 +2,7 @@ function gbtest16
 %GBTEST16 test GrB.extract
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 
@@ -56,6 +56,10 @@ J = [3 3 1 2] ;
 % B = sprandn (length (I), length (J), 0.5) ;
 Cout = GrB.extract (A, {I}, {J}) ;
 C2 = A (I,J)  ;
+assert (gbtest_eq (C2, Cout)) ;
+
+desc.base = 'zero-based' ;
+Cout = GrB.extract (A, { int64(I) - 1 }, { int64(J) - 1 }, desc) ;
 assert (gbtest_eq (C2, Cout)) ;
 
 G = GrB.random (1, 10, inf) ;

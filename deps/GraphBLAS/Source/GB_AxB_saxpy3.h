@@ -13,6 +13,7 @@
 #ifndef GB_AXB_SAXPY3_H
 #define GB_AXB_SAXPY3_H
 #include "GB.h"
+#include "GB_hash.h"
 
 GrB_Info GB_AxB_saxpy3              // C = A*B using Gustavson+Hash
 (
@@ -32,33 +33,6 @@ GrB_Info GB_AxB_saxpy3              // C = A*B using Gustavson+Hash
     const int do_sort,              // if nonzero, try to sort in saxpy3
     GB_Context Context
 ) ;
-
-//------------------------------------------------------------------------------
-// functions for the Hash method for C=A*B
-//------------------------------------------------------------------------------
-
-// initial hash function, for where to place the integer i in the hash table.
-// hash_bits is a bit mask to compute the result modulo the hash table size,
-// which is always a power of 2.  The function is (i*257) & (hash_bits).
-#define GB_HASHF(i) ((((i) << 8) + (i)) & (hash_bits))
-
-// rehash function, for subsequent hash lookups if the initial hash function
-// refers to a hash entry that is already occupied.  Linear probing is used,
-// so the function does not currently depend on i.  On input, hash is equal
-// to the current value of the hash function, and on output, hash is set to
-// the new hash value.
-#define GB_REHASH(hash,i) hash = ((hash + 1) & (hash_bits))
-
-// The hash functions and their parameters are modified from this paper:
-
-// [2] Yusuke Nagasaka, Satoshi Matsuoka, Ariful Azad, and Aydin Buluc. 2018.
-// High-Performance Sparse Matrix-Matrix Products on Intel KNL and Multicore
-// Architectures. In Proc. 47th Intl. Conf. on Parallel Processing (ICPP '18).
-// Association for Computing Machinery, New York, NY, USA, Article 34, 1–10.
-// DOI:https://doi.org/10.1145/3229710.3229720
-
-// The hash function in that paper is (i*107)&(hash_bits).  Here, the term
-// 107 is replaced with 257 to allow for a faster hash function computation.
 
 //------------------------------------------------------------------------------
 // GB_saxpy3task_struct: task descriptor for GB_AxB_saxpy3

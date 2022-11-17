@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -58,14 +58,21 @@ void gbcov_put (void) ;
 
 #define CHECK_ERROR(error,message) if (error) ERROR (message) ;
 
-#define OK(method) CHECK_ERROR ((method) != GrB_SUCCESS, "GrB:error") ;
+#define OK(method)                                          \
+{                                                           \
+    GrB_Info info = method ;                                \
+    if (info != GrB_SUCCESS)                                \
+    {                                                       \
+        ERROR (gb_error (info)) ;                           \
+    }                                                       \
+}
 
 #define OK0(method)                                         \
 {                                                           \
     GrB_Info info = method ;                                \
     if (!(info == GrB_SUCCESS || info == GrB_NO_VALUE))     \
     {                                                       \
-        ERROR ("GrB:error") ;                               \
+        ERROR (gb_error (info)) ;                           \
     }                                                       \
 }
 
@@ -212,6 +219,11 @@ void gb_usage       // check usage and make sure GxB_init has been called
 (
     bool ok,                // if false, then usage is not correct
     const char *message     // error message if usage is not correct
+) ;
+
+const char *gb_error        // return an error string from a GrB_Info value
+(
+    GrB_Info info
 ) ;
 
 void gb_find_dot            // find 1st and 2nd dot ('.') in a string
@@ -374,6 +386,12 @@ bool gb_mxarray_is_scalar   // true if built-in array is a scalar
     const mxArray *S
 ) ;
 
+uint64_t gb_mxget_uint64_scalar // return uint64 value of a MATLAB scalar
+(
+    const mxArray *mxscalar,    // MATLAB scalar to extract
+    char *name                  // name of the scalar
+) ;
+
 bool gb_mxarray_is_empty    // true if built-in array is NULL, or 2D and 0-by-0
 (
     const mxArray *S
@@ -399,7 +417,8 @@ GrB_Index *gb_mxcell_to_index   // return index list I
     base_enum_t base,           // I is one-based or zero-based
     const GrB_Index n,          // dimension of matrix being indexed
     bool *I_allocated,          // true if output array I is allocated
-    GrB_Index *ni               // length (I)
+    GrB_Index *ni,              // length (I)
+    int64_t *I_max              // max (I) is computed if I_max is not NULL
 ) ;
 
 GrB_BinaryOp gb_first_binop         // return GrB_FIRST_[type] operator

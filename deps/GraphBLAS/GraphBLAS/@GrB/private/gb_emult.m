@@ -10,13 +10,23 @@ function C = gb_emult (A, op, B)
 % matrices, in any combination.  C is returned as a GraphBLAS struct.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
-if (gb_isscalar (A) || gb_isscalar (B))
-    % either A or B are scalars
-    C = gbapply2 (A, op, B) ;
+if (gb_isscalar (A))
+    if (gb_isscalar (B))
+        % both A and B are scalars
+        C = gbemult (A, op, B) ;
+    else
+        % A is a scalar, B is a matrix
+        C = gbapply2 (gbfull (A), op, B) ;
+    end
 else
-    % both A and B are matrices
-    C = gbemult (A, op, B) ;
+    if (gb_isscalar (B))
+        % A is a matrix, B is a scalar
+        C = gbapply2 (A, op, gbfull (B)) ;
+    else
+        % both A and B are matrices
+        C = gbemult (A, op, B) ;
+    end
 end
 

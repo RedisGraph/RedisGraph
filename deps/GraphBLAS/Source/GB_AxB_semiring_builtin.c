@@ -39,6 +39,14 @@ bool GB_AxB_semiring_builtin        // true if semiring is builtin
     // check inputs
     //--------------------------------------------------------------------------
 
+    if (flipxy)
+    {
+        // quick return.  All built-in semirings have been handled already
+        // in GB_AxB_meta, and flipxy is now false.  If flipxy is still true,
+        // the semiring is not built-in.
+        return (false) ;
+    }
+
     // A and B may be aliased
 
     GrB_BinaryOp add  = semiring->add->op ;     // add operator

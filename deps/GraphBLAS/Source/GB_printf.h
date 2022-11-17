@@ -120,7 +120,7 @@
 // burble
 //------------------------------------------------------------------------------
 
-// GBBURBLE and the GB_BURBLE_* methods provide diagnostic output.
+// GBURBLE and the GB_BURBLE_* methods provide diagnostic output.
 // Use GxB_set (GxB_BURBLE, true) to turn it on
 // and GxB_set (GxB_BURBLE, false) to turn it off.
 
@@ -137,9 +137,18 @@ void GB_burble_assign
     const int assign_kind       // row assign, col assign, assign, or subassign
 ) ;
 
+#if defined ( GBCUDA ) && defined ( GBNVTX )
+// enable nvtxMark for CUDA
+#include <nvToolsExt.h>
+#define GB_NVTX { nvtxMark ("nvtx:" __FILE__ ":" GB_XSTR(__LINE__)) ; }
+#else
+#define GB_NVTX
+#endif
+
 // define the function to use to burble
 #define GBURBLE(...)                                \
 {                                                   \
+    GB_NVTX                                         \
     if (GB_Global_burble_get ( ))                   \
     {                                               \
         GBDUMP (__VA_ARGS__) ;                      \
@@ -169,6 +178,7 @@ void GB_burble_assign
     #define GB_BURBLE_START(func)                       \
     double t_burble = 0 ;                               \
     {                                                   \
+        GB_NVTX                                         \
         if (GB_Global_burble_get ( ))                   \
         {                                               \
             GBURBLE (" [ " func " ") ;                  \
@@ -178,6 +188,7 @@ void GB_burble_assign
 
     #define GB_BURBLE_END                               \
     {                                                   \
+        GB_NVTX                                         \
         if (GB_Global_burble_get ( ))                   \
         {                                               \
             t_burble = GB_OPENMP_GET_WTIME - t_burble ; \

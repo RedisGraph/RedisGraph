@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "string_funcs.h"
 #include "../func_desc.h"
@@ -209,6 +209,7 @@ SIValue AR_TRIM(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	SIValue ltrim = AR_LTRIM(argv, argc, NULL);
 	SIValue trimmed = AR_RTRIM(&ltrim, 1, NULL);
+	SIValue_Free(ltrim);
 	return trimmed;
 }
 

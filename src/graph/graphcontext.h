@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #pragma once
 
@@ -136,6 +136,14 @@ Schema *GraphContext_AddSchema
 	SchemaType t
 );
 
+// removes a schema with a specific id
+void GraphContext_RemoveSchema
+(
+	GraphContext *gc,
+	int schema_id,
+	SchemaType t
+);
+
 // retrieve the label string for a given Node object
 const char *GraphContext_GetNodeLabel
 (
@@ -160,7 +168,8 @@ uint GraphContext_AttributeCount
 Attribute_ID GraphContext_FindOrAddAttribute
 (
 	GraphContext *gc,
-	const char *attribute
+	const char *attribute,
+	bool* created
 );
 
 // retrieve an attribute string given an ID
@@ -176,6 +185,13 @@ Attribute_ID GraphContext_GetAttributeID
 (
 	GraphContext *gc,
 	const char *str
+);
+
+// removes an attribute from the graph
+void GraphContext_RemoveAttribute
+(
+	GraphContext *gc,
+	Attribute_ID id
 );
 
 //------------------------------------------------------------------------------
