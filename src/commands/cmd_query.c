@@ -101,8 +101,6 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 
 		// populate the index only when at least one attribute was introduced
 		if(index_added) Index_Construct(idx, gc->g);
-
-		QueryCtx_UnlockCommit();
 	} else if(exec_type == EXECUTION_TYPE_INDEX_DROP) {
 		// retrieve strings from AST node
 		const char *label = cypher_ast_label_get_name(
@@ -120,7 +118,6 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 		QueryCtx_LockForCommit();
 		int res = GraphContext_DeleteIndex(gc, schema_type, label, prop,
 				idx_type);
-		QueryCtx_UnlockCommit();
 
 		if(res != INDEX_OK) {
 			ErrorCtx_SetError("ERR Unable to drop index on :%s(%s): no such index.", label, prop);
