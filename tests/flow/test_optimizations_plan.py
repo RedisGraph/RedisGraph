@@ -432,14 +432,16 @@ class testOptimizationsPlan(FlowTestsBase):
         self.env.flush()
 
         # Create three nodes with label N, two with label M, one of them in common.
-        query = """CREATE (:N), (:N), (:N:M), (:M)"""
-        graph.query(query)
+        graph.query("CREATE (:N), (:N), (:N:M), (:M)")
 
         # Make sure that the M is traversed first.
-        query = """MATCH (n:N:M) RETURN n"""
+        query = "MATCH (n:N:M) RETURN n"
         plan = graph.execution_plan(query)
         self.env.assertIn("Node By Label Scan | (n:M)", plan)
 
-        # Make sure that N is traversed as well.
+        # Make sure multi-label is enforced, we're expecting only the node with
+        # both :N and :M to be returned.
         res = graph.query(query)
+        self.env.assertEquals(len(res.result_set), 1)
         self.env.assertEquals(res.result_set[0][0], Node(alias='n', label=['N', 'M']))
+        
