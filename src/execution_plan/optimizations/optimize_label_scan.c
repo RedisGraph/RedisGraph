@@ -80,17 +80,16 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	AlgebraicExpression *ae = op_traverse->ae;
 	AlgebraicExpression *operand;
 
-	const char *row_domain = scan->n.alias;
+	const char *row_domain    = scan->n.alias;
 	const char *column_domain = scan->n.alias;
 
-	// locate the operand corresponding to the searched alias in the 
-	// parent operation (conditional traverse)
+	// locate the operand corresponding to the about to be replaced label
+	// in the parent operation (conditional traverse)
 	bool found = AlgebraicExpression_LocateOperand(ae, &operand, NULL,
 			row_domain, column_domain, NULL, min_label_str);
 	ASSERT(found == true);
 
-	// create an AlgebraicExpression to replace the current operand in 
-	// the parent operation, corresponding to the replaced label.
+	// create a replacement operand for the migrated label matrix
 	AlgebraicExpression *replacement = AlgebraicExpression_NewOperand(NULL,
 			true, AlgebraicExpression_Src(operand),
 			AlgebraicExpression_Dest(operand), NULL, scan->n.label);
