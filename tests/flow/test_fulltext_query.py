@@ -18,6 +18,7 @@ class testFulltextIndexQuery(FlowTestsBase):
         graph.query("CALL db.idx.fulltext.createNodeIndex('L3', { field: 'v1', weight: 1 }, { field: 'v2', weight: 2 })")
         graph.query("CALL db.idx.fulltext.createNodeIndex('L4', { field: 'v', phonetic: 'dm:en' })")
         graph.query("CALL db.idx.fulltext.createNodeIndex('L5', { field: 'v', nostem: true })")
+        graph.query("CALL db.idx.fulltext.createNodeIndex({label: ['L6', 'L7']}, 'v')")
 
         n = Node(label="L1", properties={"v": 'hello redis world'})
         graph.add_node(n)
@@ -35,6 +36,12 @@ class testFulltextIndexQuery(FlowTestsBase):
         graph.add_node(n)
 
         n = Node(label="L5", properties={"v": 'there are seven words in this sentence'})
+        graph.add_node(n)
+
+        n = Node(label="L6", properties={"v": 'hello redis world'})
+        graph.add_node(n)
+
+        n = Node(label="L7", properties={"v": 'hello redis world'})
         graph.add_node(n)
 
         graph.flush()
@@ -89,4 +96,24 @@ class testFulltextIndexQuery(FlowTestsBase):
         # fulltext query L5 for 'word' nostem did not removed 's' from 'words'
         # as such no results are expected
         result = graph.query("CALL db.idx.fulltext.queryNodes('L5', 'word')")
+        self.env.assertEquals(result.result_set, [])
+
+        expected_result = graph.query("MATCH (n:L6) RETURN n")
+
+        # fulltext query L6 for hello 
+        result = graph.query("CALL db.idx.fulltext.queryNodes('L6', 'hello')")
+        self.env.assertEquals(result.result_set[0][0], expected_result.result_set[0][0])
+
+        # fulltext query L6 for a non-existing word. 
+        result = graph.query("CALL db.idx.fulltext.queryNodes('L6', 'non-existent-word')")
+        self.env.assertEquals(result.result_set, [])
+
+        expected_result = graph.query("MATCH (n:L7) RETURN n")
+
+        # fulltext query L7 for hello 
+        result = graph.query("CALL db.idx.fulltext.queryNodes('L7', 'hello')")
+        self.env.assertEquals(result.result_set[0][0], expected_result.result_set[0][0])
+
+        # fulltext query L7 for a non-existing word. 
+        result = graph.query("CALL db.idx.fulltext.queryNodes('L7', 'non-existent-word')")
         self.env.assertEquals(result.result_set, [])
