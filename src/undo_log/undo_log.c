@@ -519,9 +519,6 @@ void UndoLog_Rollback
 
 	if(count == 0) return;
 
-	// acquire lock before making any changes to the graph
-	QueryCtx_LockForCommit();
-
 	// apply undo operations in reverse order for rollback correctness
 	// find sequences of the same operation and rollback them as a bulk
 	int seq_end = count - 1;
@@ -565,9 +562,6 @@ void UndoLog_Rollback
 				ASSERT(false);
 		}
  	}
-
-	// assumption: no operations should be executing at this point
-	QueryCtx_UnlockCommit(NULL);
 
 	array_clear(log);
 
