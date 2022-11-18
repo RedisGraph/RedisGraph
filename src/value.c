@@ -281,8 +281,11 @@ void SIType_ToMultipleTypeString(SIType t, char *buf, size_t *bufferLen, size_t 
 	SIType remainingTypes = t;
 	
 	uint typesDetected = 0;
+	uint typesDefined = __builtin_popcount(t);
+	
 	// Iterate over the possible SITypes
-	for(currentType = 1; currentType < SI_ALL; currentType = currentType << 1) {
+	currentType = 1;
+	while(typesDetected < typesDefined) {
 		if(t & currentType) {
 			remainingTypes &= (~currentType);
 			if(typesDetected > 0) {
@@ -302,9 +305,7 @@ void SIType_ToMultipleTypeString(SIType t, char *buf, size_t *bufferLen, size_t 
 			*bytesWritten += snprintf(buf + *bytesWritten, *bufferLen, "%s", SIType_ToString(currentType));
 			typesDetected++;
 		}
-		if(!remainingTypes) {
-			break;
-		}
+		currentType = currentType << 1;
 	}
 }
 
