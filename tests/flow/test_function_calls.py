@@ -2223,3 +2223,11 @@ class testFunctionCallsFlow(FlowTestsBase):
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
+
+    # GitHub Issue #2291.
+    # Ensure that a node can be added to a list.
+    def test89_node_add_to_array(self):
+        query = """MATCH (a) WITH collect(a) AS as RETURN as[0] + [true, 2, 3]"""
+        actual_result = graph.query(query)
+        expected_result = [Node(label='person', properties = {'name': 'Roi', 'val': 0}), True, 2, 3]
+        self.env.assertEquals(actual_result.result_set[0][0], expected_result)
