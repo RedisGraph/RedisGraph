@@ -2229,7 +2229,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             # Expecting a type error.
             self.env.assertContains("Type mismatch: expected Node or Null but was Edge", str(e))
 
-        query = "MATCH (n) RETURN hasLabels(n, 1)"
+        query = "CREATE (n) RETURN hasLabels(n, 1)"
         try:
             actual_result = graph.query(query)
             self.env.assertTrue(False)
