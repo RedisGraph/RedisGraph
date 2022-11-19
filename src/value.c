@@ -273,9 +273,11 @@ const char *SIType_ToString(SIType t) {
 	}
 }
 
-void SIType_ToMultipleTypeString(SIType t, char *buf, size_t *bufferLen, size_t *bytesWritten) {
+void SIType_ToMultipleTypeString(SIType t, char *buf, size_t bufferLen) {
 	// Worst case: Len(SIType names) + 19*Len(", ") + Len("Or") = 177 + 38 + 2 = 217
-	ASSERT((*bufferLen - *bytesWritten) >= 256);
+	ASSERT(sizeof(buf) >= MULTIPLE_TYPE_STRING_BUFFER_SIZE);
+	
+	size_t bytesWritten = 0;
 
 	SIType currentType;
 	SIType remainingTypes = t;
@@ -290,19 +292,19 @@ void SIType_ToMultipleTypeString(SIType t, char *buf, size_t *bufferLen, size_t 
 			remainingTypes &= (~currentType);
 			if(typesDetected > 0) {
 				if(remainingTypes) {
-					*bytesWritten += snprintf(buf + *bytesWritten, *bufferLen, ", ");
+					bytesWritten += snprintf(buf + bytesWritten, bufferLen, ", ");
 				} else {
 					// There is no more types, then concatenate "or" before the SIType name
 					if(typesDetected == 1) {
 						// If there are two items, the last comma should be omitted.
-						*bytesWritten += snprintf(buf + *bytesWritten, *bufferLen, " or ");
+						bytesWritten += snprintf(buf + bytesWritten, bufferLen, " or ");
 					} else {
 						// If there are more than two, the last comma should be present
-						*bytesWritten += snprintf(buf + *bytesWritten, *bufferLen, ", or ");
+						bytesWritten += snprintf(buf + bytesWritten, bufferLen, ", or ");
 					}
 				}
 			}
-			*bytesWritten += snprintf(buf + *bytesWritten, *bufferLen, "%s", SIType_ToString(currentType));
+			bytesWritten += snprintf(buf + bytesWritten, bufferLen, "%s", SIType_ToString(currentType));
 			typesDetected++;
 		}
 		currentType = currentType << 1;
