@@ -155,9 +155,8 @@ bool SIValue_IsTrue(SIValue v);
 const char *SIType_ToString(SIType t);
 
 // Prints all individual types represented by 't', multiple types are separated by comma,
-// to a given buffer with length (bufferLen), sets bytesWritten to the actual length
-// of string representation
-void SIType_ToMultipleTypeString(SIType t, char *buf, size_t *bufferLen, size_t *bytesWritten);
+// to a given buffer with length (bufferLen)
+void SIType_ToMultipleTypeString(SIType t, char *buf, size_t bufferLen);
 
 // Prints an SIValue to a given buffer, with length (bufferLen), sets bytesWritten to the actual length
 // of string representation
