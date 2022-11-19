@@ -139,7 +139,7 @@ void Error_InvalidFilterPlacement(rax *entitiesRax) {
 }
 
 void Error_SITypeMismatch(SIValue received, SIType expected) {
-	size_t bufferLen = 256;
+	size_t bufferLen = MULTIPLE_TYPE_STRING_BUFFER_SIZE;
 	char buf[bufferLen];
 
 	SIType_ToMultipleTypeString(expected, buf, bufferLen);

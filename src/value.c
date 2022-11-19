@@ -275,7 +275,7 @@ const char *SIType_ToString(SIType t) {
 
 void SIType_ToMultipleTypeString(SIType t, char *buf, size_t bufferLen) {
 	// Worst case: Len(SIType names) + 19*Len(", ") + Len("Or") = 177 + 38 + 2 = 217
-	ASSERT(bufferLen >= 256);
+	ASSERT(bufferLen >= MULTIPLE_TYPE_STRING_BUFFER_SIZE);
 	size_t bytesWritten = 0;
 
 	SIType currentType;

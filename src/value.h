@@ -77,6 +77,9 @@ typedef enum {
 #define COMPARED_NULL INT_MIN
 #define COMPARED_NAN INT_MIN+1
 
+// Minimum buffer size for string generated in SIType_ToMultipleTypeString
+#define MULTIPLE_TYPE_STRING_BUFFER_SIZE 256
+
 struct Pair;
 
 typedef struct SIValue {
