@@ -18,7 +18,8 @@ def compare_nodes_result_set(env, result_set_a, result_set_b):
 class test_encode_decode(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True,
-                       moduleArgs='VKEY_MAX_ENTITY_COUNT 10 NODE_CREATION_BUFFER 100')
+                       moduleArgs='VKEY_MAX_ENTITY_COUNT 10 NODE_CREATION_BUFFER 100',
+                       enableDebugCommand=True)
         global redis_con
         redis_con = self.env.getConnection()
 

@@ -122,9 +122,6 @@ static void _DeleteEntities
 		}
 	}
 
-	// release lock
-	QueryCtx_UnlockCommit(&op->op);
-
 	// clean up
 	array_free(distinct_nodes);
 	array_free(distinct_edges);
