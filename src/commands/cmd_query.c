@@ -326,12 +326,12 @@ static void _ExecuteQuery(void *args) {
 		ResultSet_Clear(result_set);
 	}
 	
-	QueryCtx_ForceUnlockCommit();
-
 	// replicate command if graph was modified
 	if(ResultSetStat_IndicateModification(&result_set->stats)) {
 		QueryCtx_Replicate(query_ctx);
 	}
+	
+	QueryCtx_UnlockCommit();
 
 	if(!profile || ErrorCtx_EncounteredError()) {
 		// if we encountered an error, ResultSet_Reply will emit the error

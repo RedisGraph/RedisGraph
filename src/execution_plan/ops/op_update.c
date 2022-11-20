@@ -101,10 +101,6 @@ static Record UpdateConsume(OpBase *opBase) {
 		CommitUpdates(op->gc, op->stats, op->edge_updates, ENTITY_EDGE);
 	}
 
-	// always try to releasing the lock, even though this update operation might not made any changes
-	// this is required in the situation where this update op is the last write operation within the execution-plan
-	QueryCtx_UnlockCommit(opBase);
-
 	for(uint i = 0; i < node_updates_count; i ++) {
 		PendingUpdateCtx *pending_update = op->node_updates + i;
 		AttributeSet_Free(&pending_update->attributes);

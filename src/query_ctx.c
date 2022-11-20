@@ -91,11 +91,6 @@ void QueryCtx_SetParams(rax *params) {
 	ctx->query_data.params = params;
 }
 
-void QueryCtx_SetLastWriter(OpBase *last_writer) {
-	QueryCtx *ctx = _QueryCtx_GetCreateCtx();
-	ctx->internal_exec_ctx.last_writer = last_writer;
-}
-
 AST *QueryCtx_GetAST(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ASSERT(ctx != NULL);
@@ -214,25 +209,6 @@ static void _QueryCtx_UnlockCommit(QueryCtx *ctx) {
 	_QueryCtx_ThreadSafeContextUnlock(ctx);
 }
 
-void QueryCtx_UnlockCommit(OpBase *writer_op) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	if(!ctx) {
-		return;
-	}
-
-	// check that the writer_op is entitled to release the lock.
-	if(writer_op != NULL && ctx->internal_exec_ctx.last_writer != writer_op) {
-		return;
-	}
-
-	// for safety, already unlocked?
-	if(!ctx->internal_exec_ctx.locked_for_commit) {
-		return;
-	}
-
-	_QueryCtx_UnlockCommit(ctx);
-}
-
 // replicate command
 void QueryCtx_Replicate
 (
@@ -243,28 +219,17 @@ void QueryCtx_Replicate
 	GraphContext   *gc        = ctx->gc;
 	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
 
-	// replication requires GIL
-	_QueryCtx_ThreadSafeContextLock(ctx);
-
 	// replicate
 	RedisModule_Replicate(redis_ctx, ctx->global_exec_ctx.command_name,
 			"cc!", gc->graph_name, ctx->query_data.query);
-
-	// release GIL
-	_QueryCtx_ThreadSafeContextUnlock(ctx);
 }
 
-void QueryCtx_ForceUnlockCommit() {
+void QueryCtx_UnlockCommit() {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	if(!ctx) return;
 
 	// already unlocked?
 	if(!ctx->internal_exec_ctx.locked_for_commit) return;
-
-	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
-	RedisModule_Log(redis_ctx, "warning",
-					"RedisGraph used forced unlocking commit flow for the query %s",
-					ctx->query_data.query);
 
 	_QueryCtx_UnlockCommit(ctx);
 }

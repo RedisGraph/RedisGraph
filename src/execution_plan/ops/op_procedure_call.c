@@ -137,9 +137,6 @@ static Record ProcCallConsume(OpBase *opBase) {
 
 		ProcedureResult res = Proc_Invoke(op->procedure, op->args, op->output);
 
-		// unlock if procedure can modify the graph
-		if(!Procedure_IsReadOnly(op->procedure)) QueryCtx_UnlockCommit(opBase);
-
 		/* TODO: should rise run-time exception?
 		 * op->r will be freed in ProcCallFree. */
 		if(res != PROCEDURE_OK) return NULL;
