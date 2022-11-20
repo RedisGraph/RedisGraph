@@ -36,13 +36,13 @@ static void _process_yield
 	const char **yield
 ) {
 	ctx->yield_type        = NULL;
+	ctx->yield_info        = NULL;
 	ctx->yield_label       = NULL;
-	ctx->yield_properties  = NULL;
+	ctx->yield_status      = NULL;
 	ctx->yield_language    = NULL;
 	ctx->yield_stopwords   = NULL;
+	ctx->yield_properties  = NULL;
 	ctx->yield_entity_type = NULL;
-	ctx->yield_status      = NULL;
-	ctx->yield_info        = NULL;
 
 	int idx = 0;
 	for(uint i = 0; i < array_len(yield); i++) {
@@ -115,12 +115,13 @@ ProcedureResult Proc_IndexesInvoke
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
-	IndexesContext *pdata    = rm_malloc(sizeof(IndexesContext));
-	pdata->gc                = gc;
-	pdata->out               = array_new(SIValue, 7);
-	pdata->type              = IDX_EXACT_MATCH;
-	pdata->node_schema_id    = GraphContext_SchemaCount(gc, SCHEMA_NODE) - 1;
-	pdata->edge_schema_id    = GraphContext_SchemaCount(gc, SCHEMA_EDGE) - 1;
+	IndexesContext *pdata = rm_malloc(sizeof(IndexesContext));
+
+	pdata->gc             = gc;
+	pdata->out            = array_new(SIValue, 8);
+	pdata->type           = IDX_EXACT_MATCH;
+	pdata->node_schema_id = GraphContext_SchemaCount(gc, SCHEMA_NODE) - 1;
+	pdata->edge_schema_id = GraphContext_SchemaCount(gc, SCHEMA_EDGE) - 1;
 
 	_process_yield(pdata, yield);
 

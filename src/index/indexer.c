@@ -5,6 +5,7 @@
 */
 
 #include "indexer.h"
+#include "../redismodule.h"
 #include "../util/circular_buffer.h"
 #include <assert.h>
 #include <pthread.h>
@@ -41,6 +42,7 @@ static void *_index_populate
 (
 	void *arg
 ) {
+	RedisModuleCtx *rm_ctx;
 	while(true) {
 		// pop an item from queue
 		// if queue is empty thread will be put to sleep
@@ -54,7 +56,12 @@ static void *_index_populate
 				GraphContext_DecreaseRefCount(ctx.gc);
 				break;
 			case INDEXER_DROP:
+				rm_ctx = RedisModule_GetThreadSafeContext(NULL);
+				RedisModule_ThreadSafeContextLock(rm_ctx);
+
 				Index_Free(ctx.idx);
+
+				RedisModule_ThreadSafeContextUnlock(rm_ctx);
 				break;
 			default:
 				assert(false && "unknown indexer operation");

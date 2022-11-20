@@ -323,32 +323,38 @@ uint GraphContext_AttributeCount(GraphContext *gc) {
 	return size;
 }
 
-Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attribute, bool* created) {
+Attribute_ID GraphContext_FindOrAddAttribute
+(
+	GraphContext *gc,
+	const char *attribute,
+	bool* created
+) {
 	bool created_flag = false;
+	unsigned char *attr = (unsigned char*)attribute;
+	uint l = strlen(attribute);
 	
-	// Acquire a read lock for looking up the attribute.
+	// acquire a read lock for looking up the attribute
 	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
 
-	// See if attribute already exists.
-	void *attribute_id = raxFind(gc->attributes, (unsigned char *)attribute, strlen(attribute));
+	// see if attribute already exists
+	void *attribute_id = raxFind(gc->attributes, attr, l);
 
 	if(attribute_id == raxNotFound) {
-		// We are writing to the shared GraphContext; release the held lock and re-acquire as a writer.
+		// we are writing to the shared GraphContext
+		// release the held lock and re-acquire as a writer
 		pthread_rwlock_unlock(&gc->_attribute_rwlock);
 		pthread_rwlock_wrlock(&gc->_attribute_rwlock);
 
-		// Lookup the attribute again now that we are in a critical region.
-		attribute_id = raxFind(gc->attributes, (unsigned char *)attribute, strlen(attribute));
-		// If it has been set by another thread, use the retrieved value.
+		// lookup the attribute again now that we are in a critical region
+		attribute_id = raxFind(gc->attributes, attr, l);
+
+		// if set by another thread, use the retrieved value
 		if(attribute_id == raxNotFound) {
-			// Otherwise, it will be assigned an ID equal to the current mapping size.
+			// otherwise, it will be assigned an ID
+			// equal to the current mapping size
 			attribute_id = (void *)raxSize(gc->attributes);
-			// Insert the new attribute key and ID.
-			raxInsert(gc->attributes,
-					  (unsigned char *)attribute,
-					  strlen(attribute),
-					  attribute_id,
-					  NULL);
+			// insert the new attribute key and ID
+			raxInsert(gc->attributes, attr, l, attribute_id, NULL);
 			array_append(gc->string_mapping, rm_strdup(attribute));
 			created_flag = true;
 
@@ -357,11 +363,13 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 		}
 	}
 
-	// Release the lock.
+	// release the lock
 	pthread_rwlock_unlock(&gc->_attribute_rwlock);
+
 	if(created) {
 		*created = created_flag;
 	}
+
 	return (uintptr_t)attribute_id;
 }
 
@@ -480,9 +488,8 @@ bool GraphContext_AddExactMatchIndex
 		// create index field
 		const char *field = fields[i];
 		IndexField idx_field;
-		Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field);
-		IndexField_New(&idx_field, field_id, field, INDEX_FIELD_DEFAULT_WEIGHT,
-				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
+		Attribute_ID f_id = GraphContext_FindOrAddAttribute(gc, field, NULL);
+		IndexField_Default(&idx_field, f_id, field);
 
 		if(Schema_AddIndex(idx, s, &idx_field, IDX_EXACT_MATCH) == INDEX_OK) {
 			index_created = true;
@@ -537,8 +544,8 @@ bool GraphContext_AddFullTextIndex
 		const char  *phonetic = phonetics[i];
 
 		IndexField index_field;
-		Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field);
-		IndexField_New(&index_field, field_id, field, weight, nostem, phonetic);
+		Attribute_ID f_id = GraphContext_FindOrAddAttribute(gc, field, NULL);
+		IndexField_New(&index_field, f_id, field, weight, nostem, phonetic);
 		if(Schema_AddIndex(idx, s, &index_field, IDX_FULLTEXT) == INDEX_OK) {
 			index_created = true;
 			// update result-set

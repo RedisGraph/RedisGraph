@@ -45,6 +45,9 @@ static void _Index_ConstructExactMatchStructure
 	Index *idx,
 	RSIndex *rsIdx
 ) {
+	ASSERT(idx != NULL);
+	ASSERT(rsIdx != NULL);
+
 	RSFieldID fieldID;
 	uint fields_count = array_len(idx->fields);
 	unsigned types = RSFLDTYPE_NUMERIC | RSFLDTYPE_GEO | RSFLDTYPE_TAG;
@@ -82,10 +85,13 @@ static void _Index_ConstructExactMatchStructure
 
 // responsible for creating the index structure only!
 // e.g. fields, stopwords, language
-static RSIndex *_Index_ConstructStructure
+void Index_ConstructStructure
 (
 	Index *idx
 ) {
+	ASSERT(idx != NULL);
+	ASSERT(idx->idx == NULL);
+
 	// TODO: at which point do we need to acquire Redis's GIL?
 	RSIndex *rsIdx = NULL;
 	RSIndexOptions *idx_options = RediSearch_CreateIndexOptions();
@@ -114,7 +120,7 @@ static RSIndex *_Index_ConstructStructure
 		_Index_ConstructExactMatchStructure(idx, rsIdx);
 	}
 
-	return rsIdx;
+	idx->idx = rsIdx;
 }
 
 RSDoc *Index_IndexGraphEntity
@@ -226,16 +232,16 @@ RSDoc *Index_IndexGraphEntity
 
 void IndexField_New
 (
-	IndexField *field,
-	Attribute_ID id,
-	const char *name,
-	double weight,
-	bool nostem,
-	const char *phonetic
+	IndexField *field,    // field to initialize
+	Attribute_ID id,      // attribute ID
+	const char *name,     // field name
+	double weight,        // field weight
+	bool nostem,          // no stemming
+	const char *phonetic  // phonetic
 ) {
-	ASSERT(name      !=  NULL);
-	ASSERT(field     !=  NULL);
-	ASSERT(phonetic  !=  NULL);
+	ASSERT(name     != NULL);
+	ASSERT(field    != NULL);
+	ASSERT(phonetic != NULL);
 
 	field->id       = id;
 	field->name     = rm_strdup(name);
@@ -262,6 +268,8 @@ Index *Index_New
 	IndexType type,              // exact match or full text
 	GraphEntityType entity_type  // entity type been indexed
 ) {
+	ASSERT(label != NULL);
+
 	Index *idx = rm_malloc(sizeof(Index));
 
 	idx->idx             = NULL;
@@ -290,13 +298,14 @@ void Index_Disable
 
 	if(idx->idx != NULL) {
 		RediSearch_DropIndex(idx->idx);
+		idx->idx = NULL;
 	}
 
 	// create RediSearch index structure
 	// assuming GIL + WRITE locks are acquired
 	// TODO: validate assumption!
 	// TODO: validate RediSearch_DropIndex isn't an expensive operation
-	idx->idx = _Index_ConstructStructure(idx);
+	Index_ConstructStructure(idx);
 }
 
 // try to enable index by dropping number of pending changes by 1

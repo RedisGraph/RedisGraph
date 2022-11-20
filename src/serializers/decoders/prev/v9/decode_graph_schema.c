@@ -36,6 +36,13 @@ static Schema *_RdbLoadSchema
 		RedisModule_Free(field_name);
 	}
 
+	if(s->index) {
+		Index_ConstructStructure(s->index);
+	}
+	if(s->fulltextIdx) {
+		Index_ConstructStructure(s->fulltextIdx);
+	}
+
 	return s;
 }
 

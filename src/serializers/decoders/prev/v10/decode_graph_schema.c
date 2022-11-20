@@ -38,10 +38,15 @@ static Schema *_RdbLoadSchema
 		}
 		RedisModule_Free(field_name);
 	}
+
 	if(s) {
 		// no entities are expected to be in the graph in this point in time
-		if(s->index) Index_Populate(s->index, gc->g);
-		if(s->fulltextIdx) Index_Populate(s->fulltextIdx, gc->g);
+		if(s->index) {
+			Index_ConstructStructure(s->index);
+		}
+		if(s->fulltextIdx) {
+			Index_ConstructStructure(s->fulltextIdx);
+		}
 	}
 
 	return s;

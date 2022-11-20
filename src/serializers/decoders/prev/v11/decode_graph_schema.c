@@ -55,6 +55,7 @@ static void _RdbLoadFullTextIndex
 		ASSERT(idx != NULL);
 		Index_SetLanguage(idx, language);
 		Index_SetStopwords(idx, stopwords);
+		Index_ConstructStructure(idx);
 	}
 	
 	// free language
@@ -89,6 +90,11 @@ static void _RdbLoadExactMatchIndex
 			Schema_AddIndex(&idx, s, &field, IDX_EXACT_MATCH);
 		}
 		RedisModule_Free(field_name);
+	}
+
+	// construct index structure
+	if(!already_loaded) {
+		Index_ConstructStructure(idx);
 	}
 }
 

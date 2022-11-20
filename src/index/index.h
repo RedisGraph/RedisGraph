@@ -23,15 +23,10 @@
 #define INDEX_FIELD_DEFAULT_NOSTEM false
 #define INDEX_FIELD_DEFAULT_PHONETIC "no"
 
-// creates a new index field and initialize it to default values
-// returns a pointer to the field
-#define INDEX_FIELD_DEFAULT(field)                                                    \
-	({                                                                                \
-		IndexField field;                                                             \
-		IndexField_New(&field, ATTRIBUTE_ID_NONE, #field, INDEX_FIELD_DEFAULT_WEIGHT, \
-			INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);                \
-		&field;                                                                       \
-	})
+// initialize index field with default values
+#define IndexField_Default(field, id, name) IndexField_New(field, id, name,  \
+		INDEX_FIELD_DEFAULT_WEIGHT, INDEX_FIELD_DEFAULT_NOSTEM,              \
+		INDEX_FIELD_DEFAULT_PHONETIC)
 
 typedef enum {
 	IDX_ANY          =  0,
@@ -109,6 +104,13 @@ void Index_Disable
 bool Index_Enabled
 (
 	const Index *idx  // index to get state of
+);
+
+// responsible for creating the index structure only!
+// e.g. fields, stopwords, language
+void Index_ConstructStructure
+(
+	Index *idx
 );
 
 // populates index

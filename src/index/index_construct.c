@@ -28,8 +28,8 @@ static void _Index_PopulateNodeIndex
 	ASSERT(idx != NULL);
 
 	GrB_Index          rowIdx     = 0;
-	int                indexed    = 0;     // number of entities indexed in current batch
-	int                batch_size = 1000;  // max number of entities to index in one go
+	int                indexed    = 0;      // #entities in current batch
+	int                batch_size = 10000;  // max #entities to index in one go
 	RG_MatrixTupleIter it         = {0};
 
 	while(true) {
@@ -55,8 +55,11 @@ static void _Index_PopulateNodeIndex
 		// resume scanning from rowIdx
 		//----------------------------------------------------------------------
 
-		RG_MatrixTupleIter_attach(&it, m);
-		RG_MatrixTupleIter_jump_to_row(&it, rowIdx);
+		GrB_Info info;
+		info = RG_MatrixTupleIter_attach(&it, m);
+		ASSERT(info == GrB_SUCCESS);
+		info = RG_MatrixTupleIter_iterate_range(&it, rowIdx, UINT64_MAX);
+		ASSERT(info == GrB_SUCCESS);
 
 		//----------------------------------------------------------------------
 		// batch index nodes
@@ -150,8 +153,10 @@ static void _Index_PopulateEdgeIndex
 		// resume scanning from previous row/col indices
 		//----------------------------------------------------------------------
 
-		RG_MatrixTupleIter_attach(&it, m);
-		RG_MatrixTupleIter_jump_to_row(&it, src_id);
+		info = RG_MatrixTupleIter_attach(&it, m);
+		ASSERT(info == GrB_SUCCESS);
+		info = RG_MatrixTupleIter_iterate_range(&it, src_id, UINT64_MAX);
+		ASSERT(info == GrB_SUCCESS);
 
 		// skip previously indexed edges
 		while((info = RG_MatrixTupleIter_next_UINT64(&it, &src_id, &dest_id,

@@ -64,9 +64,10 @@ class testIndexDeletionFlow():
         result = redis_graph.query("CALL db.indexes()")
         self.env.assertEquals(len(result.result_set), 0)
 
-    def test05_drop_index_during_population(self):
+    #def test05_drop_index_during_population(self):
         # 1. populate a graph
         # 2. create an index and wait for it to be sync
         # 3. constantly update indexed entities
         # 4. drop index
         # 5. validate execution-plan + indexes report
+

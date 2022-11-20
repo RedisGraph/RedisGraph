@@ -86,13 +86,6 @@ static inline void _RdbSaveExactMatchIndex
 	for(uint i = 0; i < fields_count; i++) {
 		char *field_name = idx->fields[i].name;
 
-		// for exact-match index on an edge type, skip both `_src_id` and
-		// `_dest_id` fields, these are introduce automaticly by the index
-		// construct routine
-		if(type == SCHEMA_EDGE && 
-		   (strcmp(field_name, "_src_id") == 0 ||
-		    strcmp(field_name, "_dest_id") == 0)) continue;
-
 		// encode field
 		RedisModule_SaveStringBuffer(rdb, field_name, strlen(field_name) + 1);
 	}
