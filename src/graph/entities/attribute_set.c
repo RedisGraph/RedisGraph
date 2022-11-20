@@ -213,14 +213,7 @@ void AttributeSet_Set_Allow_Null
 	}
 
 	// allocate room for new attribute
-	size_t n = ATTRIBUTESET_BYTE_SIZE(_set) + sizeof(Attribute);
-	if(set == NULL) {
-		_set = rm_malloc(n);
-		_set->attr_count = 0;
-	} else {
-		_set = rm_realloc(_set, n);
-	}
-	_set->attr_count++;
+	AttributeSet _set = AttributeSet_AddPrepare(set, attr_id);
 
 	// set attribute
 	Attribute *attr = _set->attributes + _set->attr_count - 1;
