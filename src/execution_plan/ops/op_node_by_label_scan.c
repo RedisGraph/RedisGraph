@@ -100,9 +100,6 @@ static OpResult NodeByLabelScanInit(OpBase *opBase) {
 		return OP_OK;
 	}
 
-	// resolve label ID at runtime
-	_update_label_id(op);
-
 	if(op->n.label_id == GRAPH_UNKNOWN_LABEL) {
 		// Missing schema, use the NOP consume function.
 		OpBase_UpdateConsume(opBase, NodeByLabelScanNoOp);
@@ -134,7 +131,6 @@ static inline void _ResetIterator(NodeByLabelScan *op) {
 		NodeID maxId = op->id_range->include_max ? op->id_range->max : op->id_range->max - 1 ;
 		RG_MatrixTupleIter_iterate_range(&op->iter, minId, maxId);
 	} else {
-		_update_label_id(op);
 		// invalid schema, our consume function is NOP
 		op->id_range = UnsignedRange_New();
 		GrB_Info iterator_built = _ConstructIterator(op);
