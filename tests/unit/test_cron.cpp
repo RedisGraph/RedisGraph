@@ -166,7 +166,7 @@ TEST_F(CRONTest, AbortNoneExistingTask) {
 	// abort task, should not crash hang
 	Cron_AbortTask(none_existing_task_handle);
 	
-	mssleep(20); // sleep for 20 ms
+	mssleep(30); // sleep for 20 ms
 
 	// task should have been executed
 	// expecting X = 3
