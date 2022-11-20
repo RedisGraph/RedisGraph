@@ -213,7 +213,7 @@ void AttributeSet_Set_Allow_Null
 	}
 
 	// allocate room for new attribute
-	AttributeSet _set = AttributeSet_AddPrepare(set, attr_id);
+	_set = AttributeSet_AddPrepare(set, attr_id);
 
 	// set attribute
 	Attribute *attr = _set->attributes + _set->attr_count - 1;
