@@ -106,7 +106,7 @@ size_t GraphEntity_PropertiesToString
 		*bufferLen += 64;
 		*buffer = rm_realloc(*buffer, *bufferLen);
 	}
-	*bytesWritten += snprintf(*buffer, *bufferLen, "{");
+	*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "{");
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	const AttributeSet set = GraphEntity_GetAttributes(e);
 	int propCount = ATTRIBUTE_SET_COUNT(set);
