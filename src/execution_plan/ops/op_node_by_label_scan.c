@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "op_node_by_label_scan.h"
 #include "RG.h"
@@ -24,14 +24,14 @@ static inline void NodeByLabelScanToString(const OpBase *ctx, sds *buf) {
 	ScanToString(ctx, buf, op->n.alias, op->n.label);
 }
 
+// update the label-id of a cached operation, as it may have not 
+// been known when the plan was prepared.
 static void _update_label_id(NodeByLabelScan *op) {
 	if(op->n.label_id != GRAPH_UNKNOWN_LABEL) return;
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Schema *s = GraphContext_GetSchema(gc, op->n.label, SCHEMA_NODE);
-	if(s != NULL) {
-		op->n.label_id = Schema_GetID(s);
-	}
+	if(s != NULL) op->n.label_id = Schema_GetID(s);
 }
 
 OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, NodeScanCtx n) {
@@ -100,9 +100,6 @@ static OpResult NodeByLabelScanInit(OpBase *opBase) {
 		return OP_OK;
 	}
 
-	// Resolve label ID at runtime.
-	_update_label_id(op);
-
 	if(op->n.label_id == GRAPH_UNKNOWN_LABEL) {
 		// Missing schema, use the NOP consume function.
 		OpBase_UpdateConsume(opBase, NodeByLabelScanNoOp);
@@ -134,9 +131,7 @@ static inline void _ResetIterator(NodeByLabelScan *op) {
 		NodeID maxId = op->id_range->include_max ? op->id_range->max : op->id_range->max - 1 ;
 		RG_MatrixTupleIter_iterate_range(&op->iter, minId, maxId);
 	} else {
-		_update_label_id(op);
 		// invalid schema, our consume function is NOP
-		if(op->n.label_id == GRAPH_UNKNOWN_LABEL) return;
 		op->id_range = UnsignedRange_New();
 		GrB_Info iterator_built = _ConstructIterator(op);
 		// if the iterator is invalid, our consume function is NOP

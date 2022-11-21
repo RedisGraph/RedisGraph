@@ -427,16 +427,38 @@ class testOptimizationsPlan(FlowTestsBase):
                     [0, 3]]
         self.env.assertEqual(resultset, expected)
 
-    # Label_id of a label in a cached execution plan should be updated properly.
-    # The label with less nodes should be traversed first.
-    def test28_optimize_label_scan_cached_label_id(self):
+    # Labels' order should be replaced properly.
+    def test28_optimize_label_scan_switch_labels(self):
+        self.env.flush()
+
+        # Create three nodes with label N, two with label M, one of them in common.
+        graph.query("CREATE (:N), (:N), (:N:M), (:M)")
+
+        # Make sure that the M is traversed first.
+        query = "MATCH (n:N:M) RETURN n"
+        plan = graph.execution_plan(query)
+        self.env.assertIn("Node By Label Scan | (n:M)", plan)
+
+        # Make sure multi-label is enforced, we're expecting only the node with
+        # both :N and :M to be returned.
+        res = graph.query(query)
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0], Node(alias='n', label=['N', 'M']))
+
+    # in cases where a referred label doesn't exist, the UNKNOW_LABEL_ID 
+    # is being cached. Once the label is created we want to make sure that 
+    # the UNKNOW_LABEL_ID is replaced with the actual label ID. this test 
+    # illustrates this scenario by traversing from a non-existing label 
+    # (populating our execution-plan cache) which afterwards is being 
+    # created. once created we want to make sure the correct label ID is used.
+    def test29_optimize_label_scan_cached_label_id(self):
         self.env.flush()
 
         # Create node with label Q
-        graph.query("CREATE (n:Q {v: 1})")
+        graph.query("CREATE (n:Q)")
 
-        # Make sure N is traversed first, as it has less nodes.
-        plan = graph.execution_plan("MATCH (n:N:Q) RETURN n.v")
+        # Make sure N is traversed first, as it has no nodes. (none existing)
+        plan = graph.execution_plan("MATCH (n:N:Q) RETURN n")
         self.env.assertIn("Node By Label Scan | (n:N)", plan)
 
         # Add label `N` to only node in the graph
@@ -444,11 +466,11 @@ class testOptimizationsPlan(FlowTestsBase):
         graph.query(query)
 
         # Make sure #nodes labeled as Q > #nodes labeled as N
-        graph.query("CREATE (n:Q {v: 1})")
+        graph.query("CREATE (n:Q)")
 
         # Make sure N is traversed first, N is now associated with an ID
         # |N| < |Q|
-        query = """MATCH (n:N:Q) RETURN n.v"""
+        query = """MATCH (n:N:Q) RETURN count(n)"""
         res = graph.query(query)
         self.env.assertEquals(res.result_set, [[1]])
 
@@ -457,7 +479,7 @@ class testOptimizationsPlan(FlowTestsBase):
 
     # Q should not be traversed first even though it has less nodes
     # as it is optional
-    def test29_optimize_label_scan_optional_match(self):
+    def test30_optimize_label_scan_optional_match(self):
         self.env.flush()
 
         query = """CREATE (n:N {v: 1})"""
@@ -469,3 +491,4 @@ class testOptimizationsPlan(FlowTestsBase):
         res = graph.query(query)
         self.env.assertEquals(res.result_set, [[1]])
 
+        self.env.assertIn("Node By Label Scan | (n:N)", plan)

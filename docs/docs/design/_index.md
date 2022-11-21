@@ -209,7 +209,7 @@ RedisGraph is able to create over 1 million nodes under half a second and form 5
 
 ## License
 
-RedisGraph is published under the [Redis Source Available License Agreement](https://redis.com/legal/licenses/).
+RedisGraph is published under the [Redis Source Available License 2.0 (RSALv2) or the Server Side Public License v1 (SSPLv1)](https://redis.com/legal/licenses/).
 
 ## Conclusion
 
