@@ -131,8 +131,9 @@ QGNode *QGNode_Clone
 /* Gets a string representation of given node. */
 void QGNode_ToString
 (
-	const QGNode *n,
-	sds *buff
+	const QGNode *n,  // target node
+	sds *buff,        // result buffer (concatenated)
+	char *label_to_ignore  // label not to return in result string (used for condTraverse and ExpandInto printing)
 );
 
 // frees allocated space by given node

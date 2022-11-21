@@ -6,6 +6,7 @@
 
 #include "print_functions.h"
 #include "../../execution_plan.h"
+#include "../op_node_by_label_scan.h"
 
 static inline void _NodeToString(sds *buf, const char *alias, const char *label) {
 	// Print a representation of a node with an optional alias and optional label.
@@ -29,7 +30,12 @@ void TraversalToString(const OpBase *op, sds *buf, AlgebraicExpression *ae) {
 											 AlgebraicExpression_Dest(ae));
 	QGEdge *e = (edge) ? QueryGraph_GetEdgeByAlias(op->plan->query_graph, edge) : NULL;
 
-	QGNode_ToString(src, buf);
+	// ignore child label if child is a label-scan.
+	bool ignore_label = (op->type == OPType_CONDITIONAL_TRAVERSE || op->type == OPType_EXPAND_INTO)
+						&& op->children[0]->type == OPType_NODE_BY_LABEL_SCAN;
+	char *label_to_ignore = NULL;
+	if(ignore_label) label_to_ignore = ((NodeByLabelScan *)op->children[0])->n.label;
+	QGNode_ToString(src, buf, label_to_ignore);
 	if(e) {
 		if(transpose) {
 			*buf = sdscatprintf(*buf, "<-");
@@ -43,7 +49,7 @@ void TraversalToString(const OpBase *op, sds *buf, AlgebraicExpression *ae) {
 	} else {
 		*buf = sdscatprintf(*buf, "->");
 	}
-	QGNode_ToString(dest, buf);
+	QGNode_ToString(dest, buf, label_to_ignore);
 }
 
 void ScanToString(const OpBase *op, sds *buf, const char *alias, const char *label) {
