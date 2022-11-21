@@ -24,10 +24,10 @@ int X = 1;
 static int mssleep(uint ms) {
 	struct timespec req;
 
- 	req.tv_sec = ms / 1000;
- 	req.tv_nsec = (ms % 1000) * 1000000;
+	req.tv_sec = ms / 1000;
+	req.tv_nsec = (ms % 1000) * 1000000;
 
- 	return nanosleep(&req, NULL);
+	return nanosleep(&req, NULL);
 }
 
 class CRONTest: public ::testing::Test {
