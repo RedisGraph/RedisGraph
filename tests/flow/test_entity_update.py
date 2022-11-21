@@ -534,3 +534,9 @@ class testEntityUpdate(FlowTestsBase):
         self.env.assertEqual(result.properties_set, 1)
         self.env.assertEqual(result.properties_removed, 1)
 
+    def test_36_set_property_null(self):
+        graph.delete()
+        graph.query("CREATE ()")
+        result = graph.query("MATCH (v) SET v.p1 = v.p8, v.p1 = v.p5, v.p2 = v.p4")
+        result = graph.query("MATCH (v) RETURN v")
+        self.env.assertEqual(result.header, [[1, 'v']])

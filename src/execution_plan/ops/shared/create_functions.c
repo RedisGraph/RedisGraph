@@ -1,7 +1,7 @@
 /*
- * Copyright 2018-2022 Redis Labs Ltd. and Contributors
- *
- * This file is available under the Redis Labs Source Available License Agreement
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
  */
 
 #include "create_functions.h"
@@ -211,9 +211,6 @@ void CommitNewEntities
 	// update statistics
 	pending->stats->nodes_created          +=  node_count;
 	pending->stats->relationships_created  +=  edge_count;
-
-	// release lock
-	QueryCtx_UnlockCommit(op);
 
 	// restore matrix sync policy to default
 	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);

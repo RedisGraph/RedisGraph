@@ -1,7 +1,7 @@
 /*
- * Copyright 2018-2022 Redis Labs Ltd. and Contributors
- *
- * This file is available under the Redis Labs Source Available License Agreement
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
  */
 
 #include "RG.h"
@@ -519,9 +519,6 @@ void UndoLog_Rollback
 
 	if(count == 0) return;
 
-	// acquire lock before making any changes to the graph
-	QueryCtx_LockForCommit();
-
 	// apply undo operations in reverse order for rollback correctness
 	// find sequences of the same operation and rollback them as a bulk
 	int seq_end = count - 1;
@@ -565,9 +562,6 @@ void UndoLog_Rollback
 				ASSERT(false);
 		}
  	}
-
-	// assumption: no operations should be executing at this point
-	QueryCtx_UnlockCommit(NULL);
 
 	array_clear(log);
 

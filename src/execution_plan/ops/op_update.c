@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "op_update.h"
 #include "RG.h"
@@ -100,10 +100,6 @@ static Record UpdateConsume(OpBase *opBase) {
 		CommitUpdates(op->gc, op->stats, op->node_updates, ENTITY_NODE);
 		CommitUpdates(op->gc, op->stats, op->edge_updates, ENTITY_EDGE);
 	}
-
-	// always try to releasing the lock, even though this update operation might not made any changes
-	// this is required in the situation where this update op is the last write operation within the execution-plan
-	QueryCtx_UnlockCommit(opBase);
 
 	for(uint i = 0; i < node_updates_count; i ++) {
 		PendingUpdateCtx *pending_update = op->node_updates + i;

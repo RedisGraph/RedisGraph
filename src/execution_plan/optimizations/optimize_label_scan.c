@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "RG.h"
 #include "../../query_ctx.h"
@@ -71,10 +71,6 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	// no switching required
 	if(min_label_id == scan->n.label_id) return;
 
-	// swap current label with minimum label
-	scan->n.label     =  min_label_str;
-	scan->n.label_id  =  min_label_id;
-
 	// patch following traversal, skip filters
 	OpBase *parent = op->parent;
 	while(OpBase_Type(parent) == OPType_FILTER) parent = parent->parent;
@@ -84,16 +80,23 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	AlgebraicExpression *ae = op_traverse->ae;
 	AlgebraicExpression *operand;
 
-	const char *row_domain = scan->n.alias;
+	const char *row_domain    = scan->n.alias;
 	const char *column_domain = scan->n.alias;
 
+	// locate the operand corresponding to the about to be replaced label
+	// in the parent operation (conditional traverse)
 	bool found = AlgebraicExpression_LocateOperand(ae, &operand, NULL,
 			row_domain, column_domain, NULL, min_label_str);
 	ASSERT(found == true);
 
+	// create a replacement operand for the migrated label matrix
 	AlgebraicExpression *replacement = AlgebraicExpression_NewOperand(NULL,
 			true, AlgebraicExpression_Src(operand),
-			AlgebraicExpression_Dest(operand), NULL, min_label_str);
+			AlgebraicExpression_Dest(operand), NULL, scan->n.label);
+
+	// swap current label with minimum label
+	scan->n.label    = min_label_str;
+	scan->n.label_id = min_label_id;
 
 	_AlgebraicExpression_InplaceRepurpose(operand, replacement);
 }
