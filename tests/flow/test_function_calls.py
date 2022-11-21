@@ -2231,3 +2231,32 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         expected_result = [Node(label='person', properties = {'name': 'Roi', 'val': 0}), True, 2, 3]
         self.env.assertEquals(actual_result.result_set[0][0], expected_result)
+
+    # Ensure that an edge can be added to a list.
+    def test60_edge_add_to_array(self):
+        query = """MATCH (a)-[r]->(b) WITH collect(r) AS rs RETURN rs[0] + [true, 2, 3]"""
+        actual_result = graph.query(query)
+        expected_result = [True, 2, 3]
+        self.env.assertTrue(isinstance(actual_result.result_set[0][0][0], Edge))
+        self.env.assertEquals(actual_result.result_set[0][0][1:], expected_result)
+
+    # Ensure that a path can be added to a list.
+    def test61_path_add_to_array(self):
+        query = """MATCH path = (a)-[r]->(b) RETURN path + [true, 2, 3]"""
+        actual_result = graph.query(query)
+        expected_result = [True, 2, 3]
+        self.env.assertTrue(isinstance(actual_result.result_set[0][0][0], Path))
+        self.env.assertEquals(actual_result.result_set[0][0][1:], expected_result)
+
+    # Ensure that a node, edge or a path can't be used in an addition operation.
+    def test62_node_edge_path_in_addition(self):
+        queries = [
+            """MATCH (a) RETURN a + 2 LIMIT 1""",
+            """MATCH (a) RETURN 2 + a LIMIT 1""",
+            """MATCH ()-[r]->() RETURN r + 2 LIMIT 1""",
+            """MATCH ()-[r]->() RETURN 2 + r LIMIT 1""",
+            """MATCH path = ()-[r]->() RETURN path + 2 LIMIT 1""",
+            """MATCH path = ()-[r]->() RETURN 2 + path LIMIT 1""",
+        ]
+        for query in queries:
+            self.expect_type_error(query)

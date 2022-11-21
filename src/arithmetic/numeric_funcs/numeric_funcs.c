@@ -21,7 +21,20 @@
 /* The '+' operator is overloaded to perform string concatenation
  * as well as arithmetic addition. */
 SIValue AR_ADD(SIValue *argv, int argc, void *private_data) {
-	return SIValue_Add(argv[0], argv[1]);
+	const SIValue lhs = argv[0];
+	const SIValue rhs = argv[1];
+
+	// Forbid addition of a node, edge and path objects with anything else
+	// except for an array. The only allowed types for addition with those is an
+	// array (pre/append to the list).
+	if ((SIValue_IsGraphEntityOrPath(lhs) && SI_TYPE(rhs) != T_ARRAY)
+		|| (SIValue_IsGraphEntityOrPath(rhs) && SI_TYPE(lhs) != T_ARRAY)) {
+		const SIValue problemArgument = SIValue_IsGraphEntityOrPath(lhs) ? rhs : lhs;
+		Error_SITypeMismatch(problemArgument, T_ARRAY);
+		return SI_NullVal();
+	}
+
+	return SIValue_Add(lhs, rhs);
 }
 
 /* returns the subtracting given values. */
@@ -374,7 +387,7 @@ void Register_NumericFuncs() {
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 1);
-	array_append(types, (SI_NUMERIC | T_STRING | T_ARRAY | T_BOOL | T_NODE | T_NULL));
+	array_append(types, SI_ALL);
 	ret_type = SI_NUMERIC | T_STRING | T_ARRAY | T_BOOL | T_NULL;
 	func_desc = AR_FuncDescNew("add", AR_ADD, 2, 2, types, ret_type, true, true);
 	AR_RegFunc(func_desc);
