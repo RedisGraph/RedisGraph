@@ -22,13 +22,18 @@ extern "C"
 int X = 1;
 
 static int mssleep(uint ms) {
-	struct timespec req;
-
-	req.tv_sec = ms / 1000;
-	req.tv_nsec = (ms % 1000) * 1000000;
-
-	return nanosleep(&req, NULL);
+	long delay_nanos = ms * 1000000;
+    struct timespec now, start;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    long nanos = 0;
+    while (nanos < delay_nanos)
+    {
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        nanos = now.tv_nsec - start.tv_nsec;
+        if (now.tv_sec > start.tv_sec) nanos += 1000000000L;
+    }
 }
+
 class CRONTest: public ::testing::Test {
   protected:
 	static void SetUpTestCase() {
@@ -166,7 +171,7 @@ TEST_F(CRONTest, AbortNoneExistingTask) {
 	// abort task, should not crash hang
 	Cron_AbortTask(none_existing_task_handle);
 	
-	mssleep(30); // sleep for 20 ms
+	mssleep(20); // sleep for 20 ms
 
 	// task should have been executed
 	// expecting X = 3
