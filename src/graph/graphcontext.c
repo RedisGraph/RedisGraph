@@ -92,6 +92,7 @@ GraphContext *GraphContext_New
 	gc->string_mapping   = array_new(char *, 64);
 	gc->encoding_context = GraphEncodeContext_New();
 	gc->decoding_context = GraphDecodeContext_New();
+	gc->info             = Info_New();
 
 	// read NODE_CREATION_BUFFER size from configuration
 	// this value controls how much extra room we're willing to spend for:
@@ -596,6 +597,11 @@ static void _GraphContext_Free(void *arg) {
 		// GIL need to be acquire because RediSearch change Redis global data structure
 		RedisModule_ThreadSafeContextLock(ctx);
 	}
+
+	//--------------------------------------------------------------------------
+	// Free the info structure
+	//--------------------------------------------------------------------------
+	// Info_Free(gc->info);
 
 	//--------------------------------------------------------------------------
 	// Free node schemas
