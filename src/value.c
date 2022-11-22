@@ -276,38 +276,37 @@ const char *SIType_ToString(SIType t) {
 void SIType_ToMultipleTypeString(SIType t, char *buf, size_t bufferLen) {
 	// Worst case: Len(SIType names) + 19*Len(", ") + Len("Or") = 177 + 38 + 2 = 217
 	ASSERT(bufferLen >= MULTIPLE_TYPE_STRING_BUFFER_SIZE);
+
+	uint   count		= __builtin_popcount(t);
+	char  *comma        = count > 2 ? ", or " : " or ";
+	SIType currentType  = 1;
 	size_t bytesWritten = 0;
 
-	SIType currentType;
-	SIType remainingTypes = t;
-	
-	uint typesDetected = 0;
-	uint typesDefined = __builtin_popcount(t);
-	
-	// Iterate over the possible SITypes
-	currentType = 1;
-	while(typesDetected < typesDefined) {
-		if(t & currentType) {
-			remainingTypes &= (~currentType);
-			if(typesDetected > 0) {
-				if(remainingTypes) {
-					bytesWritten += snprintf(buf + bytesWritten, bufferLen, ", ");
-				} else {
-					// There is no more types, then concatenate "or" before the SIType name
-					if(typesDetected == 1) {
-						// If there are two items, the last comma should be omitted.
-						bytesWritten += snprintf(buf + bytesWritten, bufferLen, " or ");
-					} else {
-						// If there are more than two, the last comma should be present
-						bytesWritten += snprintf(buf + bytesWritten, bufferLen, ", or ");
-					}
-				}
-			}
-			bytesWritten += snprintf(buf + bytesWritten, bufferLen, "%s", SIType_ToString(currentType));
-			typesDetected++;
-		}
+	// Find first type
+	while((t & currentType) == 0) {
 		currentType = currentType << 1;
 	}
+	bytesWritten += snprintf(buf + bytesWritten, bufferLen, "%s", SIType_ToString(currentType));
+	if(count == 1) return;
+
+	count--;
+	// Iterate over the possible SITypes except last one
+	while(count > 1) {
+		currentType = currentType << 1;
+		if(t & currentType) {
+			bytesWritten += snprintf(buf + bytesWritten, bufferLen, ", %s", SIType_ToString(currentType));
+			count--;
+		}
+	}
+
+	// Find last type
+	do {
+		currentType = currentType << 1;
+	} while((t & currentType) == 0);
+
+	// Concatenate "or" before the last SIType name
+	// If there are more than two, the last comma should be present
+	bytesWritten += snprintf(buf + bytesWritten, bufferLen, "%s%s", comma, SIType_ToString(currentType));
 }
 
 void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWritten) {
