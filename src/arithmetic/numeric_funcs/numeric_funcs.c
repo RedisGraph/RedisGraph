@@ -18,20 +18,49 @@
 #define M_PI (3.14159265358979323846)
 #endif /* M_PI */
 
+// Returns true when the passed argument (SIValue) has a type which can't be
+// used for adding.
+static bool _SIValue_IsForbiddenForAddition(const SIValue value) {
+	return SIValue_IsGraphEntityOrPath(value) || SIValue_IsPoint(value);
+}
+
+// Returns false if the arguments used for addition are incompatible for the
+// operation.
+static bool _checkAdditionArguments
+(
+	const SIValue lhs,
+	const SIValue rhs,
+	SIValue *problem_argument,
+	SIType *expected_type
+) {
+	// Forbid addition of a node, edge, path and point objects with anything
+	// else except for an array. The only allowed type for addition with those
+	// is an array (pre/append to the list).
+	if ((_SIValue_IsForbiddenForAddition(lhs) && SI_TYPE(rhs) != T_ARRAY)
+		|| (_SIValue_IsForbiddenForAddition(rhs) && SI_TYPE(lhs) != T_ARRAY)) {
+
+		*problem_argument = _SIValue_IsForbiddenForAddition(lhs) ? rhs : lhs;
+		*expected_type = T_ARRAY;
+
+		return false;
+	}
+
+	return true;
+}
+
 /* The '+' operator is overloaded to perform string concatenation
  * as well as arithmetic addition. */
 SIValue AR_ADD(SIValue *argv, int argc, void *private_data) {
 	const SIValue lhs = argv[0];
 	const SIValue rhs = argv[1];
 
-	// Forbid addition of a node, edge and path objects with anything else
-	// except for an array. The only allowed types for addition with those is an
-	// array (pre/append to the list).
-	if ((SIValue_IsGraphEntityOrPath(lhs) && SI_TYPE(rhs) != T_ARRAY)
-		|| (SIValue_IsGraphEntityOrPath(rhs) && SI_TYPE(lhs) != T_ARRAY)) {
-		const SIValue problemArgument = SIValue_IsGraphEntityOrPath(lhs) ? rhs : lhs;
-		Error_SITypeMismatch(problemArgument, T_ARRAY);
-		return SI_NullVal();
+	{
+		SIValue problem_argument = SI_NullVal();
+		SIType expected_type = T_NULL;
+		if (!_checkAdditionArguments(lhs, rhs, &problem_argument, &expected_type)) {
+			Error_SITypeMismatch(problem_argument, expected_type);
+			return SI_NullVal();
+		}
 	}
 
 	return SIValue_Add(lhs, rhs);

@@ -2248,8 +2248,15 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.env.assertTrue(isinstance(actual_result.result_set[0][0][0], Path))
         self.env.assertEquals(actual_result.result_set[0][0][1:], expected_result)
 
-    # Ensure that a node, edge or a path can't be used in an addition operation.
-    def test62_node_edge_path_in_addition(self):
+    # Ensure that a point can be added to a list.
+    def test62_point_add_to_array(self):
+        query = """MATCH () RETURN point({latitude:1, longitude:2}) + [true, 2, 3] LIMIT 1"""
+        actual_result = graph.query(query)
+        expected_result = [{'latitude': 1, 'longitude': 2}, True, 2, 3]
+        self.env.assertEquals(actual_result.result_set[0][0], expected_result)
+
+    # Ensure that complex objects can't be used in an addition operation.
+    def test63_node_edge_path_point_in_addition(self):
         queries = [
             """MATCH (a) RETURN a + 2 LIMIT 1""",
             """MATCH (a) RETURN 2 + a LIMIT 1""",
@@ -2257,6 +2264,8 @@ class testFunctionCallsFlow(FlowTestsBase):
             """MATCH ()-[r]->() RETURN 2 + r LIMIT 1""",
             """MATCH path = ()-[r]->() RETURN path + 2 LIMIT 1""",
             """MATCH path = ()-[r]->() RETURN 2 + path LIMIT 1""",
+            """MATCH () RETURN point({latitude:1, longitude:2}) + 2 LIMIT 1""",
+            """MATCH () RETURN 2 + point({latitude:1, longitude:2}) LIMIT 1""",
         ]
         for query in queries:
             self.expect_type_error(query)
