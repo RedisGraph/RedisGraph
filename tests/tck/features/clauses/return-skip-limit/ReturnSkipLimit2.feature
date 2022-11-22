@@ -125,9 +125,7 @@ Feature: ReturnSkipLimit2 - Limit
       """
     When executing query:
       """
-      MATCH (n)
-      WITH n LIMIT toInteger(ceil(1.7))
-      RETURN count(*) AS count
+      MATCH (n) WITH n LIMIT toInteger(ceil(1.7)) RETURN count(*) AS count
       """
     Then the result should be, in any order:
       | count |

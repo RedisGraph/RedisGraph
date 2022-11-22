@@ -101,7 +101,6 @@ Feature: Graph8 - Property keys function
       | theProps |
     And no side effects
 
-  @skip
   Scenario: [5] Using `keys()` on a relationship, non-empty result
     Given an empty graph
     And having executed:
@@ -120,7 +119,6 @@ Feature: Graph8 - Property keys function
       | 'year'   |
     And no side effects
 
-  @skip
   Scenario: [6] Using `keys()` on a relationship, empty result
     Given an empty graph
     And having executed:
@@ -137,7 +135,6 @@ Feature: Graph8 - Property keys function
       | theProps |
     And no side effects
 
-  @skip
   Scenario: [7] Using `keys()` on an optionally matched relationship
     Given an empty graph
     And having executed:
