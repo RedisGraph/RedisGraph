@@ -75,11 +75,16 @@ Feature: WithWhere7 - Variable visibility under aliasing
     Given an empty graph
     And having executed:
       """
-      CREATE ({name2: 'A'}),({name2: 'B'}),({name2: 'C'})
+      CREATE ({name2: 'A'}),
+             ({name2: 'B'}),
+             ({name2: 'C'})
       """
     When executing query:
       """
-      MATCH (a) WITH a.name2 AS name WHERE name = 'B' OR a.name2 = 'C' RETURN *
+      MATCH (a)
+      WITH a.name2 AS name
+      WHERE name = 'B' OR a.name2 = 'C'
+      RETURN *
       """
     Then the result should be, in any order:
       | name |
