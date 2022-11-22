@@ -393,9 +393,9 @@ $(TARGET): $(LIBS) $(OBJECTS)
 	$(SHOW)$(CXX) -o $@ $(OBJECTS) $(LIBS) $(SO_LD_FLAGS)
 ifeq ($(OS),macos)
 	$(SHOW)$(CXX) -o $(patsubst %.so,%.dylib,$@) $(OBJECTS) $(LIBS) $(DYLIB_LD_FLAGS)
+endif
 	@printf '%b %b\n' $(CCCOLOR)AR$(NOCOLOR) $(SRCCOLOR)$(patsubst %.so,%.a,$@)$(NOCOLOR)
 	$(SHOW)$(AR) rcs $(patsubst %.so,%.a,$@) $(OBJECTS)
-endif
 ifeq ($(OS),linux)
 ifneq ($(DEBUG),1)
 	$(SHOW)$(call extract_symbols,$@)
