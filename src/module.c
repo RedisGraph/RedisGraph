@@ -114,7 +114,6 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	if(Config_Init(ctx, argv, argc) != REDISMODULE_OK) return REDISMODULE_ERR;
 
 	RegisterEventHandlers(ctx);
-	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
 
 	// Create thread local storage keys for query and error contexts.
 	if(!QueryCtx_Init())    return REDISMODULE_ERR;

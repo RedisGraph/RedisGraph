@@ -668,3 +668,6 @@ class testGraphMergeFlow(FlowTestsBase):
                    RETURN x"""
         res = graph.query(query)
         self.env.assertEquals(res.result_set[0][0], expected)
+
+
+# MERGE ()-[:R2]->(a:L1)-[:R1]->(a:L2) RETURN *
