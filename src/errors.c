@@ -139,7 +139,11 @@ void Error_InvalidFilterPlacement(rax *entitiesRax) {
 }
 
 void Error_SITypeMismatch(SIValue received, SIType expected) {
-	ErrorCtx_SetError("Type mismatch: expected %s but was %s", SIType_ToString(expected),
+	size_t bufferLen = MULTIPLE_TYPE_STRING_BUFFER_SIZE;
+	char buf[bufferLen];
+
+	SIType_ToMultipleTypeString(expected, buf, bufferLen);
+	ErrorCtx_SetError("Type mismatch: expected %s but was %s", buf,
 					  SIType_ToString(SI_TYPE(received)));
 }
 

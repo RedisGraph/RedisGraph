@@ -879,7 +879,7 @@ static bool _Validate_DELETE_Clause
 			type != CYPHER_AST_APPLY_OPERATOR &&
 			type != CYPHER_AST_APPLY_ALL_OPERATOR &&
 			type != CYPHER_AST_SUBSCRIPT_OPERATOR) {
-			ErrorCtx_SetError("DELETE can only be called on nodes and relationships");
+			ErrorCtx_SetError("DELETE can only be called on nodes, paths and relationships");
 			vctx->valid = AST_INVALID;
 			break;
 		}
