@@ -77,6 +77,9 @@ typedef enum {
 #define COMPARED_NULL INT_MIN
 #define COMPARED_NAN INT_MIN+1
 
+// Minimum buffer size for string generated in SIType_ToMultipleTypeString
+#define MULTIPLE_TYPE_STRING_BUFFER_SIZE 256
+
 struct Pair;
 
 typedef struct SIValue {
@@ -154,7 +157,11 @@ bool SIValue_IsTrue(SIValue v);
 
 const char *SIType_ToString(SIType t);
 
-// Prints an SIValue to a given buffer, with length (bufferLen), sets bytesWritten to the actuall length
+// Prints all individual types represented by 't', multiple types are separated by comma,
+// to a given buffer with length (bufferLen)
+void SIType_ToMultipleTypeString(SIType t, char *buf, size_t bufferLen);
+
+// Prints an SIValue to a given buffer, with length (bufferLen), sets bytesWritten to the actual length
 // of string representation
 // if there is not enough space for the value to be printed, the buffer will be re allocated with
 // more space, and bufferLen will change accordingly

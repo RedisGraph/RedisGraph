@@ -395,9 +395,6 @@ static bool _AR_EXP_ValidateInvocation
 			expected_type = fdesc->types[i];
 		}
 		if(!(actual_type & expected_type)) {
-			/* TODO extend string-building logic to better express multiple acceptable types, like:
-			 * RETURN 'a' * 2
-			 * "Type mismatch: expected Float, Integer or Duration but was String" */
 			Error_SITypeMismatch(argv[i], expected_type);
 			return false;
 		}
