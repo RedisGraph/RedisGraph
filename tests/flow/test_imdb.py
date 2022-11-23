@@ -1,5 +1,6 @@
 from common import *
 
+from index_utils import *
 from reversepattern import ReversePattern
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/imdb')
@@ -61,7 +62,7 @@ class testImdbFlow(FlowTestsBase):
         # Execute this command directly, as its response does not contain the result set that
         # 'redis_graph.query()' expects
         redis_con = self.env.getConnection()
-        res = redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "CREATE INDEX ON :actor(age)")
+        create_node_exact_match_index(redis_graph, 'actor', 'age', sync=True)
 
         q = imdb.actors_over_85_index_scan.query
         execution_plan = redis_graph.execution_plan(q)
@@ -87,7 +88,7 @@ class testImdbFlow(FlowTestsBase):
 
         # Execute this command directly, as its response does not contain the result set that
         # 'redis_graph.query()' expects
-        self.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "CREATE INDEX ON :movie(year)")
+        create_node_exact_match_index(redis_graph, 'movie', 'year', sync=True)
         q = imdb.eighties_movies_index_scan.query
         execution_plan = redis_graph.execution_plan(q)
         self.env.assertIn('Index Scan', execution_plan)
@@ -106,3 +107,4 @@ class testImdbFlow(FlowTestsBase):
 
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
+

@@ -520,7 +520,9 @@ bool GraphContext_AddFullTextIndex
 	uint fields_count,       // number of fields to index
 	double *weights,         // fields weights
 	bool *nostems,           //
-	const char **phonetics   //
+	const char **phonetics,  //
+	char **stopwords,
+	const char *language
 ) {
 	ASSERT(idx    != NULL);
 	ASSERT(gc     != NULL);
@@ -551,6 +553,14 @@ bool GraphContext_AddFullTextIndex
 			// update result-set
 			ResultSet_IndexCreated(result_set, INDEX_OK);
 		}
+	}
+
+	if(stopwords != NULL) {
+		Index_SetStopwords(*idx, stopwords);
+	}
+
+	if(language != NULL) {
+		Index_SetLanguage(*idx, language);
 	}
 
 	// diable index if it was created

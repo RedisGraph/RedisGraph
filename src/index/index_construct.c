@@ -160,7 +160,7 @@ static void _Index_PopulateEdgeIndex
 
 		// skip previously indexed edges
 		while((info = RG_MatrixTupleIter_next_UINT64(&it, &src_id, &dest_id,
-						NULL)) == GrB_SUCCESS &&
+						&edge_id)) == GrB_SUCCESS &&
 				src_id == prev_src_id &&
 				dest_id <= prev_dest_id);
 
@@ -226,6 +226,7 @@ void Index_Populate
 	ASSERT(g        != NULL);
 	ASSERT(idx      != NULL);
 	ASSERT(idx->idx != NULL);
+	ASSERT(!Index_Enabled(idx));  // index should have pending changes
 
 	//--------------------------------------------------------------------------
 	// populate index

@@ -60,10 +60,6 @@ static void _RdbLoadFullTextIndex
 	
 	// free language
 	RedisModule_Free(language);
-
-	// free stopwords
-	for (uint i = 0; i < stopwords_count; i++) RedisModule_Free(stopwords[i]);
-	array_free(stopwords);
 }
 
 static void _RdbLoadExactMatchIndex

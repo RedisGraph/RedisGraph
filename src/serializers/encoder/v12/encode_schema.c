@@ -76,13 +76,8 @@ static inline void _RdbSaveExactMatchIndex
 
 	uint fields_count = Index_FieldsCount(idx);
 
-	// for exact-match index on an edge type, decrease `fields_count` by 2
-	// skipping `_src_id` and `_dest_id` fields
-	uint encode_fields_count =
-		type == SCHEMA_EDGE ? fields_count - 2 : fields_count;
-
 	// encode field count
-	RedisModule_SaveUnsigned(rdb, encode_fields_count);
+	RedisModule_SaveUnsigned(rdb, fields_count);
 	for(uint i = 0; i < fields_count; i++) {
 		char *field_name = idx->fields[i].name;
 
@@ -165,3 +160,4 @@ void RdbSaveGraphSchema_v12(RedisModuleIO *rdb, GraphContext *gc) {
 		_RdbSaveSchema(rdb, s);
 	}
 }
+

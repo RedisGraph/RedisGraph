@@ -468,7 +468,7 @@ void Index_SetStopwords
 	ASSERT(stopwords != NULL);
 	ASSERT(idx->stopwords == NULL);
 
-	array_clone_with_cb(idx->stopwords, stopwords, rm_strdup);
+	idx->stopwords = stopwords;
 }
 
 // returns true if index doesn't contains any pending changes

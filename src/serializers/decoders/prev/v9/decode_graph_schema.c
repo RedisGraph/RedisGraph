@@ -37,10 +37,10 @@ static Schema *_RdbLoadSchema
 	}
 
 	if(s->index) {
-		Index_ConstructStructure(s->index);
+		Index_Disable(s->index);
 	}
 	if(s->fulltextIdx) {
-		Index_ConstructStructure(s->fulltextIdx);
+		Index_Disable(s->fulltextIdx);
 	}
 
 	return s;

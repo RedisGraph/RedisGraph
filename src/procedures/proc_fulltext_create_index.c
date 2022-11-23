@@ -249,8 +249,8 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke
 		}
 	}
 
-	res = GraphContext_AddFullTextIndex(&idx, gc, SCHEMA_NODE, label, _fields,
-			fields_count, weights, nostems, phonetics);
+	char **stopwords     = NULL;
+	const char *language = NULL;
 
 	if(SI_TYPE(label_config) == T_MAP) {
 		bool lang_exists     = MAP_GET(label_config, "language",  lang);
@@ -258,16 +258,19 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke
 
 		if(stopword_exists) {
 			uint stopwords_count = SIArray_Length(sw);
-			char **stopwords = array_new(char*, stopwords_count);
+			stopwords = array_new(char*, stopwords_count); // freed by the index
 			for (uint i = 0; i < stopwords_count; i++) {
 				SIValue stopword = SIArray_Get(sw, i);
-				array_append(stopwords, stopword.stringval);
+				array_append(stopwords, rm_strdup(stopword.stringval));
 			}
-			Index_SetStopwords(idx, stopwords);
-			array_free(stopwords);
 		}
-		if(lang_exists) Index_SetLanguage(idx, lang.stringval);
+		if(lang_exists) {
+			language = lang.stringval;
+		}
 	}
+
+	res = GraphContext_AddFullTextIndex(&idx, gc, SCHEMA_NODE, label, _fields,
+			fields_count, weights, nostems, phonetics, stopwords, language);
 
 	// build index
 	if(res) {

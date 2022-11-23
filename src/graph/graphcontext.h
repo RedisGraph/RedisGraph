@@ -245,7 +245,9 @@ bool GraphContext_AddFullTextIndex
 	uint fields_count,       // number of fields to index
 	double *weights,         // fields weights
 	bool *nostems,           //
-	const char **phonetics   //
+	const char **phonetics,  //
+	char **stopwords,
+	const char *language
 );
 
 // remove and free an index

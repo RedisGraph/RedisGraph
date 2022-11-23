@@ -36,6 +36,14 @@ static Schema *_RdbLoadSchema
 		RedisModule_Free(field_name);
 	}
 
+	if(s->index != NULL) {
+		Index_Disable(s->index);
+	}
+
+	if(s->fulltextIdx != NULL) {
+		Index_Disable(s->fulltextIdx);
+	}
+
 	return s;
 }
 

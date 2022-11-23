@@ -1,5 +1,6 @@
 import asyncio
 from common import *
+from index_utils import *
 from time import sleep, time
 from execution_plan_util import locate_operation
 
@@ -15,40 +16,34 @@ class testIndexCreationFlow():
         con = self.env.getConnection()
         graph = Graph(con, GRAPH_ID)
 
-    # validate index is being populated
-    def index_under_construction(self, g, lbl, typ):
-        params = {'lbl': lbl, 'typ': typ}
-        res = g.query("CALL db.indexes() YIELD type, label, status WHERE label = $lbl AND type = $typ RETURN status", params)
-        return "UNDER CONSTRUCTION" in res.result_set[0][0]
-
     # full-text index creation
     def test01_fulltext_index_creation(self):
         # create an index over L:v0
-        result = graph.query("CALL db.idx.fulltext.createNodeIndex('L', 'v0')")
+        result = create_fulltext_index(graph, 'L', 'v0', sync=True)
         self.env.assertEquals(result.indices_created, 1)
 
         # create an index over L:v1
-        result = graph.query("CALL db.idx.fulltext.createNodeIndex('L', 'v1')")
+        result = create_fulltext_index(graph, 'L', 'v1', sync=True)
         self.env.assertEquals(result.indices_created, 1)
 
         # create an index over L:v1 and L:v2
-        result = graph.query("CALL db.idx.fulltext.createNodeIndex('L', 'v1', 'v2')")
+        result = create_fulltext_index(graph, 'L', 'v1', 'v2', sync=True)
         self.env.assertEquals(result.indices_created, 1)
 
         # create an index over L:v0, L:v1 and L:v2
-        result = graph.query("CALL db.idx.fulltext.createNodeIndex('L', 'v0', 'v1', 'v2')")
+        result = create_fulltext_index(graph, 'L', 'v0', 'v1', 'v2', sync=True)
         self.env.assertEquals(result.indices_created, 0)
 
         # create an index over L:v2, L:v1 and L:v0
-        result = graph.query("CALL db.idx.fulltext.createNodeIndex('L', 'v2', 'v1', 'v0')")
+        result = create_fulltext_index(graph, 'L', 'v2', 'v1', 'v0', sync=True)
         self.env.assertEquals(result.indices_created, 0)
 
         # create an index over L:v3 and L:v4
-        result = graph.query("CALL db.idx.fulltext.createNodeIndex('L', 'v3', 'v4')")
+        result = create_fulltext_index(graph, 'L', 'v3', 'v4', sync=True)
         self.env.assertEquals(result.indices_created, 2)
 
         # create an index over L:v5 and L:v6
-        result = graph.query("CALL db.idx.fulltext.createNodeIndex({ label: 'L' }, 'v5', 'v6')")
+        result = create_fulltext_index(graph, 'L', 'v5', 'v6', sync=True)
         self.env.assertEquals(result.indices_created, 2)
 
     def test02_fulltext_index_creation_label_config(self):
@@ -310,15 +305,14 @@ class testIndexCreationFlow():
         # create an index
         #-----------------------------------------------------------------------
 
-        q = "CREATE INDEX FOR (n:L) on (n.v)"
-        res = g.query(q)
+        res = create_node_exact_match_index(g, 'L', 'v', sync=False)
         self.env.assertEquals(res.indices_created, 1)
 
         #-----------------------------------------------------------------------
         # validate index is being populated
         #-----------------------------------------------------------------------
 
-        self.env.assertTrue(self.index_under_construction(g, 'L', 'exact-match'))
+        self.env.assertTrue(index_under_construction(g, 'L', 'exact-match'))
 
         # while the index is being constructed
         # perform CRUD operations
@@ -361,14 +355,13 @@ class testIndexCreationFlow():
         # validate index is being populated
         #-----------------------------------------------------------------------
 
-        self.env.assertTrue(self.index_under_construction(g, 'L', 'exact-match'))
+        self.env.assertTrue(index_under_construction(g, 'L', 'exact-match'))
 
         # wait for index to become operational
-        while self.index_under_construction(g, 'L', 'exact-match'):
-            sleep(0.5) # sleep for .5 seconds
+        wait_for_indices_to_sync(g)
 
         # index should be operational
-        self.env.assertFalse(self.index_under_construction(g, 'L', 'exact-match'))
+        self.env.assertFalse(index_under_construction(g, 'L', 'exact-match'))
 
         #-----------------------------------------------------------------------
         # validate index results
@@ -423,15 +416,14 @@ class testIndexCreationFlow():
         # create a fulltext index
         #-----------------------------------------------------------------------
 
-        q = "CALL db.idx.fulltext.createNodeIndex('L', 'h')"
-        res = g.query(q)
+        res = create_fulltext_index(g, 'L', 'h', sync=False)
         self.env.assertEquals(res.indices_created, 1)
 
         #-----------------------------------------------------------------------
         # validate index is being populated
         #-----------------------------------------------------------------------
 
-        self.env.assertTrue(self.index_under_construction(g, 'L', 'full-text'))
+        self.env.assertTrue(index_under_construction(g, 'L', 'full-text'))
 
         # while the index is being constructed
         # perform CRUD operations
@@ -485,14 +477,13 @@ class testIndexCreationFlow():
         # validate index is being populated
         #-----------------------------------------------------------------------
 
-        self.env.assertTrue(self.index_under_construction(g, 'L', 'full-text'))
+        self.env.assertTrue(index_under_construction(g, 'L', 'full-text'))
 
         # wait for index to become operational
-        while self.index_under_construction(g, 'L', 'full-text'):
-            sleep(0.5) # sleep for .5 seconds
+        wait_for_indices_to_sync(g)
 
         # index should be operational
-        self.env.assertFalse(self.index_under_construction(g, 'L', 'full-text'))
+        self.env.assertFalse(index_under_construction(g, 'L', 'full-text'))
 
         #-----------------------------------------------------------------------
         # validate index results
@@ -534,15 +525,14 @@ class testIndexCreationFlow():
         # create an index
         #-----------------------------------------------------------------------
 
-        q = "CREATE INDEX FOR (n:L) on (n.v)"
-        res = g.query(q)
+        res = create_node_exact_match_index(g, 'L', 'v', sync=False)
         self.env.assertEquals(res.indices_created, 1)
 
         #-----------------------------------------------------------------------
         # validate index is being populated
         #-----------------------------------------------------------------------
 
-        self.env.assertTrue(self.index_under_construction(g, 'L', 'exact-match'))
+        self.env.assertTrue(index_under_construction(g, 'L', 'exact-match'))
 
         #-----------------------------------------------------------------------
         # delete graph while the index is being constructed 
@@ -582,15 +572,14 @@ class testIndexCreationFlow():
         # create an index
         #-----------------------------------------------------------------------
 
-        q = "CALL db.idx.fulltext.createNodeIndex('L', 'v')"
-        res = g.query(q)
+        res = create_fulltext_index(g, 'L', 'v', sync=False)
         self.env.assertEquals(res.indices_created, 1)
 
         #-----------------------------------------------------------------------
         # validate index is being populated
         #-----------------------------------------------------------------------
 
-        self.env.assertTrue(self.index_under_construction(g, 'L', 'full-text'))
+        self.env.assertTrue(index_under_construction(g, 'L', 'full-text'))
 
         #-----------------------------------------------------------------------
         # delete graph while the index is being constructed 
@@ -635,13 +624,8 @@ class testIndexCreationFlow():
         # determine how much time does it take to construct our index
         start = time()
 
-        q = "CREATE INDEX FOR (n:L) on (n.v)"
-        res = g.query(q)
+        res = create_node_exact_match_index(g, 'L', 'v', sync=True)
         self.env.assertEquals(res.indices_created, 1)
-
-        # wait for index to become operational
-        while self.index_under_construction(g, 'L', 'exact-match'):
-            sleep(0.5) # sleep for .5 seconds
 
         # total index creation time
         elapsed = time() - start
@@ -660,13 +644,11 @@ class testIndexCreationFlow():
         start = time()
 
         # introduce a new field
-        q = "CREATE INDEX FOR (n:L) on (n.a)"
-        res = g.query(q)
+        res = create_node_exact_match_index(g, 'L', 'a', sync=False)
         self.env.assertEquals(res.indices_created, 1)
 
         # introduce a new field
-        q = "CREATE INDEX FOR (n:L) on (n.b)"
-        res = g.query(q)
+        res = create_node_exact_match_index(g, 'L', 'b', sync=False)
         self.env.assertEquals(res.indices_created, 1)
 
         # remove field
@@ -675,13 +657,11 @@ class testIndexCreationFlow():
         self.env.assertEquals(res.indices_deleted, 1)
 
         # introduce a new field
-        q = "CREATE INDEX FOR (n:L) on (n.v)"
-        res = g.query(q)
+        res = create_node_exact_match_index(g, 'L', 'v', sync=False)
         self.env.assertEquals(res.indices_created, 1)
 
         # wait for index to become operational
-        while self.index_under_construction(g, 'L', 'exact-match'):
-            sleep(0.5) # sleep for .5 seconds
+        wait_for_indices_to_sync(g)
 
         elapsed_2 = time() - start
 
@@ -721,13 +701,8 @@ class testIndexCreationFlow():
         # determine how much time does it take to construct our index
         start = time()
 
-        q = "CALL db.idx.fulltext.createNodeIndex('L', 'v')"
-        res = g.query(q)
+        res = create_fulltext_index(g, 'L', 'v', sync=True)
         self.env.assertEquals(res.indices_created, 1)
-
-        # wait for index to become operational
-        while self.index_under_construction(g, 'L', 'full-text'):
-            sleep(0.5) # sleep for .5 seconds
 
         # total index creation time
         elapsed = time() - start
@@ -746,13 +721,11 @@ class testIndexCreationFlow():
         start = time()
 
         # introduce a new field
-        q = "CALL db.idx.fulltext.createNodeIndex('L', 'a')"
-        res = g.query(q)
+        res = create_fulltext_index(g, 'L', 'a', sync=False)
         self.env.assertEquals(res.indices_created, 1)
 
         # introduce a new field
-        q = "CALL db.idx.fulltext.createNodeIndex('L', 'b')"
-        res = g.query(q)
+        res = create_fulltext_index(g, 'L', 'b', sync=False)
         self.env.assertEquals(res.indices_created, 1)
 
         # remove index
@@ -761,13 +734,11 @@ class testIndexCreationFlow():
         self.env.assertEquals(res.indices_deleted, 1)
 
         # introduce a new field
-        q = "CALL db.idx.fulltext.createNodeIndex('L', 'v')"
-        res = g.query(q)
+        res = create_fulltext_index(g, 'L', 'v', sync=False)
         self.env.assertEquals(res.indices_created, 1)
 
         # wait for index to become operational
-        while self.index_under_construction(g, 'L', 'full-text'):
-            sleep(0.5) # sleep for .5 seconds
+        wait_for_indices_to_sync(g)
 
         elapsed_2 = time() - start
 
@@ -775,3 +746,4 @@ class testIndexCreationFlow():
         # new index includes 2 fields (b,v) while the former index included just
         # one (v) we're expecting thier overall construction time to be similar
         self.env.assertTrue(elapsed_2 < elapsed * 2)
+
