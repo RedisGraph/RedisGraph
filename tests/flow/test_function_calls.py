@@ -2249,6 +2249,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         query_to_expected_result = {
             "RETURN typeOf(NULL)" : [['Null']],
             "RETURN typeOf([1,2])" : [['List']],
+            "RETURN typeOf({a: 1})" : [['Map']],
             "RETURN typeOf(point({latitude:1,longitude:2}))" : [['Point']],
             "RETURN typeOf(1), typeOf('1'), typeOf(true)" : [['Integer', 'String', 'Boolean']],
             "MATCH path=({val: 0})-[e:works_with]->({val: 1}) RETURN typeOf(path)" : [['Path']],
