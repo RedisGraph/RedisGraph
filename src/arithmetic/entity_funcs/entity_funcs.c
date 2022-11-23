@@ -236,6 +236,10 @@ SIValue AR_PROPERTY(SIValue *argv, int argc, void *private_data) {
 	}
 }
 
+SIValue AR_TYPEOF(SIValue *argv, int argc, void *private_data) {
+	return SI_ConstStringVal(SIType_ToString(SI_TYPE(argv[0])));
+}
+
 void Register_EntityFuncs() {
 	SIType *types;
 	SIType ret_type;
@@ -304,6 +308,12 @@ void Register_EntityFuncs() {
 	array_append(types, T_INT64);
 	ret_type = SI_ALL;
 	func_desc = AR_FuncDescNew("property", AR_PROPERTY, 3, 3, types, ret_type, true, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, T_NULL | SI_ALL);
+	ret_type = T_STRING;
+	func_desc = AR_FuncDescNew("typeof", AR_TYPEOF, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 }
 
