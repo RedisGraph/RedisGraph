@@ -1,12 +1,12 @@
 /*
- * Copyright 2018-2022 Redis Labs Ltd. and Contributors
- *
- * This file is available under the Redis Labs Source Available License Agreement
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
  */
 
 #pragma once
 
-// forward declaration of RG_Matrix type
+// forward declaration
 typedef struct _CircularBuffer _CircularBuffer;
 typedef _CircularBuffer *CircularBuffer;
 
@@ -21,7 +21,7 @@ CircularBuffer CircularBuffer_New
 int CircularBuffer_Add
 (
 	CircularBuffer cb,  // buffer to populate
-	void *item           // item to add
+	void *item          // item to add
 );
 
 // removes oldest item from buffer

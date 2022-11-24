@@ -106,6 +106,7 @@ static bool _index_operation_delete
 	}
 
 	QueryCtx_LockForCommit();
+
 	int res = GraphContext_DeleteIndex(gc, schema_type, label, attr,
 			IDX_EXACT_MATCH);
 
@@ -415,12 +416,12 @@ void _query(bool profile, void *args) {
 		goto cleanup;
 	}
 
-	// TODO: at the moment we can't timeout index operation
 	CronTaskHandle timeout_task = 0;
 
 	// enforce specified timeout when query is readonly
 	// or timeout applies to both read and write
-	if(command_ctx->timeout != 0 && (readonly || command_ctx->timeout_rw)) {
+	if(command_ctx->timeout != 0 && !index_op &&
+			(readonly || command_ctx->timeout_rw)) {
 		timeout_task = Query_SetTimeOut(command_ctx->timeout, exec_ctx->plan);
 	}
 

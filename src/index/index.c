@@ -92,7 +92,6 @@ void Index_ConstructStructure
 	ASSERT(idx != NULL);
 	ASSERT(idx->idx == NULL);
 
-	// TODO: at which point do we need to acquire Redis's GIL?
 	RSIndex *rsIdx = NULL;
 	RSIndexOptions *idx_options = RediSearch_CreateIndexOptions();
 	RediSearch_IndexOptionsSetLanguage(idx_options, idx->language);
@@ -294,7 +293,6 @@ void Index_Disable
 	ASSERT(idx != NULL);
 
 	idx->pending_changes++;
-	//printf("Disable, pending_changes: %d\n", idx->pending_changes);
 
 	if(idx->idx != NULL) {
 		RediSearch_DropIndex(idx->idx);
@@ -302,9 +300,6 @@ void Index_Disable
 	}
 
 	// create RediSearch index structure
-	// assuming GIL + WRITE locks are acquired
-	// TODO: validate assumption!
-	// TODO: validate RediSearch_DropIndex isn't an expensive operation
 	Index_ConstructStructure(idx);
 }
 
@@ -317,7 +312,6 @@ void Index_Enable
 	ASSERT(idx != NULL);
 
 	idx->pending_changes--;
-	//printf("Enable, pending_changes: %d\n", idx->pending_changes);
 }
 
 // adds field to index
