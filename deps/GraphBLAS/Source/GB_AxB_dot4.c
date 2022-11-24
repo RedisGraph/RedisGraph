@@ -22,7 +22,7 @@
 #include "GB_mxm.h"
 #include "GB_binop.h"
 #include "GB_unused.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_AxB__include2.h"
 #endif
 
@@ -35,7 +35,7 @@
 #define GB_FREE_ALL                     \
 {                                       \
     GB_FREE_WORKSPACE ;                 \
-    GB_phbix_free (C) ;                 \
+    GB_phybix_free (C) ;                \
 }
 
 //------------------------------------------------------------------------------
@@ -58,7 +58,7 @@ GrB_Info GB_AxB_dot4                // C+=A'*B, dot product method
     // dot4 is disabled if GraphBLAS is compiled as compact
     //--------------------------------------------------------------------------
 
-    #ifdef GBCOMPACT
+    #ifdef GBCUDA_DEV
     GBURBLE ("(always punt) ") ;
     return (GrB_NO_VALUE) ;
     #else

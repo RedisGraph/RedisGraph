@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "op_conditional_traverse.h"
 #include "RG.h"
@@ -26,64 +26,69 @@ static void CondTraverseToString(const OpBase *ctx, sds *buf) {
 static void _populate_filter_matrix(OpCondTraverse *op) {
 	GrB_Matrix FM = RG_MATRIX_M(op->F);
 
+	// clear filter matrix
+	GrB_Matrix_clear(FM);
+
+	// update filter matrix F, set row i at position srcId
+	// F[i, srcId] = true
 	for(uint i = 0; i < op->record_count; i++) {
 		Record r = op->records[i];
-		/* Update filter matrix F, set row i at position srcId
-		 * F[i, srcId] = true. */
 		Node *n = Record_GetNode(r, op->srcNodeIdx);
 		NodeID srcId = ENTITY_GET_ID(n);	
 		GrB_Matrix_setElement_BOOL(FM, true, i, srcId);
 	}
-
-	GrB_Matrix_wait(FM, GrB_MATERIALIZE);
 }
 
-/* Evaluate algebraic expression:
- * prepends filter matrix as the left most operand
- * perform multiplications
- * set iterator over result matrix
- * removed filter matrix from original expression
- * clears filter matrix. */
+// evaluate algebraic expression:
+// prepends filter matrix as the left most operand
+// perform multiplications
+// set iterator over result matrix
+// removed filter matrix from original expression
+// clears filter matrix
 void _traverse(OpCondTraverse *op) {
-	// If op->F is null, this is the first time we are traversing.
+	// if op->F is null, this is the first time we are traversing
 	if(op->F == NULL) {
-		/* Create both filter and result matrices.
-		 * make sure M's format is SPARSE, required by the matrix iterator */
+		// create both filter and result matrices
 		size_t required_dim = Graph_RequiredMatrixDim(op->graph);
 		RG_Matrix_new(&op->M, GrB_BOOL, op->record_cap, required_dim);
 		RG_Matrix_new(&op->F, GrB_BOOL, op->record_cap, required_dim);
 
-		// Prepend the filter matrix to algebraic expression as the leftmost operand.
+		// prepend filter matrix to algebraic expression as the leftmost operand
 		AlgebraicExpression_MultiplyToTheLeft(&op->ae, op->F);
 
-		// Optimize the expression tree.
+		// optimize the expression tree
 		AlgebraicExpression_Optimize(&op->ae);
 	}
 
-	// Populate filter matrix.
+	// populate filter matrix
 	_populate_filter_matrix(op);
 
-	// Evaluate expression.
+	// evaluate expression
 	AlgebraicExpression_Eval(op->ae, op->M);
 
 	RG_MatrixTupleIter_attach(&op->iter, op->M);
-
-	// Clear filter matrix.
-	RG_Matrix_clear(op->F);
 }
 
-OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
+OpBase *NewCondTraverseOp
+(
+	const ExecutionPlan *plan,
+	Graph *g,
+	AlgebraicExpression *ae
+) {
 	OpCondTraverse *op = rm_calloc(sizeof(OpCondTraverse), 1);
-	op->graph = g;
-	op->ae = ae;
+
+	op->ae         = ae;
+	op->graph      = g;
 	op->record_cap = BATCH_SIZE;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", CondTraverseInit,
-				CondTraverseConsume, CondTraverseReset, CondTraverseToString, CondTraverseClone, CondTraverseFree,
-				false, plan);
+	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE,
+			"Conditional Traverse", CondTraverseInit, CondTraverseConsume,
+			CondTraverseReset, CondTraverseToString, CondTraverseClone,
+			CondTraverseFree, false, plan);
 
-	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Src(ae), &op->srcNodeIdx);
+	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Src(ae),
+			&op->srcNodeIdx);
 	UNUSED(aware);
 	ASSERT(aware == true);
 
@@ -92,8 +97,8 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 
 	const char *edge = AlgebraicExpression_Edge(ae);
 	if(edge) {
-		/* This operation will populate an edge in the Record.
-		 * Prepare all necessary information for collecting matching edges. */
+		// this operation will populate an edge in the Record
+		// prepare all necessary information for collecting matching edges
 		uint edge_idx = OpBase_Modifies((OpBase *)op, edge);
 		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
 		op->edge_ctx = EdgeTraverseCtx_New(ae, e, edge_idx);

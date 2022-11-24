@@ -22,11 +22,12 @@ bool GB_op_is_second    // return true if op is SECOND, of the right type
     GrB_Type type
 ) ;
 
-void GB_op_name_and_defn
+GrB_Info GB_op_name_and_defn
 (
     // output
     char *operator_name,        // op->name of the GrB operator struct
     char **operator_defn,       // op->defn of the GrB operator struct
+    size_t *operator_defn_size, // op->defn_size of the GrB operator struct
     // input
     const char *input_name,     // user-provided name, may be NULL
     const char *input_defn,     // user-provided name, may be NULL

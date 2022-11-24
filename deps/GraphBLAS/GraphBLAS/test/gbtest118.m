@@ -2,7 +2,7 @@ function gbtest118
 %GBTEST118 test GrB.argsort
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 
@@ -46,7 +46,9 @@ for k = 1:length (types)
             error ('type not supported') ;
     end 
 
-    A = GrB.random (m, n, 0.2, 'range', range) ;
+for d = [0.2 inf]
+
+    A = GrB.random (m, n, d, 'range', range) ;
 
     [C, P] = GrB.argsort (A) ;
     for k = 1:n
@@ -62,6 +64,9 @@ for k = 1:length (types)
         a = Ai (p) ;
         assert (isequal (Pk, a)) ;
     end
+
+    C2 = GrB.argsort (A) ;
+    assert (isequal (C, C2)) ;
 
     [C, P] = GrB.argsort (A, 'descend') ;
     for k = 1:n
@@ -107,8 +112,10 @@ for k = 1:length (types)
         a = Aj (p) ;
         assert (isequal (Pk', a)) ;
     end
+end
 
-    X = GrB.random (100000, 1, 0.8, 'range', range) ;
+for d = [0.8 inf]
+    X = GrB.random (100000, 1, d, 'range', range) ;
     [C, P] = GrB.argsort (X) ;
     [Xi, ~, Xx] = GrB.extracttuples (X) ;
     [x, p] = sort (Xx) ;
@@ -118,6 +125,7 @@ for k = 1:length (types)
     Pk = double (P (1:nz)) ;
     a = Xi (p) ;
     assert (isequal (Pk, a)) ;
+end
 
 end
 

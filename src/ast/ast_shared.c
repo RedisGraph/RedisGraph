@@ -1,3 +1,9 @@
+/*
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
+
 #include "ast_shared.h"
 #include "../RG.h"
 #include "../util/arr.h"
@@ -72,7 +78,7 @@ PropertyMap *PropertyMap_New
 	uint prop_count = cypher_ast_map_nentries(props);
 
 	PropertyMap *map = rm_malloc(sizeof(PropertyMap));
-	map->keys = array_new(Attribute_ID, prop_count);
+	map->keys = array_new(const char *, prop_count);
 	map->values = array_new(AR_ExpNode *, prop_count);
 
 	for(uint prop_idx = 0; prop_idx < prop_count; prop_idx++) {
@@ -82,19 +88,17 @@ PropertyMap *PropertyMap_New
 		const cypher_astnode_t *ast_value = cypher_ast_map_get_value(props, prop_idx);
 		AR_ExpNode *value                 = AR_EXP_FromASTNode(ast_value);
 
-		// Convert the string key to an Attribute ID.
-		Attribute_ID id = GraphContext_FindOrAddAttribute(gc, attribute);
 		// search for duplicate attributes
 		uint count = array_len(map->keys);
 		for (uint i = 0; i < count; i++) {
-			if(map->keys[i] == id) {
+			if(strcmp(attribute, map->keys[i]) == 0) {
 				insert_idx = i;
 				break;
 			}
 		}
 
 		if(insert_idx == prop_idx) {
-			array_append(map->keys, id);			
+			array_append(map->keys, attribute);			
 			array_append(map->values, value);
 		} else {
 			AR_EXP_Free(map->values[insert_idx]);
@@ -158,16 +162,13 @@ EdgeCreateCtx EdgeCreateCtx_Clone
 
 EntityUpdateEvalCtx *UpdateCtx_New
 (
-	UPDATE_MODE mode,
-	uint prop_count,
 	const char *alias
 ) {
 	EntityUpdateEvalCtx *ctx = rm_malloc(sizeof(EntityUpdateEvalCtx));
 
-	ctx->mode          = mode;
 	ctx->alias         = alias;
 	ctx->record_idx    = INVALID_INDEX;
-	ctx->properties    = array_new(PropertySetCtx, prop_count);
+	ctx->properties    = array_new(PropertySetCtx, 1);
 	ctx->add_labels    = NULL;
 	ctx->remove_labels = NULL;
 
@@ -182,7 +183,6 @@ EntityUpdateEvalCtx *UpdateCtx_Clone
 
 	uint count = array_len(orig->properties);
 
-	clone->mode          = orig->mode;
 	clone->alias         = orig->alias;
 	clone->record_idx    = orig->record_idx;
 	clone->properties    = array_new(PropertySetCtx, count);
@@ -197,22 +197,14 @@ EntityUpdateEvalCtx *UpdateCtx_Clone
 
 	for(uint i = 0; i < count; i ++) {
 		PropertySetCtx update = {
-			.id = orig->properties[i].id,
+			.attribute = orig->properties[i].attribute,
 			.exp = AR_EXP_Clone(orig->properties[i].exp),
+			.mode = orig->properties[i].mode,
 		};
 		array_append(clone->properties, update);
 	}
 
 	return clone;
-}
-
-void UpdateCtx_SetMode
-(
-	EntityUpdateEvalCtx *ctx,
-	UPDATE_MODE mode
-) {
-	ASSERT(ctx != NULL);
-	ctx->mode = mode;
 }
 
 void UpdateCtx_Clear

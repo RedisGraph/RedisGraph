@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "./op_delete.h"
 #include "../../errors.h"
@@ -121,9 +121,6 @@ static void _DeleteEntities
 			op->stats->relationships_deleted += edge_deleted;
 		}
 	}
-
-	// release lock
-	QueryCtx_UnlockCommit(&op->op);
 
 	// clean up
 	array_free(distinct_nodes);

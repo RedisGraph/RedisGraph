@@ -87,3 +87,10 @@ class testBoundVariables(FlowTestsBase):
         expected_result = [['v1', 'v2']]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
+    def test05_unwind_reference_entities(self):
+        query = """MATCH ()-[a]->() UNWIND a as x RETURN id(x)"""
+        actual_result = redis_graph.query(query)
+
+        # Verify results.
+        expected_result = [[0], [1], [2]]
+        self.env.assertEquals(actual_result.result_set, expected_result)

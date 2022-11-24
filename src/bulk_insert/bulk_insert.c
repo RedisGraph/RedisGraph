@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "RG.h"
 #include "bulk_insert.h"
@@ -112,7 +112,7 @@ static Attribute_ID* _BulkInsert_ReadHeaderProperties
 		*data_idx += strlen(prop_key) + 1;
 
 		// add properties to schemas
-		prop_indices[j] = GraphContext_FindOrAddAttribute(gc, prop_key);
+		prop_indices[j] = GraphContext_FindOrAddAttribute(gc, prop_key, NULL);
 	}
 
     return prop_indices;

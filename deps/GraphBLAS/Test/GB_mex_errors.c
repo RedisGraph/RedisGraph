@@ -1227,12 +1227,11 @@ void mexFunction
     ERR (GrB_Vector_extractElement_FP64_(&x_double, v, -1)) ;
     ERR (GrB_Vector_extractElement_FP64_(&x_double, v, 10)) ;
 
-    expected = GrB_DOMAIN_MISMATCH ;
-
-    ERR (GrB_Vector_extractElement_UDT ((void *) X, v, 0)) ;
-
     OK (GrB_Vector_setElement_FP64 (v, 22.8, 2)) ;
     OK (GrB_Vector_setElement_FP64 (v, 44.9, 4)) ;
+
+    expected = GrB_DOMAIN_MISMATCH ;
+    ERR (GrB_Vector_extractElement_UDT ((void *) X, v, 2)) ;
 
     x_double = 404 ;
     OK (GrB_Vector_extractElement_FP64_(&x_double, v, 3)) ;
@@ -1666,18 +1665,24 @@ void mexFunction
     ERR (GrB_Matrix_extractElement_FP64   (NULL, Acrud, 0, 0)) ;
     ERR (GrB_Matrix_extractElement_UDT    (NULL, Acrud, 0, 0)) ;
 
-    expected = GrB_INVALID_INDEX ;
+    OK (GrB_Matrix_setElement_FP64 (A, 22.8, 2, 0)) ;
+    OK (GrB_Matrix_setElement_FP64 (A, 44.9, 4, 0)) ;
 
+    expected = GrB_INVALID_INDEX ;
+    OK (GxB_Matrix_Option_set (A, GxB_FORMAT, GxB_BY_ROW)) ;
+    GxB_print (A, 3) ;
     ERR (GrB_Matrix_extractElement_FP64_(&x_double, A, -1, 0)) ;
     ERR (GrB_Matrix_extractElement_FP64_(&x_double, A, 10, 0)) ;
     ERR (GrB_Matrix_extractElement_FP64_(&x_double, A, 0, 911)) ;
+    OK (GxB_Matrix_Option_set (A, GxB_FORMAT, GxB_BY_COL)) ;
+    GxB_print (A, 3) ;
+    ERR (GrB_Matrix_extractElement_FP64_(&x_double, A, -1, 0)) ;
+    ERR (GrB_Matrix_extractElement_FP64_(&x_double, A, 10, 0)) ;
+    ERR (GrB_Matrix_extractElement_FP64_(&x_double, A, 0, 911)) ;
+    OK (GxB_Matrix_Option_set (A, GxB_FORMAT, GxB_BY_ROW)) ;
 
     expected = GrB_DOMAIN_MISMATCH ;
-
-    ERR (GrB_Matrix_extractElement_UDT ((void *) X, A, 0, 0)) ;
-
-    OK (GrB_Matrix_setElement_FP64 (A, 22.8, 2, 0)) ;
-    OK (GrB_Matrix_setElement_FP64 (A, 44.9, 4, 0)) ;
+    ERR (GrB_Matrix_extractElement_UDT ((void *) X, A, 2, 0)) ;
 
     x_double = 404 ;
     OK (GrB_Matrix_extractElement_FP64_(&x_double, A, 3, 0)) ;
@@ -2828,6 +2833,7 @@ void mexFunction
     ERR1 (C4, GxB_Matrix_subassign (C4, C4, GrB_PLUS_FP64, C4, I3, 3, J3, 2, NULL)) ;
     OK (GrB_Matrix_free_(&C4)) ;
 
+    expected = GrB_INVALID_INDEX ;
     OK (GrB_Matrix_dup (&A4, A)) ;
     ERR1 (A4, GxB_Matrix_subassign_FP64_(A4, NULL, GrB_PLUS_FP64, x_double, I3, 1, J3, 1, NULL));
     OK (GrB_Matrix_free_(&A4)) ;
@@ -4182,6 +4188,8 @@ void mexFunction
         NULL)) ;
     OK (GB_Matrix_check (A, "valid pending pi", G3, NULL)) ;
     OK (GrB_Matrix_nvals (&nvals, A)) ;
+    OK (GB_Matrix_check (A, "valid pending pi again", G3, NULL)) ;
+    printf ("nvals %ld\n", nvals) ;
     OK (GrB_Matrix_wait_(A, GrB_MATERIALIZE)) ;
     CHECK (nvals == 1) ;
 
@@ -4576,7 +4584,7 @@ void mexFunction
         OK (GxB_Matrix_fprint (Eleven, "Eleven", pr, ff)) ;
     }
 
-    OK (GB_convert_hyper_to_sparse (Eleven, Context)) ;
+    OK (GB_convert_hyper_to_sparse (Eleven, true, Context)) ;
     int64_t nothing = 42 ;
     printf ("\nEleven invalid hypersparse:\n") ;
     GB_free_memory ((void **) &(Eleven->h), Eleven->h_size) ;
@@ -4815,7 +4823,7 @@ void mexFunction
     OK (GB_Matrix_check (A, "A pattern 2", G3, NULL)) ;
 
     GB_bix_free (NULL) ;
-    GB_ph_free (NULL) ;
+    GB_phy_free (NULL) ;
 
     GrB_Matrix_free_(&C) ;
     GrB_Matrix_free_(&B) ;

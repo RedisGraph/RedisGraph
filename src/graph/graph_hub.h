@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #pragma once
 
@@ -97,4 +97,12 @@ Schema *AddSchema
 	GraphContext *gc,             // graph context to add the schema
 	const char *label,            // schema label
 	SchemaType t                  // schema type (node/edge)
+);
+
+// Find or adding attribute. If there is a need to add an attribute to the graph
+// the attribute is tracked by the undo log so in case of error it will be deleted.
+Attribute_ID FindOrAddAttribute
+(
+	GraphContext *gc,             // graph context to add the attribute
+	const char *attribute         // attribute name
 );

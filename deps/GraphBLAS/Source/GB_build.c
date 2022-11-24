@@ -244,7 +244,7 @@ GrB_Info GB_build               // build matrix
 
     // the type, dimensions, hyper_switch, bitmap_switch and sparsity control
     // are still preserved in C.
-    GB_phbix_free (C) ;
+    GB_phybix_free (C) ;
 
     //--------------------------------------------------------------------------
     // build the matrix T
@@ -289,6 +289,7 @@ GrB_Info GB_build               // build matrix
         nvals,          // number of tuples
         dup2,           // operator to assemble duplicates (may be NULL)
         xtype,          // type of the X array
+        true,           // burble is OK
         Context
     )) ;
 

@@ -23,13 +23,13 @@ function iset = mis (A, check)
 % See also GrB.offdiag.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 % NOTE: this is a high-level algorithm that uses GrB objects.
 
 [m, n] = size (A) ;
 if (m ~= n)
-    error ('A must be square') ;
+    error ('GrB:error', 'A must be square') ;
 end
 
 % convert A to logical
@@ -41,16 +41,16 @@ else
     if (isequal (check, 'check'))
         check = true ;
     else
-        error ('unknown option') ;
+        error ('GrB:error', 'unknown option') ;
     end
 end
 
 if (check)
     if (nnz (diag (A)) > 0)
-        error ('A must not have any diagonal entries') ;
+        error ('GrB:error', 'A must not have any diagonal entries') ;
     end
     if (~issymmetric (A))
-        error ('A must be symmetric') ;
+        error ('GrB:error', 'A must be symmetric') ;
     end
 end
 
@@ -124,7 +124,7 @@ while (ncand > 0)
 
     % this will not occur, unless the input is corrupted somehow
     if (last_ncand == ncand)
-        error ('method stalled; rerun with ''check'' option') ;
+        error ('GrB:error', 'method stalled; rerun with ''check'' option') ;
     end
     last_ncand = ncand ;
 end

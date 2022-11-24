@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -426,6 +426,13 @@ GrB_UnaryOp gb_string_and_type_to_unop  // return op from string and type
 
         if (type == GrB_FP32  ) return (GxB_ERFC_FP32) ;
         if (type == GrB_FP64  ) return (GxB_ERFC_FP64) ;
+
+    }
+    else if (MATCH (op_name, "cbrt"))
+    { 
+
+        if (type == GrB_FP32  ) return (GxB_CBRT_FP32) ;
+        if (type == GrB_FP64  ) return (GxB_CBRT_FP64) ;
 
     }
     else if (MATCH (op_name, "conj"))

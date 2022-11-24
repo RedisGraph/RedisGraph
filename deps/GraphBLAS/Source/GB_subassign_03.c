@@ -116,7 +116,7 @@ GrB_Info GB_subassign_03
             // get S(iA_start:end,j)
             //------------------------------------------------------------------
 
-            GB_GET_VECTOR_FOR_IXJ (S, iA_start) ;
+            GB_LOOKUP_VECTOR_FOR_IXJ (S, iA_start) ;
 
             //------------------------------------------------------------------
             // C(I(iA_start,iA_end-1),jC) += scalar
@@ -182,7 +182,7 @@ GrB_Info GB_subassign_03
             // get S(iA_start:end,j)
             //------------------------------------------------------------------
 
-            GB_GET_VECTOR_FOR_IXJ (S, iA_start) ;
+            GB_LOOKUP_VECTOR_FOR_IXJ (S, iA_start) ;
 
             //------------------------------------------------------------------
             // C(I(iA_start,iA_end-1),jC) += scalar

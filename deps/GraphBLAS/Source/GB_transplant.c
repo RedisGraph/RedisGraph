@@ -17,6 +17,12 @@
 // C->hyper_switch, C->bitmap_switch, C->sparsity_control, and C->static_header
 // are not modified by the transplant.
 
+#define GB_FREE_ALL                 \
+{                                   \
+    GB_phybix_free (C) ;            \
+    GB_Matrix_free (Ahandle) ;      \
+}
+
 #include "GB.h"
 
 GrB_Info GB_transplant          // transplant one matrix into another
@@ -32,6 +38,7 @@ GrB_Info GB_transplant          // transplant one matrix into another
     // check inputs
     //--------------------------------------------------------------------------
 
+    GrB_Info info ;
     ASSERT (Ahandle != NULL) ;
     GrB_Matrix A = *Ahandle ;
     ASSERT (!GB_aliased (C, A)) ;
@@ -59,6 +66,7 @@ GrB_Info GB_transplant          // transplant one matrix into another
     // determine the number of threads to use
     //--------------------------------------------------------------------------
 
+    int64_t anvals = A->nvals ;
     int64_t anz = GB_nnz_held (A) ;
     int64_t anvec = A->nvec ;
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
@@ -69,7 +77,7 @@ GrB_Info GB_transplant          // transplant one matrix into another
     //--------------------------------------------------------------------------
 
     // free all content of C
-    GB_phbix_free (C) ;
+    GB_phybix_free (C) ;
 
     ASSERT (!GB_PENDING (C)) ;
     ASSERT (!GB_ZOMBIES (C)) ;
@@ -90,11 +98,34 @@ GrB_Info GB_transplant          // transplant one matrix into another
     ASSERT (C->b == NULL) ;
     ASSERT (C->i == NULL) ;
     ASSERT (C->x == NULL) ;
+    ASSERT (C->Y == NULL) ;
     ASSERT (C->Pending == NULL) ;
 
     // determine if C should be constructed as a bitmap or full matrix
+    bool C_is_hyper = GB_IS_HYPERSPARSE (A) ;
     bool C_is_bitmap = GB_IS_BITMAP (A) ;
-    bool C_is_full = GB_as_if_full (A) && !C_is_bitmap ;
+    bool C_is_full = GB_as_if_full (A) && !C_is_bitmap && !C_is_hyper ;
+
+    //--------------------------------------------------------------------------
+    // transplant A->Y into C->Y
+    //--------------------------------------------------------------------------
+
+    if (C_is_hyper && A->Y != NULL)
+    {
+        if (A->Y_shallow || GB_is_shallow (A->Y))
+        {
+            // A->Y is shallow, so create a deep copy for C
+            GB_OK (GB_dup (&(C->Y), A->Y, Context)) ;
+        }
+        else
+        {
+            // A->Y is not shallow, so transplant it into C
+            C->Y = A->Y ;
+            A->Y = NULL ;
+            A->Y_shallow = false ;
+        }
+        C->Y_shallow = false ;
+    }
 
     //--------------------------------------------------------------------------
     // transplant pending tuples from A to C
@@ -143,8 +174,7 @@ GrB_Info GB_transplant          // transplant one matrix into another
     if (!ok)
     { 
         // out of memory
-        GB_phbix_free (C) ;
-        GB_Matrix_free (Ahandle) ;
+        GB_FREE_ALL ;
         return (GrB_OUT_OF_MEMORY) ;
     }
 
@@ -201,7 +231,7 @@ GrB_Info GB_transplant          // transplant one matrix into another
         C->nvec = avdim ;
 
         // free any non-shallow A->p and A->h content of A
-        GB_ph_free (A) ;
+        GB_phy_free (A) ;
 
     }
     else if (A->p_shallow || A->h_shallow)
@@ -216,15 +246,14 @@ GrB_Info GB_transplant          // transplant one matrix into another
         if (A->h != NULL)
         {
             // A is hypersparse, create new C->p and C->h
-            C->plen = anvec ;
+            C->plen = GB_IMAX (1, anvec) ;
             C->nvec = anvec ;
             C->p = GB_MALLOC (C->plen+1, int64_t, &(C->p_size)) ;
             C->h = GB_MALLOC (C->plen  , int64_t, &(C->h_size)) ;
             if (C->p == NULL || C->h == NULL)
             { 
                 // out of memory
-                GB_phbix_free (C) ;
-                GB_Matrix_free (Ahandle) ;
+                GB_FREE_ALL ;
                 return (GrB_OUT_OF_MEMORY) ;
             }
 
@@ -241,8 +270,7 @@ GrB_Info GB_transplant          // transplant one matrix into another
             if (C->p == NULL)
             { 
                 // out of memory
-                GB_phbix_free (C) ;
-                GB_Matrix_free (Ahandle) ;
+                GB_FREE_ALL ;
                 return (GrB_OUT_OF_MEMORY) ;
             }
 
@@ -251,7 +279,7 @@ GrB_Info GB_transplant          // transplant one matrix into another
         }
 
         // free any non-shallow A->p and A->h content of A
-        GB_ph_free (A) ;
+        GB_phy_free (A) ;
 
     }
     else
@@ -279,6 +307,7 @@ GrB_Info GB_transplant          // transplant one matrix into another
     C->p_shallow = false ;
     C->h_shallow = false ;
 
+    C->nvals = anvals ;
     C->magic = GB_MAGIC ;           // C is now initialized
     A->magic = GB_MAGIC2 ;          // A is now invalid
 
@@ -367,7 +396,6 @@ GrB_Info GB_transplant          // transplant one matrix into another
     }
 
     C->b_shallow = false ;
-    C->nvals = A->nvals ;
 
     //--------------------------------------------------------------------------
     // free A and return result

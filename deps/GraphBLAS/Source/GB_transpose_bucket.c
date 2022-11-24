@@ -51,7 +51,7 @@
 
 #define GB_FREE_ALL                                                     \
 {                                                                       \
-    GB_phbix_free (C) ;                                                 \
+    GB_phybix_free (C) ;                                                \
     GB_FREE_WORKSPACE ;                                                 \
 }
 
@@ -126,6 +126,7 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
         GxB_SPARSE, true, A->hyper_switch, vlen, anz, true, C_iso, Context)) ;
 
     int64_t *restrict Cp = C->p ;
+    C->nvals = anz ;
 
     //--------------------------------------------------------------------------
     // allocate workspace
@@ -179,6 +180,7 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
 
         // Only requires a single int64 workspace of size vlen for a single
         // thread.  The resulting C matrix is not jumbled.
+        GBURBLE ("(1-thread bucket transpose) ") ;
 
         // compute the row counts of A.  No need to scan the A->p pointers
         ASSERT (nworkspaces == 1) ;
@@ -209,6 +211,8 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
         // because of contention on the atomic workspace.  Otherwise, it is
         // typically faster than the non-atomic method.  The resulting C matrix
         // is jumbled.
+
+        GBURBLE ("(%d-thread atomic bucket transpose) ", nthreads) ;
 
         // compute the row counts of A.  No need to scan the A->p pointers
         int64_t *restrict workspace = Workspaces [0] ;
@@ -244,9 +248,11 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
         // resulting C matrix is not jumbled, so this can save work if C needs
         // to be unjumbled later.
 
+        GBURBLE ("(%d-thread non-atomic bucket transpose) ", nthreads) ;
+
         ASSERT (nworkspaces == nthreads) ;
         const int64_t *restrict Ap = A->p ;
-        const int64_t *restrict Ah = A->h ;
+//      const int64_t *restrict Ah = A->h ;
         const int64_t *restrict Ai = A->i ;
 
         int tid ;
@@ -259,7 +265,7 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
             for (int64_t k = A_slice [tid] ; k < A_slice [tid+1] ; k++)
             {
                 // iterate over the entries in A(:,j)
-                int64_t j = GBH (Ah, k) ;
+                // int64_t j = GBH (Ah, k) ;
                 int64_t pA_start = Ap [k] ;
                 int64_t pA_end = Ap [k+1] ;
                 for (int64_t pA = pA_start ; pA < pA_end ; pA++)

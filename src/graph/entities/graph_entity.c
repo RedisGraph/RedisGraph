@@ -1,14 +1,15 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "graph_entity.h"
 #include "../../errors.h"
 #include "../../query_ctx.h"
 #include "../graphcontext.h"
 #include "../../util/rmalloc.h"
+#include "../../datatypes/map.h"
 #include "../../datatypes/array.h"
 
 // add a new property to entity
@@ -71,6 +72,24 @@ SIValue GraphEntity_Keys
 		SIArray_Append(&keys, SI_ConstStringVal(key));
 	}
 	return keys;
+}
+
+// returns a map containing all the properties in the given node, or edge. 
+SIValue GraphEntity_Properties
+(
+	const GraphEntity *e
+) {
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	const AttributeSet set = GraphEntity_GetAttributes(e);
+	int propCount = ATTRIBUTE_SET_COUNT(set);
+	SIValue map = SI_Map(propCount);
+	for(int i = 0; i < propCount; i++) {
+		Attribute_ID attr_id;
+		SIValue value = AttributeSet_GetIdx(set, i, &attr_id);
+		const char *key = GraphContext_GetAttributeString(gc, attr_id);
+		Map_Add(&map, SI_ConstStringVal(key), value);
+	}
+	return map;
 }
 
 // prints the attribute set into a buffer, returns what is the string length

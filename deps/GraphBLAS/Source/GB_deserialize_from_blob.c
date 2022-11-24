@@ -16,6 +16,7 @@
 #include "GB.h"
 #include "GB_serialize.h"
 #include "GB_lz4.h"
+#include "GB_zstd.h"
 
 #define GB_FREE_ALL         \
 {                           \
@@ -44,7 +45,7 @@ GrB_Info GB_deserialize_from_blob
     // check inputs
     //--------------------------------------------------------------------------
 
-    GrB_Info info ;
+//  GrB_Info info ;
     ASSERT (blob != NULL) ;
     ASSERT (s_handle != NULL) ;
     ASSERT (X_handle != NULL) ;
@@ -104,11 +105,12 @@ GrB_Info GB_deserialize_from_blob
         }
 
     }
-    else if (algo == GxB_COMPRESSION_LZ4 || algo == GxB_COMPRESSION_LZ4HC)
+    else if (algo == GxB_COMPRESSION_LZ4 || algo == GxB_COMPRESSION_LZ4HC
+        || algo == GxB_COMPRESSION_ZSTD)
     {
 
         //----------------------------------------------------------------------
-        // LZ4 / LZ4HC compression
+        // LZ4, LZ4HC, or ZSTD compression
         //----------------------------------------------------------------------
 
         int nthreads = GB_IMIN (nthreads_max, nblocks) ;
@@ -143,13 +145,27 @@ GrB_Info GB_deserialize_from_blob
                 // GB_deserialize, if requested.
                 const char *src = (const char *) (blob + s + s_start) ;
                 char *dst = (char *) (X + kstart) ;
-                int src_size = (int) s_size ;
-                int dst_size = (int) d_size ;
-                int u = LZ4_decompress_safe (src, dst, src_size, dst_size) ;
-                if (u != dst_size)
-                {
-                    // blob is invalid
-                    ok = false ;
+                if (algo == GxB_COMPRESSION_ZSTD)
+                { 
+                    // ZSTD
+                    size_t u = ZSTD_decompress (dst, d_size, src, s_size) ;
+                    if (u != d_size)
+                    {
+                        // blob is invalid
+                        ok = false ;
+                    }
+                }
+                else
+                { 
+                    // LZ4 or LZ4HC
+                    int src_size = (int) s_size ;
+                    int dst_size = (int) d_size ;
+                    int u = LZ4_decompress_safe (src, dst, src_size, dst_size) ;
+                    if (u != dst_size)
+                    {
+                        // blob is invalid
+                        ok = false ;
+                    }
                 }
             }
         }

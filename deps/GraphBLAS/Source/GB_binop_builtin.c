@@ -43,13 +43,25 @@ bool GB_binop_builtin               // true if binary operator is builtin
 {
 
     //--------------------------------------------------------------------------
+    // handle the flipxy (for a semiring only)
+    //--------------------------------------------------------------------------
+
+    if (flipxy)
+    { 
+        // For a semiring, GB_AxB_meta has already handled flipxy for built-in
+        // semirings and operators that can be flipped.  If flipxy is still
+        // true, the binary operator is not part of a built-in semiring.
+        return (false) ;
+    }
+
+    //--------------------------------------------------------------------------
     // check if the operator is builtin, with no typecasting
     //--------------------------------------------------------------------------
 
     GrB_Type op_xtype, op_ytype, op_ztype ;
     if (op == NULL)
     { 
-        // implicit GB_SECOND_[TYPE] operator
+        // GB_wait: implicit GB_SECOND_[TYPE] operator
         ASSERT (A_type == B_type) ;
         (*opcode) = GB_SECOND_binop_code ;
         op_xtype = A_type ;
@@ -76,8 +88,7 @@ bool GB_binop_builtin               // true if binary operator is builtin
     // check if A matches the input to the operator
     if (!A_is_pattern && !op_is_positional)
     {
-        if ((A_type != (flipxy ? op_ytype : op_xtype)) ||
-            (A_type->code >= GB_UDT_code))
+        if ((A_type != op_xtype) || (A_type->code >= GB_UDT_code))
         { 
             // A is a user-defined type, or its type does not match the input
             // to the operator
@@ -88,8 +99,7 @@ bool GB_binop_builtin               // true if binary operator is builtin
     // check if B matches the input to the operator
     if (!B_is_pattern && !op_is_positional)
     {
-        if ((B_type != (flipxy ? op_xtype : op_ytype)) ||
-            (B_type->code >= GB_UDT_code))
+        if ((B_type != op_ytype) || (B_type->code >= GB_UDT_code))
         { 
             // B is a user-defined type, or its type does not match the input
             // to the operator
@@ -125,28 +135,6 @@ bool GB_binop_builtin               // true if binary operator is builtin
         (*opcode) = GB_boolean_rename (*opcode) ;
     }
 
-    //--------------------------------------------------------------------------
-    // handle the flipxy (for a semiring only)
-    //--------------------------------------------------------------------------
-
-    // If flipxy is true, the matrices A and B have been flipped (A passed as B
-    // and B passed as A), so pass A as the 2nd argument to the operator, and B
-    // as the first.  This can also be done by flipping operator opcodes
-    // instead of flipping the A and B inputs to the operator, thus simplifying
-    // the workers.  The z=x-y and z=x/y operators are flipped using the GxB_*
-    // functions rminus (z=y-x)and rdiv (z=y/x).
-
-    bool handled = true ;
-    if (flipxy)
-    { 
-        // All built-in semirings use either commutative multiplicative
-        // operators (PLUS, TIMES, ANY, ...), or operators that have flipped
-        // versions (DIV vs RDIV, ...).  Flipping the operator does not handle
-        // ATAN2, BGET, and other built-in operators, but these do not
-        // correspond to built-in semirings.
-        (*opcode) = GB_flip_binop_code (*opcode, &handled) ; // for any opcode
-    }
-
-    return (handled) ;
+    return (true) ;
 }
 

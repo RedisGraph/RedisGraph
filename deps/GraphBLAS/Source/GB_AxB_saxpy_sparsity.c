@@ -46,7 +46,7 @@ void GB_AxB_saxpy_sparsity          // determine C_sparsity and method to use
     double m = (double) A->vlen ;
     double n = (double) B->vdim ;
     double anz = (double) GB_nnz_held (A) ;
-    double bnz = (double) GB_nnz_held (B) ;
+//  double bnz = (double) GB_nnz_held (B) ;
 
     int M_sparsity = (M == NULL) ? 0 : GB_sparsity (M) ;
     int B_sparsity = GB_sparsity (B) ;

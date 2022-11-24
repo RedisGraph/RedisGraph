@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "RG.h"
 #include "rg_matrix.h"
@@ -30,7 +30,43 @@ bool RG_Matrix_isDirty
 	const RG_Matrix C
 ) {
 	ASSERT(C);
-	return C->dirty;
+
+	if(C->dirty) {
+		return true;
+	}
+
+	bool pending_M;
+	bool pending_DP;
+	bool pending_DM;
+
+	GxB_Matrix_Pending(RG_MATRIX_M(C), &pending_M);
+	GxB_Matrix_Pending(RG_MATRIX_DELTA_PLUS(C), &pending_DP);
+	GxB_Matrix_Pending(RG_MATRIX_DELTA_MINUS(C), &pending_DM);
+
+	return (pending_M | pending_DM | pending_DP);
+}
+
+// checks if C is fully synced
+// a synced delta matrix does not contains any entries in
+// either its delta-plus and delta-minus internal matrices
+bool RG_Matrix_Synced
+(
+	const RG_Matrix C  // matrix to inquery
+) {
+	ASSERT(C);
+
+	// quick indication, if the matrix is marked as dirty that means
+	// entires exists in either DP or DM
+	if(C->dirty) {
+		return false;
+	}
+
+	GrB_Index dp_nvals;
+	GrB_Index dm_nvals;
+	GrB_Matrix_nvals(&dp_nvals, RG_MATRIX_DELTA_PLUS(C));
+	GrB_Matrix_nvals(&dm_nvals, RG_MATRIX_DELTA_MINUS(C));
+
+	return ((dp_nvals + dm_nvals) == 0);
 }
 
 // locks the matrix

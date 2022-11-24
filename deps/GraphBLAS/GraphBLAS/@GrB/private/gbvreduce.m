@@ -1,7 +1,7 @@
-function C = gbvreduce (Cin, M, accum, op, A, desc)      %#ok
+function [C,k] = gbvreduce (Cin, M, accum, op, A, desc)      %#ok
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 error ('GrB:mex', 'mexFunction not found; use gbmake to compile GraphBLAS') ;
 

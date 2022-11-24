@@ -1,7 +1,7 @@
 /*
- * Copyright 2018-2022 Redis Labs Ltd. and Contributors
- *
- * This file is available under the Redis Labs Source Available License Agreement
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
  */
 
 #include "create_functions.h"
@@ -212,9 +212,6 @@ void CommitNewEntities
 	pending->stats->nodes_created          +=  node_count;
 	pending->stats->relationships_created  +=  edge_count;
 
-	// release lock
-	QueryCtx_UnlockCommit(op);
-
 	// restore matrix sync policy to default
 	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 }
@@ -222,6 +219,7 @@ void CommitNewEntities
 // resolve the properties specified in the query into constant values
 void ConvertPropertyMap
 (
+	GraphContext* gc,
 	AttributeSet *attributes,
 	Record r,
 	PropertyMap *map,
@@ -271,7 +269,8 @@ void ConvertPropertyMap
 		}
 
 		// set the converted attribute
-		AttributeSet_Add(attributes, map->keys[i], val);
+		Attribute_ID attribute_id = FindOrAddAttribute(gc, map->keys[i]);
+		AttributeSet_Add(attributes, attribute_id, val);
 		SIValue_Free(val);
 	}
 }
