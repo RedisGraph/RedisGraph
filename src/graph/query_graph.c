@@ -414,7 +414,6 @@ QueryGraph *QueryGraph_ExtractPatterns
 		for(uint j = 0; j < npaths; j ++) {
 			const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
 			_QueryGraph_ExtractPath(qg, graph, path);
-			
 		}
 	}
 

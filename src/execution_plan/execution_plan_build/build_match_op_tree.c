@@ -180,7 +180,7 @@ static void _buildOptionalMatchOps(ExecutionPlan *plan, AST *ast, const cypher_a
 	}
 
 	// Build the new Match stream and add it to the Optional stream.
-	OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, clause);
+	OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, cypher_ast_match_get_pattern(clause));
 	array_free(arguments);
 	ExecutionPlan_AddOp(optional, match_stream);
 

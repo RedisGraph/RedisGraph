@@ -203,13 +203,13 @@ void ExecutionPlanSegment_Convert(GraphContext *gc, AST *ast, ExecutionPlan *pla
 		// Converting a WITH clause can create multiple operations.
 		buildWithOps(plan, node);
 	} else if(t == CYPHER_AST_QUERY) {
-		uint clause_count = cypher_ast_query_nclauses(ast->root);
+		uint clause_count = cypher_ast_query_nclauses(node);
 		for(uint i = 0; i < clause_count; i ++) {
 			// Build the appropriate operation(s) for each clause in the query.
-			const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
+			const cypher_astnode_t *clause = cypher_ast_query_get_clause(node, i);
 			ExecutionPlanSegment_Convert(gc, ast, plan, clause);
 		}
-	} else if(t == CYPHER_AST_PATTERN_COMPREHENSION || t == CYPHER_AST_PATTERN_PATH) {
+	} else if(t == CYPHER_AST_PATTERN_COMPREHENSION || t == CYPHER_AST_PATTERN_PATH || t == CYPHER_AST_PATTERN) {
 		ExecutionPlan_ProcessQueryGraph(plan, plan->query_graph, ast);
 	} else {
 		ASSERT(false);
