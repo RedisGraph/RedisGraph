@@ -386,7 +386,7 @@ class testIndexScanFlow():
         g = Graph(self.env.getConnection(), 'fulltext_scoring')
 
         # create full-text index over label 'L', attribute 'v'
-        g.call_procedure('db.idx.fulltext.createNodeIndex', 'L', 'v')
+        create_fulltext_index(g, 'L', 'v', sync=True)
 
         # introduce 2 nodes
         g.query("create (:L {v:'hello world hello'})")
@@ -621,7 +621,7 @@ class testIndexScanFlow():
         # create exact match index over User id
         create_node_exact_match_index(redis_graph, 'User', 'id', sync=True)
         # create a fulltext index over User id
-        redis_graph.query("CALL db.idx.fulltext.createNodeIndex('User', 'id')")
+        create_fulltext_index(redis_graph, 'User', 'id', sync=True)
 
         #-----------------------------------------------------------------------
         # create node
