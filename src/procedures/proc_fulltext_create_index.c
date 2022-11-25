@@ -214,7 +214,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke
 	SIValue lang;  // index language
 
 	bool res              = false;
-	Index *idx            = NULL;
+	Index idx             = NULL;
 	GraphContext *gc      = QueryCtx_GetGraphCtx();
 	uint fields_count     = arg_count - 1; // skip label
 	const SIValue *fields = args + 1;      // skip index name

@@ -20,7 +20,7 @@ static void _RdbLoadFullTextIndex
 	 * #properties - M
 	 * M * property: {name, weight, nostem, phonetic} */
 
-	Index *idx       = NULL;
+	Index idx        = NULL;
 	char *language   = RedisModule_LoadStringBuffer(rdb, NULL);
 	char **stopwords = NULL;
 	
@@ -73,7 +73,7 @@ static void _RdbLoadExactMatchIndex
 	 * #properties - M
 	 * M * property */
 
-	Index *idx = NULL;
+	Index idx = NULL;
 	uint fields_count = RedisModule_LoadUnsigned(rdb);
 	for(uint i = 0; i < fields_count; i++) {
 		char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);

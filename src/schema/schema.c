@@ -69,7 +69,7 @@ unsigned short Schema_IndexCount
 	return n;
 }
 
-Index *Schema_GetIndex
+Index Schema_GetIndex
 (
 	const Schema *s,
 	Attribute_ID *attr_id,
@@ -77,7 +77,7 @@ Index *Schema_GetIndex
 ) {
 	ASSERT(s != NULL);
 
-	Index *idx = NULL;
+	Index idx = NULL;
 	if(type != IDX_ANY) {
 		idx = (type == IDX_EXACT_MATCH) ? s->index : s->fulltextIdx;
 		// return NULL if the index does not exist, or an attribute was
@@ -106,7 +106,7 @@ Index *Schema_GetIndex
 // attribute must already exists and not associated with an index
 int Schema_AddIndex
 (
-	Index **idx,        // [input/output] index to create
+	Index *idx,         // [input/output] index to create
 	Schema *s,          // schema holding the index
 	IndexField *field,  // field to index
 	IndexType type      // type of entities to index
@@ -116,7 +116,7 @@ int Schema_AddIndex
 	ASSERT(field != NULL);
 
 	// see if index already exists
-	Index *_idx = Schema_GetIndex(s, NULL, type);
+	Index _idx = Schema_GetIndex(s, NULL, type);
 
 	// index exists, make sure attribute isn't already indexed
 	if(_idx != NULL) {
@@ -160,7 +160,7 @@ static int _Schema_RemoveExactMatchIndex
 		return INDEX_FAIL;
 	}
 
-	Index *idx = Schema_GetIndex(s, &attribute_id, IDX_EXACT_MATCH);
+	Index idx = Schema_GetIndex(s, &attribute_id, IDX_EXACT_MATCH);
 	if(idx == NULL) {
 		return INDEX_FAIL;
 	}
@@ -183,7 +183,7 @@ static int _Schema_RemoveFullTextIndex
 	ASSERT(s != NULL);
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+	Index idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
 	if(idx == NULL) {
 		return INDEX_FAIL;
 	}
@@ -223,7 +223,7 @@ void Schema_AddNodeToIndices
 	ASSERT(s != NULL);
 	ASSERT(n != NULL);
 
-	Index *idx = NULL;
+	Index idx = NULL;
 
 	idx = s->fulltextIdx;
 	if(idx) Index_IndexNode(idx, n);
@@ -241,7 +241,7 @@ void Schema_AddEdgeToIndices
 	ASSERT(s != NULL);
 	ASSERT(e != NULL);
 
-	Index *idx = NULL;
+	Index idx = NULL;
 
 	idx = s->fulltextIdx;
 	if(idx) Index_IndexEdge(idx, e);
@@ -259,7 +259,7 @@ void Schema_RemoveNodeFromIndices
 	ASSERT(s != NULL);
 	ASSERT(n != NULL);
 
-	Index *idx = NULL;
+	Index idx = NULL;
 
 	idx = s->fulltextIdx;
 	if(idx) Index_RemoveNode(idx, n);
@@ -277,7 +277,7 @@ void Schema_RemoveEdgeFromIndices
 	ASSERT(s != NULL);
 	ASSERT(e != NULL);
 
-	Index *idx = NULL;
+	Index idx = NULL;
 
 	idx = s->fulltextIdx;
 	if(idx) Index_RemoveEdge(idx, e);

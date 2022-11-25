@@ -11,18 +11,18 @@
 #include "../graph/entities/edge.h"
 #include "../graph/rg_matrix/rg_matrix_iter.h"
 
-extern RSDoc *Index_IndexGraphEntity(Index *idx,const GraphEntity *e,
+extern RSDoc *Index_IndexGraphEntity(Index idx,const GraphEntity *e,
 		const void *key, size_t key_len, uint *doc_field_count);
 
 void Index_IndexEdge
 (
-	Index *idx,
+	Index idx,
 	const Edge *e
 ) {
 	ASSERT(idx  !=  NULL);
 	ASSERT(e    !=  NULL);
 
-	RSIndex   *rsIdx   =  idx->idx;
+	RSIndex   *rsIdx   =  Index_RSIndex(idx);
 	EntityID  src_id   =  Edge_GetSrcNodeID(e);
 	EntityID  dest_id  =  Edge_GetDestNodeID(e);
 	EntityID  edge_id  =  ENTITY_GET_ID(e);
@@ -54,7 +54,7 @@ void Index_IndexEdge
 
 void Index_RemoveEdge
 (
-	Index *idx,    // index to update
+	Index idx,     // index to update
 	const Edge *e  // edge to remove from index
 ) {
 	ASSERT(e   != NULL);
@@ -66,6 +66,6 @@ void Index_RemoveEdge
 
 	EdgeIndexKey key = {.src_id = src_id, .dest_id = dest_id, .edge_id = edge_id};
 	size_t key_len = sizeof(EdgeIndexKey);
-	RediSearch_DeleteDocument(idx->idx, &key, key_len);
+	RediSearch_DeleteDocument(Index_RSIndex(idx), &key, key_len);
 }
 

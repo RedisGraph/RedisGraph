@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "indexer.h"
 #include "../redismodule.h"
@@ -18,7 +18,7 @@ typedef enum {
 
 // index population context
 typedef struct {
-	Index *idx;        // index to populate
+	Index idx;         // index to populate
 	GraphContext *gc;  // graph holding entities to index
 	IndexerOp op;      // operation to perform populate / drop
 } IndexPopulateCtx;
@@ -176,7 +176,7 @@ bool Indexer_Init(void) {
 		goto cleanup;
 	}
 
-    t_res = pthread_create(&indexer->t, &attr, _index_populate, NULL);
+	t_res = pthread_create(&indexer->t, &attr, _index_populate, NULL);
 	if(t_res != 0) {
 		goto cleanup;	
 	}
@@ -217,7 +217,7 @@ cleanup:
 void Indexer_PopulateIndex
 (
 	GraphContext *gc, // graph to operate on
-	Index *idx        // index to populate
+	Index idx         // index to populate
 ) {
 	ASSERT(gc      != NULL);
 	ASSERT(idx     != NULL);
@@ -242,7 +242,7 @@ void Indexer_PopulateIndex
 // eventually the indexer working thread will pick it up and drop the index
 void Indexer_DropIndex
 (
-	Index *idx  // index to drop
+	Index idx  // index to drop
 ) {
 	ASSERT(idx     != NULL);
 	ASSERT(indexer != NULL);

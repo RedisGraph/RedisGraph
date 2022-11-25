@@ -427,10 +427,16 @@ bool GraphContext_HasIndices(GraphContext *gc) {
 
 	return false;
 }
-Index *GraphContext_GetIndexByID(const GraphContext *gc, int id,
-								 Attribute_ID *attribute_id, IndexType type, SchemaType t) {
+Index GraphContext_GetIndexByID
+(
+	const GraphContext *gc,
+	int id,
+	Attribute_ID *attribute_id,
+	IndexType type,
+	SchemaType t
+) {
 
-	ASSERT(gc     !=  NULL);
+	ASSERT(gc != NULL);
 
 	// Retrieve the schema for given id
 	Schema *s = GraphContext_GetSchemaByID(gc, id, t);
@@ -439,7 +445,7 @@ Index *GraphContext_GetIndexByID(const GraphContext *gc, int id,
 	return Schema_GetIndex(s, attribute_id, type);
 }
 
-Index *GraphContext_GetIndex
+Index GraphContext_GetIndex
 (
 	const GraphContext *gc,
 	const char *label,
@@ -461,7 +467,7 @@ Index *GraphContext_GetIndex
 // create an exact match index for the given label and attribute
 bool GraphContext_AddExactMatchIndex
 (
-	Index **idx,             // [input/output] index created
+	Index *idx,              // [input/output] index created
 	GraphContext *gc,        // graph context
 	SchemaType schema_type,  // type of entities to index nodes/edges
 	const char *label,       // label of indexed entities
@@ -512,7 +518,7 @@ bool GraphContext_AddExactMatchIndex
 // create a full text index for the given label and attribute
 bool GraphContext_AddFullTextIndex
 (
-	Index **idx,             // [input/output] index created
+	Index *idx,             // [input/output] index created
 	GraphContext *gc,        // graph context
 	SchemaType schema_type,  // type of entities to index nodes/edges
 	const char *label,       // label of indexed entities

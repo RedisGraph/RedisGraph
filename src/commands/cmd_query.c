@@ -64,7 +64,7 @@ static bool _index_operation_delete
 (
 	GraphContext *gc,
 	AST *ast,
-	Index **idx
+	Index *idx
 ) {
 	*idx = NULL;
 	Schema *s = NULL;
@@ -121,7 +121,7 @@ static bool _index_operation_create
 	RedisModuleCtx *ctx,
 	GraphContext *gc,
 	AST *ast,
-	Index **idx
+	Index *idx
 ) {
 	ASSERT(gc  != NULL);
 	ASSERT(ctx != NULL);
@@ -195,7 +195,7 @@ static void _index_operation
 	AST *ast,
 	ExecutionType exec_type
 ) {
-	Index *idx = NULL;
+	Index idx = NULL;
 
 	switch(exec_type) {
 		case EXECUTION_TYPE_INDEX_CREATE:

@@ -8,7 +8,7 @@
 
 // forward declaration
 typedef struct _CircularBuffer _CircularBuffer;
-typedef _CircularBuffer *CircularBuffer;
+typedef _CircularBuffer* CircularBuffer;
 
 CircularBuffer CircularBuffer_New
 (

@@ -15,9 +15,23 @@
 #include "../graph/entities/node.h"
 #include "../graph/rg_matrix/rg_matrix_iter.h"
 
+#include <stdatomic.h>
+
+struct _Index {
+	char *label;                   // indexed label
+	int label_id;                  // indexed label ID
+	IndexField *fields;            // indexed fields
+	char *language;                // language
+	char **stopwords;              // stopwords
+	GraphEntityType entity_type;   // entity type (node/edge) indexed
+	IndexType type;                // index type exact-match / fulltext
+	RSIndex *_idx;                 // rediSearch index
+	uint _Atomic pending_changes;  // number of pending changes
+};
+
 static void _Index_ConstructFullTextStructure
 (
-	Index *idx,
+	Index idx,
 	RSIndex *rsIdx
 ) {
 	uint fields_count = array_len(idx->fields);
@@ -42,7 +56,7 @@ static void _Index_ConstructFullTextStructure
 
 static void _Index_ConstructExactMatchStructure
 (
-	Index *idx,
+	Index idx,
 	RSIndex *rsIdx
 ) {
 	ASSERT(idx != NULL);
@@ -87,10 +101,10 @@ static void _Index_ConstructExactMatchStructure
 // e.g. fields, stopwords, language
 void Index_ConstructStructure
 (
-	Index *idx
+	Index idx
 ) {
 	ASSERT(idx != NULL);
-	ASSERT(idx->idx == NULL);
+	ASSERT(idx->_idx == NULL);
 
 	RSIndex *rsIdx = NULL;
 	RSIndexOptions *idx_options = RediSearch_CreateIndexOptions();
@@ -119,12 +133,12 @@ void Index_ConstructStructure
 		_Index_ConstructExactMatchStructure(idx, rsIdx);
 	}
 
-	idx->idx = rsIdx;
+	idx->_idx = rsIdx;
 }
 
 RSDoc *Index_IndexGraphEntity
 (
-	Index *idx,
+	Index idx,
 	const GraphEntity *e,
 	const void *key,
 	size_t key_len,
@@ -139,7 +153,7 @@ RSDoc *Index_IndexGraphEntity
 	double      score            = 1;     // default score
 	IndexField  *field           = NULL;  // current indexed field
 	SIValue     *v               = NULL;  // current indexed value
-	RSIndex     *rsIdx           = idx->idx;
+	RSIndex     *rsIdx           = idx->_idx;
 	EntityID    id               = ENTITY_GET_ID(e);
 	uint        field_count      = array_len(idx->fields);
 
@@ -260,7 +274,7 @@ void IndexField_Free
 }
 
 // create a new index
-Index *Index_New
+Index Index_New
 (
 	const char *label,           // indexed label
 	int label_id,                // indexed label id
@@ -269,9 +283,9 @@ Index *Index_New
 ) {
 	ASSERT(label != NULL);
 
-	Index *idx = rm_malloc(sizeof(Index));
+	Index idx = rm_malloc(sizeof(_Index));
 
-	idx->idx             = NULL;
+	idx->_idx            = NULL;
 	idx->type            = type;
 	idx->label           = rm_strdup(label);
 	idx->fields          = array_new(IndexField, 1);
@@ -284,19 +298,29 @@ Index *Index_New
 	return idx;
 }
 
+// returns number of pending changes
+int Index_PendingChanges
+(
+	const Index idx  // index to inquery
+) {
+	ASSERT(idx != NULL);
+
+	return idx->pending_changes;
+}
+
 // disable index by increasing the number of pending changes
 // and re-creating the internal RediSearch index
 void Index_Disable
 (
-	Index *idx  // index to disable
+	Index idx  // index to disable
 ) {
 	ASSERT(idx != NULL);
 
 	idx->pending_changes++;
 
-	if(idx->idx != NULL) {
-		RediSearch_DropIndex(idx->idx);
-		idx->idx = NULL;
+	if(idx->_idx != NULL) {
+		RediSearch_DropIndex(idx->_idx);
+		idx->_idx = NULL;
 	}
 
 	// create RediSearch index structure
@@ -307,7 +331,7 @@ void Index_Disable
 // the index is enabled once there are no pending changes
 void Index_Enable
 (
-	Index *idx
+	Index idx
 ) {
 	ASSERT(idx != NULL);
 
@@ -317,7 +341,7 @@ void Index_Enable
 // adds field to index
 void Index_AddField
 (
-	Index *idx,        // index to update
+	Index idx,         // index to update
 	IndexField *field  // field to add
 ) {
 	ASSERT(idx   != NULL);
@@ -330,7 +354,7 @@ void Index_AddField
 // removes fields from index
 void Index_RemoveField
 (
-	Index *idx,
+	Index idx,
 	const char *field
 ) {
 	ASSERT(idx   != NULL);
@@ -357,20 +381,50 @@ void Index_RemoveField
 // query index
 RSResultsIterator *Index_Query
 (
-	const Index *idx,
+	const Index idx,
 	const char *query,
 	char **err
 ) {
 	ASSERT(idx   != NULL);
 	ASSERT(query != NULL);
 
-	return RediSearch_IterateQuery(idx->idx, query, strlen(query), err);
+	return RediSearch_IterateQuery(idx->_idx, query, strlen(query), err);
+}
+
+// returns internal RediSearch index
+RSIndex *Index_RSIndex
+(
+	const Index idx
+) {
+	ASSERT(idx != NULL);
+
+	return idx->_idx;
+}
+
+// returns index type
+IndexType Index_Type
+(
+	const Index idx
+) {
+	ASSERT(idx != NULL);
+
+	return idx->type;
+}
+
+// returns index graph entity type
+GraphEntityType Index_GraphEntityType
+(
+	const Index idx
+) {
+	ASSERT(idx != NULL);
+
+	return idx->entity_type;
 }
 
 // returns number of fields indexed
 uint Index_FieldsCount
 (
-	const Index *idx
+	const Index idx
 ) {
 	ASSERT(idx != NULL);
 
@@ -380,7 +434,7 @@ uint Index_FieldsCount
 // returns indexed fields
 const IndexField *Index_GetFields
 (
-	const Index *idx
+	const Index idx
 ) {
 	ASSERT(idx != NULL);
 
@@ -389,7 +443,7 @@ const IndexField *Index_GetFields
 
 bool Index_ContainsAttribute
 (
-	const Index *idx,
+	const Index idx,
 	Attribute_ID attribute_id
 ) {
 	ASSERT(idx != NULL);
@@ -407,7 +461,7 @@ bool Index_ContainsAttribute
 
 int Index_GetLabelID
 (
-	const Index *idx
+	const Index idx
 ) {
 	ASSERT(idx != NULL);
 
@@ -416,24 +470,24 @@ int Index_GetLabelID
 
 const char *Index_GetLanguage
 (
-	const Index *idx
+	const Index idx
 ) {
 	ASSERT(idx != NULL);
-	ASSERT(idx->idx != NULL);
+	ASSERT(idx->_idx != NULL);
 
-	return RediSearch_IndexGetLanguage(idx->idx);
+	return RediSearch_IndexGetLanguage(idx->_idx);
 }
 
 char **Index_GetStopwords
 (
-	const Index *idx,
+	const Index idx,
 	size_t *size
 ) {
 	ASSERT(idx != NULL);
-	ASSERT(idx->idx != NULL);
+	ASSERT(idx->_idx != NULL);
 
 	if(idx->type == IDX_FULLTEXT) {
-		return RediSearch_IndexGetStopwords(idx->idx, size);
+		return RediSearch_IndexGetStopwords(idx->_idx, size);
 	}
 
 	return NULL;
@@ -442,7 +496,7 @@ char **Index_GetStopwords
 // set indexed language
 void Index_SetLanguage
 (
-	Index *idx,
+	Index idx,
 	const char *language
 ) {
 	ASSERT(idx != NULL);
@@ -455,7 +509,7 @@ void Index_SetLanguage
 // set indexed stopwords
 void Index_SetStopwords
 (
-	Index *idx,
+	Index idx,
 	char **stopwords
 ) {
 	ASSERT(idx != NULL);
@@ -468,7 +522,7 @@ void Index_SetStopwords
 // returns true if index doesn't contains any pending changes
 bool Index_Enabled
 (
-	const Index *idx  // index to get state of
+	const Index idx  // index to get state of
 ) {
 	ASSERT(idx != NULL);
 
@@ -478,12 +532,12 @@ bool Index_Enabled
 // free index
 void Index_Free
 (
-	Index *idx
+	Index idx
 ) {
 	ASSERT(idx != NULL);
 
-	if(idx->idx) {
-		RediSearch_DropIndex(idx->idx);
+	if(idx->_idx) {
+		RediSearch_DropIndex(idx->_idx);
 	}
 
 	if(idx->language) {

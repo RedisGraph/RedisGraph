@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "RG.h"
 #include "index.h"
@@ -21,7 +21,7 @@
 // in the "worst" case we will index that entity twice which is perfectly OK
 static void _Index_PopulateNodeIndex
 (
-	Index *idx,
+	Index idx,
 	Graph *g
 ) {
 	ASSERT(g   != NULL);
@@ -40,7 +40,7 @@ static void _Index_PopulateNodeIndex
 		// this can happen if for example the following sequance is issued:
 		// 1. CREATE INDEX FOR (n:Person) ON (n.age)
 		// 2. CREATE INDEX FOR (n:Person) ON (n.height)
-		if(idx->pending_changes > 1) {
+		if(Index_PendingChanges(idx) > 1) {
 			break;
 		}
 
@@ -48,7 +48,7 @@ static void _Index_PopulateNodeIndex
 		indexed = 0;
 
 		// fetch label matrix
-		const RG_Matrix m = Graph_GetLabelMatrix(g, idx->label_id);
+		const RG_Matrix m = Graph_GetLabelMatrix(g, Index_GetLabelID(idx));
 		ASSERT(m != NULL);
 
 		//----------------------------------------------------------------------
@@ -111,7 +111,7 @@ static void _Index_PopulateNodeIndex
 // in the "worst" case we will index that entity twice which is perfectly OK
 static void _Index_PopulateEdgeIndex
 (
-	Index *idx,
+	Index idx,
 	Graph *g
 ) {
 	ASSERT(g   != NULL);
@@ -136,7 +136,7 @@ static void _Index_PopulateEdgeIndex
 		// this can happen if for example the following sequance is issued:
 		// 1. CREATE INDEX FOR (:Person)-[e:WORKS]-(:Company) ON (e.since)
 		// 2. CREATE INDEX FOR (:Person)-[e:WORKS]-(:Company) ON (e.title)
-		if(idx->pending_changes > 1) {
+		if(Index_PendingChanges(idx) > 1) {
 			break;
 		}
 
@@ -146,7 +146,8 @@ static void _Index_PopulateEdgeIndex
 		prev_dest_id = dest_id;
 
 		// fetch relation matrix
-		const RG_Matrix m = Graph_GetRelationMatrix(g, idx->label_id, false);
+		const RG_Matrix m = Graph_GetRelationMatrix(g, Index_GetLabelID(idx),
+				false);
 		ASSERT(m != NULL);
 
 		//----------------------------------------------------------------------
@@ -177,7 +178,7 @@ static void _Index_PopulateEdgeIndex
 			Edge e;
 			e.srcNodeID  = src_id;
 			e.destNodeID = dest_id;
-			e.relationID = idx->label_id;
+			e.relationID = Index_GetLabelID(idx);
 
 			if(SINGLE_EDGE(edge_id)) {
 				Graph_GetEdge(g, edge_id, &e);
@@ -220,19 +221,19 @@ static void _Index_PopulateEdgeIndex
 // constructs index
 void Index_Populate
 (
-	Index *idx,
+	Index idx,
 	Graph *g
 ) {
 	ASSERT(g        != NULL);
 	ASSERT(idx      != NULL);
-	ASSERT(idx->idx != NULL);
+	ASSERT(Index_RSIndex(idx) != NULL);
 	ASSERT(!Index_Enabled(idx));  // index should have pending changes
 
 	//--------------------------------------------------------------------------
 	// populate index
 	//--------------------------------------------------------------------------
 
-	if(idx->entity_type == GETYPE_NODE) {
+	if(Index_GraphEntityType(idx) == GETYPE_NODE) {
 		_Index_PopulateNodeIndex(idx, g);
 	} else {
 		_Index_PopulateEdgeIndex(idx, g);

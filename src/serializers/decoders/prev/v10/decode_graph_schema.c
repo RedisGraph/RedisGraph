@@ -24,7 +24,7 @@ static Schema *_RdbLoadSchema
 	Schema *s = already_loaded ? NULL : Schema_New(type, id, name);
 	RedisModule_Free(name);
 
-	Index *idx = NULL;
+	Index idx = NULL;
 	uint index_count = RedisModule_LoadUnsigned(rdb);
 	for(uint i = 0; i < index_count; i++) {
 		IndexType type = RedisModule_LoadUnsigned(rdb);

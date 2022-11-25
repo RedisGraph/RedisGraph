@@ -38,7 +38,7 @@ ProcedureResult Proc_FulltextDropIndexInvoke
 
 	const char *l = args[0].stringval;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Index *idx = GraphContext_GetIndex(gc, l, NULL, IDX_FULLTEXT, SCHEMA_NODE);
+	Index idx = GraphContext_GetIndex(gc, l, NULL, IDX_FULLTEXT, SCHEMA_NODE);
 	int res = GraphContext_DeleteIndex(gc, SCHEMA_NODE, l, NULL, IDX_FULLTEXT);
 
 	if(res != INDEX_OK) {
