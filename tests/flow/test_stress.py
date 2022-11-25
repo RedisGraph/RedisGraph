@@ -1,11 +1,11 @@
-from common import *
 import time
+from common import *
 from time import sleep
 from index_utils import *
 from pathos.pools import ProcessPool as Pool
 
-graphs       = None  # one graph object per client
-GRAPH_ID     = "G"   # graph identifier
+graphs   = None # one graph object per client
+GRAPH_ID = "G"  # graph identifier
 
 
 def query_crud(graph, query_id):

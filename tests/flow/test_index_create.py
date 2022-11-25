@@ -282,6 +282,10 @@ class testIndexCreationFlow():
             self.env.assertContains("a not defined", str(e))
 
     def test08_async_index_creation(self):
+        # skip test if we're running under Valgrind
+        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
+            return
+
         # 1. create a large graph
         # 2. create an index
         # 3. while the index is being constructed make sure:
@@ -394,6 +398,10 @@ class testIndexCreationFlow():
         self.env.assertEquals(res[0][0], 0)
 
     def test09_async_fulltext_index_creation(self):
+        # skip test if we're running under Valgrind
+        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
+            return
+
         # 1. create a large graph
         # 2. create an index
         # 3. while the index is being constructed make sure:
@@ -500,6 +508,10 @@ class testIndexCreationFlow():
             self.env.assertEquals(res[0][0], 0)
 
     def test10_delete_interrupt_async_index_creation(self):
+        # skip test if we're running under Valgrind
+        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
+            return
+
         # 1. create a large graph
         # 2. create an index
         # 3. delete the graph while the index is being constructed
@@ -547,6 +559,10 @@ class testIndexCreationFlow():
         # key had been removed
 
     def test11_delete_interrupt_async_fulltext_index_creation(self):
+        # skip test if we're running under Valgrind
+        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
+            return
+
         # 1. create a large graph
         # 2. create an index
         # 3. delete the graph while the index is being constructed
@@ -594,6 +610,10 @@ class testIndexCreationFlow():
         # key had been removed
 
     def test12_multi_index_creation(self):
+        # skip test if we're running under Valgrind
+        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
+            return
+
         # interrupt index creation by adding/removing fields
         #
         # 1. create a large graph
@@ -671,6 +691,10 @@ class testIndexCreationFlow():
         self.env.assertTrue(elapsed_2 < elapsed * 2)
 
     def test13_multi_fulltext_index_creation(self):
+        # skip test if we're running under Valgrind
+        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
+            return
+
         # interrupt index creation by adding/removing fields
         #
         # 1. create a large graph

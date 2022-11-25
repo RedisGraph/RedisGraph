@@ -38,7 +38,7 @@ class testProcedures(FlowTestsBase):
         redis_graph.commit()
 
         # Create full-text index.
-        create_fulltext_index(redis_graph, 'fruit', name, sync=True)
+        create_fulltext_index(redis_graph, 'fruit', 'name', sync=True)
 
     # Compares two nodes based on their properties.
     def _compareNodes(self, a, b):
