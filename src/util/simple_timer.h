@@ -66,7 +66,37 @@
 
 #endif
 
-//------------------------------------------------------------------------------
+// Determines how many milliseconds are in a second.
+#define MILLISECONDS_IN_SECOND 1000
+// Determines how many nanoseconds are in a millisecond.
+#define NANOSECONDS_IN_MILLISECOND 1000000
+
+// An alias for the type of the timer.
+#define TIMER_TYPE double[2]
+// Defines a timer variable. An easy way to define a variable of a timer named
+// "name" which doesn't care about the precise timer type (double[2]), so it
+// also can be easily changed to whichever else.
+#define TIMER_DEFINE(name) double name[2]
+// An alias to assign for the timer.
+#define TIMER_ASSIGN(lhs, rhs) lhs[0] = rhs[0]; lhs[1] = rhs[1]
+// Returns current time and (re)starts the timer.
+#define TIMER_GET_TIME(name) simple_tic(name)
+// Returns the seconds (double) counted by the timer.
+#define TIMER_GET_SECONDS(name) name[0]
+// Returns the seconds (uint64_t) counted by the timer.
+#define TIMER_GET_FULL_SECONDS(name) (uint64_t)TIMER_GET_SECONDS(name)
+// Returns the nanoseconds (double) counted by the timer.
+#define TIMER_GET_NANOSECONDS(name) name[1]
+// Returns the nanoseconds (uint64_t) counted by the timer.
+#define TIMER_GET_FULL_NANOSECONDS(name) (uint64_t)TIMER_GET_NANOSECONDS(name)
+// Returns the time counted in full milliseconds.
+#define TIMER_GET_MILLISECONDS(name) \
+    (uint64_t)(TIMER_GET_FULL_SECONDS(name) * MILLISECONDS_IN_SECOND) + \
+    (uint64_t)(TIMER_GET_FULL_NANOSECONDS(name) / NANOSECONDS_IN_MILLISECOND)
+// An alias to return the time in seconds passed since the previous call.
+#define TIMER_GET_ELAPSED(name) simple_toc(name)
+// Defines a timer variable and starts the timer immediately.
+#define TIMER_DEFINE_AND_START(name) TIMER_DEFINE(name); TIMER_GET_TIME(name)
 
 void simple_tic         // returns current time in seconds and nanoseconds
 (
