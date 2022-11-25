@@ -23,17 +23,61 @@ typedef struct {
     // Current state of the query.
     QueryState state;
     // The time it spent waiting.
-    uint64_t waiting_time;
+    uint64_t waiting_time_milliseconds;
     // The time spent on executing.
-    uint64_t executing_time;
+    uint64_t executing_time_milliseconds;
     // The time spent on reporting.
-    uint64_t reporting_time;
+    uint64_t reporting_time_milliseconds;
     // The context of the query.
-    struct QueryCtx *context;
+    const struct QueryCtx *context;
+    // The command context of the query.
+    // When a command is received by the redis server it is dispatched to the
+    // graph command dispatcher. At this moment, there is no query yet but only
+    // the command context. Once the command dispatcher figures out the query
+    // const struct CommandCtx *command;
 } QueryInfo;
 
+// Creates a new, empty query info object.
+QueryInfo QueryInfo_New();
+// Assigns the query context to the query info.
+void QueryInfo_SetQueryContext(QueryInfo *, const struct QueryCtx *);
+// Sets the query info object state.
+void QueryInfo_SetState(QueryInfo *, const QueryState);
+void QueryInfo_SetWaitingState(QueryInfo *);
+void QueryInfo_SetExecutingState(QueryInfo *);
+void QueryInfo_SetReportingState(QueryInfo *);
+void QueryInfo_SetNextState(QueryInfo *);
+
+// Informs the query info object that the execution has started.
+void QueryInfo_SetAlreadyWaiting
+(
+    QueryInfo *,
+    const uint64_t waiting_time_milliseconds
+);
+
+// Informs the query info object that the execution has started.
+void QueryInfo_SetExecutionStarted
+(
+    QueryInfo *,
+    const uint64_t waiting_time_milliseconds
+);
+
+// Informs the query info object that the reporting has started.
+void QueryInfo_SetReportingStarted
+(
+    QueryInfo *,
+    const uint64_t executing_time_milliseconds
+);
+
+// Informs the query info object that the reporting has finished.
+void QueryInfo_SetReportingFinished
+(
+    QueryInfo *,
+    const uint64_t executing_time_milliseconds
+);
+
 typedef struct {
-    // An array containing query information.
+    // Storage for query information.
     QueryInfo *query_info_array;
     // Maximum registered time a query was waiting for.
     atomic_uint_fast64_t max_query_waiting_time;

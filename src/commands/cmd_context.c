@@ -28,7 +28,8 @@ CommandCtx *CommandCtx_New
 	bool replicated_command,
 	bool compact,
 	long long timeout,
-	bool timeout_rw
+	bool timeout_rw,
+	TIMER_DEFINE(timer)
 ) {
 	CommandCtx *context = rm_malloc(sizeof(CommandCtx));
 	context->bc                 = bc;
@@ -41,6 +42,7 @@ CommandCtx *CommandCtx_New
 	context->command_name       = NULL;
 	context->timeout_rw         = timeout_rw;
 	context->replicated_command = replicated_command;
+	TIMER_ASSIGN(context->timer, timer);
 
 	if(cmd_name) {
 		// Make a copy of command name.
@@ -132,6 +134,14 @@ void CommandCtx_ThreadSafeContextUnlock(const CommandCtx *command_ctx) {
 	 * no need to release lock. */
 	ASSERT(command_ctx != NULL && command_ctx->ctx != NULL);
 	if(command_ctx->bc) RedisModule_ThreadSafeContextUnlock(command_ctx->ctx);
+}
+
+uint64_t CommandCtx_GetTimerMilliseconds(const CommandCtx *command_ctx) {
+	ASSERT(command_ctx);
+	if (!command_ctx) {
+		return 0;
+	}
+	return TIMER_GET_MILLISECONDS(command_ctx->timer);
 }
 
 void CommandCtx_Free(CommandCtx *command_ctx) {
