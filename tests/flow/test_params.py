@@ -45,7 +45,8 @@ class testParams(FlowTestsBase):
                 "CYPHER param=[1, 1*'a'] UNWIND $param AS x RETURN x",     # 1*'a' isn't defined
                 "CYPHER param={'key':a} RETURN $param",                    # 'a' isn't defined
                 "CYPHER param=[1, a] UNWIND $param AS x RETURN x",         # 'a' isn't defined
-                "CYPHER param0=1 param1=$param0 RETURN $param1"            # paramers shouldn't refer to one another
+                "CYPHER param0=1 param1=$param0 RETURN $param1",           # paramers shouldn't refer to one another
+                "RETURN ({1})--({})"                                       # old params syntax
                 ]
         for q in invalid_queries:
             try:

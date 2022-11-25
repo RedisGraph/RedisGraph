@@ -144,6 +144,30 @@ class testEntityUpdate(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions", str(e))
 
+        try:
+            graph.query("MERGE (n:N) ON CREATE SET n.a.b=3 RETURN n")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions", str(e))
+
+        try:
+            graph.query("MERGE (n:N) ON CREATE SET n = {v: 1}, n.a.b=3 RETURN n")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions", str(e))
+
+        try:
+            graph.query("MERGE (n:N) ON MATCH SET n.a.b=3 RETURN n")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions", str(e))
+
+        try:
+            graph.query("MERGE (n:N) ON MATCH SET n = {v: 1}, n.a.b=3 RETURN n")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions", str(e))
+
     # Fail when a property is a complex type nested within an array type
     def test13_invalid_complex_type_in_array(self):
         # Test combinations of invalid types with nested and top-level arrays
@@ -510,3 +534,9 @@ class testEntityUpdate(FlowTestsBase):
         self.env.assertEqual(result.properties_set, 1)
         self.env.assertEqual(result.properties_removed, 1)
 
+    def test_36_set_property_null(self):
+        graph.delete()
+        graph.query("CREATE ()")
+        result = graph.query("MATCH (v) SET v.p1 = v.p8, v.p1 = v.p5, v.p2 = v.p4")
+        result = graph.query("MATCH (v) RETURN v")
+        self.env.assertEqual(result.header, [[1, 'v']])

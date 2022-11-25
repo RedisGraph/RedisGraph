@@ -1,3 +1,9 @@
+/*
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
+
 #include "ast.h"
 #include "RG.h"
 #include "../util/arr.h"
@@ -303,6 +309,19 @@ static void _AST_MapRemoveClauseReferences
 	}
 }
 
+// maps entities in UNWIND clause
+static void _AST_MapUnwindClauseReferences
+(
+	AST *ast,
+	const cypher_astnode_t *unwind_clause
+) {
+	ASSERT(ast != NULL);
+	ASSERT(unwind_clause != NULL);
+
+	const cypher_astnode_t * expr = cypher_ast_unwind_get_expression(unwind_clause);
+	_AST_MapExpression(ast, expr);
+}
+
 // maps entities in DELETE clause
 static void _AST_MapDeleteClauseReferences
 (
@@ -422,6 +441,9 @@ static void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *claus
 	} else if(type == CYPHER_AST_REMOVE) {
 		// add referenced aliases for REMOVE clause
 		_AST_MapRemoveClauseReferences(ast, clause);
+	} else if(type == CYPHER_AST_UNWIND) {
+		// add referenced aliases for UNWIND clause
+		_AST_MapUnwindClauseReferences(ast, clause);
 	}
 }
 

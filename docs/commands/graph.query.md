@@ -839,6 +839,7 @@ This section contains information on all supported functions from the Cypher que
 | hasLabels()            | Returns true if input node contains all specified labels, otherwise false   |
 | labels()               | Returns a string representation of the label of a node                      |
 | properties()           | Returns a map containing all the properties in the given map, node, or edge. In case of map, it is returned without any change |
+| randomUUID()           | Returns a random UUID (Universal Unique IDentifier)                         |
 | startNode()            | Returns the source node of a relationship                                   |
 | timestamp()            | Returns the amount of milliseconds since epoch                              |
 | type()                 | Returns a string representation of the type of a relationship type          |
@@ -955,8 +956,8 @@ This section contains information on all supported functions from the Cypher que
 | toString()  | Returns a string representation of a value from the type integer, float, boolean, string, point.All other types are not allowed and will cause a type mismatch error to be returned. |
 | toStringorNull()  | Returns a string representation of a value from the type integer, float, boolean, string, point. All other types will return `null` |
 | toStringList()    | Converts a list of values to a list of string values. Each item in the list is converted using toStringOrNull()        | 
-| toBoolean         | Returns a boolean value from boolean type, string type (either `"True"` or `"False"` string values, case insensitive. All other values will return `null`) or integer type (0 for `false`, all other values will return `true`). All other types are not allowed and will cause a type mismatch error to be returned.
-| toBooleanOrNull   | Returns a boolean value from boolean type, string type (either `"True"` or `"False"` string values, case insensitive. All other values will return `null`) or integer type (0 for `false`, all other values will return `true`). All other types will return `null`.
+| toBoolean()       | Returns a boolean value from boolean type, string type (either `"True"` or `"False"` string values, case insensitive. All other values will return `null`) or integer type (0 for `false`, all other values will return `true`). All other types are not allowed and will cause a type mismatch error to be returned.
+| toBooleanOrNull() | Returns a boolean value from boolean type, string type (either `"True"` or `"False"` string values, case insensitive. All other values will return `null`) or integer type (0 for `false`, all other values will return `true`). All other types will return `null`.
 | toBooleanList()   | Converts a list of values to a list of boolean values. Each item in the list is converted using toBooleanOrNull()      |
 
 ## Node functions
@@ -1236,18 +1237,48 @@ For a relationship type, the index deletion syntax is:
 GRAPH.QUERY DEMO_GRAPH "DROP INDEX ON :FOLLOW(created_at)"
 ```
 
+## Full-text indexing
 
-### Full-text indexing
+RedisGraph leverages the indexing capabilities of [RediSearch](/docs/stack/search/index.html) to provide full-text indices through procedure calls. 
 
-RedisGraph leverages the indexing capabilities of [RediSearch](/docs/stack/search/index.html) to provide full-text indices through procedure calls. To construct a full-text index on the `title` property of all nodes with label `Movie`, use the syntax:
+### Creating a full-text index for a node label
+
+To construct a full-text index on the `title` property of all nodes with label `Movie`, use the syntax:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('Movie', 'title')"
 ```
 
-(More properties can be added to this index by adding their names to the above set of arguments, or using this syntax again with the additional names.)
+More properties can be added to this index by adding their names to the above set of arguments, or using this syntax again with the additional names.
 
-Now this index can be invoked to match any whole words contained within:
+```sh
+GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('Person', 'firstName', 'lastName')"
+```
+
+RediSearch provide 2 index configuration options:
+1. Language - Define which language to use for stemming text which is adding the base form of a word to the index. This allows the query for "going" to also return results for "go" and "gone", for example.
+2. Stopwords - These are words that are usually so common that they do not add much information to search, but take up a lot of space and CPU time in the index.
+
+To construct a full-text index on the `title` property using `German` language and using custom stopwords of all nodes with label `Movie`, use the syntax:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex({ label: 'Movie', language: 'German', stopwords: ['a', 'ab'] }, 'title')"
+```
+
+RediSearch provide 3 additional field configuration options:
+1. Weight - The importance of the text in the field
+2. Nostem - Skip stemming when indexing text
+3. Phonetic - Enable phonetic search on the text
+
+To construct a full-text index on the `title` property with phonetic search of all nodes with label `Movie`, use the syntax:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('Movie', {field: 'title', phonetic: 'dm:en'})"
+```
+
+### Utilizing a full-text index for a node label
+
+An index can be invoked to match any whole words contained within:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
@@ -1297,23 +1328,10 @@ GRAPH.QUERY DEMO_GRAPH
    2) "Query internal execution time: 0.335401 milliseconds"
 ```
 
-RediSearch provide 2 additional index configuration options:
-1. Language - Define which language to use for stemming text which is adding the base form of a word to the index. This allows the query for "going" to also return results for "go" and "gone", for example.
-2. Stopwords - These are words that are usually so common that they do not add much information to search, but take up a lot of space and CPU time in the index.
+### Deleting a full-text index for a node label
 
-To construct a full-text index on the `title` property using `German` language and using custom stopwords of all nodes with label `Movie`, use the syntax:
+For a node label, the full-text index deletion syntax is:
 
-```sh
-GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex({ label: 'Movie', language: 'German', stopwords: ['a', 'ab'] }, 'title')"
 ```
-
-RediSearch provide 3 additional field configuration options:
-1. Weight - The importance of the text in the field
-2. Nostem - Skip stemming when indexing text
-3. Phonetic - Enable phonetic search on the text
-
-To construct a full-text index on the `title` property with phonetic search of all nodes with label `Movie`, use the syntax:
-
-```sh
-GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('Movie', {field: 'title', phonetic: 'dm:en'})"
+GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.drop('Movie')"
 ```
