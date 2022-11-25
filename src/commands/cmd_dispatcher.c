@@ -10,6 +10,7 @@
 #include "../util/thpool/pools.h"
 #include "../util/blocked_client.h"
 #include "../configuration/config.h"
+#include "../util/simple_timer.h"
 
 #define GRAPH_VERSION_MISSING -1
 
@@ -154,7 +155,7 @@ static Command_Handler get_command_handler(GRAPH_Commands cmd) {
 }
 
 // Convert from string representation to an enum.
-static GRAPH_Commands determine_command(const char *cmd_name) {
+GRAPH_Commands CommandFromString(const char *cmd_name) {
 	if(strcasecmp(cmd_name, "graph.QUERY")    == 0) return CMD_QUERY;
 	if(strcasecmp(cmd_name, "graph.RO_QUERY") == 0) return CMD_RO_QUERY;
 	if(strcasecmp(cmd_name, "graph.EXPLAIN")  == 0) return CMD_EXPLAIN;
@@ -186,11 +187,12 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	bool timeout_rw;
 	long long timeout;
 	CommandCtx *context = NULL;
+	TIMER_DEFINE_AND_START(timer);
 
 	RedisModuleString *graph_name = argv[1];
 	RedisModuleString *query = (argc > 2) ? argv[2] : NULL;
 	const char *command_name = RedisModule_StringPtrLen(argv[0], NULL);
-	GRAPH_Commands cmd = determine_command(command_name);
+	GRAPH_Commands cmd = CommandFromString(command_name);
 
 	if(_validate_command_arity(cmd, argc) == false) return RedisModule_WrongArity(ctx);
 
@@ -236,13 +238,13 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(exec_thread == EXEC_THREAD_MAIN) {
 		// run query on Redis main thread
 		context = CommandCtx_New(ctx, NULL, argv[0], query, gc, exec_thread,
-								 is_replicated, compact, timeout, timeout_rw);
+								 is_replicated, compact, timeout, timeout_rw, timer);
 		handler(context);
 	} else {
 		// run query on a dedicated thread
 		RedisModuleBlockedClient *bc = RedisGraph_BlockClient(ctx);
 		context = CommandCtx_New(NULL, bc, argv[0], query, gc, exec_thread,
-								 is_replicated, compact, timeout, timeout_rw);
+								 is_replicated, compact, timeout, timeout_rw, timer);
 
 		if(ThreadPools_AddWorkReader(handler, context) == THPOOL_QUEUE_FULL) {
 			// Report an error once our workers thread pool internal queue

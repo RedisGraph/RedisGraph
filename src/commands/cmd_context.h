@@ -9,6 +9,7 @@
 #include "cypher-parser.h"
 #include "../redismodule.h"
 #include "../graph/graphcontext.h"
+#include "util/simple_timer.h"
 
 // ExecutorThread lists the diffrent types of threads in the system
 typedef enum {
@@ -29,6 +30,7 @@ typedef struct {
 	ExecutorThread thread;          // Which thread executes this command
 	long long timeout;              // The query timeout, if specified.
 	bool timeout_rw;                // Apply timeout on both read and write queries.
+	TIMER_DEFINE(timer);            // The timer for timing the command.
 } CommandCtx;
 
 // Create a new command context.
@@ -43,7 +45,8 @@ CommandCtx *CommandCtx_New
 	bool replicated_command,        // Whether this instance was spawned by a replication command.
 	bool compact,                   // Whether this query was issued with the compact flag.
 	long long timeout,              // The query timeout, if specified.
-	bool timeout_rw                 // Apply timeout on both read and write queries.
+	bool timeout_rw,                // Apply timeout on both read and write queries.
+	TIMER_DEFINE(timer)             // The timer for timing the command.
 );
 
 // Tracks given 'ctx' such that in case of a crash we will be able to report
@@ -93,6 +96,10 @@ void CommandCtx_ThreadSafeContextUnlock
 (
 	const CommandCtx *command_ctx
 );
+
+// Return the time in milliseconds, spent since the last call (or initialization
+// of the object).
+uint64_t CommandCtx_GetTimerMilliseconds(const CommandCtx *);
 
 // Free command context.
 void CommandCtx_Free

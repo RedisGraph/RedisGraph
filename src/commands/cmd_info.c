@@ -100,13 +100,35 @@ static bool _collect_queries_info_from_graph
 
     bool is_ok = true;
     const uint64_t waiting_queries_count = _waiting_queries_count_from_graph(gc);
+    const uint64_t executing_queries_count = _executing_queries_count_from_graph(gc);
+    const uint64_t reporting_queries_count = _reporting_queries_count_from_graph(gc);
 
     if (!checked_add_u64(
         global_info->total_waiting_queries_count,
         waiting_queries_count,
         &global_info->total_waiting_queries_count)) {
         // We have a value overflow.
-        if (is_ok) {
+        if (!is_ok) {
+            return false;
+        }
+    }
+
+    if (!checked_add_u64(
+        global_info->total_executing_queries_count,
+        executing_queries_count,
+        &global_info->total_executing_queries_count)) {
+        // We have a value overflow.
+        if (!is_ok) {
+            return false;
+        }
+    }
+
+    if (!checked_add_u64(
+        global_info->total_reporting_queries_count,
+        reporting_queries_count,
+        &global_info->total_reporting_queries_count)) {
+        // We have a value overflow.
+        if (!is_ok) {
             return false;
         }
     }

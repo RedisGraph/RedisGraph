@@ -6,6 +6,7 @@
 
 #include "RG.h"
 #include "../errors.h"
+#include "commands.h"
 #include "cmd_context.h"
 #include "../ast/ast.h"
 #include "../util/arr.h"
@@ -71,6 +72,68 @@ void abort_and_check_timeout(GraphQueryCtx *gq_ctx, ExecutionPlan *plan) {
 	}
 }
 
+static bool _is_query_for_tracking_info(const GraphQueryCtx *gq_ctx) {
+	ASSERT(gq_ctx);
+	ASSERT(gq_ctx->command_ctx);
+
+	const GRAPH_Commands command = CommandFromString(gq_ctx->command_ctx->command_name);
+	return !gq_ctx->profile && (command == CMD_QUERY || command == CMD_RO_QUERY);
+}
+
+static QueryInfo* _get_query_for_tracking(const GraphQueryCtx *gq_ctx) {
+	ASSERT(gq_ctx);
+	ASSERT(gq_ctx->command_ctx);
+	ASSERT(gq_ctx->graph_ctx);
+	if (!gq_ctx || !gq_ctx->command_ctx || !gq_ctx->graph_ctx || !_is_query_for_tracking_info(gq_ctx)) {
+		return NULL;
+	}
+	return Info_FindQueryInfo(&gq_ctx->graph_ctx->info, gq_ctx->query_ctx);
+}
+
+static void _report_query_already_waiting(const GraphQueryCtx *gq_ctx) {
+	ASSERT(gq_ctx);
+	ASSERT(gq_ctx->command_ctx);
+	if (!_is_query_for_tracking_info(gq_ctx)) {
+		return;
+	}
+
+	QueryInfo query_info = QueryInfo_New();
+	const uint64_t milliseconds_waited = CommandCtx_GetTimerMilliseconds(gq_ctx->command_ctx);
+	QueryInfo_SetAlreadyWaiting(&query_info, milliseconds_waited);
+	QueryInfo_SetQueryContext(&query_info, gq_ctx->query_ctx);
+	Info_AddQueryInfo(&gq_ctx->graph_ctx->info, query_info);
+}
+
+static void _report_query_started_execution(const GraphQueryCtx *gq_ctx) {
+	QueryInfo *query_info = _get_query_for_tracking(gq_ctx);
+	ASSERT(query_info);
+	if (!query_info) {
+		return;
+	}
+	const uint64_t milliseconds_waited = CommandCtx_GetTimerMilliseconds(gq_ctx->command_ctx);
+	QueryInfo_SetExecutionStarted(query_info, milliseconds_waited);
+}
+static void _report_query_started_reporting(const GraphQueryCtx *gq_ctx) {
+	QueryInfo *query_info = _get_query_for_tracking(gq_ctx);
+	ASSERT(query_info);
+	if (!query_info) {
+		return;
+	}
+
+	const uint64_t milliseconds_executed = CommandCtx_GetTimerMilliseconds(gq_ctx->command_ctx);
+	QueryInfo_SetReportingStarted(query_info, milliseconds_executed);
+}
+
+static void _report_query_finished_reporting(const GraphQueryCtx *gq_ctx) {
+	QueryInfo *query_info = _get_query_for_tracking(gq_ctx);
+	ASSERT(query_info);
+	if (!query_info) {
+		return;
+	}
+	const uint64_t milliseconds_reported = CommandCtx_GetTimerMilliseconds(gq_ctx->command_ctx);
+	QueryInfo_SetReportingStarted(query_info, milliseconds_reported);
+}
+
 static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 							 ExecutionType exec_type) {
 	Index       *idx         =  NULL;
@@ -98,7 +161,7 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 				schema_type = SCHEMA_EDGE;
 			}
 		}
-	
+
 		// add index for each property
 		QueryCtx_LockForCommit();
 		for(unsigned int i = 0; i < nprops; i++) {
@@ -188,11 +251,11 @@ static void _ExecuteQuery(void *args) {
 	// instantiate the query ResultSet
 	bool compact = command_ctx->compact;
 	// replicated command don't need to return result
-	ResultSetFormatterType resultset_format = 
+	ResultSetFormatterType resultset_format =
 		profile || command_ctx->replicated_command
-		? FORMATTER_NOP 
-		: (compact) 
-			? FORMATTER_COMPACT 
+		? FORMATTER_NOP
+		: (compact)
+			? FORMATTER_COMPACT
 			: FORMATTER_VERBOSE;
 	ResultSet *result_set = NewResultSet(rm_ctx, resultset_format);
 	if(exec_ctx->cached) ResultSet_CachedExecution(result_set); // indicate a cached execution
@@ -212,6 +275,8 @@ static void _ExecuteQuery(void *args) {
 		}
 		CommandCtx_ThreadSafeContextUnlock(command_ctx);
 	}
+
+	_report_query_started_execution(gq_ctx);
 
 	if(exec_type == EXECUTION_TYPE_QUERY) {  // query operation
 		// set policy after lock acquisition,
@@ -247,18 +312,20 @@ static void _ExecuteQuery(void *args) {
 		// clear resultset statistics, avoiding commnad being replicated
 		ResultSet_Clear(result_set);
 	}
-	
+
 	// replicate command if graph was modified
 	if(ResultSetStat_IndicateModification(&result_set->stats)) {
 		QueryCtx_Replicate(query_ctx);
 	}
-	
+
 	QueryCtx_UnlockCommit();
 
 	if(!profile || ErrorCtx_EncounteredError()) {
 		// if we encountered an error, ResultSet_Reply will emit the error
 		// send result-set back to client
+		_report_query_started_reporting(gq_ctx);
 		ResultSet_Reply(result_set);
+		_report_query_finished_reporting(gq_ctx);
 	}
 
 	if(readonly) Graph_ReleaseLock(gc->g); // release read lock
@@ -352,6 +419,7 @@ void _query(bool profile, void *args) {
 	// populate the container struct for invoking _ExecuteQuery.
 	GraphQueryCtx *gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, command_ctx,
 											  readonly, profile, timeout_task);
+	_report_query_already_waiting(gq_ctx);
 
 	// if 'thread' is redis main thread, continue running
 	// if readonly is true we're executing on a worker thread from
