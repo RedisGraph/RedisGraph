@@ -1,4 +1,5 @@
 from common import *
+from index_utils import *
 
 graph = None
 GRAPH_ID = "multi_label"
@@ -113,8 +114,8 @@ class testMultiLabel():
 
     # Validate behavior of index scans on multi-labeled nodes
     def test05_index_scan(self):
-        query = """CREATE INDEX ON :L1(v)"""
-        query_result = graph.query(query)
+
+        query_result = create_node_exact_match_index(graph, 'L1', 'v', sync=True)
         self.env.assertEquals(query_result.indices_created, 1)
 
         # Query the explicitly created index
