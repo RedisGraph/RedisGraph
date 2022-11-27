@@ -1,10 +1,6 @@
 from common import *
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-redis_graph = None
-
-class test_execution_plan_print(FlowTestsBase):
+class test_execution_plan_print():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global graph
@@ -27,10 +23,6 @@ class test_execution_plan_print(FlowTestsBase):
     # expand-into should not print the label traversed in
     # a label-scan that occurred before it.
     def test02_expand_into(self):
-        self.env.flush()
-        # Create key
-        graph.query("RETURN 1")
-
         plan = graph.execution_plan("MATCH (n:A:B:C) RETURN n")
 
         # label A is traversed first
@@ -41,8 +33,6 @@ class test_execution_plan_print(FlowTestsBase):
     # after optimize_label_scan operates (switching label-traversal order)
     # printing of conditional-traverse should be updated as well.
     def test03_optimize_label_scan_replace_conditional_traverse(self):
-        self.env.flush()
-        
         # create a node with label A, so that B will
         # be the first label scanned after optimization
         graph.query("CREATE (:A)")
@@ -58,11 +48,10 @@ class test_execution_plan_print(FlowTestsBase):
     # after optimize_label_scan operates (switching label-traversal order)
     # printing of expand_into should be updated as well.
     def test04_optimize_label_scan_replace_expand_into(self):
-        self.env.flush()
-
-        # create nodes with label A and C, so that B will
+        # create a node with label C, so that B will
         # be the first label scanned after optimization
-        graph.query("CREATE (:A), (:C)")
+        # (since nodes with labels A and C exist now, while B doesn't)
+        graph.query("CREATE (:C)")
 
         plan = graph.execution_plan("MATCH (n:A:B:C) RETURN n")
         # make sure optimize_label_scan worked
@@ -84,6 +73,6 @@ class test_execution_plan_print(FlowTestsBase):
         # B is printed alone in conditional-traverse
         self.env.assertIn("Conditional Traverse | (n:B)->(n:B)", plan)
         # conditional-variable-length-traverse prints all labels
-        self.env.assertIn("""Conditional Variable Length Traverse | (n:A:B)-[@anon_0*1..INF]->(m:C:D)""", plan)
+        self.env.assertIn("Conditional Variable Length Traverse | (n:A:B)-[@anon_0*1..INF]->(m:C:D)", plan)
         # expand-into prints labels C and D
         self.env.assertIn("Expand Into | (m:C:D)->(m:C:D)", plan)
