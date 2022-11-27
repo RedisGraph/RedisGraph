@@ -46,9 +46,25 @@ endif
 
 test: $(TESTS)
 
+UNIT_TESTS=$(wildcard $(BINROOT)/src/tests/unit/test_*)
+
 unit:
 	### unit tests
-	@$(MAKE) -C unit all
+ifeq ($(V),1)
+	$(SHOW)for t in $(UNIT_TESTS); do \
+		echo Running $$t ...; \
+		o1=$$(mktemp) ;\
+		$$t 2>&1 >$$o1 || { cat $$o1; rm $$o1; exit 1; }; \
+		rm $$o1 ; \
+	done
+else
+	$(SHOW)for t in $(UNIT_TESTS); do \
+		echo Running $$t ...; \
+		$$t || exit 1; \
+	done
+endif
+
+.PHONY: test
 
 flow:
 	### flow tests

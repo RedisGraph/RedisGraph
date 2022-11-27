@@ -136,7 +136,6 @@ endif
 
 #----------------------------------------------------------------------------------------------
 
-
 include $(MK)/defs
 
 ifneq ($(filter all build,$(MAKECMDGOALS)),)
@@ -274,19 +273,7 @@ else
 	$(SHOW)$(MAKE) -C $(REDISEARCH_DIR) clean BINROOT=$(REDISEARCH_BINROOT)
 endif
 
-#----------------------------------------------------------------------------------------------
-
-list-undefs:
-	$(SHOW)nm -AC $(TARGET) | grep -v @@ | grep ' U '
-
-list-bindeps:
-ifneq ($(OS),macos)
-	$(SHOW)ldd $(TARGET)
-else
-	$(SHOW)otool -L $(TARGET)
-endif
-
-.PHONY: clean list-undefs list-bindeps
+.PHONY: clean
 
 #----------------------------------------------------------------------------------------------
 
@@ -324,7 +311,7 @@ ifeq ($(OS),macos)
 	docker build -f tests/Dockerfile -t mac_os_test_docker .
 endif
 endif
-	@$(MAKE) -C $(ROOT)/tests test PARALLEL=$(_RLTEST_PARALLEL)
+	@$(MAKE) -C $(ROOT)/tests test PARALLEL=$(_RLTEST_PARALLEL) BINROOT=$(BINROOT)
 
 .PHONY: test
 
