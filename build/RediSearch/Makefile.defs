@@ -1,10 +1,10 @@
 
-VECSIM_BINDIR=$(REDISEARCH_BINROOT)/search-static/deps/VectorSimilarity/src
-
 REDISEARCH=$(REDISEARCH_BINROOT)/search-static/libredisearch.a
 
+VECSIM_BINDIR=$(REDISEARCH_BINROOT)/search-static/deps/VectorSimilarity/src
+
 ifeq ($(ARCH),x64)
-VECSIM_SPACES=sse avx avx512 no_optimization
+VECSIM_SPACES=sse avx avx512 avx512dq no_optimization
 else
 VECSIM_SPACES=no_optimization
 endif
@@ -14,4 +14,4 @@ VECSIM_LIBS=\
 	$(VECSIM_BINDIR)/VecSim/spaces/libVectorSimilaritySpaces.a \
 	$(foreach f,$(VECSIM_SPACES),$(VECSIM_BINDIR)/VecSim/spaces/libVectorSimilaritySpaces_$(f).a)
 
-REDISEARCH_LIBS=$(REDISEARCH) $(VECSIM_LIBS)
+export REDISEARCH_LIBS=$(REDISEARCH) $(VECSIM_LIBS)

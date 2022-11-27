@@ -1,2 +1,2 @@
 
-RAX=$(RAX_BINDIR)/librax.a
+export RAX=$(RAX_BINDIR)/librax.a

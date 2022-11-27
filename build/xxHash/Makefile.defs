@@ -1,2 +1,2 @@
 
-LIBXXHASH=$(LIBXXHASH_BINDIR)/libxxhash.a
+export LIBXXHASH=$(LIBXXHASH_BINDIR)/libxxhash.a

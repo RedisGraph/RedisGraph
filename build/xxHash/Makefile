@@ -31,14 +31,14 @@ OBJECTS=$(patsubst $(SRCDIR)/%.c,$(BINDIR)/%.o,$(SOURCES))
 CC_DEPS = $(patsubst $(SRCDIR)/%.c, $(BINDIR)/%.d, $(SOURCES))
 
 CC_FLAGS += \
-	-fPIC \
 	-std=gnu99 \
-	-fvisibility=hidden \
-	-MMD -MF $(@:.o=.d) \
-	-I$(SRCDIR) \
-	-I$(BINDIR) \
-	-I$(LIBSSL_PREFIX)/include \
-	$(CC_FLAGS.coverage)
+	-fvisibility=hidden
+
+define CC_INCLUDE
+	$(SRCDIR)
+	$(BINDIR)
+	$(LIBSSL_PREFIX)/include
+endef
 
 ifeq ($(DEBUG),1)
 CC_FLAGS += -g -O0 \

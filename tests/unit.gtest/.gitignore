@@ -1,0 +1,8 @@
+# Unit test binaries
+*.run
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf

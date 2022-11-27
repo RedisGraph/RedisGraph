@@ -1,6 +1,8 @@
 
 ROOT=../..
 
+MK.cmake=1
+
 include $(ROOT)/deps/readies/mk/main
 
 #----------------------------------------------------------------------------------------------
@@ -19,68 +21,39 @@ endef
 
 #----------------------------------------------------------------------------------------------
 
+SRCDIR=$(ROOT)/deps/GraphBLAS
+
+CMAKE_TARGETS=graphblas_static
+
 BINDIR=$(BINROOT)/GraphBLAS
 
 TARGET=$(BINDIR)/libgraphblas.a
 
-#----------------------------------------------------------------------------------------------
-
-CMAKE_DIR=$(ROOT)/deps/GraphBLAS
-
-ifeq ($(DEBUG),1)
-CMAKE_BUILD_TYPE=DEBUG
+ifeq ($(OSNICK),monterey)
+OSX_SDK_VER=12.0
 else
-CMAKE_BUILD_TYPE=RelWithDebInfo
-endif
-CMAKE_DEBUG=-DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
-
-ifeq ($(WHY),1)
-CMAKE_WHY=--trace-expand > /tmp/cmake-why 2>&1
+OSX_SDK_VER=10.15
 endif
 
-CMAKE_FLAGS=\
+CMAKE_FLAGS+=\
 	-Wno-dev \
 	-DBUILD_GRB_STATIC_LIBRARY=1 \
 	-DBUILD_TESTING=off \
-	-DCMAKE_POSITION_INDEPENDENT_CODE=on \
-	-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0
+	-DCMAKE_POSITION_INDEPENDENT_CODE=on
 
-CMAKE_FLAGS += $(CMAKE_ARGS) $(CMAKE_DEBUG) $(CMAKE_STATIC) $(CMAKE_WHY)
+#	-DCMAKE_OSX_DEPLOYMENT_TARGET=$(OSX_SDK_VER)
 
 #----------------------------------------------------------------------------------------------
 
 include $(MK)/defs
 
-MK_CUSTOM_CLEAN=1
-
 #----------------------------------------------------------------------------------------------
 
-all: bindirs $(TARGET)
+MK_CUSTOM_CLEAN=1
 
 include $(MK)/rules
 
-ifeq ($(SLOW),1)
-MAKE_J=
-else
-MAKE_J:=-j$(shell nproc)
-endif
-
-$(BINDIR)/Makefile : $(CMAKE_DIR)/CMakeLists.txt
-ifeq ($(WHY),1)
-	@echo CMake log is in /tmp/cmake-why
-endif
-	$(SHOW)mkdir -p $(BINDIR)
-	$(SHOW)cd $(BINDIR) && cmake $(CMAKE_DIR) $(CMAKE_FLAGS)
-
-$(TARGET): $(BINDIR)/Makefile
-	@echo Building $(TARGET) ...
-ifneq ($(DRY_RUN),1)
-	$(SHOW)$(MAKE) -C $(BINDIR) $(MAKE_J) graphblas_static
-else
-	$(SHOW)make -C $(BINDIR) $(MAKE_J) graphblas_static
-endif
-
-.PHONY: build clean
+#----------------------------------------------------------------------------------------------
 
 clean:
 ifeq ($(ALL),1)
@@ -89,4 +62,4 @@ else
 	$(SHOW)$(MAKE) -C $(BINDIR) clean
 endif
 
-#----------------------------------------------------------------------------------------------
+.PHONY: clean

@@ -1,0 +1,16 @@
+
+file(GLOB TEST_SOURCES LIST_DIRECTORIES false test_*.c)
+
+foreach(test_src ${TEST_SOURCES})
+	get_filename_component(test ${test_src} NAME_WE)
+	add_executable(${test} ${test_src})
+	set_target_properties(${test} PROPERTIES LINKER_LANGUAGE CXX)
+	if (NOT APPLE)
+		# target_link_libraries(${test} ${REDISGRAPH_LIBS} redisgraph)
+		# target_link_libraries(${test} ${REDISGRAPH_OBJECTS} ${REDISGRAPH_LIBS})
+		target_link_libraries(${test} redisgraph_static ${REDISGRAPH_LIBS})
+	else()
+		target_link_libraries(${test} ${REDISGRAPH_OBJECTS} ${REDISGRAPH_LIBS})
+	endif()
+	target_link_libraries(${test} ${LIBOMP} c m dl pthread)
+endforeach()
