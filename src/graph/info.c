@@ -99,44 +99,6 @@ uint64_t QueryInfo_TotalTimeSpent(const QueryInfo info, bool *is_ok) {
     return total_time_spent;
 }
 
-// void QueryInfo_SetAlreadyWaiting
-// (
-//     QueryInfo *query_info,
-//     const uint64_t waiting_time_milliseconds
-// ) {
-//     REQUIRE_ARG(query_info);
-// 	query_info->waiting_time_milliseconds = waiting_time_milliseconds;
-// }
-
-// void QueryInfo_SetExecutionStarted
-// (
-//     QueryInfo *query_info,
-//     const uint64_t waiting_time_milliseconds
-// ) {
-//     REQUIRE_ARG(query_info);
-// 	query_info->waiting_time_milliseconds += waiting_time_milliseconds;
-// }
-
-// void QueryInfo_SetReportingStarted
-// (
-//     QueryInfo *query_info,
-//     const uint64_t executing_time_milliseconds
-// ) {
-//     REQUIRE_ARG(query_info);
-// 	query_info->state = QueryState_REPORTING;
-// 	query_info->executing_time_milliseconds += executing_time_milliseconds;
-// }
-
-// void QueryInfo_SetReportingFinished
-// (
-//     QueryInfo *query_info,
-//     const uint64_t reporting_time_milliseconds
-// ) {
-//     REQUIRE_ARG(query_info);
-//     ASSERT(query_info->state == QueryState_REPORTING);
-// 	query_info->reporting_time_milliseconds += reporting_time_milliseconds;
-// }
-
 QueryInfoStorage QueryInfoStorage_New() {
     QueryInfoStorage storage;
     storage.queries = array_new(QueryInfo, INITIAL_QUERY_INFO_CAPACITY);
@@ -179,8 +141,8 @@ bool QueryInfoStorage_RemoveByContext
     REQUIRE_ARG_OR_RETURN(context, false);
 
     for (uint32_t i = 0; i < array_len(storage->queries); ++i) {
-        QueryInfo *query_info = (QueryInfo*)array_elem(storage->queries, i);
-        if (query_info && query_info->context == context) {
+        QueryInfo query_info = storage->queries[i];
+        if (query_info.context == context) {
             array_del(storage->queries, i);
             return true;
         }
@@ -189,26 +151,7 @@ bool QueryInfoStorage_RemoveByContext
     return false;
 }
 
-QueryInfo* QueryInfoStorage_FindByContext
-(
-    QueryInfoStorage *storage,
-    const struct QueryCtx *context
-) {
-    REQUIRE_ARG_OR_RETURN(storage, NULL);
-    REQUIRE_ARG_OR_RETURN(context, NULL);
-
-    for (uint32_t i = 0; i < array_len(storage->queries); ++i) {
-        QueryInfo *query_info = (QueryInfo*)array_elem(storage->queries, i);
-        if (query_info && query_info->context == context) {
-            return query_info;
-        }
-    }
-
-    return NULL;
-}
-
-
-void _Info_ClearQueries(Info info) {
+static void _Info_ClearQueries(Info info) {
     QueryInfoStorage_Clear(&info.waiting_queries);
     QueryInfoStorage_Clear(&info.executing_queries);
     QueryInfoStorage_Clear(&info.reporting_queries);
@@ -218,8 +161,8 @@ Info Info_New() {
     const Info info = {
         .waiting_queries = QueryInfoStorage_New(),
         .executing_queries = QueryInfoStorage_New(),
-        .waiting_queries = QueryInfoStorage_New(),
-        .max_query_waiting_time = 0
+        .reporting_queries = QueryInfoStorage_New(),
+        .max_query_pipeline_time = 0
     };
 
     return info;
@@ -229,7 +172,7 @@ void Info_Reset(Info *info) {
     REQUIRE_ARG(info);
 
     _Info_ClearQueries(*info);
-    info->max_query_waiting_time = 0;
+    info->max_query_pipeline_time = 0;
 }
 
 void Info_Free(Info info) {
@@ -268,12 +211,13 @@ void Info_IndicateQueryStartedExecution
     // --- Synchronised start
     QueryInfoStorage storage = info->waiting_queries;
     for (uint32_t i = 0; i < array_len(storage.queries); ++i) {
-        QueryInfo *query_info = (QueryInfo*)array_elem(storage.queries, i);
-        if (query_info && query_info->context == context) {
-            QueryInfo copy = *query_info;
-            copy.waiting_time_milliseconds += waiting_time_milliseconds;
+        QueryInfo query_info = storage.queries[i];
+        if (query_info.context == context) {
+            query_info.waiting_time_milliseconds += waiting_time_milliseconds;
             array_del(storage.queries, i);
-            QueryInfoStorage_Add(&info->executing_queries, copy);
+            QueryInfoStorage_Add(&info->executing_queries, query_info);
+
+            break;
         }
     }
     // --- Synchronised end
@@ -295,18 +239,19 @@ void Info_IndicateQueryStartedReporting
     // --- Synchronised start
     QueryInfoStorage storage = info->executing_queries;
     for (uint32_t i = 0; i < array_len(storage.queries); ++i) {
-        QueryInfo *query_info = (QueryInfo*)array_elem(storage.queries, i);
-        if (query_info && query_info->context == context) {
-            QueryInfo copy = *query_info;
-            copy.executing_time_milliseconds += executing_time_milliseconds;
+        QueryInfo query_info = storage.queries[i];
+        if (query_info.context == context) {
+            query_info.executing_time_milliseconds += executing_time_milliseconds;
             array_del(storage.queries, i);
-            QueryInfoStorage_Add(&info->reporting_queries, copy);
+            QueryInfoStorage_Add(&info->reporting_queries, query_info);
+
+            break;
         }
     }
     // --- Synchronised end
 }
 
-void _Info_RecalculateMaxQueryWaitingTime
+static void _Info_RecalculateMaxQueryWaitingTime
 (
     Info *info,
     const QueryInfo query_info
@@ -316,7 +261,7 @@ void _Info_RecalculateMaxQueryWaitingTime
     bool is_ok = true;
     const uint64_t total_query_time = QueryInfo_TotalTimeSpent(query_info, &is_ok);
     REQUIRE_TRUE(is_ok);
-    info->max_query_waiting_time = MAX(info->max_query_waiting_time, total_query_time);
+    info->max_query_pipeline_time = MAX(info->max_query_pipeline_time, total_query_time);
 }
 
 void Info_IndicateQueryFinishedReporting
@@ -334,12 +279,13 @@ void Info_IndicateQueryFinishedReporting
     // --- Synchronised start
     QueryInfoStorage storage = info->reporting_queries;
     for (uint32_t i = 0; i < array_len(storage.queries); ++i) {
-        QueryInfo *query_info = (QueryInfo*)array_elem(storage.queries, i);
-        if (query_info && query_info->context == context) {
-            QueryInfo copy = *query_info;
-            copy.reporting_time_milliseconds += reporting_time_milliseconds;
+        QueryInfo query_info = storage.queries[i];
+        if (query_info.context == context) {
+            query_info.reporting_time_milliseconds += reporting_time_milliseconds;
             array_del(storage.queries, i);
+            _Info_RecalculateMaxQueryWaitingTime(info, query_info);
 
+            break;
         }
     }
     // --- Synchronised end
@@ -389,4 +335,10 @@ uint64_t Info_GetReportingQueriesCount(const Info *info) {
     REQUIRE_ARG_OR_RETURN(info, 0);
 
     return QueryInfoStorage_Length(&info->reporting_queries);
+}
+
+uint64_t Info_GetMaxQueryPipelineTime(const Info *info) {
+    REQUIRE_ARG_OR_RETURN(info, 0);
+
+    return info->max_query_pipeline_time;
 }
