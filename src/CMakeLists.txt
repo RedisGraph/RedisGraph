@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 
 get_filename_component(root ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
-include(${root}/deps/readies/mk/cmake/main)
+include(${root}/deps/readies/cmake/main)
 
 project(redisgraph)
 
@@ -32,8 +32,8 @@ if (DEBUG)
 	add_compile_definitions(_DEBUG RG_DEBUG)
 endif()
 
-list_from_env(CMAKE_CC_FLAGS)
-target_compile_options(redisgraph PUBLIC -fPIC ${CMAKE_CC_FLAGS})
+lists_from_env(CMAKE_CC_FLAGS CMAKE_CC_C_FLAGS)
+target_compile_options(redisgraph PUBLIC -fPIC ${CMAKE_CC_FLAGS} ${CMAKE_CC_C_FLAGS})
 
 list_from_env(LIBOMP)
 add_link_options(${LIBOMP})
