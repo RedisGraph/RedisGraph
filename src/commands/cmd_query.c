@@ -135,8 +135,8 @@ static void _report_query_finished_reporting(const GraphQueryCtx *gq_ctx) {
 		return;
 	}
 
-	const uint64_t milliseconds_executed = CommandCtx_GetTimerMilliseconds(gq_ctx->command_ctx);
-	Info_IndicateQueryFinishedReporting(&gq_ctx->graph_ctx->info, context, milliseconds_executed);
+	const uint64_t milliseconds_reporting = CommandCtx_GetTimerMilliseconds(gq_ctx->command_ctx);
+	Info_IndicateQueryFinishedReporting(&gq_ctx->graph_ctx->info, context, milliseconds_reporting);
 }
 
 static bool _index_operation_delete

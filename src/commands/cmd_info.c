@@ -19,7 +19,7 @@ extern GraphContext **graphs_in_keyspace;
 
 // Global info - across all the graphs available.
 typedef struct {
-    uint64_t max_query_waiting_time;
+    uint64_t max_query_pipeline_time;
     uint64_t total_waiting_queries_count;
     uint64_t total_executing_queries_count;
     uint64_t total_reporting_queries_count;
@@ -85,6 +85,19 @@ static uint64_t _reporting_queries_count_from_graph
     return Info_GetReportingQueriesCount(&gc->info);
 }
 
+static uint64_t _max_query_pipeline_time_from_graph
+(
+    const GraphContext *gc
+) {
+    ASSERT(gc != NULL);
+
+    if (!gc) {
+        return 0;
+    }
+
+    return Info_GetMaxQueryPipelineTime(&gc->info);
+}
+
 static bool _collect_queries_info_from_graph
 (
     RedisModuleCtx *ctx,
@@ -102,6 +115,7 @@ static bool _collect_queries_info_from_graph
     const uint64_t waiting_queries_count = _waiting_queries_count_from_graph(gc);
     const uint64_t executing_queries_count = _executing_queries_count_from_graph(gc);
     const uint64_t reporting_queries_count = _reporting_queries_count_from_graph(gc);
+    const uint64_t max_query_pipeline_time = _max_query_pipeline_time_from_graph(gc);
 
     if (!checked_add_u64(
         global_info->total_waiting_queries_count,
@@ -127,6 +141,16 @@ static bool _collect_queries_info_from_graph
         global_info->total_reporting_queries_count,
         reporting_queries_count,
         &global_info->total_reporting_queries_count)) {
+        // We have a value overflow.
+        if (!is_ok) {
+            return false;
+        }
+    }
+
+    if (!checked_add_u64(
+        global_info->max_query_pipeline_time,
+        max_query_pipeline_time,
+        &global_info->max_query_pipeline_time)) {
         // We have a value overflow.
         if (!is_ok) {
             return false;
@@ -164,7 +188,9 @@ static int _reply_with_queries_info_from_all_graphs
         }
     }
 
-    RedisModule_ReplyWithLongLong(ctx, global_info.max_query_waiting_time);
+    RedisModule_ReplyWithLongLong(ctx, global_info.max_query_pipeline_time);
+
+    return REDISMODULE_OK;
 }
 
 // GRAPH.INFO QUERIES
