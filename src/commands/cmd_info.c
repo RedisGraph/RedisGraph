@@ -56,7 +56,7 @@ static uint64_t _waiting_queries_count_from_graph
         return 0;
     }
 
-    return Info_GetWaitingQueriesCount(gc->info);
+    return Info_GetWaitingQueriesCount(&gc->info);
 }
 
 static uint64_t _executing_queries_count_from_graph
@@ -69,7 +69,7 @@ static uint64_t _executing_queries_count_from_graph
         return 0;
     }
 
-    return Info_GetExecutingQueriesCount(gc->info);
+    return Info_GetExecutingQueriesCount(&gc->info);
 }
 
 static uint64_t _reporting_queries_count_from_graph
@@ -82,7 +82,7 @@ static uint64_t _reporting_queries_count_from_graph
         return 0;
     }
 
-    return Info_GetReportingQueriesCount(gc->info);
+    return Info_GetReportingQueriesCount(&gc->info);
 }
 
 static bool _collect_queries_info_from_graph

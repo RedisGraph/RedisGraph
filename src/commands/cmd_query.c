@@ -80,58 +80,58 @@ static bool _is_query_for_tracking_info(const GraphQueryCtx *gq_ctx) {
 	return !gq_ctx->profile && (command == CMD_QUERY || command == CMD_RO_QUERY);
 }
 
-static QueryInfo* _get_query_for_tracking(const GraphQueryCtx *gq_ctx) {
+static const struct QueryCtx* _get_query_context_for_tracking(const GraphQueryCtx *gq_ctx) {
 	ASSERT(gq_ctx);
 	ASSERT(gq_ctx->command_ctx);
 	ASSERT(gq_ctx->graph_ctx);
 	if (!gq_ctx || !gq_ctx->command_ctx || !gq_ctx->graph_ctx || !_is_query_for_tracking_info(gq_ctx)) {
 		return NULL;
 	}
-	return Info_FindQueryInfo(&gq_ctx->graph_ctx->info, gq_ctx->query_ctx);
+	return gq_ctx->query_ctx;
 }
 
 static void _report_query_already_waiting(const GraphQueryCtx *gq_ctx) {
 	ASSERT(gq_ctx);
 	ASSERT(gq_ctx->command_ctx);
-	if (!_is_query_for_tracking_info(gq_ctx)) {
+	const struct QueryCtx *context = _get_query_context_for_tracking(gq_ctx);
+	if (!context) {
 		return;
 	}
 
-	QueryInfo query_info = QueryInfo_New();
 	const uint64_t milliseconds_waited = CommandCtx_GetTimerMilliseconds(gq_ctx->command_ctx);
-	QueryInfo_SetAlreadyWaiting(&query_info, milliseconds_waited);
-	QueryInfo_SetQueryContext(&query_info, gq_ctx->query_ctx);
-	Info_AddQueryInfo(&gq_ctx->graph_ctx->info, query_info);
+	Info_AddWaitingQueryInfo(&gq_ctx->graph_ctx->info, context, milliseconds_waited);
 }
 
 static void _report_query_started_execution(const GraphQueryCtx *gq_ctx) {
-	QueryInfo *query_info = _get_query_for_tracking(gq_ctx);
-	ASSERT(query_info);
-	if (!query_info) {
+	const struct QueryCtx *context = _get_query_context_for_tracking(gq_ctx);
+	ASSERT(context);
+	if (!context) {
 		return;
 	}
 	const uint64_t milliseconds_waited = CommandCtx_GetTimerMilliseconds(gq_ctx->command_ctx);
-	QueryInfo_SetExecutionStarted(query_info, milliseconds_waited);
+	Info_IndicateQueryStartedExecution(&gq_ctx->graph_ctx->info, context, milliseconds_waited);
 }
+
 static void _report_query_started_reporting(const GraphQueryCtx *gq_ctx) {
-	QueryInfo *query_info = _get_query_for_tracking(gq_ctx);
-	ASSERT(query_info);
-	if (!query_info) {
+	const struct QueryCtx *context = _get_query_context_for_tracking(gq_ctx);
+	ASSERT(context);
+	if (!context) {
 		return;
 	}
 
 	const uint64_t milliseconds_executed = CommandCtx_GetTimerMilliseconds(gq_ctx->command_ctx);
-	QueryInfo_SetReportingStarted(query_info, milliseconds_executed);
+	Info_IndicateQueryStartedReporting(&gq_ctx->graph_ctx->info, context, milliseconds_executed);
 }
 
 static void _report_query_finished_reporting(const GraphQueryCtx *gq_ctx) {
-	QueryInfo *query_info = _get_query_for_tracking(gq_ctx);
-	ASSERT(query_info);
-	if (!query_info) {
+	const struct QueryCtx *context = _get_query_context_for_tracking(gq_ctx);
+	ASSERT(context);
+	if (!context) {
 		return;
 	}
-	const uint64_t milliseconds_reported = CommandCtx_GetTimerMilliseconds(gq_ctx->command_ctx);
-	QueryInfo_SetReportingStarted(query_info, milliseconds_reported);
+
+	const uint64_t milliseconds_executed = CommandCtx_GetTimerMilliseconds(gq_ctx->command_ctx);
+	Info_IndicateQueryFinishedReporting(&gq_ctx->graph_ctx->info, context, milliseconds_executed);
 }
 
 static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
