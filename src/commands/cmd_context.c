@@ -141,7 +141,11 @@ uint64_t CommandCtx_GetTimerMilliseconds(const CommandCtx *command_ctx) {
 	if (!command_ctx) {
 		return 0;
 	}
-	return TIMER_GET_MILLISECONDS(command_ctx->timer);
+
+	const uint64_t elapsed_milliseconds = TIMER_GET_ELAPSED_MILLISECONDS(command_ctx->timer);
+	TIMER_RESTART(command_ctx->timer);
+
+	return elapsed_milliseconds;
 }
 
 void CommandCtx_Free(CommandCtx *command_ctx) {

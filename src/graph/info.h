@@ -54,12 +54,6 @@ void QueryInfoStorage_Add(QueryInfoStorage *, const QueryInfo);
 bool QueryInfoStorage_Remove(QueryInfoStorage *, const QueryInfo *);
 // Returns true if the element has successfully been removed.
 bool QueryInfoStorage_RemoveByContext(QueryInfoStorage *, const struct QueryCtx *);
-// Returns a pointer to stored query if found by context.
-QueryInfo* QueryInfoStorage_FindByContext
-(
-    QueryInfoStorage *,
-    const struct QueryCtx *
-);
 
 typedef struct {
     // Storage for query information for waiting queries.
@@ -68,8 +62,9 @@ typedef struct {
     QueryInfoStorage executing_queries;
     // Storage for query information for reporting currently queries.
     QueryInfoStorage reporting_queries;
-    // Maximum registered time a query was waiting for.
-    atomic_uint_fast64_t max_query_waiting_time;
+    // Maximum registered time a query was spent waiting, executing and
+    // reporting the results.
+    atomic_uint_fast64_t max_query_pipeline_time;
 } Info;
 
 // Create a new info structure.
@@ -121,3 +116,6 @@ uint64_t Info_GetWaitingQueriesCount(const Info *);
 uint64_t Info_GetExecutingQueriesCount(const Info *);
 // Return the number of queries currently reporting results back.
 uint64_t Info_GetReportingQueriesCount(const Info *);
+// Return the maximum registered time a query was spent waiting, executing and
+// reporting the results.
+uint64_t Info_GetMaxQueryPipelineTime(const Info *);
