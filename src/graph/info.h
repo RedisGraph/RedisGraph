@@ -7,21 +7,10 @@
 #pragma once
 
 #include <stdatomic.h>
+#include <stdbool.h>
 
-typedef enum {
-    // The time since the server has received the query and before the
-    // execution has started.
-    QueryState_WAITING = 0,
-    // The time since the execution has started until it finishes and before the
-    // reporting starts.
-    QueryState_EXECUTING = 1,
-    // The time it took for the query to report the results back to the client.
-    QueryState_REPORTING = 2
-} QueryState;
 
 typedef struct {
-    // Current state of the query.
-    QueryState state;
     // The time it spent waiting.
     uint64_t waiting_time_milliseconds;
     // The time spent on executing.
@@ -41,44 +30,44 @@ typedef struct {
 QueryInfo QueryInfo_New();
 // Assigns the query context to the query info.
 void QueryInfo_SetQueryContext(QueryInfo *, const struct QueryCtx *);
-// Sets the query info object state.
-void QueryInfo_SetState(QueryInfo *, const QueryState);
-void QueryInfo_SetWaitingState(QueryInfo *);
-void QueryInfo_SetExecutingState(QueryInfo *);
-void QueryInfo_SetReportingState(QueryInfo *);
-void QueryInfo_SetNextState(QueryInfo *);
+// Returns the total time spent by a query waiting, executing and reporting.
+uint64_t QueryInfo_TotalTimeSpent(const QueryInfo, bool *is_ok);
 
-// Informs the query info object that the execution has started.
-void QueryInfo_SetAlreadyWaiting
-(
-    QueryInfo *,
-    const uint64_t waiting_time_milliseconds
-);
+typedef struct {
+    // Storage for query information for waiting queries.
+    // This implementation uses the "arr.h" facility with a mutex.
+    // TODO use atomic-free skip list for storing queries.
+    QueryInfo *queries;
+} QueryInfoStorage;
 
-// Informs the query info object that the execution has started.
-void QueryInfo_SetExecutionStarted
+// Creates a new query info storage.
+QueryInfoStorage QueryInfoStorage_New();
+// Clears the storage by removing all the queries stored.
+void QueryInfoStorage_Clear(QueryInfoStorage *);
+// Deallocates the storage.
+void QueryInfoStorage_Free(QueryInfoStorage *);
+// Returns the current length of the storage (in elements).
+uint32_t QueryInfoStorage_Length(QueryInfoStorage *);
+// Adds a query info object.
+void QueryInfoStorage_Add(QueryInfoStorage *, const QueryInfo);
+// Returns true if the element has successfully been removed.
+bool QueryInfoStorage_Remove(QueryInfoStorage *, const QueryInfo *);
+// Returns true if the element has successfully been removed.
+bool QueryInfoStorage_RemoveByContext(QueryInfoStorage *, const struct QueryCtx *);
+// Returns a pointer to stored query if found by context.
+QueryInfo* QueryInfoStorage_FindByContext
 (
-    QueryInfo *,
-    const uint64_t waiting_time_milliseconds
-);
-
-// Informs the query info object that the reporting has started.
-void QueryInfo_SetReportingStarted
-(
-    QueryInfo *,
-    const uint64_t executing_time_milliseconds
-);
-
-// Informs the query info object that the reporting has finished.
-void QueryInfo_SetReportingFinished
-(
-    QueryInfo *,
-    const uint64_t executing_time_milliseconds
+    QueryInfoStorage *,
+    const struct QueryCtx *
 );
 
 typedef struct {
-    // Storage for query information.
-    QueryInfo *query_info_array;
+    // Storage for query information for waiting queries.
+    QueryInfoStorage waiting_queries;
+    // Storage for query information for queries being executed.
+    QueryInfoStorage executing_queries;
+    // Storage for query information for reporting currently queries.
+    QueryInfoStorage reporting_queries;
     // Maximum registered time a query was waiting for.
     atomic_uint_fast64_t max_query_waiting_time;
 } Info;
@@ -89,17 +78,46 @@ Info Info_New();
 void Info_Reset(Info *);
 // Free the info structure's contents.
 void Info_Free(const Info);
-// Insert a query information into the info structure.
-void Info_AddQueryInfo(Info *, const QueryInfo);
-// Remove the query information by the query context.
-void Info_RemoveQueryInfo(Info *, const struct QueryCtx *);
+// Insert a query information into the info structure. The query is supposed
+// to be added right after being successfully parsed and known to the module,
+// and before it starts being executed.
+void Info_AddWaitingQueryInfo
+(
+    Info *,
+    const struct QueryCtx *,
+    const uint64_t waiting_time_milliseconds
+);
+// Indicates that the provided query has finished waiting and stated being
+// executed.
+void Info_IndicateQueryStartedExecution
+(
+    Info *,
+    const struct QueryCtx *, 
+    const uint64_t waiting_time_milliseconds
+);
+// Indicates that the query has finished the execution and has started
+// reporting the results back to the client.
+void Info_IndicateQueryStartedReporting
+(
+    Info *,
+    const struct QueryCtx *, 
+    const uint64_t executing_time_milliseconds
+);
+// Indicates that the query has finished reporting the results and is no longer
+// required to be stored and kept track of.
+void Info_IndicateQueryFinishedReporting
+(
+    Info *,
+    const struct QueryCtx *, 
+    const uint64_t reporting_time_milliseconds
+);
 // Find a QueryInfo object by the provided context.
 QueryInfo* Info_FindQueryInfo(Info *, const struct QueryCtx *);
 // Return the total number of queries currently queued or being executed.
-uint64_t Info_GetTotalQueriesCount(const Info);
+uint64_t Info_GetTotalQueriesCount(const Info *);
 // Return the number of queries currently waiting to be executed.
-uint64_t Info_GetWaitingQueriesCount(const Info);
+uint64_t Info_GetWaitingQueriesCount(const Info *);
 // Return the number of queries being currently executed.
-uint64_t Info_GetExecutingQueriesCount(const Info);
+uint64_t Info_GetExecutingQueriesCount(const Info *);
 // Return the number of queries currently reporting results back.
-uint64_t Info_GetReportingQueriesCount(const Info);
+uint64_t Info_GetReportingQueriesCount(const Info *);
