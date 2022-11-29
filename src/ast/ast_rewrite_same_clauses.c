@@ -250,7 +250,7 @@ bool AST_RewriteSameClauses
 		if(j - i > 0) {
 			// multiple clauses with same type, replace them
 			if(t == CYPHER_AST_CREATE) replace_create_clause((cypher_astnode_t *)root, clauses, i, j);
-			else if(t == CYPHER_AST_MATCH) replace_match_clause((cypher_astnode_t *)root, clauses, i, j);
+			// else if(t == CYPHER_AST_MATCH) replace_match_clause((cypher_astnode_t *)root, clauses, i, j);
 			else if(t == CYPHER_AST_DELETE) replace_delete_clause((cypher_astnode_t *)root, clauses, i, j);
 			else if(t == CYPHER_AST_SET) replace_set_clause((cypher_astnode_t *)root, clauses, i, j);
 			else if(t == CYPHER_AST_REMOVE) replace_remove_clause((cypher_astnode_t *)root, clauses, i, j);
