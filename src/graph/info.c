@@ -12,7 +12,6 @@
 
 #include "util/arr.h"
 #include "util/num.h"
-#include "query_ctx.h"
 
 #define INITIAL_QUERY_INFO_CAPACITY 100
 
@@ -60,7 +59,7 @@ void QueryInfo_SetQueryContext
     query_info->context = query_ctx;
 }
 
-uint64_t QueryInfo_TotalTimeSpent(const QueryInfo info, bool *is_ok) {
+uint64_t QueryInfo_GetTotalTimeSpent(const QueryInfo info, bool *is_ok) {
     uint64_t total_time_spent = 0;
 
     if (!checked_add_u64(
@@ -97,6 +96,18 @@ uint64_t QueryInfo_TotalTimeSpent(const QueryInfo info, bool *is_ok) {
     }
 
     return total_time_spent;
+}
+
+uint64_t QueryInfo_GetWaitingTime(const QueryInfo info) {
+    return info.waiting_time_milliseconds;
+}
+
+uint64_t QueryInfo_GetExecutionTime(const QueryInfo info) {
+    return info.executing_time_milliseconds;
+}
+
+uint64_t QueryInfo_GetReportingTime(const QueryInfo info) {
+    return info.reporting_time_milliseconds;
 }
 
 QueryInfoStorage QueryInfoStorage_New() {
@@ -259,7 +270,7 @@ static void _Info_RecalculateMaxQueryWaitingTime
     REQUIRE_ARG(info);
 
     bool is_ok = true;
-    const uint64_t total_query_time = QueryInfo_TotalTimeSpent(query_info, &is_ok);
+    const uint64_t total_query_time = QueryInfo_GetTotalTimeSpent(query_info, &is_ok);
     REQUIRE_TRUE(is_ok);
     info->max_query_pipeline_time = MAX(info->max_query_pipeline_time, total_query_time);
 }
