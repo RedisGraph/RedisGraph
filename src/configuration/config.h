@@ -30,7 +30,8 @@ typedef enum {
 	Config_QUERY_MEM_CAPACITY        = 10,  // max mem(bytes) that query/thread can utilize at any given time
 	Config_DELTA_MAX_PENDING_CHANGES = 11,  // number of pending changes before RG_Matrix flushed
 	Config_NODE_CREATION_BUFFER      = 12,  // size of buffer to maintain as margin in matrices
-	Config_END_MARKER                = 13
+	Config_CMD_INFO                  = 13,  // toggle on/off the GRAPH.INFO
+	Config_END_MARKER                = 14
 } Config_Option_Field;
 
 // callback function, invoked once configuration changes as a result of

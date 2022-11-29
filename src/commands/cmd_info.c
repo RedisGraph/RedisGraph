@@ -206,18 +206,18 @@ static int _reply_global_info
 }
 
 static bool _collect_global_info(RedisModuleCtx *ctx, GlobalInfo *global_info) {
-	ASSERT(ctx != NULL);
-	ASSERT(global_info != NULL);
-	ASSERT(graphs_in_keyspace != NULL);
+    ASSERT(ctx != NULL);
+    ASSERT(global_info != NULL);
+    ASSERT(graphs_in_keyspace != NULL);
     if (!ctx || !global_info || !graphs_in_keyspace) {
         return REDISMODULE_ERR;
     }
 
-	const uint graphs_count = array_len(graphs_in_keyspace);
+    const uint32_t graphs_count = array_len(graphs_in_keyspace);
     memset(global_info, 0, sizeof(GlobalInfo));
 
-	for (uint i = 0; i < graphs_count; ++i) {
-		const GraphContext *gc = graphs_in_keyspace[i];
+    for (uint32_t i = 0; i < graphs_count; ++i) {
+        const GraphContext *gc = graphs_in_keyspace[i];
         if (!gc) {
             RedisModule_ReplyWithError(ctx, "Graph does not exist.");
             return false;
@@ -315,16 +315,16 @@ static int _reply_graph_info(RedisModuleCtx *ctx, const GraphContext *gc) {
 
 static int _reply_per_graph_data(RedisModuleCtx *ctx) {
     ASSERT(ctx);
-	ASSERT(graphs_in_keyspace);
+    ASSERT(graphs_in_keyspace);
     if (!ctx || !graphs_in_keyspace) {
         return REDISMODULE_ERR;
     }
 
-	const uint graphs_count = array_len(graphs_in_keyspace);
+    const uint32_t graphs_count = array_len(graphs_in_keyspace);
 
     REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, graphs_count));
-	for (uint i = 0; i < graphs_count; ++i) {
-		const GraphContext *gc = graphs_in_keyspace[i];
+    for (uint32_t i = 0; i < graphs_count; ++i) {
+        const GraphContext *gc = graphs_in_keyspace[i];
         if (!gc) {
             return REDISMODULE_ERR;
         }
@@ -368,6 +368,52 @@ static int _reply_with_queries_info_from_all_graphs
     return REDISMODULE_OK;
 }
 
+static int _reset_all_graphs_info(RedisModuleCtx *ctx) {
+    ASSERT(ctx);
+    ASSERT(graphs_in_keyspace);
+    if (!ctx || !graphs_in_keyspace) {
+        return REDISMODULE_ERR;
+    }
+
+    const uint32_t graphs_count = array_len(graphs_in_keyspace);
+
+    for (uint32_t i = 0; i < graphs_count; ++i) {
+        const GraphContext *gc = graphs_in_keyspace[i];
+        ASSERT(gc);
+        if (!gc) {
+            return REDISMODULE_ERR;
+        }
+        Info_Reset(&gc->info);
+    }
+    REDISMODULE_DO(RedisModule_ReplyWithBool(ctx, true));
+    return REDISMODULE_OK;
+}
+
+static int _reset_graph_info(RedisModuleCtx *ctx, const char *graph_name) {
+    ASSERT(ctx);
+    ASSERT(graphs_in_keyspace);
+    if (!ctx || !graphs_in_keyspace) {
+        return REDISMODULE_ERR;
+    }
+
+    const uint32_t graphs_count = array_len(graphs_in_keyspace);
+
+    for (uint32_t i = 0; i < graphs_count; ++i) {
+        const GraphContext *gc = graphs_in_keyspace[i];
+        ASSERT(gc);
+        if (!gc) {
+            return REDISMODULE_ERR;
+        }
+        if (_string_equals_case_insensitive(graph_name, gc->graph_name)) {
+            Info_Reset(&gc->info);
+            REDISMODULE_DO(RedisModule_ReplyWithBool(ctx, true));
+            return REDISMODULE_OK;
+        }
+    }
+    RedisModule_ReplyWithError(ctx, "Couldn't find the specified graph");
+    return REDISMODULE_ERR;
+}
+
 // GRAPH.INFO QUERIES
 static int _info_queries
 (
@@ -405,11 +451,23 @@ static int _info_reset
     const int argc
 ) {
     ASSERT(ctx != NULL);
-    int result = REDISMODULE_OK;
 
-    RedisModule_ReplyWithError(ctx, UNIMPLEMENTED_ERROR_STRING);
+    if (argc < 3) {
+        return RedisModule_WrongArity(ctx);
+    }
 
-    return result;
+    const char *graph_name = RedisModule_StringPtrLen(argv[2], NULL);
+
+    if (!graph_name) {
+        RedisModule_ReplyWithError(ctx, "No graph name was specified");
+        return REDISMODULE_ERR;
+    }
+
+    if (_string_equals_case_insensitive(graph_name, "*")) {
+        return _reset_all_graphs_info(ctx);
+    }
+
+    return _reset_graph_info(ctx, graph_name);
 }
 
 static bool _dispatch_subcommand
@@ -443,7 +501,7 @@ int Graph_Info
     const RedisModuleString **argv,
     const int argc
 ) {
-	ASSERT(ctx != NULL);
+    ASSERT(ctx != NULL);
 
     if (argc < 2) {
         return RedisModule_WrongArity(ctx);
@@ -456,7 +514,7 @@ int Graph_Info
         RedisModule_ReplyWithError(ctx, UNKNOWN_SUBCOMMAND_MESSAGE);
     }
 
-	return result;
+    return result;
 }
 
 
