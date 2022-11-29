@@ -25,7 +25,8 @@
 #define REDISMODULE_DO(doable) \
     do { \
         const int ret = doable; \
-        ASSERT(ret == REDISMODULE_OK && "Redis module function " #doable " returned an error."); \
+        ASSERT(ret == REDISMODULE_OK \
+         && "Redis module function " #doable " returned an error."); \
         if (ret != REDISMODULE_OK) { \
             return ret; \
         } \
@@ -63,10 +64,7 @@ static bool _is_reset_cmd(const char *cmd) {
     return _string_equals_case_insensitive(cmd, SUBCOMMAND_NAME_RESET);
 }
 
-static uint64_t _waiting_queries_count_from_graph
-(
-    const GraphContext *gc
-) {
+static uint64_t _waiting_queries_count_from_graph(const GraphContext *gc) {
     ASSERT(gc != NULL);
 
     if (!gc) {
@@ -76,10 +74,7 @@ static uint64_t _waiting_queries_count_from_graph
     return Info_GetWaitingQueriesCount(&gc->info);
 }
 
-static uint64_t _executing_queries_count_from_graph
-(
-    const GraphContext *gc
-) {
+static uint64_t _executing_queries_count_from_graph(const GraphContext *gc) {
     ASSERT(gc != NULL);
 
     if (!gc) {
@@ -89,10 +84,7 @@ static uint64_t _executing_queries_count_from_graph
     return Info_GetExecutingQueriesCount(&gc->info);
 }
 
-static uint64_t _reporting_queries_count_from_graph
-(
-    const GraphContext *gc
-) {
+static uint64_t _reporting_queries_count_from_graph(const GraphContext *gc) {
     ASSERT(gc != NULL);
 
     if (!gc) {
@@ -102,10 +94,7 @@ static uint64_t _reporting_queries_count_from_graph
     return Info_GetReportingQueriesCount(&gc->info);
 }
 
-static uint64_t _max_query_pipeline_time_from_graph
-(
-    const GraphContext *gc
-) {
+static uint64_t _max_query_pipeline_time_from_graph(const GraphContext *gc) {
     ASSERT(gc != NULL);
 
     if (!gc) {
@@ -182,13 +171,14 @@ static int _reply_global_info
     RedisModuleCtx *ctx,
     const GlobalInfo global_info
 ) {
+    static const long KEY_VALUE_COUNT = 4;
+
     ASSERT(ctx);
     if (!ctx) {
         return REDISMODULE_ERR;
     }
 
-    const long key_value_count = 4;
-    REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, key_value_count));
+    REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, KEY_VALUE_COUNT));
     // 1
     REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, MAX_QUERY_PIPELINE_KEY_NAME));
     REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, global_info.max_query_pipeline_time));
@@ -232,6 +222,44 @@ static bool _collect_global_info(RedisModuleCtx *ctx, GlobalInfo *global_info) {
     return true;
 }
 
+static int _reply_graph_query_info
+(
+    RedisModuleCtx *ctx,
+    const QueryInfo info
+) {
+    static const long KEY_VALUE_COUNT = 5;
+
+    REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, KEY_VALUE_COUNT));
+    // 1
+    // Note: customer proprietary data. should not appear in support packages
+    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Query"));
+    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, info.context->query_data.query));
+    // 2
+    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current total time (milliseconds)"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetTotalTimeSpent(info, NULL)));
+    // 3
+    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current wait time (milliseconds)"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetWaitingTime(info)));
+    // 4
+    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current execution time (milliseconds)"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetExecutionTime(info)));
+    // 5
+    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current reporting time (milliseconds)"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetReportingTime(info)));
+    // TODO memory
+    // // 6
+    // REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current processing memory (bytes)"));
+    // REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetReportingTime(info)));
+    // // 7
+    // REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current undo-log memory (bytes)"));
+    // REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetReportingTime(info)));
+    // // 8
+    // REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current result-set memory (bytes)"));
+    // REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetReportingTime(info)));
+
+    return REDISMODULE_OK;
+}
+
 // Breaks the encapsulation!
 // TODO rewrite it so that it doesn't break the encapsulation!
 // Currently it knows about the internals of the Info data structure
@@ -247,7 +275,6 @@ static int _reply_graph_query_info_storage
         return REDISMODULE_ERR;
     }
 
-    const long key_value_count = 5;
     const uint32_t length = array_len(storage->queries);
     REDISMODULE_DO(RedisModule_ReplyWithArray(ctx, length));
     for (uint32_t i = 0; i < length; ++i) {
@@ -256,33 +283,7 @@ static int _reply_graph_query_info_storage
         if (!info.context) {
             break;
         }
-        REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, key_value_count));
-        // 1
-        // Note: customer proprietary data. should not appear in support packages
-        REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Query"));
-        REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, info.context->query_data.query));
-        // 2
-        REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current total time (milliseconds)"));
-        REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetTotalTimeSpent(info, NULL)));
-        // 3
-        REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current wait time (milliseconds)"));
-        REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetWaitingTime(info)));
-        // 4
-        REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current execution time (milliseconds)"));
-        REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetExecutionTime(info)));
-        // 5
-        REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current reporting time (milliseconds)"));
-        REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetReportingTime(info)));
-        // TODO memory
-        // // 6
-        // REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current processing memory (bytes)"));
-        // REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetReportingTime(info)));
-        // // 7
-        // REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current undo-log memory (bytes)"));
-        // REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetReportingTime(info)));
-        // // 8
-        // REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current result-set memory (bytes)"));
-        // REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetReportingTime(info)));
+        REDISMODULE_DO(_reply_graph_query_info(ctx, info));
     }
 
     return REDISMODULE_OK;
@@ -378,7 +379,7 @@ static int _reset_all_graphs_info(RedisModuleCtx *ctx) {
     const uint32_t graphs_count = array_len(graphs_in_keyspace);
 
     for (uint32_t i = 0; i < graphs_count; ++i) {
-        const GraphContext *gc = graphs_in_keyspace[i];
+        GraphContext *gc = graphs_in_keyspace[i];
         ASSERT(gc);
         if (!gc) {
             return REDISMODULE_ERR;
@@ -399,7 +400,7 @@ static int _reset_graph_info(RedisModuleCtx *ctx, const char *graph_name) {
     const uint32_t graphs_count = array_len(graphs_in_keyspace);
 
     for (uint32_t i = 0; i < graphs_count; ++i) {
-        const GraphContext *gc = graphs_in_keyspace[i];
+        GraphContext *gc = graphs_in_keyspace[i];
         ASSERT(gc);
         if (!gc) {
             return REDISMODULE_ERR;
@@ -436,7 +437,7 @@ static int _info_get
     const int argc
 ) {
     ASSERT(ctx != NULL);
-    int result = REDISMODULE_OK;
+    int result = REDISMODULE_ERR;
 
     RedisModule_ReplyWithError(ctx, UNIMPLEMENTED_ERROR_STRING);
 
