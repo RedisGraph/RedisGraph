@@ -38,7 +38,7 @@ typedef struct {
 	const char *command_name;       // Command name.
 } QueryCtx_GlobalExecCtx;
 
-typedef struct {
+typedef struct QueryCtx {
 	QueryCtx_QueryData query_data;              // The data related to the query syntax.
 	QueryCtx_InternalExecCtx internal_exec_ctx; // The data related to internal query execution.
 	QueryCtx_GlobalExecCtx global_exec_ctx;     // The data rlated to global redis execution.
