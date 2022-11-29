@@ -35,9 +35,9 @@ endif()
 lists_from_env(CMAKE_CC_FLAGS CMAKE_CC_C_FLAGS)
 target_compile_options(redisgraph PUBLIC -fPIC ${CMAKE_CC_FLAGS} ${CMAKE_CC_C_FLAGS})
 
-list_from_env(LIBOMP)
-add_link_options(${LIBOMP})
-target_link_options(redisgraph PUBLIC ${LIBOMP})
+lists_from_env(CMAKE_LD_FLAGS CMAKE_SO_LD_FLAGS LIBOMP)
+add_link_options(${CMAKE_LD_FLAGS} ${CMAKE_SO_LD_FLAGS} ${LIBOMP})
+target_link_options(redisgraph PUBLIC ${CMAKE_LD_FLAGS} ${CMAKE_SO_LD_FLAGS} ${LIBOMP})
 
 set_target_properties(redisgraph PROPERTIES PREFIX "")
 set_target_properties(redisgraph PROPERTIES SUFFIX ".so")
@@ -46,8 +46,8 @@ set_target_properties(redisgraph PROPERTIES LINKER_LANGUAGE CXX)
 
 set(REDISGRAPH_OBJECTS $<TARGET_OBJECTS:redisgraph>)
 
-list_from_env(REDISEARCH_LIBS)
-set(REDISGRAPH_LIBS $ENV{GRAPHBLAS} $ENV{LIBXXHASH} $ENV{RAX} $ENV{LIBCYPHER_PARSER} ${REDISEARCH_LIBS})
+lists_from_env(GRAPHBLAS LIBXXHASH RAX LIBCYPHER_PARSER REDISEARCH_LIBS)
+set(REDISGRAPH_LIBS ${GRAPHBLAS} ${LIBXXHASH} ${RAX} ${LIBCYPHER_PARSER} ${REDISEARCH_LIBS})
 
 target_link_libraries(redisgraph PRIVATE ${REDISGRAPH_LIBS})
 target_link_libraries(redisgraph PRIVATE c m dl pthread)

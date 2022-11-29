@@ -266,6 +266,9 @@ ifeq ($(DEPS),1)
 endif
 endif
 
+clean-libcypher-parser:
+	$(SHOW)$(MAKE) -C $(ROOT)/build/libcypher-parser clean ALL=1 AUTOGEN=1
+
 clean-search:
 ifeq ($(ALL),1)
 	$(SHOW)rm -rf $(REDISEARCH_BINROOT)/search-static
