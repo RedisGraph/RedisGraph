@@ -20,11 +20,6 @@ typedef struct {
     uint64_t reporting_time_milliseconds;
     // The context of the query.
     const QueryCtx *context;
-    // The command context of the query.
-    // When a command is received by the redis server it is dispatched to the
-    // graph command dispatcher. At this moment, there is no query yet but only
-    // the command context. Once the command dispatcher figures out the query
-    // const struct CommandCtx *command;
 } QueryInfo;
 
 // Creates a new, empty query info object.
