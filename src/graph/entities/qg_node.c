@@ -256,8 +256,7 @@ QGNode *QGNode_Clone
 void QGNode_ToString
 (
 	const QGNode *n,  // target node
-	sds *buff,        // result buffer (concatenated)
-	char *label_to_ignore  // label not to return in result string (used for condTraverse and ExpandInto printing)
+	sds *buff        // result buffer (concatenated)
 ) {
 	ASSERT(n != NULL);
 	ASSERT(buff != NULL);
@@ -267,7 +266,6 @@ void QGNode_ToString
 	if(n->alias) *buff = sdscatprintf(*buff, "%s", n->alias);
 
 	for(uint i = 0; i < QGNode_LabelCount(n); i++) {
-		if(label_to_ignore && !(strcmp(n->labels[i], label_to_ignore))) continue;
 		*buff = sdscatprintf(*buff, ":%s", n->labels[i]);
 	}
 

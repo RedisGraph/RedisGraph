@@ -16,8 +16,8 @@ static inline void _NodeToString(sds *buf, const char *alias, const char *label)
 	*buf = sdscatprintf(*buf, ")");
 }
 
-// concatenate labels of src or dest of ae to buf, according to the labels in ae
-// if src is set, the labels of the source-node are printed, and dest otherwise
+// concatenate labels of src or dest of ae to buf
+// if src is set, the labels of the source node of ae are printed, dest otherwise
 static void print_ae_labels_cat
 (
 	sds *buf,                 // output buffer (concatenated)
@@ -52,7 +52,6 @@ void TraversalToString(const OpBase *op, sds *buf, AlgebraicExpression *ae) {
 	QGEdge *e = (edge) ? QueryGraph_GetEdgeByAlias(op->plan->query_graph, edge) : NULL;
 	
 	print_ae_labels_cat(buf, AlgebraicExpression_Clone(ae), true);
-
 	if(e) {
 		if(transpose) {
 			*buf = sdscatprintf(*buf, "<-");

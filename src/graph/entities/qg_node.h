@@ -132,8 +132,7 @@ QGNode *QGNode_Clone
 void QGNode_ToString
 (
 	const QGNode *n,  // target node
-	sds *buff,        // result buffer (concatenated)
-	char *label_to_ignore  // label not to return in result string (used for condTraverse and ExpandInto printing)
+	sds *buff        // result buffer (concatenated)
 );
 
 // frees allocated space by given node
