@@ -73,6 +73,6 @@ class test_execution_plan_print():
         # B is printed alone in conditional-traverse
         self.env.assertIn("Conditional Traverse | (n:B)->(n:B)", plan)
         # conditional-variable-length-traverse prints all labels
-        self.env.assertIn("Conditional Variable Length Traverse | (n:A:B)-[@anon_0*1..INF]->(m:C:D)", plan)
+        self.env.assertIn("Conditional Variable Length Traverse | (n)-[@anon_0*1..INF]->(m)", plan)
         # expand-into prints labels C and D
         self.env.assertIn("Expand Into | (m:C:D)->(m:C:D)", plan)

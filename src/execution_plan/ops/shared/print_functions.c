@@ -16,6 +16,27 @@ static inline void _NodeToString(sds *buf, const char *alias, const char *label)
 	*buf = sdscatprintf(*buf, ")");
 }
 
+// concatenate labels of src or dest of ae to buf, according to the labels in ae
+// if src is set, the labels of the source-node are printed, and dest otherwise
+static void print_ae_labels_cat
+(
+	sds *buf,                 // output buffer (concatenated)
+	AlgebraicExpression *ae,  // AlgebraicExpression from which to take the labels
+	bool src                  // src or dest of ae
+) {
+	AlgebraicExpression *clone = AlgebraicExpression_Clone(ae);
+	const char *alias = src ? AlgebraicExpression_Src(clone) : AlgebraicExpression_Dest(clone);
+	*buf = sdscatprintf(*buf, "(%s", alias);
+	AlgebraicExpression *ae_src = (AlgebraicExpression *) AlgebraicExpression_SrcOperand(clone);
+	while(ae_src->type == AL_OPERAND && ae_src->operand.diagonal) {
+		ae_src = AlgebraicExpression_RemoveSource(&clone);
+		*buf = sdscatprintf(*buf, ":%s", ae_src->operand.label);
+		if(clone) ae_src = (AlgebraicExpression *) AlgebraicExpression_SrcOperand(clone);
+		else break;
+	}
+	*buf = sdscatprintf(*buf, ")");
+}
+
 void TraversalToString(const OpBase *op, sds *buf, AlgebraicExpression *ae) {
 	ASSERT(ae != NULL);
 
@@ -29,13 +50,9 @@ void TraversalToString(const OpBase *op, sds *buf, AlgebraicExpression *ae) {
 	QGNode *dest = QueryGraph_GetNodeByAlias(op->plan->query_graph,
 											 AlgebraicExpression_Dest(ae));
 	QGEdge *e = (edge) ? QueryGraph_GetEdgeByAlias(op->plan->query_graph, edge) : NULL;
+	
+	print_ae_labels_cat(buf, AlgebraicExpression_Clone(ae), true);
 
-	// ignore child label if child is a label-scan.
-	bool ignore_label = (op->type == OPType_CONDITIONAL_TRAVERSE || op->type == OPType_EXPAND_INTO)
-						&& op->children[0]->type == OPType_NODE_BY_LABEL_SCAN;
-	char *label_to_ignore = NULL;
-	if(ignore_label) label_to_ignore = ((NodeByLabelScan *)op->children[0])->n.label;
-	QGNode_ToString(src, buf, label_to_ignore);
 	if(e) {
 		if(transpose) {
 			*buf = sdscatprintf(*buf, "<-");
@@ -49,7 +66,7 @@ void TraversalToString(const OpBase *op, sds *buf, AlgebraicExpression *ae) {
 	} else {
 		*buf = sdscatprintf(*buf, "->");
 	}
-	QGNode_ToString(dest, buf, label_to_ignore);
+	print_ae_labels_cat(buf, AlgebraicExpression_Clone(ae), false);
 }
 
 void ScanToString(const OpBase *op, sds *buf, const char *alias, const char *label) {
