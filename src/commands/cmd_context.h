@@ -99,7 +99,7 @@ void CommandCtx_ThreadSafeContextUnlock
 
 // Return the time in milliseconds, spent since the last call (or initialization
 // of the object).
-uint64_t CommandCtx_GetTimerMilliseconds(const CommandCtx *);
+uint64_t CommandCtx_GetTimerMilliseconds(CommandCtx *);
 
 // Free command context.
 void CommandCtx_Free
