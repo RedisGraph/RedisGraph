@@ -13,6 +13,21 @@
 #define SUBCOMMAND_NAME_GET "GET"
 #define SUBCOMMAND_NAME_RESET "RESET"
 #define UNKNOWN_SUBCOMMAND_MESSAGE "Unknown subcommand."
+#define MAX_QUERY_PIPELINE_KEY_NAME "Max Query Pipeline Time (milliseconds)"
+#define TOTAL_WAITING_QUERIES_COUNT_KEY_NAME "Total waiting queries count"
+#define TOTAL_EXECUTING_QUERIES_COUNT_KEY_NAME "Total executing queries count"
+#define TOTAL_REPORTING_QUERIES_COUNT_KEY_NAME "Total reporting queries count"
+#define UNIMPLEMENTED_ERROR_STRING "Unimplemented"
+
+// A wrapper for RedisModule_ functions which returns immediately on failure.
+#define REDISMODULE_DO(doable) \
+    do { \
+        const int ret = doable; \
+        ASSERT(ret == REDISMODULE_OK && "Redis module function " #doable " returned an error."); \
+        if (ret != REDISMODULE_OK) { \
+            return ret; \
+        } \
+    } while(0);
 
 // Global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
@@ -160,35 +175,131 @@ static bool _collect_queries_info_from_graph
     return true;
 }
 
-static int _reply_with_queries_info_from_all_graphs
+static int _reply_global_info
 (
-    RedisModuleCtx *ctx
+    RedisModuleCtx *ctx,
+    const GlobalInfo global_info
 ) {
+    ASSERT(ctx);
+    if (!ctx) {
+        return REDISMODULE_ERR;
+    }
+
+    const long key_value_count = 4;
+    REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, key_value_count));
+    // 1
+    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, MAX_QUERY_PIPELINE_KEY_NAME));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, global_info.max_query_pipeline_time));
+    // 2
+    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, TOTAL_WAITING_QUERIES_COUNT_KEY_NAME));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, global_info.total_waiting_queries_count));
+    // 3
+    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, TOTAL_EXECUTING_QUERIES_COUNT_KEY_NAME));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, global_info.total_executing_queries_count));
+    // 4
+    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, TOTAL_REPORTING_QUERIES_COUNT_KEY_NAME));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, global_info.total_reporting_queries_count));
+
+    return REDISMODULE_OK;
+}
+
+static bool _collect_global_info(RedisModuleCtx *ctx, GlobalInfo *global_info) {
+	ASSERT(ctx != NULL);
+	ASSERT(global_info != NULL);
 	ASSERT(graphs_in_keyspace != NULL);
+    if (!ctx || !global_info || !graphs_in_keyspace) {
+        return REDISMODULE_ERR;
+    }
+
+	const uint graphs_count = array_len(graphs_in_keyspace);
+    memset(global_info, 0, sizeof(GlobalInfo));
+
+	for (uint i = 0; i < graphs_count; ++i) {
+		const GraphContext *gc = graphs_in_keyspace[i];
+        if (!gc) {
+            RedisModule_ReplyWithError(ctx, "Graph does not exist.");
+            return false;
+        }
+
+        if (!_collect_queries_info_from_graph(ctx, gc, global_info)) {
+            RedisModule_ReplyWithError(ctx, "Error while collecting data.");
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static int _reply_graph_info(RedisModuleCtx *ctx, const GraphContext *gc) {
+    ASSERT(ctx);
+    ASSERT(gc);
+    if (!ctx || !gc) {
+        return REDISMODULE_ERR;
+    }
+
+    // const Info info = gc->info;
+    // const long key_value_count = 4;
+    // REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, key_value_count));
+    // Breaks the encapsulation!
+    // TODO rewrite it so that it doesn't break the encapsulation!
+    // Currently it knows about the internals of the Info data structure
+    // and the way it stores the data.
+    // foreach executing query, reporting query.
+
+    // // 1
+    // REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Graph name"));
+    // REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, gc->graph_name));
+    // // 2
+    // REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Graph name"));
+    // REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, gc->graph_name));
+
+    return REDISMODULE_OK;
+}
+
+static int _reply_per_graph_data(RedisModuleCtx *ctx) {
+    ASSERT(ctx);
+	ASSERT(graphs_in_keyspace);
     if (!ctx || !graphs_in_keyspace) {
         return REDISMODULE_ERR;
     }
 
-    bool is_ok = true;
 	const uint graphs_count = array_len(graphs_in_keyspace);
-    GlobalInfo global_info = {};
 
-	for(uint i = 0; i < graphs_count; ++i) {
+	for (uint i = 0; i < graphs_count; ++i) {
 		const GraphContext *gc = graphs_in_keyspace[i];
         if (!gc) {
-            RedisModule_ReplyWithError(ctx, "Graph does not exist.");
             return REDISMODULE_ERR;
         }
 
-        is_ok = _collect_queries_info_from_graph(ctx, gc, &global_info);
-
-        if (!is_ok) {
-            RedisModule_ReplyWithError(ctx, "Error while collecting data.");
+        if (!_reply_graph_info(ctx, gc)) {
             return REDISMODULE_ERR;
         }
     }
 
-    RedisModule_ReplyWithLongLong(ctx, global_info.max_query_pipeline_time);
+    return REDISMODULE_OK;
+}
+
+static int _reply_with_queries_info_from_all_graphs
+(
+    RedisModuleCtx *ctx
+) {
+    ASSERT(ctx);
+    if (!ctx) {
+        return REDISMODULE_ERR;
+    }
+
+    GlobalInfo global_info = {};
+    if (!_collect_global_info(ctx, &global_info)) {
+        return REDISMODULE_ERR;
+    }
+
+    if (!_reply_global_info(ctx, global_info)) {
+        return REDISMODULE_ERR;
+    }
+
+    if (!_reply_per_graph_data(ctx)) {
+        return REDISMODULE_ERR;
+    }
 
     return REDISMODULE_OK;
 }
@@ -217,7 +328,7 @@ static int _info_get
     ASSERT(ctx != NULL);
     int result = REDISMODULE_OK;
 
-    RedisModule_ReplyWithNull(ctx);
+    RedisModule_ReplyWithError(ctx, UNIMPLEMENTED_ERROR_STRING);
 
     return result;
 }
@@ -232,7 +343,7 @@ static int _info_reset
     ASSERT(ctx != NULL);
     int result = REDISMODULE_OK;
 
-    RedisModule_ReplyWithNull(ctx);
+    RedisModule_ReplyWithError(ctx, UNIMPLEMENTED_ERROR_STRING);
 
     return result;
 }
