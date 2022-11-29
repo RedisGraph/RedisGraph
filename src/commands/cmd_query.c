@@ -6,6 +6,7 @@
 
 #include "RG.h"
 #include "../errors.h"
+#include "../configuration/config.h"
 #include "commands.h"
 #include "cmd_context.h"
 #include "../ast/ast.h"
@@ -85,11 +86,17 @@ static bool _is_query_for_tracking_info(const GraphQueryCtx *gq_ctx) {
 	return !gq_ctx->profile && (command == CMD_QUERY || command == CMD_RO_QUERY);
 }
 
+static bool _is_cmd_info_enabled() {
+	bool cmd_info_enabled = false;
+	return Config_Option_get(Config_CMD_INFO, &cmd_info_enabled) && cmd_info_enabled;
+}
+
 static const struct QueryCtx* _get_query_context_for_tracking(const GraphQueryCtx *gq_ctx) {
 	ASSERT(gq_ctx);
 	ASSERT(gq_ctx->command_ctx);
 	ASSERT(gq_ctx->graph_ctx);
-	if (!gq_ctx || !gq_ctx->command_ctx || !gq_ctx->graph_ctx || !_is_query_for_tracking_info(gq_ctx)) {
+	if (!gq_ctx || !gq_ctx->command_ctx || !gq_ctx->graph_ctx
+	 || _is_cmd_info_enabled() || !_is_query_for_tracking_info(gq_ctx)) {
 		return NULL;
 	}
 	return gq_ctx->query_ctx;

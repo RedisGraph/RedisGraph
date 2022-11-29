@@ -200,8 +200,8 @@ void Info_AddWaitingQueryInfo
 ) {
     REQUIRE_ARG(info);
 
-	QueryInfo query_info = QueryInfo_New();
-	QueryInfo_SetQueryContext(&query_info, query_context);
+    QueryInfo query_info = QueryInfo_New();
+    QueryInfo_SetQueryContext(&query_info, query_context);
     query_info.waiting_time_milliseconds += waiting_time_milliseconds;
     QueryInfoStorage_Add(&info->waiting_queries, query_info);
 }
@@ -209,7 +209,7 @@ void Info_AddWaitingQueryInfo
 void Info_IndicateQueryStartedExecution
 (
     Info *info,
-    const struct QueryCtx *context, 
+    const struct QueryCtx *context,
     const uint64_t waiting_time_milliseconds
 ) {
     REQUIRE_ARG(info);
@@ -237,7 +237,7 @@ void Info_IndicateQueryStartedExecution
 void Info_IndicateQueryStartedReporting
 (
     Info *info,
-    const struct QueryCtx *context, 
+    const struct QueryCtx *context,
     const uint64_t executing_time_milliseconds
 ) {
     REQUIRE_ARG(info);
@@ -278,7 +278,7 @@ static void _Info_RecalculateMaxQueryWaitingTime
 void Info_IndicateQueryFinishedReporting
 (
     Info *info,
-    const struct QueryCtx *context, 
+    const struct QueryCtx *context,
     const uint64_t reporting_time_milliseconds
 ) {
     REQUIRE_ARG(info);
