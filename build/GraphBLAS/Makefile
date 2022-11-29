@@ -39,9 +39,8 @@ CMAKE_FLAGS+=\
 	-Wno-dev \
 	-DBUILD_GRB_STATIC_LIBRARY=1 \
 	-DBUILD_TESTING=off \
-	-DCMAKE_POSITION_INDEPENDENT_CODE=on
-
-#	-DCMAKE_OSX_DEPLOYMENT_TARGET=$(OSX_SDK_VER)
+	-DCMAKE_POSITION_INDEPENDENT_CODE=on \
+	-DCMAKE_OSX_DEPLOYMENT_TARGET=$(OSX_SDK_VER)
 
 #----------------------------------------------------------------------------------------------
 
