@@ -23,11 +23,11 @@ TEST(NumOverflowTest, TestCheckedAddU8) {
     ASSERT_EQ(is_ok, true);
     is_ok = checked_add_u8(254, 2, &out);
     // The value isn't changed when it is not ok.
-    ASSERT_EQ(out, 255);
+    ASSERT_EQ(out, 0);
     ASSERT_EQ(is_ok, false);
     is_ok = checked_add_u8(254, 100, &out);
     // The value isn't changed when it is not ok.
-    ASSERT_EQ(out, 255);
+    ASSERT_EQ(out, 98);
     ASSERT_EQ(is_ok, false);
 }
 

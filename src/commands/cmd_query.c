@@ -91,7 +91,7 @@ static const struct QueryCtx* _get_query_context_for_tracking(const GraphQueryCt
 	ASSERT(gq_ctx->command_ctx);
 	ASSERT(gq_ctx->graph_ctx);
 	if (!gq_ctx || !gq_ctx->command_ctx || !gq_ctx->graph_ctx
-	 || _is_cmd_info_enabled() || !_is_query_for_tracking_info(gq_ctx)) {
+	 || !_is_cmd_info_enabled() || !_is_query_for_tracking_info(gq_ctx)) {
 		return NULL;
 	}
 	return gq_ctx->query_ctx;
