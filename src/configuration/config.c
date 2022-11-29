@@ -55,6 +55,9 @@
 // size of node creation buffer
 #define NODE_CREATION_BUFFER "NODE_CREATION_BUFFER"
 
+// The GRAPH.INFO command
+#define CMD_INFO "CMD_INFO"
+
 //------------------------------------------------------------------------------
 // Configuration defaults
 //------------------------------------------------------------------------------
@@ -62,6 +65,7 @@
 #define CACHE_SIZE_DEFAULT            25
 #define QUEUED_QUERIES_UNLIMITED      UINT64_MAX
 #define VKEY_MAX_ENTITY_COUNT_DEFAULT 100000
+#define CMD_INFO_DEFAULT              true
 
 // configuration object
 typedef struct {
@@ -79,6 +83,7 @@ typedef struct {
 	uint64_t node_creation_buffer;     // Number of extra node creations to buffer as margin in matrices
 	int64_t delta_max_pending_changes; // number of pending changed befor RG_Matrix flushed
 	Config_on_change cb;               // callback function which being called when config param changed
+	bool cmd_info_on;                  // If true, the GRAPH.INFO is enabled.
 } RG_Config;
 
 RG_Config config; // global module configuration
@@ -376,6 +381,21 @@ static uint64_t Config_node_creation_buffer_get(void) {
 	return config.node_creation_buffer;
 }
 
+//------------------------------------------------------------------------------
+// cmd info
+//------------------------------------------------------------------------------
+
+static uint64_t Config_cmd_info_get(void) {
+	return config.cmd_info_on;
+}
+
+static void Config_cmd_info_set
+(
+	bool cmd_info_on
+) {
+	config.cmd_info_on = cmd_info_on;
+}
+
 bool Config_Contains_field
 (
 	const char *field_str,
@@ -409,6 +429,8 @@ bool Config_Contains_field
 		f = Config_DELTA_MAX_PENDING_CHANGES;
 	} else if(!(strcasecmp(field_str, NODE_CREATION_BUFFER))) {
 		f = Config_NODE_CREATION_BUFFER;
+	} else if(!(strcasecmp(field_str, CMD_INFO))) {
+		f = Config_CMD_INFO;
 	} else {
 		return false;
 	}
@@ -475,6 +497,10 @@ const char *Config_Field_name
 			name = NODE_CREATION_BUFFER;
 			break;
 
+		case Config_CMD_INFO:
+			name = CMD_INFO;
+			break;
+
 		//----------------------------------------------------------------------
 		// invalid option
 		//----------------------------------------------------------------------
@@ -533,6 +559,9 @@ static void _Config_SetToDefaults(void) {
 
 	// the amount of empty space to reserve for node creations in matrices
 	config.node_creation_buffer = NODE_CREATION_BUFFER_DEFAULT;
+
+    // GRAPH.INFO command on/off.
+	config.cmd_info_on = CMD_INFO_DEFAULT;
 }
 
 int Config_Init
@@ -799,6 +828,20 @@ bool Config_Option_get
 		break;
 
 		//----------------------------------------------------------------------
+		// cmd info
+		//----------------------------------------------------------------------
+
+		case Config_CMD_INFO: {
+			va_start(ap, field);
+			bool *cmd_info_on = va_arg(ap, bool *);
+			va_end(ap);
+
+			ASSERT(cmd_info_on != NULL);
+			(*cmd_info_on) = Config_cmd_info_get();
+		}
+		break;
+
+		//----------------------------------------------------------------------
 		// invalid option
 		//----------------------------------------------------------------------
 
@@ -995,6 +1038,20 @@ bool Config_Option_set
 				node_creation_buffer = 1 << msb;
 			}
 			Config_node_creation_buffer_set(node_creation_buffer);
+		}
+		break;
+
+		//----------------------------------------------------------------------
+		// cmd info
+		//----------------------------------------------------------------------
+
+		case Config_CMD_INFO: {
+			bool cmd_info_on = false;
+			if (!_Config_ParseYesNo(val, &cmd_info_on)) {
+				return false;
+			}
+
+			Config_cmd_info_set(cmd_info_on);
 		}
 		break;
 
