@@ -6,11 +6,11 @@
 
 #pragma once
 
-//convert str to a lower case string and save it in lower
-void str_tolower(const char *str, char *lower, size_t *lower_len);
+//convert str to a lower case string and save it in lower, pass "" for the root locale or NULL for the default locale
+void str_tolower(const char *str, char *lower, size_t *lower_len, const char *locale);
 
-//convert str to a n upper case string and save it in upper
-void str_toupper(const char *str, char *upper, size_t *upper_len);
+//convert str to a n upper case string and save it in upper, pass "" for the root locale or NULL for the default locale
+void str_toupper(const char *str, char *upper, size_t *upper_len, const char *locale);
 
 
 // Utility function to increase the size of a buffer.

@@ -48,7 +48,7 @@ void AR_RegFunc
 ) {
 	char lower_func_name[32];
 	size_t lower_func_name_len = 32;
-	str_tolower(func->name, lower_func_name, &lower_func_name_len);
+	str_tolower(func->name, lower_func_name, &lower_func_name_len, NULL);
 	int res = raxInsert(__aeRegisteredFuncs, (unsigned char *)lower_func_name,
 			lower_func_name_len, func, NULL);
 	ASSERT(res == 1);
@@ -72,7 +72,7 @@ AR_FuncDesc *AR_GetFunc
 ) {
 	size_t len = strlen(func_name);
 	char lower_func_name[len];
-	str_tolower(func_name, lower_func_name, &len);
+	str_tolower(func_name, lower_func_name, &len, NULL);
 	void *f = raxFind(__aeRegisteredFuncs, (unsigned char *)lower_func_name, len);
 
 	if(f == raxNotFound) return NULL;
@@ -99,7 +99,7 @@ bool AR_FuncExists
 ) {
 	size_t len = strlen(func_name);
 	char lower_func_name[len];
-	str_tolower(func_name, lower_func_name, &len);
+	str_tolower(func_name, lower_func_name, &len, NULL);
 	void *f = raxFind(__aeRegisteredFuncs, (unsigned char *)lower_func_name, len);
 
 	if(f == raxNotFound) return false;
@@ -115,7 +115,7 @@ bool AR_FuncIsAggregate
 ) {
 	size_t len = strlen(func_name);
 	char lower_func_name[len];
-	str_tolower(func_name, lower_func_name, &len);
+	str_tolower(func_name, lower_func_name, &len, NULL);
 	AR_FuncDesc *f = raxFind(__aeRegisteredFuncs,
 			(unsigned char *)lower_func_name, len);
 

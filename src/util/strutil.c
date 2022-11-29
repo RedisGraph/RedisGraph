@@ -9,7 +9,7 @@
 #include "RG.h"
 #include "rmalloc.h"
 
-void str_tolower(const char *str, char *lower, size_t *lower_len) {
+void str_tolower(const char *str, char *lower, size_t *lower_len, const char *locale); {
 	size_t str_len = strlen(str);
 	//Avoid overflow
 	ASSERT(*lower_len >= str_len);
@@ -22,7 +22,7 @@ void str_tolower(const char *str, char *lower, size_t *lower_len) {
 	lower[i] = 0;
 }
 
-void str_toupper(const char *str, char *upper, size_t *upper_len) {
+void str_toupper(const char *str, char *upper, size_t *upper_len, const char *locale) {
 	size_t str_len = strlen(str);
 	//Avoid overflow
 	ASSERT(*upper_len >= str_len);
