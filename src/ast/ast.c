@@ -592,6 +592,8 @@ cypher_parse_result_t *parse_query(const char *query) {
 	bool rerun_validation = AST_RewriteStarProjections(result);
 	rerun_validation |= AST_RewriteSameClauses(result);
 
+	cypher_parse_result_fprint_ast(result, stdout, 0, NULL, NULL);
+
 	// only perform validations again if there's been a rewrite
 	if(rerun_validation && AST_Validate_Query(result) != AST_VALID) {
 		parse_result_free(result);

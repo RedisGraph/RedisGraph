@@ -8,8 +8,8 @@
 
 #include "ast.h"
 
-// rewrite sequence of CREATE clauses in query to 1 clause,
-// returning true if a rewrite has been performed
+// rewrite result by compressing consecutive clauses of the same type
+// to one clause, returning true if a rewrite has been performed
 bool AST_RewriteSameClauses
 (
     cypher_parse_result_t *result
