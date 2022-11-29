@@ -152,7 +152,7 @@ bool QueryInfoStorage_RemoveByContext
     REQUIRE_ARG_OR_RETURN(context, false);
 
     for (uint32_t i = 0; i < array_len(storage->queries); ++i) {
-        QueryInfo query_info = storage->queries[i];
+        const QueryInfo query_info = storage->queries[i];
         if (query_info.context == context) {
             array_del(storage->queries, i);
             return true;
