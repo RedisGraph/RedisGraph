@@ -1,5 +1,6 @@
 from common import *
 graph = None
+
 class test_execution_plan_print():
     def __init__(self):
         self.env = Env(decodeResponses=True)
@@ -33,10 +34,6 @@ class test_execution_plan_print():
     # Make sure the conditional-traverse and expand-into operations
     # which do not come after a label_scan print all labels.
     def test03_operations_not_after_scan(self):
-        self.env.flush()
-        # create key
-        graph.query("RETURN 1")
-
         plan = graph.execution_plan("match p=(n:A:B)-[*]-(m:C:D) RETURN p")
 
         # A is traversed first
