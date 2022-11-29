@@ -94,7 +94,7 @@ void Info_AddWaitingQueryInfo
 void Info_IndicateQueryStartedExecution
 (
     Info *,
-    const QueryCtx *, 
+    const QueryCtx *,
     const uint64_t waiting_time_milliseconds
 );
 // Indicates that the query has finished the execution and has started
@@ -102,7 +102,7 @@ void Info_IndicateQueryStartedExecution
 void Info_IndicateQueryStartedReporting
 (
     Info *,
-    const QueryCtx *, 
+    const QueryCtx *,
     const uint64_t executing_time_milliseconds
 );
 // Indicates that the query has finished reporting the results and is no longer
@@ -110,7 +110,7 @@ void Info_IndicateQueryStartedReporting
 void Info_IndicateQueryFinishedReporting
 (
     Info *,
-    const QueryCtx *, 
+    const QueryCtx *,
     const uint64_t reporting_time_milliseconds
 );
 // Find a QueryInfo object by the provided context.
