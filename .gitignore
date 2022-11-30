@@ -32,6 +32,8 @@
 CMakeFiles/
 logs/
 /bin/
+build/icu/make
+build/icu/build
 
 # Files
 CMakeCache.txt
