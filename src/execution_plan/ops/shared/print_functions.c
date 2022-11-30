@@ -98,7 +98,7 @@ void TraversalToString(const OpBase *op, sds *buf, AlgebraicExpression *ae) {
 	*buf = sdscatprintf(*buf, ")");
 
 	// if clone is yet to be free'd, free it
-	if(!same_alias) AlgebraicExpression_Free(clone);
+	if(!clone) AlgebraicExpression_Free(clone);
 }
 
 void ScanToString(const OpBase *op, sds *buf, const char *alias, const char *label) {
