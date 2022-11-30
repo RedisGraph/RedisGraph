@@ -21,6 +21,7 @@
 #define GLOBAL_INFO_KEY_NAME "Global info"
 #define UNIMPLEMENTED_ERROR_STRING "Unimplemented"
 
+// TODO move to a common place.
 // A wrapper for RedisModule_ functions which returns immediately on failure.
 #define REDISMODULE_DO(doable) \
     do { \
@@ -124,11 +125,13 @@ static bool _collect_queries_info_from_graph
     }
 
     bool is_ok = true;
+    // TODO GraphContext Info
     const uint64_t waiting_queries_count = _waiting_queries_count_from_graph(gc);
     const uint64_t executing_queries_count = _executing_queries_count_from_graph(gc);
     const uint64_t reporting_queries_count = _reporting_queries_count_from_graph(gc);
     const uint64_t max_query_pipeline_time = _max_query_pipeline_time_from_graph(gc);
 
+    // TODO let it overflow.
     if (!checked_add_u64(
         global_info->total_waiting_queries_count,
         waiting_queries_count,
@@ -244,7 +247,12 @@ static int _reply_graph_query_info
     // 1
     // Note: customer proprietary data. should not appear in support packages
     REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Query"));
-    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, info.context->query_data.query));
+    const QueryCtx *query_ctx = QueryInfo_GetQueryContext(&info);
+    ASSERT(query_ctx);
+    if (!query_ctx) {
+        return REDISMODULE_ERR;
+    }
+    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, query_ctx->query_data.query));
     // 2
     REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current total time (milliseconds)"));
     REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetTotalTimeSpent(info, NULL)));
@@ -285,10 +293,6 @@ static void _update_query_stage_timer(const QueryStage stage, QueryInfo *info) {
     }
 }
 
-// Breaks the encapsulation!
-// TODO rewrite it so that it doesn't break the encapsulation!
-// Currently it knows about the internals of the Info data structure
-// and the way it stores the data.
 static int _reply_graph_query_info_storage
 (
     RedisModuleCtx *ctx,
@@ -301,18 +305,23 @@ static int _reply_graph_query_info_storage
         return REDISMODULE_ERR;
     }
 
-    const uint32_t length = array_len(storage->queries);
-    REDISMODULE_DO(RedisModule_ReplyWithArray(ctx, length));
+    const uint32_t length = QueryInfoStorage_Length(storage);
+    REDISMODULE_DO(RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN));
+    uint64_t actual_elements_count = 0;
     for (uint32_t i = 0; i < length; ++i) {
-        QueryInfo *info = array_elem(storage->queries, i);
+        QueryInfo *info = QueryInfoStorage_Get(storage, i);
         ASSERT(info);
-        ASSERT(info->context);
-        if (!info || !info->context) {
+        if (!info) {
             break;
         }
+        if (!QueryInfo_IsValid(info)) {
+            continue;
+        }
         _update_query_stage_timer(query_stage, info);
+        ++actual_elements_count;
         REDISMODULE_DO(_reply_graph_query_info(ctx, *info));
     }
+    RedisModule_ReplySetArrayLength(ctx, actual_elements_count);
 
     return REDISMODULE_OK;
 }
@@ -324,20 +333,21 @@ static int _reply_graph_info(RedisModuleCtx *ctx, const GraphContext *gc) {
         return REDISMODULE_ERR;
     }
 
-    const Info info = gc->info;
+    const Info *info = &gc->info;
 
     REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, 2));
-    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Executing queries"));
 
-    if (_reply_graph_query_info_storage(ctx, QueryStage_EXECUTING, &info.executing_queries)) {
-        return REDISMODULE_ERR;
-    }
+    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Executing queries"));
+    REDISMODULE_DO(_reply_graph_query_info_storage(
+        ctx,
+        QueryStage_EXECUTING,
+        &info->executing_queries_per_thread));
 
     REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Reporting queries"));
-
-    if (_reply_graph_query_info_storage(ctx, QueryStage_REPORTING, &info.reporting_queries)) {
-        return REDISMODULE_ERR;
-    }
+    REDISMODULE_DO(_reply_graph_query_info_storage(
+        ctx,
+        QueryStage_REPORTING,
+        &info->reporting_queries_per_thread));
 
     return REDISMODULE_OK;
 }
@@ -382,21 +392,18 @@ static int _reply_with_queries_info_from_all_graphs
         return REDISMODULE_ERR;
     }
 
+    // TODO check minimum version of redis (6.0.0) we support has support for map.
     REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, 2));
     REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, GLOBAL_INFO_KEY_NAME));
-
-    if (_reply_global_info(ctx, global_info)) {
-        return REDISMODULE_ERR;
-    }
+    REDISMODULE_DO(_reply_global_info(ctx, global_info));
 
     REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Per-graph data"));
-    if (_reply_per_graph_data(ctx)) {
-        return REDISMODULE_ERR;
-    }
+    REDISMODULE_DO(_reply_per_graph_data(ctx));
 
     return REDISMODULE_OK;
 }
 
+// TODO should we lock the graphs_in_keyspace?
 static int _reset_all_graphs_info(RedisModuleCtx *ctx) {
     ASSERT(ctx);
     ASSERT(graphs_in_keyspace);
@@ -444,15 +451,8 @@ static int _reset_graph_info(RedisModuleCtx *ctx, const char *graph_name) {
 }
 
 // GRAPH.INFO QUERIES
-static int _info_queries
-(
-    RedisModuleCtx *ctx,
-    const RedisModuleString **argv,
-    const int argc
-) {
+static int _info_queries(RedisModuleCtx *ctx) {
     ASSERT(ctx != NULL);
-    UNUSED(argv);
-    UNUSED(argc);
 
     return _reply_with_queries_info_from_all_graphs(ctx);
 }
@@ -472,7 +472,7 @@ static int _info_get
     return result;
 }
 
-// GRAPH.INFO RESET
+// GRAPH.INFO RESET [name]
 static int _info_reset
 (
     RedisModuleCtx *ctx,
@@ -480,6 +480,7 @@ static int _info_reset
     const int argc
 ) {
     ASSERT(ctx != NULL);
+    ASSERT(argv);
 
     if (argc < 3) {
         return RedisModule_WrongArity(ctx);
@@ -509,9 +510,11 @@ static bool _dispatch_subcommand
 ) {
     ASSERT(ctx != NULL);
     ASSERT(subcommand_name != NULL && "Subcommand must be specified.");
+    ASSERT(result);
+    // TODO assert argc > 1?
 
     if (_is_queries_cmd(subcommand_name)) {
-        *result = _info_queries(ctx, argv, argc);
+        *result = _info_queries(ctx);
     } else if (_is_get_cmd(subcommand_name)) {
         *result = _info_get(ctx, argv, argc);
     } else if (_is_reset_cmd(subcommand_name)) {
@@ -539,6 +542,7 @@ int Graph_Info
     int result = REDISMODULE_ERR;
 
     const char *subcommand_name = RedisModule_StringPtrLen(argv[1], NULL);
+    // TODO argv + 1, argc - 1
     if (!_dispatch_subcommand(ctx, argv, argc, subcommand_name, &result)) {
         RedisModule_ReplyWithError(ctx, UNKNOWN_SUBCOMMAND_MESSAGE);
     }
