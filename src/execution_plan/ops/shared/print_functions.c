@@ -28,7 +28,6 @@ static char* ae_labels_src
 		labels_str = sdscatprintf(labels_str, ":%s", operand_ae->operand.label);
 		AlgebraicExpression_Free(operand_ae);
 		if(ae) operand_ae = (AlgebraicExpression *) AlgebraicExpression_SrcOperand(ae);
-		else break;
 	}
 
 	return labels_str;
@@ -46,7 +45,6 @@ static char* ae_labels_dest
 		labels_str = sdscatprintf(labels_str, ":%s", operand_ae->operand.label);
 		AlgebraicExpression_Free(operand_ae);
 		if(ae) operand_ae = (AlgebraicExpression *) AlgebraicExpression_DestOperand(ae);
-		else break;
 	}
 
 	return labels_str;
@@ -62,15 +60,13 @@ void TraversalToString(const OpBase *op, sds *buf, AlgebraicExpression *ae) {
 	AlgebraicExpression *clone = AlgebraicExpression_Clone(ae);
 
 	// print source labels
-	*buf = sdscatprintf(*buf, "(%s", AlgebraicExpression_Src(clone));
+	const char *src_alias = AlgebraicExpression_Src(clone);
+	*buf = sdscatprintf(*buf, "(%s", src_alias);
 	bool same_alias = !strcmp(AlgebraicExpression_Src(clone), 
 							  AlgebraicExpression_Dest(clone));
 	char *src_labels = ae_labels_src(clone);
-	if(same_alias) *buf = sdscatprintf(*buf, "%s", (char *)src_labels);
-	else {
-		*buf = sdscatprintf(*buf, "%s", src_labels);
-		sdsfree(src_labels);
-	}
+	*buf = sdscatprintf(*buf, "%s", src_labels);
+	if(!same_alias) sdsfree(src_labels);
 	*buf = sdscatprintf(*buf, ")");
 	
 	QGEdge *e = (edge) ? QueryGraph_GetEdgeByAlias(op->plan->query_graph, edge) : NULL;
@@ -88,12 +84,13 @@ void TraversalToString(const OpBase *op, sds *buf, AlgebraicExpression *ae) {
 		*buf = sdscatprintf(*buf, "->");
 	}
 	// print dest labels
-	*buf = sdscatprintf(*buf, "(%s", AlgebraicExpression_Dest(clone));
 	if(same_alias) {
+		*buf = sdscatprintf(*buf, "(%s", src_alias);
 		*buf = sdscatprintf(*buf, "%s", src_labels);
 		sdsfree(src_labels);
 	}
 	else {
+		*buf = sdscatprintf(*buf, "(%s", AlgebraicExpression_Dest(clone));
 		char *dest_labels = ae_labels_dest(clone);
 		*buf = sdscatprintf(*buf, "%s", dest_labels);
 		sdsfree(dest_labels);
