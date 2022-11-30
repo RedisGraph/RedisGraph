@@ -40,12 +40,14 @@
     }
 
 QueryInfo QueryInfo_New() {
-    const QueryInfo query_info = {
+    QueryInfo query_info = {
         .waiting_time_milliseconds = 0,
         .executing_time_milliseconds = 0,
         .reporting_time_milliseconds = 0,
-        .context = NULL
+        .context = NULL,
+        .stage_timer = {}
     };
+    TIMER_RESTART(query_info.stage_timer);
     return query_info;
 }
 
@@ -110,6 +112,29 @@ uint64_t QueryInfo_GetReportingTime(const QueryInfo info) {
     return info.reporting_time_milliseconds;
 }
 
+void QueryInfo_UpdateWaitingTime(QueryInfo *info) {
+    REQUIRE_ARG(info);
+    info->waiting_time_milliseconds += QueryInfo_ResetStageTimer(info);
+}
+
+void QueryInfo_UpdateExecutionTime(QueryInfo *info) {
+    REQUIRE_ARG(info);
+    info->executing_time_milliseconds += QueryInfo_ResetStageTimer(info);
+}
+
+void QueryInfo_UpdateReportingTime(QueryInfo *info) {
+    REQUIRE_ARG(info);
+    info->reporting_time_milliseconds += QueryInfo_ResetStageTimer(info);
+}
+
+uint64_t QueryInfo_ResetStageTimer(QueryInfo *info) {
+    REQUIRE_ARG_OR_RETURN(info, 0);
+    const uint64_t milliseconds_spent
+        = TIMER_GET_ELAPSED_MILLISECONDS(info->stage_timer);
+    TIMER_RESTART(info->stage_timer);
+    return milliseconds_spent;
+}
+
 QueryInfoStorage QueryInfoStorage_New() {
     QueryInfoStorage storage;
     storage.queries = array_new(QueryInfo, INITIAL_QUERY_INFO_CAPACITY);
@@ -128,7 +153,7 @@ void QueryInfoStorage_Free(QueryInfoStorage *storage) {
     array_free(storage->queries);
 }
 
-uint32_t QueryInfoStorage_Length(QueryInfoStorage *storage) {
+uint32_t QueryInfoStorage_Length(const QueryInfoStorage *storage) {
     REQUIRE_ARG_OR_RETURN(storage, 0);
     return array_len(storage->queries);
 }
@@ -209,8 +234,7 @@ void Info_AddWaitingQueryInfo
 void Info_IndicateQueryStartedExecution
 (
     Info *info,
-    const struct QueryCtx *context,
-    const uint64_t waiting_time_milliseconds
+    const struct QueryCtx *context
 ) {
     REQUIRE_ARG(info);
     REQUIRE_ARG(context);
@@ -224,7 +248,7 @@ void Info_IndicateQueryStartedExecution
     for (uint32_t i = 0; i < array_len(storage.queries); ++i) {
         QueryInfo query_info = storage.queries[i];
         if (query_info.context == context) {
-            query_info.waiting_time_milliseconds += waiting_time_milliseconds;
+            QueryInfo_UpdateWaitingTime(&query_info);
             array_del(storage.queries, i);
             QueryInfoStorage_Add(&info->executing_queries, query_info);
 
@@ -237,8 +261,7 @@ void Info_IndicateQueryStartedExecution
 void Info_IndicateQueryStartedReporting
 (
     Info *info,
-    const struct QueryCtx *context,
-    const uint64_t executing_time_milliseconds
+    const struct QueryCtx *context
 ) {
     REQUIRE_ARG(info);
     REQUIRE_ARG(context);
@@ -252,7 +275,7 @@ void Info_IndicateQueryStartedReporting
     for (uint32_t i = 0; i < array_len(storage.queries); ++i) {
         QueryInfo query_info = storage.queries[i];
         if (query_info.context == context) {
-            query_info.executing_time_milliseconds += executing_time_milliseconds;
+            QueryInfo_UpdateExecutionTime(&query_info);
             array_del(storage.queries, i);
             QueryInfoStorage_Add(&info->reporting_queries, query_info);
 
@@ -278,8 +301,7 @@ static void _Info_RecalculateMaxQueryWaitingTime
 void Info_IndicateQueryFinishedReporting
 (
     Info *info,
-    const struct QueryCtx *context,
-    const uint64_t reporting_time_milliseconds
+    const struct QueryCtx *context
 ) {
     REQUIRE_ARG(info);
     REQUIRE_ARG(context);
@@ -292,7 +314,7 @@ void Info_IndicateQueryFinishedReporting
     for (uint32_t i = 0; i < array_len(storage.queries); ++i) {
         QueryInfo query_info = storage.queries[i];
         if (query_info.context == context) {
-            query_info.reporting_time_milliseconds += reporting_time_milliseconds;
+            QueryInfo_UpdateReportingTime(&query_info);
             array_del(storage.queries, i);
             _Info_RecalculateMaxQueryWaitingTime(info, query_info);
 
