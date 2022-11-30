@@ -8,7 +8,7 @@
 #include <ctype.h>
 #include "RG.h"
 #include "rmalloc.h"
-#include "../../deps/icu/build/include/unicode/ustring.h"
+#include "../../build/icu/build/include/unicode/ustring.h"
 
 static void str_changecase(const char *str, char *result, size_t *result_len, const char *locale, bool toUpper) {
 	size_t str_len = strlen(str);
