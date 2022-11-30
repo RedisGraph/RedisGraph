@@ -18,4 +18,4 @@
 	url = https://github.com/RedisLabsModules/readies.git
 [submodule "deps/icu"]
 	path = deps/icu
-	url = https://github.com/unicode-org/icu
+	url = https://github.com/unicode-org/icu.git
