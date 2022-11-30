@@ -19,15 +19,15 @@ static inline void _NodeToString(sds *buf, const char *alias, const char *label)
 // return the labels of the src of ae splitted by ':'
 static char* ae_labels_src
 (
-	AlgebraicExpression *ae  // AlgebraicExpression from which to take the labels
+	AlgebraicExpression **ae  // AlgebraicExpression from which to take the labels
 ) {
 	sds labels_str = sdsempty();
-	AlgebraicExpression *operand_ae = (AlgebraicExpression *) AlgebraicExpression_SrcOperand(ae);
-	while(ae && operand_ae->type == AL_OPERAND && operand_ae->operand.diagonal) {
-		operand_ae = AlgebraicExpression_RemoveSource(&ae);
+	AlgebraicExpression *operand_ae = (AlgebraicExpression *) AlgebraicExpression_SrcOperand(*ae);
+	while(ae && *ae && operand_ae->type == AL_OPERAND && operand_ae->operand.diagonal) {
+		operand_ae = AlgebraicExpression_RemoveSource(ae);
 		labels_str = sdscatprintf(labels_str, ":%s", operand_ae->operand.label);
 		AlgebraicExpression_Free(operand_ae);
-		if(ae) operand_ae = (AlgebraicExpression *) AlgebraicExpression_SrcOperand(ae);
+		if(ae && *ae) operand_ae = (AlgebraicExpression *) AlgebraicExpression_SrcOperand(*ae);
 	}
 
 	return labels_str;
@@ -36,15 +36,15 @@ static char* ae_labels_src
 // return the labels of the dest of ae splitted by ':'
 static char* ae_labels_dest
 (
-	AlgebraicExpression *ae  // AlgebraicExpression from which to take the labels
+	AlgebraicExpression **ae  // AlgebraicExpression from which to take the labels
 ) {
 	sds labels_str = sdsempty();
-	AlgebraicExpression *operand_ae = (AlgebraicExpression *) AlgebraicExpression_DestOperand(ae);
-	while(ae && operand_ae->type == AL_OPERAND && operand_ae->operand.diagonal) {
-		operand_ae = AlgebraicExpression_RemoveDest(&ae);
+	AlgebraicExpression *operand_ae = (AlgebraicExpression *) AlgebraicExpression_DestOperand(*ae);
+	while(ae && *ae && operand_ae->type == AL_OPERAND && operand_ae->operand.diagonal) {
+		operand_ae = AlgebraicExpression_RemoveDest(ae);
 		labels_str = sdscatprintf(labels_str, ":%s", operand_ae->operand.label);
 		AlgebraicExpression_Free(operand_ae);
-		if(ae) operand_ae = (AlgebraicExpression *) AlgebraicExpression_DestOperand(ae);
+		if(ae && *ae) operand_ae = (AlgebraicExpression *) AlgebraicExpression_DestOperand(*ae);
 	}
 
 	return labels_str;
@@ -62,13 +62,13 @@ void TraversalToString(const OpBase *op, sds *buf, AlgebraicExpression *ae) {
 	// print source labels
 	const char *src_alias = AlgebraicExpression_Src(clone);
 	*buf = sdscatprintf(*buf, "(%s", src_alias);
-	bool same_alias = !strcmp(AlgebraicExpression_Src(clone), 
+	bool same_alias = !strcmp(AlgebraicExpression_Src(clone),
 							  AlgebraicExpression_Dest(clone));
-	char *src_labels = ae_labels_src(clone);
+	char *src_labels = ae_labels_src(&clone);
 	*buf = sdscatprintf(*buf, "%s", src_labels);
 	if(!same_alias) sdsfree(src_labels);
 	*buf = sdscatprintf(*buf, ")");
-	
+
 	QGEdge *e = (edge) ? QueryGraph_GetEdgeByAlias(op->plan->query_graph, edge) : NULL;
 	if(e) {
 		if(transpose) {
@@ -91,14 +91,14 @@ void TraversalToString(const OpBase *op, sds *buf, AlgebraicExpression *ae) {
 	}
 	else {
 		*buf = sdscatprintf(*buf, "(%s", AlgebraicExpression_Dest(clone));
-		char *dest_labels = ae_labels_dest(clone);
+		char *dest_labels = ae_labels_dest(&clone);
 		*buf = sdscatprintf(*buf, "%s", dest_labels);
 		sdsfree(dest_labels);
 	}
 	*buf = sdscatprintf(*buf, ")");
 
 	// if clone is yet to be free'd, free it
-	if(!clone) AlgebraicExpression_Free(clone);
+	if(clone) AlgebraicExpression_Free(clone);
 }
 
 void ScanToString(const OpBase *op, sds *buf, const char *alias, const char *label) {
