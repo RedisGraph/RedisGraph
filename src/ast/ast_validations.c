@@ -257,7 +257,7 @@ static AST_Validation _Validate_referred_identifier
 	return AST_VALID;
 }
 
-static bool _Validate_list_comprehention
+static bool _Validate_list_comprehension
 (
 	const cypher_astnode_t *n,
 	bool start,
@@ -269,13 +269,26 @@ static bool _Validate_list_comprehention
 	const cypher_astnode_t *id = cypher_ast_list_comprehension_get_identifier(n);
 	const char *identifier = cypher_ast_identifier_get_name(id);
 	if(start) {
+		// This is problematic. Allows things like "WITH [x in range(0, 10) where x % 3 = 0 | x] AS li RETURN x"
+		// to return 'nil' instead of throwing an error.
+		// Need to forget the identifier when list comprehension is left.
+			// Another thought: What if this overrides some other identifier that we 
+			// want to remember after the list comprehension, like: 
+			// "MATCH (x:N) with x, [x in range(0, 10) where x % 3 = 0 | x^2] as li RETURN x"
+			// The `T_NODE` data is lost (checked).
+			// Maybe if we first check if it already exists it will be fine.
 		raxInsert(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
 	}
+
+	/*else {
+		// remove identifier from vctx->defined_identifiers
+
+	}*/
 
 	return true;
 }
 
-static bool _Validate_pattern_comprehention
+static bool _Validate_pattern_comprehension
 (
 	const cypher_astnode_t *n,
 	bool start,
@@ -409,7 +422,94 @@ static bool _Validate_apply_operator
 
 	return vctx->valid == AST_VALID;
 }
+static bool _Validate_reduce
+(
+	const cypher_astnode_t *n,
+	bool start,
+	ast_visitor *visitor
+) {
+	validations_ctx *vctx = visitor->ctx;
+	if(vctx->valid == AST_INVALID || !start) return false;
+	// A reduce call has an accumulator and a local list variable that should
+	// only be accessed within its scope;
+	// do not leave them in the identifiers map
+	// example: reduce(sum=0, n in [1,2] | sum+n)
+	//  the reduce function is composed of 5 components:
+	//     1. accumulator                  `sum`
+	//     2. accumulator init expression  `0`
+	//     3. list expression              `[1,2,3]`
+	//     4. variable                     `n`
+	//     5. eval expression              `sum + n`
+	
+	// make sure that init expression is a known var or valid exp.
+	const cypher_astnode_t *init_node = cypher_ast_reduce_get_init(n);
+	if(cypher_astnode_type(init_node) == CYPHER_AST_IDENTIFIER) {
+		// check if the variable is already known
+		const char *var_str = cypher_ast_identifier_get_name(init_node);
+		if(raxFind(vctx->defined_identifiers, (unsigned char *)var_str, strlen(var_str)) == raxNotFound) {
+			ErrorCtx_SetError("%s not defined.", var_str);
+			vctx->valid = AST_INVALID;
+			return false;
+		}
+	}
 
+	// make sure that the list expression is a list (or list comprehension) or an 
+	// alias of an existing one.
+	const cypher_astnode_t *list_var = cypher_ast_reduce_get_expression(n);
+	if(cypher_astnode_type(list_var) == CYPHER_AST_IDENTIFIER) {
+		const char *list_var_str = cypher_ast_identifier_get_name(list_var);
+		if(raxFind(vctx->defined_identifiers, (unsigned char *) list_var_str, strlen(list_var_str)) == raxNotFound) {
+			ErrorCtx_SetError("%s not defined", list_var_str);
+			vctx->valid = AST_INVALID;
+			return false;
+		}
+	}
+
+	// Visit the list expression (no need to introduce local vars)
+	AST_Visitor_visit(list_var, visitor);
+	if(vctx->valid == AST_INVALID) return false;
+
+	// make sure that the eval-expression exists (current test for this checks for 
+	// 'n not defined'.. Change this)
+	const cypher_astnode_t *eval_node = cypher_ast_reduce_get_eval(n);
+	if(!eval_node) {
+		ErrorCtx_SetError("No eval expression given in reduce");
+		vctx->valid = AST_INVALID;
+		return false;
+	}
+
+	// Can now manually visit the eval-expression
+	// In this manner I can also take into account the temporal vars with no embedded envs
+	const cypher_astnode_t *eval_exp = cypher_ast_reduce_get_eval(n);
+	// If accumulator is already in the environment, don't reintroduce
+	const cypher_astnode_t *accum_node =cypher_ast_reduce_get_accumulator(n);
+	const char *accum_str = cypher_ast_identifier_get_name(accum_node);
+	bool introduce_accum = (raxFind(vctx->defined_identifiers, (unsigned char *) accum_str, strlen(accum_str))
+						    == raxNotFound);
+	if(introduce_accum)
+		raxInsert(vctx->defined_identifiers, (unsigned char *) accum_str, strlen(accum_str), NULL, NULL);
+
+	// same for the list var
+	const cypher_astnode_t *list_var_node =cypher_ast_reduce_get_identifier(n);
+	const char *list_var_str = cypher_ast_identifier_get_name(list_var_node);
+	bool introduce_list_var = (raxFind(vctx->defined_identifiers, (unsigned char *) list_var_str, strlen(list_var_str))
+						    == raxNotFound);
+	if(introduce_list_var)
+		raxInsert(vctx->defined_identifiers, (unsigned char *) list_var_str, strlen(list_var_str), NULL, NULL);
+
+	AST_Visitor_visit(eval_exp, visitor);
+
+	if(vctx->valid == AST_INVALID)
+		return false;
+
+	// Remove local vars\aliases if introduced.
+	if(introduce_accum) 
+		raxRemove(vctx->defined_identifiers, (unsigned char *) accum_str, strlen(accum_str), NULL);
+	if(introduce_list_var) 
+		raxRemove(vctx->defined_identifiers, (unsigned char *) list_var_str, strlen(list_var_str), NULL);
+
+	return false;
+}
 // Validate the property maps used in node/edge patterns in MATCH, and CREATE clauses
 static AST_Validation _ValidateInlinedProperties
 (
@@ -650,19 +750,19 @@ static AST_Validation _Validate_LIMIT_SKIP_Modifiers
 
 static AST_Validation _ValidateUnion_Clauses(const AST *ast) {
 	/* Make sure there's no conflict between UNION clauses
-	 * either all UNION clauses specify ALL or nither of them does. */
+	 * either all UNION clauses specify ALL or neither of them does. */
 	AST_Validation res = AST_VALID;
 	uint *union_indices = AST_GetClauseIndices(ast, CYPHER_AST_UNION);
 	uint union_clause_count = array_len(union_indices);
 	int has_all_count = 0;
+
+	if(union_clause_count == 0) return AST_VALID; 
 
 	for(uint i = 0; i < union_clause_count; i++) {
 		const cypher_astnode_t *union_clause = cypher_ast_query_get_clause(ast->root, union_indices[i]);
 		if(cypher_ast_union_has_all(union_clause)) has_all_count++;
 	}
 	array_free(union_indices);
-
-	if(union_clause_count == 0) return AST_VALID; 
 
 	// If we've encountered UNION ALL clause, all UNION clauses should specify ALL.
 	if(has_all_count != 0) {
@@ -888,7 +988,7 @@ static bool _Validate_DELETE_Clause
 	return true;
 }
 
-// checks if set property contains non-alias referenes in lhs
+// checks if set property contains non-alias references in lhs
 static bool _Validate_set_property
 (
 	const cypher_astnode_t *n,
@@ -920,6 +1020,24 @@ static bool _Validate_SET_Clause
 
 	if(start) {
 		vctx->clause = cypher_astnode_type(n);
+		return true;
+	}
+
+	return true;
+}
+
+static bool _Validate_UNION_Clause
+(
+	const cypher_astnode_t *n,
+	bool start,
+	ast_visitor *visitor
+) {
+	validations_ctx *vctx = visitor->ctx;
+	if(vctx->valid == AST_INVALID) return false;
+
+	if(start) {
+		vctx->clause = cypher_astnode_type(n);
+		vctx->defined_identifiers = raxNew();
 		return true;
 	}
 
@@ -1188,6 +1306,7 @@ static AST_Validation _ValidateScopes
 	// Verify that the clause order in the scope is valid.
 	if(_ValidateClauseOrder(ast) != AST_VALID) return AST_INVALID;
 
+	// Verify that the clauses surrounding UNION return the same column names.
 	if(_ValidateUnion_Clauses(ast) != AST_VALID) return AST_INVALID;
 
 	validations_ctx ctx;
@@ -1201,6 +1320,7 @@ static AST_Validation _ValidateScopes
 	AST_Visitor_register(visitor, CYPHER_AST_MERGE, _Validate_MERGE_Clause);
 	AST_Visitor_register(visitor, CYPHER_AST_CREATE, _Validate_CREATE_Clause);
 	AST_Visitor_register(visitor, CYPHER_AST_SET, _Validate_SET_Clause);
+	AST_Visitor_register(visitor, CYPHER_AST_UNION, _Validate_UNION_Clause);
 	AST_Visitor_register(visitor, CYPHER_AST_SET_PROPERTY, _Validate_set_property);
 	AST_Visitor_register(visitor, CYPHER_AST_DELETE, _Validate_DELETE_Clause);
 	AST_Visitor_register(visitor, CYPHER_AST_WITH, _Validate_WITH_Clause);
@@ -1212,15 +1332,16 @@ static AST_Validation _ValidateScopes
 	AST_Visitor_register(visitor, CYPHER_AST_REL_PATTERN, _Validate_rel_pattern);
 	AST_Visitor_register(visitor, CYPHER_AST_APPLY_OPERATOR, _Validate_apply_operator);
 	AST_Visitor_register(visitor, CYPHER_AST_APPLY_ALL_OPERATOR, _Validate_apply_all_operator);
+	AST_Visitor_register(visitor, CYPHER_AST_REDUCE, _Validate_reduce);
 	AST_Visitor_register(visitor, CYPHER_AST_IDENTIFIER, _Validate_identifier);
 	AST_Visitor_register(visitor, CYPHER_AST_PROJECTION, _Validate_projection);
 	AST_Visitor_register(visitor, CYPHER_AST_MAP, _Validate_map);
-	AST_Visitor_register(visitor, CYPHER_AST_LIST_COMPREHENSION, _Validate_list_comprehention);
-	AST_Visitor_register(visitor, CYPHER_AST_PATTERN_COMPREHENSION, _Validate_pattern_comprehention);
-	AST_Visitor_register(visitor, CYPHER_AST_ANY, _Validate_list_comprehention);
-	AST_Visitor_register(visitor, CYPHER_AST_ALL, _Validate_list_comprehention);
-	AST_Visitor_register(visitor, CYPHER_AST_NONE, _Validate_list_comprehention);
-	AST_Visitor_register(visitor, CYPHER_AST_SINGLE, _Validate_list_comprehention);
+	AST_Visitor_register(visitor, CYPHER_AST_LIST_COMPREHENSION, _Validate_list_comprehension);
+	AST_Visitor_register(visitor, CYPHER_AST_PATTERN_COMPREHENSION, _Validate_pattern_comprehension);
+	AST_Visitor_register(visitor, CYPHER_AST_ANY, _Validate_list_comprehension);
+	AST_Visitor_register(visitor, CYPHER_AST_ALL, _Validate_list_comprehension);
+	AST_Visitor_register(visitor, CYPHER_AST_NONE, _Validate_list_comprehension);
+	AST_Visitor_register(visitor, CYPHER_AST_SINGLE, _Validate_list_comprehension);
 	
 	AST_Visitor_visit(ast->root, visitor);
 	
