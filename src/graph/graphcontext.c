@@ -57,7 +57,7 @@ inline void GraphContext_DecreaseRefCount
 	if(__atomic_sub_fetch(&gc->ref_count, 1, __ATOMIC_RELAXED) == 0) {
 		bool async_delete;
 		Config_Option_get(Config_ASYNC_DELETE, &async_delete);
-		
+
 		// remove graph context from global `graphs_in_keyspace` array
 		_GraphContext_RemoveFromRegistry(gc);
 
@@ -92,7 +92,8 @@ GraphContext *GraphContext_New
 	gc->string_mapping   = array_new(char *, 64);
 	gc->encoding_context = GraphEncodeContext_New();
 	gc->decoding_context = GraphDecodeContext_New();
-	gc->info             = Info_New();
+	const bool info_created = Info_New(&gc->info);
+	ASSERT(info_created);
 
 	// read NODE_CREATION_BUFFER size from configuration
 	// this value controls how much extra room we're willing to spend for:
@@ -335,7 +336,7 @@ Attribute_ID GraphContext_FindOrAddAttribute
 	bool created_flag = false;
 	unsigned char *attr = (unsigned char*)attribute;
 	uint l = strlen(attribute);
-	
+
 	// acquire a read lock for looking up the attribute
 	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
 
@@ -677,7 +678,7 @@ static void _GraphContext_Free(void *arg) {
 
 	bool async_delete;
 	Config_Option_get(Config_ASYNC_DELETE, &async_delete);
-	
+
 	RedisModuleCtx *ctx = NULL;
 	if(async_delete) {
 		ctx = RedisModule_GetThreadSafeContext(NULL);
@@ -688,7 +689,8 @@ static void _GraphContext_Free(void *arg) {
 	//--------------------------------------------------------------------------
 	// Free the info structure
 	//--------------------------------------------------------------------------
-	// Info_Free(gc->info);
+	const bool info_freed = Info_Free(&gc->info);
+	ASSERT(info_freed);
 
 	//--------------------------------------------------------------------------
 	// Free node schemas
