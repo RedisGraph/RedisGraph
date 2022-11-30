@@ -18,7 +18,6 @@ static inline void _NodeToString(sds *buf, const char *alias, const char *label)
 
 // return the labels of the src of ae splitted by ':'
 static char* ae_labels_src
-// static void ae_labels_src
 (
 	AlgebraicExpression *ae  // AlgebraicExpression from which to take the labels
 ) {
@@ -102,7 +101,7 @@ void TraversalToString(const OpBase *op, sds *buf, AlgebraicExpression *ae) {
 	*buf = sdscatprintf(*buf, ")");
 
 	// if clone is yet to be free'd, free it
-	// if(clone) AlgebraicExpression_Free(clone);
+	if(!same_alias) AlgebraicExpression_Free(clone);
 }
 
 void ScanToString(const OpBase *op, sds *buf, const char *alias, const char *label) {
