@@ -8,31 +8,57 @@
 #include <ctype.h>
 #include "RG.h"
 #include "rmalloc.h"
+#include "../../deps/icu/build/include/unicode/ustring.h"
 
-void str_tolower(const char *str, char *lower, size_t *lower_len, const char *locale) {
+static void str_changecase(const char *str, char *result, size_t *result_len, const char *locale, bool toUpper) {
 	size_t str_len = strlen(str);
 	//Avoid overflow
-	ASSERT(*lower_len >= str_len);
+	assert(*result_len >= str_len);
+	//Update result len
+	*result_len = str_len;
 
-	//Update lower len
-	*lower_len = str_len;
+	size_t u_og_len = str_len;
+	size_t u_result_len = str_len;
 
-	size_t i = 0;
-	for(; i < str_len; i++) lower[i] = tolower(str[i]);
-	lower[i] = 0;
+	UChar* original = (UChar *) rm_malloc((u_og_len + 1) * sizeof(UChar));
+    UChar* converted = (UChar *) rm_malloc((u_result_len + 1) * sizeof(UChar));
+    UErrorCode errorCode = U_ZERO_ERROR;
+
+    u_uastrcpy(original, str);
+
+    size_t size;
+	if (toUpper) {
+		size = u_strToUpper(converted, u_result_len, original, u_og_len, locale, &errorCode);
+	} else {
+		size = u_strToLower(converted, u_result_len, original, u_og_len, locale, &errorCode);
+	}
+
+    // if the result is larger than allocated length
+    if (size > u_result_len) {
+        u_result_len = size;
+		*result_len = size;
+        if (toUpper) {
+			u_strToUpper(converted, u_result_len, original, u_og_len, locale, &errorCode);
+		} else {
+			u_strToLower(converted, u_result_len, original, u_og_len, locale, &errorCode);
+		}
+    }
+	if (U_FAILURE(errorCode)) {
+		// do something to handle error
+		*result = *str;
+	} else {
+		u_austrcpy(result, converted);
+	}
+	rm_free(original);
+	rm_free(converted);
+}
+
+void str_tolower(const char *str, char *lower, size_t *lower_len, const char *locale) {
+	str_changecase(str, lower, lower_len, locale, false);
 }
 
 void str_toupper(const char *str, char *upper, size_t *upper_len, const char *locale) {
-	size_t str_len = strlen(str);
-	//Avoid overflow
-	ASSERT(*upper_len >= str_len);
-
-	//Update lower len
-	*upper_len = str_len;
-
-	size_t i = 0;
-	for(; i < str_len; i++) upper[i] = toupper(str[i]);
-	upper[i] = 0;
+	str_changecase(str, upper, upper_len, locale, true);
 }
 
 // Utility function to increase the size of a buffer.
