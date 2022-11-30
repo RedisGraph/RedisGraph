@@ -163,7 +163,7 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 	return SI_TransferStringVal(substring);
 }
 
-// returns the original string in lowercase.
+// returns the original string in lowercase, takes an optional locale
 SIValue AR_TOLOWER(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *original = argv[0].stringval;
@@ -177,7 +177,7 @@ SIValue AR_TOLOWER(SIValue *argv, int argc, void *private_data) {
 	return SI_TransferStringVal(lower);
 }
 
-// returns the original string in uppercase.
+// returns the original string in uppercase, takes an optional locale
 SIValue AR_TOUPPER(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *original = argv[0].stringval;

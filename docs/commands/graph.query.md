@@ -930,9 +930,9 @@ This section contains information on all supported functions from the Cypher que
 | rTrim()     | Returns the original string with trailing whitespace removed                                    |
 | split()     | Returns a list of strings from splitting a string by a given delimiter                          |
 | substring() | Returns a substring of the original string, beginning with a 0-based index start and length     |
-| toLower()   | Returns the original string in lowercase                                                        |
+| toLower()   | Returns the original string in lowercase, takes an optional locale                              |
 | toJSON()    | Returns a [JSON representation](#json-format) of a value                                        |
-| toUpper()   | Returns the original string in uppercase                                                        |
+| toUpper()   | Returns the original string in uppercase, takes an optional locale                              |
 | trim()      | Returns the original string with leading and trailing whitespace removed                        |
 | size()      | Returns a string length                                                                         |
 
