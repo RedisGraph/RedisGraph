@@ -58,10 +58,17 @@ ifeq ($(V),1)
 		rm $$o1 ; \
 	done
 else
+ifneq ($(GDB),1)
 	$(SHOW)for t in $(UNIT_TESTS); do \
 		echo Running $$t ...; \
 		$$t || exit 1; \
 	done
+else
+	$(SHOW)for t in $(UNIT_TESTS); do \
+		echo Running $$t ...; \
+		$(DEBUGGER_CMD) $$t; \
+	done
+endif
 endif
 
 .PHONY: test

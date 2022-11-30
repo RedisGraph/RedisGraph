@@ -276,7 +276,7 @@ else
 	$(SHOW)$(MAKE) -C $(REDISEARCH_DIR) clean BINROOT=$(REDISEARCH_BINROOT)
 endif
 
-.PHONY: clean
+.PHONY: clean clean-libcypher-parser clean-search
 
 #----------------------------------------------------------------------------------------------
 
@@ -354,3 +354,17 @@ fuzz: $(TARGET)
 	@$(MAKE) -C $(ROOT)/tests fuzz
 
 .PHONY: fuzz
+
+#----------------------------------------------------------------------------------------------
+
+docker:
+	$(SHOW)$(MAKE) -C build/docker
+
+ifneq ($(wildcard /w/*),)
+SANBOX_ARGS += -v /w:/w
+endif
+
+sanbox:
+	@docker run -it -v $(PWD):/build -w /build --cap-add=SYS_PTRACE --security-opt seccomp=unconfined $(SANBOX_ARGS) redisfab/clang:13-x64-bullseye bash
+
+.PHONY: box sanbox

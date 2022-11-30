@@ -8,6 +8,9 @@ ROOT=$(cd $HERE/../.. && pwd)
 READIES=$ROOT/deps/readies
 . $READIES/shibumi/defs
 
+VALGRIND_REDIS_VER=6.2
+SAN_REDIS_VER=6.2
+
 #----------------------------------------------------------------------------------------------
 
 help() {
@@ -40,6 +43,7 @@ help() {
 		VALGRIND|VG=1       Run with Valgrind
 		VG_LEAKS=1          Look for memory leaks
 		VG_ACCESS=1         Look for memory access errors
+		SAN=type            Use LLVM sanitizer (type=address|memory|leak|thread) 
 
 		DOCKER_HOST         Address of Docker server (default: localhost)
 		RLEC_PORT           Port of existing-env in RLEC container (default: 12000)
@@ -140,6 +144,55 @@ fi
 
 #----------------------------------------------------------------------------------------------
 
+setup_clang_sanitizer() {
+	if ! grep THPIsEnabled /build/redis.blacklist &> /dev/null; then
+		echo "fun:THPIsEnabled" >> /build/redis.blacklist
+	fi
+
+	# for module
+	export RS_GLOBAL_DTORS=1
+
+	# for RLTest
+	export SANITIZER="$SAN"
+	export SHORT_READ_BYTES_DELTA=512
+	
+	# --no-output-catch --exit-on-failure --check-exitcode
+	RLTEST_SAN_ARGS="--unix --sanitizer $SAN"
+
+	if [[ $SAN == addr || $SAN == address ]]; then
+		REDIS_SERVER=${REDIS_SERVER:-redis-server-asan-$SAN_REDIS_VER}
+		if ! command -v $REDIS_SERVER > /dev/null; then
+			echo Building Redis for clang-asan ...
+			$READIES/bin/getredis --force -v $SAN_REDIS_VER --own-openssl --no-run \
+				--suffix asan --clang-asan --clang-san-blacklist /build/redis.blacklist
+		fi
+
+		export ASAN_OPTIONS=detect_odr_violation=0
+		# :detect_leaks=0
+
+	elif [[ $SAN == mem || $SAN == memory ]]; then
+		REDIS_SERVER=${REDIS_SERVER:-redis-server-msan-$SAN_REDIS_VER}
+		if ! command -v $REDIS_SERVER > /dev/null; then
+			echo Building Redis for clang-msan ...
+			$READIES/bin/getredis --force -v $SAN_REDIS_VER  --no-run --own-openssl \
+				--suffix msan --clang-msan --llvm-dir /opt/llvm-project/build-msan \
+				--clang-san-blacklist /build/redis.blacklist
+		fi
+	fi
+}
+
+clang_sanitizer_summary() {
+	if grep -l "leaked in" logs/*.asan.log* &> /dev/null; then
+		echo
+		echo "${LIGHTRED}Sanitizer: leaks detected:${RED}"
+		grep -l "leaked in" logs/*.asan.log*
+		echo "${NOCOLOR}"
+		E=1
+	fi
+}
+
+#----------------------------------------------------------------------------------------------
+
 setup_redis_server() {
 	if [[ $VALGRIND == 1 ]]; then
 		REDIS_SERVER=${REDIS_SERVER:-redis-server-vg}
@@ -209,6 +262,7 @@ run_tests() {
 				--module-args '$MODARGS'
 				$RLTEST_ARGS
 				$RLTEST_PARALLEL_ARG
+				$RLTEST_SAN_ARGS
 				$RLTEST_VG_ARGS
 
 				EOF
@@ -257,6 +311,12 @@ run_tests() {
 [[ $VERBOSE == 1 ]] && RLTEST_ARGS+=" -s -v"
 
 [[ $GDB == 1 ]] && RLTEST_ARGS+=" -i --verbose"
+
+[[ $SAN == addr ]] && SAN=address
+[[ $SAN == mem ]] && SAN=memory
+if [[ -n $SAN ]]; then
+	setup_clang_sanitizer
+fi
 
 [[ $VALGRIND == 1 ]] && valgrind_config
 
@@ -309,6 +369,10 @@ if [[ -n $STATFILE ]]; then
 		(( E |= `cat $STATFILE || echo 1` )) || true
 	fi
 	echo $E > $STATFILE
+fi
+
+if [[ $NOP != 1 && -n $SAN ]]; then
+	clang_sanitizer_summary
 fi
 
 if [[ $NOFAIL == 1 ]]; then
