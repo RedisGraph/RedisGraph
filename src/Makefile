@@ -326,7 +326,7 @@ endif
 # configuration for UNIX system
 $(ICU4C_LIBS):
 ifeq (,$(wildcard $(ICU4C_LIBS)))
-	@mkdir $(ICU4C_MAKE_DIR) ;\
+	@mkdir -p $(ICU4C_MAKE_DIR) ;\
 	cd $(ICU4C_MAKE_DIR) ;\
 	chmod +x $(ICU4C_SRC_DIR)/runConfigureICU $(ICU4C_SRC_DIR)configure $(ICU4C_SRC_DIR)install-sh ;\
 	CPPFLAGS="-fPIC -DU_NO_DEFAULT_INCLUDE_UTF_HEADERS=1 -DUCONFIG_ONLY_COLLATION=1" \
