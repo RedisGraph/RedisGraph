@@ -2195,3 +2195,21 @@ class testFunctionCallsFlow(FlowTestsBase):
             actual_result = graph.query(query)
         except redis.ResponseError as e:
             self.env.assertContains("Division by zero", str(e))
+
+    def test86_ToLowerUnicode(self):
+        query_to_expected_result = {
+            "RETURN toLower('ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ')": [['αβγδεζηθικλμνξοπρστυφχψω']], # greek
+            "RETURN toLower('АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ')": [['абвгдеёжзийклмнопрстуфхцчшщъыьэюя']], # cyrillic
+            "RETURN toLower('TITLE', 'tr')": [['tıtle']], # Locale-sensitive
+            "RETURN toLower('TITLE', 'en')": [['title']]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+    
+    def test86_ToUpperUnicode(self):
+        query_to_expected_result = {
+            "RETURN toUpper('αβγδεζηθικλμνξοπρστυφχψω')": [['ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ']], # greek
+            "RETURN toUpper('абвгдеёжзийклмнопрстуфхцчшщъыьэюя')": [['АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ']], #cyrillic
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
