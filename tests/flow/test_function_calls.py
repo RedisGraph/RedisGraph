@@ -2196,7 +2196,35 @@ class testFunctionCallsFlow(FlowTestsBase):
         except redis.ResponseError as e:
             self.env.assertContains("Division by zero", str(e))
 
-    def test86_ToLowerUnicode(self):
+    def test86_type_mismatch_message(self):
+        # A list of queries and errors which are expected to occur with the
+        # specified query.
+        queries_with_errors = {
+            "RETURN tail(1)": "Type mismatch: expected List or Null but was Integer",
+            "CREATE (n) RETURN hasLabels(n, 1)": "Type mismatch: expected List but was Integer",
+            "CREATE ()-[r:R]->() RETURN hasLabels(r, ['abc', 'def'])": "Type mismatch: expected Node or Null but was Edge",
+            "RETURN toBoolean(1.2)": "Type mismatch: expected String, Boolean, Integer, or Null but was Float",
+            "RETURN isEmpty(1)": "Type mismatch: expected Map, List, String, or Null but was Integer",
+            "CREATE ()-[r:R]->() RETURN toString(r)": "Type mismatch: expected Datetime, Duration, String, Boolean, Integer, Float, Null, or Point but was Edge",
+        }
+        for query, error in queries_with_errors.items():
+            self.expect_error(query, error)
+
+    def test87_typeof(self):
+        query_to_expected_result = {
+            "RETURN typeOf(NULL)" : [['Null']],
+            "RETURN typeOf([1,2])" : [['List']],
+            "RETURN typeOf({a: 1})" : [['Map']],
+            "RETURN typeOf(point({latitude:1,longitude:2}))" : [['Point']],
+            "RETURN typeOf(1), typeOf('1'), typeOf(true)" : [['Integer', 'String', 'Boolean']],
+            "MATCH path=({val: 0})-[e:works_with]->({val: 1}) RETURN typeOf(path)" : [['Path']],
+            "CREATE (a)-[b:B]->(c) RETURN typeOf(a), typeOf(b), typeOf(c)" : [['Node', 'Edge', 'Node']],
+            "CREATE (a:A {x:1, y:'1', z:true}) RETURN typeOf(a.x), typeOf(a.y), typeOf(a.z)" : [['Integer', 'String', 'Boolean']],
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+            
+    def test88_ToLowerUnicode(self):
         query_to_expected_result = {
             "RETURN toLower('ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ')": [['αβγδεζηθικλμνξοπρστυφχψω']], # greek
             "RETURN toLower('АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ')": [['абвгдеёжзийклмнопрстуфхцчшщъыьэюя']], # cyrillic
@@ -2206,7 +2234,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
     
-    def test86_ToUpperUnicode(self):
+    def test89_ToUpperUnicode(self):
         query_to_expected_result = {
             "RETURN toUpper('αβγδεζηθικλμνξοπρστυφχψω')": [['ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ']], # greek
             "RETURN toUpper('абвгдеёжзийклмнопрстуфхцчшщъыьэюя')": [['АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ']], #cyrillic
