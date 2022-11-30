@@ -114,8 +114,7 @@ static void _report_query_started_execution(const GraphQueryCtx *gq_ctx) {
 	if (!context) {
 		return;
 	}
-	const uint64_t milliseconds_waited = CommandCtx_GetTimerMilliseconds(gq_ctx->command_ctx);
-	Info_IndicateQueryStartedExecution(&gq_ctx->graph_ctx->info, context, milliseconds_waited);
+	Info_IndicateQueryStartedExecution(&gq_ctx->graph_ctx->info, context);
 }
 
 static void _report_query_started_reporting(const GraphQueryCtx *gq_ctx) {
@@ -124,8 +123,7 @@ static void _report_query_started_reporting(const GraphQueryCtx *gq_ctx) {
 		return;
 	}
 
-	const uint64_t milliseconds_executed = CommandCtx_GetTimerMilliseconds(gq_ctx->command_ctx);
-	Info_IndicateQueryStartedReporting(&gq_ctx->graph_ctx->info, context, milliseconds_executed);
+	Info_IndicateQueryStartedReporting(&gq_ctx->graph_ctx->info, context);
 }
 
 static void _report_query_finished_reporting(const GraphQueryCtx *gq_ctx) {
@@ -134,8 +132,7 @@ static void _report_query_finished_reporting(const GraphQueryCtx *gq_ctx) {
 		return;
 	}
 
-	const uint64_t milliseconds_reporting = CommandCtx_GetTimerMilliseconds(gq_ctx->command_ctx);
-	Info_IndicateQueryFinishedReporting(&gq_ctx->graph_ctx->info, context, milliseconds_reporting);
+	Info_IndicateQueryFinishedReporting(&gq_ctx->graph_ctx->info, context);
 }
 
 static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
