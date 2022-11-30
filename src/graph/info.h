@@ -8,6 +8,7 @@
 
 #include <stdatomic.h>
 #include <stdbool.h>
+#include "util/simple_timer.h"
 
 typedef struct QueryCtx QueryCtx;
 
@@ -20,6 +21,9 @@ typedef struct {
     uint64_t reporting_time_milliseconds;
     // The context of the query.
     const QueryCtx *context;
+    // A timer for counting the time spent in the stages (waiting, executing,
+    // reporting).
+    TIMER_DEFINE(stage_timer);
 } QueryInfo;
 
 // Creates a new, empty query info object.
@@ -34,6 +38,15 @@ uint64_t QueryInfo_GetWaitingTime(const QueryInfo);
 uint64_t QueryInfo_GetExecutionTime(const QueryInfo);
 // Returns the time the query spent reporting.
 uint64_t QueryInfo_GetReportingTime(const QueryInfo);
+// Reads the stage timer and updates the waiting time with it.
+void QueryInfo_UpdateWaitingTime(QueryInfo *info);
+// Reads the stage timer and updates the execution time with it.
+void QueryInfo_UpdateExecutionTime(QueryInfo *info);
+// Reads the stage timer and updates the reporting time with it.
+void QueryInfo_UpdateReportingTime(QueryInfo *info);
+// Resets the stage timer and returns the milliseconds it had recorded before
+// having been reset.
+uint64_t QueryInfo_ResetStageTimer(QueryInfo *);
 
 typedef struct {
     // Storage for query information for waiting queries.
@@ -49,7 +62,7 @@ void QueryInfoStorage_Clear(QueryInfoStorage *);
 // Deallocates the storage.
 void QueryInfoStorage_Free(QueryInfoStorage *);
 // Returns the current length of the storage (in elements).
-uint32_t QueryInfoStorage_Length(QueryInfoStorage *);
+uint32_t QueryInfoStorage_Length(const QueryInfoStorage *);
 // Adds a query info object.
 void QueryInfoStorage_Add(QueryInfoStorage *, const QueryInfo);
 // Returns true if the element has successfully been removed.
@@ -89,24 +102,21 @@ void Info_AddWaitingQueryInfo
 void Info_IndicateQueryStartedExecution
 (
     Info *,
-    const QueryCtx *,
-    const uint64_t waiting_time_milliseconds
+    const QueryCtx *
 );
 // Indicates that the query has finished the execution and has started
 // reporting the results back to the client.
 void Info_IndicateQueryStartedReporting
 (
     Info *,
-    const QueryCtx *,
-    const uint64_t executing_time_milliseconds
+    const QueryCtx *
 );
 // Indicates that the query has finished reporting the results and is no longer
 // required to be stored and kept track of.
 void Info_IndicateQueryFinishedReporting
 (
     Info *,
-    const QueryCtx *,
-    const uint64_t reporting_time_milliseconds
+    const QueryCtx *
 );
 // Find a QueryInfo object by the provided context.
 QueryInfo* Info_FindQueryInfo(Info *, const QueryCtx *);
