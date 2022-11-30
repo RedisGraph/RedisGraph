@@ -36,12 +36,18 @@
 extern GraphContext **graphs_in_keyspace;
 
 // Global info - across all the graphs available.
-typedef struct {
+typedef struct GlobalInfo {
     uint64_t max_query_pipeline_time;
     uint64_t total_waiting_queries_count;
     uint64_t total_executing_queries_count;
     uint64_t total_reporting_queries_count;
 } GlobalInfo;
+
+typedef enum QueryStage {
+    QueryStage_WAITING = 0,
+    QueryStage_EXECUTING,
+    QueryStage_REPORTING
+} QueryStage;
 
 // Returns true if the strings are equal (case insensitively).
 // NOTE: The strings must have a NULL-character at the end (strlen requirement).
@@ -227,6 +233,11 @@ static int _reply_graph_query_info
     RedisModuleCtx *ctx,
     const QueryInfo info
 ) {
+    ASSERT(ctx);
+    if (!ctx) {
+        return REDISMODULE_ERR;
+    }
+
     static const long KEY_VALUE_COUNT = 5;
 
     REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, KEY_VALUE_COUNT));
@@ -260,6 +271,20 @@ static int _reply_graph_query_info
     return REDISMODULE_OK;
 }
 
+static void _update_query_stage_timer(const QueryStage stage, QueryInfo *info) {
+    ASSERT(info);
+    if (!info) {
+        return;
+    }
+
+    switch (stage) {
+        case QueryStage_WAITING: QueryInfo_UpdateWaitingTime(info); break;
+        case QueryStage_EXECUTING: QueryInfo_UpdateExecutionTime(info); break;
+        case QueryStage_REPORTING: QueryInfo_UpdateReportingTime(info); break;
+        default: ASSERT(false); break;
+    }
+}
+
 // Breaks the encapsulation!
 // TODO rewrite it so that it doesn't break the encapsulation!
 // Currently it knows about the internals of the Info data structure
@@ -267,6 +292,7 @@ static int _reply_graph_query_info
 static int _reply_graph_query_info_storage
 (
     RedisModuleCtx *ctx,
+    const QueryStage query_stage,
     const QueryInfoStorage *storage
 ) {
     ASSERT(ctx);
@@ -278,12 +304,14 @@ static int _reply_graph_query_info_storage
     const uint32_t length = array_len(storage->queries);
     REDISMODULE_DO(RedisModule_ReplyWithArray(ctx, length));
     for (uint32_t i = 0; i < length; ++i) {
-        const QueryInfo info = storage->queries[i];
-        ASSERT(info.context);
-        if (!info.context) {
+        QueryInfo *info = array_elem(storage->queries, i);
+        ASSERT(info);
+        ASSERT(info->context);
+        if (!info || !info->context) {
             break;
         }
-        REDISMODULE_DO(_reply_graph_query_info(ctx, info));
+        _update_query_stage_timer(query_stage, info);
+        REDISMODULE_DO(_reply_graph_query_info(ctx, *info));
     }
 
     return REDISMODULE_OK;
@@ -301,13 +329,13 @@ static int _reply_graph_info(RedisModuleCtx *ctx, const GraphContext *gc) {
     REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, 2));
     REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Executing queries"));
 
-    if (_reply_graph_query_info_storage(ctx, &info.executing_queries)) {
+    if (_reply_graph_query_info_storage(ctx, QueryStage_EXECUTING, &info.executing_queries)) {
         return REDISMODULE_ERR;
     }
 
     REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Reporting queries"));
 
-    if (_reply_graph_query_info_storage(ctx, &info.reporting_queries)) {
+    if (_reply_graph_query_info_storage(ctx, QueryStage_REPORTING, &info.reporting_queries)) {
         return REDISMODULE_ERR;
     }
 

@@ -61,7 +61,7 @@ typedef void *array_t;
 /* Internal - get a pointer to the array header */
 #define array_hdr(arr) ((array_hdr_t *)(((char *)arr) - sizeof(array_hdr_t)))
 /* Interanl - get a pointer to an element inside the array at a given index */
-#define array_elem(arr, idx) (*((void **)((char *)arr + (idx * array_hdr(arr)->elem_sz))))
+#define array_elem(arr, idx) ((void *)((char *)arr + (idx * array_hdr(arr)->elem_sz)))
 
 static inline uint32_t array_len(array_t arr);
 
