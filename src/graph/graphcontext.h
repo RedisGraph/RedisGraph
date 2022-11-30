@@ -41,7 +41,7 @@ typedef struct {
 	GraphDecodeContext *decoding_context;   // decode context of the graph
 	Cache *cache;                           // global cache of execution plans
 	XXH32_hash_t version;                   // graph version
-	Info info;
+	Info info;                              // graph query information
 } GraphContext;
 
 //------------------------------------------------------------------------------
