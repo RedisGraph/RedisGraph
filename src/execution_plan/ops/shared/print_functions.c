@@ -23,11 +23,11 @@ static char* ae_labels_src
 ) {
 	sds labels_str = sdsempty();
 	AlgebraicExpression *operand_ae = (AlgebraicExpression *) AlgebraicExpression_SrcOperand(*ae);
-	while(ae && *ae && operand_ae->type == AL_OPERAND && operand_ae->operand.diagonal) {
+	while(*ae && operand_ae->type == AL_OPERAND && operand_ae->operand.diagonal) {
 		operand_ae = AlgebraicExpression_RemoveSource(ae);
 		labels_str = sdscatprintf(labels_str, ":%s", operand_ae->operand.label);
 		AlgebraicExpression_Free(operand_ae);
-		if(ae && *ae) operand_ae = (AlgebraicExpression *) AlgebraicExpression_SrcOperand(*ae);
+		if(*ae) operand_ae = (AlgebraicExpression *) AlgebraicExpression_SrcOperand(*ae);
 	}
 
 	return labels_str;
@@ -40,11 +40,11 @@ static char* ae_labels_dest
 ) {
 	sds labels_str = sdsempty();
 	AlgebraicExpression *operand_ae = (AlgebraicExpression *) AlgebraicExpression_DestOperand(*ae);
-	while(ae && *ae && operand_ae->type == AL_OPERAND && operand_ae->operand.diagonal) {
+	while(*ae && operand_ae->type == AL_OPERAND && operand_ae->operand.diagonal) {
 		operand_ae = AlgebraicExpression_RemoveDest(ae);
 		labels_str = sdscatprintf(labels_str, ":%s", operand_ae->operand.label);
 		AlgebraicExpression_Free(operand_ae);
-		if(ae && *ae) operand_ae = (AlgebraicExpression *) AlgebraicExpression_DestOperand(*ae);
+		if(*ae) operand_ae = (AlgebraicExpression *) AlgebraicExpression_DestOperand(*ae);
 	}
 
 	return labels_str;
