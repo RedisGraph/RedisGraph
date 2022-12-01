@@ -185,13 +185,14 @@ class testVariableLengthTraversals(FlowTestsBase):
 
     # Test variable-length edges using minHops and maxHops
     def test11_variable_length_edges(self):
-        query = """CREATE (c {name:'C'})-[:R]->(a {name:'A'})"""
+        query = """CREATE (a {v:'a'}), (b {v:'b'}), (c {v:'c'}), (a)-[:R]->(b), (b)-[:R]->(c), (c)-[:R]->(a)"""
         actual_result = redis_graph.query(query)
         query_to_expected_result = {
-            "MATCH p = (a {name: 'A'})-[*..2]-(b) RETURN length(p)" : [[1], [2], [1]],
-            "MATCH p = (a {name: 'A'})-[*2]-(c {name: 'C'}) RETURN length(p)" : [[2]],
-            "MATCH p = (a {name: 'A'})-[*2..]-(c {name: 'C'}) RETURN length(p)" : [[2]],
-            "MATCH p = (a {name: 'A'})-[*2..2]-(c {name: 'C'}) RETURN length(p)" : [[2]],
+            "MATCH p = ({v:'a'})-[*2]-({v:'c'}) RETURN length(p)" : [[2]],
+            "MATCH p = ({v:'a'})-[*2..]-({v:'c'}) RETURN length(p)" : [[2]],
+            "MATCH p = ({v:'a'})-[*2..2]-({v:'c'}) RETURN length(p)" : [[2]],
+            "MATCH p = ({v:'a'})-[*]-({v:'c'}) RETURN length(p)" : [[2],[1]],
+            "MATCH p = ({v:'a'})-[*..]-({v:'c'}) RETURN length(p)" : [[2],[1]],
         }
         for query, expected_result in query_to_expected_result.items():
             actual_result = redis_graph.query(query)
