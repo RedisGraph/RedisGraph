@@ -37,8 +37,8 @@ add_compile_options(${CMAKE_CC_FLAGS} ${CMAKE_CC_C_FLAGS})
 target_compile_options(redisgraph PUBLIC -fPIC ${CMAKE_CC_FLAGS} ${CMAKE_CC_C_FLAGS})
 
 lists_from_env(CMAKE_LD_FLAGS CMAKE_SO_LD_FLAGS LIBOMP)
-add_link_options(${CMAKE_LD_FLAGS} ${CMAKE_SO_LD_FLAGS} -Wl,-Bsymbolic,-Bsymbolic-functions ${LIBOMP})
-target_link_options(redisgraph PUBLIC ${CMAKE_LD_FLAGS} ${CMAKE_SO_LD_FLAGS} -Wl,-Bsymbolic,-Bsymbolic-functions ${LIBOMP})
+add_link_options(${CMAKE_LD_FLAGS} ${CMAKE_SO_LD_FLAGS} ${LIBOMP})
+target_link_options(redisgraph PUBLIC ${CMAKE_LD_FLAGS} ${CMAKE_SO_LD_FLAGS} ${LIBOMP})
 
 set_target_properties(redisgraph PROPERTIES PREFIX "")
 set_target_properties(redisgraph PROPERTIES SUFFIX ".so")

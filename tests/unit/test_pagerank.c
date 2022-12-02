@@ -103,6 +103,8 @@ void test_pagerank() {
 		TEST_ASSERT(fabs((double)ranking[i].page - expectations[i].page) < 0.000001);
 		TEST_ASSERT(fabs((double)ranking[i].pagerank - expectations[i].pagerank) < 0.000001);
 	}
+    
+	rm_free(ranking);
 }
 
 TEST_LIST = {

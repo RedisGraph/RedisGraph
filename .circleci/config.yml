@@ -154,15 +154,19 @@ commands:
           key: v1-GraphBLAS-<< parameters.cache_name >>-{{ checksum "deps/GraphBLAS/README.md" }}
 
   test-steps:
+    parameters:
+      test_params:
+        type: string
+        default: ""
     steps:
       - run:
           name: Test
           shell: /bin/bash -l -eo pipefail
-          command: make test PLATFORM_MODE=1
+          command: make test PLATFORM_MODE=1 <<parameters.test_params>>
       - run:
           name: Run 30-second fuzz test
           shell: /bin/bash -l -eo pipefail
-          command: make fuzz
+          command: make fuzz <<parameters.test_params>>
       - save-tests-logs
 
   fuzzer-test-steps:
@@ -348,6 +352,23 @@ jobs:
       - install-prerequisites
       - build-steps
       - fuzzer-test-steps
+      - save-tests-logs
+
+  sanitize:
+    docker:
+      - image: redisfab/clang:13-x64-bullseye
+    resource_class: large
+    parameters:
+      san-type:
+        type: string
+    steps:
+      - early-returns
+      - checkout-all
+      - install-prerequisites
+      - build-steps: 
+          build_params: SAN=<<parameters.san-type>>
+      - test-steps: 
+          test_params: SAN=<<parameters.san-type>>
       - save-tests-logs
 
   build-memcheck:
@@ -616,6 +637,12 @@ workflows:
           <<: *not-on-integ-branch
       - coverage:
           <<: *on-any-branch
+      - sanitize:
+          name: sanitize-<< matrix.san-type >>
+          <<: *on-any-branch
+          matrix:
+            parameters:
+              san-type: [address] # [address, memory]
       - build-memcheck:
           <<: *on-any-branch
       - upload-artifacts:
