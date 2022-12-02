@@ -189,17 +189,33 @@ static int _reply_global_info
 
     REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, KEY_VALUE_COUNT));
     // 1
-    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, MAX_QUERY_PIPELINE_KEY_NAME));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, global_info.max_query_pipeline_time));
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        MAX_QUERY_PIPELINE_KEY_NAME));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        global_info.max_query_pipeline_time));
     // 2
-    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, TOTAL_WAITING_QUERIES_COUNT_KEY_NAME));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, global_info.total_waiting_queries_count));
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        TOTAL_WAITING_QUERIES_COUNT_KEY_NAME));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        global_info.total_waiting_queries_count));
     // 3
-    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, TOTAL_EXECUTING_QUERIES_COUNT_KEY_NAME));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, global_info.total_executing_queries_count));
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        TOTAL_EXECUTING_QUERIES_COUNT_KEY_NAME));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        global_info.total_executing_queries_count));
     // 4
-    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, TOTAL_REPORTING_QUERIES_COUNT_KEY_NAME));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, global_info.total_reporting_queries_count));
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        TOTAL_REPORTING_QUERIES_COUNT_KEY_NAME));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        global_info.total_reporting_queries_count));
 
     return REDISMODULE_OK;
 }
@@ -252,29 +268,59 @@ static int _reply_graph_query_info
     if (!query_ctx) {
         return REDISMODULE_ERR;
     }
-    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, query_ctx->query_data.query));
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        query_ctx->query_data.query));
     // 2
-    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current total time (milliseconds)"));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetTotalTimeSpent(info, NULL)));
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Current total time (milliseconds)"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        QueryInfo_GetTotalTimeSpent(info, NULL)));
     // 3
-    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current wait time (milliseconds)"));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetWaitingTime(info)));
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Current wait time (milliseconds)"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        QueryInfo_GetWaitingTime(info)));
     // 4
-    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current execution time (milliseconds)"));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetExecutionTime(info)));
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Current execution time (milliseconds)"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        QueryInfo_GetExecutionTime(info)));
     // 5
-    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current reporting time (milliseconds)"));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetReportingTime(info)));
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Current reporting time (milliseconds)"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        QueryInfo_GetReportingTime(info)));
     // TODO memory
     // // 6
-    // REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current processing memory (bytes)"));
-    // REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetReportingTime(info)));
+    // REDISMODULE_DO(RedisModule_ReplyWithCString(
+    //     ctx,
+    //     "Current processing memory (bytes)"));
+    // REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+    //     ctx,
+    //     QueryInfo_GetReportingTime(info)));
     // // 7
-    // REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current undo-log memory (bytes)"));
-    // REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetReportingTime(info)));
+    // REDISMODULE_DO(RedisModule_ReplyWithCString(
+    //     ctx,
+    //     "Current undo-log memory (bytes)"));
+    // REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+    //     ctx,
+    //     QueryInfo_GetReportingTime(info)));
     // // 8
-    // REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Current result-set memory (bytes)"));
-    // REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, QueryInfo_GetReportingTime(info)));
+    // REDISMODULE_DO(RedisModule_ReplyWithCString(
+    //     ctx,
+    //     "Current result-set memory (bytes)"));
+    // REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+    //     ctx,
+    //     QueryInfo_GetReportingTime(info)));
 
     return REDISMODULE_OK;
 }
@@ -305,18 +351,13 @@ static int _reply_graph_query_info_storage
         return REDISMODULE_ERR;
     }
 
-    const uint32_t length = QueryInfoStorage_Length(storage);
-    REDISMODULE_DO(RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN));
+    QueryInfoIterator iterator = QueryInfoIterator_New(storage);
+    REDISMODULE_DO(RedisModule_ReplyWithArray(
+        ctx,
+        REDISMODULE_POSTPONED_ARRAY_LEN));
     uint64_t actual_elements_count = 0;
-    for (uint32_t i = 0; i < length; ++i) {
-        QueryInfo *info = QueryInfoStorage_Get(storage, i);
-        ASSERT(info);
-        if (!info) {
-            break;
-        }
-        if (!QueryInfo_IsValid(info)) {
-            continue;
-        }
+    QueryInfo *info = NULL;
+    while ((info = QueryInfoIterator_NextValid(&iterator)) != NULL) {
         _update_query_stage_timer(query_stage, info);
         ++actual_elements_count;
         REDISMODULE_DO(_reply_graph_query_info(ctx, *info));
@@ -392,7 +433,6 @@ static int _reply_with_queries_info_from_all_graphs
         return REDISMODULE_ERR;
     }
 
-    // TODO check minimum version of redis (6.0.0) we support has support for map.
     REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, 2));
     REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, GLOBAL_INFO_KEY_NAME));
     REDISMODULE_DO(_reply_global_info(ctx, global_info));
