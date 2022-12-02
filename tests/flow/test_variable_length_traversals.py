@@ -185,7 +185,7 @@ class testVariableLengthTraversals(FlowTestsBase):
 
     # Test variable-length edges using minHops and maxHops
     def test11_variable_length_edges(self):
-        query = """CREATE (a {v:'a'}), (b {v:'b'}), (c {v:'c'}), (a)-[:R]->(b), (b)-[:R]->(c), (c)-[:R]->(a)"""
+        query = """CREATE (a {v:'a'}), (b {v:'b'}), (c {v:'c'}), (d {v:'d'}), (a)-[:R]->(b), (b)-[:R]->(c), (c)-[:R]->(a), (d)-[:R]->(d)"""
         actual_result = redis_graph.query(query)
         query_to_expected_result = {
             "MATCH p = ({v:'a'})-[*2]-({v:'c'}) RETURN length(p)" : [[2]],
@@ -193,6 +193,7 @@ class testVariableLengthTraversals(FlowTestsBase):
             "MATCH p = ({v:'a'})-[*2..2]-({v:'c'}) RETURN length(p)" : [[2]],
             "MATCH p = ({v:'a'})-[*]-({v:'c'}) RETURN length(p)" : [[2],[1]],
             "MATCH p = ({v:'a'})-[*..]-({v:'c'}) RETURN length(p)" : [[2],[1]],
+            "MATCH p = ({v:'d'})-[*0]-() RETURN length(p)" : [[0]],
         }
         for query, expected_result in query_to_expected_result.items():
             actual_result = redis_graph.query(query)
