@@ -39,7 +39,7 @@ commands:
             apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
             bash <(curl -fsSL https://raw.githubusercontent.com/docker/docker-install/master/install.sh)
       - setup_remote_docker:
-          version: 20.10.7
+          version: 20.10.14
           docker_layer_caching: true
 
   checkout-all:
@@ -136,6 +136,9 @@ commands:
       cache_name:
         type: string
         default: "build"
+      run_pack:
+        type: boolean
+        default: true
     steps:
       - early-returns
       - checkout-all
@@ -147,7 +150,15 @@ commands:
       - run:
           name: Build
           shell: /bin/bash -l -eo pipefail
-          command: make <<parameters.build_params>> all package
+          command: make <<parameters.build_params>>
+      - when:
+          condition: << parameters.run_pack >>
+          steps:
+            - run:
+                name: Pack
+                shell: /bin/bash -l -eo pipefail
+                command: |
+                  make pack SHOW=1
       - save_cache:
           paths:
             - deps/GraphBLAS/build
@@ -367,6 +378,7 @@ jobs:
       - install-prerequisites
       - build-steps: 
           build_params: SAN=<<parameters.san-type>>
+          run_pack: false
       - test-steps: 
           test_params: SAN=<<parameters.san-type>>
       - save-tests-logs

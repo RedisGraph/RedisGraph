@@ -336,7 +336,8 @@ benchmark: $(TARGET)
 
 COV_EXCLUDE_DIRS += \
 	deps \
-	src/util/sds
+	src/util/sds \
+	tests
 
 COV_EXCLUDE+=$(foreach D,$(COV_EXCLUDE_DIRS),'$(realpath $(ROOT))/$(D)/*')
 
