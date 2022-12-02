@@ -25,7 +25,7 @@
 */
 
 #include "pagerank.h"
-#include "../util/rmalloc.h"
+#include "util/rmalloc.h"
 #include <assert.h>
 
 //------------------------------------------------------------------------------
