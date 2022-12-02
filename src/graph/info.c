@@ -314,6 +314,11 @@ QueryInfoIterator QueryInfoIterator_New(QueryInfoStorage *storage) {
 
 QueryInfo* QueryInfoIterator_Next(QueryInfoIterator *iterator) {
     REQUIRE_ARG_OR_RETURN(iterator, NULL);
+
+    if (!iterator->has_started) {
+        return QueryInfoIterator_Get(iterator);
+    }
+
     const uint64_t next_index = iterator->current_index + 1;
     const bool is_index_valid
         = next_index < QueryInfoStorage_Length(iterator->storage);
@@ -327,12 +332,7 @@ QueryInfo* QueryInfoIterator_Next(QueryInfoIterator *iterator) {
 }
 
 QueryInfo* QueryInfoIterator_NextValid(QueryInfoIterator *iterator) {
-    QueryInfo *next = NULL;
-    if (iterator->has_started) {
-        next = QueryInfoIterator_Next(iterator);
-    } else {
-        next = QueryInfoIterator_Get(iterator);
-    }
+    QueryInfo *next = QueryInfoIterator_Next(iterator);
 
     while (next && !QueryInfo_IsValid(next)) {
         next = QueryInfoIterator_Next(iterator);
