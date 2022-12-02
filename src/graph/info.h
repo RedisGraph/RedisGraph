@@ -82,7 +82,7 @@ void QueryInfoStorage_Clear(QueryInfoStorage *);
 // Deallocates the storage.
 void QueryInfoStorage_Free(QueryInfoStorage *);
 // Returns the number of elements which are valid within the storage.
-uint32_t QueryInfoStorage_ValidLength(const QueryInfoStorage *);
+uint32_t QueryInfoStorage_ValidCount(const QueryInfoStorage *);
 // Returns the current length of the storage (in elements).
 uint32_t QueryInfoStorage_Length(const QueryInfoStorage *);
 // Adds a query info object.
@@ -99,6 +99,35 @@ bool QueryInfoStorage_Remove(QueryInfoStorage *, const QueryInfo *);
 // Returns true if the element has successfully been removed.
 bool QueryInfoStorage_RemoveByContext(QueryInfoStorage *, const QueryCtx *);
 
+// An abstraction for iteration over QueryInfo objects.
+typedef struct QueryInfoIterator {
+    QueryInfoStorage *const storage;
+    uint64_t current_index;
+    // True if at least one Next*/Get* was called.
+    bool has_started;
+} QueryInfoIterator;
+
+// Returns a new iterator over the provided storage starting with the
+// provided index. The created iterator doesn't have to be freed.
+QueryInfoIterator QueryInfoIterator_NewStartingAt
+(
+    QueryInfoStorage *,
+    const uint64_t
+);
+// Returns a new iterator over the provided storage starting from the beginning.
+QueryInfoIterator QueryInfoIterator_New(QueryInfoStorage *);
+// Returns a pointer to the next element from the current, NULL if the end has
+// been reached.
+QueryInfo* QueryInfoIterator_Next(QueryInfoIterator *);
+// Returns a pointer to the next valid element from the current, NULL if the end
+// has been reached.
+QueryInfo* QueryInfoIterator_NextValid(QueryInfoIterator *);
+// Returns a pointer to the underlying storage being iterated over.
+QueryInfoStorage * const QueryInfoIterator_GetStorage(QueryInfoIterator *);
+// Returns current element being pointed at by the iterator.
+QueryInfo* QueryInfoIterator_Get(QueryInfoIterator *);
+
+
 typedef struct {
     // Storage for query information for waiting queries.
     QueryInfoStorage waiting_queries;
@@ -109,20 +138,16 @@ typedef struct {
     QueryInfoStorage executing_queries_per_thread;
     // Storage for query information for reporting currently queries.
     QueryInfoStorage reporting_queries_per_thread;
-    // Global synchronisation primitive, locking all the collecitons. Required
-    // when the read operation is performed over all the collections. Example:
-    // "GRAPH.INFO QUERIES" iterates over each of the collections.
-    pthread_rwlock_t global_collection_lock;
     // Maximum registered time a query was spent waiting, executing and
     // reporting the results.
     atomic_uint_fast64_t max_query_pipeline_time;
 } Info;
 
-// Create a new info structure. Returns true on successfull creation.
+// Create a new info structure. Returns true on successful creation.
 bool Info_New(Info *);
 // Reset an already existing info structure.
 void Info_Reset(Info *);
-// Free the info structure's contents. Returns true on successfull free.
+// Free the info structure's contents. Returns true on successful free.
 bool Info_Free(Info *);
 // Insert a query information into the info structure. The query is supposed
 // to be added right after being successfully parsed and known to the module,
