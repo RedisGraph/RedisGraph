@@ -418,7 +418,9 @@ static bool _Validate_apply_operator
 	// Collect the function name.
 	const cypher_astnode_t *func = cypher_ast_apply_operator_get_func_name(n);
 	const char *func_name = cypher_ast_function_name_get_value(func);
-	vctx->valid = _ValidateFunctionCall(func_name, vctx->clause == CYPHER_AST_WITH || vctx->clause == CYPHER_AST_RETURN);
+	// Need to add UNWIND? (see prior code).
+	vctx->valid = _ValidateFunctionCall(func_name, vctx->clause == CYPHER_AST_WITH 
+										|| vctx->clause == CYPHER_AST_RETURN);
 
 	return vctx->valid == AST_VALID;
 }
@@ -429,7 +431,13 @@ static bool _Validate_reduce
 	ast_visitor *visitor
 ) {
 	validations_ctx *vctx = visitor->ctx;
-	if(vctx->valid == AST_INVALID || !start) return false;
+	if(vctx->valid == AST_INVALID || !start) {
+		return false;
+	}
+	cypher_astnode_type_t orig_clause = vctx->clause;
+	// change clause type of vctx so that function-validation will work properly
+	vctx->clause = CYPHER_AST_REDUCE;
+
 	// A reduce call has an accumulator and a local list variable that should
 	// only be accessed within its scope;
 	// do not leave them in the identifiers map
@@ -452,6 +460,13 @@ static bool _Validate_reduce
 			return false;
 		}
 	}
+	else {
+		AST_Visitor_visit(init_node, visitor);
+
+		if(vctx->valid == AST_INVALID) {
+			return false;
+		}
+	}
 
 	// make sure that the list expression is a list (or list comprehension) or an 
 	// alias of an existing one.
@@ -464,10 +479,13 @@ static bool _Validate_reduce
 			return false;
 		}
 	}
-
+	
 	// Visit the list expression (no need to introduce local vars)
 	AST_Visitor_visit(list_var, visitor);
-	if(vctx->valid == AST_INVALID) return false;
+
+	if(vctx->valid == AST_INVALID) {
+		return false;
+	}
 
 	// make sure that the eval-expression exists (current test for this checks for 
 	// 'n not defined'.. Change this)
@@ -484,8 +502,9 @@ static bool _Validate_reduce
 	// If accumulator is already in the environment, don't reintroduce
 	const cypher_astnode_t *accum_node =cypher_ast_reduce_get_accumulator(n);
 	const char *accum_str = cypher_ast_identifier_get_name(accum_node);
-	bool introduce_accum = (raxFind(vctx->defined_identifiers, (unsigned char *) accum_str, strlen(accum_str))
-						    == raxNotFound);
+	bool introduce_accum = 
+	(raxFind(vctx->defined_identifiers, (unsigned char *) accum_str, strlen(accum_str))
+			 == raxNotFound);
 	if(introduce_accum)
 		raxInsert(vctx->defined_identifiers, (unsigned char *) accum_str, strlen(accum_str), NULL, NULL);
 
@@ -496,11 +515,16 @@ static bool _Validate_reduce
 						    == raxNotFound);
 	if(introduce_list_var)
 		raxInsert(vctx->defined_identifiers, (unsigned char *) list_var_str, strlen(list_var_str), NULL, NULL);
-
+	
+	// visit eval expression
 	AST_Visitor_visit(eval_exp, visitor);
+	
+	// change back
+	vctx->clause = orig_clause;
 
-	if(vctx->valid == AST_INVALID)
+	if(vctx->valid == AST_INVALID) {
 		return false;
+	}
 
 	// Remove local vars\aliases if introduced.
 	if(introduce_accum) 
