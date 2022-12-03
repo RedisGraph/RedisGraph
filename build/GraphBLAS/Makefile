@@ -29,22 +29,15 @@ BINDIR=$(BINROOT)/GraphBLAS
 
 TARGET=$(BINDIR)/libgraphblas.a
 
-ifeq ($(OSNICK),monterey)
-OSX_SDK_VER=12.0
-else
-OSX_SDK_VER=10.15
-endif
-
-CMAKE_FLAGS+=\
-	-Wno-dev \
-	-DBUILD_GRB_STATIC_LIBRARY=1 \
-	-DBUILD_TESTING=off \
-	-DCMAKE_POSITION_INDEPENDENT_CODE=on \
-	-DCMAKE_OSX_DEPLOYMENT_TARGET=$(OSX_SDK_VER)
-
 #----------------------------------------------------------------------------------------------
 
 include $(MK)/defs
+
+define CMAKE_DEFS +=
+	BUILD_GRB_STATIC_LIBRARY=1
+	BUILD_TESTING=off
+	CMAKE_POSITION_INDEPENDENT_CODE=on
+endef
 
 #----------------------------------------------------------------------------------------------
 
