@@ -205,7 +205,7 @@ commands:
           shell: /bin/bash -l -eo pipefail
           command: |
             cd build/docker
-            make build OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" TEST=1 OFFICIAL=<<parameters.official>> SHOW=1 VERBOSE=1
+            make build OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" TEST=1 OFFICIAL=<<parameters.official>> SHOW=1 VERBOSE=1 SLOW=1
       - save-tests-logs
       - early-return-for-forked-pull-requests
       - run:
@@ -236,7 +236,7 @@ commands:
           name: Build for platform
           command: |
             cd build/docker
-            make build OSNICK=<<parameters.platform>> VERSION=$CIRCLE_TAG BRANCH=$CIRCLE_BRANCH TEST=1 OFFICIAL=<<parameters.official>> SHOW=1 VERBOSE=1
+            make build OSNICK=<<parameters.platform>> VERSION=$CIRCLE_TAG BRANCH=$CIRCLE_BRANCH TEST=1 OFFICIAL=<<parameters.official>> SHOW=1 VERBOSE=1 SLOW=1
           no_output_timeout: 30m
       - save-tests-logs
       - early-return-for-forked-pull-requests
@@ -384,7 +384,7 @@ jobs:
       - run:
           name: Test
           shell: /bin/bash -l -eo pipefail
-          command: make test PLATFORM_MODE=1 SAN=<<parameters.san-type>> UNIT=0 FLOW=1 TCK=0
+          command: make test PLATFORM_MODE=1 SAN=<<parameters.san-type>> UNIT=0 FLOW=1 TCK=0 SLOW=1
       - save-tests-logs
 
   build-memcheck:
@@ -660,7 +660,8 @@ workflows:
             parameters:
               san-type: [address] # [address, memory]
       - build-memcheck:
-          <<: *on-any-branch
+          #@@<<: *on-any-branch
+          <<: *never
       - upload-artifacts:
           name: upload-artifacts-to-staging-lab
           staging-lab: "1"

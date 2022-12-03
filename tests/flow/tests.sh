@@ -167,7 +167,7 @@ setup_clang_sanitizer() {
 				--suffix asan --clang-asan --clang-san-blacklist /build/redis.blacklist
 		fi
 
-		export ASAN_OPTIONS=detect_odr_violation=0
+		export ASAN_OPTIONS=detect_odr_violation=0:-fsanitize-recover=all
 		# :detect_leaks=0
 
 	elif [[ $SAN == mem || $SAN == memory ]]; then
