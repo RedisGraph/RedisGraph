@@ -491,7 +491,8 @@ inline AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast) {
 
 static inline char *_create_anon_alias(int anon_count) {
 	char *alias;
-	asprintf(&alias, "@anon_%d", anon_count);
+	int rc __attribute__((unused));
+	rc = asprintf(&alias, "@anon_%d", anon_count);
 	return alias;
 }
 

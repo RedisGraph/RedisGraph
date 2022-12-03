@@ -143,6 +143,10 @@ $(info # Building into $(BINDIR))
 $(info # Using CC=$(CC))
 endif
 
+ifeq ($(UNIT_TESTS),1)
+CMAKE_DEFS += UNIT_TESTS:BOOL=on
+endif
+
 #----------------------------------------------------------------------------------------------
 
 MISSING_DEPS:=
@@ -186,12 +190,6 @@ MK_ALL_TARGETS=bindirs deps build
 .PHONY: all deps clean lint format pack run tests unit_tests flow_tests docker bindirs
 
 all: bindirs $(TARGET)
-
-ifeq ($(OS),linux)
-ifneq ($(DEBUG),1)
-EXTRACT_TARGET_SYMBOLS=1
-endif
-endif
 
 include $(MK)/rules
 
@@ -256,13 +254,13 @@ ifeq ($(ALL),1)
 else
 #	$(SHOW)-rm -f $(TARGET) $(OBJECTS) $(CC_DEPS)
 	$(SHOW)$(MAKE) -C $(BINDIR) clean
+	$(SHOW)-rm -fr $(BINDIR)/CMakeCache.txt $(BINDIR)/tests
 ifeq ($(DEPS),1)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/rax clean
 	$(SHOW)$(MAKE) -C $(ROOT)/build/xxHash clean
 	$(SHOW)$(MAKE) -C $(ROOT)/build/GraphBLAS clean
 	$(SHOW)$(MAKE) -C $(ROOT)/build/libcypher-parser clean
 	$(SHOW)$(MAKE) -C $(REDISEARCH_DIR) clean ALL=1 BINROOT=$(REDISEARCH_BINROOT)
-	$(SHOW)$(MAKE) -C $(ROOT)/tests clean
 endif
 endif
 

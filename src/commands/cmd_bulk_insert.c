@@ -37,8 +37,9 @@ static int _Graph_Bulk_Begin(RedisModuleCtx *ctx, RedisModuleString ***argv,
 
 	if(key) {
 		char *err;
-		asprintf(&err, "Graph with name '%s' cannot be created, \
-				as key '%s' already exists.", graphname, graphname);
+		int rc __attribute__((unused));
+		rc = asprintf(&err, "Graph with name '%s' cannot be created, "\
+                      "as key '%s' already exists.", graphname, graphname);
 		RedisModule_ReplyWithError(ctx, err);
 		free(err);
 		return BULK_FAIL;

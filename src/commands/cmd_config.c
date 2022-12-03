@@ -100,7 +100,8 @@ void _Config_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 				RedisModule_ReplyWithError(ctx, error);
 			} else {
 				char *errmsg;
-				asprintf(&errmsg, "Failed to set config value %s to %s", config_name, val_str);
+				int rc __attribute__((unused));
+				rc = asprintf(&errmsg, "Failed to set config value %s to %s", config_name, val_str);
 				RedisModule_ReplyWithError(ctx, errmsg);
 				free(errmsg);
 			}

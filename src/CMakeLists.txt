@@ -3,6 +3,11 @@ cmake_minimum_required(VERSION 3.13)
 get_filename_component(root ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
 include(${root}/deps/readies/cmake/main)
 
+#set(UNIT_TESTS ON CACHE BOOL "Build unit tests" FORCE)
+if (NOT DEFINED UNIT_TESTS)
+	set(UNIT_TESTS OFF)
+endif()
+
 project(redisgraph)
 
 file(GLOB_RECURSE SOURCES "*.c")
@@ -51,8 +56,16 @@ lists_from_env(GRAPHBLAS LIBXXHASH RAX LIBCYPHER_PARSER REDISEARCH_LIBS)
 set(REDISGRAPH_LIBS ${GRAPHBLAS} ${LIBXXHASH} ${RAX} ${LIBCYPHER_PARSER} ${REDISEARCH_LIBS})
 
 target_link_libraries(redisgraph PRIVATE ${REDISGRAPH_LIBS} c m dl pthread)
-#target_link_libraries(redisgraph PRIVATE c m dl pthread)
 
-add_library(redisgraph_static STATIC $<TARGET_OBJECTS:redisgraph>)
+if (NOT DEBUG AND NOT APPLE)
+	add_custom_command(TARGET redisgraph POST_BUILD
+		COMMAND ${MK}/extract-obj-symbols $<TARGET_FILE:redisgraph>)
+endif()
 
-add_subdirectory(${root}/tests/unit tests/unit)
+if (APPLE)
+	add_library(redisgraph_static STATIC $<TARGET_OBJECTS:redisgraph>)
+endif()
+
+if (UNIT_TESTS)
+	add_subdirectory(${root}/tests/unit tests/unit)
+endif()

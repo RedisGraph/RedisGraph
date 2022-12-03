@@ -34,7 +34,8 @@ int Graph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	GraphContext_DecreaseRefCount(gc);   // Decrease graph ref count.
 
 	double t = QueryCtx_GetExecutionTime();
-	asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
+	int rc __attribute__((unused));
+	rc = asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
 	RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
 
 	// Delete commands should always modify slaves.

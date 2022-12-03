@@ -55,7 +55,8 @@ void InfoFunc(RedisModuleInfoCtx *ctx, int for_crash_report) {
 	for(int i = 0; i < nthreads; i++) {
 		CommandCtx *cmd = command_ctxs[i];
 		if(cmd != NULL) {
-			asprintf(&command_desc, "%s %s", cmd->command_name, cmd->query);
+			int rc __attribute__((unused));
+			rc = asprintf(&command_desc, "%s %s", cmd->command_name, cmd->query);
 			RedisModule_InfoAddFieldCString(ctx, "command", command_desc);
 			free(command_desc);
 		}
