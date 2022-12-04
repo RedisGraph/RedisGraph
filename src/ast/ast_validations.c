@@ -5,11 +5,12 @@
  */
 
 #include "ast.h"
+#include "astnode.h"
 #include "../RG.h"
 #include "../errors.h"
 #include "ast_shared.h"
 #include "ast_visitor.h"
-#include "../util/arr.h"
+#include "util.h"
 #include "cypher_whitelist.h"
 #include "../util/rax_extensions.h"
 #include "../procedures/procedure.h"
@@ -53,14 +54,19 @@ static bool _ValidateAllShortestPaths
 	return false;
 }
 
-static void _AST_GetWithAliases
+// get aliases of the WITH clause
+// return true if no errors where found, false otherwise
+static bool _AST_GetWithAliases
 (
 	const cypher_astnode_t *node,
 	rax *aliases
 ) {
-	if(!node) return;
-	if(cypher_astnode_type(node) != CYPHER_AST_WITH) return;
+	if(!node) return false;
+	if(cypher_astnode_type(node) != CYPHER_AST_WITH) return false;
 	ASSERT(aliases != NULL);
+
+	// local rax for checking duplicate column names
+	rax *local_env = raxNew();
 
 	uint num_with_projections = cypher_ast_with_nprojections(node);
 	for(uint i = 0; i < num_with_projections; i ++) {
@@ -71,13 +77,22 @@ static void _AST_GetWithAliases
 			alias = cypher_ast_identifier_get_name(alias_node);
 		} else {
 			const cypher_astnode_t *expr = cypher_ast_projection_get_expression(child);
-			// This expression not being an identifier is an error case, but will be captured in a later validation.
-			if(cypher_astnode_type(expr) != CYPHER_AST_IDENTIFIER) continue;
+			if(cypher_astnode_type(expr) != CYPHER_AST_IDENTIFIER) {
+				ErrorCtx_SetError("WITH clause projections must be aliased");
+				return false;	
+			}
 			// Retrieve "a" from "WITH a"
 			alias = cypher_ast_identifier_get_name(expr);
 		}
 		raxInsert(aliases, (unsigned char *)alias, strlen(alias), NULL, NULL);
+
+		// check for duplicate column names
+		if(raxTryInsert(local_env, (unsigned char *)alias, strlen(alias), NULL, NULL) == 0) {
+			ErrorCtx_SetError("Error: Multiple result columns with the same name are not supported.");
+			return false;
+		}
 	}
+	return true;
 }
 
 // Extract identifiers / aliases from a procedure call.
@@ -424,6 +439,7 @@ static bool _Validate_apply_operator
 
 	return vctx->valid == AST_VALID;
 }
+
 static bool _Validate_reduce
 (
 	const cypher_astnode_t *n,
@@ -942,34 +958,32 @@ static bool _Validate_WITH_Clause
 
 	if(start) {
 		vctx->clause = cypher_astnode_type(n);
-		_AST_GetWithAliases(n, vctx->defined_identifiers);
+
+		if(!_AST_GetWithAliases(n, vctx->defined_identifiers)) {
+			vctx->valid = AST_INVALID;
+			return false;
+		}
 		return true;
 	}
 
-	rax *rax = raxNew();
+	// if one of the 'projections' is a star -> proceed with current env
+	// otherwise build a new environment using the new column names (aliases)
+	if(!cypher_ast_with_has_include_existing(n)) {
+		rax *new_env = raxNew();
+		for(uint i = 0; i < cypher_ast_with_nprojections(n); i++) {
+			const cypher_astnode_t *proj = cypher_ast_with_get_projection(n, i);
+			const cypher_astnode_t *ast_alias = cypher_ast_projection_get_alias(proj);
+			if(!ast_alias) {
+				ast_alias = cypher_ast_projection_get_expression(proj);			
+			}
+			const char *alias = cypher_ast_identifier_get_name(ast_alias);
+			raxInsert(new_env, (unsigned char *)alias, strlen(alias), NULL, NULL);
+		}
 
-	// Verify that each WITH projection either is aliased or is itself an identifier.
-	uint projection_count = cypher_ast_with_nprojections(n);
-	for(uint i = 0; i < projection_count; i ++) {
-		const cypher_astnode_t *proj = cypher_ast_with_get_projection(n, i);
-		const cypher_astnode_t *ast_alias = cypher_ast_projection_get_alias(proj);
-		if(!ast_alias &&
-		   cypher_astnode_type(cypher_ast_projection_get_expression(proj)) != CYPHER_AST_IDENTIFIER) {
-			ErrorCtx_SetError("WITH clause projections must be aliased");
-			vctx->valid = AST_INVALID;
-			break;
-		}
-		if(ast_alias == NULL) ast_alias = cypher_ast_projection_get_expression(proj);
-		const char *alias = cypher_ast_identifier_get_name(ast_alias);
-		// column with same name is invalid
-		if(raxTryInsert(rax, (unsigned char *)alias, strlen(alias), NULL, NULL) == 0) {
-			ErrorCtx_SetError("Error: Multiple result columns with the same name are not supported.");
-			vctx->valid = AST_INVALID;
-			break;
-		}
+		// free old env, set new one
+		raxFree(vctx->defined_identifiers);
+		vctx->defined_identifiers = new_env;
 	}
-
-	raxFree(rax);
 
 	if(vctx->valid == AST_INVALID) return false;
 
@@ -1061,6 +1075,7 @@ static bool _Validate_UNION_Clause
 
 	if(start) {
 		vctx->clause = cypher_astnode_type(n);
+		raxFree(vctx->defined_identifiers);
 		vctx->defined_identifiers = raxNew();
 		return true;
 	}
@@ -1109,7 +1124,6 @@ static bool _Validate_MERGE_Clause
 
 	if(start) {
 		vctx->clause = cypher_astnode_type(n);
-		return true;
 	}
 
 	return true;
