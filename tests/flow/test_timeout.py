@@ -256,3 +256,25 @@ class testQueryTimeout():
             self.env.assertTrue(False)
         except ResponseError as error:
             self.env.assertContains("The TIMEOUT configuration parameter is deprecated. Please set TIMEOUT_MAX and TIMEOUT_DEFAULT instead", str(error))
+
+    # When timeout occurs while executing a PROFILE command, only the error-message
+    # should return to user
+    def test10_profile_no_double_response(self):
+        # reset timeout params to default
+        self.env.stop()
+        self.env = Env(decodeResponses=True)
+
+        # Set timeout parameters to small values (1 millisecond)
+        redis_graph.config("TIMEOUT_MAX", 1, True)
+        redis_graph.config("TIMEOUT_DEFAULT", 1, True)
+
+        # Issue a profile query, expect a timeout error
+        try:
+            redis_graph.profile("UNWIND range(0, 100000000) AS x CREATE (:P{v:x})")
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertTrue(True)
+        
+        # make sure no pending result exists
+        res = redis_graph.query("RETURN 1")
+        self.env.assertEquals(res.result_set[0][0], 1)
