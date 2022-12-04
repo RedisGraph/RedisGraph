@@ -124,8 +124,6 @@ static void _QueryGraphAddEdge
 		if(start) edge->minHops = AST_ParseIntegerNode(start);
 		if(end) edge->maxHops = AST_ParseIntegerNode(end);
 		else edge->maxHops = EDGE_LENGTH_INF;
-	} else {
-		edge->varLen = false;
 	}
 
 	// build and add a QGEdge representing this entity to the QueryGraph

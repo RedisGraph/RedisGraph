@@ -25,6 +25,7 @@ QGEdge *QGEdge_New
 	e->maxHops        =  1;
 	e->bidirectional  =  false;
 	e->shortest_path  =  false;
+	e->varLen         =  false;
 
 	return e;
 }
