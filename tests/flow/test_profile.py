@@ -37,5 +37,5 @@ class testProfile(FlowTestsBase):
         profile = redis_con.execute_command("GRAPH.PROFILE", GRAPH_ID, q)
         profile = [x[0:x.index(',')].strip() for x in profile]
         self.env.assertIn("Update | Records produced: 0", profile)
-        self.env.assertIn("Conditional Variable Length Traverse | (a:L)-[@anon_1*1..INF]->(@anon_0) | Records produced: 0", profile)
+        self.env.assertIn("Conditional Variable Length Traverse | (a)-[@anon_1*1..INF]->(@anon_0) | Records produced: 0", profile)
         self.env.assertIn("Node By Label Scan | (a:L) | Records produced: 0", profile)
