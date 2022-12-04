@@ -54,6 +54,7 @@ static void replace_match_clause
 
 	struct cypher_input_range range = cypher_astnode_range(clauses[0]);
 	cypher_astnode_t **paths = array_new(cypher_astnode_t *, count);
+	cypher_astnode_t *predicate = NULL;
 	for (uint i = 0; i < count; i++) {
 		const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clauses[i]);
 		uint npaths = cypher_ast_pattern_npaths(pattern);
@@ -61,12 +62,22 @@ static void replace_match_clause
 			const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
 			array_append(paths, cypher_ast_clone(path));	
 		}
+		if(predicate == NULL) {
+			predicate = (cypher_astnode_t *)cypher_ast_match_get_predicate(clauses[i]);
+		} else {
+			cypher_astnode_t *new_predicate = (cypher_astnode_t *)cypher_ast_match_get_predicate(clauses[i]);
+			if(new_predicate != NULL) {
+				cypher_astnode_t *children[] = {predicate, new_predicate};
+				predicate = cypher_ast_binary_operator(CYPHER_OP_AND, predicate, new_predicate, children, 2, range);
+			}
+		}
 		cypher_ast_free(clauses[i]);
 	}
 	
 	cypher_astnode_t *pattern = cypher_ast_pattern(paths, array_len(paths), paths, array_len(paths), range);
 	// build the replacement clause
-	cypher_astnode_t *new_clause = cypher_ast_match(false, pattern, NULL, 0, NULL, &pattern, 1, range);
+	cypher_astnode_t *children[] = {pattern, predicate};
+	cypher_astnode_t *new_clause = cypher_ast_match(false, pattern, NULL, 0, predicate, children, 2, range);
 
 	// replace original clause with fully populated one
 	cypher_ast_query_replace_clauses(root, new_clause, scope_start, scope_end);
@@ -133,41 +144,6 @@ static void replace_set_clause
 	array_free(items);
 }
 
-// For now leaving the WITH clause, as it can be problematic to rewrite such 
-// a clause for instance if some of the clauses have ORDER BY (or SKIP, LIMIT, predicate)
-/*
-static void replace_with_clause
-(
-	cypher_astnode_t *root,      // ast root
-	cypher_astnode_t **clauses,  // clause being replaced
-	int scope_start,             // begining of scope
-	int scope_end                // ending of scope
-) {
-	uint count = array_len(clauses);
-
-	struct cypher_input_range range = cypher_astnode_range(clauses[0]);
-	cypher_astnode_t **projections = array_new(cypher_astnode_t *, count);
-	for (uint i = 0; i < count; i++) {
-		uint nprojections = cypher_ast_with_nprojections(clauses[i]);
-		for(uint j = 0; j < nprojections; j++) {
-			const cypher_astnode_t *exp = cypher_ast_with_get_projection(clauses[i], j);
-			array_append(projections, cypher_ast_clone(exp));
-		}
-
-		cypher_ast_free(clauses[i]);
-	}
-	
-	// Talk about `distinct`, `include_existing`, fields.
-	// Here SKIP, ORDER BY, LIMIT, predicate are set to NULL.
-	cypher_astnode_t *new_clause = cypher_ast_with(false, false, projections, array_len(projections), NULL, NULL, NULL, NULL, projections, array_len(projections), range);
-
-	// replace original clause with fully populated one
-	cypher_ast_query_replace_clauses(root, new_clause, scope_start, scope_end);
-	
-	array_free(items);
-}
-*/
-
 static void replace_remove_clause
 (
 	cypher_astnode_t *root,      // ast root
@@ -202,14 +178,9 @@ static bool is_compressible
 (
 	cypher_astnode_type_t type
 ) {
-	// Use a rax instead of this loop. Populate it only once in AST_RewriteSameClauses.
-	
-	cypher_astnode_type_t compressible_types[] = {CYPHER_AST_CREATE, CYPHER_AST_MATCH,
-	CYPHER_AST_DELETE, CYPHER_AST_SET, CYPHER_AST_REMOVE};
-	// for(uint i = 0; i < array_len(compressible_types); i++) {
-	for(uint i = 0; i < 9; i++) {
-		if(type == compressible_types[i]) return true;
-	}
+	if(type == CYPHER_AST_CREATE || type == CYPHER_AST_MATCH ||
+	   type == CYPHER_AST_DELETE || type == CYPHER_AST_SET ||
+	   type == CYPHER_AST_REMOVE) return true;
 
 	// type is not compressible
 	return false;
@@ -249,11 +220,17 @@ bool AST_RewriteSameClauses
 		
 		if(j - i > 0) {
 			// multiple clauses with same type, replace them
-			if(t == CYPHER_AST_CREATE) replace_create_clause((cypher_astnode_t *)root, clauses, i, j);
-			// else if(t == CYPHER_AST_MATCH) replace_match_clause((cypher_astnode_t *)root, clauses, i, j);
-			else if(t == CYPHER_AST_DELETE) replace_delete_clause((cypher_astnode_t *)root, clauses, i, j);
-			else if(t == CYPHER_AST_SET) replace_set_clause((cypher_astnode_t *)root, clauses, i, j);
-			else if(t == CYPHER_AST_REMOVE) replace_remove_clause((cypher_astnode_t *)root, clauses, i, j);
+			if(t == CYPHER_AST_CREATE) {
+				replace_create_clause((cypher_astnode_t *)root, clauses, i, j);
+			} else if(t == CYPHER_AST_MATCH) {
+				replace_match_clause((cypher_astnode_t *)root, clauses, i, j);
+			} else if(t == CYPHER_AST_DELETE) {
+				replace_delete_clause((cypher_astnode_t *)root, clauses, i, j);
+			} else if(t == CYPHER_AST_SET) {
+				replace_set_clause((cypher_astnode_t *)root, clauses, i, j);
+			} else if(t == CYPHER_AST_REMOVE) {
+				replace_remove_clause((cypher_astnode_t *)root, clauses, i, j);
+			}
 
 			rewritten = true;
 
