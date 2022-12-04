@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "execution_ctx.h"
 #include "RG.h"
@@ -80,6 +80,7 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 
 	// query included only params e.g. 'cypher a=1' was provided
 	if(strlen(query_string) == 0) {
+		parse_result_free(params_parse_result);
 		ErrorCtx_SetError("Error: empty query.");
 		return NULL;
 	}

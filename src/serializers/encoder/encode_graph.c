@@ -1,13 +1,13 @@
 /*
- * Copyright 2018-2022 Redis Labs Ltd. and Contributors
- *
- * This file is available under the Redis Labs Source Available License Agreement
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
  */
 
 #include "encode_graph.h"
-#include "v11/encode_v11.h"
+#include "v12/encode_v12.h"
 
 void RdbSaveGraph(RedisModuleIO *rdb, void *value) {
-	RdbSaveGraph_v11(rdb, value);
+	RdbSaveGraph_v12(rdb, value);
 }
 

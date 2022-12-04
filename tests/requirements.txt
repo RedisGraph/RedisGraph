@@ -1,4 +1,4 @@
-redis~=4.2.1
+git+https://github.com/redis/redis-py.git@a246f40#egg=redis
 redisgraph-bulk-loader~=0.10.2
 
 click

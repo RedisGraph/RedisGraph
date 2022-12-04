@@ -1,7 +1,7 @@
 /*
- * Copyright 2018-2022 Redis Labs Ltd. and Contributors
- *
- * This file is available under the Redis Labs Source Available License Agreement
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
  */
 
 #pragma once
@@ -20,8 +20,8 @@ typedef struct {
 	const char *alias;         // user-provided alias associated with this node
 	const char **labels;       // labels string array
 	bool highly_connected;     // node degree > 2
-	struct QGEdge **outgoing_edges;   // array of incoming edges (ME)<-(SRC)
-	struct QGEdge **incoming_edges;   // array of outgoing edges (ME)->(DEST)
+	struct QGEdge **outgoing_edges;   // array of outgoing edges (ME)->(DEST)
+	struct QGEdge **incoming_edges;   // array of incoming edges (ME)<-(SRC)
 } QGNode;
 
 // creates a new node
@@ -128,11 +128,11 @@ QGNode *QGNode_Clone
 	const QGNode *n
 );
 
-/* Gets a string representation of given node. */
+// gets a string representation of given node
 void QGNode_ToString
 (
-	const QGNode *n,
-	sds *buff
+	const QGNode *n,  // target node
+	sds *buff         // result buffer (concatenated)
 );
 
 // frees allocated space by given node

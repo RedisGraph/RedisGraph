@@ -504,3 +504,18 @@ class testEdgeByIndexScanFlow(FlowTestsBase):
         result = redis_graph.query("MATCH ()-[u:R2]->() WHERE u.id1 = 990000000262240069 AND u.id2 = 990000000262240067 RETURN u.id1, u.id2")
         expected_result = [[990000000262240069, 990000000262240067]]
         self.env.assertEquals(result.result_set, expected_result)
+
+    def test21_create_index_multi_edge(self):
+        redis_graph = Graph(self.env.getConnection(), 'index_multi_edge')
+
+        result = redis_graph.query("CREATE (a:A), (b:B)")
+        self.env.assertEquals(result.nodes_created, 2)
+
+        result = redis_graph.query("MATCH (a:A), (b:B) UNWIND range(1, 500) AS x CREATE (a)-[:R{v:x}]->(b)")
+        self.env.assertEquals(result.relationships_created, 500)
+    
+        result = redis_graph.query("CREATE INDEX FOR ()-[r:R]-() ON (r.v)")
+        self.env.assertEquals(result.indices_created, 1)
+
+        result = redis_graph.query("MATCH (a:A)-[r:R]->(b:B) WHERE r.v > 0 RETURN count(r)")
+        self.env.assertEquals(result.result_set[0][0], 500)

@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "op_all_node_scan.h"
 #include "../../query_ctx.h"
@@ -54,8 +54,8 @@ static Record AllNodeScanConsumeFromChild(OpBase *opBase) {
 	}
 
 	Node n = GE_NEW_NODE();
-	n.entity = (Entity *)DataBlockIterator_Next(op->iter, &n.id);
-	if(n.entity == NULL) {
+	n.attributes = DataBlockIterator_Next(op->iter, &n.id);
+	if(n.attributes == NULL) {
 		OpBase_DeleteRecord(op->child_record); // Free old record.
 		// Pull a new record from child.
 		op->child_record = OpBase_Consume(op->op.children[0]);
@@ -63,12 +63,12 @@ static Record AllNodeScanConsumeFromChild(OpBase *opBase) {
 
 		// Reset iterator and evaluate again.
 		DataBlockIterator_Reset(op->iter);
-		n.entity = DataBlockIterator_Next(op->iter, &n.id);
-		if(n.entity == NULL) return NULL; // Iterator was empty; return immediately.
+		n.attributes = DataBlockIterator_Next(op->iter, &n.id);
+		if(n.attributes == NULL) return NULL; // Iterator was empty; return immediately.
 	}
 
 	// Clone the held Record, as it will be freed upstream.
-	Record r = OpBase_CloneRecord(op->child_record);
+	Record r = OpBase_DeepCloneRecord(op->child_record);
 
 	// Populate the Record with the graph entity data.
 	Record_AddNode(r, op->nodeRecIdx, n);
@@ -80,8 +80,8 @@ static Record AllNodeScanConsume(OpBase *opBase) {
 	AllNodeScan *op = (AllNodeScan *)opBase;
 
 	Node n = GE_NEW_NODE();
-	n.entity = (Entity *)DataBlockIterator_Next(op->iter, &n.id);
-	if(n.entity == NULL) return NULL;
+	n.attributes = DataBlockIterator_Next(op->iter, &n.id);
+	if(n.attributes == NULL) return NULL;
 
 	Record r = OpBase_CreateRecord((OpBase *)op);
 	Record_AddNode(r, op->nodeRecIdx, n);

@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "decode_v9.h"
 
@@ -16,9 +16,6 @@ static GraphContext *_GetOrCreateGraphContext(char *graph_name) {
 	}
 	// Free the name string, as it either not in used or copied.
 	RedisModule_Free(graph_name);
-
-	// Set the GraphCtx in thread-local storage.
-	QueryCtx_SetGraphCtx(gc);
 
 	return gc;
 }
@@ -184,9 +181,10 @@ GraphContext *RdbLoadGraphContext_v9(RedisModuleIO *rdb) {
 		// set the node label matrix
 		Serializer_Graph_SetNodeLabels(g);
 
+		Graph_ApplyAllPending(g, true);
+
 		// revert to default synchronization behavior
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
-		Graph_ApplyAllPending(g, true);
 
 		uint node_schemas_count = array_len(gc->node_schemas);
 		// update the node statistics
@@ -196,10 +194,6 @@ GraphContext *RdbLoadGraphContext_v9(RedisModuleIO *rdb) {
 			RG_Matrix_nvals(&nvals, L);
 			GraphStatistics_IncNodeCount(&g->stats, i, nvals);
 		}
-
-		// set the thread-local GraphContext
-		// as it will be accessed when creating indexes
-		QueryCtx_SetGraphCtx(gc);
 		
 		uint label_count = Graph_LabelTypeCount(g);
 		// update the node statistics
@@ -211,8 +205,8 @@ GraphContext *RdbLoadGraphContext_v9(RedisModuleIO *rdb) {
 			GraphStatistics_IncNodeCount(&g->stats, i, nvals);
 
 			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
-			if(s->index) Index_Construct(s->index);
-			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
+			if(s->index) Index_Construct(s->index, g);
+			if(s->fulltextIdx) Index_Construct(s->fulltextIdx, g);
 		}
 
 		// make sure graph doesn't contains may pending changes
@@ -223,9 +217,6 @@ GraphContext *RdbLoadGraphContext_v9(RedisModuleIO *rdb) {
 		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
 		RedisModule_Log(ctx, "notice", "Done decoding graph %s", gc->graph_name);
 	}
-	
-	// release thread-local variables
-	QueryCtx_Free();
 
 	return gc;
 }

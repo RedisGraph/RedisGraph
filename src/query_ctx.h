@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #pragma once
 
@@ -13,6 +13,7 @@
 #include "commands/cmd_context.h"
 #include "resultset/resultset.h"
 #include "execution_plan/ops/op.h"
+#include "undo_log/undo_log.h"
 #include <pthread.h>
 
 extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
@@ -29,7 +30,6 @@ typedef struct {
 	RedisModuleKey *key;        // Saves an open key value, for later extraction and closing.
 	ResultSet *result_set;      // Save the execution result set.
 	bool locked_for_commit;     // Indicates if a call for QueryCtx_LockForCommit issued before.
-	OpBase *last_writer;        // The last writer operation which indicates the need for commit.
 } QueryCtx_InternalExecCtx;
 
 typedef struct {
@@ -43,6 +43,7 @@ typedef struct {
 	QueryCtx_InternalExecCtx internal_exec_ctx; // The data related to internal query execution.
 	QueryCtx_GlobalExecCtx global_exec_ctx;     // The data rlated to global redis execution.
 	GraphContext *gc;                           // The GraphContext associated with this query's graph.
+	UndoLog undo_log;                           // Undo log for updates, used in the case of write query can fail and rollback is needed.
 } QueryCtx;
 
 /* Instantiate the thread-local QueryCtx on module load. */
@@ -71,8 +72,6 @@ void QueryCtx_SetGraphCtx(GraphContext *gc);
 void QueryCtx_SetResultSet(ResultSet *result_set);
 /* Set the parameters map. */
 void QueryCtx_SetParams(rax *params);
-/* Set the last writer which needs to commit */
-void QueryCtx_SetLastWriter(OpBase *op);
 
 /* Getters */
 /* Retrieve the AST. */
@@ -114,18 +113,16 @@ bool QueryCtx_LockForCommit(void);
  * 2. Unlock graph R/W lock
  * 3. Close key
  * 4. Unlock GIL */
-void QueryCtx_UnlockCommit(OpBase *writer_op);
+void QueryCtx_UnlockCommit();
 
-/*
- * -------------------------FOR SAFETY ONLY---------------------------
- *
- * This method force releases the locks acquired during commit flow if for
- * some reason the last writer op has not invoked QueryCtx_UnlockCommit and Redis is locked.*/
-void QueryCtx_ForceUnlockCommit(void);
+// replicate command to AOF/Replicas
+void QueryCtx_Replicate
+(
+	QueryCtx *ctx
+);
 
 /* Compute and return elapsed query execution time. */
 double QueryCtx_GetExecutionTime(void);
 
 /* Free the allocations within the QueryCtx and reset it for the next query. */
 void QueryCtx_Free(void);
-

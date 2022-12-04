@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "RG.h"
 #include "rg_matrix.h"
@@ -26,11 +26,11 @@ GrB_Info RG_mxm                     // C = A * B
 	// this operation performs: A * B by computing:
 	// (A * (M + 'delta-plus'))<!'delta-minus'>
 
-	// validate A is fully synced
-	ASSERT(!RG_Matrix_isDirty(A));
+	// validate A doesn't contains entries in either delta-plus or delta-minus
+	ASSERT(RG_Matrix_Synced(A));
 
-	// validate C is fully synced
-	ASSERT(!RG_Matrix_isDirty(C));
+	// validate C doesn't contains entries in either delta-plus or delta-minus
+	ASSERT(RG_Matrix_Synced(C));
 
 	GrB_Info info;
 	GrB_Index nrows;     // number of rows in result matrix

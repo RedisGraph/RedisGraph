@@ -1,4 +1,8 @@
 function done = long_enough (tm, tg, k)
+
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
+
 if (k < 3)
     done = false ;
 else

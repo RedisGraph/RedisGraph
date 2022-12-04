@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #pragma once
 
@@ -135,6 +135,9 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 // root - expression root to traverse
 // func - function name to lookup
 bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func);
+
+// checks to see if expression contains a variable
+bool AR_EXP_ContainsVariadic(const AR_ExpNode *root);
 
 // returns true if an arithmetic expression node is a constant
 bool AR_EXP_IsConstant(const AR_ExpNode *exp);

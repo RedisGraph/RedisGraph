@@ -1,14 +1,17 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #pragma once
 
 #include <stdint.h>
 #include "./rg_matrix.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
+
+#define RG_ITER_MIN_ROW 0
+#define RG_ITER_MAX_ROW ULLONG_MAX
 
 // TuplesIter maintains information required
 // to iterate over a RG_Matrix
@@ -30,6 +33,15 @@ GrB_Info RG_MatrixTupleIter_attach
 	const RG_Matrix A               // matrix to scan
 );
 
+// attach iterator to matrix governing the specified range
+GrB_Info RG_MatrixTupleIter_AttachRange
+(
+	RG_MatrixTupleIter *iter,       // iterator to update
+	const RG_Matrix A,              // matrix to scan
+	GrB_Index min_row,              // minimum row for iteration
+	GrB_Index max_row               // maximum row for iteration
+);
+
 // free iterator internals, keeping the iterator intact
 GrB_Info RG_MatrixTupleIter_detach
 (
@@ -47,12 +59,6 @@ GrB_Info RG_MatrixTupleIter_iterate_row
 (
 	RG_MatrixTupleIter *iter,      // iterator to use
 	GrB_Index rowIdx               // row to iterate
-);
-
-GrB_Info RG_MatrixTupleIter_jump_to_row
-(
-	RG_MatrixTupleIter *iter,      // iterator to use
-	GrB_Index rowIdx               // row to jump to
 );
 
 GrB_Info RG_MatrixTupleIter_iterate_range

@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "entity_funcs.h"
 #include "../func_desc.h"
@@ -194,7 +194,7 @@ SIValue AR_PROPERTY(SIValue *argv, int argc, void *private_data) {
 	}
 
 	// inputs:
-	// argv[0] - node/edge/map
+	// argv[0] - node/edge/map/point
 	// argv[1] - property string
 	// argv[2] - property index
 
@@ -203,7 +203,6 @@ SIValue AR_PROPERTY(SIValue *argv, int argc, void *private_data) {
 	//--------------------------------------------------------------------------
 
 	SIValue obj = argv[0];
-
 	if(SI_TYPE(obj) & SI_GRAPHENTITY) {
 		// retrieve entity property
 		GraphEntity *graph_entity = (GraphEntity *)obj.ptrval;
@@ -211,7 +210,7 @@ SIValue AR_PROPERTY(SIValue *argv, int argc, void *private_data) {
 		Attribute_ID prop_idx     = argv[2].longval;
 
 		// We have the property string, attempt to look up the index now.
-		if(prop_idx == ATTRIBUTE_NOTFOUND) {
+		if(prop_idx == ATTRIBUTE_ID_NONE) {
 			GraphContext *gc = QueryCtx_GetGraphCtx();
 			prop_idx = GraphContext_GetAttributeID(gc, prop_name);
 		}
@@ -219,7 +218,7 @@ SIValue AR_PROPERTY(SIValue *argv, int argc, void *private_data) {
 		// Retrieve the property.
 		SIValue *value = GraphEntity_GetProperty(graph_entity, prop_idx);
 		return SI_ConstValue(value);
-	} else {
+	} else if(SI_TYPE(obj) & T_MAP) {
 		// retrieve map key
 		SIValue key = argv[1];
 		SIValue value;
@@ -227,7 +226,18 @@ SIValue AR_PROPERTY(SIValue *argv, int argc, void *private_data) {
 		Map_Get(obj, key, &value);
 		// Return a volatile copy of the value, as it may be heap-allocated.
 		return SI_ShareValue(value);
+	} else if(SI_TYPE(obj) & T_POINT) {
+		// retrieve property key 
+		SIValue key = argv[1];
+		return Point_GetCoordinate(obj, key);
+	} else {
+		// unexpected type SI_TYPE(obj)
+		return SI_NullVal();
 	}
+}
+
+SIValue AR_TYPEOF(SIValue *argv, int argc, void *private_data) {
+	return SI_ConstStringVal(SIType_ToString(SI_TYPE(argv[0])));
 }
 
 void Register_EntityFuncs() {
@@ -293,11 +303,17 @@ void Register_EntityFuncs() {
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
-	array_append(types, T_NULL | T_NODE | T_EDGE | T_MAP);
+	array_append(types, T_NULL | T_NODE | T_EDGE | T_MAP | T_POINT);
 	array_append(types, T_STRING);
 	array_append(types, T_INT64);
 	ret_type = SI_ALL;
 	func_desc = AR_FuncDescNew("property", AR_PROPERTY, 3, 3, types, ret_type, true, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, T_NULL | SI_ALL);
+	ret_type = T_STRING;
+	func_desc = AR_FuncDescNew("typeof", AR_TYPEOF, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 }
 

@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -29,7 +29,9 @@ GrB_Index *gb_mxcell_to_index   // return index list I
     base_enum_t base,           // I is one-based or zero-based
     const GrB_Index n,          // dimension of matrix being indexed
     bool *I_allocated,          // true if output array I is allocated
-    GrB_Index *ni               // length (I)
+    GrB_Index *ni,              // length (I)
+    int64_t *I_max              // max (I) is computed if I_max is not NULL.
+                                // I_max is 0-based.
 )
 {
 
@@ -74,6 +76,11 @@ GrB_Index *gb_mxcell_to_index   // return index list I
         (*ni) = n ;
         (*I_allocated) = false ;
         I = (GrB_Index *) GrB_ALL ;
+        if (I_max != NULL)
+        { 
+            // I_max is the last index in the matrix, based on its dimension.
+            (*I_max) = ((int64_t) n) - 1 ;
+        }
 
     }
     else if (len == 1)
@@ -86,6 +93,23 @@ GrB_Index *gb_mxcell_to_index   // return index list I
         (*ni) = Item_len [0] ;
         (*I_allocated) = Item_allocated [0] ;
         I = (GrB_Index *) (Item [0]) ;
+        if (I_max != NULL)
+        {
+            // find the max entry in the list
+            if (Item_max [0] >= 0)
+            { 
+                // the max entry has already been computed (1-based)
+                // convert from 1-based to 0-based
+                (*I_max) = Item_max [0] - 1 ;
+            }
+            else
+            { 
+                // find the max entry (0-based)
+                GrB_Index List_max = 0 ;
+                GB_helper4 (I, (*ni), &List_max) ;
+                (*I_max) = ((int64_t) List_max) - 1 ;
+            }
+        }
 
     }
     else if (len == 2)
@@ -109,6 +133,11 @@ GrB_Index *gb_mxcell_to_index   // return index list I
         if (Item_allocated [1]) gb_mxfree ((void **) (& (Item [1]))) ;
 
         (*ni) = GxB_RANGE ;
+        if (I_max != NULL)
+        { 
+            // find the last index in the start:fini list
+            (*I_max) = (int64_t) I [GxB_END] ;
+        }
 
     }
     else // if (len == 3)
@@ -128,29 +157,59 @@ GrB_Index *gb_mxcell_to_index   // return index list I
         I [GxB_BEGIN] = Item [0][0] ;
         I [GxB_END  ] = Item [2][0] ;
         I [GxB_INC  ] = 0 ;
-        int64_t inc = Item [1][0] ;
+        int64_t iinc = Item [1][0] ;
 
         if (Item_allocated [1])
         { 
-            // the 2nd item in the list is inc, and if it was passed in as
+            // the 2nd item in the list is iinc, and if it was passed in as
             // 1-based, it has been decremented.  So increment it to get back
             // to the correct value.
-            inc++ ;
+            iinc++ ;
         }
 
         if (Item_allocated [0]) gb_mxfree ((void **) (& (Item [0]))) ;
         if (Item_allocated [1]) gb_mxfree ((void **) (& (Item [1]))) ;
         if (Item_allocated [2]) gb_mxfree ((void **) (& (Item [2]))) ;
 
-        if (inc < 0)
+        if (iinc < 0)
         { 
-            I [GxB_INC] = (GrB_Index) (-inc) ;
+            I [GxB_INC] = (GrB_Index) (-iinc) ;
             (*ni) = GxB_BACKWARDS ;
+            if (I_max != NULL)
+            {
+                // find the first entry in the list ibegin:iinc:iend.
+                (*I_max) = -1 ;
+                int64_t ibegin = (int64_t) I [GxB_BEGIN] ;
+                int64_t iend   = (int64_t) I [GxB_END] ;
+                if (iinc != 0 && ibegin >= iend)
+                { 
+                    // the list is non-empty, for example, 7:-2:4 = [7 5]
+                    // I_max = GB_ijlist (NULL, 0, GB_STRIDE, I)
+                    (*I_max) = ibegin ;
+                }
+            }
         }
         else
         { 
-            I [GxB_INC] = (GrB_Index) (inc) ;
+            I [GxB_INC] = (GrB_Index) (iinc) ;
             (*ni) = GxB_STRIDE ;
+            if (I_max != NULL)
+            {
+                // find the last entry in the list ibegin:iinc:iend.
+                (*I_max) = -1 ;
+                int64_t ibegin = (int64_t) I [GxB_BEGIN] ;
+                int64_t iend   = (int64_t) I [GxB_END] ;
+                if (iinc != 0 && ibegin <= iend)
+                { 
+                    // the list is non-empty, for example, 4:2:9 = [4 6 8]
+                    // nI = length of the expanded list (see GB_ijproperties),
+                    // which is 3 for the list 4:2:9.
+                    int64_t nI = ((iend - ibegin) / iinc) + 1 ;
+                    // I_max = GB_ijlist (NULL, nI-1, GB_STRIDE, I),
+                    // which is 8 for the list 4:2:9
+                    (*I_max) = ibegin + (nI-1) * iinc ;
+                }
+            }
         }
     }
 

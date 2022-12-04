@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "RG.h"
 #include "../errors.h"
@@ -59,6 +59,18 @@ void static inline GraphQueryCtx_Free(GraphQueryCtx *ctx) {
 	rm_free(ctx);
 }
 
+void abort_and_check_timeout(GraphQueryCtx *gq_ctx, ExecutionPlan *plan) {
+	// abort timeout if set
+	if(gq_ctx->timeout != 0) {
+		Cron_AbortTask(gq_ctx->timeout);
+	}
+
+	// emit error if query timed out
+	if(ExecutionPlan_Drained(plan)) {
+		ErrorCtx_SetError("Query timed out");
+	}
+}
+
 static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 							 ExecutionType exec_type) {
 	Index       *idx         =  NULL;
@@ -100,9 +112,7 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 		}
 
 		// populate the index only when at least one attribute was introduced
-		if(index_added) Index_Construct(idx);
-
-		QueryCtx_UnlockCommit(NULL);
+		if(index_added) Index_Construct(idx, gc->g);
 	} else if(exec_type == EXECUTION_TYPE_INDEX_DROP) {
 		// retrieve strings from AST node
 		const char *label = cypher_ast_label_get_name(
@@ -120,7 +130,6 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 		QueryCtx_LockForCommit();
 		int res = GraphContext_DeleteIndex(gc, schema_type, label, prop,
 				idx_type);
-		QueryCtx_UnlockCommit(NULL);
 
 		if(res != INDEX_OK) {
 			ErrorCtx_SetError("ERR Unable to drop index on :%s(%s): no such index.", label, prop);
@@ -210,17 +219,16 @@ static void _ExecuteQuery(void *args) {
 		ExecutionPlan_PreparePlan(plan);
 		if(profile) {
 			ExecutionPlan_Profile(plan);
-			if(!ErrorCtx_EncounteredError()) ExecutionPlan_Print(plan, rm_ctx);
+			abort_and_check_timeout(gq_ctx, plan);
+
+			if(!ErrorCtx_EncounteredError()) {
+				ExecutionPlan_Print(plan, rm_ctx);
+			}
 		}
 		else {
 			result_set = ExecutionPlan_Execute(plan);
+			abort_and_check_timeout(gq_ctx, plan);
 		}
-
-		// abort timeout if set
-		if(gq_ctx->timeout != 0) Cron_AbortTask(gq_ctx->timeout);
-
-		// emit error if query timed out
-		if(ExecutionPlan_Drained(plan)) ErrorCtx_SetError("Query timed out");
 
 		ExecutionPlan_Free(plan);
 		exec_ctx->plan = NULL;
@@ -231,7 +239,19 @@ static void _ExecuteQuery(void *args) {
 		ASSERT("Unhandled query type" && false);
 	}
 
-	QueryCtx_ForceUnlockCommit();
+	// in case of an error, rollback any modifications
+	if(ErrorCtx_EncounteredError()) {
+		UndoLog_Rollback(query_ctx->undo_log);
+		// clear resultset statistics, avoiding commnad being replicated
+		ResultSet_Clear(result_set);
+	}
+	
+	// replicate command if graph was modified
+	if(ResultSetStat_IndicateModification(&result_set->stats)) {
+		QueryCtx_Replicate(query_ctx);
+	}
+	
+	QueryCtx_UnlockCommit();
 
 	if(!profile || ErrorCtx_EncounteredError()) {
 		// if we encountered an error, ResultSet_Reply will emit the error
@@ -318,13 +338,10 @@ void _query(bool profile, void *args) {
 
 	CronTaskHandle timeout_task = 0;
 
-	// set the query timeout if one was specified
-	if(command_ctx->timeout != 0) {
-		// disallow timeouts on write operations to avoid leaving the graph in an inconsistent state
-		if(readonly) {
-			timeout_task = Query_SetTimeOut(command_ctx->timeout,
-					exec_ctx->plan);
-		}
+	// enforce specified timeout when query is readonly
+	// or timeout applies to both read and write
+	if(command_ctx->timeout != 0 && (readonly || command_ctx->timeout_rw)) {
+		timeout_task = Query_SetTimeOut(command_ctx->timeout, exec_ctx->plan);
 	}
 
 	// populate the container struct for invoking _ExecuteQuery.

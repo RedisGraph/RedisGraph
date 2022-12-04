@@ -56,12 +56,23 @@ void GB_assign_zombie3
     // get C (:,j)
     //--------------------------------------------------------------------------
 
-    const int64_t *restrict Ch = C->h ;
     const int64_t *restrict Cp = C->p ;
     int64_t *restrict Ci = C->i ;
-    int64_t pC_start, pC_end, pleft = 0, pright = C->nvec-1 ;
-    GB_lookup (C->h != NULL, Ch, Cp, C->vlen, &pleft, pright, j,
-        &pC_start, &pC_end) ;
+    int64_t pC_start, pC_end ;
+
+    if (C->h != NULL)
+    { 
+        // C is hypersparse
+        GB_hyper_hash_lookup (Cp, C->Y->p, C->Y->i, C->Y->x, C->Y->vdim-1,
+            j, &pC_start, &pC_end) ;
+    }
+    else
+    { 
+        // C is sparse
+        pC_start = Cp [j] ;
+        pC_end   = Cp [j+1] ;
+    }
+
     int64_t nzombies = C->nzombies ;
     const int64_t zjnz = pC_end - pC_start ;
 

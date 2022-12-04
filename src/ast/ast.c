@@ -1,7 +1,7 @@
 /*
- * Copyright 2018-2022 Redis Labs Ltd. and Contributors
- *
- * This file is available under the Redis Labs Source Available License Agreement
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
  */
 
 #include "ast.h"
@@ -11,7 +11,6 @@
 #include "../errors.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
-#include "../util/qsort.h"
 #include "../procedures/procedure.h"
 #include "ast_rewrite_star_projections.h"
 #include "../arithmetic/arithmetic_expression.h"
@@ -115,6 +114,7 @@ bool AST_ReadOnly(const cypher_astnode_t *root) {
 	   type == CYPHER_AST_MERGE                      ||
 	   type == CYPHER_AST_DELETE                     ||
 	   type == CYPHER_AST_SET                        ||
+	   type == CYPHER_AST_REMOVE                     ||
 	   type == CYPHER_AST_CREATE_NODE_PROPS_INDEX    ||
 	   type == CYPHER_AST_CREATE_PATTERN_PROPS_INDEX ||
 	   type == CYPHER_AST_DROP_PROPS_INDEX) {
@@ -491,7 +491,7 @@ inline AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast) {
 
 static inline char *_create_anon_alias(int anon_count) {
 	char *alias;
-	asprintf(&alias, "anon_%d", anon_count);
+	asprintf(&alias, "@anon_%d", anon_count);
 	return alias;
 }
 

@@ -229,3 +229,33 @@ class testMultiLabel():
         self.env.assertEquals(query_result.nodes_created, 2)
         self.env.assertEquals(query_result.relationships_created, 2)
 
+    def test10_test_delete_label(self):
+        graph = Graph(self.redis_con, 'delete_multi_label')
+
+        query = """CREATE (a:L1) RETURN labels(a)"""
+        query_result = graph.query(query)
+        self.env.assertEquals(query_result.labels_added, 1)
+        self.env.assertEquals(query_result.nodes_created, 1)
+        self.env.assertEquals(query_result.result_set[0][0], ["L1"])
+
+        query = """CREATE (a:L2) RETURN labels(a)"""
+        query_result = graph.query(query)
+        self.env.assertEquals(query_result.labels_added, 1)
+        self.env.assertEquals(query_result.nodes_created, 1)
+        self.env.assertEquals(query_result.result_set[0][0], ["L2"])
+
+        query = """CREATE (a:L3) RETURN labels(a)"""
+        query_result = graph.query(query)
+        self.env.assertEquals(query_result.labels_added, 1)
+        self.env.assertEquals(query_result.nodes_created, 1)
+        self.env.assertEquals(query_result.result_set[0][0], ["L3"])
+
+        query = """MATCH (a) DELETE a"""
+        query_result = graph.query(query)
+        self.env.assertEquals(query_result.nodes_deleted, 3)
+
+        query = """CREATE (a:L4) RETURN labels(a)"""
+        query_result = graph.query(query)
+        self.env.assertEquals(query_result.labels_added, 1)
+        self.env.assertEquals(query_result.nodes_created, 1)
+        self.env.assertEquals(query_result.result_set[0][0], ["L4"])

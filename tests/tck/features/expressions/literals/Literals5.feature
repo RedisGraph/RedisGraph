@@ -324,7 +324,6 @@ Feature: Literals5 - Float
     And no side effects
 
   @NegativeTest
-  @skip
   Scenario: [27] Fail when float value is too large
     Given any graph
     When executing query:

@@ -2,13 +2,13 @@ Executes the given query against a specified graph.
 
 Arguments: `Graph name, Query, Timeout [optional]`
 
-Returns: [Result set](result_structure#redisgraph-result-set-structure)
+Returns: [Result set](/redisgraph/design/result_structure)
 
 ```sh
 GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
 ```
 
-Query-level timeouts can be set as described in [the configuration section](configuration#query-timeout).
+Query-level timeouts can be set as described in [the configuration section](/redisgraph/configuration#timeout).
 
 ### Query language
 
@@ -144,9 +144,17 @@ RETURN nodes(p) as actors"
 
 This query will produce all the paths matching the pattern contained in the named path `p`. All of these paths will share the same starting point, the actor node representing Charlie Sheen, but will otherwise vary in length and contents. Though the variable-length traversal and `(:Actor)` endpoint are not explicitly aliased, all nodes and edges traversed along the path will be included in `p`. In this case, we are only interested in the nodes of each path, which we'll collect using the built-in function `nodes()`. The returned value will contain, in order, Charlie Sheen, between 0 and 2 intermediate nodes, and the unaliased endpoint.
 
-##### allShortestPaths()
+##### All shortest paths
 
-`allShortestPaths()` is a MATCH mode in which only the shortest paths matching all criteria are captured. Both endpoints must be bound in an earlier WITH-demarcated scope to invoke `allShortestPaths()`.
+The `allShortestPaths` function returns all the shortest paths between a pair of entities.
+
+`allShortestPaths()` is a MATCH mode in which only the shortest paths matching all criteria are captured. Both the source and the target nodes must be bound in an earlier WITH-demarcated scope to invoke `allShortestPaths()`.
+
+A minimal length (must be 1) and maximal length (must be at least 1) for the search may be specified. Zero or more relationship types may be specified (e.g. [:R|Q*1..3]). No property filters may be introduced in the pattern.
+
+`allShortestPaths()` can have any number of hops for its minimum and maximum, including zero. This number represents how many edges can be traversed in fulfilling the pattern, with a value of 0 entailing that the source node will be included in the returned path.
+
+Filters on properties are supported, and any number of labels may be specified.
 
 Example:
 
@@ -159,6 +167,190 @@ RETURN nodes(p) as actors"
 ```
 
 This query will produce all paths of the minimum length connecting the actor node representing Charlie Sheen to the one representing Kevin Bacon. There are several 2-hop paths between the two actors, and all of these will be returned. The computation of paths then terminates, as we are not interested in any paths of length greater than 2.
+
+##### Single-Pair minimal-weight bounded-cost bounded-length paths
+
+(Since RedisGraph v2.10)
+
+The `algo.SPpaths` procedure returns one, _n_, or all minimal-weight, [optionally] bounded-cost, [optionally] bounded-length distinct paths between a pair of entities. Each path is a sequence of distinct nodes connected by distinct edges.
+
+`algo.SPpaths()` is a MATCH mode in which only the paths matching all criteria are captured. Both the source and the target nodes must be bound in an earlier WITH-demarcated scope to invoke `algo.SPpaths()`.
+
+Input arguments:
+
+- A map containing:
+  - `sourceNode`: Mandatory. Must be of type node
+  - `targetNode`: Mandatory. Must be of type node
+  - `relTypes`: Optional. Array of zero or more relationship types. A relationship must have one of these types to be part of the path. If not specified or empty: the path may contain any relationship.
+  - `relDirection`: Optional. string. one of `'incoming'`, `'outgoing'`, `'both'`. If not specified: `'outgoing'`.
+  - `pathCount`: Optional. Number of minimal-weight paths to retrieve. Non-negative integer. If not specified: 1
+
+    - `0`: retrieve all minimal-weight paths (all reported paths have the same weight)
+
+      Order: 1st : minimal cost, 2nd: minimal length.
+
+    - `1`: retrieve a single minimal-weight path
+
+      When multiple equal-weight paths exist: (preferences: 1st : minimal cost, 2nd: minimal length)
+
+    - _n_ > 1: retrieve up to _n_ minimal-weight paths (reported paths may have different weights)
+
+      When multiple equal-weight paths exist: (preferences: 1st : minimal cost, 2nd: minimal length)
+
+  - `weightProp`: Optional. If not specified: use the default weight: 1 for each relationship.
+
+    The name of the property that represents the weight of each relationship (integer / float)
+
+    If such property doesn’t exist, of if its value is not a positive numeric - use the default weight: 1
+
+    Note: when all weights are equal: minimal-weight ≡ shortest-path.
+
+  - `costProp`: Optional. If not specified: use the default cost: 1 for each relationship.
+
+    The name of the property that represents the cost of each relationship (integer / float)
+
+    If such property doesn't exist, or if its value is not a positive numeric - use the default cost: 1
+
+  - `maxLen`: Optional. Maximal path length (number of relationships along the path). Positive integer. 
+
+    If not specified: no maximal length constraint.
+
+  - `maxCost`: Optional. Positive numeric. If not specified: no maximal cost constraint.
+
+    The maximal cumulative cost for the relationships along the path.
+    
+Result:
+
+  - Paths conforming to the input arguments. For each reported path:
+
+    - `path` - the path
+
+    - `pathWeight` - the path’s weight
+
+    - `pathCost` - the path’s cost
+
+    To retrieve additional information:
+
+    - The path’s length can be retrieved with `length(path)`
+
+    - An array of the nodes along the path can be retrieved with `nodes(path)`
+
+    - The path’s first node can be retrieved with `nodes(path)[0]`
+
+    - The path’s last node can be retrieved with `nodes(path)[-1]`
+
+    - An array of the relationship's costs along the path can be retrieved with `[r in relationships(path) | r.cost]` where cost is the name of the cost property
+
+    - An array of the relationship's weights along the path can be retrieved with `[r in relationships(path) | r.weight]` where weight is the name of the weight property
+
+Behavior in presence on multiple-edges:
+
+  - multi-edges are two or more edges connecting the same pair of vertices (possibly with different weights and costs). 
+
+  - All matching edges are considered. Paths with identical vertices and different edges are different paths. The following are 3 different paths ('n1', 'n2', and 'n3' are nodes; 'e1', 'e2', 'e3', and 'e4' are edges): (n1)-[e1]-(n2)-[e2]-(n3),  (n1)-[e1]-(n2)-[e3]-(n3),  (n1)-[e4]-(n2)-[e3]-(n3)
+
+Example:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH 
+"MATCH (s:Actor {name: 'Charlie Sheen'}), (t:Actor {name: 'Kevin Bacon'}) 
+CALL algo.SPpaths( {sourceNode: s, targetNode: t, relTypes: ['r1', 'r2', 'r3'], relDirection: 'outgoing', pathCount: 1, weightProp: 'weight', costProp: 'cost', maxLen: 3, maxCost: 100} ) 
+YIELD path, pathCost, pathWeight
+RETURN path ORDER BY pathCost"
+```
+
+##### Single-Source minimal-weight bounded-cost bounded-length paths
+
+(Since RedisGraph v2.10)
+
+The `algo.SSpaths` procedure returns one, _n_, or all minimal-weight, [optionally] bounded-cost, [optionally] bounded-length distinct paths from a given entity. Each path is a sequence of distinct nodes connected by distinct edges.
+
+`algo.SSpaths()` is a MATCH mode in which only the paths matching all criteria are captured. The source node must be bound in an earlier WITH-demarcated scope to invoke `algo.SSpaths()`.
+
+Input arguments:
+
+- A map containing:
+  - `sourceNode`: Mandatory. Must be of type node
+  - `relTypes`: Optional. Array of zero or more relationship types. A relationship must have one of these types to be part of the path. If not specified or empty: the path may contain any relationship.
+  - `relDirection`: Optional. string. one of `'incoming'`, `'outgoing'`, `'both'`. If not specified: `'outgoing'`.
+  - `pathCount`: Optional. Number of minimal-weight paths to retrieve. Non-negative integer. If not specified: 1
+
+    This number is global (not per source-target pair); all returned paths may be with the same target.
+
+    - `0`: retrieve all minimal-weight paths (all reported paths have the same weight)
+
+      Order: 1st : minimal cost, 2nd: minimal length.
+
+    - `1`: retrieve a single minimal-weight path
+
+      When multiple equal-weight paths exist: (preferences: 1st : minimal cost, 2nd: minimal length)
+
+    - _n_ > 1: retrieve up to _n_ minimal-weight paths (reported paths may have different weights)
+
+      When multiple equal-weight paths exist: (preferences: 1st : minimal cost, 2nd: minimal length)
+
+  - `weightProp`: Optional. If not specified: use the default weight: 1 for each relationship.
+
+    The name of the property that represents the weight of each relationship (integer / float)
+
+    If such property doesn’t exist, of if its value is not a positive numeric - use the default weight: 1
+
+    Note: when all weights are equal: minimal-weight ≡ shortest-path.
+
+  - `costProp`: Optional. If not specified: use the default cost: 1 for each relationship.
+
+    The name of the property that represents the cost of each relationship (integer / float)
+
+    If such property doesn't exist, or if its value is not a positive numeric - use the default cost: 1
+
+  - `maxLen`: Optional. Maximal path length (number of relationships along the path). Positive integer. 
+
+    If not specified: no maximal length constraint.
+
+  - `maxCost`: Optional. Positive numeric. If not specified: no maximal cost constraint.
+
+    The maximal cumulative cost for the relationships along the path.
+    
+Result:
+
+  - Paths conforming to the input arguments. For each reported path:
+
+    - `path` - the path
+
+    - `pathWeight` - the path’s weight
+
+    - `pathCost` - the path’s cost
+
+    To retrieve additional information:
+
+    - The path’s length can be retrieved with `length(path)`
+
+    - An array of the nodes along the path can be retrieved with `nodes(path)`
+
+    - The path’s first node can be retrieved with `nodes(path)[0]`
+
+    - The path’s last node can be retrieved with `nodes(path)[-1]`
+
+    - An array of the relationship's costs along the path can be retrieved with `[r in relationships(path) | r.cost]` where cost is the name of the cost property
+
+    - An array of the relationship's weights along the path can be retrieved with `[r in relationships(path) | r.weight]` where weight is the name of the weight property
+
+Behavior in presence on multiple-edges:
+
+  - multi-edges are two or more edges connecting the same pair of vertices (possibly with different weights and costs). 
+
+  - All matching edges are considered. Paths with identical vertices and different edges are different paths. The following are 3 different paths ('n1', 'n2', and 'n3' are nodes; 'e1', 'e2', 'e3', and 'e4' are edges): (n1)-[e1]-(n2)-[e2]-(n3), (n1)-[e1]-(n2)-[e3]-(n3), (n1)-[e4]-(n2)-[e3]-(n3)
+
+Example:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH 
+"MATCH (s:Actor {name: 'Charlie Sheen'})
+CALL algo.SSpaths( {sourceNode: s, relTypes: ['r1', 'r2', 'r3'], relDirection: 'outgoing', pathCount: 1, weightProp: 'weight', costProp: 'cost', maxLen: 3, maxCost: 100} ) 
+YIELD path, pathCost, pathWeight
+RETURN path ORDER BY pathCost"
+```
+
 
 #### OPTIONAL MATCH
 
@@ -616,81 +808,115 @@ This section contains information on all supported functions from the Cypher que
 * [Scalar functions](#scalar-functions)
 * [Aggregating functions](#aggregating-functions)
 * [List functions](#list-functions)
+* [Mathematical operators](#mathematical-operators)
 * [Mathematical functions](#mathematical-functions)
+* [Trigonometric functions](#trigonometric-functions)
 * [String functions](#string-functions)
 * [Point functions](#point-functions)
+* [Type conversion functions](#type-conversion-functions)
 * [Node functions](#node-functions)
 * [Path functions](#path-functions)
 
 ## Predicate functions
 
-| Function                                         | Description                                                                                   |
-| -------                                          | :-----------                                                                                  |
-| exists()                                         | Returns true if the specified property exists in the node or relationship.                    |
-| [any()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for any element in the input array.      |
-| [all()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for all elements in the input array.     |
-| [none()](#existential-comprehension-functions)   | Returns true if the inner WHERE predicate holds false for all elements in the input array.    |
-| [single()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for 1 element only in the input array.   |
-| [single()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for 1 element only in the input array.   |
-| [CASE...WHEN](#case-when)                        | Evaluates the CASE expression and returns the value indicated by the matching WHEN statement. |
+| Function                                         | Description                                                                                              |
+| -------                                          | :-----------                                                                                             |
+| exists()                                         | Returns true if the specified property exists in the node or relationship                                |
+| isEmpty()                                        | Returns true if the input list or map contains no elements or if the input string contains no characters |
+| [any()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for at least one element in the input array         |
+| [all()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for all elements in the input array                 |
+| [none()](#existential-comprehension-functions)   | Returns true if the inner WHERE predicate holds false for all elements in the input array                |
+| [single()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for exactly one element only in the input array     |
+| [CASE...WHEN](#case-when)                        | Evaluates the CASE expression and returns the value indicated by the matching WHEN statement             |
 
 ## Scalar functions
 
 | Function               | Description                                                                 |
 | -------                | :-----------                                                                |
-| endNode()              | Returns the destination node of a relationship.                             |
+| coalesce()             | Returns the first non-null argument                                         |
+| endNode()              | Returns the destination node of a relationship                              |
 | id()                   | Returns the internal ID of a relationship or node (which is not immutable.) |
-| hasLabels()            | Returns true if input node contains all specified labels, otherwise false.  |
-| keys()                 | Returns the array of keys contained in the given map, node, or edge.        |
-| labels()               | Returns a string representation of the label of a node.                     |
-| startNode()            | Returns the source node of a relationship.                                  |
-| timestamp()            | Returns the the amount of milliseconds since epoch.                         |
-| type()                 | Returns a string representation of the type of a relation.                  |
+| hasLabels()            | Returns true if input node contains all specified labels, otherwise false   |
+| labels()               | Returns a string representation of the label of a node                      |
+| properties()           | Returns a map containing all the properties in the given map, node, or edge. In case of map, it is returned without any change |
+| randomUUID()           | Returns a random UUID (Universal Unique IDentifier)                         |
+| startNode()            | Returns the source node of a relationship                                   |
+| timestamp()            | Returns the amount of milliseconds since epoch                              |
+| type()                 | Returns a string representation of the type of a relationship type          |
 | list comprehensions    | [See documentation](#list-comprehensions)                                   |
 | pattern comprehensions | [See documentation](#pattern-comprehensions)                                |
 
 ## Aggregating functions
 
-|Function | Description|
-| ------- |:-----------|
-|avg() | Returns the average of a set of numeric values|
-|collect() | Returns a list containing all elements which evaluated from a given expression|
-|count() | Returns the number of values or rows|
-|max() | Returns the maximum value in a set of values|
-|min() | Returns the minimum value in a set of values|
-|sum() | Returns the sum of a set of numeric values|
-|percentileDisc() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0|
-|percentileCont() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0|
-|stDev() | Returns the standard deviation for the given value over a group|
+|Function         | Description|
+| --------------- |:-----------|
+|avg()            | Returns the average of a set of numeric values                                               |
+|collect()        | Returns a list containing all elements which evaluated from a given expression               |
+|count()          | Returns the number of values or rows                                                         |
+|max()            | Returns the maximum value in a set of values                                                 |
+|min()            | Returns the minimum value in a set of values                                                 |
+|sum()            | Returns the sum of a set of numeric values                                                   |
+|percentileDisc() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0    |
+|percentileCont() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0    |
+|stDev()          | Returns the standard deviation for the given value over a group over a sample                |
+|stDevP()         | Returns the standard deviation for the given value over a group over an entire population    |
 
 ## List functions
-| Function                     | Description                                                                                                                                                    |
-| -------                      | :-----------                                                                                                                                                   |
-| head()                       | Return the first member of a list                                                                                                                              |
-| range()                      | Create a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval. |
-| size()                       | Return a list size                                                                                                                                             |
-| tail()                       | Return a sublist of a list, which contains all the values without the first value                                                                              |
-| [reduce()](#reduce) | Return a scalar produced by evaluating an expression against each list member                                                                                  |
+
+| Function            | Description                                                                              |
+| ------------------- | :-----------                                                                             |
+| head()              | Returns the first member of a list                                                       |
+| keys()              | Returns a list of keys containing all properties names in a given map, node, or edge     |
+| last()              | Returns the last member of a list                                                        |
+| range()             | Creates a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval. |
+| size()              | Returns a list size                                                                      |
+| tail()              | Returns a sublist of a list, which contains all the values without the first value       |
+| [reduce()](#reduce) | Returns a scalar produced by evaluating an expression against each list member           |
+
+## Mathematical operators
+
+|Function     | Description|
+| ----------- |:-----------|
+| +           | Add two values                                                                                   |
+| -           | Subtract second value from first                                                                 |
+| *           | Multiply two values                                                                              |
+| /           | Divide first value by the second                                                                 |
+| ^           | Raise the first value to the power of the second                                                 |
+| %           | Perform modulo division of the first value by the second                                         |
 
 ## Mathematical functions
 
-|Function    | Description|
-| ---------- |:-----------|
-| +           | Add two values                                                                                                          |
-| -           | Subtract second value from first                                                                                        |
-| *           | Multiply two values                                                                                                     |
-| /           | Divide first value by the second                                                                                         |
-| ^           | Raise the first value to the power of the second                                                                         |
-| %           | Perform modulo division of the first value by the second                                                                 |
+|Function     | Description|
+| ----------- |:-----------|
 | abs()       | Returns the absolute value of a number                                                                                   |
 | ceil()      | Returns the smallest floating point number that is greater than or equal to a number and equal to a mathematical integer |
 | floor()     | Returns the largest floating point number that is less than or equal to a number and equal to a mathematical integer     |
 | rand()      | Returns a random floating point number in the range from 0 to 1; i.e. [0,1]                                              |
 | round()     | Returns the value of a number rounded to the nearest integer                                                             |
 | sign()      | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number          |
+| e()         | Returns the constant _e_, the base of the natural logarithm                                                              |
+| exp()       | Returns _e_^a, where _e_ is the base of the natural logarithm                                                            |
+| log()       | Returns the natural logarithm of a                                                                                       |
+| log10()     | Returns the logarithm (base 10) of a                                                                                     |
 | sqrt()      | Returns the square root of a number                                                                                      |
 | pow()       | Returns base raised to the power of exponent, base^exponent                                                              |
-| toInteger() | Converts a floating point or string value to an integer value.                                                           |
+
+## Trigonometric functions
+
+|Function    | Description|
+| ---------- |:-----------|
+| sin()      |  Returns the sine of a numeric expression that represents an angle in radians                            |
+| cos()      |  Returns the cosine of a numeric expression that represents an angle in radians                          |
+| haversin() |  Returns half the versine of a numeric expression that represents an angle in radians                    |
+| tan()      |  Returns the tangent of a numeric expression that represents an angle in radians                         |
+| cot()      |  Returns the cotangent of a numeric expression that represents an angle in radians                       |
+| asin()     |  Returns the arcsine, in radians, of a numeric expression                                                |
+| acos()     |  Returns the arccosine, in radians, of a numeric expression                                              |
+| atan()     |  Returns the arctangent, in radians, of a numeric expression                                             |
+| atan2()    |  Returns the 2-argument arctangent, in radians, of a pair of numeric expressions (Cartesian coordinates) |
+| degrees()  |  Converts a numeric expression from radians to degrees                                                   |
+| radians()  |  Converts a numeric expression from degrees to radians                                                   |
+| pi()       |  Returns the mathematical constant _pi_                                                                  |
 
 ## String functions
 
@@ -702,9 +928,9 @@ This section contains information on all supported functions from the Cypher que
 | reverse()   | Returns a string in which the order of all characters in the original string are reversed       |
 | right()     | Returns a string containing the specified number of rightmost characters of the original string |
 | rTrim()     | Returns the original string with trailing whitespace removed                                    |
+| split()     | Returns a list of strings from splitting a string by a given delimiter                          |
 | substring() | Returns a substring of the original string, beginning with a 0-based index start and length     |
 | toLower()   | Returns the original string in lowercase                                                        |
-| toString()  | Returns a string representation of a value                                                      |
 | toJSON()    | Returns a [JSON representation](#json-format) of a value                                        |
 | toUpper()   | Returns the original string in uppercase                                                        |
 | trim()      | Returns the original string with leading and trailing whitespace removed                        |
@@ -717,19 +943,36 @@ This section contains information on all supported functions from the Cypher que
 | [point()](#point) | Returns a Point type representing the given lat/lon coordinates |
 | distance()        | Returns the distance in meters between the two given points     |
 
+## Type conversion functions
+
+|Function    | Description|
+| ---------- |:-----------|
+| toInteger() | Converts a floating point or string value to an integer value. All other types are not allowed and will cause a type mismatch error to be returned |
+| toIntegerOrNull() | Converts a floating point or string value to an integer value. All other types will return `null`                                            | 
+| toIntegerList()   | Converts a list of values to a list of integer values. Each item in the list is converted using toIntegerOrNull()      |
+| toFloat()   | Converts an integer or string value to a floating point value. All other types are not allowed and will cause a type mismatch error to be returned |
+| toFloatOrNull()   | Converts an integer or string value to a floating point value. All other types will return `null`                                            |
+| toFloatList()     | Converts a list of values to a list of floating point values. Each item in the list is converted using toFloatOrNull() |
+| toString()  | Returns a string representation of a value from the type integer, float, boolean, string, point.All other types are not allowed and will cause a type mismatch error to be returned. |
+| toStringorNull()  | Returns a string representation of a value from the type integer, float, boolean, string, point. All other types will return `null` |
+| toStringList()    | Converts a list of values to a list of string values. Each item in the list is converted using toStringOrNull()        | 
+| toBoolean()       | Returns a boolean value from boolean type, string type (either `"True"` or `"False"` string values, case insensitive. All other values will return `null`) or integer type (0 for `false`, all other values will return `true`). All other types are not allowed and will cause a type mismatch error to be returned.
+| toBooleanOrNull() | Returns a boolean value from boolean type, string type (either `"True"` or `"False"` string values, case insensitive. All other values will return `null`) or integer type (0 for `false`, all other values will return `true`). All other types will return `null`.
+| toBooleanList()   | Converts a list of values to a list of boolean values. Each item in the list is converted using toBooleanOrNull()      |
+
 ## Node functions
 |Function | Description|
 | ------- |:-----------|
-|indegree() | Returns the number of node's incoming edges. |
-|outdegree() | Returns the number of node's outgoing edges. |
+|indegree()  | Returns the number of node's incoming edges |
+|outdegree() | Returns the number of node's outgoing edges |
 
 ## Path functions
-| Function                        | Description                                               |
-| -------                         | :-----------                                              |
-| nodes()                         | Return a new list of nodes, of a given path.              |
-| relationships()                 | Return a new list of edges, of a given path.              |
-| length()                        | Return the length (number of edges) of the path.          |
-| [shortestPath()](#shortestPath) | Return the shortest path that resolves the given pattern. |
+| Function                        | Description                                              |
+| -------                         | :-----------                                             |
+| nodes()                         | Return a new list of nodes, of a given path              |
+| relationships()                 | Return a new list of edges, of a given path              |
+| length()                        | Return the length (number of edges) of the path          |
+| [shortestPath()](#shortestPath) | Return the shortest path that resolves the given pattern |
 
 ### List comprehensions
 List comprehensions are a syntactical construct that accepts an array and produces another based on the provided map and filter directives.
@@ -841,7 +1084,7 @@ The `shortestPath()` function is invoked with the form:
 MATCH (a {v: 1}), (b {v: 4}) RETURN shortestPath((a)-[:L*]->(b))
 ```
 
-The sole `shortestPath` argument is a traversal pattern. This pattern's endpoints must be resolved prior to the function call, and no property filters may be introduced in the pattern. The relationship pattern may specify any number of relationship types (including zero) to be considered. If a minimum number of hops is specified, it may only be 0 or 1, while any number may be used for the maximum number of hops. If no shortest path can be found, NULL is returned.
+The sole `shortestPath` argument is a traversal pattern. This pattern's endpoints must be resolved prior to the function call, and no property filters may be introduced in the pattern. The relationship pattern may specify any number of relationship types (including zero) to be considered. If a minimum number of edges to traverse is specified, it may only be 0 or 1, while any number may be used for the maximum. If 0 is specified as the minimum, the source node will be included in the returned path. If no shortest path can be found, NULL is returned.
 
 ### JSON format
 `toJSON()` returns the input value in JSON formatting. For primitive data types and arrays, this conversion is conventional. Maps and map projections (`toJSON(node { .prop} )`) are converted to JSON objects, as are nodes and relationships.
@@ -863,7 +1106,7 @@ The format for a relationship object in JSON is:
 {
   "type": "relationship",
   "id": id(int),
-  "label": label(string),
+  "relationship": type(string),
   "properties": {
     property_key(string): property_value X N
   }
@@ -916,20 +1159,21 @@ It can yield two outputs:
 `edges` - An array of all edges traversed during the search. This does not necessarily contain all edges connecting nodes in the tree, as cycles or multiple edges connecting the same source and destination do not have a bearing on the reachability this algorithm tests for. These can be used to construct the directed acyclic graph that represents the BFS tree. Emitting edges incurs a small performance penalty.
 
 ## Indexing
-RedisGraph supports single-property indexes for node labels.
 
-String, numeric, and geospatial data types can be indexed.
+RedisGraph supports single-property indexes for node labels and for relationship type. String, numeric, and geospatial data types can be indexed.
 
-The creation syntax is:
+### Creating an index for a node label
 
-```sh
-GRAPH.QUERY DEMO_GRAPH "CREATE INDEX ON :Person(age)"
-```
-
-On the master branch, a newer syntax is also supported. This will be the standard in future versions:
+For a node label, the index creation syntax is:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH "CREATE INDEX FOR (p:Person) ON (p.age)"
+```
+
+An old syntax is also supported:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "CREATE INDEX ON :Person(age)"
 ```
 
 After an index is explicitly created, it will automatically be used by queries that reference that label and any indexed property in a filter.
@@ -957,9 +1201,9 @@ GRAPH.QUERY DEMO_GRAPH
 
 Geospatial indexes can currently only be leveraged with `<` and `<=` filters; matching nodes outside of the given radius is performed using conventional matching.
 
-Indexing relationship property
+### Creating an index for a relationship type
 
-The creation syntax is:
+For a relationship type, the index creation syntax is:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH "CREATE INDEX FOR ()-[f:FOLLOW]-() ON (f.created_at)"
@@ -977,23 +1221,64 @@ GRAPH.EXPLAIN DEMO_GRAPH "MATCH (p:Person {id: 0})-[f:FOLLOW]->(fp) WHERE 0 < f.
 
 This can significantly improve the runtime of queries that traverse super nodes or when we want to start traverse from relationships.
 
-Individual indexes can be deleted using the matching syntax:
+### Deleting an index for a node label
+
+For a node label, the index deletion syntax is:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH "DROP INDEX ON :Person(age)"
 ```
 
-## Full-text indexes
+### Deleting an index for a relationship type
 
-RedisGraph leverages the indexing capabilities of [RediSearch](https://oss.redis.com/redisearch/index.html) to provide full-text indices through procedure calls. To construct a full-text index on the `title` property of all nodes with label `Movie`, use the syntax:
+For a relationship type, the index deletion syntax is:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "DROP INDEX ON :FOLLOW(created_at)"
+```
+
+## Full-text indexing
+
+RedisGraph leverages the indexing capabilities of [RediSearch](/docs/stack/search/index.html) to provide full-text indices through procedure calls. 
+
+### Creating a full-text index for a node label
+
+To construct a full-text index on the `title` property of all nodes with label `Movie`, use the syntax:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('Movie', 'title')"
 ```
 
-(More properties can be added to this index by adding their names to the above set of arguments, or using this syntax again with the additional names.)
+More properties can be added to this index by adding their names to the above set of arguments, or using this syntax again with the additional names.
 
-Now this index can be invoked to match any whole words contained within:
+```sh
+GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('Person', 'firstName', 'lastName')"
+```
+
+RediSearch provide 2 index configuration options:
+1. Language - Define which language to use for stemming text which is adding the base form of a word to the index. This allows the query for "going" to also return results for "go" and "gone", for example.
+2. Stopwords - These are words that are usually so common that they do not add much information to search, but take up a lot of space and CPU time in the index.
+
+To construct a full-text index on the `title` property using `German` language and using custom stopwords of all nodes with label `Movie`, use the syntax:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex({ label: 'Movie', language: 'German', stopwords: ['a', 'ab'] }, 'title')"
+```
+
+RediSearch provide 3 additional field configuration options:
+1. Weight - The importance of the text in the field
+2. Nostem - Skip stemming when indexing text
+3. Phonetic - Enable phonetic search on the text
+
+To construct a full-text index on the `title` property with phonetic search of all nodes with label `Movie`, use the syntax:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('Movie', {field: 'title', phonetic: 'dm:en'})"
+```
+
+### Utilizing a full-text index for a node label
+
+An index can be invoked to match any whole words contained within:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
@@ -1029,7 +1314,7 @@ RETURN m ORDER BY m.rating"
 3) 1) "Query internal execution time: 0.226914 milliseconds"
 ```
 
-In addition to yielding matching nodes, full-text index scans will return the score of each node. This is the [TF-IDF](https://oss.redis.com/redisearch/Scoring/#tfidf_default) score of the node, which is informed by how many times the search terms appear in the node and how closely grouped they are. This can be observed in the example:
+In addition to yielding matching nodes, full-text index scans will return the score of each node. This is the [TF-IDF](/docs/stack/search/reference/scoring/#tfidf-default) score of the node, which is informed by how many times the search terms appear in the node and how closely grouped they are. This can be observed in the example:
 ```sh
 GRAPH.QUERY DEMO_GRAPH
 "CALL db.idx.fulltext.queryNodes('Node', 'hello world') YIELD node, score RETURN score, node.val"
@@ -1043,23 +1328,10 @@ GRAPH.QUERY DEMO_GRAPH
    2) "Query internal execution time: 0.335401 milliseconds"
 ```
 
-RediSearch provide 2 additional index configuration options:
-1. Language - Define which language to use for stemming text which is adding the base form of a word to the index. This allows the query for "going" to also return results for "go" and "gone", for example.
-2. Stopwords - These are words that are usually so common that they do not add much information to search, but take up a lot of space and CPU time in the index.
+### Deleting a full-text index for a node label
 
-To construct a full-text index on the `title` property using `German` language and using custom stopwords of all nodes with label `Movie`, use the syntax:
+For a node label, the full-text index deletion syntax is:
 
-```sh
-GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex({ label: 'Movie', language: 'German', stopwords: ['a', 'ab'] }, 'title')"
 ```
-
-RediSearch provide 3 additional field configuration options:
-1. Weight - The importance of the text in the field
-2. Nostem - Skip setemming when indexing text
-3. Phonetic - Enable phonetic search on the text
-
-To construct a full-text index on the `title` property with phonetic search of all nodes with label `Movie`, use the syntax:
-
-```sh
-GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('Movie', {field: 'title', phonetic: 'dm:en'})"
+GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.drop('Movie')"
 ```

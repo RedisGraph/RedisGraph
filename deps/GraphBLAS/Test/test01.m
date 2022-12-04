@@ -12,6 +12,10 @@ GB_mex_about4 ;
 GB_mex_about5 ;
 GB_mex_about6 ;
 GB_mex_about7 ;
+GB_mex_about8 ;
+if (~ispc)
+    GB_mex_about9 ;
+end
 
 fprintf ('\ntest01: all tests passed\n') ;
 

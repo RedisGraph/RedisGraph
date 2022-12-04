@@ -32,8 +32,9 @@ for k = 1:length (types)
     gt.optype = type ;
 
     for is_csc = 0:1
+      for density = [0.3 inf]
 
-        A = GB_spec_random (m, n, 0.3, 100, type, is_csc) ;
+        A = GB_spec_random (m, n, density, 100, type, is_csc) ;
 
         for c = [1 2 4 8]
             A.sparsity = c ;
@@ -79,11 +80,12 @@ for k = 1:length (types)
             GB_spec_compare (C1, C2) ;
 
         end
-
+      end
     end
 
-    A = GB_spec_random (m, 1, 0.3, 100, type, true) ;
-    fprintf ('.') ;
+    for density = [0.3 inf]
+        A = GB_spec_random (m, 1, density, 100, type, true) ;
+        fprintf ('.') ;
 
         for c = [1 2 4 8]
             A.sparsity = c ;
@@ -109,6 +111,7 @@ for k = 1:length (types)
             GB_spec_compare (C1, C2) ;
             GB_spec_compare (P1, P2) ;
         end
+    end
     
 end
 

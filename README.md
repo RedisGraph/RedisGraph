@@ -1,10 +1,10 @@
 [![Release](https://img.shields.io/github/release/RedisGraph/RedisGraph.svg?sort=semver)](https://github.com/RedisGraph/RedisGraph/releases/latest)
 [![CircleCI](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master.svg?style=svg)](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master)
 [![Dockerhub](https://img.shields.io/badge/dockerhub-redislabs%2Fredisgraph-blue)](https://hub.docker.com/r/redislabs/redisgraph/tags/)
-[![Total alerts](https://img.shields.io/lgtm/alerts/g/RedisGraph/RedisGraph.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/RedisGraph/RedisGraph/alerts/)
 [![Codecov](https://codecov.io/gh/RedisGraph/RedisGraph/branch/master/graph/badge.svg)](https://codecov.io/gh/RedisGraph/RedisGraph)
+[![Bounty](https://img.shields.io/bountysource/team/redislabsmodules/activity)](https://app.bountysource.com/teams/redislabsmodules/issues)
 
-# RedisGraph 
+# RedisGraph
 ## A graph database module for Redis
 [![Forum](https://img.shields.io/badge/Forum-RedisGraph-blue)](https://forum.redislabs.com/c/modules/redisgraph)
 [![Discord](https://img.shields.io/discord/697882427875393627?style=flat-square)](https://discord.gg/gWBRT6P)
@@ -14,14 +14,14 @@ RedisGraph is the first queryable [Property Graph](https://github.com/opencypher
 Primary features:
 * Adopting the [Property Graph Model](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc)
   * Nodes (vertices) and Relationships (edges) that may have attributes
-  * Nodes that can be labeled
+  * Nodes can have multiple labels
   * Relationships have a relationship type
 * Graphs represented as sparse adjacency matrices
-* [Cypher](http://www.opencypher.org/) as query language
-  * Cypher queries translated into linear algebra expressions
+* [OpenCypher](http://www.opencypher.org/) with proprietary extensions as a query language
+  * Queries are translated into linear algebra expressions
 
 To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGraph/tree/master/demo).
-To read the docs, visit [redisgraph.io](http://redisgraph.io).
+To read the docs, visit [redis.io](https://redis.io/docs/stack/graph/).
 
 ## Quickstart
 
@@ -40,7 +40,7 @@ To try RedisGraph, either use the RedisGraph Docker image, or [create a free Red
 To quickly tryout RedisGraph, launch an instance using docker:
 
 ```sh
-docker run -p 6379:6379 -it --rm redislabs/redisgraph
+docker run -p 6379:6379 -it --rm redis/redis-stack-server:latest
 ```
 
 ### Give it a try
@@ -93,7 +93,7 @@ Requirements:
 
 * The RedisGraph repository: `git clone --recurse-submodules -j8 https://github.com/RedisGraph/RedisGraph.git`
 
-* On Ubuntu Linux, run: `apt-get install build-essential cmake m4 automake peg libtool autoconf`
+* On Ubuntu Linux, run: `apt-get install build-essential cmake m4 automake peg libtool autoconf python3`
 
 * On OS X, verify that `homebrew` is installed and run: `brew install cmake m4 automake peg libtool autoconf`.
     * The version of Clang that ships with the OS X toolchain does not support OpenMP, which is a requirement for RedisGraph. One way to resolve this is to run `brew install gcc g++` and follow the on-screen instructions to update the symbolic links. Note that this is a system-wide change - setting the environment variables for `CC` and `CXX` will work if that is not an option.
@@ -191,6 +191,7 @@ Some languages have client libraries that provide support for RedisGraph's comma
 | Project                                                   | Language   | License | Author                                      | Stars                                                             | Comment    |
 | --------------------------------------------------------- | ---------- | ------- | ------------------------------------------- | ----------------------------------------------------------------- | ---------- |
 | [Jedis][Jedis-url]                                        | Java       | MIT     | [Redis][Jedis-author]                       | [![Jedis-stars]][Jedis-url]                                       |
+| [redis-modules-java][redis-modules-java-url]              | Java       | Apache 2.0 | [dengliming][redis-modules-java-author]               | [![redis-modules-java-stars]][redis-modules-java-url]                       |
 | [redisgraph-py][redisgraph-py-url]                        | Python     | BSD     | [Redis Labs][redisgraph-py-author]          | [![redisgraph-py-stars]][redisgraph-py-url]                       |
 | [JRedisGraph][JRedisGraph-url]                            | Java       | BSD     | [Redis Labs][JRedisGraph-author]            | [![JRedisGraph-stars]][JRedisGraph-url]                           | Deprecated |
 | [redisgraph-rb][redisgraph-rb-url]                        | Ruby       | BSD     | [Redis Labs][redisgraph-rb-author]          | [![redisgraph-rb-stars]][redisgraph-rb-url]                       |
@@ -287,6 +288,10 @@ Some languages have client libraries that provide support for RedisGraph's comma
 [RedisGraph.jl-url]: https://github.com/xyxel/RedisGraph.jl
 [RedisGraph.jl-stars]: https://img.shields.io/github/stars/xyxel/RedisGraph.jl.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
+[redis-modules-java-author]: https://github.com/dengliming
+[redis-modules-java-url]: https://github.com/dengliming/redis-modules-java
+[redis-modules-java-stars]: https://img.shields.io/github/stars/dengliming/redis-modules-java.svg?style=social&amp;label=Star&amp;maxAge=2592000
+
 ## Documentation
 
 Read the docs at [redisgraph.io](http://redisgraph.io).
@@ -297,4 +302,4 @@ Got questions? Feel free to ask at the [RedisGraph forum](https://forum.redislab
 
 ## License
 
-Redis Source Available License Agreement - see [LICENSE](LICENSE)
+Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or the Server Side Public License v1 (SSPLv1). See [LICENSE](LICENSE.txt).

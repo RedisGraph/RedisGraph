@@ -26,7 +26,7 @@
 
 #include "GB_apply.h"
 
-#define GB_FREE_ALL GB_phbix_free (C) ;
+#define GB_FREE_ALL GB_phybix_free (C) ;
 
 GB_PUBLIC
 GrB_Info GB_shallow_op      // create shallow matrix and apply operator
@@ -112,13 +112,20 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
     C->nvec = A->nvec ;
     C->nvec_nonempty = A->nvec_nonempty ;
     C->jumbled = A->jumbled ;           // C is jumbled if A is jumbled
-    C->nvals = A->nvals ;               // if A bitmap 
+    C->nvals = A->nvals ;
     C->magic = GB_MAGIC ;
     C->iso = C_iso ;                    // OK
     if (C_iso)
     { 
         GB_BURBLE_MATRIX (A, "(iso apply) ") ;
     }
+
+    //--------------------------------------------------------------------------
+    // make a shallow copy of the A->Y hyper_hash
+    //--------------------------------------------------------------------------
+
+    C->Y = A->Y ;
+    C->Y_shallow = (A->Y != NULL) ;
 
     //--------------------------------------------------------------------------
     // check for empty matrix

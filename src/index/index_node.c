@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "RG.h"
 #include "index.h"
@@ -43,12 +43,11 @@ void Index_IndexNode
 
 void populateNodeIndex
 (
-	Index *idx
+	Index *idx,
+	Graph *g
 ) {
 	ASSERT(idx != NULL);
-
-	GraphContext  *gc  =  QueryCtx_GetGraphCtx();
-	Graph         *g   =  gc->g;
+	ASSERT(g != NULL);
 
 	const RG_Matrix m = Graph_GetLabelMatrix(g, idx->label_id);
 	ASSERT(m != NULL);

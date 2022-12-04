@@ -1,3 +1,9 @@
+/*
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
+
 #pragma once
 
 #include "../value.h"
@@ -42,6 +48,14 @@ u_int32_t SIArray_Length(SIValue siarray);
   * @retval a boolean indicating whether any types were matched
   */
 bool SIArray_ContainsType(SIValue siarray, SIType t);
+
+/**
+  * @brief  Returns true if all of the elements in the array are of type 't'
+  * @param  siarray: array
+  * @param  t: type to compare
+  * @retval a boolean indicating whether all elements are of type 't'
+  */
+bool SIArray_AllOfType(SIValue siarray, SIType t);
 
 /**
   * @brief  Returns a copy of the array

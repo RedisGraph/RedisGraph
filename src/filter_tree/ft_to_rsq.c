@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "ft_to_rsq.h"
 #include "RG.h"
@@ -156,15 +156,13 @@ static bool _predicateTreeToRange
 	ASSERT(string_ranges  != NULL);
 	ASSERT(numeric_ranges != NULL);
 
-	// simple predicate trees are used to build up a range object
-	ASSERT(AR_EXP_IsConstant(tree->pred.rhs));
-
 	// handel filters of form: 'n.v op constant'
 	char *prop = NULL;
 	// TODO: we might not need this check
 	if(!AR_EXP_IsAttribute(tree->pred.lhs, &prop)) return false;
 
-	SIValue c = tree->pred.rhs->operand.constant;
+	ASSERT(!AR_EXP_ContainsVariadic(tree->pred.rhs));
+	SIValue c = AR_EXP_Evaluate(tree->pred.rhs, NULL);
 	SIType  t = SI_TYPE(c);
 
 	// make sure constant is an indexable type
@@ -419,8 +417,7 @@ static bool _FilterTreePredicateToQueryNode
 	ASSERT(attribute == true);
 
 	// validate const type
-	ASSERT(AR_EXP_IsConstant(tree->pred.rhs));
-	SIValue v = tree->pred.rhs->operand.constant;
+	SIValue v = AR_EXP_Evaluate(tree->pred.rhs, NULL);
 	SIType t = SI_TYPE(v);
 	if(!(t & SI_INDEXABLE)) {
 		// none indexable type, consult with the none indexed field
@@ -512,8 +509,13 @@ static bool _FilterTreeToQueryNode
 	*root = NULL;
 
 	if(isInFilter(tree)) {
-		*root = _FilterTreeToInQueryNode(tree, idx);
-		return true;
+		bool attribute = AR_EXP_IsAttribute(tree->exp.exp->op.children[0], NULL);
+		if(attribute) {
+			*root = _FilterTreeToInQueryNode(tree, idx);
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	if(isDistanceFilter(tree)) {
@@ -570,8 +572,7 @@ RSQNode *FilterTreeToQueryNode
 	for(uint i = 0; i < tree_count; i++) {
 		RSQNode *node = NULL;
 		bool resolved_filter = _FilterTreeToQueryNode(&node, trees[i], idx);
-		ASSERT(node != NULL);
-		array_append(nodes, node);
+		if(node != NULL) array_append(nodes, node);
 		if(resolved_filter) {
 			FilterTree_Free(trees[i]);
 			// remove converted filter from filters array

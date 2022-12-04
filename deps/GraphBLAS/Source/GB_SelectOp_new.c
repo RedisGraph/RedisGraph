@@ -8,7 +8,9 @@
 //------------------------------------------------------------------------------
 
 // This function is historical.  Use GrB_IndexUnaryOp_new with GrB_select,
-// instead of a user-defined GxB_SelectOp with GxB_select.
+// instead of a user-defined GxB_SelectOp with GxB_select.  No JIT acceleration
+// will be provided for user-defined GxB_SelectOps, so the operator definition
+// string is not provided.
 
 // The select function signature must be:
 
@@ -67,7 +69,7 @@ GrB_Info GB_SelectOp_new            // create a new user-defined select operator
     op->opcode = GB_USER_selop_code ;
     memset (op->name, 0, GxB_MAX_NAME_LEN) ;
     snprintf (op->name, GxB_MAX_NAME_LEN-1, "user_selectop") ;
-    op->defn = NULL ;
+    op->defn = NULL ;           // unused: no JIT acceleration for these ops
 
     //--------------------------------------------------------------------------
     // return result

@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "value.h"
 #include "RG.h"
@@ -232,7 +232,9 @@ inline bool SIValue_IsNullPtr(SIValue *v) {
 }
 
 const char *SIType_ToString(SIType t) {
-	if(t & T_STRING) {
+	if (t & T_MAP) {
+		return "Map";
+	} else if(t & T_STRING) {
 		return "String";
 	} else if(t & T_INT64) {
 		return "Integer";
@@ -250,6 +252,20 @@ const char *SIType_ToString(SIType t) {
 		return "List";
 	} else if(t & T_PATH) {
 		return "Path";
+	} else if(t & T_DATETIME) {
+		return "Datetime";
+	} else if(t & T_LOCALDATETIME) {
+		return "Local Datetime";
+	} else if(t & T_DATE) {
+		return "Date";
+	} else if(t & T_TIME) {
+		return "Time";
+	} else if(t & T_LOCALTIME) {
+		return "Local Time";
+	} else if(t & T_DURATION) {
+		return "Duration";
+	} else if(t & T_POINT) {
+		return "Point";
 	} else if(t & T_NULL) {
 		return "Null";
 	} else {
@@ -257,9 +273,44 @@ const char *SIType_ToString(SIType t) {
 	}
 }
 
+void SIType_ToMultipleTypeString(SIType t, char *buf, size_t bufferLen) {
+	// Worst case: Len(SIType names) + 19*Len(", ") + Len("Or") = 177 + 38 + 2 = 217
+	ASSERT(bufferLen >= MULTIPLE_TYPE_STRING_BUFFER_SIZE);
+
+	uint   count		= __builtin_popcount(t);
+	char  *comma        = count > 2 ? ", or " : " or ";
+	SIType currentType  = 1;
+	size_t bytesWritten = 0;
+
+	// Find first type
+	while((t & currentType) == 0) {
+		currentType = currentType << 1;
+	}
+	bytesWritten += snprintf(buf + bytesWritten, bufferLen, "%s", SIType_ToString(currentType));
+	if(count == 1) return;
+
+	count--;
+	// Iterate over the possible SITypes except last one
+	while(count > 1) {
+		currentType = currentType << 1;
+		if(t & currentType) {
+			bytesWritten += snprintf(buf + bytesWritten, bufferLen, ", %s", SIType_ToString(currentType));
+			count--;
+		}
+	}
+
+	// Find last type
+	do {
+		currentType = currentType << 1;
+	} while((t & currentType) == 0);
+
+	// Concatenate "or" before the last SIType name
+	// If there are more than two, the last comma should be present
+	bytesWritten += snprintf(buf + bytesWritten, bufferLen, "%s%s", comma, SIType_ToString(currentType));
+}
+
 void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWritten) {
 	// uint64 max and int64 min string representation requires 21 bytes
-	// float defaults to print 6 digit after the decimal-point
 	// checkt for enough space
 	if(*bufferLen - *bytesWritten < 64) {
 		*bufferLen += 64;
@@ -277,8 +328,20 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%s", v.longval ? "true" : "false");
 		break;
 	case T_DOUBLE:
-		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%f", v.doubleval);
+	{
+		size_t n = snprintf(*buf + *bytesWritten, *bufferLen - *bytesWritten, "%f", v.doubleval);
+		// check if there was enough space in the buffer
+		if(*bytesWritten + n > *bufferLen) {
+			// realloc the buffer
+			*bufferLen = *bytesWritten + n + 1;
+			*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
+
+			// write it again
+			snprintf(*buf + *bytesWritten, *bufferLen - *bytesWritten, "%f", v.doubleval);
+		}
+		*bytesWritten += n;
 		break;
+	}
 	case T_NODE:
 		Node_ToString(v.ptrval, buf, bufferLen, bytesWritten, ENTITY_ID);
 		break;
@@ -301,6 +364,8 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "POINTER");
 		break;
 	case T_POINT:
+		// max string length is 32 chars of string + 10 * 2 chars for the floats
+		// = 52 bytes that already checked in the header of the function
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "point({latitude: %f, longitude: %f})", Point_lat(v), Point_lon(v));
 		break;
 	default:
@@ -332,9 +397,9 @@ SIValue SIValue_FromString(const char *s) {
 
 	errno = 0;
 	double parsedval = strtod(s, &sEnd);
-	/* The input was not a complete number or represented a number that
-	 * cannot be represented as a double.
-	 * Create a string SIValue. */
+	// the input was not a complete number or represented a number that
+	// cannot be represented as a double
+	// create a string SIValue
 	if(sEnd[0] != '\0' || errno == ERANGE) {
 		return SI_DuplicateStringVal(s);
 	}
@@ -449,7 +514,14 @@ SIValue SIValue_Modulo(const SIValue a, const SIValue n) {
 	bool inputs_are_integers = SI_TYPE(a) & SI_TYPE(n) & T_INT64;
 	if(inputs_are_integers) {
 		// The modulo machine instruction may be used if a and n are both integers.
-		return SI_LongVal(a.longval % n.longval);
+
+		int64_t res = 0;
+		// workaround for https://gcc.gnu.org/bugzilla/show_bug.cgi?id=30484
+		if (n.longval != -1){ // % -1 is always return 0
+			res = (int64_t)a.longval % (int64_t)n.longval;
+		}
+
+		return SI_LongVal(res);
 	} else {
 		// Otherwise, use the library function fmod to calculate the modulo and return a double.
 		return SI_DoubleVal(fmod(SI_GET_NUMERIC(a), SI_GET_NUMERIC(n)));
@@ -494,7 +566,7 @@ int SIArray_Compare(SIValue arrayA, SIValue arrayB, int *disjointOrNull) {
 	// If all the elements in the shared range yielded false comparisons.
 	if(notEqualCounter == minLength && notEqualCounter > nullCounter) return notEqual;
 	// If there was a null comperison on non disjoint arrays.
-	if(nullCounter) {
+	if(nullCounter && arrayALen == arrayBLen) {
 		if(disjointOrNull) *disjointOrNull = COMPARED_NULL;
 		return notEqual;
 	}
@@ -517,6 +589,10 @@ int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull) {
 		case T_BOOL:
 			return SAFE_COMPARISON_RESULT(a.longval - b.longval);
 		case T_DOUBLE:
+			if(isnan(a.doubleval) || isnan(b.doubleval)) {
+				if(disjointOrNull) *disjointOrNull = COMPARED_NAN;
+			}
+
 			return SAFE_COMPARISON_RESULT(a.doubleval - b.doubleval);
 		case T_STRING:
 			return strcmp(a.stringval, b.stringval);
@@ -548,6 +624,10 @@ int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull) {
 	/* The inputs have different SITypes - compare them if they
 	 * are both numerics of differing types. */
 	if(SI_TYPE(a) & SI_NUMERIC && SI_TYPE(b) & SI_NUMERIC) {
+		if(isnan(SI_GET_NUMERIC(a)) || isnan(SI_GET_NUMERIC(b))) {
+			if(disjointOrNull) *disjointOrNull = COMPARED_NAN;
+		}
+
 		double diff = SI_GET_NUMERIC(a) - SI_GET_NUMERIC(b);
 		return SAFE_COMPARISON_RESULT(diff);
 	}

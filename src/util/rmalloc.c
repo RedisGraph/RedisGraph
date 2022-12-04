@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "rmalloc.h"
 #include "../errors.h"
@@ -115,7 +115,15 @@ void rm_set_mem_capacity(int64_t cap) {
 	}
 }
 
-#endif
+#else
+
+void rm_reset_n_alloced() {
+}
+
+void rm_set_mem_capacity(int64_t cap) {
+}
+
+#endif // REDIS_MODULE_TARGET
 
 /* Redefine the allocator functions to use the malloc family.
  * Only to be used when running module code from a non-Redis

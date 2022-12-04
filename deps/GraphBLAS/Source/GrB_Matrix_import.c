@@ -294,6 +294,7 @@ static GrB_Info GB_import_worker   // import a matrix of any type
                     nvals,          // number of tuples
                     NULL,           // implicit SECOND operator for duplicates
                     type,           // type of the X array
+                    true,           // burble is allowed
                     Context
                 )) ;
             }

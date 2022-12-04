@@ -54,6 +54,73 @@ class testMap(FlowTestsBase):
                            [{'val': 3, 'literal': 'lit'}]]
         self.env.assertEquals(query_result.result_set, expected_result)
 
+        query = """MATCH (n) RETURN n {}"""
+        query_result = redis_graph.query(query)
+        expected_result = [[{}],
+                           [{}],
+                           [{}]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        query = """MATCH (n) RETURN n {.*}  ORDER BY n.val"""
+        query_result = redis_graph.query(query)
+        expected_result =  [[{'val': 1}],
+                            [{'val': 2}],
+                            [{'val': 3}]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        queries = [
+            """MATCH (n) RETURN n {.*, .h}  ORDER BY n.val""",
+            """MATCH (n) RETURN n {.h, .*}  ORDER BY n.val""",
+            """MATCH (n) RETURN n {.*, .h, .*}  ORDER BY n.val""",
+            """MATCH (n) RETURN n {.h, .*, .h, .val}  ORDER BY n.val""",
+        ]
+        expected_result =  [[{'val': 1, 'h': None}],
+                            [{'val': 2, 'h': None}],
+                            [{'val': 3, 'h': None}]]
+        for query in queries:
+            query_result = redis_graph.query(query)
+            self.env.assertEquals(query_result.result_set, expected_result)
+
+        query = """MATCH (n:unexisting) RETURN n {}"""
+        query_result = redis_graph.query(query)
+        expected_result = []
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        # map projection unexisting property
+        query = """CREATE (a:A {name: 'abc', y: 3, z: 43}) RETURN a{.h}"""
+        query_result = redis_graph.query(query)
+        expected_result = [[{'h': None}]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        # map projection all properties and unexisting property
+        queries = [
+            """CREATE (a:A {name: 'abc', y: 3, z: 43}) RETURN a{.*, .h}""",
+            """CREATE (a:A {name: 'abc', y: 3, z: 43}) RETURN a{.h, .*}""",
+            """CREATE (a:A {name: 'abc', y: 3, z: 43}) RETURN a{.*, .z, .h, .*}""",
+        ]
+        expected_result = [[{'name':'abc', 'y': 3, 'z': 43, 'h': None}]]
+        for query in queries:
+            query_result = redis_graph.query(query)
+            self.env.assertEquals(query_result.result_set, expected_result)
+
+        # map projection attributes
+        query = """CREATE (a:A {name: 'abc', y: 3, z: 43}) RETURN a{vname: a.name, vy: a.y, vz: a.z}"""
+        expected_result = [[{'vname': 'abc', 'vy': 3, 'vz': 43}]]
+        query_result = redis_graph.query(query)
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        # nested projections
+        queries = [
+            """MATCH (a), (b) RETURN a{.*, b {.*} }""",
+            """MATCH (a) RETURN a{.*, c {.*} }""",
+        ]
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                self.env.assertTrue(False)
+            except redis.ResponseError as e:
+                self.env.assertContains("Invalid input '{': expected ':', ',' or '}'", str(e))
+
     # Validate behaviors of nested maps
     def test03_nested_maps(self):
         # Return a map with nesting
@@ -144,3 +211,14 @@ class testMap(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             self.env.assertIn("Encountered unhandled type", str(e))
 
+    # validate that function accesses of scalar-reducible maps do not access invalid memory
+    def test08_map_safe_return_value(self):
+        query = """RETURN {a: 5, b: 'xx'}.b"""
+        query_result = redis_graph.query(query)
+        expected_result = [['xx']]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        query = """RETURN {a: 5, b: toUpper('xx')}.b"""
+        query_result = redis_graph.query(query)
+        expected_result = [['XX']]
+        self.env.assertEquals(query_result.result_set, expected_result)

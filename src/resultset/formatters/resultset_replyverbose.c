@@ -1,7 +1,7 @@
 /*
- * Copyright 2018-2022 Redis Labs Ltd. and Contributors
- *
- * This file is available under the Redis Labs Source Available License Agreement
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
  */
 
 #include "resultset_formatters.h"
@@ -63,17 +63,19 @@ static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 
 static void _ResultSet_VerboseReplyWithProperties(RedisModuleCtx *ctx, GraphContext *gc,
 												  const GraphEntity *e) {
-	int prop_count = ENTITY_PROP_COUNT(e);
+	const AttributeSet set = GraphEntity_GetAttributes(e);
+	int prop_count = ATTRIBUTE_SET_COUNT(set);
 	RedisModule_ReplyWithArray(ctx, prop_count);
 	// Iterate over all properties stored on entity
 	for(int i = 0; i < prop_count; i ++) {
 		RedisModule_ReplyWithArray(ctx, 2);
-		EntityProperty prop = ENTITY_PROPS(e)[i];
+		Attribute_ID attr_id;
+		SIValue value = AttributeSet_GetIdx(set, i, &attr_id);
 		// Emit the actual string
-		const char *prop_str = GraphContext_GetAttributeString(gc, prop.id);
+		const char *prop_str = GraphContext_GetAttributeString(gc, attr_id);
 		RedisModule_ReplyWithStringBuffer(ctx, prop_str, strlen(prop_str));
 		// Emit the value
-		_ResultSet_VerboseReplyWithSIValue(ctx, gc, prop.value);
+		_ResultSet_VerboseReplyWithSIValue(ctx, gc, value);
 	}
 }
 

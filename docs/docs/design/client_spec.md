@@ -16,8 +16,6 @@ GRAPH.QUERY demo "MATCH (a) RETURN a" --compact
 
 ## Formatting differences in the compact result set
 
-The result set has the same overall structure as described in the [Result Set documentation](result_structure#top-level-members).
-
 Certain values are emitted as integer IDs rather than strings:
 
 1. Node labels
@@ -215,20 +213,24 @@ The final top-level member of the GRAPH.QUERY reply is the execution statistics.
 The statistics always include query execution time, while any combination of the other elements may be included depending on how the graph was modified.
 
 1. "Labels added: (integer)"
-2. "Nodes created: (integer)"
-3. "Properties set: (integer)"
+2. "Labels removed: (integer)"    (since RedisGraph 2.10)
+3. "Nodes created: (integer)"
 4. "Nodes deleted: (integer)"
-5. "Relationships deleted: (integer)"
-6. "Relationships created: (integer)"
-7. "Query internal execution time: (float) milliseconds"
+5. "Properties set: (integer)"
+6. "Properties removed: (integer)"    (since RedisGraph 2.10)
+7. "Relationships created: (integer)"
+8. "Relationships deleted: (integer)"
+9. "Indices created: (integer)"
+10. "Indices deleted: (integer)"
+11. "Query internal execution time: (float) milliseconds"
 
 ## Procedure Calls
 
 Property keys, node labels, and relationship types are all returned as IDs rather than strings in the compact format. For each of these 3 string-ID mappings, IDs start at 0 and increase monotonically.
 
-As such, the client should store an string array for each of these 3 mappings, and print the appropriate string for the user by checking an array at position _ID_. If an ID greater than the array length is encountered, the local array should be updated with a procedure call.
+As such, the client should store a string array for each of these 3 mappings, and print the appropriate string for the user by checking an array at position _ID_. If an ID greater than the array length is encountered, the local array should be updated with a procedure call.
 
-These calls are described generally in the [Procedures documentation](commands#procedures).
+These calls are described generally in the [Procedures documentation](/commands/graph.query/#procedures).
 
 To retrieve each full mapping, the appropriate calls are:
 
@@ -270,5 +272,5 @@ In the case of an IndexError, it issues a procedure call to fully refresh its la
 
 ## Reference clients
 
-All the logic described in this document has been implemented in most of the clients listed in [Client Libraries](clients#currently-available-libraries). Among these, `redisgraph-py` and `JRedisGraph` are currently the most sophisticated.
+All the logic described in this document has been implemented in most of the clients listed in [Client Libraries](clients). Among these, `node-redis`, `redis-py` and `jedis` are currently the most sophisticated.
 

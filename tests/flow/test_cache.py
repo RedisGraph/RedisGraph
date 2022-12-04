@@ -16,6 +16,8 @@ class testCache(FlowTestsBase):
     def compare_uncached_to_cached_query_plans(self, query, params=None):
         global redis_con
         plan_graph = Graph(redis_con, 'Cache_Test_plans')
+        # Create graph
+        plan_graph.query("RETURN 1")
         uncached_plan = plan_graph.execution_plan(query, params)
         cached_plan = plan_graph.execution_plan(query, params)
         self.env.assertEqual(uncached_plan, cached_plan)

@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #pragma once
 
@@ -24,7 +24,6 @@
 #define GRAPH_UNKNOWN_LABEL -2                  // Labels are numbered [0-N], -2 represents an unknown relation.
 #define GRAPH_NO_RELATION -1                    // Relations are numbered [0-N], -1 represents no relation.
 #define GRAPH_UNKNOWN_RELATION -2               // Relations are numbered [0-N], -2 represents an unknown relation.
-#define EDGE_BULK_DELETE_THRESHOLD 4            // Max number of deletions to perform without choosing the bulk delete routine.
 
 typedef enum {
 	GRAPH_EDGE_DIR_INCOMING,
@@ -125,19 +124,50 @@ int Graph_AddLabel
 	Graph *g
 );
 
-// Associate node with labels by setting label matrix L to 1 at position [id,id]
-void Graph_LabelNode
+// adds a label from the graph
+void Graph_RemoveLabel
 (
 	Graph *g,
-	NodeID id,
-	int *labels,
-	uint label_count
+	int label_id
+);
+
+// label node with each label in 'lbls'
+void Graph_LabelNode
+(
+	Graph *g,       // graph to operate on
+	NodeID id,      // node ID to update
+	LabelID *lbls,  // set to labels to associate with node
+	uint lbl_count  // number of labels
+);
+
+// dissociates each label in 'lbls' from given node
+void Graph_RemoveNodeLabels
+(
+	Graph *g,       // graph to operate against
+	NodeID id,      // node ID to update
+	LabelID *lbls,  // set of labels to remove
+	uint lbl_count  // number of labels to remove
+);
+
+// return true if node is labeled as 'l'
+bool Graph_IsNodeLabeled
+(
+	Graph *g,   // graph to operate on
+	NodeID id,  // node ID to inspect
+	LabelID l   // label to check for
 );
 
 // creates a new relation matrix, returns id given to relation
 int Graph_AddRelationType
 (
 	Graph *g
+);
+
+// removes a relation from the graph
+void Graph_RemoveRelation
+(
+	Graph *g,
+	int relation_id
 );
 
 // make sure graph can hold an additional N nodes
@@ -160,7 +190,7 @@ void Graph_CreateNode
 (
 	Graph *g,
 	Node *n,
-	int *labels,
+	LabelID *labels,
 	uint label_count
 );
 
@@ -189,22 +219,19 @@ int Graph_DeleteEdge
 	Edge *e
 );
 
+// update entity attribute with new value
+int Graph_UpdateEntity
+(
+	GraphEntity *ge,             // entity yo update
+	Attribute_ID attr_id,        // attribute to update
+	SIValue value,               // value to be set
+	GraphEntityType entity_type  // type of the entity node/edge
+);
+
 // returns true if the given entity has been deleted
 bool Graph_EntityIsDeleted
 (
-	Entity *e
-);
-
-// removes both nodes and edges from graph
-void Graph_BulkDelete
-(
-	Graph *g,           // graph to delete entities from
-	Node *nodes,        // nodes to delete
-	uint node_count,    // number of nodes to delete
-	Edge *edges,        // edges to delete
-	uint edge_count,    // number of edges to delete
-	uint *node_deleted, // number of nodes removed
-	uint *edge_deleted  // number of edges removed
+	const GraphEntity *e
 );
 
 // all graph matrices are required to be squared NXN
@@ -396,9 +423,14 @@ RG_Matrix Graph_GetLabelRGMatrix
 	int label_idx
 );
 
+// free partial graph
+void Graph_PartialFree
+(
+	Graph *g
+);
+
 // free graph
 void Graph_Free
 (
 	Graph *g
 );
-

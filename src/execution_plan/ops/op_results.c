@@ -1,7 +1,7 @@
 /*
- * Copyright 2018-2022 Redis Labs Ltd. and Contributors
- *
- * This file is available under the Redis Labs Source Available License Agreement
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
  */
 
 #include "op_results.h"
@@ -10,6 +10,7 @@
 #include "../../query_ctx.h"
 #include "../../configuration/config.h"
 #include "../../arithmetic/arithmetic_expression.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 
 /* Forward declarations. */
 static Record ResultsConsume(OpBase *opBase);
@@ -30,6 +31,14 @@ static OpResult ResultsInit(OpBase *opBase) {
 	Results *op = (Results *)opBase;
 	op->result_set = QueryCtx_GetResultSet();
 	Config_Option_get(Config_RESULTSET_MAX_SIZE, &op->result_set_size_limit);
+
+	// map resultset columns to record entries
+	OpBase *join = ExecutionPlan_LocateOp(opBase, OPType_JOIN);
+	if(op->result_set != NULL && join == NULL) {
+		rax *mapping = ExecutionPlan_GetMappings(opBase->plan);
+		ResultSet_MapProjection(op->result_set, mapping);
+	}
+
 	return OP_OK;
 }
 

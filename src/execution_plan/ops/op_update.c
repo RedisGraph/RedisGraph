@@ -1,15 +1,14 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "op_update.h"
 #include "RG.h"
 #include "../../errors.h"
 #include "../../query_ctx.h"
 #include "../../util/arr.h"
-#include "../../util/qsort.h"
 #include "../../util/rmalloc.h"
 #include "../../util/rax_extensions.h"
 #include "../../arithmetic/arithmetic_expression.h"
@@ -85,20 +84,32 @@ static Record UpdateConsume(OpBase *opBase) {
 
 		array_append(op->records, r);
 	}
+	
+	uint node_updates_count = array_len(op->node_updates);
+	uint edge_updates_count = array_len(op->edge_updates);
 
-	// done reading; we're not going to call Consume any longer
-	// there might be operations like "Index Scan" that need to free the
-	// index R/W lock - as such, free all ExecutionPlan operations up the chain.
-	OpBase_PropagateFree(child);
+	if(node_updates_count > 0 || edge_updates_count > 0) {
+		// done reading; we're not going to call Consume any longer
+		// there might be operations like "Index Scan" that need to free the
+		// index R/W lock - as such, free all ExecutionPlan operations up the chain.
+		OpBase_PropagateReset(child);
 
-	// lock everything
-	QueryCtx_LockForCommit();
-	{
+		// lock everything
+		QueryCtx_LockForCommit();
+
 		CommitUpdates(op->gc, op->stats, op->node_updates, ENTITY_NODE);
 		CommitUpdates(op->gc, op->stats, op->edge_updates, ENTITY_EDGE);
 	}
-	// release lock
-	QueryCtx_UnlockCommit(opBase);
+
+	for(uint i = 0; i < node_updates_count; i ++) {
+		PendingUpdateCtx *pending_update = op->node_updates + i;
+		AttributeSet_Free(&pending_update->attributes);
+	}
+		
+	for(uint i = 0; i < edge_updates_count; i ++) {
+		PendingUpdateCtx *pending_update = op->edge_updates + i;
+		AttributeSet_Free(&pending_update->attributes);
+	}
 
 	array_clear(op->node_updates);
 	array_clear(op->edge_updates);
@@ -118,10 +129,21 @@ static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase) {
 
 static OpResult UpdateReset(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
-	array_free(op->node_updates);
-	op->node_updates = NULL;
-	array_free(op->edge_updates);
-	op->edge_updates = NULL;
+
+	uint node_updates_count = array_len(op->node_updates);
+	for(uint i = 0; i < node_updates_count; i ++) {
+		PendingUpdateCtx *pending_update = op->node_updates + i;
+		AttributeSet_Free(&pending_update->attributes);
+	}
+	array_clear(op->node_updates);
+
+	uint edge_updates_count = array_len(op->edge_updates);
+	for(uint i = 0; i < edge_updates_count; i ++) {
+		PendingUpdateCtx *pending_update = op->edge_updates + i;
+		AttributeSet_Free(&pending_update->attributes);
+	}
+	array_clear(op->edge_updates);
+
 	op->updates_committed = false;
 	return OP_OK;
 }
@@ -130,24 +152,26 @@ static void UpdateFree(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 
 	if(op->node_updates) {
-		uint update_count = array_len(op->node_updates);
-		for (uint i = 0; i < update_count; i++) {
-			SIValue_Free(op->node_updates[i].new_value);
+		uint node_updates_count = array_len(op->node_updates);
+		for(uint i = 0; i < node_updates_count; i ++) {
+			PendingUpdateCtx *pending_update = op->node_updates + i;
+			AttributeSet_Free(&pending_update->attributes);
 		}
 		array_free(op->node_updates);
 		op->node_updates = NULL;
 	}
 
 	if(op->edge_updates) {
-		uint update_count = array_len(op->edge_updates);
-		for (uint i = 0; i < update_count; i++) {
-			SIValue_Free(op->edge_updates[i].new_value);
+		uint edge_updates_count = array_len(op->edge_updates);
+		for(uint i = 0; i < edge_updates_count; i ++) {
+			PendingUpdateCtx *pending_update = op->edge_updates + i;
+			AttributeSet_Free(&pending_update->attributes);
 		}
 		array_free(op->edge_updates);
 		op->edge_updates = NULL;
 	}
 
-	// Free each update context.
+	// free each update context
 	if(op->update_ctxs) {
 		raxFreeWithCallback(op->update_ctxs, (void(*)(void *))UpdateCtx_Free);
 		op->update_ctxs = NULL;
@@ -162,4 +186,3 @@ static void UpdateFree(OpBase *ctx) {
 
 	raxStop(&op->it);
 }
-

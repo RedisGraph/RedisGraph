@@ -86,6 +86,7 @@ GrB_Info GB_export      // export/unpack a matrix in any format
         case GxB_HYPERSPARSE : 
             GB_RETURN_IF_NULL (nvec) ;
             GB_RETURN_IF_NULL (Ah) ; GB_RETURN_IF_NULL (Ah_size) ;
+            // fall through to the sparse case
 
         case GxB_SPARSE : 
             if (is_sparse_vector)
@@ -102,6 +103,7 @@ GrB_Info GB_export      // export/unpack a matrix in any format
         case GxB_BITMAP : 
             GB_RETURN_IF_NULL (nvals) ;
             GB_RETURN_IF_NULL (Ab) ; GB_RETURN_IF_NULL (Ab_size) ;
+            // fall through to the full case
 
         case GxB_FULL : 
             break ;
@@ -186,6 +188,7 @@ GrB_Info GB_export      // export/unpack a matrix in any format
             GB_Global_memtable_remove ((*A)->h) ;
             (*Ah) = (GrB_Index *) ((*A)->h) ; (*A)->h = NULL ;
             (*Ah_size) = (*A)->h_size ;
+            // fall through to the sparse case
 
         case GxB_SPARSE : 
             if (jumbled != NULL)
@@ -246,11 +249,13 @@ GrB_Info GB_export      // export/unpack a matrix in any format
     // free or clear the GrB_Matrix
     //--------------------------------------------------------------------------
 
+    // both export and unpack free the hyper_hash, A->Y
+
     if (unpacking)
     { 
         // unpack: clear the matrix, leaving it hypersparse (or sparse if
         // it is a vector (vdim of 1) or has vdim of zero)
-        GB_phbix_free (*A) ;
+        GB_phybix_free (*A) ;
         (*A)->plen = plen_new ;
         (*A)->nvec = nvec_new ;
         (*A)->p = Ap_new ; (*A)->p_size = Ap_new_size ;

@@ -22,7 +22,7 @@ GrB_Info GB_EVAL2 (GRB (Scalar_setElement_), T)    /* s = x */              \
     GB_WHERE (s, "GrB_Scalar_setElement_" GB_STR(T) " (w, x)") ;            \
     GB_RETURN_IF_NULL_OR_FAULTY (s) ;                                       \
     ASSERT (GB_SCALAR_OK (s)) ;                                             \
-    return (GB_setElement ((GrB_Matrix) s, ampersand x, 0, 0,               \
+    return (GB_setElement ((GrB_Matrix) s, NULL, ampersand x, 0, 0,         \
         GB_ ## T ## _code, Context)) ;                                      \
 }
 
@@ -53,7 +53,7 @@ GrB_Info GB_EVAL2 (GXB (Scalar_setElement_), T)    /* s = x */              \
     GB_WHERE (s, "GxB_Scalar_setElement_" GB_STR(T) " (w, x)") ;            \
     GB_RETURN_IF_NULL_OR_FAULTY (s) ;                                       \
     ASSERT (GB_SCALAR_OK (s)) ;                                             \
-    return (GB_setElement ((GrB_Matrix) s, ampersand x, 0, 0,               \
+    return (GB_setElement ((GrB_Matrix) s, NULL, ampersand x, 0, 0,         \
         GB_ ## T ## _code, Context)) ;                                      \
 }
 

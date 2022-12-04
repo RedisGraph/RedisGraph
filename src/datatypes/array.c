@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "array.h"
 #include "../util/arr.h"
@@ -48,6 +48,16 @@ bool SIArray_ContainsType(SIValue siarray, SIType t) {
 	}
 
 	return false;
+}
+
+bool SIArray_AllOfType(SIValue siarray, SIType t) {
+	uint array_len = SIArray_Length(siarray);
+	for(uint i = 0; i < array_len; i++) {
+		SIValue elem = SIArray_Get(siarray, i);
+		if((SI_TYPE(elem) & t) == 0) return false;
+	}
+
+	return true;
 }
 
 SIValue SIArray_Clone(SIValue siarray) {

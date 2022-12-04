@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #pragma once
 
@@ -10,8 +10,10 @@
 
 void Register_StringFuncs();
 
-/* returns a list of strings resulting from the splitting of the original string around matches of the given delimiter. */
-SIValue AR_SPLIT(SIValue *argv, int argc);
-/* returns a string concatenation of given values. */
-SIValue AR_CONCAT(SIValue *argv, int argc);
-
+// tries to convert input to string
+SIValue AR_TOSTRING
+(
+    SIValue *argv,      // arguments
+    int argc,           // number of arguments
+    void *private_data  // private context
+);

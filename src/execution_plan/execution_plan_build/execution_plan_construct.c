@@ -1,3 +1,9 @@
+/*
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
+
 #include "execution_plan_construct.h"
 #include "execution_plan_modify.h"
 #include "../execution_plan.h"
@@ -186,7 +192,7 @@ void ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, ExecutionPla
 		_buildUnwindOp(plan, clause);
 	} else if(t == CYPHER_AST_MERGE) {
 		buildMergeOp(plan, ast, clause, gc);
-	} else if(t == CYPHER_AST_SET) {
+	} else if(t == CYPHER_AST_SET || t == CYPHER_AST_REMOVE) {
 		_buildUpdateOp(gc, plan, clause);
 	} else if(t == CYPHER_AST_DELETE) {
 		_buildDeleteOp(plan, clause);

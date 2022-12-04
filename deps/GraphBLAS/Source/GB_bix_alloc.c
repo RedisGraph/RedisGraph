@@ -80,7 +80,7 @@ GrB_Info GB_bix_alloc       // allocate A->b, A->i, and A->x space in a matrix
     if (!ok)
     { 
         // out of memory
-        GB_phbix_free (A) ;
+        GB_phybix_free (A) ;
         return (GrB_OUT_OF_MEMORY) ;
     }
 

@@ -35,13 +35,15 @@ GrB_Info GB_assign_scalar           // C<M>(Rows,Cols) += x
     const GrB_Descriptor desc,      // descriptor for C and M
     GB_Context Context
 )
-{ 
+{
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
     GB_RETURN_IF_NULL (scalar) ;
+    GB_RETURN_IF_NULL (Rows) ;
+    GB_RETURN_IF_NULL (Cols) ;
     ASSERT (scalar_code <= GB_UDT_code) ;
 
     // get the descriptor
@@ -55,18 +57,27 @@ GrB_Info GB_assign_scalar           // C<M>(Rows,Cols) += x
     // C<M>(Rows,Cols) = accum (C(Rows,Cols), scalar)
     //--------------------------------------------------------------------------
 
-    return (GB_assign (
-        C, C_replace,               // C matrix and its descriptor
-        M, Mask_comp, Mask_struct,  // mask matrix and its descriptor
-        false,                      // do not transpose the mask
-        accum,                      // for accum (C(Rows,Cols),scalar)
-        NULL, false,                // no explicit matrix A
-        Rows, nRows,                // row indices
-        Cols, nCols,                // column indices
-        true,                       // do scalar expansion
-        scalar,                     // scalar to assign, expands to become A
-        scalar_code,                // type code of scalar to expand
-        GB_ASSIGN,
-        Context)) ;
+    if (M == NULL && !Mask_comp && nRows == 1 && nCols == 1 && !C_replace)
+    { 
+        // C(i,j) = scalar or C(i,j) += scalar
+        return (GB_setElement (C, accum, scalar, Rows [0], Cols [0],
+            scalar_code, Context)) ;
+    }
+    else
+    { 
+        return (GB_assign (
+            C, C_replace,               // C matrix and its descriptor
+            M, Mask_comp, Mask_struct,  // mask matrix and its descriptor
+            false,                      // do not transpose the mask
+            accum,                      // for accum (C(Rows,Cols),scalar)
+            NULL, false,                // no explicit matrix A
+            Rows, nRows,                // row indices
+            Cols, nCols,                // column indices
+            true,                       // do scalar expansion
+            scalar,                     // scalar to assign, expands to become A
+            scalar_code,                // type code of scalar to expand
+            GB_ASSIGN,
+            Context)) ;
+    }
 }
 

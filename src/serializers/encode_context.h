@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #pragma once
 
@@ -32,6 +32,8 @@ typedef struct {
 	uint64_t key_count;              // number of virtual keys + primary key
 	uint64_t node_count;             // number of nodes
 	uint64_t edge_count;             // number of edges
+	uint64_t deleted_node_count;      // number of deleted nodes
+	uint64_t deleted_edge_count;     // number of deleted edges
 	const char *graph_name;          // name of graph
 	uint label_matrix_count;         // number of label matrices
 	uint relationship_matrix_count;  // number of relation matrices

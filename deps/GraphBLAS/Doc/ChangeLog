@@ -1,3 +1,103 @@
+Version 7.3.0, Oct 11, 2022
+
+    * GrB_Matrix: changes to the internal data structure
+        * minor internal changes: A->nvals for sparse/hypersparse
+        * more significant changes: added A->Y hyper_hash for hypersparse case,
+            speeds up GrB_mxm (C=A*B, C<M>=A*B' (for CSR A'*B for CSC)),
+            C<M>=A+B (eWiseAdd), C<M>A.*B (eWiseMult), some cases for
+            GrB_assign, for hypersparse matrices.
+        * added GxB_unpack_HyperHash and GxB_pack_HyperHash: to pack/unpack
+            the A->Y hyper_hash
+    * @GrB MATLAB/Octave interface: changed license to Apache-2.0
+    * MATLAB library: renamed to libgraphblas_matlab.so
+    * performance: faster C=A*B when using a single thread and B is a
+        sparse vector with many entries
+
+Version 7.2.0, Aug 8, 2022
+
+    * added ZSTD as a compression option for serialize/deserialize:
+        Version 1.5.3 by Yann Collet, https://github.com/facebook/zstd.git
+        Copyright (c) 2016-present, Facebook, Inc. All rights reserved.
+        Included in SuiteSparse:GraphBLAS via its BSD-3-clause license.
+        The default method is now ZSTD, level 1.
+    * added GxB_Matrix_reshape and GxB_Matrix_reshapeDup
+    * MATLAB interface: faster C(:)=A, C=A(:), and reshape.
+        Better error messages.
+
+Version 7.1.2, July 8, 2022
+
+    * MATLAB interface: linear indexing added for C(:)=A, C=A(:), and
+        single-output I=find(C).  Faster bandwidth, istriu, istril,
+        isbanded, isdiag.  C(I,J)=A can now grow the size of C.
+
+Version 7.1.1, June 17, 2022
+
+    * minor updates to documentation and error messages
+    * MATLAB interface: minor revision of GrB.deserialize
+
+Version 7.1.0, May 20, 2022
+
+    * added cube root: GxB_CBRT_FP* unary operators
+    * added GxB_Matrix_isStoredElement and GxB_Vector_isStoredElement
+
+Version 7.0.4, Apr 25, 2022
+
+    * (46) bug fix: user-defined type size was incorrectly limited
+        to 128 bytes.  Caught by Erik Welch.
+
+Version 7.0.3, Apr 8, 2022
+
+    * faster transpose when using 2 threads
+
+Version 7.0.2, Apr 6, 2022
+
+    * (45) bug fix: vector iterator was broken for iterating across a
+        vector in bitmap format.  Caught by Erik Welch.
+
+Version 7.0.1, Apr 3, 2022
+
+    * revised ACM TOMS submission: Doc/toms_parallel_grb2.pdf
+
+Version 7.0.0, Apr 2, 2022
+
+    * (44) spec bug: GrB_Matrix_diag was implemented in v5.2.x and v6.x with
+        the wrong signature.  This fix requires the major release to change,
+        from v6.x to v7.x, since the change means that the revised v7 is not
+        backward compatible with v6.
+    * performance for GrB_mxm: auto selection for saxpy method (Hash vs
+        Gustavson) revised.
+    * (43) performance bug fix for GrB_assign: better performance for
+        C(i,j)=scalar and C(i,j)+=scalar when i and j have length 1 (scalar
+        assigment with no scalar expansion).  The prior code worked but this is
+        a performance bug introduced in the parallel GraphBLAS.  The bug likely
+        doesn't appear in v2.x (the sequential version of SS:GrB).  This
+        affects method 1 of Demo/Source/wathen.c.  Caught by a reviewer of the
+        ACM TOMS paper on the parallel GraphBLAS.
+
+Version 6.2.5, Mar 14, 2022
+
+    * For SuiteSparse v5.11.0
+
+Version 6.2.4, Mar 8, 2022
+
+    * (42) bug fix: GrB_mxm with 0-by-0 iso full matrices: Caught by
+        Henry Amuasi in the Python grblas interface, then triaged and
+        isolated by Erik Welch.
+
+Version 6.2.3, Mar 5, 2022
+
+    * minor update to documentation in GrB.build: no change to any code
+
+Version 6.2.2 Feb 28, 2022
+
+    * revised output of GxB_*_sort: to return newly created matrices
+        C and P as full or bitmap matrices, as appropriate, instead of
+        sparse/hypersparse, following their sparsity control settings
+
+Version 6.2.1 Feb 16, 2022
+
+    * (41) bug fix: GxB_Iterator_get used (void *) + siz arithmetic
+
 Version 6.2.0 Feb 14, 2022
 
     * added row/column/entry/vector iterators
@@ -442,7 +542,7 @@ Version 3.0.1, July 26, 2019
     * new operators and semirings: RDIV (f(x,y)=y/x) and RMINUS (y-x)
         binary operators.
 
-Version 2.3.5, Oct 20, 2019
+Version 2.3.5, July 20, 2019
 
     * minor update: fix for tests in R2019b
 

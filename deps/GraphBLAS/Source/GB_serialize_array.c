@@ -9,11 +9,12 @@
 
 // Parallel compression method for an array.  The array is compressed into
 // a sequence of independently allocated blocks, or returned as-is if not
-// compressed.  Currently, only LZ4 is supported.
+// compressed.  Currently, only LZ4, LZ4HC, and ZSTD are supported.
 
 #include "GB.h"
 #include "GB_serialize.h"
 #include "GB_lz4.h"
+#include "GB_zstd.h"
 
 #define GB_FREE_ALL                                                     \
 {                                                                       \
@@ -47,7 +48,6 @@ GrB_Info GB_serialize_array
     // check inputs
     //--------------------------------------------------------------------------
 
-    GrB_Info info ;
     ASSERT (Blocks_handle != NULL) ;
     ASSERT (Blocks_size_handle != NULL) ;
     ASSERT (Sblocks_handle != NULL) ;
@@ -131,6 +131,7 @@ GrB_Info GB_serialize_array
     int64_t blocksize = (nthreads == 1) ? len : GB_ICEIL (len, 4*nthreads) ;
 
     // ensure the blocksize does not exceed the LZ4 maximum
+    // ... this is also fine for ZSTD
     ASSERT (LZ4_MAX_INPUT_SIZE < INT32_MAX) ;
     blocksize = GB_IMIN (blocksize, LZ4_MAX_INPUT_SIZE/2) ;
 
@@ -166,7 +167,20 @@ GrB_Info GB_serialize_array
         size_t uncompressed = kend - kstart ;
         ASSERT (uncompressed < INT32_MAX) ;
         ASSERT (uncompressed > 0) ;
-        size_t s = (size_t) LZ4_compressBound ((int) uncompressed) ;
+
+        size_t s ;
+        switch (algo)
+        {
+            case GxB_COMPRESSION_LZ4 : 
+            case GxB_COMPRESSION_LZ4HC : 
+                s = (size_t) LZ4_compressBound ((int) uncompressed) ;
+                break ;
+            default :
+            case GxB_COMPRESSION_ZSTD : 
+                s = ZSTD_compressBound (uncompressed) ;
+                break ;
+        }
+
         ASSERT (s < INT32_MAX) ;
         if (dryrun)
         { 
@@ -217,19 +231,32 @@ GrB_Info GB_serialize_array
         size_t dsize = Blocks [blockid].p_size_allocated ;  // size of dest
         int dstCapacity = GB_IMIN (dsize, INT32_MAX) ;
         int s ;
+        size_t s64 ;
         switch (algo)
         {
-            default :
+
             case GxB_COMPRESSION_LZ4 : 
                 s = LZ4_compress_default (src, dst, srcSize, dstCapacity) ;
+                ok = ok && (s > 0) ;
+                // compressed block is now in dst [0:s-1], of size s
+                Sblocks [blockid] = (int64_t) s ;
                 break ;
+
             case GxB_COMPRESSION_LZ4HC : 
                 s = LZ4_compress_HC (src, dst, srcSize, dstCapacity, level) ;
+                ok = ok && (s > 0) ;
+                // compressed block is now in dst [0:s-1], of size s
+                Sblocks [blockid] = (int64_t) s ;
+                break ;
+
+            default :
+            case GxB_COMPRESSION_ZSTD : 
+                s64 = ZSTD_compress (dst, dstCapacity, src, srcSize, level) ;
+                ok = ok && (s64 <= dstCapacity) ;
+                // compressed block is now in dst [0:s64-1], of size s64
+                Sblocks [blockid] = (int64_t) s64 ;
                 break ;
         }
-        ok = ok && (s > 0) ;
-        // compressed block is now in dst [0:s-1], of size s
-        Sblocks [blockid] = (int64_t) s ;
     }
 
     if (!ok)

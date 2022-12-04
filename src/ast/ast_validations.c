@@ -1,7 +1,7 @@
 /*
- * Copyright 2018-2022 Redis Labs Ltd. and Contributors
- *
- * This file is available under the Redis Labs Source Available License Agreement
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
  */
 
 #include "ast.h"
@@ -80,6 +80,7 @@ static bool _ValidateAllShortestPaths
 }
 
 // Forward declaration
+static void _AST_Path_GetDefinedIdentifiers(const cypher_astnode_t *path, rax *identifiers);
 static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identifiers);
 
 inline static void _prepareIterateAll(rax *map, raxIterator *iter) {
@@ -274,45 +275,21 @@ static rax *_AST_GetReturnProjections(const cypher_astnode_t *return_clause) {
 }
 
 /* Compares a triemap of user-specified functions with the registered functions we provide. */
-static AST_Validation _ValidateReferredFunctions(rax *referred_functions, bool include_aggregates) {
+static AST_Validation _ValidateReferredFunctions(const char *funcName, bool include_aggregates) {
 	AST_Validation res = AST_VALID;
-	char funcName[32];
-	raxIterator it;
-	_prepareIterateAll(referred_functions, &it);
-	bool found = true;
-	while(raxNext(&it)) {
-		size_t len = it.key_len;
-		// No functions have a name longer than 32 characters
-		if(len >= 32) {
-			res = AST_INVALID;
-			break;
-		}
 
-		// Copy the triemap key so that we can safely add a terinator character
-		memcpy(funcName, it.key, len);
-		funcName[len] = 0;
-
-		if(!include_aggregates && AR_FuncIsAggregate(funcName)) {
-			// Provide a unique error for using aggregate functions from inappropriate contexts
-			ErrorCtx_SetError("Invalid use of aggregating function '%s'", funcName);
-			res = AST_INVALID;
-			break;
-		}
-
-		if(AR_FuncExists(funcName)) continue;
-
-		// If we reach this point, the function was not found
-		found = false;
+	if(!include_aggregates && AR_FuncIsAggregate(funcName)) {
+		// provide a unique error for using aggregate functions from inappropriate contexts
+		ErrorCtx_SetError("Invalid use of aggregating function '%s'", funcName);
 		res = AST_INVALID;
-		break;
 	}
 
-	// If the function was not found, provide a reason if one is not set
-	if(res == AST_INVALID && !found) {
+	if(!AR_FuncExists(funcName)) {
+		// if we reach this point, the function was not found
 		ErrorCtx_SetError("Unknown function '%s'", funcName);
+		res = AST_INVALID;
 	}
 
-	raxStop(&it);
 	return res;
 }
 
@@ -331,8 +308,8 @@ preceding WITH clause and have their aliased values referenced in the map.");
 	return AST_VALID;
 }
 
-// Recursively collect function names and perform validations on functions with STAR arguments.
-static AST_Validation _VisitFunctions(const cypher_astnode_t *node, rax *func_names) {
+static AST_Validation _ValidateFunctionCalls(const cypher_astnode_t *node,
+											 bool include_aggregates) {
 	cypher_astnode_type_t type = cypher_astnode_type(node);
 	if(type == CYPHER_AST_APPLY_ALL_OPERATOR) {
 		// Working with a function call that has * as its argument.
@@ -352,18 +329,15 @@ static AST_Validation _VisitFunctions(const cypher_astnode_t *node, rax *func_na
 			return AST_INVALID;
 		}
 
-		// Collect the function name, which is always "count" here.
-		raxInsert(func_names, (unsigned char *)"count", 5, NULL, NULL);
-
-		// As Apply All operators have no children, we can return here.
-		return AST_VALID;
+		// Validate all provided function names.
+		return _ValidateReferredFunctions(func_name, include_aggregates);
 	}
 
 	if(type == CYPHER_AST_APPLY_OPERATOR) {
 		// Collect the function name.
 		const cypher_astnode_t *func = cypher_ast_apply_operator_get_func_name(node);
 		const char *func_name = cypher_ast_function_name_get_value(func);
-		raxInsert(func_names, (unsigned char *)func_name, strlen(func_name), NULL, NULL);
+		return _ValidateReferredFunctions(func_name, include_aggregates);
 	}
 
 	if(type == CYPHER_AST_MAP) {
@@ -372,31 +346,18 @@ static AST_Validation _VisitFunctions(const cypher_astnode_t *node, rax *func_na
 		if(res != AST_VALID) return res;
 	}
 
+	if(type == CYPHER_AST_REDUCE) {
+		include_aggregates = false;
+	}
+
 	uint child_count = cypher_astnode_nchildren(node);
 	for(uint i = 0; i < child_count; i ++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
-		AST_Validation res = _VisitFunctions(child, func_names);
+		AST_Validation res = _ValidateFunctionCalls(child, include_aggregates);
 		if(res != AST_VALID) return res;
 	}
 
 	return AST_VALID;
-}
-
-static AST_Validation _ValidateFunctionCalls(const cypher_astnode_t *node,
-											 bool include_aggregates) {
-	AST_Validation res = AST_VALID;
-	rax *func_names = raxNew();
-
-	// Collect function names and perform in-place validations.
-	res = _VisitFunctions(node, func_names);
-	if(res != AST_VALID) goto cleanup;
-
-	// Validate all provided function names.
-	res = _ValidateReferredFunctions(func_names, include_aggregates);
-
-cleanup:
-	raxFree(func_names);
-	return res;
 }
 
 static inline bool _AliasIsReturned(rax *projections, const char *identifier) {
@@ -860,6 +821,17 @@ static AST_Validation _ValidateMergeNode(const cypher_astnode_t *entity, rax *de
 	return AST_VALID;
 }
 
+// Validate SET property.
+static AST_Validation Validate_SETProperty(const cypher_astnode_t *set_item) {
+	const cypher_astnode_t *ast_prop = cypher_ast_set_property_get_property(set_item);
+	const cypher_astnode_t *ast_entity = cypher_ast_property_operator_get_expression(ast_prop);
+	if(cypher_astnode_type(ast_entity) != CYPHER_AST_IDENTIFIER) {
+		ErrorCtx_SetError("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions");
+		return AST_INVALID;
+	}
+	return AST_VALID;
+}
+
 static AST_Validation _Validate_MERGE_Clauses(const AST *ast) {
 	AST_Validation res = AST_VALID;
 	uint *merge_clause_indices = AST_GetClauseIndices(ast, CYPHER_AST_MERGE);
@@ -898,6 +870,37 @@ static AST_Validation _Validate_MERGE_Clauses(const AST *ast) {
 		// Verify that any filters on the path refer to constants or resolved identifiers.
 		res = _ValidateInlinedPropertiesOnPath(path);
 		if(res != AST_VALID) goto cleanup;
+
+		uint action_count = cypher_ast_merge_nactions(merge_clause);
+		for (uint j = 0; j < action_count; j++) {
+			const cypher_astnode_t *action = cypher_ast_merge_get_action(merge_clause, j);
+			_ValidateFunctionCalls(action, false);
+
+			cypher_astnode_type_t type = cypher_astnode_type(action);
+			if(type == CYPHER_AST_ON_CREATE) {
+				// ON CREATE.
+				uint n_set_items = cypher_ast_on_create_nitems(action);
+				for(uint j = 0; j < n_set_items; j ++) {
+					const cypher_astnode_t *set_item = cypher_ast_on_create_get_item(action, j);
+					if(cypher_astnode_type(set_item) == CYPHER_AST_SET_PROPERTY) {
+						res = Validate_SETProperty(set_item);
+						if(res != AST_VALID) goto cleanup;
+					}
+				}
+			} else if(type == CYPHER_AST_ON_MATCH) {
+				// ON MATCH.
+				uint n_set_items = cypher_ast_on_match_nitems(action);
+				for(uint j = 0; j < n_set_items; j ++) {
+					const cypher_astnode_t *set_item = cypher_ast_on_match_get_item(action, j);
+					if(cypher_astnode_type(set_item) == CYPHER_AST_SET_PROPERTY) {
+						res = Validate_SETProperty(set_item);
+						if(res != AST_VALID) goto cleanup;
+					}
+				}
+			} else {
+				ASSERT(false);
+			}
+		}
 	}
 
 cleanup:
@@ -906,49 +909,49 @@ cleanup:
 	return res;
 }
 
-// Validate each entity referenced in the CREATE clause.
-static AST_Validation _Validate_CREATE_Entities(const cypher_astnode_t *clause,
+// Validate each entity referenced in a single path of a CREATE clause.
+static AST_Validation _Validate_CREATE_Entities(const cypher_astnode_t *path,
 												rax *defined_aliases) {
-	const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clause);
-	// Verify that functions invoked in the CREATE pattern are valid.
-	if(_ValidateFunctionCalls(pattern, false) != AST_VALID) return AST_INVALID;
-	uint path_count = cypher_ast_pattern_npaths(pattern);
-	for(uint i = 0; i < path_count; i ++) {
-		const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
-		// Validate that inlined properties are valid.
-		if(_ValidateInlinedPropertiesOnPath(path) != AST_VALID) return AST_INVALID;
+	if(_ValidateInlinedPropertiesOnPath(path) != AST_VALID) return AST_INVALID;
 
-		uint nelems = cypher_ast_pattern_path_nelements(path);
-		/* Visit every relationship (every odd offset) on the path to validate its alias and structure.
-		 * TODO There should also be a syntax error for redeclaring nodes, as in:
-		 * MATCH (a) CREATE (a)
-		 * But this is a no-op query, and we don't have the logic to differentiate this from a valid query like
-		 * MATCH (a) CREATE (a)-[:E]->(:B) */
-		for(uint j = 1; j < nelems; j += 2) {
-			const cypher_astnode_t *rel = cypher_ast_pattern_path_get_element(path, j);
-			const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(rel);
-			// Validate that no relation aliases are previously bound.
-			if(identifier) {
-				const char *alias = cypher_ast_identifier_get_name(identifier);
-				printf("\nDA %s\n", alias);
-				if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) != raxNotFound) {
-					ErrorCtx_SetError("The bound variable %s' can't be redeclared in a CREATE clause", alias);
-					return AST_INVALID;
-				}
-			}
-
-			// Validate that each relation has exactly one type.
-			uint reltype_count = cypher_ast_rel_pattern_nreltypes(rel);
-			if(reltype_count != 1) {
-				ErrorCtx_SetError("Exactly one relationship type must be specified for CREATE");
+	uint nelems = cypher_ast_pattern_path_nelements(path);
+	 // Redeclaration of a node is not allowed only when the path is of length 0, as in: MATCH (a) CREATE (a).
+	 // Otherwise, using a defined alias of a node is allowed, as in: MATCH (a) CREATE (a)-[:E]->(:B)
+	if(nelems == 1) {
+		const cypher_astnode_t *node = cypher_ast_pattern_path_get_element(path, 0);
+		const cypher_astnode_t *identifier = cypher_ast_node_pattern_get_identifier(node);
+		if(identifier) {
+			const char *alias = cypher_ast_identifier_get_name(identifier);
+			if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) != raxNotFound) {
+				ErrorCtx_SetError("The bound variable '%s' can't be redeclared in a CREATE clause", alias);
 				return AST_INVALID;
 			}
-
-			// Validate that each relation being created is directed.
-			if(cypher_ast_rel_pattern_get_direction(rel) == CYPHER_REL_BIDIRECTIONAL) {
-				ErrorCtx_SetError("Only directed relationships are supported in CREATE");
+		}
+	}
+	//Visit every relationship (every odd offset) on the path to validate its alias and structure.
+	for(uint j = 1; j < nelems; j += 2) {
+		const cypher_astnode_t *rel = cypher_ast_pattern_path_get_element(path, j);
+		const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(rel);
+		// Validate that no relation aliases are previously bound.
+		if(identifier) {
+			const char *alias = cypher_ast_identifier_get_name(identifier);
+			if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) != raxNotFound) {
+				ErrorCtx_SetError("The bound variable '%s' can't be redeclared in a CREATE clause", alias);
 				return AST_INVALID;
 			}
+		}
+
+		// Validate that each relation has exactly one type.
+		uint reltype_count = cypher_ast_rel_pattern_nreltypes(rel);
+		if(reltype_count != 1) {
+			ErrorCtx_SetError("Exactly one relationship type must be specified for CREATE");
+			return AST_INVALID;
+		}
+
+		// Validate that each relation being created is directed.
+		if(cypher_ast_rel_pattern_get_direction(rel) == CYPHER_REL_BIDIRECTIONAL) {
+			ErrorCtx_SetError("Only directed relationships are supported in CREATE");
+			return AST_INVALID;
 		}
 	}
 
@@ -969,15 +972,28 @@ static AST_Validation _Validate_CREATE_Clauses(const AST *ast) {
 		uint clause_idx = create_clause_indices[i];
 
 		// Collect all entities that are bound before this CREATE clause.
-		for(uint j = start_offset; j < clause_idx; j ++) {
-			const cypher_astnode_t *prev_clause = cypher_ast_query_get_clause(ast->root, i);
+		for (uint j = start_offset; j < clause_idx; j++) {
+			const cypher_astnode_t *prev_clause = cypher_ast_query_get_clause(ast->root, j);
 			_AST_GetDefinedIdentifiers(prev_clause, defined_aliases);
 		}
 		start_offset = clause_idx;
 
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, clause_idx);
-		res = _Validate_CREATE_Entities(clause, defined_aliases);
-		if(res == AST_INVALID) goto cleanup;
+		const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clause);
+
+		// Verify that functions invoked in the CREATE pattern are valid.
+		if (_ValidateFunctionCalls(pattern, false) != AST_VALID) goto cleanup;
+
+		uint path_count = cypher_ast_pattern_npaths(pattern);
+		const cypher_astnode_t *prev_path = NULL;
+		for (uint j = 0; j < path_count; j++) {
+			const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
+			// Collect aliases defined on the previous path in this CREATE clause.
+			if (prev_path) _AST_Path_GetDefinedIdentifiers(prev_path, defined_aliases);
+			res = _Validate_CREATE_Entities(path, defined_aliases);
+			if (res == AST_INVALID) goto cleanup;
+			prev_path = path;
+		}
 	}
 
 	/* Since we combine all our CREATE clauses in a segment into one operation,
@@ -1009,13 +1025,13 @@ static AST_Validation _Validate_DELETE_Clauses(const AST *ast) {
 			const cypher_astnode_t *exp = cypher_ast_delete_get_expression(clause, j);
 			cypher_astnode_type_t type = cypher_astnode_type(exp);
 			// expecting an identifier or a function call
-			// identifiers and calls that don't resolve to a node or edge
+			// identifiers and calls that don't resolve to a node, path or edge
 			// will raise an error at run-time
 			if(type != CYPHER_AST_IDENTIFIER &&
 			   type != CYPHER_AST_APPLY_OPERATOR &&
 			   type != CYPHER_AST_APPLY_ALL_OPERATOR &&
 			   type != CYPHER_AST_SUBSCRIPT_OPERATOR) {
-				ErrorCtx_SetError("DELETE can only be called on nodes and relationships");
+				ErrorCtx_SetError("DELETE can only be called on nodes, paths and relationships");
 				res = AST_INVALID;
 				goto cleanup;
 			}
@@ -1326,6 +1342,19 @@ static void _AST_Pattern_GetDefinedIdentifiers(const cypher_astnode_t *pattern, 
 	}
 }
 
+static void _AST_CreateIndex_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identifiers) {
+	uint child_count = cypher_astnode_nchildren(node);
+	for(uint c = 0; c < child_count; c ++) {
+		const cypher_astnode_t *child = cypher_astnode_get_child(node, c);
+		cypher_astnode_type_t type = cypher_astnode_type(child);
+		if(type == CYPHER_AST_IDENTIFIER) {
+			const char *identifier = cypher_ast_identifier_get_name(child);
+			raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
+			return;
+		}
+	}
+}
+
 static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identifiers) {
 	if(!node) return;
 	cypher_astnode_type_t type = cypher_astnode_type(node);
@@ -1363,7 +1392,12 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identi
 		raxInsert(identifiers, (unsigned char *)unwind_alias, strlen(unwind_alias), NULL, NULL);
 	} else if(type == CYPHER_AST_CALL) {
 		_AST_RegisterCallOutputs(node, identifiers);
-	} else {
+	} else if(type == CYPHER_AST_CREATE_NODE_PROPS_INDEX || 
+		type == CYPHER_AST_CREATE_PATTERN_PROPS_INDEX ||
+		type == CYPHER_AST_DROP_PROPS_INDEX) {
+		_AST_CreateIndex_GetDefinedIdentifiers(node, identifiers);
+	}
+	else {
 		uint child_count = cypher_astnode_nchildren(node);
 		for(uint c = 0; c < child_count; c ++) {
 			const cypher_astnode_t *child = cypher_astnode_get_child(node, c);
@@ -1478,12 +1512,8 @@ static AST_Validation _Validate_SETItems(const cypher_astnode_t *set_clause) {
 		const cypher_astnode_t *set_item = cypher_ast_set_get_item(set_clause, i);
 		const cypher_astnode_type_t type = cypher_astnode_type(set_item);
 		if(type == CYPHER_AST_SET_PROPERTY) {
-			const cypher_astnode_t *ast_prop = cypher_ast_set_property_get_property(set_item);
-			const cypher_astnode_t *ast_entity = cypher_ast_property_operator_get_expression(ast_prop);
-			if(cypher_astnode_type(ast_entity) != CYPHER_AST_IDENTIFIER) {
-				ErrorCtx_SetError("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions");
-				return AST_INVALID;
-			}
+			AST_Validation res = Validate_SETProperty(set_item);
+			if(res != AST_VALID) return res;
 		}
 	}
 	return AST_VALID;
@@ -1815,14 +1845,18 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 	// Verify that the query does not contain any expressions not in the
 	// RedisGraph support whitelist
 	if(CypherWhitelist_ValidateQuery(root) != AST_VALID) return AST_INVALID;
-
+	
+	AST_Validation res;
 	const cypher_astnode_t *body = cypher_ast_statement_get_body(root);
 	cypher_astnode_type_t body_type = cypher_astnode_type(body);
 	if(body_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX    ||
 	   body_type == CYPHER_AST_CREATE_PATTERN_PROPS_INDEX ||
 	   body_type == CYPHER_AST_DROP_PROPS_INDEX) {
-		// Index operation; validations are handled elsewhere.
-		return AST_VALID;
+		// Index operation
+		rax *defined_aliases = raxNew();
+		res = _Validate_Aliases_DefinedInClause(body, defined_aliases);
+		raxFree(defined_aliases);
+		return res;
 	}
 
 	// validate positions of allShortestPaths
@@ -1836,7 +1870,6 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 	mock_ast.root = body;
 
 	// Check for invalid queries not captured by libcypher-parser
-	AST_Validation res;
 	if(AST_ContainsClause(&mock_ast, CYPHER_AST_UNION)) {
 		// If the query contains a UNION clause, it has nested scopes that should be checked separately.
 		res = _AST_ValidateUnionQuery(&mock_ast);
