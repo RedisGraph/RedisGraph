@@ -126,6 +126,10 @@ void buildPatternComprehensionOps
 		} else {
 			ExecutionPlan_AddOp(root, aggregate);
 		}
+
+		// Build the FilterTree to model any WHERE predicates on these clauses and place ops appropriately.
+		FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(NULL, &pc, 1);
+		ExecutionPlan_PlaceFilterOps(plan, match_stream, NULL, sub_ft);
 	}
 
 	// restore AST
@@ -249,6 +253,16 @@ void buildPatternPathOps
 		} else {
 			ExecutionPlan_AddOp(root, aggregate);
 		}
+
+		// // Build the FilterTree to model any WHERE predicates on these clauses and place ops appropriately.
+		// FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(NULL, &path, 1);
+		// ExecutionPlan_PlaceFilterOps(plan, match_stream, NULL, sub_ft);
+
+		// QGPath **paths = array_new(QGPath *, 1);
+		// QGPath *qg_path = QGPath_New()
+		// //  match_stream->plan->query_graph
+		// OpBase *op = NewPathProjectOp(plan, paths);
+		// ExecutionPlan_AddOp(op, match_stream);
 	}
 
 	// restore AST

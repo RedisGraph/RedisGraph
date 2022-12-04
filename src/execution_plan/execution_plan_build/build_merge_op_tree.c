@@ -11,6 +11,7 @@
 #include "../../query_ctx.h"
 #include "../../util/rax_extensions.h"
 #include "../../ast/ast_build_op_contexts.h"
+#include "../../ast/ast_build_filter_tree.h"
 
 static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge_ctx,
 									const char **arguments) {
@@ -81,6 +82,10 @@ void buildMergeOp(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause,
 	// Set Merge op as new root and add previously-built ops, if any, as Merge's first stream.
 	ExecutionPlan_UpdateRoot(plan, merge_op);
 	ExecutionPlan_AddOp(merge_op, match_stream); // Add Match stream to Merge op.
+
+	// Build the FilterTree to model any WHERE predicates on these clauses and place ops appropriately.
+	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, &clause, 1);
+	ExecutionPlan_PlaceFilterOps(plan, match_stream, NULL, sub_ft);
 
 	// Build the Create stream as a Merge child.
 	_buildMergeCreateStream(plan, &merge_ctx, arguments);

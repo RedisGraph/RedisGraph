@@ -196,6 +196,10 @@ static void _buildOptionalMatchOps(ExecutionPlan *plan, AST *ast, const cypher_a
 		// If no root has been set (OPTIONAL was the first clause), set it to the Optional op.
 		ExecutionPlan_UpdateRoot(plan, optional);
 	}
+
+	// Build the FilterTree to model any WHERE predicates on these clauses and place ops appropriately.
+	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, &clause, 1);
+	ExecutionPlan_PlaceFilterOps(plan, match_stream, NULL, sub_ft);
 }
 
 void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause) {

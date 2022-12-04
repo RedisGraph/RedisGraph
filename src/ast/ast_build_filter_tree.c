@@ -240,7 +240,28 @@ FT_FilterNode *_FilterNode_FromAST(const cypher_astnode_t *expr) {
 	}
 }
 
-void _AST_ConvertGraphPatternToFilter(const AST *ast, FT_FilterNode **root,
+void _AST_ConvertGraphPatternPathToFilter(FT_FilterNode **root,
+									  const cypher_astnode_t *path) {
+	if(!path) return;
+	FT_FilterNode *ft_node = NULL;
+
+	// Go over each element in the path pattern and check if there is an inline filter.
+	uint nelements = cypher_ast_pattern_path_nelements(path);
+	// Nodes are in even places.
+	for(uint n = 0; n < nelements; n += 2) {
+		const cypher_astnode_t *node = cypher_ast_pattern_path_get_element(path, n);
+		ft_node = _convertInlinedProperties(node, GETYPE_NODE);
+		if(ft_node) _FT_Append(root, ft_node);
+	}
+	// Edges are in odd places.
+	for(uint e = 1; e < nelements; e += 2) {
+		const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, e);
+		ft_node = _convertInlinedProperties(edge, GETYPE_EDGE);
+		if(ft_node) _FT_Append(root, ft_node);
+	}
+}
+
+void _AST_ConvertGraphPatternToFilter(FT_FilterNode **root,
 									  const cypher_astnode_t *pattern) {
 	if(!pattern) return;
 	FT_FilterNode *ft_node = NULL;
@@ -248,20 +269,7 @@ void _AST_ConvertGraphPatternToFilter(const AST *ast, FT_FilterNode **root,
 	// Go over each path in the pattern.
 	for(uint i = 0; i < npaths; i++) {
 		const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
-		// Go over each element in the path pattern and check if there is an inline filter.
-		uint nelements = cypher_ast_pattern_path_nelements(path);
-		// Nodes are in even places.
-		for(uint n = 0; n < nelements; n += 2) {
-			const cypher_astnode_t *node = cypher_ast_pattern_path_get_element(path, n);
-			ft_node = _convertInlinedProperties(node, GETYPE_NODE);
-			if(ft_node) _FT_Append(root, ft_node);
-		}
-		// Edges are in odd places.
-		for(uint e = 1; e < nelements; e += 2) {
-			const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, e);
-			ft_node = _convertInlinedProperties(edge, GETYPE_EDGE);
-			if(ft_node) _FT_Append(root, ft_node);
-		}
+		_AST_ConvertGraphPatternPathToFilter(root, path);
 	}
 }
 
@@ -295,7 +303,7 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 			// Optional match clauses are handled separately.
 			if(cypher_ast_match_is_optional(match_clauses[i])) continue;
 			const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match_clauses[i]);
-			_AST_ConvertGraphPatternToFilter(ast, &filter_tree, pattern);
+			_AST_ConvertGraphPatternToFilter(&filter_tree, pattern);
 			const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(match_clauses[i]);
 			if(predicate) AST_ConvertFilters(&filter_tree, predicate);
 		}
@@ -348,12 +356,20 @@ FT_FilterNode *AST_BuildFilterTreeFromClauses
 		type = cypher_astnode_type(clauses[i]);
 		if(type == CYPHER_AST_MATCH) {
 			const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clauses[i]);
-			_AST_ConvertGraphPatternToFilter(ast, &filter_tree, pattern);
+			_AST_ConvertGraphPatternToFilter(&filter_tree, pattern);
 			predicate = cypher_ast_match_get_predicate(clauses[i]);
 		} else if(type == CYPHER_AST_WITH) {
 			predicate = cypher_ast_with_get_predicate(clauses[i]);
 		} else if(type == CYPHER_AST_CALL) {
 			predicate = cypher_ast_call_get_predicate(clauses[i]);
+		} else if(type == CYPHER_AST_MERGE) {
+			const cypher_astnode_t *pattern = cypher_ast_merge_get_pattern_path(clauses[i]);
+			_AST_ConvertGraphPatternPathToFilter(&filter_tree, pattern);
+		} else if(type == CYPHER_AST_PATTERN_COMPREHENSION) {
+			const cypher_astnode_t *pattern = cypher_ast_pattern_comprehension_get_pattern(clauses[i]);
+			_AST_ConvertGraphPatternPathToFilter(&filter_tree, pattern);
+		} else if(type == CYPHER_AST_PATTERN_PATH) {
+			_AST_ConvertGraphPatternPathToFilter(&filter_tree, clauses[i]);
 		} else {
 			ASSERT(false);
 		}
