@@ -253,10 +253,11 @@ QGNode *QGNode_Clone
 	return clone;
 }
 
+// gets a string representation of given node
 void QGNode_ToString
 (
-	const QGNode *n,
-	sds *buff
+	const QGNode *n,  // target node
+	sds *buff         // result buffer (concatenated)
 ) {
 	ASSERT(n != NULL);
 	ASSERT(buff != NULL);
