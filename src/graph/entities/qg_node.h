@@ -128,11 +128,11 @@ QGNode *QGNode_Clone
 	const QGNode *n
 );
 
-/* Gets a string representation of given node. */
+// gets a string representation of given node
 void QGNode_ToString
 (
-	const QGNode *n,
-	sds *buff
+	const QGNode *n,  // target node
+	sds *buff         // result buffer (concatenated)
 );
 
 // frees allocated space by given node
