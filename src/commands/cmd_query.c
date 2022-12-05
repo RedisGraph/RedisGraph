@@ -110,8 +110,6 @@ static bool _index_operation_delete
 	int res = GraphContext_DeleteIndex(gc, schema_type, label, attr,
 			IDX_EXACT_MATCH);
 
-	QueryCtx_UnlockCommit(NULL);
-
 	return res == INDEX_OK;
 }
 
@@ -179,9 +177,6 @@ static bool _index_operation_create
 	// add fields to index
 	bool index_added = GraphContext_AddExactMatchIndex(idx, gc, schema_type,
 					label, fields, nprops);
-
-	// unlock
-	QueryCtx_UnlockCommit(NULL);
 
 	return index_added;
 }
@@ -281,9 +276,9 @@ static void _ExecuteQuery(void *args) {
 	if(readonly) {
 		Graph_AcquireReadLock(gc->g);
 	} else {
-		/* if this is a writer query `we need to re-open the graph key with write flag
-		 * this notifies Redis that the key is "dirty" any watcher on that key will
-		 * be notified */
+		// if this is a writer query `we need to re-open the graph key with write flag
+		// this notifies Redis that the key is "dirty" any watcher on that key will
+		// be notified
 		CommandCtx_ThreadSafeContextLock(command_ctx);
 		{
 			GraphContext_MarkWriter(rm_ctx, gc);
