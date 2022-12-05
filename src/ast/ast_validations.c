@@ -217,13 +217,13 @@ static AST_Validation _ValidateMergeNode
 	return AST_VALID;
 }
 
+// Validate that the relation alias of an edge is not bound
 static AST_Validation _ValidateCreateRelation
 (
 	const cypher_astnode_t *entity,
 	rax *defined_aliases
 ) {
 	const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(entity);
-	// Validate that no relation aliases are previously bound.
 	if(identifier) {
 		const char *alias = cypher_ast_identifier_get_name(identifier);
 		if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) != raxNotFound) {
@@ -591,6 +591,12 @@ static bool _Validate_rel_pattern
 
 	if(start) {
 		if(vctx->clause == CYPHER_AST_CREATE) {
+			// validate that the relation alias is not bound
+			vctx->valid = _ValidateCreateRelation(n, vctx->defined_identifiers);
+			if(vctx->valid == AST_INVALID) {
+				return false;
+			}
+
 			// Validate that each relation has exactly one type.
 			uint reltype_count = cypher_ast_rel_pattern_nreltypes(n);
 			if(reltype_count != 1) {
@@ -601,15 +607,21 @@ static bool _Validate_rel_pattern
 
 			// Validate that each relation being created is directed.
 			if(cypher_ast_rel_pattern_get_direction(n) == CYPHER_REL_BIDIRECTIONAL) {
-				ErrorCtx_SetError("Only directed relationships are supported in CREATE");
-				vctx->valid = AST_INVALID;
-				return false;
+					ErrorCtx_SetError("Only directed relationships are supported in CREATE");
+					vctx->valid = AST_INVALID;
+					return false;
 			}
 		}
 
 		vctx->valid = _ValidateInlinedProperties(cypher_ast_rel_pattern_get_properties(n));
 		if(vctx->valid == AST_INVALID) return false;
 
+		// if we are in a merge clause, validate accordingly
+		if(vctx->clause == CYPHER_AST_MERGE) {
+			vctx->valid = _ValidateMergeRelation(n, vctx->defined_identifiers);
+			if(vctx->valid == AST_INVALID) return false;
+		}
+		
 		const cypher_astnode_t *alias_node = cypher_ast_rel_pattern_get_identifier(n);
 		if(!alias_node) return true; // Skip unaliased entities.
 		const char *alias = cypher_ast_identifier_get_name(alias_node);
@@ -635,17 +647,7 @@ static bool _Validate_rel_pattern
 		const cypher_astnode_t *range = cypher_ast_rel_pattern_get_varlength(n);
 		if(range) {
 			vctx->valid = _ValidateMultiHopTraversal(n, range);
-			return vctx->valid == AST_INVALID;
-		}
-
-		if(vctx->clause == CYPHER_AST_MERGE) {
-			vctx->valid = _ValidateMergeRelation(n, vctx->defined_identifiers);
-			if(vctx->valid == AST_INVALID) return false;
-		}
-
-		if(vctx->clause == CYPHER_AST_CREATE) {
-			vctx->valid = _ValidateCreateRelation(n, vctx->defined_identifiers);
-			if(vctx->valid == AST_INVALID) return false;
+			return vctx->valid == AST_VALID;
 		}
 	}
 
