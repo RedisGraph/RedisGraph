@@ -62,11 +62,12 @@ static void replace_match_clause
 			const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
 			array_append(paths, cypher_ast_clone(path));	
 		}
-		if(predicate == NULL) {
-			predicate = (cypher_astnode_t *)cypher_ast_match_get_predicate(clauses[i]);
-		} else {
-			cypher_astnode_t *new_predicate = (cypher_astnode_t *)cypher_ast_match_get_predicate(clauses[i]);
-			if(new_predicate != NULL) {
+		cypher_astnode_t *new_predicate = (cypher_astnode_t *)cypher_ast_match_get_predicate(clauses[i]);
+		if(new_predicate != NULL) {
+			new_predicate = cypher_ast_clone(new_predicate);
+			if(predicate == NULL) {
+				predicate = new_predicate;
+			} else {
 				cypher_astnode_t *children[] = {predicate, new_predicate};
 				predicate = cypher_ast_binary_operator(CYPHER_OP_AND, predicate, new_predicate, children, 2, range);
 			}
