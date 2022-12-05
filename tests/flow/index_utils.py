@@ -41,11 +41,19 @@ def create_edge_exact_match_index(graph, relation, *properties, sync=False):
     q = f"CREATE INDEX for ()-[r:{relation}]->() on (" + ','.join(map('r.{0}'.format, properties)) +")"
     return _create_index(graph, q, relation, "exact-match", sync)
 
-def create_fulltext_index(graph, relation, *properties, sync=False):
-    q = f"CALL db.idx.fulltext.createNodeIndex('{relation}', "
+def create_fulltext_index(graph, label, *properties, sync=False):
+    q = f"CALL db.idx.fulltext.createNodeIndex('{label}', "
     q += ','.join(map("'{0}'".format, properties))
     q += ")"
-    return _create_index(graph, q, relation, "full-text", sync)
+    return _create_index(graph, q, label, "full-text", sync)
+
+def drop_exact_match_index(graph, label, attribute):
+    q = f"DROP INDEX ON :{label}({attribute})"
+    return graph.query(q)
+
+def drop_fulltext_index(graph, label):
+    q = f"CALL db.idx.fulltext.drop('{label}')"
+    return graph.query(q)
 
 # validate index is being populated
 def index_under_construction(graph, label, t):
