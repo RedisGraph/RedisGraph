@@ -114,11 +114,12 @@ static void _AST_GetProcCallAliases
 		if(alias_node) {
 			// Alias is given: YIELD label AS l.
 			identifier = cypher_ast_identifier_get_name(alias_node);
-		} else {
-			// No alias, use identifier: YIELD label
+			raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
+		}
+		// } else {
+			// Introduce expression as well: YIELD label. (later removed from evn alias exists)
 			const cypher_astnode_t *exp_node = cypher_ast_projection_get_expression(proj_node);
 			identifier = cypher_ast_identifier_get_name(exp_node);
-		}
 		ASSERT(identifiers != NULL);
 		raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
 	}
@@ -512,8 +513,6 @@ static bool _Validate_reduce
 		return false;
 	}
 
-	// Can now manually visit the eval-expression
-	// In this manner I can also take into account the temporal vars with no embedded envs
 	const cypher_astnode_t *eval_exp = cypher_ast_reduce_get_eval(n);
 	// If accumulator is already in the environment, don't reintroduce
 	const cypher_astnode_t *accum_node =cypher_ast_reduce_get_accumulator(n);
@@ -938,6 +937,11 @@ static bool _Validate_CALL_Clause
 				vctx->valid = AST_INVALID;
 				goto cleanup;
 			}
+
+			// remove from env if an alias exists
+			if(cypher_ast_projection_get_alias(proj)){
+				raxRemove(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL);
+			}
 		}
 	}
 
@@ -1214,6 +1218,27 @@ static bool _Validate_MATCH_Clause
 	return true;
 }
 
+// validate index creation
+/*
+static bool _Validate_index_creation
+(
+	const cypher_astnode_t *n,
+	bool start,
+	ast_visitor *visitor
+) {
+	validations_ctx *vctx = visitor->ctx;
+	if(vctx->valid == AST_INVALID) {
+		return false;
+	}
+
+	if(start) {
+		vctx->clause = CYPHER_AST_CREATE_PATTERN_PROPS_INDEX;
+
+		// make sure 
+	}
+}
+*/
+
 // A query must end in a RETURN clause, a procedure, or an updating clause
 // (CREATE, MERGE, DELETE, SET, or REMOVE once supported)
 static AST_Validation _ValidateQueryTermination
@@ -1380,6 +1405,8 @@ static AST_Validation _ValidateScopes
 	AST_Visitor_register(visitor, CYPHER_AST_ALL, _Validate_list_comprehension);
 	AST_Visitor_register(visitor, CYPHER_AST_NONE, _Validate_list_comprehension);
 	AST_Visitor_register(visitor, CYPHER_AST_SINGLE, _Validate_list_comprehension);
+	// AST_Visitor_register(visitor, CYPHER_AST_CREATE_PATTERN_PROPS_INDEX, _Validate_index_creation);
+	// TODO: Add the same for edge indexes
 	
 	AST_Visitor_visit(ast->root, visitor);
 	
