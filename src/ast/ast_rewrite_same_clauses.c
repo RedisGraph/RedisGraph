@@ -77,7 +77,7 @@ static void replace_match_clause
 	cypher_astnode_t *pattern = cypher_ast_pattern(paths, array_len(paths), paths, array_len(paths), range);
 	// build the replacement clause
 	cypher_astnode_t *children[] = {pattern, predicate};
-	cypher_astnode_t *new_clause = cypher_ast_match(false, pattern, NULL, 0, predicate, children, 2, range);
+	cypher_astnode_t *new_clause = cypher_ast_match(false, pattern, NULL, 0, predicate, children, predicate == NULL ? 1 : 2, range);
 
 	// replace original clause with fully populated one
 	cypher_ast_query_replace_clauses(root, new_clause, scope_start, scope_end);
