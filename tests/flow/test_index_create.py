@@ -267,7 +267,7 @@ class testIndexCreationFlow(FlowTestsBase):
 
         # create index for relationship on undefined identifier after defined identifier
         try:
-            redis_graph.query("CREATE INDEX FOR ()-[n:T]-() ON (p.x, a.b)")
+            redis_graph.query("CREATE INDEX FOR ()-[n:T]-() ON (n.x, a.b)")
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("a not defined", str(e))

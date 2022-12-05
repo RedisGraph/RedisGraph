@@ -1219,7 +1219,6 @@ static bool _Validate_MATCH_Clause
 }
 
 // validate index creation
-/*
 static bool _Validate_index_creation
 (
 	const cypher_astnode_t *n,
@@ -1227,17 +1226,26 @@ static bool _Validate_index_creation
 	ast_visitor *visitor
 ) {
 	validations_ctx *vctx = visitor->ctx;
-	if(vctx->valid == AST_INVALID) {
-		return false;
-	}
+	if(vctx->valid == AST_INVALID) return false;
 
 	if(start) {
-		vctx->clause = CYPHER_AST_CREATE_PATTERN_PROPS_INDEX;
+		vctx->clause = cypher_astnode_type(n);
 
-		// make sure 
+		const cypher_astnode_t *id = cypher_ast_create_pattern_props_index_get_identifier(n);
+		const char *name = cypher_ast_identifier_get_name(id);
+		raxInsert(vctx->defined_identifiers, (unsigned char *)name, strlen(name), NULL, NULL);
+		// const cypher_astnode_t *prop = cypher_ast_create_pattern_props_index_get_property_operator(n);
+		// const cypher_astnode_t *exp = cypher_ast_property_operator_get_expression(prop);
+		// const char *exp_name = cypher_ast_identifier_get_name(exp);
+		// if(strcmp(name, exp_name) != 0) {
+		// 	ErrorCtx_SetError("%.*s not defined", strlen(exp_name), exp_name);
+		// 	vctx->valid = AST_INVALID;
+		// }
+		return true;
 	}
+
+	return false;
 }
-*/
 
 // A query must end in a RETURN clause, a procedure, or an updating clause
 // (CREATE, MERGE, DELETE, SET, or REMOVE once supported)
@@ -1363,15 +1371,6 @@ static AST_Validation _ValidateScopes
 (
 	AST *ast
 ) {
-	// Verify that the RETURN clause and terminating clause do not violate scoping rules.
-	if(_ValidateQuerySequence(ast) != AST_VALID) return AST_INVALID;
-
-	// Verify that the clause order in the scope is valid.
-	if(_ValidateClauseOrder(ast) != AST_VALID) return AST_INVALID;
-
-	// Verify that the clauses surrounding UNION return the same column names.
-	if(_ValidateUnion_Clauses(ast) != AST_VALID) return AST_INVALID;
-
 	validations_ctx ctx;
 	ctx.valid = AST_VALID;
 	ctx.defined_identifiers = raxNew();
@@ -1405,8 +1404,7 @@ static AST_Validation _ValidateScopes
 	AST_Visitor_register(visitor, CYPHER_AST_ALL, _Validate_list_comprehension);
 	AST_Visitor_register(visitor, CYPHER_AST_NONE, _Validate_list_comprehension);
 	AST_Visitor_register(visitor, CYPHER_AST_SINGLE, _Validate_list_comprehension);
-	// AST_Visitor_register(visitor, CYPHER_AST_CREATE_PATTERN_PROPS_INDEX, _Validate_index_creation);
-	// TODO: Add the same for edge indexes
+	AST_Visitor_register(visitor, CYPHER_AST_CREATE_PATTERN_PROPS_INDEX, _Validate_index_creation);
 	
 	AST_Visitor_visit(ast->root, visitor);
 	
@@ -1467,13 +1465,25 @@ AST_Validation AST_Validate_Query
 	if(CypherWhitelist_ValidateQuery(root) != AST_VALID) return AST_INVALID;
 
 	const cypher_astnode_t *body = cypher_ast_statement_get_body(root);
+	AST ast; // Build a fake AST with the correct AST root
+	ast.root = body;
+
 	cypher_astnode_type_t body_type = cypher_astnode_type(body);
 	if(body_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX    ||
 	   body_type == CYPHER_AST_CREATE_PATTERN_PROPS_INDEX ||
 	   body_type == CYPHER_AST_DROP_PROPS_INDEX) {
 		// Index operation; validations are handled elsewhere.
-		return AST_VALID;
+		return _ValidateScopes(&ast);
 	}
+
+	// Verify that the RETURN clause and terminating clause do not violate scoping rules.
+	if(_ValidateQuerySequence(&ast) != AST_VALID) return AST_INVALID;
+
+	// Verify that the clause order in the scope is valid.
+	if(_ValidateClauseOrder(&ast) != AST_VALID) return AST_INVALID;
+
+	// Verify that the clauses surrounding UNION return the same column names.
+	if(_ValidateUnion_Clauses(&ast) != AST_VALID) return AST_INVALID;
 
 	// validate positions of allShortestPaths
 	bool invalid = _ValidateAllShortestPaths(body);
@@ -1482,13 +1492,8 @@ AST_Validation AST_Validate_Query
 		return AST_INVALID;
 	}
 
-	AST mock_ast; // Build a fake AST with the correct AST root
-	mock_ast.root = body;
-
 	// Check for invalid queries not captured by libcypher-parser
-	AST_Validation res = _ValidateScopes(&mock_ast);
-
-	return res;
+	return _ValidateScopes(&ast);
 }
 
 //------------------------------------------------------------------------------
