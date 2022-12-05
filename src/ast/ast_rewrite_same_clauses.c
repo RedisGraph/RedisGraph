@@ -213,7 +213,13 @@ bool AST_RewriteSameClauses
 		for (; j < clause_count; j++) {
 			clause = cypher_ast_query_get_clause(root, j);
 			cypher_astnode_type_t t2 = cypher_astnode_type(clause);
-			if(t2 != t) break;
+			if(t2 != t) {
+				break;
+			}
+			if(t == CYPHER_AST_MATCH &&
+			    (cypher_ast_match_is_optional(clause) != cypher_ast_match_is_optional(clauses[0]))) {
+					break;
+			}
 			array_append(clauses, (cypher_astnode_t *)clause);
 		}
 		j--;
