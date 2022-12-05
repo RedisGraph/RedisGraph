@@ -114,7 +114,6 @@ static void replace_delete_clause
 	array_free(exps);
 }
 
-
 static void replace_set_clause
 (
 	cypher_astnode_t *root,      // ast root
@@ -206,6 +205,7 @@ bool AST_RewriteSameClauses
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(root, i);
 		cypher_astnode_type_t t = cypher_astnode_type(clause);
 		if(!is_compressible(t)) continue;
+		if(t == CYPHER_AST_MATCH && cypher_ast_match_is_optional(clause)) continue;
 
 		array_append(clauses, (cypher_astnode_t *)clause);
 
