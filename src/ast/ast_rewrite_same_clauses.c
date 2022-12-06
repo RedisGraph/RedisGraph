@@ -114,7 +114,6 @@ static void replace_delete_clause
 	array_free(exps);
 }
 
-
 static void replace_set_clause
 (
 	cypher_astnode_t *root,      // ast root
@@ -176,11 +175,13 @@ static void replace_remove_clause
 // returns true if type is compressible
 static bool is_compressible
 (
-	cypher_astnode_type_t type
+	cypher_astnode_type_t type  // type to check
 ) {
 	if(type == CYPHER_AST_CREATE || type == CYPHER_AST_MATCH ||
 	   type == CYPHER_AST_DELETE || type == CYPHER_AST_SET ||
-	   type == CYPHER_AST_REMOVE) return true;
+	   type == CYPHER_AST_REMOVE) {
+		return true;
+	}
 
 	// type is not compressible
 	return false;
@@ -197,7 +198,9 @@ bool AST_RewriteSameClauses
 
 	// retrieve the root query node from the statement
 	const cypher_astnode_t *root = cypher_ast_statement_get_body(statement);
-	if(cypher_astnode_type(root) != CYPHER_AST_QUERY) return rewritten;
+	if(cypher_astnode_type(root) != CYPHER_AST_QUERY) {
+		return rewritten;
+	}
 
 	uint clause_count = cypher_ast_query_nclauses(root);
 
@@ -205,7 +208,9 @@ bool AST_RewriteSameClauses
 	for(uint i = 0; i < clause_count; i++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(root, i);
 		cypher_astnode_type_t t = cypher_astnode_type(clause);
-		if(!is_compressible(t)) continue;
+		if(!is_compressible(t)) {
+			continue;
+		}
 
 		array_append(clauses, (cypher_astnode_t *)clause);
 
@@ -225,7 +230,8 @@ bool AST_RewriteSameClauses
 		j--;
 		
 		if(j - i > 0) {
-			// multiple clauses with same type, replace them
+			// multiple executive clauses with same type, replace them
+			// with one combined clause
 			if(t == CYPHER_AST_CREATE) {
 				replace_create_clause((cypher_astnode_t *)root, clauses, i, j);
 			} else if(t == CYPHER_AST_MATCH) {
