@@ -16,7 +16,7 @@ static void replace_create_clause
 (
 	cypher_astnode_t *root,      // ast root
 	cypher_astnode_t **clauses,  // clause being replaced
-	int scope_start,             // begining of scope
+	int scope_start,             // beginning of scope
 	int scope_end                // ending of scope
 ) {
 	uint count = array_len(clauses);
@@ -33,11 +33,13 @@ static void replace_create_clause
 		cypher_ast_free(clauses[i]);
 	}
 	
+	//build the replacement pattern
 	cypher_astnode_t *pattern = cypher_ast_pattern(paths, array_len(paths), paths, array_len(paths), range);
+	
 	// build the replacement clause
 	cypher_astnode_t *new_clause = cypher_ast_create(false, pattern, &pattern, 1, range);
 
-	// replace original clause with fully populated one
+	// replace original clause with the new one
 	cypher_ast_query_replace_clauses(root, new_clause, scope_start, scope_end);
 	
 	array_free(paths);
@@ -47,7 +49,7 @@ static void replace_match_clause
 (
 	cypher_astnode_t *root,      // ast root
 	cypher_astnode_t **clauses,  // clause being replaced
-	int scope_start,             // begining of scope
+	int scope_start,             // beginning of scope
 	int scope_end                // ending of scope
 ) {
 	uint count = array_len(clauses);
@@ -75,12 +77,14 @@ static void replace_match_clause
 		cypher_ast_free(clauses[i]);
 	}
 	
+	// build the replacement pattern
 	cypher_astnode_t *pattern = cypher_ast_pattern(paths, array_len(paths), paths, array_len(paths), range);
+	
 	// build the replacement clause
 	cypher_astnode_t *children[] = {pattern, predicate};
 	cypher_astnode_t *new_clause = cypher_ast_match(false, pattern, NULL, 0, predicate, children, predicate == NULL ? 1 : 2, range);
 
-	// replace original clause with fully populated one
+	// replace original clause with the new one
 	cypher_ast_query_replace_clauses(root, new_clause, scope_start, scope_end);
 	
 	array_free(paths);
@@ -90,7 +94,7 @@ static void replace_delete_clause
 (
 	cypher_astnode_t *root,      // ast root
 	cypher_astnode_t **clauses,  // clause being replaced
-	int scope_start,             // begining of scope
+	int scope_start,             // beginning of scope
 	int scope_end                // ending of scope
 ) {
 	uint count = array_len(clauses);
@@ -107,9 +111,10 @@ static void replace_delete_clause
 		cypher_ast_free(clauses[i]);
 	}
 	
+	// build the replacement clause
 	cypher_astnode_t *new_clause = cypher_ast_delete(false, exps, array_len(exps), exps, array_len(exps), range);
 
-	// replace original clause with fully populated one
+	// replace original clause with the new one
 	cypher_ast_query_replace_clauses(root, new_clause, scope_start, scope_end);
 	
 	array_free(exps);
@@ -119,7 +124,7 @@ static void replace_set_clause
 (
 	cypher_astnode_t *root,      // ast root
 	cypher_astnode_t **clauses,  // clause being replaced
-	int scope_start,             // begining of scope
+	int scope_start,             // beginning of scope
 	int scope_end                // ending of scope
 ) {
 	uint count = array_len(clauses);
@@ -136,9 +141,10 @@ static void replace_set_clause
 		cypher_ast_free(clauses[i]);
 	}
 	
+	// build the replacement clause
 	cypher_astnode_t *new_clause = cypher_ast_set(items, array_len(items), items, array_len(items), range);
 
-	// replace original clause with fully populated one
+	// replace original clause with the new one
 	cypher_ast_query_replace_clauses(root, new_clause, scope_start, scope_end);
 	
 	array_free(items);
@@ -148,7 +154,7 @@ static void replace_remove_clause
 (
 	cypher_astnode_t *root,      // ast root
 	cypher_astnode_t **clauses,  // clause being replaced
-	int scope_start,             // begining of scope
+	int scope_start,             // beginning of scope
 	int scope_end                // ending of scope
 ) {
 	uint count = array_len(clauses);
@@ -165,6 +171,7 @@ static void replace_remove_clause
 		cypher_ast_free(clauses[i]);
 	}
 	
+	// build the replacement clause
 	cypher_astnode_t *new_clause = cypher_ast_remove(items, array_len(items), items, array_len(items), range);
 
 	// replace original clause with fully populated one
@@ -193,6 +200,7 @@ bool AST_RewriteSameClauses
 	cypher_parse_result_t *result
 ) {
 	bool rewritten = false;
+	
 	// retrieve the statement node
 	const cypher_astnode_t *statement = cypher_parse_result_get_root(result, 0);
 	if(cypher_astnode_type(statement) != CYPHER_AST_STATEMENT) return rewritten;
@@ -205,13 +213,18 @@ bool AST_RewriteSameClauses
 
 	uint clause_count = cypher_ast_query_nclauses(root);
 
+	// traverse over clauses, compress compressible executive clauses.
 	cypher_astnode_t **clauses = array_new(cypher_astnode_t *, 0);
 	for(uint i = 0; i < clause_count; i++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(root, i);
 		cypher_astnode_type_t t = cypher_astnode_type(clause);
+
+		// check compressibility, move on if not compressible
 		if(!is_compressible(t)) {
 			continue;
 		}
+
+		// don't combine OPTIONAL MATCH clauses
 		if(t == CYPHER_AST_MATCH && cypher_ast_match_is_optional(clause)) continue;
 
 		array_append(clauses, (cypher_astnode_t *)clause);
@@ -223,9 +236,8 @@ bool AST_RewriteSameClauses
 			if(t2 != t) {
 				break;
 			}
-			if(t == CYPHER_AST_MATCH &&
-			    (cypher_ast_match_is_optional(clause) != cypher_ast_match_is_optional(clauses[0]))) {
-					break;
+			if(t == CYPHER_AST_MATCH && cypher_ast_match_is_optional(t)) {
+				break;
 			}
 			array_append(clauses, (cypher_astnode_t *)clause);
 		}
