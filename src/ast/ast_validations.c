@@ -163,7 +163,7 @@ static AST_Validation _ValidateMultiHopTraversal
 	// Check if the relation has an alias
 	const cypher_astnode_t *ast_identifier = cypher_ast_rel_pattern_get_identifier(edge);
 	if(!ast_identifier) return AST_VALID;
-
+	
 	const char *identifier = cypher_ast_identifier_get_name(ast_identifier);
 	ErrorCtx_SetError("RedisGraph does not support alias of variable-length traversal edges '%s'. \
 	Instead, use a query in the style of: 'MATCH p = (a)-[*]->(b) RETURN relationships(p)'.",
@@ -650,7 +650,9 @@ static bool _Validate_rel_pattern
 		}
 		
 		const cypher_astnode_t *alias_node = cypher_ast_rel_pattern_get_identifier(n);
-		if(!alias_node) return true; // Skip unaliased entities.
+		if(!alias_node) {
+			return true; // Skip unaliased entities.
+		}
 		const char *alias = cypher_ast_identifier_get_name(alias_node);
 		void *alias_type = raxFind(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias));
 		if(alias_type == raxNotFound) {
