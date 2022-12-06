@@ -41,7 +41,7 @@ typedef struct {
 } QueryInfo;
 
 // Creates a new, empty query info object.
-QueryInfo QueryInfo_New();
+QueryInfo QueryInfo_New(void);
 // Assigns the query context to the query info.
 void QueryInfo_SetQueryContext(QueryInfo *, const QueryCtx *);
 // Returns the query context associated with the query info.
@@ -141,6 +141,12 @@ typedef struct {
     // Maximum registered time a query was spent waiting, executing and
     // reporting the results.
     atomic_uint_fast64_t max_query_pipeline_time;
+    // A global lock for the object. Used as an inverse lock - allows parallel
+    // writers but just one reader. This is done that way as the parallel
+    // writes are guaranteed to happen lock-free or without race conditions,
+    // so the locking for writes isn't really required. But what is required is
+    // locking for reads, and to allow that, and rwlock is used inversely.
+    pthread_rwlock_t inverse_global_lock;
 } Info;
 
 // Create a new info structure. Returns true on successful creation.
@@ -190,3 +196,7 @@ uint64_t Info_GetReportingQueriesCount(const Info *);
 // Return the maximum registered time a query was spent waiting, executing and
 // reporting the results.
 uint64_t Info_GetMaxQueryPipelineTime(const Info *);
+// Locks the info object for external reading. Only one concurrent read is
+// allowed at the same time.
+bool Info_Lock(Info *);
+bool Info_Unlock(Info *);
