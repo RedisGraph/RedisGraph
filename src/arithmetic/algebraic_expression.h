@@ -94,14 +94,14 @@ AlgebraicExpression *AlgebraicExpression_Clone
 // row domain
 const char *AlgebraicExpression_Src
 (
-	AlgebraicExpression *root   // Root of expression.
+	const AlgebraicExpression *root   // Root of expression.
 );
 
 // Returns the destination entity alias represented by the right-most operand
 // column domain
 const char *AlgebraicExpression_Dest
 (
-	AlgebraicExpression *root   // Root of expression.
+	const AlgebraicExpression *root   // Root of expression.
 );
 
 // Returns the first edge alias encountered
