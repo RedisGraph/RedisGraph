@@ -70,7 +70,7 @@ const AlgebraicExpression *AlgebraicExpression_DestOperand
 // returns the source entity alias, row domain
 const char *AlgebraicExpression_Src
 (
-	AlgebraicExpression *root   // root of expression
+	const AlgebraicExpression *root  // root of expression
 ) {
 	ASSERT(root != NULL);
 
@@ -85,7 +85,7 @@ const char *AlgebraicExpression_Src
 // column domain
 const char *AlgebraicExpression_Dest
 (
-	AlgebraicExpression *root   // root of expression
+	const AlgebraicExpression *root   // root of expression
 ) {
 	ASSERT(root);
 	// Dest(exp) = Src(Transpose(exp))
