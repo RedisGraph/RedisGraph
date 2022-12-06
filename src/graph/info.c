@@ -55,7 +55,7 @@ typedef uint64_t uint;
         } \
     } while (0);
 
-QueryInfo QueryInfo_New() {
+QueryInfo QueryInfo_New(void) {
     QueryInfo query_info = {
         .waiting_time_milliseconds = 0,
         .executing_time_milliseconds = 0,
@@ -169,6 +169,7 @@ QueryInfoStorage QueryInfoStorage_NewWithCapacity(const uint64_t capacity) {
 QueryInfoStorage QueryInfoStorage_NewWithLength(const uint64_t length) {
     QueryInfoStorage storage;
     storage.queries = array_newlen(QueryInfo, length);
+
     return storage;
 }
 
@@ -242,6 +243,18 @@ QueryInfo* QueryInfoStorage_Get
     REQUIRE_TRUE_OR_RETURN(is_enough_space, false);
 
     return array_elem(storage->queries, index);
+}
+
+static bool _QueryInfoStorage_ResetAll(QueryInfoStorage *storage) {
+    REQUIRE_ARG_OR_RETURN(storage, false);
+
+    for (uint64_t i = 0; i < QueryInfoStorage_Length(storage); ++i) {
+        if (!QueryInfoStorage_ResetElement(storage, i)) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 bool QueryInfoStorage_ResetElement
@@ -372,6 +385,16 @@ static bool _unlock_rwlock(pthread_rwlock_t *lock) {
     return !pthread_rwlock_unlock(lock);
 }
 
+static bool _Info_LockEverything(Info *info, const bool is_write) {
+    REQUIRE_ARG_OR_RETURN(info, false);
+    return _lock_rwlock(&info->inverse_global_lock, !is_write);
+}
+
+static bool _Info_UnlockEverything(Info *info) {
+    REQUIRE_ARG_OR_RETURN(info, false);
+    return _unlock_rwlock(&info->inverse_global_lock);
+}
+
 static bool _Info_LockWaitingQueries(Info *info, const bool is_write) {
     REQUIRE_ARG_OR_RETURN(info, false);
     return _lock_rwlock(&info->waiting_queries_rwlock, is_write);
@@ -384,17 +407,26 @@ static bool _Info_UnlockWaitingQueries(Info *info) {
 
 bool Info_New(Info *info) {
     REQUIRE_ARG_OR_RETURN(info, false);
-    const uint64_t thread_count = ThreadPools_ThreadCount();
+    // Compensate for the main thread.
+    const uint64_t thread_count = ThreadPools_ThreadCount() + 1;
 
     info->waiting_queries = QueryInfoStorage_New();
     info->executing_queries_per_thread
         = QueryInfoStorage_NewWithLength(thread_count);
     info->reporting_queries_per_thread
         = QueryInfoStorage_NewWithLength(thread_count);
+    _QueryInfoStorage_ResetAll(&info->executing_queries_per_thread);
+    _QueryInfoStorage_ResetAll(&info->reporting_queries_per_thread);
     info->max_query_pipeline_time = 0;
 
-    const bool lock_initialized = !pthread_rwlock_init(
+    bool lock_initialized = !pthread_rwlock_init(
         &info->waiting_queries_rwlock,
+        NULL);
+
+    REQUIRE_TRUE_OR_RETURN(lock_initialized, false);
+
+   lock_initialized = !pthread_rwlock_init(
+        &info->inverse_global_lock,
         NULL);
 
     REQUIRE_TRUE_OR_RETURN(lock_initialized, false);
@@ -410,13 +442,19 @@ void Info_Reset(Info *info) {
 
 bool Info_Free(Info *info) {
     REQUIRE_ARG_OR_RETURN(info, false);
+    REQUIRE_TRUE_OR_RETURN(_Info_LockEverything(info, true), false);
 
     QueryInfoStorage_Free(&info->waiting_queries);
     QueryInfoStorage_Free(&info->executing_queries_per_thread);
     QueryInfoStorage_Free(&info->reporting_queries_per_thread);
-    const bool lock_destroyed = !pthread_rwlock_destroy(
+    bool lock_destroyed = !pthread_rwlock_destroy(
         &info->waiting_queries_rwlock);
     ASSERT(lock_destroyed);
+    lock_destroyed = !pthread_rwlock_destroy(
+        &info->inverse_global_lock);
+    ASSERT(lock_destroyed);
+
+    REQUIRE_TRUE_OR_RETURN(_Info_UnlockEverything(info), false);
 
     return true;
 }
@@ -428,6 +466,8 @@ void Info_AddWaitingQueryInfo
     const uint64_t waiting_time_milliseconds
 ) {
     REQUIRE_ARG(info);
+
+    REQUIRE_TRUE(_Info_LockEverything(info, true));
     REQUIRE_TRUE(_Info_LockWaitingQueries(info, true));
 
     QueryInfo query_info = QueryInfo_New();
@@ -436,6 +476,7 @@ void Info_AddWaitingQueryInfo
     QueryInfoStorage_Add(&info->waiting_queries, query_info);
 
     REQUIRE_TRUE(_Info_UnlockWaitingQueries(info));
+    REQUIRE_TRUE(_Info_UnlockEverything(info));
 }
 
 bool _Info_MoveQueryInfoBetweenStorages
@@ -462,6 +503,7 @@ void Info_IndicateQueryStartedExecution
 ) {
     REQUIRE_ARG(info);
     REQUIRE_ARG(context);
+    REQUIRE_TRUE(_Info_LockEverything(info, true));
     REQUIRE_TRUE(_Info_LockWaitingQueries(info, true));
 
     // This effectively moves the query info object from the waiting queue
@@ -479,12 +521,17 @@ void Info_IndicateQueryStartedExecution
                 &info->executing_queries_per_thread,
                 thread_id,
                 query_info);
-            REQUIRE_TRUE(set);
+            ASSERT(set);
+            if (!set) {
+                _Info_UnlockEverything(info);
+                return;
+            }
             break;
         }
     }
 
     REQUIRE_TRUE(_Info_UnlockWaitingQueries(info));
+    REQUIRE_TRUE(_Info_UnlockEverything(info));
 }
 
 void Info_IndicateQueryStartedReporting
@@ -494,6 +541,7 @@ void Info_IndicateQueryStartedReporting
 ) {
     REQUIRE_ARG(info);
     REQUIRE_ARG(context);
+    REQUIRE_TRUE(_Info_LockEverything(info, true));
 
     // This effectively moves the query info object from the executing queue
     // to the reporting queue, recording the time spent executing.
@@ -509,7 +557,8 @@ void Info_IndicateQueryStartedReporting
         &info->executing_queries_per_thread,
         &info->reporting_queries_per_thread,
         thread_id);
-    REQUIRE_TRUE(moved);
+    ASSERT(moved);
+    REQUIRE_TRUE(_Info_UnlockEverything(info));
 }
 
 static void _Info_RecalculateMaxQueryWaitingTime
@@ -536,6 +585,7 @@ void Info_IndicateQueryFinishedReporting
 ) {
     REQUIRE_ARG(info);
     REQUIRE_ARG(context);
+    REQUIRE_TRUE(_Info_LockEverything(info, true));
 
     // This effectively removes the query info object from the reporting queue.
 
@@ -543,7 +593,13 @@ void Info_IndicateQueryFinishedReporting
     QueryInfo *query_info = QueryInfoStorage_Get(
         &info->reporting_queries_per_thread,
         thread_id);
-    REQUIRE_ARG(query_info && QueryInfo_GetQueryContext(query_info) == context);
+    const bool is_ours
+        = query_info && QueryInfo_GetQueryContext(query_info) == context;
+    ASSERT(is_ours);
+    if (!is_ours) {
+        REQUIRE_TRUE(_Info_UnlockEverything(info));
+        return;
+    }
     QueryInfo_UpdateReportingTime(query_info);
     _Info_RecalculateMaxQueryWaitingTime(info, *query_info);
     QueryInfoStorage_ResetElement(
@@ -582,17 +638,39 @@ uint64_t Info_GetWaitingQueriesCount(const Info *info) {
 uint64_t Info_GetExecutingQueriesCount(const Info *info) {
     REQUIRE_ARG_OR_RETURN(info, 0);
 
-    return QueryInfoStorage_ValidCount(&info->executing_queries_per_thread);
+    REQUIRE_TRUE_OR_RETURN(_Info_LockEverything(info, true), 0);
+
+    const uint64_t count
+        = QueryInfoStorage_ValidCount(&info->executing_queries_per_thread);
+
+    REQUIRE_TRUE_OR_RETURN(_Info_UnlockEverything(info), 0);
+
+    return count;
 }
 
 uint64_t Info_GetReportingQueriesCount(const Info *info) {
     REQUIRE_ARG_OR_RETURN(info, 0);
 
-    return QueryInfoStorage_ValidCount(&info->reporting_queries_per_thread);
+    REQUIRE_TRUE_OR_RETURN(_Info_LockEverything(info, true), 0);
+
+    const uint64_t count
+        = QueryInfoStorage_ValidCount(&info->reporting_queries_per_thread);
+
+    REQUIRE_TRUE_OR_RETURN(_Info_UnlockEverything(info), 0);
+
+    return count;
 }
 
 uint64_t Info_GetMaxQueryPipelineTime(const Info *info) {
     REQUIRE_ARG_OR_RETURN(info, 0);
 
     return info->max_query_pipeline_time;
+}
+
+bool Info_Lock(Info *info) {
+    return _Info_LockEverything(info, false);
+}
+
+bool Info_Unlock(Info *info) {
+    return _Info_UnlockEverything(info);
 }
