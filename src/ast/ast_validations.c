@@ -16,11 +16,18 @@
 #include "../procedures/procedure.h"
 #include "../arithmetic/arithmetic_expression.h"
 
+typedef enum {
+	NOT_DEFINED = 0x00,
+	REGULAR = 0x01,
+	ALL = 0x02
+} is_union_all;
+
 typedef struct
 {
 	rax *defined_identifiers;
 	cypher_astnode_type_t clause;
 	AST_Validation valid;
+	is_union_all union_all;
 } validations_ctx;
 
 // validate that allShortestPaths is in a supported place
@@ -838,29 +845,14 @@ static AST_Validation _Validate_LIMIT_SKIP_Modifiers
 }
 
 static AST_Validation _ValidateUnion_Clauses(const AST *ast) {
-	/* Make sure there's no conflict between UNION clauses
-	 * either all UNION clauses specify ALL or neither of them does. */
+	// get amount of UNION clauses
 	AST_Validation res = AST_VALID;
 	uint *union_indices = AST_GetClauseIndices(ast, CYPHER_AST_UNION);
 	uint union_clause_count = array_len(union_indices);
-	int has_all_count = 0;
+	array_free(union_indices);
 
 	if(union_clause_count == 0) {
 		return AST_VALID;
-	}
-
-	for(uint i = 0; i < union_clause_count; i++) {
-		const cypher_astnode_t *union_clause = cypher_ast_query_get_clause(ast->root, union_indices[i]);
-		if(cypher_ast_union_has_all(union_clause)) has_all_count++;
-	}
-	array_free(union_indices);
-
-	// If we've encountered UNION ALL clause, all UNION clauses should specify ALL.
-	if(has_all_count != 0) {
-		if(has_all_count != union_clause_count) {
-			ErrorCtx_SetError("Invalid combination of UNION and UNION ALL.");
-			return AST_INVALID;
-		}
 	}
 
 	// Require all RETURN clauses to perform the exact same projection.
@@ -1147,6 +1139,15 @@ static bool _Validate_UNION_Clause
 	}
 
 	if(start) {
+		// Make sure all UNIONs specify ALL or none of them do
+		if(vctx->union_all == NOT_DEFINED) {
+			vctx->union_all = cypher_ast_union_has_all(n);
+		}
+		else if(vctx->union_all != cypher_ast_union_has_all(n)) {
+			vctx->valid = AST_INVALID;
+			return false;
+		}
+
 		vctx->clause = cypher_astnode_type(n);
 		raxFree(vctx->defined_identifiers);
 		vctx->defined_identifiers = raxNew();
@@ -1440,6 +1441,7 @@ static AST_Validation _ValidateScopes
 ) {
 	validations_ctx ctx;
 	ctx.valid = AST_VALID;
+	ctx.union_all = NOT_DEFINED;
 	ctx.defined_identifiers = raxNew();
 
 	ast_visitor *visitor = AST_Visitor_new(&ctx);
