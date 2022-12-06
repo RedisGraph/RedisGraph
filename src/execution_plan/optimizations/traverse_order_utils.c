@@ -8,7 +8,7 @@
 #include "../../util/arr.h"
 #include "traverse_order_utils.h"
 
-static bool _AlgebraicExpression_IsVarLen
+static bool _AlgebraicExpression_IsRangeLen
 (
 	const AlgebraicExpression *exp,
 	const QueryGraph *qg
@@ -24,7 +24,7 @@ static bool _AlgebraicExpression_IsVarLen
 	QGEdge *e = QueryGraph_GetEdgeByAlias(qg, edge_alias);
 	ASSERT(e != NULL);
 
-	return QGEdge_VariableLength(e);
+	return QGEdge_RangeLength(e);
 }
 
 //------------------------------------------------------------------------------
@@ -66,7 +66,7 @@ int TraverseOrder_LabelsScore
 	// 3. [B] - label matrix
 	//
 	// we don't want to score expression [R] as if it resolves labels
-	if(_AlgebraicExpression_IsVarLen(exp, qg)) {
+	if(_AlgebraicExpression_IsRangeLen(exp, qg)) {
 		score = 0;
 	}
 
@@ -91,9 +91,9 @@ int TraverseOrder_FilterExistenceScore
 	const  char  *dest          =  AlgebraicExpression_Dest(exp);
 	const  char  *edge          =  AlgebraicExpression_Edge(exp);
 
-	// varible length expression shouldn't be scored on its source or destination
+	// range length expression shouldn't be scored on its source or destination
 	// as these are usually (if labeled) represented via seperated expressions
-	if(!_AlgebraicExpression_IsVarLen(exp, qg)) {
+	if(!_AlgebraicExpression_IsRangeLen(exp, qg)) {
 		frequency = raxFind(filtered_entities, (unsigned char *)src, strlen(src));
 		if(frequency != raxNotFound) {
 			score += 2;
@@ -274,8 +274,8 @@ void TraverseOrder_ScoreExpressions
 			score = TraverseOrder_FilterExistenceScore(exp, qg,
 													   filtered_entities);
 			if(score > 0) {
-				if(_AlgebraicExpression_IsVarLen(exp, qg)) {
-					// variable length traversal should always "lose" to its
+				if(_AlgebraicExpression_IsRangeLen(exp, qg)) {
+					// range length traversal should always "lose" to its
 					// direct prev and next expressions
 					score = currmax / 2;
 				} else {

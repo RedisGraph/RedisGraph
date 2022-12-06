@@ -25,7 +25,7 @@ QGEdge *QGEdge_New
 	e->maxHops        =  1;
 	e->bidirectional  =  false;
 	e->shortest_path  =  false;
-	e->varLen         =  false;
+	e->rangeLen       =  false;
 
 	return e;
 }
@@ -71,12 +71,12 @@ QGEdge *QGEdge_Clone
 	return e;
 }
 
-bool QGEdge_VariableLength
+bool QGEdge_RangeLength
 (
 	const QGEdge *e
 ) {
 	ASSERT(e);
-	return (e->varLen);
+	return (e->rangeLen);
 }
 
 bool QGEdge_IsShortestPath

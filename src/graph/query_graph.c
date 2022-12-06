@@ -118,7 +118,7 @@ static void _QueryGraphAddEdge
 	// incase of a variable length edge, set edge min/max hops
 	const cypher_astnode_t *range = cypher_ast_rel_pattern_get_varlength(ast_entity);
 	if(range) {
-		edge->varLen = true;
+		edge->rangeLen = true;
 		const cypher_astnode_t *start = cypher_ast_range_get_start(range);
 		const cypher_astnode_t *end = cypher_ast_range_get_end(range);
 		if(start) edge->minHops = AST_ParseIntegerNode(start);

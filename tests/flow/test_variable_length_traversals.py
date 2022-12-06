@@ -183,8 +183,8 @@ class testVariableLengthTraversals(FlowTestsBase):
         expected_result = [['A', 'B']]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-    # Test variable-length edges using minHops and maxHops
-    def test11_variable_length_edges(self):
+    # Test range-length edges
+    def test11_range_length_edges(self):
         query = """CREATE (a {v:'a'}), (b {v:'b'}), (c {v:'c'}), (d {v:'d'}), (a)-[:R]->(b), (b)-[:R]->(c), (c)-[:R]->(a), (d)-[:R]->(d)"""
         actual_result = redis_graph.query(query)
         query_to_expected_result = {

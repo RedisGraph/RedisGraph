@@ -21,7 +21,7 @@ struct QGEdge {
 	uint maxHops;           // maximum number of hops this edge represents
 	bool bidirectional;     // edge doesn't have a direction
 	bool shortest_path;     // only edges in the shortest paths should be collected
-	bool varLen;            // this edge represents a variable length relationship
+	bool rangeLen;          // this edge represents a relationship with range of hops: minHops, maxHops or both of them were defined
 };
 
 typedef struct QGEdge QGEdge;
@@ -57,8 +57,8 @@ QGEdge *QGEdge_Clone
 	const QGEdge *orig
 );
 
-// determine whether this is a variable length edge
-bool QGEdge_VariableLength
+// determine whether this is a edge with a range of length defined (variable length [*minHops..maxHops] or fixed length [*Hops])
+bool QGEdge_RangeLength
 (
 	const QGEdge *e
 );
