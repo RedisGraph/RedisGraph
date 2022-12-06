@@ -57,7 +57,7 @@ static bool _ValidateAllShortestPaths
 }
 
 // get aliases of the WITH clause
-// return true if no errors where found, false otherwise
+// return true if no errors where encountered, false otherwise
 static bool _AST_GetWithAliases
 (
 	const cypher_astnode_t *node,
@@ -95,8 +95,13 @@ static bool _AST_GetWithAliases
 		// check for duplicate column names
 		if(raxTryInsert(local_env, (unsigned char *)alias, strlen(alias), NULL, NULL) == 0) {
 			ErrorCtx_SetError("Error: Multiple result columns with the same name are not supported.");
+			raxFree(local_env);
 			return false;
 		}
+	}
+
+	if(local_env) {
+		raxFree(local_env);
 	}
 	return true;
 }
@@ -865,6 +870,7 @@ static AST_Validation _ValidateUnion_Clauses(const AST *ast) {
 	if(return_clause_count != union_clause_count + 1) {
 		ErrorCtx_SetError("Found %d UNION clauses but only %d RETURN clauses.", union_clause_count,
 						  return_clause_count);
+		array_free(return_indices);
 		return AST_INVALID;
 	}
 
@@ -995,8 +1001,12 @@ static bool _Validate_CALL_Clause
 	}
 
 cleanup:
-	if(proc) Proc_Free(proc);
-	if(rax) raxFree(rax);
+	if(proc) {
+		Proc_Free(proc);
+	}
+	if(rax) {
+		raxFree(rax);
+	}
 	return vctx->valid == AST_VALID;
 }
 
@@ -1465,7 +1475,10 @@ static AST_Validation _ValidateScopes
 	
 	AST_Visitor_visit(ast->root, visitor);
 	
-	return ctx.valid;
+	AST_Validation is_valid = ctx.valid;
+	raxFree(ctx.defined_identifiers);
+	AST_Visitor_free(visitor);
+	return is_valid;
 }
 
 // Checks to see if libcypher-parser reported any errors.
