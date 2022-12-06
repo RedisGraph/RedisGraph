@@ -17,9 +17,9 @@
 #include "../arithmetic/arithmetic_expression.h"
 
 typedef enum {
-	NOT_DEFINED = 0x00,
-	REGULAR = 0x01,
-	ALL = 0x02
+	NOT_DEFINED = -0x01,
+	REGULAR = 0x00,
+	ALL = 0x01
 } is_union_all;
 
 typedef struct
@@ -1144,6 +1144,7 @@ static bool _Validate_UNION_Clause
 			vctx->union_all = cypher_ast_union_has_all(n);
 		}
 		else if(vctx->union_all != cypher_ast_union_has_all(n)) {
+			ErrorCtx_SetError("Invalid combination of UNION and UNION ALL.");
 			vctx->valid = AST_INVALID;
 			return false;
 		}
@@ -1646,6 +1647,7 @@ AST_Validation AST_Validate_QueryParams
 
 	validations_ctx ctx;
 	ctx.valid = AST_VALID;
+	ctx.union_all = NOT_DEFINED;
 	ctx.defined_identifiers = raxNew();
 
 	ast_visitor *visitor = AST_Visitor_new(&ctx);
@@ -1653,6 +1655,7 @@ AST_Validation AST_Validate_QueryParams
 
 	AST_Visitor_visit(root, visitor);
 
+	AST_Visitor_free(visitor);
 	if(ctx.valid != AST_VALID) {
 		return AST_INVALID;
 	}
