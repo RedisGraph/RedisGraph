@@ -62,11 +62,12 @@ static void replace_match_clause
 			const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
 			array_append(paths, cypher_ast_clone(path));	
 		}
-		if(predicate == NULL) {
-			predicate = (cypher_astnode_t *)cypher_ast_match_get_predicate(clauses[i]);
-		} else {
-			cypher_astnode_t *new_predicate = (cypher_astnode_t *)cypher_ast_match_get_predicate(clauses[i]);
-			if(new_predicate != NULL) {
+		cypher_astnode_t *new_predicate = (cypher_astnode_t *)cypher_ast_match_get_predicate(clauses[i]);
+		if(new_predicate != NULL) {
+			new_predicate = cypher_ast_clone(new_predicate);
+			if(predicate == NULL) {
+				predicate = new_predicate;
+			} else {
 				cypher_astnode_t *children[] = {predicate, new_predicate};
 				predicate = cypher_ast_binary_operator(CYPHER_OP_AND, predicate, new_predicate, children, 2, range);
 			}
@@ -77,7 +78,7 @@ static void replace_match_clause
 	cypher_astnode_t *pattern = cypher_ast_pattern(paths, array_len(paths), paths, array_len(paths), range);
 	// build the replacement clause
 	cypher_astnode_t *children[] = {pattern, predicate};
-	cypher_astnode_t *new_clause = cypher_ast_match(false, pattern, NULL, 0, predicate, children, 2, range);
+	cypher_astnode_t *new_clause = cypher_ast_match(false, pattern, NULL, 0, predicate, children, predicate == NULL ? 1 : 2, range);
 
 	// replace original clause with fully populated one
 	cypher_ast_query_replace_clauses(root, new_clause, scope_start, scope_end);
@@ -211,6 +212,7 @@ bool AST_RewriteSameClauses
 		if(!is_compressible(t)) {
 			continue;
 		}
+		if(t == CYPHER_AST_MATCH && cypher_ast_match_is_optional(clause)) continue;
 
 		array_append(clauses, (cypher_astnode_t *)clause);
 
