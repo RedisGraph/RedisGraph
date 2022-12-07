@@ -321,10 +321,12 @@ AR_ExpNode **AST_PrepareDeleteOp
 	AR_ExpNode **exps = array_new(AR_ExpNode *, delete_count);
 
 	for(uint i = 0; i < delete_count; i ++) {
-		const cypher_astnode_t *ast_expr = cypher_ast_delete_get_expression(delete_clause, i);
+		const cypher_astnode_t *ast_expr =
+			cypher_ast_delete_get_expression(delete_clause, i);
 		AR_ExpNode *exp = AR_EXP_FromASTNode(ast_expr);
 		array_append(exps, exp);
 	}
+
 	return exps;
 }
 
@@ -433,7 +435,8 @@ AST_CreateContext AST_PrepareCreateOp
 	rax *bound_vars,
 	const cypher_astnode_t *clause
 ) {
-	// Shouldn't operate on the original bound variables map, as this function may insert aliases.
+	// shouldn't operate on the original bound variables map
+	// as this function may insert aliases
 	rax *bound_and_introduced_entities = raxClone(bound_vars);
 
 	NodeCreateCtx *nodes_to_create = array_new(NodeCreateCtx, 1);
@@ -444,13 +447,15 @@ AST_CreateContext AST_PrepareCreateOp
 
 	for(uint j = 0; j < npaths; j++) {
 		const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
-		AST_PreparePathCreation(path, qg, bound_and_introduced_entities, &nodes_to_create,
-								&edges_to_create);
+		AST_PreparePathCreation(path, qg, bound_and_introduced_entities,
+				&nodes_to_create, &edges_to_create);
 	}
 
 	raxFree(bound_and_introduced_entities);
 
-	AST_CreateContext ctx = { .nodes_to_create = nodes_to_create, .edges_to_create = edges_to_create };
+	AST_CreateContext ctx = { .nodes_to_create = nodes_to_create,
+		.edges_to_create = edges_to_create };
 
 	return ctx;
 }
+

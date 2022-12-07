@@ -9,8 +9,9 @@
 #include "ast.h"
 
 // rewrite result by compressing consecutive clauses of the same type
-// to one clause, returning true if a rewrite has been performed
+// to a single clause, returning true if the rewrite has been performed
 bool AST_RewriteSameClauses
 (
-    cypher_parse_result_t *result
+	const cypher_astnode_t *root // root of AST
 );
+

@@ -585,12 +585,19 @@ cypher_parse_result_t *parse_query(const char *query) {
 		return NULL;
 	}
 
+	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
+
 	// rewrite '*' projections
 	// e.g. MATCH (a), (b) RETURN *
 	// will be rewritten as:
 	//  MATCH (a), (b) RETURN a, b
 	bool rerun_validation = AST_RewriteStarProjections(result);
-	rerun_validation |= AST_RewriteSameClauses(result);
+
+	// compress clauses
+	// e.g. MATCH (a:N) MATCH (b:N) RETURN a,b
+	// will be rewritten as:
+	// MATCH (a:N), (b:N) RETURN a,b
+	rerun_validation |= AST_RewriteSameClauses(root);
 
 	// only perform validations again if there's been a rewrite
 	if(rerun_validation && AST_Validate_Query(result) != AST_VALID) {

@@ -146,9 +146,20 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, OpBase *root, const OpBas
 	_ExecutionPlan_PlaceApplyOps(plan);
 }
 
-static inline void _buildCreateOp(GraphContext *gc, AST *ast, ExecutionPlan *plan, const cypher_astnode_t *clause) {
-	AST_CreateContext create_ast_ctx = AST_PrepareCreateOp(plan->query_graph, plan->record_map, clause);
-	OpBase *op = NewCreateOp(plan, create_ast_ctx.nodes_to_create, create_ast_ctx.edges_to_create);
+static inline void _buildCreateOp
+(
+	GraphContext *gc,
+	AST *ast,
+	ExecutionPlan *plan,
+	const cypher_astnode_t *clause
+) {
+	AST_CreateContext create_ast_ctx =
+		AST_PrepareCreateOp(plan->query_graph, plan->record_map, clause);
+
+	OpBase *op =
+		NewCreateOp(plan, create_ast_ctx.nodes_to_create,
+				create_ast_ctx.edges_to_create);
+
 	ExecutionPlan_UpdateRoot(plan, op);
 }
 
@@ -176,10 +187,16 @@ static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	ExecutionPlan_UpdateRoot(plan, op);
 }
 
-void ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, ExecutionPlan *plan,
-										const cypher_astnode_t *clause) {
+void ExecutionPlanSegment_ConvertClause
+(
+	GraphContext *gc,
+	AST *ast,
+	ExecutionPlan *plan,
+	const cypher_astnode_t *clause
+) {
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
-	// Because 't' is set using the offsetof() call, it cannot be used in switch statements.
+	// Because 't' is set using the offsetof() call
+	// it cannot be used in switch statements
 	if(t == CYPHER_AST_MATCH) {
 		buildMatchOpTree(plan, ast, clause);
 	} else if(t == CYPHER_AST_CALL) {
@@ -200,6 +217,8 @@ void ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, ExecutionPla
 	} else if(t == CYPHER_AST_WITH) {
 		// Converting a WITH clause can create multiple operations.
 		buildWithOps(plan, clause);
+	} else {
+		assert(false && "unhandeled clause");
 	}
 }
 
