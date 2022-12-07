@@ -113,7 +113,7 @@ def create_random_graph(g, nodes, edges):
         # print(node["count"])
 
         index_label = node["labels"][0]
-        res = g.query(f"CREATE INDEX ON :{index_label}(v)")
+        res = create_node_exact_match_index(g, index_label, 'v', sync=True)
         result["indexes"].append(res)
 
         data, range_pattern = create_nodes_range(node, "map")

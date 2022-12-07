@@ -1,10 +1,10 @@
 from common import *
+from index_utils import *
 
 graph = None
 multiple_entity_graph = None
 
-
-class testEntityUpdate(FlowTestsBase):
+class testEntityUpdate():
     def __init__(self):
         global graph
         global multiple_entity_graph
@@ -16,8 +16,7 @@ class testEntityUpdate(FlowTestsBase):
         # create a graph with a two nodes connected by an edge
         multiple_entity_graph = Graph(self.env.getConnection(), 'multiple_entity_update')
         multiple_entity_graph.query("CREATE (:L {v1: 1})-[:R {v1: 3}]->(:L {v2: 2})")
-        multiple_entity_graph.query("CREATE INDEX ON :L(v1)")
-        multiple_entity_graph.query("CREATE INDEX ON :L(v2)")
+        create_node_exact_match_index(multiple_entity_graph, 'L', 'v1', 'v2', sync=True)
 
     def test01_update_attribute(self):
         # update existing attribute 'v'
