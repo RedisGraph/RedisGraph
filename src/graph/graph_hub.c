@@ -101,15 +101,18 @@ static inline uint _AddProperties
 	GraphEntity *e,
 	const AttributeSet set
 ) {
-	uint updates = 0;
-	uint attr_count = ATTRIBUTE_SET_COUNT(set);
-	for(int i = 0; i < attr_count; i++) {
-		Attribute_ID attr_id;
-		SIValue v = AttributeSet_GetIdx(set, i, &attr_id);
-		updates += GraphEntity_AddProperty(e, attr_id, v);
-	}
+	*e->attributes = (AttributeSet)set;
+	return ATTRIBUTE_SET_COUNT(set);
 
-	return updates;
+//	uint updates = 0;
+//	uint attr_count = ATTRIBUTE_SET_COUNT(set);
+//	for(int i = 0; i < attr_count; i++) {
+//		Attribute_ID attr_id;
+//		SIValue v = AttributeSet_GetIdx(set, i, &attr_id);
+//		updates += GraphEntity_AddProperty(e, attr_id, v);
+//	}
+//
+//	return updates;
 }
 
 uint CreateNode
