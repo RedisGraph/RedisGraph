@@ -95,36 +95,19 @@ static void _AddEdgeToIndices(GraphContext *gc, Edge *e) {
 	Schema_AddEdgeToIndices(s, e);
 }
 
-// add properties to the GraphEntity
-static inline uint _AddProperties
-(
-	GraphEntity *e,
-	const AttributeSet set
-) {
-	uint updates = 0;
-	uint attr_count = ATTRIBUTE_SET_COUNT(set);
-	for(int i = 0; i < attr_count; i++) {
-		Attribute_ID attr_id;
-		SIValue v = AttributeSet_GetIdx(set, i, &attr_id);
-		updates += GraphEntity_AddProperty(e, attr_id, v);
-	}
-
-	return updates;
-}
-
 uint CreateNode
 (
 	GraphContext *gc,
 	Node *n,
 	LabelID *labels,
 	uint label_count,
-	const AttributeSet props
+	AttributeSet set
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(n != NULL);
 
 	Graph_CreateNode(gc->g, n, labels, label_count);
-	uint properties_set = _AddProperties((GraphEntity *)n, props);
+	*n->attributes = set;
 
 	// add node labels
 	for(uint i = 0; i < label_count; i++) {
@@ -137,7 +120,7 @@ uint CreateNode
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 	UndoLog_CreateNode(&query_ctx->undo_log, n);
 
-	return properties_set;
+	return ATTRIBUTE_SET_COUNT(set);
 }
 
 uint CreateEdge
@@ -147,13 +130,13 @@ uint CreateEdge
 	NodeID src,
 	NodeID dst,
 	int r,
-	const AttributeSet props
+	AttributeSet set
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(e != NULL);
 
 	Graph_CreateEdge(gc->g, src, dst, r, e);
-	uint properties_set = _AddProperties((GraphEntity *)e, props);
+	*e->attributes = set;
 
 	Schema *s = GraphContext_GetSchema(gc, e->relationship, SCHEMA_EDGE);
 	// all schemas have been created in the edge blueprint loop or earlier
@@ -164,7 +147,7 @@ uint CreateEdge
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 	UndoLog_CreateEdge(&query_ctx->undo_log, e);
 
-	return properties_set;
+	return ATTRIBUTE_SET_COUNT(set);
 }
 
 uint DeleteNode
