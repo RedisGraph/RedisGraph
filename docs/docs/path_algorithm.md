@@ -71,7 +71,7 @@ With RedisInsight v2, you can visualize a path simply by returning it.
 ### Find all the shortest paths (by number of roads) from A to G
 
 {{< highlight bash >}}
-GRAPH.QUERY g "MATCH (a:City{name:'A'}),(g:City{name:'G'}) WITH a,g MATCH p=allShortestPaths((a)-[*]->(g)) return length(p), [n in nodes(p) | n.name] as pathNodes"
+GRAPH.QUERY g "MATCH (a:City{name:'A'}),(g:City{name:'G'}) WITH a,g MATCH p=allShortestPaths((a)-[*]->(g)) RETURN length(p), [n in nodes(p) | n.name] as pathNodes"
 1) 1) "length(p)"
    2) "pathNodes"
 2) 1) 1) (integer) 3
