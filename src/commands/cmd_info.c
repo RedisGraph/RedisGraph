@@ -562,17 +562,12 @@ static int _reply_with_get_graph_info
     const GraphContext *gc,
     const InfoGetFlag flags
 ) {
-    static const long KEY_VALUE_COUNT = 6;
+    static const long KEY_VALUE_COUNT = 10;
 
     ASSERT(ctx);
     ASSERT(gc);
     ASSERT(gc->g);
-    /*
 
-Total number of unique relationship property names
-Total number of node properties
-Total number of relationship properties
-    */
     REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, KEY_VALUE_COUNT));
     // 1
     REDISMODULE_DO(RedisModule_ReplyWithCString(
@@ -587,7 +582,7 @@ Total number of relationship properties
         "Number of relationships"));
     REDISMODULE_DO(RedisModule_ReplyWithLongLong(
         ctx,
-        Graph_EdgeCount(gc->g) - Graph_DeleteEdgeCount(gc->g)));
+        Graph_EdgeCount(gc->g) - Graph_DeletedEdgeCount(gc->g)));
     // 3
     REDISMODULE_DO(RedisModule_ReplyWithCString(
         ctx,
@@ -623,7 +618,27 @@ Total number of relationship properties
     REDISMODULE_DO(RedisModule_ReplyWithLongLong(
         ctx,
         GraphContext_UniqueNodePropertyNamesCount(gc)));
-
+    // 8
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Total number of unique edge property names"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        GraphContext_UniqueEdgePropertyNamesCount(gc)));
+    // 9
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Total number of edge property names"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        GraphContext_AllEdgePropertyNamesCount(gc)));
+    // 10
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Total number of node property names"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        GraphContext_AllNodePropertyNamesCount(gc)));
 
     return REDISMODULE_OK;
 }

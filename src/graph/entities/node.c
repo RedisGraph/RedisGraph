@@ -12,7 +12,7 @@ void Node_ToString
 	char **buffer,
 	size_t *bufferLen,
 	size_t *bytesWritten,
-	GraphEntityStringFromat format
+	GraphEntityStringFormat format
 ) {
 	GraphEntity_ToString((const GraphEntity *)n, buffer, bufferLen,
 			bytesWritten, format, GETYPE_NODE);

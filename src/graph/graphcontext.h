@@ -27,21 +27,24 @@
 // and take action accordingly
 
 typedef struct {
-	Graph *g;                               // container for all matrices and entity properties
-	int ref_count;                          // number of active references
-	rax *attributes;                        // from strings to attribute IDs
-	pthread_rwlock_t _attribute_rwlock;     // read-write lock to protect access to the attribute maps
-	char *graph_name;                       // string associated with graph
-	char **string_mapping;                  // from attribute IDs to strings
-	Schema **node_schemas;                  // array of schemas for each node label
-	Schema **relation_schemas;              // array of schemas for each relation type
-	unsigned short index_count;             // number of indicies
-	SlowLog *slowlog;                       // slowlog associated with graph
-	GraphEncodeContext *encoding_context;   // encode context of the graph
-	GraphDecodeContext *decoding_context;   // decode context of the graph
-	Cache *cache;                           // global cache of execution plans
-	XXH32_hash_t version;                   // graph version
-	Info info;                              // graph query information
+	Graph *g;                                          // container for all matrices and entity properties
+	int ref_count;                                     // number of active references
+	rax *attributes;                                   // from strings to attribute IDs
+	atomic_uint_fast64_t node_attributes_count;        // counter of attributes related to nodes
+	atomic_uint_fast64_t edge_attributes_count;        // counter of attributes related to edges
+	Attribute_ID *node_attributes;                     // attributes of just nodes.
+	pthread_rwlock_t _attribute_rwlock;                // read-write lock to protect access to the attribute maps
+	char *graph_name;                                  // string associated with graph
+	char **string_mapping;                             // from attribute IDs to strings
+	Schema **node_schemas;                             // array of schemas for each node label
+	Schema **relation_schemas;                         // array of schemas for each relation type
+	unsigned short index_count;                        // number of indicies
+	SlowLog *slowlog;                                  // slowlog associated with graph
+	GraphEncodeContext *encoding_context;              // encode context of the graph
+	GraphDecodeContext *decoding_context;              // decode context of the graph
+	Cache *cache;                                      // global cache of execution plans
+	XXH32_hash_t version;                              // graph version
+	Info info;                                         // graph query information
 } GraphContext;
 
 //------------------------------------------------------------------------------
@@ -100,6 +103,44 @@ void GraphContext_Rename
 XXH32_hash_t GraphContext_GetVersion
 (
 	const GraphContext *gc
+);
+
+uint64_t GraphContext_UniqueNodePropertyNamesCount(const GraphContext *gc);
+uint64_t GraphContext_AllNodePropertyNamesCount(const GraphContext *gc);
+uint64_t GraphContext_UniqueEdgePropertyNamesCount(const GraphContext *gc);
+uint64_t GraphContext_AllEdgePropertyNamesCount(const GraphContext *gc);
+
+void GraphContext_IncreasePropertyNamesCount
+(
+	GraphContext *gc,
+	const uint64_t count,
+	const GraphEntityType entity_type
+);
+
+void GraphContext_DecreasePropertyNamesCount
+(
+	GraphContext *gc,
+	const uint64_t count,
+	const GraphEntityType entity_type
+);
+
+void GraphContext_CreateNode
+(
+	GraphContext *gc,
+	Node *created_node,
+	LabelID *labels,
+	uint label_count,
+	SIValue *properties_array
+);
+
+void GraphContext_CreateEdge
+(
+	GraphContext *gc,
+	const NodeID source_node,
+	const NodeID destination_node,
+	const int relation_index,
+	Edge *created_edge,
+	SIValue *properties_array
 );
 
 //------------------------------------------------------------------------------
@@ -204,6 +245,9 @@ bool GraphContext_HasIndices
 (
 	GraphContext *gc
 );
+
+uint64_t GraphContext_NodeIndexCount(const GraphContext *gc);
+uint64_t GraphContext_EdgeIndexCount(const GraphContext *gc);
 
 // attempt to retrieve an index on the given label and attribute IDs
 Index GraphContext_GetIndexByID

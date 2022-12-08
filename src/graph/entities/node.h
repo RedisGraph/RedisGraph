@@ -38,5 +38,5 @@ void Node_ToString
 	char **buffer,
 	size_t *bufferLen,
 	size_t *bytesWritten,
-	GraphEntityStringFromat format
+	GraphEntityStringFormat format
 );
