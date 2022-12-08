@@ -38,7 +38,7 @@ GRAPH.QUERY g "CREATE (a:City{name:'A'}), (b:City{name:'B'}), (c:City{name:'C'})
 If you're using RedisInsight v2, you can create and visualize the graph by slightly modifying the above query: you'll have to assign aliases to all nodes and relationships, and return them:
 
 {{< highlight bash >}}
-GRAPH.QUERY g "CREATE (a:City{name:'A'}), (b:City{name:'B'}), (c:City{name:'C'}), (d:City{name:'D'}), (e:City{name:'E'}), (f:City{name:'F'}), (g:City{name:'G'}), (a)-[r1:Road{time:4, dist:3}]->(b), (a)-[r2:Road{time:3, dist:8}]->(c), (a)-[r3:Road{time:4, dist:2}]->(d), (b)-[r4:Road{time:5, dist:7}]->(e), (b)-[r5:Road{time:5, dist:5}]->(d), (d)-[r6:Road{time:4, dist:5}]->(e), (c)-[r7:Road{time:3, dist:6}]->(f), (d)-[r8:Road{time:1, dist:4}]->(c), (d)-[r9:Road{time:2, dist:12}]->(f), (e)-[r10:Road{time:5, dist:5}]->(g), (f)-[r11:Road{time:4, dist:2}]->(g) return a,b,c,d,e,f,g,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11"
+GRAPH.QUERY g "CREATE (a:City{name:'A'}), (b:City{name:'B'}), (c:City{name:'C'}), (d:City{name:'D'}), (e:City{name:'E'}), (f:City{name:'F'}), (g:City{name:'G'}), (a)-[r1:Road{time:4, dist:3}]->(b), (a)-[r2:Road{time:3, dist:8}]->(c), (a)-[r3:Road{time:4, dist:2}]->(d), (b)-[r4:Road{time:5, dist:7}]->(e), (b)-[r5:Road{time:5, dist:5}]->(d), (d)-[r6:Road{time:4, dist:5}]->(e), (c)-[r7:Road{time:3, dist:6}]->(f), (d)-[r8:Road{time:1, dist:4}]->(c), (d)-[r9:Road{time:2, dist:12}]->(f), (e)-[r10:Road{time:5, dist:5}]->(g), (f)-[r11:Road{time:4, dist:2}]->(g) RETURN a,b,c,d,e,f,g,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11"
 {{< / highlight >}}
 
 ![Road network](../images/graph_query_city.png)
