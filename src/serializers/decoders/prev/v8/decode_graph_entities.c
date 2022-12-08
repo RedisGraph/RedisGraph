@@ -50,7 +50,13 @@ static SIValue _RdbLoadSIArray(RedisModuleIO *rdb) {
 	return list;
 }
 
-static void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e) {
+static void _RdbLoadEntity
+(
+	RedisModuleIO *rdb,
+	GraphContext *gc,
+	GraphEntity *e,
+	const GraphEntityType entity_type
+) {
 	/* Format:
 	 * #properties N
 	 * (name, value type, value) X N
@@ -63,6 +69,7 @@ static void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e)
 		GraphEntity_AddProperty(e, attr_id, attr_value);
 		SIValue_Free(attr_value);
 	}
+	GraphContext_IncreasePropertyNamesCount(gc, propCount, entity_type);
 }
 
 
@@ -88,7 +95,7 @@ void RdbLoadNodes_v8(RedisModuleIO *rdb, GraphContext *gc, uint64_t node_count) 
 		LabelID l = (nodeLabelCount) ? RedisModule_LoadUnsigned(rdb) : GRAPH_NO_LABEL;
 		Serializer_Graph_SetNode(gc->g, id, &l, nodeLabelCount, &n);
 
-		_RdbLoadEntity(rdb, gc, (GraphEntity *)&n);
+		_RdbLoadEntity(rdb, gc, (GraphEntity *)&n, GETYPE_NODE);
 	}
 }
 
@@ -121,7 +128,7 @@ void RdbLoadEdges_v8(RedisModuleIO *rdb, GraphContext *gc, uint64_t edge_count) 
 		Serializer_Graph_SetEdge(gc->g,
 				gc->decoding_context->multi_edge[relation], edgeId, srcId,
 				destId, relation, &e);
-		_RdbLoadEntity(rdb, gc, (GraphEntity *)&e);
+		_RdbLoadEntity(rdb, gc, (GraphEntity *)&e, GETYPE_EDGE);
 	}
 }
 

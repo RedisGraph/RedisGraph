@@ -22,7 +22,7 @@ bool GraphEntity_AddProperty
 	ASSERT(e);
 
 	AttributeSet_Add(e->attributes, attr_id, value);
-	
+
 	return true;
 }
 
@@ -74,7 +74,7 @@ SIValue GraphEntity_Keys
 	return keys;
 }
 
-// returns a map containing all the properties in the given node, or edge. 
+// returns a map containing all the properties in the given node, or edge.
 SIValue GraphEntity_Properties
 (
 	const GraphEntity *e
@@ -145,7 +145,7 @@ void GraphEntity_ToString
 	char **buffer,
 	size_t *bufferLen,
 	size_t *bytesWritten,
-	GraphEntityStringFromat format,
+	GraphEntityStringFormat format,
 	GraphEntityType entityType
 ) {
 	// space allocation
@@ -250,8 +250,8 @@ inline int GraphEntity_ClearAttributes
 	ASSERT(e != NULL);
 
 	int count = ATTRIBUTE_SET_COUNT(*e->attributes);
-	
+
 	AttributeSet_Free(e->attributes);
-	
+
 	return count;
 }
