@@ -561,7 +561,7 @@ class testQueryValidationFlow(FlowTestsBase):
                 redis_graph.query(q)
                 assert(False)
             except redis.exceptions.ResponseError as e:
-                self.env.assertContains("All sub queries in an UNION must have the same column names", str(e))
+                self.env.assertContains("All sub queries in a UNION must have the same column names", str(e))
 
     def test39_non_single_statement_query(self):
         queries = [";",

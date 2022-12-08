@@ -669,15 +669,17 @@ void AST_Free
 
 cypher_parse_result_t *parse_query
 (
-	const char *query
+	const char *query  // query to parse
 ) {
 	FILE *f = fmemopen((char *)query, strlen(query), "r");
 	cypher_parse_result_t *result = cypher_fparse(f, NULL, NULL, CYPHER_PARSE_SINGLE);
 	fclose(f);
 
-	if(!result) return NULL;
+	if(!result) {
+		return NULL;
+	}
 
-	// check that the parser parse the entire query
+	// check that the parser parsed the entire query
 	if(!cypher_parse_result_eof(result)) {
 		ErrorCtx_SetError("Error: query with more than one statement is not supported.");
 		parse_result_free(result);
@@ -704,13 +706,11 @@ cypher_parse_result_t *parse_query
 		return NULL;
 	}
 
-	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
-
 	// rewrite '*' projections
 	// e.g. MATCH (a), (b) RETURN *
 	// will be rewritten as:
 	//  MATCH (a), (b) RETURN a, b
-	bool rerun_validation = AST_RewriteStarProjections(result);
+	bool rerun_validation = AST_RewriteStarProjections(root);
 
 	// compress clauses
 	// e.g. MATCH (a:N) MATCH (b:N) RETURN a,b

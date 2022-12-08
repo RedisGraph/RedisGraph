@@ -221,7 +221,7 @@ const char **AST_BuildCallColumnNames
 // parse a query to construct an immutable AST
 cypher_parse_result_t *parse_query
 (
-	const char *query
+	const char *query  // query to parse
 );
 
 // parse a query parameter values only

@@ -368,15 +368,12 @@ static void replace_clause
 
 bool AST_RewriteStarProjections
 (
-	cypher_parse_result_t *result
+	const cypher_astnode_t *root  // root for which to rewrite star projections
 ) {
 	bool rewritten = false;
-	// retrieve the statement node
-	const cypher_astnode_t *statement = cypher_parse_result_get_root(result, 0);
-	if(cypher_astnode_type(statement) != CYPHER_AST_STATEMENT) return rewritten;
 
 	// retrieve the root query node from the statement
-	const cypher_astnode_t *root = cypher_ast_statement_get_body(statement);
+	root = cypher_ast_statement_get_body(root);
 	if(cypher_astnode_type(root) != CYPHER_AST_QUERY) return rewritten;
 
 	// rewrite all WITH * / RETURN * clauses to include all aliases
