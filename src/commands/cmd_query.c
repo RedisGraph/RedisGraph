@@ -190,7 +190,9 @@ static void _ExecuteQuery(void *args) {
 
 	// instantiate the query ResultSet
 	bool compact = command_ctx->compact;
-	ResultSetFormatterType resultset_format = profile
+	// replicated command don't need to return result
+	ResultSetFormatterType resultset_format = 
+		profile || command_ctx->replicated_command
 		? FORMATTER_NOP 
 		: (compact) 
 			? FORMATTER_COMPACT 
@@ -329,13 +331,13 @@ void _query(bool profile, void *args) {
 
 	CronTaskHandle timeout_task = 0;
 
-	// set the query timeout if one was specified
-	if(command_ctx->timeout != 0) {
-		// disallow timeouts on write operations to avoid leaving the graph in an inconsistent state
-		if(readonly) {
-			timeout_task = Query_SetTimeOut(command_ctx->timeout,
-					exec_ctx->plan);
-		}
+	// enforce specified timeout when query is readonly
+	// or timeout applies to both read and write
+	bool enforce_timeout = command_ctx->timeout != 0 &&
+		(readonly || command_ctx->timeout_rw) &&
+		!command_ctx->replicated_command;
+	if(enforce_timeout) {
+		timeout_task = Query_SetTimeOut(command_ctx->timeout, exec_ctx->plan);
 	}
 
 	// populate the container struct for invoking _ExecuteQuery.
