@@ -20,6 +20,12 @@
 #define TOTAL_REPORTING_QUERIES_COUNT_KEY_NAME "Total reporting queries count"
 #define GLOBAL_INFO_KEY_NAME "Global info"
 #define UNIMPLEMENTED_ERROR_STRING "Unimplemented"
+#define INFO_GET_MEMORY_ARG "MEM"
+#define INFO_GET_COUNTS_ARG "COUNTS"
+#define INFO_GET_STATISTICS_ARG "STAT"
+#define ERROR_COULDNOT_FIND_GRAPH "Couldn't find the specified graph"
+#define ERROR_NO_GRAPH_NAME_SPECIFIED "No graph name was specified"
+#define ALL_GRAPH_KEYS_MASK "*"
 
 // TODO move to a common place.
 // A wrapper for RedisModule_ functions which returns immediately on failure.
@@ -50,6 +56,13 @@ typedef enum QueryStage {
     QueryStage_REPORTING
 } QueryStage;
 
+typedef enum InfoGetFlag {
+    InfoGetFlag_NONE = 0,
+    InfoGetFlag_MEMORY = 1 << 0,
+    InfoGetFlag_COUNTS = 1 << 1,
+    InfoGetFlag_STATISTICS = 1 << 2,
+} InfoGetFlag;
+
 // Returns true if the strings are equal (case insensitively).
 // NOTE: The strings must have a NULL-character at the end (strlen requirement).
 static bool _string_equals_case_insensitive(const char *lhs, const char *rhs) {
@@ -57,6 +70,37 @@ static bool _string_equals_case_insensitive(const char *lhs, const char *rhs) {
         return false;
     }
     return !strcasecmp(lhs, rhs);
+}
+
+static InfoGetFlag _parse_info_get_flag_from_string(const char *str) {
+    if (_string_equals_case_insensitive(str, INFO_GET_MEMORY_ARG)) {
+        return InfoGetFlag_MEMORY;
+    } else if (_string_equals_case_insensitive(str, INFO_GET_COUNTS_ARG)) {
+        return InfoGetFlag_COUNTS;
+    } else if (_string_equals_case_insensitive(str, INFO_GET_STATISTICS_ARG)) {
+        return InfoGetFlag_STATISTICS;
+    }
+    return InfoGetFlag_NONE;
+}
+
+static InfoGetFlag _parse_info_get_flags_from_args
+(
+    const char **argv,
+    const int argc
+) {
+    InfoGetFlag flags = InfoGetFlag_NONE;
+
+    if (!argv || argc <= 0) {
+        return flags;
+    }
+
+    int read = 0;
+    while (read < argc) {
+        flags |= _parse_info_get_flag_from_string(argv[read]);
+        ++read;
+    }
+
+    return flags;
 }
 
 static bool _is_queries_cmd(const char *cmd) {
@@ -218,6 +262,28 @@ static int _reply_global_info
         global_info.total_reporting_queries_count));
 
     return REDISMODULE_OK;
+}
+
+static GraphContext* _find_graph_with_name(const char *graph_name) {
+    ASSERT(graph_name);
+    if (!graph_name) {
+        return NULL;
+    }
+
+    const uint32_t graphs_count = array_len(graphs_in_keyspace);
+
+    for (uint32_t i = 0; i < graphs_count; ++i) {
+        const GraphContext *gc = graphs_in_keyspace[i];
+        if (!gc) {
+            return NULL;
+        }
+
+        if (_string_equals_case_insensitive(graph_name, gc->graph_name)) {
+            return gc;
+        }
+    }
+
+    return NULL;
 }
 
 static bool _collect_global_info(RedisModuleCtx *ctx, GlobalInfo *global_info) {
@@ -486,7 +552,109 @@ static int _reset_graph_info(RedisModuleCtx *ctx, const char *graph_name) {
             return REDISMODULE_OK;
         }
     }
-    RedisModule_ReplyWithError(ctx, "Couldn't find the specified graph");
+    RedisModule_ReplyWithError(ctx, ERROR_COULDNOT_FIND_GRAPH);
+    return REDISMODULE_ERR;
+}
+
+static int _reply_with_get_graph_info
+(
+    RedisModuleCtx *ctx,
+    const GraphContext *gc,
+    const InfoGetFlag flags
+) {
+    static const long KEY_VALUE_COUNT = 6;
+
+    ASSERT(ctx);
+    ASSERT(gc);
+    ASSERT(gc->g);
+    /*
+
+Total number of unique relationship property names
+Total number of node properties
+Total number of relationship properties
+    */
+    REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, KEY_VALUE_COUNT));
+    // 1
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Number of nodes"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        Graph_NodeCount(gc->g) - Graph_DeletedNodeCount(gc->g)));
+    // 2
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Number of relationships"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        Graph_EdgeCount(gc->g) - Graph_DeleteEdgeCount(gc->g)));
+    // 3
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Number of node labels"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        Graph_LabelTypeCount(gc->g)));
+    // 4
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Number of relationship types"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        Graph_RelationTypeCount(gc->g)));
+    // 5
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Number of node indices"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        GraphContext_NodeIndexCount(gc)));
+    // 6
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Number of relationship indices"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        GraphContext_EdgeIndexCount(gc)));
+    // 7
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Total number of unique node property names"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        GraphContext_UniqueNodePropertyNamesCount(gc)));
+
+
+    return REDISMODULE_OK;
+}
+
+static int _get_graph_info
+(
+    RedisModuleCtx *ctx,
+    const char *graph_name,
+    const InfoGetFlag flags
+) {
+    ASSERT(ctx);
+    ASSERT(graph_name);
+
+    const GraphContext *gc = _find_graph_with_name(graph_name);
+    if (!gc) {
+        RedisModule_ReplyWithError(ctx, ERROR_COULDNOT_FIND_GRAPH);
+        return REDISMODULE_ERR;
+    }
+
+    return _reply_with_get_graph_info(ctx, gc, flags);
+}
+
+// TODO
+static int _get_all_graphs_info(RedisModuleCtx *ctx, const InfoGetFlag flags) {
+    RedisModule_ReplyWithError(ctx, UNIMPLEMENTED_ERROR_STRING);
+    return REDISMODULE_ERR;
+}
+
+// TODO
+static int _get_all_graphs_info_from_shards(RedisModuleCtx *ctx, const InfoGetFlag flags) {
+    RedisModule_ReplyWithError(ctx, UNIMPLEMENTED_ERROR_STRING);
     return REDISMODULE_ERR;
 }
 
@@ -497,7 +665,7 @@ static int _info_queries(RedisModuleCtx *ctx) {
     return _reply_with_queries_info_from_all_graphs(ctx);
 }
 
-// GRAPH.INFO GET
+// GRAPH.INFO GET key [MEM] [COUNTS] [STAT]
 static int _info_get
 (
     RedisModuleCtx *ctx,
@@ -507,9 +675,23 @@ static int _info_get
     ASSERT(ctx != NULL);
     int result = REDISMODULE_ERR;
 
-    RedisModule_ReplyWithError(ctx, UNIMPLEMENTED_ERROR_STRING);
+    if (argc < 2) {
+        return RedisModule_WrongArity(ctx);
+    }
 
-    return result;
+    const char *graph_name = RedisModule_StringPtrLen(argv[1], NULL);
+
+    if (!graph_name) {
+        RedisModule_ReplyWithError(ctx, ERROR_NO_GRAPH_NAME_SPECIFIED);
+        return REDISMODULE_ERR;
+    }
+    const InfoGetFlag flags = _parse_info_get_flags_from_args(argv + 1, argc - 1);
+
+    if (_string_equals_case_insensitive(graph_name, ALL_GRAPH_KEYS_MASK)) {
+        return _get_all_graphs_info(ctx, flags);
+    }
+
+    return _get_graph_info(ctx, graph_name, flags);
 }
 
 // GRAPH.INFO RESET [name]
@@ -522,18 +704,18 @@ static int _info_reset
     ASSERT(ctx != NULL);
     ASSERT(argv);
 
-    if (argc < 3) {
+    if (argc < 2) {
         return RedisModule_WrongArity(ctx);
     }
 
-    const char *graph_name = RedisModule_StringPtrLen(argv[2], NULL);
+    const char *graph_name = RedisModule_StringPtrLen(argv[1], NULL);
 
     if (!graph_name) {
-        RedisModule_ReplyWithError(ctx, "No graph name was specified");
+        RedisModule_ReplyWithError(ctx, ERROR_NO_GRAPH_NAME_SPECIFIED);
         return REDISMODULE_ERR;
     }
 
-    if (_string_equals_case_insensitive(graph_name, "*")) {
+    if (_string_equals_case_insensitive(graph_name, ALL_GRAPH_KEYS_MASK)) {
         return _reset_all_graphs_info(ctx);
     }
 
@@ -551,7 +733,6 @@ static bool _dispatch_subcommand
     ASSERT(ctx != NULL);
     ASSERT(subcommand_name != NULL && "Subcommand must be specified.");
     ASSERT(result);
-    // TODO assert argc > 1?
 
     if (_is_queries_cmd(subcommand_name)) {
         *result = _info_queries(ctx);
@@ -582,8 +763,7 @@ int Graph_Info
     int result = REDISMODULE_ERR;
 
     const char *subcommand_name = RedisModule_StringPtrLen(argv[1], NULL);
-    // TODO argv + 1, argc - 1
-    if (!_dispatch_subcommand(ctx, argv, argc, subcommand_name, &result)) {
+    if (!_dispatch_subcommand(ctx, argv + 1, argc - 1, subcommand_name, &result)) {
         RedisModule_ReplyWithError(ctx, UNKNOWN_SUBCOMMAND_MESSAGE);
     }
 
