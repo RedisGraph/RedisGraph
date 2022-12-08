@@ -199,4 +199,5 @@ uint64_t Info_GetMaxQueryPipelineTime(const Info *);
 // Locks the info object for external reading. Only one concurrent read is
 // allowed at the same time.
 bool Info_Lock(Info *);
+// Unlocks the info object from exclusive external reading.
 bool Info_Unlock(Info *);
