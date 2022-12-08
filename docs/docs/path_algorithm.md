@@ -55,7 +55,7 @@ Before 2.10, you were able to solve these queries:
 ### Find the shortest path (by number of roads) from A to G
 
 {{< highlight bash >}}
-GRAPH.QUERY g "MATCH (a:City{name:'A'}),(g:City{name:'G'}) WITH shortestPath((a)-[*]->(g)) as p return length(p), [n in nodes(p) | n.name] as pathNodes"
+GRAPH.QUERY g "MATCH (a:City{name:'A'}),(g:City{name:'G'}) WITH shortestPath((a)-[*]->(g)) as p RETURN length(p), [n in nodes(p) | n.name] as pathNodes"
 1) 1) "length(p)"
    2) "pathNodes"
 2) 1) 1) (integer) 3
