@@ -18,6 +18,22 @@ void rm_set_mem_capacity(int64_t cap);
 // reset thread memory consumption counter to 0 (no memory consumed)
 void rm_reset_n_alloced();
 
+// ------< CUT HERE >--------
+// // Allocation context for various purposes.
+// // Using of allocation contexts allows to provide with more insight how
+// // the memory allocations are used, for what purposes.
+// typedef enum AllocationContext {
+// 	AllocationContext_PROCESSING,
+// 	AllocationContext_UNDO_LOG,
+// 	AllocationContext_RESULT_SET,
+// } AllocationContext;
+
+// // Sets the allocation context to the specified one.
+// void set_allocation_context(const AllocationContext);
+// // Unsets the previously set allocation context.
+// void unset_allocation_context();
+// ------< CUT HERE >--------
+
 static inline void *rm_malloc(size_t n) {
 	return RedisModule_Alloc(n);
 }
