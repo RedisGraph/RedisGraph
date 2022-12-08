@@ -7,7 +7,7 @@ weight: 7
 
 RedisGraph 2.10 introduced two new path-finding algorithms, or more accurately, minimum-weight, optionally bounded-cost, and optionally bounded-length path-finding algorithms, `algo.SPpaths` and `algo.SSpaths`.
 
-`algo.SPpaths` and `algo.SSpaths` can solve a wide range of real-world problems, where minimal-weight paths need to be found. algo.SPpaths finds paths between a given pair of nodes, while algo.SSpaths finds paths from a given source node. Weight can represent time, distance, price, or any other measurement. A bound can be set on another property (e.g., finding a minimal-time bounded-price way to reach from point A to point B). Both algorithms are performant and have low memory requirements.
+`algo.SPpaths` and `algo.SSpaths` can solve a wide range of real-world problems, where minimum-weight paths need to be found. `algo.SPpaths` finds paths between a given pair of nodes, while `algo.SSpaths` finds paths from a given source node. Weight can represent time, distance, price, or any other measurement. A bound can be set on another property (e.g., finding a minimum-time bounded-price way to reach from point A to point B). Both algorithms are performant and have low memory requirements.
 
 For both algorithms, you can set:
 
