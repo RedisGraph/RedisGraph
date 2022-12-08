@@ -92,6 +92,7 @@ static bool _AST_GetWithAliases
 			const cypher_astnode_t *expr = cypher_ast_projection_get_expression(child);
 			if(cypher_astnode_type(expr) != CYPHER_AST_IDENTIFIER) {
 				ErrorCtx_SetError("WITH clause projections must be aliased");
+				raxFree(local_env);
 				return false;	
 			}
 			// Retrieve "a" from "WITH a"
@@ -107,9 +108,7 @@ static bool _AST_GetWithAliases
 		}
 	}
 
-	if(local_env) {
-		raxFree(local_env);
-	}
+	raxFree(local_env);
 	return true;
 }
 
@@ -1655,6 +1654,7 @@ AST_Validation AST_Validate_QueryParams
 
 	AST_Visitor_visit(root, visitor);
 
+	raxFree(ctx.defined_identifiers);
 	AST_Visitor_free(visitor);
 	if(ctx.valid != AST_VALID) {
 		return AST_INVALID;
