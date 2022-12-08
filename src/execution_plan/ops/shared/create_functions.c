@@ -313,22 +313,12 @@ void PendingCreationsFree
 		pending->created_edges = NULL;
 	}
 
-	// free all graph-committed attributes associated with nodes
 	if(pending->node_attributes) {
-		uint prop_count = array_len(pending->node_attributes);
-		for(uint i = 0; i < prop_count; i ++) {
-			AttributeSet_Free(pending->node_attributes + i);
-		}
 		array_free(pending->node_attributes);
 		pending->node_attributes = NULL;
 	}
 
-	// free all graph-committed attributes associated with edges
 	if(pending->edge_attributes) {
-		uint prop_count = array_len(pending->edge_attributes);
-		for(uint i = 0; i < prop_count; i ++) {
-			AttributeSet_Free(pending->edge_attributes + i);
-		}
 		array_free(pending->edge_attributes);
 		pending->edge_attributes = NULL;
 	}
