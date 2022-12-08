@@ -1,7 +1,7 @@
 ---
 title: "Path algorithms"
 linkTitle: "Path algorithms"
-description: "Learn how to use algo.SPpaths and algo.SSpaths to solve queries"
+description: "Learn how to use algo.SPpaths and algo.SSpaths to find single-pair and single-source paths"
 weight: 7
 ---
 
