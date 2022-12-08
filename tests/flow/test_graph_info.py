@@ -129,7 +129,6 @@ class testGraphInfoFlow(FlowTestsBase):
         self._assert_one_executing_query(info, None)
 
     def test02_long_query_is_recorded_as_being_executed(self):
-        # query = """RETURN reduce(sum = 0, n IN range(1, 100000000) | sum ^ n)"""
         query = """UNWIND (range(0, 10000000)) AS x WITH x AS x WHERE (x / 90000) = 1 RETURN x"""
         waiter = run_concurrently((query), thread_run_query)
 
