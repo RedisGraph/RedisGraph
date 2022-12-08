@@ -146,9 +146,20 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, OpBase *root, const OpBas
 	_ExecutionPlan_PlaceApplyOps(plan);
 }
 
-static inline void _buildCreateOp(GraphContext *gc, AST *ast, ExecutionPlan *plan) {
-	AST_CreateContext create_ast_ctx = AST_PrepareCreateOp(plan->query_graph, plan->record_map);
-	OpBase *op = NewCreateOp(plan, create_ast_ctx.nodes_to_create, create_ast_ctx.edges_to_create);
+static inline void _buildCreateOp
+(
+	GraphContext *gc,
+	AST *ast,
+	ExecutionPlan *plan,
+	const cypher_astnode_t *clause
+) {
+	AST_CreateContext create_ast_ctx =
+		AST_PrepareCreateOp(plan->query_graph, plan->record_map, clause);
+
+	OpBase *op =
+		NewCreateOp(plan, create_ast_ctx.nodes_to_create,
+				create_ast_ctx.edges_to_create);
+
 	ExecutionPlan_UpdateRoot(plan, op);
 }
 
@@ -176,18 +187,22 @@ static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	ExecutionPlan_UpdateRoot(plan, op);
 }
 
-void ExecutionPlanSegment_Convert(GraphContext *gc, AST *ast, ExecutionPlan *plan,
-										const cypher_astnode_t *node) {
+void ExecutionPlanSegment_ConvertClause
+(
+	GraphContext *gc,
+	AST *ast,
+	ExecutionPlan *plan,
+	const cypher_astnode_t *node
+) {
 	cypher_astnode_type_t t = cypher_astnode_type(node);
-	// Because 't' is set using the offsetof() call, it cannot be used in switch statements.
+	// Because 't' is set using the offsetof() call
+	// it cannot be used in switch statements
 	if(t == CYPHER_AST_MATCH) {
 		buildMatchOpTree(plan, ast, node);
 	} else if(t == CYPHER_AST_CALL) {
 		buildCallOp(ast, plan, node);
 	} else if(t == CYPHER_AST_CREATE) {
-		// Only add at most one Create op per plan. TODO Revisit and improve this logic.
-		if(ExecutionPlan_LocateOp(plan->root, OPType_CREATE)) return;
-		_buildCreateOp(gc, ast, plan);
+		_buildCreateOp(gc, ast, plan, clause);
 	} else if(t == CYPHER_AST_UNWIND) {
 		_buildUnwindOp(plan, node);
 	} else if(t == CYPHER_AST_MERGE) {
@@ -212,7 +227,7 @@ void ExecutionPlanSegment_Convert(GraphContext *gc, AST *ast, ExecutionPlan *pla
 	} else if(t == CYPHER_AST_PATTERN_COMPREHENSION || t == CYPHER_AST_PATTERN_PATH || t == CYPHER_AST_PATTERN) {
 		ExecutionPlan_ProcessQueryGraph(plan, plan->query_graph, ast);
 	} else {
-		ASSERT(false);
+		ASSERT(false && "unhandeled clause");
 	}
 }
 
