@@ -228,7 +228,8 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	ExecutorThread exec_thread = (flags & (REDISMODULE_CTX_FLAGS_MULTI         |
 										   REDISMODULE_CTX_FLAGS_LUA           |
 										   REDISMODULE_CTX_FLAGS_DENY_BLOCKING |
-										   REDISMODULE_CTX_FLAGS_LOADING)) ?
+										   REDISMODULE_CTX_FLAGS_LOADING)) || 
+										   is_replicated ?
 								 EXEC_THREAD_MAIN : EXEC_THREAD_READER;
 
 	Command_Handler handler = get_command_handler(cmd);
