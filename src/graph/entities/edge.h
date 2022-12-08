@@ -132,7 +132,7 @@ void Edge_ToString
 	char **buffer,
 	size_t *bufferLen,
 	size_t *bytesWritten,
-	GraphEntityStringFromat format
+	GraphEntityStringFormat format
 );
 
 // frees allocated space by given edge
