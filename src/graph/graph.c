@@ -6,6 +6,7 @@
 
 #include "RG.h"
 #include "graph.h"
+#include "entities/attribute_set.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 #include "../util/datablock/oo_datablock.h"
@@ -810,7 +811,6 @@ void Graph_CreateEdge
 	e->destNodeID    =  dest;
 	e->relationID    =  r;
 
-
 	Graph_FormConnection(g, src, dest, id, r);
 }
 
@@ -1135,7 +1135,7 @@ int Graph_DeleteEdge
 
 	// free and remove edges from datablock.
 	DataBlock_DeleteItem(g->edges, ENTITY_GET_ID(e));
-	
+
 	return 1;
 }
 
@@ -1157,7 +1157,7 @@ static void _Graph_FreeRelationMatrices
 // update entity's attribute with given value
 int Graph_UpdateEntity
 (
-	GraphEntity *ge,             // entity yo update
+	GraphEntity *ge,             // entity to update
 	Attribute_ID attr_id,        // attribute to update
 	SIValue value,               // value to be set
 	GraphEntityType entity_type  // type of the entity node/edge
