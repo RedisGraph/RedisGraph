@@ -74,7 +74,8 @@ static void _RdbLoadEntity
 (
 	RedisModuleIO *rdb,
 	GraphContext *gc,
-	GraphEntity *e
+	GraphEntity *e,
+	const GraphEntityType entity_type
 ) {
 	// Format:
 	// #properties N
@@ -88,6 +89,7 @@ static void _RdbLoadEntity
 		GraphEntity_AddProperty(e, attr_id, attr_value);
 		SIValue_Free(attr_value);
 	}
+	GraphContext_IncreasePropertyNamesCount(gc, propCount, entity_type);
 }
 
 void RdbLoadNodes_v12
@@ -118,7 +120,7 @@ void RdbLoadNodes_v12
 
 		Serializer_Graph_SetNode(gc->g, id, labels, nodeLabelCount, &n);
 
-		_RdbLoadEntity(rdb, gc, (GraphEntity *)&n);
+		_RdbLoadEntity(rdb, gc, (GraphEntity *)&n, GETYPE_NODE);
 
 		// introduce n to each relevant index
 		for (int i = 0; i < nodeLabelCount; i++) {
@@ -169,7 +171,7 @@ void RdbLoadEdges_v12
 		Serializer_Graph_SetEdge(gc->g,
 				gc->decoding_context->multi_edge[relation], edgeId, srcId,
 				destId, relation, &e);
-		_RdbLoadEntity(rdb, gc, (GraphEntity *)&e);
+		_RdbLoadEntity(rdb, gc, (GraphEntity *)&e, GETYPE_EDGE);
 
 		// index edge
 		Schema *s = GraphContext_GetSchemaByID(gc, relation, SCHEMA_EDGE);
