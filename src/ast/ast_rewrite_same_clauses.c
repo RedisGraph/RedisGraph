@@ -138,17 +138,14 @@ static void replace_delete_clause
 			
 			// do not aggregate multiple appearances of an identifier
 			if(cypher_astnode_type(exp) == CYPHER_AST_IDENTIFIER) {
-				const char *name = cypher_ast_identifier_get_name(exp);
-				if(raxFind(identifiers, name, strlen(name)) != raxNotFound) {
-					continue;
+				const char *identifier = cypher_ast_identifier_get_name(exp);
+				if(raxTryInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL)) {
+					array_append(exps, cypher_ast_clone(exp));
 				}
-
-				raxInsert(identifiers, name, strlen(name), NULL, NULL);
 			}
-
-			array_append(exps, cypher_ast_clone(exp));
 		}
 	}
+	raxFree(identifiers);
 
 	// build the replacement clause
 	cypher_astnode_t *new_clause = cypher_ast_delete(false, exps,
