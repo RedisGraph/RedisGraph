@@ -144,29 +144,19 @@ class testEntityUpdate(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions", str(e))
 
-        try:
-            graph.query("MERGE (n:N) ON CREATE SET n.a.b=3 RETURN n")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions", str(e))
-
-        try:
-            graph.query("MERGE (n:N) ON CREATE SET n = {v: 1}, n.a.b=3 RETURN n")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions", str(e))
-
-        try:
-            graph.query("MERGE (n:N) ON MATCH SET n.a.b=3 RETURN n")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions", str(e))
-
-        try:
-            graph.query("MERGE (n:N) ON MATCH SET n = {v: 1}, n.a.b=3 RETURN n")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions", str(e))
+        queries = [
+            "MERGE (n:N) ON CREATE SET n.a.b=3 RETURN n",
+            "MERGE (n:N) ON CREATE SET n = {v: 1}, n.a.b=3 RETURN n",
+            "MERGE (n:N) ON MATCH SET n.a.b=3 RETURN n",
+            "MERGE (n:N) ON MATCH SET n = {v: 1}, n.a.b=3 RETURN n"
+        ]
+        for query in queries:
+            try:
+                graph.query(query)
+                self.env.assertTrue(False)
+            except ResponseError as e:
+                # Expecting a type error.
+                self.env.assertContains("Type mismatch: expected Node or Edge but was Map", str(e))
 
     # Fail when a property is a complex type nested within an array type
     def test13_invalid_complex_type_in_array(self):
@@ -404,7 +394,7 @@ class testEntityUpdate(FlowTestsBase):
                 multiple_entity_graph.query(query)
                 self.env.assertTrue(False)
             except ResponseError as e:
-                self.env.assertContains("Type mismatch: expected Node but was Relationship", str(e))
+                self.env.assertContains("Type mismatch: expected Node but was Edge", str(e))
     
 
     def test_26_fail_update_label_for_constant(self):
@@ -414,7 +404,7 @@ class testEntityUpdate(FlowTestsBase):
                 graph.query(query)
                 self.env.assertTrue(False)
             except ResponseError as e:
-                self.env.assertContains("Update error: alias 'x' did not resolve to a graph entity", str(e))
+                self.env.assertContains("Type mismatch: expected Node or Edge but was Integer", str(e))
     
 
     def test_27_set_label_on_merge(self):
@@ -516,7 +506,7 @@ class testEntityUpdate(FlowTestsBase):
                 multiple_entity_graph.query(query)
                 self.env.assertTrue(False)
             except ResponseError as e:
-                self.env.assertContains("Type mismatch: expected Node but was Relationship", str(e))
+                self.env.assertContains("Type mismatch: expected Node but was Edge", str(e))
     
     def test_35_fail_remove_label_for_constant(self):
         queries = ["WITH 1 AS x REMOVE x:L RETURN x"]
@@ -525,7 +515,7 @@ class testEntityUpdate(FlowTestsBase):
                 graph.query(query)
                 self.env.assertTrue(False)
             except ResponseError as e:
-                self.env.assertContains("Update error: alias 'x' did not resolve to a graph entity", str(e))
+                self.env.assertContains("Type mismatch: expected Node or Edge but was Integer", str(e))
 
     def test_36_mix_add_and_remove_node_properties(self):
         graph.delete()

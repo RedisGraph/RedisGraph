@@ -13,6 +13,7 @@
 #include "../util/rax_extensions.h"
 #include "../procedures/procedure.h"
 #include "../arithmetic/arithmetic_expression.h"
+#include "../arithmetic/arithmetic_expression_construct.h"
 
 // TODO: generic function should be used to validate different features positions
 // static AST_Validation _NestedIn
@@ -825,7 +826,13 @@ static AST_Validation _ValidateMergeNode(const cypher_astnode_t *entity, rax *de
 static AST_Validation Validate_SETProperty(const cypher_astnode_t *set_item) {
 	const cypher_astnode_t *ast_prop = cypher_ast_set_property_get_property(set_item);
 	const cypher_astnode_t *ast_entity = cypher_ast_property_operator_get_expression(ast_prop);
-	if(cypher_astnode_type(ast_entity) != CYPHER_AST_IDENTIFIER) {
+	cypher_astnode_type_t type = cypher_astnode_type(ast_entity);
+	if(type == CYPHER_AST_PROPERTY_OPERATOR) {
+		AR_ExpNode* node = AR_EXP_FromASTNode(ast_entity);
+		SIType expected_type = T_NODE | T_EDGE;
+		Error_SITypeMismatch(node->operand.constant, expected_type);
+		return AST_INVALID;;
+	} else if(cypher_astnode_type(ast_entity) != CYPHER_AST_IDENTIFIER) {
 		ErrorCtx_SetError("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions");
 		return AST_INVALID;
 	}
