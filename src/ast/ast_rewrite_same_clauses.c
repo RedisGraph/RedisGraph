@@ -14,7 +14,7 @@
 
 // compressing multiple consecutive CREATE clauses into a single CREATE clause
 // this function collects all patterns scattered across multiple CREATE clauses
-// and introduces them into a single CREATE clause
+// and combines them into a single CREATE clause
 static void replace_create_clause
 (
 	cypher_astnode_t *root,      // ast root
@@ -37,9 +37,6 @@ static void replace_create_clause
 				cypher_ast_pattern_get_path(pattern, j);
 			array_append(paths, cypher_ast_clone(path));
 		}
-
-		// done with current clause, free it
-		cypher_ast_free(clauses[i]);
 	}
 	
 	// build the replacement pattern
@@ -58,7 +55,7 @@ static void replace_create_clause
 
 // compressing multiple consecutive MATCH clauses into a single MATCH clause
 // this function collects all patterns scattered across multiple MATCH clauses
-// and introduces them into a single MATCH clause
+// and combines them into a single MATCH clause
 static void replace_match_clause
 (
 	cypher_astnode_t *root,      // ast root
@@ -98,8 +95,6 @@ static void replace_match_clause
 						new_predicate, children, 2, range);
 			}
 		}
-		// done with current clause, free it
-		cypher_ast_free(clauses[i]);
 	}
 	
 	// build the replacement pattern
@@ -120,7 +115,7 @@ static void replace_match_clause
 
 // compressing multiple consecutive DELETE clauses into a single DELETE clause
 // this function collects all expressions scattered across multiple DELETE
-// clauses and introduces them into a single DELETE clause
+// clauses and combines them into a single DELETE clause
 static void replace_delete_clause
 (
 	cypher_astnode_t *root,      // ast root
@@ -132,6 +127,7 @@ static void replace_delete_clause
 
 	struct cypher_input_range range = cypher_astnode_range(clauses[0]);
 	cypher_astnode_t **exps = array_new(cypher_astnode_t *, count);
+	rax *identifiers = raxNew();
 
 	// collect expressions
 	for (uint i = 0; i < count; i++) {
@@ -139,13 +135,21 @@ static void replace_delete_clause
 		for(uint j = 0; j < nexps; j++) {
 			const cypher_astnode_t *exp =
 				cypher_ast_delete_get_expression(clauses[i], j);
+			
+			// do not aggregate multiple appearances of an identifier
+			if(cypher_astnode_type(exp) == CYPHER_AST_IDENTIFIER) {
+				const char *name = cypher_ast_identifier_get_name(exp);
+				if(raxFind(identifiers, name, strlen(name)) != raxNotFound) {
+					continue;
+				}
+
+				raxInsert(identifiers, name, strlen(name), NULL, NULL);
+			}
+
 			array_append(exps, cypher_ast_clone(exp));
 		}
-
-		// done with current clause, free it
-		cypher_ast_free(clauses[i]);
 	}
-	
+
 	// build the replacement clause
 	cypher_astnode_t *new_clause = cypher_ast_delete(false, exps,
 			array_len(exps), exps, array_len(exps), range);
@@ -158,7 +162,7 @@ static void replace_delete_clause
 
 // compressing multiple consecutive SET clauses into a single SET clause
 // this function collects all expressions scattered across multiple SET
-// clauses and introduces them into a single SET clause
+// clauses and combines them into a single SET clause
 static void replace_set_clause
 (
 	cypher_astnode_t *root,      // ast root
@@ -178,9 +182,6 @@ static void replace_set_clause
 				cypher_ast_set_get_item(clauses[i], j);
 			array_append(items, cypher_ast_clone(item));
 		}
-
-		// done with current clause, free it
-		cypher_ast_free(clauses[i]);
 	}
 	
 	// build the replacement clause
@@ -195,7 +196,7 @@ static void replace_set_clause
 
 // compressing multiple consecutive REMOVE clauses into a single REMOVE clause
 // this function collects all expressions scattered across multiple REMOVE
-// clauses and introduces them into a single REMOVE clause
+// clauses and combines them into a single REMOVE clause
 static void replace_remove_clause
 (
 	cypher_astnode_t *root,      // ast root
@@ -215,9 +216,6 @@ static void replace_remove_clause
 				cypher_ast_remove_get_item(clauses[i], j);
 			array_append(items, cypher_ast_clone(item));
 		}
-
-		// done with current clause, free it
-		cypher_ast_free(clauses[i]);
 	}
 	
 	// build the replacement clause
