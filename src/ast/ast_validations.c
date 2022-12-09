@@ -831,6 +831,7 @@ static AST_Validation Validate_SETProperty(const cypher_astnode_t *set_item) {
 		AR_ExpNode* node = AR_EXP_FromASTNode(ast_entity);
 		SIType expected_type = T_NODE | T_EDGE;
 		Error_SITypeMismatch(node->operand.constant, expected_type);
+		AR_EXP_Free(node);
 		return AST_INVALID;;
 	} else if(cypher_astnode_type(ast_entity) != CYPHER_AST_IDENTIFIER) {
 		ErrorCtx_SetError("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions");
