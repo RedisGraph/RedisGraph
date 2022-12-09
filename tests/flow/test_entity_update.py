@@ -530,3 +530,17 @@ class testEntityUpdate(FlowTestsBase):
         result = graph.query("MATCH (v) SET v.p1 = v.p8, v.p1 = v.p5, v.p2 = v.p4")
         result = graph.query("MATCH (v) RETURN v")
         self.env.assertEqual(result.header, [[1, 'v']])
+
+    def test_37_set_aliased_literal_map(self):
+        queries = [
+            "WITH {a:1} AS x SET x = 3",
+            "WITH {a:1} AS x SET x.a = 3",
+            "WITH {a:{b:1, c:2}} AS x SET x.a.b = 3",
+        ]
+        for query in queries:
+            try:
+                graph.query(query)
+                self.env.assertTrue(False)
+            except ResponseError as e:
+                # Expecting a type error.
+                self.env.assertContains("Type mismatch: expected Node or Edge but was Map", str(e))
