@@ -62,7 +62,7 @@ static bool _ValidateAllShortestPaths
 	return false;
 }
 
-// get aliases of the WITH clause
+// get aliases of a WITH clause
 // return true if no errors where encountered, false otherwise
 static bool _AST_GetWithAliases
 (
@@ -135,12 +135,11 @@ static void _AST_GetProcCallAliases
 		// Example: YIELD label --> label is introduced (removed outside of scope)
 		const cypher_astnode_t *exp_node = cypher_ast_projection_get_expression(proj_node);
 		identifier = cypher_ast_identifier_get_name(exp_node);
-		ASSERT(identifiers != NULL);
 		raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
 	}
 }
 
-// multi-hop traversals aliasing is not supported
+// make sure multi-hop traversals are not aliased
 static AST_Validation _ValidateMultiHopTraversal
 (
 	const cypher_astnode_t *edge,  // ast-node to validate
@@ -186,7 +185,7 @@ static AST_Validation _ValidateMultiHopTraversal
 // one reltype is specified for unbound relations (created).
 static AST_Validation _ValidateMergeRelation
 (
-	const cypher_astnode_t *entity,  // ast-node
+	const cypher_astnode_t *entity,  // ast-node (rel-pattern)
 	rax *defined_aliases             // bound variables
 ) {
 	const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(entity);
@@ -213,7 +212,7 @@ static AST_Validation _ValidateMergeRelation
 	return AST_VALID;
 }
 
-// Verify that MERGE doesn't redeclare bound nodes
+// Verify that MERGE does not introduce labels or properties to bound nodes
 static AST_Validation _ValidateMergeNode
 (
 	const cypher_astnode_t *entity,  // ast-node
@@ -224,7 +223,7 @@ static AST_Validation _ValidateMergeNode
 	}
 
 	const cypher_astnode_t *identifier = cypher_ast_node_pattern_get_identifier(entity);
-	if(identifier == NULL) {
+	if(!identifier) {
 		return AST_VALID;
 	}
 
@@ -265,8 +264,8 @@ static AST_Validation _ValidateCreateRelation
 // Validate each entity referenced in a single path of a CREATE clause.
 static AST_Validation _Validate_CREATE_Entities
 (
-	const cypher_astnode_t *path,
-	rax *defined_aliases
+	const cypher_astnode_t *path,  // ast-node (pattern-path)
+	rax *defined_aliases           // bound vars
 ) {
 	uint nelems = cypher_ast_pattern_path_nelements(path);
 	 // Redeclaration of a node is not allowed only when the path is of length 0, as in: MATCH (a) CREATE (a).
@@ -290,7 +289,7 @@ static AST_Validation _Validate_CREATE_Entities
 static AST_Validation _Validate_referred_identifier
 (
 	rax *defined_identifiers,  // bound variables
-	const char *identifier     // variable to check
+	const char *identifier     // identifier to check
 ) {
 	int len = strlen(identifier);
 	if(raxFind(defined_identifiers, (unsigned char *)identifier, len) == raxNotFound) {
@@ -309,26 +308,57 @@ static bool _Validate_list_comprehension
 	ast_visitor *visitor        // visitor
 ) {
 	validations_ctx *vctx = visitor->ctx;
-	if(vctx->valid == AST_INVALID) return false;
+	if(vctx->valid == AST_INVALID) {
+		return false;
+	}
 
-	const cypher_astnode_t *id = cypher_ast_list_comprehension_get_identifier(n);
-	const char *identifier = cypher_ast_identifier_get_name(id);
-	bool is_new = (raxFind(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier)) == raxNotFound);
 	if(start) {
-		// if identifier already exists in env, don't re-introduce.
-		if(raxFind(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier) == raxNotFound)) {
+		const cypher_astnode_t *id = cypher_ast_list_comprehension_get_identifier(n);
+		const char *identifier = cypher_ast_identifier_get_name(id);
+		bool is_new = (raxFind(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier)) == raxNotFound);
+
+		// Introduce local identifier if it is not yet introduced
+		if(is_new) {
 			raxInsert(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
 		}
-		return true;
-	}
 
+		// Visit expression-children
+		// Visit expression
+		const cypher_astnode_t *exp = cypher_ast_list_comprehension_get_expression(n);
+		if(exp) {
+			AST_Visitor_visit(exp, visitor);
+		}
+		if(vctx->valid == AST_INVALID) {
+			return false;
+		}
+
+		// Visit predicate
+		const cypher_astnode_t *pred = cypher_ast_list_comprehension_get_predicate(n);
+		if(pred) {
+			AST_Visitor_visit(pred, visitor);
+		}
+		if(vctx->valid == AST_INVALID) {
+			return false;
+		}
+
+		// Visit eval
+		const cypher_astnode_t *eval = cypher_ast_list_comprehension_get_eval(n);
+		if(eval) {
+			AST_Visitor_visit(eval, visitor);
+		}
+
+		// list comprehension identifier is no longer bound, remove it from bound vars
+		// list comprehension identifier is no longer bound, remove it from bound vars
+		// list comprehension identifier is no longer bound, remove it from bound vars
 	// list comprehension identifier is no longer bound, remove it from bound vars 
-	// if it was introduced
-	if(is_new) {
-		raxRemove(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL);
+		// list comprehension identifier is no longer bound, remove it from bound vars
+		// if it was introduced
+		if(is_new) {
+			raxRemove(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL);
+		}
 	}
 
-	return true;
+	return false;
 }
 
 // validate a pattern comprehension
@@ -344,21 +374,61 @@ static bool _Validate_pattern_comprehension
 	}
 
 	if(start) {
-		// introduce pattern-comprehension to bound vars if it exists
-		const cypher_astnode_t *identifier_node = cypher_ast_pattern_comprehension_get_identifier(n);
-		if(identifier_node) {
-			const char *identifier = cypher_ast_identifier_get_name(identifier_node);
+		const cypher_astnode_t *id = cypher_ast_pattern_comprehension_get_identifier(n);
+		bool is_new;
+		const char *identifier;;
+		if(id) {
+			identifier = cypher_ast_identifier_get_name(id);
+			is_new = (raxFind(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier)) == raxNotFound);
+		}
+		else {
+			is_new = false;
+		}
+
+		// Introduce local identifier if it is not yet introduced
+		if(is_new) {
 			raxInsert(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
+		}
+
+		// Visit expression-children
+		// Visit pattern
+		const cypher_astnode_t *pattern = cypher_ast_pattern_comprehension_get_pattern(n);
+		if(pattern) {
+			AST_Visitor_visit(pattern, visitor);
+		}
+		if(vctx->valid == AST_INVALID) {
+			return false;
+		}
+
+		// Visit predicate
+		const cypher_astnode_t *pred = cypher_ast_pattern_comprehension_get_predicate(n);
+		if(pred) {
+			AST_Visitor_visit(pred, visitor);
+		}
+		if(vctx->valid == AST_INVALID) {
+			return false;
+		}
+
+		// Visit eval
+		const cypher_astnode_t *eval = cypher_ast_pattern_comprehension_get_eval(n);
+		if(eval) {
+			AST_Visitor_visit(eval, visitor);
+		}
+
+		// pattern comprehension identifier is no longer bound, remove it from bound vars
+		// if it was introduced
+		if(is_new) {
+			raxRemove(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL);
 		}
 	}
 
-	return true;
+	return false;
 }
 
 // validate that an identifier is bound
 static bool _Validate_identifier
 (
-	const cypher_astnode_t *n,  // ast-node
+	const cypher_astnode_t *n,  // ast-node (identifier)
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
@@ -373,10 +443,10 @@ static bool _Validate_identifier
 	return true;
 }
 
-// validate a map
+// validate the values of a map
 static bool _Validate_map
 (
-	const cypher_astnode_t *n,  // ast-node
+	const cypher_astnode_t *n,  // ast-node (map)
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
@@ -419,6 +489,7 @@ static AST_Validation _ValidateFunctionCall
 	const char *funcName,    // function name
 	bool include_aggregates  // are aggregations allowed
 ) {
+	// check existence of the function-name
 	if(!AR_FuncExists(funcName)) {
 		ErrorCtx_SetError("Unknown function '%s'", funcName);
 		return AST_INVALID;
@@ -488,7 +559,7 @@ static bool _Validate_apply_operator
 	return vctx->valid == AST_VALID;
 }
 
-// validate a reduce clause
+// validate reduce
 static bool _Validate_reduce
 (
 	const cypher_astnode_t *n,  // ast-node
@@ -515,7 +586,7 @@ static bool _Validate_reduce
 	//     4. variable                     `n`
 	//     5. eval expression              `sum + n`
 	
-	// make sure that init expression is a known var or valid exp.
+	// make sure that the init expression is a known var or valid exp.
 	const cypher_astnode_t *init_node = cypher_ast_reduce_get_init(n);
 	if(cypher_astnode_type(init_node) == CYPHER_AST_IDENTIFIER) {
 		// check if the variable has already been introduced
@@ -528,7 +599,6 @@ static bool _Validate_reduce
 	}
 	else {
 		AST_Visitor_visit(init_node, visitor);
-
 		if(vctx->valid == AST_INVALID) {
 			return false;
 		}
@@ -548,7 +618,6 @@ static bool _Validate_reduce
 	
 	// Visit the list expression (no need to introduce local vars)
 	AST_Visitor_visit(list_var, visitor);
-
 	if(vctx->valid == AST_INVALID) {
 		return false;
 	}
@@ -561,7 +630,6 @@ static bool _Validate_reduce
 		return false;
 	}
 
-	const cypher_astnode_t *eval_exp = cypher_ast_reduce_get_eval(n);
 	// If accumulator is already in the environment, don't reintroduce it
 	const cypher_astnode_t *accum_node =cypher_ast_reduce_get_accumulator(n);
 	const char *accum_str = cypher_ast_identifier_get_name(accum_node);
@@ -580,14 +648,14 @@ static bool _Validate_reduce
 		raxInsert(vctx->defined_identifiers, (unsigned char *) list_var_str, strlen(list_var_str), NULL, NULL);
 	
 	// visit eval expression
+	const cypher_astnode_t *eval_exp = cypher_ast_reduce_get_eval(n);
 	AST_Visitor_visit(eval_exp, visitor);
-	
-	// change clause type back
-	vctx->clause = orig_clause;
-
 	if(vctx->valid == AST_INVALID) {
 		return false;
 	}
+
+	// change clause type back
+	vctx->clause = orig_clause;
 
 	// Remove local vars\aliases if introduced
 	if(introduce_accum) {
@@ -637,7 +705,7 @@ static AST_Validation _ValidateInlinedProperties
 // validate a relation-pattern
 static bool _Validate_rel_pattern
 (
-	const cypher_astnode_t *n,  // ast-node
+	const cypher_astnode_t *n,  // ast-node (rel-pattern)s
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
@@ -715,7 +783,7 @@ static bool _Validate_rel_pattern
 // validate a node-pattern expression
 static bool _Validate_node_pattern
 (
-	const cypher_astnode_t *n,  // ast-node
+	const cypher_astnode_t *n,  // ast-node (node-pattern)
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
@@ -767,29 +835,31 @@ static bool _Validate_shortest_path
 		return false;
 	}
 
-	if(vctx->clause == CYPHER_AST_MATCH) {
-		if(cypher_ast_shortest_path_is_single(n)) {
-			// MATCH (a), (b), p = shortestPath((a)-[*]->(b)) RETURN p
-			vctx->valid = AST_INVALID;
-			ErrorCtx_SetError("RedisGraph currently only supports shortestPath in WITH or RETURN clauses");
-		} else {
-			// MATCH (a), (b), p = allShortestPaths((a)-[*2..]->(b)) RETURN p
-			// validate rel pattern range doesn't contains a minimum > 1
-			const cypher_astnode_t **ranges = AST_GetTypedNodes(n, CYPHER_AST_RANGE);
-			int range_count = array_len(ranges);
-			for(int i = 0; i < range_count; i++) {
-				long min_hops = 1;
-				const cypher_astnode_t *r = ranges[i];
-				const cypher_astnode_t *start = cypher_ast_range_get_start(r);
-				if(start) min_hops = AST_ParseIntegerNode(start);
-				if(min_hops != 1) {
-					vctx->valid = AST_INVALID;
-					ErrorCtx_SetError("allShortestPaths(...) does not support a minimal length different from 1");
-					break;
-				}
+	if(vctx->clause != CYPHER_AST_MATCH) {
+		return true;
+	}
+
+	if(cypher_ast_shortest_path_is_single(n)) {
+		// MATCH (a), (b), p = shortestPath((a)-[*]->(b)) RETURN p
+		vctx->valid = AST_INVALID;
+		ErrorCtx_SetError("RedisGraph currently only supports shortestPath in WITH or RETURN clauses");
+	} else {
+		// MATCH (a), (b), p = allShortestPaths((a)-[*2..]->(b)) RETURN p
+		// validate rel pattern range doesn't contains a minimum > 1
+		const cypher_astnode_t **ranges = AST_GetTypedNodes(n, CYPHER_AST_RANGE);
+		int range_count = array_len(ranges);
+		for(int i = 0; i < range_count; i++) {
+			long min_hops = 1;
+			const cypher_astnode_t *r = ranges[i];
+			const cypher_astnode_t *start = cypher_ast_range_get_start(r);
+			if(start) min_hops = AST_ParseIntegerNode(start);
+			if(min_hops != 1) {
+				vctx->valid = AST_INVALID;
+				ErrorCtx_SetError("allShortestPaths(...) does not support a minimal length different from 1");
+				break;
 			}
-			array_free(ranges);
 		}
+		array_free(ranges);
 	}
 
 	return vctx->valid == AST_VALID;
@@ -818,7 +888,7 @@ static bool _Validate_pattern_path
 // validate a named path
 static bool _Validate_named_path
 (
-	const cypher_astnode_t *n,  // ast-node
+	const cypher_astnode_t *n,  // ast-node (named path)
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
@@ -1103,7 +1173,7 @@ static bool _Validate_DELETE_Clause
 		const cypher_astnode_t *exp = cypher_ast_delete_get_expression(n, j);
 		cypher_astnode_type_t type = cypher_astnode_type(exp);
 		// expecting an identifier or a function call
-		// identifiers and calls that don't resolve to a node or edge
+		// identifiers and calls that don't resolve to a node, path or edge
 		// will raise an error at run-time
 		if(type != CYPHER_AST_IDENTIFIER &&
 			type != CYPHER_AST_APPLY_OPERATOR &&
@@ -1118,7 +1188,7 @@ static bool _Validate_DELETE_Clause
 	return true;
 }
 
-// checks if a set property contains non-aliased references in lhs
+// checks if a set property contains non-aliased references in its lhs
 static bool _Validate_set_property
 (
 	const cypher_astnode_t *n,  // ast-node
@@ -1247,6 +1317,8 @@ static bool _Validate_UNWIND_Clause
 
 	if(start) {
 		vctx->clause = cypher_astnode_type(n);
+
+		// introduce alias to bound vars
 		const cypher_astnode_t *alias = cypher_ast_unwind_get_alias(n);
 		const char *identifier = cypher_ast_identifier_get_name(alias);
 		raxInsert(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
@@ -1272,6 +1344,7 @@ static bool _Validate_RETURN_Clause
 		vctx->clause = cypher_astnode_type(n);
 		uint num_return_projections = cypher_ast_return_nprojections(n);
 
+		// introduce bound vars
 		for(uint i = 0; i < num_return_projections; i ++) {
 			const cypher_astnode_t *child = cypher_ast_return_get_projection(n, i);
 			const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(child);
