@@ -54,10 +54,13 @@ make test         # Run tests
   TEST=test         # Run specific test
   TESTFILE=file     # Run tests listed in file
   FAILFILE=file     # Write failed tests to file
+make unit-tests  # Run unit tests
+make flow-tests  # Run flow tests
+make tck-tests   # Run TCK tests
+make fuzz-tests  # Run fuzz tester
 
 make memcheck    # Run tests with Valgrind
 make benchmark   # Run benchmarks
-make fuzz        # Run fuzz tester
 
 make coverage     # Perform coverage analysis (build & test)
 make cov-upload   # Upload coverage data to codecov.io
@@ -265,7 +268,8 @@ endif
 endif
 
 clean-libcypher-parser:
-	$(SHOW)$(MAKE) -C $(ROOT)/build/libcypher-parser clean ALL=1 AUTOGEN=1
+	$(SHOW)$(MAKE) -C $(ROOT)/build/libcypher-parser clean
+#	$(SHOW)$(MAKE) -C $(ROOT)/build/libcypher-parser clean ALL=1 AUTOGEN=1
 
 clean-search:
 ifeq ($(ALL),1)
@@ -314,7 +318,19 @@ endif
 endif
 	@$(MAKE) -C $(ROOT)/tests test PARALLEL=$(_RLTEST_PARALLEL) BINROOT=$(BINROOT)
 
-.PHONY: test
+unit-tests:
+	@$(MAKE) -C $(ROOT)/tests unit BINROOT=$(BINROOT)
+
+flow-tests: $(TARGET)
+	@$(MAKE) -C $(ROOT)/tests flow BINROOT=$(BINROOT)
+
+tck-tests: $(TARGET)
+	@$(MAKE) -C $(ROOT)/tests tck BINROOT=$(BINROOT)
+
+fuzz fuzz-tests: $(TARGET)
+	@$(MAKE) -C $(ROOT)/tests fuzz BINROOT=$(BINROOT)
+
+.PHONY: test unit-tests flow-tests tck-tests fuzz fuzz-tests
 
 #----------------------------------------------------------------------------------------------
 
@@ -346,13 +362,6 @@ coverage:
 	$(SHOW)$(COVERAGE_COLLECT_REPORT)
 
 .PHONY: coverage
-
-#----------------------------------------------------------------------------------------------
-
-fuzz: $(TARGET)
-	@$(MAKE) -C $(ROOT)/tests fuzz
-
-.PHONY: fuzz
 
 #----------------------------------------------------------------------------------------------
 

@@ -59,7 +59,7 @@ target_link_libraries(redisgraph PRIVATE ${REDISGRAPH_LIBS} c m dl pthread)
 
 if (NOT DEBUG AND NOT APPLE)
 	add_custom_command(TARGET redisgraph POST_BUILD
-		COMMAND ${MK}/extract-obj-symbols $<TARGET_FILE:redisgraph>)
+		COMMAND "${MK}/extract-obj-symbols" "$<TARGET_FILE:redisgraph>")
 endif()
 
 if (APPLE)

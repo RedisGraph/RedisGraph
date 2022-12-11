@@ -167,8 +167,8 @@ setup_clang_sanitizer() {
 				--suffix asan --clang-asan --clang-san-blacklist /build/redis.blacklist
 		fi
 
-		export ASAN_OPTIONS=detect_odr_violation=0:-fsanitize-recover=all
-		# :detect_leaks=0
+		export ASAN_OPTIONS="detect_odr_violation=0:halt_on_error=0:detect_leaks=1"
+		export LSAN_OPTIONS="suppressions=$ROOT/tests/memcheck/asan.supp"
 
 	elif [[ $SAN == mem || $SAN == memory ]]; then
 		REDIS_SERVER=${REDIS_SERVER:-redis-server-msan-$SAN_REDIS_VER}
@@ -229,7 +229,7 @@ valgrind_config() {
 		VG_OPTIONS+=" --leak-check=full"
 	fi
 
-	VALGRIND_SUPRESSIONS=$ROOT/tests/valgrind/valgrind.supp
+	VALGRIND_SUPRESSIONS=$ROOT/tests/memcheck/valgrind.supp
 
 	RLTEST_VG_ARGS+="\
 		--use-valgrind \

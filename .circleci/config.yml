@@ -385,6 +385,7 @@ jobs:
           name: Test
           shell: /bin/bash -l -eo pipefail
           command: make test PLATFORM_MODE=1 SAN=<<parameters.san-type>> UNIT=0 FLOW=1 TCK=0 SLOW=1
+          no_output_timeout: 45m
       - save-tests-logs
 
   build-memcheck:
