@@ -773,7 +773,7 @@ static AST_Validation _Validate_WITH_Clauses(const AST *ast) {
 }
 
 // Verify that MERGE doesn't redeclare bound relations, that one reltype is specified for unbound relations, 
-// and that it is not a variable length relationship
+// and that there is not variable length relationship
 static AST_Validation _ValidateMergeRelation(const cypher_astnode_t *entity, rax *defined_aliases) {
 	// Verify that this is not a variable length relationship
 	const cypher_astnode_t *range = cypher_ast_rel_pattern_get_varlength(entity);
