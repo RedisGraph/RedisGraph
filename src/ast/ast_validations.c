@@ -772,8 +772,16 @@ static AST_Validation _Validate_WITH_Clauses(const AST *ast) {
 	return res;
 }
 
-// Verify that MERGE doesn't redeclare bound relations and that one reltype is specified for unbound relations.
+// Verify that MERGE doesn't redeclare bound relations, that one reltype is specified for unbound relations, 
+// and that it is not a variable length relationship
 static AST_Validation _ValidateMergeRelation(const cypher_astnode_t *entity, rax *defined_aliases) {
+	// Verify that this is not a variable length relationship
+	const cypher_astnode_t *range = cypher_ast_rel_pattern_get_varlength(entity);
+	if(range) {
+		ErrorCtx_SetError("Variable length relationships cannot be used in MERGE");
+		return AST_INVALID;
+	}
+
 	const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(entity);
 	const char *alias = NULL;
 	if(identifier) {
@@ -985,6 +993,23 @@ static AST_Validation _Validate_CREATE_Clauses(const AST *ast) {
 		if (_ValidateFunctionCalls(pattern, false) != AST_VALID) goto cleanup;
 
 		uint path_count = cypher_ast_pattern_npaths(pattern);
+
+		// Verify that there are not variable length relationships
+		for (uint j = 0; j < path_count; j++) {
+			const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
+			uint path_len = cypher_ast_pattern_path_nelements(path);
+			// Odd offsets correspond to edges, even offsets correspond to nodes.
+			for(uint k = 1; k < path_len; k += 2) {
+				const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, k);
+				const cypher_astnode_t *range = cypher_ast_rel_pattern_get_varlength(edge);
+				if(range) {
+					ErrorCtx_SetError("Variable length relationships cannot be used in CREATE");
+					res = AST_INVALID;
+					goto cleanup;
+				}
+			}
+		}
+		
 		const cypher_astnode_t *prev_path = NULL;
 		for (uint j = 0; j < path_count; j++) {
 			const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
