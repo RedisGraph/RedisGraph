@@ -30,8 +30,10 @@ CFLAGS += \
 	-I$(BINDIR)/lib/src \
 	$(CFLAGS.$(OS))
 
-CFLAGS.macos += \
+ifeq ($(GCC),1)
+CFLAGS += \
 	-Wno-error=discarded-qualifiers
+endif
 
 export CFLAGS
 
