@@ -1264,6 +1264,53 @@ static bool _Validate_UNION_Clause
 	return true;
 }
 
+// validate a FOREACH clause
+static bool _Validate_FOREACH_Clause
+(
+	const cypher_astnode_t *n,  // ast-node
+	bool start,                 // first traversal
+	ast_visitor *visitor        // visitor
+) {
+	validations_ctx *vctx = visitor->ctx;
+	if(vctx->valid == AST_INVALID) {
+		return false;
+	}
+
+	if(start) {
+		vctx->clause = cypher_astnode_type(n);
+
+		// introduce local identifier to bound vars
+		const cypher_astnode_t *identifier_node = cypher_ast_foreach_get_identifier(n);
+		const char *identifier = cypher_ast_identifier_get_name(identifier_node);
+		bool introduce_ident = 
+			(raxTryInsert(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL) != NULL);
+
+		// visit expression
+		const cypher_astnode_t *exp = cypher_ast_foreach_get_expression(n);
+		AST_Visitor_visit(exp, visitor);
+		if(vctx->valid == AST_INVALID) {
+			return false;
+		}
+
+		// visit clauses
+		uint nclauses = cypher_ast_foreach_nclauses(n);
+		for(uint i = 0; i < nclauses; i++) {
+			const cypher_astnode_t *clause = cypher_ast_foreach_get_clause(n, i);
+			AST_Visitor_visit(clause, visitor);
+			if(vctx->valid == AST_INVALID) {
+				return false;
+			}
+		}
+
+		// remove local identifier from bound vars if introduced
+		if(introduce_ident) {
+			raxRemove(vctx->defined_identifiers, identifier, strlen(identifier), NULL);
+		}
+	}
+
+	return false;
+}
+
 // validate a CREATE clause
 static bool _Validate_CREATE_Clause
 (
@@ -1575,6 +1622,7 @@ static AST_Validation _ValidateScopes
 	AST_Visitor_register(visitor, CYPHER_AST_CREATE, _Validate_CREATE_Clause);
 	AST_Visitor_register(visitor, CYPHER_AST_SET, _Validate_SET_Clause);
 	AST_Visitor_register(visitor, CYPHER_AST_UNION, _Validate_UNION_Clause);
+	AST_Visitor_register(visitor, CYPHER_AST_FOREACH, _Validate_FOREACH_Clause);
 	AST_Visitor_register(visitor, CYPHER_AST_SET_PROPERTY, _Validate_set_property);
 	AST_Visitor_register(visitor, CYPHER_AST_DELETE, _Validate_DELETE_Clause);
 	AST_Visitor_register(visitor, CYPHER_AST_WITH, _Validate_WITH_Clause);

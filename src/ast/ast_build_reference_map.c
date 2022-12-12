@@ -383,6 +383,12 @@ static void _AST_MapWithReferredEntities(AST *ast_segment, const cypher_astnode_
 	if(order_by) _AST_MapOrderByReferences(ast_segment, order_by);
 }
 
+// Maps entities in FOREACH clause.
+static void _AST_MapForeachClauseReferences(AST *ast, const cypher_astnode_t *foreach_clause) {
+	const cypher_astnode_t *identifier = cypher_ast_foreach_get_identifier(foreach_clause);
+	_AST_MapExpression(ast, identifier);
+}
+
 // Map the LHS of "AS" projected entities. "RETURN a as x order by x" will just collect a to the map.
 static void _AST_MapReturnReferredEntities(AST *ast_segment,
 										   const cypher_astnode_t *return_clause) {
@@ -438,6 +444,14 @@ static void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *claus
 	} else if(type == CYPHER_AST_DELETE) {
 		// add referenced aliases for DELETE clause
 		_AST_MapDeleteClauseReferences(ast, clause);
+	} else if(type == CYPHER_AST_FOREACH) {
+		// Add referenced aliases for FOREACH clause.
+		_AST_MapForeachClauseReferences(ast, clause);
+		uint nclauses = cypher_ast_foreach_nclauses(clause);
+		for (uint i = 0; i < nclauses; i++) {
+			const cypher_astnode_t *clause_node = cypher_ast_foreach_get_clause(clause, i);
+			_ASTClause_BuildReferenceMap(ast, clause_node);
+		}
 	} else if(type == CYPHER_AST_REMOVE) {
 		// add referenced aliases for REMOVE clause
 		_AST_MapRemoveClauseReferences(ast, clause);

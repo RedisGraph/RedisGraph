@@ -74,7 +74,6 @@ AST_Validation CypherWhitelist_ValidateQuery
 	AST_Visitor_register(visitor, CYPHER_AST_EXTRACT, _visit); // Deprecated, will not be supported
 	AST_Visitor_register(visitor, CYPHER_AST_INDEX_NAME, _visit);
 	AST_Visitor_register(visitor, CYPHER_AST_COMMAND, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_FOREACH, _visit);
 	AST_Visitor_register(visitor, CYPHER_AST_BINARY_OPERATOR, _visit_binary_op);
 	AST_Visitor_visit(root, visitor);
 	AST_Visitor_free(visitor);
