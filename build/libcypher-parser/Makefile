@@ -28,7 +28,8 @@ export CFLAGS += \
 	-O3 \
 	-DYY_BUFFER_SIZE=1048576 \
 	-I$(BINDIR)/lib/src \
-	$(CFLAGS.$(OS))
+	$(CFLAGS.$(OS)) \
+	-Wno-error=discarded-qualifiers
 
 #----------------------------------------------------------------------------------------------
 

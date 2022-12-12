@@ -42,8 +42,7 @@ add_compile_options(${CMAKE_CC_FLAGS} ${CMAKE_CC_C_FLAGS})
 target_compile_options(redisgraph PUBLIC -fPIC ${CMAKE_CC_FLAGS} ${CMAKE_CC_C_FLAGS})
 
 lists_from_env(CMAKE_LD_FLAGS CMAKE_SO_LD_FLAGS LIBOMP)
-add_link_options(${CMAKE_LD_FLAGS} ${CMAKE_SO_LD_FLAGS} ${LIBOMP})
-target_link_options(redisgraph PUBLIC ${CMAKE_LD_FLAGS} ${CMAKE_SO_LD_FLAGS} ${LIBOMP})
+target_link_options(redisgraph PRIVATE ${CMAKE_LD_FLAGS} ${CMAKE_SO_LD_FLAGS} ${LIBOMP})
 
 set_target_properties(redisgraph PROPERTIES PREFIX "")
 set_target_properties(redisgraph PROPERTIES SUFFIX ".so")
@@ -59,7 +58,7 @@ target_link_libraries(redisgraph PRIVATE ${REDISGRAPH_LIBS} c m dl pthread)
 
 if (NOT DEBUG AND NOT APPLE)
 	add_custom_command(TARGET redisgraph POST_BUILD
-		COMMAND "${MK}/extract-obj-symbols" "$<TARGET_FILE:redisgraph>")
+		COMMAND "$ENV{MK}/extract-obj-symbols" "$<TARGET_FILE:redisgraph>")
 endif()
 
 if (APPLE)

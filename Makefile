@@ -188,6 +188,10 @@ endif
 
 #----------------------------------------------------------------------------------------------
 
+RUN_CMD=redis-server --loadmodule $(abspath $(TARGET))
+
+#----------------------------------------------------------------------------------------------
+
 MK_ALL_TARGETS=bindirs deps build
 
 .PHONY: all deps clean lint format pack run tests unit_tests flow_tests docker bindirs
@@ -292,10 +296,6 @@ upload-artifacts:
 	$(SHOW)SNAPSHOT=1 ./sbin/upload-artifacts
 
 .PHONY: pack package upload-artifacts upload-release
-
-#----------------------------------------------------------------------------------------------
-
-RUN_CMD=redis-server --loadmodule $(abspath $(TARGET))
 
 #----------------------------------------------------------------------------------------------
 
