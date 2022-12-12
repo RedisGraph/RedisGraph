@@ -23,13 +23,17 @@ SRCDIR=$(ROOT)/deps/libcypher-parser
 
 TARGET=$(BINDIR)/lib/src/.libs/libcypher-parser.a
 
-export CFLAGS += \
+CFLAGS += \
 	-fPIC \
 	-O3 \
 	-DYY_BUFFER_SIZE=1048576 \
 	-I$(BINDIR)/lib/src \
-	$(CFLAGS.$(OS)) \
+	$(CFLAGS.$(OS))
+
+CFLAGS.macos += \
 	-Wno-error=discarded-qualifiers
+
+export CFLAGS
 
 #----------------------------------------------------------------------------------------------
 
