@@ -4,6 +4,7 @@
 #include "../index/index.h"
 #include "redisearch_api.h"
 #include "../index/index.h"
+#include "../schema/schema.h"
 #include "value.h"
 
 
@@ -33,9 +34,9 @@ Constraint Constraint_free() {
 
 // check if entity constains all attributes of the constraint
 static bool _Should_constraint_enforce_entity(Constraint c, const AttributeSet attributes) {
-    size_t len = array_len(c->ids);
+    size_t len = array_len(c->attributes);
     for(size_t i = 0; i < len; ++i) {
-        if(AttributeSet_Get(attributes, c->ids[i]) == ATTRIBUTE_NOTFOUND) {
+        if(AttributeSet_Get(attributes, c->attributes[i]) == ATTRIBUTE_NOTFOUND) {
             return false;
         }
     }
@@ -55,7 +56,7 @@ bool Constraint_enforce_entity(Constraint c, const AttributeSet attributes, RSIn
     RSQNode *rs_query_node = RediSearch_CreateIntersectNode(idx, false);
     ASSERT(rs_query_node != NULL);
 
-    for(uint i = 0; i < array_len(c->ids); i++) {
+    for(uint i = 0; i < array_len(c->attributes); i++) {
         char *field = c->attributes[i].attribute_name;
         v = AttributeSet_Get(attributes, c->attributes[i].id);
         ASSERT(v != ATTRIBUTE_NOTFOUND); // We already ensured it using _Should_constraint_enforce_entity
@@ -113,13 +114,13 @@ void Free_Constraint_Remove_Its_Index(Constraint c, const GraphContext *gc) {
 	ASSERT(s);
 
 	// remove all index fields
-	for(int i = 0; i < array_len(c->attribute_name); i++) {
-		int res = GraphContext_DeleteIndex(gc, schema_type, c->label, c->attribute_name,
+	for(int i = 0; i < array_len(c->attributes); i++) {
+		int res = GraphContext_DeleteIndex(gc, schema_type, c->label, c->attributes[i].attribute_name,
 			IDX_EXACT_MATCH, true);
 		ASSERT(res != INDEX_FAIL); // index should exist
 
 		if(res == INDEX_OK) {
-			Index idx = Schema_GetIndex(s, c->ids[i], IDX_EXACT_MATCH);
+			Index idx = Schema_GetIndex(s, &(c->attributes[i].id), IDX_EXACT_MATCH);
 			ASSERT(*idx != NULL);
 
 			if(Index_FieldsCount(idx) > 0) {

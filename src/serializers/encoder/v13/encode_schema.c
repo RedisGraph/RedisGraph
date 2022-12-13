@@ -4,7 +4,7 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "encode_v12.h"
+#include "encode_v13.h"
 
 static void _RdbSaveAttributeKeys
 (
@@ -114,6 +114,27 @@ static inline void _RdbSaveIndexData
 	}
 }
 
+static inline void _RdbSaveConstraintsData(RedisModuleIO *rdb, Constraint constraints) {
+	uint n_constraints = array_len(constraints);
+	// encode number of constraints
+	RedisModule_SaveUnsigned(rdb, n_constraints);
+
+	for (uint i = 0; i < n_constraints; i++) {
+		_Constraint c = constraints[i];
+
+		uint fields_count = array_len(c.attributes);
+
+		// encode field count
+		RedisModule_SaveUnsigned(rdb, fields_count);
+		for(uint i = 0; i < fields_count; i++) {
+			char *field_name = c.attributes[i].attribute_name;
+
+			// encode field
+			RedisModule_SaveStringBuffer(rdb, field_name, strlen(field_name) + 1);
+		}
+	}
+}
+
 static void _RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
 	/* Format:
 	 * id
@@ -135,9 +156,12 @@ static void _RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
 
 	// Fulltext indices.
 	_RdbSaveIndexData(rdb, s->type, s->fulltextIdx);
+
+	// Constraints.
+	_RdbSaveConstraintsData(rdb, s->constraints);
 }
 
-void RdbSaveGraphSchema_v12(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbSaveGraphSchema_v13(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * attribute keys (unified schema)
 	 * #node schemas

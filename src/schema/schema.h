@@ -127,7 +127,7 @@ void Schema_Free
 // checks if schema has a constraint
 bool Schema_ContainsConstraint(
 const Schema *s, 
-const Attribute_ID *fields, 
+const ConstAttrData *fields, 
 uint field_count);
 
 // adds a constraint to schema
