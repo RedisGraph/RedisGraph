@@ -32,7 +32,7 @@ static Schema *_RdbLoadSchema
 		Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field_name, NULL);
 		IndexField_New(&field, field_id, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
 				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
-		Schema_AddIndex(&idx, s, &field, type);
+		Schema_AddIndex(&idx, s, &field, type, false);
 		RedisModule_Free(field_name);
 	}
 

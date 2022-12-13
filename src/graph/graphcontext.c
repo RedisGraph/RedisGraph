@@ -466,17 +466,24 @@ Index GraphContext_GetIndex
 	return Schema_GetIndex(s, attribute_id, type);
 }
 
-// create an exact match index for the given label and attribute
-bool GraphContext_AddExactMatchIndex
+static inline int _cmp_ConstAttrData(const void *a, const void *b) {
+	const ConstAttrData *x = a;
+	const ConstAttrData *y = b;
+	return x->id - y->id;
+}
+
+bool GraphContext_AddExactMatchIndexOrUniqueConstraint
 (
-	Index *idx,              // [input/output] index created
-	GraphContext *gc,        // graph context
-	SchemaType schema_type,  // type of entities to index nodes/edges
-	const char *label,       // label of indexed entities
-	const char **fields,     // fields to index
-	uint fields_count        // number of fields to index
+	Index *idx,                 // [input/output] index created
+	Constraint *constraint,     // [input/output] constraint created
+	GraphContext *gc,           // graph context
+	SchemaType schema_type,     // type of entities to index nodes/edges
+	const char *label,          // label of indexed entities
+	const char **fields_str,    // fields to index
+	uint fields_count           // number of fields to index
 ) {
 	ASSERT(idx    !=  NULL);
+	ASSERT((!constraint) || (*constraint == NULL));
 	ASSERT(gc     !=  NULL);
 	ASSERT(label  !=  NULL);
 	ASSERT(fields !=  NULL);
@@ -492,14 +499,33 @@ bool GraphContext_AddExactMatchIndex
 		s = GraphContext_AddSchema(gc, label, schema_type);
 	}
 
+	if(constraint) {
+		ConstAttrData fields[fields_count];
+		for(uint i = 0; i < fields; i++) {
+			fields[i].id = GraphContext_FindOrAddAttribute(gc, fields_str[i], NULL);
+			fields[i].attribute_name = fields_str[i];
+		}
+
+		// sort the properties for an easy comparison later
+		qsort(fields, fields_count, sizeof(Attribute_ID), (int (*)(const void *, const void *))_cmp_ConstAttrData);
+
+		// check if constraint already contained in schema
+		if(Schema_ContainsConstraint(s, fields, fields_count)) {
+			// constraint already exists
+			return false;
+		}
+
+		GraphEntityType entity_type = (s->type == SCHEMA_NODE) ? GETYPE_NODE : GETYPE_EDGE;
+		*constraint = Constraint_new(fields, fields_count, s->name, s->id, entity_type);
+	}
+
 	for(uint i = 0; i < fields_count; i++) {
 		// create index field
-		const char *field = fields[i];
+		const char *field = fields_str[i];
 		IndexField idx_field;
 		Attribute_ID f_id = GraphContext_FindOrAddAttribute(gc, field, NULL);
 		IndexField_Default(&idx_field, f_id, field);
-
-		if(Schema_AddIndex(idx, s, &idx_field, IDX_EXACT_MATCH) == INDEX_OK) {
+		if(Schema_AddIndex(idx, s, &idx_field, IDX_EXACT_MATCH, true) == INDEX_OK) {
 			index_changed = true;
 			// update result-set
 			ResultSet_IndexCreated(result_set, INDEX_OK);
@@ -559,7 +585,7 @@ bool GraphContext_AddFullTextIndex
 		IndexField index_field;
 		Attribute_ID f_id = GraphContext_FindOrAddAttribute(gc, field, NULL);
 		IndexField_New(&index_field, f_id, field, weight, nostem, phonetic);
-		if(Schema_AddIndex(idx, s, &index_field, IDX_FULLTEXT) == INDEX_OK) {
+		if(Schema_AddIndex(idx, s, &index_field, IDX_FULLTEXT, false) == INDEX_OK) {
 			index_changed = true;
 			// update result-set
 			ResultSet_IndexCreated(result_set, INDEX_OK);
@@ -590,7 +616,8 @@ int GraphContext_DeleteIndex
 	SchemaType schema_type,
 	const char *label,
 	const char *field,
-	IndexType type
+	IndexType type,
+	bool part_of_constraint_deletion
 ) {
 	ASSERT(gc    != NULL);
 	ASSERT(label != NULL);
@@ -600,8 +627,8 @@ int GraphContext_DeleteIndex
 	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
 
 	if(s != NULL) {
-		res = Schema_RemoveIndex(s, field, type);
-		if(res != INDEX_FAIL) {
+		res = Schema_RemoveIndex(s, field, type, part_of_constraint_deletion);
+		if(res == INDEX_OK) {
 			// update resultset statistics
 			ResultSet *result_set = QueryCtx_GetResultSet();
 			ResultSet_IndexDeleted(result_set, res);

@@ -337,16 +337,29 @@ void IndexField_New
 	field->weight   = weight;
 	field->nostem   = nostem;
 	field->phonetic = rm_strdup(phonetic);
+	field->ref_count = 1;
 }
 
-void IndexField_Free
+bool IndexField_Free
+(
+	IndexField *field,
+	bool enforce_free
+) {
+	ASSERT(field != NULL);
+	ASSERT(field->ref_count >= 0);
+
+	if((!enforce_free) && ((--field->ref_count) > 0)) return false;
+	rm_free(field->name);
+	rm_free(field->phonetic);
+	return true;
+}
+
+void IndexField_IncRef
 (
 	IndexField *field
 ) {
 	ASSERT(field != NULL);
-
-	rm_free(field->name);
-	rm_free(field->phonetic);
+	field->ref_count++;
 }
 
 // create a new index
@@ -426,17 +439,19 @@ void Index_AddField
 ) {
 	ASSERT(idx   != NULL);
 	ASSERT(field != NULL);
-	ASSERT(!Index_ContainsAttribute(idx, field->id));
+	ASSERT(!Index_getIndexField(idx, field->id));
 
 	array_append(idx->fields, *field);
 	Index_AddFieldToStructure(idx, field);
 }
 
 // removes fields from index
-void Index_RemoveField
+bool Index_RemoveField
 (
 	Index idx,
-	const char *field
+	const char *field,
+	const Constraint constraints,
+	bool part_of_constraint_deletion
 ) {
 	ASSERT(idx   != NULL);
 	ASSERT(field != NULL);
@@ -447,16 +462,22 @@ void Index_RemoveField
 
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
-		IndexField *field = idx->fields + i;
-		if(field->id == attribute_id) {
+		IndexField *_field = idx->fields + i;
+		// if there is a constraint on the field, we don't allow to remove it using drop index
+		if(_field->id == attribute_id && (part_of_constraint_deletion || !Has_Constraint_On_Attribute(s->constraints, attribute_id))) {
 			// free field
-			IndexField_Free(field);
-			array_del_fast(idx->fields, i);
+			bool is_freed = IndexField_Free(_field, false);
+			if(is_freed) {
+				array_del_fast(idx->fields, i);
 
-			Index_Disable(idx);
-			break;
+				Index_Disable(idx);
+				return true;
+			}
+			return false;
 		}
 	}
+
+	return false;
 }
 
 // query index
@@ -522,22 +543,22 @@ const IndexField *Index_GetFields
 	return (const IndexField *)idx->fields;
 }
 
-bool Index_ContainsAttribute
+IndexField *Index_getIndexField
 (
 	const Index idx,
 	Attribute_ID attribute_id
 ) {
 	ASSERT(idx != NULL);
 
-	if(attribute_id == ATTRIBUTE_ID_NONE) return false;
+	if(attribute_id == ATTRIBUTE_ID_NONE) return NULL;
 	
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
 		IndexField *field = idx->fields + i;
-		if(field->id == attribute_id) return true;
+		if(field->id == attribute_id) return field;
 	}
 
-	return false;
+	return NULL;
 }
 
 int Index_GetLabelID
@@ -627,7 +648,7 @@ void Index_Free
 
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
-		IndexField_Free(idx->fields + i);
+		IndexField_Free(idx->fields + i, true);
 	}
 	array_free(idx->fields);
 

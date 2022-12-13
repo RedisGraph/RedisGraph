@@ -11,6 +11,7 @@
 #include "rax.h"
 #include "redisearch_api.h"
 #include "../graph/entities/graph_entity.h"
+#include "../constraint/constraint.h"
 
 typedef enum {
 	SCHEMA_NODE,
@@ -21,11 +22,12 @@ typedef enum {
 // similar to a relational table structure, our schemas are a collection
 // of attributes we've encountered overtime as entities were created or updated
 typedef struct {
-	int id;             // schema id
-	char *name;         // schema name
-	SchemaType type;    // schema type (node/edge)
-	Index index;        // exact match index
-	Index fulltextIdx;  // full-text index
+	int id;                 // schema id
+	char *name;             // schema name
+	SchemaType type;        // schema type (node/edge)
+	Index index;            // exact match index
+	Index fulltextIdx;      // full-text index
+	Constraint constraints; // constraints array
 } Schema;
 
 // creates a new schema
@@ -75,7 +77,8 @@ int Schema_AddIndex
 	Index *idx,         // [input/output] index to create
 	Schema *s,          // schema holding the index
 	IndexField *field,  // field to index
-	IndexType type      // type of entities to index
+	IndexType type,      // type of entities to index
+	bool inc_ref_count  // should the index's ref count be incremented?
 );
 
 // removes index
@@ -83,7 +86,8 @@ int Schema_RemoveIndex
 (
 	Schema *s,
 	const char *field,
-	IndexType type
+	IndexType type,
+	bool part_of_constraint_deletion
 );
 
 // introduce node to schema indicies
@@ -118,4 +122,17 @@ void Schema_RemoveEdgeFromIndices
 void Schema_Free
 (
 	Schema *s
+);
+
+// checks if schema has a constraint
+bool Schema_ContainsConstraint(
+const Schema *s, 
+const Attribute_ID *fields, 
+uint field_count);
+
+// adds a constraint to schema
+int Schema_AddConstraint
+(
+	Schema *s,       // schema holding the index
+	Constraint c     // constraint to add
 );

@@ -223,15 +223,15 @@ Index GraphContext_GetIndex
 	SchemaType schema_type
 );
 
-// create an exact match index for the given label and attribute
-bool GraphContext_AddExactMatchIndex
+bool GraphContext_AddExactMatchIndexOrUniqueConstraint
 (
-	Index *idx,              // [input/output] index created
-	GraphContext *gc,        // graph context
-	SchemaType schema_type,  // type of entities to index nodes/edges
-	const char *label,       // label of indexed entities
-	const char **fields,     // fields to index
-	uint fields_count        // number of fields to index
+	Index *idx,                 // [input/output] index created
+	Constraint *constraint,     // [input/output] constraint created
+	GraphContext *gc,           // graph context
+	SchemaType schema_type,     // type of entities to index nodes/edges
+	const char *label,          // label of indexed entities
+	const char **fields_str,    // fields to index
+	uint fields_count           // number of fields to index
 );
 
 // create a full text index for the given label and attribute
@@ -257,7 +257,8 @@ int GraphContext_DeleteIndex
 	SchemaType schema_type,
 	const char *label,
 	const char *field,
-	IndexType type
+	IndexType type,
+	bool part_of_constraint_deletion
 );
 
 // remove a single node from all indices that refer to it

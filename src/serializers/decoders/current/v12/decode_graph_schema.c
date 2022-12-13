@@ -44,7 +44,7 @@ static void _RdbLoadFullTextIndex
 			IndexField field;
 			Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field_name, NULL);
 			IndexField_New(&field, field_id, field_name, weight, nostem, phonetic);
-			Schema_AddIndex(&idx, s, &field, IDX_FULLTEXT);
+			Schema_AddIndex(&idx, s, &field, IDX_FULLTEXT, false);
 		}
 
 		RedisModule_Free(field_name);
@@ -85,7 +85,7 @@ static void _RdbLoadExactMatchIndex
 			IndexField_New(&field, field_id, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
 				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
 
-			Schema_AddIndex(&idx, s, &field, IDX_EXACT_MATCH);
+			Schema_AddIndex(&idx, s, &field, IDX_EXACT_MATCH, false);
 		}
 		RedisModule_Free(field_name);
 	}

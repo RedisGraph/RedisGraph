@@ -7,6 +7,9 @@
 #include "indexer.h"
 #include "../redismodule.h"
 #include "../util/circular_buffer.h"
+#include "../constraints/constraint.h"
+#include "../schema/schema.h"
+#include "../resultset/resultset.h"
 #include <assert.h>
 #include <pthread.h>
 
@@ -19,9 +22,10 @@ typedef enum {
 // index population context
 typedef struct {
 	Index idx;         // index to populate
+	Constraint c;	   // constraint to add
 	GraphContext *gc;  // graph holding entities to index
 	IndexerOp op;      // operation to perform populate / drop
-} IndexPopulateCtx;
+} IndexConstraintPopulateCtx;
 
 typedef struct {
 	pthread_t t;         // worker thread handel
@@ -32,7 +36,7 @@ typedef struct {
 } Indexer;
 
 // forward declarations
-static void _indexer_PopTask(IndexPopulateCtx *task);
+static void _indexer_PopTask(IndexConstraintPopulateCtx *task);
 
 static Indexer *indexer = NULL;
 
@@ -46,12 +50,29 @@ static void *_index_populate
 	while(true) {
 		// pop an item from queue
 		// if queue is empty thread will be put to sleep
-		IndexPopulateCtx ctx;
+		IndexConstraintPopulateCtx ctx;
 		_indexer_PopTask(&ctx);
 
 		switch(ctx.op) {
 			case INDEXER_POPULATE:
-				Index_Populate(ctx.idx, ctx.gc->g);
+				if(!ctx.idx) {
+					ASSERT(ctx.c);
+					Constraint c = ctx.c;
+					if(Index_Populate_enforce_constraint(ctx.idx, ctx.c, ctx.gc, false)) {
+						// constraint was satisfied, add it to the schema
+
+						SchemaType schema_type = (c->entity_type == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
+						QueryCtx_LockForCommit();
+						Schema *s = GraphContext_GetSchema(ctx.gc, c->label, schema_type);
+						Schema_AddConstraint(s, c);
+						QueryCtx_UnlockCommit(NULL);
+					} else {
+						// constraint was not satisfied, free it and remove it's index
+						Free_Constraint_Remove_Its_Index(c, ctx.gc);
+					}
+				} else {
+					Index_Populate_enforce_constraint(ctx.idx, ctx.c, ctx.gc, true);
+				}
 				// decrease graph reference count
 				GraphContext_DecreaseRefCount(ctx.gc);
 				break;
@@ -75,7 +96,7 @@ static void *_index_populate
 // add task to indexer queue
 static void _indexer_AddTask
 (
-	IndexPopulateCtx *task  // task to be added
+	IndexConstraintPopulateCtx *task  // task to be added
 ) {
 	// lock
 	int res = pthread_mutex_lock(&indexer->m);
@@ -99,7 +120,7 @@ static void _indexer_AddTask
 // if queue is empty caller will be waiting on conditional variable
 static void _indexer_PopTask
 (
-	IndexPopulateCtx *task
+	IndexConstraintPopulateCtx *task
 ) {
 	ASSERT(task != NULL);
 
@@ -166,7 +187,7 @@ bool Indexer_Init(void) {
 	}
 
 	// create task queue
-	indexer->q = CircularBuffer_New(sizeof(IndexPopulateCtx), 256);
+	indexer->q = CircularBuffer_New(sizeof(IndexConstraintPopulateCtx), 256);
 
 	// create worker thread
 	pthread_attr_t attr;
@@ -211,21 +232,21 @@ cleanup:
 	return false;
 }
 
-// populates index asynchronously
+// populates index and enforce constraint asynchronously
 // this function simply place the population request onto a queue
 // eventually the indexer working thread will pick it up and populate the index
-void Indexer_PopulateIndex
+void Indexer_PopulateIndexOrConstraint
 (
 	GraphContext *gc, // graph to operate on
-	Index idx         // index to populate
+	Index idx,        // index to populate
+	Constraint c      // constraint enforce and add
 ) {
 	ASSERT(gc      != NULL);
-	ASSERT(idx     != NULL);
 	ASSERT(indexer != NULL);
 	ASSERT(Index_Enabled(idx) == false);
 
 	// create work item
-	IndexPopulateCtx ctx = {.idx = idx, .gc = gc, .op = INDEXER_POPULATE};
+	IndexConstraintPopulateCtx ctx = {.idx = idx, .c = c, .gc = gc, .op = INDEXER_POPULATE};
 
 	// increase graph reference count
 	// count will be reduced once this task is perfomed
@@ -249,7 +270,7 @@ void Indexer_DropIndex
 	ASSERT(Index_Enabled(idx) == false);
 
 	// create work item
-	IndexPopulateCtx ctx = {.idx = idx, .gc = NULL, .op = INDEXER_DROP};
+	IndexConstraintPopulateCtx ctx = {.idx = idx, .gc = NULL, .op = INDEXER_DROP};
 
 	// place task into queue
 	_indexer_AddTask(&ctx);

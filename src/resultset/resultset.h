@@ -72,6 +72,20 @@ void ResultSet_IndexDeleted
 	int status_code  // index deletion status code
 );
 
+// update resultset constraint creation statistics
+void ResultSet_ConstraintCreated
+(
+	ResultSet *set,  // resultset to update
+	int status_code  // constraint creation status code
+);
+
+// update resultset constraint deleted statistics
+void ResultSet_ConstraintDeleted
+(
+	ResultSet *set,  // resultset to update
+	int status_code  // constraint deletion status code
+);
+
 // update resultset cache execution statistics
 void ResultSet_CachedExecution
 (

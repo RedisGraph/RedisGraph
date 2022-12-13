@@ -10,6 +10,7 @@
 #include "../../../datatypes/map.h"
 #include "../../../datatypes/array.h"
 #include "../../../graph/graph_hub.h"
+#include "../../../graph/entities/node.h"
 
 static bool _ValidateAttrType
 (
@@ -83,6 +84,19 @@ void CommitUpdates
 		labels_removed     += _labels_removed;
 		properties_set     += _props_set;
 		properties_removed += _props_removed;
+
+
+		// retrieve node labels
+		uint label_count;
+		NODE_GET_LABELS(gc->g, update->ge, label_count);
+		for(uint i = 0; i < label_count; i ++) {
+			Schema *s = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
+			if(!Constraints_enforce_entity(s->constraints, GraphEntity_GetAttributes(update->ge), Index_RSIndex(s->index))) {
+				// Constraint violation.
+				ErrorCtx_RaiseRuntimeException("constraint violation on label %s", s->name);
+				return;
+			}
+		}
 	}
 
 	if(stats) {

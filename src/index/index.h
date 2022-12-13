@@ -14,6 +14,7 @@
 
 #define INDEX_OK 1
 #define INDEX_FAIL 0
+#define INDEX_NOT_CHANGED 2
 #define INDEX_SEPARATOR '\1'  // can't use '\0', RediSearch will terminate on \0
 #define INDEX_FIELD_NONE_INDEXED "NONE_INDEXABLE_FIELDS"
 
@@ -48,6 +49,7 @@ typedef struct {
 	double weight;     // the importance of text
 	bool nostem;       // disable stemming of the text
 	char *phonetic;    // phonetic search of text
+	int ref_count;     // reference count of the field
 } IndexField;
 
 // create new index field
@@ -61,10 +63,17 @@ void IndexField_New
 	const char *phonetic  // phonetic search of text
 );
 
-// free index field
-void IndexField_Free
+// free index field return true if field was freed
+bool IndexField_Free
 (
-	IndexField *field  // index field to be freed
+	IndexField *field,  // index field to be freed
+	bool enforce_free   // enforce free - skip ref count, used when freeing schema for (optimization)
+);
+
+// Increase the reference count of the given index field.
+void IndexField_IncRef
+(
+	IndexField *field // index field to increase reference count
 );
 
 // create a new index
@@ -123,10 +132,13 @@ void Index_ConstructStructure
 );
 
 // populates index
-void Index_Populate
+// returns true if the constraint satisfied
+bool Index_Populate_enforce_constraint
 (
 	Index idx,  // index to populate
-	Graph *g    // graph holding entities to index
+	Constraint c, // constraint to enforce
+	GraphContext *gc,    // graph holding entities to index
+	bool should_index
 );
 
 // adds field to index
@@ -137,10 +149,13 @@ void Index_AddField
 );
 
 // removes field from index
-void Index_RemoveField
+// returns true if field was removed
+bool Index_RemoveField
 (
 	Index idx,         // index modified
-	const char *field  // field to remove
+	const char *field,  // field to remove
+	const Constraint constraints, // array of constraints
+	bool part_of_constraint_deletion // is this field being deleted as part of a constraint deletion?
 );
 
 // index node
@@ -210,7 +225,7 @@ const IndexField *Index_GetFields
 );
 
 // checks if given attribute is indexed
-bool Index_ContainsAttribute
+bool Index_getIndexField
 (
 	const Index idx,           // index to query
 	Attribute_ID attribute_id  // attribute id to search

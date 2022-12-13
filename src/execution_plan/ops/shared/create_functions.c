@@ -74,6 +74,14 @@ static void _CommitNodes
 		// introduce node into graph
 		pending->stats->properties_set += CreateNode(gc, n, labels, label_count,
 				attr);
+
+		for(uint j = 0; j < label_count; j++) {
+			Schema *s = GraphContext_GetSchemaByID(gc, labels[j], SCHEMA_NODE);
+			if(!Constraints_enforce_entity(s->constraints, attr, Index_RSIndex(s->index))) {
+				// Constraint violation.
+				ErrorCtx_RaiseRuntimeException("constraint violation on label %s", s->name);
+			}
+		}
 	}
 }
 
@@ -145,6 +153,14 @@ static void _CommitEdges
 
 		pending->stats->properties_set += CreateEdge(gc, e, srcNodeID,
 				destNodeID, relation_id, attr);
+	
+		for(uint j = 0; j < label_count; j++) {
+			Schema *s = GraphContext_GetSchemaByID(gc, labels[j], SCHEMA_EDGE);
+			if(!Constraints_enforce_entity(s->constraints, attr, Index_RSIndex(s->index))) {
+				// Constraint violation.
+				ErrorCtx_RaiseRuntimeException("constraint violation on label %s", s->name);
+			}
+		}
 	}
 }
 

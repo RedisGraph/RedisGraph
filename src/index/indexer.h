@@ -21,12 +21,13 @@
 // initialize indexer
 bool Indexer_Init(void);
 
-// populates index
+// populates index and enforce constraint
 // adds the task for populating the given index to the indexer
-void Indexer_PopulateIndex
+void Indexer_PopulateIndexOrConstraint
 (
 	GraphContext *gc, // graph to operate on
-	Index idx         // index to populate
+	Index idx,        // index to populate
+	Constraint c      // constraint enforce and add
 );
 
 // drops index asynchronously

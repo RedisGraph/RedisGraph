@@ -80,7 +80,8 @@ static bool _index_operation_delete
 (
 	GraphContext *gc,
 	AST *ast,
-	Index *idx
+	Index *idx,
+	bool part_of_constraint_deletion
 ) {
 	*idx = NULL;
 	Schema *s = NULL;
@@ -124,23 +125,24 @@ static bool _index_operation_delete
 	QueryCtx_LockForCommit();
 
 	int res = GraphContext_DeleteIndex(gc, schema_type, label, attr,
-			IDX_EXACT_MATCH);
+			IDX_EXACT_MATCH, part_of_constraint_deletion);
 
 	return res == INDEX_OK;
 }
 
 // create index structure
-static bool _index_operation_create
+static void _index_operation_create
 (
 	RedisModuleCtx *ctx,
 	GraphContext *gc,
 	AST *ast,
-	Index *idx
+	Index *idx,
 ) {
 	ASSERT(gc  != NULL);
 	ASSERT(ctx != NULL);
 	ASSERT(ast != NULL);
 	ASSERT(idx != NULL);
+	ASSERT(*idx == NULL);
 
 	uint nprops            = 0;            // number of fields indexed
 	const char *label      = NULL;         // label being indexed
@@ -191,14 +193,73 @@ static bool _index_operation_create
 	QueryCtx_LockForCommit();
 
 	// add fields to index
-	bool index_added = GraphContext_AddExactMatchIndex(idx, gc, schema_type,
-					label, fields, nprops);
+	GraphContext_AddExactMatchIndexOrUniqueConstraint(idx, NULL, gc, schema_type,
+			label, fields, nprops);
 
-	return index_added;
+	return;
 }
 
-// handle index operation
-// either index creation or index deletion
+// create constraint structure
+static void _constraint_operation_create
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc,
+	AST *ast,
+	Index *idx,
+	Constraint *c,
+) {
+	ASSERT(gc  != NULL);
+	ASSERT(ctx != NULL);
+	ASSERT(ast != NULL);
+	ASSERT(idx != NULL);
+	ASSERT(*idx == NULL);
+	ASSERT(c != NULL);
+	ASSERT(*c == NULL);
+
+	uint nprops            = 0;            // number of fields under constraint
+	const char *label      = NULL;         // label being constraint
+	SchemaType schema_type = SCHEMA_NODE;  // type of entities being constraint
+
+	const cypher_astnode_t *constraint_op = ast->root;
+
+	//--------------------------------------------------------------------------
+	// retrieve label and attributes from AST
+	//--------------------------------------------------------------------------
+	// new format
+	// CREATE CONSTRAINT FOR (n:N) ON n.name
+	nprops = cypher_ast_create_pattern_props_constraint_nprops(constraint_op);
+	label  = cypher_ast_label_get_name(
+			cypher_ast_create_pattern_props_constraint_get_label(constraint_op));
+
+	// determine if index is created over node label or edge relationship
+	// default to node
+	if(cypher_ast_create_pattern_props_constraint_pattern_is_relation(constraint_op)) {
+		schema_type = SCHEMA_EDGE;
+	}
+
+	ASSERT(nprops > 0);
+	ASSERT(label != NULL);
+
+	const char *fields[nprops];
+	for(uint i = 0; i < nprops; i++) {
+		const cypher_astnode_t *prop_name = 
+			cypher_ast_property_operator_get_prop_name
+			(cypher_ast_create_pattern_props_constraint_get_property_operator(constraint_op, i));
+
+		fields[i] = cypher_ast_prop_name_get_value(prop_name);
+	}
+
+	// lock
+	QueryCtx_LockForCommit();
+
+	// add fields to index
+	GraphContext_AddExactMatchIndexOrUniqueConstraint(idx, c, gc, schema_type, label, props, fields, nprops);
+
+	return;
+}
+
+// handle index/constraint operation
+// either index/constraint creation or index/constraint deletion
 static void _index_operation
 (
 	RedisModuleCtx *ctx,
@@ -207,19 +268,38 @@ static void _index_operation
 	ExecutionType exec_type
 ) {
 	Index idx = NULL;
+	Constraint c = NULL;
 
 	switch(exec_type) {
 		case EXECUTION_TYPE_INDEX_CREATE:
-			if(_index_operation_create(ctx, gc, ast, &idx)) {
-				Indexer_PopulateIndex(gc, idx);
+			_index_operation_create(ctx, gc, ast, &idx)
+			if(idx) {
+				Indexer_PopulateIndexOrConstraint(gc, idx, NULL);
 			}
 			break;
 		case EXECUTION_TYPE_INDEX_DROP:
-			if(_index_operation_delete(gc, ast, &idx)) {
+			if(_index_operation_delete(gc, ast, &idx, false)) {
 				// if idx field count > 0 reindex
 				// otherwise drop
 				if(Index_FieldsCount(idx) > 0) {
-					Indexer_PopulateIndex(gc, idx);
+					Indexer_PopulateIndexOrConstraint(gc, idx, NULL);
+				} else {
+					Indexer_DropIndex(idx);
+				}
+			}
+			break;
+		case EXECUTION_TYPE_CONSTRAINT_CREATE:
+			_constraint_operation_create(ctx, gc, ast, &idx, &c)
+			if(c) {
+				Indexer_PopulateIndexOrConstraint(gc, idx, c);
+			} // else constraint already exists
+			break;
+		case EXECUTION_TYPE_CONSTRAINT_DROP:
+			if(_constraint_operation_delete(gc, ast, &c, true)) {
+				// if idx field count > 0 reindex
+				// otherwise drop
+				if(Index_FieldsCount(idx) > 0) {
+					Indexer_PopulateIndexOrConstraint(gc, idx, c);
 				} else {
 					Indexer_DropIndex(idx);
 				}
@@ -326,7 +406,9 @@ static void _ExecuteQuery(void *args) {
 		ExecutionPlan_Free(plan);
 		exec_ctx->plan = NULL;
 	} else if(exec_type == EXECUTION_TYPE_INDEX_CREATE ||
-			exec_type == EXECUTION_TYPE_INDEX_DROP) {
+			exec_type == EXECUTION_TYPE_INDEX_DROP ||
+			exec_type == EXECUTION_TYPE_CONSTRAINT_CREATE ||
+			exec_type == EXECUTION_TYPE_CONSTRAINT_DROP) {  // index operation
 		_index_operation(rm_ctx, gc, ast, exec_type);
 	} else {
 		ASSERT("Unhandled query type" && false);

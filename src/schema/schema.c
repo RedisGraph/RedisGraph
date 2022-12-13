@@ -24,6 +24,7 @@ Schema *Schema_New
 	s->type         =  type;
 	s->index        =  NULL;
 	s->fulltextIdx  =  NULL;
+	s->constraints   =  array_new(Constraint, 0);
 	s->name         =  rm_strdup(name);
 
 	return s;
@@ -82,16 +83,16 @@ Index Schema_GetIndex
 		idx = (type == IDX_EXACT_MATCH) ? s->index : s->fulltextIdx;
 		// return NULL if the index does not exist, or an attribute was
 		// specified but does not reside on the index
-		if(idx != NULL && (attr_id && !Index_ContainsAttribute(idx, *attr_id))) {
+		if(idx != NULL && (attr_id && !Index_getIndexField(idx, *attr_id))) {
 			idx = NULL;
 		}
 	} else if(attr_id) {
 		// ANY index, specified attribute id
 		// return the first index containing attribute
-		if(s->index && Index_ContainsAttribute(s->index, *attr_id)) {
+		if(s->index && Index_getIndexField(s->index, *attr_id)) {
 			idx = s->index;
 		}
-		if(s->fulltextIdx && Index_ContainsAttribute(s->fulltextIdx, *attr_id)) {
+		if(s->fulltextIdx && Index_getIndexField(s->fulltextIdx, *attr_id)) {
 			idx = s->fulltextIdx;
 		}
 	} else {
@@ -109,7 +110,8 @@ int Schema_AddIndex
 	Index *idx,         // [input/output] index to create
 	Schema *s,          // schema holding the index
 	IndexField *field,  // field to index
-	IndexType type      // type of entities to index
+	IndexType type,     // type of entities to index
+	bool inc_ref_count  // should the index's ref count be incremented?
 ) {
 	ASSERT(s     != NULL);
 	ASSERT(idx   != NULL);
@@ -120,9 +122,12 @@ int Schema_AddIndex
 
 	// index exists, make sure attribute isn't already indexed
 	if(_idx != NULL) {
-		if(Index_ContainsAttribute(_idx, field->id)) {
+		IndexField *ind_field = Index_getIndexField(_idx, field->id);
+		if(ind_field != NULL) {
 			// field already indexed, quick return
-			IndexField_Free(field);
+			if(inc_ref_count) ind_field->ref_count++;
+			bool res = IndexField_Free(field, false);
+			ASSERT(res)
 			return INDEX_FAIL;
 		}
 	} else {
@@ -151,7 +156,8 @@ int Schema_AddIndex
 static int _Schema_RemoveExactMatchIndex
 (
 	Schema *s,
-	const char *field
+	const char *field,
+	bool part_of_constraint_deletion
 ) {
 	ASSERT(s != NULL);
 	ASSERT(field != NULL);
@@ -167,7 +173,7 @@ static int _Schema_RemoveExactMatchIndex
 		return INDEX_FAIL;
 	}
 
-	Index_RemoveField(idx, field);
+	if(!Index_RemoveField(idx, field, s->constraints, part_of_constraint_deletion)) return INDEX_NOT_CHANGED;
 
 	// if index field count dropped to 0 remove index from schema
 	// index will be freed by the indexer thread
@@ -205,7 +211,8 @@ int Schema_RemoveIndex
 (
 	Schema *s,
 	const char *field,
-	IndexType type
+	IndexType type,
+	bool part_of_constraint_deletion
 ) {
 	ASSERT(s != NULL);
 
@@ -213,7 +220,7 @@ int Schema_RemoveIndex
 		case IDX_FULLTEXT:
 			return _Schema_RemoveFullTextIndex(s);
 		case IDX_EXACT_MATCH:
-			return _Schema_RemoveExactMatchIndex(s, field);
+			return _Schema_RemoveExactMatchIndex(s, field, part_of_constraint_deletion);
 		default:
 			return INDEX_FAIL;
 	}
@@ -299,6 +306,14 @@ void Schema_Free
 
 	if(s->name) rm_free(s->name);
 
+	// Free constraints.
+	if(s->constraints) {
+		for(uint i = 0; i < array_len(s->constraints); i++) {
+			Constraint_Free(s->constraints[i]);
+		}
+		array_fee(s->constraints);
+	}
+
 	// Free indicies.
 	if(s->index) Index_Free(s->index);
 	if(s->fulltextIdx) Index_Free(s->fulltextIdx);
@@ -306,3 +321,35 @@ void Schema_Free
 	rm_free(s);
 }
 
+bool Schema_ContainsConstraint(const Schema *s, const ConstAttrData *fields, uint field_count) {
+	ASSERT(s != NULL);
+	ASSERT(fields != NULL);
+	ASSERT(field_count > 0);
+
+	for(uint i = 0; i < array_len(s->constraints); i++) {
+		Constraint c = &s->constraints[i];
+		if(array_len(c->attributes) != field_count) continue;
+
+		bool match = true;
+		for(uint j = 0; j < field_count; j++) {
+			if(c->attributes[j].id != fields[j].id) {
+				match = false;
+				break;
+			}
+		}
+
+		if(match) return true;
+	}
+
+	return false;
+}
+
+int Schema_AddConstraint
+(
+	Schema *s,       // schema holding the index
+	Constraint c     // constraint to add
+) {
+	ASSERT(s != NULL);
+	ASSERT(c != NULL);
+	array_append(s->constraints, *c);
+}

@@ -181,7 +181,35 @@ void ResultSet_IndexDeleted
 
 	set->stats.index_deletion = true;
 	if(status_code == INDEX_OK) {
-		set->stats.indices_deleted = 1;
+		set->stats.indices_deleted += 1;
+	}
+}
+
+// update resultset constraint creation statistics
+void ResultSet_ConstraintCreated
+(
+	ResultSet *set,  // resultset to update
+	int status_code  // index creation status code
+) {
+	ASSERT(set != NULL);
+
+	set->stats.constraint_creation = true;
+	if(status_code == INDEX_OK) {
+		set->stats.constraints_created += 1;
+	}
+}
+
+// update resultset constraint deleted statistics
+void ResultSet_ConstraintDeleted
+(
+	ResultSet *set,  // resultset to update
+	int status_code  // index deletion status code
+) {
+	ASSERT(set != NULL);
+
+	set->stats.constraint_deletion = true;
+	if(status_code == INDEX_OK) {
+		set->stats.constraints_deleted += 1;
 	}
 }
 
