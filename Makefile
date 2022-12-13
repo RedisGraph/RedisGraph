@@ -93,6 +93,8 @@ export DEPS_BINDIR:=$(ROOT)/bin/$(FULL_VARIANT.release)
 DEPS_DEBUG=
 endif
 
+#----------------------------------------------------------------------------------------------
+
 RAX_DIR = $(ROOT)/deps/rax
 export RAX_BINDIR=$(DEPS_BINDIR)/rax
 include $(ROOT)/build/rax/Makefile.defs
@@ -120,31 +122,21 @@ LIBS=$(RAX) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH_LIBS) $(LIBCYPHER_PARSER)
 
 #----------------------------------------------------------------------------------------------
 
-ifeq ($(OS),macos)
-ifneq ($(GCC),1)
-CLANG=1
-endif
-endif
-
-#----------------------------------------------------------------------------------------------
-
 ifeq ($(DEBUG),1)
-	# Enable all assertions in debug mode
-	CC_FLAGS.debug += -DRG_DEBUG
-	ifeq ($(MEMCHECK),1)
-		CC_FLAGS.debug += -DMEMCHECK
-		SO_LD_FLAGS += -u RediSearch_CleanupModule
-	endif
+ifeq ($(MEMCHECK),1)
+	CC_FLAGS += MEMCHECK
+	# SO_LD_FLAGS += -u RediSearch_CleanupModule
+endif
 endif
 
 #----------------------------------------------------------------------------------------------
+
+CC_COMMON_H=0
 
 include $(MK)/defs
 
-ifneq ($(filter all build,$(MAKECMDGOALS)),)
 $(info # Building into $(BINDIR))
 $(info # Using CC=$(CC))
-endif
 
 ifeq ($(UNIT_TESTS),1)
 CMAKE_DEFS += UNIT_TESTS:BOOL=on
@@ -259,21 +251,19 @@ ifeq ($(ALL),1)
 	$(SHOW)-rm -rf $(BINROOT) $(DEPS_BINDIR)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/libcypher-parser clean ALL=1
 else
-#	$(SHOW)-rm -f $(TARGET) $(OBJECTS) $(CC_DEPS)
 	$(SHOW)$(MAKE) -C $(BINDIR) clean
-	$(SHOW)-rm -fr $(BINDIR)/CMakeCache.txt $(BINDIR)/tests
+	$(SHOW)-rm -fr $(TARGET).debug $(BINDIR)/CMakeCache.txt $(BINDIR)/tests
 ifeq ($(DEPS),1)
-	$(SHOW)$(MAKE) -C $(ROOT)/build/rax clean
-	$(SHOW)$(MAKE) -C $(ROOT)/build/xxHash clean
-	$(SHOW)$(MAKE) -C $(ROOT)/build/GraphBLAS clean
-	$(SHOW)$(MAKE) -C $(ROOT)/build/libcypher-parser clean
+	$(SHOW)$(MAKE) -C $(ROOT)/build/rax clean DEBUG=$(DEPS_DEBUG)
+	$(SHOW)$(MAKE) -C $(ROOT)/build/xxHash clean DEBUG=$(DEPS_DEBUG)
+	$(SHOW)$(MAKE) -C $(ROOT)/build/GraphBLAS clean DEBUG=$(DEPS_DEBUG)
+	$(SHOW)$(MAKE) -C $(ROOT)/build/libcypher-parser clean DEBUG=$(DEPS_DEBUG)
 	$(SHOW)$(MAKE) -C $(REDISEARCH_DIR) clean ALL=1 BINROOT=$(REDISEARCH_BINROOT)
 endif
 endif
 
 clean-libcypher-parser:
-	$(SHOW)$(MAKE) -C $(ROOT)/build/libcypher-parser clean
-#	$(SHOW)$(MAKE) -C $(ROOT)/build/libcypher-parser clean ALL=1 AUTOGEN=1
+	$(SHOW)$(MAKE) -C $(ROOT)/build/libcypher-parser clean ALL=1 AUTOGEN=1
 
 clean-search:
 ifeq ($(ALL),1)
@@ -311,9 +301,8 @@ test: $(TARGET)
 ifeq ($(VALGRIND),1)
 # valgrind is requested, check that host's os is not Linux
 ifeq ($(OS),macos)
-	@echo building docker to run valgrind on MacOS
-	@cd .. ;\
-	docker build -f tests/Dockerfile -t mac_os_test_docker .
+	@echo Building docker to run valgrind on macOS
+	$(SHOW)docker build -f tests/Dockerfile -t macos_test_docker .
 endif
 endif
 	@$(MAKE) -C $(ROOT)/tests test PARALLEL=$(_RLTEST_PARALLEL) BINROOT=$(BINROOT)

@@ -14,5 +14,5 @@ ifeq ($(DOCKER_VG),0)
 else
 	# valgrind in docker
 	@echo running docker to run valgrind tck test on MacOS
-	@docker run -ti  mac_os_test_docker bash -c "cd tests/tck; RLTest --module ../../src/redisgraph.so $(TEST_ARGS)"
+	@docker run -ti  macos_test_docker bash -c "cd tests/tck; RLTest --module ../../src/redisgraph.so $(TEST_ARGS)"
 endif

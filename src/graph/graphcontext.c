@@ -99,7 +99,8 @@ GraphContext *GraphContext_New
 	// 2. matrices dimensions
 	size_t node_cap;
 	size_t edge_cap;
-	assert(Config_Option_get(Config_NODE_CREATION_BUFFER, &node_cap));
+	bool rc = Config_Option_get(Config_NODE_CREATION_BUFFER, &node_cap);
+	assert(rc);
 	edge_cap = node_cap;
 
 	gc->g = Graph_New(node_cap, edge_cap);
@@ -110,7 +111,8 @@ GraphContext *GraphContext_New
 	gc->relation_schemas = array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 
 	// initialize the read-write lock to protect access to the attributes rax
-	assert(pthread_rwlock_init(&gc->_attribute_rwlock, NULL) == 0);
+	int rc1 = pthread_rwlock_init(&gc->_attribute_rwlock, NULL);
+	assert(rc1 == 0);
 
 	// build the execution plans cache
 	uint64_t cache_size;

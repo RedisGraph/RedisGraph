@@ -31,8 +31,9 @@ CFLAGS += \
 	$(CFLAGS.$(OS))
 
 ifeq ($(GCC),1)
-CFLAGS += \
-	-Wno-error=discarded-qualifiers
+CFLAGS += -Wno-error=discarded-qualifiers
+else
+CFLAGS += -Wno-error=ignored-qualifiers -Wno-error=incompatible-pointer-types-discards-qualifiers
 endif
 
 export CFLAGS

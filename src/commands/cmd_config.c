@@ -6,7 +6,7 @@
 
 #include <string.h>
 #include "RG.h"
-#include "../configuration/config.h"
+#include "configuration/config.h"
 
 void _Config_get_all(RedisModuleCtx *ctx) {
 	uint config_count = Config_END_MARKER;

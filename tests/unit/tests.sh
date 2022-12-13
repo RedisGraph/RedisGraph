@@ -20,7 +20,7 @@ help() {
 		BINROOT=path   Path to repo binary root dir
 		TEST=name      Operate in single-test mode
 
-        SAN=addr|mem   Run with sanitizer
+		SAN=addr|mem   Run with sanitizer
 		TEST_LEAK=1    Run test that leaks (for sanitizer diagnostics)
 
 		GDB=1          Enable interactive gdb debugging (in single-test mode)
