@@ -25,6 +25,7 @@
 #define INFO_GET_STATISTICS_ARG "STAT"
 #define ERROR_COULDNOT_FIND_GRAPH "Couldn't find the specified graph"
 #define ERROR_NO_GRAPH_NAME_SPECIFIED "No graph name was specified"
+#define ERROR_VALUES_OVERFLOW "Some values have overflown"
 #define ALL_GRAPH_KEYS_MASK "*"
 
 // TODO move to a common place.
@@ -38,6 +39,11 @@
             return ret; \
         } \
     } while(0);
+
+#define CHECKED_ADD_OR_RETURN(lhs, rhs, return_on_error) \
+    if (!checked_add_u64(lhs, rhs, &lhs)) { \
+        return return_on_error; \
+    }
 
 // Global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
@@ -62,6 +68,75 @@ typedef enum InfoGetFlag {
     InfoGetFlag_COUNTS = 1 << 1,
     InfoGetFlag_STATISTICS = 1 << 2,
 } InfoGetFlag;
+
+typedef struct AggregatedGraphGetInfo {
+    uint64_t graph_count;
+    uint64_t node_count;
+    uint64_t relationship_count;
+    uint64_t node_label_count;
+    uint64_t relationship_type_count;
+    uint64_t node_index_count;
+    uint64_t relationship_index_count;
+    uint64_t node_property_name_count;
+    uint64_t edge_property_name_count;
+} AggregatedGraphGetInfo;
+
+static bool AggregatedGraphGetInfo_AddFromGraphContext
+(
+    AggregatedGraphGetInfo *info,
+    const GraphContext *gc
+) {
+    ASSERT(info);
+    ASSERT(gc);
+    if (!info || !gc) {
+        return false;
+    }
+    const uint64_t node_count
+        = Graph_NodeCount(gc->g) - Graph_DeletedNodeCount(gc->g);
+    CHECKED_ADD_OR_RETURN(info->node_count, node_count, false);
+
+    const uint64_t relationship_count
+        = Graph_EdgeCount(gc->g) - Graph_DeletedEdgeCount(gc->g);
+    CHECKED_ADD_OR_RETURN(
+        info->relationship_count,
+        relationship_count,
+        false);
+
+    CHECKED_ADD_OR_RETURN(
+        info->node_label_count,
+        Graph_LabelTypeCount(gc->g),
+        false);
+
+    CHECKED_ADD_OR_RETURN(
+        info->relationship_type_count,
+        Graph_RelationTypeCount(gc->g),
+        false);
+
+    CHECKED_ADD_OR_RETURN(
+        info->node_index_count,
+        GraphContext_NodeIndexCount(gc),
+        false);
+
+    CHECKED_ADD_OR_RETURN(
+        info->relationship_index_count,
+        GraphContext_EdgeIndexCount(gc),
+        false);
+
+    CHECKED_ADD_OR_RETURN(
+        info->node_property_name_count,
+        GraphContext_AllNodePropertyNamesCount(gc),
+        false);
+
+    CHECKED_ADD_OR_RETURN(
+        info->edge_property_name_count,
+        GraphContext_AllEdgePropertyNamesCount(gc),
+        false
+    );
+
+    ++info->graph_count;
+
+    return true;
+}
 
 // Returns true if the strings are equal (case insensitively).
 // NOTE: The strings must have a NULL-character at the end (strlen requirement).
@@ -556,6 +631,83 @@ static int _reset_graph_info(RedisModuleCtx *ctx, const char *graph_name) {
     return REDISMODULE_ERR;
 }
 
+static int _reply_with_get_aggregated_graph_info
+(
+    RedisModuleCtx *ctx,
+    const AggregatedGraphGetInfo info
+) {
+    static const long KEY_VALUE_COUNT = 9;
+
+    ASSERT(ctx);
+
+    REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, KEY_VALUE_COUNT));
+    // 1
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Number of graphs"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        info.graph_count));
+    // 2
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Number of nodes"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        info.node_count));
+    // 3
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Number of relationships"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        info.relationship_count));
+    // 4
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Number of node labels"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        info.node_label_count));
+    // 5
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Number of relationship types"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        info.relationship_type_count));
+    // 6
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Number of node indices"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        info.node_index_count));
+    // 7
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Number of relationship indices"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        info.relationship_index_count));
+    // 8
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Total number of edge property names"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        info.node_property_name_count));
+    // 9
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Total number of node property names"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        info.edge_property_name_count));
+
+    return REDISMODULE_OK;
+}
+
 static int _reply_with_get_graph_info
 (
     RedisModuleCtx *ctx,
@@ -661,10 +813,25 @@ static int _get_graph_info
     return _reply_with_get_graph_info(ctx, gc, flags);
 }
 
-// TODO
+// TODO use flags
 static int _get_all_graphs_info(RedisModuleCtx *ctx, const InfoGetFlag flags) {
-    RedisModule_ReplyWithError(ctx, UNIMPLEMENTED_ERROR_STRING);
-    return REDISMODULE_ERR;
+    ASSERT(ctx);
+    const uint32_t graphs_count = array_len(graphs_in_keyspace);
+    AggregatedGraphGetInfo info = {};
+
+    for (uint32_t i = 0; i < graphs_count; ++i) {
+        const GraphContext *gc = graphs_in_keyspace[i];
+        if (!gc) {
+            return REDISMODULE_ERR;
+        }
+
+        if (!AggregatedGraphGetInfo_AddFromGraphContext(&info, gc)) {
+            RedisModule_ReplyWithError(ctx, ERROR_VALUES_OVERFLOW);
+            return REDISMODULE_ERR;
+        }
+    }
+
+    return _reply_with_get_aggregated_graph_info(ctx, info);
 }
 
 // TODO
