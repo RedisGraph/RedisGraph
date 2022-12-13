@@ -187,6 +187,14 @@ static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	ExecutionPlan_UpdateRoot(plan, op);
 }
 
+static inline void buildForeachOp(ExecutionPlan *plan, const cypher_astnode_t *clause) {
+       const cypher_astnode_t *exp_node = cypher_ast_foreach_get_expression(clause);
+       AR_ExpNode *exp = AR_EXP_FromASTNode(exp_node);
+       exp->resolved_name = cypher_ast_identifier_get_name(cypher_ast_foreach_get_identifier(clause));
+       OpBase *op = NewUnwindOp(plan, exp);
+       ExecutionPlan_UpdateRoot(plan, op);
+}
+
 void ExecutionPlanSegment_ConvertClause
 (
 	GraphContext *gc,
