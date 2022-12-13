@@ -26,7 +26,7 @@ ast_visitor *AST_Visitor_new
 	ast_visitor *visitor = rm_malloc(sizeof(ast_visitor) + sizeof(visit) * 256);
 	visitor->ctx = ctx;
 	for (uint i = 0; i < 256; i++) {
-		visitor->funcs[i] = _default_visit;		
+		visitor->funcs[i] = _default_visit;	
 	}
 	
 	return visitor;
@@ -44,7 +44,7 @@ void AST_Visitor_register
 	visitor->funcs[type] = cb;
 }
 
-void AST_Visitor_visit
+bool AST_Visitor_visit
 (
 	const cypher_astnode_t *node,
 	ast_visitor *visitor
@@ -53,13 +53,32 @@ void AST_Visitor_visit
 	ASSERT(visitor != NULL);
 
 	cypher_astnode_type_t node_type = cypher_astnode_type(node);
-	if(visitor->funcs[node_type](node, true, visitor)) {
-		uint nchildren = cypher_astnode_nchildren(node);
-		for (uint i = 0; i < nchildren; i++) {
-			AST_Visitor_visit(cypher_astnode_get_child(node, i), visitor);
-		}
-		visitor->funcs[node_type](node, false, visitor);
+
+	//--------------------------------------------------------------------------
+	// opening call
+	//--------------------------------------------------------------------------
+
+	if(!visitor->funcs[node_type](node, true, visitor)) {
+		return false;
 	}
+
+	//--------------------------------------------------------------------------
+	// recall for each child node
+	//--------------------------------------------------------------------------
+
+	uint nchildren = cypher_astnode_nchildren(node);
+	for (uint i = 0; i < nchildren; i++) {
+		if(!AST_Visitor_visit(cypher_astnode_get_child(node, i), visitor)) {
+			// child failed, quick return
+			return false;
+		}
+	}
+
+	//----------------------------------------------------------------------
+	// closing call
+	//----------------------------------------------------------------------
+
+	return visitor->funcs[node_type](node, false, visitor);
 }
 
 void AST_Visitor_free
