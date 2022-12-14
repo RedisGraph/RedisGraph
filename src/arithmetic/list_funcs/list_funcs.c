@@ -509,7 +509,7 @@ void Register_ListFuncs() {
 	array_append(types, T_INT64);
 	array_append(types, T_INT64);
 	ret_type = T_ARRAY | T_NULL;
-	func_desc = AR_FuncDescNew("range", AR_RANGE, 2, 3, types, ret_type, false, true);
+	func_desc = AR_FuncDescNew("range", AR_RANGE, 2, 3, types, ret_type, false, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);

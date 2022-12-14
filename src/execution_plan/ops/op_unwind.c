@@ -27,6 +27,9 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 	op->list = SI_NullVal();
 	op->currentRecord = NULL;
 	op->listIdx = INDEX_NOT_SET;
+	op->is_range = false;
+	op->from = SI_NullVal();
+	op->to = SI_NullVal();
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", UnwindInit, UnwindConsume,
@@ -40,15 +43,22 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
  * if expression did not returned a list type value, creates a list with that value. */
 static void _initList(OpUnwind *op) {
 	op->list = SI_NullVal(); // Null-set the list value to avoid memory errors if evaluation fails.
-	SIValue new_list = AR_EXP_Evaluate(op->exp, op->currentRecord);
-	if(SI_TYPE(new_list) == T_ARRAY || SI_TYPE(new_list) == T_NULL) {
-		// Update the list value.
-		op->list = new_list;
+	if(AR_EXP_IsOperation(op->exp) && strcmp(op->exp->op.f->name, "range") == 0) {
+		op->from = AR_EXP_Evaluate(op->exp->op.children[0], op->currentRecord);
+		op->to = AR_EXP_Evaluate(op->exp->op.children[1], op->currentRecord);
+		op->current = op->from;
+		op->is_range = true;
 	} else {
-		// Create a list of size 1 and initialize it with the input expression value
-		op->list = SI_Array(1);
-		SIArray_Append(&op->list, new_list);
-		SIValue_Free(new_list);
+		SIValue new_list = AR_EXP_Evaluate(op->exp, op->currentRecord);
+		if(SI_TYPE(new_list) == T_ARRAY || SI_TYPE(new_list) == T_NULL) {
+			// Update the list value.
+			op->list = new_list;
+		} else {
+			// Create a list of size 1 and initialize it with the input expression value
+			op->list = SI_Array(1);
+			SIArray_Append(&op->list, new_list);
+			SIValue_Free(new_list);
+		}
 	}
 }
 
@@ -73,8 +83,14 @@ static OpResult UnwindInit(OpBase *opBase) {
  * NULL will be returned if dynamic list is not evaluted (listIdx = INDEX_NOT_SET)
  * or in case where the current list is fully consumed. */
 Record _handoff(OpUnwind *op) {
-	// If there is a new value ready, return it.
-	if(op->listIdx < SIArray_Length(op->list)) {
+	if(op->is_range) {
+		if(SIValue_Compare(op->current, op->to, NULL) <= 0) {
+			Record r = OpBase_CloneRecord(op->currentRecord);
+			Record_Add(r, op->unwindRecIdx, op->current);
+			op->current = SIValue_Add(op->current, SI_LongVal(1));
+			return r;
+		}
+	} else if(op->listIdx < SIArray_Length(op->list)) {
 		Record r = OpBase_CloneRecord(op->currentRecord);
 		Record_Add(r, op->unwindRecIdx, SIArray_Get(op->list, op->listIdx));
 		op->listIdx++;
