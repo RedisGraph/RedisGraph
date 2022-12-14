@@ -14,7 +14,7 @@
 #define SUBCOMMAND_NAME_GET "GET"
 #define SUBCOMMAND_NAME_RESET "RESET"
 #define UNKNOWN_SUBCOMMAND_MESSAGE "Unknown subcommand."
-#define MAX_QUERY_PIPELINE_KEY_NAME "Max Query Pipeline Time (milliseconds)"
+#define MAX_QUERY_WAIT_TIME_KEY_NAME "Max Query Wait Time (milliseconds)"
 #define TOTAL_WAITING_QUERIES_COUNT_KEY_NAME "Total waiting queries count"
 #define TOTAL_EXECUTING_QUERIES_COUNT_KEY_NAME "Total executing queries count"
 #define TOTAL_REPORTING_QUERIES_COUNT_KEY_NAME "Total reporting queries count"
@@ -50,7 +50,7 @@ extern GraphContext **graphs_in_keyspace;
 
 // Global info - across all the graphs available.
 typedef struct GlobalInfo {
-    uint64_t max_query_pipeline_time;
+    uint64_t max_query_wait_time_time;
     uint64_t total_waiting_queries_count;
     uint64_t total_executing_queries_count;
     uint64_t total_reporting_queries_count;
@@ -220,14 +220,14 @@ static uint64_t _reporting_queries_count_from_graph(const GraphContext *gc) {
     return Info_GetReportingQueriesCount(&gc->info);
 }
 
-static uint64_t _max_query_pipeline_time_from_graph(const GraphContext *gc) {
+static uint64_t _max_query_wait_time_from_graph(const GraphContext *gc) {
     ASSERT(gc != NULL);
 
     if (!gc) {
         return 0;
     }
 
-    return Info_GetMaxQueryPipelineTime(&gc->info);
+    return Info_GetMaxQueryWaitTime(&gc->info);
 }
 
 static bool _collect_queries_info_from_graph
@@ -248,7 +248,7 @@ static bool _collect_queries_info_from_graph
     const uint64_t waiting_queries_count = _waiting_queries_count_from_graph(gc);
     const uint64_t executing_queries_count = _executing_queries_count_from_graph(gc);
     const uint64_t reporting_queries_count = _reporting_queries_count_from_graph(gc);
-    const uint64_t max_query_pipeline_time = _max_query_pipeline_time_from_graph(gc);
+    const uint64_t max_query_wait_time_time = _max_query_wait_time_from_graph(gc);
 
     // TODO let it overflow.
     if (!checked_add_u64(
@@ -282,9 +282,9 @@ static bool _collect_queries_info_from_graph
     }
 
     if (!checked_add_u64(
-        global_info->max_query_pipeline_time,
-        max_query_pipeline_time,
-        &global_info->max_query_pipeline_time)) {
+        global_info->max_query_wait_time_time,
+        max_query_wait_time_time,
+        &global_info->max_query_wait_time_time)) {
         // We have a value overflow.
         if (!is_ok) {
             return false;
@@ -310,10 +310,10 @@ static int _reply_global_info
     // 1
     REDISMODULE_DO(RedisModule_ReplyWithCString(
         ctx,
-        MAX_QUERY_PIPELINE_KEY_NAME));
+        MAX_QUERY_WAIT_TIME_KEY_NAME));
     REDISMODULE_DO(RedisModule_ReplyWithLongLong(
         ctx,
-        global_info.max_query_pipeline_time));
+        global_info.max_query_wait_time_time));
     // 2
     REDISMODULE_DO(RedisModule_ReplyWithCString(
         ctx,
