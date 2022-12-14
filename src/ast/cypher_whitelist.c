@@ -13,11 +13,13 @@ static bool _visit
 (
 	const cypher_astnode_t *n,
 	bool start,
-	ast_visitor *visitor
+	ast_visitor *visitor,
+	bool *err
 ) {
 	AST_Validation *res = visitor->ctx;
 	*res = AST_INVALID;
 	Error_UnsupportedASTNodeType(n);
+	*err = true;
 	return false;
 }
 
@@ -25,7 +27,8 @@ static bool _visit_binary_op
 (
 	const cypher_astnode_t *n,
 	bool start,
-	ast_visitor *visitor
+	ast_visitor *visitor,
+	bool *err
 ) {
 	AST_Validation *res = visitor->ctx;
 	const cypher_operator_t *op = cypher_ast_binary_operator_get_operator(n);
@@ -34,6 +37,7 @@ static bool _visit_binary_op
 	   op == CYPHER_OP_REGEX) {
 		*res = AST_INVALID;
 		Error_UnsupportedASTOperator(op);
+		*err = true;
 		return false;
 	}
 	return true;
