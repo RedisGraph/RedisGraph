@@ -1,13 +1,11 @@
 //------------------------------------------------------------------------------
-// GB_spones_mex: like spones(A) but do not drop zeros on input
+// GB_spones_mex: like spones(A) in MATLAB but do not drop zeros on input
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-//------------------------------------------------------------------------------
-
-// The built-in function spones(A) has changed.
+// The MATLAB built-in function spones(A) has changed, as of MATLAB R2019b.
 // It now drops zeros on input.  Prior versions converted them to 1 on output.
 // The tests here use the old behavior, so this function replaces spones(A)
 // with GB_spones_mex (A), which has the old behavior of spones.

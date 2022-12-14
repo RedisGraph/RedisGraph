@@ -18,27 +18,6 @@
 // The list X [pleft ... pright] is in ascending order.  It may have
 // duplicates.
 
-#ifdef GB_CUDA_KERNEL
-
-// version for the GPU, with fewer branches
-#define GB_TRIM_BINARY_SEARCH(i,X,pleft,pright)                             \
-{                                                                           \
-    /* binary search of X [pleft ... pright] for integer i */               \
-    while (pleft < pright)                                                  \
-    {                                                                       \
-        int64_t pmiddle = (pleft + pright) >> 1 ;                           \
-        bool less = (X [pmiddle] < i) ;                                     \
-        pleft  = less ? (pmiddle+1) : pleft ;                               \
-        pright = less ? pright : pmiddle ;                                  \
-    }                                                                       \
-    /* binary search is narrowed down to a single item */                   \
-    /* or it has found the list is empty */                                 \
-    ASSERT (pleft == pright || pleft == pright + 1) ;                       \
-}
-
-#else
-
-// version for the CPU
 #define GB_TRIM_BINARY_SEARCH(i,X,pleft,pright)                             \
 {                                                                           \
     /* binary search of X [pleft ... pright] for integer i */               \
@@ -60,7 +39,6 @@
     /* or it has found the list is empty */                                 \
     ASSERT (pleft == pright || pleft == pright + 1) ;                       \
 }
-#endif
 
 //------------------------------------------------------------------------------
 // GB_BINARY_SEARCH: binary search and check if found
@@ -110,27 +88,6 @@
 // GB_TRIM_BINARY_SEARCH_ZOMBIE: binary search in the presence of zombies
 //------------------------------------------------------------------------------
 
-#ifdef GB_CUDA_KERNEL
-
-// version for the GPU, with fewer branches
-#define GB_TRIM_BINARY_SEARCH_ZOMBIE(i,X,pleft,pright)                      \
-{                                                                           \
-    /* binary search of X [pleft ... pright] for integer i */               \
-    while (pleft < pright)                                                  \
-    {                                                                       \
-        int64_t pmiddle = (pleft + pright) >> 1 ;                           \
-        bool less = (GB_UNFLIP (X [pmiddle]) < i) ;                         \
-        pleft  = less ? (pmiddle+1) : pleft ;                               \
-        pright = less ? pright : pmiddle ;                                  \
-    }                                                                       \
-    /* binary search is narrowed down to a single item */                   \
-    /* or it has found the list is empty */                                 \
-    ASSERT (pleft == pright || pleft == pright + 1) ;                       \
-}
-
-#else
-
-// version for the CPU
 #define GB_TRIM_BINARY_SEARCH_ZOMBIE(i,X,pleft,pright)                      \
 {                                                                           \
     /* binary search of X [pleft ... pright] for integer i */               \
@@ -152,7 +109,6 @@
     /* or it has found the list is empty */                                 \
     ASSERT (pleft == pright || pleft == pright + 1) ;                       \
 }
-#endif
 
 //------------------------------------------------------------------------------
 // GB_BINARY_SEARCH_ZOMBIE: binary search with zombies; check if found
@@ -222,12 +178,6 @@
         GB_SPLIT_BINARY_SEARCH(i,X,pleft,pright,found)                      \
     }                                                                       \
 }
-
-//------------------------------------------------------------------------------
-// GB_lookup: find k so that j == Ah [k]
-//------------------------------------------------------------------------------
-
-#include "GB_lookup_template.c"
 
 #endif
 

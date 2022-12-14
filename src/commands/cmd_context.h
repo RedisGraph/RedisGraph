@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #pragma once
 
@@ -28,6 +28,7 @@ typedef struct {
 	bool compact;                   // Whether this query was issued with the compact flag.
 	ExecutorThread thread;          // Which thread executes this command
 	long long timeout;              // The query timeout, if specified.
+	bool timeout_rw;                // Apply timeout on both read and write queries.
 } CommandCtx;
 
 // Create a new command context.
@@ -41,7 +42,8 @@ CommandCtx *CommandCtx_New
 	ExecutorThread thread,          // Which thread executes this command
 	bool replicated_command,        // Whether this instance was spawned by a replication command.
 	bool compact,                   // Whether this query was issued with the compact flag.
-	long long timeout               // The query timeout, if specified.
+	long long timeout,              // The query timeout, if specified.
+	bool timeout_rw                 // Apply timeout on both read and write queries.
 );
 
 // Tracks given 'ctx' such that in case of a crash we will be able to report

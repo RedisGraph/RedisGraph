@@ -87,14 +87,14 @@ end
 switch (binop)
     case { 'pair' }
         % no emult for these operators
-        fprintf (f, 'define(`_AemultB_08'', `(none)'')\n') ;
+        fprintf (f, 'define(`_AemultB'', `(none)'')\n') ;
         fprintf (f, 'define(`_AemultB_02'', `(none)'')\n') ;
         fprintf (f, 'define(`_AemultB_04'', `(none)'')\n') ;
         fprintf (f, 'define(`_AemultB_bitmap'', `(none)'')\n') ;
         fprintf (f, 'define(`if_binop_emult_is_enabled'', `#if 0'')\n') ;
         fprintf (f, 'define(`endif_binop_emult_is_enabled'', `#endif'')\n') ;
     otherwise
-        fprintf (f, 'define(`_AemultB_08'', `_AemultB_08__%s'')\n', name) ;
+        fprintf (f, 'define(`_AemultB'', `_AemultB__%s'')\n', name) ;
         fprintf (f, 'define(`_AemultB_02'', `_AemultB_02__%s'')\n', name) ;
         fprintf (f, 'define(`_AemultB_04'', `_AemultB_04__%s'')\n', name) ;
         fprintf (f, 'define(`_AemultB_bitmap'', `_AemultB_bitmap__%s'')\n', name) ;
@@ -197,19 +197,13 @@ else
     fprintf (f, 'define(`GB_copy_b_to_c'', `$1 = GBX ($2, $3, $4)'')\n') ;
 end
 
-% type-specific IDIV
-if (~isempty (strfind (op, 'IDIV')))
+% type-specific idiv
+if (~isempty (strfind (op, 'idiv')))
     if (unsigned)
-        op = strrep (op, 'IDIV', 'IDIV_UNSIGNED') ;
-        % TODO: use this instead
-        % mult = strrep (op, 'IDIV', 'idiv_uint%d', bits) ;
+        op = strrep (op, 'idiv', sprintf ('idiv_uint%d', bits)) ;
     else
-        op = strrep (op, 'IDIV', 'IDIV_SIGNED') ;
-        % TODO: use this instead
-        % mult = strrep (op, 'IDIV', 'idiv_int%d', bits) ;
+        op = strrep (op, 'idiv', sprintf ('idiv_int%d', bits)) ;
     end
-    % TODO: remove this
-    op = strrep (op, ')', sprintf (', %d)', bits)) ;
 end
 
 % create the binary operator

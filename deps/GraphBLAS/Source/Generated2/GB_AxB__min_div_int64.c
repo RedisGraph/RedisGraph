@@ -12,11 +12,10 @@
 
 #include "GB_dev.h"
 
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 
 #include "GB.h"
 #include "GB_control.h"
-#include "GB_bracket.h"
 #include "GB_sort.h"
 #include "GB_atomics.h"
 #include "GB_AxB_saxpy.h"
@@ -48,7 +47,7 @@
 // B type:     int64_t
 // B pattern?  0
 
-// Multiply: z = GB_IDIV_SIGNED (x, y, 64)
+// Multiply: z = GB_idiv_int64 (x, y)
 // Add:      if (cij > t) { cij = t ; }
 //    'any' monoid?  0
 //    atomic?        1
@@ -56,7 +55,7 @@
 //    identity:      INT64_MAX
 //    terminal?      1
 //    terminal condition: if (cij == INT64_MIN) { break ; }
-// MultAdd:  { int64_t x_op_y = GB_IDIV_SIGNED (x, y, 64) ; z = GB_IMIN (z, x_op_y) ; }
+// MultAdd:  { int64_t x_op_y = GB_idiv_int64 (x, y) ; z = GB_IMIN (z, x_op_y) ; }
 
 #define GB_ATYPE \
     int64_t
@@ -113,7 +112,7 @@
 
 // multiply operator
 #define GB_MULT(z, x, y, i, k, j) \
-    z = GB_IDIV_SIGNED (x, y, 64)
+    z = GB_idiv_int64 (x, y)
 
 // cast from a real scalar (or 2, if C is complex) to the type of C
 #define GB_CTYPE_CAST(x,y) \
@@ -125,7 +124,7 @@
 
 // multiply-add
 #define GB_MULTADD(z, x, y, i, k, j) \
-    { int64_t x_op_y = GB_IDIV_SIGNED (x, y, 64) ; z = GB_IMIN (z, x_op_y) ; }
+    { int64_t x_op_y = GB_idiv_int64 (x, y) ; z = GB_IMIN (z, x_op_y) ; }
 
 // monoid identity value
 #define GB_IDENTITY \
@@ -591,7 +590,7 @@ GrB_Info GB (_Asaxpy3B__min_div_int64)
 }
 
 //------------------------------------------------------------------------------
-// GB_Asaxpy3B_M: C<M>=A*Bi: saxpy method (Gustavson + Hash)
+// GB_Asaxpy3B_M: C<M>=A*B: saxpy method (Gustavson + Hash)
 //------------------------------------------------------------------------------
 
 #if ( !GB_DISABLE )

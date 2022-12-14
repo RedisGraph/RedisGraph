@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "RG.h"
 #include "proc_ss_paths.h"
@@ -228,7 +228,7 @@ static ProcedureResult validate_config
 		}
 	}
 
-	int64_t max_length_val = LONG_MAX;
+	int64_t max_length_val = LONG_MAX - 1;
 	if(max_length_exists) {
 		if(SI_TYPE(max_length) != T_INT64) {
 			ErrorCtx_SetError("maxLen must be integer");
@@ -259,6 +259,10 @@ static ProcedureResult validate_config
 			}
 			types_count = array_len(types);
 		}
+	} else {
+		types_count = 1;
+		types = array_new(int, types_count);
+		array_append(types, GRAPH_NO_RELATION);
 	}
 
 	SingleSourceCtx_New(ctx, (Node *)start.ptrval, g, types, types_count,
@@ -296,6 +300,10 @@ static ProcedureResult validate_config
 	if(path_count_exists) {
 		if(SI_TYPE(path_count) != T_INT64) {
 				ErrorCtx_SetError("pathCount must be integer");
+				return false;
+		}
+		if(path_count.longval < 0) {
+				ErrorCtx_SetError("pathCount must be greater than or equal to 0");
 				return false;
 		}
 		ctx->path_count = SI_GET_NUMERIC(path_count);

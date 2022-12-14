@@ -347,8 +347,7 @@ GrB_Scalar GB_mx_get_Scalar
         if (! (info == GrB_SUCCESS || info == GrB_NO_VALUE))                \
         {                                                                   \
             FREE_ALL ;                                                      \
-            printf ("info: %d\n", info) ;                                   \
-            mexErrMsgTxt ("method failed") ;                                \
+            mexErrMsgIdAndTxt ("GB:test", "method failed, info: %d", info) ;\
         }                                                                   \
     }                                                                       \
     else                                                                    \
@@ -409,8 +408,8 @@ GrB_Scalar GB_mx_get_Scalar
             {                                                               \
                 /* another error has occurred */                            \
                 FREE_ALL ;                                                  \
-                printf ("info: %d\n", info) ; \
-                mexErrMsgTxt ("unexpected error in mex brutal malloc debug") ; \
+                mexErrMsgIdAndTxt ("GB:brutal", "unexpected error in mex "  \
+                    "brutal malloc debug, info: %d", info) ;                \
             }                                                               \
         }                                                                   \
     }

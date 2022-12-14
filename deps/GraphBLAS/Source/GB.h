@@ -28,10 +28,20 @@
 #include "GraphBLAS.h"
 
 //------------------------------------------------------------------------------
-// internal #include files
+// handle the restrict keyword
 //------------------------------------------------------------------------------
 
+// Intentionally shadow the built-in "restrict" keyword.  See GraphBLAS.h for
+// the definition of GB_restrict.  It becomes empty for C++, and "__restrict"
+// for MS Visual Studio.  Otherwise, GB_restrct is just "restrict" on ANSI C11
+// compliant compilers.  I prefer to use the "restrct" keyword to make the code
+// readable.  This #define is a patch for compilers that don't support it:
+
 #define restrict GB_restrict
+
+//------------------------------------------------------------------------------
+// internal #include files
+//------------------------------------------------------------------------------
 
 #include "GB_prefix.h"
 #include "GB_bytes.h"
@@ -78,6 +88,7 @@
 #include "GB_Descriptor_get.h"
 #include "GB_Element.h"
 #include "GB_op.h"
+#include "GB_hash.h"
 #include "GB_hyper.h"
 #include "GB_ok.h"
 #include "GB_cast.h"

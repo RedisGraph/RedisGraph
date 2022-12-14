@@ -179,18 +179,10 @@ class testGraphDeletionFlow(FlowTestsBase):
         self._assert_run_time(result, query_info)
 
     def test11_delete_entity_type_validation(self):
-        # Currently we only support deletion of either nodes or edges
-        # we've yet to introduce deletion of Path.
+        # Currently we only support deletion of either nodes, edges or paths
 
         # Try to delete an integer.
         query = """UNWIND [1] AS x DELETE x"""
-        try:
-            redis_graph.query(query)
-            self.env.assertTrue(False)
-        except Exception as error:
-            self.env.assertTrue("Delete type mismatch" in str(error))
-
-        query = """MATCH p=(n) DELETE p"""
         try:
             redis_graph.query(query)
             self.env.assertTrue(False)
@@ -346,7 +338,7 @@ class testGraphDeletionFlow(FlowTestsBase):
             redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("DELETE can only be called on nodes and relationships", str(e))
+            self.env.assertContains("DELETE can only be called on nodes, paths and relationships", str(e))
 
         # try to delete the output of a nonexistent function call
         try:

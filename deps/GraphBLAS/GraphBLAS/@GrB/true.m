@@ -13,7 +13,7 @@ function C = true (varargin)
 % See also GrB.zeros, GrB.ones, GrB.false, GrB.eye, GrB.speye.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 [m, n, ~] = gb_parse_args ('true', varargin {:}) ;
 C = GrB (gb_scalar_to_full (m, n, 'logical', gbformat, true)) ;

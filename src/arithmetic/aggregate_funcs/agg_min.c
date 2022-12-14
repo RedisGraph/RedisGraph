@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "RG.h"
 #include "agg_funcs.h"
@@ -22,7 +22,8 @@ AggregateResult AGG_MIN(SIValue *argv, int argc, void *private_data) {
 	int compared_null;
 	if((SIValue_Compare(ctx->result, v, &compared_null) > 0) ||
 	   (compared_null == COMPARED_NULL)) {
-		ctx->result = v;
+		SIValue_Free(ctx->result);
+		ctx->result = SI_CloneValue(v);
 	}
 
 	return AGGREGATE_OK;

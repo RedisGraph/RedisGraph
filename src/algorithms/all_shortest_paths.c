@@ -1,15 +1,15 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "RG.h"
 #include "all_shortest_paths.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 
-// run BFS from `src` untill `dest` is rached
+// run BFS from `src` until `dest` is reached
 // add all nodes visited during traversal except for nodes in
 // `dest` level, so it can be used later on in `AllShortestPaths_NextPath`
 int AllShortestPaths_FindMinimumLength

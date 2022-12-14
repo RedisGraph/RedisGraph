@@ -134,7 +134,7 @@ unary_ops.float = {
 
 % unary ops for FP32 and FP64 only
 unary_ops.fpreal = {
-'lgamma', 'tgamma', 'erf', 'erfc', 'frexpx',  'frexpe' } ;
+'lgamma', 'tgamma', 'erf', 'erfc', 'frexpx',  'frexpe', 'cbrt' } ;
 
 % unary ops for FC32 and FC64 only
 unary_ops.complex = {

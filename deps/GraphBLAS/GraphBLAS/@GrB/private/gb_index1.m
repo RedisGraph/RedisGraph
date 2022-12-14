@@ -6,7 +6,7 @@ function I = gb_index1 (G)
 % handled by the mexFunctions.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 type = gbtype (G) ;
 I = gbextractvalues (G) ;
@@ -21,7 +21,7 @@ switch (type)
         I = double (I) ;
 
     case { 'single complex', 'double complex' }
-        error ('array indices must be integers') ;
+        error ('GrB:error', 'array indices must be integers') ;
 
     otherwise
         % any other integer must be typecast to double, int64, or uint64.

@@ -17,13 +17,13 @@
 
 #include "GB.h"
 
-GrB_Info GxB_IndexUnaryOp_new       // create a new user-defined index_unary op
+GrB_Info GxB_IndexUnaryOp_new   // create a named user-created IndexUnaryOp
 (
-    GrB_IndexUnaryOp *op,           // handle for the new GrB_IndexUnaryOp
-    GxB_index_unary_function function,   // pointer to the index_unary function
+    GrB_IndexUnaryOp *op,           // handle for the new IndexUnary operator
+    GxB_index_unary_function function,    // pointer to index_unary function
     GrB_Type ztype,                 // type of output z
-    GrB_Type xtype,                 // type of input x
-    GrB_Type ttype,                 // type of input thunk
+    GrB_Type xtype,                 // type of input x (the A(i,j) entry)
+    GrB_Type ytype,                 // type of input y (the scalar)
     const char *idxop_name,         // name of the user function
     const char *idxop_defn          // definition of the user function
 )
@@ -33,14 +33,14 @@ GrB_Info GxB_IndexUnaryOp_new       // create a new user-defined index_unary op
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_WHERE1 ("GxB_IndexUnaryOp_new (op, function, ztype, xtype, ttype"
+    GB_WHERE1 ("GxB_IndexUnaryOp_new (op, function, ztype, xtype, ytype"
         ", name, defn)") ;
     GB_RETURN_IF_NULL (op) ;
     (*op) = NULL ;
     GB_RETURN_IF_NULL (function) ;
     GB_RETURN_IF_NULL_OR_FAULTY (ztype) ;
     GB_RETURN_IF_NULL_OR_FAULTY (xtype) ;
-    GB_RETURN_IF_NULL_OR_FAULTY (ttype) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (ytype) ;
 
     //--------------------------------------------------------------------------
     // allocate the index_unary op
@@ -62,7 +62,7 @@ GrB_Info GxB_IndexUnaryOp_new       // create a new user-defined index_unary op
     (*op)->magic = GB_MAGIC ;
     (*op)->ztype = ztype ;
     (*op)->xtype = xtype ;
-    (*op)->ytype = ttype ;      // thunk type
+    (*op)->ytype = ytype ;      // thunk type
 
     (*op)->unop_function = NULL ;
     (*op)->idxunop_function = function ;
@@ -70,9 +70,20 @@ GrB_Info GxB_IndexUnaryOp_new       // create a new user-defined index_unary op
     (*op)->selop_function = NULL ;
 
     (*op)->opcode = GB_USER_idxunop_code ;
+
+    //--------------------------------------------------------------------------
     // get the index_unary op name and defn
-    GB_op_name_and_defn ((*op)->name, &((*op)->defn), idxop_name, idxop_defn,
+    //--------------------------------------------------------------------------
+
+    GrB_Info info = GB_op_name_and_defn ((*op)->name, &((*op)->defn),
+        &((*op)->defn_size), idxop_name, idxop_defn,
         "GxB_index_unary_function", 24) ;
+    if (info != GrB_SUCCESS)
+    { 
+        // out of memory
+        GB_FREE (op, header_size) ;
+        return (info) ;
+    }
 
     //--------------------------------------------------------------------------
     // return result

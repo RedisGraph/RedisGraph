@@ -1,8 +1,8 @@
 [![Release](https://img.shields.io/github/release/RedisGraph/RedisGraph.svg?sort=semver)](https://github.com/RedisGraph/RedisGraph/releases/latest)
 [![CircleCI](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master.svg?style=svg)](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master)
 [![Dockerhub](https://img.shields.io/badge/dockerhub-redislabs%2Fredisgraph-blue)](https://hub.docker.com/r/redislabs/redisgraph/tags/)
-[![Total alerts](https://img.shields.io/lgtm/alerts/g/RedisGraph/RedisGraph.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/RedisGraph/RedisGraph/alerts/)
 [![Codecov](https://codecov.io/gh/RedisGraph/RedisGraph/branch/master/graph/badge.svg)](https://codecov.io/gh/RedisGraph/RedisGraph)
+[![Bounty](https://img.shields.io/bountysource/team/redislabsmodules/activity)](https://app.bountysource.com/teams/redislabsmodules/issues)
 
 # RedisGraph
 ## A graph database module for Redis
@@ -14,14 +14,14 @@ RedisGraph is the first queryable [Property Graph](https://github.com/opencypher
 Primary features:
 * Adopting the [Property Graph Model](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc)
   * Nodes (vertices) and Relationships (edges) that may have attributes
-  * Nodes that can be labeled
+  * Nodes can have multiple labels
   * Relationships have a relationship type
 * Graphs represented as sparse adjacency matrices
-* [Cypher](http://www.opencypher.org/) as query language
-  * Cypher queries translated into linear algebra expressions
+* [OpenCypher](http://www.opencypher.org/) with proprietary extensions as a query language
+  * Queries are translated into linear algebra expressions
 
 To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGraph/tree/master/demo).
-To read the docs, visit [redisgraph.io](http://redisgraph.io).
+To read the docs, visit [redis.io](https://redis.io/docs/stack/graph/).
 
 ## Quickstart
 
@@ -302,4 +302,4 @@ Got questions? Feel free to ask at the [RedisGraph forum](https://forum.redislab
 
 ## License
 
-Redis Source Available License Agreement - see [LICENSE](LICENSE)
+Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or the Server Side Public License v1 (SSPLv1). See [LICENSE](LICENSE.txt).

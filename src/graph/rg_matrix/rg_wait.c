@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "RG.h"
 #include "rg_matrix.h"
@@ -14,8 +14,12 @@ static inline void _SetUndirty
 	RG_Matrix C
 ) {
 	ASSERT(C);
+
 	C->dirty = false;
-	if(RG_MATRIX_MAINTAIN_TRANSPOSE(C)) C->transposed->dirty = false;
+
+	if(RG_MATRIX_MAINTAIN_TRANSPOSE(C)) {
+		C->transposed->dirty = false;
+	}
 }
 
 static GrB_Info RG_Matrix_sync
@@ -86,7 +90,14 @@ static GrB_Info RG_Matrix_sync
 	GrB_Matrix_nvals(&nvals, dm);
 	ASSERT(nvals == 0);
 
-	info = GrB_wait(m, GrB_MATERIALIZE);
+	// wait on all 3 matrices
+	info = GrB_wait(m,  GrB_MATERIALIZE);
+	ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_wait(dm, GrB_MATERIALIZE);
+	ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_wait(dp, GrB_MATERIALIZE);
 	ASSERT(info == GrB_SUCCESS);
 
 	return info;
@@ -102,29 +113,35 @@ GrB_Info RG_Matrix_wait
 		RG_Matrix_wait(A->transposed, force_sync);
 	}
 	
-	GrB_Info    info         =  GrB_SUCCESS;
-	GrB_Matrix  m            =  RG_MATRIX_M(A);
-	GrB_Matrix  delta_plus   =  RG_MATRIX_DELTA_PLUS(A);
-	GrB_Matrix  delta_minus  =  RG_MATRIX_DELTA_MINUS(A);
-
-	info = GrB_wait(delta_plus, GrB_MATERIALIZE);
-	ASSERT(info == GrB_SUCCESS);
-
-	info = GrB_wait(delta_minus, GrB_MATERIALIZE);
-	ASSERT(info == GrB_SUCCESS);
+	GrB_Info   info        = GrB_SUCCESS;
+	GrB_Matrix m           = RG_MATRIX_M(A);
+	GrB_Matrix delta_plus  = RG_MATRIX_DELTA_PLUS(A);
+	GrB_Matrix delta_minus = RG_MATRIX_DELTA_MINUS(A);
 
 	// check if merge is required
-	
 	GrB_Index delta_plus_nvals;
 	GrB_Index delta_minus_nvals;
 	GrB_Matrix_nvals(&delta_plus_nvals, delta_plus);
 	GrB_Matrix_nvals(&delta_minus_nvals, delta_minus);
 
 	uint64_t delta_max_pending_changes;
-	Config_Option_get(Config_DELTA_MAX_PENDING_CHANGES, &delta_max_pending_changes);
+	Config_Option_get(Config_DELTA_MAX_PENDING_CHANGES,
+			&delta_max_pending_changes);
+
 	if(force_sync ||
 	   delta_plus_nvals + delta_minus_nvals >= delta_max_pending_changes) {
 		info = RG_Matrix_sync(A);
+	} else {
+		// wait on 'm', in most cases 'm' won't contain any pending work
+		// but it might need to build its internal hyper-hash
+		info = GrB_wait(m, GrB_MATERIALIZE);
+		ASSERT(info == GrB_SUCCESS);
+
+		info = GrB_wait(delta_plus, GrB_MATERIALIZE);
+		ASSERT(info == GrB_SUCCESS);
+
+		info = GrB_wait(delta_minus, GrB_MATERIALIZE);
+		ASSERT(info == GrB_SUCCESS);
 	}
 
 	_SetUndirty(A);

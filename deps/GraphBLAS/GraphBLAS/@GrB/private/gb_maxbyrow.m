@@ -3,7 +3,7 @@ function C = gb_maxbyrow (op, A)
 % Implements C = max (A, [ ], 2)
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 % C = max (A, [ ], 2) reduces each row to a scalar; C is m-by-1
 C = gbvreduce (op, A) ;
@@ -22,7 +22,7 @@ if (gb_issigned (ctype))
         % all rows A(i,:) have between 1 and n-1 entries
         C = gbapply2 (op, C, zero) ;
     else
-        d = gbapply2 (['1st.' ctype], zero, d) ;
+        d = gbapply2 (['2nd.' ctype], d, zero) ;
         % if d(i) is between 1 and n-1 and C(i) < 0 then C(i) = 0
         C = gbeadd (op, C, d) ;
     end

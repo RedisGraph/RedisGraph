@@ -104,7 +104,7 @@ codegen_axb_template ('rminus',         ...
 
 codegen_axb_template ('div',          ...
     [ ],                                ... % bool
-    'GB_IDIV (xarg, yarg)',             ... % int, uint
+    'GB_idiv (xarg, yarg)',             ... % int, uint
     '(xarg / yarg)',                    ... % float
     '(xarg / yarg)',                    ... % double
     'GB_FC32_div (xarg, yarg)',         ... % GxB_FC32_t
@@ -112,7 +112,7 @@ codegen_axb_template ('div',          ...
 
 codegen_axb_template ('rdiv',         ...
     [ ],                                ... % bool
-    'GB_IDIV (yarg, xarg)',             ... % int, uint
+    'GB_idiv (yarg, xarg)',             ... % int, uint
     '(yarg / xarg)',                    ... % float
     '(yarg / xarg)',                    ... % double
     'GB_FC32_div (yarg, xarg)',         ... % GxB_FC32_t

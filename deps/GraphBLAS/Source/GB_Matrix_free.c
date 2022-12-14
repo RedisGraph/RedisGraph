@@ -25,7 +25,7 @@ void GB_Matrix_free             // free a matrix
         {
             // free all content of A
             size_t header_size = A->header_size ;
-            GB_phbix_free (A) ;
+            GB_phybix_free (A) ;
             if (!(A->static_header))
             { 
                 // free the header of A itself, unless it is static

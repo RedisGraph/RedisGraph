@@ -276,6 +276,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
         {
             memcpy (A->p, Mp, (ncols+1) * sizeof (int64_t)) ;
             memcpy (A->i, Mi, anz * sizeof (int64_t)) ;
+            A->nvals = A->p [ncols] ;
         }
         A->magic = GB_MAGIC ;
 
@@ -305,6 +306,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
             A->i_size = GB_IMAX (anz, 1) * sizeof (int64_t) ;
             A->p_shallow = true ;
             A->i_shallow = true ;
+            A->nvals = A->p [ncols] ;
         }
         else
         {
@@ -490,7 +492,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
         {
             bool burble = GB_Global_burble_get ( ) ;
             if (burble) printf (" [ GB_mx_mxArray_to_Matrix ") ;
-            GB_convert_hyper_to_sparse (A, Context) ;
+            GB_convert_hyper_to_sparse (A, true, Context) ;
             if (burble) printf ("]\n") ;
         }
         ASSERT (!A->is_csc) ;

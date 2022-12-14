@@ -136,6 +136,7 @@ class testGraphMergeFlow(FlowTestsBase):
         self.env.assertEquals(result.labels_added, 0)
         self.env.assertEquals(result.nodes_created, 0)
         self.env.assertEquals(result.properties_set, 1)
+        self.env.assertEquals(result.properties_removed, 1)
         self.env.assertEquals(result.relationships_created, 0)
 
         query = """MATCH (franklin:ACTOR { name: 'Franklin Cover' })-[r:ACTED_IN {rate:5.9, date:1998}]->(almostHeroes:MOVIE) RETURN franklin.name, franklin.age, r.rate, r.date"""
@@ -618,3 +619,52 @@ class testGraphMergeFlow(FlowTestsBase):
         self.env.assertEquals(res.nodes_created, 0)
         self.env.assertEquals(res.relationships_created, 0)
         self.env.assertEquals(res.result_set, [['abcd', 'x', 'y']])
+
+    def test30_record_clone_under_merge(self):
+        # the following operations
+        # 1. node label scan
+        # 2. all node scan
+        # 3. node by id seek
+        # hold the child record clone and enrich it before returning to parent
+        # if the parent is eager then these operation delete the child record
+        # this can lead to free values that is used in other operation
+        # this tests check that this operations using deep clone
+
+        redis_con = self.env.getConnection()
+        graph = Graph(redis_con, "node_label_scan_under_merge")
+
+        # Create data
+        graph.query("""CREATE (:A {name:"A"}), (:B {id:"B"}), (:B {id:"B"})""")
+
+        expected = {"name": "A", "id": "C"}
+        
+        # node label scan under merge
+        query = """UNWIND [{name: "A", id: "C"}] AS x
+                   MATCH (i:A {name:x.name})
+                   WITH *
+                   MATCH (m:B {id:"B"})
+                   MERGE (m)-[:R]->(i)
+                   RETURN x"""
+        res = graph.query(query)
+        self.env.assertEquals(res.result_set[0][0], expected)
+
+        # all node scan under merge
+        query = """UNWIND [{name: "A", id: "C"}] AS x
+                   MATCH (i:A {name:x.name})
+                   WITH *
+                   MATCH (m)
+                   MERGE (m)-[:R]->(i)
+                   RETURN x"""
+        res = graph.query(query)
+        self.env.assertEquals(res.result_set[0][0], expected)
+
+        # node by id seek under merge
+        query = """UNWIND [{name: "A", id: "C"}] AS x
+                   MATCH (i:A {name:x.name})
+                   WITH *
+                   MATCH (m)
+                   WHERE id(m) > 0
+                   MERGE (m)-[:R]->(i)
+                   RETURN x"""
+        res = graph.query(query)
+        self.env.assertEquals(res.result_set[0][0], expected)

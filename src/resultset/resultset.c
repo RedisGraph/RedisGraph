@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "resultset.h"
 #include "RG.h"
@@ -164,14 +164,10 @@ void ResultSet_IndexCreated
 	int status_code  // index creation status code
 ) {
 	ASSERT(set != NULL);
+
+	set->stats.index_creation = true;
 	if(status_code == INDEX_OK) {
-		if(set->stats.indices_created == STAT_NOT_SET) {
-			set->stats.indices_created = 1;
-		} else {
-			set->stats.indices_created += 1;
-		}
-	} else if(set->stats.indices_created == STAT_NOT_SET) {
-		set->stats.indices_created = 0;
+		set->stats.indices_created += 1;
 	}
 }
 
@@ -183,14 +179,9 @@ void ResultSet_IndexDeleted
 ) {
 	ASSERT(set != NULL);
 
+	set->stats.index_deletion = true;
 	if(status_code == INDEX_OK) {
-		if(set->stats.indices_deleted == STAT_NOT_SET) {
-			set->stats.indices_deleted = 1;
-		} else {
-			set->stats.indices_deleted += 1;
-		}
-	} else if(set->stats.indices_deleted == STAT_NOT_SET) {
-		set->stats.indices_deleted = 0;
+		set->stats.indices_deleted = 1;
 	}
 }
 

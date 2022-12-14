@@ -1,7 +1,7 @@
 /*
- * Copyright 2018-2022 Redis Labs Ltd. and Contributors
- *
- * This file is available under the Redis Labs Source Available License Agreement
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
  */
 
 #include "RG.h"
@@ -253,10 +253,11 @@ QGNode *QGNode_Clone
 	return clone;
 }
 
+// gets a string representation of given node
 void QGNode_ToString
 (
-	const QGNode *n,
-	sds *buff
+	const QGNode *n,  // target node
+	sds *buff         // result buffer (concatenated)
 ) {
 	ASSERT(n != NULL);
 	ASSERT(buff != NULL);

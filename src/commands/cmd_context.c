@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "cmd_context.h"
 #include "RG.h"
@@ -27,17 +27,19 @@ CommandCtx *CommandCtx_New
 	ExecutorThread thread,
 	bool replicated_command,
 	bool compact,
-	long long timeout
+	long long timeout,
+	bool timeout_rw
 ) {
 	CommandCtx *context = rm_malloc(sizeof(CommandCtx));
-	context->bc = bc;
-	context->ctx = ctx;
-	context->query = NULL;
-	context->thread = thread;
-	context->compact = compact;
-	context->timeout = timeout;
-	context->command_name = NULL;
-	context->graph_ctx = graph_ctx;
+	context->bc                 = bc;
+	context->ctx                = ctx;
+	context->query              = NULL;
+	context->thread             = thread;
+	context->compact            = compact;
+	context->timeout            = timeout;
+	context->graph_ctx          = graph_ctx;
+	context->command_name       = NULL;
+	context->timeout_rw         = timeout_rw;
 	context->replicated_command = replicated_command;
 
 	if(cmd_name) {

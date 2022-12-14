@@ -1,5 +1,9 @@
 function dobench_methods (matrix, what)
 % dobench_methods (matrix, what)
+
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
+
 Prob = ssget (matrix) ;
 A = Prob.A ;
 [m n] = size (A) ;

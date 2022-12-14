@@ -26,7 +26,8 @@ typedef struct
     // blocking/non-blocking mode, set by GrB_init
     //--------------------------------------------------------------------------
 
-    GrB_Mode mode ;             // GrB_NONBLOCKING or GrB_BLOCKING
+    GrB_Mode mode ;             // GrB_NONBLOCKING, GrB_BLOCKING
+                                // GxB_NONBLOCKING_GPU, or GxB_BLOCKING_GPU
     bool GrB_init_called ;      // true if GrB_init already called
 
     //--------------------------------------------------------------------------
@@ -93,7 +94,7 @@ typedef struct
     // for testing and development
     //--------------------------------------------------------------------------
 
-    int64_t hack [2] ;              // settings for testing/developement only
+    int64_t hack [2] ;              // settings for testing/development only
 
     //--------------------------------------------------------------------------
     // diagnostic output
@@ -152,7 +153,7 @@ typedef struct
     GrB_Desc_Value gpu_control ;    // always, never, or default
     double gpu_chunk ;              // min problem size for using a GPU
     // properties of each GPU:
-    rmm_device gpu_properties [GB_CUDA_MAX_GPUS] ;
+    GB_cuda_device gpu_properties [GB_CUDA_MAX_GPUS] ;
 
 }
 GB_Global_struct ;
@@ -163,7 +164,7 @@ GB_Global_struct GB_Global =
 {
 
     // GraphBLAS mode
-    .mode = GrB_NONBLOCKING,    // default is nonblocking
+    .mode = GrB_NONBLOCKING,    // default is nonblocking, no GPU
 
     // initialization flag
     .GrB_init_called = false,   // GrB_init has not yet been called
@@ -651,7 +652,7 @@ void GB_Global_memtable_add (void *p, size_t size)
     #endif
     #pragma omp critical(GB_memtable)
     {
-        int n = GB_Global.nmemtable  ;
+        int n = GB_Global.nmemtable ;
         fail = (n > GB_MEMTABLE_SIZE) ;
         if (!fail)
         {
@@ -691,7 +692,7 @@ size_t GB_Global_memtable_size (void *p)
     bool found = false ;
     #pragma omp critical(GB_memtable)
     {
-        int n = GB_Global.nmemtable  ;
+        int n = GB_Global.nmemtable ;
         for (int i = 0 ; i < n ; i++)
         {
             if (p == GB_Global.memtable_p [i])
@@ -721,7 +722,7 @@ bool GB_Global_memtable_find (void *p)
     if (p == NULL) return (false) ;
     #pragma omp critical(GB_memtable)
     {
-        int n = GB_Global.nmemtable  ;
+        int n = GB_Global.nmemtable ;
         for (int i = 0 ; i < n ; i++)
         {
             if (p == GB_Global.memtable_p [i])
@@ -752,7 +753,7 @@ void GB_Global_memtable_remove (void *p)
     #endif
     #pragma omp critical(GB_memtable)
     {
-        int n = GB_Global.nmemtable  ;
+        int n = GB_Global.nmemtable ;
         for (int i = 0 ; i < n ; i++)
         {
             if (p == GB_Global.memtable_p [i])
@@ -992,13 +993,13 @@ bool GB_Global_burble_get (void)
 }
 
 GB_PUBLIC
-GB_printf_function_t GB_Global_printf_get ( )
+GB_printf_function_t GB_Global_printf_get (void)
 { 
     return (GB_Global.printf_func) ;
 }
 
 GB_PUBLIC
-GB_flush_function_t GB_Global_flush_get ( )
+GB_flush_function_t GB_Global_flush_get (void)
 { 
     return (GB_Global.flush_func) ;
 }
@@ -1131,35 +1132,35 @@ int GB_Global_gpu_sm_get (int device)
 {
     // get the # of SMs in a specific GPU
     GB_GPU_DEVICE_CHECK (0) ;       // zero if invalid GPU
-    return (GB_Global.gpu_properties [device].number_of_sms)  ;
+    return (GB_Global.gpu_properties [device].number_of_sms) ;
 }
 
-bool GB_Global_gpu_device_pool_size_set( int device, size_t size)
+bool GB_Global_gpu_device_pool_size_set (int device, size_t size)
 {
-    GB_GPU_DEVICE_CHECK (0) ;       // zero if invalid GPU
-    GB_Global.gpu_properties [device].pool_size = (int) size ;
-    return( true); 
+    GB_GPU_DEVICE_CHECK (false) ;   // fail if invalid GPU
+    GB_Global.gpu_properties [device].pool_size = size ;
+    return (true) ; 
 }
 
-bool GB_Global_gpu_device_max_pool_size_set( int device, size_t size)
+bool GB_Global_gpu_device_max_pool_size_set (int device, size_t size)
 {
-    GB_GPU_DEVICE_CHECK (0) ;       // zero if invalid GPU
-    GB_Global.gpu_properties[device].max_pool_size = (int) size ;
-    return( true); 
+    GB_GPU_DEVICE_CHECK (false) ;   // fail if invalid GPU
+    GB_Global.gpu_properties[device].max_pool_size = size ;
+    return (true) ; 
 }
 
-bool GB_Global_gpu_device_memory_resource_set( int device, void *resource)
+bool GB_Global_gpu_device_memory_resource_set (int device, void *resource)
 {
-    GB_GPU_DEVICE_CHECK (0) ;       // zero if invalid GPU
+    GB_GPU_DEVICE_CHECK (false) ;   // fail if invalid GPU
     GB_Global.gpu_properties[device].memory_resource = resource;
-    return( true); 
+    return (true) ; 
 }
 
-void* GB_Global_gpu_device_memory_resource_get( int device )
+void* GB_Global_gpu_device_memory_resource_get (int device)
 {
-    GB_GPU_DEVICE_CHECK (0) ;       // zero if invalid GPU
-    return ( GB_Global.gpu_properties [device].memory_resource ) ;
-    //NOTE: this returns a void*, needs to be cast to be used
+    GB_GPU_DEVICE_CHECK (false) ;   // fail if invalid GPU
+    return  (GB_Global.gpu_properties [device].memory_resource) ;
+    // NOTE: this returns a void*, needs to be cast to be used
 }
 
 bool GB_Global_gpu_device_properties_get (int device)

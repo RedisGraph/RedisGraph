@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include <stdio.h>
 #include <unistd.h>
@@ -266,8 +266,8 @@ void SlowLog_Replay
 	const SlowLog *slowlog,
 	RedisModuleCtx *ctx
 ) {
-	SlowLog *aggregated_slowlog = SlowLog_New();
 	int my_t_id = ThreadPools_GetThreadID();
+	SlowLog *aggregated_slowlog = SlowLog_New();
 
 	for(int t_id = 0; t_id < slowlog->count; t_id++) {
 		// don't lock ourselves

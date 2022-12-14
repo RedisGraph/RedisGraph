@@ -78,7 +78,6 @@ Feature: Delete1 - Deleting nodes
     And the side effects should be:
       | -nodes         | 1 |
       | -relationships | 3 |
-      | -labels        | 1 |
 
   Scenario: [4] Delete on null node
     Given an empty graph

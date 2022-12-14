@@ -1,7 +1,7 @@
 /*
- * Copyright 2018-2022 Redis Labs Ltd. and Contributors
- *
- * This file is available under the Redis Labs Source Available License Agreement
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
  */
 
 #include "ast.h"
@@ -12,6 +12,7 @@
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../procedures/procedure.h"
+#include "ast_rewrite_same_clauses.h"
 #include "ast_rewrite_star_projections.h"
 #include "../arithmetic/arithmetic_expression.h"
 #include "../arithmetic/arithmetic_expression_construct.h"
@@ -114,6 +115,7 @@ bool AST_ReadOnly(const cypher_astnode_t *root) {
 	   type == CYPHER_AST_MERGE                      ||
 	   type == CYPHER_AST_DELETE                     ||
 	   type == CYPHER_AST_SET                        ||
+	   type == CYPHER_AST_REMOVE                     ||
 	   type == CYPHER_AST_CREATE_NODE_PROPS_INDEX    ||
 	   type == CYPHER_AST_CREATE_PATTERN_PROPS_INDEX ||
 	   type == CYPHER_AST_DROP_PROPS_INDEX) {
@@ -583,11 +585,19 @@ cypher_parse_result_t *parse_query(const char *query) {
 		return NULL;
 	}
 
+	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
+
 	// rewrite '*' projections
 	// e.g. MATCH (a), (b) RETURN *
 	// will be rewritten as:
 	//  MATCH (a), (b) RETURN a, b
 	bool rerun_validation = AST_RewriteStarProjections(result);
+
+	// compress clauses
+	// e.g. MATCH (a:N) MATCH (b:N) RETURN a,b
+	// will be rewritten as:
+	// MATCH (a:N), (b:N) RETURN a,b
+	rerun_validation |= AST_RewriteSameClauses(root);
 
 	// only perform validations again if there's been a rewrite
 	if(rerun_validation && AST_Validate_Query(result) != AST_VALID) {
