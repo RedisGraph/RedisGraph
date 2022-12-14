@@ -300,15 +300,18 @@ QueryInfoIterator QueryInfoIterator_NewStartingAt
     const uint64_t index
 ) {
     ASSERT(storage && "Storage has to be provided");
-    const bool is_index_valid = index < QueryInfoStorage_Length(storage);
-    ASSERT(is_index_valid && "Index is going out of bounds.");
-    if (!storage || !is_index_valid) {
-        const QueryInfoIterator iterator = {
-            .storage = NULL,
-            .current_index = 0,
-            .has_started = false
-        };
-        return iterator;
+    const uint64_t length = QueryInfoStorage_Length(storage);
+    const bool is_index_valid = index < length;
+    if (length > 0) {
+        ASSERT(is_index_valid && "Index is going out of bounds.");
+        if (!storage || !is_index_valid) {
+            const QueryInfoIterator iterator = {
+                .storage = NULL,
+                .current_index = 0,
+                .has_started = false
+            };
+            return iterator;
+        }
     }
 
     const QueryInfoIterator iterator = {
@@ -326,13 +329,17 @@ QueryInfoIterator QueryInfoIterator_New(QueryInfoStorage *storage) {
 QueryInfo* QueryInfoIterator_Next(QueryInfoIterator *iterator) {
     REQUIRE_ARG_OR_RETURN(iterator, NULL);
 
+    const uint64_t length = QueryInfoStorage_Length(iterator->storage);
+    if (iterator->current_index >= length) {
+        return NULL;
+    }
+
     if (!iterator->has_started) {
         return QueryInfoIterator_Get(iterator);
     }
 
     const uint64_t next_index = iterator->current_index + 1;
-    const bool is_index_valid
-        = next_index < QueryInfoStorage_Length(iterator->storage);
+    const bool is_index_valid = next_index < length;
 
     if (!is_index_valid) {
         return NULL;
@@ -415,7 +422,6 @@ bool Info_New(Info *info) {
         = QueryInfoStorage_NewWithLength(thread_count);
     _QueryInfoStorage_ResetAll(&info->executing_queries_per_thread);
     _QueryInfoStorage_ResetAll(&info->reporting_queries_per_thread);
-    info->max_query_pipeline_time = 0;
 
     bool lock_initialized = !pthread_rwlock_init(
         &info->waiting_queries_rwlock,
@@ -435,7 +441,7 @@ bool Info_New(Info *info) {
 void Info_Reset(Info *info) {
     REQUIRE_ARG(info);
 
-    info->max_query_pipeline_time = 0;
+    // TODO remove if there is nothing to reset?
 }
 
 bool Info_Free(Info *info) {
@@ -521,6 +527,7 @@ void Info_IndicateQueryStartedExecution
                 query_info);
             ASSERT(set);
             if (!set) {
+                _Info_UnlockWaitingQueries(info);
                 _Info_UnlockEverything(info);
                 return;
             }
@@ -548,7 +555,11 @@ void Info_IndicateQueryStartedReporting
     QueryInfo *query_info = QueryInfoStorage_Get(
         &info->executing_queries_per_thread,
         thread_id);
-    REQUIRE_ARG(query_info && QueryInfo_GetQueryContext(query_info) == context);
+    ASSERT(query_info && QueryInfo_GetQueryContext(query_info) == context);
+    if (!query_info || QueryInfo_GetQueryContext(query_info) != context) {
+        REQUIRE_TRUE(_Info_UnlockEverything(info));
+        return;
+    }
     QueryInfo_UpdateExecutionTime(query_info);
 
     const bool moved = _Info_MoveQueryInfoBetweenStorages(
@@ -557,23 +568,6 @@ void Info_IndicateQueryStartedReporting
         thread_id);
     ASSERT(moved);
     REQUIRE_TRUE(_Info_UnlockEverything(info));
-}
-
-static void _Info_RecalculateMaxQueryWaitingTime
-(
-    Info *info,
-    const QueryInfo query_info
-) {
-    REQUIRE_ARG(info);
-
-    bool is_ok = true;
-    const uint64_t total_query_time = QueryInfo_GetTotalTimeSpent(
-        query_info,
-        &is_ok);
-    REQUIRE_TRUE(is_ok);
-    info->max_query_pipeline_time = MAX(
-        info->max_query_pipeline_time,
-        total_query_time);
 }
 
 void Info_IndicateQueryFinishedReporting
@@ -599,10 +593,10 @@ void Info_IndicateQueryFinishedReporting
         return;
     }
     QueryInfo_UpdateReportingTime(query_info);
-    _Info_RecalculateMaxQueryWaitingTime(info, *query_info);
     QueryInfoStorage_ResetElement(
         &info->reporting_queries_per_thread,
         thread_id);
+    REQUIRE_TRUE(_Info_UnlockEverything(info));
 }
 
 uint64_t Info_GetTotalQueriesCount(const Info* info) {
@@ -659,10 +653,36 @@ uint64_t Info_GetReportingQueriesCount(const Info *info) {
     return count;
 }
 
-uint64_t Info_GetMaxQueryPipelineTime(const Info *info) {
+uint64_t Info_GetMaxQueryWaitTime(const Info *info) {
     REQUIRE_ARG_OR_RETURN(info, 0);
+    _Info_LockEverything(info, false);
 
-    return info->max_query_pipeline_time;
+    uint64_t max_time = 0;
+    QueryInfo *query = NULL;
+    {
+        REQUIRE_TRUE_OR_RETURN(_Info_LockWaitingQueries(info, false), 0);
+        QueryInfoIterator iterator = QueryInfoIterator_New(&info->waiting_queries);
+        while ((query = QueryInfoIterator_NextValid(&iterator)) != NULL) {
+            max_time = MAX(max_time, QueryInfo_GetWaitingTime(*query));
+        }
+        REQUIRE_TRUE_OR_RETURN(_Info_UnlockWaitingQueries(info), 0);
+    }
+    {
+        QueryInfoIterator iterator = QueryInfoIterator_New(&info->executing_queries_per_thread);
+        while ((query = QueryInfoIterator_NextValid(&iterator)) != NULL) {
+            max_time = MAX(max_time, QueryInfo_GetWaitingTime(*query));
+        }
+    }
+    {
+        QueryInfoIterator iterator = QueryInfoIterator_New(&info->reporting_queries_per_thread);
+        while ((query = QueryInfoIterator_NextValid(&iterator)) != NULL) {
+            max_time = MAX(max_time, QueryInfo_GetWaitingTime(*query));
+        }
+    }
+
+    _Info_UnlockEverything(info);
+
+    return max_time;
 }
 
 bool Info_Lock(Info *info) {

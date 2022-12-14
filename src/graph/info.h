@@ -195,7 +195,7 @@ uint64_t Info_GetExecutingQueriesCount(const Info *);
 uint64_t Info_GetReportingQueriesCount(const Info *);
 // Return the maximum registered time a query was spent waiting, executing and
 // reporting the results.
-uint64_t Info_GetMaxQueryPipelineTime(const Info *);
+uint64_t Info_GetMaxQueryWaitTime(const Info *);
 // Locks the info object for external reading. Only one concurrent read is
 // allowed at the same time.
 bool Info_Lock(Info *);
