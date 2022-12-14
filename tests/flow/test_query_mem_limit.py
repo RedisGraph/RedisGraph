@@ -18,7 +18,8 @@ from pathos.pools import ProcessPool as Pool
 
 g                  =  None
 GRAPH_NAME         =  "max_query_mem"
-MEM_HOG_QUERY      =  """UNWIND range(0, 100000) AS x
+MEM_HOG_QUERY      =  """WITH range(0, 100000) AS xs
+                         UNWIND xs AS x
                          WITH x
                          WHERE (x / 2) = 50
                          RETURN x, count(x)"""
