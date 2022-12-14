@@ -30,6 +30,7 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 	op->is_range = false;
 	op->from = SI_NullVal();
 	op->to = SI_NullVal();
+	op->step = SI_LongVal(1);
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", UnwindInit, UnwindConsume,
@@ -46,6 +47,9 @@ static void _initList(OpUnwind *op) {
 	if(AR_EXP_IsOperation(op->exp) && strcmp(op->exp->op.f->name, "range") == 0) {
 		op->from = AR_EXP_Evaluate(op->exp->op.children[0], op->currentRecord);
 		op->to = AR_EXP_Evaluate(op->exp->op.children[1], op->currentRecord);
+		if(op->exp->op.child_count == 3) {
+			op->step = AR_EXP_Evaluate(op->exp->op.children[2], op->currentRecord);
+		}
 		op->current = op->from;
 		op->is_range = true;
 	} else {
@@ -83,13 +87,17 @@ static OpResult UnwindInit(OpBase *opBase) {
  * NULL will be returned if dynamic list is not evaluted (listIdx = INDEX_NOT_SET)
  * or in case where the current list is fully consumed. */
 Record _handoff(OpUnwind *op) {
-	if(op->is_range) {
-		if(SIValue_Compare(op->current, op->to, NULL) <= 0) {
+	if(op->is_range && !SIValue_IsNull(op->current)) {
+		if(SIValue_Compare(op->current, op->to, NULL) != 0) {
 			Record r = OpBase_CloneRecord(op->currentRecord);
 			Record_Add(r, op->unwindRecIdx, op->current);
-			op->current = SIValue_Add(op->current, SI_LongVal(1));
+			op->current = SIValue_Add(op->current, op->step);
 			return r;
 		}
+		Record r = OpBase_CloneRecord(op->currentRecord);
+		Record_Add(r, op->unwindRecIdx, op->current);
+		op->current = SI_NullVal();
+		return r;
 	} else if(op->listIdx < SIArray_Length(op->list)) {
 		Record r = OpBase_CloneRecord(op->currentRecord);
 		Record_Add(r, op->unwindRecIdx, SIArray_Get(op->list, op->listIdx));

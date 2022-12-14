@@ -17,6 +17,7 @@ typedef struct {
 	SIValue list;         // List which the unwind operation is performed on.
 	SIValue from;         // From range
 	SIValue to;           // To range
+	SIValue step;         // Step range
 	SIValue current;      // current range
 	bool is_range;
 	AR_ExpNode *exp;      // Arithmetic expression (evaluated as an SIArray).
