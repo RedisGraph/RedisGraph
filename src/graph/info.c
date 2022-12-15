@@ -55,6 +55,7 @@
 
 QueryInfo QueryInfo_New(void) {
     QueryInfo query_info = {
+        .received_unix_timestamp_milliseconds = 0,
         .waiting_time_milliseconds = 0,
         .executing_time_milliseconds = 0,
         .reporting_time_milliseconds = 0,
@@ -82,6 +83,10 @@ const QueryCtx* QueryInfo_GetQueryContext(const QueryInfo *query_info) {
 
 bool QueryInfo_IsValid(const QueryInfo *query_info) {
     return QueryInfo_GetQueryContext(query_info);
+}
+
+uint64_t QueryInfo_GetReceivedTimestamp(const QueryInfo info) {
+    return info.received_unix_timestamp_milliseconds;
 }
 
 uint64_t QueryInfo_GetTotalTimeSpent(const QueryInfo info, bool *is_ok) {
@@ -441,7 +446,7 @@ bool Info_New(Info *info) {
 void Info_Reset(Info *info) {
     REQUIRE_ARG(info);
 
-    // TODO remove if there is nothing to reset?
+    // TODO delete if there is nothing to reset?
 }
 
 bool Info_Free(Info *info) {
@@ -467,7 +472,8 @@ void Info_AddWaitingQueryInfo
 (
     Info *info,
     const struct QueryCtx *query_context,
-    const uint64_t waiting_time_milliseconds
+    const uint64_t waiting_time_milliseconds,
+    const uint64_t received_unix_timestamp_milliseconds
 ) {
     REQUIRE_ARG(info);
 
@@ -477,6 +483,7 @@ void Info_AddWaitingQueryInfo
     QueryInfo query_info = QueryInfo_New();
     QueryInfo_SetQueryContext(&query_info, query_context);
     query_info.waiting_time_milliseconds += waiting_time_milliseconds;
+    query_info.received_unix_timestamp_milliseconds = received_unix_timestamp_milliseconds;
     QueryInfoStorage_Add(&info->waiting_queries, query_info);
 
     REQUIRE_TRUE(_Info_UnlockWaitingQueries(info));

@@ -31,22 +31,24 @@ typedef struct {
 	long long timeout;              // The query timeout, if specified.
 	bool timeout_rw;                // Apply timeout on both read and write queries.
 	TIMER_DEFINE(timer);            // The timer for timing the command.
+	uint64_t received_timestamp;    // The timestamp when the command was received.
 } CommandCtx;
 
 // Create a new command context.
 CommandCtx *CommandCtx_New
 (
-	RedisModuleCtx *ctx,            // Redis module context.
-	RedisModuleBlockedClient *bc,   // Blocked client.
-	RedisModuleString *cmd_name,    // Command to execute.
-	RedisModuleString *query,       // Query string.
-	GraphContext *graph_ctx,        // Graph context.
-	ExecutorThread thread,          // Which thread executes this command
-	bool replicated_command,        // Whether this instance was spawned by a replication command.
-	bool compact,                   // Whether this query was issued with the compact flag.
-	long long timeout,              // The query timeout, if specified.
-	bool timeout_rw,                // Apply timeout on both read and write queries.
-	TIMER_DEFINE(timer)             // The timer for timing the command.
+	RedisModuleCtx *ctx,               // Redis module context.
+	RedisModuleBlockedClient *bc,      // Blocked client.
+	RedisModuleString *cmd_name,       // Command to execute.
+	RedisModuleString *query,          // Query string.
+	GraphContext *graph_ctx,           // Graph context.
+	ExecutorThread thread,             // Which thread executes this command
+	bool replicated_command,           // Whether this instance was spawned by a replication command.
+	bool compact,                      // Whether this query was issued with the compact flag.
+	long long timeout,                 // The query timeout, if specified.
+	bool timeout_rw,                   // Apply timeout on both read and write queries.
+	TIMER_DEFINE(timer),               // The timer for timing the command.
+	const uint64_t received_timestamp  // The command receive timestamp (epoch).
 );
 
 // Tracks given 'ctx' such that in case of a crash we will be able to report
@@ -100,6 +102,9 @@ void CommandCtx_ThreadSafeContextUnlock
 // Return the time in milliseconds, spent since the last call (or initialization
 // of the object).
 uint64_t CommandCtx_GetTimerMilliseconds(CommandCtx *);
+// Return the timestamp in milliseconds since the UNIX epoch, indicating when
+// the command was received by the module.
+uint64_t CommandCtx_GetReceivedTimestamp(const CommandCtx *);
 
 // Free command context.
 void CommandCtx_Free
