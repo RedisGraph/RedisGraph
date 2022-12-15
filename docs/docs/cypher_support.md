@@ -92,9 +92,11 @@ The currently-supported functions can be found in [the Functions documentation](
 ## Operators
 
 ### Mathematical operators
-+ Multiplication, addition, subtraction, division, modulo, power
+
+The currently-supported functions can be found in [the Functions documentation](/commands/graph.query/#mathematical-operators).
 
 ### String operators
+
 + String operators (STARTS WITH, ENDS WITH, CONTAINS) are supported.
 
   **Unsupported:**
