@@ -14,7 +14,7 @@
 #define SUBCOMMAND_NAME_GET "GET"
 #define SUBCOMMAND_NAME_RESET "RESET"
 #define UNKNOWN_SUBCOMMAND_MESSAGE "Unknown subcommand."
-#define MAX_QUERY_WAIT_TIME_KEY_NAME "Max Query Wait Time (milliseconds)"
+#define MAX_QUERY_WAIT_TIME_KEY_NAME "Max query wait duration (milliseconds)"
 #define TOTAL_WAITING_QUERIES_COUNT_KEY_NAME "Total waiting queries count"
 #define TOTAL_EXECUTING_QUERIES_COUNT_KEY_NAME "Total executing queries count"
 #define TOTAL_REPORTING_QUERIES_COUNT_KEY_NAME "Total reporting queries count"
@@ -244,7 +244,7 @@ static bool _collect_queries_info_from_graph
     }
 
     bool is_ok = true;
-    // TODO GraphContext Info
+    // TODO GraphContext Info (get and use).
     const uint64_t waiting_queries_count = _waiting_queries_count_from_graph(gc);
     const uint64_t executing_queries_count = _executing_queries_count_from_graph(gc);
     const uint64_t reporting_queries_count = _reporting_queries_count_from_graph(gc);
@@ -398,10 +398,17 @@ static int _reply_graph_query_info
         return REDISMODULE_ERR;
     }
 
-    static const long KEY_VALUE_COUNT = 5;
+    static const long KEY_VALUE_COUNT = 6;
 
     REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, KEY_VALUE_COUNT));
     // 1
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Receive timestamp (milliseconds)"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        QueryInfo_GetReceivedTimestamp(info)));
+    // 2
     // Note: customer proprietary data. should not appear in support packages
     REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Query"));
     const QueryCtx *query_ctx = QueryInfo_GetQueryContext(&info);
@@ -412,50 +419,50 @@ static int _reply_graph_query_info
     REDISMODULE_DO(RedisModule_ReplyWithCString(
         ctx,
         query_ctx->query_data.query));
-    // 2
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
-        ctx,
-        "Current total time (milliseconds)"));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        QueryInfo_GetTotalTimeSpent(info, NULL)));
     // 3
     REDISMODULE_DO(RedisModule_ReplyWithCString(
         ctx,
-        "Current wait time (milliseconds)"));
+        "Current total duration (milliseconds)"));
     REDISMODULE_DO(RedisModule_ReplyWithLongLong(
         ctx,
-        QueryInfo_GetWaitingTime(info)));
+        QueryInfo_GetTotalTimeSpent(info, NULL)));
     // 4
     REDISMODULE_DO(RedisModule_ReplyWithCString(
         ctx,
-        "Current execution time (milliseconds)"));
+        "Current wait duration (milliseconds)"));
     REDISMODULE_DO(RedisModule_ReplyWithLongLong(
         ctx,
-        QueryInfo_GetExecutionTime(info)));
+        QueryInfo_GetWaitingTime(info)));
     // 5
     REDISMODULE_DO(RedisModule_ReplyWithCString(
         ctx,
-        "Current reporting time (milliseconds)"));
+        "Current execution duration (milliseconds)"));
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
+        ctx,
+        QueryInfo_GetExecutionTime(info)));
+    // 6
+    REDISMODULE_DO(RedisModule_ReplyWithCString(
+        ctx,
+        "Current reporting duration (milliseconds)"));
     REDISMODULE_DO(RedisModule_ReplyWithLongLong(
         ctx,
         QueryInfo_GetReportingTime(info)));
     // TODO memory
-    // // 6
+    // // 7
     // REDISMODULE_DO(RedisModule_ReplyWithCString(
     //     ctx,
     //     "Current processing memory (bytes)"));
     // REDISMODULE_DO(RedisModule_ReplyWithLongLong(
     //     ctx,
     //     QueryInfo_GetReportingTime(info)));
-    // // 7
+    // // 8
     // REDISMODULE_DO(RedisModule_ReplyWithCString(
     //     ctx,
     //     "Current undo-log memory (bytes)"));
     // REDISMODULE_DO(RedisModule_ReplyWithLongLong(
     //     ctx,
     //     QueryInfo_GetReportingTime(info)));
-    // // 8
+    // // 9
     // REDISMODULE_DO(RedisModule_ReplyWithCString(
     //     ctx,
     //     "Current result-set memory (bytes)"));
@@ -943,6 +950,9 @@ int Graph_Info
     }
 
     int result = REDISMODULE_ERR;
+
+    bool is_compact_mode = false;
+
 
     const char *subcommand_name = RedisModule_StringPtrLen(argv[1], NULL);
     if (!_dispatch_subcommand(ctx, argv + 1, argc - 1, subcommand_name, &result)) {
