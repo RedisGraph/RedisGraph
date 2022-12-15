@@ -32,6 +32,7 @@ OpBase *NewUnwindOp
 	op->list          = SI_NullVal();
 	op->from          = 0;
 	op->step          = 1;
+	op->current       = 0;
 	op->listIdx       = INDEX_NOT_SET;
 	op->is_range      = false;
 	op->currentRecord = NULL;
