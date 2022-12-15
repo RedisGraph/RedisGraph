@@ -28,13 +28,6 @@ OpBase *NewUnwindOp
 	OpUnwind *op = rm_malloc(sizeof(OpUnwind));
 
 	op->exp           = exp;
-	op->to            = 0;
-	op->list          = SI_NullVal();
-	op->from          = 0;
-	op->step          = 1;
-	op->current       = 0;
-	op->listIdx       = INDEX_NOT_SET;
-	op->is_range      = false;
 	op->currentRecord = NULL;
 
 	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", UnwindInit,
@@ -51,10 +44,10 @@ OpBase *NewUnwindOp
 static void _initList
 (
 	OpUnwind *op
-) {
-	// null-set the list value to avoid memory errors if evaluation fails
-	op->list = SI_NullVal();
+) {	
 	if(AR_EXP_IsOperation(op->exp) && strcmp(op->exp->op.f->name, "range") == 0) {
+		op->step     = 1;
+		op->is_range = true;
 		// extracting information from range function
 		// extracting: range beginning, range end and optional range step
 		SIValue v = AR_EXP_Evaluate(op->exp->op.children[0], op->currentRecord);
@@ -79,8 +72,11 @@ static void _initList
 		}
 		op->to      += op->step;
 		op->current  = op->from;
-		op->is_range = true;
 	} else {
+		// null-set the list value to avoid memory errors if evaluation fails
+		op->list     = SI_NullVal();
+		op->listIdx  = INDEX_NOT_SET;
+		op->is_range = false;
 		SIValue new_list = AR_EXP_Evaluate(op->exp, op->currentRecord);
 		if(SI_TYPE(new_list) == T_ARRAY || SI_TYPE(new_list) == T_NULL) {
 			// update the list value
