@@ -14,14 +14,20 @@
 
 typedef struct {
 	OpBase op;
-	SIValue list;         // list which the unwind operation is performed on
-	int64_t from;         // beginning of range
-	int64_t to;           // end of range
-	int64_t step;         // step size
-	int64_t current;      // current value in range
+	union {
+		struct {
+			SIValue list;         // list which the unwind operation is performed on
+			uint listIdx;         // current list index
+		};
+		struct {
+			int64_t from;         // beginning of range
+			int64_t to;           // end of range
+			int64_t step;         // step size
+			int64_t current;      // current value in range
+		};
+	};
 	bool is_range;        // op is using range otherwise list
 	AR_ExpNode *exp;      // arithmetic expression (evaluated as an SIArray)
-	uint listIdx;         // current list index
 	int unwindRecIdx;     // update record at this index
 	Record currentRecord; // record to clone and add a value extracted from the list
 } OpUnwind;
