@@ -27,6 +27,9 @@ typedef struct QueryCtx QueryCtx;
 
 // Holds the necessary per-query statistics.
 typedef struct {
+    // The UNIX epoch timestamp in milliseconds indicating when the query was
+    // received by the module.
+    uint64_t received_unix_timestamp_milliseconds;
     // The time it spent waiting.
     uint64_t waiting_time_milliseconds;
     // The time spent on executing.
@@ -48,6 +51,9 @@ void QueryInfo_SetQueryContext(QueryInfo *, const QueryCtx *);
 const QueryCtx* QueryInfo_GetQueryContext(const QueryInfo *);
 // Returns true if the query info object is valid and can be worked with.
 bool QueryInfo_IsValid(const QueryInfo *);
+// Returns the date/time when the query was received by the module, in
+// milliseconds from UNIX epoch.
+uint64_t QueryInfo_GetReceivedTimestamp(const QueryInfo);
 // Returns the total time spent by a query waiting, executing and reporting.
 uint64_t QueryInfo_GetTotalTimeSpent(const QueryInfo, bool *is_ok);
 // Returns the time the query spent waiting.
@@ -162,7 +168,8 @@ void Info_AddWaitingQueryInfo
 (
     Info *,
     const QueryCtx *,
-    const uint64_t waiting_time_milliseconds
+    const uint64_t waiting_time_milliseconds,
+    const uint64_t received_unix_timestamp_milliseconds
 );
 // Indicates that the provided query has finished waiting and stated being
 // executed.

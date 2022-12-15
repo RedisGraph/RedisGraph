@@ -29,7 +29,8 @@ CommandCtx *CommandCtx_New
 	bool compact,
 	long long timeout,
 	bool timeout_rw,
-	TIMER_DEFINE(timer)
+	TIMER_DEFINE(timer),
+	const uint64_t received_timestamp
 ) {
 	CommandCtx *context = rm_malloc(sizeof(CommandCtx));
 	context->bc                 = bc;
@@ -43,6 +44,7 @@ CommandCtx *CommandCtx_New
 	context->timeout_rw         = timeout_rw;
 	context->replicated_command = replicated_command;
 	TIMER_ASSIGN(context->timer, timer);
+	context->received_timestamp = received_timestamp;
 
 	if(cmd_name) {
 		// Make a copy of command name.
@@ -146,6 +148,15 @@ uint64_t CommandCtx_GetTimerMilliseconds(CommandCtx *command_ctx) {
 	TIMER_RESTART(command_ctx->timer);
 
 	return elapsed_milliseconds;
+}
+
+uint64_t CommandCtx_GetReceivedTimestamp(const CommandCtx *command_ctx) {
+	ASSERT(command_ctx);
+	if (!command_ctx) {
+		return 0;
+	}
+
+	return command_ctx->received_timestamp;
 }
 
 void CommandCtx_Free(CommandCtx *command_ctx) {

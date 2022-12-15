@@ -12,6 +12,8 @@
 #include "../configuration/config.h"
 #include "../util/simple_timer.h"
 
+#include <sys/time.h>
+
 #define GRAPH_VERSION_MISSING -1
 
 // command handler function pointer
@@ -24,7 +26,7 @@ static int _read_flags
 	RedisModuleString **argv,   // commands arguments
   	int argc,                   // number of arguments
   	bool *compact,              // compact result-set format
-  	long long *timeout,         // query level timeout 
+  	long long *timeout,         // query level timeout
   	bool *timeout_rw,           // apply timeout on both read and write queries
   	uint *graph_version,        // graph version [UNUSED]
   	char **errmsg               // reported error message
@@ -180,6 +182,17 @@ static bool should_command_create_graph(GRAPH_Commands cmd) {
 	return false;
 }
 
+uint64_t _get_unix_timestamp_milliseconds() {
+	struct timeval tv = {};
+
+	gettimeofday(&tv, NULL);
+
+	const uint64_t milliseconds_since_epoch =
+		(uint64_t)(tv.tv_sec) * 1000 +
+		(uint64_t)(tv.tv_usec) / 1000;
+	return milliseconds_since_epoch;
+}
+
 int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	char *errmsg;
 	uint version;
@@ -187,6 +200,7 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	bool timeout_rw;
 	long long timeout;
 	CommandCtx *context = NULL;
+	const uint64_t received_milliseconds = _get_unix_timestamp_milliseconds();
 	TIMER_DEFINE_AND_START(timer);
 
 	RedisModuleString *graph_name = argv[1];
@@ -238,13 +252,15 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(exec_thread == EXEC_THREAD_MAIN) {
 		// run query on Redis main thread
 		context = CommandCtx_New(ctx, NULL, argv[0], query, gc, exec_thread,
-								 is_replicated, compact, timeout, timeout_rw, timer);
+								 is_replicated, compact, timeout, timeout_rw, timer,
+								 received_milliseconds);
 		handler(context);
 	} else {
 		// run query on a dedicated thread
 		RedisModuleBlockedClient *bc = RedisGraph_BlockClient(ctx);
 		context = CommandCtx_New(NULL, bc, argv[0], query, gc, exec_thread,
-								 is_replicated, compact, timeout, timeout_rw, timer);
+								 is_replicated, compact, timeout, timeout_rw, timer,
+								 received_milliseconds);
 
 		if(ThreadPools_AddWorkReader(handler, context) == THPOOL_QUEUE_FULL) {
 			// Report an error once our workers thread pool internal queue
