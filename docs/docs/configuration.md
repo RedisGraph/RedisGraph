@@ -45,7 +45,7 @@ GRAPH.CONFIG GET OPT1
 GRAPH.CONFIG GET *
 ```
 
-Values set using `GRAPH.CONFIG SET` do not persist after server restart.
+Values set using `GRAPH.CONFIG SET` are not persisted after server restart.
 
 ## RedisGraph configuration parameters
 
