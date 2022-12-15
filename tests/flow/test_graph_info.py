@@ -57,6 +57,10 @@ def get_total_executing_queries_from_info_cmd_result(info):
     # [1][5] = 'Global info' => 'Total executing queries count'
     return info[1][5]
 
+def get_unix_timestamp_milliseconds():
+    import time
+
+    return (int)(time.time_ns() / 1000000)
 
 class testGraphInfoFlow(FlowTestsBase):
     def __init__(self):
@@ -71,7 +75,10 @@ class testGraphInfoFlow(FlowTestsBase):
 
     # Validate the GRAPH.INFO result: should contain the queries specified,
     # and exactly thath number of queries being executed.
-    def _assert_executing_queries(self, info, queries=[]):
+    # Optionally, checks for the receive time: all queries are checked to have
+    # been received after the passed "assert_receive_time".
+    def _assert_executing_queries(self, info, queries=[], assert_receive_time=None):
+        assert_timestamp = get_unix_timestamp_milliseconds()
         # if the info object is passed directly as a result, convert it to
         # a dictionary for easier and consistent assertions.
         if not isinstance(info, dict):
@@ -89,23 +96,27 @@ class testGraphInfoFlow(FlowTestsBase):
         # Check that the only query being currently executed is ours.
         for i in range(0, executing_queries_count):
             executing_query = list_to_dict(info['Per-graph data'][GRAPH_ID]['Executing queries'][i])
+            if assert_receive_time is not None:
+                self.env.assertGreaterEqual(executing_query['Receive timestamp (milliseconds)'], assert_receive_time, depth=1)
+            self.env.assertLessEqual(executing_query['Receive timestamp (milliseconds)'], assert_timestamp, depth=1)
+
             self.env.assertEquals(executing_query['Query'], queries[i], depth=1)
-            self.env.assertGreaterEqual(executing_query['Current total time (milliseconds)'], 0, depth=1)
-            wait_time = executing_query['Current wait time (milliseconds)']
+            self.env.assertGreaterEqual(executing_query['Current total duration (milliseconds)'], 0, depth=1)
+            wait_time = executing_query['Current wait duration (milliseconds)']
             max_wait_time = max(max_wait_time, wait_time)
             self.env.assertGreaterEqual(wait_time, 0, depth=1)
-            self.env.assertGreaterEqual(executing_query['Current execution time (milliseconds)'], 0, depth=1)
-            self.env.assertEqual(executing_query['Current reporting time (milliseconds)'], 0, depth=1)
+            self.env.assertGreaterEqual(executing_query['Current execution duration (milliseconds)'], 0, depth=1)
+            self.env.assertEqual(executing_query['Current reporting duration (milliseconds)'], 0, depth=1)
             self.env.assertEqual(len(info['Per-graph data'][GRAPH_ID]['Reporting queries']), 0, depth=1)
         # It has already accounted for the graph creation query, which might
         # have taken longer than a millisecond.
-        self.env.assertGreaterEqual(info['Global info']['Max Query Wait Time (milliseconds)'], max_wait_time, depth=1)
+        self.env.assertGreaterEqual(info['Global info']['Max query wait duration (milliseconds)'], max_wait_time, depth=1)
 
-    def _assert_one_executing_query(self, info, query):
+    def _assert_one_executing_query(self, info, query, assert_receive_time=None):
         queries = []
         if query is not None:
             queries.append(query)
-        self._assert_executing_queries(info, queries)
+        self._assert_executing_queries(info, queries, assert_receive_time)
 
     def _wait_for_number_of_clients(self, clients_count, timeout=2):
         wait_step = 0.1
@@ -137,6 +148,7 @@ class testGraphInfoFlow(FlowTestsBase):
         self._assert_one_executing_query(info, None)
 
     def test02_long_query_is_recorded_as_being_executed(self):
+        query_issue_timestamp_ms = get_unix_timestamp_milliseconds()
         query = """UNWIND (range(0, 10000000)) AS x WITH x AS x WHERE (x / 90000) = 1 RETURN x"""
         waiter = run_concurrently((query), thread_run_query)
 
@@ -154,7 +166,7 @@ class testGraphInfoFlow(FlowTestsBase):
         results = waiter.get().result_set
         # Validate the GRAPH.QUERY result.
         self.env.assertEquals(results[0][0], 90000)
-        self._assert_one_executing_query(info, query)
+        self._assert_one_executing_query(info, query, assert_receive_time=query_issue_timestamp_ms)
 
     def test03_graph_info_reset_all(self):
         info = self.conn.execute_command(INFO_QUERIES_COMMAND)
@@ -166,13 +178,13 @@ class testGraphInfoFlow(FlowTestsBase):
         self.env.assertEquals(results.result_set[0][0], 90000, depth=1)
 
         info = list_to_dict(self.conn.execute_command(INFO_QUERIES_COMMAND))
-        self.env.assertGreaterEqual(info['Global info']['Max Query Wait Time (milliseconds)'], 0, depth=1)
+        self.env.assertGreaterEqual(info['Global info']['Max query wait duration (milliseconds)'], 0, depth=1)
 
         reset = self.conn.execute_command(INFO_RESET_ALL_COMMAND)
         self.env.assertTrue(reset, depth=1)
 
         info = list_to_dict(self.conn.execute_command(INFO_QUERIES_COMMAND))
-        self.env.assertEqual(info['Global info']['Max Query Wait Time (milliseconds)'], 0, depth=1)
+        self.env.assertEqual(info['Global info']['Max query wait duration (milliseconds)'], 0, depth=1)
 
     def _assert_info_get_result(self, result,
         nodes=0, relationships=0,
