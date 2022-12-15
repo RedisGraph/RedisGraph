@@ -75,6 +75,8 @@ static bool _validateInExpression(AR_ExpNode *exp) {
 	ASSERT(exp->op.child_count == 2);
 
 	AR_ExpNode *list = exp->op.children[1];
+	if(AR_EXP_IsOperation(list) && strcmp(list->op.f->name, "range") == 0) return true;
+	
 	SIValue listValue = SI_NullVal();
 	AR_EXP_ReduceToScalar(list, true, &listValue);
 	if(SI_TYPE(listValue) != T_ARRAY) return false;

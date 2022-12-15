@@ -107,6 +107,9 @@ static RSQNode *_FilterTreeToInQueryNode
 	ASSERT(attribute == true);
 
 	SIValue list = inOp->op.children[1]->operand.constant;
+	if(AR_EXP_IsOperation(inOp->op.children[1]) && strcmp(inOp->op.children[1]->op.f->name, "range") == 0) {
+		list = AR_EXP_Evaluate(inOp->op.children[1], NULL);
+	}
 	uint list_len = SIArray_Length(list);
 
 	if(list_len == 0) {
