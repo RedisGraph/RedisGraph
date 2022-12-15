@@ -509,6 +509,7 @@ void Register_ListFuncs() {
 	array_append(types, T_INT64);
 	array_append(types, T_INT64);
 	ret_type = T_ARRAY | T_NULL;
+	// range function is not reducable to not allocate large arrays when not needed
 	func_desc = AR_FuncDescNew("range", AR_RANGE, 2, 3, types, ret_type, false, false);
 	AR_RegFunc(func_desc);
 
