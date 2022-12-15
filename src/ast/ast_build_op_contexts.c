@@ -11,8 +11,12 @@
 #include "../arithmetic/arithmetic_expression_construct.h"
 #include "../query_ctx.h"
 
-static inline EdgeCreateCtx _NewEdgeCreateCtx(GraphContext *gc, const QGEdge *e,
-											  const cypher_astnode_t *edge) {
+static inline EdgeCreateCtx _NewEdgeCreateCtx
+(
+	GraphContext *gc,
+	const QGEdge *e,
+	const cypher_astnode_t *edge
+) {
 	const cypher_astnode_t *props = cypher_ast_rel_pattern_get_properties(edge);
 
 	EdgeCreateCtx new_edge = {  .alias = e->alias,
@@ -25,8 +29,12 @@ static inline EdgeCreateCtx _NewEdgeCreateCtx(GraphContext *gc, const QGEdge *e,
 	return new_edge;
 }
 
-static inline NodeCreateCtx _NewNodeCreateCtx(GraphContext *gc, const QGNode *n,
-											  const cypher_astnode_t *ast_node) {
+static inline NodeCreateCtx _NewNodeCreateCtx
+(
+	GraphContext *gc,
+	const QGNode *n,
+	const cypher_astnode_t *ast_node
+) {
 	const cypher_astnode_t *ast_props = cypher_ast_node_pattern_get_properties(ast_node);
 
 	NodeCreateCtx new_node;
@@ -266,7 +274,11 @@ void AST_PreparePathCreation
 //------------------------------------------------------------------------------
 
 // Get direction of each sort operation, append to an array, return the array in the form of out parameter
-void AST_PrepareSortOp(const cypher_astnode_t *order_clause, int **sort_directions) {
+void AST_PrepareSortOp
+(
+	const cypher_astnode_t *order_clause,
+	int **sort_directions
+) {
 	ASSERT(order_clause && sort_directions);
 
 	unsigned int nitems = cypher_ast_order_by_nitems(order_clause);
@@ -285,7 +297,10 @@ void AST_PrepareSortOp(const cypher_astnode_t *order_clause, int **sort_directio
 // UNWIND operation
 //------------------------------------------------------------------------------
 
-AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause) {
+AST_UnwindContext AST_PrepareUnwindOp
+(
+	const cypher_astnode_t *unwind_clause
+) {
 	const cypher_astnode_t *collection = cypher_ast_unwind_get_expression(unwind_clause);
 	AR_ExpNode *exp = AR_EXP_FromASTNode(collection);
 	exp->resolved_name = cypher_ast_identifier_get_name(cypher_ast_unwind_get_alias(unwind_clause));
@@ -298,15 +313,20 @@ AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause) {
 // DELETE operation
 //------------------------------------------------------------------------------
 
-AR_ExpNode **AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause) {
+AR_ExpNode **AST_PrepareDeleteOp
+(
+	const cypher_astnode_t *delete_clause
+) {
 	uint delete_count = cypher_ast_delete_nexpressions(delete_clause);
 	AR_ExpNode **exps = array_new(AR_ExpNode *, delete_count);
 
 	for(uint i = 0; i < delete_count; i ++) {
-		const cypher_astnode_t *ast_expr = cypher_ast_delete_get_expression(delete_clause, i);
+		const cypher_astnode_t *ast_expr =
+			cypher_ast_delete_get_expression(delete_clause, i);
 		AR_ExpNode *exp = AR_EXP_FromASTNode(ast_expr);
 		array_append(exps, exp);
 	}
+
 	return exps;
 }
 
@@ -314,8 +334,13 @@ AR_ExpNode **AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause) {
 // MERGE operation
 //------------------------------------------------------------------------------
 
-AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, GraphContext *gc,
-									QueryGraph *qg, rax *bound_vars) {
+AST_MergeContext AST_PrepareMergeOp
+(
+	const cypher_astnode_t *merge_clause,
+	GraphContext *gc,
+	QueryGraph *qg,
+	rax *bound_vars
+) {
 	AST_MergeContext merge_ctx = { .nodes_to_merge = NULL,
 								   .edges_to_merge = NULL,
 								   .on_match = NULL,
@@ -404,33 +429,32 @@ rax *AST_PrepareUpdateOp
 // CREATE operation
 //------------------------------------------------------------------------------
 
-AST_CreateContext AST_PrepareCreateOp(QueryGraph *qg, rax *bound_vars) {
-	AST *ast = QueryCtx_GetAST();
-
-	// Shouldn't operate on the original bound variables map, as this function may insert aliases.
+AST_CreateContext AST_PrepareCreateOp
+(
+	QueryGraph *qg,
+	rax *bound_vars,
+	const cypher_astnode_t *clause
+) {
+	// shouldn't operate on the original bound variables map
+	// as this function may insert aliases
 	rax *bound_and_introduced_entities = raxClone(bound_vars);
-	const cypher_astnode_t **create_clauses = AST_GetClauses(ast, CYPHER_AST_CREATE);
-	uint create_count = (create_clauses) ? array_len(create_clauses) : 0;
 
 	NodeCreateCtx *nodes_to_create = array_new(NodeCreateCtx, 1);
 	EdgeCreateCtx *edges_to_create = array_new(EdgeCreateCtx, 1);
 
-	for(uint i = 0; i < create_count; i++) {
-		const cypher_astnode_t *clause = create_clauses[i];
-		const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clause);
-		uint npaths = cypher_ast_pattern_npaths(pattern);
+	const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clause);
+	uint npaths = cypher_ast_pattern_npaths(pattern);
 
-		for(uint j = 0; j < npaths; j++) {
-			const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
-			AST_PreparePathCreation(path, qg, bound_and_introduced_entities, &nodes_to_create,
-									&edges_to_create);
-		}
+	for(uint j = 0; j < npaths; j++) {
+		const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
+		AST_PreparePathCreation(path, qg, bound_and_introduced_entities,
+				&nodes_to_create, &edges_to_create);
 	}
 
-	array_free(create_clauses);
 	raxFree(bound_and_introduced_entities);
 
-	AST_CreateContext ctx = { .nodes_to_create = nodes_to_create, .edges_to_create = edges_to_create };
+	AST_CreateContext ctx = { .nodes_to_create = nodes_to_create,
+		.edges_to_create = edges_to_create };
 
 	return ctx;
 }
