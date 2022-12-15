@@ -20,45 +20,72 @@ static OpResult UnwindReset(OpBase *opBase);
 static OpBase *UnwindClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void UnwindFree(OpBase *opBase);
 
-OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
+OpBase *NewUnwindOp
+(
+	const ExecutionPlan *plan,
+	AR_ExpNode *exp
+) {
 	OpUnwind *op = rm_malloc(sizeof(OpUnwind));
 
-	op->exp = exp;
-	op->list = SI_NullVal();
+	op->exp           = exp;
+	op->to            = 0;
+	op->list          = SI_NullVal();
+	op->from          = 0;
+	op->step          = 1;
+	op->listIdx       = INDEX_NOT_SET;
+	op->is_range      = false;
 	op->currentRecord = NULL;
-	op->listIdx = INDEX_NOT_SET;
-	op->is_range = false;
-	op->from = SI_NullVal();
-	op->to = SI_NullVal();
-	op->step = SI_LongVal(1);
 
-	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", UnwindInit, UnwindConsume,
-				UnwindReset, NULL, UnwindClone, UnwindFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", UnwindInit,
+				UnwindConsume, UnwindReset, NULL, UnwindClone, UnwindFree,
+				false, plan);
 
 	op->unwindRecIdx = OpBase_Modifies((OpBase *)op, exp->resolved_name);
 	return (OpBase *)op;
 }
 
-/* Evaluate list expression, 
- * if expression did not returned a list type value, creates a list with that value. */
-static void _initList(OpUnwind *op) {
-	op->list = SI_NullVal(); // Null-set the list value to avoid memory errors if evaluation fails.
+// Evaluate list expression
+// if expression did not returned a list type value
+// creates a list with that value
+static void _initList
+(
+	OpUnwind *op
+) {
+	// null-set the list value to avoid memory errors if evaluation fails
+	op->list = SI_NullVal();
 	if(AR_EXP_IsOperation(op->exp) && strcmp(op->exp->op.f->name, "range") == 0) {
-		op->from = AR_EXP_Evaluate(op->exp->op.children[0], op->currentRecord);
-		op->to = AR_EXP_Evaluate(op->exp->op.children[1], op->currentRecord);
-		if(op->exp->op.child_count == 3) {
-			op->step = AR_EXP_Evaluate(op->exp->op.children[2], op->currentRecord);
+		// extracting information from range function
+		// extracting: range beginning, range end and optional range step
+		SIValue v = AR_EXP_Evaluate(op->exp->op.children[0], op->currentRecord);
+		if(SI_TYPE(v) != T_INT64) {
+			Error_SITypeMismatch(v, T_INT64);
+			ErrorCtx_RaiseRuntimeException(NULL);
 		}
-		op->current = op->from;
+		op->from = v.longval;
+		v = AR_EXP_Evaluate(op->exp->op.children[1], op->currentRecord);
+		if(SI_TYPE(v) != T_INT64) {
+			Error_SITypeMismatch(v, T_INT64);
+			ErrorCtx_RaiseRuntimeException(NULL);
+		}
+		op->to = v.longval;
+		if(op->exp->op.child_count == 3) {
+			v = AR_EXP_Evaluate(op->exp->op.children[2], op->currentRecord);
+			if(SI_TYPE(v) != T_INT64) {
+				Error_SITypeMismatch(v, T_INT64);
+				ErrorCtx_RaiseRuntimeException(NULL);
+			}
+			op->step = v.longval;
+		}
+		op->to      += op->step;
+		op->current  = op->from;
 		op->is_range = true;
 	} else {
 		SIValue new_list = AR_EXP_Evaluate(op->exp, op->currentRecord);
 		if(SI_TYPE(new_list) == T_ARRAY || SI_TYPE(new_list) == T_NULL) {
-			// Update the list value.
+			// update the list value
 			op->list = new_list;
 		} else {
-			// Create a list of size 1 and initialize it with the input expression value
+			// create a list of size 1 and initialize it with the input expression value
 			op->list = SI_Array(1);
 			SIArray_Append(&op->list, new_list);
 			SIValue_Free(new_list);
@@ -66,16 +93,19 @@ static void _initList(OpUnwind *op) {
 	}
 }
 
-static OpResult UnwindInit(OpBase *opBase) {
+static OpResult UnwindInit
+(
+	OpBase *opBase
+) {
 	OpUnwind *op = (OpUnwind *) opBase;
 	op->currentRecord = OpBase_CreateRecord((OpBase *)op);
 
 	if(op->op.childCount == 0) {
-		// No child operation, list must be static.
+		// no child operation, list must be static
 		op->listIdx = 0;
 		_initList(op);
 	} else {
-		// List might depend on data provided by child operation.
+		// list might depend on data provided by child operation
 		op->list = SI_EmptyArray();
 		op->listIdx = INDEX_NOT_SET;
 	}
@@ -83,21 +113,20 @@ static OpResult UnwindInit(OpBase *opBase) {
 	return OP_OK;
 }
 
-/* Try to generate a new value to return
- * NULL will be returned if dynamic list is not evaluted (listIdx = INDEX_NOT_SET)
- * or in case where the current list is fully consumed. */
-Record _handoff(OpUnwind *op) {
-	if(op->is_range && !SIValue_IsNull(op->current)) {
-		if(SIValue_Compare(op->current, op->to, NULL) != 0) {
+// try to generate a new value to return
+// NULL will be returned if dynamic list is not evaluted (listIdx = INDEX_NOT_SET)
+// or in case where the current list is fully consumed
+Record _handoff
+(
+	OpUnwind *op
+) {
+	if(op->is_range) {
+		if(op->current != op->to) {
 			Record r = OpBase_CloneRecord(op->currentRecord);
-			Record_Add(r, op->unwindRecIdx, op->current);
-			op->current = SIValue_Add(op->current, op->step);
+			Record_Add(r, op->unwindRecIdx, SI_LongVal(op->current));
+			op->current += op->step;
 			return r;
 		}
-		Record r = OpBase_CloneRecord(op->currentRecord);
-		Record_Add(r, op->unwindRecIdx, op->current);
-		op->current = SI_NullVal();
-		return r;
 	} else if(op->listIdx < SIArray_Length(op->list)) {
 		Record r = OpBase_CloneRecord(op->currentRecord);
 		Record_Add(r, op->unwindRecIdx, SIArray_Get(op->list, op->listIdx));
@@ -107,26 +136,29 @@ Record _handoff(OpUnwind *op) {
 	return NULL;
 }
 
-static Record UnwindConsume(OpBase *opBase) {
+static Record UnwindConsume
+(
+	OpBase *opBase
+) {
 	OpUnwind *op = (OpUnwind *)opBase;
 
-	// Try to produce data.
+	// try to produce data
 	Record r = _handoff(op);
 	if(r) return r;
 
-	// No child operation to pull data from, we're done.
+	// no child operation to pull data from, we're done
 	if(op->op.childCount == 0) return NULL;
 
 	OpBase *child = op->op.children[0];
-	// Did we managed to get new data?
+	// did we managed to get new data?
 	if((r = OpBase_Consume(child))) {
-		// Free current record to accommodate new record.
+		// free current record to accommodate new record
 		OpBase_DeleteRecord(op->currentRecord);
 		op->currentRecord = r;
-		// Free old list.
+		// free old list
 		SIValue_Free(op->list);
 
-		// Reset index and set list.
+		// reset index and set list
 		op->listIdx = 0;
 		_initList(op);
 	}
@@ -134,22 +166,32 @@ static Record UnwindConsume(OpBase *opBase) {
 	return _handoff(op);
 }
 
-static OpResult UnwindReset(OpBase *ctx) {
+static OpResult UnwindReset
+(
+	OpBase *ctx
+) {
 	OpUnwind *op = (OpUnwind *)ctx;
-	// Static should reset index to 0.
+	// static should reset index to 0
 	if(op->op.childCount == 0) op->listIdx = 0;
-	// Dynamic should set index to UINT_MAX, to force refetching of data.
+	// dynamic should set index to UINT_MAX, to force refetching of data
 	else op->listIdx = INDEX_NOT_SET;
 	return OP_OK;
 }
 
-static inline OpBase *UnwindClone(const ExecutionPlan *plan, const OpBase *opBase) {
+static inline OpBase *UnwindClone
+(
+	const ExecutionPlan *plan,
+	const OpBase *opBase
+) {
 	ASSERT(opBase->type == OPType_UNWIND);
 	OpUnwind *op = (OpUnwind *)opBase;
 	return NewUnwindOp(plan, AR_EXP_Clone(op->exp));
 }
 
-static void UnwindFree(OpBase *ctx) {
+static void UnwindFree
+(
+	OpBase *ctx
+) {
 	OpUnwind *op = (OpUnwind *)ctx;
 	SIValue_Free(op->list);
 	op->list = SI_NullVal();
@@ -164,4 +206,3 @@ static void UnwindFree(OpBase *ctx) {
 		op->currentRecord = NULL;
 	}
 }
-

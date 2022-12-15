@@ -14,18 +14,22 @@
 
 typedef struct {
 	OpBase op;
-	SIValue list;         // List which the unwind operation is performed on.
-	SIValue from;         // From range
-	SIValue to;           // To range
-	SIValue step;         // Step range
-	SIValue current;      // current range
-	bool is_range;
-	AR_ExpNode *exp;      // Arithmetic expression (evaluated as an SIArray).
-	uint listIdx;         // Current list index.
-	int unwindRecIdx;     // Update record at this index.
-	Record currentRecord; // record to clone and add a value extracted from the list.
+	SIValue list;         // list which the unwind operation is performed on
+	int64_t from;         // beginning of range
+	int64_t to;           // end of range
+	int64_t step;         // step size
+	int64_t current;      // current value in range
+	bool is_range;        // op is using range otherwise list
+	AR_ExpNode *exp;      // arithmetic expression (evaluated as an SIArray)
+	uint listIdx;         // current list index
+	int unwindRecIdx;     // update record at this index
+	Record currentRecord; // record to clone and add a value extracted from the list
 } OpUnwind;
 
-/* Creates a new Unwind operation */
-OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp);
+// creates a new Unwind operation
+OpBase *NewUnwindOp
+(
+	const ExecutionPlan *plan,
+	AR_ExpNode *exp
+);
 
