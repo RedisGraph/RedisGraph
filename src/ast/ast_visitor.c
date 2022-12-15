@@ -12,8 +12,7 @@ static bool _default_visit
 (
 	const cypher_astnode_t *n,
 	bool start,
-	ast_visitor *visitor,
-	bool *err
+	ast_visitor *visitor
 ) {
 	ASSERT(n != NULL);
 
@@ -45,54 +44,22 @@ void AST_Visitor_register
 	visitor->funcs[type] = cb;
 }
 
-static void _AST_Visitor_visit
+void AST_Visitor_visit
 (
 	const cypher_astnode_t *node,
-	ast_visitor *visitor,
-	bool *err
+	ast_visitor *visitor
 ) {
 	ASSERT(node    != NULL);
 	ASSERT(visitor != NULL);
 
 	cypher_astnode_type_t node_type = cypher_astnode_type(node);
-
-	//--------------------------------------------------------------------------
-	// opening call
-	//--------------------------------------------------------------------------
-
-	// first visit of the node
-	if(!visitor->funcs[node_type](node, true, visitor, err) || *err) {
-		return;
-	}
-
-	//--------------------------------------------------------------------------
-	// recall for each child node
-	//--------------------------------------------------------------------------
-
-	uint nchildren = cypher_astnode_nchildren(node);
-	for (uint i = 0; i < nchildren; i++) {
-		_AST_Visitor_visit(cypher_astnode_get_child(node, i), visitor, err);
-		if(*err) {
-			// child failed, quick return
-			return;
+	if(visitor->funcs[node_type](node, true, visitor)) {
+		uint nchildren = cypher_astnode_nchildren(node);
+		for (uint i = 0; i < nchildren; i++) {
+			AST_Visitor_visit(cypher_astnode_get_child(node, i), visitor);
 		}
+		visitor->funcs[node_type](node, false, visitor);
 	}
-
-	//----------------------------------------------------------------------
-	// closing call
-	//----------------------------------------------------------------------
-
-	visitor->funcs[node_type](node, false, visitor, err);
-}
-
-bool AST_Visitor_visit
-(
-	const cypher_astnode_t *node,
-	ast_visitor *visitor
-) {
-	bool err = false;
-	_AST_Visitor_visit(node, visitor, &err);
-	return err;
 }
 
 void AST_Visitor_free

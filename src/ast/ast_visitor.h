@@ -10,7 +10,7 @@
 
 typedef struct ast_visitor ast_visitor;
 
-typedef bool (*visit)(const cypher_astnode_t *n, bool start, ast_visitor *visitor, bool *err);
+typedef bool (*visit)(const cypher_astnode_t *n, bool start, ast_visitor *visitor);
 
 typedef struct ast_visitor
 {
@@ -30,7 +30,7 @@ void AST_Visitor_register
 	visit cb
 );
 
-bool AST_Visitor_visit
+void AST_Visitor_visit
 (
 	const cypher_astnode_t *node,
 	ast_visitor *visitor
