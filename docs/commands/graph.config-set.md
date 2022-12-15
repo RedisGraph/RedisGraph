@@ -1,6 +1,6 @@
 Set the value of a RedisGraph configuration parameter.
 
-Values set using `GRAPH.CONFIG SET` do not persist after server restart.
+Values set using `GRAPH.CONFIG SET` are not persisted after server restart.
 
 RedisGraph configuration parameters are detailed [here](/docs/stack/graph/configuration).
 
