@@ -913,9 +913,6 @@ uint64_t Graph_GetNodeDegree
 	ASSERT(g != NULL);
 	ASSERT(n != NULL);
 
-	GrB_Info info;
-	UNUSED(info);
-
 	NodeID              srcID      = ENTITY_GET_ID(n);
 	NodeID              destID     = INVALID_ENTITY_ID;
 	EdgeID              edgeID     = INVALID_ENTITY_ID;
