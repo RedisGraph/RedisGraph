@@ -1480,6 +1480,7 @@ static AST_Validation _Validate_Aliases_DefinedInClause
 				if(referred && !defined) {
 					ErrorCtx_SetError("%.*s not defined", len, alias);
 					res = AST_INVALID;
+					break;
 				}
 			}
 		}
