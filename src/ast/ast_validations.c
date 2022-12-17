@@ -179,11 +179,11 @@ static void _AST_GetWithAliases(const cypher_astnode_t *node, rax *aliases) {
 		if(alias_node) {
 			alias = cypher_ast_identifier_get_name(alias_node);
 		} else {
-				const cypher_astnode_t *expr = cypher_ast_projection_get_expression(child);
-				// This expression not being an identifier is an error case, but will be captured in a later validation.
-				if(cypher_astnode_type(expr) != CYPHER_AST_IDENTIFIER) continue;
-				// Retrieve "a" from "WITH a"
-				alias = cypher_ast_identifier_get_name(expr);
+			const cypher_astnode_t *expr = cypher_ast_projection_get_expression(child);
+			// This expression not being an identifier is an error case, but will be captured in a later validation.
+			if(cypher_astnode_type(expr) != CYPHER_AST_IDENTIFIER) continue;
+			// Retrieve "a" from "WITH a"
+			alias = cypher_ast_identifier_get_name(expr);
 		}
 		raxInsert(aliases, (unsigned char *)alias, strlen(alias), NULL, NULL);
 	}
@@ -209,7 +209,6 @@ static void _AST_GetWithReferences
 		const cypher_astnode_t *order_by = cypher_ast_with_get_order_by(node);
 		if(order_by) _AST_GetIdentifiers(order_by, identifiers);
 	}
-	
 }
 
 // Extract identifiers / aliases from a procedure call.
