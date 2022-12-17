@@ -179,17 +179,22 @@ static void _AST_GetWithAliases(const cypher_astnode_t *node, rax *aliases) {
 		if(alias_node) {
 			alias = cypher_ast_identifier_get_name(alias_node);
 		} else {
-			const cypher_astnode_t *expr = cypher_ast_projection_get_expression(child);
-			// This expression not being an identifier is an error case, but will be captured in a later validation.
-			if(cypher_astnode_type(expr) != CYPHER_AST_IDENTIFIER) continue;
-			// Retrieve "a" from "WITH a"
-			alias = cypher_ast_identifier_get_name(expr);
+				const cypher_astnode_t *expr = cypher_ast_projection_get_expression(child);
+				// This expression not being an identifier is an error case, but will be captured in a later validation.
+				if(cypher_astnode_type(expr) != CYPHER_AST_IDENTIFIER) continue;
+				// Retrieve "a" from "WITH a"
+				alias = cypher_ast_identifier_get_name(expr);
 		}
 		raxInsert(aliases, (unsigned char *)alias, strlen(alias), NULL, NULL);
 	}
 }
 
-static void _AST_GetWithReferences(const cypher_astnode_t *node, rax *identifiers) {
+static void _AST_GetWithReferences
+(
+	const cypher_astnode_t *node, 
+	rax *identifiers, 
+	bool include_order_by
+) {
 	if(!node) return;
 	if(cypher_astnode_type(node) != CYPHER_AST_WITH) return;
 	ASSERT(identifiers != NULL);
@@ -200,8 +205,11 @@ static void _AST_GetWithReferences(const cypher_astnode_t *node, rax *identifier
 		_AST_GetIdentifiers(child, identifiers);
 	}
 
-	const cypher_astnode_t *order_by = cypher_ast_with_get_order_by(node);
-	if(order_by) _AST_GetIdentifiers(order_by, identifiers);
+	if(include_order_by) {
+		const cypher_astnode_t *order_by = cypher_ast_with_get_order_by(node);
+		if(order_by) _AST_GetIdentifiers(order_by, identifiers);
+	}
+	
 }
 
 // Extract identifiers / aliases from a procedure call.
@@ -1071,10 +1079,10 @@ AST_Validation _AST_ValidateResultColumns
 			break;
 		}
 	}
-	
+
 	raxFree(rax);
 	array_free(columns);
-	
+
 	return res;
 }
 
@@ -1089,7 +1097,7 @@ static AST_Validation _Validate_RETURN_Clause(const AST *ast) {
 	bool include_aggregates = true;
 	if(_ValidateFunctionCalls(return_clause, include_aggregates) == AST_INVALID)
 		return AST_INVALID;
-	
+
 	return _AST_ValidateResultColumns(return_clause);
 }
 
@@ -1392,7 +1400,7 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identi
 		raxInsert(identifiers, (unsigned char *)unwind_alias, strlen(unwind_alias), NULL, NULL);
 	} else if(type == CYPHER_AST_CALL) {
 		_AST_RegisterCallOutputs(node, identifiers);
-	} else if(type == CYPHER_AST_CREATE_NODE_PROPS_INDEX || 
+	} else if(type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
 		type == CYPHER_AST_CREATE_PATTERN_PROPS_INDEX ||
 		type == CYPHER_AST_DROP_PROPS_INDEX) {
 		_AST_CreateIndex_GetDefinedIdentifiers(node, identifiers);
@@ -1410,20 +1418,26 @@ static void _AST_GetReferredIdentifiers(const cypher_astnode_t *node, rax *ident
 	if(!node) return;
 	if(cypher_astnode_type(node) == CYPHER_AST_WITH) {
 		// WITH clauses should only have their inputs collected, not their outputs.
-		_AST_GetWithReferences(node, identifiers);
+		_AST_GetWithReferences(node, identifiers, true);
 	} else {
 		_AST_GetIdentifiers(node, identifiers);
 	}
 }
 
-static AST_Validation _Validate_Aliases_DefinedInClause(const cypher_astnode_t *clause,
-														rax *defined_aliases) {
+static AST_Validation _Validate_Aliases_DefinedInClause
+(
+	const cypher_astnode_t *clause,
+	rax *defined_aliases
+) {
 	AST_Validation res = AST_VALID;
 	rax *referred_identifiers = raxNew();
+	rax *with_aliases = raxNew();
+	rax *with_referred = raxNew();
+	rax *prev_defined_aliases = raxClone(defined_aliases);
 
 	// Get defined identifiers.
 	_AST_GetDefinedIdentifiers(clause, defined_aliases);
-
+	
 	// Get referred identifiers.
 	_AST_GetReferredIdentifiers(clause, referred_identifiers);
 
@@ -1441,9 +1455,42 @@ static AST_Validation _Validate_Aliases_DefinedInClause(const cypher_astnode_t *
 		}
 	}
 
-	// Clean up:
+	if(res == AST_VALID) {
+		if(cypher_astnode_type(clause) == CYPHER_AST_WITH) {
+
+			// Get aliases identifiers in with clause
+			_AST_GetWithAliases(clause, with_aliases);
+
+			// Get referred identifiers in with clause
+			_AST_GetWithReferences(clause, with_referred, false);
+
+			_prepareIterateAll(with_aliases, &it);
+
+			// Check if every alias identifier that is referred was previously defined
+			while(raxNext(&it)) {
+				bool referred = false;
+				bool defined = false;
+				int len = it.key_len;
+				unsigned char *alias = it.key;
+				if(raxFind(with_referred, alias, len) != raxNotFound) {
+					referred = true;
+				}
+				if(raxFind(prev_defined_aliases, alias, len) != raxNotFound) {
+					defined = true;
+				}
+				if(referred && !defined) {
+					ErrorCtx_SetError("%.*s not defined", len, alias);
+					res = AST_INVALID;
+				}
+			}
+		}
+	}
+
 	raxStop(&it);
 	raxFree(referred_identifiers);
+	raxFree(with_aliases);
+	raxFree(with_referred);
+	raxFree(prev_defined_aliases);
 	return res;
 }
 
@@ -1845,7 +1892,7 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 	// Verify that the query does not contain any expressions not in the
 	// RedisGraph support whitelist
 	if(CypherWhitelist_ValidateQuery(root) != AST_VALID) return AST_INVALID;
-	
+
 	AST_Validation res;
 	const cypher_astnode_t *body = cypher_ast_statement_get_body(root);
 	cypher_astnode_type_t body_type = cypher_astnode_type(body);
