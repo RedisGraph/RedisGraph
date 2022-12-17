@@ -1423,6 +1423,48 @@ static void _AST_GetReferredIdentifiers(const cypher_astnode_t *node, rax *ident
 	}
 }
 
+static AST_Validation _Validate_Aliases_DefinedInWithClause(
+	const cypher_astnode_t *clause,
+	rax *defined_aliases
+) {
+	AST_Validation res = AST_VALID;
+	rax *with_aliases = raxNew();
+	rax *with_referred = raxNew();
+
+	raxIterator it;
+
+	// Get aliases identifiers in with clause
+	_AST_GetWithAliases(clause, with_aliases);
+
+	// Get referred identifiers in with clause, but don't include references of ORDER BY
+	_AST_GetWithReferences(clause, with_referred, false);
+
+	_prepareIterateAll(with_aliases, &it);
+
+	// Check if every alias identifier that is referred was previously defined
+	while(raxNext(&it)) {
+		bool referred = false;
+		bool defined = false;
+		int len = it.key_len;
+		unsigned char *alias = it.key;
+		if(raxFind(with_referred, alias, len) != raxNotFound) {
+			referred = true;
+		}
+		if(raxFind(defined_aliases, alias, len) != raxNotFound) {
+			defined = true;
+		}
+		if(referred && !defined) {
+			ErrorCtx_SetError("%.*s not defined", len, alias);
+			res = AST_INVALID;
+			break;
+		}
+	}
+	raxStop(&it);
+	raxFree(with_aliases);
+	raxFree(with_referred);
+	return res;
+}
+
 static AST_Validation _Validate_Aliases_DefinedInClause
 (
 	const cypher_astnode_t *clause,
@@ -1430,8 +1472,6 @@ static AST_Validation _Validate_Aliases_DefinedInClause
 ) {
 	AST_Validation res = AST_VALID;
 	rax *referred_identifiers = raxNew();
-	rax *with_aliases = raxNew();
-	rax *with_referred = raxNew();
 	rax *prev_defined_aliases = raxClone(defined_aliases);
 
 	// Get defined identifiers.
@@ -1454,42 +1494,11 @@ static AST_Validation _Validate_Aliases_DefinedInClause
 		}
 	}
 
-	if(res == AST_VALID) {
-		if(cypher_astnode_type(clause) == CYPHER_AST_WITH) {
-
-			// Get aliases identifiers in with clause
-			_AST_GetWithAliases(clause, with_aliases);
-
-			// Get referred identifiers in with clause, but don't include references of ORDER BY
-			_AST_GetWithReferences(clause, with_referred, false);
-
-			_prepareIterateAll(with_aliases, &it);
-
-			// Check if every alias identifier that is referred was previously defined
-			while(raxNext(&it)) {
-				bool referred = false;
-				bool defined = false;
-				int len = it.key_len;
-				unsigned char *alias = it.key;
-				if(raxFind(with_referred, alias, len) != raxNotFound) {
-					referred = true;
-				}
-				if(raxFind(prev_defined_aliases, alias, len) != raxNotFound) {
-					defined = true;
-				}
-				if(referred && !defined) {
-					ErrorCtx_SetError("%.*s not defined", len, alias);
-					res = AST_INVALID;
-					break;
-				}
-			}
-		}
+	if(res == AST_VALID && cypher_astnode_type(clause) == CYPHER_AST_WITH) {
+		res = _Validate_Aliases_DefinedInWithClause(clause, prev_defined_aliases);
 	}
-
 	raxStop(&it);
 	raxFree(referred_identifiers);
-	raxFree(with_aliases);
-	raxFree(with_referred);
 	raxFree(prev_defined_aliases);
 	return res;
 }
