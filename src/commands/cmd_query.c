@@ -187,7 +187,9 @@ static void _ExecuteQuery(void *args) {
 
 	// instantiate the query ResultSet
 	bool compact = command_ctx->compact;
-	ResultSetFormatterType resultset_format = profile
+	// replicated command don't need to return result
+	ResultSetFormatterType resultset_format = 
+		profile || command_ctx->replicated_command
 		? FORMATTER_NOP 
 		: (compact) 
 			? FORMATTER_COMPACT 
@@ -340,7 +342,10 @@ void _query(bool profile, void *args) {
 
 	// enforce specified timeout when query is readonly
 	// or timeout applies to both read and write
-	if(command_ctx->timeout != 0 && (readonly || command_ctx->timeout_rw)) {
+	bool enforce_timeout = command_ctx->timeout != 0 &&
+		(readonly || command_ctx->timeout_rw) &&
+		!command_ctx->replicated_command;
+	if(enforce_timeout) {
 		timeout_task = Query_SetTimeOut(command_ctx->timeout, exec_ctx->plan);
 	}
 
