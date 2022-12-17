@@ -1460,7 +1460,7 @@ static AST_Validation _Validate_Aliases_DefinedInClause
 			// Get aliases identifiers in with clause
 			_AST_GetWithAliases(clause, with_aliases);
 
-			// Get referred identifiers in with clause
+			// Get referred identifiers in with clause, but don't include references of ORDER BY
 			_AST_GetWithReferences(clause, with_referred, false);
 
 			_prepareIterateAll(with_aliases, &it);
