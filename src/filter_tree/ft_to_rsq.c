@@ -108,7 +108,29 @@ static RSQNode *_FilterTreeToInQueryNode
 
 	SIValue list = inOp->op.children[1]->operand.constant;
 	if(AR_EXP_IsOperation(inOp->op.children[1]) && strcmp(inOp->op.children[1]->op.f->name, "range") == 0) {
-		list = AR_EXP_Evaluate(inOp->op.children[1], NULL);
+		AR_ExpNode *range = inOp->op.children[1];
+		int64_t step     = 1;
+		// extracting information from range function
+		// extracting: range beginning, range end and optional range step
+		SIValue v = AR_EXP_Evaluate(range->op.children[0], NULL);
+		ASSERT(SI_TYPE(v) == T_INT64);
+		int64_t from = v.longval;
+		v = AR_EXP_Evaluate(range->op.children[1], NULL);
+		ASSERT(SI_TYPE(v) == T_INT64);
+		int64_t to = v.longval;
+		if(range->op.child_count == 3) {
+			v = AR_EXP_Evaluate(range->op.children[2], NULL);
+			ASSERT(SI_TYPE(v) == T_INT64);
+			step = v.longval;
+		}
+		to      += step;
+		int64_t current  = (to >= from && step > 0) || (to <= from && step < 0) ? from : to;
+		RSQNode *U = RediSearch_CreateUnionNode(idx);
+		while(current != to) {
+			RediSearch_QueryNodeAddChild(U, RediSearch_CreateNumericNode(idx, field, current, current, true, true));
+			current += step;
+		}
+		return U;
 	}
 	uint list_len = SIArray_Length(list);
 
