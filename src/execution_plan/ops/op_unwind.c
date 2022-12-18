@@ -101,6 +101,11 @@ static OpResult UnwindInit
 		// no child operation, list must be static
 		op->listIdx = 0;
 		_initList(op);
+	} else {
+		// list might depend on data provided by child operation
+		op->list     = SI_EmptyArray();
+		op->listIdx  = INDEX_NOT_SET;
+		op->is_range = false;
 	}
 
 	return OP_OK;
