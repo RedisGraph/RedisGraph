@@ -4,12 +4,12 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "cypher_whitelist.h"
 #include "ast_visitor.h"
 #include "../errors.h"
 #include "../../deps/libcypher-parser/lib/src/operators.h"
 
-static bool _visit
+// break visitor traversal, resulting in a fast-fold
+static VISITOR_STATE _visit_break
 (
 	const cypher_astnode_t *n,
 	bool start,
@@ -18,10 +18,10 @@ static bool _visit
 	AST_Validation *res = visitor->ctx;
 	*res = AST_INVALID;
 	Error_UnsupportedASTNodeType(n);
-	return false;
+	return VISITOR_BREAK;
 }
 
-static bool _visit_binary_op
+static VISITOR_STATE _visit_binary_op
 (
 	const cypher_astnode_t *n,
 	bool start,
@@ -34,9 +34,9 @@ static bool _visit_binary_op
 	   op == CYPHER_OP_REGEX) {
 		*res = AST_INVALID;
 		Error_UnsupportedASTOperator(op);
-		return false;
+		return VISITOR_BREAK;
 	}
-	return true;
+	return VISITOR_RECURSE;
 }
 
 AST_Validation CypherWhitelist_ValidateQuery
@@ -45,36 +45,36 @@ AST_Validation CypherWhitelist_ValidateQuery
 ) {
 	AST_Validation res = AST_VALID;
 	ast_visitor *visitor = AST_Visitor_new(&res);
-	AST_Visitor_register(visitor, CYPHER_AST_EXPLAIN_OPTION, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_PROFILE_OPTION, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_SCHEMA_COMMAND, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_CREATE_NODE_PROP_CONSTRAINT, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_DROP_NODE_PROP_CONSTRAINT, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_CREATE_REL_PROP_CONSTRAINT, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_DROP_REL_PROP_CONSTRAINT, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_QUERY_OPTION, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_USING_PERIODIC_COMMIT, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_LOAD_CSV, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_START, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_START_POINT, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_NODE_INDEX_LOOKUP, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_NODE_INDEX_QUERY, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_NODE_ID_LOOKUP, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_ALL_NODES_SCAN, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_REL_INDEX_LOOKUP, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_REL_INDEX_QUERY, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_REL_ID_LOOKUP, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_ALL_RELS_SCAN, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_MATCH_HINT, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_USING_INDEX, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_USING_JOIN, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_USING_SCAN, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_REMOVE_ITEM, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_FILTER, _visit);  // Deprecated, will not be supported
-	AST_Visitor_register(visitor, CYPHER_AST_EXTRACT, _visit); // Deprecated, will not be supported
-	AST_Visitor_register(visitor, CYPHER_AST_INDEX_NAME, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_COMMAND, _visit);
-	AST_Visitor_register(visitor, CYPHER_AST_FOREACH, _visit);
+	AST_Visitor_register(visitor, CYPHER_AST_EXPLAIN_OPTION, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_PROFILE_OPTION, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_SCHEMA_COMMAND, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_CREATE_NODE_PROP_CONSTRAINT, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_DROP_NODE_PROP_CONSTRAINT, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_CREATE_REL_PROP_CONSTRAINT, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_DROP_REL_PROP_CONSTRAINT, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_QUERY_OPTION, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_USING_PERIODIC_COMMIT, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_LOAD_CSV, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_START, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_START_POINT, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_NODE_INDEX_LOOKUP, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_NODE_INDEX_QUERY, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_NODE_ID_LOOKUP, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_ALL_NODES_SCAN, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_REL_INDEX_LOOKUP, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_REL_INDEX_QUERY, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_REL_ID_LOOKUP, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_ALL_RELS_SCAN, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_MATCH_HINT, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_USING_INDEX, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_USING_JOIN, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_USING_SCAN, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_REMOVE_ITEM, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_FILTER, _visit_break);  // Deprecated, will not be supported
+	AST_Visitor_register(visitor, CYPHER_AST_EXTRACT, _visit_break); // Deprecated, will not be supported
+	AST_Visitor_register(visitor, CYPHER_AST_INDEX_NAME, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_COMMAND, _visit_break);
+	AST_Visitor_register(visitor, CYPHER_AST_FOREACH, _visit_break);
 	AST_Visitor_register(visitor, CYPHER_AST_BINARY_OPERATOR, _visit_binary_op);
 	AST_Visitor_visit(root, visitor);
 	AST_Visitor_free(visitor);

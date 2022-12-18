@@ -693,6 +693,7 @@ cypher_parse_result_t *parse_query
 		return NULL;
 	}
 
+	// get the index of a valid root (of type CYPHER_AST_STATEMENT)
 	int index;
 	if(AST_Validate_ParseResultRoot(result, &index) == AST_INVALID) {
 		parse_result_free(result);
@@ -701,6 +702,7 @@ cypher_parse_result_t *parse_query
 
 	const cypher_astnode_t *root = cypher_parse_result_get_root(result, index);
 
+	// validate the query
 	if(AST_Validate_Query(root) != AST_VALID) {
 		parse_result_free(result);
 		return NULL;

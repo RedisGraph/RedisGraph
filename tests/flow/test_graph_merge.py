@@ -671,10 +671,7 @@ class testGraphMergeFlow(FlowTestsBase):
 
     def test31_alias_multiple_definition(self):
         redis_con = self.env.getConnection()
-        graph = Graph(redis_con, 'G')
-
-        # create key
-        graph.query("RETURN 1")
+        graph = Graph(redis_con, "M")
 
         # Redefinition of an alias by depicting L2 as a label of a
         # should raise an exception

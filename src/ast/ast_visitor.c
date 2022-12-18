@@ -8,7 +8,7 @@
 #include "ast_visitor.h"
 #include "util/rmalloc.h"
 
-static bool _default_visit
+static VISITOR_STATE _default_visit
 (
 	const cypher_astnode_t *n,
 	bool start,
@@ -16,12 +16,13 @@ static bool _default_visit
 ) {
 	ASSERT(n != NULL);
 
-	return true;
+	return VISITOR_RECURSE;
 }
 
+// creates a new visitor
 ast_visitor *AST_Visitor_new
 (
-	void *ctx
+	void *ctx  // context to attach to the new visitor
 ) {
 	ast_visitor *visitor = rm_malloc(sizeof(ast_visitor) + sizeof(visit) * 256);
 	visitor->ctx = ctx;
@@ -32,11 +33,12 @@ ast_visitor *AST_Visitor_new
 	return visitor;
 }
 
+// registers a function to a visitor
 void AST_Visitor_register
 (
-	ast_visitor *visitor,
-	cypher_astnode_type_t type,
-	visit cb
+	ast_visitor *visitor,        // visitor to register the function to
+	cypher_astnode_type_t type,  // type of ast-node
+	visit cb                     // visit function to register
 ) {
 	ASSERT(cb      != NULL);
 	ASSERT(visitor != NULL);
@@ -44,7 +46,8 @@ void AST_Visitor_register
 	visitor->funcs[type] = cb;
 }
 
-void AST_Visitor_visit
+// recursively visit an ast-node
+static VISITOR_STATE _AST_Visitor_visit
 (
 	const cypher_astnode_t *node,
 	ast_visitor *visitor
@@ -53,18 +56,53 @@ void AST_Visitor_visit
 	ASSERT(visitor != NULL);
 
 	cypher_astnode_type_t node_type = cypher_astnode_type(node);
-	if(visitor->funcs[node_type](node, true, visitor)) {
-		uint nchildren = cypher_astnode_nchildren(node);
-		for (uint i = 0; i < nchildren; i++) {
-			AST_Visitor_visit(cypher_astnode_get_child(node, i), visitor);
-		}
-		visitor->funcs[node_type](node, false, visitor);
+
+	//--------------------------------------------------------------------------
+	// opening call
+	//--------------------------------------------------------------------------
+
+	// first visit of the node
+	VISITOR_STATE state = visitor->funcs[node_type](node, true, visitor);
+	if(state != VISITOR_RECURSE) {
+		// do not visit children
+		return state;
 	}
+
+	//--------------------------------------------------------------------------
+	// recall for each child node
+	//--------------------------------------------------------------------------
+
+	uint nchildren = cypher_astnode_nchildren(node);
+	for (uint i = 0; i < nchildren; i++) {
+		if(_AST_Visitor_visit(cypher_astnode_get_child(node, i), visitor) == VISITOR_BREAK) {
+			// error occurred, fast fold
+			return VISITOR_BREAK;
+		}
+	}
+
+	//----------------------------------------------------------------------
+	// closing call
+	//----------------------------------------------------------------------
+
+	return visitor->funcs[node_type](node, false, visitor);
 }
 
+// visit an ast-node
+void AST_Visitor_visit
+(
+	const cypher_astnode_t *node,  // node to visit
+	ast_visitor *visitor           // visitor
+) {
+	ASSERT(node    != NULL);
+	ASSERT(visitor != NULL);
+
+	_AST_Visitor_visit(node, visitor);
+}
+
+// frees a visitor
 void AST_Visitor_free
 (
-	ast_visitor *visitor
+	ast_visitor *visitor  // visitor to free
 ) {
 	ASSERT(visitor != NULL);
 
