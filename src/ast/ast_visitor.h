@@ -20,10 +20,10 @@ typedef enum {
 	VISITOR_BREAK,     // fast-fold
 	VISITOR_CONTINUE,  // continue traversing the next sibling, without visiting children
 	VISITOR_RECURSE    // visit children as well as next sibling
-} VISITOR_STATE;
+} VISITOR_STRATEGY;
 
 // visit function signature called for each registered AST node type
-typedef VISITOR_STATE (*visit)(const cypher_astnode_t *n, bool start, ast_visitor *visitor);
+typedef VISITOR_STRATEGY (*visit)(const cypher_astnode_t *n, bool start, ast_visitor *visitor);
 
 /*
 ast_visitor traverses an ast-node as long as its state is valid (not VISITOR_BREAK).

@@ -300,7 +300,7 @@ static AST_Validation _Validate_referred_identifier
 }
 
 // validate a list comprehension
-static VISITOR_STATE _Validate_list_comprehension
+static VISITOR_STRATEGY _Validate_list_comprehension
 (
 	const cypher_astnode_t *n,  // ast-node
 	bool start,                 // first traversal
@@ -358,7 +358,7 @@ static VISITOR_STATE _Validate_list_comprehension
 }
 
 // validate a pattern comprehension
-static VISITOR_STATE _Validate_pattern_comprehension
+static VISITOR_STRATEGY _Validate_pattern_comprehension
 (
 	const cypher_astnode_t *n,  // ast-node
 	bool start,                 // first traversal
@@ -423,7 +423,7 @@ static VISITOR_STATE _Validate_pattern_comprehension
 }
 
 // validate that an identifier is bound
-static VISITOR_STATE _Validate_identifier
+static VISITOR_STRATEGY _Validate_identifier
 (
 	const cypher_astnode_t *n,  // ast-node (identifier)
 	bool start,                 // first traversal
@@ -444,7 +444,7 @@ static VISITOR_STATE _Validate_identifier
 }
 
 // validate the values of a map
-static VISITOR_STATE _Validate_map
+static VISITOR_STRATEGY _Validate_map
 (
 	const cypher_astnode_t *n,  // ast-node (map)
 	bool start,                 // first traversal
@@ -470,7 +470,7 @@ static VISITOR_STATE _Validate_map
 }
 
 // validate a projection
-static VISITOR_STATE _Validate_projection
+static VISITOR_STRATEGY _Validate_projection
 (
 	const cypher_astnode_t *n,  // ast-node
 	bool start,                 // first traversal
@@ -513,7 +513,7 @@ static AST_Validation _ValidateFunctionCall
 }
 
 // validate an apply-all operator
-static VISITOR_STATE _Validate_apply_all_operator
+static VISITOR_STRATEGY _Validate_apply_all_operator
 (
 	const cypher_astnode_t *n,  // ast-node
 	bool start,                 // first traversal
@@ -545,7 +545,7 @@ static VISITOR_STATE _Validate_apply_all_operator
 }
 
 // validate an apply operator
-static VISITOR_STATE _Validate_apply_operator
+static VISITOR_STRATEGY _Validate_apply_operator
 (
 	const cypher_astnode_t *n,  // ast-node
 	bool start,                 // first traversal
@@ -568,7 +568,7 @@ static VISITOR_STATE _Validate_apply_operator
 }
 
 // validate reduce
-static VISITOR_STATE _Validate_reduce
+static VISITOR_STRATEGY _Validate_reduce
 (
 	const cypher_astnode_t *n,  // ast-node
 	bool start,                 // first traversal
@@ -709,7 +709,7 @@ static AST_Validation _ValidateInlinedProperties
 }
 
 // validate a relation-pattern
-static VISITOR_STATE _Validate_rel_pattern
+static VISITOR_STRATEGY _Validate_rel_pattern
 (
 	const cypher_astnode_t *n,  // ast-node (rel-pattern)s
 	bool start,                 // first traversal
@@ -780,7 +780,7 @@ static VISITOR_STATE _Validate_rel_pattern
 }
 
 // validate a node-pattern expression
-static VISITOR_STATE _Validate_node_pattern
+static VISITOR_STRATEGY _Validate_node_pattern
 (
 	const cypher_astnode_t *n,  // ast-node (node-pattern)
 	bool start,                 // first traversal
@@ -818,7 +818,7 @@ static VISITOR_STATE _Validate_node_pattern
 }
 
 // validate a shortest-path expression
-static VISITOR_STATE _Validate_shortest_path
+static VISITOR_STRATEGY _Validate_shortest_path
 (
 	const cypher_astnode_t *n,  // ast-node
 	bool start,                 // first traversal
@@ -863,7 +863,7 @@ static VISITOR_STATE _Validate_shortest_path
 }
 
 // validate a pattern-path expression
-static VISITOR_STATE _Validate_pattern_path
+static VISITOR_STRATEGY _Validate_pattern_path
 (
 	const cypher_astnode_t *n,  // ast-node
 	bool start,                 // first traversal
@@ -883,7 +883,7 @@ static VISITOR_STATE _Validate_pattern_path
 }
 
 // validate a named path
-static VISITOR_STATE _Validate_named_path
+static VISITOR_STRATEGY _Validate_named_path
 (
 	const cypher_astnode_t *n,  // ast-node (named path)
 	bool start,                 // first traversal
@@ -1006,7 +1006,7 @@ cleanup:
 }
 
 // validate a CALL clause
-static VISITOR_STATE _Validate_CALL_Clause
+static VISITOR_STRATEGY _Validate_CALL_Clause
 (
 	const cypher_astnode_t *n,  // ast-node
 	bool start,                 // first traversal
@@ -1014,83 +1014,93 @@ static VISITOR_STATE _Validate_CALL_Clause
 ) {
 	validations_ctx *vctx = visitor->ctx;
 
-	if(!start) {
-		return VISITOR_CONTINUE;
-	}
+	if(start) {
+		vctx->clause = cypher_astnode_type(n);
+		// introduce aliases in the clause to the bounded vars environment
+		_AST_GetProcCallAliases(n, vctx->defined_identifiers);
 
-	vctx->clause = cypher_astnode_type(n);
-	// introduce aliases in the clause to the bounded vars environment
-	_AST_GetProcCallAliases(n, vctx->defined_identifiers);
+		/* Make sure procedure calls are valid:
+		* 1. procedure exists
+		* 2. number of arguments to procedure is as expected
+		* 3. yield refers to procedure output */
 
-	/* Make sure procedure calls are valid:
-	 * 1. procedure exists
-	 * 2. number of arguments to procedure is as expected
-	 * 3. yield refers to procedure output */
+		ProcedureCtx *proc = NULL;
+		rax *rax = NULL;
 
-	ProcedureCtx *proc = NULL;
-	rax *rax = NULL;
+		// Make sure procedure exists.
+		const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(n));
+		proc = Proc_Get(proc_name);
 
-	// Make sure procedure exists.
-	const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(n));
-	proc = Proc_Get(proc_name);
-
-	if(proc == NULL) {
-		ErrorCtx_SetError("Procedure `%s` is not registered", proc_name);
-		goto cleanup;
-	}
-
-	// Validate num of arguments.
-	if(proc->argc != PROCEDURE_VARIABLE_ARG_COUNT) {
-		unsigned int given_arg_count = cypher_ast_call_narguments(n);
-		if(Procedure_Argc(proc) != given_arg_count) {
-			ErrorCtx_SetError("Procedure `%s` requires %d arguments, got %d", proc_name, proc->argc,
-								given_arg_count);
+		if(proc == NULL) {
+			ErrorCtx_SetError("Procedure `%s` is not registered", proc_name);
 			goto cleanup;
 		}
+
+		// Validate num of arguments.
+		if(proc->argc != PROCEDURE_VARIABLE_ARG_COUNT) {
+			unsigned int given_arg_count = cypher_ast_call_narguments(n);
+			if(Procedure_Argc(proc) != given_arg_count) {
+				ErrorCtx_SetError("Procedure `%s` requires %d arguments, got %d", proc_name, proc->argc,
+									given_arg_count);
+				goto cleanup;
+			}
+		}
+
+		rax = raxNew();
+
+		// validate projections
+		uint proj_count = cypher_ast_call_nprojections(n);
+		// collect call projections
+		for(uint j = 0; j < proj_count; j++) {
+			const cypher_astnode_t *proj = cypher_ast_call_get_projection(n, j);
+			const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(proj);
+			ASSERT(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
+			const char *identifier = cypher_ast_identifier_get_name(ast_exp);
+
+			// make sure each yield output is mentioned only once
+			if(!raxInsert(rax, (unsigned char *)identifier, strlen(identifier), NULL, NULL)) {
+				ErrorCtx_SetError("Variable `%s` already declared", identifier);
+				goto cleanup;
+			}
+
+			// make sure procedure is aware of output
+			if(!Procedure_ContainsOutput(proc, identifier)) {
+				ErrorCtx_SetError("Procedure `%s` does not yield output `%s`",
+									proc_name, identifier);
+				goto cleanup;
+			}
+		}
+
+cleanup:
+		if(proc) {
+			Proc_Free(proc);
+		}
+		if(rax) {
+			raxFree(rax);
+		}
+		return !ErrorCtx_EncounteredError() ? VISITOR_RECURSE : VISITOR_BREAK;
 	}
 
-	rax = raxNew();
+	// end handling
 
-	// validate projections
 	uint proj_count = cypher_ast_call_nprojections(n);
-	// collect call projections
+	// remove expression identifiers from bound vars if an alias exists
 	for(uint j = 0; j < proj_count; j++) {
 		const cypher_astnode_t *proj = cypher_ast_call_get_projection(n, j);
 		const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(proj);
 		ASSERT(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
 		const char *identifier = cypher_ast_identifier_get_name(ast_exp);
-
-		// make sure each yield output is mentioned only once
-		if(!raxInsert(rax, (unsigned char *)identifier, strlen(identifier), NULL, NULL)) {
-			ErrorCtx_SetError("Variable `%s` already declared", identifier);
-			goto cleanup;
-		}
-
-		// make sure procedure is aware of output
-		if(!Procedure_ContainsOutput(proc, identifier)) {
-			ErrorCtx_SetError("Procedure `%s` does not yield output `%s`",
-								proc_name, identifier);
-			goto cleanup;
-		}
-
-		// remove from env if an alias exists
 		if(cypher_ast_projection_get_alias(proj)){
 			raxRemove(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL);
 		}
 	}
 
-cleanup:
-	if(proc) {
-		Proc_Free(proc);
-	}
-	if(rax) {
-		raxFree(rax);
-	}
-	return !ErrorCtx_EncounteredError() ? VISITOR_CONTINUE : VISITOR_BREAK;
+	return VISITOR_CONTINUE;
+
 }
 
 // validate a WITH clause
-static VISITOR_STATE _Validate_WITH_Clause
+static VISITOR_STRATEGY _Validate_WITH_Clause
 (
 	const cypher_astnode_t *n,  // ast-node
 	bool start,                 // first traversal
@@ -1135,7 +1145,7 @@ static VISITOR_STATE _Validate_WITH_Clause
 }
 
 // validate a DELETE clause
-static VISITOR_STATE _Validate_DELETE_Clause
+static VISITOR_STRATEGY _Validate_DELETE_Clause
 (
 	const cypher_astnode_t *n,  // ast-node
 	bool start,                 // first traversal
@@ -1168,7 +1178,7 @@ static VISITOR_STATE _Validate_DELETE_Clause
 }
 
 // checks if a set property contains non-aliased references in its lhs
-static VISITOR_STATE _Validate_set_property
+static VISITOR_STRATEGY _Validate_set_property
 (
 	const cypher_astnode_t *n,  // ast-node
 	bool start,                 // first traversal
@@ -1190,7 +1200,7 @@ static VISITOR_STATE _Validate_set_property
 }
 
 // validate a SET clause
-static VISITOR_STATE _Validate_SET_Clause
+static VISITOR_STRATEGY _Validate_SET_Clause
 (
 	const cypher_astnode_t *n,  // ast-node
 	bool start,                 // first traversal
@@ -1207,7 +1217,7 @@ static VISITOR_STATE _Validate_SET_Clause
 }
 
 // validate a UNION clause
-static VISITOR_STATE _Validate_UNION_Clause
+static VISITOR_STRATEGY _Validate_UNION_Clause
 (
 	const cypher_astnode_t *n,  // ast-node
 	bool start,                 // first traversal
@@ -1236,7 +1246,7 @@ static VISITOR_STATE _Validate_UNION_Clause
 }
 
 // validate a CREATE clause
-static VISITOR_STATE _Validate_CREATE_Clause
+static VISITOR_STRATEGY _Validate_CREATE_Clause
 (
 	const cypher_astnode_t *n,  // ast-node
 	bool start,                 // first traversal
@@ -1253,7 +1263,7 @@ static VISITOR_STATE _Validate_CREATE_Clause
 }
 
 // validate a MERGE clause
-static VISITOR_STATE _Validate_MERGE_Clause
+static VISITOR_STRATEGY _Validate_MERGE_Clause
 (
 	const cypher_astnode_t *n,  // ast-node
 	bool start,                 // first traversal
@@ -1270,7 +1280,7 @@ static VISITOR_STATE _Validate_MERGE_Clause
 }
 
 // validate an UNWIND clause
-static VISITOR_STATE _Validate_UNWIND_Clause
+static VISITOR_STRATEGY _Validate_UNWIND_Clause
 (
 	const cypher_astnode_t *n,  // ast-node
 	bool start,                 // first traversal
@@ -1292,7 +1302,7 @@ static VISITOR_STATE _Validate_UNWIND_Clause
 }
 
 // validate a RETURN clause
-static VISITOR_STATE _Validate_RETURN_Clause
+static VISITOR_STRATEGY _Validate_RETURN_Clause
 (
 	const cypher_astnode_t *n,  // ast-node
 	bool start,                 // first traversal
@@ -1300,27 +1310,22 @@ static VISITOR_STATE _Validate_RETURN_Clause
 ) {
 	validations_ctx *vctx = visitor->ctx;
 
-	if(start) {
-		vctx->clause = cypher_astnode_type(n);
-		uint num_return_projections = cypher_ast_return_nprojections(n);
-
-		// introduce bound vars
-		for(uint i = 0; i < num_return_projections; i ++) {
-			const cypher_astnode_t *child = cypher_ast_return_get_projection(n, i);
-			const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(child);
-			if(alias_node == NULL) {
-				continue;
-			}
-			const char *alias = cypher_ast_identifier_get_name(alias_node);
-			raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
-		}
-		return VISITOR_RECURSE;
+	if(!start) {
+		return VISITOR_CONTINUE;
 	}
 
-	// TODO: fix so that we check for duplicate column names
-	// and this should occur when start=true, i.e. in first pass.
-	if(cypher_ast_return_has_include_existing(n)) {
-		return VISITOR_CONTINUE;
+	vctx->clause = cypher_astnode_type(n);
+	uint num_return_projections = cypher_ast_return_nprojections(n);
+
+	// introduce bound vars
+	for(uint i = 0; i < num_return_projections; i ++) {
+		const cypher_astnode_t *child = cypher_ast_return_get_projection(n, i);
+		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(child);
+		if(alias_node == NULL) {
+			continue;
+		}
+		const char *alias = cypher_ast_identifier_get_name(alias_node);
+		raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
 	}
 
 	// check for duplicate column names
@@ -1335,20 +1340,20 @@ static VISITOR_STATE _Validate_RETURN_Clause
 			return VISITOR_BREAK;
 		}
 	}
-	
+
 	raxFree(rax);
 	array_free(columns);
 
 	if(_Validate_LIMIT_SKIP_Modifiers(cypher_ast_return_get_limit(n), cypher_ast_return_get_skip(n))
 		== AST_INVALID) {
 			return VISITOR_BREAK;
-		}
-	
-	return VISITOR_CONTINUE;
+	}
+
+	return VISITOR_RECURSE;
 }
 
 // validate a MATCH clause
-static VISITOR_STATE _Validate_MATCH_Clause
+static VISITOR_STRATEGY _Validate_MATCH_Clause
 (
 	const cypher_astnode_t *n,  // ast-node
 	bool start,                 // first traversal
@@ -1365,7 +1370,7 @@ static VISITOR_STATE _Validate_MATCH_Clause
 }
 
 // validate index creation
-static VISITOR_STATE _Validate_index_creation
+static VISITOR_STRATEGY _Validate_index_creation
 (
 	const cypher_astnode_t *n,
 	bool start,

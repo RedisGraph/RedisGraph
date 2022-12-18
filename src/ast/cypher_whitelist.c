@@ -9,7 +9,7 @@
 #include "../../deps/libcypher-parser/lib/src/operators.h"
 
 // break visitor traversal, resulting in a fast-fold
-static VISITOR_STATE _visit_break
+static VISITOR_STRATEGY _visit_break
 (
 	const cypher_astnode_t *n,
 	bool start,
@@ -21,7 +21,7 @@ static VISITOR_STATE _visit_break
 	return VISITOR_BREAK;
 }
 
-static VISITOR_STATE _visit_binary_op
+static VISITOR_STRATEGY _visit_binary_op
 (
 	const cypher_astnode_t *n,
 	bool start,

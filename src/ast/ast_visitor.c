@@ -8,7 +8,7 @@
 #include "ast_visitor.h"
 #include "util/rmalloc.h"
 
-static VISITOR_STATE _default_visit
+static VISITOR_STRATEGY _default_visit
 (
 	const cypher_astnode_t *n,
 	bool start,
@@ -47,7 +47,7 @@ void AST_Visitor_register
 }
 
 // recursively visit an ast-node
-static VISITOR_STATE _AST_Visitor_visit
+static VISITOR_STRATEGY _AST_Visitor_visit
 (
 	const cypher_astnode_t *node,
 	ast_visitor *visitor
@@ -62,7 +62,7 @@ static VISITOR_STATE _AST_Visitor_visit
 	//--------------------------------------------------------------------------
 
 	// first visit of the node
-	VISITOR_STATE state = visitor->funcs[node_type](node, true, visitor);
+	VISITOR_STRATEGY state = visitor->funcs[node_type](node, true, visitor);
 	if(state != VISITOR_RECURSE) {
 		// do not visit children
 		return state;
