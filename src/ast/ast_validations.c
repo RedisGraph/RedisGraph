@@ -1332,7 +1332,7 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
 		== AST_INVALID) {
 			return VISITOR_BREAK;
 	}
-	
+
 	if(cypher_ast_return_has_include_existing(n)) {
 		return VISITOR_RECURSE;
 	}
@@ -1346,14 +1346,14 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
 		// column with same name is invalid
 		if(raxTryInsert(rax, (unsigned char *)columns[i], strlen(columns[i]), NULL, NULL) == 0) {
 			ErrorCtx_SetError("Error: Multiple result columns with the same name are not supported.");
-			return VISITOR_BREAK;
+			break;
 		}
 	}
 
 	raxFree(rax);
 	array_free(columns);
 
-	return VISITOR_RECURSE;
+	return !ErrorCtx_EncounteredError() ? VISITOR_RECURSE : VISITOR_BREAK;
 }
 
 // validate a MATCH clause
