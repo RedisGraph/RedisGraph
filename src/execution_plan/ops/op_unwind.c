@@ -71,7 +71,7 @@ static void _initList
 			op->step = v.longval;
 		}
 		op->to      += op->step;
-		op->current  = op->from;
+		op->current  = (op->to >= op->from && op->step > 0) || (op->to <= op->from && op->step < 0) ? op->from : op->to;
 	} else {
 		// null-set the list value to avoid memory errors if evaluation fails
 		op->list     = SI_NullVal();
