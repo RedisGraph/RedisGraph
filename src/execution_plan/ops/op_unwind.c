@@ -75,7 +75,7 @@ static void _initList
 	} else {
 		// null-set the list value to avoid memory errors if evaluation fails
 		op->list     = SI_NullVal();
-		op->listIdx  = INDEX_NOT_SET;
+		op->listIdx  = 0;
 		op->is_range = false;
 		SIValue new_list = AR_EXP_Evaluate(op->exp, op->currentRecord);
 		if(SI_TYPE(new_list) == T_ARRAY || SI_TYPE(new_list) == T_NULL) {
