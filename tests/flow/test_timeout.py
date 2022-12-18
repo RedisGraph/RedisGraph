@@ -106,7 +106,7 @@ class testQueryTimeout():
         for i, q in enumerate(queries):
             try:
                 # query is expected to timeout
-                timeout = max(int(timeouts[i]), 1)
+                timeout = min(max(int(timeouts[i]), 1), 20)
                 res = redis_graph.query(q, timeout=timeout)
                 self.env.assertTrue(False)
                 print(q)
@@ -116,7 +116,7 @@ class testQueryTimeout():
                 self.env.assertContains("Query timed out", str(error))
 
     def test04_query_timeout_free_resultset(self):
-        query = "UNWIND range(0,3000000) AS x RETURN toString(x)"
+        query = "UNWIND range(0, 3000000) AS x RETURN toString(x)"
 
         res = None
         try:
@@ -127,7 +127,9 @@ class testQueryTimeout():
 
         try:
             # The query is expected to timeout
-            res = redis_graph.query(query, timeout=int(res.run_time_ms))
+            timeout = int(res.run_time_ms)
+            res = redis_graph.query(query, timeout=timeout)
+            print(timeout)
             self.env.assertTrue(False)
         except ResponseError as error:
             self.env.assertContains("Query timed out", str(error))
