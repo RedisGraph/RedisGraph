@@ -168,7 +168,7 @@ static void replace_clause
 (
 	cypher_astnode_t *root,    // ast root
 	cypher_astnode_t *clause,  // clause being replaced
-	int scope_start,           // begining of scope
+	int scope_start,           // beginning of scope
 	int scope_end              // ending of scope
 ) {
 	cypher_astnode_type_t t = cypher_astnode_type(clause);

@@ -1130,7 +1130,7 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 			const cypher_astnode_t *proj = cypher_ast_with_get_projection(n, i);
 			const cypher_astnode_t *ast_alias = cypher_ast_projection_get_alias(proj);
 			if(!ast_alias) {
-				ast_alias = cypher_ast_projection_get_expression(proj);			
+				ast_alias = cypher_ast_projection_get_expression(proj);
 			}
 			const char *alias = cypher_ast_identifier_get_name(ast_alias);
 			raxInsert(new_env, (unsigned char *)alias, strlen(alias), NULL, NULL);
@@ -1328,6 +1328,15 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
 		raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
 	}
 
+	if(_Validate_LIMIT_SKIP_Modifiers(cypher_ast_return_get_limit(n), cypher_ast_return_get_skip(n))
+		== AST_INVALID) {
+			return VISITOR_BREAK;
+	}
+	
+	if(cypher_ast_return_has_include_existing(n)) {
+		return VISITOR_RECURSE;
+	}
+
 	// check for duplicate column names
 	rax           *rax          = raxNew();
 	const char   **columns      = AST_BuildReturnColumnNames(n);
@@ -1343,11 +1352,6 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
 
 	raxFree(rax);
 	array_free(columns);
-
-	if(_Validate_LIMIT_SKIP_Modifiers(cypher_ast_return_get_limit(n), cypher_ast_return_get_skip(n))
-		== AST_INVALID) {
-			return VISITOR_BREAK;
-	}
 
 	return VISITOR_RECURSE;
 }
