@@ -132,6 +132,10 @@ QueryInfo* QueryInfoIterator_NextValid(QueryInfoIterator *);
 QueryInfoStorage * const QueryInfoIterator_GetStorage(QueryInfoIterator *);
 // Returns current element being pointed at by the iterator.
 QueryInfo* QueryInfoIterator_Get(QueryInfoIterator *);
+// Returns the number of elements which are still to be iterated over.
+uint32_t QueryInfoIterator_Length(const QueryInfoIterator *);
+// Returns true if the iterator has no more elements to iterate over.
+bool QueryInfoIterator_IsExhausted(const QueryInfoIterator *);
 
 
 typedef struct {
@@ -208,3 +212,12 @@ uint64_t Info_GetMaxQueryWaitTime(const Info *);
 bool Info_Lock(Info *);
 // Unlocks the info object from exclusive external reading.
 bool Info_Unlock(Info *);
+// Returns a pointer to the underlying storage for all the waiting queries.
+// Must be accessed within the Info_Lock and Info_Unlock.
+QueryInfoStorage* Info_GetWaitingQueriesStorage(Info *info);
+// Returns a pointer to the underlying reporting queries storage per thread.
+// Must be accessed within the Info_Lock and Info_Unlock.
+QueryInfoStorage* Info_GetExecutingQueriesStorage(Info *info);
+// Returns a pointer to the underlying reporting queries storage per thread.
+// Must be accessed within the Info_Lock and Info_Unlock.
+QueryInfoStorage* Info_GetReportingQueriesStorage(Info *info);
