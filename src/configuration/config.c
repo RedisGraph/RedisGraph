@@ -58,14 +58,18 @@
 // The GRAPH.INFO command
 #define CMD_INFO "CMD_INFO"
 
+// The GRAPH.INFO QUERIES maximum element count
+#define CMD_INFO_MAX_QUERIES_COUNT_OPTION_NAME "MAX_INFO_QUERIES"
+
 //------------------------------------------------------------------------------
 // Configuration defaults
 //------------------------------------------------------------------------------
 
-#define CACHE_SIZE_DEFAULT            25
-#define QUEUED_QUERIES_UNLIMITED      UINT64_MAX
-#define VKEY_MAX_ENTITY_COUNT_DEFAULT 100000
-#define CMD_INFO_DEFAULT              true
+#define CACHE_SIZE_DEFAULT                 25
+#define QUEUED_QUERIES_UNLIMITED           UINT64_MAX
+#define VKEY_MAX_ENTITY_COUNT_DEFAULT      100000
+#define CMD_INFO_DEFAULT                   true
+#define CMD_INFO_QUERIES_MAX_COUNT_DEFAULT 10000
 
 // configuration object
 typedef struct {
@@ -84,6 +88,7 @@ typedef struct {
 	int64_t delta_max_pending_changes; // number of pending changed befor RG_Matrix flushed
 	Config_on_change cb;               // callback function which being called when config param changed
 	bool cmd_info_on;                  // If true, the GRAPH.INFO is enabled.
+	uint64_t max_info_queries_count;    // Maximum number of query info elements.
 } RG_Config;
 
 RG_Config config; // global module configuration
@@ -206,7 +211,7 @@ static bool Config_enforce_timeout_max
 		RedisModule_Log(NULL, "warning", "The TIMEOUT_DEFAULT(%lld) configuration parameter value is higher than TIMEOUT_MAX(%lld).", timeout_default, timeout_max);
 		return false;
 	}
-	
+
 	config.timeout_max     = timeout_max;
 	config.timeout_default = timeout_default;
 	return true;
@@ -392,6 +397,17 @@ static void Config_cmd_info_set
 	config.cmd_info_on = cmd_info_on;
 }
 
+static uint64_t Config_cmd_info_max_queries_get(void) {
+	return config.max_info_queries_count;
+}
+
+static void Config_cmd_info_max_queries_set
+(
+	uint64_t count
+) {
+	config.max_info_queries_count = count;
+}
+
 bool Config_Contains_field
 (
 	const char *field_str,
@@ -427,6 +443,8 @@ bool Config_Contains_field
 		f = Config_NODE_CREATION_BUFFER;
 	} else if(!(strcasecmp(field_str, CMD_INFO))) {
 		f = Config_CMD_INFO;
+	} else if(!(strcasecmp(field_str, CMD_INFO_QUERIES_MAX_COUNT_DEFAULT))) {
+		f = Config_CMD_INFO_MAX_QUERY_COUNT;
 	} else {
 		return false;
 	}
@@ -497,6 +515,10 @@ const char *Config_Field_name
 			name = CMD_INFO;
 			break;
 
+		case Config_CMD_INFO_MAX_QUERY_COUNT:
+			name = CMD_INFO_MAX_QUERIES_COUNT_OPTION_NAME;
+			break;
+
 		//----------------------------------------------------------------------
 		// invalid option
 		//----------------------------------------------------------------------
@@ -558,6 +580,9 @@ static void _Config_SetToDefaults(void) {
 
     // GRAPH.INFO command on/off.
 	config.cmd_info_on = CMD_INFO_DEFAULT;
+
+    // GRAPH.INFO maximum queries count.
+	config.max_info_queries_count = CMD_INFO_QUERIES_MAX_COUNT_DEFAULT;
 }
 
 int Config_Init
@@ -618,7 +643,7 @@ int Config_Init
 							"Failed setting field '%s' with error: %s", field_str, error);
 			} else {
 				RedisModule_Log(ctx, "error",
-							"Failed setting field '%s'", field_str);	
+							"Failed setting field '%s'", field_str);
 			}
 			return REDISMODULE_ERR;
 		}
@@ -838,6 +863,22 @@ bool Config_Option_get
 		break;
 
 		//----------------------------------------------------------------------
+		// cmd info maximum queries count
+		//----------------------------------------------------------------------
+
+		case Config_CMD_INFO_MAX_QUERY_COUNT: {
+			va_start(ap, field);
+			uint64_t *count = va_arg(ap, uint64_t *);
+			va_end(ap);
+
+			ASSERT(count != NULL);
+			(*count) = Config_cmd_info_max_queries_get();
+		}
+		break;
+
+
+
+		//----------------------------------------------------------------------
 		// invalid option
 		//----------------------------------------------------------------------
 
@@ -1048,6 +1089,18 @@ bool Config_Option_set
 			}
 
 			Config_cmd_info_set(cmd_info_on);
+		}
+		break;
+
+		//----------------------------------------------------------------------
+		// cmd info max queries count
+		//----------------------------------------------------------------------
+
+		case Config_CMD_INFO_MAX_QUERY_COUNT: {
+			long long count;
+			if(!_Config_ParseNonNegativeInteger(val, &count)) return false;
+
+			Config_cmd_info_max_queries_set(count);
 		}
 		break;
 
