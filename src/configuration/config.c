@@ -88,7 +88,7 @@ typedef struct {
 	int64_t delta_max_pending_changes; // number of pending changed befor RG_Matrix flushed
 	Config_on_change cb;               // callback function which being called when config param changed
 	bool cmd_info_on;                  // If true, the GRAPH.INFO is enabled.
-	uint64_t max_info_queries_count;    // Maximum number of query info elements.
+	uint32_t max_info_queries_count;    // Maximum number of query info elements.
 } RG_Config;
 
 RG_Config config; // global module configuration
@@ -386,24 +386,24 @@ static uint64_t Config_node_creation_buffer_get(void) {
 // cmd info
 //------------------------------------------------------------------------------
 
-static uint64_t Config_cmd_info_get(void) {
+static bool Config_cmd_info_get(void) {
 	return config.cmd_info_on;
 }
 
 static void Config_cmd_info_set
 (
-	bool cmd_info_on
+	const bool cmd_info_on
 ) {
 	config.cmd_info_on = cmd_info_on;
 }
 
-static uint64_t Config_cmd_info_max_queries_get(void) {
+static uint32_t Config_cmd_info_max_queries_get(void) {
 	return config.max_info_queries_count;
 }
 
 static void Config_cmd_info_max_queries_set
 (
-	uint64_t count
+	const uint32_t count
 ) {
 	if (count > CMD_INFO_QUERIES_MAX_COUNT_DEFAULT) {
 		config.max_info_queries_count = CMD_INFO_QUERIES_MAX_COUNT_DEFAULT;
@@ -872,7 +872,7 @@ bool Config_Option_get
 
 		case Config_CMD_INFO_MAX_QUERY_COUNT: {
 			va_start(ap, field);
-			uint64_t *count = va_arg(ap, uint64_t *);
+			uint32_t *count = va_arg(ap, uint32_t *);
 			va_end(ap);
 
 			ASSERT(count != NULL);
@@ -1104,6 +1104,7 @@ bool Config_Option_set
 			long long count;
 			if(!_Config_ParseNonNegativeInteger(val, &count)) return false;
 
+			// A downcast from <long long> to <uint32_t>.
 			Config_cmd_info_max_queries_set(count);
 		}
 		break;
