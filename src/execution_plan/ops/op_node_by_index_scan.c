@@ -4,6 +4,7 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
+#include "../../errors.h"
 #include "op_node_by_index_scan.h"
 #include "../../query_ctx.h"
 #include "shared/print_functions.h"
@@ -162,6 +163,11 @@ pull_index:
 				filter, op->idx);
 		FilterTree_Free(filter);
 
+		if(ErrorCtx_EncounteredError()) {
+			RediSearch_QueryNodeFree(rs_query_node);
+			ErrorCtx_RaiseRuntimeException(NULL);
+		}
+
 		// create iterator
 		ASSERT(rs_query_node != NULL);
 		op->iter = RediSearch_GetResultsIterator(rs_query_node, op->idx);
@@ -171,6 +177,12 @@ pull_index:
 		if(op->iter == NULL) {
 			// first call to consume, create query and iterator
 			RSQNode *rs_query_node = FilterTreeToQueryNode(&op->unresolved_filters, op->filter, op->idx);
+
+			if(ErrorCtx_EncounteredError()) {
+				RediSearch_QueryNodeFree(rs_query_node);
+				ErrorCtx_RaiseRuntimeException(NULL);
+			}
+
 			ASSERT(rs_query_node != NULL);
 			op->iter = RediSearch_GetResultsIterator(rs_query_node, op->idx);
 		} else {
@@ -190,6 +202,11 @@ static Record IndexScanConsume(OpBase *opBase) {
 	if(op->iter == NULL) {
 		RSQNode *rs_query_node = FilterTreeToQueryNode(&op->unresolved_filters,
 				op->filter, op->idx);
+
+		if(ErrorCtx_EncounteredError()) {
+			RediSearch_QueryNodeFree(rs_query_node);
+			ErrorCtx_RaiseRuntimeException(NULL);
+		}
 
 		op->iter = RediSearch_GetResultsIterator(rs_query_node, op->idx);
 	}
