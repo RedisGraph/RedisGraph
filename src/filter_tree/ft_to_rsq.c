@@ -116,20 +116,20 @@ static RSQNode *_FilterTreeToInQueryNode
 		SIValue v = AR_EXP_Evaluate(range->op.children[0], NULL);
 		if(SI_TYPE(v) != T_INT64) {
 			Error_SITypeMismatch(v, T_INT64);
-			ErrorCtx_RaiseRuntimeException(NULL);
+			return RediSearch_CreateEmptyNode(idx);
 		}
 		int64_t from = v.longval;
 		v = AR_EXP_Evaluate(range->op.children[1], NULL);
 		if(SI_TYPE(v) != T_INT64) {
 			Error_SITypeMismatch(v, T_INT64);
-			ErrorCtx_RaiseRuntimeException(NULL);
+			return RediSearch_CreateEmptyNode(idx);
 		}
 		int64_t to = v.longval;
 		if(range->op.child_count == 3) {
 			v = AR_EXP_Evaluate(range->op.children[2], NULL);
 			if(SI_TYPE(v) != T_INT64) {
 				Error_SITypeMismatch(v, T_INT64);
-				ErrorCtx_RaiseRuntimeException(NULL);
+				return RediSearch_CreateEmptyNode(idx);
 			}
 			step = v.longval;
 		}
@@ -641,6 +641,10 @@ RSQNode *FilterTreeToQueryNode
 	array_free(trees);
 	raxFreeWithCallback(string_ranges, (void(*)(void *))StringRange_Free);
 	raxFreeWithCallback(numeric_ranges, (void(*)(void *))NumericRange_Free);
+
+	if(ErrorCtx_EncounteredError()) {
+		ErrorCtx_RaiseRuntimeException(NULL);
+	}
 
 	return root;
 }

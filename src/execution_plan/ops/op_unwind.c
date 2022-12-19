@@ -28,6 +28,7 @@ OpBase *NewUnwindOp
 	OpUnwind *op = rm_malloc(sizeof(OpUnwind));
 
 	op->exp           = exp;
+	op->is_range      = true;
 	op->currentRecord = NULL;
 
 	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", UnwindInit,
