@@ -11,7 +11,7 @@ endif
 ROOT=.
 
 MK.cmake=1
-SRCDIR=src
+SRCDIR=.
 
 include $(ROOT)/deps/readies/mk/main
 
@@ -162,8 +162,8 @@ ifeq ($(wildcard $(LIBCYPHER_PARSER)),)
 MISSING_DEPS += $(LIBCYPHER_PARSER)
 endif
 
-ifeq ($(wildcard $(REDISEARCH)),)
-MISSING_DEPS += $(REDISEARCH)
+ifneq ($(call files_missing,$(REDISEARCH_LIBS)),)
+MISSING_DEPS += $(REDISEARCH_LIBS)
 endif
 
 ifneq ($(MISSING_DEPS),)

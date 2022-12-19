@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13)
 
-get_filename_component(root ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
+get_filename_component(root ${CMAKE_CURRENT_LIST_DIR} ABSOLUTE)
 include(${root}/deps/readies/cmake/main)
 
 #set(UNIT_TESTS ON CACHE BOOL "Build unit tests" FORCE)
@@ -10,7 +10,7 @@ endif()
 
 project(redisgraph)
 
-file(GLOB_RECURSE SOURCES "*.c")
+file(GLOB_RECURSE SOURCES "src/*.c")
 
 if (NOT APPLE)
 	add_library(redisgraph SHARED ${SOURCES})
