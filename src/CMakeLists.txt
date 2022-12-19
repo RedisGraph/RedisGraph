@@ -12,7 +12,11 @@ project(redisgraph)
 
 file(GLOB_RECURSE SOURCES "*.c")
 
-add_library(redisgraph SHARED ${SOURCES})
+if (NOT APPLE)
+	add_library(redisgraph SHARED ${SOURCES})
+else()
+	add_library(redisgraph MODULE ${SOURCES})
+endif()
 
 set_property(TARGET redisgraph PROPERTY C_STANDARD 11)
 
@@ -58,6 +62,9 @@ target_link_libraries(redisgraph PRIVATE ${REDISGRAPH_LIBS} c m dl pthread)
 extract_debug_symbols(redisgraph)
 
 if (APPLE)
+	# add_library(redisgraph_dylib SHARED $<TARGET_OBJECTS:redisgraph>)
+	# target_link_libraries(redisgraph_dylib PRIVATE ${REDISGRAPH_LIBS} ${LIBOMP} c m dl pthread)
+	
 	add_library(redisgraph_static STATIC $<TARGET_OBJECTS:redisgraph>)
 endif()
 
