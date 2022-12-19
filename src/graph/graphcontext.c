@@ -242,21 +242,9 @@ XXH32_hash_t GraphContext_GetVersion(const GraphContext *gc) {
 	return gc->version;
 }
 
-uint64_t GraphContext_UniqueNodePropertyNamesCount(const GraphContext *gc) {
-	ASSERT(gc);
-	return 0;
-	// return Set_Size(gc->node_attributes);
-}
-
 uint64_t GraphContext_AllNodePropertyNamesCount(const GraphContext *gc) {
 	ASSERT(gc);
 	return gc->node_attributes_count;
-}
-
-uint64_t GraphContext_UniqueEdgePropertyNamesCount(const GraphContext *gc) {
-	ASSERT(gc);
-	return 0;
-	// return raxSize(gc->attributes) - GraphContext_UniqueNodePropertyNamesCount(gc);
 }
 
 uint64_t GraphContext_AllEdgePropertyNamesCount(const GraphContext *gc) {

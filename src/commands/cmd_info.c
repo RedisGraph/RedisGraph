@@ -992,13 +992,14 @@ static int _reply_with_get_aggregated_graph_info
     return REDISMODULE_OK;
 }
 
+// TODO add a compact mode version.
 static int _reply_with_get_graph_info
 (
     RedisModuleCtx *ctx,
     const GraphContext *gc,
     const InfoGetFlag flags
 ) {
-    static const long KEY_VALUE_COUNT = 10;
+    static const long KEY_VALUE_COUNT = 9;
 
     ASSERT(ctx);
     ASSERT(gc);
@@ -1050,25 +1051,18 @@ static int _reply_with_get_graph_info
     // 7
     REDISMODULE_DO(RedisModule_ReplyWithCString(
         ctx,
-        "Total number of unique node property names"));
+        "Total number of unique property names"));
     REDISMODULE_DO(RedisModule_ReplyWithLongLong(
         ctx,
-        GraphContext_UniqueNodePropertyNamesCount(gc)));
+        GraphContext_AttributeCount(gc)));
     // 8
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
-        ctx,
-        "Total number of unique edge property names"));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        GraphContext_UniqueEdgePropertyNamesCount(gc)));
-    // 9
     REDISMODULE_DO(RedisModule_ReplyWithCString(
         ctx,
         "Total number of edge property names"));
     REDISMODULE_DO(RedisModule_ReplyWithLongLong(
         ctx,
         GraphContext_AllEdgePropertyNamesCount(gc)));
-    // 10
+    // 9
     REDISMODULE_DO(RedisModule_ReplyWithCString(
         ctx,
         "Total number of node property names"));
@@ -1098,6 +1092,7 @@ static int _get_graph_info
 }
 
 // TODO use flags
+// TODO add compact mode.
 static int _get_all_graphs_info
 (
     RedisModuleCtx *ctx,
