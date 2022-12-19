@@ -409,7 +409,11 @@ static void Config_cmd_info_max_queries_set
 (
 	uint64_t count
 ) {
-	config.max_info_queries_count = count;
+	if (count > CMD_INFO_QUERIES_MAX_COUNT_DEFAULT) {
+		config.max_info_queries_count = CMD_INFO_QUERIES_MAX_COUNT_DEFAULT;
+	} else {
+		config.max_info_queries_count = count;
+	}
 }
 
 bool Config_Contains_field
