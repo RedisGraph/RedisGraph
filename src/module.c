@@ -20,13 +20,13 @@
 #include "graph/graphcontext.h"
 #include "util/redis_version.h"
 #include "configuration/config.h"
-#include "ast/cypher_whitelist.h"
 #include "procedures/procedure.h"
 #include "module_event_handlers.h"
 #include "serializers/graphmeta_type.h"
 #include "configuration/reconf_handler.h"
 #include "serializers/graphcontext_type.h"
 #include "arithmetic/arithmetic_expression.h"
+#include "ast/ast_validations.h"
 
 //------------------------------------------------------------------------------
 // Minimal supported Redis version
@@ -116,9 +116,10 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	RegisterEventHandlers(ctx);
 
 	// Create thread local storage keys for query and error contexts.
-	if(!QueryCtx_Init())    return REDISMODULE_ERR;
-	if(!ErrorCtx_Init())    return REDISMODULE_ERR;
-	if(!ThreadPools_Init()) return REDISMODULE_ERR;
+	if(!QueryCtx_Init())              return REDISMODULE_ERR;
+	if(!ErrorCtx_Init())              return REDISMODULE_ERR;
+	if(!AST_ValidationsMappingInit()) return REDISMODULE_ERR;
+	if(!ThreadPools_Init())           return REDISMODULE_ERR;
 
 	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.",
 			ThreadPools_ReadersCount());

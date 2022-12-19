@@ -7,43 +7,19 @@
 #include "RG.h"
 #include "ast_visitor.h"
 #include "util/rmalloc.h"
-
-static VISITOR_STRATEGY _default_visit
-(
-	const cypher_astnode_t *n,
-	bool start,
-	ast_visitor *visitor
-) {
-	ASSERT(n != NULL);
-
-	return VISITOR_RECURSE;
-}
+#include "ast_validations.h"
 
 // creates a new visitor
 ast_visitor *AST_Visitor_new
 (
-	void *ctx  // context to attach to the new visitor
+	void *ctx,                   // context to attach to the new visitor
+	ast_visitor_mapping mapping  // mapping between ast-node-types to visiting functions
 ) {
-	ast_visitor *visitor = rm_malloc(sizeof(ast_visitor) + sizeof(visit) * 256);
+	ast_visitor *visitor = rm_malloc(sizeof(ast_visitor));
 	visitor->ctx = ctx;
-	for (uint i = 0; i < 256; i++) {
-		visitor->funcs[i] = _default_visit;		
-	}
+	visitor->mapping = mapping;
 	
 	return visitor;
-}
-
-// registers a function to a visitor
-void AST_Visitor_register
-(
-	ast_visitor *visitor,        // visitor to register the function to
-	cypher_astnode_type_t type,  // type of ast-node
-	visit cb                     // visit function to register
-) {
-	ASSERT(cb      != NULL);
-	ASSERT(visitor != NULL);
-
-	visitor->funcs[type] = cb;
 }
 
 // recursively visit an ast-node
@@ -62,7 +38,7 @@ static VISITOR_STRATEGY _AST_Visitor_visit
 	//--------------------------------------------------------------------------
 
 	// first visit of the node
-	VISITOR_STRATEGY state = visitor->funcs[node_type](node, true, visitor);
+	VISITOR_STRATEGY state = visitor->mapping[node_type](node, true, visitor);
 	if(state != VISITOR_RECURSE) {
 		// do not visit children
 		return state;
@@ -84,7 +60,7 @@ static VISITOR_STRATEGY _AST_Visitor_visit
 	// closing call
 	//----------------------------------------------------------------------
 
-	return visitor->funcs[node_type](node, false, visitor);
+	return visitor->mapping[node_type](node, false, visitor);
 }
 
 // visit an ast-node
@@ -107,4 +83,31 @@ void AST_Visitor_free
 	ASSERT(visitor != NULL);
 
 	rm_free(visitor);
+}
+
+// registers a function to a mapping
+void AST_Visitor_mapping_register
+(
+	ast_visitor_mapping mapping, // visitor to register the function to
+	cypher_astnode_type_t type,  // type of ast-node
+	visit cb                     // visit function to register
+) {
+	ASSERT(cb      != NULL);
+	ASSERT(mapping != NULL);
+
+	mapping[type] = cb;
+}
+
+ast_visitor_mapping AST_Visitor_mapping_new() {
+	return rm_malloc(sizeof(visit) * 256);
+}
+
+// free a mapping
+void AST_Visitor_mapping_free
+(
+	ast_visitor_mapping mapping  // mapping to free
+) {
+	ASSERT(mapping != NULL);
+
+	rm_free(mapping);
 }

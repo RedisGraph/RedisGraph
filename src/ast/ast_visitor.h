@@ -23,29 +23,25 @@ typedef enum {
 // visit function signature called for each registered AST node type
 typedef VISITOR_STRATEGY (*visit)(const cypher_astnode_t *n, bool start, ast_visitor *visitor);
 
+// ast_visitor_mapping maps between an ast-node-type and a visiting function
+typedef visit* ast_visitor_mapping;
+
 /*
 ast_visitor traverses an ast-node as long as its state is valid (not VISITOR_BREAK).
 the ast_visitor holds a context which it can populate and use throughout the traversal,
-and visiting functions for the different ast-node types
+and a mapping between ast-node-types to their corresponding visiting functions.
 */
 typedef struct ast_visitor
 {
-	void *ctx;
-	visit funcs[];
+	void *ctx;                    // context
+	ast_visitor_mapping mapping;  // mapping between ast-node-types to visiting functions
 } ast_visitor;
 
 // creates a new visitor
 ast_visitor *AST_Visitor_new
 (
-	void *ctx  // context to attach to the new visitor
-);
-
-// registers a function to a visitor
-void AST_Visitor_register
-(
-	ast_visitor *visitor,        // visitor to register the function to
-	cypher_astnode_type_t type,  // type of ast-node
-	visit cb                     // visit function to register
+	void *ctx,                   // context to attach to the new visitor
+	ast_visitor_mapping mapping  // mapping between ast-node-types to visiting functions
 );
 
 // visits an ast-node
@@ -59,4 +55,19 @@ void AST_Visitor_visit
 void AST_Visitor_free
 (
 	ast_visitor *visitor  // visitor to free
+);
+
+ast_visitor_mapping AST_Visitor_mapping_new();
+
+// registers a function to a visitor
+void AST_Visitor_mapping_register
+(
+	ast_visitor_mapping mapping, // visitor to register the function to
+	cypher_astnode_type_t type,  // type of ast-node
+	visit cb                     // visit function to register
+);
+
+void AST_Visitor_mapping_free
+(
+	ast_visitor_mapping mapping  // mapping to free
 );
