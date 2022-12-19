@@ -53,6 +53,39 @@
         } \
     } while (0);
 
+static bool _lock_rwlock(pthread_rwlock_t *, const bool);
+static bool _unlock_rwlock(pthread_rwlock_t *);
+
+static QueryInfoStorage finished_queries = QueryInfoStorage_New();
+static pthread_rwlock_t finished_queries_rwlock = PTHREAD_RWLOCK_INITIALIZER;
+
+static void _add_finished_query(const QueryInfo info) {
+    const bool locked = _lock_rwlock(&finished_queries_rwlock, true);
+    ASSERT(locked);
+    if (!locked) {
+        return;
+    }
+    QueryInfoStorage_Add(&finished_queries, info);
+    const bool unlocked = _unlock_rwlock(&finished_queries_rwlock);
+    ASSERT(unlocked);
+}
+
+static bool _lock_rwlock(pthread_rwlock_t *lock, const bool is_write) {
+    REQUIRE_ARG_OR_RETURN(lock, false);
+
+    if (is_write) {
+        return !pthread_rwlock_wrlock(lock);
+    }
+
+    return !pthread_rwlock_rdlock(lock);
+}
+
+static bool _unlock_rwlock(pthread_rwlock_t *lock) {
+    REQUIRE_ARG_OR_RETURN(lock, false);
+
+    return !pthread_rwlock_unlock(lock);
+}
+
 QueryInfo QueryInfo_New(void) {
     QueryInfo query_info = {
         .received_unix_timestamp_milliseconds = 0,
@@ -218,6 +251,17 @@ void QueryInfoStorage_Add(QueryInfoStorage *storage, const QueryInfo info) {
     REQUIRE_ARG(storage);
     // TODO check for duplicates?
     array_append(storage->queries, info);
+}
+
+void QueryInfoStorage_SetCapacity
+(
+    QueryInfoStorage *storage,
+    const uint32_t capacity
+) {
+    REQUIRE_ARG(storage);
+
+    storage->queries = array_reset_cap(storage->queries, capacity);
+    ASSERT(storage->queries && "Couldn't reset capacity.");
 }
 
 bool QueryInfoStorage_Set
@@ -386,22 +430,6 @@ uint32_t QueryInfoIterator_Length(const QueryInfoIterator *iterator) {
 
 bool QueryInfoIterator_IsExhausted(const QueryInfoIterator *iterator) {
     return QueryInfoIterator_Length(iterator) > 0;
-}
-
-static bool _lock_rwlock(pthread_rwlock_t *lock, const bool is_write) {
-    REQUIRE_ARG_OR_RETURN(lock, false);
-
-    if (is_write) {
-        return !pthread_rwlock_wrlock(lock);
-    }
-
-    return !pthread_rwlock_rdlock(lock);
-}
-
-static bool _unlock_rwlock(pthread_rwlock_t *lock) {
-    REQUIRE_ARG_OR_RETURN(lock, false);
-
-    return !pthread_rwlock_unlock(lock);
 }
 
 static bool _Info_LockEverything(Info *info, const bool is_write) {
@@ -724,3 +752,13 @@ QueryInfoStorage* Info_GetReportingQueriesStorage(Info *info) {
     return &info->reporting_queries_per_thread;
 }
 
+void Info_ResizeFinishedQueriesStorage(const uint32_t count) {
+    const bool locked = _lock_rwlock(&finished_queries_rwlock, true);
+    ASSERT(locked);
+    if (!locked) {
+        return;
+    }
+    QueryInfoStorage_SetCapacity(&finished_queries, count);
+    const bool unlocked = _unlock_rwlock(&finished_queries_rwlock);
+    ASSERT(unlocked);
+}
