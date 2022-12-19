@@ -9,6 +9,7 @@
 #include "redismodule.h"
 #include "graph/graphcontext.h"
 #include "query_ctx.h"
+#include "configuration/config.h"
 
 #define SUBCOMMAND_NAME_QUERIES "QUERIES"
 #define SUBCOMMAND_NAME_GET "GET"
@@ -28,6 +29,7 @@
 #define ERROR_NO_GRAPH_NAME_SPECIFIED "No graph name was specified"
 #define ERROR_VALUES_OVERFLOW "Some values have overflown"
 #define ALL_GRAPH_KEYS_MASK "*"
+#define MAX_QUERIES_COUNT 10000
 
 // TODO move to a common place.
 // A wrapper for RedisModule_ functions which returns immediately on failure.
@@ -636,6 +638,7 @@ static int _reply_graph_query_info_storage
     const QueryStage query_stage,
     const QueryInfoStorage *storage,
     const bool is_compact_mode,
+    const uint64_t max_count,
     uint64_t *iterated
 ) {
     ASSERT(ctx);
@@ -648,6 +651,9 @@ static int _reply_graph_query_info_storage
     uint64_t actual_elements_count = 0;
     QueryInfo *info = NULL;
     while ((info = QueryInfoIterator_NextValid(&iterator)) != NULL) {
+        if (actual_elements_count >= max_count) {
+            break;
+        }
         _update_query_stage_timer(query_stage, info);
         ++actual_elements_count;
         if (is_compact_mode) {
@@ -670,6 +676,7 @@ static int _reply_with_graph_queries_of_stage
     const bool is_compact_mode,
     const GraphContext *gc,
     const QueryStage query_stage,
+    const uint64_t max_count,
     uint64_t *printed_count
 ) {
     ASSERT(ctx);
@@ -693,6 +700,7 @@ static int _reply_with_graph_queries_of_stage
         query_stage,
         storage,
         is_compact_mode,
+        max_count,
         &iterated)) {
         Info_Unlock(info);
         return REDISMODULE_ERR;
@@ -711,6 +719,7 @@ static int _reply_queries_from_all_graphs
     RedisModuleCtx *ctx,
     const bool is_compact_mode,
     const QueryStage query_stage,
+    const uint64_t max_count,
     uint64_t *printed_count
 ) {
     ASSERT(ctx);
@@ -735,6 +744,7 @@ static int _reply_queries_from_all_graphs
             is_compact_mode,
             gc,
             query_stage,
+            max_count,
             &queries_printed)) {
             return REDISMODULE_ERR;
         }
@@ -748,15 +758,20 @@ static int _reply_queries_from_all_graphs
     return REDISMODULE_OK;
 }
 
-static int _reply_per_graph_data
+static int _reply_graph_queries
 (
     RedisModuleCtx *ctx,
-    const bool is_compact_mode
+    const bool is_compact_mode,
+    const uint64_t max_elements_count
 ) {
     ASSERT(ctx);
     ASSERT(graphs_in_keyspace);
+    ASSERT(max_elements_count);
     if (!ctx || !graphs_in_keyspace) {
         return REDISMODULE_ERR;
+    }
+    if (!max_elements_count) {
+        return REDISMODULE_OK;
     }
 
     REDISMODULE_DO(RedisModule_ReplyWithArray(
@@ -765,29 +780,43 @@ static int _reply_per_graph_data
 
     uint64_t actual_elements_count = 0;
     uint64_t count = 0;
+    uint64_t current_limit = max_elements_count;
 
     _reply_queries_from_all_graphs(
         ctx,
         is_compact_mode,
         QueryStage_WAITING,
+        current_limit,
         &count
     );
     actual_elements_count += count;
+    if (current_limit >= count) {
+        current_limit -= count;
+    } else {
+        current_limit = 0;
+    }
     count = 0;
 
     _reply_queries_from_all_graphs(
         ctx,
         is_compact_mode,
         QueryStage_EXECUTING,
+        current_limit,
         &count
     );
     actual_elements_count += count;
+    if (current_limit >= count) {
+        current_limit -= count;
+    } else {
+        current_limit = 0;
+    }
     count = 0;
 
     _reply_queries_from_all_graphs(
         ctx,
         is_compact_mode,
         QueryStage_REPORTING,
+        current_limit,
         &count
     );
     actual_elements_count += count;
@@ -814,6 +843,11 @@ static int _reply_with_queries_info_from_all_graphs
         return REDISMODULE_ERR;
     }
 
+    uint64_t max_elements_count = 0;
+	if (!Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &max_elements_count)) {
+        max_elements_count = MAX_QUERIES_COUNT;
+    }
+
     if (!is_compact_mode) {
         REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, ITEM_COUNT));
     } else {
@@ -829,7 +863,7 @@ static int _reply_with_queries_info_from_all_graphs
     if (!is_compact_mode) {
         REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Queries"));
     }
-    REDISMODULE_DO(_reply_per_graph_data(ctx, is_compact_mode));
+    REDISMODULE_DO(_reply_graph_queries(ctx, is_compact_mode, max_elements_count));
 
     return REDISMODULE_OK;
 }
@@ -1064,7 +1098,11 @@ static int _get_graph_info
 }
 
 // TODO use flags
-static int _get_all_graphs_info(RedisModuleCtx *ctx, const InfoGetFlag flags) {
+static int _get_all_graphs_info
+(
+    RedisModuleCtx *ctx,
+    const InfoGetFlag flags
+) {
     ASSERT(ctx);
     const uint32_t graphs_count = array_len(graphs_in_keyspace);
     AggregatedGraphGetInfo info = {};
