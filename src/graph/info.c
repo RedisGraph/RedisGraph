@@ -381,6 +381,15 @@ QueryInfo* QueryInfoIterator_Get(QueryInfoIterator *iterator) {
     return QueryInfoStorage_Get(iterator->storage, iterator->current_index);
 }
 
+uint32_t QueryInfoIterator_Length(const QueryInfoIterator *iterator) {
+    REQUIRE_ARG_OR_RETURN(iterator, 0);
+    return QueryInfoStorage_Length(iterator->storage) - iterator->current_index;
+}
+
+bool QueryInfoIterator_IsExhausted(const QueryInfoIterator *iterator) {
+    return QueryInfoIterator_Length(iterator) > 0;
+}
+
 static bool _lock_rwlock(pthread_rwlock_t *lock, const bool is_write) {
     REQUIRE_ARG_OR_RETURN(lock, false);
 
@@ -701,3 +710,19 @@ bool Info_Lock(Info *info) {
 bool Info_Unlock(Info *info) {
     return _Info_UnlockEverything(info);
 }
+
+QueryInfoStorage* Info_GetWaitingQueriesStorage(Info *info) {
+    REQUIRE_ARG_OR_RETURN(info, NULL);
+    return &info->waiting_queries;
+}
+
+QueryInfoStorage* Info_GetExecutingQueriesStorage(Info *info) {
+    REQUIRE_ARG_OR_RETURN(info, NULL);
+    return &info->executing_queries_per_thread;
+}
+
+QueryInfoStorage* Info_GetReportingQueriesStorage(Info *info) {
+    REQUIRE_ARG_OR_RETURN(info, NULL);
+    return &info->reporting_queries_per_thread;
+}
+

@@ -8,9 +8,9 @@ from common import *
 import time
 
 GRAPH_ID = "G"
-INFO_QUERIES_COMMAND = 'GRAPH.INFO QUERIES --compact'
-INFO_GET_COMMAND_TEMPLATE = 'GRAPH.INFO GET %s --compact'
-INFO_RESET_ALL_COMMAND = 'GRAPH.INFO RESET * --compact'
+INFO_QUERIES_COMMAND = 'GRAPH.INFO QUERIES'
+INFO_GET_COMMAND_TEMPLATE = 'GRAPH.INFO GET %s'
+INFO_RESET_ALL_COMMAND = 'GRAPH.INFO RESET *'
 
 
 def thread_execute_command(cmd_and_args, _args):
@@ -53,6 +53,7 @@ def list_to_dict(lst):
         d[k] = v
     return d
 
+# This won't work in the compact mode as the output is different.
 def get_total_executing_queries_from_info_cmd_result(info):
     # [1][5] = 'Global info' => 'Total executing queries count'
     return info[1][5]
@@ -95,11 +96,12 @@ class testGraphInfoFlow(FlowTestsBase):
         max_wait_time = 0
         # Check that the only query being currently executed is ours.
         for i in range(0, executing_queries_count):
-            executing_query = list_to_dict(info['Per-graph data'][GRAPH_ID]['Executing queries'][i])
+            executing_query = list_to_dict(info['Queries'][i])
             if assert_receive_time is not None:
                 self.env.assertGreaterEqual(executing_query['Receive timestamp (milliseconds)'], assert_receive_time, depth=1)
             self.env.assertLessEqual(executing_query['Receive timestamp (milliseconds)'], assert_timestamp, depth=1)
-
+            self.env.assertEquals(executing_query['Graph name'], GRAPH_ID, depth=1)
+            self.env.assertEquals(executing_query['Stage'], 1, depth=1)
             self.env.assertEquals(executing_query['Query'], queries[i], depth=1)
             self.env.assertGreaterEqual(executing_query['Current total duration (milliseconds)'], 0, depth=1)
             wait_time = executing_query['Current wait duration (milliseconds)']
@@ -107,7 +109,6 @@ class testGraphInfoFlow(FlowTestsBase):
             self.env.assertGreaterEqual(wait_time, 0, depth=1)
             self.env.assertGreaterEqual(executing_query['Current execution duration (milliseconds)'], 0, depth=1)
             self.env.assertEqual(executing_query['Current reporting duration (milliseconds)'], 0, depth=1)
-            self.env.assertEqual(len(info['Per-graph data'][GRAPH_ID]['Reporting queries']), 0, depth=1)
         # It has already accounted for the graph creation query, which might
         # have taken longer than a millisecond.
         self.env.assertGreaterEqual(info['Global info']['Max query wait duration (milliseconds)'], max_wait_time, depth=1)
