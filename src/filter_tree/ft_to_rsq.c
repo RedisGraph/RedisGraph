@@ -643,6 +643,7 @@ RSQNode *FilterTreeToQueryNode
 	raxFreeWithCallback(numeric_ranges, (void(*)(void *))NumericRange_Free);
 
 	if(ErrorCtx_EncounteredError()) {
+		RediSearch_QueryNodeFree(root);
 		ErrorCtx_RaiseRuntimeException(NULL);
 	}
 
