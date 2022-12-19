@@ -98,3 +98,42 @@ class testUnwindClause():
         query = """UNWIND ({x:null}) AS q MATCH (n:N) SET n.x= q.x RETURN n"""
         actual_result = redis_graph.query(query)
         self.env.assertEqual(actual_result.properties_removed, 1)
+    
+    def test03_unwind_range(self):
+        query = """UNWIND range(1, 3) AS x RETURN x"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEqual(actual_result.result_set, [[1], [2], [3]])
+
+        query = """UNWIND range(3, 1) AS x RETURN x"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEqual(actual_result.result_set, [])
+
+        query = """UNWIND range(3, 1, -1) AS x RETURN x"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEqual(actual_result.result_set, [[3], [2], [1]])
+
+        query = """UNWIND range(1, 3, -1) AS x RETURN x"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEqual(actual_result.result_set, [])
+
+        query = """WITH 1 AS from UNWIND range(from, 3) AS x RETURN x"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEqual(actual_result.result_set, [[1], [2], [3]])
+
+        query = """WITH 1.2 AS from UNWIND range(from, 3) AS x RETURN x"""
+        try:
+            redis_graph.query(query)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected Integer but was Float", str(e))
+
+        query = """WITH 1.2 AS to UNWIND range(1, to) AS x RETURN x"""
+        try:
+            redis_graph.query(query)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected Integer but was Float", str(e))
+
+        query = """WITH 1.2 AS step UNWIND range(1, 3, step) AS x RETURN x"""
+        try:
+            redis_graph.query(query)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected Integer but was Float", str(e))

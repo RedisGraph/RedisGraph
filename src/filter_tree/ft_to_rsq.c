@@ -6,6 +6,7 @@
 
 #include "ft_to_rsq.h"
 #include "RG.h"
+#include "../errors.h"
 #include "../util/arr.h"
 #include "filter_tree_utils.h"
 #include "../datatypes/point.h"
@@ -113,14 +114,23 @@ static RSQNode *_FilterTreeToInQueryNode
 		// extracting information from range function
 		// extracting: range beginning, range end and optional range step
 		SIValue v = AR_EXP_Evaluate(range->op.children[0], NULL);
-		ASSERT(SI_TYPE(v) == T_INT64);
+		if(SI_TYPE(v) != T_INT64) {
+			Error_SITypeMismatch(v, T_INT64);
+			ErrorCtx_RaiseRuntimeException(NULL);
+		}
 		int64_t from = v.longval;
 		v = AR_EXP_Evaluate(range->op.children[1], NULL);
-		ASSERT(SI_TYPE(v) == T_INT64);
+		if(SI_TYPE(v) != T_INT64) {
+			Error_SITypeMismatch(v, T_INT64);
+			ErrorCtx_RaiseRuntimeException(NULL);
+		}
 		int64_t to = v.longval;
 		if(range->op.child_count == 3) {
 			v = AR_EXP_Evaluate(range->op.children[2], NULL);
-			ASSERT(SI_TYPE(v) == T_INT64);
+			if(SI_TYPE(v) != T_INT64) {
+				Error_SITypeMismatch(v, T_INT64);
+				ErrorCtx_RaiseRuntimeException(NULL);
+			}
 			step = v.longval;
 		}
 		to      += step;
