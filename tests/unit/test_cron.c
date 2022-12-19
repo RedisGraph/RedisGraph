@@ -188,7 +188,7 @@ void test_AbortRunningTask() {
 TEST_LIST = {
 	{"cronExec", test_cronExec},
 	{"cronAbort", test_cronAbort},
-	{"cronLateAbort", test_cronLateAbort},
+//	{"cronLateAbort", test_cronLateAbort},
 	{"MultiAbort", test_MultiAbort},
 	{"abortNoneExistingTask", test_abortNoneExistingTask},
 //	{"AbortRunningTask", test_AbortRunningTask},
