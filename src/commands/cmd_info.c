@@ -25,11 +25,12 @@
 #define INFO_GET_MEMORY_ARG "MEM"
 #define INFO_GET_COUNTS_ARG "COUNTS"
 #define INFO_GET_STATISTICS_ARG "STAT"
+#define INFO_QUERIES_CURRENT_ARG "CURRENT"
+#define INFO_QUERIES_PREV_ARG "PREV"
 #define ERROR_COULDNOT_FIND_GRAPH "Couldn't find the specified graph"
 #define ERROR_NO_GRAPH_NAME_SPECIFIED "No graph name was specified"
 #define ERROR_VALUES_OVERFLOW "Some values have overflown"
 #define ALL_GRAPH_KEYS_MASK "*"
-#define MAX_QUERIES_COUNT 10000
 
 // TODO move to a common place.
 // A wrapper for RedisModule_ functions which returns immediately on failure.
@@ -64,6 +65,12 @@ typedef enum QueryStage {
     QueryStage_EXECUTING,
     QueryStage_REPORTING
 } QueryStage;
+
+typedef enum InfoQueriesFlag {
+    InfoQueriesFlag_NONE = 0,
+    InfoQueriesFlag_CURRENT = 1,
+    InfoQueriesFlag_PREV = 2,
+} InfoGetFlag;
 
 typedef enum InfoGetFlag {
     InfoGetFlag_NONE = 0,
@@ -179,6 +186,15 @@ static InfoGetFlag _parse_info_get_flags_from_args
     }
 
     return flags;
+}
+
+static InfoQueriesFlag _parse_info_queries_flag_from_string(const char *str) {
+    if (_string_equals_case_insensitive(str, INFO_QUERIES_CURRENT_ARG)) {
+        return InfoQueriesFlag_CURRENT;
+    } else if (_string_equals_case_insensitive(str, INFO_QUERIES_PREV_ARG)) {
+        return InfoQueriesFlag_PREV;
+    }
+    return InfoQueriesFlag_NONE;
 }
 
 static bool _is_queries_cmd(const char *cmd) {
@@ -845,7 +861,7 @@ static int _reply_with_queries_info_from_all_graphs
 
     uint64_t max_elements_count = 0;
 	if (!Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &max_elements_count)) {
-        max_elements_count = MAX_QUERIES_COUNT;
+        max_elements_count = INFO_MAX_QUERIES_COUNT;
     }
 
     if (!is_compact_mode) {
@@ -1123,9 +1139,16 @@ static int _get_all_graphs_info_from_shards(RedisModuleCtx *ctx, const InfoGetFl
     return REDISMODULE_ERR;
 }
 
-// GRAPH.INFO QUERIES
-static int _info_queries(RedisModuleCtx *ctx, const bool is_compact_mode) {
+// GRAPH.INFO QUERIES [CURRENT] [PREV <count>]
+static int _info_queries
+(
+    RedisModuleCtx *ctx,
+    const RedisModuleString **argv,
+    const int argc
+    const bool is_compact_mode
+) {
     ASSERT(ctx);
+    ASSERT(argv);
 
     return _reply_with_queries_info_from_all_graphs(ctx, is_compact_mode);
 }
@@ -1201,7 +1224,7 @@ static bool _dispatch_subcommand
     ASSERT(result);
 
     if (_is_queries_cmd(subcommand_name)) {
-        *result = _info_queries(ctx, is_compact_mode);
+        *result = _info_queries(ctx, argv, argc, is_compact_mode);
     } else if (_is_get_cmd(subcommand_name)) {
         *result = _info_get(ctx, argv, argc);
     } else if (_is_reset_cmd(subcommand_name)) {
