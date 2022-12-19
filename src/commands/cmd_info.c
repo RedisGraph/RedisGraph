@@ -1228,16 +1228,14 @@ int Graph_Info
 
     int result = REDISMODULE_ERR;
 
-    // TODO should we check all the args or just the last one as with the
-    // other commands? We should have an agreement for the "compact" options
-    // throughout the module.
-    const bool is_compact_mode = _args_have_compact_mode_option(argv, argc);
+    const char *arg = RedisModule_StringPtrLen(argv[argc - 1], NULL);
+    const bool is_compact_mode = _is_compact_mode(arg);
 
     const char *subcommand_name = RedisModule_StringPtrLen(argv[1], NULL);
     if (!_dispatch_subcommand(
         ctx,
         argv + 1,
-        argc - 1,
+        is_compact_mode ? argc - 2 : argc - 1,
         subcommand_name,
         &result,
         is_compact_mode)) {
