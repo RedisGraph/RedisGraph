@@ -23,6 +23,8 @@
 
 #include "../util/simple_timer.h"
 
+#define MAX_QUERIES_COUNT 10000
+
 typedef struct QueryCtx QueryCtx;
 
 // Holds the necessary per-query statistics.
@@ -93,6 +95,9 @@ uint32_t QueryInfoStorage_ValidCount(const QueryInfoStorage *);
 uint32_t QueryInfoStorage_Length(const QueryInfoStorage *);
 // Adds a query info object.
 void QueryInfoStorage_Add(QueryInfoStorage *, const QueryInfo);
+// Sets the capacity of the storage to the specified one. If there were more
+// elements than the specified capacity, those are removed (cut off).
+void QueryInfoStorage_SetCapacity(QueryInfoStorage *, const uint32_t);
 // Sets the value of an existing element within the array.
 bool QueryInfoStorage_Set(QueryInfoStorage *, const uint64_t, const QueryInfo);
 // Returns a pointer to an already existing value in the storage at provided
@@ -221,3 +226,5 @@ QueryInfoStorage* Info_GetExecutingQueriesStorage(Info *info);
 // Returns a pointer to the underlying reporting queries storage per thread.
 // Must be accessed within the Info_Lock and Info_Unlock.
 QueryInfoStorage* Info_GetReportingQueriesStorage(Info *info);
+// Resizes the finished queries storage.
+void Info_ResizeFinishedQueriesStorage(const uint32_t count);
