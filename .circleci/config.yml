@@ -58,6 +58,7 @@ commands:
             ./deps/readies/bin/getpy3
             ./deps/readies/bin/getpy2
             ./deps/readies/bin/getaws
+          no_output_timeout: 30m
 
   install-prerequisites:
     parameters:
@@ -661,8 +662,8 @@ workflows:
             parameters:
               san-type: [address] # [address, memory]
       - build-memcheck:
-          #@@<<: *on-any-branch
-          <<: *never
+          <<: *on-any-branch
+          #@@<<: *never
       - upload-artifacts:
           name: upload-artifacts-to-staging-lab
           staging-lab: "1"
