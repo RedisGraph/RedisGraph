@@ -81,7 +81,7 @@ class testStressFlow():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         # skip test if we're running under Valgrind
-        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
+        if VALGRIND or SANITIZER != "" or CODE_COVERAGE:
             self.env.skip() # valgrind is not working correctly with multi process
 
         global graphs
@@ -176,10 +176,6 @@ class testStressFlow():
         conn.close()
 
     def test03_clean_shutdown(self):
-        # skip test if we're running under COV=1
-        if os.getenv('COV') == '1':
-            self.env.skip() # valgrind is not working correctly with multi process
-
         # issue SHUTDOWN while traffic is generated
         indexes = range(self.client_count)
         pool = Pool(nodes=self.client_count)

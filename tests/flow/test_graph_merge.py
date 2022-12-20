@@ -542,10 +542,6 @@ class testGraphMergeFlow(FlowTestsBase):
         self.env.assertEquals(result.properties_set, 0)
 
     def test27_merge_create_invalid_entity(self):
-        # Skip this test if running under Valgrind, as it causes a memory leak.
-        if self.env.envRunner.debugger is not None:
-            self.env.skip()
-
         redis_con = self.env.getConnection()
         graph = Graph(redis_con, "N") # Instantiate a new graph.
 

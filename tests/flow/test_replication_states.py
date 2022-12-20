@@ -31,7 +31,7 @@ class testReplicationState():
         self.connection_state = Connection.Connected
 
         # skip test if we're running under Valgrind
-        if self.env.envRunner.debugger is not None:
+        if VALGRIND or SANITIZER != "":
             self.env.skip() # valgrind is not working correctly with replication
 
     # check that the expected key count exists in both master and slave

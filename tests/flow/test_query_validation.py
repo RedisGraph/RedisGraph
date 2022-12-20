@@ -445,10 +445,6 @@ class testQueryValidationFlow(FlowTestsBase):
             assert("Encountered unhandled type" in str(e))
 
     def test31_set_invalid_property_type(self):
-        # Skip this test if running under Valgrind, as it causes a memory leak.
-        if self.env.envRunner.debugger is not None:
-            self.env.skip()
-
         queries = ["""MATCH (a) CREATE (:L {v: a})""",
                    """MATCH (a), (b) WHERE b.age IS NOT NULL SET b.age = a""",
                    """MERGE (a) ON MATCH SET a.age = a"""]
@@ -497,10 +493,6 @@ class testQueryValidationFlow(FlowTestsBase):
             pass
 
     def test34_self_referential_properties(self):
-        # Skip this test if running under Valgrind, as it causes a memory leak.
-        if self.env.envRunner.debugger is not None:
-            self.env.skip()
-
         try:
             # The server should emit an error on trying to create a node with a self-referential property.
             query = """CREATE (a:L {v: a.v})"""

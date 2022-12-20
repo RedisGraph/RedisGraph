@@ -70,10 +70,6 @@ class testGraphCreationFlow(FlowTestsBase):
         self.env.assertEquals(result.properties_set, 1)
 
     def test05_create_with_property_reference(self):
-        # Skip this test if running under Valgrind, as it causes a memory leak.
-        if self.env.envRunner.debugger is not None:
-            self.env.skip()
-
         # Queries that reference properties before they have been created should emit an error.
         try:
             query = """CREATE (a {val: 2}), (b {val: a.val})"""
