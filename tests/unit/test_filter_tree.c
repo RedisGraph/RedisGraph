@@ -146,10 +146,12 @@ FT_FilterNode *_build_deep_compactable_or_true_tree
 
 FT_FilterNode *_build_deep_non_compactable_or_true_tree
 (
-	FT_FilterNode **expected
+	FT_FilterNode **expected,
+	AST **ast
 ) {
 	const char *expected_q = "MATCH (n) WHERE n.val = n.val2 OR n.val3 = n.val4 RETURN n";
 	*expected = build_tree_from_query(expected_q);
+	*ast = QueryCtx_GetAST();
 	const char *q = "MATCH (n) WHERE n.val = n.val2 OR ( n.val3 = n.val4 AND 1 = 1) RETURN n";
 	return build_tree_from_query(q);
 }
@@ -178,10 +180,12 @@ FT_FilterNode *_build_compactable_or_false_tree
 
 FT_FilterNode *_build_non_compactable_or_false_tree
 (
-	FT_FilterNode **expected
+	FT_FilterNode **expected,
+	AST **ast
 ) {
 	const char *expected_q = "MATCH (n) WHERE n.val = n.val2 RETURN n";
 	*expected = build_tree_from_query(expected_q);
+	*ast = QueryCtx_GetAST();
 	const char *q = "MATCH (n) WHERE n.val = n.val2 OR 1 > 1 RETURN n";
 	return build_tree_from_query(q);
 }
@@ -200,10 +204,12 @@ FT_FilterNode *_build_deep_compactable_or_false_tree
 
 FT_FilterNode *_build_deep_non_compactable_or_false_tree
 (
-	FT_FilterNode **expected
+	FT_FilterNode **expected,
+	AST **ast
 ) {
 	const char *expected_q = "MATCH (n) WHERE n.val = n.val2 RETURN n";
 	*expected = build_tree_from_query(expected_q);
+	*ast = QueryCtx_GetAST();
 	const char *q = "MATCH (n) WHERE n.val = n.val2 OR ( n.val3 = n.val4 AND 1 > 1) RETURN n";
 	return build_tree_from_query(q);
 }
@@ -283,6 +289,8 @@ void test_subTrees() {
 
 	FilterTree_Free(tree);
 	array_free(sub_trees);
+	AST *ast = QueryCtx_GetAST();
+	AST_Free(ast);
 
 	//--------------------------------------------------------------------------
 
@@ -295,11 +303,14 @@ void test_subTrees() {
 
 	array_free(sub_trees);
 	FilterTree_Free(tree);
+	ast = QueryCtx_GetAST();
+	AST_Free(ast);
 
 	//--------------------------------------------------------------------------
 
 	FT_FilterNode *original_tree = _build_AND_cond_tree();
-	tree = _build_AND_cond_tree(); // TODO memory leak
+	ast = QueryCtx_GetAST();
+	tree = _build_AND_cond_tree();
 	sub_trees = FilterTree_SubTrees(tree);
 	TEST_ASSERT(array_len(sub_trees) == 2);
 
@@ -311,6 +322,9 @@ void test_subTrees() {
 
 	array_free(sub_trees);
 	FilterTree_Free(original_tree);
+	AST_Free(ast);
+	ast = QueryCtx_GetAST();
+	AST_Free(ast);
 
 	//--------------------------------------------------------------------------
 
@@ -323,6 +337,8 @@ void test_subTrees() {
 
 	array_free(sub_trees);
 	FilterTree_Free(tree);
+	ast = QueryCtx_GetAST();
+	AST_Free(ast);
 
 	//--------------------------------------------------------------------------
 
@@ -335,11 +351,14 @@ void test_subTrees() {
 
 	array_free(sub_trees);
 	FilterTree_Free(tree);
+	ast = QueryCtx_GetAST();
+	AST_Free(ast);
 
 	//--------------------------------------------------------------------------
 
 	original_tree = _build_deep_tree();
-	tree = _build_deep_tree(); // TODO memory leak
+	ast = QueryCtx_GetAST();
+	tree = _build_deep_tree();
 	sub_trees = FilterTree_SubTrees(tree);
 	TEST_ASSERT(array_len(sub_trees) == 3);
 
@@ -354,10 +373,9 @@ void test_subTrees() {
 
 	array_free(sub_trees);
 	FilterTree_Free(original_tree);
-
-	//teardown();
-	//GraphContext *gc = QueryCtx_GetGraphCtx();
-	//free(gc);
+	AST_Free(ast);
+	ast = QueryCtx_GetAST();
+	AST_Free(ast);
 }
 
 void test_collectModified() {
@@ -375,6 +393,8 @@ void test_collectModified() {
 	// clean up
 	raxFree(aliases);
 	FilterTree_Free(tree);
+	AST *ast = QueryCtx_GetAST();
+	AST_Free(ast);
 }
 
 void test_NOTReduction() {
@@ -405,12 +425,16 @@ void test_NOTReduction() {
 		const char *expected_q = expected[i];
 
 		FT_FilterNode *actual_tree = build_tree_from_query(actual);
+		AST *ast = QueryCtx_GetAST();
 		FT_FilterNode *expected_tree = build_tree_from_query(expected_q);
 
 		compareFilterTrees(actual_tree, expected_tree);
 
 		FilterTree_Free(actual_tree);
 		FilterTree_Free(expected_tree);
+		AST_Free(ast);
+		ast = QueryCtx_GetAST();
+		AST_Free(ast);
 	}
 }
 
@@ -430,6 +454,8 @@ void test_containsFunc() {
 	TEST_ASSERT(node == NULL);
 
 	FilterTree_Free(tree);
+	AST *ast = QueryCtx_GetAST();
+	AST_Free(ast);
 	//--------------------------------------------------------------------------
 
 	q = "MATCH (n) WHERE tolower(toupper(n.name)) = 'alex' RETURN n";
@@ -445,6 +471,8 @@ void test_containsFunc() {
 	TEST_ASSERT(node != NULL);
 
 	FilterTree_Free(tree);
+	ast = QueryCtx_GetAST();
+	AST_Free(ast);
 }
 
 void test_clone() {
@@ -456,36 +484,48 @@ void test_clone() {
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(expected);
 	FilterTree_Free(actual);
+	AST *ast = QueryCtx_GetAST();
+	AST_Free(ast);
 
 	expected = _build_simple_varying_tree();
 	actual = FilterTree_Clone(expected);
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(expected);
 	FilterTree_Free(actual);
+	ast = QueryCtx_GetAST();
+	AST_Free(ast);
 
 	expected = _build_AND_cond_tree();
 	actual = FilterTree_Clone(expected);
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(expected);
 	FilterTree_Free(actual);
+	ast = QueryCtx_GetAST();
+	AST_Free(ast);
 
 	expected = _build_XOR_cond_tree();
 	actual = FilterTree_Clone(expected);
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(expected);
 	FilterTree_Free(actual);
+	ast = QueryCtx_GetAST();
+	AST_Free(ast);
 
 	expected = _build_OR_cond_tree();
 	actual = FilterTree_Clone(expected);
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(expected);
 	FilterTree_Free(actual);
+	ast = QueryCtx_GetAST();
+	AST_Free(ast);
 
 	expected = _build_deep_tree();
 	actual = FilterTree_Clone(expected);
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(expected);
 	FilterTree_Free(actual);
+	ast = QueryCtx_GetAST();
+	AST_Free(ast);
 }
 
 void test_compact() {
@@ -498,31 +538,42 @@ void test_compact() {
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
 	FilterTree_Free(expected);
+	AST *ast = QueryCtx_GetAST();
+	AST_Free(ast);
 
 	actual = _build_true_tree(&expected);
 	TEST_ASSERT(FilterTree_Compact(actual));
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
 	FilterTree_Free(expected);
+	ast = QueryCtx_GetAST();
+	AST_Free(ast);
 
 	actual = _build_compactable_or_true_tree(&expected);
 	TEST_ASSERT(FilterTree_Compact(actual));
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
 	FilterTree_Free(expected);
+	ast = QueryCtx_GetAST();
+	AST_Free(ast);
 
 	actual = _build_deep_compactable_or_true_tree(&expected);
 	TEST_ASSERT(FilterTree_Compact(actual));
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
 	FilterTree_Free(expected);
+	ast = QueryCtx_GetAST();
+	AST_Free(ast);
 
 	// Non compactable 'true' tree.
-	actual = _build_deep_non_compactable_or_true_tree(&expected);
+	actual = _build_deep_non_compactable_or_true_tree(&expected, &ast);
 	TEST_ASSERT(!FilterTree_Compact(actual));
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
 	FilterTree_Free(expected);
+	AST_Free(ast);
+	ast = QueryCtx_GetAST();
+	AST_Free(ast);
 
 	// Compactable 'false' trees.
 	actual = _build_explicit_false_tree(&expected);
@@ -530,37 +581,51 @@ void test_compact() {
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
 	FilterTree_Free(expected);
+	ast = QueryCtx_GetAST();
+	AST_Free(ast);
 
 	actual = _build_false_tree(&expected);
 	FilterTree_Compact(actual);
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
 	FilterTree_Free(expected);
+	ast = QueryCtx_GetAST();
+	AST_Free(ast);
 
 	actual = _build_compactable_or_false_tree(&expected);
 	FilterTree_Compact(actual);
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
 	FilterTree_Free(expected);
+	ast = QueryCtx_GetAST();
+	AST_Free(ast);
 
 	actual = _build_deep_compactable_or_false_tree(&expected);
 	FilterTree_Compact(actual);
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
 	FilterTree_Free(expected);
+	ast = QueryCtx_GetAST();
+	AST_Free(ast);
 
 	// Non compactable 'false' trees.
-	actual = _build_non_compactable_or_false_tree(&expected);
+	actual = _build_non_compactable_or_false_tree(&expected, &ast);
 	TEST_ASSERT(!FilterTree_Compact(actual));
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
 	FilterTree_Free(expected);
+	AST_Free(ast);
+	ast = QueryCtx_GetAST();
+	AST_Free(ast);
 
-	actual = _build_deep_non_compactable_or_false_tree(&expected);
+	actual = _build_deep_non_compactable_or_false_tree(&expected, &ast);
 	TEST_ASSERT(!FilterTree_Compact(actual));
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
 	FilterTree_Free(expected);
+	AST_Free(ast);
+	ast = QueryCtx_GetAST();
+	AST_Free(ast);
 }
 
 TEST_LIST = {

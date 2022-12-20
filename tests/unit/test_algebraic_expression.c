@@ -178,10 +178,10 @@ static void _bind_matrices() {
 	raxInsert(_matrices, (unsigned char *)"C", strlen("C"), dummy_matrix, NULL);
 }
 
-AlgebraicExpression **build_algebraic_expression(const char *query) {
+AlgebraicExpression **build_algebraic_expression(const char *query, AST **master_ast) {
 	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
-	AST *master_ast = AST_Build(parse_result);
-	AST *ast = AST_NewSegment(master_ast, 0, cypher_ast_query_nclauses(master_ast->root));
+	*master_ast = AST_Build(parse_result);
+	AST *ast = AST_NewSegment(*master_ast, 0, cypher_ast_query_nclauses((*master_ast)->root));
 	QueryGraph *qg = BuildQueryGraph(ast);
 	AlgebraicExpression **ae = AlgebraicExpression_FromQueryGraph(qg);
 	_AlgebraicExpression_RemoveRedundentOperands(ae, qg);
@@ -192,6 +192,7 @@ AlgebraicExpression **build_algebraic_expression(const char *query) {
 	}
 
 	QueryGraph_Free(qg);
+	AST_Free(ast);
 
 	return ae;
 }
@@ -1013,7 +1014,8 @@ void test_ExpTransform_A_Plus_B_Times_C_Plus_D() {
 void test_MultipleIntermidiateReturnNodes() {
 	// "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, f, c, e";
 	const char *q = query_multiple_intermidate_return_nodes;
-	AlgebraicExpression **actual = build_algebraic_expression(q);
+	AST *master_ast;
+	AlgebraicExpression **actual = build_algebraic_expression(q, &master_ast);
 	uint exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 3);
 
@@ -1034,11 +1036,13 @@ void test_MultipleIntermidiateReturnNodes() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 }
 
 void test_OneIntermidiateReturnNode() {
 	const char *q = query_one_intermidate_return_nodes;
-	AlgebraicExpression **actual = build_algebraic_expression(q);
+	AST *master_ast;
+	AlgebraicExpression **actual = build_algebraic_expression(q, &master_ast);
 	uint exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 2);
 
@@ -1056,11 +1060,13 @@ void test_OneIntermidiateReturnNode() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 }
 
 void test_NoIntermidiateReturnNodes() {
 	const char *q = query_no_intermidate_return_nodes;
-	AlgebraicExpression **actual = build_algebraic_expression(q);
+	AST *master_ast;
+	AlgebraicExpression **actual = build_algebraic_expression(q, &master_ast);
 	uint exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 1);
 
@@ -1073,6 +1079,7 @@ void test_NoIntermidiateReturnNodes() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 }
 
 void test_ONeIntermidiateReturnEdge() {
@@ -1084,7 +1091,8 @@ void test_ONeIntermidiateReturnEdge() {
 	//==============================================================================================
 
 	q = query_return_first_edge;
-	actual = build_algebraic_expression(q);
+	AST *master_ast;
+	actual = build_algebraic_expression(q, &master_ast);
 	uint exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 2);
 
@@ -1097,12 +1105,13 @@ void test_ONeIntermidiateReturnEdge() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 
 	//==============================================================================================
 	//=== MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ev
 	//==============================================================================================
 	q = query_return_intermidate_edge;
-	actual = build_algebraic_expression(q);
+	actual = build_algebraic_expression(q, &master_ast);
 	exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 3);
 
@@ -1115,12 +1124,13 @@ void test_ONeIntermidiateReturnEdge() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 
 	//==============================================================================================
 	//=== MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ew
 	//==============================================================================================
 	q = query_return_last_edge;
-	actual = build_algebraic_expression(q);
+	actual = build_algebraic_expression(q, &master_ast);
 	exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 2);
 
@@ -1133,12 +1143,14 @@ void test_ONeIntermidiateReturnEdge() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 }
 
 void test_BothDirections() {
 	const char *q =
 		"MATCH (p:Person)-[ef:friend]->(f:Person)<-[ev:visit]-(c:City)-[ew:war]->(e:City) RETURN p,e";
-	AlgebraicExpression **actual = build_algebraic_expression(q);
+	AST *master_ast;
+	AlgebraicExpression **actual = build_algebraic_expression(q, &master_ast);
 	uint exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 1);
 
@@ -1150,11 +1162,13 @@ void test_BothDirections() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 }
 
 void test_SingleNode() {
 	const char *q = "MATCH (p:Person) RETURN p";
-	AlgebraicExpression **actual = build_algebraic_expression(q);
+	AST *master_ast;
+	AlgebraicExpression **actual = build_algebraic_expression(q, &master_ast);
 	uint exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 1);
 
@@ -1166,12 +1180,14 @@ void test_SingleNode() {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 }
 
 void test_ShareableEntity() {
 	const char *q =
 		"MATCH (p:Person)-[ef:friend]->(f:Person) MATCH (f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p,e";
-	AlgebraicExpression **actual = build_algebraic_expression(q);
+	AST *master_ast;
+	AlgebraicExpression **actual = build_algebraic_expression(q, &master_ast);
 	uint exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 1);
 
@@ -1183,10 +1199,11 @@ void test_ShareableEntity() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 
 	exp_count = 0;
 	q = "MATCH (p:Person)-[ef:friend]->(f:Person) MATCH (f:Person)<-[ev:visit]-(c:City)<-[ew:war]-(e:City) RETURN p,e";
-	actual = build_algebraic_expression(q);
+	actual = build_algebraic_expression(q, &master_ast);
 	exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 1);
 
@@ -1197,10 +1214,11 @@ void test_ShareableEntity() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 
 	exp_count = 0;
 	q = "MATCH (p:Person)-[ef:friend]->(f:Person) MATCH (f:Person)-[ev:visit]->(c:City) MATCH (c:City)-[ew:war]->(e:City) RETURN p,e";
-	actual = build_algebraic_expression(q);
+	actual = build_algebraic_expression(q, &master_ast);
 	exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 1);
 
@@ -1211,10 +1229,11 @@ void test_ShareableEntity() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 
 	exp_count = 0;
 	q = "MATCH (a:Person)-[:friend]->(f:Person) MATCH (b:Person)-[:friend]->(f:Person) RETURN a,b";
-	actual = build_algebraic_expression(q);
+	actual = build_algebraic_expression(q, &master_ast);
 	exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 1);
 
@@ -1225,11 +1244,12 @@ void test_ShareableEntity() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 
 	// High incoming degree.
 	exp_count = 0;
 	q = "MATCH (a:Person)-[:friend]->(d:Person) MATCH (b:Person)-[:friend]->(d:Person) MATCH (c:Person)-[:friend]->(d:Person) RETURN a";
-	actual = build_algebraic_expression(q);
+	actual = build_algebraic_expression(q, &master_ast);
 	exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 3);
 
@@ -1242,11 +1262,12 @@ void test_ShareableEntity() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 
 	// High outgoing degree.
 	exp_count = 0;
 	q = "MATCH (a:Person)-[:friend]->(b:Person) MATCH (a:Person)-[:friend]->(c:Person) MATCH (a:Person)-[:friend]->(d:Person) RETURN a";
-	actual = build_algebraic_expression(q);
+	actual = build_algebraic_expression(q, &master_ast);
 	exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 3);
 
@@ -1259,6 +1280,7 @@ void test_ShareableEntity() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 
 	// Cycle.
 	/* TODO: The algebraic expression here can be improved
@@ -1267,7 +1289,7 @@ void test_ShareableEntity() {
 	 * see comment in AlgebraicExpression_FromQueryGraph regarding cycles. */
 	exp_count = 0;
 	q = "MATCH (a:Person)-[:friend]->(b:Person)-[:friend]->(a:Person) RETURN a";
-	actual = build_algebraic_expression(q);
+	actual = build_algebraic_expression(q, &master_ast);
 	exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 1);
 
@@ -1278,11 +1300,12 @@ void test_ShareableEntity() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 
 	// Longer cycle.
 	exp_count = 0;
 	q = "MATCH (a:Person)-[:friend]->(b:Person)-[:friend]->(c:Person)-[:friend]->(a:Person) RETURN a";
-	actual = build_algebraic_expression(q);
+	actual = build_algebraic_expression(q, &master_ast);
 	exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 1);
 
@@ -1293,11 +1316,12 @@ void test_ShareableEntity() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 
 	// Self pointing node.
 	exp_count = 0;
 	q = "MATCH (a:Person)-[:friend]->(a) RETURN a";
-	actual = build_algebraic_expression(q);
+	actual = build_algebraic_expression(q, &master_ast);
 	exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 1);
 
@@ -1308,11 +1332,12 @@ void test_ShareableEntity() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 
 	//(p1)-[]->(p2)-[]->(p3)-[]->(p2)-[]->(p4)-[]->(p5) RETURN p1
 	exp_count = 0;
 	q = "MATCH (p1)-[:friend]->(p2)-[:friend]->(p3)-[:friend]->(p2)-[:friend]->(p4)-[:friend]->(p5) RETURN p1";
-	actual = build_algebraic_expression(q);
+	actual = build_algebraic_expression(q, &master_ast);
 	exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 3);
 
@@ -1325,11 +1350,12 @@ void test_ShareableEntity() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 
 	// (p1)-[]->(p2)-[]->(p3)-[]->(p2)-[]->(p4)-[]->(p5) RETURN p1,p2,p3,p4,p5
 	exp_count = 0;
 	q = "MATCH (p1)-[:friend]->(p2)-[:friend]->(p3)-[:friend]->(p2)-[:friend]->(p4)-[:friend]->(p5) RETURN p1,p2,p3,p4,p5";
-	actual = build_algebraic_expression(q);
+	actual = build_algebraic_expression(q, &master_ast);
 	exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 5);
 
@@ -1344,11 +1370,12 @@ void test_ShareableEntity() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 
 	// MATCH (p1)-[]->(p2)-[]->(p3)-[]->(p4)-[]->(p5)-[]->(p2)-[]->(p6)-[]->(p7)-[]->(p3) RETURN p1
 	exp_count = 0;
 	q = "MATCH (p1)-[:friend]->(p2)-[:friend]->(p3)-[:friend]->(p4)-[:friend]->(p5)-[:friend]->(p2)-[:friend]->(p6)-[:friend]->(p7)-[:friend]->(p3) RETURN p1";
-	actual = build_algebraic_expression(q);
+	actual = build_algebraic_expression(q, &master_ast);
 	exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 4);
 
@@ -1362,11 +1389,12 @@ void test_ShareableEntity() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 
 	// MATCH (p1)-[]->(p2)-[]->(p3)-[]->(p4)-[]->(p5)-[]->(p2)-[]->(p6)-[]->(p7)-[]->(p3) RETURN p1,p2,p3,p4,p5,p6,p7
 	exp_count = 0;
 	q = "MATCH (p1)-[:friend]->(p2)-[:friend]->(p3)-[:friend]->(p4)-[:friend]->(p5)-[:friend]->(p2)-[:friend]->(p6)-[:friend]->(p7)-[:friend]->(p3) RETURN p1,p2,p3,p4,p5,p6,p7";
-	actual = build_algebraic_expression(q);
+	actual = build_algebraic_expression(q, &master_ast);
 	exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 8);
 
@@ -1384,11 +1412,12 @@ void test_ShareableEntity() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 
 	// MATCH (p1)-[]->(p2)-[]->(p3)-[]->(p4)-[]->(p1)-[]->(p4),(p4)-[]->(p5) RETURN p1
 	exp_count = 0;
 	q = "MATCH (p1)-[:friend]->(p2)-[:friend]->(p3)-[:friend]->(p4)-[:friend]->(p1)-[:friend]->(p4)-[:friend]->(p5) RETURN p1";
-	actual = build_algebraic_expression(q);
+	actual = build_algebraic_expression(q, &master_ast);
 	exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 4);
 
@@ -1402,11 +1431,12 @@ void test_ShareableEntity() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 
 	// MATCH (p1)-[]->(p2)-[]->(p3)-[]->(p4)-[]->(p1)-[]->(p4),(p4)-[]->(p5) RETURN p1,p2,p3,p4,p5
 	exp_count = 0;
 	q = "MATCH (p1)-[:friend]->(p2)-[:friend]->(p3)-[:friend]->(p4)-[:friend]->(p1)-[:friend]->(p4)-[:friend]->(p5) RETURN p1,p2,p3,p4,p5";
-	actual = build_algebraic_expression(q);
+	actual = build_algebraic_expression(q, &master_ast);
 	exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 6);
 
@@ -1422,12 +1452,14 @@ void test_ShareableEntity() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 }
 
 void test_VariableLength() {
 	const char *q =
 		"MATCH (p:Person)-[ef:friend]->(f:Person)-[:visit*1..3]->(c:City)-[ew:war]->(e:City) RETURN p,e";
-	AlgebraicExpression **actual = build_algebraic_expression(q);
+	AST *master_ast;
+	AlgebraicExpression **actual = build_algebraic_expression(q, &master_ast);
 	uint exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 3);
 
@@ -1441,11 +1473,12 @@ void test_VariableLength() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 
 	// Transposed variable length.
 	exp_count = 0;
 	q = "MATCH (p:Person)-[ef:friend]->(f:Person)<-[:visit*1..3]-(c:City)-[ew:war]->(e:City) RETURN p,e";
-	actual = build_algebraic_expression(q);
+	actual = build_algebraic_expression(q, &master_ast);
 	exp_count = array_len(actual);
 	TEST_ASSERT(exp_count == 3);
 
@@ -1458,6 +1491,7 @@ void test_VariableLength() {
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	array_free(actual);
+	AST_Free(master_ast);
 }
 
 void test_ExpressionExecute() {
@@ -1466,7 +1500,8 @@ void test_ExpressionExecute() {
 
 	// "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, e"
 	const char *q = query_no_intermidate_return_nodes;
-	AlgebraicExpression **ae = build_algebraic_expression(q);
+	AST *master_ast;
+	AlgebraicExpression **ae = build_algebraic_expression(q, &master_ast);
 	uint exp_count = array_len(ae);
 	TEST_ASSERT(exp_count == 1);
 
@@ -1501,6 +1536,7 @@ void test_ExpressionExecute() {
 	GrB_Matrix_free(&expected);
 	free_algebraic_expressions(ae, exp_count);
 	array_free(ae);
+	AST_Free(master_ast);
 }
 
 void test_RemoveOperand() {
