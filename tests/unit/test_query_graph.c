@@ -32,7 +32,7 @@ void setup() {
 
 void tearDown() {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	GraphContext_DecreaseRefCount(gc);
+	free(gc);
 	QueryCtx_Free();
 }
 
@@ -280,6 +280,8 @@ void test_QueryGraphRemoveEntities() {
 
 	// clean up
 	QueryGraph_Free(g);
+	QGNode_Free(C);
+	QGEdge_Free(AB);
 }
 
 void test_QueryGraphConnectedComponents() {

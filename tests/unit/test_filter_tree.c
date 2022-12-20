@@ -16,7 +16,11 @@
 #include <string.h>
 
 void setup();
+void tearDown();
+
 #define TEST_INIT setup();
+#define TEST_FINI tearDown();
+
 #include "acutest.h"
 
 void _fake_graph_context() {
@@ -36,6 +40,13 @@ void setup() {
 	ErrorCtx_Init();
 	AR_RegisterFuncs();
 	_fake_graph_context();
+}
+
+void tearDown() {
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	raxFree(gc->attributes);
+	free(gc);
+	QueryCtx_Free();
 }
 
 AST *_build_ast
