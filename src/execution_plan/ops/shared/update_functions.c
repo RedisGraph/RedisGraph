@@ -143,7 +143,7 @@ void EvalEntityUpdates
 
 	PendingUpdateCtx update = {0};
 	update.ge            = entity;
-	update.attributes    = AttributeSet_New();
+	update.attributes    = NULL;
 	update.add_labels    = ctx->add_labels;
 	update.remove_labels = ctx->remove_labels;
 
