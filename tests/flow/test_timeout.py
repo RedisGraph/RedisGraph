@@ -127,7 +127,7 @@ class testQueryTimeout():
 
         try:
             # The query is expected to timeout
-            timeout = int(res.run_time_ms)
+            timeout = max(1, int(res.run_time_ms))
             res = redis_graph.query(query, timeout=timeout)
             print(timeout)
             self.env.assertTrue(False)
