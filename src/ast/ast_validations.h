@@ -4,9 +4,8 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-// initialize the mapping between ast-node-types and 
-// visiting functions for the ast-visitor
-bool AST_ValidationsMappingInit();
+#pragma once
 
-// free a mapping
-void AST_ValidationsMappingFree();
+// build the global mapping from ast-node-type to visiting functions
+bool AST_ValidationsMappingInit(void);
+

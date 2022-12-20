@@ -15,7 +15,6 @@
 #include "configuration/config.h"
 #include "serializers/graphmeta_type.h"
 #include "serializers/graphcontext_type.h"
-#include "ast/ast_validations.h"
 
 // indicates the possibility of half-baked graphs in the keyspace
 #define INTERMEDIATE_GRAPHS (aux_field_counter > 0)
@@ -248,7 +247,6 @@ static void _ShutdownEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uin
 	ThreadPools_Destroy();
 	// Server is shutting down, finalize GraphBLAS.
 	GrB_finalize();
-	AST_ValidationsMappingFree();
 }
 
 static void _RegisterServerEvents(RedisModuleCtx *ctx) {

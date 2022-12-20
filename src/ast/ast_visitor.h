@@ -8,8 +8,9 @@
 
 #include "ast.h"
 
-// ast_visitor is responsible for traversing an ast-node using the visitor design pattern,
-// performing some operation along the traversal (e.g., validation).
+// ast_visitor is responsible for traversing an ast-node
+// using the visitor design pattern performing some operations along the
+// traversal (e.g., validation)
 
 typedef struct ast_visitor ast_visitor;
 
@@ -21,21 +22,20 @@ typedef enum {
 } VISITOR_STRATEGY;
 
 // visit function signature called for each registered AST node type
-typedef VISITOR_STRATEGY (*visit)(const cypher_astnode_t *n, bool start, ast_visitor *visitor);
+typedef VISITOR_STRATEGY (*visit)(const cypher_astnode_t *n, bool start, void *ctx);
 
 // ast_visitor_mapping maps between an ast-node-type and a visiting function
 typedef visit* ast_visitor_mapping;
 
-/*
-ast_visitor traverses an ast-node as long as its state is valid (not VISITOR_BREAK).
-the ast_visitor holds a context which it can populate and use throughout the traversal,
-and a mapping between ast-node-types to their corresponding visiting functions.
-*/
-typedef struct ast_visitor
-{
+// ast_visitor traverses an ast-node as long as its state is valid (not VISITOR_BREAK).
+// the ast_visitor holds a context which it can populate and use throughout the traversal,
+// and a mapping between ast-node-types to their corresponding visiting functions.
+typedef struct ast_visitor {
 	void *ctx;                    // context
 	ast_visitor_mapping mapping;  // mapping between ast-node-types to visiting functions
 } ast_visitor;
+
+ast_visitor_mapping AST_Visitor_mapping_new(void);
 
 // creates a new visitor
 ast_visitor *AST_Visitor_new
@@ -47,17 +47,9 @@ ast_visitor *AST_Visitor_new
 // visits an ast-node
 void AST_Visitor_visit
 (
-	const cypher_astnode_t *node,  // node to visit
+	const cypher_astnode_t *root,  // node to visit
 	ast_visitor *visitor           // visitor
 );
-
-// frees a visitor
-void AST_Visitor_free
-(
-	ast_visitor *visitor  // visitor to free
-);
-
-ast_visitor_mapping AST_Visitor_mapping_new();
 
 // registers a function to a visitor
 void AST_Visitor_mapping_register
@@ -67,7 +59,14 @@ void AST_Visitor_mapping_register
 	visit cb                     // visit function to register
 );
 
+// frees a visitor
+void AST_Visitor_free
+(
+	ast_visitor *visitor  // visitor to free
+);
+
 void AST_Visitor_mapping_free
 (
 	ast_visitor_mapping mapping  // mapping to free
 );
+
