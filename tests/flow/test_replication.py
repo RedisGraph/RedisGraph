@@ -11,11 +11,11 @@ GRAPH_ID = "replication"
 
 class testReplication(FlowTestsBase):
     def __init__(self):
-        self.env = Env(decodeResponses=True, env='oss', useSlaves=True)
-
         # skip test if we're running under Valgrind
         if VALGRIND or SANITIZER != "":
-            self.env.skip() # valgrind is not working correctly with replication
+            Env.skip(None) # valgrind is not working correctly with replication
+
+        self.env = Env(decodeResponses=True, env='oss', useSlaves=True)
 
     def test_CRUD_replication(self):
         # create a simple graph

@@ -11,9 +11,10 @@ def checkSlaveSynced(env, masterConn, slaveConn, graph_name):
 
 class test_read_only_query(FlowTestsBase):
     def __init__(self):
-        self.env = Env(decodeResponses=True, useSlaves=True)
         if VALGRIND or SANITIZER != "":
-            self.env.skip() # valgrind is not working correctly with replication
+            Env.skip(None) # valgrind is not working correctly with replication
+
+        self.env = Env(decodeResponses=True, useSlaves=True)
         global master_con
         global slave_con
         master_con = self.env.getConnection()
