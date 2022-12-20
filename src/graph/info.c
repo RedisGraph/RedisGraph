@@ -12,9 +12,13 @@
 
 #include "util/arr.h"
 #include "util/num.h"
+#include "util/circular_buffer.h"
 
-// TODO temporarily silenced the error in pools.h, investigate.
-typedef uint64_t uint;
+#include <sys/types.h>
+#include "../query_ctx.h"
+
+#include <string.h>
+
 #include "util/thpool/pools.h"
 
 #define INITIAL_QUERY_INFO_CAPACITY 100
@@ -58,16 +62,40 @@ typedef uint64_t uint;
 static bool _lock_rwlock(pthread_rwlock_t *, const bool);
 static bool _unlock_rwlock(pthread_rwlock_t *);
 
-static QueryInfoStorage finished_queries = QueryInfoStorage_New();
+static CircularBuffer finished_queries;
 static pthread_rwlock_t finished_queries_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
-static void _add_finished_query(const QueryInfo info) {
+FinishedQueryInfo FinishedQueryInfo_FromQueryInfo(const QueryInfo info) {
+    ASSERT(info.context);
+
+    FinishedQueryInfo finished;
+    memset(&finished, 0, sizeof(FinishedQueryInfo));
+
+    finished.executing_time_milliseconds = info.executing_time_milliseconds;
+    finished.received_unix_timestamp_milliseconds = info.received_unix_timestamp_milliseconds;
+    finished.reporting_time_milliseconds = info.reporting_time_milliseconds;
+    finished.waiting_time_milliseconds = info.waiting_time_milliseconds;
+
+    if (info.context) {
+        finished.query_string = strdup(info.context->query_data.query);
+    }
+
+    return finished;
+}
+
+void FinishedQueryInfo_Free(const FinishedQueryInfo query_info) {
+    if (query_info.query_string) {
+        free(query_info.query_string);
+    }
+}
+
+static void _add_finished_query(const FinishedQueryInfo info) {
     const bool locked = _lock_rwlock(&finished_queries_rwlock, true);
     ASSERT(locked);
     if (!locked) {
         return;
     }
-    QueryInfoStorage_Add(&finished_queries, info);
+    CircularBuffer_Add(finished_queries, (const void*)&info);
     const bool unlocked = _unlock_rwlock(&finished_queries_rwlock);
     ASSERT(unlocked);
 }
@@ -639,6 +667,8 @@ void Info_IndicateQueryFinishedReporting
         return;
     }
     QueryInfo_UpdateReportingTime(query_info);
+    FinishedQueryInfo finished = FinishedQueryInfo_FromQueryInfo(*query_info);
+    _add_finished_query(finished);
     QueryInfoStorage_ResetElement(
         &info->reporting_queries_per_thread,
         thread_id);
@@ -754,13 +784,29 @@ QueryInfoStorage* Info_GetReportingQueriesStorage(Info *info) {
     return &info->reporting_queries_per_thread;
 }
 
-void Info_ResizeFinishedQueriesStorage(const uint32_t count) {
+static void _FinishedQueryInfoDeleter(void *info) {
+    ASSERT(info);
+    if (info) {
+        FinishedQueryInfo *query_info = (FinishedQueryInfo*)info;
+        FinishedQueryInfo_Free(*query_info);
+    }
+}
+
+void Info_SetCapacityForFinishedQueriesStorage(const uint32_t count) {
     const bool locked = _lock_rwlock(&finished_queries_rwlock, true);
     ASSERT(locked);
     if (!locked) {
         return;
     }
-    QueryInfoStorage_SetCapacity(&finished_queries, count);
+    if (!finished_queries) {
+        finished_queries = CircularBuffer_New(sizeof(FinishedQueryInfo), count);
+        CircularBuffer_SetDeleter(
+            finished_queries,
+            _FinishedQueryInfoDeleter,
+            NULL);
+    } else {
+        CircularBuffer_SetCapacity(&finished_queries, count);
+    }
     const bool unlocked = _unlock_rwlock(&finished_queries_rwlock);
     ASSERT(unlocked);
 }
