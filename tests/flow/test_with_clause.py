@@ -277,6 +277,7 @@ class testWithClause(FlowTestsBase):
             "WITH a AS b, b AS c, c AS a RETURN a",
             "WITH {a:a} as a RETURN a",
             "WITH a RETURN 0",
+            "WITH 3 AS a, 4 AS b, a + b AS c RETURN c"
         ]
         for query in invalid_queries:
             try:
