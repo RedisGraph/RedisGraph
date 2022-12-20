@@ -15,8 +15,11 @@
 #include <string.h>
 
 void setup();
+void tearDown();
 
 #define TEST_INIT setup();
+#define TEST_FINI tearDown();
+
 #include "acutest.h"
 
 static void build_ast_and_plan
@@ -36,6 +39,7 @@ static void _fake_graph_context() {
 	GraphContext *gc = (GraphContext *)malloc(sizeof(GraphContext));
 
 	gc->g = Graph_New(16, 16);
+	gc->ref_count = 1;
 	gc->index_count = 0;
 	gc->graph_name = strdup("G");
 	gc->attributes = raxNew();
@@ -43,6 +47,10 @@ static void _fake_graph_context() {
 	gc->string_mapping = (char **)array_new(char *, 64);
 	gc->node_schemas = (Schema **)array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
 	gc->relation_schemas = (Schema **)array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
+	gc->cache = NULL;
+	gc->slowlog = NULL;
+	gc->encoding_context = NULL;
+	gc->decoding_context = NULL;
 	QueryCtx_SetGraphCtx(gc);
 }
 
@@ -106,6 +114,13 @@ void setup() {
 
 	// create a graphcontext
 	_fake_graph_context();
+}
+
+void tearDown() {
+	TEST_ASSERT(GrB_finalize() == GrB_SUCCESS);
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	GraphContext_DecreaseRefCount(gc);
+	QueryCtx_Free();
 }
 
 void test_createClause() {

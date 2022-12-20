@@ -144,8 +144,8 @@ int Schema_AddIndex
 		// introduce edge src and dest node ids
 		// as additional index fields
 		if(entity_type == GETYPE_EDGE) {
-			Index_AddField(_idx, INDEX_FIELD_DEFAULT(_src_id));
-			Index_AddField(_idx, INDEX_FIELD_DEFAULT(_dest_id));
+			INDEX_ADD_DEFAULT_FIELD(_src_id);
+			INDEX_ADD_DEFAULT_FIELD(_dest_id);
 		}
 	}
 

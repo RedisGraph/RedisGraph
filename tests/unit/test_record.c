@@ -47,6 +47,7 @@ void test_recordToString() {
 	TEST_ASSERT(record_str_len == 31);
 	TEST_ASSERT(strcmp(record_str, "Hello,-24,24,0.314000,NULL,true") == 0);
 
+	raxFree(_rax);
 	rm_free(record_str);
 	Record_Free(r);
 }

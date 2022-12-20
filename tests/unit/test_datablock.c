@@ -227,6 +227,7 @@ void test_dataBlockOutOfOrderBuilding() {
 	TEST_ASSERT(dataBlock->deletedIdx[1] == 4 || dataBlock->deletedIdx[1] == 7);
 
 	DataBlock_Free(dataBlock);
+	DataBlockIterator_Free(it);
 }
 
 TEST_LIST = {

@@ -1533,6 +1533,8 @@ void test_RGMatrix_resize() {
 
 	TEST_ASSERT(T_nrows == ncols);
 	TEST_ASSERT(T_ncols == nrows);
+
+	RG_Matrix_free(&A);
 }
 
 TEST_LIST = {

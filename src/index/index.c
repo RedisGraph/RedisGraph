@@ -105,8 +105,8 @@ RSDoc *Index_IndexGraphEntity
 
 			char *s = NULL;
 			char stack_fields[len];
-			if(len < 512) s = stack_fields; // stack base
-			else s = rm_malloc(sizeof(char) * len); // heap base
+			if(len + 1 < 512) s = stack_fields; // stack base
+			else s = rm_malloc(sizeof(char) * (len + 1)); // heap base
 
 			// concat
 			len = sprintf(s, "%s", none_indexable_fields[0]);

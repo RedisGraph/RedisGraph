@@ -585,7 +585,7 @@ static void _GraphContext_Free(void *arg) {
 
 	// Disable matrix synchronization for graph deletion.
 	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
-	if(GraphDecodeContext_Finished(gc->decoding_context)) Graph_Free(gc->g);
+	if(gc->decoding_context == NULL || GraphDecodeContext_Finished(gc->decoding_context)) Graph_Free(gc->g);
 	else Graph_PartialFree(gc->g);
 
 

@@ -12,7 +12,11 @@
 #include "src/graph/graphcontext.h"
 
 void setup();
+void tearDown();
+
 #define TEST_INIT setup();
+#define TEST_FINI tearDown();
+
 #include "acutest.h"
 
 static void _fake_graph_context() {
@@ -24,6 +28,12 @@ static void _fake_graph_context() {
 void setup() {
 	Alloc_Reset();
 	_fake_graph_context();
+}
+
+void tearDown() {
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	GraphContext_DecreaseRefCount(gc);
+	QueryCtx_Free();
 }
 
 void compare_nodes(const QGNode *a, const QGNode *b) {

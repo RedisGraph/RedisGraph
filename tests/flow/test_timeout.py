@@ -9,6 +9,10 @@ class testQueryTimeout():
     def __init__(self):
         self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT 1000")
 
+        # skip test if we're running under Valgrind
+        if SANITIZER != "":
+            self.env.skip() # valgrind is not working correctly with replication
+
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()

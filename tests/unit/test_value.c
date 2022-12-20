@@ -203,6 +203,10 @@ void test_array() {
 	// Checking for multiple types should return true if any match is found
 	bool contains = SIArray_ContainsType(arr, (SIType)(T_DOUBLE | T_STRING));
 	TEST_ASSERT(contains);
+
+	SIValue_Free(nestedArr);
+	SIValue_Free(arr);
+	SIValue_Free(arrOther);
 }
 
 // test for difference in hash code for the same binary representation
@@ -333,6 +337,8 @@ void test_set() {
 
 	TEST_ASSERT(Set_Size(set) == 0);
 	Set_Free(set);
+	
+	SIValue_Free(arr);
 }
 
 void test_path() {

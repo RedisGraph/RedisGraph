@@ -303,6 +303,8 @@ void test_removeNodes() {
 
 	TEST_ASSERT(Graph_NodeCount(g) == 2);
 	TEST_ASSERT(Graph_EdgeCount(g) == 1);
+
+	Graph_Free(g);
 }
 
 void test_getNode() {
