@@ -400,7 +400,7 @@ jobs:
   build-memcheck:
     docker:
       - image: redisfab/rmbuilder:6.2.7-x64-bionic
-    resource_class: large
+    resource_class: xlarge
     steps:
       - early-returns
       - checkout-all
@@ -411,9 +411,9 @@ jobs:
       - run:
           name: Test for memory leaks
           shell: /bin/bash -l -eo pipefail
-          command: make memcheck PARALLEL=4 PLATFORM_MODE=1
-          timeout: 45m
-          no_output_timeout: 45m
+          command: make memcheck PARALLEL=8 PLATFORM_MODE=1
+          timeout: 60m
+          no_output_timeout: 60m
       - save-tests-logs
 
   build-platforms:
@@ -659,6 +659,8 @@ workflows:
           context: common
           <<: *on-integ-and-version-tags
       - coverage:
+          <<: *on-any-branch
+      - build-memcheck:
           <<: *on-any-branch
       - sanitize:
           name: sanitize-<< matrix.san-type >>

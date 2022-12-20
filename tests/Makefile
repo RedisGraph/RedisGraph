@@ -58,7 +58,9 @@ flow:
 ifneq ($(GEN),0)
 	@MODULE=$(TARGET) GEN=1 ./flow/tests.sh
 endif
+ifneq ($(AOF),0)
 	@MODULE=$(TARGET) GEN=0 AOF=1 ./flow/tests.sh
+endif
 
 tck:
 	### Cypher Technology Compatibility Kit (TCK)
