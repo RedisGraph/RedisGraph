@@ -3,7 +3,7 @@ from common import *
 redis_con = None
 redis_graph = None
 # Number of options available.
-NUMBER_OF_OPTIONS = 14
+NUMBER_OF_OPTIONS = 15
 
 
 class testConfig(FlowTestsBase):
