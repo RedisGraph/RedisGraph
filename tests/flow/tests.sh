@@ -273,6 +273,7 @@ run_tests() {
 				--module $MODULE
 				--module-args '$MODARGS'
 				$RLTEST_ARGS
+				$RLTEST_TEST_ARGS
 				$RLTEST_PARALLEL_ARG
 				$RLTEST_SAN_ARGS
 				$RLTEST_VG_ARGS
@@ -282,6 +283,7 @@ run_tests() {
 			cat <<-EOF > $rltest_config
 				# --clear-logs
 				$RLTEST_ARGS
+				$RLTEST_TEST_ARGS
 				$RLTEST_VG_ARGS
 
 				EOF
@@ -292,6 +294,7 @@ run_tests() {
 			--env existing-env
 			--existing-env-addr $EXT_HOST
 			$RLTEST_ARGS
+			$RLTEST_TEST_ARGS
 
 			EOF
 	fi
@@ -333,11 +336,11 @@ fi
 [[ $VALGRIND == 1 ]] && valgrind_config
 
 if [[ -n $TEST ]]; then
-	RLTEST_ARGS+=$(echo -n " "; echo "$TEST" | awk 'BEGIN { RS=" "; ORS=" " } {print "--test " $1 }')
+	RLTEST_TEST_ARGS+=$(echo -n " "; echo "$TEST" | awk 'BEGIN { RS=" "; ORS=" " } {print "--test " $1 }')
 	export BB=${BB:-1}
 fi
-[[ -n $TESTFILE ]] && RLTEST_ARGS+=" -f $TESTFILE"
-[[ -n $FAILEDFILE ]] && RLTEST_ARGS+=" -F $FAILEDFILE"
+[[ -n $TESTFILE ]] && RLTEST_TEST_ARGS+=" -f $TESTFILE"
+[[ -n $FAILEDFILE ]] && RLTEST_TEST_ARGS+=" -F $FAILEDFILE"
 
 [[ $RLEC != 1 ]] && setup_redis_server
 
@@ -356,9 +359,8 @@ E=0
 [[ $GEN == 1 ]]  && { (run_tests "general tests"); (( E |= $? )); } || true
 if [[ $AOF == 1 ]]; then
 	RLTEST_ARGS_AOF="${RLTEST_ARGS} --use-aof"
-	# [[ -z $TEST || -z $TESTFILE ]] && RLTEST_ARGS_AOF="${RLTEST_ARGS_AOF} --test test_persistency"
-	RLTEST_ARGS_AOF="${RLTEST_ARGS_AOF} --test test_persistency"
-	{ (TEST='' TESTFILE='' RLTEST_ARGS="${RLTEST_ARGS_AOF}" run_tests "tests with AOF"); (( E |= $? )); } || true
+	RLTEST_TEST_ARGS="--test test_persistency"
+	{ (RLTEST_ARGS="${RLTEST_ARGS_AOF}" run_tests "tests with AOF"); (( E |= $? )); } || true
 fi
 [[ $TCK == 1 ]]  && { (cd ../tck; run_tests "TCK tests"); (( E |= $? )); } || true
 
@@ -371,8 +373,12 @@ if [[ $COLLECT_LOGS == 1 ]]; then
 	OSNICK=`$READIES/bin/platform --osnick`
 	cd $ROOT
 	mkdir -p bin/artifacts/tests
-	{ find tests/flow/logs -name "*.log" | tar -czf bin/artifacts/tests/tests-flow-logs-${ARCH}-${OSNICK}.tgz -T -; } || true
-	{ find tests/tck/logs -name "*.log" | tar -czf bin/artifacts/tests/tests-tck-logs-${ARCH}-${OSNICK}.tgz -T - ; } || true
+	if [[ $GEN == 1 || $AOF == 1 ]]; then
+		{ find tests/flow/logs -name "*.log" | tar -czf bin/artifacts/tests/tests-flow-logs-${ARCH}-${OSNICK}.tgz -T -; } || true
+	fi
+	if [[ $TCK == 1 ]]; then
+		{ find tests/tck/logs -name "*.log" | tar -czf bin/artifacts/tests/tests-tck-logs-${ARCH}-${OSNICK}.tgz -T - ; } || true
+	fi
 fi
 
 if [[ -n $STATFILE ]]; then
