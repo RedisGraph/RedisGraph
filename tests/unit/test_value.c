@@ -1,16 +1,16 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
-#include "../../src/value.h"
-#include "../../src/util/rmalloc.h"
-#include "../../src/datatypes/set.h"
-#include "../../src/datatypes/array.h"
-#include "../../src/datatypes/path/path.h"
-#include "../../src/graph/entities/node.h"
-#include "../../src/graph/entities/edge.h"
+#include "src/value.h"
+#include "src/util/rmalloc.h"
+#include "src/datatypes/set.h"
+#include "src/datatypes/array.h"
+#include "src/datatypes/path/path.h"
+#include "src/graph/entities/node.h"
+#include "src/graph/entities/edge.h"
 
 void setup() {
 	Alloc_Reset();

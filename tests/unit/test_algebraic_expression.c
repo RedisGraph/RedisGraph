@@ -1,25 +1,25 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
-#include "assert.h"
-#include "../../src/value.h"
-#include "../../src/util/arr.h"
-#include "../../src/query_ctx.h"
-#include "../../src/redismodule.h"
-#include "../../src/graph/graph.h"
-#include "../../src/util/rmalloc.h"
-#include "../../src/graph/query_graph.h"
-#include "../../src/graph/graphcontext.h"
-#include "../../src/util/simple_timer.h"
-#include "../../src/configuration/config.h"
-#include "../../src/execution_plan/execution_plan.h"
-#include "../../src/arithmetic/algebraic_expression.h"
-#include "../../src/arithmetic/algebraic_expression/utils.h"
-#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
+#include "src/value.h"
+#include "src/util/arr.h"
+#include "src/query_ctx.h"
+#include "src/redismodule.h"
+#include "src/graph/graph.h"
+#include "src/util/rmalloc.h"
+#include "src/graph/query_graph.h"
+#include "src/graph/graphcontext.h"
+#include "src/util/simple_timer.h"
+#include "src/configuration/config.h"
+#include "src/execution_plan/execution_plan.h"
+#include "src/arithmetic/algebraic_expression.h"
+#include "src/arithmetic/algebraic_expression/utils.h"
+#include "GraphBLAS/Include/GraphBLAS.h"
 
+#include <assert.h>
 #include <stdlib.h>
 
 void setup();
