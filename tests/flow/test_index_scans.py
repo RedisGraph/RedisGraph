@@ -96,7 +96,7 @@ class testIndexScanFlow():
         result = redis_graph.query(query)
         self.env.assertEquals(result.result_set, expected_result)
 
-        query = "WITH 30 AS x MATCH (p:person) WHERE p.age IN range(0,x) RETURN p.name ORDER BY p.name"
+        query = "WITH 30 AS x MATCH (p:person) WHERE p.age IN range(0, x) RETURN p.name ORDER BY p.name"
         plan = redis_graph.execution_plan(query)
         self.env.assertIn('Node By Index Scan', plan)
 
@@ -104,7 +104,7 @@ class testIndexScanFlow():
         result = redis_graph.query(query)
         self.env.assertEquals(result.result_set, expected_result)
 
-        query = "MATCH (p:person) WHERE p.age IN range(0,30,2) RETURN p.name ORDER BY p.name"
+        query = "MATCH (p:person) WHERE p.age IN range(0, 30, 2) RETURN p.name ORDER BY p.name"
         plan = redis_graph.execution_plan(query)
         self.env.assertIn('Node By Index Scan', plan)
 
@@ -112,25 +112,25 @@ class testIndexScanFlow():
         result = redis_graph.query(query)
         self.env.assertEquals(result.result_set, expected_result)
 
-        query = "WITH 1.1 AS x MATCH (p:person) WHERE p.age IN range(x,30) RETURN p.name ORDER BY p.name"
+        query = "WITH 1.1 AS x MATCH (p:person) WHERE p.age IN range(x, 30) RETURN p.name ORDER BY p.name"
         try:
             redis_graph.query(query)
         except ResponseError as e:
             self.env.assertContains("Type mismatch: expected Integer but was Float", str(e))
 
-        query = "WITH 30.1 AS x MATCH (p:person) WHERE p.age IN range(0,x) RETURN p.name ORDER BY p.name"
+        query = "WITH 30.1 AS x MATCH (p:person) WHERE p.age IN range(0, x) RETURN p.name ORDER BY p.name"
         try:
             redis_graph.query(query)
         except ResponseError as e:
             self.env.assertContains("Type mismatch: expected Integer but was Float", str(e))
 
-        query = "WITH 1.1 AS x MATCH (p:person) WHERE p.age IN range(1,30,x) RETURN p.name ORDER BY p.name"
+        query = "WITH 1.1 AS x MATCH (p:person) WHERE p.age IN range(1, 30, x) RETURN p.name ORDER BY p.name"
         try:
             redis_graph.query(query)
         except ResponseError as e:
             self.env.assertContains("Type mismatch: expected Integer but was Float", str(e))
 
-         # Validate the transformation of IN to empty index iterator.
+        # Validate the transformation of IN to empty index iterator.
         query = "MATCH (p:person) WHERE p.age IN [] RETURN p.name"
         plan = redis_graph.execution_plan(query)
         self.env.assertIn('Node By Index Scan', plan)

@@ -75,19 +75,23 @@ static bool _validateInExpression(AR_ExpNode *exp) {
 	ASSERT(exp->op.child_count == 2);
 
 	AR_ExpNode *list = exp->op.children[1];
-	if(AR_EXP_IsOperation(list) && strcmp(list->op.f->name, "range") == 0) return true;
+
+	// expression is a range
+	// TODO: would have been better if we could always reduce to scalar
+	// and work with either an array or an iterator
+	if(AR_EXP_IsOperation(list) && strcmp(list->op.f->name, "range") == 0) {
+		return true;
+	}
 	
 	SIValue listValue = SI_NullVal();
 	AR_EXP_ReduceToScalar(list, true, &listValue);
-	if(SI_TYPE(listValue) != T_ARRAY) return false;
-
-	uint list_len = SIArray_Length(listValue);
-	for(uint i = 0; i < list_len; i++) {
-		SIValue v = SIArray_Get(listValue, i);
-		// Ignore everything other than number, strings and booleans.
-		if(!(SI_TYPE(v) & (SI_NUMERIC | T_STRING | T_BOOL))) return false;
+	if(SI_TYPE(listValue) != T_ARRAY) {
+		return false;
 	}
-	return true;
+
+	// expression is a list
+	// we can use the list if all elements are either numeric, string or bool
+	return SIArray_AllOfType(listValue, SI_NUMERIC | T_STRING | T_BOOL);
 }
 
 // return true if filter can be resolved by an index query

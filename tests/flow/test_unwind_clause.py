@@ -137,3 +137,4 @@ class testUnwindClause():
             redis_graph.query(query)
         except ResponseError as e:
             self.env.assertContains("Type mismatch: expected Integer but was Float", str(e))
+

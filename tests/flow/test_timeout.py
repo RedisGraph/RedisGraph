@@ -106,7 +106,7 @@ class testQueryTimeout():
         for i, q in enumerate(queries):
             try:
                 # query is expected to timeout
-                timeout = min(max(int(timeouts[i]), 1), 20)
+                timeout = min(max(int(timeouts[i]), 1), 20) # min 1 max 20
                 res = redis_graph.query(q, timeout=timeout)
                 self.env.assertTrue(False)
                 print(q)
@@ -127,9 +127,8 @@ class testQueryTimeout():
 
         try:
             # The query is expected to timeout
-            timeout = max(1, int(res.run_time_ms))
+            timeout = max(1, int(res.run_time_ms)) # at least 1
             res = redis_graph.query(query, timeout=timeout)
-            print(timeout)
             self.env.assertTrue(False)
         except ResponseError as error:
             self.env.assertContains("Query timed out", str(error))

@@ -10,10 +10,9 @@
 #include "../execution_plan.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-/* OP Unwind */
-
+// OP Unwind
 typedef struct {
-	OpBase op;
+	OpBase op;                    // must be the first field
 	union {
 		struct {
 			SIValue list;         // list which the unwind operation is performed on
