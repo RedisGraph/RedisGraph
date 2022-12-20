@@ -257,4 +257,3 @@ void QueryCtx_Free(void) {
 	// NULL-set the context for reuse the next time this thread receives a query
 	QueryCtx_RemoveFromTLS();
 }
-
