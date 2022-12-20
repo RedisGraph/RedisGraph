@@ -92,7 +92,7 @@ void test_cronAbort() {
 	int Y = 2;
 
 	// issue task X += 2
-	CronTaskHandle task_handle = Cron_AddTask(150, add_task, &Y);
+	CronTaskHandle task_handle = Cron_AddTask(15, add_task, &Y);
 
 	// abort task
 	Cron_AbortTask(task_handle);
@@ -135,7 +135,7 @@ void test_MultiAbort() {
 	int Y = 2;
 
 	// issue task X += 2
-	CronTaskHandle task_handle = Cron_AddTask(150, add_task, &Y);
+	CronTaskHandle task_handle = Cron_AddTask(15, add_task, &Y);
 
 	// abort task multiple times, should not crash hang
 	for(int i = 0; i < 20; i++) {
@@ -191,7 +191,7 @@ void test_AbortRunningTask() {
 
 	t = clock() - t; // stop timer
 	double time_taken_sec = ((double)t)/CLOCKS_PER_SEC;
-	
+
 	// expecting Cron_AbortTask to return before at-most 10 ms
 	TEST_ASSERT(time_taken_sec < 0.01);
 }
