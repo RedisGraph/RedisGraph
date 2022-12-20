@@ -374,7 +374,7 @@ jobs:
       san-type:
         type: string
     steps:
-      - early-returnss
+      - early-returns
       - checkout-all
       - install-prerequisites
       - build-steps: 
