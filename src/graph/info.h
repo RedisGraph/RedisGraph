@@ -23,12 +23,10 @@
 
 #include "../util/simple_timer.h"
 
-#define MAX_QUERIES_COUNT 10000
-
 typedef struct QueryCtx QueryCtx;
 
 // Holds the necessary per-query statistics.
-typedef struct {
+typedef struct QueryInfo {
     // The UNIX epoch timestamp in milliseconds indicating when the query was
     // received by the module.
     uint64_t received_unix_timestamp_milliseconds;
@@ -44,6 +42,21 @@ typedef struct {
     // reporting).
     TIMER_DEFINE(stage_timer);
 } QueryInfo;
+
+typedef struct FinishedQueryInfo {
+    uint64_t received_unix_timestamp_milliseconds;
+    // The time it spent waiting.
+    uint64_t waiting_time_milliseconds;
+    // The time spent on executing.
+    uint64_t executing_time_milliseconds;
+    // The time spent on reporting.
+    uint64_t reporting_time_milliseconds;
+    // The query as a string, with parameters.
+    char *query_string;
+} FinishedQueryInfo;
+
+FinishedQueryInfo FinishedQueryInfo_FromQueryInfo(const QueryInfo info);
+void FinishedQueryInfo_Free(const FinishedQueryInfo query_info);
 
 // Creates a new, empty query info object.
 QueryInfo QueryInfo_New(void);
@@ -75,9 +88,6 @@ void QueryInfo_UpdateReportingTime(QueryInfo *info);
 uint64_t QueryInfo_ResetStageTimer(QueryInfo *);
 
 typedef struct {
-    // Storage for query information for waiting queries.
-    // This implementation uses the "arr.h" facility with a mutex.
-    // TODO use lock-free skip list for storing queries.
     QueryInfo *queries;
 } QueryInfoStorage;
 
@@ -227,4 +237,4 @@ QueryInfoStorage* Info_GetExecutingQueriesStorage(Info *info);
 // Must be accessed within the Info_Lock and Info_Unlock.
 QueryInfoStorage* Info_GetReportingQueriesStorage(Info *info);
 // Resizes the finished queries storage.
-void Info_ResizeFinishedQueriesStorage(const uint32_t count);
+void Info_SetCapacityForFinishedQueriesStorage(const uint32_t count);

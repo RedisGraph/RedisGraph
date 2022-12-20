@@ -77,11 +77,6 @@ static int GraphBLAS_Init(RedisModuleCtx *ctx) {
 	return REDISMODULE_OK;
 }
 
-static bool _is_cmd_info_enabled() {
-	bool cmd_info_enabled = false;
-	return Config_Option_get(Config_CMD_INFO, &cmd_info_enabled) && cmd_info_enabled;
-}
-
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(RedisModule_Init(ctx, "graph", REDISGRAPH_MODULE_VERSION,
 						REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
@@ -140,6 +135,15 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	}
 	RedisModule_Log(ctx, "notice", "Maximum number of OpenMP threads set to %d", ompThreadCount);
 
+	bool cmd_info_enabled = false;
+	if (Config_Option_get(Config_CMD_INFO, &cmd_info_enabled) && cmd_info_enabled) {
+		uint32_t info_max_query_count = 0;
+		if (Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &info_max_query_count)) {
+			Info_SetCapacityForFinishedQueriesStorage(info_max_query_count);
+		}
+		RedisModule_Log(ctx, "notice", "Maximum number of info queries for history is %u", info_max_query_count);
+	}
+
 	// initialize array of command contexts
 	command_ctxs = calloc(ThreadPools_ThreadCount() + 1, sizeof(CommandCtx *));
 
@@ -195,11 +199,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	if (_is_cmd_info_enabled()) {
-		if(RedisModule_CreateCommand(ctx, "graph.INFO", Graph_Info, "readonly", 0, 0,
-									0) == REDISMODULE_ERR) {
-			return REDISMODULE_ERR;
-		}
+	if(RedisModule_CreateCommand(ctx, "graph.INFO", Graph_Info, "readonly", 0, 0,
+								0) == REDISMODULE_ERR) {
+		return REDISMODULE_ERR;
 	}
 
 	setupCrashHandlers(ctx);

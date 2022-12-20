@@ -49,7 +49,7 @@ void reconf_handler(Config_Option_Field type) {
 				uint32_t count = 0;
 				bool res = Config_Option_get(type, &count);
 				ASSERT(res);
-				Info_ResizeFinishedQueriesStorage(count);
+				Info_SetCapacityForFinishedQueriesStorage(count);
 			}
 			break;
 
