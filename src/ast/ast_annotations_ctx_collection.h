@@ -7,6 +7,8 @@
 #pragma once
 #include "cypher-parser.h"
 
+typedef unsigned uint;
+
 typedef cypher_ast_annotation_context_t AnnotationCtx;
 
 /* This struct holds the AST annotations context. Each annotation context is used in
