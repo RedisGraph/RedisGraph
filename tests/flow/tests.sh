@@ -125,19 +125,16 @@ fi
 
 #---------------------------------------------------------------------------------------------- 
 
-PARALLEL=0
 [[ $OS == macos ]] && PARALLEL=0
 [[ $GDB == 1 ]] && PARALLEL=0
 
-if [[ -n $PARALLEL ]]; then
-	if [[ $PARALLEL != 0 ]]; then
-		if [[ $PARALLEL == 1 ]]; then
-			parallel="$($READIES/bin/nproc)"
-		else
-			parallel="$PARALLEL"
-		fi
-		RLTEST_PARALLEL_ARG="--parallelism $parallel"
+if [[ -n $PARALLEL && $PARALLEL != 0 ]]; then
+	if [[ $PARALLEL == 1 ]]; then
+		parallel="$($READIES/bin/nproc)"
+	else
+		parallel="$PARALLEL"
 	fi
+	RLTEST_PARALLEL_ARG="--parallelism $parallel"
 fi
 
 [[ $UNIX == 1 ]] && RLTEST_ARGS+=" --unix"
