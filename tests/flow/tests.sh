@@ -81,7 +81,7 @@ RLEC_PORT=${RLEC_PORT:-12000}
 
 if [[ $RLEC != 1 ]]; then
 	GEN=${GEN:-1}
-	AOF=${AOF:-1}
+	AOF=${AOF:-0}
 	TCK=${TCK:-0}
 
 	MODULE=${MODULE:-$1}
@@ -187,6 +187,20 @@ clang_sanitizer_summary() {
 		echo
 		echo "${LIGHTRED}Sanitizer: leaks detected:${RED}"
 		grep -l "leaked in" logs/*.asan.log*
+		echo "${NOCOLOR}"
+		E=1
+	fi
+	if grep -l "dynamic-stack-buffer-overflow" logs/*.asan.log* &> /dev/null; then
+		echo
+		echo "${LIGHTRED}Sanitizer: buffer overflow detected:${RED}"
+		grep -l "dynamic-stack-buffer-overflow" logs/*.asan.log*
+		echo "${NOCOLOR}"
+		E=1
+	fi
+	if grep -l "stack-use-after-scope" logs/*.asan.log* &> /dev/null; then
+		echo
+		echo "${LIGHTRED}Sanitizer: stack use after scope detected:${RED}"
+		grep -l "stack-use-after-scope" logs/*.asan.log*
 		echo "${NOCOLOR}"
 		E=1
 	fi
@@ -345,9 +359,9 @@ E=0
 [[ $GEN == 1 ]]  && { (run_tests "general tests"); (( E |= $? )); } || true
 if [[ $AOF == 1 ]]; then
 	RLTEST_ARGS_AOF="${RLTEST_ARGS} --use-aof"
-	[[ -z $TEST || -z $TESTFILE ]] && RLTEST_ARGS_AOF="${RLTEST_ARGS_AOF} --test test_persistency"
-	(RLTEST_ARGS="${RLTEST_ARGS_AOF}" run_tests "tests with AOF")
-	(( E |= $? )) || true
+	# [[ -z $TEST || -z $TESTFILE ]] && RLTEST_ARGS_AOF="${RLTEST_ARGS_AOF} --test test_persistency"
+	RLTEST_ARGS_AOF="${RLTEST_ARGS_AOF} --test test_persistency"
+	{ (TEST='' TESTFILE='' RLTEST_ARGS="${RLTEST_ARGS_AOF}" run_tests "tests with AOF"); (( E |= $? )); } || true
 fi
 [[ $TCK == 1 ]]  && { (cd ../tck; run_tests "TCK tests"); (( E |= $? )); } || true
 

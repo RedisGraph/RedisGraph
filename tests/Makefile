@@ -53,30 +53,12 @@ unit:
 	@$(MAKE) -C $(ROOT) build FORCE=1 UNIT_TESTS=1
 	@BINROOT=$(BINROOT) $(ROOT)/tests/unit/tests.sh
 
-#ifeq ($(V),1)
-#	@for t in $(UNIT_TEST_FILES); do \
-#		echo Running $$t ...; \
-#		o1=$$(mktemp) ;\
-#		$$t 2>&1 >$$o1 || { cat $$o1; rm $$o1; exit 1; }; \
-#		rm $$o1 ; \
-#	done
-#else
-#ifneq ($(GDB),1)
-#	@for t in $(UNIT_TEST_FILES); do \
-#		echo Running $$t ...; \
-#		$$t || exit 1; \
-#	done
-#else
-#	@for t in $(UNIT_TEST_FILES); do \
-#		echo Running $$t ...; \
-#		$(DEBUGGER_CMD) $$t; \
-#	done
-#endif
-#endif
-
 flow:
 	### flow tests
-	@MODULE=$(TARGET) ./flow/tests.sh
+ifneq ($(GEN),0)
+	@MODULE=$(TARGET) GEN=1 ./flow/tests.sh
+endif
+	@MODULE=$(TARGET) GEN=0 AOF=1 ./flow/tests.sh
 
 tck:
 	### Cypher Technology Compatibility Kit (TCK)

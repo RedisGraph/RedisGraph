@@ -54,6 +54,20 @@ sanitizer_summary() {
 		echo "${NOCOLOR}"
 		E=1
 	fi
+	if grep -l "dynamic-stack-buffer-overflow" ${LOGS_DIR}/*.asan.log* &> /dev/null; then
+		echo
+		echo "${LIGHTRED}Sanitizer: buffer overflow detected:${RED}"
+		grep -l "dynamic-stack-buffer-overflow" ${LOGS_DIR}/*.asan.log*
+		echo "${NOCOLOR}"
+		E=1
+	fi
+	if grep -l "stack-use-after-scope" ${LOGS_DIR}/*.asan.log* &> /dev/null; then
+		echo
+		echo "${LIGHTRED}Sanitizer: stack use after scope detected:${RED}"
+		grep -l "stack-use-after-scope" ${LOGS_DIR}/*.asan.log*
+		echo "${NOCOLOR}"
+		E=1
+	fi
 }
 
 #----------------------------------------------------------------------------------------------
@@ -67,10 +81,14 @@ TEST_LEAK=${TEST_LEAK:-0}
 
 LOGS_DIR=$ROOT/tests/unit/logs
 
-if [[ $CLANG == 1 ]]; then
-	GDB_CMD="lldb -o run --"
+if [[ $GDB == 1 ]]; then
+	if [[ $CLANG == 1 ]]; then
+		GDB_CMD="lldb -o run --"
+	else
+		GDB_CMD="gdb -ex r --args"
+	fi
 else
-	GDB_CMD="gdb -ex r --args"
+	GDB_CMD=
 fi
 
 #----------------------------------------------------------------------------------------------
@@ -90,6 +108,7 @@ if [[ -z $TEST ]]; then
 	if [[ $NOP != 1 ]]; then
 		for test in $(find $TESTS_DIR -name "test_*" -type f -executable -print); do
 			test_name="$(basename $test)"
+			echo "Running $test ..."
 			if [[ $TEST_LEAK == 1 || $test_name != test_leak ]]; then
 				TEST_NAME="$test_name" sanitizer_defs
 				{ $test; (( E |= $? )); } || true
@@ -99,7 +118,11 @@ if [[ -z $TEST ]]; then
 		find $TESTS_DIR -name "test_*" -type f -executable -print
 	fi
 else
-	$OP $GDB_CMD $TESTS_DIR/$TEST
+	SUPERTEST=$(echo "$TEST" | cut -d. -f1)
+	SUBTEST=$(echo "$TEST" | cut -s -d. -f2)
+	echo "Running $TESTS_DIR/$SUPERTEST ..."
+	TEST_NAME="$SUPERTEST" sanitizer_defs
+	$OP $GDB_CMD $TESTS_DIR/$SUPERTEST $SUBTEST
 fi
 
 if [[ -n $SAN ]]; then
