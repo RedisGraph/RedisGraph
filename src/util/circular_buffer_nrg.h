@@ -10,24 +10,24 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-// forward declaration
 typedef struct _CircularBufferNRG _CircularBufferNRG;
 typedef _CircularBufferNRG* CircularBufferNRG;
 
-typedef void (*CircularBufferNRG_ViewAllCallback)(void *user_data, const void *item);
+// Should return true if the read has to be stopped right after the invocation.
+typedef bool (*CircularBufferNRG_ReadAllCallback)(void *user_data, const void *item);
 typedef void (*CircularBufferNRG_ElementFree)(void *user_data, void *item);
 
 CircularBufferNRG CircularBufferNRG_New
 (
-	const uint64_t item_size,
-	const uint64_t capacity
+    const uint64_t item_size,
+    const uint64_t capacity
 );
 
 void CircularBufferNRG_SetDeleter
 (
-	CircularBufferNRG cb,
-	CircularBufferNRG_ElementFree deleter,
-	void *user_data
+    CircularBufferNRG cb,
+    CircularBufferNRG_ElementFree deleter,
+    void *user_data
 );
 
 uint64_t CircularBufferNRG_GetCapacity(const CircularBufferNRG circular_buffer);
@@ -40,52 +40,64 @@ bool CircularBufferNRG_SetCapacity(CircularBufferNRG *cb_ptr, const uint64_t new
 // a full circle, the read offset as well.
 void CircularBufferNRG_Add
 (
-	CircularBufferNRG circular_buffer,
-	const void *item
+    CircularBufferNRG circular_buffer,
+    const void *item
 );
 
 // Removes the oldest item from buffer. If there was nothing to read, and so,
 // remove, the item pointer is not changed.
 void CircularBufferNRG_Read
 (
-	CircularBufferNRG cb,  // buffer to remove item from
-	void *item             // [output] pointer populated with removed item
+    CircularBufferNRG cb,  // buffer to remove item from
+    void *item          // [output] pointer populated with removed item
 );
 
-// Iterates over the entire unread contents and invoke the callback.
+// Iterates over the entire unread contents and invokes the callback.
 // Does it without making copies (memcpy) but rather passing a view pointer to
-// the callback function.
+// the callback function, suitable for a reinterpret cast.
+// This function adjusts the read offset.
+void CircularBufferNRG_ReadAll
+(
+    CircularBufferNRG buffer,
+    CircularBufferNRG_ReadAllCallback callback,
+    void *user_data
+);
+
+// Iterates over the entire unread contents and invokes the callback.
+// Does it without making copies (memcpy) but rather passing a view pointer to
+// the callback function, suitable for a reinterpret cast.
+// This doesn't adjust the read offset.
 void CircularBufferNRG_ViewAll
 (
-	CircularBufferNRG buffer,
-	CircularBufferNRG_ViewAllCallback callback,
-	void *user_data
+    CircularBufferNRG buffer,
+    CircularBufferNRG_ReadAllCallback callback,
+    void *user_data
 );
 
 // Returns a pointer to the current item without adjusting the read offset.
 void *CircularBufferNRG_ViewCurrent
 (
-	const CircularBufferNRG cb
+    const CircularBufferNRG cb
 );
 
 // Returns number of items in buffer.
 uint64_t CircularBufferNRG_ItemCount
 (
-	const CircularBufferNRG cb  // buffer to inspect
+    const CircularBufferNRG cb  // buffer to inspect
 );
 
 uint64_t CircularBufferNRG_ItemSize
 (
-	const CircularBufferNRG cb
+    const CircularBufferNRG cb
 );
 
 // Returns true if buffer there is nothing to read.
 bool CircularBufferNRG_IsEmpty
 (
-	const CircularBufferNRG cb  // buffer to inspect
+    const CircularBufferNRG cb  // buffer to inspect
 );
 
 void CircularBufferNRG_Free
 (
-	CircularBufferNRG cb
+    CircularBufferNRG cb
 );
