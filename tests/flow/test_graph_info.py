@@ -7,8 +7,9 @@ from pathos.helpers import mp as pathos_multiprocess
 from common import *
 import time
 
-GRAPH_ID = "G"
-INFO_QUERIES_COMMAND = 'GRAPH.INFO QUERIES'
+GRAPH_ID = "GRAPH_INFO_TEST"
+INFO_QUERIES_CURRENT_COMMAND = 'GRAPH.INFO QUERIES CURRENT'
+INFO_QUERIES_PREV_COMMAND = 'GRAPH.INFO QUERIES PREV 100'
 INFO_GET_COMMAND_TEMPLATE = 'GRAPH.INFO GET %s'
 INFO_RESET_ALL_COMMAND = 'GRAPH.INFO RESET *'
 
@@ -134,7 +135,7 @@ class testGraphInfoFlow(FlowTestsBase):
         wait_step = 0.1
         waited_time = 0
         while True:
-            info = self.conn.execute_command(INFO_QUERIES_COMMAND)
+            info = self.conn.execute_command(INFO_QUERIES_CURRENT_COMMAND)
             count = get_total_executing_queries_from_info_cmd_result(info)
             if count >= query_count:
                 # Found the query being executed.
@@ -145,7 +146,7 @@ class testGraphInfoFlow(FlowTestsBase):
                 return None
 
     def test01_empty_graph_info(self):
-        info = self.conn.execute_command(INFO_QUERIES_COMMAND)
+        info = self.conn.execute_command(INFO_QUERIES_CURRENT_COMMAND)
         self._assert_one_executing_query(info, None)
 
     def test02_long_query_is_recorded_as_being_executed(self):
@@ -170,7 +171,7 @@ class testGraphInfoFlow(FlowTestsBase):
         self._assert_one_executing_query(info, query, assert_receive_time=query_issue_timestamp_ms)
 
     def test03_graph_info_reset_all(self):
-        info = self.conn.execute_command(INFO_QUERIES_COMMAND)
+        info = self.conn.execute_command(INFO_QUERIES_CURRENT_COMMAND)
         self._assert_one_executing_query(info, None)
 
         query = """UNWIND (range(0, 1000000)) AS x WITH x AS x WHERE (x / 90000) = 1 RETURN x"""
@@ -178,13 +179,13 @@ class testGraphInfoFlow(FlowTestsBase):
         results = graph.query(query)
         self.env.assertEquals(results.result_set[0][0], 90000, depth=1)
 
-        info = list_to_dict(self.conn.execute_command(INFO_QUERIES_COMMAND))
+        info = list_to_dict(self.conn.execute_command(INFO_QUERIES_CURRENT_COMMAND))
         self.env.assertGreaterEqual(info['Global info']['Max query wait duration (milliseconds)'], 0, depth=1)
 
         reset = self.conn.execute_command(INFO_RESET_ALL_COMMAND)
         self.env.assertTrue(reset, depth=1)
 
-        info = list_to_dict(self.conn.execute_command(INFO_QUERIES_COMMAND))
+        info = list_to_dict(self.conn.execute_command(INFO_QUERIES_CURRENT_COMMAND))
         self.env.assertEqual(info['Global info']['Max query wait duration (milliseconds)'], 0, depth=1)
 
     def _assert_info_get_result(self, result,
@@ -214,6 +215,22 @@ class testGraphInfoFlow(FlowTestsBase):
 
         info = self.conn.execute_command(INFO_GET_COMMAND_TEMPLATE % GRAPH_ID)
         self._assert_info_get_result(info, nodes=2, node_labels=1, relationships=1, relationship_types=1, node_property_names=2, edge_property_names=1)
+
+    def test04_graph_info_queries_prev(self):
+        query = """CYPHER end=100 RETURN reduce(sum = 0, n IN range(1, $end) | sum ^ n)"""
+        graph = Graph(self.conn, GRAPH_ID)
+        query_issue_timestamp_ms = get_unix_timestamp_milliseconds()
+        results = graph.query(query)
+        self.env.assertEquals(results.result_set[0][0], 0, depth=1)
+
+        prev = []
+        results = self.conn.execute_command(INFO_QUERIES_PREV_COMMAND)
+        for r in results:
+            prev.append(list_to_dict(r))
+        last_query = prev[-1]
+        self.env.assertGreaterEqual(last_query['Receive timestamp (milliseconds)'], query_issue_timestamp_ms, depth=1)
+        self.env.assertEqual(last_query['Graph name'], GRAPH_ID, depth=1)
+        self.env.assertEqual(last_query['Query'], query, depth=1)
 
     # TODO
     # 1) Reset some graphs, not all, check the output.
