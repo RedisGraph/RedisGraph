@@ -104,10 +104,11 @@ RSDoc *Index_IndexGraphEntity
 			}
 
 			char *s = NULL;
-			char stack_fields[len];
+			char stack_fields[len + 1];
 			if(len + 1 < 512) s = stack_fields; // stack base
 			else s = rm_malloc(sizeof(char) * (len + 1)); // heap base
 
+			RedisModule_Log(NULL, "notice", "STRING: %s", none_indexable_fields[0]);
 			// concat
 			len = sprintf(s, "%s", none_indexable_fields[0]);
 			for(uint i = 1; i < none_indexable_fields_count; i++) {
