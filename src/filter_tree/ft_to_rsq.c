@@ -339,7 +339,6 @@ static void _compose_ranges
 			if(_predicateTreeToRange(tree, string_ranges, numeric_ranges)) {
 				// managed to convert tree into range
 				// discard tree and update loop index
-				FilterTree_Free(tree);
 				array_del_fast(trees, i);
 				i--;
 				count--;
@@ -572,7 +571,6 @@ RSQNode *FilterTreeToQueryNode
 		bool resolved_filter = _FilterTreeToQueryNode(&node, trees[i], idx);
 		if(node != NULL) array_append(nodes, node);
 		if(resolved_filter) {
-			FilterTree_Free(trees[i]);
 			// remove converted filter from filters array
 			array_del_fast(trees, i);
 			i--;
@@ -588,7 +586,7 @@ RSQNode *FilterTreeToQueryNode
 	// to caller as a single filter tree
 	// this might happen when the value compared against is a runtime value of
 	// none indexable type e.g. array
-	*none_converted_filters = FilterTree_Combine(trees, tree_count);
+	*none_converted_filters = FilterTree_Clone(FilterTree_Combine(trees, tree_count));
 
 	RSQNode  *root       =  NULL;
 	uint     node_count  =  array_len(nodes);
