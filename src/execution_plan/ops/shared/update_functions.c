@@ -232,6 +232,8 @@ void EvalEntityUpdates
 				}
 			}
 		}
+
+		SIValue_Free(new_value);
 	}
 
 	// enqueue the current update
