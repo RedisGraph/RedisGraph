@@ -24,6 +24,7 @@ static void _PreparePendingUpdate
 
 	// emit an error and exit if we're trying to add an invalid type
 	if(!(SI_TYPE(new_value) & accepted_properties)) {
+		SIValue_Free(new_value);
 		AttributeSet_Free(props);
 		Error_InvalidPropertyValue();
 		ErrorCtx_RaiseRuntimeException(NULL);
@@ -167,6 +168,7 @@ void EvalEntityUpdates
 		if(attribute != NULL) {
 			// a specific attribute is set, validate the value type
 			if(!((SI_TYPE(new_value) & (SI_VALID_PROPERTY_VALUE | T_NULL) ))) {
+				SIValue_Free(new_value);
 				AttributeSet_Free(&update.attributes);
 				Error_InvalidPropertyValue();
 				ErrorCtx_RaiseRuntimeException(NULL);
@@ -178,6 +180,7 @@ void EvalEntityUpdates
 			// the entire entity is being updated by map or other entity,
 			// validate value is not a property value
 			if((SI_TYPE(new_value) & SI_VALID_PROPERTY_VALUE )) {
+				SIValue_Free(new_value);
 				AttributeSet_Free(&update.attributes);
 				Error_InvalidPropertyValue();
 				ErrorCtx_RaiseRuntimeException(NULL);
@@ -186,6 +189,7 @@ void EvalEntityUpdates
 				if(!(SI_TYPE(new_value) & (T_NODE | T_EDGE | T_MAP))) {
 					// left-hand side is alias reference but right-hand side is a
 					// scalar, emit an error
+					SIValue_Free(new_value);
 					AttributeSet_Free(&update.attributes);
 					Error_InvalidPropertyValue();
 					ErrorCtx_RaiseRuntimeException(NULL);
@@ -224,7 +228,7 @@ void EvalEntityUpdates
 					SIValue value = AttributeSet_GetIdx(set, j, &attr_id);
 
 					_PreparePendingUpdate(&update.attributes, accepted_properties,
-						attr_id, SI_CloneValue(value));
+						attr_id, value);
 				}
 			}
 		}

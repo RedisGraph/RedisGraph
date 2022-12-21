@@ -383,17 +383,17 @@ jobs:
       - run:
           name: Unit tests
           shell: /bin/bash -l -eo pipefail
-          command: make unit-tests PLATFORM_MODE=1 SAN=<<parameters.san-type>> SLOW=1 || true
+          command: make unit-tests PLATFORM_MODE=1 SAN=<<parameters.san-type>> SLOW=1
           no_output_timeout: 45m
       - run:
           name: Flow tests
           shell: /bin/bash -l -eo pipefail
-          command: make flow-tests PLATFORM_MODE=1 SAN=<<parameters.san-type>> SLOW=1 || true
+          command: make flow-tests PLATFORM_MODE=1 SAN=<<parameters.san-type>> SLOW=1
           no_output_timeout: 45m
       - run:
           name: TCK tests
           shell: /bin/bash -l -eo pipefail
-          command: make tck-tests PLATFORM_MODE=1 SAN=<<parameters.san-type>> SLOW=1 || true
+          command: make tck-tests PLATFORM_MODE=1 SAN=<<parameters.san-type>> SLOW=1
           no_output_timeout: 45m
       - save-tests-logs
 
