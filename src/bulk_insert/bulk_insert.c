@@ -227,7 +227,8 @@ static int _BulkInsert_ProcessNodeFile
 	while (data_idx < data_len) {
 		Node n;
 		GraphEntity* ge;
-		SIValue *properties = array_newlen(SIValue, prop_count);
+ 		Graph_CreateNode(gc->g, &n, label_ids, label_count);
+ 		ge = (GraphEntity*)&n;
 		// process entity attributes
 		for (uint i = 0; i < prop_count; i++) {
 			SIValue value = _BulkInsert_ReadProperty(data, &data_idx);
@@ -235,10 +236,11 @@ static int _BulkInsert_ProcessNodeFile
 			if (!(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE)) {
 				continue;
 			}
-			properties[i] = value;
+			// properties[i] = value
+ 			GraphEntity_AddProperty(ge, prop_indices[i], value);
 		}
-		// consumes the properties array.
-		GraphContext_CreateNode(gc, &n, label_ids, label_count, properties);
+
+		GraphContext_IncreasePropertyNamesCount(gc, prop_count, GETYPE_NODE);
 	}
 
     Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_RESIZE);
@@ -291,7 +293,9 @@ static int _BulkInsert_ProcessEdgeFile
 		NodeID dest = *(NodeID*)&data[data_idx];
 		data_idx += sizeof(NodeID);
 
-		SIValue *properties = array_newlen(SIValue, prop_count);
+ 		Graph_CreateEdge(gc->g, src, dest, type_id, &e);
+ 		ge = (GraphEntity*)&e;
+
 		// process entity attributes
 		for (uint i = 0; i < prop_count; i++) {
 			SIValue value = _BulkInsert_ReadProperty(data, &data_idx);
@@ -299,11 +303,10 @@ static int _BulkInsert_ProcessEdgeFile
 			if (!(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE)) {
 				continue;
 			}
-			properties[i] = value;
+ 			GraphEntity_AddProperty(ge, prop_indices[i], value);
 		}
 
-		// consumes the properties array.
-		GraphContext_CreateEdge(gc, src, dest, type_id, &e, properties);
+		GraphContext_IncreasePropertyNamesCount(gc, prop_count, GETYPE_EDGE);
 	}
 
     array_free(type_ids);

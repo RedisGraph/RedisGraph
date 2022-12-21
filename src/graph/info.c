@@ -522,21 +522,18 @@ void Info_Reset(Info *info) {
 
 bool Info_Free(Info *info) {
     REQUIRE_ARG_OR_RETURN(info, false);
-    REQUIRE_TRUE_OR_RETURN(_Info_LockEverything(info, true), false);
 
     QueryInfoStorage_Free(&info->waiting_queries);
     QueryInfoStorage_Free(&info->executing_queries_per_thread);
     QueryInfoStorage_Free(&info->reporting_queries_per_thread);
-    bool lock_destroyed = !pthread_rwlock_destroy(
+    int lock_destroyed = pthread_rwlock_destroy(
         &info->waiting_queries_rwlock);
-    ASSERT(lock_destroyed);
-    lock_destroyed = !pthread_rwlock_destroy(
+    ASSERT(lock_destroyed == 0 && "Waiting queries rwlock destroy error.");
+    lock_destroyed = pthread_rwlock_destroy(
         &info->inverse_global_lock);
-    ASSERT(lock_destroyed);
+    ASSERT(lock_destroyed == 0 && "Global rwlock destroy error.");
 
-    REQUIRE_TRUE_OR_RETURN(_Info_UnlockEverything(info), false);
-
-    return true;
+    return lock_destroyed == 0;
 }
 
 void Info_AddWaitingQueryInfo
@@ -788,7 +785,8 @@ QueryInfoStorage* Info_GetReportingQueriesStorage(Info *info) {
     return &info->reporting_queries_per_thread;
 }
 
-static void _FinishedQueryInfoDeleter(void *info) {
+static void _FinishedQueryInfoDeleter(void *user_data, void *info) {
+    UNUSED(user_data);
     ASSERT(info);
     if (info) {
         FinishedQueryInfo *query_info = (FinishedQueryInfo*)info;

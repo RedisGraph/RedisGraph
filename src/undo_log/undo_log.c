@@ -244,8 +244,14 @@ static void _UndoLog_Rollback_Delete_Node
 		UndoOp *op = undo_list + i;
 		UndoDeleteNodeOp *delete_op = &(op->delete_node_op);
 
-		CreateNode(ctx->gc, &n, delete_op->labels,
-				delete_op->label_count, delete_op->set);
+		Graph_CreateNode(ctx->gc->g, &n, delete_op->labels,
+ 				delete_op->label_count);
+ 		*n.attributes = delete_op->set;
+		GraphContext_IncreasePropertyNamesCount(
+			ctx->gc,
+			ATTRIBUTE_SET_COUNT(*n.attributes),
+			GETYPE_NODE
+		);
 
 		// re-introduce node to indices
 		_index_node(ctx, &n);
@@ -267,8 +273,15 @@ static void _UndoLog_Rollback_Delete_Edge
 		UndoOp *op = undo_list + i;
 		UndoDeleteEdgeOp delete_op = op->delete_edge_op;
 
-		CreateEdge(ctx->gc, &e, delete_op.srcNodeID, delete_op.destNodeID,
-				delete_op.relationID, delete_op.set);
+		Graph_CreateEdge(ctx->gc->g, delete_op.srcNodeID, delete_op.destNodeID,
+ 				delete_op.relationID, &e);
+ 		*e.attributes = delete_op.set;
+
+		GraphContext_IncreasePropertyNamesCount(
+			ctx->gc,
+			ATTRIBUTE_SET_COUNT(*e.attributes),
+			GETYPE_EDGE
+		);
 
 		_index_edge(ctx, &e);
 	}
