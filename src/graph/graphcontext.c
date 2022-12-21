@@ -24,21 +24,6 @@ extern uint aux_field_counter;
 // GraphContext type as it is registered at Redis.
 extern RedisModuleType *GraphContextRedisModuleType;
 
-static void _GraphEntity_AddProperties
-(
-	GraphEntity *entity,
-	SIValue *properties_array
-) {
-	ASSERT(entity);
-	if (!properties_array) {
-		return;
-	}
-	for (uint32_t i = 0; i < array_len(properties_array); ++i) {
-		GraphEntity_AddProperty(entity, i, properties_array[i]);
-	}
-	array_free(properties_array);
-}
-
 // Forward declarations.
 static void _GraphContext_Free(void *arg);
 static void _GraphContext_UpdateVersion(GraphContext *gc, const char *str);
@@ -104,7 +89,6 @@ GraphContext *GraphContext_New
 	gc->slowlog          = SlowLog_New();
 	gc->ref_count        = 0;  // no refences
 	gc->attributes       = raxNew();
-	gc->node_attributes  = Set_New();
 	gc->node_attributes_count = 0;
 	gc->edge_attributes_count = 0;
 	gc->index_count      = 0;  // no indicies
@@ -272,40 +256,6 @@ static void _GraphContext_UpdateVersion(GraphContext *gc, const char *str) {
 	XXH32_freeState(state);
 }
 
-// NOTE: this function assumes the attributes have already been added
-// to the "string_mapping" and "attributes" members of GraphContext.
-static void _GraphContext_AddNodeOnlyAttributes
-(
-	GraphContext *gc,
-	const AttributeSet attributes
-) {
-	ASSERT(gc);
-	ASSERT(attributes);
-	if (!gc || !attributes) {
-		return;
-	}
-
-	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
-
-	const uint64_t attribute_count = ATTRIBUTE_SET_COUNT(attributes);
-	for (uint64_t i = 0; i < attribute_count; ++i) {
-		const Attribute_ID id = attributes->attributes[i].id;
-		if (id >= array_len(gc->string_mapping)) {
-			continue;
-		}
-		const char *str = gc->string_mapping[id];
-		void *foundId = raxFind(gc->attributes, str, strlen(str));
-		if (!str || !foundId || foundId == raxNotFound) {
-			continue;
-		}
-
-		const SIValue id_value = SI_LongVal(id);
-		Set_Add(gc->node_attributes, id_value);
-	}
-
-	pthread_rwlock_unlock(&gc->_attribute_rwlock);
-}
-
 void GraphContext_IncreasePropertyNamesCount
 (
 	GraphContext *gc,
@@ -336,68 +286,6 @@ void GraphContext_DecreasePropertyNamesCount
 	} else if (entity_type == GETYPE_NODE) {
 		gc->node_attributes_count -= count;
 	}
-}
-
-void GraphContext_CreateNode
-(
-	GraphContext *gc,
-	Node *created_node,
-	LabelID *labels,
-	uint label_count,
-	SIValue *properties_array
-) {
-	ASSERT(gc);
-	ASSERT(gc->g);
-	ASSERT(created_node);
-	Graph_CreateNode(gc->g, created_node, labels, label_count);
-	if (!created_node) {
-		if (properties_array) {
-			array_free(properties_array);
-		}
-		return;
-	}
-
-	GraphContext_IncreasePropertyNamesCount(gc, array_len(properties_array), GETYPE_NODE);
-	_GraphEntity_AddProperties((GraphEntity*)created_node, properties_array);
-	_GraphContext_AddNodeOnlyAttributes(gc, created_node->attributes);
-}
-
-void GraphContext_CreateEdge
-(
-	GraphContext *gc,
-	const NodeID source_node,
-	const NodeID destination_node,
-	const int relation_index,
-	Edge *created_edge,
-	SIValue *properties_array
-) {
-	ASSERT(gc);
-	ASSERT(gc->g);
-	ASSERT(created_edge);
-	ASSERT(relation_index < Graph_RelationTypeCount(gc->g));
-	if (!gc || !gc->g || !created_edge || relation_index >= Graph_RelationTypeCount(gc->g)) {
-		if (properties_array) {
-			array_free(properties_array);
-		}
-		return;
-	}
-
-	Graph_CreateEdge(
-		gc->g,
-		source_node,
-		destination_node,
-		relation_index,
-		created_edge);
-
-	if (!created_edge) {
-		if (properties_array) {
-			array_free(properties_array);
-		}
-		return;
-	}
-
-	GraphContext_IncreasePropertyNamesCount(gc, array_len(properties_array), GETYPE_EDGE);
-	_GraphEntity_AddProperties((GraphEntity*)created_edge, properties_array);
 }
 
 //------------------------------------------------------------------------------
@@ -828,8 +716,6 @@ static void _GraphContext_Free(void *arg) {
 	//--------------------------------------------------------------------------
 
 	if(gc->attributes) raxFree(gc->attributes);
-
-	if(gc->node_attributes) Set_Free(gc->node_attributes);
 
 	if(gc->string_mapping) {
 		len = array_len(gc->string_mapping);

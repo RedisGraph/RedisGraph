@@ -95,6 +95,32 @@ static void _AddEdgeToIndices(GraphContext *gc, Edge *e) {
 	Schema_AddEdgeToIndices(s, e);
 }
 
+// uint CreateNode
+// (
+// 	GraphContext *gc,
+// 	Node *n,
+// 	LabelID *labels,
+// 	uint label_count,
+// 	AttributeSet set
+// ) {
+// 	ASSERT(gc != NULL);
+// 	ASSERT(n != NULL);
+
+// 	const uint prop_count = CreateNodeWithoutUndoLog(
+// 		gc,
+// 		n,
+// 		labels,
+// 		label_count,
+// 		set
+// 	);
+
+// 	// add node creation operation to undo log
+// 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+// 	UndoLog_CreateNode(&query_ctx->undo_log, n);
+
+// 	return prop_count;
+// }
+
 uint CreateNode
 (
 	GraphContext *gc,
@@ -106,21 +132,13 @@ uint CreateNode
 	ASSERT(gc != NULL);
 	ASSERT(n != NULL);
 
+	Graph_CreateNode(gc->g, n, labels, label_count);
+ 	*n->attributes = set;
 	const uint32_t prop_count = ATTRIBUTE_SET_COUNT(set);
-	SIValue *properties_array = array_newlen(SIValue, prop_count);
-	for (uint32_t i = 0; i < prop_count; ++i) {
-		properties_array[i] = set->attributes->value;
-	}
-
-	GraphContext_CreateNode(
-		gc,
-		n,
-		labels,
-		label_count,
-		properties_array);
+	GraphContext_IncreasePropertyNamesCount(gc, prop_count, GETYPE_NODE);
 
 	// add node labels
-	for(uint i = 0; i < label_count; i++) {
+ 	for(uint i = 0; i < label_count; i++) {
 		Schema *s = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
 		ASSERT(s);
 		Schema_AddNodeToIndices(s, n);
@@ -132,6 +150,7 @@ uint CreateNode
 
 	return prop_count;
 }
+
 
 uint CreateEdge
 (
@@ -145,24 +164,16 @@ uint CreateEdge
 	ASSERT(gc != NULL);
 	ASSERT(e != NULL);
 
+	Graph_CreateEdge(gc->g, src, dst, r, e);
+ 	*e->attributes = set;
 	const uint32_t prop_count = ATTRIBUTE_SET_COUNT(set);
-	SIValue *properties_array = array_newlen(SIValue, prop_count);
-	for (uint32_t i = 0; i < prop_count; ++i) {
-		properties_array[i] = set->attributes->value;
-	}
-
-	GraphContext_CreateEdge(
-		gc,
-		src,
-		dst,
-		r,
-		e,
-		properties_array);
+	GraphContext_IncreasePropertyNamesCount(gc, prop_count, GETYPE_EDGE);
 
 	Schema *s = GraphContext_GetSchema(gc, e->relationship, SCHEMA_EDGE);
-	// all schemas have been created in the edge blueprint loop or earlier
+ 	// all schemas have been created in the edge blueprint loop or earlier
 	ASSERT(s != NULL);
 	Schema_AddEdgeToIndices(s, e);
+	// add edge creation operation to undo log
 
 	// add edge creation operation to undo log
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
