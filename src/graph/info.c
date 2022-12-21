@@ -71,10 +71,10 @@ FinishedQueryInfo FinishedQueryInfo_FromQueryInfo(const QueryInfo info) {
     FinishedQueryInfo finished;
     memset(&finished, 0, sizeof(FinishedQueryInfo));
 
-    finished.total_executed_time_milliseconds = info.executing_time_milliseconds;
     finished.received_unix_timestamp_milliseconds = info.received_unix_timestamp_milliseconds;
-    finished.total_reported_time_milliseconds = info.reporting_time_milliseconds;
-    finished.total_waited_time_milliseconds = info.waiting_time_milliseconds;
+    finished.total_wait_duration_milliseconds = info.waiting_time_milliseconds;
+    finished.total_execution_duration_milliseconds = info.executing_time_milliseconds;
+    finished.total_report_duration_milliseconds = info.reporting_time_milliseconds;
 
     if (info.context) {
         finished.query_string = strdup(info.context->query_data.query);

@@ -47,9 +47,9 @@ typedef struct QueryInfo {
 
 typedef struct FinishedQueryInfo {
     uint64_t received_unix_timestamp_milliseconds;
-    uint64_t total_waited_time_milliseconds;
-    uint64_t total_executed_time_milliseconds;
-    uint64_t total_reported_time_milliseconds;
+    uint64_t total_wait_duration_milliseconds;
+    uint64_t total_execution_duration_milliseconds;
+    uint64_t total_report_duration_milliseconds;
     char *query_string;
     char *graph_name;
 } FinishedQueryInfo;
