@@ -493,7 +493,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("Attempted to access variable" in str(e))
+            assert("a not defined" in str(e))
             pass
 
     def test34_self_referential_properties(self):

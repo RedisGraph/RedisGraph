@@ -9,18 +9,6 @@
 #include "util/rmalloc.h"
 #include "ast_validations.h"
 
-// default visit function
-static VISITOR_STRATEGY _default_visit
-(
-	const cypher_astnode_t *n,
-	bool start,
-	void *ctx
-) {
-	ASSERT(n != NULL);
-
-	return VISITOR_RECURSE;
-}
-
 // recursively visit an ast-node
 static VISITOR_STRATEGY _AST_Visitor_visit
 (
@@ -30,22 +18,15 @@ static VISITOR_STRATEGY _AST_Visitor_visit
 	ASSERT(node    != NULL);
 	ASSERT(visitor != NULL);
 
-	// visitation context
-	void *ctx = visitor->ctx;
-
 	// get ast node type
 	cypher_astnode_type_t node_type = cypher_astnode_type(node);
-
-	// TODO: make sure (DEBUG) access to mapping[node_type]
-	// is valid
-	ASSERT(node_type < visitor->n..);
 
 	//--------------------------------------------------------------------------
 	// opening call
 	//--------------------------------------------------------------------------
 
 	// first visit of the node
-	VISITOR_STRATEGY state = visitor->mapping[node_type](node, true, ctx);
+	VISITOR_STRATEGY state = visitor->mapping[node_type](node, true, visitor);
 	if(state != VISITOR_RECURSE) {
 		// do not visit children
 		return state;
@@ -57,7 +38,7 @@ static VISITOR_STRATEGY _AST_Visitor_visit
 
 	uint nchildren = cypher_astnode_nchildren(node);
 	for (uint i = 0; i < nchildren; i++) {
-		if(_AST_Visitor_visit(cypher_astnode_get_child(node, i), ctx) == VISITOR_BREAK) {
+		if(_AST_Visitor_visit(cypher_astnode_get_child(node, i), visitor) == VISITOR_BREAK) {
 			// error occurred, fast fold
 			return VISITOR_BREAK;
 		}
@@ -67,7 +48,7 @@ static VISITOR_STRATEGY _AST_Visitor_visit
 	// closing call
 	//--------------------------------------------------------------------------
 
-	return visitor->mapping[node_type](node, false, ctx);
+	return visitor->mapping[node_type](node, false, visitor);
 }
 
 // creates a new visitor
@@ -86,7 +67,7 @@ ast_visitor *AST_Visitor_new
 // visit an ast-node
 void AST_Visitor_visit
 (
-	const cypher_astnode_t *root,  // node to visit
+	const cypher_astnode_t *node,  // node to visit
 	ast_visitor *visitor           // visitor
 ) {
 	ASSERT(node    != NULL);

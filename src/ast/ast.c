@@ -712,7 +712,7 @@ cypher_parse_result_t *parse_query
 	// e.g. MATCH (a), (b) RETURN *
 	// will be rewritten as:
 	//  MATCH (a), (b) RETURN a, b
-	bool rerun_validation = AST_RewriteStarProjections(root);
+	bool rerun_validation = AST_RewriteStarProjections((cypher_astnode_t *)root);
 
 	// compress clauses
 	// e.g. MATCH (a:N) MATCH (b:N) RETURN a,b

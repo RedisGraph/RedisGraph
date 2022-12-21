@@ -22,7 +22,7 @@ typedef enum {
 } VISITOR_STRATEGY;
 
 // visit function signature called for each registered AST node type
-typedef VISITOR_STRATEGY (*visit)(const cypher_astnode_t *n, bool start, void *ctx);
+typedef VISITOR_STRATEGY (*visit)(const cypher_astnode_t *n, bool start, ast_visitor *visitor);
 
 // ast_visitor_mapping maps between an ast-node-type and a visiting function
 typedef visit* ast_visitor_mapping;
@@ -47,7 +47,7 @@ ast_visitor *AST_Visitor_new
 // visits an ast-node
 void AST_Visitor_visit
 (
-	const cypher_astnode_t *root,  // node to visit
+	const cypher_astnode_t *node,  // node to visit
 	ast_visitor *visitor           // visitor
 );
 

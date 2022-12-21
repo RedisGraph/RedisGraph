@@ -6,6 +6,15 @@
 
 #pragma once
 
+#include "ast_visitor.h"
+
 // build the global mapping from ast-node-type to visiting functions
 bool AST_ValidationsMappingInit(void);
 
+// default visit function
+static VISITOR_STRATEGY _default_visit
+(
+	const cypher_astnode_t *n,  // ast-node
+	bool start,                 // first traversal
+	ast_visitor *visitor        // visitor
+);
