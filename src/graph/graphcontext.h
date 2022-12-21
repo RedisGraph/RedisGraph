@@ -32,7 +32,6 @@ typedef struct {
 	rax *attributes;                                   // from strings to attribute IDs
 	atomic_uint_fast64_t node_attributes_count;        // counter of attributes related to nodes
 	atomic_uint_fast64_t edge_attributes_count;        // counter of attributes related to edges
-	Attribute_ID *node_attributes;                     // attributes of just nodes.
 	pthread_rwlock_t _attribute_rwlock;                // read-write lock to protect access to the attribute maps
 	char *graph_name;                                  // string associated with graph
 	char **string_mapping;                             // from attribute IDs to strings
@@ -120,25 +119,6 @@ void GraphContext_DecreasePropertyNamesCount
 	GraphContext *gc,
 	const uint64_t count,
 	const GraphEntityType entity_type
-);
-
-void GraphContext_CreateNode
-(
-	GraphContext *gc,
-	Node *created_node,
-	LabelID *labels,
-	uint label_count,
-	SIValue *properties_array
-);
-
-void GraphContext_CreateEdge
-(
-	GraphContext *gc,
-	const NodeID source_node,
-	const NodeID destination_node,
-	const int relation_index,
-	Edge *created_edge,
-	SIValue *properties_array
 );
 
 //------------------------------------------------------------------------------
