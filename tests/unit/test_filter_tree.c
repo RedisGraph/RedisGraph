@@ -321,6 +321,7 @@ void test_subTrees() {
 	compareFilterTrees(original_tree->cond.right, sub_tree);
 
 	array_free(sub_trees);
+	FilterTree_Free(tree);
 	FilterTree_Free(original_tree);
 	AST_Free(ast);
 	ast = QueryCtx_GetAST();
@@ -373,6 +374,7 @@ void test_subTrees() {
 
 	array_free(sub_trees);
 	FilterTree_Free(original_tree);
+	FilterTree_Free(tree);
 	AST_Free(ast);
 	ast = QueryCtx_GetAST();
 	AST_Free(ast);

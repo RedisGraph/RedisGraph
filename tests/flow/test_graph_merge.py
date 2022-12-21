@@ -567,7 +567,7 @@ class testGraphMergeFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            self.env.assertIn("undefined attribute", str(e))
+            self.env.assertIn("Cannot merge node using null property value", str(e))
 
     def test28_merge_reset_label_scan(self):
         redis_con = self.env.getConnection()

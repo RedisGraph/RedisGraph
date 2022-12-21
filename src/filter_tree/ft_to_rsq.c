@@ -546,10 +546,8 @@ RSQNode *FilterTreeToQueryNode
 	ASSERT(tree != NULL);
 	ASSERT(none_converted_filters != NULL);
 
-	// clone filter tree, as it is about to be modified
-	FT_FilterNode  *t       =  FilterTree_Clone(tree);
-	RSQNode        **nodes  =  array_new(RSQNode*, 1);  // intermidate nodes
-	FT_FilterNode  **trees  =  FilterTree_SubTrees(t);  // individual subtrees
+	RSQNode        **nodes  =  array_new(RSQNode*, 1);     // intermidate nodes
+	FT_FilterNode  **trees  =  FilterTree_SubTrees(tree);  // individual subtrees
 
 	//--------------------------------------------------------------------------
 	// convert filters to numeric and string ranges

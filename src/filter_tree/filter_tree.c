@@ -140,7 +140,7 @@ FT_FilterNode *FilterTree_CreateConditionFilter
 
 void _FilterTree_SubTrees
 (
-	FT_FilterNode *root,
+	const FT_FilterNode *root,
 	FT_FilterNode ***sub_trees
 ) {
 	if(root == NULL) return;
@@ -157,7 +157,6 @@ void _FilterTree_SubTrees
 					// break AND down to its components
 					_FilterTree_SubTrees(root->cond.left, sub_trees);
 					_FilterTree_SubTrees(root->cond.right, sub_trees);
-					rm_free((FT_FilterNode *)root);
 					break;
 				case OP_OR:
 				case OP_XOR:
@@ -202,7 +201,7 @@ FT_FilterNode *FilterTree_Combine
 
 FT_FilterNode **FilterTree_SubTrees
 (
-	FT_FilterNode *root
+	const FT_FilterNode *root
 ) {
 	FT_FilterNode **sub_trees = array_new(FT_FilterNode *, 1);
 	_FilterTree_SubTrees(root, &sub_trees);

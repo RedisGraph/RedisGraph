@@ -199,10 +199,10 @@ void FilterTree_CollectIndependentEntities
 		}
 
 		raxFree(modified);
-		FilterTree_Free(t);
 	}
 
 	array_free(sub_trees);
+	FilterTree_Free(tree);
 }
 
 // score each expression and sort expressions by score

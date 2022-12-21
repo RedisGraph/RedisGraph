@@ -137,13 +137,14 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, OpBase *root, const OpBas
 	 * after which the filter tree can be applied. */
 	uint nfilters = array_len(sub_trees);
 	for(uint i = 0; i < nfilters; i++) {
-		FT_FilterNode *tree = sub_trees[i];
+		FT_FilterNode *tree = FilterTree_Clone(sub_trees[i]);
 		OpBase *filter_op = NewFilterOp(plan, tree);
 		ExecutionPlan_RePositionFilterOp(plan, root, recurse_limit, filter_op);
 	}
 	array_free(sub_trees);
 	// Build ops in the Apply family to appropriately process path filters.
 	_ExecutionPlan_PlaceApplyOps(plan);
+	FilterTree_Free(ft);
 }
 
 static inline void _buildCreateOp

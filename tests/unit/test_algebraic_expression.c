@@ -1742,6 +1742,8 @@ void test_RemoveOperand() {
 			AlgebraicExpression_Free(expected);
 		}
 	}
+
+	raxFree(matrices);
 }
 
 void test_LocateOperand() {

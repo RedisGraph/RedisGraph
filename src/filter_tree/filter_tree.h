@@ -166,7 +166,7 @@ void FilterTree_Print
 // components possible following the two rules above
 FT_FilterNode **FilterTree_SubTrees
 (
-	FT_FilterNode *root
+	const FT_FilterNode *root
 );
 
 // combines filters usign AND conditions
