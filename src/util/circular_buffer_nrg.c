@@ -8,6 +8,7 @@
 #include "circular_buffer_nrg.h"
 
 #include <string.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <sys/param.h>
 
@@ -24,8 +25,8 @@ struct _CircularBufferNRG {
     uint64_t item_count;
     bool is_circled;
     ElementDeleteInfo delete_info;
-    char *end_marker;
-    char data[];
+    uint8_t *end_marker;
+    uint8_t data[];
 };
 
 static void* _CircularBufferNRG_ItemAtOffset
