@@ -332,10 +332,8 @@ void _query(bool profile, void *args) {
 	CronTaskHandle timeout_task = 0;
 
 	// enforce specified timeout when query is readonly
-	// or timeout applies to both read and write
 	bool enforce_timeout = command_ctx->timeout != 0 &&
-		(readonly || command_ctx->timeout_rw) &&
-		!command_ctx->replicated_command;
+		readonly && !command_ctx->replicated_command;
 	if(enforce_timeout) {
 		timeout_task = Query_SetTimeOut(command_ctx->timeout, exec_ctx->plan);
 	}

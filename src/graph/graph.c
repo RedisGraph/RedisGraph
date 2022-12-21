@@ -789,7 +789,7 @@ uint64_t Graph_GetNodeDegree
 	uint64_t            edge_count = 0;
 	RG_Matrix           M          = NULL;
 	RG_Matrix           TM         = NULL;
-	RG_MatrixTupleIter  it         = {0};
+	RG_MatrixTupleIter  *it        = NULL;
 
 	if(edgeType == GRAPH_UNKNOWN_RELATION) {
 		return 0;  // no edges
@@ -815,6 +815,9 @@ uint64_t Graph_GetNodeDegree
 		end_rel = Graph_RelationTypeCount(g);
 	}
 
+	GrB_Info info;
+	UNUSED(info);
+	bool depleted;
 	// for each relationship type to consider
 	for(edgeType = start_rel; edgeType < end_rel; edgeType++) {
 		M = Graph_GetRelationMatrix(g, edgeType, false);
@@ -827,10 +830,15 @@ uint64_t Graph_GetNodeDegree
 		if(outgoing) {
 			// construct an iterator to traverse over the source node row,
 			// containing all outgoing edges
-			RG_MatrixTupleIter_AttachRange(&it, M, srcID, srcID);
+			info = RG_MatrixTupleIter_new(&it, M);
+			ASSERT(info == GrB_SUCCESS);
+			info = RG_MatrixTupleIter_iterate_row(it, srcID);
+			ASSERT(info == GrB_SUCCESS);
+
 			// scan row
-			while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, &edgeID)
-					== GrB_SUCCESS) {
+			info = RG_MatrixTupleIter_next(it, NULL, &destID, &edgeID, &depleted);
+			ASSERT(info == GrB_SUCCESS);
+			while(!depleted) {
 
 				// check for edge type single/multi
 				if(SINGLE_EDGE(edgeID)) {
@@ -841,8 +849,12 @@ uint64_t Graph_GetNodeDegree
 					EdgeID *multi_edge = (EdgeID *)(CLEAR_MSB(edgeID));
 					edge_count += array_len(multi_edge);
 				}
+
+				info = RG_MatrixTupleIter_next(it, NULL, &destID, &edgeID, &depleted);
+				ASSERT(info == GrB_SUCCESS);
 			}
-			RG_MatrixTupleIter_detach(&it);
+
+			RG_MatrixTupleIter_reset(it);
 		}
 
 		//----------------------------------------------------------------------
@@ -855,10 +867,14 @@ uint64_t Graph_GetNodeDegree
 
 			// construct an iterator to traverse over the source node row,
 			// containing all incoming edges
-			RG_MatrixTupleIter_AttachRange(&it, TM, srcID, srcID);
-			while(RG_MatrixTupleIter_next_BOOL(&it, NULL, &destID, NULL)
-					== GrB_SUCCESS) {
-
+			info = RG_MatrixTupleIter_new(&it, TM);
+			ASSERT(info == GrB_SUCCESS);
+			info = RG_MatrixTupleIter_iterate_row(it, srcID);
+			ASSERT(info == GrB_SUCCESS);
+			
+			info = RG_MatrixTupleIter_next(it, NULL, &destID, NULL, &depleted);
+			ASSERT(info == GrB_SUCCESS);
+			while(!depleted) {
 				// check for edge type single/multi
 				RG_Matrix_extractElement_UINT64(&edgeID, M, destID, srcID);
 				if(SINGLE_EDGE(edgeID)) {
@@ -869,10 +885,15 @@ uint64_t Graph_GetNodeDegree
 					EdgeID *multi_edge = (EdgeID *)(CLEAR_MSB(edgeID));
 					edge_count += array_len(multi_edge);
 				}
+
+				info = RG_MatrixTupleIter_next(it, NULL, &destID, NULL, &depleted);
+				ASSERT(info == GrB_SUCCESS);
 			}
-			RG_MatrixTupleIter_detach(&it);
+			
+			RG_MatrixTupleIter_reset(it);
 		}
 	}
+	// RG_MatrixTupleIter_free(&it);
 
 	return edge_count;
 }

@@ -91,10 +91,10 @@ class testUnwindClause():
         expected = [[None], [1], [2]]
         self.env.assertEqual(actual_result.result_set, expected)
 
-    def test02_unwind_set(self):
+    def test03_unwind_set(self):
         # delete property
         query = """CREATE (n:N {x:3})"""
         actual_result = redis_graph.query(query)
-        query = """UNWIND ({x:null}) AS q MATCH (n:N) SET n.x= q.x RETURN n"""
+        query = """UNWIND ({x:null}) AS q MATCH (n:N) SET n.x = q.x RETURN n"""
         actual_result = redis_graph.query(query)
-        self.env.assertEqual(actual_result.properties_removed, 1)
+        self.env.assertEqual(actual_result.properties_set, 1)

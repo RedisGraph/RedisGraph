@@ -48,6 +48,7 @@ Feature: Set4 - Set all properties with a map
     And the side effects should be:
       | +properties | 3 |
 
+  @skip
   Scenario: [2] Non-existent values in a property map are removed with SET
     Given an empty graph
     And having executed:
@@ -67,6 +68,7 @@ Feature: Set4 - Set all properties with a map
       | +properties | 2 |
       | -properties | 2 |
 
+  @skip
   Scenario: [3] Null values in a property map are removed with SET
     Given an empty graph
     And having executed:
