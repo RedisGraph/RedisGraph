@@ -36,7 +36,7 @@ typedef struct ast_visitor {
 } ast_visitor;
 
 // get the context of a visitor
-void *AST_VisitorGetContext
+void *AST_Visitor_GetContext
 (
 	const ast_visitor *visitor  // visitor
 );
