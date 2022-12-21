@@ -451,7 +451,7 @@ bool Config_Contains_field
 		f = Config_NODE_CREATION_BUFFER;
 	} else if(!(strcasecmp(field_str, CMD_INFO))) {
 		f = Config_CMD_INFO;
-	} else if(!(strcasecmp(field_str, CMD_INFO_QUERIES_MAX_COUNT_DEFAULT))) {
+	} else if(!(strcasecmp(field_str, CMD_INFO_MAX_QUERIES_COUNT_OPTION_NAME))) {
 		f = Config_CMD_INFO_MAX_QUERY_COUNT;
 	} else {
 		return false;

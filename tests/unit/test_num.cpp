@@ -30,5 +30,3 @@ TEST(NumOverflowTest, TestCheckedAddU8) {
     ASSERT_EQ(out, 98);
     ASSERT_EQ(is_ok, false);
 }
-
-
