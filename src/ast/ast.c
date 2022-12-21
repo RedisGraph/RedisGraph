@@ -18,7 +18,11 @@
 #include "../arithmetic/arithmetic_expression_construct.h"
 
 // TODO duplicated logic, find shared place for it
-static inline void _prepareIterateAll(rax *map, raxIterator *iter) {
+static inline void _prepareIterateAll
+(
+	rax *map,
+	raxIterator *iter
+) {
 	raxStart(iter, map);
 	raxSeek(iter, "^", NULL, 0);
 }
@@ -26,8 +30,11 @@ static inline void _prepareIterateAll(rax *map, raxIterator *iter) {
 // Note each function call within given expression
 // Example: given the expression: "abs(max(min(a), abs(k)))"
 // referred_funcs will include: "abs", "max" and "min".
-static void _consume_function_call_expression(const cypher_astnode_t *node,
-											  rax *referred_funcs) {
+static void _consume_function_call_expression
+(
+	const cypher_astnode_t *node,
+	rax *referred_funcs
+) {
 	cypher_astnode_type_t type = cypher_astnode_type(node);
 
 	if(type == CYPHER_AST_APPLY_OPERATOR ||
@@ -54,10 +61,14 @@ static void _consume_function_call_expression(const cypher_astnode_t *node,
 	}
 }
 
-/* This function returns the actual root of the query.
- * As cypher_parse_result_t can have multiple roots such as comments, only a root with type
- * CYPHER_AST_STATEMENT is considered as the actual root. Comment roots are ignored. */
-static const cypher_astnode_t *_AST_parse_result_root(const cypher_parse_result_t *parse_result) {
+// this function returns the actual root of the query
+// as cypher_parse_result_t can have multiple roots such as comments
+// only a root with type CYPHER_AST_STATEMENT is considered as the actual root
+// comment roots are ignored
+static const cypher_astnode_t *_AST_parse_result_root
+(
+	const cypher_parse_result_t *parse_result
+) {
 	uint nroots = cypher_parse_result_nroots(parse_result);
 	for(uint i = 0; i < nroots; i++) {
 		const cypher_astnode_t *root = cypher_parse_result_get_root(parse_result, i);
@@ -72,10 +83,13 @@ static const cypher_astnode_t *_AST_parse_result_root(const cypher_parse_result_
 	return NULL;
 }
 
-/* This method extracts the query given parameters values, convert them into
- * constant arithmetic expressions and store them in a map of <name, value>
- * in the query context. */
-static void _AST_Extract_Params(const cypher_parse_result_t *parse_result) {
+// this method extracts the query given parameters values, convert them into
+// constant arithmetic expressions and store them in a map of <name, value>
+// in the query context
+static void _AST_Extract_Params
+(
+	const cypher_parse_result_t *parse_result
+) {
 	// Retrieve the AST root node from a parsed query.
 	const cypher_astnode_t *statement = _AST_parse_result_root(parse_result);
 	uint noptions = cypher_ast_statement_noptions(statement);
@@ -96,17 +110,26 @@ static void _AST_Extract_Params(const cypher_parse_result_t *parse_result) {
 	QueryCtx_SetParams(params);
 }
 
-static void AST_IncreaseRefCount(AST *ast) {
+static void AST_IncreaseRefCount
+(
+	AST *ast
+) {
 	ASSERT(ast);
 	__atomic_fetch_add(ast->ref_count, 1, __ATOMIC_RELAXED);
 }
 
-static int AST_DecRefCount(AST *ast) {
+static int AST_DecRefCount
+(
+	AST *ast
+) {
 	ASSERT(ast);
 	return __atomic_sub_fetch(ast->ref_count, 1, __ATOMIC_RELAXED);
 }
 
-bool AST_ReadOnly(const cypher_astnode_t *root) {
+bool AST_ReadOnly
+(
+	const cypher_astnode_t *root
+) {
 	// check for empty query
 	if(root == NULL) return true;
 
@@ -143,12 +166,20 @@ bool AST_ReadOnly(const cypher_astnode_t *root) {
 	return true;
 }
 
-inline bool AST_ContainsClause(const AST *ast, cypher_astnode_type_t clause) {
+inline bool AST_ContainsClause
+(
+	const AST *ast,
+	cypher_astnode_type_t clause
+) {
 	return AST_GetClause(ast, clause, NULL) != NULL;
 }
 
-// Checks to see if an AST tree contains specified node type.
-bool AST_TreeContainsType(const cypher_astnode_t *root, cypher_astnode_type_t search_type) {
+// checks to see if an AST tree contains specified node type
+bool AST_TreeContainsType
+(
+	const cypher_astnode_t *root,
+	cypher_astnode_type_t search_type
+) {
 	cypher_astnode_type_t type = cypher_astnode_type(root);
 	if(type == search_type) return true;
 	uint childCount = cypher_astnode_nchildren(root);
@@ -158,8 +189,12 @@ bool AST_TreeContainsType(const cypher_astnode_t *root, cypher_astnode_type_t se
 	return false;
 }
 
-// Recursively collect the names of all function calls beneath a node
-void AST_ReferredFunctions(const cypher_astnode_t *root, rax *referred_funcs) {
+// recursively collect the names of all function calls beneath a node
+void AST_ReferredFunctions
+(
+	const cypher_astnode_t *root,
+	rax *referred_funcs
+) {
 	cypher_astnode_type_t root_type = cypher_astnode_type(root);
 	if(root_type == CYPHER_AST_APPLY_OPERATOR || root_type == CYPHER_AST_APPLY_ALL_OPERATOR) {
 		_consume_function_call_expression(root, referred_funcs);
@@ -172,9 +207,13 @@ void AST_ReferredFunctions(const cypher_astnode_t *root, rax *referred_funcs) {
 	}
 }
 
-// Retrieve the first instance of the specified clause in the AST segment, if any.
-const cypher_astnode_t *AST_GetClause(const AST *ast,
-									  cypher_astnode_type_t clause_type, uint *clause_idx) {
+// retrieve the first instance of the specified clause in the AST segment if any
+const cypher_astnode_t *AST_GetClause
+(
+	const AST *ast,
+	cypher_astnode_type_t clause_type,
+	uint *clause_idx
+) {
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	for(uint i = 0; i < clause_count; i ++) {
 		const cypher_astnode_t *child = cypher_ast_query_get_clause(ast->root, i);
@@ -187,7 +226,10 @@ const cypher_astnode_t *AST_GetClause(const AST *ast,
 	return NULL;
 }
 
-const cypher_astnode_t *AST_GetClauseByIdx(const AST *ast, uint i) {
+const cypher_astnode_t *AST_GetClauseByIdx
+(
+	const AST *ast, uint i
+) {
 	ASSERT(ast != NULL);
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	ASSERT(i < clause_count);
@@ -197,7 +239,11 @@ const cypher_astnode_t *AST_GetClauseByIdx(const AST *ast, uint i) {
 	return clause;
 }
 
-uint *AST_GetClauseIndices(const AST *ast, cypher_astnode_type_t clause_type) {
+uint *AST_GetClauseIndices
+(
+	const AST *ast,
+	cypher_astnode_type_t clause_type
+) {
 	uint *clause_indices = array_new(uint, 1);
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	for(uint i = 0; i < clause_count; i ++) {
@@ -218,8 +264,9 @@ uint AST_GetClauseCount(const AST *ast, cypher_astnode_type_t clause_type) {
 	return num_found;
 }
 
-/* Collect references to all clauses of the specified type in the query. Since clauses
- * cannot be nested, we only need to check the immediate children of the query node. */
+// collect references to all clauses of the specified type in the query
+// since clauses cannot be nested we only need to check
+// the immediate children of the query node
 const cypher_astnode_t **AST_GetClauses
 (
 	const AST *ast,
@@ -237,8 +284,12 @@ const cypher_astnode_t **AST_GetClauses
 	return clauses;
 }
 
-static void _AST_GetTypedNodes(const cypher_astnode_t  ***nodes, const cypher_astnode_t *root,
-							   cypher_astnode_type_t type) {
+static void _AST_GetTypedNodes
+(
+	const cypher_astnode_t ***nodes,
+	const cypher_astnode_t *root,
+	cypher_astnode_type_t type
+) {
 	if(cypher_astnode_type(root) == type) array_append(*nodes, root);
 	uint nchildren = cypher_astnode_nchildren(root);
 	for(uint i = 0; i < nchildren; i ++) {
@@ -246,14 +297,21 @@ static void _AST_GetTypedNodes(const cypher_astnode_t  ***nodes, const cypher_as
 	}
 }
 
-const cypher_astnode_t **AST_GetTypedNodes(const cypher_astnode_t *root,
-										   cypher_astnode_type_t type) {
+const cypher_astnode_t **AST_GetTypedNodes
+(
+	const cypher_astnode_t *root,
+	cypher_astnode_type_t type
+) {
 	const cypher_astnode_t **nodes = array_new(const cypher_astnode_t *, 0);
 	_AST_GetTypedNodes(&nodes, root, type);
 	return nodes;
 }
 
-void AST_CollectAliases(const char ***aliases, const cypher_astnode_t *entity) {
+void AST_CollectAliases
+(
+	const char ***aliases,
+	const cypher_astnode_t *entity
+) {
 	if(entity == NULL) return;
 
 	const  cypher_astnode_t **identifier_nodes =  AST_GetTypedNodes(entity, CYPHER_AST_IDENTIFIER);
@@ -266,7 +324,10 @@ void AST_CollectAliases(const char ***aliases, const cypher_astnode_t *entity) {
 	array_free(identifier_nodes);
 }
 
-AST *AST_Build(cypher_parse_result_t *parse_result) {
+AST *AST_Build
+(
+	cypher_parse_result_t *parse_result
+) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->ref_count = rm_malloc(sizeof(uint));
 	ast->free_root = false;
@@ -295,7 +356,12 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	return ast;
 }
 
-AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
+AST *AST_NewSegment
+(
+	AST *master_ast,
+	uint start_offset,
+	uint end_offset
+) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->anot_ctx_collection = master_ast->anot_ctx_collection;
 	ast->free_root = true;
@@ -324,9 +390,9 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	if(end_offset == clause_count) end_offset = clause_count - 1;
 
 	project_clause = cypher_ast_query_get_clause(master_ast->root, end_offset);
-	/* Last clause is not necessarily a projection clause,
-	 * [MATCH (a) RETURN a UNION] MATCH (a) RETURN a
-	 * In this case project_clause = UNION, which is not a projection clause. */
+	// last clause is not necessarily a projection clause
+	// [MATCH (a) RETURN a UNION] MATCH (a) RETURN a
+	// In this case project_clause = UNION, which is not a projection clause
 	cypher_astnode_type_t project_type = cypher_astnode_type(project_clause);
 	if(project_type != CYPHER_AST_WITH && project_type != CYPHER_AST_RETURN) project_clause = NULL;
 
@@ -336,13 +402,20 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	return ast;
 }
 
-void AST_SetParamsParseResult(AST *ast, cypher_parse_result_t *params_parse_result) {
+void AST_SetParamsParseResult
+(
+	AST *ast,
+	cypher_parse_result_t *params_parse_result
+) {
 	// When setting this value in AST, the ast should no hold invalid pointers or leftovers from previous executions.
 	ASSERT(ast->params_parse_result == NULL);
 	ast->params_parse_result = params_parse_result;
 }
 
-AST *AST_ShallowCopy(AST *orig) {
+AST *AST_ShallowCopy
+(
+	AST *orig
+) {
 	AST_IncreaseRefCount(orig);
 	size_t ast_size = sizeof(AST);
 	AST *shallow_copy = rm_malloc(ast_size);
@@ -351,11 +424,19 @@ AST *AST_ShallowCopy(AST *orig) {
 	return shallow_copy;
 }
 
-inline bool AST_AliasIsReferenced(AST *ast, const char *alias) {
+inline bool AST_AliasIsReferenced
+(
+	AST *ast,
+	const char *alias
+) {
 	return (raxFind(ast->referenced_entities, (unsigned char *)alias, strlen(alias)) != raxNotFound);
 }
 
-bool AST_IdentifierIsAlias(const cypher_astnode_t *root, const char *identifier) {
+bool AST_IdentifierIsAlias
+(
+	const cypher_astnode_t *root,
+	const char *identifier
+) {
 	if(cypher_astnode_type(root) == CYPHER_AST_PROJECTION) {
 		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(root);
 		// If this projection is aliased, check the alias.
@@ -382,14 +463,20 @@ bool AST_IdentifierIsAlias(const cypher_astnode_t *root, const char *identifier)
 
 // TODO Consider augmenting libcypher-parser so that we don't need to perform this
 // work in-module.
-inline long AST_ParseIntegerNode(const cypher_astnode_t *int_node) {
+inline long AST_ParseIntegerNode
+(
+	const cypher_astnode_t *int_node
+) {
 	ASSERT(int_node);
 
 	const char *value_str = cypher_ast_integer_get_valuestr(int_node);
 	return strtol(value_str, NULL, 0);
 }
 
-bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
+bool AST_ClauseContainsAggregation
+(
+	const cypher_astnode_t *clause
+) {
 	ASSERT(clause);
 
 	bool aggregated = false;
@@ -419,7 +506,10 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 	return aggregated;
 }
 
-const char **AST_BuildReturnColumnNames(const cypher_astnode_t *return_clause) {
+const char **AST_BuildReturnColumnNames
+(
+	const cypher_astnode_t *return_clause
+) {
 	// all RETURN * clauses should have been converted to explicit lists
 	ASSERT(cypher_ast_return_has_include_existing(return_clause) == false);
 
@@ -438,7 +528,10 @@ const char **AST_BuildReturnColumnNames(const cypher_astnode_t *return_clause) {
 	return columns;
 }
 
-const char **AST_BuildCallColumnNames(const cypher_astnode_t *call_clause) {
+const char **AST_BuildCallColumnNames
+(
+	const cypher_astnode_t *call_clause
+) {
 	const char **proc_output_columns = NULL;
 	uint yield_count = cypher_ast_call_nprojections(call_clause);
 	if(yield_count > 0) {
@@ -475,7 +568,10 @@ const char **AST_BuildCallColumnNames(const cypher_astnode_t *call_clause) {
 	return proc_output_columns;
 }
 
-const char *_AST_ExtractQueryString(const cypher_parse_result_t *partial_result) {
+const char *_AST_ExtractQueryString
+(
+	const cypher_parse_result_t *partial_result
+) {
 	// Retrieve the AST root node from a parsed query.
 	const cypher_astnode_t *statement = _AST_parse_result_root(partial_result);
 	// We are parsing with the CYPHER_PARSE_ONLY_PARAMETERS flag.
@@ -486,17 +582,26 @@ const char *_AST_ExtractQueryString(const cypher_parse_result_t *partial_result)
 	return cypher_ast_string_get_value(body);
 }
 
-inline AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast) {
+inline AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection
+(
+	AST *ast
+) {
 	return ast->anot_ctx_collection;
 }
 
-static inline char *_create_anon_alias(int anon_count) {
+static inline char *_create_anon_alias
+(
+	int anon_count
+) {
 	char *alias;
 	asprintf(&alias, "@anon_%d", anon_count);
 	return alias;
 }
 
-const char *AST_ToString(const cypher_astnode_t *node) {
+const char *AST_ToString
+(
+	const cypher_astnode_t *node
+) {
 	QueryCtx *ctx = QueryCtx_GetQueryCtx();
 	AST *ast = QueryCtx_GetAST();
 	AnnotationCtx *to_string_ctx = AST_AnnotationCtxCollection_GetToStringCtx(ast->anot_ctx_collection);
@@ -527,13 +632,16 @@ const char *AST_ToString(const cypher_astnode_t *node) {
 	return str;
 }
 
-void AST_Free(AST *ast) {
+void AST_Free
+(
+	AST *ast
+) {
 	if(ast == NULL) return;
 
 	int ref_count = AST_DecRefCount(ast);
 
-	/* free and nullify parameters parse result if needed,
-	 * after execution, as they are only save for the execution lifetime */
+	// free and nullify parameters parse result if needed
+	// after execution, as they are only save for the execution lifetime
 	if(ast->params_parse_result) {
 		parse_result_free(ast->params_parse_result);
 	}
@@ -545,8 +653,8 @@ void AST_Free(AST *ast) {
 			// this is a generated AST, free its root node
 			cypher_astnode_free((cypher_astnode_t *) ast->root);
 		} else {
-			/* this is the master AST,
-			 * free the annotation contexts that have been constructed */
+			// this is the master AST
+			// free the annotation contexts that have been constructed
 			AST_AnnotationCtxCollection_Free(ast->anot_ctx_collection);
 			parse_result_free(ast->parse_result);
 		}
@@ -559,14 +667,19 @@ void AST_Free(AST *ast) {
 	rm_free(ast);
 }
 
-cypher_parse_result_t *parse_query(const char *query) {
+cypher_parse_result_t *parse_query
+(
+	const char *query  // query to parse
+) {
 	FILE *f = fmemopen((char *)query, strlen(query), "r");
 	cypher_parse_result_t *result = cypher_fparse(f, NULL, NULL, CYPHER_PARSE_SINGLE);
 	fclose(f);
 
-	if(!result) return NULL;
+	if(!result) {
+		return NULL;
+	}
 
-	// check that the parser parse the entire query
+	// check that the parser parsed the entire query
 	if(!cypher_parse_result_eof(result)) {
 		ErrorCtx_SetError("Error: query with more than one statement is not supported.");
 		parse_result_free(result);
@@ -580,18 +693,26 @@ cypher_parse_result_t *parse_query(const char *query) {
 		return NULL;
 	}
 
-	if(AST_Validate_Query(result) != AST_VALID) {
+	// get the index of a valid root (of type CYPHER_AST_STATEMENT)
+	int index;
+	if(AST_Validate_ParseResultRoot(result, &index) == AST_INVALID) {
 		parse_result_free(result);
 		return NULL;
 	}
 
-	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
+	const cypher_astnode_t *root = cypher_parse_result_get_root(result, index);
+
+	// validate the query
+	if(AST_Validate_Query(root) != AST_VALID) {
+		parse_result_free(result);
+		return NULL;
+	}
 
 	// rewrite '*' projections
 	// e.g. MATCH (a), (b) RETURN *
 	// will be rewritten as:
 	//  MATCH (a), (b) RETURN a, b
-	bool rerun_validation = AST_RewriteStarProjections(result);
+	bool rerun_validation = AST_RewriteStarProjections(root);
 
 	// compress clauses
 	// e.g. MATCH (a:N) MATCH (b:N) RETURN a,b
@@ -600,7 +721,7 @@ cypher_parse_result_t *parse_query(const char *query) {
 	rerun_validation |= AST_RewriteSameClauses(root);
 
 	// only perform validations again if there's been a rewrite
-	if(rerun_validation && AST_Validate_Query(result) != AST_VALID) {
+	if(rerun_validation && AST_Validate_Query(root) != AST_VALID) {
 		parse_result_free(result);
 		return NULL;
 	}
@@ -608,7 +729,11 @@ cypher_parse_result_t *parse_query(const char *query) {
 	return result;
 }
 
-cypher_parse_result_t *parse_params(const char *query, const char **query_body) {
+cypher_parse_result_t *parse_params
+(
+	const char *query,
+	const char **query_body
+) {
 	FILE *f = fmemopen((char *)query, strlen(query), "r");
 	cypher_parse_result_t *result = cypher_fparse(f, NULL, NULL, CYPHER_PARSE_ONLY_PARAMETERS);
 	fclose(f);
@@ -622,7 +747,9 @@ cypher_parse_result_t *parse_params(const char *query, const char **query_body) 
 	return result;
 }
 
-void parse_result_free(cypher_parse_result_t *parse_result) {
+void parse_result_free
+(
+	cypher_parse_result_t *parse_result
+) {
 	if(parse_result) cypher_parse_result_free(parse_result);
 }
-

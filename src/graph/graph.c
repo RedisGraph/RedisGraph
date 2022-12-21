@@ -902,6 +902,111 @@ void Graph_GetNodeEdges
 	}
 }
 
+// returns node incoming/outgoing degree
+uint64_t Graph_GetNodeDegree
+(
+	const Graph *g,      // graph to inquery
+	const Node *n,       // node to get degree of
+	GRAPH_EDGE_DIR dir,  // incoming/outgoing/both
+	int edgeType         // relation type
+) {
+	ASSERT(g != NULL);
+	ASSERT(n != NULL);
+
+	NodeID              srcID      = ENTITY_GET_ID(n);
+	NodeID              destID     = INVALID_ENTITY_ID;
+	EdgeID              edgeID     = INVALID_ENTITY_ID;
+	uint64_t            edge_count = 0;
+	RG_Matrix           M          = NULL;
+	RG_Matrix           TM         = NULL;
+	RG_MatrixTupleIter  it         = {0};
+
+	if(edgeType == GRAPH_UNKNOWN_RELATION) {
+		return 0;  // no edges
+	}
+
+	bool outgoing = (dir == GRAPH_EDGE_DIR_OUTGOING ||
+					 dir == GRAPH_EDGE_DIR_BOTH);
+
+	bool incoming = (dir == GRAPH_EDGE_DIR_INCOMING ||
+					 dir == GRAPH_EDGE_DIR_BOTH);
+
+	// relationships to consider
+	int start_rel;
+	int end_rel;
+
+	if(edgeType != GRAPH_NO_RELATION) {
+		// consider only specified relationship
+		start_rel = edgeType;
+		end_rel = start_rel + 1;
+	} else {
+		// consider all relationship types
+		start_rel = 0;
+		end_rel = Graph_RelationTypeCount(g);
+	}
+
+	// for each relationship type to consider
+	for(edgeType = start_rel; edgeType < end_rel; edgeType++) {
+		M = Graph_GetRelationMatrix(g, edgeType, false);
+
+		//----------------------------------------------------------------------
+		// outgoing edges
+		//----------------------------------------------------------------------
+
+		// TODO: revisit once we get rid of MULTI-EDGE hack
+		if(outgoing) {
+			// construct an iterator to traverse over the source node row,
+			// containing all outgoing edges
+			RG_MatrixTupleIter_AttachRange(&it, M, srcID, srcID);
+			// scan row
+			while(RG_MatrixTupleIter_next_UINT64(&it, NULL, &destID, &edgeID)
+					== GrB_SUCCESS) {
+
+				// check for edge type single/multi
+				if(SINGLE_EDGE(edgeID)) {
+					edge_count++;
+				} else {
+					// multiple edges connecting src to dest
+					// entry is a pointer to an array of edge IDs
+					EdgeID *multi_edge = (EdgeID *)(CLEAR_MSB(edgeID));
+					edge_count += array_len(multi_edge);
+				}
+			}
+			RG_MatrixTupleIter_detach(&it);
+		}
+
+		//----------------------------------------------------------------------
+		// incoming edges
+		//----------------------------------------------------------------------
+
+		if(incoming) {
+			// transposed relation matrix
+			TM = Graph_GetRelationMatrix(g, edgeType, true);
+
+			// construct an iterator to traverse over the source node row,
+			// containing all incoming edges
+			RG_MatrixTupleIter_AttachRange(&it, TM, srcID, srcID);
+			while(RG_MatrixTupleIter_next_BOOL(&it, NULL, &destID, NULL)
+					== GrB_SUCCESS) {
+
+				// check for edge type single/multi
+				RG_Matrix_extractElement_UINT64(&edgeID, M, destID, srcID);
+				if(SINGLE_EDGE(edgeID)) {
+					edge_count++;
+				} else {
+					// multiple edges connecting src to dest
+					// entry is a pointer to an array of edge IDs
+					EdgeID *multi_edge = (EdgeID *)(CLEAR_MSB(edgeID));
+					edge_count += array_len(multi_edge);
+				}
+			}
+			RG_MatrixTupleIter_detach(&it);
+		}
+	}
+
+	return edge_count;
+}
+
 // populate array of node's label IDs, return number of labels on node
 uint Graph_GetNodeLabels
 (
@@ -994,7 +1099,9 @@ int Graph_DeleteEdge
 
 	// test to see if edge exists
 	info = RG_Matrix_extractElement_UINT64(&edge_id, R, src_id, dest_id);
-	if(info != GrB_SUCCESS) return 0;
+	if(info != GrB_SUCCESS) {
+		return 0;
+	}
 
 	// an edge of type r has just been deleted, update statistics
 	GraphStatistics_DecEdgeCount(&g->stats, r, 1);
@@ -1193,8 +1300,11 @@ RG_Matrix Graph_GetRelationMatrix
 
 	RG_Matrix m = GrB_NULL;
 
-	if(relation_idx == GRAPH_NO_RELATION) m = g->adjacency_matrix;
-	else m = g->relations[relation_idx];
+	if(relation_idx == GRAPH_NO_RELATION) {
+		m = g->adjacency_matrix;
+	} else {
+		m = g->relations[relation_idx];
+	}
 
 	g->SynchronizeMatrix(g, m);
 
