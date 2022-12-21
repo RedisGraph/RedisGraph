@@ -52,9 +52,9 @@ static VISITOR_STRATEGY _AST_Visitor_visit
 }
 
 // get the context of a visitor
-void *AST_VisitorGetContext
+void *AST_Visitor_GetContext
 (
-	ast_visitor *visitor  // visitor
+	const ast_visitor *visitor  // visitor
 ) {
 	return visitor->ctx;
 }
