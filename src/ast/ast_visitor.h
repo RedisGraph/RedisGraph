@@ -35,13 +35,10 @@ typedef struct ast_visitor {
 	ast_visitor_mapping mapping;  // mapping between ast-node-types to visiting functions
 } ast_visitor;
 
-ast_visitor_mapping AST_Visitor_mapping_new(void);
-
-// creates a new visitor
-ast_visitor *AST_Visitor_new
+// get the context of a visitor
+void *AST_VisitorGetContext
 (
-	void *ctx,                   // context to attach to the new visitor
-	ast_visitor_mapping mapping  // mapping between ast-node-types to visiting functions
+	ast_visitor *visitor  // visitor
 );
 
 // visits an ast-node
@@ -58,15 +55,3 @@ void AST_Visitor_mapping_register
 	cypher_astnode_type_t type,  // type of ast-node
 	visit cb                     // visit function to register
 );
-
-// frees a visitor
-void AST_Visitor_free
-(
-	ast_visitor *visitor  // visitor to free
-);
-
-void AST_Visitor_mapping_free
-(
-	ast_visitor_mapping mapping  // mapping to free
-);
-

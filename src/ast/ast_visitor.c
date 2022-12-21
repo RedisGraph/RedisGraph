@@ -51,17 +51,12 @@ static VISITOR_STRATEGY _AST_Visitor_visit
 	return visitor->mapping[node_type](node, false, visitor);
 }
 
-// creates a new visitor
-ast_visitor *AST_Visitor_new
+// get the context of a visitor
+void *AST_VisitorGetContext
 (
-	void *ctx,                   // context to attach to the new visitor
-	ast_visitor_mapping mapping  // mapping between ast-node-types to visiting functions
+	ast_visitor *visitor  // visitor
 ) {
-	ast_visitor *visitor = rm_malloc(sizeof(ast_visitor));
-	visitor->ctx     = ctx;
-	visitor->mapping = mapping;
-
-	return visitor;
+	return visitor->ctx;
 }
 
 // visit an ast-node
@@ -89,14 +84,3 @@ void AST_Visitor_mapping_register
 
 	mapping[type] = cb;
 }
-
-// frees a visitor
-void AST_Visitor_free
-(
-	ast_visitor *visitor  // visitor to free
-) {
-	ASSERT(visitor != NULL);
-
-	rm_free(visitor);
-}
-

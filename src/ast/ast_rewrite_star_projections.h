@@ -12,5 +12,5 @@
 // returning true if a rewrite has been performed
 bool AST_RewriteStarProjections
 (
-    cypher_astnode_t *root  // root for which to rewrite star projections
+    const cypher_astnode_t *root  // root for which to rewrite star projections
 );

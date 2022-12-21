@@ -27,6 +27,8 @@ typedef struct {
 	is_union_all union_all;        // union type (regular or ALL)
 } validations_ctx;
 
+VISITOR_STRATEGY _default_visit(const cypher_astnode_t *n, bool start, ast_visitor *visitor);
+
 // ast validation visitor mappings
 // number of ast-node types: _MAX_VT_OFF = sizeof(struct cypher_astnode_vts) / sizeof(struct cypher_astnode_vt *) = 114
 static visit validations_mapping[114];
@@ -309,7 +311,7 @@ static VISITOR_STRATEGY _Validate_list_comprehension
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 
 	if(start) {
 		const cypher_astnode_t *id = cypher_ast_list_comprehension_get_identifier(n);
@@ -367,7 +369,7 @@ static VISITOR_STRATEGY _Validate_pattern_comprehension
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 
 	if(start) {
 		const cypher_astnode_t *id = cypher_ast_pattern_comprehension_get_identifier(n);
@@ -432,7 +434,7 @@ static VISITOR_STRATEGY _Validate_identifier
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 
 	if(!start) {
 		return VISITOR_CONTINUE;
@@ -453,7 +455,7 @@ static VISITOR_STRATEGY _Validate_map
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 
 	if(start) {
 		// traverse the entries of the map
@@ -478,7 +480,7 @@ static VISITOR_STRATEGY _Validate_projection
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 
 	if(start) {
 		const cypher_astnode_t *exp = cypher_ast_projection_get_expression(n);
@@ -520,7 +522,7 @@ static VISITOR_STRATEGY _Validate_apply_all_operator
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 	if(!start) {
 		return VISITOR_CONTINUE;
 	}
@@ -552,7 +554,7 @@ static VISITOR_STRATEGY _Validate_apply_operator
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 	if(!start) {
 		return VISITOR_CONTINUE;
 	}
@@ -575,7 +577,7 @@ static VISITOR_STRATEGY _Validate_reduce
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 	if(!start) {
 		return VISITOR_CONTINUE;
 	}
@@ -717,7 +719,7 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 	if(!start) {
 		return VISITOR_CONTINUE;
 	}
@@ -788,7 +790,7 @@ static VISITOR_STRATEGY _Validate_node_pattern
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 	if(!start) {
 		return VISITOR_CONTINUE;
 	}
@@ -826,7 +828,7 @@ static VISITOR_STRATEGY _Validate_shortest_path
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 	if(!start) {
 		return VISITOR_CONTINUE;
 	}
@@ -871,7 +873,7 @@ static VISITOR_STRATEGY _Validate_pattern_path
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 
 	if(!start) {
 		return VISITOR_CONTINUE;
@@ -891,7 +893,7 @@ static VISITOR_STRATEGY _Validate_named_path
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 
 	if(!start) {
 		return VISITOR_CONTINUE;
@@ -1014,7 +1016,7 @@ static VISITOR_STRATEGY _Validate_CALL_Clause
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 
 	if(start) {
 		vctx->clause = cypher_astnode_type(n);
@@ -1107,7 +1109,7 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 
 	if(start) {
 		vctx->clause = cypher_astnode_type(n);
@@ -1153,7 +1155,7 @@ static VISITOR_STRATEGY _Validate_DELETE_Clause
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 
 	if(!start) {
 		return VISITOR_CONTINUE;
@@ -1186,7 +1188,7 @@ static VISITOR_STRATEGY _Validate_set_property
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 	if(!start) {
 		return VISITOR_CONTINUE;
 	}
@@ -1208,7 +1210,7 @@ static VISITOR_STRATEGY _Validate_SET_Clause
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 
 	if(!start) {
 		return VISITOR_CONTINUE;
@@ -1225,7 +1227,7 @@ static VISITOR_STRATEGY _Validate_UNION_Clause
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 
 	if(!start) {
 		return VISITOR_CONTINUE;
@@ -1254,7 +1256,7 @@ static VISITOR_STRATEGY _Validate_CREATE_Clause
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 
 	if(!start) {
 		return VISITOR_CONTINUE;
@@ -1271,7 +1273,7 @@ static VISITOR_STRATEGY _Validate_MERGE_Clause
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 
 	if(!start) {
 		return VISITOR_CONTINUE;
@@ -1288,7 +1290,7 @@ static VISITOR_STRATEGY _Validate_UNWIND_Clause
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 
 	if(!start) {
 		return VISITOR_CONTINUE;
@@ -1310,7 +1312,7 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 
 	if(!start) {
 		return VISITOR_CONTINUE;
@@ -1365,7 +1367,7 @@ static VISITOR_STRATEGY _Validate_MATCH_Clause
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 	
 	if(!start) {
 		return VISITOR_CONTINUE;
@@ -1382,7 +1384,7 @@ static VISITOR_STRATEGY _Validate_index_creation
 	bool start,                 // first traversal
 	ast_visitor *visitor        // visitor
 ) {
-	validations_ctx *vctx = visitor->ctx;
+	validations_ctx *vctx = AST_VisitorGetContext(visitor);
 
 	if(!start) {
 		return VISITOR_CONTINUE;
@@ -1570,14 +1572,13 @@ static AST_Validation _ValidateScopes
 	ctx.defined_identifiers = raxNew();
 
 	// create a visitor
-	ast_visitor *visitor = AST_Visitor_new(&ctx, (ast_visitor_mapping) validations_mapping);
-	
+	ast_visitor visitor = {&ctx, validations_mapping};
+
 	// visit (traverse) the ast
-	AST_Visitor_visit(ast->root, visitor);
+	AST_Visitor_visit(ast->root, &visitor);
 	
 	// cleanup
 	raxFree(ctx.defined_identifiers);
-	AST_Visitor_free(visitor);
 
 	return !ErrorCtx_EncounteredError() ? AST_VALID : AST_INVALID;
 }
@@ -1831,14 +1832,13 @@ AST_Validation AST_Validate_QueryParams
 	ctx.defined_identifiers = raxNew();
 
 	// create a visitor
-	ast_visitor *visitor = AST_Visitor_new(&ctx, (ast_visitor_mapping) validations_mapping);
+	ast_visitor visitor = {&ctx, validations_mapping};
 	
 	// visit (traverse) the ast
-	AST_Visitor_visit(root, visitor);
+	AST_Visitor_visit(root, &visitor);
 
 	// cleanup
 	raxFree(ctx.defined_identifiers);
-	AST_Visitor_free(visitor);
 
 	return !ErrorCtx_EncounteredError() ? AST_VALID : AST_INVALID;
 }
