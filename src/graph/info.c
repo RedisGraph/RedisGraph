@@ -71,13 +71,14 @@ FinishedQueryInfo FinishedQueryInfo_FromQueryInfo(const QueryInfo info) {
     FinishedQueryInfo finished;
     memset(&finished, 0, sizeof(FinishedQueryInfo));
 
-    finished.executing_time_milliseconds = info.executing_time_milliseconds;
+    finished.total_executed_time_milliseconds = info.executing_time_milliseconds;
     finished.received_unix_timestamp_milliseconds = info.received_unix_timestamp_milliseconds;
-    finished.reporting_time_milliseconds = info.reporting_time_milliseconds;
-    finished.waiting_time_milliseconds = info.waiting_time_milliseconds;
+    finished.total_reported_time_milliseconds = info.reporting_time_milliseconds;
+    finished.total_waited_time_milliseconds = info.waiting_time_milliseconds;
 
     if (info.context) {
         finished.query_string = strdup(info.context->query_data.query);
+        finished.graph_name = strdup(info.context->gc->graph_name);
     }
 
     return finished;
@@ -86,6 +87,9 @@ FinishedQueryInfo FinishedQueryInfo_FromQueryInfo(const QueryInfo info) {
 void FinishedQueryInfo_Free(const FinishedQueryInfo query_info) {
     if (query_info.query_string) {
         free(query_info.query_string);
+    }
+    if (query_info.graph_name) {
+        free(query_info.graph_name);
     }
 }
 
@@ -807,6 +811,27 @@ void Info_SetCapacityForFinishedQueriesStorage(const uint32_t count) {
     } else {
         CircularBufferNRG_SetCapacity(&finished_queries, count);
     }
+    const bool unlocked = _unlock_rwlock(&finished_queries_rwlock);
+    ASSERT(unlocked);
+}
+
+void Info_ViewAllFinishedQueries
+(
+    CircularBufferNRG_ReadAllCallback callback,
+    void *user_data
+) {
+    ASSERT(finished_queries);
+    if (!finished_queries) {
+        return;
+    }
+    const bool locked = _lock_rwlock(&finished_queries_rwlock, false);
+    ASSERT(locked);
+    if (!locked) {
+        return;
+    }
+
+    CircularBufferNRG_ViewAll(finished_queries, callback, user_data);
+
     const bool unlocked = _unlock_rwlock(&finished_queries_rwlock);
     ASSERT(unlocked);
 }

@@ -11,15 +11,21 @@
 #include "query_ctx.h"
 #include "configuration/config.h"
 
+#include <stdlib.h>
+
 #define SUBCOMMAND_NAME_QUERIES "QUERIES"
 #define SUBCOMMAND_NAME_GET "GET"
 #define SUBCOMMAND_NAME_RESET "RESET"
 #define COMPACT_MODE_OPTION "--compact"
 #define UNKNOWN_SUBCOMMAND_MESSAGE "Unknown subcommand."
+#define INVALID_PARAMETERS_MESSAGE "Invalid parameters."
 #define MAX_QUERY_WAIT_TIME_KEY_NAME "Max query wait duration (milliseconds)"
 #define TOTAL_WAITING_QUERIES_COUNT_KEY_NAME "Total waiting queries count"
 #define TOTAL_EXECUTING_QUERIES_COUNT_KEY_NAME "Total executing queries count"
 #define TOTAL_REPORTING_QUERIES_COUNT_KEY_NAME "Total reporting queries count"
+#define RECEIVED_TIMESTAMP_KEY_NAME "Receive timestamp (milliseconds)"
+#define GRAPH_NAME_KEY_NAME "Graph name"
+#define QUERY_KEY_NAME "Query"
 #define GLOBAL_INFO_KEY_NAME "Global info"
 #define UNIMPLEMENTED_ERROR_STRING "Unimplemented"
 #define INFO_GET_MEMORY_ARG "MEM"
@@ -50,6 +56,73 @@
     if (!checked_add_u64(lhs, rhs, &lhs)) { \
         return return_on_error; \
     }
+
+int _reply_map
+(
+    RedisModuleCtx *ctx,
+    const bool is_compact_mode,
+    const long key_value_count
+) {
+    ASSERT(ctx);
+    if (!ctx) {
+        return REDISMODULE_ERR;
+    }
+
+    if (is_compact_mode) {
+        REDISMODULE_DO(RedisModule_ReplyWithArray(ctx, key_value_count));
+    } else {
+        REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, key_value_count));
+    }
+
+    return REDISMODULE_OK;
+}
+
+int _reply_key_value_number
+(
+    RedisModuleCtx *ctx,
+    const bool is_compact_mode,
+    const char *key,
+    const long long value
+) {
+    ASSERT(ctx);
+    ASSERT(key);
+
+    if (!ctx || !key) {
+        return REDISMODULE_ERR;
+    }
+
+    if (!is_compact_mode) {
+        REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, key));
+    }
+
+    REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, value));
+
+    return REDISMODULE_OK;
+}
+
+int _reply_key_value_string
+(
+    RedisModuleCtx *ctx,
+    const bool is_compact_mode,
+    const char *key,
+    const char *value
+) {
+    ASSERT(ctx);
+    ASSERT(key);
+    ASSERT(value);
+
+    if (!ctx || !key || !value) {
+        return REDISMODULE_ERR;
+    }
+
+    if (!is_compact_mode) {
+        REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, key));
+    }
+
+    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, value));
+
+    return REDISMODULE_OK;
+}
 
 // Global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
@@ -93,9 +166,27 @@ typedef struct AggregatedGraphGetInfo {
     uint64_t edge_property_name_count;
 } AggregatedGraphGetInfo;
 
+typedef struct ViewFinishedQueriesCallbackData {
+    RedisModuleCtx *ctx;
+    bool is_compact_mode;
+    uint64_t max_count;
+    int status;
+    uint64_t actual_elements_count;
+} ViewFinishedQueriesCallbackData;
+
 static bool _is_cmd_info_enabled() {
-	bool cmd_info_enabled = false;
-	return Config_Option_get(Config_CMD_INFO, &cmd_info_enabled) && cmd_info_enabled;
+    bool cmd_info_enabled = false;
+    return Config_Option_get(Config_CMD_INFO, &cmd_info_enabled) && cmd_info_enabled;
+}
+
+static uint64_t _info_queries_max_count() {
+    uint64_t max_elements_count = 0;
+
+    if (!Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &max_elements_count)) {
+        max_elements_count = MAX_QUERIES_COUNT;
+    }
+
+    return max_elements_count;
 }
 
 static bool AggregatedGraphGetInfo_AddFromGraphContext
@@ -335,42 +426,11 @@ static bool _collect_queries_info_from_graph
     return true;
 }
 
-static int _reply_global_info_compact
+
+static int _reply_global_info
 (
     RedisModuleCtx *ctx,
-    const GlobalInfo global_info
-) {
-    static const long ITEM_COUNT = 4;
-
-    ASSERT(ctx);
-    if (!ctx) {
-        return REDISMODULE_ERR;
-    }
-
-    REDISMODULE_DO(RedisModule_ReplyWithArray(ctx, ITEM_COUNT));
-    // 1
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        global_info.max_query_wait_time_time));
-    // 2
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        global_info.total_waiting_queries_count));
-    // 3
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        global_info.total_executing_queries_count));
-    // 4
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        global_info.total_reporting_queries_count));
-
-    return REDISMODULE_OK;
-}
-
-static int _reply_global_info_full
-(
-    RedisModuleCtx *ctx,
+    const bool is_compact_mode,
     const GlobalInfo global_info
 ) {
     static const long KEY_VALUE_COUNT = 4;
@@ -380,34 +440,30 @@ static int _reply_global_info_full
         return REDISMODULE_ERR;
     }
 
-    REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, KEY_VALUE_COUNT));
+    REDISMODULE_DO(_reply_map(ctx, is_compact_mode, KEY_VALUE_COUNT));
     // 1
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
+    REDISMODULE_DO(_reply_key_value_number(
         ctx,
-        MAX_QUERY_WAIT_TIME_KEY_NAME));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
+        is_compact_mode,
+        MAX_QUERY_WAIT_TIME_KEY_NAME,
         global_info.max_query_wait_time_time));
     // 2
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
+    REDISMODULE_DO(_reply_key_value_number(
         ctx,
-        TOTAL_WAITING_QUERIES_COUNT_KEY_NAME));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
+        is_compact_mode,
+        TOTAL_WAITING_QUERIES_COUNT_KEY_NAME,
         global_info.total_waiting_queries_count));
     // 3
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
+    REDISMODULE_DO(_reply_key_value_number(
         ctx,
-        TOTAL_EXECUTING_QUERIES_COUNT_KEY_NAME));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
+        is_compact_mode,
+        TOTAL_EXECUTING_QUERIES_COUNT_KEY_NAME,
         global_info.total_executing_queries_count));
     // 4
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
+    REDISMODULE_DO(_reply_key_value_number(
         ctx,
-        TOTAL_REPORTING_QUERIES_COUNT_KEY_NAME));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
+        is_compact_mode,
+        TOTAL_REPORTING_QUERIES_COUNT_KEY_NAME,
         global_info.total_reporting_queries_count));
 
     return REDISMODULE_OK;
@@ -462,88 +518,10 @@ static bool _collect_global_info(RedisModuleCtx *ctx, GlobalInfo *global_info) {
     return true;
 }
 
-static int _reply_graph_query_info_compact
+static int _reply_graph_query_info
 (
     RedisModuleCtx *ctx,
-    const QueryStage query_stage,
-    const QueryInfo info
-) {
-    static const long ITEM_COUNT = 8;
-
-    ASSERT(ctx);
-    if (!ctx) {
-        return REDISMODULE_ERR;
-    }
-
-    const QueryCtx *query_ctx = QueryInfo_GetQueryContext(&info);
-    ASSERT(query_ctx);
-    if (!query_ctx) {
-        return REDISMODULE_ERR;
-    }
-
-    REDISMODULE_DO(RedisModule_ReplyWithArray(
-        ctx,
-        ITEM_COUNT));
-    // 1
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
-        ctx,
-        query_ctx->gc->graph_name));
-    // 2
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        (long)query_stage));
-    // 3
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        QueryInfo_GetReceivedTimestamp(info)));
-    // 4
-    // Note: customer proprietary data. should not appear in support packages
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
-        ctx,
-        query_ctx->query_data.query));
-    // 5
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        QueryInfo_GetTotalTimeSpent(info, NULL)));
-    // 6
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        QueryInfo_GetWaitingTime(info)));
-    // 7
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        QueryInfo_GetExecutionTime(info)));
-    // 8
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        QueryInfo_GetReportingTime(info)));
-    // TODO memory
-    // // 7
-    // REDISMODULE_DO(RedisModule_ReplyWithCString(
-    //     ctx,
-    //     "Current processing memory (bytes)"));
-    // REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-    //     ctx,
-    //     QueryInfo_GetReportingTime(info)));
-    // // 8
-    // REDISMODULE_DO(RedisModule_ReplyWithCString(
-    //     ctx,
-    //     "Current undo-log memory (bytes)"));
-    // REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-    //     ctx,
-    //     QueryInfo_GetReportingTime(info)));
-    // // 9
-    // REDISMODULE_DO(RedisModule_ReplyWithCString(
-    //     ctx,
-    //     "Current result-set memory (bytes)"));
-    // REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-    //     ctx,
-    //     QueryInfo_GetReportingTime(info)));
-}
-
-static int _reply_graph_query_info_full
-(
-    RedisModuleCtx *ctx,
+    const bool is_compact_mode,
     const QueryStage query_stage,
     const QueryInfo info
 ) {
@@ -559,61 +537,58 @@ static int _reply_graph_query_info_full
         return REDISMODULE_ERR;
     }
 
-    REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, KEY_VALUE_COUNT));
+    REDISMODULE_DO(_reply_map(
+        ctx,
+        is_compact_mode,
+        KEY_VALUE_COUNT));
     // 1
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
+    REDISMODULE_DO(_reply_key_value_string(
         ctx,
-        "Graph name"));
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
-        ctx,
+        is_compact_mode,
+        GRAPH_NAME_KEY_NAME,
         query_ctx->gc->graph_name));
     // 2
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
+    REDISMODULE_DO(_reply_key_value_number(
         ctx,
-        "Stage"));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        (long)query_stage));
+        is_compact_mode,
+        "Stage",
+        (long long) query_stage));
     // 3
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
+    REDISMODULE_DO(_reply_key_value_number(
         ctx,
-        "Receive timestamp (milliseconds)"));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
+        is_compact_mode,
+        RECEIVED_TIMESTAMP_KEY_NAME,
         QueryInfo_GetReceivedTimestamp(info)));
     // 4
     // Note: customer proprietary data. should not appear in support packages
-    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Query"));
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
+    REDISMODULE_DO(_reply_key_value_string(
         ctx,
+        is_compact_mode,
+        QUERY_KEY_NAME,
         query_ctx->query_data.query));
     // 5
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
+    REDISMODULE_DO(_reply_key_value_number(
         ctx,
-        "Current total duration (milliseconds)"));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
+        is_compact_mode,
+        "Current total duration (milliseconds)",
         QueryInfo_GetTotalTimeSpent(info, NULL)));
     // 6
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
+    REDISMODULE_DO(_reply_key_value_number(
         ctx,
-        "Current wait duration (milliseconds)"));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
+        is_compact_mode,
+        "Current wait duration (milliseconds)",
         QueryInfo_GetWaitingTime(info)));
     // 7
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
+    REDISMODULE_DO(_reply_key_value_number(
         ctx,
-        "Current execution duration (milliseconds)"));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
+        is_compact_mode,
+        "Current execution duration (milliseconds)",
         QueryInfo_GetExecutionTime(info)));
     // 8
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
+    REDISMODULE_DO(_reply_key_value_number(
         ctx,
-        "Current reporting duration (milliseconds)"));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
+        is_compact_mode,
+        "Current reporting duration (milliseconds)",
         QueryInfo_GetReportingTime(info)));
     // TODO memory
     // // 7
@@ -679,11 +654,11 @@ static int _reply_graph_query_info_storage
         }
         _update_query_stage_timer(query_stage, info);
         ++actual_elements_count;
-        if (is_compact_mode) {
-            REDISMODULE_DO(_reply_graph_query_info_compact(ctx, query_stage, *info));
-        } else {
-            REDISMODULE_DO(_reply_graph_query_info_full(ctx, query_stage, *info));
-        }
+        REDISMODULE_DO(_reply_graph_query_info(
+            ctx,
+            is_compact_mode,
+            query_stage,
+            *info));
     }
 
     if (iterated) {
@@ -866,22 +841,14 @@ static int _reply_with_queries_info_from_all_graphs
         return REDISMODULE_ERR;
     }
 
-    uint64_t max_elements_count = 0;
-	if (!Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &max_elements_count)) {
-        max_elements_count = MAX_QUERIES_COUNT;
-    }
+    const uint64_t max_elements_count = _info_queries_max_count();
+
+    REDISMODULE_DO(_reply_map(ctx, is_compact_mode, ITEM_COUNT));
 
     if (!is_compact_mode) {
-        REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, ITEM_COUNT));
-    } else {
-        REDISMODULE_DO(RedisModule_ReplyWithArray(ctx, ITEM_COUNT));
-    }
-    if (is_compact_mode) {
-        REDISMODULE_DO(_reply_global_info_compact(ctx, global_info));
-    } else {
         REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, GLOBAL_INFO_KEY_NAME));
-        REDISMODULE_DO(_reply_global_info_full(ctx, global_info));
     }
+    REDISMODULE_DO(_reply_global_info(ctx, is_compact_mode, global_info));
 
     if (!is_compact_mode) {
         REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, "Queries"));
@@ -1146,6 +1113,114 @@ static int _get_all_graphs_info_from_shards(RedisModuleCtx *ctx, const InfoGetFl
     return REDISMODULE_ERR;
 }
 
+// TODO use the is_compact_mode flag.
+static bool _view_finished_queries(void *user_data, const void *item) {
+    static const long KEY_VALUE_COUNT = 7;
+
+    ViewFinishedQueriesCallbackData *data
+        = (ViewFinishedQueriesCallbackData*)user_data;
+    const FinishedQueryInfo *info
+        = (FinishedQueryInfo*)item;
+
+    ASSERT(data);
+    ASSERT(item);
+    if (!data || !item) {
+        data->status = REDISMODULE_ERR;
+        return true;
+    }
+
+    const uint64_t total_spent_time
+        = info->total_executed_time_milliseconds
+        + info->total_waited_time_milliseconds
+        + info->total_reported_time_milliseconds;
+
+    REDISMODULE_DO(_reply_map(data->ctx, data->is_compact_mode, KEY_VALUE_COUNT));
+    // 1
+    REDISMODULE_DO(_reply_key_value_number(
+        data->ctx,
+        data->is_compact_mode,
+        RECEIVED_TIMESTAMP_KEY_NAME,
+        info->received_unix_timestamp_milliseconds));
+    // 2
+    REDISMODULE_DO(_reply_key_value_string(
+        data->ctx,
+        data->is_compact_mode,
+        GRAPH_NAME_KEY_NAME,
+        info->graph_name));
+    // 3
+    REDISMODULE_DO(_reply_key_value_string(
+        data->ctx,
+        data->is_compact_mode,
+        QUERY_KEY_NAME,
+        info->query_string));
+    // 4
+    REDISMODULE_DO(_reply_key_value_number(
+        data->ctx,
+        data->is_compact_mode,
+        "Total spent time (milliseconds)",
+        total_spent_time));
+    // 5
+    REDISMODULE_DO(_reply_key_value_number(
+        data->ctx,
+        data->is_compact_mode,
+        "Total wait duration (milliseconds)",
+        info->total_waited_time_milliseconds));
+    // 6
+    REDISMODULE_DO(_reply_key_value_number(
+        data->ctx,
+        data->is_compact_mode,
+        "Total execution duration (milliseconds)",
+        info->total_executed_time_milliseconds));
+    // 7
+    REDISMODULE_DO(_reply_key_value_number(
+        data->ctx,
+        data->is_compact_mode,
+        "Total reporting duration (milliseconds)",
+        info->total_reported_time_milliseconds));
+
+    ++data->actual_elements_count;
+
+    if (data->actual_elements_count >= data->max_count) {
+        return true;
+    }
+
+    return false;
+}
+
+static int _reply_with_queries_info_prev
+(
+    RedisModuleCtx *ctx,
+    const bool is_compact_mode,
+    const uint64_t max_count
+) {
+    ASSERT(ctx);
+    ASSERT(max_count);
+    if (!ctx || !max_count) {
+        return REDISMODULE_ERR;
+    }
+
+    ViewFinishedQueriesCallbackData user_data = {
+        .ctx = ctx,
+        .is_compact_mode = is_compact_mode,
+        .max_count = max_count,
+        .status = REDISMODULE_OK,
+        .actual_elements_count = 0
+    };
+
+    REDISMODULE_DO(RedisModule_ReplyWithArray(
+        ctx,
+        REDISMODULE_POSTPONED_ARRAY_LEN));
+
+    Info_ViewAllFinishedQueries(_view_finished_queries, (void*)&user_data);
+
+    RedisModule_ReplySetArrayLength(
+        ctx,
+        user_data.actual_elements_count
+    );
+
+    return user_data.status;
+}
+
 // GRAPH.INFO QUERIES [CURRENT] [PREV <count>]
 static int _info_queries
 (
@@ -1157,7 +1232,26 @@ static int _info_queries
     ASSERT(ctx);
     ASSERT(argv);
 
-    return _reply_with_queries_info_from_all_graphs(ctx, is_compact_mode);
+    if (!argc || !argv) {
+        RedisModule_ReplyWithError(ctx, INVALID_PARAMETERS_MESSAGE);
+        return REDISMODULE_ERR;
+    }
+
+    const char *arg_flag = RedisModule_StringPtrLen(argv[0], NULL);
+    InfoQueriesFlag flag = _parse_info_queries_flag_from_string(arg_flag);
+
+    if (argc == 1 && flag == InfoQueriesFlag_CURRENT) {
+        return _reply_with_queries_info_from_all_graphs(ctx, is_compact_mode);
+    } else if (argc == 2 && flag == InfoQueriesFlag_PREV) {
+        const char *arg_count = RedisModule_StringPtrLen(argv[1], NULL);
+        const long long count = MIN(atoll(arg_count), _info_queries_max_count());
+        if (count > 0) {
+            return _reply_with_queries_info_prev(ctx, is_compact_mode, count);
+        }
+    }
+
+    RedisModule_ReplyWithError(ctx, INVALID_PARAMETERS_MESSAGE);
+    return REDISMODULE_ERR;
 }
 
 // GRAPH.INFO GET key [MEM] [COUNTS] [STAT]
@@ -1231,7 +1325,7 @@ static bool _dispatch_subcommand
     ASSERT(result);
 
     if (_is_queries_cmd(subcommand_name)) {
-        *result = _info_queries(ctx, argv, argc, is_compact_mode);
+        *result = _info_queries(ctx, argv + 1, argc - 1, is_compact_mode);
     } else if (_is_get_cmd(subcommand_name)) {
         *result = _info_get(ctx, argv, argc);
     } else if (_is_reset_cmd(subcommand_name)) {
@@ -1256,10 +1350,10 @@ int Graph_Info
         return RedisModule_WrongArity(ctx);
     }
 
-	if (!_is_cmd_info_enabled()) {
+    if (!_is_cmd_info_enabled()) {
         RedisModule_ReplyWithError(ctx, "TODO");
         return REDISMODULE_ERR;
-	}
+    }
 
     int result = REDISMODULE_ERR;
 
