@@ -187,11 +187,11 @@ FT_FilterNode *FilterTree_Combine
 	FT_FilterNode *root = NULL;
 
 	if(count > 0) {
-		root = filters[0];
+		root = FilterTree_Clone(filters[0]);
 		for(uint i = 1; i < count; i++) {
 			FT_FilterNode *and = FilterTree_CreateConditionFilter(OP_AND);
 			FilterTree_AppendLeftChild(and, root);
-			FilterTree_AppendRightChild(and, filters[i]);
+			FilterTree_AppendRightChild(and, FilterTree_Clone(filters[i]));
 			root = and;
 		}
 	}
