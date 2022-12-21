@@ -129,10 +129,82 @@ TEST(CircularBuffer, TestResetCapacitySingleStageNoReallocation) {
     CircularBuffer_Free(cb);
 }
 
-void view_element(void *user_data, const void *item) {
+bool view_element(void *user_data, const void *item) {
     std::vector<uint8_t> *viewed = reinterpret_cast<std::vector<uint8_t>*>(user_data);
     const uint8_t element = *reinterpret_cast<const uint8_t *>(item);
     viewed->push_back(element);
+
+    return false;
+}
+
+TEST(CircularBuffer, TestReadAllFullCollection) {
+    CircularBuffer cb = CircularBuffer_New(sizeof(uint8_t), 5);
+    uint8_t value = 1;
+    CircularBuffer_Add(cb, &value);
+    value = 2;
+    CircularBuffer_Add(cb, &value);
+    value = 3;
+    CircularBuffer_Add(cb, &value);
+    value = 4;
+    CircularBuffer_Add(cb, &value);
+    value = 5;
+    CircularBuffer_Add(cb, &value);
+
+    const uint8_t old_current = *(uint8_t*)CircularBuffer_ViewCurrent(cb);
+    std::vector<uint8_t> viewed;
+    CircularBuffer_ReadAll(cb, view_element, reinterpret_cast<void *>(&viewed));
+    const std::vector<uint8_t> expected = { 1, 2, 3, 4, 5 };
+    ASSERT_EQ(viewed, expected);
+    const uint8_t current = *(uint8_t*)CircularBuffer_ViewCurrent(cb);
+    ASSERT_EQ(current, old_current);
+
+    CircularBuffer_Free(cb);
+}
+
+struct ViewElementAndEndData {
+    std::vector<uint8_t> viewed;
+    uint64_t max_view_count;
+};
+
+bool view_element_and_end(void *user_data, const void *item) {
+    ViewElementAndEndData *data = reinterpret_cast<ViewElementAndEndData*>(user_data);
+
+    const uint8_t element = *reinterpret_cast<const uint8_t *>(item);
+    data->viewed.push_back(element);
+
+    if (data->viewed.size() >= data->max_view_count) {
+        return true;
+    }
+
+    return false;
+}
+
+TEST(CircularBuffer, TestReadAllAndEndPrematurely) {
+    CircularBuffer cb = CircularBuffer_New(sizeof(uint8_t), 5);
+    uint8_t value = 1;
+    CircularBuffer_Add(cb, &value);
+    value = 2;
+    CircularBuffer_Add(cb, &value);
+    value = 3;
+    CircularBuffer_Add(cb, &value);
+    value = 4;
+    CircularBuffer_Add(cb, &value);
+    value = 5;
+    CircularBuffer_Add(cb, &value);
+
+    ViewElementAndEndData data {};
+    data.max_view_count = 3;
+    CircularBuffer_ReadAll(cb, view_element_and_end, reinterpret_cast<void *>(&data));
+    const std::vector<uint8_t> expected = { 1, 2, 3 };
+    ASSERT_EQ(data.viewed, expected);
+    const uint8_t current = *(uint8_t*)CircularBuffer_ViewCurrent(cb);
+    // The read offset has moved because of the "read", so we should not
+    // expect to be able to read the same elements again. As we stopped
+    // reading right after the element "3", the next read or a view are
+    // supposed to look at the element after, which is "4".
+    ASSERT_EQ(current, 4);
+
+    CircularBuffer_Free(cb);
 }
 
 TEST(CircularBuffer, TestViewAll) {
@@ -148,10 +220,63 @@ TEST(CircularBuffer, TestViewAll) {
     value = 5;
     CircularBuffer_Add(cb, &value);
 
+    const uint8_t old_current = *(uint8_t*)CircularBuffer_ViewCurrent(cb);
     std::vector<uint8_t> viewed;
     CircularBuffer_ViewAll(cb, view_element, reinterpret_cast<void *>(&viewed));
     const std::vector<uint8_t> expected = { 1, 2, 3, 4, 5 };
     ASSERT_EQ(viewed, expected);
+    const uint8_t current = *(uint8_t*)CircularBuffer_ViewCurrent(cb);
+    // The read offset hasn't moved because of the "view", so we should
+    // expect to be able to read the same elements again, as there has been
+    // no read in between the calls.
+    ASSERT_EQ(current, old_current);
+
+    CircularBuffer_Free(cb);
+}
+
+TEST(CircularBuffer, TestViewAllWithCircle) {
+    CircularBuffer cb = CircularBuffer_New(sizeof(uint8_t), 3);
+    uint8_t value = 1;
+    CircularBuffer_Add(cb, &value);
+    value = 2;
+    CircularBuffer_Add(cb, &value);
+    value = 3;
+    CircularBuffer_Add(cb, &value);
+    value = 4;
+    CircularBuffer_Add(cb, &value);
+    value = 5;
+    CircularBuffer_Add(cb, &value);
+
+    {
+        const uint8_t old_current = *(uint8_t*)CircularBuffer_ViewCurrent(cb);
+        std::vector<uint8_t> viewed;
+        CircularBuffer_ViewAll(cb, view_element, reinterpret_cast<void *>(&viewed));
+        const std::vector<uint8_t> expected = { 3, 4, 5 };
+        ASSERT_EQ(viewed, expected);
+        const uint8_t current = *(uint8_t*)CircularBuffer_ViewCurrent(cb);
+        // The read offset hasn't moved because of the "view", so we should
+        // expect to be able to read the same elements again, as there has been
+        // no read in between the calls.
+        ASSERT_EQ(current, old_current);
+    }
+    value = 6;
+    CircularBuffer_Add(cb, &value);
+    value = 7;
+    CircularBuffer_Add(cb, &value);
+
+    {
+        const uint8_t old_current = *(uint8_t*)CircularBuffer_ViewCurrent(cb);
+        std::vector<uint8_t> viewed;
+        CircularBuffer_ViewAll(cb, view_element, reinterpret_cast<void *>(&viewed));
+        const std::vector<uint8_t> expected = { 5, 6, 7 };
+        ASSERT_EQ(viewed, expected);
+        const uint8_t current = *(uint8_t*)CircularBuffer_ViewCurrent(cb);
+        // The read offset hasn't moved because of the "view", so we should
+        // expect to be able to read the same elements again, as there has been
+        // no read in between the calls.
+        ASSERT_EQ(current, old_current);
+    }
+
 
     CircularBuffer_Free(cb);
 }
