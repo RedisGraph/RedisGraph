@@ -27,8 +27,6 @@ typedef struct {
 	is_union_all union_all;        // union type (regular or ALL)
 } validations_ctx;
 
-VISITOR_STRATEGY _default_visit(const cypher_astnode_t *n, bool start, ast_visitor *visitor);
-
 // ast validation visitor mappings
 // number of ast-node types: _MAX_VT_OFF = sizeof(struct cypher_astnode_vts) / sizeof(struct cypher_astnode_vt *) = 114
 static visit validations_mapping[114];
