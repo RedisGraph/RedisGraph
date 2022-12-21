@@ -24,6 +24,8 @@
 #include "../util/simple_timer.h"
 
 typedef struct QueryCtx QueryCtx;
+// Duplicate typedef from the circular buffer.
+typedef bool (*CircularBuffer_ReadAllCallback)(void *user_data, const void *item);
 
 // Holds the necessary per-query statistics.
 typedef struct QueryInfo {
@@ -45,14 +47,11 @@ typedef struct QueryInfo {
 
 typedef struct FinishedQueryInfo {
     uint64_t received_unix_timestamp_milliseconds;
-    // The time it spent waiting.
-    uint64_t waiting_time_milliseconds;
-    // The time spent on executing.
-    uint64_t executing_time_milliseconds;
-    // The time spent on reporting.
-    uint64_t reporting_time_milliseconds;
-    // The query as a string, with parameters.
+    uint64_t total_waited_time_milliseconds;
+    uint64_t total_executed_time_milliseconds;
+    uint64_t total_reported_time_milliseconds;
     char *query_string;
+    char *graph_name;
 } FinishedQueryInfo;
 
 FinishedQueryInfo FinishedQueryInfo_FromQueryInfo(const QueryInfo info);
@@ -238,3 +237,9 @@ QueryInfoStorage* Info_GetExecutingQueriesStorage(Info *info);
 QueryInfoStorage* Info_GetReportingQueriesStorage(Info *info);
 // Resizes the finished queries storage.
 void Info_SetCapacityForFinishedQueriesStorage(const uint32_t count);
+// Views the circular buffer of finished queries.
+void Info_ViewAllFinishedQueries
+(
+    CircularBuffer_ReadAllCallback callback,
+    void *user_data
+);
