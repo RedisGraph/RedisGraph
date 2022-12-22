@@ -72,9 +72,9 @@ FinishedQueryInfo FinishedQueryInfo_FromQueryInfo(const QueryInfo info) {
     memset(&finished, 0, sizeof(FinishedQueryInfo));
 
     finished.received_unix_timestamp_milliseconds = info.received_unix_timestamp_milliseconds;
-    finished.total_wait_duration_milliseconds = info.waiting_time_milliseconds;
-    finished.total_execution_duration_milliseconds = info.executing_time_milliseconds;
-    finished.total_report_duration_milliseconds = info.reporting_time_milliseconds;
+    finished.total_wait_duration = info.wait_duration;
+    finished.total_execution_duration = info.execution_duration;
+    finished.total_report_duration = info.report_duration;
 
     if (info.context) {
         finished.query_string = strdup(info.context->query_data.query);
@@ -123,9 +123,9 @@ static bool _unlock_rwlock(pthread_rwlock_t *lock) {
 QueryInfo QueryInfo_New(void) {
     QueryInfo query_info = {
         .received_unix_timestamp_milliseconds = 0,
-        .waiting_time_milliseconds = 0,
-        .executing_time_milliseconds = 0,
-        .reporting_time_milliseconds = 0,
+        .wait_duration = 0,
+        .execution_duration = 0,
+        .report_duration = 0,
         .context = NULL,
         .stage_timer = {}
     };
@@ -156,12 +156,12 @@ uint64_t QueryInfo_GetReceivedTimestamp(const QueryInfo info) {
     return info.received_unix_timestamp_milliseconds;
 }
 
-uint64_t QueryInfo_GetTotalTimeSpent(const QueryInfo info, bool *is_ok) {
-    uint64_t total_time_spent = 0;
+millis_t QueryInfo_GetTotalTimeSpent(const QueryInfo info, bool *is_ok) {
+    millis_t total_time_spent = 0;
 
-    if (!checked_add_u64(
+    if (!checked_add_u32(
         total_time_spent,
-        info.waiting_time_milliseconds,
+        info.wait_duration,
         &total_time_spent)) {
         // We have a value overflow.
         if (is_ok) {
@@ -170,9 +170,9 @@ uint64_t QueryInfo_GetTotalTimeSpent(const QueryInfo info, bool *is_ok) {
         }
     }
 
-    if (!checked_add_u64(
+    if (!checked_add_u32(
         total_time_spent,
-        info.executing_time_milliseconds,
+        info.execution_duration,
         &total_time_spent)) {
         // We have a value overflow.
         if (is_ok) {
@@ -181,9 +181,9 @@ uint64_t QueryInfo_GetTotalTimeSpent(const QueryInfo info, bool *is_ok) {
         }
     }
 
-    if (!checked_add_u64(
+    if (!checked_add_u32(
         total_time_spent,
-        info.reporting_time_milliseconds,
+        info.report_duration,
         &total_time_spent)) {
         // We have a value overflow.
         if (is_ok) {
@@ -195,37 +195,37 @@ uint64_t QueryInfo_GetTotalTimeSpent(const QueryInfo info, bool *is_ok) {
     return total_time_spent;
 }
 
-uint64_t QueryInfo_GetWaitingTime(const QueryInfo info) {
-    return info.waiting_time_milliseconds;
+millis_t QueryInfo_GetWaitingTime(const QueryInfo info) {
+    return info.wait_duration;
 }
 
-uint64_t QueryInfo_GetExecutionTime(const QueryInfo info) {
-    return info.executing_time_milliseconds;
+millis_t QueryInfo_GetExecutionTime(const QueryInfo info) {
+    return info.execution_duration;
 }
 
-uint64_t QueryInfo_GetReportingTime(const QueryInfo info) {
-    return info.reporting_time_milliseconds;
+millis_t QueryInfo_GetReportingTime(const QueryInfo info) {
+    return info.report_duration;
 }
 
 void QueryInfo_UpdateWaitingTime(QueryInfo *info) {
     REQUIRE_ARG(info);
-    info->waiting_time_milliseconds += QueryInfo_ResetStageTimer(info);
+    info->wait_duration += QueryInfo_ResetStageTimer(info);
 }
 
 void QueryInfo_UpdateExecutionTime(QueryInfo *info) {
     REQUIRE_ARG(info);
-    info->executing_time_milliseconds += QueryInfo_ResetStageTimer(info);
+    info->execution_duration += QueryInfo_ResetStageTimer(info);
 }
 
 void QueryInfo_UpdateReportingTime(QueryInfo *info) {
     REQUIRE_ARG(info);
-    info->reporting_time_milliseconds += QueryInfo_ResetStageTimer(info);
+    info->report_duration += QueryInfo_ResetStageTimer(info);
 }
 
-uint64_t QueryInfo_ResetStageTimer(QueryInfo *info) {
+millis_t QueryInfo_ResetStageTimer(QueryInfo *info) {
     REQUIRE_ARG_OR_RETURN(info, 0);
-    const uint64_t milliseconds_spent
-        = TIMER_GET_ELAPSED_MILLISECONDS(info->stage_timer);
+    const millis_t milliseconds_spent
+        = (millis_t)TIMER_GET_ELAPSED_MILLISECONDS(info->stage_timer);
     TIMER_RESTART(info->stage_timer);
     return milliseconds_spent;
 }
@@ -382,7 +382,7 @@ QueryInfoIterator QueryInfoIterator_NewStartingAt
     QueryInfoStorage *storage,
     const uint64_t index
 ) {
-    ASSERT(storage && "Storage has to be provided");
+    ASSERT(storage && "Storage has to be provided.");
     const uint64_t length = QueryInfoStorage_Length(storage);
     const bool is_index_valid = index < length;
     if (length > 0) {
@@ -540,7 +540,7 @@ void Info_AddWaitingQueryInfo
 (
     Info *info,
     const struct QueryCtx *query_context,
-    const uint64_t waiting_time_milliseconds,
+    const millis_t wait_duration,
     const uint64_t received_unix_timestamp_milliseconds
 ) {
     REQUIRE_ARG(info);
@@ -550,7 +550,7 @@ void Info_AddWaitingQueryInfo
 
     QueryInfo query_info = QueryInfo_New();
     QueryInfo_SetQueryContext(&query_info, query_context);
-    query_info.waiting_time_milliseconds += waiting_time_milliseconds;
+    query_info.wait_duration += wait_duration;
     query_info.received_unix_timestamp_milliseconds = received_unix_timestamp_milliseconds;
     QueryInfoStorage_Add(&info->waiting_queries, query_info);
 
@@ -730,11 +730,11 @@ uint64_t Info_GetReportingQueriesCount(const Info *info) {
     return count;
 }
 
-uint64_t Info_GetMaxQueryWaitTime(const Info *info) {
+millis_t Info_GetMaxQueryWaitTime(const Info *info) {
     REQUIRE_ARG_OR_RETURN(info, 0);
     _Info_LockEverything(info, false);
 
-    uint64_t max_time = 0;
+    millis_t max_time = 0;
     QueryInfo *query = NULL;
     {
         REQUIRE_TRUE_OR_RETURN(_Info_LockWaitingQueries(info, false), 0);
