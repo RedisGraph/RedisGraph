@@ -23,63 +23,6 @@
 static __thread int64_t n_alloced;
 static int64_t mem_capacity;  // maximum memory consumption for thread
 
-
-// ------< CUT HERE >-----------
-// static __thread AllocationContext allocation_context;
-// static atomic_int_fast64_t processing_allocated_bytes;
-// static atomic_int_fast64_t undo_log_allocated_bytes;
-// static atomic_int_fast64_t result_set_allocated_bytes;
-
-// // Defines allocation functions being context-aware.
-// #define DEFINE_FUNCTIONS_FOR_CONTEXT(context, counter) \
-// 	static inline void ##context_rm_free(void *p) { \
-// 	 	const int64_t before = n_alloced; \
-// 		rm_free_with_capacity(p); \
-// 		counter += (n_alloced - before); \
-// 	} \
-// 	static inline char* ##context_rm_strdup(const char *s, size_t n) { \
-// 	 	const int64_t before = n_alloced; \
-// 		char *ret = rm_strdup_with_capacity(s, n); \
-// 		counter += (n_alloced - before); \
-// 		return ret; \
-// 	} \
-// 	// static inline void* ##context_rm_alloc(size_t n) { \
-// 	//  	const int64_t before = n_alloced; \
-// 	// 	void *ret = rm_alloc_with_capacity(n); \
-// 	// 	counter += (n_alloced - before); \
-// 	// 	return ret; \
-// 	// } \
-// 	// static inline void* ##context_rm_realloc(void *p, size_t n) { \
-// 	//  	const int64_t before = n_alloced; \
-// 	// 	void *ret = rm_realloc_with_capacity(p, n); \
-// 	// 	counter += (n_alloced - before); \
-// 	// 	return ret; \
-// 	// } \
-// 	// static inline void* ##context_rm_calloc(size_t nelem, size_t elemsz) { \
-// 	//  	const int64_t before = n_alloced; \
-// 	// 	void *ret = rm_calloc_with_capacity(nelem, elemsz); \
-// 	// 	counter += (n_alloced - before); \
-// 	// 	return ret; \
-// 	// } \
-
-// // Assigns the current allocator functions to the specified ones.
-// #define SET_FUNCTIONS_FOR_CONTEXT(context) \
-// 	RedisModule_Alloc = ##context_rm_alloc; \
-// 	RedisModule_Calloc = ##context_rm_calloc; \
-// 	RedisModule_Realloc = ##context_rm_realloc; \
-// 	RedisModule_Strdup = ##context_rm_strdup; \
-// 	RedisModule_Free = ##context_rm_free; \
-
-// DEFINE_FUNCTIONS_FOR_CONTEXT(processing, processing_allocated_bytes);
-
-// void set_allocation_context(const AllocationContext allocation_context) {
-// 	// SET_FUNCTIONS_FOR_CONTEXT(allocation_context);
-// 	// RedisModule_Alloc         =  rm_alloc_with_capacity;
-// }
-
-// void unset_allocation_context();
-// ------< CUT HERE >-----------
-
 // function pointers which hold the original address of RedisModule_Alloc*
 static void (*RedisModule_Free_Orig)(void *ptr);
 static void * (*RedisModule_Alloc_Orig)(size_t bytes);

@@ -105,7 +105,7 @@ static void _report_query_already_waiting(const GraphQueryCtx *gq_ctx) {
 		return;
 	}
 
-	const uint64_t milliseconds_waited = CommandCtx_GetTimerMilliseconds(gq_ctx->command_ctx);
+	const millis_t milliseconds_waited = CommandCtx_GetTimerMilliseconds(gq_ctx->command_ctx);
 	const uint64_t received_milliseconds = CommandCtx_GetReceivedTimestamp(gq_ctx->command_ctx);
 	Info_AddWaitingQueryInfo(
 		&gq_ctx->graph_ctx->info,
