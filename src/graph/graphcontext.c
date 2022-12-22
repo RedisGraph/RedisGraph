@@ -482,7 +482,7 @@ uint64_t _count_indices_from_schemas(const Schema** schemas) {
 	uint64_t count = 0;
 
 	const uint32_t length = array_len(schemas);
-	for(uint32_t i = 0; i < length; ++i) {
+	for (uint32_t i = 0; i < length; ++i) {
 		const Schema *schema = schemas[i];
 		ASSERT(schema);
 		if (!schema) {
@@ -496,12 +496,12 @@ uint64_t _count_indices_from_schemas(const Schema** schemas) {
 
 uint64_t GraphContext_NodeIndexCount(const GraphContext *gc) {
 	ASSERT(gc);
-	return _count_indices_from_schemas(gc->node_schemas);
+	return _count_indices_from_schemas((const Schema**)gc->node_schemas);
 }
 
 uint64_t GraphContext_EdgeIndexCount(const GraphContext *gc) {
 	ASSERT(gc);
-	return _count_indices_from_schemas(gc->relation_schemas);
+	return _count_indices_from_schemas((const Schema**)gc->relation_schemas);
 }
 Index GraphContext_GetIndexByID
 (
