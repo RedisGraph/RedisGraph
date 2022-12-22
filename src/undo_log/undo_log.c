@@ -10,7 +10,6 @@
 #include "../execution_plan/ops/shared/update_functions.h"
 #include "../execution_plan/ops/shared/create_functions.h"
 #include "../graph/entities/attribute_set.h"
-#include "../graph/graph_hub.h"
 
 static void _index_node
 (
@@ -245,8 +244,8 @@ static void _UndoLog_Rollback_Delete_Node
 		UndoDeleteNodeOp *delete_op = &(op->delete_node_op);
 
 		Graph_CreateNode(ctx->gc->g, &n, delete_op->labels,
- 				delete_op->label_count);
- 		*n.attributes = delete_op->set;
+				delete_op->label_count);
+		*n.attributes = delete_op->set;
 		GraphContext_IncreasePropertyNamesCount(
 			ctx->gc,
 			ATTRIBUTE_SET_COUNT(*n.attributes),
@@ -274,8 +273,8 @@ static void _UndoLog_Rollback_Delete_Edge
 		UndoDeleteEdgeOp delete_op = op->delete_edge_op;
 
 		Graph_CreateEdge(ctx->gc->g, delete_op.srcNodeID, delete_op.destNodeID,
- 				delete_op.relationID, &e);
- 		*e.attributes = delete_op.set;
+				delete_op.relationID, &e);
+		*e.attributes = delete_op.set;
 
 		GraphContext_IncreasePropertyNamesCount(
 			ctx->gc,

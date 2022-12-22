@@ -66,8 +66,6 @@
 #define TIMER_GET_FULL_SECONDS(name) (uint64_t)TIMER_GET_SECONDS(name)
 // Returns the nanoseconds (double) counted by the timer.
 #define TIMER_GET_NANOSECONDS(name) name[1]
-// Returns the nanoseconds (uint64_t) counted by the timer.
-#define TIMER_GET_FULL_NANOSECONDS(name) (uint64_t)TIMER_GET_NANOSECONDS(name)
 // Returns the time counted in full milliseconds.
 // TODO rounding?
 #define TIMER_GET_MILLISECONDS(name) \

@@ -17,7 +17,7 @@ typedef struct ElementDeleteInfo {
     void *user_data;
 } ElementDeleteInfo;
 
-// A LIFO circular queue.
+// A FIFO circular queue.
 struct _CircularBuffer {
     uint64_t read_offset;
     uint64_t write_offset;
@@ -184,7 +184,7 @@ bool CircularBuffer_SetCapacity
     // If we can, this is simple:
     if (last_written_offset >= number_of_elements) {
         // Just copy the last "number_of_elements" elements.
-        const uint64_t copy_from
+        const uint8_t *copy_from
             = cb->data + (cb->write_offset - number_of_elements) * cb->item_size;
         const uint64_t copy_amount
             = number_of_elements * cb->item_size;
@@ -200,13 +200,13 @@ bool CircularBuffer_SetCapacity
         // 2. Copy from the end of the buffer, "the remainder":
         const uint64_t first_stage_bytes
             = how_many_from_the_end_of_buffer * cb->item_size;
-        const uint64_t first_stage_from
+        const uint8_t *first_stage_from
             = cb->end_marker - first_stage_bytes;
         memcpy(new_cb->data, first_stage_from, first_stage_bytes);
         // 1. Copy from the zeroth offset till the write offset.
         const uint64_t second_stage_bytes
             = how_many_from_the_write_offset * cb->item_size;
-        const uint64_t second_stage_from
+        const uint8_t *second_stage_from
             = cb->data;
         void *second_stage_to = new_cb->data + first_stage_bytes;
         memcpy(second_stage_to, second_stage_from, second_stage_bytes);

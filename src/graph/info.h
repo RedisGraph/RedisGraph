@@ -122,7 +122,7 @@ bool QueryInfoStorage_RemoveByContext(QueryInfoStorage *, const QueryCtx *);
 
 // An abstraction for iteration over QueryInfo objects.
 typedef struct QueryInfoIterator {
-    QueryInfoStorage *const storage;
+    const QueryInfoStorage *storage;
     uint64_t current_index;
     // True if at least one Next*/Get* was called.
     bool has_started;
@@ -132,11 +132,11 @@ typedef struct QueryInfoIterator {
 // provided index. The created iterator doesn't have to be freed.
 QueryInfoIterator QueryInfoIterator_NewStartingAt
 (
-    QueryInfoStorage *,
+    const QueryInfoStorage *,
     const uint64_t
 );
 // Returns a new iterator over the provided storage starting from the beginning.
-QueryInfoIterator QueryInfoIterator_New(QueryInfoStorage *);
+QueryInfoIterator QueryInfoIterator_New(const QueryInfoStorage *);
 // Returns a pointer to the next element from the current, NULL if the end has
 // been reached.
 QueryInfo* QueryInfoIterator_Next(QueryInfoIterator *);
@@ -144,7 +144,7 @@ QueryInfo* QueryInfoIterator_Next(QueryInfoIterator *);
 // has been reached.
 QueryInfo* QueryInfoIterator_NextValid(QueryInfoIterator *);
 // Returns a pointer to the underlying storage being iterated over.
-QueryInfoStorage * const QueryInfoIterator_GetStorage(QueryInfoIterator *);
+const QueryInfoStorage* QueryInfoIterator_GetStorage(QueryInfoIterator *);
 // Returns current element being pointed at by the iterator.
 QueryInfo* QueryInfoIterator_Get(QueryInfoIterator *);
 // Returns the number of elements which are still to be iterated over.
@@ -212,16 +212,21 @@ void Info_IndicateQueryFinishedReporting
     const QueryCtx *
 );
 // Return the total number of queries currently queued or being executed.
-uint64_t Info_GetTotalQueriesCount(const Info *);
+// Requires a pointer to mutable, for it changes the state of the locks.
+uint64_t Info_GetTotalQueriesCount(Info *);
 // Return the number of queries currently waiting to be executed.
-uint64_t Info_GetWaitingQueriesCount(const Info *);
+// Requires a pointer to mutable, for it changes the state of the locks.
+uint64_t Info_GetWaitingQueriesCount(Info *);
 // Return the number of queries being currently executed.
-uint64_t Info_GetExecutingQueriesCount(const Info *);
+// Requires a pointer to mutable, for it changes the state of the locks.
+uint64_t Info_GetExecutingQueriesCount(Info *);
 // Return the number of queries currently reporting results back.
-uint64_t Info_GetReportingQueriesCount(const Info *);
+// Requires a pointer to mutable, for it changes the state of the locks.
+uint64_t Info_GetReportingQueriesCount(Info *);
 // Return the maximum registered time a query was spent waiting, executing and
 // reporting the results.
-millis_t Info_GetMaxQueryWaitTime(const Info *);
+// Requires a pointer to mutable, for it changes the state of the locks.
+millis_t Info_GetMaxQueryWaitTime(Info *);
 // Locks the info object for external reading. Only one concurrent read is
 // allowed at the same time.
 bool Info_Lock(Info *);

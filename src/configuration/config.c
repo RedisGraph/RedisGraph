@@ -582,10 +582,10 @@ static void _Config_SetToDefaults(void) {
 	// the amount of empty space to reserve for node creations in matrices
 	config.node_creation_buffer = NODE_CREATION_BUFFER_DEFAULT;
 
-    // GRAPH.INFO command on/off.
+	// GRAPH.INFO command on/off.
 	config.cmd_info_on = CMD_INFO_DEFAULT;
 
-    // GRAPH.INFO maximum queries count.
+	// GRAPH.INFO maximum queries count.
 	config.max_info_queries_count = CMD_INFO_QUERIES_MAX_COUNT_DEFAULT;
 }
 
@@ -1101,8 +1101,8 @@ bool Config_Option_set
 		//----------------------------------------------------------------------
 
 		case Config_CMD_INFO_MAX_QUERY_COUNT: {
-			long long count;
-			if(!_Config_ParseNonNegativeInteger(val, &count)) return false;
+			long long count = 0;
+			if (!_Config_ParseNonNegativeInteger(val, &count)) return false;
 
 			// A downcast from <long long> to <uint32_t>.
 			Config_cmd_info_max_queries_set(count);

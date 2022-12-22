@@ -18,7 +18,7 @@ typedef rax set;
 set *Set_New(void);
 
 /* Check to see if v is in set. */
-bool Set_Contains(const set *s, SIValue v);
+bool Set_Contains(set *s, SIValue v);
 
 /* Adds v to set. */
 bool Set_Add(set *s, SIValue v);
@@ -27,7 +27,7 @@ bool Set_Add(set *s, SIValue v);
 void Set_Remove(set *s, SIValue v);
 
 /* Return number of elements in set. */
-uint64_t Set_Size(const set *s);
+uint64_t Set_Size(set *s);
 
 /* Free set. */
 void Set_Free(set *s);
