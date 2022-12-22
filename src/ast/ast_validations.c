@@ -787,7 +787,6 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 	}
 
 	// If this is a multi-hop traversal, validate it accordingly
-	
 	if(range && _ValidateMultiHopTraversal(n, range) == AST_VALID) {
 		return VISITOR_BREAK;
 	}
