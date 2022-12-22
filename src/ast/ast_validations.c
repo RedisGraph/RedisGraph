@@ -1200,7 +1200,7 @@ static VISITOR_STRATEGY _Validate_set_property
 		SIType expected_type = T_NODE | T_EDGE;
 		Error_SITypeMismatch(node->operand.constant, expected_type);
 		AR_EXP_Free(node);
-		return AST_INVALID;;
+		return VISITOR_BREAK;
 	} else if(cypher_astnode_type(ast_entity) != CYPHER_AST_IDENTIFIER) {
 		ErrorCtx_SetError("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions");
 		return VISITOR_BREAK;
