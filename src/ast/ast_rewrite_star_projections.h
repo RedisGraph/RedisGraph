@@ -10,5 +10,7 @@
 
 // rewrite WITH/RETURN * clauses in query to project explicit identifiers,
 // returning true if a rewrite has been performed
-bool AST_RewriteStarProjections(cypher_parse_result_t *result);
-
+bool AST_RewriteStarProjections
+(
+    const cypher_astnode_t *root  // root for which to rewrite star projections
+);

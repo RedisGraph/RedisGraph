@@ -668,3 +668,16 @@ class testGraphMergeFlow(FlowTestsBase):
                    RETURN x"""
         res = graph.query(query)
         self.env.assertEquals(res.result_set[0][0], expected)
+
+    def test31_alias_multiple_definition(self):
+        redis_con = self.env.getConnection()
+        graph = Graph(redis_con, "M")
+
+        # Redefinition of an alias by depicting L2 as a label of a
+        # should raise an exception
+        query = """MERGE ()-[:R2]->(a:L1)-[:R1]->(a:L2) RETURN *"""
+        try:
+            graph.execution_plan(query)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("can't be redeclared in a MERGE clause" in str(e))
