@@ -102,7 +102,7 @@ bool GraphEntity_IsDeleted
 );
 
 // returns attribute-set of entity
-const AttributeSet GraphEntity_GetAttributes
+AttributeSet GraphEntity_GetAttributes
 (
 	const GraphEntity *e
 );

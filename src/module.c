@@ -197,7 +197,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.INFO", Graph_Info, "readonly", 0, 0,
+	if (RedisModule_CreateCommand(ctx, "graph.INFO", Graph_Info, "readonly", 0, 0,
 								0) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}

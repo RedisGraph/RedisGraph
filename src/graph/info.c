@@ -379,7 +379,7 @@ bool QueryInfoStorage_RemoveByContext
 
 QueryInfoIterator QueryInfoIterator_NewStartingAt
 (
-    QueryInfoStorage *storage,
+    const QueryInfoStorage *storage,
     const uint64_t index
 ) {
     ASSERT(storage && "Storage has to be provided.");
@@ -405,7 +405,7 @@ QueryInfoIterator QueryInfoIterator_NewStartingAt
     return iterator;
 }
 
-QueryInfoIterator QueryInfoIterator_New(QueryInfoStorage *storage) {
+QueryInfoIterator QueryInfoIterator_New(const QueryInfoStorage *storage) {
     return QueryInfoIterator_NewStartingAt(storage, 0);
 }
 
@@ -442,7 +442,7 @@ QueryInfo* QueryInfoIterator_NextValid(QueryInfoIterator *iterator) {
     return next;
 }
 
-QueryInfoStorage * const QueryInfoIterator_GetStorage
+const QueryInfoStorage* QueryInfoIterator_GetStorage
 (
     QueryInfoIterator *iterator
 ) {
@@ -676,7 +676,7 @@ void Info_IndicateQueryFinishedReporting
     REQUIRE_TRUE(_Info_UnlockEverything(info));
 }
 
-uint64_t Info_GetTotalQueriesCount(const Info* info) {
+uint64_t Info_GetTotalQueriesCount(Info *info) {
     REQUIRE_ARG_OR_RETURN(info, 0);
 
     const uint64_t waiting = Info_GetWaitingQueriesCount(info);
@@ -692,7 +692,7 @@ uint64_t Info_GetTotalQueriesCount(const Info* info) {
     return total;
 }
 
-uint64_t Info_GetWaitingQueriesCount(const Info *info) {
+uint64_t Info_GetWaitingQueriesCount(Info *info) {
     REQUIRE_ARG_OR_RETURN(info, 0);
 
     REQUIRE_TRUE_OR_RETURN(_Info_LockWaitingQueries(info, false), 0);
@@ -704,7 +704,7 @@ uint64_t Info_GetWaitingQueriesCount(const Info *info) {
     return count;
 }
 
-uint64_t Info_GetExecutingQueriesCount(const Info *info) {
+uint64_t Info_GetExecutingQueriesCount(Info *info) {
     REQUIRE_ARG_OR_RETURN(info, 0);
 
     REQUIRE_TRUE_OR_RETURN(_Info_LockEverything(info, true), 0);
@@ -717,7 +717,7 @@ uint64_t Info_GetExecutingQueriesCount(const Info *info) {
     return count;
 }
 
-uint64_t Info_GetReportingQueriesCount(const Info *info) {
+uint64_t Info_GetReportingQueriesCount(Info *info) {
     REQUIRE_ARG_OR_RETURN(info, 0);
 
     REQUIRE_TRUE_OR_RETURN(_Info_LockEverything(info, true), 0);
@@ -730,7 +730,7 @@ uint64_t Info_GetReportingQueriesCount(const Info *info) {
     return count;
 }
 
-millis_t Info_GetMaxQueryWaitTime(const Info *info) {
+millis_t Info_GetMaxQueryWaitTime(Info *info) {
     REQUIRE_ARG_OR_RETURN(info, 0);
     _Info_LockEverything(info, false);
 
