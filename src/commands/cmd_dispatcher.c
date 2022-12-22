@@ -225,11 +225,12 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	int flags = RedisModule_GetContextFlags(ctx);
 	bool is_replicated = RedisModule_GetContextFlags(ctx) & REDISMODULE_CTX_FLAGS_REPLICATED;
 
-	ExecutorThread exec_thread = (flags & (REDISMODULE_CTX_FLAGS_MULTI         |
-										   REDISMODULE_CTX_FLAGS_LUA           |
-										   REDISMODULE_CTX_FLAGS_DENY_BLOCKING |
-										   REDISMODULE_CTX_FLAGS_LOADING)) ?
-								 EXEC_THREAD_MAIN : EXEC_THREAD_READER;
+	bool main_thread = (is_replicated || 
+		(flags & (REDISMODULE_CTX_FLAGS_MULTI       |
+				REDISMODULE_CTX_FLAGS_LUA           |
+				REDISMODULE_CTX_FLAGS_DENY_BLOCKING |
+				REDISMODULE_CTX_FLAGS_LOADING)));
+	ExecutorThread exec_thread =  main_thread ? EXEC_THREAD_MAIN : EXEC_THREAD_READER;
 
 	Command_Handler handler = get_command_handler(cmd);
 	if(exec_thread == EXEC_THREAD_MAIN) {
