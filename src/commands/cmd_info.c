@@ -169,9 +169,9 @@ extern GraphContext **graphs_in_keyspace;
 // Global info - across all the graphs available.
 typedef struct GlobalInfo {
     millis_t max_query_wait_time_time;
-    millis_t total_waiting_queries_count;
-    millis_t total_executing_queries_count;
-    millis_t total_reporting_queries_count;
+    uint64_t total_waiting_queries_count;
+    uint64_t total_executing_queries_count;
+    uint64_t total_reporting_queries_count;
 } GlobalInfo;
 
 typedef enum QueryStage {
@@ -235,8 +235,8 @@ static CommonQueryInfo _CommonQueryInfo_FromFinished
     const CommonQueryInfo info = {
         .received_at_ms = finished.received_unix_timestamp_milliseconds,
         .stage = QueryStage_FINISHED,
-        .graph_name = finished.graph_name,
-        .query_string = finished.query_string,
+        .graph_name = (char *)finished.graph_name,
+        .query_string = (char *)finished.query_string,
         .wait_duration = finished.total_wait_duration,
         .execution_duration = finished.total_execution_duration,
         .report_duration = finished.total_report_duration
@@ -252,8 +252,8 @@ static CommonQueryInfo _CommonQueryInfo_FromUnfinished
     const CommonQueryInfo info = {
         .received_at_ms = unfinished.received_unix_timestamp_milliseconds,
         .stage = stage,
-        .graph_name = unfinished.context->gc->graph_name,
-        .query_string = unfinished.context->query_data.query,
+        .graph_name = (char *)unfinished.context->gc->graph_name,
+        .query_string = (char *)unfinished.context->query_data.query,
         .wait_duration = unfinished.wait_duration,
         .execution_duration = unfinished.execution_duration,
         .report_duration = unfinished.report_duration
@@ -420,18 +420,7 @@ static bool _is_compact_mode(const char *arg) {
     return _string_equals_case_insensitive(arg, COMPACT_MODE_OPTION);
 }
 
-static bool _args_have_compact_mode_option(const RedisModuleString **argv, const int argc) {
-    for (int i = 0; i < argc; ++i) {
-        const char *arg = RedisModule_StringPtrLen(argv[i], NULL);
-        if (_is_compact_mode(arg)) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-static uint64_t _waiting_queries_count_from_graph(const GraphContext *gc) {
+static uint64_t _waiting_queries_count_from_graph(GraphContext *gc) {
     ASSERT(gc != NULL);
 
     if (!gc) {
@@ -441,7 +430,7 @@ static uint64_t _waiting_queries_count_from_graph(const GraphContext *gc) {
     return Info_GetWaitingQueriesCount(&gc->info);
 }
 
-static uint64_t _executing_queries_count_from_graph(const GraphContext *gc) {
+static uint64_t _executing_queries_count_from_graph(GraphContext *gc) {
     ASSERT(gc != NULL);
 
     if (!gc) {
@@ -451,7 +440,7 @@ static uint64_t _executing_queries_count_from_graph(const GraphContext *gc) {
     return Info_GetExecutingQueriesCount(&gc->info);
 }
 
-static uint64_t _reporting_queries_count_from_graph(const GraphContext *gc) {
+static uint64_t _reporting_queries_count_from_graph(GraphContext *gc) {
     ASSERT(gc != NULL);
 
     if (!gc) {
@@ -461,7 +450,7 @@ static uint64_t _reporting_queries_count_from_graph(const GraphContext *gc) {
     return Info_GetReportingQueriesCount(&gc->info);
 }
 
-static uint64_t _max_query_wait_time_from_graph(const GraphContext *gc) {
+static uint64_t _max_query_wait_time_from_graph(GraphContext *gc) {
     ASSERT(gc != NULL);
 
     if (!gc) {
@@ -474,7 +463,7 @@ static uint64_t _max_query_wait_time_from_graph(const GraphContext *gc) {
 static bool _collect_queries_info_from_graph
 (
     RedisModuleCtx *ctx,
-    const GraphContext *gc,
+    GraphContext *gc,
     GlobalInfo *global_info
 ) {
     ASSERT(ctx != NULL);
@@ -522,7 +511,7 @@ static bool _collect_queries_info_from_graph
         }
     }
 
-    if (!checked_add_u64(
+    if (!checked_add_u32(
         global_info->max_query_wait_time_time,
         max_query_wait_time_time,
         &global_info->max_query_wait_time_time)) {
@@ -587,7 +576,7 @@ static GraphContext* _find_graph_with_name(const char *graph_name) {
     const uint32_t graphs_count = array_len(graphs_in_keyspace);
 
     for (uint32_t i = 0; i < graphs_count; ++i) {
-        const GraphContext *gc = graphs_in_keyspace[i];
+        GraphContext *gc = graphs_in_keyspace[i];
         if (!gc) {
             return NULL;
         }
@@ -612,7 +601,7 @@ static bool _collect_global_info(RedisModuleCtx *ctx, GlobalInfo *global_info) {
     memset(global_info, 0, sizeof(GlobalInfo));
 
     for (uint32_t i = 0; i < graphs_count; ++i) {
-        const GraphContext *gc = graphs_in_keyspace[i];
+        GraphContext *gc = graphs_in_keyspace[i];
         if (!gc) {
             RedisModule_ReplyWithError(ctx, "Graph does not exist.");
             return false;
@@ -753,7 +742,7 @@ static int _reply_with_graph_queries_of_stage
 (
     RedisModuleCtx *ctx,
     const bool is_compact_mode,
-    const GraphContext *gc,
+    GraphContext *gc,
     const QueryStage query_stage,
     const uint64_t max_count,
     uint64_t *printed_count
@@ -764,7 +753,7 @@ static int _reply_with_graph_queries_of_stage
         return REDISMODULE_ERR;
     }
 
-    const Info *info = &gc->info;
+    Info *info = &gc->info;
     uint64_t iterated = 0;
     Info_Lock(info);
 
@@ -822,7 +811,7 @@ static int _reply_queries_from_all_graphs
     uint64_t actual_elements_count = 0;
 
     for (uint32_t i = 0; i < graphs_count; ++i) {
-        const GraphContext *gc = graphs_in_keyspace[i];
+        GraphContext *gc = graphs_in_keyspace[i];
         if (!gc) {
             return REDISMODULE_ERR;
         }
@@ -1087,7 +1076,7 @@ static int _reply_with_get_aggregated_graph_info
 static int _reply_with_get_graph_info
 (
     RedisModuleCtx *ctx,
-    const GraphContext *gc,
+    GraphContext *gc,
     const InfoGetFlag flags
 ) {
     static const long KEY_VALUE_COUNT = 9;
@@ -1173,7 +1162,7 @@ static int _get_graph_info
     ASSERT(ctx);
     ASSERT(graph_name);
 
-    const GraphContext *gc = _find_graph_with_name(graph_name);
+    GraphContext *gc = _find_graph_with_name(graph_name);
     if (!gc) {
         RedisModule_ReplyWithError(ctx, ERROR_COULDNOT_FIND_GRAPH);
         return REDISMODULE_ERR;
@@ -1206,12 +1195,6 @@ static int _get_all_graphs_info
     }
 
     return _reply_with_get_aggregated_graph_info(ctx, info);
-}
-
-// TODO
-static int _get_all_graphs_info_from_shards(RedisModuleCtx *ctx, const InfoGetFlag flags) {
-    RedisModule_ReplyWithError(ctx, UNIMPLEMENTED_ERROR_STRING);
-    return REDISMODULE_ERR;
 }
 
 static bool _reply_finished_queries(void *user_data, const void *item) {
@@ -1271,10 +1254,10 @@ static int _reply_with_queries_info_prev
 static int _parse_and_reply_info_queries_prev
 (
     RedisModuleCtx *ctx,
-    RedisModuleString **argv,
+    const RedisModuleString **argv,
     const int argc,
     const bool is_compact_mode,
-    uint64_t actual_element_count
+    uint64_t *actual_element_count
 ) {
     ASSERT(ctx && argv && argc);
     if (!ctx || !argv || !argc) {
@@ -1300,7 +1283,7 @@ static int _parse_and_reply_info_queries_prev
 static int _reply_with_queries
 (
     RedisModuleCtx *ctx,
-    const RedisModuleString *argv,
+    const RedisModuleString **argv,
     const int argc,
     const bool is_compact_mode,
     uint8_t *top_level_count
