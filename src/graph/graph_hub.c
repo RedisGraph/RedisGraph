@@ -95,32 +95,6 @@ static void _AddEdgeToIndices(GraphContext *gc, Edge *e) {
 	Schema_AddEdgeToIndices(s, e);
 }
 
-// uint CreateNode
-// (
-// 	GraphContext *gc,
-// 	Node *n,
-// 	LabelID *labels,
-// 	uint label_count,
-// 	AttributeSet set
-// ) {
-// 	ASSERT(gc != NULL);
-// 	ASSERT(n != NULL);
-
-// 	const uint prop_count = CreateNodeWithoutUndoLog(
-// 		gc,
-// 		n,
-// 		labels,
-// 		label_count,
-// 		set
-// 	);
-
-// 	// add node creation operation to undo log
-// 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-// 	UndoLog_CreateNode(&query_ctx->undo_log, n);
-
-// 	return prop_count;
-// }
-
 uint CreateNode
 (
 	GraphContext *gc,
@@ -173,7 +147,6 @@ uint CreateEdge
  	// all schemas have been created in the edge blueprint loop or earlier
 	ASSERT(s != NULL);
 	Schema_AddEdgeToIndices(s, e);
-	// add edge creation operation to undo log
 
 	// add edge creation operation to undo log
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
