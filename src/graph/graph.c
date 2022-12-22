@@ -893,7 +893,7 @@ uint64_t Graph_GetNodeDegree
 			RG_MatrixTupleIter_reset(it);
 		}
 	}
-	// RG_MatrixTupleIter_free(&it);
+	RG_MatrixTupleIter_free(&it);
 
 	return edge_count;
 }
