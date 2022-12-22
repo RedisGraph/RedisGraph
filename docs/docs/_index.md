@@ -28,7 +28,7 @@ To read the docs, visit [redis.io](https://redis.io/docs/stack/graph/).
 To quickly try out RedisGraph, launch an instance using docker:
 
 ```
-docker run -p 6379:6379 -it --rm redislabs/redisgraph
+docker run -p 6379:6379 -it --rm redis/redis-stack-server
 ```
 
 ### Give it a try

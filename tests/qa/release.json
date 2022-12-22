@@ -29,11 +29,17 @@
         "concurrency": 1,
 		"module_url": "http://redismodules.s3.amazonaws.com/{{RS_MODULE_FILE_PREFIX}}/{{RS_MODULE_FILE_PREFIX}}.Linux-rhel7-x86_64.{{MODULE_VERSION}}.zip"
       },
-	      {
+      {
         "teardown": true,
         "name": "rhel8.5-x86_64-aws",
         "concurrency": 1,
 		"module_url": "http://redismodules.s3.amazonaws.com/{{RS_MODULE_FILE_PREFIX}}/{{RS_MODULE_FILE_PREFIX}}.Linux-rhel8-x86_64.{{MODULE_VERSION}}.zip"
+      },
+      {
+        "teardown": true,
+        "name": "focal-amd64-aws",
+        "concurrency": 1,
+		"module_url": "http://redismodules.s3.amazonaws.com/{{RS_MODULE_FILE_PREFIX}}/{{RS_MODULE_FILE_PREFIX}}.Linux-ubuntu20.04-x86_64.{{MODULE_VERSION}}.zip"
       }
     ]
   }

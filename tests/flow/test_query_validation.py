@@ -493,7 +493,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("Attempted to access variable" in str(e))
+            assert("a not defined" in str(e))
             pass
 
     def test34_self_referential_properties(self):
@@ -561,7 +561,7 @@ class testQueryValidationFlow(FlowTestsBase):
                 redis_graph.query(q)
                 assert(False)
             except redis.exceptions.ResponseError as e:
-                self.env.assertContains("All sub queries in an UNION must have the same column names", str(e))
+                self.env.assertContains("All sub queries in a UNION must have the same column names", str(e))
 
     def test39_non_single_statement_query(self):
         queries = [";",
