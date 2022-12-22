@@ -23,6 +23,7 @@
 
 #include "../util/simple_timer.h"
 
+typedef uint32_t millis_t;
 typedef struct QueryCtx QueryCtx;
 // Duplicate typedef from the circular buffer.
 typedef bool (*CircularBuffer_ReadAllCallback)(void *user_data, const void *item);
@@ -33,11 +34,11 @@ typedef struct QueryInfo {
     // received by the module.
     uint64_t received_unix_timestamp_milliseconds;
     // The time it spent waiting.
-    uint64_t waiting_time_milliseconds;
+    millis_t wait_duration;
     // The time spent on executing.
-    uint64_t executing_time_milliseconds;
+    millis_t execution_duration;
     // The time spent on reporting.
-    uint64_t reporting_time_milliseconds;
+    millis_t report_duration;
     // The context of the query.
     const QueryCtx *context;
     // A timer for counting the time spent in the stages (waiting, executing,
@@ -47,9 +48,9 @@ typedef struct QueryInfo {
 
 typedef struct FinishedQueryInfo {
     uint64_t received_unix_timestamp_milliseconds;
-    uint64_t total_wait_duration_milliseconds;
-    uint64_t total_execution_duration_milliseconds;
-    uint64_t total_report_duration_milliseconds;
+    millis_t total_wait_duration;
+    millis_t total_execution_duration;
+    millis_t total_report_duration;
     char *query_string;
     char *graph_name;
 } FinishedQueryInfo;
@@ -69,13 +70,13 @@ bool QueryInfo_IsValid(const QueryInfo *);
 // milliseconds from UNIX epoch.
 uint64_t QueryInfo_GetReceivedTimestamp(const QueryInfo);
 // Returns the total time spent by a query waiting, executing and reporting.
-uint64_t QueryInfo_GetTotalTimeSpent(const QueryInfo, bool *is_ok);
+millis_t QueryInfo_GetTotalTimeSpent(const QueryInfo, bool *is_ok);
 // Returns the time the query spent waiting.
-uint64_t QueryInfo_GetWaitingTime(const QueryInfo);
+millis_t QueryInfo_GetWaitingTime(const QueryInfo);
 // Returns the time the query spent executing.
-uint64_t QueryInfo_GetExecutionTime(const QueryInfo);
+millis_t QueryInfo_GetExecutionTime(const QueryInfo);
 // Returns the time the query spent reporting.
-uint64_t QueryInfo_GetReportingTime(const QueryInfo);
+millis_t QueryInfo_GetReportingTime(const QueryInfo);
 // Reads the stage timer and updates the waiting time with it.
 void QueryInfo_UpdateWaitingTime(QueryInfo *info);
 // Reads the stage timer and updates the execution time with it.
@@ -84,7 +85,7 @@ void QueryInfo_UpdateExecutionTime(QueryInfo *info);
 void QueryInfo_UpdateReportingTime(QueryInfo *info);
 // Resets the stage timer and returns the milliseconds it had recorded before
 // having been reset.
-uint64_t QueryInfo_ResetStageTimer(QueryInfo *);
+millis_t QueryInfo_ResetStageTimer(QueryInfo *);
 
 typedef struct {
     QueryInfo *queries;
@@ -186,7 +187,7 @@ void Info_AddWaitingQueryInfo
 (
     Info *,
     const QueryCtx *,
-    const uint64_t waiting_time_milliseconds,
+    const millis_t wait_duration,
     const uint64_t received_unix_timestamp_milliseconds
 );
 // Indicates that the provided query has finished waiting and stated being
@@ -220,7 +221,7 @@ uint64_t Info_GetExecutingQueriesCount(const Info *);
 uint64_t Info_GetReportingQueriesCount(const Info *);
 // Return the maximum registered time a query was spent waiting, executing and
 // reporting the results.
-uint64_t Info_GetMaxQueryWaitTime(const Info *);
+millis_t Info_GetMaxQueryWaitTime(const Info *);
 // Locks the info object for external reading. Only one concurrent read is
 // allowed at the same time.
 bool Info_Lock(Info *);
