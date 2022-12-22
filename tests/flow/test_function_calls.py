@@ -1170,7 +1170,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         except redis.ResponseError as e:
             self.env.assertContains("Division by zero", str(e))
 
-    def test80_in_out_degree(self):
+    def test63_in_out_degree(self):
         # clear graph
         self.env.flush()
 

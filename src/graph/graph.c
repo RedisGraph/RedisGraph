@@ -854,7 +854,7 @@ uint64_t Graph_GetNodeDegree
 				ASSERT(info == GrB_SUCCESS);
 			}
 
-			RG_MatrixTupleIter_reset(it);
+			RG_MatrixTupleIter_free(it);
 		}
 
 		//----------------------------------------------------------------------
@@ -890,10 +890,9 @@ uint64_t Graph_GetNodeDegree
 				ASSERT(info == GrB_SUCCESS);
 			}
 			
-			RG_MatrixTupleIter_reset(it);
+			RG_MatrixTupleIter_free(it);
 		}
 	}
-	RG_MatrixTupleIter_free(&it);
 
 	return edge_count;
 }
