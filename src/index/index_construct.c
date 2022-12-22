@@ -26,18 +26,18 @@ static bool _Index_PopulateNodeIndex_enforce_constraint
 (
 	Index idx,
 	Constraint c,
-	GraphContext *gc,
-	bool should_index
+	GraphContext *gc
 ) {
 	ASSERT(gc   != NULL);
 	ASSERT(gc->g != NULL);
 	ASSERT(idx != NULL || c != NULL);
+	Index _idx = idx;
 	if(!idx) {
 		Schema *s = GraphContext_GetSchema(gc, c->label, SCHEMA_NODE);
 		ASSERT(s != NULL);
-		idx = s->index;
+		_idx = s->index;
 	}
-	ASSERT(idx  != NULL);
+	ASSERT(_idx  != NULL);
 
 	Graph *g = gc->g;
 	GrB_Index          rowIdx     = 0;
@@ -54,7 +54,7 @@ static bool _Index_PopulateNodeIndex_enforce_constraint
 			// this can happen if for example the following sequance is issued:
 			// 1. CREATE INDEX FOR (n:Person) ON (n.age)
 			// 2. CREATE INDEX FOR (n:Person) ON (n.height)
-			if(Index_PendingChanges(idx) > 1) {
+			if(Index_PendingChanges(_idx) > 1) {
 				break;
 			}
 		}
@@ -63,7 +63,7 @@ static bool _Index_PopulateNodeIndex_enforce_constraint
 		indexed = 0;
 
 		// fetch label matrix
-		const RG_Matrix m = Graph_GetLabelMatrix(g, Index_GetLabelID(idx));
+		const RG_Matrix m = Graph_GetLabelMatrix(g, Index_GetLabelID(_idx));
 		ASSERT(m != NULL);
 
 		//----------------------------------------------------------------------
@@ -86,7 +86,7 @@ static bool _Index_PopulateNodeIndex_enforce_constraint
 		{
 			Node n;
 			Graph_GetNode(g, id, &n);
-			if(c && !Constraint_enforce_entity(c, n.attributes, idx->_idx)) {
+			if(c && !Constraint_enforce_entity(c, n.attributes, _idx->_idx)) {
 				// Constraint is not satisfied, cancel the index operation.
 
 				// release read lock
@@ -95,7 +95,7 @@ static bool _Index_PopulateNodeIndex_enforce_constraint
 				Free_Constraint_Remove_Its_Index(c, gc);
 				return false;
 			}
-			if(should_index) Index_IndexNode(idx, &n);
+			if(idx) Index_IndexNode(_idx, &n);
 			indexed++;
 		}
 
@@ -123,15 +123,6 @@ static bool _Index_PopulateNodeIndex_enforce_constraint
 	Graph_ReleaseLock(g);
 	RG_MatrixTupleIter_detach(&it);
 
-	if(c) {
-		// Constraint is satisfied, add it to schema.
-		SchemaType schema_type = (c->entity_type == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
-		QueryCtx_LockForCommit();
-		Schema *s = GraphContext_GetSchema(gc, c->label, schema_type);
-		Schema_AddConstraint(s, c);
-		QueryCtx_UnlockCommit(NULL);
-	}
-
 	return true;
 }
 
@@ -148,20 +139,19 @@ static bool _Index_PopulateEdgeIndex_enforce_constraint
 (
 	Index idx,
 	Constraint c,
-	GraphContext *gc,
-	bool should_index
+	GraphContext *gc
 ) {
 	ASSERT(gc   != NULL);
 	ASSERT(gc->g != NULL);
 	ASSERT(idx != NULL || c != NULL);
 	Schema *s;
+	Index _idx = idx;
 	if(!idx) {
-		ASSERT(c != NULL);
 		s = GraphContext_GetSchema(gc, c->label, SCHEMA_EDGE);
 		ASSERT(s != NULL);
-		idx = s->index;
+		_idx = s->index;
 	}
-	ASSERT(idx  != NULL);
+	ASSERT(_idx  != NULL);
 
 	Graph *g = gc->g;
 	GrB_Info  info;
@@ -183,7 +173,7 @@ static bool _Index_PopulateEdgeIndex_enforce_constraint
 			// this can happen if for example the following sequance is issued:
 			// 1. CREATE INDEX FOR (:Person)-[e:WORKS]-(:Company) ON (e.since)
 			// 2. CREATE INDEX FOR (:Person)-[e:WORKS]-(:Company) ON (e.title)
-			if(Index_PendingChanges(idx) > 1) {
+			if(Index_PendingChanges(_idx) > 1) {
 				break;
 			}
 		}
@@ -194,7 +184,7 @@ static bool _Index_PopulateEdgeIndex_enforce_constraint
 		prev_dest_id = dest_id;
 
 		// fetch relation matrix
-		const RG_Matrix m = Graph_GetRelationMatrix(g, Index_GetLabelID(idx),
+		const RG_Matrix m = Graph_GetRelationMatrix(g, Index_GetLabelID(_idx),
 				false);
 		ASSERT(m != NULL);
 
@@ -226,20 +216,19 @@ static bool _Index_PopulateEdgeIndex_enforce_constraint
 			Edge e;
 			e.srcNodeID  = src_id;
 			e.destNodeID = dest_id;
-			e.relationID = Index_GetLabelID(idx);
+			e.relationID = Index_GetLabelID(_idx);
 
 			if(SINGLE_EDGE(edge_id)) {
 				Graph_GetEdge(g, edge_id, &e);
-				if(c && !Constraint_enforce_entity(c, e.attributes, idx->_idx)) {
+				if(c && !Constraint_enforce_entity(c, e.attributes, _idx->_idx)) {
 					// Constraint is not satisfied, cancel the index operation.
 
 					// release read lock
 					Graph_ReleaseLock(g);
 					RG_MatrixTupleIter_detach(&it);
-					Free_Constraint_Remove_Its_Index(c, gc);
 					return false;
 				}
-				if(should_index) Index_IndexEdge(idx, &e);
+				if(should_index) Index_IndexEdge(_idx, &e);
 			} else {
 				EdgeID *edgeIds = (EdgeID *)(CLEAR_MSB(edge_id));
 				uint edgeCount = array_len(edgeIds);
@@ -247,7 +236,7 @@ static bool _Index_PopulateEdgeIndex_enforce_constraint
 				for(uint i = 0; i < edgeCount; i++) {
 					edge_id = edgeIds[i];
 					Graph_GetEdge(g, edge_id, &e);
-					if(c && !Constraint_enforce_entity(c, e.attributes, idx->_idx)) {
+					if(c && !Constraint_enforce_entity(c, e.attributes, _idx->_idx)) {
 						// Constraint is not satisfied, cancel the index operation.
 
 						// release read lock
@@ -256,7 +245,7 @@ static bool _Index_PopulateEdgeIndex_enforce_constraint
 						Free_Constraint_Remove_Its_Index(c, gc);
 						return false;
 					}
-					if(should_index) Index_IndexEdge(idx, &e);
+					if(idx) Index_IndexEdge(_idx, &e);
 				}
 			}
 			indexed++; // single/multi edge are counted similarly
@@ -283,15 +272,6 @@ static bool _Index_PopulateEdgeIndex_enforce_constraint
 	Graph_ReleaseLock(g);
 	RG_MatrixTupleIter_detach(&it);
 
-	if(c) {
-		// Constraint is satisfied, add it to schema.
-		SchemaType schema_type = (c->entity_type == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
-		QueryCtx_LockForCommit();
-		Schema *s = GraphContext_GetSchema(gc, c->label, schema_type);
-		Schema_AddConstraint(s, c);
-		QueryCtx_UnlockCommit(NULL);
-	}
-
 	return true;
 }
 
@@ -300,10 +280,9 @@ bool Index_Populate_enforce_constraint
 (
 	Index idx,
 	Constraint c,
-	GraphContext *gc,
-	bool should_index
+	GraphContext *gc
 ) {
-	ASSERT(idx || should_index);
+	ASSERT(idx || c);
 	ASSERT(gc        != NULL);
 	ASSERT(!idx || Index_RSIndex(idx) != NULL);
 	ASSERT(!idx || !Index_Enabled(idx));  // index should have pending changes
@@ -314,9 +293,9 @@ bool Index_Populate_enforce_constraint
 	//--------------------------------------------------------------------------
 
 	if(Index_GraphEntityType(idx) == GETYPE_NODE) {
-		rv = _Index_PopulateNodeIndex_enforce_constraint(idx, c, gc, should_index);
+		rv = _Index_PopulateNodeIndex_enforce_constraint(idx, c, gc);
 	} else {
-		rv = _Index_PopulateEdgeIndex_enforce_constraint(idx, c, gc, should_index);
+		rv = _Index_PopulateEdgeIndex_enforce_constraint(idx, c, gc);
 	}
 
 	// task been handled, try to enable index

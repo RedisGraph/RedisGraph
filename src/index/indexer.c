@@ -55,23 +55,19 @@ static void *_index_populate
 
 		switch(ctx.op) {
 			case INDEXER_POPULATE:
-				if(!ctx.idx) {
-					ASSERT(ctx.c);
-					Constraint c = ctx.c;
-					if(Index_Populate_enforce_constraint(ctx.idx, ctx.c, ctx.gc, false)) {
-						// constraint was satisfied, add it to the schema
-
-						SchemaType schema_type = (c->entity_type == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
+				bool ret = Index_Populate_enforce_constraint(ctx.idx, ctx.c, ctx.gc);
+				if(ctx.c) {
+					if(ret) {
+						// Constraint is satisfied, change it's status.
 						QueryCtx_LockForCommit();
-						Schema *s = GraphContext_GetSchema(ctx.gc, c->label, schema_type);
-						Schema_AddConstraint(s, c);
-						QueryCtx_UnlockCommit(NULL);
+						ctx.c->status = CT_ACTIVE;
 					} else {
-						// constraint was not satisfied, free it and remove it's index
-						Free_Constraint_Remove_Its_Index(c, ctx.gc);
+						// constraint was not satisfied, remove it's index and change is status
+						QueryCtx_LockForCommit();
+						ctx.c->status = CT_FAILED;
+						Constraint_Drop_Index(ctx.c, ctx.gc);
 					}
-				} else {
-					Index_Populate_enforce_constraint(ctx.idx, ctx.c, ctx.gc, true);
+					QueryCtx_UnlockCommit(NULL);
 				}
 				// decrease graph reference count
 				GraphContext_DecreaseRefCount(ctx.gc);

@@ -129,8 +129,8 @@ static Schema *_RdbLoadSchema
 
 	if(s) {
 		// no entities are expected to be in the graph at this point in time
-		if(s->index) Index_Populate_enforce_constraint(s->index, NULL, gc, true);
-		if(s->fulltextIdx) Index_Populate_enforce_constraint(s->fulltextIdx, NULL, gc, true);
+		if(s->index) Index_Populate_enforce_constraint(s->index, NULL, gc);
+		if(s->fulltextIdx) Index_Populate_enforce_constraint(s->fulltextIdx, NULL, gc);
 	}
 
 	return s;

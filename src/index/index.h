@@ -137,8 +137,7 @@ bool Index_Populate_enforce_constraint
 (
 	Index idx,  // index to populate
 	Constraint c, // constraint to enforce
-	GraphContext *gc,    // graph holding entities to index
-	bool should_index
+	GraphContext *gc    // graph holding entities to index
 );
 
 // adds field to index

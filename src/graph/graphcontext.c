@@ -517,6 +517,7 @@ bool GraphContext_AddExactMatchIndexOrUniqueConstraint
 
 		GraphEntityType entity_type = (s->type == SCHEMA_NODE) ? GETYPE_NODE : GETYPE_EDGE;
 		*constraint = Constraint_new(fields, fields_count, s->name, s->id, entity_type);
+		Schema_AddConstraint(s, *constraint);
 	}
 
 	for(uint i = 0; i < fields_count; i++) {

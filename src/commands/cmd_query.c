@@ -299,7 +299,7 @@ static void _index_operation
 				// if idx field count > 0 reindex
 				// otherwise drop
 				if(Index_FieldsCount(idx) > 0) {
-					Indexer_PopulateIndexOrConstraint(gc, idx, c);
+					Indexer_PopulateIndexOrConstraint(gc, idx, NULL);
 				} else {
 					Indexer_DropIndex(idx);
 				}

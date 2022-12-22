@@ -11,11 +11,18 @@ typedef struct {
     char *attribute_name;   // attribute name
 } ConstAttrData;
 
+typedef enum ConstraintStatus {
+    CT_ACTIVE = 0,
+    CT_PENDING,
+    CT_FAILED
+} ConstraintStatus;
+
 typedef struct _Constraint {
     ConstAttrData *attributes;     // array of attributes sorted by their ids which are part of this constraint
     char *label;                   // indexed label
 	int label_id;                  // indexed label ID
     GraphEntityType entity_type;   // entity type (node/edge) indexed
+    ConstraintStatus status;       // constraint status
 } _Constraint;
 
 // forward declaration
@@ -31,7 +38,7 @@ bool Constraint_enforce_entity(Constraint c, const AttributeSet attributes, RSIn
 bool Constraints_enforce_entity(Constraint c, const AttributeSet attributes, RSIndex *idx);
 
 
-void Free_Constraint_Remove_Its_Index(Constraint c, const GraphContext *gc);
+void Constraint_Drop_Index(Constraint c, const GraphContext *gc);
 
 // is the field have constraint which enforce it
 bool Has_Constraint_On_Attribute(const Constraint constraints, Attribute_ID attr_id);

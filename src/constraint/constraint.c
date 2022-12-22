@@ -6,6 +6,7 @@
 #include "../index/index.h"
 #include "../schema/schema.h"
 #include "value.h"
+#include "../index/indexer.h"
 
 
 Constraint Constraint_new(ConstAttrData *attrData, uint id_count, const char *label, int label_id, 
@@ -20,6 +21,7 @@ GraphEntityType type) {
     c->label = rm_strdup(label);
     c->label_id = label_id;
     c->entity_type = type;
+    c->status = CT_PENDING;
     return c;
 }
 
@@ -105,11 +107,11 @@ bool Constraints_enforce_entity(Constraint c, const AttributeSet attributes, RSI
     return true;
 }
 
-void Free_Constraint_Remove_Its_Index(Constraint c, const GraphContext *gc) {
+// Executed under write lock
+void Constraint_Drop_Index(Constraint c, const GraphContext *gc) {
 	// constraint was not satisfied, free it and remove it's index
 
 	SchemaType schema_type = (c->entity_type == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
-	QueryCtx_LockForCommit();
 	Schema *s = GraphContext_GetSchema(gc, c->label, schema_type);
 	ASSERT(s);
 
@@ -130,8 +132,6 @@ void Free_Constraint_Remove_Its_Index(Constraint c, const GraphContext *gc) {
 			}
 		}
 	}
-	constraint_free(c);
-	QueryCtx_UnlockCommit(NULL);
 }
 
 bool Has_Constraint_On_Attribute(const Constraint constraints, Attribute_ID attr_id) {
