@@ -138,7 +138,7 @@ Feature: Match9 - Match deprecated scenarios
       MATCH (a)-[r1]->()-[r2]->(b)
       WITH [r1, r2] AS rs, a AS first, b AS second
         LIMIT 1
-      MATCH (first)-[rs*]->(second)
+      MATCH (first)-[*]->(second)
       RETURN first, second
       """
     Then the result should be, in any order:
@@ -160,7 +160,7 @@ Feature: Match9 - Match deprecated scenarios
       MATCH (a)-[r1]->()-[r2]->(b)
       WITH [r1, r2] AS rs, a AS second, b AS first
         LIMIT 1
-      MATCH (first)-[rs*]->(second)
+      MATCH (first)-[*]->(second)
       RETURN first, second
       """
     Then the result should be, in any order:

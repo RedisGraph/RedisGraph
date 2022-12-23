@@ -84,7 +84,7 @@ class testReduce():
         try:
             self.graph.query(q).result_set
         except ResponseError as e:
-            self.env.assertIn("n not defined", str(e))
+            self.env.assertIn("Unknown function 'reduce'", str(e))
         #-----------------------------------------------------------------------
 
         # missing list expression
