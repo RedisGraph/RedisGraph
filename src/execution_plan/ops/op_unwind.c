@@ -30,7 +30,7 @@ OpBase *NewUnwindOp
 	op->exp           = exp;
 	op->list          = SI_NullVal();
 	op->listIdx       = INDEX_NOT_SET;
-	op->is_range      = true;
+	op->is_range      = false;
 	op->currentRecord = NULL;
 
 	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", UnwindInit,
@@ -50,7 +50,7 @@ static void _initList
 ) {	
 	// null-set the list value to avoid memory errors if evaluation fails
 	op->list = SI_NullVal();
-	if(AR_EXP_IsOperation(op->exp) && strcmp(op->exp->op.f->name, "range") == 0) {
+	if(AR_EXP_IsOperation(op->exp) && (strcmp(op->exp->op.f->name, "range") == 0 || strcmp(op->exp->op.f->name, "@range") == 0)) {
 		op->exp->op.f = AR_GetFunc("@range", true);
 		op->list = AR_EXP_Evaluate(op->exp, op->currentRecord);
 		op->is_range = true;
@@ -140,8 +140,6 @@ static Record UnwindConsume
 		// free old list
 		SIValue_Free(op->list);
 
-		// reset index and set list
-		op->listIdx = 0;
 		_initList(op);
 	}
 
@@ -153,8 +151,16 @@ static OpResult UnwindReset
 	OpBase *ctx
 ) {
 	OpUnwind *op = (OpUnwind *)ctx;
+
 	// static should reset index to 0
-	if(op->op.childCount == 0) op->listIdx = 0;
+	if(op->op.childCount == 0) {
+		if(op->is_range) {
+			SIValue_Free(op->list);
+			_initList(op);
+		} else { 
+			op->listIdx = 0;
+		}
+	}
 	// dynamic should set index to UINT_MAX, to force refetching of data
 	else op->listIdx = INDEX_NOT_SET;
 	return OP_OK;
