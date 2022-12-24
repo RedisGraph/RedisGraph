@@ -131,7 +131,7 @@ GrB_Info RG_Matrix_removeEntry
 	//--------------------------------------------------------------------------
 
 	info = GrB_Matrix_extractElement(x, dp, i, j);
-	ASSERT(info == GrB_SUCCESS);
+	if(info != GrB_SUCCESS) return info;
 
 	if(SINGLE_EDGE(*x)) {
 		info = GrB_Matrix_removeElement(dp, i, j);
