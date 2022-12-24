@@ -28,6 +28,8 @@ OpBase *NewUnwindOp
 	OpUnwind *op = rm_malloc(sizeof(OpUnwind));
 
 	op->exp           = exp;
+	op->list          = SI_NullVal();
+	op->listIdx       = INDEX_NOT_SET;
 	op->is_range      = true;
 	op->currentRecord = NULL;
 
@@ -46,36 +48,14 @@ static void _initList
 (
 	OpUnwind *op
 ) {	
+	// null-set the list value to avoid memory errors if evaluation fails
+	op->list = SI_NullVal();
 	if(AR_EXP_IsOperation(op->exp) && strcmp(op->exp->op.f->name, "range") == 0) {
-		op->step     = 1;
+		op->exp->op.f = AR_GetFunc("@range", true);
+		op->list = AR_EXP_Evaluate(op->exp, op->currentRecord);
 		op->is_range = true;
-		// extracting information from range function
-		// extracting: range beginning, range end and optional range step
-		SIValue v = AR_EXP_Evaluate(op->exp->op.children[0], op->currentRecord);
-		if(SI_TYPE(v) != T_INT64) {
-			Error_SITypeMismatch(v, T_INT64);
-			ErrorCtx_RaiseRuntimeException(NULL);
-		}
-		op->from = v.longval;
-		v = AR_EXP_Evaluate(op->exp->op.children[1], op->currentRecord);
-		if(SI_TYPE(v) != T_INT64) {
-			Error_SITypeMismatch(v, T_INT64);
-			ErrorCtx_RaiseRuntimeException(NULL);
-		}
-		op->to = v.longval;
-		if(op->exp->op.child_count == 3) {
-			v = AR_EXP_Evaluate(op->exp->op.children[2], op->currentRecord);
-			if(SI_TYPE(v) != T_INT64) {
-				Error_SITypeMismatch(v, T_INT64);
-				ErrorCtx_RaiseRuntimeException(NULL);
-			}
-			op->step = v.longval;
-		}
-		op->to      += op->step;
-		op->current  = (op->to >= op->from && op->step > 0) || (op->to <= op->from && op->step < 0) ? op->from : op->to;
-	} else {
-		// null-set the list value to avoid memory errors if evaluation fails
-		op->list     = SI_NullVal();
+		op->listIdx = SIArray_Get(op->list, 0).longval;
+	} else {	
 		op->listIdx  = 0;
 		op->is_range = false;
 		SIValue new_list = AR_EXP_Evaluate(op->exp, op->currentRecord);
@@ -120,10 +100,13 @@ Record _handoff
 	OpUnwind *op
 ) {
 	if(op->is_range) {
-		if(op->current != op->to) {
+		int64_t size = SIArray_Get(op->list, 2).longval;
+		if(size > 0) {
 			Record r = OpBase_CloneRecord(op->currentRecord);
-			Record_Add(r, op->unwindRecIdx, SI_LongVal(op->current));
-			op->current += op->step;
+			Record_Add(r, op->unwindRecIdx, SI_LongVal(op->listIdx));
+			int64_t step = SIArray_Get(op->list, 1).longval;
+			op->listIdx += step;
+			op->list.array[2].longval--;
 			return r;
 		}
 	} else if(op->listIdx < SIArray_Length(op->list)) {
@@ -192,10 +175,8 @@ static void UnwindFree
 	OpBase *ctx
 ) {
 	OpUnwind *op = (OpUnwind *)ctx;
-	if(!op->is_range) {
-		SIValue_Free(op->list);
-		op->list = SI_NullVal();
-	}
+	SIValue_Free(op->list);
+	op->list = SI_NullVal();
 
 	if(op->exp) {
 		AR_EXP_Free(op->exp);

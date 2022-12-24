@@ -312,6 +312,33 @@ SIValue AR_RANGE(SIValue *argv, int argc, void *private_data) {
 	return array;
 }
 
+SIValue AR_RANGE_ITER(SIValue *argv, int argc, void *private_data) {
+	int64_t start = argv[0].longval;
+	int64_t end = argv[1].longval;
+	int64_t interval = 1;
+	if(argc == 3) {
+		ASSERT(SI_TYPE(argv[2]) == T_INT64);
+		interval = argv[2].longval;
+		if(interval == 0) {
+			ErrorCtx_RaiseRuntimeException("ArgumentError: step argument to range() can't be 0");
+			// Incase expection handler wasn't set, return NULL.
+			return SI_NullVal();
+		}
+	}
+
+	uint64_t size = 0;
+	if((end >= start && interval > 0) || (end <= start && interval < 0)) {
+		size = 1 + (end - start) / interval;
+	}
+
+	SIValue array = SI_Array(3);
+	SIArray_Append(&array, SI_LongVal(start));
+	SIArray_Append(&array, SI_LongVal(interval));
+	SIArray_Append(&array, SI_LongVal(size));
+
+	return array;
+}
+
 /* Checks if a value is in a given list.
    "RETURN 3 IN [1, 2, 3]" will return true */
 SIValue AR_IN(SIValue *argv, int argc, void *private_data) {
@@ -513,6 +540,14 @@ void Register_ListFuncs() {
 	// we don't want to compute/cache large arrays e.g. range(0, 1000000)
 	// especially now that the UNWIND operation uses iterator
 	func_desc = AR_FuncDescNew("range", AR_RANGE, 2, 3, types, ret_type, false, false);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 3);
+	array_append(types, T_INT64);
+	array_append(types, T_INT64);
+	array_append(types, T_INT64);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("@range", AR_RANGE_ITER, 2, 3, types, ret_type, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);

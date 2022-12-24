@@ -111,40 +111,20 @@ static RSQNode *_FilterTreeToInQueryNode
 	if(AR_EXP_IsOperation(inOp->op.children[1]) &&
 			strcmp(inOp->op.children[1]->op.f->name, "range") == 0) {
 		AR_ExpNode *range = inOp->op.children[1];
-		int64_t step = 1;
-		// extracting information from range function
-		// extracting: range beginning, range end and optional range step
-		SIValue v = AR_EXP_Evaluate(range->op.children[0], NULL);
-		if(SI_TYPE(v) != T_INT64) {
-			Error_SITypeMismatch(v, T_INT64);
-			return RediSearch_CreateEmptyNode(idx);
-		}
+		range->op.f = AR_GetFunc("@range", true);
+		SIValue v = AR_EXP_Evaluate(range, NULL);
+		int64_t from = SIArray_Get(v, 0).longval;
+		int64_t step = SIArray_Get(v, 1).longval;
+		int64_t size = SIArray_Get(v, 2).longval;
 
-		int64_t from = v.longval;
-
-		v = AR_EXP_Evaluate(range->op.children[1], NULL);
-		if(SI_TYPE(v) != T_INT64) {
-			Error_SITypeMismatch(v, T_INT64);
-			return RediSearch_CreateEmptyNode(idx);
-		}
-		int64_t to = v.longval;
-
-		if(range->op.child_count == 3) {
-			v = AR_EXP_Evaluate(range->op.children[2], NULL);
-			if(SI_TYPE(v) != T_INT64) {
-				Error_SITypeMismatch(v, T_INT64);
-				return RediSearch_CreateEmptyNode(idx);
-			}
-			step = v.longval;
-		}
-
-		to += step;
-		int64_t current = (to >= from && step > 0) || (to <= from && step < 0) ? from : to;
 		RSQNode *U = RediSearch_CreateUnionNode(idx);
-		while(current != to) {
-			RediSearch_QueryNodeAddChild(U, RediSearch_CreateNumericNode(idx, field, current, current, true, true));
-			current += step;
+		for (int64_t i = 0; i < size; i++) {
+			RediSearch_QueryNodeAddChild(U, RediSearch_CreateNumericNode(idx, field, from, from, true, true));
+			from += step;
 		}
+
+		SIValue_Free(v);
+
 		return U;
 	}
 	uint list_len = SIArray_Length(list);
