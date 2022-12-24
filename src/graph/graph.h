@@ -219,6 +219,12 @@ int Graph_DeleteEdge
 	Edge *e
 );
 
+int Graph_DeleteEdges
+(
+	Graph *g,
+	Edge *edges
+);
+
 // update entity attribute with new value
 int Graph_UpdateEntity
 (

@@ -1098,8 +1098,7 @@ int Graph_DeleteEdge
 	R = Graph_GetRelationMatrix(g, r, false);
 
 	// test to see if edge exists
-	info = RG_Matrix_extractElement_UINT64(&edge_id, R, src_id, dest_id);
-	if(info != GrB_SUCCESS) {
+	if(DataBlock_ItemIsDeleted((void *)e->attributes)) {
 		return 0;
 	}
 
@@ -1107,7 +1106,7 @@ int Graph_DeleteEdge
 	GraphStatistics_DecEdgeCount(&g->stats, r, 1);
 
 	// single edge of type R connecting src to dest, delete entry
-	info = RG_Matrix_removeEntry(R, src_id, dest_id, ENTITY_GET_ID(e));
+	info = RG_Matrix_removeEntry(R, src_id, dest_id, ENTITY_GET_ID(e), &edge_id);
 	ASSERT(info == GrB_SUCCESS);
 
 	if(SINGLE_EDGE(edge_id)) {
@@ -1137,6 +1136,76 @@ int Graph_DeleteEdge
 	DataBlock_DeleteItem(g->edges, ENTITY_GET_ID(e));
 	
 	return 1;
+}
+
+int Graph_DeleteEdges
+(
+	Graph *g,
+	Edge *edges
+) {
+	ASSERT(g != NULL);
+	ASSERT(e != NULL);
+
+	uint64_t    x;
+	RG_Matrix   R;
+	RG_Matrix   M;
+	GrB_Info    info;
+	EdgeID      edge_id;
+	int edge_deleted = 0;
+
+	uint count = array_len(edges);
+	for (uint i = 0; i < count; i++) {
+		Edge       *e         =  edges + i;
+		int         r         =  Edge_GetRelationID(e);
+		NodeID      src_id    =  Edge_GetSrcNodeID(e);
+		NodeID      dest_id   =  Edge_GetDestNodeID(e);
+
+
+		// test to see if edge exists
+		if(DataBlock_ItemIsDeleted((void *)e->attributes)) {
+			continue;
+		}
+		
+		// an edge of type r has just been deleted, update statistics
+		GraphStatistics_DecEdgeCount(&g->stats, r, 1);
+
+		R = Graph_GetRelationMatrix(g, r, false);
+
+		// single edge of type R connecting src to dest, delete entry
+		info = RG_Matrix_removeEntry(R, src_id, dest_id, ENTITY_GET_ID(e), &edge_id);
+		ASSERT(info == GrB_SUCCESS);
+
+		if(SINGLE_EDGE(edge_id)) {
+			// see if source is connected to destination with additional edges
+			bool connected = false;
+			int relationCount = Graph_RelationTypeCount(g);
+			for(int i = 0; i < relationCount; i++) {
+				if(i == r) continue;
+				M = Graph_GetRelationMatrix(g, i, false);
+				info = RG_Matrix_extractElement_UINT64(&x, M, src_id, dest_id);
+				if(info == GrB_SUCCESS) {
+					connected = true;
+					break;
+				}
+			}
+
+			// there are no additional edges connecting source to destination
+			// remove edge from THE adjacency matrix
+			if(!connected) {
+				M = Graph_GetAdjacencyMatrix(g, false);
+				info = RG_Matrix_removeElement_BOOL(M, src_id, dest_id);
+				ASSERT(info == GrB_SUCCESS);
+			}
+		}
+
+		// free and remove edges from datablock.
+		DataBlock_DeleteItem(g->edges, ENTITY_GET_ID(e));
+
+		edge_deleted++;
+	}
+	
+
+	return edge_deleted;
 }
 
 inline bool Graph_EntityIsDeleted
