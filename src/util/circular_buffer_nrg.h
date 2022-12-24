@@ -3,6 +3,29 @@
  * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
  * the Server Side Public License v1 (SSPLv1).
  */
+/*
+
+This file contains a data structure of a circular buffer without a read
+guarantee, meaning it is possible to overwrite the elements that haven't been
+read yet. This is useful when we want to only be able to see the "last top-N"
+elements stored within the container, and we aren't interested in the ones that
+were added earlier than these "last top-N". Hence, this structure's name
+contains the "NRG" suffix - "No Read Guarantee".
+
+A few features of the data structure:
+
+1. It is possible to specify a custom deleter specified if it is required for
+certain types.
+2. It can dynamically grow in size and shrink.
+3. It allows two versions of accessing the stored elements - one that adjusts
+the read pointer and one that doesn't; both are useful.
+4. It is possible to traverse the whole collection without the overhead and
+making copies, by providing a custom callback function which will be called for
+each of the stored item, by providing a pointer to it for further
+re-interpretation by the caller. During such a traversal, the custom callback
+function may force the ongoing traversal to stop by means of the return value.
+
+*/
 
 #pragma once
 
@@ -41,15 +64,15 @@ bool CircularBufferNRG_SetCapacity(CircularBufferNRG *cb_ptr, const uint64_t new
 void CircularBufferNRG_Add
 (
     CircularBufferNRG circular_buffer,
-    const void *item
+    const void *item_to_add
 );
 
 // Removes the oldest item from buffer. If there was nothing to read, and so,
 // remove, the item pointer is not changed.
 void CircularBufferNRG_Read
 (
-    CircularBufferNRG cb,  // buffer to remove item from
-    void *item          // [output] pointer populated with removed item
+    CircularBufferNRG cb,
+    void *output
 );
 
 // Iterates over the entire unread contents and invokes the callback.
@@ -83,7 +106,7 @@ void *CircularBufferNRG_ViewCurrent
 // Returns number of items in buffer.
 uint64_t CircularBufferNRG_ItemCount
 (
-    const CircularBufferNRG cb  // buffer to inspect
+    const CircularBufferNRG cb
 );
 
 uint64_t CircularBufferNRG_ItemSize
@@ -94,7 +117,7 @@ uint64_t CircularBufferNRG_ItemSize
 // Returns true if buffer there is nothing to read.
 bool CircularBufferNRG_IsEmpty
 (
-    const CircularBufferNRG cb  // buffer to inspect
+    const CircularBufferNRG cb
 );
 
 void CircularBufferNRG_Free
