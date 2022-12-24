@@ -30,7 +30,7 @@ typedef struct {
 	ExecutorThread thread;          // Which thread executes this command
 	long long timeout;              // The query timeout, if specified.
 	bool timeout_rw;                // Apply timeout on both read and write queries.
-	TIMER_DEFINE(timer);            // The timer for timing the command.
+	simple_timer_t timer;           // The timer for timing the command.
 	uint64_t received_timestamp;    // The timestamp when the command was received.
 } CommandCtx;
 
@@ -47,7 +47,7 @@ CommandCtx *CommandCtx_New
 	bool compact,                      // Whether this query was issued with the compact flag.
 	long long timeout,                 // The query timeout, if specified.
 	bool timeout_rw,                   // Apply timeout on both read and write queries.
-	TIMER_DEFINE(timer),               // The timer for timing the command.
+	const simple_timer_t timer,              // The timer for timing the command.
 	const uint64_t received_timestamp  // The command receive timestamp (epoch).
 );
 

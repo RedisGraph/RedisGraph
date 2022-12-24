@@ -26,7 +26,7 @@
 typedef uint32_t millis_t;
 typedef struct QueryCtx QueryCtx;
 // Duplicate typedef from the circular buffer.
-typedef bool (*CircularBuffer_ReadAllCallback)(void *user_data, const void *item);
+typedef bool (*CircularBufferNRG_ReadAllCallback)(void *user_data, const void *item);
 
 // Holds the necessary per-query statistics.
 typedef struct QueryInfo {
@@ -43,7 +43,7 @@ typedef struct QueryInfo {
     const QueryCtx *context;
     // A timer for counting the time spent in the stages (waiting, executing,
     // reporting).
-    TIMER_DEFINE(stage_timer);
+    simple_timer_t stage_timer;
 } QueryInfo;
 
 typedef struct FinishedQueryInfo {
@@ -246,6 +246,6 @@ void Info_SetCapacityForFinishedQueriesStorage(const uint32_t count);
 // Views the circular buffer of finished queries.
 void Info_ViewAllFinishedQueries
 (
-    CircularBuffer_ReadAllCallback callback,
+    CircularBufferNRG_ReadAllCallback callback,
     void *user_data
 );
