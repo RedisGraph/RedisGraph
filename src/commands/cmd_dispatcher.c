@@ -12,8 +12,6 @@
 #include "../configuration/config.h"
 #include "../util/simple_timer.h"
 
-#include <sys/time.h>
-
 #define GRAPH_VERSION_MISSING -1
 
 // command handler function pointer
@@ -159,18 +157,6 @@ static Command_Handler get_command_handler(GRAPH_Commands cmd) {
 	return NULL;
 }
 
-// Convert from string representation to an enum.
-GRAPH_Commands CommandFromString(const char *cmd_name) {
-	if(strcasecmp(cmd_name, "graph.QUERY")    == 0) return CMD_QUERY;
-	if(strcasecmp(cmd_name, "graph.RO_QUERY") == 0) return CMD_RO_QUERY;
-	if(strcasecmp(cmd_name, "graph.EXPLAIN")  == 0) return CMD_EXPLAIN;
-	if(strcasecmp(cmd_name, "graph.PROFILE")  == 0) return CMD_PROFILE;
-
-	// we shouldn't reach this point
-	ASSERT(false);
-	return CMD_UNKNOWN;
-}
-
 static bool should_command_create_graph(GRAPH_Commands cmd) {
 	switch(cmd) {
 		case CMD_QUERY:
@@ -185,17 +171,6 @@ static bool should_command_create_graph(GRAPH_Commands cmd) {
 	return false;
 }
 
-uint64_t _get_unix_timestamp_milliseconds() {
-	struct timeval tv = {};
-
-	gettimeofday(&tv, NULL);
-
-	const uint64_t milliseconds_since_epoch =
-		(uint64_t)(tv.tv_sec) * 1000 +
-		(uint64_t)(tv.tv_usec) / 1000;
-	return milliseconds_since_epoch;
-}
-
 int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	char *errmsg;
 	uint version;
@@ -203,8 +178,9 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	bool timeout_rw;
 	long long timeout;
 	CommandCtx *context = NULL;
-	const uint64_t received_milliseconds = _get_unix_timestamp_milliseconds();
-	TIMER_DEFINE_AND_START(timer);
+	const uint64_t received_milliseconds = get_unix_timestamp_milliseconds();
+	simple_timer_t timer;
+	TIMER_RESTART(timer);
 
 	RedisModuleString *graph_name = argv[1];
 	RedisModuleString *query = (argc > 2) ? argv[2] : NULL;
@@ -244,7 +220,7 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	int flags = RedisModule_GetContextFlags(ctx);
 	bool is_replicated = RedisModule_GetContextFlags(ctx) & REDISMODULE_CTX_FLAGS_REPLICATED;
 
-	bool main_thread = (is_replicated || 
+	bool main_thread = (is_replicated ||
 		(flags & (REDISMODULE_CTX_FLAGS_MULTI       |
 				REDISMODULE_CTX_FLAGS_LUA           |
 				REDISMODULE_CTX_FLAGS_DENY_BLOCKING |
