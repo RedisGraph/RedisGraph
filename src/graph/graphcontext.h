@@ -30,8 +30,8 @@ typedef struct {
 	Graph *g;                                          // container for all matrices and entity properties
 	int ref_count;                                     // number of active references
 	rax *attributes;                                   // from strings to attribute IDs
-	atomic_uint_fast64_t node_attributes_count;        // counter of attributes related to nodes
-	atomic_uint_fast64_t edge_attributes_count;        // counter of attributes related to edges
+	uint64_t node_attributes_count;                    // counter of attributes related to nodes
+	uint64_t edge_attributes_count;                    // counter of attributes related to edges
 	pthread_rwlock_t _attribute_rwlock;                // read-write lock to protect access to the attribute maps
 	char *graph_name;                                  // string associated with graph
 	char **string_mapping;                             // from attribute IDs to strings
@@ -104,8 +104,14 @@ XXH32_hash_t GraphContext_GetVersion
 	const GraphContext *gc
 );
 
-uint64_t GraphContext_AllNodePropertyNamesCount(const GraphContext *gc);
-uint64_t GraphContext_AllEdgePropertyNamesCount(const GraphContext *gc);
+uint64_t GraphContext_AllNodePropertyNamesCount
+(
+	const GraphContext *gc
+);
+uint64_t GraphContext_AllEdgePropertyNamesCount
+(
+	const GraphContext *gc
+);
 
 void GraphContext_IncreasePropertyNamesCount
 (
@@ -224,8 +230,15 @@ bool GraphContext_HasIndices
 	GraphContext *gc
 );
 
-uint64_t GraphContext_NodeIndexCount(const GraphContext *gc);
-uint64_t GraphContext_EdgeIndexCount(const GraphContext *gc);
+uint64_t GraphContext_NodeIndexCount
+(
+	const GraphContext *gc
+);
+
+uint64_t GraphContext_EdgeIndexCount
+(
+	const GraphContext *gc
+);
 
 // attempt to retrieve an index on the given label and attribute IDs
 Index *GraphContext_GetIndexByID

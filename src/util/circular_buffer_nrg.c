@@ -5,7 +5,7 @@
  */
 
 #include <RG.h>
-#include "circular_buffer.h"
+#include "circular_buffer_nrg.h"
 
 #include <string.h>
 #include <stdint.h>
@@ -13,12 +13,12 @@
 #include <sys/param.h>
 
 typedef struct ElementDeleteInfo {
-    CircularBuffer_ElementFree deleter;
+    CircularBufferNRG_ElementFree deleter;
     void *user_data;
 } ElementDeleteInfo;
 
 // A FIFO circular queue.
-struct _CircularBuffer {
+struct _CircularBufferNRG {
     uint64_t read_offset;
     uint64_t write_offset;
     uint64_t item_size;
@@ -29,9 +29,9 @@ struct _CircularBuffer {
     uint8_t data[];
 };
 
-static void* _CircularBuffer_ItemAtOffset
+static void* _CircularBufferNRG_ItemAtOffset
 (
-    CircularBuffer cb,
+    CircularBufferNRG cb,
     const uint64_t offset
 ) {
     ASSERT(cb);
@@ -41,18 +41,18 @@ static void* _CircularBuffer_ItemAtOffset
     return cb->data + offset * cb->item_size;
 }
 
-static void* _CircularBuffer_ItemAtReadOffset
+static void* _CircularBufferNRG_ItemAtReadOffset
 (
-    CircularBuffer cb
+    CircularBufferNRG cb
 ) {
-    return _CircularBuffer_ItemAtOffset(cb, cb->read_offset);
+    return _CircularBufferNRG_ItemAtOffset(cb, cb->read_offset);
 }
 
-static void* _CircularBuffer_ItemAtWriteOffset
+static void* _CircularBufferNRG_ItemAtWriteOffset
 (
-    CircularBuffer cb
+    CircularBufferNRG cb
 ) {
-    return _CircularBuffer_ItemAtOffset(cb, cb->write_offset);
+    return _CircularBufferNRG_ItemAtOffset(cb, cb->write_offset);
 }
 
 static void _DeleteElement(
@@ -66,7 +66,7 @@ static void _DeleteElement(
     info.deleter(info.user_data, item);
 }
 
-CircularBuffer CircularBuffer_New
+CircularBufferNRG CircularBufferNRG_New
 (
     const uint64_t item_size,
     const uint64_t capacity
@@ -78,8 +78,8 @@ CircularBuffer CircularBuffer_New
     }
 
     const uint64_t size_of_data = item_size * capacity;
-    const void *allocation = malloc(sizeof(_CircularBuffer) + size_of_data);
-    CircularBuffer cb = (CircularBuffer)allocation;
+    const void *allocation = malloc(sizeof(_CircularBufferNRG) + size_of_data);
+    CircularBufferNRG cb = (CircularBufferNRG)allocation;
 
     cb->read_offset = 0;
     cb->write_offset = 0;
@@ -92,10 +92,10 @@ CircularBuffer CircularBuffer_New
     return cb;
 }
 
-void CircularBuffer_SetDeleter
+void CircularBufferNRG_SetDeleter
 (
-    CircularBuffer cb,
-    CircularBuffer_ElementFree deleter,
+    CircularBufferNRG cb,
+    CircularBufferNRG_ElementFree deleter,
     void *user_data
 ) {
     ASSERT(cb);
@@ -103,7 +103,7 @@ void CircularBuffer_SetDeleter
     cb->delete_info.user_data = user_data;
 }
 
-uint64_t CircularBuffer_GetCapacity(const CircularBuffer cb) {
+uint64_t CircularBufferNRG_GetCapacity(const CircularBufferNRG cb) {
     ASSERT(cb);
     if (!cb) {
         return 0;
@@ -112,9 +112,9 @@ uint64_t CircularBuffer_GetCapacity(const CircularBuffer cb) {
     return (cb->end_marker - cb->data) / cb->item_size;
 }
 
-bool CircularBuffer_SetCapacity
+bool CircularBufferNRG_SetCapacity
 (
-    CircularBuffer *cb_ptr,
+    CircularBufferNRG *cb_ptr,
     const uint64_t new_capacity
 ) {
     ASSERT(cb_ptr && *cb_ptr);
@@ -122,13 +122,13 @@ bool CircularBuffer_SetCapacity
     if (!cb_ptr || !*cb_ptr || !new_capacity) {
         return false;
     }
-    CircularBuffer cb = *cb_ptr;
-    if (new_capacity == CircularBuffer_GetCapacity(cb)) {
+    CircularBufferNRG cb = *cb_ptr;
+    if (new_capacity == CircularBufferNRG_GetCapacity(cb)) {
         // NOOP, the original buffer already has the same capacity.
         return true;
     }
 
-    CircularBuffer new_cb = CircularBuffer_New(cb->item_size, new_capacity);
+    CircularBufferNRG new_cb = CircularBufferNRG_New(cb->item_size, new_capacity);
     ASSERT(new_cb);
     if (!new_cb) {
         return false;
@@ -220,7 +220,7 @@ bool CircularBuffer_SetCapacity
     new_cb->is_circled = new_cb->write_offset == 0;
     memcpy(&new_cb->delete_info, &cb->delete_info, sizeof(ElementDeleteInfo));
 
-    CircularBuffer_Free(cb);
+    CircularBufferNRG_Free(cb);
     *cb_ptr = new_cb;
 
     return true;
@@ -247,9 +247,9 @@ static bool _IncrementOffsetCircular
     return false;
 }
 
-void CircularBuffer_Add
+void CircularBufferNRG_Add
 (
-    CircularBuffer cb,
+    CircularBufferNRG cb,
     const void *item
 ) {
     ASSERT(cb);
@@ -257,7 +257,7 @@ void CircularBuffer_Add
         return;
     }
 
-    void *destination = _CircularBuffer_ItemAtWriteOffset(cb);
+    void *destination = _CircularBufferNRG_ItemAtWriteOffset(cb);
 
     // If we are overwriting, use the deleter.
     if (cb->item_count > cb->write_offset) {
@@ -265,7 +265,7 @@ void CircularBuffer_Add
     }
     memcpy(destination, item, cb->item_size);
 
-    const uint64_t capacity = CircularBuffer_GetCapacity(cb);
+    const uint64_t capacity = CircularBufferNRG_GetCapacity(cb);
 
     if (cb->is_circled && unlikely(cb->write_offset == cb->read_offset)) {
         _IncrementOffsetCircular(&cb->read_offset, capacity);
@@ -280,12 +280,12 @@ void CircularBuffer_Add
     }
 }
 
-void CircularBuffer_Read
+void CircularBufferNRG_Read
 (
-    CircularBuffer cb,
+    CircularBufferNRG cb,
     void *item
 ) {
-    const uint64_t capacity = CircularBuffer_GetCapacity(cb);
+    const uint64_t capacity = CircularBufferNRG_GetCapacity(cb);
 
     if (unlikely(cb->read_offset == cb->write_offset)) {
         if (cb->is_circled) {
@@ -295,7 +295,7 @@ void CircularBuffer_Read
         }
     }
 
-    const void* source = _CircularBuffer_ItemAtReadOffset(cb);
+    const void* source = _CircularBufferNRG_ItemAtReadOffset(cb);
     memcpy(item, source, cb->item_size);
 
     const bool reads_circled = _IncrementOffsetCircular(&cb->read_offset, capacity);
@@ -304,10 +304,10 @@ void CircularBuffer_Read
     }
 }
 
-void _CircularBuffer_ViewAllWithOffset
+void _CircularBufferNRG_ViewAllWithOffset
 (
-    CircularBuffer buffer,
-    CircularBuffer_ReadAllCallback callback,
+    CircularBufferNRG buffer,
+    CircularBufferNRG_ReadAllCallback callback,
     void *user_data,
     uint64_t *read_view_offset_ptr
 ) {
@@ -328,7 +328,7 @@ void _CircularBuffer_ViewAllWithOffset
             }
         }
 
-        void *item = _CircularBuffer_ItemAtOffset(buffer, read_view_offset);
+        void *item = _CircularBufferNRG_ItemAtOffset(buffer, read_view_offset);
         const bool should_stop = callback(user_data, item);
 
         if (buffer->data + ++read_view_offset * buffer->item_size >= buffer->end_marker) {
@@ -345,10 +345,10 @@ void _CircularBuffer_ViewAllWithOffset
     }
 }
 
-void CircularBuffer_ReadAll
+void CircularBufferNRG_ReadAll
 (
-    CircularBuffer buffer,
-    CircularBuffer_ReadAllCallback callback,
+    CircularBufferNRG buffer,
+    CircularBufferNRG_ReadAllCallback callback,
     void *user_data
 ) {
     ASSERT(buffer);
@@ -357,37 +357,37 @@ void CircularBuffer_ReadAll
         return;
     }
 
-    _CircularBuffer_ViewAllWithOffset(buffer, callback, user_data, &buffer->read_offset);
+    _CircularBufferNRG_ViewAllWithOffset(buffer, callback, user_data, &buffer->read_offset);
 
     buffer->is_circled = false;
 }
 
-void CircularBuffer_ViewAll
+void CircularBufferNRG_ViewAll
 (
-    CircularBuffer buffer,
-    CircularBuffer_ReadAllCallback callback,
+    CircularBufferNRG buffer,
+    CircularBufferNRG_ReadAllCallback callback,
     void *user_data
 ) {
-    _CircularBuffer_ViewAllWithOffset(buffer, callback, user_data, NULL);
+    _CircularBufferNRG_ViewAllWithOffset(buffer, callback, user_data, NULL);
 }
 
-void *CircularBuffer_ViewCurrent
+void *CircularBufferNRG_ViewCurrent
 (
-    const CircularBuffer cb
+    const CircularBufferNRG cb
 ) {
     ASSERT(cb);
     if (!cb) {
         return NULL;
     }
-    if (CircularBuffer_ItemCount(cb) == 0) {
+    if (CircularBufferNRG_ItemCount(cb) == 0) {
         return NULL;
     }
-    return _CircularBuffer_ItemAtReadOffset(cb);
+    return _CircularBufferNRG_ItemAtReadOffset(cb);
 }
 
-uint64_t CircularBuffer_ItemCount
+uint64_t CircularBufferNRG_ItemCount
 (
-    const CircularBuffer cb
+    const CircularBufferNRG cb
 ) {
     ASSERT(cb);
     if (!cb) {
@@ -397,9 +397,9 @@ uint64_t CircularBuffer_ItemCount
     return cb->item_count;
 }
 
-uint64_t CircularBuffer_ItemSize
+uint64_t CircularBufferNRG_ItemSize
 (
-    const CircularBuffer cb
+    const CircularBufferNRG cb
 ) {
     ASSERT(cb);
     if (!cb) {
@@ -408,9 +408,9 @@ uint64_t CircularBuffer_ItemSize
     return cb->item_size;
 }
 
-bool CircularBuffer_IsEmpty
+bool CircularBufferNRG_IsEmpty
 (
-    const CircularBuffer cb
+    const CircularBufferNRG cb
 ) {
     ASSERT(cb);
     if (!cb) {
@@ -419,7 +419,7 @@ bool CircularBuffer_IsEmpty
     return cb->item_count == 0;
 }
 
-static void _CircularBuffer_DeleteAllElements(CircularBuffer cb) {
+static void _CircularBufferNRG_DeleteAllElements(CircularBufferNRG cb) {
     ASSERT(cb);
     if (!cb || !cb->delete_info.deleter) {
         return;
@@ -427,19 +427,19 @@ static void _CircularBuffer_DeleteAllElements(CircularBuffer cb) {
 
     uint64_t read_offset = 0;
     while (read_offset < cb->item_count) {
-        void *item = _CircularBuffer_ItemAtOffset(cb, read_offset);
+        void *item = _CircularBufferNRG_ItemAtOffset(cb, read_offset);
         _DeleteElement(item, cb->delete_info);
         ++read_offset;
     }
 }
 
-void CircularBuffer_Free
+void CircularBufferNRG_Free
 (
-    CircularBuffer cb
+    CircularBufferNRG cb
 ) {
     ASSERT(cb);
     if (cb) {
-        _CircularBuffer_DeleteAllElements(cb);
+        _CircularBufferNRG_DeleteAllElements(cb);
         free(cb);
     }
 }

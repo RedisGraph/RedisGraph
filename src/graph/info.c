@@ -12,7 +12,7 @@
 
 #include "util/arr.h"
 #include "util/num.h"
-#include "util/circular_buffer.h"
+#include "util/circular_buffer_nrg.h"
 
 #include <sys/types.h>
 #include "../query_ctx.h"
@@ -62,7 +62,7 @@
 static bool _lock_rwlock(pthread_rwlock_t *, const bool);
 static bool _unlock_rwlock(pthread_rwlock_t *);
 
-static CircularBuffer finished_queries;
+static CircularBufferNRG finished_queries;
 static pthread_rwlock_t finished_queries_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
 FinishedQueryInfo FinishedQueryInfo_FromQueryInfo(const QueryInfo info) {
@@ -99,7 +99,7 @@ static void _add_finished_query(const FinishedQueryInfo info) {
     if (!locked) {
         return;
     }
-    CircularBuffer_Add(finished_queries, (const void*)&info);
+    CircularBufferNRG_Add(finished_queries, (const void*)&info);
     const bool unlocked = _unlock_rwlock(&finished_queries_rwlock);
     ASSERT(unlocked);
 }
@@ -801,13 +801,13 @@ void Info_SetCapacityForFinishedQueriesStorage(const uint32_t count) {
         return;
     }
     if (!finished_queries) {
-        finished_queries = CircularBuffer_New(sizeof(FinishedQueryInfo), count);
-        CircularBuffer_SetDeleter(
+        finished_queries = CircularBufferNRG_New(sizeof(FinishedQueryInfo), count);
+        CircularBufferNRG_SetDeleter(
             finished_queries,
             _FinishedQueryInfoDeleter,
             NULL);
     } else {
-        CircularBuffer_SetCapacity(&finished_queries, count);
+        CircularBufferNRG_SetCapacity(&finished_queries, count);
     }
     const bool unlocked = _unlock_rwlock(&finished_queries_rwlock);
     ASSERT(unlocked);
@@ -815,7 +815,7 @@ void Info_SetCapacityForFinishedQueriesStorage(const uint32_t count) {
 
 void Info_ViewAllFinishedQueries
 (
-    CircularBuffer_ReadAllCallback callback,
+    CircularBufferNRG_ReadAllCallback callback,
     void *user_data
 ) {
     ASSERT(finished_queries);
@@ -828,7 +828,7 @@ void Info_ViewAllFinishedQueries
         return;
     }
 
-    CircularBuffer_ViewAll(finished_queries, callback, user_data);
+    CircularBufferNRG_ViewAll(finished_queries, callback, user_data);
 
     const bool unlocked = _unlock_rwlock(&finished_queries_rwlock);
     ASSERT(unlocked);

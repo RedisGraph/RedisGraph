@@ -25,7 +25,7 @@ typedef struct {
 } Attribute;
 
 typedef struct {
-	uint16_t attr_count;       // number of attributes
+	uint16_t attr_count;     // number of attributes
 	Attribute attributes[];  // key value pair of attributes
 } _AttributeSet;
 
