@@ -50,7 +50,9 @@ static void _initList
 ) {	
 	// null-set the list value to avoid memory errors if evaluation fails
 	op->list = SI_NullVal();
-	if(AR_EXP_IsOperation(op->exp) && (strcmp(op->exp->op.f->name, "range") == 0 || strcmp(op->exp->op.f->name, "@range") == 0)) {
+	if(AR_EXP_IsOperation(op->exp) && 
+		(strcmp(op->exp->op.f->name, "range") == 0 ||
+		strcmp(op->exp->op.f->name, "@range") == 0)) {
 		op->exp->op.f = AR_GetFunc("@range", true);
 		op->list = AR_EXP_Evaluate(op->exp, op->currentRecord);
 		op->is_range = true;
