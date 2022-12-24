@@ -1144,7 +1144,7 @@ int Graph_DeleteEdges
 	Edge *edges
 ) {
 	ASSERT(g != NULL);
-	ASSERT(e != NULL);
+	ASSERT(edges != NULL);
 
 	uint64_t    x;
 	RG_Matrix   R;

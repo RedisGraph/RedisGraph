@@ -97,6 +97,7 @@ GrB_Info RG_Matrix_removeEntry
 	ASSERT(info == GrB_SUCCESS);
 	ASSERT(type == GrB_UINT64);
 	
+	bool dm_x;
 	info = GrB_Matrix_extractElement(&dm_x, dm, i, j);
 	ASSERT(info == GrB_NO_VALUE);
 #endif

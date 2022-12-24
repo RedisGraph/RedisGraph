@@ -176,8 +176,8 @@ int DeleteEdges
 	GraphContext *gc,
 	Edge *edges
 ) {
-	ASSERT(e  != NULL);
-	ASSERT(gc != NULL);
+	ASSERT(gc     != NULL);
+	ASSERT(edges  != NULL);
 
 	// add edge deletion operation to undo log
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
