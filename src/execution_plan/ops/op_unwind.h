@@ -12,7 +12,7 @@
 
 // OP Unwind
 typedef struct {
-	OpBase op;                    // must be the first field
+	OpBase op;            // must be the first field
 	SIValue list;         // list which the unwind operation is performed on
 	uint listIdx;         // current list index
 	bool is_range;        // op is using range otherwise list
