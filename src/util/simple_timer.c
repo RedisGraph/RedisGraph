@@ -11,6 +11,8 @@
 
 #include "simple_timer.h"
 
+#include <sys/time.h>
+
 /* -------------------------------------------------------------------------- */
 /* simple_tic: return the current wallclock time in high resolution           */
 /* -------------------------------------------------------------------------- */
@@ -66,3 +68,14 @@ double simple_toc           /* returns time since last simple_tic */
     return ((toc [0] - tic [0]) + 1e-9 * (toc [1] - tic [1])) ;
 }
 
+uint64_t get_unix_timestamp_milliseconds() {
+	struct timeval tv = {};
+
+	gettimeofday(&tv, NULL);
+
+	const uint64_t milliseconds_since_epoch =
+		(uint64_t)(tv.tv_sec) * 1000 +
+		(uint64_t)(tv.tv_usec) / 1000;
+
+	return milliseconds_since_epoch;
+}

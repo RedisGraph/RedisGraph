@@ -29,7 +29,7 @@ CommandCtx *CommandCtx_New
 	bool compact,
 	long long timeout,
 	bool timeout_rw,
-	TIMER_DEFINE(timer),
+	const simple_timer_t timer,
 	const uint64_t received_timestamp
 ) {
 	CommandCtx *context = rm_malloc(sizeof(CommandCtx));

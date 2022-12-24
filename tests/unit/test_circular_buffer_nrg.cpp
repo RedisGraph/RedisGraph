@@ -13,120 +13,120 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "../../src/util/circular_buffer.h"
+#include "../../src/util/circular_buffer_nrg.h"
 #ifdef __cplusplus
 }
 #endif
 
-TEST(CircularBuffer, TestWrapsWrites) {
-    CircularBuffer cb = CircularBuffer_New(sizeof(uint8_t), 2);
+TEST(CircularBufferNRG, TestWrapsWrites) {
+    CircularBufferNRG cb = CircularBufferNRG_New(sizeof(uint8_t), 2);
     ASSERT_TRUE(cb);
-    ASSERT_EQ(CircularBuffer_GetCapacity(cb), 2);
-    ASSERT_TRUE(CircularBuffer_IsEmpty(cb));
-    ASSERT_EQ(CircularBuffer_ItemCount(cb), 0);
-    ASSERT_FALSE(CircularBuffer_ViewCurrent(cb));
+    ASSERT_EQ(CircularBufferNRG_GetCapacity(cb), 2);
+    ASSERT_TRUE(CircularBufferNRG_IsEmpty(cb));
+    ASSERT_EQ(CircularBufferNRG_ItemCount(cb), 0);
+    ASSERT_FALSE(CircularBufferNRG_ViewCurrent(cb));
 
     uint8_t value = 1;
-    CircularBuffer_Add(cb, &value);
-    ASSERT_FALSE(CircularBuffer_IsEmpty(cb));
-    ASSERT_EQ(CircularBuffer_GetCapacity(cb), 2);
-    ASSERT_EQ(CircularBuffer_ItemCount(cb), 1);
-    uint8_t viewed = *(uint8_t *)CircularBuffer_ViewCurrent(cb);
+    CircularBufferNRG_Add(cb, &value);
+    ASSERT_FALSE(CircularBufferNRG_IsEmpty(cb));
+    ASSERT_EQ(CircularBufferNRG_GetCapacity(cb), 2);
+    ASSERT_EQ(CircularBufferNRG_ItemCount(cb), 1);
+    uint8_t viewed = *(uint8_t *)CircularBufferNRG_ViewCurrent(cb);
     ASSERT_EQ(viewed, 1);
-    ASSERT_EQ(CircularBuffer_ItemCount(cb), 1);
+    ASSERT_EQ(CircularBufferNRG_ItemCount(cb), 1);
 
     value = 2;
-    CircularBuffer_Add(cb, &value);
-    ASSERT_EQ(CircularBuffer_GetCapacity(cb), 2);
-    viewed = *(uint8_t*)CircularBuffer_ViewCurrent(cb);
+    CircularBufferNRG_Add(cb, &value);
+    ASSERT_EQ(CircularBufferNRG_GetCapacity(cb), 2);
+    viewed = *(uint8_t*)CircularBufferNRG_ViewCurrent(cb);
     ASSERT_EQ(viewed, 1);
-    ASSERT_EQ(CircularBuffer_ItemCount(cb), 2);
+    ASSERT_EQ(CircularBufferNRG_ItemCount(cb), 2);
 
     value = 3;
-    CircularBuffer_Add(cb, &value);
-    ASSERT_EQ(CircularBuffer_GetCapacity(cb), 2);
+    CircularBufferNRG_Add(cb, &value);
+    ASSERT_EQ(CircularBufferNRG_GetCapacity(cb), 2);
     // The read pointer still points to the least recently read entry,
     // after overwrite. Here, the "1" was overwritten by "3", while "2"
     // was left untouched, hence the "current" points to the first unread
     // entry, which is "2" in this case.
-    viewed = *(uint8_t*)CircularBuffer_ViewCurrent(cb);
+    viewed = *(uint8_t*)CircularBufferNRG_ViewCurrent(cb);
     ASSERT_EQ(viewed, 2);
-    ASSERT_EQ(CircularBuffer_ItemCount(cb), 2);
+    ASSERT_EQ(CircularBufferNRG_ItemCount(cb), 2);
 
     value = 4;
-    CircularBuffer_Add(cb, &value);
-    ASSERT_EQ(CircularBuffer_GetCapacity(cb), 2);
+    CircularBufferNRG_Add(cb, &value);
+    ASSERT_EQ(CircularBufferNRG_GetCapacity(cb), 2);
     // The read pointer has never been advanced by reading, and so now
     // should just point to the earliest possible entry. In this case, it
     // is located at the zeroeth offset, with the value of "3".
-    viewed = *(uint8_t*)CircularBuffer_ViewCurrent(cb);
+    viewed = *(uint8_t*)CircularBufferNRG_ViewCurrent(cb);
     ASSERT_EQ(viewed, 3);
 
-    CircularBuffer_Free(cb);
+    CircularBufferNRG_Free(cb);
 }
 
-TEST(CircularBuffer, TestWrapsReads) {
-    CircularBuffer cb = CircularBuffer_New(sizeof(uint8_t), 2);
+TEST(CircularBufferNRG, TestWrapsReads) {
+    CircularBufferNRG cb = CircularBufferNRG_New(sizeof(uint8_t), 2);
     uint8_t value = 1;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     uint8_t removed = 0;
-    CircularBuffer_Read(cb, &removed);
+    CircularBufferNRG_Read(cb, &removed);
     ASSERT_EQ(removed, 1);
     value = 2;
-    CircularBuffer_Add(cb, &value);
-    CircularBuffer_Read(cb, &removed);
+    CircularBufferNRG_Add(cb, &value);
+    CircularBufferNRG_Read(cb, &removed);
     ASSERT_EQ(removed, 2);
     value = 3;
-    CircularBuffer_Add(cb, &value);
-    CircularBuffer_Read(cb, &removed);
+    CircularBufferNRG_Add(cb, &value);
+    CircularBufferNRG_Read(cb, &removed);
     ASSERT_EQ(removed, 3);
 
     value = 4;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 5;
-    CircularBuffer_Add(cb, &value);
-    CircularBuffer_Read(cb, &removed);
+    CircularBufferNRG_Add(cb, &value);
+    CircularBufferNRG_Read(cb, &removed);
     ASSERT_EQ(removed, 4);
-    CircularBuffer_Read(cb, &removed);
+    CircularBufferNRG_Read(cb, &removed);
     ASSERT_EQ(removed, 5);
     value = 6;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 7;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 8;
-    CircularBuffer_Add(cb, &value);
-    CircularBuffer_Read(cb, &removed);
+    CircularBufferNRG_Add(cb, &value);
+    CircularBufferNRG_Read(cb, &removed);
     ASSERT_EQ(removed, 7);
-    CircularBuffer_Read(cb, &removed);
+    CircularBufferNRG_Read(cb, &removed);
     ASSERT_EQ(removed, 8);
     removed = 0;
-    CircularBuffer_Read(cb, &removed);
+    CircularBufferNRG_Read(cb, &removed);
     // When nothing to remove, the pointer remains unchanged.
     ASSERT_EQ(removed, 0);
 
-    CircularBuffer_Free(cb);
+    CircularBufferNRG_Free(cb);
 }
 
-TEST(CircularBuffer, TestResetCapacitySingleStageNoReallocation) {
-    CircularBuffer cb = CircularBuffer_New(sizeof(uint8_t), 5);
+TEST(CircularBufferNRG, TestResetCapacitySingleStageNoReallocation) {
+    CircularBufferNRG cb = CircularBufferNRG_New(sizeof(uint8_t), 5);
     uint8_t value = 1;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 2;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 3;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 4;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 5;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
 
-    CircularBuffer old_address = cb;
+    CircularBufferNRG old_address = cb;
     // Returns true as if the capacity setting went okay.
-    ASSERT_TRUE(CircularBuffer_SetCapacity(&cb, 5));
+    ASSERT_TRUE(CircularBufferNRG_SetCapacity(&cb, 5));
     // The address hasn't changed, meaning there has been no reallocation.
     ASSERT_EQ(old_address, cb);
 
-    CircularBuffer_Free(cb);
+    CircularBufferNRG_Free(cb);
 }
 
 bool view_element(void *user_data, const void *item) {
@@ -137,28 +137,28 @@ bool view_element(void *user_data, const void *item) {
     return false;
 }
 
-TEST(CircularBuffer, TestReadAllFullCollection) {
-    CircularBuffer cb = CircularBuffer_New(sizeof(uint8_t), 5);
+TEST(CircularBufferNRG, TestReadAllFullCollection) {
+    CircularBufferNRG cb = CircularBufferNRG_New(sizeof(uint8_t), 5);
     uint8_t value = 1;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 2;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 3;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 4;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 5;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
 
-    const uint8_t old_current = *(uint8_t*)CircularBuffer_ViewCurrent(cb);
+    const uint8_t old_current = *(uint8_t*)CircularBufferNRG_ViewCurrent(cb);
     std::vector<uint8_t> viewed;
-    CircularBuffer_ReadAll(cb, view_element, reinterpret_cast<void *>(&viewed));
+    CircularBufferNRG_ReadAll(cb, view_element, reinterpret_cast<void *>(&viewed));
     const std::vector<uint8_t> expected = { 1, 2, 3, 4, 5 };
     ASSERT_EQ(viewed, expected);
-    const uint8_t current = *(uint8_t*)CircularBuffer_ViewCurrent(cb);
+    const uint8_t current = *(uint8_t*)CircularBufferNRG_ViewCurrent(cb);
     ASSERT_EQ(current, old_current);
 
-    CircularBuffer_Free(cb);
+    CircularBufferNRG_Free(cb);
 }
 
 struct ViewElementAndEndData {
@@ -179,98 +179,98 @@ bool view_element_and_end(void *user_data, const void *item) {
     return false;
 }
 
-TEST(CircularBuffer, TestReadAllAndEndPrematurely) {
-    CircularBuffer cb = CircularBuffer_New(sizeof(uint8_t), 5);
+TEST(CircularBufferNRG, TestReadAllAndEndPrematurely) {
+    CircularBufferNRG cb = CircularBufferNRG_New(sizeof(uint8_t), 5);
     uint8_t value = 1;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 2;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 3;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 4;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 5;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
 
     ViewElementAndEndData data {};
     data.max_view_count = 3;
-    CircularBuffer_ReadAll(cb, view_element_and_end, reinterpret_cast<void *>(&data));
+    CircularBufferNRG_ReadAll(cb, view_element_and_end, reinterpret_cast<void *>(&data));
     const std::vector<uint8_t> expected = { 1, 2, 3 };
     ASSERT_EQ(data.viewed, expected);
-    const uint8_t current = *(uint8_t*)CircularBuffer_ViewCurrent(cb);
+    const uint8_t current = *(uint8_t*)CircularBufferNRG_ViewCurrent(cb);
     // The read offset has moved because of the "read", so we should not
     // expect to be able to read the same elements again. As we stopped
     // reading right after the element "3", the next read or a view are
     // supposed to look at the element after, which is "4".
     ASSERT_EQ(current, 4);
 
-    CircularBuffer_Free(cb);
+    CircularBufferNRG_Free(cb);
 }
 
-TEST(CircularBuffer, TestViewAll) {
-    CircularBuffer cb = CircularBuffer_New(sizeof(uint8_t), 5);
+TEST(CircularBufferNRG, TestViewAll) {
+    CircularBufferNRG cb = CircularBufferNRG_New(sizeof(uint8_t), 5);
     uint8_t value = 1;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 2;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 3;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 4;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 5;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
 
-    const uint8_t old_current = *(uint8_t*)CircularBuffer_ViewCurrent(cb);
+    const uint8_t old_current = *(uint8_t*)CircularBufferNRG_ViewCurrent(cb);
     std::vector<uint8_t> viewed;
-    CircularBuffer_ViewAll(cb, view_element, reinterpret_cast<void *>(&viewed));
+    CircularBufferNRG_ViewAll(cb, view_element, reinterpret_cast<void *>(&viewed));
     const std::vector<uint8_t> expected = { 1, 2, 3, 4, 5 };
     ASSERT_EQ(viewed, expected);
-    const uint8_t current = *(uint8_t*)CircularBuffer_ViewCurrent(cb);
+    const uint8_t current = *(uint8_t*)CircularBufferNRG_ViewCurrent(cb);
     // The read offset hasn't moved because of the "view", so we should
     // expect to be able to read the same elements again, as there has been
     // no read in between the calls.
     ASSERT_EQ(current, old_current);
 
-    CircularBuffer_Free(cb);
+    CircularBufferNRG_Free(cb);
 }
 
-TEST(CircularBuffer, TestViewAllWithCircle) {
-    CircularBuffer cb = CircularBuffer_New(sizeof(uint8_t), 3);
+TEST(CircularBufferNRG, TestViewAllWithCircle) {
+    CircularBufferNRG cb = CircularBufferNRG_New(sizeof(uint8_t), 3);
     uint8_t value = 1;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 2;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 3;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 4;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 5;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
 
     {
-        const uint8_t old_current = *(uint8_t*)CircularBuffer_ViewCurrent(cb);
+        const uint8_t old_current = *(uint8_t*)CircularBufferNRG_ViewCurrent(cb);
         std::vector<uint8_t> viewed;
-        CircularBuffer_ViewAll(cb, view_element, reinterpret_cast<void *>(&viewed));
+        CircularBufferNRG_ViewAll(cb, view_element, reinterpret_cast<void *>(&viewed));
         const std::vector<uint8_t> expected = { 3, 4, 5 };
         ASSERT_EQ(viewed, expected);
-        const uint8_t current = *(uint8_t*)CircularBuffer_ViewCurrent(cb);
+        const uint8_t current = *(uint8_t*)CircularBufferNRG_ViewCurrent(cb);
         // The read offset hasn't moved because of the "view", so we should
         // expect to be able to read the same elements again, as there has been
         // no read in between the calls.
         ASSERT_EQ(current, old_current);
     }
     value = 6;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
     value = 7;
-    CircularBuffer_Add(cb, &value);
+    CircularBufferNRG_Add(cb, &value);
 
     {
-        const uint8_t old_current = *(uint8_t*)CircularBuffer_ViewCurrent(cb);
+        const uint8_t old_current = *(uint8_t*)CircularBufferNRG_ViewCurrent(cb);
         std::vector<uint8_t> viewed;
-        CircularBuffer_ViewAll(cb, view_element, reinterpret_cast<void *>(&viewed));
+        CircularBufferNRG_ViewAll(cb, view_element, reinterpret_cast<void *>(&viewed));
         const std::vector<uint8_t> expected = { 5, 6, 7 };
         ASSERT_EQ(viewed, expected);
-        const uint8_t current = *(uint8_t*)CircularBuffer_ViewCurrent(cb);
+        const uint8_t current = *(uint8_t*)CircularBufferNRG_ViewCurrent(cb);
         // The read offset hasn't moved because of the "view", so we should
         // expect to be able to read the same elements again, as there has been
         // no read in between the calls.
@@ -278,7 +278,7 @@ TEST(CircularBuffer, TestViewAllWithCircle) {
     }
 
 
-    CircularBuffer_Free(cb);
+    CircularBufferNRG_Free(cb);
 }
 
 void delete_element(void *user_data, void *item) {
@@ -288,31 +288,31 @@ void delete_element(void *user_data, void *item) {
     ++(*deleted_counter);
 }
 
-TEST(CircularBuffer, TestCustomDeleterIsUsedProperly) {
-    CircularBuffer cb = CircularBuffer_New(sizeof(char *), 2);
+TEST(CircularBufferNRG, TestCustomDeleterIsUsedProperly) {
+    CircularBufferNRG cb = CircularBufferNRG_New(sizeof(char *), 2);
     uint64_t deleted_counter = 0;
-    CircularBuffer_SetDeleter(
+    CircularBufferNRG_SetDeleter(
         cb,
         delete_element,
         reinterpret_cast<void *>(&deleted_counter)
     );
     char *s = strdup("11");
-    CircularBuffer_Add(cb, &s);
+    CircularBufferNRG_Add(cb, &s);
     s = strdup("22");
-    CircularBuffer_Add(cb, &s);
+    CircularBufferNRG_Add(cb, &s);
     s = strdup("33");
-    CircularBuffer_Add(cb, &s);
+    CircularBufferNRG_Add(cb, &s);
 
     // We deleted "11".
     ASSERT_EQ(deleted_counter, 1);
 
     // Reads don't delete.
     char *r = NULL;
-    CircularBuffer_Read(cb, reinterpret_cast<void *>(&r));
+    CircularBufferNRG_Read(cb, reinterpret_cast<void *>(&r));
     ASSERT_TRUE(!strcmp(r, "22"));
     ASSERT_EQ(deleted_counter, 1);
 
-    CircularBuffer_Free(cb);
+    CircularBufferNRG_Free(cb);
     ASSERT_EQ(deleted_counter, 3);
 }
 
@@ -331,15 +331,15 @@ class Reallocation1Fixture: public ::testing::TestWithParam<Reallocation> {
 TEST_P(Reallocation1Fixture, TestResetCapacitySingleStageWithReallocation1Parametrised) {
     const Reallocation param = GetParam();
 
-    CircularBuffer cb = CircularBuffer_New(sizeof(uint8_t), param.initialCapacity);
+    CircularBufferNRG cb = CircularBufferNRG_New(sizeof(uint8_t), param.initialCapacity);
     for (const auto element : param.initialElements) {
-        CircularBuffer_Add(cb, &element);
+        CircularBufferNRG_Add(cb, &element);
     }
-    const uint64_t original_item_count = CircularBuffer_ItemCount(cb);
+    const uint64_t original_item_count = CircularBufferNRG_ItemCount(cb);
     ASSERT_EQ(original_item_count, MIN(param.initialElements.size(), param.initialCapacity));
 
-    CircularBuffer old_address = cb;
-    ASSERT_TRUE(CircularBuffer_SetCapacity(&cb, param.newCapacity));
+    CircularBufferNRG old_address = cb;
+    ASSERT_TRUE(CircularBufferNRG_SetCapacity(&cb, param.newCapacity));
     if (param.expectedReallocation) {
         // The address has changed, meaning there has been a reallocation.
         ASSERT_NE(old_address, cb);
@@ -348,28 +348,28 @@ TEST_P(Reallocation1Fixture, TestResetCapacitySingleStageWithReallocation1Parame
         ASSERT_EQ(old_address, cb);
     }
 
-    ASSERT_EQ(CircularBuffer_GetCapacity(cb), param.newCapacity);
-    ASSERT_EQ(CircularBuffer_IsEmpty(cb), param.expectedEmpty);
-    ASSERT_EQ(CircularBuffer_ItemCount(cb), param.expectedElements.size());
+    ASSERT_EQ(CircularBufferNRG_GetCapacity(cb), param.newCapacity);
+    ASSERT_EQ(CircularBufferNRG_IsEmpty(cb), param.expectedEmpty);
+    ASSERT_EQ(CircularBufferNRG_ItemCount(cb), param.expectedElements.size());
 
     // Confirm the new buffer has only the elements expected.
     for (const auto element : param.expectedElements) {
         uint8_t removed = 0;
-        CircularBuffer_Read(cb, &removed);
+        CircularBufferNRG_Read(cb, &removed);
         ASSERT_EQ(removed, element);
     }
 
     // After all the expected elements have been read, we shouldn't be able
     // to read more.
     uint8_t removed = 127;
-    CircularBuffer_Read(cb, &removed);
+    CircularBufferNRG_Read(cb, &removed);
     ASSERT_EQ(removed, 127);
 
-    CircularBuffer_Free(cb);
+    CircularBufferNRG_Free(cb);
 }
 
 INSTANTIATE_TEST_SUITE_P(
-        CircularBufferReallocation1Tests,
+        CircularBufferNRGReallocation1Tests,
         Reallocation1Fixture,
         ::testing::Values<Reallocation>(
             Reallocation {

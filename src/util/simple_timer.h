@@ -45,6 +45,10 @@
 #include <omp.h>
 #endif
 
+#include <stdint.h>
+
+typedef double simple_timer_t[2];
+
 // Determines how many milliseconds are in a second.
 #define MILLISECONDS_IN_SECOND 1000
 // Determines how many nanoseconds are in a millisecond.
@@ -52,10 +56,6 @@
 
 // An alias for the type of the timer.
 #define TIMER_TYPE double[2]
-// Defines a timer variable. An easy way to define a variable of a timer named
-// "name" which doesn't care about the precise timer type (double[2]), so it
-// also can be easily changed to whichever else.
-#define TIMER_DEFINE(name) double name[2]
 // An alias to assign for the timer.
 #define TIMER_ASSIGN(lhs, rhs) lhs[0] = rhs[0]; lhs[1] = rhs[1]
 // (Re)starts the timer.
@@ -77,7 +77,7 @@
 #define TIMER_GET_ELAPSED_MILLISECONDS(name) \
     (uint64_t)(TIMER_GET_ELAPSED(name) * MILLISECONDS_IN_SECOND)
 // Defines a timer variable and starts the timer immediately.
-#define TIMER_DEFINE_AND_START(name) TIMER_DEFINE(name); TIMER_RESTART(name)
+#define TIMER_DEFINE_AND_START(name) simple_timer_t name; TIMER_RESTART(name)
 
 void simple_tic         /* returns current time in seconds and nanoseconds */
 (
@@ -90,3 +90,5 @@ double simple_toc           /* returns time since last simple_tic */
     const double tic [2]    /* tic from last call to simple_tic */
 ) ;
 
+// Returns the milliseconds elapsed since the UNIX epoch.
+uint64_t get_unix_timestamp_milliseconds();

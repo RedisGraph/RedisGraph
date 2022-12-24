@@ -6,7 +6,6 @@
 
 #include "RG.h"
 #include "graph.h"
-#include "entities/attribute_set.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 #include "../util/datablock/oo_datablock.h"

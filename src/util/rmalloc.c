@@ -6,8 +6,6 @@
 
 #include "rmalloc.h"
 
-#include <stdatomic.h>
-
 #include "../errors.h"
 
 #ifdef REDIS_MODULE_TARGET /* Set this when compiling your code as a module */
