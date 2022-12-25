@@ -184,4 +184,4 @@ class testIndexCreationFlow(FlowTestsBase):
                 pipe.execute()
                 redis_con.execute_command("GRAPH.DELETE", f"x{graph_id}")
         pool = Pool(nodes=10)
-        pool.map(create_drop_index, range(1, 100))
+        pool.map(create_drop_index, range(1, 50))
