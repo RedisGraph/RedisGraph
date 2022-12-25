@@ -105,11 +105,8 @@ static void _DeleteEntities
 		// NOTE: delete edges before nodes
 		// required as a deleted node must be detached
 
-		MATRIX_POLICY policy = Graph_GetMatrixPolicy(op->gc->g);
-		Graph_SetMatrixPolicy(op->gc->g, SYNC_POLICY_NOP);
 		// delete edges
 		edge_deleted += DeleteEdges(op->gc, distinct_edges);
-		Graph_SetMatrixPolicy(op->gc->g, policy);
 
 		// delete nodes
 		for(uint i = 0; i < node_count; i++) {

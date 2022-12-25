@@ -1085,6 +1085,7 @@ int Graph_DeleteEdge
 ) {
 	ASSERT(g != NULL);
 	ASSERT(e != NULL);
+	ASSERT(!DataBlock_ItemIsDeleted((void *)e->attributes));
 
 	uint64_t    x;
 	RG_Matrix   R;
@@ -1096,11 +1097,6 @@ int Graph_DeleteEdge
 	NodeID      dest_id   =  Edge_GetDestNodeID(e);
 
 	R = Graph_GetRelationMatrix(g, r, false);
-
-	// test to see if edge exists
-	if(DataBlock_ItemIsDeleted((void *)e->attributes)) {
-		return 0;
-	}
 
 	// an edge of type r has just been deleted, update statistics
 	GraphStatistics_DecEdgeCount(&g->stats, r, 1);
@@ -1151,7 +1147,9 @@ int Graph_DeleteEdges
 	RG_Matrix   M;
 	GrB_Info    info;
 	EdgeID      edge_id;
-	int edge_deleted = 0;
+
+	MATRIX_POLICY policy = Graph_GetMatrixPolicy(g);
+	Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
 
 	uint count = array_len(edges);
 	for (uint i = 0; i < count; i++) {
@@ -1160,11 +1158,7 @@ int Graph_DeleteEdges
 		NodeID      src_id    =  Edge_GetSrcNodeID(e);
 		NodeID      dest_id   =  Edge_GetDestNodeID(e);
 
-
-		// test to see if edge exists
-		if(DataBlock_ItemIsDeleted((void *)e->attributes)) {
-			continue;
-		}
+		ASSERT(!DataBlock_ItemIsDeleted((void *)e->attributes));
 		
 		// an edge of type r has just been deleted, update statistics
 		GraphStatistics_DecEdgeCount(&g->stats, r, 1);
@@ -1201,11 +1195,11 @@ int Graph_DeleteEdges
 		// free and remove edges from datablock.
 		DataBlock_DeleteItem(g->edges, ENTITY_GET_ID(e));
 
-		edge_deleted++;
 	}
 	
+	Graph_SetMatrixPolicy(g, policy);
 
-	return edge_deleted;
+	return count;
 }
 
 inline bool Graph_EntityIsDeleted

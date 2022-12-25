@@ -46,9 +46,9 @@ static bool _removeEntryFromMultiValArr
 
 static GrB_Info _removeElementMultiVal
 (
-    GrB_Matrix A,                   // matrix to remove entry from
-    GrB_Index i,                    // row index
-    GrB_Index j,                    // column index
+	GrB_Matrix A,                   // matrix to remove entry from
+	GrB_Index i,                    // row index
+	GrB_Index j,                    // column index
 	uint64_t  v                     // value to remove
 ) {
 	ASSERT(A);
@@ -75,9 +75,9 @@ static GrB_Info _removeElementMultiVal
 
 GrB_Info RG_Matrix_removeEntry
 (
-    RG_Matrix C,                    // matrix to remove entry from
-    GrB_Index i,                    // row index
-    GrB_Index j,                    // column index
+	RG_Matrix C,                    // matrix to remove entry from
+	GrB_Index i,                    // row index
+	GrB_Index j,                    // column index
 	uint64_t  v,                    // value to remove
 	uint64_t *x                     // old value
 ) {
@@ -145,4 +145,3 @@ GrB_Info RG_Matrix_removeEntry
 	}
 	return info;
 }
-
