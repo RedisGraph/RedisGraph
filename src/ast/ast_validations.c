@@ -1303,6 +1303,53 @@ static VISITOR_STRATEGY _Validate_UNWIND_Clause
 	return VISITOR_RECURSE;
 }
 
+// validate a FOREACH clause
+static VISITOR_STRATEGY _Validate_FOREACH_Clause
+(
+	const cypher_astnode_t *n,  // ast-node
+	bool start,                 // first traversal
+	ast_visitor *visitor        // visitor
+) {
+	validations_ctx *vctx = visitor->ctx;
+
+	// first (and only) traversal
+	if(start) {
+		vctx->clause = cypher_astnode_type(n);
+
+		// introduce local identifier to bound vars
+		const cypher_astnode_t *identifier_node = cypher_ast_foreach_get_identifier(n);
+		const char *identifier = cypher_ast_identifier_get_name(identifier_node);
+		bool introduce_ident =
+			(raxTryInsert(vctx->defined_identifiers, (unsigned char *)identifier,
+			strlen(identifier), NULL, NULL) != 0);
+
+		// visit expression
+		const cypher_astnode_t *exp = cypher_ast_foreach_get_expression(n);
+		AST_Visitor_visit(exp, visitor);
+		if(ErrorCtx_EncounteredError()) {
+			return VISITOR_BREAK;
+		}
+
+		// visit clauses
+		uint nclauses = cypher_ast_foreach_nclauses(n);
+		for(uint i = 0; i < nclauses; i++) {
+			const cypher_astnode_t *clause = cypher_ast_foreach_get_clause(n, i);
+			AST_Visitor_visit(clause, visitor);
+			if(ErrorCtx_EncounteredError()) {
+			return VISITOR_BREAK;
+			}
+		}
+
+		// remove local identifier from bound vars if introduced
+		if(introduce_ident) {
+			raxRemove(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL);
+		}
+	}
+
+	// do not traverse children
+	return VISITOR_CONTINUE;
+}
+
 // validate a RETURN clause
 static VISITOR_STRATEGY _Validate_RETURN_Clause
 (
@@ -1612,6 +1659,7 @@ bool AST_ValidationsMappingInit(void) {
 	validations_mapping[CYPHER_AST_CREATE]                      =  _Validate_CREATE_Clause;
 	validations_mapping[CYPHER_AST_DELETE]                      =  _Validate_DELETE_Clause;
 	validations_mapping[CYPHER_AST_REDUCE]                      =  _Validate_reduce;
+	validations_mapping[CYPHER_AST_FOREACH]                     =  _Validate_FOREACH_Clause;
 	validations_mapping[CYPHER_AST_IDENTIFIER]                  =  _Validate_identifier;
 	validations_mapping[CYPHER_AST_PROJECTION]                  =  _Validate_projection;
 	validations_mapping[CYPHER_AST_NAMED_PATH]                  =  _Validate_named_path;
