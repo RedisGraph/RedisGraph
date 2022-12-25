@@ -293,7 +293,7 @@ static bool compress_clauses
 
 		// try compressing the inner-clauses of a foreach clause
 		if(t == CYPHER_AST_FOREACH) {
-			rewritten = compress_foreach_clause((cypher_astnode_t *)node, i);
+			rewritten = compress_foreach_clause(node, i);
 			continue;
 		}
 
@@ -383,12 +383,12 @@ bool AST_RewriteSameClauses
 	}
 
 	// retrieve the root's body
-	const cypher_astnode_t *body = cypher_ast_statement_get_body(root);
+	cypher_astnode_t *body = (cypher_astnode_t *)cypher_ast_statement_get_body(root);
 	if(cypher_astnode_type(body) != CYPHER_AST_QUERY) {
 		return rewritten;
 	}
 
 	// traverse clauses
 	// compress consecutive clauses
-	return compress_clauses((cypher_astnode_t *) body);
+	return compress_clauses(body);
 }

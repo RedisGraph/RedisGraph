@@ -1682,7 +1682,6 @@ bool AST_ValidationsMappingInit(void) {
 	validations_mapping[CYPHER_AST_FILTER]                       =  _visit_break;
 	validations_mapping[CYPHER_AST_EXTRACT]                      =  _visit_break;
 	validations_mapping[CYPHER_AST_COMMAND]                      =  _visit_break;
-	validations_mapping[CYPHER_AST_FOREACH]                      =  _visit_break;
 	validations_mapping[CYPHER_AST_LOAD_CSV]                     =  _visit_break;
 	validations_mapping[CYPHER_AST_MATCH_HINT]                   =  _visit_break;
 	validations_mapping[CYPHER_AST_USING_JOIN]                   =  _visit_break;
