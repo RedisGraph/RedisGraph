@@ -819,32 +819,29 @@ This section contains information on all supported functions from the Cypher que
 
 ## Predicate functions
 
-| Function                                         | Description|
-| -------                                          | :----------|
-| exists()                                         | Returns true if the specified property exists in the node or relationship                                |
-| isEmpty()                                        | Returns true if the input list or map contains no elements or if the input string contains no characters |
-| [any()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for at least one element in the input array         |
-| [all()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for all elements in the input array                 |
-| [none()](#existential-comprehension-functions)   | Returns true if the inner WHERE predicate holds false for all elements in the input array                |
-| [single()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for exactly one element only in the input array     |
-| [CASE...WHEN](#case-when)                        | Evaluates the CASE expression and returns the value indicated by the matching WHEN statement             |
+| Function                                                                          | Description|
+| --------------------------------------------------------------------------------- | :----------|
+| [all(_var_ IN _list_ WHERE _predicate_)](#existential-comprehension-functions)    | Returns true if _predicate_ holds true for all elements in _list_         |
+| [any(_var_ IN _list_ WHERE _predicate_)](#existential-comprehension-functions)    | Returns true if _predicate_ holds true for at least one element in _list_ |
+| exists(_pattern_)                                                                 | Returns true if at least one match for _pattern_ exists                   |
+| isEmpty(_list_&#124;_map_&#124;_string_)                                          | Returns true if the input list or map contains no elements or if the input string contains no characters <br> Returns null if the input is null |
+| [none(_var_ IN _list_ WHERE _predicate_)](#existential-comprehension-functions)   | Returns true if _predicate_ holds false for all elements in _list_        |
+| [single(_var_ IN _list_ WHERE _predicate_)](#existential-comprehension-functions) | Returns true if _predicate_ holds true for exactly one element in _list_  |
 
 ## Scalar functions
 
-| Function                           | Description|
-| ---------------------------------- | :----------|
-| coalesce(_expr_[, expr...])        | Returns the evaluation of the first argument that evaluates to a non-null value <br> Returns null when all arguments evaluate to null                                 |
-| endNode(_relationship_)            | Returns the destination node of a relationship <br> Returns null when _relationship_ is null                                                                          |
-| hasLabels(_node_, _labelsArray_) * | Returns true if _node_ contains all labels in _labelsArray_, otherwise false <br> Return true when _labelsArray_ is empty                                             |
-| id(_node_&#124;_relationship_)     | Returns the internal ID of a node or relationship (which is not immutable)                                                                                            |
-| labels(_node_)                     | Returns an array of strings: all labels of _node_ <br> Returns null when _node_ is null                                                                               |
-| properties(_expr_)                 | When _expr_ is a node or relationship: Returns a map containing all the properties of the given node or relationship <br> When _expr_ is a map: Returns the map as-is <br> Returns null when _expr_ is null |
-| randomUUID()                       | Returns a random UUID (Universal Unique IDentifier)                                                                                                                   |
-| startNode(_relationship_)          | Returns the source node of a relationship <br> Returns null when _relationship_ is null                                                                               |
-| timestamp()                        | Returns the current system timestamp (milliseconds since epoch)                                                                                                       |
-| type(_relationship_)               | Returns a string: the type of _relationship_ <br> Returns null when _relationship_ is null                                                                            |
-| list comprehensions                | [See documentation](#list-comprehensions)                                                                                                                             |
-| pattern comprehensions             | [See documentation](#pattern-comprehensions)                                                                                                                          |
+| Function                          | Description|
+| --------------------------------- | :----------|
+| coalesce(_expr_[, expr...])       | Returns the evaluation of the first argument that evaluates to a non-null value <br> Returns null when all arguments evaluate to null |
+| endNode(_relationship_)           | Returns the destination node of a relationship <br> Returns null when _relationship_ is null                                          |
+| hasLabels(_node_, _labelsList_) * | Returns true if _node_ contains all labels in _labelsList_, otherwise false <br> Return true when _labelsList_ is empty               |
+| id(_node_&#124;_relationship_)    | Returns the internal ID of a node or relationship (which is not immutable)                                                            |
+| labels(_node_)                    | Returns a list of strings: all labels of _node_ <br> Returns null when _node_ is null                                                 |
+| properties(_expr_)                | When _expr_ is a node or relationship: Returns a map containing all the properties of the given node or relationship <br> When _expr_ is a map: Returns the map as-is <br> Returns null when _expr_ is null |
+| randomUUID()                      | Returns a random UUID (Universal Unique IDentifier)                                                                                   |
+| startNode(_relationship_)         | Returns the source node of a relationship <br> Returns null when _relationship_ is null                                               |
+| timestamp()                       | Returns the current system timestamp (milliseconds since epoch)                                                                       |
+| type(_relationship_)              | Returns a string: the type of _relationship_ <br> Returns null when _relationship_ is null                                            |
 
 * RedisGraph-specific extensions to Cypher
 
