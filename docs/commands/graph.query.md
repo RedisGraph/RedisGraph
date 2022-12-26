@@ -850,28 +850,28 @@ This section contains information on all supported functions from the Cypher que
 
 |Function                             | Description|
 | ----------------------------------- |:-----------|
-|avg(_expr_)                          | Returns the average of a set of numeric values                                                                                      |
-|collect(_expr_)                      | Returns a list containing all non-null elements which evaluated from a given expression                                             |
-|count(_expr_)                        | Returns the number of non-null values or rows                                                                                       |
-|max(_expr_)                          | Returns the maximum value in a set of values. <br> Note: Map < Node < Relationship < List < Path < String < Boolean < Number < null |
-|min(_expr_)                          | Returns the minimum value in a set of values. <br> Note: Map < Node < Relationship < List < Path < String < Boolean < Number < null |
-|percentileCont(_expr_, _percentile_) | Returns a linear-interpolated percentile (between 0.0 and 1.0) over a set of numeric values. null values are ignored                |
-|percentileDisc(_expr_, _percentile_) | Returns a nearest-value percentile (between 0.0 and 1.0) over a set of numeric values                                               |
-|stDev(_expr_)                        | Returns the sample standard deviation over a set of numeric values                                                                  |
-|stDevP(_expr_)                       | Returns the population standard deviation over a set of numeric values                                                              |
-|sum(_expr_)                          | Returns the sum of a set of numeric values                                                                                          |
+|avg(_expr_)                          | Returns the average of a set of numeric values. null values are ignored <br> Returns null when _expr_ has no evaluations                                               |
+|collect(_expr_)                      | Returns a list containing all non-null elements which evaluated from a given expression                                                                                |
+|count(_expr_&#124;&#42;)             | When argument is _expr_: returns the number of non-null evaluations of _expr_ <br> When argument is `*`: returns the total number of evaluations (including nulls)     |
+|max(_expr_)                          | Returns the maximum value in a set of values (taking into account type ordering). null values are ignored <br> Returns null when _expr_ has no evaluations             |
+|min(_expr_)                          | Returns the minimum value in a set of values (taking into account type ordering). null values are ignored <br> Returns null when _expr_ has no evaluations             |
+|percentileCont(_expr_, _percentile_) | Returns a linear-interpolated percentile (between 0.0 and 1.0) over a set of numeric values. null values are ignored <br> Returns null when _expr_ has no evaluations  |
+|percentileDisc(_expr_, _percentile_) | Returns a nearest-value percentile (between 0.0 and 1.0) over a set of numeric values. null values are ignored <br> Returns null when _expr_ has no evaluations        |
+|stDev(_expr_)                        | Returns the sample standard deviation over a set of numeric values. null values are ignored <br> Returns null when _expr_ has no evaluations                           |
+|stDevP(_expr_)                       | Returns the population standard deviation over a set of numeric values. null values are ignored <br> Returns null when _expr_ has no evaluations                       |
+|sum(_expr_)                          | Returns the sum of a set of numeric values. null values are ignored <br> Returns 0 when _expr_ has no evaluations                                                      |
 
 ## List functions
 
 | Function                           | Description|
 | ---------------------------------- | :----------|
-| head(_expr_)                       | Returns the first element of a list. <br> Returns null when _expr_ is null or an empty list                                                                                               |
-| keys(_expr_)                       | Returns a list of strings: all key names for given map or all property names for a given node or edge. <br> Returns null if _expr_ is null                                                |
-| last()                             | Returns the last element of a list. <br> Returns null when _expr_ is null or an empty list                                                                                                |
-| range(_first_,_last_,[_step_ = 1]) | Returns a list of integers in the range of [start, end]. _step_ is the increment between consequtive elements                                                                             |
-| size(_expr_)                       | Returns the number of elements in a list. <br> Returns null with _expr_ is null                                                                                                           |
-| tail(_expr_)                       | Returns a sublist of a list, which contains all its elements except the first. <br> Return an empty list when _expr_ containst less than 2 elements. <br> Return null with _expr_ is null |
-| [reduce(...)](#reduce)             | Returns a scalar produced by evaluating an expression against each list member                                                                                                            |
+| head(_expr_)                       | Returns the first element of a list <br> Returns null when _expr_ is null or an empty list                                                                                                 |
+| keys(_expr_)                       | Returns a list of strings: all key names for given map or all property names for a given node or edge <br> Returns null if _expr_ is null                                                  |
+| last(_expr_)                       | Returns the last element of a list <br> Returns null when _expr_ is null or an empty list                                                                                                  |
+| range(_first_,_last_,[_step_ = 1]) | Returns a list of integers in the range of [start, end]. _step_, an optional integer argument, is the increment between consequtive elements                                               |
+| size(_expr_)                       | Returns the number of elements in a list <br> Returns null with _expr_ is null                                                                                                             |
+| tail(_expr_)                       | Returns a sublist of a list, which contains all its elements except the first <br> Returns an empty list when _expr_ containst less than 2 elements. <br> Returns null when _expr_ is null |
+| [reduce(...)](#reduce)             | Returns a scalar produced by evaluating an expression against each list member                                                                                                             |
 
 ## Mathematical operators
 
