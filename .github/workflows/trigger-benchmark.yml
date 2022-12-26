@@ -23,10 +23,12 @@ jobs:
     if: needs.haslabel.outputs.benchmark
     runs-on: ubuntu-latest
     steps:
-      - name: trigger-circle-ci
-      - uses: CircleCI-Public/trigger-circleci-pipeline-action@v1.0.5
-        env:
-          CCI_TOKEN: ${{ secrets.CIRCLE_CI_SECRET }}
-        with:
-          run_default_flow: false
-          run_benchmark_flow_label: true
+      - uses: actions/checkout@v2
+      - name: curl-circle-ci
+        run: |
+          curl --request POST \
+          --url https://circleci.com/api/v2/project/gh/${{ github.repository }}/pipeline \
+          --header 'Circle-Token: ${{ secrets.CIRCLE_CI_SECRET }}' \
+          --header 'content-type: application/json' \
+          --data '{"branch": "${{ github.event.pull_request.head.ref }}",
+          "parameters": {"run_default_flow":false, "run_benchmark_flow_label":true}}'
