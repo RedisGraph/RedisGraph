@@ -831,20 +831,20 @@ This section contains information on all supported functions from the Cypher que
 
 ## Scalar functions
 
-| Function               | Description|
-| -------                | :----------|
-| coalesce()             | Returns the first non-null argument                                         |
-| endNode()              | Returns the destination node of a relationship                              |
-| id()                   | Returns the internal ID of a relationship or node (which is not immutable.) |
-| hasLabels()            | Returns true if input node contains all specified labels, otherwise false   |
-| labels()               | Returns a string representation of the label of a node                      |
-| properties()           | Returns a map containing all the properties in the given map, node, or edge. In case of map, it is returned without any change |
-| randomUUID()           | Returns a random UUID (Universal Unique IDentifier)                         |
-| startNode()            | Returns the source node of a relationship                                   |
-| timestamp()            | Returns the amount of milliseconds since epoch                              |
-| type()                 | Returns a string representation of the type of a relationship type          |
-| list comprehensions    | [See documentation](#list-comprehensions)                                   |
-| pattern comprehensions | [See documentation](#pattern-comprehensions)                                |
+| Function                    | Description|
+| --------------------------- | :----------|
+| coalesce(_expr_[, expr...]) | Returns the evaluation of the first argument that evaluates to a non-null value <br> Returns null when all arguments evaluate to null |
+| endNode(_relationship_)     | Returns the destination node of a relationship <br> Returns null when _relationship_ is null                                          |
+| hasLabels()                 | Returns true if input node contains all specified labels, otherwise false   |
+| id()                        | Returns the internal ID of a relationship or node (which is not immutable.) |
+| labels()                    | Returns a string representation of the label of a node                      |
+| properties()                | Returns a map containing all the properties in the given map, node, or edge. In case of map, it is returned without any change |
+| randomUUID()                | Returns a random UUID (Universal Unique IDentifier)                         |
+| startNode(_relationship_)   | Returns the source node of a relationship <br> Returns null when _relationship_ is null                                                |
+| timestamp()                 | Returns the amount of milliseconds since epoch                              |
+| type()                      | Returns a string representation of the type of a relationship type          |
+| list comprehensions         | [See documentation](#list-comprehensions)                                   |
+| pattern comprehensions      | [See documentation](#pattern-comprehensions)                                |
 
 ## Aggregating functions
 
@@ -863,15 +863,15 @@ This section contains information on all supported functions from the Cypher que
 
 ## List functions
 
-| Function                           | Description|
-| ---------------------------------- | :----------|
-| head(_expr_)                       | Returns the first element of a list <br> Returns null when _expr_ is null or an empty list                                                                                                 |
-| keys(_expr_)                       | Returns a list of strings: all key names for given map or all property names for a given node or edge <br> Returns null if _expr_ is null                                                  |
-| last(_expr_)                       | Returns the last element of a list <br> Returns null when _expr_ is null or an empty list                                                                                                  |
-| range(_first_,_last_,[_step_ = 1]) | Returns a list of integers in the range of [start, end]. _step_, an optional integer argument, is the increment between consequtive elements                                               |
-| size(_expr_)                       | Returns the number of elements in a list <br> Returns null with _expr_ is null                                                                                                             |
-| tail(_expr_)                       | Returns a sublist of a list, which contains all its elements except the first <br> Returns an empty list when _expr_ containst less than 2 elements. <br> Returns null when _expr_ is null |
-| [reduce(...)](#reduce)             | Returns a scalar produced by evaluating an expression against each list member                                                                                                             |
+| Function                             | Description|
+| ------------------------------------ | :----------|
+| head(_expr_)                         | Returns the first element of a list <br> Returns null when _expr_ is null or an empty list                                                                                                 |
+| keys(_expr_)                         | Returns a list of strings: all key names for given map or all property names for a given node or edge <br> Returns null if _expr_ is null                                                  |
+| last(_expr_)                         | Returns the last element of a list <br> Returns null when _expr_ is null or an empty list                                                                                                  |
+| range(_first_, _last_[, _step_ = 1]) | Returns a list of integers in the range of [start, end]. _step_, an optional integer argument, is the increment between consequtive elements                                               |
+| size(_expr_)                         | Returns the number of elements in a list <br> Returns null with _expr_ is null                                                                                                             |
+| tail(_expr_)                         | Returns a sublist of a list, which contains all its elements except the first <br> Returns an empty list when _expr_ containst less than 2 elements. <br> Returns null when _expr_ is null |
+| [reduce(...)](#reduce)               | Returns a scalar produced by evaluating an expression against each list member                                                                                                             |
 
 ## Mathematical operators
 
