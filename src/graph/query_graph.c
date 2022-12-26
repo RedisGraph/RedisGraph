@@ -131,7 +131,7 @@ static void _QueryGraphAddEdge
 	else QueryGraph_ConnectNodes(qg, dest, src, edge);
 }
 
-// extracts node from 'qg' and places a copy of into 'graph'
+// extracts node from 'qg' and places a copy of it in 'graph'
 static void _QueryGraph_ExtractNode
 (
 	const QueryGraph *qg,
@@ -394,6 +394,13 @@ QueryGraph *BuildQueryGraph
 		// for each clause of the current type
 		for(uint j = 0; j < clause_count; j ++) {
 			const cypher_astnode_t *clause = clauses[j];
+
+			// if this is an OPTIONAL MATCH clause - don't introduce its
+			// components to the query-graph.
+			if(i == 0 && cypher_ast_match_is_optional(clause)) {
+				continue;
+			}
+
 			// collect path objects
 			const cypher_astnode_t **paths =
 				AST_GetTypedNodes(clause, CYPHER_AST_PATTERN_PATH);
