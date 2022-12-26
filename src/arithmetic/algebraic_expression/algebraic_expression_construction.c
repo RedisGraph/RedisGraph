@@ -586,8 +586,8 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 	// and the process repeat itself
 
 	// a graph with no edges implies an empty algebraic expression
-	// the reasoning behind this decission is that algebraic expression
-	// represent graph traversals, no edges means no traversals
+	// the reasoning behind this decision is that the algebraic expression
+	// represents graph traversals, no edges means no traversals
 	AlgebraicExpression **exps = array_new(AlgebraicExpression *, 1);
 	uint edge_count = QueryGraph_EdgeCount(qg);
 

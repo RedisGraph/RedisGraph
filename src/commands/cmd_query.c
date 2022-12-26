@@ -59,6 +59,18 @@ void static inline GraphQueryCtx_Free(GraphQueryCtx *ctx) {
 	rm_free(ctx);
 }
 
+void abort_and_check_timeout(GraphQueryCtx *gq_ctx, ExecutionPlan *plan) {
+	// abort timeout if set
+	if(gq_ctx->timeout != 0) {
+		Cron_AbortTask(gq_ctx->timeout);
+	}
+
+	// emit error if query timed out
+	if(ExecutionPlan_Drained(plan)) {
+		ErrorCtx_SetError("Query timed out");
+	}
+}
+
 static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 							 ExecutionType exec_type) {
 	Index       *idx         =  NULL;
@@ -175,7 +187,9 @@ static void _ExecuteQuery(void *args) {
 
 	// instantiate the query ResultSet
 	bool compact = command_ctx->compact;
-	ResultSetFormatterType resultset_format = profile
+	// replicated command don't need to return result
+	ResultSetFormatterType resultset_format = 
+		profile || command_ctx->replicated_command
 		? FORMATTER_NOP 
 		: (compact) 
 			? FORMATTER_COMPACT 
@@ -207,17 +221,16 @@ static void _ExecuteQuery(void *args) {
 		ExecutionPlan_PreparePlan(plan);
 		if(profile) {
 			ExecutionPlan_Profile(plan);
-			if(!ErrorCtx_EncounteredError()) ExecutionPlan_Print(plan, rm_ctx);
+			abort_and_check_timeout(gq_ctx, plan);
+
+			if(!ErrorCtx_EncounteredError()) {
+				ExecutionPlan_Print(plan, rm_ctx);
+			}
 		}
 		else {
 			result_set = ExecutionPlan_Execute(plan);
+			abort_and_check_timeout(gq_ctx, plan);
 		}
-
-		// abort timeout if set
-		if(gq_ctx->timeout != 0) Cron_AbortTask(gq_ctx->timeout);
-
-		// emit error if query timed out
-		if(ExecutionPlan_Drained(plan)) ErrorCtx_SetError("Query timed out");
 
 		ExecutionPlan_Free(plan);
 		exec_ctx->plan = NULL;
@@ -329,7 +342,10 @@ void _query(bool profile, void *args) {
 
 	// enforce specified timeout when query is readonly
 	// or timeout applies to both read and write
-	if(command_ctx->timeout != 0 && (readonly || command_ctx->timeout_rw)) {
+	bool enforce_timeout = command_ctx->timeout != 0 &&
+		(readonly || command_ctx->timeout_rw) &&
+		!command_ctx->replicated_command;
+	if(enforce_timeout) {
 		timeout_task = Query_SetTimeOut(command_ctx->timeout, exec_ctx->plan);
 	}
 
