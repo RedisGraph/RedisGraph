@@ -359,7 +359,7 @@ static inline OpBase *ValueHashJoinClone
 	const ExecutionPlan *plan,
 	const OpBase *opBase
 ) {
-	ASSERT(opBase->type == OPType_VALUE_HASH_JOIN);
+	ASSERT(opBase->desc->type == OPType_VALUE_HASH_JOIN);
 	OpValueHashJoin *op = (OpValueHashJoin *)opBase;
 	return NewValueHashJoin(plan, AR_EXP_Clone(op->lhs_exp),
 			AR_EXP_Clone(op->rhs_exp));

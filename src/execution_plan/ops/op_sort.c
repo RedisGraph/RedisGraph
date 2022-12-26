@@ -196,7 +196,7 @@ static OpResult SortReset(OpBase *ctx) {
 }
 
 static OpBase *SortClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	ASSERT(opBase->type == OPType_SORT);
+	ASSERT(opBase->desc->type == OPType_SORT);
 	OpSort *op = (OpSort *)opBase;
 	int *directions;
 	AR_ExpNode **exps;

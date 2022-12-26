@@ -78,7 +78,7 @@ static OpResult LimitReset(OpBase *ctx) {
 }
 
 static inline OpBase *LimitClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	ASSERT(opBase->type == OPType_LIMIT);
+	ASSERT(opBase->desc->type == OPType_LIMIT);
 
 	OpLimit *op = (OpLimit *)opBase;
 	/* Clone the limit expression stored on the ExecutionPlan,

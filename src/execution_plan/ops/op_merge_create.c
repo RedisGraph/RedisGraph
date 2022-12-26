@@ -278,7 +278,7 @@ void MergeCreate_Commit(OpBase *opBase) {
 }
 
 static OpBase *MergeCreateClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	ASSERT(opBase->type == OPType_MERGE_CREATE);
+	ASSERT(opBase->desc->type == OPType_MERGE_CREATE);
 	OpMergeCreate *op = (OpMergeCreate *)opBase;
 	NodeCreateCtx *nodes;
 	EdgeCreateCtx *edges;

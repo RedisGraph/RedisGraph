@@ -17,14 +17,14 @@
 
 // Try to compact a filter.
 static inline bool _compactFilter(OpBase *op) {
-	ASSERT(op->type == OPType_FILTER);
+	ASSERT(op->desc->type == OPType_FILTER);
 	OpFilter *filter_op = (OpFilter *)op;
 	return FilterTree_Compact(filter_op->filterTree);
 }
 
 // In case the compacted filter resolved to 'true', remove it from the execution plan.
 static void _removeTrueFilter(ExecutionPlan *plan, OpBase *op) {
-	ASSERT(op->type == OPType_FILTER);
+	ASSERT(op->desc->type == OPType_FILTER);
 	OpFilter *filter_op = (OpFilter *)op;
 	FT_FilterNode *root = filter_op->filterTree;
 	// We can only have a contant expression in this point (after compaction).

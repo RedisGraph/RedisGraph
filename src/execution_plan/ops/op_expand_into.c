@@ -341,7 +341,7 @@ static inline OpBase *ExpandIntoClone
 	const ExecutionPlan *plan,
 	const OpBase *opBase
 ) {
-	ASSERT(opBase->type == OPType_EXPAND_INTO);
+	ASSERT(opBase->desc->type == OPType_EXPAND_INTO);
 
 	OpExpandInto *op = (OpExpandInto *)opBase;
 

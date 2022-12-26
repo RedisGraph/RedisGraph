@@ -305,7 +305,7 @@ static OpResult AggregateReset(OpBase *opBase) {
 }
 
 static OpBase *AggregateClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	ASSERT(opBase->type == OPType_AGGREGATE);
+	ASSERT(opBase->desc->type == OPType_AGGREGATE);
 	OpAggregate *op = (OpAggregate *)opBase;
 	uint key_count = op->key_count;
 	uint aggregate_count = op->aggregate_count;

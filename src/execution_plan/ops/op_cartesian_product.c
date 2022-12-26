@@ -118,7 +118,7 @@ static OpResult CartesianProductReset(OpBase *opBase) {
 }
 
 static OpBase *CartesianProductClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	ASSERT(opBase->type == OPType_CARTESIAN_PRODUCT);
+	ASSERT(opBase->desc->type == OPType_CARTESIAN_PRODUCT);
 	return NewCartesianProductOp(plan);
 }
 

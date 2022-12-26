@@ -42,7 +42,7 @@ void buildPatternComprehensionOps
 	ASSERT(plan != NULL);
 	ASSERT(root != NULL);
 	ASSERT(ast  != NULL);
-	ASSERT(root->type == OPType_PROJECT || root->type == OPType_AGGREGATE);
+	ASSERT(root->desc->type == OPType_PROJECT || root->desc->type == OPType_AGGREGATE);
 
 	// search for pattern comprehension AST nodes
 	// quickly return if none been found
@@ -166,7 +166,7 @@ void buildPatternPathOps
 	ASSERT(plan != NULL);
 	ASSERT(root != NULL);
 	ASSERT(ast  != NULL);
-	ASSERT(root->type == OPType_PROJECT || root->type == OPType_AGGREGATE);
+	ASSERT(root->desc->type == OPType_PROJECT || root->desc->type == OPType_AGGREGATE);
 
 	// search for pattern comprehension AST nodes
 	// quickly return if none been found

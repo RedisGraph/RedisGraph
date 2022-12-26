@@ -53,7 +53,7 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 									  const OpBase *upper_bound, OpBase *filter) {
 	// validate inputs
 	ASSERT(plan != NULL);
-	ASSERT(filter->type == OPType_FILTER);
+	ASSERT(filter->desc->type == OPType_FILTER);
 
 	/* When placing filters, we should not recurse into certain operation's
 	 * subtrees that would cause logical errors.

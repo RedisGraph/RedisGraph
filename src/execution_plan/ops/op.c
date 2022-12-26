@@ -261,7 +261,7 @@ OpBase *OpBase_Clone
 ) {
 	ASSERT(op        != NULL);
 	ASSERT(plan      != NULL);
-	ASSERT(op->clone != NULL);
+	ASSERT(op->desc->clone != NULL);
 	
 	return op->desc->clone(plan, op);
 }

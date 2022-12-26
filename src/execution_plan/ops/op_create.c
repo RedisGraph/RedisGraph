@@ -177,7 +177,7 @@ static Record CreateConsume(OpBase *opBase) {
 }
 
 static OpBase *CreateClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	ASSERT(opBase->type == OPType_CREATE);
+	ASSERT(opBase->desc->type == OPType_CREATE);
 	OpCreate *op = (OpCreate *)opBase;
 	NodeCreateCtx *nodes;
 	EdgeCreateCtx *edges;

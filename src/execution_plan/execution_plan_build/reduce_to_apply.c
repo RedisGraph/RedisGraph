@@ -82,7 +82,7 @@ static OpBase *_ReduceFilterToOp(ExecutionPlan *plan, const char **vars,
 		if(rhs->desc->type == OPType_FILTER) filter_root->cond.right = NULL;
 		_CreateBoundBranch(rhs, plan, vars);
 		// Check that at least one of the branches is not a filter.
-		ASSERT(!(rhs->type == OPType_FILTER && lhs->type == OPType_FILTER));
+		ASSERT(!(rhs->desc->type == OPType_FILTER && lhs->desc->type == OPType_FILTER));
 		// Create multiplexer op and set the branches as its children.
 		OpBase *apply_multiplexer = NewApplyMultiplexerOp(plan, filter_root->cond.op);
 		ExecutionPlan_AddOp(apply_multiplexer, lhs);

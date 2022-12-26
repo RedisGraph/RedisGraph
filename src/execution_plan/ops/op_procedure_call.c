@@ -155,7 +155,7 @@ static OpResult ProcCallReset(OpBase *ctx) {
 }
 
 static OpBase *ProcCallClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	ASSERT(opBase->type == OPType_PROC_CALL);
+	ASSERT(opBase->desc->type == OPType_PROC_CALL);
 	OpProcCall *op = (OpProcCall *)opBase;
 	AR_ExpNode **args_exp;
 	AR_ExpNode **yield_exps;

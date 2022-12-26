@@ -129,7 +129,7 @@ static OpResult SemiApplyReset(OpBase *opBase) {
 }
 
 static inline OpBase *SemiApplyClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	ASSERT(opBase->type == OPType_SEMI_APPLY || opBase->type == OPType_ANTI_SEMI_APPLY);
+	ASSERT(opBase->desc->type == OPType_SEMI_APPLY || opBase->desc->type == OPType_ANTI_SEMI_APPLY);
 	bool anti = opBase->desc->type == OPType_ANTI_SEMI_APPLY;
 	return NewSemiApplyOp(plan, anti);
 }

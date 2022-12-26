@@ -117,7 +117,7 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 	// Join execution plans.
 	for(int i = 0; i < union_count; i++) {
 		ExecutionPlan *sub_plan = plans[i];
-		ASSERT(sub_plan->root->type == OPType_RESULTS);
+		ASSERT(sub_plan->root->desc->type == OPType_RESULTS);
 
 		// Remove OP_Result.
 		OpBase *op_result = sub_plan->root;
@@ -231,8 +231,8 @@ static ExecutionPlan *_tie_segments
 			// validate the connecting operation
 			// the connecting operation may already have children
 			// if it's been attached to a previous scope
-			ASSERT(connecting_op->type == OPType_PROJECT ||
-			       connecting_op->type == OPType_AGGREGATE);
+			ASSERT(connecting_op->desc->type == OPType_PROJECT ||
+			       connecting_op->desc->type == OPType_AGGREGATE);
 
 			ExecutionPlan_AddOp(connecting_op, prev_segment->root);
 		}

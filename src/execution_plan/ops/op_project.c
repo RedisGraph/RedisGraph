@@ -94,7 +94,7 @@ static OpResult ProjectReset(OpBase *opBase) {
 }
 
 static OpBase *ProjectClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	ASSERT(opBase->type == OPType_PROJECT);
+	ASSERT(opBase->desc->type == OPType_PROJECT);
 	OpProject *op = (OpProject *)opBase;
 	AR_ExpNode **exps;
 	array_clone_with_cb(exps, op->exps, AR_EXP_Clone);

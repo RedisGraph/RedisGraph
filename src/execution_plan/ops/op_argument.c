@@ -61,7 +61,7 @@ void Argument_AddRecord(Argument *arg, Record r) {
 }
 
 static inline OpBase *ArgumentClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	ASSERT(opBase->type == OPType_ARGUMENT);
+	ASSERT(opBase->desc->type == OPType_ARGUMENT);
 	return NewArgumentOp(plan, opBase->modifies);
 }
 

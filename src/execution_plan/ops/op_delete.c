@@ -213,7 +213,7 @@ static Record DeleteConsume(OpBase *opBase) {
 }
 
 static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	ASSERT(opBase->type == OPType_DELETE);
+	ASSERT(opBase->desc->type == OPType_DELETE);
 	OpDelete *op = (OpDelete *)opBase;
 	AR_ExpNode **exps;
 	array_clone_with_cb(exps, op->exps, AR_EXP_Clone);

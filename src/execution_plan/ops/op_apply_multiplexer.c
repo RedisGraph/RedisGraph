@@ -157,7 +157,7 @@ static OpResult OpApplyMultiplexerReset(OpBase *opBase) {
 }
 
 static inline OpBase *OpApplyMultiplexerClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	ASSERT(opBase->type == OPType_OR_APPLY_MULTIPLEXER || opBase->type == OPType_AND_APPLY_MULTIPLEXER);
+	ASSERT(opBase->desc->type == OPType_OR_APPLY_MULTIPLEXER || opBase->desc->type == OPType_AND_APPLY_MULTIPLEXER);
 	OpApplyMultiplexer *op = (OpApplyMultiplexer *)opBase;
 	return NewApplyMultiplexerOp(plan, op->boolean_operator);
 }

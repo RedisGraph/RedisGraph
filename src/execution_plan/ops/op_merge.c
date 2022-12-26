@@ -433,7 +433,7 @@ static OpBase *MergeClone
 	const ExecutionPlan *plan,
 	const OpBase *opBase
 ) {
-	ASSERT(opBase->type == OPType_MERGE);
+	ASSERT(opBase->desc->type == OPType_MERGE);
 
 	OpMerge *op    = (OpMerge *)opBase;
 	rax *on_match  = NULL;

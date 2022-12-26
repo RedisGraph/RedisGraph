@@ -47,7 +47,7 @@ static Record FilterConsume(OpBase *opBase) {
 }
 
 static inline OpBase *FilterClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	ASSERT(opBase->type == OPType_FILTER);
+	ASSERT(opBase->desc->type == OPType_FILTER);
 	OpFilter *op = (OpFilter *)opBase;
 	return NewFilterOp(plan, FilterTree_Clone(op->filterTree));
 }

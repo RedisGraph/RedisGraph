@@ -83,7 +83,7 @@ static OpResult SkipReset(OpBase *ctx) {
 }
 
 static inline OpBase *SkipClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	ASSERT(opBase->type == OPType_SKIP);
+	ASSERT(opBase->desc->type == OPType_SKIP);
 
 	OpSkip *op = (OpSkip *)opBase;
 	/* Clone the skip expression stored on the ExecutionPlan,

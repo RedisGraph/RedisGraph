@@ -213,7 +213,7 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 }
 
 static inline OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	ASSERT(opBase->type == OPType_CONDITIONAL_TRAVERSE);
+	ASSERT(opBase->desc->type == OPType_CONDITIONAL_TRAVERSE);
 	OpCondTraverse *op = (OpCondTraverse *)opBase;
 	return NewCondTraverseOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae));
 }

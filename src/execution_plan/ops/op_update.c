@@ -124,7 +124,7 @@ static Record UpdateConsume(OpBase *opBase) {
 }
 
 static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	ASSERT(opBase->type == OPType_UPDATE);
+	ASSERT(opBase->desc->type == OPType_UPDATE);
 	OpUpdate *op = (OpUpdate *)opBase;
 
 	rax *update_ctxs = raxCloneWithCallback(op->update_ctxs, (void *(*)(void *))UpdateCtx_Clone);

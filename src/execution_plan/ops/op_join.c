@@ -75,7 +75,7 @@ static Record JoinConsume(OpBase *opBase) {
 }
 
 static inline OpBase *JoinClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	ASSERT(opBase->type == OPType_JOIN);
+	ASSERT(opBase->desc->type == OPType_JOIN);
 	return NewJoinOp(plan);
 }
 

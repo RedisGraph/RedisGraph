@@ -66,6 +66,6 @@ static Record ResultsConsume(OpBase *opBase) {
 }
 
 static inline OpBase *ResultsClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	ASSERT(opBase->type == OPType_RESULTS);
+	ASSERT(opBase->desc->type == OPType_RESULTS);
 	return NewResultsOp(plan);
 }

@@ -210,7 +210,7 @@ static OpResult NodeByLabelScanReset(OpBase *ctx) {
 }
 
 static OpBase *NodeByLabelScanClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	ASSERT(opBase->type == OPType_NODE_BY_LABEL_SCAN);
+	ASSERT(opBase->desc->type == OPType_NODE_BY_LABEL_SCAN);
 	NodeByLabelScan *op = (NodeByLabelScan *)opBase;
 	OpBase *clone = NewNodeByLabelScanOp(plan, op->n);
 	return clone;
