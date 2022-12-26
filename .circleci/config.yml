@@ -633,7 +633,7 @@ workflows:
           requires:
             - upload-release-artifacts
       - benchmark:
-          <<: *on-any-branch
+          <<: *on-perf-tags
           context: common
       # disable temporarily due to huge profile overhead in RG
       # - benchmark-profiler:
