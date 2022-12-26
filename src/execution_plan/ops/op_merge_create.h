@@ -26,5 +26,7 @@ typedef struct {
 
 OpBase *NewMergeCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateCtx *edges);
 
+void OpMergeCreateRegister();
+
 // Commit all pending creations and switch to Record handoff mode.
 void MergeCreate_Commit(OpBase *opBase);

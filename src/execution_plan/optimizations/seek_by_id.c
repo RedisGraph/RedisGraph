@@ -63,7 +63,7 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 	OpBase *parent = scan_op->parent;
 	OpBase *grandparent;
 	UnsignedRange *id_range = NULL;
-	while(parent && parent->type == OPType_FILTER) {
+	while(parent && parent->desc->type == OPType_FILTER) {
 		grandparent = parent->parent; // Track the next op to visit in case we free parent.
 		OpFilter *filter = (OpFilter *)parent;
 		FT_FilterNode *f = filter->filterTree;
@@ -88,7 +88,7 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 		 * Issue 818 https://github.com/RedisGraph/RedisGraph/issues/818
 		 * This optimization caused a range query over the entire range of ids in the graph
 		 * regardless to the label. */
-		if(scan_op->type == OPType_NODE_BY_LABEL_SCAN) {
+		if(scan_op->desc->type == OPType_NODE_BY_LABEL_SCAN) {
 			NodeByLabelScan *label_scan = (NodeByLabelScan *) scan_op;
 			NodeByLabelScanOp_SetIDRange(label_scan, id_range);
 		} else {

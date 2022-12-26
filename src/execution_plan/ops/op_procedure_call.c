@@ -43,6 +43,11 @@ static void _evaluate_proc_args(OpProcCall *op) {
 	}
 }
 
+void OpProcCallRegister() {
+	OpDesc_Register(OPType_PROC_CALL, "ProcedureCall", NULL, ProcCallReset,
+		NULL, ProcCallClone, ProcCallFree, false); // TODO: !Procedure_IsReadOnly(op->procedure));
+}
+
 OpBase *NewProcCallOp
 (
 	const ExecutionPlan *plan,
@@ -76,9 +81,7 @@ OpBase *NewProcCallOp
 	op->yield_map = rm_malloc(sizeof(OutputMap) * yield_count);
 
 	// set callbacks
-	OpBase_Init((OpBase *)op, OPType_PROC_CALL, "ProcedureCall",
-				NULL, ProcCallConsume, ProcCallReset, NULL, ProcCallClone,
-				ProcCallFree, !Procedure_IsReadOnly(op->procedure), plan);
+	OpBase_Init((OpBase *)op, OPType_PROC_CALL, ProcCallConsume, plan);
 
 	// set modifiers
 	for(uint i = 0; i < yield_count; i ++) {

@@ -128,7 +128,7 @@ static void _ExecutionPlan_ProcessQueryGraph
 						ErrorCtx_SetError("Source and destination must already be resolved to call allShortestPaths");
 					}
 				}
-				root = NewCondVarLenTraverseOp(plan, gc->g, exp);
+				root = NewCondVarLenTraverseOp(plan, gc->g, exp, AST_AliasIsReferenced(ast, edge->alias));
 			} else {
 				root = NewCondTraverseOp(plan, gc->g, exp);
 			}

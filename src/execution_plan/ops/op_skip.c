@@ -36,6 +36,11 @@ static void _eval_skip(OpSkip *op, AR_ExpNode *skip_exp) {
 	AR_EXP_Free(skip_exp);
 }
 
+void OpSkipRegister() {
+	OpDesc_Register(OPType_SKIP, "Skip", NULL, SkipReset, NULL, SkipClone,
+		SkipFree, false);
+}
+
 OpBase *NewSkipOp(const ExecutionPlan *plan, AR_ExpNode *skip_exp) {
 	OpSkip *op = rm_malloc(sizeof(OpSkip));
 	op->skip = 0;
@@ -45,8 +50,7 @@ OpBase *NewSkipOp(const ExecutionPlan *plan, AR_ExpNode *skip_exp) {
 	_eval_skip(op, skip_exp);
 
 	// set operations
-	OpBase_Init((OpBase *)op, OPType_SKIP, "Skip", NULL, SkipConsume, SkipReset, NULL, SkipClone,
-				SkipFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_SKIP, SkipConsume, plan);
 
 	return (OpBase *)op;
 }

@@ -50,6 +50,11 @@ static void _updateOffsets(OpDistinct *op, Record r) {
 	}
 }
 
+void OpDistinctRegister() {
+	OpDesc_Register(OPType_DISTINCT, "Distinct", NULL, NULL, NULL,
+		DistinctClone, DistinctFree, false);
+}
+
 OpBase *NewDistinctOp(const ExecutionPlan *plan, const char **aliases, uint alias_count) {
 	ASSERT(aliases != NULL);
 	ASSERT(alias_count > 0);
@@ -65,8 +70,7 @@ OpBase *NewDistinctOp(const ExecutionPlan *plan, const char **aliases, uint alia
 	// Copy aliases into heap array managed by this op
 	memcpy(op->aliases, aliases, alias_count * sizeof(const char *));
 
-	OpBase_Init((OpBase *)op, OPType_DISTINCT, "Distinct", NULL, DistinctConsume,
-				NULL, NULL, DistinctClone, DistinctFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_DISTINCT, DistinctConsume, plan);
 
 	return (OpBase *)op;
 }

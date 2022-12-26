@@ -27,8 +27,14 @@ static void EdgeIndexScanToString
 	OpEdgeIndexScan *op = (OpEdgeIndexScan *)ctx;
 
 	// Edge By Index Scan | [e:R]
-	*buf = sdscatprintf(*buf, "%s | ", ctx->name);
+	*buf = sdscatprintf(*buf, "%s | ", ctx->desc->name);
 	QGEdge_ToString(op->edge, buf);
+}
+
+void OpEdgeIndexScanRegister() {
+	OpDesc_Register(OPType_EDGE_BY_INDEX_SCAN, "Edge By Index Scan",
+		EdgeIndexScanInit, EdgeIndexScanReset, EdgeIndexScanToString, NULL,
+		EdgeIndexScanFree, false);
 }
 
 OpBase *NewEdgeIndexScanOp
@@ -61,18 +67,8 @@ OpBase *NewEdgeIndexScanOp
 	op->rebuild_index_query  =  false;
 
 	// set our Op operations
-	OpBase_Init(
-			(OpBase *)op,
-			OPType_EDGE_BY_INDEX_SCAN,
-			"Edge By Index Scan",
-			EdgeIndexScanInit,
-			EdgeIndexScanConsume,
-			EdgeIndexScanReset,
-			EdgeIndexScanToString,
-			NULL,
-			EdgeIndexScanFree,
-			false,
-			plan);
+	OpBase_Init((OpBase *)op, OPType_EDGE_BY_INDEX_SCAN, EdgeIndexScanConsume,
+		plan);
 
 	op->edgeRecIdx = OpBase_Modifies((OpBase *)op, QGEdge_Alias(e));
 

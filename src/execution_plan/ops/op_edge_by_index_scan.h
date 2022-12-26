@@ -40,3 +40,4 @@ OpBase *NewEdgeIndexScanOp
 	FT_FilterNode *filter
 );
 
+void OpEdgeIndexScanRegister();

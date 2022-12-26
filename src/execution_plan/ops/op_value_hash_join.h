@@ -23,3 +23,5 @@ typedef struct {
 
 /* Creates a new ValueHashJoin operation */
 OpBase *NewValueHashJoin(const ExecutionPlan *plan, AR_ExpNode *lhs_exp, AR_ExpNode *rhs_exp);
+
+void OpValueHashJoinRegister();

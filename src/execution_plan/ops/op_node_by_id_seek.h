@@ -27,3 +27,4 @@ typedef struct {
 
 OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const char *alias, UnsignedRange *id_range);
 
+void OpNodeByIdSeekRegister();

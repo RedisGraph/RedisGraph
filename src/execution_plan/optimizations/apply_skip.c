@@ -15,7 +15,7 @@
  * once a skip is known */
 
 static void notify_skip(OpBase *op, uint skip) {
-	OPType t = op->type;
+	OPType t = op->desc->type;
 
 	switch(t) {
 		case OPType_SKIP:

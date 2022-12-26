@@ -14,15 +14,20 @@ static OpResult CartesianProductReset(OpBase *opBase);
 static OpBase *CartesianProductClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void CartesianProductFree(OpBase *opBase);
 
+void OpCartesianProductRegister() {
+	OpDesc_Register(OPType_CARTESIAN_PRODUCT, "Cartesian Product",
+		CartesianProductInit, CartesianProductReset, NULL,
+		CartesianProductClone, CartesianProductFree, false);
+}
+
 OpBase *NewCartesianProductOp(const ExecutionPlan *plan) {
 	CartesianProduct *op = rm_malloc(sizeof(CartesianProduct));
 	op->init = true;
 	op->r = NULL;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_CARTESIAN_PRODUCT, "Cartesian Product", CartesianProductInit,
-				CartesianProductConsume, CartesianProductReset, NULL, CartesianProductClone, CartesianProductFree,
-				false, plan);
+	OpBase_Init((OpBase *)op, OPType_CARTESIAN_PRODUCT, CartesianProductConsume,
+		plan);
 	return (OpBase *)op;
 }
 

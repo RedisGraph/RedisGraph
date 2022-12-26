@@ -21,7 +21,7 @@ void reduceDistinct(ExecutionPlan *plan) {
 	for(uint i = 0; i < array_len(distinct_ops); i++) {
 		OpBase *distinct = distinct_ops[i];
 		ASSERT(distinct->childCount == 1);
-		if(distinct->children[0]->type == OPType_AGGREGATE) {
+		if(distinct->children[0]->desc->type == OPType_AGGREGATE) {
 			// We can remove the Distinct op if its child is an aggregate operation,
 			// as its results will inherently be unique.
 			ExecutionPlan_RemoveOp(plan, distinct);

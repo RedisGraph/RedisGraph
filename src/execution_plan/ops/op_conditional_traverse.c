@@ -69,6 +69,12 @@ void _traverse(OpCondTraverse *op) {
 	RG_MatrixTupleIter_attach(&op->iter, op->M);
 }
 
+void OpCondTraverseRegister() {
+	OpDesc_Register(OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse",
+		CondTraverseInit, CondTraverseReset, CondTraverseToString,
+		CondTraverseClone, CondTraverseFree, false);
+}
+
 OpBase *NewCondTraverseOp
 (
 	const ExecutionPlan *plan,
@@ -82,10 +88,8 @@ OpBase *NewCondTraverseOp
 	op->record_cap = BATCH_SIZE;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE,
-			"Conditional Traverse", CondTraverseInit, CondTraverseConsume,
-			CondTraverseReset, CondTraverseToString, CondTraverseClone,
-			CondTraverseFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, CondTraverseConsume,
+		plan);
 
 	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Src(ae),
 			&op->srcNodeIdx);

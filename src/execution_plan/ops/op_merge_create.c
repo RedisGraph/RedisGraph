@@ -66,6 +66,11 @@ static void _RollbackPendingCreations(OpMergeCreate *op) {
 	}
 }
 
+void OpMergeCreateRegister() {
+	OpDesc_Register(OPType_MERGE_CREATE, "MergeCreate", MergeCreateInit,
+		NULL, NULL, MergeCreateClone, MergeCreateFree, true);
+}
+
 OpBase *NewMergeCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
 	OpMergeCreate *op = rm_calloc(1, sizeof(OpMergeCreate));
 	op->unique_entities = raxNew();       // Create a map to unique pending creations.
@@ -76,8 +81,7 @@ OpBase *NewMergeCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCr
 	op->records = array_new(Record, 32);
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_MERGE_CREATE, "MergeCreate", MergeCreateInit, MergeCreateConsume,
-				NULL, NULL, MergeCreateClone, MergeCreateFree, true, plan);
+	OpBase_Init((OpBase *)op, OPType_MERGE_CREATE, MergeCreateConsume, plan);
 
 	uint node_blueprint_count = array_len(nodes);
 	uint edge_blueprint_count = array_len(edges);

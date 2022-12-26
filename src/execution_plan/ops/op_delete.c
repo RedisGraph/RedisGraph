@@ -127,6 +127,11 @@ static void _DeleteEntities
 	array_free(distinct_edges);
 }
 
+void OpDeleteRegister() {
+	OpDesc_Register(OPType_DELETE, "Delete", DeleteInit, DeleteReset, NULL,
+		DeleteClone, DeleteFree, true);
+}
+
 OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	OpDelete *op = rm_malloc(sizeof(OpDelete));
 
@@ -138,8 +143,7 @@ OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	op->deleted_edges = array_new(Edge, 32);
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", DeleteInit, DeleteConsume,
-				DeleteReset, NULL, DeleteClone, DeleteFree, true, plan);
+	OpBase_Init((OpBase *)op, OPType_DELETE, DeleteConsume, plan);
 
 	return (OpBase *)op;
 }

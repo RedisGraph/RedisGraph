@@ -96,7 +96,7 @@ void TraversalToString
 	ASSERT(ae  != NULL);
 	ASSERT(buf != NULL);
 
-	*buf = sdscatprintf(*buf, "%s | ", op->name);
+	*buf = sdscatprintf(*buf, "%s | ", op->desc->name);
 
 	// this edge should be printed right-to-left if the edge matrix is transposed
 	const char *edge       = AlgebraicExpression_Edge(ae);
@@ -164,7 +164,7 @@ void TraversalToString
 }
 
 void ScanToString(const OpBase *op, sds *buf, const char *alias, const char *label) {
-	*buf = sdscatprintf(*buf, "%s | ", op->name);
+	*buf = sdscatprintf(*buf, "%s | ", op->desc->name);
 	_NodeToString(buf, alias, label);
 }
 

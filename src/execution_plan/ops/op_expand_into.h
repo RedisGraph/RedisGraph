@@ -36,3 +36,4 @@ OpBase *NewExpandIntoOp
 	AlgebraicExpression *ae
 );
 
+void OpExpandIntoRegister();

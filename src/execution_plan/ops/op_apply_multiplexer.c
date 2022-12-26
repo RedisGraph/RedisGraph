@@ -21,19 +21,26 @@ static Record _pullFromBranchStream(OpApplyMultiplexer *op, int branch_index) {
 	return OpBase_Consume(op->op.children[branch_index]);
 }
 
+void OpApplyMultiplexerRegister() {
+	OpDesc_Register(OPType_OR_APPLY_MULTIPLEXER, "OR Apply Multiplexer",
+					OpApplyMultiplexerInit, OpApplyMultiplexerReset, NULL,
+					OpApplyMultiplexerClone, OpApplyMultiplexerFree, false);
+	OpDesc_Register(OPType_AND_APPLY_MULTIPLEXER, "AND Apply Multiplexer",
+					OpApplyMultiplexerInit, OpApplyMultiplexerReset, NULL,
+					OpApplyMultiplexerClone, OpApplyMultiplexerFree, false);
+}
+
 OpBase *NewApplyMultiplexerOp(const ExecutionPlan *plan, AST_Operator boolean_operator) {
 
 	OpApplyMultiplexer *op = rm_calloc(1, sizeof(OpApplyMultiplexer));
 	op->boolean_operator = boolean_operator;
 	// Set our Op operations
 	if(boolean_operator == OP_OR) {
-		OpBase_Init((OpBase *)op, OPType_OR_APPLY_MULTIPLEXER, "OR Apply Multiplexer",
-					OpApplyMultiplexerInit, OrMultiplexer_Consume, OpApplyMultiplexerReset, NULL,
-					OpApplyMultiplexerClone, OpApplyMultiplexerFree, false, plan);
+		OpBase_Init((OpBase *)op, OPType_OR_APPLY_MULTIPLEXER,
+			OrMultiplexer_Consume, plan);
 	} else if(boolean_operator == OP_AND) {
-		OpBase_Init((OpBase *)op, OPType_AND_APPLY_MULTIPLEXER, "AND Apply Multiplexer",
-					OpApplyMultiplexerInit, AndMultiplexer_Consume, OpApplyMultiplexerReset, NULL,
-					OpApplyMultiplexerClone, OpApplyMultiplexerFree, false, plan);
+		OpBase_Init((OpBase *)op, OPType_AND_APPLY_MULTIPLEXER,
+			AndMultiplexer_Consume, plan);
 	} else {
 		ASSERT("apply multiplexer boolean operator should be AND or OR only" && false);
 	}
@@ -53,7 +60,7 @@ static void _OpApplyMultiplexer_SortChildren(OpBase *op) {
 			bool swapped = false;
 			for(int j = i + 1; j < op->childCount; j++) {
 				OpBase *candidate = op->children[j];
-				if(candidate->type == OPType_FILTER) {
+				if(candidate->desc->type == OPType_FILTER) {
 					op->children[i] = candidate;
 					op->children[j] = child;
 					swapped = true;

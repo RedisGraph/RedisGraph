@@ -29,6 +29,12 @@ static inline bool _outOfBounds(NodeByIdSeek *op) {
 	return false;
 }
 
+void OpNodeByIdSeekRegister() {
+	OpDesc_Register(OPType_NODE_BY_ID_SEEK, "NodeByIdSeek", NodeByIdSeekInit,
+		NodeByIdSeekReset, NodeByIdSeekToString, NodeByIdSeekClone,
+		NodeByIdSeekFree, false);
+}
+
 OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const char *alias, UnsignedRange *id_range) {
 
 	NodeByIdSeek *op = rm_malloc(sizeof(NodeByIdSeek));
@@ -44,9 +50,7 @@ OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const char *alias, Unsigned
 
 	op->currentId = op->minId;
 
-	OpBase_Init((OpBase *)op, OPType_NODE_BY_ID_SEEK, "NodeByIdSeek", NodeByIdSeekInit,
-				NodeByIdSeekConsume, NodeByIdSeekReset, NodeByIdSeekToString, NodeByIdSeekClone, NodeByIdSeekFree,
-				false, plan);
+	OpBase_Init((OpBase *)op, OPType_NODE_BY_ID_SEEK, NodeByIdSeekConsume, plan);
 
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, alias);
 

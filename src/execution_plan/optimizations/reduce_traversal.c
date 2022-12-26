@@ -56,10 +56,10 @@ void reduceTraversal(ExecutionPlan *plan) {
 	for(uint i = 0; i < traversals_count; i++) {
 		OpBase *op = traversals[i];
 		AlgebraicExpression *ae = NULL;
-		if(op->type == OPType_CONDITIONAL_TRAVERSE) {
+		if(op->desc->type == OPType_CONDITIONAL_TRAVERSE) {
 			OpCondTraverse *traverse = (OpCondTraverse *)op;
 			ae = traverse->ae;
-		} else if(op->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE) {
+		} else if(op->desc->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE) {
 			CondVarLenTraverse *traverse = (CondVarLenTraverse *)op;
 			ae = traverse->ae;
 		} else {
@@ -92,7 +92,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 
 		/* Both src and dest are already known
 		 * perform expand into instead of traverse. */
-		if(op->type == OPType_CONDITIONAL_TRAVERSE) {
+		if(op->desc->type == OPType_CONDITIONAL_TRAVERSE) {
 			OpCondTraverse *traverse = (OpCondTraverse *)op;
 			const ExecutionPlan *traverse_plan = traverse->op.plan;
 			OpBase *expand_into = NewExpandIntoOp(traverse_plan, traverse->graph, traverse->ae);
@@ -114,7 +114,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 			QGNode *src = QueryGraph_GetNodeByAlias(traverse_plan->query_graph, AlgebraicExpression_Src(ae));
 			if(QGNode_Labeled(src)) {
 				t = op->children[0];
-				if(t->type == OPType_CONDITIONAL_TRAVERSE && !_isInSubExecutionPlan(op)) {
+				if(t->desc->type == OPType_CONDITIONAL_TRAVERSE && !_isInSubExecutionPlan(op)) {
 					// Queue traversal for removal.
 					redundantTraversals[redundantTraversalsCount++] = (OpCondTraverse *)t;
 				}
@@ -123,7 +123,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 													 AlgebraicExpression_Dest(ae));
 			if(QGNode_Labeled(dest)) {
 				t = op->parent;
-				if(t->type == OPType_CONDITIONAL_TRAVERSE && !_isInSubExecutionPlan(op)) {
+				if(t->desc->type == OPType_CONDITIONAL_TRAVERSE && !_isInSubExecutionPlan(op)) {
 					// Queue traversal for removal.
 					redundantTraversals[redundantTraversalsCount++] = (OpCondTraverse *)t;
 				}

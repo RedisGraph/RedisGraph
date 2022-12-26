@@ -41,7 +41,7 @@ static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
 
 	if(raxFind(bound_vars, (unsigned char *)scanned_alias, strlen(scanned_alias)) != raxNotFound) {
 		// If the alias the scan operates on is already bound, the scan operation is redundant.
-		if(scan->type == OPType_NODE_BY_LABEL_SCAN) {
+		if(scan->desc->type == OPType_NODE_BY_LABEL_SCAN) {
 			// If we are performing a label scan, introduce a conditional traversal to filter by label.
 			OpBase *traverse = _LabelScanToConditionalTraverse((NodeByLabelScan *)scan);
 			ExecutionPlan_ReplaceOp(plan, scan, traverse);

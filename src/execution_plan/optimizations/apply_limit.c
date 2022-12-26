@@ -17,7 +17,7 @@
  * once a limit is known. */
 
 static void notify_limit(OpBase *op, uint limit) {
-	OPType t = op->type;
+	OPType t = op->desc->type;
 
 	switch(t) {
 		// reset limit on eager operation

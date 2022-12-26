@@ -30,3 +30,4 @@ typedef struct {
 OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,
 		RSIndex *idx, FT_FilterNode *filter);
 
+void OpNodeIndexScanRegister();

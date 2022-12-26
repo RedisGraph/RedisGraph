@@ -27,3 +27,4 @@ typedef struct {
 
 OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should_cache_records);
 
+void OpAggregateRegister();

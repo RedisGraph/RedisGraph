@@ -33,3 +33,4 @@ typedef struct {
 /* Creates a new Traverse operation */
 OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae);
 
+void OpCondTraverseRegister();

@@ -35,3 +35,4 @@ typedef struct {
 
 OpBase *NewMergeOp(const ExecutionPlan *plan, rax *on_match, rax *on_create);
 
+void OpMergeRegister();

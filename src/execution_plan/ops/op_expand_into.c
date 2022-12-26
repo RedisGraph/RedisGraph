@@ -80,6 +80,12 @@ static void _traverse
 	AlgebraicExpression_Eval(op->ae, op->M);
 }
 
+void OpExpandIntoRegister() {
+	OpDesc_Register(OPType_EXPAND_INTO, "Expand Into", ExpandIntoInit,
+		ExpandIntoReset, ExpandIntoToString, ExpandIntoClone, ExpandIntoFree,
+		false);
+}
+
 OpBase *NewExpandIntoOp
 (
 	const ExecutionPlan *plan,
@@ -100,9 +106,7 @@ OpBase *NewExpandIntoOp
 	op->single_operand  =  false;
 
 	// set our Op operations
-	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", ExpandIntoInit,
-			ExpandIntoConsume, ExpandIntoReset, ExpandIntoToString,
-			ExpandIntoClone, ExpandIntoFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, ExpandIntoConsume, plan);
 
 	// make sure that all entities are represented in record
 	bool aware;

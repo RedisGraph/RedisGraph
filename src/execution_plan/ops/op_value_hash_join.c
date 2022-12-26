@@ -209,7 +209,7 @@ static void ValueHashJoinToString
 
 	char *exp_str = NULL;
 
-	*buff = sdscatprintf(*buff, "%s | ", op->op.name);
+	*buff = sdscatprintf(*buff, "%s | ", op->op.desc->name);
 
 	// return early if we don't have arithmetic expressions to print
 	// this can occur when an upstream op like MERGE has
@@ -225,6 +225,12 @@ static void ValueHashJoinToString
 	AR_EXP_ToString(op->rhs_exp, &exp_str);
 	*buff = sdscatprintf(*buff, "%s", exp_str);
 	rm_free(exp_str);
+}
+
+void OpValueHashJoinRegister() {
+	OpDesc_Register(OPType_VALUE_HASH_JOIN, "Value Hash Join", NULL,
+		ValueHashJoinReset, ValueHashJoinToString, ValueHashJoinClone,
+		ValueHashJoinFree, false);
 }
 
 // creates a new valueHashJoin operation
@@ -244,10 +250,8 @@ OpBase *NewValueHashJoin
 	op->number_of_intersections = 0;
 
 	// set our Op operations
-	OpBase_Init((OpBase *)op, OPType_VALUE_HASH_JOIN, "Value Hash Join",
-			NULL, ValueHashJoinConsume, ValueHashJoinReset,
-			ValueHashJoinToString, ValueHashJoinClone, ValueHashJoinFree, false,
-			plan);
+	OpBase_Init((OpBase *)op, OPType_VALUE_HASH_JOIN, ValueHashJoinConsume,
+		plan);
 
 	op->join_value_rec_idx = OpBase_Modifies((OpBase *)op, "pivot");
 	return (OpBase *)op;

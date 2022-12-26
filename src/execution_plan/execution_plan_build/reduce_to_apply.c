@@ -75,11 +75,11 @@ static OpBase *_ReduceFilterToOp(ExecutionPlan *plan, const char **vars,
 	if(filter_root->t == FT_N_COND && FilterTree_ContainsFunc(filter_root, "path_filter", &node)) {
 		// Create the relevant LHS branch and set a bounded branch for it.
 		OpBase *lhs = _ReduceFilterToOp(plan, vars, filter_root->cond.left);
-		if(lhs->type == OPType_FILTER) filter_root->cond.left = NULL;
+		if(lhs->desc->type == OPType_FILTER) filter_root->cond.left = NULL;
 		_CreateBoundBranch(lhs, plan, vars);
 		// Create the relevant RHS branch and set a bounded branch for it.
 		OpBase *rhs = _ReduceFilterToOp(plan, vars, filter_root->cond.right);
-		if(rhs->type == OPType_FILTER) filter_root->cond.right = NULL;
+		if(rhs->desc->type == OPType_FILTER) filter_root->cond.right = NULL;
 		_CreateBoundBranch(rhs, plan, vars);
 		// Check that at least one of the branches is not a filter.
 		ASSERT(!(rhs->type == OPType_FILTER && lhs->type == OPType_FILTER));

@@ -22,3 +22,5 @@ typedef struct {
 } OpCreate;
 
 OpBase *NewCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateCtx *edges);
+
+void OpCreateRegister();

@@ -29,3 +29,5 @@ typedef struct OpSemiApply {
 } OpSemiApply;
 
 OpBase *NewSemiApplyOp(const ExecutionPlan *plan, bool anti);
+
+void OpSemiApplyRegister();

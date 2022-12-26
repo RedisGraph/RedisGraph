@@ -22,3 +22,5 @@ typedef struct {
 
 /* Creates a new Results operation */
 OpBase *NewResultsOp(const ExecutionPlan *plan);
+
+void OpResultRegister();

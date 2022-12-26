@@ -14,40 +14,50 @@ Record ExecutionPlan_BorrowRecord(struct ExecutionPlan *plan);
 rax *ExecutionPlan_GetMappings(const struct ExecutionPlan *plan);
 void ExecutionPlan_ReturnRecord(struct ExecutionPlan *plan, Record r);
 
-void OpBase_Init
+OpDesc _op_descs[35];
+
+void OpDesc_Register
 (
-	OpBase *op,
 	OPType type,
 	const char *name,
 	fpInit init,
-	fpConsume consume,
 	fpReset reset,
 	fpToString toString,
 	fpClone clone,
 	fpFree free,
-	bool writer,
+	bool writer
+) {
+	OpDesc *desc = _op_descs + type;
+	desc->type     = type;
+	desc->name     = name;
+	desc->writer   = writer;
+	desc->init     = init;
+	desc->reset    = reset;
+	desc->clone    = clone;
+	desc->free     = free;
+	desc->toString = toString;
+}
+
+void OpBase_Init
+(
+	OpBase *op,
+	OPType type,
+	fpConsume consume,
 	const struct ExecutionPlan *plan
 ) {
-	op->type = type;
-	op->name = name;
-	op->plan = plan;
-	op->stats = NULL;
-	op->parent = NULL;
+	op->desc       = _op_descs + type;
+	op->plan       = plan;
+	op->stats      = NULL;
+	op->parent     = NULL;
 	op->childCount = 0;
-	op->children = NULL;
-	op->parent = NULL;
-	op->stats = NULL;
+	op->children   = NULL;
+	op->parent     = NULL;
+	op->stats      = NULL;
+	op->modifies   = NULL;
 	op->op_initialized = false;
-	op->modifies = NULL;
-	op->writer = writer;
 
 	// function pointers
-	op->init = init;
 	op->consume = consume;
-	op->reset = reset;
-	op->toString = toString;
-	op->clone = clone;
-	op->free = free;
 	op->profile = NULL;
 }
 
@@ -140,8 +150,8 @@ void OpBase_PropagateReset
 (
 	OpBase *op
 ) {
-	if(op->reset) {
-		OpResult res = op->reset(op);
+	if(op->desc->reset) {
+		OpResult res = op->desc->reset(op);
 		ASSERT(res == OP_OK);
 	}
 	for(int i = 0; i < op->childCount; i++) OpBase_PropagateReset(op->children[i]);
@@ -165,8 +175,8 @@ void OpBase_ToString
 ) {
 	int bytes_written = 0;
 
-	if(op->toString) op->toString(op, buff);
-	else *buff = sdscatprintf(*buff, "%s", op->name);
+	if(op->desc->toString) op->desc->toString(op, buff);
+	else *buff = sdscatprintf(*buff, "%s", op->desc->name);
 
 	if(op->stats) _OpBase_StatsToString(op, buff);
 }
@@ -189,7 +199,7 @@ bool OpBase_IsWriter
 (
 	OpBase *op
 ) {
-	return op->writer;
+	return op->desc->writer;
 }
 
 void OpBase_UpdateConsume
@@ -234,7 +244,7 @@ inline OPType OpBase_Type
 	const OpBase *op
 ) {
 	ASSERT(op != NULL);
-	return op->type;
+	return op->desc->type;
 }
 
 inline void OpBase_DeleteRecord
@@ -249,8 +259,11 @@ OpBase *OpBase_Clone
 	const struct ExecutionPlan *plan,
 	const OpBase *op
 ) {
-	if(op->clone) return op->clone(plan, op);
-	return NULL;
+	ASSERT(op        != NULL);
+	ASSERT(plan      != NULL);
+	ASSERT(op->clone != NULL);
+	
+	return op->desc->clone(plan, op);
 }
 
 void OpBase_Free
@@ -258,7 +271,7 @@ void OpBase_Free
 	OpBase *op
 ) {
 	// free internal operation
-	if(op->free) op->free(op);
+	if(op->desc->free) op->desc->free(op);
 	if(op->children) rm_free(op->children);
 	if(op->modifies) array_free(op->modifies);
 	if(op->stats) rm_free(op->stats);

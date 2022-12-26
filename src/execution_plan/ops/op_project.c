@@ -17,6 +17,11 @@ static OpResult ProjectReset(OpBase *opBase);
 static OpBase *ProjectClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void ProjectFree(OpBase *opBase);
 
+void OpProjectRegister() {
+	OpDesc_Register(OPType_PROJECT, "Project", NULL, ProjectReset, NULL,
+		ProjectClone, ProjectFree, false);
+}
+
 OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	OpProject *op = rm_malloc(sizeof(OpProject));
 	op->exps = exps;
@@ -27,8 +32,7 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	op->projection = NULL;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", NULL, ProjectConsume,
-				ProjectReset, NULL, ProjectClone, ProjectFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_PROJECT, ProjectConsume, plan);
 
 	for(uint i = 0; i < op->exp_count; i ++) {
 		// The projected record will associate values with their resolved name

@@ -20,6 +20,12 @@ static inline void AllNodeScanToString(const OpBase *ctx, sds *buf) {
 	ScanToString(ctx, buf, ((AllNodeScan *)ctx)->alias, NULL);
 }
 
+void OpAllNodeScanRegister() {
+	OpDesc_Register(OPType_ALL_NODE_SCAN, "All Node Scan", AllNodeScanInit,
+		AllNodeScanReset, AllNodeScanToString, AllNodeScanClone,
+		AllNodeScanFree, false);
+}
+
 OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const char *alias) {
 	AllNodeScan *op = rm_malloc(sizeof(AllNodeScan));
 	op->iter = NULL;
@@ -27,9 +33,7 @@ OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const char *alias) {
 	op->child_record = NULL;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_ALL_NODE_SCAN, "All Node Scan", AllNodeScanInit,
-				AllNodeScanConsume, AllNodeScanReset, AllNodeScanToString, AllNodeScanClone, AllNodeScanFree, false,
-				plan);
+	OpBase_Init((OpBase *)op, OPType_ALL_NODE_SCAN, AllNodeScanConsume, plan);
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, alias);
 	return (OpBase *)op;
 }

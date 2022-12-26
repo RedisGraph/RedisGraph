@@ -20,13 +20,13 @@ static int _identifyResultAndAggregateOps(OpBase *root, OpResult **opResult,
 										  OpAggregate **opAggregate) {
 	OpBase *op = root;
 	// Op Results.
-	if(op->type != OPType_RESULTS || op->childCount != 1) return 0;
+	if(op->desc->type != OPType_RESULTS || op->childCount != 1) return 0;
 
 	*opResult = (OpResult *)op;
 	op = op->children[0];
 
 	// Op Aggregate.
-	if(op->type != OPType_AGGREGATE || op->childCount != 1) return 0;
+	if(op->desc->type != OPType_AGGREGATE || op->childCount != 1) return 0;
 
 	// Expecting a single aggregation, without ordering.
 	*opAggregate = (OpAggregate *)op;
@@ -61,14 +61,14 @@ static int _identifyNodeCountPattern(OpBase *root, OpResult **opResult, OpAggreg
 	OpBase *op = ((OpBase *)*opAggregate)->children[0];
 
 	// Scan, either a full node or label scan.
-	if((op->type != OPType_ALL_NODE_SCAN &&
-		op->type != OPType_NODE_BY_LABEL_SCAN) ||
+	if((op->desc->type != OPType_ALL_NODE_SCAN &&
+		op->desc->type != OPType_NODE_BY_LABEL_SCAN) ||
 	   op->childCount != 0) {
 		return 0;
 	}
 
 	*opScan = op;
-	if(op->type == OPType_NODE_BY_LABEL_SCAN) {
+	if(op->desc->type == OPType_NODE_BY_LABEL_SCAN) {
 		NodeByLabelScan *labelScan = (NodeByLabelScan *)op;
 		*label = labelScan->n.label;
 	}
@@ -139,7 +139,7 @@ static bool _identifyEdgeCountPattern(OpBase *root, OpResult **opResult,
 
 	OpBase *op = ((OpBase *)*opAggregate)->children[0];
 
-	if(op->type != OPType_CONDITIONAL_TRAVERSE || op->childCount != 1) {
+	if(op->desc->type != OPType_CONDITIONAL_TRAVERSE || op->childCount != 1) {
 		return false;
 	}
 
@@ -148,7 +148,7 @@ static bool _identifyEdgeCountPattern(OpBase *root, OpResult **opResult,
 
 	// only a full node scan can be converted, as a labeled source acts as a
 	// filter that may invalidate some of the edges
-	if(op->type != OPType_ALL_NODE_SCAN || op->childCount != 0) return false;
+	if(op->desc->type != OPType_ALL_NODE_SCAN || op->childCount != 0) return false;
 	*opScan = op;
 
 	return true;

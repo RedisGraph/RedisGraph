@@ -20,6 +20,13 @@ static inline Record _pullFromMatchStream(OpSemiApply *op) {
 	return OpBase_Consume(op->match_branch);
 }
 
+void OpSemiApplyRegister() {
+	OpDesc_Register(OPType_ANTI_SEMI_APPLY, "Anti Semi Apply", SemiApplyInit,
+		SemiApplyReset, NULL, SemiApplyClone, SemiApplyFree, false);
+	OpDesc_Register(OPType_SEMI_APPLY, "Semi Apply", SemiApplyInit,
+		SemiApplyReset, NULL, SemiApplyClone, SemiApplyFree, false);
+}
+
 OpBase *NewSemiApplyOp(const ExecutionPlan *plan, bool anti) {
 	OpSemiApply *op = rm_malloc(sizeof(OpSemiApply));
 	op->r = NULL;
@@ -28,11 +35,10 @@ OpBase *NewSemiApplyOp(const ExecutionPlan *plan, bool anti) {
 	op->match_branch = NULL;
 	// Set our Op operations
 	if(anti) {
-		OpBase_Init((OpBase *)op, OPType_ANTI_SEMI_APPLY, "Anti Semi Apply", SemiApplyInit,
-					AntiSemiApplyConsume, SemiApplyReset, NULL, SemiApplyClone, SemiApplyFree, false, plan);
+		OpBase_Init((OpBase *)op, OPType_ANTI_SEMI_APPLY, AntiSemiApplyConsume,
+			plan);
 	} else {
-		OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, "Semi Apply", SemiApplyInit, SemiApplyConsume,
-					SemiApplyReset, NULL, SemiApplyClone, SemiApplyFree, false, plan);
+		OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, SemiApplyConsume, plan);
 	}
 	return (OpBase *) op;
 }
@@ -124,7 +130,7 @@ static OpResult SemiApplyReset(OpBase *opBase) {
 
 static inline OpBase *SemiApplyClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	ASSERT(opBase->type == OPType_SEMI_APPLY || opBase->type == OPType_ANTI_SEMI_APPLY);
-	bool anti = opBase->type == OPType_ANTI_SEMI_APPLY;
+	bool anti = opBase->desc->type == OPType_ANTI_SEMI_APPLY;
 	return NewSemiApplyOp(plan, anti);
 }
 

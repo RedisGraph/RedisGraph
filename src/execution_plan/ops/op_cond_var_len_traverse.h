@@ -29,6 +29,7 @@ typedef struct {
 	int edgeRelationCount;                 /* Length of edgeRelationTypes. */
 	int *edgeRelationTypes;                /* Relation(s) we're traversing. */
 	AlgebraicExpression *ae;               /* ArithmeticExpression describing op's traversal pattern. */
+	bool is_edge_referenced;                    /* Only collect shortest paths. */
 	union {
 		AllPathsCtx *allPathsCtx;          /* Context for collecting all paths. */
 		AllNeighborsCtx *allNeighborsCtx;  /* Context for collecting all neighbors . */
@@ -37,7 +38,9 @@ typedef struct {
 	GRAPH_EDGE_DIR traverseDir;            /* Traverse direction. */
 } CondVarLenTraverse;
 
-OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae);
+OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae, bool is_edge_referenced);
+
+void OpCondVarLenTraverseRegister();
 
 /* Transform operation from Conditional Variable Length Traverse
  * to Expand Into Conditional Variable Length Traverse */

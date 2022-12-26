@@ -26,3 +26,4 @@ typedef struct {
 /* Creates a new Sort operation */
 OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions);
 
+void OpSortRegister();

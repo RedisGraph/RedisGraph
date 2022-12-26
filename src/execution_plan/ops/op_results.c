@@ -17,12 +17,16 @@ static Record ResultsConsume(OpBase *opBase);
 static OpResult ResultsInit(OpBase *opBase);
 static OpBase *ResultsClone(const ExecutionPlan *plan, const OpBase *opBase);
 
+void OpResultRegister() {
+	OpDesc_Register(OPType_RESULTS, "Results", ResultsInit, NULL, NULL,
+		ResultsClone, NULL, false);
+}
+
 OpBase *NewResultsOp(const ExecutionPlan *plan) {
 	Results *op = rm_malloc(sizeof(Results));
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_RESULTS, "Results", ResultsInit, ResultsConsume,
-				NULL, NULL, ResultsClone, NULL, false, plan);
+	OpBase_Init((OpBase *)op, OPType_RESULTS, ResultsConsume, plan);
 
 	return (OpBase *)op;
 }

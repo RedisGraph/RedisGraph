@@ -19,3 +19,4 @@ typedef struct {
 // Limits number of produced records
 OpBase *NewLimitOp(const ExecutionPlan *plan, AR_ExpNode *limit_exp);
 
+void OpLimitRegister();

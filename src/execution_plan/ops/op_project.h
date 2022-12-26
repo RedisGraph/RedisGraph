@@ -22,3 +22,4 @@ typedef struct {
 
 OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps);
 
+void OpProjectRegister();

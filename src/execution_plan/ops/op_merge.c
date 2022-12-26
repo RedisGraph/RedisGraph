@@ -104,6 +104,11 @@ static inline void _free_pending_updates
 	}
 }
 
+void OpMergeRegister() {
+	OpDesc_Register(OPType_MERGE, "Merge", MergeInit, NULL, NULL, MergeClone,
+		MergeFree, true);
+}
+
 OpBase *NewMergeOp
 (
 	const ExecutionPlan *plan,
@@ -123,8 +128,7 @@ OpBase *NewMergeOp
 	op->edge_pending_updates = NULL;
 	
 	// set our Op operations
-	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume,
-			NULL, NULL, MergeClone, MergeFree, true, plan);
+	OpBase_Init((OpBase *)op, OPType_MERGE, MergeConsume, plan);
 
 	if(op->on_match) _InitializeUpdates(op, op->on_match, &op->on_match_it);
 	if(op->on_create) _InitializeUpdates(op, op->on_create, &op->on_create_it);
@@ -146,7 +150,7 @@ static OpBase *_LocateOp
 	if(!root) {
 		ret = NULL;
 	}
-	else if(root->type == type) {
+	else if(root->desc->type == type) {
 		ret = root;
 	}
 	else if(root->childCount > 0) {

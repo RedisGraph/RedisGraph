@@ -23,7 +23,7 @@ void _reduceFilter(OpBase *op) {
 	/* Filter operation is promised to have only one child. */
 	while(parent->childCount == 1) {
 		child = parent->children[0];
-		if(child->type != OPType_FILTER) break;
+		if(child->desc->type != OPType_FILTER) break;
 
 		OpFilter *childFilter = (OpFilter *)child;
 
@@ -61,7 +61,7 @@ void _reduceFilter(OpBase *op) {
 void _reduceFilters(OpBase *op) {
 	if(op == NULL) return;
 
-	if(op->type == OPType_FILTER) {
+	if(op->desc->type == OPType_FILTER) {
 		_reduceFilter(op);
 	}
 

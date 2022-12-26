@@ -25,3 +25,4 @@ typedef struct {
 
 OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const char *alias);
 
+void OpAllNodeScanRegister();

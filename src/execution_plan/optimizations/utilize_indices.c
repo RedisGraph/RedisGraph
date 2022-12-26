@@ -247,7 +247,7 @@ OpFilter **_applicableFilters
 
 	// we want to find predicate filters that modify the active entity
 	OpBase *current = op->parent;
-	while(current->type == OPType_FILTER) {
+	while(current->desc->type == OPType_FILTER) {
 		OpFilter *filter = (OpFilter *)current;
 
 		if(_applicableFilter(filtered_entity, idx, &filter->filterTree)) {
@@ -442,7 +442,7 @@ void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
 
 	// The OPType_ALL_NODE_SCAN operation is redundant
 	// because OPType_EDGE_BY_INDEX_SCAN will resolve source nodes
-	if(cond->op.children[0]->type == OPType_ALL_NODE_SCAN) {
+	if(cond->op.children[0]->desc->type == OPType_ALL_NODE_SCAN) {
 		OpBase *allNodeScan = cond->op.children[0];
 		// remove all node scan op
 		ExecutionPlan_RemoveOp(plan, allNodeScan);
@@ -519,7 +519,7 @@ void utilizeIndices
 
 		// make sure scan is followed by filter(s)
 		OpBase *parent = scanOp->op.parent;
-		if(parent->type != OPType_FILTER) {
+		if(parent->desc->type != OPType_FILTER) {
 			// no filters to utilize
 			continue;
 		}

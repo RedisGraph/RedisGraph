@@ -23,6 +23,7 @@
 #include "configuration/config.h"
 #include "procedures/procedure.h"
 #include "module_event_handlers.h"
+#include "execution_plan/ops/ops.h"
 #include "serializers/graphmeta_type.h"
 #include "configuration/reconf_handler.h"
 #include "serializers/graphcontext_type.h"
@@ -103,6 +104,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
 	Proc_Register();         // Register procedures.
 	AR_RegisterFuncs();      // Register arithmetic functions.
+	OpDesc_RegisterOps();    // Register operations.
 	Cron_Start();            // Start CRON
 	// Set up global lock and variables scoped to the entire module.
 	_PrepareModuleGlobals(ctx, argv, argc);

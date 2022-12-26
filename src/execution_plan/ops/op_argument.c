@@ -13,13 +13,17 @@ static OpResult ArgumentReset(OpBase *opBase);
 static OpBase *ArgumentClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void ArgumentFree(OpBase *opBase);
 
+void OpArgumentRegister() {
+	OpDesc_Register(OPType_ARGUMENT, "Argument", NULL, ArgumentReset, NULL,
+		ArgumentClone, ArgumentFree, false);
+}
+
 OpBase *NewArgumentOp(const ExecutionPlan *plan, const char **variables) {
 	Argument *op = rm_malloc(sizeof(Argument));
 	op->r = NULL;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_ARGUMENT, "Argument", NULL,
-				ArgumentConsume, ArgumentReset, NULL, ArgumentClone, ArgumentFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_ARGUMENT, ArgumentConsume, plan);
 
 	uint variable_count = array_len(variables);
 	for(uint i = 0; i < variable_count; i ++) {

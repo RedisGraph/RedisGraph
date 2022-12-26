@@ -17,3 +17,5 @@ typedef struct {
 } CartesianProduct;
 
 OpBase *NewCartesianProductOp(const ExecutionPlan *plan);
+
+void OpCartesianProductRegister();

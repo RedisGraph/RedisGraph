@@ -20,6 +20,11 @@ static OpResult UnwindReset(OpBase *opBase);
 static OpBase *UnwindClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void UnwindFree(OpBase *opBase);
 
+void OpUnwindRegister() {
+	OpDesc_Register(OPType_UNWIND, "Unwind", UnwindInit, UnwindReset, NULL,
+		UnwindClone, UnwindFree, false);
+};
+
 OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 	OpUnwind *op = rm_malloc(sizeof(OpUnwind));
 
@@ -29,8 +34,7 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 	op->listIdx = INDEX_NOT_SET;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", UnwindInit, UnwindConsume,
-				UnwindReset, NULL, UnwindClone, UnwindFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_UNWIND, UnwindConsume, plan);
 
 	op->unwindRecIdx = OpBase_Modifies((OpBase *)op, exp->resolved_name);
 	return (OpBase *)op;

@@ -17,5 +17,6 @@ typedef struct {
 
 OpBase *NewArgumentOp(const ExecutionPlan *plan, const char **variables);
 
-void Argument_AddRecord(Argument *arg, Record r);
+void OpArgumentRegister();
 
+void Argument_AddRecord(Argument *arg, Record r);

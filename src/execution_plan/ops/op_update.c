@@ -28,6 +28,11 @@ static Record _handoff(OpUpdate *op) {
 	return NULL;
 }
 
+void OpUpdateRegister() {
+	OpDesc_Register(OPType_UPDATE, "Update", UpdateInit, UpdateReset, NULL,
+		UpdateClone, UpdateFree, true);
+}
+
 OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 	OpUpdate *op = rm_calloc(1, sizeof(OpUpdate));
 	op->records            =  NULL;
@@ -38,8 +43,7 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 	op->gc                 =  QueryCtx_GetGraphCtx();
 
 	// set our op operations
-	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", UpdateInit, UpdateConsume,
-				UpdateReset, NULL, UpdateClone, UpdateFree, true, plan);
+	OpBase_Init((OpBase *)op, OPType_UPDATE, UpdateConsume, plan);
 
 	// iterate over all update expressions
 	// set the record index for every entity modified by this operation

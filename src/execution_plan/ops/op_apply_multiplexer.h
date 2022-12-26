@@ -53,3 +53,5 @@ typedef struct OpApplyMultiplexer {
 } OpApplyMultiplexer;
 
 OpBase *NewApplyMultiplexerOp(const ExecutionPlan *plan, AST_Operator boolean_operator);
+
+void OpApplyMultiplexerRegister();

@@ -15,13 +15,17 @@ static Record CreateConsume(OpBase *opBase);
 static OpBase *CreateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void CreateFree(OpBase *opBase);
 
+void OpCreateRegister() {
+	OpDesc_Register(OPType_CREATE, "Create", NULL, NULL, NULL, CreateClone,
+		CreateFree, true);
+}
+
 OpBase *NewCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
 	OpCreate *op = rm_calloc(1, sizeof(OpCreate));
 	op->records = NULL;
 	NewPendingCreationsContainer(&op->pending, nodes, edges); // Prepare all creation variables.
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_CREATE, "Create", NULL, CreateConsume,
-				NULL, NULL, CreateClone, CreateFree, true, plan);
+	OpBase_Init((OpBase *)op, OPType_CREATE, CreateConsume, plan);
 
 	uint node_blueprint_count = array_len(nodes);
 	uint edge_blueprint_count = array_len(edges);

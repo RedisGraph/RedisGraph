@@ -22,3 +22,4 @@ typedef struct {
 
 OpBase *NewDistinctOp(const ExecutionPlan *plan, const char **aliases, uint alias_count);
 
+void OpDistinctRegister();

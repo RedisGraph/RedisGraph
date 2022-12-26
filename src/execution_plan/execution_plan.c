@@ -254,11 +254,11 @@ static ExecutionPlan *_tie_segments
 		}
 
 		// RETURN projections
-		if (segment->root->type == OPType_RESULTS) {
+		if (segment->root->desc->type == OPType_RESULTS) {
 			uint clause_count = cypher_ast_query_nclauses(ast->root);
 			const cypher_astnode_t *closing_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
 			OpBase *op = segment->root;
-			while(op->type != OPType_PROJECT && op->type != OPType_AGGREGATE) op = op->children[0];
+			while(op->desc->type != OPType_PROJECT && op->desc->type != OPType_AGGREGATE) op = op->children[0];
 			uint projections = cypher_ast_return_nprojections(closing_clause);
 			for (uint j = 0; j < projections; j++) {
 				const cypher_astnode_t *projection = cypher_ast_return_get_projection(closing_clause, j);
@@ -309,7 +309,7 @@ static ExecutionPlan *_tie_segments
 // Add an implicit "Result" operation to ExecutionPlan if necessary.
 static inline void _implicit_result(ExecutionPlan *plan) {
 	// If the query culminates in a procedure call, it implicitly returns results.
-	if(plan->root->type == OPType_PROC_CALL) {
+	if(plan->root->desc->type == OPType_PROC_CALL) {
 		OpBase *results_op = NewResultsOp(plan);
 		ExecutionPlan_UpdateRoot(plan, results_op);
 	}
@@ -389,7 +389,7 @@ static void _ExecutionPlanInit(OpBase *root) {
 	_ExecutionPlan_InitRecordPool((ExecutionPlan *)root->plan);
 
 	// Initialize the operation if necessary.
-	if(root->init) root->init(root);
+	if(root->desc->init) root->desc->init(root);
 
 	// Continue initializing downstream operations.
 	for(int i = 0; i < root->childCount; i++) {

@@ -62,7 +62,7 @@ typedef enum {
 } OpResult;
 
 // Macro for checking whether an operation is an Apply variant.
-#define OP_IS_APPLY(op) ((op)->type == OPType_OR_APPLY_MULTIPLEXER || (op)->type == OPType_AND_APPLY_MULTIPLEXER || (op)->type == OPType_SEMI_APPLY || (op)->type == OPType_ANTI_SEMI_APPLY)
+#define OP_IS_APPLY(op) ((op)->desc->type == OPType_OR_APPLY_MULTIPLEXER || (op)->desc->type == OPType_AND_APPLY_MULTIPLEXER || (op)->desc->type == OPType_SEMI_APPLY || (op)->desc->type == OPType_ANTI_SEMI_APPLY)
 
 #define PROJECT_OP_COUNT 2
 static const OPType PROJECT_OPS[] = {
@@ -117,40 +117,49 @@ typedef struct {
 	double profileExecTime;     // Operation total execution time in ms.
 }  OpStats;
 
-struct OpBase {
+typedef struct OpDesc {
+	bool writer;                // Indicates this is a writer operation.
 	OPType type;                // Type of operation.
 	fpInit init;                // Called once before execution.
 	fpFree free;                // Free operation.
 	fpReset reset;              // Reset operation state.
 	fpClone clone;              // Operation clone.
-	fpConsume consume;          // Produce next record.
-	fpConsume profile;          // Profiled version of consume.
 	fpToString toString;        // Operation string representation.
 	const char *name;           // Operation name.
-	int childCount;             // Number of children.
+} OpDesc;
+
+struct OpBase {
 	bool op_initialized;        // True if the operation has already been initialized.
+	OpDesc *desc;               // Op description
+	fpConsume consume;          // Produce next record.
+	fpConsume profile;          // Profiled version of consume.
+	int childCount;             // Number of children.
 	struct OpBase **children;   // Child operations.
+	struct OpBase *parent;      // Parent operations.
 	const char **modifies;      // List of entities this op modifies.
 	OpStats *stats;             // Profiling statistics.
-	struct OpBase *parent;      // Parent operations.
 	const struct ExecutionPlan *plan; // ExecutionPlan this operation is part of.
-	bool writer;             // Indicates this is a writer operation.
 };
 typedef struct OpBase OpBase;
+
+void OpDesc_Register
+(
+	OPType type,
+	const char *name,
+	fpInit init,
+	fpReset reset,
+	fpToString toString,
+	fpClone clone,
+	fpFree free,
+	bool writer
+);
 
 // initialize op
 void OpBase_Init
 (
 	OpBase *op,
 	OPType type,
-	const char *name,
-	fpInit init,
 	fpConsume consume,
-	fpReset reset,
-	fpToString toString,
-	fpClone,
-	fpFree free,
-	bool writer,
 	const struct ExecutionPlan *plan
 );
 

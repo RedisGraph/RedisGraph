@@ -56,7 +56,7 @@ static void _filterVariableLengthEdges(ExecutionPlan *plan,
 	OpFilter **filters = array_new(OpFilter *, 0);
 
 	// collect applicable filters
-	while(parent && parent->type == OPType_FILTER) {
+	while(parent && parent->desc->type == OPType_FILTER) {
 		// track the next op to visit in case we free parent
 		OpFilter *op_filter = (OpFilter *)parent;
 		FT_FilterNode *ft = op_filter->filterTree;

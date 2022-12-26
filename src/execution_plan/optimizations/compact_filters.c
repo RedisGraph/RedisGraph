@@ -48,7 +48,7 @@ static void _compactFilters(ExecutionPlan *plan, OpBase *op) {
 
 	// Try to compact the filter.
 	bool compact = false;
-	if(op->type == OPType_FILTER) {
+	if(op->desc->type == OPType_FILTER) {
 		compact = _compactFilter(op);
 	}
 

@@ -20,7 +20,7 @@ static inline void _PushDownPathFilters(ExecutionPlan *plan,
 										OpBase *path_filter_op) {
 	OpBase *relocate_to = path_filter_op;
 	// Find the earliest filter op in the path filter op's chain of parents.
-	while(relocate_to->parent && relocate_to->parent->type == OPType_FILTER) {
+	while(relocate_to->parent && relocate_to->parent->desc->type == OPType_FILTER) {
 		relocate_to = relocate_to->parent;
 	}
 	/* If the filter op is part of a chain of filter ops, migrate it
@@ -92,10 +92,10 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 		 * Place the op directly below the first projection if there is one,
 		 * otherwise update the ExecutionPlan root. */
 		op = plan->root;
-		while(op && op->childCount > 0 && op->type != OPType_PROJECT && op->type != OPType_AGGREGATE) {
+		while(op && op->childCount > 0 && op->desc->type != OPType_PROJECT && op->desc->type != OPType_AGGREGATE) {
 			op = op->children[0];
 		}
-		if(op == NULL || (op->type != OPType_PROJECT && op->type != OPType_AGGREGATE)) op = plan->root;
+		if(op == NULL || (op->desc->type != OPType_PROJECT && op->desc->type != OPType_AGGREGATE)) op = plan->root;
 	}
 
 	// In case this is a pre-existing filter (this function is not called out from ExecutionPlan_PlaceFilterOps)

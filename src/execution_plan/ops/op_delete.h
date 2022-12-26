@@ -26,3 +26,5 @@ typedef struct {
 } OpDelete;
 
 OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps);
+
+void OpDeleteRegister();

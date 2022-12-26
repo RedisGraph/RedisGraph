@@ -82,6 +82,11 @@ static inline Record _handoff(OpSort *op) {
 	return NULL;
 }
 
+void OpSortRegister() {
+	OpDesc_Register(OPType_SORT, "Sort", SortInit, SortReset, NULL, SortClone,
+		SortFree, false);
+}
+
 OpBase *NewSortOp
 (
 	const ExecutionPlan *plan,
@@ -99,8 +104,7 @@ OpBase *NewSortOp
 	op->directions = directions;
 
 	// set our Op operations
-	OpBase_Init((OpBase *)op, OPType_SORT, "Sort", SortInit, SortConsume,
-			SortReset, NULL, SortClone, SortFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_SORT, SortConsume, plan);
 
 	uint comparison_count = array_len(exps);
 	op->record_offsets = array_new(uint, comparison_count);

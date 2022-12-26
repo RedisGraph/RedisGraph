@@ -16,3 +16,5 @@ typedef struct {
 } OpJoin;
 
 OpBase *NewJoinOp(const ExecutionPlan *plan);
+
+void OpJoinRegister();

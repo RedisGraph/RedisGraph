@@ -53,3 +53,5 @@ typedef struct {
 
 // creates a new Optional operation
 OpBase *NewOptionalOp(const ExecutionPlan *plan);
+
+void OpOptionalRegister();

@@ -39,16 +39,17 @@ static OpBase *_CloneOpTree(OpBase *template_parent, OpBase *template_current,
 		plan_segment = clone_parent->plan;
 	}
 
-	// Temporarily set the thread-local AST to be the one referenced by this ExecutionPlan segment.
-	QueryCtx_SetAST(plan_segment->ast_segment);
-
 	// Clone the current operation.
 	OpBase *clone_current = OpBase_Clone(plan_segment, template_current);
 
+	clone_current->childCount = template_current->childCount;
+	clone_current->children = rm_malloc(sizeof(OpBase *) * template_current->childCount);
 	for(uint i = 0; i < template_current->childCount; i++) {
 		// Recursively visit and clone the op's children.
 		OpBase *child_op = _CloneOpTree(template_current, template_current->children[i], clone_current);
-		ExecutionPlan_AddOp(clone_current, child_op);
+		clone_current->children[i] = child_op;
+		// Add parent to child
+		child_op->parent = clone_current;
 	}
 
 	return clone_current;

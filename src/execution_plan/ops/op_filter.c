@@ -12,13 +12,17 @@ static Record FilterConsume(OpBase *opBase);
 static OpBase *FilterClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void FilterFree(OpBase *opBase);
 
+void OpFilterRegister() {
+	OpDesc_Register(OPType_FILTER, "Filter", NULL, NULL, NULL, FilterClone,
+		FilterFree, false);
+}
+
 OpBase *NewFilterOp(const ExecutionPlan *plan, FT_FilterNode *filterTree) {
 	OpFilter *op = rm_malloc(sizeof(OpFilter));
 	op->filterTree = filterTree;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_FILTER, "Filter", NULL, FilterConsume,
-				NULL, NULL, FilterClone, FilterFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_FILTER, FilterConsume, plan);
 
 	return (OpBase *)op;
 }

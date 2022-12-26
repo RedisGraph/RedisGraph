@@ -19,3 +19,4 @@ typedef struct {
 // Skips 'n' records.
 OpBase *NewSkipOp(const ExecutionPlan *plan, AR_ExpNode *skip_exp);
 
+void OpSkipRegister();

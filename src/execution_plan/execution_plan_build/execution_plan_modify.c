@@ -185,7 +185,7 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
 OpBase *ExecutionPlan_LocateOpMatchingType(OpBase *root, const OPType *types, uint type_count) {
 	for(int i = 0; i < type_count; i++) {
 		// Return the current op if it matches any of the types we're searching for.
-		if(root->type == types[i]) return root;
+		if(root->desc->type == types[i]) return root;
 	}
 
 	for(int i = 0; i < root->childCount; i++) {
@@ -215,7 +215,7 @@ OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
 
 	// check if this op is blacklisted
 	for(int i = 0; i < nblacklisted_ops && !blacklisted; i++) {
-		blacklisted = (root->type == blacklisted_ops[i]);
+		blacklisted = (root->desc->type == blacklisted_ops[i]);
 	}
 
 	// we're not allowed to inspect child operations of blacklisted ops
@@ -286,7 +286,7 @@ void _ExecutionPlan_LocateTaps
 
 	if(root->childCount == 0) {
 		// op Argument isn't considered a tap
-		if(root->type != OPType_ARGUMENT) {
+		if(root->desc->type != OPType_ARGUMENT) {
 			array_append(*taps, root);
 		}
 	}
@@ -308,7 +308,7 @@ static void _ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *ty
 												  OpBase ***ops) {
 	for(int i = 0; i < type_count; i++) {
 		// Check to see if the op's type matches any of the types we're searching for.
-		if(root->type == types[i]) {
+		if(root->desc->type == types[i]) {
 			array_append(*ops, root);
 			break;
 		}
@@ -348,7 +348,7 @@ void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers) {
 	 * collect their projections but do not recurse into their children.
 	 * Note that future optimizations which operate across scopes will require different logic
 	 * than this for application. */
-	if(op->type == OPType_PROJECT || op->type == OPType_AGGREGATE) return;
+	if(op->desc->type == OPType_PROJECT || op->desc->type == OPType_AGGREGATE) return;
 
 	for(int i = 0; i < op->childCount; i++) {
 		ExecutionPlan_BoundVariables(op->children[i], modifiers);

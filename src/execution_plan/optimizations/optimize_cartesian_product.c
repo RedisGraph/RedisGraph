@@ -70,7 +70,7 @@ static FilterCtx *_locate_filters_and_entities
 	OpBase *parent = cp->parent;
 	FilterCtx *filter_ctx_arr = array_new(FilterCtx, 0);
 
-	while(parent && parent->type == OPType_FILTER) {
+	while(parent && parent->desc->type == OPType_FILTER) {
 		OpFilter *filter_op = (OpFilter *)parent;
 		FilterCtx filter_ctx;
 		filter_ctx.filter = filter_op;

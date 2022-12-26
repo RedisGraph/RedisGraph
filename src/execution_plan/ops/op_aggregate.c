@@ -196,6 +196,11 @@ static Record _handoff
 	return r;
 }
 
+void OpAggregateRegister() {
+	OpDesc_Register(OPType_AGGREGATE, "Aggregate", NULL, AggregateReset, NULL,
+		AggregateClone, AggregateFree, false);
+}
+
 OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should_cache_records) {
 	OpAggregate *op = rm_malloc(sizeof(OpAggregate));
 	op->group = NULL;
@@ -211,8 +216,7 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should
 	// Allocate memory for group keys if we have any non-aggregate expressions.
 	if(op->key_count) op->group_keys = rm_malloc(op->key_count * sizeof(SIValue));
 
-	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", NULL, AggregateConsume,
-				AggregateReset, NULL, AggregateClone, AggregateFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_AGGREGATE, AggregateConsume, plan);
 
 	// The projected record will associate values with their resolved name
 	// to ensure that space is allocated for each entry.

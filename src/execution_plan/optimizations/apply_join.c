@@ -60,7 +60,7 @@ static OpFilter **_locate_filters(OpBase *cp) {
 	OpBase *parent = cp->parent;
 	OpFilter **filters = array_new(OpFilter *, 0);
 
-	while(parent && parent->type == OPType_FILTER) {
+	while(parent && parent->desc->type == OPType_FILTER) {
 		OpFilter *filter_op = (OpFilter *)parent;
 		if(_applicableFilter(filter_op->filterTree)) array_append(filters, filter_op);
 		parent = parent->parent;

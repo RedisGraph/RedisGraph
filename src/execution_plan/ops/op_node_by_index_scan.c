@@ -21,6 +21,12 @@ static void IndexScanToString(const OpBase *ctx, sds *buf) {
 	ScanToString(ctx, buf, op->n.alias, op->n.label);
 }
 
+void OpNodeIndexScanRegister() {
+	OpDesc_Register(OPType_NODE_BY_INDEX_SCAN, "Node By Index Scan",
+		IndexScanInit, IndexScanReset, IndexScanToString, NULL, IndexScanFree,
+		false);
+}
+
 OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,
 		RSIndex *idx, FT_FilterNode *filter) {
 	// validate inputs
@@ -40,8 +46,7 @@ OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,
 	op->rebuild_index_query  =  false;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_NODE_BY_INDEX_SCAN, "Node By Index Scan", IndexScanInit, IndexScanConsume,
-				IndexScanReset, IndexScanToString, NULL, IndexScanFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_NODE_BY_INDEX_SCAN, IndexScanConsume, plan);
 
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n.alias);
 	return (OpBase *)op;

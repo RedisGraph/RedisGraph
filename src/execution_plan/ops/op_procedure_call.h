@@ -40,3 +40,5 @@ OpBase *NewProcCallOp(
     AR_ExpNode **arg_exps,      // Arguments passed to procedure invocation.
 	AR_ExpNode **yield_exps     // Procedure output.
 );
+
+void OpProcCallRegister();

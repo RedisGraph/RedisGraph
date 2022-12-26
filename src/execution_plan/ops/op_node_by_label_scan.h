@@ -30,6 +30,8 @@ typedef struct {
 /* Creates a new NodeByLabelScan operation */
 OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, NodeScanCtx n);
 
+void OpNodeLabelScanRegister();
+
 /* Transform a simple label scan to perform additional range query over the label  matrix. */
 void NodeByLabelScanOp_SetIDRange(NodeByLabelScan *op, UnsignedRange *id_range);
 

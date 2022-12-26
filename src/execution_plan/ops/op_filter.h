@@ -19,3 +19,5 @@ typedef struct {
 
 /* Creates a new Filter operation */
 OpBase *NewFilterOp(const ExecutionPlan *plan, FT_FilterNode *filterTree);
+
+void OpFilterRegister();

@@ -78,8 +78,8 @@ void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {
 	// Expand into doesn't performs any modifications.
 	array_clear(op->op.modifies);
 	op->expandInto = true;
-	op->op.type = OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO;
-	op->op.name = "Conditional Variable Length Traverse (Expand Into)";
+	op->op.desc->type = OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO;
+	op->op.desc->name = "Conditional Variable Length Traverse (Expand Into)";
 }
 
 inline void CondVarLenTraverseOp_SetFilter(CondVarLenTraverse *op,
@@ -91,11 +91,19 @@ inline void CondVarLenTraverseOp_SetFilter(CondVarLenTraverse *op,
 	op->ft = ft;
 }
 
+void OpCondVarLenTraverseRegister() {
+	OpDesc_Register(OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
+		"Conditional Variable Length Traverse", CondVarLenTraverseInit,
+		CondVarLenTraverseReset, CondVarLenTraverseToString,
+		CondVarLenTraverseClone, CondVarLenTraverseFree, false);
+}
+
 OpBase *NewCondVarLenTraverseOp
 (
 	const ExecutionPlan *plan,
 	Graph *g,
-	AlgebraicExpression *ae
+	AlgebraicExpression *ae,
+	bool is_edge_referenced
 ) {
 	ASSERT(g != NULL);
 	ASSERT(ae != NULL);
@@ -111,21 +119,18 @@ OpBase *NewCondVarLenTraverseOp
 	op->collect_paths      =  true;
 	op->allNeighborsCtx    =  NULL;
 	op->edgeRelationTypes  =  NULL;
+	op->is_edge_referenced = is_edge_referenced;
 
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
-				"Conditional Variable Length Traverse", CondVarLenTraverseInit,
-				CondVarLenTraverseConsume, CondVarLenTraverseReset,
-				CondVarLenTraverseToString, CondVarLenTraverseClone,
-				CondVarLenTraverseFree, false, plan);
+				CondVarLenTraverseConsume, plan);
 
 	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Src(ae), &op->srcNodeIdx);
 	ASSERT(aware);
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Dest(ae));
 
 	// populate edge value in record only if it is referenced
-	AST *ast = QueryCtx_GetAST();
 	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, AlgebraicExpression_Edge(op->ae));
-	op->edgesIdx = AST_AliasIsReferenced(ast, e->alias) ? OpBase_Modifies((OpBase *)op, e->alias) : -1;
+	op->edgesIdx = is_edge_referenced ? OpBase_Modifies((OpBase *)op, e->alias) : -1;
 	op->shortestPaths = QGEdge_IsShortestPath(e);
 
 	_setTraverseDirection(op, e);
@@ -330,7 +335,8 @@ static OpBase *CondVarLenTraverseClone(const ExecutionPlan *plan, const OpBase *
 	ASSERT(opBase->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE);
 	CondVarLenTraverse *op = (CondVarLenTraverse *) opBase;
 	OpBase *op_clone = NewCondVarLenTraverseOp(plan, QueryCtx_GetGraph(),
-											   AlgebraicExpression_Clone(op->ae));
+											   AlgebraicExpression_Clone(op->ae),
+											   op->is_edge_referenced);
 	return op_clone;
 }
 

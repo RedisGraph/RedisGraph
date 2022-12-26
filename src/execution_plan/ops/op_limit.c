@@ -36,6 +36,11 @@ static void _eval_limit(OpLimit *op, AR_ExpNode *limit_exp) {
 	AR_EXP_Free(limit_exp);
 }
 
+void OpLimitRegister() {
+	OpDesc_Register(OPType_LIMIT, "Limit", NULL, LimitReset, NULL, LimitClone,
+		LimitFree, false);
+}
+
 OpBase *NewLimitOp(const ExecutionPlan *plan, AR_ExpNode *limit_exp) {
 	// validate inputs
 	ASSERT(plan != NULL);
@@ -49,8 +54,7 @@ OpBase *NewLimitOp(const ExecutionPlan *plan, AR_ExpNode *limit_exp) {
 	_eval_limit(op, limit_exp);
 
 	// set operations
-	OpBase_Init((OpBase *)op, OPType_LIMIT, "Limit", NULL, LimitConsume, LimitReset, NULL,
-				LimitClone, LimitFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_LIMIT, LimitConsume, plan);
 
 	return (OpBase *)op;
 }
