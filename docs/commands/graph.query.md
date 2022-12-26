@@ -963,6 +963,7 @@ This section contains information on all supported functions from the Cypher que
 | toBooleanList()   | Converts a list of values to a list of boolean values. Each item in the list is converted using toBooleanOrNull()      |
 
 ## Node functions
+
 |Function      | Description|
 | ------------ |:-----------|
 |indegree(_node_ [, _label_...]) *   | When no labels are specified: Returns the number of _node_'s incoming edges <br> When one or more labels are specified: Returns the number of _node's_ incoming edges with one of the given labels <br> Return null if _node_ is null |
@@ -971,8 +972,9 @@ This section contains information on all supported functions from the Cypher que
 * RedisGraph-specific extensions to Cypher
 
 ## Path functions
+
 | Function                             | Description|
-| -------                              | :----------|
+| ------------------------------------ | :----------|
 | nodes(_path_)                        | Returns a list containing all the nodes in _path_ <br> Returns null if _path_ if null         |
 | relationships(_path_)                | Returns a list containing all the relationships in _path_ <br> Returns null if _path_ if null |
 | length(_path_)                       | Return the length (number of edges) of _path_ <br> Returns null if _path_ if null             |
