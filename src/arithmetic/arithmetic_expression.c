@@ -580,9 +580,12 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 		return SI_NullVal(); // Otherwise return NULL; the query-level error will be emitted after cleanup.
 	}
 
-	// At least one param node was encountered during evaluation,
-	// tree should be parameters free, try reducing the tree.
-	if(res == EVAL_FOUND_PARAM) AR_EXP_ReduceToScalar(root, true, NULL);
+	// at least one param node was encountered during evaluation,
+	// tree should be parameters free, try reducing the tree
+	if(res == EVAL_FOUND_PARAM) {
+		AR_EXP_ReduceToScalar(root, true, NULL);
+	}
+
 	return result;
 }
 

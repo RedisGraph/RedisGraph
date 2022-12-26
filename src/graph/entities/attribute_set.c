@@ -115,7 +115,7 @@ SIValue AttributeSet_GetIdx
 static AttributeSet AttributeSet_AddPrepare
 (
 	AttributeSet *set,     // set to update
-	Attribute_ID attr_id  // attribute identifier
+	Attribute_ID attr_id   // attribute identifier
 ) {
 	ASSERT(set != NULL);
 	ASSERT(attr_id != ATTRIBUTE_ID_NONE);

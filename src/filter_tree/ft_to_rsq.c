@@ -545,8 +545,8 @@ RSQNode *FilterTreeToQueryNode
 	ASSERT(tree != NULL);
 	ASSERT(none_converted_filters != NULL);
 
-	RSQNode        **nodes  =  array_new(RSQNode*, 1);     // intermidate nodes
-	FT_FilterNode  **trees  =  FilterTree_SubTrees(tree);  // individual subtrees
+	RSQNode        **nodes = array_new(RSQNode*, 1);     // intermidate nodes
+	FT_FilterNode  **trees = FilterTree_SubTrees(tree);  // individual subtrees
 
 	//--------------------------------------------------------------------------
 	// convert filters to numeric and string ranges
