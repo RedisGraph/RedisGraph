@@ -831,20 +831,22 @@ This section contains information on all supported functions from the Cypher que
 
 ## Scalar functions
 
-| Function                    | Description|
-| --------------------------- | :----------|
-| coalesce(_expr_[, expr...]) | Returns the evaluation of the first argument that evaluates to a non-null value <br> Returns null when all arguments evaluate to null |
-| endNode(_relationship_)     | Returns the destination node of a relationship <br> Returns null when _relationship_ is null                                          |
-| hasLabels()                 | Returns true if input node contains all specified labels, otherwise false   |
-| id()                        | Returns the internal ID of a relationship or node (which is not immutable.) |
-| labels()                    | Returns a string representation of the label of a node                      |
-| properties()                | Returns a map containing all the properties in the given map, node, or edge. In case of map, it is returned without any change |
-| randomUUID()                | Returns a random UUID (Universal Unique IDentifier)                         |
-| startNode(_relationship_)   | Returns the source node of a relationship <br> Returns null when _relationship_ is null                                                |
-| timestamp()                 | Returns the amount of milliseconds since epoch                              |
-| type()                      | Returns a string representation of the type of a relationship type          |
-| list comprehensions         | [See documentation](#list-comprehensions)                                   |
-| pattern comprehensions      | [See documentation](#pattern-comprehensions)                                |
+| Function                           | Description|
+| ---------------------------------- | :----------|
+| coalesce(_expr_[, expr...])        | Returns the evaluation of the first argument that evaluates to a non-null value <br> Returns null when all arguments evaluate to null                                 |
+| endNode(_relationship_)            | Returns the destination node of a relationship <br> Returns null when _relationship_ is null                                                                          |
+| hasLabels(_node_, _labelsArray_) * | Returns true if _node_ contains all labels in _labelsArray_, otherwise false <br> Return true when _labelsArray_ is empty                                             |
+| id(_node_&#124;_relationship_)     | Returns the internal ID of a node or relationship (which is not immutable)                                                                                            |
+| labels(_node_)                     | Returns an array of strings: all labels of _node_ <br> Returns null when _node_ is null                                                                               |
+| properties(_expr_)                 | When _expr_ is a node or relationship: Returns a map containing all the properties of the given node or relationship <br> When _expr_ is a map: Returns the map as-is <br> Returns null when _expr_ is null |
+| randomUUID()                       | Returns a random UUID (Universal Unique IDentifier)                                                                                                                   |
+| startNode(_relationship_)          | Returns the source node of a relationship <br> Returns null when _relationship_ is null                                                                               |
+| timestamp()                        | Returns the current system timestamp (milliseconds since epoch)                                                                                                       |
+| type(_relationship_)               | Returns a string: the type of _relationship_ <br> Returns null when _relationship_ is null                                                                            |
+| list comprehensions                | [See documentation](#list-comprehensions)                                                                                                                             |
+| pattern comprehensions             | [See documentation](#pattern-comprehensions)                                                                                                                          |
+
+* RedisGraph-specific extensions to Cypher
 
 ## Aggregating functions
 
@@ -961,10 +963,13 @@ This section contains information on all supported functions from the Cypher que
 | toBooleanList()   | Converts a list of values to a list of boolean values. Each item in the list is converted using toBooleanOrNull()      |
 
 ## Node functions
-|Function | Description|
-| ------- |:-----------|
-|indegree()  | Returns the number of node's incoming edges |
-|outdegree() | Returns the number of node's outgoing edges |
+|Function      | Description|
+| ------------ |:-----------|
+|indegree() *  | Returns the number of node's incoming edges |
+|outdegree() * | Returns the number of node's outgoing edges |
+
+* RedisGraph-specific extensions to Cypher
+
 
 ## Path functions
 | Function                        | Description                                              |
