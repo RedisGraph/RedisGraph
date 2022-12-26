@@ -88,7 +88,6 @@ Feature: Set4 - Set all properties with a map
       | +properties | 2 |
       | -properties | 2 |
 
-  @skip
   Scenario: [4] All properties are removed if node is set to empty property map
     Given an empty graph
     And having executed:

@@ -162,4 +162,22 @@ class testQueryTimeout(FlowTestsBase):
             # The query is expected to succeed
             redis_graph.query(query, timeout=2000)
         except:
-            assert(False)
+            self.env.assertTrue(True)
+
+    # When timeout occurs while executing a PROFILE command, only the error-message
+    # should return to user
+    def test06_profile_no_double_response(self):
+        # Set timeout parameters to small values (1 millisecond)
+        # redis_graph.config("TIMEOUT", 1, True)
+        redis_con.execute_command("GRAPH.CONFIG SET timeout 1")
+
+        # Issue a profile query, expect a timeout error
+        try:
+            redis_graph.profile("UNWIND range(0, 100000000) AS x MATCH (n:P{v:x}) RETURN n")
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertTrue(True)
+
+        # make sure no pending result exists
+        res = redis_graph.query("RETURN 1")
+        self.env.assertEquals(res.result_set[0][0], 1)
