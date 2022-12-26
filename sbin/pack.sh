@@ -66,6 +66,8 @@ export OSNICK=$($READIES/bin/platform --osnick)
 [[ $OSNICK == ol8 ]]     && OSNICK=rhel8
 [[ $OSNICK == rocky8 ]]  && OSNICK=rhel8
 
+[[ $OSNICK == bigsur ]]  && OSNICK=catalina
+
 export PRODUCT=redisgraph
 export PRODUCT_LIB=$PRODUCT.so
 export DEPNAMES=""
