@@ -965,19 +965,20 @@ This section contains information on all supported functions from the Cypher que
 ## Node functions
 |Function      | Description|
 | ------------ |:-----------|
-|indegree() *  | Returns the number of node's incoming edges |
-|outdegree() * | Returns the number of node's outgoing edges |
+|indegree(_node_ [, _label_...]) *   | When no labels are specified: Returns the number of _node_'s incoming edges <br> When one or more labels are specified: Returns the number of _node's_ incoming edges with one of the given labels <br> Return null if _node_ is null |
+|outdegree(_node_ [, _labels_...]) * | When no labels are specified: Returns the number of _node_'s outgoing edges <br> When one or more labels are specified: Returns the number of _node's_ outgoing edges with one of the given labels <br> Return null if _node_ is null |
 
 * RedisGraph-specific extensions to Cypher
 
-
 ## Path functions
-| Function                        | Description                                              |
-| -------                         | :-----------                                             |
-| nodes()                         | Return a new list of nodes, of a given path              |
-| relationships()                 | Return a new list of edges, of a given path              |
-| length()                        | Return the length (number of edges) of the path          |
-| [shortestPath()](#shortestPath) | Return the shortest path that resolves the given pattern |
+| Function                             | Description|
+| -------                              | :----------|
+| nodes(_path_)                        | Returns a list containing all the nodes in _path_ <br> Returns null if _path_ if null         |
+| relationships(_path_)                | Returns a list containing all the relationships in _path_ <br> Returns null if _path_ if null |
+| length(_path_)                       | Return the length (number of edges) of _path_ <br> Returns null if _path_ if null             |
+| [shortestPath(...)](#shortestPath) * | Return the shortest path that resolves the given pattern                                      |
+
+* RedisGraph-specific extensions to Cypher
 
 ### List comprehensions
 List comprehensions are a syntactical construct that accepts an array and produces another based on the provided map and filter directives.
