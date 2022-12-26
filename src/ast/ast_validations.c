@@ -758,11 +758,11 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 	const char *alias = cypher_ast_identifier_get_name(alias_node);
 	void *alias_type = raxFind(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias));
 	if(alias_type == raxNotFound) {
-		raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), T_EDGE, NULL);
+		raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), (void *)T_EDGE, NULL);
 		return VISITOR_RECURSE;
 	}
 
-	if(alias_type != T_EDGE && alias_type != NULL) {
+	if(alias_type != (void *)T_EDGE && alias_type != NULL) {
 		ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.", alias);
 		return VISITOR_BREAK;
 	}
@@ -809,12 +809,12 @@ static VISITOR_STRATEGY _Validate_node_pattern
 		}
 	} else {
 		void *alias_type = raxFind(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias));
-		if(alias_type != raxNotFound && alias_type != NULL && alias_type != T_NODE) {
+		if(alias_type != raxNotFound && alias_type != NULL && alias_type != (void *)T_NODE) {
 			ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.", alias);
 			return VISITOR_BREAK;
 		}
 	}
-	raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), T_NODE, NULL);
+	raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), (void *)T_NODE, NULL);
 
 	return VISITOR_RECURSE;
 }
