@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: trigger-circle-ci
-      - uses: CircleCI-Public/trigger-circleci-pipeline-action@v1.0.5
+        uses: CircleCI-Public/trigger-circleci-pipeline-action@v1.0.5
         env:
           CCI_TOKEN: ${{ secrets.CIRCLE_CI_SECRET }}
         with:
