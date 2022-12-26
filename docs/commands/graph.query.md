@@ -819,8 +819,8 @@ This section contains information on all supported functions from the Cypher que
 
 ## Predicate functions
 
-| Function                                         | Description                                                                                              |
-| -------                                          | :-----------                                                                                             |
+| Function                                         | Description|
+| -------                                          | :----------|
 | exists()                                         | Returns true if the specified property exists in the node or relationship                                |
 | isEmpty()                                        | Returns true if the input list or map contains no elements or if the input string contains no characters |
 | [any()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for at least one element in the input array         |
@@ -831,8 +831,8 @@ This section contains information on all supported functions from the Cypher que
 
 ## Scalar functions
 
-| Function               | Description                                                                 |
-| -------                | :-----------                                                                |
+| Function               | Description|
+| -------                | :----------|
 | coalesce()             | Returns the first non-null argument                                         |
 | endNode()              | Returns the destination node of a relationship                              |
 | id()                   | Returns the internal ID of a relationship or node (which is not immutable.) |
@@ -848,41 +848,41 @@ This section contains information on all supported functions from the Cypher que
 
 ## Aggregating functions
 
-|Function         | Description|
-| --------------- |:-----------|
-|avg()            | Returns the average of a set of numeric values                                               |
-|collect()        | Returns a list containing all elements which evaluated from a given expression               |
-|count()          | Returns the number of values or rows                                                         |
-|max()            | Returns the maximum value in a set of values                                                 |
-|min()            | Returns the minimum value in a set of values                                                 |
-|sum()            | Returns the sum of a set of numeric values                                                   |
-|percentileDisc() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0    |
-|percentileCont() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0    |
-|stDev()          | Returns the standard deviation for the given value over a group over a sample                |
-|stDevP()         | Returns the standard deviation for the given value over a group over an entire population    |
+|Function                             | Description|
+| ----------------------------------- |:-----------|
+|avg(_expr_)                          | Returns the average of a set of numeric values                                                                                      |
+|collect(_expr_)                      | Returns a list containing all non-null elements which evaluated from a given expression                                             |
+|count(_expr_)                        | Returns the number of non-null values or rows                                                                                       |
+|max(_expr_)                          | Returns the maximum value in a set of values. <br> Note: Map < Node < Relationship < List < Path < String < Boolean < Number < null |
+|min(_expr_)                          | Returns the minimum value in a set of values. <br> Note: Map < Node < Relationship < List < Path < String < Boolean < Number < null |
+|percentileCont(_expr_, _percentile_) | Returns a linear-interpolated percentile (between 0.0 and 1.0) over a set of numeric values. null values are ignored                |
+|percentileDisc(_expr_, _percentile_) | Returns a nearest-value percentile (between 0.0 and 1.0) over a set of numeric values                                               |
+|stDev(_expr_)                        | Returns the sample standard deviation over a set of numeric values                                                                  |
+|stDevP(_expr_)                       | Returns the population standard deviation over a set of numeric values                                                              |
+|sum(_expr_)                          | Returns the sum of a set of numeric values                                                                                          |
 
 ## List functions
 
-| Function            | Description                                                                              |
-| ------------------- | :-----------                                                                             |
-| head()              | Returns the first member of a list                                                       |
-| keys()              | Returns a list of keys containing all properties names in a given map, node, or edge     |
-| last()              | Returns the last member of a list                                                        |
-| range()             | Creates a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval. |
-| size()              | Returns a list size                                                                      |
-| tail()              | Returns a sublist of a list, which contains all the values without the first value       |
-| [reduce()](#reduce) | Returns a scalar produced by evaluating an expression against each list member           |
+| Function                           | Description|
+| ---------------------------------- | :----------|
+| head(_expr_)                       | Returns the first element of a list. <br> Returns null when _expr_ is null or an empty list                                                                                               |
+| keys(_expr_)                       | Returns a list of strings: all key names for given map or all property names for a given node or edge. <br> Returns null if _expr_ is null                                                |
+| last()                             | Returns the last element of a list. <br> Returns null when _expr_ is null or an empty list                                                                                                |
+| range(_first_,_last_,[_step_ = 1]) | Returns a list of integers in the range of [start, end]. _step_ is the increment between consequtive elements                                                                             |
+| size(_expr_)                       | Returns the number of elements in a list. <br> Returns null with _expr_ is null                                                                                                           |
+| tail(_expr_)                       | Returns a sublist of a list, which contains all its elements except the first. <br> Return an empty list when _expr_ containst less than 2 elements. <br> Return null with _expr_ is null |
+| [reduce(...)](#reduce)             | Returns a scalar produced by evaluating an expression against each list member                                                                                                            |
 
 ## Mathematical operators
 
 |Function     | Description|
 | ----------- |:-----------|
-| +           | Add two values                                                                                   |
-| -           | Subtract second value from first                                                                 |
-| *           | Multiply two values                                                                              |
-| /           | Divide first value by the second                                                                 |
-| ^           | Raise the first value to the power of the second                                                 |
-| %           | Perform modulo division of the first value by the second                                         |
+| +           | Add two values                                           |
+| -           | Subtract second value from first                         |
+| *           | Multiply two values                                      |
+| /           | Divide first value by the second                         |
+| ^           | Raise the first value to the power of the second         |
+| %           | Perform modulo division of the first value by the second |
 
 ## Mathematical functions
 
