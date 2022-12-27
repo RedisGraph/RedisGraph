@@ -565,16 +565,21 @@ uint GraphContext_DeleteNode
 uint GraphContext_DeleteEdge
 (
 	GraphContext *gc,
-	Edge *e
+	Edge *edges
 ) {
-	ASSERT(e != NULL);
-	ASSERT(gc != NULL);
+	ASSERT(gc     != NULL);
+	ASSERT(edges  != NULL);
 
-	if(GraphContext_HasIndices(gc)) {
-		GraphContext_DeleteEdgeFromIndices(gc, e);
+	// add edge deletion operation to undo log
+	bool      has_indecise =  GraphContext_HasIndices(gc);
+	uint      count        = array_len(edges);
+	for (uint i = 0; i < count; i++) {
+		if(has_indecise) {
+			_DeleteEdgeFromIndices(gc, edges + i);
+		}
 	}
 
-	return Graph_DeleteEdge(gc->g, e);
+	return Graph_DeleteEdges(gc->g, edges);
 }
 
 //------------------------------------------------------------------------------

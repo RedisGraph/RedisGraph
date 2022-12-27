@@ -182,11 +182,11 @@ void Graph_DeleteNode
 	Node *node
 );
 
-// removes an edge from Graph and updates graph relevent matrices
-int Graph_DeleteEdge
+// removes edges from Graph and updates graph relevent matrices
+int Graph_DeleteEdges
 (
 	Graph *g,
-	Edge *e
+	Edge *edges
 );
 
 // returns true if the given entity has been deleted
