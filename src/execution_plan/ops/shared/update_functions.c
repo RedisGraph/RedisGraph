@@ -184,6 +184,7 @@ void EvalEntityUpdates
 
 			Attribute_ID attr_id = FindOrAddAttribute(gc, attribute);
 			AttributeSet_Set_Allow_Null(&update.attributes, attr_id, v);
+			SIValue_Free(v);
 			continue;
 		}
 
