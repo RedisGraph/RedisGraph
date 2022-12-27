@@ -6,6 +6,13 @@
 
 #include "gtest.h"
 
+#ifndef __cplusplus
+# include <stdatomic.h>
+#else
+# include <atomic>
+# define _Atomic(X) std::atomic< X >
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
