@@ -1,11 +1,11 @@
-/* -------------------------------------------------------------------------- */
-/* GraphBLAS/Demo/simple_timer.h: a timer for performance measurements        */
-/* -------------------------------------------------------------------------- */
+//------------------------------------------------------------------------------
+// GraphBLAS/Demo/Include/simple_timer.h: a timer for performance measurements
+//------------------------------------------------------------------------------
 
-/* SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.    */
-/* http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.        */
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
-/* -------------------------------------------------------------------------- */
+//------------------------------------------------------------------------------
 
 /*
    There is no method that works on all operating systems for finding the
@@ -34,25 +34,48 @@
         r = simple_toc (tic) ;      // r is time for work C, in seconds
 */
 
-#define _POSIX_C_SOURCE 200809L
+#ifndef SIMPLE_TIMER_H
+#define SIMPLE_TIMER_H
+
 #include <time.h>
 
-#if defined ( __linux__ )
-#include <sys/time.h>
-#endif
+//------------------------------------------------------------------------------
+// decide which timer to use
+//------------------------------------------------------------------------------
 
 #if defined ( _OPENMP )
-#include <omp.h>
+
+    // if OpenMP is available, use omp_get_wtime
+    #include <omp.h>
+
+#elif defined ( __linux__ ) || defined ( __GNU__ )
+
+    // otherwise, on Linux/GNU, use clock_gettime. May require -lrt
+    #include <sys/time.h>
+
+#elif defined ( __MACH__ ) && defined ( __APPLE__ )
+
+    // otherwise, on the Mac, use the MACH timer
+    #include <mach/clock.h>
+    #include <mach/mach.h>
+
+#else
+
+    // Finally, the ANSI C11 clock() function is used if no other timer
+    // is available.
+
 #endif
 
-void simple_tic         /* returns current time in seconds and nanoseconds */
+//------------------------------------------------------------------------------
+
+void simple_tic         // returns current time in seconds and nanoseconds
 (
-    double tic [2]      /* tic [0]: seconds, tic [1]: nanoseconds */
+    double tic [2]      // tic [0]: seconds, tic [1]: nanoseconds
 ) ;
 
-
-double simple_toc           /* returns time since last simple_tic */
+double simple_toc           // returns time since last simple_tic
 (
-    const double tic [2]    /* tic from last call to simple_tic */
+    const double tic [2]    // tic from last call to simple_tic
 ) ;
 
+#endif

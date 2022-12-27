@@ -521,6 +521,7 @@ void test_RGMatrix_del_entry() {
 	GrB_Index   i                   =  0;
 	GrB_Index   j                   =  1;
 	uint64_t    x                   =  1;
+	bool        entry_deleted       =  false;
 
 	info = RG_Matrix_new(&A, t, nrows, ncols);
 	TEST_ASSERT(info == GrB_SUCCESS);
@@ -534,7 +535,7 @@ void test_RGMatrix_del_entry() {
 	// remove none existing entry
 	//--------------------------------------------------------------------------
 
-	info = RG_Matrix_removeEntry(A, i, j, x);
+	info = RG_Matrix_removeEntry_UINT64(A, i, j, x, &entry_deleted);
 	TEST_ASSERT(info == GrB_NO_VALUE);
 
 	// matrix should not contain any entries in either DP or DM
@@ -545,11 +546,11 @@ void test_RGMatrix_del_entry() {
 	//--------------------------------------------------------------------------
 
 	// set element at position i,j
-	info = RG_Matrix_setElement_UINT64(A, x, i, j);
+	info = RG_Matrix_setElement_UINT64(A, x, i, j, &entry_deleted);
 	TEST_ASSERT(info == GrB_SUCCESS);
 
 	// remove element at position i,j
-	info = RG_Matrix_removeEntry(A, i, j, x);
+	info = RG_Matrix_removeEntry_UINT64(A, i, j, x, &entry_deleted);
 	TEST_ASSERT(info == GrB_SUCCESS);
 
 	// matrix should be mark as dirty
@@ -585,7 +586,7 @@ void test_RGMatrix_del_entry() {
 	info = RG_Matrix_wait(A, true);
 
 	// remove element at position i,j
-	info = RG_Matrix_removeEntry(A, i, j, x);
+	info = RG_Matrix_removeEntry_UINT64(A, i, j, x, &entry_deleted);
 	TEST_ASSERT(info == GrB_SUCCESS);
 
 	//--------------------------------------------------------------------------
@@ -660,7 +661,7 @@ void test_RGMatrix_del_entry() {
 	//--------------------------------------------------------------------------
 
 	// remove element at position i,j
-	info = RG_Matrix_removeEntry(A, i, j, x);
+	info = RG_Matrix_removeEntry_UINT64(A, i, j, x, &entry_deleted);
 	TEST_ASSERT(info == GrB_SUCCESS);
 
 	M_NOT_EMPTY();
@@ -859,6 +860,7 @@ void test_GRMatrix_managed_transposed() {
 	GrB_Index   j                   =  1;
 	uint64_t    x                   =  0;  // M[i,j] = x
 	bool        b                   =  false;
+	bool        entry_deleted       =  false;
 
 	//--------------------------------------------------------------------------
 	// create RGMatrix
@@ -975,14 +977,14 @@ void test_GRMatrix_managed_transposed() {
 	info = RG_Matrix_setElement_UINT64(A, x + 1, i, j);
 	TEST_ASSERT(info == GrB_SUCCESS);
 
-	info = RG_Matrix_removeEntry(A, i, j, x);
+	info = RG_Matrix_removeEntry_UINT64(A, i, j, x, &entry_deleted);
 
 	// make sure element at position j,i exists
 	info = RG_Matrix_extractElement_BOOL(&b, T, j, i);
 	TEST_ASSERT(info == GrB_SUCCESS);
 	TEST_ASSERT(true == b);
 
-	info = RG_Matrix_removeEntry(A, i, j, x + 1);
+	info = RG_Matrix_removeEntry_UINT64(A, i, j, x + 1, &entry_deleted);
 	info = RG_Matrix_extractElement_BOOL(&b, T, j, i);
 	TEST_ASSERT(info == GrB_NO_VALUE);
 
@@ -997,14 +999,14 @@ void test_GRMatrix_managed_transposed() {
 
 	RG_Matrix_wait(A, true);
 
-	info = RG_Matrix_removeEntry(A, i, j, x);
+	info = RG_Matrix_removeEntry_UINT64(A, i, j, x, &entry_deleted);
 
 	// make sure element at position j,i exists
 	info = RG_Matrix_extractElement_BOOL(&b, T, j, i);
 	TEST_ASSERT(info == GrB_SUCCESS);
 	TEST_ASSERT(true == b);
 
-	info = RG_Matrix_removeEntry(A, i, j, x + 1);
+	info = RG_Matrix_removeEntry_UINT64(A, i, j, x + 1, &entry_deleted);
 	info = RG_Matrix_extractElement_BOOL(&b, T, j, i);
 	TEST_ASSERT(info == GrB_NO_VALUE);
 
