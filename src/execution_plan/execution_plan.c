@@ -309,7 +309,8 @@ static ExecutionPlan *_tie_segments
 // Add an implicit "Result" operation to ExecutionPlan if necessary.
 static inline void _implicit_result(ExecutionPlan *plan) {
 	// If the query culminates in a procedure call, it implicitly returns results.
-	if(plan->root->desc->type == OPType_PROC_CALL) {
+	if(plan->root->desc->type == OPType_PROC_CALL ||
+		plan->root->desc->type == OPType_PROC_CALL_WRITE) {
 		OpBase *results_op = NewResultsOp(plan);
 		ExecutionPlan_UpdateRoot(plan, results_op);
 	}

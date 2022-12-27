@@ -14,7 +14,7 @@ Record ExecutionPlan_BorrowRecord(struct ExecutionPlan *plan);
 rax *ExecutionPlan_GetMappings(const struct ExecutionPlan *plan);
 void ExecutionPlan_ReturnRecord(struct ExecutionPlan *plan, Record r);
 
-OpDesc _op_descs[35];
+OpDesc _op_descs[36];
 
 void OpDesc_Register
 (

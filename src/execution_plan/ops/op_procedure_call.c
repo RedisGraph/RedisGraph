@@ -45,7 +45,9 @@ static void _evaluate_proc_args(OpProcCall *op) {
 
 void OpProcCallRegister() {
 	OpDesc_Register(OPType_PROC_CALL, "ProcedureCall", NULL, ProcCallReset,
-		NULL, ProcCallClone, ProcCallFree, false); // TODO: !Procedure_IsReadOnly(op->procedure));
+		NULL, ProcCallClone, ProcCallFree, false);
+	OpDesc_Register(OPType_PROC_CALL_WRITE, "ProcedureCall", NULL, ProcCallReset,
+		NULL, ProcCallClone, ProcCallFree, true);
 }
 
 OpBase *NewProcCallOp
@@ -81,7 +83,11 @@ OpBase *NewProcCallOp
 	op->yield_map = rm_malloc(sizeof(OutputMap) * yield_count);
 
 	// set callbacks
-	OpBase_Init((OpBase *)op, OPType_PROC_CALL, ProcCallConsume, plan);
+	if(Procedure_IsReadOnly(op->procedure)) {
+		OpBase_Init((OpBase *)op, OPType_PROC_CALL, ProcCallConsume, plan);
+	} else {
+		OpBase_Init((OpBase *)op, OPType_PROC_CALL_WRITE, ProcCallConsume, plan);
+	}
 
 	// set modifiers
 	for(uint i = 0; i < yield_count; i ++) {
@@ -155,7 +161,7 @@ static OpResult ProcCallReset(OpBase *ctx) {
 }
 
 static OpBase *ProcCallClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	ASSERT(opBase->desc->type == OPType_PROC_CALL);
+	ASSERT(opBase->desc->type == OPType_PROC_CALL || opBase->desc->type == OPType_PROC_CALL_WRITE);
 	OpProcCall *op = (OpProcCall *)opBase;
 	AR_ExpNode **args_exp;
 	AR_ExpNode **yield_exps;
