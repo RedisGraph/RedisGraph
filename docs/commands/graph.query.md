@@ -929,7 +929,7 @@ This section contains information on all supported functions from the Cypher que
 | ----------------------------------- | :----------|
 | left(_str_, _len_)                  | Returns a string containing the _len_ leftmost characters of _str_ <br> Returns null when _str_ is null, otherwise error if _len_ is null  |
 | lTrim(_str_)                        | Returns _str_ with leading whitespace removed <br> Returns null when _str_ is null                                                         |
-| replace(_str_, _search_, _replace_) | Returns _str_ with all occurrences of _search_ are replaced with _replace_ <br> Returns null when any argument is null                     |
+| replace(_str_, _search_, _replace_) | Returns _str_ with all occurrences of _search_ replaced with _replace_ <br> Returns null when any argument is null                     |
 | reverse(_str_)                      | Returns a string in which the order of all characters in _str_ are reversed <br> Returns null when _str_ is null                           |
 | right(_str_, _len_)                 | Returns a string containing the _len_ rightmost characters of _str_ <br> Returns null when _str_ is null, otherwise error if _len_ is null |
 | rTrim(_str_)                        | Returns _str_ with trailing whitespace removed <br> Returns null when _str_ is null                                                        |
