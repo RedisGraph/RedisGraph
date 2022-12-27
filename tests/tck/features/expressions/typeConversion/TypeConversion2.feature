@@ -122,6 +122,7 @@ Feature: TypeConversion2 - To Integer
       | 42   |
     And no side effects
 
+  @skip
   @leak
   @NegativeTest
   Scenario Outline: [8] `toInteger()` failing on invalid arguments
