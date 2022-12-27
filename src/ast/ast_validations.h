@@ -12,7 +12,7 @@
 bool AST_ValidationsMappingInit(void);
 
 // default visit function
-static VISITOR_STRATEGY _default_visit
+VISITOR_STRATEGY _default_visit
 (
 	const cypher_astnode_t *n,  // ast-node
 	bool start,                 // first traversal
