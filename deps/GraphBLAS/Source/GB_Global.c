@@ -1133,7 +1133,7 @@ double GB_Global_timing_get (int k)
 GB_PUBLIC
 void GB_Global_free_pool_init (bool clear)
 { 
-    #ifdef _OPENMP
+	#if defined _MEMPOOL && defined _OPENMP
         #pragma omp critical(GB_free_pool)
         {
             if (clear)
@@ -1187,7 +1187,7 @@ static inline void GB_Global_free_pool_check (void *p, int k, char *where)
 GB_PUBLIC
 void *GB_Global_free_pool_get (int k)
 { 
-    #ifdef _OPENMP
+	#if defined _MEMPOOL && defined _OPENMP
         void *p = NULL ;
         ASSERT (k >= 3 && k < 64) ;
         #pragma omp critical(GB_free_pool)
@@ -1219,7 +1219,7 @@ void *GB_Global_free_pool_get (int k)
 GB_PUBLIC
 bool GB_Global_free_pool_put (void *p, int k)
 { 
-    #ifdef _OPENMP
+	#if defined _MEMPOOL && defined _OPENMP
         #ifdef GB_DEBUG
         GB_Global_free_pool_check (p, k, "put") ;
         #endif
@@ -1247,7 +1247,7 @@ bool GB_Global_free_pool_put (void *p, int k)
 GB_PUBLIC
 void GB_Global_free_pool_dump (int pr)
 {
-    #ifdef _OPENMP
+	#if defined _MEMPOOL && defined _OPENMP
     #ifdef GB_DEBUG
     bool fail = false ;
     #pragma omp critical(GB_free_pool)
@@ -1290,7 +1290,7 @@ void GB_Global_free_pool_dump (int pr)
 GB_PUBLIC
 int64_t GB_Global_free_pool_limit_get (int k)
 { 
-    #ifdef _OPENMP
+	#if defined _MEMPOOL && defined _OPENMP
         int64_t nblocks = 0 ;
         if (k >= 3 && k < 64)
         {
@@ -1311,7 +1311,7 @@ void GB_Global_free_pool_limit_set (int k, int64_t nblocks)
 { 
     if (k >= 3 && k < 64)
     {
-        #ifdef _OPENMP
+		#if defined _MEMPOOL && defined _OPENMP
             #pragma omp critical(GB_free_pool)
             {
                 GB_Global.free_pool_limit [k] = nblocks ;
@@ -1329,7 +1329,7 @@ GB_PUBLIC
 int64_t GB_Global_free_pool_nblocks_total (void)
 {
     int64_t nblocks = 0 ;
-    #ifdef _OPENMP
+	#if defined _MEMPOOL && defined _OPENMP
     #pragma omp critical(GB_free_pool)
     {
         for (int k = 0 ; k < 64 ; k++)

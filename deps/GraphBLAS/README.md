@@ -31,6 +31,8 @@ See the user guide in `Doc/GraphBLAS_UserGuide.pdf` for documentation on the
 SuiteSparse implementation of GraphBLAS, and how to use it in your
 applications.
 
+Note: memory pool has been disabled, to enable compile with _MEMPOOL defined
+
 See http://graphblas.org for more information on GraphBLAS, including the
 GraphBLAS C API.  See https://github.com/GraphBLAS/GraphBLAS-Pointers for
 additional resources on GraphBLAS.
@@ -174,18 +176,3 @@ McGinnis, kmcginnis@txamfoundation.com) for details.
 SuiteSparse:GraphBLAS, is copyrighted by Timothy A. Davis, (c) 2017-2021, All
 Rights Reserved.  davis@tamu.edu.  Contact me if you need a non-GNU license.
 
---------------------------------------------------------------------------------
-
-## Software Acknowledgements
-
-SuiteSparse:GraphBLAS relies on the following packages (details in the LICENSE
-file, and in the GraphBLAS User Guide):
-
-(1) the LZ4 compression package (c) by Yann Collet, appearing here under the
-BSD-2-clause license.
-
-(2) cpu_features (c) Google, Apache 2.0 license with components (c) IBM and
-Intel (also Apache 2.0), and the cpu_featurer/ndk_compat component (c)
-The Android Open Source Project (BSD-2-clause)
-
-CLEAR CACHE

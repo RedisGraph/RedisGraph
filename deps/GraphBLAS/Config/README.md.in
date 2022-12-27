@@ -31,6 +31,8 @@ See the user guide in `Doc/GraphBLAS_UserGuide.pdf` for documentation on the
 SuiteSparse implementation of GraphBLAS, and how to use it in your
 applications.
 
+Note: memory pool has been disabled, to enable compile with _MEMPOOL defined
+
 See http://graphblas.org for more information on GraphBLAS, including the
 GraphBLAS C API.  See https://github.com/GraphBLAS/GraphBLAS-Pointers for
 additional resources on GraphBLAS.
