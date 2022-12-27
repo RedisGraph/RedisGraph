@@ -281,7 +281,7 @@ void compareFilterTrees
 
 void test_subTrees() {
 	FT_FilterNode *tree = _build_simple_const_tree();
-	FT_FilterNode **sub_trees = FilterTree_SubTrees(tree);
+	const FT_FilterNode **sub_trees = FilterTree_SubTrees(tree);
 	TEST_ASSERT(array_len(sub_trees) == 1);
 
 	FT_FilterNode *sub_tree = sub_trees[0];

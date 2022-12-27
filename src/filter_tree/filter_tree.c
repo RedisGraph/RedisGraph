@@ -141,7 +141,7 @@ FT_FilterNode *FilterTree_CreateConditionFilter
 void _FilterTree_SubTrees
 (
 	const FT_FilterNode *root,
-	FT_FilterNode ***sub_trees
+	const FT_FilterNode ***sub_trees
 ) {
 	if(root == NULL) return;
 
@@ -179,7 +179,7 @@ void _FilterTree_SubTrees
 // filters[0] AND filters[1] AND ... filters[count]
 FT_FilterNode *FilterTree_Combine
 (
-	FT_FilterNode **filters,
+	const FT_FilterNode **filters,
 	uint count
 ) {
 	ASSERT(filters != NULL);
@@ -199,11 +199,11 @@ FT_FilterNode *FilterTree_Combine
 	return root;
 }
 
-FT_FilterNode **FilterTree_SubTrees
+const FT_FilterNode **FilterTree_SubTrees
 (
 	const FT_FilterNode *root
 ) {
-	FT_FilterNode **sub_trees = array_new(FT_FilterNode *, 1);
+	const FT_FilterNode **sub_trees = array_new(const FT_FilterNode *, 1);
 	_FilterTree_SubTrees(root, &sub_trees);
 	return sub_trees;
 }

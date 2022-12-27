@@ -14,6 +14,7 @@ typedef struct {
 	int variable_idx;          // Record index of the comprehension's local variable
 	FT_FilterNode *ft;         // [optional] The predicate tree to evaluate each element against.
 	AR_ExpNode *eval_exp;      // [optional] The projection routine to build each return element.
+	SIValue result;            // Result value to be freed in case of error
 	Record local_record;       // Record to populate with the input record's values and the list element.
 } ListComprehensionCtx;
 

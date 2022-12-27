@@ -19,6 +19,8 @@
 void ListComprehension_Free(void *ctx_ptr) {
 	ListComprehensionCtx *ctx = ctx_ptr;
 
+	SIValue_Free(ctx->result);
+
 	// If this comprehension has a filter tree, free it.
 	if(ctx->ft) FilterTree_Free(ctx->ft);
 	// If this comprehension has an eval routine, free it.
@@ -42,6 +44,7 @@ void *ListComprehension_Clone(void *orig) {
 	ListComprehensionCtx *ctx_clone = rm_malloc(sizeof(ListComprehensionCtx));
 
 	// Clone the variadic node.
+	ctx_clone->result       = SI_NullVal();
 	ctx_clone->variable_str = ctx->variable_str;
 	ctx_clone->variable_idx = ctx->variable_idx;
 	ctx_clone->local_record = NULL;
@@ -217,7 +220,7 @@ SIValue AR_LIST_COMPREHENSION(SIValue *argv, int argc, void *private_data) {
 	// Populate the local Record with the contents of the outer Record.
 	Record_Clone(outer_record, r);
 	// Instantiate the array to be returned.
-	SIValue retval = SI_Array(0);
+	ctx->result = SI_Array(0);
 
 	uint len = SIArray_Length(list);
 	for(uint i = 0; i < len; i++) {
@@ -236,14 +239,18 @@ SIValue AR_LIST_COMPREHENSION(SIValue *argv, int argc, void *private_data) {
 		if(ctx->eval_exp) {
 			// compute the current element to append to the return list
 			SIValue newval = AR_EXP_Evaluate(ctx->eval_exp, r);
-			SIArray_Append(&retval, newval);
+			SIArray_Append(&ctx->result, newval);
 			SIValue_Free(newval);
 		} else {
 			// if the comprehension has no eval routine
 			// add each element unmodified
-			SIArray_Append(&retval, current_elem);
+			SIArray_Append(&ctx->result, current_elem);
 		}
 	}
+
+	SIValue retval = ctx->result;
+
+	ctx->result = SI_NullVal();
 
 	return retval;
 }

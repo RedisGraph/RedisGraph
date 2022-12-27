@@ -131,7 +131,7 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, OpBase *root, const OpBas
 								  FT_FilterNode *ft) {
 	/* Decompose the filter tree into an array of the smallest possible subtrees
 	 * that do not violate the rules of AND/OR combinations. */
-	FT_FilterNode **sub_trees = FilterTree_SubTrees(ft);
+	const FT_FilterNode **sub_trees = FilterTree_SubTrees(ft);
 
 	/* For each filter tree, find the earliest position in the op tree
 	 * after which the filter tree can be applied. */
@@ -142,9 +142,10 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, OpBase *root, const OpBas
 		ExecutionPlan_RePositionFilterOp(plan, root, recurse_limit, filter_op);
 	}
 	array_free(sub_trees);
+	FilterTree_Free(ft);
+
 	// Build ops in the Apply family to appropriately process path filters.
 	_ExecutionPlan_PlaceApplyOps(plan);
-	FilterTree_Free(ft);
 }
 
 static inline void _buildCreateOp

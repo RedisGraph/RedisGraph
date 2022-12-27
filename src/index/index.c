@@ -103,12 +103,13 @@ RSDoc *Index_IndexGraphEntity
 				len += strlen(none_indexable_fields[i]);
 			}
 
-			char *s = NULL;
-			char stack_fields[len + 1];
-			if(len + 1 < 512) s = stack_fields; // stack base
-			else s = rm_malloc(sizeof(char) * (len + 1)); // heap base
+			// add room for \0
+			len++;
 
-			RedisModule_Log(NULL, "notice", "STRING: %s", none_indexable_fields[0]);
+			char *s = NULL;
+			if(len < 512) s = alloca(len); // stack base
+			else s = rm_malloc(sizeof(char) * len); // heap base
+
 			// concat
 			len = sprintf(s, "%s", none_indexable_fields[0]);
 			for(uint i = 1; i < none_indexable_fields_count; i++) {
@@ -119,7 +120,7 @@ RSDoc *Index_IndexGraphEntity
 						s, len, RSFLDTYPE_TAG);
 
 			// free if heap based
-			if(s != stack_fields) rm_free(s);
+			if(len >= 512) rm_free(s);
 		}
 	}
 

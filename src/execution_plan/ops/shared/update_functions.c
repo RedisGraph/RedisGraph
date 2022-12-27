@@ -184,6 +184,7 @@ void EvalEntityUpdates
 
 			Attribute_ID attr_id = FindOrAddAttribute(gc, attribute);
 			AttributeSet_Set_Allow_Null(&update.attributes, attr_id, v);
+			continue;
 		}
 
 		//----------------------------------------------------------------------
@@ -238,7 +239,7 @@ void EvalEntityUpdates
 		//----------------------------------------------------------------------
 
 		// value is a node or edge; perform attribute set reassignment
-		ASSERT((t & (T_NODE | T_EDGE )));
+		ASSERT((t & (T_NODE | T_EDGE)));
 
 		GraphEntity *ge = v.ptrval;
 
@@ -257,4 +258,3 @@ void EvalEntityUpdates
 	// enqueue the current update
 	array_append(*updates, update);
 }
-

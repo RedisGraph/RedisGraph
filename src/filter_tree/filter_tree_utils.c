@@ -82,7 +82,7 @@ bool extractOriginAndRadius(const FT_FilterNode *filter, SIValue *origin,
 
 // return true if filter performs distance filtering
 // distance(n.location, point({lat:1.1, lon:2.2})) < 40
-bool isDistanceFilter(FT_FilterNode *filter) {
+bool isDistanceFilter(const FT_FilterNode *filter) {
 	bool res = extractOriginAndRadius(filter, NULL, NULL, NULL);
 	if(res) {
 		ASSERT(filter->t == FT_N_PRED);

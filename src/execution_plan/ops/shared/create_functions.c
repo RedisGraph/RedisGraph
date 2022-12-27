@@ -215,11 +215,9 @@ void CommitNewEntities
 	// restore matrix sync policy to default
 	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 
-	// free pending attributes array
-	array_free(pending->node_attributes);
-	array_free(pending->edge_attributes);
-	pending->node_attributes = NULL;
-	pending->edge_attributes = NULL;
+	// clear pending attributes array
+	array_clear(pending->node_attributes);
+	array_clear(pending->edge_attributes);
 }
 
 // resolve the properties specified in the query into constant values
