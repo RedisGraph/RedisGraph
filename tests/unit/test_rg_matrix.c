@@ -546,7 +546,7 @@ void test_RGMatrix_del_entry() {
 	//--------------------------------------------------------------------------
 
 	// set element at position i,j
-	info = RG_Matrix_setElement_UINT64(A, x, i, j, &entry_deleted);
+	info = RG_Matrix_setElement_UINT64(A, x, i, j);
 	TEST_ASSERT(info == GrB_SUCCESS);
 
 	// remove element at position i,j
