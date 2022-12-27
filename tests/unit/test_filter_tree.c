@@ -284,7 +284,7 @@ void test_subTrees() {
 	const FT_FilterNode **sub_trees = FilterTree_SubTrees(tree);
 	TEST_ASSERT(array_len(sub_trees) == 1);
 
-	FT_FilterNode *sub_tree = sub_trees[0];
+	const FT_FilterNode *sub_tree = sub_trees[0];
 	compareFilterTrees(tree, sub_tree);
 
 	FilterTree_Free(tree);
