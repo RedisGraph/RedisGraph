@@ -155,6 +155,11 @@ void OpDesc_Register
 	bool writer
 );
 
+OpDesc *OpDesc_Get
+(
+	OPType type
+);
+
 // initialize op
 void OpBase_Init
 (

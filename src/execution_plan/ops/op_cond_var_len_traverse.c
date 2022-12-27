@@ -78,8 +78,7 @@ void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {
 	// Expand into doesn't performs any modifications.
 	array_clear(op->op.modifies);
 	op->expandInto = true;
-	op->op.desc->type = OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO;
-	op->op.desc->name = "Conditional Variable Length Traverse (Expand Into)";
+	op->op.desc = OpDesc_Get(OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO);
 }
 
 inline void CondVarLenTraverseOp_SetFilter(CondVarLenTraverse *op,
@@ -96,6 +95,11 @@ void OpCondVarLenTraverseRegister() {
 		"Conditional Variable Length Traverse", CondVarLenTraverseInit,
 		CondVarLenTraverseReset, CondVarLenTraverseToString,
 		CondVarLenTraverseClone, CondVarLenTraverseFree, false);
+
+	OpDesc_Register(OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO,
+		"Conditional Variable Length Traverse (Expand Into)", CondVarLenTraverseInit,
+		CondVarLenTraverseReset, CondVarLenTraverseToString,
+		CondVarLenTraverseClone, CondVarLenTraverseFree, false);		
 }
 
 OpBase *NewCondVarLenTraverseOp

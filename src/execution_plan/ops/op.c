@@ -38,6 +38,13 @@ void OpDesc_Register
 	desc->toString = toString;
 }
 
+OpDesc *OpDesc_Get
+(
+	OPType type
+) {
+	return _op_descs + type;
+}
+
 void OpBase_Init
 (
 	OpBase *op,
