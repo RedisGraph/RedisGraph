@@ -945,10 +945,10 @@ This section contains information on all supported functions from the Cypher que
 
 ## Point functions
 
-| Function          | Description                                                     |
-| -------           | :-----------                                                    |
-| [point()](#point) | Returns a Point type representing the given lat/lon coordinates |
-| distance()        | Returns the distance in meters between the two given points     |
+| Function                     | Description|
+| ---------------------------- | :----------|
+| [point(...)](#point)         | Returns a Point type representing the given lat/lon coordinates                                   |
+| distance(_point1_, _point2_) | Returns the distance in meters between the two given points <br> Returns null when either is null |
 
 ## Type conversion functions
 
