@@ -819,70 +819,69 @@ This section contains information on all supported functions from the Cypher que
 
 ## Predicate functions
 
-| Function                                         | Description                                                                                              |
-| -------                                          | :-----------                                                                                             |
-| exists()                                         | Returns true if the specified property exists in the node or relationship                                |
-| isEmpty()                                        | Returns true if the input list or map contains no elements or if the input string contains no characters |
-| [any()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for at least one element in the input array         |
-| [all()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for all elements in the input array                 |
-| [none()](#existential-comprehension-functions)   | Returns true if the inner WHERE predicate holds false for all elements in the input array                |
-| [single()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for exactly one element only in the input array     |
-| [CASE...WHEN](#case-when)                        | Evaluates the CASE expression and returns the value indicated by the matching WHEN statement             |
+| Function                                                                          | Description|
+| --------------------------------------------------------------------------------- | :----------|
+| [all(_var_ IN _list_ WHERE _predicate_)](#existential-comprehension-functions)    | Returns true if _predicate_ holds true for all elements in _list_         |
+| [any(_var_ IN _list_ WHERE _predicate_)](#existential-comprehension-functions)    | Returns true if _predicate_ holds true for at least one element in _list_ |
+| exists(_pattern_)                                                                 | Returns true if at least one match for _pattern_ exists                   |
+| isEmpty(_list_&#124;_map_&#124;_string_)                                          | Returns true if the input list or map contains no elements or if the input string contains no characters <br> Returns null if the input is null |
+| [none(_var_ IN _list_ WHERE _predicate_)](#existential-comprehension-functions)   | Returns true if _predicate_ holds false for all elements in _list_        |
+| [single(_var_ IN _list_ WHERE _predicate_)](#existential-comprehension-functions) | Returns true if _predicate_ holds true for exactly one element in _list_  |
 
 ## Scalar functions
 
-| Function               | Description                                                                 |
-| -------                | :-----------                                                                |
-| coalesce()             | Returns the first non-null argument                                         |
-| endNode()              | Returns the destination node of a relationship                              |
-| id()                   | Returns the internal ID of a relationship or node (which is not immutable.) |
-| hasLabels()            | Returns true if input node contains all specified labels, otherwise false   |
-| labels()               | Returns a string representation of the label of a node                      |
-| properties()           | Returns a map containing all the properties in the given map, node, or edge. In case of map, it is returned without any change |
-| randomUUID()           | Returns a random UUID (Universal Unique IDentifier)                         |
-| startNode()            | Returns the source node of a relationship                                   |
-| timestamp()            | Returns the amount of milliseconds since epoch                              |
-| type()                 | Returns a string representation of the type of a relationship type          |
-| list comprehensions    | [See documentation](#list-comprehensions)                                   |
-| pattern comprehensions | [See documentation](#pattern-comprehensions)                                |
+| Function                          | Description|
+| --------------------------------- | :----------|
+| coalesce(_expr_[, expr...])       | Returns the evaluation of the first argument that evaluates to a non-null value <br> Returns null when all arguments evaluate to null |
+| endNode(_relationship_)           | Returns the destination node of a relationship <br> Returns null when _relationship_ is null                                          |
+| hasLabels(_node_, _labelsList_) * | Returns true if _node_ contains all labels in _labelsList_, otherwise false <br> Return true when _labelsList_ is empty               |
+| id(_node_&#124;_relationship_)    | Returns the internal ID of a node or relationship (which is not immutable)                                                            |
+| labels(_node_)                    | Returns a list of strings: all labels of _node_ <br> Returns null when _node_ is null                                                 |
+| properties(_expr_)                | When _expr_ is a node or relationship: Returns a map containing all the properties of the given node or relationship <br> When _expr_ is a map: Returns the map as-is <br> Returns null when _expr_ is null |
+| randomUUID()                      | Returns a random UUID (Universal Unique IDentifier)                                                                                   |
+| startNode(_relationship_)         | Returns the source node of a relationship <br> Returns null when _relationship_ is null                                               |
+| timestamp()                       | Returns the current system timestamp (milliseconds since epoch)                                                                       |
+| type(_relationship_)              | Returns a string: the type of _relationship_ <br> Returns null when _relationship_ is null                                            |
+
+* RedisGraph-specific extensions to Cypher
 
 ## Aggregating functions
 
-|Function         | Description|
-| --------------- |:-----------|
-|avg()            | Returns the average of a set of numeric values                                               |
-|collect()        | Returns a list containing all elements which evaluated from a given expression               |
-|count()          | Returns the number of values or rows                                                         |
-|max()            | Returns the maximum value in a set of values                                                 |
-|min()            | Returns the minimum value in a set of values                                                 |
-|sum()            | Returns the sum of a set of numeric values                                                   |
-|percentileDisc() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0    |
-|percentileCont() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0    |
-|stDev()          | Returns the standard deviation for the given value over a group over a sample                |
-|stDevP()         | Returns the standard deviation for the given value over a group over an entire population    |
+|Function                             | Description|
+| ----------------------------------- |:-----------|
+|avg(_expr_)                          | Returns the average of a set of numeric values. null values are ignored <br> Returns null when _expr_ has no evaluations                                               |
+|collect(_expr_)                      | Returns a list containing all non-null elements which evaluated from a given expression                                                                                |
+|count(_expr_&#124;&#42;)             | When argument is _expr_: returns the number of non-null evaluations of _expr_ <br> When argument is `*`: returns the total number of evaluations (including nulls)     |
+|max(_expr_)                          | Returns the maximum value in a set of values (taking into account type ordering). null values are ignored <br> Returns null when _expr_ has no evaluations             |
+|min(_expr_)                          | Returns the minimum value in a set of values (taking into account type ordering). null values are ignored <br> Returns null when _expr_ has no evaluations             |
+|percentileCont(_expr_, _percentile_) | Returns a linear-interpolated percentile (between 0.0 and 1.0) over a set of numeric values. null values are ignored <br> Returns null when _expr_ has no evaluations  |
+|percentileDisc(_expr_, _percentile_) | Returns a nearest-value percentile (between 0.0 and 1.0) over a set of numeric values. null values are ignored <br> Returns null when _expr_ has no evaluations        |
+|stDev(_expr_)                        | Returns the sample standard deviation over a set of numeric values. null values are ignored <br> Returns null when _expr_ has no evaluations                           |
+|stDevP(_expr_)                       | Returns the population standard deviation over a set of numeric values. null values are ignored <br> Returns null when _expr_ has no evaluations                       |
+|sum(_expr_)                          | Returns the sum of a set of numeric values. null values are ignored <br> Returns 0 when _expr_ has no evaluations                                                      |
 
 ## List functions
 
-| Function            | Description                                                                              |
-| ------------------- | :-----------                                                                             |
-| head()              | Returns the first member of a list                                                       |
-| keys()              | Returns a list of keys containing all properties names in a given map, node, or edge     |
-| last()              | Returns the last member of a list                                                        |
-| range()             | Creates a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval. |
-| size()              | Returns a list size                                                                      |
-| tail()              | Returns a sublist of a list, which contains all the values without the first value       |
-| [reduce()](#reduce) | Returns a scalar produced by evaluating an expression against each list member           |
+| Function                             | Description|
+| ------------------------------------ | :----------|
+| head(_expr_)                         | Returns the first element of a list <br> Returns null when _expr_ is null or an empty list                                                                                                 |
+| keys(_expr_)                         | Returns a list of strings: all key names for given map or all property names for a given node or edge <br> Returns null if _expr_ is null                                                  |
+| last(_expr_)                         | Returns the last element of a list <br> Returns null when _expr_ is null or an empty list                                                                                                  |
+| range(_first_, _last_[, _step_ = 1]) | Returns a list of integers in the range of [start, end]. _step_, an optional integer argument, is the increment between consequtive elements                                               |
+| size(_expr_)                         | Returns the number of elements in a list <br> Returns null with _expr_ is null                                                                                                             |
+| tail(_expr_)                         | Returns a sublist of a list, which contains all its elements except the first <br> Returns an empty list when _expr_ containst less than 2 elements. <br> Returns null when _expr_ is null |
+| [reduce(...)](#reduce)               | Returns a scalar produced by evaluating an expression against each list member                                                                                                             |
 
 ## Mathematical operators
 
 |Function     | Description|
 | ----------- |:-----------|
-| +           | Add two values                                                                                   |
-| -           | Subtract second value from first                                                                 |
-| *           | Multiply two values                                                                              |
-| /           | Divide first value by the second                                                                 |
-| ^           | Raise the first value to the power of the second                                                 |
-| %           | Perform modulo division of the first value by the second                                         |
+| +           | Add two values                                           |
+| -           | Subtract second value from first                         |
+| *           | Multiply two values                                      |
+| /           | Divide first value by the second                         |
+| ^           | Raise the first value to the power of the second         |
+| %           | Perform modulo division of the first value by the second |
 
 ## Mathematical functions
 
@@ -961,18 +960,24 @@ This section contains information on all supported functions from the Cypher que
 | toBooleanList()   | Converts a list of values to a list of boolean values. Each item in the list is converted using toBooleanOrNull()      |
 
 ## Node functions
-|Function | Description|
-| ------- |:-----------|
-|indegree()  | Returns the number of node's incoming edges |
-|outdegree() | Returns the number of node's outgoing edges |
+
+|Function      | Description|
+| ------------ |:-----------|
+|indegree(_node_ [, _label_...]) *   | When no labels are specified: Returns the number of _node_'s incoming edges <br> When one or more labels are specified: Returns the number of _node's_ incoming edges with one of the given labels <br> Return null if _node_ is null |
+|outdegree(_node_ [, _labels_...]) * | When no labels are specified: Returns the number of _node_'s outgoing edges <br> When one or more labels are specified: Returns the number of _node's_ outgoing edges with one of the given labels <br> Return null if _node_ is null |
+
+* RedisGraph-specific extensions to Cypher
 
 ## Path functions
-| Function                        | Description                                              |
-| -------                         | :-----------                                             |
-| nodes()                         | Return a new list of nodes, of a given path              |
-| relationships()                 | Return a new list of edges, of a given path              |
-| length()                        | Return the length (number of edges) of the path          |
-| [shortestPath()](#shortestPath) | Return the shortest path that resolves the given pattern |
+
+| Function                             | Description|
+| ------------------------------------ | :----------|
+| nodes(_path_)                        | Returns a list containing all the nodes in _path_ <br> Returns null if _path_ if null         |
+| relationships(_path_)                | Returns a list containing all the relationships in _path_ <br> Returns null if _path_ if null |
+| length(_path_)                       | Return the length (number of edges) of _path_ <br> Returns null if _path_ if null             |
+| [shortestPath(...)](#shortestPath) * | Return the shortest path that resolves the given pattern                                      |
+
+* RedisGraph-specific extensions to Cypher
 
 ### List comprehensions
 List comprehensions are a syntactical construct that accepts an array and produces another based on the provided map and filter directives.
