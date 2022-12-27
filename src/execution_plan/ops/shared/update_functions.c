@@ -31,7 +31,7 @@ static bool _ValidateAttrType
 	// acceptable type
 	if(t == T_ARRAY) {
 		SIType invalid_properties = ~SI_VALID_PROPERTY_VALUE;
-		return SIArray_ContainsType(v, invalid_properties);
+		return !SIArray_ContainsType(v, invalid_properties);
 	}
 
 	return true;
