@@ -925,21 +925,23 @@ This section contains information on all supported functions from the Cypher que
 
 ## String functions
 
-| Function    | Description                                                                                     |
-| -------     | :-----------                                                                                    |
-| left()      | Returns a string containing the specified number of leftmost characters of the original string  |
-| lTrim()     | Returns the original string with leading whitespace removed                                     |
-| replace()   | Returns a string in which all occurrences of a specified substring are replaced with the specified replacement string |
-| reverse()   | Returns a string in which the order of all characters in the original string are reversed       |
-| right()     | Returns a string containing the specified number of rightmost characters of the original string |
-| rTrim()     | Returns the original string with trailing whitespace removed                                    |
-| split()     | Returns a list of strings from splitting a string by a given delimiter                          |
-| substring() | Returns a substring of the original string, beginning with a 0-based index start and length     |
-| toLower()   | Returns the original string in lowercase                                                        |
-| toJSON()    | Returns a [JSON representation](#json-format) of a value                                        |
-| toUpper()   | Returns the original string in uppercase                                                        |
-| trim()      | Returns the original string with leading and trailing whitespace removed                        |
-| size()      | Returns a string length                                                                         |
+| Function                            | Description|
+| ----------------------------------- | :----------|
+| left(_str_, _len_)                  | Returns a string containing the _len_ leftmost characters of _str_                         |
+| lTrim(_str_)                        | Returns _str_ with leading whitespace removed                                              |
+| replace(_str_, _search_, _replace_) | Returns _str_ with all occurrences of _search_ are replaced with _replace_                 |
+| reverse(_str_)                      | Returns a string in which the order of all characters in _str_ are reversed                |
+| right(_str_, _len_)                 | Returns a string containing the _len_ rightmost characters of _str_                        |
+| rTrim(_str_)                        | Returns _str_ with trailing whitespace removed                                             |
+| split(_str_, _delimiter_)           | Returns a list of strings from splitting _str_ by _delimiter_                              |
+| substring(_str_, _start_[, _len_])  | Returns a substring of _str_, beginning with a 0-based index _start_ and with length _len_ |
+| toLower(_str_)                      | Returns _str_ in lowercase                                                                 |
+| toJSON(_str_) *                     | Returns a [JSON representation](#json-format) of a value                                   |
+| toUpper(_str_)                      | Returns _str_ in uppercase                                                                 |
+| trim(_str_)                         | Returns _str_ with leading and trailing whitespace removed                                 |
+| size(_str_)                         | Returns the number of characters in _str_                                                  |
+
+&#42; RedisGraph-specific extensions to Cypher
 
 ## Point functions
 
