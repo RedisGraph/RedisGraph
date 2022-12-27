@@ -6,6 +6,8 @@ ROOT=$(cd $HERE/.. && pwd)
 READIES=$ROOT/deps/readies
 . $READIES/shibumi/defs
 
+export HOMEBREW_NO_AUTO_UPDATE=1
+
 $READIES/bin/getpy3
 $ROOT/sbin/system-setup.py
 $READIES/bin/getpy2
