@@ -31,6 +31,11 @@ typedef struct {
 // number of ast-node types: _MAX_VT_OFF = sizeof(struct cypher_astnode_vts) / sizeof(struct cypher_astnode_vt *) = 114
 static visit validations_mapping[114];
 
+inline static void _prepareIterateAll(rax *map, raxIterator *iter) {
+	raxStart(iter, map);
+	raxSeek(iter, "^", NULL, 0);
+}
+
 // validate that allShortestPaths is in a supported place
 static bool _ValidateAllShortestPaths
 (
@@ -1100,6 +1105,92 @@ cleanup:
 	return VISITOR_CONTINUE;
 }
 
+static void _AST_GetWithIdentifiers(
+	const cypher_astnode_t *node, 
+	rax *identifiers
+) {
+	if(!node) return;
+	ASSERT(identifiers != NULL);
+
+	cypher_astnode_type_t type = cypher_astnode_type(node);
+	if(type == CYPHER_AST_IDENTIFIER) {
+		const char *identifier = cypher_ast_identifier_get_name(node);
+		raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
+		return;
+	}
+
+	// Don't visit the children of pattern comprehensions, as these will be aliased later.
+	if(type == CYPHER_AST_PATTERN_COMPREHENSION) return;
+
+	uint child_count = cypher_astnode_nchildren(node);
+
+	// In case current node is of type projection inspect first child only
+	if(type == CYPHER_AST_PROJECTION) child_count = 1;
+
+	for(uint i = 0; i < child_count; i++) {
+		const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
+		_AST_GetWithIdentifiers(child, identifiers);
+	}
+}
+
+static void _AST_GetWithReferences
+(
+	const cypher_astnode_t *node, 
+	rax *identifiers
+) {
+	if(!node) return;
+	if(cypher_astnode_type(node) != CYPHER_AST_WITH) return;
+	ASSERT(identifiers != NULL);
+
+	uint num_with_projections = cypher_ast_with_nprojections(node);
+	for(uint i = 0; i < num_with_projections; i ++) {
+		const cypher_astnode_t *child = cypher_ast_with_get_projection(node, i);
+		_AST_GetWithIdentifiers(child, identifiers);
+	}
+}
+
+static AST_Validation _Validate_Aliases_DefinedInWithClause(
+	const cypher_astnode_t *clause,
+	rax *defined_aliases
+) {
+	AST_Validation res = AST_VALID;
+	rax *with_aliases = raxNew();
+	rax *with_referred = raxNew();
+
+	raxIterator it;
+
+	// Get aliases identifiers in with clause
+	_AST_GetWithAliases(clause, with_aliases);
+
+	// Get referred identifiers in with clause, but don't include references of ORDER BY
+	_AST_GetWithReferences(clause, with_referred);
+	
+	_prepareIterateAll(with_aliases, &it);
+
+	// Check if every alias identifier that is referred was previously defined
+	while(raxNext(&it)) {
+		bool referred = false;
+		bool defined = false;
+		int len = it.key_len;
+		unsigned char *alias = it.key;
+		if(raxFind(with_referred, alias, len) != raxNotFound) {
+			referred = true;
+		}
+		if(raxFind(defined_aliases, alias, len) != raxNotFound) {
+			defined = true;
+		}
+		if(referred && !defined) {
+			ErrorCtx_SetError("%.*s not defined", len, alias);
+			res = AST_INVALID;
+			break;
+		}
+	}
+	raxStop(&it);
+	raxFree(with_aliases);
+	raxFree(with_referred);
+	return res;
+}
+
 // validate a WITH clause
 static VISITOR_STRATEGY _Validate_WITH_Clause
 (
@@ -1111,6 +1202,10 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 
 	if(start) {
 		vctx->clause = cypher_astnode_type(n);
+
+		if(_Validate_Aliases_DefinedInWithClause(n, vctx->defined_identifiers) == AST_INVALID) {
+			return VISITOR_BREAK;
+		}
 
 		if(!_AST_GetWithAliases(n, vctx->defined_identifiers)) {
 			return VISITOR_BREAK;
