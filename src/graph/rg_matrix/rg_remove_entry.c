@@ -73,23 +73,28 @@ static GrB_Info _removeElementMultiVal
 	return info;
 }
 
-GrB_Info RG_Matrix_removeEntry
+GrB_Info RG_Matrix_removeEntry_UINT64
 (
 	RG_Matrix C,                    // matrix to remove entry from
 	GrB_Index i,                    // row index
 	GrB_Index j,                    // column index
 	uint64_t  v,                    // value to remove
-	uint64_t *x                     // old value
+	bool     *entry_deleted         // is entry deleted
 ) {
 	ASSERT(C);
+	ASSERT(entry_deleted != NULL);
 	RG_Matrix_checkBounds(C, i, j);
 
+	uint64_t    m_x;
+	uint64_t    dp_x;
 	GrB_Info    info;
 	GrB_Type    type;
 	bool        in_m        =  false;
 	GrB_Matrix  m           =  RG_MATRIX_M(C);
 	GrB_Matrix  dp          =  RG_MATRIX_DELTA_PLUS(C);
 	GrB_Matrix  dm          =  RG_MATRIX_DELTA_MINUS(C);
+
+	*entry_deleted = false;
 	
 
 #ifdef RG_DEBUG
@@ -104,7 +109,7 @@ GrB_Info RG_Matrix_removeEntry
 
 	// entry should exists in either delta-plus or main
 	// locate entry
-	info = GrB_Matrix_extractElement(x, m, i, j);
+	info = GrB_Matrix_extractElement(&m_x, m, i, j);
 	in_m = (info == GrB_SUCCESS);
 
 	//--------------------------------------------------------------------------
@@ -112,7 +117,8 @@ GrB_Info RG_Matrix_removeEntry
 	//--------------------------------------------------------------------------
 
 	if(in_m) {
-		if(SINGLE_EDGE(*x)) {
+		if(SINGLE_EDGE(m_x)) {
+			*entry_deleted = true;
 			// mark deletion in delta minus
 			info = GrB_Matrix_setElement(dm, true, i, j);
 			ASSERT(info == GrB_SUCCESS);
@@ -130,10 +136,11 @@ GrB_Info RG_Matrix_removeEntry
 	// entry exists in 'delta-plus'
 	//--------------------------------------------------------------------------
 
-	info = GrB_Matrix_extractElement(x, dp, i, j);
+	info = GrB_Matrix_extractElement(&dp_x, dp, i, j);
 	if(info != GrB_SUCCESS) return info;
 
-	if(SINGLE_EDGE(*x)) {
+	if(SINGLE_EDGE(dp_x)) {
+		*entry_deleted = true;
 		info = GrB_Matrix_removeElement(dp, i, j);
 		ASSERT(info == GrB_SUCCESS);
 		info = RG_Matrix_removeElement_BOOL(C->transposed, j, i);

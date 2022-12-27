@@ -1077,63 +1077,7 @@ void Graph_DeleteNode
 	DataBlock_DeleteItem(g->nodes, n_id);
 }
 
-// removes an edge from Graph and updates graph relevant matrices
-int Graph_DeleteEdge
-(
-	Graph *g,
-	Edge *e
-) {
-	ASSERT(g != NULL);
-	ASSERT(e != NULL);
-	ASSERT(!DataBlock_ItemIsDeleted((void *)e->attributes));
-
-	uint64_t    x;
-	RG_Matrix   R;
-	RG_Matrix   M;
-	GrB_Info    info;
-	EdgeID      edge_id;
-	int         r         =  Edge_GetRelationID(e);
-	NodeID      src_id    =  Edge_GetSrcNodeID(e);
-	NodeID      dest_id   =  Edge_GetDestNodeID(e);
-
-	R = Graph_GetRelationMatrix(g, r, false);
-
-	// an edge of type r has just been deleted, update statistics
-	GraphStatistics_DecEdgeCount(&g->stats, r, 1);
-
-	// single edge of type R connecting src to dest, delete entry
-	info = RG_Matrix_removeEntry(R, src_id, dest_id, ENTITY_GET_ID(e), &edge_id);
-	ASSERT(info == GrB_SUCCESS);
-
-	if(SINGLE_EDGE(edge_id)) {
-		// see if source is connected to destination with additional edges
-		bool connected = false;
-		int relationCount = Graph_RelationTypeCount(g);
-		for(int i = 0; i < relationCount; i++) {
-			if(i == r) continue;
-			M = Graph_GetRelationMatrix(g, i, false);
-			info = RG_Matrix_extractElement_UINT64(&x, M, src_id, dest_id);
-			if(info == GrB_SUCCESS) {
-				connected = true;
-				break;
-			}
-		}
-
-		// there are no additional edges connecting source to destination
-		// remove edge from THE adjacency matrix
-		if(!connected) {
-			M = Graph_GetAdjacencyMatrix(g, false);
-			info = RG_Matrix_removeElement_BOOL(M, src_id, dest_id);
-			ASSERT(info == GrB_SUCCESS);
-		}
-	}
-
-	// free and remove edges from datablock.
-	DataBlock_DeleteItem(g->edges, ENTITY_GET_ID(e));
-	
-	return 1;
-}
-
+// removes edges from Graph and updates graph relevant matrices
 int Graph_DeleteEdges
 (
 	Graph *g,
@@ -1146,7 +1090,7 @@ int Graph_DeleteEdges
 	RG_Matrix   R;
 	RG_Matrix   M;
 	GrB_Info    info;
-	EdgeID      edge_id;
+	bool        entry_deleted;
 
 	MATRIX_POLICY policy = Graph_GetMatrixPolicy(g);
 	Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
@@ -1166,10 +1110,10 @@ int Graph_DeleteEdges
 		R = Graph_GetRelationMatrix(g, r, false);
 
 		// single edge of type R connecting src to dest, delete entry
-		info = RG_Matrix_removeEntry(R, src_id, dest_id, ENTITY_GET_ID(e), &edge_id);
+		info = RG_Matrix_removeEntry_UINT64(R, src_id, dest_id, ENTITY_GET_ID(e), &entry_deleted);
 		ASSERT(info == GrB_SUCCESS);
 
-		if(SINGLE_EDGE(edge_id)) {
+		if(entry_deleted) {
 			// see if source is connected to destination with additional edges
 			bool connected = false;
 			int relationCount = Graph_RelationTypeCount(g);
