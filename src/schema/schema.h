@@ -124,6 +124,8 @@ void Schema_Free
 	Schema *s
 );
 
+bool Schema_HasConstraints(const Schema *s);
+
 // checks if schema has a constraint
 bool Schema_ContainsConstraint(
 const Schema *s, 
@@ -135,4 +137,9 @@ int Schema_AddConstraint
 (
 	Schema *s,       // schema holding the index
 	Constraint c     // constraint to add
+);
+
+Constraint Schema_GetConstraints
+(
+	const Schema *s,       // schema holding the index
 );

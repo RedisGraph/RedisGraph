@@ -321,6 +321,11 @@ void Schema_Free
 	rm_free(s);
 }
 
+bool Schema_HasConstraints(const Schema *s) {
+	ASSERT(s);
+	return (s->constraints && array_len(s->constraints) > 0);
+}
+
 bool Schema_ContainsConstraint(const Schema *s, const ConstAttrData *fields, uint field_count) {
 	ASSERT(s != NULL);
 	ASSERT(fields != NULL);
@@ -352,4 +357,13 @@ int Schema_AddConstraint
 	ASSERT(s != NULL);
 	ASSERT(c != NULL);
 	array_append(s->constraints, *c);
+}
+
+Constraint Schema_GetConstraints
+(
+	const Schema *s,       // schema holding the index
+) {
+	ASSERT(s != NULL);
+	ASSERT(s->constraints != NULL);
+	return s->constraints;
 }

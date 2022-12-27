@@ -9,6 +9,15 @@
 #include "../index/indexer.h"
 
 
+const ConstAttrData *Constraint_GetAttributes
+(
+	const Constraint c
+) {
+	ASSERT(c != NULL);
+
+	return (const ConstAttrData *)c->attributes;
+}
+
 Constraint Constraint_new(ConstAttrData *attrData, uint id_count, const char *label, int label_id, 
 GraphEntityType type) {    
     Constraint c = rm_malloc(sizeof(_Constraint));
@@ -145,4 +154,115 @@ bool Has_Constraint_On_Attribute(const Constraint constraints, Attribute_ID attr
     }
 
     return false;
+}
+
+typedef enum {
+	CT_CREATE,
+	CT_DELETE
+} ConstraintOp;
+
+static int Constraint_Parse(RedisModuleCtx *ctx, RedisModuleString **argv, int argc, const RedisModuleString **graph_name, GraphEntityType *type, 
+                            const char **label, const RedisModuleString **props, long long *prop_count, ConstraintOp *op, ConstraintType *ct) {
+	// get graph name
+	argv += 1; // skip "GRAPH.CONSTRAINT"
+
+    const char *token = RedisModule_StringPtrLen(*argv++, NULL);
+    if(strcasecmp(token, "CREATE") == 0) {
+        *op = CT_CREATE;
+    } else if(strcasecmp(token, "DELETE") == 0) {
+        *op = CT_DELETE;
+    } else {
+        RedisModule_ReplyWithError(ctx, "invalid constraint operation");
+        return REDISMODULE_ERR;
+    }
+
+	*graph_name = *argv++;
+    token = RedisModule_StringPtrLen(*argv++, NULL);
+    if(strcasecmp(token, "UNIQUE") == 0) {
+        *ct = CT_UNIQUE;
+    } else {
+        RedisModule_ReplyWithError(ctx, "invalid constraint type");
+        return REDISMODULE_ERR; //currently only unique constraint is supported
+    }
+
+    token = RedisModule_StringPtrLen(*argv++, NULL);
+    if(strcasecmp(token, "LABEL") == 0) {
+        *type = GETYPE_NODE;
+    } else if(strcasecmp(token, "RELTYPE") == 0) {
+        *type = GETYPE_EDGE;
+    } else {
+        RedisModule_ReplyWithError(ctx, "invalid constraint entity type");
+        return REDISMODULE_ERR;
+    }
+
+    *label = RedisModule_StringPtrLen(*argv++, NULL);
+    token = RedisModule_StringPtrLen(*argv++, NULL);
+    if(strcasecmp(token, "PROPERTIES") == 0) {
+        if (RedisModule_StringToLongLong(argv[i], prop_count) != REDISMODULE_OK || *prop_count < 1) {
+            RedisModule_ReplyWithError(ctx, "invalid property count");
+            return REDISMODULE_ERR;
+        }
+    }
+
+    if(argc - 8 != *prop_count) {
+        RedisModule_ReplyWithError(ctx, "Number of properties doesn't match property count");
+        return REDISMODULE_ERR;
+    }
+
+    *props = *argv;
+
+    return REDISMODULE_OK;
+}
+
+int Graph_Constraint(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    if(argc < 7) return RedisModule_WrongArity(ctx);
+
+	GraphContext *gc = NULL;
+    RedisModuleString *rs_graph_name;
+    GraphEntityType entity_type;
+    const char *label;
+    RedisModuleString *props;
+    long long prop_count;
+    ConstraintOp op;
+    ConstraintType ct;
+
+    if(Constraint_Parse(ctx, argv, argc, &rs_graph_name, &entity_type, &label,  &props, &prop_count, &op, &ct) != REDISMODULE_OK) {
+        return REDISMODULE_ERR;
+    }
+
+    const char *props[prop_count];
+    for(int i = 0; i < prop_count; i++) {
+        props[i] = RedisModule_StringPtrLen(argv[i], NULL);
+    }
+
+	gc = GraphContext_Retrieve(ctx, rs_graph_name, false, false);
+    if(!gc) {
+        RedisModule_ReplyWithError(ctx, "Invalid graph name passed as argument");
+        return REDISMODULE_ERR;
+    }
+
+    SchemaType schema_type = (entity_type == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
+	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
+    if(!s) {
+        RedisModule_ReplyWithError(ctx, "Schema not found");
+        return REDISMODULE_ERR;
+    }
+
+	Index idx = NULL;
+	Constraint c = NULL;
+
+    // lock
+	QueryCtx_LockForCommit();
+
+	// add fields to index
+	GraphContext_AddExactMatchIndexOrUniqueConstraint(idx, c, gc, schema_type, label, props, prop_count);
+
+    // unlock
+    _QueryCtx_UnlockCommit();
+
+    if(c) {
+        Indexer_PopulateIndexOrConstraint(gc, idx, c);
+    } // else constraint already exists
+
+    return REDISMODULE_OK;
 }

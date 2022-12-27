@@ -17,6 +17,11 @@ typedef enum ConstraintStatus {
     CT_FAILED
 } ConstraintStatus;
 
+typedef enum {
+	CT_UNIQUE,
+	CT_MANDATORY
+} ConstraintType;
+
 typedef struct _Constraint {
     ConstAttrData *attributes;     // array of attributes sorted by their ids which are part of this constraint
     char *label;                   // indexed label
@@ -27,6 +32,9 @@ typedef struct _Constraint {
 
 // forward declaration
 typedef _Constraint *Constraint;
+
+// returns constraint attributes
+const ConstAttrData *Constraint_GetAttributes(const Constraint c);
 
 // the ids array should be sorted
 Constraint Constraint_new(Attribute_ID *ids, uint id_count, const char *label, int label_id, GraphEntityType type);
@@ -42,3 +50,5 @@ void Constraint_Drop_Index(Constraint c, const GraphContext *gc);
 
 // is the field have constraint which enforce it
 bool Has_Constraint_On_Attribute(const Constraint constraints, Attribute_ID attr_id);
+
+int Graph_Constraint(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);

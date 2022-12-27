@@ -28,6 +28,7 @@ void Proc_Register() {
 	__procedures = raxNew();
 	_procRegister("db.labels", Proc_LabelsCtx);
 	_procRegister("db.indexes", Proc_IndexesCtx);
+	_procRegister("db.constraints", Proc_ConstraintsCtx);
 	_procRegister("db.propertyKeys", Proc_PropKeysCtx);
 	_procRegister("dbms.procedures", Proc_ProceduresCtx);
 	_procRegister("db.relationshipTypes", Proc_RelationsCtx);
