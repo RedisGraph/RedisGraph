@@ -38,6 +38,10 @@ void OpNodeLabelScanRegister() {
 	OpDesc_Register(OPType_NODE_BY_LABEL_SCAN, "Node By Label Scan",
 		NodeByLabelScanInit, NodeByLabelScanReset, NodeByLabelScanToString,
 		NodeByLabelScanClone, NodeByLabelScanFree, false);
+
+	OpDesc_Register(OPType_NODE_BY_LABEL_AND_ID_SCAN, "Node By Label and ID Scan",
+		NodeByLabelScanInit, NodeByLabelScanReset, NodeByLabelScanToString,
+		NodeByLabelScanClone, NodeByLabelScanFree, false);
 }
 
 OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, NodeScanCtx n) {
@@ -61,8 +65,7 @@ void NodeByLabelScanOp_SetIDRange(NodeByLabelScan *op, UnsignedRange *id_range) 
 	UnsignedRange_Free(op->id_range);
 	op->id_range = UnsignedRange_Clone(id_range);
 
-	op->op.desc->type = OPType_NODE_BY_LABEL_AND_ID_SCAN;
-	op->op.desc->name = "Node By Label and ID Scan";
+	op->op.desc = OpDesc_Get(OPType_NODE_BY_LABEL_AND_ID_SCAN);
 }
 
 static GrB_Info _ConstructIterator(NodeByLabelScan *op) {
