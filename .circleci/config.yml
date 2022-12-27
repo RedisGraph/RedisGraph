@@ -1,5 +1,14 @@
 version: 2.1
 
+parameters:
+  run_default_flow:
+    default: true
+    type: boolean
+
+  run_benchmark_flow_label:
+    default: false
+    type: boolean
+
 commands:
   early-returns:
     steps:
@@ -579,21 +588,13 @@ on-integ-and-version-tags: &on-integ-and-version-tags
     tags:
       only: /^v[0-9].*/
 
-on-perf-tags: &on-perf-tags
-  filters:
-    branches:
-      only:
-        - master
-        - /^\d+\.\d+.*$/
-        - /^perf-.*$/
-    tags:
-      only: /^v[0-9].*/
-
 #----------------------------------------------------------------------------------------------------------------------------------
 
 workflows:
   version: 2
   build_and_package:
+    when:
+      << pipeline.parameters.run_default_flow >>
     jobs:
       - build-linux-debian:
           name: build
@@ -640,16 +641,16 @@ workflows:
           requires:
             - upload-release-artifacts
       - benchmark:
-          <<: *on-perf-tags
+          <<: *on-integ-and-version-tags
           context: common
-      # disable temporarily due to huge profile overhead in RG
-      # - benchmark-profiler:
-      #     <<: *on-perf-tags
-      #     context: common
-      # enable temporarily to understand overhead of GB
-      - benchmark-profiler:
-          <<: *on-perf-tags
+
+  benchmark_flow_label:
+    when:
+      << pipeline.parameters.run_benchmark_flow_label >>
+    jobs:
+      - benchmark:
           context: common
+          <<: *on-any-branch
 
   nightly:
     triggers:
@@ -664,10 +665,17 @@ workflows:
           matrix:
             parameters:
               redis_version: ["6.0", "7", "unstable"]
-      - benchmark:
-          context: common
       - fuzzer:
           name: nightly-fuzzer
-      # disable temporarily due to huge profile overhead in RG
-      # - benchmark-profiler:
-      #     context: common
+
+  nightly-perf-once-a-week:
+    triggers:
+      - schedule:
+          #  “At 07:00 on Mondays.”
+          cron: "00 07 * * 1"
+          filters:
+            branches:
+              only: master
+    jobs:
+      - benchmark:
+          context: common
