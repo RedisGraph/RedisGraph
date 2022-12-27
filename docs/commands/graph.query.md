@@ -837,13 +837,13 @@ This section contains information on all supported functions from the Cypher que
 | hasLabels(_node_, _labelsList_) * | Returns true if _node_ contains all labels in _labelsList_, otherwise false <br> Return true when _labelsList_ is empty               |
 | id(_node_&#124;_relationship_)    | Returns the internal ID of a node or relationship (which is not immutable)                                                            |
 | labels(_node_)                    | Returns a list of strings: all labels of _node_ <br> Returns null when _node_ is null                                                 |
-| properties(_expr_)                | When _expr_ is a node or relationship: Returns a map containing all the properties of the given node or relationship <br> When _expr_ is a map: Returns the map as-is <br> Returns null when _expr_ is null |
+| properties(_expr_)                | When _expr_ is a node or relationship: Returns a map containing all the properties of the given node or relationship <br> When _expr_ is a map: Returns the map unchanged <br> Returns null when _expr_ is null |
 | randomUUID()                      | Returns a random UUID (Universal Unique IDentifier)                                                                                   |
 | startNode(_relationship_)         | Returns the source node of a relationship <br> Returns null when _relationship_ is null                                               |
 | timestamp()                       | Returns the current system timestamp (milliseconds since epoch)                                                                       |
 | type(_relationship_)              | Returns a string: the type of _relationship_ <br> Returns null when _relationship_ is null                                            |
 
-* RedisGraph-specific extensions to Cypher
+&#42; RedisGraph-specific extensions to Cypher
 
 ## Aggregating functions
 
@@ -885,37 +885,43 @@ This section contains information on all supported functions from the Cypher que
 
 ## Mathematical functions
 
-|Function     | Description|
-| ----------- |:-----------|
-| abs()       | Returns the absolute value of a number                                                                                   |
-| ceil()      | Returns the smallest floating point number that is greater than or equal to a number and equal to a mathematical integer |
-| floor()     | Returns the largest floating point number that is less than or equal to a number and equal to a mathematical integer     |
-| rand()      | Returns a random floating point number in the range from 0 to 1; i.e. [0,1]                                              |
-| round()     | Returns the value of a number rounded to the nearest integer                                                             |
-| sign()      | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number          |
-| e()         | Returns the constant _e_, the base of the natural logarithm                                                              |
-| exp()       | Returns _e_^a, where _e_ is the base of the natural logarithm                                                            |
-| log()       | Returns the natural logarithm of a                                                                                       |
-| log10()     | Returns the logarithm (base 10) of a                                                                                     |
-| sqrt()      | Returns the square root of a number                                                                                      |
-| pow()       | Returns base raised to the power of exponent, base^exponent                                                              |
+|Function                   | Description|
+| ------------------------- |:-----------|
+| abs(_expr_)               | Returns the absolute value of a numeric value <br> Returns null when _expr_ is null                                                                                                                         |
+| ceil(_expr_) **           | When _expr_ is an integer: returns _expr_ <br> When _expr_ is floating point: returns a floating point equals to the smallest integer greater than or equal to _expr_ <br> Returns null when _expr_ is null |
+| e()                       | Returns the constant _e_, the base of the natural logarithm                                                                                                                                                 |
+| exp(_expr_)               | Returns _e_^_expr_, where _e_ is the base of the natural logarithm <br> Returns null when _expr_ is null                                                                                                    |
+| floor(_expr_) **          | When _expr_ is an integer: returns _expr_ <br> When _expr_ is floating point: returns a floating point equals to the greatest integer less than or equal to _expr_ <br> Returns null when _expr_ is null    |
+| log(_expr_)               | Returns the natural logarithm of a numeric value <br> Returns nan when _expr_ is negative, -inf when _expr_ is 0, and null when _expr_ is null                                                              |
+| log10(_expr_)             | Returns the base-10 logarithm of a numeric value <br> Returns nan when _expr_ is negative, -inf when _expr_ is 0, and null when _expr_ is null                                                              |
+| pow(_base_, _exponent_) * | Returns _base_ raised to the power of _exponent_ (equivalent to _base_^_exponent_) <br> Returns null when either is null                                                                                    |
+| rand(_expr_)              | Returns a random floating point in the range [0,1]                                                                                                                                                          |
+| round(_expr_) ** ***      | When _expr_ is an integer: returns _expr_ <br> When _expr_ is floating point: returns a floating point equals to the integer closest to _expr_ <br> Returns null when _expr_ is null                        |
+| sign(_expr_)              | Returns the signum of a numeric value: 0 when _expr_ is 0, -1 when _expr_ is negative, and 1 when _expr_ is positive <br> Returns null when _expr_ is null                                                  |
+| sqrt(_expr_)              | Returns the square root of a number <br> Returns nan when _expr_ is negative and null when _expr_ is null                                                                                                   |
+
+&#42; RedisGraph-specific extensions to Cypher
+
+&#42;&#42; RedisGraph-specific behavior: to avoid possible loss of precision, when _expr_ is an integer - the result is an integer as well
+
+&#42;&#42;&#42; RedisGraph-specific behavior: tie-breaking method is "half away from zero"
 
 ## Trigonometric functions
 
-|Function    | Description|
-| ---------- |:-----------|
-| sin()      |  Returns the sine of a numeric expression that represents an angle in radians                            |
-| cos()      |  Returns the cosine of a numeric expression that represents an angle in radians                          |
-| haversin() |  Returns half the versine of a numeric expression that represents an angle in radians                    |
-| tan()      |  Returns the tangent of a numeric expression that represents an angle in radians                         |
-| cot()      |  Returns the cotangent of a numeric expression that represents an angle in radians                       |
-| asin()     |  Returns the arcsine, in radians, of a numeric expression                                                |
-| acos()     |  Returns the arccosine, in radians, of a numeric expression                                              |
-| atan()     |  Returns the arctangent, in radians, of a numeric expression                                             |
-| atan2()    |  Returns the 2-argument arctangent, in radians, of a pair of numeric expressions (Cartesian coordinates) |
-| degrees()  |  Converts a numeric expression from radians to degrees                                                   |
-| radians()  |  Converts a numeric expression from degrees to radians                                                   |
-| pi()       |  Returns the mathematical constant _pi_                                                                  |
+|Function               | Description|
+| --------------------- |:-----------|
+| sin(_expr_)           | Returns the sine of a numeric value that represents an angle in radians <br> Returns null when _expr_ is null                                                                                  |
+| cos(_expr_)           | Returns the cosine of a numeric value that represents an angle in radians <br> Returns null when _expr_ is null                                                                                |
+| haversin(_expr_)      | Returns half the versine of a numeric value that represents an angle in radians <br> Returns null when _expr_ is null                                                                          |
+| tan(_expr_)           | Returns the tangent of a numeric value that represents an angle in radians <br> Returns null when _expr_ is null                                                                               |
+| cot(_expr_)           | Returns the cotangent of a numeric value that represents an angle in radians <br> Returns inf when _expr_ is 0 and null when _expr_ is null                                                    |
+| asin(_expr_)          | Returns the arcsine, in radians, of a numeric value <br> Returns nan when _expr_ is not in [-1, 1] and null when _expr_ is null                                                                |
+| acos(_expr_)          | Returns the arccosine, in radians, of a numeric value <br> Returns nan when _expr_ is not in [-1, 1] and null when _expr_ is null                                                              |
+| atan(_expr_)          | Returns the arctangent, in radians, of a numeric value <br> Returns null when _expr_ is null                                                                                                   |
+| atan2(_expr_, _expr_) | Returns the 2-argument arctangent, in radians, of a pair of numeric values (Cartesian coordinates) <br> Returns 0 when both expressions are 0 <br> Returns null when either expression is null |
+| degrees(_expr_)       | Converts a numeric value from radians to degrees <br> Returns null when _expr_ is null                                                                                                         |
+| radians(_expr_)       | Converts a numeric value from degrees to radians <br> Returns null when _expr_ is null                                                                                                         |
+| pi()                  | Returns the mathematical constant _pi_                                                                                                                                                         |
 
 ## String functions
 
@@ -944,20 +950,22 @@ This section contains information on all supported functions from the Cypher que
 
 ## Type conversion functions
 
-|Function    | Description|
-| ---------- |:-----------|
-| toInteger() | Converts a floating point or string value to an integer value. All other types are not allowed and will cause a type mismatch error to be returned |
-| toIntegerOrNull() | Converts a floating point or string value to an integer value. All other types will return `null`                                            | 
-| toIntegerList()   | Converts a list of values to a list of integer values. Each item in the list is converted using toIntegerOrNull()      |
-| toFloat()   | Converts an integer or string value to a floating point value. All other types are not allowed and will cause a type mismatch error to be returned |
-| toFloatOrNull()   | Converts an integer or string value to a floating point value. All other types will return `null`                                            |
-| toFloatList()     | Converts a list of values to a list of floating point values. Each item in the list is converted using toFloatOrNull() |
-| toString()  | Returns a string representation of a value from the type integer, float, boolean, string, point.All other types are not allowed and will cause a type mismatch error to be returned. |
-| toStringorNull()  | Returns a string representation of a value from the type integer, float, boolean, string, point. All other types will return `null` |
-| toStringList()    | Converts a list of values to a list of string values. Each item in the list is converted using toStringOrNull()        | 
-| toBoolean()       | Returns a boolean value from boolean type, string type (either `"True"` or `"False"` string values, case insensitive. All other values will return `null`) or integer type (0 for `false`, all other values will return `true`). All other types are not allowed and will cause a type mismatch error to be returned.
-| toBooleanOrNull() | Returns a boolean value from boolean type, string type (either `"True"` or `"False"` string values, case insensitive. All other values will return `null`) or integer type (0 for `false`, all other values will return `true`). All other types will return `null`.
-| toBooleanList()   | Converts a list of values to a list of boolean values. Each item in the list is converted using toBooleanOrNull()      |
+|Function                     | Description|
+| --------------------------- |:-----------|
+| toBoolean(_expr_)           | Returns a Boolean value unchanged <br> Converts a string to Boolean (`"true"` (case insensitive) to true, `"false"` (case insensitive) to false, any other value to null) <br> Converts an integer to Boolean (0 to `false`, any other values to `true`) <br> Returns null when _expr_ is null <br> Error on other types |
+| toBooleanList(_exprList_)   | Converts a list of values to a list of Booleans. Each element in the list is converted using toBooleanOrNull()                                                                                             |
+| toBooleanOrNull(_expr_)     | Returns a Boolean unchanged <br> Converts a string to Boolean (`"true"` (case insensitive) to true, `"false"` (case insensitive) to false, any other value to null) <br> Converts an integer to Boolean (0 to `false`, any other values to `true`) <br> Returns null when _expr_ is null <br> Returns null for other types   |
+| toFloat(_expr_)             | Returns a floating point unchanged <br> Converts an integer to a floating point <br> Converts a string to a floating point or null <br> Returns null when _expr_ is null <br> Error on other types         |
+| toFloatList(_exprList_)     | Converts a list of values to a list of floating points. Each element in the list is converted using toFloatOrNull()                                                                                        |
+| toFloatOrNull(_expr_)       | Returns a floating point unchanged <br> Converts an integer to a floating point <br> Converts a string to a floating point or null <br> Returns null when _expr_ is null <br> Returns null for other types |
+| toInteger(_expr_) *         | Returns an integer unchanged <br> Converts a floating point to integer <br> Converts a string to an integer or null <br> Converts a Boolean to an integer (false to 0, true to 1) <br> Returns null when _expr_ is null <br> Error on other types         |
+| toIntegerList(_exprList_) * | Converts a list of values to a list of integer values. Each element in the list is converted using toIntegerOrNull()                                                                                                                                      |
+| toIntegerOrNull(_expr_) *   | Returns an integer unchanged <br> Converts a floating point to integer <br> Converts a string to an integer or null <br> Converts a Boolean to an integer (false to 0, true to 1) <br> Returns null when _expr_ is null <br> Returns null for other types |
+| toString(_expr_)            | Returns a string value unchanged <br> Converts an integer, float, Boolean, string, or point to a string representation <br> Returns null when _expr_ is null <br> Error on other types                     |
+| toStringList(_exprList_)    | Converts a list of values to a list of strings. Each element in the list is converted using toStringOrNull()                                                                                               | 
+| toStringOrNull(_expr_)      | Returns a string value unchanged <br> Converts an integer, float, Boolean, string, or point to a string representation <br> Returns null when _expr_ is null <br> Returns null for other types             |
+
+&#42; RedisGraph-specific behavior: rounding method when converting a floating point to an integer is "toward negative infinity (floor)"
 
 ## Node functions
 
@@ -966,7 +974,7 @@ This section contains information on all supported functions from the Cypher que
 |indegree(_node_ [, _label_...]) *   | When no labels are specified: Returns the number of _node_'s incoming edges <br> When one or more labels are specified: Returns the number of _node's_ incoming edges with one of the given labels <br> Return null if _node_ is null |
 |outdegree(_node_ [, _labels_...]) * | When no labels are specified: Returns the number of _node_'s outgoing edges <br> When one or more labels are specified: Returns the number of _node's_ outgoing edges with one of the given labels <br> Return null if _node_ is null |
 
-* RedisGraph-specific extensions to Cypher
+&#42; RedisGraph-specific extensions to Cypher
 
 ## Path functions
 
@@ -977,7 +985,7 @@ This section contains information on all supported functions from the Cypher que
 | length(_path_)                       | Return the length (number of edges) of _path_ <br> Returns null if _path_ if null             |
 | [shortestPath(...)](#shortestPath) * | Return the shortest path that resolves the given pattern                                      |
 
-* RedisGraph-specific extensions to Cypher
+&#42; RedisGraph-specific extensions to Cypher
 
 ### List comprehensions
 List comprehensions are a syntactical construct that accepts an array and produces another based on the provided map and filter directives.
