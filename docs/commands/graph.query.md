@@ -927,19 +927,19 @@ This section contains information on all supported functions from the Cypher que
 
 | Function                            | Description|
 | ----------------------------------- | :----------|
-| left(_str_, _len_)                  | Returns a string containing the _len_ leftmost characters of _str_                         |
-| lTrim(_str_)                        | Returns _str_ with leading whitespace removed                                              |
-| replace(_str_, _search_, _replace_) | Returns _str_ with all occurrences of _search_ are replaced with _replace_                 |
-| reverse(_str_)                      | Returns a string in which the order of all characters in _str_ are reversed                |
-| right(_str_, _len_)                 | Returns a string containing the _len_ rightmost characters of _str_                        |
-| rTrim(_str_)                        | Returns _str_ with trailing whitespace removed                                             |
-| split(_str_, _delimiter_)           | Returns a list of strings from splitting _str_ by _delimiter_                              |
-| substring(_str_, _start_[, _len_])  | Returns a substring of _str_, beginning with a 0-based index _start_ and with length _len_ |
-| toLower(_str_)                      | Returns _str_ in lowercase                                                                 |
-| toJSON(_str_) *                     | Returns a [JSON representation](#json-format) of a value                                   |
-| toUpper(_str_)                      | Returns _str_ in uppercase                                                                 |
-| trim(_str_)                         | Returns _str_ with leading and trailing whitespace removed                                 |
-| size(_str_)                         | Returns the number of characters in _str_                                                  |
+| left(_str_, _len_)                  | Returns a string containing the _len_ leftmost characters of _str_ <br> Returns null when _str_ is null, otherwise error if _len_ is null  |
+| lTrim(_str_)                        | Returns _str_ with leading whitespace removed <br> Returns null when _str_ is null                                                         |
+| replace(_str_, _search_, _replace_) | Returns _str_ with all occurrences of _search_ are replaced with _replace_ <br> Returns null when any argument is null                     |
+| reverse(_str_)                      | Returns a string in which the order of all characters in _str_ are reversed <br> Returns null when _str_ is null                           |
+| right(_str_, _len_)                 | Returns a string containing the _len_ rightmost characters of _str_ <br> Returns null when _str_ is null, otherwise error if _len_ is null |
+| rTrim(_str_)                        | Returns _str_ with trailing whitespace removed <br> Returns null when _str_ is null                                                        |
+| split(_str_, _delimiter_)           | Returns a list of strings from splitting _str_ by _delimiter_ <br> Returns null when any argument is null                                  |
+| substring(_str_, _start_[, _len_])  | When _len_ is specified: returns a substring of _str_ beginning with a 0-based index _start_ and with length _len_ <br> When _len_ is not specified: returns a substring of _str_ beginning with a 0-based index _start_ and extending to the end of _str_ <br> Returns null when _str_ is null <br> Error when _start_ or _len_ are null |
+| toLower(_str_)                      | Returns _str_ in lowercase <br> Returns null when _str_ is null                                                                            |
+| toJSON(_str_) *                     | Returns a [JSON representation](#json-format) of a value <br> Returns null when _str_ is null                                              |
+| toUpper(_str_)                      | Returns _str_ in uppercase <br> Returns null when _str_ is null                                                                            |
+| trim(_str_)                         | Returns _str_ with leading and trailing whitespace removed <br> Returns null when _str_ is null                                            |
+| size(_str_)                         | Returns the number of characters in _str_ <br> Returns null when _str_ is null                                                             |
 
 &#42; RedisGraph-specific extensions to Cypher
 
@@ -947,7 +947,7 @@ This section contains information on all supported functions from the Cypher que
 
 | Function                     | Description|
 | ---------------------------- | :----------|
-| [point(...)](#point)         | Returns a Point type representing the given lat/lon coordinates                                   |
+| [point(_map_)](#point)       | Returns a Point representing a lat/lon coordinates                                                |
 | distance(_point1_, _point2_) | Returns the distance in meters between the two given points <br> Returns null when either is null |
 
 ## Type conversion functions
