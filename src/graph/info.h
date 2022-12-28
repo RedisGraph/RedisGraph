@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include <stdatomic.h>
+# include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -23,10 +23,23 @@
 
 #include "../util/simple_timer.h"
 
+// Checks whether the specified flag is set within the flag variable.
+// Evaluates to true if set, to false otherwise.
+#define CHECK_FLAG(flag_var, flag_value) \
+    ((flag_var & flag_value) == flag_value)
+
 typedef uint32_t millis_t;
 typedef struct QueryCtx QueryCtx;
 // Duplicate typedef from the circular buffer.
 typedef bool (*CircularBufferNRG_ReadAllCallback)(void *user_data, const void *item);
+
+// Specifies what kind of query should we count.
+typedef enum QueryStatisticsFlag {
+    QueryStatisticsFlag_READONLY = 0,
+    QueryStatisticsFlag_WRITE = 1 << 0,
+    QueryStatisticsFlag_FAIL = 1 << 1,
+    QueryStatisticsFlag_TIMEOUT = 1 << 2,
+} QueryStatisticsFlag;
 
 // Holds the necessary per-query statistics.
 typedef struct QueryInfo {
@@ -54,6 +67,24 @@ typedef struct FinishedQueryInfo {
     char *query_string;
     char *graph_name;
 } FinishedQueryInfo;
+
+typedef struct FinishedQueryCounters {
+    // The number of read-only queries succeeded.
+    atomic_uint_fast64_t readonly_succeeded_count;
+    // The number of write queries succeeded.
+    atomic_uint_fast64_t write_succeeded_count;
+    // The number of read-only queries failed but not timed out.
+    atomic_uint_fast64_t readonly_failed_count;
+    // The number of write queries failed but not timed out.
+    atomic_uint_fast64_t write_failed_count;
+    // The number of read-only queries timed out.
+    atomic_uint_fast64_t readonly_timedout_count;
+    // The number of write queries timed out.
+    atomic_uint_fast64_t write_timedout_count;
+} FinishedQueryCounters;
+
+// Returns the total number of queries recorded.
+uint64_t FinishedQueryCounters_GetTotalCount(const FinishedQueryCounters);
 
 FinishedQueryInfo FinishedQueryInfo_FromQueryInfo(const QueryInfo info);
 void FinishedQueryInfo_Free(const FinishedQueryInfo query_info);
@@ -152,8 +183,7 @@ uint32_t QueryInfoIterator_Length(const QueryInfoIterator *);
 // Returns true if the iterator has no more elements to iterate over.
 bool QueryInfoIterator_IsExhausted(const QueryInfoIterator *);
 
-
-typedef struct {
+typedef struct Info {
     // Storage for query information for waiting queries.
     QueryInfoStorage waiting_queries;
     // Synchronisation primitive to use when doing anything with the
@@ -166,6 +196,8 @@ typedef struct {
     // Maximum registered time a query was spent waiting, executing and
     // reporting the results.
     atomic_uint_fast64_t max_query_pipeline_time;
+    // Finished query counters with states.
+    FinishedQueryCounters finish_query_counters;
     // A global lock for the object. Used as an inverse lock - allows parallel
     // writers but just one reader. This is done that way as the parallel
     // writes are guaranteed to happen lock-free or without race conditions,
@@ -227,6 +259,11 @@ uint64_t Info_GetReportingQueriesCount(Info *);
 // reporting the results.
 // Requires a pointer to mutable, for it changes the state of the locks.
 millis_t Info_GetMaxQueryWaitTime(Info *);
+// Incremenents the corresponding query type counter. The passed flag
+// defines the kind of query and its finish status.
+void Info_IncrementNumberOfQueries(Info *, const QueryStatisticsFlag);
+// Returns the finished query counters from the passed info object.
+FinishedQueryCounters Info_GetFinishedQueryCounters(const Info);
 // Locks the info object for external reading. Only one concurrent read is
 // allowed at the same time.
 bool Info_Lock(Info *);
