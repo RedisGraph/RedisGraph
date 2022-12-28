@@ -202,7 +202,7 @@ void ExecutionPlanSegment_ConvertClause
 	} else if(t == CYPHER_AST_CALL) {
 		buildCallOp(ast, plan, node);
 	} else if(t == CYPHER_AST_CREATE) {
-		_buildCreateOp(gc, ast, plan, clause);
+		_buildCreateOp(gc, ast, plan, node);
 	} else if(t == CYPHER_AST_UNWIND) {
 		_buildUnwindOp(plan, node);
 	} else if(t == CYPHER_AST_MERGE) {
