@@ -103,7 +103,13 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val);
 void AR_EXP_ResolveVariables(AR_ExpNode *root, const Record r);
 
 // evaluate arithmetic expression tree
+// this function raise exception
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r);
+
+// evaluate arithmmetic expression tree
+// this function will not raise exception in case of error
+// use it in arithmetic function for example comprehension function
+SIValue AR_EXP_Evaluate_NoThrow(AR_ExpNode *root, const Record r);
 
 // evaluate aggregate functions in expression tree
 void AR_EXP_Aggregate(AR_ExpNode *root, const Record r);
