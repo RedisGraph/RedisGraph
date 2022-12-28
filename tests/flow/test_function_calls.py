@@ -736,17 +736,14 @@ class testFunctionCallsFlow(FlowTestsBase):
             self.env.assertEqual(str(e), "start must be a non-negative integer")
 
     def test25_left(self):
-        query = """RETURN LEFT('muchacho', 4)"""
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], "much")
-
-        query = """RETURN LEFT('muchacho', 100)"""
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], "muchacho")
-
-        query = """RETURN LEFT(NULL, 100)"""
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], None)
+        query_to_expected_result = {
+            "RETURN LEFT('muchacho', 4)" : [['much']],
+            "RETURN LEFT('muchacho', 100)" : [['muchacho']],
+            "RETURN LEFT(NULL, 100)" : [[None]],
+            "RETURN LEFT(NULL, NULL)" : [[None]],
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
 
         try:
             query = """RETURN LEFT('', -100)"""
@@ -757,7 +754,6 @@ class testFunctionCallsFlow(FlowTestsBase):
 
         # invalid input types
         queries = [
-            """RETURN left(NULL, NULL)""",
             """RETURN left(NULL, 'a')""",
             """RETURN left(NULL, 1.3)""",
         ]
@@ -765,17 +761,14 @@ class testFunctionCallsFlow(FlowTestsBase):
             self.expect_type_error(query)
 
     def test26_right(self):
-        query = """RETURN RIGHT('muchacho', 4)"""
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], "acho")
-
-        query = """RETURN RIGHT('muchacho', 100)"""
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], "muchacho")
-
-        query = """RETURN RIGHT(NULL, 100)"""
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], None)
+        query_to_expected_result = {
+            "RETURN RIGHT('muchacho', 4)" : [['acho']],
+            "RETURN RIGHT('muchacho', 100)" : [['muchacho']],
+            "RETURN RIGHT(NULL, 100)" : [[None]],
+            "RETURN RIGHT(NULL, NULL)" : [[None]],
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
 
         try:
             query = """RETURN RIGHT('', -100)"""
@@ -786,7 +779,6 @@ class testFunctionCallsFlow(FlowTestsBase):
 
         # invalid input types
         queries = [
-            """RETURN right(NULL, NULL)""",
             """RETURN right(NULL, 'a')""",
             """RETURN right(NULL, 1.3)""",
         ]
