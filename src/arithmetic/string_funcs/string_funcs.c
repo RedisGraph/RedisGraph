@@ -20,7 +20,7 @@
 
 // returns a string containing the specified number of leftmost characters of the original string.
 SIValue AR_LEFT(SIValue *argv, int argc, void *private_data) {
-	if(SIValue_IsNull(argv[0]) && SIValue_IsNull(argv[1])) return SI_NullVal();
+	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	
 	int64_t newlen = -1;
 	if(SI_TYPE(argv[1]) == T_INT64) {
@@ -30,8 +30,6 @@ SIValue AR_LEFT(SIValue *argv, int argc, void *private_data) {
 		ErrorCtx_SetError("length must be a non-negative integer");
 		return SI_NullVal();
 	}
-
-	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
 	if(strlen(argv[0].stringval) <= newlen) {
 		// No need to truncate this string based on the requested length
@@ -58,7 +56,7 @@ SIValue AR_LTRIM(SIValue *argv, int argc, void *private_data) {
 
 // returns a string containing the specified number of rightmost characters of the original string.
 SIValue AR_RIGHT(SIValue *argv, int argc, void *private_data) {
-	if(SIValue_IsNull(argv[0]) && SIValue_IsNull(argv[1])) return SI_NullVal();
+	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	
 	int64_t newlen = -1;
 	if(SI_TYPE(argv[1]) == T_INT64) {
@@ -68,8 +66,6 @@ SIValue AR_RIGHT(SIValue *argv, int argc, void *private_data) {
 		ErrorCtx_SetError("length must be a non-negative integer");
 		return SI_NullVal();
 	}
-
-	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
 	int64_t start = strlen(argv[0].stringval) - newlen;
 

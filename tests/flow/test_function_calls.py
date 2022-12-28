@@ -739,23 +739,29 @@ class testFunctionCallsFlow(FlowTestsBase):
         query_to_expected_result = {
             "RETURN LEFT('muchacho', 4)" : [['much']],
             "RETURN LEFT('muchacho', 100)" : [['muchacho']],
+            "RETURN LEFT(NULL, -1)" : [[None]],
             "RETURN LEFT(NULL, 100)" : [[None]],
             "RETURN LEFT(NULL, NULL)" : [[None]],
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
 
-        try:
-            query = """RETURN LEFT('', -100)"""
-            graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertEqual(str(e), "length must be a non-negative integer")
+        # invalid length argument
+        queries = [
+            """RETURN LEFT('', -100)""",
+            """RETURN LEFT('a', NULL)""",
+            ]
+        for query in queries:
+            try:
+                graph.query(query)
+                self.env.assertTrue(False)
+            except ResponseError as e:
+                self.env.assertEqual(str(e), "length must be a non-negative integer")
 
         # invalid input types
         queries = [
-            """RETURN left(NULL, 'a')""",
-            """RETURN left(NULL, 1.3)""",
+            """RETURN LEFT(NULL, 'a')""",
+            """RETURN LEFT(NULL, 1.3)""",
         ]
         for query in queries:
             self.expect_type_error(query)
@@ -764,23 +770,29 @@ class testFunctionCallsFlow(FlowTestsBase):
         query_to_expected_result = {
             "RETURN RIGHT('muchacho', 4)" : [['acho']],
             "RETURN RIGHT('muchacho', 100)" : [['muchacho']],
+            "RETURN RIGHT(NULL, -1)" : [[None]],
             "RETURN RIGHT(NULL, 100)" : [[None]],
             "RETURN RIGHT(NULL, NULL)" : [[None]],
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
 
-        try:
-            query = """RETURN RIGHT('', -100)"""
-            graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertEqual(str(e), "length must be a non-negative integer")
+        # invalid length argument
+        queries = [
+            """RETURN RIGHT('', -100)""",
+            """RETURN RIGHT('a', NULL)""",
+            ]
+        for query in queries:
+            try:
+                graph.query(query)
+                self.env.assertTrue(False)
+            except ResponseError as e:
+                self.env.assertEqual(str(e), "length must be a non-negative integer")
 
         # invalid input types
         queries = [
-            """RETURN right(NULL, 'a')""",
-            """RETURN right(NULL, 1.3)""",
+            """RETURN RIGHT(NULL, 'a')""",
+            """RETURN RIGHT(NULL, 1.3)""",
         ]
         for query in queries:
             self.expect_type_error(query)
