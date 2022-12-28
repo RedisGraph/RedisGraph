@@ -726,14 +726,14 @@ class testFunctionCallsFlow(FlowTestsBase):
             graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertEqual(str(e), "length must be positive integer")
+            self.env.assertEqual(str(e), "length must be a non-negative integer")
 
         try:
             query = """RETURN SUBSTRING("muchacho", -3, 3)"""
             graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertEqual(str(e), "start must be positive integer")
+            self.env.assertEqual(str(e), "start must be a non-negative integer")
 
     def test25_left(self):
         query = """RETURN LEFT('muchacho', 4)"""
@@ -753,9 +753,18 @@ class testFunctionCallsFlow(FlowTestsBase):
             graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertEqual(str(e), "length must be positive integer")
+            self.env.assertEqual(str(e), "length must be a non-negative integer")
 
-    def tes26_right(self):
+        # invalid input types
+        queries = [
+            """RETURN left(NULL, NULL)""",
+            """RETURN left(NULL, 'a')""",
+            """RETURN left(NULL, 1.3)""",
+        ]
+        for query in queries:
+            self.expect_type_error(query)
+
+    def test26_right(self):
         query = """RETURN RIGHT('muchacho', 4)"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], "acho")
@@ -773,7 +782,16 @@ class testFunctionCallsFlow(FlowTestsBase):
             graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertEqual(str(e), "length must be positive integer")
+            self.env.assertEqual(str(e), "length must be a non-negative integer")
+
+        # invalid input types
+        queries = [
+            """RETURN right(NULL, NULL)""",
+            """RETURN right(NULL, 'a')""",
+            """RETURN right(NULL, 1.3)""",
+        ]
+        for query in queries:
+            self.expect_type_error(query)
 
     def test27_string_concat(self):
         larg_double = 1.123456e300
