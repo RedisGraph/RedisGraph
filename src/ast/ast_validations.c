@@ -14,7 +14,6 @@
 #include "../util/rax_extensions.h"
 #include "../procedures/procedure.h"
 #include "../arithmetic/arithmetic_expression.h"
-#include "../arithmetic/arithmetic_expression_construct.h"
 
 typedef enum {
 	NOT_DEFINED = -0x01,  // Yet to be defined
