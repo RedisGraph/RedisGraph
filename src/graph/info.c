@@ -65,6 +65,63 @@ static bool _unlock_rwlock(pthread_rwlock_t *);
 static CircularBufferNRG finished_queries;
 static pthread_rwlock_t finished_queries_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
+uint64_t FinishedQueryCounters_GetTotalCount
+(
+    const FinishedQueryCounters counters
+) {
+    return counters.readonly_failed_count
+         + counters.readonly_succeeded_count
+         + counters.readonly_timedout_count
+         + counters.write_failed_count
+         + counters.write_succeeded_count
+         + counters.write_timedout_count;
+}
+
+void _FinishedQueryCounters_Reset
+(
+    FinishedQueryCounters *counters
+) {
+    REQUIRE_ARG(counters);
+
+    counters->readonly_failed_count = 0;
+    counters->readonly_succeeded_count = 0;
+    counters->readonly_timedout_count = 0;
+    counters->write_failed_count = 0;
+    counters->write_succeeded_count = 0;
+    counters->write_timedout_count = 0;
+}
+
+static void _FinishedQueryCounters_Increment(
+    FinishedQueryCounters *counters,
+    const QueryStatisticsFlag flag
+) {
+    REQUIRE_ARG(counters);
+
+    if (CHECK_FLAG(flag, QueryStatisticsFlag_WRITE)) {
+        if (CHECK_FLAG(flag, QueryStatisticsFlag_FAIL)) {
+            ++counters->write_failed_count;
+        } else if (CHECK_FLAG(flag, QueryStatisticsFlag_TIMEOUT)) {
+            ++counters->write_timedout_count;
+        } else {
+            ++counters->write_succeeded_count;
+        }
+
+        return;
+    } else {
+        if (CHECK_FLAG(flag, QueryStatisticsFlag_FAIL)) {
+            ++counters->readonly_failed_count;
+        } else if (CHECK_FLAG(flag, QueryStatisticsFlag_TIMEOUT)) {
+            ++counters->readonly_timedout_count;
+        } else {
+            ++counters->readonly_succeeded_count;
+        }
+
+        return;
+    }
+
+    ASSERT(false && "Handle unknown flag.");
+}
+
 FinishedQueryInfo FinishedQueryInfo_FromQueryInfo(const QueryInfo info) {
     ASSERT(info.context);
 
@@ -517,7 +574,7 @@ bool Info_New(Info *info) {
 void Info_Reset(Info *info) {
     REQUIRE_ARG(info);
 
-    // TODO delete if there is nothing to reset?
+    _FinishedQueryCounters_Reset(&info->finish_query_counters);
 }
 
 bool Info_Free(Info *info) {
@@ -760,6 +817,23 @@ millis_t Info_GetMaxQueryWaitTime(Info *info) {
     _Info_UnlockEverything(info);
 
     return max_time;
+}
+
+void Info_IncrementNumberOfQueries
+(
+    Info *info,
+    const QueryStatisticsFlag flag
+) {
+    REQUIRE_ARG(info);
+
+    _FinishedQueryCounters_Increment(
+        &info->finish_query_counters,
+        flag
+    );
+}
+
+FinishedQueryCounters Info_GetFinishedQueryCounters(const Info info) {
+    return info.finish_query_counters;
 }
 
 bool Info_Lock(Info *info) {

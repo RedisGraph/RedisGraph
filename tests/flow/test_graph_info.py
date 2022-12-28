@@ -283,6 +283,27 @@ class testGraphInfoFlow(FlowTestsBase):
         self.env.assertEqual(prev_query['Graph name'], GRAPH_ID, depth=1)
         self.env.assertEqual(prev_query['Query'], prev_query_string, depth=1)
 
+    def test06_info_get_specific(self):
+        # query = INFO_RESET_ALL_COMMAND
+        # graph = Graph(self.conn, GRAPH_ID)
+        # results = graph.query(prev_query_string)
+        # self.env.assertEquals(results.result_set[0][0], 0, depth=1)
+        # 1. Reset, check that everything is zero.
+        # 2. Perform a GRAPH.ROQUERY and check that the
+        # number is 1 after.
+        # 3. Perform a GRAPH.QUERY which is read-only in AST
+        # and check that the number is 2 after.
+        # 4. Perform a modifying query or creating something
+        # and check that the number is 1 after.
+        # 5. Make a readonly query fail.
+        # 5. Make a write query fail.
+        # 5. Make a readonly query timeout.
+        # 5. Make a write query timeout.
+        # 6. Check that graph.explain and graph.profile
+        # also works.
+        # 7. Check the graph.info reset once more.
+        pass
+
 
     # TODO
     # 1) Reset some graphs, not all, check the output.
