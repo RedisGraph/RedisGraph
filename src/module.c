@@ -4,6 +4,7 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
+#include <omp.h>
 #include <unistd.h>
 #include <pthread.h>
 #include "redismodule.h"
@@ -82,6 +83,8 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
+	putenv("OMP_THREAD_LIMIT=16");
+	RedisModule_Log(ctx, "notice", "OMP_THREAD_LIMIT set to %d", omp_get_thread_limit());
 	// initialize GraphBLAS
 	int res = GraphBLAS_Init(ctx);
 	if(res != REDISMODULE_OK) return res;

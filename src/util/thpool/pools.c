@@ -13,8 +13,8 @@
 // Thread pools
 //------------------------------------------------------------------------------
 
-static threadpool _readers_thpool = NULL;  // readers
-static threadpool _writers_thpool = NULL;  // writers
+static omp_threadpool  _readers_thpool = NULL;  // readers
+static omp_threadpool _writers_thpool = NULL;  // writers
 
 int ThreadPools_Init
 (
@@ -47,10 +47,10 @@ int ThreadPools_CreatePools
 	ASSERT(_readers_thpool == NULL);
 	ASSERT(_writers_thpool == NULL);
 
-	_readers_thpool = thpool_init(reader_count, "reader");
+	_readers_thpool = omp_thpool_init(reader_count);
 	if(_readers_thpool == NULL) return 0;
 
-	_writers_thpool = thpool_init(writer_count, "writer");
+	_writers_thpool = omp_thpool_init(writer_count);
 	if(_writers_thpool == NULL) return 0;
 
 	ThreadPools_SetMaxPendingWork(max_pending_work);
@@ -143,25 +143,27 @@ int ThreadPools_AddWorkReader
 ) {
 	ASSERT(_readers_thpool != NULL);
 
-	// make sure there's enough room in thread pool queue
-	if(thpool_queue_full(_readers_thpool)) return THPOOL_QUEUE_FULL;
+	// // make sure there's enough room in thread pool queue
+	// if(thpool_queue_full(_readers_thpool)) return THPOOL_QUEUE_FULL;
 
-	return thpool_add_work(_readers_thpool, function_p, arg_p);
+	omp_thpool_add_work(_readers_thpool, function_p, arg_p);
+	return 0;
 }
 
 // add task for writer thread
 int ThreadPools_AddWorkWriter
 (
-	void (*function_p)(void *),
+void (*function_p)(void *),
 	void *arg_p,
 	int force
 ) {
 	ASSERT(_writers_thpool != NULL);
 
-	// make sure there's enough room in thread pool queue
-	if(thpool_queue_full(_writers_thpool) && !force) return THPOOL_QUEUE_FULL;
+	// // make sure there's enough room in thread pool queue
+	// if(thpool_queue_full(_writers_thpool) && !force) return THPOOL_QUEUE_FULL;
 
-	return thpool_add_work(_writers_thpool, function_p, arg_p);
+	omp_thpool_add_work(_writers_thpool, function_p, arg_p);
+	return 0;
 }
 
 void ThreadPools_SetMaxPendingWork(uint64_t val) {
