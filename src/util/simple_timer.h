@@ -112,3 +112,5 @@ double simple_toc           // returns time since last simple_tic
 
 // Returns the milliseconds elapsed since the UNIX epoch.
 uint64_t get_unix_timestamp_milliseconds();
+
+#endif // SIMPLE_TIMER_H

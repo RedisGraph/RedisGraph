@@ -193,15 +193,16 @@ int DeleteEdges
 	uint      count        = array_len(edges);
 	QueryCtx *query_ctx    = QueryCtx_GetQueryCtx();
 	for (uint i = 0; i < count; i++) {
-		UndoLog_DeleteEdge(&query_ctx->undo_log, edges + i);
+		Edge *edge = edges + i;
+		UndoLog_DeleteEdge(&query_ctx->undo_log, edge);
 
 		if(has_indecise) {
-			_DeleteEdgeFromIndices(gc, edges + i);
+			_DeleteEdgeFromIndices(gc, edge);
 		}
 
 		GraphContext_DecreasePropertyNamesCount(
 			gc,
-			ATTRIBUTE_SET_COUNT(*e->attributes),
+			ATTRIBUTE_SET_COUNT(*edge->attributes),
 			GETYPE_EDGE);
 	}
 

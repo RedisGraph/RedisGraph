@@ -61,16 +61,28 @@ void static inline GraphQueryCtx_Free(GraphQueryCtx *ctx) {
 	rm_free(ctx);
 }
 
-void abort_and_check_timeout(GraphQueryCtx *gq_ctx, ExecutionPlan *plan) {
+bool abort_and_check_timeout(GraphQueryCtx *gq_ctx, ExecutionPlan *plan) {
 	// abort timeout if set
 	if(gq_ctx->timeout != 0) {
 		Cron_AbortTask(gq_ctx->timeout);
 	}
 
 	// emit error if query timed out
-	if(ExecutionPlan_Drained(plan)) {
+	const bool has_timed_out = ExecutionPlan_Drained(plan);
+	if (has_timed_out) {
 		ErrorCtx_SetError("Query timed out");
 	}
+
+	return has_timed_out;
+}
+
+static bool _is_query_for_statistics_counting(const GraphQueryCtx *gq_ctx) {
+	ASSERT(gq_ctx);
+	ASSERT(gq_ctx->command_ctx);
+
+	const GRAPH_Commands command = CommandFromString(gq_ctx->command_ctx->command_name);
+	return !gq_ctx->profile && (command == CMD_QUERY || command == CMD_RO_QUERY
+	|| command == CMD_EXPLAIN || command == CMD_PROFILE);
 }
 
 static bool _is_query_for_tracking_info(const GraphQueryCtx *gq_ctx) {
@@ -139,6 +151,21 @@ static void _report_query_finished_reporting(const GraphQueryCtx *gq_ctx) {
 	}
 
 	Info_IndicateQueryFinishedReporting(&gq_ctx->graph_ctx->info, context);
+}
+
+static void _report_query_finish_state
+(
+	GraphQueryCtx *gq_ctx,
+	const QueryStatisticsFlag flag
+) {
+	if (!gq_ctx || !_is_query_for_statistics_counting(gq_ctx)
+	 || !gq_ctx->graph_ctx) {
+		return;
+	}
+
+	Info *info = &gq_ctx->graph_ctx->info;
+
+	Info_IncrementNumberOfQueries(info, flag);
 }
 
 static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
@@ -230,9 +257,9 @@ inline static bool _readonly_cmd_mode(CommandCtx *ctx) {
 	return strcasecmp(CommandCtx_GetCommandName(ctx), "graph.RO_QUERY") == 0;
 }
 
-/* _ExecuteQuery accepts a GraphQeuryCtx as an argument
+/* _ExecuteQuery accepts a GraphQueryCtx as an argument
  * it may be called directly by a reader thread or the Redis main thread,
- * or dispatched as a worker thread job. */
+ * or dispatched as a worker thread job when is used for writing. */
 static void _ExecuteQuery(void *args) {
 	ASSERT(args != NULL);
 
@@ -248,9 +275,11 @@ static void _ExecuteQuery(void *args) {
 	ExecutionPlan   *plan         =  exec_ctx->plan;
 	ExecutionType   exec_type     =  exec_ctx->exec_type;
 
+	const bool is_write_query = command_ctx->thread == EXEC_THREAD_WRITER;
+	QueryStatisticsFlag statistics_flag = is_write_query ? QueryStatisticsFlag_WRITE : QueryStatisticsFlag_READONLY;
 	// if we have migrated to a writer thread,
 	// update thread-local storage and track the CommandCtx
-	if(command_ctx->thread == EXEC_THREAD_WRITER) {
+	if (is_write_query) {
 		QueryCtx_SetTLS(query_ctx);
 		CommandCtx_TrackCtx(command_ctx);
 	}
@@ -293,7 +322,9 @@ static void _ExecuteQuery(void *args) {
 		ExecutionPlan_PreparePlan(plan);
 		if(profile) {
 			ExecutionPlan_Profile(plan);
-			abort_and_check_timeout(gq_ctx, plan);
+			if (abort_and_check_timeout(gq_ctx, plan)) {
+				statistics_flag |= QueryStatisticsFlag_TIMEOUT;
+			}
 
 			if(!ErrorCtx_EncounteredError()) {
 				ExecutionPlan_Print(plan, rm_ctx);
@@ -301,7 +332,9 @@ static void _ExecuteQuery(void *args) {
 		}
 		else {
 			result_set = ExecutionPlan_Execute(plan);
-			abort_and_check_timeout(gq_ctx, plan);
+			if (abort_and_check_timeout(gq_ctx, plan)) {
+				statistics_flag |= QueryStatisticsFlag_TIMEOUT;
+			}
 		}
 
 		ExecutionPlan_Free(plan);
@@ -318,6 +351,9 @@ static void _ExecuteQuery(void *args) {
 		UndoLog_Rollback(query_ctx->undo_log);
 		// clear resultset statistics, avoiding commnad being replicated
 		ResultSet_Clear(result_set);
+		if (!CHECK_FLAG(statistics_flag, QueryStatisticsFlag_TIMEOUT)) {
+			statistics_flag |= QueryStatisticsFlag_FAIL;
+		}
 	}
 
 	// replicate command if graph was modified
@@ -343,6 +379,7 @@ static void _ExecuteQuery(void *args) {
 				QueryCtx_GetExecutionTime(), NULL);
 
 	// clean up
+	_report_query_finish_state(gq_ctx, statistics_flag);
 	ExecutionCtx_Free(exec_ctx);
 	GraphContext_DecreaseRefCount(gc);
 	CommandCtx_Free(command_ctx);
