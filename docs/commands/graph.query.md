@@ -821,27 +821,27 @@ This section contains information on all supported functions from the Cypher que
 
 | Function                                                                          | Description|
 | --------------------------------------------------------------------------------- | :----------|
-| [all(_var_ IN _list_ WHERE _predicate_)](#existential-comprehension-functions)    | Returns true if _predicate_ holds true for all elements in _list_         |
-| [any(_var_ IN _list_ WHERE _predicate_)](#existential-comprehension-functions)    | Returns true if _predicate_ holds true for at least one element in _list_ |
-| exists(_pattern_)                                                                 | Returns true if at least one match for _pattern_ exists                   |
-| isEmpty(_list_&#124;_map_&#124;_string_)                                          | Returns true if the input list or map contains no elements or if the input string contains no characters <br> Returns null if the input is null |
-| [none(_var_ IN _list_ WHERE _predicate_)](#existential-comprehension-functions)   | Returns true if _predicate_ holds false for all elements in _list_        |
-| [single(_var_ IN _list_ WHERE _predicate_)](#existential-comprehension-functions) | Returns true if _predicate_ holds true for exactly one element in _list_  |
+| [all(_var_ IN _list_ WHERE _predicate_)](#existential-comprehension-functions)    | Returns true when _predicate_ holds true for all elements in _list_         |
+| [any(_var_ IN _list_ WHERE _predicate_)](#existential-comprehension-functions)    | Returns true when _predicate_ holds true for at least one element in _list_ |
+| exists(_pattern_)                                                                 | Returns true when at least one match for _pattern_ exists                   |
+| isEmpty(_list_&#124;_map_&#124;_string_)                                          | Returns true if the input list or map contains no elements or if the input string contains no characters <br> Returns null when the input evaluates to null |
+| [none(_var_ IN _list_ WHERE _predicate_)](#existential-comprehension-functions)   | Returns true when _predicate_ holds false for all elements in _list_        |
+| [single(_var_ IN _list_ WHERE _predicate_)](#existential-comprehension-functions) | Returns true when _predicate_ holds true for exactly one element in _list_  |
 
 ## Scalar functions
 
 | Function                          | Description|
 | --------------------------------- | :----------|
-| coalesce(_expr_[, expr...])       | Returns the evaluation of the first argument that evaluates to a non-null value <br> Returns null when all arguments evaluate to null |
-| endNode(_relationship_)           | Returns the destination node of a relationship <br> Returns null when _relationship_ is null                                          |
-| hasLabels(_node_, _labelsList_) * | Returns true if _node_ contains all labels in _labelsList_, otherwise false <br> Return true when _labelsList_ is empty               |
-| id(_node_&#124;_relationship_)    | Returns the internal ID of a node or relationship (which is not immutable)                                                            |
-| labels(_node_)                    | Returns a list of strings: all labels of _node_ <br> Returns null when _node_ is null                                                 |
-| properties(_expr_)                | When _expr_ is a node or relationship: Returns a map containing all the properties of the given node or relationship <br> When _expr_ is a map: Returns the map unchanged <br> Returns null when _expr_ is null |
-| randomUUID()                      | Returns a random UUID (Universal Unique IDentifier)                                                                                   |
-| startNode(_relationship_)         | Returns the source node of a relationship <br> Returns null when _relationship_ is null                                               |
-| timestamp()                       | Returns the current system timestamp (milliseconds since epoch)                                                                       |
-| type(_relationship_)              | Returns a string: the type of _relationship_ <br> Returns null when _relationship_ is null                                            |
+| coalesce(_expr_[, expr...])       | Returns the evaluation of the first argument that evaluates to a non-null value <br> Returns null when all arguments evaluate to null       |
+| endNode(_relationship_)           | Returns the destination node of a relationship <br> Returns null when _relationship_ evaluates to null                                      |
+| hasLabels(_node_, _labelsList_) * | Returns true when _node_ contains all labels in _labelsList_, otherwise false <br> Return true when _labelsList_ evaluates to an empty list |
+| id(_node_&#124;_relationship_)    | Returns the internal ID of a node or relationship (which is not immutable)                                                                  |
+| labels(_node_)                    | Returns a list of strings: all labels of _node_ <br> Returns null when _node_ evaluates to null                                             |
+| properties(_expr_)                | When _expr_ is a node or relationship: Returns a map containing all the properties of the given node or relationship <br> When _expr_ evaluates to a map: Returns _expr_ unchanged <br> Returns null when _expr_ evaluates to null |
+| randomUUID()                      | Returns a random UUID (Universal Unique IDentifier)                                                                                         |
+| startNode(_relationship_)         | Returns the source node of a relationship <br> Returns null when _relationship_ evaluates to null                                           |
+| timestamp()                       | Returns the current system timestamp (milliseconds since epoch)                                                                             |
+| type(_relationship_)              | Returns a string: the type of _relationship_ <br> Returns null when _relationship_ evaluates to null                                        |
 
 &#42; RedisGraph-specific extensions to Cypher
 
@@ -864,13 +864,13 @@ This section contains information on all supported functions from the Cypher que
 
 | Function                             | Description|
 | ------------------------------------ | :----------|
-| head(_expr_)                         | Returns the first element of a list <br> Returns null when _expr_ is null or an empty list                                                                                                 |
-| keys(_expr_)                         | Returns a list of strings: all key names for given map or all property names for a given node or edge <br> Returns null if _expr_ is null                                                  |
-| last(_expr_)                         | Returns the last element of a list <br> Returns null when _expr_ is null or an empty list                                                                                                  |
-| range(_first_, _last_[, _step_ = 1]) | Returns a list of integers in the range of [start, end]. _step_, an optional integer argument, is the increment between consequtive elements                                               |
-| size(_expr_)                         | Returns the number of elements in a list <br> Returns null with _expr_ is null                                                                                                             |
-| tail(_expr_)                         | Returns a sublist of a list, which contains all its elements except the first <br> Returns an empty list when _expr_ containst less than 2 elements. <br> Returns null when _expr_ is null |
-| [reduce(...)](#reduce)               | Returns a scalar produced by evaluating an expression against each list member                                                                                                             |
+| head(_expr_)                         | Returns the first element of a list <br> Returns null when _expr_ evaluates to null or an empty list                                                                                                 |
+| keys(_expr_)                         | Returns a list of strings: all key names for given map or all property names for a given node or edge <br> Returns null when _expr_ evaluates to null                                                |
+| last(_expr_)                         | Returns the last element of a list <br> Returns null when _expr_ evaluates to null or an empty list                                                                                                  |
+| range(_first_, _last_[, _step_ = 1]) | Returns a list of integers in the range of [start, end]. _step_, an optional integer argument, is the increment between consequtive elements                                                         |
+| size(_expr_)                         | Returns the number of elements in a list <br> Returns null with _expr_ evaluates to null                                                                                                             |
+| tail(_expr_)                         | Returns a sublist of a list, which contains all its elements except the first <br> Returns an empty list when _expr_ containst less than 2 elements. <br> Returns null when _expr_ evaluates to null |
+| [reduce(...)](#reduce)               | Returns a scalar produced by evaluating an expression against each list member                                                                                                                       |
 
 ## Mathematical operators
 
@@ -887,22 +887,22 @@ This section contains information on all supported functions from the Cypher que
 
 |Function                   | Description|
 | ------------------------- |:-----------|
-| abs(_expr_)               | Returns the absolute value of a numeric value <br> Returns null when _expr_ is null                                                                                                                         |
-| ceil(_expr_) **           | When _expr_ is an integer: returns _expr_ <br> When _expr_ is floating point: returns a floating point equals to the smallest integer greater than or equal to _expr_ <br> Returns null when _expr_ is null |
-| e()                       | Returns the constant _e_, the base of the natural logarithm                                                                                                                                                 |
-| exp(_expr_)               | Returns _e_^_expr_, where _e_ is the base of the natural logarithm <br> Returns null when _expr_ is null                                                                                                    |
-| floor(_expr_) **          | When _expr_ is an integer: returns _expr_ <br> When _expr_ is floating point: returns a floating point equals to the greatest integer less than or equal to _expr_ <br> Returns null when _expr_ is null    |
-| log(_expr_)               | Returns the natural logarithm of a numeric value <br> Returns nan when _expr_ is negative, -inf when _expr_ is 0, and null when _expr_ is null                                                              |
-| log10(_expr_)             | Returns the base-10 logarithm of a numeric value <br> Returns nan when _expr_ is negative, -inf when _expr_ is 0, and null when _expr_ is null                                                              |
-| pow(_base_, _exponent_) * | Returns _base_ raised to the power of _exponent_ (equivalent to _base_^_exponent_) <br> Returns null when either is null                                                                                    |
-| rand(_expr_)              | Returns a random floating point in the range [0,1]                                                                                                                                                          |
-| round(_expr_) ** ***      | When _expr_ is an integer: returns _expr_ <br> When _expr_ is floating point: returns a floating point equals to the integer closest to _expr_ <br> Returns null when _expr_ is null                        |
-| sign(_expr_)              | Returns the signum of a numeric value: 0 when _expr_ is 0, -1 when _expr_ is negative, and 1 when _expr_ is positive <br> Returns null when _expr_ is null                                                  |
-| sqrt(_expr_)              | Returns the square root of a number <br> Returns nan when _expr_ is negative and null when _expr_ is null                                                                                                   |
+| abs(_expr_)               | Returns the absolute value of a numeric value <br> Returns null when _expr_ evaluates to null |
+| ceil(_expr_) **           | When _expr_ evaluates to an integer: returns its evaluation <br> When _expr_ evaluates to floating point: returns a floating point equals to the smallest integer greater than or equal to _expr_ <br> Returns null when _expr_ evaluates to null |
+| e()                       | Returns the constant _e_, the base of the natural logarithm |
+| exp(_expr_)               | Returns _e_^_expr_, where _e_ is the base of the natural logarithm <br> Returns null when _expr_ evaluates to null |
+| floor(_expr_) **          | When _expr_ evaluates to an integer: returns its evaluation <br> When _expr_ evaluates to a floating point: returns a floating point equals to the greatest integer less than or equal to _expr_ <br> Returns null when _expr_ evaluates to null |
+| log(_expr_)               | Returns the natural logarithm of a numeric value <br> Returns nan when _expr_ evaluates to a negative numeric value, -inf when _expr_ evaluates to 0, and null when _expr_ evaluates to null |
+| log10(_expr_)             | Returns the base-10 logarithm of a numeric value <br> Returns nan when _expr_ evaluates to a negative numeric value, -inf when _expr_ evaluates to 0, and null when _expr_ evaluates to null |
+| pow(_base_, _exponent_) * | Returns _base_ raised to the power of _exponent_ (equivalent to _base_^_exponent_) <br> Returns null when either evaluates to null |
+| rand()                    | Returns a random floating point in the range [0,1] |
+| round(_expr_) ** ***      | When _expr_ evaluates to an integer: returns its evaluation <br> When _expr_ evaluates to a floating point: returns a floating point equals to the integer closest to _expr_ <br> Returns null when _expr_ evaluates to null |
+| sign(_expr_)              | Returns the signum of a numeric value: 0 when _expr_ evaluates to 0, -1 when _expr_ evaluates to a negative numeric value, and 1 when _expr_ evaluates to a positive numeric value <br> Returns null when _expr_ evaluates to null |
+| sqrt(_expr_)              | Returns the square root of a numeric value <br> Returns nan when _expr_ evaluates to a negative value and null when _expr_ evaluates to null |
 
 &#42; RedisGraph-specific extensions to Cypher
 
-&#42;&#42; RedisGraph-specific behavior: to avoid possible loss of precision, when _expr_ is an integer - the result is an integer as well
+&#42;&#42; RedisGraph-specific behavior: to avoid possible loss of precision, when _expr_ evaluates to an integer - the result is an integer as well
 
 &#42;&#42;&#42; RedisGraph-specific behavior: tie-breaking method is "half away from zero"
 
@@ -910,36 +910,36 @@ This section contains information on all supported functions from the Cypher que
 
 |Function               | Description|
 | --------------------- |:-----------|
-| sin(_expr_)           | Returns the sine of a numeric value that represents an angle in radians <br> Returns null when _expr_ is null                                                                                  |
-| cos(_expr_)           | Returns the cosine of a numeric value that represents an angle in radians <br> Returns null when _expr_ is null                                                                                |
-| haversin(_expr_)      | Returns half the versine of a numeric value that represents an angle in radians <br> Returns null when _expr_ is null                                                                          |
-| tan(_expr_)           | Returns the tangent of a numeric value that represents an angle in radians <br> Returns null when _expr_ is null                                                                               |
-| cot(_expr_)           | Returns the cotangent of a numeric value that represents an angle in radians <br> Returns inf when _expr_ is 0 and null when _expr_ is null                                                    |
-| asin(_expr_)          | Returns the arcsine, in radians, of a numeric value <br> Returns nan when _expr_ is not in [-1, 1] and null when _expr_ is null                                                                |
-| acos(_expr_)          | Returns the arccosine, in radians, of a numeric value <br> Returns nan when _expr_ is not in [-1, 1] and null when _expr_ is null                                                              |
-| atan(_expr_)          | Returns the arctangent, in radians, of a numeric value <br> Returns null when _expr_ is null                                                                                                   |
-| atan2(_expr_, _expr_) | Returns the 2-argument arctangent, in radians, of a pair of numeric values (Cartesian coordinates) <br> Returns 0 when both expressions are 0 <br> Returns null when either expression is null |
-| degrees(_expr_)       | Converts a numeric value from radians to degrees <br> Returns null when _expr_ is null                                                                                                         |
-| radians(_expr_)       | Converts a numeric value from degrees to radians <br> Returns null when _expr_ is null                                                                                                         |
-| pi()                  | Returns the mathematical constant _pi_                                                                                                                                                         |
+| sin(_expr_)           | Returns the sine of a numeric value that represents an angle in radians <br> Returns null when _expr_ evaluates to null                                               |
+| cos(_expr_)           | Returns the cosine of a numeric value that represents an angle in radians <br> Returns null when _expr_ evaluates to null                                             |
+| haversin(_expr_)      | Returns half the versine of a numeric value that represents an angle in radians <br> Returns null when _expr_ evaluates to null                                       |
+| tan(_expr_)           | Returns the tangent of a numeric value that represents an angle in radians <br> Returns null when _expr_ evaluates to null                                            |
+| cot(_expr_)           | Returns the cotangent of a numeric value that represents an angle in radians <br> Returns inf when _expr_ evaluates to 0 and null when _expr_ evaluates to null       |
+| asin(_expr_)          | Returns the arcsine, in radians, of a numeric value <br> Returns nan when _expr_ evaluates to a numeric value not in [-1, 1] and null when _expr_ evaluates to null   |
+| acos(_expr_)          | Returns the arccosine, in radians, of a numeric value <br> Returns nan when _expr_ evaluates to a numeric value not in [-1, 1] and null when _expr_ evaluates to null |
+| atan(_expr_)          | Returns the arctangent, in radians, of a numeric value <br> Returns null when _expr_ evaluates to null                                                                |
+| atan2(_expr_, _expr_) | Returns the 2-argument arctangent, in radians, of a pair of numeric values (Cartesian coordinates) <br> Returns 0 when both expressions evaluate to 0 <br> Returns null when either expression evaluates to null |
+| degrees(_expr_)       | Converts a numeric value from radians to degrees <br> Returns null when _expr_ evaluates to null                                                                      |
+| radians(_expr_)       | Converts a numeric value from degrees to radians <br> Returns null when _expr_ evaluates to null                                                                      |
+| pi()                  | Returns the mathematical constant _pi_                                                                                                                                |
 
 ## String functions
 
 | Function                            | Description|
 | ----------------------------------- | :----------|
-| left(_str_, _len_)                  | Returns a string containing the _len_ leftmost characters of _str_ <br> Returns null when _str_ is null, otherwise error if _len_ is null  |
-| lTrim(_str_)                        | Returns _str_ with leading whitespace removed <br> Returns null when _str_ is null                                                         |
-| replace(_str_, _search_, _replace_) | Returns _str_ with all occurrences of _search_ replaced with _replace_ <br> Returns null when any argument is null                     |
-| reverse(_str_)                      | Returns a string in which the order of all characters in _str_ are reversed <br> Returns null when _str_ is null                           |
-| right(_str_, _len_)                 | Returns a string containing the _len_ rightmost characters of _str_ <br> Returns null when _str_ is null, otherwise error if _len_ is null |
-| rTrim(_str_)                        | Returns _str_ with trailing whitespace removed <br> Returns null when _str_ is null                                                        |
-| split(_str_, _delimiter_)           | Returns a list of strings from splitting _str_ by _delimiter_ <br> Returns null when any argument is null                                  |
-| substring(_str_, _start_[, _len_])  | When _len_ is specified: returns a substring of _str_ beginning with a 0-based index _start_ and with length _len_ <br> When _len_ is not specified: returns a substring of _str_ beginning with a 0-based index _start_ and extending to the end of _str_ <br> Returns null when _str_ is null <br> Error when _start_ or _len_ are null |
-| toLower(_str_)                      | Returns _str_ in lowercase <br> Returns null when _str_ is null                                                                            |
-| toJSON(_str_) *                     | Returns a [JSON representation](#json-format) of a value <br> Returns null when _str_ is null                                              |
-| toUpper(_str_)                      | Returns _str_ in uppercase <br> Returns null when _str_ is null                                                                            |
-| trim(_str_)                         | Returns _str_ with leading and trailing whitespace removed <br> Returns null when _str_ is null                                            |
-| size(_str_)                         | Returns the number of characters in _str_ <br> Returns null when _str_ is null                                                             |
+| left(_str_, _len_)                  | Returns a string containing the _len_ leftmost characters of _str_ <br> Returns null when _str_ evaluates to null, otherwise error if _len_ evaluates to null  |
+| lTrim(_str_)                        | Returns _str_ with leading whitespace removed <br> Returns null when _str_ evaluates to null                                                                   |
+| replace(_str_, _search_, _replace_) | Returns _str_ with all occurrences of _search_ replaced with _replace_ <br> Returns null when any argument evaluates to null                                   |
+| reverse(_str_)                      | Returns a string in which the order of all characters in _str_ are reversed <br> Returns null when _str_ evaluates to null                                     |
+| right(_str_, _len_)                 | Returns a string containing the _len_ rightmost characters of _str_ <br> Returns null when _str_ evaluates to null, otherwise error if _len_ evaluates to null |
+| rTrim(_str_)                        | Returns _str_ with trailing whitespace removed <br> Returns null when _str_ evaluates to null                                                                  |
+| split(_str_, _delimiter_)           | Returns a list of strings from splitting _str_ by _delimiter_ <br> Returns null when any argument evaluates to null                                            |
+| substring(_str_, _start_[, _len_])  | When _len_ is specified: returns a substring of _str_ beginning with a 0-based index _start_ and with length _len_ <br> When _len_ is not specified: returns a substring of _str_ beginning with a 0-based index _start_ and extending to the end of _str_ <br> Returns null when _str_ evaluates to null <br> Error when _start_ or _len_ evaluate to null |
+| toLower(_str_)                      | Returns _str_ in lowercase <br> Returns null when _str_ evaluates to null                                                                                      |
+| toJSON(_str_) *                     | Returns a [JSON representation](#json-format) of a value <br> Returns null when _str_ evaluates to null                                                        |
+| toUpper(_str_)                      | Returns _str_ in uppercase <br> Returns null when _str_ evaluates to null                                                                                      |
+| trim(_str_)                         | Returns _str_ with leading and trailing whitespace removed <br> Returns null when _str_ evaluates to null                                                      |
+| size(_str_)                         | Returns the number of characters in _str_ <br> Returns null when _str_ evaluates to null                                                                       |
 
 &#42; RedisGraph-specific extensions to Cypher
 
@@ -947,25 +947,25 @@ This section contains information on all supported functions from the Cypher que
 
 | Function                     | Description|
 | ---------------------------- | :----------|
-| [point(_map_)](#point)       | Returns a Point representing a lat/lon coordinates                                                |
-| distance(_point1_, _point2_) | Returns the distance in meters between the two given points <br> Returns null when either is null |
+| [point(_map_)](#point)       | Returns a Point representing a lat/lon coordinates                                                          |
+| distance(_point1_, _point2_) | Returns the distance in meters between the two given points <br> Returns null when either evaluates to null |
 
 ## Type conversion functions
 
 |Function                     | Description|
 | --------------------------- |:-----------|
-| toBoolean(_expr_)           | Returns a Boolean value unchanged <br> Converts a string to Boolean (`"true"` (case insensitive) to true, `"false"` (case insensitive) to false, any other value to null) <br> Converts an integer to Boolean (0 to `false`, any other values to `true`) <br> Returns null when _expr_ is null <br> Error on other types |
-| toBooleanList(_exprList_)   | Converts a list of values to a list of Booleans. Each element in the list is converted using toBooleanOrNull()                                                                                             |
-| toBooleanOrNull(_expr_)     | Returns a Boolean unchanged <br> Converts a string to Boolean (`"true"` (case insensitive) to true, `"false"` (case insensitive) to false, any other value to null) <br> Converts an integer to Boolean (0 to `false`, any other values to `true`) <br> Returns null when _expr_ is null <br> Returns null for other types   |
-| toFloat(_expr_)             | Returns a floating point unchanged <br> Converts an integer to a floating point <br> Converts a string to a floating point or null <br> Returns null when _expr_ is null <br> Error on other types         |
-| toFloatList(_exprList_)     | Converts a list of values to a list of floating points. Each element in the list is converted using toFloatOrNull()                                                                                        |
-| toFloatOrNull(_expr_)       | Returns a floating point unchanged <br> Converts an integer to a floating point <br> Converts a string to a floating point or null <br> Returns null when _expr_ is null <br> Returns null for other types |
-| toInteger(_expr_) *         | Returns an integer unchanged <br> Converts a floating point to integer <br> Converts a string to an integer or null <br> Converts a Boolean to an integer (false to 0, true to 1) <br> Returns null when _expr_ is null <br> Error on other types         |
-| toIntegerList(_exprList_) * | Converts a list of values to a list of integer values. Each element in the list is converted using toIntegerOrNull()                                                                                                                                      |
-| toIntegerOrNull(_expr_) *   | Returns an integer unchanged <br> Converts a floating point to integer <br> Converts a string to an integer or null <br> Converts a Boolean to an integer (false to 0, true to 1) <br> Returns null when _expr_ is null <br> Returns null for other types |
-| toString(_expr_)            | Returns a string value unchanged <br> Converts an integer, float, Boolean, string, or point to a string representation <br> Returns null when _expr_ is null <br> Error on other types                     |
-| toStringList(_exprList_)    | Converts a list of values to a list of strings. Each element in the list is converted using toStringOrNull()                                                                                               | 
-| toStringOrNull(_expr_)      | Returns a string value unchanged <br> Converts an integer, float, Boolean, string, or point to a string representation <br> Returns null when _expr_ is null <br> Returns null for other types             |
+| toBoolean(_expr_)           | Returns a Boolean when _expr_ evaluates to a Boolean <br> Converts a string to Boolean (`"true"` (case insensitive) to true, `"false"` (case insensitive) to false, any other value to null) <br> Converts an integer to Boolean (0 to `false`, any other values to `true`) <br> Returns null when _expr_ evaluates to null <br> Error on other types |
+| toBooleanList(_exprList_)   | Converts a list to a list of Booleans. Each element in the list is converted using toBooleanOrNull() |
+| toBooleanOrNull(_expr_)     | Returns a Boolean when _expr_ evaluates to a Boolean <br> Converts a string to Boolean (`"true"` (case insensitive) to true, `"false"` (case insensitive) to false, any other value to null) <br> Converts an integer to Boolean (0 to `false`, any other values to `true`) <br> Returns null when _expr_ evaluates to null <br> Returns null for other types |
+| toFloat(_expr_)             | Returns a floating point when _expr_ evaluates to a floating point <br> Converts an integer to a floating point <br> Converts a string to a floating point or null <br> Returns null when _expr_ evaluates to null <br> Error on other types |
+| toFloatList(_exprList_)     | Converts a list to a list of floating points. Each element in the list is converted using toFloatOrNull() |
+| toFloatOrNull(_expr_)       | Returns a floating point when _expr_ evaluates to a floating point <br> Converts an integer to a floating point <br> Converts a string to a floating point or null <br> Returns null when _expr_ evaluates to null <br> Returns null for other types |
+| toInteger(_expr_) *         | Returns an integer when _expr_ evaluates to an integer <br> Converts a floating point to integer <br> Converts a string to an integer or null <br> Converts a Boolean to an integer (false to 0, true to 1) <br> Returns null when _expr_ evaluates to null <br> Error on other types |
+| toIntegerList(_exprList_) * | Converts a list to a list of integer values. Each element in the list is converted using toIntegerOrNull() |
+| toIntegerOrNull(_expr_) *   | Returns an integer when _expr_ evaluates to an integer <br> Converts a floating point to integer <br> Converts a string to an integer or null <br> Converts a Boolean to an integer (false to 0, true to 1) <br> Returns null when _expr_ evaluates to null <br> Returns null for other types |
+| toString(_expr_)            | Returns a string when _expr_ evaluates to a string <br> Converts an integer, float, Boolean, string, or point to a string representation <br> Returns null when _expr_ evaluates to null <br> Error on other types |
+| toStringList(_exprList_)    | Converts a list to a list of strings. Each element in the list is converted using toStringOrNull() | 
+| toStringOrNull(_expr_)      | Returns a string when _expr_ evaluates to a string <br> Converts an integer, float, Boolean, string, or point to a string representation <br> Returns null when _expr_ evaluates to null <br> Returns null for other types |
 
 &#42; RedisGraph-specific behavior: rounding method when converting a floating point to an integer is "toward negative infinity (floor)"
 
@@ -973,8 +973,8 @@ This section contains information on all supported functions from the Cypher que
 
 |Function      | Description|
 | ------------ |:-----------|
-|indegree(_node_ [, _label_...]) *   | When no labels are specified: Returns the number of _node_'s incoming edges <br> When one or more labels are specified: Returns the number of _node's_ incoming edges with one of the given labels <br> Return null if _node_ is null |
-|outdegree(_node_ [, _labels_...]) * | When no labels are specified: Returns the number of _node_'s outgoing edges <br> When one or more labels are specified: Returns the number of _node's_ outgoing edges with one of the given labels <br> Return null if _node_ is null |
+|indegree(_node_ [, _label_...]) *   | When no labels are specified: Returns the number of _node_'s incoming edges <br> When one or more labels are specified: Returns the number of _node's_ incoming edges with one of the given labels <br> Return null when _node_ is evaluates to null |
+|outdegree(_node_ [, _labels_...]) * | When no labels are specified: Returns the number of _node_'s outgoing edges <br> When one or more labels are specified: Returns the number of _node's_ outgoing edges with one of the given labels <br> Return null when _node_ is evaluates to null |
 
 &#42; RedisGraph-specific extensions to Cypher
 
@@ -982,10 +982,10 @@ This section contains information on all supported functions from the Cypher que
 
 | Function                             | Description|
 | ------------------------------------ | :----------|
-| nodes(_path_)                        | Returns a list containing all the nodes in _path_ <br> Returns null if _path_ if null         |
-| relationships(_path_)                | Returns a list containing all the relationships in _path_ <br> Returns null if _path_ if null |
-| length(_path_)                       | Return the length (number of edges) of _path_ <br> Returns null if _path_ if null             |
-| [shortestPath(...)](#shortestPath) * | Return the shortest path that resolves the given pattern                                      |
+| nodes(_path_)                        | Returns a list containing all the nodes in _path_ <br> Returns null if _path_ evaluates to null         |
+| relationships(_path_)                | Returns a list containing all the relationships in _path_ <br> Returns null if _path_ evaluates to null |
+| length(_path_)                       | Return the length (number of edges) of _path_ <br> Returns null if _path_ evaluates to null             |
+| [shortestPath(...)](#shortestPath) * | Return the shortest path that resolves the given pattern                                                |
 
 &#42; RedisGraph-specific extensions to Cypher
 
