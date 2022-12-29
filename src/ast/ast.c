@@ -642,9 +642,7 @@ void AST_Free
 
 	// free and nullify parameters parse result if needed
 	// after execution, as they are only save for the execution lifetime
-	if(ast->params_parse_result) {
-		parse_result_free(ast->params_parse_result);
-	}
+	parse_result_free(ast->params_parse_result);
 
 	// check if the ast has additional copies
 	if(ref_count == 0) {
@@ -751,5 +749,7 @@ void parse_result_free
 (
 	cypher_parse_result_t *parse_result
 ) {
-	if(parse_result) cypher_parse_result_free(parse_result);
+	if(parse_result != NULL) {
+		cypher_parse_result_free(parse_result);
+	}
 }
