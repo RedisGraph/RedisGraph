@@ -63,8 +63,6 @@
         return return_on_error; \
     }
 
-
-
 // Replies with either a map or array, depending on the compact mode flag.
 int _reply_map
 (
