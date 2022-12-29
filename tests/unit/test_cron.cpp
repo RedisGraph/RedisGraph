@@ -14,6 +14,7 @@ extern "C"
 #include <time.h>
 #include "../../src/util/cron.h"
 #include "../../src/util/rmalloc.h"
+#include "../../src/util/simple_timer.h"
 
 #ifdef __cplusplus
 }
@@ -21,13 +22,14 @@ extern "C"
 
 int X = 1;
 
-static int mssleep(uint ms) {
-	struct timespec req;
+static void mssleep(uint ms) {
+	double tic [2];
+	double t = 0;
 
-	req.tv_sec = ms / 1000;
-	req.tv_nsec = (ms % 1000) * 1000000;
-
-	return nanosleep(&req, NULL);
+	simple_tic (tic);
+	while (t * 1000 < ms) {
+		t = simple_toc (tic);
+	}
 }
 
 class CRONTest: public ::testing::Test {
@@ -122,7 +124,7 @@ TEST_F(CRONTest, LateAbort) {
 
 	mssleep(100); // sleep for 100 ms
 
-	// task should have been executed, expecting X = 1
+	// task should have been executed, expecting X = 3
 	ASSERT_EQ(X, 3);
 
 	// abort task, should note hang/crash
