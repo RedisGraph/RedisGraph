@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -122,10 +122,7 @@ Feature: TypeConversion2 - To Integer
       | 42   |
     And no side effects
 
-  @skip
-  @leak
-  @NegativeTest
-  Scenario Outline: [8] `toInteger()` failing on invalid arguments
+  Scenario Outline: [8] Fail `toInteger()` on invalid types #Example: <exampleName>
     Given an empty graph
     And having executed:
       """
@@ -139,10 +136,9 @@ Feature: TypeConversion2 - To Integer
     Then a TypeError should be raised at runtime: InvalidArgumentValue
 
     Examples:
-      | invalid |
-      | true    |
-      | []      |
-      | {}      |
-      | n       |
-      | r       |
-      | p       |
+      | invalid | exampleName  |
+      | []      | list         |
+      | {}      | map          |
+      | n       | node         |
+      | r       | relationship |
+      | p       | path         |
