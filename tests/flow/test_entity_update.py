@@ -145,10 +145,10 @@ class testEntityUpdate(FlowTestsBase):
             self.env.assertContains("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions", str(e))
 
         queries = [
-            "MERGE (n:N) ON CREATE SET n.a.b=3 RETURN n",
-            "MERGE (n:N) ON CREATE SET n = {v: 1}, n.a.b=3 RETURN n",
-            "MERGE (n:N) ON MATCH SET n.a.b=3 RETURN n",
-            "MERGE (n:N) ON MATCH SET n = {v: 1}, n.a.b=3 RETURN n"
+            "MERGE (n:N) ON CREATE SET n.a.b = 3 RETURN n",
+            "MERGE (n:N) ON CREATE SET n = {v: 1}, n.a.b = 3 RETURN n",
+            "MERGE (n:N) ON MATCH SET n.a.b = 3 RETURN n",
+            "MERGE (n:N) ON MATCH SET n = {v: 1}, n.a.b = 3 RETURN n"
         ]
         for query in queries:
             try:
