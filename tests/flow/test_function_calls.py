@@ -681,17 +681,18 @@ class testFunctionCallsFlow(FlowTestsBase):
     
     def test23_toInteger(self):
         # expect calling toInteger to succeed
-        queries = [
-            """RETURN toInteger(1)""",
-            """RETURN toInteger(1.1)""",
-            """RETURN toInteger(1.9)""",
-            """RETURN toInteger('1')""",
-            """RETURN toInteger('1.1')""",
-            """RETURN toInteger('1.9')"""
-        ]
-        for query in queries:
-            actual_result = graph.query(query)
-            self.env.assertEquals(actual_result.result_set[0][0], 1)
+        query_to_expected_result = {
+            """RETURN toInteger(1)""": [[1]],
+            """RETURN toInteger(1.1)""": [[1]],
+            """RETURN toInteger(1.9)""": [[1]],
+            """RETURN toInteger('1')""": [[1]],
+            """RETURN toInteger('1.1')""": [[1]],
+            """RETURN toInteger('1.9')""": [[1]],
+            """RETURN toInteger(true)""": [[1]],
+            """RETURN toInteger(false)""": [[0]],
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
 
         # expect calling toInteger to return NULL
         queries = [
@@ -990,10 +991,10 @@ class testFunctionCallsFlow(FlowTestsBase):
         # boolean
         query = """RETURN toIntegerOrNull(true)"""
         actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], None)
+        self.env.assertEquals(actual_result.result_set[0][0], 1)
         query = """RETURN toIntegerOrNull(false)"""
         actual_result =graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], None)
+        self.env.assertEquals(actual_result.result_set[0][0], 0)
 
         # list
         query = """RETURN toIntegerOrNull([1])"""
