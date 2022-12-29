@@ -1,5 +1,3 @@
-import string
-import random
 import asyncio
 from common import *
 
@@ -255,32 +253,36 @@ class testCache():
         # we want to make sure the execution of a recently evicted query
         # runs to completion successfuly
 
+        # stop previous env
+        self.env.stop()
+
+        self.env = Env(decodeResponses=True, moduleArgs='THREAD_COUNT 8 CACHE_SIZE 1')
+
         # skip if 'to_thread' is missing or if test under valgrind
         if self.env.envRunner.debugger is not None or "to_thread" not in dir(asyncio):
-            env.skip()
+            self.env.skip()
 
         # eviction
-        env = Env(decodeResponses=True, moduleArgs='THREAD_COUNT 8 CACHE_SIZE 1')
-        con = env.getConnection()
+        con = self.env.getConnection()
         graph = Graph(con, 'cache_eviction')
 
         # populate graph
-        graph.query("UNWIND range(0, 1000) as x CREATE ({v:x})")
+        graph.query("UNWIND range(0, 10000) as x CREATE ({v:x})")
 
         # _run_query is expected to be issued by multiple threads
-        def _run_query():
+        def _run_query(i):
             #random param name
-            k = ''.join(random.choice(string.ascii_lowercase) for i in range(0,5))
-            q = f"MATCH (n) WHERE n.v >= ${k} RETURN count(n)"
+            k = 'p_' + str(i)
+            q = f"MATCH (n) WHERE n.v >= ${k} OR n.v = ${k} RETURN count(n)"
             params = {k : 100}
-            g = Graph(env.getConnection(), 'cache_eviction')
+            g = Graph(self.env.getConnection(), 'cache_eviction')
             count = g.query(q, params).result_set[0][0]
-            env.assertEqual(count, 901)
+            self.env.assertEqual(count, 9901)
 
         tasks = []
         loop = asyncio.get_event_loop()
         for i in range(1, 50):
-            tasks.append(loop.create_task(asyncio.to_thread(_run_query)))
+            tasks.append(loop.create_task(asyncio.to_thread(_run_query, i)))
 
         loop.run_until_complete(asyncio.wait(tasks))
 

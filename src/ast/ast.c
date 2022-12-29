@@ -640,8 +640,8 @@ void AST_Free
 
 	int ref_count = AST_DecRefCount(ast);
 
-	// free and nullify parameters parse result if needed
-	// after execution, as they are only save for the execution lifetime
+	// free parameters parse result after execution
+	// as they are only save for the execution lifetime
 	parse_result_free(ast->params_parse_result);
 
 	// check if the ast has additional copies
