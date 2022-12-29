@@ -86,8 +86,8 @@ static bool _is_query_for_statistics_counting(const GraphQueryCtx *gq_ctx) {
 	ASSERT(gq_ctx->command_ctx);
 
 	const GRAPH_Commands command = CommandFromString(gq_ctx->command_ctx->command_name);
-	return !gq_ctx->profile && (command == CMD_QUERY || command == CMD_RO_QUERY
-	|| command == CMD_EXPLAIN || command == CMD_PROFILE);
+	return command == CMD_QUERY || command == CMD_RO_QUERY
+	|| command == CMD_EXPLAIN || command == CMD_PROFILE;
 }
 
 static bool _is_query_for_tracking_info(const GraphQueryCtx *gq_ctx) {
@@ -366,11 +366,10 @@ static void _ExecuteQuery(void *args) {
 	ExecutionPlan   *plan         =  exec_ctx->plan;
 	ExecutionType   exec_type     =  exec_ctx->exec_type;
 
-	const bool is_write_query = command_ctx->thread == EXEC_THREAD_WRITER;
-	QueryStatisticsFlag statistics_flag = is_write_query ? QueryStatisticsFlag_WRITE : QueryStatisticsFlag_READONLY;
+	QueryStatisticsFlag statistics_flag = readonly ? QueryStatisticsFlag_READONLY : QueryStatisticsFlag_WRITE;
 	// if we have migrated to a writer thread,
 	// update thread-local storage and track the CommandCtx
-	if (is_write_query) {
+	if (command_ctx->thread == EXEC_THREAD_WRITER) {
 		QueryCtx_SetTLS(query_ctx);
 		CommandCtx_TrackCtx(command_ctx);
 	}
@@ -385,7 +384,9 @@ static void _ExecuteQuery(void *args) {
 			? FORMATTER_COMPACT
 			: FORMATTER_VERBOSE;
 	ResultSet *result_set = NewResultSet(rm_ctx, resultset_format);
-	if(exec_ctx->cached) ResultSet_CachedExecution(result_set); // indicate a cached execution
+	if(exec_ctx->cached) {
+		ResultSet_CachedExecution(result_set); // indicate a cached execution
+	}
 
 	QueryCtx_SetResultSet(result_set);
 
@@ -418,7 +419,9 @@ static void _ExecuteQuery(void *args) {
 			}
 
 			if(!ErrorCtx_EncounteredError()) {
+				_report_query_started_reporting(gq_ctx);
 				ExecutionPlan_Print(plan, rm_ctx);
+				_report_query_finished_reporting(gq_ctx);
 			}
 		}
 		else {

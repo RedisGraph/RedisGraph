@@ -89,7 +89,7 @@ class testQueryTimeout():
                 # multi index scans
                 "MATCH (a:Person), (b:Person), (c:Person) WHERE a.age > 40 AND b.height < 150 AND c.weight = 50 RETURN a,b,c"
                 ]
-        
+
         timeouts = []
 
         # run each query with timeout and limit
@@ -103,7 +103,7 @@ class testQueryTimeout():
                 print(q)
                 print(res.run_time_ms)
                 self.env.assertTrue(False)
-        
+
         for i, q in enumerate(queries):
             try:
                 # query is expected to timeout
@@ -202,7 +202,7 @@ class testQueryTimeout():
 
             # disable timeout_default, timeout_max should be enforced
             redis_con.execute_command("GRAPH.CONFIG", "SET", "TIMEOUT_DEFAULT", 0)
-        
+
         # revert timeout_default to 10
         redis_con.execute_command("GRAPH.CONFIG", "SET", "TIMEOUT_DEFAULT", 10)
 
@@ -275,7 +275,7 @@ class testQueryTimeout():
             self.env.assertTrue(False)
         except redis.exceptions.ResponseError as e:
             self.env.assertTrue(True)
-        
+
         # make sure no pending result exists
         res = redis_graph.query("RETURN 1")
         self.env.assertEquals(res.result_set[0][0], 1)
