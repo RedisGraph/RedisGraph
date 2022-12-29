@@ -20,7 +20,7 @@ extern "C"
 }
 #endif
 
-int X = 1;
+volatile int X = 1;
 
 static void mssleep(uint ms) {
 	double tic [2];
