@@ -184,7 +184,7 @@ static AST_Validation _ValidateMultiHopTraversal
 }
 
 // Verify that MERGE doesn't redeclare bound relations, that one reltype is specified for unbound relations, 
-// and that there is not variable length relationship
+// and that the entity is not a variable length pattern
 static AST_Validation _ValidateMergeRelation
 (
 	const cypher_astnode_t *entity,  // ast-node (rel-pattern)
