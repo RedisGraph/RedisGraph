@@ -6,19 +6,53 @@ from pathos.helpers import mp as pathos_multiprocess
 
 from common import *
 import time
+from enum import Enum
 
 GRAPH_ID = "GRAPH_INFO_TEST"
+
+# Commands
 INFO_QUERIES_CURRENT_COMMAND = 'GRAPH.INFO QUERIES CURRENT'
 INFO_QUERIES_PREV_COMMAND = 'GRAPH.INFO QUERIES PREV 100 --compact'
 INFO_QUERIES_CURRENT_PREV_COMMAND = 'GRAPH.INFO QUERIES CURRENT PREV 100'
 INFO_GET_COMMAND_TEMPLATE = 'GRAPH.INFO GET %s'
 INFO_RESET_ALL_COMMAND = 'GRAPH.INFO RESET *'
 
+# Error messages
+COULDNOT_FIND_GRAPH_ERROR_MESSAGE = "Couldn't find the specified graph"
+TIMEOUT_ERROR_MESSAGE = "Query timed out"
+
 # Keys
 CURRENT_MAXIMUM_WAIT_DURATION_KEY_NAME = 'Current maximum query wait duration'
 GLOBAL_INFO_KEY_NAME = 'Global info'
 QUERY_STAGE_EXECUTING = 1
 QUERY_STAGE_FINISHED = 3
+
+# Other
+LONG_CALCULATION_QUERY = """UNWIND (range(0, 10000000)) AS x WITH x AS x WHERE (x / 90000) = 1 RETURN x"""
+
+
+class ReadOnlyQueryKind(Enum):
+    RO_QUERY = 0
+    QUERY = 1
+    EXPLAIN = 2
+    PROFILE = 3
+
+ALL_READONLY_KINDS = [
+    ReadOnlyQueryKind.RO_QUERY,
+    ReadOnlyQueryKind.QUERY,
+    ReadOnlyQueryKind.EXPLAIN,
+    ReadOnlyQueryKind.PROFILE
+]
+
+
+class WriteQueryKind(Enum):
+    QUERY = 0
+    PROFILE = 1
+
+ALL_WRITE_KINDS = [
+    WriteQueryKind.QUERY,
+    WriteQueryKind.PROFILE
+]
 
 
 def thread_execute_command(cmd_and_args, _args):
@@ -71,9 +105,10 @@ def get_unix_timestamp_milliseconds():
 
     return (int)(time.time_ns() / 1000000)
 
-class testGraphInfoFlow(FlowTestsBase):
-    def __init__(self):
-        self.env = Env(decodeResponses=True)
+
+class _testGraphInfoFlowBase(FlowTestsBase):
+    def __init__(self, env):
+        self.env = env
         # skip test if we're running under Valgrind
         if self.env.envRunner.debugger is not None:
             self.env.skip() # valgrind is not working correctly with multi processing
@@ -155,6 +190,76 @@ class testGraphInfoFlow(FlowTestsBase):
             if waited_time >= timeout:
                 return None
 
+    def _assert_info_get_result(self, result,
+        nodes=0, relationships=0,
+        node_labels=0, relationship_types=0,
+        node_indices=0, relationship_indices=0,
+        node_property_names=0, edge_property_names=0):
+        info = list_to_dict(result)
+        self.env.assertEqual(info['Number of nodes'], nodes)
+        self.env.assertEqual(info['Number of relationships'], relationships)
+        self.env.assertEqual(info['Number of node labels'], node_labels)
+        self.env.assertEqual(info['Number of relationship types'], relationship_types)
+        self.env.assertEqual(info['Number of node indices'], node_indices)
+        self.env.assertEqual(info['Number of relationship indices'], relationship_indices)
+        self.env.assertEqual(info['Total number of node property names'], node_property_names)
+        self.env.assertEqual(info['Total number of edge property names'], edge_property_names)
+
+    def _assert_info_get_counts(self, result,
+    total_query_count=0, successful_readonly=0, successful_write=0,
+    failed_readonly=0, failed_write=0, timedout_readonly=0, timedout_write=0):
+        info = list_to_dict(result)
+        self.env.assertEqual(info['Total number of queries'], total_query_count)
+        self.env.assertEqual(info['Successful read-only queries'], successful_readonly)
+        self.env.assertEqual(info['Successful write queries'], successful_write)
+        self.env.assertEqual(info['Failed read-only queries'], failed_readonly)
+        self.env.assertEqual(info['Failed write queries'], failed_write)
+        self.env.assertEqual(info['Timed out read-only queries'], timedout_readonly)
+        self.env.assertEqual(info['Timed out write queries'], timedout_write)
+
+    # Runs a read-only query. A read-only query isn't just based on whether
+    # it is run via GRAPH.RO_QUERY but it can also be an ordinary GRAPH.QUERY
+    # that just doens't change anything. In the code we analyse the AST of the
+    # received query and so determine whether it is a write or read-only query.
+    #
+    # That said, we should check that both of the cases lead to the same result.
+    #
+    # This uses the execute_command instead of graph methods as the graph
+    # methods silently perform other queries which break the statistics.
+    def _run_readonly_query(self, kind: ReadOnlyQueryKind, timeout: int=0):
+        query = 'MATCH (pppp) RETURN pppp'
+        if timeout > 0:
+            query = LONG_CALCULATION_QUERY
+
+        if kind == ReadOnlyQueryKind.RO_QUERY:
+            return self.conn.execute_command('GRAPH.RO_QUERY', GRAPH_ID, query, 'TIMEOUT', timeout)
+        elif kind == ReadOnlyQueryKind.QUERY:
+            return self.conn.execute_command('GRAPH.QUERY', GRAPH_ID, query, 'TIMEOUT', timeout)
+        elif kind == ReadOnlyQueryKind.EXPLAIN:
+            graph = Graph(self.conn, GRAPH_ID)
+            return graph.explain('CREATE (p:Person) RETURN p')
+        elif kind == ReadOnlyQueryKind.PROFILE:
+            return self.conn.execute_command('GRAPH.PROFILE', GRAPH_ID, query, 'TIMEOUT', timeout)
+        else:
+            assert(False)
+
+    def _run_write_query(self, kind: WriteQueryKind, timeout: int=0):
+        query = 'CREATE (m:Miracle) RETURN m'
+        if timeout > 0:
+            query = 'UNWIND (range(0, 1000000)) AS x WITH x CREATE(b:Book { id: x })'
+
+        if kind == WriteQueryKind.QUERY:
+            return self.conn.execute_command('GRAPH.QUERY', GRAPH_ID, query, 'TIMEOUT', timeout)
+        elif kind == WriteQueryKind.PROFILE:
+            return self.conn.execute_command('GRAPH.PROFILE', GRAPH_ID, query, 'TIMEOUT', timeout)
+        else:
+            assert(False)
+
+
+class testGraphInfoFlow(_testGraphInfoFlowBase):
+    def __init__(self):
+        _testGraphInfoFlowBase.__init__(self, Env(decodeResponses=True))
+
     def test01_empty_graph_info(self):
         info = self.conn.execute_command(INFO_QUERIES_CURRENT_COMMAND)
         self._assert_one_executing_query(info, None)
@@ -213,7 +318,7 @@ class testGraphInfoFlow(FlowTestsBase):
         self.env.assertEqual(info['Total number of node property names'], node_property_names)
         self.env.assertEqual(info['Total number of edge property names'], edge_property_names)
 
-    def test03_graph_info_get_current_graph(self):
+    def test04_graph_info_get_current_graph(self):
         info = self.conn.execute_command(INFO_GET_COMMAND_TEMPLATE % GRAPH_ID)
         self._assert_info_get_result(info, nodes=1, node_labels=1)
         query = """MATCH (p:person) CREATE (p2:person { Name: 'Victor', Country: 'The Netherlands' })-[e:knows { Since_Year: '1970'}]->(p)"""
@@ -226,7 +331,7 @@ class testGraphInfoFlow(FlowTestsBase):
         info = self.conn.execute_command(INFO_GET_COMMAND_TEMPLATE % GRAPH_ID)
         self._assert_info_get_result(info, nodes=2, node_labels=1, relationships=1, relationship_types=1, node_property_names=2, edge_property_names=1)
 
-    def test04_graph_info_queries_prev(self):
+    def test05_graph_info_queries_prev(self):
         query = """CYPHER end=100 RETURN reduce(sum = 0, n IN range(1, $end) | sum ^ n)"""
         graph = Graph(self.conn, GRAPH_ID)
         query_issue_timestamp_ms = get_unix_timestamp_milliseconds()
@@ -241,7 +346,7 @@ class testGraphInfoFlow(FlowTestsBase):
         self.env.assertEqual(last_query[2], GRAPH_ID, depth=1)
         self.env.assertEqual(last_query[3], query, depth=1)
 
-    def test05_graph_info_queries_prev_and_current(self):
+    def test06_graph_info_queries_prev_and_current(self):
         prev_query_string = """CYPHER end=100 RETURN reduce(sum = 0, n IN range(1, $end) | sum ^ n)"""
         graph = Graph(self.conn, GRAPH_ID)
 
@@ -283,29 +388,120 @@ class testGraphInfoFlow(FlowTestsBase):
         self.env.assertEqual(prev_query['Graph name'], GRAPH_ID, depth=1)
         self.env.assertEqual(prev_query['Query'], prev_query_string, depth=1)
 
-    def test06_info_get_specific(self):
-        # query = INFO_RESET_ALL_COMMAND
-        # graph = Graph(self.conn, GRAPH_ID)
-        # results = graph.query(prev_query_string)
-        # self.env.assertEquals(results.result_set[0][0], 0, depth=1)
-        # 1. Reset, check that everything is zero.
-        # 2. Perform a GRAPH.ROQUERY and check that the
-        # number is 1 after.
-        # 3. Perform a GRAPH.QUERY which is read-only in AST
-        # and check that the number is 2 after.
-        # 4. Perform a modifying query or creating something
-        # and check that the number is 1 after.
-        # 5. Make a readonly query fail.
-        # 5. Make a write query fail.
-        # 5. Make a readonly query timeout.
-        # 5. Make a write query timeout.
-        # 6. Check that graph.explain and graph.profile
-        # also works.
-        # 7. Check the graph.info reset once more.
-        pass
+    def test07_info_reset_specific(self):
+        # Reset a non-existing graph should return an error.
+        try:
+            query = 'GRAPH.INFO RESET 124878fd'
+            results = self.conn.execute_command(query)
+            # This should be unreachable.
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertEquals(str(e), COULDNOT_FIND_GRAPH_ERROR_MESSAGE, depth=1)
+
+        # Reset an existing (current) graph should return a boolean true.
+        query = 'GRAPH.INFO RESET %s' % GRAPH_ID
+        results = self.conn.execute_command(query)
+        self.env.assertEquals(results, 1, depth=1)
+
+# This test is separate as it needs a separate and a non-concurrent context.
+class testGraphInfoGetFlow(_testGraphInfoFlowBase):
+    def __init__(self):
+        _testGraphInfoFlowBase.__init__(self, Env(decodeResponses=True, moduleArgs='TIMEOUT_MAX 1000'))
+
+    def test01_info_get_specific(self):
+        query = 'GRAPH.INFO RESET %s' % GRAPH_ID
+        results = self.conn.execute_command(query)
+        self.env.assertEquals(results, 1, depth=1)
+
+        query = 'GRAPH.INFO GET %s' % GRAPH_ID
+        results = self.conn.execute_command(query)
+        self._assert_info_get_result(results, nodes=1, node_labels=1)
+
+        get_counts_query = 'GRAPH.INFO GET %s COUNTS' % GRAPH_ID
+        results = self.conn.execute_command(get_counts_query)
+        self._assert_info_get_result(results, nodes=1, node_labels=1)
+        self._assert_info_get_counts(results)
+
+        # Test all the successful read-only queries:
+        successful_readonly_count = 0
+        total_query_count = 0
+        for kind in ALL_READONLY_KINDS:
+            self._run_readonly_query(kind)
+            results = self.conn.execute_command(get_counts_query)
+            successful_readonly_count += 1
+            total_query_count += 1
+            self._assert_info_get_result(results, nodes=1, node_labels=1)
+            self._assert_info_get_counts(results, total_query_count=total_query_count, successful_readonly=successful_readonly_count)
+
+        # Test all successful write queries.
+        successful_write_count = 0
+        nodes = 1
+        for kind in ALL_WRITE_KINDS:
+            self._run_write_query(kind)
+            results = self.conn.execute_command(get_counts_query)
+            successful_write_count += 1
+            total_query_count += 1
+            nodes += 1
+            self._assert_info_get_result(results, nodes=nodes, node_labels=2)
+            self._assert_info_get_counts(results, total_query_count=total_query_count, successful_readonly=successful_readonly_count, successful_write=successful_write_count)
+
+        # Test all read queries for time out counting.
+        timed_out_readonly_queries = 0
+        for kind in [ReadOnlyQueryKind.RO_QUERY, ReadOnlyQueryKind.QUERY, ReadOnlyQueryKind.PROFILE]:
+            try:
+                self._run_readonly_query(kind, 1)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertEquals(str(e), TIMEOUT_ERROR_MESSAGE, depth=1)
+
+            results = self.conn.execute_command(get_counts_query)
+            timed_out_readonly_queries += 1
+            total_query_count += 1
+            self._assert_info_get_result(results, nodes=nodes, node_labels=2)
+            self._assert_info_get_counts(
+                results,
+                total_query_count=total_query_count,
+                successful_readonly=successful_readonly_count,
+                successful_write=successful_write_count,
+                timedout_readonly=timed_out_readonly_queries)
+
+        # Test all write queries for time out counting.
+        timed_out_write_queries = 0
+        for kind in ALL_WRITE_KINDS:
+            try:
+                result = self._run_write_query(kind, 1)
+                print('Result: %s' % result)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertEquals(str(e), TIMEOUT_ERROR_MESSAGE, depth=1)
+
+            results = self.conn.execute_command(get_counts_query)
+            timed_out_write_queries += 1
+            total_query_count += 1
+            nodes += 1
+            self._assert_info_get_counts(
+                results,
+                total_query_count=total_query_count,
+                successful_readonly=successful_readonly_count,
+                successful_write=successful_write_count,
+                timedout_readonly=timed_out_readonly_queries,
+                timedout_write=timed_out_write_queries)
+
+        # TODO add more scenarios:
+        #
+        # 1. Test readonly queries fail.
+        # 2. Test write queries fail.
+
+        query = 'GRAPH.INFO RESET %s' % GRAPH_ID
+        results = self.conn.execute_command(query)
+        self.env.assertEquals(results, 1, depth=1)
+        results = self.conn.execute_command(get_counts_query)
+        self._assert_info_get_counts(results)
+
 
 
     # TODO
-    # 1) Reset some graphs, not all, check the output.
-    # 2) GRAPH.INFO GET * tests.
-    # 3) Test more fields of the output.
+    # 1) GRAPH.INFO GET * tests.
+    # 2) GRAPH.INFO CONFIG
+    # 3) GRAPH.INFO INDEXES
+    # 4) GRAPH.INFO CONSTRAINTS
