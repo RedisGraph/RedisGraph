@@ -187,7 +187,7 @@ static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	ExecutionPlan_UpdateRoot(plan, op);
 }
 
-void ExecutionPlanSegment_ConvertClause
+void ExecutionPlanSegment_Convert
 (
 	GraphContext *gc,
 	AST *ast,
