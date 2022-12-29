@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,6 @@
 
 Feature: Delete3 - Deleting named paths
 
-  @skip
   Scenario: [1] Detach deleting paths
     Given an empty graph
     And having executed:
@@ -49,7 +48,6 @@ Feature: Delete3 - Deleting named paths
     And the side effects should be:
       | -nodes         | 4 |
       | -relationships | 3 |
-      | -labels        | 1 |
 
   Scenario: [2] Delete on null path
     Given an empty graph

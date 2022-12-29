@@ -42,7 +42,6 @@ Feature: TypeConversion2 - To Integer
       | 82                |
     And no side effects
 
-  @skip
   Scenario: [2] `toInteger()` returning null on non-numerical string
     Given any graph
     When executing query:

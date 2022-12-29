@@ -497,7 +497,7 @@ SIValue SIValue_Subtract(const SIValue a, const SIValue b) {
 
 SIValue SIValue_Multiply(const SIValue a, const SIValue b) {
 	/* Only construct an integer return if both operands are integers. */
-	if(a.type & b.type & T_INT64) {
+	if(SI_TYPE(a) & SI_TYPE(b) & T_INT64) {
 		return SI_LongVal(a.longval * b.longval);
 	}
 	/* Return a double representation. */
@@ -505,7 +505,9 @@ SIValue SIValue_Multiply(const SIValue a, const SIValue b) {
 }
 
 SIValue SIValue_Divide(const SIValue a, const SIValue b) {
-	/* Always perform floating-point division. */
+	if(SI_TYPE(a) & SI_TYPE(b) & T_INT64) {
+		return SI_LongVal(SI_GET_NUMERIC(a) / SI_GET_NUMERIC(b));
+	}
 	return SI_DoubleVal(SI_GET_NUMERIC(a) / (double)SI_GET_NUMERIC(b));
 }
 

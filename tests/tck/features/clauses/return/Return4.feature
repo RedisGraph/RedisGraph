@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -160,7 +160,6 @@ Feature: Return4 - Column renaming
       | 11         |
     And no side effects
 
-  @skip
   Scenario: [9] Handle subexpression in aggregation also occurring as standalone expression with nested aggregation in a literal map
     Given an empty graph
     And having executed:
@@ -179,8 +178,6 @@ Feature: Return4 - Column renaming
       | 42  | 42  | {name: 1} |
     And no side effects
 
-  @NegativeTest
-  @skip
   Scenario: [10] Fail when returning multiple columns with same name
     Given any graph
     When executing query:

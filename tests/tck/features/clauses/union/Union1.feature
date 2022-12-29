@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -98,7 +98,6 @@ Feature: Union1 - Union
       | (:B) |
     And no side effects
 
-  @NegativeTest
   Scenario: [5] Failing when UNION has different columns
     Given any graph
     When executing query:

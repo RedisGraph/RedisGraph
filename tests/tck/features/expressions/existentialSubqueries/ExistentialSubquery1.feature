@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,87 +28,87 @@
 
 #encoding: utf-8
 
-Feature: Graph10 - Retrieve all properties as a property map
+Feature: ExistentialSubquery1 - Simple existential subquery
 
-  Scenario: [1] `properties()` on a node
+  @skip
+  Scenario: [1] Simple subquery without WHERE clause
     Given an empty graph
     And having executed:
       """
-      CREATE (n:Person {name: 'Popeye', level: 9001})
+      CREATE (a:A {prop: 1})-[:R]->(b:B {prop: 1}), 
+             (a)-[:R]->(:C {prop: 2}), 
+             (a)-[:R]->(:D {prop: 3})
       """
     When executing query:
       """
-      MATCH (p:Person)
-      RETURN properties(p) AS m
+      MATCH (n) WHERE exists {
+        (n)-->()
+      }
+      RETURN n
       """
     Then the result should be, in any order:
-      | m                             |
-      | {name: 'Popeye', level: 9001} |
+      | n             |
+      | (:A {prop:1}) |
     And no side effects
 
-  Scenario: [2] `properties()` on a relationship
+  @skip
+  Scenario: [2] Simple subquery with WHERE clause
     Given an empty graph
     And having executed:
       """
-      CREATE (n)-[:R {name: 'Popeye', level: 9001}]->(n)
+      CREATE (a:A {prop: 1})-[:R]->(b:B {prop: 1}), 
+             (a)-[:R]->(:C {prop: 2}), 
+             (a)-[:R]->(:D {prop: 3}), 
+             (b)-[:R]->(d)
       """
     When executing query:
       """
-      MATCH ()-[r:R]->()
-      RETURN properties(r) AS m
+      MATCH (n) WHERE exists {
+        (n)-->(m) WHERE n.prop = m.prop
+      }
+      RETURN n
       """
     Then the result should be, in any order:
-      | m                             |
-      | {name: 'Popeye', level: 9001} |
+      | n             |
+      | (:A {prop:1}) |
     And no side effects
 
-  Scenario: [3] `properties()` on null
-    Given any graph
+  @skip
+  Scenario: [3] Simple subquery without WHERE clause, not existing pattern
+    Given an empty graph
+    And having executed:
+      """
+      CREATE (a:A {prop: 1})-[:R]->(b:B {prop: 1}), 
+             (a)-[:R]->(:C {prop: 2}), 
+             (a)-[:R]->(:D {prop: 3})
+      """
     When executing query:
       """
-      OPTIONAL MATCH (n:DoesNotExist)
-      OPTIONAL MATCH (n)-[r:NOT_THERE]->()
-      RETURN properties(n), properties(r), properties(null)
+      MATCH (n) WHERE exists {
+        (n)-[:NA]->()
+      }
+      RETURN n
       """
     Then the result should be, in any order:
-      | properties(n) | properties(r) | properties(null) |
-      | null          | null          | null             |
+      | n |
     And no side effects
 
-  Scenario: [4] `properties()` on a map
-    Given any graph
+  @skip
+  Scenario: [4] Simple subquery with WHERE clause, not existing pattern
+    Given an empty graph
+    And having executed:
+      """
+      CREATE (a:A {prop: 1})-[:R]->(b:B {prop: 1}), 
+             (a)-[:R]->(:C {prop: 2}), 
+             (a)-[:R]->(:D {prop: 3})
+      """
     When executing query:
       """
-      RETURN properties({name: 'Popeye', level: 9001}) AS m
+      MATCH (n) WHERE exists {
+        (n)-[r]->() WHERE type(r) = 'NA'
+      }
+      RETURN n
       """
     Then the result should be, in any order:
-      | m                             |
-      | {name: 'Popeye', level: 9001} |
+      | n |
     And no side effects
-
-  @NegativeTest
-  Scenario: [5] `properties()` failing on an integer literal
-    Given any graph
-    When executing query:
-      """
-      RETURN properties(1)
-      """
-    Then a SyntaxError should be raised at compile time: InvalidArgumentType
-
-  @NegativeTest
-  Scenario: [6] `properties()` failing on a string literal
-    Given any graph
-    When executing query:
-      """
-      RETURN properties('Cypher')
-      """
-    Then a SyntaxError should be raised at compile time: InvalidArgumentType
-
-  @NegativeTest
-  Scenario: [7] `properties()` failing on a list of booleans
-    Given any graph
-    When executing query:
-      """
-      RETURN properties([true, false])
-      """
-    Then a SyntaxError should be raised at compile time: InvalidArgumentType
