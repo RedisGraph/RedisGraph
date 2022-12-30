@@ -642,3 +642,18 @@ class testQueryValidationFlow(FlowTestsBase):
                 assert(False)
             except redis.exceptions.ResponseError as e:
                 self.env.assertContains("Unknown function", str(e))
+    
+    # Variable length edges are not allowed in CREATE or MERGE clauses.
+    def test43_invalid_variable_length_edge_use(self):
+        queries = [
+            """CREATE (a:A)-[e:E1*]->(b:B)""",
+            """CREATE (a:A)-[e1:E1]->(b:B)-[e2:E2*]->(c:C)""",
+            """MERGE (a:A)-[e:E1*]->(b:B)""",
+            """MERGE (a:A)-[e1:E1]->(b:B)-[e2:E2*]->(c:C)""",
+        ]
+        for q in queries:
+            try:
+                redis_graph.query(q)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("Variable length relationships cannot be used in", str(e))

@@ -31,9 +31,14 @@ GrB_Info RG_Matrix_removeElement_BOOL
 	GrB_Matrix  dp          =  RG_MATRIX_DELTA_PLUS(C);
 	GrB_Matrix  dm          =  RG_MATRIX_DELTA_MINUS(C);
 
+#ifdef RG_DEBUG
 	info = GxB_Matrix_type(&type, m);
 	ASSERT(info == GrB_SUCCESS);
 	ASSERT(type == GrB_BOOL);
+
+	info = GrB_Matrix_extractElement(&dm_x, dm, i, j);
+	ASSERT(info == GrB_NO_VALUE);
+#endif
 
 	if(RG_MATRIX_MAINTAIN_TRANSPOSE(C)) {
 		info = RG_Matrix_removeElement_BOOL(C->transposed, j, i);
@@ -42,46 +47,29 @@ GrB_Info RG_Matrix_removeElement_BOOL
 		}
 	}
 
-	info = GrB_Matrix_extractElement(&m_x, m, i, j);
-	in_m = (info == GrB_SUCCESS);
-
-	info = GrB_Matrix_extractElement(&dp_x, dp, i, j);
-	in_dp = (info == GrB_SUCCESS);
-
-	info = GrB_Matrix_extractElement(&dm_x, dm, i, j);
-	in_dm = (info == GrB_SUCCESS);
-
-	// mask 'in_m' incase it is marked for deletion
-	in_m = in_m && !(in_dm);
-
-	// entry missing from both 'm' and 'dp'
-	if(!(in_m || in_dp)) {
-		return GrB_NO_VALUE;
-	}
-
-	// entry can't exists in both 'm' and 'dp'
-	ASSERT(in_m != in_dp);
-
 	//--------------------------------------------------------------------------
 	// entry exists in 'M'
 	//--------------------------------------------------------------------------
+
+	info = GrB_Matrix_extractElement(&m_x, m, i, j);
+	in_m = (info == GrB_SUCCESS);
 
 	if(in_m) {
 		// mark deletion in delta minus
 		info = GrB_Matrix_setElement(dm, true, i, j);
 		ASSERT(info == GrB_SUCCESS);
+		RG_Matrix_setDirty(C);
+		return info;
 	}
 
 	//--------------------------------------------------------------------------
 	// entry exists in 'delta-plus'
 	//--------------------------------------------------------------------------
 
-	if(in_dp) {
-		// remove entry from 'dp'
-		info = GrB_Matrix_removeElement(dp, i, j);
-		ASSERT(info == GrB_SUCCESS);
-	}
 
+	// remove entry from 'dp'
+	info = GrB_Matrix_removeElement(dp, i, j);
+	ASSERT(info == GrB_SUCCESS);
 	RG_Matrix_setDirty(C);
 	return info;
 }

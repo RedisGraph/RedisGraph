@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,7 +53,7 @@ Feature: Temporal5 - Access Components of Temporal Values
     Given an empty graph
     And having executed:
       """
-      CREATE (:Val {date: date({year: 1984, month: 01, day: 01})})
+      CREATE (:Val {date: date({year: 1984, month: 1, day: 1})})
       """
     When executing query:
       """

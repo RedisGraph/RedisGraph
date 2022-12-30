@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,7 @@
 Feature: Map2 - Dynamic Value Access
 # Dynamic value access refers to the bracket-operator – <expression resulting in a map>'['<expression resulting in a string>']' – irrespectively of whether the map key – i.e. <expression resulting in a string> – could be evaluated statically in a given scenario.
 
-  Scenario: [1] Use dynamic property lookup based on parameters when there is no type information
+  Scenario: [1] Dynamically access a field based on parameters when there is no type information
     Given any graph
     And parameters are:
       | expr | {name: 'Apa'} |
@@ -46,7 +46,7 @@ Feature: Map2 - Dynamic Value Access
       | 'Apa' |
     And no side effects
 
-  Scenario: [2] Use dynamic property lookup based on parameters when there is rhs type information
+  Scenario: [2] Dynamically access a field based on parameters when there is rhs type information
     Given any graph
     And parameters are:
       | expr | {name: 'Apa'} |
@@ -61,8 +61,53 @@ Feature: Map2 - Dynamic Value Access
       | 'Apa' |
     And no side effects
 
-  @NegativeTest
-  Scenario: [3] Fail at runtime when attempting to index with an Int into a Map
+  Scenario: [3] Dynamically access a field on null results in null
+    Given any graph
+    When executing query:
+      """
+      WITH null AS expr, 'x' AS idx
+      RETURN expr[idx] AS value
+      """
+    Then the result should be, in any order:
+      | value |
+      | null  |
+    And no side effects
+
+  Scenario: [4] Dynamically access a field with null results in null
+    Given any graph
+    When executing query:
+      """
+      WITH {name: 'Mats'} AS expr, null AS idx
+      RETURN expr[idx] AS value
+      """
+    Then the result should be, in any order:
+      | value |
+      | null  |
+    And no side effects
+
+  Scenario Outline: [5] Dynamically access a field is case-sensitive
+    Given any graph
+    When executing query:
+      """
+      WITH <map> AS map
+      RETURN map[<key>] AS result
+      """
+    Then the result should be, in any order:
+      | result   |
+      | <result> |
+    And no side effects
+
+    Examples:
+      | map                            | key    | result   |
+      | {name: 'Mats', nome: 'Pontus'} | 'name' | 'Mats'   |
+      | {name: 'Mats', Name: 'Pontus'} | 'name' | 'Mats'   |
+      | {name: 'Mats', Name: 'Pontus'} | 'Name' | 'Pontus' |
+      | {name: 'Mats', Name: 'Pontus'} | 'nAMe' | null     |
+      | {name: 'Mats', nome: 'Pontus'} | 'null' | null     |
+      | {null: 'Mats', NULL: 'Pontus'} | 'null' | 'Mats'   |
+      | {null: 'Mats', NULL: 'Pontus'} | 'NULL' | 'Pontus' |
+
+  Scenario: [6] Fail at runtime when attempting to index with an Int into a Map
     Given any graph
     And parameters are:
       | expr | {name: 'Apa'} |
@@ -74,8 +119,7 @@ Feature: Map2 - Dynamic Value Access
       """
     Then a TypeError should be raised at runtime: MapElementAccessByNonString
 
-  @NegativeTest
-  Scenario: [4] Fail at runtime when trying to index into a map with a non-string
+  Scenario: [7] Fail at runtime when trying to index into a map with a non-string
     Given any graph
     And parameters are:
       | expr | {name: 'Apa'} |
@@ -87,8 +131,7 @@ Feature: Map2 - Dynamic Value Access
       """
     Then a TypeError should be raised at runtime: MapElementAccessByNonString
 
-  @NegativeTest
-  Scenario: [5] Fail at runtime when trying to index something which is not a map
+  Scenario: [8] Fail at runtime when trying to index something which is not a map
     Given any graph
     And parameters are:
       | expr | 100 |

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -152,8 +152,7 @@ Feature: TypeConversion4 - To String
       | 'x'      |
     And no side effects
 
-  @NegativeTest
-  Scenario Outline: [10] `toString()` failing on invalid arguments
+  Scenario Outline: [10] Fail `toString()` on invalid types #Example: <exampleName>
     Given an empty graph
     And having executed:
       """
@@ -167,9 +166,9 @@ Feature: TypeConversion4 - To String
     Then a TypeError should be raised at runtime: InvalidArgumentValue
 
     Examples:
-      | invalid |
-      | []      |
-      | {}      |
-      | n       |
-      | r       |
-      | p       |
+      | invalid | exampleName  |
+      | []      | list         |
+      | {}      | map          |
+      | n       | node         |
+      | r       | relationship |
+      | p       | path         |

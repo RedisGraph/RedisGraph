@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,4 +29,38 @@
 #encoding: utf-8
 
 Feature: Conditional2 - Case Expression
+
+  Scenario Outline: [1] Simple cases over integers
+    Given an empty graph
+    When executing query:
+      """
+      RETURN CASE <value>
+          WHEN -10 THEN 'minus ten'
+          WHEN 0 THEN 'zero'
+          WHEN 1 THEN 'one'
+          WHEN 5 THEN 'five'
+          WHEN 10 THEN 'ten'
+          WHEN 3000 THEN 'three thousand'
+          ELSE 'something else'
+        END AS result
+      """
+    Then the result should be, in any order:
+      | result   |
+      | <result> |
+    And no side effects
+
+    Examples:
+      | value | result           |
+      | -10   | 'minus ten'      |
+      | 0     | 'zero'           |
+      | 1     | 'one'            |
+      | 5     | 'five'           |
+      | 10    | 'ten'            |
+      | 3000  | 'three thousand' |
+      | -30   | 'something else' |
+      | 3     | 'something else' |
+      | 3001  | 'something else' |
+      | '0'   | 'something else' |
+      | true  | 'something else' |
+      | 10.1  | 'something else' |
 

@@ -183,13 +183,20 @@ static AST_Validation _ValidateMultiHopTraversal
 	return AST_INVALID;
 }
 
-// Verify that MERGE doesn't redeclare bound relations, and that 
-// one reltype is specified for unbound relations (created).
+// Verify that MERGE doesn't redeclare bound relations, that one reltype is specified for unbound relations, 
+// and that the entity is not a variable length pattern
 static AST_Validation _ValidateMergeRelation
 (
 	const cypher_astnode_t *entity,  // ast-node (rel-pattern)
 	rax *defined_aliases             // bound variables
 ) {
+	// Verify that this is not a variable length relationship
+	const cypher_astnode_t *range = cypher_ast_rel_pattern_get_varlength(entity);
+	if(range) {
+		ErrorCtx_SetError("Variable length relationships cannot be used in MERGE");
+		return AST_INVALID;
+	}
+
 	const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(entity);
 	const char *alias = NULL;
 	if(identifier) {
@@ -722,6 +729,7 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 		return VISITOR_CONTINUE;
 	}
 
+	const cypher_astnode_t *range = cypher_ast_rel_pattern_get_varlength(n);
 	if(vctx->clause == CYPHER_AST_CREATE) {
 		// validate that the relation alias is not bound
 		if(_ValidateCreateRelation(n, vctx->defined_identifiers) == AST_INVALID) {
@@ -738,6 +746,12 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 		// Validate that each relation being created is directed
 		if(cypher_ast_rel_pattern_get_direction(n) == CYPHER_REL_BIDIRECTIONAL) {
 			ErrorCtx_SetError("Only directed relationships are supported in CREATE");
+			return VISITOR_BREAK;
+		}
+
+		// Validate that each relation being created is not variable length relationship
+		if(range) {
+			ErrorCtx_SetError("Variable length relationships cannot be used in CREATE");
 			return VISITOR_BREAK;
 		}
 	}
@@ -773,7 +787,6 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 	}
 
 	// If this is a multi-hop traversal, validate it accordingly
-	const cypher_astnode_t *range = cypher_ast_rel_pattern_get_varlength(n);
 	if(range && _ValidateMultiHopTraversal(n, range) == AST_VALID) {
 		return VISITOR_BREAK;
 	}
