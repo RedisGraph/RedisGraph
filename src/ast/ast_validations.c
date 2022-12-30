@@ -1194,7 +1194,9 @@ static VISITOR_STRATEGY _Validate_set_property
 	const cypher_astnode_t *ast_prop = cypher_ast_set_property_get_property(n);
 	const cypher_astnode_t *ast_entity = cypher_ast_property_operator_get_expression(ast_prop);
 	if(cypher_astnode_type(ast_entity) == CYPHER_AST_PROPERTY_OPERATOR) {
-		ErrorCtx_SetError("Type mismatch: expected Node or Edge but was %s", SIType_ToString(cypher_astnode_type(n)));
+		SIValue val;
+		SI_TYPE(val) = cypher_astnode_type(n);
+		Error_SITypeMismatch(val, (T_NODE | T_EDGE));
 		return VISITOR_BREAK;
 	} else if(cypher_astnode_type(ast_entity) != CYPHER_AST_IDENTIFIER) {
 		ErrorCtx_SetError("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions");
