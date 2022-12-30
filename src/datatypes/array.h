@@ -50,6 +50,14 @@ u_int32_t SIArray_Length(SIValue siarray);
 bool SIArray_ContainsType(SIValue siarray, SIType t);
 
 /**
+  * @brief  Returns true if the array contains an element equals to 'value'
+  * @param  siarray: array
+  * @param  value: value to search for
+  * @retval a boolean indicating whether value was found in siarray
+  */
+bool SIArray_ContainsValue(SIValue siarray, SIValue value);
+
+/**
   * @brief  Returns true if all of the elements in the array are of type 't'
   * @param  siarray: array
   * @param  t: type to compare

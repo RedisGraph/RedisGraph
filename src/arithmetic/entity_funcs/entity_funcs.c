@@ -155,9 +155,29 @@ static SIValue _AR_NodeDegree
 
 	if(argc > 1) {
 		// we're interested in specific relationship type(s)
-		for(int i = 1; i < argc; i++) {
-			const char *label = argv[i].stringval;
 
+		// get labels array from input arguments, but removing duplicates
+		SIValue labels = SI_EmptyArray();
+		for(int i = 1; i < argc; i++) {
+			if(SI_TYPE(argv[i]) == T_STRING) {
+				if(SIArray_ContainsValue(labels, argv[i]) == false) {
+					SIArray_Append(&labels, argv[i]);
+				}
+			} 
+			else if (SI_TYPE(argv[i]) == T_ARRAY) {
+				uint len = SIArray_Length(argv[i]);
+				for(int j = 0; j < len; j++) {
+					SIValue elem = SIArray_Get(argv[i], j);
+					if(SIArray_ContainsValue(labels, elem) == false) {
+						SIArray_Append(&labels, elem);
+					}
+				}
+			}
+		}
+		uint len = SIArray_Length(labels);
+		for(int i = 0; i < len; i++) {
+			SIValue elem = SIArray_Get(labels, i);
+			const char *label = elem.stringval;
 			// make sure relationship exists.
 			Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
 			if(s == NULL) {
@@ -167,6 +187,7 @@ static SIValue _AR_NodeDegree
 			// count edges
 			count += Graph_GetNodeDegree(gc->g, n, dir, s->id);
 		}
+		SIArray_Free(labels);
 	} else {
 		// get all relations, regardless of their type.
 		count = Graph_GetNodeDegree(gc->g, n, dir, GRAPH_NO_RELATION);
@@ -314,14 +335,14 @@ void Register_EntityFuncs() {
 
 	types = array_new(SIType, 2);
 	array_append(types, T_NULL | T_NODE);
-	array_append(types, T_STRING);
+	array_append(types, T_STRING | T_ARRAY);
 	ret_type = T_NULL | T_INT64;
 	func_desc = AR_FuncDescNew("indegree", AR_INCOMEDEGREE, 1, VAR_ARG_LEN, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	array_append(types, T_NULL | T_NODE);
-	array_append(types, T_STRING);
+	array_append(types, T_STRING | T_ARRAY);
 	ret_type = T_NULL | T_INT64;
 	func_desc = AR_FuncDescNew("outdegree", AR_OUTGOINGDEGREE, 1, VAR_ARG_LEN, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
