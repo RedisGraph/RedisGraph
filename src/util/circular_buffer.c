@@ -12,12 +12,13 @@
 // the buffer is of fixed size
 // items are removed by order of insertion, similar to a queue
 struct _CircularBuffer {
-	char *read;        // read data from here
-	char *write;       // write data to here
-	size_t item_size;  // item size in bytes
-	int item_count;    // current number of items in buffer
-	int item_cap;      // max number of items held by buffer
-	char data[];       // data
+	char *read;              // read data from here
+	char *write;             // write data to here
+	size_t item_size;        // item size in bytes
+	_Atomic int item_count;  // current number of items in buffer
+	int item_cap;            // max number of items held by buffer
+	char *end_marker;        // marks the end of the buffer
+	char data[];             // data
 };
 
 CircularBuffer CircularBuffer_New
@@ -32,6 +33,7 @@ CircularBuffer CircularBuffer_New
 	cb->item_cap   = cap;        // save cap
 	cb->item_size  = item_size;  // save item size
 	cb->item_count = 0;          // no items in buffer
+	cb->end_marker = cb->data + (item_size * cap);
 
 	return cb;
 }
@@ -47,20 +49,20 @@ int CircularBuffer_Add
 	ASSERT(item != NULL);
 	
 	// do not add item if buffer is full
-	if(CircularBuffer_Full(cb)) {
+	if(unlikely(CircularBuffer_Full(cb))) {
 		return 0;
 	}
-
-	// update buffer item count
-	cb->item_count++;
 
 	// copy item into buffer
 	memcpy(cb->write, item, cb->item_size);
 
+	// atomic update buffer item count
+	cb->item_count++;
+
 	// advance write position
 	// circle back if write reached the end of the buffer
 	cb->write += cb->item_size;
-	if(cb->write >= cb->data + cb->item_size * cb->item_cap) {
+	if(unlikely(cb->write >= cb->end_marker)) {
 		cb->write = cb->data;
 	}
 
@@ -79,7 +81,7 @@ int CircularBuffer_Remove
 	ASSERT(item != NULL);
 
 	// make sure there's data to return
-	if(CircularBuffer_Empty(cb)) {
+	if(unlikely(CircularBuffer_Empty(cb))) {
 		return 0;
 	}
 
@@ -92,12 +94,37 @@ int CircularBuffer_Remove
 	// advance read position
 	// circle back if read reached the end of the buffer
 	cb->read += cb->item_size;
-	if(cb->read >= cb->data + cb->item_size * cb->item_cap) {
+	if(unlikely(cb->read >= cb->end_marker)) {
 		cb->read = cb->data;
 	}
 
 	// report success
 	return 1;
+}
+
+void *CircularBuffer_Current
+(
+	const CircularBuffer cb
+) {
+	ASSERT(cb != NULL);
+	ASSERT(!CircularBuffer_Empty(cb));
+
+	return cb->read;
+}
+
+void CircularBuffer_Advance
+(
+	CircularBuffer cb
+) {
+	ASSERT(cb != NULL);
+
+	// update buffer item count
+	cb->item_count--;
+
+	cb->read += cb->item_size;
+	if(unlikely(cb->read >= cb->end_marker)) {
+		cb->read = cb->data;
+	}
 }
 
 // returns number of items in buffer
@@ -111,7 +138,7 @@ int CircularBuffer_ItemCount
 }
 
 // return true if buffer is empty
-bool CircularBuffer_Empty
+inline bool CircularBuffer_Empty
 (
 	const CircularBuffer cb  // buffer to inspect
 ) {
@@ -121,7 +148,7 @@ bool CircularBuffer_Empty
 }
 
 // returns true if buffer is full
-bool CircularBuffer_Full
+inline bool CircularBuffer_Full
 (
 	const CircularBuffer cb  // buffer to inspect
 ) {

@@ -32,6 +32,16 @@ int CircularBuffer_Remove
 	void *item          // [output] pointer populated with removed item
 );
 
+void *CircularBuffer_Current
+(
+	const CircularBuffer cb
+);
+
+void CircularBuffer_Advance
+(
+	CircularBuffer cb
+);
+
 // returns number of items in buffer
 int CircularBuffer_ItemCount
 (
