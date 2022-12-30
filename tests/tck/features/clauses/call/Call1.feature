@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -132,7 +132,6 @@ Feature: Call1 - Basic procedure calling
       | 'C'   |
     And no side effects
 
-  @NegativeTest
   @skip
   Scenario: [7] Standalone call to procedure should fail if explicit argument is missing
     Given an empty graph
@@ -144,7 +143,6 @@ Feature: Call1 - Basic procedure calling
       """
     Then a SyntaxError should be raised at compile time: InvalidNumberOfArguments
 
-  @NegativeTest
   @skip
   Scenario: [8] In-query call to procedure should fail if explicit argument is missing
     Given an empty graph
@@ -157,7 +155,6 @@ Feature: Call1 - Basic procedure calling
       """
     Then a SyntaxError should be raised at compile time: InvalidNumberOfArguments
 
-  @NegativeTest
   @skip
   Scenario: [9] Standalone call to procedure should fail if too many explicit argument are given
     Given an empty graph
@@ -169,7 +166,6 @@ Feature: Call1 - Basic procedure calling
       """
     Then a SyntaxError should be raised at compile time: InvalidNumberOfArguments
 
-  @NegativeTest
   @skip
   Scenario: [10] In-query call to procedure should fail if too many explicit argument are given
     Given an empty graph
@@ -182,7 +178,6 @@ Feature: Call1 - Basic procedure calling
       """
     Then a SyntaxError should be raised at compile time: InvalidNumberOfArguments
 
-  @NegativeTest
   @skip
   Scenario: [11] Standalone call to procedure should fail if implicit argument is missing
     Given an empty graph
@@ -196,7 +191,6 @@ Feature: Call1 - Basic procedure calling
       """
     Then a ParameterMissing should be raised at compile time: MissingParameter
 
-  @NegativeTest
   @skip
   Scenario: [12] In-query call to procedure that has outputs fails if no outputs are yielded
     Given an empty graph
@@ -209,7 +203,6 @@ Feature: Call1 - Basic procedure calling
       """
     Then a SyntaxError should be raised at compile time: UndefinedVariable
 
-  @NegativeTest
   @skip
   Scenario: [13] Standalone call to unknown procedure should fail
     Given an empty graph
@@ -219,7 +212,6 @@ Feature: Call1 - Basic procedure calling
       """
     Then a ProcedureError should be raised at compile time: ProcedureNotFound
 
-  @NegativeTest
   @skip
   Scenario: [14] In-query call to unknown procedure should fail
     Given an empty graph
@@ -230,7 +222,6 @@ Feature: Call1 - Basic procedure calling
       """
     Then a ProcedureError should be raised at compile time: ProcedureNotFound
 
-  @NegativeTest
   @skip
   Scenario: [15] In-query procedure call should fail if shadowing an already bound variable
     Given an empty graph
@@ -247,7 +238,6 @@ Feature: Call1 - Basic procedure calling
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
-  @NegativeTest
   @skip
   Scenario: [16] In-query procedure call should fail if one of the argument expressions uses an aggregation function
     Given an empty graph

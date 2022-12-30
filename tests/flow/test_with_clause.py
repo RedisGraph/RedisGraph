@@ -187,7 +187,7 @@ class testWithClause(FlowTestsBase):
         # otherwise, x is even and ceil(x/2) == floor(x/2).
         # ceil(5/2) = 3, floor(5/2) = 2
         # ceil(6/2) = 3, floor(6/2) = 3.
-        query = """unwind(range(0, 10)) as x with x as x where ceil(x/2) > floor(x/2) return count(x)"""
+        query = """unwind(range(0, 10)) as x with x as x where ceil(x/2.0) > floor(x/2.0) return count(x)"""
         actual_result = redis_graph.query(query)
         # Expecting count of 5: [1,3,5,7,9].
         self.env.assertEqual(actual_result.result_set[0], [5])

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,7 @@
 
 Feature: Temporal10 - Compute Durations Between two Temporal Values
 
-@skip
+  @skip
   Scenario Outline: [1] Should split between boundaries correctly
     Given any graph
     When executing query:
@@ -52,7 +52,7 @@ Feature: Temporal10 - Compute Durations Between two Temporal Values
       | datetime('2017-10-28T23:00+02:00[Europe/Stockholm]') | datetime('2017-10-29T04:00+01:00[Europe/Stockholm]') | 'PT6H'             | 0    | 21600   | 0         |
       | datetime('2017-10-29T04:00+01:00[Europe/Stockholm]') | datetime('2017-10-28T23:00+02:00[Europe/Stockholm]') | 'PT-6H'            | 0    | -21600  | 0         |
 
-@skip
+  @skip
   Scenario Outline: [2] Should compute duration between two temporals
     Given any graph
     When executing query:
@@ -92,7 +92,7 @@ Feature: Temporal10 - Compute Durations Between two Temporal Values
       | datetime('2014-07-21T21:40:36.143+0200') | localtime('16:30')                       | 'PT-5H-10M-36.143S'       |
       | datetime('2014-07-21T21:40:36.143+0200') | time('16:30+0100')                       | 'PT-4H-10M-36.143S'       |
 
-@skip
+  @skip
   Scenario Outline: [3] Should compute duration between two temporals in months
     Given any graph
     When executing query:
@@ -128,7 +128,7 @@ Feature: Temporal10 - Compute Durations Between two Temporal Values
       | datetime('2014-07-21T21:40:36.143+0200') | localtime('16:30')                       | 'PT0S'   |
       | datetime('2014-07-21T21:40:36.143+0200') | time('16:30+0100')                       | 'PT0S'   |
 
-@skip
+  @skip
   Scenario Outline: [4] Should compute duration between two temporals in days
     Given any graph
     When executing query:
@@ -164,7 +164,7 @@ Feature: Temporal10 - Compute Durations Between two Temporal Values
       | datetime('2014-07-21T21:40:36.143+0200') | localtime('16:30')                       | 'PT0S'    |
       | datetime('2014-07-21T21:40:36.143+0200') | time('16:30+0100')                       | 'PT0S'    |
 
-@skip
+  @skip
   Scenario Outline: [5] Should compute duration between two temporals in seconds
     Given any graph
     When executing query:
@@ -216,7 +216,7 @@ Feature: Temporal10 - Compute Durations Between two Temporal Values
       | 'PT-0.001S' |
     And no side effects
 
-@skip
+  @skip
   Scenario Outline: [7] Should compute negative duration between in big units
     Given any graph
     When executing query:
@@ -236,7 +236,7 @@ Feature: Temporal10 - Compute Durations Between two Temporal Values
       | datetime('2018-07-21T21:40:36.143+0200') | localdatetime('2016-07-21T21:40:36.143') | 'P-2Y'      |
       | datetime('2018-07-21T21:40:36.143+0500') | datetime('1984-07-21T22:40:36.143+0200') | 'P-33Y-11M' |
 
-@skip
+  @skip
   Scenario Outline: [8] Should handle durations at daylight saving time day
     Given any graph
     When executing query:
@@ -281,7 +281,7 @@ Feature: Temporal10 - Compute Durations Between two Temporal Values
       | 'PT17531639991215H59M59S' |
     And no side effects
 
-@skip
+  @skip
   Scenario Outline: [11] Should handle when seconds and subseconds have different signs
     Given any graph
     When executing query:
@@ -306,7 +306,7 @@ Feature: Temporal10 - Compute Durations Between two Temporal Values
       | '12:34:56.3' | '12:34:54.7' | 'PT-1.6S'     |
       | '12:34:54.7' | '12:34:56.3' | 'PT1.6S'      |
 
-@skip
+  @skip
   Scenario Outline: [12] Should compute durations with no difference
     Given any graph
     When executing query:
@@ -326,7 +326,7 @@ Feature: Temporal10 - Compute Durations Between two Temporal Values
       | localdatetime() |
       | datetime()      |
 
-@skip
+  @skip
   Scenario Outline: [13] Should propagate null
     Given any graph
     When executing query:
