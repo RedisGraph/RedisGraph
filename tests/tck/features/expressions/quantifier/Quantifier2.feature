@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -357,150 +357,40 @@ Feature: Quantifier2 - Single quantifier
       | [null, 123, null, null]  | true   |
       | [null, null, null, null] | false  |
 
-  Scenario Outline: [13] Single quantifier can nest itself and other quantifiers on nested lists
+  Scenario: [13] Single quantifier is false if the predicate is statically false and the list is not empty
     Given any graph
     When executing query:
       """
-      RETURN single(x IN [['abc'], ['abc', 'def']] WHERE <condition>) AS result
-      """
-    Then the result should be, in any order:
-      | result   |
-      | <result> |
-    And no side effects
-
-    Examples:
-      | condition                      | result |
-      | none(y IN x WHERE y = 'def')   | true   |
-      | none(y IN x WHERE y = 'ghi')   | false  |
-      | single(y IN x WHERE y = 'def') | true   |
-      | single(y IN x WHERE y = 'abc') | false  |
-      | any(y IN x WHERE y = 'def')    | true   |
-      | any(y IN x WHERE y = 'abc')    | false  |
-      | all(y IN x WHERE y = 'abc')    | true   |
-      | all(y IN x WHERE y = 'def')    | false  |
-
-  Scenario Outline: [14] Single quantifier can nest itself and other quantifiers on the same list
-    Given any graph
-    When executing query:
-      """
-      WITH [1, 2, 3, 4, 5, 6, 7, 8, 9] AS list
-      RETURN single(x IN list WHERE <condition>) AS result
-      """
-    Then the result should be, in any order:
-      | result   |
-      | <result> |
-    And no side effects
-
-    Examples:
-      | condition                           | result |
-      | none(y IN list WHERE x < y)         | true   |
-      | none(y IN list WHERE x % y = 0)     | false  |
-      | single(y IN list WHERE x + y < 5)   | true   |
-      | single(y IN list WHERE x % y = 1)   | false  |
-      | any(y IN list WHERE 2 * x + y > 25) | true   |
-      | any(y IN list WHERE x < y)          | false  |
-      | all(y IN list WHERE x <= y)         | true   |
-      | all(y IN list WHERE x <= y + 1)     | false  |
-
-  @skip
-  Scenario: [15] Single quantifier is always false if the predicate is statically false and the list is not empty
-    Given any graph
-    When executing query:
-      """
-      WITH [1, null, true, 4.5, 'abc', false, '', [234, false], {a: null, b: true, c: 15.2}, {}, [], [null], [[{b: [null]}]]] AS inputList
-      UNWIND inputList AS x
-      WITH inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      UNWIND inputList AS x
-      WITH inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      UNWIND inputList AS x
-      WITH inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      WITH list WHERE size(list) > 0
-      WITH single(x IN list WHERE false) AS result, count(*) AS cnt
-      RETURN result
+      RETURN single(x IN [1, null, true, 4.5, 'abc', false] WHERE false) AS result
       """
     Then the result should be, in any order:
       | result |
       | false  |
     And no side effects
 
-  @skip
-  Scenario: [16] Single quantifier is always false if the predicate is statically true and the list has more than one element
+  Scenario: [14] Single quantifier is false if the predicate is statically true and the list has more than one element
     Given any graph
     When executing query:
       """
-      WITH [1, null, true, 4.5, 'abc', false, '', [234, false], {a: null, b: true, c: 15.2}, {}, [], [null], [[{b: [null]}]]] AS inputList
-      UNWIND inputList AS x
-      WITH inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      UNWIND inputList AS x
-      WITH inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      UNWIND inputList AS x
-      WITH inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      WITH list WHERE size(list) > 1
-      WITH single(x IN list WHERE true) AS result, count(*) AS cnt
-      RETURN result
+      RETURN single(x IN [1, null, true, 4.5, 'abc', false] WHERE true) AS result
       """
     Then the result should be, in any order:
       | result |
       | false  |
     And no side effects
 
-  Scenario: [17] Single quantifier is always true if the predicate is statically true and the list has exactly one non-null element
+  Scenario: [15] Single quantifier is true if the predicate is statically true and the list has exactly one non-null element
     Given any graph
     When executing query:
       """
-      WITH [1, true, 4.5, 'abc', false, '', [234, false], {a: null, b: true, c: 15.2}, {}, [], [null], [[{b: [null]}]]] AS inputList
-      UNWIND inputList AS element
-      WITH single(x IN [element] WHERE true) AS result, count(*) AS cnt
-      RETURN result
+      RETURN single(x IN [1] WHERE true) AS result
       """
     Then the result should be, in any order:
       | result |
       | true   |
     And no side effects
 
-  Scenario Outline: [18] Single quantifier is always equal whether the size of the list filtered with same the predicate is one
-    Given any graph
-    When executing query:
-      """
-      UNWIND [{list: [2], fixed: true},
-              {list: [6], fixed: true},
-              {list: [7], fixed: true},
-              {list: [1, 2, 3, 4, 5, 6, 7, 8, 9], fixed: false}] AS input
-      WITH CASE WHEN input.fixed THEN input.list ELSE null END AS fixedList,
-           CASE WHEN NOT input.fixed THEN input.list ELSE [1] END AS inputList
-      UNWIND inputList AS x
-      WITH fixedList, inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH fixedList, inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      UNWIND inputList AS x
-      WITH fixedList, inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH fixedList, inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      UNWIND inputList AS x
-      WITH fixedList, inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH fixedList, inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      WITH coalesce(fixedList, list) AS list
-      WITH single(x IN list WHERE <predicate>) = (size([x IN list WHERE <predicate> | x]) = 1) AS result, count(*) AS cnt
-      RETURN result
-      """
-    Then the result should be, in any order:
-      | result |
-      | true   |
-    And no side effects
-
-    Examples:
-      | predicate |
-      | x = 2     |
-      | x % 2 = 0 |
-      | x % 3 = 0 |
-      | x < 7     |
-      | x >= 3    |
-
-  Scenario Outline: [19] Fail single quantifier on type mismatch between list elements and predicate
+  Scenario Outline: [16] Fail single quantifier on type mismatch between list elements and predicate
     Given any graph
     When executing query:
       """

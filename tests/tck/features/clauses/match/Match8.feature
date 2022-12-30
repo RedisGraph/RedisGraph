@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,7 @@
 
 Feature: Match8 - Match clause interoperation with other clauses
 
-  Scenario: [1] Pattern independented of bound variables results in cross product
+  Scenario: [1] Pattern independent of bound variables results in cross product
     Given an empty graph
     And having executed:
       """
