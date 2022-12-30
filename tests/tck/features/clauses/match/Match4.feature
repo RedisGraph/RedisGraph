@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -100,7 +100,7 @@ Feature: Match4 - Match variable length patterns scenarios
       WITH *
       UNWIND range(1, 20) AS i
       CREATE (n {var: i})
-      WITH [a] + collect(n) + [b] AS nodeList
+      WITH a, b, [a] + collect(n) + [b] AS nodeList
       UNWIND range(0, size(nodeList) - 2, 1) AS i
       WITH nodeList[i] AS n1, nodeList[i+1] AS n2
       CREATE (n1)-[:T]->(n2)
@@ -199,7 +199,7 @@ Feature: Match4 - Match variable length patterns scenarios
       | (:A)  | (:C)   |
     And no side effects
 
-  @NegativeTest @skipGrammarCheck
+  @skipGrammarCheck
   Scenario: [9] Fail when asterisk operator is missing
     Given an empty graph
     And having executed:
@@ -242,7 +242,7 @@ Feature: Match4 - Match variable length patterns scenarios
       """
     Then a SyntaxError should be raised at compile time: InvalidRelationshipPattern
 
-  @NegativeTest @skipGrammarCheck
+  @skipGrammarCheck
   Scenario: [10] Fail on negative bound
     Given an empty graph
     And having executed:

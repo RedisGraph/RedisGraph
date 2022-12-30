@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -85,7 +85,7 @@ Feature: MatchWhere5 - Filter on predicate resulting in null
     When executing query:
       """
       MATCH (:Root {name: 'x'})-->(i:TextNode)
-      WHERE i.var > 'te' AND exists(i.var)
+      WHERE i.var > 'te' AND i.var IS NOT NULL
       RETURN i
       """
     Then the result should be, in any order:
@@ -106,7 +106,7 @@ Feature: MatchWhere5 - Filter on predicate resulting in null
     When executing query:
       """
       MATCH (:Root {name: 'x'})-->(i)
-      WHERE i.var > 'te' OR exists(i.var)
+      WHERE i.var > 'te' OR i.var IS NOT NULL
       RETURN i
       """
     Then the result should be, in any order:

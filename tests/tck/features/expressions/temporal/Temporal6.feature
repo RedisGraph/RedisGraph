@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -95,7 +95,7 @@ Feature: Temporal6 - Render Temporal Values as a String
       | '1984-10-11T12:31:14.645876123+01:00' | true |
     And no side effects
 
-@skip
+  @skip
   Scenario Outline: [6] Should serialize duration
     Given any graph
     When executing query:
