@@ -20,6 +20,7 @@ INFO_RESET_ALL_COMMAND = 'GRAPH.INFO RESET *'
 # Error messages
 COULDNOT_FIND_GRAPH_ERROR_MESSAGE = "Couldn't find the specified graph"
 TIMEOUT_ERROR_MESSAGE = "Query timed out"
+RUNTIME_FAILURE_MESSAGE = "Division by zero"
 
 # Keys
 CURRENT_MAXIMUM_WAIT_DURATION_KEY_NAME = 'Current maximum query wait duration'
@@ -53,6 +54,11 @@ ALL_WRITE_KINDS = [
     WriteQueryKind.QUERY,
     WriteQueryKind.PROFILE
 ]
+
+class QueryFailureSimulationKind(Enum):
+    TIMEOUT = 0
+    FAIL_RUNTIME = 1
+    FAIL_EARLY = 2
 
 
 def thread_execute_command(cmd_and_args, _args):
@@ -107,15 +113,24 @@ def get_unix_timestamp_milliseconds():
 
 
 class _testGraphInfoFlowBase(FlowTestsBase):
+    def _recreate_graph(self):
+        graph = Graph(self.conn, GRAPH_ID)
+        try:
+            graph.delete()
+        except redis.exceptions.ResponseError:
+            pass
+        for i in range(0, 2):
+            graph.add_node(Node(label='Person', properties={'age': i}))
+        graph.commit()
+        return i + 1
+
     def __init__(self, env):
         self.env = env
         # skip test if we're running under Valgrind
         if self.env.envRunner.debugger is not None:
             self.env.skip() # valgrind is not working correctly with multi processing
         self.conn = self.env.getConnection()
-        graph = Graph(self.conn, GRAPH_ID)
-        graph.add_node(Node(label='person'))
-        graph.commit()
+        self._recreate_graph()
 
     # Validate the GRAPH.INFO result: should contain the queries specified,
     # and exactly thath number of queries being executed.
@@ -226,10 +241,36 @@ class _testGraphInfoFlowBase(FlowTestsBase):
     #
     # This uses the execute_command instead of graph methods as the graph
     # methods silently perform other queries which break the statistics.
-    def _run_readonly_query(self, kind: ReadOnlyQueryKind, timeout: int=0):
+    #
+    # Additionally, this function may simulate a problem for a query.
+    # This is useful for counting the number of failed queries.
+    def _run_readonly_query(self, kind: ReadOnlyQueryKind, problem_kind=None):
+        timeout = 0
         query = 'MATCH (pppp) RETURN pppp'
-        if timeout > 0:
+        if kind == ReadOnlyQueryKind.EXPLAIN:
+            query = 'CREATE (p:Person) RETURN p'
+
+        if problem_kind == QueryFailureSimulationKind.TIMEOUT:
+            assert kind != ReadOnlyQueryKind.EXPLAIN, \
+                'the EXPLAIN queries never time out'
             query = LONG_CALCULATION_QUERY
+            timeout = 1
+        elif problem_kind == QueryFailureSimulationKind.FAIL_RUNTIME:
+            assert kind != ReadOnlyQueryKind.EXPLAIN, \
+                'the EXPLAIN queries never fail at runtime'
+            # Such queries will be successfully parsed and will require a
+            # traversal during the execution. The parser can't know here whether
+            # it may fail or not, so it successfully builds an execution plan
+            # for the query and begins the execution.
+            query = 'MATCH (p:Person), (p2:Person) RETURN p2.age / p.age'
+        elif problem_kind == QueryFailureSimulationKind.FAIL_EARLY:
+            # Parsing error is an example "fail early" thing.
+            # Another example is when the parser immediately sees the
+            # division by zero.
+            query = 'RETURN 1/0'
+        elif problem_kind is not None:
+            assert False, \
+                f"Unknown failure simulation kind: {problem_kind}"
 
         if kind == ReadOnlyQueryKind.RO_QUERY:
             return self.conn.execute_command('GRAPH.RO_QUERY', GRAPH_ID, query, 'TIMEOUT', timeout)
@@ -237,23 +278,36 @@ class _testGraphInfoFlowBase(FlowTestsBase):
             return self.conn.execute_command('GRAPH.QUERY', GRAPH_ID, query, 'TIMEOUT', timeout)
         elif kind == ReadOnlyQueryKind.EXPLAIN:
             graph = Graph(self.conn, GRAPH_ID)
-            return graph.explain('CREATE (p:Person) RETURN p')
+            return graph.explain(query)
         elif kind == ReadOnlyQueryKind.PROFILE:
             return self.conn.execute_command('GRAPH.PROFILE', GRAPH_ID, query, 'TIMEOUT', timeout)
         else:
-            assert(False)
+            assert False, \
+                f"Unknown read only kind: {kind}"
 
-    def _run_write_query(self, kind: WriteQueryKind, timeout: int=0):
+    def _run_write_query(self,
+    kind: WriteQueryKind, problem_kind=None):
         query = 'CREATE (m:Miracle) RETURN m'
-        if timeout > 0:
+        timeout = 0
+
+        if problem_kind == QueryFailureSimulationKind.TIMEOUT:
             query = 'UNWIND (range(0, 1000000)) AS x WITH x CREATE(b:Book { id: x })'
+            timeout = 1
+        elif problem_kind == QueryFailureSimulationKind.FAIL_RUNTIME:
+            query = 'CREATE (t:T { n: 0 }), (t2:T { n: 20 }) RETURN t2.n / t.n'
+        elif problem_kind == QueryFailureSimulationKind.FAIL_EARLY:
+            query = 'RETURN 1/0'
+        elif problem_kind is not None:
+            assert False, \
+                f"Unknown failure simulation kind: {problem_kind}"
 
         if kind == WriteQueryKind.QUERY:
             return self.conn.execute_command('GRAPH.QUERY', GRAPH_ID, query, 'TIMEOUT', timeout)
         elif kind == WriteQueryKind.PROFILE:
             return self.conn.execute_command('GRAPH.PROFILE', GRAPH_ID, query, 'TIMEOUT', timeout)
         else:
-            assert(False)
+            assert False, \
+                f"Unknown write kind: {kind}"
 
 
 class testGraphInfoFlow(_testGraphInfoFlowBase):
@@ -303,33 +357,18 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
         info = list_to_dict(self.conn.execute_command(INFO_QUERIES_CURRENT_COMMAND))
         self.env.assertEqual(info[GLOBAL_INFO_KEY_NAME][CURRENT_MAXIMUM_WAIT_DURATION_KEY_NAME], 0, depth=1)
 
-    def _assert_info_get_result(self, result,
-        nodes=0, relationships=0,
-        node_labels=0, relationship_types=0,
-        node_indices=0, relationship_indices=0,
-        node_property_names=0, edge_property_names=0):
-        info = list_to_dict(result)
-        self.env.assertEqual(info['Number of nodes'], nodes)
-        self.env.assertEqual(info['Number of relationships'], relationships)
-        self.env.assertEqual(info['Number of node labels'], node_labels)
-        self.env.assertEqual(info['Number of relationship types'], relationship_types)
-        self.env.assertEqual(info['Number of node indices'], node_indices)
-        self.env.assertEqual(info['Number of relationship indices'], relationship_indices)
-        self.env.assertEqual(info['Total number of node property names'], node_property_names)
-        self.env.assertEqual(info['Total number of edge property names'], edge_property_names)
-
     def test04_graph_info_get_current_graph(self):
         info = self.conn.execute_command(INFO_GET_COMMAND_TEMPLATE % GRAPH_ID)
-        self._assert_info_get_result(info, nodes=1, node_labels=1)
-        query = """MATCH (p:person) CREATE (p2:person { Name: 'Victor', Country: 'The Netherlands' })-[e:knows { Since_Year: '1970'}]->(p)"""
+        self._assert_info_get_result(info, nodes=2, node_labels=1, node_property_names=2)
+        query = """MATCH (p:Person) CREATE (p2:Person { Name: 'Victor', Country: 'The Netherlands' })-[e:knows { Since_Year: '1970'}]->(p)"""
         graph = Graph(self.conn, GRAPH_ID)
         result = graph.query(query)
-        self.env.assertEquals(result.nodes_created, 1, depth=1)
-        self.env.assertEquals(result.relationships_created, 1, depth=1)
-        self.env.assertEquals(result.properties_set, 3, depth=1)
+        self.env.assertEquals(result.nodes_created, 2, depth=1)
+        self.env.assertEquals(result.relationships_created, 2, depth=1)
+        self.env.assertEquals(result.properties_set, 6, depth=1)
 
         info = self.conn.execute_command(INFO_GET_COMMAND_TEMPLATE % GRAPH_ID)
-        self._assert_info_get_result(info, nodes=2, node_labels=1, relationships=1, relationship_types=1, node_property_names=2, edge_property_names=1)
+        self._assert_info_get_result(info, nodes=4, node_labels=1, relationships=2, relationship_types=1, node_property_names=6, edge_property_names=2)
 
     def test05_graph_info_queries_prev(self):
         query = """CYPHER end=100 RETURN reduce(sum = 0, n IN range(1, $end) | sum ^ n)"""
@@ -405,21 +444,24 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
 
 # This test is separate as it needs a separate and a non-concurrent context.
 class testGraphInfoGetFlow(_testGraphInfoFlowBase):
+    QUERY = 'GRAPH.INFO GET %s COUNTS' % GRAPH_ID
+
     def __init__(self):
         _testGraphInfoFlowBase.__init__(self, Env(decodeResponses=True, moduleArgs='TIMEOUT_MAX 1000'))
 
-    def test01_info_get_specific(self):
+    def test01_info_get_specific_counters_successful(self):
+        nodes = self._recreate_graph()
+
         query = 'GRAPH.INFO RESET %s' % GRAPH_ID
         results = self.conn.execute_command(query)
         self.env.assertEquals(results, 1, depth=1)
 
         query = 'GRAPH.INFO GET %s' % GRAPH_ID
         results = self.conn.execute_command(query)
-        self._assert_info_get_result(results, nodes=1, node_labels=1)
+        self._assert_info_get_result(results, nodes=nodes, node_labels=1, node_property_names=2)
 
-        get_counts_query = 'GRAPH.INFO GET %s COUNTS' % GRAPH_ID
-        results = self.conn.execute_command(get_counts_query)
-        self._assert_info_get_result(results, nodes=1, node_labels=1)
+        results = self.conn.execute_command(self.QUERY)
+        self._assert_info_get_result(results, nodes=nodes, node_labels=1, node_property_names=2)
         self._assert_info_get_counts(results)
 
         # Test all the successful read-only queries:
@@ -427,81 +469,176 @@ class testGraphInfoGetFlow(_testGraphInfoFlowBase):
         total_query_count = 0
         for kind in ALL_READONLY_KINDS:
             self._run_readonly_query(kind)
-            results = self.conn.execute_command(get_counts_query)
+            results = self.conn.execute_command(self.QUERY)
             successful_readonly_count += 1
             total_query_count += 1
-            self._assert_info_get_result(results, nodes=1, node_labels=1)
+            self._assert_info_get_result(results, nodes=nodes, node_labels=1, node_property_names=2)
             self._assert_info_get_counts(results, total_query_count=total_query_count, successful_readonly=successful_readonly_count)
 
         # Test all successful write queries.
         successful_write_count = 0
-        nodes = 1
         for kind in ALL_WRITE_KINDS:
             self._run_write_query(kind)
-            results = self.conn.execute_command(get_counts_query)
+            results = self.conn.execute_command(self.QUERY)
             successful_write_count += 1
             total_query_count += 1
             nodes += 1
-            self._assert_info_get_result(results, nodes=nodes, node_labels=2)
+            self._assert_info_get_result(results, nodes=nodes, node_labels=2, node_property_names=2)
             self._assert_info_get_counts(results, total_query_count=total_query_count, successful_readonly=successful_readonly_count, successful_write=successful_write_count)
+
+        query = 'GRAPH.INFO RESET %s' % GRAPH_ID
+        results = self.conn.execute_command(query)
+        self.env.assertEquals(results, 1, depth=1)
+        results = self.conn.execute_command(self.QUERY)
+        self._assert_info_get_counts(results)
+
+    def test02_info_get_specific_counters_failed_at_runtime(self):
+        nodes = self._recreate_graph()
+
+        query = 'GRAPH.INFO RESET %s' % GRAPH_ID
+        results = self.conn.execute_command(query)
+        self.env.assertEquals(results, 1, depth=1)
+        total_query_count = 0
+
+        # Test all read queries for fail counting.
+        failed_readonly_queries = 0
+        for kind in [ReadOnlyQueryKind.RO_QUERY, ReadOnlyQueryKind.QUERY, ReadOnlyQueryKind.PROFILE]:
+            try:
+                results = self._run_readonly_query(kind, problem_kind=QueryFailureSimulationKind.FAIL_RUNTIME)
+                assert False, \
+                    f"Shouldn't have reached with the {kind} kind, result: {results}"
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains(RUNTIME_FAILURE_MESSAGE, str(e), depth=1)
+
+            results = self.conn.execute_command(self.QUERY)
+            failed_readonly_queries += 1
+            total_query_count += 1
+            self._assert_info_get_result(results, nodes=nodes, node_labels=1, node_property_names=2)
+            self._assert_info_get_counts(
+                results,
+                total_query_count=total_query_count,
+                failed_readonly=failed_readonly_queries)
+
+        # TODO fails due to incremented Graph_DeletedNodeCount.
+        # # Test all write queries for fail counting.
+        # failed_write_queries = 0
+        # for kind in ALL_WRITE_KINDS:
+        #     try:
+        #         results = self._run_write_query(kind, problem_kind=QueryFailureSimulationKind.FAIL_RUNTIME)
+        #         assert False, \
+        #             f"Shouldn't have reached with the {kind} kind, result: {results}"
+        #     except redis.exceptions.ResponseError as e:
+        #         self.env.assertContains(RUNTIME_FAILURE_MESSAGE, str(e), depth=1)
+
+        #     results = self.conn.execute_command(self.QUERY)
+        #     failed_write_queries += 1
+        #     total_query_count += 1
+        #     print(f'Query: {self.QUERY}\nResult: {results}')
+        #     self._assert_info_get_result(results, nodes=nodes, node_labels=1, node_property_names=2)
+        #     self._assert_info_get_counts(
+        #         results,
+        #         total_query_count=total_query_count,
+        #         failed_readonly=failed_readonly_queries,
+        #         failed_write=failed_write_queries)
+
+    def test02_info_get_specific_counters_failed_early(self):
+        '''
+        When a query fails early, we can't record it as we don't know what
+        it was about, so we also don't count those, hence the counters are
+        expected to be zero.
+        '''
+
+        nodes = self._recreate_graph()
+
+        query = 'GRAPH.INFO RESET %s' % GRAPH_ID
+        results = self.conn.execute_command(query)
+        self.env.assertEquals(results, 1, depth=1)
+
+        # Test all read queries for fail counting.
+        for kind in [ReadOnlyQueryKind.RO_QUERY, ReadOnlyQueryKind.QUERY, ReadOnlyQueryKind.PROFILE]:
+            try:
+                results = self._run_readonly_query(kind, problem_kind=QueryFailureSimulationKind.FAIL_EARLY)
+                assert False, \
+                    f"Shouldn't have reached with the {kind} kind, result: {results}"
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains(RUNTIME_FAILURE_MESSAGE, str(e), depth=1)
+
+            results = self.conn.execute_command(self.QUERY)
+            self._assert_info_get_result(results, nodes=nodes, node_labels=1, node_property_names=2)
+            self._assert_info_get_counts(
+                results,
+                total_query_count=0,
+                failed_readonly=0)
+
+        # Test all write queries for fail counting.
+        for kind in ALL_WRITE_KINDS:
+            try:
+                results = self._run_write_query(kind, problem_kind=QueryFailureSimulationKind.FAIL_EARLY)
+                assert False, \
+                    f"Shouldn't have reached with the {kind} kind, result: {results}"
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains(RUNTIME_FAILURE_MESSAGE, str(e), depth=1)
+
+            results = self.conn.execute_command(self.QUERY)
+            self._assert_info_get_result(results, nodes=nodes, node_labels=1, node_property_names=2)
+            self._assert_info_get_counts(
+                results,
+                total_query_count=0,
+                failed_readonly=0,
+                failed_write=0)
+
+    def test03_info_get_specific_counters_timedout(self):
+        nodes = self._recreate_graph()
+
+        query = 'GRAPH.INFO RESET %s' % GRAPH_ID
+        results = self.conn.execute_command(query)
+        self.env.assertEquals(results, 1, depth=1)
+        total_query_count = 0
 
         # Test all read queries for time out counting.
         timed_out_readonly_queries = 0
         for kind in [ReadOnlyQueryKind.RO_QUERY, ReadOnlyQueryKind.QUERY, ReadOnlyQueryKind.PROFILE]:
             try:
-                self._run_readonly_query(kind, 1)
-                assert(False)
+                results = self._run_readonly_query(kind, problem_kind=QueryFailureSimulationKind.TIMEOUT)
+                assert False, \
+                    f"Shouldn't have reached with the {kind} kind, result: {results}"
             except redis.exceptions.ResponseError as e:
                 self.env.assertEquals(str(e), TIMEOUT_ERROR_MESSAGE, depth=1)
 
-            results = self.conn.execute_command(get_counts_query)
+            results = self.conn.execute_command(self.QUERY)
             timed_out_readonly_queries += 1
             total_query_count += 1
-            self._assert_info_get_result(results, nodes=nodes, node_labels=2)
+            self._assert_info_get_result(results, nodes=nodes, node_labels=1, node_property_names=2)
             self._assert_info_get_counts(
                 results,
                 total_query_count=total_query_count,
-                successful_readonly=successful_readonly_count,
-                successful_write=successful_write_count,
                 timedout_readonly=timed_out_readonly_queries)
 
         # Test all write queries for time out counting.
         timed_out_write_queries = 0
         for kind in ALL_WRITE_KINDS:
             try:
-                result = self._run_write_query(kind, 1)
-                print('Result: %s' % result)
-                assert(False)
+                self._run_write_query(kind, problem_kind=QueryFailureSimulationKind.TIMEOUT)
+                assert False, \
+                    f"Shouldn't have reached with the {kind} kind, result: {results}"
             except redis.exceptions.ResponseError as e:
                 self.env.assertEquals(str(e), TIMEOUT_ERROR_MESSAGE, depth=1)
 
-            results = self.conn.execute_command(get_counts_query)
+            results = self.conn.execute_command(self.QUERY)
             timed_out_write_queries += 1
             total_query_count += 1
-            nodes += 1
             self._assert_info_get_counts(
                 results,
                 total_query_count=total_query_count,
-                successful_readonly=successful_readonly_count,
-                successful_write=successful_write_count,
                 timedout_readonly=timed_out_readonly_queries,
                 timedout_write=timed_out_write_queries)
 
-        # TODO add more scenarios:
-        #
-        # 1. Test readonly queries fail.
-        # 2. Test write queries fail.
-
-        query = 'GRAPH.INFO RESET %s' % GRAPH_ID
-        results = self.conn.execute_command(query)
-        self.env.assertEquals(results, 1, depth=1)
-        results = self.conn.execute_command(get_counts_query)
-        self._assert_info_get_counts(results)
-
-
-
     # TODO
+    # 0) Parametrise the tests instead of code duplication.
     # 1) GRAPH.INFO GET * tests.
-    # 2) GRAPH.INFO CONFIG
-    # 3) GRAPH.INFO INDEXES
-    # 4) GRAPH.INFO CONSTRAINTS
+    #
+    # These require some discussion:
+    #
+    # 2) GRAPH.INFO CONFIG ?
+    # 3) GRAPH.INFO INDEXES ?
+    # 4) GRAPH.INFO CONSTRAINTS ?
