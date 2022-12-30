@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -323,7 +323,6 @@ Feature: Literals5 - Float
       | 1.23456789e308 |
     And no side effects
 
-  @NegativeTest
   Scenario: [27] Fail when float value is too large
     Given any graph
     When executing query:

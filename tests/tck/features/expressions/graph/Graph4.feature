@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -114,8 +114,6 @@ Feature: Graph4 - Edge relationship type
       | 'T'           |
     And no side effects
 
-  @leak
-  @NegativeTest
   Scenario Outline: [6] `type()` failing on invalid arguments
     Given an empty graph
     And having executed:
@@ -137,7 +135,6 @@ Feature: Graph4 - Edge relationship type
       | ''      |
       | []      |
 
-  @NegativeTest
   @skip
   Scenario: [7] Failing when using `type()` on a node
     Given any graph

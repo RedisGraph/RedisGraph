@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,7 +47,6 @@ Feature: Return7 - Return all variables
       | (:Start) | () | <(:Start)-[:T]->()> |
     And no side effects
 
-  @NegativeTest
   Scenario: [2] Fail when using RETURN * without variables in scope
     Given any graph
     When executing query:

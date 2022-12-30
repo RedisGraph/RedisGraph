@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,11 +64,13 @@ Feature: Match2 - Match relationships
     Given an empty graph
     And having executed:
       """
-      CREATE (a) CREATE (a)-[:T]->(a)
+      CREATE (a)
+      CREATE (a)-[:T]->(a)
       """
     When executing query:
       """
-      MATCH ()-[r]-() RETURN type(r) AS r
+      MATCH ()-[r]-()
+      RETURN type(r) AS r
       """
     Then the result should be, in any order:
       | r   |
@@ -147,7 +149,6 @@ Feature: Match2 - Match relationships
       | a1 | r | b2 |
     And no side effects
 
-  @NegativeTest
   Scenario: [8] Fail when using parameter as relationship predicate in MATCH
     Given any graph
     When executing query:
@@ -157,7 +158,6 @@ Feature: Match2 - Match relationships
       """
     Then a SyntaxError should be raised at compile time: InvalidParameterUse
 
-  @NegativeTest
   Scenario Outline: [9] Fail when a node has the same variable in a preceding MATCH
     Given any graph
     When executing query:
@@ -198,7 +198,6 @@ Feature: Match2 - Match relationships
       | (s), (a)-[q]-(b), (t), (s)-[]->(r)<-[]-(b) |
 
   @skip
-  @NegativeTest
   Scenario Outline: [10] Fail when a path has the same variable in a preceding MATCH
     Given any graph
     When executing query:
@@ -231,7 +230,6 @@ Feature: Match2 - Match relationships
       | (x), (a)-[q*]-(b), r = (s)-[p]->(t)<-[]-(b) |
       | (x), (a)-[q]-(b), r = (s)-[p*]->(t)<-[]-(b) |
 
-  @NegativeTest
   Scenario Outline: [11] Fail when a node has the same variable in the same pattern
     Given any graph
     When executing query:
@@ -262,7 +260,6 @@ Feature: Match2 - Match relationships
       | (r), (a)-[q]-(b), (s), (s)-[r]->(t)<-[]-(b) |
 
   @skip
-  @NegativeTest
   Scenario Outline: [12] Fail when a path has the same variable in the same pattern
     Given any graph
     When executing query:
@@ -284,7 +281,6 @@ Feature: Match2 - Match relationships
       | (a)-[p]-(s)-[]-(b), r = (s)-[*]-(t), (t), (t)-[r*]-(b) |
 
   @skip
-  @NegativeTest
   Scenario Outline: [13] Fail when matching a relationship variable bound to a value
     Given any graph
     When executing query:

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +40,7 @@ Feature: Remove1 - Remove a Property
       """
       MATCH (n)
       REMOVE n.num
-      RETURN exists(n.num) AS still_there
+      RETURN n.num IS NOT NULL AS still_there
       """
     Then the result should be, in any order:
       | still_there |
@@ -76,7 +76,7 @@ Feature: Remove1 - Remove a Property
       """
       MATCH ()-[r]->()
       REMOVE r.num
-      RETURN exists(r.num) AS still_there
+      RETURN r.num IS NOT NULL AS still_there
       """
     Then the result should be, in any order:
       | still_there |

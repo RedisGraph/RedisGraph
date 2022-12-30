@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,45 +28,64 @@
 
 #encoding: utf-8
 
-Feature: Map4 - Field existence check
+Feature: ExistentialSubquery2 - Full existential subquery
 
   @skip
-  Scenario Outline: [1] `exists()` with literal maps
+  Scenario: [1] Full existential subquery
+    Given an empty graph
+    And having executed:
+      """
+      CREATE (a:A {prop: 1})-[:R]->(b:B {prop: 1}), 
+             (a)-[:R]->(:C {prop: 2}), 
+             (a)-[:R]->(:D {prop: 3})
+      """
+    When executing query:
+      """
+      MATCH (n) WHERE exists {
+        MATCH (n)-->()
+        RETURN true
+      }
+      RETURN n
+      """
+    Then the result should be, in any order:
+      | n             |
+      | (:A {prop:1}) |
+    And no side effects
+
+  @skip
+  Scenario: [2] Full existential subquery with aggregation
+    Given an empty graph
+    And having executed:
+      """
+      CREATE (a:A {prop: 1})-[:R]->(b:B {prop: 1}), 
+             (a)-[:R]->(:C {prop: 2}), 
+             (a)-[:R]->(d:D {prop: 3}), 
+             (b)-[:R]->(d)
+      """
+    When executing query:
+      """
+      MATCH (n) WHERE exists {
+        MATCH (n)-->(m)
+        WITH n, count(*) AS numConnections
+        WHERE numConnections = 3
+        RETURN true
+      }
+      RETURN n
+      """
+    Then the result should be, in any order:
+      | n             |
+      | (:A {prop:1}) |
+    And no side effects
+
+  @skip
+  Scenario: [3] Full existential subquery with update clause should fail
     Given any graph
     When executing query:
       """
-      WITH <map> AS map
-      RETURN exists(map.<key>) AS result
+      MATCH (n) WHERE exists {
+        MATCH (n)-->(m)
+        SET m.prop='fail'
+      }
+      RETURN n
       """
-    Then the result should be, in any order:
-      | result   |
-      | <result> |
-    And no side effects
-
-    Examples:
-      | map                                 | key     | result |
-      | {name: 'Mats', name2: 'Pontus'}     | name    | true   |
-      | {name: 'Mats', name2: 'Pontus'}     | name2   | true   |
-      | {name: null}                        | name    | true   |
-      | {name: null, name2: 'Pontus'}       | name    | true   |
-      | {name: null, name2: null}           | name    | true   |
-      | {name: null, name2: null}           | name2   | true   |
-      | {name: 'Pontus', name2: null}       | name2   | true   |
-      | {name: 'Pontus', notName2: null}    | name    | true   |
-      | {notName: null, notName2: null}     | name    | false  |
-      | {notName: 0, notName2: null}        | name    | false  |
-      | {notName: 0}                        | name    | false  |
-      | {}                                  | name    | false  |
-
-  @skip
-  Scenario: [2] Using `exists()` on null map
-    Given any graph
-    When executing query:
-      """
-      WITH null AS m, { prop: 3 } AS n
-      RETURN exists(m.prop), exists((null).prop)
-      """
-    Then the result should be, in any order:
-      | exists(m.prop) | exists((null).prop) |
-      | null           | null                |
-    And no side effects
+    Then a SyntaxError should be raised at compile time: InvalidClauseComposition
