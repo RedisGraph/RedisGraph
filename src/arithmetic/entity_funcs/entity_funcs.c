@@ -163,8 +163,7 @@ static SIValue _AR_NodeDegree
 				if(SIArray_ContainsValue(labels, argv[i]) == false) {
 					SIArray_Append(&labels, argv[i]);
 				}
-			} 
-			else if (SI_TYPE(argv[i]) == T_ARRAY) {
+			} else if (SI_TYPE(argv[i]) == T_ARRAY) {
 				uint len = SIArray_Length(argv[i]);
 				for(int j = 0; j < len; j++) {
 					SIValue elem = SIArray_Get(argv[i], j);

@@ -2372,3 +2372,18 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.env.assertEqual(in_degree, 1)
         self.env.assertEqual(out_degree, 1)
 
+        # given the graph (a)-[:R]->(b)
+        # out degree of 'a' is 1
+        # in degree of 'b' is 1
+        graph.query("CREATE (a:A)-[:R]->(b:B)")
+        queries = [
+            """MATCH (a:A) RETURN outdegree(a, 'R')""",
+            """MATCH (a:A) RETURN outdegree(a, ['R'])""",
+            """MATCH (a:A) RETURN outdegree(a, 'R', 'R', ['R', 'R'])""",
+            """MATCH (b:B) RETURN indegree(b, 'R')""",
+            """MATCH (b:B) RETURN indegree(b, ['R'])""",
+            """MATCH (b:B) RETURN indegree(b, 'R', 'R', ['R', 'R'])""",
+        ]
+        for query in queries:
+            actual_result = graph.query(query)
+            self.env.assertEquals(actual_result.result_set, [[1]])
