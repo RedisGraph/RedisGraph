@@ -395,7 +395,7 @@ static bool _AR_EXP_ValidateInvocation
 			expected_type = fdesc->types[i];
 		}
 		if(!(actual_type & expected_type)) {
-			Error_SITypeMismatch(argv[i], expected_type);
+			Error_FunctionArgumentSITypeMismatch(fdesc->name, i+1, argv[i], expected_type);
 			return false;
 		}
 	}

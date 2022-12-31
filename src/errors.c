@@ -147,6 +147,20 @@ void Error_SITypeMismatch(SIValue received, SIType expected) {
 					  SIType_ToString(SI_TYPE(received)));
 }
 
+void Error_FunctionArgumentSITypeMismatch(
+	const char* function, 
+	int argNumber, 
+	SIValue received, 
+	SIType expected
+) {
+	size_t bufferLen = MULTIPLE_TYPE_STRING_BUFFER_SIZE;
+	char buf[bufferLen];
+
+	SIType_ToMultipleTypeString(expected, buf, bufferLen);
+	ErrorCtx_SetError("Type mismatch on function '%s' argument %d: expected %s but was %s", 
+					  function, argNumber, buf, SIType_ToString(SI_TYPE(received)));
+}
+
 void Error_UnsupportedASTNodeType(const cypher_astnode_t *node) {
 	ASSERT(node != NULL);
 

@@ -58,6 +58,13 @@ class testList(FlowTestsBase):
         redis_con = self.env.getConnection()
         redis_graph = Graph(redis_con, GRAPH_ID)
 
+    def expect_error(self, query, expected_err_msg):
+        try:
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertIn(expected_err_msg, str(e))
+
     def test01_collect(self):
         for i in range(10):
             redis_graph.add_node(Node())
@@ -174,29 +181,13 @@ class testList(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         # Test wrong type inputs
-        try:
-            query = """RETURN head(1)"""
-            redis_graph.query(query)
-            actual_result = redis_graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Integer", str(e))
-
-        try:
-            query = """RETURN head('a')"""
-            redis_graph.query(query)
-            actual_result = redis_graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
-
-        try:
-            query = """RETURN head(true)"""
-            redis_graph.query(query)
-            actual_result = redis_graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Boolean", str(e))
+        queries_with_errors = {
+            "RETURN head(1)" : "Type mismatch on function 'head' argument 1: expected List or Null but was Integer",
+            "RETURN head('a')" : "Type mismatch on function 'head' argument 1: expected List or Null but was String",
+            "RETURN head(true)" : "Type mismatch on function 'head' argument 1: expected List or Null but was Boolean",
+        }
+        for query, error in queries_with_errors.items():
+            self.expect_error(query, error)
 
     def test05_last_function(self):
         # Test empty list input
@@ -224,29 +215,13 @@ class testList(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         # Test wrong type inputs
-        try:
-            query = """RETURN last(1)"""
-            redis_graph.query(query)
-            actual_result = redis_graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Integer", str(e))
-
-        try:
-            query = """RETURN last('a')"""
-            redis_graph.query(query)
-            actual_result = redis_graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
-
-        try:
-            query = """RETURN last(true)"""
-            redis_graph.query(query)
-            actual_result = redis_graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Boolean", str(e))
+        queries_with_errors = {
+            "RETURN last(1)" : "Type mismatch on function 'last' argument 1: expected List or Null but was Integer",
+            "RETURN last('a')" : "Type mismatch on function 'last' argument 1: expected List or Null but was String",
+            "RETURN last(true)" : "Type mismatch on function 'last' argument 1: expected List or Null but was Boolean",
+        }
+        for query, error in queries_with_errors.items():
+            self.expect_error(query, error)
 
     def test06_toBooleanList(self):
         # NULL input should return NULL
@@ -299,45 +274,18 @@ class testList(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         # Test of type mismatch input
-        try:
-            redis_graph.query("RETURN toBooleanList(true)")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Boolean", str(e))
-
-        try:
-            redis_graph.query("RETURN toBooleanList(7.05)")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Float", str(e))
-
-        try:
-            redis_graph.query("RETURN toBooleanList(7)")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Integer", str(e))
-
-        try:
-            redis_graph.query("RETURN toBooleanList('abc')")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
-
-        try:
-            query = """CREATE (a:X) RETURN toBooleanList(a)"""
-            actual_result = redis_graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Node", str(e))
-
-        try:
-            query = """CREATE (a:X)-[r:R]->(b:Y) RETURN toBooleanList(r)"""
-            redis_graph.query(query)
-            actual_result = redis_graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Edge", str(e))
-
+        # A list of queries and errors which are expected to occur with the specified query.
+        queries_with_errors = {
+            "RETURN toBooleanList(true)" : "Type mismatch on function 'toBooleanList' argument 1: expected List or Null but was Boolean",
+            "RETURN toBooleanList(7.05)" : "Type mismatch on function 'toBooleanList' argument 1: expected List or Null but was Float",
+            "RETURN toBooleanList(7)"    : "Type mismatch on function 'toBooleanList' argument 1: expected List or Null but was Integer",
+            "RETURN toBooleanList('abc')" : "Type mismatch on function 'toBooleanList' argument 1: expected List or Null but was String",
+            "CREATE (a:X) RETURN toBooleanList(a)" : "Type mismatch on function 'toBooleanList' argument 1: expected List or Null but was Node",
+            "CREATE (a:X)-[r:R]->(b:Y) RETURN toBooleanList(r)" : "Type mismatch on function 'toBooleanList' argument 1: expected List or Null but was Edge",
+        }
+        for query, error in queries_with_errors.items():
+            self.expect_error(query, error)
+        
         try:
             query = """CREATE (a:X), (b:Y)"""
             redis_graph.query(query)
@@ -347,7 +295,7 @@ class testList(FlowTestsBase):
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Path", str(e))
+            self.env.assertContains("Type mismatch on function 'toBooleanList' argument 1: expected List or Null but was Path", str(e))
             query = """MATCH (a:X),(b:Y) DELETE a, b"""
             redis_graph.query(query)
 
@@ -442,47 +390,18 @@ class testList(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-        try:
-            redis_graph.query("RETURN toFloatList(true)")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Boolean", str(e))
-
-        try:
-            redis_graph.query("RETURN toFloatList(7.05)")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Float", str(e))
-
-        try:
-            redis_graph.query("RETURN toFloatList(7)")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Integer", str(e))
-
-        try:
-            redis_graph.query("RETURN toFloatList('abc')")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
-
-        try:
-            query = """CREATE (a:X) RETURN toFloatList(a)"""
-            actual_result = redis_graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Node", str(e))
-            query = """MATCH (a:X) DELETE a"""
-            redis_graph.query(query)
-
-        try:
-            query = """CREATE (a:X)-[r:R]->(b:Y) RETURN toFloatList(r)"""
-            actual_result = redis_graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Edge", str(e))
-            query = """MATCH (a:X),(b:Y) DELETE a, b"""
-            redis_graph.query(query)
+        # Test of type mismatch input
+        # A list of queries and errors which are expected to occur with the specified query.
+        queries_with_errors = {
+            "RETURN toFloatList(true)" : "Type mismatch on function 'toFloatList' argument 1: expected List or Null but was Boolean",
+            "RETURN toFloatList(7.05)" : "Type mismatch on function 'toFloatList' argument 1: expected List or Null but was Float",
+            "RETURN toFloatList(7)"    : "Type mismatch on function 'toFloatList' argument 1: expected List or Null but was Integer",
+            "RETURN toFloatList('abc')" : "Type mismatch on function 'toFloatList' argument 1: expected List or Null but was String",
+            "CREATE (a:X) RETURN toFloatList(a)" : "Type mismatch on function 'toFloatList' argument 1: expected List or Null but was Node",
+            "CREATE (a:X)-[r:R]->(b:Y) RETURN toFloatList(r)" : "Type mismatch on function 'toFloatList' argument 1: expected List or Null but was Edge",
+        }
+        for query, error in queries_with_errors.items():
+            self.expect_error(query, error)
 
         try:
             query = """CREATE (a:X), (b:Y)"""
@@ -493,7 +412,7 @@ class testList(FlowTestsBase):
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Path", str(e))
+            self.env.assertContains("Type mismatch on function 'toFloatList' argument 1: expected List or Null but was Path", str(e))
             query = """MATCH (a:X),(b:Y) DELETE a, b"""
             redis_graph.query(query)
 
@@ -583,47 +502,18 @@ class testList(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-        try:
-            redis_graph.query("RETURN toIntegerList(true)")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Boolean", str(e))
-
-        try:
-            redis_graph.query("RETURN toIntegerList(7.05)")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Float", str(e))
-
-        try:
-            redis_graph.query("RETURN toIntegerList(7)")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Integer", str(e))
-
-        try:
-            redis_graph.query("RETURN toIntegerList('abc')")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
-
-        try:
-            query = """CREATE (a:X) RETURN toIntegerList(a)"""
-            actual_result = redis_graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Node", str(e))
-            query = """MATCH (a:X) DELETE a"""
-            redis_graph.query(query)
-
-        try:
-            query = """CREATE (a:X)-[r:R]->(b:Y) RETURN toIntegerList(r)"""
-            actual_result = redis_graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Edge", str(e))
-            query = """MATCH (a:X), (b:Y) DELETE a, b"""
-            redis_graph.query(query)
+        # Test of type mismatch input
+        # A list of queries and errors which are expected to occur with the specified query.
+        queries_with_errors = {
+            "RETURN toIntegerList(true)" : "Type mismatch on function 'toIntegerList' argument 1: expected List or Null but was Boolean",
+            "RETURN toIntegerList(7.05)" : "Type mismatch on function 'toIntegerList' argument 1: expected List or Null but was Float",
+            "RETURN toIntegerList(7)"    : "Type mismatch on function 'toIntegerList' argument 1: expected List or Null but was Integer",
+            "RETURN toIntegerList('abc')" : "Type mismatch on function 'toIntegerList' argument 1: expected List or Null but was String",
+            "CREATE (a:X) RETURN toIntegerList(a)" : "Type mismatch on function 'toIntegerList' argument 1: expected List or Null but was Node",
+            "CREATE (a:X)-[r:R]->(b:Y) RETURN toIntegerList(r)" : "Type mismatch on function 'toIntegerList' argument 1: expected List or Null but was Edge",
+        }
+        for query, error in queries_with_errors.items():
+            self.expect_error(query, error)
 
         try:
             query = """CREATE (a:X), (b:Y)"""
@@ -634,7 +524,7 @@ class testList(FlowTestsBase):
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Path", str(e))
+            self.env.assertContains("Type mismatch on function 'toIntegerList' argument 1: expected List or Null but was Path", str(e))
             query = """MATCH (a:X),(b:Y) DELETE a, b"""
             redis_graph.query(query)
 
@@ -736,47 +626,18 @@ class testList(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-        try:
-            redis_graph.query("RETURN toStringList(true)")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Boolean", str(e))
-
-        try:
-            redis_graph.query("RETURN toStringList(7.05)")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Float", str(e))
-
-        try:
-            redis_graph.query("RETURN toStringList(7)")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Integer", str(e))
-
-        try:
-            redis_graph.query("RETURN toStringList('abc')")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
-
-        try:
-            query = """CREATE (a:X) RETURN toStringList(a)"""
-            actual_result = redis_graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Node", str(e))
-            query = """MATCH (a:X) DELETE a"""
-            redis_graph.query(query)
-
-        try:
-            query = """CREATE (a:X)-[r:R]->(b:Y) RETURN toStringList(r)"""
-            actual_result = redis_graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Edge", str(e))
-            query = """MATCH (a:X),(b:Y) DELETE a, b"""
-            redis_graph.query(query)
+        # Test of type mismatch input
+        # A list of queries and errors which are expected to occur with the specified query.
+        queries_with_errors = {
+            "RETURN toStringList(true)" : "Type mismatch on function 'toStringList' argument 1: expected List or Null but was Boolean",
+            "RETURN toStringList(7.05)" : "Type mismatch on function 'toStringList' argument 1: expected List or Null but was Float",
+            "RETURN toStringList(7)"    : "Type mismatch on function 'toStringList' argument 1: expected List or Null but was Integer",
+            "RETURN toStringList('abc')" : "Type mismatch on function 'toStringList' argument 1: expected List or Null but was String",
+            "CREATE (a:X) RETURN toStringList(a)" : "Type mismatch on function 'toStringList' argument 1: expected List or Null but was Node",
+            "CREATE (a:X)-[r:R]->(b:Y) RETURN toStringList(r)" : "Type mismatch on function 'toStringList' argument 1: expected List or Null but was Edge",
+        }
+        for query, error in queries_with_errors.items():
+            self.expect_error(query, error)
 
         try:
             query = """CREATE (a:X), (b:Y)"""
@@ -787,7 +648,7 @@ class testList(FlowTestsBase):
             actual_result = redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Type mismatch: expected List or Null but was Path", str(e))
+            self.env.assertContains("Type mismatch on function 'toStringList' argument 1: expected List or Null but was Path", str(e))
             query = """MATCH (a:X),(b:Y) DELETE a, b"""
             redis_graph.query(query)
 
