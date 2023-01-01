@@ -148,9 +148,7 @@ ExecutionCtx *ExecutionCtx_FromQuery
 		if(!ErrorCtx_EncounteredError()) {
 			ErrorCtx_SetError("Error: could not parse query");
 		}
-		if(params_parse_result != NULL) {
-			parse_result_free(params_parse_result);
-		}
+		parse_result_free(params_parse_result);
 		return NULL;
 	}
 
@@ -182,6 +180,7 @@ ExecutionCtx *ExecutionCtx_FromQuery
 		// set query parameters in the execution AST
 		AST_SetParamsParseResult(ret->ast, params_parse_result);
 	} else {
+		parse_result_free(params_parse_result);
 		ret = _ExecutionCtx_New(ast, NULL, exec_type);
 	}
 
