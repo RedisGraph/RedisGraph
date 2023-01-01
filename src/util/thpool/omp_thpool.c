@@ -50,7 +50,7 @@ static void *tasks_thread_do(struct thread *thread_p) {
     omp_set_dynamic(0);
     omp_set_nested(true);
 
-#pragma omp parallel num_threads(16)
+#pragma omp parallel num_threads(pool->threads_num)
     {
 #pragma omp master
         {
