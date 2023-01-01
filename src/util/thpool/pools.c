@@ -67,8 +67,8 @@ uint ThreadPools_ThreadCount
 	ASSERT(_writers_thpool != NULL);
 
 	uint count = 0;
-	count += thpool_num_threads(_readers_thpool);
-	count += thpool_num_threads(_writers_thpool);
+	count += 16;
+	count += 16;
 
 	return count;
 }
@@ -94,21 +94,22 @@ int ThreadPools_GetThreadID
 
 	// thpool_get_thread_id returns -1 if pthread_self isn't in the thread pool
 	// most likely Redis main thread
-	int thread_id;
-	pthread_t pthread = pthread_self();
-	int readers_count = thpool_num_threads(_readers_thpool);
+	int thread_id =  omp_get_thread_num();
+	return thread_id;
+	// pthread_t pthread = pthread_self();
+	// int readers_count = thpool_num_threads(_readers_thpool);
 
-	// search in writers
-	thread_id = thpool_get_thread_id(_writers_thpool, pthread);
-	// compensate for Redis main thread
-	if(thread_id != -1) return readers_count + thread_id + 1;
+	// // search in writers
+	// thread_id = thpool_get_thread_id(_writers_thpool, pthread);
+	// // compensate for Redis main thread
+	// if(thread_id != -1) return readers_count + thread_id + 1;
 
-	// search in readers pool
-	thread_id = thpool_get_thread_id(_readers_thpool, pthread);
-	// compensate for Redis main thread
-	if(thread_id != -1) return thread_id + 1;
+	// // search in readers pool
+	// thread_id = thpool_get_thread_id(_readers_thpool, pthread);
+	// // compensate for Redis main thread
+	// if(thread_id != -1) return thread_id + 1;
 
-	return 0; // assuming Redis main thread
+	// return 0; // assuming Redis main thread
 }
 
 // pause all thread pools

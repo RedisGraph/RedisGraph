@@ -356,11 +356,11 @@ void _query(bool profile, void *args) {
 	// if 'thread' is redis main thread, continue running
 	// if readonly is true we're executing on a worker thread from
 	// the read-only threadpool
-	_ExecuteQuery(gq_ctx);
-	// if(readonly || command_ctx->thread == EXEC_THREAD_MAIN) {
-	// } else {
-	// 	_DelegateWriter(gq_ctx);
-	// }
+	if(readonly || command_ctx->thread == EXEC_THREAD_MAIN) {
+		_ExecuteQuery(gq_ctx);
+	} else {
+		_DelegateWriter(gq_ctx);
+	}
 
 	return;
 
