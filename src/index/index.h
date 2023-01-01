@@ -89,6 +89,12 @@ void Index_Enable
 	Index idx // index to enable
 );
 
+// Drop internal RediSearch index
+void Index_DropInternalIndex
+(
+	Index idx  // index to drop
+);
+
 // disable index by increasing the number of pending changes
 // and re-creating the internal RediSearch index
 void Index_Disable
@@ -100,6 +106,13 @@ void Index_Disable
 bool Index_Enabled
 (
 	const Index idx  // index to get state of
+);
+
+// responsible for adding new field to the index structure
+void Index_AddFieldToStructure
+(
+	Index idx,
+	IndexField *field
 );
 
 // responsible for creating the index structure only!

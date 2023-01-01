@@ -482,7 +482,7 @@ bool GraphContext_AddExactMatchIndex
 
 	// retrieve the schema for this label
 	Schema    *s            = GraphContext_GetSchema(gc, label, schema_type);
-	bool      index_created = false;
+	bool      index_changed = false;
 	ResultSet *result_set   = QueryCtx_GetResultSet();
 
 	if(s == NULL) {
@@ -498,7 +498,7 @@ bool GraphContext_AddExactMatchIndex
 		IndexField_Default(&idx_field, f_id, field);
 
 		if(Schema_AddIndex(idx, s, &idx_field, IDX_EXACT_MATCH) == INDEX_OK) {
-			index_created = true;
+			index_changed = true;
 			// update result-set
 			ResultSet_IndexCreated(result_set, INDEX_OK);
 		}
@@ -508,11 +508,11 @@ bool GraphContext_AddExactMatchIndex
 	// we don't call Index_Disable within Schema_AddIndex as multiple
 	// field additions are still considered as a "single" modification
 	// of the index
-	if(index_created) {
+	if(index_changed) {
 		Index_Disable(*idx);
 	}
 
-	return index_created;
+	return index_changed;
 }
 
 // create a full text index for the given label and attribute
@@ -538,7 +538,7 @@ bool GraphContext_AddFullTextIndex
 
 	// retrieve the schema for this label
 	ResultSet *result_set   = QueryCtx_GetResultSet();
-	bool      index_created = false;
+	bool      index_changed = false;
 	Schema    *s            = GraphContext_GetSchema(gc, label, schema_type);
 
 	if(s == NULL) {
@@ -555,7 +555,7 @@ bool GraphContext_AddFullTextIndex
 		Attribute_ID f_id = GraphContext_FindOrAddAttribute(gc, field, NULL);
 		IndexField_New(&index_field, f_id, field, weight, nostem, phonetic);
 		if(Schema_AddIndex(idx, s, &index_field, IDX_FULLTEXT) == INDEX_OK) {
-			index_created = true;
+			index_changed = true;
 			// update result-set
 			ResultSet_IndexCreated(result_set, INDEX_OK);
 		}
@@ -570,11 +570,13 @@ bool GraphContext_AddFullTextIndex
 	}
 
 	// diable index if it was created
-	if(index_created) {
+	if(index_changed) {
+		Index_DropInternalIndex(*idx);
+		Index_ConstructStructure(*idx);
 		Index_Disable(*idx);
 	}
 
-	return index_created;
+	return index_changed;
 }
 
 int GraphContext_DeleteIndex

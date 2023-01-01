@@ -53,6 +53,7 @@ static void _RdbLoadFullTextIndex
 
 	if(!already_loaded) {
 		ASSERT(idx != NULL);
+		Index_DropInternalIndex(idx);
 		Index_SetLanguage(idx, language);
 		Index_SetStopwords(idx, stopwords);
 		Index_ConstructStructure(idx);
@@ -75,6 +76,7 @@ static void _RdbLoadExactMatchIndex
 
 	Index idx = NULL;
 	uint fields_count = RedisModule_LoadUnsigned(rdb);
+	ASSERT(fields_count > 0);
 	for(uint i = 0; i < fields_count; i++) {
 		char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
 		if(!already_loaded) {
@@ -86,11 +88,6 @@ static void _RdbLoadExactMatchIndex
 			Schema_AddIndex(&idx, s, &field, IDX_EXACT_MATCH);
 		}
 		RedisModule_Free(field_name);
-	}
-
-	// construct index structure
-	if(!already_loaded) {
-		Index_ConstructStructure(idx);
 	}
 }
 

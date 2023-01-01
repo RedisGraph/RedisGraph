@@ -133,6 +133,8 @@ int Schema_AddIndex
 
 		_idx = Index_New(s->name, s->id, type, entity_type);
 
+		Index_ConstructStructure(_idx);
+
 		if(type == IDX_FULLTEXT) {
 			s->fulltextIdx = _idx;
 		} else {
@@ -188,6 +190,9 @@ static int _Schema_RemoveFullTextIndex
 		return INDEX_FAIL;
 	}
 
+
+	Index_DropInternalIndex(idx);
+	Index_ConstructStructure(idx);
 	Index_Disable(idx);
 
 	// index will be freed by indexer

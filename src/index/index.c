@@ -54,6 +54,26 @@ static void _Index_ConstructFullTextStructure
 	}
 }
 
+static void _Index_ConstructFullTextAddField
+(
+	RSIndex *rsIdx,
+	IndexField *field
+) {
+	// introduce text field
+	unsigned options = RSFLDOPT_NONE;
+	if(field->nostem) {
+		options |= RSFLDOPT_TXTNOSTEM;
+	}
+
+	if(strcmp(field->phonetic, INDEX_FIELD_DEFAULT_PHONETIC) != 0) {
+		options |= RSFLDOPT_TXTPHONETIC;
+	}
+
+	RSFieldID fieldID = RediSearch_CreateField(rsIdx, field->name,
+			RSFLDTYPE_FULLTEXT, options);
+	RediSearch_TextFieldSetWeight(rsIdx, fieldID, field->weight);
+}
+
 static void _Index_ConstructExactMatchStructure
 (
 	Index idx,
@@ -95,6 +115,60 @@ static void _Index_ConstructExactMatchStructure
 			RSFLDTYPE_TAG, RSFLDOPT_NONE);
 	RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
 	RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
+}
+
+void Index_ExactMatchAddField
+(
+	Index idx,
+	RSIndex *rsIdx,
+	IndexField *field
+) {
+	ASSERT(idx != NULL);
+	ASSERT(rsIdx != NULL);
+
+	RSFieldID fieldID;
+	unsigned types = RSFLDTYPE_NUMERIC | RSFLDTYPE_GEO | RSFLDTYPE_TAG;
+
+	// introduce both text, numeric and geo fields
+	fieldID = RediSearch_CreateField(rsIdx, field->name, types,
+			RSFLDOPT_NONE);
+	RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
+	RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
+
+	// introduce edge src and dest node ids as additional index fields
+	if(idx->entity_type == GETYPE_EDGE) {
+		fieldID = RediSearch_CreateField(rsIdx, "_src_id", types,
+				RSFLDOPT_NONE);
+		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
+		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
+
+		fieldID = RediSearch_CreateField(rsIdx, "_dest_id", types,
+				RSFLDOPT_NONE);
+		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
+		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
+	}
+
+	// for none indexable types e.g. Array introduce an additional field
+	// "none_indexable_fields" which will hold a list of attribute names
+	// that were not indexed
+	fieldID = RediSearch_CreateField(rsIdx, INDEX_FIELD_NONE_INDEXED,
+			RSFLDTYPE_TAG, RSFLDOPT_NONE);
+	RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
+	RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
+}
+
+void Index_AddFieldToStructure
+(
+	Index idx,
+	IndexField *field
+) {
+	ASSERT(idx != NULL);
+	ASSERT(idx->_idx != NULL);
+	if(idx->type == IDX_FULLTEXT) {
+		_Index_ConstructFullTextAddField(idx->_idx, field);
+	} else {
+		Index_ExactMatchAddField(idx, idx->_idx, field);
+	}
 }
 
 // responsible for creating the index structure only!
@@ -308,8 +382,20 @@ int Index_PendingChanges
 	return idx->pending_changes;
 }
 
+// Drop internal RediSearch index
+void Index_DropInternalIndex
+(
+	Index idx  // index to drop
+) {
+	ASSERT(idx != NULL);
+
+	if(idx->_idx) {
+		RediSearch_DropIndex(idx->_idx);
+		idx->_idx = NULL;
+	}
+}
+
 // disable index by increasing the number of pending changes
-// and re-creating the internal RediSearch index
 void Index_Disable
 (
 	Index idx  // index to disable
@@ -317,14 +403,6 @@ void Index_Disable
 	ASSERT(idx != NULL);
 
 	idx->pending_changes++;
-
-	if(idx->_idx != NULL) {
-		RediSearch_DropIndex(idx->_idx);
-		idx->_idx = NULL;
-	}
-
-	// create RediSearch index structure
-	Index_ConstructStructure(idx);
 }
 
 // try to enable index by dropping number of pending changes by 1
@@ -349,6 +427,7 @@ void Index_AddField
 	ASSERT(!Index_ContainsAttribute(idx, field->id));
 
 	array_append(idx->fields, *field);
+	Index_AddFieldToStructure(idx, field);
 }
 
 // removes fields from index
