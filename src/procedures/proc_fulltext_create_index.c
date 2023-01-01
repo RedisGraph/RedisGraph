@@ -14,6 +14,11 @@
 #include "../graph/graphcontext.h"
 #include "../datatypes/datatypes.h"
 
+#define LABEL_ARGUMENT_EXPECTED_TYPE_MESSAGE \
+    "The label argument value must be either a string or an array of strings."
+
+#define MIN_ARGUMENT_COUNT 2
+
 //------------------------------------------------------------------------------
 // fulltext createNodeIndex
 //------------------------------------------------------------------------------
@@ -159,42 +164,16 @@ static ProcedureResult _validateFieldConfigMap
 	return PROCEDURE_OK;
 }
 
-// CALL db.idx.fulltext.createNodeIndex(label, fields...)
-// CALL db.idx.fulltext.createNodeIndex('book', 'title', 'authors')
-// CALL db.idx.fulltext.createNodeIndex({label:'L', stopwords:['The']}, 'v')
-// CALL db.idx.fulltext.createNodeIndex('L', {field:'v', weight:2.1})
-ProcedureResult Proc_FulltextCreateNodeIdxInvoke
+// Creates a fulltext node index for the provided label.
+static ProcedureResult _fulltextCreateNodeIndexForLabel
 (
-	ProcedureCtx *ctx,
 	const SIValue *args,
-	const char **yield
+	const char *label
 ) {
-	uint arg_count = array_len((SIValue *)args);
-	if(arg_count < 2) {
-		ErrorCtx_SetError("Minimum number of arguments is 2");
-		return PROCEDURE_ERR;
-	}
+	const uint arg_count = array_len(args);
+	ASSERT(arg_count >= MIN_ARGUMENT_COUNT);
 
-	// label argument should be of type string or map
-	if(!(SI_TYPE(args[0]) & (T_STRING | T_MAP))) {
-		ErrorCtx_SetError("Label argument can be string or map");
-		return PROCEDURE_ERR;
-	}
-	if(SI_TYPE(args[0]) == T_MAP &&
-			_validateIndexConfigMap(args[0]) == PROCEDURE_ERR) {
-		return PROCEDURE_ERR;
-	}
-
-	const char *label     = NULL;
-	SIValue label_config  = args[0];
-
-	if(SI_TYPE(label_config) == T_STRING) {
-		label = label_config.stringval;
-	} else if(SI_TYPE(label_config) == T_MAP) {
-		SIValue label_value;
-		MAP_GET(label_config, "label", label_value);
-		label = label_value.stringval;
-	}
+	const SIValue label_config = args[0];
 
 	// validation, fields arguments should be of type string or map
 	for(uint i = 1; i < arg_count; i++) {
@@ -242,7 +221,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke
 				weight, nostem, phonetic);
 	}
 
-	if(SI_TYPE(label_config) == T_MAP) {
+	if (SI_TYPE(label_config) == T_MAP) {
 		bool lang_exists     = MAP_GET(label_config, "language",  lang);
 		bool stopword_exists = MAP_GET(label_config, "stopwords", sw);
 
@@ -263,6 +242,107 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke
 	if(res == INDEX_OK) Index_Construct(idx, gc->g);
 
 	return PROCEDURE_OK;
+}
+
+// Creates the fulltext node indices for each of the labels in the provided list
+// of labels.
+static ProcedureResult _fulltextCreateNodeIndexForListOfLabels
+(
+	const SIValue *args,
+	const SIValue list_of_labels
+) {
+	const uint arg_count = array_len(args);
+
+	ASSERT(arg_count >= MIN_ARGUMENT_COUNT);
+	ASSERT(SI_TYPE(list_of_labels) == T_ARRAY);
+
+	if (SI_TYPE(list_of_labels) != T_ARRAY) {
+		ErrorCtx_SetError(LABEL_ARGUMENT_EXPECTED_TYPE_MESSAGE);
+		return PROCEDURE_ERR;
+	}
+
+	ProcedureResult result = PROCEDURE_OK;
+	const uint32_t array_length = SIArray_Length(list_of_labels);
+
+	// Validate that the array contains only strings.
+	for (uint32_t index = 0; index < array_length && result == PROCEDURE_OK; ++index) {
+		const SIValue label_value_from_array = SIArray_Get(list_of_labels, index);
+		if (SI_TYPE(label_value_from_array) != T_STRING) {
+			ErrorCtx_SetError(LABEL_ARGUMENT_EXPECTED_TYPE_MESSAGE);
+			result = PROCEDURE_ERR;
+		}
+	} 
+
+	// By this time, we have confirmed that there are only strings in
+	// the array. We can start creating node indices for each of the
+	// labels in the array.
+	for (uint32_t index = 0; index < array_length && result == PROCEDURE_OK; ++index) {
+		const SIValue label_value_from_array = SIArray_Get(list_of_labels, index);
+		result = _fulltextCreateNodeIndexForLabel(args, label_value_from_array.stringval);
+	}
+
+	return result;
+}
+
+// Extracts the label argument and creates the fulltext node indices for each
+// of the label(s).
+static ProcedureResult _fulltextCreateNodeIndexFromArgs
+(
+	const SIValue *args
+) {
+	const uint arg_count = array_len(args);
+	ASSERT(arg_count >= MIN_ARGUMENT_COUNT);
+
+	const SIValue label_config = args[0];
+	ProcedureResult result = PROCEDURE_OK;
+
+	if (SI_TYPE(label_config) == T_STRING) {
+		result = _fulltextCreateNodeIndexForLabel(args, label_config.stringval);
+	} else if (SI_TYPE(label_config) == T_MAP) {
+		SIValue label_value;
+		MAP_GET(label_config, "label", label_value);
+		
+		if (SI_TYPE(label_value) == T_STRING) {
+			result = _fulltextCreateNodeIndexForLabel(args, label_value.stringval);
+		} else if (SI_TYPE(label_value) == T_ARRAY) {
+			result = _fulltextCreateNodeIndexForListOfLabels(args, label_value);
+		} else {
+			ErrorCtx_SetError(LABEL_ARGUMENT_EXPECTED_TYPE_MESSAGE);
+			result = PROCEDURE_ERR;
+		}
+	}
+
+	return result;
+}
+
+// CALL db.idx.fulltext.createNodeIndex(label, fields...)
+// CALL db.idx.fulltext.createNodeIndex('book', 'title', 'authors')
+// CALL db.idx.fulltext.createNodeIndex({label:'L', stopwords:['The']}, 'v')
+// CALL db.idx.fulltext.createNodeIndex('L', {field:'v', weight:2.1})
+// CALL db.idx.fulltext.createNodeIndex({label:['L1', 'L2'], 'v')
+ProcedureResult Proc_FulltextCreateNodeIdxInvoke
+(
+	ProcedureCtx *ctx,
+	const SIValue *args,
+	const char **yield
+) {
+	uint arg_count = array_len((SIValue *)args);
+	if(arg_count < MIN_ARGUMENT_COUNT) {
+		ErrorCtx_SetError("Minimum number of arguments is 2");
+		return PROCEDURE_ERR;
+	}
+
+	// label argument should be of type string or map
+	if(!(SI_TYPE(args[0]) & (T_STRING | T_MAP))) {
+		ErrorCtx_SetError("Label argument can be string or map");
+		return PROCEDURE_ERR;
+	}
+	if(SI_TYPE(args[0]) == T_MAP &&
+			_validateIndexConfigMap(args[0]) == PROCEDURE_ERR) {
+		return PROCEDURE_ERR;
+	}
+
+	return _fulltextCreateNodeIndexFromArgs(args);
 }
 
 SIValue *Proc_FulltextCreateNodeIdxStep(ProcedureCtx *ctx) {
