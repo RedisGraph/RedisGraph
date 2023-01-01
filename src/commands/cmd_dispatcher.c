@@ -42,7 +42,7 @@ static int _read_flags
 	if(max_timeout != CONFIG_TIMEOUT_NO_TIMEOUT ||
 	   *timeout != CONFIG_TIMEOUT_NO_TIMEOUT) {
 		*timeout_rw = true;
-		if(timeout == CONFIG_TIMEOUT_NO_TIMEOUT) {
+		if(*timeout == CONFIG_TIMEOUT_NO_TIMEOUT) {
 			*timeout = max_timeout;
 		}
 	} else {
