@@ -9,6 +9,8 @@
 #include "./dfs.h"
 #include "../util/arr.h"
 #include"./detect_cycle.h"
+#include "../graph/query_graph.h"
+#include "../graph/entities/qg_node.h"
 
 // Scans the graph in a DFS fashion, keeps track after the longest path length.
 static void __DFSMaxDepth(QGNode *n, int level, int *max_depth, rax *visited, rax *used_edges) {

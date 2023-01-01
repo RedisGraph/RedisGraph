@@ -6,8 +6,11 @@
 
 #pragma once
 
-#include "../graph/entities/qg_node.h"
-#include <limits.h>
+#include <stdint.h>
+
+// Forward declaration
+struct QGNode;
+struct QGEdge;
 
 /* Perform DFS scan from node S,
  * Returns a single path from S to a reachable node at distance level. */

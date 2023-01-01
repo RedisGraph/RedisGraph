@@ -6,7 +6,12 @@
 
 #pragma once
 
-#include "all_paths.h"
+#include <stddef.h>
+
+// Forward declarations
+struct AllPathsCtx;
+struct Node;
+struct Path;
 
 int AllShortestPaths_FindMinimumLength(
 	AllPathsCtx *ctx,  // shortest path context

@@ -8,6 +8,7 @@
 #include "all_neighbors.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
+#include "../graph/rg_matrix/rg_matrix_iter.h"
 
 static void _AllNeighborsCtx_CollectNeighbors
 (

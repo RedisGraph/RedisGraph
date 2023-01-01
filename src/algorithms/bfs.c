@@ -7,8 +7,8 @@
 #include "./bfs.h"
 #include "../util/arr.h"
 #include "../graph/entities/qg_edge.h"
+#include "../graph/entities/qg_node.h"
 
-#include <stddef.h>
 #include "rax.h"
 
 // Returns a set of nodes reached at given level from S.

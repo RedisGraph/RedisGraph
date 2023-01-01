@@ -6,7 +6,10 @@
 
 #pragma once
 
-#include "../graph/query_graph.h"
+#include <stdbool.h>
+
+// Forward declaration
+struct QueryGraph;
 
 /* Detects if graph contains a cycle. 
  * assuming graph is fully connected. */

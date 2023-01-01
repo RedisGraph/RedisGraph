@@ -6,10 +6,13 @@
 
 #pragma once
 
-#include "../graph/query_graph.h"
-#include "../graph/entities/qg_node.h"
+#include <stdint.h>
 
-// Determins the longest path length within a tree structured graph.
+// Forward declaration
+struct QGNode;
+struct QueryGraph;
+
+// Determines the longest path length within a tree structured graph.
 QGNode *LongestPathTree(const QueryGraph *g, int *level);
-// Determins the longest path length within a graph (containing cycles).
+// Determines the longest path length within a graph (containing cycles).
 QGNode *LongestPathGraph(const QueryGraph *g, int *level);
