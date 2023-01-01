@@ -1,12 +1,10 @@
 
 .NOTPARALLEL:
 
-ifneq ($(filter memcheck,$(MAKECMDGOALS)),)
-export DEBUG ?= 1
-export MEMCHECK=1
+ifeq ($(VG),docker)
+override VG:=1
+VG_DOCKER=1
 endif
-
-#----------------------------------------------------------------------------------------------
 
 ROOT=.
 
@@ -27,12 +25,14 @@ export TARGET=$(BINROOT)/src/redisgraph.so
 define HELPTEXT
 make all            # Build everything
   DEBUG=1             # Build for debugging
-  COV=1               # Build for coverage analysis (implies DEBUG=1)
   SLOW=1              # Disable parallel build
   STATIC_OMP=1        # Link OpenMP statically
   VARIANT=name        # Add `name` to build products directory
   GCC=1               # Build with GCC toolchain (default nor Linux)
   CLANG=1             # Build with CLang toolchain (default for macOS)
+  COV=1               # Build for coverage analysis (implies DEBUG=1)
+  VG=1|docker         # build for Valgrind
+  SAN=type            # build with LLVM sanitizer (type=address|memory|leak|thread) 
 make clean          # Clean build products
   ALL=1               # Completely remove build products
   DEPS=1              # Also clean dependant modules
@@ -54,13 +54,15 @@ make test         # Run tests
   TEST=test         # Run specific test
   TESTFILE=file     # Run tests listed in file
   FAILFILE=file     # Write failed tests to file
-make unit-tests  # Run unit tests
-make flow-tests  # Run flow tests
-make tck-tests   # Run TCK tests
-make fuzz-tests  # Run fuzz tester
 
-make memcheck    # Run tests with Valgrind
-make benchmark   # Run benchmarks
+make unit-tests   # Run unit tests
+make flow-tests   # Run flow tests
+make tck-tests    # Run TCK tests
+make fuzz-tests   # Run fuzz tester
+  TIMEOUT=secs      # Timeout in `secs`
+
+make benchmark    # Run benchmarks
+  REMOTE=1          # Run remotely
 
 make coverage     # Perform coverage analysis (build & test)
 make cov-upload   # Upload coverage data to codecov.io
@@ -122,11 +124,17 @@ LIBS=$(RAX) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH_LIBS) $(LIBCYPHER_PARSER)
 
 #----------------------------------------------------------------------------------------------
 
-ifeq ($(DEBUG),1)
+ifeq ($(VG),1)
+export MEMCHECK=1
+endif
+
+ifneq ($(SAN),)
+export MEMCHECK=1
+endif
+
 ifeq ($(MEMCHECK),1)
 	CC_FLAGS += MEMCHECK
 	# SO_LD_FLAGS += -u RediSearch_CleanupModule
-endif
 endif
 
 #----------------------------------------------------------------------------------------------
@@ -297,41 +305,57 @@ else
 _RLTEST_PARALLEL=1
 endif
 
-test: $(TARGET)
-ifeq ($(VALGRIND),1)
-# valgrind is requested, check that host's os is not Linux
-ifeq ($(OS),macos)
+ifneq ($(BUILD),0)
+TEST_DEPS=$(TARGET)
+endif
+
+ifeq ($(VG_DOCKER),1)
+test:
 	@echo Building docker to run valgrind on macOS
 	$(SHOW)docker build -f tests/Dockerfile -t macos_test_docker .
+else
+test: $(TEST_DEPS)
+	$(SHOW)MODULE=$(TARGET) BINROOT=$(BINROOT) PARALLEL=$(_RLTEST_PARALLEL) ./tests/flow/tests.sh
 endif
-endif
-	@$(MAKE) -C $(ROOT)/tests test PARALLEL=$(_RLTEST_PARALLEL) BINROOT=$(BINROOT)
 
 unit-tests:
-	@$(MAKE) -C $(ROOT)/tests unit BINROOT=$(BINROOT)
+	$(SHOW)$(MAKE) build FORCE=1 UNIT_TESTS=1
+	$(SHOW)MODULE=$(TARGET) BINROOT=$(BINROOT) ./tests/unit/tests.sh
 
-flow-tests: $(TARGET)
-	@$(MAKE) -C $(ROOT)/tests flow BINROOT=$(BINROOT)
+flow-tests: $(TEST_DEPS)
+	$(SHOW)MODULE=$(TARGET) BINROOT=$(BINROOT) PARALLEL=$(_RLTEST_PARALLEL) ./tests/flow/tests.sh
 
-tck-tests: $(TARGET)
-	@$(MAKE) -C $(ROOT)/tests tck BINROOT=$(BINROOT)
+tck-tests: $(TEST_DEPS)
+	$(SHOW)MODULE=$(TARGET) BINROOT=$(BINROOT) GEN=0 AOF=0 TCK=1 ./tests/flow/tests.sh
+	
+.PHONY: test unit-tests flow-tests tck-tests
+
+#----------------------------------------------------------------------------------------------
+
+ifneq ($(TIMEOUT),)
+FUZZ_ARGS=-t $(TIMEOUT)
+endif
 
 fuzz fuzz-tests: $(TARGET)
-	@$(MAKE) -C $(ROOT)/tests fuzz BINROOT=$(BINROOT)
+	$(SHOW)cd tests/fuzz && ./process.py -m $(TARGET) $(FUZZ_ARGS)
 
-.PHONY: test unit-tests flow-tests tck-tests fuzz fuzz-tests
-
-#----------------------------------------------------------------------------------------------
-
-memcheck: bindirs $(TARGET)
-	@$(MAKE) -C $(ROOT)/tests memcheck PARALLEL=$(_RLTEST_PARALLEL)
-
-.PHONY: memcheck
+.PHONY: fuzz fuzz-tests
 
 #----------------------------------------------------------------------------------------------
+
+ifneq ($(REMOTE),)
+BENCHMARK_ARGS=run-remote
+else
+BENCHMARK_ARGS=run-local
+endif
+
+BENCHMARK_ARGS += --module_path $(TARGET) --required-module graph
+ifneq ($(BENCHMARK),)
+BENCHMARK_ARGS += --test $(BENCHMARK)
+endif
 
 benchmark: $(TARGET)
-	@$(MAKE) -C $(ROOT)/tests benchmark
+	$(SHOW)cd tests/benchmarks && redisbench-admin $(BENCHMARK_ARGS)
 
 .PHONY: benchmark
 

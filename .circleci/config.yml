@@ -215,7 +215,7 @@ commands:
           shell: /bin/bash -l -eo pipefail
           command: |
             cd build/docker
-            make build OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" TEST=1 OFFICIAL=<<parameters.official>> SHOW=1 VERBOSE=1 SLOW=1
+            make build OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" TEST=1 OFFICIAL=<<parameters.official>> SHOW=1 VERBOSE=1
       - save-tests-logs
       - early-return-for-forked-pull-requests
       - run:
@@ -246,7 +246,7 @@ commands:
           name: Build for platform
           command: |
             cd build/docker
-            make build OSNICK=<<parameters.platform>> VERSION=$CIRCLE_TAG BRANCH=$CIRCLE_BRANCH TEST=1 OFFICIAL=<<parameters.official>> SHOW=1 VERBOSE=1 SLOW=1
+            make build OSNICK=<<parameters.platform>> VERSION=$CIRCLE_TAG BRANCH=$CIRCLE_BRANCH TEST=1 OFFICIAL=<<parameters.official>> SHOW=1 VERBOSE=1
           no_output_timeout: 30m
       - save-tests-logs
       - early-return-for-forked-pull-requests
@@ -383,44 +383,50 @@ jobs:
       san-type:
         type: string
     steps:
-      - early-returns
-      - checkout-all
-      - install-prerequisites
-      - build-steps: 
+      - build-steps:
           build_params: SAN=<<parameters.san-type>>
           run_pack: false
       - run:
           name: Unit tests
           shell: /bin/bash -l -eo pipefail
-          command: make unit-tests PLATFORM_MODE=1 SAN=<<parameters.san-type>> SLOW=1
+          command: make unit-tests PLATFORM_MODE=1 SAN=<<parameters.san-type>>
           no_output_timeout: 45m
       - run:
           name: Flow tests
           shell: /bin/bash -l -eo pipefail
-          command: make flow-tests PLATFORM_MODE=1 SAN=<<parameters.san-type>> SLOW=1
+          command: make flow-tests PLATFORM_MODE=1 SAN=<<parameters.san-type>>
           no_output_timeout: 45m
       - run:
           name: TCK tests
           shell: /bin/bash -l -eo pipefail
-          command: make tck-tests PLATFORM_MODE=1 SAN=<<parameters.san-type>> SLOW=1
+          command: make tck-tests PLATFORM_MODE=1 SAN=<<parameters.san-type>>
           no_output_timeout: 45m
       - save-tests-logs
 
-  build-memcheck:
+  valgrind-test:
     docker:
       - image: redisfab/rmbuilder:6.2.7-x64-bionic
     resource_class: xlarge
     steps:
-      - early-returns
-      - checkout-all
-      - install-prerequisites
-      - restore_cache:
-          keys:
-            - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
+      - build-steps:
+          build_params: VG=1
+          run_pack: false
       - run:
-          name: Test for memory leaks
+          name: Unit tests
           shell: /bin/bash -l -eo pipefail
-          command: make memcheck PARALLEL=8 PLATFORM_MODE=1
+          command: make unit-tests PLATFORM_MODE=1 VG=1
+          timeout: 60m
+          no_output_timeout: 60m
+      - run:
+          name: Flow tests
+          shell: /bin/bash -l -eo pipefail
+          command: make flow-tests PLATFORM_MODE=1 VG=1
+          timeout: 60m
+          no_output_timeout: 60m
+      - run:
+          name: TCK tests
+          shell: /bin/bash -l -eo pipefail
+          command: make tck-tests PLATFORM_MODE=1 VG=1
           timeout: 60m
           no_output_timeout: 60m
       - save-tests-logs
@@ -523,7 +529,7 @@ jobs:
       - run:
           name: Run 10-minute fuzz test
           shell: /bin/bash -l -eo pipefail
-          command: FUZZ_TIMEOUT=600 make fuzz
+          command: make fuzz-tests TIMEOUT=600
 
   benchmark:
     docker:
@@ -668,8 +674,6 @@ workflows:
           <<: *on-integ-and-version-tags
       - coverage:
           <<: *on-any-branch
-      - build-memcheck:
-          <<: *on-any-branch
       - sanitize:
           name: sanitize-<< matrix.san-type >>
           <<: *on-any-branch
@@ -702,7 +706,7 @@ workflows:
           <<: *on-integ-and-version-tags
           context: common
 
-  benchmark_flow_label:
+  benchmark-flow-label:
     when:
       << pipeline.parameters.run_benchmark_flow_label >>
     jobs:
@@ -721,7 +725,7 @@ workflows:
           matrix:
             parameters:
               redis_version: ["6.0", "6.2", "7", "unstable"]
-      - build-memcheck:
+      - valgrind-test:
           <<: *on-integ-branch-cron
       - fuzzer:
           name: nightly-fuzzer

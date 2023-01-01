@@ -250,7 +250,7 @@ static void _ShutdownEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uin
 	GrB_finalize();
 
     RedisModule_Log(ctx, "notice", "%s", "Clearing RediSearch resources on shutdown");
-    RediSearch_CleanupModule();
+    //RediSearch_CleanupModule();
 }
 
 static void _RegisterServerEvents(RedisModuleCtx *ctx) {
