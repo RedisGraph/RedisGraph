@@ -181,9 +181,20 @@ commands:
         default: ""
     steps:
       - run:
-          name: Test
+          name: Unit tests
           shell: /bin/bash -l -eo pipefail
-          command: make test PLATFORM_MODE=1 <<parameters.test_params>>
+          command: make unit-tests PLATFORM_MODE=1 <<parameters.test_params>>
+          no_output_timeout: 45m
+      - run:
+          name: Flow tests
+          shell: /bin/bash -l -eo pipefail
+          command: make flow-tests PLATFORM_MODE=1 <<parameters.test_params>>
+          no_output_timeout: 45m
+      - run:
+          name: TCK tests
+          shell: /bin/bash -l -eo pipefail
+          command: make tck-tests PLATFORM_MODE=1 <<parameters.test_params>>
+          no_output_timeout: 45m
       - run:
           name: Run 30-second fuzz test
           shell: /bin/bash -l -eo pipefail
@@ -671,12 +682,13 @@ workflows:
               platform: [jammy, focal, bionic]
       - build-macos:
           context: common
-          <<: *on-integ-and-version-tags
+          #@@<<: *on-integ-and-version-tags
+          <<: 
       - coverage:
-          <<: *on-any-branch
+          <<: *always
       - sanitize:
           name: sanitize-<< matrix.san-type >>
-          <<: *on-any-branch
+          <<: *always
           matrix:
             parameters:
               san-type: [address]
@@ -712,7 +724,7 @@ workflows:
     jobs:
       - benchmark:
           context: common
-          <<: *on-any-branch
+          <<: *always
 
   nightly:
     triggers:

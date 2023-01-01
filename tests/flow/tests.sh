@@ -357,7 +357,7 @@ RLEC=${RLEC:-0}
 if [[ $RLEC != 1 ]]; then
 	GEN=${GEN:-1}
 	AOF=${AOF:-1}
-	TCK=${TCK:-0}
+	TCK=${TCK:-1}
 
 	if [[ -z $MODULE || ! -f $MODULE ]]; then
 		echo "Module not found at ${MODULE}. Aborting."
