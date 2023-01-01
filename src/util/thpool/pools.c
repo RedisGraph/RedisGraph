@@ -68,7 +68,7 @@ uint ThreadPools_ThreadCount
 
 	uint count = 0;
 	count += 16;
-	count += 16;
+	count += 1;
 
 	return count;
 }
