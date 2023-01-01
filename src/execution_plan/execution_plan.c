@@ -223,6 +223,9 @@ static ExecutionPlan *_tie_segments
 		prev_connecting_op = connecting_op;
 		OpBase **taps = ExecutionPlan_LocateTaps(segment);
 		ASSERT(array_len(taps) > 0);
+
+		// TODO: Seems that we need only one tap, so we can stop the search for taps
+		// after we find one. Currently we fetch them all.
 		connecting_op = taps[0];
 		array_free(taps);
 

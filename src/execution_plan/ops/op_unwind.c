@@ -37,7 +37,7 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 }
 
 /* Evaluate list expression, 
- * if expression did not returned a list type value, creates a list with that value. */
+ * if expression did not return a list type value, creates a list with that value. */
 static void _initList(OpUnwind *op) {
 	op->list = SI_NullVal(); // Null-set the list value to avoid memory errors if evaluation fails.
 	SIValue new_list = AR_EXP_Evaluate(op->exp, op->currentRecord);
@@ -70,9 +70,9 @@ static OpResult UnwindInit(OpBase *opBase) {
 }
 
 /* Try to generate a new value to return
- * NULL will be returned if dynamic list is not evaluted (listIdx = INDEX_NOT_SET)
+ * NULL will be returned if dynamic list is not evaluated (listIdx = INDEX_NOT_SET)
  * or in case where the current list is fully consumed. */
-Record _handoff(OpUnwind *op) {
+static Record _handoff(OpUnwind *op) {
 	// If there is a new value ready, return it.
 	if(op->listIdx < SIArray_Length(op->list)) {
 		Record r = OpBase_CloneRecord(op->currentRecord);

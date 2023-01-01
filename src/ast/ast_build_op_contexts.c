@@ -309,6 +309,19 @@ AST_UnwindContext AST_PrepareUnwindOp
 	return ctx;
 }
 
+AST_ForeachContext AST_PrepareForeachOp
+(
+	const cypher_astnode_t *foreach_clause
+) {
+	
+	const cypher_astnode_t *foreach_exp = cypher_ast_foreach_get_expression(foreach_clause);
+	AR_ExpNode *exp = AR_EXP_FromASTNode(foreach_exp);
+	exp->resolved_name = cypher_ast_identifier_get_name(cypher_ast_foreach_get_identifier(foreach_clause));
+
+	AST_ForeachContext ctx = {.exp = exp};
+	return ctx;
+}
+
 //------------------------------------------------------------------------------
 // DELETE operation
 //------------------------------------------------------------------------------

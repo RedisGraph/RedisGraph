@@ -5,9 +5,9 @@
  */
 
 #include "ast.h"
-#include "../query_ctx.h"
 #include "../errors.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "../util/qsort.h"
 #include "../util/sds/sds.h"
 #include "../procedures/procedure.h"

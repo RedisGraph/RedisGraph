@@ -717,7 +717,7 @@ cypher_parse_result_t *parse_query
 	// compress clauses
 	// e.g. MATCH (a:N) MATCH (b:N) RETURN a,b
 	// will be rewritten as:
-	// MATCH (a:N), (b:N) RETURN a,b
+	// MATCH (a:N), (b:N) RETURN a,bs
 	rerun_validation |= AST_RewriteSameClauses(root);
 
 	// only perform validations again if there's been a rewrite

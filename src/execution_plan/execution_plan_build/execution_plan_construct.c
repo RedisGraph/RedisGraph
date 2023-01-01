@@ -187,6 +187,73 @@ static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	ExecutionPlan_UpdateRoot(plan, op);
 }
 
+static inline void _buildForeachOp
+(
+	ExecutionPlan *plan,             // execution plan to add operation to
+	const cypher_astnode_t *clause,  // foreach clause
+	GraphContext *gc                 // graph context
+) {
+	/**
+	 * We want to build an execution plan from scratch from the subquery in the 
+	 * `clauses` expression of the FOREACH, and then tie it to be the second
+	 * child of the Foreach operation. The first child will be the prior operation
+	 * in the plan `plan` (just set the Foreach op as the new root).
+	 * 
+	 * Build the new execution plan (which will be embedded in the Foreach)
+	 * using ExecutionPlan_NewEmptyExecutionPlan probably.
+	 **/
+
+	AST_ForeachContext foreach_ast_ctx = AST_PrepareForeachOp(clause);
+	OpBase *op = NewForeachOp(plan, foreach_ast_ctx.exp);
+	ExecutionPlan_UpdateRoot(plan, op);
+	
+	ExecutionPlan *embedded_plan = ExecutionPlan_NewEmptyExecutionPlan();
+	embedded_plan->record_map = plan->record_map;
+	embedded_plan->query_graph = plan->query_graph;
+	embedded_plan->ast_segment = plan->ast_segment;
+	embedded_plan->record_pool = plan->record_pool;
+	embedded_plan->connected_components = plan->connected_components;
+
+	// build the argument operation
+	// TODO: Pass the correct variables.
+	embedded_plan->root = NewArgumentOp(embedded_plan, NULL);
+
+	AST *ast = plan->ast_segment;
+	// build the embedded operations in the foreach clause
+	uint clause_count = cypher_ast_foreach_nclauses(clause);
+	for(uint i = 0; i < clause_count; i++) {
+		// Build the appropriate operation(s) for each clause in the query.
+		const cypher_astnode_t *sub_clause = cypher_ast_foreach_get_clause(clause, i);
+		ExecutionPlanSegment_ConvertClause(gc, ast, embedded_plan, sub_clause);
+	}
+
+	ExecutionPlan_BindPlanToOps(plan, embedded_plan->root);
+	ExecutionPlan_AddOp(op, embedded_plan->root);
+	// rm_free(embedded_plan);
+	
+	
+	/*
+	Another way to build the plan (not finished, need to add the argument
+	as the child of the deepest operation).
+
+	// Create an execution-plan for the embedded clauses --> tie it to the 
+	// Argument operation.
+	AST *orig_ast = QueryCtx_GetAST();
+	ExecutionPlan *embedded_plan = ExecutionPlan_NewEmptyExecutionPlan();
+	embedded_plan->record_map = plan->record_map;
+	AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
+	QueryCtx_SetAST(ast_segment);
+	ExecutionPlan_PopulateExecutionPlan(embedded_plan);
+	AST_Free(ast_segment); // Free the AST segment.
+
+	QueryCtx_SetAST(orig_ast);
+
+	// add the argument as the deepest child in the embedded execution-plan
+	// TBD
+	*/
+
+}
+
 void ExecutionPlanSegment_ConvertClause
 (
 	GraphContext *gc,
@@ -217,6 +284,8 @@ void ExecutionPlanSegment_ConvertClause
 	} else if(t == CYPHER_AST_WITH) {
 		// Converting a WITH clause can create multiple operations.
 		buildWithOps(plan, clause);
+	} else if(t == CYPHER_AST_FOREACH) {
+		_buildForeachOp(plan, clause, gc);
 	} else {
 		assert(false && "unhandeled clause");
 	}

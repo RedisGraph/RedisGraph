@@ -19,6 +19,11 @@ typedef struct {
 	AR_ExpNode *exp;
 } AST_UnwindContext;
 
+// Foreach operations hold a ....
+typedef struct {
+	AR_ExpNode *exp;
+} AST_ForeachContext;
+
 typedef struct {
 	rax *on_match;                   // rax of updates to make for ON MATCH directives
 	rax *on_create;                  // rax of updates to make for ON CREATE directives
@@ -62,6 +67,11 @@ void AST_PrepareSortOp
 AST_UnwindContext AST_PrepareUnwindOp
 (
 	const cypher_astnode_t *unwind_clause
+);
+
+AST_ForeachContext AST_PrepareForeachOp
+(
+	const cypher_astnode_t *foreach_clause
 );
 
 void AST_PreparePathCreation

@@ -171,6 +171,11 @@ uint DeleteNode
 	return 1;
 }
 
+// delete an edge
+// delete the edge from the graph
+// delete the edge from the relevant indexes
+// add edge deletion operation to undo-log
+// return the # of edges deleted
 int DeleteEdge
 (
 	GraphContext *gc,

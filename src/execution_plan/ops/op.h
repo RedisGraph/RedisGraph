@@ -41,6 +41,7 @@ typedef enum {
 	OPType_UPDATE,
 	OPType_DELETE,
 	OPType_UNWIND,
+	OPType_FOREACH,
 	OPType_PROC_CALL,
 	OPType_ARGUMENT,
 	OPType_CARTESIAN_PRODUCT,

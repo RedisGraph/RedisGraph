@@ -80,8 +80,8 @@ static Record DistinctConsume(OpBase *opBase) {
 		if(!r) return NULL;
 
 		// update offsets if record mapping changed
-		// it is possible for the record's mapping to be changed throughtout
-		// the execution as this distinct operation might recieve records from
+		// it is possible for the record's mapping to be changed throughout
+		// the execution as this distinct operation might receive records from
 		// different sub execution plans, such as in the case of UNION
 		// in which case the distinct values might be located at different offsets
 		// within the record and we should adjust accordingly
@@ -94,7 +94,7 @@ static Record DistinctConsume(OpBase *opBase) {
 		}
 
 		unsigned long long const hash = _compute_hash(op, r);
-		int is_new = raxInsert(op->found, (unsigned char *) &hash, sizeof(hash), NULL, NULL);
+		int is_new = raxTryInsert(op->found, (unsigned char *) &hash, sizeof(hash), NULL, NULL);
 		if(is_new) return r;
 		OpBase_DeleteRecord(r);
 	}

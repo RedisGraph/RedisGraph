@@ -1482,7 +1482,8 @@ static AST_Validation _ValidateQueryTermination
 	   type != CYPHER_AST_DELETE   &&
 	   type != CYPHER_AST_SET      &&
 	   type != CYPHER_AST_CALL     &&
-	   type != CYPHER_AST_FOREACH
+	   type != CYPHER_AST_FOREACH  &&
+	   type != CYPHER_AST_REMOVE
 	  ) {
 		ErrorCtx_SetError("Query cannot conclude with %s (must be RETURN or an update clause)",
 						  cypher_astnode_typestr(type));
