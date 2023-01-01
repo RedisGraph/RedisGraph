@@ -683,7 +683,7 @@ workflows:
       - build-macos:
           context: common
           #@@<<: *on-integ-and-version-tags
-          <<: 
+          <<: *always
       - coverage:
           <<: *always
       - sanitize:
