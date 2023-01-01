@@ -253,14 +253,14 @@ class testCache():
         # we want to make sure the execution of a recently evicted query
         # runs to completion successfuly
 
+        # skip if 'to_thread' is missing or if test under valgrind
+        if self.env.envRunner.debugger is not None or "to_thread" not in dir(asyncio):
+            self.env.skip()
+
         # stop previous env
         self.env.stop()
 
         self.env = Env(decodeResponses=True, moduleArgs='THREAD_COUNT 8 CACHE_SIZE 1')
-
-        # skip if 'to_thread' is missing or if test under valgrind
-        if self.env.envRunner.debugger is not None or "to_thread" not in dir(asyncio):
-            self.env.skip()
 
         # eviction
         con = self.env.getConnection()
