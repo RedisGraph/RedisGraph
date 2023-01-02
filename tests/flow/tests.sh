@@ -77,6 +77,39 @@ help() {
 
 #---------------------------------------------------------------------------------------------- 
 
+traps() {
+	local func="$1"
+	shift
+	local sig
+	for sig in "$@"; do
+		trap "$func $sig" "$sig"
+	done
+}
+
+linux_stop() {
+	local pgid=$(cat /proc/$PID/status | grep pgid | awk '{print $2}')
+	kill -9 -- -$pgid
+}
+
+macos_stop() {
+	local pgid=$(ps -o pid,pgid -p $PID | awk "/$PID/"'{ print $2 }' | tail -1)
+	pkill -9 -g $pgid
+}
+
+stop() {
+	trap - SIGINT
+	if [[ $OS == linux ]]; then
+		linux_stop
+	elif [[ $OS == macos ]]; then
+		macos_stop
+	fi
+	exit 1
+}
+
+traps 'stop' SIGINT
+
+#---------------------------------------------------------------------------------------------- 
+
 setup_rltest() {
 	if [[ $RLTEST == view ]]; then
 		if [[ ! -d $ROOT/../RLTest ]]; then
@@ -100,7 +133,10 @@ setup_rltest() {
 	fi
 	
 	if [[ $RLTEST_VERBOSE == 1 ]]; then
-		RLTEST_ARGS+=" -s -v"
+		RLTEST_ARGS+=" -v"
+		if [[ $VG != 1 ]]; then
+			RLTEST_ARGS+=" -s"
+		fi
 	fi
 }
 
@@ -348,6 +384,7 @@ RLEC_PORT=${RLEC_PORT:-12000}
 EXT_HOST=${EXT_HOST:-127.0.0.1}
 EXT_PORT=${EXT_PORT:-6379}
 
+PID=$$
 OS=$($READIES/bin/platform --os)
 
 #---------------------------------------------------------------------------------- Tests scope
@@ -479,12 +516,20 @@ if [[ $GEN == 1 ]]; then
 fi
 
 if [[ $AOF == 1 ]]; then
-	{ (RLTEST_ARGS="${RLTEST_ARGS} --use-aof" RLTEST_TEST_ARGS="--test test_persistency" \
-	   run_tests "tests with AOF"); (( E |= $? )); } || true
+	if [[ -z $TEST || $TEST == test_persistency* ]]; then
+		{ (RLTEST_ARGS="${RLTEST_ARGS} --use-aof" RLTEST_TEST_ARGS="--test test_persistency" \
+		   run_tests "tests with AOF"); (( E |= $? )); } || true
+	else
+		AOF=0
+	fi
 fi
 
 if [[ $TCK == 1 ]]; then
-	{ (cd $HERE/../tck; run_tests "TCK tests"); (( E |= $? )); } || true
+	if [[ -z $TEST ]]; then
+		{ (cd $HERE/../tck; run_tests "TCK tests"); (( E |= $? )); } || true
+	else
+		TCK=0
+	fi
 fi
 
 if [[ $RLEC == 1 ]]; then

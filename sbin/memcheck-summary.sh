@@ -10,63 +10,58 @@ cd $HERE
 
 #----------------------------------------------------------------------------------------------
 
+valgrind_check() {
+	echo -n "${NOCOLOR}"
+	if grep -l "$1" $logdir/*.valgrind.log &> /dev/null; then
+		echo
+		echo "${LIGHTRED}### Valgrind: ${TYPE} detected:${RED}"
+		grep -l "$1" $logdir/*.valgrind.log
+		echo -n "${NOCOLOR}"
+		E=1
+	fi
+}
+
 valgrind_summary() {
 	local logdir="$ROOT/tests/$DIR/logs"
+
 	local leaks_head=0
 	for file in $(ls $logdir/*.valgrind.log 2>/dev/null); do
 		# If the last "definitely lost: " line of a logfile has a nonzero value, print the file name
 		if tac "$file" | grep -a -m 1 "definitely lost: " | grep "definitely lost: [1-9][0-9,]* bytes" &> /dev/null; then
 			if [[ $leaks_head == 0 ]]; then
 				echo
-				echo "${LIGHTRED}### Leaks:${RED}"
+				echo "${LIGHTRED}### Valgrind: leaks detected:${RED}"
 				leaks_head=1
 			fi
 			echo "$file"
 			E=1
 		fi
 	done
-	echo -n "${NOCOLOR}"
-	if grep -l "Invalid read" $logdir/*.valgrind.log &> /dev/null; then
-		echo
-		echo "${LIGHTRED}### Invalid reads:${RED}"
-		grep -l "Invalid read" $logdir/*.valgrind.log
-		echo -n "${NOCOLOR}"
-		E=1
-	fi
-	if grep -l "Invalid write" $logdir/*.valgrind.log &> /dev/null; then
-		echo
-		echo "${LIGHTRED}### Invalid writes:${RED}"
-		grep -l "Invalid write" $logdir/*.valgrind.log
-		echo -n "${NOCOLOR}"
-		E=1
-	fi
+
+	TYPE="invalid reads" valgrind_check "Invalid read"
+	TYPE="invalid writes" valgrind_check "Invalid write"
 }
 
 #----------------------------------------------------------------------------------------------
 
+sanitizer_check() {
+	if grep -l "$1" $logdir/*.asan.log* &> /dev/null; then
+		echo
+		echo "${LIGHTRED}### Sanitizer: ${TYPE} detected:${RED}"
+		grep -l "$1" $logdir/*.asan.log*
+		echo "${NOCOLOR}"
+		E=1
+	fi
+}
+
 sanitizer_summary() {
 	local logdir="$ROOT/tests/$DIR/logs"
-	if grep -l "leaked in" $logdir/*.asan.log* &> /dev/null; then
-		echo
-		echo "${LIGHTRED}Sanitizer: leaks detected:${RED}"
-		grep -l "leaked in" $logdir/*.asan.log*
-		echo "${NOCOLOR}"
-		E=1
+	if ! TYPE="leaks" sanitizer_check "Direct leak"; then
+		TYPE="leaks" sanitizer_check "detected memory leaks"
 	fi
-	if grep -l "dynamic-stack-buffer-overflow" $logdir/*.asan.log* &> /dev/null; then
-		echo
-		echo "${LIGHTRED}Sanitizer: buffer overflow detected:${RED}"
-		grep -l "dynamic-stack-buffer-overflow" $logdir/*.asan.log*
-		echo "${NOCOLOR}"
-		E=1
-	fi
-	if grep -l "stack-use-after-scope" $logdir/*.asan.log* &> /dev/null; then
-		echo
-		echo "${LIGHTRED}Sanitizer: stack use after scope detected:${RED}"
-		grep -l "stack-use-after-scope" $logdir/*.asan.log*
-		echo "${NOCOLOR}"
-		E=1
-	fi
+	TYPE="buffer overflow" sanitizer_check "dynamic-stack-buffer-overflow"
+	TYPE="memory errors" sanitizer_check "memcpy-param-overlap"
+	TYPE="stack use after scope" sanitizer_check "stack-use-after-scope"
 }
 
 #----------------------------------------------------------------------------------------------

@@ -143,9 +143,6 @@ commands:
       build_params:
         type: string
         default: ""
-      cache_name:
-        type: string
-        default: "build"
       run_pack:
         type: boolean
         default: true
@@ -166,10 +163,6 @@ commands:
                 shell: /bin/bash -l -eo pipefail
                 command: |
                   make pack SHOW=1
-      - save_cache:
-          paths:
-            - deps/GraphBLAS/build
-          key: v1-GraphBLAS-<< parameters.cache_name >>-{{ checksum "deps/GraphBLAS/README.md" }}
 
   test-steps:
     parameters:
@@ -472,8 +465,7 @@ jobs:
         default: "yes"
     steps:
       - early-returns
-      - build-steps:
-          cache_name: "mac-clang"
+      - build-steps
       - test-steps
       - run:
           name: Upload artifacts to S3
