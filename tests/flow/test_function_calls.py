@@ -2387,3 +2387,17 @@ class testFunctionCallsFlow(FlowTestsBase):
         for query in queries:
             actual_result = graph.query(query)
             self.env.assertEquals(actual_result.result_set, [[1]])
+
+        # test type mismatch
+        queries = [
+            """MATCH (a:A) RETURN outdegree(a, a)""",     # node
+            """MATCH (a:A) RETURN outdegree(a, [1])""",   # integer
+            """MATCH (a:A) RETURN outdegree(a, [1.4])"""  # float
+            ]
+        for query in queries:
+            try:
+                graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                # Expecting a type error.
+                self.env.assertIn("Type mismatch", str(e))
