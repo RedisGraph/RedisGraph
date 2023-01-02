@@ -135,7 +135,10 @@ echo "# Running unit tests"
 TESTS_DIR="$(cd $BINROOT/src/tests/unit; pwd)"
 cd $ROOT/tests/unit
 if [[ -z $TEST ]]; then
-	for test in $(find $TESTS_DIR -name "test_*" -type f -executable -print); do
+	for test in $(find $TESTS_DIR -name "test_*" -type f -print); do
+		if [[ ! -x $test ]]; then
+			continue
+		fi
 		test_name="$(basename $test)"
 		if [[ $LEAK == 1 || $test_name != test_leak ]]; then
 			echo "Running $test ..."
