@@ -477,18 +477,21 @@ class testOptimizationsPlan(FlowTestsBase):
         plan = graph.execution_plan(query)
         self.env.assertIn("Node By Label Scan | (n:N)", plan)
 
-    # Q should not be traversed first even though it has less nodes
-    # as it is optional
+    # mandatory match labels should not be replaced with optional ones in
+    # optimize-label-scan
     def test30_optimize_label_scan_optional_match(self):
+        # clean db
         self.env.flush()
 
+        # create a node with label N
         query = """CREATE (n:N {v: 1})"""
         graph.query(query)
 
         query = """MATCH (n:N) OPTIONAL MATCH (n:Q) RETURN n.v"""
         plan = graph.execution_plan(query)
+
+        # make sure N is traversed first, even though there are no nodes with
+        # label Q
         self.env.assertIn("Node By Label Scan | (n:N)", plan)
         res = graph.query(query)
         self.env.assertEquals(res.result_set, [[1]])
-
-        self.env.assertIn("Node By Label Scan | (n:N)", plan)
