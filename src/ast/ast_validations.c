@@ -1314,6 +1314,13 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 
 	// first (and only) traversal
 	if(start) {
+
+		// build a new environment from the current one to be used in the
+		// traversal of the visitor in the FOREACH clause, since we don't want
+		// it to affect the current environment of bounded vars
+		rax *orig_env = vctx->defined_identifiers;
+		vctx->defined_identifiers = raxClone(orig_env);
+
 		vctx->clause = cypher_astnode_type(n);
 
 		// introduce local identifier to bound vars
@@ -1336,7 +1343,7 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 			const cypher_astnode_t *clause = cypher_ast_foreach_get_clause(n, i);
 			AST_Visitor_visit(clause, visitor);
 			if(ErrorCtx_EncounteredError()) {
-			return VISITOR_BREAK;
+				return VISITOR_BREAK;
 			}
 		}
 
@@ -1344,6 +1351,9 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 		if(introduce_ident) {
 			raxRemove(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL);
 		}
+
+		// return original environment of bounded vars
+		vctx->defined_identifiers = orig_env;
 	}
 
 	// do not traverse children
