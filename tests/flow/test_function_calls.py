@@ -17,7 +17,6 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.populate_graph()
 
     def populate_graph(self):
-        global graph
         nodes = {}
         # Create entities
         for idx, p in enumerate(people):
