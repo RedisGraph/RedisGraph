@@ -1,10 +1,20 @@
 
-.NOTPARALLEL:
-
 ifeq ($(VG),docker)
 override VG:=1
 VG_DOCKER=1
 endif
+
+ifeq ($(VG),1)
+export MEMCHECK=1
+endif
+
+ifneq ($(SAN),)
+export MEMCHECK=1
+endif
+
+#----------------------------------------------------------------------------------------------
+
+.NOTPARALLEL:
 
 ROOT=.
 
@@ -123,14 +133,6 @@ BIN_DIRS += $(REDISEARCH_BINROOT)/search-static
 LIBS=$(RAX) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH_LIBS) $(LIBCYPHER_PARSER)
 
 #----------------------------------------------------------------------------------------------
-
-ifeq ($(VG),1)
-export MEMCHECK=1
-endif
-
-ifneq ($(SAN),)
-export MEMCHECK=1
-endif
 
 ifeq ($(MEMCHECK),1)
 	CC_FLAGS += MEMCHECK
@@ -319,8 +321,10 @@ test: $(TEST_DEPS)
 endif
 
 unit-tests:
+ifneq ($(BUILD),0)
 	$(SHOW)$(MAKE) build FORCE=1 UNIT_TESTS=1
-	$(SHOW)MODULE=$(TARGET) BINROOT=$(BINROOT) ./tests/unit/tests.sh
+endif
+	$(SHOW)BINROOT=$(BINROOT) ./tests/unit/tests.sh
 
 flow-tests: $(TEST_DEPS)
 	$(SHOW)MODULE=$(TARGET) BINROOT=$(BINROOT) PARALLEL=$(_RLTEST_PARALLEL) GEN=1 AOF=1 TCK=0 ./tests/flow/tests.sh

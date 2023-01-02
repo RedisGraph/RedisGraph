@@ -479,9 +479,8 @@ if [[ $GEN == 1 ]]; then
 fi
 
 if [[ $AOF == 1 ]]; then
-	RLTEST_ARGS_AOF="${RLTEST_ARGS} --use-aof"
-	RLTEST_TEST_ARGS="--test test_persistency"
-	{ (RLTEST_ARGS="${RLTEST_ARGS_AOF}" run_tests "tests with AOF"); (( E |= $? )); } || true
+	{ (RLTEST_ARGS="${RLTEST_ARGS} --use-aof" RLTEST_TEST_ARGS="--test test_persistency" \
+	   run_tests "tests with AOF"); (( E |= $? )); } || true
 fi
 
 if [[ $TCK == 1 ]]; then
@@ -490,7 +489,7 @@ fi
 
 if [[ $RLEC == 1 ]]; then
 	dhost=$(echo "$DOCKER_HOST" | awk -F[/:] '{print $4}')
-	{ (RLTEST_ARGS+="${RLTEST_ARGS} --env existing-env --existing-env-addr $dhost:$RLEC_PORT" \
+	{ (RLTEST_ARGS="${RLTEST_ARGS} --env existing-env --existing-env-addr $dhost:$RLEC_PORT" \
 	   run_tests "tests on RLEC"); (( E |= $? )); } || true
 fi
 
@@ -502,7 +501,7 @@ fi
 
 if [[ $NOP != 1 ]]; then
 	if [[ -n $SAN || $VG == 1 ]]; then
-		{ $ROOT/sbin/memcheck-summary.sh; (( E |= $? )); } || true
+		{ FLOW=1 $ROOT/sbin/memcheck-summary.sh; (( E |= $? )); } || true
 	fi
 fi
 

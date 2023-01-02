@@ -21,7 +21,8 @@ help() {
 		TEST=name      Operate in single-test mode
 
 		SAN=addr|mem   Run with sanitizer
-		TEST_LEAK=1    Run test that leaks (for sanitizer diagnostics)
+		VG=1           Run with Valgrind
+		LEAK=1         Run test that leaks (for sanitizer diagnostics)
 
 		GDB=1          Enable interactive gdb debugging (in single-test mode)
 		CLANG=1        Implies use of lldb debugger
@@ -31,7 +32,6 @@ help() {
 
 
 	END
-	exit 0
 }
 
 #----------------------------------------------------------------------------------------------
@@ -77,9 +77,9 @@ sanitizer_summary() {
 OP=
 [[ $NOP == 1 ]] && OP=echo
 
-TEST_LEAK=${TEST_LEAK:-0}
+LEAK=${LEAK:-0}
 
-LOGS_DIR=$ROOT/tests/unit/logs
+export LOGS_DIR=$ROOT/tests/unit/logs
 
 if [[ $GDB == 1 ]]; then
 	if [[ $CLANG == 1 ]]; then
@@ -91,12 +91,42 @@ else
 	GDB_CMD=
 fi
 
+VG_OP=
+if [[ $VG == 1 ]]; then
+	VG_OP=valgrind
+	# VG_SUPRESSIONS=$ROOT/tests/memcheck/valgrind.supp
+	VG_SUPRESSIONS=$ROOT/tests/unit/unittests.supp
+	VG_OPTIONS="\
+		--error-exitcode=0 \
+		--leak-check=full \
+		--track-origins=yes \
+		--suppressions=${VG_SUPRESSIONS}"
+	if [[ $FULL == 1 ]]; then
+		VG_OPTIONS+=" \
+			--show-reachable=yes \
+			--show-possibly-lost=yes"
+	else
+		VG_OPTIONS+=" \
+			--show-reachable=no \
+			--show-possibly-lost=no"
+	fi
+fi
+
 #----------------------------------------------------------------------------------------------
 
 if [[ $CLEAR_LOGS != 0 ]]; then
 	rm -rf $LOGS_DIR
 fi
 mkdir -p $LOGS_DIR
+
+if [[ -z $BINROOT || ! -d $BINROOT ]]; then
+	eprint "BINROOT not defined or nonexistant"
+	exit 1
+fi
+
+if [[ $LIST == 1 ]]; then
+	TEST_ARGS+=" --list"
+fi
 
 E=0
 
@@ -105,28 +135,37 @@ echo "# Running unit tests"
 TESTS_DIR="$(cd $BINROOT/src/tests/unit; pwd)"
 cd $ROOT/tests/unit
 if [[ -z $TEST ]]; then
-	if [[ $NOP != 1 ]]; then
-		for test in $(find $TESTS_DIR -name "test_*" -type f -executable -print); do
-			test_name="$(basename $test)"
+	for test in $(find $TESTS_DIR -name "test_*" -type f -executable -print); do
+		test_name="$(basename $test)"
+		if [[ $LEAK == 1 || $test_name != test_leak ]]; then
 			echo "Running $test ..."
-			if [[ $TEST_LEAK == 1 || $test_name != test_leak ]]; then
+			if [[ $VG == 1 ]]; then
+				VG_LOG_ARG="--log-file=${LOGS_DIR}/${test_name}.valgrind.log"
+				{ $OP $VG_OP $VG_OPTIONS $VG_LOG_ARG $test; (( E |= $? )); } || true
+			else
 				TEST_NAME="$test_name" sanitizer_defs
-				{ $test; (( E |= $? )); } || true
+				{ $OP $test $TEST_ARGS; (( E |= $? )); } || true
 			fi
-		done
-	else
-		find $TESTS_DIR -name "test_*" -type f -executable -print
-	fi
+		fi
+	done
 else
-	SUPERTEST=$(echo "$TEST" | cut -d. -f1)
-	SUBTEST=$(echo "$TEST" | cut -s -d. -f2)
+	SUPERTEST=$(echo "$TEST" | cut -d: -f1)
+	SUBTEST=$(echo "$TEST" | cut -s -d: -f2)
+	echo SUPERTEST=$SUPERTEST
+	echo SUBTEST=$SUBTEST
 	echo "Running $TESTS_DIR/$SUPERTEST ..."
-	TEST_NAME="$SUPERTEST" sanitizer_defs
-	$OP $GDB_CMD $TESTS_DIR/$SUPERTEST $SUBTEST
+	if [[ $VG == 1 ]]; then
+		VG_LOG_ARG="--log-file=${LOGS_DIR}/${SUPERTEST}.valgrind.log"
+		{ $OP $VG_OP $VG_OPTIONS $VG_LOG_ARG $TESTS_DIR/$SUPERTEST $TEST_ARGS $SUBTEST; (( E |= $? )); } || true
+	else
+		TEST_NAME="$SUPERTEST" sanitizer_defs
+		{ $OP $GDB_CMD $TESTS_DIR/$SUPERTEST $TEST_ARGS $SUBTEST; (( E |= $? )); } || true
+	fi
 fi
 
-if [[ -n $SAN ]]; then
-	sanitizer_summary
+if [[ -n $SAN || $VG == 1 ]]; then
+	# sanitizer_summary
+	{ UNIT=1 $ROOT/sbin/memcheck-summary.sh; (( E |= $? )); } || true
 fi
 
 exit $E

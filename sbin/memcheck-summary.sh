@@ -10,7 +10,7 @@ cd $HERE
 
 #----------------------------------------------------------------------------------------------
 
-vagrind_summary() {
+valgrind_summary() {
 	local logdir="$ROOT/tests/$DIR/logs"
 	local leaks_head=0
 	for file in $(ls $logdir/*.valgrind.log 2>/dev/null); do
@@ -73,12 +73,23 @@ sanitizer_summary() {
 
 E=0
 
+DIRS=
+if [[ $UNIT == 1 ]]; then
+	DIRS+=" unit"
+fi
+if [[ $FLOW == 1 ]]; then
+	DIRS+=" flow"
+	if [[ $TCK == 1 ]]; then
+		DIRS+=" tck"
+	fi
+fi
+
 if [[ $VG == 1 ]]; then
-	for dir in unit flow tck; do
+	for dir in $DIRS; do
 		DIR="$dir" valgrind_summary
 	done
 elif [[ -n $SAN ]]; then
-	for dir in unit flow tck; do
+	for dir in $DIRS; do
 		DIR="$dir" sanitizer_summary
 	done
 fi
