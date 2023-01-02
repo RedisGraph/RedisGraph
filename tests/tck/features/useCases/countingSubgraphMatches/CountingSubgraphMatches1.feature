@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -110,7 +110,6 @@ Feature: CountingSubgraphMatches1 - Matching subgraph patterns and count the num
       | 1        |
     And no side effects
 
-  @skip
   Scenario: [6] Counting undirected self-relationships in self-relationship graph
     Given an empty graph
     And having executed:

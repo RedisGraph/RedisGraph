@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -87,20 +87,47 @@ Feature: Null2 - IS NOT NULL validation
       | false |
     And no side effects
 
-  Scenario Outline: [5] IS NOT NULL with literal maps
+  Scenario Outline: [5] IS NOT NULL on a map
     Given any graph
     When executing query:
       """
       WITH <map> AS map
-      RETURN map.name IS NOT NULL
+      RETURN map.<key> IS NOT NULL AS result
       """
     Then the result should be, in any order:
-      | map.name IS NOT NULL |
-      | <result>             |
+      | result   |
+      | <result> |
     And no side effects
 
     Examples:
-      | map                             | result |
-      | {name: 'Mats', name2: 'Pontus'} | true   |
-      | {name: null}                    | false  |
-      | {notName: 0, notName2: null}    | false  |
+      | map                             | key   | result |
+      | {name: 'Mats', name2: 'Pontus'} | name  | true   |
+      | {name: 'Mats', name2: 'Pontus'} | name2 | true   |
+      | {name: 'Mats', name2: null}     | name  | true   |
+      | {name: 'Mats', name2: null}     | name2 | false  |
+      | {name: null}                    | name  | false  |
+      | {name: null, name2: null}       | name  | false  |
+      | {name: null, name2: null}       | name2 | false  |
+      | {notName: null, notName2: null} | name  | false  |
+      | {notName: 0, notName2: null}    | name  | false  |
+      | {notName: 0}                    | name  | false  |
+      | {}                              | name  | false  |
+      | null                            | name  | false  |
+
+  @skipStyleCheck
+  Scenario: [6] IS NOT NULL is case insensitive
+    Given an empty graph
+    And having executed:
+      """
+      CREATE (a:X {prop: 42}), (:X)
+      """
+    When executing query:
+      """
+      MATCH (n:X)
+      RETURN n, n.prop Is noT nULl AS b
+      """
+    Then the result should be, in any order:
+      | n               | b     |
+      | (:X {prop: 42}) | true  |
+      | (:X)            | false |
+    And no side effects

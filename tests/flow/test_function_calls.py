@@ -681,17 +681,18 @@ class testFunctionCallsFlow(FlowTestsBase):
     
     def test23_toInteger(self):
         # expect calling toInteger to succeed
-        queries = [
-            """RETURN toInteger(1)""",
-            """RETURN toInteger(1.1)""",
-            """RETURN toInteger(1.9)""",
-            """RETURN toInteger('1')""",
-            """RETURN toInteger('1.1')""",
-            """RETURN toInteger('1.9')"""
-        ]
-        for query in queries:
-            actual_result = graph.query(query)
-            self.env.assertEquals(actual_result.result_set[0][0], 1)
+        query_to_expected_result = {
+            """RETURN toInteger(1)""": [[1]],
+            """RETURN toInteger(1.1)""": [[1]],
+            """RETURN toInteger(1.9)""": [[1]],
+            """RETURN toInteger('1')""": [[1]],
+            """RETURN toInteger('1.1')""": [[1]],
+            """RETURN toInteger('1.9')""": [[1]],
+            """RETURN toInteger(true)""": [[1]],
+            """RETURN toInteger(false)""": [[0]],
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
 
         # expect calling toInteger to return NULL
         queries = [
@@ -726,54 +727,76 @@ class testFunctionCallsFlow(FlowTestsBase):
             graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertEqual(str(e), "length must be positive integer")
+            self.env.assertEqual(str(e), "length must be a non-negative integer")
 
         try:
             query = """RETURN SUBSTRING("muchacho", -3, 3)"""
             graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertEqual(str(e), "start must be positive integer")
+            self.env.assertEqual(str(e), "start must be a non-negative integer")
 
     def test25_left(self):
-        query = """RETURN LEFT('muchacho', 4)"""
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], "much")
+        query_to_expected_result = {
+            "RETURN LEFT('muchacho', 4)" : [['much']],
+            "RETURN LEFT('muchacho', 100)" : [['muchacho']],
+            "RETURN LEFT(NULL, -1)" : [[None]],
+            "RETURN LEFT(NULL, 100)" : [[None]],
+            "RETURN LEFT(NULL, NULL)" : [[None]],
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
 
-        query = """RETURN LEFT('muchacho', 100)"""
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], "muchacho")
+        # invalid length argument
+        queries = [
+            """RETURN LEFT('', -100)""",
+            """RETURN LEFT('a', NULL)""",
+            ]
+        for query in queries:
+            try:
+                graph.query(query)
+                self.env.assertTrue(False)
+            except ResponseError as e:
+                self.env.assertEqual(str(e), "length must be a non-negative integer")
 
-        query = """RETURN LEFT(NULL, 100)"""
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], None)
+        # invalid input types
+        queries = [
+            """RETURN LEFT(NULL, 'a')""",
+            """RETURN LEFT(NULL, 1.3)""",
+        ]
+        for query in queries:
+            self.expect_type_error(query)
 
-        try:
-            query = """RETURN LEFT('', -100)"""
-            graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertEqual(str(e), "length must be positive integer")
+    def test26_right(self):
+        query_to_expected_result = {
+            "RETURN RIGHT('muchacho', 4)" : [['acho']],
+            "RETURN RIGHT('muchacho', 100)" : [['muchacho']],
+            "RETURN RIGHT(NULL, -1)" : [[None]],
+            "RETURN RIGHT(NULL, 100)" : [[None]],
+            "RETURN RIGHT(NULL, NULL)" : [[None]],
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
 
-    def tes26_right(self):
-        query = """RETURN RIGHT('muchacho', 4)"""
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], "acho")
+        # invalid length argument
+        queries = [
+            """RETURN RIGHT('', -100)""",
+            """RETURN RIGHT('a', NULL)""",
+            ]
+        for query in queries:
+            try:
+                graph.query(query)
+                self.env.assertTrue(False)
+            except ResponseError as e:
+                self.env.assertEqual(str(e), "length must be a non-negative integer")
 
-        query = """RETURN RIGHT('muchacho', 100)"""
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], "muchacho")
-
-        query = """RETURN RIGHT(NULL, 100)"""
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], None)
-
-        try:
-            query = """RETURN RIGHT('', -100)"""
-            graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertEqual(str(e), "length must be positive integer")
+        # invalid input types
+        queries = [
+            """RETURN RIGHT(NULL, 'a')""",
+            """RETURN RIGHT(NULL, 1.3)""",
+        ]
+        for query in queries:
+            self.expect_type_error(query)
 
     def test27_string_concat(self):
         larg_double = 1.123456e300
@@ -968,10 +991,10 @@ class testFunctionCallsFlow(FlowTestsBase):
         # boolean
         query = """RETURN toIntegerOrNull(true)"""
         actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], None)
+        self.env.assertEquals(actual_result.result_set[0][0], 1)
         query = """RETURN toIntegerOrNull(false)"""
         actual_result =graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], None)
+        self.env.assertEquals(actual_result.result_set[0][0], 0)
 
         # list
         query = """RETURN toIntegerOrNull([1])"""

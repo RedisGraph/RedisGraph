@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,7 +41,7 @@ Feature: Comparison2 - Half-bounded Range
     When executing query:
       """
       MATCH (:Root)-->(i:Child)
-      WHERE exists(i.var) AND i.var > 'x'
+      WHERE i.var IS NOT NULL AND i.var > 'x'
       RETURN i.var
       """
     Then the result should be, in any order:
@@ -60,7 +60,7 @@ Feature: Comparison2 - Half-bounded Range
     When executing query:
       """
       MATCH (:Root)-->(i:Child)
-      WHERE NOT exists(i.var) OR i.var > 'x'
+      WHERE i.var IS NULL OR i.var > 'x'
       RETURN i.var
       """
     Then the result should be, in any order:

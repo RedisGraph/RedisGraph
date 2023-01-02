@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -94,7 +94,7 @@ Feature: Call2 - Procedure arguments
       | 'Berlin' | 49           |
     And no side effects
 
-  @NegativeTest @skipGrammarCheck
+  @skipGrammarCheck
   @skip
   Scenario: [4] In-query call to procedure that takes arguments fails when trying to pass them implicitly
     Given an empty graph
@@ -107,7 +107,6 @@ Feature: Call2 - Procedure arguments
       """
     Then a SyntaxError should be raised at compile time: InvalidArgumentPassingMode
 
-  @NegativeTest
   @skip
   Scenario: [5] Standalone call to procedure should fail if input type is wrong
     Given an empty graph
@@ -119,7 +118,6 @@ Feature: Call2 - Procedure arguments
       """
     Then a SyntaxError should be raised at compile time: InvalidArgumentType
 
-  @NegativeTest
   @skip
   Scenario: [6] In-query call to procedure should fail if input type is wrong
     Given an empty graph

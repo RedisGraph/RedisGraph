@@ -395,7 +395,7 @@ TEST_F(GraphTest, RemoveNodes) {
 	uint edge_count = array_len(edges);
 	ASSERT_EQ(edge_count, 2);
 
-	for(uint i = 0; i < edge_count; i ++) Graph_DeleteEdge(g, &edges[i]);
+	Graph_DeleteEdges(g, edges);
 	Graph_GetNode(g, 0, &node);
 	Graph_DeleteNode(g, &node);
 	

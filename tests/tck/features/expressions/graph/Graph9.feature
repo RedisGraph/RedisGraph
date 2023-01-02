@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,97 +28,84 @@
 
 #encoding: utf-8
 
-Feature: Graph9 - Property existence check
+Feature: Graph9 - Retrieve all properties as a property map
 
-  Scenario: [1] `exists()` with dynamic property lookup
+  Scenario: [1] `properties()` on a node
     Given an empty graph
     And having executed:
       """
-      CREATE (:Person {name: 'foo'}),
-             (:Person)
+      CREATE (n:Person {name: 'Popeye', level: 9001})
       """
     When executing query:
       """
-      MATCH (n:Person)
-      WHERE exists(n['name'])
-      RETURN n
+      MATCH (p:Person)
+      RETURN properties(p) AS m
       """
     Then the result should be, in any order:
-      | n                       |
-      | (:Person {name: 'foo'}) |
+      | m                             |
+      | {name: 'Popeye', level: 9001} |
     And no side effects
 
-  Scenario: [2] `exists()` is case insensitive
+  Scenario: [2] `properties()` on a relationship
     Given an empty graph
     And having executed:
       """
-      CREATE (a:X {prop: 42}), (:X)
+      CREATE (n)-[:R {name: 'Popeye', level: 9001}]->(n)
       """
     When executing query:
       """
-      MATCH (n:X)
-      RETURN n, EXIsTS(n.prop) AS b
+      MATCH ()-[r:R]->()
+      RETURN properties(r) AS m
       """
     Then the result should be, in any order:
-      | n               | b     |
-      | (:X {prop: 42}) | true  |
-      | (:X)            | false |
+      | m                             |
+      | {name: 'Popeye', level: 9001} |
     And no side effects
 
-  Scenario: [3] Property existence check on non-null node
-    Given an empty graph
-    And having executed:
-      """
-      CREATE ({exists: 42})
-      """
-    When executing query:
-      """
-      MATCH (n)
-      RETURN exists(n.missing),
-             exists(n.exists)
-      """
-    Then the result should be, in any order:
-      | exists(n.missing) | exists(n.exists) |
-      | false             | true             |
-    And no side effects
-
-  Scenario: [4] Property existence check on optional non-null node
-    Given an empty graph
-    And having executed:
-      """
-      CREATE ({exists: 42})
-      """
-    When executing query:
-      """
-      OPTIONAL MATCH (n)
-      RETURN exists(n.missing),
-             exists(n.exists)
-      """
-    Then the result should be, in any order:
-      | exists(n.missing) | exists(n.exists) |
-      | false             | true             |
-    And no side effects
-
-  @skip
-  Scenario: [5] Property existence check on null node
+  Scenario: [3] `properties()` on null
     Given an empty graph
     When executing query:
       """
-      OPTIONAL MATCH (n)
-      RETURN exists(n.missing)
+      OPTIONAL MATCH (n:DoesNotExist)
+      OPTIONAL MATCH (n)-[r:NOT_THERE]->()
+      RETURN properties(n), properties(r), properties(null)
       """
     Then the result should be, in any order:
-      | exists(n.missing) |
-      | null              |
+      | properties(n) | properties(r) | properties(null) |
+      | null          | null          | null             |
     And no side effects
 
-  @NegativeTest
-  @skip
-  Scenario: [6] Fail when checking existence of a non-property and non-pattern
+  Scenario: [4] `properties()` on a map
     Given any graph
     When executing query:
       """
-      MATCH (n)
-      RETURN exists(n.num + 1)
+      RETURN properties({name: 'Popeye', level: 9001}) AS m
       """
-    Then a SyntaxError should be raised at compile time: InvalidArgumentExpression
+    Then the result should be, in any order:
+      | m                             |
+      | {name: 'Popeye', level: 9001} |
+    And no side effects
+
+  Scenario: [5] `properties()` failing on an integer literal
+    Given any graph
+    When executing query:
+      """
+      RETURN properties(1)
+      """
+    Then a SyntaxError should be raised at compile time: InvalidArgumentType
+
+  Scenario: [6] `properties()` failing on a string literal
+    Given any graph
+    When executing query:
+      """
+      RETURN properties('Cypher')
+      """
+    Then a SyntaxError should be raised at compile time: InvalidArgumentType
+
+  Scenario: [7] `properties()` failing on a list of booleans
+    Given any graph
+    When executing query:
+      """
+      RETURN properties([true, false])
+      """
+    Then a SyntaxError should be raised at compile time: InvalidArgumentType
