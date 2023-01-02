@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,4 +50,36 @@ Feature: Call6 - Call clause interoperation with other clauses
       | 3 | 'A'   |
       | 3 | 'B'   |
       | 3 | 'C'   |
+    And no side effects
+
+  @skip
+  Scenario: [2] Project procedure results between query scopes with WITH clause
+    Given an empty graph
+    And there exists a procedure test.my.proc(in :: INTEGER?) :: (out :: STRING?):
+      | in   | out   |
+      | null | 'nix' |
+    When executing query:
+      """
+      CALL test.my.proc(null) YIELD out
+      WITH out RETURN out
+      """
+    Then the result should be, in order:
+      | out   |
+      | 'nix' |
+    And no side effects
+
+  @skip
+  Scenario: [3] Project procedure results between query scopes with WITH clause and rename the projection
+    Given an empty graph
+    And there exists a procedure test.my.proc(in :: INTEGER?) :: (out :: STRING?):
+      | in   | out   |
+      | null | 'nix' |
+    When executing query:
+      """
+      CALL test.my.proc(null) YIELD out
+      WITH out AS a RETURN a
+      """
+    Then the result should be, in order:
+      | a     |
+      | 'nix' |
     And no side effects

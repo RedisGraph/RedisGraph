@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -151,7 +151,7 @@ Feature: Literals3 - Hexadecimal integer
       | 460367961908983 |
     And no side effects
 
-  @NegativeTest @skipGrammarCheck
+  @skipGrammarCheck
   Scenario: [12] Fail on an incomplete hexadecimal integer
     Given any graph
     When executing query:
@@ -160,7 +160,7 @@ Feature: Literals3 - Hexadecimal integer
       """
     Then a SyntaxError should be raised at compile time: InvalidNumberLiteral
 
-  @NegativeTest @skipGrammarCheck
+  @skipGrammarCheck
   Scenario: [13] Fail on an hexadecimal literal containing a lower case invalid alphanumeric character
     Given any graph
     When executing query:
@@ -169,7 +169,7 @@ Feature: Literals3 - Hexadecimal integer
       """
     Then a SyntaxError should be raised at compile time: InvalidNumberLiteral
 
-  @NegativeTest @skipGrammarCheck
+  @skipGrammarCheck
   Scenario: [14] Fail on an hexadecimal literal containing a upper case invalid alphanumeric character
     Given any graph
     When executing query:
@@ -188,7 +188,6 @@ Feature: Literals3 - Hexadecimal integer
 #      """
 #    Then a SyntaxError should be raised at compile time: InvalidNumberLiteral
 
-  @NegativeTest
   Scenario: [16] Fail on a too large hexadecimal integer
     Given any graph
     When executing query:
@@ -197,7 +196,6 @@ Feature: Literals3 - Hexadecimal integer
       """
     Then a SyntaxError should be raised at compile time: IntegerOverflow
 
-  @NegativeTest
   Scenario: [17] Fail on a too small hexadecimal integer
     Given any graph
     When executing query:

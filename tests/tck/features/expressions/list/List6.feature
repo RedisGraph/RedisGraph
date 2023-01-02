@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,7 +82,6 @@ Feature: List6 - List size
       | null    | null       |
     And no side effects
 
-  @NegativeTest
   @skip
   Scenario: [5] Fail for `size()` on paths
     Given any graph
@@ -92,3 +91,101 @@ Feature: List6 - List size
       RETURN size(p)
       """
     Then a SyntaxError should be raised at compile time: InvalidArgumentType
+
+  @skip
+  Scenario Outline: [6] Fail for `size()` on pattern predicates
+    Given any graph
+    When executing query:
+      """
+      MATCH (a), (b), (c)
+      RETURN size(<pattern>)
+      """
+    Then a SyntaxError should be raised at compile time: UnexpectedSyntax
+
+    Examples:
+      | pattern                                    |
+      | ()--()                                     |
+      | ()--(a)                                    |
+      | (a)-->()                                   |
+      | (a)<--(a {})                               |
+      | (a)-[:REL]->(b)                            |
+      | (a)-[:REL]->(b)                            |
+      | (a)-[:REL]->(:C)<-[:REL]-(a {num: 5})      |
+      | ()-[:REL*0..2]->()<-[:REL]-(:A {num: 5})   |
+
+  Scenario: [7] Using size of pattern comprehension to test existence
+    Given an empty graph
+    And having executed:
+      """
+      CREATE (a:X {num: 42}), (:X {num: 43})
+      CREATE (a)-[:T]->()
+      """
+    When executing query:
+      """
+      MATCH (n:X)
+      RETURN n, size([(n)--() | 1]) > 0 AS b
+      """
+    Then the result should be, in any order:
+      | n              | b     |
+      | (:X {num: 42}) | true  |
+      | (:X {num: 43}) | false |
+    And no side effects
+
+  Scenario: [8] Get node degree via size of pattern comprehension
+    Given an empty graph
+    And having executed:
+      """
+      CREATE (x:X),
+        (x)-[:T]->(),
+        (x)-[:T]->(),
+        (x)-[:T]->()
+      """
+    When executing query:
+      """
+      MATCH (a:X)
+      RETURN size([(a)-->() | 1]) AS length
+      """
+    Then the result should be, in any order:
+      | length |
+      | 3      |
+    And no side effects
+
+  Scenario: [9] Get node degree via size of pattern comprehension that specifies a relationship type
+    Given an empty graph
+    And having executed:
+      """
+      CREATE (x:X),
+        (x)-[:T]->(),
+        (x)-[:T]->(),
+        (x)-[:T]->(),
+        (x)-[:OTHER]->()
+      """
+    When executing query:
+      """
+      MATCH (a:X)
+      RETURN size([(a)-[:T]->() | 1]) AS length
+      """
+    Then the result should be, in any order:
+      | length |
+      | 3      |
+    And no side effects
+
+  Scenario: [10] Get node degree via size of pattern comprehension that specifies multiple relationship types
+    Given an empty graph
+    And having executed:
+      """
+      CREATE (x:X),
+        (x)-[:T]->(),
+        (x)-[:T]->(),
+        (x)-[:T]->(),
+        (x)-[:OTHER]->()
+      """
+    When executing query:
+      """
+      MATCH (a:X)
+      RETURN size([(a)-[:T|OTHER]->() | 1]) AS length
+      """
+    Then the result should be, in any order:
+      | length |
+      | 4      |
+    And no side effects

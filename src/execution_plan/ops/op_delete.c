@@ -106,9 +106,7 @@ static void _DeleteEntities
 		// required as a deleted node must be detached
 
 		// delete edges
-		for(uint i = 0; i < edge_count; i++) {
-			edge_deleted += DeleteEdge(op->gc, distinct_edges + i);
-		}
+		edge_deleted += DeleteEdges(op->gc, distinct_edges);
 
 		// delete nodes
 		for(uint i = 0; i < node_count; i++) {

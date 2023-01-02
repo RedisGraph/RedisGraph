@@ -212,11 +212,14 @@ static void _UndoLog_Rollback_Create_Edge
 	int seq_end
 ) {
 	UndoOp *undo_list = ctx->undo_log;
+	Edge *edges = array_new(Edge, seq_start - seq_end);
 	for(int i = seq_start; i > seq_end; --i) {
 		Edge *e = &undo_list[i].create_op.e;
 		_index_delete_edge(ctx, e);
-		Graph_DeleteEdge(ctx->gc->g, e);
+		array_append(edges, *e);
 	}
+	Graph_DeleteEdges(ctx->gc->g, edges);
+	array_free(edges);
 }
 
 // undo node deletion

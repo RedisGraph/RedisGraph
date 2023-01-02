@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -71,7 +71,7 @@ Feature: With4 - Variable aliasing
       | (:End {num: 42}) |
     And no side effects
 
-  Scenario: [3] Aliasing expression to exsiting variable name
+  Scenario: [3] Aliasing expression to existing variable name
     Given an empty graph
     And having executed:
       """
@@ -90,8 +90,6 @@ Feature: With4 - Variable aliasing
       | 'King Kong'  |
     And no side effects
 
-  @NegativeTest
-  @skip
   Scenario: [4] Fail when forwarding multiple aliases with the same name
     Given any graph
     When executing query:
@@ -101,7 +99,6 @@ Feature: With4 - Variable aliasing
       """
     Then a SyntaxError should be raised at compile time: ColumnNameConflict
 
-  @NegativeTest
   Scenario: [5] Fail when not aliasing expressions in WITH
     Given any graph
     When executing query:
