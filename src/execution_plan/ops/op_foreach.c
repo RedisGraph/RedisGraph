@@ -158,15 +158,13 @@ static Record ForeachConsume
 	// original record received), until the list is fully traversed
 	do {
 		// plant the record in the argument operation
-		Argument_AddRecord(argument, r);
+		Argument_AddRecord(argument, OpBase_CloneRecord(r));
 
 		// call consume function on first embedded child.
 		// ignore record returned from it.
 		while(OpBase_Consume(first_embedded) != NULL) {}
 		r = _handoff(op);
 	} while(r != NULL);
-	OpBase_PropagateReset(first_embedded);
-
 
 	return op->currentRecord;
 }
