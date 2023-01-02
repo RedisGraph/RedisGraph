@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,7 +82,6 @@ Feature: Merge7 - Merge relationships - on match
     And the side effects should be:
       | +properties | 1 |
 
-  @skip
   Scenario: [4] Copying properties from node with ON MATCH
     Given an empty graph
     And having executed:
@@ -113,7 +112,7 @@ Feature: Merge7 - Merge relationships - on match
       | keyValue    |
       | ['name->A'] |
 
-  @crash
+  @skip
   Scenario: [5] Copying properties from literal map with ON MATCH
     Given an empty graph
     And having executed:

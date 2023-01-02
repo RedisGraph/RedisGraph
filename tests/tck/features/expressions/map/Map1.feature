@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,24 +31,96 @@
 Feature: Map1 - Static value access
 # Static value access refers to the dot-operator – <expression resulting in a map>.<identify> – which does not allow any dynamic computation of the map key – i.e. <identify>.
 
-  Scenario: [1] Statically access field of a map resulting from an expression
+  Scenario: [1] Statically access a field of a non-null map
     Given any graph
     When executing query:
       """
-      WITH [{num: 0}, 1] AS list
-      RETURN (list[0]).num
+      WITH {existing: 42, notMissing: null} AS m
+      RETURN m.missing, m.notMissing, m.existing
       """
     Then the result should be, in any order:
-      | (list[0]).num |
-      | 0             |
+      | m.missing | m.notMissing | m.existing |
+      | null      | null         | 42         |
     And no side effects
 
-  @NegativeTest
-  Scenario: [2] Fail when performing property access on a non-map
+  Scenario: [2] Statically access a field of a null map
     Given any graph
     When executing query:
       """
-      WITH [{num: 0}, 1] AS list
-      RETURN (list[1]).num
+      WITH null AS m
+      RETURN m.missing
       """
-    Then a TypeError should be raised at runtime: PropertyAccessOnNonMap
+    Then the result should be, in any order:
+      | m.missing |
+      | null      |
+    And no side effects
+
+  Scenario: [3] Statically access a field of a map resulting from an expression
+    Given any graph
+    When executing query:
+      """
+      WITH [123, {existing: 42, notMissing: null}] AS list
+      RETURN (list[1]).missing, (list[1]).notMissing, (list[1]).existing
+      """
+    Then the result should be, in any order:
+      | (list[1]).missing | (list[1]).notMissing | (list[1]).existing |
+      | null              | null                 | 42                 |
+    And no side effects
+
+  Scenario Outline: [4] Statically access a field is case-sensitive
+    Given any graph
+    When executing query:
+      """
+      WITH <map> AS map
+      RETURN map.<key> AS result
+      """
+    Then the result should be, in any order:
+      | result   |
+      | <result> |
+    And no side effects
+
+    Examples:
+      | map                            | key  | result   |
+      | {name: 'Mats', nome: 'Pontus'} | name | 'Mats'   |
+      | {name: 'Mats', Name: 'Pontus'} | name | 'Mats'   |
+      | {name: 'Mats', Name: 'Pontus'} | Name | 'Pontus' |
+      | {name: 'Mats', Name: 'Pontus'} | nAMe | null     |
+
+  Scenario Outline: [5] Statically access a field with a delimited identifier
+    Given any graph
+    When executing query:
+      """
+      WITH <map> AS map
+      RETURN map.<key> AS result
+      """
+    Then the result should be, in any order:
+      | result   |
+      | <result> |
+    And no side effects
+
+    Examples:
+      | map                            | key    | result   |
+      | {name: 'Mats', nome: 'Pontus'} | `name` | 'Mats'   |
+      | {name: 'Mats', nome: 'Pontus'} | `nome` | 'Pontus' |
+      | {name: 'Mats', nome: 'Pontus'} | `Mats` | null     |
+      | {name: 'Mats', nome: 'Pontus'} | `null` | null     |
+      | {null: 'Mats', NULL: 'Pontus'} | `null` | 'Mats'   |
+      | {null: 'Mats', NULL: 'Pontus'} | `NULL` | 'Pontus' |
+
+  Scenario Outline: [6] Fail when performing property access on a non-map
+    Given any graph
+    When executing query:
+      """
+      WITH <exp> AS nonMap
+      RETURN nonMap.num
+      """
+    Then a TypeError should be raised at compile time: InvalidArgumentType
+
+    Examples:
+      | exp         |
+      | 123         |
+      | 42.45       |
+      | true        |
+      | false       |
+      | 'string'    |
+      | [123, true] |

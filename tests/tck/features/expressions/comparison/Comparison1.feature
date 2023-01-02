@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -312,7 +312,6 @@ Feature: Comparison1 - Equality
       | null  |
     And no side effects
 
-  @NegativeTest
   Scenario: [17] Failing when comparing to an undefined variable
     Given any graph
     When executing query:

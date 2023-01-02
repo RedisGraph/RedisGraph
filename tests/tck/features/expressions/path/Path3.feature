@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,7 +48,6 @@ Feature: Path3 - Length of a path
       | (:A) | (:B) | 1 |
     And no side effects
 
-  @NegativeTest
   @skip
   Scenario: [2] Failing when using `length()` on a node
     Given any graph
@@ -59,7 +58,6 @@ Feature: Path3 - Length of a path
       """
     Then a SyntaxError should be raised at compile time: InvalidArgumentType
 
-  @NegativeTest
   @skip
   Scenario: [3] Failing when using `length()` on a relationship
     Given any graph
