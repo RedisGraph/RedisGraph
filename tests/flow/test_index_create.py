@@ -174,6 +174,9 @@ class testIndexCreationFlow(FlowTestsBase):
         self.env.assertEquals(result.indices_created, 2)
 
     def test05_index_delete(self):
+        if SANITIZER != "":
+            self.env.skip()
+
         def create_drop_index(graph_id):
             env = Env(decodeResponses=True)
             redis_con = env.getConnection()

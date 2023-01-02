@@ -240,7 +240,7 @@ static void _PersistenceEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid,
 // Perform clean-up upon server shutdown.
 static void _ShutdownEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
 		void *data) {
-    void RediSearch_CleanupModule();
+	void RediSearch_CleanupModule();
 	if (!getenv("RS_GLOBAL_DTORS")) {  // used only with sanitizer or valgrind
 		return; 
 	}
@@ -249,8 +249,8 @@ static void _ShutdownEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uin
 	// Server is shutting down, finalize GraphBLAS.
 	GrB_finalize();
 
-    RedisModule_Log(ctx, "notice", "%s", "Clearing RediSearch resources on shutdown");
-    RediSearch_CleanupModule();
+	RedisModule_Log(ctx, "notice", "%s", "Clearing RediSearch resources on shutdown");
+	RediSearch_CleanupModule();
 }
 
 static void _RegisterServerEvents(RedisModuleCtx *ctx) {
