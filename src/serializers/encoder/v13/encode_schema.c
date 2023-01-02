@@ -86,6 +86,7 @@ static inline void _RdbSaveExactMatchIndex
 
 		// encode field
 		RedisModule_SaveStringBuffer(rdb, field_name, strlen(field_name) + 1);
+		RedisModule_SaveSigned(rdb, fields[i].ref_count);
 	}
 }
 
@@ -116,18 +117,29 @@ static inline void _RdbSaveIndexData
 
 static inline void _RdbSaveConstraintsData(RedisModuleIO *rdb, Constraint constraints) {
 	uint n_constraints = array_len(constraints);
-	// encode number of constraints
-	RedisModule_SaveUnsigned(rdb, n_constraints);
+	uint n_active_constraints = 0;
 
 	for (uint i = 0; i < n_constraints; i++) {
 		_Constraint c = constraints[i];
+		if (c.status != CT_FAILED) {
+			n_active_constraints++;
+		}
+	}
+
+	// encode number of constraints
+	RedisModule_SaveUnsigned(rdb, n_active_constraints);
+
+	for (uint i = 0; i < n_constraints; i++) {
+		_Constraint c = constraints[i];
+
+		if(c.status == CT_FAILED) continue;
 
 		uint fields_count = array_len(c.attributes);
 
 		// encode field count
 		RedisModule_SaveUnsigned(rdb, fields_count);
 		for(uint i = 0; i < fields_count; i++) {
-			char *field_name = c.attributes[i].attribute_name;
+			const char *field_name = c.attributes[i].attribute_name;
 
 			// encode field
 			RedisModule_SaveStringBuffer(rdb, field_name, strlen(field_name) + 1);

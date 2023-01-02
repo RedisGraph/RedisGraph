@@ -38,8 +38,6 @@ static void _process_yield
 	ctx->yield_info        = NULL;
 	ctx->yield_label       = NULL;
 	ctx->yield_status      = NULL;
-	ctx->yield_language    = NULL;
-	ctx->yield_stopwords   = NULL;
 	ctx->yield_properties  = NULL;
 	ctx->yield_entity_type = NULL;
 
@@ -106,7 +104,7 @@ ProcedureResult Proc_ConstraintsInvoke
 
 	pdata->gc             = gc;
 	pdata->out            = array_new(SIValue, 8);
-	pdata->type           = IDX_EXACT_MATCH;
+	pdata->type           = CT_UNIQUE;
 	pdata->node_schema_id = GraphContext_SchemaCount(gc, SCHEMA_NODE) - 1;
 	pdata->edge_schema_id = GraphContext_SchemaCount(gc, SCHEMA_EDGE) - 1;
     pdata->constraint_id  = 0;

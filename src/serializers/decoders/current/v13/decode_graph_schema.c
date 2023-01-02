@@ -77,12 +77,13 @@ static void _RdbLoadExactMatchIndex
 	uint fields_count = RedisModule_LoadUnsigned(rdb);
 	for(uint i = 0; i < fields_count; i++) {
 		char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
+		int ref_count = RedisModule_LoadSigned(rdb);
 		if(!already_loaded) {
 			IndexField field;
 			Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field_name, NULL);
 			IndexField_New(&field, field_id, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
 				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
-
+			field.ref_count = ref_count;
 			Schema_AddIndex(&idx, s, &field, IDX_EXACT_MATCH, false);
 		}
 		RedisModule_Free(field_name);
@@ -120,11 +121,12 @@ static void _RdbLoadConstaints
 
 			GraphEntityType entity_type = (s->type == SCHEMA_NODE) ? GETYPE_NODE : GETYPE_EDGE;
 			c = Constraint_new(fields, fields_count, s->name, s->id, entity_type);
+			Constraint_Activate(c);
 			Schema_AddConstraint(s, c);
 		}
 
 		for(uint j = 0; j < fields_count; j++) {
-			RedisModule_Free(fields[j].attribute_name);
+			RedisModule_Free((char *)(fields[j].attribute_name));
 		}
 	}
 }

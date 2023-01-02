@@ -22,7 +22,7 @@
 bool Indexer_Init(void);
 
 // populates index and enforce constraint
-// adds the task for populating the given index to the indexer
+// adds the task for populating the given index to the indexer and enforces the given constraint
 void Indexer_PopulateIndexOrConstraint
 (
 	GraphContext *gc, // graph to operate on
@@ -30,11 +30,12 @@ void Indexer_PopulateIndexOrConstraint
 	Constraint c      // constraint enforce and add
 );
 
-// drops index asynchronously
+// drops index and or constraint asynchronously
 // this function simply place the drop request onto a queue
-// eventually the indexer working thread will pick it up and drop the index
-void Indexer_DropIndex
+// eventually the indexer working thread will pick it up and drop the index and or constraint
+void Indexer_DropIndexOrConstraint
 (
-	Index idx  // index to drop
+	Index idx,     // index to drop
+	Constraint c   // constraint enforce and add
 );
 

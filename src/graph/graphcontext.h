@@ -223,10 +223,18 @@ Index GraphContext_GetIndex
 	SchemaType schema_type
 );
 
-bool GraphContext_AddExactMatchIndexOrUniqueConstraint
+Constraint GraphContext_AddUniqueConstraint
+(
+	GraphContext *gc,           // graph context
+	SchemaType schema_type,     // type of entities to index nodes/edges
+	const char *label,          // label of indexed entities
+	const char **fields_str,    // fields to index
+	uint fields_count           // number of fields to index
+);
+
+bool GraphContext_AddExactMatchIndex
 (
 	Index *idx,                 // [input/output] index created
-	Constraint *constraint,     // [input/output] constraint created
 	GraphContext *gc,           // graph context
 	SchemaType schema_type,     // type of entities to index nodes/edges
 	const char *label,          // label of indexed entities

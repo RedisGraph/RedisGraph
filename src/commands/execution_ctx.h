@@ -15,9 +15,7 @@
 typedef enum {
 	EXECUTION_TYPE_QUERY,             // Normal query execution.
 	EXECUTION_TYPE_INDEX_CREATE,      // Create index execution.
-	EXECUTION_TYPE_INDEX_DROP,        // Drop index execution.
-	EXECUTION_TYPE_CONSTRAINT_CREATE, // Create constraint execution.
-	EXECUTION_TYPE_CONSTRAINT_DROP    // Drop constraint execution.
+	EXECUTION_TYPE_INDEX_DROP        // Drop index execution.
 } ExecutionType;
 
 /**

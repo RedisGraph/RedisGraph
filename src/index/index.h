@@ -11,6 +11,7 @@
 #include "../graph/entities/graph_entity.h"
 #include "../graph/graph.h"
 #include "redisearch_api.h"
+#include "../constraint/constraint.h"
 
 #define INDEX_OK 1
 #define INDEX_FAIL 0
@@ -137,7 +138,7 @@ bool Index_Populate_enforce_constraint
 (
 	Index idx,  // index to populate
 	Constraint c, // constraint to enforce
-	GraphContext *gc    // graph holding entities to index
+	struct GraphContext *gc    // graph holding entities to index
 );
 
 // adds field to index
@@ -224,7 +225,7 @@ const IndexField *Index_GetFields
 );
 
 // checks if given attribute is indexed
-bool Index_getIndexField
+IndexField * Index_getIndexField
 (
 	const Index idx,           // index to query
 	Attribute_ID attribute_id  // attribute id to search

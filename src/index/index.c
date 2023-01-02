@@ -464,7 +464,7 @@ bool Index_RemoveField
 	for(uint i = 0; i < fields_count; i++) {
 		IndexField *_field = idx->fields + i;
 		// if there is a constraint on the field, we don't allow to remove it using drop index
-		if(_field->id == attribute_id && (part_of_constraint_deletion || !Has_Constraint_On_Attribute(s->constraints, attribute_id))) {
+		if(_field->id == attribute_id && (part_of_constraint_deletion || !Has_Constraint_On_Attribute(constraints, attribute_id))) {
 			// free field
 			bool is_freed = IndexField_Free(_field, false);
 			if(is_freed) {

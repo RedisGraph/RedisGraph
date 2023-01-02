@@ -1,4 +1,5 @@
 from common import *
+from constraint_utils import *
 
 GRAPH_ID = "G"
 redis_graph = None
@@ -16,21 +17,15 @@ class testConstraintFlow(FlowTestsBase):
 
     def populate_graph(self):
         global graph1
-        graph1.query("CREATE (:PARENT {name: 'Stevie'})")
-        graph1.query("CREATE (:PARENT {name: 'Mike'})")
-        graph1.query("CREATE (:PARENT {name: 'James'})")
-        graph1.query("CREATE (:PARENT {name: 'Rich', fname: 'Michael'})")
-        graph1.query("CREATE (:PARENT {name: 'Rich', fname: 'Thomas'})")
-        graph1.query("MATCH (p:PARENT {name: 'Stevie'}) CREATE (p)-[:HAS]->(c:CHILD {name: 'child1'})")
-        graph1.query("MATCH (p:PARENT {name: 'Stevie'}) CREATE (p)-[:HAS]->(c:CHILD {name: 'child2'})")
-        graph1.query("MATCH (p:PARENT {name: 'Stevie'}) CREATE (p)-[:HAS]->(c:CHILD {name: 'child3'})")
-        graph1.query("MATCH (p:PARENT {name: 'Mike'}) CREATE (p)-[:HAS]->(c:CHILD {name: 'child4'})")
-        graph1.query("MATCH (p:PARENT {name: 'James'}) CREATE (p)-[:HAS]->(c:CHILD {name: 'child5'})")
-        graph1.query("MATCH (p:PARENT {name: 'James'}) CREATE (p)-[:HAS]->(c:CHILD {name: 'child6'})")
+        graph1.query("CREATE (:PERSON {name: 'Mike', age: 10})")
+        graph1.query("CREATE (:PERSON {name: 'Kevin', age: 10})")
+        graph1.query("CREATE (:PERSON {name: 'Tim', age: 20})")
+        graph1.query("CREATE (:PERSON {name: 'Rick', age: 30})")
 
     def test_constraint_creation_failiure(self):
-        res = redis_con.execute_command("GRAPH.CONSTRAINT CREATE UNIQUE LABEL PARENT PROPERTIES 1 name")
-        assert res == [1]
+        res = create_node_unique_constraint(graph1, redis_con, "G1", "PERSON", "age")
+        assert res == [0]
 
-        res = graph1.QUERY(CALL db.constraints)
+        res = list_constraints(graph1)
+        print(res)
         #assert res.result_set[0][0] == "UNIQUE PARENT.name"

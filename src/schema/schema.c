@@ -9,6 +9,7 @@
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
+#include "../constraint/constraint.h"
 
 Schema *Schema_New
 (
@@ -24,7 +25,7 @@ Schema *Schema_New
 	s->type         =  type;
 	s->index        =  NULL;
 	s->fulltextIdx  =  NULL;
-	s->constraints   =  array_new(Constraint, 0);
+	s->constraints   =  array_new(_Constraint, 0);
 	s->name         =  rm_strdup(name);
 
 	return s;
@@ -309,9 +310,9 @@ void Schema_Free
 	// Free constraints.
 	if(s->constraints) {
 		for(uint i = 0; i < array_len(s->constraints); i++) {
-			Constraint_Free(s->constraints[i]);
+			Constraint_free(&s->constraints[i]);
 		}
-		array_fee(s->constraints);
+		array_free(s->constraints);
 	}
 
 	// Free indicies.
@@ -326,13 +327,14 @@ bool Schema_HasConstraints(const Schema *s) {
 	return (s->constraints && array_len(s->constraints) > 0);
 }
 
-bool Schema_ContainsConstraint(const Schema *s, const ConstAttrData *fields, uint field_count) {
+Constraint Schema_GetConstraint(const Schema *s, const ConstAttrData *fields, uint field_count) {
 	ASSERT(s != NULL);
 	ASSERT(fields != NULL);
 	ASSERT(field_count > 0);
 
 	for(uint i = 0; i < array_len(s->constraints); i++) {
 		Constraint c = &s->constraints[i];
+
 		if(array_len(c->attributes) != field_count) continue;
 
 		bool match = true;
@@ -343,13 +345,26 @@ bool Schema_ContainsConstraint(const Schema *s, const ConstAttrData *fields, uin
 			}
 		}
 
-		if(match) return true;
+		if(match) return c;
 	}
 
-	return false;
+	return NULL;
 }
 
-int Schema_AddConstraint
+bool Schema_ContainsConstraint(const Schema *s, const ConstAttrData *fields, uint field_count) {
+	ASSERT(s != NULL);
+	ASSERT(fields != NULL);
+	ASSERT(field_count > 0);
+
+	Constraint c = Schema_GetConstraint(s, fields, field_count);
+	if(c == NULL || c->status == CT_FAILED) {
+		return false;
+	} else {
+		return true;
+	}
+}
+
+void Schema_AddConstraint
 (
 	Schema *s,       // schema holding the index
 	Constraint c     // constraint to add
@@ -361,9 +376,28 @@ int Schema_AddConstraint
 
 Constraint Schema_GetConstraints
 (
-	const Schema *s,       // schema holding the index
+	const Schema *s       // schema holding the index
 ) {
 	ASSERT(s != NULL);
 	ASSERT(s->constraints != NULL);
 	return s->constraints;
 }
+
+int Schema_RemoveConstraint
+(
+	Schema *s,
+	Constraint c 	 // constraint to remove
+) {
+	ASSERT(s != NULL);
+	ASSERT(c != NULL);
+
+	for(uint i = 0; i < array_len(s->constraints); i++) {
+		if (c == &s->constraints[i]) {
+			array_del_fast(s->constraints, i);
+			return REDISMODULE_OK;
+		}
+	}
+
+	return REDISMODULE_ERR;
+}
+

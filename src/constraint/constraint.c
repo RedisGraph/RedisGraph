@@ -7,6 +7,8 @@
 #include "../schema/schema.h"
 #include "value.h"
 #include "../index/indexer.h"
+#include "../query_ctx.h"
+#include <stdatomic.h>
 
 
 const ConstAttrData *Constraint_GetAttributes
@@ -31,10 +33,49 @@ GraphEntityType type) {
     c->label_id = label_id;
     c->entity_type = type;
     c->status = CT_PENDING;
+    c->pending_changes = ATOMIC_VAR_INIT(0);
     return c;
 }
 
-Constraint Constraint_free() {
+void Constraint_Activate(Constraint c) {
+    c->status = CT_ACTIVE;
+}
+
+// returns number of pending changes
+int Constraint_PendingChanges
+(
+	const Constraint c  // constraint to inquery
+) {
+	ASSERT(c != NULL);
+    ASSERT(c->pending_changes <= 2); // one can't create or drop the same constraint twice
+
+	return c->pending_changes;
+}
+
+// increment number of pending changes
+void Constraint_IncPendingChanges
+(
+	Constraint c
+) {
+	ASSERT(c != NULL);
+    ASSERT(c->pending_changes <= 2); // one can't create or drop the same constraint twice
+
+	c->pending_changes++;
+}
+
+// decrement number of pending changes
+void Constraint_DecPendingChanges
+(
+	Constraint c
+) {
+	ASSERT(c != NULL);
+    ASSERT(c->pending_changes > 0);
+    ASSERT(c->pending_changes <= 2); // one can't create or drop the same constraint twice
+
+	c->pending_changes--;
+}
+
+void Constraint_free(Constraint c) {
     for(int i = 0; i < array_len(c->attributes); i++) {
         rm_free(c->attributes[i].attribute_name);
     }
@@ -47,7 +88,7 @@ Constraint Constraint_free() {
 static bool _Should_constraint_enforce_entity(Constraint c, const AttributeSet attributes) {
     size_t len = array_len(c->attributes);
     for(size_t i = 0; i < len; ++i) {
-        if(AttributeSet_Get(attributes, c->attributes[i]) == ATTRIBUTE_NOTFOUND) {
+        if(AttributeSet_Get(attributes, c->attributes[i].id) == ATTRIBUTE_NOTFOUND) {
             return false;
         }
     }
@@ -82,19 +123,19 @@ bool Constraint_enforce_entity(Constraint c, const AttributeSet attributes, RSIn
 	    	RediSearch_QueryNodeAddChild(node, child);
 	    } else if(t == T_STRING) {
             node = RediSearch_CreateTagNode(idx, field);
-            RSQNode *child = RediSearch_CreateTokenNode(idx, field, v.stringval);
+            RSQNode *child = RediSearch_CreateTokenNode(idx, field, v->stringval);
 	    	RediSearch_QueryNodeAddChild(node, child);
         } else {
             ASSERT(t & SI_NUMERIC || t == T_BOOL);
-		    double d = SI_GET_NUMERIC(v);
-            node = RediSearch_CreateNumericNode(idx, c->attribute_name, d, d, true, true);
+		    double d = SI_GET_NUMERIC((*v));
+            node = RediSearch_CreateNumericNode(idx, field, d, d, true, true);
         }
         ASSERT(node != NULL);
-        RediSearch_IntersectNodeAddChild(rs_query_node, node);
+        RediSearch_QueryNodeAddChild(rs_query_node, node);
     }
 
     RSResultsIterator *iter = RediSearch_GetResultsIterator(rs_query_node, idx);
-    void* ptr = RediSearch_ResultsIteratorNext(iter, idx, NULL);
+    const void* ptr = RediSearch_ResultsIteratorNext(iter, idx, NULL);
     ASSERT(ptr != NULL);
     ptr = RediSearch_ResultsIteratorNext(iter, idx, NULL);
     if(ptr != NULL) {
@@ -106,9 +147,10 @@ bool Constraint_enforce_entity(Constraint c, const AttributeSet attributes, RSIn
     return true;
 }
 
-bool Constraints_enforce_entity(Constraint c, const AttributeSet attributes, RSIndex *idx) {
+bool Constraints_enforce_entity(Constraint c, const AttributeSet attributes, RSIndex *idx, int *ind) {
     for(int i = 0; i < array_len(c); i++) {
-        if(!Constraint_enforce_entity(c[i], attributes, idx)) {
+        if(c[i].status != CT_FAILED && !Constraint_enforce_entity(&c[i], attributes, idx)) {
+            if(ind) *ind = i;
             return false;
         }
     }
@@ -117,27 +159,30 @@ bool Constraints_enforce_entity(Constraint c, const AttributeSet attributes, RSI
 }
 
 // Executed under write lock
-void Constraint_Drop_Index(Constraint c, const GraphContext *gc) {
+void Constraint_Drop_Index(Constraint c, struct GraphContext *gc, bool should_drop_constraint) {
 	// constraint was not satisfied, free it and remove it's index
 
 	SchemaType schema_type = (c->entity_type == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
-	Schema *s = GraphContext_GetSchema(gc, c->label, schema_type);
+	Schema *s = GraphContext_GetSchema((GraphContext*)gc, c->label, schema_type);
 	ASSERT(s);
 
 	// remove all index fields
 	for(int i = 0; i < array_len(c->attributes); i++) {
-		int res = GraphContext_DeleteIndex(gc, schema_type, c->label, c->attributes[i].attribute_name,
+		int res = GraphContext_DeleteIndex((GraphContext*)gc, schema_type, c->label, c->attributes[i].attribute_name,
 			IDX_EXACT_MATCH, true);
 		ASSERT(res != INDEX_FAIL); // index should exist
 
 		if(res == INDEX_OK) {
 			Index idx = Schema_GetIndex(s, &(c->attributes[i].id), IDX_EXACT_MATCH);
-			ASSERT(*idx != NULL);
+			ASSERT(idx != NULL);
 
 			if(Index_FieldsCount(idx) > 0) {
-				Indexer_PopulateIndexOrConstraint(gc, idx, NULL);
+				Indexer_PopulateIndexOrConstraint((GraphContext*)gc, idx, NULL);
 			} else {
-				Indexer_DropIndex(idx);
+                if(should_drop_constraint) {
+                    Constraint_IncPendingChanges(c);
+                }
+				Indexer_DropIndexOrConstraint(idx, should_drop_constraint ? c : NULL);
 			}
 		}
 	}
@@ -146,8 +191,8 @@ void Constraint_Drop_Index(Constraint c, const GraphContext *gc) {
 bool Has_Constraint_On_Attribute(const Constraint constraints, Attribute_ID attr_id) {
     for(int i = 0; i < array_len(constraints); i++) {
         _Constraint c = constraints[i];
-        for(int j = 0; j < array_len(c->attributes); j++) {
-            if(c->attributes[j].id == attr_id) {
+        for(int j = 0; j < array_len(c.attributes); j++) {
+            if(c.attributes[j].id == attr_id) {
                 return true;
             }
         }
@@ -161,8 +206,8 @@ typedef enum {
 	CT_DELETE
 } ConstraintOp;
 
-static int Constraint_Parse(RedisModuleCtx *ctx, RedisModuleString **argv, int argc, const RedisModuleString **graph_name, GraphEntityType *type, 
-                            const char **label, const RedisModuleString **props, long long *prop_count, ConstraintOp *op, ConstraintType *ct) {
+static int Constraint_Parse(RedisModuleCtx *ctx, RedisModuleString **argv, int argc, RedisModuleString **graph_name, GraphEntityType *type, 
+                            const char **label, RedisModuleString ***props, long long *prop_count, ConstraintOp *op, ConstraintType *ct) {
 	// get graph name
 	argv += 1; // skip "GRAPH.CONSTRAINT"
 
@@ -198,10 +243,13 @@ static int Constraint_Parse(RedisModuleCtx *ctx, RedisModuleString **argv, int a
     *label = RedisModule_StringPtrLen(*argv++, NULL);
     token = RedisModule_StringPtrLen(*argv++, NULL);
     if(strcasecmp(token, "PROPERTIES") == 0) {
-        if (RedisModule_StringToLongLong(argv[i], prop_count) != REDISMODULE_OK || *prop_count < 1) {
+        if (RedisModule_StringToLongLong(*argv++, prop_count) != REDISMODULE_OK || *prop_count < 1) {
             RedisModule_ReplyWithError(ctx, "invalid property count");
             return REDISMODULE_ERR;
         }
+    } else {
+        RedisModule_ReplyWithError(ctx, "7th arg isn't PROPERTIES");
+        return REDISMODULE_ERR;
     }
 
     if(argc - 8 != *prop_count) {
@@ -209,7 +257,7 @@ static int Constraint_Parse(RedisModuleCtx *ctx, RedisModuleString **argv, int a
         return REDISMODULE_ERR;
     }
 
-    *props = *argv;
+    *props = argv;
 
     return REDISMODULE_OK;
 }
@@ -221,18 +269,19 @@ int Graph_Constraint(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     RedisModuleString *rs_graph_name;
     GraphEntityType entity_type;
     const char *label;
-    RedisModuleString *props;
+    RedisModuleString **props;
     long long prop_count;
     ConstraintOp op;
     ConstraintType ct;
+    int rv = REDISMODULE_OK;
 
-    if(Constraint_Parse(ctx, argv, argc, &rs_graph_name, &entity_type, &label,  &props, &prop_count, &op, &ct) != REDISMODULE_OK) {
+    if(Constraint_Parse(ctx, argv, argc, &rs_graph_name, &entity_type, &label, &props, &prop_count, &op, &ct) != REDISMODULE_OK) {
         return REDISMODULE_ERR;
     }
 
-    const char *props[prop_count];
+    const char *props_cstr[prop_count];
     for(int i = 0; i < prop_count; i++) {
-        props[i] = RedisModule_StringPtrLen(argv[i], NULL);
+        props_cstr[i] = RedisModule_StringPtrLen(props[i], NULL);
     }
 
 	gc = GraphContext_Retrieve(ctx, rs_graph_name, false, false);
@@ -242,27 +291,56 @@ int Graph_Constraint(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     }
 
     SchemaType schema_type = (entity_type == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
+
+    // lock
+	QueryCtx_LockForCommit();
 	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
-    if(!s) {
+    if(op == CT_DELETE && !s) {
         RedisModule_ReplyWithError(ctx, "Schema not found");
-        return REDISMODULE_ERR;
+        rv =  REDISMODULE_ERR;
+        goto _out;
     }
 
 	Index idx = NULL;
 	Constraint c = NULL;
 
-    // lock
-	QueryCtx_LockForCommit();
+    if(op == CT_CREATE) {
 
-	// add fields to index
-	GraphContext_AddExactMatchIndexOrUniqueConstraint(idx, c, gc, schema_type, label, props, prop_count);
+        c = GraphContext_AddUniqueConstraint(gc, schema_type, label, props_cstr, prop_count);
 
-    // unlock
-    _QueryCtx_UnlockCommit();
+        if(!c) { // constraint already exists
+            RedisModule_ReplyWithError(ctx, "Constraint already exists");
+            rv = REDISMODULE_ERR;
+            goto _out;
+        }
 
-    if(c) {
+        // add fields to index
+        GraphContext_AddExactMatchIndex(&idx, gc, schema_type, label, props_cstr, prop_count);
+
         Indexer_PopulateIndexOrConstraint(gc, idx, c);
-    } // else constraint already exists
 
-    return REDISMODULE_OK;
+    } else { // CT_DELETE
+        ConstAttrData fields[prop_count];
+
+        for(int i = 0; i < prop_count; i++) {
+            fields[i].attribute_name = (char *)props_cstr[i];
+        }
+
+        Constraint c = Schema_GetConstraint(s, fields, prop_count);
+        if(!c) {
+            RedisModule_ReplyWithError(ctx, "Constraint not found");
+            rv = REDISMODULE_ERR;
+            goto _out;
+        }
+
+        Schema_RemoveConstraint(s, c);
+        Constraint_Drop_Index(c, (struct GraphContext *)gc, true);
+    }
+
+_out:
+    // unlock
+    QueryCtx_UnlockCommit();
+    // decrease graph reference count
+	GraphContext_DecreaseRefCount(gc);
+    return rv;    
 }

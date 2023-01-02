@@ -7,9 +7,10 @@
 #include "indexer.h"
 #include "../redismodule.h"
 #include "../util/circular_buffer.h"
-#include "../constraints/constraint.h"
+#include "../constraint/constraint.h"
 #include "../schema/schema.h"
 #include "../resultset/resultset.h"
+#include "../query_ctx.h"
 #include <assert.h>
 #include <pthread.h>
 
@@ -51,13 +52,15 @@ static void *_index_populate
 		// pop an item from queue
 		// if queue is empty thread will be put to sleep
 		IndexConstraintPopulateCtx ctx;
+		bool ret;
 		_indexer_PopTask(&ctx);
 
 		switch(ctx.op) {
 			case INDEXER_POPULATE:
-				bool ret = Index_Populate_enforce_constraint(ctx.idx, ctx.c, ctx.gc);
-				if(ctx.c) {
-					if(ret) {
+				ret = Index_Populate_enforce_constraint(ctx.idx, ctx.c, (struct GraphContext*)ctx.gc);
+				if(ctx.c && Constraint_PendingChanges(ctx.c) == 0) {
+					// If pending changes > 0, Constraint going to be deleted - don't drop the index						
+					if (ret) {
 						// Constraint is satisfied, change it's status.
 						QueryCtx_LockForCommit();
 						ctx.c->status = CT_ACTIVE;
@@ -65,7 +68,7 @@ static void *_index_populate
 						// constraint was not satisfied, remove it's index and change is status
 						QueryCtx_LockForCommit();
 						ctx.c->status = CT_FAILED;
-						Constraint_Drop_Index(ctx.c, ctx.gc);
+						Constraint_Drop_Index(ctx.c, (struct GraphContext*)ctx.gc, false);
 					}
 					QueryCtx_UnlockCommit(NULL);
 				}
@@ -76,7 +79,14 @@ static void *_index_populate
 				rm_ctx = RedisModule_GetThreadSafeContext(NULL);
 				RedisModule_ThreadSafeContextLock(rm_ctx);
 
-				Index_Free(ctx.idx);
+				ASSERT(ctx.idx || ctx.c);
+				if(ctx.idx) {
+					Index_Free(ctx.idx);
+				}
+
+				if(ctx.c) {
+					Constraint_free(ctx.c);
+				}
 
 				RedisModule_ThreadSafeContextUnlock(rm_ctx);
 				break;
@@ -230,7 +240,7 @@ cleanup:
 
 // populates index and enforce constraint asynchronously
 // this function simply place the population request onto a queue
-// eventually the indexer working thread will pick it up and populate the index
+// eventually the indexer working thread will pick it up and populate the index and enforce the constraint
 void Indexer_PopulateIndexOrConstraint
 (
 	GraphContext *gc, // graph to operate on
@@ -254,19 +264,20 @@ void Indexer_PopulateIndexOrConstraint
 	_indexer_AddTask(&ctx);
 }
 
-// drops index asynchronously
+// drops index and or constraint asynchronously
 // this function simply place the drop request onto a queue
-// eventually the indexer working thread will pick it up and drop the index
-void Indexer_DropIndex
+// eventually the indexer working thread will pick it up and drop the index and or constraint
+void Indexer_DropIndexOrConstraint
 (
-	Index idx  // index to drop
+	Index idx,     // index to drop
+	Constraint c   // constraint enforce and add
 ) {
 	ASSERT(idx     != NULL);
 	ASSERT(indexer != NULL);
 	ASSERT(Index_Enabled(idx) == false);
 
 	// create work item
-	IndexConstraintPopulateCtx ctx = {.idx = idx, .gc = NULL, .op = INDEXER_DROP};
+	IndexConstraintPopulateCtx ctx = {.idx = idx, .c = c, .gc = NULL, .op = INDEXER_DROP};
 
 	// place task into queue
 	_indexer_AddTask(&ctx);

@@ -206,10 +206,10 @@ GraphContext *RdbLoadGraphContext_v9(RedisModuleIO *rdb) {
 
 			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
 			if(s->index) {
-				Index_Populate_enforce_constraint(s->index, NULL, gc);
+				Index_Populate_enforce_constraint(s->index, NULL, (struct GraphContext*)gc);
 			}
 			if(s->fulltextIdx) {
-				Index_Populate_enforce_constraint(s->fulltextIdx, NULL, gc);
+				Index_Populate_enforce_constraint(s->fulltextIdx, NULL, (struct GraphContext*)gc);
 			}
 		}
 

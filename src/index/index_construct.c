@@ -9,7 +9,7 @@
 #include "../graph/rg_matrix/rg_matrix_iter.h"
 #include "../constraint/constraint.h"
 #include "../graph/graphcontext.h"
-#include "../schema.h"
+#include "../schema/schema.h"
 
 #include <assert.h>
 
@@ -31,15 +31,19 @@ static bool _Index_PopulateNodeIndex_enforce_constraint
 	ASSERT(gc   != NULL);
 	ASSERT(gc->g != NULL);
 	ASSERT(idx != NULL || c != NULL);
+	Graph *g = gc->g;
 	Index _idx = idx;
 	if(!idx) {
+		// lock graph for reading
+		Graph_AcquireReadLock(g);
 		Schema *s = GraphContext_GetSchema(gc, c->label, SCHEMA_NODE);
 		ASSERT(s != NULL);
 		_idx = s->index;
+		// release read lock
+		Graph_ReleaseLock(g);
 	}
 	ASSERT(_idx  != NULL);
 
-	Graph *g = gc->g;
 	GrB_Index          rowIdx     = 0;
 	int                indexed    = 0;      // #entities in current batch
 	int                batch_size = 10000;  // max #entities to index in one go
@@ -49,7 +53,11 @@ static bool _Index_PopulateNodeIndex_enforce_constraint
 		// lock graph for reading
 		Graph_AcquireReadLock(g);
 
-		if(!c) {
+		if(c && Constraint_PendingChanges(c) > 1) {
+			// Constraint state changed, abort indexing
+			// this can only happen when creating a constraint and then deleting it.
+			break;
+		} else {
 			// index state changed, abort indexing
 			// this can happen if for example the following sequance is issued:
 			// 1. CREATE INDEX FOR (n:Person) ON (n.age)
@@ -86,13 +94,12 @@ static bool _Index_PopulateNodeIndex_enforce_constraint
 		{
 			Node n;
 			Graph_GetNode(g, id, &n);
-			if(c && !Constraint_enforce_entity(c, n.attributes, _idx->_idx)) {
+			if(c && !Constraint_enforce_entity(c, *(n.attributes), Index_RSIndex(_idx))) {
 				// Constraint is not satisfied, cancel the index operation.
 
 				// release read lock
 				Graph_ReleaseLock(g);
 				RG_MatrixTupleIter_detach(&it);
-				Free_Constraint_Remove_Its_Index(c, gc);
 				return false;
 			}
 			if(idx) Index_IndexNode(_idx, &n);
@@ -145,15 +152,19 @@ static bool _Index_PopulateEdgeIndex_enforce_constraint
 	ASSERT(gc->g != NULL);
 	ASSERT(idx != NULL || c != NULL);
 	Schema *s;
+	Graph *g = gc->g;
 	Index _idx = idx;
 	if(!idx) {
+		// lock graph for reading
+		Graph_AcquireReadLock(g);
 		s = GraphContext_GetSchema(gc, c->label, SCHEMA_EDGE);
 		ASSERT(s != NULL);
 		_idx = s->index;
+		// release read lock
+		Graph_ReleaseLock(g);
 	}
 	ASSERT(_idx  != NULL);
 
-	Graph *g = gc->g;
 	GrB_Info  info;
 	EntityID  src_id       = 0;     // current processed row idx
 	EntityID  dest_id      = 0;     // current processed column idx
@@ -168,7 +179,11 @@ static bool _Index_PopulateEdgeIndex_enforce_constraint
 		// lock graph for reading
 		Graph_AcquireReadLock(g);
 
-		if(!c) {
+		if(c && Constraint_PendingChanges(c) > 1) {
+			// Constraint state changed, abort indexing
+			// this can only happen when creating a constraint and then deleting it.
+			break;
+		} else {
 			// index state changed, abort indexing
 			// this can happen if for example the following sequance is issued:
 			// 1. CREATE INDEX FOR (:Person)-[e:WORKS]-(:Company) ON (e.since)
@@ -220,7 +235,7 @@ static bool _Index_PopulateEdgeIndex_enforce_constraint
 
 			if(SINGLE_EDGE(edge_id)) {
 				Graph_GetEdge(g, edge_id, &e);
-				if(c && !Constraint_enforce_entity(c, e.attributes, _idx->_idx)) {
+				if(c && !Constraint_enforce_entity(c, *(e.attributes), Index_RSIndex(_idx))) {
 					// Constraint is not satisfied, cancel the index operation.
 
 					// release read lock
@@ -228,7 +243,7 @@ static bool _Index_PopulateEdgeIndex_enforce_constraint
 					RG_MatrixTupleIter_detach(&it);
 					return false;
 				}
-				if(should_index) Index_IndexEdge(_idx, &e);
+				if(idx) Index_IndexEdge(_idx, &e);
 			} else {
 				EdgeID *edgeIds = (EdgeID *)(CLEAR_MSB(edge_id));
 				uint edgeCount = array_len(edgeIds);
@@ -236,13 +251,12 @@ static bool _Index_PopulateEdgeIndex_enforce_constraint
 				for(uint i = 0; i < edgeCount; i++) {
 					edge_id = edgeIds[i];
 					Graph_GetEdge(g, edge_id, &e);
-					if(c && !Constraint_enforce_entity(c, e.attributes, _idx->_idx)) {
+					if(c && !Constraint_enforce_entity(c, *(e.attributes), Index_RSIndex(_idx))) {
 						// Constraint is not satisfied, cancel the index operation.
 
 						// release read lock
 						Graph_ReleaseLock(g);
 						RG_MatrixTupleIter_detach(&it);
-						Free_Constraint_Remove_Its_Index(c, gc);
 						return false;
 					}
 					if(idx) Index_IndexEdge(_idx, &e);
@@ -280,7 +294,7 @@ bool Index_Populate_enforce_constraint
 (
 	Index idx,
 	Constraint c,
-	GraphContext *gc
+	struct GraphContext *gc
 ) {
 	ASSERT(idx || c);
 	ASSERT(gc        != NULL);
@@ -293,13 +307,20 @@ bool Index_Populate_enforce_constraint
 	//--------------------------------------------------------------------------
 
 	if(Index_GraphEntityType(idx) == GETYPE_NODE) {
-		rv = _Index_PopulateNodeIndex_enforce_constraint(idx, c, gc);
+		rv = _Index_PopulateNodeIndex_enforce_constraint(idx, c, (GraphContext *)gc);
 	} else {
-		rv = _Index_PopulateEdgeIndex_enforce_constraint(idx, c, gc);
+		rv = _Index_PopulateEdgeIndex_enforce_constraint(idx, c, (GraphContext *)gc);
 	}
 
-	// task been handled, try to enable index
-	Index_Enable(idx);
+	if(idx) {
+		// task been handled, try to enable index
+		Index_Enable(idx);
+	}
+
+	if(c) {
+		// task been handled, dec pending changes of constraint
+		Constraint_DecPendingChanges(c);
+	}
 
 	return rv;
 }

@@ -8,3 +8,4 @@
 #include "v9/decode_v9.h"
 #include "v10/decode_v10.h"
 #include "v11/decode_v11.h"
+#include "v12/decode_v12.h"

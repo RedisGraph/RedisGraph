@@ -472,10 +472,61 @@ static inline int _cmp_ConstAttrData(const void *a, const void *b) {
 	return x->id - y->id;
 }
 
-bool GraphContext_AddExactMatchIndexOrUniqueConstraint
+// Create constraint for the given label and attributes
+Constraint GraphContext_AddUniqueConstraint
+(
+	GraphContext *gc,           // graph context
+	SchemaType schema_type,     // type of entities to index nodes/edges
+	const char *label,          // label of indexed entities
+	const char **fields_str,    // fields to index
+	uint fields_count           // number of fields to index
+) {
+	ASSERT(gc     !=  NULL);
+	ASSERT(label  !=  NULL);
+	ASSERT(fields_str !=  NULL);
+	ASSERT(fields_count > 0);
+
+	// retrieve the schema for this label
+	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
+
+	if(s == NULL) {
+		// schema doesn't exists, create it
+		s = GraphContext_AddSchema(gc, label, schema_type);
+	}
+
+	ConstAttrData fields[fields_count];
+	for(uint i = 0; i < fields_count; i++) {
+		fields[i].id = GraphContext_FindOrAddAttribute(gc, fields_str[i], NULL);
+		fields[i].attribute_name = (char *)fields_str[i];
+	}
+
+	// sort the properties for an easy comparison later
+	qsort(fields, fields_count, sizeof(Attribute_ID), (int (*)(const void *, const void *))_cmp_ConstAttrData);
+
+	// check if constraint already contained in schema
+	Constraint c = Schema_GetConstraint(s, fields, fields_count);
+	if(c != NULL && c->status != CT_FAILED) {
+		// constraint already exists
+		return NULL;
+	}
+
+	if(c->status == CT_FAILED) {
+		// constraint already exists but failed, change its status and try to create it again
+		c->status = CT_PENDING;
+	} else {
+		GraphEntityType entity_type = (schema_type == SCHEMA_NODE) ? GETYPE_NODE : GETYPE_EDGE;
+		c = Constraint_new(fields, fields_count, label, s->id, entity_type);
+	}
+
+	Constraint_IncPendingChanges(c);
+
+	return c;
+}
+
+// create an exact match index for the given label and attribute
+bool GraphContext_AddExactMatchIndex
 (
 	Index *idx,                 // [input/output] index created
-	Constraint *constraint,     // [input/output] constraint created
 	GraphContext *gc,           // graph context
 	SchemaType schema_type,     // type of entities to index nodes/edges
 	const char *label,          // label of indexed entities
@@ -483,10 +534,9 @@ bool GraphContext_AddExactMatchIndexOrUniqueConstraint
 	uint fields_count           // number of fields to index
 ) {
 	ASSERT(idx    !=  NULL);
-	ASSERT((!constraint) || (*constraint == NULL));
 	ASSERT(gc     !=  NULL);
 	ASSERT(label  !=  NULL);
-	ASSERT(fields !=  NULL);
+	ASSERT(fields_str !=  NULL);
 	ASSERT(fields_count > 0);
 
 	// retrieve the schema for this label
@@ -497,27 +547,6 @@ bool GraphContext_AddExactMatchIndexOrUniqueConstraint
 	if(s == NULL) {
 		// schema doesn't exists, create it
 		s = GraphContext_AddSchema(gc, label, schema_type);
-	}
-
-	if(constraint) {
-		ConstAttrData fields[fields_count];
-		for(uint i = 0; i < fields; i++) {
-			fields[i].id = GraphContext_FindOrAddAttribute(gc, fields_str[i], NULL);
-			fields[i].attribute_name = fields_str[i];
-		}
-
-		// sort the properties for an easy comparison later
-		qsort(fields, fields_count, sizeof(Attribute_ID), (int (*)(const void *, const void *))_cmp_ConstAttrData);
-
-		// check if constraint already contained in schema
-		if(Schema_ContainsConstraint(s, fields, fields_count)) {
-			// constraint already exists
-			return false;
-		}
-
-		GraphEntityType entity_type = (s->type == SCHEMA_NODE) ? GETYPE_NODE : GETYPE_EDGE;
-		*constraint = Constraint_new(fields, fields_count, s->name, s->id, entity_type);
-		Schema_AddConstraint(s, *constraint);
 	}
 
 	for(uint i = 0; i < fields_count; i++) {

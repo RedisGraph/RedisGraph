@@ -128,7 +128,11 @@ void RdbLoadNodes_v13
 			if(s->fulltextIdx) Index_IndexNode(s->fulltextIdx, &n);
 
 			// Entities must satisfy their constraints.
-			ASSERT(Constraints_enforce_entity(s->constraints, GraphEntity_GetAttributes((GraphEntity *)&n), Index_RSIndex(s->index)));
+			int c_index;
+			if(!Constraints_enforce_entity(s->constraints, GraphEntity_GetAttributes((GraphEntity *)&n), Index_RSIndex(s->index), &c_index)) {
+				s->constraints[c_index].status = CT_FAILED;
+				Constraint_Drop_Index(&s->constraints[c_index], (struct GraphContext*)gc, false);
+			}
 		}
 	}
 }
@@ -181,7 +185,11 @@ void RdbLoadEdges_v13
 		if(s->fulltextIdx) Index_IndexEdge(s->fulltextIdx, &e);
 
 		// Entities must satisfy their constraints.
-		ASSERT(Constraints_enforce_entity(s->constraints, GraphEntity_GetAttributes((GraphEntity *)&e), Index_RSIndex(s->index)));
+		int c_index;
+		if (Constraints_enforce_entity(s->constraints, GraphEntity_GetAttributes((GraphEntity *)&e), Index_RSIndex(s->index), &c_index)) {
+			s->constraints[c_index].status = CT_FAILED;
+			Constraint_Drop_Index(&s->constraints[c_index], (struct GraphContext*)gc, false);
+		}
 	}
 }
 

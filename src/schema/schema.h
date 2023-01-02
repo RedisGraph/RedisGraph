@@ -126,6 +126,8 @@ void Schema_Free
 
 bool Schema_HasConstraints(const Schema *s);
 
+Constraint Schema_GetConstraint(const Schema *s, const ConstAttrData *fields, uint field_count);
+
 // checks if schema has a constraint
 bool Schema_ContainsConstraint(
 const Schema *s, 
@@ -133,7 +135,7 @@ const ConstAttrData *fields,
 uint field_count);
 
 // adds a constraint to schema
-int Schema_AddConstraint
+void Schema_AddConstraint
 (
 	Schema *s,       // schema holding the index
 	Constraint c     // constraint to add
@@ -141,5 +143,11 @@ int Schema_AddConstraint
 
 Constraint Schema_GetConstraints
 (
-	const Schema *s,       // schema holding the index
+	const Schema *s       // schema holding the index
+);
+
+int Schema_RemoveConstraint
+(
+	Schema *s,
+	Constraint c 	 // constraint to remove
 );

@@ -44,7 +44,7 @@ ProcedureResult Proc_FulltextDropIndexInvoke
 	if(res != INDEX_OK) {
 		ErrorCtx_SetError("ERR Unable to drop index on :%s: no such index.", l);
 	} else {
-		Indexer_DropIndex(idx);
+		Indexer_DropIndexOrConstraint(idx, NULL);
 	}
 
 	return PROCEDURE_OK;
