@@ -327,7 +327,7 @@ endif
 	$(SHOW)BINROOT=$(BINROOT) ./tests/unit/tests.sh
 
 flow-tests: $(TEST_DEPS)
-	$(SHOW)MODULE=$(TARGET) BINROOT=$(BINROOT) PARALLEL=$(_RLTEST_PARALLEL) GEN=1 AOF=1 TCK=0 ./tests/flow/tests.sh
+	$(SHOW)MODULE=$(TARGET) BINROOT=$(BINROOT) PARALLEL=$(_RLTEST_PARALLEL) GEN=$(GEN) AOF=$(AOF) TCK=0 ./tests/flow/tests.sh
 
 tck-tests: $(TEST_DEPS)
 	$(SHOW)MODULE=$(TARGET) BINROOT=$(BINROOT) PARALLEL=$(_RLTEST_PARALLEL) GEN=0 AOF=0 TCK=1 ./tests/flow/tests.sh

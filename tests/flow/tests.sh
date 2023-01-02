@@ -134,9 +134,12 @@ setup_rltest() {
 	
 	if [[ $RLTEST_VERBOSE == 1 ]]; then
 		RLTEST_ARGS+=" -v"
-		if [[ $VG != 1 ]]; then
-			RLTEST_ARGS+=" -s"
-		fi
+	fi
+	if [[ -n $RLTEST_LOG && $RLTEST_LOG != 1 ]]; then
+		RLTEST_ARGS+=" -s"
+	fi
+	if [[ $RLTEST_CONSOLE == 1 ]]; then
+		RLTEST_ARGS+=" -i"
 	fi
 }
 
@@ -325,7 +328,7 @@ run_tests() {
 
 		else # EXT=1
 			rltest_config=$(mktemp "${TMPDIR:-/tmp}/xredis_rltest.XXXXXXX")
-			[[ $KEEP != 1 ]] && rm -f $rltest_config
+			rm -f $rltest_config
 			cat <<-EOF > $rltest_config
 				--env existing-env
 				--existing-env-addr $EXT_HOST:$EXT_PORT
@@ -336,7 +339,7 @@ run_tests() {
 		fi
 	fi
 
-	if [[ $VERBOSE == 1 ]]; then
+	if [[ $VERBOSE == 1 || $NOP == 1 ]]; then
 		echo "RLTest configuration:"
 		cat $rltest_config
 		[[ -n $VG_OPTIONS ]] && { echo "VG_OPTIONS: $VG_OPTIONS"; echo; }
@@ -414,16 +417,16 @@ VG_ACCESS=${VG_ACCESS:-1}
 GDB=${GDB:-0}
 
 if [[ $GDB == 1 ]]; then
-	RLTEST_VERBOSE=1
-	RLTEST_ARGS+=" -i"
+	[[ $LOG != 1 ]] && RLTEST_LOG=0
+	RLTEST_CONSOLE=1
 fi
 
 [[ $SAN == addr ]] && SAN=address
 [[ $SAN == mem ]] && SAN=memory
 
 if [[ -n $TEST ]]; then
+	[[ $LOG != 1 ]] && RLTEST_LOG=0
 	export BB=${BB:-1}
-	[[ $LOG != 1 ]] && RLTEST_VERBOSE=1
 	export RUST_BACKTRACE=1
 fi
 
@@ -470,9 +473,15 @@ fi
 
 #---------------------------------------------------------------------------------------- Setup
 
-if [[ $VERBOSE == 1 && $LOG != 1 ]]; then
+if [[ $VERBOSE == 1 ]]; then
 	RLTEST_VERBOSE=1
 fi
+
+RLTEST_LOG=${RLTEST_LOG:-$LOG}
+#if [[ $LOG == 1 ]]; then
+#	echo "Log=1!"
+#	RLTEST_LOG=1
+#fi
 
 [[ $EXT == 1 || $EXT == run || $BB == 1 ]] && PARALLEL=0
 
