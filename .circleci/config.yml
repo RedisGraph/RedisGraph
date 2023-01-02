@@ -154,9 +154,6 @@ commands:
       - checkout-all
       - install-prerequisites:
           redis_version: <<parameters.redis_version>>
-      - restore_cache:
-          keys:
-            - v1-GraphBLAS-<< parameters.cache_name >>-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build
           shell: /bin/bash -l -eo pipefail
@@ -363,9 +360,6 @@ jobs:
       - early-returns
       - checkout-all
       - install-prerequisites
-      - restore_cache:
-          keys:
-            - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Test coverage
           shell: /bin/bash -l -eo pipefail
