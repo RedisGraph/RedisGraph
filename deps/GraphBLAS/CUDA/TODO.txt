@@ -1,4 +1,16 @@
 
-TODO Get libgraphblascuda.a to work.
-TODO why is pthread demo hanging with CUDA?
+rename functions and filenames to GB_*
+
+refactor jitFactor.hpp
+
+hexadecimal
+
+stream pool
+
+complex types/ops, CPU & GPU 
+
+reduce: do any monoid (but Tim needs to do the GB*reduce_23482304823094.h)
+
+CPU:    #define GB_STATIC_INLINE static inline
+CUDA:   #define GB_STATIC_INLINE static __device__  __inline__
 

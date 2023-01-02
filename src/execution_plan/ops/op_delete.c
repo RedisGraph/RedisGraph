@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "./op_delete.h"
 #include "../../errors.h"
@@ -106,9 +106,7 @@ static void _DeleteEntities
 		// required as a deleted node must be detached
 
 		// delete edges
-		for(uint i = 0; i < edge_count; i++) {
-			edge_deleted += DeleteEdge(op->gc, distinct_edges + i);
-		}
+		edge_deleted += DeleteEdges(op->gc, distinct_edges);
 
 		// delete nodes
 		for(uint i = 0; i < node_count; i++) {
@@ -121,9 +119,6 @@ static void _DeleteEntities
 			op->stats->relationships_deleted += edge_deleted;
 		}
 	}
-
-	// release lock
-	QueryCtx_UnlockCommit(&op->op);
 
 	// clean up
 	array_free(distinct_nodes);

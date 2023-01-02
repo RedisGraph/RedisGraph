@@ -82,6 +82,7 @@ class testUndoLog():
 
     def test05_undo_update_node(self):
         self.graph.query("CREATE (:N {a: 1, b:'str', c:[1, 'str', point({latitude:1, longitude:2})], d:point({latitude:1, longitude:2})})")
+        property_keys = self.graph.query("CALL db.propertyKeys").result_set
         try:
             self.graph.query("""MATCH (n:N {a: 1})
                                 SET n.a = 2, n.b = '', n.c = null, n.d = point({latitude:2, longitude:1})
@@ -99,6 +100,10 @@ class testUndoLog():
         self.env.assertEquals(result.result_set[0][2], [1, 'str', {'latitude':1, 'longitude':2}])
         self.env.assertEquals(result.result_set[0][3], {'latitude':1, 'longitude':2})
 
+        # no new properties should have been created
+        new_property_keys = self.graph.query("CALL db.propertyKeys").result_set
+        self.env.assertEquals(property_keys, new_property_keys)
+
         # introduce a new attribute `n.e`
         try:
             self.graph.query("""MATCH (n:N {a: 1})
@@ -113,6 +118,10 @@ class testUndoLog():
         # expecting the original attributes to be deleted
         result = self.graph.query("MATCH (n:N) RETURN n.e")
         self.env.assertEquals(result.result_set[0][0], None)
+
+        # no new properties should have been created
+        new_property_keys = self.graph.query("CALL db.propertyKeys").result_set
+        self.env.assertEquals(property_keys, new_property_keys)
 
         # introduce a new Label `n:M`
         try:
@@ -146,6 +155,8 @@ class testUndoLog():
         self.env.assertEquals(result.result_set[0][1], 'str')
         self.env.assertEquals(result.result_set[0][2], [1, 'str', {'latitude':1, 'longitude':2}])
         self.env.assertEquals(result.result_set[0][3], {'latitude':1, 'longitude':2})
+        new_property_keys = self.graph.query("CALL db.propertyKeys").result_set
+        self.env.assertEquals(property_keys, new_property_keys)
 
         try:
             self.graph.query("""MATCH (n:N {a: 1})
@@ -164,9 +175,12 @@ class testUndoLog():
         self.env.assertEquals(result.result_set[0][2], [1, 'str', {'latitude':1, 'longitude':2}])
         self.env.assertEquals(result.result_set[0][3], {'latitude':1, 'longitude':2})
         self.env.assertEquals(result.result_set[0][4], None)
+        new_property_keys = self.graph.query("CALL db.propertyKeys").result_set
+        self.env.assertEquals(property_keys, new_property_keys)
 
     def test06_undo_update_edge(self):
         self.graph.query("CREATE (:N)-[:R {v: 1}]->(:N)")
+        property_keys = self.graph.query("CALL db.propertyKeys").result_set
         try:
             self.graph.query("""MATCH ()-[r]->()
                               SET r.v = 2
@@ -181,8 +195,29 @@ class testUndoLog():
         result = self.graph.query("MATCH ()-[r]->() RETURN r.v")
         self.env.assertEquals(result.result_set[0][0], 1)
 
+        new_property_keys = self.graph.query("CALL db.propertyKeys").result_set
+        self.env.assertEquals(property_keys, new_property_keys)
+
+        try:
+            self.graph.query("""MATCH ()-[r]->()
+                              SET r.v2 = 2
+                              WITH r
+                              RETURN r * 1""")
+            # we're not supposed to be here, expecting query to fail
+            self.env.assertTrue(False) 
+        except:
+            pass
+
+        # expecting no values
+        result = self.graph.query("MATCH ()-[r]->() RETURN r.v2")
+        self.env.assertEquals(result.result_set, [[None]])
+
+        new_property_keys = self.graph.query("CALL db.propertyKeys").result_set
+        self.env.assertEquals(property_keys, new_property_keys)
+
     def test07_undo_create_indexed_node(self):
         self.graph.query("CREATE INDEX FOR (n:N) ON (n.v)")
+        property_keys = self.graph.query("CALL db.propertyKeys").result_set
         try:
             self.graph.query("CREATE (n:N {v:1}) WITH n RETURN 1 * n")
             # we're not supposed to be here, expecting query to fail
@@ -193,10 +228,28 @@ class testUndoLog():
         # node (n:N) should be removed, expecting an empty graph
         result = self.graph.query("MATCH (n:N {v:1}) RETURN n")
         self.env.assertEquals(len(result.result_set), 0)
+        # no new properties should have been created
+        new_property_keys = self.graph.query("CALL db.propertyKeys").result_set
+        self.env.assertEquals(property_keys, new_property_keys)
+
+        try:
+            self.graph.query("MERGE (n:N {v:1}) WITH n RETURN 1 * n")
+            # we're not supposed to be here, expecting query to fail
+            self.env.assertTrue(False) 
+        except:
+            pass
+
+        # node (n:N) should be removed, expecting an empty graph
+        result = self.graph.query("MATCH (n:N {v:1}) RETURN n")
+        self.env.assertEquals(len(result.result_set), 0)
+        # no new properties should have been created
+        new_property_keys = self.graph.query("CALL db.propertyKeys").result_set
+        self.env.assertEquals(property_keys, new_property_keys)
 
     def test08_undo_create_indexed_edge(self):
         self.graph.query("CREATE INDEX FOR ()-[r:R]->() ON (r.v)")
         self.graph.query("CREATE (:N {v: 1}), (:N {v: 2})")
+        property_keys = self.graph.query("CALL db.propertyKeys").result_set
         try:
             self.graph.query("""MATCH (s:N {v: 1}), (t:N {v: 2})
                                 CREATE (s)-[r:R {v:1}]->(t)
@@ -210,6 +263,26 @@ class testUndoLog():
         # edge [r:R] should have been removed
         result = self.graph.query("MATCH ()-[r:R {v:1}]->() RETURN r")
         self.env.assertEquals(len(result.result_set), 0)
+        # no new properties should have been created
+        new_property_keys = self.graph.query("CALL db.propertyKeys").result_set
+        self.env.assertEquals(property_keys, new_property_keys)
+
+        try:
+            self.graph.query("""MATCH (s:N {v: 1}), (t:N {v: 2})
+                                MERGE (s)-[r:R {v:1}]->(t)
+                                WITH r
+                                RETURN 1 * r""")
+            # we're not supposed to be here, expecting query to fail
+            self.env.assertTrue(False) 
+        except:
+            pass
+
+        # edge [r:R] should have been removed
+        result = self.graph.query("MATCH ()-[r:R {v:1}]->() RETURN r")
+        self.env.assertEquals(len(result.result_set), 0)
+        # no new properties should have been created
+        new_property_keys = self.graph.query("CALL db.propertyKeys").result_set
+        self.env.assertEquals(property_keys, new_property_keys)
 
     def test09_undo_delete_indexed_node(self):
         self.graph.query("CREATE INDEX FOR (n:N) ON (n.v)")
@@ -339,7 +412,7 @@ class testUndoLog():
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except Exception as e:
-            self.env.assertEquals(str(e), "Type mismatch: expected Integer but was String") 
+            self.env.assertEquals(str(e), "Type mismatch: expected Integer, Float, or Null but was String")
 
         # validate no changed is the created graph
         expected_result = [[1, 1, 1], [2, 2, 2], [3, 3, 3]]

@@ -277,7 +277,7 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
     // In all cases above, C remains dense and can be updated in-place
     // C_replace must be false.  M can be valued or structural.
 
-    #ifndef GBCOMPACT
+    #ifndef GBCUDA_DEV
 
     bool C_as_if_full = GB_as_if_full (C) ;
     bool A_as_if_full = GB_as_if_full (A1) ;

@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "entity_funcs.h"
 #include "../func_desc.h"
@@ -140,43 +140,67 @@ SIValue AR_EXISTS(SIValue *argv, int argc, void *private_data) {
 	return SI_BoolVal(1);
 }
 
-SIValue _AR_NodeDegree(SIValue *argv, int argc, GRAPH_EDGE_DIR dir) {
-	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
-	Node *n = (Node *)argv[0].ptrval;
-	Edge *edges = array_new(Edge, 0);
-	GraphContext *gc = QueryCtx_GetGraphCtx();
+// returns node incoming/outgoing degree
+static SIValue _AR_NodeDegree
+(
+	SIValue *argv,
+	int argc,
+	GRAPH_EDGE_DIR dir  // edge direction
+) {
+	ASSERT(SI_TYPE(argv[0]) != T_NULL);
+
+	Node          *n     = (Node*)argv[0].ptrval;
+	uint64_t      count  = 0;
+	GraphContext  *gc    = QueryCtx_GetGraphCtx();
 
 	if(argc > 1) {
-		// We're interested in specific relationship type(s).
+		// we're interested in specific relationship type(s)
 		for(int i = 1; i < argc; i++) {
 			const char *label = argv[i].stringval;
 
-			// Make sure relationship exists.
+			// make sure relationship exists.
 			Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
-			if(!s) continue;
+			if(s == NULL) {
+				continue;
+			}
 
-			// Accumulate edges.
-			Graph_GetNodeEdges(gc->g, n, dir, s->id, &edges);
+			// count edges
+			count += Graph_GetNodeDegree(gc->g, n, dir, s->id);
 		}
 	} else {
-		// Get all relations, regardless of their type.
-		Graph_GetNodeEdges(gc->g, n, dir, GRAPH_NO_RELATION, &edges);
+		// get all relations, regardless of their type.
+		count = Graph_GetNodeDegree(gc->g, n, dir, GRAPH_NO_RELATION);
 	}
 
-	SIValue res = SI_LongVal(array_len(edges));
-	array_free(edges);
+	SIValue res = SI_LongVal(count);
 	return res;
 }
 
-/* Returns the number of incoming edges for given node. */
-SIValue AR_INCOMEDEGREE(SIValue *argv, int argc, void *private_data) {
-	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
+// returns the number of incoming edges for given node
+SIValue AR_INCOMEDEGREE
+(
+	SIValue *argv,
+	int argc,
+	void *private_data
+) {
+	if(SI_TYPE(argv[0]) == T_NULL) {
+		return SI_NullVal();
+	}
+
 	return _AR_NodeDegree(argv, argc, GRAPH_EDGE_DIR_INCOMING);
 }
 
-/* Returns the number of outgoing edges for given node. */
-SIValue AR_OUTGOINGDEGREE(SIValue *argv, int argc, void *private_data) {
-	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
+// returns the number of outgoing edges for given node
+SIValue AR_OUTGOINGDEGREE
+(
+	SIValue *argv,
+	int argc,
+	void *private_data
+) {
+	if(SI_TYPE(argv[0]) == T_NULL) {
+		return SI_NullVal();
+	}
+
 	return _AR_NodeDegree(argv, argc, GRAPH_EDGE_DIR_OUTGOING);
 }
 
@@ -234,6 +258,10 @@ SIValue AR_PROPERTY(SIValue *argv, int argc, void *private_data) {
 		// unexpected type SI_TYPE(obj)
 		return SI_NullVal();
 	}
+}
+
+SIValue AR_TYPEOF(SIValue *argv, int argc, void *private_data) {
+	return SI_ConstStringVal(SIType_ToString(SI_TYPE(argv[0])));
 }
 
 void Register_EntityFuncs() {
@@ -304,6 +332,12 @@ void Register_EntityFuncs() {
 	array_append(types, T_INT64);
 	ret_type = SI_ALL;
 	func_desc = AR_FuncDescNew("property", AR_PROPERTY, 3, 3, types, ret_type, true, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, T_NULL | SI_ALL);
+	ret_type = T_STRING;
+	func_desc = AR_FuncDescNew("typeof", AR_TYPEOF, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 }
 

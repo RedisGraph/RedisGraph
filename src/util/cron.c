@@ -68,10 +68,10 @@ static int CRON_JobCmp
 // compute now + ms
 static struct timespec due_in_ms(uint ms) {
 	struct timespec due;
-    clock_gettime(CLOCK_REALTIME, &due);
+	clock_gettime(CLOCK_REALTIME, &due);
 
 	due.tv_sec += ms / 1000;
-    due.tv_nsec += (ms % 1000) * 1000000;
+	due.tv_nsec += (ms % 1000) * 1000000;
 
 	return due;
 }
@@ -88,7 +88,7 @@ static bool CRON_TaskDue(const CRON_TASK *t) {
 	ASSERT(t != NULL);
 
 	struct timespec now;
-    clock_gettime(CLOCK_REALTIME, &now);
+	clock_gettime(CLOCK_REALTIME, &now);
 	return cmp_timespec(now, t->due) >= 0;
 }
 
@@ -99,11 +99,12 @@ static CRON_TASK *CRON_Peek() {
 	return task;
 }
 
-static void CRON_RemoveTask(const CRON_TASK *t) {
+static bool CRON_RemoveTask(const CRON_TASK *t) {
 	ASSERT(t != NULL);
 	pthread_mutex_lock(&cron->mutex);
-	Heap_remove_item(cron->tasks, t);
+	void *res = Heap_remove_item(cron->tasks, t);
 	pthread_mutex_unlock(&cron->mutex);
+	return res != NULL;
 }
 
 static void CRON_InsertTask(CRON_TASK *t) {
@@ -170,10 +171,10 @@ static void *Cron_Run(void *arg) {
 				// set state to completed
 				// frees any threads waiting on task to complete
 				task->state = TASK_COMPLETED;
-			}
 
-			CRON_RemoveTask(task);
-			CRON_FreeTask(task);
+				CRON_RemoveTask(task);
+				CRON_FreeTask(task);
+			}
 		}
 
 		// sleep
@@ -242,26 +243,11 @@ void Cron_AbortTask(CronTaskHandle t) {
 
 	CRON_TASK *task = (CRON_TASK *)t;
 
-	pthread_mutex_lock(&cron->mutex);
-	if(Heap_contains_item(cron->tasks, task)) {
-		// as long as we're holding the cron's mutex it is safe to access task
-
-		CRON_TASK_STATE state = task->state;
-		if(state != TASK_COMPLETED && state != TASK_ABORT) {
-			// try marking task as aborted
-			bool abort = CRON_TaskAdvanceState(task, TASK_PENDING, TASK_ABORT);
-			if(!abort) {
-				// task is executing, wait for it to finish
-				// shouldn't happen often and shouldn't take long
-				volatile CRON_TASK *task_pending = task;
-				while(task_pending->state != TASK_COMPLETED);
-			}
-		}
-
-		state = task->state;
-		ASSERT(state == TASK_COMPLETED || state == TASK_ABORT);
+	// try remove the task
+	if(!CRON_RemoveTask(task)) return;
+	
+	// try marking task as aborted
+	if(CRON_TaskAdvanceState(task, TASK_PENDING, TASK_ABORT)) {
+		CRON_FreeTask(task);
 	}
-
-	pthread_mutex_unlock(&cron->mutex);
 }
-

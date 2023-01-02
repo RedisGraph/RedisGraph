@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "RG.h"
 #include "commands.h"
@@ -42,7 +42,7 @@ static int _read_flags
 	if(max_timeout != CONFIG_TIMEOUT_NO_TIMEOUT ||
 	   *timeout != CONFIG_TIMEOUT_NO_TIMEOUT) {
 		*timeout_rw = true;
-		if(timeout == CONFIG_TIMEOUT_NO_TIMEOUT) {
+		if(*timeout == CONFIG_TIMEOUT_NO_TIMEOUT) {
 			*timeout = max_timeout;
 		}
 	} else {
@@ -74,7 +74,7 @@ static int _read_flags
 					return REDISMODULE_ERR;
 				}
 
-				if(timeout == CONFIG_TIMEOUT_NO_TIMEOUT && timeout_rw) {
+				if(*timeout == CONFIG_TIMEOUT_NO_TIMEOUT && timeout_rw) {
 					Config_Option_get(Config_TIMEOUT_DEFAULT, timeout);
 					if(timeout == CONFIG_TIMEOUT_NO_TIMEOUT) {
 						*timeout = max_timeout;
@@ -225,11 +225,12 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	int flags = RedisModule_GetContextFlags(ctx);
 	bool is_replicated = RedisModule_GetContextFlags(ctx) & REDISMODULE_CTX_FLAGS_REPLICATED;
 
-	ExecutorThread exec_thread = (flags & (REDISMODULE_CTX_FLAGS_MULTI         |
-										   REDISMODULE_CTX_FLAGS_LUA           |
-										   REDISMODULE_CTX_FLAGS_DENY_BLOCKING |
-										   REDISMODULE_CTX_FLAGS_LOADING)) ?
-								 EXEC_THREAD_MAIN : EXEC_THREAD_READER;
+	bool main_thread = (is_replicated || 
+		(flags & (REDISMODULE_CTX_FLAGS_MULTI       |
+				REDISMODULE_CTX_FLAGS_LUA           |
+				REDISMODULE_CTX_FLAGS_DENY_BLOCKING |
+				REDISMODULE_CTX_FLAGS_LOADING)));
+	ExecutorThread exec_thread =  main_thread ? EXEC_THREAD_MAIN : EXEC_THREAD_READER;
 
 	Command_Handler handler = get_command_handler(cmd);
 	if(exec_thread == EXEC_THREAD_MAIN) {

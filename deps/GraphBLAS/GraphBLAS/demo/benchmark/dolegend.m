@@ -1,4 +1,8 @@
 function dolegend
+
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
+
 fprintf ('S: large input sparse matrix (m-by-n)\n') ;
 fprintf ('x: dense vector (1-by-m or n-by-1)\n') ;
 fprintf ('F: dense matrix (4-by-m or n-by-4)\n') ;

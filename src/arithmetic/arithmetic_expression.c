@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "./arithmetic_expression.h"
 
@@ -174,7 +174,6 @@ static void _AR_EXP_ValidateArgsCount
 		// Set the query-level error.
 		ErrorCtx_SetError("Received %d arguments to function '%s', expected at most %d", argc,
 						  fdesc->name, fdesc->max_argc);
-		return;
 	}
 }
 
@@ -396,9 +395,6 @@ static bool _AR_EXP_ValidateInvocation
 			expected_type = fdesc->types[i];
 		}
 		if(!(actual_type & expected_type)) {
-			/* TODO extend string-building logic to better express multiple acceptable types, like:
-			 * RETURN 'a' * 2
-			 * "Type mismatch: expected Float, Integer or Duration but was String" */
 			Error_SITypeMismatch(argv[i], expected_type);
 			return false;
 		}

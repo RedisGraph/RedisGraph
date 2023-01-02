@@ -1,6 +1,6 @@
 ---
-title: "RedisGraph Data Types"
-linkTitle: "Data Types"
+title: "RedisGraph data types"
+linkTitle: "Data types"
 weight: 4
 description: "RedisGraph supports a number of distinct data types, some of which can be persisted as property values and some of which are ephemeral."
 ---
@@ -123,7 +123,7 @@ $ redis-cli GRAPH.QUERY G "WITH {key1: 'stringval', key2: 10} AS map RETURN map.
       2) (integer) 10
 ```
 
-This aligns with way that the properties of nodes and relationships can be accessed.
+This aligns with the way that the properties of nodes and relationships can be accessed.
 
 Maps cannot be stored as property values.
 

@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "string_funcs.h"
 #include "../func_desc.h"
@@ -20,12 +20,14 @@
 
 // returns a string containing the specified number of leftmost characters of the original string.
 SIValue AR_LEFT(SIValue *argv, int argc, void *private_data) {
-	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
-
-	int64_t newlen = argv[1].longval;
-
+	if(SIValue_IsNull(argv[0])) return SI_NullVal();
+	
+	int64_t newlen = -1;
+	if(SI_TYPE(argv[1]) == T_INT64) {
+		newlen = argv[1].longval;
+	} 
 	if(newlen < 0) {
-		ErrorCtx_SetError("length must be positive integer");
+		ErrorCtx_SetError("length must be a non-negative integer");
 		return SI_NullVal();
 	}
 
@@ -54,12 +56,14 @@ SIValue AR_LTRIM(SIValue *argv, int argc, void *private_data) {
 
 // returns a string containing the specified number of rightmost characters of the original string.
 SIValue AR_RIGHT(SIValue *argv, int argc, void *private_data) {
-	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[0])) return SI_NullVal();
-
-	int64_t newlen = argv[1].longval;
-
+	if(SIValue_IsNull(argv[0])) return SI_NullVal();
+	
+	int64_t newlen = -1;
+	if(SI_TYPE(argv[1]) == T_INT64) {
+		newlen = argv[1].longval;
+	}
 	if(newlen < 0) {
-		ErrorCtx_SetError("length must be positive integer");
+		ErrorCtx_SetError("length must be a non-negative integer");
 		return SI_NullVal();
 	}
 
@@ -137,7 +141,7 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 
 	/* Make sure start doesn't overreach. */
 	if(start < 0) {
-		ErrorCtx_SetError("start must be positive integer");
+		ErrorCtx_SetError("start must be a non-negative integer");
 		return SI_NullVal();
 	}
 	if(start >= original_len) return SI_ConstStringVal("");
@@ -148,7 +152,7 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 	} else {
 		length = argv[2].longval;
 		if(length < 0) {
-			ErrorCtx_SetError("length must be positive integer");
+			ErrorCtx_SetError("length must be a non-negative integer");
 			return SI_ConstStringVal("");
 		}
 
@@ -209,6 +213,7 @@ SIValue AR_TRIM(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	SIValue ltrim = AR_LTRIM(argv, argc, NULL);
 	SIValue trimmed = AR_RTRIM(&ltrim, 1, NULL);
+	SIValue_Free(ltrim);
 	return trimmed;
 }
 

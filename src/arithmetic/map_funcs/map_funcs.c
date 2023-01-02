@@ -1,7 +1,7 @@
 /*
- * Copyright 2018-2022 Redis Labs Ltd. and Contributors
- *
- * This file is available under the Redis Labs Source Available License Agreement
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
  */
 
 #include "map_funcs.h"
@@ -10,6 +10,7 @@
 #include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../datatypes/map.h"
+#include "../../datatypes/array.h"
 #include "../../graph/entities/graph_entity.h"
 
 SIValue AR_TOMAP(SIValue *argv, int argc, void *private_data) {
@@ -57,6 +58,48 @@ SIValue AR_KEYS(SIValue *argv, int argc, void *private_data) {
 	return SI_NullVal();
 }
 
+SIValue AR_PROPERTIES(SIValue *argv, int argc, void *private_data) {
+	ASSERT(argc == 1);
+	switch(SI_TYPE(argv[0])) {
+		case T_NULL:
+			return SI_NullVal();
+		case T_NODE:
+		case T_EDGE:
+			return GraphEntity_Properties(argv[0].ptrval);
+		case T_MAP:
+			return argv[0];
+		default:
+			ASSERT(false);
+	}
+	return SI_NullVal();
+}
+
+// Receives two maps and merges them
+SIValue AR_MERGEMAP(SIValue *argv, int argc, void *private_data) {
+	ASSERT(argc == 2);
+
+	SIValue map0 = argv[0];
+	SIValue map1 = argv[1];
+
+	if ((SI_TYPE(map0) & T_NULL) && (SI_TYPE(map1) & T_NULL)) {
+		return SI_NullVal();
+	} else if (SI_TYPE(map0) & T_NULL) {
+		return map1;
+	} else if (SI_TYPE(map1) & T_NULL) {
+		return map0;
+	} else {
+		uint keyCount0 = Map_KeyCount(map0);
+		SIValue map = Map_Clone(map1);
+		for(int i = 0; i < keyCount0; i++) {
+			SIValue key;
+			SIValue value;
+			Map_GetIdx(map0, i, &key, &value);
+			Map_Add(&map, key, value);
+		}
+		return map;
+	}
+}
+
 void Register_MapFuncs() {
 	SIType *types;
 	SIType ret_type;
@@ -72,6 +115,19 @@ void Register_MapFuncs() {
 	array_append(types, T_NULL | T_MAP | T_NODE | T_EDGE);
 	ret_type = T_NULL | T_ARRAY;
 	func_desc = AR_FuncDescNew("keys", AR_KEYS, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, T_NULL | T_MAP | T_NODE | T_EDGE);
+	ret_type = T_NULL | T_MAP;
+	func_desc = AR_FuncDescNew("properties", AR_PROPERTIES, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 2);
+	array_append(types, T_NULL | T_MAP);
+	array_append(types, T_NULL | T_MAP);
+	ret_type = T_NULL | T_MAP;
+	func_desc = AR_FuncDescNew("merge_maps", AR_MERGEMAP, 2, 2, types, ret_type, true, true);
 	AR_RegFunc(func_desc);
 }
 

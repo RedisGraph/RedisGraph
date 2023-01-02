@@ -1,8 +1,13 @@
-function testcb
+function testcb(use_builtin)
 %TESTCB test complex reduce
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
+
+if (nargin < 1)
+    use_builtin = true ;
+end
+GB_builtin_complex_set (use_builtin) ;
 
 tol = 1e-13 ;
 seed = 1 ;
@@ -57,3 +62,4 @@ end
 
 fprintf ('testcb: all complex reduce tests passed\n') ;
 
+GB_builtin_complex_set (true) ;

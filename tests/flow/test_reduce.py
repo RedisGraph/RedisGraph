@@ -84,7 +84,7 @@ class testReduce():
         try:
             self.graph.query(q).result_set
         except ResponseError as e:
-            self.env.assertIn("n not defined", str(e))
+            self.env.assertIn("Unknown function 'reduce'", str(e))
         #-----------------------------------------------------------------------
 
         # missing list expression
@@ -180,7 +180,7 @@ class testReduce():
 
     def test_invalid_use(self):
         queries = [
-            "return reduce(1,[1],{1})",
+            "return reduce(1,[1],$a)",
             "with 1 as x return reduce(x,x,x)",
             "with {a:1, b:2} as x return reduce(x,x,x)",
             "return reduce()",
@@ -194,4 +194,22 @@ class testReduce():
             except redis.exceptions.ResponseError as e:
                 # Expecting an error.
                 self.env.assertContains(str(e), "Unknown function 'reduce'")
+                pass
+    
+    def test_aggregate_in_reduce(self):
+        queries = [
+            "RETURN reduce(x = 0, n in [1] | min(n))",
+            "WITH [1,2,3] as l RETURN reduce(x = 0, n in l | min(n))",
+            "WITH [1,2,3] as l RETURN reduce(x = 0, n in l | min(n))",
+            "WITH [1,2,3] as l RETURN reduce(x = min(l), n in l | n)",
+            "WITH [1,2,3] as l RETURN reduce(x = 0, n in min(l) | n)"
+        ]
+
+        for query in queries:
+            try:
+                self.graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                # Expecting an error.
+                self.env.assertContains(str(e), "Invalid use of aggregating function 'min'")
                 pass

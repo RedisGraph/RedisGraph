@@ -141,7 +141,7 @@ def step_impl(context):
     assert exception != None
     assert "must be a positive integer" in str(exception)
 
-@then(u'a TypeError should be raised at runtime: PropertyAccessOnNonMap')
+@then(u'a TypeError should be raised at compile time: InvalidArgumentType')
 def step_impl(context):
     global exception
     assert exception != None
@@ -181,13 +181,18 @@ def step_impl(context):
     assert exception != None
     assert "can't be redeclared" in str(exception)
 
-@then(u'a TypeError should be raised at runtime: ListElementAccessByNonInteger')
+@then(u'a TypeError should be raised at any time: InvalidArgumentType')
 @then(u'a TypeError should be raised at compile time: ListElementAccessByNonInteger')
 @then(u'a SyntaxError should be raised at compile time: ListElementAccessByNonInteger')
 def step_impl(context):
     global exception
     assert exception != None
     assert "Type mismatch" in str(exception)
+
+@then(u'a TypeError should be raised at any time: *')
+def step_impl(context):
+    global exception
+    assert exception != None
 
 @then(u'a TypeError should be raised at runtime: InvalidArgumentType')
 @then(u'a SyntaxError should be raised at runtime: InvalidArgumentType')
@@ -293,3 +298,15 @@ def step_impl(context):
     global exception
     assert exception != None
     assert "Float overflow" in str(exception)
+
+@then(u'a SyntaxError should be raised at compile time: InvalidDelete')
+def step_imp(context):
+    global exception
+    assert exception != None
+    assert "DELETE can only be called on nodes, paths and relationships" in str(exception)
+
+@then(u'a SyntaxError should be raised at compile time: ColumnNameConflict')
+def step_imp(context):
+    global exception
+    assert exception != None
+    assert "Multiple result columns with the same name are not supported." in str(exception)

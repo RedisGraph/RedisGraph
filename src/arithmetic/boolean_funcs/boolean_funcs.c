@@ -1,14 +1,16 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "boolean_funcs.h"
 #include "../../errors.h"
 #include "../func_desc.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
+#include "../../datatypes/map.h"
+#include "../../datatypes/array.h"
 
 #define CONTAINS_NULL 2 // Macro used for efficiently evaluating 3-valued truth table
 
@@ -74,13 +76,13 @@ SIValue AR_GT(SIValue *argv, int argc, void *private_data) {
 
 	int disjointOrNull = 0;
 	int res = SIValue_Compare(a, b, &disjointOrNull);
-	if(disjointOrNull == COMPARED_NULL) {
-		// Comparisons with NULL values always return NULL.
+	if(disjointOrNull == COMPARED_NULL || disjointOrNull == DISJOINT) {
+		// comparisons with NULL or different types values always return NULL
 		return SI_NullVal();
-	} else if(disjointOrNull == DISJOINT) {
-		// Emit error when attempting to compare invalid types
-		Error_SITypeMismatch(b, SI_TYPE(a));
-		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
+	}
+	if(disjointOrNull == COMPARED_NAN) {
+		// comparisons with NaN values always return false
+		return SI_BoolVal(false);
 	}
 
 	return SI_BoolVal(res > 0);
@@ -95,11 +97,9 @@ SIValue AR_GE(SIValue *argv, int argc, void *private_data) {
 	if(disjointOrNull == COMPARED_NULL) {
 		// Comparisons with NULL values always return NULL.
 		return SI_NullVal();
-	} else if(disjointOrNull == DISJOINT) {
-		// Emit error when attempting to compare invalid types
-		Error_SITypeMismatch(b, SI_TYPE(a));
-		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
+	if(disjointOrNull == COMPARED_NAN) return SI_BoolVal(false);
+	if(disjointOrNull == DISJOINT) return SI_NullVal();
 
 	return SI_BoolVal(res >= 0);
 }
@@ -113,11 +113,9 @@ SIValue AR_LT(SIValue *argv, int argc, void *private_data) {
 	if(disjointOrNull == COMPARED_NULL) {
 		// Comparisons with NULL values always return NULL.
 		return SI_NullVal();
-	} else if(disjointOrNull == DISJOINT) {
-		// Emit error when attempting to compare invalid types
-		Error_SITypeMismatch(b, SI_TYPE(a));
-		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
+	if(disjointOrNull == COMPARED_NAN) return SI_BoolVal(false);
+	if(disjointOrNull == DISJOINT) return SI_NullVal();
 
 	return SI_BoolVal(res < 0);
 }
@@ -131,11 +129,9 @@ SIValue AR_LE(SIValue *argv, int argc, void *private_data) {
 	if(disjointOrNull == COMPARED_NULL) {
 		// Comparisons with NULL values always return NULL.
 		return SI_NullVal();
-	} else if(disjointOrNull == DISJOINT) {
-		// Emit error when attempting to compare invalid types
-		Error_SITypeMismatch(b, SI_TYPE(a));
-		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
+	if(disjointOrNull == COMPARED_NAN) return SI_BoolVal(false);
+	if(disjointOrNull == DISJOINT) return SI_NullVal();
 
 	return SI_BoolVal(res <= 0);
 }
@@ -147,6 +143,8 @@ SIValue AR_EQ(SIValue *argv, int argc, void *private_data) {
 	int disjointOrNull = 0;
 	int res = SIValue_Compare(a, b, &disjointOrNull);
 	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
+	if(disjointOrNull == COMPARED_NAN) return SI_BoolVal(false);
+	if(disjointOrNull == DISJOINT) return SI_BoolVal(false);
 	// Disjoint comparison is allowed on EQ and NE operators, since they impose no order.
 	return SI_BoolVal(res == 0);
 }
@@ -158,6 +156,8 @@ SIValue AR_NE(SIValue *argv, int argc, void *private_data) {
 	int disjointOrNull = 0;
 	int res = SIValue_Compare(a, b, &disjointOrNull);
 	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
+	if(disjointOrNull == COMPARED_NAN) return SI_BoolVal(true);
+	if(disjointOrNull == DISJOINT) return SI_BoolVal(true);
 	// Disjoint comparison is allowed on EQ and NE operators, since they impose no order.
 	return SI_BoolVal(res != 0);
 }
@@ -196,6 +196,26 @@ SIValue AR_TO_BOOLEAN(SIValue *argv, int argc, void *private_data) {
 	}
 }
 
+SIValue AR_ISEMPTY(SIValue *argv, int argc, void *private_data) {
+	ASSERT(argc == 1);
+	switch(SI_TYPE(argv[0])) {
+		case T_NULL:
+			return SI_NullVal();
+		case T_ARRAY:
+			if(SIArray_Length(argv[0]) == 0) return SI_BoolVal(true);
+			break;
+		case T_MAP:
+			if(array_len(argv[0].map) == 0) return SI_BoolVal(true);
+			break;
+		case T_STRING:
+			if(strlen(argv[0].stringval) == 0) return SI_BoolVal(true);
+			break;
+		default:
+			ASSERT(false);
+	}
+	return SI_BoolVal(false);
+}
+
 void Register_BooleanFuncs() {
 	SIType *types;
 	SIType ret_type = T_BOOL | T_NULL;
@@ -225,26 +245,26 @@ void Register_BooleanFuncs() {
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
-	array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_MAP | T_NULL));
-	array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_MAP | T_NULL));
+	array_append(types, SI_ALL);
+	array_append(types, SI_ALL);
 	func_desc = AR_FuncDescNew("gt", AR_GT, 2, 2, types, ret_type, true, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
-	array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_MAP | T_NULL));
-	array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_MAP | T_NULL));
+	array_append(types, SI_ALL);
+	array_append(types, SI_ALL);
 	func_desc = AR_FuncDescNew("ge", AR_GE, 2, 2, types, ret_type, true, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
-	array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_MAP | T_NULL));
-	array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_MAP | T_NULL));
+	array_append(types, SI_ALL);
+	array_append(types, SI_ALL);
 	func_desc = AR_FuncDescNew("lt", AR_LT, 2, 2, types, ret_type, true, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
-	array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_MAP | T_NULL));
-	array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_MAP | T_NULL));
+	array_append(types, SI_ALL);
+	array_append(types, SI_ALL);
 	func_desc = AR_FuncDescNew("le", AR_LE, 2, 2, types, ret_type, true, true);
 	AR_RegFunc(func_desc);
 
@@ -278,5 +298,11 @@ void Register_BooleanFuncs() {
 	types = array_new(SIType, 1);
 	array_append(types, SI_ALL);
 	func_desc = AR_FuncDescNew("toBooleanOrNull", AR_TO_BOOLEAN, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, T_ARRAY | T_MAP | T_NULL | T_STRING);
+	ret_type = T_BOOL | T_NULL;
+	func_desc = AR_FuncDescNew("isempty", AR_ISEMPTY, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 }

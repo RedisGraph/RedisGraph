@@ -2,7 +2,7 @@ function gbtest15
 %GBTEST15 list all unary operators
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 types = gbtest_types ;
 ops = { 'identity', '~', '-', '1', 'minv', 'abs',  'sqrt', 'log', ...
@@ -10,6 +10,7 @@ ops = { 'identity', '~', '-', '1', 'minv', 'abs',  'sqrt', 'log', ...
     'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh', ...
     'signum', 'ceil', 'floor', 'round', 'trunc', 'pow2', ...
     'expm1', 'log10', 'log1p', 'log2', 'lgamma', 'tgamma', 'erf', ...
+    'cbrt', ...
     'erfc', 'conj', 'creal', 'cimag', 'carg', 'isinf', 'isnan', ...
     'isinfinite', 'frexpx', 'frexpe', 'i0', 'i1', 'j0', 'j1' } ;
 
@@ -31,7 +32,7 @@ fprintf ('\nhelp GrB.unopinfo:\n') ;
 GrB.unopinfo ;
 
 fprintf ('number of unary ops: %d\n', nops) ;
-assert (nops == 212) ;
+assert (nops == 214) ;
 
 fprintf ('gbtest15: all tests passed\n') ;
 

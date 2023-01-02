@@ -12,7 +12,7 @@ function gbtest97
 % C = GrB.apply2 (C, M, accum, op, x, A)
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default')
 

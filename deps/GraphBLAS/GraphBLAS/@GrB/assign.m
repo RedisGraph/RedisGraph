@@ -37,8 +37,9 @@ function C = assign (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 %
 %       The J argument is identical, except that it is a list of column
 %       indices of C.  If only one cell array is provided, J = {  } is
-%       implied, refering to all n columns of C, like C(I,:).  1D
-%       indexing of a matrix C, as in C(I) = A, is not yet supported.
+%       implied, refering to all n columns of C, like C(I,:).
+%       GrB.assign does not support linear indexing of a 2D matrix,
+%       as in C(I)=A when C is a 2D matrix.
 %
 %       If neither I nor J are provided on input, then this implies both
 %       I = { } and J = { }, or C(:,:), refering to all rows and columns
@@ -94,7 +95,7 @@ function C = assign (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 % See also GrB.subassign, GrB/subsasgn.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 if (isobject (arg1))
     arg1 = arg1.opaque ;

@@ -127,11 +127,17 @@ GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
     // create the FIRST_ZTYPE binary operator
     //--------------------------------------------------------------------------
 
-    // note the function pointer is NULL; it is not needed by FIRST
+    // Note the function pointer is NULL; it is not needed by FIRST.  The
+    // function defn is also NULL.  In the JIT, the FIRST multiply operator is
+    // a simple assignment so there's no need for a function definition.
+
     struct GB_BinaryOp_opaque op_header ;
     GrB_BinaryOp op = &op_header ;
-    GB_binop_new (op, NULL, ztype, ztype, ztype, "1st_ztype", NULL,
+    info = GB_binop_new (op, NULL, ztype, ztype, ztype, "1st", NULL,
         GB_FIRST_binop_code) ;
+
+    // GB_binop_new cannot fail since it doesn't allocate the function defn.
+    ASSERT (info == GrB_SUCCESS) ;
     ASSERT_BINARYOP_OK (op, "op for reduce-to-vector", GB0) ;
 
     //--------------------------------------------------------------------------

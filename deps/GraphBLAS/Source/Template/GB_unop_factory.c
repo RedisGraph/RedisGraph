@@ -600,6 +600,16 @@
                 }
                 break ;
 
+            case GB_CBRT_unop_code :    // z = cbrt (x)
+
+                switch (code1)
+                {
+                    case GB_FP32_code   : GB_WORKER (_cbrt, _fp32, float     , _fp32, float )
+                    case GB_FP64_code   : GB_WORKER (_cbrt, _fp64, double    , _fp64, double)
+                    default: ;
+                }
+                break ;
+
             case GB_FREXPX_unop_code :  // z = frexpx (x), mantissa from ANSI C11 frexp
 
                 switch (code1)

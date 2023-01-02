@@ -5,7 +5,7 @@
 PROGNAME="${BASH_SOURCE[0]}"
 HERE="$(cd "$(dirname "$PROGNAME")" &>/dev/null && pwd)"
 ROOT=$(cd $HERE/../.. && pwd)
-READIES=$ROOT/deps/readies 
+READIES=$ROOT/deps/readies
 . $READIES/shibumi/defs
 
 #----------------------------------------------------------------------------------------------
@@ -282,11 +282,12 @@ fi
 
 E=0
 [[ $GEN == 1 ]]  && { (run_tests "general tests"); (( E |= $? )); } || true
-if [[ $AOF == 1 ]]; then                                                                                                                                       
-	[[ -z $TEST || -z $TESTFILE ]] && RLTEST_ARGS="${RLTEST_ARGS} --test test_persistency"                                                                                  
-	(RLTEST_ARGS="${RLTEST_ARGS} --use-aof" run_tests "tests with AOF")                                                                                     
-	(( E |= $? )) || true                                                                                                                                   
-fi                                                                                                                                                             
+if [[ $AOF == 1 ]]; then
+	RLTEST_ARGS_AOF="${RLTEST_ARGS} --use-aof"
+	[[ -z $TEST || -z $TESTFILE ]] && RLTEST_ARGS_AOF="${RLTEST_ARGS_AOF} --test test_persistency"
+	(RLTEST_ARGS="${RLTEST_ARGS_AOF}" run_tests "tests with AOF")
+	(( E |= $? )) || true
+fi
 [[ $TCK == 1 ]]  && { (cd ../tck; run_tests "TCK tests"); (( E |= $? )); } || true
 
 [[ $RLEC == 1 ]] && { (RLTEST_ARGS="${RLTEST_ARGS} --env existing-env --existing-env-addr $DOCKER_HOST:$RLEC_PORT" run_tests "tests on RLEC"); (( E |= $? )); } || true
@@ -298,8 +299,8 @@ if [[ $COLLECT_LOGS == 1 ]]; then
 	OSNICK=`$READIES/bin/platform --osnick`
 	cd $ROOT
 	mkdir -p bin/artifacts/tests
-	find tests/flow/logs -name "*.log" | tar -czf bin/artifacts/tests/tests-flow-logs-${ARCH}-${OSNICK}.tgz -T -
-	find tests/tck/logs -name "*.log" | tar -czf bin/artifacts/tests/tests-tck-logs-${ARCH}-${OSNICK}.tgz -T -
+	{ find tests/flow/logs -name "*.log" | tar -czf bin/artifacts/tests/tests-flow-logs-${ARCH}-${OSNICK}.tgz -T -; } || true
+	{ find tests/tck/logs -name "*.log" | tar -czf bin/artifacts/tests/tests-tck-logs-${ARCH}-${OSNICK}.tgz -T - ; } || true
 fi
 
 if [[ -n $STATFILE ]]; then

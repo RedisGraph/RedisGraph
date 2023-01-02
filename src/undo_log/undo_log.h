@@ -1,7 +1,7 @@
 /*
- * Copyright 2018-2022 Redis Labs Ltd. and Contributors
- *
- * This file is available under the Redis Labs Source Available License Agreement
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
  */
 
 #pragma once
@@ -29,7 +29,8 @@ typedef enum {
 	UNDO_DELETE_EDGE,   // undo edge deletion
 	UNDO_SET_LABELS,    // undo set labels
 	UNDO_REMOVE_LABELS, // undo remove labels
-	UNDO_ADD_SCHEMA     // undo schema addition
+	UNDO_ADD_SCHEMA,    // undo schema addition
+	UNDO_ADD_ATTRIBUTE   // undo property addition
 } UndoOpType;
 
 //------------------------------------------------------------------------------
@@ -84,6 +85,10 @@ typedef struct {
 	SchemaType t;
 } UndoAddSchemaOp;
 
+typedef struct {
+	Attribute_ID attribute_id;
+} UndoAddAttributeOp;
+
 // Undo operation
 typedef struct {
 	union {
@@ -93,6 +98,7 @@ typedef struct {
 		UndoUpdateOp update_op;
 		UndoLabelsOp labels_op;
 		UndoAddSchemaOp schema_op;
+		UndoAddAttributeOp attribute_op;
 	};
 	UndoOpType type;  // type of undo operation
 } UndoOp;
@@ -170,6 +176,14 @@ void UndoLog_AddSchema
 	int schema_id,               // id of the schema
 	SchemaType t                 // type of the schema
 );
+
+// undo attribute addition
+void UndoLog_AddAttribute
+(
+	UndoLog *log,                // undo log
+	Attribute_ID attribute_id    // id of the attribute
+);
+
 
 // rollback all modifications tracked by this undo log
 void UndoLog_Rollback

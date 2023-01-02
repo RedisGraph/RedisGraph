@@ -1,7 +1,7 @@
 /*
- * Copyright 2018-2022 Redis Labs Ltd. and Contributors
- *
- * This file is available under the Redis Labs Source Available License Agreement
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
  */
 
 #include "RG.h"
@@ -212,11 +212,14 @@ static void _UndoLog_Rollback_Create_Edge
 	int seq_end
 ) {
 	UndoOp *undo_list = ctx->undo_log;
+	Edge *edges = array_new(Edge, seq_start - seq_end);
 	for(int i = seq_start; i > seq_end; --i) {
 		Edge *e = &undo_list[i].create_op.e;
 		_index_delete_edge(ctx, e);
-		Graph_DeleteEdge(ctx->gc->g, e);
+		array_append(edges, *e);
 	}
+	Graph_DeleteEdges(ctx->gc->g, edges);
+	array_free(edges);
 }
 
 // undo node deletion
@@ -285,6 +288,23 @@ static void _UndoLog_Rollback_Add_Schema
 		} else {
 			Graph_RemoveRelation(ctx->gc->g, schema_id);
 		}	
+	}
+}
+
+// undo attribute addition
+static void _UndoLog_Rollback_Add_Attribute
+(
+	QueryCtx *ctx,
+	int seq_start,
+	int seq_end
+) {
+	UndoOp *undo_list = ctx->undo_log;
+	for(int i = seq_start; i > seq_end; --i) {
+		Edge e;
+		UndoOp *op = undo_list + i;
+		UndoAddAttributeOp attribute_op = op->attribute_op;
+		int attribute_id = attribute_op.attribute_id;
+		GraphContext_RemoveAttribute(ctx->gc, attribute_id);	
 	}
 }
 
@@ -473,6 +493,20 @@ void UndoLog_AddSchema
 	_UndoLog_AddOperation(log, &op);
 }
 
+void UndoLog_AddAttribute
+(
+	UndoLog *log,                // undo log
+	Attribute_ID attribute_id             // id of the attribute
+) {
+	ASSERT(log != NULL);
+	UndoOp op;
+
+	op.type = UNDO_ADD_ATTRIBUTE;
+	op.attribute_op.attribute_id = attribute_id;
+	_UndoLog_AddOperation(log, &op);
+}
+
+
 //------------------------------------------------------------------------------
 // rollback
 //------------------------------------------------------------------------------
@@ -487,9 +521,6 @@ void UndoLog_Rollback
 	uint64_t count = array_len(log);
 
 	if(count == 0) return;
-
-	// acquire lock before making any changes to the graph
-	QueryCtx_LockForCommit();
 
 	// apply undo operations in reverse order for rollback correctness
 	// find sequences of the same operation and rollback them as a bulk
@@ -527,13 +558,13 @@ void UndoLog_Rollback
 			case UNDO_ADD_SCHEMA:
 				_UndoLog_Rollback_Add_Schema(ctx, seq_start, seq_end);
 				break;
+			case UNDO_ADD_ATTRIBUTE:
+				_UndoLog_Rollback_Add_Attribute(ctx, seq_start, seq_end);
+				break;
 			default:
 				ASSERT(false);
 		}
  	}
-
-	// assumption: no operations should be executing at this point
-	QueryCtx_UnlockCommit(NULL);
 
 	array_clear(log);
 
@@ -567,6 +598,7 @@ void UndoLog_Free
 				array_free(op->labels_op.label_lds);
 				break;
 			case UNDO_ADD_SCHEMA:
+			case UNDO_ADD_ATTRIBUTE:
 				break;
 			default:
 				ASSERT(false);

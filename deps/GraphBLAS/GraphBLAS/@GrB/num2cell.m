@@ -14,7 +14,7 @@ function C = num2cell (A, dim)
 % See also GrB/horzcat, GrB/vertcat, GrB/cat, GrB.cell2mat, GrB/mat2cell.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 if (nargin == 2 && isequal (dim, [1 2]))
 
@@ -46,7 +46,7 @@ else
         % split A into rows
         C = gbsplit (A, ones (m, 1), n) ;
     else
-        error ('unknown option') ;
+        error ('GrB:error', 'unknown option') ;
     end
 
     % convert each cell back into GrB matrices

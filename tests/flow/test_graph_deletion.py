@@ -338,7 +338,7 @@ class testGraphDeletionFlow(FlowTestsBase):
             redis_graph.query(query)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("DELETE can only be called on nodes and relationships", str(e))
+            self.env.assertContains("DELETE can only be called on nodes, paths and relationships", str(e))
 
         # try to delete the output of a nonexistent function call
         try:

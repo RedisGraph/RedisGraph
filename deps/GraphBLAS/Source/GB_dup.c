@@ -51,7 +51,7 @@ GrB_Info GB_dup             // make an exact copy of a matrix
     // delete any lingering zombies and assemble any pending tuples
     //--------------------------------------------------------------------------
 
-    GB_MATRIX_WAIT (A) ;        // TODO: keep zombies and jumbled
+    GB_MATRIX_WAIT (A) ;
 
     //--------------------------------------------------------------------------
     // C = A

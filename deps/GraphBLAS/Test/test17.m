@@ -45,9 +45,11 @@ for k1 = 1:length (types)
                         use_scalar = (rand (1) > 0.9) ;
                         x1 = GB_mex_Matrix_extractElement  (A, iu, ju, ...
                                 xtype, use_scalar) ;
-                        x2 = GB_spec_Matrix_extractElement (A, i, j, xtype) ;
+                        [x2 noval] = ...
+                            GB_spec_Matrix_extractElement (A, i, j, xtype) ;
                         assert (isequal (x1,x2))
-
+                        x3 = GB_mex_Matrix_isStoredElement (A, iu, ju) ;
+                        assert (isequal (~noval,x3))
                     end
                 end
                 end
@@ -56,9 +58,13 @@ for k1 = 1:length (types)
                 for i = 0:(m*n)-1
                     iu = uint64 (i) ;
                     use_scalar = (rand (1) > 0.9) ;
-                    x1 = GB_mex_Vector_extractElement  (B, iu, xtype, use_scalar) ;
-                    x2 = GB_spec_Vector_extractElement (B, i, xtype) ;
+                    x1 = GB_mex_Vector_extractElement  (B, iu, xtype, ...
+                        use_scalar) ;
+                    [x2 noval] = ...
+                        GB_spec_Vector_extractElement (B, i, xtype) ;
                     assert (isequal (x1,x2))
+                    x3 = GB_mex_Vector_isStoredElement (B, iu) ;
+                    assert (isequal (~noval,x3))
                 end
             end
         end

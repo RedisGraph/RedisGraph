@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #pragma once
 
@@ -18,11 +18,11 @@
 // return the # of attributes set
 uint CreateNode
 (
-	GraphContext *gc,         // graph context to create the node
-	Node *n,                  // output node created
-	LabelID *labels,          // node labels
-	uint label_count,         // labels count
-	const AttributeSet props  // node attributes
+	GraphContext *gc, // graph context to create the node
+	Node *n,          // output node created
+	LabelID *labels,  // node labels
+	uint label_count, // labels count
+	AttributeSet set  // node attributes
 );
 
 // create an edge
@@ -32,12 +32,12 @@ uint CreateNode
 // return the # of attributes set
 uint CreateEdge
 (
-	GraphContext *gc,         // graph context to create the edge
-	Edge *e,                  // output edge created
-	NodeID src,               // edge source
-	NodeID dst,               // edge destination
-	int r,                    // edge relation type
-	const AttributeSet props  // edge attributes
+	GraphContext *gc, // graph context to create the edge
+	Edge *e,          // output edge created
+	NodeID src,       // edge source
+	NodeID dst,       // edge destination
+	int r,            // edge relation type
+	AttributeSet set  // edge attributes
 );
 
 // delete a node
@@ -55,10 +55,10 @@ uint DeleteNode
 // delete the edge from the relevant indexes
 // add edge deletion operation to undo-log
 // return the # of edges deleted
-int DeleteEdge
+int DeleteEdges
 (
 	GraphContext *gc,  // graph context to delete the edge
-	Edge *e            // the edge to be deleted
+	Edge *edges        // the edge to be deleted
 );
 
 // update an entity(node/edge)
@@ -97,4 +97,12 @@ Schema *AddSchema
 	GraphContext *gc,             // graph context to add the schema
 	const char *label,            // schema label
 	SchemaType t                  // schema type (node/edge)
+);
+
+// Find or adding attribute. If there is a need to add an attribute to the graph
+// the attribute is tracked by the undo log so in case of error it will be deleted.
+Attribute_ID FindOrAddAttribute
+(
+	GraphContext *gc,             // graph context to add the attribute
+	const char *attribute         // attribute name
 );

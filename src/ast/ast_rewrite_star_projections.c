@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "ast.h"
 #include "../query_ctx.h"
@@ -168,7 +168,7 @@ static void replace_clause
 (
 	cypher_astnode_t *root,    // ast root
 	cypher_astnode_t *clause,  // clause being replaced
-	int scope_start,           // begining of scope
+	int scope_start,           // beginning of scope
 	int scope_end              // ending of scope
 ) {
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
@@ -368,15 +368,12 @@ static void replace_clause
 
 bool AST_RewriteStarProjections
 (
-	cypher_parse_result_t *result
+	const cypher_astnode_t *root  // root for which to rewrite star projections
 ) {
 	bool rewritten = false;
-	// retrieve the statement node
-	const cypher_astnode_t *statement = cypher_parse_result_get_root(result, 0);
-	if(cypher_astnode_type(statement) != CYPHER_AST_STATEMENT) return rewritten;
 
 	// retrieve the root query node from the statement
-	const cypher_astnode_t *root = cypher_ast_statement_get_body(statement);
+	root = cypher_ast_statement_get_body(root);
 	if(cypher_astnode_type(root) != CYPHER_AST_QUERY) return rewritten;
 
 	// rewrite all WITH * / RETURN * clauses to include all aliases

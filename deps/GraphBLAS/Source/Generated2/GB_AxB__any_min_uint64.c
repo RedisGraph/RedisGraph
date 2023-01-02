@@ -12,11 +12,10 @@
 
 #include "GB_dev.h"
 
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 
 #include "GB.h"
 #include "GB_control.h"
-#include "GB_bracket.h"
 #include "GB_sort.h"
 #include "GB_atomics.h"
 #include "GB_AxB_saxpy.h"
@@ -591,7 +590,7 @@ GrB_Info GB (_Asaxpy3B__any_min_uint64)
 }
 
 //------------------------------------------------------------------------------
-// GB_Asaxpy3B_M: C<M>=A*Bi: saxpy method (Gustavson + Hash)
+// GB_Asaxpy3B_M: C<M>=A*B: saxpy method (Gustavson + Hash)
 //------------------------------------------------------------------------------
 
 #if ( !GB_DISABLE )

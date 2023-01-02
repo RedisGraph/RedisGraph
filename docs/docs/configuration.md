@@ -45,6 +45,8 @@ GRAPH.CONFIG GET OPT1
 GRAPH.CONFIG GET *
 ```
 
+Values set using `GRAPH.CONFIG SET` are not persisted after server restart.
+
 ## RedisGraph configuration parameters
 
 The following table summarizes which configuration parameters can be set at module load-time and which can be set on run-time:

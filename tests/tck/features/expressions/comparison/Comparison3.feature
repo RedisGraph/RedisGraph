@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -124,7 +124,6 @@ Feature: Comparison3 - Full-Bound Range
       | 'b'    |
     And no side effects
 
-  @skip
   Scenario: [6] Handling string ranges 2
     Given an empty graph
     And having executed:
@@ -144,7 +143,6 @@ Feature: Comparison3 - Full-Bound Range
       | 'c'    |
     And no side effects
 
-  @skip
   Scenario: [7] Handling string ranges 3
     Given an empty graph
     And having executed:
@@ -164,7 +162,6 @@ Feature: Comparison3 - Full-Bound Range
       | 'b'    |
     And no side effects
 
-  @skip
   Scenario: [8] Handling string ranges 4
     Given an empty graph
     And having executed:

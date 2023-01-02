@@ -1,10 +1,15 @@
-function testc6
+function testc6(use_builtin)
 %TESTC6 test complex apply
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
 rng 'default'
+
+if (nargin < 1)
+    use_builtin = true ;
+end
+GB_builtin_complex_set (use_builtin) ;
 
 [complex_binary complex_unary] = GB_user_opsall ;
 
@@ -91,3 +96,4 @@ end
 
 fprintf ('testc6: all complex apply C<Mask>=op(A) tests passed\n') ;
 
+GB_builtin_complex_set (true) ;

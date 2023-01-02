@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,7 +82,6 @@ Feature: Aggregation6 - Percentiles
       | 0.5 | 20.0   |
       | 1.0 | 30.0   |
 
-  @NegativeTest
   Scenario Outline: [3] `percentileCont()` failing on bad arguments
     Given an empty graph
     And having executed:
@@ -104,7 +103,6 @@ Feature: Aggregation6 - Percentiles
       | -1         |
       | 1.1        |
 
-  @NegativeTest
   Scenario Outline: [4] `percentileDisc()` failing on bad arguments
     Given an empty graph
     And having executed:
@@ -126,7 +124,6 @@ Feature: Aggregation6 - Percentiles
       | -1         |
       | 1.1        |
 
-  @NegativeTest
   Scenario: [5] `percentileDisc()` failing in more involved query
     Given an empty graph
     And having executed:

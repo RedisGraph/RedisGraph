@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #pragma once
 
@@ -212,11 +212,11 @@ void Graph_DeleteNode
 	Node *node
 );
 
-// removes an edge from Graph and updates graph relevent matrices
-int Graph_DeleteEdge
+// removes edges from Graph and updates graph relevent matrices
+int Graph_DeleteEdges
 (
 	Graph *g,
-	Edge *e
+	Edge *edges
 );
 
 // update entity attribute with new value
@@ -361,11 +361,20 @@ void Graph_GetEdgesConnectingNodes
 // get node edges
 void Graph_GetNodeEdges
 (
-	const Graph *g,         // Graph to get edges from.
-	const Node *n,          // Node to extract edges from.
-	GRAPH_EDGE_DIR dir,     // Edge direction.
-	int edgeType,           // Relation type.
-	Edge **edges            // array_t incoming/outgoing edges.
+	const Graph *g,         // graph to get edges from
+	const Node *n,          // node to extract edges from
+	GRAPH_EDGE_DIR dir,     // edge direction
+	int edgeType,           // relation type
+	Edge **edges            // array_t incoming/outgoing edges
+);
+
+// returns node incoming/outgoing degree
+uint64_t Graph_GetNodeDegree
+(
+	const Graph *g,      // graph to inquery
+	const Node *n,       // node to get degree of
+	GRAPH_EDGE_DIR dir,  // incoming/outgoing/both
+	int edgeType         // relation type
 );
 
 // populate array of node's label IDs, return number of labels on node.

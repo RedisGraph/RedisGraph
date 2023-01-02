@@ -27,5 +27,6 @@ GB_PUBLIC void GB (make_shallow) (GrB_Matrix A)
     if (A->b != NULL) GB_Global_memtable_remove (A->b) ;
     if (A->i != NULL) GB_Global_memtable_remove (A->i) ;
     if (A->x != NULL) GB_Global_memtable_remove (A->x) ;
+    GB (make_shallow) (A->Y) ;
 }
 
