@@ -24,12 +24,15 @@
 typedef struct {
 	OpBase op;
     
-    Argument *argument;     // argument operation (tap)
+    OpBase *supplier;        // the operation from which records are pulled (optional)
+    Argument *argument;      // argument operation (tap)
+    OpBase *first_embedded;  // the first operation in the embedded execution-plan
 
-    SIValue list;         // List which the unwind operation is performed on.
-    uint listIdx;         // Current list index.
-    AR_ExpNode *exp;      // Arithmetic expression (evaluated as an SIArray).
-    Record currentRecord; // record to clone and add a value extracted from the list.
+    uint listIdx;            // Current list index.
+    SIValue list;            // List which the unwind operation is performed on.
+    AR_ExpNode *exp;         // Arithmetic expression (evaluated as an SIArray).
+    int foreachRecIdx;       // Update record at this index.
+    Record currentRecord;    // record to clone and add a value extracted from the list.
 } OpForeach;
 
 /* Creates a new Foreach operation */

@@ -193,16 +193,6 @@ static inline void _buildForeachOp
 	const cypher_astnode_t *clause,  // foreach clause
 	GraphContext *gc                 // graph context
 ) {
-	/**
-	 * We want to build an execution plan from scratch from the subquery in the 
-	 * `clauses` expression of the FOREACH, and then tie it to be the second
-	 * child of the Foreach operation. The first child will be the prior operation
-	 * in the plan `plan` (just set the Foreach op as the new root).
-	 * 
-	 * Build the new execution plan (which will be embedded in the Foreach)
-	 * using ExecutionPlan_NewEmptyExecutionPlan probably.
-	 **/
-
 	AST_ForeachContext foreach_ast_ctx = AST_PrepareForeachOp(clause);
 	OpBase *op = NewForeachOp(plan, foreach_ast_ctx.exp);
 	ExecutionPlan_UpdateRoot(plan, op);
@@ -215,8 +205,18 @@ static inline void _buildForeachOp
 	embedded_plan->connected_components = plan->connected_components;
 
 	// build the argument operation
-	// TODO: Pass the correct variables.
-	embedded_plan->root = NewArgumentOp(embedded_plan, NULL);
+	const char **arguments = NULL;
+	if(plan->root) {
+		rax *bound_vars = raxNew();
+		// Rather than cloning the record map, collect the bound variables along with their
+		// parser-generated constant strings.
+		ExecutionPlan_BoundVariables(plan->root, bound_vars);
+		// Collect the variable names from bound_vars to populate the Argument ops we will build.
+		arguments = (const char **)raxValues(bound_vars);
+	}
+	
+	OpBase *argument = NewArgumentOp(embedded_plan, arguments);
+	embedded_plan->root = argument;
 
 	AST *ast = plan->ast_segment;
 	// build the embedded operations in the foreach clause
@@ -230,28 +230,6 @@ static inline void _buildForeachOp
 	ExecutionPlan_BindPlanToOps(plan, embedded_plan->root);
 	ExecutionPlan_AddOp(op, embedded_plan->root);
 	// rm_free(embedded_plan);
-	
-	
-	/*
-	Another way to build the plan (not finished, need to add the argument
-	as the child of the deepest operation).
-
-	// Create an execution-plan for the embedded clauses --> tie it to the 
-	// Argument operation.
-	AST *orig_ast = QueryCtx_GetAST();
-	ExecutionPlan *embedded_plan = ExecutionPlan_NewEmptyExecutionPlan();
-	embedded_plan->record_map = plan->record_map;
-	AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
-	QueryCtx_SetAST(ast_segment);
-	ExecutionPlan_PopulateExecutionPlan(embedded_plan);
-	AST_Free(ast_segment); // Free the AST segment.
-
-	QueryCtx_SetAST(orig_ast);
-
-	// add the argument as the deepest child in the embedded execution-plan
-	// TBD
-	*/
-
 }
 
 void ExecutionPlanSegment_ConvertClause

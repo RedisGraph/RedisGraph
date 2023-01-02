@@ -106,6 +106,6 @@ class testForeachFlow(FlowTestsBase):
             """FOREACH(do_perform IN CASE WHEN false THEN [1] ELSE [] END | \
                 CREATE (:N))"""
             )
-        
+
         # make sure a node was not created
         self.env.assertEquals(res.nodes_created, 0)
