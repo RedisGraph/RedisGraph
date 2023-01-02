@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -164,7 +164,7 @@ Feature: ReturnOrderBy2 - Order by a single expression (order of projection)
       RETURN n.name, count(*) AS foo
         ORDER BY n.name
       """
-    Then the result should be, in any order:
+    Then the result should be, in order:
       | n.name  | foo |
       | 'nisse' | 1   |
     And no side effects
@@ -263,7 +263,6 @@ Feature: ReturnOrderBy2 - Order by a single expression (order of projection)
       | [[(:C), (:D), (:E), (:F)]]                               | 3 |
     And no side effects
 
-  @NegativeTest
   @skip
   Scenario: [13] Fail when sorting on variable removed by DISTINCT
     Given an empty graph
@@ -279,7 +278,6 @@ Feature: ReturnOrderBy2 - Order by a single expression (order of projection)
       """
     Then a SyntaxError should be raised at compile time: UndefinedVariable
 
-  @NegativeTest
   @skip
   Scenario: [14] Fail on aggregation in ORDER BY after RETURN
     Given any graph

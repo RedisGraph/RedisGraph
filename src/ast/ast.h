@@ -30,103 +30,226 @@ typedef struct {
 	cypher_parse_result_t *params_parse_result;         // Parameters parsing output.
 } AST;
 
-// Checks to see if libcypher-parser reported any errors.
-bool AST_ContainsErrors(const cypher_parse_result_t *result);
+// checks to see if libcypher-parser reported any errors
+bool AST_ContainsErrors
+(
+	const cypher_parse_result_t *result
+);
 
 // reports first encountered error
 // asserts if there are no errors!
-void AST_ReportErrors(const cypher_parse_result_t *result);
+void AST_ReportErrors
+(
+	const cypher_parse_result_t *result
+);
 
-// Make sure the parse result and the AST tree pass all validations.
-AST_Validation AST_Validate_Query(const cypher_parse_result_t *result);
+AST_Validation AST_Validate_ParseResultRoot
+(
+	const cypher_parse_result_t *result,
+	int *index
+);
 
-// Validate query parameters parsing only.
-AST_Validation AST_Validate_QueryParams(const cypher_parse_result_t *result);
+// make sure the parse result and the AST tree pass all validations
+AST_Validation AST_Validate_Query
+(
+	const cypher_astnode_t *root
+);
 
-// Checks if the parse result represents a read-only query.
-bool AST_ReadOnly(const cypher_astnode_t *root);
+// validate query parameters parsing only
+AST_Validation AST_Validate_QueryParams
+(
+	const cypher_parse_result_t *result
+);
 
-// Checks to see if AST contains specified clause.
-bool AST_ContainsClause(const AST *ast, cypher_astnode_type_t clause);
+// checks if the parse result represents a read-only query
+bool AST_ReadOnly
+(
+	const cypher_astnode_t *root
+);
 
-// Checks to see if an AST tree contains specified node type.
-bool AST_TreeContainsType(const cypher_astnode_t *root, cypher_astnode_type_t clause);
+// checks to see if AST contains specified clause
+bool AST_ContainsClause
+(
+	const AST *ast,
+	cypher_astnode_type_t clause
+);
 
-// Returns all function (aggregated & none aggregated) mentioned in query.
-void AST_ReferredFunctions(const cypher_astnode_t *root, rax *referred_funcs);
+// checks to see if an AST tree contains specified node type
+bool AST_TreeContainsType
+(
+	const cypher_astnode_t *root,
+	cypher_astnode_type_t clause
+);
 
-// Returns specified clause or NULL.
+// returns all function (aggregated & none aggregated) mentioned in query
+void AST_ReferredFunctions
+(
+	const cypher_astnode_t *root,
+	rax *referred_funcs
+);
+
+// returns specified clause or NULL
 // if 'clause_idx' is specified and requested clause type is found
 // 'clause_idx' is set to the index of the returned clause
-// otherwise 'clause_idx' isn't modified.
-const cypher_astnode_t *AST_GetClause(const AST *ast,
-		cypher_astnode_type_t clause_type, uint *clause_idx);
+// otherwise 'clause_idx' isn't modified
+const cypher_astnode_t *AST_GetClause
+(
+	const AST *ast,
+	cypher_astnode_type_t clause_type,
+	uint *clause_idx
+);
 
-// Return clause at position 'i'
-const cypher_astnode_t *AST_GetClauseByIdx(const AST *ast, uint i);
+// return clause at position 'i'
+const cypher_astnode_t *AST_GetClauseByIdx
+(
+	const AST *ast,
+	uint i
+);
 
-// Returns the indexes into the AST of all instances of the given clause.
-uint *AST_GetClauseIndices(const AST *ast, cypher_astnode_type_t clause_type);
+// returns the indexes into the AST of all instances of the given clause
+uint *AST_GetClauseIndices
+(
+	const AST *ast,
+	cypher_astnode_type_t clause_type
+);
 
-// Returns the number of times the given clause appears in the AST.
-uint AST_GetClauseCount(const AST *ast, cypher_astnode_type_t clause_type);
+// returns the number of times the given clause appears in the AST
+uint AST_GetClauseCount
+(
+	const AST *ast,
+	cypher_astnode_type_t clause_type
+);
 
-// Returns all instances of the given clause in the AST.
-const cypher_astnode_t **AST_GetClauses(const AST *ast, cypher_astnode_type_t type);
+// returns all instances of the given clause in the AST
+const cypher_astnode_t **AST_GetClauses
+(
+	const AST *ast,
+	cypher_astnode_type_t type
+);
 
-// Returns an array (arr.h type) of all the nodes from a given type. Note: array must be free after use.
-const cypher_astnode_t **AST_GetTypedNodes(const cypher_astnode_t *ast,
-										   cypher_astnode_type_t type);
+// returns an array (arr.h type) of all the nodes from a given type.
+// note: array must be free after use
+const cypher_astnode_t **AST_GetTypedNodes
+(
+	const cypher_astnode_t *ast,
+	cypher_astnode_type_t type
+);
 
-// Collect all aliases within `entity` subtree.
-void AST_CollectAliases(const char ***aliases, const cypher_astnode_t *entity);
+// collect all aliases within `entity` subtree
+void AST_CollectAliases
+(
+	const char ***aliases,
+	const cypher_astnode_t *entity
+);
 
-AST *AST_Build(cypher_parse_result_t *parse_result);
+AST *AST_Build
+(
+	cypher_parse_result_t *parse_result
+);
 
-AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset);
+AST *AST_NewSegment
+(
+	AST *master_ast,
+	uint start_offset,
+	uint end_offset
+);
 
-// Sets a parameter parsing result in the ast.
-void AST_SetParamsParseResult(AST *ast, cypher_parse_result_t *params_parse_result);
+// sets a parameter parsing result in the ast
+void AST_SetParamsParseResult
+(
+	AST *ast,
+	cypher_parse_result_t *params_parse_result
+);
 
-// Returns a shallow copy of the original AST pointer with ref counter increased.
-AST *AST_ShallowCopy(AST *orig);
+// returns a shallow copy of the original AST pointer with ref counter increased
+AST *AST_ShallowCopy
+(
+	AST *orig
+);
 
-// Populate the AST's map of all referenced aliases.
-void AST_BuildReferenceMap(AST *ast, const cypher_astnode_t *project_clause);
+// populate the AST's map of all referenced aliases
+void AST_BuildReferenceMap
+(
+	AST *ast,
+	const cypher_astnode_t *project_clause
+);
 
-// Annotate AST, naming all anonymous graph entities.
-void AST_Enrich(AST *ast);
+// annotate AST naming all anonymous graph entities
+void AST_Enrich
+(
+	AST *ast
+);
 
-// Returns true if the given alias is referenced within this AST segment.
-bool AST_AliasIsReferenced(AST *ast, const char *alias);
+// returns true if the given alias is referenced within this AST segment
+bool AST_AliasIsReferenced
+(
+	AST *ast,
+	const char *alias
+);
 
-// Returns true if the given identifier is used as an alias within this tree.
-bool AST_IdentifierIsAlias(const cypher_astnode_t *root, const char *identifier);
+// returns true if the given identifier is used as an alias within this tree
+bool AST_IdentifierIsAlias
+(
+	const cypher_astnode_t *root,
+	const char *identifier
+);
 
-// Convert an AST integer node (which is stored internally as a string) into an integer.
-long AST_ParseIntegerNode(const cypher_astnode_t *int_node);
+// convert an AST integer node (which is stored internally as a string) into an integer
+long AST_ParseIntegerNode
+(
+	const cypher_astnode_t *int_node
+);
 
-// Returns true if the given clause contains an aggregate function.
-bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause);
+// returns true if the given clause contains an aggregate function
+bool AST_ClauseContainsAggregation
+(
+	const cypher_astnode_t *clause
+);
 
-// Collect the aliases from a RETURN clause to populate ResultSet column names.
-const char **AST_BuildReturnColumnNames(const cypher_astnode_t *return_clause);
+// collect the aliases from a RETURN clause to populate ResultSet column names
+const char **AST_BuildReturnColumnNames
+(
+	const cypher_astnode_t *return_clause
+);
 
-// Collect the aliases from a CALL clause to populate ResultSet column names.
-const char **AST_BuildCallColumnNames(const cypher_astnode_t *return_clause);
+// collect the aliases from a CALL clause to populate ResultSet column names
+const char **AST_BuildCallColumnNames
+(
+	const cypher_astnode_t *return_clause
+);
 
-// Parse a query to construct an immutable AST.
-cypher_parse_result_t *parse_query(const char *query);
+// parse a query to construct an immutable AST
+cypher_parse_result_t *parse_query
+(
+	const char *query  // query to parse
+);
 
-// Parse a query parameter values only. The remaining query string is set in the result body.
-cypher_parse_result_t *parse_params(const char *query, const char **query_body);
+// parse a query parameter values only
+// the remaining query string is set in the result body
+cypher_parse_result_t *parse_params
+(
+	const char *query,
+	const char **query_body
+);
 
-// Free the immutable AST generated by the parser.
-void parse_result_free(cypher_parse_result_t *parse_result);
+// free the immutable AST generated by the parser
+void parse_result_free
+(
+	cypher_parse_result_t *parse_result
+);
 
-// Returns the ast annotation context collection of the AST.
-AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast);
+// returns the ast annotation context collection of the AST
+AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection
+(
+	AST *ast
+);
 
-const char *AST_ToString(const cypher_astnode_t *node);
+const char *AST_ToString
+(
+	const cypher_astnode_t *node
+);
 
-void AST_Free(AST *ast);
+void AST_Free
+(
+	AST *ast
+);

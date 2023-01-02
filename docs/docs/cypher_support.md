@@ -1,6 +1,6 @@
 ---
-title: "Cypher Coverage"
-linkTitle: "Cypher Coverage"
+title: "Cypher coverage"
+linkTitle: "Cypher coverage"
 weight: 7
 description: >
     RedisGraph implements a subset of the Cypher language, which is growing as development continues.
@@ -74,109 +74,29 @@ We do not support any of these properties at the type level, meaning nodes and r
 ### Reading/Writing Clauses
 + MERGE
 + CALL (procedures)
-    - The currently-supported procedures can be found in [the Procedures documentation](/commands/graph.query/#procedures).
+    - The currently-supported procedures are listed in [the Procedures documentation](/commands/graph.query/#procedures).
 
 ### Set Operations
 + UNION
 + UNION ALL
 
 ## Functions
-### Scalar functions
-+ id
-+ labels
-+ timestamp
-+ type
-+ coalesce
-+ startNode
-+ endNode
-+ [list comprehensions](/commands/graph.query/#list-comprehensions)
-+ toBoolean
-+ toBooleanOrNull
+
+The currently-supported functions are listed in [the Functions documentation](/commands/graph.query/#functions).
 
   **Unsupported:**
 
 - Temporal arithmetic functions
-- Functions returning maps (properties)
-
-### Aggregating functions
-+ avg
-+ collect
-+ count
-+ max
-+ min
-+ percentileCont
-+ percentileDist
-+ stDev
-+ stDevP
-+ sum
-
-### List functions
-+ head
-+ range
-+ reverse
-+ size
-+ tail
-
-### Math functions - numeric
-+ abs
-+ ceil
-+ floor
-+ sign
-+ round
-+ rand
-+ toInteger
-+ toIntegerOrNull
-+ toFloat
-+ toFloatOrNull
-
-### String functions
-+ left
-+ right
-+ trim
-+ lTrim
-+ rTrim
-+ reverse
-+ substring
-+ toLower
-+ toUpper
-+ toString
-+ toStringOrNull
-+ split
-
-  **Unsupported:**
-
-- replace
-
-### Predicate functions
-+ exists
-+ any
-+ all
-+ single
-+ none
-
-### Expression functions
-+ case...when
-
-### Geospatial functions
-+ distance
-+ point
-
-### Unsupported function classes
-
-- Logarithmic math functions
-- Trigonometric math functions
 - User-defined functions
 
 ## Operators
 
 ### Mathematical operators
-+ Multiplication, addition, subtraction, division, modulo
 
-  **Unsupported:**
-
-- Exponentiation
+The currently-supported functions are listed in [the mathematical operators documentation](/commands/graph.query/#mathematical-operators).
 
 ### String operators
+
 + String operators (STARTS WITH, ENDS WITH, CONTAINS) are supported.
 
   **Unsupported:**

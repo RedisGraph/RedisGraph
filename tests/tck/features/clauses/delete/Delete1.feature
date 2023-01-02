@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -112,7 +112,6 @@ Feature: Delete1 - Deleting nodes
     Then the result should be empty
     And no side effects
 
-  @NegativeTest
   @skip
   Scenario: [7] Failing when deleting connected nodes
     Given an empty graph
@@ -130,7 +129,6 @@ Feature: Delete1 - Deleting nodes
       """
     Then a ConstraintVerificationFailed should be raised at runtime: DeleteConnectedNode
 
-  @NegativeTest
   @skip
   Scenario: [8] Failing when deleting a label
     Given any graph

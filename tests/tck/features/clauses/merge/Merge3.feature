@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -105,7 +105,6 @@ Feature: Merge3 - Merge node - on match
       | +labels     | 1 |
       | +properties | 1 |
 
-  @NegativeTest
   Scenario: [5] Fail when using undefined variable in ON MATCH
     Given any graph
     When executing query:

@@ -250,12 +250,13 @@ GrB_Info RG_Matrix_removeElement_UINT64
 );
 
 // remove value 'v' from multi-value entry at position C[i,j]
-GrB_Info RG_Matrix_removeEntry
+GrB_Info RG_Matrix_removeEntry_UINT64
 (
 	RG_Matrix C,                    // matrix to remove entry from
 	GrB_Index i,                    // row index
 	GrB_Index j,                    // column index
-	uint64_t  v                     // value to remove
+	uint64_t  v,                    // value to remove
+	bool     *entry_deleted         // is entry deleted
 );
 
 GrB_Info RG_mxm                     // C = A * B
