@@ -546,7 +546,8 @@ fi
 
 if [[ $NOP != 1 ]]; then
 	if [[ -n $SAN || $VG == 1 ]]; then
-		{ FLOW=1 $ROOT/sbin/memcheck-summary.sh; (( E |= $? )); } || true
+		[[ $GEN == 1 || $AOF == 1 ]] && FLOW=1
+		{ FLOW=$FLOW TCK=$TCK $ROOT/sbin/memcheck-summary.sh; (( E |= $? )); } || true
 	fi
 fi
 

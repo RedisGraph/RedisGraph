@@ -173,17 +173,17 @@ commands:
       - run:
           name: Unit tests
           shell: /bin/bash -l -eo pipefail
-          command: make unit-tests PLATFORM_MODE=1 <<parameters.test_params>>
+          command: make unit-tests CLEAR_LOGS=0 <<parameters.test_params>>
           no_output_timeout: 45m
       - run:
           name: Flow tests
           shell: /bin/bash -l -eo pipefail
-          command: make flow-tests PLATFORM_MODE=1 <<parameters.test_params>>
+          command: make flow-tests CLEAR_LOGS=0 <<parameters.test_params>>
           no_output_timeout: 45m
       - run:
           name: TCK tests
           shell: /bin/bash -l -eo pipefail
-          command: make tck-tests PLATFORM_MODE=1 <<parameters.test_params>>
+          command: make tck-tests CLEAR_LOGS=0 <<parameters.test_params>>
           no_output_timeout: 45m
       - run:
           name: Run 30-second fuzz test
@@ -387,17 +387,17 @@ jobs:
       - run:
           name: Unit tests
           shell: /bin/bash -l -eo pipefail
-          command: make unit-tests PLATFORM_MODE=1 SAN=<<parameters.san-type>>
+          command: make unit-tests CLEAR_LOGS=0 SAN=<<parameters.san-type>>
           no_output_timeout: 45m
       - run:
           name: Flow tests
           shell: /bin/bash -l -eo pipefail
-          command: make flow-tests PLATFORM_MODE=1 SAN=<<parameters.san-type>>
+          command: make flow-tests CLEAR_LOGS=0 SAN=<<parameters.san-type>>
           no_output_timeout: 45m
       - run:
           name: TCK tests
           shell: /bin/bash -l -eo pipefail
-          command: make tck-tests PLATFORM_MODE=1 SAN=<<parameters.san-type>>
+          command: make tck-tests CLEAR_LOGS=0 SAN=<<parameters.san-type>>
           no_output_timeout: 45m
       - save-tests-logs
 
@@ -412,19 +412,19 @@ jobs:
       - run:
           name: Unit tests
           shell: /bin/bash -l -eo pipefail
-          command: make unit-tests PLATFORM_MODE=1 VG=1
+          command: make unit-tests CLEAR_LOGS=0 VG=1
           timeout: 60m
           no_output_timeout: 60m
       - run:
           name: Flow tests
           shell: /bin/bash -l -eo pipefail
-          command: make flow-tests PLATFORM_MODE=1 VG=1
+          command: make flow-tests CLEAR_LOGS=0 VG=1
           timeout: 60m
           no_output_timeout: 60m
       - run:
           name: TCK tests
           shell: /bin/bash -l -eo pipefail
-          command: make tck-tests PLATFORM_MODE=1 VG=1
+          command: make tck-tests CLEAR_LOGS=0 VG=1
           timeout: 60m
           no_output_timeout: 60m
       - save-tests-logs

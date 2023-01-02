@@ -62,6 +62,7 @@ sanitizer_summary() {
 	TYPE="buffer overflow" sanitizer_check "dynamic-stack-buffer-overflow"
 	TYPE="memory errors" sanitizer_check "memcpy-param-overlap"
 	TYPE="stack use after scope" sanitizer_check "stack-use-after-scope"
+	TYPE="use after free" sanitizer_check "heap-use-after-free"
 }
 
 #----------------------------------------------------------------------------------------------
@@ -74,9 +75,9 @@ if [[ $UNIT == 1 ]]; then
 fi
 if [[ $FLOW == 1 ]]; then
 	DIRS+=" flow"
-	if [[ $TCK == 1 ]]; then
-		DIRS+=" tck"
-	fi
+fi
+if [[ $TCK == 1 ]]; then
+	DIRS+=" tck"
 fi
 
 if [[ $VG == 1 ]]; then
