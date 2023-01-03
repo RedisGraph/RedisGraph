@@ -24,7 +24,7 @@ static Schema *_RdbLoadSchema
 	Schema *s = already_loaded ? NULL : Schema_New(type, id, name);
 	RedisModule_Free(name);
 
-	Index *idx = NULL;
+	Index idx = NULL;
 	uint index_count = RedisModule_LoadUnsigned(rdb);
 	for(uint i = 0; i < index_count; i++) {
 		IndexType type = RedisModule_LoadUnsigned(rdb);
@@ -38,10 +38,15 @@ static Schema *_RdbLoadSchema
 		}
 		RedisModule_Free(field_name);
 	}
+
 	if(s) {
 		// no entities are expected to be in the graph in this point in time
-		if(s->index) Index_Construct(s->index, gc->g);
-		if(s->fulltextIdx) Index_Construct(s->fulltextIdx, gc->g);
+		if(s->index) {
+			Index_ConstructStructure(s->index);
+		}
+		if(s->fulltextIdx) {
+			Index_ConstructStructure(s->fulltextIdx);
+		}
 	}
 
 	return s;

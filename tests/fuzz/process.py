@@ -16,8 +16,8 @@ sys.path.insert(0, os.path.join(ROOT, "deps/readies"))
 import paella
 
 
-def make_connection():
-    env = Env(decodeResponses=True, module=os.path.join(ROOT, "src/redisgraph.so"), logDir="logs")
+def make_connection(module):
+    env = Env(decodeResponses=True, module=module, logDir="logs")
     redis_con = env.getConnection()
     return Graph(redis_con, "G")
 
@@ -51,7 +51,8 @@ def issue_queries(graph, timeout):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-t", "--timeout", type=int, default=30, help="timeout value in seconds")
+parser.add_argument("-m", "--module", type=str, help="module .so file")
 args = parser.parse_args()
 
-graph = make_connection()
+graph = make_connection(args.module)
 issue_queries(graph, args.timeout)

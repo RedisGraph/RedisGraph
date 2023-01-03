@@ -782,13 +782,15 @@ void QueryGraph_Print
 		QGNode *n = qg->nodes[i];
 		if(QGNode_IncomeDegree(n) + QGNode_OutgoingDegree(n) == 0) {
 			// floating node
-			asprintf(&buff, "%s%s;\n", buff, n->alias);
+			int rc __attribute__((unused));
+			rc = asprintf(&buff, "%s%s;\n", buff, n->alias);
 		}
 	}
 
 	for(int i = 0; i < edge_count; i++) {
 		QGEdge *e = qg->edges[i];
-		asprintf(&buff, "%s%s -> %s;\n", buff, e->src->alias, e->dest->alias);
+        int rc __attribute__((unused));
+		rc = asprintf(&buff, "%s%s -> %s;\n", buff, e->src->alias, e->dest->alias);
 	}
 
 	printf("%s\n", buff);

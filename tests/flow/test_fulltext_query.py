@@ -1,10 +1,10 @@
 from common import *
+from index_utils import *
 
 GRAPH_ID = "query"
 graph = None
 
-
-class testFulltextIndexQuery(FlowTestsBase):
+class testFulltextIndexQuery():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global graph
@@ -18,6 +18,7 @@ class testFulltextIndexQuery(FlowTestsBase):
         graph.query("CALL db.idx.fulltext.createNodeIndex('L3', { field: 'v1', weight: 1 }, { field: 'v2', weight: 2 })")
         graph.query("CALL db.idx.fulltext.createNodeIndex('L4', { field: 'v', phonetic: 'dm:en' })")
         graph.query("CALL db.idx.fulltext.createNodeIndex('L5', { field: 'v', nostem: true })")
+        wait_for_indices_to_sync(graph)
 
         n = Node(label="L1", properties={"v": 'hello redis world'})
         graph.add_node(n)
@@ -90,3 +91,4 @@ class testFulltextIndexQuery(FlowTestsBase):
         # as such no results are expected
         result = graph.query("CALL db.idx.fulltext.queryNodes('L5', 'word')")
         self.env.assertEquals(result.result_set, [])
+
