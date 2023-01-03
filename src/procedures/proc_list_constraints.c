@@ -123,10 +123,10 @@ static bool _EmitConstraint
 	ConstraintType type,
     int constraint_id
 ) {
-	Constraint c = Schema_GetConstraints(s);
+	Constraint *c = Schema_GetConstraints(s);
     ASSERT(c != NULL);
     if(array_len(c) <= constraint_id) return false;
-    Constraint constraint = &c[constraint_id];
+    Constraint constraint = c[constraint_id];
 
 	//--------------------------------------------------------------------------
 	// constraint entity type
@@ -179,8 +179,8 @@ static bool _EmitConstraint
 	//--------------------------------------------------------------------------
 
 	if(ctx->yield_properties) {
-		uint fields_count        = array_len(c->attributes);
-		const ConstAttrData *fields = Constraint_GetAttributes(c);
+		uint fields_count        = array_len(constraint->attributes);
+		const ConstAttrData *fields = Constraint_GetAttributes(constraint);
 		*ctx->yield_properties   = SI_Array(fields_count);
 
 		for(uint i = 0; i < fields_count; i++) {

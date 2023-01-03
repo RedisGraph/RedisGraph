@@ -510,12 +510,13 @@ Constraint GraphContext_AddUniqueConstraint
 		return NULL;
 	}
 
-	if(c->status == CT_FAILED) {
+	if(c && c->status == CT_FAILED) {
 		// constraint already exists but failed, change its status and try to create it again
 		c->status = CT_PENDING;
 	} else {
 		GraphEntityType entity_type = (schema_type == SCHEMA_NODE) ? GETYPE_NODE : GETYPE_EDGE;
 		c = Constraint_new(fields, fields_count, label, s->id, entity_type);
+		Schema_AddConstraint(s, c);
 	}
 
 	Constraint_IncPendingChanges(c);
@@ -531,7 +532,8 @@ bool GraphContext_AddExactMatchIndex
 	SchemaType schema_type,     // type of entities to index nodes/edges
 	const char *label,          // label of indexed entities
 	const char **fields_str,    // fields to index
-	uint fields_count           // number of fields to index
+	uint fields_count,          // number of fields to index
+	bool should_reply           // should reply to client
 ) {
 	ASSERT(idx    !=  NULL);
 	ASSERT(gc     !=  NULL);
@@ -542,7 +544,7 @@ bool GraphContext_AddExactMatchIndex
 	// retrieve the schema for this label
 	Schema    *s            = GraphContext_GetSchema(gc, label, schema_type);
 	bool      index_changed = false;
-	ResultSet *result_set   = QueryCtx_GetResultSet();
+	ResultSet *result_set   = should_reply ? QueryCtx_GetResultSet() : NULL;
 
 	if(s == NULL) {
 		// schema doesn't exists, create it
@@ -557,8 +559,10 @@ bool GraphContext_AddExactMatchIndex
 		IndexField_Default(&idx_field, f_id, field);
 		if(Schema_AddIndex(idx, s, &idx_field, IDX_EXACT_MATCH, true) == INDEX_OK) {
 			index_changed = true;
-			// update result-set
-			ResultSet_IndexCreated(result_set, INDEX_OK);
+			if(should_reply) {
+				// update result-set
+				ResultSet_IndexCreated(result_set, INDEX_OK);
+			}
 		}
 	}
 
@@ -657,8 +661,8 @@ int GraphContext_DeleteIndex
 	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
 
 	if(s != NULL) {
-		res = Schema_RemoveIndex(s, field, type, part_of_constraint_deletion);
-		if(res == INDEX_OK) {
+		res = Schema_RemoveIndex(s, (struct GraphContext*)gc, field, type, part_of_constraint_deletion);
+		if(res == INDEX_OK && !part_of_constraint_deletion) {
 			// update resultset statistics
 			ResultSet *result_set = QueryCtx_GetResultSet();
 			ResultSet_IndexDeleted(result_set, res);
@@ -803,3 +807,26 @@ static void _GraphContext_Free(void *arg) {
 	rm_free(gc);
 }
 
+void GraphContext_LockForCommit
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc
+) {
+    // aquire GIL
+    RedisModule_ThreadSafeContextLock(ctx);
+
+	// acquire graph write lock
+	Graph_AcquireWriteLock(gc->g);
+}
+
+void GraphContext_UnlockCommit
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc
+) {
+	// release graph R/W lock
+	Graph_ReleaseLock(gc->g);
+
+	// unlock GIL
+	RedisModule_ThreadSafeContextUnlock(ctx);
+}

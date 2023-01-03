@@ -10,11 +10,11 @@ def _wait_on_constraint(graph, label, t):
         if result.result_set[0][0] == 0:
             break
 
-def _create_constraint(graph, con, q, label=None, t=None, sync=False):
-    res = con.execute_command(q)
+def _create_constraint(graph, ct_type, entity_type, label, *properties, sync=False):
+    res = graph.constraint("CREATE", ct_type, entity_type, label, *properties)
 
     if sync:
-        _wait_on_constraint(graph, label, t)
+        _wait_on_constraint(graph, label, ct_type)
 
     return res
 
@@ -33,22 +33,17 @@ def list_constraints(graph, label=None, t=None):
 
     return graph.query(q)
 
-def create_node_unique_constraint(graph, con, key, label, *properties, sync=False):
-    q = f"GRAPH.CONSTRAINT CREATE {key} UNIQUE LABEL {label} PROPERTIES {len(properties)} " + ' '.join(map('n.{0}'.format, properties))
-    print(q)
-    return _create_constraint(graph, con, q, label, "unique", sync)
+def create_node_unique_constraint(graph, label, *properties, sync=False):
+    return _create_constraint(graph, "UNIQUE", "LABEL", label, *properties, sync=sync)
 
-def create_edge_unique_constraint(graph, con, key, relation, *properties, sync=False):
-    q = f"GRAPH.CONSTRAINT CREATE {key} UNIQUE RELTYPE {relation} PROPERTIES {len(properties)} " + ' '.join(map('n.{0}'.format, properties))
-    return _create_constraint(graph, con, q, relation, "unique", sync)
+def create_edge_unique_constraint(graph, relation, *properties, sync=False):
+    return _create_constraint(graph, "UNIQUE", "RELTYPE", relation, properties, sync=sync)
 
-def drop_node_unique_constraint(con, key, label, *properties):
-    q = f"GRAPH.CONSTRAINT DEL {key} UNIQUE LABEL {label} PROPERTIES {len(properties)} " + ' '.join(map('n.{0}'.format, properties))
-    return con.execute_command(q)
+def drop_node_unique_constraint(graph, label, *properties):
+    return graph.constraint("DEL", "UNIQUE", "LABEL", label, properties)
 
-def drop_edge_unique_constraint(con, key, relation, *properties):
-    q = f"GRAPH.CONSTRAINT DEL {key} UNIQUE RELTYPE {relation} PROPERTIES {len(properties)} " + ' '.join(map('n.{0}'.format, properties))
-    return con.execute_command(q)
+def drop_edge_unique_constraint(graph, relation, *properties):
+    return graph.constraint("DEL", "UNIQUE", "RELTYPE", relation, properties)
 
 # validate constraint is being populated
 def constraint_under_construction(graph, label, t):

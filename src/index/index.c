@@ -449,15 +449,15 @@ void Index_AddField
 bool Index_RemoveField
 (
 	Index idx,
+	struct GraphContext *gc,
 	const char *field,
-	const Constraint constraints,
+	Constraint *constraints,
 	bool part_of_constraint_deletion
 ) {
 	ASSERT(idx   != NULL);
 	ASSERT(field != NULL);
 
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
+	Attribute_ID attribute_id = GraphContext_GetAttributeID((GraphContext *)gc, field);
 	ASSERT(attribute_id != ATTRIBUTE_ID_NONE);
 
 	uint fields_count = array_len(idx->fields);

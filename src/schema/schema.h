@@ -22,12 +22,12 @@ typedef enum {
 // similar to a relational table structure, our schemas are a collection
 // of attributes we've encountered overtime as entities were created or updated
 typedef struct {
-	int id;                 // schema id
-	char *name;             // schema name
-	SchemaType type;        // schema type (node/edge)
-	Index index;            // exact match index
-	Index fulltextIdx;      // full-text index
-	Constraint constraints; // constraints array
+	int id;                  // schema id
+	char *name;              // schema name
+	SchemaType type;         // schema type (node/edge)
+	Index index;             // exact match index
+	Index fulltextIdx;       // full-text index
+	Constraint *constraints; // constraints array
 } Schema;
 
 // creates a new schema
@@ -81,10 +81,13 @@ int Schema_AddIndex
 	bool inc_ref_count  // should the index's ref count be incremented?
 );
 
+struct GraphContext;
+
 // removes index
 int Schema_RemoveIndex
 (
 	Schema *s,
+	struct GraphContext *gc,
 	const char *field,
 	IndexType type,
 	bool part_of_constraint_deletion
@@ -141,7 +144,7 @@ void Schema_AddConstraint
 	Constraint c     // constraint to add
 );
 
-Constraint Schema_GetConstraints
+Constraint *Schema_GetConstraints
 (
 	const Schema *s       // schema holding the index
 );

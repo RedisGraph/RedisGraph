@@ -72,12 +72,12 @@ void Constraint_free(Constraint c);
 bool Constraint_enforce_entity(Constraint c, const AttributeSet attributes, RSIndex *idx);
 
 // Enforce the constraints on the given entity.
-bool Constraints_enforce_entity(Constraint c, const AttributeSet attributes, RSIndex *idx, int *ind);
+bool Constraints_enforce_entity(Constraint *c, const AttributeSet attributes, RSIndex *idx, int *ind);
 
 struct GraphContext; // forward declaration
 void Constraint_Drop_Index(Constraint c, struct GraphContext *gc, bool should_drop_constraint);
 
 // is the field have constraint which enforce it
-bool Has_Constraint_On_Attribute(const Constraint constraints, Attribute_ID attr_id);
+bool Has_Constraint_On_Attribute(Constraint *constraints, Attribute_ID attr_id);
 
 int Graph_Constraint(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);

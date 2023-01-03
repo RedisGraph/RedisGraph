@@ -153,8 +153,9 @@ void Index_AddField
 bool Index_RemoveField
 (
 	Index idx,         // index modified
+	struct GraphContext *gc, // graph context
 	const char *field,  // field to remove
-	const Constraint constraints, // array of constraints
+	Constraint *constraints, // array of constraints
 	bool part_of_constraint_deletion // is this field being deleted as part of a constraint deletion?
 );
 

@@ -94,6 +94,7 @@ static bool _Index_PopulateNodeIndex_enforce_constraint
 		{
 			Node n;
 			Graph_GetNode(g, id, &n);
+			if(idx) Index_IndexNode(_idx, &n);
 			if(c && !Constraint_enforce_entity(c, *(n.attributes), Index_RSIndex(_idx))) {
 				// Constraint is not satisfied, cancel the index operation.
 
@@ -102,7 +103,6 @@ static bool _Index_PopulateNodeIndex_enforce_constraint
 				RG_MatrixTupleIter_detach(&it);
 				return false;
 			}
-			if(idx) Index_IndexNode(_idx, &n);
 			indexed++;
 		}
 
@@ -235,6 +235,7 @@ static bool _Index_PopulateEdgeIndex_enforce_constraint
 
 			if(SINGLE_EDGE(edge_id)) {
 				Graph_GetEdge(g, edge_id, &e);
+				if(idx) Index_IndexEdge(_idx, &e);
 				if(c && !Constraint_enforce_entity(c, *(e.attributes), Index_RSIndex(_idx))) {
 					// Constraint is not satisfied, cancel the index operation.
 
@@ -243,7 +244,6 @@ static bool _Index_PopulateEdgeIndex_enforce_constraint
 					RG_MatrixTupleIter_detach(&it);
 					return false;
 				}
-				if(idx) Index_IndexEdge(_idx, &e);
 			} else {
 				EdgeID *edgeIds = (EdgeID *)(CLEAR_MSB(edge_id));
 				uint edgeCount = array_len(edgeIds);
@@ -251,6 +251,7 @@ static bool _Index_PopulateEdgeIndex_enforce_constraint
 				for(uint i = 0; i < edgeCount; i++) {
 					edge_id = edgeIds[i];
 					Graph_GetEdge(g, edge_id, &e);
+					if(idx) Index_IndexEdge(_idx, &e);
 					if(c && !Constraint_enforce_entity(c, *(e.attributes), Index_RSIndex(_idx))) {
 						// Constraint is not satisfied, cancel the index operation.
 
@@ -259,7 +260,6 @@ static bool _Index_PopulateEdgeIndex_enforce_constraint
 						RG_MatrixTupleIter_detach(&it);
 						return false;
 					}
-					if(idx) Index_IndexEdge(_idx, &e);
 				}
 			}
 			indexed++; // single/multi edge are counted similarly

@@ -115,13 +115,13 @@ static inline void _RdbSaveIndexData
 	}
 }
 
-static inline void _RdbSaveConstraintsData(RedisModuleIO *rdb, Constraint constraints) {
+static inline void _RdbSaveConstraintsData(RedisModuleIO *rdb, Constraint *constraints) {
 	uint n_constraints = array_len(constraints);
 	uint n_active_constraints = 0;
 
 	for (uint i = 0; i < n_constraints; i++) {
-		_Constraint c = constraints[i];
-		if (c.status != CT_FAILED) {
+		Constraint c = constraints[i];
+		if (c->status != CT_FAILED) {
 			n_active_constraints++;
 		}
 	}
@@ -130,16 +130,16 @@ static inline void _RdbSaveConstraintsData(RedisModuleIO *rdb, Constraint constr
 	RedisModule_SaveUnsigned(rdb, n_active_constraints);
 
 	for (uint i = 0; i < n_constraints; i++) {
-		_Constraint c = constraints[i];
+		Constraint c = constraints[i];
 
-		if(c.status == CT_FAILED) continue;
+		if(c->status == CT_FAILED) continue;
 
-		uint fields_count = array_len(c.attributes);
+		uint fields_count = array_len(c->attributes);
 
 		// encode field count
 		RedisModule_SaveUnsigned(rdb, fields_count);
 		for(uint i = 0; i < fields_count; i++) {
-			const char *field_name = c.attributes[i].attribute_name;
+			const char *field_name = c->attributes[i].attribute_name;
 
 			// encode field
 			RedisModule_SaveStringBuffer(rdb, field_name, strlen(field_name) + 1);

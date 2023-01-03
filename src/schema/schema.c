@@ -25,7 +25,7 @@ Schema *Schema_New
 	s->type         =  type;
 	s->index        =  NULL;
 	s->fulltextIdx  =  NULL;
-	s->constraints   =  array_new(_Constraint, 0);
+	s->constraints   =  array_new(Constraint, 0);
 	s->name         =  rm_strdup(name);
 
 	return s;
@@ -157,14 +157,14 @@ int Schema_AddIndex
 static int _Schema_RemoveExactMatchIndex
 (
 	Schema *s,
+	struct GraphContext *gc,
 	const char *field,
 	bool part_of_constraint_deletion
 ) {
 	ASSERT(s != NULL);
 	ASSERT(field != NULL);
 
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
+	Attribute_ID attribute_id = GraphContext_GetAttributeID((GraphContext *)gc, field);
 	if(attribute_id == ATTRIBUTE_ID_NONE) {
 		return INDEX_FAIL;
 	}
@@ -174,7 +174,7 @@ static int _Schema_RemoveExactMatchIndex
 		return INDEX_FAIL;
 	}
 
-	if(!Index_RemoveField(idx, field, s->constraints, part_of_constraint_deletion)) return INDEX_NOT_CHANGED;
+	if(!Index_RemoveField(idx, gc, field, s->constraints, part_of_constraint_deletion)) return INDEX_NOT_CHANGED;
 
 	// if index field count dropped to 0 remove index from schema
 	// index will be freed by the indexer thread
@@ -187,11 +187,11 @@ static int _Schema_RemoveExactMatchIndex
 
 static int _Schema_RemoveFullTextIndex
 (
-	Schema *s
+	Schema *s,
+	struct GraphContext *gc
 ) {
 	ASSERT(s != NULL);
 
-	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Index idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
 	if(idx == NULL) {
 		return INDEX_FAIL;
@@ -211,6 +211,7 @@ static int _Schema_RemoveFullTextIndex
 int Schema_RemoveIndex
 (
 	Schema *s,
+	struct GraphContext *gc,
 	const char *field,
 	IndexType type,
 	bool part_of_constraint_deletion
@@ -219,9 +220,9 @@ int Schema_RemoveIndex
 
 	switch(type) {
 		case IDX_FULLTEXT:
-			return _Schema_RemoveFullTextIndex(s);
+			return _Schema_RemoveFullTextIndex(s, gc);
 		case IDX_EXACT_MATCH:
-			return _Schema_RemoveExactMatchIndex(s, field, part_of_constraint_deletion);
+			return _Schema_RemoveExactMatchIndex(s, gc, field, part_of_constraint_deletion);
 		default:
 			return INDEX_FAIL;
 	}
@@ -310,7 +311,7 @@ void Schema_Free
 	// Free constraints.
 	if(s->constraints) {
 		for(uint i = 0; i < array_len(s->constraints); i++) {
-			Constraint_free(&s->constraints[i]);
+			Constraint_free(s->constraints[i]);
 		}
 		array_free(s->constraints);
 	}
@@ -333,7 +334,7 @@ Constraint Schema_GetConstraint(const Schema *s, const ConstAttrData *fields, ui
 	ASSERT(field_count > 0);
 
 	for(uint i = 0; i < array_len(s->constraints); i++) {
-		Constraint c = &s->constraints[i];
+		Constraint c = s->constraints[i];
 
 		if(array_len(c->attributes) != field_count) continue;
 
@@ -371,10 +372,10 @@ void Schema_AddConstraint
 ) {
 	ASSERT(s != NULL);
 	ASSERT(c != NULL);
-	array_append(s->constraints, *c);
+	array_append(s->constraints, c);
 }
 
-Constraint Schema_GetConstraints
+Constraint *Schema_GetConstraints
 (
 	const Schema *s       // schema holding the index
 ) {
@@ -392,7 +393,7 @@ int Schema_RemoveConstraint
 	ASSERT(c != NULL);
 
 	for(uint i = 0; i < array_len(s->constraints); i++) {
-		if (c == &s->constraints[i]) {
+		if (c == s->constraints[i]) {
 			array_del_fast(s->constraints, i);
 			return REDISMODULE_OK;
 		}

@@ -124,14 +124,16 @@ void RdbLoadNodes_v13
 		for (int i = 0; i < nodeLabelCount; i++) {
 			Schema *s = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
 			ASSERT(s != NULL);
+
 			if(s->index) Index_IndexNode(s->index, &n);
 			if(s->fulltextIdx) Index_IndexNode(s->fulltextIdx, &n);
 
-			// Entities must satisfy their constraints.
+						// Entities must satisfy their constraints.
 			int c_index;
-			if(!Constraints_enforce_entity(s->constraints, GraphEntity_GetAttributes((GraphEntity *)&n), Index_RSIndex(s->index), &c_index)) {
-				s->constraints[c_index].status = CT_FAILED;
-				Constraint_Drop_Index(&s->constraints[c_index], (struct GraphContext*)gc, false);
+			bool has_constraints = array_len(s->constraints) > 0;
+			if(has_constraints && !Constraints_enforce_entity(s->constraints, GraphEntity_GetAttributes((GraphEntity *)&n), Index_RSIndex(s->index), &c_index)) {
+				s->constraints[c_index]->status = CT_FAILED;
+				Constraint_Drop_Index(s->constraints[c_index], (struct GraphContext*)gc, false);
 			}
 		}
 	}
@@ -181,14 +183,16 @@ void RdbLoadEdges_v13
 		// index edge
 		Schema *s = GraphContext_GetSchemaByID(gc, relation, SCHEMA_EDGE);
 		ASSERT(s != NULL);
+
 		if(s->index) Index_IndexEdge(s->index, &e);
 		if(s->fulltextIdx) Index_IndexEdge(s->fulltextIdx, &e);
 
 		// Entities must satisfy their constraints.
 		int c_index;
-		if (Constraints_enforce_entity(s->constraints, GraphEntity_GetAttributes((GraphEntity *)&e), Index_RSIndex(s->index), &c_index)) {
-			s->constraints[c_index].status = CT_FAILED;
-			Constraint_Drop_Index(&s->constraints[c_index], (struct GraphContext*)gc, false);
+		bool has_constraints = array_len(s->constraints) > 0;
+		if (has_constraints && !Constraints_enforce_entity(s->constraints, GraphEntity_GetAttributes((GraphEntity *)&e), Index_RSIndex(s->index), &c_index)) {
+			s->constraints[c_index]->status = CT_FAILED;
+			Constraint_Drop_Index(s->constraints[c_index], (struct GraphContext*)gc, false);
 		}
 	}
 }

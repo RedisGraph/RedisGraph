@@ -194,7 +194,7 @@ static void _index_operation_create
 
 	// add fields to index
 	GraphContext_AddExactMatchIndex(idx, gc, schema_type,
-			label, fields, nprops);
+			label, fields, nprops, true);
 
 	return;
 }

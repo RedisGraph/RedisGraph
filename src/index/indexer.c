@@ -57,20 +57,21 @@ static void *_index_populate
 
 		switch(ctx.op) {
 			case INDEXER_POPULATE:
+				rm_ctx = RedisModule_GetThreadSafeContext(NULL);
 				ret = Index_Populate_enforce_constraint(ctx.idx, ctx.c, (struct GraphContext*)ctx.gc);
 				if(ctx.c && Constraint_PendingChanges(ctx.c) == 0) {
 					// If pending changes > 0, Constraint going to be deleted - don't drop the index						
 					if (ret) {
 						// Constraint is satisfied, change it's status.
-						QueryCtx_LockForCommit();
+						GraphContext_LockForCommit(rm_ctx, ctx.gc);
 						ctx.c->status = CT_ACTIVE;
 					} else {
 						// constraint was not satisfied, remove it's index and change is status
-						QueryCtx_LockForCommit();
+						GraphContext_LockForCommit(rm_ctx, ctx.gc);
 						ctx.c->status = CT_FAILED;
 						Constraint_Drop_Index(ctx.c, (struct GraphContext*)ctx.gc, false);
 					}
-					QueryCtx_UnlockCommit(NULL);
+					GraphContext_UnlockCommit(rm_ctx, ctx.gc);
 				}
 				// decrease graph reference count
 				GraphContext_DecreaseRefCount(ctx.gc);
@@ -250,6 +251,7 @@ void Indexer_PopulateIndexOrConstraint
 	ASSERT(gc      != NULL);
 	ASSERT(indexer != NULL);
 	ASSERT(Index_Enabled(idx) == false);
+	ASSERT(idx || c);
 
 	// create work item
 	IndexConstraintPopulateCtx ctx = {.idx = idx, .c = c, .gc = gc, .op = INDEXER_POPULATE};
@@ -272,9 +274,9 @@ void Indexer_DropIndexOrConstraint
 	Index idx,     // index to drop
 	Constraint c   // constraint enforce and add
 ) {
-	ASSERT(idx     != NULL);
+	ASSERT(idx || c);
 	ASSERT(indexer != NULL);
-	ASSERT(Index_Enabled(idx) == false);
+	ASSERT(!idx || Index_Enabled(idx) == false);
 
 	// create work item
 	IndexConstraintPopulateCtx ctx = {.idx = idx, .c = c, .gc = NULL, .op = INDEXER_DROP};
