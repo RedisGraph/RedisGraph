@@ -71,7 +71,7 @@ AR_FuncDesc *AR_GetFunc
 	bool include_internal
 ) {
 	size_t len = strlen(func_name);
-	char lower_func_name[len];
+	char lower_func_name[len + 1];
 	str_tolower(func_name, lower_func_name, &len);
 	void *f = raxFind(__aeRegisteredFuncs, (unsigned char *)lower_func_name, len);
 
@@ -98,7 +98,7 @@ bool AR_FuncExists
 	const char *func_name
 ) {
 	size_t len = strlen(func_name);
-	char lower_func_name[len];
+	char lower_func_name[len + 1];
 	str_tolower(func_name, lower_func_name, &len);
 	void *f = raxFind(__aeRegisteredFuncs, (unsigned char *)lower_func_name, len);
 
@@ -114,7 +114,7 @@ bool AR_FuncIsAggregate
 	const char *func_name
 ) {
 	size_t len = strlen(func_name);
-	char lower_func_name[len];
+	char lower_func_name[len + 1];
 	str_tolower(func_name, lower_func_name, &len);
 	AR_FuncDesc *f = raxFind(__aeRegisteredFuncs,
 			(unsigned char *)lower_func_name, len);

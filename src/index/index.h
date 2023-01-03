@@ -23,12 +23,12 @@
 
 // creates a new index field and initialize it to default values
 // returns a pointer to the field
-#define INDEX_FIELD_DEFAULT(field)                                                    \
+#define INDEX_ADD_DEFAULT_FIELD(field)                                                \
 	({                                                                                \
 		IndexField field;                                                             \
 		IndexField_New(&field, ATTRIBUTE_ID_NONE, #field, INDEX_FIELD_DEFAULT_WEIGHT, \
 			INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);                \
-		&field;                                                                       \
+		Index_AddField(_idx, &field);                                                 \
 	})
 
 typedef enum {

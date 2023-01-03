@@ -439,7 +439,7 @@ SIValue AR_REDUCE
 		// set current element to the record
 		Record_AddScalar(r, ctx->variable_idx, elem);
 		// compute sum = sum + i
-		SIValue new_accum = AR_EXP_Evaluate(ctx->exp, r);
+		SIValue new_accum = AR_EXP_Evaluate_NoThrow(ctx->exp, r);
 		SIValue_Free(accum);
 		accum = new_accum;
 		// update accumulator within internal record

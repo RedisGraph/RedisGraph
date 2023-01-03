@@ -198,7 +198,11 @@ static bool Config_enforce_timeout_max
 ) {
 	if(timeout_max != CONFIG_TIMEOUT_NO_TIMEOUT &&
 	   timeout_default > timeout_max) {
+#ifdef __aarch64__
 		RedisModule_Log(NULL, "warning", "The TIMEOUT_DEFAULT(%lld) configuration parameter value is higher than TIMEOUT_MAX(%lld).", timeout_default, timeout_max);
+#else
+		RedisModule_Log(NULL, "warning", "The TIMEOUT_DEFAULT(%ld) configuration parameter value is higher than TIMEOUT_MAX(%ld).", timeout_default, timeout_max);
+#endif
 		return false;
 	}
 	

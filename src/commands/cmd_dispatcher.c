@@ -70,7 +70,8 @@ static int _read_flags
 
 				if(max_timeout != CONFIG_TIMEOUT_NO_TIMEOUT &&
 				   *timeout > max_timeout) {
-					asprintf(errmsg, "The query TIMEOUT parameter value cannot exceed the TIMEOUT_MAX configuration parameter value");
+					int rc __attribute__((unused));
+					rc = asprintf(errmsg, "The query TIMEOUT parameter value cannot exceed the TIMEOUT_MAX configuration parameter value");
 					return REDISMODULE_ERR;
 				}
 
@@ -84,7 +85,8 @@ static int _read_flags
 
 			// Emit error on missing, negative, or non-numeric timeout values.
 			if(err != REDISMODULE_OK || *timeout < 0) {
-				asprintf(errmsg, "Failed to parse query timeout value");
+				int rc __attribute__((unused));
+				rc = asprintf(errmsg, "Failed to parse query timeout value");
 				return REDISMODULE_ERR;
 			}
 		} else if(!strcasecmp(arg, "version")) {
@@ -98,7 +100,8 @@ static int _read_flags
 
 			// Emit error on missing, negative, or non-numeric version values.
 			if(err != REDISMODULE_OK || v < 0 || v > UINT_MAX) {
-				asprintf(errmsg, "Failed to parse graph version value");
+				int rc __attribute__((unused));
+				rc = asprintf(errmsg, "Failed to parse graph version value");
 				return REDISMODULE_ERR;
 			}
 
