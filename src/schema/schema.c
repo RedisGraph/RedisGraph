@@ -69,64 +69,59 @@ unsigned short Schema_IndexCount
 	return n;
 }
 
-Index *Schema_GetIndex
+Index Schema_GetIndex
 (
 	const Schema *s,
-	Attribute_ID *attribute_id,
+	Attribute_ID *attr_id,
 	IndexType type
 ) {
 	ASSERT(s != NULL);
 
-	if(type == IDX_EXACT_MATCH) {
+	Index idx = NULL;
+	if(type != IDX_ANY) {
+		idx = (type == IDX_EXACT_MATCH) ? s->index : s->fulltextIdx;
 		// return NULL if the index does not exist, or an attribute was
 		// specified but does not reside on the index
-		if(s->index == NULL ||
-		   (attribute_id && !Index_ContainsAttribute(s->index, *attribute_id))) {
-			return NULL;
+		if(idx != NULL && (attr_id && !Index_ContainsAttribute(idx, *attr_id))) {
+			idx = NULL;
 		}
-		return s->index;
-	} else if(type ==  IDX_FULLTEXT) {
-		// return NULL if the index does not exist, or an attribute was
-		// specified but does not reside on the index
-		if(s->fulltextIdx == NULL ||
-		   (attribute_id && !Index_ContainsAttribute(s->fulltextIdx, *attribute_id))) {
-			return NULL;
+	} else if(attr_id) {
+		// ANY index, specified attribute id
+		// return the first index containing attribute
+		if(s->index && Index_ContainsAttribute(s->index, *attr_id)) {
+			idx = s->index;
 		}
-		return s->fulltextIdx;
-	} else if(type == IDX_ANY && attribute_id) {
-		// if an attribute was specified
-		// return the first index that contains it
-		if(s->index && Index_ContainsAttribute(s->index, *attribute_id)) {
-			return s->index;
+		if(s->fulltextIdx && Index_ContainsAttribute(s->fulltextIdx, *attr_id)) {
+			idx = s->fulltextIdx;
 		}
-		if(s->fulltextIdx && Index_ContainsAttribute(s->fulltextIdx, *attribute_id)) {
-			return s->fulltextIdx;
-		}
-	} else if(type == IDX_ANY && attribute_id == NULL) {
-		// if no attribute was specified, return the first extant index
-		if(s->index) return s->index;
-		if(s->fulltextIdx) return s->fulltextIdx;
+	} else {
+		// ANY index, unspecified attribute id, return the first extant index
+		idx = (s->index != NULL) ? s->index : s->fulltextIdx;
 	}
 
-	return NULL;
+	return idx;
 }
 
+// assign a new index to attribute
+// attribute must already exists and not associated with an index
 int Schema_AddIndex
 (
-	Index **idx,
-	Schema *s,
-	IndexField *field,
-	IndexType type
+	Index *idx,         // [input/output] index to create
+	Schema *s,          // schema holding the index
+	IndexField *field,  // field to index
+	IndexType type      // type of entities to index
 ) {
-	ASSERT(s != NULL);
-	ASSERT(idx != NULL);
+	ASSERT(s     != NULL);
+	ASSERT(idx   != NULL);
 	ASSERT(field != NULL);
 
-	Index *_idx = Schema_GetIndex(s, NULL, type);
+	// see if index already exists
+	Index _idx = Schema_GetIndex(s, NULL, type);
 
 	// index exists, make sure attribute isn't already indexed
 	if(_idx != NULL) {
 		if(Index_ContainsAttribute(_idx, field->id)) {
+			// field already indexed, quick return
 			IndexField_Free(field);
 			return INDEX_FAIL;
 		}
@@ -134,18 +129,14 @@ int Schema_AddIndex
 		// index doesn't exist, create it
 		// determine index graph entity type
 		GraphEntityType entity_type;
-		if(s->type == SCHEMA_NODE) entity_type = GETYPE_NODE;
-		else entity_type = GETYPE_EDGE;
+		entity_type = (s->type == SCHEMA_NODE) ? GETYPE_NODE : GETYPE_EDGE;
 
 		_idx = Index_New(s->name, s->id, type, entity_type);
-		if(type == IDX_FULLTEXT) s->fulltextIdx = _idx;
-		else s->index = _idx;
 
-		// introduce edge src and dest node ids
-		// as additional index fields
-		if(entity_type == GETYPE_EDGE) {
-			Index_AddField(_idx, INDEX_FIELD_DEFAULT(_src_id));
-			Index_AddField(_idx, INDEX_FIELD_DEFAULT(_dest_id));
+		if(type == IDX_FULLTEXT) {
+			s->fulltextIdx = _idx;
+		} else {
+			s->index = _idx;
 		}
 	}
 
@@ -165,19 +156,20 @@ static int _Schema_RemoveExactMatchIndex
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
-	if(attribute_id == ATTRIBUTE_ID_NONE) return INDEX_FAIL;
+	if(attribute_id == ATTRIBUTE_ID_NONE) {
+		return INDEX_FAIL;
+	}
 
-	Index *idx = Schema_GetIndex(s, &attribute_id, IDX_EXACT_MATCH);
-	if(idx == NULL) return INDEX_FAIL;
+	Index idx = Schema_GetIndex(s, &attribute_id, IDX_EXACT_MATCH);
+	if(idx == NULL) {
+		return INDEX_FAIL;
+	}
 
 	Index_RemoveField(idx, field);
 
-	// if index field count dropped to 0
-	// or it is edge index and it dropped to 2(_src_id, _dest_id)
-	// remove index from schema
-	if(Index_FieldsCount(idx) == 0 ||
-	   (s->type == SCHEMA_EDGE && Index_FieldsCount(idx) == 2)) {
-		Index_Free(idx);
+	// if index field count dropped to 0 remove index from schema
+	// index will be freed by the indexer thread
+	if(Index_FieldsCount(idx) == 0) {
 		s->index = NULL;
 	}
 
@@ -191,10 +183,14 @@ static int _Schema_RemoveFullTextIndex
 	ASSERT(s != NULL);
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
-	if(idx == NULL) return INDEX_FAIL;
+	Index idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+	if(idx == NULL) {
+		return INDEX_FAIL;
+	}
 
-	Index_Free(idx);
+	Index_Disable(idx);
+
+	// index will be freed by indexer
 	s->fulltextIdx = NULL;
 
 	return INDEX_OK;
@@ -227,7 +223,7 @@ void Schema_AddNodeToIndices
 	ASSERT(s != NULL);
 	ASSERT(n != NULL);
 
-	Index *idx = NULL;
+	Index idx = NULL;
 
 	idx = s->fulltextIdx;
 	if(idx) Index_IndexNode(idx, n);
@@ -245,7 +241,7 @@ void Schema_AddEdgeToIndices
 	ASSERT(s != NULL);
 	ASSERT(e != NULL);
 
-	Index *idx = NULL;
+	Index idx = NULL;
 
 	idx = s->fulltextIdx;
 	if(idx) Index_IndexEdge(idx, e);
@@ -263,7 +259,7 @@ void Schema_RemoveNodeFromIndices
 	ASSERT(s != NULL);
 	ASSERT(n != NULL);
 
-	Index *idx = NULL;
+	Index idx = NULL;
 
 	idx = s->fulltextIdx;
 	if(idx) Index_RemoveNode(idx, n);
@@ -281,7 +277,7 @@ void Schema_RemoveEdgeFromIndices
 	ASSERT(s != NULL);
 	ASSERT(e != NULL);
 
-	Index *idx = NULL;
+	Index idx = NULL;
 
 	idx = s->fulltextIdx;
 	if(idx) Index_RemoveEdge(idx, e);

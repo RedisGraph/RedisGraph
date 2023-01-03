@@ -1,6 +1,7 @@
-from common import *
 import random
 import string
+from common import *
+from index_utils import *
 
 GRAPH_ID = "G"
 redis_graph = None
@@ -12,7 +13,7 @@ node_ctr = 0
 edge_ctr = 0
 
 
-class testEdgeIndexUpdatesFlow(FlowTestsBase):
+class testEdgeIndexUpdatesFlow():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_graph
@@ -55,6 +56,7 @@ class testEdgeIndexUpdatesFlow(FlowTestsBase):
         for field in fields:
             redis_graph.query("CREATE INDEX FOR ()-[r:type_a]-() ON (r.%s)" % (field))
             redis_graph.query("CREATE INDEX FOR ()-[r:type_b]-() ON (r.%s)" % (field))
+        wait_for_indices_to_sync(redis_graph)
 
     # Validate that all properties are indexed
     def validate_indexed(self):
@@ -179,7 +181,7 @@ class testEdgeIndexUpdatesFlow(FlowTestsBase):
         query = """CREATE ()-[:NEW {v: 5}]->()"""
         result = redis_graph.query(query)
         self.env.assertEquals(result.properties_set, 1)
-        redis_graph.query("CREATE INDEX FOR ()-[r:NEW]-() ON (r.v)")
+        create_edge_exact_match_index(redis_graph, 'NEW', 'v', sync=True)
 
         # Delete the entity's property
         query = """MATCH ()-[a:NEW {v: 5}]->() SET a.v = NULL"""
@@ -195,3 +197,4 @@ class testEdgeIndexUpdatesFlow(FlowTestsBase):
         # No entities should be returned
         expected_result = []
         self.env.assertEquals(result.result_set, expected_result)
+

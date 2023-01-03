@@ -6,3 +6,11 @@
    fun:strdup
    fun:SI_StringVal
 }
+
+{
+	<GB_Global_malloc_function>
+	Memcheck:Leak
+	fun:malloc
+	fun:GB_Global_malloc_function
+	...
+}

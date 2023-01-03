@@ -27,7 +27,7 @@ static void _RdbSaveAttributeKeys
 static inline void _RdbSaveFullTextIndexData
 (
 	RedisModuleIO *rdb,
-	Index *idx
+	Index idx
 ) {
 	/* Format:
 	 * language
@@ -53,14 +53,16 @@ static inline void _RdbSaveFullTextIndexData
 
 	// encode field count
 	uint fields_count = Index_FieldsCount(idx);
+	const IndexField *fields = Index_GetFields(idx);
+
 	RedisModule_SaveUnsigned(rdb, fields_count);
 	for(uint i = 0; i < fields_count; i++) {
 		// encode field
-		RedisModule_SaveStringBuffer(rdb, idx->fields[i].name, strlen(idx->fields[i].name) + 1);
-		RedisModule_SaveDouble(rdb, idx->fields[i].weight);
-		RedisModule_SaveUnsigned(rdb, idx->fields[i].nostem);
-		RedisModule_SaveStringBuffer(rdb, idx->fields[i].phonetic, 
-			strlen(idx->fields[i].phonetic) + 1);
+		const IndexField *f = fields + i;
+		RedisModule_SaveStringBuffer(rdb, f->name, strlen(f->name) + 1);
+		RedisModule_SaveDouble(rdb, f->weight);
+		RedisModule_SaveUnsigned(rdb, f->nostem);
+		RedisModule_SaveStringBuffer(rdb, f->phonetic, strlen(f->phonetic) + 1);
 	}
 }
 
@@ -68,30 +70,19 @@ static inline void _RdbSaveExactMatchIndex
 (
 	RedisModuleIO *rdb,
 	SchemaType type,
-	Index *idx
+	Index idx
 ) {
 	/* Format:
 	 * #properties - M
 	 * M * property */
 
 	uint fields_count = Index_FieldsCount(idx);
-
-	// for exact-match index on an edge type, decrease `fields_count` by 2
-	// skipping `_src_id` and `_dest_id` fields
-	uint encode_fields_count =
-		type == SCHEMA_EDGE ? fields_count - 2 : fields_count;
+	const IndexField *fields = Index_GetFields(idx);
 
 	// encode field count
-	RedisModule_SaveUnsigned(rdb, encode_fields_count);
+	RedisModule_SaveUnsigned(rdb, fields_count);
 	for(uint i = 0; i < fields_count; i++) {
-		char *field_name = idx->fields[i].name;
-
-		// for exact-match index on an edge type, skip both `_src_id` and
-		// `_dest_id` fields, these are introduce automaticly by the index
-		// construct routine
-		if(type == SCHEMA_EDGE && 
-		   (strcmp(field_name, "_src_id") == 0 ||
-		    strcmp(field_name, "_dest_id") == 0)) continue;
+		char *field_name = fields[i].name;
 
 		// encode field
 		RedisModule_SaveStringBuffer(rdb, field_name, strlen(field_name) + 1);
@@ -102,7 +93,7 @@ static inline void _RdbSaveIndexData
 (
 	RedisModuleIO *rdb,
 	SchemaType type,
-	Index *idx
+	Index idx
 ) {
 	/* Format:
 	 * type
@@ -111,10 +102,16 @@ static inline void _RdbSaveIndexData
 	if(!idx) return;
 
 	// index type
-	RedisModule_SaveUnsigned(rdb, idx->type);
+	IndexType t = Index_Type(idx);
+	ASSERT(t == IDX_EXACT_MATCH || t == IDX_FULLTEXT);
 
-	if(idx->type == IDX_FULLTEXT) _RdbSaveFullTextIndexData(rdb, idx);
-	else _RdbSaveExactMatchIndex(rdb, type, idx);
+	RedisModule_SaveUnsigned(rdb, t);
+
+	if(t == IDX_FULLTEXT) {
+		_RdbSaveFullTextIndexData(rdb, idx);
+	} else {
+		_RdbSaveExactMatchIndex(rdb, type, idx);
+	}
 }
 
 static void _RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
@@ -172,3 +169,4 @@ void RdbSaveGraphSchema_v12(RedisModuleIO *rdb, GraphContext *gc) {
 		_RdbSaveSchema(rdb, s);
 	}
 }
+

@@ -1,6 +1,7 @@
-from common import *
-import random
 import string
+import random
+from common import *
+from index_utils import *
 
 GRAPH_ID = "G"
 redis_graph = None
@@ -37,8 +38,9 @@ class testIndexUpdatesFlow(FlowTestsBase):
 
     def build_indices(self):
         for field in fields:
-            redis_graph.query("CREATE INDEX ON :label_a(%s)" % (field))
-            redis_graph.query("CREATE INDEX ON :label_b(%s)" % (field))
+            create_node_exact_match_index(redis_graph, 'label_a', field)
+            create_node_exact_match_index(redis_graph, 'label_b', field)
+        wait_for_indices_to_sync(redis_graph)
 
     # Validate that all properties are indexed
     def validate_indexed(self):
@@ -154,7 +156,7 @@ class testIndexUpdatesFlow(FlowTestsBase):
         result = redis_graph.query(query)
         self.env.assertEquals(result.properties_set, 1)
         self.env.assertEquals(result.labels_added, 1)
-        redis_graph.query("CREATE INDEX ON :NEW(v)")
+        create_node_exact_match_index(redis_graph, 'NEW', 'v', sync=True)
 
         # Delete the entity's property
         query = """MATCH (a:NEW {v: 5}) SET a.v = NULL"""
@@ -179,9 +181,10 @@ class testIndexUpdatesFlow(FlowTestsBase):
     # index does not track the property.
     def test07_update_property_only_on_fulltext_index(self):
         # Remove the exact-match index on a property
-        self.redis_con.execute_command("GRAPH.QUERY", GRAPH_ID, "DROP INDEX ON :label_a(group)")
+        drop_exact_match_index(redis_graph, 'label_a', 'group')
+
         # Add a full-text index on the property
-        result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex('label_a', 'group')")
+        result = create_fulltext_index(redis_graph, 'label_a', 'group', sync=True)
         self.env.assertEquals(result.indices_created, 1)
 
         # Modify the values of the property
@@ -196,3 +199,4 @@ class testIndexUpdatesFlow(FlowTestsBase):
         # Validate that the previous value has been removed
         result = redis_graph.query("CALL db.idx.fulltext.queryNodes('label_a', 'Group C')")
         self.env.assertEquals(len(result.result_set), 0)
+
