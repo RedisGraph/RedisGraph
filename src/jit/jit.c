@@ -76,58 +76,58 @@ static LLVMValueRef GetOrCreateFunction(const char* name) {
 
 	if(strcmp(name, "ResultSet_AddRecord") == 0) {
 		LLVMTypeRef addRecord_params[] = { ctx->voidPtr, ctx->voidPtr }; 
-		LLVMTypeRef addRecord_type = LLVMFunctionType(ctx->i32, addRecord_params, 2, 0);
+		ctx->addRecord_type = LLVMFunctionType(ctx->i32, addRecord_params, 2, 0);
 
-		return LLVMAddFunction(ctx->module, "ResultSet_AddRecord", addRecord_type);
+		return LLVMAddFunction(ctx->module, "ResultSet_AddRecord", ctx->addRecord_type);
 	}
 
 	if(strcmp(name, "OpBase_CreateRecord") == 0) {
 		LLVMTypeRef createRecord_params[] = { ctx->voidPtr }; 
-		LLVMTypeRef createRecord_type = LLVMFunctionType(ctx->voidPtr, createRecord_params, 1, 0);
+		ctx->createRecord_type = LLVMFunctionType(ctx->voidPtr, createRecord_params, 1, 0);
 
-		return LLVMAddFunction(ctx->module, "OpBase_CreateRecord", createRecord_type);
+		return LLVMAddFunction(ctx->module, "OpBase_CreateRecord", ctx->createRecord_type);
 	}
 
 	if(strcmp(name, "AR_EXP_Evaluate") == 0) {
 		LLVMTypeRef AR_EXP_Evaluate_params[] = { ctx->voidPtr, ctx->voidPtr }; 
-		LLVMTypeRef AR_EXP_Evaluate_type = LLVMFunctionType(ctx->si_type, AR_EXP_Evaluate_params, 2, 0);
+		ctx->AR_EXP_Evaluate_type = LLVMFunctionType(ctx->si_type, AR_EXP_Evaluate_params, 2, 0);
 
-		return LLVMAddFunction(ctx->module, "AR_EXP_Evaluate", AR_EXP_Evaluate_type);
+		return LLVMAddFunction(ctx->module, "AR_EXP_Evaluate", ctx->AR_EXP_Evaluate_type);
 	}
 
 	if(strcmp(name, "Record_Add") == 0) {
 		LLVMTypeRef addRecord_params[] = { ctx->voidPtr, ctx->i32, ctx->si_type }; 
-		LLVMTypeRef addRecord_type = LLVMFunctionType(ctx->voidPtr, addRecord_params, 3, 0);
+		ctx->addRecord_type = LLVMFunctionType(ctx->voidPtr, addRecord_params, 3, 0);
 
-		return LLVMAddFunction(ctx->module, "Record_Add", addRecord_type);
+		return LLVMAddFunction(ctx->module, "Record_Add", ctx->addRecord_type);
 	}
 
 	if(strcmp(name, "RG_MatrixTupleIter_next") == 0) {
 		LLVMTypeRef iter_next_params[] = { ctx->voidPtr, ctx->i64ptr, ctx->i64ptr, ctx->boolPtr }; 
-		LLVMTypeRef iter_next_type = LLVMFunctionType(ctx->i32, iter_next_params, 4, 0);
+		ctx->iter_next_type = LLVMFunctionType(ctx->i32, iter_next_params, 4, 0);
 
-		return LLVMAddFunction(ctx->module, "RG_MatrixTupleIter_next", iter_next_type);
+		return LLVMAddFunction(ctx->module, "RG_MatrixTupleIter_next", ctx->iter_next_type);
 	}
 
 	if(strcmp(name, "RG_MatrixTupleIter_reset") == 0) {
-		LLVMTypeRef iter_next_params[] = { ctx->voidPtr }; 
-		LLVMTypeRef iter_next_type = LLVMFunctionType(ctx->i32, iter_next_params, 1, 0);
+		LLVMTypeRef iter_reset_params[] = { ctx->voidPtr }; 
+		ctx->iter_reset_type = LLVMFunctionType(ctx->i32, iter_reset_params, 1, 0);
 
-		return LLVMAddFunction(ctx->module, "RG_MatrixTupleIter_reset", iter_next_type);
+		return LLVMAddFunction(ctx->module, "RG_MatrixTupleIter_reset", ctx->iter_reset_type);
 	}
 
 	if(strcmp(name, "Graph_GetNode") == 0) {
-		LLVMTypeRef iter_next_params[] = { ctx->voidPtr, ctx->i64, LLVMPointerType(ctx->node_type, 0) }; 
-		LLVMTypeRef iter_next_type = LLVMFunctionType(ctx->i32, iter_next_params, 3, 0);
+		LLVMTypeRef graph_getnodes_params[] = { ctx->voidPtr, ctx->i64, LLVMPointerType(ctx->node_type, 0) }; 
+		ctx->graph_getnodes_type = LLVMFunctionType(ctx->i32, graph_getnodes_params, 3, 0);
 
-		return LLVMAddFunction(ctx->module, "Graph_GetNode", iter_next_type);
+		return LLVMAddFunction(ctx->module, "Graph_GetNode", ctx->graph_getnodes_type);
 	}
 
 	if(strcmp(name, "Record_AddNode") == 0) {
 		LLVMTypeRef addNode_params[] = { ctx->voidPtr, ctx->i32, LLVMPointerType(ctx->node_type, 0) }; 
-		LLVMTypeRef addNode_type = LLVMFunctionType(ctx->i32, addNode_params, 3, 0);
+		ctx->addNode_type = LLVMFunctionType(ctx->i32, addNode_params, 3, 0);
 
-		return LLVMAddFunction(ctx->module, "Record_AddNode", addNode_type);
+		return LLVMAddFunction(ctx->module, "Record_AddNode", ctx->addNode_type);
 	}
 
 	return NULL;
@@ -195,8 +195,8 @@ static LLVMErrorRef definitionGeneratorFn(LLVMOrcDefinitionGeneratorRef G, void 
 	  LLVMJITSymbolFlags Flags = {LLVMJITSymbolGenericFlagsWeak, 0};
 	  LLVMJITEvaluatedSymbol Sym = {Addr, Flags};
 	  LLVMOrcRetainSymbolStringPoolEntry(Element.Name);
-	  LLVMJITCSymbolMapPair Pair = {Element.Name, Sym};
-	  LLVMJITCSymbolMapPair Pairs[] = {Pair};
+	  LLVMOrcCSymbolMapPair Pair = {Element.Name, Sym};
+	  LLVMOrcCSymbolMapPair Pairs[] = {Pair};
 	  LLVMOrcMaterializationUnitRef MU = LLVMOrcAbsoluteSymbols(Pairs, 1);
 	  LLVMErrorRef Err = LLVMOrcJITDylibDefine(JD, MU);
 	  if (Err)
@@ -254,7 +254,7 @@ void JIT_Run(SymbolResolve fn) {
 
 	// LLVMOrcJITDylibAddGenerator(LLVMOrcLLJITGetMainJITDylib(J), ProcessSymbolsGenerator);
 
-	LLVMOrcDefinitionGeneratorRef Gen = LLVMOrcCreateCustomCAPIDefinitionGenerator(definitionGeneratorFn, fn);
+	LLVMOrcDefinitionGeneratorRef Gen = LLVMOrcCreateCustomCAPIDefinitionGenerator(definitionGeneratorFn, fn, NULL);
 	LLVMOrcJITDylibAddGenerator(LLVMOrcLLJITGetMainJITDylib(J), Gen);
 
 	LLVMOrcJITTargetAddress QueryAddr;
@@ -291,11 +291,10 @@ void JIT_CreateRecord(void *opBase) {
 	EmitCtx *ctx = EmitCtx_Get();
 
 	LLVMValueRef createRecord_func = GetOrCreateFunction(str_CreateRecord);
-
 	LLVMValueRef global = GetOrCreateGlobal(str_op, opBase);
 	LLVMValueRef local = LLVMBuildLoad2(ctx->builder, ctx->voidPtr, global, "local");
 	LLVMValueRef args[] = {local};
-	LLVMValueRef r = LLVMBuildCall2(ctx->builder, LLVMGetReturnType(LLVMTypeOf(createRecord_func)), createRecord_func, args, 1, "call");
+	LLVMValueRef r = LLVMBuildCall2(ctx->builder, ctx->createRecord_type, createRecord_func, args, 1, "call");
 	ctx->r = r;
 }
 
@@ -308,7 +307,7 @@ void JIT_Result(void *rsVal) {
 
 
 	LLVMValueRef args[] = {local, ctx->r};
-	LLVMBuildCall2(ctx->builder, LLVMGetReturnType(LLVMTypeOf(addRecord_func)), addRecord_func, args, 2, "call");
+	LLVMBuildCall2(ctx->builder, ctx->addRecord_type, addRecord_func, args, 2, "call");
 
 	//Record_FreeEntries
 	//JIT_CreateRecord(NULL);
@@ -327,12 +326,12 @@ void JIT_Project(void *opBase, AR_ExpNode **exps, uint exp_count, uint *record_o
 		LLVMValueRef expr_global = GetOrCreateGlobal(name, exp);
 		LLVMValueRef expr_local = LLVMBuildLoad2(ctx->builder, ctx->voidPtr, expr_global, name);
 		LLVMValueRef eval_args[] = {expr_local, ctx->r};
-		LLVMValueRef v = LLVMBuildCall2(ctx->builder, LLVMGetReturnType(LLVMTypeOf(AR_EXP_Evaluate_func)), AR_EXP_Evaluate_func, eval_args, 2, "call");
+		LLVMValueRef v = LLVMBuildCall2(ctx->builder, ctx->AR_EXP_Evaluate_type, AR_EXP_Evaluate_func, eval_args, 2, "call");
 
 		int rec_idx = record_offsets[i];
 
 		LLVMValueRef addRec_args[] = {ctx->r, LLVMConstInt(ctx->i32, rec_idx, 0), v};
-		LLVMValueRef r = LLVMBuildCall2(ctx->builder, LLVMGetReturnType(LLVMTypeOf(addRecord_func)), addRecord_func, addRec_args, 3, "call");
+		LLVMValueRef r = LLVMBuildCall2(ctx->builder, ctx->addRecord_type, addRecord_func, addRec_args, 3, "call");
 	}
 }
 
@@ -359,13 +358,13 @@ void JIT_StartLabelScan(void *iter, int nodeIdx) {
 	array_append(ctx->loop, loop);
 
 	LLVMValueRef iter_reset_params[] = {iter_value};
-	LLVMBuildCall2(ctx->builder, LLVMGetReturnType(LLVMTypeOf(iter_reset_func)), iter_reset_func, iter_reset_params, 1, "call");
+	LLVMBuildCall2(ctx->builder, ctx->iter_reset_type, iter_reset_func, iter_reset_params, 1, "call");
 
 	LLVMBuildBr(ctx->builder, loop.loop_cond);
 	LLVMPositionBuilderAtEnd(ctx->builder, loop.loop_cond);
 
 	LLVMValueRef iter_next_params[] = {iter_value, LLVMConstPointerNull(i64ptr), nodeId, LLVMConstPointerNull(ctx->boolPtr)};
-	LLVMValueRef info = LLVMBuildCall2(ctx->builder, LLVMGetReturnType(LLVMTypeOf(iter_next_func)), iter_next_func, iter_next_params, 4, "call");
+	LLVMValueRef info = LLVMBuildCall2(ctx->builder, ctx->iter_next_type, iter_next_func, iter_next_params, 4, "call");
 
 	LLVMValueRef depleted_trunc = LLVMBuildICmp(ctx->builder, LLVMIntEQ, info, LLVMConstInt(ctx->i32, 2, 0), "trunc");
 	LLVMBuildCondBr(ctx->builder, depleted_trunc, loop.loop_end, loop.loop);
@@ -376,10 +375,10 @@ void JIT_StartLabelScan(void *iter, int nodeIdx) {
 	LLVMValueRef g_local = LLVMBuildLoad2(ctx->builder, ctx->voidPtr, g_global, "g");
 	LLVMValueRef nodeId_load = LLVMBuildLoad2(ctx->builder, ctx->i64, nodeId, "nodeId_load");
 	LLVMValueRef getNode_params[] = {g_local, nodeId_load, node};
-	LLVMBuildCall2(ctx->builder, LLVMGetReturnType(LLVMTypeOf(getNode_func)), getNode_func, getNode_params, 3, "call");
+	LLVMBuildCall2(ctx->builder, ctx->graph_getnodes_type, getNode_func, getNode_params, 3, "call");
 
 	LLVMValueRef addNode_params[] = {ctx->r, LLVMConstInt(ctx->i32, nodeIdx, 0), node};
-	LLVMBuildCall2(ctx->builder, LLVMGetReturnType(LLVMTypeOf(addNode_func)), addNode_func, addNode_params, 3, "call");
+	LLVMBuildCall2(ctx->builder, ctx->addNode_type, addNode_func, addNode_params, 3, "call");
 }
 
 void JIT_EndLabelScan() {

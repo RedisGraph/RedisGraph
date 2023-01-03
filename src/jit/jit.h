@@ -42,6 +42,13 @@ typedef struct {
 	LLVMTypeRef i64;
 	LLVMTypeRef si_type;
 	LLVMTypeRef node_type;
+	LLVMTypeRef addRecord_type;
+	LLVMTypeRef createRecord_type;
+	LLVMTypeRef AR_EXP_Evaluate_type;
+	LLVMTypeRef iter_next_type;
+	LLVMTypeRef iter_reset_type;
+	LLVMTypeRef graph_getnodes_type;
+	LLVMTypeRef addNode_type;
 	LLVMValueRef r;
 	LLVMLoop *loop;
 } EmitCtx;
