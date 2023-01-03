@@ -11,18 +11,18 @@
 #include "../graph/graphcontext.h"
 #include "../graph/rg_matrix/rg_matrix_iter.h"
 
-extern RSDoc *Index_IndexGraphEntity(Index *idx,const GraphEntity *e,
+extern RSDoc *Index_IndexGraphEntity(Index idx,const GraphEntity *e,
 		const void *key, size_t key_len, uint *doc_field_count);
 
 void Index_IndexNode
 (
-	Index *idx,
+	Index idx,
 	const Node *n
 ) {
 	ASSERT(idx  !=  NULL);
 	ASSERT(n    !=  NULL);
 
-	RSIndex   *rsIdx           =  idx->idx;
+	RSIndex   *rsIdx           =  Index_RSIndex(idx);
 	EntityID  key              =  ENTITY_GET_ID(n);
 	size_t    key_len          =  sizeof(EntityID);
 	uint      doc_field_count  =  0;
@@ -41,40 +41,15 @@ void Index_IndexNode
 	}
 }
 
-void populateNodeIndex
-(
-	Index *idx,
-	Graph *g
-) {
-	ASSERT(idx != NULL);
-	ASSERT(g != NULL);
-
-	const RG_Matrix m = Graph_GetLabelMatrix(g, idx->label_id);
-	ASSERT(m != NULL);
-
-	RG_MatrixTupleIter it = {0};
-	RG_MatrixTupleIter_attach(&it, m);
-
-	// iterate over each graph entity
-	EntityID id;
-	while(RG_MatrixTupleIter_next_BOOL(&it, &id, NULL, NULL) == GrB_SUCCESS) {
-		Node n;
-		Graph_GetNode(g, id, &n);
-		Index_IndexNode(idx, &n);
-	}
-
-	RG_MatrixTupleIter_detach(&it);
-}
-
 void Index_RemoveNode
 (
-	Index *idx,    // index to update
+	Index idx,     // index to update
 	const Node *n  // node to remove from index
 ) {
 	ASSERT(n   != NULL);
 	ASSERT(idx != NULL);
 
 	EntityID id = ENTITY_GET_ID(n);
-	RediSearch_DeleteDocument(idx->idx, &id, sizeof(EntityID));
+	RediSearch_DeleteDocument(Index_RSIndex(idx), &id, sizeof(EntityID));
 }
 

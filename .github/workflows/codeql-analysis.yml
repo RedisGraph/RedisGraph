@@ -63,8 +63,7 @@ jobs:
       run: |
         sudo ln -sf /usr/bin/gcc /usr/bin/gcc-5
         ./deps/readies/bin/getpy3
-        ./deps/readies/bin/getpy2
-        ./sbin/system-setup.py
+        ./sbin/system-setup.py # --no-rmpytools
         make build
 
     # ℹ️ Command-line programs to run using the OS shell.

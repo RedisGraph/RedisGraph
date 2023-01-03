@@ -51,7 +51,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
         # skip test if we're running under Valgrind
-        if self.env.envRunner.debugger is not None:
+        if VALGRIND:
             self.env.skip() # valgrind is not working correctly with multi processing
 
         self.conn = self.env.getConnection()

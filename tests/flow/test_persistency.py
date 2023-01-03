@@ -9,6 +9,11 @@ port = None
 class testGraphPersistency():
     def __init__(self):
         self.env = Env(decodeResponses=True, enableDebugCommand=True)
+
+        # skip test if we're running under Sanitizer
+        if SANITIZER != "":
+            self.env.skip() # sanitizer is not working correctly with bulk
+
         global redis_con
         redis_con = self.env.getConnection()
         global port

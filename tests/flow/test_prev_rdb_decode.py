@@ -57,3 +57,4 @@ class test_prev_rdb_decode(FlowTestsBase):
         self.env.assertIn("Index Scan", plan)
         results = redis_graph.query("MATCH (n:L1 {val:1}) RETURN n")
         self.env.assertEqual(results.result_set, [[node0]])
+

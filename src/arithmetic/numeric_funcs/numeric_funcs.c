@@ -122,6 +122,11 @@ SIValue AR_TOINTEGER(SIValue *argv, int argc, void *private_data) {
 	case T_DOUBLE:
 		// Remove floating point.
 		return SI_LongVal(floor(arg.doubleval));
+	case T_BOOL:
+		if(SIValue_IsTrue(arg)) {
+			return SI_LongVal(1);
+		}
+		return SI_LongVal(0);
 	case T_STRING:
 		if(strlen(arg.stringval) == 0) return SI_NullVal();
 		errno = 0;
@@ -439,7 +444,7 @@ void Register_NumericFuncs() {
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	array_append(types, (SI_NUMERIC | T_STRING | T_NULL));
+	array_append(types, (SI_NUMERIC | T_STRING | T_NULL | T_BOOL));
 	ret_type = T_INT64 | T_NULL;
 	func_desc = AR_FuncDescNew("tointeger", AR_TOINTEGER, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
