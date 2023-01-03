@@ -168,6 +168,7 @@ static SIValue _AR_NodeDegree
 				for(int j = 0; j < len; j++) {
 					SIValue elem = SIArray_Get(argv[i], j);
 					if(SI_TYPE(elem) != T_STRING) {
+						SIArray_Free(labels);
 						Error_SITypeMismatch(elem, T_STRING);
 						return SI_NullVal();
 					}
