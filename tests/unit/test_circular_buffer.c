@@ -4,8 +4,15 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
+#include "src/util/rmalloc.h"
+#include "src/util/circular_buffer.h"
+
+void setup() {
+	Alloc_Reset();
+}
+
+#define TEST_INIT setup();
 #include "acutest.h"
-#include "../../src/util/circular_buffer.h"
 
 void test_CircularBufferInit(void) {
 	CircularBuffer buff = CircularBuffer_New(sizeof(int), 16);
