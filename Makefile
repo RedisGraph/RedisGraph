@@ -100,6 +100,7 @@ endef
 ifeq ($(MEMCHECK),1)
 DEPS_BINDIR=$(ROOT)/bin/$(FULL_VARIANT)
 DEPS_DEBUG=1
+CMAKE_DEFS += MEMCHECK=ON
 else
 export DEPS_BINDIR:=$(ROOT)/bin/$(FULL_VARIANT.release)
 DEPS_DEBUG=
@@ -131,13 +132,6 @@ include $(ROOT)/build/RediSearch/Makefile.defs
 BIN_DIRS += $(REDISEARCH_BINROOT)/search-static
 
 LIBS=$(RAX) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH_LIBS) $(LIBCYPHER_PARSER)
-
-#----------------------------------------------------------------------------------------------
-
-ifeq ($(MEMCHECK),1)
-	CC_FLAGS += MEMCHECK
-	# SO_LD_FLAGS += -u RediSearch_CleanupModule
-endif
 
 #----------------------------------------------------------------------------------------------
 

@@ -42,6 +42,9 @@ endif()
 
 add_compile_options(${CMAKE_CC_FLAGS} ${CMAKE_CC_C_FLAGS})
 target_compile_options(redisgraph PRIVATE -fPIC ${CMAKE_CC_FLAGS} ${CMAKE_CC_C_FLAGS})
+if (MEMCHECK)
+	add_compile_definitions(MEMCHECK)
+endif()
 
 lists_from_env(LIBOMP)
 target_link_options(redisgraph PRIVATE ${CMAKE_LD_FLAGS} ${CMAKE_SO_LD_FLAGS} ${LIBOMP})
