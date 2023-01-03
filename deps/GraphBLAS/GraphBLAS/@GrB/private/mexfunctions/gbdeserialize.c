@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -32,14 +32,16 @@ void mexFunction
 
     gb_usage ((nargin >= 1 || nargin <= 3) && nargout <= 1, USAGE) ;
     CHECK_ERROR (mxGetClassID (pargin [0]) != mxUINT8_CLASS
-        || mxGetN (pargin [0]) != 1, "blob must be a uint8 column vector") ;
+        || mxIsSparse (pargin [0]), "blob must be a uint8 dense matrix/vector");
 
     //--------------------------------------------------------------------------
-    // get the blob
+    // get the blob, normally a row or column vector, but can be a dense matrix
     //--------------------------------------------------------------------------
 
     void *blob = mxGetData (pargin [0]) ;
-    GrB_Index blob_size = (GrB_Index) mxGetM (pargin [0]) ;
+    GrB_Index m = (GrB_Index) mxGetM (pargin [0]) ;
+    GrB_Index n = (GrB_Index) mxGetN (pargin [0]) ;
+    GrB_Index blob_size = m*n ;
 
     //--------------------------------------------------------------------------
     // deserialize the blob into a matrix

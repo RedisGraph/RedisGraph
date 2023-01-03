@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "op_procedure_call.h"
 #include "../../RG.h"
@@ -136,9 +136,6 @@ static Record ProcCallConsume(OpBase *opBase) {
 		if(!Procedure_IsReadOnly(op->procedure)) QueryCtx_LockForCommit();
 
 		ProcedureResult res = Proc_Invoke(op->procedure, op->args, op->output);
-
-		// unlock if procedure can modify the graph
-		if(!Procedure_IsReadOnly(op->procedure)) QueryCtx_UnlockCommit(opBase);
 
 		/* TODO: should rise run-time exception?
 		 * op->r will be freed in ProcCallFree. */

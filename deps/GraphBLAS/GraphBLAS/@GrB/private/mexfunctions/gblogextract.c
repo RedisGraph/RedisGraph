@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -275,6 +275,7 @@ void mexFunction
     int64_t *Vp = V->p ;
     Vp [0] = 0 ;
     Vp [1] = tnvals ;
+    V->nvals = tnvals ;
     V->magic = GB_MAGIC ;
     V->nvec_nonempty = (tnvals > 0) ? 1 : 0 ;
 

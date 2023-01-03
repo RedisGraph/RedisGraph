@@ -13,8 +13,9 @@ import paella
 #----------------------------------------------------------------------------------------------
 
 class RedisGraphSetup(paella.Setup):
-    def __init__(self, nop=False):
-        paella.Setup.__init__(self, nop)
+    def __init__(self, args):
+        paella.Setup.__init__(self, args.nop)
+        self.no_rmpytools = args.no_rmpytools
 
     def common_first(self):
         self.install_downloaders()
@@ -29,6 +30,10 @@ class RedisGraphSetup(paella.Setup):
         else:
             self.run("%s/bin/getgcc" % READIES)
         self.install("peg")
+        if self.platform.is_arm():
+            self.install("python3-dev")
+        self.run("{READIES}/bin/getjava".format(READIES=READIES)) # for grammarinator/ANTLR
+        self.pip_install("-r tests/fuzz/requirements.txt")
 
     def redhat_compat(self):
         self.install("redhat-lsb-core")
@@ -51,6 +56,7 @@ class RedisGraphSetup(paella.Setup):
         self.run("brew install libomp")
         self.install("redis")
         self.install_peg()
+        self.pip_install("-r tests/fuzz/requirements.txt")
 
     def alpine(self):
         self.install("automake make autoconf libtool m4")
@@ -61,6 +67,7 @@ class RedisGraphSetup(paella.Setup):
         self.install("valgrind")
 
     def common_last(self):
+        self.run("%s/bin/getaws" % READIES)
         self.install("astyle", _try=True) # fails for centos7
         self.run("{PYTHON} {READIES}/bin/getcmake --usr".format(PYTHON=self.python, READIES=READIES),
                  sudo=self.os != 'macos')
@@ -69,10 +76,10 @@ class RedisGraphSetup(paella.Setup):
         else:
             self.install("lcov-git", aur=True)
 
-        self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall".format(PYTHON=self.python, READIES=READIES))
-        self.pip_install("awscli")
-        self.pip_install("-r tests/requirements.txt")
-        self.pip_install("-r tests/fuzz/requirements.txt")
+        if not self.no_rmpytools:
+            self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall --modern --redispy-version a246f40".format(PYTHON=self.python, READIES=READIES))
+            self.pip_install("-r tests/requirements.txt")
+
         self.run("%s/bin/getpy2" % READIES) # for RediSearch build
 
     def install_peg(self):
@@ -92,7 +99,8 @@ class RedisGraphSetup(paella.Setup):
 #----------------------------------------------------------------------------------------------
 
 parser = argparse.ArgumentParser(description='Set up system for build.')
-parser.add_argument('-n', '--nop', action="store_true", help='no operation')
+parser.add_argument('-n', '--nop', action="store_true", help='No operation')
+parser.add_argument('--no-rmpytools', action="store_true", help='Do not install Python tools')
 args = parser.parse_args()
 
-RedisGraphSetup(nop=args.nop).setup()
+RedisGraphSetup(args).setup()

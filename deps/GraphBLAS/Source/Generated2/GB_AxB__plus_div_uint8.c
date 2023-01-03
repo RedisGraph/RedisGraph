@@ -12,11 +12,10 @@
 
 #include "GB_dev.h"
 
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 
 #include "GB.h"
 #include "GB_control.h"
-#include "GB_bracket.h"
 #include "GB_sort.h"
 #include "GB_atomics.h"
 #include "GB_AxB_saxpy.h"
@@ -48,7 +47,7 @@
 // B type:     uint8_t
 // B pattern?  0
 
-// Multiply: z = GB_IDIV_UNSIGNED (x, y, 8)
+// Multiply: z = GB_idiv_uint8 (x, y)
 // Add:      cij += t
 //    'any' monoid?  0
 //    atomic?        1
@@ -56,7 +55,7 @@
 //    identity:      0
 //    terminal?      0
 //    terminal condition: ;
-// MultAdd:  { uint8_t x_op_y = GB_IDIV_UNSIGNED (x, y, 8) ; z += x_op_y ; }
+// MultAdd:  { uint8_t x_op_y = GB_idiv_uint8 (x, y) ; z += x_op_y ; }
 
 #define GB_ATYPE \
     uint8_t
@@ -113,7 +112,7 @@
 
 // multiply operator
 #define GB_MULT(z, x, y, i, k, j) \
-    z = GB_IDIV_UNSIGNED (x, y, 8)
+    z = GB_idiv_uint8 (x, y)
 
 // cast from a real scalar (or 2, if C is complex) to the type of C
 #define GB_CTYPE_CAST(x,y) \
@@ -125,7 +124,7 @@
 
 // multiply-add
 #define GB_MULTADD(z, x, y, i, k, j) \
-    { uint8_t x_op_y = GB_IDIV_UNSIGNED (x, y, 8) ; z += x_op_y ; }
+    { uint8_t x_op_y = GB_idiv_uint8 (x, y) ; z += x_op_y ; }
 
 // monoid identity value
 #define GB_IDENTITY \
@@ -591,7 +590,7 @@ GrB_Info GB (_Asaxpy3B__plus_div_uint8)
 }
 
 //------------------------------------------------------------------------------
-// GB_Asaxpy3B_M: C<M>=A*Bi: saxpy method (Gustavson + Hash)
+// GB_Asaxpy3B_M: C<M>=A*B: saxpy method (Gustavson + Hash)
 //------------------------------------------------------------------------------
 
 #if ( !GB_DISABLE )

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,7 +43,6 @@ Feature: Set5 - Set multiple properties with a map
       | null |
     And no side effects
 
-@skip
   Scenario: [2] Overwrite values when using +=
     Given an empty graph
     And having executed:
@@ -81,7 +80,6 @@ Feature: Set5 - Set multiple properties with a map
     And the side effects should be:
       | +properties | 1 |
 
-@skip
   Scenario: [4] Explicit null values in a map remove old values
     Given an empty graph
     And having executed:

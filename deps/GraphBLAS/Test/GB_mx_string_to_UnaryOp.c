@@ -142,6 +142,7 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
         else if (MATCH (opname, "tgamma"  )) { opcode = GB_TGAMMA_unop_code ; }
         else if (MATCH (opname, "erf"     )) { opcode = GB_ERF_unop_code ; }
         else if (MATCH (opname, "erfc"    )) { opcode = GB_ERFC_unop_code ; }
+        else if (MATCH (opname, "cbrt"    )) { opcode = GB_CBRT_unop_code ; }
         else if (MATCH (opname, "frexpx"  )) { opcode = GB_FREXPX_unop_code ; }
         else if (MATCH (opname, "frexpe"  )) { opcode = GB_FREXPE_unop_code ; }
 
@@ -744,6 +745,18 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
                 {
                     case GB_FP32_code    : op = GxB_ERFC_FP32   ; break ;
                     case GB_FP64_code    : op = GxB_ERFC_FP64   ; break ;
+                    default              : 
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        return (false) ;
+                }
+                break ;
+
+            case GB_CBRT_unop_code :    // z = cbrt (x)
+
+                switch (xcode)
+                {
+                    case GB_FP32_code    : op = GxB_CBRT_FP32   ; break ;
+                    case GB_FP64_code    : op = GxB_CBRT_FP64   ; break ;
                     default              : 
                         mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
                         return (false) ;

@@ -27,7 +27,7 @@
 
 #include "GB_subassign_methods.h"
 #include "GB_dense.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_type__include.h"
 #endif
 
@@ -109,7 +109,7 @@ GrB_Info GB_dense_subassign_25
     // initialize them.
 
     bool C_is_csc = C->is_csc ;
-    GB_phbix_free (C) ;
+    GB_phybix_free (C) ;
     // set C->iso = C_iso   OK
     GB_OK (GB_dup_worker (&C, C_iso, M, false, C->type, Context)) ;
     C->is_csc = C_is_csc ;
@@ -139,7 +139,7 @@ GrB_Info GB_dense_subassign_25
 
         bool done = false ;
 
-        #ifndef GBCOMPACT
+        #ifndef GBCUDA_DEV
 
             //------------------------------------------------------------------
             // define the worker for the switch factory

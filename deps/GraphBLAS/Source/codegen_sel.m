@@ -8,6 +8,7 @@ function codegen_sel
 % SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\nselection operators:\n') ;
+addpath ('../Test') ;
 
 f = fopen ('Generated1/GB_sel__include.h', 'w') ;
 fprintf (f, '//------------------------------------------------------------------------------\n') ;

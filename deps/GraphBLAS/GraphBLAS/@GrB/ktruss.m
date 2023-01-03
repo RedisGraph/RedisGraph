@@ -36,7 +36,7 @@ function C = ktruss (A, k, check)
 % See also GrB.tricount.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 % NOTE: this is a high-level algorithm that uses GrB objects.
 
@@ -45,7 +45,7 @@ if (nargin < 2)
     k = 3 ;
 end
 if (k < 3)
-    error ('k-truss defined only for k >= 3') ;
+    error ('GrB:error', 'k-truss defined only for k >= 3') ;
 end
 
 if (nargin < 3)
@@ -56,7 +56,7 @@ end
 
 [m, n] = size (A) ;
 if (m ~= n)
-    error ('A must be square') ;
+    error ('GrB:error', 'A must be square') ;
 end
 
 int_type = 'int64' ;
@@ -69,10 +69,10 @@ C = GrB.apply (['1.' int_type], A) ;
 if (check)
     % Do the costly checks.  These are optional.
     if (~issymmetric (C))
-        error ('A must have a symmetric pattern') ;
+        error ('GrB:error', 'A must have a symmetric pattern') ;
     end
     if (nnz (diag (C) > 0))
-        error ('A must have a zero-free diagonal') ;
+        error ('GrB:error', 'A must have a zero-free diagonal') ;
     end
 end
 

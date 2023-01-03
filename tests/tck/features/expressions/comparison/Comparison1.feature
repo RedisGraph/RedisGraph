@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -123,7 +123,6 @@ Feature: Comparison1 - Equality
       | 1        |
     And no side effects
 
-  @skip
   Scenario Outline: [6] Comparing lists to lists
     Given an empty graph
     When executing query:
@@ -174,7 +173,6 @@ Feature: Comparison1 - Equality
       | {k: 1, l: null} | {k: null, l: 1}    | null   |
       | {k: 1, l: null} | {k: 1, l: 1}       | null   |
 
-  @skip
   Scenario Outline: [8] Equality and inequality of NaN
     Given any graph
     When executing query:
@@ -314,7 +312,6 @@ Feature: Comparison1 - Equality
       | null  |
     And no side effects
 
-  @NegativeTest
   Scenario: [17] Failing when comparing to an undefined variable
     Given any graph
     When executing query:

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -249,7 +249,6 @@ Feature: Return2 - Return single expression (correctly projecting an expression)
     And the side effects should be:
       | -relationships | 1 |
 
-  @NegativeTest
   @skip
   Scenario: [15] Fail when returning properties of deleted nodes
     Given an empty graph
@@ -265,7 +264,6 @@ Feature: Return2 - Return single expression (correctly projecting an expression)
       """
     Then a EntityNotFound should be raised at runtime: DeletedEntityAccess
 
-  @NegativeTest
   @skip
   Scenario: [16] Fail when returning labels of deleted nodes
     Given an empty graph
@@ -281,7 +279,6 @@ Feature: Return2 - Return single expression (correctly projecting an expression)
       """
     Then a EntityNotFound should be raised at runtime: DeletedEntityAccess
 
-  @NegativeTest
   @skip
   Scenario: [17] Fail when returning properties of deleted relationships
     Given an empty graph
@@ -297,7 +294,6 @@ Feature: Return2 - Return single expression (correctly projecting an expression)
       """
     Then a EntityNotFound should be raised at runtime: DeletedEntityAccess
 
-  @NegativeTest
   Scenario: [18] Fail on projecting a non-existent function
     Given any graph
     When executing query:

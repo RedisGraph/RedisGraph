@@ -10,6 +10,8 @@ class testTraversalConstruction():
         self.env = Env(decodeResponses=True)
         redis_con = self.env.getConnection()
         graph = Graph(redis_con, "TraversalConstruction")
+        # Create the graph
+        graph.query("RETURN 1")
 
     # Test differing starting points for the same search pattern
     def test_starting_point(self):

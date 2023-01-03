@@ -24,6 +24,7 @@
     #define GB_COMPILER_GCC     0
     #define GB_COMPILER_MSC     0
     #define GB_COMPILER_XLC     0
+    #define GB_COMPILER_MINGW   0
 
     #define GB_COMPILER_MAJOR __CUDACC_VER_MAJOR__
     #define GB_COMPILER_MINOR __CUDACC_VER_MINOR__
@@ -40,6 +41,7 @@
     #define GB_COMPILER_GCC     0
     #define GB_COMPILER_MSC     0
     #define GB_COMPILER_XLC     0
+    #define GB_COMPILER_MINGW   0
 
     #define GB_COMPILER_MAJOR __INTEL_CLANG_COMPILER
     #define GB_COMPILER_MINOR 0
@@ -56,6 +58,7 @@
     #define GB_COMPILER_GCC     0
     #define GB_COMPILER_MSC     0
     #define GB_COMPILER_XLC     0
+    #define GB_COMPILER_MINGW   0
 
     #define GB_COMPILER_MAJOR __INTEL_COMPILER
     #define GB_COMPILER_MINOR __INTEL_COMPILER_UPDATE
@@ -72,6 +75,7 @@
     #define GB_COMPILER_GCC     0
     #define GB_COMPILER_MSC     0
     #define GB_COMPILER_XLC     0
+    #define GB_COMPILER_MINGW   0
 
     #define GB_COMPILER_MAJOR __clang_major__
     #define GB_COMPILER_MINOR __clang_minor__
@@ -88,6 +92,7 @@
     #define GB_COMPILER_GCC     0
     #define GB_COMPILER_MSC     0
     #define GB_COMPILER_XLC     1
+    #define GB_COMPILER_MINGW   0
 
     #define GB_COMPILER_MAJOR ( __xlC__ / 256 )
     #define GB_COMPILER_MINOR ( __xlC__ - 256 * GB_COMPILER_MAJOR)
@@ -104,6 +109,7 @@
     #define GB_COMPILER_GCC     1
     #define GB_COMPILER_MSC     0
     #define GB_COMPILER_XLC     0
+    #define GB_COMPILER_MINGW   0
 
     #define GB_COMPILER_MAJOR __GNUC__
     #define GB_COMPILER_MINOR __GNUC_MINOR__
@@ -121,11 +127,34 @@
     #define GB_COMPILER_GCC     0
     #define GB_COMPILER_MSC     1
     #define GB_COMPILER_XLC     0
+    #define GB_COMPILER_MINGW   0
 
     #define GB_COMPILER_MAJOR ( _MSC_VER / 100 )
     #define GB_COMPILER_MINOR ( _MSC_VER - 100 * GB_COMPILER_MAJOR)
     #define GB_COMPILER_SUB   0
     #define GB_COMPILER_NAME  "Microsoft Visual Studio " GB_XSTR (_MSC_VER)
+
+#elif defined ( __MINGW32__ ) || defined ( __MINGW64__ )
+
+    // MinGW (32-bit or 64-bit)
+    #define GB_COMPILER_NVCC    0
+    #define GB_COMPILER_ICX     0
+    #define GB_COMPILER_ICC     0
+    #define GB_COMPILER_CLANG   0
+    #define GB_COMPILER_GCC     0
+    #define GB_COMPILER_MSC     0
+    #define GB_COMPILER_XLC     0
+    #define GB_COMPILER_MINGW   1
+
+    #if defined ( __MINGW32__ )
+    #define GB_COMPILER_MAJOR ( __MINGW32_MAJOR_VERSION )
+    #define GB_COMPILER_MINOR ( __MINGW32_MINOR_VERSION )
+    #else
+    #define GB_COMPILER_MAJOR ( __MINGW64_MAJOR_VERSION )
+    #define GB_COMPILER_MINOR ( __MINGW64_MINOR_VERSION )
+    #endif
+    #define GB_COMPILER_SUB   0
+    #define GB_COMPILER_NAME  "MinGW"
 
 #else
 
@@ -137,6 +166,7 @@
     #define GB_COMPILER_GCC     0
     #define GB_COMPILER_MSC     0
     #define GB_COMPILER_XLC     0
+    #define GB_COMPILER_MINGW   0
 
     #define GB_COMPILER_MAJOR 0
     #define GB_COMPILER_MINOR 0
@@ -213,7 +243,7 @@
 
     #define GB_HAS_VLA  1
 
-#elif GxB_STDC_VERSION >= 199901L
+#elif (defined (__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L))
 
     // ANSI C99 and later
     #define GB_HAS_VLA  1

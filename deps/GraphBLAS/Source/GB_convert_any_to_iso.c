@@ -62,7 +62,7 @@ GrB_Info GB_convert_any_to_iso // convert non-iso matrix to iso
         if (A->x == NULL)
         { 
             // out of memory
-            GB_phbix_free (A) ;
+            GB_phybix_free (A) ;
             return (GrB_OUT_OF_MEMORY) ;
         }
     }

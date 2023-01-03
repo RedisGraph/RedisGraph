@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -72,14 +72,14 @@ Feature: WithWhere2 - Filter multiple variables
              (p2)-[:AP_HAS_VALUE]->(red)
       """
     And parameters are:
-      | 1 | 0 |
-      | 2 | 1 |
+      | a | 0 |
+      | b | 1 |
     When executing query:
       """
       MATCH (advertiser)-[:ADV_HAS_PRODUCT]->(out)-[:AP_HAS_VALUE]->(red)<-[:AA_HAS_VALUE]-(a)
       WITH a, advertiser, red, out
-      WHERE advertiser.id = $1
-        AND a.id = $2
+      WHERE advertiser.id = $a
+        AND a.id = $b
         AND red.name = 'red'
         AND out.name = 'product1'
       RETURN out.name

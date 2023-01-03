@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,6 @@
 
 Feature: TypeConversion1 - To Boolean
 
-  @skip
   Scenario: [1] `toBoolean()` on booleans
     Given any graph
     When executing query:
@@ -44,7 +43,6 @@ Feature: TypeConversion1 - To Boolean
       | false |
     And no side effects
 
-  @skip
   Scenario: [2] `toBoolean()` on valid literal string
     Given any graph
     When executing query:
@@ -56,7 +54,6 @@ Feature: TypeConversion1 - To Boolean
       | true |
     And no side effects
 
-  @skip
   Scenario: [3] `toBoolean()` on variables with valid string values
     Given any graph
     When executing query:
@@ -70,7 +67,6 @@ Feature: TypeConversion1 - To Boolean
       | false |
     And no side effects
 
-  @skip
   Scenario: [4] `toBoolean()` on invalid strings
     Given any graph
     When executing query:
@@ -86,20 +82,24 @@ Feature: TypeConversion1 - To Boolean
       | null |
     And no side effects
 
-  @skip
-  @NegativeTest
-  Scenario Outline: [5] `toBoolean()` on invalid types
-    Given any graph
+  Scenario Outline: [5] Fail `toBoolean()` on invalid types #Example: <exampleName>
+    Given an empty graph
+    And having executed:
+      """
+      CREATE ()-[:T]->()
+      """
     When executing query:
       """
-      WITH [true, <invalid>] AS list
-      RETURN toBoolean(list[1]) AS b
+      MATCH p = (n)-[r:T]->()
+      RETURN [x IN [true, <invalid>] | toBoolean(x) ] AS list
       """
     Then a TypeError should be raised at runtime: InvalidArgumentValue
 
     Examples:
-      | invalid |
-      | []      |
-      | {}      |
-      | 1       |
-      | 1.0     |
+      | invalid | exampleName  |
+      | []      | list         |
+      | {}      | map          |
+      | 1.0     | float        |
+      | n       | node         |
+      | r       | relationship |
+      | p       | path         |

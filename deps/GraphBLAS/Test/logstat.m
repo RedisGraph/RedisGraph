@@ -77,8 +77,8 @@ for trial = 1:ntrials
     % trim the year from the date
     s = s ([1:6 12:end]) ;
 
-    fprintf (   '%s %-10s %7.1f sec ', s, testscript, t) ;
-    fprintf (f, '%s %-10s %7.1f sec ', s, testscript, t) ;
+    fprintf (   '%s %-11s %7.1f sec ', s, testscript, t) ;
+    fprintf (f, '%s %-11s %7.1f sec ', s, testscript, t) ;
 
     if (~isempty (strfind (pwd, 'Tcov')))
         global GraphBLAS_debug GraphBLAS_grbcov
@@ -90,14 +90,14 @@ for trial = 1:ntrials
             c = sum (GraphBLAS_grbcov > 0) ;
             n = length (GraphBLAS_grbcov) ;
             if (c == n)
-                fprintf (   '%5d:   all %5d full 100%% %8.2f/sec', ...
+                fprintf (   '%5d:   all %5d full 100%% %8.2f/s', ...
                     c - clast, n, (c-clast) / t) ;
-                fprintf (f, '%5d:   all %5d full 100%% %8.2f/sec', ...
+                fprintf (f, '%5d:   all %5d full 100%% %8.2f/s', ...
                     c - clast, n, (c-clast) / t) ;
             else
-                fprintf (   '%5d: %5d of %5d %5.1f%% %8.2f/sec', ...
+                fprintf (   '%5d: %5d of %5d %5.1f%% %8.2f/s', ...
                     c - clast, n-c, n, 100 * (c/n), (c-clast) / t) ;
-                fprintf (f, '%5d: %5d of %5d %5.1f%% %8.2f/sec', ...
+                fprintf (f, '%5d: %5d of %5d %5.1f%% %8.2f/s', ...
                     c - clast, n-c, n, 100 * (c/n), (c-clast) / t) ;
             end
             if (debug)

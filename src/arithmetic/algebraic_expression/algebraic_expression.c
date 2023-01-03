@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "RG.h"
 #include "utils.h"
@@ -82,7 +82,7 @@ static AlgebraicExpression *_AlgebraicExpression_RemoveOperand
 		switch(current->operation.op) {
 		case AL_EXP_TRANSPOSE:
 			transpose = !transpose;
-			current = FIRST_CHILD(current); // transpose have only one child
+			current = FIRST_CHILD(current); // transpose has only one child
 			break;
 		case AL_EXP_ADD:
 			// Addition order of operands is not effected by transpose
@@ -112,7 +112,7 @@ static AlgebraicExpression *_AlgebraicExpression_RemoveOperand
 	// expression is just a single operand, set root to NULL
 	if(array_len(stack) == 0) *root = NULL;
 
-	// propegate operand removal upward
+	// propagate operand removal upwards
 	// when removing A from MUL(A,B) root should become B
 	// when removing A from T(T(A)) root should become NULL
 	// when removing A from ADD(MUL(T(A),B),C) root should become ADD(B,C)
@@ -125,7 +125,7 @@ static AlgebraicExpression *_AlgebraicExpression_RemoveOperand
 		if(current != ret) AlgebraicExpression_Free(current);
 
 		AL_EXP_OP op = parent->operation.op;
-		/* binary operation with a single child, replace operaion with child
+		/* binary operation with a single child, replace operation with child
 		 * removing A from A+B should become B */
 		if(op == AL_EXP_ADD || op == AL_EXP_MUL) {
 			if(AlgebraicExpression_ChildCount(parent) == 1) {

@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "op_edge_by_index_scan.h"
 #include "../../query_ctx.h"
@@ -350,15 +350,14 @@ static Record EdgeIndexScanConsume
 static OpResult EdgeIndexScanReset(OpBase *opBase) {
 	OpEdgeIndexScan *op = (OpEdgeIndexScan *)opBase;
 
-	if(op->rebuild_index_query) {
+	if(op->iter) {
 		RediSearch_ResultsIteratorFree(op->iter);
 		op->iter = NULL;
-		if(op->unresolved_filters) {
-			FilterTree_Free(op->unresolved_filters);
-			op->unresolved_filters = NULL;
-		}
-	} else {
-		RediSearch_ResultsIteratorReset(op->iter);
+	}
+
+	if(op->unresolved_filters) {
+		FilterTree_Free(op->unresolved_filters);
+		op->unresolved_filters = NULL;
 	}
 
 	return OP_OK;

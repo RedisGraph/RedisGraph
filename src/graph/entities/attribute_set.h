@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #pragma once
 
@@ -51,7 +51,15 @@ SIValue AttributeSet_GetIdx
 	Attribute_ID *attr_id    // attribute identifier
 );
 
-// adds an attribute to the set
+// adds an attribute to the set without cloning the SIValue
+void AttributeSet_AddNoClone
+(
+	AttributeSet *set,     // set to update
+	Attribute_ID attr_id,  // attribute identifier
+	SIValue value          // attribute value
+);
+
+// adds an attribute to the set (clones the SIValue)
 void AttributeSet_Add
 (
 	AttributeSet *set,     // set to update
@@ -65,6 +73,15 @@ void AttributeSet_Set_Allow_Null
 	AttributeSet *set,     // set to update
 	Attribute_ID attr_id,  // attribute identifier
 	SIValue value          // attribute value
+);
+
+// updates existing attribute (without cloning), return true if attribute been updated
+// otherwise false
+bool AttributeSet_UpdateNoClone
+(
+	AttributeSet *set,     // set to update
+	Attribute_ID attr_id,  // attribute identifier
+	SIValue value          // new value
 );
 
 // updates existing attribute, return true if attribute been updated

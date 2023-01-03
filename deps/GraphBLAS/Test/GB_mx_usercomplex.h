@@ -171,7 +171,6 @@ GB_PUBLIC GrB_Info Complex_finalize (void) ;
 #define Y *y
 #define Z *z
 
-#if GxB_STDC_VERSION >= 201112L
 GB_PUBLIC void complex_first    (C Z, const C X, const C Y) ;
 GB_PUBLIC void complex_second   (C Z, const C X, const C Y) ;
 GB_PUBLIC void complex_pair     (C Z, const C X, const C Y) ;
@@ -195,7 +194,6 @@ GB_PUBLIC void complex_real     (double Z, const C X) ;
 GB_PUBLIC void complex_imag     (double Z, const C X) ;
 GB_PUBLIC void complex_cabs     (double Z, const C X) ;
 GB_PUBLIC void complex_angle    (double Z, const C X) ;
-#endif
 
 GB_PUBLIC void complex_min     (C Z, const C X, const C Y) ;
 GB_PUBLIC void complex_max     (C Z, const C X, const C Y) ;

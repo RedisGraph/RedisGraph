@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "RG.h"
 #include "rg_matrix.h"
@@ -43,11 +43,8 @@ void RG_Matrix_free
 
 	if(RG_MATRIX_MAINTAIN_TRANSPOSE(M)) RG_Matrix_free(&M->transposed);
 
-	// force flush M
-	info = RG_Matrix_wait(M, true);
-	ASSERT(info == GrB_SUCCESS);
-
-	GrB_Matrix m = RG_MATRIX_M(M);
+	GrB_Matrix m  = RG_MATRIX_M(M);
+	GrB_Matrix dp = RG_MATRIX_DELTA_PLUS(M);
 
 	// free edges
 	if(RG_MATRIX_MULTI_EDGE(M)) {
@@ -60,6 +57,8 @@ void RG_Matrix_free
 
 		// frees multi-edge arrays
 		info = GrB_Matrix_apply(m, NULL, NULL, free_multi_edge_op, m, NULL);
+		ASSERT(info == GrB_SUCCESS);
+		info = GrB_Matrix_apply(dp, NULL, NULL, free_multi_edge_op, dp, NULL);
 		ASSERT(info == GrB_SUCCESS);
 	}
 

@@ -1,5 +1,14 @@
 version: 2.1
 
+parameters:
+  run_default_flow:
+    default: true
+    type: boolean
+
+  run_benchmark_flow_label:
+    default: false
+    type: boolean
+
 commands:
   early-returns:
     steps:
@@ -57,6 +66,7 @@ commands:
             git submodule update --init deps/readies
             ./deps/readies/bin/getpy3
             ./deps/readies/bin/getpy2
+            ./deps/readies/bin/getaws
 
   install-prerequisites:
     parameters:
@@ -164,6 +174,14 @@ commands:
           command: make fuzz
       - save-tests-logs
 
+  fuzzer-test-steps:
+    steps:
+      - run:
+          name: Run 30-second fuzz test
+          shell: /bin/bash -l -eo pipefail
+          command: make fuzz
+      - save-tests-logs
+
   platform-build-steps:
     parameters:
       platform:
@@ -220,7 +238,7 @@ commands:
           name: Upload artifacts to S3
           command: |
             if [[ -n $CIRCLE_BRANCH ]]; then
-                make upload-artifacts OSNICK=<<parameters.platform>>
+                make upload-artifacts OSNICK=<<parameters.platform>> SHOW=1 VERBOSE=1
             fi
       - run:
           name: Publish container
@@ -263,7 +281,7 @@ commands:
             export EC2_PRIVATE_PEM=$PERFORMANCE_EC2_PRIVATE_PEM
             export PROFILE=<< parameters.profile_env >>
             export BENCHMARK_GLOB=<< parameters.benchmark_glob >>
-            export PERF_CALLGRAPH_MODE="fp"
+            export PERF_CALLGRAPH_MODE="dwarf"
             redisbench-admin run-remote \
               --module_path << parameters.module_path >> \
               --github_actor << parameters.github_actor >> \
@@ -285,7 +303,8 @@ commands:
 jobs:
   build-linux-debian:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bullseye
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    resource_class: large
     parameters:
       redis_version:
         type: string
@@ -311,7 +330,8 @@ jobs:
 
   coverage:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bullseye
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    resource_class: large
     steps:
       - early-returns
       - checkout-all
@@ -332,9 +352,21 @@ jobs:
           no_output_timeout: 45m
       - save-tests-logs
 
+  fuzzer:
+    docker:
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    steps:
+      - early-returns
+      - checkout-all
+      - install-prerequisites
+      - build-steps
+      - fuzzer-test-steps
+      - save-tests-logs
+
   build-memcheck:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.7-x64-bionic
+    resource_class: large
     steps:
       - early-returns
       - checkout-all
@@ -346,6 +378,8 @@ jobs:
           name: Test for memory leaks
           shell: /bin/bash -l -eo pipefail
           command: make memcheck PARALLEL=8 PLATFORM_MODE=1
+          timeout: 45m
+          no_output_timeout: 45m
       - save-tests-logs
 
   build-platforms:
@@ -368,7 +402,7 @@ jobs:
         type: string
     machine:
       image: ubuntu-2004:202101-01
-    resource_class: arm.medium
+    resource_class: arm.large
     steps:
       - vm-build-platforms-steps:
           platform: <<parameters.platform>>
@@ -376,7 +410,7 @@ jobs:
 
   build-macos:
     macos:
-      xcode: 12.4.0
+      xcode: 12.5.1
     resource_class: macos.x86.medium.gen2
     parameters:
       upload:
@@ -391,10 +425,9 @@ jobs:
           name: Upload artifacts to S3
           command: |
             if [[ -n $CIRCLE_BRANCH && "<<parameters.upload>>" == "yes" ]]; then
-                make upload-artifacts
+                make upload-artifacts SHOW=1 VERBOSE=1
             fi
       - persist-artifacts
-
 
   upload-artifacts:
     parameters:
@@ -402,7 +435,7 @@ jobs:
         type: string
         default: "0"
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bullseye
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - early-return-for-forked-pull-requests
@@ -423,7 +456,7 @@ jobs:
 
   release-automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bullseye
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - early-return-for-forked-pull-requests
@@ -435,7 +468,7 @@ jobs:
 
   nightly-automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bullseye
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - early-return-for-forked-pull-requests
@@ -451,7 +484,7 @@ jobs:
 
   benchmark:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - checkout-all
@@ -468,7 +501,7 @@ jobs:
 
   benchmark-profiler:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - checkout-all
@@ -483,11 +516,19 @@ jobs:
       - benchmark-steps:
           profile_env: "1"
           module_path: "/root/project/src/$PACKAGE_NAME.so"
+          benchmark_glob: "graph500-scale18-ef16_1hop.yml"
           triggering_env: "circleci.profilers" # results generated with profilers attached are not mixed with the ones without it
 
 #----------------------------------------------------------------------------------------------------------------------------------
 
 on-any-branch: &on-any-branch
+  filters:
+    branches:
+      only: /.*/
+    tags:
+      only: /.*/
+
+always: &always
   filters:
     branches:
       only: /.*/
@@ -547,21 +588,13 @@ on-integ-and-version-tags: &on-integ-and-version-tags
     tags:
       only: /^v[0-9].*/
 
-on-perf-tags: &on-perf-tags
-  filters:
-    branches:
-      only:
-        - master
-        - /^\d+\.\d+.*$/
-        - /^perf-.*$/
-    tags:
-      only: /^v[0-9].*/
-
 #----------------------------------------------------------------------------------------------------------------------------------
 
 workflows:
   version: 2
   build_and_package:
+    when:
+      << pipeline.parameters.run_default_flow >>
     jobs:
       - build-linux-debian:
           name: build
@@ -571,13 +604,13 @@ workflows:
           context: common
           matrix:
             parameters:
-              platform: [focal, bionic, xenial, centos7, rocky8, bullseye]
+              platform: [jammy, focal, bionic, xenial, centos7, rocky8, bullseye]
       - build-arm-platforms:
           <<: *on-integ-and-version-tags
           context: common
           matrix:
             parameters:
-              platform: [bionic]
+              platform: [jammy, focal, bionic]
       - build-macos:
           context: common
           <<: *on-integ-and-version-tags
@@ -608,12 +641,16 @@ workflows:
           requires:
             - upload-release-artifacts
       - benchmark:
-          <<: *on-perf-tags
+          <<: *on-integ-and-version-tags
           context: common
-      # disable temporarily due to huge profile overhead in RG
-      # - benchmark-profiler:
-      #     <<: *on-perf-tags
-      #     context: common
+
+  benchmark_flow_label:
+    when:
+      << pipeline.parameters.run_benchmark_flow_label >>
+    jobs:
+      - benchmark:
+          context: common
+          <<: *on-any-branch
 
   nightly:
     triggers:
@@ -628,8 +665,17 @@ workflows:
           matrix:
             parameters:
               redis_version: ["6.0", "7", "unstable"]
+      - fuzzer:
+          name: nightly-fuzzer
+
+  nightly-perf-once-a-week:
+    triggers:
+      - schedule:
+          #  “At 07:00 on Mondays.”
+          cron: "00 07 * * 1"
+          filters:
+            branches:
+              only: master
+    jobs:
       - benchmark:
           context: common
-      # disable temporarily due to huge profile overhead in RG
-      # - benchmark-profiler:
-      #     context: common

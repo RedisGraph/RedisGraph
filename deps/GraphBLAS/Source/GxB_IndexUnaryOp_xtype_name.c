@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GxB_IndexUnaryOp_xtype_name: return the type_name of x for z=f(x,thunk)
+// GxB_IndexUnaryOp_xtype_name: return the type_name of x for z=f(x,i,j,y)
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.

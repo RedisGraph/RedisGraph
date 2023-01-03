@@ -66,3 +66,5 @@ deps/GraphBLAS/Config/GraphBLAS.h.tmp
 *.gcda
 *.gcno
 /cov/
+/venv/
+/.vscode/

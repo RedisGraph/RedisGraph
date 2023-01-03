@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,7 +41,7 @@ Feature: Comparison2 - Half-bounded Range
     When executing query:
       """
       MATCH (:Root)-->(i:Child)
-      WHERE exists(i.var) AND i.var > 'x'
+      WHERE i.var IS NOT NULL AND i.var > 'x'
       RETURN i.var
       """
     Then the result should be, in any order:
@@ -60,7 +60,7 @@ Feature: Comparison2 - Half-bounded Range
     When executing query:
       """
       MATCH (:Root)-->(i:Child)
-      WHERE NOT exists(i.var) OR i.var > 'x'
+      WHERE i.var IS NULL OR i.var > 'x'
       RETURN i.var
       """
     Then the result should be, in any order:
@@ -69,7 +69,6 @@ Feature: Comparison2 - Half-bounded Range
       | null  |
     And no side effects
 
-  @skip
   Scenario Outline: [3] Comparing across types yields null, except numbers
     Given an empty graph
     And having executed:
@@ -119,7 +118,6 @@ Feature: Comparison2 - Half-bounded Range
       | [1, 'a']  | [1, null] | null   |
       | [1, 2]    | [3, null] | false  |
 
-  @skip
   Scenario Outline: [5] Comparing NaN
     Given an empty graph
     When executing query:
@@ -138,7 +136,6 @@ Feature: Comparison2 - Half-bounded Range
       | 0.0 / 0.0 | 0.0 / 0.0 | false  |
       | 0.0 / 0.0 | 'a'       | null   |
 
-  @skip
   Scenario Outline: [6] Comparability between numbers and strings
     Given any graph
     When executing query:

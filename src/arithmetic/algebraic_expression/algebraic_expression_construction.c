@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "RG.h"
 #include "../algebraic_expression.h"
@@ -586,8 +586,8 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 	// and the process repeat itself
 
 	// a graph with no edges implies an empty algebraic expression
-	// the reasoning behind this decission is that algebraic expression
-	// represent graph traversals, no edges means no traversals
+	// the reasoning behind this decision is that the algebraic expression
+	// represents graph traversals, no edges means no traversals
 	AlgebraicExpression **exps = array_new(AlgebraicExpression *, 1);
 	uint edge_count = QueryGraph_EdgeCount(qg);
 

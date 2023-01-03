@@ -37,8 +37,6 @@ common options for upload operations:
   VERBOSE=1             # show more details
   NOP=1                 # do not copy, just print commands
 
-make format             # Apply source code formatting
-
 endef
 
 all:
@@ -94,9 +92,6 @@ cov-upload:
 
 fuzz:
 	@$(MAKE) -C src fuzz
-
-format:
-	astyle -Q --options=.astylerc -R --ignore-exclude-errors "./*.c,*.h,*.cpp"
 
 ifneq ($(HELP),)
 ifneq ($(filter help,$(MAKECMDGOALS)),)

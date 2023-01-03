@@ -6,7 +6,7 @@ function C = atanh (G)
 % See also GrB/tan, GrB/atan, GrB/tanh, GrB/atan2.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 G = G.opaque ;
 C = GrB (gb_trig ('atanh', G)) ;

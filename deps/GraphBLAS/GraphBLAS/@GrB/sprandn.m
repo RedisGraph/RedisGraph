@@ -15,7 +15,7 @@ function C = sprandn (arg1, arg2, arg3)
 % See also GrB/sprandn, GrB/sprandsym, GrB.random.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
 if (nargin == 1)
     % C = sprandn (G)
@@ -29,6 +29,6 @@ elseif (nargin == 3)
     C = GrB (gb_random (m, n, d, 'normal')) ;
 else
     % the 'rc' input option is not supported
-    error ('usage: sprandn(A) or sprandn(m,n,d)') ;
+    error ('GrB:error', 'usage: sprandn(A) or sprandn(m,n,d)') ;
 end
 

@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "./arithmetic_expression.h"
 
@@ -160,6 +160,23 @@ static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 	return clone;
 }
 
+static void _AR_EXP_ValidateArgsCount
+(
+	AR_FuncDesc *fdesc,
+	uint argc
+) {
+	// Make sure number of arguments is as expected.
+	if(fdesc->min_argc > argc) {
+		// Set the query-level error.
+		ErrorCtx_SetError("Received %d arguments to function '%s', expected at least %d", argc,
+						  fdesc->name, fdesc->min_argc);
+	} else if(fdesc->max_argc < argc) {
+		// Set the query-level error.
+		ErrorCtx_SetError("Received %d arguments to function '%s', expected at most %d", argc,
+						  fdesc->name, fdesc->max_argc);
+	}
+}
+
 AR_ExpNode *AR_EXP_NewOpNode
 (
 	const char *func_name,
@@ -169,6 +186,8 @@ AR_ExpNode *AR_EXP_NewOpNode
 	// retrieve function
 	AR_FuncDesc *func = AR_GetFunc(func_name, include_internal);
 	AR_ExpNode *node = _AR_EXP_NewOpNode(child_count);
+
+	if(!func->internal) _AR_EXP_ValidateArgsCount(func, child_count);
 
 	ASSERT(func != NULL);
 	node->op.f = func;
@@ -367,21 +386,6 @@ static bool _AR_EXP_ValidateInvocation
 	SIType actual_type;
 	SIType expected_type = T_NULL;
 
-	// Make sure number of arguments is as expected.
-	if(fdesc->min_argc > argc) {
-		// Set the query-level error.
-		ErrorCtx_SetError("Received %d arguments to function '%s', expected at least %d", argc,
-						  fdesc->name, fdesc->min_argc);
-		return false;
-	}
-
-	if(fdesc->max_argc < argc) {
-		// Set the query-level error.
-		ErrorCtx_SetError("Received %d arguments to function '%s', expected at most %d", argc,
-						  fdesc->name, fdesc->max_argc);
-		return false;
-	}
-
 	uint expected_types_count = array_len(fdesc->types);
 	for(int i = 0; i < argc; i++) {
 		actual_type = SI_TYPE(argv[i]);
@@ -391,9 +395,6 @@ static bool _AR_EXP_ValidateInvocation
 			expected_type = fdesc->types[i];
 		}
 		if(!(actual_type & expected_type)) {
-			/* TODO extend string-building logic to better express multiple acceptable types, like:
-			 * RETURN 'a' * 2
-			 * "Type mismatch: expected Float, Integer or Duration but was String" */
 			Error_SITypeMismatch(argv[i], expected_type);
 			return false;
 		}

@@ -97,6 +97,7 @@ GrB_Info GrB_Vector_assign_Scalar   // w<Mask>(I) = accum (w(I),s)
     GB_RETURN_IF_NULL_OR_FAULTY (w) ;
     GB_RETURN_IF_NULL_OR_FAULTY (scalar) ;
     GB_RETURN_IF_FAULTY (M_in) ;
+    GB_RETURN_IF_NULL (I) ;
     ASSERT (GB_VECTOR_OK (w)) ;
     ASSERT (M_in == NULL || GB_VECTOR_OK (M_in)) ;
 
@@ -113,7 +114,29 @@ GrB_Info GrB_Vector_assign_Scalar   // w<Mask>(I) = accum (w(I),s)
 
     GrB_Index nvals ;
     GB_OK (GB_nvals (&nvals, (GrB_Matrix) scalar, Context)) ;
-    if (nvals == 1)
+
+    if (M == NULL && !Mask_comp && ni == 1 && !C_replace)
+    {
+
+        //----------------------------------------------------------------------
+        // scalar assignment
+        //----------------------------------------------------------------------
+
+        const GrB_Index row = I [0] ;
+        if (nvals == 1)
+        { 
+            // set the element: w(row) += scalar or w(row) = scalar
+            info = GB_setElement ((GrB_Matrix) w, accum, scalar->x, row, 0,
+                scalar->type->code, Context) ;
+        }
+        else if (accum == NULL)
+        { 
+            // delete the w(row) element
+            info = GB_Vector_removeElement (w, row, Context) ;
+        }
+
+    }
+    else if (nvals == 1)
     { 
 
         //----------------------------------------------------------------------
@@ -122,7 +145,7 @@ GrB_Info GrB_Vector_assign_Scalar   // w<Mask>(I) = accum (w(I),s)
 
         // This is identical to non-opaque scalar subassignment
 
-        info = (GB_assign (
+        info = GB_assign (
             (GrB_Matrix) w, C_replace,  // w vector and its descriptor
             M, Mask_comp, Mask_struct,  // mask vector and its descriptor
             false,                      // do not transpose the mask
@@ -134,7 +157,7 @@ GrB_Info GrB_Vector_assign_Scalar   // w<Mask>(I) = accum (w(I),s)
             scalar->x,                  // scalar to assign, expands to become u
             scalar->type->code,         // type code of scalar to expand
             GB_ASSIGN,
-            Context)) ;
+            Context) ;
 
     }
     else

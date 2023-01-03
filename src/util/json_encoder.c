@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "json_encoder.h"
 #include "sds/sds.h"
@@ -53,6 +53,7 @@ static sds _JsonEncoder_Node(const Node *n, sds s) {
 		const char *label = Schema_GetName(schema);
 		ASSERT(label);
 		s = sdscatfmt(s, "\"%s\"", label);
+		if(i != label_count - 1) s = sdscat(s, ", ");
 	}
 	s = sdscat(s, "], ");
 	s = _JsonEncoder_Properties((const GraphEntity *)n, s);

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,7 +61,18 @@ Feature: Create1 - Creating nodes
       | +nodes  | 1 |
       | +labels | 1 |
 
-  Scenario: [4] Create a single node with multiple labels
+  Scenario: [4] Create two nodes with same label
+    Given an empty graph
+    When executing query:
+      """
+      CREATE (:Label), (:Label)
+      """
+    Then the result should be empty
+    And the side effects should be:
+      | +nodes  | 2 |
+      | +labels | 1 |
+
+  Scenario: [5] Create a single node with multiple labels
     Given an empty graph
     When executing query:
       """
@@ -72,7 +83,18 @@ Feature: Create1 - Creating nodes
       | +nodes  | 1 |
       | +labels | 4 |
 
-  Scenario: [5] Create a single node with a property
+  Scenario: [6] Create three nodes with multiple labels
+    Given an empty graph
+    When executing query:
+      """
+      CREATE (:B:A:D), (:B:C), (:D:E:B)
+      """
+    Then the result should be empty
+    And the side effects should be:
+      | +nodes  | 3 |
+      | +labels | 5 |
+
+  Scenario: [7] Create a single node with a property
     Given any graph
     When executing query:
       """
@@ -83,7 +105,7 @@ Feature: Create1 - Creating nodes
       | +nodes      | 1 |
       | +properties | 1 |
 
-  Scenario: [6] Create a single node with a property and return it
+  Scenario: [8] Create a single node with a property and return it
     Given any graph
     When executing query:
       """
@@ -97,7 +119,7 @@ Feature: Create1 - Creating nodes
       | +nodes      | 1 |
       | +properties | 1 |
 
-  Scenario: [7] Create a single node with two properties
+  Scenario: [9] Create a single node with two properties
     Given any graph
     When executing query:
       """
@@ -108,7 +130,7 @@ Feature: Create1 - Creating nodes
       | +nodes      | 1 |
       | +properties | 2 |
 
-  Scenario: [8] Create a single node with two properties and return them
+  Scenario: [10] Create a single node with two properties and return them
     Given any graph
     When executing query:
       """
@@ -122,7 +144,7 @@ Feature: Create1 - Creating nodes
       | +nodes      | 1 |
       | +properties | 2 |
 
-  Scenario: [9] Create a single node with null properties should not return those properties
+  Scenario: [11] Create a single node with null properties should not return those properties
     Given any graph
     When executing query:
       """
@@ -136,7 +158,7 @@ Feature: Create1 - Creating nodes
       | +nodes      | 1 |
       | +properties | 1 |
 
-  Scenario: [10] CREATE does not lose precision on large integers
+  Scenario: [12] CREATE does not lose precision on large integers
     Given an empty graph
     When executing query:
       """
@@ -151,9 +173,7 @@ Feature: Create1 - Creating nodes
       | +properties | 1 |
       | +labels     | 1 |
 
-  @NegativeTest
-  @skip
-  Scenario: [11] Fail when creating a node that is already bound
+  Scenario: [13] Fail when creating a node that is already bound
     Given any graph
     When executing query:
       """
@@ -162,9 +182,7 @@ Feature: Create1 - Creating nodes
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
-  @NegativeTest
-  @skip
-  Scenario: [12] Fail when creating a node with properties that is already bound
+  Scenario: [14] Fail when creating a node with properties that is already bound
     Given any graph
     When executing query:
       """
@@ -174,9 +192,8 @@ Feature: Create1 - Creating nodes
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
-  @NegativeTest
   @skip
-  Scenario: [13] Fail when adding a new label predicate on a node that is already bound 1
+  Scenario: [15] Fail when adding a new label predicate on a node that is already bound 1
     Given an empty graph
     When executing query:
       """
@@ -185,10 +202,9 @@ Feature: Create1 - Creating nodes
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
-  @NegativeTest
-  # Consider improve naming of this and the next three scenarios, they seem to test invariant nature of node patterns
   @skip
-  Scenario: [14] Fail when adding new label predicate on a node that is already bound 2
+  # Consider improve naming of this and the next three scenarios, they seem to test invariant nature of node patterns
+  Scenario: [16] Fail when adding new label predicate on a node that is already bound 2
     Given an empty graph
     When executing query:
       """
@@ -197,9 +213,8 @@ Feature: Create1 - Creating nodes
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
-  @NegativeTest
   @skip
-  Scenario: [15] Fail when adding new label predicate on a node that is already bound 3
+  Scenario: [17] Fail when adding new label predicate on a node that is already bound 3
     Given an empty graph
     When executing query:
       """
@@ -208,9 +223,8 @@ Feature: Create1 - Creating nodes
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
-  @NegativeTest
   @skip
-  Scenario: [16] Fail when adding new label predicate on a node that is already bound 4
+  Scenario: [18] Fail when adding new label predicate on a node that is already bound 4
     Given an empty graph
     When executing query:
       """
@@ -219,9 +233,8 @@ Feature: Create1 - Creating nodes
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
-  @NegativeTest
   @skip
-  Scenario: [17] Fail when adding new label predicate on a node that is already bound 5
+  Scenario: [19] Fail when adding new label predicate on a node that is already bound 5
     Given an empty graph
     When executing query:
       """
@@ -230,8 +243,7 @@ Feature: Create1 - Creating nodes
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
-  @NegativeTest
-  Scenario: [18] Fail when creating a node using undefined variable in pattern
+  Scenario: [20] Fail when creating a node using undefined variable in pattern
     Given any graph
     When executing query:
       """

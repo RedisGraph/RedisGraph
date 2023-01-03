@@ -31,7 +31,7 @@
 #define GB_FREE_ALL         \
 {                           \
     GB_FREE_WORKSPACE ;     \
-    GB_phbix_free (C) ;     \
+    GB_phybix_free (C) ;    \
 }
 
 #include "GB_kron.h"
@@ -218,6 +218,7 @@ GrB_Info GB_kroner                  // C = kron (A,B)
 
     if (!C_is_full)
     { 
+        // C is sparse or hypersparse
         #pragma omp parallel for num_threads(nthreads) schedule(guided)
         for (kC = 0 ; kC < cnvec ; kC++)
         {
@@ -232,10 +233,7 @@ GrB_Info GB_kroner                  // C = kron (A,B)
             const int64_t bknz = (Bp == NULL) ? bvlen : (Bp [kB+1] - Bp [kB]) ;
             // determine # entries in C(:,jC), the (kC)th vector of C
             // int64_t kC = kA * bnvec + kB ;
-            if (!C_is_full)
-            { 
-                Cp [kC] = aknz * bknz ;
-            }
+            Cp [kC] = aknz * bknz ;
             if (C_is_hyper)
             { 
                 Ch [kC] = jA * bvdim + jB ;
@@ -243,6 +241,7 @@ GrB_Info GB_kroner                  // C = kron (A,B)
         }
 
         GB_cumsum (Cp, cnvec, &(C->nvec_nonempty), nthreads, Context) ;
+        C->nvals = Cp [cnvec] ;
         if (C_is_hyper) C->nvec = cnvec ;
     }
 

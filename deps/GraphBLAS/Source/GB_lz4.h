@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_lz4.h: defintions for a wrapper for the LZ4 compression library
+// GB_lz4.h: definitions for a wrapper for the LZ4 compression library
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.

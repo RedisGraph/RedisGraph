@@ -16,6 +16,15 @@
 // else if A(i,j) does not appear but B(i,j) does:
 //      C(i,j) = add (alpha, B(i,j))
 
+// by contrast, GrB_eWiseAdd does the following:
+
+// if A(i,j) and B(i,j) both appear:
+//      C(i,j) = add (A(i,j), B(i,j))
+// else if A(i,j) appears but B(i,j) does not:
+//      C(i,j) = A(i,j)
+// else if A(i,j) does not appear but B(i,j) does:
+//      C(i,j) = B(i,j)
+
 #include "GB_ewise.h"
 #include "GB_get_mask.h"
 
@@ -41,6 +50,7 @@
         true,                       /* eWiseAdd                    */       \
         true, alpha, beta,          /* eWiseUnion                  */       \
         Context) ;
+
 //------------------------------------------------------------------------------
 // GxB_Matrix_eWiseUnion: matrix addition
 //------------------------------------------------------------------------------

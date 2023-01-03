@@ -106,7 +106,7 @@
 #include "GB_build.h"
 #include "GB_sort.h"
 #include "GB_binop.h"
-#ifndef GBCOMPACT
+#ifndef GBCUDA_DEV
 #include "GB_red__include.h"
 #endif
 
@@ -155,6 +155,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
                                     // if NULL use the SECOND operator to
                                     // keep the most recent duplicate.
     const GrB_Type stype,           // the type of S_work or S_input
+    bool do_burble,                 // if true, then burble is allowed
     GB_Context Context
 )
 {
@@ -205,7 +206,6 @@ GrB_Info GB_builder                 // build a matrix from tuples
     int64_t *restrict I_work = (*I_work_handle) ;
     int64_t *restrict J_work = (*J_work_handle) ;
     int64_t *restrict K_work = NULL ; size_t K_work_size = 0 ;
-    ASSERT (*J_work_size_handle == GB_Global_memtable_size (J_work)) ;
 
     //--------------------------------------------------------------------------
     // determine the number of threads to use
@@ -819,7 +819,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
     ASSERT (T->x == NULL) ;
 
     T->iso = S_iso ;                // OK: T is iso if and only if Sx is iso
-    bool do_burble = (vlen > 1 || vdim > 1) && (nvals > 1) ;
+    do_burble = do_burble && (vlen > 1 || vdim > 1) && (nvals > 1) ;
     if (do_burble)
     {
         if (S_iso)
@@ -933,7 +933,8 @@ GrB_Info GB_builder                 // build a matrix from tuples
     T->nvec_nonempty = tnvec ;
     T->nvec = tnvec ;
     Tp [tnvec] = tnz ;
-    ASSERT (T->nvec == T->plen) ;
+    T->nvals = tnz ;
+    ASSERT (T->nvec == T->plen || (T->plen == 1 && T->nvec == 0)) ;
     T->magic = GB_MAGIC ;
 
     //--------------------------------------------------------------------------
@@ -971,7 +972,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
         if (T->i == NULL)
         { 
             // out of memory
-            GB_phbix_free (T) ;
+            GB_phybix_free (T) ;
             GB_FREE_WORKSPACE ;
             return (GrB_OUT_OF_MEMORY) ;
         }
@@ -1025,7 +1026,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
 
     GrB_Type xtype, ytype, ztype ;
     GxB_binary_function fdup ;
-    #ifndef GBCOMPACT
+    #ifndef GBCUDA_DEV
     GB_Opcode opcode ;
     #endif
 
@@ -1045,7 +1046,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
         // z = SECOND (x,y) where all three types are the same as ttype
         // T(i,j) = (ttype) Sx(k) will be done for all tuples.
 
-        #ifndef GBCOMPACT
+        #ifndef GBCUDA_DEV
         opcode = GB_SECOND_binop_code ;
         #endif
         xtype = ttype ;
@@ -1074,7 +1075,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
 
         ASSERT_BINARYOP_OK (dup, "dup for build_factory", GB0) ;
         ASSERT (!S_iso) ;
-        #ifndef GBCOMPACT
+        #ifndef GBCUDA_DEV
         opcode = dup->opcode ;
         #endif
         xtype = dup->xtype ;
@@ -1159,7 +1160,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
         if (T->x == NULL)
         { 
             // out of memory
-            GB_phbix_free (T) ;
+            GB_phybix_free (T) ;
             GB_FREE_WORKSPACE ;
             return (GrB_OUT_OF_MEMORY) ;
         }
@@ -1237,7 +1238,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
                 // T and Sx are not iso; call in the workers
                 //--------------------------------------------------------------
 
-                #ifndef GBCOMPACT
+                #ifndef GBCUDA_DEV
 
                     //----------------------------------------------------------
                     // define the worker for the switch factory

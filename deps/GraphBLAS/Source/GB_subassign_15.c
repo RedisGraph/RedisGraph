@@ -71,6 +71,7 @@ GrB_Info GB_subassign_15
     const int64_t *restrict Cp = C->p ;
     const bool C_is_hyper = (Ch != NULL) ;
     GB_GET_MASK ;
+    GB_GET_MASK_HYPER_HASH ;
     GB_GET_S ;
     GB_GET_ACCUM_SCALAR ;
 
@@ -121,8 +122,8 @@ GrB_Info GB_subassign_15
             // get S(iA_start:end,j) and M(iA_start:end,j)
             //------------------------------------------------------------------
 
-            GB_GET_VECTOR_FOR_IXJ (S, iA_start) ;
-            GB_GET_VECTOR_FOR_IXJ (M, iA_start) ;
+            GB_LOOKUP_VECTOR_FOR_IXJ (S, iA_start) ;
+            GB_LOOKUP_VECTOR_FOR_IXJ (M, iA_start) ;
 
             //------------------------------------------------------------------
             // C(I(iA_start,iA_end-1),jC)<!M> += scalar
@@ -238,8 +239,8 @@ GrB_Info GB_subassign_15
             // get S(iA_start:end,j) and M(iA_start:end,j)
             //------------------------------------------------------------------
 
-            GB_GET_VECTOR_FOR_IXJ (S, iA_start) ;
-            GB_GET_VECTOR_FOR_IXJ (M, iA_start) ;
+            GB_LOOKUP_VECTOR_FOR_IXJ (S, iA_start) ;
+            GB_LOOKUP_VECTOR_FOR_IXJ (M, iA_start) ;
 
             //------------------------------------------------------------------
             // C(I(iA_start,iA_end-1),jC)<!M> += scalar

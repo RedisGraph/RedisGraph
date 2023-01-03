@@ -6,15 +6,14 @@ function C = eps (G)
 % See also GrB/isfloat, realmax, realmin.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: GPL-3.0-or-later
+% SPDX-License-Identifier: Apache-2.0
 
-% FUTURE: GraphBLAS should have a built-in unary operator to
-% compute eps.
+% FUTURE: GraphBLAS should have a built-in eps unary operator.
 
 % convert to a built-in full matrix and use the built-in eps:
 
-% FUTURE: there should be a sparse version of 'eps'.  C is full because
-% eps (0) is 2^(-1024).
+% FUTURE: there should be a sparse version of 'eps'.
+% C is full because eps (0) is 2^(-1024).
 
 switch (GrB.type (G))
 
@@ -31,7 +30,7 @@ switch (GrB.type (G))
         C = max (eps (double (real (G))), eps (double (imag (G)))) ;
 
     otherwise
-        error ('input must be floating-point') ;
+        error ('GrB:error', 'input must be floating-point') ;
 
 end
 

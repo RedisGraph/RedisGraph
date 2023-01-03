@@ -1,7 +1,7 @@
 /*
- * Copyright 2018-2022 Redis Labs Ltd. and Contributors
- *
- * This file is available under the Redis Labs Source Available License Agreement
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
  */
 
 #pragma once
@@ -31,28 +31,61 @@ typedef struct {
 	EdgeCreateCtx *edges_to_create;
 } AST_CreateContext;
 
-// Convert the properties specified in a node or edge entity into a set of string keys and SIValue values.
-PropertyMap *AST_ConvertPropertiesMap(const cypher_astnode_t *props);
+// convert the properties specified in a node or edge entity
+// into a set of string keys and SIValue values
+PropertyMap *AST_ConvertPropertiesMap
+(
+	const cypher_astnode_t *props
+);
 
-// Extract the necessary information to populate an update operation from a SET clause.
-rax *AST_PrepareUpdateOp(GraphContext *gc, const cypher_astnode_t *set_clause);
+// extract the necessary information to populate an update operation from a SET clause
+rax *AST_PrepareUpdateOp
+(
+	GraphContext *gc,
+	const cypher_astnode_t *set_clause
+);
 
-// Extract the necessary information to populate a delete operation from a DELETE clause.
-AR_ExpNode **AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause);
+// extract the necessary information to populate a delete operation from a DELETE clause
+AR_ExpNode **AST_PrepareDeleteOp
+(
+	const cypher_astnode_t *delete_clause
+);
 
-// Determine sort directions (ascending / descending) of multiple sort operations
-void AST_PrepareSortOp(const cypher_astnode_t *order_clause, int **sort_directions);
+// determine sort directions (ascending / descending) of multiple sort operations
+void AST_PrepareSortOp
+(
+	const cypher_astnode_t *order_clause,
+	int **sort_directions
+);
 
-// Extract the necessary information to populate a unwind operation from an UNWIND clause.
-AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause);
+// extract the necessary information to populate a unwind operation from an UNWIND clause
+AST_UnwindContext AST_PrepareUnwindOp
+(
+	const cypher_astnode_t *unwind_clause
+);
 
-void AST_PreparePathCreation(const cypher_astnode_t *path, const QueryGraph *qg,
-							 rax *bound_vars, NodeCreateCtx **nodes, EdgeCreateCtx **edges);
+void AST_PreparePathCreation
+(
+	const cypher_astnode_t *path,
+	const QueryGraph *qg,
+	rax *bound_vars,
+	NodeCreateCtx **nodes,
+	EdgeCreateCtx **edges
+);
 
-// Extract the necessary information to populate a merge operation from a MERGE clause.
-AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, GraphContext *gc,
-									QueryGraph *qg, rax *bound_vars);
+// extract the necessary information to populate a merge operation from a MERGE clause
+AST_MergeContext AST_PrepareMergeOp
+(
+	const cypher_astnode_t *merge_clause,
+	GraphContext *gc,
+	QueryGraph *qg,
+	rax *bound_vars
+);
 
-// Extract the necessary information to populate a create operation from all CREATE clauses.
-AST_CreateContext AST_PrepareCreateOp(QueryGraph *qg, rax *bound_vars);
-
+// extract the necessary information to populate a create operation from all CREATE clauses
+AST_CreateContext AST_PrepareCreateOp
+(
+	QueryGraph *qg,
+	rax *bound_vars,
+	const cypher_astnode_t *clause
+);

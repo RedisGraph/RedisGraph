@@ -71,11 +71,14 @@ void GB_assign_zombie4
     const GB_void *restrict Mx = (GB_void *) (Mask_struct ? NULL : (M->x)) ;
     const size_t msize = M->type->size ;
     const int64_t Mnvec = M->nvec ;
-    const int64_t Mvlen = M->vlen ;
-    ASSERT (Mvlen == 1) ;
+    ASSERT (M->vlen == 1) ;
     const bool M_is_hyper = GB_IS_HYPERSPARSE (M) ;
     const bool M_is_bitmap = GB_IS_BITMAP (M) ;
     const bool M_is_full = GB_IS_FULL (M) ;
+    const int64_t *restrict M_Yp = (M_is_hyper) ? M->Y->p : NULL ;
+    const int64_t *restrict M_Yi = (M_is_hyper) ? M->Y->i : NULL ;
+    const int64_t *restrict M_Yx = (M_is_hyper) ? M->Y->x : NULL ;
+    const int64_t M_hash_bits = (M_is_hyper) ? (M->Y->vdim - 1) : 0 ;
 
     //--------------------------------------------------------------------------
     // determine the number of threads to use
@@ -138,7 +141,7 @@ void GB_assign_zombie4
 
                     if (M_is_bitmap || M_is_full)
                     { 
-                        // M is bitmap/full, no need for GB_lookup
+                        // M is bitmap/full
                         int64_t pM = j ;
                         mij = GBB (Mb, pM) && GB_mcast (Mx, pM, msize) ;
                     }
@@ -146,10 +149,20 @@ void GB_assign_zombie4
                     {
                         // M is sparse or hypersparse
                         int64_t pM, pM_end ;
-                        int64_t pleft = 0 ;
-                        int64_t pright = Mnvec - 1 ;
-                        GB_lookup (M_is_hyper, Mh, Mp, Mvlen, &pleft, pright,
-                            j, &pM, &pM_end) ;
+
+                        if (M_is_hyper)
+                        { 
+                            // M is hypersparse
+                            GB_hyper_hash_lookup (Mp, M_Yp, M_Yi, M_Yx,
+                                M_hash_bits, j, &pM, &pM_end) ;
+                        }
+                        else
+                        { 
+                            // M is sparse
+                            pM     = Mp [j] ;
+                            pM_end = Mp [j+1] ;
+                        }
+
                         if (pM < pM_end)
                         { 
                             // found it

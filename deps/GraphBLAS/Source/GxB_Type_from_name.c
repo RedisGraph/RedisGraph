@@ -94,7 +94,9 @@ GrB_Info GxB_Type_from_name     // return the GrB_Type from a name
     else if (MATCH ("float"         )) (*type) = GrB_FP32   ;
     else if (MATCH ("double"        )) (*type) = GrB_FP64   ;
     else if (MATCH ("float complex" )) (*type) = GxB_FC32   ;
+    else if (MATCH ("GxB_FC32_t"    )) (*type) = GxB_FC32   ;
     else if (MATCH ("double complex")) (*type) = GxB_FC64   ;
+    else if (MATCH ("GxB_FC64_t"    )) (*type) = GxB_FC64   ;
     else
     {
         // This is not an error.  Returning type as NULL means that A has a

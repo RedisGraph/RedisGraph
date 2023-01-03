@@ -60,7 +60,8 @@
                 bool hf_unlocked = false ;  // true if i found
                 bool hf_empty = false ;     // true if empty slot found
                 int64_t hash ;
-                for (hash = GB_HASHF (i) ; ; GB_REHASH (hash,i))
+                for (hash = GB_HASHF (i, hash_bits) ; ;
+                    GB_REHASH (hash,i,hash_bits))
                 { 
                     int64_t hf = Hf [hash] ;    // grab the entry
                     hf_unlocked = (hf == i_unlocked) ;

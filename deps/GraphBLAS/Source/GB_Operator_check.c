@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_Operaror_check: check and print any operator
+// GB_Operator_check: check and print any operator
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.

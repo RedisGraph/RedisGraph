@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2022 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
 #include "schema.h"
 #include "../util/arr.h"
@@ -172,8 +172,11 @@ static int _Schema_RemoveExactMatchIndex
 
 	Index_RemoveField(idx, field);
 
-	// if index field count dropped to 0, remove index from schema
-	if(Index_FieldsCount(idx) == 0) {
+	// if index field count dropped to 0
+	// or it is edge index and it dropped to 2(_src_id, _dest_id)
+	// remove index from schema
+	if(Index_FieldsCount(idx) == 0 ||
+	   (s->type == SCHEMA_EDGE && Index_FieldsCount(idx) == 2)) {
 		Index_Free(idx);
 		s->index = NULL;
 	}
