@@ -60,8 +60,8 @@ class testImdbFlow(FlowTestsBase):
         # skip test if we're running under Valgrind
         # drop index is an async operation which can cause Valgraind
         # to wrongfully report as a leak
-        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
-            return
+        if VALGRIND:
+            self.env.skip()
 
         # Execute this command directly, as its response does not contain the result set that
         # 'redis_graph.query()' expects
@@ -90,8 +90,8 @@ class testImdbFlow(FlowTestsBase):
         # skip test if we're running under Valgrind
         # drop index is an async operation which can cause Valgraind
         # to wrongfully report as a leak
-        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
-            return
+        if VALGRIND:
+            self.env.skip()
 
         # Execute this command directly, as its response does not contain the result set that
         # 'redis_graph.query()' expects

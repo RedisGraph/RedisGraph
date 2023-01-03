@@ -9,13 +9,13 @@ class testIndexDeletionFlow():
     def __init__(self):
         global g
         global redis_con
-
-        self.env = Env(decodeResponses=True)
         # skip test if we're running under Valgrind
         # drop index is an async operation which can cause Valgraind
         # to wrongfully report as a leak
-        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
-            self.env.skip() # valgrind is not working correctly with multi process
+        if VALGRIND:
+            Env.skip()
+
+        self.env = Env(decodeResponses=True)
 
         redis_con = self.env.getConnection()
         g = Graph(redis_con, GRAPH_ID)

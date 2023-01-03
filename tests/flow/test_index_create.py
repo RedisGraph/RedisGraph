@@ -286,8 +286,8 @@ class testIndexCreationFlow():
 
     def test08_async_index_creation(self):
         # skip test if we're running under Valgrind
-        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
-            return
+        if VALGRIND:
+            self.env.skip()
 
         # 1. create a large graph
         # 2. create an index
@@ -402,8 +402,8 @@ class testIndexCreationFlow():
 
     def test09_async_fulltext_index_creation(self):
         # skip test if we're running under Valgrind
-        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
-            return
+        if VALGRIND:
+            self.env.skip()
 
         # 1. create a large graph
         # 2. create an index
@@ -512,8 +512,8 @@ class testIndexCreationFlow():
 
     def test10_delete_interrupt_async_index_creation(self):
         # skip test if we're running under Valgrind
-        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
-            return
+        if VALGRIND:
+            self.env.skip()
 
         # 1. create a large graph
         # 2. create an index
@@ -563,8 +563,8 @@ class testIndexCreationFlow():
 
     def test11_delete_interrupt_async_fulltext_index_creation(self):
         # skip test if we're running under Valgrind
-        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
-            return
+        if VALGRIND:
+            self.env.skip()
 
         # 1. create a large graph
         # 2. create an index
@@ -614,8 +614,8 @@ class testIndexCreationFlow():
 
     def test12_multi_index_creation(self):
         # skip test if we're running under Valgrind
-        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
-            return
+        if VALGRIND:
+            self.env.skip()
 
         # interrupt index creation by adding/removing fields
         #
@@ -695,8 +695,8 @@ class testIndexCreationFlow():
 
     def test13_multi_fulltext_index_creation(self):
         # skip test if we're running under Valgrind
-        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
-            return
+        if VALGRIND:
+            self.env.skip()
 
         # interrupt index creation by adding/removing fields
         #
