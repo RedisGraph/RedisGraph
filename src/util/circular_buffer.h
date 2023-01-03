@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <stdbool.h>
+
 // forward declaration
 typedef struct _CircularBuffer _CircularBuffer;
 typedef _CircularBuffer* CircularBuffer;
