@@ -1,4 +1,5 @@
 from common import *
+from index_utils import *
 
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
 redis_graph = None
@@ -46,7 +47,8 @@ class testEdgeByIndexScanFlow(FlowTestsBase):
         global redis_graph
         redis_graph.query("CREATE INDEX ON :person(age)")
         redis_graph.query("CREATE INDEX FOR ()-[f:friend]-() ON (f.created_at)")
-        redis_graph.query("CREATE INDEX FOR ()-[f:knows]-() ON (f.created_at)")
+        redis_graph.query("CREATE INDEX FOR ()-[k:knows]-() ON (k.created_at)")
+        wait_for_indices_to_sync(redis_graph)
 
     # Validate that Cartesian products using index and label scans succeed
     def test01_cartesian_product_mixed_scans(self):
@@ -83,7 +85,7 @@ class testEdgeByIndexScanFlow(FlowTestsBase):
 
     # Validate that the appropriate bounds are respected when a Cartesian product uses the same index in two streams
     def test03_cartesian_product_reused_index(self):
-        redis_graph.query("CREATE INDEX FOR ()-[f:friend]-() ON (f.updated_at)")
+        create_edge_exact_match_index(redis_graph, 'friend', 'updated_at', sync=True)
         query = "MATCH ()-[a:friend]->(), ()-[b:friend]->() WHERE a.created_at >= 80 AND b.updated_at >= 120 RETURN a.created_at, b.updated_at"
         plan = redis_graph.execution_plan(query)
         # The two streams should both use index scans
@@ -465,8 +467,8 @@ class testEdgeByIndexScanFlow(FlowTestsBase):
     def test20_index_scan_numeric_accuracy(self):
         redis_graph = Graph(self.env.getConnection(), 'large_index_values')
 
-        redis_graph.query("CREATE INDEX FOR ()-[r:R1]-() ON (r.id)")
-        redis_graph.query("CREATE INDEX FOR ()-[r:R2]-() ON (r.id1, r.id2)")
+        create_edge_exact_match_index(redis_graph, 'R1', 'id', sync=True)
+        create_edge_exact_match_index(redis_graph, 'R2', 'id1', 'id2', sync=True)
         redis_graph.query("UNWIND range(1, 5) AS v CREATE ()-[:R1 {id: 990000000262240068 + v}]->()")
         redis_graph.query("UNWIND range(1, 5) AS v CREATE ()-[:R2 {id1: 990000000262240068 + v, id2: 990000000262240068 - v}]->()")
 
@@ -513,8 +515,8 @@ class testEdgeByIndexScanFlow(FlowTestsBase):
 
         result = redis_graph.query("MATCH (a:A), (b:B) UNWIND range(1, 500) AS x CREATE (a)-[:R{v:x}]->(b)")
         self.env.assertEquals(result.relationships_created, 500)
-    
-        result = redis_graph.query("CREATE INDEX FOR ()-[r:R]-() ON (r.v)")
+
+        result = create_edge_exact_match_index(redis_graph, 'R', 'v', sync=True)
         self.env.assertEquals(result.indices_created, 1)
 
         result = redis_graph.query("MATCH (a:A)-[r:R]->(b:B) WHERE r.v > 0 RETURN count(r)")

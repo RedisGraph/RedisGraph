@@ -140,8 +140,8 @@ FT_FilterNode *FilterTree_CreateConditionFilter
 
 void _FilterTree_SubTrees
 (
-	FT_FilterNode *root,
-	FT_FilterNode ***sub_trees
+	const FT_FilterNode *root,
+	const FT_FilterNode ***sub_trees
 ) {
 	if(root == NULL) return;
 
@@ -157,7 +157,6 @@ void _FilterTree_SubTrees
 					// break AND down to its components
 					_FilterTree_SubTrees(root->cond.left, sub_trees);
 					_FilterTree_SubTrees(root->cond.right, sub_trees);
-					rm_free((FT_FilterNode *)root);
 					break;
 				case OP_OR:
 				case OP_XOR:
@@ -180,7 +179,7 @@ void _FilterTree_SubTrees
 // filters[0] AND filters[1] AND ... filters[count]
 FT_FilterNode *FilterTree_Combine
 (
-	FT_FilterNode **filters,
+	const FT_FilterNode **filters,
 	uint count
 ) {
 	ASSERT(filters != NULL);
@@ -188,11 +187,11 @@ FT_FilterNode *FilterTree_Combine
 	FT_FilterNode *root = NULL;
 
 	if(count > 0) {
-		root = filters[0];
+		root = FilterTree_Clone(filters[0]);
 		for(uint i = 1; i < count; i++) {
 			FT_FilterNode *and = FilterTree_CreateConditionFilter(OP_AND);
 			FilterTree_AppendLeftChild(and, root);
-			FilterTree_AppendRightChild(and, filters[i]);
+			FilterTree_AppendRightChild(and, FilterTree_Clone(filters[i]));
 			root = and;
 		}
 	}
@@ -200,11 +199,11 @@ FT_FilterNode *FilterTree_Combine
 	return root;
 }
 
-FT_FilterNode **FilterTree_SubTrees
+const FT_FilterNode **FilterTree_SubTrees
 (
-	FT_FilterNode *root
+	const FT_FilterNode *root
 ) {
-	FT_FilterNode **sub_trees = array_new(FT_FilterNode *, 1);
+	const FT_FilterNode **sub_trees = array_new(const FT_FilterNode *, 1);
 	_FilterTree_SubTrees(root, &sub_trees);
 	return sub_trees;
 }

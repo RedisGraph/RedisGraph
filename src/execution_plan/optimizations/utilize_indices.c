@@ -174,7 +174,7 @@ static bool _applicable_predicate(const char* filtered_entity,
 bool _applicableFilter
 (
 	const char* filtered_entity,
-	const Index *idx,
+	const Index idx,
 	FT_FilterNode **filter
 ) {
 	bool           res           =  true;
@@ -241,7 +241,7 @@ OpFilter **_applicableFilters
 (
 	const OpBase *op,
 	const char *filtered_entity,
-	const Index *idx
+	const Index idx
 ) {
 	OpFilter **filters = array_new(OpFilter *, 0);
 
@@ -314,7 +314,7 @@ void reduce_scan_op
 
 	uint label_count = QGNode_LabelCount(qn);
 	for(uint i = 0; i < label_count; i++) {
-		Index *idx;
+		Index idx;
 		uint64_t nnz;
 		int label_id = QGNode_GetLabelID(qn, i);
 		const char *label = QGNode_GetLabel(qn, i);
@@ -322,13 +322,15 @@ void reduce_scan_op
 		// unknown label
 		if(label_id == GRAPH_UNKNOWN_LABEL) continue;
 
-		idx = GraphContext_GetIndexByID(gc, label_id, NULL, IDX_EXACT_MATCH, SCHEMA_NODE);
+		idx = GraphContext_GetIndexByID(gc, label_id, NULL, IDX_EXACT_MATCH,
+				SCHEMA_NODE);
 
 		// no index for current label
-		if(idx == NULL) continue;
+		if(idx == NULL || !Index_Enabled(idx)) continue;
 
 		// get all applicable filter for index
-		RSIndex *cur_idx = idx->idx;
+		RSIndex *cur_idx = Index_RSIndex(idx);
+
 		// TODO switch to reusable array
 		OpFilter **cur_filters = _applicableFilters((OpBase *)scan, scan->n.alias, idx);
 
@@ -425,11 +427,11 @@ void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
 
 	const char *label = QGEdge_Relation(e, 0);
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Index *idx = GraphContext_GetIndex(gc, label, NULL, IDX_EXACT_MATCH, SCHEMA_EDGE);
+	Index idx = GraphContext_GetIndex(gc, label, NULL, IDX_EXACT_MATCH, SCHEMA_EDGE);
 	if(idx == NULL) return;
 
 	// get all applicable filter for index
-	RSIndex *rs_idx = idx->idx;
+	RSIndex *rs_idx = Index_RSIndex(idx);
 	OpFilter **filters = _applicableFilters((OpBase *)cond, edge, idx);
 
 	// no filters, return

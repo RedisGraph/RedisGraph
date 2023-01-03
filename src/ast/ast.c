@@ -8,14 +8,14 @@
 #include <pthread.h>
 
 #include "RG.h"
-#include "../errors.h"
-#include "../util/arr.h"
-#include "../query_ctx.h"
-#include "../procedures/procedure.h"
+#include "errors.h"
+#include "util/arr.h"
+#include "query_ctx.h"
+#include "procedures/procedure.h"
 #include "ast_rewrite_same_clauses.h"
 #include "ast_rewrite_star_projections.h"
-#include "../arithmetic/arithmetic_expression.h"
-#include "../arithmetic/arithmetic_expression_construct.h"
+#include "arithmetic/arithmetic_expression.h"
+#include "arithmetic/arithmetic_expression_construct.h"
 
 // TODO duplicated logic, find shared place for it
 static inline void _prepareIterateAll
@@ -594,7 +594,8 @@ static inline char *_create_anon_alias
 	int anon_count
 ) {
 	char *alias;
-	asprintf(&alias, "@anon_%d", anon_count);
+	int rc __attribute__((unused));
+	rc = asprintf(&alias, "@anon_%d", anon_count);
 	return alias;
 }
 
