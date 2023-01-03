@@ -628,8 +628,9 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """MATCH (n) WHERE hasLabels(n, ['person', 1]) RETURN n.name"""
         try:
             graph.query(query)
+            self.env.assertTrue(False)
         except redis.ResponseError as e:
-            self.env.assertContains("Type mismatch on function 'hasLabels' argument 2: expected String but was Integer", str(e))
+            self.env.assertContains("Type mismatch on function 'hasLabels' argument 2, element 2: expected String but was Integer", str(e))
 
     def test20_keys(self):
         # Test retrieving keys of a nested map
@@ -2228,7 +2229,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             "CREATE ()-[r:R]->() RETURN hasLabels(r, ['abc', 'def'])": "Type mismatch on function 'hasLabels' argument 1: expected Node or Null but was Edge",
             "RETURN toBoolean(1.2)": "Type mismatch on function 'toBoolean' argument 1: expected String, Boolean, Integer, or Null but was Float",
             "RETURN isEmpty(1)": "Type mismatch on function 'isEmpty' argument 1: expected Map, List, String, or Null but was Integer",
-            "CREATE ()-[r:R]->() RETURN toString(r)": "Type mismatch on function 'toString' argument 1: expected Datetime, Duration, String, Boolean, Integer, Float, Null, or Point but was Edge",
+            "CREATE ()-[r:R]->() RETURN toString(r)": "Type mismatch on function 'tostring' argument 1: expected Datetime, Duration, String, Boolean, Integer, Float, Null, or Point but was Edge",
         }
         for query, error in queries_with_errors.items():
             self.expect_error(query, error)

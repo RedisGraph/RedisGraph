@@ -303,6 +303,6 @@ void Register_BooleanFuncs() {
 	types = array_new(SIType, 1);
 	array_append(types, T_ARRAY | T_MAP | T_NULL | T_STRING);
 	ret_type = T_BOOL | T_NULL;
-	func_desc = AR_FuncDescNew("isempty", AR_ISEMPTY, 1, 1, types, ret_type, false, true);
+	func_desc = AR_FuncDescNew("isEmpty", AR_ISEMPTY, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 }
