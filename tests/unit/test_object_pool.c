@@ -1,18 +1,22 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
- *
- * This file is available under the Redis Labs Source Available License Agreement
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
  */
 
+#include "src/util/arr.h"
+#include "src/util/rmalloc.h"
+#include "src/util/object_pool/object_pool.h"
+
 #include <stdio.h>
+
+void setup() {
+	Alloc_Reset();
+}
+#define TEST_INIT setup();
 #include "acutest.h"
-#include "../../src/util/arr.h"
-#include "../../src/util/rmalloc.h"
-#include "../../src/util/object_pool/object_pool.h"
 
 void test_objectPoolNew() {
-	Alloc_Reset();
-
 	// Create a new ObjectPool capable of holding at least 1024 integer items.
 	uint item_size = sizeof(uint);
 	ObjectPool *object_pool = ObjectPool_New(1024, item_size, NULL);
@@ -39,8 +43,6 @@ void test_objectPoolNew() {
 }
 
 void test_objectPoolAddItem() {
-	Alloc_Reset();
-
 	ObjectPool *object_pool = ObjectPool_New(256, sizeof(uint), NULL);
 	uint item_count = 128;
 	uint final_item_count = item_count *= 16;
@@ -71,8 +73,6 @@ void test_objectPoolAddItem() {
 }
 
 void test_objectPoolRemoveItem() {
-	Alloc_Reset();
-
 	ObjectPool *object_pool = ObjectPool_New(1024, sizeof(uint), NULL);
 	uint item_count = 32;
 
@@ -104,7 +104,7 @@ void test_objectPoolRemoveItem() {
 	// Verify that the new entry is zeroed.
 	TEST_ASSERT(*new_item == 0);
 
-	// Cleanup.
+	// cleanup
 	ObjectPool_Free(object_pool);
 }
 

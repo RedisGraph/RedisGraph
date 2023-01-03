@@ -1,7 +1,19 @@
+/*
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
+
+#include "src/util/rmalloc.h"
+#include "src/util/cache/cache.h"
+#include "src/execution_plan/execution_plan.h"
+
+void setup() {
+	Alloc_Reset();
+}
+
+#define TEST_INIT setup();
 #include "acutest.h"
-#include "../../src/util/rmalloc.h"
-#include "../../src/util/cache/cache.h"
-#include "../../src/execution_plan/execution_plan.h"
 
 static int free_count = 0;  // count how many cache objects been freed
 
@@ -32,8 +44,6 @@ void CacheObj_Free(CacheObj *obj) {
 }
 
 void test_executionPlanCache() {
-	Alloc_Reset();
-
 	// build a cache of strings in this case for simplicity
 	Cache *cache = Cache_New(3, (CacheEntryFreeFunc)CacheObj_Free,
 			(CacheEntryCopyFunc)CacheObj_Dup);

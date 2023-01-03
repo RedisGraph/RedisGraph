@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -124,7 +124,6 @@ Feature: Match9 - Match deprecated scenarios
       | 1        |
     And no side effects
 
-  @leak
   Scenario: [6] Matching relationships into a list and matching variable length using the list, with bound nodes
     Given an empty graph
     And having executed:
@@ -138,7 +137,7 @@ Feature: Match9 - Match deprecated scenarios
       MATCH (a)-[r1]->()-[r2]->(b)
       WITH [r1, r2] AS rs, a AS first, b AS second
         LIMIT 1
-      MATCH (first)-[rs*]->(second)
+      MATCH (first)-[*]->(second)
       RETURN first, second
       """
     Then the result should be, in any order:
@@ -146,7 +145,6 @@ Feature: Match9 - Match deprecated scenarios
       | (:A)  | (:C)   |
     And no side effects
 
-  @leak
   Scenario: [7] Matching relationships into a list and matching variable length using the list, with bound nodes, wrong direction
     Given an empty graph
     And having executed:
@@ -160,7 +158,7 @@ Feature: Match9 - Match deprecated scenarios
       MATCH (a)-[r1]->()-[r2]->(b)
       WITH [r1, r2] AS rs, a AS second, b AS first
         LIMIT 1
-      MATCH (first)-[rs*]->(second)
+      MATCH (first)-[*]->(second)
       RETURN first, second
       """
     Then the result should be, in any order:

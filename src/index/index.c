@@ -221,9 +221,11 @@ RSDoc *Index_IndexGraphEntity
 				len += strlen(none_indexable_fields[i]);
 			}
 
+			// add room for \0
+			len++;
+
 			char *s = NULL;
-			char stack_fields[len];
-			if(len < 512) s = stack_fields; // stack base
+			if(len < 512) s = alloca(len); // stack base
 			else s = rm_malloc(sizeof(char) * len); // heap base
 
 			// concat
@@ -236,7 +238,7 @@ RSDoc *Index_IndexGraphEntity
 						s, len, RSFLDTYPE_TAG);
 
 			// free if heap based
-			if(s != stack_fields) rm_free(s);
+			if(len >= 512) rm_free(s);
 		}
 	}
 

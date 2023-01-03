@@ -1,22 +1,26 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
-#include "acutest.h"
+#include "src/util/arr.h"
+#include "src/util/datablock/datablock.h"
+#include "src/util/datablock/oo_datablock.h"
+#include "src/util/rmalloc.h"
+
 #include <stdio.h>
 #include <string.h>
-#include "../../src/util/arr.h"
-#include "../../src/util/datablock/datablock.h"
-#include "../../src/util/datablock/oo_datablock.h"
-#include "../../src/util/rmalloc.h"
+
+void setup() {
+	Alloc_Reset();
+}
+#define TEST_INIT setup();
+#include "acutest.h"
 
 #define DATABLOCK_BLOCK_CAP 16384
 
 void test_dataBlockNew() {
-	Alloc_Reset();
-
 	// create a new data block, which can hold at least 1024 items
 	// each item is an integer.
 	size_t itemSize = sizeof(int);
@@ -223,6 +227,7 @@ void test_dataBlockOutOfOrderBuilding() {
 	TEST_ASSERT(dataBlock->deletedIdx[1] == 4 || dataBlock->deletedIdx[1] == 7);
 
 	DataBlock_Free(dataBlock);
+	DataBlockIterator_Free(it);
 }
 
 TEST_LIST = {

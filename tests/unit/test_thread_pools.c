@@ -1,17 +1,24 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
-#include "acutest.h"
-#include "assert.h"
-#include "../../src/util/rmalloc.h"
-#include "../../src/util/thpool/pools.h"
-#include "../../src/configuration/config.h"
+#include "src/util/rmalloc.h"
+#include "src/util/thpool/pools.h"
+#include "src/configuration/config.h"
+
+#include <assert.h>
 
 #define READER_COUNT 4
 #define WRITER_COUNT 1
+
+void setup() {
+	Alloc_Reset();
+}
+
+#define TEST_INIT setup();
+#include "acutest.h"
 
 static void get_thread_friendly_id(void *arg) {
 	int *threadID = (int*)arg;
@@ -19,13 +26,12 @@ static void get_thread_friendly_id(void *arg) {
 }
 
 void test_threadPools_threadID() {
-	Alloc_Reset();
 	ThreadPools_CreatePools(READER_COUNT, WRITER_COUNT, UINT64_MAX);
 
 	// verify thread count equals to the number of reader and writer threads
-	TEST_ASSERT (READER_COUNT + WRITER_COUNT == ThreadPools_ThreadCount());
+	TEST_ASSERT(READER_COUNT + WRITER_COUNT == ThreadPools_ThreadCount());
 
-	int thread_ids[READER_COUNT + WRITER_COUNT + 1] = {-1, -1, -1, -1, -1, -1};
+	volatile int thread_ids[READER_COUNT + WRITER_COUNT + 1] = {-1, -1, -1, -1, -1, -1};
 
 	// get main thread friendly id
 	thread_ids[0] = ThreadPools_GetThreadID();
@@ -35,7 +41,7 @@ void test_threadPools_threadID() {
 		int offset = i + 1;
 		TEST_ASSERT(0 == 
 				ThreadPools_AddWorkReader(get_thread_friendly_id,
-					thread_ids + offset));
+					(int*)(thread_ids + offset)));
 	}
 
 	// get writer threads friendly ids
@@ -43,7 +49,7 @@ void test_threadPools_threadID() {
 		int offset = i + READER_COUNT + 1;
 		TEST_ASSERT(0 ==
 				ThreadPools_AddWorkWriter(get_thread_friendly_id,
-					thread_ids + offset, 0));
+					(int*)(thread_ids + offset), 0));
 	}
 
 	// wait for all threads
@@ -72,3 +78,4 @@ TEST_LIST = {
 	{"threadPools_threadID", test_threadPools_threadID},
 	{NULL, NULL}
 };
+

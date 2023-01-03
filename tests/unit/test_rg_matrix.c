@@ -1,25 +1,32 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
-#include "acutest.h"
-#include "../../src/util/rmalloc.h"
-#include "../../src/configuration/config.h"
-#include "../../src/graph/rg_matrix/rg_matrix.h"
+#include "src/util/rmalloc.h"
+#include "src/configuration/config.h"
+#include "src/graph/rg_matrix/rg_matrix.h"
+
 #include <time.h>
+
+void setup();
+void tearDown();
+
+#define TEST_INIT setup();
+#define TEST_FINI tearDown();
+#include "acutest.h"
 
 #define MATRIX_EMPTY(M)               \
 	({                                \
 		GrB_Matrix_nvals(&nvals, M);  \
-		TEST_ASSERT(nvals == 0);          \
+		TEST_ASSERT(nvals == 0);      \
 	}) 
 
 #define MATRIX_NOT_EMPTY(M)           \
 	({                                \
 		GrB_Matrix_nvals(&nvals, M);  \
-		TEST_ASSERT(nvals != 0);          \
+		TEST_ASSERT(nvals != 0);      \
 	}) 
 
 #define M_EMPTY()   MATRIX_EMPTY(M)
@@ -29,6 +36,24 @@
 #define M_NOT_EMPTY()   MATRIX_NOT_EMPTY(M)
 #define DP_NOT_EMPTY()  MATRIX_NOT_EMPTY(DP)
 #define DM_NOT_EMPTY()  MATRIX_NOT_EMPTY(DM)
+
+void setup() {
+	// use the malloc family for allocations
+	Alloc_Reset();
+
+	// initialize GraphBLAS
+	GrB_init(GrB_NONBLOCKING);
+
+	// all matrices in CSR format
+	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
+
+	// set delta matrix flush threshold
+	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000", NULL);
+}
+
+void tearDown() {
+	GrB_finalize();
+}
 
 // nvals(A + B) == nvals(A) == nvals(B)
 void ASSERT_GrB_Matrices_EQ(const GrB_Matrix A, const GrB_Matrix B)
@@ -107,37 +132,24 @@ void ASSERT_GrB_Matrices_EQ(const GrB_Matrix A, const GrB_Matrix B)
 }
 
 // test RGMatrix initialization
-// TEST_F(RGMatrixTest, RGMatrix_new) {
 void test_RGMatrix_new() {
-	// use the malloc family for allocations
-	Alloc_Reset();
-
-	// initialize GraphBLAS
-	GrB_init(GrB_NONBLOCKING);
-
-	// all matrices in CSR format
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
-
-	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
-
-	RG_Matrix   A                   =  NULL;
-	GrB_Matrix  M                   =  NULL;
-	GrB_Matrix  DP                  =  NULL;
-	GrB_Matrix  DM                  =  NULL;
-	GrB_Type    t                   =  GrB_UINT64;
-	GrB_Info    info                =  GrB_SUCCESS;
-	GrB_Index   nvals               =  0;
-	GrB_Index   nrows               =  100;
-	GrB_Index   ncols               =  100;
+	RG_Matrix  A     = NULL;
+	GrB_Matrix M     = NULL;
+	GrB_Matrix DP    = NULL;
+	GrB_Matrix DM    = NULL;
+	GrB_Type   t     = GrB_UINT64;
+	GrB_Info   info  = GrB_SUCCESS;
+	GrB_Index  nvals = 0;
+	GrB_Index  nrows = 100;
+	GrB_Index  ncols = 100;
 
 	info = RG_Matrix_new(&A, t, nrows, ncols);
 	TEST_ASSERT(info == GrB_SUCCESS);
 
 	// get internal matrices
-	M   =  RG_MATRIX_M(A);
-	DP  =  RG_MATRIX_DELTA_PLUS(A);
-	DM  =  RG_MATRIX_DELTA_MINUS(A);
+	M  = RG_MATRIX_M(A);
+	DP = RG_MATRIX_DELTA_PLUS(A);
+	DM = RG_MATRIX_DELTA_MINUS(A);
 
 	// uint64 matrix always maintain transpose
 	TEST_ASSERT(RG_MATRIX_MAINTAIN_TRANSPOSE(A));
@@ -145,8 +157,9 @@ void test_RGMatrix_new() {
 	// uint64 matrix always multi edge
 	TEST_ASSERT(RG_MATRIX_MULTI_EDGE(A));
 
-	// matrix shouldn't be dirty
-	TEST_ASSERT(!RG_Matrix_isDirty(A));
+	// a new empty matrix should be synced
+	// no data in either DP or DM
+	TEST_ASSERT(RG_Matrix_Synced(A));
 
 	// test M, DP and DM hyper switch
 	int format;
@@ -154,7 +167,7 @@ void test_RGMatrix_new() {
 
 	// M should be either hyper-sparse or sparse
 	GxB_Matrix_Option_get(M, GxB_SPARSITY_CONTROL, &format);
-	TEST_ASSERT(format == GxB_SPARSE | format == GxB_HYPERSPARSE);
+	TEST_ASSERT(format == (GxB_SPARSE | GxB_HYPERSPARSE));
 
 	// DP should always be hyper
 	GxB_Matrix_Option_get(DP, GxB_HYPER_SWITCH, &hyper_switch);
@@ -188,14 +201,15 @@ void test_RGMatrix_new() {
 	DP  =  RG_MATRIX_DELTA_PLUS(A);
 	DM  =  RG_MATRIX_DELTA_MINUS(A);
 
-	// bool matrix always not maintain transpose
-	TEST_ASSERT(!RG_MATRIX_MAINTAIN_TRANSPOSE(A));
+	// bool matrix do not maintain transpose
+	TEST_ASSERT(!(RG_MATRIX_MAINTAIN_TRANSPOSE(A)));
 
 	// bool matrix always not multi edge
 	TEST_ASSERT(!RG_MATRIX_MULTI_EDGE(A));
 
-	// matrix shouldn't be dirty
-	TEST_ASSERT(!RG_Matrix_isDirty(A));
+	// a new empty matrix should be synced
+	// no data in either DP or DM
+	TEST_ASSERT(RG_Matrix_Synced(A));
 
 	// matrix should be empty
 	M_EMPTY();
@@ -206,25 +220,11 @@ void test_RGMatrix_new() {
 
 	RG_Matrix_free(&A);
 	TEST_ASSERT(A == NULL);
-
-	GrB_finalize();
 }
 
 // setting an empty entry
 // M[i,j] = 1
 void test_RGMatrix_simple_set() {
-	// use the malloc family for allocations
-	Alloc_Reset();
-
-	// initialize GraphBLAS
-	GrB_init(GrB_NONBLOCKING);
-
-	// all matrices in CSR format
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
-
-	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
-
 	GrB_Type    t                   =  GrB_UINT64;
 	RG_Matrix   A                   =  NULL;
 	GrB_Matrix  M                   =  NULL;
@@ -305,24 +305,10 @@ void test_RGMatrix_simple_set() {
 	// clean up
 	RG_Matrix_free(&A);
 	TEST_ASSERT(A == NULL);
-
-	GrB_finalize();
 }
 
 // multiple delete scenarios
 void test_RGMatrix_del() {
-	// use the malloc family for allocations
-	Alloc_Reset();
-
-	// initialize GraphBLAS
-	GrB_init(GrB_NONBLOCKING);
-
-	// all matrices in CSR format
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
-
-	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
-
 	GrB_Type    t                   =  GrB_UINT64;
 	RG_Matrix   A                   =  NULL;
 	GrB_Matrix  M                   =  NULL;
@@ -351,8 +337,8 @@ void test_RGMatrix_del() {
 	info = RG_Matrix_removeElement_UINT64(A, i, j);
 	TEST_ASSERT(info == GrB_NO_VALUE);
 
-	// matrix should not be dirty
-	TEST_ASSERT(!RG_Matrix_isDirty(A));
+	// matrix should not contain any entries in either DP or DM
+	TEST_ASSERT(RG_Matrix_Synced(A));
 
 	//--------------------------------------------------------------------------
 	// remove none flushed addition
@@ -519,24 +505,10 @@ void test_RGMatrix_del() {
 
 	RG_Matrix_free(&A);
 	TEST_ASSERT(A == NULL);
-
-	GrB_finalize();
 }
 
 // multiple delete entry scenarios
 void test_RGMatrix_del_entry() {
-	// use the malloc family for allocations
-	Alloc_Reset();
-
-	// initialize GraphBLAS
-	GrB_init(GrB_NONBLOCKING);
-
-	// all matrices in CSR format
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
-
-	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
-
 	GrB_Type    t                   =  GrB_UINT64;
 	RG_Matrix   A                   =  NULL;
 	GrB_Matrix  M                   =  NULL;
@@ -549,6 +521,7 @@ void test_RGMatrix_del_entry() {
 	GrB_Index   i                   =  0;
 	GrB_Index   j                   =  1;
 	uint64_t    x                   =  1;
+	bool        entry_deleted       =  false;
 
 	info = RG_Matrix_new(&A, t, nrows, ncols);
 	TEST_ASSERT(info == GrB_SUCCESS);
@@ -562,11 +535,11 @@ void test_RGMatrix_del_entry() {
 	// remove none existing entry
 	//--------------------------------------------------------------------------
 
-	info = RG_Matrix_removeEntry(A, i, j, x);
+	info = RG_Matrix_removeEntry_UINT64(A, i, j, x, &entry_deleted);
 	TEST_ASSERT(info == GrB_NO_VALUE);
 
-	// matrix should not be dirty
-	TEST_ASSERT(!RG_Matrix_isDirty(A));
+	// matrix should not contain any entries in either DP or DM
+	TEST_ASSERT(RG_Matrix_Synced(A));
 
 	//--------------------------------------------------------------------------
 	// remove none flushed addition
@@ -577,7 +550,7 @@ void test_RGMatrix_del_entry() {
 	TEST_ASSERT(info == GrB_SUCCESS);
 
 	// remove element at position i,j
-	info = RG_Matrix_removeEntry(A, i, j, x);
+	info = RG_Matrix_removeEntry_UINT64(A, i, j, x, &entry_deleted);
 	TEST_ASSERT(info == GrB_SUCCESS);
 
 	// matrix should be mark as dirty
@@ -613,7 +586,7 @@ void test_RGMatrix_del_entry() {
 	info = RG_Matrix_wait(A, true);
 
 	// remove element at position i,j
-	info = RG_Matrix_removeEntry(A, i, j, x);
+	info = RG_Matrix_removeEntry_UINT64(A, i, j, x, &entry_deleted);
 	TEST_ASSERT(info == GrB_SUCCESS);
 
 	//--------------------------------------------------------------------------
@@ -688,7 +661,7 @@ void test_RGMatrix_del_entry() {
 	//--------------------------------------------------------------------------
 
 	// remove element at position i,j
-	info = RG_Matrix_removeEntry(A, i, j, x);
+	info = RG_Matrix_removeEntry_UINT64(A, i, j, x, &entry_deleted);
 	TEST_ASSERT(info == GrB_SUCCESS);
 
 	M_NOT_EMPTY();
@@ -729,23 +702,9 @@ void test_RGMatrix_del_entry() {
 
 	RG_Matrix_free(&A);
 	TEST_ASSERT(A == NULL);
-
-	GrB_finalize();
 }
 
 void test_RGMatrix_set() {
-	// use the malloc family for allocations
-	Alloc_Reset();
-
-	// initialize GraphBLAS
-	GrB_init(GrB_NONBLOCKING);
-
-	// all matrices in CSR format
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
-
-	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
-
 	GrB_Type    t                   =  GrB_BOOL;
 	RG_Matrix   A                   =  NULL;
 	GrB_Matrix  M                   =  NULL;
@@ -810,24 +769,10 @@ void test_RGMatrix_set() {
 
 	RG_Matrix_free(&A);
 	TEST_ASSERT(A == NULL);
-
-	GrB_finalize();
 }
 
 // flush simple addition
 void test_RGMatrix_flus() {
-	// use the malloc family for allocations
-	Alloc_Reset();
-
-	// initialize GraphBLAS
-	GrB_init(GrB_NONBLOCKING);
-
-	// all matrices in CSR format
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
-
-	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
-
 	GrB_Type    t                   =  GrB_BOOL;
 	RG_Matrix   A                   =  NULL;
 	GrB_Matrix  M                   =  NULL;
@@ -893,8 +838,6 @@ void test_RGMatrix_flus() {
 	// clean up
 	RG_Matrix_free(&A);
 	TEST_ASSERT(A == NULL);
-
-	GrB_finalize();
 }
 
 //------------------------------------------------------------------------------
@@ -903,18 +846,6 @@ void test_RGMatrix_flus() {
 
 // M[i,j] = x, M[i,j] = y
 void test_GRMatrix_managed_transposed() {
-	// use the malloc family for allocations
-	Alloc_Reset();
-
-	// initialize GraphBLAS
-	GrB_init(GrB_NONBLOCKING);
-
-	// all matrices in CSR format
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
-
-	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
-
 	GrB_Type    t                   =  GrB_UINT64;
 	RG_Matrix   A                   =  NULL;
 	RG_Matrix   T                   =  NULL;  // A transposed
@@ -929,6 +860,7 @@ void test_GRMatrix_managed_transposed() {
 	GrB_Index   j                   =  1;
 	uint64_t    x                   =  0;  // M[i,j] = x
 	bool        b                   =  false;
+	bool        entry_deleted       =  false;
 
 	//--------------------------------------------------------------------------
 	// create RGMatrix
@@ -1045,14 +977,14 @@ void test_GRMatrix_managed_transposed() {
 	info = RG_Matrix_setElement_UINT64(A, x + 1, i, j);
 	TEST_ASSERT(info == GrB_SUCCESS);
 
-	info = RG_Matrix_removeEntry(A, i, j, x);
+	info = RG_Matrix_removeEntry_UINT64(A, i, j, x, &entry_deleted);
 
 	// make sure element at position j,i exists
 	info = RG_Matrix_extractElement_BOOL(&b, T, j, i);
 	TEST_ASSERT(info == GrB_SUCCESS);
 	TEST_ASSERT(true == b);
 
-	info = RG_Matrix_removeEntry(A, i, j, x + 1);
+	info = RG_Matrix_removeEntry_UINT64(A, i, j, x + 1, &entry_deleted);
 	info = RG_Matrix_extractElement_BOOL(&b, T, j, i);
 	TEST_ASSERT(info == GrB_NO_VALUE);
 
@@ -1067,14 +999,14 @@ void test_GRMatrix_managed_transposed() {
 
 	RG_Matrix_wait(A, true);
 
-	info = RG_Matrix_removeEntry(A, i, j, x);
+	info = RG_Matrix_removeEntry_UINT64(A, i, j, x, &entry_deleted);
 
 	// make sure element at position j,i exists
 	info = RG_Matrix_extractElement_BOOL(&b, T, j, i);
 	TEST_ASSERT(info == GrB_SUCCESS);
 	TEST_ASSERT(true == b);
 
-	info = RG_Matrix_removeEntry(A, i, j, x + 1);
+	info = RG_Matrix_removeEntry_UINT64(A, i, j, x + 1, &entry_deleted);
 	info = RG_Matrix_extractElement_BOOL(&b, T, j, i);
 	TEST_ASSERT(info == GrB_NO_VALUE);
 
@@ -1100,8 +1032,6 @@ void test_GRMatrix_managed_transposed() {
 	// clean up
 	RG_Matrix_free(&A);
 	TEST_ASSERT(A == NULL);
-
-	GrB_finalize();
 }
 
 //------------------------------------------------------------------------------
@@ -1109,18 +1039,6 @@ void test_GRMatrix_managed_transposed() {
 //------------------------------------------------------------------------------
 
 void test_RGMatrix_fuzzy() {
-	// use the malloc family for allocations
-	Alloc_Reset();
-
-	// initialize GraphBLAS
-	GrB_init(GrB_NONBLOCKING);
-
-	// all matrices in CSR format
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
-
-	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
-
 	GrB_Type    t                   =  GrB_BOOL;
 	RG_Matrix   A                   =  NULL;
 	RG_Matrix   T                   =  NULL;  // A transposed
@@ -1234,25 +1152,11 @@ void test_RGMatrix_fuzzy() {
 
 	free(I);
 	free(J);
-
-	GrB_finalize();
 }
 
 // test exporting RG_Matrix to GrB_Matrix when there are no pending changes
 // by exporting the matrix after flushing
 void test_RGMatrix_export_no_changes() {
-	// use the malloc family for allocations
-	Alloc_Reset();
-
-	// initialize GraphBLAS
-	GrB_init(GrB_NONBLOCKING);
-
-	// all matrices in CSR format
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
-
-	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
-
 	GrB_Type    t                   =  GrB_BOOL;
 	RG_Matrix   A                   =  NULL; 
 	GrB_Matrix  M                   =  NULL;
@@ -1315,26 +1219,12 @@ void test_RGMatrix_export_no_changes() {
 
 	RG_Matrix_free(&A);
 	GrB_Matrix_free(&N);
-
-	GrB_finalize();
 }
 
 // test exporting RG_Matrix to GrB_Matrix when there are pending changes
 // by exporting the matrix after making changes
 // then flush the matrix and compare the internal matrix to the exported matrix
 void test_RGMatrix_export_pending_changes() {
-	// use the malloc family for allocations
-	Alloc_Reset();
-
-	// initialize GraphBLAS
-	GrB_init(GrB_NONBLOCKING);
-
-	// all matrices in CSR format
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
-
-	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
-
 	GrB_Type    t                   =  GrB_BOOL;
 	RG_Matrix   A                   =  NULL;
 	GrB_Matrix  M                   =  NULL;
@@ -1401,23 +1291,9 @@ void test_RGMatrix_export_pending_changes() {
 	GrB_Matrix_free(&N);
 	RG_Matrix_free(&A);
 	TEST_ASSERT(A == NULL);
-
-	GrB_finalize();
 }
 
 void test_RGMatrix_copy() {
-	// use the malloc family for allocations
-	Alloc_Reset();
-
-	// initialize GraphBLAS
-	GrB_init(GrB_NONBLOCKING);
-
-	// all matrices in CSR format
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
-
-	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
-
 	GrB_Type    t                   =  GrB_BOOL;
 	RG_Matrix   A                   =  NULL;
 	RG_Matrix   B                   =  NULL;
@@ -1491,23 +1367,9 @@ void test_RGMatrix_copy() {
 	TEST_ASSERT(A == NULL);
 	RG_Matrix_free(&B);
 	TEST_ASSERT(B == NULL);
-
-	GrB_finalize();
 }
 
 void test_RGMatrix_mxm() {
-	// use the malloc family for allocations
-	Alloc_Reset();
-
-	// initialize GraphBLAS
-	GrB_init(GrB_NONBLOCKING);
-
-	// all matrices in CSR format
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
-
-	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
-
 	GrB_Type    t                   =  GrB_BOOL;
 	RG_Matrix   A                   =  NULL;
 	RG_Matrix   B                   =  NULL;
@@ -1591,23 +1453,9 @@ void test_RGMatrix_mxm() {
 	TEST_ASSERT(C == NULL);
 	RG_Matrix_free(&D);
 	TEST_ASSERT(C == NULL);
-
-	GrB_finalize();
 }
 
 void test_RGMatrix_resize() {
-	// use the malloc family for allocations
-	Alloc_Reset();
-
-	// initialize GraphBLAS
-	GrB_init(GrB_NONBLOCKING);
-
-	// all matrices in CSR format
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
-
-	// set delta matrix flush threshold
-	Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
-
 	RG_Matrix  A        =  NULL;
 	RG_Matrix  T        =  NULL;
 	GrB_Info   info     =  GrB_SUCCESS;
@@ -1688,7 +1536,7 @@ void test_RGMatrix_resize() {
 	TEST_ASSERT(T_nrows == ncols);
 	TEST_ASSERT(T_ncols == nrows);
 
-	GrB_finalize();
+	RG_Matrix_free(&A);
 }
 
 TEST_LIST = {

@@ -20,8 +20,8 @@
 #include "util/thpool/pools.h"
 #include "graph/graphcontext.h"
 #include "util/redis_version.h"
+#include "ast/ast_validations.h"
 #include "configuration/config.h"
-#include "ast/cypher_whitelist.h"
 #include "procedures/procedure.h"
 #include "module_event_handlers.h"
 #include "serializers/graphmeta_type.h"
@@ -115,13 +115,13 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	if(Config_Init(ctx, argv, argc) != REDISMODULE_OK) return REDISMODULE_ERR;
 
 	RegisterEventHandlers(ctx);
-	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
 
-	// create thread local storage keys for query error contexts and indexer.
-	if(!QueryCtx_Init())    return REDISMODULE_ERR;
-	if(!ErrorCtx_Init())    return REDISMODULE_ERR;
-	if(!ThreadPools_Init()) return REDISMODULE_ERR;
-	if(!Indexer_Init())     return REDISMODULE_ERR;
+	// create thread local storage keys for query and error contexts
+	if(!QueryCtx_Init())              return REDISMODULE_ERR;
+	if(!ErrorCtx_Init())              return REDISMODULE_ERR;
+	if(!ThreadPools_Init())           return REDISMODULE_ERR;
+	if(!Indexer_Init())               return REDISMODULE_ERR;
+	if(!AST_ValidationsMappingInit()) return REDISMODULE_ERR;
 
 	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.",
 			ThreadPools_ReadersCount());

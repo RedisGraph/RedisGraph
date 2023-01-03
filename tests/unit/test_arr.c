@@ -1,20 +1,24 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
+#include "src/util/rmalloc.h"
+#include "src/util/arr.h"
+
+void setup() {
+	Alloc_Reset();
+}
+
+#define TEST_INIT setup();
 #include "acutest.h"
-#include "../../src/util/rmalloc.h"
-#include "../../src/util/arr.h"
 
 int int_identity(int x) {
 	return x;
 }
 
 void test_arrCloneWithCB() {
-	Alloc_Reset();
-
 	int *arr = array_new(int, 10);
 	for(int i = 0; i < 10; i++) {
 		array_append(arr, i);

@@ -445,10 +445,6 @@ class testQueryValidationFlow(FlowTestsBase):
             assert("Encountered unhandled type" in str(e))
 
     def test31_set_invalid_property_type(self):
-        # Skip this test if running under Valgrind, as it causes a memory leak.
-        if self.env.envRunner.debugger is not None:
-            self.env.skip()
-
         queries = ["""MATCH (a) CREATE (:L {v: a})""",
                    """MATCH (a), (b) WHERE b.age IS NOT NULL SET b.age = a""",
                    """MERGE (a) ON MATCH SET a.age = a"""]
@@ -493,14 +489,10 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("Attempted to access variable" in str(e))
+            assert("a not defined" in str(e))
             pass
 
     def test34_self_referential_properties(self):
-        # Skip this test if running under Valgrind, as it causes a memory leak.
-        if self.env.envRunner.debugger is not None:
-            self.env.skip()
-
         try:
             # The server should emit an error on trying to create a node with a self-referential property.
             query = """CREATE (a:L {v: a.v})"""
@@ -561,7 +553,7 @@ class testQueryValidationFlow(FlowTestsBase):
                 redis_graph.query(q)
                 assert(False)
             except redis.exceptions.ResponseError as e:
-                self.env.assertContains("All sub queries in an UNION must have the same column names", str(e))
+                self.env.assertContains("All sub queries in a UNION must have the same column names", str(e))
 
     def test39_non_single_statement_query(self):
         queries = [";",
@@ -642,3 +634,18 @@ class testQueryValidationFlow(FlowTestsBase):
                 assert(False)
             except redis.exceptions.ResponseError as e:
                 self.env.assertContains("Unknown function", str(e))
+    
+    # Variable length edges are not allowed in CREATE or MERGE clauses.
+    def test43_invalid_variable_length_edge_use(self):
+        queries = [
+            """CREATE (a:A)-[e:E1*]->(b:B)""",
+            """CREATE (a:A)-[e1:E1]->(b:B)-[e2:E2*]->(c:C)""",
+            """MERGE (a:A)-[e:E1*]->(b:B)""",
+            """MERGE (a:A)-[e1:E1]->(b:B)-[e2:E2*]->(c:C)""",
+        ]
+        for q in queries:
+            try:
+                redis_graph.query(q)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("Variable length relationships cannot be used in", str(e))

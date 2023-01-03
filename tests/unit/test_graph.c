@@ -1,17 +1,23 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
+#include "src/util/arr.h"
+#include "src/graph/graph.h"
+#include "src/util/rmalloc.h"
+#include "src/util/simple_timer.h"
+#include "src/configuration/config.h"
+#include "src/util/datablock/datablock_iterator.h"
+#include "GraphBLAS/Include/GraphBLAS.h"
+
+void setup();
+void tearDown();
+
+#define TEST_INIT setup();
+#define TEST_FINI tearDown();
 #include "acutest.h"
-#include "../../src/util/arr.h"
-#include "../../src/graph/graph.h"
-#include "../../src/util/rmalloc.h"
-#include "../../src/util/simple_timer.h"
-#include "../../src/configuration/config.h"
-#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
-#include "../../src/util/datablock/datablock_iterator.h"
 
 // Console text colors for benchmark printing
 #define KGRN "\x1B[32m"
@@ -186,9 +192,7 @@ void benchmark_graph() {
 	printf("%sgraph benchmark - PASS!%s\n", KGRN, KNRM);
 }
 
-// Validate the creation of a graph,
-// Make sure graph's defaults are applied.
-void test_newGraph() {
+void setup() {
 	// Use the malloc family for allocations
 	Alloc_Reset();
 
@@ -198,7 +202,15 @@ void test_newGraph() {
 	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
 	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
 	srand(time(NULL));
+}
 
+void tearDown() {
+	GrB_finalize();
+}
+
+// Validate the creation of a graph,
+// Make sure graph's defaults are applied.
+void test_newGraph() {
 	GrB_Index ncols, nrows, nvals;
 	Graph *g = Graph_New(GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 	Graph_AcquireWriteLock(g);
@@ -220,43 +232,19 @@ void test_newGraph() {
 
 	Graph_ReleaseLock(g);
 	Graph_Free(g);
-
-	GrB_finalize();
 }
 
 // Tests node and edge creation.
 void test_graphConstruction() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-	srand(time(NULL));
-	
 	size_t node_count = GRAPH_DEFAULT_NODE_CAP / 2;
 	Graph *g = Graph_New(node_count, node_count);
 	Graph_AcquireWriteLock(g);
 	_test_node_creation(g, node_count);
 	Graph_ReleaseLock(g);
 	Graph_Free(g);
-
-	GrB_finalize();
 }
 
 void test_removeNodes() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-	srand(time(NULL));
-
 	// Construct graph.
 	RG_Matrix M;
 	GrB_Index nnz;
@@ -305,7 +293,7 @@ void test_removeNodes() {
 	uint edge_count = array_len(edges);
 	TEST_ASSERT(edge_count == 2);
 
-	for(uint i = 0; i < edge_count; i ++) Graph_DeleteEdge(g, &edges[i]);
+	Graph_DeleteEdges(g, edges);
 	Graph_GetNode(g, 0, &node);
 	Graph_DeleteNode(g, &node);
 	
@@ -316,20 +304,10 @@ void test_removeNodes() {
 	TEST_ASSERT(Graph_NodeCount(g) == 2);
 	TEST_ASSERT(Graph_EdgeCount(g) == 1);
 
-	GrB_finalize();
+	Graph_Free(g);
 }
 
 void test_getNode() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-	srand(time(NULL));
-
 	/* Create a graph with nodeCount nodes,
 	 * Make sure node retrival works as expected:
 	 * try to get nodes (0 - nodeCount) */
@@ -352,21 +330,9 @@ void test_getNode() {
 	}
 
 	Graph_Free(g);
-
-	GrB_finalize();
 }
 
 void test_getEdge() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-	srand(time(NULL));
-
 	/* Create a graph with both nodes and edges.
 	 * Make sure edge retrival works as expected:
 	 * 1. try to get edges by ID
@@ -473,8 +439,6 @@ void test_getEdge() {
 	array_free(edges);
 	Graph_ReleaseLock(g);
 	Graph_Free(g);
-
-	GrB_finalize();
 }
 
 TEST_LIST = {

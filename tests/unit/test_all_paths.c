@@ -1,13 +1,20 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
+
+#include "src/util/rmalloc.h"
+#include "src/configuration/config.h"
+#include "src/algorithms/algorithms.h"
+
+void setup();
+void tearDown();
+
+#define TEST_INIT setup();
+#define TEST_FINI tearDown();
 
 #include "acutest.h"
-#include "../../src/util/rmalloc.h"
-#include "../../src/configuration/config.h"
-#include "../../src/algorithms/algorithms.h"
 
 static Graph *BuildGraph() {
 	Edge e;
@@ -67,7 +74,7 @@ bool pathArrayContainsPath(NodeID **array, int arrayLen, Path *path) {
 	return false;
 }
 
-void test_noPaths() {
+void setup() {
 	// Use the malloc family for allocations
 	Alloc_Reset();
 
@@ -75,7 +82,13 @@ void test_noPaths() {
 	GrB_init(GrB_NONBLOCKING);
 	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);     // all matrices in CSR format
 	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
+}
 
+void tearDown() {
+	GrB_finalize();
+}
+
+void test_noPaths() {
 	Graph *g = BuildGraph();
 
 	NodeID srcNodeID = 0;
@@ -94,19 +107,9 @@ void test_noPaths() {
 
 	AllPathsCtx_Free(ctx);
 	Graph_Free(g);
-
-	GrB_finalize();
 }
 
 void test_longest_Paths() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);     // all matrices in CSR format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
 	Graph *g = BuildGraph();
 
 	NodeID srcNodeID = 0;
@@ -131,19 +134,9 @@ void test_longest_Paths() {
 
 	AllPathsCtx_Free(ctx);
 	Graph_Free(g);
-
-	GrB_finalize();
 }
 
 void test_upToThreeLegsPaths() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);     // all matrices in CSR format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
 	Graph *g = BuildGraph();
 
 	NodeID srcNodeID = 0;
@@ -218,19 +211,9 @@ void test_upToThreeLegsPaths() {
 
 	AllPathsCtx_Free(ctx);
 	Graph_Free(g);
-
-	GrB_finalize();
 }
 
 void test_twoLegPaths() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);     // all matrices in CSR format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
 	Graph *g = BuildGraph();
 
 	NodeID srcNodeID = 0;
@@ -281,20 +264,10 @@ void test_twoLegPaths() {
 
 	AllPathsCtx_Free(ctx);
 	Graph_Free(g);
-
-	GrB_finalize();
 }
 
 // Test all paths from source to a specific destination node.
 void test_destinationSpecificPaths() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-
-	// Initialize GraphBLAS.
-	GrB_init(GrB_NONBLOCKING);
-	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);     // all matrices in CSR format
-	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-
 	NodeID p00_0[2] = {1, 0};
 	NodeID p00_1[4] = {3, 0, 1, 0};
 	NodeID p00_2[6] = {5, 0, 1, 2, 1, 0};
@@ -327,8 +300,6 @@ void test_destinationSpecificPaths() {
 
 	AllPathsCtx_Free(ctx);
 	Graph_Free(g);
-
-	GrB_finalize();
 }
 
 TEST_LIST = {

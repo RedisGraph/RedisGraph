@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -114,7 +114,6 @@ Feature: List11 - Create a list from a range
       | true |
     And no side effects
 
-  @NegativeTest
   Scenario Outline: [4] Fail on invalid arguments for `range()`
     Given any graph
     When executing query:
@@ -130,7 +129,6 @@ Feature: List11 - Create a list from a range
       | -2    | 8    | 0    |
       | 2     | -8   | 0    |
 
-  @NegativeTest
   Scenario Outline: [5] Fail on invalid argument types for `range()`
     Given any graph
     When executing query:

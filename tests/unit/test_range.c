@@ -1,16 +1,23 @@
 /*
-* Copyright 2018-2020 Redis Labs OP_Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
-#include "acutest.h"
-#include "../../src/util/rmalloc.h"
-#include "../../src/ast/ast_shared.h"
-#include "../../src/util/range/string_range.h"
-#include "../../src/util/range/numeric_range.h"
-#include "../../src/util/range/unsigned_range.h"
+#include "src/util/rmalloc.h"
+#include "src/ast/ast_shared.h"
+#include "src/util/range/string_range.h"
+#include "src/util/range/numeric_range.h"
+#include "src/util/range/unsigned_range.h"
+
 #include <math.h>
+
+void setup() {
+	Alloc_Reset();
+}
+
+#define TEST_INIT setup();
+#include "acutest.h"
 
 //------------------------------------------------------------------------------
 // Numeric range
@@ -18,8 +25,6 @@
 
 // TEST_F(RangeTest, NumericRangeNew) {
 void test_numericRangeNew() {
-	Alloc_Reset();
-	
 	NumericRange *r = NumericRange_New();
 
 	TEST_ASSERT(r->valid);
@@ -32,8 +37,6 @@ void test_numericRangeNew() {
 }
 
 void test_numericRangeValidation() {
-	Alloc_Reset();
-
 	NumericRange *r = NumericRange_New();
 
 	// X > 5 AND X < 5
@@ -96,14 +99,12 @@ void test_numericRangeValidation() {
 }
 
 void test_numericTightenRange() {
-	Alloc_Reset();
-
 	NumericRange *r = NumericRange_New();
 
 	// X < 100
 	NumericRange_TightenRange(r, OP_LT, 100);
 	TEST_ASSERT(r->max == 100);
-	TEST_ASSERT(r->include_max);
+	TEST_ASSERT(!r->include_max);
 
 	// X <= 100
 	NumericRange_TightenRange(r, OP_LE, 100);
@@ -132,8 +133,6 @@ void test_numericTightenRange() {
 }
 
 void test_numericContainsValue() {
-	Alloc_Reset();
-	
 	NumericRange *r = NumericRange_New();
 	// -INF < X < INF
 	TEST_ASSERT(NumericRange_ContainsValue(r, 100));
@@ -167,8 +166,6 @@ void test_numericContainsValue() {
 //------------------------------------------------------------------------------
 
 void test_stringRangeNew() {
-	Alloc_Reset();
-
 	StringRange *r = StringRange_New();
 
 	TEST_ASSERT(r->valid);
@@ -181,15 +178,13 @@ void test_stringRangeNew() {
 }
 
 void test_stringRangeValidation() {
-	Alloc_Reset();
-
 	StringRange *r;
 
 	// X > "a" AND X < "a"
 	r = StringRange_New();
 	StringRange_TightenRange(r, OP_LT, "a");
 	StringRange_TightenRange(r, OP_GT, "a");
-	TEST_ASSERT(StringRange_IsValid(r));
+	TEST_ASSERT(!StringRange_IsValid(r));
 	StringRange_Free(r);
 
 	// X >= "a" AND X < "a"
@@ -243,8 +238,6 @@ void test_stringRangeValidation() {
 }
 
 void test_stringTightenRange() {
-	Alloc_Reset();
-	
 	StringRange *r = StringRange_New();
 
 	// X < "z"
@@ -265,7 +258,7 @@ void test_stringTightenRange() {
 	// X > "a"
 	StringRange_TightenRange(r, OP_GT, "a");
 	TEST_ASSERT(strcmp(r->min, "a") == 0);
-	TEST_ASSERT(r->include_min);
+	TEST_ASSERT(!r->include_min);
 
 	// "g" <= X >= "g"
 	StringRange_TightenRange(r, OP_EQUAL, "g");
@@ -279,8 +272,6 @@ void test_stringTightenRange() {
 }
 
 void test_stringContainsValue() {
-	Alloc_Reset();
-
 	StringRange *r = StringRange_New();
 	// -INF < X < INF
 	TEST_ASSERT(StringRange_ContainsValue(r, "k"));
@@ -314,8 +305,6 @@ void test_stringContainsValue() {
 //------------------------------------------------------------------------------
 
 void test_unsighnedRangeNew() {
-	Alloc_Reset();
-
 	UnsignedRange *r = UnsignedRange_New();
 
 	TEST_ASSERT(r->valid);
@@ -328,8 +317,6 @@ void test_unsighnedRangeNew() {
 }
 
 void test_unsignedRangeValidation() {
-	Alloc_Reset();
-
 	UnsignedRange *r = UnsignedRange_New();
 
 	// X > 5 AND X < 5
@@ -344,7 +331,7 @@ void test_unsignedRangeValidation() {
 	r->min = 5;
 	r->include_max = false;
 	r->include_min = true;
-	TEST_ASSERT(UnsignedRange_IsValid(r));
+	TEST_ASSERT(!UnsignedRange_IsValid(r));
 
 	// X >= 5 AND X <= 5
 	r->max = 5;
@@ -392,8 +379,6 @@ void test_unsignedRangeValidation() {
 }
 
 void test_unsignedTightenRange() {
-	Alloc_Reset();
-
 	UnsignedRange *r = UnsignedRange_New();
 
 	// X < 100
@@ -428,8 +413,6 @@ void test_unsignedTightenRange() {
 }
 
 void test_unsignedContainsValue() {
-	Alloc_Reset();
-
 	UnsignedRange *r = UnsignedRange_New();
 	// 0 <= X < UINT64_MAX
 	TEST_ASSERT(UnsignedRange_ContainsValue(r, 100));

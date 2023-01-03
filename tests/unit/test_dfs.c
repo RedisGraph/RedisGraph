@@ -1,14 +1,20 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
 
+#include "src/util/arr.h"
+#include "src/util/rmalloc.h"
+#include "src/graph/query_graph.h"
+#include "src/algorithms/algorithms.h"
+
+void setup() {
+	Alloc_Reset();
+}
+
+#define TEST_INIT setup();
 #include "acutest.h"
-#include "../../src/util/arr.h"
-#include "../../src/util/rmalloc.h"
-#include "../../src/graph/query_graph.h"
-#include "../../src/algorithms/algorithms.h"
 
 static QGNode *A;
 static QGNode *B;
@@ -51,8 +57,6 @@ static QueryGraph *BuildGraph() {
 }
 
 void test_DFSLevels() {
-	Alloc_Reset();
-
 	QGNode *S;      // DFS starts here.
 	QGEdge **path;  // Path reached by DFS.
 	QueryGraph *g;  // Graph traversed.

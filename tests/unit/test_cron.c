@@ -1,15 +1,31 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
+
+#include "src/util/cron.h"
+#include "src/util/rmalloc.h"
 
 #include <time.h>
+
+void setup();
+void tearDown();
+
+#define TEST_INIT setup();
+#define TEST_FINI tearDown();
 #include "acutest.h"
-#include "../../src/util/cron.h"
-#include "../../src/util/rmalloc.h"
 
 int X = 1;
+
+static int mssleep(uint ms) {
+	struct timespec req;
+
+	req.tv_sec = ms / 1000;
+	req.tv_nsec = (ms % 1000) * 1000000;
+
+	return nanosleep(&req, NULL);
+}
 
 static void TearDownTestCase() {
 }
@@ -25,16 +41,22 @@ void mul_task(void *pdata) {
 }
 
 void long_running_task(void *pdata) {
-	// sleep for 'n' seconds
-	int *sec = (int*)pdata;
-	sleep(*sec);
+	// sleep for 'n' milliseconds
+	int *ms = (int*)pdata;
+	mssleep(*ms);
 }
 
-void test_cronExec() {
+void setup() {
 	// Use the malloc family for allocations
 	Alloc_Reset();
 	Cron_Start();
+}
 
+void tearDown() {
+	Cron_Stop();
+}
+
+void test_cronExec() {
 	// Add two tasks to CRON
 	// one adds 2 to X
 	// second multiply X by 2
@@ -51,21 +73,16 @@ void test_cronExec() {
 	// X += Z, X = 3
 	// X *= Y, X = 6
 
-	Cron_AddTask(150, add_task, &Z);
-	Cron_AddTask(10, mul_task, &Y);
-	sleep(1); // sleep for 1 sec
+	Cron_AddTask(15, add_task, &Z);
+	Cron_AddTask(5, mul_task, &Y);
+
+	mssleep(100); // sleep for 100 ms
 
 	// verify X = (X * 2) + 2
 	TEST_ASSERT(X == 4);
-
-	Cron_Stop();
 }
 
 void test_cronAbort() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-	Cron_Start();
-
 	// reset X = 1
 	// issue a task X += 2
 	// abort task
@@ -75,25 +92,19 @@ void test_cronAbort() {
 	int Y = 2;
 
 	// issue task X += 2
-	CronTaskHandle task_handle = Cron_AddTask(150, add_task, &Y);
+	CronTaskHandle task_handle = Cron_AddTask(15, add_task, &Y);
 
 	// abort task
 	Cron_AbortTask(task_handle);
 	
-	sleep(1); // sleep for 1 sec
+	mssleep(100); // sleep for 100 ms
 
 	// task should have been aborted prior to its execution
 	// expecting X = 1
 	TEST_ASSERT(X == 1);
-
-	Cron_Stop();
 }
 
 void test_cronLateAbort() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-	Cron_Start();
-
 	// reset X = 1
 	// issue a task X += 2
 	// abort task AFTER task been performed
@@ -103,24 +114,18 @@ void test_cronLateAbort() {
 	int Y = 2;
 
 	// issue task X += 2
-	CronTaskHandle task_handle = Cron_AddTask(150, add_task, &Y);
+	CronTaskHandle task_handle = Cron_AddTask(15, add_task, &Y);
 
-	sleep(1); // sleep for 1 sec
+	mssleep(100); // sleep for 100 ms
 
 	// task should have been executed, expecting X = 1
 	TEST_ASSERT(X == 3);
 
 	// abort task, should note hang/crash
 	Cron_AbortTask(task_handle);
-
-	Cron_Stop();
 }
 
 void test_MultiAbort() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-	Cron_Start();
-
 	// reset X = 1
 	// issue a task X += 2
 	// abort task multiple times
@@ -130,27 +135,21 @@ void test_MultiAbort() {
 	int Y = 2;
 
 	// issue task X += 2
-	CronTaskHandle task_handle = Cron_AddTask(150, add_task, &Y);
+	CronTaskHandle task_handle = Cron_AddTask(15, add_task, &Y);
 
 	// abort task multiple times, should not crash hang
 	for(int i = 0; i < 20; i++) {
 		Cron_AbortTask(task_handle);
 	}
-	
-	sleep(1); // sleep for 1 sec
+
+	mssleep(100); // sleep for 100 ms
 
 	// task should have been aborted prior to its execution
 	// expecting X = 1
 	TEST_ASSERT(X == 1);
-
-	Cron_Stop();
 }
 
 void test_abortNoneExistingTask() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-	Cron_Start();
-
 	// reset X = 1
 	// issue a task X += 2
 	// abort none existing task
@@ -160,35 +159,29 @@ void test_abortNoneExistingTask() {
 	int Y = 2;
 
 	// issue task X += 2
-	CronTaskHandle task_handle = Cron_AddTask(150, add_task, &Y);
+	CronTaskHandle task_handle = Cron_AddTask(15, add_task, &Y);
 	CronTaskHandle none_existing_task_handle = task_handle + 1; 
 
 	// abort task, should not crash hang
 	Cron_AbortTask(none_existing_task_handle);
 	
-	sleep(1); // sleep for 1 sec
+	mssleep(100); // sleep for 100 ms
 
 	// task should have been executed
 	// expecting X = 3
 	TEST_ASSERT(X == 3);
-
-	Cron_Stop();
 }
 
 void test_AbortRunningTask() {
-	// Use the malloc family for allocations
-	Alloc_Reset();
-	Cron_Start();
-
-	// issue a long running task ~4 seconds
-	// issue abort 1 second into execution
-	// validate call to Cron_AbortTask returns after ~2 seconds
+	// issue a long running task ~100ms
+	// issue abort 20ms into execution
+	// validate call to Cron_AbortTask returns in less than ~10 ms
 	
-	// issue a long running task, task will sleep for 'sec' seconds
-	int sec = 4;
-	CronTaskHandle task_handle = Cron_AddTask(0, long_running_task, &sec);
+	// issue a long running task, task will sleep for 100 'ms'
+	int ms = 100;
+	CronTaskHandle task_handle = Cron_AddTask(0, long_running_task, &ms);
 
-	sleep(1); // sleep for 1 sec
+	mssleep(20); // sleep for 20 ms
 
 	clock_t t = clock(); // start timer
 
@@ -198,11 +191,9 @@ void test_AbortRunningTask() {
 
 	t = clock() - t; // stop timer
 	double time_taken_sec = ((double)t)/CLOCKS_PER_SEC;
-	
-	// expecting Cron_AbortTask to return after at-least 2 seconds
-	TEST_ASSERT(time_taken_sec > 2);
 
-	Cron_Stop();
+	// expecting Cron_AbortTask to return before at-most 10 ms
+	TEST_ASSERT(time_taken_sec < 0.01);
 }
 
 TEST_LIST = {

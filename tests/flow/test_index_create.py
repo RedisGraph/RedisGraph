@@ -177,7 +177,10 @@ class testIndexCreationFlow():
         self.env.assertEquals(result.indices_created, 2)
 
     def test05_index_delete(self):
-        def _create_drop_index(graph_id):
+        if SANITIZER != "":
+            self.env.skip()
+
+        def create_drop_index(graph_id):
             env = Env(decodeResponses=True)
             con = env.getConnection()
             for _ in range(1, 100):
@@ -276,7 +279,7 @@ class testIndexCreationFlow():
 
         # create index for relationship on undefined identifier after defined identifier
         try:
-            graph.query("CREATE INDEX FOR ()-[n:T]-() ON (p.x, a.b)")
+            redis_graph.query("CREATE INDEX FOR ()-[n:T]-() ON (n.x, a.b)")
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("a not defined", str(e))

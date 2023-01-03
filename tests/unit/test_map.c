@@ -1,18 +1,22 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
+
+#include "src/value.h"
+#include "src/util/arr.h"
+#include "src/util/rmalloc.h"
+#include "src/datatypes/map.h"
+#include "src/datatypes/array.h"
+
+void setup() {
+	Alloc_Reset();
+}
+#define TEST_INIT setup();
 #include "acutest.h"
-#include "../../src/value.h"
-#include "../../src/util/arr.h"
-#include "../../src/util/rmalloc.h"
-#include "../../src/datatypes/map.h"
-#include "../../src/datatypes/array.h"
 
 void test_empty_map() {
-	Alloc_Reset();
-
 	SIValue map = Map_New(2);
 
 	//--------------------------------------------------------------------------
@@ -45,8 +49,6 @@ void test_empty_map() {
 }
 
 void test_map_add() {
-	Alloc_Reset();
-
 	SIValue map = Map_New(2);
 
 	SIValue  k0  =  SI_ConstStringVal("key0");
@@ -98,8 +100,6 @@ void test_map_add() {
 }
 
 void test_map_remove() {
-	Alloc_Reset();
-
 	SIValue map = Map_New(2);
 
 	SIValue  k0  =  SI_ConstStringVal("key0");
@@ -147,8 +147,6 @@ void test_map_remove() {
 }
 
 void test_map_tostring() {
-	Alloc_Reset();
-	
 	SIValue  k;
 	SIValue  v;
 	SIValue map = Map_New(3);

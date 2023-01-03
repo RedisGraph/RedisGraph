@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,7 +46,6 @@ Feature: Return1 - Return single variable (correct return of values according to
       | ({numbers: [1, 2, 3]}) |
     And no side effects
 
-  @NegativeTest
   Scenario: [2] Fail when returning an undefined variable
     Given any graph
     When executing query:

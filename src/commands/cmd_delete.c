@@ -4,11 +4,11 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "./cmd_context.h"
-#include "../graph/graph.h"
-#include "../graph/graphcontext.h"
-#include "../query_ctx.h"
-#include "../resultset/resultset.h"
+#include "cmd_context.h"
+#include "graph/graph.h"
+#include "graph/graphcontext.h"
+#include "query_ctx.h"
+#include "resultset/resultset.h"
 
 /* Delete graph, removing the key from Redis and
  * freeing every resource allocated by the graph. */
@@ -34,7 +34,8 @@ int Graph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	GraphContext_DecreaseRefCount(gc);   // Decrease graph ref count.
 
 	double t = QueryCtx_GetExecutionTime();
-	asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
+	int rc __attribute__((unused));
+	rc = asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
 	RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
 
 	// Delete commands should always modify slaves.
