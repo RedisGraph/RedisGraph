@@ -230,7 +230,7 @@ static int Constraint_Parse(RedisModuleCtx *ctx, RedisModuleString **argv, int a
     } else if(strcasecmp(token, "DEL") == 0) {
         *op = CT_DELETE;
     } else {
-        RedisModule_ReplyWithError(ctx, "invalid constraint operation");
+        RedisModule_ReplyWithError(ctx, "Invalid constraint operation");
         return REDISMODULE_ERR;
     }
 
@@ -238,7 +238,7 @@ static int Constraint_Parse(RedisModuleCtx *ctx, RedisModuleString **argv, int a
     if(strcasecmp(token, "UNIQUE") == 0) {
         *ct = CT_UNIQUE;
     } else {
-        RedisModule_ReplyWithError(ctx, "invalid constraint type");
+        RedisModule_ReplyWithError(ctx, "Invalid constraint type");
         return REDISMODULE_ERR; //currently only unique constraint is supported
     }
 
@@ -248,7 +248,7 @@ static int Constraint_Parse(RedisModuleCtx *ctx, RedisModuleString **argv, int a
     } else if(strcasecmp(token, "RELTYPE") == 0) {
         *type = GETYPE_EDGE;
     } else {
-        RedisModule_ReplyWithError(ctx, "invalid constraint entity type");
+        RedisModule_ReplyWithError(ctx, "Invalid constraint entity type");
         return REDISMODULE_ERR;
     }
 
@@ -256,7 +256,7 @@ static int Constraint_Parse(RedisModuleCtx *ctx, RedisModuleString **argv, int a
     token = RedisModule_StringPtrLen(*argv++, NULL);
     if(strcasecmp(token, "PROPERTIES") == 0) {
         if (RedisModule_StringToLongLong(*argv++, prop_count) != REDISMODULE_OK || *prop_count < 1) {
-            RedisModule_ReplyWithError(ctx, "invalid property count");
+            RedisModule_ReplyWithError(ctx, "Invalid property count");
             return REDISMODULE_ERR;
         }
     } else {
@@ -308,7 +308,7 @@ int Graph_Constraint(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	Graph_AcquireWriteLock(gc->g);
 	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
     if(op == CT_DELETE && !s) {
-        RedisModule_ReplyWithError(ctx, "Schema not found");
+        RedisModule_ReplyWithError(ctx, "Trying to delete constraint from non existing label");
         rv =  REDISMODULE_ERR;
         goto _out;
     }
@@ -336,6 +336,13 @@ int Graph_Constraint(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
         for(int i = 0; i < prop_count; i++) {
             fields[i].attribute_name = (char *)props_cstr[i];
+            Attribute_ID id = GraphContext_GetAttributeID(gc, fields[i].attribute_name);
+            if(id == ATTRIBUTE_ID_NONE) {
+                RedisModule_ReplyWithError(ctx, "Property name not found");
+                rv = REDISMODULE_ERR;
+                goto _out;
+            }
+            fields[i].id = id;
         }
 
         Constraint c = Schema_GetConstraint(s, fields, prop_count);
@@ -356,4 +363,14 @@ _out:
 	GraphContext_DecreaseRefCount(gc);
     if(rv == REDISMODULE_OK) RedisModule_ReplyWithLongLong(ctx, REDISMODULE_OK);
     return rv;    
+}
+
+// returns constraint graph entity type
+GraphEntityType Constraint_GraphEntityType
+(
+	const Constraint c
+) {
+	ASSERT(c != NULL);
+
+	return c->entity_type;
 }

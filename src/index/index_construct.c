@@ -301,12 +301,13 @@ bool Index_Populate_enforce_constraint
 	ASSERT(!idx || Index_RSIndex(idx) != NULL);
 	ASSERT(!idx || !Index_Enabled(idx));  // index should have pending changes
 	bool rv;
+	GraphEntityType type = idx ? Index_GraphEntityType(idx) : Constraint_GraphEntityType(c);
 
 	//--------------------------------------------------------------------------
-	// populate index
+	// populate index and validate constraint
 	//--------------------------------------------------------------------------
 
-	if(Index_GraphEntityType(idx) == GETYPE_NODE) {
+	if(type == GETYPE_NODE) {
 		rv = _Index_PopulateNodeIndex_enforce_constraint(idx, c, (GraphContext *)gc);
 	} else {
 		rv = _Index_PopulateEdgeIndex_enforce_constraint(idx, c, (GraphContext *)gc);

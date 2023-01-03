@@ -81,3 +81,9 @@ void Constraint_Drop_Index(Constraint c, struct GraphContext *gc, bool should_dr
 bool Has_Constraint_On_Attribute(Constraint *constraints, Attribute_ID attr_id);
 
 int Graph_Constraint(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
+
+// returns constraint graph entity type
+GraphEntityType Constraint_GraphEntityType
+(
+	const Constraint c
+);

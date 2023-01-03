@@ -34,16 +34,16 @@ def list_constraints(graph, label=None, t=None):
     return graph.query(q)
 
 def create_node_unique_constraint(graph, label, *properties, sync=False):
-    return _create_constraint(graph, "UNIQUE", "LABEL", label, *properties, sync=sync)
+    return _create_constraint(graph, "unique", "LABEL", label, *properties, sync=sync)
 
 def create_edge_unique_constraint(graph, relation, *properties, sync=False):
-    return _create_constraint(graph, "UNIQUE", "RELTYPE", relation, properties, sync=sync)
+    return _create_constraint(graph, "unique", "RELTYPE", relation, *properties, sync=sync)
 
 def drop_node_unique_constraint(graph, label, *properties):
-    return graph.constraint("DEL", "UNIQUE", "LABEL", label, properties)
+    return graph.constraint("DEL", "unique", "LABEL", label, *properties)
 
 def drop_edge_unique_constraint(graph, relation, *properties):
-    return graph.constraint("DEL", "UNIQUE", "RELTYPE", relation, properties)
+    return graph.constraint("DEL", "unique", "RELTYPE", relation, *properties)
 
 # validate constraint is being populated
 def constraint_under_construction(graph, label, t):

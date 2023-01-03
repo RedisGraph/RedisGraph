@@ -250,7 +250,7 @@ void Indexer_PopulateIndexOrConstraint
 ) {
 	ASSERT(gc      != NULL);
 	ASSERT(indexer != NULL);
-	ASSERT(Index_Enabled(idx) == false);
+	ASSERT(!idx || Index_Enabled(idx) == false);
 	ASSERT(idx || c);
 
 	// create work item
