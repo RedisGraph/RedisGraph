@@ -164,15 +164,16 @@ void FilterTree_Print
 // sub trees under an OR operator are returned,
 // sub trees under an AND operator are broken down to the smallest
 // components possible following the two rules above
-FT_FilterNode **FilterTree_SubTrees
+// sub trees reffer to the original tree subsections
+const FT_FilterNode **FilterTree_SubTrees
 (
-	FT_FilterNode *root
+	const FT_FilterNode *root
 );
 
 // combines filters usign AND conditions
 FT_FilterNode *FilterTree_Combine
 (
-	FT_FilterNode **filters,
+	const FT_FilterNode **filters,
 	uint count
 );
 

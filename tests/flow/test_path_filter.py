@@ -1,5 +1,6 @@
-from common import *
 import re
+from common import *
+from index_utils import *
 from collections import Counter
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../..')
@@ -163,8 +164,7 @@ class testPathFilter(FlowTestsBase):
         redis_graph.flush()
 
         # Create index.
-        query = "CREATE INDEX ON :L(x)"
-        result_set = redis_graph.query(query)
+        result_set = create_node_exact_match_index(redis_graph, 'L', 'x', sync=True)
         self.env.assertEquals(result_set.indices_created, 1)
 
         # Issue a query in which the bound variable stream of the SemiApply op is an Index Scan.
