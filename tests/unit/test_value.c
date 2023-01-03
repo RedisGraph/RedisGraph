@@ -465,4 +465,3 @@ TEST_LIST = {
 	{"path", test_path},
 	{NULL, NULL}
 };
-

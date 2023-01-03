@@ -521,4 +521,3 @@ TEST_LIST = {
 	{"namePath", test_namePath},
 	{NULL, NULL}
 };
-

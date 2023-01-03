@@ -69,7 +69,6 @@ void test_objectPoolAddItem() {
 	for(uint i = 0; i < item_count; i++) {
 		TEST_ASSERT(*item_pointers[i] == i);
 	}
-
 	ObjectPool_Free(object_pool);
 }
 

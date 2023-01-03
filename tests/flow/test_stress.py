@@ -1,10 +1,11 @@
-from common import *
 import time
+from common import *
 from time import sleep
+from index_utils import *
 from pathos.pools import ProcessPool as Pool
 
-graphs       = None  # one graph object per client
-GRAPH_ID     = "G"   # graph identifier
+graphs   = None # one graph object per client
+GRAPH_ID = "G"  # graph identifier
 
 
 def query_crud(graph, query_id):
@@ -118,7 +119,7 @@ class testStressFlow():
         n_deletions  =  n_creations/2
 
         conn = self.env.getConnection()
-        graphs[0].query("CREATE INDEX FOR (n:Node) ON (n.v)")
+        create_node_exact_match_index(graphs[0], 'Node', 'v', sync=True)
 
         pool = Pool(nodes=5)
 

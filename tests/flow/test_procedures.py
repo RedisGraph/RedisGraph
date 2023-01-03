@@ -1,4 +1,5 @@
 from common import *
+from index_utils import *
 
 GRAPH_ID = "procedures"
 redis_graph = None
@@ -37,7 +38,7 @@ class testProcedures(FlowTestsBase):
         redis_graph.commit()
 
         # Create full-text index.
-        redis_graph.call_procedure("db.idx.fulltext.createNodeIndex", 'fruit', 'name')
+        create_fulltext_index(redis_graph, 'fruit', 'name', sync=True)
 
     # Compares two nodes based on their properties.
     def _compareNodes(self, a, b):

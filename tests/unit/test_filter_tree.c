@@ -639,4 +639,3 @@ TEST_LIST = {
 	{"compact", test_compact},
 	{NULL, NULL}
 };
-

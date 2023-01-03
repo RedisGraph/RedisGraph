@@ -449,4 +449,3 @@ TEST_LIST = {
 	{"unsignedContainsValue", test_unsignedContainsValue},
 	{NULL, NULL}
 };
-
