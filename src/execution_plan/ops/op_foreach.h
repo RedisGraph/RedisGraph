@@ -28,16 +28,11 @@ typedef struct {
     Argument *argument;      // argument operation (tap)
     OpBase *first_embedded;  // the first operation in the embedded execution-plan
 
-    uint listIdx;            // Current list index.
-    SIValue list;            // List which the unwind operation is performed on.
-    AR_ExpNode *exp;         // Arithmetic expression (evaluated as an SIArray).
-    int foreachRecIdx;       // Update record at this index.
-    Record currentRecord;    // record to clone and add a value extracted from the list.
+    bool first;              // did the first consume already occur?
 } OpForeach;
 
 /* Creates a new Foreach operation */
 OpBase *NewForeachOp
 (
-    const ExecutionPlan *plan,  // execution plan
-    AR_ExpNode *exp             // arithmetic expression node
+    const ExecutionPlan *plan  // execution plan
 );

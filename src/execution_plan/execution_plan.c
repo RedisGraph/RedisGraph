@@ -396,7 +396,9 @@ static void _ExecutionPlanInit(OpBase *root) {
 
 	// Continue initializing downstream operations.
 	for(int i = 0; i < root->childCount; i++) {
-		_ExecutionPlanInit(root->children[i]);
+		if (root->children[i]){
+			_ExecutionPlanInit(root->children[i]);
+		}
 	}
 }
 

@@ -193,14 +193,13 @@ static inline void _buildForeachOp
 	const cypher_astnode_t *clause,  // foreach clause
 	GraphContext *gc                 // graph context
 ) {
-	AST_ForeachContext foreach_ast_ctx = AST_PrepareForeachOp(clause);
-	OpBase *op = NewForeachOp(plan, foreach_ast_ctx.exp);
+	OpBase *op = NewForeachOp(plan);
 	ExecutionPlan_UpdateRoot(plan, op);
-	
+
 	ExecutionPlan *embedded_plan = ExecutionPlan_NewEmptyExecutionPlan();
 	embedded_plan->record_map = plan->record_map;
-	embedded_plan->query_graph = plan->query_graph;
 	embedded_plan->ast_segment = plan->ast_segment;
+	embedded_plan->query_graph = plan->query_graph;
 	embedded_plan->record_pool = plan->record_pool;
 	embedded_plan->connected_components = plan->connected_components;
 
@@ -215,8 +214,17 @@ static inline void _buildForeachOp
 		arguments = (const char **)raxValues(bound_vars);
 	}
 	
+	// build the argument op, which will be the deepest op in the embedded plan
 	OpBase *argument = NewArgumentOp(embedded_plan, arguments);
-	embedded_plan->root = argument;
+	ExecutionPlan_UpdateRoot(embedded_plan, argument);
+
+	// build the unwind op
+	AST_UnwindContext unwind_ast_ctx = {.exp =
+		AR_EXP_FromASTNode(cypher_ast_foreach_get_expression(clause))};
+	unwind_ast_ctx.exp->resolved_name = cypher_ast_identifier_get_name(
+		cypher_ast_foreach_get_identifier(clause));
+	OpBase *unwind_op = NewUnwindOp(embedded_plan, unwind_ast_ctx.exp);
+	ExecutionPlan_UpdateRoot(embedded_plan, unwind_op);
 
 	AST *ast = plan->ast_segment;
 	// build the embedded operations in the foreach clause
@@ -229,7 +237,13 @@ static inline void _buildForeachOp
 
 	ExecutionPlan_BindPlanToOps(plan, embedded_plan->root);
 	ExecutionPlan_AddOp(op, embedded_plan->root);
-	// rm_free(embedded_plan);
+
+	// embedded_plan->record_map = NULL;
+	// embedded_plan->ast_segment = NULL;
+	// embedded_plan->query_graph = NULL;
+	// embedded_plan->record_pool = NULL;
+	// embedded_plan->connected_components = NULL;
+	// ExecutionPlan_Free(embedded_plan);
 }
 
 void ExecutionPlanSegment_ConvertClause
