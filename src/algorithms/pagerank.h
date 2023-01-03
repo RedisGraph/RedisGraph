@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
+#include "GraphBLAS/Include/GraphBLAS.h"
 
 typedef struct {
 	GrB_Index page ;    // the node number itself

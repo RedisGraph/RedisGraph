@@ -74,7 +74,7 @@ We do not support any of these properties at the type level, meaning nodes and r
 ### Reading/Writing Clauses
 + MERGE
 + CALL (procedures)
-    - The currently-supported procedures can be found in [the Procedures documentation](/commands/graph.query/#procedures).
+    - The currently-supported procedures are listed in [the Procedures documentation](/commands/graph.query/#procedures).
 
 ### Set Operations
 + UNION
@@ -82,7 +82,7 @@ We do not support any of these properties at the type level, meaning nodes and r
 
 ## Functions
 
-The currently-supported functions can be found in [the Functions documentation](/commands/graph.query/#functions).
+The currently-supported functions are listed in [the Functions documentation](/commands/graph.query/#functions).
 
   **Unsupported:**
 
@@ -93,7 +93,7 @@ The currently-supported functions can be found in [the Functions documentation](
 
 ### Mathematical operators
 
-The currently-supported functions can be found in [the Functions documentation](/commands/graph.query/#mathematical-operators).
+The currently-supported functions are listed in [the mathematical operators documentation](/commands/graph.query/#mathematical-operators).
 
 ### String operators
 

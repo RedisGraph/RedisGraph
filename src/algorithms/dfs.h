@@ -6,7 +6,8 @@
 
 #pragma once
 
-#include "../graph/entities/qg_node.h"
+#include "graph/entities/qg_node.h"
+#include "graph/entities/qg_edge.h"
 #include <limits.h>
 
 /* Perform DFS scan from node S,

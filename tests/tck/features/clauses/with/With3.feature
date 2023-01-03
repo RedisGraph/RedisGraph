@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,15 +39,15 @@ Feature: With3 - Forward multiple expressions
              ()-[:T2 {id: 2}]->()
       """
     When executing query:
-	"""
-	MATCH (a)-[r]->(b:X)
-	WITH a, r, b
-	MATCH (a)-[r]->(b)
-	RETURN r
-	ORDER BY r.id
-	"""
+      """
+      MATCH (a)-[r]->(b:X)
+      WITH a, r, b
+      MATCH (a)-[r]->(b)
+      RETURN r AS rel
+        ORDER BY rel.id
+      """
     Then the result should be, in order:
-      | r             |
+      | rel           |
       | [:T1 {id: 0}] |
       | [:T2 {id: 1}] |
     And no side effects

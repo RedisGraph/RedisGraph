@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -118,7 +118,6 @@ Feature: Literals2 - Decimal integer
       | -9223372036854775808 |
     And no side effects
 
-  @NegativeTest
   Scenario: [9] Fail on a too large integer
     Given any graph
     When executing query:
@@ -127,7 +126,6 @@ Feature: Literals2 - Decimal integer
       """
     Then a SyntaxError should be raised at compile time: IntegerOverflow
 
-  @NegativeTest
   Scenario: [10] Fail on a too small integer
     Given any graph
     When executing query:
@@ -136,7 +134,7 @@ Feature: Literals2 - Decimal integer
       """
     Then a SyntaxError should be raised at compile time: IntegerOverflow
 
-  @NegativeTest @skipGrammarCheck
+  @skipGrammarCheck
   Scenario: [11] Fail on an integer containing a alphabetic character
     Given any graph
     When executing query:
@@ -145,7 +143,7 @@ Feature: Literals2 - Decimal integer
       """
     Then a SyntaxError should be raised at compile time: InvalidNumberLiteral
 
-  @NegativeTest @skipGrammarCheck
+  @skipGrammarCheck
   Scenario: [12] Fail on an integer containing a invalid symbol character
     Given any graph
     When executing query:

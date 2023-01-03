@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,6 @@
 
 Feature: Union3 - Union in combination with Union All
 
-  @NegativeTest
   Scenario: [1] Failing when mixing UNION and UNION ALL
     Given any graph
     When executing query:
@@ -43,7 +42,6 @@ Feature: Union3 - Union in combination with Union All
       """
     Then a SyntaxError should be raised at compile time: InvalidClauseComposition
 
-  @NegativeTest
   Scenario: [2] Failing when mixing UNION ALL and UNION
     Given any graph
     When executing query:

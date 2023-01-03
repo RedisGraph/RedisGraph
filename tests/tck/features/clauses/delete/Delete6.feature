@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,25 +28,359 @@
 
 #encoding: utf-8
 
-Feature: Delete6 - Negative scenarios
+Feature: Delete6 - Persistence of delete clause side effects
 
-  @NegativeTest
-  Scenario: [1] Failing when using undefined variable in DELETE
-    Given any graph
-    When executing query:
-      """
-      MATCH (a)
-      DELETE x
-      """
-    Then a SyntaxError should be raised at compile time: UndefinedVariable
-
-  @NegativeTest
   @skip
-  Scenario: [2] Failing when deleting an integer expression
-    Given any graph
+  Scenario: [1] Limiting to zero results after deleting nodes affects the result set but not the side effects
+    Given an empty graph
+    And having executed:
+      """
+      CREATE (:N {num: 42})
+      """
     When executing query:
       """
-      MATCH ()
-      DELETE 1 + 1
+      MATCH (n:N)
+      DELETE n
+      RETURN 42 AS num
+      LIMIT 0
       """
-    Then a SyntaxError should be raised at compile time: InvalidArgumentType
+    Then the result should be, in any order:
+      | num |
+    And the side effects should be:
+      | -nodes      | 1 |
+      | -labels     | 1 |
+      | -properties | 1 |
+
+  @skip
+  Scenario: [2] Skipping all results after deleting nodes affects the result set but not the side effects
+    Given an empty graph
+    And having executed:
+      """
+      CREATE (:N {num: 42})
+      """
+    When executing query:
+      """
+      MATCH (n:N)
+      DELETE n
+      RETURN 42 AS num
+      SKIP 1
+      """
+    Then the result should be, in any order:
+      | num |
+    And the side effects should be:
+      | -nodes      | 1 |
+      | -labels     | 1 |
+      | -properties | 1 |
+
+  @skip
+  Scenario: [3] Skipping and limiting to a few results after deleting nodes affects the result set but not the side effects
+    Given an empty graph
+    And having executed:
+      """
+      CREATE (:N {num: 1})
+      CREATE (:N {num: 2})
+      CREATE (:N {num: 3})
+      CREATE (:N {num: 4})
+      CREATE (:N {num: 5})
+      """
+    When executing query:
+      """
+      MATCH (n:N)
+      DELETE n
+      RETURN 42 AS num
+      SKIP 2 LIMIT 2
+      """
+    Then the result should be, in any order:
+      | num |
+      | 42  |
+      | 42  |
+    And the side effects should be:
+      | -nodes      | 5 |
+      | -labels     | 1 |
+      | -properties | 5 |
+
+  @skip
+  Scenario: [4] Skipping zero results and limiting to all results after deleting nodes does not affect the result set nor the side effects
+    Given an empty graph
+    And having executed:
+      """
+      CREATE (:N {num: 1})
+      CREATE (:N {num: 2})
+      CREATE (:N {num: 3})
+      CREATE (:N {num: 4})
+      CREATE (:N {num: 5})
+      """
+    When executing query:
+      """
+      MATCH (n:N)
+      DELETE n
+      RETURN 42 AS num
+      SKIP 0 LIMIT 5
+      """
+    Then the result should be, in any order:
+      | num |
+      | 42  |
+      | 42  |
+      | 42  |
+      | 42  |
+      | 42  |
+    And the side effects should be:
+      | -nodes      | 5 |
+      | -labels     | 1 |
+      | -properties | 5 |
+
+  @skip
+  Scenario: [5] Filtering after deleting nodes affects the result set but not the side effects
+    Given an empty graph
+    And having executed:
+      """
+      CREATE (:N {num: 1})
+      CREATE (:N {num: 2})
+      CREATE (:N {num: 3})
+      CREATE (:N {num: 4})
+      CREATE (:N {num: 5})
+      """
+    When executing query:
+      """
+      MATCH (n:N)
+      WITH n, n.num AS num
+      DELETE n
+      WITH num
+      WHERE num % 2 = 0
+      RETURN num
+      """
+    Then the result should be, in any order:
+      | num |
+      | 2   |
+      | 4   |
+    And the side effects should be:
+      | -nodes      | 5 |
+      | -labels     | 1 |
+      | -properties | 5 |
+
+  @skip
+  Scenario: [6] Aggregating in `RETURN` after deleting nodes affects the result set but not the side effects
+    Given an empty graph
+    And having executed:
+      """
+      CREATE (:N {num: 1})
+      CREATE (:N {num: 2})
+      CREATE (:N {num: 3})
+      CREATE (:N {num: 4})
+      CREATE (:N {num: 5})
+      """
+    When executing query:
+      """
+      MATCH (n:N)
+      WITH n, n.num AS num
+      DELETE n
+      RETURN sum(num) AS sum
+      """
+    Then the result should be, in any order:
+      | sum |
+      | 15  |
+    And the side effects should be:
+      | -nodes      | 5 |
+      | -labels     | 1 |
+      | -properties | 5 |
+
+  @skip
+  Scenario: [7] Aggregating in `WITH` after deleting nodes affects the result set but not the side effects
+    Given an empty graph
+    And having executed:
+      """
+      CREATE (:N {num: 1})
+      CREATE (:N {num: 2})
+      CREATE (:N {num: 3})
+      CREATE (:N {num: 4})
+      CREATE (:N {num: 5})
+      """
+    When executing query:
+      """
+      MATCH (n:N)
+      WITH n, n.num AS num
+      DELETE n
+      WITH sum(num) AS sum
+      RETURN sum
+      """
+    Then the result should be, in any order:
+      | sum |
+      | 15  |
+    And the side effects should be:
+      | -nodes      | 5 |
+      | -labels     | 1 |
+      | -properties | 5 |
+
+  @skip
+  Scenario: [8] Limiting to zero results after deleting relationships affects the result set but not the side effects
+    Given an empty graph
+    And having executed:
+      """
+      CREATE ()-[r:R {num: 42}]->()
+      """
+    When executing query:
+      """
+      MATCH ()-[r:R]->()
+      DELETE r
+      RETURN 42 AS num
+      LIMIT 0
+      """
+    Then the result should be, in any order:
+      | num |
+    And the side effects should be:
+      | -relationships | 1 |
+      | -properties    | 1 |
+
+  @skip
+  Scenario: [9] Skipping all results after deleting relationships affects the result set but not the side effects
+    Given an empty graph
+    And having executed:
+      """
+      CREATE ()-[r:R {num: 42}]->()
+      """
+    When executing query:
+      """
+      MATCH ()-[r:R]->()
+      DELETE r
+      RETURN 42 AS num
+      SKIP 1
+      """
+    Then the result should be, in any order:
+      | num |
+    And the side effects should be:
+      | -relationships | 1 |
+      | -properties    | 1 |
+
+  @skip
+  Scenario: [10] Skipping and limiting to a few results after deleting relationships affects the result set but not the side effects
+    Given an empty graph
+    And having executed:
+      """
+      CREATE ()-[:R {num: 1}]->()
+      CREATE ()-[:R {num: 2}]->()
+      CREATE ()-[:R {num: 3}]->()
+      CREATE ()-[:R {num: 4}]->()
+      CREATE ()-[:R {num: 5}]->()
+      """
+    When executing query:
+      """
+      MATCH ()-[r:R]->()
+      DELETE r
+      RETURN 42 AS num
+      SKIP 2 LIMIT 2
+      """
+    Then the result should be, in any order:
+      | num |
+      | 42  |
+      | 42  |
+    And the side effects should be:
+      | -relationships | 5 |
+      | -properties    | 5 |
+
+  @skip
+  Scenario: [11] Skipping zero result and limiting to all results after deleting relationships does not affect the result set nor the side effects
+    Given an empty graph
+    And having executed:
+      """
+      CREATE ()-[:R {num: 1}]->()
+      CREATE ()-[:R {num: 2}]->()
+      CREATE ()-[:R {num: 3}]->()
+      CREATE ()-[:R {num: 4}]->()
+      CREATE ()-[:R {num: 5}]->()
+      """
+    When executing query:
+      """
+      MATCH ()-[r:R]->()
+      DELETE r
+      RETURN 42 AS num
+      SKIP 0 LIMIT 5
+      """
+    Then the result should be, in any order:
+      | num |
+      | 42  |
+      | 42  |
+      | 42  |
+      | 42  |
+      | 42  |
+    And the side effects should be:
+      | -relationships | 5 |
+      | -properties    | 5 |
+
+  @skip
+  Scenario: [12] Filtering after deleting relationships affects the result set but not the side effects
+    Given an empty graph
+    And having executed:
+      """
+      CREATE ()-[:R {num: 1}]->()
+      CREATE ()-[:R {num: 2}]->()
+      CREATE ()-[:R {num: 3}]->()
+      CREATE ()-[:R {num: 4}]->()
+      CREATE ()-[:R {num: 5}]->()
+      """
+    When executing query:
+      """
+      MATCH ()-[r:R]->()
+      WITH r, r.num AS num
+      DELETE r
+      WITH num
+      WHERE num % 2 = 0
+      RETURN num
+      """
+    Then the result should be, in any order:
+      | num |
+      | 2   |
+      | 4   |
+    And the side effects should be:
+      | -relationships | 5 |
+      | -properties    | 5 |
+
+  @skip
+  Scenario: [13] Aggregating in `RETURN` after deleting relationships affects the result set but not the side effects
+    Given an empty graph
+    And having executed:
+      """
+      CREATE ()-[:R {num: 1}]->()
+      CREATE ()-[:R {num: 2}]->()
+      CREATE ()-[:R {num: 3}]->()
+      CREATE ()-[:R {num: 4}]->()
+      CREATE ()-[:R {num: 5}]->()
+      """
+    When executing query:
+      """
+      MATCH ()-[r:R]->()
+      WITH r, r.num AS num
+      DELETE r
+      RETURN sum(num) AS sum
+      """
+    Then the result should be, in any order:
+      | sum |
+      | 15  |
+    And the side effects should be:
+      | -relationships | 5 |
+      | -properties    | 5 |
+
+  @skip
+  Scenario: [14] Aggregating in `WITH` after deleting relationships affects the result set but not the side effects
+    Given an empty graph
+    And having executed:
+      """
+      CREATE ()-[:R {num: 1}]->()
+      CREATE ()-[:R {num: 2}]->()
+      CREATE ()-[:R {num: 3}]->()
+      CREATE ()-[:R {num: 4}]->()
+      CREATE ()-[:R {num: 5}]->()
+      """
+    When executing query:
+      """
+      MATCH ()-[r:R]->()
+      WITH r, r.num AS num
+      DELETE r
+      WITH sum(num) AS sum
+      RETURN sum
+      """
+    Then the result should be, in any order:
+      | sum |
+      | 15  |
+    And the side effects should be:
+      | -relationships | 5 |
+      | -properties    | 5 |

@@ -23,7 +23,7 @@ static Schema *_RdbLoadSchema
 	Schema *s = Schema_New(type, id, name);
 	RedisModule_Free(name);
 
-	Index *idx = NULL;
+	Index idx = NULL;
 	uint index_count = RedisModule_LoadUnsigned(rdb);
 	for(uint i = 0; i < index_count; i++) {
 		IndexType type = RedisModule_LoadUnsigned(rdb);
@@ -34,6 +34,13 @@ static Schema *_RdbLoadSchema
 				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
 		Schema_AddIndex(&idx, s, &field, type);
 		RedisModule_Free(field_name);
+	}
+
+	if(s->index) {
+		Index_Disable(s->index);
+	}
+	if(s->fulltextIdx) {
+		Index_Disable(s->fulltextIdx);
 	}
 
 	return s;
