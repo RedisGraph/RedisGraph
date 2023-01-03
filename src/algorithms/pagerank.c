@@ -25,7 +25,7 @@
 */
 
 #include "pagerank.h"
-#include "../util/rmalloc.h"
+#include "util/rmalloc.h"
 #include <assert.h>
 
 //------------------------------------------------------------------------------
@@ -82,12 +82,14 @@ GrB_Info Pagerank               // GrB_SUCCESS or error condition
 	GrB_Index n, nvals, *I = NULL ;
 	GrB_Vector r = NULL, t = NULL, d = NULL ;
 	GrB_Matrix C = NULL, D = NULL, T = NULL ;
+	GrB_Info rc;
 
 	assert(Phandle);
 	(*Phandle) = NULL ;
 
 	// n = size (A,1) ;         // number of nodes
-	assert(GrB_Matrix_nrows(&n, A) == GrB_SUCCESS) ;
+	rc = GrB_Matrix_nrows(&n, A) ;
+	assert(rc == GrB_SUCCESS) ;
 	if(n == 0) return (GrB_SUCCESS) ;
 
 	// teleport = (1 - 0.85) / n
@@ -96,64 +98,81 @@ GrB_Info Pagerank               // GrB_SUCCESS or error condition
 
 	// r (i) = 1/n for all nodes i
 	float x = 1.0 / ((float) n) ;
-	assert(GrB_Vector_new(&r, GrB_FP32, n) == GrB_SUCCESS) ;
-	assert(GrB_assign(r, NULL, NULL, x, GrB_ALL, n, NULL) == GrB_SUCCESS) ;
+	rc = GrB_Vector_new(&r, GrB_FP32, n) ;
+	assert(rc == GrB_SUCCESS) ;
+	rc = GrB_assign(r, NULL, NULL, x, GrB_ALL, n, NULL) ;
+	assert(rc == GrB_SUCCESS) ;
 
 	// d (i) = out deg of node i
-	assert(GrB_Vector_new(&d, GrB_FP32, n) == GrB_SUCCESS) ;
-	assert(GrB_reduce(d, NULL, NULL, GrB_PLUS_FP32, A, NULL) == GrB_SUCCESS) ;
+	rc = GrB_Vector_new(&d, GrB_FP32, n) ;
+	assert(rc == GrB_SUCCESS) ;
+	rc = GrB_reduce(d, NULL, NULL, GrB_PLUS_FP32, A, NULL) ;
+	assert(rc == GrB_SUCCESS) ;
 	// GxB_print (d, 3) ;
 
 	// D = (1/diag (d)) * DAMPING
 	bool iso ;
 	bool jumbled ;
 	GrB_Type type ;
-    GrB_Index vi_size;
-    GrB_Index vx_size;
+	GrB_Index vi_size;
+	GrB_Index vx_size;
 
-	assert(GxB_Vector_export_CSC(&d, &type, &n, &I, (void **)(&X), &vi_size,
-				&vx_size, &iso, &nvals, &jumbled, NULL) == GrB_SUCCESS) ;
+	rc = GxB_Vector_export_CSC(&d, &type, &n, &I, (void **)(&X), &vi_size,
+				               &vx_size, &iso, &nvals, &jumbled, NULL) ;
+	assert(rc == GrB_SUCCESS) ;
 
 	for(int64_t k = 0 ; k < nvals ; k++) X [k] = DAMPING / X [k] ;
-	assert(GrB_Matrix_new(&D, GrB_FP32, n, n) == GrB_SUCCESS) ;
-	assert(GrB_Matrix_build(D, I, I, X, nvals, GrB_PLUS_FP32) == GrB_SUCCESS) ;
+	rc = GrB_Matrix_new(&D, GrB_FP32, n, n) ;
+	assert(rc == GrB_SUCCESS) ;
+	rc = GrB_Matrix_build(D, I, I, X, nvals, GrB_PLUS_FP32) ;
+	assert(rc == GrB_SUCCESS) ;
 	rm_free(I) ;
 	rm_free(X) ;
 
 	// C = diagonal matrix with all zeros on the diagonal.  This ensures that
 	// the vectors r and t remain dense, which is faster, and is required
 	// for the t += teleport_scalar step.
-	assert(GrB_Matrix_new(&C, GrB_FP32, n, n) == GrB_SUCCESS) ;
+	rc = GrB_Matrix_new(&C, GrB_FP32, n, n) ;
+	assert(rc == GrB_SUCCESS) ;
 	// GxB_set (C, GxB_HYPER, GxB_ALWAYS_HYPER) ;
 
 	for(int64_t k = 0 ; k < n ; k++) {
 		// C(k,k) = 0
-		assert(GrB_Matrix_setElement(C, (float) 0, k, k) == GrB_SUCCESS) ;
+		rc = GrB_Matrix_setElement(C, (float) 0, k, k) ;
+		assert(rc == GrB_SUCCESS) ;
 	}
 
 	// make sure D is diagonal
-	assert(GrB_eWiseAdd(D, NULL, NULL, GrB_PLUS_FP32, D, C, NULL) == GrB_SUCCESS) ;
+	rc = GrB_eWiseAdd(D, NULL, NULL, GrB_PLUS_FP32, D, C, NULL) ;
+	assert(rc == GrB_SUCCESS) ;
 
 	// use GrB_mxv for t=C*r below
 	// C = C+(D*A)' = C+A'*D'  : using the transpose of C, and C*r below
 
 	// T = D*A
-	assert(GrB_Matrix_new(&T, GrB_FP32, n, n) == GrB_SUCCESS) ;
-	assert(GrB_mxm(T, NULL, NULL, GxB_PLUS_TIMES_FP32, D, A, NULL) == GrB_SUCCESS) ;
+	rc = GrB_Matrix_new(&T, GrB_FP32, n, n) ;
+	assert(rc == GrB_SUCCESS) ;
+	rc = GrB_mxm(T, NULL, NULL, GxB_PLUS_TIMES_FP32, D, A, NULL) ;
+	assert(rc == GrB_SUCCESS) ;
 
 	// C = C+T'
-	assert(GrB_transpose(C, NULL, GrB_PLUS_FP32, T, NULL) == GrB_SUCCESS) ;
+	rc = GrB_transpose(C, NULL, GrB_PLUS_FP32, T, NULL) ;
+	assert(rc == GrB_SUCCESS) ;
 
-	assert(GrB_free(&T) == GrB_SUCCESS) ;
-	assert(GrB_free(&D) == GrB_SUCCESS) ;
+	rc = GrB_free(&T) ;
+	assert(rc == GrB_SUCCESS) ;
+	rc = GrB_free(&D) ;
+	assert(rc == GrB_SUCCESS) ;
 
 	// create operator
-	assert(GrB_BinaryOp_new(&op_diff, fdiff, GrB_FP32, GrB_FP32, GrB_FP32) == GrB_SUCCESS) ;
+	rc = GrB_BinaryOp_new(&op_diff, fdiff, GrB_FP32, GrB_FP32, GrB_FP32) ;
+	assert(rc == GrB_SUCCESS) ;
 
 	float ftol = tol * tol ; // use tol^2 so sqrt(rdiff) not needed
 	float rdiff = 1 ;       // so first iteration is always done
 
-	assert(GrB_Vector_new(&t, GrB_FP32, n) == GrB_SUCCESS) ;
+	rc = GrB_Vector_new(&t, GrB_FP32, n) ;
+	assert(rc == GrB_SUCCESS) ;
 
 	//--------------------------------------------------------------------------
 	// iterate to compute the pagerank of each node
@@ -166,21 +185,26 @@ GrB_Info Pagerank               // GrB_SUCCESS or error condition
 		//----------------------------------------------------------------------
 		// GxB_print (r, 2) ;
 
-		assert(GrB_reduce(&rsum, NULL, GxB_PLUS_FP32_MONOID, r, NULL) == GrB_SUCCESS) ;
+		rc = GrB_reduce(&rsum, NULL, GxB_PLUS_FP32_MONOID, r, NULL) ;
+		assert(rc == GrB_SUCCESS) ;
 
 		// t = C*r
 		// using the transpose of A, scaled (dot product)
-		assert(GrB_mxv(t, NULL, NULL, GxB_PLUS_TIMES_FP32, C, r, NULL) == GrB_SUCCESS) ;
+		rc = GrB_mxv(t, NULL, NULL, GxB_PLUS_TIMES_FP32, C, r, NULL) ;
+		assert(rc == GrB_SUCCESS) ;
 
 		// t += teleport_scalar ;
 		float teleport_scalar = teleport * rsum ;
-		assert(GrB_assign(t, NULL, GrB_PLUS_FP32, teleport_scalar, GrB_ALL, n, NULL) == GrB_SUCCESS) ;
+		rc = GrB_assign(t, NULL, GrB_PLUS_FP32, teleport_scalar, GrB_ALL, n, NULL) ;
+		assert(rc == GrB_SUCCESS) ;
 		//----------------------------------------------------------------------
 		// rdiff = sum ((r-t).^2)
 		//----------------------------------------------------------------------
 
-		assert(GrB_eWiseAdd(r, NULL, NULL, op_diff, r, t, NULL) == GrB_SUCCESS) ;
-		assert(GrB_reduce(&rdiff, NULL, GxB_PLUS_FP32_MONOID, r, NULL) == GrB_SUCCESS) ;
+		rc = GrB_eWiseAdd(r, NULL, NULL, op_diff, r, t, NULL) ;
+		assert(rc == GrB_SUCCESS) ;
+		rc = GrB_reduce(&rdiff, NULL, GxB_PLUS_FP32_MONOID, r, NULL) ;
+		assert(rc == GrB_SUCCESS) ;
 
 		//----------------------------------------------------------------------
 		// swap r and t
@@ -191,18 +215,22 @@ GrB_Info Pagerank               // GrB_SUCCESS or error condition
 		t = temp ;
 	}
 
-	assert(GrB_free(&C) == GrB_SUCCESS) ;
-	assert(GrB_free(&t) == GrB_SUCCESS) ;
+	rc = GrB_free(&C) ;
+	assert(rc == GrB_SUCCESS) ;
+	rc = GrB_free(&t) ;
+	assert(rc == GrB_SUCCESS) ;
 
 	//--------------------------------------------------------------------------
 	// scale the result
 	//--------------------------------------------------------------------------
 
 	// rsum = sum (r)
-	assert(GrB_reduce(&rsum, NULL, GxB_PLUS_FP32_MONOID, r, NULL) == GrB_SUCCESS) ;
+	rc = GrB_reduce(&rsum, NULL, GxB_PLUS_FP32_MONOID, r, NULL) ;
+	assert(rc == GrB_SUCCESS) ;
 
 	// r = r / rsum
-	assert(GrB_Vector_assign_FP32(r, NULL, GrB_TIMES_FP32, 1 / rsum, GrB_ALL, n, NULL) == GrB_SUCCESS) ;
+	rc = GrB_Vector_assign_FP32(r, NULL, GrB_TIMES_FP32, 1 / rsum, GrB_ALL, n, NULL) ;
+	assert(rc == GrB_SUCCESS) ;
 
 	//--------------------------------------------------------------------------
 	// sort the nodes by pagerank
@@ -211,8 +239,9 @@ GrB_Info Pagerank               // GrB_SUCCESS or error condition
 	// [r,irank] = sort (r, 'descend') ;
 
 	// extract the contents of r
-	assert(GxB_Vector_export_CSC(&r, &type, &n, &I, (void **)(&X), &vi_size,
-				&vx_size, &iso, &nvals, &jumbled, NULL) == GrB_SUCCESS) ;
+	rc = GxB_Vector_export_CSC(&r, &type, &n, &I, (void **)(&X), &vi_size,
+							   &vx_size, &iso, &nvals, &jumbled, NULL) ;
+	assert(rc == GrB_SUCCESS) ;
 
 	// this will always be true since r is dense, but check anyway:
 	if(nvals != n) return (GrB_PANIC) ;

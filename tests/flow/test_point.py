@@ -1,4 +1,5 @@
 from common import *
+from index_utils import *
 
 GRAPH_ID = "point"
 redis_graph = None
@@ -86,8 +87,7 @@ class testPath():
         miradouro = {'lat': 37.854010999507736, 'lon': -25.775820972037057}
 
         # create index over location
-        q = "create index on :N(loc)"
-        redis_graph.query(q)
+        create_node_exact_match_index(redis_graph, 'N', 'loc', sync=True)
 
         # create 2 points: 'home' and 'univ'
         q = """create (:N {name:'home', loc:point({ latitude:%f, longitude:%f })})""" % (home['lat'], home['lon'])

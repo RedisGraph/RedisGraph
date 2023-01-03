@@ -26,8 +26,9 @@ description: >
 | [redislabs-redisgraph-php][redislabs-redisgraph-php-url] | PHP        | MIT          | [mkorkmaz][redislabs-redisgraph-php-author] | [![redislabs-redisgraph-php-stars]][redislabs-redisgraph-php-url] |
 | [redisgraph_php][redisgraph_php-url]                     | PHP        | MIT          | [jpbourbon][redisgraph_php-author]          | [![redisgraph_php-stars]][redisgraph_php-url]                     |
 | [redisgraph-ex][redisgraph-ex-url]                       | Elixir     | MIT          | [crflynn][redisgraph-ex-author]             | [![redisgraph-ex-stars]][redisgraph-ex-url]                       |
-| [redisgraph-rs][redisgraph-rs-url]                       | RUST       | MIT          | [malte-v][redisgraph-rs-author]             | [![redisgraph-rs-stars]][redisgraph-rs-url]                       |
-| [redis_graph][redis_graph-url]                           | RUST       | BSD          | [tompro][redis_graph-author]                | [![redis_graph-stars]][redis_graph-url]                           |
+| [redisgraph-rs][redisgraph-rs-url]                       | Rust       | MIT          | [malte-v][redisgraph-rs-author]             | [![redisgraph-rs-stars]][redisgraph-rs-url]                       |
+| [redis_graph][redis_graph-url]                           | Rust       | BSD          | [tompro][redis_graph-author]                | [![redis_graph-stars]][redis_graph-url]     
+| [rustis][rustis-url]                                     | Rust       | MIT          | [Dahomey Technologies][rustis-author]       | [![rustis-stars]][rustis-url]    |
 | [NRedisGraph][NRedisGraph-url]                           | C#         | BSD          | [tombatron][NRedisGraph-author]             | [![NRedisGraph-stars]][NRedisGraph-url]                           |
 | [RedisGraphDotNet.Client][RedisGraphDotNet.Client-url]   | C#         | BSD          | [Sgawrys][RedisGraphDotNet.Client-author]   | [![RedisGraphDotNet.Client-stars]][RedisGraphDotNet.Client-url]   |
 | [RedisGraph.jl][RedisGraph.jl-url]                       | Julia      | MIT          | [xyxel][RedisGraph.jl-author]               | [![RedisGraph.jl-stars]][RedisGraph.jl-url]                       |
@@ -112,6 +113,10 @@ description: >
 [redis-modules-java-author]: https://github.com/dengliming
 [redis-modules-java-url]: https://github.com/dengliming/redis-modules-java
 [redis-modules-java-stars]: https://img.shields.io/github/stars/dengliming/redis-modules-java.svg?style=social&amp;label=Star&amp;maxAge=2592000
+
+[rustis-url]: https://github.com/dahomey-technologies/rustis
+[rustis-author]: https://github.com/dahomey-technologies
+[rustis-stars]: https://img.shields.io/github/stars/dahomey-technologies/rustis.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 ## Implementing a client
 

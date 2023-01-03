@@ -10,6 +10,7 @@
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../index/index.h"
+#include "../index/indexer.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
 #include "../datatypes/datatypes.h"
@@ -185,8 +186,8 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke
 		return PROCEDURE_ERR;
 	}
 
-	const char *label     = NULL;
-	SIValue label_config  = args[0];
+	const char *label    = NULL;
+	SIValue label_config = args[0];
 
 	if(SI_TYPE(label_config) == T_STRING) {
 		label = label_config.stringval;
@@ -212,35 +213,44 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke
 	SIValue sw;    // index stopwords
 	SIValue lang;  // index language
 
-	int res               = INDEX_FAIL;
-	Index *idx            = NULL;
+	bool res              = false;
+	Index idx             = NULL;
 	GraphContext *gc      = QueryCtx_GetGraphCtx();
 	uint fields_count     = arg_count - 1; // skip label
 	const SIValue *fields = args + 1;      // skip index name
 
-	// introduce fields to index
+	const char* _fields[fields_count];
+	bool        nostems[fields_count];
+	double      weights[fields_count];
+	const char* phonetics[fields_count];
+
+	// collect fields
 	for(uint i = 0; i < fields_count; i++) {
-		char    *field     =  NULL;
-		double  weight     =  INDEX_FIELD_DEFAULT_WEIGHT;
-		bool    nostem     =  INDEX_FIELD_DEFAULT_NOSTEM;
-		char    *phonetic  =  INDEX_FIELD_DEFAULT_PHONETIC;
+		weights[i]   = INDEX_FIELD_DEFAULT_WEIGHT;
+		nostems[i]   = INDEX_FIELD_DEFAULT_NOSTEM;
+		phonetics[i] = INDEX_FIELD_DEFAULT_PHONETIC;
 
 		if(SI_TYPE(fields[i]) == T_STRING) {
-			field = fields[i].stringval;
+			_fields[i] = fields[i].stringval;
 		} else {
 			SIValue tmp;
-
 			MAP_GET(fields[i], "field", tmp);
-			field = tmp.stringval;
+			_fields[i] = tmp.stringval;
 
-			if(MAP_GET(fields[i], "weight", tmp)) weight = SI_GET_NUMERIC(tmp);
-			if(MAP_GET(fields[i], "nostem", tmp)) nostem = tmp.longval;
-			if(MAP_GET(fields[i], "phonetic", tmp)) phonetic = tmp.stringval;
+			if(MAP_GET(fields[i], "weight", tmp)) {
+				weights[i] = SI_GET_NUMERIC(tmp);
+			}
+			if(MAP_GET(fields[i], "nostem", tmp)) {
+				nostems[i] = tmp.longval;
+			}
+			if(MAP_GET(fields[i], "phonetic", tmp)) {
+				phonetics[i] = tmp.stringval;
+			}
 		}
-
-		res = GraphContext_AddFullTextIndex(&idx, gc, SCHEMA_NODE, label, field,
-				weight, nostem, phonetic);
 	}
+
+	char **stopwords     = NULL;
+	const char *language = NULL;
 
 	if(SI_TYPE(label_config) == T_MAP) {
 		bool lang_exists     = MAP_GET(label_config, "language",  lang);
@@ -248,19 +258,24 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke
 
 		if(stopword_exists) {
 			uint stopwords_count = SIArray_Length(sw);
-			char **stopwords = array_new(char*, stopwords_count);
+			stopwords = array_new(char*, stopwords_count); // freed by the index
 			for (uint i = 0; i < stopwords_count; i++) {
 				SIValue stopword = SIArray_Get(sw, i);
-				array_append(stopwords, stopword.stringval);
+				array_append(stopwords, rm_strdup(stopword.stringval));
 			}
-			Index_SetStopwords(idx, stopwords);
-			array_free(stopwords);
 		}
-		if(lang_exists) Index_SetLanguage(idx, lang.stringval);
+		if(lang_exists) {
+			language = lang.stringval;
+		}
 	}
 
+	res = GraphContext_AddFullTextIndex(&idx, gc, SCHEMA_NODE, label, _fields,
+			fields_count, weights, nostems, phonetics, stopwords, language);
+
 	// build index
-	if(res == INDEX_OK) Index_Construct(idx, gc->g);
+	if(res) {
+		Indexer_PopulateIndex(gc, idx);
+	}
 
 	return PROCEDURE_OK;
 }
@@ -274,17 +289,10 @@ ProcedureResult Proc_FulltextCreateNodeIdxFree(ProcedureCtx *ctx) {
 }
 
 ProcedureCtx *Proc_FulltextCreateNodeIdxGen() {
-	void *privateData = NULL;
 	ProcedureOutput *output = array_new(ProcedureOutput, 0);
-	ProcedureCtx *ctx = ProcCtxNew("db.idx.fulltext.createNodeIndex",
-								   PROCEDURE_VARIABLE_ARG_COUNT,
-								   output,
-								   Proc_FulltextCreateNodeIdxStep,
-								   Proc_FulltextCreateNodeIdxInvoke,
-								   Proc_FulltextCreateNodeIdxFree,
-								   privateData,
-								   false);
-
-	return ctx;
+	return ProcCtxNew("db.idx.fulltext.createNodeIndex",
+			PROCEDURE_VARIABLE_ARG_COUNT, output,
+			Proc_FulltextCreateNodeIdxStep, Proc_FulltextCreateNodeIdxInvoke,
+			Proc_FulltextCreateNodeIdxFree, NULL, false);
 }
 

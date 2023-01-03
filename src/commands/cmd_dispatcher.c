@@ -42,7 +42,7 @@ static int _read_flags
 	if(max_timeout != CONFIG_TIMEOUT_NO_TIMEOUT ||
 	   *timeout != CONFIG_TIMEOUT_NO_TIMEOUT) {
 		*timeout_rw = true;
-		if(timeout == CONFIG_TIMEOUT_NO_TIMEOUT) {
+		if(*timeout == CONFIG_TIMEOUT_NO_TIMEOUT) {
 			*timeout = max_timeout;
 		}
 	} else {
@@ -70,11 +70,12 @@ static int _read_flags
 
 				if(max_timeout != CONFIG_TIMEOUT_NO_TIMEOUT &&
 				   *timeout > max_timeout) {
-					asprintf(errmsg, "The query TIMEOUT parameter value cannot exceed the TIMEOUT_MAX configuration parameter value");
+					int rc __attribute__((unused));
+					rc = asprintf(errmsg, "The query TIMEOUT parameter value cannot exceed the TIMEOUT_MAX configuration parameter value");
 					return REDISMODULE_ERR;
 				}
 
-				if(timeout == CONFIG_TIMEOUT_NO_TIMEOUT && timeout_rw) {
+				if(*timeout == CONFIG_TIMEOUT_NO_TIMEOUT && timeout_rw) {
 					Config_Option_get(Config_TIMEOUT_DEFAULT, timeout);
 					if(timeout == CONFIG_TIMEOUT_NO_TIMEOUT) {
 						*timeout = max_timeout;
@@ -84,7 +85,8 @@ static int _read_flags
 
 			// Emit error on missing, negative, or non-numeric timeout values.
 			if(err != REDISMODULE_OK || *timeout < 0) {
-				asprintf(errmsg, "Failed to parse query timeout value");
+				int rc __attribute__((unused));
+				rc = asprintf(errmsg, "Failed to parse query timeout value");
 				return REDISMODULE_ERR;
 			}
 		} else if(!strcasecmp(arg, "version")) {
@@ -98,7 +100,8 @@ static int _read_flags
 
 			// Emit error on missing, negative, or non-numeric version values.
 			if(err != REDISMODULE_OK || v < 0 || v > UINT_MAX) {
-				asprintf(errmsg, "Failed to parse graph version value");
+				int rc __attribute__((unused));
+				rc = asprintf(errmsg, "Failed to parse graph version value");
 				return REDISMODULE_ERR;
 			}
 
@@ -245,12 +248,12 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 								 is_replicated, compact, timeout, timeout_rw);
 
 		if(ThreadPools_AddWorkReader(handler, context) == THPOOL_QUEUE_FULL) {
-			// Report an error once our workers thread pool internal queue
+			// report an error once our workers thread pool internal queue
 			// is full, this error usually happens when the server is
 			// under heavy load and is unable to catch up
 			RedisModule_ReplyWithError(ctx, "Max pending queries exceeded");
-			// Release the GraphContext, as we increased its reference count
-			// when retrieving it.
+			// release the GraphContext, as we increased its reference count
+			// when retrieving it
 			GraphContext_DecreaseRefCount(gc);
 			CommandCtx_Free(context);
 		}

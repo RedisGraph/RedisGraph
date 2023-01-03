@@ -26,6 +26,7 @@ typedef struct {
 	SIValue *yield_language;    // yield index language
 	SIValue *yield_stopwords;   // yield index stopwords
 	SIValue *yield_entity_type; // yield index entity type
+	SIValue *yield_status;      // yield index status
 	SIValue *yield_info;        // yield info
 } IndexesContext;
 
@@ -35,12 +36,13 @@ static void _process_yield
 	const char **yield
 ) {
 	ctx->yield_type        = NULL;
+	ctx->yield_info        = NULL;
 	ctx->yield_label       = NULL;
-	ctx->yield_properties  = NULL;
+	ctx->yield_status      = NULL;
 	ctx->yield_language    = NULL;
 	ctx->yield_stopwords   = NULL;
+	ctx->yield_properties  = NULL;
 	ctx->yield_entity_type = NULL;
-	ctx->yield_info        = NULL;
 
 	int idx = 0;
 	for(uint i = 0; i < array_len(yield); i++) {
@@ -80,6 +82,12 @@ static void _process_yield
 			continue;
 		}
 
+		if(strcasecmp("status", yield[i]) == 0) {
+			ctx->yield_status = ctx->out + idx;
+			idx++;
+			continue;
+		}
+
 		if(strcasecmp("info", yield[i]) == 0) {
 			ctx->yield_info = ctx->out + idx;
 			idx++;
@@ -107,12 +115,13 @@ ProcedureResult Proc_IndexesInvoke
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
-	IndexesContext *pdata    = rm_malloc(sizeof(IndexesContext));
-	pdata->gc                = gc;
-	pdata->out               = array_new(SIValue, 7);
-	pdata->type              = IDX_EXACT_MATCH;
-	pdata->node_schema_id    = GraphContext_SchemaCount(gc, SCHEMA_NODE) - 1;
-	pdata->edge_schema_id    = GraphContext_SchemaCount(gc, SCHEMA_EDGE) - 1;
+	IndexesContext *pdata = rm_malloc(sizeof(IndexesContext));
+
+	pdata->gc             = gc;
+	pdata->out            = array_new(SIValue, 8);
+	pdata->type           = IDX_EXACT_MATCH;
+	pdata->node_schema_id = GraphContext_SchemaCount(gc, SCHEMA_NODE) - 1;
+	pdata->edge_schema_id = GraphContext_SchemaCount(gc, SCHEMA_EDGE) - 1;
 
 	_process_yield(pdata, yield);
 
@@ -127,8 +136,12 @@ static bool _EmitIndex
 	const Schema *s,
 	IndexType type
 ) {
-	Index *idx = Schema_GetIndex(s, NULL, type);
+	Index idx = Schema_GetIndex(s, NULL, type);
 	if(idx == NULL) return false;
+
+	//--------------------------------------------------------------------------
+	// index entity type
+	//--------------------------------------------------------------------------
 
 	if(ctx->yield_entity_type != NULL) {
 		if(s->type == SCHEMA_NODE) {
@@ -138,6 +151,22 @@ static bool _EmitIndex
 		}
 	}
 
+	//--------------------------------------------------------------------------
+	// index status
+	//--------------------------------------------------------------------------
+
+	if(ctx->yield_status != NULL) {
+		if(Index_Enabled(idx)) {
+			*ctx->yield_status = SI_ConstStringVal("OPERATIONAL");
+		} else {
+			*ctx->yield_status = SI_ConstStringVal("UNDER CONSTRUCTION");
+		}
+	}
+
+	//--------------------------------------------------------------------------
+	// index type
+	//--------------------------------------------------------------------------
+
 	if(ctx->yield_type != NULL) {
 		if(type == IDX_EXACT_MATCH) {
 			*ctx->yield_type = SI_ConstStringVal("exact-match");
@@ -146,9 +175,17 @@ static bool _EmitIndex
 		}
 	}
 
+	//--------------------------------------------------------------------------
+	// index label
+	//--------------------------------------------------------------------------
+
 	if(ctx->yield_label) {
 		*ctx->yield_label = SI_ConstStringVal((char *)Schema_GetName(s));
 	}
+
+	//--------------------------------------------------------------------------
+	// index fields
+	//--------------------------------------------------------------------------
 
 	if(ctx->yield_properties) {
 		uint fields_count        = Index_FieldsCount(idx);
@@ -161,10 +198,18 @@ static bool _EmitIndex
 		}
 	}
 
+	//--------------------------------------------------------------------------
+	// index language
+	//--------------------------------------------------------------------------
+
 	if(ctx->yield_language) {
 		*ctx->yield_language =
 			SI_ConstStringVal((char *)Index_GetLanguage(idx));
 	}
+
+	//--------------------------------------------------------------------------
+	// index stopwords
+	//--------------------------------------------------------------------------
 
 	if(ctx->yield_stopwords) {
 		size_t stopwords_count;
@@ -182,10 +227,14 @@ static bool _EmitIndex
 		rm_free(stopwords);
 	}
 
+	//--------------------------------------------------------------------------
+	// index info
+	//--------------------------------------------------------------------------
+
 	if(ctx->yield_info) {
 		RSIdxInfo info = { .version = RS_INFO_CURRENT_VERSION };
-		
-		RediSearch_IndexInfo(idx->idx, &info);
+
+		RediSearch_IndexInfo(Index_RSIndex(idx), &info);
 		SIValue map = SI_Map(23);
 
 		Map_Add(&map, SI_ConstStringVal("gcPolicy"),  SI_LongVal(info.gcPolicy));
@@ -228,9 +277,8 @@ static bool _EmitIndex
 		Map_Add(&map, SI_ConstStringVal("totalMSRun"),       SI_LongVal(info.totalMSRun));
 		Map_Add(&map, SI_ConstStringVal("lastRunTimeMs"),    SI_LongVal(info.lastRunTimeMs));
 
-		*ctx->yield_info = map;
-
 		RediSearch_IndexInfoFree(&info);
+		*ctx->yield_info = map;
 	}
 
 	return true;
@@ -303,7 +351,7 @@ ProcedureResult Proc_IndexesFree
 ProcedureCtx *Proc_IndexesCtx() {
 	void *privateData = NULL;
 	ProcedureOutput output;
-	ProcedureOutput *outputs = array_new(ProcedureOutput, 7);
+	ProcedureOutput *outputs = array_new(ProcedureOutput, 8);
 
 	// index type (exact-match / fulltext)
 	output = (ProcedureOutput) {
@@ -341,6 +389,12 @@ ProcedureCtx *Proc_IndexesCtx() {
 	};
 	array_append(outputs, output);
 
+	// index status (operational / under construction)
+	output = (ProcedureOutput) {
+		.name = "status", .type = T_STRING
+	};
+	array_append(outputs, output);
+
 	// index info
 	output = (ProcedureOutput) {
 		.name = "info", .type = T_MAP
@@ -357,3 +411,4 @@ ProcedureCtx *Proc_IndexesCtx() {
 								   true);
 	return ctx;
 }
+

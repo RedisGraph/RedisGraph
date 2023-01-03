@@ -31,7 +31,7 @@ static void _DeleteNodeFromIndices
 		ASSERT(s != NULL);
 
 		// update any indices this entity is represented in
-		Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+		Index idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
 		if(idx) Index_RemoveNode(idx, n);
 
 		idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
@@ -52,7 +52,7 @@ static void _DeleteEdgeFromIndices
 	s = GraphContext_GetSchemaByID(gc, relation_id, SCHEMA_EDGE);
 
 	// update any indices this entity is represented in
-	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+	Index idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
 	if(idx) Index_RemoveEdge(idx, e);
 
 	idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
