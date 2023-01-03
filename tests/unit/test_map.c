@@ -190,4 +190,3 @@ TEST_LIST = {
 	{"map_tostring", test_map_tostring},
 	{NULL, NULL}
 };
-

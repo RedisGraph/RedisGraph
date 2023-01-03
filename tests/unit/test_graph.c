@@ -449,4 +449,3 @@ TEST_LIST = {
 	{"getEdge", test_getEdge},
 	{NULL, NULL}
 };
-

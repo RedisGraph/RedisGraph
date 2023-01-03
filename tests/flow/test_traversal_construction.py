@@ -1,4 +1,5 @@
 from common import *
+from index_utils import *
 
 graph = None
 
@@ -118,8 +119,7 @@ class testTraversalConstruction():
         # have the potential turn into index scan
         return
 
-        q = """CREATE INDEX ON :L(v)"""
-        graph.query(q)
+        create_node_exact_match_index(graph, 'L', 'v', sync=True)
 
         q = """MATCH (a:L {v:1})-[]-(b:L {x:1}) RETURN a, b"""
         plan = graph.execution_plan(q)

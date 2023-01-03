@@ -112,4 +112,3 @@ TEST_LIST = {
 	{"pagerank", test_pagerank},
 	{NULL, NULL}
 };
-
