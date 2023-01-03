@@ -189,12 +189,12 @@ class testIndexCreationFlow():
                 con.execute_command("GRAPH.DELETE", graph_id)
 
         if "to_thread" not in dir(asyncio):
-            _create_drop_index(1)
+            create_drop_index(1)
         else:
             loop = asyncio.get_event_loop()
             tasks = []
             for i in range(1, 20):
-                tasks.append(loop.create_task(asyncio.to_thread(_create_drop_index, i)))
+                tasks.append(loop.create_task(asyncio.to_thread(create_drop_index, i)))
 
             loop.run_until_complete(asyncio.wait(tasks))
 
