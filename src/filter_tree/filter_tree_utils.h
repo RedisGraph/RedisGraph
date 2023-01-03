@@ -13,5 +13,5 @@ bool isInFilter(const FT_FilterNode *filter);
 bool extractOriginAndRadius(const FT_FilterNode *filter, SIValue *origin,
 		SIValue *radius, char **point);
 
-bool isDistanceFilter(FT_FilterNode *filter);
+bool isDistanceFilter(const FT_FilterNode *filter);
 

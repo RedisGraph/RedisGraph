@@ -572,18 +572,38 @@ static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r,
 	return res;
 }
 
+SIValue AR_EXP_Evaluate_NoThrow(AR_ExpNode *root, const Record r) {
+	SIValue result;
+	AR_EXP_Result res = _AR_EXP_Evaluate(root, r, &result);
+
+	if(res == EVAL_ERR) {
+		return SI_NullVal(); // Otherwise return NULL; the query-level error will be emitted after cleanup.
+	}
+
+	// at least one param node was encountered during evaluation,
+	// tree should be parameters free, try reducing the tree
+	if(res == EVAL_FOUND_PARAM) {
+		AR_EXP_ReduceToScalar(root, true, NULL);
+	}
+
+	return result;
+}
+
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 	SIValue result;
 	AR_EXP_Result res = _AR_EXP_Evaluate(root, r, &result);
 
 	if(res == EVAL_ERR) {
-		ErrorCtx_RaiseRuntimeException(NULL);  // Raise an exception if we're in a run-time context.
+		ErrorCtx_RaiseRuntimeException(NULL);
 		return SI_NullVal(); // Otherwise return NULL; the query-level error will be emitted after cleanup.
 	}
 
-	// At least one param node was encountered during evaluation,
-	// tree should be parameters free, try reducing the tree.
-	if(res == EVAL_FOUND_PARAM) AR_EXP_ReduceToScalar(root, true, NULL);
+	// at least one param node was encountered during evaluation,
+	// tree should be parameters free, try reducing the tree
+	if(res == EVAL_FOUND_PARAM) {
+		AR_EXP_ReduceToScalar(root, true, NULL);
+	}
+
 	return result;
 }
 

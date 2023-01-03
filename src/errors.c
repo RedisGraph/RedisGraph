@@ -62,7 +62,8 @@ static void _ErrorCtx_SetError(const char *err_fmt, va_list args) {
 	// An error is already set - free it
 	if(ctx->error != NULL) free(ctx->error);
 
-	vasprintf(&ctx->error, err_fmt, args);
+	int rc __attribute__((unused));
+	rc = vasprintf(&ctx->error, err_fmt, args);
 }
 
 void ErrorCtx_SetError(const char *err_fmt, ...) {

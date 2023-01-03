@@ -23,7 +23,7 @@ class testPendingQueryLimit():
     def __init__(self):
         self.env = Env(decodeResponses=True, moduleArgs="THREAD_COUNT 2")
         # skip test if we're running under Valgrind
-        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
+        if VALGRIND:
             self.env.skip() # valgrind is not working correctly with multi process
 
         self.conn = self.env.getConnection()

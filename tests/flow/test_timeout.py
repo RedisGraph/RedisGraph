@@ -1,4 +1,5 @@
 from common import *
+from index_utils import *
 
 redis_con = None
 redis_graph = None
@@ -8,9 +9,10 @@ GRAPH_ID = "timeout"
 class testQueryTimeout():
     def __init__(self):
         self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT 1000")
+
         # skip test if we're running under Valgrind
-        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
-            self.env.skip() # queries will be much slower under Valgrind
+        if SANITIZER != "":
+            self.env.skip() # valgrind is not working correctly with replication
 
         global redis_con
         global redis_graph
@@ -61,8 +63,7 @@ class testQueryTimeout():
         # set timeout to unlimited
         redis_con.execute_command("GRAPH.CONFIG SET timeout 0")
 
-        query = """CREATE INDEX ON :Person(age, height, weight)"""
-        redis_graph.query(query)
+        create_node_exact_match_index(redis_graph, 'Person', 'age', 'height', 'weight', sync=True)
 
         queries = [
                 # full scan
