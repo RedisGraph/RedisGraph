@@ -196,7 +196,6 @@ static inline void _buildForeachOp
 	GraphContext *gc                 // graph context
 ) {
 	OpBase *op = NewForeachOp(plan);
-	ExecutionPlan_UpdateRoot(plan, op);
 
 	ExecutionPlan *embedded_plan = ExecutionPlan_NewEmptyExecutionPlan();
 	embedded_plan->record_map = plan->record_map;
@@ -240,12 +239,15 @@ static inline void _buildForeachOp
 	ExecutionPlan_BindPlanToOps(plan, embedded_plan->root);
 	ExecutionPlan_AddOp(op, embedded_plan->root);
 
-	// embedded_plan->record_map = NULL;
-	// embedded_plan->ast_segment = NULL;
-	// embedded_plan->query_graph = NULL;
-	// embedded_plan->record_pool = NULL;
-	// embedded_plan->connected_components = NULL;
+	ExecutionPlan_UpdateRoot(plan, op);
+
+	embedded_plan->record_map = NULL;
+	embedded_plan->ast_segment = NULL;
+	embedded_plan->query_graph = NULL;
+	embedded_plan->record_pool = NULL;
+	embedded_plan->connected_components = NULL;
 	// ExecutionPlan_Free(embedded_plan);
+	rm_free(embedded_plan);
 }
 
 void ExecutionPlanSegment_ConvertClause

@@ -29,7 +29,9 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan) {
 
 	// Initialize the plan's record mapping if necessary.
 	// It will already be set if this ExecutionPlan has been created to populate a single stream.
-	if(plan->record_map == NULL) plan->record_map = raxNew();
+	if(plan->record_map == NULL) {
+		plan->record_map = raxNew();
+	}
 
 	// Build query graph
 	// Query graph is set if this ExecutionPlan has been created to populate a single stream.

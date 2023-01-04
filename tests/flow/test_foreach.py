@@ -63,53 +63,53 @@ class testForeachFlow(FlowTestsBase):
             self.get_res_and_assertEquals(q_i, res_i)
 
 
-    # # tests that the modifications made in the FOREACH clause are correct
-    # def test03_modifications(self):
-    #     # using the nodes created above
-    #     # update the nodes' properties
-    #     res = graph.query(
-    #         'FOREACH(i in range(0, 4) | MERGE (n:N {v: i}) SET n.v=i^2)'
-    #         )
+    # tests that the modifications made in the FOREACH clause are correct
+    def test03_modifications(self):
+        # using the nodes created above
+        # update the nodes' properties
+        res = graph.query(
+            'FOREACH(i in range(0, 4) | MERGE (n:N {v: i}) SET n.v=i^2)'
+            )
 
-    #     # make sure no nodes were created
-    #     self.env.assertEquals(res.nodes_created, 0)
+        # make sure no nodes were created
+        self.env.assertEquals(res.nodes_created, 0)
 
-    #     # validate that the update is correct
-    #     for i in range(5):
-    #         q_i = f'MATCH (n:N {{v: {i**2}}}) return n.v'
-    #         res_i = [[i**2]]
-    #         self.get_res_and_assertEquals(q_i, res_i)
+        # validate that the update is correct
+        for i in range(5):
+            q_i = f'MATCH (n:N {{v: {i**2}}}) return n.v'
+            res_i = [[i**2]]
+            self.get_res_and_assertEquals(q_i, res_i)
 
-    #     # update the nodes labels
-    #     res = graph.query(
-    #         'FOREACH(i in range(0, 4) | MATCH (n:N {v: i}) SET n:M'
-    #         )
-        
-    #     # validate that the update is correct
-    #     for i in range(5):
-    #         q_i = f'MATCH (n:N {{v: {i}}}) return labels(n)'
-    #         res_i = [['N', 'M']]
-    #         self.get_res_and_assertEquals(q_i, res_i)
+        # update the nodes labels
+        res = graph.query(
+            'FOREACH(i in range(0, 4) | MERGE (n:N {v: i^2}) SET n:M)'
+            )
 
-    # # tests a CASE WHEN THEN ELSE
-    # def test04_case(self):
-    #     # clean db
-    #     self.env.flush()
-        
-    #     # perform a conditional query using a CASE expression
-    #     res = graph.query(
-    #         """FOREACH(do_perform IN CASE WHEN true THEN [1] ELSE [] END | \
-    #             CREATE (:N))"""
-    #         )
-        
-    #     # make sure a node was created
-    #     self.env.assertEquals(res.nodes_created, 1)
+        # validate that the update is correct
+        for i in range(5):
+            q_i = f'MATCH (n:N {{v: {i**2}}}) return labels(n)'
+            res_i = [[['N', 'M']]]
+            self.get_res_and_assertEquals(q_i, res_i)
 
-    #     # same case with a negative test-clause
-    #     res = graph.query(
-    #         """FOREACH(do_perform IN CASE WHEN false THEN [1] ELSE [] END | \
-    #             CREATE (:N))"""
-    #         )
+    # tests a CASE WHEN THEN ELSE
+    def test04_case(self):
+        # clean db
+        self.env.flush()
 
-    #     # make sure a node was not created
-    #     self.env.assertEquals(res.nodes_created, 0)
+        # perform a conditional query using a CASE expression
+        res = graph.query(
+            """FOREACH(do_perform IN CASE WHEN true THEN [1] ELSE [] END | \
+                CREATE (:N))"""
+            )
+
+        # make sure a node was created
+        self.env.assertEquals(res.nodes_created, 1)
+
+        # same case with a negative test-clause
+        res = graph.query(
+            """FOREACH(do_perform IN CASE WHEN false THEN [1] ELSE [] END | \
+                CREATE (:N))"""
+            )
+
+        # make sure a node was not created
+        self.env.assertEquals(res.nodes_created, 0)

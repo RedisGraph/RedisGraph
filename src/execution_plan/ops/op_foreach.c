@@ -98,7 +98,7 @@ static Record ForeachConsume
 
 	return r;
 }
-// FOREACH(n in [1, 2, 3, 4] | ....)
+
 static OpResult ForeachReset
 (
     OpBase *opBase  // operation
