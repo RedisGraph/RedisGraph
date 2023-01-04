@@ -9,6 +9,7 @@
 #include "src/util/rmalloc.h"
 #include "src/arithmetic/funcs.h"
 #include "src/procedures/procedure.h"
+#include "src/execution_plan/ops/ops.h"
 #include "src/execution_plan/execution_plan_clone.h"
 
 #include <stdio.h>
@@ -111,6 +112,7 @@ void setup() {
 
 	Proc_Register();     // register procedures
 	AR_RegisterFuncs();  // register arithmetic functions
+	OpDesc_RegisterOps();
 
 	// create a graphcontext
 	_fake_graph_context();
