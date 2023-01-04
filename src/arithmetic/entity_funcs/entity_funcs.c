@@ -56,7 +56,7 @@ SIValue AR_HAS_LABELS(SIValue *argv, int argc, void *private_data) {
 	GraphContext *gc       =  QueryCtx_GetGraphCtx();
 	Graph        *g        =  gc->g;
 
-	// iterate over given labels
+	// validate input arguments
 	uint32_t labels_length = SIArray_Length(labels);
 	for (uint32_t i = 0; i < labels_length; i++) {
 		SIValue label_value = SIArray_Get(labels, i);
@@ -64,6 +64,10 @@ SIValue AR_HAS_LABELS(SIValue *argv, int argc, void *private_data) {
 			Error_FunctionArgumentSITypeMismatch(label_value, T_STRING, "hasLabels", 2, i + 1);
 			return SI_NullVal();
 		}
+	}
+	// iterate over given labels
+	for (uint32_t i = 0; i < labels_length; i++) {
+		SIValue label_value = SIArray_Get(labels, i);
 		char *label = label_value.stringval;
 		Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 
