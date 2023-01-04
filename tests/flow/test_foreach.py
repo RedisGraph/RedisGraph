@@ -113,3 +113,37 @@ class testForeachFlow(FlowTestsBase):
 
         # make sure a node was not created
         self.env.assertEquals(res.nodes_created, 0)
+
+    # test the tieing of different segments with FOREACH
+    def test05_tie_with_foreach(self):
+        # clean db
+        self.env.flush()
+
+        graph.query(
+            "CYPHER li = [0, 1, 2, 3, 4] FOREACH(i in $li | CREATE(n:N {v: i}))"
+        )
+
+        # send a query that demands the tieing of segments containing foreach
+        query = """
+                MATCH (n:N) WITH collect(n) as ns
+                FOREACH(n in ns | CREATE (:N {v: n.v}))
+                MATCH (new_n:N) WITH collect(new_n) as new_ns
+                FOREACH(n in new_ns | CREATE (:N {v: n.v^10}))
+                """
+
+        res = graph.query(query)
+
+        # 5 + 10 = 15 nodes created
+        self.env.assertEquals(res.nodes_created, 15)
+
+        # 5 + 10 = 15 properties set
+        self.env.assertEquals(res.properties_set, 15)
+
+        # clean db
+        self.env.flush()
+
+    # Problematic at the moment - think if to make Foreach eager, or change Create.
+    # def test06_multiple_records(self):
+
+    # MATCH (n:N) FOREACH(i in [1] | CREATE (:N {v: n.v}))
+    #         WITH collect(n) as ns FOREACH(n in ns | CREATE (:N {v: n.v^10}))

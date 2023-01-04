@@ -196,6 +196,7 @@ static inline void _buildForeachOp
 	GraphContext *gc                 // graph context
 ) {
 	OpBase *op = NewForeachOp(plan);
+	ExecutionPlan_UpdateRoot(plan, op);
 
 	ExecutionPlan *embedded_plan = ExecutionPlan_NewEmptyExecutionPlan();
 	embedded_plan->record_map = plan->record_map;
@@ -238,8 +239,6 @@ static inline void _buildForeachOp
 
 	ExecutionPlan_BindPlanToOps(plan, embedded_plan->root);
 	ExecutionPlan_AddOp(op, embedded_plan->root);
-
-	ExecutionPlan_UpdateRoot(plan, op);
 
 	embedded_plan->record_map = NULL;
 	embedded_plan->ast_segment = NULL;

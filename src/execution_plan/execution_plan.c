@@ -217,6 +217,10 @@ static ExecutionPlan *_tie_segments
 	// merge segments
 	//--------------------------------------------------------------------------
 
+	if(segment_count == 1) {
+		goto one_segment;
+	}
+
 	for(int i = 0; i < segment_count; i++) {
 		ExecutionPlan *segment = segments[i];
 		AST *ast = segment->ast_segment;
@@ -302,6 +306,7 @@ static ExecutionPlan *_tie_segments
 		}
 	}
 
+one_segment:
 	// Restore the master AST.
 	QueryCtx_SetAST(master_ast);
 
