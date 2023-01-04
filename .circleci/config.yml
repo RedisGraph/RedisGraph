@@ -298,6 +298,16 @@ commands:
               --fail_fast \
               --push_results_redistimeseries \
               --allowed-envs << parameters.allowed_envs >>
+      - run:
+          name: Generate Pull Request Performance info
+          command: |
+            if [[ -n ${CIRCLE_PULL_REQUEST##*/} ]]; then
+                redisbench-admin compare  \
+                  --defaults_filename ./tests/benchmarks/defaults.yml \
+                  --comparison-branch $CIRCLE_BRANCH \
+                  --pull-request ${CIRCLE_PULL_REQUEST##*/}
+            fi
+
 
 #----------------------------------------------------------------------------------------------------------------------------------
 
