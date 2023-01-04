@@ -214,40 +214,20 @@ void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *cla
 		return;
 	}
 
-	//--------------------------------------------------------------------------
-	// Extract mandatory patterns
-	//--------------------------------------------------------------------------
-
-	uint mandatory_match_count = 0; // Number of mandatory patterns
-	const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
-	uint match_clause_count = array_len(match_clauses);
-	const cypher_astnode_t *patterns[match_clause_count];
-	const cypher_astnode_t *mandatory_matches[match_clause_count];
-
-	for(uint i = 0; i < match_clause_count; i++) {
-		const cypher_astnode_t *match_clause = match_clauses[i];
-		if(cypher_ast_match_is_optional(match_clause)) continue;
-		mandatory_matches[mandatory_match_count] = match_clause;
-		patterns[mandatory_match_count] = cypher_ast_match_get_pattern(match_clause);
-		mandatory_match_count++;
-	}
-
 	// collect the QueryGraph entities referenced in the clauses being converted
+	const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clause);
 	QueryGraph *qg = plan->query_graph;
-	QueryGraph *sub_qg = QueryGraph_ExtractPatterns(qg, patterns,
-			mandatory_match_count);
+	QueryGraph *sub_qg = QueryGraph_ExtractPatterns(qg, &pattern, 1);
 
 	ExecutionPlan_ProcessQueryGraph(plan, sub_qg, ast);
 	if(ErrorCtx_EncounteredError()) goto cleanup;
 
 	// Build the FilterTree to model any WHERE predicates on these clauses and place ops appropriately.
-	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, mandatory_matches,
-														   mandatory_match_count);
+	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, &clause, 1);
 	ExecutionPlan_PlaceFilterOps(plan, plan->root, NULL, sub_ft);
 
 	// Clean up
 cleanup:
 	QueryGraph_Free(sub_qg);
-	array_free(match_clauses);
 }
 
