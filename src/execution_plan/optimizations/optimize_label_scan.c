@@ -46,10 +46,12 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 
 	// return if node has only one non-optional label
 	uint label_count = QGNode_MandatoryLabelCount(qn);
-	if(label_count == 1) return;
+	if(label_count == 1) {
+		return;
+	}
 	
 	label_count = QGNode_LabelCount(qn);
-	ASSERT(label_count >= 1);
+	ASSERT(label_count > 1);
 
 	// node has multiple labels
 	// find label with minimum entities
@@ -57,14 +59,19 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	int         min_label_id  = 0;          // tracks min label ID
 	const char *min_label_str = NULL;       // tracks min label name
 
-	// don't perform the optimization on a plan where the label is optional
+	// don't perform the optimization on a plan where the first label is optional
 	bool optional;
 	QGNode_HasLabel(qn, scan->n.label, NULL,  &optional);
-	if(optional) return;
+	// if the label is optional, do not swap the order of traversal
+	if(optional) {
+		return;
+	}
 
 	for(uint i = 0; i < label_count; i++) {
 		// don't consider optional labels
-		if (QGNode_IsLabelIdxOptional(qn, i)) continue;
+		if (QGNode_IsLabelIdxOptional(qn, i)) {
+			continue;
+		}
 		uint64_t nnz;
 		int label_id = QGNode_GetLabelID(qn, i);
 		nnz = Graph_LabeledNodeCount(g, label_id);
@@ -78,7 +85,9 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 
 	// scanned label has the minimum number of entries
 	// no switching required
-	if(min_label_id == scan->n.label_id) return;
+	if(min_label_id == scan->n.label_id) {
+		return;
+	}
 
 	// patch following traversal, skip filters
 	OpBase *parent = op->parent;

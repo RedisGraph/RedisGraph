@@ -87,7 +87,7 @@ uint QGNode_MandatoryLabelCount
 		optional_count += n->optional[i];
 	}
 
-	return optional_count;
+	return count - optional_count;
 }
 
 int QGNode_GetLabelID
@@ -139,6 +139,9 @@ const char *QGNode_GetLabel
 	return n->labels[idx];
 }
 
+// returns whether n has label l
+// if optional arguments idx, optional are not NULL
+// they are set to their corresponding values
 bool QGNode_HasLabel
 (
 	const QGNode *n,  // node to inspect
