@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -138,7 +138,6 @@ Feature: Graph3 - Node labels
       | null      | null         |
     And no side effects
 
-  @NegativeTest
   Scenario: [8] `labels()` failing on a path
     Given an empty graph
     And having executed:
@@ -152,7 +151,6 @@ Feature: Graph3 - Node labels
       """
     Then a SyntaxError should be raised at compile time: InvalidArgumentType
 
-  @NegativeTest
   Scenario: [9] `labels()` failing on invalid arguments
     Given an empty graph
     And having executed:

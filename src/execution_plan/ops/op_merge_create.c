@@ -134,7 +134,6 @@ static bool _CreateEntities(OpMergeCreate *op, Record r, GraphContext *gc) {
 		PropertyMap *map = n->properties;
 		AttributeSet converted_attr = NULL;
 		if(map != NULL) {
-			converted_attr = AttributeSet_New();
 			ConvertPropertyMap(gc, &converted_attr, r, map, true);
 		}
 
@@ -179,7 +178,6 @@ static bool _CreateEntities(OpMergeCreate *op, Record r, GraphContext *gc) {
 		PropertyMap *map = e->properties;
 		AttributeSet converted_attr = NULL;
 		if(map != NULL) {
-			converted_attr = AttributeSet_New();
 			ConvertPropertyMap(gc, &converted_attr, r, map, true);
 		}
 

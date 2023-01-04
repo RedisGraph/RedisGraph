@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,7 @@
 
 Feature: Temporal2 - Create Temporal Values from a String
 
-@skip
+  @skip
   Scenario Outline: [1] Should parse date from string
     Given any graph
     When executing query:
@@ -56,7 +56,7 @@ Feature: Temporal2 - Create Temporal Values from a String
       | '2015202'    | '2015-07-21' |
       | '2015'       | '2015-01-01' |
 
-@skip
+  @skip
   Scenario Outline: [2] Should parse local time from string
     Given any graph
     When executing query:
@@ -78,7 +78,7 @@ Feature: Temporal2 - Create Temporal Values from a String
       | '2140'         | '21:40'        |
       | '21'           | '21:00'        |
 
-@skip
+  @skip
   Scenario Outline: [3] Should parse time from string
     Given any graph
     When executing query:
@@ -101,7 +101,7 @@ Feature: Temporal2 - Create Temporal Values from a String
       | '2140-02'           | '21:40-02:00'        |
       | '22+18:00'          | '22:00+18:00'        |
 
-@skip
+  @skip
   Scenario Outline: [4] Should parse local date time from string
     Given any graph
     When executing query:
@@ -123,7 +123,7 @@ Feature: Temporal2 - Create Temporal Values from a String
       | '2015-W30T2140'           | '2015-07-20T21:40'        |
       | '2015202T21'              | '2015-07-21T21:00'        |
 
-@skip
+  @skip
   Scenario Outline: [5] Should parse date time from string
     Given any graph
     When executing query:
@@ -146,7 +146,7 @@ Feature: Temporal2 - Create Temporal Values from a String
       | '2015-W30T2140-02'             | '2015-07-20T21:40-02:00'        |
       | '2015202T21+18:00'             | '2015-07-21T21:00+18:00'        |
 
-@skip
+  @skip
   Scenario Outline: [6] Should parse date time with named time zone from string
     Given any graph
     When executing query:
@@ -164,9 +164,9 @@ Feature: Temporal2 - Create Temporal Values from a String
       | '2015-07-21T21:40:32.142+0845[Australia/Eucla]'   | '2015-07-21T21:40:32.142+08:45[Australia/Eucla]'     |
       | '2015-07-21T21:40:32.142-04[America/New_York]'    | '2015-07-21T21:40:32.142-04:00[America/New_York]'    |
       | '2015-07-21T21:40:32.142[Europe/London]'          | '2015-07-21T21:40:32.142+01:00[Europe/London]'       |
-      | '1818-07-21T21:40:32.142[Europe/Stockholm]'       | '1818-07-21T21:40:32.142+01:12:12[Europe/Stockholm]' |
+      | '1818-07-21T21:40:32.142[Europe/Stockholm]'       | '1818-07-21T21:40:32.142+00:53:28[Europe/Stockholm]' |
 
-@skip
+  @skip
   Scenario Outline: [7] Should parse duration from string
     Given any graph
     When executing query:

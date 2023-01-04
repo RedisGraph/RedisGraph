@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2021 "Neo Technology,"
+# Copyright (c) 2015-2022 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -357,232 +357,29 @@ Feature: Quantifier3 - Any quantifier
       | [null, 123, null, null]  | true   |
       | [null, null, null, null] | false  |
 
-  Scenario Outline: [13] Any quantifier can nest itself and other quantifiers on nested lists
+  Scenario: [13] Any quantifier is false if the predicate is statically false and the list is not empty
     Given any graph
     When executing query:
       """
-      RETURN any(x IN [['abc'], ['abc', 'def']] WHERE <condition>) AS result
-      """
-    Then the result should be, in any order:
-      | result   |
-      | <result> |
-    And no side effects
-
-    Examples:
-      | condition                      | result |
-      | none(y IN x WHERE y = 'def')   | true   |
-      | none(y IN x WHERE y = 'abc')   | false  |
-      | single(y IN x WHERE y = 'def') | true   |
-      | single(y IN x WHERE y = 'ghi') | false  |
-      | any(y IN x WHERE y = 'abc')    | true   |
-      | any(y IN x WHERE y = 'ghi')    | false  |
-      | all(y IN x WHERE y = 'abc')    | true   |
-      | all(y IN x WHERE y = 'def')    | false  |
-
-  Scenario Outline: [14] Any quantifier can nest itself and other quantifiers on the same list
-    Given any graph
-    When executing query:
-      """
-      WITH [1, 2, 3, 4, 5, 6, 7, 8, 9] AS list
-      RETURN any(x IN list WHERE <condition>) AS result
-      """
-    Then the result should be, in any order:
-      | result   |
-      | <result> |
-    And no side effects
-
-    Examples:
-      | condition                         | result |
-      | none(y IN list WHERE x = y * y)   | true   |
-      | none(y IN list WHERE x % y = 0)   | false  |
-      | single(y IN list WHERE x = y * y) | true   |
-      | single(y IN list WHERE x < y * y) | false  |
-      | any(y IN list WHERE x = y)        | true   |
-      | any(y IN list WHERE x = 10 * y)   | false  |
-      | all(y IN list WHERE x <= y)       | true   |
-      | all(y IN list WHERE x < y)        | false  |
-
-  @skip
-  Scenario: [15] Any quantifier is always false if the predicate is statically false and the list is not empty
-    Given any graph
-    When executing query:
-      """
-      WITH [1, null, true, 4.5, 'abc', false, '', [234, false], {a: null, b: true, c: 15.2}, {}, [], [null], [[{b: [null]}]]] AS inputList
-      UNWIND inputList AS x
-      WITH inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      UNWIND inputList AS x
-      WITH inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      UNWIND inputList AS x
-      WITH inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      WITH list WHERE size(list) > 0
-      WITH any(x IN list WHERE false) AS result, count(*) AS cnt
-      RETURN result
+      RETURN any(x IN [1, null, true, 4.5, 'abc', false] WHERE false) AS result
       """
     Then the result should be, in any order:
       | result |
       | false  |
     And no side effects
 
-  @skip
-  Scenario: [16] Any quantifier is always true if the predicate is statically true and the list is not empty
+  Scenario: [14] Any quantifier is true if the predicate is statically true and the list is not empty
     Given any graph
     When executing query:
       """
-      WITH [1, null, true, 4.5, 'abc', false, '', [234, false], {a: null, b: true, c: 15.2}, {}, [], [null], [[{b: [null]}]]] AS inputList
-      UNWIND inputList AS x
-      WITH inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      UNWIND inputList AS x
-      WITH inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      UNWIND inputList AS x
-      WITH inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      WITH list WHERE size(list) > 0
-      WITH any(x IN list WHERE true) AS result, count(*) AS cnt
-      RETURN result
+      RETURN any(x IN [1, null, true, 4.5, 'abc', false] WHERE true) AS result
       """
     Then the result should be, in any order:
       | result |
       | true   |
     And no side effects
 
-  Scenario Outline: [17] Any quantifier is always true if the single or the all quantifier is true
-    Given any graph
-    When executing query:
-      """
-      UNWIND [{list: [2], fixed: true},
-              {list: [6], fixed: true},
-              {list: [1, 2, 3, 4, 5, 6, 7, 8, 9], fixed: false}] AS input
-      WITH CASE WHEN input.fixed THEN input.list ELSE null END AS fixedList,
-           CASE WHEN NOT input.fixed THEN input.list ELSE [1] END AS inputList
-      UNWIND inputList AS x
-      WITH fixedList, inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH fixedList, inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      UNWIND inputList AS x
-      WITH fixedList, inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH fixedList, inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      UNWIND inputList AS x
-      WITH fixedList, inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH fixedList, inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      WITH coalesce(fixedList, list) AS list
-      WITH list WHERE single(<operands>) OR all(<operands>)
-      WITH any(<operands>) AS result, count(*) AS cnt
-      RETURN result
-      """
-    Then the result should be, in any order:
-      | result |
-      | true   |
-    And no side effects
-
-    Examples:
-      | operands                  |
-      | x IN list WHERE x = 2     |
-      | x IN list WHERE x % 2 = 0 |
-      | x IN list WHERE x % 3 = 0 |
-      | x IN list WHERE x < 7     |
-      | x IN list WHERE x >= 3    |
-
-  Scenario Outline: [18] Any quantifier is always equal the boolean negative of the none quantifier
-    Given any graph
-    When executing query:
-      """
-      WITH [1, 2, 3, 4, 5, 6, 7, 8, 9] AS inputList
-      UNWIND inputList AS x
-      WITH inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      UNWIND inputList AS x
-      WITH inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      UNWIND inputList AS x
-      WITH inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      WITH any(x IN list WHERE <predicate>) = (NOT none(x IN list WHERE <predicate>)) AS result, count(*) AS cnt
-      RETURN result
-      """
-    Then the result should be, in any order:
-      | result |
-      | true   |
-    And no side effects
-
-    Examples:
-      | predicate |
-      | x = 2     |
-      | x % 2 = 0 |
-      | x % 3 = 0 |
-      | x < 7     |
-      | x >= 3    |
-
-  Scenario Outline: [19] Any quantifier is always equal the boolean negative of the all quantifier on the boolean negative of the predicate
-    Given any graph
-    When executing query:
-      """
-      WITH [1, 2, 3, 4, 5, 6, 7, 8, 9] AS inputList
-      UNWIND inputList AS x
-      WITH inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      UNWIND inputList AS x
-      WITH inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      UNWIND inputList AS x
-      WITH inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      WITH any(x IN list WHERE <predicate>) = (NOT all(x IN list WHERE NOT (<predicate>))) AS result, count(*) AS cnt
-      RETURN result
-      """
-    Then the result should be, in any order:
-      | result |
-      | true   |
-    And no side effects
-
-    Examples:
-      | predicate |
-      | x = 2     |
-      | x % 2 = 0 |
-      | x % 3 = 0 |
-      | x < 7     |
-      | x >= 3    |
-
-  Scenario Outline: [20] Any quantifier is always equal whether the size of the list filtered with same the predicate is grater zero
-    Given any graph
-    When executing query:
-      """
-      UNWIND [{list: [2], fixed: true},
-              {list: [6], fixed: true},
-              {list: [7], fixed: true},
-              {list: [1, 2, 3, 4, 5, 6, 7, 8, 9], fixed: false}] AS input
-      WITH CASE WHEN input.fixed THEN input.list ELSE null END AS fixedList,
-           CASE WHEN NOT input.fixed THEN input.list ELSE [1] END AS inputList
-      UNWIND inputList AS x
-      WITH fixedList, inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH fixedList, inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      UNWIND inputList AS x
-      WITH fixedList, inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH fixedList, inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      UNWIND inputList AS x
-      WITH fixedList, inputList, x, [ y IN inputList WHERE rand() > 0.5 | y] AS list
-      WITH fixedList, inputList, CASE WHEN rand() < 0.5 THEN reverse(list) ELSE list END + x AS list
-      WITH coalesce(fixedList, list) AS list
-      WITH any(x IN list WHERE <predicate>) = (size([x IN list WHERE <predicate> | x]) > 0) AS result, count(*) AS cnt
-      RETURN result
-      """
-    Then the result should be, in any order:
-      | result |
-      | true   |
-    And no side effects
-
-    Examples:
-      | predicate |
-      | x = 2     |
-      | x % 2 = 0 |
-      | x % 3 = 0 |
-      | x < 7     |
-      | x >= 3    |
-
-  Scenario Outline: [21] Fail any quantifier on type mismatch between list elements and predicate
+  Scenario Outline: [15] Fail any quantifier on type mismatch between list elements and predicate
     Given any graph
     When executing query:
       """

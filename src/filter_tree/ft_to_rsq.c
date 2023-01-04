@@ -20,9 +20,9 @@
 // returns true if 'tree' been converted into an index query, false otherwise
 static bool _FilterTreeToQueryNode
 (
-	RSQNode**root,       // array of query nodes to populate
-	FT_FilterNode *tree, // filter to convert into an index query
-	RSIndex *idx         // queried index
+	RSQNode**root,             // array of query nodes to populate
+	const FT_FilterNode *tree, // filter to convert into an index query
+	RSIndex *idx               // queried index
 );
 
 //------------------------------------------------------------------------------
@@ -72,7 +72,7 @@ static RSQNode *_StringRangeToQueryNode
 // creates a RediSearch distance query from given filter
 static RSQNode *_FilterTreeToDistanceQueryNode
 (
-	FT_FilterNode *filter,  // filter to convert
+	const FT_FilterNode *filter,  // filter to convert
 	RSIndex *idx            // queried index
 ) {
 	char     *field  =  NULL;         // field being filtered
@@ -88,8 +88,8 @@ static RSQNode *_FilterTreeToDistanceQueryNode
 // creates a RediSearch query node out of given IN filter
 static RSQNode *_FilterTreeToInQueryNode
 (
-	FT_FilterNode *filter,  // filter to convert
-	RSIndex *idx            // queried index
+	const FT_FilterNode *filter,  // filter to convert
+	RSIndex *idx                  // queried index
 ) {
 	ASSERT(idx    != NULL);
 	ASSERT(filter != NULL);
@@ -324,9 +324,9 @@ static RSQNode *_ranges_to_query_nodes
 // reduce filters into ranges
 static void _compose_ranges
 (
-	FT_FilterNode **trees,  // filters to convert into ranges
-	rax *string_ranges,     // string ranges
-	rax *numeric_ranges     // numerical reages
+	const FT_FilterNode **trees,  // filters to convert into ranges
+	rax *string_ranges,           // string ranges
+	rax *numeric_ranges           // numerical reages
 ) {
 	ASSERT(trees          != NULL);
 	ASSERT(string_ranges  != NULL);
@@ -334,12 +334,11 @@ static void _compose_ranges
 
 	uint count = array_len(trees);
 	for(uint i = 0; i < count; i++) {
-		FT_FilterNode *tree = trees[i];
+		const FT_FilterNode *tree = trees[i];
 		if(tree->t == FT_N_PRED) {
 			if(_predicateTreeToRange(tree, string_ranges, numeric_ranges)) {
 				// managed to convert tree into range
 				// discard tree and update loop index
-				FilterTree_Free(tree);
 				array_del_fast(trees, i);
 				i--;
 				count--;
@@ -353,9 +352,9 @@ static void _compose_ranges
 // a conversion might fail if tree contains a none indexable type e.g. array
 static bool _FilterTreeConditionToQueryNode
 (
-	RSQNode **root,      // [output] query node
-	FT_FilterNode *tree, // filter to convert
-	RSIndex *idx         // queried index
+	RSQNode **root,            // [output] query node
+	const FT_FilterNode *tree, // filter to convert
+	RSIndex *idx               // queried index
 ) {
 
 	ASSERT(idx != NULL);
@@ -396,9 +395,9 @@ static bool _FilterTreeConditionToQueryNode
 // returns true if predicate filter been converted to an index query
 static bool _FilterTreePredicateToQueryNode
 (
-	RSQNode **root,      // [output] query node
-	FT_FilterNode *tree, // filter to convert
-	RSIndex *idx         // queried index
+	RSQNode **root,            // [output] query node
+	const FT_FilterNode *tree, // filter to convert
+	RSIndex *idx               // queried index
 ) {
 
 	ASSERT(idx  != NULL);
@@ -497,9 +496,9 @@ static bool _FilterTreePredicateToQueryNode
 // returns true if 'tree' been converted into an index query, false otherwise
 static bool _FilterTreeToQueryNode
 (
-	RSQNode **root,      // [output] query node
-	FT_FilterNode *tree, // filter to convert into an index query
-	RSIndex *idx         // queried index
+	RSQNode **root,            // [output] query node
+	const FT_FilterNode *tree, // filter to convert into an index query
+	RSIndex *idx               // queried index
 ) {
 	ASSERT(idx  != NULL);
 	ASSERT(root != NULL);
@@ -546,10 +545,8 @@ RSQNode *FilterTreeToQueryNode
 	ASSERT(tree != NULL);
 	ASSERT(none_converted_filters != NULL);
 
-	// clone filter tree, as it is about to be modified
-	FT_FilterNode  *t       =  FilterTree_Clone(tree);
-	RSQNode        **nodes  =  array_new(RSQNode*, 1);  // intermidate nodes
-	FT_FilterNode  **trees  =  FilterTree_SubTrees(t);  // individual subtrees
+	RSQNode              **nodes = array_new(RSQNode*, 1);     // intermidate nodes
+	const FT_FilterNode  **trees = FilterTree_SubTrees(tree);  // individual subtrees
 
 	//--------------------------------------------------------------------------
 	// convert filters to numeric and string ranges
@@ -574,7 +571,6 @@ RSQNode *FilterTreeToQueryNode
 		bool resolved_filter = _FilterTreeToQueryNode(&node, trees[i], idx);
 		if(node != NULL) array_append(nodes, node);
 		if(resolved_filter) {
-			FilterTree_Free(trees[i]);
 			// remove converted filter from filters array
 			array_del_fast(trees, i);
 			i--;

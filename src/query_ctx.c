@@ -151,13 +151,15 @@ static void _QueryCtx_ThreadSafeContextUnlock(QueryCtx *ctx) {
 bool QueryCtx_LockForCommit(void) {
 	QueryCtx *ctx = _QueryCtx_GetCreateCtx();
 	if(ctx->internal_exec_ctx.locked_for_commit) return true;
-	// Lock GIL.
+
+	// lock GIL
 	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
 	GraphContext *gc = ctx->gc;
 	RedisModuleString *graphID = RedisModule_CreateString(redis_ctx, gc->graph_name,
 														  strlen(gc->graph_name));
 	_QueryCtx_ThreadSafeContextLock(ctx);
-	// Open key and verify.
+
+	// open key and verify
 	RedisModuleKey *key = RedisModule_OpenKey(redis_ctx, graphID, REDISMODULE_WRITE);
 	RedisModule_FreeString(redis_ctx, graphID);
 	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
@@ -174,21 +176,23 @@ bool QueryCtx_LockForCommit(void) {
 		goto clean_up;
 	}
 	ctx->internal_exec_ctx.key = key;
-	// Acquire graph write lock.
+
+	// acquire graph write lock
 	Graph_AcquireWriteLock(gc->g);
 	ctx->internal_exec_ctx.locked_for_commit = true;
 
 	return true;
 
 clean_up:
-	// Free key handle.
+	// free key handle
 	RedisModule_CloseKey(key);
-	// Unlock GIL.
+
+	// unlock GIL
 	_QueryCtx_ThreadSafeContextUnlock(ctx);
-	// If there is a break point for runtime exception, raise it, otherwise return false.
+
+	// if there is a break point for runtime exception, raise it, otherwise return false
 	ErrorCtx_RaiseRuntimeException(NULL);
 	return false;
-
 }
 
 static void _QueryCtx_UnlockCommit(QueryCtx *ctx) {
