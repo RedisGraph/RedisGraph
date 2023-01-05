@@ -512,6 +512,9 @@ bool GraphContext_AddExactMatchIndex
 	// of the index
 	if(index_created) {
 		Index_Disable(*idx);
+	} else {
+		// update result-set
+		ResultSet_IndexCreated(result_set, INDEX_FAIL);
 	}
 
 	return index_created;
