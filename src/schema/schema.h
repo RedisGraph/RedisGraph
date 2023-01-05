@@ -129,12 +129,12 @@ void Schema_Free
 
 bool Schema_HasConstraints(const Schema *s);
 
-Constraint Schema_GetConstraint(const Schema *s, const ConstAttrData *fields, uint field_count);
+Constraint Schema_GetConstraint(const Schema *s, const AttrInfo *fields, uint field_count);
 
 // checks if schema has a constraint
 bool Schema_ContainsConstraint(
 const Schema *s, 
-const ConstAttrData *fields, 
+const AttrInfo *fields, 
 uint field_count);
 
 // adds a constraint to schema

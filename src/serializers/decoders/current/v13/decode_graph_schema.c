@@ -106,7 +106,7 @@ static void _RdbLoadConstaints
 	for (uint i = 0; i < constraint_count; i++) {
 		Constraint c = NULL;
 		uint fields_count = RedisModule_LoadUnsigned(rdb);
-		ConstAttrData fields[fields_count];
+		AttrInfo fields[fields_count];
 		for(uint j = 0; j < fields_count; j++) {
 			char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
 			if(!already_loaded) {

@@ -466,9 +466,9 @@ Index GraphContext_GetIndex
 	return Schema_GetIndex(s, attribute_id, type);
 }
 
-static inline int _cmp_ConstAttrData(const void *a, const void *b) {
-	const ConstAttrData *x = a;
-	const ConstAttrData *y = b;
+static inline int _cmp_AttrInfo(const void *a, const void *b) {
+	const AttrInfo *x = a;
+	const AttrInfo *y = b;
 	return x->id - y->id;
 }
 
@@ -494,14 +494,14 @@ Constraint GraphContext_AddUniqueConstraint
 		s = GraphContext_AddSchema(gc, label, schema_type);
 	}
 
-	ConstAttrData fields[fields_count];
+	AttrInfo fields[fields_count];
 	for(uint i = 0; i < fields_count; i++) {
 		fields[i].id = GraphContext_FindOrAddAttribute(gc, fields_str[i], NULL);
 		fields[i].attribute_name = (char *)fields_str[i];
 	}
 
 	// sort the properties for an easy comparison later
-	qsort(fields, fields_count, sizeof(ConstAttrData), (int (*)(const void *, const void *))_cmp_ConstAttrData);
+	qsort(fields, fields_count, sizeof(AttrInfo), (int (*)(const void *, const void *))_cmp_AttrInfo);
 
 	// check if constraint already contained in schema
 	Constraint c = Schema_GetConstraint(s, fields, fields_count);
@@ -573,8 +573,10 @@ bool GraphContext_AddExactMatchIndex
 	if(index_changed) {
 		Index_Disable(*idx);
 	} else {
-		// update result-set
-		ResultSet_IndexCreated(result_set, INDEX_FAIL);
+		if(should_reply) {
+			// update result-set
+			ResultSet_IndexCreated(result_set, INDEX_FAIL);
+		}
 	}
 
 	return index_changed;

@@ -180,7 +180,7 @@ static bool _EmitConstraint
 
 	if(ctx->yield_properties) {
 		uint fields_count        = array_len(constraint->attributes);
-		const ConstAttrData *fields = Constraint_GetAttributes(constraint);
+		const AttrInfo *fields = Constraint_GetAttributes(constraint);
 		*ctx->yield_properties   = SI_Array(fields_count);
 
 		for(uint i = 0; i < fields_count; i++) {

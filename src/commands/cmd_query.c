@@ -329,7 +329,7 @@ static void _ExecuteQuery(void *args) {
 		ExecutionPlan_Free(plan);
 		exec_ctx->plan = NULL;
 	} else if(exec_type == EXECUTION_TYPE_INDEX_CREATE ||
-			exec_type == EXECUTION_TYPE_INDEX_DROP) {  // index operation
+			exec_type == EXECUTION_TYPE_INDEX_DROP) {
 		_index_operation(rm_ctx, gc, ast, exec_type);
 	} else {
 		ASSERT("Unhandled query type" && false);

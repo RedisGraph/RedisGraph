@@ -11,22 +11,22 @@
 #include <stdatomic.h>
 
 
-const ConstAttrData *Constraint_GetAttributes
+const AttrInfo *Constraint_GetAttributes
 (
 	const Constraint c
 ) {
 	ASSERT(c != NULL);
 
-	return (const ConstAttrData *)c->attributes;
+	return (const AttrInfo *)c->attributes;
 }
 
-Constraint Constraint_new(ConstAttrData *attrData, uint id_count, const char *label, int label_id, 
+Constraint Constraint_new(AttrInfo *attrData, uint id_count, const char *label, int label_id, 
 GraphEntityType type) {    
     Constraint c = rm_malloc(sizeof(_Constraint));
-    c->attributes = array_newlen(ConstAttrData, id_count);
+    c->attributes = array_newlen(AttrInfo, id_count);
 
-    memcpy(c->attributes, attrData, sizeof(ConstAttrData) * id_count);
-    for(int i = 0; i < id_count; i++) {
+    memcpy(c->attributes, attrData, sizeof(AttrInfo) * id_count);
+    for(uint i = 0; i < id_count; i++) {
         c->attributes[i].attribute_name = rm_strdup(attrData[i].attribute_name);
     }
     c->label = rm_strdup(label);
@@ -86,8 +86,8 @@ void Constraint_free(Constraint c) {
 
 // check if entity constains all attributes of the constraint
 static bool _Should_constraint_enforce_entity(Constraint c, const AttributeSet attributes) {
-    size_t len = array_len(c->attributes);
-    for(size_t i = 0; i < len; ++i) {
+    uint32_t len = array_len(c->attributes);
+    for(uint32_t i = 0; i < len; ++i) {
         if(AttributeSet_Get(attributes, c->attributes[i].id) == ATTRIBUTE_NOTFOUND) {
             return false;
         }
@@ -148,8 +148,8 @@ bool Constraint_enforce_entity(Constraint c, const AttributeSet attributes, RSIn
     return true;
 }
 
-bool Constraints_enforce_entity(Constraint *c, const AttributeSet attributes, RSIndex *idx, int *ind) {
-    for(int i = 0; i < array_len(c); i++) {
+bool Constraints_enforce_entity(Constraint *c, const AttributeSet attributes, RSIndex *idx, uint32_t *ind) {
+    for(uint32_t i = 0; i < array_len(c); i++) {
         if(c[i]->status != CT_FAILED && !Constraint_enforce_entity(c[i], attributes, idx)) {
             if(ind) *ind = i;
             return false;
@@ -332,7 +332,7 @@ int Graph_Constraint(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         Indexer_PopulateIndexOrConstraint(gc, idx, c);
 
     } else { // CT_DELETE
-        ConstAttrData fields[prop_count];
+        AttrInfo fields[prop_count];
 
         for(int i = 0; i < prop_count; i++) {
             fields[i].attribute_name = (char *)props_cstr[i];

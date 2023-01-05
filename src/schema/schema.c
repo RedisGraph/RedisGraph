@@ -25,7 +25,7 @@ Schema *Schema_New
 	s->type         =  type;
 	s->index        =  NULL;
 	s->fulltextIdx  =  NULL;
-	s->constraints   =  array_new(Constraint, 0);
+	s->constraints  =  array_new(Constraint, 0);
 	s->name         =  rm_strdup(name);
 
 	return s;
@@ -328,7 +328,7 @@ bool Schema_HasConstraints(const Schema *s) {
 	return (s->constraints && array_len(s->constraints) > 0);
 }
 
-Constraint Schema_GetConstraint(const Schema *s, const ConstAttrData *fields, uint field_count) {
+Constraint Schema_GetConstraint(const Schema *s, const AttrInfo *fields, uint field_count) {
 	ASSERT(s != NULL);
 	ASSERT(fields != NULL);
 	ASSERT(field_count > 0);
@@ -352,7 +352,7 @@ Constraint Schema_GetConstraint(const Schema *s, const ConstAttrData *fields, ui
 	return NULL;
 }
 
-bool Schema_ContainsConstraint(const Schema *s, const ConstAttrData *fields, uint field_count) {
+bool Schema_ContainsConstraint(const Schema *s, const AttrInfo *fields, uint field_count) {
 	ASSERT(s != NULL);
 	ASSERT(fields != NULL);
 	ASSERT(field_count > 0);
