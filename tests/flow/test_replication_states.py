@@ -22,6 +22,10 @@ keys = {
 
 class testReplicationState():
     def __init__(self):
+        # skip test if we're running under Valgrind
+        if VALGRIND or SANITIZER != "":
+            Env.skip(None) # valgrind is not working correctly with replication
+
         self.env = Env(useSlaves=True, decodeResponses=True, env='oss', moduleArgs='VKEY_MAX_ENTITY_COUNT 10')
         self.master = self.env.getConnection()
         self.slave = self.env.getSlaveConnection()
@@ -29,10 +33,6 @@ class testReplicationState():
         self.master_host = info["master_host"]
         self.master_port = info["master_port"]
         self.connection_state = Connection.Connected
-
-        # skip test if we're running under Valgrind
-        if self.env.envRunner.debugger is not None:
-            self.env.skip() # valgrind is not working correctly with replication
 
     # check that the expected key count exists in both master and slave
     def _check(self, keys_master, keys_slave):

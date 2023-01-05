@@ -1,4 +1,5 @@
 from common import *
+from index_utils import *
 from functools import cmp_to_key
 
 NODES = 20    # node count
@@ -14,7 +15,7 @@ class testAllShortestPaths():
         self.init()
 
     def populate_graph(self):
-        self.graph.query("CREATE INDEX ON :L(v)")
+        create_node_exact_match_index(self.graph, 'L', 'v', sync=True)
         self.graph.query(f"UNWIND range(1, {NODES}) AS x CREATE (:L{{v: x}})")
         self.graph.query(f"""UNWIND range(1, {EDGES}) AS i
                              WITH ToInteger(rand() * {NODES}) AS x, ToInteger(rand() * {NODES}) AS y

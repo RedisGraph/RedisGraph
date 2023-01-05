@@ -15,12 +15,130 @@
 #include "../graph/entities/node.h"
 #include "../graph/rg_matrix/rg_matrix_iter.h"
 
-extern void populateEdgeIndex(Index *idx, Graph *g); 
-extern void populateNodeIndex(Index *idx, Graph *g);
+#include <stdatomic.h>
+
+struct _Index {
+	char *label;                   // indexed label
+	int label_id;                  // indexed label ID
+	IndexField *fields;            // indexed fields
+	char *language;                // language
+	char **stopwords;              // stopwords
+	GraphEntityType entity_type;   // entity type (node/edge) indexed
+	IndexType type;                // index type exact-match / fulltext
+	RSIndex *_idx;                 // rediSearch index
+	uint _Atomic pending_changes;  // number of pending changes
+};
+
+static void _Index_ConstructFullTextStructure
+(
+	Index idx,
+	RSIndex *rsIdx
+) {
+	uint fields_count = array_len(idx->fields);
+
+	for(uint i = 0; i < fields_count; i++) {
+		IndexField *field = idx->fields + i;
+		// introduce text field
+		unsigned options = RSFLDOPT_NONE;
+		if(field->nostem) {
+			options |= RSFLDOPT_TXTNOSTEM;
+		}
+
+		if(strcmp(field->phonetic, INDEX_FIELD_DEFAULT_PHONETIC) != 0) {
+			options |= RSFLDOPT_TXTPHONETIC;
+		}
+
+		RSFieldID fieldID = RediSearch_CreateField(rsIdx, field->name,
+				RSFLDTYPE_FULLTEXT, options);
+		RediSearch_TextFieldSetWeight(rsIdx, fieldID, field->weight);
+	}
+}
+
+static void _Index_ConstructExactMatchStructure
+(
+	Index idx,
+	RSIndex *rsIdx
+) {
+	ASSERT(idx != NULL);
+	ASSERT(rsIdx != NULL);
+
+	RSFieldID fieldID;
+	uint fields_count = array_len(idx->fields);
+	unsigned types = RSFLDTYPE_NUMERIC | RSFLDTYPE_GEO | RSFLDTYPE_TAG;
+
+	for(uint i = 0; i < fields_count; i++) {
+		IndexField *field = idx->fields + i;
+		// introduce both text, numeric and geo fields
+		fieldID = RediSearch_CreateField(rsIdx, field->name, types,
+				RSFLDOPT_NONE);
+		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
+		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
+	}
+
+	// introduce edge src and dest node ids as additional index fields
+	if(idx->entity_type == GETYPE_EDGE) {
+		fieldID = RediSearch_CreateField(rsIdx, "_src_id", types,
+				RSFLDOPT_NONE);
+		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
+		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
+
+		fieldID = RediSearch_CreateField(rsIdx, "_dest_id", types,
+				RSFLDOPT_NONE);
+		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
+		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
+	}
+
+	// for none indexable types e.g. Array introduce an additional field
+	// "none_indexable_fields" which will hold a list of attribute names
+	// that were not indexed
+	fieldID = RediSearch_CreateField(rsIdx, INDEX_FIELD_NONE_INDEXED,
+			RSFLDTYPE_TAG, RSFLDOPT_NONE);
+	RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
+	RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
+}
+
+// responsible for creating the index structure only!
+// e.g. fields, stopwords, language
+void Index_ConstructStructure
+(
+	Index idx
+) {
+	ASSERT(idx != NULL);
+	ASSERT(idx->_idx == NULL);
+
+	RSIndex *rsIdx = NULL;
+	RSIndexOptions *idx_options = RediSearch_CreateIndexOptions();
+	RediSearch_IndexOptionsSetLanguage(idx_options, idx->language);
+	// TODO: Remove this comment when https://github.com/RediSearch/RediSearch/issues/1100 is closed
+	// RediSearch_IndexOptionsSetGetValueCallback(idx_options, _getNodeAttribute, gc);
+
+	// enable GC, every 30 seconds gc will check if there's garbage
+	// if there are over 100 docs to remove GC will perform clean up
+	RediSearch_IndexOptionsSetGCPolicy(idx_options, GC_POLICY_FORK);
+
+	if(idx->stopwords) {
+		RediSearch_IndexOptionsSetStopwords(idx_options,
+				(const char**)idx->stopwords, array_len(idx->stopwords));
+	} else if(idx->type == IDX_EXACT_MATCH) {
+		RediSearch_IndexOptionsSetStopwords(idx_options, NULL, 0);
+	}
+
+	rsIdx = RediSearch_CreateIndex(idx->label, idx_options);
+	RediSearch_FreeIndexOptions(idx_options);
+
+	// create indexed fields
+	if(idx->type == IDX_FULLTEXT) {
+		_Index_ConstructFullTextStructure(idx, rsIdx);
+	} else {
+		_Index_ConstructExactMatchStructure(idx, rsIdx);
+	}
+
+	idx->_idx = rsIdx;
+}
 
 RSDoc *Index_IndexGraphEntity
 (
-	Index *idx,
+	Index idx,
 	const GraphEntity *e,
 	const void *key,
 	size_t key_len,
@@ -35,7 +153,7 @@ RSDoc *Index_IndexGraphEntity
 	double      score            = 1;     // default score
 	IndexField  *field           = NULL;  // current indexed field
 	SIValue     *v               = NULL;  // current indexed value
-	RSIndex     *rsIdx           = idx->idx;
+	RSIndex     *rsIdx           = idx->_idx;
 	EntityID    id               = ENTITY_GET_ID(e);
 	uint        field_count      = array_len(idx->fields);
 
@@ -103,9 +221,11 @@ RSDoc *Index_IndexGraphEntity
 				len += strlen(none_indexable_fields[i]);
 			}
 
+			// add room for \0
+			len++;
+
 			char *s = NULL;
-			char stack_fields[len];
-			if(len < 512) s = stack_fields; // stack base
+			if(len < 512) s = alloca(len); // stack base
 			else s = rm_malloc(sizeof(char) * len); // heap base
 
 			// concat
@@ -118,7 +238,7 @@ RSDoc *Index_IndexGraphEntity
 						s, len, RSFLDTYPE_TAG);
 
 			// free if heap based
-			if(s != stack_fields) rm_free(s);
+			if(len >= 512) rm_free(s);
 		}
 	}
 
@@ -127,16 +247,16 @@ RSDoc *Index_IndexGraphEntity
 
 void IndexField_New
 (
-	IndexField *field,
-	Attribute_ID id,
-	const char *name,
-	double weight,
-	bool nostem,
-	const char *phonetic
+	IndexField *field,    // field to initialize
+	Attribute_ID id,      // attribute ID
+	const char *name,     // field name
+	double weight,        // field weight
+	bool nostem,          // no stemming
+	const char *phonetic  // phonetic
 ) {
-	ASSERT(name      !=  NULL);
-	ASSERT(field     !=  NULL);
-	ASSERT(phonetic  !=  NULL);
+	ASSERT(name     != NULL);
+	ASSERT(field    != NULL);
+	ASSERT(phonetic != NULL);
 
 	field->id       = id;
 	field->name     = rm_strdup(name);
@@ -156,40 +276,79 @@ void IndexField_Free
 }
 
 // create a new index
-Index *Index_New
+Index Index_New
 (
 	const char *label,           // indexed label
 	int label_id,                // indexed label id
 	IndexType type,              // exact match or full text
 	GraphEntityType entity_type  // entity type been indexed
 ) {
-	Index *idx = rm_malloc(sizeof(Index));
+	ASSERT(label != NULL);
 
-	idx->idx           =  NULL;
-	idx->type          =  type;
-	idx->label         =  rm_strdup(label);
-	idx->fields        =  array_new(IndexField, 1);
-	idx->label_id      =  label_id;
-	idx->language      =  NULL;
-	idx->stopwords     =  NULL;
-	idx->entity_type   =  entity_type;
+	Index idx = rm_malloc(sizeof(_Index));
+
+	idx->_idx            = NULL;
+	idx->type            = type;
+	idx->label           = rm_strdup(label);
+	idx->fields          = array_new(IndexField, 1);
+	idx->label_id        = label_id;
+	idx->language        = NULL;
+	idx->stopwords       = NULL;
+	idx->entity_type     = entity_type;
+	idx->pending_changes = ATOMIC_VAR_INIT(0);
 
 	return idx;
+}
+
+// returns number of pending changes
+int Index_PendingChanges
+(
+	const Index idx  // index to inquery
+) {
+	ASSERT(idx != NULL);
+
+	return idx->pending_changes;
+}
+
+// disable index by increasing the number of pending changes
+// and re-creating the internal RediSearch index
+void Index_Disable
+(
+	Index idx  // index to disable
+) {
+	ASSERT(idx != NULL);
+
+	idx->pending_changes++;
+
+	if(idx->_idx != NULL) {
+		RediSearch_DropIndex(idx->_idx);
+		idx->_idx = NULL;
+	}
+
+	// create RediSearch index structure
+	Index_ConstructStructure(idx);
+}
+
+// try to enable index by dropping number of pending changes by 1
+// the index is enabled once there are no pending changes
+void Index_Enable
+(
+	Index idx
+) {
+	ASSERT(idx != NULL);
+
+	idx->pending_changes--;
 }
 
 // adds field to index
 void Index_AddField
 (
-	Index *idx,
-	IndexField *field
+	Index idx,         // index to update
+	IndexField *field  // field to add
 ) {
-	ASSERT(idx != NULL);
+	ASSERT(idx   != NULL);
 	ASSERT(field != NULL);
-
-	if(Index_ContainsAttribute(idx, field->id)) {
-		IndexField_Free(field);
-		return;
-	}
+	ASSERT(!Index_ContainsAttribute(idx, field->id));
 
 	array_append(idx->fields, *field);
 }
@@ -197,10 +356,10 @@ void Index_AddField
 // removes fields from index
 void Index_RemoveField
 (
-	Index *idx,
+	Index idx,
 	const char *field
 ) {
-	ASSERT(idx != NULL);
+	ASSERT(idx   != NULL);
 	ASSERT(field != NULL);
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
@@ -214,106 +373,60 @@ void Index_RemoveField
 			// free field
 			IndexField_Free(field);
 			array_del_fast(idx->fields, i);
+
+			Index_Disable(idx);
 			break;
 		}
 	}
 }
 
-// constructs index
-void Index_Construct
-(
-	Index *idx,
-	Graph *g
-) {
-	ASSERT(idx != NULL);
-
-	// RediSearch index already exists, re-construct
-	if(idx->idx) {
-		RediSearch_DropIndex(idx->idx);
-		idx->idx = NULL;
-	}
-
-	RSIndex *rsIdx = NULL;
-	RSIndexOptions *idx_options = RediSearch_CreateIndexOptions();
-	RediSearch_IndexOptionsSetLanguage(idx_options, idx->language);
-	// TODO: Remove this comment when https://github.com/RediSearch/RediSearch/issues/1100 is closed
-	// RediSearch_IndexOptionsSetGetValueCallback(idx_options, _getNodeAttribute, gc);
-
-	// enable GC, every 30 seconds gc will check if there's garbage
-	// if there are over 100 docs to remove GC will perform clean up
-	RediSearch_IndexOptionsSetGCPolicy(idx_options, GC_POLICY_FORK);
-
-	if(idx->stopwords) {
-		RediSearch_IndexOptionsSetStopwords(idx_options,
-				(const char**)idx->stopwords, array_len(idx->stopwords));
-	} else if(idx->type == IDX_EXACT_MATCH) {
-		RediSearch_IndexOptionsSetStopwords(idx_options, NULL, 0);
-	}
-
-	rsIdx = RediSearch_CreateIndex(idx->label, idx_options);
-	RediSearch_FreeIndexOptions(idx_options);
-
-	// create indexed fields
-	uint fields_count = array_len(idx->fields);
-	if(idx->type == IDX_FULLTEXT) {
-		for(uint i = 0; i < fields_count; i++) {
-			IndexField *field = idx->fields + i;
-			// introduce text field
-			unsigned options = RSFLDOPT_NONE;
-			if(field->nostem) options |= RSFLDOPT_TXTNOSTEM;
-
-			if(strcmp(field->phonetic, INDEX_FIELD_DEFAULT_PHONETIC) != 0) {
-				options |= RSFLDOPT_TXTPHONETIC;
-			}
-
-			RSFieldID fieldID = RediSearch_CreateField(rsIdx, field->name,
-					RSFLDTYPE_FULLTEXT, options);
-			RediSearch_TextFieldSetWeight(rsIdx, fieldID, field->weight);
-		}
-	} else {
-		for(uint i = 0; i < fields_count; i++) {
-			IndexField *field = idx->fields+i;
-			// introduce both text, numeric and geo fields
-			unsigned types = RSFLDTYPE_NUMERIC | RSFLDTYPE_GEO | RSFLDTYPE_TAG;
-			RSFieldID fieldID = RediSearch_CreateField(rsIdx, field->name,
-					types, RSFLDOPT_NONE);
-
-			RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
-			RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
-		}
-
-		// for none indexable types e.g. Array introduce an additional field
-		// "none_indexable_fields" which will hold a list of attribute names
-		// that were not indexed
-		RSFieldID fieldID = RediSearch_CreateField(rsIdx,
-				INDEX_FIELD_NONE_INDEXED, RSFLDTYPE_TAG, RSFLDOPT_NONE);
-
-		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
-		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
-	}
-
-	idx->idx = rsIdx;
-	if(idx->entity_type == GETYPE_NODE) populateNodeIndex(idx, g);
-	else populateEdgeIndex(idx, g);
-}
-
 // query index
 RSResultsIterator *Index_Query
 (
-	const Index *idx,
+	const Index idx,
 	const char *query,
 	char **err
 ) {
 	ASSERT(idx   != NULL);
 	ASSERT(query != NULL);
 
-	return RediSearch_IterateQuery(idx->idx, query, strlen(query), err);
+	return RediSearch_IterateQuery(idx->_idx, query, strlen(query), err);
+}
+
+// returns internal RediSearch index
+RSIndex *Index_RSIndex
+(
+	const Index idx
+) {
+	ASSERT(idx != NULL);
+
+	return idx->_idx;
+}
+
+// returns index type
+IndexType Index_Type
+(
+	const Index idx
+) {
+	ASSERT(idx != NULL);
+
+	return idx->type;
+}
+
+// returns index graph entity type
+GraphEntityType Index_GraphEntityType
+(
+	const Index idx
+) {
+	ASSERT(idx != NULL);
+
+	return idx->entity_type;
 }
 
 // returns number of fields indexed
 uint Index_FieldsCount
 (
-	const Index *idx
+	const Index idx
 ) {
 	ASSERT(idx != NULL);
 
@@ -323,7 +436,7 @@ uint Index_FieldsCount
 // returns indexed fields
 const IndexField *Index_GetFields
 (
-	const Index *idx
+	const Index idx
 ) {
 	ASSERT(idx != NULL);
 
@@ -332,7 +445,7 @@ const IndexField *Index_GetFields
 
 bool Index_ContainsAttribute
 (
-	const Index *idx,
+	const Index idx,
 	Attribute_ID attribute_id
 ) {
 	ASSERT(idx != NULL);
@@ -350,7 +463,7 @@ bool Index_ContainsAttribute
 
 int Index_GetLabelID
 (
-	const Index *idx
+	const Index idx
 ) {
 	ASSERT(idx != NULL);
 
@@ -359,26 +472,33 @@ int Index_GetLabelID
 
 const char *Index_GetLanguage
 (
-	const Index *idx
+	const Index idx
 ) {
-	return RediSearch_IndexGetLanguage(idx->idx);
+	ASSERT(idx != NULL);
+	ASSERT(idx->_idx != NULL);
+
+	return RediSearch_IndexGetLanguage(idx->_idx);
 }
 
 char **Index_GetStopwords
 (
-	const Index *idx,
+	const Index idx,
 	size_t *size
 ) {
-	if(idx->type == IDX_FULLTEXT)
-		return RediSearch_IndexGetStopwords(idx->idx, size);
-	
+	ASSERT(idx != NULL);
+	ASSERT(idx->_idx != NULL);
+
+	if(idx->type == IDX_FULLTEXT) {
+		return RediSearch_IndexGetStopwords(idx->_idx, size);
+	}
+
 	return NULL;
 }
 
 // set indexed language
 void Index_SetLanguage
 (
-	Index *idx,
+	Index idx,
 	const char *language
 ) {
 	ASSERT(idx != NULL);
@@ -391,23 +511,40 @@ void Index_SetLanguage
 // set indexed stopwords
 void Index_SetStopwords
 (
-	Index *idx,
+	Index idx,
 	char **stopwords
 ) {
 	ASSERT(idx != NULL);
 	ASSERT(stopwords != NULL);
 	ASSERT(idx->stopwords == NULL);
 
-	array_clone_with_cb(idx->stopwords, stopwords, rm_strdup);
+	idx->stopwords = stopwords;
+}
+
+// returns true if index doesn't contains any pending changes
+bool Index_Enabled
+(
+	const Index idx  // index to get state of
+) {
+	ASSERT(idx != NULL);
+
+	return idx->pending_changes == 0;
 }
 
 // free index
-void Index_Free(Index *idx) {
+void Index_Free
+(
+	Index idx
+) {
 	ASSERT(idx != NULL);
 
-	if(idx->idx) RediSearch_DropIndex(idx->idx);
+	if(idx->_idx) {
+		RediSearch_DropIndex(idx->_idx);
+	}
 
-	if(idx->language) rm_free(idx->language);
+	if(idx->language) {
+		rm_free(idx->language);
+	}
 
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
