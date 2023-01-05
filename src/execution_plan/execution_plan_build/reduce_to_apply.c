@@ -12,6 +12,7 @@
 #include "../../query_ctx.h"
 #include "../../util/rax_extensions.h"
 #include "../optimizations/optimizer.h"
+#include "../../ast/ast_build_filter_tree.h"
 
 /* Swap operation on operation children. If two valid indices, a and b, are given, this operation
  * swap the child in index a with the child in index b. */
@@ -44,9 +45,29 @@ static OpBase *_ApplyOpFromPathExpression(ExecutionPlan *plan, const char **vars
 	// Build new Semi Apply op.
 	OpBase *op_semi_apply = NewSemiApplyOp(plan, anti);
 	const cypher_astnode_t *path = expression->op.children[0]->operand.constant.ptrval;
+
+	ExecutionPlan *filter_plan = ExecutionPlan_NewEmptyExecutionPlan();
+	filter_plan->record_map = plan->record_map;
+	filter_plan->query_graph = plan->query_graph;
+
 	// Add a match branch as a Semi Apply op child.
-	OpBase *match_branch = ExecutionPlan_BuildOpsFromPath(plan, vars, path);
-	ExecutionPlan_AddOp(op_semi_apply, match_branch);
+	OpBase *match_branch = ExecutionPlan_BuildOpsFromPath(filter_plan, vars, path);
+	filter_plan->root = match_branch;
+
+	// Build the FilterTree to model any WHERE predicates on these clauses and place ops appropriately.
+	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(QueryCtx_GetAST(), &path, 1);
+	ExecutionPlan_PlaceFilterOps(filter_plan, match_branch, NULL, sub_ft);
+
+	ExecutionPlan_BindPlanToOps(plan, filter_plan->root);
+	ExecutionPlan_AddOp(op_semi_apply, filter_plan->root);
+
+	// NULL-set variables shared between the filter_plan and the overall plan.
+	filter_plan->root = NULL;
+	filter_plan->record_map = NULL;
+	filter_plan->query_graph = NULL;
+	// Free the temporary plan.
+	ExecutionPlan_Free(filter_plan);
+
 	return op_semi_apply;
 }
 
