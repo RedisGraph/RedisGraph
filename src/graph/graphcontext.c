@@ -501,7 +501,7 @@ Constraint GraphContext_AddUniqueConstraint
 	}
 
 	// sort the properties for an easy comparison later
-	qsort(fields, fields_count, sizeof(Attribute_ID), (int (*)(const void *, const void *))_cmp_ConstAttrData);
+	qsort(fields, fields_count, sizeof(ConstAttrData), (int (*)(const void *, const void *))_cmp_ConstAttrData);
 
 	// check if constraint already contained in schema
 	Constraint c = Schema_GetConstraint(s, fields, fields_count);

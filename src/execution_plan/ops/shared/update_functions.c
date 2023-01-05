@@ -87,15 +87,24 @@ void CommitUpdates
 
 
 		// retrieve node labels
-		uint label_count;
-		NODE_GET_LABELS(gc->g, (Node*)update->ge, label_count);
+		uint label_count = 1;
+		if (type == ENTITY_NODE) {
+			label_count = Graph_LabelTypeCount(gc->g);
+		}
+		LabelID labels[label_count];
+		if (type == ENTITY_NODE) {
+			label_count = Graph_GetNodeLabels(gc->g, (Node*)update->ge, labels, label_count);
+		} else {
+			labels[0] = EDGE_GET_RELATION_ID((Edge*)update->ge, gc->g);
+		}
+
+		SchemaType stype = type == ENTITY_NODE ? SCHEMA_NODE : SCHEMA_EDGE;
 		for(uint i = 0; i < label_count; i ++) {
-			Schema *s = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
+			Schema *s = GraphContext_GetSchemaByID(gc, labels[i], stype);
 			bool has_constraints = array_len(s->constraints) > 0;
 			if(has_constraints && !Constraints_enforce_entity(s->constraints, GraphEntity_GetAttributes(update->ge), Index_RSIndex(s->index), NULL)) {
 				// Constraint violation.
-				ErrorCtx_RaiseRuntimeException("constraint violation on label %s", s->name);
-				return;
+				ErrorCtx_SetError("constraint violation on label %s", s->name);
 			}
 		}
 	}

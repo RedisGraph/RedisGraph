@@ -411,7 +411,9 @@ static Record MergeConsume
 		// lock everything
 		QueryCtx_LockForCommit(); {
 			CommitUpdates(gc, op->stats, op->node_pending_updates, ENTITY_NODE);
-			CommitUpdates(gc, op->stats, op->edge_pending_updates, ENTITY_EDGE);
+			if(likely(!ErrorCtx_EncounteredError())) {
+				CommitUpdates(gc, op->stats, op->edge_pending_updates, ENTITY_EDGE);
+			}
 		}
 	}
 

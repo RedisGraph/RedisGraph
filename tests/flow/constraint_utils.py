@@ -1,6 +1,16 @@
 import time
 
-def _wait_on_constraint(graph, label, t):
+def wait_on_constraint_to_fail(graph, label, t):
+    q = f"""CALL db.constraints() YIELD type, label, status
+    WHERE type = '{t}' AND label = '{label}' AND status = 'FAILED'
+    RETURN count(1)"""
+
+    while True:
+        result = graph.query(q)
+        if result.result_set[0][0] == 1:
+            break
+
+def wait_on_constraint(graph, label, t):
     q = f"""CALL db.constraints() YIELD type, label, status
     WHERE type = '{t}' AND label = '{label}' AND status <> 'OPERATIONAL'
     RETURN count(1)"""
@@ -11,10 +21,21 @@ def _wait_on_constraint(graph, label, t):
             break
 
 def _create_constraint(graph, ct_type, entity_type, label, *properties, sync=False):
-    res = graph.constraint("CREATE", ct_type, entity_type, label, *properties)
+    params = [
+        graph.name,
+        "CREATE",
+        ct_type,
+        entity_type,
+        label,
+        "PROPERTIES",
+        len(properties),
+    ]
+    params.extend(properties)
+    res = graph.execute_command("GRAPH.CONSTRAINT", *params)
+    #res = graph.constraint("CREATE", ct_type, entity_type, label, *properties)
 
     if sync:
-        _wait_on_constraint(graph, label, ct_type)
+        wait_on_constraint(graph, label, ct_type)
 
     return res
 
@@ -40,10 +61,32 @@ def create_edge_unique_constraint(graph, relation, *properties, sync=False):
     return _create_constraint(graph, "unique", "RELTYPE", relation, *properties, sync=sync)
 
 def drop_node_unique_constraint(graph, label, *properties):
-    return graph.constraint("DEL", "unique", "LABEL", label, *properties)
+    params = [
+        graph.name,
+        "DEL",
+        "unique",
+        "LABEL",
+        label,
+        "PROPERTIES",
+        len(properties),
+    ]
+    params.extend(properties)
+    return graph.execute_command("GRAPH.CONSTRAINT", *params)
+    #return graph.constraint("DEL", "unique", "LABEL", label, *properties)
 
 def drop_edge_unique_constraint(graph, relation, *properties):
-    return graph.constraint("DEL", "unique", "RELTYPE", relation, *properties)
+    params = [
+        graph.name,
+        "DEL",
+        "unique",
+        "RELTYPE",
+        relation,
+        "PROPERTIES",
+        len(properties),
+    ]
+    params.extend(properties)
+    return graph.execute_command("GRAPH.CONSTRAINT", *params)
+    #return graph.constraint("DEL", "unique", "RELTYPE", relation, *properties)
 
 # validate constraint is being populated
 def constraint_under_construction(graph, label, t):

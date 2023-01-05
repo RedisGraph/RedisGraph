@@ -80,8 +80,8 @@ static void _CommitNodes
 			bool has_constraints = array_len(s->constraints) > 0;
 			if(has_constraints && !Constraints_enforce_entity(s->constraints, attr, Index_RSIndex(s->index), NULL)) {
 				// Constraint violation.
-				ErrorCtx_RaiseRuntimeException("constraint violation on label %s", s->name);
-				return;
+				ErrorCtx_SetError("constraint violation on label %s", s->name);
+				// we can't return here because the graph allocation (Graph_AllocateNodes) already been called
 			}
 		}
 	}
@@ -158,9 +158,8 @@ static void _CommitEdges
 
 		bool has_constraints = array_len(s->constraints) > 0;
 		if(has_constraints && !Constraints_enforce_entity(s->constraints, attr, Index_RSIndex(s->index), NULL)) {
-			// Constraint violation.
-			ErrorCtx_RaiseRuntimeException("constraint violation on label %s", s->name);
-			return;
+			ErrorCtx_SetError("constraint violation on label %s", s->name);
+			// we can't return here because the graph allocation (Graph_AllocateNodes) already been called
 		}
 	}
 }
@@ -209,6 +208,8 @@ void CommitNewEntities
 		// no need to perform sync/resize
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
 		_CommitNodes(pending);
+		pending->stats->nodes_created += node_count; // update statistics
+		if(unlikely(ErrorCtx_EncounteredError())) goto cleanup;
 	}
 
 	if(edge_count > 0) {
@@ -223,11 +224,10 @@ void CommitNewEntities
 		// no need to perform sync/resize
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
 		_CommitEdges(pending);
+		pending->stats->relationships_created  +=  edge_count; // update statistics
 	}
 
-	// update statistics
-	pending->stats->nodes_created          +=  node_count;
-	pending->stats->relationships_created  +=  edge_count;
+cleanup:
 
 	// restore matrix sync policy to default
 	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
