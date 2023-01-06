@@ -61,7 +61,9 @@ SIValue AR_HAS_LABELS(SIValue *argv, int argc, void *private_data) {
 	for (uint32_t i = 0; i < labels_length; i++) {
 		SIValue label = SIArray_Get(labels, i);
 		if(SI_TYPE(label) != T_STRING) {
-			Error_FunctionArgumentSITypeMismatch(label, T_STRING, "hasLabels", 2, i + 1);
+			SIValue testLabel = SI_CloneValue(label);
+			Error_FunctionArgumentSITypeMismatch(testLabel, T_STRING, "hasLabels", 2, i + 1);
+			SIValue_Free(testLabel);
 			// Error_SITypeMismatch(label, T_STRING);
 			return SI_NullVal();
 		}
