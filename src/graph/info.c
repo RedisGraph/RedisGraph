@@ -894,6 +894,46 @@ QueryInfoStorage* Info_GetReportingQueriesStorage(Info *info) {
     return &info->reporting_queries_per_thread;
 }
 
+Percentiles Info_GetDurationsPercentiles(Info *info) {
+    ASSERT(info && "Info is not provided.");
+
+    static const double QUANTILES[] = {
+        25.0f,
+        50.0f,
+        75.0f,
+        90.0f,
+        95.0f,
+        99.0f
+    };
+    static const size_t LENGTH = sizeof(QUANTILES) / sizeof(QUANTILES[0]);
+    ASSERT(LENGTH == PERCENTILE_COUNT);
+
+    Percentiles percentiles = {};
+
+    bool ret = !hdr_value_at_percentiles(
+        info->wait_durations,
+        QUANTILES,
+        percentiles.wait_durations,
+        LENGTH);
+    ASSERT(ret);
+
+    ret = !hdr_value_at_percentiles(
+        info->execution_durations,
+        QUANTILES,
+        percentiles.execution_durations,
+        LENGTH);
+    ASSERT(ret);
+
+    ret = !hdr_value_at_percentiles(
+        info->report_durations,
+        QUANTILES,
+        percentiles.report_durations,
+        LENGTH);
+    ASSERT(ret);
+
+    return percentiles;
+}
+
 static void _FinishedQueryInfoDeleter(void *user_data, void *info) {
     UNUSED(user_data);
     ASSERT(info);
