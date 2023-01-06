@@ -13,3 +13,6 @@
 [submodule "deps/readies"]
 	path = deps/readies
 	url = https://github.com/RedisLabsModules/readies.git
+[submodule "deps/hdr_histogram"]
+	path = deps/hdr_histogram
+	url = https://github.com/RedisBloom/HdrHistogram_c.git

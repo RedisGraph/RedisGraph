@@ -23,6 +23,8 @@
 
 #include "../util/simple_timer.h"
 
+typedef struct hdr_histogram hdr_histogram;
+
 // Checks whether the specified flag is set within the flag variable.
 // Evaluates to true if set, to false otherwise.
 #define CHECK_FLAG(flag_var, flag_value) \
@@ -118,7 +120,7 @@ void QueryInfo_UpdateReportingTime(QueryInfo *info);
 // having been reset.
 millis_t QueryInfo_ResetStageTimer(QueryInfo *);
 
-typedef struct {
+typedef struct QueryInfoStorage {
     QueryInfo *queries;
 } QueryInfoStorage;
 
@@ -198,6 +200,12 @@ typedef struct Info {
     atomic_uint_fast64_t max_query_pipeline_time;
     // Finished query counters with states.
     FinishedQueryCounters finish_query_counters;
+    // Statistics for the wait durations in milliseconds.
+    hdr_histogram *wait_durations;
+    // Statistics for the execution durations in milliseconds.
+    hdr_histogram *execution_durations;
+    // Statistics for the report durations in milliseconds.
+    hdr_histogram *report_durations;
     // A global lock for the object. Used as an inverse lock - allows parallel
     // writers but just one reader. This is done that way as the parallel
     // writes are guaranteed to happen lock-free or without race conditions,
