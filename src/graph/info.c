@@ -10,6 +10,8 @@
 */
 #include "info.h"
 
+#include "../deps/hdr_histogram/hdr_histogram.h"
+
 #include "util/arr.h"
 #include "util/num.h"
 #include "util/circular_buffer_nrg.h"
@@ -64,6 +66,17 @@ static bool _unlock_rwlock(pthread_rwlock_t *);
 
 static CircularBufferNRG finished_queries;
 static pthread_rwlock_t finished_queries_rwlock = PTHREAD_RWLOCK_INITIALIZER;
+
+static bool _histogram_init(hdr_histogram **histogram) {
+    REQUIRE_ARG_OR_RETURN(histogram, false);
+
+    return !hdr_init(
+        1,
+        // The maximum value of "millis_t".
+        UINT32_MAX,
+        3,
+        histogram);
+}
 
 uint64_t FinishedQueryCounters_GetTotalCount
 (
@@ -568,6 +581,18 @@ bool Info_New(Info *info) {
 
     REQUIRE_TRUE_OR_RETURN(lock_initialized, false);
 
+    bool histogram_initialized = _histogram_init(&info->wait_durations);
+
+    REQUIRE_TRUE_OR_RETURN(histogram_initialized, false);
+
+    histogram_initialized = _histogram_init(&info->execution_durations);
+
+    REQUIRE_TRUE_OR_RETURN(histogram_initialized, false);
+
+    histogram_initialized = _histogram_init(&info->report_durations);
+
+    REQUIRE_TRUE_OR_RETURN(histogram_initialized, false);
+
     return true;
 }
 
@@ -575,6 +600,9 @@ void Info_Reset(Info *info) {
     REQUIRE_ARG(info);
 
     _FinishedQueryCounters_Reset(&info->finish_query_counters);
+    hdr_reset(info->wait_durations);
+    hdr_reset(info->execution_durations);
+    hdr_reset(info->report_durations);
 }
 
 bool Info_Free(Info *info) {
@@ -589,6 +617,10 @@ bool Info_Free(Info *info) {
     lock_destroyed = pthread_rwlock_destroy(
         &info->inverse_global_lock);
     ASSERT(lock_destroyed == 0 && "Global rwlock destroy error.");
+
+    hdr_close(info->wait_durations);
+    hdr_close(info->execution_durations);
+    hdr_close(info->report_durations);
 
     return lock_destroyed == 0;
 }
@@ -657,6 +689,7 @@ void Info_IndicateQueryStartedExecution
                 &info->executing_queries_per_thread,
                 thread_id,
                 query_info);
+            hdr_record_value(info->wait_durations, QueryInfo_GetWaitingTime(query_info));
             ASSERT(set);
             if (!set) {
                 _Info_UnlockWaitingQueries(info);
@@ -693,6 +726,7 @@ void Info_IndicateQueryStartedReporting
         return;
     }
     QueryInfo_UpdateExecutionTime(query_info);
+    hdr_record_value(info->execution_durations, QueryInfo_GetExecutionTime(*query_info));
 
     const bool moved = _Info_MoveQueryInfoBetweenStorages(
         &info->executing_queries_per_thread,
@@ -725,6 +759,7 @@ void Info_IndicateQueryFinishedReporting
         return;
     }
     QueryInfo_UpdateReportingTime(query_info);
+    hdr_record_value(info->report_durations, QueryInfo_GetReportingTime(*query_info));
     FinishedQueryInfo finished = FinishedQueryInfo_FromQueryInfo(*query_info);
     _add_finished_query(finished);
     QueryInfoStorage_ResetElement(
