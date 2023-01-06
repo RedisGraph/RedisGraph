@@ -132,6 +132,39 @@ int _reply_key_value_number
     return REDISMODULE_OK;
 }
 
+// Replies with the key(C string)-value(long long) pair when the compact mode is
+// off, and with just the value when the compact mode is on.
+int _reply_key_value_numbers
+(
+    RedisModuleCtx *ctx,
+    const bool is_compact_mode,
+    const char *key,
+    const int64_t *values,
+    const size_t length
+) {
+    ASSERT(ctx);
+    ASSERT(key);
+
+    if (!ctx || !key) {
+        return REDISMODULE_ERR;
+    }
+    if (!values || !length) {
+        // Nothing to do.
+        return REDISMODULE_OK;
+    }
+
+    if (!is_compact_mode) {
+        REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, key));
+    }
+
+    REDISMODULE_DO(RedisModule_ReplyWithArray(ctx, length));
+    for (size_t i = 0; i < length; ++i) {
+        REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, values[i]));
+    }
+
+    return REDISMODULE_OK;
+}
+
 // Replies with the key(C string)-value(C string) pair when the compact mode is
 // off, and with just the value when the compact mode is on.
 int _reply_key_value_string
@@ -1277,6 +1310,64 @@ Number of timeout write queries (create/update/delete)
             is_compact_mode,
             "Timed out write queries",
             counters.write_timedout_count
+        ));
+    }
+
+    /*
+ [STAT]
+Statistics regarding queries since server start (for one graph / total for all graphs):
+For each of the following: 0.25, 0.5, 0.75, 0.9, 0.95, 0.99 quantiles  (using t-digest)
+Query total duration (sum of the three below)
+Query wait duration
+Query execution duration
+Query report duration
+Query total memory (sum of the three below)
+Query processing memory
+Query undo-log memory
+Query result-size memory
+    */
+    if (CHECK_FLAG(flags, InfoGetFlag_STATISTICS)) {
+        static const long KEY_VALUE_COUNT_COUNTS_FLAG = 3;
+
+        key_value_count += KEY_VALUE_COUNT_COUNTS_FLAG;
+        const Percentiles percentiles
+            = Info_GetDurationsPercentiles(&gc->info);
+
+        // TODO the total histogram.
+        // 1
+        // REDISMODULE_DO(_reply_key_value_numbers(
+        //     ctx,
+        //     is_compact_mode,
+        //     "Query total durations",
+        //     percentiles.wait_durations,
+        //     sizeof(percentiles.wait_durations) / sizeof(percentiles.wait_durations[0])
+        // ));
+
+        // 2
+        REDISMODULE_DO(_reply_key_value_numbers(
+            ctx,
+            is_compact_mode,
+            "Query wait durations",
+            percentiles.wait_durations,
+            sizeof(percentiles.wait_durations) / sizeof(percentiles.wait_durations[0])
+        ));
+
+        // 3
+        REDISMODULE_DO(_reply_key_value_numbers(
+            ctx,
+            is_compact_mode,
+            "Query execution durations",
+            percentiles.execution_durations,
+            sizeof(percentiles.execution_durations) / sizeof(percentiles.execution_durations[0])
+        ));
+
+        // 4
+        REDISMODULE_DO(_reply_key_value_numbers(
+            ctx,
+            is_compact_mode,
+            "Query report durations",
+            percentiles.report_durations,
+            sizeof(percentiles.report_durations) / sizeof(percentiles.report_durations[0])
         ));
     }
 
