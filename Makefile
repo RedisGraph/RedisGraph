@@ -42,7 +42,7 @@ make all            # Build everything
   CLANG=1             # Build with CLang toolchain (default for macOS)
   COV=1               # Build for coverage analysis (implies DEBUG=1)
   VG=1|docker         # build for Valgrind
-  SAN=type            # build with LLVM sanitizer (type=address|memory|leak|thread) 
+  SAN=type            # build with LLVM sanitizer (type=address|memory|leak|thread)
 make clean          # Clean build products
   ALL=1               # Completely remove build products
   DEPS=1              # Also clean dependant modules
@@ -133,9 +133,14 @@ REDISEARCH_DIR = $(ROOT)/deps/RediSearch
 export REDISEARCH_BINROOT=$(BINROOT)
 include $(ROOT)/build/RediSearch/Makefile.defs
 
-BIN_DIRS += $(REDISEARCH_BINROOT)/search-static
+HDR_HISTOGRAM_DIR = $(ROOT)/deps/hdr_histogram
+export HDR_HISTOGRAM_BINROOT=$(BINROOT)
+include $(ROOT)/build/hdr_histogram/Makefile.defs
 
-LIBS=$(RAX) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH_LIBS) $(LIBCYPHER_PARSER) $(UTF8PROC)
+BIN_DIRS += $(REDISEARCH_BINROOT)/search-static
+BIN_DIRS += $(HDR_HISTOGRAM_BINROOT)/search-static
+
+LIBS=$(RAX) $(HDR_HISTOGRAM_LIBS) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH_LIBS) $(LIBCYPHER_PARSER) $(UTF8PROC)
 
 #----------------------------------------------------------------------------------------------
 
@@ -178,6 +183,10 @@ ifneq ($(call files_missing,$(REDISEARCH_LIBS)),)
 MISSING_DEPS += $(REDISEARCH_LIBS)
 endif
 
+ifneq ($(call files_missing,$(HDR_HISTOGRAM_LIBS)),)
+MISSING_DEPS += $(HDR_HISTOGRAM_LIBS)
+endif
+
 ifneq ($(MISSING_DEPS),)
 DEPS=1
 endif
@@ -208,7 +217,7 @@ include $(MK)/rules
 
 ifeq ($(DEPS),1)
 
-deps: $(LIBCYPHER_PARSER) $(GRAPHBLAS) $(LIBXXHASH) $(RAX) $(REDISEARCH_LIBS) $(UTF8PROC)
+deps: $(LIBCYPHER_PARSER) $(HDR_HISTOGRAM_LIBS) $(GRAPHBLAS) $(LIBXXHASH) $(RAX) $(REDISEARCH_LIBS) $(UTF8PROC)
 
 libxxhash: $(LIBXXHASH)
 
@@ -221,6 +230,13 @@ rax: $(RAX)
 $(RAX):
 	@echo Building $@ ...
 	$(SHOW)$(MAKE) --no-print-directory -C $(ROOT)/build/rax DEBUG=$(DEPS_DEBUG)
+
+hdr_histogram: $(HDR_HISTOGRAM_LIBS)
+
+$(HDR_HISTOGRAM_LIBS):
+	@echo Building $@ ...
+	CC=$(CC) CXX=$(CXX) cmake -S $(HDR_HISTOGRAM_DIR) -DHDR_HISTOGRAM_INSTALL_STATIC=1 -B $(HDR_HISTOGRAM_BINROOT)
+	$(SHOW)$(MAKE) -C $(HDR_HISTOGRAM_BINROOT)
 
 graphblas: $(GRAPHBLAS)
 
@@ -247,7 +263,7 @@ $(REDISEARCH_LIBS):
 	@echo Building $@ ...
 	$(SHOW)$(MAKE) -C $(REDISEARCH_DIR) STATIC=1 BINROOT=$(REDISEARCH_BINROOT) CC=$(CC) CXX=$(CXX)
 
-.PHONY: libcypher-parser graphblas redisearch libxxhash rax utf8proc
+.PHONY: libcypher-parser graphblas redisearch libxxhash rax hdr_histogram utf8proc
 
 #----------------------------------------------------------------------------------------------
 
@@ -274,6 +290,8 @@ else
 	$(SHOW)-rm -fr $(TARGET).debug $(BINDIR)/CMakeCache.txt $(BINDIR)/tests
 ifeq ($(DEPS),1)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/rax clean DEBUG=$(DEPS_DEBUG)
+	# $(SHOW)$(MAKE) -C $(ROOT)/build/hdr_histogram clean DEBUG=$(DEPS_DEBUG)
+	$(SHOW)$(MAKE) -C $(HDR_HISTOGRAM_DIR) clean ALL=1 BINROOT=$(HDR_HISTOGRAM_BINROOT)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/xxHash clean DEBUG=$(DEPS_DEBUG)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/utf8proc clean DEBUG=$(DEPS_DEBUG)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/GraphBLAS clean DEBUG=$(DEPS_DEBUG)
@@ -287,9 +305,11 @@ clean-libcypher-parser:
 
 clean-search:
 ifeq ($(ALL),1)
+	$(SHOW)rm -rf $(HDR_HISTOGRAM_BINROOT)/search-static
 	$(SHOW)rm -rf $(REDISEARCH_BINROOT)/search-static
 else
 	$(SHOW)$(MAKE) -C $(REDISEARCH_DIR) clean BINROOT=$(REDISEARCH_BINROOT)
+	$(SHOW)$(MAKE) -C $(HDR_HISTOGRAM_DIR) clean BINROOT=$(REDISEARCH_BINROOT)
 endif
 
 .PHONY: clean clean-libcypher-parser clean-search
@@ -341,7 +361,7 @@ flow-tests: $(TEST_DEPS)
 
 tck-tests: $(TEST_DEPS)
 	$(SHOW)MODULE=$(TARGET) BINROOT=$(BINROOT) PARALLEL=$(_RLTEST_PARALLEL) GEN=0 AOF=0 TCK=1 ./tests/flow/tests.sh
-	
+
 .PHONY: test unit-tests flow-tests tck-tests
 
 #----------------------------------------------------------------------------------------------
