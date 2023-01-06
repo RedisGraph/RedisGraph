@@ -30,6 +30,16 @@ typedef struct hdr_histogram hdr_histogram;
 #define CHECK_FLAG(flag_var, flag_value) \
     ((flag_var & flag_value) == flag_value)
 
+// Define the indices for the percentiles within an array of values.
+#define PERCENTILE_25 0
+#define PERCENTILE_50 1
+#define PERCENTILE_75 2
+#define PERCENTILE_90 3
+#define PERCENTILE_95 4
+#define PERCENTILE_99 5
+#define PERCENTILE_COUNT (PERCENTILE_99 + 1)
+
+
 typedef uint32_t millis_t;
 typedef struct QueryCtx QueryCtx;
 // Duplicate typedef from the circular buffer.
@@ -185,6 +195,14 @@ uint32_t QueryInfoIterator_Length(const QueryInfoIterator *);
 // Returns true if the iterator has no more elements to iterate over.
 bool QueryInfoIterator_IsExhausted(const QueryInfoIterator *);
 
+// The type of values is int64_t due to the hdr_histogram API limitations.
+// Ideally, should be the "millis_t".
+typedef struct Percentiles {
+    int64_t wait_durations[PERCENTILE_COUNT];
+    int64_t execution_durations[PERCENTILE_COUNT];
+    int64_t report_durations[PERCENTILE_COUNT];
+} Percentiles;
+
 typedef struct Info {
     // Storage for query information for waiting queries.
     QueryInfoStorage waiting_queries;
@@ -286,6 +304,9 @@ QueryInfoStorage* Info_GetExecutingQueriesStorage(Info *info);
 // Returns a pointer to the underlying reporting queries storage per thread.
 // Must be accessed within the Info_Lock and Info_Unlock.
 QueryInfoStorage* Info_GetReportingQueriesStorage(Info *info);
+// Returns the percentiles of values of durations of each stage of a query.
+// Must be accessed within the Info_Lock and Info_Unlock.
+Percentiles Info_GetDurationsPercentiles(Info *info);
 // Resizes the finished queries storage.
 void Info_SetCapacityForFinishedQueriesStorage(const uint32_t count);
 // Views the circular buffer of finished queries.
