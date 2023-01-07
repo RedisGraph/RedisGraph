@@ -154,7 +154,7 @@ commands:
       - run:
           name: Build
           shell: /bin/bash -l -eo pipefail
-          command: make <<parameters.build_params>>
+          command: make <<parameters.build_params>> NPROC=16
       - when:
           condition: << parameters.run_pack >>
           steps:
@@ -369,7 +369,8 @@ jobs:
       - early-returns
       - checkout-all
       - install-prerequisites
-      - build-steps
+      - build-steps:
+          build_params: NPROC=16
       - fuzzer-test-steps
       - save-tests-logs
 
@@ -542,13 +543,14 @@ jobs:
       - run:
           name: Build artifact
           shell: /bin/bash -l -eo pipefail
-          command: make
+          command: make NPROC=16
       - benchmark-steps:
           module_path: "/root/project/src/$PACKAGE_NAME.so"
 
   benchmark-profiler:
     docker:
       - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    resource_class: large
     steps:
       - early-returns
       - checkout-all
@@ -559,7 +561,7 @@ jobs:
       - run:
           name: Build artifact
           shell: /bin/bash -l -eo pipefail
-          command: make
+          command: make NPROC=16
       - benchmark-steps:
           profile_env: "1"
           module_path: "/root/project/src/$PACKAGE_NAME.so"
@@ -660,7 +662,8 @@ workflows:
           context: common
           matrix:
             parameters:
-              platform: [jammy, focal, bionic, xenial, centos7, rocky8, bullseye]
+              #@@platform: [jammy, focal, bionic, xenial, centos7, rocky8, bullseye]
+              platform: [focal]
       - build-arm-platforms:
           <<: *on-integ-and-version-tags
           context: common
@@ -669,7 +672,8 @@ workflows:
               platform: [jammy, focal, bionic]
       - build-macos:
           context: common
-          <<: *on-integ-and-version-tags
+          #@@<<: *on-integ-and-version-tags
+          <<: *always
       - coverage:
           <<: *always
       - sanitize:
@@ -682,10 +686,11 @@ workflows:
           name: upload-artifacts-to-staging-lab
           staging-lab: "1"
           context: common
-          <<: *on-integ-branch
+          #@@<<: *on-integ-branch
+          <<: *always
           requires:
             - build-platforms
-            - build-arm-platforms
+            #@@- build-arm-platforms
             - build-macos
       - upload-artifacts:
           name: upload-release-artifacts
