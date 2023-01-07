@@ -626,8 +626,8 @@ class testFunctionCallsFlow(FlowTestsBase):
 
         # Test has labels using functions mismatch type
         queries_with_errors = {
-            # "MATCH (n) WHERE hasLabels(n, ['person', 1]) RETURN n.name": "Type mismatch: expected String but was Integer",
-            "MATCH (n) WHERE hasLabels(n, ['person', 1]) RETURN n.name": "Type mismatch on function 'hasLabels' argument 2: expected String but was Integer",
+            "MATCH (n) WHERE hasLabels(n, ['person', 1]) RETURN n.name": "Type mismatch: expected String but was Integer",
+            # "MATCH (n) WHERE hasLabels(n, ['person', 1]) RETURN n.name": "Type mismatch on function 'hasLabels' argument 2: expected String but was Integer",
             # "MATCH (n) WHERE hasLabels(n, ['person', 1]) RETURN n.name": "Type mismatch on function 'hasLabels' argument 2, element 2: expected String but was Integer",
             # "MATCH (n) WHERE hasLabels(n, ['a', 'b', 1]) RETURN n.name": "Type mismatch on function 'hasLabels' argument 2, element 3: expected String but was Integer",
         }
