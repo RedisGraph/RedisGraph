@@ -1,4 +1,5 @@
 from common import *
+from index_utils import *
 import time
 
 GRAPH_ID = "replication"
@@ -41,8 +42,7 @@ class testReplication(FlowTestsBase):
         graph.flush()
 
         # create index
-        q = "CREATE INDEX ON :L(id)"
-        graph.query(q)
+        create_node_exact_match_index(graph, 'L', 'id', sync=True)
 
         # create full-text index
         q = "CALL db.idx.fulltext.createNodeIndex('L', 'name')"
