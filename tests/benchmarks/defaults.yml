@@ -1,6 +1,7 @@
 version: 0.1
 kpis:
   - eq: { $.Totals.Total.Errors: 0 }
+  - le: { $.OverallRelativeInternalExternalLatencyDiff.q50: 5 }
 exporter:
   redistimeseries:
     timemetric: "$.StartTime"
@@ -13,6 +14,8 @@ exporter:
       - "$.OverallGraphInternalLatencies.Total.q95"
       - "$.OverallGraphInternalLatencies.Total.q99"
       - "$.OverallGraphInternalLatencies.Total.avg"
+      - "$.OverallRelativeInternalExternalLatencyDiff.avg"
+      - "$.OverallRelativeInternalExternalLatencyDiff.q50"
       - "$.OverallQueryRates.Total"
   comparison:
     metrics:
