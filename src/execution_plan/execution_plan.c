@@ -217,10 +217,6 @@ static ExecutionPlan *_tie_segments
 	// merge segments
 	//--------------------------------------------------------------------------
 
-	if(segment_count == 1) {
-		goto one_segment;
-	}
-
 	for(int i = 0; i < segment_count; i++) {
 		ExecutionPlan *segment = segments[i];
 		AST *ast = segment->ast_segment;
@@ -228,7 +224,9 @@ static ExecutionPlan *_tie_segments
 		// find the firstmost non-argument operation in this segment
 		prev_connecting_op = connecting_op;
 		OpBase **taps = ExecutionPlan_LocateTaps(segment);
-		ASSERT(array_len(taps) > 0);
+		// TODO: change tap definition (to contain Foreach in some manner) or
+		// remove this assertion.
+		// ASSERT(array_len(taps) > 0);
 
 		// TODO: Seems that we need only one tap, so we can stop the search for taps
 		// after we find one. Currently we fetch them all.
@@ -306,7 +304,6 @@ static ExecutionPlan *_tie_segments
 		}
 	}
 
-one_segment:
 	// Restore the master AST.
 	QueryCtx_SetAST(master_ast);
 

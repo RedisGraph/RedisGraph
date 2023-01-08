@@ -142,8 +142,16 @@ class testForeachFlow(FlowTestsBase):
         # clean db
         self.env.flush()
 
-    # Problematic at the moment - think if to make Foreach eager, or change Create.
+    # # Problematic at the moment - think if to make Foreach eager, or change Create.
     # def test06_multiple_records(self):
+    #     # clear db
+    #     self.env.flush
 
-    # MATCH (n:N) FOREACH(i in [1] | CREATE (:N {v: n.v}))
-    #         WITH collect(n) as ns FOREACH(n in ns | CREATE (:N {v: n.v^10}))
+    #     # create 5 nodes
+    #     graph.query("UNWIND range(0, 4) as val CREATE (n:N {v: val})")
+
+    #     # execute a FOREACH clause for every node matched
+    #     query = """MATCH (n:N) FOREACH(i in [1] | CREATE (:N {v: 2*n.v}))"""
+    #     res = graph.query(query)
+    #     self.env.assertEquals(res.nodes_created, 5)
+    #     self.env.assertEquals(res.properties_set, 5)
