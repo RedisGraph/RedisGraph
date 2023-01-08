@@ -62,7 +62,6 @@ static void _CreateNodes(OpCreate *op, Record r, GraphContext *gc) {
 		AttributeSet converted_attr = NULL;
 		PropertyMap *map = op->pending.nodes_to_create[i].properties;
 		if(map != NULL) {
-			converted_attr = AttributeSet_New();
 			ConvertPropertyMap(gc, &converted_attr, r, map, false);
 		}
 
@@ -103,7 +102,6 @@ static void _CreateEdges(OpCreate *op, Record r, GraphContext *gc) {
 		PropertyMap *map = op->pending.edges_to_create[i].properties;
 		AttributeSet converted_attr = NULL;
 		if(map != NULL) {
-			converted_attr = AttributeSet_New();
 			ConvertPropertyMap(gc, &converted_attr, r, map, false);
 		}
 

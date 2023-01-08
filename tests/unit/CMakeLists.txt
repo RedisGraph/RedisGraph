@@ -1,0 +1,17 @@
+
+file(GLOB TEST_SOURCES LIST_DIRECTORIES false test_*.c)
+
+foreach(test_src ${TEST_SOURCES})
+	get_filename_component(test ${test_src} NAME_WE)
+	add_executable(${test} ${test_src})
+	set_target_properties(${test} PROPERTIES LINKER_LANGUAGE CXX)
+	target_compile_options(${test} PRIVATE ${CMAKE_CC_FLAGS} ${CMAKE_CC_C_FLAGS})
+	target_link_options(${test} PRIVATE ${CMAKE_LD_FLAGS})
+	if (NOT APPLE)
+		target_link_libraries(${test} PRIVATE redisgraph ${REDISGRAPH_LIBS})
+	else()
+		# target_link_libraries(${test} PRIVATE ${redisgraph_dylib} ${REDISGRAPH_LIBS})
+		target_link_libraries(${test} PRIVATE ${REDISGRAPH_OBJECTS} ${REDISGRAPH_LIBS})
+	endif()
+	target_link_libraries(${test} PRIVATE ${LIBOMP} c m dl pthread)
+endforeach()

@@ -99,7 +99,8 @@ GraphContext *GraphContext_New
 	// 2. matrices dimensions
 	size_t node_cap;
 	size_t edge_cap;
-	assert(Config_Option_get(Config_NODE_CREATION_BUFFER, &node_cap));
+	bool rc = Config_Option_get(Config_NODE_CREATION_BUFFER, &node_cap);
+	assert(rc);
 	edge_cap = node_cap;
 
 	gc->g = Graph_New(node_cap, edge_cap);
@@ -110,7 +111,8 @@ GraphContext *GraphContext_New
 	gc->relation_schemas = array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 
 	// initialize the read-write lock to protect access to the attributes rax
-	assert(pthread_rwlock_init(&gc->_attribute_rwlock, NULL) == 0);
+	int rc1 = pthread_rwlock_init(&gc->_attribute_rwlock, NULL);
+	assert(rc1 == 0);
 
 	// build the execution plans cache
 	uint64_t cache_size;
@@ -273,7 +275,12 @@ Schema *GraphContext_GetSchema(const GraphContext *gc, const char *label, Schema
 	return GraphContext_GetSchemaByID(gc, id, t);
 }
 
-Schema *GraphContext_AddSchema(GraphContext *gc, const char *label, SchemaType t) {
+Schema *GraphContext_AddSchema
+(
+	GraphContext *gc,
+	const char *label,
+	SchemaType t
+) {
 	int label_id;
 	Schema *schema;
 
@@ -318,32 +325,38 @@ uint GraphContext_AttributeCount(GraphContext *gc) {
 	return size;
 }
 
-Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attribute, bool* created) {
+Attribute_ID GraphContext_FindOrAddAttribute
+(
+	GraphContext *gc,
+	const char *attribute,
+	bool* created
+) {
 	bool created_flag = false;
+	unsigned char *attr = (unsigned char*)attribute;
+	uint l = strlen(attribute);
 	
-	// Acquire a read lock for looking up the attribute.
+	// acquire a read lock for looking up the attribute
 	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
 
-	// See if attribute already exists.
-	void *attribute_id = raxFind(gc->attributes, (unsigned char *)attribute, strlen(attribute));
+	// see if attribute already exists
+	void *attribute_id = raxFind(gc->attributes, attr, l);
 
 	if(attribute_id == raxNotFound) {
-		// We are writing to the shared GraphContext; release the held lock and re-acquire as a writer.
+		// we are writing to the shared GraphContext
+		// release the held lock and re-acquire as a writer
 		pthread_rwlock_unlock(&gc->_attribute_rwlock);
 		pthread_rwlock_wrlock(&gc->_attribute_rwlock);
 
-		// Lookup the attribute again now that we are in a critical region.
-		attribute_id = raxFind(gc->attributes, (unsigned char *)attribute, strlen(attribute));
-		// If it has been set by another thread, use the retrieved value.
+		// lookup the attribute again now that we are in a critical region
+		attribute_id = raxFind(gc->attributes, attr, l);
+
+		// if set by another thread, use the retrieved value
 		if(attribute_id == raxNotFound) {
-			// Otherwise, it will be assigned an ID equal to the current mapping size.
+			// otherwise, it will be assigned an ID
+			// equal to the current mapping size
 			attribute_id = (void *)raxSize(gc->attributes);
-			// Insert the new attribute key and ID.
-			raxInsert(gc->attributes,
-					  (unsigned char *)attribute,
-					  strlen(attribute),
-					  attribute_id,
-					  NULL);
+			// insert the new attribute key and ID
+			raxInsert(gc->attributes, attr, l, attribute_id, NULL);
 			array_append(gc->string_mapping, rm_strdup(attribute));
 			created_flag = true;
 
@@ -352,11 +365,13 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 		}
 	}
 
-	// Release the lock.
+	// release the lock
 	pthread_rwlock_unlock(&gc->_attribute_rwlock);
+
 	if(created) {
 		*created = created_flag;
 	}
+
 	return (uintptr_t)attribute_id;
 }
 
@@ -368,7 +383,11 @@ const char *GraphContext_GetAttributeString(GraphContext *gc, Attribute_ID id) {
 	return name;
 }
 
-Attribute_ID GraphContext_GetAttributeID(GraphContext *gc, const char *attribute) {
+Attribute_ID GraphContext_GetAttributeID
+(
+	GraphContext *gc,
+	const char *attribute
+) {
 	// Acquire a read lock for looking up the attribute.
 	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
 	// Look up the attribute ID.
@@ -410,10 +429,16 @@ bool GraphContext_HasIndices(GraphContext *gc) {
 
 	return false;
 }
-Index *GraphContext_GetIndexByID(const GraphContext *gc, int id,
-								 Attribute_ID *attribute_id, IndexType type, SchemaType t) {
+Index GraphContext_GetIndexByID
+(
+	const GraphContext *gc,
+	int id,
+	Attribute_ID *attribute_id,
+	IndexType type,
+	SchemaType t
+) {
 
-	ASSERT(gc     !=  NULL);
+	ASSERT(gc != NULL);
 
 	// Retrieve the schema for given id
 	Schema *s = GraphContext_GetSchemaByID(gc, id, t);
@@ -422,11 +447,16 @@ Index *GraphContext_GetIndexByID(const GraphContext *gc, int id,
 	return Schema_GetIndex(s, attribute_id, type);
 }
 
-Index *GraphContext_GetIndex(const GraphContext *gc, const char *label,
-							 Attribute_ID *attribute_id, IndexType type,
-							 SchemaType schema_type) {
+Index GraphContext_GetIndex
+(
+	const GraphContext *gc,
+	const char *label,
+	Attribute_ID *attribute_id,
+	IndexType type,
+	SchemaType schema_type
+) {
 
-	ASSERT(gc != NULL);
+	ASSERT(gc    != NULL);
 	ASSERT(label != NULL);
 
 	// Retrieve the schema for this label
@@ -436,63 +466,120 @@ Index *GraphContext_GetIndex(const GraphContext *gc, const char *label,
 	return Schema_GetIndex(s, attribute_id, type);
 }
 
-int GraphContext_AddExactMatchIndex
+// create an exact match index for the given label and attribute
+bool GraphContext_AddExactMatchIndex
 (
-	Index **idx,
-	GraphContext *gc,
-	SchemaType schema_type,
-	const char *label,
-	const char *field
+	Index *idx,              // [input/output] index created
+	GraphContext *gc,        // graph context
+	SchemaType schema_type,  // type of entities to index nodes/edges
+	const char *label,       // label of indexed entities
+	const char **fields,     // fields to index
+	uint fields_count        // number of fields to index
 ) {
 	ASSERT(idx    !=  NULL);
 	ASSERT(gc     !=  NULL);
 	ASSERT(label  !=  NULL);
-	ASSERT(field  !=  NULL);
+	ASSERT(fields !=  NULL);
+	ASSERT(fields_count > 0);
 
-	// Retrieve the schema for this label
-	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
-	if(s == NULL) s = GraphContext_AddSchema(gc, label, schema_type);
+	// retrieve the schema for this label
+	Schema    *s            = GraphContext_GetSchema(gc, label, schema_type);
+	bool      index_created = false;
+	ResultSet *result_set   = QueryCtx_GetResultSet();
 
-	IndexField idx_field;
-	Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field, NULL);
-	IndexField_New(&idx_field, field_id, field, INDEX_FIELD_DEFAULT_WEIGHT,
-				   INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
+	if(s == NULL) {
+		// schema doesn't exists, create it
+		s = GraphContext_AddSchema(gc, label, schema_type);
+	}
 
-	int res = Schema_AddIndex(idx, s, &idx_field, IDX_EXACT_MATCH);
+	for(uint i = 0; i < fields_count; i++) {
+		// create index field
+		const char *field = fields[i];
+		IndexField idx_field;
+		Attribute_ID f_id = GraphContext_FindOrAddAttribute(gc, field, NULL);
+		IndexField_Default(&idx_field, f_id, field);
 
-	ResultSet *result_set = QueryCtx_GetResultSet();
-	ResultSet_IndexCreated(result_set, res);
+		if(Schema_AddIndex(idx, s, &idx_field, IDX_EXACT_MATCH) == INDEX_OK) {
+			index_created = true;
+			// update result-set
+			ResultSet_IndexCreated(result_set, INDEX_OK);
+		}
+	}
 
-	return res;
+	// disable index if it was created
+	// we don't call Index_Disable within Schema_AddIndex as multiple
+	// field additions are still considered as a "single" modification
+	// of the index
+	if(index_created) {
+		Index_Disable(*idx);
+	} else {
+		// update result-set
+		ResultSet_IndexCreated(result_set, INDEX_FAIL);
+	}
+
+	return index_created;
 }
 
-int GraphContext_AddFullTextIndex
+// create a full text index for the given label and attribute
+bool GraphContext_AddFullTextIndex
 (
-	Index **idx,
-	GraphContext *gc,
-	SchemaType schema_type,
-	const char *label,
-	const char *field,
-	double weight,
-	bool nostem,
-	const char *phonetic
+	Index *idx,             // [input/output] index created
+	GraphContext *gc,        // graph context
+	SchemaType schema_type,  // type of entities to index nodes/edges
+	const char *label,       // label of indexed entities
+	const char **fields,     // fields to index
+	uint fields_count,       // number of fields to index
+	double *weights,         // fields weights
+	bool *nostems,           //
+	const char **phonetics,  //
+	char **stopwords,
+	const char *language
 ) {
-	ASSERT(idx    !=  NULL);
-	ASSERT(gc     !=  NULL);
-	ASSERT(label  !=  NULL);
-	ASSERT(field  !=  NULL);
+	ASSERT(idx    != NULL);
+	ASSERT(gc     != NULL);
+	ASSERT(label  != NULL);
+	ASSERT(fields != NULL);
+	ASSERT(fields_count > 0);
 
-	// Retrieve the schema for this label
-	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
-	if(s == NULL) s = GraphContext_AddSchema(gc, label, schema_type);
-	IndexField index_field;
-	Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field, NULL);
-	IndexField_New(&index_field, field_id, field, weight, nostem, phonetic);
-	int res = Schema_AddIndex(idx, s, &index_field, IDX_FULLTEXT);
-	ResultSet *result_set = QueryCtx_GetResultSet();
-	ResultSet_IndexCreated(result_set, res);
+	// retrieve the schema for this label
+	ResultSet *result_set   = QueryCtx_GetResultSet();
+	bool      index_created = false;
+	Schema    *s            = GraphContext_GetSchema(gc, label, schema_type);
 
-	return res;
+	if(s == NULL) {
+		s = GraphContext_AddSchema(gc, label, schema_type);
+	}
+
+	for(uint i = 0; i < fields_count; i++) {
+		const char* field     = fields[i];
+		double      weight    = weights[i];
+		bool        nostem    = nostems[i];
+		const char  *phonetic = phonetics[i];
+
+		IndexField index_field;
+		Attribute_ID f_id = GraphContext_FindOrAddAttribute(gc, field, NULL);
+		IndexField_New(&index_field, f_id, field, weight, nostem, phonetic);
+		if(Schema_AddIndex(idx, s, &index_field, IDX_FULLTEXT) == INDEX_OK) {
+			index_created = true;
+			// update result-set
+			ResultSet_IndexCreated(result_set, INDEX_OK);
+		}
+	}
+
+	if(stopwords != NULL) {
+		Index_SetStopwords(*idx, stopwords);
+	}
+
+	if(language != NULL) {
+		Index_SetLanguage(*idx, language);
+	}
+
+	// diable index if it was created
+	if(index_created) {
+		Index_Disable(*idx);
+	}
+
+	return index_created;
 }
 
 int GraphContext_DeleteIndex
@@ -503,8 +590,8 @@ int GraphContext_DeleteIndex
 	const char *field,
 	IndexType type
 ) {
-	ASSERT(gc     !=  NULL);
-	ASSERT(label  !=  NULL);
+	ASSERT(gc    != NULL);
+	ASSERT(label != NULL);
 
 	// retrieve the schema for this label
 	int res = INDEX_FAIL;
@@ -583,7 +670,7 @@ static void _GraphContext_Free(void *arg) {
 
 	// Disable matrix synchronization for graph deletion.
 	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
-	if(GraphDecodeContext_Finished(gc->decoding_context)) Graph_Free(gc->g);
+	if(gc->decoding_context == NULL || GraphDecodeContext_Finished(gc->decoding_context)) Graph_Free(gc->g);
 	else Graph_PartialFree(gc->g);
 
 

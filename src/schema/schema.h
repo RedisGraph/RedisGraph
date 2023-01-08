@@ -21,11 +21,11 @@ typedef enum {
 // similar to a relational table structure, our schemas are a collection
 // of attributes we've encountered overtime as entities were created or updated
 typedef struct {
-	int id;               // schema id
-	char *name;           // schema name
-	SchemaType type;      // schema type (node/edge)
-	Index *index;         // exact match index
-	Index *fulltextIdx;   // full-text index
+	int id;             // schema id
+	char *name;         // schema name
+	SchemaType type;    // schema type (node/edge)
+	Index index;        // exact match index
+	Index fulltextIdx;  // full-text index
 } Schema;
 
 // creates a new schema
@@ -61,7 +61,7 @@ unsigned short Schema_IndexCount
 
 // retrieves index from attribute
 // returns NULL if index wasn't found
-Index *Schema_GetIndex
+Index Schema_GetIndex
 (
 	const Schema *s,
 	Attribute_ID *attribute_id,
@@ -72,10 +72,10 @@ Index *Schema_GetIndex
 // attribute must already exists and not associated with an index
 int Schema_AddIndex
 (
-	Index **idx,
-	Schema *s,
-	IndexField *field,
-	IndexType type
+	Index *idx,         // [input/output] index to create
+	Schema *s,          // schema holding the index
+	IndexField *field,  // field to index
+	IndexType type      // type of entities to index
 );
 
 // removes index

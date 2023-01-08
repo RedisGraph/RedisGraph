@@ -24,7 +24,7 @@ typedef struct {
 	Node n;
 	Graph *g;
 	SIValue *output;
-	Index *idx;
+	Index idx;
 	RSResultsIterator *iter;
 	SIValue *yield_node;     // yield node
 	SIValue *yield_score;    // yield score
@@ -75,7 +75,7 @@ ProcedureResult Proc_FulltextQueryNodeInvoke
 	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(s == NULL) return PROCEDURE_OK;
 
-	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+	Index idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
 	if(!idx) return PROCEDURE_ERR; // TODO: this should cause an error to be emitted
 
 	ctx->privateData = rm_malloc(sizeof(QueryNodeContext));
@@ -120,7 +120,8 @@ SIValue *Proc_FulltextQueryNodeStep
 	// try to get a result out of the iterator
 	// NULL is returned if iterator id depleted
 	size_t len = 0;
-	NodeID *id = (NodeID *)RediSearch_ResultsIteratorNext(pdata->iter, pdata->idx->idx, &len);
+	NodeID *id = (NodeID *)RediSearch_ResultsIteratorNext(pdata->iter,
+			Index_RSIndex(pdata->idx), &len);
 
 	// depleted
 	if(!id) return NULL;

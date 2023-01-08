@@ -6,7 +6,7 @@
 
 #include <string.h>
 #include "RG.h"
-#include "../configuration/config.h"
+#include "configuration/config.h"
 
 void _Config_get_all(RedisModuleCtx *ctx) {
 	uint config_count = Config_END_MARKER;
@@ -100,7 +100,8 @@ void _Config_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 				RedisModule_ReplyWithError(ctx, error);
 			} else {
 				char *errmsg;
-				asprintf(&errmsg, "Failed to set config value %s to %s", config_name, val_str);
+				int rc __attribute__((unused));
+				rc = asprintf(&errmsg, "Failed to set config value %s to %s", config_name, val_str);
 				RedisModule_ReplyWithError(ctx, errmsg);
 				free(errmsg);
 			}

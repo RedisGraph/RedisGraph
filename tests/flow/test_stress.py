@@ -1,10 +1,11 @@
-from common import *
 import time
+from common import *
 from time import sleep
+from index_utils import *
 from pathos.pools import ProcessPool as Pool
 
-graphs       = None  # one graph object per client
-GRAPH_ID     = "G"   # graph identifier
+graphs   = None # one graph object per client
+GRAPH_ID = "G"  # graph identifier
 
 
 def query_crud(graph, query_id):
@@ -79,10 +80,11 @@ def BGSAVE_loop(env, conn, n_iterations):
 
 class testStressFlow():
     def __init__(self):
-        self.env = Env(decodeResponses=True)
         # skip test if we're running under Valgrind
-        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
-            self.env.skip() # valgrind is not working correctly with multi process
+        if VALGRIND or SANITIZER != "" or CODE_COVERAGE:
+            Env.skip(None) # valgrind is not working correctly with multi process
+
+        self.env = Env(decodeResponses=True)
 
         global graphs
         graphs = []
@@ -91,14 +93,6 @@ class testStressFlow():
 
         for i in range(0, self.client_count):
             graphs.append(Graph(self.env.getConnection(), GRAPH_ID))
-
-    def __del__(self):
-        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
-            return
-
-        for i in range(0, self.client_count):
-            g = graphs[0]
-            self.env.getConnection().close()
 
     # called before each test function
     def setUp(self):
@@ -125,7 +119,7 @@ class testStressFlow():
         n_deletions  =  n_creations/2
 
         conn = self.env.getConnection()
-        graphs[0].query("CREATE INDEX FOR (n:Node) ON (n.v)")
+        create_node_exact_match_index(graphs[0], 'Node', 'v', sync=True)
 
         pool = Pool(nodes=5)
 
@@ -176,10 +170,6 @@ class testStressFlow():
         conn.close()
 
     def test03_clean_shutdown(self):
-        # skip test if we're running under COV=1
-        if os.getenv('COV') == '1':
-            self.env.skip() # valgrind is not working correctly with multi process
-
         # issue SHUTDOWN while traffic is generated
         indexes = range(self.client_count)
         pool = Pool(nodes=self.client_count)

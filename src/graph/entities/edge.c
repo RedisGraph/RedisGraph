@@ -52,27 +52,6 @@ Node *Edge_GetDestNode
 	return e->dest;
 }
 
-RG_Matrix Edge_GetMatrix
-(
-	Edge *e
-) {
-	ASSERT(e);
-
-	// retrieve matrix from graph if edge matrix isn't set
-	if(!e->mat) {
-		Graph *g = QueryCtx_GetGraph();
-
-		// get relation matrix
-		if(e->relationID == GRAPH_UNKNOWN_RELATION) {
-			e->mat = Graph_GetZeroMatrix(g);
-		} else {
-			e->mat = Graph_GetRelationMatrix(g, e->relationID, false);
-		}
-	}
-
-	return e->mat;
-}
-
 void Edge_SetSrcNode
 (
 	Edge *e,
