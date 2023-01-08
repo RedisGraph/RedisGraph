@@ -14,3 +14,8 @@ exporter:
       - "$.OverallGraphInternalLatencies.Total.q99"
       - "$.OverallGraphInternalLatencies.Total.avg"
       - "$.OverallQueryRates.Total"
+  comparison:
+    metrics:
+      - "$.OverallQueryRates.Total"
+    mode: higher-better
+    baseline-branch: master
