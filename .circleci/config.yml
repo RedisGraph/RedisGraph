@@ -154,7 +154,7 @@ commands:
       - run:
           name: Build
           shell: /bin/bash -l -eo pipefail
-          command: make <<parameters.build_params>>
+          command: make <<parameters.build_params>> NPROC=16
       - when:
           condition: << parameters.run_pack >>
           steps:
@@ -369,7 +369,8 @@ jobs:
       - early-returns
       - checkout-all
       - install-prerequisites
-      - build-steps
+      - build-steps:
+          build_params: NPROC=16
       - fuzzer-test-steps
       - save-tests-logs
 
@@ -531,6 +532,7 @@ jobs:
   benchmark:
     docker:
       - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    resource_class: large
     steps:
       - early-returns
       - checkout-all
@@ -541,13 +543,14 @@ jobs:
       - run:
           name: Build artifact
           shell: /bin/bash -l -eo pipefail
-          command: make
+          command: make NPROC=16
       - benchmark-steps:
           module_path: "/root/project/src/$PACKAGE_NAME.so"
 
   benchmark-profiler:
     docker:
       - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    resource_class: large
     steps:
       - early-returns
       - checkout-all
@@ -558,7 +561,7 @@ jobs:
       - run:
           name: Build artifact
           shell: /bin/bash -l -eo pipefail
-          command: make
+          command: make NPROC=16
       - benchmark-steps:
           profile_env: "1"
           module_path: "/root/project/src/$PACKAGE_NAME.so"
