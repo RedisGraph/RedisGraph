@@ -290,3 +290,19 @@ class testOptionalFlow(FlowTestsBase):
                            ['v3'],
                            ['v4']]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # validate that the optional labels are not taken into account in optimize-
+    # label-scan.
+    def test23_optimize_mandatory_labels_only(self):
+        # clear db
+        self.env.flush()
+
+        # create two nodes with label N, and one with label Q.
+        redis_graph.query("CREATE (:N), (:N), (:Q)")
+
+        # The most tempting label to start traversing from is Z, as there are
+        # no nodes of label Z, but it is optional, so the second most tempting
+        # label (Q) must be traversed first (order swapped with N)
+        plan = redis_graph.execution_plan("""MATCH (n:N) MATCH (n:Q) OPTIONAL MATCH (n:Z) RETURN n""")
+        self.env.assertIn("Node By Label Scan | (n:Q)", plan)
+        self.env.assertIn("Conditional Traverse | (n:N)->(n:N)", plan)
