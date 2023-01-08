@@ -1332,7 +1332,8 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 		// traversal of the visitor in the FOREACH clause, since we don't want
 		// it to affect the current environment of bounded vars
 		rax *orig_env = vctx->defined_identifiers;
-		vctx->defined_identifiers = raxClone(orig_env);
+		rax *temp_env = raxClone(orig_env);
+		vctx->defined_identifiers = temp_env;
 
 		vctx->clause = cypher_astnode_type(n);
 
@@ -1367,6 +1368,7 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 
 		// return original environment of bounded vars
 		vctx->defined_identifiers = orig_env;
+		rax_Free(temp_env);
 	}
 
 	// do not traverse children
