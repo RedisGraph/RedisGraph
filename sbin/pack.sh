@@ -68,8 +68,8 @@ PLATFORM="$OS-$OSNICK-$ARCH"
 #----------------------------------------------------------------------------------------------
 
 RAMP=${RAMP:-1}
-DEPS=${DEPS:-1}
-SYM=${SYM:-1}
+# DEPS=${DEPS:-1}
+# SYM=${SYM:-1}
 
 RELEASE=${RELEASE:-1}
 SNAPSHOT=${SNAPSHOT:-1}

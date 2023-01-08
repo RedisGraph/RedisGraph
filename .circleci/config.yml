@@ -673,8 +673,7 @@ workflows:
               platform: [jammy, focal, bionic]
       - build-macos:
           context: common
-          #@@<<: *on-integ-and-version-tags
-          <<: *always
+          <<: *on-integ-and-version-tags
       - coverage:
           <<: *always
       - sanitize:
@@ -692,7 +691,7 @@ workflows:
           requires:
             - build-platforms
             #@@- build-arm-platforms
-            - build-macos
+            #@@- build-macos
       - upload-artifacts:
           name: upload-release-artifacts
           context: common
