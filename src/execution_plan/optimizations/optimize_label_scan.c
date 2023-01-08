@@ -46,7 +46,7 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 
 	// return if node has only one non-optional label
 	uint label_count = QGNode_MandatoryLabelCount(qn);
-	if(label_count == 1) {
+	if(label_count <= 1) {
 		return;
 	}
 	
