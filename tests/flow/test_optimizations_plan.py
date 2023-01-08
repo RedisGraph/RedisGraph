@@ -479,7 +479,7 @@ class testOptimizationsPlan(FlowTestsBase):
 
     # mandatory match labels should not be replaced with optional ones in
     # optimize-label-scan
-    def test30_optimize_label_scan_optional_match(self):
+    def test30_optimize_mandatory_labels_order_only(self):
         # clean db
         self.env.flush()
 
@@ -495,3 +495,14 @@ class testOptimizationsPlan(FlowTestsBase):
         self.env.assertIn("Node By Label Scan | (n:N)", plan)
         res = graph.query(query)
         self.env.assertEquals(res.result_set, [[1]])
+
+        # create nodes so there are two nodes with label N, and one with label Q.
+        graph.query("CREATE (:N), (:Q)")
+
+        # The most tempting label to start traversing from is Z, as there are
+        # no nodes of label Z, but it is optional, so the second most tempting
+        # label (Q) must be traversed first (order swapped with N)
+        plan = graph.execution_plan("""MATCH (n:N) MATCH (n:Q) OPTIONAL MATCH
+                                        (n:Z) RETURN n""")
+        self.env.assertIn("Node By Label Scan | (n:Q)", plan)
+        self.env.assertIn("Conditional Traverse | (n:N)->(n:N)", plan)
