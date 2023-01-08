@@ -555,7 +555,7 @@ jobs:
           shell: /bin/bash -l -eo pipefail
           command: make NPROC=16
       - benchmark-steps:
-          module_path: "/root/project/src/$PACKAGE_NAME.so"
+          module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
 
   benchmark-profiler:
     docker:
