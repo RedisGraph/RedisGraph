@@ -165,6 +165,18 @@ class testConstraintFlow(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("constraint violation on label PERSON", str(e))
 
+
+        # update node LABEL which will cause constraint violation
+        graph1.query("CREATE (:ALIEN {name: 'Dan', age: 15, height: 189})")
+        try:
+            graph1.query("MATCH (n:ALIEN {name: 'Dan'}) SET n:PERSON")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("constraint violation on label PERSON", str(e))
+
+        res = graph1.query("MATCH (n:ALIEN {name: 'Dan'}) RETURN labels(n)")
+        assert res.result_set == [[['ALIEN']]]
+
         # create node that don't violate any constraint
         graph1.query("CREATE (:PERSON {name: 'Dan', age: 15, height: 191})")
 
