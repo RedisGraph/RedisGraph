@@ -1,5 +1,6 @@
-from common import *
 import re
+from common import *
+from index_utils import *
 
 redis_graph = None
 graph_2 = None
@@ -191,10 +192,8 @@ class testGraphMergeFlow(FlowTestsBase):
 
     # Add node that matches pre-existing index
     def test15_merge_indexed_entity(self):
-        global redis_graph
         # Create index
-        query = """CREATE INDEX ON :person(age)"""
-        redis_graph.query(query)
+        create_node_exact_match_index(redis_graph, 'person', 'age', sync=True)
 
         count_query = """MATCH (p:person) WHERE p.age > 0 RETURN COUNT(p)"""
         result = redis_graph.query(count_query)
@@ -509,8 +508,7 @@ class testGraphMergeFlow(FlowTestsBase):
         graph = Graph(redis_con, "M")
 
         # Index the "L:prop) combination so that the MERGE tree will not have a filter op.
-        query = """CREATE INDEX ON :L(prop)"""
-        graph.query(query)
+        create_node_exact_match_index(graph, 'L', 'prop', sync=True)
 
         query = """MERGE (n:L {prop:1}) WITH n WHERE n.prop < 1 RETURN n.prop"""
         result = graph.query(query)
@@ -542,10 +540,6 @@ class testGraphMergeFlow(FlowTestsBase):
         self.env.assertEquals(result.properties_set, 0)
 
     def test27_merge_create_invalid_entity(self):
-        # Skip this test if running under Valgrind, as it causes a memory leak.
-        if self.env.envRunner.debugger is not None:
-            self.env.skip()
-
         redis_con = self.env.getConnection()
         graph = Graph(redis_con, "N") # Instantiate a new graph.
 

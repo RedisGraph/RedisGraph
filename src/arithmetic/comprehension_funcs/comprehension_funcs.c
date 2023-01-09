@@ -235,7 +235,7 @@ SIValue AR_LIST_COMPREHENSION(SIValue *argv, int argc, void *private_data) {
 
 		if(ctx->eval_exp) {
 			// compute the current element to append to the return list
-			SIValue newval = AR_EXP_Evaluate(ctx->eval_exp, r);
+			SIValue newval = AR_EXP_Evaluate_NoThrow(ctx->eval_exp, r);
 			SIArray_Append(&retval, newval);
 			SIValue_Free(newval);
 		} else {

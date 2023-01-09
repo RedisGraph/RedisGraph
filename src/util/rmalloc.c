@@ -129,9 +129,9 @@ void rm_set_mem_capacity(int64_t cap) {
  * Only to be used when running module code from a non-Redis
  * context, such as unit tests. */
 void Alloc_Reset() {
-  RedisModule_Alloc = malloc;
-  RedisModule_Realloc = realloc;
-  RedisModule_Calloc = calloc;
-  RedisModule_Free = free;
-  RedisModule_Strdup = strdup;
+	RedisModule_Alloc   = malloc;
+	RedisModule_Realloc = realloc;
+	RedisModule_Calloc  = calloc;
+	RedisModule_Free    = free;
+	RedisModule_Strdup  = strdup;
 }

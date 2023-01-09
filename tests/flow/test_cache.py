@@ -1,5 +1,6 @@
 import asyncio
 from common import *
+from index_utils import *
 
 redis_con = None
 
@@ -121,7 +122,7 @@ class testCache():
 
     def test_07_test_optimizations_index(self):
         graph = Graph(redis_con, 'Cache_Test_Index')
-        graph.query("CREATE INDEX ON :N(val)")
+        create_node_exact_match_index(graph, 'N', 'val', sync=True)
         query = "CREATE (:N{val:1}), (:N{val:2})"
         graph.query(query)
         query = "MATCH (n:N{val:$val}) RETURN n.val"
@@ -213,8 +214,7 @@ class testCache():
         self.env.assertEqual(1, result.nodes_created)
         self.env.assertEqual(1, result.labels_added)
 
-        query = "CREATE INDEX ON :Label(v)"
-        result = graph.query(query)
+        result = create_node_exact_match_index(graph, 'Label', 'v', sync=True)
         self.env.assertEqual(1, result.indices_created)
 
         params = {'v': 5}

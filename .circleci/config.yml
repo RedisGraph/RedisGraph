@@ -48,7 +48,7 @@ commands:
             apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
             bash <(curl -fsSL https://raw.githubusercontent.com/docker/docker-install/master/install.sh)
       - setup_remote_docker:
-          version: 20.10.7
+          version: 20.10.14
           docker_layer_caching: true
 
   checkout-all:
@@ -67,6 +67,7 @@ commands:
             ./deps/readies/bin/getpy3
             ./deps/readies/bin/getpy2
             ./deps/readies/bin/getaws
+          no_output_timeout: 30m
 
   install-prerequisites:
     parameters:
@@ -142,36 +143,52 @@ commands:
       build_params:
         type: string
         default: ""
-      cache_name:
-        type: string
-        default: "build"
+      run_pack:
+        type: boolean
+        default: true
     steps:
       - early-returns
       - checkout-all
       - install-prerequisites:
           redis_version: <<parameters.redis_version>>
-      - restore_cache:
-          keys:
-            - v1-GraphBLAS-<< parameters.cache_name >>-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build
           shell: /bin/bash -l -eo pipefail
-          command: make <<parameters.build_params>> all package
-      - save_cache:
-          paths:
-            - deps/GraphBLAS/build
-          key: v1-GraphBLAS-<< parameters.cache_name >>-{{ checksum "deps/GraphBLAS/README.md" }}
+          command: make <<parameters.build_params>> NPROC=16
+      - when:
+          condition: << parameters.run_pack >>
+          steps:
+            - run:
+                name: Pack
+                shell: /bin/bash -l -eo pipefail
+                command: |
+                  make pack SHOW=1
 
   test-steps:
+    parameters:
+      test_params:
+        type: string
+        default: ""
     steps:
       - run:
-          name: Test
+          name: Unit tests
           shell: /bin/bash -l -eo pipefail
-          command: make test
+          command: make unit-tests CLEAR_LOGS=0 <<parameters.test_params>>
+          no_output_timeout: 45m
+      - run:
+          name: Flow tests
+          shell: /bin/bash -l -eo pipefail
+          command: make flow-tests CLEAR_LOGS=0 <<parameters.test_params>>
+          no_output_timeout: 45m
+      - run:
+          name: TCK tests
+          shell: /bin/bash -l -eo pipefail
+          command: make tck-tests CLEAR_LOGS=0 <<parameters.test_params>>
+          no_output_timeout: 45m
       - run:
           name: Run 30-second fuzz test
           shell: /bin/bash -l -eo pipefail
-          command: make fuzz
+          command: make fuzz <<parameters.test_params>>
       - save-tests-logs
 
   fuzzer-test-steps:
@@ -297,6 +314,16 @@ commands:
               --fail_fast \
               --push_results_redistimeseries \
               --allowed-envs << parameters.allowed_envs >>
+      - run:
+          name: Generate Pull Request Performance info
+          command: |
+            if [[ -n ${CIRCLE_PULL_REQUEST##*/} ]]; then
+                redisbench-admin compare  \
+                  --defaults_filename ./tests/benchmarks/defaults.yml \
+                  --comparison-branch $CIRCLE_BRANCH \
+                  --pull-request ${CIRCLE_PULL_REQUEST##*/}
+            fi
+
 
 #----------------------------------------------------------------------------------------------------------------------------------
 
@@ -336,19 +363,12 @@ jobs:
       - early-returns
       - checkout-all
       - install-prerequisites
-      - restore_cache:
-          keys:
-            - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
-          name: Build for coverage
-          shell: /bin/bash -l -eo pipefail
-          command: make COV=1
-      - run:
-          name: Test with coverage
+          name: Test coverage
           shell: /bin/bash -l -eo pipefail
           command: |
-            make test COV=1
-            make cov-upload
+            make coverage
+            make upload-cov
           no_output_timeout: 45m
       - save-tests-logs
 
@@ -359,27 +379,65 @@ jobs:
       - early-returns
       - checkout-all
       - install-prerequisites
-      - build-steps
+      - build-steps:
+          build_params: NPROC=16
       - fuzzer-test-steps
       - save-tests-logs
 
-  build-memcheck:
+  sanitize:
+    docker:
+      - image: redisfab/clang:13-x64-bullseye
+    resource_class: large
+    parameters:
+      san-type:
+        type: string
+    steps:
+      - build-steps:
+          build_params: SAN=<<parameters.san-type>>
+          run_pack: false
+      - run:
+          name: Unit tests
+          shell: /bin/bash -l -eo pipefail
+          command: make unit-tests CLEAR_LOGS=0 SAN=<<parameters.san-type>>
+          no_output_timeout: 45m
+      - run:
+          name: Flow tests
+          shell: /bin/bash -l -eo pipefail
+          command: make flow-tests CLEAR_LOGS=0 SAN=<<parameters.san-type>>
+          no_output_timeout: 45m
+      - run:
+          name: TCK tests
+          shell: /bin/bash -l -eo pipefail
+          command: make tck-tests CLEAR_LOGS=0 SAN=<<parameters.san-type>>
+          no_output_timeout: 45m
+      - save-tests-logs
+
+  valgrind-test:
     docker:
       - image: redisfab/rmbuilder:6.2.7-x64-bionic
-    resource_class: large
+    resource_class: xlarge
     steps:
-      - early-returns
-      - checkout-all
-      - install-prerequisites
-      - restore_cache:
-          keys:
-            - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
+      - build-steps:
+          build_params: VG=1
+          run_pack: false
       - run:
-          name: Test for memory leaks
+          name: Unit tests
           shell: /bin/bash -l -eo pipefail
-          command: make memcheck PARALLEL=8 PLATFORM_MODE=1
-          timeout: 45m
-          no_output_timeout: 45m
+          command: make unit-tests CLEAR_LOGS=0 VG=1
+          timeout: 60m
+          no_output_timeout: 60m
+      - run:
+          name: Flow tests
+          shell: /bin/bash -l -eo pipefail
+          command: make flow-tests CLEAR_LOGS=0 VG=1
+          timeout: 60m
+          no_output_timeout: 60m
+      - run:
+          name: TCK tests
+          shell: /bin/bash -l -eo pipefail
+          command: make tck-tests CLEAR_LOGS=0 VG=1
+          timeout: 60m
+          no_output_timeout: 60m
       - save-tests-logs
 
   build-platforms:
@@ -418,8 +476,7 @@ jobs:
         default: "yes"
     steps:
       - early-returns
-      - build-steps:
-          cache_name: "mac-clang"
+      - build-steps
       - test-steps
       - run:
           name: Upload artifacts to S3
@@ -480,11 +537,12 @@ jobs:
       - run:
           name: Run 10-minute fuzz test
           shell: /bin/bash -l -eo pipefail
-          command: FUZZ_TIMEOUT=600 make fuzz
+          command: make fuzz-tests TIMEOUT=600
 
   benchmark:
     docker:
       - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    resource_class: large
     steps:
       - early-returns
       - checkout-all
@@ -495,13 +553,14 @@ jobs:
       - run:
           name: Build artifact
           shell: /bin/bash -l -eo pipefail
-          command: make
+          command: make NPROC=16
       - benchmark-steps:
-          module_path: "/root/project/src/$PACKAGE_NAME.so"
+          module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
 
   benchmark-profiler:
     docker:
       - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    resource_class: large
     steps:
       - early-returns
       - checkout-all
@@ -512,7 +571,7 @@ jobs:
       - run:
           name: Build artifact
           shell: /bin/bash -l -eo pipefail
-          command: make
+          command: make NPROC=16
       - benchmark-steps:
           profile_env: "1"
           module_path: "/root/project/src/$PACKAGE_NAME.so"
@@ -559,6 +618,15 @@ on-integ-branch: &on-integ-branch
         - /^perf-.*$/
     tags:
       ignore: /.*/
+
+on-integ-branch-cron: &on-integ-branch-cron
+  filters:
+    branches:
+      only:
+        - master
+        - /^\d+\.\d+.*$/
+        - /^feature-.*$/
+        - /^perf-.*$/
 
 not-on-integ-branch: &not-on-integ-branch
   filters:
@@ -615,9 +683,13 @@ workflows:
           context: common
           <<: *on-integ-and-version-tags
       - coverage:
-          <<: *on-any-branch
-      - build-memcheck:
-          <<: *on-any-branch
+          <<: *always
+      - sanitize:
+          name: sanitize-<< matrix.san-type >>
+          <<: *always
+          matrix:
+            parameters:
+              san-type: [address]
       - upload-artifacts:
           name: upload-artifacts-to-staging-lab
           staging-lab: "1"
@@ -644,27 +716,27 @@ workflows:
           <<: *on-integ-and-version-tags
           context: common
 
-  benchmark_flow_label:
+  benchmark-flow-label:
     when:
       << pipeline.parameters.run_benchmark_flow_label >>
     jobs:
       - benchmark:
           context: common
-          <<: *on-any-branch
+          <<: *always
 
   nightly:
     triggers:
       - schedule:
           cron: "07 20 * * *"
-          filters:
-            branches:
-              only: master
+          <<: *on-integ-branch-cron
     jobs:
       - build-linux-debian:
           name: build-with-redis-<<matrix.redis_version>>
           matrix:
             parameters:
-              redis_version: ["6.0", "7", "unstable"]
+              redis_version: ["6.0", "6.2", "7", "unstable"]
+      - valgrind-test:
+          <<: *on-integ-branch-cron
       - fuzzer:
           name: nightly-fuzzer
 

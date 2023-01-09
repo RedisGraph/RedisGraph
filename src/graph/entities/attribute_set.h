@@ -31,9 +31,6 @@ typedef struct {
 
 typedef _AttributeSet* AttributeSet;
 
-// create new empty attribute set
-AttributeSet AttributeSet_New(void);
-
 // retrieves a value from set
 // NOTE: if the key does not exist
 //       we return the special constant value ATTRIBUTE_NOTFOUND

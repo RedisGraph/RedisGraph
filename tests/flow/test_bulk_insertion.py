@@ -20,6 +20,11 @@ def run_bulk_loader(graphname, filename):
 class testGraphBulkInsertFlow(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
+
+        # skip test if we're running under Valgrind
+        if VALGRIND or SANITIZER != "":
+            self.env.skip() # valgrind is not working correctly with replication
+
         global redis_graph
         global redis_con
         global port
@@ -355,10 +360,6 @@ class testGraphBulkInsertFlow(FlowTestsBase):
 
     # Verify that the bulk loader does not block the server
     def test09_large_bulk_insert(self):
-        # Skip this test if running under Valgrind, (too slow)
-        if self.env.envRunner.debugger is not None:
-            self.env.skip()
-
         graphname = "tmpgraph5"
         prop_str = "Property value to be repeated 1 million generating a multi-megabyte CSV"
 
