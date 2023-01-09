@@ -148,6 +148,26 @@ void Error_SITypeMismatch(SIValue received, SIType expected) {
 					  SIType_ToString(SI_TYPE(received)));
 }
 
+// static bool _FunctionIsOperator(const char* function_name, char* operator_name) {
+// 	if(strcmp(function_name, "mul")==0) {
+// 		strcpy(operator_name, "*");
+// 		return true;
+// 	} else if(strcmp(function_name, "add")==0) {
+// 		strcpy(operator_name, "+");
+// 		return true;
+// 	} else if(strcmp(function_name, "div")==0) {
+// 		strcpy(operator_name, "/");
+// 		return true;
+// 	} else if(strcmp(function_name, "mod")==0) {
+// 		strcpy(operator_name, "%");
+// 		return true;
+// 	} else if(strcmp(function_name, "pow")==0) {
+// 		strcpy(operator_name, "^");
+// 		return true;
+// 	}
+// 	return false;
+// }
+
 void Error_FunctionArgumentSITypeMismatch(
 	SIValue received,
 	SIType expected,
@@ -163,7 +183,7 @@ void Error_FunctionArgumentSITypeMismatch(
 		ErrorCtx_SetError("Type mismatch on function '%s' argument %d: expected %s but was %s", 
 					  function, argNumber, buf, SIType_ToString(SI_TYPE(received)));
 	} else {
-		ErrorCtx_SetError("Type mismatch on function '%s' argument %d, element %d: expected %s but was %s", 
+		ErrorCtx_RaiseRuntimeException("Type mismatch on function '%s' argument %d, element %d: expected %s but was %s", 
 					  function, argNumber, elemNumber, buf, SIType_ToString(SI_TYPE(received)));
 	}
 	
