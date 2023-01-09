@@ -151,10 +151,10 @@ static void _indexer_PopTask
 		// unlock queue mutex
 		pthread_mutex_unlock(&indexer->m);
 
-		while(rdb_load_in_progress) {
+		do {
 			// wait on conditional variable
 			pthread_cond_wait(&indexer->c, &indexer->cm);
-		}
+		} while(rdb_load_in_progress);
 
 		pthread_mutex_unlock(&indexer->cm);
 
