@@ -80,8 +80,8 @@ class testConstraintFlow(FlowTestsBase):
         res = list_constraints(graph1)
         assert res.result_set == [['unique', 'PERSON', ['age'], 'NODE', 'OPERATIONAL']]
 
-        assert drop_node_unique_constraint(graph1, "PERSON", "age") == 0
-        assert create_node_unique_constraint(graph1, "PERSON", "age", sync=True) == 0
+        assert drop_node_unique_constraint(graph1, "PERSON", "age")
+        assert create_node_unique_constraint(graph1, "PERSON", "age", sync=True)
 
         res = list_constraints(graph1)
         assert res.result_set == [['unique', 'PERSON', ['age'], 'NODE', 'OPERATIONAL']]
@@ -120,20 +120,20 @@ class testConstraintFlow(FlowTestsBase):
         res = graph1.query("MATCH (n:PERSON {name: 'Bob'}) RETURN n.age")
         assert res.result_set == []
 
-        assert drop_node_unique_constraint(graph1, "PERSON", "age") == 0
+        assert drop_node_unique_constraint(graph1, "PERSON", "age")
 
     def test03_constraint_create_drop_simultanously(self):
         assert list_constraints(graph1).result_set == []
 
         graph1.query("UNWIND range(0,100000) AS x CREATE (:CAT {age: x, height: x + 1})")
-        assert create_node_unique_constraint(graph1, "CAT", "age", sync=False) == 0
-        assert drop_node_unique_constraint(graph1, "CAT", "age") == 0
+        assert create_node_unique_constraint(graph1, "CAT", "age", sync=False)
+        assert drop_node_unique_constraint(graph1, "CAT", "age")
 
         res = list_constraints(graph1)
         assert res.result_set == []
 
     def test04_multiple_constraint_creation_deletion(self):
-        assert create_node_unique_constraint(graph1, "PERSON", "age", "height", sync=True) == 0
+        assert create_node_unique_constraint(graph1, "PERSON", "age", "height", sync=True)
 
         res = list_constraints(graph1)
         assert res.result_set == [['unique', 'PERSON', ['age', 'height'], 'NODE', 'OPERATIONAL']]
@@ -149,7 +149,7 @@ class testConstraintFlow(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("constraint violation on label PERSON", str(e))
 
-        assert create_node_unique_constraint(graph1, "PERSON", "height", sync=True) == 0
+        assert create_node_unique_constraint(graph1, "PERSON", "height", sync=True)
 
         # create node that violates the 2nd constraint
         try:
@@ -181,7 +181,7 @@ class testConstraintFlow(FlowTestsBase):
         graph1.query("CREATE (:PERSON {name: 'Dan', age: 15, height: 191})")
 
     def test05_constraint_creation_failiure(self):
-        assert create_node_unique_constraint(graph1, "PERSON", "age", sync=False) == 0
+        assert create_node_unique_constraint(graph1, "PERSON", "age", sync=False)
         wait_on_constraint_to_fail(graph1, "PERSON", "unique")
 
         res = list_constraints(graph1)
@@ -190,13 +190,13 @@ class testConstraintFlow(FlowTestsBase):
         ['unique', 'PERSON', ['age'], 'NODE', 'FAILED']]
 
         # check that deletion of failed constraint is done correctly
-        assert drop_node_unique_constraint(graph1, "PERSON", "age") == 0
+        assert drop_node_unique_constraint(graph1, "PERSON", "age")
 
         res = list_constraints(graph1)
         assert res.result_set == [['unique', 'PERSON', ['age', 'height'], 'NODE', 'OPERATIONAL'],
         ['unique', 'PERSON', ['height'], 'NODE', 'OPERATIONAL']]
 
-        assert create_node_unique_constraint(graph1, "PERSON", "age", sync=False) == 0
+        assert create_node_unique_constraint(graph1, "PERSON", "age", sync=False)
         wait_on_constraint_to_fail(graph1, "PERSON", "unique")
 
         res = list_constraints(graph1)
@@ -207,7 +207,7 @@ class testConstraintFlow(FlowTestsBase):
         # check that recreation of constraint after removing problematic nodes is done correctly
         graph1.query("MATCH (s:PERSON {age: 15}) DELETE s")
 
-        assert create_node_unique_constraint(graph1, "PERSON", "age", sync=True) == 0
+        assert create_node_unique_constraint(graph1, "PERSON", "age", sync=True)
 
         res = list_constraints(graph1)
         assert res.result_set == [['unique', 'PERSON', ['age', 'height'], 'NODE', 'OPERATIONAL'],
@@ -223,7 +223,7 @@ class testConstraintFlow(FlowTestsBase):
             self.env.assertContains("constraint violation on label PERSON", str(e))
 
     def test06_constraint_creation_with_unfimiliar_label(self):
-        assert create_node_unique_constraint(graph1, "LION", "age", sync=True) == 0
+        assert create_node_unique_constraint(graph1, "LION", "age", sync=True)
         graph1.query("CREATE (:LION {name: 'Or', age: 15})")
 
         try:
@@ -308,8 +308,8 @@ class testConstraintFlowEdges(FlowTestsBase):
         res = list_constraints(graph1)
         assert res.result_set == [['unique', 'PERSON', ['age'], 'RELATIONSHIP', 'OPERATIONAL']]
 
-        assert drop_edge_unique_constraint(graph1, "PERSON", "age") == 0
-        assert create_edge_unique_constraint(graph1, "PERSON", "age", sync=True) == 0
+        assert drop_edge_unique_constraint(graph1, "PERSON", "age")
+        assert create_edge_unique_constraint(graph1, "PERSON", "age", sync=True)
 
         res = list_constraints(graph1)
         assert res.result_set == [['unique', 'PERSON', ['age'], 'RELATIONSHIP', 'OPERATIONAL']]
@@ -348,20 +348,20 @@ class testConstraintFlowEdges(FlowTestsBase):
         res = graph1.query("MATCH ()-[n:PERSON {name: 'Bob'}]->() RETURN n.age")
         assert res.result_set == []
 
-        assert drop_edge_unique_constraint(graph1, "PERSON", "age") == 0
+        assert drop_edge_unique_constraint(graph1, "PERSON", "age")
 
     def test03_constraint_create_drop_simultanously(self):
         assert list_constraints(graph1).result_set == []
 
         graph1.query("UNWIND range(0,100000) AS x CREATE ()-[:CAT {age: x, height: x + 1}]->()")
-        assert create_edge_unique_constraint(graph1, "CAT", "age", sync=False) == 0
-        assert drop_edge_unique_constraint(graph1, "CAT", "age") == 0
+        assert create_edge_unique_constraint(graph1, "CAT", "age", sync=False)
+        assert drop_edge_unique_constraint(graph1, "CAT", "age")
 
         res = list_constraints(graph1)
         assert res.result_set == []
 
     def test04_multiple_constraint_creation_deletion(self):
-        assert create_edge_unique_constraint(graph1, "PERSON", "age", "height", sync=True) == 0
+        assert create_edge_unique_constraint(graph1, "PERSON", "age", "height", sync=True)
 
         res = list_constraints(graph1)
         assert res.result_set == [['unique', 'PERSON', ['age', 'height'], 'RELATIONSHIP', 'OPERATIONAL']]
@@ -377,7 +377,7 @@ class testConstraintFlowEdges(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("constraint violation on label PERSON", str(e))
 
-        assert create_edge_unique_constraint(graph1, "PERSON", "height", sync=True) == 0
+        assert create_edge_unique_constraint(graph1, "PERSON", "height", sync=True)
 
         # create edge that violates the 2nd constraint
         try:
@@ -397,7 +397,7 @@ class testConstraintFlowEdges(FlowTestsBase):
         graph1.query("CREATE ()-[:PERSON {name: 'Dan', age: 15, height: 191}]->()")
 
     def test05_constraint_creation_failiure(self):
-        assert create_edge_unique_constraint(graph1, "PERSON", "age", sync=False) == 0
+        assert create_edge_unique_constraint(graph1, "PERSON", "age", sync=False)
         wait_on_constraint_to_fail(graph1, "PERSON", "unique")
 
         res = list_constraints(graph1)
@@ -406,13 +406,13 @@ class testConstraintFlowEdges(FlowTestsBase):
         ['unique', 'PERSON', ['age'], 'RELATIONSHIP', 'FAILED']]
 
         # check that deletion of failed constraint is done correctly
-        assert drop_edge_unique_constraint(graph1, "PERSON", "age") == 0
+        assert drop_edge_unique_constraint(graph1, "PERSON", "age")
 
         res = list_constraints(graph1)
         assert res.result_set == [['unique', 'PERSON', ['age', 'height'], 'RELATIONSHIP', 'OPERATIONAL'],
         ['unique', 'PERSON', ['height'], 'RELATIONSHIP', 'OPERATIONAL']]
 
-        assert create_edge_unique_constraint(graph1, "PERSON", "age", sync=False) == 0
+        assert create_edge_unique_constraint(graph1, "PERSON", "age", sync=False)
         wait_on_constraint_to_fail(graph1, "PERSON", "unique")
 
         res = list_constraints(graph1)
@@ -423,7 +423,7 @@ class testConstraintFlowEdges(FlowTestsBase):
         # check that recreation of constraint after removing problematic edges is done correctly
         graph1.query("MATCH ()-[s:PERSON {age: 15}]->() DELETE s")
 
-        assert create_edge_unique_constraint(graph1, "PERSON", "age", sync=True) == 0
+        assert create_edge_unique_constraint(graph1, "PERSON", "age", sync=True)
 
         res = list_constraints(graph1)
         assert res.result_set == [['unique', 'PERSON', ['age', 'height'], 'RELATIONSHIP', 'OPERATIONAL'],
@@ -439,7 +439,7 @@ class testConstraintFlowEdges(FlowTestsBase):
             self.env.assertContains("constraint violation on label PERSON", str(e))
 
     def test06_constraint_creation_with_unfimiliar_label(self):
-        assert create_edge_unique_constraint(graph1, "LION", "age", sync=True) == 0
+        assert create_edge_unique_constraint(graph1, "LION", "age", sync=True)
         graph1.query("CREATE ()-[:LION {name: 'Or', age: 15}]->()")
 
         try:

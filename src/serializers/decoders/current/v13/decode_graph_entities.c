@@ -128,12 +128,18 @@ void RdbLoadNodes_v13
 			if(s->index) Index_IndexNode(s->index, &n);
 			if(s->fulltextIdx) Index_IndexNode(s->fulltextIdx, &n);
 
-						// Entities must satisfy their constraints.
-			uint32_t c_index;
+			// validate Pending constaint.
 			bool has_constraints = array_len(s->constraints) > 0;
-			if(has_constraints && !Constraints_enforce_entity(s->constraints, GraphEntity_GetAttributes((GraphEntity *)&n), Index_RSIndex(s->index), &c_index)) {
-				s->constraints[c_index]->status = CT_FAILED;
-				Constraint_Drop_Index(s->constraints[c_index], (struct GraphContext*)gc, false);
+			if(has_constraints) {
+				Constraint *constraints = Schema_GetConstraints(s);
+				for(uint32_t i = 0; i < array_len(constraints); i++) {
+					Constraint c = constraints[i];
+					if(c->status == CT_PENDING && !Constraint_enforce_entity(c, 
+						GraphEntity_GetAttributes((GraphEntity *)&n), Index_RSIndex(s->index))) {
+						c->status = CT_FAILED;
+						Constraint_Drop_Index(c, (struct GraphContext*)gc, false);
+					}
+				}
 			}
 		}
 	}

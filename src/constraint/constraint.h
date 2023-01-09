@@ -46,8 +46,8 @@ const AttrInfo *Constraint_GetAttributes(const Constraint c);
 // the ids array should be sorted
 Constraint Constraint_new(AttrInfo *attrData, uint id_count, const char *label, int label_id, GraphEntityType type);
 
-// Set constraint status to active.
-void Constraint_Activate(Constraint c);
+// Set constraint status.
+void Constraint_SetStatus(Constraint c, ConstraintStatus status);
 
 int Constraint_PendingChanges
 (

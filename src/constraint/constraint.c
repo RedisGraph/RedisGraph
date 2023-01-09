@@ -37,8 +37,8 @@ GraphEntityType type) {
     return c;
 }
 
-void Constraint_Activate(Constraint c) {
-    c->status = CT_ACTIVE;
+void Constraint_SetStatus(Constraint c, ConstraintStatus status) {
+    c->status = status;
 }
 
 // returns number of pending changes
@@ -361,7 +361,10 @@ _out:
 	Graph_ReleaseLock(gc->g);
     // decrease graph reference count
 	GraphContext_DecreaseRefCount(gc);
-    if(rv == REDISMODULE_OK) RedisModule_ReplyWithLongLong(ctx, REDISMODULE_OK);
+    if(rv == REDISMODULE_OK) {
+        RedisModule_ReplyWithSimpleString(ctx, "OK");
+        RedisModule_ReplicateVerbatim(ctx);
+    }
     return rv;    
 }
 

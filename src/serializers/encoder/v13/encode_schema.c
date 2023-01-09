@@ -136,6 +136,9 @@ static inline void _RdbSaveConstraintsData(RedisModuleIO *rdb, Constraint *const
 
 		uint fields_count = array_len(c->attributes);
 
+		// encode constraint status
+		RedisModule_SaveSigned(rdb, c->status);
+
 		// encode field count
 		RedisModule_SaveUnsigned(rdb, fields_count);
 		for(uint i = 0; i < fields_count; i++) {

@@ -101,14 +101,16 @@ static void _RdbLoadConstaints
 	uint constraint_count = RedisModule_LoadUnsigned(rdb);
 	for (uint i = 0; i < constraint_count; i++) {
 		Constraint c = NULL;
+		ConstraintStatus status = RedisModule_LoadSigned(rdb);
+		ASSERT(status < CT_FAILED);
 		uint fields_count = RedisModule_LoadUnsigned(rdb);
 		AttrInfo fields[fields_count];
 		for(uint j = 0; j < fields_count; j++) {
 			char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
 			if(!already_loaded) {
 				fields[j].id = GraphContext_FindOrAddAttribute(gc, field_name, NULL);
-				fields[i].attribute_name = field_name;
 			}
+			fields[j].attribute_name = field_name;
 		}
 
 		if(!already_loaded) {
@@ -117,7 +119,7 @@ static void _RdbLoadConstaints
 
 			GraphEntityType entity_type = (s->type == SCHEMA_NODE) ? GETYPE_NODE : GETYPE_EDGE;
 			c = Constraint_new(fields, fields_count, s->name, s->id, entity_type);
-			Constraint_Activate(c);
+			Constraint_SetStatus(c, status);
 			Schema_AddConstraint(s, c);
 		}
 

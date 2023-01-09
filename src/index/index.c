@@ -86,15 +86,6 @@ static void _Index_ConstructExactMatchStructure
 	uint fields_count = array_len(idx->fields);
 	unsigned types = RSFLDTYPE_NUMERIC | RSFLDTYPE_GEO | RSFLDTYPE_TAG;
 
-	for(uint i = 0; i < fields_count; i++) {
-		IndexField *field = idx->fields + i;
-		// introduce both text, numeric and geo fields
-		fieldID = RediSearch_CreateField(rsIdx, field->name, types,
-				RSFLDOPT_NONE);
-		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
-		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
-	}
-
 	// introduce edge src and dest node ids as additional index fields
 	if(idx->entity_type == GETYPE_EDGE) {
 		fieldID = RediSearch_CreateField(rsIdx, "_src_id", types,
@@ -103,6 +94,15 @@ static void _Index_ConstructExactMatchStructure
 		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
 
 		fieldID = RediSearch_CreateField(rsIdx, "_dest_id", types,
+				RSFLDOPT_NONE);
+		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
+		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
+	}
+
+	for(uint i = 0; i < fields_count; i++) {
+		IndexField *field = idx->fields + i;
+		// introduce both text, numeric and geo fields
+		fieldID = RediSearch_CreateField(rsIdx, field->name, types,
 				RSFLDOPT_NONE);
 		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
 		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);

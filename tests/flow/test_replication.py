@@ -1,5 +1,6 @@
 from common import *
 from index_utils import *
+from constraint_utils import *
 import time
 
 GRAPH_ID = "replication"
@@ -32,8 +33,8 @@ class testReplication(FlowTestsBase):
         # create a simple graph
         graph = Graph(source_con, GRAPH_ID)
         replica = Graph(replica_con, GRAPH_ID)
-        s = Node(label='L', properties={'id': 0, 'name': 'abcd'})
-        t = Node(label='L', properties={'id': 1, 'name': 'efgh'})
+        s = Node(label='L', properties={'id': 0, 'name': 'abcd', 'height' : 178})
+        t = Node(label='L', properties={'id': 1, 'name': 'efgh', 'height' : 178})
         e = Edge(s, 'R', t)
 
         graph.add_node(s)
@@ -55,6 +56,23 @@ class testReplication(FlowTestsBase):
         # create full-text index with index config
         q = "CALL db.idx.fulltext.createNodeIndex({label: 'L1', language: 'german', stopwords: ['a', 'b'] }, 'title', 'desc')"
         graph.query(q)
+
+        # create node unique constraint
+        assert create_node_unique_constraint(graph, "L", "id", sync=True)
+
+        # add another unique constraint
+        assert create_node_unique_constraint(graph, "L", "id", "name", sync=True)
+
+        # add failed unique constraint
+        graph.query("CREATE (:FISH {age: 10, name: 'sharki'})")
+        graph.query("CREATE (:FISH {age: 10, name: 'goldi'})")
+        assert create_node_unique_constraint(graph, "FISH", "age", sync=False)
+        wait_on_constraint_to_fail(graph, "FISH", "unique")
+
+        # add failed unique constraint which should be replicated as Pending and then fail
+        graph.query("UNWIND range(0,1000000) AS x CREATE (:CAT {age: x, height: x + 1})")
+        graph.query("CREATE (:CAT {age: 10})")
+        assert create_node_unique_constraint(graph, "CAT", "age", sync=False)
 
         # update entity
         q = "MATCH (n:L {id:1}) SET n.id = 2"
@@ -136,6 +154,69 @@ class testReplication(FlowTestsBase):
 
         # make sure both primary and replica have the same set of indexes
         q = "CALL db.indexes() YIELD type, label, properties, language, stopwords, entitytype"
+        result = graph.query(q).result_set
+        replica_result = replica.query(q).result_set
+        env.assertEquals(replica_result, result)
+
+
+        # make sure both primary and replica have the same set of constraints
+        q = "CALL db.constraints() YIELD type, label, properties, entitytype WHERE label = 'L' RETURN *"
+        result = graph.query(q).result_set
+        replica_result = replica.query(q).result_set
+        env.assertEquals(replica_result, result)
+
+        # drop constraint
+        assert drop_node_unique_constraint(graph, "L", "id")
+
+        # the WAIT command forces master slave sync to complete
+        source_con.execute_command("WAIT", "1", "0")
+
+        # make sure both primary and replica have the same set of constraints
+        q = "CALL db.constraints() YIELD type, label, properties, entitytype WHERE label = 'L' RETURN *"
+        result = graph.query(q).result_set
+        replica_result = replica.query(q).result_set
+        env.assertEquals(replica_result, result)
+
+        # make sure both primary and replica have the same set of constraints
+        q = "CALL db.constraints() YIELD type, label, properties, entitytype WHERE label = 'FISH' RETURN *"
+        result = graph.query(q).result_set
+        replica_result = replica.query(q).result_set
+        env.assertEquals(result, [['NODE', 'FISH', ['age'], 'unique']])
+        env.assertEquals(replica_result, []) # we are not replicating failed constraints
+
+        # drop failed constraint
+        assert drop_node_unique_constraint(graph, "FISH", "age")
+
+        # the WAIT command forces master slave sync to complete
+        source_con.execute_command("WAIT", "1", "0")
+
+        # make sure both primary and replica have the same set of constraints
+        q = "CALL db.constraints() YIELD type, label, properties, entitytype WHERE label = 'L' RETURN *"
+        result = graph.query(q).result_set
+        replica_result = replica.query(q).result_set
+        env.assertEquals(replica_result, result)
+
+        # make sure both primary and replica have the same set of constraints
+        q = "CALL db.constraints() YIELD type, label, properties, entitytype WHERE label = 'FISH' RETURN *"
+        result = graph.query(q).result_set
+        replica_result = replica.query(q).result_set
+        env.assertEquals(result, [])
+        env.assertEquals(replica_result, []) # we are not replicating failed constraints
+
+        # make sure both primary and replica have the same set of constraints
+        q = "CALL db.constraints() YIELD type, label, properties, entitytype WHERE label = 'CAT' RETURN *"
+        result = graph.query(q).result_set
+        replica_result = replica.query(q).result_set
+        env.assertEquals(replica_result, result)
+
+        # drop failed constraint
+        assert drop_node_unique_constraint(graph, "CAT", "age")
+
+        # the WAIT command forces master slave sync to complete
+        source_con.execute_command("WAIT", "1", "0")
+
+        # make sure both primary and replica have the same set of constraints
+        q = "CALL db.constraints() YIELD type, label, properties, entitytype WHERE label = 'CAT' RETURN *"
         result = graph.query(q).result_set
         replica_result = replica.query(q).result_set
         env.assertEquals(replica_result, result)

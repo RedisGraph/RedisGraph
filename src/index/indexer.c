@@ -100,6 +100,13 @@ static void *_index_populate
 	return NULL;
 }
 
+// signal conditional variable
+void indexer_WakeUp() {
+	pthread_mutex_lock(&indexer->cm); 
+	pthread_cond_signal(&indexer->c);
+	pthread_mutex_unlock(&indexer->cm);
+}
+
 // add task to indexer queue
 static void _indexer_AddTask
 (
@@ -118,10 +125,10 @@ static void _indexer_AddTask
 	ASSERT(res == 0);
 
 	// signal conditional variable
-	pthread_mutex_lock(&indexer->cm); 
-	pthread_cond_signal(&indexer->c);
-	pthread_mutex_unlock(&indexer->cm);
+	indexer_WakeUp();
 }
+
+extern bool rdb_load_in_progress;
 
 // pops a task from queue
 // if queue is empty caller will be waiting on conditional variable
@@ -144,8 +151,11 @@ static void _indexer_PopTask
 		// unlock queue mutex
 		pthread_mutex_unlock(&indexer->m);
 
-		// wait on conditional variable
-		pthread_cond_wait(&indexer->c, &indexer->cm);
+		while(rdb_load_in_progress) {
+			// wait on conditional variable
+			pthread_cond_wait(&indexer->c, &indexer->cm);
+		}
+
 		pthread_mutex_unlock(&indexer->cm);
 
 		// work been added to queue

@@ -39,3 +39,5 @@ void Indexer_DropIndexOrConstraint
 	Constraint c   // constraint enforce and add
 );
 
+// wakes up the worker thread by conditional variable signal
+void indexer_WakeUp();

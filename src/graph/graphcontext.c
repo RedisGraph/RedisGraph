@@ -264,6 +264,22 @@ unsigned short GraphContext_SchemaCount(const GraphContext *gc, SchemaType t) {
 	else return array_len(gc->relation_schemas);
 }
 
+void GraphContext_ActivateAllConstraints(const GraphContext *gc) {
+	for(uint i = 0; i < array_len(gc->node_schemas); i ++) {
+		Schema *s = gc->node_schemas[i];
+		for(uint j = 0; j < array_len(s->constraints); j ++) {
+			Constraint_SetStatus(s->constraints[j], CT_ACTIVE);
+		}
+	}
+
+	for(uint i = 0; i < array_len(gc->relation_schemas); i ++) {
+		Schema *s = gc->relation_schemas[i];
+		for(uint j = 0; j < array_len(s->constraints); j ++) {
+			Constraint_SetStatus(s->constraints[j], CT_ACTIVE);
+		}
+	}
+}
+
 Schema *GraphContext_GetSchemaByID(const GraphContext *gc, int id, SchemaType t) {
 	Schema **schemas = (t == SCHEMA_NODE) ? gc->node_schemas : gc->relation_schemas;
 	if(id == GRAPH_NO_LABEL) return NULL;
