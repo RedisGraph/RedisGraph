@@ -1368,7 +1368,7 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 
 		// return original environment of bounded vars
 		vctx->defined_identifiers = orig_env;
-		rax_Free(temp_env);
+		raxFree(temp_env);
 	}
 
 	// do not traverse children
