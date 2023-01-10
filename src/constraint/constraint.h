@@ -6,49 +6,60 @@
 
 #pragma once
 
-#include "../graph/entities/attribute_set.h"
-#include "../graph/entities/graph_entity.h"
 #include "../redismodule.h"
-#include "redisearch_api.h"
-#include "../util/arr.h"
+#include "../graph/entities/graph_entity.h"
+#include "../graph/entities/attribute_set.h"
+
+// forward declaration of opaque constraint structure
+typedef _Constraint *Constraint;
 
 typedef struct {
-    Attribute_ID id;        // Attribute ID.
-    char *attribute_name;   // attribute name
+    Attribute_ID id;             // attribute ID
+    const char *attribute_name;  // attribute name
 } AttrInfo;
 
+// different states a constraint can be at
+// starting as pending and transitioning to either active or failed
 typedef enum ConstraintStatus {
     CT_ACTIVE = 0,
     CT_PENDING,
     CT_FAILED
 } ConstraintStatus;
 
+// type of constraint
+// we're currently supporting two types of constraints
+// 1. unique constraint
+// 2. mandatory constraint
 typedef enum {
 	CT_UNIQUE,
 	CT_MANDATORY
 } ConstraintType;
 
-typedef struct _Constraint {
-    AttrInfo *attributes;     // array of attributes sorted by their ids which are part of this constraint
-    char *label;                   // indexed label
-	int label_id;                  // indexed label ID
-    GraphEntityType entity_type;   // entity type (node/edge) indexed
-    ConstraintStatus status;       // constraint status
-    uint _Atomic pending_changes;  // number of pending changes
-} _Constraint;
+// create a new constraint
+Constraint Constraint_New
+(
+	AttrInfo *fields, // enforced fields
+	uint n_fields,    // number of fields
+	const Schema *s   // constraint schema
+);
 
-// forward declaration
-typedef _Constraint *Constraint;
+// set constraint status
+// status can change from:
+// 1. CT_PENDING to CT_ACTIVE
+// 2. CT_PENDING to CT_FAILED
+void Constraint_SetStatus
+(
+	Constraint c,            // constraint to update
+	ConstraintStatus status  // new status
+);
 
-// returns constraint attributes
-const AttrInfo *Constraint_GetAttributes(const Constraint c);
+// returns a shallow copy of constraint fields
+const AttrInfo *Constraint_GetFields
+(
+	const Constraint c  // constraint from which to extract fields
+);
 
-// the ids array should be sorted
-Constraint Constraint_new(AttrInfo *attrData, uint id_count, const char *label, int label_id, GraphEntityType type);
-
-// Set constraint status.
-void Constraint_SetStatus(Constraint c, ConstraintStatus status);
-
+// returns number of pending changes
 int Constraint_PendingChanges
 (
 	const Constraint c  // constraint to inquery
@@ -57,19 +68,23 @@ int Constraint_PendingChanges
 // increment number of pending changes
 void Constraint_IncPendingChanges
 (
-	Constraint c
+	Constraint c  // constraint to update
 );
 
 // decrement number of pending changes
 void Constraint_DecPendingChanges
 (
-	Constraint c
+	Constraint c  // constraint to update
 );
 
-void Constraint_free(Constraint c);
-
-// Enforce the constraint on the given entity.
-bool Constraint_enforce_entity(Constraint c, const AttributeSet attributes, RSIndex *idx);
+// enforce constraint on entity
+// returns true if entity satisfies the constraint
+// false otherwise
+bool Constraint_enforce_entity
+(
+	const Constraint c,   // constraint to enforce
+	const GraphEntity *e  // enforced entity
+);
 
 // Enforce the constraints on the given entity.
 bool Constraints_enforce_entity(Constraint *c, const AttributeSet attributes, RSIndex *idx, uint32_t *ind);
@@ -87,3 +102,5 @@ GraphEntityType Constraint_GraphEntityType
 (
 	const Constraint c
 );
+
+void Constraint_free(Constraint c);

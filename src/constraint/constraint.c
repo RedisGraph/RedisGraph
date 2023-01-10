@@ -1,3 +1,4 @@
+#include "RG.h"
 #include "constraint.h"
 #include "../util/arr.h"
 #include "../graph/entities/attribute_set.h"
@@ -10,6 +11,16 @@
 #include "../query_ctx.h"
 #include <stdatomic.h>
 
+// opaque structure representing a constraint
+typedef struct _Constraint {
+    AttrInfo *attributes;          // array of attributes sorted by their ids which are part of this constraint
+	Schema *schema;                // constraint schema
+    char *label;                   // indexed label
+	int label_id;                  // indexed label ID
+    GraphEntityType entity_type;   // entity type (node/edge) indexed
+    ConstraintStatus status;       // constraint status
+    uint _Atomic pending_changes;  // number of pending changes
+} _Constraint;
 
 const AttrInfo *Constraint_GetAttributes
 (
@@ -20,24 +31,45 @@ const AttrInfo *Constraint_GetAttributes
 	return (const AttrInfo *)c->attributes;
 }
 
-Constraint Constraint_new(AttrInfo *attrData, uint id_count, const char *label, int label_id, 
-GraphEntityType type) {    
-    Constraint c = rm_malloc(sizeof(_Constraint));
+// create a new constraint
+Constraint Constraint_New
+(
+	AttrInfo *fields, // enforced fields
+	uint n_fields,    // number of fields
+	const Schema *s   // constraint schema
+) {
+    Constraint c  = rm_malloc(sizeof(_Constraint));
     c->attributes = array_newlen(AttrInfo, id_count);
 
     memcpy(c->attributes, attrData, sizeof(AttrInfo) * id_count);
     for(uint i = 0; i < id_count; i++) {
         c->attributes[i].attribute_name = rm_strdup(attrData[i].attribute_name);
     }
-    c->label = rm_strdup(label);
-    c->label_id = label_id;
-    c->entity_type = type;
-    c->status = CT_PENDING;
-    c->pending_changes = ATOMIC_VAR_INIT(0);
+
+	c->label           = rm_strdup(label);
+	c->status          = CT_PENDING;
+	c->label_id        = label_id;
+	c->entity_type     = type;
+	c->pending_changes = ATOMIC_VAR_INIT(0);
+
     return c;
 }
 
-void Constraint_SetStatus(Constraint c, ConstraintStatus status) {
+// set constraint status
+// status can change from:
+// 1. CT_PENDING to CT_ACTIVE
+// 2. CT_PENDING to CT_FAILED
+void Constraint_SetStatus
+(
+	Constraint c,            // constraint to update
+	ConstraintStatus status  // new status
+) {
+	// validations
+	// validate state transition
+	ASSERT(c->status == CT_PENDING);
+	ASSERT(status == CT_ACTIVE || status == CT_FAILED);
+
+	// assuming under lock
     c->status = status;
 }
 
@@ -46,8 +78,15 @@ int Constraint_PendingChanges
 (
 	const Constraint c  // constraint to inquery
 ) {
+	// validations
 	ASSERT(c != NULL);
-    ASSERT(c->pending_changes <= 2); // one can't create or drop the same constraint twice
+	// the number of pending changes of a constraint can not be more than 2
+	// CREATE + DROP will yield 2 pending changes, a dropped constraint can not
+	// be dropped again
+	//
+	// CREATE + CREATE will result in two different constraints each with its
+	// own pending changes
+    ASSERT(c->pending_changes <= 2);
 
 	return c->pending_changes;
 }
@@ -55,23 +94,31 @@ int Constraint_PendingChanges
 // increment number of pending changes
 void Constraint_IncPendingChanges
 (
-	Constraint c
+	Constraint c  // constraint to update
 ) {
 	ASSERT(c != NULL);
-    ASSERT(c->pending_changes <= 2); // one can't create or drop the same constraint twice
 
+	// one can't create or drop the same constraint twice
+	// see comment at Constraint_PendingChanges
+    ASSERT(c->pending_changes <= 2);
+
+	// atomic increment
 	c->pending_changes++;
 }
 
 // decrement number of pending changes
 void Constraint_DecPendingChanges
 (
-	Constraint c
+	Constraint c  // constraint to update
 ) {
 	ASSERT(c != NULL);
-    ASSERT(c->pending_changes > 0);
-    ASSERT(c->pending_changes <= 2); // one can't create or drop the same constraint twice
 
+	// one can't create or drop the same constraint twice
+	// see comment at Constraint_PendingChanges
+    ASSERT(c->pending_changes > 0);
+    ASSERT(c->pending_changes <= 2);
+
+	// atomic decrement
 	c->pending_changes--;
 }
 
@@ -84,37 +131,55 @@ void Constraint_free(Constraint c) {
     rm_free(c);
 }
 
-// check if entity constains all attributes of the constraint
-static bool _Should_constraint_enforce_entity(Constraint c, const AttributeSet attributes) {
-    uint32_t len = array_len(c->attributes);
-    for(uint32_t i = 0; i < len; ++i) {
-        if(AttributeSet_Get(attributes, c->attributes[i].id) == ATTRIBUTE_NOTFOUND) {
-            return false;
-        }
-    }
+// enforce constraint on entity
+// returns true if entity satisfies the constraint
+// false otherwise
+bool Constraint_enforce_entity
+(
+	const Constraint c,   // constraint to enforce
+	const GraphEntity *e  // enforced entity
+) {
+	// validations
+	ASSERT(c != NULL);
+	ASSERT(e != NULL);
 
-    return true;
-}
+	Index *idx = c->idx;
+	bool  res  = false;  // return value none-optimistic
 
-bool Constraint_enforce_entity(Constraint c, const AttributeSet attributes, RSIndex *idx) {
-    if(!_Should_constraint_enforce_entity(c, attributes)) {
-        return true;
-    }
+	//--------------------------------------------------------------------------
+	// construct a RediSearch query locating entity
+	//--------------------------------------------------------------------------
 
-    SIValue *v;
+	// TODO: prefer to have the RediSearch query "template" constructed
+	// once and reused for each entity
+
     SIType t;
-    RSQNode  *node =  NULL;
+    SIValue *v;
+    RSQNode *node = NULL;  // RediSearch query node
+
     // convert constraint into a RediSearch query
     RSQNode *rs_query_node = RediSearch_CreateIntersectNode(idx, false);
     ASSERT(rs_query_node != NULL);
 
     for(uint i = 0; i < array_len(c->attributes); i++) {
-        char *field = c->attributes[i].attribute_name;
-        v = AttributeSet_Get(attributes, c->attributes[i].id);
-        ASSERT(v != ATTRIBUTE_NOTFOUND); // We already ensured it using _Should_constraint_enforce_entity
+		AttrInfo *attr_info = c->attributes + i;
+        const char *attr = attr_info->attribute_name;
+		Attribute_ID attr_id = attr_info->id;
+
+		// get current attribute from entity
+        v = AttributeSet_Get(attributes, attr_id);
+		if(v == ATTRIBUTE_NOTFOUND) {
+			// entity satisfies constraint in a vacuous truth manner
+			// TODO: clean up...
+			res = true;
+			break;
+		}
+
+		// create RediSearch query node according to entity attr type
         t = SI_TYPE(*v);
 
 	    if(!(t & SI_INDEXABLE)) {
+			assert("check with Neo implementations" && false);
 	    	// none indexable type, consult with the none indexed field
 	    	node = RediSearch_CreateTagNode(idx, INDEX_FIELD_NONE_INDEXED);
 	    	RSQNode *child = RediSearch_CreateTokenNode(idx,
@@ -141,11 +206,12 @@ bool Constraint_enforce_entity(Constraint c, const AttributeSet attributes, RSIn
     if(ptr != NULL) {
         // We have the same property value twice.
         RediSearch_ResultsIteratorFree(iter);
-        return false;
+        res = false;
     }
+	res = true;
 
     RediSearch_ResultsIteratorFree(iter);
-    return true;
+    return res;
 }
 
 bool Constraints_enforce_entity(Constraint *c, const AttributeSet attributes, RSIndex *idx, uint32_t *ind) {
