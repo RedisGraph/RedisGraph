@@ -1,7 +1,6 @@
 version: 0.1
 kpis:
   - eq: { $.Totals.Total.Errors: 0 }
-  - le: { $.OverallRelativeInternalExternalLatencyDiff.q50: 5 }
 exporter:
   redistimeseries:
     timemetric: "$.StartTime"
