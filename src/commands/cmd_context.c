@@ -138,7 +138,10 @@ void CommandCtx_ThreadSafeContextUnlock(const CommandCtx *command_ctx) {
 	if(command_ctx->bc) RedisModule_ThreadSafeContextUnlock(command_ctx->ctx);
 }
 
-uint64_t CommandCtx_GetTimerMilliseconds(CommandCtx *command_ctx) {
+uint64_t CommandCtx_GetTimerMilliseconds
+(
+	CommandCtx *command_ctx
+) {
 	ASSERT(command_ctx);
 	if (!command_ctx) {
 		return 0;
@@ -150,7 +153,10 @@ uint64_t CommandCtx_GetTimerMilliseconds(CommandCtx *command_ctx) {
 	return elapsed_milliseconds;
 }
 
-uint64_t CommandCtx_GetReceivedTimestamp(const CommandCtx *command_ctx) {
+uint64_t CommandCtx_GetReceivedTimestamp
+(
+	const CommandCtx *command_ctx
+) {
 	ASSERT(command_ctx);
 	if (!command_ctx) {
 		return 0;
