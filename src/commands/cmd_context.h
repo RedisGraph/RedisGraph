@@ -101,10 +101,16 @@ void CommandCtx_ThreadSafeContextUnlock
 
 // Return the time in milliseconds, spent since the last call (or initialization
 // of the object).
-uint64_t CommandCtx_GetTimerMilliseconds(CommandCtx *);
+uint64_t CommandCtx_GetTimerMilliseconds
+(
+	CommandCtx *
+);
 // Return the timestamp in milliseconds since the UNIX epoch, indicating when
 // the command was received by the module.
-uint64_t CommandCtx_GetReceivedTimestamp(const CommandCtx *);
+uint64_t CommandCtx_GetReceivedTimestamp
+(
+	const CommandCtx *
+);
 
 // Free command context.
 void CommandCtx_Free
