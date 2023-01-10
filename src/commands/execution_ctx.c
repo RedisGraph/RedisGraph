@@ -59,9 +59,6 @@ static ExecutionCtx *_ExecutionCtx_New
 	ExecutionPlan *plan,
 	ExecutionType exec_type
 ) {
-	// a new execution context must be parameters free
-	ASSERT(ast->params_parse_result == NULL);
-
 	ExecutionCtx *exec_ctx = rm_malloc(sizeof(ExecutionCtx));
 
 	exec_ctx->ast       = ast;
@@ -116,9 +113,12 @@ ExecutionCtx *ExecutionCtx_FromQuery
 		return NULL;
 	}
 
+	// parameters are no longer needed
+	// the QueryCtx_Params is set
+	parse_result_free(params_parse_result);
+
 	// query included only params e.g. 'cypher a=1' was provided
 	if(unlikely(strlen(q_str) == 0)) {
-		parse_result_free(params_parse_result);
 		ErrorCtx_SetError("Error: empty query.");
 		return NULL;
 	}
@@ -134,7 +134,6 @@ ExecutionCtx *ExecutionCtx_FromQuery
 	ret = Cache_GetValue(cache, q_str);
 	if(ret != NULL) {
 		// set query parameters in the execution AST
-		AST_SetParamsParseResult(ret->ast, params_parse_result);
 		ret->cached = true;  // mark cached execution
 		return ret;
 	}
@@ -148,7 +147,6 @@ ExecutionCtx *ExecutionCtx_FromQuery
 		if(!ErrorCtx_EncounteredError()) {
 			ErrorCtx_SetError("Error: could not parse query");
 		}
-		parse_result_free(params_parse_result);
 		return NULL;
 	}
 
@@ -170,17 +168,12 @@ ExecutionCtx *ExecutionCtx_FromQuery
 			// clean up and return NULL
 			AST_Free(ast);
 			ExecutionPlan_Free(plan);
-			parse_result_free(params_parse_result);
 			return NULL;
 		}
 
 		ExecutionCtx *exec_ctx = _ExecutionCtx_New(ast, plan, exec_type);
 		ret = Cache_SetGetValue(cache, q_str, exec_ctx);
-
-		// set query parameters in the execution AST
-		AST_SetParamsParseResult(ret->ast, params_parse_result);
 	} else {
-		parse_result_free(params_parse_result);
 		ret = _ExecutionCtx_New(ast, NULL, exec_type);
 	}
 

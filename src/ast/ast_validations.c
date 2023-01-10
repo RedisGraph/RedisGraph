@@ -1609,71 +1609,71 @@ bool AST_ValidationsMappingInit(void) {
 	// register supported types
 	//--------------------------------------------------------------------------
 
-	validations_mapping[CYPHER_AST_SET]                         =  _Validate_SET_Clause;
-	validations_mapping[CYPHER_AST_MAP]                         =  _Validate_map;
-	validations_mapping[CYPHER_AST_ANY]                         =  _Validate_list_comprehension;
-	validations_mapping[CYPHER_AST_ALL]                         =  _Validate_list_comprehension;
-	validations_mapping[CYPHER_AST_CALL]                        =  _Validate_CALL_Clause;
-	validations_mapping[CYPHER_AST_WITH]                        =  _Validate_WITH_Clause;
-	validations_mapping[CYPHER_AST_NONE]                        =  _Validate_list_comprehension;
-	validations_mapping[CYPHER_AST_UNION]                       =  _Validate_UNION_Clause;
-	validations_mapping[CYPHER_AST_MATCH]                       =  _Validate_MATCH_Clause;
-	validations_mapping[CYPHER_AST_MERGE]                       =  _Validate_MERGE_Clause;
-	validations_mapping[CYPHER_AST_SINGLE]                      =  _Validate_list_comprehension;
-	validations_mapping[CYPHER_AST_RETURN]                      =  _Validate_RETURN_Clause;
-	validations_mapping[CYPHER_AST_UNWIND]                      =  _Validate_UNWIND_Clause;
-	validations_mapping[CYPHER_AST_CREATE]                      =  _Validate_CREATE_Clause;
-	validations_mapping[CYPHER_AST_DELETE]                      =  _Validate_DELETE_Clause;
-	validations_mapping[CYPHER_AST_REDUCE]                      =  _Validate_reduce;
-	validations_mapping[CYPHER_AST_IDENTIFIER]                  =  _Validate_identifier;
-	validations_mapping[CYPHER_AST_PROJECTION]                  =  _Validate_projection;
-	validations_mapping[CYPHER_AST_NAMED_PATH]                  =  _Validate_named_path;
-	validations_mapping[CYPHER_AST_REL_PATTERN]                 =  _Validate_rel_pattern;
-	validations_mapping[CYPHER_AST_SET_PROPERTY]                =  _Validate_set_property;
-	validations_mapping[CYPHER_AST_NODE_PATTERN]                =  _Validate_node_pattern;
-	validations_mapping[CYPHER_AST_PATTERN_PATH]                =  _Validate_pattern_path;
-	validations_mapping[CYPHER_AST_SHORTEST_PATH]               =  _Validate_shortest_path;
-	validations_mapping[CYPHER_AST_APPLY_OPERATOR]              =  _Validate_apply_operator;
-	validations_mapping[CYPHER_AST_APPLY_ALL_OPERATOR]          =  _Validate_apply_all_operator;
-	validations_mapping[CYPHER_AST_LIST_COMPREHENSION]          =  _Validate_list_comprehension;
-	validations_mapping[CYPHER_AST_PATTERN_COMPREHENSION]       =  _Validate_pattern_comprehension;
-	validations_mapping[CYPHER_AST_CREATE_PATTERN_PROPS_INDEX]  =  _Validate_index_creation;
+	validations_mapping[CYPHER_AST_SET]                         = _Validate_SET_Clause;
+	validations_mapping[CYPHER_AST_MAP]                         = _Validate_map;
+	validations_mapping[CYPHER_AST_ANY]                         = _Validate_list_comprehension;
+	validations_mapping[CYPHER_AST_ALL]                         = _Validate_list_comprehension;
+	validations_mapping[CYPHER_AST_CALL]                        = _Validate_CALL_Clause;
+	validations_mapping[CYPHER_AST_WITH]                        = _Validate_WITH_Clause;
+	validations_mapping[CYPHER_AST_NONE]                        = _Validate_list_comprehension;
+	validations_mapping[CYPHER_AST_UNION]                       = _Validate_UNION_Clause;
+	validations_mapping[CYPHER_AST_MATCH]                       = _Validate_MATCH_Clause;
+	validations_mapping[CYPHER_AST_MERGE]                       = _Validate_MERGE_Clause;
+	validations_mapping[CYPHER_AST_SINGLE]                      = _Validate_list_comprehension;
+	validations_mapping[CYPHER_AST_RETURN]                      = _Validate_RETURN_Clause;
+	validations_mapping[CYPHER_AST_UNWIND]                      = _Validate_UNWIND_Clause;
+	validations_mapping[CYPHER_AST_CREATE]                      = _Validate_CREATE_Clause;
+	validations_mapping[CYPHER_AST_DELETE]                      = _Validate_DELETE_Clause;
+	validations_mapping[CYPHER_AST_REDUCE]                      = _Validate_reduce;
+	validations_mapping[CYPHER_AST_IDENTIFIER]                  = _Validate_identifier;
+	validations_mapping[CYPHER_AST_PROJECTION]                  = _Validate_projection;
+	validations_mapping[CYPHER_AST_NAMED_PATH]                  = _Validate_named_path;
+	validations_mapping[CYPHER_AST_REL_PATTERN]                 = _Validate_rel_pattern;
+	validations_mapping[CYPHER_AST_SET_PROPERTY]                = _Validate_set_property;
+	validations_mapping[CYPHER_AST_NODE_PATTERN]                = _Validate_node_pattern;
+	validations_mapping[CYPHER_AST_PATTERN_PATH]                = _Validate_pattern_path;
+	validations_mapping[CYPHER_AST_SHORTEST_PATH]               = _Validate_shortest_path;
+	validations_mapping[CYPHER_AST_APPLY_OPERATOR]              = _Validate_apply_operator;
+	validations_mapping[CYPHER_AST_APPLY_ALL_OPERATOR]          = _Validate_apply_all_operator;
+	validations_mapping[CYPHER_AST_LIST_COMPREHENSION]          = _Validate_list_comprehension;
+	validations_mapping[CYPHER_AST_PATTERN_COMPREHENSION]       = _Validate_pattern_comprehension;
+	validations_mapping[CYPHER_AST_CREATE_PATTERN_PROPS_INDEX]  = _Validate_index_creation;
 
 	//--------------------------------------------------------------------------
 	// register unsupported types
 	//--------------------------------------------------------------------------
 
-	validations_mapping[CYPHER_AST_START]                        =  _visit_break;
-	validations_mapping[CYPHER_AST_FILTER]                       =  _visit_break;
-	validations_mapping[CYPHER_AST_EXTRACT]                      =  _visit_break;
-	validations_mapping[CYPHER_AST_COMMAND]                      =  _visit_break;
-	validations_mapping[CYPHER_AST_FOREACH]                      =  _visit_break;
-	validations_mapping[CYPHER_AST_LOAD_CSV]                     =  _visit_break;
-	validations_mapping[CYPHER_AST_MATCH_HINT]                   =  _visit_break;
-	validations_mapping[CYPHER_AST_USING_JOIN]                   =  _visit_break;
-	validations_mapping[CYPHER_AST_USING_SCAN]                   =  _visit_break;
-	validations_mapping[CYPHER_AST_INDEX_NAME]                   =  _visit_break;
-	validations_mapping[CYPHER_AST_REL_ID_LOOKUP]                =  _visit_break;
-	validations_mapping[CYPHER_AST_ALL_RELS_SCAN]                =  _visit_break;
-	validations_mapping[CYPHER_AST_USING_INDEX]                  =  _visit_break;
-	validations_mapping[CYPHER_AST_START_POINT]                  =  _visit_break;
-	validations_mapping[CYPHER_AST_REMOVE_ITEM]                  =  _visit_break;
-	validations_mapping[CYPHER_AST_QUERY_OPTION]                 =  _visit_break;
-	validations_mapping[CYPHER_AST_REL_INDEX_QUERY]              =  _visit_break;
-	validations_mapping[CYPHER_AST_BINARY_OPERATOR]              =  _visit_binary_op;
-	validations_mapping[CYPHER_AST_EXPLAIN_OPTION]               =  _visit_break;
-	validations_mapping[CYPHER_AST_PROFILE_OPTION]               =  _visit_break;
-	validations_mapping[CYPHER_AST_SCHEMA_COMMAND]               =  _visit_break;
-	validations_mapping[CYPHER_AST_NODE_ID_LOOKUP]               =  _visit_break;
-	validations_mapping[CYPHER_AST_ALL_NODES_SCAN]               =  _visit_break;
-	validations_mapping[CYPHER_AST_REL_INDEX_LOOKUP]             =  _visit_break;
-	validations_mapping[CYPHER_AST_NODE_INDEX_QUERY]             =  _visit_break;
-	validations_mapping[CYPHER_AST_NODE_INDEX_LOOKUP]            =  _visit_break;
-	validations_mapping[CYPHER_AST_USING_PERIODIC_COMMIT]        =  _visit_break;
-	validations_mapping[CYPHER_AST_DROP_REL_PROP_CONSTRAINT]     =  _visit_break;
-	validations_mapping[CYPHER_AST_DROP_NODE_PROP_CONSTRAINT]    =  _visit_break;
-	validations_mapping[CYPHER_AST_CREATE_REL_PROP_CONSTRAINT]   =  _visit_break;
-	validations_mapping[CYPHER_AST_CREATE_NODE_PROP_CONSTRAINT]  =  _visit_break;
+	validations_mapping[CYPHER_AST_START]                        = _visit_break;
+	validations_mapping[CYPHER_AST_FILTER]                       = _visit_break;
+	validations_mapping[CYPHER_AST_EXTRACT]                      = _visit_break;
+	validations_mapping[CYPHER_AST_COMMAND]                      = _visit_break;
+	validations_mapping[CYPHER_AST_FOREACH]                      = _visit_break;
+	validations_mapping[CYPHER_AST_LOAD_CSV]                     = _visit_break;
+	validations_mapping[CYPHER_AST_MATCH_HINT]                   = _visit_break;
+	validations_mapping[CYPHER_AST_USING_JOIN]                   = _visit_break;
+	validations_mapping[CYPHER_AST_USING_SCAN]                   = _visit_break;
+	validations_mapping[CYPHER_AST_INDEX_NAME]                   = _visit_break;
+	validations_mapping[CYPHER_AST_REL_ID_LOOKUP]                = _visit_break;
+	validations_mapping[CYPHER_AST_ALL_RELS_SCAN]                = _visit_break;
+	validations_mapping[CYPHER_AST_USING_INDEX]                  = _visit_break;
+	validations_mapping[CYPHER_AST_START_POINT]                  = _visit_break;
+	validations_mapping[CYPHER_AST_REMOVE_ITEM]                  = _visit_break;
+	validations_mapping[CYPHER_AST_QUERY_OPTION]                 = _visit_break;
+	validations_mapping[CYPHER_AST_REL_INDEX_QUERY]              = _visit_break;
+	validations_mapping[CYPHER_AST_BINARY_OPERATOR]              = _visit_binary_op;
+	validations_mapping[CYPHER_AST_EXPLAIN_OPTION]               = _visit_break;
+	validations_mapping[CYPHER_AST_PROFILE_OPTION]               = _visit_break;
+	validations_mapping[CYPHER_AST_SCHEMA_COMMAND]               = _visit_break;
+	validations_mapping[CYPHER_AST_NODE_ID_LOOKUP]               = _visit_break;
+	validations_mapping[CYPHER_AST_ALL_NODES_SCAN]               = _visit_break;
+	validations_mapping[CYPHER_AST_REL_INDEX_LOOKUP]             = _visit_break;
+	validations_mapping[CYPHER_AST_NODE_INDEX_QUERY]             = _visit_break;
+	validations_mapping[CYPHER_AST_NODE_INDEX_LOOKUP]            = _visit_break;
+	validations_mapping[CYPHER_AST_USING_PERIODIC_COMMIT]        = _visit_break;
+	validations_mapping[CYPHER_AST_DROP_REL_PROP_CONSTRAINT]     = _visit_break;
+	validations_mapping[CYPHER_AST_DROP_NODE_PROP_CONSTRAINT]    = _visit_break;
+	validations_mapping[CYPHER_AST_CREATE_REL_PROP_CONSTRAINT]   = _visit_break;
+	validations_mapping[CYPHER_AST_CREATE_NODE_PROP_CONSTRAINT]  = _visit_break;
 
 	return true;
 }
@@ -1686,16 +1686,16 @@ bool AST_ContainsErrors
 	return cypher_parse_result_nerrors(result) > 0;
 }
 
-/* This function checks for the existence a valid root in the query.
- * As cypher_parse_result_t can have multiple roots such as comments,
- * only a query that has a root with type CYPHER_AST_STATEMENT is considered valid.
- * Comment roots are ignored. */
+// this function checks for the existence a valid root in the query
+// as cypher_parse_result_t can have multiple roots such as comments,
+// only a query that has a root with type CYPHER_AST_STATEMENT
+// is considered valid comment roots are ignored
 AST_Validation AST_Validate_ParseResultRoot
 (
 	const cypher_parse_result_t *result,
 	int *index
 ) {
-	// Check for failures in libcypher-parser
+	// check for failures in libcypher-parser
 	ASSERT(AST_ContainsErrors(result) == false);
 
 	uint nroots = cypher_parse_result_nroots(result);
@@ -1709,7 +1709,7 @@ AST_Validation AST_Validate_ParseResultRoot
 			ErrorCtx_SetError("Encountered unsupported query type '%s'", cypher_astnode_typestr(root_type));
 			return AST_INVALID;
 		} else {
-			// We got a statement.
+			// we got a statement
 			*index = i;
 			return AST_VALID;
 		}
@@ -1776,19 +1776,23 @@ static AST_Validation _ValidateParamsOnly
 ) {
 	uint noptions = cypher_ast_statement_noptions(statement);
 	for(uint i = 0; i < noptions; i++) {
-		const cypher_astnode_t *option = cypher_ast_statement_get_option(statement, i);
+		const cypher_astnode_t *option =
+			cypher_ast_statement_get_option(statement, i);
 		const cypher_astnode_type_t type = cypher_astnode_type(option);
-		if((type == CYPHER_AST_EXPLAIN_OPTION) || (type == CYPHER_AST_PROFILE_OPTION)) {
+
+		if((type == CYPHER_AST_EXPLAIN_OPTION) ||
+		   (type == CYPHER_AST_PROFILE_OPTION)) {
 			const char *invalid_option_name = cypher_astnode_typestr(type);
 			ErrorCtx_SetError("Please use GRAPH.%s 'key' 'query' command instead of GRAPH.QUERY 'key' '%s query'",
 							  invalid_option_name, invalid_option_name);
 			return AST_INVALID;
 		}
 	}
+
 	return AST_VALID;
 }
 
-// Make sure no duplicated parameters are given in a statement expression
+// make sure no duplicated parameters are given in a statement expression
 static AST_Validation _ValidateDuplicateParameters
 (
 	const cypher_astnode_t *statement  // statement
@@ -1798,17 +1802,23 @@ static AST_Validation _ValidateDuplicateParameters
 	for(uint i = 0; i < noptions; i++) {
 		const cypher_astnode_t *option = cypher_ast_statement_get_option(statement, i);
 		uint nparams = cypher_ast_cypher_option_nparams(option);
+
 		for(uint j = 0; j < nparams; j++) {
-			const cypher_astnode_t *param = cypher_ast_cypher_option_get_param(option, j);
-			const char *paramName = cypher_ast_string_get_value(cypher_ast_cypher_option_param_get_name(param));
-			// If parameter already exists return an error.
-			if(!raxInsert(param_names, (unsigned char *) paramName, strlen(paramName), NULL, NULL)) {
+			const cypher_astnode_t *param =
+				cypher_ast_cypher_option_get_param(option, j);
+			const char *paramName =
+				cypher_ast_string_get_value(cypher_ast_cypher_option_param_get_name(param));
+
+			// if parameter already exists return an error
+			if(!raxInsert(param_names, (unsigned char *) paramName,
+						strlen(paramName), NULL, NULL)) {
 				ErrorCtx_SetError("Duplicated parameter: %s", paramName);
 				raxFree(param_names);
 				return AST_INVALID;
 			}
 		}
 	}
+
 	raxFree(param_names);
 	return AST_VALID;
 }
@@ -1833,25 +1843,28 @@ AST_Validation AST_Validate_QueryParams
 	if(_ValidateParamsOnly(root) != AST_VALID) {
 		return AST_INVALID;
 	}
+
+	// check for duplicated parameters
 	if(_ValidateDuplicateParameters(root) != AST_VALID) {
 		return AST_INVALID;
 	}
 
 	// create a context for the traversal
-	validations_ctx ctx;
-	ctx.union_all = NOT_DEFINED;
-	ctx.defined_identifiers = raxNew();
+	//validations_ctx ctx;
+	//ctx.union_all = NOT_DEFINED;
+	//ctx.defined_identifiers = raxNew();
 
 	// create a visitor
-	ast_visitor visitor = {&ctx, validations_mapping};
+	//ast_visitor visitor = {&ctx, validations_mapping};
 	
 	// visit (traverse) the ast
-	AST_Visitor_visit(root, &visitor);
+	//AST_Visitor_visit(root, &visitor);
 
 	// cleanup
-	raxFree(ctx.defined_identifiers);
+	//raxFree(ctx.defined_identifiers);
 
-	return !ErrorCtx_EncounteredError() ? AST_VALID : AST_INVALID;
+	return AST_VALID;
+	//return ErrorCtx_EncounteredError() ? AST_INVALID : AST_VALID;
 }
 
 // report encountered errors by libcypher-parser

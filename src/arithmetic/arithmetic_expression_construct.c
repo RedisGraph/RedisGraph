@@ -873,12 +873,15 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 	return NULL;
 }
 
-AR_ExpNode *AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
+AR_ExpNode *AR_EXP_FromASTNode
+(
+	const cypher_astnode_t *expr
+) {
 	AR_ExpNode *root = _AR_EXP_FromASTNode(expr);
 	AR_EXP_ReduceToScalar(root, false, NULL);
 
-	/* Make sure expression doesn't contains nested aggregation functions
-	 * count(max(n.v)) */
+	// make sure expression doesn't contains nested aggregation functions
+	// count(max(n.v))
 	if(_AR_EXP_ContainsNestedAgg(root)) {
 		// Set error (compile-time), this error will be raised later on.
 		ErrorCtx_SetError("Can't use aggregate functions inside of aggregate functions.");
