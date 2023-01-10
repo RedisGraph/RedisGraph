@@ -105,7 +105,7 @@ ExecutionCtx *ExecutionCtx_FromQuery
 
 	// parse and validate parameters only
 	// extract query string
-	// return invalid execution context if there isn't a parser result
+	// return invalid execution context if there failed to parse params
 	cypher_parse_result_t *params_parse_result = parse_params(q, &q_str);
 
 	// parameter parsing failed, return NULL

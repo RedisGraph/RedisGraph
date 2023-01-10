@@ -117,9 +117,10 @@ static void _AST_Extract_Params
 			// TODO: consider SIValue from cypher_astnode_t
 			AR_ExpNode *exp = AR_EXP_FromASTNode(paramValue);
 			SIValue *v = rm_malloc(sizeof(SIValue));
-			*v = AR_EXP_Evaluate(exp, NULL);
+			SIValue _v = AR_EXP_Evaluate(exp, NULL);
+			*v = SI_CloneValue(_v);
 			raxInsert(params, (unsigned char *)paramName, strlen(paramName),
-					(void *)v, SI_CloneValue(*v), NULL);
+					(void *)v, NULL);
 			AR_EXP_Free(exp);
 		}
 	}
