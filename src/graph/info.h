@@ -198,8 +198,13 @@ bool QueryInfoIterator_IsExhausted(const QueryInfoIterator *);
 // The type of values is int64_t due to the hdr_histogram API limitations.
 // Ideally, should be the "millis_t".
 typedef struct Percentiles {
+    // Sum of the three durations below.
+    int64_t total_durations[PERCENTILE_COUNT];
+    // The wait durations distribution.
     int64_t wait_durations[PERCENTILE_COUNT];
+    // The execution durations distribution.
     int64_t execution_durations[PERCENTILE_COUNT];
+    // The report durations distribution.
     int64_t report_durations[PERCENTILE_COUNT];
 } Percentiles;
 
@@ -224,6 +229,8 @@ typedef struct Info {
     hdr_histogram *execution_durations;
     // Statistics for the report durations in milliseconds.
     hdr_histogram *report_durations;
+    // Statistics for the three durations above in total, in milliseconds.
+    hdr_histogram *total_durations;
     // A global lock for the object. Used as an inverse lock - allows parallel
     // writers but just one reader. This is done that way as the parallel
     // writes are guaranteed to happen lock-free or without race conditions,

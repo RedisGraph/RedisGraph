@@ -154,6 +154,12 @@ FinishedQueryInfo FinishedQueryInfo_FromQueryInfo(const QueryInfo info) {
     return finished;
 }
 
+millis_t _FinishedQueryInfo_GetTotalDuration(const FinishedQueryInfo info) {
+    return info.total_execution_duration
+         + info.total_report_duration
+         + info.total_wait_duration;
+}
+
 void FinishedQueryInfo_Free(const FinishedQueryInfo query_info) {
     if (query_info.query_string) {
         free(query_info.query_string);
@@ -593,6 +599,10 @@ bool Info_New(Info *info) {
 
     REQUIRE_TRUE_OR_RETURN(histogram_initialized, false);
 
+    histogram_initialized = _histogram_init(&info->total_durations);
+
+    REQUIRE_TRUE_OR_RETURN(histogram_initialized, false);
+
     return true;
 }
 
@@ -603,6 +613,7 @@ void Info_Reset(Info *info) {
     hdr_reset(info->wait_durations);
     hdr_reset(info->execution_durations);
     hdr_reset(info->report_durations);
+    hdr_reset(info->total_durations);
 }
 
 bool Info_Free(Info *info) {
@@ -621,6 +632,7 @@ bool Info_Free(Info *info) {
     hdr_close(info->wait_durations);
     hdr_close(info->execution_durations);
     hdr_close(info->report_durations);
+    hdr_close(info->total_durations);
 
     return lock_destroyed == 0;
 }
@@ -761,6 +773,8 @@ void Info_IndicateQueryFinishedReporting
     QueryInfo_UpdateReportingTime(query_info);
     hdr_record_value(info->report_durations, QueryInfo_GetReportingTime(*query_info));
     FinishedQueryInfo finished = FinishedQueryInfo_FromQueryInfo(*query_info);
+    const millis_t total_duration = _FinishedQueryInfo_GetTotalDuration(finished);
+    hdr_record_value(info->total_durations, total_duration);
     _add_finished_query(finished);
     QueryInfoStorage_ResetElement(
         &info->reporting_queries_per_thread,
@@ -910,26 +924,43 @@ Percentiles Info_GetDurationsPercentiles(Info *info) {
 
     Percentiles percentiles = {};
 
-    bool ret = !hdr_value_at_percentiles(
-        info->wait_durations,
-        QUANTILES,
-        percentiles.wait_durations,
-        LENGTH);
-    ASSERT(ret);
+    bool ret = true;
 
-    ret = !hdr_value_at_percentiles(
-        info->execution_durations,
-        QUANTILES,
-        percentiles.execution_durations,
-        LENGTH);
-    ASSERT(ret);
+    if (info->wait_durations->total_count) {
+        ret = !hdr_value_at_percentiles(
+            info->wait_durations,
+            QUANTILES,
+            percentiles.wait_durations,
+            LENGTH);
+        ASSERT(ret);
+    }
 
-    ret = !hdr_value_at_percentiles(
-        info->report_durations,
-        QUANTILES,
-        percentiles.report_durations,
-        LENGTH);
-    ASSERT(ret);
+    if (info->execution_durations->total_count) {
+        ret = !hdr_value_at_percentiles(
+            info->execution_durations,
+            QUANTILES,
+            percentiles.execution_durations,
+            LENGTH);
+        ASSERT(ret);
+    }
+
+    if (info->report_durations->total_count) {
+        ret = !hdr_value_at_percentiles(
+            info->report_durations,
+            QUANTILES,
+            percentiles.report_durations,
+            LENGTH);
+        ASSERT(ret);
+    }
+
+    if (info->total_durations->total_count) {
+        ret = !hdr_value_at_percentiles(
+            info->total_durations,
+            QUANTILES,
+            percentiles.total_durations,
+            LENGTH);
+        ASSERT(ret);
+    }
 
     return percentiles;
 }
