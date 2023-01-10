@@ -95,11 +95,11 @@ static void _PopulateReduceCtx
 	ASSERT(ctx->accumulator_idx != INVALID_INDEX);
 }
 
-// Forward declaration of property function.
+// forward declaration of property function
 SIValue AR_PROPERTY(SIValue *argv, int argc, void *private_data);
 
-/* Create a list from a given squence of values.
-   "RETURN [1, '2', True, null]" */
+// create a list from a given squence of values
+// "RETURN [1, '2', True, null]"
 SIValue AR_TOLIST(SIValue *argv, int argc, void *private_data) {
 	SIValue array = SI_Array(argc);
 	for(int i = 0; i < argc; i++) {

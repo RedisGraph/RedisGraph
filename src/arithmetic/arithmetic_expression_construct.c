@@ -208,7 +208,10 @@ static AR_ExpNode *_AR_EXP_FromFloatExpression(const cypher_astnode_t *expr) {
 	return AR_EXP_NewConstOperandNode(converted);
 }
 
-static AR_ExpNode *_AR_EXP_FromStringExpression(const cypher_astnode_t *expr) {
+static AR_ExpNode *_AR_EXP_FromStringExpression
+(
+	const cypher_astnode_t *expr
+) {
 	const char *value_str = cypher_ast_string_get_value(expr);
 	SIValue converted = SI_ConstStringVal((char *)value_str);
 	return AR_EXP_NewConstOperandNode(converted);
@@ -351,7 +354,10 @@ static AR_ExpNode *_AR_EXP_FromCaseExpression(const cypher_astnode_t *expr) {
 	return op;
 }
 
-static AR_ExpNode *_AR_ExpFromCollectionExpression(const cypher_astnode_t *expr) {
+static AR_ExpNode *_AR_ExpFromCollectionExpression
+(
+	const cypher_astnode_t *expr
+) {
 	uint expCount = cypher_ast_collection_length(expr);
 	AR_ExpNode *op = AR_EXP_NewOpNode("tolist", true, expCount);
 	for(uint i = 0; i < expCount; i ++) {
@@ -807,7 +813,7 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 		// entity-property pair
 	} else if(t == CYPHER_AST_PROPERTY_OPERATOR) {
 		return _AR_EXP_FromPropertyExpression(expr);
-		// sIValue constant types
+		// SIValue constant types
 	} else if(t == CYPHER_AST_INTEGER) {
 		return _AR_EXP_FromIntegerExpression(expr);
 	} else if(t == CYPHER_AST_FLOAT) {

@@ -603,7 +603,8 @@ static AR_EXP_Result _AR_EXP_Evaluate
 	case AR_EXP_OPERAND:
 		switch(root->operand.type) {
 		case AR_EXP_CONSTANT:
-			// The value is constant or has been computed elsewhere, and is shared with the caller.
+			// the value is constant or has been computed elsewhere
+			// share with caller
 			*result = SI_ShareValue(root->operand.constant);
 			return res;
 		case AR_EXP_VARIADIC:

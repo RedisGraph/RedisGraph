@@ -113,12 +113,12 @@ ExecutionCtx *ExecutionCtx_FromQuery
 		return NULL;
 	}
 
-	// parameters are no longer needed
-	// the QueryCtx_Params is set
-	parse_result_free(params_parse_result);
+	// TODO: seems like we should be able to free 'params_parse_result'
+	// at this point but this messes up the parsing of the actual query
 
 	// query included only params e.g. 'cypher a=1' was provided
 	if(unlikely(strlen(q_str) == 0)) {
+		parse_result_free(params_parse_result);
 		ErrorCtx_SetError("Error: empty query.");
 		return NULL;
 	}
@@ -133,6 +133,7 @@ ExecutionCtx *ExecutionCtx_FromQuery
 	// see if we already have a cached execution-ctx for given query
 	ret = Cache_GetValue(cache, q_str);
 	if(ret != NULL) {
+		parse_result_free(params_parse_result);
 		// set query parameters in the execution AST
 		ret->cached = true;  // mark cached execution
 		return ret;
@@ -140,6 +141,10 @@ ExecutionCtx *ExecutionCtx_FromQuery
 
 	// no cached execution plan, try to parse the query
 	AST *ast = _ExecutionCtx_ParseAST(q_str);
+
+	// parameters are no longer needed
+	// the QueryCtx_Params is set
+	parse_result_free(params_parse_result);
 
 	// if query parsing failed, return NULL
 	if(ast == NULL) {

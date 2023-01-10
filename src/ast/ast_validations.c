@@ -1849,22 +1849,7 @@ AST_Validation AST_Validate_QueryParams
 		return AST_INVALID;
 	}
 
-	// create a context for the traversal
-	//validations_ctx ctx;
-	//ctx.union_all = NOT_DEFINED;
-	//ctx.defined_identifiers = raxNew();
-
-	// create a visitor
-	//ast_visitor visitor = {&ctx, validations_mapping};
-	
-	// visit (traverse) the ast
-	//AST_Visitor_visit(root, &visitor);
-
-	// cleanup
-	//raxFree(ctx.defined_identifiers);
-
 	return AST_VALID;
-	//return ErrorCtx_EncounteredError() ? AST_INVALID : AST_VALID;
 }
 
 // report encountered errors by libcypher-parser
