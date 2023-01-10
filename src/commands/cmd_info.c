@@ -280,7 +280,10 @@ typedef enum InfoGetFlag {
     InfoGetFlag_STATISTICS = 1 << 2,
 } InfoGetFlag;
 
+// This is a data structure which has all the GRAPH.INFO GET information
+// aggregated from all the graphs in the keyspaces of all the shards.
 typedef struct AggregatedGraphGetInfo {
+    // General information.
     uint64_t graph_count;
     uint64_t node_count;
     uint64_t relationship_count;
@@ -290,7 +293,23 @@ typedef struct AggregatedGraphGetInfo {
     uint64_t relationship_index_count;
     uint64_t node_property_name_count;
     uint64_t edge_property_name_count;
+
+    // COUNTS
+    FinishedQueryCounters counters;
+
+    // MEM TODO
+
+    // STAT
+    Statistics statistics;
 } AggregatedGraphGetInfo;
+
+static bool _AggregatedGraphGetInfo_New(AggregatedGraphGetInfo *info) {
+    ASSERT(info && "Info is not provided.");
+    if (!info) {
+        return false;
+    }
+    return Statistics_New(&info->statistics);
+}
 
 typedef struct ViewFinishedQueriesCallbackData {
     RedisModuleCtx *ctx;
@@ -413,6 +432,9 @@ static bool AggregatedGraphGetInfo_AddFromGraphContext
         GraphContext_AllEdgePropertyNamesCount(gc),
         false
     );
+
+    FinishedQueryCounters_Add(&info->counters, Info_GetFinishedQueryCounters(gc->info));
+    Statistics_Add(&info->statistics, Info_GetStatistics(gc->info));
 
     ++info->graph_count;
 
@@ -1084,76 +1106,197 @@ static int _reset_graph_info(RedisModuleCtx *ctx, const char *graph_name) {
 static int _reply_with_get_aggregated_graph_info
 (
     RedisModuleCtx *ctx,
-    const AggregatedGraphGetInfo info
+    const AggregatedGraphGetInfo info,
+    const bool is_compact_mode,
+    const InfoGetFlag flags
 ) {
-    static const long KEY_VALUE_COUNT = 9;
+    static const long KEY_VALUE_GENERAL_COUNT = 9;
+    long key_value_count = KEY_VALUE_GENERAL_COUNT;
 
     ASSERT(ctx);
 
-    REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, KEY_VALUE_COUNT));
+    REDISMODULE_DO(_reply_map(
+        ctx,
+        is_compact_mode,
+        REDISMODULE_POSTPONED_LEN
+    ));
     // 1
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
+    REDISMODULE_DO(_reply_key_value_number(
         ctx,
-        "Number of graphs"));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        info.graph_count));
+        is_compact_mode,
+        "Number of graphs",
+        info.graph_count
+    ));
     // 2
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
+    REDISMODULE_DO(_reply_key_value_number(
         ctx,
-        "Number of nodes"));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        info.node_count));
+        is_compact_mode,
+        "Number of nodes",
+        info.node_count
+    ));
     // 3
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
+    REDISMODULE_DO(_reply_key_value_number(
         ctx,
-        "Number of relationships"));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        info.relationship_count));
+        is_compact_mode,
+        "Number of relationships",
+        info.relationship_count
+    ));
     // 4
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
+    REDISMODULE_DO(_reply_key_value_number(
         ctx,
-        "Number of node labels"));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        info.node_label_count));
+        is_compact_mode,
+        "Number of node labels",
+        info.node_label_count
+    ));
     // 5
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
+    REDISMODULE_DO(_reply_key_value_number(
         ctx,
-        "Number of relationship types"));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        info.relationship_type_count));
+        is_compact_mode,
+        "Number of relationship types",
+        info.relationship_type_count
+    ));
     // 6
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
+    REDISMODULE_DO(_reply_key_value_number(
         ctx,
-        "Number of node indices"));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        info.node_index_count));
+        is_compact_mode,
+        "Number of node indices",
+        info.node_index_count
+    ));
     // 7
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
+    REDISMODULE_DO(_reply_key_value_number(
         ctx,
-        "Number of relationship indices"));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        info.relationship_index_count));
+        is_compact_mode,
+        "Number of relationship indices",
+        info.relationship_index_count
+    ));
     // 8
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
+    REDISMODULE_DO(_reply_key_value_number(
         ctx,
-        "Total number of edge properties"));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        info.node_property_name_count));
+        is_compact_mode,
+        "Total number of edge properties",
+        info.node_property_name_count
+    ));
     // 9
-    REDISMODULE_DO(RedisModule_ReplyWithCString(
+    REDISMODULE_DO(_reply_key_value_number(
         ctx,
-        "Total number of node properties"));
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(
-        ctx,
-        info.edge_property_name_count));
+        is_compact_mode,
+        "Total number of node properties",
+        info.edge_property_name_count
+    ));
+
+    if (CHECK_FLAG(flags, InfoGetFlag_COUNTS)) {
+        static const long KEY_VALUE_COUNT_COUNTS_FLAG = 7;
+        key_value_count += KEY_VALUE_COUNT_COUNTS_FLAG;
+
+        // 1
+        REDISMODULE_DO(_reply_key_value_number(
+            ctx,
+            is_compact_mode,
+            "Total number of queries",
+            FinishedQueryCounters_GetTotalCount(info.counters)
+        ));
+        // 2
+        REDISMODULE_DO(_reply_key_value_number(
+            ctx,
+            is_compact_mode,
+            "Successful read-only queries",
+            info.counters.readonly_succeeded_count
+        ));
+        // 3
+        REDISMODULE_DO(_reply_key_value_number(
+            ctx,
+            is_compact_mode,
+            "Successful write queries",
+            info.counters.write_succeeded_count
+        ));
+        // 4
+        REDISMODULE_DO(_reply_key_value_number(
+            ctx,
+            is_compact_mode,
+            "Failed read-only queries",
+            info.counters.readonly_failed_count
+        ));
+        // 5
+        REDISMODULE_DO(_reply_key_value_number(
+            ctx,
+            is_compact_mode,
+            "Failed write queries",
+            info.counters.write_failed_count
+        ));
+        // 6
+        REDISMODULE_DO(_reply_key_value_number(
+            ctx,
+            is_compact_mode,
+            "Timed out read-only queries",
+            info.counters.readonly_timedout_count
+        ));
+        // 7
+        REDISMODULE_DO(_reply_key_value_number(
+            ctx,
+            is_compact_mode,
+            "Timed out write queries",
+            info.counters.write_timedout_count
+        ));
+    }
+
+    if (CHECK_FLAG(flags, InfoGetFlag_STATISTICS)) {
+        static const long KEY_VALUE_COUNT_COUNTS_FLAG = 4;
+        key_value_count += KEY_VALUE_COUNT_COUNTS_FLAG;
+
+        const Percentiles percentiles
+            = Statistics_GetPercentiles(info.statistics);
+
+        // 1
+        REDISMODULE_DO(_reply_key_value_numbers(
+            ctx,
+            is_compact_mode,
+            "Query total durations",
+            percentiles.total_durations,
+            sizeof(percentiles.total_durations) / sizeof(percentiles.total_durations[0])
+        ));
+        // 2
+        REDISMODULE_DO(_reply_key_value_numbers(
+            ctx,
+            is_compact_mode,
+            "Query wait durations",
+            percentiles.wait_durations,
+            sizeof(percentiles.wait_durations) / sizeof(percentiles.wait_durations[0])
+        ));
+        // 3
+        REDISMODULE_DO(_reply_key_value_numbers(
+            ctx,
+            is_compact_mode,
+            "Query execution durations",
+            percentiles.execution_durations,
+            sizeof(percentiles.execution_durations) / sizeof(percentiles.execution_durations[0])
+        ));
+        // 4
+        REDISMODULE_DO(_reply_key_value_numbers(
+            ctx,
+            is_compact_mode,
+            "Query report durations",
+            percentiles.report_durations,
+            sizeof(percentiles.report_durations) / sizeof(percentiles.report_durations[0])
+        ));
+
+        // TODO memory
+    }
+
+    if (CHECK_FLAG(flags, InfoGetFlag_MEMORY)) {
+        static const long KEY_VALUE_COUNT_MEM_FLAG = 1;
+
+        key_value_count += KEY_VALUE_COUNT_MEM_FLAG;
+
+        // 1
+        REDISMODULE_DO(_reply_key_value_string(
+            ctx,
+            is_compact_mode,
+            "[MEM]",
+            "The flag is not implemented."
+        ));
+    }
+
+    _reply_map_set_postponed_length(ctx, is_compact_mode, key_value_count);
 
     return REDISMODULE_OK;
 }
@@ -1241,19 +1384,6 @@ static int _reply_with_get_graph_info
         GraphContext_AllNodePropertyNamesCount(gc)
     ));
 
-    /*
- [COUNTS]
-Query counts since server start
-(based on GRAPH.QUERY, GRAPH.RO_QUERY, GRAPH.PROFILE, GRAPH.EXPLAIN)
-Total number of queries
-Sum of the four below:
-Number of successful read-only queries (queries with no intended side effect)
-Number of successful write queries (create/update/delete)
-Number of failed (except on timeout) read-only queries (queries with no intended side effect)
-Number of failed (except on timeout) write queries (create/update/delete)
-Number of timeout read-only queries (queries with no intended side effect)
-Number of timeout write queries (create/update/delete)
-    */
     if (CHECK_FLAG(flags, InfoGetFlag_COUNTS)) {
         static const long KEY_VALUE_COUNT_COUNTS_FLAG = 7;
 
@@ -1312,25 +1442,14 @@ Number of timeout write queries (create/update/delete)
         ));
     }
 
-    /*
- [STAT]
-Statistics regarding queries since server start (for one graph / total for all graphs):
-For each of the following: 0.25, 0.5, 0.75, 0.9, 0.95, 0.99 quantiles  (using t-digest)
-Query total duration (sum of the three below)
-Query wait duration
-Query execution duration
-Query report duration
-Query total memory (sum of the three below)
-Query processing memory
-Query undo-log memory
-Query result-size memory
-    */
     if (CHECK_FLAG(flags, InfoGetFlag_STATISTICS)) {
         static const long KEY_VALUE_COUNT_COUNTS_FLAG = 4;
 
         key_value_count += KEY_VALUE_COUNT_COUNTS_FLAG;
+        const Statistics statistics
+            = Info_GetStatistics(gc->info);
         const Percentiles percentiles
-            = Info_GetDurationsPercentiles(&gc->info);
+            = Statistics_GetPercentiles(statistics);
 
         // 1
         REDISMODULE_DO(_reply_key_value_numbers(
@@ -1371,6 +1490,20 @@ Query result-size memory
         // TODO memory
     }
 
+    if (CHECK_FLAG(flags, InfoGetFlag_MEMORY)) {
+        static const long KEY_VALUE_COUNT_MEM_FLAG = 1;
+
+        key_value_count += KEY_VALUE_COUNT_MEM_FLAG;
+
+        // 1
+        REDISMODULE_DO(_reply_key_value_string(
+            ctx,
+            is_compact_mode,
+            "[MEM]",
+            "The flag is not implemented."
+        ));
+    }
+
     _reply_map_set_postponed_length(ctx, is_compact_mode, key_value_count);
 
     return REDISMODULE_OK;
@@ -1395,16 +1528,21 @@ static int _get_graph_info
     return _reply_with_get_graph_info(ctx, gc, is_compact_mode, flags);
 }
 
-// TODO use flags
-// TODO add compact mode.
 static int _get_all_graphs_info
 (
     RedisModuleCtx *ctx,
+    const bool is_compact_mode,
     const InfoGetFlag flags
 ) {
     ASSERT(ctx);
     const uint32_t graphs_count = array_len(graphs_in_keyspace);
     AggregatedGraphGetInfo info = {};
+    const bool initialised = _AggregatedGraphGetInfo_New(&info);
+    ASSERT(initialised && "Couldn't initialise aggregated info.");
+    if (!initialised) {
+        RedisModule_ReplyWithError(ctx, "Couldn't initialise aggregated info.");
+        return REDISMODULE_ERR;
+    }
 
     for (uint32_t i = 0; i < graphs_count; ++i) {
         const GraphContext *gc = graphs_in_keyspace[i];
@@ -1418,7 +1556,12 @@ static int _get_all_graphs_info
         }
     }
 
-    return _reply_with_get_aggregated_graph_info(ctx, info);
+    return _reply_with_get_aggregated_graph_info(
+        ctx,
+        info,
+        is_compact_mode,
+        flags
+    );
 }
 
 static bool _reply_finished_queries(void *user_data, const void *item) {
@@ -1629,8 +1772,7 @@ static int _info_get
     const InfoGetFlag flags = _parse_info_get_flags_from_args(argv + 1, argc - 1);
 
     if (_string_equals_case_insensitive(graph_name, ALL_GRAPH_KEYS_MASK)) {
-        // TODO add compact flag.
-        return _get_all_graphs_info(ctx, flags);
+        return _get_all_graphs_info(ctx, is_compact_mode, flags);
     }
 
     return _get_graph_info(ctx, graph_name, is_compact_mode, flags);

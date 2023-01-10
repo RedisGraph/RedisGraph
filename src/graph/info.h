@@ -97,6 +97,12 @@ typedef struct FinishedQueryCounters {
 
 // Returns the total number of queries recorded.
 uint64_t FinishedQueryCounters_GetTotalCount(const FinishedQueryCounters);
+// Adds the counts from another counters object.
+void FinishedQueryCounters_Add
+(
+    FinishedQueryCounters *lhs,
+    const FinishedQueryCounters rhs
+);
 
 FinishedQueryInfo FinishedQueryInfo_FromQueryInfo(const QueryInfo info);
 void FinishedQueryInfo_Free(const FinishedQueryInfo query_info);
@@ -208,6 +214,36 @@ typedef struct Percentiles {
     int64_t report_durations[PERCENTILE_COUNT];
 } Percentiles;
 
+
+// Various queries' duration statistics.
+typedef struct Statistics {
+    // Statistics for the wait durations in milliseconds.
+    hdr_histogram *wait_durations;
+    // Statistics for the execution durations in milliseconds.
+    hdr_histogram *execution_durations;
+    // Statistics for the report durations in milliseconds.
+    hdr_histogram *report_durations;
+    // Statistics for the three durations above in total, in milliseconds.
+    hdr_histogram *total_durations;
+} Statistics;
+
+// Initializes the data in already allocated object.
+// Returns false on error, true otherwise.
+bool Statistics_New(Statistics *);
+// Adds (merges) the data from another statistics object.
+void Statistics_Add(Statistics *lhs, const Statistics rhs);
+void Statistics_RecordWaitDuration(Statistics *, const millis_t);
+void Statistics_RecordExecutionDuration(Statistics *, const millis_t);
+void Statistics_RecordReportDuration(Statistics *, const millis_t);
+void Statistics_RecordTotalDuration(Statistics *, const millis_t);
+// Returns the percentiles of values of durations of each stage of a query.
+Percentiles Statistics_GetPercentiles(const Statistics);
+// Resets the statistics.
+void Statistics_Reset(Statistics *statistics);
+// Frees the memory allocated for statistics.
+void Statistics_Free(Statistics *statistics);
+
+// Information about a graph.
 typedef struct Info {
     // Storage for query information for waiting queries.
     QueryInfoStorage waiting_queries;
@@ -223,14 +259,8 @@ typedef struct Info {
     atomic_uint_fast64_t max_query_pipeline_time;
     // Finished query counters with states.
     FinishedQueryCounters finish_query_counters;
-    // Statistics for the wait durations in milliseconds.
-    hdr_histogram *wait_durations;
-    // Statistics for the execution durations in milliseconds.
-    hdr_histogram *execution_durations;
-    // Statistics for the report durations in milliseconds.
-    hdr_histogram *report_durations;
-    // Statistics for the three durations above in total, in milliseconds.
-    hdr_histogram *total_durations;
+    // Statistics of the queries we currently keep track of.
+    Statistics statistics;
     // A global lock for the object. Used as an inverse lock - allows parallel
     // writers but just one reader. This is done that way as the parallel
     // writes are guaranteed to happen lock-free or without race conditions,
@@ -311,9 +341,8 @@ QueryInfoStorage* Info_GetExecutingQueriesStorage(Info *info);
 // Returns a pointer to the underlying reporting queries storage per thread.
 // Must be accessed within the Info_Lock and Info_Unlock.
 QueryInfoStorage* Info_GetReportingQueriesStorage(Info *info);
-// Returns the percentiles of values of durations of each stage of a query.
-// Must be accessed within the Info_Lock and Info_Unlock.
-Percentiles Info_GetDurationsPercentiles(Info *info);
+// Returns the statistics accumulated.
+Statistics Info_GetStatistics(const Info);
 // Resizes the finished queries storage.
 void Info_SetCapacityForFinishedQueriesStorage(const uint32_t count);
 // Views the circular buffer of finished queries.
