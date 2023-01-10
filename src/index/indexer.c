@@ -143,7 +143,7 @@ static void _indexer_PopTask
 	ASSERT(res == 0);
 
 	// remove task to queue
-	if(CircularBuffer_Empty(indexer->q)) {
+	if(CircularBuffer_Empty(indexer->q) || unlikely(rdb_load_in_progress)) {
 		// waiting for work
 		// lock conditional variable mutex
 		pthread_mutex_lock(&indexer->cm);
