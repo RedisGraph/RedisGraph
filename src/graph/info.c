@@ -90,6 +90,21 @@ uint64_t FinishedQueryCounters_GetTotalCount
          + counters.write_timedout_count;
 }
 
+void FinishedQueryCounters_Add
+(
+    FinishedQueryCounters *lhs,
+    const FinishedQueryCounters rhs
+) {
+    REQUIRE_ARG(lhs);
+
+    lhs->readonly_failed_count += rhs.readonly_failed_count;
+    lhs->readonly_succeeded_count += rhs.readonly_succeeded_count;
+    lhs->readonly_timedout_count += rhs.readonly_timedout_count;
+    lhs->write_failed_count += rhs.write_failed_count;
+    lhs->write_succeeded_count += rhs.write_succeeded_count;
+    lhs->write_timedout_count += rhs.write_timedout_count;
+}
+
 void _FinishedQueryCounters_Reset
 (
     FinishedQueryCounters *counters
@@ -562,6 +577,144 @@ static bool _Info_UnlockWaitingQueries(Info *info) {
     return _unlock_rwlock(&info->waiting_queries_rwlock);
 }
 
+bool Statistics_New(Statistics *stat) {
+    bool histogram_initialized = _histogram_init(&stat->wait_durations);
+
+    REQUIRE_TRUE_OR_RETURN(histogram_initialized, false);
+
+    histogram_initialized = _histogram_init(&stat->execution_durations);
+
+    REQUIRE_TRUE_OR_RETURN(histogram_initialized, false);
+
+    histogram_initialized = _histogram_init(&stat->report_durations);
+
+    REQUIRE_TRUE_OR_RETURN(histogram_initialized, false);
+
+    histogram_initialized = _histogram_init(&stat->total_durations);
+
+    REQUIRE_TRUE_OR_RETURN(histogram_initialized, false);
+
+    return true;
+}
+
+void Statistics_Add
+(
+    Statistics *lhs,
+    const Statistics rhs
+) {
+    REQUIRE_ARG(lhs);
+
+    hdr_add(lhs->wait_durations, rhs.wait_durations);
+    hdr_add(lhs->execution_durations, rhs.execution_durations);
+    hdr_add(lhs->report_durations, rhs.report_durations);
+    hdr_add(lhs->total_durations, rhs.total_durations);
+}
+
+void Statistics_RecordWaitDuration
+(
+    Statistics *statistics,
+    const millis_t duration
+) {
+    REQUIRE_ARG(statistics);
+    hdr_record_value(statistics->wait_durations, duration);
+}
+
+void Statistics_RecordExecutionDuration
+(
+    Statistics *statistics,
+    const millis_t duration
+) {
+    REQUIRE_ARG(statistics);
+    hdr_record_value(statistics->execution_durations, duration);
+}
+
+void Statistics_RecordReportDuration
+(
+    Statistics *statistics,
+    const millis_t duration
+) {
+    REQUIRE_ARG(statistics);
+    hdr_record_value(statistics->report_durations, duration);
+}
+
+void Statistics_RecordTotalDuration
+(
+    Statistics *statistics,
+    const millis_t duration
+) {
+    REQUIRE_ARG(statistics);
+    hdr_record_value(statistics->total_durations, duration);
+}
+
+Percentiles Statistics_GetPercentiles(const Statistics stat) {
+    static const double QUANTILES[] = {
+        25.0f,
+        50.0f,
+        75.0f,
+        90.0f,
+        95.0f,
+        99.0f
+    };
+    static const size_t LENGTH = sizeof(QUANTILES) / sizeof(QUANTILES[0]);
+    ASSERT(LENGTH == PERCENTILE_COUNT);
+
+    Percentiles percentiles = {};
+
+    bool ret = true;
+
+    if (stat.wait_durations->total_count) {
+        ret = !hdr_value_at_percentiles(
+            stat.wait_durations,
+            QUANTILES,
+            percentiles.wait_durations,
+            LENGTH);
+        ASSERT(ret);
+    }
+
+    if (stat.execution_durations->total_count) {
+        ret = !hdr_value_at_percentiles(
+            stat.execution_durations,
+            QUANTILES,
+            percentiles.execution_durations,
+            LENGTH);
+        ASSERT(ret);
+    }
+
+    if (stat.report_durations->total_count) {
+        ret = !hdr_value_at_percentiles(
+            stat.report_durations,
+            QUANTILES,
+            percentiles.report_durations,
+            LENGTH);
+        ASSERT(ret);
+    }
+
+    if (stat.total_durations->total_count) {
+        ret = !hdr_value_at_percentiles(
+            stat.total_durations,
+            QUANTILES,
+            percentiles.total_durations,
+            LENGTH);
+        ASSERT(ret);
+    }
+
+    return percentiles;
+}
+
+void Statistics_Reset(Statistics *statistics) {
+    hdr_reset(statistics->wait_durations);
+    hdr_reset(statistics->execution_durations);
+    hdr_reset(statistics->report_durations);
+    hdr_reset(statistics->total_durations);
+}
+
+void Statistics_Free(Statistics *statistics) {
+    hdr_close(statistics->wait_durations);
+    hdr_close(statistics->execution_durations);
+    hdr_close(statistics->report_durations);
+    hdr_close(statistics->total_durations);
+}
+
 bool Info_New(Info *info) {
     REQUIRE_ARG_OR_RETURN(info, false);
     // Compensate for the main thread.
@@ -587,21 +740,7 @@ bool Info_New(Info *info) {
 
     REQUIRE_TRUE_OR_RETURN(lock_initialized, false);
 
-    bool histogram_initialized = _histogram_init(&info->wait_durations);
-
-    REQUIRE_TRUE_OR_RETURN(histogram_initialized, false);
-
-    histogram_initialized = _histogram_init(&info->execution_durations);
-
-    REQUIRE_TRUE_OR_RETURN(histogram_initialized, false);
-
-    histogram_initialized = _histogram_init(&info->report_durations);
-
-    REQUIRE_TRUE_OR_RETURN(histogram_initialized, false);
-
-    histogram_initialized = _histogram_init(&info->total_durations);
-
-    REQUIRE_TRUE_OR_RETURN(histogram_initialized, false);
+    REQUIRE_TRUE_OR_RETURN(Statistics_New(&info->statistics), false);
 
     return true;
 }
@@ -610,10 +749,7 @@ void Info_Reset(Info *info) {
     REQUIRE_ARG(info);
 
     _FinishedQueryCounters_Reset(&info->finish_query_counters);
-    hdr_reset(info->wait_durations);
-    hdr_reset(info->execution_durations);
-    hdr_reset(info->report_durations);
-    hdr_reset(info->total_durations);
+    Statistics_Reset(&info->statistics);
 }
 
 bool Info_Free(Info *info) {
@@ -629,10 +765,7 @@ bool Info_Free(Info *info) {
         &info->inverse_global_lock);
     ASSERT(lock_destroyed == 0 && "Global rwlock destroy error.");
 
-    hdr_close(info->wait_durations);
-    hdr_close(info->execution_durations);
-    hdr_close(info->report_durations);
-    hdr_close(info->total_durations);
+    Statistics_Free(&info->statistics);
 
     return lock_destroyed == 0;
 }
@@ -701,7 +834,7 @@ void Info_IndicateQueryStartedExecution
                 &info->executing_queries_per_thread,
                 thread_id,
                 query_info);
-            hdr_record_value(info->wait_durations, QueryInfo_GetWaitingTime(query_info));
+            Statistics_RecordWaitDuration(&info->statistics, QueryInfo_GetWaitingTime(query_info));
             ASSERT(set);
             if (!set) {
                 _Info_UnlockWaitingQueries(info);
@@ -738,7 +871,7 @@ void Info_IndicateQueryStartedReporting
         return;
     }
     QueryInfo_UpdateExecutionTime(query_info);
-    hdr_record_value(info->execution_durations, QueryInfo_GetExecutionTime(*query_info));
+    Statistics_RecordExecutionDuration(&info->statistics, QueryInfo_GetExecutionTime(*query_info));
 
     const bool moved = _Info_MoveQueryInfoBetweenStorages(
         &info->executing_queries_per_thread,
@@ -771,10 +904,10 @@ void Info_IndicateQueryFinishedReporting
         return;
     }
     QueryInfo_UpdateReportingTime(query_info);
-    hdr_record_value(info->report_durations, QueryInfo_GetReportingTime(*query_info));
+    Statistics_RecordReportDuration(&info->statistics, QueryInfo_GetReportingTime(*query_info));
     FinishedQueryInfo finished = FinishedQueryInfo_FromQueryInfo(*query_info);
     const millis_t total_duration = _FinishedQueryInfo_GetTotalDuration(finished);
-    hdr_record_value(info->total_durations, total_duration);
+    Statistics_RecordTotalDuration(&info->statistics, total_duration);
     _add_finished_query(finished);
     QueryInfoStorage_ResetElement(
         &info->reporting_queries_per_thread,
@@ -908,61 +1041,8 @@ QueryInfoStorage* Info_GetReportingQueriesStorage(Info *info) {
     return &info->reporting_queries_per_thread;
 }
 
-Percentiles Info_GetDurationsPercentiles(Info *info) {
-    ASSERT(info && "Info is not provided.");
-
-    static const double QUANTILES[] = {
-        25.0f,
-        50.0f,
-        75.0f,
-        90.0f,
-        95.0f,
-        99.0f
-    };
-    static const size_t LENGTH = sizeof(QUANTILES) / sizeof(QUANTILES[0]);
-    ASSERT(LENGTH == PERCENTILE_COUNT);
-
-    Percentiles percentiles = {};
-
-    bool ret = true;
-
-    if (info->wait_durations->total_count) {
-        ret = !hdr_value_at_percentiles(
-            info->wait_durations,
-            QUANTILES,
-            percentiles.wait_durations,
-            LENGTH);
-        ASSERT(ret);
-    }
-
-    if (info->execution_durations->total_count) {
-        ret = !hdr_value_at_percentiles(
-            info->execution_durations,
-            QUANTILES,
-            percentiles.execution_durations,
-            LENGTH);
-        ASSERT(ret);
-    }
-
-    if (info->report_durations->total_count) {
-        ret = !hdr_value_at_percentiles(
-            info->report_durations,
-            QUANTILES,
-            percentiles.report_durations,
-            LENGTH);
-        ASSERT(ret);
-    }
-
-    if (info->total_durations->total_count) {
-        ret = !hdr_value_at_percentiles(
-            info->total_durations,
-            QUANTILES,
-            percentiles.total_durations,
-            LENGTH);
-        ASSERT(ret);
-    }
-
-    return percentiles;
+Statistics Info_GetStatistics(const Info info) {
+    return info.statistics;
 }
 
 static void _FinishedQueryInfoDeleter(void *user_data, void *info) {
