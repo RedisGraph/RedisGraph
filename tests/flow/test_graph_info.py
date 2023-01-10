@@ -14,7 +14,8 @@ GRAPH_ID = "GRAPH_INFO_TEST"
 INFO_QUERIES_CURRENT_COMMAND = 'GRAPH.INFO QUERIES CURRENT'
 INFO_QUERIES_PREV_COMMAND = 'GRAPH.INFO QUERIES PREV 100 --compact'
 INFO_QUERIES_CURRENT_PREV_COMMAND = 'GRAPH.INFO QUERIES CURRENT PREV 100'
-INFO_GET_COMMAND_TEMPLATE = 'GRAPH.INFO GET %s'
+INFO_GET_GENERIC_COMMAND_TEMPLATE = 'GRAPH.INFO GET %s'
+INFO_GET_STAT_COMMAND_TEMPLATE = 'GRAPH.INFO GET %s STAT'
 INFO_RESET_ALL_COMMAND = 'GRAPH.INFO RESET *'
 
 # Error messages
@@ -30,6 +31,7 @@ QUERY_STAGE_FINISHED = 3
 
 # Other
 LONG_CALCULATION_QUERY = """UNWIND (range(0, 10000000)) AS x WITH x AS x WHERE (x / 90000) = 1 RETURN x"""
+PERCENTILE_COUNTS_COUNT = 6
 
 
 class ReadOnlyQueryKind(Enum):
@@ -113,16 +115,32 @@ def get_unix_timestamp_milliseconds():
 
 
 class _testGraphInfoFlowBase(FlowTestsBase):
-    def _recreate_graph(self):
+    def _delete_graph(self):
         graph = Graph(self.conn, GRAPH_ID)
         try:
             graph.delete()
         except redis.exceptions.ResponseError:
             pass
+
+    def _create_graph_filled(self):
+        graph = Graph(self.conn, GRAPH_ID)
+
         for i in range(0, 2):
             graph.add_node(Node(label='Person', properties={'age': i}))
+
         graph.commit()
         return i + 1
+
+    def _create_graph_empty(self):
+        self.conn.execute_command('GRAPH.QUERY', GRAPH_ID, 'RETURN 1')
+
+    def _recreate_graph_empty(self):
+        self._delete_graph()
+        self._create_graph_empty()
+
+    def _recreate_graph_with_node(self):
+        self._delete_graph()
+        return self._create_graph_filled()
 
     def __init__(self, env):
         self.env = env
@@ -130,7 +148,7 @@ class _testGraphInfoFlowBase(FlowTestsBase):
         if self.env.envRunner.debugger is not None:
             self.env.skip() # valgrind is not working correctly with multi processing
         self.conn = self.env.getConnection()
-        self._recreate_graph()
+        self._recreate_graph_with_node()
 
     # Validate the GRAPH.INFO result: should contain the queries specified,
     # and exactly thath number of queries being executed.
@@ -209,7 +227,8 @@ class _testGraphInfoFlowBase(FlowTestsBase):
         nodes=0, relationships=0,
         node_labels=0, relationship_types=0,
         node_indices=0, relationship_indices=0,
-        node_property_names=0, edge_property_names=0):
+        node_property_names=0, edge_property_names=0,
+        stat=None):
         info = list_to_dict(result)
         self.env.assertEqual(info['Number of nodes'], nodes)
         self.env.assertEqual(info['Number of relationships'], relationships)
@@ -217,8 +236,8 @@ class _testGraphInfoFlowBase(FlowTestsBase):
         self.env.assertEqual(info['Number of relationship types'], relationship_types)
         self.env.assertEqual(info['Number of node indices'], node_indices)
         self.env.assertEqual(info['Number of relationship indices'], relationship_indices)
-        self.env.assertEqual(info['Total number of node property names'], node_property_names)
-        self.env.assertEqual(info['Total number of edge property names'], edge_property_names)
+        self.env.assertEqual(info['Total number of node properties'], node_property_names)
+        self.env.assertEqual(info['Total number of edge properties'], edge_property_names)
 
     def _assert_info_get_counts(self, result,
     total_query_count=0, successful_readonly=0, successful_write=0,
@@ -231,6 +250,16 @@ class _testGraphInfoFlowBase(FlowTestsBase):
         self.env.assertEqual(info['Failed write queries'], failed_write)
         self.env.assertEqual(info['Timed out read-only queries'], timedout_readonly)
         self.env.assertEqual(info['Timed out write queries'], timedout_write)
+
+    def _assert_info_get_stat(self, result,
+    total_durations=[], wait_durations=[],
+    execution_durations=[], report_durations=[]):
+        info = list_to_dict(result)
+        self.env.assertEqual(info['Query total durations'], total_durations)
+        self.env.assertEqual(info['Query wait durations'], wait_durations)
+        self.env.assertEqual(info['Query execution durations'], execution_durations)
+        self.env.assertEqual(info['Query report durations'], report_durations)
+
 
     # Runs a read-only query. A read-only query isn't just based on whether
     # it is run via GRAPH.RO_QUERY but it can also be an ordinary GRAPH.QUERY
@@ -357,8 +386,8 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
         info = list_to_dict(self.conn.execute_command(INFO_QUERIES_CURRENT_COMMAND))
         self.env.assertEqual(info[GLOBAL_INFO_KEY_NAME][CURRENT_MAXIMUM_WAIT_DURATION_KEY_NAME], 0, depth=1)
 
-    def test04_graph_info_get_current_graph(self):
-        info = self.conn.execute_command(INFO_GET_COMMAND_TEMPLATE % GRAPH_ID)
+    def test04_graph_info_get_current_graph_generic(self):
+        info = self.conn.execute_command(INFO_GET_GENERIC_COMMAND_TEMPLATE % GRAPH_ID)
         self._assert_info_get_result(info, nodes=2, node_labels=1, node_property_names=2)
         query = """MATCH (p:Person) CREATE (p2:Person { Name: 'Victor', Country: 'The Netherlands' })-[e:knows { Since_Year: '1970'}]->(p)"""
         graph = Graph(self.conn, GRAPH_ID)
@@ -367,8 +396,69 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
         self.env.assertEquals(result.relationships_created, 2, depth=1)
         self.env.assertEquals(result.properties_set, 6, depth=1)
 
-        info = self.conn.execute_command(INFO_GET_COMMAND_TEMPLATE % GRAPH_ID)
+        info = self.conn.execute_command(INFO_GET_GENERIC_COMMAND_TEMPLATE % GRAPH_ID)
         self._assert_info_get_result(info, nodes=4, node_labels=1, relationships=2, relationship_types=1, node_property_names=6, edge_property_names=2)
+
+    def test04_graph_info_get_current_graph_stat(self):
+        self._recreate_graph_empty()
+        info = self.conn.execute_command(INFO_GET_STAT_COMMAND_TEMPLATE % GRAPH_ID)
+        info = list_to_dict(info)
+
+        '''
+        When there have been no queries for this graph, the counters should
+        be all set to zero.
+        '''
+        total_durations = [0] * PERCENTILE_COUNTS_COUNT
+        wait_durations = [0] * PERCENTILE_COUNTS_COUNT
+        execution_durations = [0] * PERCENTILE_COUNTS_COUNT
+        report_durations = [0] * PERCENTILE_COUNTS_COUNT
+
+        self.env.assertEqual(info['Query total durations'], total_durations, depth=1)
+        self.env.assertEqual(info['Query wait durations'], wait_durations, depth=1)
+        self.env.assertEqual(info['Query execution durations'], execution_durations, depth=1)
+        self.env.assertEqual(info['Query report durations'], report_durations, depth=1)
+
+        '''When there a query has been performed, the counters should reflect
+        the durations respectively.'''
+        # Execute a query.
+        query = """UNWIND (range(0, 1000000)) AS x WITH x AS x WHERE (x / 90000) = 1 RETURN x"""
+        graph = Graph(self.conn, GRAPH_ID)
+        results = graph.query(query)
+        execution_time = results.statistics['internal execution time']
+
+        # Get new statistics.
+        info = self.conn.execute_command(INFO_GET_STAT_COMMAND_TEMPLATE % GRAPH_ID)
+        info = list_to_dict(info)
+
+        # The error margin in milliseconds allowed.
+        error_margin = 10
+
+        # Now that we can't know the internal wait, execution and report time
+        # from the outside, we just check that those are greater than zero and
+        # less than the total execution time.
+        got_total_durations = info['Query total durations']
+        self.env.assertEqual(got_total_durations[0:2], [0, 0], depth=1)
+        # The values should be in the range of execution time +- error margin.
+        self.env.assertGreaterEqual(got_total_durations[2:6], [execution_time - error_margin] * 4, depth=1)
+        self.env.assertLessEqual(got_total_durations[2:6], [execution_time + error_margin] * 4, depth=1)
+
+        got_wait_durations = info['Query wait durations']
+        self.env.assertEqual(got_wait_durations[0:2], [0, 0], depth=1)
+        # The values should be in the range of [0;execution time]
+        self.env.assertGreaterEqual(got_wait_durations[2:6], [0] * 4, depth=1)
+        self.env.assertLessEqual(got_wait_durations[2:6], [execution_time] * 4, depth=1)
+
+        got_execution_durations = info['Query wait durations']
+        self.env.assertEqual(got_execution_durations[0:2], [0, 0], depth=1)
+        # The values should be in the range of [0;execution time]
+        self.env.assertGreaterEqual(got_execution_durations[2:6], [0] * 4, depth=1)
+        self.env.assertLessEqual(got_execution_durations[2:6], [execution_time] * 4, depth=1)
+
+        got_report_durations = info['Query report durations']
+        self.env.assertEqual(got_report_durations[0:2], [0, 0], depth=1)
+        # The values should be in the range of [0;execution time]
+        self.env.assertGreaterEqual(got_report_durations[2:6], [0] * 4, depth=1)
+        self.env.assertLessEqual(got_report_durations[2:6], [execution_time] * 4, depth=1)
 
     def test05_graph_info_queries_prev(self):
         query = """CYPHER end=100 RETURN reduce(sum = 0, n IN range(1, $end) | sum ^ n)"""
@@ -450,7 +540,7 @@ class testGraphInfoGetFlow(_testGraphInfoFlowBase):
         _testGraphInfoFlowBase.__init__(self, Env(decodeResponses=True, moduleArgs='TIMEOUT_MAX 1000'))
 
     def test01_info_get_specific_counters_successful(self):
-        nodes = self._recreate_graph()
+        nodes = self._recreate_graph_with_node()
 
         query = 'GRAPH.INFO RESET %s' % GRAPH_ID
         results = self.conn.execute_command(query)
@@ -493,7 +583,7 @@ class testGraphInfoGetFlow(_testGraphInfoFlowBase):
         self._assert_info_get_counts(results)
 
     def test02_info_get_specific_counters_failed_at_runtime(self):
-        nodes = self._recreate_graph()
+        nodes = self._recreate_graph_with_node()
 
         query = 'GRAPH.INFO RESET %s' % GRAPH_ID
         results = self.conn.execute_command(query)
@@ -548,7 +638,7 @@ class testGraphInfoGetFlow(_testGraphInfoFlowBase):
         expected to be zero.
         '''
 
-        nodes = self._recreate_graph()
+        nodes = self._recreate_graph_with_node()
 
         query = 'GRAPH.INFO RESET %s' % GRAPH_ID
         results = self.conn.execute_command(query)
@@ -588,7 +678,7 @@ class testGraphInfoGetFlow(_testGraphInfoFlowBase):
                 failed_write=0)
 
     def test03_info_get_specific_counters_timedout(self):
-        nodes = self._recreate_graph()
+        nodes = self._recreate_graph_with_node()
 
         query = 'GRAPH.INFO RESET %s' % GRAPH_ID
         results = self.conn.execute_command(query)
