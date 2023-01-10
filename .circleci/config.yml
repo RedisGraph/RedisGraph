@@ -725,7 +725,7 @@ workflows:
           <<: *always
       - benchmark-profiler:
           context: common
-          <<: *on-any-branch
+          <<: *always
 
   nightly:
     triggers:
