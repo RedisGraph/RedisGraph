@@ -6,6 +6,7 @@
 
 #include "util/arr.h"
 #include "util/num.h"
+#include "util/module.h"
 #include "redismodule.h"
 #include "graph/graphcontext.h"
 #include "query_ctx.h"
@@ -46,208 +47,11 @@
 // A duplicate of what is set in config.c
 #define MAX_QUERIES_COUNT 10000
 
-// TODO move to a common place.
-// A wrapper for RedisModule_ functions which returns immediately on failure.
-#define REDISMODULE_DO(doable) \
-    do { \
-        const int ret = doable; \
-        ASSERT(ret == REDISMODULE_OK \
-         && "Redis module function " #doable " returned an error."); \
-        if (ret != REDISMODULE_OK) { \
-            return ret; \
-        } \
-    } while(0);
 
 #define CHECKED_ADD_OR_RETURN(lhs, rhs, return_on_error) \
     if (!checked_add_u64(lhs, rhs, &lhs)) { \
         return return_on_error; \
     }
-
-// Replies with either a map or array, depending on the compact mode flag.
-int _reply_map
-(
-    RedisModuleCtx *ctx,
-    const bool is_compact_mode,
-    const long key_value_count
-) {
-    ASSERT(ctx);
-    if (!ctx) {
-        return REDISMODULE_ERR;
-    }
-
-    if (is_compact_mode) {
-        REDISMODULE_DO(RedisModule_ReplyWithArray(ctx, key_value_count));
-    } else {
-        REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, key_value_count));
-    }
-
-    return REDISMODULE_OK;
-}
-
-// Sets the postponed value either for a map or an array, depending on the
-// compact mode flag.
-void _reply_map_set_postponed_length
-(
-    RedisModuleCtx *ctx,
-    const bool is_compact_mode,
-    const long length
-) {
-    ASSERT(ctx);
-    ASSERT(length != REDISMODULE_POSTPONED_LEN);
-    if (!ctx || length == REDISMODULE_POSTPONED_LEN) {
-        return;
-    }
-
-    if (is_compact_mode) {
-        RedisModule_ReplySetArrayLength(ctx, length);
-    } else {
-        RedisModule_ReplySetMapLength(ctx, length);
-    }
-
-    return;
-}
-
-// Replies with the key(C string)-value(long long) pair when the compact mode is
-// off, and with just the value when the compact mode is on.
-int _reply_key_value_number
-(
-    RedisModuleCtx *ctx,
-    const bool is_compact_mode,
-    const char *key,
-    const long long value
-) {
-    ASSERT(ctx);
-    ASSERT(key);
-
-    if (!ctx || !key) {
-        return REDISMODULE_ERR;
-    }
-
-    if (!is_compact_mode) {
-        REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, key));
-    }
-
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, value));
-
-    return REDISMODULE_OK;
-}
-
-// Replies with the key(C string)-value(long long) pair when the compact mode is
-// off, and with just the value when the compact mode is on.
-int _reply_key_value_numbers
-(
-    RedisModuleCtx *ctx,
-    const bool is_compact_mode,
-    const char *key,
-    const int64_t *values,
-    const size_t length
-) {
-    ASSERT(ctx);
-    ASSERT(key);
-
-    if (!ctx || !key) {
-        return REDISMODULE_ERR;
-    }
-    if (!values || !length) {
-        // Nothing to do.
-        return REDISMODULE_OK;
-    }
-
-    if (!is_compact_mode) {
-        REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, key));
-    }
-
-    REDISMODULE_DO(RedisModule_ReplyWithArray(ctx, length));
-    for (size_t i = 0; i < length; ++i) {
-        REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, values[i]));
-    }
-
-    return REDISMODULE_OK;
-}
-
-// Replies with the key(C string)-value(C string) pair when the compact mode is
-// off, and with just the value when the compact mode is on.
-int _reply_key_value_string
-(
-    RedisModuleCtx *ctx,
-    const bool is_compact_mode,
-    const char *key,
-    const char *value
-) {
-    ASSERT(ctx);
-    ASSERT(key);
-    ASSERT(value);
-
-    if (!ctx || !key || !value) {
-        return REDISMODULE_ERR;
-    }
-
-    if (!is_compact_mode) {
-        REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, key));
-    }
-
-    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, value));
-
-    return REDISMODULE_OK;
-}
-
-// typedef struct ReplyRecorder {
-//     RedisModuleCtx *ctx;
-//     bool is_compact_mode;
-//     uint64_t element_count;
-// } ReplyRecorder;
-
-
-// static ReplyRecorder ReplyRecorder_New
-// (
-//     RedisModuleCtx *ctx,
-//     const bool is_compact_mode,
-//     bool *has_started
-// ) {
-//     const ReplyRecorder recorder = {
-//         .context = ctx,
-//         .is_compact_mode = is_compact_mode,
-//         .element_count = 0
-//     };
-
-//     const int status = _reply_map(
-//         ctx,
-//         is_compact_mode,
-//         REDISMODULE_POSTPONED_LEN
-//     );
-
-//     ASSERT(status == REDISMODULE_OK);
-//     if (has_started) {
-//         *has_started = status == REDISMODULE_OK;
-//     }
-
-//     return recorder;
-// }
-
-// static int ReplyRecorder_AddNumber
-// (
-//     ReplyRecorder *recorder,
-//     const char *key,
-//     const long long value
-// ) {
-//     ASSERT(recorder);
-//     if (!recorder || !recorder->ctx) {
-//         return REDISMODULE_ERR;
-//     }
-//     _reply_key_value_number(
-//         recorder.ctx,
-//         recorder.is_compact_mode,
-
-//     )
-// }
-
-// static void ReplyRecorder_Finish(const ReplyRecorder recorder) {
-//     _reply_map_set_postponed_length(
-//         recorder.ctx,
-//         recorder.is_compact_mode,
-//         recorder.element_count
-//     );
-// }
 
 // Global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
@@ -646,27 +450,27 @@ static int _reply_global_info
         return REDISMODULE_ERR;
     }
 
-    REDISMODULE_DO(_reply_map(ctx, is_compact_mode, KEY_VALUE_COUNT));
+    REDISMODULE_DO(module_reply_map(ctx, is_compact_mode, KEY_VALUE_COUNT));
     // 1
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         MAX_QUERY_WAIT_TIME_KEY_NAME,
         global_info.max_query_wait_time_time));
     // 2
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         TOTAL_WAITING_QUERIES_COUNT_KEY_NAME,
         global_info.total_waiting_queries_count));
     // 3
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         TOTAL_EXECUTING_QUERIES_COUNT_KEY_NAME,
         global_info.total_executing_queries_count));
     // 4
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         TOTAL_REPORTING_QUERIES_COUNT_KEY_NAME,
@@ -756,51 +560,51 @@ static int _reply_graph_query_info
         + info.execution_duration
         + info.report_duration;
 
-    REDISMODULE_DO(_reply_map(ctx, is_compact_mode, KEY_VALUE_COUNT));
+    REDISMODULE_DO(module_reply_map(ctx, is_compact_mode, KEY_VALUE_COUNT));
     // 1
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         RECEIVED_TIMESTAMP_KEY_NAME,
         info.received_at_ms));
     // 2
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         STAGE_KEY_NAME,
         (long long)info.stage));
     // 3
-    REDISMODULE_DO(_reply_key_value_string(
+    REDISMODULE_DO(module_reply_key_value_string(
         ctx,
         is_compact_mode,
         GRAPH_NAME_KEY_NAME,
         info.graph_name));
     // 4
-    REDISMODULE_DO(_reply_key_value_string(
+    REDISMODULE_DO(module_reply_key_value_string(
         ctx,
         is_compact_mode,
         QUERY_KEY_NAME,
         info.query_string));
     // 5
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         TOTAL_DURATION_KEY_NAME,
         total_spent_time));
     // 6
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         WAIT_DURATION_KEY_NAME,
         info.wait_duration));
     // 7
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         EXECUTION_DURATION_KEY_NAME,
         info.execution_duration));
     // 8
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         REPORT_DURATION_KEY_NAME,
@@ -1115,69 +919,69 @@ static int _reply_with_get_aggregated_graph_info
 
     ASSERT(ctx);
 
-    REDISMODULE_DO(_reply_map(
+    REDISMODULE_DO(module_reply_map(
         ctx,
         is_compact_mode,
         REDISMODULE_POSTPONED_LEN
     ));
     // 1
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         "Number of graphs",
         info.graph_count
     ));
     // 2
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         "Number of nodes",
         info.node_count
     ));
     // 3
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         "Number of relationships",
         info.relationship_count
     ));
     // 4
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         "Number of node labels",
         info.node_label_count
     ));
     // 5
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         "Number of relationship types",
         info.relationship_type_count
     ));
     // 6
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         "Number of node indices",
         info.node_index_count
     ));
     // 7
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         "Number of relationship indices",
         info.relationship_index_count
     ));
     // 8
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         "Total number of edge properties",
         info.node_property_name_count
     ));
     // 9
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         "Total number of node properties",
@@ -1189,49 +993,49 @@ static int _reply_with_get_aggregated_graph_info
         key_value_count += KEY_VALUE_COUNT_COUNTS_FLAG;
 
         // 1
-        REDISMODULE_DO(_reply_key_value_number(
+        REDISMODULE_DO(module_reply_key_value_number(
             ctx,
             is_compact_mode,
             "Total number of queries",
             FinishedQueryCounters_GetTotalCount(info.counters)
         ));
         // 2
-        REDISMODULE_DO(_reply_key_value_number(
+        REDISMODULE_DO(module_reply_key_value_number(
             ctx,
             is_compact_mode,
             "Successful read-only queries",
             info.counters.readonly_succeeded_count
         ));
         // 3
-        REDISMODULE_DO(_reply_key_value_number(
+        REDISMODULE_DO(module_reply_key_value_number(
             ctx,
             is_compact_mode,
             "Successful write queries",
             info.counters.write_succeeded_count
         ));
         // 4
-        REDISMODULE_DO(_reply_key_value_number(
+        REDISMODULE_DO(module_reply_key_value_number(
             ctx,
             is_compact_mode,
             "Failed read-only queries",
             info.counters.readonly_failed_count
         ));
         // 5
-        REDISMODULE_DO(_reply_key_value_number(
+        REDISMODULE_DO(module_reply_key_value_number(
             ctx,
             is_compact_mode,
             "Failed write queries",
             info.counters.write_failed_count
         ));
         // 6
-        REDISMODULE_DO(_reply_key_value_number(
+        REDISMODULE_DO(module_reply_key_value_number(
             ctx,
             is_compact_mode,
             "Timed out read-only queries",
             info.counters.readonly_timedout_count
         ));
         // 7
-        REDISMODULE_DO(_reply_key_value_number(
+        REDISMODULE_DO(module_reply_key_value_number(
             ctx,
             is_compact_mode,
             "Timed out write queries",
@@ -1247,7 +1051,7 @@ static int _reply_with_get_aggregated_graph_info
             = Statistics_GetPercentiles(info.statistics);
 
         // 1
-        REDISMODULE_DO(_reply_key_value_numbers(
+        REDISMODULE_DO(module_reply_key_value_numbers(
             ctx,
             is_compact_mode,
             "Query total durations",
@@ -1255,7 +1059,7 @@ static int _reply_with_get_aggregated_graph_info
             sizeof(percentiles.total_durations) / sizeof(percentiles.total_durations[0])
         ));
         // 2
-        REDISMODULE_DO(_reply_key_value_numbers(
+        REDISMODULE_DO(module_reply_key_value_numbers(
             ctx,
             is_compact_mode,
             "Query wait durations",
@@ -1263,7 +1067,7 @@ static int _reply_with_get_aggregated_graph_info
             sizeof(percentiles.wait_durations) / sizeof(percentiles.wait_durations[0])
         ));
         // 3
-        REDISMODULE_DO(_reply_key_value_numbers(
+        REDISMODULE_DO(module_reply_key_value_numbers(
             ctx,
             is_compact_mode,
             "Query execution durations",
@@ -1271,7 +1075,7 @@ static int _reply_with_get_aggregated_graph_info
             sizeof(percentiles.execution_durations) / sizeof(percentiles.execution_durations[0])
         ));
         // 4
-        REDISMODULE_DO(_reply_key_value_numbers(
+        REDISMODULE_DO(module_reply_key_value_numbers(
             ctx,
             is_compact_mode,
             "Query report durations",
@@ -1288,7 +1092,7 @@ static int _reply_with_get_aggregated_graph_info
         key_value_count += KEY_VALUE_COUNT_MEM_FLAG;
 
         // 1
-        REDISMODULE_DO(_reply_key_value_string(
+        REDISMODULE_DO(module_reply_key_value_string(
             ctx,
             is_compact_mode,
             "[MEM]",
@@ -1296,7 +1100,7 @@ static int _reply_with_get_aggregated_graph_info
         ));
     }
 
-    _reply_map_set_postponed_length(ctx, is_compact_mode, key_value_count);
+    module_reply_map_set_postponed_length(ctx, is_compact_mode, key_value_count);
 
     return REDISMODULE_OK;
 }
@@ -1315,69 +1119,69 @@ static int _reply_with_get_graph_info
     ASSERT(gc);
     ASSERT(gc->g);
 
-    REDISMODULE_DO(_reply_map(
+    REDISMODULE_DO(module_reply_map(
         ctx,
         is_compact_mode,
         REDISMODULE_POSTPONED_LEN
     ));
     // 1
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         "Number of nodes",
         Graph_NodeCount(gc->g) - Graph_DeletedNodeCount(gc->g)
     ));
     // 2
-    REDISMODULE_DO( _reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         "Number of relationships",
         Graph_EdgeCount(gc->g) - Graph_DeletedEdgeCount(gc->g)
     ));
     // 3
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         "Number of node labels",
         Graph_LabelTypeCount(gc->g)
     ));
     // 4
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         "Number of relationship types",
         Graph_RelationTypeCount(gc->g)
     ));
     // 5
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         "Number of node indices",
         GraphContext_NodeIndexCount(gc)
     ));
     // 6
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         "Number of relationship indices",
         GraphContext_EdgeIndexCount(gc)
     ));
     // 7
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         "Number of unique property names",
         GraphContext_AttributeCount(gc)
     ));
     // 8
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         "Total number of edge properties",
         GraphContext_AllEdgePropertyNamesCount(gc)
     ));
     // 9
-    REDISMODULE_DO(_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         ctx,
         is_compact_mode,
         "Total number of node properties",
@@ -1392,49 +1196,49 @@ static int _reply_with_get_graph_info
             = Info_GetFinishedQueryCounters(gc->info);
 
         // 1
-        REDISMODULE_DO(_reply_key_value_number(
+        REDISMODULE_DO(module_reply_key_value_number(
             ctx,
             is_compact_mode,
             "Total number of queries",
             FinishedQueryCounters_GetTotalCount(counters)
         ));
         // 2
-        REDISMODULE_DO(_reply_key_value_number(
+        REDISMODULE_DO(module_reply_key_value_number(
             ctx,
             is_compact_mode,
             "Successful read-only queries",
             counters.readonly_succeeded_count
         ));
         // 3
-        REDISMODULE_DO(_reply_key_value_number(
+        REDISMODULE_DO(module_reply_key_value_number(
             ctx,
             is_compact_mode,
             "Successful write queries",
             counters.write_succeeded_count
         ));
         // 4
-        REDISMODULE_DO(_reply_key_value_number(
+        REDISMODULE_DO(module_reply_key_value_number(
             ctx,
             is_compact_mode,
             "Failed read-only queries",
             counters.readonly_failed_count
         ));
         // 5
-        REDISMODULE_DO(_reply_key_value_number(
+        REDISMODULE_DO(module_reply_key_value_number(
             ctx,
             is_compact_mode,
             "Failed write queries",
             counters.write_failed_count
         ));
         // 6
-        REDISMODULE_DO(_reply_key_value_number(
+        REDISMODULE_DO(module_reply_key_value_number(
             ctx,
             is_compact_mode,
             "Timed out read-only queries",
             counters.readonly_timedout_count
         ));
         // 7
-        REDISMODULE_DO(_reply_key_value_number(
+        REDISMODULE_DO(module_reply_key_value_number(
             ctx,
             is_compact_mode,
             "Timed out write queries",
@@ -1452,7 +1256,7 @@ static int _reply_with_get_graph_info
             = Statistics_GetPercentiles(statistics);
 
         // 1
-        REDISMODULE_DO(_reply_key_value_numbers(
+        REDISMODULE_DO(module_reply_key_value_numbers(
             ctx,
             is_compact_mode,
             "Query total durations",
@@ -1461,7 +1265,7 @@ static int _reply_with_get_graph_info
         ));
 
         // 2
-        REDISMODULE_DO(_reply_key_value_numbers(
+        REDISMODULE_DO(module_reply_key_value_numbers(
             ctx,
             is_compact_mode,
             "Query wait durations",
@@ -1470,7 +1274,7 @@ static int _reply_with_get_graph_info
         ));
 
         // 3
-        REDISMODULE_DO(_reply_key_value_numbers(
+        REDISMODULE_DO(module_reply_key_value_numbers(
             ctx,
             is_compact_mode,
             "Query execution durations",
@@ -1479,7 +1283,7 @@ static int _reply_with_get_graph_info
         ));
 
         // 4
-        REDISMODULE_DO(_reply_key_value_numbers(
+        REDISMODULE_DO(module_reply_key_value_numbers(
             ctx,
             is_compact_mode,
             "Query report durations",
@@ -1496,7 +1300,7 @@ static int _reply_with_get_graph_info
         key_value_count += KEY_VALUE_COUNT_MEM_FLAG;
 
         // 1
-        REDISMODULE_DO(_reply_key_value_string(
+        REDISMODULE_DO(module_reply_key_value_string(
             ctx,
             is_compact_mode,
             "[MEM]",
@@ -1504,7 +1308,7 @@ static int _reply_with_get_graph_info
         ));
     }
 
-    _reply_map_set_postponed_length(ctx, is_compact_mode, key_value_count);
+    module_reply_map_set_postponed_length(ctx, is_compact_mode, key_value_count);
 
     return REDISMODULE_OK;
 }
@@ -1724,7 +1528,7 @@ static int _info_queries
 
     uint8_t top_level_count = 1;
 
-    REDISMODULE_DO(_reply_map(
+    REDISMODULE_DO(module_reply_map(
         ctx,
         is_compact_mode,
         REDISMODULE_POSTPONED_LEN));
@@ -1739,7 +1543,7 @@ static int _info_queries
         &top_level_count
     ));
 
-    _reply_map_set_postponed_length(
+    module_reply_map_set_postponed_length(
         ctx,
         is_compact_mode,
         top_level_count
