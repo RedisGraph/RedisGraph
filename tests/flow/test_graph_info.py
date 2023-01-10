@@ -227,8 +227,7 @@ class _testGraphInfoFlowBase(FlowTestsBase):
         nodes=0, relationships=0,
         node_labels=0, relationship_types=0,
         node_indices=0, relationship_indices=0,
-        node_property_names=0, edge_property_names=0,
-        stat=None):
+        node_property_names=0, edge_property_names=0):
         info = list_to_dict(result)
         self.env.assertEqual(info['Number of nodes'], nodes)
         self.env.assertEqual(info['Number of relationships'], relationships)
@@ -423,42 +422,34 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
         # Execute a query.
         query = """UNWIND (range(0, 1000000)) AS x WITH x AS x WHERE (x / 90000) = 1 RETURN x"""
         graph = Graph(self.conn, GRAPH_ID)
-        results = graph.query(query)
-        execution_time = results.statistics['internal execution time']
+        graph.query(query)
+
+        results = self.conn.execute_command(INFO_QUERIES_PREV_COMMAND)
+        last_query = results[1][-1]
+        total_duration = last_query[-4]
+        wait_duration = last_query[-3]
+        execution_duration = last_query[-2]
+        report_duration = last_query[-1]
 
         # Get new statistics.
         info = self.conn.execute_command(INFO_GET_STAT_COMMAND_TEMPLATE % GRAPH_ID)
         info = list_to_dict(info)
 
-        # The error margin in milliseconds allowed.
-        error_margin = 10
-
-        # Now that we can't know the internal wait, execution and report time
-        # from the outside, we just check that those are greater than zero and
-        # less than the total execution time.
         got_total_durations = info['Query total durations']
-        self.env.assertEqual(got_total_durations[0:2], [0, 0], depth=1)
-        # The values should be in the range of execution time +- error margin.
-        self.env.assertGreaterEqual(got_total_durations[2:6], [execution_time - error_margin] * 4, depth=1)
-        self.env.assertLessEqual(got_total_durations[2:6], [execution_time + error_margin] * 4, depth=1)
+        self.env.assertEqual(got_total_durations[0:2], [0, 0])
+        self.env.assertEqual(got_total_durations[2:6], [total_duration] * 4)
 
         got_wait_durations = info['Query wait durations']
-        self.env.assertEqual(got_wait_durations[0:2], [0, 0], depth=1)
-        # The values should be in the range of [0;execution time]
-        self.env.assertGreaterEqual(got_wait_durations[2:6], [0] * 4, depth=1)
-        self.env.assertLessEqual(got_wait_durations[2:6], [execution_time] * 4, depth=1)
+        self.env.assertEqual(got_wait_durations[0:2], [0, 0])
+        self.env.assertEqual(got_wait_durations[2:6], [wait_duration] * 4)
 
-        got_execution_durations = info['Query wait durations']
-        self.env.assertEqual(got_execution_durations[0:2], [0, 0], depth=1)
-        # The values should be in the range of [0;execution time]
-        self.env.assertGreaterEqual(got_execution_durations[2:6], [0] * 4, depth=1)
-        self.env.assertLessEqual(got_execution_durations[2:6], [execution_time] * 4, depth=1)
+        got_execution_durations = info['Query execution durations']
+        self.env.assertEqual(got_execution_durations[0:2], [0, 0])
+        self.env.assertEqual(got_execution_durations[2:6], [execution_duration] * 4)
 
         got_report_durations = info['Query report durations']
-        self.env.assertEqual(got_report_durations[0:2], [0, 0], depth=1)
-        # The values should be in the range of [0;execution time]
-        self.env.assertGreaterEqual(got_report_durations[2:6], [0] * 4, depth=1)
-        self.env.assertLessEqual(got_report_durations[2:6], [execution_time] * 4, depth=1)
+        self.env.assertEqual(got_report_durations[0:2], [0, 0])
+        self.env.assertEqual(got_report_durations[2:6], [report_duration] * 4)
 
     def test05_graph_info_queries_prev(self):
         query = """CYPHER end=100 RETURN reduce(sum = 0, n IN range(1, $end) | sum ^ n)"""
