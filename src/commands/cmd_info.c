@@ -1143,14 +1143,14 @@ static int _reply_with_get_aggregated_graph_info
     // 8
     REDISMODULE_DO(RedisModule_ReplyWithCString(
         ctx,
-        "Total number of edge property names"));
+        "Total number of edge properties"));
     REDISMODULE_DO(RedisModule_ReplyWithLongLong(
         ctx,
         info.node_property_name_count));
     // 9
     REDISMODULE_DO(RedisModule_ReplyWithCString(
         ctx,
-        "Total number of node property names"));
+        "Total number of node properties"));
     REDISMODULE_DO(RedisModule_ReplyWithLongLong(
         ctx,
         info.edge_property_name_count));
@@ -1158,7 +1158,6 @@ static int _reply_with_get_aggregated_graph_info
     return REDISMODULE_OK;
 }
 
-// TODO add a compact mode version.
 static int _reply_with_get_graph_info
 (
     RedisModuleCtx *ctx,
@@ -1224,21 +1223,21 @@ static int _reply_with_get_graph_info
     REDISMODULE_DO(_reply_key_value_number(
         ctx,
         is_compact_mode,
-        "Total number of unique property names",
+        "Number of unique property names",
         GraphContext_AttributeCount(gc)
     ));
     // 8
     REDISMODULE_DO(_reply_key_value_number(
         ctx,
         is_compact_mode,
-        "Total number of edge property names",
+        "Total number of edge properties",
         GraphContext_AllEdgePropertyNamesCount(gc)
     ));
     // 9
     REDISMODULE_DO(_reply_key_value_number(
         ctx,
         is_compact_mode,
-        "Total number of node property names",
+        "Total number of node properties",
         GraphContext_AllNodePropertyNamesCount(gc)
     ));
 
@@ -1327,21 +1326,20 @@ Query undo-log memory
 Query result-size memory
     */
     if (CHECK_FLAG(flags, InfoGetFlag_STATISTICS)) {
-        static const long KEY_VALUE_COUNT_COUNTS_FLAG = 3;
+        static const long KEY_VALUE_COUNT_COUNTS_FLAG = 4;
 
         key_value_count += KEY_VALUE_COUNT_COUNTS_FLAG;
         const Percentiles percentiles
             = Info_GetDurationsPercentiles(&gc->info);
 
-        // TODO the total histogram.
         // 1
-        // REDISMODULE_DO(_reply_key_value_numbers(
-        //     ctx,
-        //     is_compact_mode,
-        //     "Query total durations",
-        //     percentiles.wait_durations,
-        //     sizeof(percentiles.wait_durations) / sizeof(percentiles.wait_durations[0])
-        // ));
+        REDISMODULE_DO(_reply_key_value_numbers(
+            ctx,
+            is_compact_mode,
+            "Query total durations",
+            percentiles.total_durations,
+            sizeof(percentiles.total_durations) / sizeof(percentiles.total_durations[0])
+        ));
 
         // 2
         REDISMODULE_DO(_reply_key_value_numbers(
@@ -1369,6 +1367,8 @@ Query result-size memory
             percentiles.report_durations,
             sizeof(percentiles.report_durations) / sizeof(percentiles.report_durations[0])
         ));
+
+        // TODO memory
     }
 
     _reply_map_set_postponed_length(ctx, is_compact_mode, key_value_count);
