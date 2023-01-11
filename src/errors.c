@@ -185,8 +185,13 @@ void Error_FunctionArgumentSITypeMismatch(
 	SIType_ToMultipleTypeString(expected, buf, bufferLen);
 	if(elem_number == 0) {
 		if(_FunctionIsOperator(function_name, operator)) {
-			ErrorCtx_SetError("Type mismatch on operator '%s' argument %d: expected %s but was %s", 
-				operator, arg_number, buf, SIType_ToString(SI_TYPE(received)));
+			if(arg_number == 1) {
+				ErrorCtx_SetError("Type mismatch on operator '%s' left argument: expected %s but was %s", 
+					operator, buf, SIType_ToString(SI_TYPE(received)));
+			} else {
+				ErrorCtx_SetError("Type mismatch on operator '%s' right argument: expected %s but was %s", 
+					operator, buf, SIType_ToString(SI_TYPE(received)));
+			}
 		} else {
 			ErrorCtx_SetError("Type mismatch on function '%s' argument %d: expected %s but was %s", 
 				function_name, arg_number, buf, SIType_ToString(SI_TYPE(received)));
