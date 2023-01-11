@@ -18,6 +18,10 @@ typedef struct RedisModuleCtx RedisModuleCtx;
         } \
     } while(0);
 
+// A helpful clean-up macro which specifies the ReplyRecorder destructor which
+// flushes the reply upon deletion.
+#define REPLY_AUTO_FINISH  __attribute__ ((__cleanup__(ReplyRecorder_Cleanup)))
+
 
 // Replies with either a map or an array, depending on the compact mode flag.
 int module_reply_map
@@ -68,7 +72,7 @@ int module_reply_key_value_string
 );
 
 
-// A convinient wrapper over the reply mechanism, storing the state of the reply
+// A convenient wrapper over the reply mechanism, storing the state of the reply
 // until the flush is required. Supports compact mode and doesn't need a length
 // of elements inside as it is counting on its own.
 //
@@ -76,18 +80,26 @@ int module_reply_key_value_string
 // allows replies in key-value pairs, where the key is omitted when the compact
 // mode is used. For the compact mode it replies with just values within an
 // array, otherwise with key-value pairs within a map.
+//
+// A good way of using it is to create an object with the REPLY_AUTO_FINISH
+// destructor, which will flush the reply and send it to the client:
+//
+//     ReplyRecorder recorder REPLY_AUTO_FINISH;
+//
+//
 typedef struct ReplyRecorder {
     RedisModuleCtx *context;
     bool is_compact_mode;
     uint64_t element_count;
 } ReplyRecorder;
 
-// Creates a new reply recorder.
-ReplyRecorder ReplyRecorder_New
+// Initializes the reply recorder passed.
+// Returns REDISMODULE_OK on success, REDISMODULE_ERR otherwise.
+int ReplyRecorder_New
 (
+    ReplyRecorder *recorder,
     RedisModuleCtx *ctx,
-    const bool is_compact_mode,
-    bool *has_started
+    const bool is_compact_mode
 );
 
 // Adds a new number to the reply set.
@@ -96,6 +108,14 @@ int ReplyRecorder_AddNumber
     ReplyRecorder *recorder,
     const char *key,
     const long long value
+);
+
+// Adds a new C string to the reply set.
+int ReplyRecorder_AddString
+(
+    ReplyRecorder *recorder,
+    const char *key,
+    const char *value
 );
 
 // Adds an array of numbers to the reply set.
@@ -113,4 +133,11 @@ int ReplyRecorder_AddNumbers
 void ReplyRecorder_Finish
 (
     const ReplyRecorder recorder
+);
+
+// This is a callback function for when the ReplyRecorder object goes out of
+// scope (object destructor).
+void ReplyRecorder_Cleanup
+(
+    ReplyRecorder *recorder
 );

@@ -122,30 +122,28 @@ int module_reply_key_value_string
     return REDISMODULE_OK;
 }
 
-ReplyRecorder ReplyRecorder_New
+int ReplyRecorder_New
 (
+    ReplyRecorder *recorder,
     RedisModuleCtx *ctx,
-    const bool is_compact_mode,
-    bool *has_started
+    const bool is_compact_mode
 ) {
-    const ReplyRecorder recorder = {
-        .context = ctx,
-        .is_compact_mode = is_compact_mode,
-        .element_count = 0
-    };
+    ASSERT(ctx && recorder && "Ctx and recorder should be passed.");
+    if (!ctx || !recorder) {
+        return REDISMODULE_ERR;
+    }
 
-    const int status = module_reply_map(
+    recorder->context = ctx;
+    recorder->is_compact_mode = is_compact_mode;
+    recorder->element_count = 0;
+
+    REDISMODULE_DO(module_reply_map(
         ctx,
         is_compact_mode,
         REDISMODULE_POSTPONED_LEN
-    );
+    ));
 
-    ASSERT(status == REDISMODULE_OK);
-    if (has_started) {
-        *has_started = status == REDISMODULE_OK;
-    }
-
-    return recorder;
+    return REDISMODULE_OK;
 }
 
 int ReplyRecorder_AddNumber
@@ -158,12 +156,38 @@ int ReplyRecorder_AddNumber
     if (!recorder || !recorder->context) {
         return REDISMODULE_ERR;
     }
-    return module_reply_key_value_number(
+    REDISMODULE_DO(module_reply_key_value_number(
         recorder->context,
         recorder->is_compact_mode,
         key,
         value
-    );
+    ));
+
+    ++recorder->element_count;
+
+    return REDISMODULE_OK;
+}
+
+int ReplyRecorder_AddString
+(
+    ReplyRecorder *recorder,
+    const char *key,
+    const char *value
+) {
+    ASSERT(recorder);
+    if (!recorder || !recorder->context) {
+        return REDISMODULE_ERR;
+    }
+    REDISMODULE_DO(module_reply_key_value_string(
+        recorder->context,
+        recorder->is_compact_mode,
+        key,
+        value
+    ));
+
+    ++recorder->element_count;
+
+    return REDISMODULE_OK;
 }
 
 int ReplyRecorder_AddNumbers
@@ -178,13 +202,17 @@ int ReplyRecorder_AddNumbers
         return REDISMODULE_ERR;
     }
 
-    return module_reply_key_value_numbers(
+    REDISMODULE_DO(module_reply_key_value_numbers(
         recorder->context,
         recorder->is_compact_mode,
         key,
         values,
         values_count
-    );
+    ));
+
+    ++recorder->element_count;
+
+    return REDISMODULE_OK;
 }
 
 void ReplyRecorder_Finish(const ReplyRecorder recorder) {
@@ -193,4 +221,15 @@ void ReplyRecorder_Finish(const ReplyRecorder recorder) {
         recorder.is_compact_mode,
         recorder.element_count
     );
+}
+
+void ReplyRecorder_Cleanup
+(
+    ReplyRecorder *recorder
+) {
+    ASSERT(recorder);
+    if (!recorder) {
+        return;
+    }
+    ReplyRecorder_Finish(*recorder);
 }
