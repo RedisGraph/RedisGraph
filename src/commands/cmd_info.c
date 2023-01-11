@@ -332,46 +332,6 @@ static bool _is_compact_mode(const char *arg) {
     return _string_equals_case_insensitive(arg, COMPACT_MODE_OPTION);
 }
 
-static uint64_t _waiting_queries_count_from_graph(GraphContext *gc) {
-    ASSERT(gc != NULL);
-
-    if (!gc) {
-        return 0;
-    }
-
-    return Info_GetWaitingQueriesCount(&gc->info);
-}
-
-static uint64_t _executing_queries_count_from_graph(GraphContext *gc) {
-    ASSERT(gc != NULL);
-
-    if (!gc) {
-        return 0;
-    }
-
-    return Info_GetExecutingQueriesCount(&gc->info);
-}
-
-static uint64_t _reporting_queries_count_from_graph(GraphContext *gc) {
-    ASSERT(gc != NULL);
-
-    if (!gc) {
-        return 0;
-    }
-
-    return Info_GetReportingQueriesCount(&gc->info);
-}
-
-static uint64_t _max_query_wait_time_from_graph(GraphContext *gc) {
-    ASSERT(gc != NULL);
-
-    if (!gc) {
-        return 0;
-    }
-
-    return Info_GetMaxQueryWaitTime(&gc->info);
-}
-
 static bool _collect_queries_info_from_graph
 (
     RedisModuleCtx *ctx,
@@ -386,13 +346,12 @@ static bool _collect_queries_info_from_graph
     }
 
     bool is_ok = true;
-    // TODO GraphContext Info (get and use).
-    const uint64_t waiting_queries_count = _waiting_queries_count_from_graph(gc);
-    const uint64_t executing_queries_count = _executing_queries_count_from_graph(gc);
-    const uint64_t reporting_queries_count = _reporting_queries_count_from_graph(gc);
-    const uint64_t max_query_wait_time_time = _max_query_wait_time_from_graph(gc);
 
-    // TODO let it overflow.
+    const uint64_t waiting_queries_count = Info_GetWaitingQueriesCount(&gc->info);
+    const uint64_t executing_queries_count = Info_GetExecutingQueriesCount(&gc->info);
+    const uint64_t reporting_queries_count = Info_GetReportingQueriesCount(&gc->info);
+    const uint64_t max_query_wait_time_time = Info_GetMaxQueryWaitTime(&gc->info);
+
     if (!checked_add_u64(
         global_info->total_waiting_queries_count,
         waiting_queries_count,
@@ -435,7 +394,6 @@ static bool _collect_queries_info_from_graph
 
     return true;
 }
-
 
 static int _reply_global_info
 (
@@ -501,9 +459,7 @@ static GraphContext* _find_graph_with_name(const char *graph_name) {
 }
 
 static bool _collect_global_info(RedisModuleCtx *ctx, GlobalInfo *global_info) {
-    ASSERT(ctx != NULL);
-    ASSERT(global_info != NULL);
-    ASSERT(graphs_in_keyspace != NULL);
+    ASSERT(ctx && global_info && graphs_in_keyspace);
     if (!ctx || !global_info || !graphs_in_keyspace) {
         return REDISMODULE_ERR;
     }
@@ -547,8 +503,6 @@ static int _reply_graph_query_info
     const bool is_compact_mode,
     const CommonQueryInfo info
 ) {
-    static const long KEY_VALUE_COUNT = 8;
-
     ASSERT(ctx);
     if (!ctx) {
         return REDISMODULE_ERR;
@@ -861,8 +815,7 @@ static int _reply_with_queries_info_from_all_graphs
 
 // TODO should we lock the graphs_in_keyspace?
 static int _reset_all_graphs_info(RedisModuleCtx *ctx) {
-    ASSERT(ctx);
-    ASSERT(graphs_in_keyspace);
+    ASSERT(ctx && graphs_in_keyspace);
     if (!ctx || !graphs_in_keyspace) {
         return REDISMODULE_ERR;
     }
@@ -882,8 +835,7 @@ static int _reset_all_graphs_info(RedisModuleCtx *ctx) {
 }
 
 static int _reset_graph_info(RedisModuleCtx *ctx, const char *graph_name) {
-    ASSERT(ctx);
-    ASSERT(graphs_in_keyspace);
+    ASSERT(ctx && graphs_in_keyspace);
     if (!ctx || !graphs_in_keyspace) {
         return REDISMODULE_ERR;
     }
@@ -1069,12 +1021,7 @@ static int _reply_with_get_graph_info
     const bool is_compact_mode,
     const InfoGetFlag flags
 ) {
-    static const long KEY_VALUE_COUNT_DEFAULT = 9;
-    long key_value_count = KEY_VALUE_COUNT_DEFAULT;
-
-    ASSERT(ctx);
-    ASSERT(gc);
-    ASSERT(gc->g);
+    ASSERT(ctx && gc && gc->g);
 
     ReplyRecorder recorder REPLY_AUTO_FINISH;
     REDISMODULE_DO(ReplyRecorder_New(&recorder, ctx, is_compact_mode));
@@ -1235,8 +1182,7 @@ static int _get_graph_info
     const bool is_compact_mode,
     const InfoGetFlag flags
 ) {
-    ASSERT(ctx);
-    ASSERT(graph_name);
+    ASSERT(ctx && graph_name);
 
     GraphContext *gc = _find_graph_with_name(graph_name);
     if (!gc) {
@@ -1475,7 +1421,7 @@ static int _info_get
     const int argc,
     const bool is_compact_mode
 ) {
-    ASSERT(ctx != NULL);
+    ASSERT(ctx);
     int result = REDISMODULE_ERR;
 
     if (argc < 2) {
@@ -1504,8 +1450,7 @@ static int _info_reset
     const RedisModuleString **argv,
     const int argc
 ) {
-    ASSERT(ctx != NULL);
-    ASSERT(argv);
+    ASSERT(ctx && argv);
 
     if (argc < 2) {
         return RedisModule_WrongArity(ctx);
@@ -1525,6 +1470,7 @@ static int _info_reset
     return _reset_graph_info(ctx, graph_name);
 }
 
+// Returns true if the command was found and handled, false otherwise.
 static bool _dispatch_subcommand
 (
     RedisModuleCtx *ctx,
@@ -1534,9 +1480,8 @@ static bool _dispatch_subcommand
     int *result,
     const bool is_compact_mode
 ) {
-    ASSERT(ctx != NULL);
+    ASSERT(ctx && result);
     ASSERT(subcommand_name != NULL && "Subcommand must be specified.");
-    ASSERT(result);
 
     if (_is_queries_cmd(subcommand_name)) {
         *result = _info_queries(ctx, argv + 1, argc - 1, is_compact_mode);
@@ -1558,7 +1503,7 @@ int Graph_Info
     const RedisModuleString **argv,
     const int argc
 ) {
-    ASSERT(ctx != NULL);
+    ASSERT(ctx);
 
     if (argc < 2) {
         return RedisModule_WrongArity(ctx);
