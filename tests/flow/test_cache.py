@@ -267,17 +267,17 @@ class testCache():
         graph = Graph(con, 'cache_eviction')
 
         # populate graph
-        graph.query("UNWIND range(0, 10000) as x CREATE ({v:x})")
+        graph.query("UNWIND range(0, 10000) as x CREATE ({v:'/'})")
 
         # _run_query is expected to be issued by multiple threads
         def _run_query(i):
             #random param name
-            k = 'p_' + str(i)
-            q = f"MATCH (n) WHERE n.v >= ${k} OR n.v = ${k} RETURN count(n)"
-            params = {k : 100}
+            param_name = 'p_' + str(i)
+            q = f"MATCH (n) WHERE n.v = ${param_name} RETURN count(n)"
+            params = {param_name : '/'}
             g = Graph(self.env.getConnection(), 'cache_eviction')
             count = g.query(q, params).result_set[0][0]
-            self.env.assertEqual(count, 9901)
+            self.env.assertEqual(count, 10001)
 
         tasks = []
         loop = asyncio.get_event_loop()

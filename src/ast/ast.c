@@ -348,27 +348,32 @@ AST *AST_Build
 	cypher_parse_result_t *parse_result
 ) {
 	AST *ast = rm_malloc(sizeof(AST));
-	ast->ref_count = rm_malloc(sizeof(uint));
-	ast->free_root = false;
+
+	ast->free_root           = false;
+	ast->ref_count           = rm_malloc(sizeof(uint));
+	ast->parse_result        = parse_result;
 	ast->referenced_entities = NULL;
-	ast->parse_result = parse_result;
+	ast->params_parse_result = NULL;
 	ast->anot_ctx_collection = AST_AnnotationCtxCollection_New();
 
 	*(ast->ref_count) = 1;
-	// Retrieve the AST root node from a parsed query.
+
+	// retrieve the AST root node from a parsed query
 	const cypher_astnode_t *statement = _AST_parse_result_root(parse_result);
-	// We are parsing with the CYPHER_PARSE_ONLY_STATEMENTS flag,
+
+	// we are parsing with the CYPHER_PARSE_ONLY_STATEMENTS flag,
 	// and double-checking this in AST validations
 	ASSERT(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
 	ast->root = cypher_ast_statement_get_body(statement);
 
-	// Empty queries should be captured by AST validations
+	// empty queries should be captured by AST validations
 	ASSERT(ast->root);
 
-	// Set thread-local AST.
+	// set thread-local AST
 	QueryCtx_SetAST(ast);
 
-	// Augment the AST with annotations for naming entities and populating WITH/RETURN * projections.
+	// augment the AST with annotations for naming entities
+	// and populating WITH/RETURN * projections
 	AST_Enrich(ast);
 
 	return ast;
@@ -381,10 +386,14 @@ AST *AST_NewSegment
 	uint end_offset
 ) {
 	AST *ast = rm_malloc(sizeof(AST));
+
+	ast->free_root           = true;
+	ast->ref_count           = rm_malloc(sizeof(uint));
+	ast->parse_result        = NULL;
+	ast->params_parse_result = NULL;
+	ast->referenced_entities = NULL;
 	ast->anot_ctx_collection = master_ast->anot_ctx_collection;
-	ast->free_root = true;
-	ast->ref_count = rm_malloc(sizeof(uint));
-	ast->parse_result = NULL;
+
 	uint n = end_offset - start_offset;
 
 	*(ast->ref_count) = 1;
@@ -417,6 +426,16 @@ AST *AST_NewSegment
 	AST_BuildReferenceMap(ast, project_clause);
 
 	return ast;
+}
+
+void AST_SetParamsParseResult
+(
+	AST *ast,
+	cypher_parse_result_t *params_parse_result
+) {
+	// setting parameters within an AST should only occur once
+	ASSERT(ast->params_parse_result == NULL);
+	ast->params_parse_result = params_parse_result;
 }
 
 AST *AST_ShallowCopy
@@ -639,35 +658,6 @@ const char *AST_ToString
 	return str;
 }
 
-void AST_Free
-(
-	AST *ast
-) {
-	if(ast == NULL) return;
-
-	int ref_count = AST_DecRefCount(ast);
-
-	// check if the ast has additional copies
-	if(ref_count == 0) {
-		// no valid references, the struct can be disposed completely
-		if(ast->free_root) {
-			// this is a generated AST, free its root node
-			cypher_astnode_free((cypher_astnode_t *) ast->root);
-		} else {
-			// this is the master AST
-			// free the annotation contexts that have been constructed
-			AST_AnnotationCtxCollection_Free(ast->anot_ctx_collection);
-			parse_result_free(ast->parse_result);
-		}
-
-		if(ast->referenced_entities) raxFree(ast->referenced_entities);
-
-		rm_free(ast->ref_count);
-	}
-
-	rm_free(ast);
-}
-
 cypher_parse_result_t *parse_query
 (
 	const char *query  // query to parse
@@ -766,3 +756,39 @@ void parse_result_free
 		cypher_parse_result_free(parse_result);
 	}
 }
+
+void AST_Free
+(
+	AST *ast
+) {
+	if(ast == NULL) return;
+
+	int ref_count = AST_DecRefCount(ast);
+
+	// check if the ast has additional copies
+	if(ref_count == 0) {
+		// free and nullify parameters parse result if needed
+		// after execution, as they are only save for the execution lifetime
+		if(ast->params_parse_result != NULL) {
+			parse_result_free(ast->params_parse_result);
+		}
+
+		// no valid references, the struct can be disposed completely
+		if(ast->free_root) {
+			// this is a generated AST, free its root node
+			cypher_astnode_free((cypher_astnode_t *) ast->root);
+		} else {
+			// this is the master AST
+			// free the annotation contexts that have been constructed
+			AST_AnnotationCtxCollection_Free(ast->anot_ctx_collection);
+			parse_result_free(ast->parse_result);
+		}
+
+		if(ast->referenced_entities) raxFree(ast->referenced_entities);
+
+		rm_free(ast->ref_count);
+	}
+
+	rm_free(ast);
+}
+

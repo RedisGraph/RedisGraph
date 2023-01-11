@@ -132,28 +132,37 @@ ExecutionCtx *ExecutionCtx_FromQuery
 
 	// see if we already have a cached execution-ctx for given query
 	ret = Cache_GetValue(cache, q_str);
+
+	//--------------------------------------------------------------------------
+	// cache hit
+	//--------------------------------------------------------------------------
+
 	if(ret != NULL) {
-		parse_result_free(params_parse_result);
-		// set query parameters in the execution AST
-		ret->cached = true;  // mark cached execution
+		parse_result_free(params_parse_result);  // free parsed params
+		ret->cached = true;                      // mark cached execution
 		return ret;
 	}
 
-	// no cached execution plan, try to parse the query
+	//--------------------------------------------------------------------------
+	// cache miss
+	//--------------------------------------------------------------------------
+
+	// try to parse the query
 	AST *ast = _ExecutionCtx_ParseAST(q_str);
 
-	// parameters are no longer needed
-	// the QueryCtx_Params is set
-	parse_result_free(params_parse_result);
-
-	// if query parsing failed, return NULL
+	// parser failed
 	if(ast == NULL) {
+		parse_result_free(params_parse_result);  // free parsed params
+
 		// if no error has been set, emit one now
 		if(!ErrorCtx_EncounteredError()) {
 			ErrorCtx_SetError("Error: could not parse query");
 		}
 		return NULL;
 	}
+
+	// associate parameters with AST
+	AST_SetParamsParseResult(ast, params_parse_result);
 
 	ExecutionType exec_type = _GetExecutionTypeFromAST(ast);
 	// in case of valid query
