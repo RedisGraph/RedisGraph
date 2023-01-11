@@ -1,3 +1,12 @@
+/*
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
+
+ /*
+  * This file contains the useful stuff when working from within a redis module.
+ */
 #pragma once
 
 #include <stdbool.h>

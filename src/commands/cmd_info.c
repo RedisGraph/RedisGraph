@@ -40,12 +40,12 @@
 #define INFO_GET_STATISTICS_ARG "STAT"
 #define INFO_QUERIES_CURRENT_ARG "CURRENT"
 #define INFO_QUERIES_PREV_ARG "PREV"
-#define ERROR_COULDNOT_FIND_GRAPH "Couldn't find the specified graph"
+#define ERROR_COULD_NOT_FIND_GRAPH "Couldn't find the specified graph"
 #define ERROR_NO_GRAPH_NAME_SPECIFIED "No graph name was specified"
 #define ERROR_VALUES_OVERFLOW "Some values have overflown"
 #define ALL_GRAPH_KEYS_MASK "*"
 // A duplicate of what is set in config.c
-#define MAX_QUERIES_COUNT 10000
+#define MAX_QUERIES_COUNT_DEFAULT 10000
 
 
 #define CHECKED_ADD_OR_RETURN(lhs, rhs, return_on_error) \
@@ -53,10 +53,10 @@
         return return_on_error; \
     }
 
-// Global array tracking all extant GraphContexts (defined in module.c)
+// Global array tracking all existing GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
 
-// Global info - across all the graphs available.
+// Global info - across all the graphs available in all the shards.
 typedef struct GlobalInfo {
     millis_t max_query_wait_time_time;
     uint64_t total_waiting_queries_count;
@@ -64,6 +64,7 @@ typedef struct GlobalInfo {
     uint64_t total_reporting_queries_count;
 } GlobalInfo;
 
+// A stage a query may be in.
 typedef enum QueryStage {
     QueryStage_WAITING = 0,
     QueryStage_EXECUTING,
@@ -71,12 +72,14 @@ typedef enum QueryStage {
     QueryStage_FINISHED,
 } QueryStage;
 
+// Flags for the "GRAPH.INFO QUERIES".
 typedef enum InfoQueriesFlag {
     InfoQueriesFlag_NONE = 0,
     InfoQueriesFlag_CURRENT = 1 << 0,
     InfoQueriesFlag_PREV = 1 << 1,
 } InfoQueriesFlag;
 
+// Flags for the "GRAPH.INFO GET".
 typedef enum InfoGetFlag {
     InfoGetFlag_NONE = 0,
     InfoGetFlag_MEMORY = 1 << 0,
@@ -107,6 +110,7 @@ typedef struct AggregatedGraphGetInfo {
     Statistics statistics;
 } AggregatedGraphGetInfo;
 
+// Initialise the AggregatedGraphGetInfo object.
 static bool _AggregatedGraphGetInfo_New(AggregatedGraphGetInfo *info) {
     ASSERT(info && "Info is not provided.");
     if (!info) {
@@ -115,6 +119,8 @@ static bool _AggregatedGraphGetInfo_New(AggregatedGraphGetInfo *info) {
     return Statistics_New(&info->statistics);
 }
 
+// The data we need to extract from the callback for the circle buffer which we
+// later print out in the reply of the "GRAPH.INFO QUERIES PREV".
 typedef struct ViewFinishedQueriesCallbackData {
     RedisModuleCtx *ctx;
     bool is_compact_mode;
@@ -123,7 +129,7 @@ typedef struct ViewFinishedQueriesCallbackData {
     uint64_t actual_elements_count;
 } ViewFinishedQueriesCallbackData;
 
-// The same structure is used for replies for the finished and non-finished
+// The same structure is used for the replies for the finished and non-finished
 // queries. The objects of this structure should have a very limited lifetime,
 // as it uses pointers to a data it doesn't own.
 typedef struct CommonQueryInfo {
@@ -179,19 +185,20 @@ static uint64_t _info_queries_max_count() {
     uint64_t max_elements_count = 0;
 
     if (!Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &max_elements_count)) {
-        max_elements_count = MAX_QUERIES_COUNT;
+        max_elements_count = MAX_QUERIES_COUNT_DEFAULT;
     }
 
     return max_elements_count;
 }
 
+// Aggregates the information used for the "GRAPH.INFO GET" from all the graphs
+// from all the shards available.
 static bool AggregatedGraphGetInfo_AddFromGraphContext
 (
     AggregatedGraphGetInfo *info,
     const GraphContext *gc
 ) {
-    ASSERT(info);
-    ASSERT(gc);
+    ASSERT(info && gc);
     if (!info || !gc) {
         return false;
     }
@@ -254,6 +261,8 @@ static bool _string_equals_case_insensitive(const char *lhs, const char *rhs) {
     return !strcasecmp(lhs, rhs);
 }
 
+// Parses out a single flag from a string, which is suitable for the
+// "GRAPH.INFO GET" command.
 static InfoGetFlag _parse_info_get_flag_from_string(const char *str) {
     if (_string_equals_case_insensitive(str, INFO_GET_MEMORY_ARG)) {
         return InfoGetFlag_MEMORY;
@@ -265,6 +274,8 @@ static InfoGetFlag _parse_info_get_flag_from_string(const char *str) {
     return InfoGetFlag_NONE;
 }
 
+// Parses out all the flags from an array of strings. The flags extracted are to
+// be used for the "GRAPH.INFO GET" command.
 static InfoGetFlag _parse_info_get_flags_from_args
 (
     const RedisModuleString **argv,
@@ -286,6 +297,7 @@ static InfoGetFlag _parse_info_get_flags_from_args
     return flags;
 }
 
+// Parses out a single "GRAPH.INFO QUERIES" flag.
 static InfoQueriesFlag _parse_info_queries_flag_from_string(const char *str) {
     if (_string_equals_case_insensitive(str, INFO_QUERIES_CURRENT_ARG)) {
         return InfoQueriesFlag_CURRENT;
@@ -295,6 +307,7 @@ static InfoQueriesFlag _parse_info_queries_flag_from_string(const char *str) {
     return InfoQueriesFlag_NONE;
 }
 
+// Parses out the "GRAPH.INFO QUERIES" flags from an array of strings.
 static InfoQueriesFlag _parse_info_queries_flags_from_args
 (
     const RedisModuleString **argv,
@@ -338,9 +351,7 @@ static bool _collect_queries_info_from_graph
     GraphContext *gc,
     GlobalInfo *global_info
 ) {
-    ASSERT(ctx != NULL);
-    ASSERT(gc != NULL);
-    ASSERT(global_info != NULL);
+    ASSERT(ctx && gc && global_info);
     if (!ctx || !gc || !global_info) {
         return false;
     }
@@ -395,6 +406,8 @@ static bool _collect_queries_info_from_graph
     return true;
 }
 
+// Replies with the global information about the graphs, the output is a part
+// of the "GRAPH.INFO" with no flags.
 static int _reply_global_info
 (
     RedisModuleCtx *ctx,
@@ -436,7 +449,11 @@ static int _reply_global_info
     return REDISMODULE_OK;
 }
 
-static GraphContext* _find_graph_with_name(const char *graph_name) {
+// Returns a GraphContext object of a graph found by name.
+static GraphContext* _find_graph_with_name
+(
+    const char *graph_name
+) {
     ASSERT(graph_name);
     if (!graph_name) {
         return NULL;
@@ -458,7 +475,13 @@ static GraphContext* _find_graph_with_name(const char *graph_name) {
     return NULL;
 }
 
-static bool _collect_global_info(RedisModuleCtx *ctx, GlobalInfo *global_info) {
+// Collects all the global information from all the graphs.
+// TODO also collect from the shards.
+static bool _collect_global_info
+(
+    RedisModuleCtx *ctx,
+    GlobalInfo *global_info
+) {
     ASSERT(ctx && global_info && graphs_in_keyspace);
     if (!ctx || !global_info || !graphs_in_keyspace) {
         return REDISMODULE_ERR;
@@ -483,6 +506,10 @@ static bool _collect_global_info(RedisModuleCtx *ctx, GlobalInfo *global_info) {
     return true;
 }
 
+// Updates the query stage timer. This is necessary to do as, at the time the
+// "GRAPH.INFO" commands are issued, there might be concurrently running queries
+// which have their timer ticking but the counted value not yet updated as it
+// hasn't moved to the new stage.
 static void _update_query_stage_timer(const QueryStage stage, QueryInfo *info) {
     ASSERT(info);
     if (!info) {
@@ -497,6 +524,9 @@ static void _update_query_stage_timer(const QueryStage stage, QueryInfo *info) {
     }
 }
 
+// Replies with the query information, which is relevant either to the already
+// finished queries or currently working.
+// This is a part of the "GRAPH.INFO QUERIES" reply.
 static int _reply_graph_query_info
 (
     RedisModuleCtx *ctx,
@@ -566,6 +596,7 @@ static int _reply_graph_query_info
     return REDISMODULE_OK;
 }
 
+// Replies with the information from the QueryInfo storage.
 static int _reply_graph_query_info_storage
 (
     RedisModuleCtx *ctx,
@@ -575,8 +606,7 @@ static int _reply_graph_query_info_storage
     const uint64_t max_count,
     uint64_t *iterated
 ) {
-    ASSERT(ctx);
-    ASSERT(storage);
+    ASSERT(ctx && storage);
     if (!ctx || !storage) {
         return REDISMODULE_ERR;
     }
@@ -603,6 +633,8 @@ static int _reply_graph_query_info_storage
     return REDISMODULE_OK;
 }
 
+// Replies with queries information which are currently in the passed stage.
+// This is a part of the "GRAPH.INFO QUERIES CURRENT" reply.
 static int _reply_with_graph_queries_of_stage
 (
     RedisModuleCtx *ctx,
@@ -612,8 +644,7 @@ static int _reply_with_graph_queries_of_stage
     const uint64_t max_count,
     uint64_t *printed_count
 ) {
-    ASSERT(ctx);
-    ASSERT(gc);
+    ASSERT(ctx && gc);
     if (!ctx || !gc) {
         return REDISMODULE_ERR;
     }
@@ -657,6 +688,9 @@ static int _reply_with_graph_queries_of_stage
     return REDISMODULE_OK;
 }
 
+// Replies with all the queries which are in the specified stage and are
+// currently working from all the graphs.
+// This is a part of the "GRAPH.INFO QUERIES CURRENT" reply.
 static int _reply_queries_from_all_graphs
 (
     RedisModuleCtx *ctx,
@@ -665,8 +699,7 @@ static int _reply_queries_from_all_graphs
     const uint64_t max_count,
     uint64_t *printed_count
 ) {
-    ASSERT(ctx);
-    ASSERT(graphs_in_keyspace);
+    ASSERT(ctx && graphs_in_keyspace);
     if (!ctx || !graphs_in_keyspace) {
         return REDISMODULE_ERR;
     }
@@ -701,6 +734,8 @@ static int _reply_queries_from_all_graphs
     return REDISMODULE_OK;
 }
 
+// Replies with all the queries which are currently working from all the graphs.
+// This is a part of the "GRAPH.INFO QUERIES CURRENT" reply.
 static int _reply_graph_queries
 (
     RedisModuleCtx *ctx,
@@ -708,9 +743,7 @@ static int _reply_graph_queries
     const uint64_t max_elements_count,
     uint64_t *actual_elements_count_ptr
 ) {
-    ASSERT(ctx);
-    ASSERT(graphs_in_keyspace);
-    ASSERT(max_elements_count);
+    ASSERT(ctx && graphs_in_keyspace && max_elements_count);
     if (!ctx || !graphs_in_keyspace) {
         return REDISMODULE_ERR;
     }
@@ -768,6 +801,8 @@ static int _reply_graph_queries
     return REDISMODULE_OK;
 }
 
+// Replies with the global query information.
+// This is a part of the "GRAPH.INFO QUERIES" information.
 static int _reply_with_queries_info_global
 (
     RedisModuleCtx *ctx,
@@ -791,6 +826,9 @@ static int _reply_with_queries_info_global
     return REDISMODULE_OK;
 }
 
+// Replies with the query information from all the graphs.
+// This is a part of the "GRAPH.INFO QUERIES" information with either CURRENT or
+// PREV flags specified information.
 static int _reply_with_queries_info_from_all_graphs
 (
     RedisModuleCtx *ctx,
@@ -813,8 +851,11 @@ static int _reply_with_queries_info_from_all_graphs
     return REDISMODULE_OK;
 }
 
-// TODO should we lock the graphs_in_keyspace?
-static int _reset_all_graphs_info(RedisModuleCtx *ctx) {
+// Resets the information gathered so far in all the graphs.
+static int _reset_all_graphs_info
+(
+    RedisModuleCtx *ctx
+) {
     ASSERT(ctx && graphs_in_keyspace);
     if (!ctx || !graphs_in_keyspace) {
         return REDISMODULE_ERR;
@@ -834,7 +875,12 @@ static int _reset_all_graphs_info(RedisModuleCtx *ctx) {
     return REDISMODULE_OK;
 }
 
-static int _reset_graph_info(RedisModuleCtx *ctx, const char *graph_name) {
+// Resets the specified graphs information gathered so far.
+static int _reset_graph_info
+(
+    RedisModuleCtx *ctx,
+    const char *graph_name
+) {
     ASSERT(ctx && graphs_in_keyspace);
     if (!ctx || !graphs_in_keyspace) {
         return REDISMODULE_ERR;
@@ -854,10 +900,12 @@ static int _reset_graph_info(RedisModuleCtx *ctx, const char *graph_name) {
             return REDISMODULE_OK;
         }
     }
-    RedisModule_ReplyWithError(ctx, ERROR_COULDNOT_FIND_GRAPH);
+    RedisModule_ReplyWithError(ctx, ERROR_COULD_NOT_FIND_GRAPH);
     return REDISMODULE_ERR;
 }
 
+// Replies with an aggregated information over all the graphs.
+// This is a part of the "GRAPH.INFO GET *" reply.
 static int _reply_with_get_aggregated_graph_info
 (
     RedisModuleCtx *ctx,
@@ -1014,6 +1062,8 @@ static int _reply_with_get_aggregated_graph_info
     return REDISMODULE_OK;
 }
 
+// Replies with an information of the specified graph.
+// This is a part of the "GRAPH.INFO GET <key>" reply.
 static int _reply_with_get_graph_info
 (
     RedisModuleCtx *ctx,
@@ -1175,6 +1225,8 @@ static int _reply_with_get_graph_info
     return REDISMODULE_OK;
 }
 
+// Handles the specific graph information request.
+// This is an action of the "GRAPH.INFO GET <key>" command.
 static int _get_graph_info
 (
     RedisModuleCtx *ctx,
@@ -1186,13 +1238,15 @@ static int _get_graph_info
 
     GraphContext *gc = _find_graph_with_name(graph_name);
     if (!gc) {
-        RedisModule_ReplyWithError(ctx, ERROR_COULDNOT_FIND_GRAPH);
+        RedisModule_ReplyWithError(ctx, ERROR_COULD_NOT_FIND_GRAPH);
         return REDISMODULE_ERR;
     }
 
     return _reply_with_get_graph_info(ctx, gc, is_compact_mode, flags);
 }
 
+// Handles graph information request regarding all the graphs available.
+// This is an action of the "GRAPH.INFO GET *" command.
 static int _get_all_graphs_info
 (
     RedisModuleCtx *ctx,
@@ -1229,6 +1283,9 @@ static int _get_all_graphs_info
     );
 }
 
+// Replies with the finished queries information.
+// This function is used as a callback for the circle buffer viewer.
+// This is a part of the "GRAPH.INFO QUERIES PREV" reply.
 static bool _reply_finished_queries(void *user_data, const void *item) {
     ViewFinishedQueriesCallbackData *data
         = (ViewFinishedQueriesCallbackData*)user_data;
@@ -1253,6 +1310,8 @@ static bool _reply_finished_queries(void *user_data, const void *item) {
     return false;
 }
 
+// Replies with the finished queries information.
+// This is a part of the "GRAPH.INFO QUERIES PREV" reply.
 static int _reply_with_queries_info_prev
 (
     RedisModuleCtx *ctx,
@@ -1260,8 +1319,7 @@ static int _reply_with_queries_info_prev
     const uint64_t max_count,
     uint64_t *actual_element_count
 ) {
-    ASSERT(ctx);
-    ASSERT(max_count);
+    ASSERT(ctx && max_count);
     if (!ctx || !max_count) {
         return REDISMODULE_ERR;
     }
@@ -1283,6 +1341,7 @@ static int _reply_with_queries_info_prev
     return user_data.status;
 }
 
+// Parses and handles the "GRAPH.INFO QUERIES PREV" command.
 static int _parse_and_reply_info_queries_prev
 (
     RedisModuleCtx *ctx,
@@ -1312,6 +1371,7 @@ static int _parse_and_reply_info_queries_prev
     return REDISMODULE_OK;
 }
 
+// Parses and handles the "GRAPH.INFO QUERIES" command.
 static int _reply_with_queries
 (
     RedisModuleCtx *ctx,
@@ -1373,7 +1433,8 @@ static int _reply_with_queries
     return REDISMODULE_OK;
 }
 
-// GRAPH.INFO QUERIES [CURRENT] [PREV <count>]
+// Handles the "GRAPH.INFO QUERIES" subcommand.
+// The format is "GRAPH.INFO QUERIES [CURRENT] [PREV <count>]".
 static int _info_queries
 (
     RedisModuleCtx *ctx,
@@ -1413,7 +1474,8 @@ static int _info_queries
     return REDISMODULE_OK;
 }
 
-// GRAPH.INFO GET key [MEM] [COUNTS] [STAT]
+// Handles the "GRAPH.INFO GET" subcommand.
+// The format is "GRAPH.INFO GET <key> [MEM] [COUNTS] [STAT]".
 static int _info_get
 (
     RedisModuleCtx *ctx,
@@ -1443,7 +1505,8 @@ static int _info_get
     return _get_graph_info(ctx, graph_name, is_compact_mode, flags);
 }
 
-// GRAPH.INFO RESET [name]
+// Handles the "GRAPH.INFO RESET" subcommand.
+// The format is "GRAPH.INFO RESET <key>".
 static int _info_reset
 (
     RedisModuleCtx *ctx,
@@ -1470,6 +1533,7 @@ static int _info_reset
     return _reset_graph_info(ctx, graph_name);
 }
 
+// Attempts to find the specified subcommand of "GRAPH.INFO" and dispatch it.
 // Returns true if the command was found and handled, false otherwise.
 static bool _dispatch_subcommand
 (
