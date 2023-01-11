@@ -148,45 +148,53 @@ void Error_SITypeMismatch(SIValue received, SIType expected) {
 					  SIType_ToString(SI_TYPE(received)));
 }
 
-// static bool _FunctionIsOperator(const char* function_name, char* operator_name) {
-// 	if(strcmp(function_name, "mul")==0) {
-// 		strcpy(operator_name, "*");
-// 		return true;
-// 	} else if(strcmp(function_name, "add")==0) {
-// 		strcpy(operator_name, "+");
-// 		return true;
-// 	} else if(strcmp(function_name, "div")==0) {
-// 		strcpy(operator_name, "/");
-// 		return true;
-// 	} else if(strcmp(function_name, "mod")==0) {
-// 		strcpy(operator_name, "%");
-// 		return true;
-// 	} else if(strcmp(function_name, "pow")==0) {
-// 		strcpy(operator_name, "^");
-// 		return true;
-// 	}
-// 	return false;
-// }
+static bool _FunctionIsOperator(const char* function_name, char* operator) {
+	if(strcmp(function_name, "add") == 0) {
+		strcpy(operator, "+");
+		return true;
+	} else if(strcmp(function_name, "div") == 0) {
+		strcpy(operator, "/");
+		return true;
+	} else if(strcmp(function_name, "mod") == 0) {
+		strcpy(operator, "%");
+		return true;
+	} else if(strcmp(function_name, "mul") == 0) {
+		strcpy(operator, "*");
+		return true;
+	} else if(strcmp(function_name, "pow") == 0) {
+		strcpy(operator, "^");
+		return true;
+	} else if(strcmp(function_name, "sub") == 0) {
+		strcpy(operator, "-");
+		return true;
+	}
+	return false;
+}
 
 void Error_FunctionArgumentSITypeMismatch(
 	SIValue received,
 	SIType expected,
-	const char* function,
-	int argNumber,
-	int elemNumber
+	const char* function_name,
+	int arg_number,
+	int elem_number
 ) {
 	size_t bufferLen = MULTIPLE_TYPE_STRING_BUFFER_SIZE;
 	char buf[bufferLen];
+	char operator[2];
 
 	SIType_ToMultipleTypeString(expected, buf, bufferLen);
-	if(elemNumber == 0) {
-		ErrorCtx_SetError("Type mismatch on function '%s' argument %d: expected %s but was %s", 
-					  function, argNumber, buf, SIType_ToString(SI_TYPE(received)));
+	if(elem_number == 0) {
+		if(_FunctionIsOperator(function_name, operator)) {
+			ErrorCtx_SetError("Type mismatch on operator '%s' argument %d: expected %s but was %s", 
+				operator, arg_number, buf, SIType_ToString(SI_TYPE(received)));
+		} else {
+			ErrorCtx_SetError("Type mismatch on function '%s' argument %d: expected %s but was %s", 
+				function_name, arg_number, buf, SIType_ToString(SI_TYPE(received)));
+		}
 	} else {
 		ErrorCtx_RaiseRuntimeException("Type mismatch on function '%s' argument %d, element %d: expected %s but was %s", 
-					  function, argNumber, elemNumber, buf, SIType_ToString(SI_TYPE(received)));
+			function_name, arg_number, elem_number, buf, SIType_ToString(SI_TYPE(received)));
 	}
-	
 }
 
 void Error_UnsupportedASTNodeType(const cypher_astnode_t *node) {

@@ -412,7 +412,7 @@ class testUndoLog():
             # we're not supposed to be here, expecting query to fail
             self.env.assertTrue(False) 
         except Exception as e:
-            self.env.assertEquals(str(e), "Type mismatch on function 'mul' argument 2: expected Integer, Float, or Null but was String")
+            self.env.assertEquals(str(e), "Type mismatch on operator '*' argument 2: expected Integer, Float, or Null but was String")
 
         # validate no changed is the created graph
         expected_result = [[1, 1, 1], [2, 2, 2], [3, 3, 3]]
