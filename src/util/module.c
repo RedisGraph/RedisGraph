@@ -128,8 +128,8 @@ int ReplyRecorder_New
     RedisModuleCtx *ctx,
     const bool is_compact_mode
 ) {
-    ASSERT(ctx && recorder && "Ctx and recorder should be passed.");
-    if (!ctx || !recorder) {
+    ASSERT(recorder && ctx && "Recorder and ctx should be passed.");
+    if (!recorder || !ctx) {
         return REDISMODULE_ERR;
     }
 
@@ -152,7 +152,7 @@ int ReplyRecorder_AddNumber
     const char *key,
     const long long value
 ) {
-    ASSERT(recorder);
+    ASSERT(recorder && key);
     if (!recorder || !recorder->context) {
         return REDISMODULE_ERR;
     }
@@ -174,8 +174,8 @@ int ReplyRecorder_AddString
     const char *key,
     const char *value
 ) {
-    ASSERT(recorder);
-    if (!recorder || !recorder->context) {
+    ASSERT(recorder && recorder->context && key && value);
+    if (!recorder || !recorder->context || !key || !value) {
         return REDISMODULE_ERR;
     }
     REDISMODULE_DO(module_reply_key_value_string(
@@ -197,7 +197,7 @@ int ReplyRecorder_AddNumbers
     const long long values[],
     const size_t values_count
 ) {
-    ASSERT(recorder);
+    ASSERT(recorder && recorder->context);
     if (!recorder || !recorder->context) {
         return REDISMODULE_ERR;
     }
