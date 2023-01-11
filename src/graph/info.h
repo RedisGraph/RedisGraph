@@ -41,6 +41,7 @@ typedef struct hdr_histogram hdr_histogram;
 
 
 typedef uint32_t millis_t;
+#define MILLIS_T_MAX UINT32_MAX
 typedef struct QueryCtx QueryCtx;
 // Duplicate typedef from the circular buffer.
 typedef bool (*CircularBufferNRG_ReadAllCallback)(void *user_data, const void *item);
@@ -119,7 +120,7 @@ bool QueryInfo_IsValid(const QueryInfo *);
 // milliseconds from UNIX epoch.
 uint64_t QueryInfo_GetReceivedTimestamp(const QueryInfo);
 // Returns the total time spent by a query waiting, executing and reporting.
-millis_t QueryInfo_GetTotalTimeSpent(const QueryInfo, bool *is_ok);
+millis_t QueryInfo_GetTotalTimeSpent(const QueryInfo);
 // Returns the time the query spent waiting.
 millis_t QueryInfo_GetWaitingTime(const QueryInfo);
 // Returns the time the query spent executing.

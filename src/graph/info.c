@@ -72,8 +72,7 @@ static bool _histogram_init(hdr_histogram **histogram) {
 
     return !hdr_init(
         1,
-        // The maximum value of "millis_t".
-        UINT32_MAX,
+        MILLIS_T_MAX,
         3,
         histogram);
 }
@@ -105,7 +104,7 @@ void FinishedQueryCounters_Add
     lhs->write_timedout_count += rhs.write_timedout_count;
 }
 
-void _FinishedQueryCounters_Reset
+static void _FinishedQueryCounters_Reset
 (
     FinishedQueryCounters *counters
 ) {
@@ -195,7 +194,11 @@ static void _add_finished_query(const FinishedQueryInfo info) {
     ASSERT(unlocked);
 }
 
-static bool _lock_rwlock(pthread_rwlock_t *lock, const bool is_write) {
+static bool _lock_rwlock
+(
+    pthread_rwlock_t *lock,
+    const bool is_write
+) {
     REQUIRE_ARG_OR_RETURN(lock, false);
 
     if (is_write) {
@@ -247,43 +250,8 @@ uint64_t QueryInfo_GetReceivedTimestamp(const QueryInfo info) {
     return info.received_unix_timestamp_milliseconds;
 }
 
-millis_t QueryInfo_GetTotalTimeSpent(const QueryInfo info, bool *is_ok) {
-    millis_t total_time_spent = 0;
-
-    if (!checked_add_u32(
-        total_time_spent,
-        info.wait_duration,
-        &total_time_spent)) {
-        // We have a value overflow.
-        if (is_ok) {
-            *is_ok = false;
-            return 0;
-        }
-    }
-
-    if (!checked_add_u32(
-        total_time_spent,
-        info.execution_duration,
-        &total_time_spent)) {
-        // We have a value overflow.
-        if (is_ok) {
-            *is_ok = false;
-            return 0;
-        }
-    }
-
-    if (!checked_add_u32(
-        total_time_spent,
-        info.report_duration,
-        &total_time_spent)) {
-        // We have a value overflow.
-        if (is_ok) {
-            *is_ok = false;
-            return 0;
-        }
-    }
-
-    return total_time_spent;
+millis_t QueryInfo_GetTotalTimeSpent(const QueryInfo info) {
+    return info.wait_duration + info.execution_duration + info.report_duration;
 }
 
 millis_t QueryInfo_GetWaitingTime(const QueryInfo info) {
@@ -330,7 +298,6 @@ QueryInfoStorage QueryInfoStorage_NewWithCapacity(const uint64_t capacity) {
 QueryInfoStorage QueryInfoStorage_NewWithLength(const uint64_t length) {
     QueryInfoStorage storage;
     storage.queries = array_newlen(QueryInfo, length);
-
     return storage;
 }
 
@@ -717,7 +684,7 @@ void Statistics_Free(Statistics *statistics) {
 
 bool Info_New(Info *info) {
     REQUIRE_ARG_OR_RETURN(info, false);
-    // Compensate for the main thread.
+    // HACK: Compensate for the main thread.
     const uint64_t thread_count = ThreadPools_ThreadCount() + 1;
 
     info->waiting_queries = QueryInfoStorage_New();
@@ -734,7 +701,7 @@ bool Info_New(Info *info) {
 
     REQUIRE_TRUE_OR_RETURN(lock_initialized, false);
 
-   lock_initialized = !pthread_rwlock_init(
+    lock_initialized = !pthread_rwlock_init(
         &info->inverse_global_lock,
         NULL);
 
@@ -792,7 +759,7 @@ void Info_AddWaitingQueryInfo
     REQUIRE_TRUE(_Info_UnlockEverything(info));
 }
 
-bool _Info_MoveQueryInfoBetweenStorages
+static bool _Info_MoveQueryInfoBetweenStorages
 (
     QueryInfoStorage *from,
     QueryInfoStorage *to,
