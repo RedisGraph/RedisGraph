@@ -13,6 +13,8 @@ exporter:
       - "$.OverallGraphInternalLatencies.Total.q95"
       - "$.OverallGraphInternalLatencies.Total.q99"
       - "$.OverallGraphInternalLatencies.Total.avg"
+      - "$.OverallRelativeInternalExternalLatencyDiff.avg"
+      - "$.OverallRelativeInternalExternalLatencyDiff.q50"
       - "$.OverallQueryRates.Total"
   comparison:
     metrics:
