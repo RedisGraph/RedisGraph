@@ -8,6 +8,7 @@
 #include <ctype.h>
 #include "RG.h"
 #include "rmalloc.h"
+#include "deps/utf8proc/utf8proc.h"
 
 void str_tolower(const char *str, char *lower, size_t *lower_len) {
 	size_t str_len = strlen(str);
@@ -17,8 +18,14 @@ void str_tolower(const char *str, char *lower, size_t *lower_len) {
 	//Update lower len
 	*lower_len = str_len;
 
+	utf8proc_int32_t c;
 	size_t i = 0;
-	for(; i < str_len; i++) lower[i] = tolower(str[i]);
+	int w = 0;
+	while(i < str_len) {
+		w = utf8proc_iterate(str + i, -1, &c);
+		utf8proc_encode_char(utf8proc_tolower(c), lower + i);
+		i+=w;
+	}
 	lower[i] = 0;
 }
 
@@ -30,8 +37,14 @@ void str_toupper(const char *str, char *upper, size_t *upper_len) {
 	//Update lower len
 	*upper_len = str_len;
 
+	utf8proc_int32_t c;
 	size_t i = 0;
-	for(; i < str_len; i++) upper[i] = toupper(str[i]);
+	int w = 0;
+	while(i < str_len) {
+		w = utf8proc_iterate(str + i, -1, &c);
+		utf8proc_encode_char(utf8proc_toupper(c), upper + i);
+		i+=w;
+	}
 	upper[i] = 0;
 }
 

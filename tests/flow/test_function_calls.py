@@ -1853,7 +1853,9 @@ class testFunctionCallsFlow(FlowTestsBase):
         query_to_expected_result = {
             "RETURN toLower('MuChAcHo')": [['muchacho']],
             "RETURN toLower('mUcHaChO')": [['muchacho']],
-            "RETURN toLower(NULL)": [[None]]
+            "RETURN toLower(NULL)": [[None]],
+            "RETURN toLower('ΑαΒβΓγΔδΕεΖζΗηΘθΙιΚκΛλΜμΝνΞξΟοΠπΡρΣσςΤτΥυΦφΧχΨψΩω')": [["ααββγγδδεεζζηηθθιικκλλμμννξξοοππρρσσςττυυφφχχψψωω"]],
+            "RETURN toLower('АаБбВвГгДдЕеЖжЗзИиЙйКкЛлМмНнОоПпРрСсТтУуФфХхЦцЧчШшЩщЬьЭэЮюЯя')": [["ааббввггддеежжззииййккллммннооппррссттууффххццччшшщщььээююяя"]]
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
@@ -1862,7 +1864,9 @@ class testFunctionCallsFlow(FlowTestsBase):
         query_to_expected_result = {
             "RETURN toUpper('MuChAcHo')": [['MUCHACHO']],
             "RETURN toUpper('mUcHaChO')": [['MUCHACHO']],
-            "RETURN toUpper(NULL)": [[None]]
+            "RETURN toUpper(NULL)": [[None]],
+            "RETURN toUpper('ΑαΒβΓγΔδΕεΖζΗηΘθΙιΚκΛλΜμΝνΞξΟοΠπΡρΣσςΤτΥυΦφΧχΨψΩω')": [["ΑΑΒΒΓΓΔΔΕΕΖΖΗΗΘΘΙΙΚΚΛΛΜΜΝΝΞΞΟΟΠΠΡΡΣΣΣΤΤΥΥΦΦΧΧΨΨΩΩ"]],
+            "RETURN toUpper('АаБбВвГгДдЕеЖжЗзИиЙйКкЛлМмНнОоПпРрСсТтУуФфХхЦцЧчШшЩщЬьЭэЮюЯя')":  [["ААББВВГГДДЕЕЖЖЗЗИИЙЙККЛЛММННООППРРССТТУУФФХХЦЦЧЧШШЩЩЬЬЭЭЮЮЯЯ"]]
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
