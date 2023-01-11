@@ -6,6 +6,9 @@
 
 #pragma once
 
+// return utf8 encoded length of string
+int str_length(const char *str);
+
 //convert str to a lower case string and save it in lower
 void str_tolower(const char *str, char *lower, size_t *lower_len);
 

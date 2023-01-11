@@ -2376,3 +2376,11 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.env.assertEqual(in_degree, 1)
         self.env.assertEqual(out_degree, 1)
 
+    def test89_size(self):
+        query_to_expected_result = {
+            "RETURN size(NULL)" : [[None]],
+            "RETURN size('abcd')" : [[4]],
+            "RETURN size('丁丂七丄丅丆万丈三上')" : [[10]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)

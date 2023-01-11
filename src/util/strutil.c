@@ -10,6 +10,18 @@
 #include "rmalloc.h"
 #include "deps/utf8proc/utf8proc.h"
 
+int str_length(const char *str) {
+	size_t str_len = strlen(str);
+	utf8proc_int32_t c;
+	size_t i = 0;
+	int len = 0;
+	while(i < str_len) {
+		i+= utf8proc_iterate(str + i, -1, &c);
+		len++;
+	}
+	return len;
+}
+
 void str_tolower(const char *str, char *lower, size_t *lower_len) {
 	size_t str_len = strlen(str);
 	//Avoid overflow
