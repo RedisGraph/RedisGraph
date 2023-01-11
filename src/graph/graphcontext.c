@@ -494,12 +494,18 @@ uint64_t _count_indices_from_schemas(const Schema** schemas) {
 	return count;
 }
 
-uint64_t GraphContext_NodeIndexCount(const GraphContext *gc) {
+uint64_t GraphContext_NodeIndexCount
+(
+	const GraphContext *gc
+) {
 	ASSERT(gc);
 	return _count_indices_from_schemas((const Schema**)gc->node_schemas);
 }
 
-uint64_t GraphContext_EdgeIndexCount(const GraphContext *gc) {
+uint64_t GraphContext_EdgeIndexCount
+(
+	const GraphContext *gc
+) {
 	ASSERT(gc);
 	return _count_indices_from_schemas((const Schema**)gc->relation_schemas);
 }
