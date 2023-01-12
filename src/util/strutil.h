@@ -12,7 +12,15 @@ int str_length
 	const char *str
 );
 
-// convert str to a lower case string and save it in lower
+// convert ascii str to a lower case string and save it in lower
+void str_tolower_ascii
+(
+	const char *str,
+	char *lower,
+	size_t *lower_len
+);
+
+// convert utf8 str to a lower case string and save it in lower
 void str_tolower
 (
 	const char *str,
@@ -20,7 +28,7 @@ void str_tolower
 	size_t *lower_len
 );
 
-// convert str to a n upper case string and save it in upper
+// convert utf8 str to a n upper case string and save it in upper
 void str_toupper
 (
 	const char *str,

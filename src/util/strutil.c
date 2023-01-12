@@ -10,6 +10,23 @@
 #include "rmalloc.h"
 #include "utf8proc/utf8proc.h"
 
+void str_tolower_ascii
+(
+	const char *str,
+	char *lower,
+	size_t *lower_len
+) {
+ 	size_t str_len = strlen(str);
+ 	// avoid overflow
+ 	ASSERT(*lower_len >= str_len);
+
+ 	// update lower len
+ 	*lower_len = str_len;
+
+ 	for(size_t i = 0; i < str_len; i++) lower[i] = tolower(str[i]);
+ 	lower[str_len] = 0;
+ }
+
 // determine the length of the string
 // not in terms of the number of bytes in the string
 // but in terms of the number of Unicode characters in the string
@@ -17,16 +34,15 @@ int str_length
 (
     const char *str
 ) {
-    utf8proc_int32_t c; // hold current Unicode character
+	// hold current Unicode character
+    utf8proc_int32_t c;
 
-    size_t i       = 0;
-    int    len     = 0;
-    size_t str_len = strlen(str);  // length of the string in bytes
+    int len = 0;
 
-    // while the current position is less than length in bytes
-    while(i < str_len) {
+    // while we didn't get to the end of the string
+    while(str[0] != 0) {
         // increment current position by number of bytes in Unicode character
-        i += utf8proc_iterate((const utf8proc_uint8_t *)(str + i), -1, &c);
+        str += utf8proc_iterate((const utf8proc_uint8_t *)str, -1, &c);
         // increment length of the string in terms of Unicode characters
         len++;
     }
@@ -42,21 +58,22 @@ void str_tolower
 	size_t *lower_len
 ) {
 	size_t str_len = strlen(str);
-	//Avoid overflow
+	// avoid overflow
 	ASSERT(*lower_len >= str_len);
 
-	//Update lower len
+	// update lower len
 	*lower_len = str_len;
 
+	// hold current Unicode character
 	utf8proc_int32_t c;
-	size_t i = 0;
-	int w = 0;
-	while(i < str_len) {
-		w = utf8proc_iterate((const utf8proc_uint8_t *)(str + i), -1, &c);
-		utf8proc_encode_char(utf8proc_tolower(c), (utf8proc_uint8_t *)(lower + i));
-		i+=w;
+	// while we didn't get to the end of the string
+	while(str[0] != 0) {
+		// increment current position by number of bytes in Unicode character
+		str   += utf8proc_iterate((const utf8proc_uint8_t *)str, -1, &c);
+		// write the Unicode character to the buffer
+		lower += utf8proc_encode_char(utf8proc_tolower(c), (utf8proc_uint8_t *)lower);
 	}
-	lower[i] = 0;
+	lower[0] = 0;
 }
 
 void str_toupper
@@ -66,21 +83,22 @@ void str_toupper
 	size_t *upper_len
 ) {
 	size_t str_len = strlen(str);
-	//Avoid overflow
+	// avoid overflow
 	ASSERT(*upper_len >= str_len);
 
-	//Update lower len
+	// update lower len
 	*upper_len = str_len;
 
+	// hold current Unicode character
 	utf8proc_int32_t c;
-	size_t i = 0;
-	int w = 0;
-	while(i < str_len) {
-		w = utf8proc_iterate((const utf8proc_uint8_t *)(str + i), -1, &c);
-		utf8proc_encode_char(utf8proc_toupper(c), (utf8proc_uint8_t *)(upper + i));
-		i+=w;
+	// while we didn't get to the end of the strings
+	while(str[0] != 0) {
+		// increment current position by number of bytes in Unicode character
+		str   += utf8proc_iterate((const utf8proc_uint8_t *)str, -1, &c);
+		// write the Unicode character to the buffer
+		upper += utf8proc_encode_char(utf8proc_toupper(c), (utf8proc_uint8_t *)upper);
 	}
-	upper[i] = 0;
+	upper[0] = 0;
 }
 
 // Utility function to increase the size of a buffer.
