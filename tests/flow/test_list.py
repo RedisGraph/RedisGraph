@@ -826,3 +826,110 @@ class testList(FlowTestsBase):
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("Received 0 arguments to function 'toStringList', expected at least 1", str(e))
+
+    def test09_remove(self):
+        # NULL input should return NULL
+        expected_result = [None]
+        query = """RETURN remove(null, 2)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # 2nd arg should be integer
+        try:
+            redis_graph.query("RETURN remove([1,2,3], '2')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected Integer but was String", str(e))
+
+        # 3rd arg shoulf be integer
+        try:
+            redis_graph.query("RETURN remove([1,2,3], 2, '1')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected Integer but was String", str(e))
+
+        # Test without input argument
+        try:
+            query = """RETURN remove()"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 0 arguments to function 'remove', expected at least 2", str(e))
+
+        # Test with 1 input argument
+        try:
+            query = """RETURN remove([1,2,3])"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 1 arguments to function 'remove', expected at least 2", str(e))
+
+        # Test with 4 input argument
+        try:
+            query = """RETURN remove([1,2,3], 2, 1, 3)"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 4 arguments to function 'remove', expected at most 3", str(e))
+
+        ### Test valid inputs ###
+
+        expected_result = [[1]]
+        query = """RETURN remove([1,2,3], 1, 2)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,4]]
+        query = """RETURN remove([1,2,3,4], 1, 2)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,2]]
+        query = """RETURN remove([1,2,3], 2, 1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+        query = """RETURN remove([1,2,3], 2)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # test negative index
+        expected_result = [[1,2,3]]
+        query = """RETURN remove([1,2,3,4], -1, 1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # test negative index
+        expected_result = [[2,3,4]]
+        query = """RETURN remove([1,2,3,4], -4, 1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # test out of range removal
+        expected_result = [[1,2,3]]
+        query = """RETURN remove([1,2,3,4], -1, 2)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # test out of range removal
+        expected_result = [[1]]
+        query = """RETURN remove([1,2,3,4], -3, 5)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # test out of range removal
+        expected_result = [[1]]
+        query = """RETURN remove([1,2,3,4], 1, 5)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # test out bound index
+        expected_result = [None]
+        query = """RETURN remove([1,2,3,4], -5, 5)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # test out bound index
+        expected_result = [None]
+        query = """RETURN remove([1,2,3,4], 4, 5)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)

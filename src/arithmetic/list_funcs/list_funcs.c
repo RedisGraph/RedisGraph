@@ -191,6 +191,20 @@ SIValue AR_TOSTRINGLIST(SIValue *argv, int argc, void *private_data) {
 	return array;
 }
 
+/* Normalize index.
+   Returns true if in range, false otherwise.
+   Idx is 0-based when non-negative, or from the end of the list when negative.
+*/
+static inline bool normalize_index(int32_t *index, uint32_t arrayLen) {
+	// given a negativ index, the accses is calculated as arrayLen+index
+	uint32_t absIndex = abs(*index);
+	// index range can be [-arrayLen, arrayLen) (lower bound inclusive, upper exclusive)
+	// this is because 0 = arrayLen+(-arrayLen)
+	if((*index < 0 && absIndex > arrayLen) || (*index > 0 && absIndex >= arrayLen)) return false;
+	*index = *index >= 0 ? *index : arrayLen - absIndex;
+	return true;
+}
+
 /* If given an array, returns a value in a specific index in an array.
    Valid index range is [-arrayLen, arrayLen).
    Invalid index will return null.
@@ -223,12 +237,9 @@ SIValue AR_SUBSCRIPT(SIValue *argv, int argc, void *private_data) {
 	SIValue list = argv[0];
 	int32_t index = (int32_t)argv[1].longval;
 	uint32_t arrayLen = SIArray_Length(list);
-	// given a negativ index, the accses is calculated as arrayLen+index
-	uint32_t absIndex = abs(index);
-	// index range can be [-arrayLen, arrayLen) (lower bound inclusive, upper exclusive)
-	// this is because 0 = arrayLen+(-arrayLen)
-	if((index < 0 && absIndex > arrayLen) || (index > 0 && absIndex >= arrayLen)) return SI_NullVal();
-	index = index >= 0 ? index : arrayLen - absIndex;
+	if(!normalize_index(&index, arrayLen)) {
+		return SI_NullVal();
+	}
 	SIValue res = SIArray_Get(list, index);
 	// clone is in case for nested heap allocated values returned from the array
 	return SI_CloneValue(res);
@@ -399,6 +410,57 @@ SIValue AR_TAIL(SIValue *argv, int argc, void *private_data) {
 	return array;
 }
 
+/*  Given a list, return a list after removing a given number of consecutive elements 
+	(or less, if the end of the list has been reached). starting at a given index.
+	list.remove(list, idx, count = 1) → list
+	"RETURN remove([1,2,3], 2, 2)" returns [1]
+ */
+SIValue AR_REMOVE(SIValue *argv, int argc, void *private_data) {
+	ASSERT(argc == 2 || argc == 3);
+	SIValue list = argv[0];
+	if(SI_TYPE(list) == T_NULL) return SI_NullVal();
+	ASSERT(SI_TYPE(list) == T_ARRAY);
+
+	if(SI_TYPE(argv[1]) != T_INT64) {
+		// index should be integer.
+		Error_SITypeMismatch(argv[1], T_INT64);
+		return SI_NullVal();
+	}
+
+	int32_t index = (int32_t)argv[1].longval;
+
+	int32_t count = 1;
+	if(argc == 3) {
+		if(SI_TYPE(argv[2]) != T_INT64) {
+			// count should be integer.
+			Error_SITypeMismatch(argv[2], T_INT64);
+			return SI_NullVal();
+		}
+
+		count = (int32_t)argv[2].longval;
+	}
+	ASSERT(count >= 0);
+
+	uint32_t arrayLen = SIArray_Length(list);
+	if(!normalize_index(&index, arrayLen)) {
+		return SI_NullVal();
+	}
+
+	// calculate real count
+	count = MIN(count, arrayLen - index);
+
+	SIValue array = SI_Array(arrayLen - count);
+	for(uint i = 0; i < index; i++) {
+		SIArray_Append(&array, SIArray_Get(list, i));
+	}
+
+	for(uint i = index + count; i < arrayLen; i++) {
+		SIArray_Append(&array, SIArray_Get(list, i));
+	}
+
+	return array;
+}
+
 SIValue AR_REDUCE
 (
 	SIValue *argv,
@@ -541,6 +603,14 @@ void Register_ListFuncs() {
 	array_append(types, T_ARRAY | T_NULL);
 	ret_type = SI_ALL;
 	func_desc = AR_FuncDescNew("tail", AR_TAIL, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_INT64);
+	array_append(types, T_INT64);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("remove", AR_REMOVE, 2, 3, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 4);
