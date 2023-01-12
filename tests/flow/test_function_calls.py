@@ -2222,7 +2222,7 @@ class testFunctionCallsFlow(FlowTestsBase):
 
     def test86_type_mismatch_message(self):
         # A list of queries and errors which are expected to occur with the
-        # specified query.      
+        # specified query.
         queries_with_errors = {
             "RETURN tail(1)" : "Type mismatch on function 'tail' argument 1: expected List or Null but was Integer",
             "CREATE (n) RETURN hasLabels(n, 1)" : "Type mismatch on function 'hasLabels' argument 2: expected List but was Integer",
@@ -2230,6 +2230,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             "RETURN toBoolean(1.2)" : "Type mismatch on function 'toBoolean' argument 1: expected String, Boolean, Integer, or Null but was Float",
             "RETURN isEmpty(1)" : "Type mismatch on function 'isEmpty' argument 1: expected Map, List, String, or Null but was Integer",
             "CREATE ()-[r:R]->() RETURN toString(r)" : "Type mismatch on function 'tostring' argument 1: expected Datetime, Duration, String, Boolean, Integer, Float, Null, or Point but was Edge",
+            "MERGE p=() RETURN p.name" : "Type mismatch on operator '.' left argument: expected Map, Node, Edge, Null, or Point but was Path",
             "RETURN 'a'-2" : "Type mismatch on operator '-' left argument: expected Integer, Float, or Null but was String",
             "RETURN 1*'a'" : "Type mismatch on operator '*' right argument: expected Integer, Float, or Null but was String",
             "RETURN 2^'a'" : "Type mismatch on operator '^' right argument: expected Integer, Float, or Null but was String",

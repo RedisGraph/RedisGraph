@@ -167,7 +167,10 @@ static bool _FunctionIsOperator(const char* function_name, char* operator) {
 	} else if(strcmp(function_name, "sub") == 0) {
 		strcpy(operator, "-");
 		return true;
-	}
+	} else if(strcmp(function_name, "property") == 0) {
+		strcpy(operator, ".");
+		return true;
+	} 
 	return false;
 }
 
