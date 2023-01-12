@@ -1854,6 +1854,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             "RETURN toLower('MuChAcHo')": [['muchacho']],
             "RETURN toLower('mUcHaChO')": [['muchacho']],
             "RETURN toLower(NULL)": [[None]],
+            # test unicode charecters
             "RETURN toLower('ΑαΒβΓγΔδΕεΖζΗηΘθΙιΚκΛλΜμΝνΞξΟοΠπΡρΣσςΤτΥυΦφΧχΨψΩω')": [["ααββγγδδεεζζηηθθιικκλλμμννξξοοππρρσσςττυυφφχχψψωω"]],
             "RETURN toLower('АаБбВвГгДдЕеЖжЗзИиЙйКкЛлМмНнОоПпРрСсТтУуФфХхЦцЧчШшЩщЬьЭэЮюЯя')": [["ааббввггддеежжззииййккллммннооппррссттууффххццччшшщщььээююяя"]]
         }
@@ -1865,6 +1866,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             "RETURN toUpper('MuChAcHo')": [['MUCHACHO']],
             "RETURN toUpper('mUcHaChO')": [['MUCHACHO']],
             "RETURN toUpper(NULL)": [[None]],
+            # test unicode charecters
             "RETURN toUpper('ΑαΒβΓγΔδΕεΖζΗηΘθΙιΚκΛλΜμΝνΞξΟοΠπΡρΣσςΤτΥυΦφΧχΨψΩω')": [["ΑΑΒΒΓΓΔΔΕΕΖΖΗΗΘΘΙΙΚΚΛΛΜΜΝΝΞΞΟΟΠΠΡΡΣΣΣΤΤΥΥΦΦΧΧΨΨΩΩ"]],
             "RETURN toUpper('АаБбВвГгДдЕеЖжЗзИиЙйКкЛлМмНнОоПпРрСсТтУуФфХхЦцЧчШшЩщЬьЭэЮюЯя')":  [["ААББВВГГДДЕЕЖЖЗЗИИЙЙККЛЛММННООППРРССТТУУФФХХЦЦЧЧШШЩЩЬЬЭЭЮЮЯЯ"]]
         }
