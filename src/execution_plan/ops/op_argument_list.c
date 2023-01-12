@@ -9,15 +9,15 @@
 #include "op_argument_list.h"
 
 // Forward declarations
+static void ArgumentListFree(OpBase *opBase);
 static Record ArgumentListConsume(OpBase *opBase);
 static OpResult ArgumentListReset(OpBase *opBase);
 static OpBase *ArgumentListClone(const ExecutionPlan *plan, const OpBase *opBase);
-static void ArgumentListFree(OpBase *opBase);
 
 OpBase *NewArgumentListOp
 (
 	const ExecutionPlan *plan,  // plan to bind the operation to
-	const char **variables     // bound variables
+	const char **variables      // bound variables
 ) {
 	ArgumentList *op = rm_malloc(sizeof(ArgumentList));
 	op->record_list = NULL;
@@ -42,13 +42,25 @@ static Record ArgumentListConsume(OpBase *opBase) {
 			return array_pop(arg->record_list);
 		}
 	}
-    // if the list is empty - return NULL (depleted)
+
+    // if the list is non-existing or empty - return NULL (uninitialized or
+	// depleted)
     return NULL;
 }
 
 static OpResult ArgumentListReset(OpBase *opBase) {
 	// Reset operation, freeing the Record if one is held.
 	ArgumentList *arg = (ArgumentList *)opBase;
+
+	if(arg->record_list) {
+		// free record list components
+		for(uint i = 0; i < array_len(arg->record_list); i++) {
+			Record_Free(arg->record_list[i]);
+		}
+
+		array_free(arg->record_list);
+	}
+	arg->record_list = NULL;
 
 	return OP_OK;
 }
@@ -65,9 +77,14 @@ static inline OpBase *ArgumentListClone(const ExecutionPlan *plan, const OpBase 
 
 static void ArgumentListFree(OpBase *opBase) {
 	ArgumentList *arg = (ArgumentList *)opBase;
-	// if(arg->r) {
-	// 	OpBase_DeleteRecord(arg->r);
-	// 	arg->r = NULL;
-	// }
-}
 
+	if(arg->record_list) {
+		// free record list components
+		for(uint i = 0; i < array_len(arg->record_list); i++) {
+			Record_Free(arg->record_list[i]);
+		}
+
+		array_free(arg->record_list);
+	}
+	arg->record_list = NULL;
+}

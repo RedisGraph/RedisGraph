@@ -9,20 +9,22 @@
 #include "op.h"
 #include "../execution_plan.h"
 
-/* The Argument operation holds an internal Record that it will emit exactly once. */
+// The ArgumentList operation holds an internal Record list that it emits
+// one-by-one exactly once.
+
 typedef struct {
-	OpBase op;
-	Record *record_list;
+	OpBase op;            // OpBase
+	Record *record_list;  // internal Record list
 } ArgumentList;
 
 OpBase *NewArgumentListOp
 (
 	const ExecutionPlan *plan,  // plan to bind the operation to
-	const char **variables     // bound variables
+	const char **variables      // bound variables
 );
 
 void ArgumentList_AddRecordList
 (
 	ArgumentList *arg,       // Argument operation to plant the list in
-	Record *record_list  // record list
+	Record *record_list      // record list
 );

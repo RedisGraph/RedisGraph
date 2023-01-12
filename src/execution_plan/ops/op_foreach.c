@@ -33,22 +33,19 @@ OpBase *NewForeachOp
 
     op->supplier = NULL;
 	op->first_embedded = NULL;
-    op->argument = NULL;
+    op->argument_list = NULL;
 	op->records = NULL;
 	op->first = true;
 
     OpBase_Init((OpBase *)op, OPType_FOREACH, "Foreach", ForeachInit, ForeachConsume,
 				ForeachReset, NULL, ForeachClone, NULL, false, plan);
 
-	// set the record index in which the final array will be written to.
-	op->recIdx = OpBase_Modifies((OpBase *)op, "array_holder");
-
 	return (OpBase *)op;
 }
 
 static OpResult ForeachInit
 (
-    OpBase *opBase  // operation
+    OpBase *opBase  // Foreach operation to initialize
 ) {
     OpForeach *op = (OpForeach *)opBase;
 
@@ -64,17 +61,17 @@ static OpResult ForeachInit
 
 	// update argument operation to be the deepest child of the first embedded
 	// child
-	OpBase *argument = op->first_embedded;
-	while(argument->childCount > 0) {
-		argument = argument->children[0];
+	OpBase *argument_list = op->first_embedded;
+	while(argument_list->childCount > 0) {
+		argument_list = argument_list->children[0];
 	}
-	op->argument = (Argument *)argument;
+	op->argument_list = (ArgumentList *)argument_list;
 
     return OP_OK;
 }
 
+// if there is a record to return, it is returned. Otherwise, returns NULL
 static Record _handoff(OpForeach *op) {
-	// if there is a record to return, return it
 	Record r = NULL;
 	if(array_len(op->records)) {
 		r = array_pop(op->records);
@@ -88,15 +85,13 @@ static Record ForeachConsume
 ) {
     OpForeach *op = (OpForeach *)opBase;
 
+	// if aggregation already occurred, return a record if not depleted
 	if(!op->first) {
 		return _handoff(op);
 	}
 
-	// construct an array (SI_Value) containing the records passed by the supplier
-	// this happens ONCE
+	// construct an array of records to hold all consumed records (eagerly)
 	op->records = array_new(Record, 1);
-	// SIValue recs = SI_Array(1);
-	// SIArray_Append(&recs, SI_PtrVal((void *) op->records));
 
 	Record r = NULL;
 	if(op->supplier) {
@@ -120,7 +115,7 @@ static Record ForeachConsume
 	// plant the list of arguments in argument_list operation
 	Record *clone;
 	array_clone(clone, op->records);
-	ArgumentList_AddRecordList(op->argument, clone);
+	ArgumentList_AddRecordList(op->argument_list, clone);
 
 	// call consume on first_embedded op. The result is thrown away.
 	while(OpBase_Consume(op->first_embedded)) {};

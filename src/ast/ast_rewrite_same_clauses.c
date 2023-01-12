@@ -262,7 +262,12 @@ static bool compress_foreach_clause
 	cypher_astnode_t *body,  // ast root
 	int index               // index of the clause in body
 ) {
-	cypher_astnode_t *foreach_clause = (cypher_astnode_t *) cypher_ast_query_get_clause(body, index);
+	cypher_astnode_t *foreach_clause;
+	if(cypher_astnode_type(body) == CYPHER_AST_QUERY) {
+		 foreach_clause = (cypher_astnode_t *) cypher_ast_query_get_clause(body, index);
+	} else {
+		foreach_clause = (cypher_astnode_t *) cypher_ast_foreach_get_clause(body, index);
+	}
 	return compress_clauses(foreach_clause);
 }
 

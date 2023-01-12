@@ -50,7 +50,7 @@ class testForeachFlow(FlowTestsBase):
         self.env.flush()
 
         res = graph.query(
-            "CYPHER li = [0, 1, 2, 3, 4] FOREACH(i in $li | CREATE(n:N {v: i}))"
+            "CYPHER li = [0, 1, 2, 3, 4] FOREACH(i in $li | CREATE (n:N {v: i}))"
             )
 
         # 5 nodes should have been created, and 5 properties set
@@ -121,7 +121,7 @@ class testForeachFlow(FlowTestsBase):
         self.env.flush()
 
         graph.query(
-            "CYPHER li = [0, 1, 2, 3, 4] FOREACH(i in $li | CREATE(n:N {v: i}))"
+            "CYPHER li = [0, 1, 2, 3, 4] FOREACH(i in $li | CREATE (n:N {v: i}))"
         )
 
         # send a query that demands the tieing of segments containing foreach
@@ -200,6 +200,45 @@ class testForeachFlow(FlowTestsBase):
         self.env.assertEquals(Counter([li[0] for li in res2.result_set]),
                               {i: 1 for i in range(1, 5)})
 
-    # Add 'stress-tests' - large lists.
-    # strange lists
-    # paths, etc.
+    # test that an embedded REMOVE clause affects the graph correctly
+    def test09_remove(self):
+        # state of the graph:
+        # the graph has four nodes with label N, with property v set to 1 to 4
+
+        # remove the properties of the nodes using remove\
+        res = graph.query("MATCH (n:N) WITH collect(n) as ns FOREACH(n in ns | REMOVE n.v, n:N)")
+
+        # validate removal
+        self.env.assertEquals(res.properties_removed, 4)
+        self.env.assertEquals(res.labels_removed, 4)
+        res2 = graph.query("MATCH (n) return labels(n), n.v")
+        self.env.assertEquals(res2.result_set, [[[], None], [[], None], [[], None], [[], None]])
+
+
+    # test that DELETE acts appropriately when embedded in FOREACH
+    def test10_embedded_delete(self):
+        # state of the graph:
+        # the graph has four nodes with no labels or properties
+
+        # delete the entities (the four nodes)
+        res = graph.query("MATCH (n) DELETE n")
+
+        # validate the deletion
+        self.env.assertEquals(res.nodes_deleted, 4)
+
+
+    # check all clauses, with different permutation
+    # keeping here a list of checked permutations of the clauses (to be deleted)
+    # updating clauses aloud in FOREACH: SET, REMOVE, CREATE, MERGE, DELETE, and FOREACH
+    # have already checked:
+    #   CREATE
+    #   MERGE -> SET
+    #   FOREACH -> FOREACH
+    #   DELETE
+
+    # to add:
+    #   MERGE --> DELETE
+    #   DELETE --> MERGE
+    #   SET --> MERGE
+    #   SET --> REMOVE
+    #   etc..

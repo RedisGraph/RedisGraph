@@ -225,15 +225,7 @@ static inline void _buildForeachOp
 	OpBase *argument_list = NewArgumentListOp(embedded_plan, arguments);
 	ExecutionPlan_UpdateRoot(embedded_plan, argument_list);
 
-
-	// // build the outer Unwind op
-	// char *array_holder_str = strdup("array_holder");
-	// AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(array_holder_str);
-	// exp->resolved_name = array_holder_str;
-	// OpBase *unwind_inner = NewUnwindOp(embedded_plan, exp);
-	// ExecutionPlan_UpdateRoot(embedded_plan, unwind_inner);
-
-	// build the inner Unwind op
+	// build the Unwind op (using the list expression from the Foreach clause)
 	AST_UnwindContext unwind_ast_ctx = {.exp =
 		AR_EXP_FromASTNode(cypher_ast_foreach_get_expression(clause))};
 	unwind_ast_ctx.exp->resolved_name = cypher_ast_identifier_get_name(
