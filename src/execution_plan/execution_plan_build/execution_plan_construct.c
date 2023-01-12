@@ -15,6 +15,7 @@
 #include "../../ast/ast_build_filter_tree.h"
 #include "../../ast/ast_build_op_contexts.h"
 #include "../../arithmetic/arithmetic_expression_construct.h"
+#include "../ops/op_argument_list.h"
 
 static inline void _PushDownPathFilters(ExecutionPlan *plan,
 										OpBase *path_filter_op) {
@@ -216,17 +217,29 @@ static inline void _buildForeachOp
 		arguments = (const char **)raxValues(bound_vars);
 	}
 	
-	// build the argument op, which will be the deepest op in the embedded plan
-	OpBase *argument = NewArgumentOp(embedded_plan, arguments);
-	ExecutionPlan_UpdateRoot(embedded_plan, argument);
+	// // build the argument op, which will be the deepest op in the embedded plan
+	// OpBase *argument = NewArgumentOp(embedded_plan, arguments);
+	// ExecutionPlan_UpdateRoot(embedded_plan, argument);
 
-	// build the unwind op
+	// build the argument_list operation
+	OpBase *argument_list = NewArgumentListOp(embedded_plan, arguments);
+	ExecutionPlan_UpdateRoot(embedded_plan, argument_list);
+
+
+	// // build the outer Unwind op
+	// char *array_holder_str = strdup("array_holder");
+	// AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(array_holder_str);
+	// exp->resolved_name = array_holder_str;
+	// OpBase *unwind_inner = NewUnwindOp(embedded_plan, exp);
+	// ExecutionPlan_UpdateRoot(embedded_plan, unwind_inner);
+
+	// build the inner Unwind op
 	AST_UnwindContext unwind_ast_ctx = {.exp =
 		AR_EXP_FromASTNode(cypher_ast_foreach_get_expression(clause))};
 	unwind_ast_ctx.exp->resolved_name = cypher_ast_identifier_get_name(
 		cypher_ast_foreach_get_identifier(clause));
-	OpBase *unwind_op = NewUnwindOp(embedded_plan, unwind_ast_ctx.exp);
-	ExecutionPlan_UpdateRoot(embedded_plan, unwind_op);
+	OpBase *unwind_outer = NewUnwindOp(embedded_plan, unwind_ast_ctx.exp);
+	ExecutionPlan_UpdateRoot(embedded_plan, unwind_outer);
 
 	AST *ast = plan->ast_segment;
 	// build the embedded operations in the foreach clause

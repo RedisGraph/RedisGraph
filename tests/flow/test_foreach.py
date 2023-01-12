@@ -1,4 +1,5 @@
 from common import *
+from collections import Counter
 
 graph = None
 redis_con = None
@@ -142,16 +143,63 @@ class testForeachFlow(FlowTestsBase):
         # clean db
         self.env.flush()
 
-    # # Problematic at the moment - think if to make Foreach eager, or change Create.
-    # def test06_multiple_records(self):
-    #     # clear db
-    #     self.env.flush
+    # validate that multiple records are passed to Foreach appropriately.
+    # namely, the Foreach clause should run once for every record passed to it
+    def test06_multiple_records(self):
+        # clear db
+        self.env.flush
 
-    #     # create 5 nodes
-    #     graph.query("UNWIND range(0, 4) as val CREATE (n:N {v: val})")
+        # create 5 nodes
+        graph.query("UNWIND range(0, 4) as val CREATE (n:N {v: val})")
 
-    #     # execute a FOREACH clause for every node matched
-    #     query = """MATCH (n:N) FOREACH(i in [1] | CREATE (:N {v: 2*n.v}))"""
-    #     res = graph.query(query)
-    #     self.env.assertEquals(res.nodes_created, 5)
-    #     self.env.assertEquals(res.properties_set, 5)
+        # execute a FOREACH clause for every node matched
+        query = """MATCH (n:N) FOREACH(i in [1] | CREATE (:M {v: 2*n.v}))"""
+        res = graph.query(query)
+        self.env.assertEquals(res.nodes_created, 5)
+        self.env.assertEquals(res.properties_set, 5)
+
+        # validate that the creation is correct
+        for i in range(5):
+            q_i = f'MATCH (m:M {{v: {2 * i}}}) RETURN m.v'
+            res_i = [[2 * i]]
+            self.get_res_and_assertEquals(q_i, res_i)
+
+    # validate that Foreach accesses fields correctly
+    def test07_field_access(self):
+        # clean db
+        self.env.flush()
+
+        # create two nodes with list properties
+        graph.query("CREATE (:N {li: [1, 2, 3, 4]}), (:M {li: [1, 2, 3, 4]})")
+
+        # run a Foreach clause for every node, accessing its list
+        res = graph.query("MATCH (n) FOREACH(i in n.li | \
+                           CREATE (t:TEMP {v: i}))")
+
+        # validate the creation
+        self.env.assertEquals(res.nodes_created, 8)
+        self.env.assertEquals(res.properties_set, 8)
+        res2 = graph.query("MATCH (t:TEMP) RETURN t.v")
+        c1 = {i : 2 for i in range(1, 5)}
+        c_actual = Counter([li[0] for li in res2.result_set])
+        self.env.assertEquals(c1, c_actual)
+
+    # embedded foreach clause inside a foreach clause
+    def test08_embedded_foreach(self):
+        # clean db
+        self.env.flush()
+
+        # the following query should create 4 nodes, with v properties 1 to 4.
+        res = graph.query("FOREACH(li in [[1, 2], [3, 4]] | \
+                           FOREACH(j in li | CREATE (n:N {v: j})))")
+
+        # validate the creation
+        self.env.assertEquals(res.nodes_created, 4)
+        self.env.assertEquals(res.properties_set, 4)
+        res2 = graph.query("MATCH (n:N) return n.v")
+        self.env.assertEquals(Counter([li[0] for li in res2.result_set]),
+                              {i: 1 for i in range(1, 5)})
+
+    # Add 'stress-tests' - large lists.
+    # strange lists
+    # paths, etc.

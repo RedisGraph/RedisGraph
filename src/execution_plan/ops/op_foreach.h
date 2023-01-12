@@ -27,8 +27,10 @@ typedef struct {
     OpBase *supplier;        // the operation from which records are pulled (optional)
     Argument *argument;      // argument operation (tap)
     OpBase *first_embedded;  // the first operation in the embedded execution-plan
-
-    bool first;              // did the first consume already occur?
+    
+    Record *records;         // records aggregated by the operation
+    int recIdx;              // the index in which the result array will be
+    bool first;              // is this operation depleted
 } OpForeach;
 
 /* Creates a new Foreach operation */

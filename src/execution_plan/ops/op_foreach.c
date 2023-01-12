@@ -8,10 +8,12 @@
 #include "op_foreach.h"
 #include "../../errors.h"
 #include "../../util/arr.h"
+#include "../../src/value.h"
 #include "../../query_ctx.h"
 #include "../../util/rmalloc.h"
 #include "../../datatypes/array.h"
 #include "../../arithmetic/arithmetic_expression.h"
+#include "op_argument_list.h"
 
 #define INDEX_NOT_SET UINT_MAX
 
@@ -20,6 +22,7 @@ static OpResult ForeachInit(OpBase *opBase);
 static Record ForeachConsume(OpBase *opBase);
 static OpResult ForeachReset(OpBase *opBase);
 static OpBase *ForeachClone(const ExecutionPlan *plan, const OpBase *opBase);
+static void ForeachFree(OpBase *opBase);
 
 /* Creates a new Foreach operation */
 OpBase *NewForeachOp
@@ -31,10 +34,14 @@ OpBase *NewForeachOp
     op->supplier = NULL;
 	op->first_embedded = NULL;
     op->argument = NULL;
-	op->first = false;
+	op->records = NULL;
+	op->first = true;
 
     OpBase_Init((OpBase *)op, OPType_FOREACH, "Foreach", ForeachInit, ForeachConsume,
 				ForeachReset, NULL, ForeachClone, NULL, false, plan);
+
+	// set the record index in which the final array will be written to.
+	op->recIdx = OpBase_Modifies((OpBase *)op, "array_holder");
 
 	return (OpBase *)op;
 }
@@ -63,40 +70,65 @@ static OpResult ForeachInit
 	}
 	op->argument = (Argument *)argument;
 
-	op->first = true;
-
     return OP_OK;
+}
+
+static Record _handoff(OpForeach *op) {
+	// if there is a record to return, return it
+	Record r = NULL;
+	if(array_len(op->records)) {
+		r = array_pop(op->records);
+	}
+	return r;
 }
 
 static Record ForeachConsume
 (
     OpBase *opBase  // operation
 ) {
-    Record r = NULL;
     OpForeach *op = (OpForeach *)opBase;
 
-	// consume a record from supplier if it exists
-	if(op->supplier) {
-		r = OpBase_Consume(op->supplier);
+	if(!op->first) {
+		return _handoff(op);
 	}
-	if(r == NULL) {
-		// depleted or no child
-		if(!op->first) {
-			// Done
-			return NULL;
+
+	// construct an array (SI_Value) containing the records passed by the supplier
+	// this happens ONCE
+	op->records = array_new(Record, 1);
+	// SIValue recs = SI_Array(1);
+	// SIArray_Append(&recs, SI_PtrVal((void *) op->records));
+
+	Record r = NULL;
+	if(op->supplier) {
+		while((r = OpBase_Consume(op->supplier))) {
+			// persist scalars from previous ops, which may be freed before the
+			// records are handed of
+			Record_PersistScalars(r);
+			array_append(op->records, r);
+			// SIArray_Append(&recs, SI_PtrVal((void *) &r));
 		}
-		// first call and no child --> call consume on first embedded ONCE
-		// plan the record in the argument operation
-		Argument_AddRecord(op->argument, OpBase_CreateRecord((OpBase *)op));
+	} else {
+		// static list, just wrap it in a list ONCE
+		// The inner Unwind operation will not need this record, just send
+		// and empty one
+		r = OpBase_CreateRecord((OpBase *)op);
+		array_append(op->records, r);
+
 		op->first = false;
 	}
-	else {
-		Argument_AddRecord(op->argument, OpBase_CloneRecord(r));
-	}
-	// call consume on first_embedded operation
-	OpBase_Consume(op->first_embedded);
 
-	return r;
+	// plant the list of arguments in argument_list operation
+	Record *clone;
+	array_clone(clone, op->records);
+	ArgumentList_AddRecordList(op->argument, clone);
+
+	// call consume on first_embedded op. The result is thrown away.
+	while(OpBase_Consume(op->first_embedded)) {};
+	
+	// mark that the aggregation has occurred, so it won't occur again
+	op->first = false;
+
+	return _handoff(op);
 }
 
 static OpResult ForeachReset
@@ -116,4 +148,14 @@ static OpBase *ForeachClone
 ) {
     ASSERT(opBase->type == OPType_FOREACH);
 	return NewForeachOp(plan);
+}
+
+static void ForeachFree
+(
+	OpBase *op
+) {
+	OpForeach *_op = (OpForeach *) op;
+	if(_op->records) {
+		array_free(_op->records);
+	}
 }
