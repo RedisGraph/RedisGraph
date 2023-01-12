@@ -14,8 +14,8 @@
 typedef _Constraint *Constraint;
 
 typedef struct {
-    Attribute_ID id;             // attribute ID
-    const char *attribute_name;  // attribute name
+    Attribute_ID id;   // attribute ID
+    const char *name;  // attribute name
 } AttrInfo;
 
 // different states a constraint can be at
@@ -40,7 +40,8 @@ Constraint Constraint_New
 (
 	AttrInfo *fields, // enforced fields
 	uint n_fields,    // number of fields
-	const Schema *s   // constraint schema
+	const Schema *s,  // constraint schema
+	ConstraintType t  // constraint type
 );
 
 // set constraint status
@@ -53,10 +54,10 @@ void Constraint_SetStatus
 	ConstraintStatus status  // new status
 );
 
-// returns a shallow copy of constraint fields
-const AttrInfo *Constraint_GetFields
+// returns a shallow copy of constraint attributes
+const AttrInfo *Constraint_GetAttributes
 (
-	const Constraint c  // constraint from which to extract fields
+	const Constraint c  // constraint from which to get attributes
 );
 
 // returns number of pending changes
@@ -80,17 +81,19 @@ void Constraint_DecPendingChanges
 // enforce constraint on entity
 // returns true if entity satisfies the constraint
 // false otherwise
-bool Constraint_enforce_entity
+bool Constraint_EnforceEntity
 (
-	const Constraint c,   // constraint to enforce
+	const Constraint *c,  // constraint to enforce
 	const GraphEntity *e  // enforced entity
 );
 
-// Enforce the constraints on the given entity.
-bool Constraints_enforce_entity(Constraint *c, const AttributeSet attributes, RSIndex *idx, uint32_t *ind);
-
 struct GraphContext; // forward declaration
-void Constraint_Drop_Index(Constraint c, struct GraphContext *gc, bool should_drop_constraint);
+void Constraint_Drop_Index
+(
+	Constraint c,
+	struct GraphContext *gc,
+	bool should_drop_constraint
+);
 
 // is the field have constraint which enforce it
 bool Has_Constraint_On_Attribute(Constraint *constraints, Attribute_ID attr_id);
@@ -104,3 +107,4 @@ GraphEntityType Constraint_GraphEntityType
 );
 
 void Constraint_free(Constraint c);
+

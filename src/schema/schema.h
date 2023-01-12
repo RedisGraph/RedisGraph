@@ -100,6 +100,14 @@ void Schema_AddNodeToIndices
 	const Node *n
 );
 
+// enforce all constraints under given schema
+// on provided entity
+bool Schema_EnforceConstraints
+(
+	const Schema *s,
+	const GraphEntity *e
+);
+
 // introduce edge to schema indicies
 void Schema_AddEdgeToIndices
 (
@@ -154,3 +162,4 @@ int Schema_RemoveConstraint
 	Schema *s,
 	Constraint c 	 // constraint to remove
 );
+

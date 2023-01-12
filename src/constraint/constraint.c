@@ -11,130 +11,21 @@
 #include "../query_ctx.h"
 #include <stdatomic.h>
 
+// constraint enforcement callback function
+typedef bool (EnforcementCB)(const Constraint *c, const GraphEntity * e);
+
 // opaque structure representing a constraint
 typedef struct _Constraint {
-    AttrInfo *attributes;          // array of attributes sorted by their ids which are part of this constraint
 	Schema *schema;                // constraint schema
-    char *label;                   // indexed label
-	int label_id;                  // indexed label ID
-    GraphEntityType entity_type;   // entity type (node/edge) indexed
+	ConstraintType t;              // constraint type
+	EnforcementCB enforce;         // enforcement function
+    AttrInfo *attributes;          // array of attributes sorted by their ids which are part of this constraint
     ConstraintStatus status;       // constraint status
     uint _Atomic pending_changes;  // number of pending changes
 } _Constraint;
 
-const AttrInfo *Constraint_GetAttributes
-(
-	const Constraint c
-) {
-	ASSERT(c != NULL);
-
-	return (const AttrInfo *)c->attributes;
-}
-
-// create a new constraint
-Constraint Constraint_New
-(
-	AttrInfo *fields, // enforced fields
-	uint n_fields,    // number of fields
-	const Schema *s   // constraint schema
-) {
-    Constraint c  = rm_malloc(sizeof(_Constraint));
-    c->attributes = array_newlen(AttrInfo, id_count);
-
-    memcpy(c->attributes, attrData, sizeof(AttrInfo) * id_count);
-    for(uint i = 0; i < id_count; i++) {
-        c->attributes[i].attribute_name = rm_strdup(attrData[i].attribute_name);
-    }
-
-	c->label           = rm_strdup(label);
-	c->status          = CT_PENDING;
-	c->label_id        = label_id;
-	c->entity_type     = type;
-	c->pending_changes = ATOMIC_VAR_INIT(0);
-
-    return c;
-}
-
-// set constraint status
-// status can change from:
-// 1. CT_PENDING to CT_ACTIVE
-// 2. CT_PENDING to CT_FAILED
-void Constraint_SetStatus
-(
-	Constraint c,            // constraint to update
-	ConstraintStatus status  // new status
-) {
-	// validations
-	// validate state transition
-	ASSERT(c->status == CT_PENDING);
-	ASSERT(status == CT_ACTIVE || status == CT_FAILED);
-
-	// assuming under lock
-    c->status = status;
-}
-
-// returns number of pending changes
-int Constraint_PendingChanges
-(
-	const Constraint c  // constraint to inquery
-) {
-	// validations
-	ASSERT(c != NULL);
-	// the number of pending changes of a constraint can not be more than 2
-	// CREATE + DROP will yield 2 pending changes, a dropped constraint can not
-	// be dropped again
-	//
-	// CREATE + CREATE will result in two different constraints each with its
-	// own pending changes
-    ASSERT(c->pending_changes <= 2);
-
-	return c->pending_changes;
-}
-
-// increment number of pending changes
-void Constraint_IncPendingChanges
-(
-	Constraint c  // constraint to update
-) {
-	ASSERT(c != NULL);
-
-	// one can't create or drop the same constraint twice
-	// see comment at Constraint_PendingChanges
-    ASSERT(c->pending_changes <= 2);
-
-	// atomic increment
-	c->pending_changes++;
-}
-
-// decrement number of pending changes
-void Constraint_DecPendingChanges
-(
-	Constraint c  // constraint to update
-) {
-	ASSERT(c != NULL);
-
-	// one can't create or drop the same constraint twice
-	// see comment at Constraint_PendingChanges
-    ASSERT(c->pending_changes > 0);
-    ASSERT(c->pending_changes <= 2);
-
-	// atomic decrement
-	c->pending_changes--;
-}
-
-void Constraint_free(Constraint c) {
-    for(int i = 0; i < array_len(c->attributes); i++) {
-        rm_free(c->attributes[i].attribute_name);
-    }
-    array_free(c->attributes);
-    rm_free(c->label);
-    rm_free(c);
-}
-
-// enforce constraint on entity
-// returns true if entity satisfies the constraint
-// false otherwise
-bool Constraint_enforce_entity
+// enforces unique constraint on given entity
+static bool Constraint_EnforceUniqueEntity
 (
 	const Constraint c,   // constraint to enforce
 	const GraphEntity *e  // enforced entity
@@ -143,8 +34,8 @@ bool Constraint_enforce_entity
 	ASSERT(c != NULL);
 	ASSERT(e != NULL);
 
-	Index *idx = c->idx;
 	bool  res  = false;  // return value none-optimistic
+	Index *idx = Schema_GetIndex(c->s, _, _);
 
 	//--------------------------------------------------------------------------
 	// construct a RediSearch query locating entity
@@ -196,36 +87,164 @@ bool Constraint_enforce_entity
             node = RediSearch_CreateNumericNode(idx, field, d, d, true, true);
         }
         ASSERT(node != NULL);
+		// TODO: validate that if there's only one child
+		// there's no performance penalty
         RediSearch_QueryNodeAddChild(rs_query_node, node);
     }
 
+	//--------------------------------------------------------------------------
+	// query RediSearch index
+	//--------------------------------------------------------------------------
+
+	// TODO: it is ok for 'RediSearch_ResultsIteratorNext' to return NULL
+	// in which case the enforced entity satisfies
     RSResultsIterator *iter = RediSearch_GetResultsIterator(rs_query_node, idx);
     const void* ptr = RediSearch_ResultsIteratorNext(iter, idx, NULL);
-    ASSERT(ptr != NULL); // We always index before we check for constraint violation
-    ptr = RediSearch_ResultsIteratorNext(iter, idx, NULL);
-    if(ptr != NULL) {
-        // We have the same property value twice.
-        RediSearch_ResultsIteratorFree(iter);
-        res = false;
-    }
-	res = true;
+	RediSearch_ResultsIteratorFree(iter);
 
-    RediSearch_ResultsIteratorFree(iter);
-    return res;
+	// if ptr == NULL
+	// then there's no pre-existing entity which conflicts with given entity
+	// constaint holds!
+	//
+	// otherwise ptr != NULL
+	// there's already an existing entity which conflicts with given entity
+	// constaint does NOT hold!
+
+    return (ptr == NULL);
 }
 
-bool Constraints_enforce_entity(Constraint *c, const AttributeSet attributes, RSIndex *idx, uint32_t *ind) {
-    for(uint32_t i = 0; i < array_len(c); i++) {
-        if(c[i]->status != CT_FAILED && !Constraint_enforce_entity(c[i], attributes, idx)) {
-            if(ind) *ind = i;
-            return false;
-        }
+// create a new constraint
+Constraint Constraint_New
+(
+	AttrInfo *attrs,  // enforced attributes
+	uint n_attr,      // number of attributes
+	const Schema *s,  // constraint schema
+	ConstraintType t  // constraint type
+) {
+	// TODO: support CT_MANDATORY
+	ASSERT(t == CT_UNIQUE);
+
+    Constraint c = rm_malloc(sizeof(_Constraint));
+
+	// introduce constraint attributes
+	c->attributes = array_newlen(AttrInfo,  n_fields);
+    memcpy(c->attributes, fields, sizeof(AttrInfo) * id_count);
+    for(uint i = 0; i < id_count; i++) {
+		AttrInfo attr = attrs[i].id;
+		c->attributes[i].id   = attr.id;
+		c->attributes[i].name = rm_strdup(attr.name);
     }
 
-    return true;
+	// initialize constraint
+	c->t               = t;
+	c->schema          = s;
+	c->status          = CT_PENDING;
+	c->pending_changes = ATOMIC_VAR_INIT(0);
+
+	// set enforce function pointer
+	if(t == CT_UNIQUE) {
+		c->enforce = Constraint_EnforceUniqueEntity;
+	} else {
+		c->enforce = Constraint_EnforceMandatory;
+	}
+
+	return c;
 }
 
-// Executed under write lock
+// set constraint status
+// status can change from:
+// 1. CT_PENDING to CT_ACTIVE
+// 2. CT_PENDING to CT_FAILED
+void Constraint_SetStatus
+(
+	Constraint c,            // constraint to update
+	ConstraintStatus status  // new status
+) {
+	// validations
+	// validate state transition
+	ASSERT(c->status == CT_PENDING);
+	ASSERT(status == CT_ACTIVE || status == CT_FAILED);
+
+	// assuming under lock
+    c->status = status;
+}
+
+// returns a shallow copy of constraint attributes
+const AttrInfo *Constraint_GetAttributes
+(
+	const Constraint c  // constraint from which to get attributes
+) {
+	ASSERT(c != NULL);
+
+	return (const AttrInfo *)c->attributes;
+}
+
+// returns number of pending changes
+int Constraint_PendingChanges
+(
+	const Constraint c  // constraint to inquery
+) {
+	// validations
+	ASSERT(c != NULL);
+
+	// the number of pending changes of a constraint can not be more than 2
+	// CREATE + DROP will yield 2 pending changes, a dropped constraint can not
+	// be dropped again
+	//
+	// CREATE + CREATE will result in two different constraints each with its
+	// own pending changes
+    ASSERT(c->pending_changes <= 2);
+
+	return c->pending_changes;
+}
+
+// increment number of pending changes
+void Constraint_IncPendingChanges
+(
+	Constraint c  // constraint to update
+) {
+	ASSERT(c != NULL);
+
+	// one can't create or drop the same constraint twice
+	// see comment at Constraint_PendingChanges
+    ASSERT(c->pending_changes > 0);
+    ASSERT(c->pending_changes <= 2);
+
+	// atomic increment
+	c->pending_changes++;
+}
+
+// decrement number of pending changes
+void Constraint_DecPendingChanges
+(
+	Constraint c  // constraint to update
+) {
+	ASSERT(c != NULL);
+
+	// one can't create or drop the same constraint twice
+	// see comment at Constraint_PendingChanges
+    ASSERT(c->pending_changes > 0);
+    ASSERT(c->pending_changes <= 2);
+
+	// atomic decrement
+	c->pending_changes--;
+}
+
+// enforce constraint on entity
+// returns true if entity satisfies the constraint
+// false otherwise
+bool Constraint_EnforceEntity
+(
+	Constraint *c,
+	const GraphEntity *e,
+) {
+	ASSERT(c != NULL);
+	ASSERT(e != NULL);
+
+	return c->enforce(e);
+}
+
+// executed under write lock
 void Constraint_Drop_Index(Constraint c, struct GraphContext *gc, bool should_drop_constraint) {
 	// constraint was not satisfied, free it and remove it's index
 
@@ -442,4 +461,13 @@ GraphEntityType Constraint_GraphEntityType
 	ASSERT(c != NULL);
 
 	return c->entity_type;
+}
+
+void Constraint_free(Constraint c) {
+    for(int i = 0; i < array_len(c->attributes); i++) {
+        rm_free(c->attributes[i].attribute_name);
+    }
+    array_free(c->attributes);
+    rm_free(c->label);
+    rm_free(c);
 }
