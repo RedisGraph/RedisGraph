@@ -246,8 +246,8 @@ static AR_ExpNode *_AR_EXP_FromUnaryOpExpression(const cypher_astnode_t *expr) {
 			op = AR_EXP_NewConstOperandNode(converted);
 			rm_free(minus_str);
 		} else {
-			op = AR_EXP_NewOpNodeFromAST(OP_MULT, 2);
-			op->op.children[0] = AR_EXP_NewConstOperandNode(SI_LongVal(-1));
+			op = AR_EXP_NewOpNodeFromAST(OP_MINUS, 2);
+			op->op.children[0] = AR_EXP_NewConstOperandNode(SI_LongVal(0));
 			op->op.children[1] = _AR_EXP_FromASTNode(arg);
 		}
 	} else if(operator == CYPHER_OP_UNARY_PLUS) {
