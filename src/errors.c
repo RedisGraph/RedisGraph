@@ -148,30 +148,23 @@ void Error_SITypeMismatch(SIValue received, SIType expected) {
 					  SIType_ToString(SI_TYPE(received)));
 }
 
-static bool _FunctionIsOperator(const char* function_name, char* operator) {
+static char _GetFunctionOperator(const char* function_name) {
 	if(strcmp(function_name, "add") == 0) {
-		strcpy(operator, "+");
-		return true;
+		return '+';
 	} else if(strcmp(function_name, "div") == 0) {
-		strcpy(operator, "/");
-		return true;
+		return '/';
 	} else if(strcmp(function_name, "mod") == 0) {
-		strcpy(operator, "%");
-		return true;
+		return '%';
 	} else if(strcmp(function_name, "mul") == 0) {
-		strcpy(operator, "*");
-		return true;
+		return '*';
 	} else if(strcmp(function_name, "pow") == 0) {
-		strcpy(operator, "^");
-		return true;
+		return '^';
 	} else if(strcmp(function_name, "sub") == 0) {
-		strcpy(operator, "-");
-		return true;
+		return '-';
 	} else if(strcmp(function_name, "property") == 0) {
-		strcpy(operator, ".");
-		return true;
-	} 
-	return false;
+		return '.';
+	}
+	return 0;
 }
 
 void Error_FunctionArgumentSITypeMismatch(
@@ -183,16 +176,16 @@ void Error_FunctionArgumentSITypeMismatch(
 ) {
 	size_t bufferLen = MULTIPLE_TYPE_STRING_BUFFER_SIZE;
 	char buf[bufferLen];
-	char operator[2];
+	char operator = _GetFunctionOperator(function_name);
 
 	SIType_ToMultipleTypeString(expected, buf, bufferLen);
 	if(elem_number == 0) {
-		if(_FunctionIsOperator(function_name, operator)) {
+		if(operator != 0) {
 			if(arg_number == 1) {
-				ErrorCtx_SetError("Type mismatch on operator '%s' left argument: expected %s but was %s", 
+				ErrorCtx_SetError("Type mismatch on operator '%c' left argument: expected %s but was %s", 
 					operator, buf, SIType_ToString(SI_TYPE(received)));
 			} else {
-				ErrorCtx_SetError("Type mismatch on operator '%s' right argument: expected %s but was %s", 
+				ErrorCtx_SetError("Type mismatch on operator '%c' right argument: expected %s but was %s", 
 					operator, buf, SIType_ToString(SI_TYPE(received)));
 			}
 		} else {
