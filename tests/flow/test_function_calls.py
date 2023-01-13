@@ -2231,13 +2231,13 @@ class testFunctionCallsFlow(FlowTestsBase):
             "RETURN isEmpty(1)" : "Type mismatch on function 'isEmpty' argument 1: expected Map, List, String, or Null but was Integer",
             "CREATE ()-[r:R]->() RETURN toString(r)" : "Type mismatch on function 'tostring' argument 1: expected Datetime, Duration, String, Boolean, Integer, Float, Point, or Null but was Edge",
             "MERGE p=() RETURN p.name" : "Type mismatch on operator '.' left argument: expected Map, Node, Edge, Point, or Null but was Path",
-            "MERGE p=() RETURN p+1" : "Type mismatch on operator '+' left argument: expected List, String, Boolean, Integer, Float, or Null but was Path",
+            "MERGE p=() RETURN p + 1" : "Type mismatch on operator '+' left argument: expected List, String, Boolean, Integer, Float, or Null but was Path",
             "RETURN -'a'" : "Type mismatch on operator '-' right argument: expected Integer, Float, or Null but was String",
-            "RETURN 'a'-2" : "Type mismatch on operator '-' left argument: expected Integer, Float, or Null but was String",
-            "RETURN 1*'a'" : "Type mismatch on operator '*' right argument: expected Integer, Float, or Null but was String",
-            "RETURN 2^'a'" : "Type mismatch on operator '^' right argument: expected Integer, Float, or Null but was String",
-            "RETURN 'a'/2" : "Type mismatch on operator '/' left argument: expected Integer, Float, or Null but was String",
-            "RETURN 'a'%2" : "Type mismatch on operator '%' left argument: expected Integer, Float, or Null but was String",
+            "RETURN 'a' - 2" : "Type mismatch on operator '-' left argument: expected Integer, Float, or Null but was String",
+            "RETURN 1 * 'a'" : "Type mismatch on operator '*' right argument: expected Integer, Float, or Null but was String",
+            "RETURN 2 ^ 'a'" : "Type mismatch on operator '^' right argument: expected Integer, Float, or Null but was String",
+            "RETURN 'a' / 2" : "Type mismatch on operator '/' left argument: expected Integer, Float, or Null but was String",
+            "RETURN 'a' % 2" : "Type mismatch on operator '%' left argument: expected Integer, Float, or Null but was String",
         }
         for query, error in queries_with_errors.items():
             self.expect_error(query, error)
