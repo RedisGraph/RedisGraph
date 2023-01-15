@@ -2372,3 +2372,74 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.env.assertEqual(in_degree, 1)
         self.env.assertEqual(out_degree, 1)
 
+    def test89_JOIN(self):
+        # NULL input should return NULL
+        expected_result = [None]
+        query = """WITH NULL as list RETURN join(null, '')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # 2nd arg should be string
+        try:
+            graph.query("RETURN join(['HELL','OW'], 2)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected String but was Integer", str(e))
+
+        # Test without input argument
+        try:
+            query = """RETURN join()"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 0 arguments to function 'join', expected at least 1", str(e))
+
+        # Test with 3 input argument
+        try:
+            query = """RETURN join(['HELL','OW'], ' ', '')"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 3 arguments to function 'join', expected at most 2", str(e))
+
+        # list args should be string
+        try:
+            graph.query("RETURN join(['HELL', 2], ' ')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected String but was Integer", str(e))
+
+        # list args should be string
+        try:
+            graph.query("RETURN join(['HELL', 'OW', 2, 'now'], ' ')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected String but was Integer", str(e))
+
+        # list args should be string
+        try:
+            graph.query("RETURN join([3, 'OW', 'now'], ' ')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected String but was Integer", str(e))
+
+        ### Test valid inputs ###
+        expected_result = ['HELLOW']
+        query = """RETURN join(['HELL','OW'])"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = ['HELL OW']
+        query = """RETURN join(['HELL','OW'], ' ')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = ['HELL']
+        query = """RETURN join(['HELL'], ' ')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = ['HELL OW NOW']
+        query = """RETURN join(['HELL','OW', 'NOW'], ' ')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
