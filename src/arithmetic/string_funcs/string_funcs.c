@@ -37,13 +37,11 @@ SIValue AR_LEFT(SIValue *argv, int argc, void *private_data) {
 		return SI_DuplicateStringVal(argv[0].stringval);
 	}
 
-
 	utf8proc_int32_t c;
 	const char *str = argv[0].stringval;
 	char left_str[strlen(str)];
 	char* left = left_str;
-	int i = 0;
-	for (; i < newlen; i++) {
+	for (int i = 0;; i < newlen; i++) {
 		str += utf8proc_iterate((const utf8proc_uint8_t *)str, -1, &c);
 		left += utf8proc_encode_char(c, (utf8proc_uint8_t *)left);
 	}
