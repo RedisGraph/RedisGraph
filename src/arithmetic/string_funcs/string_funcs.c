@@ -38,15 +38,15 @@ SIValue AR_LEFT(SIValue *argv, int argc, void *private_data) {
 	}
 
 	utf8proc_int32_t c;
-	int64_t bytes_len = 0;
+	int64_t newlen_bytes = 0;
 	const char *str = argv[0].stringval;
 	for (int i = 0; i < newlen; i++) {
-		bytes_len += utf8proc_iterate((const utf8proc_uint8_t *)(str+bytes_len), -1, &c);
+		newlen_bytes += utf8proc_iterate((const utf8proc_uint8_t *)(str+newlen_bytes), -1, &c);
 	}
 
-	char *left_str = rm_malloc((bytes_len + 1) * sizeof(char));
- 	strncpy(left_str, str, bytes_len * sizeof(char));
- 	left_str[bytes_len] = '\0';
+	char *left_str = rm_malloc((newlen_bytes + 1) * sizeof(char));
+ 	strncpy(left_str, str, newlen_bytes * sizeof(char));
+ 	left_str[newlen_bytes] = '\0';
 
 	return SI_TransferStringVal(left_str);
 }
@@ -77,13 +77,21 @@ SIValue AR_RIGHT(SIValue *argv, int argc, void *private_data) {
 		return SI_NullVal();
 	}
 
-	int64_t start = strlen(argv[0].stringval) - newlen;
+	const char *str = argv[0].stringval;
+	int64_t start   = str_length(str) - newlen;
 
 	if(start <= 0) {
 		// No need to truncate this string based on the requested length
-		return SI_DuplicateStringVal(argv[0].stringval);
+		return SI_DuplicateStringVal(str);
 	}
-	return SI_DuplicateStringVal(argv[0].stringval + start);
+
+	utf8proc_int32_t c;
+	int64_t start_bytes = 0;
+	for (int i = 0; i < start; i++) {
+		start_bytes += utf8proc_iterate((const utf8proc_uint8_t *)(str+start_bytes), -1, &c);
+	}
+
+	return SI_DuplicateStringVal(str + start_bytes);
 }
 
 // returns the original string with trailing whitespace removed.

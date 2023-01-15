@@ -777,6 +777,9 @@ class testFunctionCallsFlow(FlowTestsBase):
             "RETURN RIGHT(NULL, -1)" : [[None]],
             "RETURN RIGHT(NULL, 100)" : [[None]],
             "RETURN RIGHT(NULL, NULL)" : [[None]],
+            # test unicode charecters
+            "RETURN RIGHT('丁丂七丄丅丆万丈三上', 4)" : [['万丈三上']],
+            "RETURN RIGHT('丁丂七丄丅丆万丈三上', 100)" : [['丁丂七丄丅丆万丈三上']],
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
