@@ -38,15 +38,17 @@ SIValue AR_LEFT(SIValue *argv, int argc, void *private_data) {
 	}
 
 	utf8proc_int32_t c;
+	int64_t bytes_len = 0;
 	const char *str = argv[0].stringval;
-	char left_str[strlen(str)];
-	char* left = left_str;
 	for (int i = 0; i < newlen; i++) {
-		str += utf8proc_iterate((const utf8proc_uint8_t *)str, -1, &c);
-		left += utf8proc_encode_char(c, (utf8proc_uint8_t *)left);
+		bytes_len += utf8proc_iterate((const utf8proc_uint8_t *)(str+bytes_len), -1, &c);
 	}
-	left[0] = '\0';
-	return SI_DuplicateStringVal(left_str);
+
+	char *left_str = rm_malloc((bytes_len + 1) * sizeof(char));
+ 	strncpy(left_str, str, bytes_len * sizeof(char));
+ 	left_str[bytes_len] = '\0';
+
+	return SI_TransferStringVal(left_str);
 }
 
 // returns the original string with leading whitespace removed.
