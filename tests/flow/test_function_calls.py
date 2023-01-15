@@ -705,36 +705,22 @@ class testFunctionCallsFlow(FlowTestsBase):
             self.env.assertEquals(actual_result.result_set[0][0], None)
 
     def test24_substring(self):
-        query = """RETURN SUBSTRING('muchacho', 0, 4)"""
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], "much")
+        query_to_expected_result = {
+            """RETURN SUBSTRING('muchacho', 0, 4)""": [["much"]],
+            """RETURN SUBSTRING('muchacho', 3, 20)""": [["hacho"]],
+            """RETURN SUBSTRING(NULL, 3, 20)""": [[None]],
+            """RETURN SUBSTRING('ab', 1, 999999999999999)""": [["b"]],
+            # test unicode charecters
+            """RETURN SUBSTRING('丁丂七丄丅丆万丈三上', 3, 4)""" : [['丄丅丆万']],
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+        
+        self.expect_error("""RETURN SUBSTRING("muchacho", 3, -20)""",
+            "length must be a non-negative integer")
 
-        query = """RETURN SUBSTRING('muchacho', 3, 20)"""
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], "hacho")
-
-        query = """RETURN SUBSTRING(NULL, 3, 20)"""
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], None)
-
-        # the requested length is too long and overflowing
-        query = """RETURN SUBSTRING('ab', 1, 999999999999999)"""
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], "b")
-
-        try:
-            query = """RETURN SUBSTRING("muchacho", 3, -20)"""
-            graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertEqual(str(e), "length must be a non-negative integer")
-
-        try:
-            query = """RETURN SUBSTRING("muchacho", -3, 3)"""
-            graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertEqual(str(e), "start must be a non-negative integer")
+        self.expect_error("""RETURN SUBSTRING("muchacho", -3, 3)""",
+            "start must be a non-negative integer")
 
     def test25_left(self):
         query_to_expected_result = {

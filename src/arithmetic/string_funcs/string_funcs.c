@@ -182,9 +182,20 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 		length = MIN(length, suffix_len);
 	}
 
-	char *substring = rm_malloc((length + 1) * sizeof(char));
-	strncpy(substring, original + start, length);
-	substring[length] = '\0';
+	utf8proc_int32_t c;
+	int64_t start_bytes = 0;
+	for (int i = 0; i < start; i++) {
+		start_bytes += utf8proc_iterate((const utf8proc_uint8_t *)(original+start_bytes), -1, &c);
+	}
+
+	int64_t length_bytes = 0;
+	for (int i = 0; i < length; i++) {
+		length_bytes += utf8proc_iterate((const utf8proc_uint8_t *)(original+start_bytes + length_bytes), -1, &c);
+	}
+
+	char *substring = rm_malloc((length_bytes + 1) * sizeof(char));
+	strncpy(substring, original + start_bytes, length_bytes);
+	substring[length_bytes] = '\0';
 
 	return SI_TransferStringVal(substring);
 }
