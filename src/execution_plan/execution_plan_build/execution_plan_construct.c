@@ -15,7 +15,6 @@
 #include "../../ast/ast_build_filter_tree.h"
 #include "../../ast/ast_build_op_contexts.h"
 #include "../../arithmetic/arithmetic_expression_construct.h"
-#include "../ops/op_argument_list.h"
 
 static inline void _PushDownPathFilters(ExecutionPlan *plan,
 										OpBase *path_filter_op) {
@@ -227,11 +226,11 @@ static inline void _buildForeachOp
 	ExecutionPlan_UpdateRoot(embedded_plan, argument_list);
 
 	// build the Unwind op using the list expression from the Foreach clause
-	AST_UnwindContext unwind_ast_ctx = {.exp =
-		AR_EXP_FromASTNode(cypher_ast_foreach_get_expression(clause))};
-	unwind_ast_ctx.exp->resolved_name = cypher_ast_identifier_get_name(
+	AR_ExpNode *exp = AR_EXP_FromASTNode(
+		cypher_ast_foreach_get_expression(clause));
+	exp->resolved_name = cypher_ast_identifier_get_name(
 		cypher_ast_foreach_get_identifier(clause));
-	OpBase *unwind_outer = NewUnwindOp(embedded_plan, unwind_ast_ctx.exp);
+	OpBase *unwind_outer = NewUnwindOp(embedded_plan, exp);
 	ExecutionPlan_UpdateRoot(embedded_plan, unwind_outer);
 
 	AST *ast = plan->ast_segment;
@@ -248,14 +247,13 @@ static inline void _buildForeachOp
 	ExecutionPlan_AddOp(op, embedded_plan->root);
 
 	// free the temporary plan
-	embedded_plan->record_map = NULL;
-	embedded_plan->ast_segment = NULL;
-	embedded_plan->query_graph = NULL;
-	embedded_plan->record_pool = NULL;
+	embedded_plan->root                 = NULL;
+	embedded_plan->record_map           = NULL;
+	embedded_plan->ast_segment          = NULL;
+	embedded_plan->query_graph          = NULL;
+	embedded_plan->record_pool          = NULL;
 	embedded_plan->connected_components = NULL;
-	// TODO: free the plan (if needed)
-	// ExecutionPlan_Free(embedded_plan);
-	rm_free(embedded_plan);
+	ExecutionPlan_Free(embedded_plan);
 }
 
 void ExecutionPlanSegment_ConvertClause
