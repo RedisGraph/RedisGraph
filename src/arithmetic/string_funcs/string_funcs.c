@@ -41,7 +41,7 @@ SIValue AR_LEFT(SIValue *argv, int argc, void *private_data) {
 	const char *str = argv[0].stringval;
 	char left_str[strlen(str)];
 	char* left = left_str;
-	for (int i = 0;; i < newlen; i++) {
+	for (int i = 0; i < newlen; i++) {
 		str += utf8proc_iterate((const utf8proc_uint8_t *)str, -1, &c);
 		left += utf8proc_encode_char(c, (utf8proc_uint8_t *)left);
 	}
@@ -115,12 +115,16 @@ SIValue AR_REVERSE(SIValue *argv, int argc, void *private_data) {
 		size_t str_len = strlen(str);
 		char *reverse = rm_malloc((str_len + 1) * sizeof(char));
 
-		int i = str_len - 1;
-		int j = 0;
-		while(i >= 0) {
-			reverse[j++] = str[i--];
+		char *reverse_i = reverse + str_len;
+		utf8proc_int32_t c;
+		utf8proc_ssize_t w;
+		while(str[0] != 0) {
+			w = utf8proc_iterate((const utf8proc_uint8_t *)str, -1, &c);
+			str += w;
+			reverse_i -= w;
+			utf8proc_encode_char(c, (utf8proc_uint8_t *)reverse_i);
 		}
-		reverse[j] = '\0';
+		reverse[str_len] = '\0';
 		return SI_TransferStringVal(reverse);
 	} else {
 		SIValue reverse = SI_CloneValue(value);

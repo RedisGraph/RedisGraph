@@ -1814,7 +1814,9 @@ class testFunctionCallsFlow(FlowTestsBase):
         query_to_expected_result = {
             "RETURN REVERSE('muchacho')": [["ohcahcum"]], 
             "RETURN REVERSE('')": [[""]], 
-            "RETURN REVERSE(NULL)": [[None]]
+            "RETURN REVERSE(NULL)": [[None]],
+            # test unicode charecters
+            "RETURN reverse('丁丂七丄丅丆万丈三上')": [["上三丈万丆丅丄七丂丁"]]
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
