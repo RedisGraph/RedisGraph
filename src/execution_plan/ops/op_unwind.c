@@ -36,8 +36,8 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 	return (OpBase *)op;
 }
 
-/* Evaluate list expression, 
- * if expression did not return a list type value, creates a list with that value. */
+// Evaluate list expression,
+// if expression did not return a list type value, creates a list with that value.
 static void _initList(OpUnwind *op) {
 	op->list = SI_NullVal(); // Null-set the list value to avoid memory errors if evaluation fails.
 	SIValue new_list = AR_EXP_Evaluate(op->exp, op->currentRecord);

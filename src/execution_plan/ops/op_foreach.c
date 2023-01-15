@@ -27,7 +27,7 @@ OpBase *NewForeachOp
 	op->first_embedded = NULL;
 
     OpBase_Init((OpBase *)op, OPType_FOREACH, "Foreach", ForeachInit, ForeachConsume,
-				ForeachReset, NULL, ForeachClone, NULL, false, plan);
+				ForeachReset, NULL, ForeachClone, ForeachFree, false, plan);
 
 	return (OpBase *)op;
 }
@@ -121,14 +121,7 @@ static OpResult ForeachReset
 ) {
     OpForeach *op = (OpForeach *)opBase;
 	op->first = true;
-	if(op->records) {
-		uint nrecords = array_len(op->records);
-		for(uint i = 0; i < nrecords; i++) {
-			Record_Free(op->records[i]);
-		}
-		array_free(op->records);
-		op->records = NULL;
-	}
+	op->records = NULL;
 
 	return OP_OK;
 }
@@ -147,12 +140,5 @@ static void ForeachFree
 	OpBase *op
 ) {
 	OpForeach *_op = (OpForeach *) op;
-	if(_op->records) {
-		uint nrecords = array_len(_op->records);
-		for(uint i = 0; i < nrecords; i++) {
-			Record_Free(_op->records[i]);
-		}
-		array_free(_op->records);
-		_op->records = NULL;
-	}
+	_op->records = NULL;
 }

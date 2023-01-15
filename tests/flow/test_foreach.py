@@ -5,23 +5,13 @@ graph = None
 redis_con = None
 GRAPH_ID = "G"
 
-class testForeachFlow(FlowTestsBase):
+class testForeachFlow():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global graph
         global redis_con
         redis_con = self.env.getConnection()
         graph = Graph(redis_con, GRAPH_ID)
-
-    def expect_error(self, query, expected_err_msg):
-        try:
-            graph.query(query)
-            assert(False)
-        except redis.exceptions.ResponseError as e:
-            self.env.assertIn(expected_err_msg, str(e))
-
-    def expect_type_error(self, query):
-        self.expect_error(query, "Type mismatch")
 
     def get_res_and_assertEquals(self, query, expected_result):
         actual_result = graph.query(query)
@@ -31,9 +21,8 @@ class testForeachFlow(FlowTestsBase):
     # check that FOREACH with a literal list works properly
     def test01_literal_list(self):
         # graph is empty
-        res = graph.query(
-            "FOREACH(i in range(0, 4) | CREATE (n:N {v: i}))"
-            )
+        res = graph.query("FOREACH(i in range(0, 4) | CREATE (n:N {v: i}))")
+
         # 5 nodes should have been created, and 5 properties set
         self.env.assertEquals(res.nodes_created, 5)
         self.env.assertEquals(res.properties_set, 5)
@@ -43,6 +32,59 @@ class testForeachFlow(FlowTestsBase):
             q_i = f'MATCH (n:N {{v: {i}}}) return n.v'
             res_i = [[i]]
             self.get_res_and_assertEquals(q_i, res_i)
+
+        # validate MERGE (without creation) and SET
+        res = graph.query(
+            'FOREACH(i in range(0, 4) | MERGE (n:N {v: i}) SET n.v=i^2)'
+            )
+
+        # make sure no nodes were created, and 3 properties were set
+        self.env.assertEquals(res.nodes_created, 0)
+        self.env.assertEquals(res.properties_set, 3)
+
+        # validate that the update is correct
+        for i in range(5):
+            q_i = f'MATCH (n:N {{v: {i**2}}}) return n.v'
+            res_i = [[i**2]]
+            self.get_res_and_assertEquals(q_i, res_i)
+        
+        # validate MERGE creation
+        res = graph.query(
+            'FOREACH(i in range(0, 4) | MERGE (m:M {v: i}))'
+        )
+
+        # 5 nodes should have been created, and 5 properties set
+        self.env.assertEquals(res.nodes_created, 5)
+        self.env.assertEquals(res.properties_set, 5)
+
+        # delete the entities (the four nodes)
+        res = graph.query("FOREACH(i in range(0, 4) | MERGE (m:M {v: i}) DELETE m)")
+
+        # validate the deletion
+        self.env.assertEquals(res.nodes_deleted, 5)
+        
+        # remove the properties of the nodes using remove
+        res = graph.query("MATCH (n:N) WITH collect(n) as ns FOREACH(n in ns | REMOVE n.v, n:N)")
+
+        # validate removal
+        self.env.assertEquals(res.properties_removed, 5)
+        self.env.assertEquals(res.labels_removed, 5)
+        res = graph.query("MATCH (n) return labels(n), n.v")
+        self.env.assertEquals(res.result_set, 
+                    [[[], None], [[], None],[[], None], [[], None], [[], None]])
+        
+        # embedded foreach
+        res = graph.query(
+            """FOREACH(i in [0, 1, 2, 3, 4] | FOREACH(j in [1, 2] | \
+                                                CREATE (n:N) \
+                                                SET n.i=i, n.j=j)) \
+            """
+        )
+
+        # validate the actions of the query
+        self.env.assertEquals(res.nodes_created, 10)
+        self.env.assertEquals(res.properties_set, 20)
+        
 
     # tests that FOREACH with an aliased list works properly
     def test02_aliased_list(self):
@@ -62,38 +104,63 @@ class testForeachFlow(FlowTestsBase):
             q_i = f'MATCH (n:N {{v: {i}}}) return n.v'
             res_i = [[i]]
             self.get_res_and_assertEquals(q_i, res_i)
-
-
-    # tests that the modifications made in the FOREACH clause are correct
-    def test03_modifications(self):
-        # using the nodes created above
-        # update the nodes' properties
+        
+        # validate MERGE (without creation) and SET
         res = graph.query(
-            'FOREACH(i in range(0, 4) | MERGE (n:N {v: i}) SET n.v=i^2)'
+            """CYPHER li = [0, 1, 2, 3, 4]
+            FOREACH(i in $li | MERGE (n:N {v: i}) SET n.v=i^2)"""
             )
 
-        # make sure no nodes were created
+        # make sure no nodes were created, and 3 properties were set
         self.env.assertEquals(res.nodes_created, 0)
+        self.env.assertEquals(res.properties_set, 3)
 
         # validate that the update is correct
         for i in range(5):
             q_i = f'MATCH (n:N {{v: {i**2}}}) return n.v'
             res_i = [[i**2]]
             self.get_res_and_assertEquals(q_i, res_i)
-
-        # update the nodes labels
+        
+        # validate MERGE creation
         res = graph.query(
-            'FOREACH(i in range(0, 4) | MERGE (n:N {v: i^2}) SET n:M)'
-            )
+            'CYPHER li = [0, 1, 2, 3, 4] FOREACH(i in $li | MERGE (m:M {v: i}))'
+        )
 
-        # validate that the update is correct
-        for i in range(5):
-            q_i = f'MATCH (n:N {{v: {i**2}}}) return labels(n)'
-            res_i = [[['N', 'M']]]
-            self.get_res_and_assertEquals(q_i, res_i)
+        # 5 nodes should have been created, and 5 properties set
+        self.env.assertEquals(res.nodes_created, 5)
+        self.env.assertEquals(res.properties_set, 5)
+
+        # delete the entities (the four nodes)
+        res = graph.query("CYPHER li = [0, 1, 2, 3, 4] FOREACH(i in $li | MERGE (m:M {v: i}) DELETE m)")
+
+        # validate the deletion
+        self.env.assertEquals(res.nodes_deleted, 5)
+        
+        # remove the properties of the nodes using remove
+        res = graph.query("MATCH (n:N) WITH collect(n) as ns FOREACH(n in ns | REMOVE n.v, n:N)")
+
+        # validate removal
+        self.env.assertEquals(res.properties_removed, 5)
+        self.env.assertEquals(res.labels_removed, 5)
+        res = graph.query("MATCH (n) return labels(n), n.v")
+        self.env.assertEquals(res.result_set, 
+                    [[[], None], [[], None],[[], None], [[], None], [[], None]])
+
+        # embedded foreach
+        res = graph.query(
+            """CYPHER li = [0, 1, 2, 3, 4] \
+            FOREACH(i in $li | FOREACH(j in [1, 2] | \
+                                    CREATE (n:N) \
+                                    SET n.i=i, n.j=j)) \
+            """
+        )
+
+        # validate the actions of the query
+        self.env.assertEquals(res.nodes_created, 10)
+        self.env.assertEquals(res.properties_set, 20)
 
     # tests a CASE WHEN THEN ELSE
-    def test04_case(self):
+    def test03_case(self):
         # clean db
         self.env.flush()
 
@@ -116,7 +183,7 @@ class testForeachFlow(FlowTestsBase):
         self.env.assertEquals(res.nodes_created, 0)
 
     # test the tieing of different segments with FOREACH
-    def test05_tie_with_foreach(self):
+    def test04_tie_with_foreach(self):
         # clean db
         self.env.flush()
 
@@ -128,24 +195,24 @@ class testForeachFlow(FlowTestsBase):
         query = """
                 MATCH (n:N) WITH collect(n) as ns
                 FOREACH(n in ns | CREATE (:N {v: n.v}))
-                MATCH (new_n:N) WITH collect(new_n) as new_ns
-                FOREACH(n in new_ns | CREATE (:N {v: n.v^10}))
+                WITH ns
+                FOREACH(n in ns | CREATE (:N {v: n.v^10}))
                 """
 
         res = graph.query(query)
 
-        # 5 + 10 = 15 nodes created
-        self.env.assertEquals(res.nodes_created, 15)
+        # 5 + 5 = 10 nodes created
+        self.env.assertEquals(res.nodes_created, 10)
 
-        # 5 + 10 = 15 properties set
-        self.env.assertEquals(res.properties_set, 15)
+        # 5 + 5 = 10 properties set
+        self.env.assertEquals(res.properties_set, 10)
 
         # clean db
         self.env.flush()
 
     # validate that multiple records are passed to Foreach appropriately.
     # namely, the Foreach clause should run once for every record passed to it
-    def test06_multiple_records(self):
+    def test05_multiple_records(self):
         # clear db
         self.env.flush
 
@@ -165,7 +232,7 @@ class testForeachFlow(FlowTestsBase):
             self.get_res_and_assertEquals(q_i, res_i)
 
     # validate that Foreach accesses fields correctly
-    def test07_field_access(self):
+    def test06_field_access(self):
         # clean db
         self.env.flush()
 
@@ -183,62 +250,10 @@ class testForeachFlow(FlowTestsBase):
         c1 = {i : 2 for i in range(1, 5)}
         c_actual = Counter([li[0] for li in res2.result_set])
         self.env.assertEquals(c1, c_actual)
-
-    # embedded foreach clause inside a foreach clause
-    def test08_embedded_foreach(self):
-        # clean db
-        self.env.flush()
-
-        # the following query should create 4 nodes, with v properties 1 to 4.
-        res = graph.query("FOREACH(li in [[1, 2], [3, 4]] | \
-                           FOREACH(j in li | CREATE (n:N {v: j})))")
-
-        # validate the creation
-        self.env.assertEquals(res.nodes_created, 4)
-        self.env.assertEquals(res.properties_set, 4)
-        res2 = graph.query("MATCH (n:N) return n.v")
-        self.env.assertEquals(Counter([li[0] for li in res2.result_set]),
-                              {i: 1 for i in range(1, 5)})
-
-    # test that an embedded REMOVE clause affects the graph correctly
-    def test09_remove(self):
-        # state of the graph:
-        # the graph has four nodes with label N, with property v set to 1 to 4
-
-        # remove the properties of the nodes using remove\
-        res = graph.query("MATCH (n:N) WITH collect(n) as ns FOREACH(n in ns | REMOVE n.v, n:N)")
-
-        # validate removal
-        self.env.assertEquals(res.properties_removed, 4)
-        self.env.assertEquals(res.labels_removed, 4)
-        res2 = graph.query("MATCH (n) return labels(n), n.v")
-        self.env.assertEquals(res2.result_set, [[[], None], [[], None], [[], None], [[], None]])
-
-
-    # test that DELETE acts appropriately when embedded in FOREACH
-    def test10_embedded_delete(self):
-        # state of the graph:
-        # the graph has four nodes with no labels or properties
-
-        # delete the entities (the four nodes)
-        res = graph.query("MATCH (n) DELETE n")
-
-        # validate the deletion
-        self.env.assertEquals(res.nodes_deleted, 4)
-
-
-    # check all clauses, with different permutation
-    # keeping here a list of checked permutations of the clauses (to be deleted)
-    # updating clauses aloud in FOREACH: SET, REMOVE, CREATE, MERGE, DELETE, and FOREACH
-    # have already checked:
-    #   CREATE
-    #   MERGE -> SET
-    #   FOREACH -> FOREACH
-    #   DELETE
-
-    # to add:
-    #   MERGE --> DELETE
-    #   DELETE --> MERGE
-    #   SET --> MERGE
-    #   SET --> REMOVE
-    #   etc..
+    
+    # mid-evaluation failure (memory free'd appropriately)
+    def test07_midfail(self):
+        try:
+            graph.query("FOREACH(i in [1, 2, 0, 3] | CREATE (n:N {v: 1/i}))")
+        except redis.exceptions.ResponseError as e:
+            self.env.assertIn("Division by zero", str(e))

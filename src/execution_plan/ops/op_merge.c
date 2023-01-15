@@ -192,10 +192,10 @@ static OpResult MergeInit
 		OpBase *child = opBase->children[i];
 
 		bool child_has_merge = _LocateOp(child, OPType_MERGE);
-		/* neither Match stream and Create stream have a Merge op
-		 * the bound variable stream will have a Merge op in-case of a merge merge query
-		 * MERGE (a:A) MERGE (b:B)
-		 * In which case the first Merge has yet to order its streams! */
+		// neither Match stream and Create stream have a Merge op
+		// the bound variable stream will have a Merge op in-case of a merge merge query
+		// MERGE (a:A) MERGE (b:B)
+		// In which case the first Merge has yet to order its streams!
 		if(!op->bound_variable_stream && child_has_merge) {
 			op->bound_variable_stream = child;
 			continue;
@@ -230,11 +230,6 @@ static OpResult MergeInit
 	opBase->children[0] = op->bound_variable_stream;
 	opBase->children[1] = op->match_stream;
 	opBase->children[2] = op->create_stream;
-
-	// migrate the children so that EXPLAIN calls print properly
-	op->bound_variable_stream = opBase->children[0];
-	op->match_stream          = opBase->children[1];
-	op->create_stream         = opBase->children[2];
 
 	// find and store references to the:
 	// Argument taps for the Match and Create streams
