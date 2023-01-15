@@ -201,10 +201,10 @@ static inline void _buildForeachOp
 	// make an execution-plan mocking the current one, in which the execution-
 	// plan of Foreach will be built
 	ExecutionPlan *embedded_plan = ExecutionPlan_NewEmptyExecutionPlan();
-	embedded_plan->record_map = plan->record_map;
-	embedded_plan->ast_segment = plan->ast_segment;
-	embedded_plan->query_graph = plan->query_graph;
-	embedded_plan->record_pool = plan->record_pool;
+	embedded_plan->record_map           = plan->record_map;
+	embedded_plan->ast_segment          = plan->ast_segment;
+	embedded_plan->query_graph          = plan->query_graph;
+	embedded_plan->record_pool          = plan->record_pool;
 	embedded_plan->connected_components = plan->connected_components;
 
 	// build the argumentList operation
