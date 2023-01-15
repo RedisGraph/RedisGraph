@@ -282,7 +282,9 @@ void _ExecutionPlan_LocateTaps
 	OpBase *root,
 	OpBase ***taps
 ) {
-	if(root == NULL) return;
+	if(root == NULL) {
+		return;
+	}
 
 	if(root->childCount == 0) {
 		// op Argument isn't considered a tap

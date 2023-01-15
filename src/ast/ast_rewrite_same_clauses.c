@@ -13,19 +13,16 @@
 #include "../procedures/procedure.h"
 
 // forward declarations
-bool AST_RewriteSameClauses(const cypher_astnode_t *root);
 static inline bool is_compressible(const cypher_astnode_t *clause);
-static bool compress_clauses(cypher_astnode_t *node);
+static bool _compress_clauses(cypher_astnode_t *node);
 
-// compressing multiple consecutive CREATE clauses into a single CREATE clause
-// this function collects all patterns scattered across multiple CREATE clauses
-// and combines them into a single CREATE clause
-static void replace_create_clause
+// compresses multiple consecutive CREATE clauses into a single CREATE clause
+static void _replace_create_clause
 (
 	cypher_astnode_t *root,      // ast root
 	cypher_astnode_t **clauses,  // clause being replaced
 	int scope_start,             // beginning of scope
-	int scope_end,                // ending of scope
+	int scope_end,               // ending of scope
 	bool is_foreach              // wrapping expression is a foreach clause
 ) {
 	// initialize appropriate replacing function
@@ -63,15 +60,13 @@ static void replace_create_clause
 	array_free(paths);
 }
 
-// compressing multiple consecutive MATCH clauses into a single MATCH clause
-// this function collects all patterns scattered across multiple MATCH clauses
-// and combines them into a single MATCH clause
-static void replace_match_clause
+// compresses multiple consecutive MATCH clauses into a single MATCH clause
+static void _replace_match_clause
 (
 	cypher_astnode_t *root,      // ast root
 	cypher_astnode_t **clauses,  // clause being replaced
 	int scope_start,             // beginning of scope
-	int scope_end,                // ending of scope
+	int scope_end,               // ending of scope
 	bool is_foreach              // wrapping expression is a foreach clause
 ) {
 	// initialize appropriate replacing function
@@ -128,15 +123,13 @@ static void replace_match_clause
 	array_free(paths);
 }
 
-// compressing multiple consecutive DELETE clauses into a single DELETE clause
-// this function collects all expressions scattered across multiple DELETE
-// clauses and combines them into a single DELETE clause
-static void replace_delete_clause
+// compresses multiple consecutive DELETE clauses into a single DELETE clause
+static void _replace_delete_clause
 (
 	cypher_astnode_t *root,      // ast root
 	cypher_astnode_t **clauses,  // clause being replaced
 	int scope_start,             // beginning of scope
-	int scope_end,                // ending of scope
+	int scope_end,               // ending of scope
 	bool is_foreach              // wrapping expression is a foreach clause
 ) {
 	// initialize appropriate replacing function
@@ -177,15 +170,13 @@ static void replace_delete_clause
 	array_free(exps);
 }
 
-// compressing multiple consecutive SET clauses into a single SET clause
-// this function collects all expressions scattered across multiple SET
-// clauses and combines them into a single SET clause
-static void replace_set_clause
+// compresses multiple consecutive SET clauses into a single SET clause
+static void _replace_set_clause
 (
 	cypher_astnode_t *root,      // ast root
 	cypher_astnode_t **clauses,  // clause being replaced
 	int scope_start,             // beginning of scope
-	int scope_end,                // ending of scope
+	int scope_end,               // ending of scope
 	bool is_foreach              // wrapping expression is a foreach clause
 ) {
 	// initialize appropriate replacing function
@@ -216,15 +207,13 @@ static void replace_set_clause
 	array_free(items);
 }
 
-// compressing multiple consecutive REMOVE clauses into a single REMOVE clause
-// this function collects all expressions scattered across multiple REMOVE
-// clauses and combines them into a single REMOVE clause
-static void replace_remove_clause
+// compresses multiple consecutive REMOVE clauses into a single REMOVE clause
+static void _replace_remove_clause
 (
 	cypher_astnode_t *root,      // ast root
 	cypher_astnode_t **clauses,  // clause being replaced
 	int scope_start,             // beginning of scope
-	int scope_end,                // ending of scope
+	int scope_end,               // ending of scope
 	bool is_foreach              // wrapping expression is a foreach clause
 ) {
 	// initialize appropriate replacing function
@@ -257,7 +246,8 @@ static void replace_remove_clause
 }
 
 // try compressing the inner-clauses of a foreach clause
-static bool compress_foreach_clause
+// return true if a change was done, false otherwise
+static bool _compress_foreach_clause
 (
 	cypher_astnode_t *body,  // ast root
 	int index               // index of the clause in body
@@ -266,14 +256,15 @@ static bool compress_foreach_clause
 	if(cypher_astnode_type(body) == CYPHER_AST_QUERY) {
 		 foreach_clause = (cypher_astnode_t *) cypher_ast_query_get_clause(body, index);
 	} else {
+		// FOREACH may be embedded within a FOREACH clause
 		foreach_clause = (cypher_astnode_t *) cypher_ast_foreach_get_clause(body, index);
 	}
-	return compress_clauses(foreach_clause);
+	return _compress_clauses(foreach_clause);
 }
 
-// compress clauses of a query or a foreach clause
+// tries to compress clauses of a query or a foreach clause
 // returns true if a rewrite occurred
-static bool compress_clauses
+static bool _compress_clauses
 (
 	cypher_astnode_t *node  // node containing clauses to compress
 ) {
@@ -282,7 +273,6 @@ static bool compress_clauses
 	// is the node representing a FOREACH clause
 	bool is_foreach = (cypher_astnode_type(node) == CYPHER_AST_FOREACH);
 
-	// get clause_count
 	uint clause_count = is_foreach ? cypher_ast_foreach_nclauses(node) :
 									 cypher_ast_query_nclauses(node);
 
@@ -298,7 +288,7 @@ static bool compress_clauses
 
 		// try compressing the inner-clauses of a foreach clause
 		if(t == CYPHER_AST_FOREACH) {
-			rewritten = compress_foreach_clause(node, i);
+			rewritten = _compress_foreach_clause(node, i);
 			continue;
 		}
 
@@ -330,15 +320,15 @@ static bool compress_clauses
 			// multiple consecutive clauses of the same type
 			// compress them
 			if(t == CYPHER_AST_CREATE) {
-				replace_create_clause((cypher_astnode_t *)node, clauses, s, e, is_foreach);
+				_replace_create_clause((cypher_astnode_t *)node, clauses, s, e, is_foreach);
 			} else if(t == CYPHER_AST_MATCH) {
-				replace_match_clause((cypher_astnode_t *)node, clauses, s, e, is_foreach);
+				_replace_match_clause((cypher_astnode_t *)node, clauses, s, e, is_foreach);
 			} else if(t == CYPHER_AST_DELETE) {
-				replace_delete_clause((cypher_astnode_t *)node, clauses, s, e, is_foreach);
+				_replace_delete_clause((cypher_astnode_t *)node, clauses, s, e, is_foreach);
 			} else if(t == CYPHER_AST_SET) {
-				replace_set_clause((cypher_astnode_t *)node, clauses, s, e, is_foreach);
+				_replace_set_clause((cypher_astnode_t *)node, clauses, s, e, is_foreach);
 			} else if(t == CYPHER_AST_REMOVE) {
-				replace_remove_clause((cypher_astnode_t *)node, clauses, s, e, is_foreach);
+				_replace_remove_clause((cypher_astnode_t *)node, clauses, s, e, is_foreach);
 			}
 
 			rewritten = true;
@@ -395,5 +385,5 @@ bool AST_RewriteSameClauses
 
 	// traverse clauses
 	// compress consecutive clauses
-	return compress_clauses(body);
+	return _compress_clauses(body);
 }

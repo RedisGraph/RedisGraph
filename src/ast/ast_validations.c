@@ -1328,21 +1328,21 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 	// first (and only) traversal
 	if(start) {
 
-		// build a new environment from the current one to be used in the
-		// traversal of the visitor in the FOREACH clause, since we don't want
-		// it to affect the current environment of bounded vars
+		// build a new environment of bounded vars from the current one to be
+		// used in the traversal of the visitor in the clauses of the FOREACH
+		// clause - as they are local to the FOREACH clause
 		rax *orig_env = vctx->defined_identifiers;
 		rax *temp_env = raxClone(orig_env);
 		vctx->defined_identifiers = temp_env;
 
+		// set the clause of the context
 		vctx->clause = cypher_astnode_type(n);
 
 		// introduce local identifier to bound vars
 		const cypher_astnode_t *identifier_node = cypher_ast_foreach_get_identifier(n);
 		const char *identifier = cypher_ast_identifier_get_name(identifier_node);
-		bool introduce_ident =
-			(raxTryInsert(vctx->defined_identifiers, (unsigned char *)identifier,
-			strlen(identifier), NULL, NULL) != 0);
+		raxInsert(vctx->defined_identifiers, (unsigned char *) identifier,
+				  strlen(identifier), NULL, NULL);
 
 		// visit expression
 		const cypher_astnode_t *exp = cypher_ast_foreach_get_expression(n);
@@ -1359,11 +1359,6 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 			if(ErrorCtx_EncounteredError()) {
 				return VISITOR_BREAK;
 			}
-		}
-
-		// remove local identifier from bound vars if introduced
-		if(introduce_ident) {
-			raxRemove(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL);
 		}
 
 		// return original environment of bounded vars

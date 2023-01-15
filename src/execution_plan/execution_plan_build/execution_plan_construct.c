@@ -199,6 +199,8 @@ static inline void _buildForeachOp
 	OpBase *op = NewForeachOp(plan);
 	ExecutionPlan_UpdateRoot(plan, op);
 
+	// make an execution-plan mocking the current one, in which the execution-
+	// plan of Foreach will be built
 	ExecutionPlan *embedded_plan = ExecutionPlan_NewEmptyExecutionPlan();
 	embedded_plan->record_map = plan->record_map;
 	embedded_plan->ast_segment = plan->ast_segment;
@@ -206,7 +208,8 @@ static inline void _buildForeachOp
 	embedded_plan->record_pool = plan->record_pool;
 	embedded_plan->connected_components = plan->connected_components;
 
-	// build the argument operation
+	// build the argumentList operation
+	// find the bound vars
 	const char **arguments = NULL;
 	if(plan->root) {
 		rax *bound_vars = raxNew();
@@ -215,17 +218,15 @@ static inline void _buildForeachOp
 		ExecutionPlan_BoundVariables(plan->root, bound_vars);
 		// Collect the variable names from bound_vars to populate the Argument ops we will build.
 		arguments = (const char **)raxValues(bound_vars);
+		raxFree(bound_vars);
 	}
-	
-	// // build the argument op, which will be the deepest op in the embedded plan
-	// OpBase *argument = NewArgumentOp(embedded_plan, arguments);
-	// ExecutionPlan_UpdateRoot(embedded_plan, argument);
 
 	// build the argument_list operation
 	OpBase *argument_list = NewArgumentListOp(embedded_plan, arguments);
+	array_free(arguments);
 	ExecutionPlan_UpdateRoot(embedded_plan, argument_list);
 
-	// build the Unwind op (using the list expression from the Foreach clause)
+	// build the Unwind op using the list expression from the Foreach clause
 	AST_UnwindContext unwind_ast_ctx = {.exp =
 		AR_EXP_FromASTNode(cypher_ast_foreach_get_expression(clause))};
 	unwind_ast_ctx.exp->resolved_name = cypher_ast_identifier_get_name(
@@ -234,22 +235,25 @@ static inline void _buildForeachOp
 	ExecutionPlan_UpdateRoot(embedded_plan, unwind_outer);
 
 	AST *ast = plan->ast_segment;
-	// build the embedded operations in the foreach clause
+	// build the operations corresponding to the embedded clauses in foreach
 	uint clause_count = cypher_ast_foreach_nclauses(clause);
 	for(uint i = 0; i < clause_count; i++) {
-		// Build the appropriate operation(s) for each clause in the query.
 		const cypher_astnode_t *sub_clause = cypher_ast_foreach_get_clause(clause, i);
 		ExecutionPlanSegment_ConvertClause(gc, ast, embedded_plan, sub_clause);
 	}
 
+	// bind the operations of the new plan to the old plan
 	ExecutionPlan_BindPlanToOps(plan, embedded_plan->root);
+	// tie the plans
 	ExecutionPlan_AddOp(op, embedded_plan->root);
 
+	// free the temporary plan
 	embedded_plan->record_map = NULL;
 	embedded_plan->ast_segment = NULL;
 	embedded_plan->query_graph = NULL;
 	embedded_plan->record_pool = NULL;
 	embedded_plan->connected_components = NULL;
+	// TODO: free the plan (if needed)
 	// ExecutionPlan_Free(embedded_plan);
 	rm_free(embedded_plan);
 }

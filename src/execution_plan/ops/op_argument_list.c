@@ -5,7 +5,6 @@
  */
 
 #include "op.h"
-#include "RG.h"
 #include "op_argument_list.h"
 
 // Forward declarations
@@ -26,6 +25,7 @@ OpBase *NewArgumentListOp
 	OpBase_Init((OpBase *)op, OPType_ARGUMENT_LIST, "Argument List", NULL,
 				ArgumentListConsume, ArgumentListReset, NULL, ArgumentListClone, ArgumentListFree, false, plan);
 
+	// Todo - is this needed?
 	uint variable_count = array_len(variables);
 	for(uint i = 0; i < variable_count; i ++) {
 		OpBase_Modifies((OpBase *)op, variables[i]);
@@ -43,18 +43,19 @@ static Record ArgumentListConsume(OpBase *opBase) {
 		}
 	}
 
-    // if the list is non-existing or empty - return NULL (uninitialized or
-	// depleted)
+    // if the record-list is non-existing or empty - return NULL (uninitialized
+	// or depleted)
     return NULL;
 }
 
 static OpResult ArgumentListReset(OpBase *opBase) {
-	// Reset operation, freeing the Record if one is held.
+	// Reset operation, freeing the Record-list if exists.
 	ArgumentList *arg = (ArgumentList *)opBase;
 
 	if(arg->record_list) {
 		// free record list components
-		for(uint i = 0; i < array_len(arg->record_list); i++) {
+		uint nrecords = array_len(arg->record_list);
+		for(uint i = 0; i < nrecords; i++) {
 			Record_Free(arg->record_list[i]);
 		}
 
@@ -80,7 +81,8 @@ static void ArgumentListFree(OpBase *opBase) {
 
 	if(arg->record_list) {
 		// free record list components
-		for(uint i = 0; i < array_len(arg->record_list); i++) {
+		uint nrecords = array_len(arg->record_list);
+		for(uint i = 0; i < nrecords; i++) {
 			Record_Free(arg->record_list[i]);
 		}
 

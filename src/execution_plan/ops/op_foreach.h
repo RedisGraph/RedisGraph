@@ -6,20 +6,15 @@
 
 #pragma once
 
-#include "op.h"
 #include "op_argument_list.h"
-#include "../execution_plan.h"
-#include "../../arithmetic/arithmetic_expression.h"
 
-/** Foreach operation gets a list from either its first child or statically,
- * unwinds it, and executes clauses which receive the components of the unwinded
- * list as input records.
- * It passes on the records it got onward to its parent operation, unchanged.
- * The list (potentially, among others) is pulled from the first child.
- * 
- * The Argument-list operation is used to pass a list of records to the embedded
- * operations representing the clauses in the FOREACH clause.
- */
+// The Foreach operation gets a list from either its first child or statically,
+// unwinds it, and executes clauses which receive the components of the unwinded
+// list as input records.
+// It passes on the records it received onward to its parent operation,
+// unchanged.
+// The Argument-list operation is used to pass a list of records to the embedded
+// operations representing the clauses in the FOREACH clause, one-by-one.
 
 typedef struct {
 	OpBase op;
@@ -32,7 +27,7 @@ typedef struct {
     
 } OpForeach;
 
-/* Creates a new Foreach operation */
+// Creates a new Foreach operation
 OpBase *NewForeachOp
 (
     const ExecutionPlan *plan  // execution plan

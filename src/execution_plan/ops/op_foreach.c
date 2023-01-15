@@ -4,25 +4,14 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "RG.h"
 #include "op_foreach.h"
-#include "../../errors.h"
-#include "../../util/arr.h"
-#include "../../src/value.h"
-#include "../../query_ctx.h"
-#include "../../util/rmalloc.h"
-#include "../../datatypes/array.h"
-#include "../../arithmetic/arithmetic_expression.h"
-#include "op_argument_list.h"
-
-#define INDEX_NOT_SET UINT_MAX
 
 /* Forward declarations. */
+static void ForeachFree(OpBase *opBase);
 static OpResult ForeachInit(OpBase *opBase);
 static Record ForeachConsume(OpBase *opBase);
 static OpResult ForeachReset(OpBase *opBase);
 static OpBase *ForeachClone(const ExecutionPlan *plan, const OpBase *opBase);
-static void ForeachFree(OpBase *opBase);
 
 /* Creates a new Foreach operation */
 OpBase *NewForeachOp
@@ -31,11 +20,11 @@ OpBase *NewForeachOp
 ) {
     OpForeach *op = rm_calloc(1, sizeof(OpForeach));
 
-    op->supplier = NULL;
-	op->first_embedded = NULL;
-    op->argument_list = NULL;
-	op->records = NULL;
 	op->first = true;
+	op->records = NULL;
+    op->supplier = NULL;
+    op->argument_list = NULL;
+	op->first_embedded = NULL;
 
     OpBase_Init((OpBase *)op, OPType_FOREACH, "Foreach", ForeachInit, ForeachConsume,
 				ForeachReset, NULL, ForeachClone, NULL, false, plan);
@@ -50,7 +39,7 @@ static OpResult ForeachInit
     OpForeach *op = (OpForeach *)opBase;
 
 	// if number of children is larger than one --> we have a supplier and 
-	// a consumer. Otherwise, we have only a consumer.
+	// a consumer. Otherwise, we have only a consumer (using a static list).
 	if(op->op.childCount > 1) {
 		op->supplier = op->op.children[0];
 		op->first_embedded = op->op.children[1];
@@ -59,8 +48,8 @@ static OpResult ForeachInit
 		op->first_embedded = op->op.children[0];
 	}
 
-	// update argument operation to be the deepest child of the first embedded
-	// child
+	// update argumentList operation to be the deepest child operation of the
+	// first embedded child operation
 	OpBase *argument_list = op->first_embedded;
 	while(argument_list->childCount > 0) {
 		argument_list = argument_list->children[0];
@@ -73,6 +62,7 @@ static OpResult ForeachInit
 // if there is a record to return, it is returned. Otherwise, returns NULL
 static Record _handoff(OpForeach *op) {
 	Record r = NULL;
+	ASSERT(op->records != NULL);
 	if(array_len(op->records)) {
 		r = array_pop(op->records);
 	}
@@ -98,9 +88,8 @@ static Record ForeachConsume
 		while((r = OpBase_Consume(op->supplier))) {
 			// persist scalars from previous ops, which may be freed before the
 			// records are handed of
-			Record_PersistScalars(r);
+			// Record_PersistScalars(r);
 			array_append(op->records, r);
-			// SIArray_Append(&recs, SI_PtrVal((void *) &r));
 		}
 	} else {
 		// static list, just wrap it in a list ONCE
@@ -131,7 +120,15 @@ static OpResult ForeachReset
     OpBase *opBase  // operation
 ) {
     OpForeach *op = (OpForeach *)opBase;
-	op->first = false;
+	op->first = true;
+	if(op->records) {
+		uint nrecords = array_len(op->records);
+		for(uint i = 0; i < nrecords; i++) {
+			Record_Free(op->records[i]);
+		}
+		array_free(op->records);
+		op->records = NULL;
+	}
 
 	return OP_OK;
 }
@@ -151,6 +148,11 @@ static void ForeachFree
 ) {
 	OpForeach *_op = (OpForeach *) op;
 	if(_op->records) {
+		uint nrecords = array_len(_op->records);
+		for(uint i = 0; i < nrecords; i++) {
+			Record_Free(_op->records[i]);
+		}
 		array_free(_op->records);
+		_op->records = NULL;
 	}
 }
