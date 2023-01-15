@@ -10,9 +10,10 @@
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
 #include "../../util/uuid.h"
+#include "utf8proc/utf8proc.h"
 #include "../../util/strutil.h"
-#include "../../util/json_encoder.h"
 #include "../../datatypes/array.h"
+#include "../../util/json_encoder.h"
 
 // toString supports only integer, float, string, boolean, point, duration, 
 // date, time, localtime, localdatetime or datetime values
@@ -35,10 +36,19 @@ SIValue AR_LEFT(SIValue *argv, int argc, void *private_data) {
 		// No need to truncate this string based on the requested length
 		return SI_DuplicateStringVal(argv[0].stringval);
 	}
-	char *left_str = rm_malloc((newlen + 1) * sizeof(char));
-	strncpy(left_str, argv[0].stringval, newlen * sizeof(char));
-	left_str[newlen] = '\0';
-	return SI_TransferStringVal(left_str);
+
+
+	utf8proc_int32_t c;
+	const char *str = argv[0].stringval;
+	char left_str[strlen(str)];
+	char* left = left_str;
+	int i = 0;
+	for (; i < newlen; i++) {
+		str += utf8proc_iterate((const utf8proc_uint8_t *)str, -1, &c);
+		left += utf8proc_encode_char(c, (utf8proc_uint8_t *)left);
+	}
+	left[0] = '\0';
+	return SI_DuplicateStringVal(left_str);
 }
 
 // returns the original string with leading whitespace removed.
