@@ -75,6 +75,13 @@ SIValue SIArray_Clone(SIValue siarray);
 void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytesWritten);
 
 /**
+  * @brief  Sorts the array in place
+  * @param  siarray: array to print
+  * @param  ascending: sort order
+  */
+void SIArray_Sort(SIValue siarray, bool ascending);
+
+/**
  * @brief  Returns the array hash code.
  * @param  siarray: SIArray.
  * @retval The array hashCode.

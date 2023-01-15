@@ -1,4 +1,5 @@
 from common import *
+import math
 
 redis_graph = None
 GRAPH_ID = "G"
@@ -830,7 +831,7 @@ class testList(FlowTestsBase):
     def test09_remove(self):
         # NULL input should return NULL
         expected_result = [None]
-        query = """RETURN remove(null, 2)"""
+        query = """WITH NULL as list RETURN remove(null, 2)"""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
@@ -933,3 +934,88 @@ class testList(FlowTestsBase):
         query = """RETURN remove([1,2,3,4], 4, 5)"""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+
+    def test10_sort(self):
+        # NULL input should return NULL
+        expected_result = [None]
+        query = """WITH NULL as list RETURN sort(null, true)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # 2nd arg should be bool
+        try:
+            redis_graph.query("RETURN sort([1,3,2], '2')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected Boolean but was String", str(e))
+
+        # Test without input argument
+        try:
+            query = """RETURN sort()"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 0 arguments to function 'sort', expected at least 1", str(e))
+
+        # Test with 3 input argument
+        try:
+            query = """RETURN sort([1,2,3], 2, 1)"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 3 arguments to function 'sort', expected at most 2", str(e))
+
+        ### Test valid inputs ###
+        expected_result = [[1]]
+        query = """RETURN sort([1])"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,2,3]]
+        query = """RETURN sort([1,3,2])"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+        query = """RETURN sort([1,3,2], true)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+        query = """RETURN sort([3,1,2])"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+        query = """RETURN sort([1,2,3])"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+        query = """RETURN sort([3,2,1])"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[3,2,1]]
+        query = """RETURN sort([1,3,2], false)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+        query = """RETURN sort([1,3,2], false)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+        query = """RETURN sort([3,1,2], false)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+        query = """RETURN sort([1,2,3], false)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+        query = """RETURN sort([3,2,1], false)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[[1,2,3],[4,5,6]]]
+        query = """RETURN sort([[4,5,6], [1,2,3]])"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[[1,2,3],[1,2,3,4]]]
+        query = """RETURN sort([[1,2,3,4], [1,2,3]])"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        query = """WITH {a: 1, b: 2, c: 3} as map RETURN sort([map, 1, [1,2,3]])"""
+        actual_result = redis_graph.query(query)
+        assert str(actual_result.result_set[0]) == "[[OrderedDict([('a', 1), ('b', 2), ('c', 3)]), [1, 2, 3], 1]]"

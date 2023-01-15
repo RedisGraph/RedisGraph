@@ -461,6 +461,41 @@ SIValue AR_REMOVE(SIValue *argv, int argc, void *private_data) {
 	return array;
 }
 
+/*  Given a list, return a list with similar elements,
+    but sorted (inversely-sorted if ascending is evaluated to FALSE).
+	list.sort(list, ascending = TRUE) → list
+	"RETURN sort([1,3,2], TRUE)" returns [1,2,3]
+ */
+SIValue AR_SORT(SIValue *argv, int argc, void *private_data) {
+	ASSERT(argc == 1 || argc == 2);
+	SIValue list = argv[0];
+	if(SI_TYPE(list) == T_NULL) return SI_NullVal();
+	ASSERT(SI_TYPE(list) == T_ARRAY);
+
+	bool ascending = true;
+	if(argc == 2) {
+		if(SI_TYPE(argv[1]) != T_BOOL) {
+			// index should be boolean.
+			Error_SITypeMismatch(argv[1], T_BOOL);
+			return SI_NullVal();
+		}
+
+		ascending = (bool)argv[1].longval;
+	}
+
+	uint32_t arrayLen = SIArray_Length(list);
+	SIValue array = SI_Array(arrayLen);
+
+	for(uint i = 0; i < arrayLen; i++) {
+		SIArray_Append(&array, SIArray_Get(list, i));
+	}
+
+	// sort array
+	SIArray_Sort(array, ascending);
+
+	return array;
+}
+
 SIValue AR_REDUCE
 (
 	SIValue *argv,
@@ -605,12 +640,19 @@ void Register_ListFuncs() {
 	func_desc = AR_FuncDescNew("tail", AR_TAIL, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
-	types = array_new(SIType, 1);
+	types = array_new(SIType, 3);
 	array_append(types, T_ARRAY | T_NULL);
 	array_append(types, T_INT64);
 	array_append(types, T_INT64);
 	ret_type = T_ARRAY | T_NULL;
 	func_desc = AR_FuncDescNew("remove", AR_REMOVE, 2, 3, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 2);
+	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_BOOL);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("sort", AR_SORT, 1, 2, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 4);
