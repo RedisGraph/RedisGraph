@@ -29,6 +29,7 @@ class RedisGraphSetup(paella.Setup):
             self.run("%s/bin/getgcc --modern" % READIES)
         else:
             self.run("%s/bin/getgcc" % READIES)
+        self.install("zlib1g-dev")
         self.install("peg")
         if self.platform.is_arm():
             self.install("python3-dev")
@@ -36,6 +37,7 @@ class RedisGraphSetup(paella.Setup):
         self.pip_install("-r tests/fuzz/requirements.txt")
 
     def redhat_compat(self):
+        self.install("zlib-devel")
         self.install("redhat-lsb-core")
         if not self.platform.is_arm():
             self.install_linux_gnu_tar()
@@ -48,6 +50,7 @@ class RedisGraphSetup(paella.Setup):
 
     def fedora(self):
         self.run("%s/bin/getgcc" % READIES)
+        self.install("zlib-devel")
         self.install_peg()
 
     def macos(self):
@@ -75,6 +78,7 @@ class RedisGraphSetup(paella.Setup):
             self.install("lcov")
         else:
             self.install("lcov-git", aur=True)
+        self.install("zlib")
 
         if not self.no_rmpytools:
             self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall --modern --redispy-version a246f40 --ramp-version pypi:2.4.0".format(PYTHON=self.python, READIES=READIES))
