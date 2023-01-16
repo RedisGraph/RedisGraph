@@ -108,11 +108,7 @@ static Record ForeachConsume
 	// plant a clone of the list of arguments in argument_list operation
 	uint nrecords = array_len(op->records);
 	Record *clone_list = array_new(Record, nrecords);
-	Record clone;
-	for(uint i = 0; i < nrecords; i++) {
-		clone = OpBase_CloneRecord(op->records[i]);
-		array_append(clone_list, clone);
-	}
+	array_clone_with_cb(clone_list, op->records, OpBase_CloneRecord);
 	ArgumentList_AddRecordList(op->argument_list, clone_list);
 
 	// call consume on first_embedded op. The result is thrown away.
