@@ -288,8 +288,7 @@ else
 	$(SHOW)-rm -fr $(TARGET).debug $(BINDIR)/CMakeCache.txt $(BINDIR)/tests
 ifeq ($(DEPS),1)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/rax clean DEBUG=$(DEPS_DEBUG)
-	# $(SHOW)$(MAKE) -C $(ROOT)/build/hdr_histogram clean DEBUG=$(DEPS_DEBUG)
-	$(SHOW)$(MAKE) -C $(HDR_HISTOGRAM_DIR) clean ALL=1 BINROOT=$(HDR_HISTOGRAM_BINROOT)
+	$(SHOW)$(MAKE) -C $(ROOT)/build/hdr_histogram clean DEBUG=$(DEPS_DEBUG)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/xxHash clean DEBUG=$(DEPS_DEBUG)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/utf8proc clean DEBUG=$(DEPS_DEBUG)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/GraphBLAS clean DEBUG=$(DEPS_DEBUG)
