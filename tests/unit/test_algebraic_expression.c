@@ -1787,7 +1787,6 @@ void test_LocateOperand() {
 
 	AlgebraicExpression_Free(r);
 }
-<<<<<<< HEAD:tests/unit/test_algebraic_expression.c
 
 TEST_LIST = {
 	{"algebraicExpression", test_algebraicExpression},
