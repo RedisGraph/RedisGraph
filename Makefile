@@ -191,7 +191,7 @@ ifneq ($(MISSING_DEPS),)
 DEPS=1
 endif
 
-DEPENDENCIES=libcypher-parser graphblas redisearch rax libxxhash utf8proc
+DEPENDENCIES=libcypher-parser graphblas redisearch hdr_histogram rax libxxhash utf8proc
 
 ifneq ($(filter all deps $(DEPENDENCIES) pack,$(MAKECMDGOALS)),)
 DEPS=1
@@ -236,7 +236,7 @@ hdr_histogram: $(HDR_HISTOGRAM_LIBS)
 $(HDR_HISTOGRAM_LIBS):
 	@echo Building $@ ...
 	CC=$(CC) CXX=$(CXX) cmake -S $(HDR_HISTOGRAM_DIR) -DHDR_HISTOGRAM_INSTALL_STATIC=1 -B $(HDR_HISTOGRAM_BINROOT)
-	$(SHOW)$(MAKE) -C $(HDR_HISTOGRAM_BINROOT)
+	$(SHOW)$(MAKE) -C $(HDR_HISTOGRAM_BINROOT) CC=$(CC) CXX=$(CXX)
 
 graphblas: $(GRAPHBLAS)
 
@@ -305,11 +305,9 @@ clean-libcypher-parser:
 
 clean-search:
 ifeq ($(ALL),1)
-	$(SHOW)rm -rf $(HDR_HISTOGRAM_BINROOT)/search-static
 	$(SHOW)rm -rf $(REDISEARCH_BINROOT)/search-static
 else
 	$(SHOW)$(MAKE) -C $(REDISEARCH_DIR) clean BINROOT=$(REDISEARCH_BINROOT)
-	$(SHOW)$(MAKE) -C $(HDR_HISTOGRAM_DIR) clean BINROOT=$(REDISEARCH_BINROOT)
 endif
 
 .PHONY: clean clean-libcypher-parser clean-search
