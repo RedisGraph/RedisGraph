@@ -56,7 +56,7 @@ static OpResult ForeachInit
 	op->argument_list = (ArgumentList *)argument_list;
 
 	// validate found operation type, expecting ArgumentList
-	ASSERT(OpBase_Type(op->argument_list) == OPType_ARGUMENT_LIST);
+	ASSERT(OpBase_Type((const OpBase *)op->argument_list) == OPType_ARGUMENT_LIST);
 
     return OP_OK;
 }
@@ -110,7 +110,7 @@ static Record ForeachConsume
 	Record *clone_list = array_new(Record, nrecords);
 	Record clone;
 	for(uint i = 0; i < nrecords; i++) {
-		Record_Clone(op->records[i], clone);
+		clone = OpBase_CloneRecord(op->records[i]);
 		array_append(clone_list, clone);
 	}
 	ArgumentList_AddRecordList(op->argument_list, clone_list);
