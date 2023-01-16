@@ -10,7 +10,7 @@
 */
 #include "info.h"
 
-#include "../deps/hdr_histogram/hdr_histogram.h"
+#include "hdr/hdr_histogram.h"
 
 #include "util/arr.h"
 #include "util/num.h"
