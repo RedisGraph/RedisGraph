@@ -1850,7 +1850,8 @@ class testFunctionCallsFlow(FlowTestsBase):
             "RETURN toLower(NULL)": [[None]],
             # test unicode charecters
             "RETURN toLower('ΑαΒβΓγΔδΕεΖζΗηΘθΙιΚκΛλΜμΝνΞξΟοΠπΡρΣσςΤτΥυΦφΧχΨψΩω')": [["ααββγγδδεεζζηηθθιικκλλμμννξξοοππρρσσςττυυφφχχψψωω"]],
-            "RETURN toLower('АаБбВвГгДдЕеЖжЗзИиЙйКкЛлМмНнОоПпРрСсТтУуФфХхЦцЧчШшЩщЬьЭэЮюЯя')": [["ааббввггддеежжззииййккллммннооппррссттууффххццччшшщщььээююяя"]]
+            "RETURN toLower('АаБбВвГгДдЕеЖжЗзИиЙйКкЛлМмНнОоПпРрСсТтУуФфХхЦцЧчШшЩщЬьЭэЮюЯя')": [["ааббввггддеежжззииййккллммннооппррссттууффххццччшшщщььээююяя"]],
+            "RETURN toLower('AbCdEfGhIjKlMnOpQrStUvWxYzÄöÜß')":  [["abcdefghijklmnopqrstuvwxyzäöüß"]]
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
@@ -1862,7 +1863,8 @@ class testFunctionCallsFlow(FlowTestsBase):
             "RETURN toUpper(NULL)": [[None]],
             # test unicode charecters
             "RETURN toUpper('ΑαΒβΓγΔδΕεΖζΗηΘθΙιΚκΛλΜμΝνΞξΟοΠπΡρΣσςΤτΥυΦφΧχΨψΩω')": [["ΑΑΒΒΓΓΔΔΕΕΖΖΗΗΘΘΙΙΚΚΛΛΜΜΝΝΞΞΟΟΠΠΡΡΣΣΣΤΤΥΥΦΦΧΧΨΨΩΩ"]],
-            "RETURN toUpper('АаБбВвГгДдЕеЖжЗзИиЙйКкЛлМмНнОоПпРрСсТтУуФфХхЦцЧчШшЩщЬьЭэЮюЯя')":  [["ААББВВГГДДЕЕЖЖЗЗИИЙЙККЛЛММННООППРРССТТУУФФХХЦЦЧЧШШЩЩЬЬЭЭЮЮЯЯ"]]
+            "RETURN toUpper('АаБбВвГгДдЕеЖжЗзИиЙйКкЛлМмНнОоПпРрСсТтУуФфХхЦцЧчШшЩщЬьЭэЮюЯя')":  [["ААББВВГГДДЕЕЖЖЗЗИИЙЙККЛЛММННООППРРССТТУУФФХХЦЦЧЧШШЩЩЬЬЭЭЮЮЯЯ"]],
+            "RETURN toUpper('AbCdEfGhIjKlMnOpQrStUvWxYzÄöÜß')":  [["ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜẞ"]]
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
