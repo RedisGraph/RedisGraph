@@ -212,7 +212,7 @@ class testForeachFlow():
         graph.query("UNWIND range(0, 4) as val CREATE (n:N {v: val})")
 
         # execute a FOREACH clause for every node matched
-        res = graph.query("MATCH (n:N) FOREACH(i in [1] | CREATE (:M {v: 2*n.v}))")
+        res = graph.query("MATCH (n:N) FOREACH(i in [1] | CREATE (m:M {v: 2*n.v}))")
         self.env.assertEquals(res.nodes_created, 5)
         self.env.assertEquals(res.properties_set, 5)
 

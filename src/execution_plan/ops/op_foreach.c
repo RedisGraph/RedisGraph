@@ -6,55 +6,57 @@
 
 #include "op_foreach.h"
 
-/* Forward declarations. */
+// Forward declarations
 static void ForeachFree(OpBase *opBase);
 static OpResult ForeachInit(OpBase *opBase);
 static Record ForeachConsume(OpBase *opBase);
 static OpResult ForeachReset(OpBase *opBase);
 static OpBase *ForeachClone(const ExecutionPlan *plan, const OpBase *opBase);
 
-/* Creates a new Foreach operation */
+// creates a new Foreach operation
 OpBase *NewForeachOp
 (
-    const ExecutionPlan *plan  // execution plan
+	const ExecutionPlan *plan  // execution plan
 ) {
     OpForeach *op = rm_calloc(1, sizeof(OpForeach));
 
-	op->first = true;
-	op->records = NULL;
-    op->supplier = NULL;
-    op->argument_list = NULL;
+	op->first          = true;
+	op->records        = NULL;
+	op->supplier       = NULL;
+	op->argument_list  = NULL;
 	op->first_embedded = NULL;
 
-    OpBase_Init((OpBase *)op, OPType_FOREACH, "Foreach", ForeachInit, ForeachConsume,
-				ForeachReset, NULL, ForeachClone, ForeachFree, false, plan);
+    OpBase_Init((OpBase *)op, OPType_FOREACH, "Foreach", ForeachInit,
+			ForeachConsume, ForeachReset, NULL, ForeachClone, ForeachFree,
+			false, plan);
 
 	return (OpBase *)op;
 }
 
 static OpResult ForeachInit
 (
-    OpBase *opBase  // Foreach operation to initialize
+    OpBase *opBase  // foreach operation to initialize
 ) {
     OpForeach *op = (OpForeach *)opBase;
 
 	// if number of children is larger than one --> we have a supplier and 
-	// a consumer. Otherwise, we have only a consumer (using a static list).
+	// a consumer. otherwise, we have only a consumer (using a static list)
 	if(op->op.childCount > 1) {
 		op->supplier = op->op.children[0];
 		op->first_embedded = op->op.children[1];
-	}
-	else {
+	} else {
 		op->first_embedded = op->op.children[0];
 	}
 
-	// update argumentList operation to be the deepest child operation of the
-	// first embedded child operation
+	// search for the ArgumentList op on the embedded sub-execution plan chain
 	OpBase *argument_list = op->first_embedded;
 	while(argument_list->childCount > 0) {
 		argument_list = argument_list->children[0];
 	}
 	op->argument_list = (ArgumentList *)argument_list;
+
+	// validate found operation type, expecting ArgumentList
+	ASSERT(OpBase_Type(op->argument_list) == OPType_ARGUMENT_LIST);
 
     return OP_OK;
 }
@@ -80,6 +82,9 @@ static Record ForeachConsume
 		return _handoff(op);
 	}
 
+	// mark that the aggregation has occurred, so it won't occur again
+	op->first = false;
+
 	// construct an array of records to hold all consumed records (eagerly)
 	op->records = array_new(Record, 1);
 
@@ -92,25 +97,26 @@ static Record ForeachConsume
 			array_append(op->records, r);
 		}
 	} else {
-		// static list, just wrap it in a list ONCE
-		// The inner Unwind operation will not need this record, just send
-		// and empty one
+		// static list, create a dummy empty record just to kick start the
+		// argument-list operation
 		r = OpBase_CreateRecord((OpBase *)op);
 		array_append(op->records, r);
 
 		op->first = false;
 	}
 
-	// plant the list of arguments in argument_list operation
-	Record *clone;
-	array_clone(clone, op->records);
-	ArgumentList_AddRecordList(op->argument_list, clone);
+	// plant a clone of the list of arguments in argument_list operation
+	uint nrecords = array_len(op->records);
+	Record *clone_list = array_new(Record, nrecords);
+	Record clone;
+	for(uint i = 0; i < nrecords; i++) {
+		Record_Clone(op->records[i], clone);
+		array_append(clone_list, clone);
+	}
+	ArgumentList_AddRecordList(op->argument_list, clone_list);
 
 	// call consume on first_embedded op. The result is thrown away.
 	while(OpBase_Consume(op->first_embedded)) {};
-	
-	// mark that the aggregation has occurred, so it won't occur again
-	op->first = false;
 
 	return _handoff(op);
 }
