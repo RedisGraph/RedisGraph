@@ -59,9 +59,7 @@ class testBoundVariables(FlowTestsBase):
 
     def test03_procedure_match_bound_variable(self):
         # Create a full-text index.
-        create_fulltext_index(redis_graph, "K", "val", sync=True)
-
-        wait_for_indices_to_sync(redis_graph)
+        create_fulltext_index(redis_graph, "L", "val", sync=True)
 
         # Project the result of scanning this index into a MATCH pattern.
         query = """CALL db.idx.fulltext.queryNodes('L', 'v1') YIELD node MATCH (node)-[]->(b) RETURN b.val"""
