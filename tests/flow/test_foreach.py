@@ -207,9 +207,6 @@ class testForeachFlow():
         # 5 + 5 = 10 properties set
         self.env.assertEquals(res.properties_set, 10)
 
-        # clean db
-        self.env.flush()
-
     # validate that multiple records are passed to Foreach appropriately.
     # namely, the Foreach clause should run once for every record passed to it
     def test05_multiple_records(self):
@@ -220,8 +217,7 @@ class testForeachFlow():
         graph.query("UNWIND range(0, 4) as val CREATE (n:N {v: val})")
 
         # execute a FOREACH clause for every node matched
-        query = """MATCH (n:N) FOREACH(i in [1] | CREATE (:M {v: 2*n.v}))"""
-        res = graph.query(query)
+        res = graph.query("MATCH (n:N) FOREACH(i in [1] | CREATE (:M {v: 2*n.v}))")
         self.env.assertEquals(res.nodes_created, 5)
         self.env.assertEquals(res.properties_set, 5)
 
