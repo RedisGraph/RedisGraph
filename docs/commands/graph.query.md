@@ -813,7 +813,7 @@ The following query searches for all the hotels, checks whether they buy directl
 ```sh
 GRAPH.QUERY DEMO_GRAPH
 "MATCH (h:HOTEL) OPTIONAL MATCH (h)-[b:BUYS_FROM]->(bakery:BAKERY)
-FOREACH(do_perform IN CASE WHEN b = NULL THEN [1] ELSE [] END | MERGE (h)-[b2:BUYS_FROM]->(s:SUPPLIER) WHERE 'Bread' IN s.supplies SET b2.direct = false)"
+FOREACH(do_perform IN CASE WHEN b = NULL THEN [1] ELSE [] END | MERGE (h)-[b2:BUYS_FROM]->(s:SUPPLIER {supplies_bread: true}) SET b2.direct = false)"
 ```
 
 #### UNION

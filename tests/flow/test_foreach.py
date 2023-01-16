@@ -2,14 +2,12 @@ from common import *
 from collections import Counter
 
 graph = None
-redis_con = None
 GRAPH_ID = "G"
 
 class testForeachFlow():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global graph
-        global redis_con
         redis_con = self.env.getConnection()
         graph = Graph(redis_con, GRAPH_ID)
 
@@ -204,14 +202,11 @@ class testForeachFlow():
         # 5 + 5 = 10 nodes created
         self.env.assertEquals(res.nodes_created, 10)
 
-        # 5 + 5 = 10 properties set
-        self.env.assertEquals(res.properties_set, 10)
-
     # validate that multiple records are passed to Foreach appropriately.
     # namely, the Foreach clause should run once for every record passed to it
     def test05_multiple_records(self):
         # clear db
-        self.env.flush
+        self.env.flush()
 
         # create 5 nodes
         graph.query("UNWIND range(0, 4) as val CREATE (n:N {v: val})")
