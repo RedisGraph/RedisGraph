@@ -221,8 +221,7 @@ static ExecutionPlan *_tie_segments
 		ExecutionPlan *segment = segments[i];
 		AST *ast = segment->ast_segment;
 
-		// find the first non-argument operation with no children in this
-		// segment
+		// find the first non-argument op with no children in this segment
 		prev_connecting_op = connecting_op;
 		OpBase **taps = ExecutionPlan_LocateTaps(segment);
 		ASSERT((array_len(taps) > 0) ||

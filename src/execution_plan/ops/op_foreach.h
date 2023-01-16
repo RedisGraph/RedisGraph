@@ -18,17 +18,16 @@
 
 typedef struct {
 	OpBase op;
-
     bool first;                   // is this the first call to consume
     Record *records;              // records aggregated by the operation
-    OpBase *supplier;             // the operation from which records are pulled (optional)
-    OpBase *first_embedded;       // the first operation in the embedded execution-plan
+    OpBase *supplier;             // op from which records are pulled (optional)
+    OpBase *first_embedded;       // the first op in the embedded execution-plan
     ArgumentList *argument_list;  // argument operation (tap)
-
 } OpForeach;
 
-// Creates a new Foreach operation
+// creates a new Foreach operation
 OpBase *NewForeachOp
 (
     const ExecutionPlan *plan  // execution plan
 );
+
