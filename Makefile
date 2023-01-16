@@ -134,13 +134,12 @@ export REDISEARCH_BINROOT=$(BINROOT)
 include $(ROOT)/build/RediSearch/Makefile.defs
 
 HDR_HISTOGRAM_DIR = $(ROOT)/deps/hdr_histogram
-export HDR_HISTOGRAM_BINROOT=$(BINROOT)
+export HDR_HISTOGRAM_BINROOT=$(DEPS_BINDIR)/hdr_histogram
 include $(ROOT)/build/hdr_histogram/Makefile.defs
 
 BIN_DIRS += $(REDISEARCH_BINROOT)/search-static
-BIN_DIRS += $(HDR_HISTOGRAM_BINROOT)/search-static
 
-LIBS=$(RAX) $(HDR_HISTOGRAM_LIBS) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH_LIBS) $(LIBCYPHER_PARSER) $(UTF8PROC)
+LIBS=$(RAX) $(HDR_HISTOGRAM) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH_LIBS) $(LIBCYPHER_PARSER) $(UTF8PROC)
 
 #----------------------------------------------------------------------------------------------
 
@@ -183,8 +182,8 @@ ifneq ($(call files_missing,$(REDISEARCH_LIBS)),)
 MISSING_DEPS += $(REDISEARCH_LIBS)
 endif
 
-ifneq ($(call files_missing,$(HDR_HISTOGRAM_LIBS)),)
-MISSING_DEPS += $(HDR_HISTOGRAM_LIBS)
+ifneq ($(call files_missing,$(HDR_HISTOGRAM)),)
+MISSING_DEPS += $(HDR_HISTOGRAM)
 endif
 
 ifneq ($(MISSING_DEPS),)
@@ -217,7 +216,7 @@ include $(MK)/rules
 
 ifeq ($(DEPS),1)
 
-deps: $(LIBCYPHER_PARSER) $(HDR_HISTOGRAM_LIBS) $(GRAPHBLAS) $(LIBXXHASH) $(RAX) $(REDISEARCH_LIBS) $(UTF8PROC)
+deps: $(LIBCYPHER_PARSER) $(HDR_HISTOGRAM) $(GRAPHBLAS) $(LIBXXHASH) $(RAX) $(REDISEARCH_LIBS) $(UTF8PROC)
 
 libxxhash: $(LIBXXHASH)
 
@@ -231,12 +230,11 @@ $(RAX):
 	@echo Building $@ ...
 	$(SHOW)$(MAKE) --no-print-directory -C $(ROOT)/build/rax DEBUG=$(DEPS_DEBUG)
 
-hdr_histogram: $(HDR_HISTOGRAM_LIBS)
+hdr_histogram: $(HDR_HISTOGRAM)
 
-$(HDR_HISTOGRAM_LIBS):
+$(HDR_HISTOGRAM):
 	@echo Building $@ ...
-	CC=$(CC) CXX=$(CXX) cmake -S $(HDR_HISTOGRAM_DIR) -DHDR_HISTOGRAM_INSTALL_STATIC=1 -B $(HDR_HISTOGRAM_BINROOT)
-	$(SHOW)$(MAKE) -C $(HDR_HISTOGRAM_BINROOT) CC=$(CC) CXX=$(CXX)
+	$(SHOW)$(MAKE) --no-print-directory -C $(ROOT)/build/hdr_histogram DEBUG=$(DEPS_DEBUG)
 
 graphblas: $(GRAPHBLAS)
 
