@@ -20,21 +20,21 @@ supported.
 
 ### Query structure
 
-- MATCH
-- OPTIONAL MATCH
-- WHERE
-- RETURN
-- ORDER BY
-- SKIP
-- LIMIT
-- CREATE
-- MERGE
-- DELETE
-- SET
-- WITH
-- UNION
-- UNWIND
-- FOREACH
+* [MATCH](#match)
+* [OPTIONAL MATCH](#optional-match)
+* [WHERE](#where)
+* [RETURN](#return)
+* [ORDER BY](#order-by)
+* [SKIP](#skip)
+* [LIMIT](#limit)
+* [CREATE](#create)
+* [MERGE](#merge)
+* [DELETE](#delete)
+* [SET](#set)
+* [WITH](#with)
+* [UNION](#union)
+* [UNWIND](#unwind)
+* [FOREACH](#foreach)
 
 #### MATCH
 
@@ -785,7 +785,7 @@ GRAPH.QUERY DEMO_GRAPH
 ```
 
 #### FOREACH
-The FOREACH clause feeds the components of a list to a sub-query comprised of **updating clauses only** (`CREATE`, `MERGE`, `SET`, `REMOVE`, `DELETE` and `FOREACH`), while passing on the records it receives without change.
+The `FOREACH` clause feeds the components of a list to a sub-query comprised of **updating clauses only** (`CREATE`, `MERGE`, `SET`, `REMOVE`, `DELETE` and `FOREACH`), while passing on the records it receives without change.
 
 The clauses within the sub-query recognize the bound variables defined prior to the `FOREACH` clause, but are local in the sense that later clauses are not aware of the variables defined inside them. In other words, `FOREACH` uses the current context, and does not affect it.
 
