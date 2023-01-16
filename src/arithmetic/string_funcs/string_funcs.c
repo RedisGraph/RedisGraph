@@ -193,19 +193,24 @@ SIValue AR_JOIN(SIValue *argv, int argc, void *private_data) {
 	// concatenate the first string in the list.
 	SIValue str = SIArray_Get(list, 0);
 	if(SI_TYPE(str) != T_STRING) goto err;
-	size_t strLen = strlen(str.stringval) + 1;
-	res = rm_malloc(strLen);
-	memcpy(res, str.stringval, strLen*sizeof(char));
+	size_t str_len = strlen(str.stringval);
+	res = rm_malloc((str_len + 1)*sizeof(char));
+	memcpy(res, str.stringval, (str_len+1)*sizeof(char));
 
+	size_t delimeter_len = strlen(delimiter);
+	size_t cur_len = str_len;
 	// concatenate all the rest of the strings in the list.
 	for(uint i = 1; i < arrayLen; i++) {
 		str = SIArray_Get(list, i);
 		if(SI_TYPE(str) != T_STRING) goto err;
-
-		res = rm_realloc(res, strlen(res) + strlen(str.stringval) + strlen(delimiter) + 1);
-		strcat(res, delimiter);
-		strcat(res, str.stringval);
+		str_len = strlen(str.stringval);
+		res = rm_realloc(res, (cur_len + delimeter_len + str_len + 1)*sizeof(char));
+		memcpy(res + cur_len, delimiter, delimeter_len*sizeof(char));
+		cur_len += delimeter_len;
+		memcpy(res + cur_len, str.stringval, str_len*sizeof(char));
+		cur_len += str_len;
 	}
+	res[cur_len] = '\0';
 
 	return SI_TransferStringVal(res);
 
