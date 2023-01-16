@@ -1120,35 +1120,18 @@ class testFunctionCallsFlow(FlowTestsBase):
                 self.env.assertIn("Type mismatch", str(e))
 
     def test34_split(self):
-        # null string
-        query = "RETURN split(null, ',')"
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], None)
-
-        # null delimiter
-        query = "RETURN split('hello world', null)"
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], None)
-
-        # invalid delimiter
-        query = "RETURN split('hello world', ',')"
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], ["hello world"])
-
-        # empty delimiter
-        query = "RETURN split('hello world', '')"
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], ['h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd'])
-
-        # empty string
-        query = "RETURN split('', ',')"
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], [""])
-
-        # empty string and empty delimiter
-        query = "RETURN split('', '')"
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], [""])
+        query_to_expected_result = {
+            "RETURN split(null, ',')": [[None]],
+            "RETURN split('hello world', null)": [[None]],
+            "RETURN split('hello world', ',')": [[["hello world"]]],
+            "RETURN split('hello world', '')": [[['h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd']]],
+            "RETURN split('', ',')": [[[""]]],
+            "RETURN split('', '')": [[[""]]],
+            # test unicode charecters
+            "RETURN split('丁丂七丄丅丆万丈三上', '丄')": [[["丁丂七", "丅丆万丈三上"]]],
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
 
     def test35_min_max(self):
         query = "UNWIND [[1], [2], [2], [1]] AS x RETURN max(x), min(x)"
