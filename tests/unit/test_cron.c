@@ -16,7 +16,7 @@ void tearDown();
 #define TEST_FINI tearDown();
 #include "acutest.h"
 
-int X = 1;
+volatile int X = 1;
 
 static int mssleep(uint ms) {
 	struct timespec req;
