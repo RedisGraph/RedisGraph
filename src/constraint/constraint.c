@@ -245,7 +245,12 @@ bool Constraint_EnforceEntity
 }
 
 // executed under write lock
-void Constraint_Drop_Index(Constraint c, struct GraphContext *gc, bool should_drop_constraint) {
+void Constraint_Drop_Index
+(
+	Constraint c,
+	GraphContext *gc,
+	bool should_drop_constraint
+) {
 	// constraint was not satisfied, free it and remove it's index
 
 	SchemaType schema_type = (c->entity_type == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
@@ -302,156 +307,6 @@ typedef enum {
 	CT_DELETE
 } ConstraintOp;
 
-static int Constraint_Parse(RedisModuleCtx *ctx, RedisModuleString **argv, int argc, RedisModuleString **graph_name, GraphEntityType *type, 
-                            const char **label, RedisModuleString ***props, long long *prop_count, ConstraintOp *op, ConstraintType *ct) {
-	// get graph name
-	argv += 1; // skip "GRAPH.CONSTRAINT"
-
-    *graph_name = *argv++;
-
-    const char *token = RedisModule_StringPtrLen(*argv++, NULL);
-    if(strcasecmp(token, "CREATE") == 0) {
-        *op = CT_CREATE;
-    } else if(strcasecmp(token, "DEL") == 0) {
-        *op = CT_DELETE;
-    } else {
-        RedisModule_ReplyWithError(ctx, "Invalid constraint operation");
-        return REDISMODULE_ERR;
-    }
-
-    token = RedisModule_StringPtrLen(*argv++, NULL);
-    if(strcasecmp(token, "UNIQUE") == 0) {
-        *ct = CT_UNIQUE;
-    } else {
-        RedisModule_ReplyWithError(ctx, "Invalid constraint type");
-        return REDISMODULE_ERR; //currently only unique constraint is supported
-    }
-
-    token = RedisModule_StringPtrLen(*argv++, NULL);
-    if(strcasecmp(token, "LABEL") == 0) {
-        *type = GETYPE_NODE;
-    } else if(strcasecmp(token, "RELTYPE") == 0) {
-        *type = GETYPE_EDGE;
-    } else {
-        RedisModule_ReplyWithError(ctx, "Invalid constraint entity type");
-        return REDISMODULE_ERR;
-    }
-
-    *label = RedisModule_StringPtrLen(*argv++, NULL);
-    token = RedisModule_StringPtrLen(*argv++, NULL);
-    if(strcasecmp(token, "PROPERTIES") == 0) {
-        if (RedisModule_StringToLongLong(*argv++, prop_count) != REDISMODULE_OK || *prop_count < 1) {
-            RedisModule_ReplyWithError(ctx, "Invalid property count");
-            return REDISMODULE_ERR;
-        }
-    } else {
-        RedisModule_ReplyWithError(ctx, "7th arg isn't PROPERTIES");
-        return REDISMODULE_ERR;
-    }
-
-    if(argc - 8 != *prop_count) {
-        RedisModule_ReplyWithError(ctx, "Number of properties doesn't match property count");
-        return REDISMODULE_ERR;
-    }
-
-    *props = argv;
-
-    return REDISMODULE_OK;
-}
-
-int Graph_Constraint(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if(argc < 7) return RedisModule_WrongArity(ctx);
-
-	GraphContext *gc = NULL;
-    RedisModuleString *rs_graph_name;
-    GraphEntityType entity_type;
-    const char *label;
-    RedisModuleString **props;
-    long long prop_count;
-    ConstraintOp op;
-    ConstraintType ct;
-    int rv = REDISMODULE_OK;
-
-    if(Constraint_Parse(ctx, argv, argc, &rs_graph_name, &entity_type, &label, &props, &prop_count, &op, &ct) != REDISMODULE_OK) {
-        return REDISMODULE_ERR;
-    }
-
-    const char *props_cstr[prop_count];
-    for(int i = 0; i < prop_count; i++) {
-        props_cstr[i] = RedisModule_StringPtrLen(props[i], NULL);
-    }
-
-	gc = GraphContext_Retrieve(ctx, rs_graph_name, false, false);
-    if(!gc) {
-        RedisModule_ReplyWithError(ctx, "Invalid graph name passed as argument");
-        return REDISMODULE_ERR;
-    }
-
-    SchemaType schema_type = (entity_type == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
-
-    // acquire graph write lock
-	Graph_AcquireWriteLock(gc->g);
-	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
-    if(op == CT_DELETE && !s) {
-        RedisModule_ReplyWithError(ctx, "Trying to delete constraint from non existing label");
-        rv =  REDISMODULE_ERR;
-        goto _out;
-    }
-
-	Index idx = NULL;
-	Constraint c = NULL;
-
-    if(op == CT_CREATE) {
-
-        c = GraphContext_AddUniqueConstraint(gc, schema_type, label, props_cstr, prop_count);
-
-        if(!c) { // constraint already exists
-            RedisModule_ReplyWithError(ctx, "Constraint already exists");
-            rv = REDISMODULE_ERR;
-            goto _out;
-        }
-
-        // add fields to index
-        GraphContext_AddExactMatchIndex(&idx, gc, schema_type, label, props_cstr, prop_count, false);
-
-        Indexer_PopulateIndexOrConstraint(gc, idx, c);
-
-    } else { // CT_DELETE
-        AttrInfo fields[prop_count];
-
-        for(int i = 0; i < prop_count; i++) {
-            fields[i].attribute_name = (char *)props_cstr[i];
-            Attribute_ID id = GraphContext_GetAttributeID(gc, fields[i].attribute_name);
-            if(id == ATTRIBUTE_ID_NONE) {
-                RedisModule_ReplyWithError(ctx, "Property name not found");
-                rv = REDISMODULE_ERR;
-                goto _out;
-            }
-            fields[i].id = id;
-        }
-
-        Constraint c = Schema_GetConstraint(s, fields, prop_count);
-        if(!c) {
-            RedisModule_ReplyWithError(ctx, "Constraint not found");
-            rv = REDISMODULE_ERR;
-            goto _out;
-        }
-
-        Schema_RemoveConstraint(s, c);
-        Constraint_Drop_Index(c, (struct GraphContext *)gc, true);
-    }
-
-_out:
-	// release graph R/W lock
-	Graph_ReleaseLock(gc->g);
-    // decrease graph reference count
-	GraphContext_DecreaseRefCount(gc);
-    if(rv == REDISMODULE_OK) {
-        RedisModule_ReplyWithSimpleString(ctx, "OK");
-        RedisModule_ReplicateVerbatim(ctx);
-    }
-    return rv;    
-}
 
 // returns constraint graph entity type
 GraphEntityType Constraint_GraphEntityType

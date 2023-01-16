@@ -87,11 +87,10 @@ bool Constraint_EnforceEntity
 	const GraphEntity *e  // enforced entity
 );
 
-struct GraphContext; // forward declaration
 void Constraint_Drop_Index
 (
 	Constraint c,
-	struct GraphContext *gc,
+	GraphContext *gc,
 	bool should_drop_constraint
 );
 
