@@ -200,7 +200,7 @@ static OpResult NodeByLabelScanReset(OpBase *ctx) {
 		OpBase_DeleteRecord(op->child_record); // Free old record.
 		op->child_record = NULL;
 	}
-	if(op->n.label_id == GRAPH_UNKNOWN_LABEL) {
+	if(op->n.label_id != GRAPH_UNKNOWN_LABEL) {
 		_ResetIterator(op);
 	}
 	return OP_OK;
