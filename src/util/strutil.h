@@ -20,20 +20,16 @@ void str_tolower_ascii
 	size_t *lower_len
 );
 
-// convert utf8 str to a lower case string and save it in lower
-void str_tolower
+// return utf8 string converted to lower case
+char *str_tolower
 (
-	const char *str,
-	char *lower,
-	size_t *lower_len
+	const char *str
 );
 
-// convert utf8 str to a n upper case string and save it in upper
-void str_toupper
+// return utf8 string converted to upper case
+char *str_toupper
 (
-	const char *str,
-	char *upper,
-	size_t *upper_len
+	const char *str
 );
 
 // utility function to increase the size of a buffer

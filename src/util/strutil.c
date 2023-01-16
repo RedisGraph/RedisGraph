@@ -51,54 +51,62 @@ int str_length
     return len;
 }
 
-void str_tolower
+char *str_tolower
 (
-	const char *str,
-	char *lower,
-	size_t *lower_len
+	const char *str
 ) {
-	size_t str_len = strlen(str);
-	// avoid overflow
-	ASSERT(*lower_len >= str_len);
-
-	// update lower len
-	*lower_len = str_len;
-
 	// hold current Unicode character
 	utf8proc_int32_t c;
+	const char *str_i = str;
+	size_t lower_len = 0;
+	char buffer[4];
+	while(str_i[0] != 0) {
+		str_i     += utf8proc_iterate((const utf8proc_uint8_t *)str_i, -1, &c);
+		lower_len += utf8proc_encode_char(utf8proc_tolower(c), (utf8proc_uint8_t *)buffer);
+	}
+	
+	char *lower = rm_malloc(lower_len + 1);
+
+	str_i = str;
 	// while we didn't get to the end of the string
-	while(str[0] != 0) {
+	while(str_i[0] != 0) {
 		// increment current position by number of bytes in Unicode character
-		str   += utf8proc_iterate((const utf8proc_uint8_t *)str, -1, &c);
+		str_i += utf8proc_iterate((const utf8proc_uint8_t *)str_i, -1, &c);
 		// write the Unicode character to the buffer
 		lower += utf8proc_encode_char(utf8proc_tolower(c), (utf8proc_uint8_t *)lower);
 	}
 	lower[0] = 0;
+
+	return lower - lower_len;
 }
 
-void str_toupper
+char *str_toupper
 (
-	const char *str,
-	char *upper,
-	size_t *upper_len
+	const char *str
 ) {
-	size_t str_len = strlen(str);
-	// avoid overflow
-	ASSERT(*upper_len >= str_len);
-
-	// update lower len
-	*upper_len = str_len;
-
 	// hold current Unicode character
 	utf8proc_int32_t c;
+	const char *str_i = str;
+	size_t upper_len = 0;
+	char buffer[4];
+	while(str_i[0] != 0) {
+		str_i     += utf8proc_iterate((const utf8proc_uint8_t *)str_i, -1, &c);
+		upper_len += utf8proc_encode_char(utf8proc_toupper(c), (utf8proc_uint8_t *)buffer);
+	}
+	
+	char *upper = rm_malloc(upper_len + 1);
+
+	str_i = str;
 	// while we didn't get to the end of the strings
-	while(str[0] != 0) {
+	while(str_i[0] != 0) {
 		// increment current position by number of bytes in Unicode character
-		str   += utf8proc_iterate((const utf8proc_uint8_t *)str, -1, &c);
+		str_i += utf8proc_iterate((const utf8proc_uint8_t *)str_i, -1, &c);
 		// write the Unicode character to the buffer
 		upper += utf8proc_encode_char(utf8proc_toupper(c), (utf8proc_uint8_t *)upper);
 	}
 	upper[0] = 0;
+
+	return upper - upper_len;
 }
 
 // Utility function to increase the size of a buffer.

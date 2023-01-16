@@ -204,9 +204,7 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 SIValue AR_TOLOWER(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *original = argv[0].stringval;
-	size_t lower_len = strlen(original);
-	char *lower = rm_malloc((lower_len + 1) * sizeof(char));
-	str_tolower(original, lower, &lower_len);
+	char *lower = str_tolower(original);
 	return SI_TransferStringVal(lower);
 }
 
@@ -214,9 +212,7 @@ SIValue AR_TOLOWER(SIValue *argv, int argc, void *private_data) {
 SIValue AR_TOUPPER(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *original = argv[0].stringval;
-	size_t upper_len = strlen(original);
-	char *upper = rm_malloc((upper_len + 1) * sizeof(char));
-	str_toupper(original, upper, &upper_len);
+	char *upper = str_toupper(original);
 	return SI_TransferStringVal(upper);
 }
 
@@ -419,18 +415,29 @@ SIValue AR_SPLIT(SIValue *argv, int argc, void *private_data) {
 	} else if(str_len == 0) {
 		SIArray_Append(&tokens, SI_ConstStringVal(""));
 	} else {
+		size_t rest_len   = str_len;
 		const char *start = str;
-		while(start[0] != 0) {
+		while(rest_len > delimiter_len) {
 			int len = 0;
-			while (start[len] != 0) {
+			while(len <= rest_len - delimiter_len) {
 				if(strncmp(start+len, delimiter, delimiter_len) == 0) {
 					break;
 				}
 				len++;
 			}
+			if(len > rest_len - delimiter_len) {
+				break;
+			}
 			SIValue si_token = SI_TransferStringVal(rm_strndup(start, len));
 			SIArray_Append(&tokens, si_token);
+			SIValue_Free(si_token);
 			start += len + delimiter_len;
+			rest_len -= len + delimiter_len;
+		}
+		if(rest_len > 0) {
+			SIValue si_token = SI_TransferStringVal(rm_strndup(start, rest_len));
+			SIArray_Append(&tokens, si_token);
+			SIValue_Free(si_token);
 		}
 	}
 
