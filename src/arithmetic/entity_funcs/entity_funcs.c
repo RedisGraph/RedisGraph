@@ -160,7 +160,7 @@ static SIValue _AR_NodeDegree
 		SIValue labels = SI_EmptyArray();
 		for(int i = 1; i < argc; i++) {
 			if(SI_TYPE(argv[i]) == T_STRING) {
-				if(SIArray_ContainsValue(labels, argv[i]) == false) {
+				if(SIArray_ContainsValue(labels, argv[i], NULL) == false) {
 					SIArray_Append(&labels, argv[i]);
 				}
 			} else if (SI_TYPE(argv[i]) == T_ARRAY) {
@@ -172,7 +172,7 @@ static SIValue _AR_NodeDegree
 						Error_SITypeMismatch(elem, T_STRING);
 						return SI_NullVal();
 					}
-					if(SIArray_ContainsValue(labels, elem) == false) {
+					if(SIArray_ContainsValue(labels, elem, NULL) == false) {
 						SIArray_Append(&labels, elem);
 					}
 				}

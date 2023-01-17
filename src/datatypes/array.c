@@ -60,16 +60,22 @@ bool SIArray_ContainsType(SIValue siarray, SIType t) {
   * @brief  Returns true if the array contains an element equals to 'value'
   * @param  siarray: array
   * @param  value: value to search for
+  * @param  comparedNull: indicate if there was a null comparison during the array scan
   * @retval a boolean indicating whether value was found in siarray
   */
-bool SIArray_ContainsValue(SIValue siarray, SIValue value) {
+bool SIArray_ContainsValue(SIValue siarray, SIValue value, bool *comparedNull) {
+	// indicate if there was a null comparison during the array scan
+	*comparedNull = false;
 	uint array_len = SIArray_Length(siarray);
 	for(uint i = 0; i < array_len; i++) {
+		int disjointOrNull = 0;
 		SIValue elem = siarray.array[i];
-		if(SI_TYPE(elem) & SI_TYPE(value)) {
-			int res = SIValue_Compare(elem, value, NULL);
-			if(res == 0) return true;
+		int compareValue = SIValue_Compare(elem, value, &disjointOrNull);
+		if(disjointOrNull == COMPARED_NULL) {
+			*comparedNull = true;
+			continue;
 		}
+		if(compareValue == 0) return true;
 	}
 	return false;
 }

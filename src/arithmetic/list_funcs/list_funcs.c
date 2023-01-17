@@ -322,15 +322,8 @@ SIValue AR_IN(SIValue *argv, int argc, void *private_data) {
 	SIValue lookupList = argv[1];
 	// indicate if there was a null comparison during the array scan
 	bool comparedNull = false;
-	uint arrayLen = SIArray_Length(lookupList);
-	for(uint i = 0; i < arrayLen; i++) {
-		int disjointOrNull = 0;
-		int compareValue = SIValue_Compare(lookupValue, SIArray_Get(lookupList, i), &disjointOrNull);
-		if(disjointOrNull == COMPARED_NULL) {
-			comparedNull = true;
-			continue;
-		}
-		if(compareValue == 0) return SI_BoolVal(true);
+	if(SIArray_ContainsValue(lookupList, lookupValue, &comparedNull)) {
+		return SI_BoolVal(true);
 	}
 	// if there was a null comparison return null, other wise return false as the lookup item did not found
 	return comparedNull ? SI_NullVal() : SI_BoolVal(false);
