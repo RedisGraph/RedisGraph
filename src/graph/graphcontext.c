@@ -537,6 +537,11 @@ Constraint GraphContext_AddUniqueConstraint
 
 	Constraint_IncPendingChanges(c);
 
+	// add fields to index
+	GraphContext_AddExactMatchIndex(&idx, gc, schema_type, label, props, prop_count, false);
+
+	Indexer_PopulateIndexOrConstraint(gc, idx, c);
+
 	return c;
 }
 
