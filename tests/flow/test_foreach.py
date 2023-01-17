@@ -244,7 +244,153 @@ class testForeachFlow():
     
     # mid-evaluation failure (memory free'd appropriately)
     def test07_midfail(self):
+        # clean db
+        self.env.flush()
+
         try:
             graph.query("FOREACH(i in [1, 2, 0, 3] | CREATE (n:N {v: 1/i}))")
         except redis.exceptions.ResponseError as e:
             self.env.assertIn("Division by zero", str(e))
+
+        # assure that no nodes are left (undo-log was applied correctly)
+        res = graph.query("MATCH (n) return count(n)")
+        self.env.assertEquals(res.result_set[0][0], 0)
+
+    # complicate things up
+    def test08_complex(self):
+        global graph
+
+        # ----------------------------------------------------------------------
+        # addressing node properties in the record sent to Foreach
+        # ----------------------------------------------------------------------
+
+        # create a single node
+        graph.query("CREATE (:N {v: 1, name: 'RAZ', li: [1, 2, 3, 4]})")
+
+        query = """MATCH (n:N {v: 1, name: toUpper('raz')})
+        FOREACH(x in n.li |
+            CREATE (m:M {v: n.v, name: toLower(n.name), li: [x]})
+        )
+        """
+
+        res = graph.query(query)
+
+        # validate the query statistics
+        self.env.assertEquals(res.nodes_created, 4)
+        self.env.assertEquals(res.properties_set, 12)
+        self.env.assertEquals(res.nodes_deleted, 0)
+
+        # validate that the end state is correct
+        # there should be one node in the graph, with label N, properties: {v: 2, name: 'RAZmon', li: [1]
+        # and 4 nodes with label M and properties: {v: 1, name: 'raz'} and li from 1 to 4
+        res = graph.query("MATCH (n:N) return n")
+        n = Node(label='N', properties={'v': 1, 'name': 'RAZ', 'li': [1, 2, 3, 4]})
+        self.env.assertEquals(res.result_set[0][0], n)
+        self.env.assertEquals(len(res.result_set), 1)
+        res = graph.query("MATCH (m:M) return m")
+        self.env.assertEquals(len(res.result_set), 4)
+        for i in range(len(res.result_set)):
+            m = Node(label= 'M', properties={'v': 1, 'name': 'raz', 'li': [i+1]})
+            self.env.assertEquals(res.result_set[i][0], m)
+
+        # clear nodes with label M
+        res = graph.query("MATCH (m:M) DELETE m")
+        self.env.assertEquals(res.nodes_deleted, 4)
+
+        # ----------------------------------------------------------------------
+        # triple embedding of a FOREACH clause, referencing node properties
+        # ----------------------------------------------------------------------
+
+        query = """
+        MATCH (n:N {v: 1, name: toUpper('raz'), li: [1, 2, 3, 4]})
+        WITH collect(n) as ns
+        FOREACH(n in ns |
+            FOREACH(x in n.li |
+                FOREACH(do_action IN CASE WHEN x > 2 THEN [1] ELSE [] END |
+                    CREATE (t:TEMP {v: 2 * x + n.v, name: toLower(n.name), li: n.li + [x]})
+                )
+            )
+        )
+        """
+
+        res = graph.query(query)
+
+        # validate the query statistics
+        self.env.assertEquals(res.nodes_created, 2)
+        self.env.assertEquals(res.properties_set, 6)
+        self.env.assertEquals(res.nodes_deleted, 0)
+
+        # delete newly created nodes
+        graph.query("MATCH (t:TEMP) DELETE t")
+
+        # ----------------------------------------------------------------------
+        # triple embedded Foreach clause followed by reading and writing clauses
+        # ----------------------------------------------------------------------
+
+        # clear db
+        self.env.flush()
+        # Make a new graph object with no cache (problematic label info)
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+        # create a single node
+        graph.query("CREATE (:N {v: 1, name: 'RAZ', li: [1, 2, 3, 4]})")
+
+        query = """
+        MATCH (n:N {v: 1, name: toUpper('raz'), li: [1, 2, 3, 4]})
+        WITH collect(n) as ns
+        FOREACH(n in ns |
+            FOREACH(x in n.li |
+                FOREACH(do_action IN CASE WHEN x > 2 THEN [1] ELSE [] END |
+                    CREATE (t:TEMP {v: x, li: n.li + x, name: toLower(n.name)})
+                )
+            )
+        )
+        WITH ns
+        UNWIND ns as n
+        MATCH (t: TEMP)
+        SET t.li = t.li + [toUpper(n.name)]
+        WITH ns, t
+        UNWIND ns as n
+        DELETE n
+        FOREACH(n in ns | CREATE (:TEMP))
+        """
+
+        res = graph.query(query)
+        self.env.assertEquals(res.nodes_created, 3)
+        self.env.assertEquals(res.properties_set, 8)
+        self.env.assertEquals(res.nodes_deleted, 1)
+
+        # validate that the altered state is correct
+        res = graph.query("MATCH (t:TEMP) return t")
+        t1 = Node(label='TEMP', properties={'v': 4, 'li': [1, 2, 3, 4, 4, 'RAZ'], 'name': 'raz'})
+        t2 = Node(label='TEMP', properties={'v': 3, 'li': [1, 2, 3, 4, 3, 'RAZ'], 'name': 'raz'})
+        t3 = Node(label='TEMP')
+        nodes = [t1, t2, t3]
+        for i in range(3):
+            self.env.assertEquals(res.result_set[i][0], nodes[i])
+
+        # delete newly created nodes
+        graph.query("MATCH (t:TEMP) DELETE t")
+
+    # a WITH clause must appear between FOREACH and a reading clause
+    # (MATCH, UNWIND, CALL)
+    def test09_clause_order(self):
+        try:
+            graph.query("FOREACH(i in [1] | CREATE (:M)) MATCH (m:M) RETURN m")
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertIn("A WITH clause is required to introduce MATCH after an updating clause.", str(e))
+
+        try:
+            graph.query("FOREACH(i in [1] | CREATE (:M)) unwind [1, 2, 3] as x RETURN x")
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertIn("A WITH clause is required to introduce UNWIND after an updating clause.", str(e))
+
+        try:
+            graph.query("FOREACH(i in [1] | CREATE (:M)) CALL db.labels() YIELD labels RETURN labels")
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertIn("A WITH clause is required to introduce CALL after an updating clause.", str(e))
+
+    # TODO: Add tests with edge creation and deletion.

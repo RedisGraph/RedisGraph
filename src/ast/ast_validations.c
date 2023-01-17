@@ -1553,7 +1553,7 @@ static AST_Validation _ValidateQuerySequence
 }
 
 /* In any given query scope, reading clauses (MATCH, UNWIND, and InQueryCall)
- * cannot follow updating clauses (CREATE, MERGE, DELETE, SET, REMOVE).
+ * cannot follow updating clauses (CREATE, MERGE, DELETE, SET, REMOVE, FOREACH).
  * https://s3.amazonaws.com/artifacts.opencypher.org/railroad/SinglePartQuery.html
  * Additionally, a MATCH clause cannot follow an OPTIONAL MATCH clause. */
 static AST_Validation _ValidateClauseOrder
@@ -1569,7 +1569,7 @@ static AST_Validation _ValidateClauseOrder
 		cypher_astnode_type_t type = cypher_astnode_type(clause);
 		if(!encountered_updating_clause && (type == CYPHER_AST_CREATE || type == CYPHER_AST_MERGE ||
 											type == CYPHER_AST_DELETE || type == CYPHER_AST_SET ||
-											type == CYPHER_AST_REMOVE)) {
+											type == CYPHER_AST_REMOVE || type == CYPHER_AST_FOREACH)) {
 			encountered_updating_clause = true;
 		} else if(encountered_updating_clause && (type == CYPHER_AST_MATCH ||
 												  type == CYPHER_AST_UNWIND ||

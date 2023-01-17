@@ -4,12 +4,12 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "list_funcs.h"
 #include "RG.h"
+#include "list_funcs.h"
 #include "../func_desc.h"
 #include "../../errors.h"
 #include "../../util/arr.h"
-#include"../../query_ctx.h"
+#include "../../query_ctx.h"
 #include "../../datatypes/array.h"
 #include "../../util/rax_extensions.h"
 #include "../string_funcs/string_funcs.h"
