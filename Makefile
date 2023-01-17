@@ -137,6 +137,9 @@ LIBS=$(RAX) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH_LIBS) $(LIBCYPHER_PARSER)
 
 CC_COMMON_H=$(SRCDIR)/src/common.h
 
+CC_C_STD=gnu11
+CC_OPENMP=1
+
 include $(MK)/defs
 
 $(info # Building into $(BINDIR))
