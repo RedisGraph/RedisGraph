@@ -139,7 +139,7 @@ LIBS=$(RAX) $(HDR_HISTOGRAM) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH_LIBS) $(LIBC
 
 #----------------------------------------------------------------------------------------------
 
-CC_COMMON_H=0
+CC_COMMON_H=$(SRCDIR)/src/common.h
 
 include $(MK)/defs
 

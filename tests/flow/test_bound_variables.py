@@ -1,4 +1,5 @@
 from common import *
+from index_utils import *
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -58,7 +59,7 @@ class testBoundVariables(FlowTestsBase):
 
     def test03_procedure_match_bound_variable(self):
         # Create a full-text index.
-        redis_graph.call_procedure("db.idx.fulltext.createNodeIndex", 'L', 'val')
+        create_fulltext_index(redis_graph, "L", "val", sync=True)
 
         # Project the result of scanning this index into a MATCH pattern.
         query = """CALL db.idx.fulltext.queryNodes('L', 'v1') YIELD node MATCH (node)-[]->(b) RETURN b.val"""

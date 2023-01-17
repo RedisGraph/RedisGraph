@@ -77,6 +77,7 @@ class RedisGraphSetup(paella.Setup):
             self.install("lcov")
         else:
             self.install("lcov-git", aur=True)
+        self.install("zlib")
 
         if not self.no_rmpytools:
             self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall --modern --redispy-version a246f40".format(PYTHON=self.python, READIES=READIES))
