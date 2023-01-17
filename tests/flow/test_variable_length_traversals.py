@@ -185,16 +185,32 @@ class testVariableLengthTraversals(FlowTestsBase):
 
     # Test range-length edges
     def test11_range_length_edges(self):
-        query = """CREATE (a {v:'a'}), (b {v:'b'}), (c {v:'c'}), (d {v:'d'}), (a)-[:R]->(b), (b)-[:R]->(c), (c)-[:R]->(a), (d)-[:R]->(d)"""
+        # clear previous data
+        conn = self.env.getConnection()
+        conn.flushall()
+
+        # populate graph
+        # create a graph with 4 nodes
+        # a->b
+        # b->c
+        # c->a
+        # d->d
+        query = """CREATE (a {v:'a'}), (b {v:'b'}), (c {v:'c'}), (d {v:'d'}),
+                          (a)-[:R]->(b), (b)-[:R]->(c), (c)-[:R]->(a), (d)-[:R]->(d)"""
+
         actual_result = redis_graph.query(query)
+
+        # validation queries
         query_to_expected_result = {
-            "MATCH p = ({v:'a'})-[*2]-({v:'c'}) RETURN length(p)" : [[2]],
-            "MATCH p = ({v:'a'})-[*2..]-({v:'c'}) RETURN length(p)" : [[2]],
-            "MATCH p = ({v:'a'})-[*2..2]-({v:'c'}) RETURN length(p)" : [[2]],
-            "MATCH p = ({v:'a'})-[*]-({v:'c'}) RETURN length(p)" : [[2],[1]],
-            "MATCH p = ({v:'a'})-[*..]-({v:'c'}) RETURN length(p)" : [[2],[1]],
-            "MATCH p = ({v:'d'})-[*0]-() RETURN length(p)" : [[0]],
+            "MATCH p = (a {v:'a'})-[*2]-(c {v:'c'}) RETURN length(p)" : [[2]],
+            "MATCH p = (a {v:'a'})-[*2..]-(c {v:'c'}) RETURN length(p)" : [[2]],
+            "MATCH p = (a {v:'a'})-[*2..2]-(c {v:'c'}) RETURN length(p)" : [[2]],
+            "MATCH p = (a {v:'a'})-[*]-(c {v:'c'}) WITH length(p) AS len RETURN len ORDER BY len" : [[1],[2]],
+            "MATCH p = (a {v:'a'})-[*..]-(c {v:'c'}) WITH length(p) as len RETURN len ORDER BY len" : [[1],[2]],
+            "MATCH p = (d {v:'d'})-[*0]-() RETURN length(p)" : [[0]],
         }
+
+        # validate query results
         for query, expected_result in query_to_expected_result.items():
             actual_result = redis_graph.query(query)
             self.env.assertEquals(actual_result.result_set, expected_result)
