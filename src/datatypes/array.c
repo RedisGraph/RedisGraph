@@ -65,14 +65,14 @@ bool SIArray_ContainsType(SIValue siarray, SIType t) {
   */
 bool SIArray_ContainsValue(SIValue siarray, SIValue value, bool *comparedNull) {
 	// indicate if there was a null comparison during the array scan
-	*comparedNull = false;
+	if(comparedNull) *comparedNull = false;
 	uint array_len = SIArray_Length(siarray);
 	for(uint i = 0; i < array_len; i++) {
 		int disjointOrNull = 0;
 		SIValue elem = siarray.array[i];
 		int compareValue = SIValue_Compare(elem, value, &disjointOrNull);
 		if(disjointOrNull == COMPARED_NULL) {
-			*comparedNull = true;
+			if(comparedNull) *comparedNull = true;
 			continue;
 		}
 		if(compareValue == 0) return true;
