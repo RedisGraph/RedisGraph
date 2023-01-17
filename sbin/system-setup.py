@@ -55,8 +55,7 @@ class RedisGraphSetup(paella.Setup):
 
     def macos(self):
         self.install_gnu_utils()
-        # self.run("%s/bin/getgcc --modern" % READIES)
-        self.run("brew install libomp")
+        self.install("libomp zlib")
         self.install("redis")
         self.install_peg()
         self.pip_install("-r tests/fuzz/requirements.txt")
@@ -78,7 +77,6 @@ class RedisGraphSetup(paella.Setup):
             self.install("lcov")
         else:
             self.install("lcov-git", aur=True)
-        self.install("zlib")
 
         if not self.no_rmpytools:
             self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall --modern --redispy-version a246f40".format(PYTHON=self.python, READIES=READIES))
