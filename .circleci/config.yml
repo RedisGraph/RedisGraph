@@ -321,7 +321,8 @@ commands:
                 redisbench-admin compare  \
                   --defaults_filename ./tests/benchmarks/defaults.yml \
                   --comparison-branch $CIRCLE_BRANCH \
-                  --pull-request ${CIRCLE_PULL_REQUEST##*/}
+                  --pull-request ${CIRCLE_PULL_REQUEST##*/} \
+                  --auto-approve
             fi
 
 
