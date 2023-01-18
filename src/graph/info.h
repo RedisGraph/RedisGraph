@@ -46,6 +46,7 @@ typedef struct QueryCtx QueryCtx;
 // Duplicate typedef from the circular buffer.
 typedef bool (*CircularBufferNRG_ReadAllCallback)(void *user_data, const void *item);
 
+// TODO think of the impossible states.
 // Specifies what kind of query should we count.
 typedef enum QueryStatisticsFlag {
     QueryStatisticsFlag_READONLY = 0,
@@ -259,7 +260,7 @@ typedef struct Info {
     // reporting the results.
     atomic_uint_fast64_t max_query_pipeline_time;
     // Finished query counters with states.
-    FinishedQueryCounters finish_query_counters;
+    FinishedQueryCounters finished_query_counters;
     // Statistics of the queries we currently keep track of.
     Statistics statistics;
     // A global lock for the object. Used as an inverse lock - allows parallel

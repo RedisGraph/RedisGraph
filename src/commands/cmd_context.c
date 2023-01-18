@@ -138,6 +138,7 @@ void CommandCtx_ThreadSafeContextUnlock(const CommandCtx *command_ctx) {
 	if(command_ctx->bc) RedisModule_ThreadSafeContextUnlock(command_ctx->ctx);
 }
 
+// TODO a better name?
 uint64_t CommandCtx_GetTimerMilliseconds
 (
 	CommandCtx *command_ctx

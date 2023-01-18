@@ -124,19 +124,5 @@ void QueryCtx_Replicate
 /* Compute and return elapsed query execution time. */
 double QueryCtx_GetExecutionTime(void);
 
-inline const char* QueryCtx_GetQueryStringWithParameters
-(
-	const QueryCtx *ctx
-) {
-	return ctx->query_data.query;
-}
-
-inline const char* QueryCtx_GetQueryStringWithoutParameters
-(
-	const QueryCtx *ctx
-) {
-	return ctx->query_data.query_no_params;
-}
-
 /* Free the allocations within the QueryCtx and reset it for the next query. */
 void QueryCtx_Free(void);
