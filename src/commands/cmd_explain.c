@@ -19,10 +19,10 @@
  * argv[2] query */
 void Graph_Explain(void *args) {
 	bool lock_acquired = false;
-	CommandCtx     *command_ctx = (CommandCtx *)args;
-	RedisModuleCtx *ctx         = CommandCtx_GetRedisCtx(command_ctx);
-	GraphContext   *gc          = CommandCtx_GetGraphContext(command_ctx);
-	ExecutionCtx   *exec_ctx    = NULL;
+	CommandCtx     *command_ctx         = (CommandCtx *)args;
+	RedisModuleCtx *ctx                 = CommandCtx_GetRedisCtx(command_ctx);
+	GraphContext   *gc                  = CommandCtx_GetGraphContext(command_ctx);
+	ExecutionCtx   *exec_ctx            = NULL;
 	QueryStatisticsFlag statistics_flag = QueryStatisticsFlag_READONLY;
 
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);

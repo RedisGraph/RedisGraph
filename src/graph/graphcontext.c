@@ -16,7 +16,8 @@
 #include "../util/thpool/pools.h"
 #include "../serializers/graphcontext_type.h"
 #include "../commands/execution_ctx.h"
-#include "../datatypes/set.h"
+// TODO will it work without?
+// #include "../datatypes/set.h"
 
 // Global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
@@ -85,17 +86,17 @@ GraphContext *GraphContext_New
 ) {
 	GraphContext *gc = rm_malloc(sizeof(GraphContext));
 
-	gc->version          = 0;  // initial graph version
-	gc->slowlog          = SlowLog_New();
-	gc->ref_count        = 0;  // no refences
-	gc->attributes       = raxNew();
+	gc->version               = 0;  // initial graph version
+	gc->slowlog               = SlowLog_New();
+	gc->ref_count             = 0;  // no refences
+	gc->attributes            = raxNew();
 	gc->node_attributes_count = 0;
 	gc->edge_attributes_count = 0;
-	gc->index_count      = 0;  // no indicies
-	gc->string_mapping   = array_new(char *, 64);
-	gc->encoding_context = GraphEncodeContext_New();
-	gc->decoding_context = GraphDecodeContext_New();
-	const bool info_created = Info_New(&gc->info);
+	gc->index_count           = 0;  // no indicies
+	gc->string_mapping        = array_new(char *, 64);
+	gc->encoding_context      = GraphEncodeContext_New();
+	gc->decoding_context      = GraphDecodeContext_New();
+	const bool info_created   = Info_New(&gc->info);
 	ASSERT(info_created);
 
 	// read NODE_CREATION_BUFFER size from configuration

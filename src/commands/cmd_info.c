@@ -58,7 +58,7 @@ extern GraphContext **graphs_in_keyspace;
 
 // Global info - across all the graphs available in all the shards.
 typedef struct GlobalInfo {
-    millis_t max_query_wait_time_time;
+    millis_t max_query_wait_time;
     uint64_t total_waiting_queries_count;
     uint64_t total_executing_queries_count;
     uint64_t total_reporting_queries_count;
@@ -119,14 +119,15 @@ static bool _AggregatedGraphGetInfo_New(AggregatedGraphGetInfo *info) {
     return Statistics_New(&info->statistics);
 }
 
-// The data we need to extract from the callback for the circle buffer which we
-// later print out in the reply of the "GRAPH.INFO QUERIES PREV".
+// The data we need to extract from the callback for the circular buffer which
+// we later print out in the reply of the "GRAPH.INFO QUERIES PREV".
+// It is used as a "user data" field in the view callback.
 typedef struct ViewFinishedQueriesCallbackData {
     RedisModuleCtx *ctx;
-    bool is_compact_mode;
     uint64_t max_count;
-    int status;
     uint64_t actual_elements_count;
+    int status;
+    bool is_compact_mode;
 } ViewFinishedQueriesCallbackData;
 
 // The same structure is used for the replies for the finished and non-finished
@@ -191,8 +192,8 @@ static uint64_t _info_queries_max_count() {
     return max_elements_count;
 }
 
-// Aggregates the information used for the "GRAPH.INFO GET" from all the graphs
-// from all the shards available.
+// Aggregates the information used for the "GRAPH.INFO GET" from the specified
+// graph.
 static bool AggregatedGraphGetInfo_AddFromGraphContext
 (
     AggregatedGraphGetInfo *info,
@@ -202,15 +203,12 @@ static bool AggregatedGraphGetInfo_AddFromGraphContext
     if (!info || !gc) {
         return false;
     }
-    const uint64_t node_count
-        = Graph_NodeCount(gc->g) - Graph_DeletedNodeCount(gc->g);
-    CHECKED_ADD_OR_RETURN(info->node_count, node_count, false);
 
-    const uint64_t relationship_count
-        = Graph_EdgeCount(gc->g) - Graph_DeletedEdgeCount(gc->g);
+    CHECKED_ADD_OR_RETURN(info->node_count, Graph_NodeCount(gc->g), false);
+
     CHECKED_ADD_OR_RETURN(
         info->relationship_count,
-        relationship_count,
+        Graph_EdgeCount(gc->g),
         false);
 
     CHECKED_ADD_OR_RETURN(
@@ -252,23 +250,17 @@ static bool AggregatedGraphGetInfo_AddFromGraphContext
     return true;
 }
 
-// Returns true if the strings are equal (case insensitively).
-// NOTE: The strings must have a NULL-character at the end (strlen requirement).
-static bool _string_equals_case_insensitive(const char *lhs, const char *rhs) {
-    if (strlen(lhs) != strlen(rhs)) {
-        return false;
-    }
-    return !strcasecmp(lhs, rhs);
-}
-
 // Parses out a single flag from a string, which is suitable for the
 // "GRAPH.INFO GET" command.
-static InfoGetFlag _parse_info_get_flag_from_string(const char *str) {
-    if (_string_equals_case_insensitive(str, INFO_GET_MEMORY_ARG)) {
+static InfoGetFlag _parse_info_get_flag_from_string
+(
+    const char *str
+) {
+    if (!strcasecmp(str, INFO_GET_MEMORY_ARG)) {
         return InfoGetFlag_MEMORY;
-    } else if (_string_equals_case_insensitive(str, INFO_GET_COUNTS_ARG)) {
+    } else if (!strcasecmp(str, INFO_GET_COUNTS_ARG)) {
         return InfoGetFlag_COUNTS;
-    } else if (_string_equals_case_insensitive(str, INFO_GET_STATISTICS_ARG)) {
+    } else if (!strcasecmp(str, INFO_GET_STATISTICS_ARG)) {
         return InfoGetFlag_STATISTICS;
     }
     return InfoGetFlag_NONE;
@@ -298,10 +290,13 @@ static InfoGetFlag _parse_info_get_flags_from_args
 }
 
 // Parses out a single "GRAPH.INFO QUERIES" flag.
-static InfoQueriesFlag _parse_info_queries_flag_from_string(const char *str) {
-    if (_string_equals_case_insensitive(str, INFO_QUERIES_CURRENT_ARG)) {
+static InfoQueriesFlag _parse_info_queries_flag_from_string
+(
+    const char *str
+) {
+    if (!strcasecmp(str, INFO_QUERIES_CURRENT_ARG)) {
         return InfoQueriesFlag_CURRENT;
-    } else if (_string_equals_case_insensitive(str, INFO_QUERIES_PREV_ARG)) {
+    } else if (!strcasecmp(str, INFO_QUERIES_PREV_ARG)) {
         return InfoQueriesFlag_PREV;
     }
     return InfoQueriesFlag_NONE;
@@ -329,20 +324,21 @@ static InfoQueriesFlag _parse_info_queries_flags_from_args
     return flags;
 }
 
+// TODO just use strcase cmp?
 static bool _is_queries_cmd(const char *cmd) {
-    return _string_equals_case_insensitive(cmd, SUBCOMMAND_NAME_QUERIES);
+    return !strcasecmp(cmd, SUBCOMMAND_NAME_QUERIES);
 }
 
 static bool _is_get_cmd(const char *cmd) {
-    return _string_equals_case_insensitive(cmd, SUBCOMMAND_NAME_GET);
+    return !strcasecmp(cmd, SUBCOMMAND_NAME_GET);
 }
 
 static bool _is_reset_cmd(const char *cmd) {
-    return _string_equals_case_insensitive(cmd, SUBCOMMAND_NAME_RESET);
+    return !strcasecmp(cmd, SUBCOMMAND_NAME_RESET);
 }
 
 static bool _is_compact_mode(const char *arg) {
-    return _string_equals_case_insensitive(arg, COMPACT_MODE_OPTION);
+    return !strcasecmp(arg, COMPACT_MODE_OPTION);
 }
 
 static bool _collect_queries_info_from_graph
@@ -361,8 +357,9 @@ static bool _collect_queries_info_from_graph
     const uint64_t waiting_queries_count = Info_GetWaitingQueriesCount(&gc->info);
     const uint64_t executing_queries_count = Info_GetExecutingQueriesCount(&gc->info);
     const uint64_t reporting_queries_count = Info_GetReportingQueriesCount(&gc->info);
-    const uint64_t max_query_wait_time_time = Info_GetMaxQueryWaitTime(&gc->info);
+    const uint64_t max_query_wait_time = Info_GetMaxQueryWaitTime(&gc->info);
 
+    // TODO Use checked add macro.
     if (!checked_add_u64(
         global_info->total_waiting_queries_count,
         waiting_queries_count,
@@ -394,9 +391,9 @@ static bool _collect_queries_info_from_graph
     }
 
     if (!checked_add_u32(
-        global_info->max_query_wait_time_time,
-        max_query_wait_time_time,
-        &global_info->max_query_wait_time_time)) {
+        global_info->max_query_wait_time,
+        max_query_wait_time,
+        &global_info->max_query_wait_time)) {
         // We have a value overflow.
         if (!is_ok) {
             return false;
@@ -407,7 +404,7 @@ static bool _collect_queries_info_from_graph
 }
 
 // Replies with the global information about the graphs, the output is a part
-// of the "GRAPH.INFO" with no flags.
+// of the "GRAPH.INFO QUERIES" with no flags.
 static int _reply_global_info
 (
     RedisModuleCtx *ctx,
@@ -425,7 +422,7 @@ static int _reply_global_info
     REDISMODULE_DO(ReplyRecorder_AddNumber(
         &recorder,
         MAX_QUERY_WAIT_TIME_KEY_NAME,
-        global_info.max_query_wait_time_time
+        global_info.max_query_wait_time
     ));
 
     REDISMODULE_DO(ReplyRecorder_AddNumber(
@@ -467,7 +464,7 @@ static GraphContext* _find_graph_with_name
             return NULL;
         }
 
-        if (_string_equals_case_insensitive(graph_name, gc->graph_name)) {
+        if (!strcasecmp(graph_name, gc->graph_name)) {
             return gc;
         }
     }
@@ -476,7 +473,6 @@ static GraphContext* _find_graph_with_name
 }
 
 // Collects all the global information from all the graphs.
-// TODO also collect from the shards.
 static bool _collect_global_info
 (
     RedisModuleCtx *ctx,
@@ -510,6 +506,8 @@ static bool _collect_global_info
 // "GRAPH.INFO" commands are issued, there might be concurrently running queries
 // which have their timer ticking but the counted value not yet updated as it
 // hasn't moved to the new stage.
+// TODO don't accumulate but here only return the time spent, don't update the
+// counters.
 static void _update_query_stage_timer(const QueryStage stage, QueryInfo *info) {
     ASSERT(info);
     if (!info) {
@@ -886,22 +884,17 @@ static int _reset_graph_info
         return REDISMODULE_ERR;
     }
 
-    const uint32_t graphs_count = array_len(graphs_in_keyspace);
-
-    for (uint32_t i = 0; i < graphs_count; ++i) {
-        GraphContext *gc = graphs_in_keyspace[i];
-        ASSERT(gc);
-        if (!gc) {
-            return REDISMODULE_ERR;
-        }
-        if (_string_equals_case_insensitive(graph_name, gc->graph_name)) {
-            Info_Reset(&gc->info);
-            REDISMODULE_DO(RedisModule_ReplyWithBool(ctx, true));
-            return REDISMODULE_OK;
-        }
+    GraphContext *gc = _find_graph_with_name(graph_name);
+    if (!gc) {
+        RedisModule_ReplyWithError(ctx, ERROR_COULD_NOT_FIND_GRAPH);
+        return REDISMODULE_ERR;
     }
-    RedisModule_ReplyWithError(ctx, ERROR_COULD_NOT_FIND_GRAPH);
-    return REDISMODULE_ERR;
+
+    Info_Reset(&gc->info);
+
+    REDISMODULE_DO(RedisModule_ReplyWithBool(ctx, true));
+
+    return REDISMODULE_OK;
 }
 
 // Replies with an aggregated information over all the graphs.
@@ -1284,7 +1277,7 @@ static int _get_all_graphs_info
 }
 
 // Replies with the finished queries information.
-// This function is used as a callback for the circle buffer viewer.
+// This function is used as a callback for the circular buffer viewer.
 // This is a part of the "GRAPH.INFO QUERIES PREV" reply.
 static bool _reply_finished_queries(void *user_data, const void *item) {
     ViewFinishedQueriesCallbackData *data
@@ -1498,7 +1491,7 @@ static int _info_get
     }
     const InfoGetFlag flags = _parse_info_get_flags_from_args(argv + 1, argc - 1);
 
-    if (_string_equals_case_insensitive(graph_name, ALL_GRAPH_KEYS_MASK)) {
+    if (!strcasecmp(graph_name, ALL_GRAPH_KEYS_MASK)) {
         return _get_all_graphs_info(ctx, is_compact_mode, flags);
     }
 
@@ -1526,7 +1519,7 @@ static int _info_reset
         return REDISMODULE_ERR;
     }
 
-    if (_string_equals_case_insensitive(graph_name, ALL_GRAPH_KEYS_MASK)) {
+    if (!strcasecmp(graph_name, ALL_GRAPH_KEYS_MASK)) {
         return _reset_all_graphs_info(ctx);
     }
 
