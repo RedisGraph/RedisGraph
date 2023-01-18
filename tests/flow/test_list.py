@@ -1074,7 +1074,7 @@ class testList(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
         expected_result = [[1,4,2,3]]
-        query = """RETURN insert([1,2,3], 1, 4)"""
+        query = """RETURN insert([1,2,3], 1, 4, true)"""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
@@ -1141,3 +1141,228 @@ class testList(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
+        # test dup=true
+        expected_result = [[1,2,3]]
+        query = """RETURN insert([1,2,3], 0, 2, false)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # test dup=true
+        expected_result = [[[1,3],1,2,3]]
+        query = """RETURN insert([[1,3],1,2,3], 4, [1,2+1], false)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+    def test11_insert(self):
+        # NULL input should return NULL
+        expected_result = [None]
+        query = """WITH NULL as list RETURN insertListElements(null, [1,2,3], 2)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # 2nd arg should be list
+        try:
+            redis_graph.query("RETURN insertListElements([1,2,3], '2', 3)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
+
+        # 3th arg should be Integer
+        try:
+            redis_graph.query("RETURN insertListElements([1,2,3], [2], '1')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected Integer but was String", str(e))
+
+        # Test without input argument
+        try:
+            query = """RETURN insertListElements()"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 0 arguments to function 'insertListElements', expected at least 3", str(e))
+
+        # Test with 1 input argument
+        try:
+            query = """RETURN insertListElements([1,2,3])"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 1 arguments to function 'insertListElements', expected at least 3", str(e))
+
+        # Test with 5 input argument
+        try:
+            query = """RETURN insertListElements([1,2,3], [2], 1, true, 1)"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 5 arguments to function 'insertListElements', expected at most 4", str(e))
+
+
+        ### Test valid inputs ###
+
+        expected_result = [[4,1,2,3]]
+        query = """RETURN insertListElements([1,2,3], [4], 0)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,4,2,3]]
+        query = """RETURN insertListElements([1,2,3], [4], 1, true)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,2,4,3]]
+        query = """RETURN insertListElements([1,2,3], [4], 2)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,2,3,4]]
+        query = """RETURN insertListElements([1,2,3], [4], 3)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,2,3,4]]
+        query = """RETURN insertListElements([1,2,3], [4], -1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,2,4,3]]
+        query = """RETURN insertListElements([1,2,3], [4], -2)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,4,2,3]]
+        query = """RETURN insertListElements([1,2,3], [4], -3)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[4,1,2,3]]
+        query = """RETURN insertListElements([1,2,3], [4], -4)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[4]]
+        query = """RETURN insertListElements([], [4], 0)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[4]]
+        query = """RETURN insertListElements([], [4], -1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,2,3,[1,3]]]
+        query = """RETURN insertListElements([1,2,3], [[1,2+1]], 3)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # test out of range index
+        expected_result = [[1,2,3]]
+        query = """RETURN insertListElements([1,2,3], [5], 4)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # test out of range index
+        expected_result = [[1,2,3]]
+        query = """RETURN insertListElements([1,2,3], [5], -5)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # test val of type NULL
+        expected_result = [[1,2,3]]
+        query = """RETURN insertListElements([1,2,3], null, 1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # test dup=true
+        expected_result = [[1,2,3]]
+        query = """RETURN insertListElements([1,2,3], [2], 0, false)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # test dup=true
+        expected_result = [[[1,3],1,2,3]]
+        query = """RETURN insertListElements([[1,3],1,2,3], [[1,2+1]], 4, false)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        ### test multiple values in list2 ###
+
+        expected_result = [[4,5,6,1,2,3]]
+        query = """RETURN insertListElements([1,2,3], [4,5,6], 0)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,4,5,6,2,3]]
+        query = """RETURN insertListElements([1,2,3], [4,5,6], 1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,2,4,5,6,3]]
+        query = """RETURN insertListElements([1,2,3], [4,5,6], 2)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,2,3,4,5,6]]
+        query = """RETURN insertListElements([1,2,3], [4,5,6], 3)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,2,3,4,5,6]]
+        query = """RETURN insertListElements([1,2,3], [4,5,6], -1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,2,4,5,6,3]]
+        query = """RETURN insertListElements([1,2,3], [4,5,6], -2)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,4,5,6,2,3]]
+        query = """RETURN insertListElements([1,2,3], [4,5,6], -3)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[4,5,6,1,2,3]]
+        query = """RETURN insertListElements([1,2,3], [4,5,6], -4)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[4,5,6]]
+        query = """RETURN insertListElements([], [4,5,6], 0)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[4,5,6]]
+        query = """RETURN insertListElements([], [4,5,6], -1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,2,3,[1,3],4]]
+        query = """RETURN insertListElements([1,2,3], [[1,2+1], 4], 3)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # test out of range index
+        expected_result = [[1,2,3]]
+        query = """RETURN insertListElements([1,2,3], [5, 6], 4)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # test out of range index
+        expected_result = [[1,2,3]]
+        query = """RETURN insertListElements([1,2,3], [5, 9], -5)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # test dup=true
+        expected_result = [[9,7,1,2,3]]
+        query = """RETURN insertListElements([1,2,3], [9,3,2,7], 0, false)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # test dup=true
+        expected_result = [[1,[1,3],2,3,[1,4],8,[5]]]
+        query = """RETURN insertListElements([1,[1,3],2,3,[5]], [[1,4],[1,2+1],8,[5]], 4, false)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)

@@ -527,7 +527,7 @@ SIValue AR_INSERT(SIValue *argv, int argc, void *private_data) {
 	bool dups = true;
 	if(argc == 4) {
 		ASSERT(SI_TYPE(argv[3]) == T_BOOL);
-		dups = argv[3].longval;
+		dups = (bool)argv[3].longval;
 	}
 
 	if(!dups) {
@@ -557,6 +557,79 @@ SIValue AR_INSERT(SIValue *argv, int argc, void *private_data) {
 
 	return array;
 }
+
+/*  Given a list, return a list after inserting the elements of a second list at a given index.
+    idx is 0-based when non-negative, or from the end of the list when negative.
+	list.insertListElements(list, list2, idx, dups = TRUE) → list
+ */
+SIValue AR_INSERTLISTELEMENTS(SIValue *argv, int argc, void *private_data) {
+	ASSERT(argc == 3 || argc == 4);
+	SIValue list = argv[0];
+	if(SI_TYPE(list) == T_NULL) return SI_NullVal();
+	ASSERT(SI_TYPE(list) == T_ARRAY);
+	SIValue list2 = argv[1];
+	if(SI_TYPE(list2) == T_NULL) return SIArray_Clone(list);
+	ASSERT(SI_TYPE(list2) == T_ARRAY);
+
+	ASSERT(SI_TYPE(argv[2]) == T_INT64);
+	int32_t index = (int32_t)argv[2].longval;
+
+	uint32_t arrayLen = SIArray_Length(list);
+	if(!normalize_index(&index, arrayLen, true)) {
+		return SIArray_Clone(list);
+	}
+
+	bool dups = true;
+	if(argc == 4) {
+		ASSERT(SI_TYPE(argv[3]) == T_BOOL);
+		dups = (bool)argv[3].longval;
+	}
+
+	uint32_t arrayLen2 = SIArray_Length(list2);
+	if(!dups) {
+		// remove duplicates from list2
+		SIValue list2_no_duplicates = SI_Array(arrayLen2);
+		for(uint i = 0; i < arrayLen2; i++) {
+			// Check if it already exists in list
+			// TODO: optimize using hashmap
+			bool found = false;
+			SIValue _val = SIArray_Get(list2, i);
+			for(uint j = 0; j < arrayLen; j++) {
+				if(SIValue_Compare(SIArray_Get(list, j), _val, NULL) == 0) {
+					found = true;
+				}
+			}
+
+			if(!found) {
+				SIArray_Append(&list2_no_duplicates, _val);
+			}
+		}
+
+		list2 = list2_no_duplicates;
+		arrayLen2 = SIArray_Length(list2);
+	}
+
+	SIValue array = SI_Array(arrayLen + arrayLen2);
+	uint i = 0;
+
+	// append elements up to index
+	for(; i < index; i++) {
+		SIArray_Append(&array, SIArray_Get(list, i));
+	}
+
+	// append list2
+	for(uint j = 0; j < arrayLen2; j++) {
+		SIArray_Append(&array, SIArray_Get(list2, j));
+	}
+
+	// append remaining elements
+	for(; i < arrayLen; i++) {
+		SIArray_Append(&array, SIArray_Get(list, i));
+	}
+
+	return array;
+}
+
 
 SIValue AR_REDUCE
 (
@@ -724,6 +797,15 @@ void Register_ListFuncs() {
 	array_append(types, T_BOOL);
 	ret_type = T_ARRAY | T_NULL;
 	func_desc = AR_FuncDescNew("insert", AR_INSERT, 3, 4, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 4);
+	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_INT64);
+	array_append(types, T_BOOL);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("insertListElements", AR_INSERTLISTELEMENTS, 3, 4, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 4);
