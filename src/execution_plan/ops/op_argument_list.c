@@ -40,6 +40,9 @@ static Record ArgumentListConsume(OpBase *opBase) {
 	if(arg->record_list) {
 		if(array_len(arg->record_list) > 0) {
 			return array_pop(arg->record_list);
+		} else {
+			array_free(arg->record_list);
+			arg->record_list = NULL;
 		}
 	}
 
@@ -60,8 +63,8 @@ static OpResult ArgumentListReset(OpBase *opBase) {
 		}
 
 		array_free(arg->record_list);
+		arg->record_list = NULL;
 	}
-	arg->record_list = NULL;
 
 	return OP_OK;
 }
@@ -87,6 +90,6 @@ static void ArgumentListFree(OpBase *opBase) {
 		}
 
 		array_free(arg->record_list);
+		arg->record_list = NULL;
 	}
-	arg->record_list = NULL;
 }

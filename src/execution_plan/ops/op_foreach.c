@@ -109,7 +109,6 @@ static Record ForeachConsume
 	uint nrecords = array_len(op->records);
 	Record *clone_list = array_new(Record, nrecords);
 	array_clone_with_cb(clone_list, op->records, OpBase_CloneRecord);
-	// array_clone_with_cb(clone_list, op->records, OpBase_DeepCloneRecord);
 	ArgumentList_AddRecordList(op->argument_list, clone_list);
 
 	// call consume on first_embedded op. The result is thrown away.
