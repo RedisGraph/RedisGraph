@@ -113,7 +113,9 @@ static Record ForeachConsume
 	ArgumentList_AddRecordList(op->argument_list, clone_list);
 
 	// call consume on first_embedded op. The result is thrown away.
-	while(OpBase_Consume(op->first_embedded)) {};
+	while((r = OpBase_Consume(op->first_embedded))) {
+		OpBase_DeleteRecord(r);
+	};
 
 	return _handoff(op);
 }
@@ -154,7 +156,6 @@ static void ForeachFree
 	OpBase *op
 ) {
 	OpForeach *_op = (OpForeach *) op;
-	// if(_op->records && _op->supplier) {
 	if(_op->records) {
 		// free record list components
 		uint nrecords = array_len(_op->records);
