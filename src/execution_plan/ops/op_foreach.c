@@ -91,9 +91,6 @@ static Record ForeachConsume
 	Record r = NULL;
 	if(op->supplier) {
 		while((r = OpBase_Consume(op->supplier))) {
-			// persist scalars from previous ops, which may be freed before the
-			// records are handed of
-			// Record_PersistScalars(r);
 			array_append(op->records, r);
 		}
 	} else {

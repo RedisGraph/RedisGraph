@@ -387,4 +387,43 @@ class testForeachFlow():
         except redis.exceptions.ResponseError as e:
             self.env.assertIn("A WITH clause is required to introduce CALL after an updating clause.", str(e))
 
-    # TODO: Add tests with edge creation and deletion.
+    # validate that edge (relationship) manipulation (creation, deletion update)
+    # operations work correctly when embedded in a FOREACH clause
+    def test10_edge_manipulation(self):
+        # clear db and instantiate a new graph object (with an empty cache)
+        global graph
+        self.env.flush()
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+        # ----------------------------------------------------------------------
+        # create an edge between 2 nodes
+        # ----------------------------------------------------------------------
+
+        # create two nodes and an edge between them
+        res = graph.query("CREATE (n1:N {v: 1}), (n2:N {v: 2}) FOREACH(i in [1] | CREATE (n1)-[:R]->(n2))")
+        self.env.assertEquals(res.nodes_created, 2)
+        self.env.assertEquals(res.relationships_created, 1)
+
+        # ----------------------------------------------------------------------
+        # delete an edge
+        # ----------------------------------------------------------------------
+        
+        # delete the edge using FOREACH
+        res = graph.query("MATCH (n1)-[r]-(n2) FOREACH(i in [1] | DELETE r)")
+        self.env.assertEquals(res.nodes_deleted, 0)
+        self.env.assertEquals(res.relationships_deleted, 1)
+
+        # ----------------------------------------------------------------------
+        # delete a node that has an edge. Validate that the edge is deleted as
+        # well when the node is deleted
+        # ----------------------------------------------------------------------
+
+        # create an edge between the two existing nodes
+        res = graph.query("MERGE (n1:N {v: 1}) MERGE (n2:N {v: 2}) FOREACH(i in [1] | CREATE (n1)-[:R]->(n2))")
+        self.env.assertEquals(res.nodes_created, 0)
+        self.env.assertEquals(res.relationships_created, 1)
+
+        # delete the nodes with FOREACH
+        res = graph.query("MATCH (n) FOREACH(i in [1] | DELETE n)")
+        self.env.assertEquals(res.nodes_deleted, 2)
+        self.env.assertEquals(res.relationships_deleted, 1)
