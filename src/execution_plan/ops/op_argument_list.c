@@ -52,6 +52,15 @@ static OpResult ArgumentListReset(OpBase *opBase) {
 	// Reset operation, freeing the Record-list if exists.
 	ArgumentList *arg = (ArgumentList *)opBase;
 
+	if(arg->record_list) {
+		// free record list components
+		uint nrecords = array_len(arg->record_list);
+		for(uint i = 0; i < nrecords; i++) {
+			OpBase_DeleteRecord(arg->record_list[i]);
+		}
+
+		array_free(arg->record_list);
+	}
 	arg->record_list = NULL;
 
 	return OP_OK;
@@ -74,7 +83,7 @@ static void ArgumentListFree(OpBase *opBase) {
 		// free record list components
 		uint nrecords = array_len(arg->record_list);
 		for(uint i = 0; i < nrecords; i++) {
-			Record_Free(arg->record_list[i]);
+			OpBase_DeleteRecord(arg->record_list[i]);
 		}
 
 		array_free(arg->record_list);

@@ -123,6 +123,17 @@ static OpResult ForeachReset
 ) {
     OpForeach *op = (OpForeach *)opBase;
 	op->first = true;
+
+	// free records still held by this operation
+	if(op->records) {
+		// free record list components
+		uint nrecords = array_len(op->records);
+		for(uint i = 0; i < nrecords; i++) {
+			OpBase_DeleteRecord(op->records[i]);
+		}
+
+		array_free(op->records);
+	}
 	op->records = NULL;
 
 	return OP_OK;
@@ -142,5 +153,15 @@ static void ForeachFree
 	OpBase *op
 ) {
 	OpForeach *_op = (OpForeach *) op;
+	// if(_op->records && _op->supplier) {
+	if(_op->records) {
+		// free record list components
+		uint nrecords = array_len(_op->records);
+		for(uint i = 0; i < nrecords; i++) {
+			OpBase_DeleteRecord(_op->records[i]);
+		}
+
+		array_free(_op->records);
+	}
 	_op->records = NULL;
 }
