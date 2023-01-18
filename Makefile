@@ -135,7 +135,7 @@ LIBS=$(RAX) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH_LIBS) $(LIBCYPHER_PARSER)
 
 #----------------------------------------------------------------------------------------------
 
-CC_COMMON_H=0
+CC_COMMON_H=$(SRCDIR)/src/common.h
 
 include $(MK)/defs
 
