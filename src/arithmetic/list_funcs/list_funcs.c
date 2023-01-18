@@ -195,12 +195,19 @@ SIValue AR_TOSTRINGLIST(SIValue *argv, int argc, void *private_data) {
    Returns true if in range, false otherwise.
    Idx is 0-based when non-negative, or from the end of the list when negative.
 */
-static inline bool normalize_index(int32_t *index, uint32_t arrayLen) {
+static inline bool normalize_index(int32_t *index, uint32_t arrayLen, bool bounds_inclusive) {
 	// given a negativ index, the accses is calculated as arrayLen+index
 	uint32_t absIndex = abs(*index);
-	// index range can be [-arrayLen, arrayLen) (lower bound inclusive, upper exclusive)
-	// this is because 0 = arrayLen+(-arrayLen)
-	if((*index < 0 && absIndex > arrayLen) || (*index > 0 && absIndex >= arrayLen)) return false;
+	if(bounds_inclusive) {
+		// index range can be [-arrayLen - 1, arrayLen] (both bounds inclusive)
+		// this is because 0 = (arrayLen+1)+(-arrayLen-1)
+		if((*index < 0 && absIndex > arrayLen+1) || (*index >= 0 && absIndex > arrayLen)) return false;
+		arrayLen += 1; // for the index normalization calculation to be correct when index is negative
+	} else {
+		// index range can be [-arrayLen, arrayLen) (lower bound inclusive, upper exclusive)
+		// this is because 0 = arrayLen+(-arrayLen)
+		if((*index < 0 && absIndex > arrayLen) || (*index > 0 && absIndex >= arrayLen)) return false;
+	}
 	*index = *index >= 0 ? *index : arrayLen - absIndex;
 	return true;
 }
@@ -237,7 +244,7 @@ SIValue AR_SUBSCRIPT(SIValue *argv, int argc, void *private_data) {
 	SIValue list = argv[0];
 	int32_t index = (int32_t)argv[1].longval;
 	uint32_t arrayLen = SIArray_Length(list);
-	if(!normalize_index(&index, arrayLen)) {
+	if(!normalize_index(&index, arrayLen, false)) {
 		return SI_NullVal();
 	}
 	SIValue res = SIArray_Get(list, index);
@@ -442,8 +449,8 @@ SIValue AR_REMOVE(SIValue *argv, int argc, void *private_data) {
 	ASSERT(count >= 0);
 
 	uint32_t arrayLen = SIArray_Length(list);
-	if(!normalize_index(&index, arrayLen)) {
-		return SI_NullVal();
+	if(!normalize_index(&index, arrayLen, false)) {
+		return SIArray_Clone(list);
 	}
 
 	// calculate real count
@@ -492,6 +499,61 @@ SIValue AR_SORT(SIValue *argv, int argc, void *private_data) {
 
 	// sort array
 	SIArray_Sort(array, ascending);
+
+	return array;
+}
+
+/*  Given a list, return a list after inserting a given value at a given index.
+    idx is 0-based when non-negative, or from the end of the list when negative.
+	list.insert(list, idx, val, dups = TRUE) → list
+ */
+SIValue AR_INSERT(SIValue *argv, int argc, void *private_data) {
+	ASSERT(argc == 3 || argc == 4);
+	SIValue list = argv[0];
+	if(SI_TYPE(list) == T_NULL) return SI_NullVal();
+	ASSERT(SI_TYPE(list) == T_ARRAY);
+
+	ASSERT(SI_TYPE(argv[1]) == T_INT64);
+	int32_t index = (int32_t)argv[1].longval;
+
+	uint32_t arrayLen = SIArray_Length(list);
+	if(!normalize_index(&index, arrayLen, true)) {
+		return SIArray_Clone(list);
+	}
+
+	SIValue val = argv[2];
+	if(SI_TYPE(val) == T_NULL) return SIArray_Clone(list);
+
+	bool dups = true;
+	if(argc == 4) {
+		ASSERT(SI_TYPE(argv[3]) == T_BOOL);
+		dups = argv[3].longval;
+	}
+
+	if(!dups) {
+		// check if value already exists in list
+		for(uint i = 0; i < arrayLen; i++) {
+			if(SIValue_Compare(SIArray_Get(list, i), val, NULL) == 0) {
+				return SIArray_Clone(list);
+			}
+		}
+	}
+
+	SIValue array = SI_Array(arrayLen + 1);
+	uint i = 0;
+
+	// append elements up to index
+	for(; i < index; i++) {
+		SIArray_Append(&array, SIArray_Get(list, i));
+	}
+
+	// append new value
+	SIArray_Append(&array, val);
+
+	// append remaining elements
+	for(; i < arrayLen; i++) {
+		SIArray_Append(&array, SIArray_Get(list, i));
+	}
 
 	return array;
 }
@@ -653,6 +715,15 @@ void Register_ListFuncs() {
 	array_append(types, T_BOOL);
 	ret_type = T_ARRAY | T_NULL;
 	func_desc = AR_FuncDescNew("sort", AR_SORT, 1, 2, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 4);
+	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_INT64);
+	array_append(types, SI_ALL);
+	array_append(types, T_BOOL);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("insert", AR_INSERT, 3, 4, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 4);
