@@ -328,18 +328,22 @@ bool Schema_HasConstraints(const Schema *s) {
 	return (s->constraints && array_len(s->constraints) > 0);
 }
 
+// retrieves constraint 
+// returns NULL if constraint was not found
 Constraint Schema_GetConstraint
 (
-	const Schema *s,
-	const AttrInfo *fields,
-	uint field_count
+	const Schema *s,             // schema from which to get constraint
+	const Attribute_ID *fields,  // constraint fields
+	uint field_count             // number of fields
 ) {
+	// validations
 	ASSERT(s           != NULL);
 	ASSERT(fields      != NULL);
 	ASSERT(field_count  > 0);
 
 	// search for constraint
-	for(uint i = 0; i < array_len(s->constraints); i++) {
+	uint n = array_len(s->constraints);
+	for(uint i = 0; i < n; i++) {
 		Constraint c = s->constraints[i];
 
 		// make sure constraint attribute count matches
@@ -347,31 +351,37 @@ Constraint Schema_GetConstraint
 			continue;
 		}
 
-		bool match = true;
+		bool match = true;  // optimistic
 		for(uint j = 0; j < field_count; j++) {
-			if(c->attributes[j].id != fields[j].id) {
+			if(c->attributes[j] != fields[j]) {
 				match = false;
 				break;
 			}
 		}
 
-		if(match) return c;
+		if(match == true) {
+			return c;
+		}
 	}
 
+	// no constraint was found
 	return NULL;
 }
 
-bool Schema_ContainsConstraint(const Schema *s, const AttrInfo *fields, uint field_count) {
-	ASSERT(s != NULL);
-	ASSERT(fields != NULL);
-	ASSERT(field_count > 0);
+// checks if schema constains constraint
+bool Schema_ContainsConstraint
+(
+	const Schema *s,             // schema to search in
+	const Attribute_ID *fields,  // constraint fields to look up
+	uint field_count             // number of fields
+) {
+	// validations
+	ASSERT(s           != NULL);
+	ASSERT(fields      != NULL);
+	ASSERT(field_count  > 0);
 
 	Constraint c = Schema_GetConstraint(s, fields, field_count);
-	if(c == NULL || c->status == CT_FAILED) {
-		return false;
-	} else {
-		return true;
-	}
+	return (c == NULL || c->status == CT_FAILED);
 }
 
 void Schema_AddConstraint
@@ -384,30 +394,37 @@ void Schema_AddConstraint
 	array_append(s->constraints, c);
 }
 
-Constraint *Schema_GetConstraints
+// get all constraints in given schema
+const Constraint *Schema_GetConstraints
 (
-	const Schema *s       // schema holding the index
+	const Schema *s  // schema from which to extract constraints
 ) {
+	// validations
 	ASSERT(s != NULL);
 	ASSERT(s->constraints != NULL);
+
 	return s->constraints;
 }
 
+// removes constraint from schema
 int Schema_RemoveConstraint
 (
-	Schema *s,
-	Constraint c 	 // constraint to remove
+	Schema *s,    // schema
+	Constraint c  // constraint to remove
 ) {
+	// validations
 	ASSERT(s != NULL);
 	ASSERT(c != NULL);
 
-	for(uint i = 0; i < array_len(s->constraints); i++) {
+	// search for constraint
+	uint n = array_len(s->constraints);
+	for(uint i = 0; i < n; i++) {
 		if (c == s->constraints[i]) {
 			array_del_fast(s->constraints, i);
-			return REDISMODULE_OK;
+			return 1;
 		}
 	}
 
-	return REDISMODULE_ERR;
+	return 0;
 }
 

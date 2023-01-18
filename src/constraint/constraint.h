@@ -13,11 +13,6 @@
 // forward declaration of opaque constraint structure
 typedef _Constraint *Constraint;
 
-typedef struct {
-    Attribute_ID id;   // attribute ID
-    const char *name;  // attribute name
-} AttrInfo;
-
 // different states a constraint can be at
 // starting as pending and transitioning to either active or failed
 typedef enum ConstraintStatus {
@@ -38,10 +33,16 @@ typedef enum {
 // create a new constraint
 Constraint Constraint_New
 (
-	AttrInfo *fields, // enforced fields
-	uint n_fields,    // number of fields
-	const Schema *s,  // constraint schema
-	ConstraintType t  // constraint type
+	Attribute_ID *fields, // enforced fields
+	uint n_fields,        // number of fields
+	const Schema *s,      // constraint schema
+	ConstraintType t      // constraint type
+);
+
+// returns constraint status
+ConstraintStatus Constraint_GetStatus
+(
+	const Constraint c
 );
 
 // set constraint status
@@ -55,7 +56,7 @@ void Constraint_SetStatus
 );
 
 // returns a shallow copy of constraint attributes
-const AttrInfo *Constraint_GetAttributes
+const Attribute_ID *Constraint_GetAttributes
 (
 	const Constraint c  // constraint from which to get attributes
 );

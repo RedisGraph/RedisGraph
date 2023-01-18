@@ -137,13 +137,22 @@ void Schema_Free
 
 bool Schema_HasConstraints(const Schema *s);
 
-Constraint Schema_GetConstraint(const Schema *s, const AttrInfo *fields, uint field_count);
+// retrieves constraint 
+// returns NULL if constraint was not found
+Constraint Schema_GetConstraint
+(
+	const Schema *s,         // schema from which to get constraint
+	const AttrInfo *fields,  // constraint fields
+	uint field_count         // number of fields
+);
 
-// checks if schema has a constraint
-bool Schema_ContainsConstraint(
-const Schema *s, 
-const AttrInfo *fields, 
-uint field_count);
+// checks if schema constains constraint
+bool Schema_ContainsConstraint
+(
+	const Schema *s,         // schema to search in
+	const AttrInfo *fields,  // constraint fields to look up
+	uint field_count         // number of fields
+);
 
 // adds a constraint to schema
 void Schema_AddConstraint
@@ -152,14 +161,16 @@ void Schema_AddConstraint
 	Constraint c     // constraint to add
 );
 
-Constraint *Schema_GetConstraints
+// get all constraints in given schema
+const Constraint *Schema_GetConstraints
 (
-	const Schema *s       // schema holding the index
+	const Schema *s  // schema from which to extract constraints
 );
 
+// removes constraint from schema
 int Schema_RemoveConstraint
 (
-	Schema *s,
-	Constraint c 	 // constraint to remove
+	Schema *s,    // schema
+	Constraint c  // constraint to remove
 );
 

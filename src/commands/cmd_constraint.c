@@ -101,6 +101,7 @@ static int Constraint_Parse
 	return REDISMODULE_OK;
 }
 
+// GRAPH.CONSTRAIN <key> DEL UNIQUE/MANDATORY LABEL/RELTYPE label PROPERTIES prop_count prop0, prop1...
 static int Constraint_Delete
 (
 	RedisModuleCtx *ctx,
@@ -112,6 +113,13 @@ static int Constraint_Delete
 	const RedisModuleString **props
 ) {
 	int rv = REDISMODULE_OK;  // optimistic
+
+	// get or create graph
+	GraphContext *gc = GraphContext_Retrieve(ctx, key, false, false);
+	if(!gc) {
+		RedisModule_ReplyWithError(ctx, "Invalid graph name passed as argument");
+		return REDISMODULE_ERR;
+	}
 
 	// acquire graph write lock
 	Graph_AcquireWriteLock(gc->g);
@@ -163,17 +171,20 @@ cleanup:
 
 	// decrease graph reference count
 	GraphContext_DecreaseRefCount(gc);
+
+	return rv;
 }
 
+// GRAPH.CONSTRAIN <key> CREATE UNIQUE/MANDATORY LABEL/RELTYPE label PROPERTIES prop_count prop0, prop1...
 static int Constraint_Create
 (
-	RedisModuleCtx *ctx,
-	RedisModuleString *key,
-	ConstraintType ct,
-	GraphEntityType entity_type,
-	const char *label,
-	long long prop_count,
-	const RedisModuleString **props
+	RedisModuleCtx *ctx,             // redis module context
+	RedisModuleString *key,          // graph key to operate on
+	ConstraintType ct,               // constraint type
+	GraphEntityType entity_type,     // entity type
+	const char *label,               // label / rel-type
+	long long prop_count,            // properties count
+	const RedisModuleString **props  // properties
 ) {
 	int rv = REDISMODULE_OK;  // optimistic
 
@@ -187,7 +198,7 @@ static int Constraint_Create
 	// acquire graph write lock
 	Graph_AcquireWriteLock(gc->g);
 
-	c = GraphContext_AddUniqueConstraint(gc, entity_type, label, props,
+	c = GraphContext_AddConstraint(gc, ct, entity_type, label, props,
 			prop_count);
 
 	// constraint already exists

@@ -19,7 +19,7 @@ typedef struct _Constraint {
 	Schema *schema;                // constraint schema
 	ConstraintType t;              // constraint type
 	EnforcementCB enforce;         // enforcement function
-    AttrInfo *attributes;          // array of attributes sorted by their ids which are part of this constraint
+    Attribute_ID *attributes;      // sorted array of attr IDs
     ConstraintStatus status;       // constraint status
     uint _Atomic pending_changes;  // number of pending changes
 } _Constraint;
@@ -53,9 +53,7 @@ static bool Constraint_EnforceUniqueEntity
     ASSERT(rs_query_node != NULL);
 
     for(uint i = 0; i < array_len(c->attributes); i++) {
-		AttrInfo *attr_info = c->attributes + i;
-        const char *attr = attr_info->attribute_name;
-		Attribute_ID attr_id = attr_info->id;
+		Attribute_ID attr_id = c->attributes + i;
 
 		// get current attribute from entity
         v = AttributeSet_Get(attributes, attr_id);
@@ -116,10 +114,10 @@ static bool Constraint_EnforceUniqueEntity
 // create a new constraint
 Constraint Constraint_New
 (
-	AttrInfo *attrs,  // enforced attributes
-	uint n_attr,      // number of attributes
-	const Schema *s,  // constraint schema
-	ConstraintType t  // constraint type
+	Attribute_ID *attrs,  // enforced attributes
+	uint n_attr,          // number of attributes
+	const Schema *s,      // constraint schema
+	ConstraintType t      // constraint type
 ) {
 	// TODO: support CT_MANDATORY
 	ASSERT(t == CT_UNIQUE);
@@ -127,13 +125,8 @@ Constraint Constraint_New
     Constraint c = rm_malloc(sizeof(_Constraint));
 
 	// introduce constraint attributes
-	c->attributes = array_newlen(AttrInfo,  n_fields);
-    memcpy(c->attributes, fields, sizeof(AttrInfo) * id_count);
-    for(uint i = 0; i < id_count; i++) {
-		AttrInfo attr = attrs[i].id;
-		c->attributes[i].id   = attr.id;
-		c->attributes[i].name = rm_strdup(attr.name);
-    }
+	c->attributes = array_newlen(Attribute_ID,  n_fields);
+    memcpy(c->attributes, fields, sizeof(Attribute_ID) * id_count);
 
 	// initialize constraint
 	c->t               = t;
@@ -170,13 +163,13 @@ void Constraint_SetStatus
 }
 
 // returns a shallow copy of constraint attributes
-const AttrInfo *Constraint_GetAttributes
+const Attribute_ID *Constraint_GetAttributes
 (
 	const Constraint c  // constraint from which to get attributes
 ) {
 	ASSERT(c != NULL);
 
-	return (const AttrInfo *)c->attributes;
+	return (const Attribute_ID*)c->attributes;
 }
 
 // returns number of pending changes
