@@ -254,7 +254,7 @@ class testCache():
         # runs to completion successfuly
 
         # skip if 'to_thread' is missing or if test under valgrind
-        if self.env.envRunner.debugger is not None or "to_thread" not in dir(asyncio):
+        if VALGRIND or "to_thread" not in dir(asyncio):
             self.env.skip()
 
         # stop previous env

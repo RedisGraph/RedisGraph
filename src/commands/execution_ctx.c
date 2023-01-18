@@ -105,7 +105,7 @@ ExecutionCtx *ExecutionCtx_FromQuery
 
 	// parse and validate parameters only
 	// extract query string
-	// return invalid execution context if there failed to parse params
+	// return invalid execution context if failed to parse params
 	cypher_parse_result_t *params_parse_result = parse_params(q, &q_str);
 
 	// parameter parsing failed, return NULL
@@ -113,7 +113,7 @@ ExecutionCtx *ExecutionCtx_FromQuery
 		return NULL;
 	}
 
-	// TODO: seems like we should be able to free 'params_parse_result'
+	// seems like we should be able to free 'params_parse_result'
 	// at this point but this messes up the parsing of the actual query
 
 	// query included only params e.g. 'cypher a=1' was provided

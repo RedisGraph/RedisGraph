@@ -114,7 +114,6 @@ static void _AST_Extract_Params
 			const cypher_astnode_t *paramValue =
 				cypher_ast_cypher_option_param_get_value(param);
 
-			// TODO: consider SIValue from cypher_astnode_t
 			AR_ExpNode *exp = AR_EXP_FromASTNode(paramValue);
 			SIValue *v = rm_malloc(sizeof(SIValue));
 			SIValue _v = AR_EXP_Evaluate(exp, NULL);
@@ -725,6 +724,9 @@ cypher_parse_result_t *parse_params
 	const char *query,
 	const char **query_body
 ) {
+	ASSERT(query != NULL);
+	ASSERT(query_body != NULL);
+
 	FILE *f = fmemopen((char *)query, strlen(query), "r");
 	cypher_parse_result_t *result = cypher_fparse(f, NULL, NULL,
 			CYPHER_PARSE_ONLY_PARAMETERS);
@@ -741,9 +743,13 @@ cypher_parse_result_t *parse_params
 
 	_AST_Extract_Params(result);
 
-	if(query_body != NULL) {
-		*query_body = _AST_ExtractQueryString(result);
+	// see if we've encountered an error while evaluating parameter value
+	if(ErrorCtx_EncounteredError()) {
+		parse_result_free(result);
+		return NULL;
 	}
+
+	*query_body = _AST_ExtractQueryString(result);
 
 	return result;
 }
