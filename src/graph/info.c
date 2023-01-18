@@ -715,7 +715,7 @@ bool Info_New(Info *info) {
 void Info_Reset(Info *info) {
     REQUIRE_ARG(info);
 
-    _FinishedQueryCounters_Reset(&info->finish_query_counters);
+    _FinishedQueryCounters_Reset(&info->finished_query_counters);
     Statistics_Reset(&info->statistics);
 }
 
@@ -976,13 +976,13 @@ void Info_IncrementNumberOfQueries
     REQUIRE_ARG(info);
 
     _FinishedQueryCounters_Increment(
-        &info->finish_query_counters,
+        &info->finished_query_counters,
         flag
     );
 }
 
 FinishedQueryCounters Info_GetFinishedQueryCounters(const Info info) {
-    return info.finish_query_counters;
+    return info.finished_query_counters;
 }
 
 bool Info_Lock(Info *info) {

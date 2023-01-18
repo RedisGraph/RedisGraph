@@ -723,3 +723,33 @@ class testGraphInfoGetFlow(_testGraphInfoFlowBase):
     # 2) GRAPH.INFO CONFIG ?
     # 3) GRAPH.INFO INDEXES ?
     # 4) GRAPH.INFO CONSTRAINTS ?
+    # Test all of that for the undo log (deletions and additions):
+	# for (uint i = 0; i < count; i++) {
+	# 	UndoOp *op = log + i;
+	# 	switch(op->type) {
+	# 		case UNDO_UPDATE:
+	# 			SIValue_Free(op->update_op.orig_value);
+	# 			break;
+	# 		case UNDO_CREATE_NODE:
+	# 			break;
+	# 		case UNDO_CREATE_EDGE:
+	# 			break;
+	# 		case UNDO_DELETE_NODE:
+	# 			rm_free(op->delete_node_op.labels);
+	# 			AttributeSet_Free(&op->delete_node_op.set);
+	# 			break;
+	# 		case UNDO_DELETE_EDGE:
+	# 			AttributeSet_Free(&op->delete_edge_op.set);
+	# 			break;
+	# 		case UNDO_SET_LABELS:
+	# 		case UNDO_REMOVE_LABELS:
+	# 			array_free(op->labels_op.label_lds);
+	# 			break;
+	# 		case UNDO_ADD_SCHEMA:
+	# 		case UNDO_ADD_ATTRIBUTE:
+	# 			break;
+	# 		default:
+	# 			ASSERT(false);
+	# 	}
+	# }
+

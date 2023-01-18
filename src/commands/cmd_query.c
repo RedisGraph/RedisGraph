@@ -57,7 +57,7 @@ static GraphQueryCtx *GraphQueryCtx_New
 	return ctx;
 }
 
-static bool inline GraphQueryCtx_Free(GraphQueryCtx *ctx) {
+static void inline GraphQueryCtx_Free(GraphQueryCtx *ctx) {
 	ASSERT(ctx != NULL);
 	rm_free(ctx);
 }
@@ -73,6 +73,8 @@ static bool abort_and_check_timeout
 	}
 
 	// emit error if query timed out
+	// TODO for the abort feature this won't necessarily mean a timeout,
+	// it will also flag the aborted queries.
 	const bool has_timed_out = ExecutionPlan_Drained(plan);
 	if (has_timed_out) {
 		ErrorCtx_SetError("Query timed out");
@@ -81,23 +83,15 @@ static bool abort_and_check_timeout
 	return has_timed_out;
 }
 
-static bool _is_query_for_statistics_counting(const GraphQueryCtx *gq_ctx) {
-	ASSERT(gq_ctx);
-	ASSERT(gq_ctx->command_ctx);
-
-	const GRAPH_Commands command = CommandFromString(gq_ctx->command_ctx->command_name);
-	return command == CMD_QUERY || command == CMD_RO_QUERY
-	|| command == CMD_EXPLAIN || command == CMD_PROFILE;
-}
-
 static bool _is_query_for_tracking_info(const GraphQueryCtx *gq_ctx) {
 	ASSERT(gq_ctx);
 	ASSERT(gq_ctx->command_ctx);
 
 	const GRAPH_Commands command = CommandFromString(gq_ctx->command_ctx->command_name);
-	return !gq_ctx->profile && (command == CMD_QUERY || command == CMD_RO_QUERY);
+	return command == CMD_QUERY || command == CMD_RO_QUERY;
 }
 
+// TODO Move all of this to cmd_dispatcher
 static bool _is_cmd_info_enabled() {
 	bool cmd_info_enabled = false;
 	return Config_Option_get(Config_CMD_INFO, &cmd_info_enabled) && cmd_info_enabled;
@@ -163,8 +157,7 @@ static void _report_query_finish_state
 	GraphQueryCtx *gq_ctx,
 	const QueryStatisticsFlag flag
 ) {
-	if (!gq_ctx || !_is_query_for_statistics_counting(gq_ctx)
-	 || !gq_ctx->graph_ctx) {
+	if (!gq_ctx || !gq_ctx->graph_ctx) {
 		return;
 	}
 

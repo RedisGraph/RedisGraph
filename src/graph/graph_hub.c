@@ -107,12 +107,12 @@ uint CreateNode
 	ASSERT(n != NULL);
 
 	Graph_CreateNode(gc->g, n, labels, label_count);
- 	*n->attributes = set;
+	*n->attributes = set;
 	const uint32_t prop_count = ATTRIBUTE_SET_COUNT(set);
 	GraphContext_IncreasePropertyNamesCount(gc, prop_count, GETYPE_NODE);
 
 	// add node labels
- 	for(uint i = 0; i < label_count; i++) {
+	for(uint i = 0; i < label_count; i++) {
 		Schema *s = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
 		ASSERT(s);
 		Schema_AddNodeToIndices(s, n);
@@ -139,12 +139,12 @@ uint CreateEdge
 	ASSERT(e != NULL);
 
 	Graph_CreateEdge(gc->g, src, dst, r, e);
- 	*e->attributes = set;
+	*e->attributes = set;
 	const uint32_t prop_count = ATTRIBUTE_SET_COUNT(set);
 	GraphContext_IncreasePropertyNamesCount(gc, prop_count, GETYPE_EDGE);
 
 	Schema *s = GraphContext_GetSchema(gc, e->relationship, SCHEMA_EDGE);
- 	// all schemas have been created in the edge blueprint loop or earlier
+	// all schemas have been created in the edge blueprint loop or earlier
 	ASSERT(s != NULL);
 	Schema_AddEdgeToIndices(s, e);
 
@@ -414,8 +414,7 @@ Attribute_ID FindOrAddAttribute
 	ASSERT(attribute != NULL);
 
 	bool created;
-	Attribute_ID attr_id
-		= GraphContext_FindOrAddAttribute(gc, attribute, &created);
+	Attribute_ID attr_id = GraphContext_FindOrAddAttribute(gc, attribute, &created);
 	// In case there was an append, the latest id should be tracked
 	if(created) {
 		QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
