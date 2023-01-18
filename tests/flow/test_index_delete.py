@@ -13,7 +13,7 @@ class testIndexDeletionFlow():
         # drop index is an async operation which can cause Valgraind
         # to wrongfully report as a leak
         if VALGRIND:
-            Env.skip()
+            Env.skip(None)
 
         self.env = Env(decodeResponses=True)
 
