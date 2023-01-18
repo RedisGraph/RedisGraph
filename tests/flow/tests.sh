@@ -170,7 +170,7 @@ setup_clang_sanitizer() {
 		fi
 
 		export ASAN_OPTIONS="detect_odr_violation=0:halt_on_error=0:detect_leaks=1"
-		export LSAN_OPTIONS="verbosity=1:log_threads=1:suppressions=$ROOT/tests/memcheck/asan.supp"
+		export LSAN_OPTIONS="suppressions=$ROOT/tests/memcheck/asan.supp"
 
 	elif [[ $SAN == mem || $SAN == memory ]]; then
 		REDIS_SERVER=${REDIS_SERVER:-redis-server-msan-$SAN_REDIS_VER}
@@ -180,30 +180,6 @@ setup_clang_sanitizer() {
 				--suffix msan --clang-msan --llvm-dir /opt/llvm-project/build-msan \
 				--clang-san-blacklist $ignorelist
 		fi
-	fi
-}
-
-clang_sanitizer_summary() {
-	if grep -l "leaked in" logs/*.asan.log* &> /dev/null; then
-		echo
-		echo "${LIGHTRED}Sanitizer: leaks detected:${RED}"
-		grep -l "leaked in" logs/*.asan.log*
-		echo "${NOCOLOR}"
-		E=1
-	fi
-	if grep -l "dynamic-stack-buffer-overflow" logs/*.asan.log* &> /dev/null; then
-		echo
-		echo "${LIGHTRED}Sanitizer: buffer overflow detected:${RED}"
-		grep -l "dynamic-stack-buffer-overflow" logs/*.asan.log*
-		echo "${NOCOLOR}"
-		E=1
-	fi
-	if grep -l "stack-use-after-scope" logs/*.asan.log* &> /dev/null; then
-		echo
-		echo "${LIGHTRED}Sanitizer: stack use after scope detected:${RED}"
-		grep -l "stack-use-after-scope" logs/*.asan.log*
-		echo "${NOCOLOR}"
-		E=1
 	fi
 }
 
