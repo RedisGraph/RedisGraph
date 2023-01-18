@@ -6,7 +6,7 @@
 
 #include "op_foreach.h"
 
-// Forward declarations
+// forward declarations
 static void ForeachFree(OpBase *opBase);
 static OpResult ForeachInit(OpBase *opBase);
 static Record ForeachConsume(OpBase *opBase);
@@ -20,11 +20,11 @@ OpBase *NewForeachOp
 ) {
     OpForeach *op = rm_calloc(1, sizeof(OpForeach));
 
+	op->body           = NULL;
 	op->first          = true;
 	op->records        = NULL;
 	op->supplier       = NULL;
 	op->argument_list  = NULL;
-	op->first_embedded = NULL;
 
     OpBase_Init((OpBase *)op, OPType_FOREACH, "Foreach", ForeachInit,
 			ForeachConsume, ForeachReset, NULL, ForeachClone, ForeachFree,
@@ -43,13 +43,19 @@ static OpResult ForeachInit
 	// a consumer. otherwise, we have only a consumer (using a static list)
 	if(op->op.childCount > 1) {
 		op->supplier = op->op.children[0];
-		op->first_embedded = op->op.children[1];
+		op->body = op->op.children[1];
 	} else {
-		op->first_embedded = op->op.children[0];
+		op->body = op->op.children[0];
 	}
 
 	// search for the ArgumentList op on the embedded sub-execution plan chain
-	OpBase *argument_list = op->first_embedded;
+	
+	// TODO: consider switching to _ExecutionPlan_LocateTaps
+	OpBase **taps;
+	_ExecutionPlan_LocateTaps(op->body, &taps);
+
+	OpBase *argument_list = op->body;
+	// TODO: investigate if it is OK to locate args_list via child[0]
 	while(argument_list->childCount > 0) {
 		argument_list = argument_list->children[0];
 	}
@@ -61,13 +67,16 @@ static OpResult ForeachInit
     return OP_OK;
 }
 
-// if there is a record to return, it is returned. Otherwise, returns NULL
+// if there is a record to return, it is returned
+// otherwise, returns NULL
 static Record _handoff(OpForeach *op) {
-	Record r = NULL;
 	ASSERT(op->records != NULL);
+
+	Record r = NULL;
 	if(array_len(op->records)) {
 		r = array_pop(op->records);
 	}
+
 	return r;
 }
 
@@ -90,6 +99,7 @@ static Record ForeachConsume
 
 	Record r = NULL;
 	if(op->supplier) {
+		// eagerly drain supplier
 		while((r = OpBase_Consume(op->supplier))) {
 			array_append(op->records, r);
 		}
@@ -98,8 +108,6 @@ static Record ForeachConsume
 		// argument-list operation
 		r = OpBase_CreateRecord((OpBase *)op);
 		array_append(op->records, r);
-
-		op->first = false;
 	}
 
 	// plant a clone of the list of arguments in argument_list operation
@@ -107,23 +115,22 @@ static Record ForeachConsume
 	array_clone_with_cb(clone_list, op->records, OpBase_CloneRecord);
 	ArgumentList_AddRecordList(op->argument_list, clone_list);
 
-	// call consume on first_embedded op. The result is thrown away.
-	while((r = OpBase_Consume(op->first_embedded))) {
+	// call consume on loop body first op
+	// the result is thrown away
+	while((r = OpBase_Consume(op->body))) {
 		OpBase_DeleteRecord(r);
 	};
 
 	return _handoff(op);
 }
 
-static OpResult ForeachReset
+// free foreach internal data structures
+static void _freeInternals
 (
-    OpBase *opBase  // operation
+	OpForeach *op  // operation to free
 ) {
-    OpForeach *op = (OpForeach *)opBase;
-	op->first = true;
-
 	// free records still held by this operation
-	if(op->records) {
+	if(op->records != NULL) {
 		// free record list components
 		uint nrecords = array_len(op->records);
 		for(uint i = 0; i < nrecords; i++) {
@@ -133,6 +140,17 @@ static OpResult ForeachReset
 		array_free(op->records);
 	}
 	op->records = NULL;
+}
+
+static OpResult ForeachReset
+(
+    OpBase *opBase  // operation
+) {
+    OpForeach *op = (OpForeach *)opBase;
+
+	op->first = true;
+
+	_freeInternals(op);
 
 	return OP_OK;
 }
@@ -140,7 +158,7 @@ static OpResult ForeachReset
 static OpBase *ForeachClone
 (
     const ExecutionPlan *plan,  // plan
-    const OpBase *opBase        // operation
+    const OpBase *opBase        // operation to clone
 ) {
     ASSERT(opBase->type == OPType_FOREACH);
 	return NewForeachOp(plan);
@@ -151,14 +169,9 @@ static void ForeachFree
 	OpBase *op
 ) {
 	OpForeach *_op = (OpForeach *) op;
-	if(_op->records) {
-		// free record list components
-		uint nrecords = array_len(_op->records);
-		for(uint i = 0; i < nrecords; i++) {
-			OpBase_DeleteRecord(_op->records[i]);
-		}
 
-		array_free(_op->records);
-	}
+	_freeInternals(op);
+
 	_op->records = NULL;
 }
+

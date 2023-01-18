@@ -20,9 +20,9 @@ typedef struct {
 	OpBase op;
 
     bool first;                   // is this the first call to consume
+    OpBase *body;                 // the first op in the embedded execution-plan
     Record *records;              // records aggregated by the operation
     OpBase *supplier;             // op from which records are pulled (optio    nal)
-    OpBase *first_embedded;       // the first op in the embedded execution-plan
     ArgumentList *argument_list;  // argument operation (tap)
 
 } OpForeach;
