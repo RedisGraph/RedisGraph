@@ -47,7 +47,7 @@ CommandCtx *CommandCtx_New
 	bool compact,                      // Whether this query was issued with the compact flag.
 	long long timeout,                 // The query timeout, if specified.
 	bool timeout_rw,                   // Apply timeout on both read and write queries.
-	const simple_timer_t timer,              // The timer for timing the command.
+	const simple_timer_t timer,        // The timer for timing the command.
 	const uint64_t received_timestamp  // The command receive timestamp (epoch).
 );
 

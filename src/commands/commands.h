@@ -25,7 +25,8 @@ typedef enum {
 	CMD_BULK_INSERT    = 7,
 	CMD_SLOWLOG        = 8,
 	CMD_LIST           = 9,
-	CMD_INFO           = 10,
+	CMD_DEBUG          = 10,
+	CMD_INFO           = 11,
 } GRAPH_Commands;
 
 //------------------------------------------------------------------------------
