@@ -320,9 +320,6 @@ class testForeachFlow():
         self.env.assertEquals(res.properties_set, 6)
         self.env.assertEquals(res.nodes_deleted, 0)
 
-        # delete newly created nodes
-        graph.query("MATCH (t:TEMP) DELETE t")
-
         # ----------------------------------------------------------------------
         # triple embedded Foreach clause followed by reading and writing clauses
         # ----------------------------------------------------------------------
@@ -346,9 +343,8 @@ class testForeachFlow():
             )
         )
         WITH ns
-        UNWIND ns as n
         MATCH (t: TEMP)
-        SET t.li = t.li + [toUpper(n.name)]
+        SET t.li = t.li + ['RAZ']
         WITH ns, t
         UNWIND ns as n
         DELETE n
