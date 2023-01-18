@@ -89,8 +89,8 @@ void *Cache_GetValue(Cache *cache, const char *key) {
 
 	if(entry == raxNotFound) goto cleanup;
 
-	/* element is now the most recently used; update its LRU
-	 * note that multiple threads can be here simultaneously */
+	// element is now the most recently used; update its LRU
+	// note that multiple threads can be here simultaneously
 	cache->counter++;
 	entry->LRU = cache->counter;
 
