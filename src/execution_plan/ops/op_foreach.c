@@ -106,8 +106,7 @@ static Record ForeachConsume
 	}
 
 	// plant a clone of the list of arguments in argument_list operation
-	uint nrecords = array_len(op->records);
-	Record *clone_list = array_new(Record, nrecords);
+	Record *clone_list;
 	array_clone_with_cb(clone_list, op->records, OpBase_CloneRecord);
 	ArgumentList_AddRecordList(op->argument_list, clone_list);
 
