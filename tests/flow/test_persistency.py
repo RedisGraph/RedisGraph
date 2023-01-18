@@ -1,5 +1,6 @@
 from common import *
 import random
+from index_utils import *
 from click.testing import CliRunner
 from redisgraph_bulk_loader.bulk_insert import bulk_insert
 
@@ -61,14 +62,11 @@ class testGraphPersistency():
         redis_graph.query(query)
 
         # create indices
-        redis_con.execute_command(
-                "GRAPH.QUERY", graph_name, "CREATE INDEX FOR (p:Person) ON (p.name, p.height)")
-        redis_con.execute_command(
-                "GRAPH.QUERY", graph_name, "CREATE INDEX FOR (c:country) ON (c.name, c.population)")
-        actual_result = redis_con.execute_command(
-                "GRAPH.QUERY", graph_name, "CREATE INDEX FOR ()-[r:visit]-() ON (r.purpose)")
-        actual_result = redis_con.execute_command(
-                "GRAPH.QUERY", graph_name, "CALL db.idx.fulltext.createNodeIndex({label: 'person', stopwords: ['A', 'B'], language: 'english'}, { field: 'text', nostem: true, weight: 2, phonetic: 'dm:en' })")
+        create_node_exact_match_index(redis_graph, "person", "name", "height")
+        create_node_exact_match_index(redis_graph, "country", "name", "population")
+        create_edge_exact_match_index(redis_graph, "visit", "purpose")
+        redis_graph.query("CALL db.idx.fulltext.createNodeIndex({label: 'person', stopwords: ['A', 'B'], language: 'english'}, { field: 'text', nostem: true, weight: 2, phonetic: 'dm:en' })")
+        wait_for_indices_to_sync(redis_graph)
 
         return redis_graph
 
