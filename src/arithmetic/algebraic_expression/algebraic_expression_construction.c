@@ -44,7 +44,7 @@ static inline bool _should_populate_edge
 	QGEdge *e
 ) {
 	ASSERT(e != NULL);
-	return (_referred_entity(e->alias) || QGEdge_RangeLength(e));
+	return (_referred_entity(e->alias) || QGEdge_VariableLength(e));
 }
 
 // checks if given expression contains a variable length edge
@@ -70,7 +70,7 @@ static bool _AlgebraicExpression_ContainsVariableLengthEdge
 	case AL_OPERAND:
 		if(exp->operand.edge) {
 			QGEdge *e = QueryGraph_GetEdgeByAlias(qg, exp->operand.edge);
-			return QGEdge_RangeLength(e);
+			return QGEdge_VariableLength(e);
 		}
 		break;
 	default:
@@ -334,7 +334,7 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
 	AlgebraicExpression  *add               =  NULL;
 	AlgebraicExpression  *root              =  NULL;
 	AlgebraicExpression  *src_filter        =  NULL;
-	bool                 var_len_traversal  =  QGEdge_RangeLength(e);
+	bool                 var_len_traversal  =  QGEdge_VariableLength(e);
 
 	// use original `src` and `dest` for algebraic operands
 	const  char  *src   =  (transpose)               ?  dest_node->alias  :  src_node->alias;
