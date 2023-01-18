@@ -328,15 +328,24 @@ bool Schema_HasConstraints(const Schema *s) {
 	return (s->constraints && array_len(s->constraints) > 0);
 }
 
-Constraint Schema_GetConstraint(const Schema *s, const AttrInfo *fields, uint field_count) {
-	ASSERT(s != NULL);
-	ASSERT(fields != NULL);
-	ASSERT(field_count > 0);
+Constraint Schema_GetConstraint
+(
+	const Schema *s,
+	const AttrInfo *fields,
+	uint field_count
+) {
+	ASSERT(s           != NULL);
+	ASSERT(fields      != NULL);
+	ASSERT(field_count  > 0);
 
+	// search for constraint
 	for(uint i = 0; i < array_len(s->constraints); i++) {
 		Constraint c = s->constraints[i];
 
-		if(array_len(c->attributes) != field_count) continue;
+		// make sure constraint attribute count matches
+		if(array_len(c->attributes) != field_count) {
+			continue;
+		}
 
 		bool match = true;
 		for(uint j = 0; j < field_count; j++) {

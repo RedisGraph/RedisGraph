@@ -117,15 +117,9 @@ static int Constraint_Delete
 	Graph_AcquireWriteLock(gc->g);
 
 	// try to get schema
-	SchemaType schema_type;
-	if(entity_type == GETYPE_NODE) {
-		schema_type = SCHEMA_NODE;
-	} else {
-		schema_type = SCHEMA_EDGE;
-	}
-
-	// try to get schema
-	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
+	// determine schema type
+	SchemaType st = (entity_type == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
+	Schema *s = GraphContext_GetSchema(gc, label, st);
 	if(s == NULL) {
 		RedisModule_ReplyWithError(ctx, "Trying to delete constraint from non existing label");
 		rv = REDISMODULE_ERR;
@@ -145,10 +139,10 @@ static int Constraint_Delete
 		if(id == ATTRIBUTE_ID_NONE) {
 			RedisModule_ReplyWithError(ctx, "Property name not found");
 			rv = REDISMODULE_ERR;
-			goto _out;
+			goto cleanup;
 		}
 
-		fields[i].id = id;
+		fields[i].id             = id;
 		fields[i].attribute_name = prop;
 	}
 
@@ -162,6 +156,13 @@ static int Constraint_Delete
 
 	Schema_RemoveConstraint(s, c);
 	Constraint_Drop_Index(c, (struct GraphContext *)gc, true);
+
+cleanup:
+	// release graph R/W lock
+	Graph_ReleaseLock(gc->g);
+
+	// decrease graph reference count
+	GraphContext_DecreaseRefCount(gc);
 }
 
 static int Constraint_Create
@@ -277,7 +278,6 @@ int Graph_Constraint
 	} else { // CT_DELETE
 		rv = Constraint_Delete(ctx, key, ct, entity_type, label, prop_count,
 				props_cstr);
-
 	}
 
 	if(rv == REDISMODULE_OK) {
