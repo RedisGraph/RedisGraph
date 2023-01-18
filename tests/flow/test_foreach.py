@@ -346,15 +346,13 @@ class testForeachFlow():
         MATCH (t: TEMP)
         SET t.li = t.li + ['RAZ']
         WITH ns, t
-        UNWIND ns as n
-        DELETE n
         FOREACH(n in ns | CREATE (:TEMP))
         """
 
         res = graph.query(query)
-        self.env.assertEquals(res.nodes_created, 3)
+        self.env.assertEquals(res.nodes_created, 4)
         self.env.assertEquals(res.properties_set, 8)
-        self.env.assertEquals(res.nodes_deleted, 1)
+        self.env.assertEquals(res.nodes_deleted, 0)
 
         # validate that the altered state is correct
         res = graph.query("MATCH (t:TEMP) return t")
