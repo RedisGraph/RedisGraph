@@ -11,8 +11,6 @@
 #include "../../arithmetic/arithmetic_expression.h"
 #include "limits.h"
 
-#define INDEX_NOT_SET UINT_MAX
-
 // forward declarations
 static void UnwindFree(OpBase *opBase);
 static OpResult UnwindInit(OpBase *opBase);
@@ -29,9 +27,9 @@ OpBase *NewUnwindOp
 
 	op->exp           = exp;
 	op->list          = SI_NullVal();
-	op->listIdx       = INDEX_NOT_SET;
-	op->free_rec      = true;
+	op->listIdx       = 0;
 	op->listLen       = 0;
+	op->free_rec      = true;
 	op->currentRecord = NULL;
 
 	// Set our Op operations
@@ -61,7 +59,7 @@ static void _initList
 	} else if(SI_TYPE(new_list) == T_NULL) {
 		op->list = SI_Array(0);
 	} else {
-		// Create a list of size 1 and initialize it with the input exp value
+		// create a list of size 1 and initialize it with the input exp value
 		op->list = SI_Array(1);
 		SIArray_Append(&op->list, new_list);
 		SIValue_Free(new_list);
@@ -84,9 +82,7 @@ static OpResult UnwindInit
 		_initList(op);
 	} else {
 		// list might depend on data provided by child operation
-		op->list = SI_EmptyArray();
-		op->listIdx = INDEX_NOT_SET;
-		// if the child is an ArgumentList op, Foreach is responsible for
+		// if the child is an ArgumentList op, the Foreach op is responsible for
 		// freeing the record
 		op->free_rec = (OpBase_Type(op->op.children[0]) != OPType_ARGUMENT_LIST);
 	}
@@ -96,13 +92,12 @@ static OpResult UnwindInit
 
 // try to generate a new value to return
 // NULL will be returned if dynamic list is not evaluated
-// (listIdx = INDEX_NOT_SET)
-// or in case where the current list is fully consumed.
+// or in case where the current list is fully consumed
 static Record _handoff
 (
 	OpUnwind *op
 ) {
-	// If there is a new value ready, return it.
+	// if there is a new value ready, return it
 	if(op->listIdx < op->listLen) {
 		Record r = OpBase_CloneRecord(op->currentRecord);
 		Record_Add(r, op->unwindRecIdx, SIArray_Get(op->list, op->listIdx));
@@ -118,15 +113,20 @@ static Record UnwindConsume
 ) {
 	OpUnwind *op = (OpUnwind *)opBase;
 
-	// Try to produce data.
+	// try to produce data
 	Record r = _handoff(op);
-	if(r) return r;
+	if(r != NULL) {
+		return r;
+	}
 
-	// No child operation to pull data from, we're done.
-	if(op->op.childCount == 0) return NULL;
+	// no child operation to pull data from, we're done
+	if(op->op.childCount == 0) {
+		return NULL;
+	}
 
 	OpBase *child = op->op.children[0];
-	// Did we managed to get new data?
+	// did we managed to get new data?
+pull:
 	if((r = OpBase_Consume(child))) {
 		// free current record to accommodate new record, unless the child op
 		// type (if exists) is ArgumentList. In this case, we do not want to
@@ -143,11 +143,9 @@ static Record UnwindConsume
 		// reset index and set list
 		_initList(op);
 
-		if(op->listLen == 0 && !op->free_rec) {
-			while(op->listLen == 0 && (r = OpBase_Consume(child))) {
-				op->currentRecord = r;
-				_initList(op);
-			}
+		// skip empty lists
+		if(op->listLen == 0) {
+			goto pull;
 		}
 	}
 
@@ -159,13 +157,9 @@ static OpResult UnwindReset
 	OpBase *ctx
 ) {
 	OpUnwind *op = (OpUnwind *)ctx;
-	// static should reset index to 0
-	if(op->op.childCount == 0) {
-		op->listIdx = 0;
-	} else {
-		// dynamic should set index to UINT_MAX, to force refetching of data.
-		op->listIdx = INDEX_NOT_SET;
-	}
+
+	// reset index to 0
+	op->listIdx = 0;
 
 	return OP_OK;
 }
@@ -176,6 +170,7 @@ static inline OpBase *UnwindClone
 	const OpBase *opBase
 ) {
 	ASSERT(opBase->type == OPType_UNWIND);
+
 	OpUnwind *op = (OpUnwind *)opBase;
 	return NewUnwindOp(plan, AR_EXP_Clone(op->exp));
 }
@@ -199,6 +194,7 @@ static void UnwindFree
 	if(op->currentRecord != NULL && op->free_rec) {
 		OpBase_DeleteRecord(op->currentRecord);
 	}
+
 	op->currentRecord = NULL;
 }
 

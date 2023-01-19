@@ -189,14 +189,22 @@ static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	ExecutionPlan_UpdateRoot(plan, op);
 }
 
-static inline void _buildForeachOp
+static void _buildForeachOp
 (
 	ExecutionPlan *plan,             // execution plan to add operation to
 	const cypher_astnode_t *clause,  // foreach clause
 	GraphContext *gc                 // graph context
 ) {
-	OpBase *op = NewForeachOp(plan);
-	ExecutionPlan_UpdateRoot(plan, op);
+	// construct the following sub execution plan structure
+	// foreach
+	//   loop body (foreach/create/update/remove/delete/merge)
+	//		unwind
+	//			argument list
+
+	OpBase *foreach = NewForeachOp(plan);
+	AST    *ast     = plan->ast_segment;
+
+	ExecutionPlan_UpdateRoot(plan, foreach);
 
 	// make an execution-plan mocking the current one, in which the execution-
 	// plan of Foreach will be built
@@ -210,30 +218,40 @@ static inline void _buildForeachOp
 	// build the argumentList operation
 	// find the bound vars
 	const char **arguments = NULL;
-	if(plan->root) {
-		rax *bound_vars = raxNew();
-		// Rather than cloning the record map, collect the bound variables along with their
-		// parser-generated constant strings.
-		ExecutionPlan_BoundVariables(plan->root, bound_vars);
-		// Collect the variable names from bound_vars to populate the Argument ops we will build.
-		arguments = (const char **)raxValues(bound_vars);
-		raxFree(bound_vars);
-	}
+	rax *bound_vars = raxNew();
+	// rather than cloning the record map
+	// collect the bound variables along with their
+	// parser-generated constant strings
+	ExecutionPlan_BoundVariables(plan->root, bound_vars);
+	// collect the variable names from bound_vars to populate
+	// the ArgumentList ops we will build
+	arguments = (const char **)raxValues(bound_vars);
+	raxFree(bound_vars);
 
-	// build the argument_list operation
+	//--------------------------------------------------------------------------
+	// build ArgumentList op
+	//--------------------------------------------------------------------------
+
 	OpBase *argument_list = NewArgumentListOp(embedded_plan, arguments);
 	array_free(arguments);
 	ExecutionPlan_UpdateRoot(embedded_plan, argument_list);
 
-	// build the Unwind op using the list expression from the Foreach clause
+	//--------------------------------------------------------------------------
+	// build Unwind op 
+	//--------------------------------------------------------------------------
+
+	// unwind foreach list expression
 	AR_ExpNode *exp = AR_EXP_FromASTNode(
 		cypher_ast_foreach_get_expression(clause));
 	exp->resolved_name = cypher_ast_identifier_get_name(
 		cypher_ast_foreach_get_identifier(clause));
-	OpBase *unwind_outer = NewUnwindOp(embedded_plan, exp);
-	ExecutionPlan_UpdateRoot(embedded_plan, unwind_outer);
+	OpBase *unwind = NewUnwindOp(embedded_plan, exp);
+	ExecutionPlan_UpdateRoot(embedded_plan, unwind);
 
-	AST *ast = plan->ast_segment;
+	//--------------------------------------------------------------------------
+	// build FOREACH loop body operation(s)
+	//--------------------------------------------------------------------------
+
 	// build the operations corresponding to the embedded clauses in foreach
 	uint clause_count = cypher_ast_foreach_nclauses(clause);
 	for(uint i = 0; i < clause_count; i++) {
@@ -243,8 +261,9 @@ static inline void _buildForeachOp
 
 	// bind the operations of the new plan to the old plan
 	ExecutionPlan_BindPlanToOps(plan, embedded_plan->root);
-	// tie the plans
-	ExecutionPlan_AddOp(op, embedded_plan->root);
+
+	// connect foreach op to its child operation
+	ExecutionPlan_AddOp(foreach, embedded_plan->root);
 
 	// free the temporary plan
 	embedded_plan->root                 = NULL;
