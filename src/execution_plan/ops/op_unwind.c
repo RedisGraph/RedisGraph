@@ -140,6 +140,13 @@ static Record UnwindConsume
 
 		// reset index and set list
 		_initList(op);
+
+		if(!op->free_rec && op->listLen == 0) {
+			while(op->listLen == 0 && (r = OpBase_Consume(child))) {
+				op->currentRecord = r;
+				_initList(op);
+			}
+		}
 	}
 
 	return _handoff(op);
@@ -157,7 +164,6 @@ static OpResult UnwindReset
 		// dynamic should set index to UINT_MAX, to force refetching of data.
 		op->listIdx = INDEX_NOT_SET;
 	}
-	op->listLen = 0;
 
 	return OP_OK;
 }

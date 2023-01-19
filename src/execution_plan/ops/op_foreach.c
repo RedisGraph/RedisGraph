@@ -112,7 +112,7 @@ static Record ForeachConsume
 	// the result is thrown away
 	while((r = OpBase_Consume(op->body))) {
 		OpBase_DeleteRecord(r);
-	};
+	}
 
 	return _handoff(op);
 }
