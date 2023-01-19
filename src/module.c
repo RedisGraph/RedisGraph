@@ -135,7 +135,6 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	}
 	RedisModule_Log(ctx, "notice", "Maximum number of OpenMP threads set to %d", ompThreadCount);
 
-	// TODO Can this be just within the reconf handler?
 	bool cmd_info_enabled = false;
 	if (Config_Option_get(Config_CMD_INFO, &cmd_info_enabled) && cmd_info_enabled) {
 		uint32_t info_max_query_count = 0;

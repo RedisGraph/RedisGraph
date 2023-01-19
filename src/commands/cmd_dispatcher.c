@@ -24,6 +24,7 @@ static int _read_flags
 	RedisModuleString **argv,   // commands arguments
   	int argc,                   // number of arguments
   	bool *compact,              // compact result-set format
+	bool *should_track_info,    // whether or not we should track the info data
   	long long *timeout,         // query level timeout
   	bool *timeout_rw,           // apply timeout on both read and write queries
   	uint *graph_version,        // graph version [UNUSED]
@@ -39,6 +40,11 @@ static int _read_flags
 	*graph_version = GRAPH_VERSION_MISSING;
 	Config_Option_get(Config_TIMEOUT_DEFAULT, timeout);
 	Config_Option_get(Config_TIMEOUT_MAX, &max_timeout);
+
+	if (should_track_info) {
+		bool is_enabled = false;
+		*should_track_info = Config_Option_get(Config_CMD_INFO, &is_enabled) && is_enabled;
+	}
 
 	if(max_timeout != CONFIG_TIMEOUT_NO_TIMEOUT ||
 	   *timeout != CONFIG_TIMEOUT_NO_TIMEOUT) {
@@ -178,6 +184,7 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	bool timeout_rw;
 	long long timeout;
 	CommandCtx *context = NULL;
+	bool should_track_info = false;
 	const uint64_t received_milliseconds = get_unix_timestamp_milliseconds();
 	simple_timer_t timer;
 	TIMER_RESTART(timer);
@@ -190,7 +197,14 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(_validate_command_arity(cmd, argc) == false) return RedisModule_WrongArity(ctx);
 
 	// parse additional arguments
-	int res = _read_flags(argv, argc, &compact, &timeout, &timeout_rw, &version,
+	int res = _read_flags(
+		argv,
+		argc,
+		&compact,
+		&should_track_info,
+		&timeout,
+		&timeout_rw,
+		&version,
 		&errmsg);
 	if(res == REDISMODULE_ERR) {
 		// emit error and exit if argument parsing failed
@@ -214,7 +228,7 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		return REDISMODULE_OK;
 	}
 
-	/* Determin query execution context
+	/* Determine query execution context
 	 * queries issued within a LUA script or multi exec block must
 	 * run on Redis main thread, others can run on different threads. */
 	int flags = RedisModule_GetContextFlags(ctx);
@@ -232,14 +246,14 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		// run query on Redis main thread
 		context = CommandCtx_New(ctx, NULL, argv[0], query, gc, exec_thread,
 								 is_replicated, compact, timeout, timeout_rw, timer,
-								 received_milliseconds);
+								 received_milliseconds, should_track_info);
 		handler(context);
 	} else {
 		// run query on a dedicated thread
 		RedisModuleBlockedClient *bc = RedisGraph_BlockClient(ctx);
 		context = CommandCtx_New(NULL, bc, argv[0], query, gc, exec_thread,
 								 is_replicated, compact, timeout, timeout_rw, timer,
-								 received_milliseconds);
+								 received_milliseconds, should_track_info);
 
 		if(ThreadPools_AddWorkReader(handler, context) == THPOOL_QUEUE_FULL) {
 			// report an error once our workers thread pool internal queue

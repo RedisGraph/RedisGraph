@@ -32,6 +32,7 @@ typedef struct {
 	bool timeout_rw;                // Apply timeout on both read and write queries.
 	simple_timer_t timer;           // The timer for timing the command.
 	uint64_t received_timestamp;    // The timestamp when the command was received.
+	bool should_track_info;         // Whether or not to track info.
 } CommandCtx;
 
 // Create a new command context.
@@ -48,7 +49,8 @@ CommandCtx *CommandCtx_New
 	long long timeout,                 // The query timeout, if specified.
 	bool timeout_rw,                   // Apply timeout on both read and write queries.
 	const simple_timer_t timer,        // The timer for timing the command.
-	const uint64_t received_timestamp  // The command receive timestamp (epoch).
+	const uint64_t received_timestamp, // The command receive timestamp (epoch).
+	const bool should_track_info       // Whether or not to track info.
 );
 
 // Tracks given 'ctx' such that in case of a crash we will be able to report
@@ -101,7 +103,7 @@ void CommandCtx_ThreadSafeContextUnlock
 
 // Return the time in milliseconds, spent since the last call (or initialization
 // of the object).
-uint64_t CommandCtx_GetTimerMilliseconds
+uint64_t CommandCtx_GetTimeSpent
 (
 	CommandCtx *
 );

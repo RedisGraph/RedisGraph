@@ -82,27 +82,9 @@ static bool abort_and_check_timeout
 
 	return has_timed_out;
 }
-
-static bool _is_query_for_tracking_info(const GraphQueryCtx *gq_ctx) {
-	ASSERT(gq_ctx);
-	ASSERT(gq_ctx->command_ctx);
-
-	const GRAPH_Commands command = CommandFromString(gq_ctx->command_ctx->command_name);
-	return command == CMD_QUERY || command == CMD_RO_QUERY;
-}
-
-// TODO Move all of this to cmd_dispatcher
-static bool _is_cmd_info_enabled() {
-	bool cmd_info_enabled = false;
-	return Config_Option_get(Config_CMD_INFO, &cmd_info_enabled) && cmd_info_enabled;
-}
-
 static const struct QueryCtx* _get_query_context_for_tracking(const GraphQueryCtx *gq_ctx) {
 	ASSERT(gq_ctx);
-	ASSERT(gq_ctx->command_ctx);
-	ASSERT(gq_ctx->graph_ctx);
-	if (!gq_ctx || !gq_ctx->command_ctx || !gq_ctx->graph_ctx
-	 || !_is_cmd_info_enabled() || !_is_query_for_tracking_info(gq_ctx)) {
+	if (!gq_ctx) {
 		return NULL;
 	}
 	return gq_ctx->query_ctx;
@@ -112,11 +94,11 @@ static void _report_query_already_waiting(const GraphQueryCtx *gq_ctx) {
 	ASSERT(gq_ctx);
 	ASSERT(gq_ctx->command_ctx);
 	const struct QueryCtx *context = _get_query_context_for_tracking(gq_ctx);
-	if (!context) {
+	if (!context || !gq_ctx->command_ctx) {
 		return;
 	}
 
-	const millis_t milliseconds_waited = CommandCtx_GetTimerMilliseconds(gq_ctx->command_ctx);
+	const millis_t milliseconds_waited = CommandCtx_GetTimeSpent(gq_ctx->command_ctx);
 	const uint64_t received_milliseconds = CommandCtx_GetReceivedTimestamp(gq_ctx->command_ctx);
 	Info_AddWaitingQueryInfo(
 		&gq_ctx->graph_ctx->info,

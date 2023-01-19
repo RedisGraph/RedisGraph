@@ -30,9 +30,10 @@ CommandCtx *CommandCtx_New
 	long long timeout,
 	bool timeout_rw,
 	const simple_timer_t timer,
-	const uint64_t received_timestamp
+	const uint64_t received_timestamp,
+	const bool should_track_info
 ) {
-	CommandCtx *context = rm_malloc(sizeof(CommandCtx));
+	CommandCtx *context         = rm_malloc(sizeof(CommandCtx));
 	context->bc                 = bc;
 	context->ctx                = ctx;
 	context->query              = NULL;
@@ -45,6 +46,7 @@ CommandCtx *CommandCtx_New
 	context->replicated_command = replicated_command;
 	TIMER_ASSIGN(context->timer, timer);
 	context->received_timestamp = received_timestamp;
+	context->should_track_info  = should_track_info;
 
 	if(cmd_name) {
 		// Make a copy of command name.
@@ -138,8 +140,7 @@ void CommandCtx_ThreadSafeContextUnlock(const CommandCtx *command_ctx) {
 	if(command_ctx->bc) RedisModule_ThreadSafeContextUnlock(command_ctx->ctx);
 }
 
-// TODO a better name?
-uint64_t CommandCtx_GetTimerMilliseconds
+uint64_t CommandCtx_GetTimeSpent
 (
 	CommandCtx *command_ctx
 ) {
