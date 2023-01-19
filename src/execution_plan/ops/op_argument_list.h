@@ -9,12 +9,14 @@
 #include "op.h"
 #include "../execution_plan.h"
 
-// The ArgumentList operation holds an internal Record list that it emits
-// one-by-one exactly once.
+// the ArgumentList operation holds an internal Record list that it emits
+// one-by-one exactly once
 
 typedef struct {
-	OpBase op;            // OpBase
-	Record *record_list;  // internal Record list
+	OpBase op;              // OpBase
+	const Record *records;  // internal Record list
+	uint rec_len;           // number of records to emit
+	uint rec_idx;           // index of current record
 } ArgumentList;
 
 OpBase *NewArgumentListOp
@@ -25,6 +27,7 @@ OpBase *NewArgumentListOp
 
 void ArgumentList_AddRecordList
 (
-	ArgumentList *arg,   // Argument operation to plant the list in
-	Record *record_list  // record list
+	ArgumentList *arg,  // Argument operation to plant the list in
+	Record *records     // record list
 );
+

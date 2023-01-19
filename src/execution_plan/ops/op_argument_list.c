@@ -7,7 +7,7 @@
 #include "op.h"
 #include "op_argument_list.h"
 
-// Forward declarations
+// forward declarations
 static void ArgumentListFree(OpBase *opBase);
 static Record ArgumentListConsume(OpBase *opBase);
 static OpResult ArgumentListReset(OpBase *opBase);
@@ -19,13 +19,16 @@ OpBase *NewArgumentListOp
 	const char **variables      // bound variables
 ) {
 	ArgumentList *op = rm_malloc(sizeof(ArgumentList));
-	op->record_list = NULL;
+	op->rec_len = 0;
+	op->rec_idx = 0;
+	op->records = NULL;
 
-	// Set our Op operations
+	// set our Op operations
 	OpBase_Init((OpBase *)op, OPType_ARGUMENT_LIST, "Argument List", NULL,
-				ArgumentListConsume, ArgumentListReset, NULL, ArgumentListClone, ArgumentListFree, false, plan);
+			ArgumentListConsume, ArgumentListReset, NULL, ArgumentListClone,
+			ArgumentListFree, false, plan);
 
-	// Todo - is this needed?
+	// TODO: - is this needed?
 	uint variable_count = array_len(variables);
 	for(uint i = 0; i < variable_count; i ++) {
 		OpBase_Modifies((OpBase *)op, variables[i]);
@@ -34,51 +37,63 @@ OpBase *NewArgumentListOp
 	return (OpBase *)op;
 }
 
-static Record ArgumentListConsume(OpBase *opBase) {
-	ArgumentList *arg = (ArgumentList *)opBase;
+void ArgumentList_AddRecordList
+(
+	ArgumentList *op,
+	Record *record_list
+) {
+	ASSERT(op->record_list != NULL && "insert into a populated ArgumentList");
+	op->record_list  =  record_list;
+	assert("attend!" && false);
+	op->rec_len      =  0;
+	op->rec_idx      =  0;
+}
 
-	if(arg->record_list) {
-		if(array_len(arg->record_list) > 0) {
-			return array_pop(arg->record_list);
-		} else {
-			array_free(arg->record_list);
-			arg->record_list = NULL;
-		}
+static Record ArgumentListConsume
+(
+	OpBase *opBase
+) {
+	ArgumentList *op = (ArgumentList *)opBase;
+
+	ASSERT(op->record_list != NULL);
+
+	if(array_len(op->record_list) > 0) {
+		return array_pop(op->record_list);
 	}
 
-    // if the record-list is non-existing or empty - return NULL (uninitialized
-	// or depleted)
+	// depleted! return NULL
+	op->record_list = NULL;
+
     return NULL;
 }
 
-static OpResult ArgumentListReset(OpBase *opBase) {
+static OpResult ArgumentListReset
+(
+	OpBase *opBase
+) {
 	// Reset operation, freeing the Record-list if exists.
-	ArgumentList *arg = (ArgumentList *)opBase;
+	ArgumentList *op = (ArgumentList *)opBase;
 
-	if(arg->record_list) {
-		array_free(arg->record_list);
-		arg->record_list = NULL;
-	}
+	op->record_list = NULL;
 
 	return OP_OK;
 }
 
-void ArgumentList_AddRecordList(ArgumentList *arg, Record *record_list) {
-	ASSERT(!arg->record_list && "tried to insert into a populated Argument op");
-	arg->record_list = record_list;
-}
-
-static inline OpBase *ArgumentListClone(const ExecutionPlan *plan, const OpBase *opBase) {
+static inline OpBase *ArgumentListClone
+(
+	const ExecutionPlan *plan,
+	const OpBase *opBase
+) {
 	ASSERT(opBase->type == OPType_ARGUMENT_LIST);
 	return NewArgumentListOp(plan, opBase->modifies);
 }
 
-static void ArgumentListFree(OpBase *opBase) {
-	ArgumentList *arg = (ArgumentList *)opBase;
+static void ArgumentListFree
+(
+	OpBase *opBase
+) {
+	ArgumentList *op = (ArgumentList *)opBase;
 
-	if(arg->record_list) {
-		array_free(arg->record_list);
-		arg->record_list = NULL;
-	}
-
+	op->record_list = NULL;
 }
+
