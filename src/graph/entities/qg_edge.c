@@ -78,12 +78,12 @@ bool QGEdge_VariableLength
 	return (e->minHops != e->maxHops);
 }
 
-bool QGEdge_RangeLength
+bool QGEdge_LengthOne
 (
 	const QGEdge *e
 ) {
 	ASSERT(e);
-	return (e->minHops > 1 || (e->minHops == 0 && e->minHops == e->maxHops));
+	return (e->minHops == 1 && e->maxHops == 1);
 }
 
 bool QGEdge_IsShortestPath

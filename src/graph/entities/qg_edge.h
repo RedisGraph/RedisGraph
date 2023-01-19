@@ -62,8 +62,8 @@ bool QGEdge_VariableLength
 	const QGEdge *e
 );
 
-// determine whether this is a edge with a range of length defined (variable length [*minHops..maxHops] or fixed length [*Hops])
-bool QGEdge_RangeLength
+// determine whether this is a edge range of length one
+bool QGEdge_LengthOne
 (
 	const QGEdge *e
 );
