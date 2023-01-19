@@ -102,9 +102,13 @@ static void _AR_EXP_InplaceRepurposeConstant(AR_ExpNode *node, SIValue v) {
 	node->operand.constant  =  v;
 }
 
-static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
+static AR_ExpNode *_AR_EXP_CloneOperand
+(
+	const AR_ExpNode *exp
+) {
 	AR_ExpNode *clone = rm_calloc(1, sizeof(AR_ExpNode));
 	clone->type = AR_EXP_OPERAND;
+
 	switch(exp->operand.type) {
 	case AR_EXP_CONSTANT:
 		clone->operand.type = AR_EXP_CONSTANT;
@@ -126,6 +130,7 @@ static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 		ASSERT(false);
 		break;
 	}
+
 	return clone;
 }
 
@@ -250,9 +255,15 @@ AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant) {
 	return node;
 }
 
-AR_ExpNode *AR_EXP_NewParameterOperandNode(const char *param_name) {
+AR_ExpNode *AR_EXP_NewParameterOperandNode
+(
+	const char *param_name
+) {
+	ASSERT(param_name != NULL);
+
 	AR_ExpNode *node = _AR_EXP_InitializeOperand(AR_EXP_PARAM);
 	node->operand.param_name = param_name;
+
 	return node;
 }
 
@@ -274,17 +285,27 @@ void AR_SetPrivateData
 	node->op.private_data = pdata;
 }
 
-/* Compact tree by evaluating constant expressions
- * e.g. MINUS(X) where X is a constant number will be reduced to
- * a single node with the value -X
- * PLUS(MINUS(A), B) will be reduced to a single constant: B-A. */
-bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val) {
-	if(val != NULL) *val = SI_NullVal();
+// compact tree by evaluating constant expressions
+// e.g. MINUS(X) where X is a constant number will be reduced to
+// a single node with the value -X
+// PLUS(MINUS(A), B) will be reduced to a single constant: B-A
+bool AR_EXP_ReduceToScalar
+(
+	AR_ExpNode *root,
+	bool reduce_params,
+	SIValue *val
+) {
+	if(val != NULL) {
+		*val = SI_NullVal();
+	}
+
 	if(root->type == AR_EXP_OPERAND) {
-		// In runtime, parameters are set so they can be evaluated
+		// in runtime, parameters are set so they can be evaluated
 		if(reduce_params && AR_EXP_IsParameter(root)) {
 			SIValue v = AR_EXP_Evaluate(root, NULL);
-			if(val != NULL) *val = v;
+			if(val != NULL) {
+				*val = v;
+			}
 			return true;
 		}
 		if(AR_EXP_IsConstant(root)) {
@@ -292,39 +313,48 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val) {
 			if(val != NULL) *val = root->operand.constant;
 			return true;
 		}
-		// Root is variadic, no way to reduce.
+		// Root is variadic, no way to reduce
 		return false;
 	} else {
-		// root represents an operation.
+		// root represents an operation
 		ASSERT(AR_EXP_IsOperation(root));
 
-		/* See if we're able to reduce each child of root
-		 * if so we'll be able to reduce root. */
+		// see if we're able to reduce each child of root
+		// if so we'll be able to reduce root
 		bool reduce_children = true;
 		for(int i = 0; i < root->op.child_count; i++) {
 			if(!AR_EXP_ReduceToScalar(root->op.children[i], reduce_params, NULL)) {
-				// Root reduce is not possible, but continue to reduce every reducable child.
+				// root reduce is not possible, but continue to reduce every reducable child
 				reduce_children = false;
 			}
 		}
-		// Can't reduce root as one of its children is not a constant.
-		if(!reduce_children) return false;
 
-		// All child nodes are constants, make sure function is marked as reducible.
-		if(!root->op.f->reducible) return false;
+		// can't reduce root as one of its children is not a constant
+		if(!reduce_children) {
+			return false;
+		}
 
-		// Evaluate function.
+		// all child nodes are constants, make sure function is marked as reducible
+		if(!root->op.f->reducible) {
+			return false;
+		}
+
+		// evaluate function
 		SIValue v = AR_EXP_Evaluate(root, NULL);
 		if(val != NULL) *val = v;
-		if(SIValue_IsNull(v)) return false;
+		if(SIValue_IsNull(v)) {
+			return false;
+		}
 
-		// Reduce.
-		// Clear children and function context.
+		// reduce
+		// clear children and function context
 		_AR_EXP_FreeOpInternals(root);
-		// In-place update, set as constant.
+
+		// in-place update, set as constant
 		root->type = AR_EXP_OPERAND;
 		root->operand.type = AR_EXP_CONSTANT;
 		root->operand.constant = v;
+
 		return true;
 	}
 }
@@ -517,20 +547,35 @@ static AR_EXP_Result _AR_EXP_EvaluateVariadic(AR_ExpNode *node, const Record r, 
 	return EVAL_OK;
 }
 
-static AR_EXP_Result _AR_EXP_EvaluateParam(AR_ExpNode *node, SIValue *result) {
+static AR_EXP_Result _AR_EXP_EvaluateParam
+(
+	AR_ExpNode *node,
+	SIValue *result
+) {
+	SIValue *param;
 	rax *params = QueryCtx_GetParams();
-	AR_ExpNode *param_node;
-	if(params) param_node = raxFind(params, (unsigned char *)node->operand.param_name,
-										strlen(node->operand.param_name));
-	if(params == NULL || param_node == raxNotFound) {
-		// Set the query-level error.
+
+	if(params) {
+		param = (SIValue*)raxFind(params,
+				(unsigned char *)node->operand.param_name,
+				strlen(node->operand.param_name));
+	}
+
+	if(params == NULL || param == raxNotFound) {
+		// set the query-level error
 		ErrorCtx_SetError("Missing parameters");
 		return EVAL_ERR;
 	}
-	// In place replacement;
-	node->operand.type = AR_EXP_CONSTANT;
-	node->operand.constant = SI_ShareValue(param_node->operand.constant);
+
+	//--------------------------------------------------------------------------
+	// in place replacement
+	//--------------------------------------------------------------------------
+
+	node->operand.type     = AR_EXP_CONSTANT;
+	node->operand.constant = SI_ShareValue(*param);
+
 	*result = node->operand.constant;
+
 	return EVAL_FOUND_PARAM;
 }
 
@@ -541,19 +586,25 @@ static inline AR_EXP_Result _AR_EXP_EvaluateBorrowRecord(AR_ExpNode *node, const
 	return EVAL_OK;
 }
 
-/* Evaluate an expression tree,
- * placing the calculated value in 'result'
- * and returning whether an error occurred during evaluation. */
-static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r,
-									  SIValue *result) {
+// evaluate an expression tree,
+// placing the calculated value in 'result'
+// and returning whether an error occurred during evaluation
+static AR_EXP_Result _AR_EXP_Evaluate
+(
+	AR_ExpNode *root,
+	const Record r,
+	SIValue *result
+) {
 	AR_EXP_Result res = EVAL_OK;
+
 	switch(root->type) {
 	case AR_EXP_OP:
 		return _AR_EXP_EvaluateFunctionCall(root, r, result);
 	case AR_EXP_OPERAND:
 		switch(root->operand.type) {
 		case AR_EXP_CONSTANT:
-			// The value is constant or has been computed elsewhere, and is shared with the caller.
+			// the value is constant or has been computed elsewhere
+			// share with caller
 			*result = SI_ShareValue(root->operand.constant);
 			return res;
 		case AR_EXP_VARIADIC:
@@ -589,13 +640,19 @@ SIValue AR_EXP_Evaluate_NoThrow(AR_ExpNode *root, const Record r) {
 	return result;
 }
 
-SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
+SIValue AR_EXP_Evaluate
+(
+	AR_ExpNode *root,
+	const Record r
+) {
 	SIValue result;
 	AR_EXP_Result res = _AR_EXP_Evaluate(root, r, &result);
 
 	if(res == EVAL_ERR) {
 		ErrorCtx_RaiseRuntimeException(NULL);
-		return SI_NullVal(); // Otherwise return NULL; the query-level error will be emitted after cleanup.
+		// otherwise return NULL;
+		// the query-level error will be emitted after cleanup
+		return SI_NullVal();
 	}
 
 	// at least one param node was encountered during evaluation,
@@ -881,7 +938,10 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
 	return clone;
 }
 
-static inline void _AR_EXP_FreeOpInternals(AR_ExpNode *op_node) {
+static inline void _AR_EXP_FreeOpInternals
+(
+	AR_ExpNode *op_node
+) {
 	if(AGGREGATION_NODE(op_node)) {
 		AR_FuncDesc *agg_func = op_node->op.f;
 
@@ -900,12 +960,16 @@ static inline void _AR_EXP_FreeOpInternals(AR_ExpNode *op_node) {
 	rm_free(op_node->op.children);
 }
 
-inline void AR_EXP_Free(AR_ExpNode *root) {
+inline void AR_EXP_Free
+(
+	AR_ExpNode *root
+) {
 	if(AR_EXP_IsOperation(root)) {
 		_AR_EXP_FreeOpInternals(root);
 	} else if(AR_EXP_IsConstant(root)) {
 		SIValue_Free(root->operand.constant);
 	}
+
 	rm_free(root);
 }
 
