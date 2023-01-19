@@ -1356,6 +1356,20 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 		uint nclauses = cypher_ast_foreach_nclauses(n);
 		for(uint i = 0; i < nclauses; i++) {
 			const cypher_astnode_t *clause = cypher_ast_foreach_get_clause(n, i);
+			// make sure it is an updating clause
+			cypher_astnode_type_t child_clause_type =
+				cypher_astnode_type(clause);
+			if(child_clause_type != CYPHER_AST_CREATE  &&
+			   child_clause_type != CYPHER_AST_SET     &&
+			   child_clause_type != CYPHER_AST_REMOVE  &&
+			   child_clause_type != CYPHER_AST_MERGE   &&
+			   child_clause_type != CYPHER_AST_DELETE  &&
+			   child_clause_type != CYPHER_AST_FOREACH
+			) {
+				ErrorCtx_SetError("Error: Only updating clauses may reside in FOREACH");
+			}
+
+			// visit the clause
 			AST_Visitor_visit(clause, visitor);
 		}
 
