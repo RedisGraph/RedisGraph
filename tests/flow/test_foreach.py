@@ -350,6 +350,8 @@ class testForeachFlow():
         """
 
         res = graph.query(query)
+
+        # validate the correctness of the new state
         self.env.assertEquals(res.nodes_created, 4)
         self.env.assertEquals(res.properties_set, 8)
         self.env.assertEquals(res.nodes_deleted, 0)

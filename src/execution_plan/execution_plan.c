@@ -224,6 +224,10 @@ static ExecutionPlan *_tie_segments
 		// find the first non-argument op with no children in this segment
 		prev_connecting_op = connecting_op;
 		OpBase **taps = ExecutionPlan_LocateTaps(segment);
+		// in the case of a single segment with FOREACH as its root, there is no
+		// tap (of the current definition)
+		// for instance: FOREACH(i in [i] | CREATE (n:N))
+		// in any other case, there must be a tap
 		ASSERT((array_len(taps) > 0) ||
 		   (segment_count == 1 && strcmp(segment->root->name, "Foreach") == 0));
 

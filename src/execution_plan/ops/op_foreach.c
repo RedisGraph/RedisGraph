@@ -49,11 +49,6 @@ static OpResult ForeachInit
 	}
 
 	// search for the ArgumentList op on the embedded sub-execution plan chain
-	
-	// TODO: consider switching to _ExecutionPlan_LocateTaps
-	OpBase **taps;
-	_ExecutionPlan_LocateTaps(op->body, &taps);
-
 	OpBase *argument_list = op->body;
 	// TODO: investigate if it is OK to locate args_list via child[0]
 	while(argument_list->childCount > 0) {
@@ -111,9 +106,9 @@ static Record ForeachConsume
 	}
 
 	// plant a clone of the list of arguments in argument_list operation
-	Record *clone_list;
-	array_clone_with_cb(clone_list, op->records, OpBase_CloneRecord);
-	ArgumentList_AddRecordList(op->argument_list, clone_list);
+	Record *clone_records;
+	array_clone(clone_records, op->records);
+	ArgumentList_AddRecordList(op->argument_list, clone_records);
 
 	// call consume on loop body first op
 	// the result is thrown away
@@ -138,8 +133,8 @@ static void _freeInternals
 		}
 
 		array_free(op->records);
+		op->records = NULL;
 	}
-	op->records = NULL;
 }
 
 static OpResult ForeachReset
@@ -170,8 +165,6 @@ static void ForeachFree
 ) {
 	OpForeach *_op = (OpForeach *) op;
 
-	_freeInternals(op);
-
-	_op->records = NULL;
+	_freeInternals(_op);
 }
 

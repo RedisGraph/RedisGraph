@@ -96,8 +96,14 @@ static Record UnwindConsume(OpBase *opBase) {
 	OpBase *child = op->op.children[0];
 	// Did we managed to get new data?
 	if((r = OpBase_Consume(child))) {
-		// Free current record to accommodate new record.
-		OpBase_DeleteRecord(op->currentRecord);
+		// free current record to accommodate new record, unless the child op
+		// type (if exists) is ArgumentList. In this case, we do not want to
+		// free the return the record back to the pool, since this record will
+		// be later passed on by the foreach operation to the rest of the
+		// exec-plan (if exists, otherwise it will free it)
+		if(op->op.childCount == 0 || OpBase_Type(op->op.children[0]) != OPType_ARGUMENT_LIST) {
+			OpBase_DeleteRecord(op->currentRecord);
+		}
 		op->currentRecord = r;
 		// Free old list.
 		SIValue_Free(op->list);
@@ -135,9 +141,12 @@ static void UnwindFree(OpBase *ctx) {
 		op->exp = NULL;
 	}
 
-	if(op->currentRecord) {
+	// if the child is an argumentList, than the record held by this operation
+	// exists in the Foreach operation as well, which is also be responsible to
+	// free it
+	if(op->currentRecord && (op->op.childCount == 0 || OpBase_Type(op->op.children[0]) != OPType_ARGUMENT_LIST)) {
 		OpBase_DeleteRecord(op->currentRecord);
-		op->currentRecord = NULL;
 	}
+	op->currentRecord = NULL;
 }
 
