@@ -324,7 +324,6 @@ static InfoQueriesFlag _parse_info_queries_flags_from_args
     return flags;
 }
 
-// TODO just use strcase cmp?
 static bool _is_queries_cmd(const char *cmd) {
     return !strcasecmp(cmd, SUBCOMMAND_NAME_QUERIES);
 }
@@ -352,52 +351,28 @@ static bool _collect_queries_info_from_graph
         return false;
     }
 
-    bool is_ok = true;
-
     const uint64_t waiting_queries_count = Info_GetWaitingQueriesCount(&gc->info);
     const uint64_t executing_queries_count = Info_GetExecutingQueriesCount(&gc->info);
     const uint64_t reporting_queries_count = Info_GetReportingQueriesCount(&gc->info);
     const uint64_t max_query_wait_time = Info_GetMaxQueryWaitTime(&gc->info);
 
-    // TODO Use checked add macro.
-    if (!checked_add_u64(
+    CHECKED_ADD_OR_RETURN(
         global_info->total_waiting_queries_count,
         waiting_queries_count,
-        &global_info->total_waiting_queries_count)) {
-        // We have a value overflow.
-        if (!is_ok) {
-            return false;
-        }
-    }
+        false);
 
-    if (!checked_add_u64(
+    CHECKED_ADD_OR_RETURN(
         global_info->total_executing_queries_count,
         executing_queries_count,
-        &global_info->total_executing_queries_count)) {
-        // We have a value overflow.
-        if (!is_ok) {
-            return false;
-        }
-    }
+        false);
 
-    if (!checked_add_u64(
+    CHECKED_ADD_OR_RETURN(
         global_info->total_reporting_queries_count,
         reporting_queries_count,
-        &global_info->total_reporting_queries_count)) {
-        // We have a value overflow.
-        if (!is_ok) {
-            return false;
-        }
-    }
+        false);
 
-    if (!checked_add_u32(
-        global_info->max_query_wait_time,
-        max_query_wait_time,
-        &global_info->max_query_wait_time)) {
-        // We have a value overflow.
-        if (!is_ok) {
-            return false;
-        }
+    if (max_query_wait_time > global_info->max_query_wait_time) {
+        global_info->max_query_wait_time = max_query_wait_time;
     }
 
     return true;
@@ -506,8 +481,6 @@ static bool _collect_global_info
 // "GRAPH.INFO" commands are issued, there might be concurrently running queries
 // which have their timer ticking but the counted value not yet updated as it
 // hasn't moved to the new stage.
-// TODO don't accumulate but here only return the time spent, don't update the
-// counters.
 static void _update_query_stage_timer(const QueryStage stage, QueryInfo *info) {
     ASSERT(info);
     if (!info) {

@@ -753,3 +753,8 @@ class testGraphInfoGetFlow(_testGraphInfoFlowBase):
 	# 	}
 	# }
 
+    # Test max_query_wait_time is actually maximum, not something else.
+    # Test the undo-log things.
+    # Test the valid_prop count is used in bulk_insert.c
+    # Test working with non-existing graphs is well-handled for all the commands.
+
