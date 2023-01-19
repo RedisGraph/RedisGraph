@@ -134,6 +134,9 @@ void QueryInfo_UpdateWaitingTime(QueryInfo *info);
 void QueryInfo_UpdateExecutionTime(QueryInfo *info);
 // Reads the stage timer and updates the reporting time with it.
 void QueryInfo_UpdateReportingTime(QueryInfo *info);
+// Returns the number of milliseconds the timer has counted. This function does
+// not reset the timer.
+millis_t QueryInfo_GetCountedMilliseconds(QueryInfo *);
 // Resets the stage timer and returns the milliseconds it had recorded before
 // having been reset.
 millis_t QueryInfo_ResetStageTimer(QueryInfo *);

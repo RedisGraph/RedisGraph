@@ -268,17 +268,22 @@ millis_t QueryInfo_GetReportingTime(const QueryInfo info) {
 
 void QueryInfo_UpdateWaitingTime(QueryInfo *info) {
     REQUIRE_ARG(info);
-    info->wait_duration += QueryInfo_ResetStageTimer(info);
+    info->wait_duration = QueryInfo_GetCountedMilliseconds(info);
 }
 
 void QueryInfo_UpdateExecutionTime(QueryInfo *info) {
     REQUIRE_ARG(info);
-    info->execution_duration += QueryInfo_ResetStageTimer(info);
+    info->execution_duration = QueryInfo_GetCountedMilliseconds(info);
 }
 
 void QueryInfo_UpdateReportingTime(QueryInfo *info) {
     REQUIRE_ARG(info);
-    info->report_duration += QueryInfo_ResetStageTimer(info);
+    info->report_duration = QueryInfo_GetCountedMilliseconds(info);
+}
+
+millis_t QueryInfo_GetCountedMilliseconds(QueryInfo *info) {
+    REQUIRE_ARG_OR_RETURN(info, 0);
+    return (millis_t)TIMER_GET_ELAPSED_MILLISECONDS(info->stage_timer);
 }
 
 millis_t QueryInfo_ResetStageTimer(QueryInfo *info) {
@@ -796,6 +801,7 @@ void Info_IndicateQueryStartedExecution
         QueryInfo query_info = storage.queries[i];
         if (QueryInfo_GetQueryContext(&query_info) == context) {
             QueryInfo_UpdateWaitingTime(&query_info);
+            QueryInfo_ResetStageTimer(&query_info);
             array_del(storage.queries, i);
             const bool set = QueryInfoStorage_Set(
                 &info->executing_queries_per_thread,
@@ -838,6 +844,7 @@ void Info_IndicateQueryStartedReporting
         return;
     }
     QueryInfo_UpdateExecutionTime(query_info);
+    QueryInfo_ResetStageTimer(query_info);
     Statistics_RecordExecutionDuration(&info->statistics, QueryInfo_GetExecutionTime(*query_info));
 
     const bool moved = _Info_MoveQueryInfoBetweenStorages(
@@ -871,6 +878,7 @@ void Info_IndicateQueryFinishedReporting
         return;
     }
     QueryInfo_UpdateReportingTime(query_info);
+    QueryInfo_ResetStageTimer(query_info);
     Statistics_RecordReportDuration(&info->statistics, QueryInfo_GetReportingTime(*query_info));
     FinishedQueryInfo finished = FinishedQueryInfo_FromQueryInfo(*query_info);
     const millis_t total_duration = _FinishedQueryInfo_GetTotalDuration(finished);
