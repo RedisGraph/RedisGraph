@@ -49,14 +49,19 @@ static void _initList
 (
 	OpUnwind *op
 ) {
+	// free previous list
+	SIValue_Free(op->list);
+
 	// Null-set the list value to avoid memory errors if evaluation fails
 	op->list = SI_NullVal(); 
 	SIValue new_list = AR_EXP_Evaluate(op->exp, op->currentRecord);
-	if(SI_TYPE(new_list) == T_ARRAY || SI_TYPE(new_list) == T_NULL) {
-		// Update the list value.
+	if(SI_TYPE(new_list) == T_ARRAY) {
+		// update the list value.
 		op->list = new_list;
+	} else if(SI_TYPE(new_list) == T_NULL) {
+		op->list = SI_Array(0);
 	} else {
-		// Create a list of size 1 and initialize it with the input expression value
+		// Create a list of size 1 and initialize it with the input exp value
 		op->list = SI_Array(1);
 		SIArray_Append(&op->list, new_list);
 		SIValue_Free(new_list);
@@ -135,18 +140,8 @@ static Record UnwindConsume
 		// assign new record
 		op->currentRecord = r;
 
-		// free old list
-		SIValue_Free(op->list);
-
 		// reset index and set list
 		_initList(op);
-
-		if(!op->free_rec && op->listLen == 0) {
-			while(op->listLen == 0 && (r = OpBase_Consume(child))) {
-				op->currentRecord = r;
-				_initList(op);
-			}
-		}
 	}
 
 	return _handoff(op);
