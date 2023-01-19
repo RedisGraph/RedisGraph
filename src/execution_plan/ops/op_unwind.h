@@ -17,8 +17,10 @@ typedef struct {
 	SIValue list;         // List which the unwind operation is performed on.
 	AR_ExpNode *exp;      // Arithmetic expression (evaluated as an SIArray).
 	uint listIdx;         // Current list index.
+	uint listLen;         // length of the list currently being traversed.
 	int unwindRecIdx;     // Update record at this index.
 	Record currentRecord; // record to clone and add a value extracted from the list.
+	bool free_rec;        // free the current record when done using or not
 } OpUnwind;
 
 /* Creates a new Unwind operation */

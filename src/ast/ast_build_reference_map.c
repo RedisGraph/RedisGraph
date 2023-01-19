@@ -11,6 +11,8 @@
 // Forward declerations:
 static void _AST_MapReferencedEntitiesInPath(AST *ast, const cypher_astnode_t *path,
 											 bool force_mapping);
+static void _ASTClause_BuildReferenceMap(AST *ast,
+										const cypher_astnode_t *clause);
 
 /* Check if a path is a named path or shortest path.
  * If so, all the entities it contains should be mapped,
@@ -341,9 +343,7 @@ static void _AST_MapForeachClauseReferences
 	for(uint i = 0; i < nclauses; i++) {
 		const cypher_astnode_t *clause = cypher_ast_foreach_get_clause(
 				foreach_clause, i);
-		// TODO: validate that this change is OK
 		_ASTClause_BuildReferenceMap(ast, clause);
-		//_AST_MapExpression(ast, exp);
 	}
 }
 

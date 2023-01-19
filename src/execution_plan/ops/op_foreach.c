@@ -106,9 +106,7 @@ static Record ForeachConsume
 	}
 
 	// plant a clone of the list of arguments in argument_list operation
-	Record *clone_records;
-	array_clone(clone_records, op->records);
-	ArgumentList_AddRecordList(op->argument_list, clone_records);
+	ArgumentList_AddRecordList(op->argument_list, op->records);
 
 	// call consume on loop body first op
 	// the result is thrown away
@@ -167,4 +165,3 @@ static void ForeachFree
 
 	_freeInternals(_op);
 }
-

@@ -14,11 +14,11 @@
 #define INDEX_NOT_SET UINT_MAX
 
 // forward declarations
+static void UnwindFree(OpBase *opBase);
 static OpResult UnwindInit(OpBase *opBase);
 static Record UnwindConsume(OpBase *opBase);
 static OpResult UnwindReset(OpBase *opBase);
 static OpBase *UnwindClone(const ExecutionPlan *plan, const OpBase *opBase);
-static void UnwindFree(OpBase *opBase);
 
 OpBase *NewUnwindOp
 (
@@ -31,6 +31,7 @@ OpBase *NewUnwindOp
 	op->list          = SI_NullVal();
 	op->listIdx       = INDEX_NOT_SET;
 	op->free_rec      = true;
+	op->listLen       = 0;
 	op->currentRecord = NULL;
 
 	// Set our Op operations
@@ -80,7 +81,8 @@ static OpResult UnwindInit
 		// list might depend on data provided by child operation
 		op->list = SI_EmptyArray();
 		op->listIdx = INDEX_NOT_SET;
-		// TODO: explain this condition / variable
+		// if the child is an ArgumentList op, Foreach is responsible for
+		// freeing the record
 		op->free_rec = (OpBase_Type(op->op.children[0]) != OPType_ARGUMENT_LIST);
 	}
 
@@ -96,7 +98,7 @@ static Record _handoff
 	OpUnwind *op
 ) {
 	// If there is a new value ready, return it.
-	if(op->listIdx < op->list_len) {
+	if(op->listIdx < op->listLen) {
 		Record r = OpBase_CloneRecord(op->currentRecord);
 		Record_Add(r, op->unwindRecIdx, SIArray_Get(op->list, op->listIdx));
 		op->listIdx++;
@@ -155,6 +157,7 @@ static OpResult UnwindReset
 		// dynamic should set index to UINT_MAX, to force refetching of data.
 		op->listIdx = INDEX_NOT_SET;
 	}
+	op->listLen = 0;
 
 	return OP_OK;
 }

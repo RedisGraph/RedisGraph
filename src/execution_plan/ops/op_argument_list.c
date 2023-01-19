@@ -40,13 +40,12 @@ OpBase *NewArgumentListOp
 void ArgumentList_AddRecordList
 (
 	ArgumentList *op,
-	Record *record_list
+	Record *records
 ) {
-	ASSERT(op->record_list != NULL && "insert into a populated ArgumentList");
-	op->record_list  =  record_list;
-	assert("attend!" && false);
-	op->rec_len      =  0;
-	op->rec_idx      =  0;
+	ASSERT(op->records != NULL && "insert into a populated ArgumentList");
+	op->rec_idx = 0;
+	op->rec_len = array_len(records);
+	op->records = records;
 }
 
 static Record ArgumentListConsume
@@ -55,14 +54,14 @@ static Record ArgumentListConsume
 ) {
 	ArgumentList *op = (ArgumentList *)opBase;
 
-	ASSERT(op->record_list != NULL);
+	ASSERT(op->records != NULL);
 
-	if(array_len(op->record_list) > 0) {
-		return array_pop(op->record_list);
+	if(op->rec_idx < op->rec_len) {
+		return op->records[op->rec_idx++];
 	}
 
 	// depleted! return NULL
-	op->record_list = NULL;
+	op->records = NULL;
 
     return NULL;
 }
@@ -74,7 +73,9 @@ static OpResult ArgumentListReset
 	// Reset operation, freeing the Record-list if exists.
 	ArgumentList *op = (ArgumentList *)opBase;
 
-	op->record_list = NULL;
+	op->records = NULL;
+	op->rec_idx = 0;
+	op->rec_len = 0;
 
 	return OP_OK;
 }
@@ -94,6 +95,6 @@ static void ArgumentListFree
 ) {
 	ArgumentList *op = (ArgumentList *)opBase;
 
-	op->record_list = NULL;
+	op->records = NULL;
 }
 

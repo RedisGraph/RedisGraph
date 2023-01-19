@@ -378,13 +378,13 @@ class testForeachFlow():
             self.env.assertIn("A WITH clause is required to introduce MATCH after an updating clause.", str(e))
 
         try:
-            graph.query("FOREACH(i in [1] | CREATE (:M)) unwind [1, 2, 3] as x RETURN x")
+            graph.query("FOREACH(i in [1] | CREATE (:M)) UNWIND [1, 2, 3] as x RETURN x")
             self.env.assertTrue(False)
         except redis.exceptions.ResponseError as e:
             self.env.assertIn("A WITH clause is required to introduce UNWIND after an updating clause.", str(e))
 
         try:
-            graph.query("FOREACH(i in [1] | CREATE (:M)) CALL db.labels() YIELD labels RETURN labels")
+            graph.query("FOREACH(i in [1] | CREATE (:M)) CALL db.labels() YIELD label RETURN label")
             self.env.assertTrue(False)
         except redis.exceptions.ResponseError as e:
             self.env.assertIn("A WITH clause is required to introduce CALL after an updating clause.", str(e))

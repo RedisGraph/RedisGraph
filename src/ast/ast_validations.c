@@ -1570,12 +1570,13 @@ static AST_Validation _ValidateClauseOrder
 	for(uint i = 0; i < clause_count; i ++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
 		cypher_astnode_type_t type = cypher_astnode_type(clause);
-		encountered_updating_clause = (type == CYPHER_AST_CREATE ||
-									   type == CYPHER_AST_MERGE  ||
-									   type == CYPHER_AST_DELETE ||
-									   type == CYPHER_AST_SET    ||
-									   type == CYPHER_AST_REMOVE ||
-									   type == CYPHER_AST_FOREACH);
+		encountered_updating_clause = (encountered_updating_clause   ||
+									  (type == CYPHER_AST_CREATE     ||
+									   type == CYPHER_AST_MERGE      ||
+									   type == CYPHER_AST_DELETE     ||
+									   type == CYPHER_AST_SET        ||
+									   type == CYPHER_AST_REMOVE     ||
+									   type == CYPHER_AST_FOREACH));
 		if(encountered_updating_clause && (type == CYPHER_AST_MATCH  ||
 										   type == CYPHER_AST_UNWIND ||
 										   type == CYPHER_AST_CALL)) {
