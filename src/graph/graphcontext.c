@@ -16,8 +16,6 @@
 #include "../util/thpool/pools.h"
 #include "../serializers/graphcontext_type.h"
 #include "../commands/execution_ctx.h"
-// TODO will it work without?
-// #include "../datatypes/set.h"
 
 // Global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
