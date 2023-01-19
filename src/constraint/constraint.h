@@ -39,6 +39,14 @@ Constraint Constraint_New
 	ConstraintType t      // constraint type
 );
 
+// tries to enforce constraint
+// will create indicies if required to
+// sets constraint status to pending
+void Constraint_Enforce
+(
+	const Constraint c  // constraint to enforce
+);
+
 // returns constraint status
 ConstraintStatus Constraint_GetStatus
 (
@@ -98,13 +106,14 @@ void Constraint_Drop_Index
 // is the field have constraint which enforce it
 bool Has_Constraint_On_Attribute(Constraint *constraints, Attribute_ID attr_id);
 
-int Graph_Constraint(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
-
 // returns constraint graph entity type
 GraphEntityType Constraint_GraphEntityType
 (
 	const Constraint c
 );
 
-void Constraint_free(Constraint c);
+void Constraint_free
+(
+	Constraint c
+);
 

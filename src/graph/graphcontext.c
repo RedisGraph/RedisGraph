@@ -521,6 +521,7 @@ Constraint GraphContext_AddConstraint
 		fields[i] = GraphContext_FindOrAddAttribute(gc, fields_str[i], NULL);
 	}
 
+	// TODO: remove duplicates
 	// sort the properties for an easy comparison later
 	qsort(fields, fields_count, sizeof(Attribute_ID), _cmp_Attribute_ID);
 
@@ -529,8 +530,7 @@ Constraint GraphContext_AddConstraint
 	
 	if(c == NULL) {
 		// constraint doesn't exists create it
-		GraphEntityType entity_type = (schema_type == SCHEMA_NODE) ? GETYPE_NODE : GETYPE_EDGE;
-		c = Constraint_new(fields, fields_count, label, s->id, entity_type);
+		c = Constraint_new(fields, fields_count, s, label, ct);
 		Schema_AddConstraint(s, c);
 	} else {
 		// constraint already exists
@@ -540,20 +540,11 @@ Constraint GraphContext_AddConstraint
 		if(status == CT_FAILED) {
 			// previous constraint creation had failed
 			// retry populating the constraint
-			c->status = CT_PENDING;
 		} else {
 			// constraint already exists
 			return NULL;
 		}
 	}
-
-	Constraint_IncPendingChanges(c);
-
-	// add fields to index
-	GraphContext_AddExactMatchIndex(&idx, gc, schema_type, label, props,
-			prop_count, false);
-
-	Indexer_PopulateIndexOrConstraint(gc, idx, c);
 
 	return c;
 }

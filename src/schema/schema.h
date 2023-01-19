@@ -49,6 +49,11 @@ const char *Schema_GetName
 	const Schema *s
 );
 
+SchemaType Schema_GetType
+(
+	const Schema *s
+);
+
 // returns true if schema has either a full-text or exact-match index
 bool Schema_HasIndices
 (

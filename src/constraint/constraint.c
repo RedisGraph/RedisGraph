@@ -144,6 +144,60 @@ Constraint Constraint_New
 	return c;
 }
 
+// tries to enforce constraint
+// will create indicies if required to
+// sets constraint status to pending
+int Constraint_Enforce
+(
+	const Constraint c,  // constraint to enforce
+	GraphContext *gc
+) {
+	ASSERT(c != NULL);
+
+	// mark constraint as pending
+	Constraint_IncPendingChanges(c);
+
+	//--------------------------------------------------------------------------
+	// make sure constraint is supported by an index
+	//--------------------------------------------------------------------------
+
+	Index idx = NULL;
+
+	Schema *s = c->s;
+	SchemaType st = Schema_GetType(s);
+	const char *l = Schema_GetName(s);
+
+	uint n = array_len(c->attributes);
+	const char *fields[n];
+	for(uint i = 0; i < n; i++) {
+		fields_str[i] = GraphContext_GetAttributeString(gc, c->attributes[i]);
+	}
+
+	bool idx_created = GraphContext_AddExactMatchIndex(&idx, gc, st, l, fields,
+			n, false);
+
+	if(idx_created == false) {
+
+	}
+
+	enum ASYNC_TASK {
+		EnforceConstraint       // requires index to be operational
+		PopulateConstraintIndex // populate index taking constraint into acount
+	}
+
+	// 1. index already exists!
+	//    1.a check if constraint holds:
+	//        scan through all entities governed by this constraint and enforce
+	//
+	// 2. index modified / created
+	//    2.a conditional build index:
+	//        foreach new index document, enforce constraint on entity
+	//        add document to index only if constraint holds
+	//        if not revert back to previous index and mark constraint as failed
+
+	Indexer_PopulateIndexOrConstraint(gc, idx, c);
+}
+
 // set constraint status
 // status can change from:
 // 1. CT_PENDING to CT_ACTIVE
@@ -202,6 +256,9 @@ void Constraint_IncPendingChanges
 	// see comment at Constraint_PendingChanges
     ASSERT(c->pending_changes > 0);
     ASSERT(c->pending_changes <= 2);
+
+	// update constraint status to pending
+	c->status = CT_PENDING;
 
 	// atomic increment
 	c->pending_changes++;

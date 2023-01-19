@@ -58,18 +58,20 @@ static void *_index_populate
 		switch(ctx.op) {
 			case INDEXER_POPULATE:
 				rm_ctx = RedisModule_GetThreadSafeContext(NULL);
-				ret = Index_Populate_enforce_constraint(ctx.idx, ctx.c, (struct GraphContext*)ctx.gc);
+				ret = Index_Populate_enforce_constraint(ctx.idx, ctx.c, ctx.gc);
 				if(ctx.c && Constraint_PendingChanges(ctx.c) == 0) {
-					// If pending changes > 0, Constraint going to be deleted - don't drop the index						
+					// if pending changes > 0
+					// constraint going to be deleted - don't drop the index
 					if (ret) {
-						// Constraint is satisfied, change it's status.
+						// constraint is satisfied, change it's status.
 						GraphContext_LockForCommit(rm_ctx, ctx.gc);
-						ctx.c->status = CT_ACTIVE;
+						Constraint_SetStatus(ctx->c, CT_ACTIVE);
 					} else {
-						// constraint was not satisfied, remove it's index and change is status
+						// constraint was not satisfied!
+						// remove it's index and change is status
 						GraphContext_LockForCommit(rm_ctx, ctx.gc);
-						ctx.c->status = CT_FAILED;
-						Constraint_Drop_Index(ctx.c, (struct GraphContext*)ctx.gc, false);
+						Constraint_SetStatus(ctx->c, CT_FAILED);
+						Constraint_Drop_Index(ctx.c, ctx.gc, false);
 					}
 					GraphContext_UnlockCommit(rm_ctx, ctx.gc);
 				}
@@ -251,7 +253,8 @@ cleanup:
 
 // populates index and enforce constraint asynchronously
 // this function simply place the population request onto a queue
-// eventually the indexer working thread will pick it up and populate the index and enforce the constraint
+// eventually the indexer working thread will pick it up and populate the index
+// and enforce the constraint
 void Indexer_PopulateIndexOrConstraint
 (
 	GraphContext *gc, // graph to operate on
@@ -264,7 +267,10 @@ void Indexer_PopulateIndexOrConstraint
 	ASSERT(idx || c);
 
 	// create work item
-	IndexConstraintPopulateCtx ctx = {.idx = idx, .c = c, .gc = gc, .op = INDEXER_POPULATE};
+	IndexConstraintPopulateCtx ctx = {.idx = idx,
+									  .c   = c,
+									  .gc  = gc,
+									  .op  = INDEXER_POPULATE};
 
 	// increase graph reference count
 	// count will be reduced once this task is perfomed
