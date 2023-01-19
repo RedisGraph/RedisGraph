@@ -358,8 +358,8 @@ class testForeachFlow():
 
         # validate that the altered state is correct
         res = graph.query("MATCH (t:TEMP) return t")
-        t1 = Node(label='TEMP', properties={'v': 4, 'li': [1, 2, 3, 4, 4, 'RAZ'], 'name': 'raz'})
-        t2 = Node(label='TEMP', properties={'v': 3, 'li': [1, 2, 3, 4, 3, 'RAZ'], 'name': 'raz'})
+        t1 = Node(label='TEMP', properties={'v': 3, 'li': [1, 2, 3, 4, 3, 'RAZ'], 'name': 'raz'})
+        t2 = Node(label='TEMP', properties={'v': 4, 'li': [1, 2, 3, 4, 4, 'RAZ'], 'name': 'raz'})
         t3 = Node(label='TEMP')
         nodes = [t1, t2, t3]
         for i in range(3):

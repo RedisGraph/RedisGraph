@@ -142,6 +142,13 @@ static Record UnwindConsume
 
 		// reset index and set list
 		_initList(op);
+
+		if(op->listLen == 0 && !op->free_rec) {
+			while(op->listLen == 0 && (r = OpBase_Consume(child))) {
+				op->currentRecord = r;
+				_initList(op);
+			}
+		}
 	}
 
 	return _handoff(op);

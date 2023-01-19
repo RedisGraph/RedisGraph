@@ -42,10 +42,10 @@ void ArgumentList_AddRecordList
 	ArgumentList *op,
 	Record *records
 ) {
-	ASSERT(op->records != NULL && "insert into a populated ArgumentList");
+	ASSERT(op->records == NULL && "insert into a populated ArgumentList");
 	op->rec_idx = 0;
-	op->rec_len = array_len(records);
 	op->records = records;
+	op->rec_len = array_len(records);
 }
 
 static Record ArgumentListConsume
@@ -75,7 +75,6 @@ static OpResult ArgumentListReset
 
 	op->records = NULL;
 	op->rec_idx = 0;
-	op->rec_len = 0;
 
 	return OP_OK;
 }
@@ -97,4 +96,3 @@ static void ArgumentListFree
 
 	op->records = NULL;
 }
-
