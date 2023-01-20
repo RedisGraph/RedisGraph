@@ -26,7 +26,7 @@ typedef struct {
 } QueryCtx_QueryData;
 
 typedef struct {
-	double timer[2];            // Query execution time tracking.
+	double timer[2];            // Query execution time tracking for profiling.
 	RedisModuleKey *key;        // Saves an open key value, for later extraction and closing.
 	ResultSet *result_set;      // Save the execution result set.
 	bool locked_for_commit;     // Indicates if a call for QueryCtx_LockForCommit issued before.

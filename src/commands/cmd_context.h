@@ -30,7 +30,7 @@ typedef struct {
 	ExecutorThread thread;          // Which thread executes this command
 	long long timeout;              // The query timeout, if specified.
 	bool timeout_rw;                // Apply timeout on both read and write queries.
-	simple_timer_t timer;           // The timer for timing the command.
+	simple_timer_t timer;           // The timer for "GRAPH.INFO".
 	uint64_t received_timestamp;    // The timestamp when the command was received.
 	bool should_track_info;         // Whether or not to track info.
 } CommandCtx;
