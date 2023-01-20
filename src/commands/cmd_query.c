@@ -78,18 +78,11 @@ static bool abort_and_check_timeout
 
 	return has_timed_out;
 }
-static const struct QueryCtx* _get_query_context_for_tracking(const GraphQueryCtx *gq_ctx) {
-	ASSERT(gq_ctx);
-	if (!gq_ctx) {
-		return NULL;
-	}
-	return gq_ctx->query_ctx;
-}
 
 static void _report_query_already_waiting(const GraphQueryCtx *gq_ctx) {
 	ASSERT(gq_ctx);
 	ASSERT(gq_ctx->command_ctx);
-	const struct QueryCtx *context = _get_query_context_for_tracking(gq_ctx);
+	const struct QueryCtx *context = gq_ctx->query_ctx;
 	if (!context || !gq_ctx->command_ctx) {
 		return;
 	}
@@ -105,29 +98,29 @@ static void _report_query_already_waiting(const GraphQueryCtx *gq_ctx) {
 }
 
 static void _report_query_started_execution(const GraphQueryCtx *gq_ctx) {
-	const struct QueryCtx *context = _get_query_context_for_tracking(gq_ctx);
-	if (!context) {
+	ASSERT(gq_ctx && gq_ctx->graph_ctx);
+	if (!gq_ctx || !gq_ctx->graph_ctx) {
 		return;
 	}
-	Info_IndicateQueryStartedExecution(&gq_ctx->graph_ctx->info, context);
+	Info_IndicateQueryStartedExecution(&gq_ctx->graph_ctx->info, gq_ctx->query_ctx);
 }
 
 static void _report_query_started_reporting(const GraphQueryCtx *gq_ctx) {
-	const struct QueryCtx *context = _get_query_context_for_tracking(gq_ctx);
-	if (!context) {
+	ASSERT(gq_ctx && gq_ctx->graph_ctx);
+	if (!gq_ctx || !gq_ctx->graph_ctx) {
 		return;
 	}
 
-	Info_IndicateQueryStartedReporting(&gq_ctx->graph_ctx->info, context);
+	Info_IndicateQueryStartedReporting(&gq_ctx->graph_ctx->info, gq_ctx->query_ctx);
 }
 
 static void _report_query_finished_reporting(const GraphQueryCtx *gq_ctx) {
-	const struct QueryCtx *context = _get_query_context_for_tracking(gq_ctx);
-	if (!context) {
+	ASSERT(gq_ctx && gq_ctx->graph_ctx);
+	if (!gq_ctx || !gq_ctx->graph_ctx) {
 		return;
 	}
 
-	Info_IndicateQueryFinishedReporting(&gq_ctx->graph_ctx->info, context);
+	Info_IndicateQueryFinishedReporting(&gq_ctx->graph_ctx->info, gq_ctx->query_ctx);
 }
 
 static void _report_query_finish_state
