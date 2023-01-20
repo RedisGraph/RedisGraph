@@ -158,23 +158,32 @@ static SIValue _AR_NodeDegree
 
 		// get labels array from input arguments, but removing duplicates
 		SIValue labels = SI_EmptyArray();
-		for(int i = 1; i < argc; i++) {
-			if(SI_TYPE(argv[i]) == T_STRING) {
-				if(SIArray_ContainsValue(labels, argv[i], NULL) == false) {
-					SIArray_Append(&labels, argv[i]);
+		if(SI_TYPE(argv[1]) == T_STRING) {
+			// validate signature function(NODE, STR_0, STR_1, ... STR_N)
+			for(int i = 1; i < argc; i++) {
+				if(SI_TYPE(argv[i]) == T_STRING) {
+					if(SIArray_ContainsValue(labels, argv[i], NULL) == false) {
+						SIArray_Append(&labels, argv[i]);
+					}
+				} else {
+					Error_SITypeMismatch(argv[i], T_STRING);
 				}
-			} else if (SI_TYPE(argv[i]) == T_ARRAY) {
-				uint len = SIArray_Length(argv[i]);
-				for(int j = 0; j < len; j++) {
-					SIValue elem = SIArray_Get(argv[i], j);
-					if(SI_TYPE(elem) != T_STRING) {
-						SIArray_Free(labels);
-						Error_SITypeMismatch(elem, T_STRING);
-						return SI_NullVal();
-					}
-					if(SIArray_ContainsValue(labels, elem, NULL) == false) {
-						SIArray_Append(&labels, elem);
-					}
+			}
+		} else if (SI_TYPE(argv[1]) == T_ARRAY) {
+			if(argc > 2) {
+				ErrorCtx_SetError("Received %d arguments, expected at most 2 because second argument is List", argc);
+			}
+			// validate signature function(NODE, ARRAY_OF_STRINGS)
+			uint len = SIArray_Length(argv[1]);
+			for(int j = 0; j < len; j++) {
+				SIValue elem = SIArray_Get(argv[1], j);
+				if(SI_TYPE(elem) != T_STRING) {
+					SIArray_Free(labels);
+					Error_SITypeMismatch(elem, T_STRING);
+					return SI_NullVal();
+				}
+				if(SIArray_ContainsValue(labels, elem, NULL) == false) {
+					SIArray_Append(&labels, elem);
 				}
 			}
 		}

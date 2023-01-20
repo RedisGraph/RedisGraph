@@ -2379,10 +2379,10 @@ class testFunctionCallsFlow(FlowTestsBase):
         queries = [
             """MATCH (a:A) RETURN outdegree(a, 'R')""",
             """MATCH (a:A) RETURN outdegree(a, ['R'])""",
-            """MATCH (a:A) RETURN outdegree(a, 'R', 'R', ['R', 'R'])""",
+            """MATCH (a:A) RETURN outdegree(a, 'R', 'R')""",
             """MATCH (b:B) RETURN indegree(b, 'R')""",
-            """MATCH (b:B) RETURN indegree(b, ['R'])""",
-            """MATCH (b:B) RETURN indegree(b, 'R', 'R', ['R', 'R'])""",
+            """MATCH (b:B) RETURN indegree(b, ['R', 'R'])""",
+            """MATCH (b:B) RETURN indegree(b, 'R', 'R')""",
         ]
         for query in queries:
             actual_result = graph.query(query)
@@ -2390,9 +2390,11 @@ class testFunctionCallsFlow(FlowTestsBase):
 
         # test type mismatch
         queries = [
-            """MATCH (a:A) RETURN outdegree(a, a)""",     # node
-            """MATCH (a:A) RETURN outdegree(a, [1])""",   # integer
-            """MATCH (a:A) RETURN outdegree(a, [1.4])"""  # float
+            """MATCH (a:A) RETURN outdegree(a, a)""",           # node
+            """MATCH (a:A) RETURN outdegree(a, [1])""",         # integer
+            """MATCH (a:A) RETURN outdegree(a, [1.4])""",       # float
+            """MATCH (a:A) RETURN outdegree(a, 'R', 1)""",      # integer after string
+            """MATCH (a:A) RETURN outdegree(a, ['R', 1])""",    # integer element in list
             ]
         for query in queries:
             try:
@@ -2401,3 +2403,16 @@ class testFunctionCallsFlow(FlowTestsBase):
             except redis.exceptions.ResponseError as e:
                 # Expecting a type error.
                 self.env.assertIn("Type mismatch", str(e))
+
+        # test wrong argument number
+        queries = [
+            """MATCH (a:A) RETURN outdegree()""",
+            """MATCH (a:A) RETURN outdegree(a, ['R'], 'a')""",
+            ]
+        for query in queries:
+            try:
+                graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                # Expecting a type error.
+                self.env.assertIn("Received", str(e))
