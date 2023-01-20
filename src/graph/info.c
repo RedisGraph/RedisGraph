@@ -120,14 +120,15 @@ static void _FinishedQueryCounters_Reset
 
 static void _FinishedQueryCounters_Increment(
     FinishedQueryCounters *counters,
-    const QueryStatisticsFlag flag
+    const QueryExecutionTypeFlag flags,
+    const QueryExecutionStatus status
 ) {
     REQUIRE_ARG(counters);
 
-    if (CHECK_FLAG(flag, QueryStatisticsFlag_WRITE)) {
-        if (CHECK_FLAG(flag, QueryStatisticsFlag_FAIL)) {
+    if (CHECK_FLAG(flags, QueryExecutionTypeFlag_WRITE)) {
+        if (status == QueryExecutionStatus_FAILURE) {
             ++counters->write_failed_count;
-        } else if (CHECK_FLAG(flag, QueryStatisticsFlag_TIMEOUT)) {
+        } else if (status == QueryExecutionStatus_TIMEDOUT) {
             ++counters->write_timedout_count;
         } else {
             ++counters->write_succeeded_count;
@@ -135,9 +136,9 @@ static void _FinishedQueryCounters_Increment(
 
         return;
     } else {
-        if (CHECK_FLAG(flag, QueryStatisticsFlag_FAIL)) {
+        if (status == QueryExecutionStatus_FAILURE) {
             ++counters->readonly_failed_count;
-        } else if (CHECK_FLAG(flag, QueryStatisticsFlag_TIMEOUT)) {
+        } else if (status == QueryExecutionStatus_TIMEDOUT) {
             ++counters->readonly_timedout_count;
         } else {
             ++counters->readonly_succeeded_count;
@@ -979,13 +980,15 @@ millis_t Info_GetMaxQueryWaitTime(Info *info) {
 void Info_IncrementNumberOfQueries
 (
     Info *info,
-    const QueryStatisticsFlag flag
+    const QueryExecutionTypeFlag flags,
+    const QueryExecutionStatus status
 ) {
     REQUIRE_ARG(info);
 
     _FinishedQueryCounters_Increment(
         &info->finished_query_counters,
-        flag
+        flags,
+        status
     );
 }
 
