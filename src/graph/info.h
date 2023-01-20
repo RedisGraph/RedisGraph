@@ -22,13 +22,11 @@
 #include <pthread.h>
 
 #include "../util/simple_timer.h"
+#include "../util/num.h"
 
 typedef struct hdr_histogram hdr_histogram;
-
-// Checks whether the specified flag is set within the flag variable.
-// Evaluates to true if set, to false otherwise.
-#define CHECK_FLAG(flag_var, flag_value) \
-    ((flag_var & flag_value) == flag_value)
+typedef enum QueryExecutionTypeFlag QueryExecutionTypeFlag;
+typedef enum QueryExecutionStatus QueryExecutionStatus;
 
 // Define the indices for the percentiles within an array of values.
 #define PERCENTILE_25 0
@@ -46,14 +44,6 @@ typedef struct QueryCtx QueryCtx;
 // Duplicate typedef from the circular buffer.
 typedef bool (*CircularBufferNRG_ReadAllCallback)(void *user_data, const void *item);
 
-// TODO think of the impossible states.
-// Specifies what kind of query should we count.
-typedef enum QueryStatisticsFlag {
-    QueryStatisticsFlag_READONLY = 0,
-    QueryStatisticsFlag_WRITE = 1 << 0,
-    QueryStatisticsFlag_FAIL = 1 << 1,
-    QueryStatisticsFlag_TIMEOUT = 1 << 2,
-} QueryStatisticsFlag;
 
 // Holds the necessary per-query statistics.
 typedef struct QueryInfo {
@@ -327,9 +317,9 @@ uint64_t Info_GetReportingQueriesCount(Info *);
 // reporting the results.
 // Requires a pointer to mutable, for it changes the state of the locks.
 millis_t Info_GetMaxQueryWaitTime(Info *);
-// Incremenents the corresponding query type counter. The passed flag
-// defines the kind of query and its finish status.
-void Info_IncrementNumberOfQueries(Info *, const QueryStatisticsFlag);
+// Incremenents the corresponding query type counter. The passed parameters
+// define the kind of query and its finish status.
+void Info_IncrementNumberOfQueries(Info *, const QueryExecutionTypeFlag, const QueryExecutionStatus);
 // Returns the finished query counters from the passed info object.
 FinishedQueryCounters Info_GetFinishedQueryCounters(const Info);
 // Locks the info object for external reading. Only one concurrent read is

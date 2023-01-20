@@ -18,6 +18,23 @@
 
 extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
 
+// Holds the execution type flags: certain traits of query regarding its'
+// execution.
+typedef enum QueryExecutionTypeFlag {
+	// Whether a query is readonly only or not.
+	QueryExecutionTypeFlag_READONLY = 0,
+	QueryExecutionTypeFlag_WRITE = 1 << 0,
+	// Whether or not we want to profile the query.
+	QueryExecutionTypeFlag_PROFILE = 1 << 1,
+} QueryExecutionTypeFlag;
+
+// Holds the query execution status.
+typedef enum QueryExecutionStatus {
+	QueryExecutionStatus_SUCCESS = 0,
+	QueryExecutionStatus_FAILURE,
+	QueryExecutionStatus_TIMEDOUT,
+} QueryExecutionStatus;
+
 typedef struct {
 	AST *ast;                     // The scoped AST associated with this query.
 	rax *params;                  // Query parameters.
@@ -44,6 +61,8 @@ typedef struct QueryCtx {
 	QueryCtx_GlobalExecCtx global_exec_ctx;     // The data rlated to global redis execution.
 	GraphContext *gc;                           // The GraphContext associated with this query's graph.
 	UndoLog undo_log;                           // Undo log for updates, used in the case of write query can fail and rollback is needed.
+	QueryExecutionTypeFlag flags;               // The execution flags.
+	QueryExecutionStatus status;                // The query execution status.
 } QueryCtx;
 
 /* Instantiate the thread-local QueryCtx on module load. */

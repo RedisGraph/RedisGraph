@@ -4,8 +4,9 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 /**
- * This file contains checked addition for unsigned integers.
- * To support "overload" for a single function using different arguments
+ * This file contains helpful functions to work with numbers, like
+ * checked addition for unsigned integers, among others.
+ * To support the "overload" for a single function using different arguments
  * (except for the out parameter), all the arguments for addition are implicitly
  * converted to the max-width type (uint64_t) and only then, inside the body,
  * the checks are performed.
@@ -15,6 +16,11 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+
+// Checks whether the specified flag is set within the flag variable.
+// Evaluates to true if set, to false otherwise.
+#define CHECK_FLAG(flag_var, flag_value) \
+    ((flag_var & flag_value) == flag_value)
 
 bool checked_add_u8(const uint64_t lhs, const uint64_t rhs, uint8_t *result);
 bool checked_add_u16(const uint64_t lhs, const uint64_t rhs, uint16_t *result);

@@ -19,18 +19,18 @@
  * argv[2] query */
 void Graph_Explain(void *args) {
 	bool lock_acquired = false;
-	CommandCtx     *command_ctx         = (CommandCtx *)args;
-	RedisModuleCtx *ctx                 = CommandCtx_GetRedisCtx(command_ctx);
-	GraphContext   *gc                  = CommandCtx_GetGraphContext(command_ctx);
-	ExecutionCtx   *exec_ctx            = NULL;
-	QueryStatisticsFlag statistics_flag = QueryStatisticsFlag_READONLY;
+	CommandCtx     *command_ctx = (CommandCtx *)args;
+	RedisModuleCtx *ctx         = CommandCtx_GetRedisCtx(command_ctx);
+	GraphContext   *gc          = CommandCtx_GetGraphContext(command_ctx);
+	ExecutionCtx   *exec_ctx    = NULL;
+	QueryCtx       *query_ctx   = QueryCtx_GetQueryCtx();
 
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
 	CommandCtx_TrackCtx(command_ctx);
 
 	if(strcmp(command_ctx->query, "") == 0) {
 		ErrorCtx_SetError("Error: empty query.");
-		statistics_flag |= QueryStatisticsFlag_FAIL;
+		query_ctx->status = QueryExecutionStatus_FAILURE;
 		goto cleanup;
 	}
 
@@ -40,10 +40,10 @@ void Graph_Explain(void *args) {
 	 * 1. Execution plan
 	 * 2. Whether these items were cached or not */
 	bool           cached = false;
-	ExecutionPlan  *plan  = NULL
+	ExecutionPlan  *plan  = NULL;
 	exec_ctx  =  ExecutionCtx_FromQuery(command_ctx->query);
 	if (exec_ctx == NULL) {
-		statistics_flag |= QueryStatisticsFlag_FAIL;
+		query_ctx->status = QueryExecutionStatus_FAILURE;
 		goto cleanup;
 	}
 
@@ -65,14 +65,14 @@ void Graph_Explain(void *args) {
 	ExecutionPlan_Init(plan);       // Initialize the plan's ops.
 
 	if (ErrorCtx_EncounteredError()) {
-		statistics_flag |= QueryStatisticsFlag_FAIL;
+		query_ctx->status = QueryExecutionStatus_FAILURE;
 		goto cleanup;
 	}
 
 	ExecutionPlan_Print(plan, ctx); // Print the execution plan.
 
 cleanup:
-	Info_IncrementNumberOfQueries(&gc->info, statistics_flag);
+	Info_IncrementNumberOfQueries(&gc->info, query_ctx->flags, query_ctx->status);
 	if(ErrorCtx_EncounteredError()) ErrorCtx_EmitException();
 	if(lock_acquired) Graph_ReleaseLock(gc->g);
 	ExecutionCtx_Free(exec_ctx);
