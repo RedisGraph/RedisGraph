@@ -15,9 +15,29 @@
 
 typedef struct RedisModuleCtx RedisModuleCtx;
 
-// Helpful macros to exit immediately if a RedisModule_* function
+
+// A helpful macro to exit immediately if a RedisModule_* function
 // returns with a result different from the REDISMODULE_OK value.
+//
+// This macro is different from the "REDISMODULE_ASSERT" in a way that it doesn't
+// use the assertion and simply exits with the error code from the calling
+// function. This is useful for branching rather than ensuring a problem won't
+// happen at all costs.
 #define REDISMODULE_DO(doable) \
+    do { \
+        const int ret = doable; \
+        if (ret != REDISMODULE_OK) { \
+            return ret; \
+        } \
+    } while(0);
+
+// A helpful macro to exit immediately if a RedisModule_* function
+// returns with a result different from the REDISMODULE_OK value.
+//
+// This is convenient to use when the error is expected NOT to happen, as this
+// macro uses an assertion to quickly point to the problematic place where an
+// error happens while it shouldn't.
+#define REDISMODULE_ASSERT(doable) \
     do { \
         const int ret = doable; \
         ASSERT(ret == REDISMODULE_OK \
@@ -26,6 +46,7 @@ typedef struct RedisModuleCtx RedisModuleCtx;
             return ret; \
         } \
     } while(0);
+
 
 // A helpful clean-up macro which specifies the ReplyRecorder destructor which
 // flushes the reply upon deletion.

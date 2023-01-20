@@ -12,6 +12,7 @@
 #include "query_ctx.h"
 #include "configuration/config.h"
 
+#include <ctype.h>
 #include <stdlib.h>
 
 #define SUBCOMMAND_NAME_QUERIES "QUERIES"
@@ -20,6 +21,7 @@
 #define COMPACT_MODE_OPTION "--compact"
 #define UNKNOWN_SUBCOMMAND_MESSAGE "Unknown subcommand."
 #define INVALID_PARAMETERS_MESSAGE "Invalid parameters."
+#define INVALID_COUNT_PARAMETER_FOR_PREV_MESSAGE "\"PREV\": Invalid value for the <count> parameter."
 #define MAX_QUERY_WAIT_TIME_KEY_NAME "Current maximum query wait duration"
 #define TOTAL_WAITING_QUERIES_COUNT_KEY_NAME "Total waiting queries count"
 #define TOTAL_EXECUTING_QUERIES_COUNT_KEY_NAME "Total executing queries count"
@@ -392,27 +394,27 @@ static int _reply_global_info
     }
 
     ReplyRecorder recorder REPLY_AUTO_FINISH;
-    REDISMODULE_DO(ReplyRecorder_New(&recorder, ctx, is_compact_mode));
+    REDISMODULE_ASSERT(ReplyRecorder_New(&recorder, ctx, is_compact_mode));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         MAX_QUERY_WAIT_TIME_KEY_NAME,
         global_info.max_query_wait_time
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         TOTAL_WAITING_QUERIES_COUNT_KEY_NAME,
         global_info.total_waiting_queries_count
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         TOTAL_EXECUTING_QUERIES_COUNT_KEY_NAME,
         global_info.total_executing_queries_count
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         TOTAL_REPORTING_QUERIES_COUNT_KEY_NAME,
         global_info.total_reporting_queries_count
@@ -515,50 +517,50 @@ static int _reply_graph_query_info
         + info.report_duration;
 
     ReplyRecorder recorder REPLY_AUTO_FINISH;
-    REDISMODULE_DO(ReplyRecorder_New(&recorder, ctx, is_compact_mode));
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_New(&recorder, ctx, is_compact_mode));
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         RECEIVED_TIMESTAMP_KEY_NAME,
         info.received_at_ms
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         STAGE_KEY_NAME,
         (long long)info.stage
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddString(
+    REDISMODULE_ASSERT(ReplyRecorder_AddString(
         &recorder,
         GRAPH_NAME_KEY_NAME,
         info.graph_name
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddString(
+    REDISMODULE_ASSERT(ReplyRecorder_AddString(
         &recorder,
         QUERY_KEY_NAME,
         info.query_string
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         TOTAL_DURATION_KEY_NAME,
         total_spent_time
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         WAIT_DURATION_KEY_NAME,
         info.wait_duration
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         EXECUTION_DURATION_KEY_NAME,
         info.execution_duration
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         REPORT_DURATION_KEY_NAME,
         info.report_duration
@@ -591,7 +593,7 @@ static int _reply_graph_query_info_storage
         }
         _update_query_stage_timer(query_stage, info);
         ++actual_elements_count;
-        REDISMODULE_DO(_reply_graph_query_info(
+        REDISMODULE_ASSERT(_reply_graph_query_info(
             ctx,
             is_compact_mode,
             _CommonQueryInfo_FromUnfinished(*info, query_stage)));
@@ -790,9 +792,9 @@ static int _reply_with_queries_info_global
     }
 
     if (!is_compact_mode) {
-        REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, GLOBAL_INFO_KEY_NAME));
+        REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, GLOBAL_INFO_KEY_NAME));
     }
-    REDISMODULE_DO(_reply_global_info(ctx, is_compact_mode, global_info));
+    REDISMODULE_ASSERT(_reply_global_info(ctx, is_compact_mode, global_info));
 
     return REDISMODULE_OK;
 }
@@ -813,7 +815,7 @@ static int _reply_with_queries_info_from_all_graphs
 
     const uint64_t max_elements_count = _info_queries_max_count();
 
-    REDISMODULE_DO(_reply_graph_queries(
+    REDISMODULE_ASSERT(_reply_graph_queries(
         ctx,
         is_compact_mode,
         max_elements_count,
@@ -842,7 +844,7 @@ static int _reset_all_graphs_info
         }
         Info_Reset(&gc->info);
     }
-    REDISMODULE_DO(RedisModule_ReplyWithBool(ctx, true));
+    REDISMODULE_ASSERT(RedisModule_ReplyWithBool(ctx, true));
     return REDISMODULE_OK;
 }
 
@@ -865,7 +867,7 @@ static int _reset_graph_info
 
     Info_Reset(&gc->info);
 
-    REDISMODULE_DO(RedisModule_ReplyWithBool(ctx, true));
+    REDISMODULE_ASSERT(RedisModule_ReplyWithBool(ctx, true));
 
     return REDISMODULE_OK;
 }
@@ -882,100 +884,100 @@ static int _reply_with_get_aggregated_graph_info
     ASSERT(ctx);
 
     ReplyRecorder recorder REPLY_AUTO_FINISH;
-    REDISMODULE_DO(ReplyRecorder_New(&recorder, ctx, is_compact_mode));
+    REDISMODULE_ASSERT(ReplyRecorder_New(&recorder, ctx, is_compact_mode));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Number of graphs",
         info.graph_count
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Number of nodes",
         info.node_count
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Number of relationships",
         info.relationship_count
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Number of node labels",
         info.node_label_count
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Number of relationship types",
         info.relationship_type_count
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Number of node indices",
         info.node_index_count
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Number of relationship indices",
         info.relationship_index_count
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Total number of edge properties",
         info.node_property_name_count
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Total number of node properties",
         info.edge_property_name_count
     ));
 
     if (CHECK_FLAG(flags, InfoGetFlag_COUNTS)) {
-        REDISMODULE_DO(ReplyRecorder_AddNumber(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
             &recorder,
             "Total number of queries",
             FinishedQueryCounters_GetTotalCount(info.counters)
         ));
 
-        REDISMODULE_DO(ReplyRecorder_AddNumber(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
             &recorder,
             "Successful read-only queries",
             info.counters.readonly_succeeded_count
         ));
 
-        REDISMODULE_DO(ReplyRecorder_AddNumber(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
             &recorder,
             "Successful write queries",
             info.counters.write_succeeded_count
         ));
 
-        REDISMODULE_DO(ReplyRecorder_AddNumber(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
             &recorder,
             "Failed read-only queries",
             info.counters.readonly_failed_count
         ));
 
-        REDISMODULE_DO(ReplyRecorder_AddNumber(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
             &recorder,
             "Failed write queries",
             info.counters.write_failed_count
         ));
 
-        REDISMODULE_DO(ReplyRecorder_AddNumber(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
             &recorder,
             "Timed out read-only queries",
             info.counters.readonly_timedout_count
         ));
 
-        REDISMODULE_DO(ReplyRecorder_AddNumber(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
             &recorder,
             "Timed out write queries",
             info.counters.write_timedout_count
@@ -986,28 +988,28 @@ static int _reply_with_get_aggregated_graph_info
         const Percentiles percentiles
             = Statistics_GetPercentiles(info.statistics);
 
-        REDISMODULE_DO(ReplyRecorder_AddNumbers(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumbers(
             &recorder,
             "Query total durations",
             (long long*)percentiles.total_durations,
             sizeof(percentiles.total_durations) / sizeof(percentiles.total_durations[0])
         ));
 
-        REDISMODULE_DO(ReplyRecorder_AddNumbers(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumbers(
             &recorder,
             "Query wait durations",
             (long long*)percentiles.wait_durations,
             sizeof(percentiles.wait_durations) / sizeof(percentiles.wait_durations[0])
         ));
 
-        REDISMODULE_DO(ReplyRecorder_AddNumbers(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumbers(
             &recorder,
             "Query execution durations",
             (long long*)percentiles.execution_durations,
             sizeof(percentiles.execution_durations) / sizeof(percentiles.execution_durations[0])
         ));
 
-        REDISMODULE_DO(ReplyRecorder_AddNumbers(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumbers(
             &recorder,
             "Query report durations",
             (long long*)percentiles.report_durations,
@@ -1018,7 +1020,7 @@ static int _reply_with_get_aggregated_graph_info
     }
 
     if (CHECK_FLAG(flags, InfoGetFlag_MEMORY)) {
-        REDISMODULE_DO(ReplyRecorder_AddString(
+        REDISMODULE_ASSERT(ReplyRecorder_AddString(
             &recorder,
             "[MEM]",
             "The flag is not implemented."
@@ -1040,57 +1042,57 @@ static int _reply_with_get_graph_info
     ASSERT(ctx && gc && gc->g);
 
     ReplyRecorder recorder REPLY_AUTO_FINISH;
-    REDISMODULE_DO(ReplyRecorder_New(&recorder, ctx, is_compact_mode));
+    REDISMODULE_ASSERT(ReplyRecorder_New(&recorder, ctx, is_compact_mode));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Number of nodes",
         Graph_NodeCount(gc->g) - Graph_DeletedNodeCount(gc->g)
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Number of relationships",
         Graph_EdgeCount(gc->g) - Graph_DeletedEdgeCount(gc->g)
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Number of node labels",
         Graph_LabelTypeCount(gc->g)
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Number of relationship types",
         Graph_RelationTypeCount(gc->g)
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Number of node indices",
         GraphContext_NodeIndexCount(gc)
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Number of relationship indices",
         GraphContext_EdgeIndexCount(gc)
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Number of unique property names",
         GraphContext_AttributeCount(gc)
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Total number of edge properties",
         GraphContext_AllEdgePropertyNamesCount(gc)
     ));
 
-    REDISMODULE_DO(ReplyRecorder_AddNumber(
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Total number of node properties",
         GraphContext_AllNodePropertyNamesCount(gc)
@@ -1100,43 +1102,43 @@ static int _reply_with_get_graph_info
         const FinishedQueryCounters counters
             = Info_GetFinishedQueryCounters(gc->info);
 
-        REDISMODULE_DO(ReplyRecorder_AddNumber(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
             &recorder,
             "Total number of queries",
             FinishedQueryCounters_GetTotalCount(counters)
         ));
 
-        REDISMODULE_DO(ReplyRecorder_AddNumber(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
             &recorder,
             "Successful read-only queries",
             counters.readonly_succeeded_count
         ));
 
-        REDISMODULE_DO(ReplyRecorder_AddNumber(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
             &recorder,
             "Successful write queries",
             counters.write_succeeded_count
         ));
 
-        REDISMODULE_DO(ReplyRecorder_AddNumber(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
             &recorder,
             "Failed read-only queries",
             counters.readonly_failed_count
         ));
 
-        REDISMODULE_DO(ReplyRecorder_AddNumber(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
             &recorder,
             "Failed write queries",
             counters.write_failed_count
         ));
 
-        REDISMODULE_DO(ReplyRecorder_AddNumber(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
             &recorder,
             "Timed out read-only queries",
             counters.readonly_timedout_count
         ));
 
-        REDISMODULE_DO(ReplyRecorder_AddNumber(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
             &recorder,
             "Timed out write queries",
             counters.write_timedout_count
@@ -1149,28 +1151,28 @@ static int _reply_with_get_graph_info
         const Percentiles percentiles
             = Statistics_GetPercentiles(statistics);
 
-        REDISMODULE_DO(ReplyRecorder_AddNumbers(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumbers(
             &recorder,
             "Query total durations",
             percentiles.total_durations,
             sizeof(percentiles.total_durations) / sizeof(percentiles.total_durations[0])
         ));
 
-        REDISMODULE_DO(ReplyRecorder_AddNumbers(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumbers(
             &recorder,
             "Query wait durations",
             percentiles.wait_durations,
             sizeof(percentiles.wait_durations) / sizeof(percentiles.wait_durations[0])
         ));
 
-        REDISMODULE_DO(ReplyRecorder_AddNumbers(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumbers(
             &recorder,
             "Query execution durations",
             percentiles.execution_durations,
             sizeof(percentiles.execution_durations) / sizeof(percentiles.execution_durations[0])
         ));
 
-        REDISMODULE_DO(ReplyRecorder_AddNumbers(
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumbers(
             &recorder,
             "Query report durations",
             percentiles.report_durations,
@@ -1181,7 +1183,7 @@ static int _reply_with_get_graph_info
     }
 
     if (CHECK_FLAG(flags, InfoGetFlag_MEMORY)) {
-        REDISMODULE_DO(ReplyRecorder_AddString(
+        REDISMODULE_ASSERT(ReplyRecorder_AddString(
             &recorder,
             "[MEM]",
             "The flag is not implemented."
@@ -1267,7 +1269,7 @@ static bool _reply_finished_queries(void *user_data, const void *item) {
 
     const CommonQueryInfo info = _CommonQueryInfo_FromFinished(*finished);
 
-    REDISMODULE_DO(_reply_graph_query_info(data->ctx, data->is_compact_mode, info))
+    REDISMODULE_ASSERT(_reply_graph_query_info(data->ctx, data->is_compact_mode, info))
 
     if (++data->actual_elements_count >= data->max_count) {
         return true;
@@ -1307,7 +1309,7 @@ static int _reply_with_queries_info_prev
     return user_data.status;
 }
 
-// Parses and handles the "GRAPH.INFO QUERIES PREV" command.
+// Parses and handles the "GRAPH.INFO QUERIES PREV <count>" command.
 static int _parse_and_reply_info_queries_prev
 (
     RedisModuleCtx *ctx,
@@ -1319,14 +1321,25 @@ static int _parse_and_reply_info_queries_prev
     ASSERT(ctx && argv && argc);
     if (!ctx || !argv || !argc) {
         RedisModule_ReplyWithError(ctx, INVALID_PARAMETERS_MESSAGE);
+        if (actual_element_count) {
+            *actual_element_count = 1;
+        }
         return REDISMODULE_ERR;
     }
 
     // We expect the count as the last argument.
     const char *arg_count = RedisModule_StringPtrLen(argv[argc - 1], NULL);
+    if (arg_count && !isdigit(arg_count[0])) {
+        RedisModule_ReplyWithError(ctx, INVALID_COUNT_PARAMETER_FOR_PREV_MESSAGE);
+        if (actual_element_count) {
+            *actual_element_count = 1;
+        }
+        return REDISMODULE_ERR;
+    }
+
     const long long max_count = MIN(atoll(arg_count), _info_queries_max_count());
     if (max_count > 0) {
-        REDISMODULE_DO(_reply_with_queries_info_prev(
+        REDISMODULE_ASSERT(_reply_with_queries_info_prev(
             ctx,
             is_compact_mode,
             max_count,
@@ -1360,7 +1373,7 @@ static int _reply_with_queries
     }
 
     if (!is_compact_mode) {
-        REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, QUERIES_KEY_NAME));
+        REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, QUERIES_KEY_NAME));
     }
 
     if (*top_level_count) {
@@ -1368,20 +1381,25 @@ static int _reply_with_queries
         ++*top_level_count;
     }
 
-    REDISMODULE_DO(RedisModule_ReplyWithArray(
+    REDISMODULE_ASSERT(RedisModule_ReplyWithArray(
         ctx,
         REDISMODULE_POSTPONED_LEN));
 
     uint64_t actual_element_count = 0;
 
     if (CHECK_FLAG(flags, InfoQueriesFlag_PREV)) {
-        REDISMODULE_DO(_parse_and_reply_info_queries_prev(
+        const int ret = _parse_and_reply_info_queries_prev(
             ctx,
             argv,
             argc,
             is_compact_mode,
             &actual_element_count
-        ));
+        );
+
+        if (ret != REDISMODULE_OK) {
+            RedisModule_ReplySetArrayLength(ctx, actual_element_count);
+            return ret;
+        }
     }
 
     if (CHECK_FLAG(flags, InfoQueriesFlag_CURRENT)) {
@@ -1416,20 +1434,20 @@ static int _info_queries
 
     uint8_t top_level_count = 1;
 
-    REDISMODULE_DO(module_reply_map(
+    REDISMODULE_ASSERT(module_reply_map(
         ctx,
         is_compact_mode,
         REDISMODULE_POSTPONED_LEN));
 
-    REDISMODULE_DO(_reply_with_queries_info_global(ctx, is_compact_mode));
+    REDISMODULE_ASSERT(_reply_with_queries_info_global(ctx, is_compact_mode));
 
-    REDISMODULE_DO(_reply_with_queries(
+    const int ret = _reply_with_queries(
         ctx,
         argv,
         argc,
         is_compact_mode,
         &top_level_count
-    ));
+    );
 
     module_reply_map_set_postponed_length(
         ctx,
@@ -1437,7 +1455,7 @@ static int _info_queries
         top_level_count
     );
 
-    return REDISMODULE_OK;
+    return ret;
 }
 
 // Handles the "GRAPH.INFO GET" subcommand.
