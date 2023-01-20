@@ -334,7 +334,7 @@ static void _ExecuteQuery(void *args) {
 	ExecutionPlan   *plan         =  exec_ctx->plan;
 	ExecutionType   exec_type     =  exec_ctx->exec_type;
 	const bool profile = CHECK_FLAG(query_ctx->flags, QueryExecutionTypeFlag_PROFILE);
-	const bool readonly = CHECK_FLAG(query_ctx->flags, QueryExecutionTypeFlag_READONLY);
+	const bool readonly = !CHECK_FLAG(query_ctx->flags, QueryExecutionTypeFlag_WRITE);
 
 	// if we have migrated to a writer thread,
 	// update thread-local storage and track the CommandCtx
@@ -523,7 +523,7 @@ void _query(bool profile, void *args) {
 	}
 
 	// populate the container struct for invoking _ExecuteQuery.
-	QueryExecutionTypeFlag flags = QueryExecutionTypeFlag_READONLY;
+	QueryExecutionTypeFlag flags = 0;
 	if (!readonly) {
 		flags |= QueryExecutionTypeFlag_WRITE;
 	}
