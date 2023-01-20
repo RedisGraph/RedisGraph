@@ -28,8 +28,6 @@ typedef struct {
 	QueryCtx *query_ctx;      // query context
 	ExecutionCtx *exec_ctx;   // execution context
 	CommandCtx *command_ctx;  // command context
-	bool readonly_query;      // read only query
-	bool profile;             // profile query
 	CronTaskHandle timeout;   // timeout cron task
 } GraphQueryCtx;
 
@@ -39,8 +37,7 @@ static GraphQueryCtx *GraphQueryCtx_New
 	RedisModuleCtx *rm_ctx,
 	ExecutionCtx *exec_ctx,
 	CommandCtx *command_ctx,
-	bool readonly_query,
-	bool profile,
+	QueryExecutionTypeFlag flags,
 	CronTaskHandle timeout
 ) {
 	GraphQueryCtx *ctx = rm_malloc(sizeof(GraphQueryCtx));
@@ -49,9 +46,8 @@ static GraphQueryCtx *GraphQueryCtx_New
 	ctx->exec_ctx        =  exec_ctx;
 	ctx->graph_ctx       =  graph_ctx;
 	ctx->query_ctx       =  QueryCtx_GetQueryCtx();
+	ctx->query_ctx->flags = flags;
 	ctx->command_ctx     =  command_ctx;
-	ctx->readonly_query  =  readonly_query;
-	ctx->profile         =  profile;
 	ctx->timeout         =  timeout;
 
 	return ctx;
@@ -136,16 +132,15 @@ static void _report_query_finished_reporting(const GraphQueryCtx *gq_ctx) {
 
 static void _report_query_finish_state
 (
-	GraphQueryCtx *gq_ctx,
-	const QueryStatisticsFlag flag
+	GraphQueryCtx *gq_ctx
 ) {
-	if (!gq_ctx || !gq_ctx->graph_ctx) {
+	if (!gq_ctx || !gq_ctx->query_ctx || !gq_ctx->graph_ctx) {
 		return;
 	}
 
 	Info *info = &gq_ctx->graph_ctx->info;
 
-	Info_IncrementNumberOfQueries(info, flag);
+	Info_IncrementNumberOfQueries(info, gq_ctx->query_ctx->flags, gq_ctx->query_ctx->status);
 }
 
 static bool _index_operation_delete
@@ -333,15 +328,14 @@ static void _ExecuteQuery(void *args) {
 	QueryCtx        *query_ctx    =  gq_ctx->query_ctx;
 	GraphContext    *gc           =  gq_ctx->graph_ctx;
 	RedisModuleCtx  *rm_ctx       =  gq_ctx->rm_ctx;
-	bool            profile       =  gq_ctx->profile;
-	bool            readonly      =  gq_ctx->readonly_query;
 	ExecutionCtx    *exec_ctx     =  gq_ctx->exec_ctx;
 	CommandCtx      *command_ctx  =  gq_ctx->command_ctx;
 	AST             *ast          =  exec_ctx->ast;
 	ExecutionPlan   *plan         =  exec_ctx->plan;
 	ExecutionType   exec_type     =  exec_ctx->exec_type;
+	const bool profile = CHECK_FLAG(query_ctx->flags, QueryExecutionTypeFlag_PROFILE);
+	const bool readonly = CHECK_FLAG(query_ctx->flags, QueryExecutionTypeFlag_READONLY);
 
-	QueryStatisticsFlag statistics_flag = readonly ? QueryStatisticsFlag_READONLY : QueryStatisticsFlag_WRITE;
 	// if we have migrated to a writer thread,
 	// update thread-local storage and track the CommandCtx
 	if (command_ctx->thread == EXEC_THREAD_WRITER) {
@@ -390,7 +384,7 @@ static void _ExecuteQuery(void *args) {
 		if(profile) {
 			ExecutionPlan_Profile(plan);
 			if (abort_and_check_timeout(gq_ctx, plan)) {
-				statistics_flag |= QueryStatisticsFlag_TIMEOUT;
+				query_ctx->status = QueryExecutionStatus_TIMEDOUT;
 			}
 
 			if(!ErrorCtx_EncounteredError()) {
@@ -402,7 +396,7 @@ static void _ExecuteQuery(void *args) {
 		else {
 			result_set = ExecutionPlan_Execute(plan);
 			if (abort_and_check_timeout(gq_ctx, plan)) {
-				statistics_flag |= QueryStatisticsFlag_TIMEOUT;
+				query_ctx->status = QueryExecutionStatus_TIMEDOUT;
 			}
 		}
 
@@ -420,8 +414,8 @@ static void _ExecuteQuery(void *args) {
 		UndoLog_Rollback(query_ctx->undo_log);
 		// clear resultset statistics, avoiding commnad being replicated
 		ResultSet_Clear(result_set);
-		if (!CHECK_FLAG(statistics_flag, QueryStatisticsFlag_TIMEOUT)) {
-			statistics_flag |= QueryStatisticsFlag_FAIL;
+		if (query_ctx->status != QueryExecutionStatus_TIMEDOUT) {
+			query_ctx->status = QueryExecutionStatus_FAILURE;
 		}
 	}
 
@@ -448,7 +442,7 @@ static void _ExecuteQuery(void *args) {
 				QueryCtx_GetExecutionTime(), NULL);
 
 	// clean up
-	_report_query_finish_state(gq_ctx, statistics_flag);
+	_report_query_finish_state(gq_ctx);
 	ExecutionCtx_Free(exec_ctx);
 	GraphContext_DecreaseRefCount(gc);
 	CommandCtx_Free(command_ctx);
@@ -529,8 +523,15 @@ void _query(bool profile, void *args) {
 	}
 
 	// populate the container struct for invoking _ExecuteQuery.
+	QueryExecutionTypeFlag flags = QueryExecutionTypeFlag_READONLY;
+	if (!readonly) {
+		flags |= QueryExecutionTypeFlag_WRITE;
+	}
+	if (profile) {
+		flags |= QueryExecutionTypeFlag_PROFILE;
+	}
 	GraphQueryCtx *gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, command_ctx,
-											  readonly, profile, timeout_task);
+											  flags, timeout_task);
 	_report_query_already_waiting(gq_ctx);
 
 	// if 'thread' is redis main thread, continue running

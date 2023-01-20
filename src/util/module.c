@@ -21,9 +21,9 @@ int module_reply_map
     }
 
     if (is_compact_mode) {
-        REDISMODULE_DO(RedisModule_ReplyWithArray(ctx, key_value_count));
+        REDISMODULE_ASSERT(RedisModule_ReplyWithArray(ctx, key_value_count));
     } else {
-        REDISMODULE_DO(RedisModule_ReplyWithMap(ctx, key_value_count));
+        REDISMODULE_ASSERT(RedisModule_ReplyWithMap(ctx, key_value_count));
     }
 
     return REDISMODULE_OK;
@@ -65,10 +65,10 @@ int module_reply_key_value_number
     }
 
     if (!is_compact_mode) {
-        REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, key));
+        REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, key));
     }
 
-    REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, value));
+    REDISMODULE_ASSERT(RedisModule_ReplyWithLongLong(ctx, value));
 
     return REDISMODULE_OK;
 }
@@ -93,12 +93,12 @@ int module_reply_key_value_numbers
     }
 
     if (!is_compact_mode) {
-        REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, key));
+        REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, key));
     }
 
-    REDISMODULE_DO(RedisModule_ReplyWithArray(ctx, length));
+    REDISMODULE_ASSERT(RedisModule_ReplyWithArray(ctx, length));
     for (size_t i = 0; i < length; ++i) {
-        REDISMODULE_DO(RedisModule_ReplyWithLongLong(ctx, values[i]));
+        REDISMODULE_ASSERT(RedisModule_ReplyWithLongLong(ctx, values[i]));
     }
 
     return REDISMODULE_OK;
@@ -120,10 +120,10 @@ int module_reply_key_value_string
     }
 
     if (!is_compact_mode) {
-        REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, key));
+        REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, key));
     }
 
-    REDISMODULE_DO(RedisModule_ReplyWithCString(ctx, value));
+    REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, value));
 
     return REDISMODULE_OK;
 }
@@ -143,7 +143,7 @@ int ReplyRecorder_New
     recorder->is_compact_mode = is_compact_mode;
     recorder->element_count = 0;
 
-    REDISMODULE_DO(module_reply_map(
+    REDISMODULE_ASSERT(module_reply_map(
         ctx,
         is_compact_mode,
         REDISMODULE_POSTPONED_LEN
@@ -162,7 +162,7 @@ int ReplyRecorder_AddNumber
     if (!recorder || !recorder->context) {
         return REDISMODULE_ERR;
     }
-    REDISMODULE_DO(module_reply_key_value_number(
+    REDISMODULE_ASSERT(module_reply_key_value_number(
         recorder->context,
         recorder->is_compact_mode,
         key,
@@ -184,7 +184,7 @@ int ReplyRecorder_AddString
     if (!recorder || !recorder->context || !key || !value) {
         return REDISMODULE_ERR;
     }
-    REDISMODULE_DO(module_reply_key_value_string(
+    REDISMODULE_ASSERT(module_reply_key_value_string(
         recorder->context,
         recorder->is_compact_mode,
         key,
@@ -208,7 +208,7 @@ int ReplyRecorder_AddNumbers
         return REDISMODULE_ERR;
     }
 
-    REDISMODULE_DO(module_reply_key_value_numbers(
+    REDISMODULE_ASSERT(module_reply_key_value_numbers(
         recorder->context,
         recorder->is_compact_mode,
         key,
