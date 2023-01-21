@@ -107,19 +107,19 @@ typedef void *(dictDefragAllocFunction)(void *ptr);
 /* ------------------------------- Macros ------------------------------------*/
 #define dictFreeVal(d, entry) do {                     \
     if ((d)->type->valDestructor)                      \
-        (d)->type->valDestructor((d), dictGetVal(entry)); \
+        (d)->type->valDestructor((d), HashTableGetVal(entry)); \
    } while(0)
 
 #define dictFreeKey(d, entry) \
     if ((d)->type->keyDestructor) \
-        (d)->type->keyDestructor((d), dictGetKey(entry))
+        (d)->type->keyDestructor((d), HashTableGetKey(entry))
 
 #define dictCompareKeys(d, key1, key2) \
     (((d)->type->keyCompare) ? \
         (d)->type->keyCompare((d), key1, key2) : \
         (key1) == (key2))
 
-#define dictEntryMetadataSize(d) ((d)->type->dictEntryMetadataBytes     \
+#define HashTableEntryMetadataSize(d) ((d)->type->dictEntryMetadataBytes     \
                                   ? (d)->type->dictEntryMetadataBytes(d) : 0)
 #define dictMetadataSize(d) ((d)->type->dictMetadataBytes               \
                              ? (d)->type->dictMetadataBytes() : 0)
@@ -145,7 +145,8 @@ typedef enum {
 } HashTableResizeEnable;
 
 /* API */
-dict *dictCreate(dictType *type);
+dict *HashTableCreate(dictType *type);
+unsigned long HashTableElemCount(const dict *d);
 int HashTableExpand(dict *d, unsigned long size);
 void *HashTableMetadata(dict *d);
 int HashTableAdd(dict *d, void *key, void *val);
@@ -162,7 +163,7 @@ dictEntry *HashTableFind(dict *d, const void *key);
 void *HashTableFetchValue(dict *d, const void *key);
 int HashTableResize(dict *d);
 void HashTableSetKey(dict *d, dictEntry* de, void *key);
-void dictSetVal(dict *d, dictEntry *de, void *val);
+void HashTableSetVal(dict *d, dictEntry *de, void *val);
 void *HashTableEntryMetadata(dictEntry *de);
 void *HashTableGetKey(const dictEntry *de);
 void *HashTableGetVal(const dictEntry *de);

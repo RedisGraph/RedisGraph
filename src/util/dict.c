@@ -108,7 +108,11 @@ uint64_t HashTableGenCaseHashFunction(const unsigned char *buf, size_t len) {
 /* ----------------------------- API implementation ------------------------- */
 
 /* Reset hash table parameters already initialized with _dictInit()*/
-static void _dictReset(dict *d, int htidx)
+static void _dictReset
+(
+	dict *d,
+	int htidx
+)
 {
     d->ht_table[htidx] = NULL;
     d->ht_size_exp[htidx] = -1;
@@ -116,7 +120,10 @@ static void _dictReset(dict *d, int htidx)
 }
 
 /* Create a new hash table */
-dict *dictCreate(dictType *type)
+dict *HashTableCreate
+(
+	dictType *type
+)
 {
     size_t metasize = type->dictMetadataBytes ? type->dictMetadataBytes() : 0;
     dict *d = malloc(sizeof(*d) + metasize);
@@ -128,9 +135,20 @@ dict *dictCreate(dictType *type)
     return d;
 }
 
+// returns number of elements in hash table
+unsigned long HashTableElemCount
+(
+	const dict *d
+) {
+	return d->ht_used[0] + d->ht_used[1];
+}
+
 /* Initialize the hash table */
-int _dictInit(dict *d, dictType *type)
-{
+int _dictInit
+(
+	dict *d,
+	dictType *type
+) {
     _dictReset(d, 0);
     _dictReset(d, 1);
     d->type = type;
@@ -155,8 +173,13 @@ int HashTableResize(dict *d)
 /* Expand or create the hash table,
  * when malloc_failed is non-NULL, it'll avoid panic if malloc fails (in which case it'll be set to 1).
  * Returns DICT_OK if expand was performed, and DICT_ERR if skipped. */
-int _HashTableExpand(dict *d, unsigned long size, int* malloc_failed)
-{
+int _HashTableExpand
+(
+	dict *d,
+	unsigned long size,
+	int* malloc_failed
+) {
+	//printf("_HashTableExpand size: %lu\n", size);
     if (malloc_failed) *malloc_failed = 0;
 
     /* the size is invalid if it is smaller than the number of
@@ -171,6 +194,7 @@ int _HashTableExpand(dict *d, unsigned long size, int* malloc_failed)
 
     /* Detect overflows */
     size_t newsize = 1ul<<new_ht_size_exp;
+	//printf("_HashTableExpand newsize: %zu\n", newsize);
     if (newsize < size || newsize * sizeof(dictEntry*) < newsize)
         return DICT_ERR;
 
@@ -206,7 +230,11 @@ int _HashTableExpand(dict *d, unsigned long size, int* malloc_failed)
 }
 
 /* return DICT_ERR if expand was not performed */
-int HashTableExpand(dict *d, unsigned long size) {
+int HashTableExpand
+(
+	dict *d,
+	unsigned long size
+) {
     return _HashTableExpand(d, size, NULL);
 }
 
@@ -279,7 +307,7 @@ int HashTableRehash(dict *d, int n) {
     return 1;
 }
 
-long long timeInMilliseconds(void) {
+static long long timeInMilliseconds(void) {
     struct timeval tv;
 
     gettimeofday(&tv,NULL);
@@ -311,7 +339,7 @@ int HashTableRehashMilliseconds(dict *d, int ms) {
  * dictionary so that the hash table automatically migrates from H1 to H2
  * while it is actively used. */
 static void _dictRehashStep(dict *d) {
-    if (d->pauserehash == 0) dictRehash(d,1);
+    if (d->pauserehash == 0) HashTableRehash(d,1);
 }
 
 /* Return a pointer to the metadata section within the dict. */
@@ -320,8 +348,12 @@ void *HashTableMetadata(dict *d) {
 }
 
 /* Add an element to the target hash table */
-int HashTableAdd(dict *d, void *key, void *val)
-{
+int HashTableAdd
+(
+	dict *d,
+	void *key,
+	void *val
+) {
     dictEntry *entry = HashTableAddRaw(d,key,NULL);
 
     if (!entry) return DICT_ERR;
@@ -347,8 +379,12 @@ int HashTableAdd(dict *d, void *key, void *val)
  *
  * If key was added, the hash entry is returned to be manipulated by the caller.
  */
-dictEntry *HashTableAddRaw(dict *d, void *key, dictEntry **existing)
-{
+dictEntry *HashTableAddRaw
+(
+	dict *d,
+	void *key,
+	dictEntry **existing
+) {
     long index;
     dictEntry *entry;
     int htidx;
@@ -500,7 +536,7 @@ void HashTableFreeUnlinkedEntry(dict *d, dictEntry *he) {
 }
 
 /* Destroy an entire dictionary */
-int _dictClear(dict *d, int htidx, void(callback)(dict*)) {
+static int _dictClear(dict *d, int htidx, void(callback)(dict*)) {
     unsigned long i;
 
     /* Free all the elements */
@@ -542,12 +578,16 @@ dictEntry *HashTableFind(dict *d, const void *key)
     if (dictSize(d) == 0) return NULL; /* dict is empty */
     if (dictIsRehashing(d)) _dictRehashStep(d);
     h = dictHashKey(d, key);
+	//printf("HashTableFind hash: %llu\n", h);
     for (table = 0; table <= 1; table++) {
         idx = h & DICTHT_SIZE_MASK(d->ht_size_exp[table]);
         he = d->ht_table[table][idx];
         while(he) {
-            if (key==he->key || dictCompareKeys(d, key, he->key))
+			//printf("key: %llu, he->key: %llu\n", key, he->key);
+            if (key==he->key || dictCompareKeys(d, key, he->key)) {
+				//printf("keys are the same!\n");
                 return he;
+			}
             he = he->next;
         }
         if (!dictIsRehashing(d)) return NULL;
@@ -653,7 +693,7 @@ size_t HashTableEntryMemUsage(void) {
  * the fingerprint again when the iterator is released.
  * If the two fingerprints are different it means that the user of the iterator
  * performed forbidden operations against the dictionary while iterating. */
-unsigned long long dictFingerprint(dict *d) {
+unsigned long long HashTable_Fingerprint(dict *d) {
     unsigned long long integers[6], hash = 0;
     int j;
 
@@ -697,7 +737,7 @@ void HashTableInitIterator(dictIterator *iter, dict *d)
 
 void HashTableInitSafeIterator(dictIterator *iter, dict *d)
 {
-    dictInitIterator(iter, d);
+    HashTableInitIterator(iter, d);
     iter->safe = 1;
 }
 
@@ -707,14 +747,14 @@ void HashTableResetIterator(dictIterator *iter)
         if (iter->safe)
             dictResumeRehashing(iter->d);
         else
-            assert(iter->fingerprint == dictFingerprint(iter->d));
+            assert(iter->fingerprint == HashTable_Fingerprint(iter->d));
     }
 }
 
 dictIterator *HashTableGetIterator(dict *d)
 {
     dictIterator *iter = malloc(sizeof(*iter));
-    dictInitIterator(iter, d);
+    HashTableInitIterator(iter, d);
     return iter;
 }
 
@@ -733,7 +773,7 @@ dictEntry *HashTableNext(dictIterator *iter)
                 if (iter->safe)
                     dictPauseRehashing(iter->d);
                 else
-                    iter->fingerprint = dictFingerprint(iter->d);
+                    iter->fingerprint = HashTable_Fingerprint(iter->d);
             }
             iter->index++;
             if (iter->index >= (long) DICTHT_SIZE(iter->d->ht_size_exp[iter->table])) {
@@ -760,7 +800,7 @@ dictEntry *HashTableNext(dictIterator *iter)
 
 void HashTableReleaseIterator(dictIterator *iter)
 {
-    dictResetIterator(iter);
+    HashTableResetIterator(iter);
     free(iter);
 }
 
@@ -995,8 +1035,10 @@ static int dictTypeExpandAllowed(dict *d) {
 }
 
 /* Expand the hash table if needed */
-static int _HashTableExpandIfNeeded(dict *d)
-{
+static int _HashTableExpandIfNeeded
+(
+	dict *d
+) {
     /* Incremental rehashing already in progress. Return. */
     if (dictIsRehashing(d)) return DICT_OK;
 
@@ -1040,8 +1082,13 @@ static signed char _dictNextExp(unsigned long size)
  *
  * Note that if we are in the process of rehashing the hash table, the
  * index is always returned in the context of the second (new) hash table. */
-static long _dictKeyIndex(dict *d, const void *key, uint64_t hash, dictEntry **existing)
-{
+static long _dictKeyIndex
+(
+	dict *d,
+	const void *key,
+	uint64_t hash,
+	dictEntry **existing
+) {
     unsigned long idx, table;
     dictEntry *he;
     if (existing) *existing = NULL;
@@ -1076,7 +1123,7 @@ void HashTableSetResizeEnabled(HashTableResizeEnable enable) {
     dict_can_resize = enable;
 }
 
-uint64_t dictGetHash(dict *d, const void *key) {
+uint64_t HashTableGetHash(dict *d, const void *key) {
     return dictHashKey(d, key);
 }
 
@@ -1171,11 +1218,11 @@ void HashTableGetStats(char *buf, size_t bufsize, dict *d) {
     char *orig_buf = buf;
     size_t orig_bufsize = bufsize;
 
-    l = HashTabletGetStatsHt(buf,bufsize,d,0);
+    l = _HashTableGetStatsHt(buf,bufsize,d,0);
     buf += l;
     bufsize -= l;
     if (dictIsRehashing(d) && bufsize > 0) {
-        HashTabletGetStatsHt(buf,bufsize,d,1);
+        _HashTableGetStatsHt(buf,bufsize,d,1);
     }
     /* Make sure there is a NULL term at the end. */
     if (orig_bufsize) orig_buf[orig_bufsize-1] = '\0';
