@@ -83,30 +83,48 @@ static const cypher_astnode_t *_AST_parse_result_root
 	return NULL;
 }
 
-// this method extracts the query given parameters values, convert them into
-// constant arithmetic expressions and store them in a map of <name, value>
+// this method extracts the query's parameters values, convert them into
+// constant SIValues and store them in a map of <name, value>
 // in the query context
 static void _AST_Extract_Params
 (
 	const cypher_parse_result_t *parse_result
 ) {
-	// Retrieve the AST root node from a parsed query.
+	// retrieve the AST root node from a parsed query
 	const cypher_astnode_t *statement = _AST_parse_result_root(parse_result);
 	uint noptions = cypher_ast_statement_noptions(statement);
-	if(noptions == 0) return;
+	if(noptions == 0) {
+		return;
+	}
+
 	rax *params = raxNew();
 	for(uint i = 0; i < noptions; i++) {
-		const cypher_astnode_t *option = cypher_ast_statement_get_option(statement, i);
+		const cypher_astnode_t *option =
+			cypher_ast_statement_get_option(statement, i);
 		uint nparams = cypher_ast_cypher_option_nparams(option);
+
 		for(uint j = 0; j < nparams; j++) {
-			const cypher_astnode_t *param = cypher_ast_cypher_option_get_param(option, j);
-			const char *paramName = cypher_ast_string_get_value(cypher_ast_cypher_option_param_get_name(param));
-			const cypher_astnode_t *paramValue = cypher_ast_cypher_option_param_get_value(param);
+			const cypher_astnode_t *param =
+				cypher_ast_cypher_option_get_param(option, j);
+
+			const char *paramName =
+				cypher_ast_string_get_value(
+						cypher_ast_cypher_option_param_get_name(param));
+
+			const cypher_astnode_t *paramValue =
+				cypher_ast_cypher_option_param_get_value(param);
+
 			AR_ExpNode *exp = AR_EXP_FromASTNode(paramValue);
-			raxInsert(params, (unsigned char *) paramName, strlen(paramName), (void *)exp, NULL);
+			SIValue *v = rm_malloc(sizeof(SIValue));
+			SIValue _v = AR_EXP_Evaluate(exp, NULL);
+			*v = SI_CloneValue(_v);
+			raxInsert(params, (unsigned char *)paramName, strlen(paramName),
+					(void *)v, NULL);
+			AR_EXP_Free(exp);
 		}
 	}
-	// Add the parameters map to the QueryCtx.
+
+	// add the parameters map to the QueryCtx
 	QueryCtx_SetParams(params);
 }
 
@@ -329,28 +347,32 @@ AST *AST_Build
 	cypher_parse_result_t *parse_result
 ) {
 	AST *ast = rm_malloc(sizeof(AST));
-	ast->ref_count = rm_malloc(sizeof(uint));
-	ast->free_root = false;
-	ast->params_parse_result = NULL;
+
+	ast->free_root           = false;
+	ast->ref_count           = rm_malloc(sizeof(uint));
+	ast->parse_result        = parse_result;
 	ast->referenced_entities = NULL;
-	ast->parse_result = parse_result;
+	ast->params_parse_result = NULL;
 	ast->anot_ctx_collection = AST_AnnotationCtxCollection_New();
 
 	*(ast->ref_count) = 1;
-	// Retrieve the AST root node from a parsed query.
+
+	// retrieve the AST root node from a parsed query
 	const cypher_astnode_t *statement = _AST_parse_result_root(parse_result);
-	// We are parsing with the CYPHER_PARSE_ONLY_STATEMENTS flag,
+
+	// we are parsing with the CYPHER_PARSE_ONLY_STATEMENTS flag,
 	// and double-checking this in AST validations
 	ASSERT(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
 	ast->root = cypher_ast_statement_get_body(statement);
 
-	// Empty queries should be captured by AST validations
+	// empty queries should be captured by AST validations
 	ASSERT(ast->root);
 
-	// Set thread-local AST.
+	// set thread-local AST
 	QueryCtx_SetAST(ast);
 
-	// Augment the AST with annotations for naming entities and populating WITH/RETURN * projections.
+	// augment the AST with annotations for naming entities
+	// and populating WITH/RETURN * projections
 	AST_Enrich(ast);
 
 	return ast;
@@ -363,11 +385,14 @@ AST *AST_NewSegment
 	uint end_offset
 ) {
 	AST *ast = rm_malloc(sizeof(AST));
-	ast->anot_ctx_collection = master_ast->anot_ctx_collection;
-	ast->free_root = true;
-	ast->ref_count = rm_malloc(sizeof(uint));
-	ast->parse_result = NULL;
+
+	ast->free_root           = true;
+	ast->ref_count           = rm_malloc(sizeof(uint));
+	ast->parse_result        = NULL;
 	ast->params_parse_result = NULL;
+	ast->referenced_entities = NULL;
+	ast->anot_ctx_collection = master_ast->anot_ctx_collection;
+
 	uint n = end_offset - start_offset;
 
 	*(ast->ref_count) = 1;
@@ -407,7 +432,7 @@ void AST_SetParamsParseResult
 	AST *ast,
 	cypher_parse_result_t *params_parse_result
 ) {
-	// When setting this value in AST, the ast should no hold invalid pointers or leftovers from previous executions.
+	// setting parameters within an AST should only occur once
 	ASSERT(ast->params_parse_result == NULL);
 	ast->params_parse_result = params_parse_result;
 }
@@ -420,7 +445,6 @@ AST *AST_ShallowCopy
 	size_t ast_size = sizeof(AST);
 	AST *shallow_copy = rm_malloc(ast_size);
 	memcpy(shallow_copy, orig, ast_size);
-	shallow_copy->params_parse_result = NULL;
 	return shallow_copy;
 }
 
@@ -633,41 +657,6 @@ const char *AST_ToString
 	return str;
 }
 
-void AST_Free
-(
-	AST *ast
-) {
-	if(ast == NULL) return;
-
-	int ref_count = AST_DecRefCount(ast);
-
-	// free and nullify parameters parse result if needed
-	// after execution, as they are only save for the execution lifetime
-	if(ast->params_parse_result) {
-		parse_result_free(ast->params_parse_result);
-	}
-
-	// check if the ast has additional copies
-	if(ref_count == 0) {
-		// no valid references, the struct can be disposed completely
-		if(ast->free_root) {
-			// this is a generated AST, free its root node
-			cypher_astnode_free((cypher_astnode_t *) ast->root);
-		} else {
-			// this is the master AST
-			// free the annotation contexts that have been constructed
-			AST_AnnotationCtxCollection_Free(ast->anot_ctx_collection);
-			parse_result_free(ast->parse_result);
-		}
-
-		if(ast->referenced_entities) raxFree(ast->referenced_entities);
-
-		rm_free(ast->ref_count);
-	}
-
-	rm_free(ast);
-}
-
 cypher_parse_result_t *parse_query
 (
 	const char *query  // query to parse
@@ -735,16 +724,33 @@ cypher_parse_result_t *parse_params
 	const char *query,
 	const char **query_body
 ) {
+	ASSERT(query != NULL);
+	ASSERT(query_body != NULL);
+
 	FILE *f = fmemopen((char *)query, strlen(query), "r");
-	cypher_parse_result_t *result = cypher_fparse(f, NULL, NULL, CYPHER_PARSE_ONLY_PARAMETERS);
+	cypher_parse_result_t *result = cypher_fparse(f, NULL, NULL,
+			CYPHER_PARSE_ONLY_PARAMETERS);
 	fclose(f);
-	if(!result) return NULL;
+
+	if(!result) {
+		return NULL;
+	}
+
 	if(AST_Validate_QueryParams(result) != AST_VALID) {
 		parse_result_free(result);
 		return NULL;
 	}
+
 	_AST_Extract_Params(result);
-	if(query_body) *query_body = _AST_ExtractQueryString(result);
+
+	// see if we've encountered an error while evaluating parameter value
+	if(ErrorCtx_EncounteredError()) {
+		parse_result_free(result);
+		return NULL;
+	}
+
+	*query_body = _AST_ExtractQueryString(result);
+
 	return result;
 }
 
@@ -752,5 +758,43 @@ void parse_result_free
 (
 	cypher_parse_result_t *parse_result
 ) {
-	if(parse_result) cypher_parse_result_free(parse_result);
+	if(parse_result != NULL) {
+		cypher_parse_result_free(parse_result);
+	}
 }
+
+void AST_Free
+(
+	AST *ast
+) {
+	if(ast == NULL) return;
+
+	int ref_count = AST_DecRefCount(ast);
+
+	// check if the ast has additional copies
+	if(ref_count == 0) {
+		// free and nullify parameters parse result if needed
+		// after execution, as they are only save for the execution lifetime
+		if(ast->params_parse_result != NULL) {
+			parse_result_free(ast->params_parse_result);
+		}
+
+		// no valid references, the struct can be disposed completely
+		if(ast->free_root) {
+			// this is a generated AST, free its root node
+			cypher_astnode_free((cypher_astnode_t *) ast->root);
+		} else {
+			// this is the master AST
+			// free the annotation contexts that have been constructed
+			AST_AnnotationCtxCollection_Free(ast->anot_ctx_collection);
+			parse_result_free(ast->parse_result);
+		}
+
+		if(ast->referenced_entities) raxFree(ast->referenced_entities);
+
+		rm_free(ast->ref_count);
+	}
+
+	rm_free(ast);
+}
+
