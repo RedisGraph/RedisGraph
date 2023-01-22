@@ -8,7 +8,6 @@
 #include "op_argument_list.h"
 
 // forward declarations
-static void ArgumentListFree(OpBase *opBase);
 static Record ArgumentListConsume(OpBase *opBase);
 static OpResult ArgumentListReset(OpBase *opBase);
 static OpBase *ArgumentListClone(const ExecutionPlan *plan, const OpBase *opBase);
@@ -25,7 +24,7 @@ OpBase *NewArgumentListOp
 	// set our Op operations
 	OpBase_Init((OpBase *)op, OPType_ARGUMENT_LIST, "Argument List", NULL,
 			ArgumentListConsume, ArgumentListReset, NULL, ArgumentListClone,
-			ArgumentListFree, false, plan);
+			NULL, false, plan);
 
 	return (OpBase *)op;
 }
@@ -53,9 +52,7 @@ static Record ArgumentListConsume
 		return op->records[op->rec_idx++];
 	}
 
-	// depleted! return NULL
-	op->records = NULL;
-
+	// depleted!
     return NULL;
 }
 
@@ -67,6 +64,7 @@ static OpResult ArgumentListReset
 	ArgumentList *op = (ArgumentList *)opBase;
 
 	op->records = NULL;
+	op->rec_len = 0;
 	op->rec_idx = 0;
 
 	return OP_OK;
@@ -79,13 +77,4 @@ static inline OpBase *ArgumentListClone
 ) {
 	ASSERT(opBase->type == OPType_ARGUMENT_LIST);
 	return NewArgumentListOp(plan);
-}
-
-static void ArgumentListFree
-(
-	OpBase *opBase
-) {
-	ArgumentList *op = (ArgumentList *)opBase;
-
-	op->records = NULL;
 }
