@@ -1,3 +1,4 @@
+import asyncio
 from common import *
 from index_utils import *
 
@@ -5,9 +6,7 @@ redis_con = None
 
 CACHE_SIZE = 16
 
-
-class testCache(FlowTestsBase):
-
+class testCache():
     def __init__(self):
         # Have only one thread handling queries
         self.env = Env(decodeResponses=True, moduleArgs='THREAD_COUNT 8 CACHE_SIZE {CACHE_SIZE}'.format(CACHE_SIZE = CACHE_SIZE))
@@ -24,13 +23,13 @@ class testCache(FlowTestsBase):
         self.env.assertEqual(uncached_plan, cached_plan)
         plan_graph.delete()
 
-    def test_sanity_check(self):
+    def test_01_sanity_check(self):
         graph = Graph(redis_con, 'Cache_Sanity_Check')
         for i in range(CACHE_SIZE + 1):
             result = graph.query("MATCH (n) WHERE n.value = {val} RETURN n".format(val=i))
             self.env.assertFalse(result.cached_execution)
         
-        for i in range(1,CACHE_SIZE + 1):
+        for i in range(1, CACHE_SIZE + 1):
             result = graph.query("MATCH (n) WHERE n.value = {val} RETURN n".format(val=i))
             self.env.assertTrue(result.cached_execution)
         
@@ -39,7 +38,7 @@ class testCache(FlowTestsBase):
 
         graph.delete()
 
-    def test01_test_create(self):
+    def test_02_test_create(self):
         # Both queries do exactly the same operations
         graph = Graph(redis_con, 'Cache_Test_Create')
         query = "CREATE ()"
@@ -51,7 +50,7 @@ class testCache(FlowTestsBase):
         self.env.assertEqual(uncached_result.nodes_created, cached_result.nodes_created)
         graph.delete()
         
-    def test02_test_create_with_params(self):
+    def test_03_test_create_with_params(self):
         # Both queries do exactly the same operations
         graph = Graph(redis_con, 'Cache_Test_Create_With_Params')
         params = {'val' : 1}
@@ -65,7 +64,7 @@ class testCache(FlowTestsBase):
         self.env.assertEqual(uncached_result.nodes_created, cached_result.nodes_created)
         graph.delete()
 
-    def test03_test_delete(self):
+    def test_04_test_delete(self):
         # Both queries do exactly the same operations
         graph = Graph(redis_con, 'Cache_Test_Delete')
         for i in range(2):
@@ -85,7 +84,7 @@ class testCache(FlowTestsBase):
         self.env.assertEqual(uncached_result.nodes_deleted, cached_result.nodes_deleted)
         graph.delete()
 
-    def test04_test_merge(self):
+    def test_05_test_merge(self):
         # Different outcome, same execution plan.
         graph = Graph(redis_con, 'Cache_Test_Merge')    
         params = {'create_val': 0, 'match_val':1}
@@ -103,7 +102,7 @@ class testCache(FlowTestsBase):
 
         graph.delete()
 
-    def test05_test_branching_with_path_filter(self):
+    def test_06_test_branching_with_path_filter(self):
         # Different outcome, same execution plan.
         graph = Graph(redis_con, 'Cache_Test_Path_Filter') 
         query = "CREATE ({val:1})-[:R]->({val:2})-[:R2]->({val:3})"
@@ -121,7 +120,7 @@ class testCache(FlowTestsBase):
         graph.delete()
 
 
-    def test06_test_optimizations_index(self):
+    def test_07_test_optimizations_index(self):
         graph = Graph(redis_con, 'Cache_Test_Index')
         create_node_exact_match_index(graph, 'N', 'val', sync=True)
         query = "CREATE (:N{val:1}), (:N{val:2})"
@@ -139,7 +138,7 @@ class testCache(FlowTestsBase):
         graph.delete()
 
 
-    def test07_test_optimizations_id_scan(self):
+    def test_08_test_optimizations_id_scan(self):
         graph = Graph(redis_con, 'Cache_Test_ID_Scan')
         query = "CREATE (), ()"
         graph.query(query)
@@ -156,7 +155,7 @@ class testCache(FlowTestsBase):
         graph.delete()
 
 
-    def test08_test_join(self):
+    def test_09_test_join(self):
         graph = Graph(redis_con, 'Cache_Test_Join')
         query = "CREATE ({val:1}), ({val:2}), ({val:3}),({val:4})"
         graph.query(query)
@@ -172,7 +171,7 @@ class testCache(FlowTestsBase):
         self.env.assertEqual([[3, 4]], cached_result.result_set)
         graph.delete()
 
-    def test09_test_edge_merge(self):
+    def test_10_test_edge_merge(self):
         # In this scenario, the same query is executed twice.
         # In the first time, the relationship `leads` is unknown to the graph so it is created.
         # In the second time the relationship should be known to the graph, so it will be returned by the match.
@@ -188,7 +187,7 @@ class testCache(FlowTestsBase):
         self.env.assertEqual(0, cached_result.relationships_created)
         self.env.assertEqual(uncached_result.result_set, cached_result.result_set)
 
-    def test10_test_labelscan_update(self):
+    def test_11_test_labelscan_update(self):
         # In this scenario a label scan is made for non existing label
         # than the label is created and the label scan query is re-used.
         graph = Graph(redis_con, 'Cache_test_labelscan_update')
@@ -203,7 +202,7 @@ class testCache(FlowTestsBase):
         self.env.assertEqual(1, len(result.result_set))
         self.env.assertEqual("Label", result.result_set[0][0].label)
 
-    def test11_test_index_scan_update(self):
+    def test_12_test_index_scan_update(self):
         # In this scenario a label scan and Update op are made for non-existent label,
         # then the label is created and an index are subsequently created.
         # When the cached query is reused, it should rely on valid label data.
@@ -224,7 +223,7 @@ class testCache(FlowTestsBase):
         self.env.assertEqual(0, result.nodes_created)
         self.env.assertEqual(1, result.properties_set)
 
-    def test12_test_skip_limit(self):
+    def test_13_test_skip_limit(self):
         # Test using parameters for skip and limit values,
         # ensuring cached executions always use the parameterized values.
         graph = Graph(redis_con, 'Cache_Empty_Key')
@@ -245,3 +244,45 @@ class testCache(FlowTestsBase):
         cached_result = graph.query(query, params)
         self.env.assertEqual(expected_result, cached_result.result_set)
         self.env.assertTrue(cached_result.cached_execution)
+
+    def test_14_cache_eviction(self):
+        # this tests spawns a new graph env` with a query-cache with just
+        # a single slot, then multiple clients are issuing a similar query
+        # only with a small variation to cause a cache miss which implies
+        # cache eviction of the only solt
+        # we want to make sure the execution of a recently evicted query
+        # runs to completion successfuly
+
+        # skip if 'to_thread' is missing or if test under valgrind
+        if VALGRIND or "to_thread" not in dir(asyncio):
+            self.env.skip()
+
+        # stop previous env
+        self.env.stop()
+
+        self.env = Env(decodeResponses=True, moduleArgs='THREAD_COUNT 8 CACHE_SIZE 1')
+
+        # eviction
+        con = self.env.getConnection()
+        graph = Graph(con, 'cache_eviction')
+
+        # populate graph
+        graph.query("UNWIND range(0, 10000) as x CREATE ({v:'/'})")
+
+        # _run_query is expected to be issued by multiple threads
+        def _run_query(i):
+            #random param name
+            param_name = 'p_' + str(i)
+            q = f"MATCH (n) WHERE n.v = ${param_name} RETURN count(n)"
+            params = {param_name : '/'}
+            g = Graph(self.env.getConnection(), 'cache_eviction')
+            count = g.query(q, params).result_set[0][0]
+            self.env.assertEqual(count, 10001)
+
+        tasks = []
+        loop = asyncio.get_event_loop()
+        for i in range(1, 50):
+            tasks.append(loop.create_task(asyncio.to_thread(_run_query, i)))
+
+        loop.run_until_complete(asyncio.wait(tasks))
+
