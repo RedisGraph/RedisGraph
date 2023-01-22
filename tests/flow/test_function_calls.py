@@ -2395,6 +2395,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             """MATCH (a:A) RETURN outdegree(a, [1.4])""",       # float
             """MATCH (a:A) RETURN outdegree(a, 'R', 1)""",      # integer after string
             """MATCH (a:A) RETURN outdegree(a, ['R', 1])""",    # integer element in list
+            """MATCH (a:A) RETURN outdegree(a, 'R', ['R'])""",  # wrong signature: string and list
             ]
         for query in queries:
             try:
