@@ -2408,6 +2408,10 @@ class testFunctionCallsFlow(FlowTestsBase):
         queries = [
             """MATCH (a:A) RETURN outdegree()""",
             """MATCH (a:A) RETURN outdegree(a, ['R'], 'a')""",
+            """MATCH (a:A) RETURN outdegree(a, ['R'], ['R'])""",
+            """MATCH (b:B) RETURN indegree()""",
+            """MATCH (b:B) RETURN indegree(b, ['R'], 'a')""",
+            """MATCH (b:B) RETURN indegree(b, ['R'], ['R'])""",
             ]
         for query in queries:
             try:
