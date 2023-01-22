@@ -167,13 +167,15 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 	return SI_TransferStringVal(substring);
 }
 
-// Given a list of strings and an optional delimiter,
-// return a concatenation of all the strings using the given delimiter.
-// string.join(list, delimiter = '') → string
+// given a list of strings and an optional delimiter,
+// return a concatenation of all the strings using the given delimiter
+//  string.join(list, delimiter = '') → string
 SIValue AR_JOIN(SIValue *argv, int argc, void *private_data) {
 	ASSERT(argc == 1 || argc == 2);
 	SIValue list = argv[0];
-	if(SI_TYPE(list) == T_NULL) return SI_NullVal();
+	if(SI_TYPE(list) == T_NULL) {
+		return SI_NullVal();
+	}
 	ASSERT(SI_TYPE(list) == T_ARRAY);
 
 	char *delimiter = "";
@@ -192,7 +194,10 @@ SIValue AR_JOIN(SIValue *argv, int argc, void *private_data) {
 
 	// concatenate the first string in the list.
 	SIValue str = SIArray_Get(list, 0);
-	if(SI_TYPE(str) != T_STRING) goto err;
+	if(SI_TYPE(str) != T_STRING) {
+		goto err;
+	}
+
 	size_t str_len = strlen(str.stringval);
 	res = rm_malloc((str_len + 1)*sizeof(char));
 	memcpy(res, str.stringval, (str_len+1)*sizeof(char));
@@ -202,7 +207,10 @@ SIValue AR_JOIN(SIValue *argv, int argc, void *private_data) {
 	// concatenate all the rest of the strings in the list.
 	for(uint i = 1; i < arrayLen; i++) {
 		str = SIArray_Get(list, i);
-		if(SI_TYPE(str) != T_STRING) goto err;
+		if(SI_TYPE(str) != T_STRING) {
+			goto err;
+		}
+
 		str_len = strlen(str.stringval);
 		res = rm_realloc(res, (cur_len + delimeter_len + str_len + 1)*sizeof(char));
 		memcpy(res + cur_len, delimiter, delimeter_len*sizeof(char));
@@ -221,9 +229,7 @@ err:
 	return SI_NullVal();
 }
 
-// Given a list of strings and an optional delimiter,
-// return a concatenation of all the strings using the given delimiter.
-// string.join(list, delimiter = '') → string
+// ---
 SIValue AR_MATCHREGEX(SIValue *argv, int argc, void *private_data) {
 	ASSERT(argc == 2);
 	SIValue list = SIArray_New(0);
@@ -235,7 +241,6 @@ SIValue AR_MATCHREGEX(SIValue *argv, int argc, void *private_data) {
 
 	return list;
 }
-
 
 // returns the original string in lowercase.
 SIValue AR_TOLOWER(SIValue *argv, int argc, void *private_data) {

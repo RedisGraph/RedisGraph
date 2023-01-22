@@ -191,20 +191,19 @@ SIValue AR_TOSTRINGLIST(SIValue *argv, int argc, void *private_data) {
 	return array;
 }
 
-/* Normalize index.
-   Returns true if in range, false otherwise.
-   Idx is 0-based when non-negative, or from the end of the list when negative.
-*/
+// Normalize index.
+//    returns true if in range, false otherwise
+//    idx is 0-based when non-negative, or from the end of the list when negative
 static inline bool normalize_index(int32_t *index, uint32_t arrayLen, bool bounds_inclusive) {
-	// given a negativ index, the accses is calculated as arrayLen+index
+	// given a negative index, the access is calculated as arrayLen+index
 	uint32_t absIndex = abs(*index);
 	if(bounds_inclusive) {
-		// index range can be [-arrayLen - 1, arrayLen] (both bounds inclusive)
+		// index range can be [-arrayLen - 1, arrayLen]
 		// this is because 0 = (arrayLen+1)+(-arrayLen-1)
 		if((*index < 0 && absIndex > arrayLen+1) || (*index >= 0 && absIndex > arrayLen)) return false;
 		arrayLen += 1; // for the index normalization calculation to be correct when index is negative
 	} else {
-		// index range can be [-arrayLen, arrayLen) (lower bound inclusive, upper exclusive)
+		// index range can be [-arrayLen, arrayLen)
 		// this is because 0 = arrayLen+(-arrayLen)
 		if((*index < 0 && absIndex > arrayLen) || (*index > 0 && absIndex >= arrayLen)) return false;
 	}
@@ -212,13 +211,13 @@ static inline bool normalize_index(int32_t *index, uint32_t arrayLen, bool bound
 	return true;
 }
 
-/* If given an array, returns a value in a specific index in an array.
-   Valid index range is [-arrayLen, arrayLen).
-   Invalid index will return null.
-   "RETURN [1, 2, 3][0]" will yield 1.
+// If given an array, returns a value in a specific index in an array.
+//    Valid index range is [-arrayLen, arrayLen).
+//    Invalid index will return null.
+//    "RETURN [1, 2, 3][0]" will yield 1.
 
-   If given a map or graph entity, returns the property value associated
-   with the given key string. */
+//    If given a map or graph entity, returns the property value associated
+//    with the given key string.
 SIValue AR_SUBSCRIPT(SIValue *argv, int argc, void *private_data) {
 	ASSERT(argc == 2);
 	if(SI_TYPE(argv[0]) == T_NULL || SI_TYPE(argv[1]) == T_NULL) return SI_NullVal();
@@ -417,19 +416,22 @@ SIValue AR_TAIL(SIValue *argv, int argc, void *private_data) {
 	return array;
 }
 
-/*  Given a list, return a list after removing a given number of consecutive elements 
-	(or less, if the end of the list has been reached). starting at a given index.
-	list.remove(list, idx, count = 1) → list
-	"RETURN remove([1,2,3], 2, 2)" returns [1]
- */
+// given a list, return the list received after removing a given number of
+// consecutive elements or less, if the end of the list has been reached)
+// starting at a given index.
+//  list.remove(list, idx, count = 1) → list
+//  "RETURN remove([1,2,3], 2, 2)" returns [1]
 SIValue AR_REMOVE(SIValue *argv, int argc, void *private_data) {
 	ASSERT(argc == 2 || argc == 3);
 	SIValue list = argv[0];
-	if(SI_TYPE(list) == T_NULL) return SI_NullVal();
+	if(SI_TYPE(list) == T_NULL) {
+		return SI_NullVal();
+	}
 	ASSERT(SI_TYPE(list) == T_ARRAY);
 
 	if(SI_TYPE(argv[1]) != T_INT64) {
 		// index should be integer.
+		// TODO: remove this, there is an assertion already in argument type-check.
 		Error_SITypeMismatch(argv[1], T_INT64);
 		return SI_NullVal();
 	}
@@ -440,6 +442,7 @@ SIValue AR_REMOVE(SIValue *argv, int argc, void *private_data) {
 	if(argc == 3) {
 		if(SI_TYPE(argv[2]) != T_INT64) {
 			// count should be integer.
+			// TODO: remove this, there is an assertion already in argument type-check.
 			Error_SITypeMismatch(argv[2], T_INT64);
 			return SI_NullVal();
 		}
@@ -468,15 +471,16 @@ SIValue AR_REMOVE(SIValue *argv, int argc, void *private_data) {
 	return array;
 }
 
-/*  Given a list, return a list with similar elements,
-    but sorted (inversely-sorted if ascending is evaluated to FALSE).
-	list.sort(list, ascending = TRUE) → list
-	"RETURN sort([1,3,2], TRUE)" returns [1,2,3]
- */
+// Given a list, return a list with similar elements,
+//     but sorted (inversely-sorted if ascending is evaluated to FALSE).
+// 	list.sort(list, ascending = TRUE) → list
+// 	"RETURN sort([1,3,2], TRUE)" returns [1,2,3]
 SIValue AR_SORT(SIValue *argv, int argc, void *private_data) {
 	ASSERT(argc == 1 || argc == 2);
 	SIValue list = argv[0];
-	if(SI_TYPE(list) == T_NULL) return SI_NullVal();
+	if(SI_TYPE(list) == T_NULL) {
+		return SI_NullVal();
+	}
 	ASSERT(SI_TYPE(list) == T_ARRAY);
 
 	bool ascending = true;
@@ -490,12 +494,7 @@ SIValue AR_SORT(SIValue *argv, int argc, void *private_data) {
 		ascending = (bool)argv[1].longval;
 	}
 
-	uint32_t arrayLen = SIArray_Length(list);
-	SIValue array = SI_Array(arrayLen);
-
-	for(uint i = 0; i < arrayLen; i++) {
-		SIArray_Append(&array, SIArray_Get(list, i));
-	}
+	SIValue array = SIArray_Clone(list);
 
 	// sort array
 	SIArray_Sort(array, ascending);
@@ -503,14 +502,15 @@ SIValue AR_SORT(SIValue *argv, int argc, void *private_data) {
 	return array;
 }
 
-/*  Given a list, return a list after inserting a given value at a given index.
-    idx is 0-based when non-negative, or from the end of the list when negative.
-	list.insert(list, idx, val, dups = TRUE) → list
- */
+// given a list, return a list after inserting a given value at a given index
+//  idx is 0-based when non-negative, or from the end of the list when negative
+//  list.insert(list, idx, val, dups = TRUE) → list
 SIValue AR_INSERT(SIValue *argv, int argc, void *private_data) {
 	ASSERT(argc == 3 || argc == 4);
 	SIValue list = argv[0];
-	if(SI_TYPE(list) == T_NULL) return SI_NullVal();
+	if(SI_TYPE(list) == T_NULL) {
+		return SI_NullVal();
+	}
 	ASSERT(SI_TYPE(list) == T_ARRAY);
 
 	ASSERT(SI_TYPE(argv[1]) == T_INT64);
@@ -522,7 +522,9 @@ SIValue AR_INSERT(SIValue *argv, int argc, void *private_data) {
 	}
 
 	SIValue val = argv[2];
-	if(SI_TYPE(val) == T_NULL) return SIArray_Clone(list);
+	if(SI_TYPE(val) == T_NULL) {
+		return SIArray_Clone(list);
+	}
 
 	bool dups = true;
 	if(argc == 4) {
@@ -558,17 +560,21 @@ SIValue AR_INSERT(SIValue *argv, int argc, void *private_data) {
 	return array;
 }
 
-/*  Given a list, return a list after inserting the elements of a second list at a given index.
-    idx is 0-based when non-negative, or from the end of the list when negative.
-	list.insertListElements(list, list2, idx, dups = TRUE) → list
- */
+// given a list, return a list after inserting the elements of a second list
+// from a given index. idx is 0-based when non-negative, or from the end of the
+// list when negative
+//  list.insertListElements(list, list2, idx, dups = TRUE) → list
 SIValue AR_INSERTLISTELEMENTS(SIValue *argv, int argc, void *private_data) {
 	ASSERT(argc == 3 || argc == 4);
 	SIValue list = argv[0];
-	if(SI_TYPE(list) == T_NULL) return SI_NullVal();
+	if(SI_TYPE(list) == T_NULL) {
+		return SI_NullVal();
+	}
 	ASSERT(SI_TYPE(list) == T_ARRAY);
 	SIValue list2 = argv[1];
-	if(SI_TYPE(list2) == T_NULL) return SIArray_Clone(list);
+	if(SI_TYPE(list2) == T_NULL) {
+		return SIArray_Clone(list);
+	}
 	ASSERT(SI_TYPE(list2) == T_ARRAY);
 
 	ASSERT(SI_TYPE(argv[2]) == T_INT64);
