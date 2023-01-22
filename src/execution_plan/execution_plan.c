@@ -229,7 +229,8 @@ static ExecutionPlan *_tie_segments
 		// for instance: FOREACH(i in [i] | CREATE (n:N))
 		// in any other case, there must be a tap
 		ASSERT((array_len(taps) > 0) ||
-		   (segment_count == 1 && strcmp(segment->root->name, "Foreach") == 0));
+		   (segment_count == 1 &&
+			(OpBase_Type(segment->root) == OPType_FOREACH)));
 
 		connecting_op = taps[0];
 		array_free(taps);

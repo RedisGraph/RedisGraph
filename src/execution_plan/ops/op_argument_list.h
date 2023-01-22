@@ -21,8 +21,7 @@ typedef struct {
 
 OpBase *NewArgumentListOp
 (
-	const ExecutionPlan *plan,  // plan to bind the operation to
-	const char **variables      // bound variables
+	const ExecutionPlan *plan
 );
 
 void ArgumentList_AddRecordList

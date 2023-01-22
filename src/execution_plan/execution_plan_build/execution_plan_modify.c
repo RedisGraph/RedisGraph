@@ -357,15 +357,23 @@ void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers) {
 	}
 }
 
-void ExecutionPlan_BindPlanToOps(ExecutionPlan *plan, OpBase *root) {
+void ExecutionPlan_BindPlanToOps
+(
+	ExecutionPlan *plan,  // plan to bind the operations to
+	OpBase *root,         // root operation
+	bool qg               // whether to merge QueryGraphs or not
+) {
 	if(!root) return;
-	// If the temporary execution plan has added new QueryGraph entities,
-	// migrate them to the master plan's QueryGraph.
-	QueryGraph_MergeGraphs(plan->query_graph, root->plan->query_graph);
+
+	if(qg) {
+		// If the temporary execution plan has added new QueryGraph entities,
+		// migrate them to the master plan's QueryGraph.
+		QueryGraph_MergeGraphs(plan->query_graph, root->plan->query_graph);
+	}
 
 	root->plan = plan;
 	for(int i = 0; i < root->childCount; i ++) {
-		ExecutionPlan_BindPlanToOps(plan, root->children[i]);
+		ExecutionPlan_BindPlanToOps(plan, root->children[i], qg);
 	}
 }
 
@@ -410,7 +418,7 @@ OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_v
 
 	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
 	OpBase *match_stream_root = match_stream_plan->root;
-	ExecutionPlan_BindPlanToOps(plan, match_stream_root);
+	ExecutionPlan_BindPlanToOps(plan, match_stream_root, true);
 
 	// NULL-set variables shared between the match_stream_plan and the overall plan.
 	match_stream_plan->root = NULL;

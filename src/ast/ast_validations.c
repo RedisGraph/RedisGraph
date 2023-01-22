@@ -1367,6 +1367,7 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 			   child_clause_type != CYPHER_AST_FOREACH
 			) {
 				ErrorCtx_SetError("Error: Only updating clauses may reside in FOREACH");
+				break;
 			}
 
 			// visit the clause

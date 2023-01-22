@@ -15,8 +15,7 @@ static OpBase *ArgumentListClone(const ExecutionPlan *plan, const OpBase *opBase
 
 OpBase *NewArgumentListOp
 (
-	const ExecutionPlan *plan,  // plan to bind the operation to
-	const char **variables      // bound variables
+	const ExecutionPlan *plan
 ) {
 	ArgumentList *op = rm_malloc(sizeof(ArgumentList));
 	op->rec_len = 0;
@@ -27,12 +26,6 @@ OpBase *NewArgumentListOp
 	OpBase_Init((OpBase *)op, OPType_ARGUMENT_LIST, "Argument List", NULL,
 			ArgumentListConsume, ArgumentListReset, NULL, ArgumentListClone,
 			ArgumentListFree, false, plan);
-
-	// TODO: - is this needed?
-	uint variable_count = array_len(variables);
-	for(uint i = 0; i < variable_count; i ++) {
-		OpBase_Modifies((OpBase *)op, variables[i]);
-	}
 
 	return (OpBase *)op;
 }
@@ -85,7 +78,7 @@ static inline OpBase *ArgumentListClone
 	const OpBase *opBase
 ) {
 	ASSERT(opBase->type == OPType_ARGUMENT_LIST);
-	return NewArgumentListOp(plan, opBase->modifies);
+	return NewArgumentListOp(plan);
 }
 
 static void ArgumentListFree

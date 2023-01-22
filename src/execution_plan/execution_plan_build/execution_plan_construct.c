@@ -209,31 +209,19 @@ static void _buildForeachOp
 	// make an execution-plan mocking the current one, in which the execution-
 	// plan of Foreach will be built
 	ExecutionPlan *embedded_plan = ExecutionPlan_NewEmptyExecutionPlan();
-	embedded_plan->record_map           = plan->record_map;
+	// use a clone record-map, to not pollute the main one (different scope)
+	embedded_plan->record_map           = raxClone(plan->record_map);
 	embedded_plan->ast_segment          = plan->ast_segment;
-	embedded_plan->query_graph          = plan->query_graph;
+	// use a clone QueryGraph, to not pollute the main one (different scope)
+	embedded_plan->query_graph          = QueryGraph_Clone(plan->query_graph);
 	embedded_plan->record_pool          = plan->record_pool;
 	embedded_plan->connected_components = plan->connected_components;
-
-	// build the argumentList operation
-	// find the bound vars
-	const char **arguments = NULL;
-	rax *bound_vars = raxNew();
-	// rather than cloning the record map
-	// collect the bound variables along with their
-	// parser-generated constant strings
-	ExecutionPlan_BoundVariables(plan->root, bound_vars);
-	// collect the variable names from bound_vars to populate
-	// the ArgumentList ops we will build
-	arguments = (const char **)raxValues(bound_vars);
-	raxFree(bound_vars);
 
 	//--------------------------------------------------------------------------
 	// build ArgumentList op
 	//--------------------------------------------------------------------------
 
-	OpBase *argument_list = NewArgumentListOp(embedded_plan, arguments);
-	array_free(arguments);
+	OpBase *argument_list = NewArgumentListOp(embedded_plan);
 	ExecutionPlan_UpdateRoot(embedded_plan, argument_list);
 
 	//--------------------------------------------------------------------------
@@ -259,17 +247,16 @@ static void _buildForeachOp
 		ExecutionPlanSegment_ConvertClause(gc, ast, embedded_plan, sub_clause);
 	}
 
-	// bind the operations of the new plan to the old plan
-	ExecutionPlan_BindPlanToOps(plan, embedded_plan->root);
+	// bind the operations of the new plan to the old plan, without merging qgs
+	ExecutionPlan_BindPlanToOps(plan, embedded_plan->root, false);
 
 	// connect foreach op to its child operation
 	ExecutionPlan_AddOp(foreach, embedded_plan->root);
 
-	// free the temporary plan
+	// free the temporary plan after disconnecting the shared components with
+	// the main plan
 	embedded_plan->root                 = NULL;
-	embedded_plan->record_map           = NULL;
 	embedded_plan->ast_segment          = NULL;
-	embedded_plan->query_graph          = NULL;
 	embedded_plan->record_pool          = NULL;
 	embedded_plan->connected_components = NULL;
 	ExecutionPlan_Free(embedded_plan);
