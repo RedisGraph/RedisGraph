@@ -113,7 +113,9 @@ void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root) {
 }
 
 inline void ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_root) {
-	if(plan->root) ExecutionPlan_NewRoot(plan->root, new_root);
+	if(plan->root) {
+		ExecutionPlan_NewRoot(plan->root, new_root);
+	}
 	plan->root = new_root;
 }
 

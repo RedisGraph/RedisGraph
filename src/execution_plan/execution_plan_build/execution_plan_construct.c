@@ -218,13 +218,6 @@ static void _buildForeachOp
 	embedded_plan->connected_components = plan->connected_components;
 
 	//--------------------------------------------------------------------------
-	// build ArgumentList op
-	//--------------------------------------------------------------------------
-
-	OpBase *argument_list = NewArgumentListOp(embedded_plan);
-	ExecutionPlan_UpdateRoot(embedded_plan, argument_list);
-
-	//--------------------------------------------------------------------------
 	// build Unwind op 
 	//--------------------------------------------------------------------------
 
@@ -234,7 +227,16 @@ static void _buildForeachOp
 	exp->resolved_name = cypher_ast_identifier_get_name(
 		cypher_ast_foreach_get_identifier(clause));
 	OpBase *unwind = NewUnwindOp(embedded_plan, exp);
+	// set the unwind op as the current root of the embedded plan
 	ExecutionPlan_UpdateRoot(embedded_plan, unwind);
+
+	//--------------------------------------------------------------------------
+	// build ArgumentList op
+	//--------------------------------------------------------------------------
+
+	OpBase *argument_list = NewArgumentListOp(embedded_plan);
+	// add the op as a child of the unwind operation
+	ExecutionPlan_AddOp(unwind, argument_list);
 
 	//--------------------------------------------------------------------------
 	// build FOREACH loop body operation(s)

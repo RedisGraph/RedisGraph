@@ -104,6 +104,8 @@ static Record _handoff
 		op->listIdx++;
 		return r;
 	}
+
+	// depleted
 	return NULL;
 }
 
