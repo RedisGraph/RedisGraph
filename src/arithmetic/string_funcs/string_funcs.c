@@ -221,6 +221,22 @@ err:
 	return SI_NullVal();
 }
 
+// Given a list of strings and an optional delimiter,
+// return a concatenation of all the strings using the given delimiter.
+// string.join(list, delimiter = '') → string
+SIValue AR_MATCHREGEX(SIValue *argv, int argc, void *private_data) {
+	ASSERT(argc == 2);
+	SIValue list = SIArray_New(0);
+	if(SI_TYPE(argv[0]) == T_NULL || SI_TYPE(argv[1]) == T_NULL) {
+		return list;
+	}
+	const char *str = argv[0].stringval;
+	const char *regex = argv[1].stringval;
+
+	return list;
+}
+
+
 // returns the original string in lowercase.
 SIValue AR_TOLOWER(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
@@ -518,6 +534,13 @@ void Register_StringFuncs() {
 	array_append(types, T_STRING);
 	ret_type = T_STRING | T_NULL;
 	func_desc = AR_FuncDescNew("join", AR_JOIN, 1, 2, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 2);
+	array_append(types, (T_STRING | T_NULL));
+	array_append(types, (T_STRING | T_NULL));
+	ret_type = T_ARRAY;
+	func_desc = AR_FuncDescNew("matchregex", AR_MATCHREGEX, 1, 2, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);

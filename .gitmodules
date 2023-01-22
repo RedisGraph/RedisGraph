@@ -13,3 +13,6 @@
 [submodule "deps/readies"]
 	path = deps/readies
 	url = https://github.com/RedisLabsModules/readies.git
+[submodule "deps/oniguruma"]
+	path = deps/oniguruma
+	url = git@github.com:kkos/oniguruma.git

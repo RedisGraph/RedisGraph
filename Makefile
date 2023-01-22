@@ -125,13 +125,17 @@ GRAPHBLAS_DIR = $(ROOT)/deps/GraphBLAS
 export GRAPHBLAS_BINDIR=$(DEPS_BINDIR)/GraphBLAS
 include $(ROOT)/build/GraphBLAS/Makefile.defs
 
+ONIGURUMA_DIR = $(ROOT)/deps/oniguruma
+export ONIGURUMA_BINDIR=$(DEPS_BINDIR)/oniguruma
+include $(ROOT)/build/ONIGURUMA/Makefile.defs
+
 REDISEARCH_DIR = $(ROOT)/deps/RediSearch
 export REDISEARCH_BINROOT=$(BINROOT)
 include $(ROOT)/build/RediSearch/Makefile.defs
 
 BIN_DIRS += $(REDISEARCH_BINROOT)/search-static
 
-LIBS=$(RAX) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH_LIBS) $(LIBCYPHER_PARSER)
+LIBS=$(RAX) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH_LIBS) $(LIBCYPHER_PARSER) $(ONIGURUMA)
 
 #----------------------------------------------------------------------------------------------
 
@@ -166,6 +170,10 @@ ifeq ($(wildcard $(LIBCYPHER_PARSER)),)
 MISSING_DEPS += $(LIBCYPHER_PARSER)
 endif
 
+ifeq ($(wildcard $(ONIGURUMA)),)
+MISSING_DEPS += $(ONIGURUMA)
+endif
+
 ifneq ($(call files_missing,$(REDISEARCH_LIBS)),)
 MISSING_DEPS += $(REDISEARCH_LIBS)
 endif
@@ -174,7 +182,7 @@ ifneq ($(MISSING_DEPS),)
 DEPS=1
 endif
 
-DEPENDENCIES=libcypher-parser graphblas redisearch rax libxxhash
+DEPENDENCIES=libcypher-parser graphblas redisearch rax libxxhash oniguruma
 
 ifneq ($(filter all deps $(DEPENDENCIES) pack,$(MAKECMDGOALS)),)
 DEPS=1
@@ -200,7 +208,7 @@ include $(MK)/rules
 
 ifeq ($(DEPS),1)
 
-deps: $(LIBCYPHER_PARSER) $(GRAPHBLAS) $(LIBXXHASH) $(RAX) $(REDISEARCH_LIBS)
+deps: $(LIBCYPHER_PARSER) $(GRAPHBLAS) $(LIBXXHASH) $(RAX) $(REDISEARCH_LIBS) $(ONIGURUMA)
 
 libxxhash: $(LIBXXHASH)
 
@@ -226,13 +234,19 @@ $(LIBCYPHER_PARSER):
 	@echo Building $@ ...
 	$(SHOW)$(MAKE) --no-print-directory -C $(ROOT)/build/libcypher-parser DEBUG=$(DEPS_DEBUG)
 
+oniguruma: $(ONIGURUMA)
+
+$(ONIGURUMA):
+	@echo Building $@ ...
+	$(SHOW)$(MAKE) --no-print-directory -C $(ROOT)/build/oniguruma DEBUG=$(DEPS_DEBUG)
+
 redisearch: $(REDISEARCH_LIBS)
 
 $(REDISEARCH_LIBS):
 	@echo Building $@ ...
 	$(SHOW)$(MAKE) -C $(REDISEARCH_DIR) STATIC=1 BINROOT=$(REDISEARCH_BINROOT) CC=$(CC) CXX=$(CXX)
 
-.PHONY: libcypher-parser graphblas redisearch libxxhash rax
+.PHONY: libcypher-parser graphblas redisearch libxxhash rax oniguruma
 
 #----------------------------------------------------------------------------------------------
 
@@ -260,6 +274,7 @@ else
 ifeq ($(DEPS),1)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/rax clean DEBUG=$(DEPS_DEBUG)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/xxHash clean DEBUG=$(DEPS_DEBUG)
+	$(SHOW)$(MAKE) -C $(ROOT)/build/oniguruma clean DEBUG=$(DEPS_DEBUG)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/GraphBLAS clean DEBUG=$(DEPS_DEBUG)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/libcypher-parser clean DEBUG=$(DEPS_DEBUG)
 	$(SHOW)$(MAKE) -C $(REDISEARCH_DIR) clean ALL=1 BINROOT=$(REDISEARCH_BINROOT)
