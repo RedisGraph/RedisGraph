@@ -78,7 +78,7 @@ bool QGEdge_VariableLength
 	return (e->minHops != e->maxHops);
 }
 
-bool QGEdge_LengthOne
+bool QGEdge_SingleHop
 (
 	const QGEdge *e
 ) {

@@ -62,8 +62,8 @@ bool QGEdge_VariableLength
 	const QGEdge *e
 );
 
-// determine whether this is a edge range of length one
-bool QGEdge_LengthOne
+// determine whether this edge represent a single hop
+bool QGEdge_SingleHop
 (
 	const QGEdge *e
 );
