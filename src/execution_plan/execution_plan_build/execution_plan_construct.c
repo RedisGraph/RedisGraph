@@ -206,8 +206,8 @@ static void _buildForeachOp
 
 	ExecutionPlan_UpdateRoot(plan, foreach);
 
-	// make an execution-plan mocking the current one, in which the execution-
-	// plan of Foreach will be built
+	// make an execution-plan mocking the current one, in which the embedded
+	// execution-plan of the Foreach clauses will be built
 	ExecutionPlan *embedded_plan = ExecutionPlan_NewEmptyExecutionPlan();
 	// use a clone record-map, to not pollute the main one (different scope)
 	embedded_plan->record_map           = raxClone(plan->record_map);
@@ -218,7 +218,7 @@ static void _buildForeachOp
 	embedded_plan->connected_components = plan->connected_components;
 
 	//--------------------------------------------------------------------------
-	// build Unwind op 
+	// build Unwind op
 	//--------------------------------------------------------------------------
 
 	// unwind foreach list expression

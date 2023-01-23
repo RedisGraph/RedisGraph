@@ -60,7 +60,6 @@ static OpResult ArgumentListReset
 (
 	OpBase *opBase
 ) {
-	// Reset operation, freeing the Record-list if exists.
 	ArgumentList *op = (ArgumentList *)opBase;
 
 	op->records = NULL;
