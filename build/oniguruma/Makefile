@@ -19,6 +19,7 @@ TARGET=$(BINDIR)/libonig.a
 
 define CMAKE_DEFS +=
 	BUILD_SHARED_LIBS=off
+	BUILD_TEST=off
 endef
 
 #----------------------------------------------------------------------------------------------
