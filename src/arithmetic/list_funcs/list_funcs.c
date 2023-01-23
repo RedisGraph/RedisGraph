@@ -428,25 +428,13 @@ SIValue AR_REMOVE(SIValue *argv, int argc, void *private_data) {
 		return SI_NullVal();
 	}
 	ASSERT(SI_TYPE(list) == T_ARRAY);
-
-	if(SI_TYPE(argv[1]) != T_INT64) {
-		// index should be integer.
-		// TODO: remove this, there is an assertion already in argument type-check.
-		Error_SITypeMismatch(argv[1], T_INT64);
-		return SI_NullVal();
-	}
+	ASSERT(SI_TYPE(argv[1]) == T_INT64);
 
 	int32_t index = (int32_t)argv[1].longval;
 
 	int32_t count = 1;
 	if(argc == 3) {
-		if(SI_TYPE(argv[2]) != T_INT64) {
-			// count should be integer.
-			// TODO: remove this, there is an assertion already in argument type-check.
-			Error_SITypeMismatch(argv[2], T_INT64);
-			return SI_NullVal();
-		}
-
+		ASSERT(SI_TYPE(argv[1]) == T_INT64);
 		count = (int32_t)argv[2].longval;
 	}
 	ASSERT(count >= 0);
@@ -485,12 +473,7 @@ SIValue AR_SORT(SIValue *argv, int argc, void *private_data) {
 
 	bool ascending = true;
 	if(argc == 2) {
-		if(SI_TYPE(argv[1]) != T_BOOL) {
-			// index should be boolean.
-			Error_SITypeMismatch(argv[1], T_BOOL);
-			return SI_NullVal();
-		}
-
+		ASSERT(SI_TYPE(argv[1]) == T_BOOL);
 		ascending = (bool)argv[1].longval;
 	}
 

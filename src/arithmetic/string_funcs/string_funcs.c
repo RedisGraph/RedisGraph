@@ -180,12 +180,7 @@ SIValue AR_JOIN(SIValue *argv, int argc, void *private_data) {
 
 	char *delimiter = "";
 	if(argc == 2) {
-		if(SI_TYPE(argv[1]) != T_STRING) {
-			// delimiter should be string.
-			Error_SITypeMismatch(argv[1], T_STRING);
-			return SI_NullVal();
-		}
-
+		ASSERT(SI_TYPE(argv[1]) == T_STRING);
 		delimiter = argv[1].stringval;
 	}
 

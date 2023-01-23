@@ -7,8 +7,8 @@
 #include "array.h"
 #include "../util/arr.h"
 #include "../util/qsort.h"
-#include "xxhash.h"
 #include <limits.h>
+#include "xxhash.h"
 
 SIValue SIArray_New(uint32_t initialCapacity) {
 	SIValue siarray;
@@ -101,7 +101,7 @@ void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytes
 // compare two SIValues, wrt ascending order
 static int _siarray_compare_func(const void *a, const void *b, void *ascending) {
 	int rel = SIValue_Compare(*(SIValue*)a, *(SIValue*)b, NULL);
-	return (*(bool*)ascending) ? rel : (-1)*rel;
+	return (*(bool*)ascending) ? rel : -rel;
 }
 
 // sorts the array in place in ascending\descending order
