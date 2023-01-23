@@ -127,7 +127,7 @@ include $(ROOT)/build/GraphBLAS/Makefile.defs
 
 ONIGURUMA_DIR = $(ROOT)/deps/oniguruma
 export ONIGURUMA_BINDIR=$(DEPS_BINDIR)/oniguruma
-include $(ROOT)/build/ONIGURUMA/Makefile.defs
+include $(ROOT)/build/oniguruma/Makefile.defs
 
 REDISEARCH_DIR = $(ROOT)/deps/RediSearch
 export REDISEARCH_BINROOT=$(BINROOT)
