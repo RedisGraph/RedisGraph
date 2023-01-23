@@ -2372,3 +2372,52 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.env.assertEqual(in_degree, 1)
         self.env.assertEqual(out_degree, 1)
 
+        # given the graph (a)-[:R]->(b)
+        # out degree of 'a' is 1
+        # in degree of 'b' is 1
+        graph.query("CREATE (a:A)-[:R]->(b:B)")
+        queries = [
+            """MATCH (a:A) RETURN outdegree(a, 'R')""",
+            """MATCH (a:A) RETURN outdegree(a, ['R'])""",
+            """MATCH (a:A) RETURN outdegree(a, 'R', 'R')""",
+            """MATCH (b:B) RETURN indegree(b, 'R')""",
+            """MATCH (b:B) RETURN indegree(b, ['R', 'R'])""",
+            """MATCH (b:B) RETURN indegree(b, 'R', 'R')""",
+        ]
+        for query in queries:
+            actual_result = graph.query(query)
+            self.env.assertEquals(actual_result.result_set, [[1]])
+
+        # test type mismatch
+        queries = [
+            """MATCH (a:A) RETURN outdegree(a, a)""",           # node
+            """MATCH (a:A) RETURN outdegree(a, [1])""",         # integer
+            """MATCH (a:A) RETURN outdegree(a, [1.4])""",       # float
+            """MATCH (a:A) RETURN outdegree(a, 'R', 1)""",      # integer after string
+            """MATCH (a:A) RETURN outdegree(a, ['R', 1])""",    # integer element in list
+            """MATCH (a:A) RETURN outdegree(a, 'R', ['R'])""",  # wrong signature: string and list
+            ]
+        for query in queries:
+            try:
+                graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                # Expecting a type error.
+                self.env.assertIn("Type mismatch", str(e))
+
+        # test wrong argument number
+        queries = [
+            """MATCH (a:A) RETURN outdegree()""",
+            """MATCH (a:A) RETURN outdegree(a, ['R'], 'a')""",
+            """MATCH (a:A) RETURN outdegree(a, ['R'], ['R'])""",
+            """MATCH (b:B) RETURN indegree()""",
+            """MATCH (b:B) RETURN indegree(b, ['R'], 'a')""",
+            """MATCH (b:B) RETURN indegree(b, ['R'], ['R'])""",
+            ]
+        for query in queries:
+            try:
+                graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                # Expecting a type error.
+                self.env.assertIn("Received", str(e))
