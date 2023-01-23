@@ -15,7 +15,11 @@ endef
 BINDIR=$(BINROOT)/oniguruma
 SRCDIR=$(ROOT)/deps/oniguruma
 
-TARGET=$(BINDIR)/oniguruma.a
+TARGET=$(BINDIR)/libonig.a
+
+define CMAKE_DEFS +=
+	BUILD_SHARED_LIBS=off
+endef
 
 #----------------------------------------------------------------------------------------------
 
