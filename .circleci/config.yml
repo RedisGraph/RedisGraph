@@ -683,6 +683,8 @@ workflows:
       - build-macos:
           context: common
           <<: *on-integ-and-version-tags
+      - valgrind-test:
+          <<: *always
       - coverage:
           <<: *always
       - sanitize:
