@@ -51,6 +51,19 @@ bool SIArray_ContainsType(SIValue siarray, SIType t) {
 	return false;
 }
 
+// check list contains value
+// TODO: optimize using hashmap
+bool SIArray_ContainsValue(SIValue siarray, SIValue v) {
+	uint32_t arrayLen = SIArray_Length(siarray);
+	for(uint j = 0; j < arrayLen; j++) {
+		if(SIValue_Compare(SIArray_Get(siarray, j), v, NULL) == 0) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 bool SIArray_AllOfType(SIValue siarray, SIType t) {
 	uint array_len = SIArray_Length(siarray);
 	for(uint i = 0; i < array_len; i++) {

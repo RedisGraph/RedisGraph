@@ -1366,3 +1366,52 @@ class testList(FlowTestsBase):
         query = """RETURN insertListElements([1,[1,3],2,3,[5]], [[1,4],[1,2+1],8,[5]], 4, false)"""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+    def test12_dedup(self):
+        # NULL input should return NULL
+        expected_result = [None]
+        query = """WITH NULL as list RETURN dedup(null)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # 1st arg should be list
+        try:
+            redis_graph.query("RETURN dedup('2')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
+
+        # Test without input argument
+        try:
+            query = """RETURN dedup()"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 0 arguments to function 'dedup', expected at least 1", str(e))
+
+        # Test with 2 input argument
+        try:
+            query = """RETURN dedup([1,2,3], 2)"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 2 arguments to function 'dedup', expected at most 1", str(e))
+
+
+        ### Test valid inputs ###
+
+        expected_result = [[1,2,3,4]]
+        query = """RETURN dedup([1,2,3,2,2,1,4])"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[3]]
+        query = """RETURN dedup([3,3,3])"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[3,[1,2],[1]]]
+        query = """RETURN dedup([3,[1,2],3,[1],[1,2]])"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+

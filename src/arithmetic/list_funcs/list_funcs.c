@@ -517,10 +517,9 @@ SIValue AR_INSERT(SIValue *argv, int argc, void *private_data) {
 
 	if(!dups) {
 		// check if value already exists in list
-		for(uint i = 0; i < arrayLen; i++) {
-			if(SIValue_Compare(SIArray_Get(list, i), val, NULL) == 0) {
-				return SIArray_Clone(list);
-			}
+		// TODO: optimize using hashmap
+		if(SIArray_ContainsValue(list, val)) {
+			return SIArray_Clone(list);
 		}
 	}
 
@@ -579,17 +578,8 @@ SIValue AR_INSERTLISTELEMENTS(SIValue *argv, int argc, void *private_data) {
 		// remove duplicates from list2
 		SIValue list2_no_duplicates = SI_Array(arrayLen2);
 		for(uint i = 0; i < arrayLen2; i++) {
-			// Check if it already exists in list
-			// TODO: optimize using hashmap
-			bool found = false;
 			SIValue _val = SIArray_Get(list2, i);
-			for(uint j = 0; j < arrayLen; j++) {
-				if(SIValue_Compare(SIArray_Get(list, j), _val, NULL) == 0) {
-					found = true;
-				}
-			}
-
-			if(!found) {
+			if(!SIArray_ContainsValue(list, _val)) {
 				SIArray_Append(&list2_no_duplicates, _val);
 			}
 		}
@@ -614,6 +604,30 @@ SIValue AR_INSERTLISTELEMENTS(SIValue *argv, int argc, void *private_data) {
 	// append remaining elements
 	for(; i < arrayLen; i++) {
 		SIArray_Append(&array, SIArray_Get(list, i));
+	}
+
+	return array;
+}
+
+// given a list, return a similar list after removing duplicate elements
+//  order is preserved, duplicates are removed from the end of the list
+//  list.dedup(list) → list
+SIValue AR_DEDUP(SIValue *argv, int argc, void *private_data) {
+	ASSERT(argc == 1);
+	SIValue list = argv[0];
+	if(SI_TYPE(list) == T_NULL) {
+		return SI_NullVal();
+	}
+	ASSERT(SI_TYPE(list) == T_ARRAY);
+	uint32_t arrayLen = SIArray_Length(list);
+	SIValue array = SI_Array(arrayLen);
+	// check if value already exists in list
+	// TODO: optimize using hashmap
+	for(uint i = 0; i < arrayLen; i++) {
+		SIValue val = SIArray_Get(list, i);
+		if(!SIArray_ContainsValue(array, val)) {
+			SIArray_Append(&array, val);
+		}
 	}
 
 	return array;
@@ -795,6 +809,12 @@ void Register_ListFuncs() {
 	array_append(types, T_BOOL);
 	ret_type = T_ARRAY | T_NULL;
 	func_desc = AR_FuncDescNew("insertListElements", AR_INSERTLISTELEMENTS, 3, 4, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, T_ARRAY | T_NULL);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("dedup", AR_DEDUP, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 4);
