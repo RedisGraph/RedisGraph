@@ -15,4 +15,4 @@
 	url = https://github.com/RedisLabsModules/readies.git
 [submodule "deps/oniguruma"]
 	path = deps/oniguruma
-	url = git@github.com:kkos/oniguruma.git
+	url = https://github.com/kkos/oniguruma.git
