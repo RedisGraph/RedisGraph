@@ -26,10 +26,8 @@ class testForeachFlow():
         self.env.assertEquals(res.properties_set, 5)
 
         # validate that the correct nodes have been created
-        for i in range(5):
-            q_i = f'MATCH (n:N {{v: {i}}}) return n.v'
-            res_i = [[i]]
-            self.get_res_and_assertEquals(q_i, res_i)
+        self.get_res_and_assertEquals("MATCH (n) RETURN n.v ORDER BY n.v",
+                                      [[0], [1], [2], [3], [4]])
 
         # validate MERGE (without creation) and SET
         res = graph.query(
@@ -41,10 +39,8 @@ class testForeachFlow():
         self.env.assertEquals(res.properties_set, 3)
 
         # validate that the update is correct
-        for i in range(5):
-            q_i = f'MATCH (n:N {{v: {i**2}}}) return n.v'
-            res_i = [[i**2]]
-            self.get_res_and_assertEquals(q_i, res_i)
+        self.get_res_and_assertEquals("MATCH (n) RETURN n.v ORDER BY n.v",
+                                      [[0], [1], [4], [9], [16]])
         
         # validate MERGE creation
         res = graph.query(
@@ -64,7 +60,7 @@ class testForeachFlow():
         # validate the deletion
         self.env.assertEquals(res.nodes_deleted, 5)
         
-        # remove the properties of the nodes using remove
+        # remove the properties and labels of the nodes using REMOVE
         res = graph.query("""
         MATCH (n:N)
         WITH collect(n) as ns
@@ -108,11 +104,9 @@ class testForeachFlow():
         self.env.assertEquals(res.properties_set, 5)
 
         # validate that the correct nodes have been created
-        for i in range(5):
-            q_i = f'MATCH (n:N {{v: {i}}}) return n.v'
-            res_i = [[i]]
-            self.get_res_and_assertEquals(q_i, res_i)
-        
+        self.get_res_and_assertEquals("MATCH (n) RETURN n.v ORDER BY n.v",
+                                      [[0], [1], [2], [3], [4]])
+
         # validate MERGE (without creation) and SET
         res = graph.query("""
         CYPHER li = [0, 1, 2, 3, 4]
@@ -126,11 +120,9 @@ class testForeachFlow():
         self.env.assertEquals(res.properties_set, 3)
 
         # validate that the update is correct
-        for i in range(5):
-            q_i = f'MATCH (n:N {{v: {i**2}}}) return n.v'
-            res_i = [[i**2]]
-            self.get_res_and_assertEquals(q_i, res_i)
-        
+        self.get_res_and_assertEquals("MATCH (n) RETURN n.v ORDER BY n.v",
+                                      [[0], [1], [4], [9], [16]])
+
         # validate MERGE creation
         res = graph.query("""
         CYPHER li = [0, 1, 2, 3, 4]
@@ -215,6 +207,7 @@ class testForeachFlow():
         # clean db
         self.env.flush()
 
+        # populate graph
         graph.query(
             "CYPHER li = [0, 1, 2, 3, 4] FOREACH(i in $li | CREATE (n:N {v: i}))"
         )
@@ -256,10 +249,8 @@ class testForeachFlow():
         self.env.assertEquals(res.properties_set, 5)
 
         # validate that the creation is correct
-        for i in range(5):
-            q_i = f'MATCH (m:M {{v: {2 * i}}}) RETURN m.v'
-            res_i = [[2 * i]]
-            self.get_res_and_assertEquals(q_i, res_i)
+        self.get_res_and_assertEquals("MATCH (m:M) RETURN m.v ORDER BY m.v",
+                                      [[0], [2], [4], [6], [8]])
 
     # validate that Foreach accesses fields correctly
     def test06_field_access(self):
@@ -274,13 +265,10 @@ class testForeachFlow():
                            CREATE (t:TEMP {v: i}))""")
 
         # validate the creation
-        self.env.assertEquals(res.nodes_created, 8)
-        self.env.assertEquals(res.properties_set, 8)
-        res2 = graph.query("MATCH (t:TEMP) RETURN t.v")
-        c1 = {i : 2 for i in range(1, 5)}
-        c_actual = Counter([li[0] for li in res2.result_set])
-        self.env.assertEquals(c1, c_actual)
-    
+        self.get_res_and_assertEquals("""MATCH (t:TEMP) RETURN t.v, count(t.v)
+                                         ORDER BY t.v""",
+                                      [[1, 2], [2, 2], [3, 2], [4, 2]])
+
     # mid-evaluation failure (memory free'd appropriately)
     def test07_midfail(self):
         # clean db
