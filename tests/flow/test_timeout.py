@@ -144,8 +144,6 @@ class testQueryTimeout():
             self.env.assertTrue(True)
 
     def test06_error_timeout_default_higher_than_timeout_max(self):
-        self.env.flush()
-        self.env.stop()
         self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT_DEFAULT 10 TIMEOUT_MAX 10")
 
         # get current timeout configuration
