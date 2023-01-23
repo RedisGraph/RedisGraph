@@ -50,7 +50,6 @@ static OpResult ForeachInit
 
 	// search for the ArgumentList op on the embedded sub-execution plan chain
 	OpBase *argument_list = op->body;
-	// TODO: investigate if it is OK to locate args_list via child[0]
 	while(argument_list->childCount > 0) {
 		argument_list = argument_list->children[0];
 	}
@@ -75,6 +74,16 @@ static Record _handoff(OpForeach *op) {
 	return r;
 }
 
+// the Foreach consume function aggregates all the records from the supplier if
+// it exists, or a dummy record if not, in a list.
+// this list is passed AS IS (i.e., no cloning) to the ArgumentList
+// operation which passes them ONE-BY-ONE to the Unwind operation which clones
+// every record it receives BEFORE performing its modifications (this is what
+// allows us to not clone the records in Foreach or ArgumentList!).
+// Unwind will not free the records if ArgumentList is its child (i.e., part of
+// an execution-plan embedded in Foreach), such that Foreach is responsible for
+// the records.
+// please notice these notes when modifying Foreach/ArgumentList/Unwind
 static Record ForeachConsume
 (
     OpBase *opBase  // operation
