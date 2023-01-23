@@ -175,13 +175,13 @@ static SIValue _AR_NodeDegree
 			}
 			// validate signature function(NODE, ARRAY_OF_STRINGS)
 			uint len = SIArray_Length(argv[1]);
-			if(SIArray_ContainsType(argv[1], ~T_STRING)) {
-				SIArray_Free(labels);
-				Error_SITypeMismatch(elem, T_STRING);
-				return SI_NullVal();
-			}
 			for(int j = 0; j < len; j++) {
 				SIValue elem = SIArray_Get(argv[1], j);
+				if(SI_TYPE(elem) != T_STRING) {
+					SIArray_Free(labels);
+					Error_SITypeMismatch(elem, T_STRING);
+					return SI_NullVal();
+				}
 				if(SIArray_ContainsValue(labels, elem, NULL) == false) {
 					SIArray_Append(&labels, elem);
 				}
