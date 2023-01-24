@@ -78,6 +78,14 @@ bool QGEdge_VariableLength
 	return (e->minHops != e->maxHops);
 }
 
+bool QGEdge_SingleHop
+(
+	const QGEdge *e
+) {
+	ASSERT(e);
+	return (e->minHops == 1 && e->maxHops == 1);
+}
+
 bool QGEdge_IsShortestPath
 (
 	const QGEdge *e
