@@ -931,13 +931,13 @@ static int _reply_with_get_aggregated_graph_info
     REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Total number of edge properties",
-        info.node_property_name_count
+        info.edge_property_name_count
     ));
 
     REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Total number of node properties",
-        info.edge_property_name_count
+        info.node_property_name_count
     ));
 
     if (CHECK_FLAG(flags, InfoGetFlag_COUNTS)) {
