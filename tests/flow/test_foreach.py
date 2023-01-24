@@ -283,6 +283,17 @@ class testForeachFlow():
         res = graph.query("MATCH (n) return count(n)")
         self.env.assertEquals(res.result_set[0][0], 0)
 
+        # collect may not be used inside the list expression of FOREACH
+        try:
+            graph.query("""
+            MATCH (n:N)
+            FOREACH(n in collect(n) |
+                CREATE (m:M {v: n.v})
+            )"""
+            )
+        except redis.exceptions.ResponseError as e:
+            self.env.assertIn("Invalid use of aggregating function 'collect'", str(e))
+
     # complicate things up
     def test08_complex(self):
         global graph
@@ -403,8 +414,9 @@ class testForeachFlow():
                                             'li': [1, 2, 3, 4, 4, 'RAZ'],
                                             'name': 'raz'})
         t3 = Node(label='TEMP')
-        nodes = [t1, t2, t3]
-        for i in range(3):
+        t4 = Node(label='TEMP')
+        nodes = [t1, t2, t3, t4]
+        for i in range(4):
             self.env.assertEquals(res.result_set[i][0], nodes[i])
 
         # delete newly created nodes
