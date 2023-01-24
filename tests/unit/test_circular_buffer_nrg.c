@@ -4,31 +4,36 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "gtest.h"
-
-#include <vector>
 
 #include <sys/param.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-#include "../../src/util/circular_buffer_nrg.h"
-#ifdef __cplusplus
-}
-#endif
+#include "src/util/circular_buffer_nrg.h"
+#include "src/util/rmalloc.h"
+#include "src/util/arr.h"
 
-TEST(CircularBufferNRG, TestWrapsWrites) {
+void setup() {
+	Alloc_Reset();
+}
+
+#define TEST_INIT setup();
+#include "acutest.h"
+
+// GTest to AcuTest redefinitions
+#define ASSERT_EQ(lhs, rhs) TEST_ASSERT(lhs == rhs)
+#define ASSERT_NE(lhs, rhs) TEST_ASSERT(lhs != rhs)
+#define ASSERT_NOT_NULL(lhs) ASSERT_NE(lhs, NULL)
+
+void test_CircularBufferNRG_TestWrapsWrites(void) {
     CircularBufferNRG cb = CircularBufferNRG_New(sizeof(uint8_t), 2);
-    ASSERT_TRUE(cb);
+    ASSERT_NOT_NULL(cb);
     ASSERT_EQ(CircularBufferNRG_GetCapacity(cb), 2);
-    ASSERT_TRUE(CircularBufferNRG_IsEmpty(cb));
+    TEST_ASSERT(CircularBufferNRG_IsEmpty(cb));
     ASSERT_EQ(CircularBufferNRG_ItemCount(cb), 0);
-    ASSERT_FALSE(CircularBufferNRG_ViewCurrent(cb));
+    TEST_ASSERT(!CircularBufferNRG_ViewCurrent(cb));
 
     uint8_t value = 1;
     CircularBufferNRG_Add(cb, &value);
-    ASSERT_FALSE(CircularBufferNRG_IsEmpty(cb));
+    TEST_ASSERT(!CircularBufferNRG_IsEmpty(cb));
     ASSERT_EQ(CircularBufferNRG_GetCapacity(cb), 2);
     ASSERT_EQ(CircularBufferNRG_ItemCount(cb), 1);
     uint8_t viewed = *(uint8_t *)CircularBufferNRG_ViewCurrent(cb);
@@ -65,7 +70,7 @@ TEST(CircularBufferNRG, TestWrapsWrites) {
     CircularBufferNRG_Free(cb);
 }
 
-TEST(CircularBufferNRG, TestWrapsReads) {
+void test_CircularBufferNRG_TestWrapsReads(void) {
     CircularBufferNRG cb = CircularBufferNRG_New(sizeof(uint8_t), 2);
     uint8_t value = 1;
     CircularBufferNRG_Add(cb, &value);
@@ -107,7 +112,7 @@ TEST(CircularBufferNRG, TestWrapsReads) {
     CircularBufferNRG_Free(cb);
 }
 
-TEST(CircularBufferNRG, TestResetCapacitySingleStageNoReallocation) {
+void test_CircularBufferNRG_TestResetCapacitySingleStageNoReallocation(void) {
     CircularBufferNRG cb = CircularBufferNRG_New(sizeof(uint8_t), 5);
     uint8_t value = 1;
     CircularBufferNRG_Add(cb, &value);
@@ -122,7 +127,7 @@ TEST(CircularBufferNRG, TestResetCapacitySingleStageNoReallocation) {
 
     CircularBufferNRG old_address = cb;
     // Returns true as if the capacity setting went okay.
-    ASSERT_TRUE(CircularBufferNRG_SetCapacity(&cb, 5));
+    TEST_ASSERT(CircularBufferNRG_SetCapacity(&cb, 5));
     // The address hasn't changed, meaning there has been no reallocation.
     ASSERT_EQ(old_address, cb);
 
@@ -130,14 +135,14 @@ TEST(CircularBufferNRG, TestResetCapacitySingleStageNoReallocation) {
 }
 
 bool view_element(void *user_data, const void *item) {
-    std::vector<uint8_t> *viewed = reinterpret_cast<std::vector<uint8_t>*>(user_data);
-    const uint8_t element = *reinterpret_cast<const uint8_t *>(item);
-    viewed->push_back(element);
+    uint8_t *viewed = (uint8_t*)(user_data);
+    const uint8_t element = *(const uint8_t *)item;
+    array_append(viewed, element);
 
     return false;
 }
 
-TEST(CircularBufferNRG, TestReadAllFullCollection) {
+void test_CircularBufferNRG_TestReadAllFullCollection(void) {
     CircularBufferNRG cb = CircularBufferNRG_New(sizeof(uint8_t), 5);
     uint8_t value = 1;
     CircularBufferNRG_Add(cb, &value);
@@ -151,35 +156,40 @@ TEST(CircularBufferNRG, TestReadAllFullCollection) {
     CircularBufferNRG_Add(cb, &value);
 
     const uint8_t old_current = *(uint8_t*)CircularBufferNRG_ViewCurrent(cb);
-    std::vector<uint8_t> viewed;
-    CircularBufferNRG_ReadAll(cb, view_element, reinterpret_cast<void *>(&viewed));
-    const std::vector<uint8_t> expected = { 1, 2, 3, 4, 5 };
-    ASSERT_EQ(viewed, expected);
+    uint8_t *viewed = array_new(uint8_t, 10);
+    CircularBufferNRG_ReadAll(cb, view_element, (void*)viewed);
+    static const uint8_t EXPECTED[] = { 1, 2, 3, 4, 5 };
+    static const size_t LENGTH = sizeof(EXPECTED) / sizeof(EXPECTED[0]);
+    ASSERT_EQ(array_len(viewed), LENGTH);
+    for (size_t i = 0; i < LENGTH; ++i) {
+        ASSERT_EQ(viewed[i], EXPECTED[i]);
+    }
     const uint8_t current = *(uint8_t*)CircularBufferNRG_ViewCurrent(cb);
     ASSERT_EQ(current, old_current);
 
+    array_free(viewed);
     CircularBufferNRG_Free(cb);
 }
 
-struct ViewElementAndEndData {
-    std::vector<uint8_t> viewed;
+typedef struct ViewElementAndEndData {
+    uint8_t *viewed;
     uint64_t max_view_count;
-};
+} ViewElementAndEndData;
 
 bool view_element_and_end(void *user_data, const void *item) {
-    ViewElementAndEndData *data = reinterpret_cast<ViewElementAndEndData*>(user_data);
+    ViewElementAndEndData *data = (ViewElementAndEndData*)user_data;
 
-    const uint8_t element = *reinterpret_cast<const uint8_t *>(item);
-    data->viewed.push_back(element);
+    const uint8_t element = *(const uint8_t *)item;
+    array_append(data->viewed, element);
 
-    if (data->viewed.size() >= data->max_view_count) {
+    if (array_len(data->viewed) >= data->max_view_count) {
         return true;
     }
 
     return false;
 }
 
-TEST(CircularBufferNRG, TestReadAllAndEndPrematurely) {
+void test_CircularBufferNRG_TestReadAllAndEndPrematurely(void) {
     CircularBufferNRG cb = CircularBufferNRG_New(sizeof(uint8_t), 5);
     uint8_t value = 1;
     CircularBufferNRG_Add(cb, &value);
@@ -192,11 +202,16 @@ TEST(CircularBufferNRG, TestReadAllAndEndPrematurely) {
     value = 5;
     CircularBufferNRG_Add(cb, &value);
 
-    ViewElementAndEndData data {};
+    ViewElementAndEndData data = {};
+    data.viewed = array_new(uint8_t, 10);
     data.max_view_count = 3;
-    CircularBufferNRG_ReadAll(cb, view_element_and_end, reinterpret_cast<void *>(&data));
-    const std::vector<uint8_t> expected = { 1, 2, 3 };
-    ASSERT_EQ(data.viewed, expected);
+    CircularBufferNRG_ReadAll(cb, view_element_and_end, (void *)&data);
+    static const uint8_t EXPECTED[] = { 1, 2, 3 };
+    static const size_t LENGTH = sizeof(EXPECTED) / sizeof(EXPECTED[0]);
+    ASSERT_EQ(array_len(data.viewed), LENGTH);
+    for (size_t i = 0; i < LENGTH; ++i) {
+        ASSERT_EQ(data.viewed[i], EXPECTED[i]);
+    }
     const uint8_t current = *(uint8_t*)CircularBufferNRG_ViewCurrent(cb);
     // The read offset has moved because of the "read", so we should not
     // expect to be able to read the same elements again. As we stopped
@@ -204,10 +219,11 @@ TEST(CircularBufferNRG, TestReadAllAndEndPrematurely) {
     // supposed to look at the element after, which is "4".
     ASSERT_EQ(current, 4);
 
+    array_free(data.viewed);
     CircularBufferNRG_Free(cb);
 }
 
-TEST(CircularBufferNRG, TestViewAll) {
+void test_CircularBufferNRG_TestViewAll(void) {
     CircularBufferNRG cb = CircularBufferNRG_New(sizeof(uint8_t), 5);
     uint8_t value = 1;
     CircularBufferNRG_Add(cb, &value);
@@ -221,20 +237,25 @@ TEST(CircularBufferNRG, TestViewAll) {
     CircularBufferNRG_Add(cb, &value);
 
     const uint8_t old_current = *(uint8_t*)CircularBufferNRG_ViewCurrent(cb);
-    std::vector<uint8_t> viewed;
-    CircularBufferNRG_ViewAll(cb, view_element, reinterpret_cast<void *>(&viewed));
-    const std::vector<uint8_t> expected = { 1, 2, 3, 4, 5 };
-    ASSERT_EQ(viewed, expected);
+    uint8_t *viewed = array_new(uint8_t, 10);
+    CircularBufferNRG_ViewAll(cb, view_element, (void *)viewed);
+    static const uint8_t EXPECTED[] = { 1, 2, 3, 4, 5 };
+    static const size_t LENGTH = sizeof(EXPECTED) / sizeof(EXPECTED[0]);
+    ASSERT_EQ(array_len(viewed), LENGTH);
+    for (size_t i = 0; i < LENGTH; ++i) {
+        ASSERT_EQ(viewed[i], EXPECTED[i]);
+    }
     const uint8_t current = *(uint8_t*)CircularBufferNRG_ViewCurrent(cb);
     // The read offset hasn't moved because of the "view", so we should
     // expect to be able to read the same elements again, as there has been
     // no read in between the calls.
     ASSERT_EQ(current, old_current);
 
+    array_free(viewed);
     CircularBufferNRG_Free(cb);
 }
 
-TEST(CircularBufferNRG, TestViewAllWithCircle) {
+void test_CircularBufferNRG_TestViewAllWithCircle(void) {
     CircularBufferNRG cb = CircularBufferNRG_New(sizeof(uint8_t), 3);
     uint8_t value = 1;
     CircularBufferNRG_Add(cb, &value);
@@ -249,16 +270,21 @@ TEST(CircularBufferNRG, TestViewAllWithCircle) {
 
     {
         const uint8_t old_current = *(uint8_t*)CircularBufferNRG_ViewCurrent(cb);
-        std::vector<uint8_t> viewed;
-        CircularBufferNRG_ViewAll(cb, view_element, reinterpret_cast<void *>(&viewed));
-        const std::vector<uint8_t> expected = { 3, 4, 5 };
-        ASSERT_EQ(viewed, expected);
+        uint8_t *viewed = array_new(uint8_t, 10);
+        CircularBufferNRG_ViewAll(cb, view_element, (void*)viewed);
+        const uint8_t EXPECTED[] = { 3, 4, 5 };
+        const size_t LENGTH = sizeof(EXPECTED) / sizeof(EXPECTED[0]);
+        ASSERT_EQ(array_len(viewed), LENGTH);
+        for (size_t i = 0; i < LENGTH; ++i) {
+            ASSERT_EQ(viewed[i], EXPECTED[i]);
+        }
         const uint8_t current = *(uint8_t*)CircularBufferNRG_ViewCurrent(cb);
         // The read offset hasn't moved because of the "view", so we should
         // expect to be able to read the same elements again, as there has been
         // no read in between the calls.
         ASSERT_EQ(current, old_current);
     }
+
     value = 6;
     CircularBufferNRG_Add(cb, &value);
     value = 7;
@@ -266,10 +292,14 @@ TEST(CircularBufferNRG, TestViewAllWithCircle) {
 
     {
         const uint8_t old_current = *(uint8_t*)CircularBufferNRG_ViewCurrent(cb);
-        std::vector<uint8_t> viewed;
-        CircularBufferNRG_ViewAll(cb, view_element, reinterpret_cast<void *>(&viewed));
-        const std::vector<uint8_t> expected = { 5, 6, 7 };
-        ASSERT_EQ(viewed, expected);
+        uint8_t *viewed = array_new(uint8_t, 10);
+        CircularBufferNRG_ViewAll(cb, view_element, (void *)viewed);
+        const uint8_t EXPECTED[] = { 5, 6, 7 };
+        const size_t LENGTH = sizeof(EXPECTED) / sizeof(EXPECTED[0]);
+        ASSERT_EQ(array_len(viewed), LENGTH);
+        for (size_t i = 0; i < LENGTH; ++i) {
+            ASSERT_EQ(viewed[i], EXPECTED[i]);
+        }
         const uint8_t current = *(uint8_t*)CircularBufferNRG_ViewCurrent(cb);
         // The read offset hasn't moved because of the "view", so we should
         // expect to be able to read the same elements again, as there has been
@@ -282,19 +312,19 @@ TEST(CircularBufferNRG, TestViewAllWithCircle) {
 }
 
 void delete_element(void *user_data, void *item) {
-    uint64_t *deleted_counter = reinterpret_cast<uint64_t*>(user_data);
-    char** element = reinterpret_cast<char **>(item);
+    uint64_t *deleted_counter = (uint64_t*)user_data;
+    char** element = (char **)item;
     free(*element);
     ++(*deleted_counter);
 }
 
-TEST(CircularBufferNRG, TestCustomDeleterIsUsedProperly) {
+void test_CircularBufferNRG_TestCustomDeleterIsUsedProperly(void) {
     CircularBufferNRG cb = CircularBufferNRG_New(sizeof(char *), 2);
     uint64_t deleted_counter = 0;
     CircularBufferNRG_SetDeleter(
         cb,
         delete_element,
-        reinterpret_cast<void *>(&deleted_counter)
+        (void *)&deleted_counter
     );
     char *s = strdup("11");
     CircularBufferNRG_Add(cb, &s);
@@ -308,81 +338,95 @@ TEST(CircularBufferNRG, TestCustomDeleterIsUsedProperly) {
 
     // Reads don't delete.
     char *r = NULL;
-    CircularBufferNRG_Read(cb, reinterpret_cast<void *>(&r));
-    ASSERT_TRUE(!strcmp(r, "22"));
+    CircularBufferNRG_Read(cb, (void *)&r);
+    TEST_ASSERT(!strcmp(r, "22"));
     ASSERT_EQ(deleted_counter, 1);
 
     CircularBufferNRG_Free(cb);
     ASSERT_EQ(deleted_counter, 3);
 }
 
-struct Reallocation {
+typedef struct Reallocation {
     uint64_t initialCapacity;
-    std::vector<uint8_t> initialElements;
+    uint8_t initial_elements_start;
+    uint8_t initial_elements_count;
     uint64_t newCapacity;
     bool expectedReallocation;
     bool expectedEmpty;
-    std::vector<uint8_t> expectedElements;
-};
+    uint8_t expected_elements_start;
+    uint8_t expected_elements_count;
+} Reallocation;
 
-class Reallocation1Fixture: public ::testing::TestWithParam<Reallocation> {
-};
+void test_CircularBufferNRG_TestResetCapacitySingleStageWithReallocation(void) {
+    const Reallocation reallocations[] = {
+        {
+            // We simply reduce the capacity and reallocate.
+            6, 1, 4, 5, true, false, 1, 4
+        },
+        {
+            // We simply reduce the capacity and reallocate.
+            6, 1, 5, 5, true, false, 1, 5
+        },
+        {
+            // We reduce the capacity, reallocate and copy only the
+            // most recently added elements.
+            6, 1, 9, 5, true, false, 5, 5
+        }
+    };
 
-TEST_P(Reallocation1Fixture, TestResetCapacitySingleStageWithReallocation1Parametrised) {
-    const Reallocation param = GetParam();
+    const size_t reallocations_count = sizeof(reallocations) / sizeof(reallocations[0]);
+    for (size_t i = 0; i < reallocations_count; ++i) {
+        const Reallocation param = reallocations[i];
 
-    CircularBufferNRG cb = CircularBufferNRG_New(sizeof(uint8_t), param.initialCapacity);
-    for (const auto element : param.initialElements) {
-        CircularBufferNRG_Add(cb, &element);
-    }
-    const uint64_t original_item_count = CircularBufferNRG_ItemCount(cb);
-    ASSERT_EQ(original_item_count, MIN(param.initialElements.size(), param.initialCapacity));
+        CircularBufferNRG cb = CircularBufferNRG_New(sizeof(uint8_t), param.initialCapacity);
+        for (uint8_t j = 0; j < param.initial_elements_count; ++j) {
+            const uint8_t element = param.initial_elements_start + j;
+            CircularBufferNRG_Add(cb, &element);
+        }
+        const uint64_t original_item_count = CircularBufferNRG_ItemCount(cb);
+        ASSERT_EQ(original_item_count, MIN(param.initial_elements_count, param.initialCapacity));
 
-    CircularBufferNRG old_address = cb;
-    ASSERT_TRUE(CircularBufferNRG_SetCapacity(&cb, param.newCapacity));
-    if (param.expectedReallocation) {
-        // The address has changed, meaning there has been a reallocation.
-        ASSERT_NE(old_address, cb);
-    } else {
-        // The address hasn't changed, meaning there has been no reallocation.
-        ASSERT_EQ(old_address, cb);
-    }
+        CircularBufferNRG old_address = cb;
+        TEST_ASSERT(CircularBufferNRG_SetCapacity(&cb, param.newCapacity));
+        if (param.expectedReallocation) {
+            // The address has changed, meaning there has been a reallocation.
+            ASSERT_NE(old_address, cb);
+        } else {
+            // The address hasn't changed, meaning there has been no reallocation.
+            ASSERT_EQ(old_address, cb);
+        }
 
-    ASSERT_EQ(CircularBufferNRG_GetCapacity(cb), param.newCapacity);
-    ASSERT_EQ(CircularBufferNRG_IsEmpty(cb), param.expectedEmpty);
-    ASSERT_EQ(CircularBufferNRG_ItemCount(cb), param.expectedElements.size());
+        ASSERT_EQ(CircularBufferNRG_GetCapacity(cb), param.newCapacity);
+        ASSERT_EQ(CircularBufferNRG_IsEmpty(cb), param.expectedEmpty);
+        ASSERT_EQ(CircularBufferNRG_ItemCount(cb), param.expected_elements_count);
 
-    // Confirm the new buffer has only the elements expected.
-    for (const auto element : param.expectedElements) {
-        uint8_t removed = 0;
+        // Confirm the new buffer has only the elements expected.
+        for (uint8_t j = 0; j < param.expected_elements_count; ++j) {
+            const uint8_t element = param.expected_elements_start + j;
+            uint8_t removed = 0;
+            CircularBufferNRG_Read(cb, &removed);
+            ASSERT_EQ(removed, element);
+        }
+
+        // After all the expected elements have been read, we shouldn't be able
+        // to read more.
+        uint8_t removed = 127;
         CircularBufferNRG_Read(cb, &removed);
-        ASSERT_EQ(removed, element);
+        ASSERT_EQ(removed, 127);
+
+        CircularBufferNRG_Free(cb);
     }
-
-    // After all the expected elements have been read, we shouldn't be able
-    // to read more.
-    uint8_t removed = 127;
-    CircularBufferNRG_Read(cb, &removed);
-    ASSERT_EQ(removed, 127);
-
-    CircularBufferNRG_Free(cb);
 }
 
-INSTANTIATE_TEST_SUITE_P(
-        CircularBufferNRGReallocation1Tests,
-        Reallocation1Fixture,
-        ::testing::Values<Reallocation>(
-            Reallocation {
-                // We simply reduce the capacity and reallocate.
-                6, { 1, 2, 3, 4 }, 5, true, false, { 1, 2, 3, 4 }
-            },
-            Reallocation {
-                // We simply reduce the capacity and reallocate.
-                6, { 1, 2, 3, 4, 5 }, 5, true, false, { 1, 2, 3, 4, 5 }
-            },
-            Reallocation {
-                // We reduce the capacity, reallocate and copy only the
-                // most recently added elements.
-                6, { 1, 2, 3, 4, 5, 6, 7, 8, 9 }, 5, true, false, { 5, 6, 7, 8, 9 }
-            }
-        ));
+TEST_LIST = {
+    { "test_CircularBufferNRG_TestResetCapacitySingleStageWithReallocation", test_CircularBufferNRG_TestResetCapacitySingleStageWithReallocation },
+	{ "test_CircularBufferNRG_TestCustomDeleterIsUsedProperly", test_CircularBufferNRG_TestCustomDeleterIsUsedProperly },
+	{ "test_CircularBufferNRG_TestViewAllWithCircle", test_CircularBufferNRG_TestViewAllWithCircle },
+	{ "test_CircularBufferNRG_TestViewAll", test_CircularBufferNRG_TestViewAll },
+	{ "test_CircularBufferNRG_TestReadAllAndEndPrematurely", test_CircularBufferNRG_TestReadAllAndEndPrematurely },
+	{ "test_CircularBufferNRG_TestReadAllFullCollection", test_CircularBufferNRG_TestReadAllFullCollection },
+	{ "test_CircularBufferNRG_TestResetCapacitySingleStageNoReallocation", test_CircularBufferNRG_TestResetCapacitySingleStageNoReallocation },
+	{ "test_CircularBufferNRG_TestWrapsReads", test_CircularBufferNRG_TestWrapsReads },
+	{ "test_CircularBufferNRG_TestWrapsWrites", test_CircularBufferNRG_TestWrapsWrites },
+	{ NULL, NULL }
+};
