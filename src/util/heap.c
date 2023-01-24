@@ -142,7 +142,7 @@ static void __pushdown
             child = childl;
         }
 		// find smallest child
-        else if (h->cmp(h->array[childl], h->array[childr], h->udata) < 0) {
+        else if (h->cmp(h->array[childl], h->array[childr], h->udata) > 0) {
             child = childl;
 		} else {
             child = childr;
@@ -214,14 +214,13 @@ void Heap_clear(heap_t * h)
     h->count = 0;
 }
 
-/**
- * @return item's index on the heap's array; otherwise -1 */
+// return item's index on the heap's array; otherwise -1
 static int __item_get_idx(const heap_t * h, const void *item)
 {
     unsigned int idx;
 
     for (idx = 0; idx < h->count; idx++)
-        if (0 == h->cmp(h->array[idx], item, h->udata))
+        if (h->cmp(h->array[idx], item, h->udata) == 0)
             return idx;
 
     return -1;
@@ -229,7 +228,7 @@ static int __item_get_idx(const heap_t * h, const void *item)
 
 void *Heap_remove_item
 (
-	heap_t * h,
+	heap_t *h,
 	const void *item
 )
 {
@@ -245,15 +244,16 @@ void *Heap_remove_item
     h->array[h->count - 1] = NULL;
 
     h->count -= 1;
-
-	if(h->cmp(h->array[idx], ret_item, h->udata) > 0) {
-		// replacement > removed
-        // ensure heap property
-        __pushdown(h, idx);
-	} else {
-		// replacement <= removed
-        // ensure heap property
-        __pushup(h, idx);
+    if(idx < h->count) {
+		if(h->cmp(h->array[idx], ret_item, h->udata) < 0) {
+			// replacement > removed
+			// ensure heap property
+			__pushdown(h, idx);
+		} else {
+			// replacement <= removed
+			// ensure heap property
+			__pushup(h, idx);
+		}
 	}
 
     // no need to pushup if replaced element is removed element
@@ -278,6 +278,41 @@ int Heap_count(const heap_t * h)
 int Heap_size(const heap_t * h)
 {
     return h->size;
+}
+
+void _Heap_print
+(
+	const heap_t *hp,
+	int idx,
+	int level
+) {
+	int val = *(int*)hp->array[idx];
+	for(int i = 0; i < level; i++) {
+		putchar('\t');
+	}
+	printf("%d\n", val);
+
+	int l = __child_left(idx);
+	int r = __child_right(idx);
+
+	if(l < Heap_count(hp)) {
+		_Heap_print(hp, l, level+1);
+	}
+	
+	if(r < Heap_count(hp)) {
+		_Heap_print(hp, r, level+1);
+	}
+}
+
+void Heap_print
+(
+	const heap_t *hp
+) {
+	printf("heap:\n");
+	if(Heap_count(hp) == 0) {
+		return;
+	}
+	_Heap_print(hp, 0, 0);
 }
 
 /*--------------------------------------------------------------79-characters-*/

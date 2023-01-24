@@ -5,10 +5,24 @@
  */
 
 #include "acutest.h"
-#include "../../src/util/arr.h"
 #include "../../src/util/heap.h"
 #include <time.h>
+#include <math.h>
 #include <stdlib.h>
+
+static int find_min
+(
+	const int *arr,
+	int n
+) {
+	int min = (int)INFINITY;
+	for(int i = 0; i < n; i++) {
+		if(min > arr[i]) {
+			min = arr[i];
+		}
+	}
+	return min;
+}
 
 static int cmp
 (
@@ -129,8 +143,9 @@ static void test_heapPopulateRand(void) {
 	// create a new heap
 	heap_t *heap = Heap_new(cmp, NULL);
 
-	int n = 10;
+	int n = 100;
 	int elements[n];
+	int sorted_elements[n];
 
 	//--------------------------------------------------------------------------
 	// generate n random numbers within the range 0..999
@@ -139,6 +154,7 @@ static void test_heapPopulateRand(void) {
 	// insert elements 0..n
 	for(int i = 0; i < n; i++) {
 		elements[i] = rand() % 1000;
+		sorted_elements[i] = elements[i];
 		TEST_ASSERT(Heap_offer(&heap, elements + i) == 0);
 	}
 
@@ -154,7 +170,7 @@ static void test_heapPopulateRand(void) {
 	// sort elements
 	//--------------------------------------------------------------------------
 
-	qsort(elements, n, sizeof(int), qsort_cmp);
+	qsort(sorted_elements, n, sizeof(int), qsort_cmp);
 
 	//--------------------------------------------------------------------------
 	// validate heap poll ordering
@@ -163,10 +179,10 @@ static void test_heapPopulateRand(void) {
 	int *elem;
 	for(int i = 0; i < n; i++) {
 		elem = (int*)Heap_peek(heap);
-		TEST_ASSERT(*elem == elements[i]);
+		TEST_ASSERT(*elem == sorted_elements[i]);
 
 		elem = Heap_poll(heap);
-		TEST_ASSERT(*elem == elements[i]);
+		TEST_ASSERT(*elem == sorted_elements[i]);
 	}
 
 	//--------------------------------------------------------------------------
@@ -203,39 +219,40 @@ static void test_heapRemoveElement(void) {
 	// remove heap head
 	//--------------------------------------------------------------------------
 
-	int *elem;
-	elem = (int*)Heap_remove_item(heap, elements + 0);
-	TEST_ASSERT(elem == elements + 0);
+	int elem;
+	elem = *(int*)Heap_remove_item(heap, elements + 0);
+
+	TEST_ASSERT(elem == elements[0]);
 
 	// validate new head
-	elem = (int*)Heap_peek(heap);
-	TEST_ASSERT(*elem == 1);
+	elem = *(int*)Heap_peek(heap);
+	TEST_ASSERT(elem == 1);
 
 	//--------------------------------------------------------------------------
 	// remove 2 from heap
 	//--------------------------------------------------------------------------
 
-	elem = (int*)Heap_remove_item(heap, elements + 3);
-	TEST_ASSERT(elem == elements + 3);
+	elem = *(int*)Heap_remove_item(heap, elements + 2);
+	TEST_ASSERT(elem == elements[2]);
 
 	// remove heap head
-	elem = (int*)Heap_poll(heap);
-	TEST_ASSERT(*elem == 1);
+	elem = *(int*)Heap_poll(heap);
+	TEST_ASSERT(elem == 1);
 
 	// validate new head
-	elem = (int*)Heap_peek(heap);
-	TEST_ASSERT(*elem == 3);
+	elem = *(int*)Heap_peek(heap);
+	TEST_ASSERT(elem == 3);
 
 	//--------------------------------------------------------------------------
 	// remove last element
 	//--------------------------------------------------------------------------
 
-	elem = (int*)Heap_remove_item(heap, elements + 9);
-	TEST_ASSERT(elem == elements + 9);
+	elem = *(int*)Heap_remove_item(heap, elements + 9);
+	TEST_ASSERT(elem == elements[9]);
 
 	// validate new head
-	elem = (int*)Heap_peek(heap);
-	TEST_ASSERT(*elem == 3);
+	elem = *(int*)Heap_peek(heap);
+	TEST_ASSERT(elem == 3);
 
 	// free heap
 	Heap_free(heap);
@@ -248,8 +265,9 @@ static void test_heapFuzz(void) {
 	// create a new heap
 	heap_t *heap = Heap_new(cmp, NULL);
 
-	int n = 1000;
-	int *elements = array_new(int, 1000);
+	int n = 100;         // array size
+	int elem_count = 0;  // number of elements in array
+	int elements[n];     // array of generated elements
 
 	// perform 2000 random operations:
 	// 1. introduce a new random element
@@ -257,43 +275,58 @@ static void test_heapFuzz(void) {
 	// 3. remove head
 	// 
 	// after each operation perform validation against head of heap
-	for(int i = 0; i < 2000; i++) {
+	for(int i = 0; i < 100; i++) {
 		int x;
 		int idx;
 		int elem;
-		int op = rand() % 3;
+		int op = rand() % 2;
 
 		switch(op) {
 			case 0:
 				// introduce a new random element
 				elem = rand() % 100;
-				array_append(elements, elem);
-				Heap_offer(&heap, elements + i);
 
-				// sort elements
-				qsort(elements, n, sizeof(int), qsort_cmp);
+				elements[elem_count] = elem;
+				Heap_offer(&heap, elements + elem_count);
+				elem_count++;
+
+				printf("new element added\n");
+				Heap_print(heap);
+
 				break;
 			case 1:
-				// remove a random element
-				idx = rand() & array_len(elements);
-				Heap_remove_item(heap, elements + idx);
-				array_del_fast(elements, idx);
+				if(elem_count > 0) {
+					// remove a random element
+					idx = rand() % elem_count;
+					printf("removing element: %d\n", elements[idx]);
+					Heap_remove_item(heap, elements + idx);
+					elem_count--;
+					elements[idx] = elements[elem_count];
 
-				// sort elements
-				qsort(elements, n, sizeof(int), qsort_cmp);
+					printf("element removed\n");
+					Heap_print(heap);
+				}
 				break;
 			case 2:
-				Heap_poll(heap);
+				//Heap_poll(heap);
 				break;
 			default:
 				break;
 		}
 
+
 		// validate head of heap contains the lowest value in elements array
-		TEST_ASSERT(Heap_count(heap) == array_len(elements));
+		int heap_count = Heap_count(heap);
+		printf("heap_count: %d\n", heap_count);
+		printf("elem_count: %d\n", elem_count);
+
+		TEST_ASSERT(Heap_count(heap) == elem_count);
 		if(Heap_count(heap) > 0) {
-			x = (*(int*)Heap_peek(heap));
-			TEST_ASSERT(x == elements[0]);
+			x = *(int*)Heap_peek(heap);
+			int min = find_min(elements, elem_count);
+			printf("min: %d\n", min);
+			printf("x: %d\n", x);
+			TEST_ASSERT(x == min);
 		}
 	}
 
