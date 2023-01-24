@@ -1047,13 +1047,13 @@ static int _reply_with_get_graph_info
     REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Number of nodes",
-        Graph_NodeCount(gc->g) - Graph_DeletedNodeCount(gc->g)
+        Graph_NodeCount(gc->g)
     ));
 
     REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         "Number of relationships",
-        Graph_EdgeCount(gc->g) - Graph_DeletedEdgeCount(gc->g)
+        Graph_EdgeCount(gc->g)
     ));
 
     REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
