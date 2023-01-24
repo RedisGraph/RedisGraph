@@ -115,38 +115,48 @@ static int __pushup(heap_t * h, unsigned int idx)
     return idx;
 }
 
-static void __pushdown(heap_t * h, unsigned int idx)
-{
+static void __pushdown
+(
+	heap_t * h,
+	unsigned int idx
+) {
     while (1)
     {
         unsigned int childl, childr, child;
 
+		// get left and right child indices
         childl = __child_left(idx);
         childr = __child_right(idx);
 
+		// see if right child index is within bounds
         if (childr >= h->count)
         {
-            /* can't pushdown any further */
-            if (childl >= h->count)
+			// see if left child index is within bounds
+            if (childl >= h->count) {
+				// we've reached a leaf node
+				// can't push down any further
                 return;
+			}
 
+			// only left child should be considered
             child = childl;
         }
-        // find biggest child
-        else if (h->cmp(h->array[childl], h->array[childr], h->udata) < 0)
-            child = childr;
-        else
+		// find smallest child
+        else if (h->cmp(h->array[childl], h->array[childr], h->udata) < 0) {
             child = childl;
+		} else {
+            child = childr;
+		}
 
         // idx is smaller than child
         if (h->cmp(h->array[idx], h->array[child], h->udata) < 0)
         {
             __swap(h, idx, child);
             idx = child;
-            /* bigger than the biggest child, we stop, we win */
-        }
-        else
+        } else {
+			// parent is smaller than its children we can stop
             return;
+		}
     }
 }
 
@@ -217,25 +227,40 @@ static int __item_get_idx(const heap_t * h, const void *item)
     return -1;
 }
 
-void *Heap_remove_item(heap_t * h, const void *item)
+void *Heap_remove_item
+(
+	heap_t * h,
+	const void *item
+)
 {
     int idx = __item_get_idx(h, item);
 
-    if (idx == -1)
+    if (idx == -1) {
         return NULL;
+	}
 
-    /* swap the item we found with the last item on the heap */
+    // swap the item we found with the last item on the heap
     void *ret_item = h->array[idx];
     h->array[idx] = h->array[h->count - 1];
     h->array[h->count - 1] = NULL;
 
     h->count -= 1;
 
-    /* no need to pushup if replaced element is removed element */
-    if(idx < h->count) {
-        /* ensure heap property */
+	if(h->cmp(h->array[idx], ret_item, h->udata) > 0) {
+		// replacement > removed
+        // ensure heap property
+        __pushdown(h, idx);
+	} else {
+		// replacement <= removed
+        // ensure heap property
         __pushup(h, idx);
-    }
+	}
+
+    // no need to pushup if replaced element is removed element
+    //if(idx < h->count) {
+        // ensure heap property
+    //    __pushup(h, idx);
+    //}
 
     return ret_item;
 }
