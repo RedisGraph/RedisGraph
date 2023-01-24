@@ -10,12 +10,18 @@
 #include <math.h>
 #include <stdlib.h>
 
+#define array_alloc_fn malloc
+#define array_realloc_fn realloc
+#define array_free_fn free
+#include "../../src/util/arr.h"
+
+// find min value in array
 static int find_min
 (
-	const int *arr,
-	int n
+	int *arr
 ) {
 	int min = (int)INFINITY;
+	int n = array_len(arr);
 	for(int i = 0; i < n; i++) {
 		if(min > arr[i]) {
 			min = arr[i];
@@ -24,6 +30,22 @@ static int find_min
 	return min;
 }
 
+// remove value 'v' from array
+static void remove_value
+(
+	int *arr,
+	int v
+) {
+	int n = array_len(arr);
+	for(int i = 0; i < n; i++) {
+		if(arr[i] == v) {
+			array_del_fast(arr, i);
+			break;
+		}
+	}
+}
+
+// heap compare function
 static int cmp
 (
 	const void *a,
@@ -34,9 +56,9 @@ static int cmp
 	int _b = *(int*)b;
 
 	return _b - _a;
-	//return _a - _b;
 }
 
+// quick sort compare function
 static int qsort_cmp
 (
 	const void *a,
@@ -265,73 +287,68 @@ static void test_heapFuzz(void) {
 	// create a new heap
 	heap_t *heap = Heap_new(cmp, NULL);
 
-	int n = 100;         // array size
-	int elem_count = 0;  // number of elements in array
-	int elements[n];     // array of generated elements
+	int n                = 500;
+	int *elements        = array_new(int, n);  // all elements ever introduced
+	int *synced_elements = array_new(int, n);  // elements synced with heap
 
-	// perform 2000 random operations:
+	// perform random operations:
 	// 1. introduce a new random element
 	// 2. remove a random element
 	// 3. remove head
 	// 
 	// after each operation perform validation against head of heap
-	for(int i = 0; i < 100; i++) {
-		int x;
-		int idx;
-		int elem;
-		int op = rand() % 2;
+	for(int i = 0; i < 500; i++) {
+		int idx;              // index of element to remove
+		int *top;             // head of heap
+		int elem;             // element to add
+		int op = rand() % 3;  // operation to perform
 
 		switch(op) {
 			case 0:
 				// introduce a new random element
 				elem = rand() % 100;
-
-				elements[elem_count] = elem;
-				Heap_offer(&heap, elements + elem_count);
-				elem_count++;
-
-				printf("new element added\n");
-				Heap_print(heap);
-
+				array_append(elements, elem);
+				array_append(synced_elements, elem);
+				Heap_offer(&heap, elements + (array_len(elements)-1));
 				break;
 			case 1:
-				if(elem_count > 0) {
+				// remove random element
+				if(Heap_count(heap) > 0) {
 					// remove a random element
-					idx = rand() % elem_count;
-					printf("removing element: %d\n", elements[idx]);
-					Heap_remove_item(heap, elements + idx);
-					elem_count--;
-					elements[idx] = elements[elem_count];
+					idx = rand() % array_len(elements);
 
-					printf("element removed\n");
-					Heap_print(heap);
+					Heap_remove_item(heap, elements + idx);
+					remove_value(synced_elements, elements[idx]);
 				}
 				break;
 			case 2:
-				//Heap_poll(heap);
+				// pop heap head
+				top = (int*)Heap_poll(heap);
+				if(top != NULL) {
+					remove_value(synced_elements, *top);
+				}
 				break;
 			default:
 				break;
 		}
 
-
+		//----------------------------------------------------------------------
 		// validate head of heap contains the lowest value in elements array
+		//----------------------------------------------------------------------
 		int heap_count = Heap_count(heap);
-		printf("heap_count: %d\n", heap_count);
-		printf("elem_count: %d\n", elem_count);
-
-		TEST_ASSERT(Heap_count(heap) == elem_count);
-		if(Heap_count(heap) > 0) {
-			x = *(int*)Heap_peek(heap);
-			int min = find_min(elements, elem_count);
-			printf("min: %d\n", min);
-			printf("x: %d\n", x);
-			TEST_ASSERT(x == min);
+		int arr_count  = array_len(synced_elements);
+		TEST_ASSERT(heap_count == arr_count);
+		if(heap_count > 0) {
+			top = (int*)Heap_peek(heap);
+			int min = find_min(synced_elements);
+			TEST_ASSERT(*top == min);
 		}
 	}
 
-	// free heap
+	// clean up
 	Heap_free(heap);
+	array_free(elements);
+	array_free(synced_elements);
 }
 
 TEST_LIST = {
