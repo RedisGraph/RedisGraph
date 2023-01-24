@@ -183,30 +183,6 @@ setup_clang_sanitizer() {
 	fi
 }
 
-clang_sanitizer_summary() {
-	if grep -l "leaked in" logs/*.asan.log* &> /dev/null; then
-		echo
-		echo "${LIGHTRED}Sanitizer: leaks detected:${RED}"
-		grep -l "leaked in" logs/*.asan.log*
-		echo "${NOCOLOR}"
-		E=1
-	fi
-	if grep -l "dynamic-stack-buffer-overflow" logs/*.asan.log* &> /dev/null; then
-		echo
-		echo "${LIGHTRED}Sanitizer: buffer overflow detected:${RED}"
-		grep -l "dynamic-stack-buffer-overflow" logs/*.asan.log*
-		echo "${NOCOLOR}"
-		E=1
-	fi
-	if grep -l "stack-use-after-scope" logs/*.asan.log* &> /dev/null; then
-		echo
-		echo "${LIGHTRED}Sanitizer: stack use after scope detected:${RED}"
-		grep -l "stack-use-after-scope" logs/*.asan.log*
-		echo "${NOCOLOR}"
-		E=1
-	fi
-}
-
 #----------------------------------------------------------------------------------------------
 
 setup_redis_server() {
