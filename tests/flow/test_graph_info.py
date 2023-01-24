@@ -11,6 +11,7 @@ import time
 from enum import Enum
 
 GRAPH_ID = "GRAPH_INFO_TEST"
+GRAPH_ID_2 = "GRAPH_INFO_TEST_2"
 
 # GRAPH.INFO commands
 INFO_QUERIES_CURRENT_COMMAND = 'GRAPH.INFO QUERIES CURRENT'
@@ -117,15 +118,15 @@ def get_unix_timestamp_milliseconds():
 
 
 class _testGraphInfoFlowBase(FlowTestsBase):
-    def _delete_graph(self):
-        graph = Graph(self.conn, GRAPH_ID)
+    def _delete_graph(self, name=GRAPH_ID):
+        graph = Graph(self.conn, name)
         try:
             graph.delete()
         except redis.exceptions.ResponseError:
             pass
 
-    def _create_graph_filled(self):
-        graph = Graph(self.conn, GRAPH_ID)
+    def _create_graph_filled(self, name=GRAPH_ID):
+        graph = Graph(self.conn, name)
 
         for i in range(0, 2):
             graph.add_node(Node(label='Person', properties={'age': i}))
@@ -133,16 +134,16 @@ class _testGraphInfoFlowBase(FlowTestsBase):
         graph.commit()
         return i + 1
 
-    def _create_graph_empty(self):
-        self.conn.execute_command('GRAPH.QUERY', GRAPH_ID, 'RETURN 1')
+    def _create_graph_empty(self, name=GRAPH_ID):
+        self.conn.execute_command('GRAPH.QUERY', name, 'RETURN 1')
 
-    def _recreate_graph_empty(self):
-        self._delete_graph()
-        self._create_graph_empty()
+    def _recreate_graph_empty(self, name=GRAPH_ID):
+        self._delete_graph(name)
+        self._create_graph_empty(name)
 
-    def _recreate_graph_with_node(self):
-        self._delete_graph()
-        return self._create_graph_filled()
+    def _recreate_graph_with_node(self, name=GRAPH_ID):
+        self._delete_graph(name)
+        return self._create_graph_filled(name)
 
     def __init__(self, env):
         self.env = env
@@ -399,6 +400,29 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
 
         info = self.conn.execute_command(INFO_GET_GENERIC_COMMAND_TEMPLATE % GRAPH_ID)
         self._assert_info_get_result(info, nodes=4, node_labels=1, relationships=2, relationship_types=1, node_property_names=6, edge_property_names=2)
+
+    def test04_info_get_all_generic(self):
+        '''
+        Tests that the results aggregated in the "GRAPH.INFO GET *"
+        are sums and are correct.
+        '''
+        self._recreate_graph_with_node(GRAPH_ID)
+        self._recreate_graph_with_node(GRAPH_ID_2)
+        info_1 = self.conn.execute_command(INFO_GET_GENERIC_COMMAND_TEMPLATE % GRAPH_ID)
+        self._assert_info_get_result(info_1, nodes=2, node_labels=1, node_property_names=2)
+        info_1 = list_to_dict(info_1)
+        info_2 = self.conn.execute_command(INFO_GET_GENERIC_COMMAND_TEMPLATE % GRAPH_ID_2)
+        self._assert_info_get_result(info_2, nodes=2, node_labels=1, node_property_names=2)
+        info_2 = list_to_dict(info_2)
+
+        info_all = self.conn.execute_command(INFO_GET_GENERIC_COMMAND_TEMPLATE % '*')
+        info_1_and_2 = dict()
+        for key in info_1:
+            info_1_and_2[key] = info_1[key] + info_2[key]
+        self._assert_info_get_result(info_all,
+        nodes=info_1_and_2['Number of nodes'],
+        node_labels=info_1_and_2['Number of node labels'],
+        node_property_names=info_1_and_2['Total number of node properties'])
 
     def test04_graph_info_get_current_graph_stat(self):
         self._recreate_graph_empty()
@@ -783,8 +807,6 @@ class testGraphInfoGetFlow(_testGraphInfoFlowBase):
 	# 	}
 	# }
 
-    # Test max_query_wait_time is actually maximum, not something else.
     # Test the undo-log things.
-    # Test the valid_prop count is used in bulk_insert.c
     # Test working with non-existing graphs is well-handled for all the commands.
 
