@@ -600,27 +600,25 @@ class testGraphInfoGetFlow(_testGraphInfoFlowBase):
                 total_query_count=total_query_count,
                 failed_readonly=failed_readonly_queries)
 
-        # TODO fails due to incremented Graph_DeletedNodeCount.
-        # # Test all write queries for fail counting.
-        # failed_write_queries = 0
-        # for kind in ALL_WRITE_KINDS:
-        #     try:
-        #         results = self._run_write_query(kind, problem_kind=QueryFailureSimulationKind.FAIL_RUNTIME)
-        #         assert False, \
-        #             f"Shouldn't have reached with the {kind} kind, result: {results}"
-        #     except redis.exceptions.ResponseError as e:
-        #         self.env.assertContains(RUNTIME_FAILURE_MESSAGE, str(e), depth=1)
+        # Test all write queries for fail counting.
+        failed_write_queries = 0
+        for kind in ALL_WRITE_KINDS:
+            try:
+                results = self._run_write_query(kind, problem_kind=QueryFailureSimulationKind.FAIL_RUNTIME)
+                assert False, \
+                    f"Shouldn't have reached with the {kind} kind, result: {results}"
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains(RUNTIME_FAILURE_MESSAGE, str(e), depth=1)
 
-        #     results = self.conn.execute_command(self.QUERY)
-        #     failed_write_queries += 1
-        #     total_query_count += 1
-        #     print(f'Query: {self.QUERY}\nResult: {results}')
-        #     self._assert_info_get_result(results, nodes=nodes, node_labels=1, node_property_names=2)
-        #     self._assert_info_get_counts(
-        #         results,
-        #         total_query_count=total_query_count,
-        #         failed_readonly=failed_readonly_queries,
-        #         failed_write=failed_write_queries)
+            results = self.conn.execute_command(self.QUERY)
+            failed_write_queries += 1
+            total_query_count += 1
+            self._assert_info_get_result(results, nodes=nodes, node_labels=1, node_property_names=2)
+            self._assert_info_get_counts(
+                results,
+                total_query_count=total_query_count,
+                failed_readonly=failed_readonly_queries,
+                failed_write=failed_write_queries)
 
     def test02_info_get_specific_counters_failed_early(self):
         '''
