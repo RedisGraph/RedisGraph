@@ -62,6 +62,12 @@ bool QGEdge_VariableLength
 	const QGEdge *e
 );
 
+// determine whether this edge represent a single hop
+bool QGEdge_SingleHop
+(
+	const QGEdge *e
+);
+
 // determine whether this is part of an allShortestPaths query
 bool QGEdge_IsShortestPath
 (
