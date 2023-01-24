@@ -14,11 +14,6 @@ setup_cc_options()
 file(GLOB_RECURSE SOURCES "src/*.c")
 
 add_library(redisgraph SHARED ${SOURCES})
-#if (NOT APPLE)
-#	add_library(redisgraph SHARED ${SOURCES})
-#else()
-#	add_library(redisgraph MODULE ${SOURCES})
-#endif()
 
 include_directories(
 	${root}/src
