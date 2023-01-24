@@ -314,8 +314,8 @@ class testForeachFlow():
         # and properties: {v: 1, name: 'raz'} and li from 1 to 4
         res = graph.query("MATCH (n:N) return n")
         n = Node(label='N', properties={'v': 1, 'name': 'RAZ', 'li': [1, 2, 3, 4]})
-        self.env.assertEquals(res.result_set[0][0], n)
         self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0], n)
         res = graph.query("MATCH (m:M) return m")
         self.env.assertEquals(len(res.result_set), 4)
         for i in range(len(res.result_set)):
@@ -331,7 +331,7 @@ class testForeachFlow():
         # ----------------------------------------------------------------------
 
         query = """
-        MATCH (n:N {v: 1, name: toUpper('raz'), li: [1, 2, 3, 4]})
+        MATCH (n:N)
         WITH collect(n) as ns
         FOREACH(n in ns |
             FOREACH(x in n.li |
@@ -349,6 +349,15 @@ class testForeachFlow():
         self.env.assertEquals(res.properties_set, 6)
         self.env.assertEquals(res.nodes_deleted, 0)
 
+        # validate that the correct nodes were created
+        n1 = Node(label = 'TEMP',
+                  properties={'v': 7, 'name': 'raz', 'li': [1, 2, 3, 4, 3]})
+        n2 = Node(label = 'TEMP',
+                  properties={'v': 9, 'name': 'raz', 'li': [1, 2, 3, 4, 4]})
+        res = self.get_res_and_assertEquals("""MATCH (t:TEMP) RETURN t ORDER BY
+                                            t.v""",
+                                            [[n1], [n2]])
+
         # ----------------------------------------------------------------------
         # triple embedded Foreach clause followed by reading and writing clauses
         # ----------------------------------------------------------------------
@@ -362,18 +371,18 @@ class testForeachFlow():
         graph.query("CREATE (:N {v: 1, name: 'RAZ', li: [1, 2, 3, 4]})")
 
         query = """
-        MATCH (n:N {v: 1, name: toUpper('raz'), li: [1, 2, 3, 4]})
-        WITH collect(n) as ns
+        MATCH (n:N)
+        WITH collect(n) as ns, toLower(n.name) as name
         FOREACH(n in ns |
             FOREACH(x in n.li |
                 FOREACH(do_action IN CASE WHEN x > 2 THEN [1] ELSE [] END |
-                    CREATE (t:TEMP {v: x, li: n.li + x, name: toLower(n.name)})
+                    CREATE (t:TEMP {v: x, li: n.li + x, name: name})
                 )
             )
         )
-        WITH ns
+        WITH ns, name
         MATCH (t: TEMP)
-        SET t.li = t.li + ['RAZ']
+        SET t.li = t.li + toUpper(name)
         WITH ns, t
         FOREACH(n in ns | CREATE (:TEMP))
         """
