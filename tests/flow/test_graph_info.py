@@ -20,6 +20,7 @@ INFO_QUERIES_CURRENT_PREV_COMMAND = 'GRAPH.INFO QUERIES CURRENT PREV 100'
 INFO_GET_GENERIC_COMMAND_TEMPLATE = 'GRAPH.INFO GET %s'
 INFO_GET_STAT_COMMAND_TEMPLATE = 'GRAPH.INFO GET %s STAT'
 INFO_RESET_ALL_COMMAND = 'GRAPH.INFO RESET *'
+INFO_RESET_SPECIFIC_COMMAND_TEMPLATE = 'GRAPH.INFO RESET %s'
 
 # Error messages
 COULDNOT_FIND_GRAPH_ERROR_MESSAGE = "Couldn't find the specified graph"
@@ -124,6 +125,10 @@ class _testGraphInfoFlowBase(FlowTestsBase):
             graph.delete()
         except redis.exceptions.ResponseError:
             pass
+
+    def _delete_graphs(self):
+        self._delete_graph(GRAPH_ID)
+        self._delete_graph(GRAPH_ID_2)
 
     def _create_graph_filled(self, name=GRAPH_ID):
         graph = Graph(self.conn, name)
@@ -579,6 +584,26 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
         # These numbers were carefully deducted from the csv files used above.
         self._assert_info_get_result(info, nodes=27, node_labels=2, relationships=56, relationship_types=2, node_property_names=69, edge_property_names=56)
 
+    def test09_non_existing_graphs_handling(self):
+        '''
+        This test shows that the non-existing graphs are handled well when the
+        GRAPH.INFO commands are issued.
+        '''
+        self._delete_graphs()
+        queries = [
+            INFO_GET_GENERIC_COMMAND_TEMPLATE % GRAPH_ID,
+            INFO_GET_STAT_COMMAND_TEMPLATE % GRAPH_ID,
+            INFO_RESET_SPECIFIC_COMMAND_TEMPLATE % GRAPH_ID,
+        ]
+        for query in queries:
+            try:
+                results = self.conn.execute_command(query)
+                assert False, \
+                    f"Shouldn't have reached with this point, result: {results}"
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains(COULDNOT_FIND_GRAPH_ERROR_MESSAGE, str(e), depth=1)
+
+
 # This test is separate as it needs a separate and a non-concurrent context.
 class testGraphInfoGetFlow(_testGraphInfoFlowBase):
     QUERY = 'GRAPH.INFO GET %s COUNTS' % GRAPH_ID
@@ -770,7 +795,6 @@ class testGraphInfoGetFlow(_testGraphInfoFlowBase):
 
     # TODO
     # 0) Parametrise the tests instead of code duplication.
-    # 1) GRAPH.INFO GET * tests.
     #
     # These require some discussion:
     #
