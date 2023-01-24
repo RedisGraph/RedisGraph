@@ -1,8 +1,10 @@
 # GRAPH.INFO being useful only concurrently, requires concurrent tests.
-import asyncio
 from common import *
 from pathos.pools import ProcessPool as Pool
-from pathos.helpers import mp as pathos_multiprocess
+import csv
+import time
+from click.testing import CliRunner
+from redisgraph_bulk_loader.bulk_insert import bulk_insert
 
 from common import *
 import time
@@ -10,7 +12,7 @@ from enum import Enum
 
 GRAPH_ID = "GRAPH_INFO_TEST"
 
-# Commands
+# GRAPH.INFO commands
 INFO_QUERIES_CURRENT_COMMAND = 'GRAPH.INFO QUERIES CURRENT'
 INFO_QUERIES_PREV_COMMAND = 'GRAPH.INFO QUERIES PREV 100 --compact'
 INFO_QUERIES_CURRENT_PREV_COMMAND = 'GRAPH.INFO QUERIES CURRENT PREV 100'
@@ -522,6 +524,36 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
         query = 'GRAPH.INFO RESET %s' % GRAPH_ID
         results = self.conn.execute_command(query)
         self.env.assertEquals(results, 1, depth=1)
+
+    def test08_bulk_loading_info(self):
+        '''
+        Bulk loading is a separate command that also has little deviations
+        from how the usual graph node/edge insertion works. For it to be
+        accounted for properly, special hooks are added which count the nodes
+        and edges added to a graph this way. The purpose of this test is to
+        confirm that these hooks are working (counting) properly.
+        '''
+        self._delete_graph()
+
+        runner = CliRunner()
+        port = self.env.envRunner.port
+
+        csv_path = os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/resources/bulk_formatted/'
+        res = runner.invoke(bulk_insert, ['--port', port,
+                                          '--nodes', csv_path + 'Person.csv',
+                                          '--nodes', csv_path + 'Country.csv',
+                                          '--relations', csv_path + 'KNOWS.csv',
+                                          '--relations', csv_path + 'VISITED.csv',
+                                          GRAPH_ID])
+
+        # The script should report 27 node creations and 56 edge creations
+        self.env.assertEquals(res.exit_code, 0)
+        self.env.assertIn('27 nodes created', res.output)
+        self.env.assertIn('56 relations created', res.output)
+
+        info = self.conn.execute_command(INFO_GET_GENERIC_COMMAND_TEMPLATE % GRAPH_ID)
+        # These numbers were carefully deducted from the csv files used above.
+        self._assert_info_get_result(info, nodes=27, node_labels=2, relationships=56, relationship_types=2, node_property_names=69, edge_property_names=56)
 
 # This test is separate as it needs a separate and a non-concurrent context.
 class testGraphInfoGetFlow(_testGraphInfoFlowBase):
