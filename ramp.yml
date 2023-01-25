@@ -20,6 +20,7 @@ capabilities:
     - no_multi_key
     - intershard_tls
     - intershard_tls_pass
+    - ipv6    
 exclude_commands:
     - graph.CONFIG
     - graph.DEBUG

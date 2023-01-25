@@ -13,7 +13,7 @@ typedef struct {
 	GraphEntity *ge;            // entity to be updated
 	AttributeSet attributes;    // attributes to update
 	const char **add_labels;    // labels to add to the node
-	const char **remove_labels; // labels to add to the node
+	const char **remove_labels; // labels to remove from the node
 } PendingUpdateCtx;
 
 // commit all updates described in the array of pending updates
@@ -25,9 +25,9 @@ void CommitUpdates
 	EntityType type
 );
 
-/* build pending updates in the 'updates' array to match all
- * AST-level updates described in the context
- * NULL values are allowed in SET clauses but not in MERGE clauses */
+// build pending updates in the 'updates' array to match all
+// AST-level updates described in the context
+// NULL values are allowed in SET clauses but not in MERGE clauses
 void EvalEntityUpdates
 (
 	GraphContext *gc,

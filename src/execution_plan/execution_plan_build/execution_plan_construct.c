@@ -189,6 +189,81 @@ static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	ExecutionPlan_UpdateRoot(plan, op);
 }
 
+static void _buildForeachOp
+(
+	ExecutionPlan *plan,             // execution plan to add operation to
+	const cypher_astnode_t *clause,  // foreach clause
+	GraphContext *gc                 // graph context
+) {
+	// construct the following sub execution plan structure
+	// foreach
+	//   loop body (foreach/create/update/remove/delete/merge)
+	//		unwind
+	//			argument list
+
+	OpBase *foreach = NewForeachOp(plan);
+	AST    *ast     = plan->ast_segment;
+
+	ExecutionPlan_UpdateRoot(plan, foreach);
+
+	// make an execution-plan mocking the current one, in which the embedded
+	// execution-plan of the Foreach clauses will be built
+	ExecutionPlan *embedded_plan = ExecutionPlan_NewEmptyExecutionPlan();
+	// use a clone record-map, to not pollute the main one (different scope)
+	embedded_plan->record_map           = raxClone(plan->record_map);
+	embedded_plan->ast_segment          = plan->ast_segment;
+	// use a clone QueryGraph, to not pollute the main one (different scope)
+	embedded_plan->query_graph          = QueryGraph_Clone(plan->query_graph);
+	embedded_plan->record_pool          = plan->record_pool;
+	embedded_plan->connected_components = plan->connected_components;
+
+	//--------------------------------------------------------------------------
+	// build Unwind op
+	//--------------------------------------------------------------------------
+
+	// unwind foreach list expression
+	AR_ExpNode *exp = AR_EXP_FromASTNode(
+		cypher_ast_foreach_get_expression(clause));
+	exp->resolved_name = cypher_ast_identifier_get_name(
+		cypher_ast_foreach_get_identifier(clause));
+	OpBase *unwind = NewUnwindOp(embedded_plan, exp);
+	// set the unwind op as the current root of the embedded plan
+	ExecutionPlan_UpdateRoot(embedded_plan, unwind);
+
+	//--------------------------------------------------------------------------
+	// build ArgumentList op
+	//--------------------------------------------------------------------------
+
+	OpBase *argument_list = NewArgumentListOp(embedded_plan);
+	// add the op as a child of the unwind operation
+	ExecutionPlan_AddOp(unwind, argument_list);
+
+	//--------------------------------------------------------------------------
+	// build FOREACH loop body operation(s)
+	//--------------------------------------------------------------------------
+
+	// build the operations corresponding to the embedded clauses in foreach
+	uint clause_count = cypher_ast_foreach_nclauses(clause);
+	for(uint i = 0; i < clause_count; i++) {
+		const cypher_astnode_t *sub_clause = cypher_ast_foreach_get_clause(clause, i);
+		ExecutionPlanSegment_ConvertClause(gc, ast, embedded_plan, sub_clause);
+	}
+
+	// bind the operations of the new plan to the old plan, without merging qgs
+	ExecutionPlan_BindPlanToOps(plan, embedded_plan->root, false);
+
+	// connect foreach op to its child operation
+	ExecutionPlan_AddOp(foreach, embedded_plan->root);
+
+	// free the temporary plan after disconnecting the shared components with
+	// the main plan
+	embedded_plan->root                 = NULL;
+	embedded_plan->ast_segment          = NULL;
+	embedded_plan->record_pool          = NULL;
+	embedded_plan->connected_components = NULL;
+	ExecutionPlan_Free(embedded_plan);
+}
+
 void ExecutionPlanSegment_ConvertClause
 (
 	GraphContext *gc,
@@ -219,6 +294,8 @@ void ExecutionPlanSegment_ConvertClause
 	} else if(t == CYPHER_AST_WITH) {
 		// Converting a WITH clause can create multiple operations.
 		buildWithOps(plan, clause);
+	} else if(t == CYPHER_AST_FOREACH) {
+		_buildForeachOp(plan, clause, gc);
 	} else {
 		assert(false && "unhandeled clause");
 	}
