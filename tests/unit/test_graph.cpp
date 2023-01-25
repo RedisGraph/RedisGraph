@@ -554,7 +554,7 @@ TEST_F(GraphTest, RemoveEdges) {
 	ASSERT_EQ(array_len(edges), 2);
 
 	// Delete edge.
-	array_append(edges[0]);
+	array_append(arr, edges[0]);
 	srcID = Edge_GetSrcNodeID(&e);
 	destID = Edge_GetDestNodeID(&e);
 	Graph_DeleteEdges(g, arr);
