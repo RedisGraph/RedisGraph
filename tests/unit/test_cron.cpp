@@ -185,6 +185,6 @@ TEST_F(CRONTest, AbortRunningTask) {
 	double time_taken_sec = ((double)t)/CLOCKS_PER_SEC;
 	
 	// expecting Cron_AbortTask to return after at-least 2 seconds
-	ASSERT_LT(time_taken_sec, < 0.01);
+	ASSERT_LT(time_taken_sec, 0.01);
 }
 
