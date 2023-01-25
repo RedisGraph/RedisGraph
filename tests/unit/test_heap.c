@@ -7,7 +7,6 @@
 #include "acutest.h"
 #include "../../src/util/heap.h"
 #include <time.h>
-#include <math.h>
 #include <stdlib.h>
 
 #define array_alloc_fn malloc
@@ -20,13 +19,14 @@ static int find_min
 (
 	int *arr
 ) {
-	int min = (int)INFINITY;
+	int min = arr[0];
 	int n = array_len(arr);
-	for(int i = 0; i < n; i++) {
+	for(int i = 1; i < n; i++) {
 		if(min > arr[i]) {
 			min = arr[i];
 		}
 	}
+
 	return min;
 }
 
@@ -158,6 +158,54 @@ static void test_heapPopulate(void) {
 	Heap_free(heap);
 }
 
+static void test_heapPopulateDup(void) {
+	// create a new heap
+	heap_t *heap = Heap_new(cmp, NULL);
+
+	int e = 7;     // duplicated value
+	int n = 1000;  // number of duplicates
+
+	//--------------------------------------------------------------------------
+	// populate heap
+	//--------------------------------------------------------------------------
+
+	// insert duplicated elements
+	for(int i = 0; i < n; i++) {
+		TEST_ASSERT(Heap_offer(&heap, &e) == 0);
+	}
+
+	// validate number of elements in heap
+	TEST_ASSERT(Heap_count(heap) == n);
+
+	// validate expected elements are indeed in heap
+	for(int i = 0; i < n; i++) {
+		TEST_ASSERT(Heap_contains_item(heap, &e) == 1);
+	}
+
+	//--------------------------------------------------------------------------
+	// empty heap
+	//--------------------------------------------------------------------------
+
+	// empty heap by polling until empty
+	int *elem;
+	for(int i = 0; i < n; i++) {
+		elem = (int*)Heap_peek(heap);
+		TEST_ASSERT(*elem == e);
+
+		elem = Heap_poll(heap);
+		TEST_ASSERT(*elem == e);
+	}
+
+	//--------------------------------------------------------------------------
+	// validate heap is empty
+	//--------------------------------------------------------------------------
+
+	TEST_ASSERT(Heap_count(heap) == 0);
+
+	// free heap
+	Heap_free(heap);
+}
+
 static void test_heapPopulateRand(void) {
 	// seed random
 	srand(time(NULL));
@@ -276,6 +324,14 @@ static void test_heapRemoveElement(void) {
 	elem = *(int*)Heap_peek(heap);
 	TEST_ASSERT(elem == 3);
 
+	//--------------------------------------------------------------------------
+	// remove none existing element
+	//--------------------------------------------------------------------------
+
+	int x;
+	void *res = Heap_remove_item(heap, &x);
+	TEST_ASSERT(res == NULL);
+
 	// free heap
 	Heap_free(heap);
 }
@@ -317,8 +373,9 @@ static void test_heapFuzz(void) {
 					// remove a random element
 					idx = rand() % array_len(elements);
 
-					Heap_remove_item(heap, elements + idx);
-					remove_value(synced_elements, elements[idx]);
+					if(Heap_remove_item(heap, elements + idx) != NULL) {
+						remove_value(synced_elements, elements[idx]);
+					}
 				}
 				break;
 			case 2:
@@ -354,6 +411,7 @@ static void test_heapFuzz(void) {
 TEST_LIST = {
 	{"heapCreate", test_heapCreate},
 	{"heapPopulate", test_heapPopulate},
+	{"heapPopulateDup", test_heapPopulateDup},
 	{"heapPopulateRand", test_heapPopulateRand},
 	{"heapRemoveElement", test_heapRemoveElement},
 	{"heapFuzz", test_heapFuzz},

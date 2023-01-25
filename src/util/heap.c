@@ -125,8 +125,8 @@ static int __item_get_idx
 ) {
     unsigned int idx;
 
-    for (idx = 0; idx < hp->count; idx++) {
-        if(hp->cmp(hp->array[idx], item, hp->udata) == 0) {
+    for(idx = 0; idx < hp->count; idx++) {
+        if(hp->array[idx] == item) {
             return idx;
 		}
 	}
