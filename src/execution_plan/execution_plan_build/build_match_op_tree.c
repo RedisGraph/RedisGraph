@@ -102,7 +102,7 @@ static void _ExecutionPlan_ProcessQueryGraph
 					QueryGraph_GetEdgeByAlias(qg, AlgebraicExpression_Edge(exp));
 			}
 
-			if(edge && QGEdge_VariableLength(edge)) {
+			if(edge && (QGEdge_VariableLength(edge) || !QGEdge_SingleHop(edge))) {
 				// edge is part of a shortest-path
 				// MATCH allShortestPaths((a)-[*..]->(b))
 				// validate both edge ends are bounded
