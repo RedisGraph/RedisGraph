@@ -478,6 +478,7 @@ TEST_F(GraphTest, RemoveEdges) {
 	RG_Matrix M;
 	GrB_Index nnz;
 	Graph *g = Graph_New(32, 32);
+	Edge *arr = array_new(Edge, 1);
 	Graph_AcquireWriteLock(g);
 	for(int i = 0; i < 3; i++) Graph_CreateNode(g, &n, NULL, 0);
 	int r = Graph_AddRelationType(g);
@@ -517,7 +518,7 @@ TEST_F(GraphTest, RemoveEdges) {
 	NodeID destID = Edge_GetDestNodeID(&e);
 
 	// Delete edge.
-	Graph_DeleteEdge(g, &e);
+	Graph_DeleteEdges(g, edges);
 
 	// Validate edge deletion.
 	ASSERT_EQ(Graph_EdgeCount(g), 2);
@@ -553,10 +554,11 @@ TEST_F(GraphTest, RemoveEdges) {
 	ASSERT_EQ(array_len(edges), 2);
 
 	// Delete edge.
-	e = edges[0];
+	array_append(edges[0]);
 	srcID = Edge_GetSrcNodeID(&e);
 	destID = Edge_GetDestNodeID(&e);
-	Graph_DeleteEdge(g, &e);
+	Graph_DeleteEdges(g, arr);
+	array_clear(arr);
 
 	// Validate edge deletion.
 	ASSERT_EQ(Graph_EdgeCount(g), 1);
@@ -583,10 +585,11 @@ TEST_F(GraphTest, RemoveEdges) {
 	//--------------------------------------------------------------------------
 
 	// Delete edge.
-	e = edges[1];
+	array_append(arr, edges[1]);
 	srcID = Edge_GetSrcNodeID(&e);
 	destID = Edge_GetDestNodeID(&e);
-	Graph_DeleteEdge(g, &e);
+	Graph_DeleteEdges(g, arr);
+	array_clear(arr);
 
 	// Validate edge deletion.
 	ASSERT_EQ(Graph_EdgeCount(g), 0);
@@ -609,6 +612,7 @@ TEST_F(GraphTest, RemoveEdges) {
 	ASSERT_EQ(nnz, 0);
 
 	// Cleanup.
+	array_free(arr);
 	Graph_ReleaseLock(g);
 	Graph_Free(g);
 }
