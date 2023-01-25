@@ -78,7 +78,7 @@ int module_reply_key_value_numbers
     RedisModuleCtx *ctx,
     const bool is_compact_mode,
     const char *key,
-    const int64_t *values,
+    const long long *values,
     const size_t length
 ) {
     ASSERT(ctx);
