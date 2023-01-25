@@ -1,3 +1,4 @@
+import asyncio
 from common import *
 
 redis_con = None
@@ -181,3 +182,26 @@ class testQueryTimeout(FlowTestsBase):
         # make sure no pending result exists
         res = redis_graph.query("RETURN 1")
         self.env.assertEquals(res.result_set[0][0], 1)
+
+    def test11_concurrent_timeout(self):
+        # skip test if we're running under Valgrind
+        if VALGRIND or "to_thread" not in dir(asyncio):
+            self.env.skip() # valgrind is not working correctly with multi processing
+
+        self.env.stop()
+        self.env = Env(decodeResponses=True)
+        
+        redis_graph.query("UNWIND range(1, 1000) AS x CREATE (:N {v:x})")
+
+        def query():
+            g = Graph(self.env.getConnection(), GRAPH_ID)
+
+            for i in range(1, 1000):
+                g.query(f"MATCH (n:N) WHERE n.v > {i} RETURN count(1)", timeout=1000)
+        
+        loop = asyncio.get_event_loop()
+        tasks = []
+        for i in range(1, 10):
+            tasks.append(loop.create_task(asyncio.to_thread(query)))
+
+        loop.run_until_complete(asyncio.wait(tasks))
