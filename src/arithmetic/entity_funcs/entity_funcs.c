@@ -160,6 +160,13 @@ static SIValue _AR_NodeDegree
 	if(argc > 1) {
 		// we're interested in specific relationship type(s)
 
+		// set function name for error messages
+		char function_name[10];
+		if (dir == GRAPH_EDGE_DIR_INCOMING) {
+			strcpy(function_name, "indegree");
+		} else {
+			strcpy(function_name, "outdegree");
+		}
 		// get labels array from input arguments, but removing duplicates
 		SIValue labels = SI_EmptyArray();
 		if(SI_TYPE(argv[1]) == T_STRING) {
@@ -170,7 +177,7 @@ static SIValue _AR_NodeDegree
 						SIArray_Append(&labels, argv[i]);
 					}
 				} else {
-					Error_SITypeMismatch(argv[i], T_STRING);
+					Error_FunctionArgumentSITypeMismatch(argv[i], T_STRING, function_name, i+1, 0);
 				}
 			}
 		} else if (SI_TYPE(argv[1]) == T_ARRAY) {
@@ -183,7 +190,7 @@ static SIValue _AR_NodeDegree
 				SIValue elem = SIArray_Get(argv[1], j);
 				if(SI_TYPE(elem) != T_STRING) {
 					SIArray_Free(labels);
-					Error_SITypeMismatch(elem, T_STRING);
+					Error_FunctionArgumentSITypeMismatch(elem, T_STRING, function_name, 2, j+1);
 					return SI_NullVal();
 				}
 				if(SIArray_ContainsValue(labels, elem, NULL) == false) {
