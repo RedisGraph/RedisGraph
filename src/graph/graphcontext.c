@@ -562,7 +562,7 @@ uint GraphContext_DeleteNode
 	return 1;
 }
 
-uint GraphContext_DeleteEdge
+uint GraphContext_DeleteEdges
 (
 	GraphContext *gc,
 	Edge *edges
@@ -575,7 +575,7 @@ uint GraphContext_DeleteEdge
 	uint      count        = array_len(edges);
 	for (uint i = 0; i < count; i++) {
 		if(has_indecise) {
-			_DeleteEdgeFromIndices(gc, edges + i);
+			GraphContext_DeleteEdgeFromIndices(gc, edges + i);
 		}
 	}
 

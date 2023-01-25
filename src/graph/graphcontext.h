@@ -252,7 +252,7 @@ uint GraphContext_DeleteNode
 // delete edges
 // remove edges from the relevant indexes
 // return the # of edges deleted
-uint GraphContext_DeleteEdge
+uint GraphContext_DeleteEdges
 (
 	GraphContext *gc,
 	Edge *edges
