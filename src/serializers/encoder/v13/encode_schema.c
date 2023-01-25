@@ -115,7 +115,14 @@ static inline void _RdbSaveIndexData
 	}
 }
 
-static inline void _RdbSaveConstraintsData(RedisModuleIO *rdb, Constraint *constraints) {
+static inline void _RdbSaveConstraintsData
+(
+	RedisModuleIO *rdb,
+	Constraint *constraints
+) {
+	/* Format:
+	 * type
+	 * fields */
 	uint n_constraints = array_len(constraints);
 	uint n_active_constraints = 0;
 
@@ -155,7 +162,10 @@ static void _RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
 	 * id
 	 * name
 	 * #indices
-	 * (index type, indexed property) X M */
+	 * (index type, indexed property) X M 
+	 * #constraints 
+	 * (constraint type, constraint fields) X N
+	 */
 
 	// Schema ID.
 	RedisModule_SaveUnsigned(rdb, s->id);
