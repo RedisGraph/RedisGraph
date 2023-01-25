@@ -1011,7 +1011,7 @@ int Graph_DeleteEdges
 		NodeID      src_id    =  Edge_GetSrcNodeID(e);
 		NodeID      dest_id   =  Edge_GetDestNodeID(e);
 
-		ASSERT(!DataBlock_ItemIsDeleted((void *)e->attributes));
+		ASSERT(!DataBlock_ItemIsDeleted((void *)e->entity));
 		
 		// an edge of type r has just been deleted, update statistics
 		GraphStatistics_DecEdgeCount(&g->stats, r, 1);
