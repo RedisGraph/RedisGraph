@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
@@ -6,250 +5,375 @@
 
 #include "heap.h"
 
-
 #define DEFAULT_CAPACITY 13
 
 struct heap_s
 {
-    /* size of array */
-    unsigned int size;
-    /* items within heap */
-    unsigned int count;
-    /**  user data */
-    void *udata;
-    heap_cmp cmp;
-    void * array[];
+	unsigned int size;   // size of array
+	unsigned int count;  // items within heap
+	void *udata;         // user data
+	heap_cmp cmp;        // item compare function
+	void *array[];       // heap elements
 };
 
-size_t Heap_sizeof(unsigned int size)
-{
-    return sizeof(heap_t) + size * sizeof(void *);
-}
-
-static int __child_left(const int idx)
-{
-    return idx * 2 + 1;
-}
-
-static int __child_right(const int idx)
-{
-    return idx * 2 + 2;
-}
-
-static int __parent(const int idx)
-{
-    return (idx - 1) / 2;
-}
-
-void Heap_init
+// compute left child index of given parent
+static int __child_left
 (
-	heap_t* h,
-	heap_cmp cmp,
-	void *udata,
-	unsigned int size
-)
-{
-    h->cmp = cmp;
-    h->udata = udata;
-    h->size = size;
-    h->count = 0;
+	const int idx
+) {
+	return idx * 2 + 1;
 }
 
+// compute right child index of given parent
+static int __child_right
+(
+	const int idx
+) {
+	return idx * 2 + 2;
+}
+
+// compute parent index for given child
+static int __parent
+(
+	const int idx
+) {
+	return (idx - 1) / 2;
+}
+
+static void __swap
+(
+	heap_t *hp,
+	const int i1,
+	const int i2
+) {
+	void *tmp = hp->array[i1];
+
+	hp->array[i1] = hp->array[i2];
+	hp->array[i2] = tmp;
+}
+
+static int __pushup
+(
+	heap_t *hp,
+	unsigned int idx
+) {
+	// 0 is the root node
+	while (0 != idx)
+	{
+		int parent = __parent(idx);
+
+		// we are smaller than the parent
+		if(hp->cmp(hp->array[idx], hp->array[parent], hp->udata) < 0) {
+			return -1;
+		} else {
+			__swap(hp, idx, parent);
+		}
+
+		idx = parent;
+	}
+
+	return idx;
+}
+
+static void __pushdown
+(
+	heap_t *hp,
+	unsigned int idx
+) {
+	while (1) {
+		unsigned int childl, childr, child;
+
+		// get left and right child indices
+		childl = __child_left(idx);
+		childr = __child_right(idx);
+
+		// see if right child index is within bounds
+		if(childr >= hp->count) {
+			// see if left child index is within bounds
+			if(childl >= hp->count) {
+				// we've reached a leaf node
+				// can't push down any further
+				return;
+			}
+
+			// only left child should be considered
+			child = childl;
+		}
+		// find smallest child
+		else if(hp->cmp(hp->array[childl], hp->array[childr], hp->udata) > 0) {
+			child = childl;
+		} else {
+			child = childr;
+		}
+
+		// idx is smaller than child
+		if(hp->cmp(hp->array[idx], hp->array[child], hp->udata) < 0) {
+			__swap(hp, idx, child);
+			idx = child;
+		} else {
+			// parent is smaller than its children we can stop
+			return;
+		}
+	}
+}
+
+// return item's index on the heap's array; otherwise -1
+static int __item_get_idx
+(
+	const heap_t *hp,
+	const void *item
+) {
+	unsigned int idx;
+
+	for(idx = 0; idx < hp->count; idx++) {
+		if(hp->array[idx] == item) {
+			return idx;
+		}
+	}
+
+	return -1;
+}
+
+static void __Heap_offerx
+(
+	heap_t *hp,
+	void *item
+) {
+	hp->array[hp->count] = item;
+
+	// ensure heap properties
+	__pushup(hp, hp->count++);
+}
+
+// return a new heap on success; NULL otherwise
+static heap_t* __ensurecapacity
+(
+	heap_t *hp
+) {
+	if(hp->count < hp->size) {
+		return hp;
+	}
+
+	hp->size *= 2;
+
+	return realloc(hp, Heap_sizeof(hp->size));
+}
+
+// create new heap and initialise it
 heap_t *Heap_new
 (
-	heap_cmp cmp,
-	void *udata
-)
-{
-    heap_t *h = malloc(Heap_sizeof(DEFAULT_CAPACITY));
+	heap_cmp cmp,  // cmp callback used to get an item's priority
+	void *udata    // udata user data passed through to cmp callback
+) {
+	heap_t *hp = malloc(Heap_sizeof(DEFAULT_CAPACITY));
 
-    if (!h)
-        return NULL;
+	if(!hp) {
+		return NULL;
+	}
 
-    Heap_init(h, cmp, udata, DEFAULT_CAPACITY);
+	Heap_init(hp, cmp, udata, DEFAULT_CAPACITY);
 
-    return h;
+	return hp;
 }
 
-void Heap_free(heap_t * h)
-{
-    free(h);
+ // initialise heap
+void Heap_init
+(
+	heap_t *hp,        // heap to initialise
+	heap_cmp cmp,      // cmp Callback used to get an item's priority
+	void *udata,       // udata User data passed through to cmp callback
+	unsigned int size  // size Initial size of the heap's array
+) {
+	hp->cmp   = cmp;
+	hp->size  = size;
+	hp->count = 0;
+	hp->udata = udata;
 }
 
-/**
- * @return a new heap on success; NULL otherwise */
-static heap_t* __ensurecapacity(heap_t * h)
-{
-    if (h->count < h->size)
-        return h;
+// add item, ensures that the data structure can hold the item
+// NOTE: realloc() possibly called
+// return 0 on success; -1 on failure
+int Heap_offer
+(
+	heap_t **hp,  // pointer to the heap, changed when heap is enlarged
+	void *item    // item The item to be added
+) {
+	if(NULL == (*hp = __ensurecapacity(*hp))) {
+		return -1;
+	}
 
-    h->size *= 2;
-
-    return realloc(h, Heap_sizeof(h->size));
+	__Heap_offerx(*hp, item);
+	return 0;
 }
 
-static void __swap(heap_t * h, const int i1, const int i2)
-{
-    void *tmp = h->array[i1];
+// add item
+// an error will occur if there isn't enough space for this item
+// return 0 on success; -1 on error
+int Heap_offerx
+(
+	heap_t *hp,  // item The item to be added
+	void *item
+) {
+	if(hp->count == hp->size) {
+		return -1;
+	}
 
-    h->array[i1] = h->array[i2];
-    h->array[i2] = tmp;
+	__Heap_offerx(hp, item);
+
+	return 0;
 }
 
-static int __pushup(heap_t * h, unsigned int idx)
-{
-    // 0 is the root node
-    while (0 != idx)
-    {
-        int parent = __parent(idx);
+// remove the item with the top priority
+// return top item
+void *Heap_poll
+(
+	heap_t *hp
+) {
+	if(0 == Heap_count(hp)) {
+		return NULL;
+	}
 
-        // we are smaller than the parent
-        if (h->cmp(h->array[idx], h->array[parent], h->udata) < 0)
-            return -1;
-        else
-            __swap(h, idx, parent);
+	void *item = hp->array[0];
 
-        idx = parent;
-    }
+	hp->array[0] = hp->array[hp->count - 1];
+	hp->count--;
 
-    return idx;
+	if(hp->count > 1) {
+		__pushdown(hp, 0);
+	}
+
+	return item;
 }
 
-static void __pushdown(heap_t * h, unsigned int idx)
-{
-    while (1)
-    {
-        unsigned int childl, childr, child;
+// return top item of the heap
+void *Heap_peek
+(
+	const heap_t *hp
+) {
+	if(0 == Heap_count(hp)) {
+		return NULL;
+	}
 
-        childl = __child_left(idx);
-        childr = __child_right(idx);
-
-        if (childr >= h->count)
-        {
-            /* can't pushdown any further */
-            if (childl >= h->count)
-                return;
-
-            child = childl;
-        }
-        // find biggest child
-        else if (h->cmp(h->array[childl], h->array[childr], h->udata) < 0)
-            child = childr;
-        else
-            child = childl;
-
-        // idx is smaller than child
-        if (h->cmp(h->array[idx], h->array[child], h->udata) < 0)
-        {
-            __swap(h, idx, child);
-            idx = child;
-            /* bigger than the biggest child, we stop, we win */
-        }
-        else
-            return;
-    }
+	return hp->array[0];
 }
 
-static void __Heap_offerx(heap_t * h, void *item)
-{
-    h->array[h->count] = item;
-
-    /* ensure heap properties */
-    __pushup(h, h->count++);
+// clear all items
+// note: does not free items
+// only use if item memory is managed outside of heap
+void Heap_clear
+(
+	heap_t *hp
+) {
+	hp->count = 0;
 }
 
-int Heap_offerx(heap_t * h, void *item)
-{
-    if (h->count == h->size)
-        return -1;
-    __Heap_offerx(h, item);
-    return 0;
+// return number of items in heap
+int Heap_count
+(
+	const heap_t *hp
+) {
+	return hp->count;
 }
 
-int Heap_offer(heap_t ** h, void *item)
-{
-    if (NULL == (*h = __ensurecapacity(*h)))
-        return -1;
-
-    __Heap_offerx(*h, item);
-    return 0;
+// return size of array
+int Heap_size
+(
+	const heap_t *hp
+) {
+	return hp->size;
 }
 
-void *Heap_poll(heap_t * h)
-{
-    if (0 == Heap_count(h))
-        return NULL;
-
-    void *item = h->array[0];
-
-    h->array[0] = h->array[h->count - 1];
-    h->count--;
-
-    if (h->count > 1)
-        __pushdown(h, 0);
-
-    return item;
+// return number of bytes needed for a heap of this size
+size_t Heap_sizeof
+(
+	unsigned int size
+) {
+	return sizeof(heap_t) + size * sizeof(void *);
 }
 
-void *Heap_peek(const heap_t * h)
-{
-    if (0 == Heap_count(h))
-        return NULL;
+// remove item
+// return item to be removed; NULL if item does not exist
+void *Heap_remove_item
+(
+	heap_t *hp,
+	const void *item  // the item that is to be removed
+) {
+	int idx = __item_get_idx(hp, item);
 
-    return h->array[0];
+	if(idx == -1) {
+		return NULL;
+	}
+
+	// swap the item we found with the last item on the heap
+	void *ret_item = hp->array[idx];
+	hp->array[idx] = hp->array[hp->count - 1];
+	hp->array[hp->count - 1] = NULL;
+
+	hp->count -= 1;
+	if(idx < hp->count) {
+		if(hp->cmp(hp->array[idx], ret_item, hp->udata) < 0) {
+			// replacement > removed
+			// ensure heap property
+			__pushdown(hp, idx);
+		} else {
+			// replacement <= removed
+			// ensure heap property
+			__pushup(hp, idx);
+		}
+	}
+
+	return ret_item;
 }
 
-void Heap_clear(heap_t * h)
-{
-    h->count = 0;
+// test membership of item
+// return 1 if the heap contains this item; otherwise 0
+int Heap_contains_item
+(
+	const heap_t *hp,
+	const void *item
+) {
+	return __item_get_idx(hp, item) != -1;
 }
 
-/**
- * @return item's index on the heap's array; otherwise -1 */
-static int __item_get_idx(const heap_t * h, const void *item)
-{
-    unsigned int idx;
+static void _Heap_print
+(
+	const heap_t *hp,
+	int idx,
+	int level
+) {
+	int val = *(int*)hp->array[idx];
+	for(int i = 0; i < level; i++) {
+		putchar('\t');
+	}
+	printf("%d\n", val);
 
-    for (idx = 0; idx < h->count; idx++)
-        if (0 == h->cmp(h->array[idx], item, h->udata))
-            return idx;
+	int l = __child_left(idx);
+	int r = __child_right(idx);
 
-    return -1;
+	if(l < Heap_count(hp)) {
+		_Heap_print(hp, l, level+1);
+	}
+	
+	if(r < Heap_count(hp)) {
+		_Heap_print(hp, r, level+1);
+	}
 }
 
-void *Heap_remove_item(heap_t * h, const void *item)
-{
-    int idx = __item_get_idx(h, item);
-
-    if (idx == -1)
-        return NULL;
-
-    /* swap the item we found with the last item on the heap */
-    void *ret_item = h->array[idx];
-    h->array[idx] = h->array[h->count - 1];
-    h->array[h->count - 1] = NULL;
-
-    h->count -= 1;
-
-    /* ensure heap property */
-    __pushup(h, idx);
-
-    return ret_item;
+// prints heap
+void Heap_print
+(
+	const heap_t *hp
+) {
+	if(Heap_count(hp) == 0) {
+		return;
+	}
+	_Heap_print(hp, 0, 0);
 }
 
-int Heap_contains_item(const heap_t * h, const void *item)
-{
-    return __item_get_idx(h, item) != -1;
+// free heap
+void Heap_free
+(
+	heap_t *hp
+) {
+	free(hp);
 }
-
-int Heap_count(const heap_t * h)
-{
-    return h->count;
-}
-
-int Heap_size(const heap_t * h)
-{
-    return h->size;
-}
-
-/*--------------------------------------------------------------79-characters-*/
