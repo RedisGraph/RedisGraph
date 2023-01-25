@@ -150,6 +150,11 @@ class _testGraphInfoFlowBase(FlowTestsBase):
         self._delete_graph(name)
         return self._create_graph_filled(name)
 
+    def _reset_graph_info_stats(self, name=GRAPH_ID):
+        query = 'GRAPH.INFO RESET %s' % GRAPH_ID
+        results = self.conn.execute_command(query)
+        self.env.assertEquals(results, 1, depth=1)
+
     def __init__(self, env):
         self.env = env
         # skip test if we're running under Valgrind
@@ -270,7 +275,7 @@ class _testGraphInfoFlowBase(FlowTestsBase):
 
     # Runs a read-only query. A read-only query isn't just based on whether
     # it is run via GRAPH.RO_QUERY but it can also be an ordinary GRAPH.QUERY
-    # that just doens't change anything. In the code we analyse the AST of the
+    # that just doesn't change anything. In the code we analyse the AST of the
     # received query and so determine whether it is a write or read-only query.
     #
     # That said, we should check that both of the cases lead to the same result.
@@ -300,7 +305,7 @@ class _testGraphInfoFlowBase(FlowTestsBase):
             # for the query and begins the execution.
             query = 'MATCH (p:Person), (p2:Person) RETURN p2.age / p.age'
         elif problem_kind == QueryFailureSimulationKind.FAIL_EARLY:
-            # Parsing error is an example "fail early" thing.
+            # Parsing error is an example of a "fail early" thing.
             # Another example is when the parser immediately sees the
             # division by zero.
             query = 'RETURN 1/0'
@@ -793,6 +798,80 @@ class testGraphInfoGetFlow(_testGraphInfoFlowBase):
                 timedout_readonly=timed_out_readonly_queries,
                 timedout_write=timed_out_write_queries)
 
+    def test04_info_works_with_undolog_well(self):
+        '''
+        The goal of this test case is to show that the GRAPH.INFO statistics
+        and other counters are taking into account the undo log. The undo log
+        is doing its job when a query failure is reached. Hence, to check that
+        the GRAPH.INFO works correctly with the undo log, we must perform
+        queries which fail at runtime after messing up with a graph: either
+        adding nodes/edges/attributes or deleting those.
+
+        The expected outcome of all these undo-log-graph.info interactions is
+        that the graph is unchanged after such queries, and so the GRAPH.INFO
+        stats have no changes as well.
+        '''
+        self._recreate_graph_with_node()
+
+        # This list contains the queries which are supposed to populate the
+        # graph at first, and then, the very last query is the failing query
+        # for which we test.
+        queries = [
+            # This will fail and the undo log will have to delete the nodes
+            # and edges.
+            # This query creates nodes, labels, properties and relationships
+            # between the create nodes, but it fails to finish due to a runtime
+            # error caused by a zero division.
+            [
+                'CREATE (t:T { n: 0 }), (t2:T { n: 20 }), (t)-[r:R { a: 5 }]->(t2) RETURN t2.n / t.n',
+            ],
+            # This will fail and the undo log will have to add the nodes and
+            # edges back.
+            [
+                'CREATE (t:T { n: 0 }), (t2:T { n: 20 }), (t)-[r:R { a: 5 }]->(t2)',
+                'MATCH (t:T)-[r:R]->(t2:T) WHERE t2.n / t.n > 0 DELETE t, r, t2'
+            ]
+        ]
+
+        for queries_inner in queries:
+            # Execute the populating queries.
+            for query in queries_inner[:len(queries_inner) - 1]:
+                results = self.conn.execute_command('GRAPH.QUERY', GRAPH_ID, query)
+
+            self._reset_graph_info_stats()
+            info = self.conn.execute_command(INFO_GET_GENERIC_COMMAND_TEMPLATE % GRAPH_ID)
+            info = list_to_dict(info)
+
+            # Test the query that fails.
+            query = queries_inner[-1]
+            got_exception = False
+            try:
+                results = self.conn.execute_command('GRAPH.QUERY', GRAPH_ID, query)
+                assert False, \
+                    f"Shouldn't have reached, result: {results}"
+            except redis.exceptions.ResponseError as e:
+                # Here we don't really care what caused the failure, we just
+                # need to ensure there was one.
+                got_exception = True
+
+            assert(got_exception)
+
+            results = self.conn.execute_command(self.QUERY)
+
+            self._assert_info_get_result(results,
+            nodes=info['Number of nodes'],
+            relationships=info['Number of relationships'],
+            node_labels=info['Number of node labels'],
+            relationship_types=info['Number of relationship types'],
+            node_property_names=info['Total number of node properties'],
+            edge_property_names=info['Total number of edge properties'],
+            )
+
+            self._assert_info_get_counts(
+                results,
+                total_query_count=1,
+                failed_write=1)
+
     # TODO
     # 0) Parametrise the tests instead of code duplication.
     #
@@ -830,7 +909,3 @@ class testGraphInfoGetFlow(_testGraphInfoFlowBase):
 	# 			ASSERT(false);
 	# 	}
 	# }
-
-    # Test the undo-log things.
-    # Test working with non-existing graphs is well-handled for all the commands.
-
