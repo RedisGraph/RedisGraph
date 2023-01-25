@@ -58,6 +58,8 @@ inline Record OpBase_Consume
 	return op->consume(op);
 }
 
+// mark alias as being modified by operation
+// returns the ID associated with alias
 int OpBase_Modifies
 (
 	OpBase *op,
