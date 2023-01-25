@@ -1154,28 +1154,28 @@ static int _reply_with_get_graph_info
         REDISMODULE_ASSERT(ReplyRecorder_AddNumbers(
             &recorder,
             "Query total durations",
-            percentiles.total_durations,
+            (long long*)percentiles.total_durations,
             sizeof(percentiles.total_durations) / sizeof(percentiles.total_durations[0])
         ));
 
         REDISMODULE_ASSERT(ReplyRecorder_AddNumbers(
             &recorder,
             "Query wait durations",
-            percentiles.wait_durations,
+            (long long*)percentiles.wait_durations,
             sizeof(percentiles.wait_durations) / sizeof(percentiles.wait_durations[0])
         ));
 
         REDISMODULE_ASSERT(ReplyRecorder_AddNumbers(
             &recorder,
             "Query execution durations",
-            percentiles.execution_durations,
+            (long long*)percentiles.execution_durations,
             sizeof(percentiles.execution_durations) / sizeof(percentiles.execution_durations[0])
         ));
 
         REDISMODULE_ASSERT(ReplyRecorder_AddNumbers(
             &recorder,
             "Query report durations",
-            percentiles.report_durations,
+            (long long*)percentiles.report_durations,
             sizeof(percentiles.report_durations) / sizeof(percentiles.report_durations[0])
         ));
 
