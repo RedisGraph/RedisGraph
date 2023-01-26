@@ -283,6 +283,7 @@ void test_CircularBufferNRG_TestViewAllWithCircle(void) {
         // expect to be able to read the same elements again, as there has been
         // no read in between the calls.
         ASSERT_EQ(current, old_current);
+        array_free(viewed);
     }
 
     value = 6;
@@ -305,6 +306,7 @@ void test_CircularBufferNRG_TestViewAllWithCircle(void) {
         // expect to be able to read the same elements again, as there has been
         // no read in between the calls.
         ASSERT_EQ(current, old_current);
+        array_free(viewed);
     }
 
 
