@@ -422,13 +422,13 @@ void test_CircularBufferNRG_TestResetCapacitySingleStageWithReallocation(void) {
 
 TEST_LIST = {
     { "test_CircularBufferNRG_TestResetCapacitySingleStageWithReallocation", test_CircularBufferNRG_TestResetCapacitySingleStageWithReallocation },
-	{ "test_CircularBufferNRG_TestCustomDeleterIsUsedProperly", test_CircularBufferNRG_TestCustomDeleterIsUsedProperly },
-	{ "test_CircularBufferNRG_TestViewAllWithCircle", test_CircularBufferNRG_TestViewAllWithCircle },
-	{ "test_CircularBufferNRG_TestViewAll", test_CircularBufferNRG_TestViewAll },
-	{ "test_CircularBufferNRG_TestReadAllAndEndPrematurely", test_CircularBufferNRG_TestReadAllAndEndPrematurely },
-	{ "test_CircularBufferNRG_TestReadAllFullCollection", test_CircularBufferNRG_TestReadAllFullCollection },
-	{ "test_CircularBufferNRG_TestResetCapacitySingleStageNoReallocation", test_CircularBufferNRG_TestResetCapacitySingleStageNoReallocation },
-	{ "test_CircularBufferNRG_TestWrapsReads", test_CircularBufferNRG_TestWrapsReads },
-	{ "test_CircularBufferNRG_TestWrapsWrites", test_CircularBufferNRG_TestWrapsWrites },
-	{ NULL, NULL }
+    { "test_CircularBufferNRG_TestCustomDeleterIsUsedProperly", test_CircularBufferNRG_TestCustomDeleterIsUsedProperly },
+    { "test_CircularBufferNRG_TestViewAllWithCircle", test_CircularBufferNRG_TestViewAllWithCircle },
+    { "test_CircularBufferNRG_TestViewAll", test_CircularBufferNRG_TestViewAll },
+    { "test_CircularBufferNRG_TestReadAllAndEndPrematurely", test_CircularBufferNRG_TestReadAllAndEndPrematurely },
+    { "test_CircularBufferNRG_TestReadAllFullCollection", test_CircularBufferNRG_TestReadAllFullCollection },
+    { "test_CircularBufferNRG_TestResetCapacitySingleStageNoReallocation", test_CircularBufferNRG_TestResetCapacitySingleStageNoReallocation },
+    { "test_CircularBufferNRG_TestWrapsReads", test_CircularBufferNRG_TestWrapsReads },
+    { "test_CircularBufferNRG_TestWrapsWrites", test_CircularBufferNRG_TestWrapsWrites },
+    { NULL, NULL }
 };
