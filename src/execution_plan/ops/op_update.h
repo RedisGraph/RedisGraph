@@ -24,4 +24,3 @@ typedef struct {
 } OpUpdate;
 
 OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps);
-
