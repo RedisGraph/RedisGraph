@@ -13,6 +13,7 @@
 #include "../../util/strutil.h"
 #include "../../util/json_encoder.h"
 #include "../../datatypes/array.h"
+#include "../deps/oniguruma/src/oniguruma.h"
 
 // toString supports only integer, float, string, boolean, point, duration, 
 // date, time, localtime, localdatetime or datetime values
@@ -224,15 +225,74 @@ err:
 	return SI_NullVal();
 }
 
-// ---
+typedef struct {
+	SIValue *list;
+	const char *str; 
+} _regex_scan_cb_args;
+
+static int _regex_scan_cb(int n, int pos, OnigRegion *region, void *arg) {
+	_regex_scan_cb_args *args = (_regex_scan_cb_args *)arg;
+	SIValue *list = args->list;
+	const char *str = args->str;
+	SIValue subList = SIArray_New(region->num_regs);
+
+  	for (int i = 0; i < region->num_regs; i++) {
+		int substr_len = region->end[i] - region->beg[i];
+		char *substr = rm_malloc((substr_len + 1)*sizeof(char));
+		memcpy(substr, str + region->beg[i], (substr_len)*sizeof(char));
+		substr[substr_len] = '\0';
+		SIArray_Append(&subList, SI_TransferStringVal(substr));
+  	}
+
+	SIArray_Append(list, subList);
+	return 0;
+}
+
+// given a string and a regular expression, 
+// return an array of all matches and matching regions
+// string.matchRegEx(str, regex) → array(array(string))
 SIValue AR_MATCHREGEX(SIValue *argv, int argc, void *private_data) {
 	ASSERT(argc == 2);
 	SIValue list = SIArray_New(0);
 	if(SI_TYPE(argv[0]) == T_NULL || SI_TYPE(argv[1]) == T_NULL) {
 		return list;
 	}
+	ASSERT(SI_TYPE(argv[0]) == T_STRING);
+	ASSERT(SI_TYPE(argv[1]) == T_STRING);
+	int rv;
 	const char *str = argv[0].stringval;
-	const char *regex = argv[1].stringval;
+	const char *regex_str = argv[1].stringval;
+	regex_t *regex;
+
+	OnigRegion *region = onig_region_new();
+	OnigErrorInfo einfo;
+
+	rv = onig_new(&regex, (const UChar *)regex_str, (const UChar *)(regex_str + strlen(regex_str)),
+			 ONIG_OPTION_DEFAULT, ONIG_ENCODING_UTF8, ONIG_SYNTAX_JAVA, &einfo);
+	if(rv != ONIG_NORMAL) {
+		char s[ONIG_MAX_ERROR_MESSAGE_LEN];
+    	onig_error_code_to_str((UChar* )s, rv, &einfo);
+		ErrorCtx_SetError("invalid regex, err=%s", s);
+		return SI_NullVal();
+	}
+	ASSERT(rv == ONIG_NORMAL);
+
+	_regex_scan_cb_args args = {
+		.list = &list,
+		.str = str
+	};
+
+	rv = onig_scan(regex, (const UChar *)str, 
+			(const UChar *)(str + strlen(str)), region, ONIG_OPTION_DEFAULT, _regex_scan_cb, &args);
+	if(rv < 0) {
+		char s[ONIG_MAX_ERROR_MESSAGE_LEN];
+    	onig_error_code_to_str((OnigUChar* )s, rv);
+		ErrorCtx_SetError("invalid regex, err=%s", s);
+		return SI_NullVal();
+	}
+
+	onig_free(regex);
+  	onig_region_free(region, 1);
 
 	return list;
 }
@@ -540,7 +600,7 @@ void Register_StringFuncs() {
 	array_append(types, (T_STRING | T_NULL));
 	array_append(types, (T_STRING | T_NULL));
 	ret_type = T_ARRAY;
-	func_desc = AR_FuncDescNew("matchregex", AR_MATCHREGEX, 1, 2, types, ret_type, false, true);
+	func_desc = AR_FuncDescNew("matchRegEx", AR_MATCHREGEX, 2, 2, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
