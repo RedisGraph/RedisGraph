@@ -135,6 +135,7 @@ class testQueryTimeout():
             self.env.assertContains("Query timed out", str(error))
 
     def test05_invalid_loadtime_config(self):
+        self.env.flush()
         self.env.stop()
 
         try:
@@ -223,6 +224,7 @@ class testQueryTimeout():
                 self.env.assertContains("The query TIMEOUT parameter value cannot exceed the TIMEOUT_MAX configuration parameter value", str(error))
 
     def test_09_fallback(self):
+        self.env.flush()
         self.env.stop()
         self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT 1")
 
@@ -263,6 +265,7 @@ class testQueryTimeout():
     # should return to user
     def test10_profile_no_double_response(self):
         # reset timeout params to default
+        self.env.flush()
         self.env.stop()
         self.env = Env(decodeResponses=True)
 
@@ -286,6 +289,7 @@ class testQueryTimeout():
         if VALGRIND or "to_thread" not in dir(asyncio):
             self.env.skip() # valgrind is not working correctly with multi processing
 
+        self.env.flush()
         self.env.stop()
         self.env = Env(decodeResponses=True)
         
