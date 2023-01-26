@@ -250,7 +250,7 @@ static Record AggregateConsume
 		while((r = OpBase_Consume(child))) _aggregateRecord(op, r);
 	}
 
-	// did we processed any records?
+	// did we process any records?
 	// does aggregation contains keys?
 	// e.g.
 	// MATCH (n:N) WHERE n.noneExisting = 2 RETURN count(n)

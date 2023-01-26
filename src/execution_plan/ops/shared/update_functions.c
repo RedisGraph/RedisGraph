@@ -93,6 +93,9 @@ void CommitUpdates
 	}
 }
 
+// build pending updates in the 'updates' array to match all
+// AST-level updates described in the context
+// NULL values are allowed in SET clauses but not in MERGE clauses
 void EvalEntityUpdates
 (
 	GraphContext *gc,
