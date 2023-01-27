@@ -844,7 +844,7 @@ static int _reset_all_graphs_info
         }
         Info_Reset(&gc->info);
     }
-    REDISMODULE_ASSERT(RedisModule_ReplyWithBool(ctx, true));
+    REDISMODULE_ASSERT(module_reply_bool(ctx, true));
     return REDISMODULE_OK;
 }
 
@@ -867,7 +867,7 @@ static int _reset_graph_info
 
     Info_Reset(&gc->info);
 
-    REDISMODULE_ASSERT(RedisModule_ReplyWithBool(ctx, true));
+    REDISMODULE_ASSERT(module_reply_bool(ctx, true));
 
     return REDISMODULE_OK;
 }
@@ -1566,7 +1566,6 @@ int Graph_Info
 
     const char *arg = RedisModule_StringPtrLen(argv[argc - 1], NULL);
     const bool is_compact_mode = _is_compact_mode(arg);
-
     const char *subcommand_name = RedisModule_StringPtrLen(argv[1], NULL);
     if (!_dispatch_subcommand(
         ctx,
