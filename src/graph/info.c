@@ -701,6 +701,8 @@ bool Info_New(Info *info) {
     _QueryInfoStorage_ResetAll(&info->executing_queries_per_thread);
     _QueryInfoStorage_ResetAll(&info->reporting_queries_per_thread);
 
+    _FinishedQueryCounters_Reset(&info->finished_query_counters);
+
     bool lock_initialized = !pthread_rwlock_init(
         &info->waiting_queries_rwlock,
         NULL);

@@ -6,6 +6,7 @@
 
  /*
   * This file contains the useful stuff when working from within a redis module.
+  * The reply mechanisms it has support RESP3 and RESP2.
  */
 #pragma once
 
@@ -54,6 +55,7 @@ typedef struct RedisModuleCtx RedisModuleCtx;
 
 
 // Replies with either a map or an array, depending on the compact mode flag.
+// Supports RESP3 and RESP2.
 int module_reply_map
 (
     RedisModuleCtx *ctx,
@@ -101,6 +103,11 @@ int module_reply_key_value_string
     const char *value
 );
 
+// Repleis with the boolean value. Supports RESP3 and RESP2.
+int module_reply_bool(
+    RedisModuleCtx *ctx,
+    const bool value
+);
 
 // A convenient wrapper over the reply mechanism, storing the state of the reply
 // until the flush is required. Supports compact mode and doesn't need a length
