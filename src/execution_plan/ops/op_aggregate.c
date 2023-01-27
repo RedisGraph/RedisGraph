@@ -68,7 +68,8 @@ static inline AR_ExpNode **_build_aggregate_exps
 (
 	OpAggregate *op
 ) {
-	AR_ExpNode **agg_exps = rm_malloc(op->aggregate_count * sizeof(AR_ExpNode *));
+	AR_ExpNode **agg_exps =
+		rm_malloc(op->aggregate_count * sizeof(AR_ExpNode *));
 
 	for(uint i = 0; i < op->aggregate_count; i++) {
 		agg_exps[i] = AR_EXP_Clone(op->aggregate_exps[i]);
@@ -205,7 +206,8 @@ static Record _handoff
 		int rec_idx = op->record_offsets[i];
 		// Non-aggregated expression.
 		SIValue res = group->keys[i];
-		// Key values are shared with the Record, as they'll be freed with the group cache.
+		// key values are shared with the Record
+		// as they'll be freed with the group cache
 		res = SI_ShareValue(res);
 		Record_Add(r, rec_idx, res);
 	}
@@ -229,33 +231,40 @@ OpBase *NewAggregateOp
 	bool should_cache_records
 ) {
 	OpAggregate *op = rm_malloc(sizeof(OpAggregate));
-	op->group = NULL;
-	op->group_iter = NULL;
-	op->group_keys = NULL;
-	op->groups = HashTableCreate(&dt);
+
+	op->group                = NULL;
+	op->group_iter           = NULL;
+	op->group_keys           = NULL;
+	op->groups               = HashTableCreate(&dt);
 	op->should_cache_records = should_cache_records;
 
-	// Migrate each expression to the keys array or the aggregations array as appropriate.
+	// migrate each expression to the keys array or
+	// the aggregations array as appropriate
 	_migrate_expressions(op, exps);
 	array_free(exps);
 
-	// Allocate memory for group keys if we have any non-aggregate expressions.
-	if(op->key_count) op->group_keys = rm_malloc(op->key_count * sizeof(SIValue));
+	// allocate memory for group keys if we have any non-aggregate expressions
+	if(op->key_count) {
+		op->group_keys = rm_malloc(op->key_count * sizeof(SIValue));
+	}
 
-	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", NULL, AggregateConsume,
-				AggregateReset, NULL, AggregateClone, AggregateFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", NULL,
+			AggregateConsume, AggregateReset, NULL, AggregateClone,
+			AggregateFree, false, plan);
 
-	// The projected record will associate values with their resolved name
-	// to ensure that space is allocated for each entry.
+	// the projected record will associate values with their resolved name
+	// to ensure that space is allocated for each entry
 	op->record_offsets = array_new(uint, op->aggregate_count + op->key_count);
 	for(uint i = 0; i < op->key_count; i++) {
-		// Store the index of each key expression.
-		int record_idx = OpBase_Modifies((OpBase *)op, op->key_exps[i]->resolved_name);
+		// store the index of each key expression
+		int record_idx = OpBase_Modifies((OpBase *)op,
+				op->key_exps[i]->resolved_name);
 		array_append(op->record_offsets, record_idx);
 	}
 	for(uint i = 0; i < op->aggregate_count; i++) {
-		// Store the index of each aggregating expression.
-		int record_idx = OpBase_Modifies((OpBase *)op, op->aggregate_exps[i]->resolved_name);
+		// store the index of each aggregating expression
+		int record_idx = OpBase_Modifies((OpBase *)op,
+				op->aggregate_exps[i]->resolved_name);
 		array_append(op->record_offsets, record_idx);
 	}
 
@@ -352,14 +361,20 @@ static OpBase *AggregateClone
 	const OpBase *opBase
 ) {
 	ASSERT(opBase->type == OPType_AGGREGATE);
+
 	OpAggregate *op = (OpAggregate *)opBase;
 	uint key_count = op->key_count;
 	uint aggregate_count = op->aggregate_count;
 	AR_ExpNode **exps = array_new(AR_ExpNode *, aggregate_count + key_count);
 
-	for(uint i = 0; i < key_count; i++) array_append(exps, AR_EXP_Clone(op->key_exps[i]));
-	for(uint i = 0; i < aggregate_count; i++)
+	for(uint i = 0; i < key_count; i++) {
+		array_append(exps, AR_EXP_Clone(op->key_exps[i]));
+	}
+
+	for(uint i = 0; i < aggregate_count; i++) {
 		array_append(exps, AR_EXP_Clone(op->aggregate_exps[i]));
+	}
+
 	return NewAggregateOp(plan, exps, op->should_cache_records);
 }
 
@@ -368,7 +383,9 @@ static void AggregateFree
 	OpBase *opBase
 ) {
 	OpAggregate *op = (OpAggregate *)opBase;
-	if(!op) return;
+	if(op == NULL) {
+		return;
+	}
 
 	if(op->group_keys) {
 		rm_free(op->group_keys);
@@ -381,13 +398,17 @@ static void AggregateFree
 	}
 
 	if(op->key_exps) {
-		for(uint i = 0; i < op->key_count; i++) AR_EXP_Free(op->key_exps[i]);
+		for(uint i = 0; i < op->key_count; i++) {
+			AR_EXP_Free(op->key_exps[i]);
+		}
 		array_free(op->key_exps);
 		op->key_exps = NULL;
 	}
 
 	if(op->aggregate_exps) {
-		for(uint i = 0; i < op->aggregate_count; i++) AR_EXP_Free(op->aggregate_exps[i]);
+		for(uint i = 0; i < op->aggregate_count; i++) {
+			AR_EXP_Free(op->aggregate_exps[i]);
+		}
 		array_free(op->aggregate_exps);
 		op->aggregate_exps = NULL;
 	}
