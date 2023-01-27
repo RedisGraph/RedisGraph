@@ -113,12 +113,27 @@ typedef struct AggregatedGraphGetInfo {
 } AggregatedGraphGetInfo;
 
 // Initialise the AggregatedGraphGetInfo object.
-static bool _AggregatedGraphGetInfo_New(AggregatedGraphGetInfo *info) {
+static bool _AggregatedGraphGetInfo_New
+(
+    AggregatedGraphGetInfo *info
+) {
     ASSERT(info && "Info is not provided.");
     if (!info) {
         return false;
     }
     return Statistics_New(&info->statistics);
+}
+
+static void _AggregatedGraphGetInfo_Free
+(
+    AggregatedGraphGetInfo *info
+) {
+    ASSERT(info && "Info is not provided.");
+    if (!info) {
+        return;
+    }
+
+    Statistics_Free(&info->statistics);
 }
 
 // The data we need to extract from the callback for the circular buffer which
@@ -1243,12 +1258,16 @@ static int _get_all_graphs_info
         }
     }
 
-    return _reply_with_get_aggregated_graph_info(
+    REDISMODULE_ASSERT(_reply_with_get_aggregated_graph_info(
         ctx,
         info,
         is_compact_mode,
         flags
-    );
+    ));
+
+    _AggregatedGraphGetInfo_Free(&info);
+
+    return REDISMODULE_OK;
 }
 
 // Replies with the finished queries information.
