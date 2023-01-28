@@ -1316,6 +1316,30 @@ static VISITOR_STRATEGY _Validate_UNWIND_Clause
 	return VISITOR_RECURSE;
 }
 
+// validate an ORDER BY clause
+static VISITOR_STRATEGY _Validate_ORDER_Clause
+(
+	const cypher_astnode_t *n,  // ast-node
+	bool start,                 // first traversal
+	ast_visitor *visitor        // visitor
+) {
+	// TODO: in case this ORDER BY clause follows an aggregation
+	// all specified aliases must be either aggregation keys or
+	// aggregated values
+	//
+	// the following should error:
+	// WITH 1 as one UNWIND range(0, 4) as x RETURN max(x) ORDER BY one
+	//
+	// as one doesn't participates in the aggregation
+	uint count = cypher_ast_order_by_nitems(n);
+	for(uint i = 0; i < count; i++) {
+		const cypher_astnode_t *item = cypher_ast_order_by_get_item(n, i);
+		const cypher_astnode_t *ast_exp = cypher_ast_sort_item_get_expression(item);
+	}
+
+	return VISITOR_CONTINUE;
+}
+
 // validate a RETURN clause
 static VISITOR_STRATEGY _Validate_RETURN_Clause
 (
@@ -1625,6 +1649,7 @@ bool AST_ValidationsMappingInit(void) {
 	validations_mapping[CYPHER_AST_CREATE]                      =  _Validate_CREATE_Clause;
 	validations_mapping[CYPHER_AST_DELETE]                      =  _Validate_DELETE_Clause;
 	validations_mapping[CYPHER_AST_REDUCE]                      =  _Validate_reduce;
+	validations_mapping[CYPHER_AST_ORDER_BY]                    =  _Validate_ORDER_Clause;
 	validations_mapping[CYPHER_AST_IDENTIFIER]                  =  _Validate_identifier;
 	validations_mapping[CYPHER_AST_PROJECTION]                  =  _Validate_projection;
 	validations_mapping[CYPHER_AST_NAMED_PATH]                  =  _Validate_named_path;
@@ -1638,6 +1663,7 @@ bool AST_ValidationsMappingInit(void) {
 	validations_mapping[CYPHER_AST_LIST_COMPREHENSION]          =  _Validate_list_comprehension;
 	validations_mapping[CYPHER_AST_PATTERN_COMPREHENSION]       =  _Validate_pattern_comprehension;
 	validations_mapping[CYPHER_AST_CREATE_PATTERN_PROPS_INDEX]  =  _Validate_index_creation;
+
 
 	//--------------------------------------------------------------------------
 	// register unsupported types

@@ -23,13 +23,11 @@ typedef struct {
 	dictIterator *group_iter;     // iterator for walking all groups
 	uint key_count;               // number of key expressions
 	uint aggregate_count;         // number of aggregating expressions
-	bool should_cache_records;    // records should be cached if we're sorting after aggregation
 } OpAggregate;
 
 OpBase *NewAggregateOp
 (
 	const ExecutionPlan *plan,
-	AR_ExpNode **exps,
-	bool should_cache_records
+	AR_ExpNode **exps
 );
 

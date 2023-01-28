@@ -180,8 +180,7 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 	if(aggregate) {
 		// an aggregate op's caching policy depends on
 		// whether its results will be sorted
-		bool sorting_after_aggregation = (order_exps != NULL);
-		op = NewAggregateOp(plan, projections, sorting_after_aggregation);
+		op = NewAggregateOp(plan, projections);
 	} else {
 		op = NewProjectOp(plan, projections);
 	}

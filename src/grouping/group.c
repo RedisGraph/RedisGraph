@@ -18,8 +18,7 @@ Group *NewGroup
 	SIValue *keys,
 	uint key_count,
 	AR_ExpNode **funcs,
-	uint func_count,
-	Record r
+	uint func_count
 ) {
 	Group *g = rm_malloc(sizeof(Group));
 
@@ -27,8 +26,6 @@ Group *NewGroup
 	g->aggregationFunctions = funcs;
 	g->key_count            = key_count;
 	g->func_count           = func_count;
-
-	g->r = (r) ? OpBase_CloneRecord(r) : NULL;
 
 	return g;
 }
@@ -41,12 +38,10 @@ void FreeGroup
 		return;
 	}
 
-	if(g->r != NULL) {
-		Record_FreeEntries(g->r);  // will be freed by Record owner
-	}
-
 	if(g->keys != NULL) {
-		for(int i = 0; i < g->key_count; i ++) SIValue_Free(g->keys[i]);
+		for(int i = 0; i < g->key_count; i ++) {
+			SIValue_Free(g->keys[i]);
+		}
 		rm_free(g->keys);
 	}
 

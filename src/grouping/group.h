@@ -11,10 +11,9 @@
 
 typedef struct {
 	SIValue *keys;                       // SIValues that form the key associated with each group
-	AR_ExpNode **aggregationFunctions;   // Nodes containing aggregate functions to be evaluated
-	uint key_count;                      // Number of SIValues in the key
-	uint func_count;                     // Number of aggregation function values
-	Record r;                            // Representative record for all aggregated records in group
+	AR_ExpNode **aggregationFunctions;   // nodes containing aggregate functions to be evaluated
+	uint key_count;                      // number of SIValues in the key
+	uint func_count;                     // number of aggregation function values
 } Group;
 
 // creates a new group
@@ -23,8 +22,7 @@ Group *NewGroup
 	SIValue *keys,
 	uint key_count,
 	AR_ExpNode **funcs,
-	uint func_count,
-	Record r
+	uint func_count
 );
 
 void FreeGroup

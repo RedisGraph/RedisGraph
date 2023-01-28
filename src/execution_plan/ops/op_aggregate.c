@@ -97,8 +97,7 @@ static inline SIValue *_build_group_key
 
 static Group *_CreateGroup
 (
-	OpAggregate *op,
-	Record r
+	OpAggregate *op
 ) {
 	// create a new group, clone group keys
 	SIValue *group_keys = _build_group_key(op);
@@ -106,10 +105,8 @@ static Group *_CreateGroup
 	// get a fresh copy of aggregation functions
 	AR_ExpNode **agg_exps = _build_aggregate_exps(op);
 
-	// there's no need to keep a reference to record if we're not sorting groups
-	Record cache_record = (op->should_cache_records) ? r : NULL;
 	op->group = NewGroup(group_keys, op->key_count, agg_exps,
-			op->aggregate_count, cache_record);
+			op->aggregate_count);
 
 	return op->group;
 }
@@ -162,7 +159,7 @@ static Group *_GetGroup
 	} else {
 		// entry missing
 		// group does not exists, create it
-		op->group = _CreateGroup(op, r);
+		op->group = _CreateGroup(op);
 		HashTableSetVal(op->groups, entry, op->group);
 	}
 
@@ -184,7 +181,6 @@ static void _aggregateRecord
 		AR_EXP_Aggregate(exp, r);
 	}
 
-	// free record
 	OpBase_DeleteRecord(r);
 }
 
@@ -204,12 +200,9 @@ static Record _handoff
 	// add all projected keys to the Record
 	for(uint i = 0; i < op->key_count; i++) {
 		int rec_idx = op->record_offsets[i];
-		// Non-aggregated expression.
-		SIValue res = group->keys[i];
-		// key values are shared with the Record
-		// as they'll be freed with the group cache
-		res = SI_ShareValue(res);
-		Record_Add(r, rec_idx, res);
+		// non-aggregated expression
+		SIValue key = SI_TransferOwnership(group->keys + i);
+		Record_Add(r, rec_idx, key);
 	}
 
 	// compute the final value of all aggregate expressions and add to Record
@@ -217,8 +210,8 @@ static Record _handoff
 		int rec_idx = op->record_offsets[i + op->key_count];
 		AR_ExpNode *exp = group->aggregationFunctions[i];
 
-		SIValue res = AR_EXP_FinalizeAggregations(exp, r);
-		Record_AddScalar(r, rec_idx, res);
+		SIValue agg = AR_EXP_FinalizeAggregations(exp, r);
+		Record_AddScalar(r, rec_idx, agg);
 	}
 
 	return r;
@@ -227,8 +220,7 @@ static Record _handoff
 OpBase *NewAggregateOp
 (
 	const ExecutionPlan *plan,
-	AR_ExpNode **exps,
-	bool should_cache_records
+	AR_ExpNode **exps
 ) {
 	OpAggregate *op = rm_malloc(sizeof(OpAggregate));
 
@@ -236,7 +228,14 @@ OpBase *NewAggregateOp
 	op->group_iter           = NULL;
 	op->group_keys           = NULL;
 	op->groups               = HashTableCreate(&dt);
-	op->should_cache_records = should_cache_records;
+
+	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", NULL,
+			AggregateConsume, AggregateReset, NULL, AggregateClone,
+			AggregateFree, false, plan);
+
+	// expand hashtable to 2048 slots
+	int res = HashTableExpand(op->groups, 2048);
+	ASSERT(res == DICT_OK);
 
 	// migrate each expression to the keys array or
 	// the aggregations array as appropriate
@@ -247,10 +246,6 @@ OpBase *NewAggregateOp
 	if(op->key_count) {
 		op->group_keys = rm_malloc(op->key_count * sizeof(SIValue));
 	}
-
-	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", NULL,
-			AggregateConsume, AggregateReset, NULL, AggregateClone,
-			AggregateFree, false, plan);
 
 	// the projected record will associate values with their resolved name
 	// to ensure that space is allocated for each entry
@@ -299,6 +294,7 @@ static Record AggregateConsume
 	// e.g.
 	// MATCH (n:N) WHERE n.noneExisting = 2 RETURN count(n)
 	if(HashTableElemCount(op->groups) == 0 && op->key_count == 0) {
+
 		// no data was processed and aggregation doesn't have a key
 		// in this case we want to return aggregation default value
 		// aggregate on an empty record
@@ -339,17 +335,16 @@ static OpResult AggregateReset
 		op->group_iter = NULL;
 	}
 
+	// re-create hashtable
+	unsigned long elem_count = HashTableElemCount(op->groups);
 	HashTableRelease(op->groups);
 
-	// create hashtable
 	op->groups = HashTableCreate(&dt);
-	ASSERT(op->groups != NULL);
 
-	// expand hashtable to 2048 slots
-	int res = HashTableExpand(op->groups, 2048);
+	// expand hashtable to previous element count
+	int res = HashTableExpand(op->groups, elem_count);
 	ASSERT(res == DICT_OK);
 
-	// TODO: shouldn't this group be freed?
 	op->group = NULL;
 
 	return OP_OK;
@@ -375,7 +370,7 @@ static OpBase *AggregateClone
 		array_append(exps, AR_EXP_Clone(op->aggregate_exps[i]));
 	}
 
-	return NewAggregateOp(plan, exps, op->should_cache_records);
+	return NewAggregateOp(plan, exps);
 }
 
 static void AggregateFree

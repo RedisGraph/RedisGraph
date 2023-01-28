@@ -9,7 +9,7 @@
 #include "../../util/rmalloc.h"
 #include "../../util/simple_timer.h"
 
-/* Forward declarations */
+// forward declarations
 Record ExecutionPlan_BorrowRecord(struct ExecutionPlan *plan);
 rax *ExecutionPlan_GetMappings(const struct ExecutionPlan *plan);
 void ExecutionPlan_ReturnRecord(struct ExecutionPlan *plan, Record r);
@@ -28,27 +28,26 @@ void OpBase_Init
 	bool writer,
 	const struct ExecutionPlan *plan
 ) {
-	op->type = type;
-	op->name = name;
-	op->plan = plan;
-	op->stats = NULL;
-	op->parent = NULL;
-	op->childCount = 0;
-	op->children = NULL;
-	op->parent = NULL;
-	op->stats = NULL;
+	op->type           = type;
+	op->name           = name;
+	op->plan           = plan;
+	op->stats          = NULL;
+	op->parent         = NULL;
+	op->parent         = NULL;
+	op->writer         = writer;
+	op->modifies       = NULL;
+	op->children       = NULL;
+	op->childCount     = 0;
 	op->op_initialized = false;
-	op->modifies = NULL;
-	op->writer = writer;
 
 	// function pointers
-	op->init = init;
-	op->consume = consume;
-	op->reset = reset;
+	op->init     = init;
+	op->free     = free;
+	op->clone    = clone;
+	op->reset    = reset;
+	op->profile  = NULL;
+	op->consume  = consume;
 	op->toString = toString;
-	op->clone = clone;
-	op->free = free;
-	op->profile = NULL;
 }
 
 inline Record OpBase_Consume
