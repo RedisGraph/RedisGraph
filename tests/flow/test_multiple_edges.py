@@ -97,4 +97,3 @@ class testGraphMultipleEdgeFlow(FlowTestsBase):
         actual_result = redis_graph.query(query)
         edge_count = actual_result.result_set[0][0]
         self.env.assertEquals(edge_count, 1)
-

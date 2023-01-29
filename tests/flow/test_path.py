@@ -326,3 +326,13 @@ class testPath(FlowTestsBase):
         result = redis_graph.query(query)
         self.env.assertEquals(result.nodes_deleted, 2)
         self.env.assertEquals(result.relationships_deleted, 1)
+
+    def test_zero_length_path(self):
+        # clean the db
+        self.env.flush()
+        redis_graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+        # send a profile query with a zero-length edge
+        res = redis_graph.profile("MATCH p = (a)-[*0]-(b) RETURN length(p)")
+
+        self.env.assertEquals(len(res.result_set), 4)
