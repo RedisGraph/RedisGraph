@@ -4,16 +4,35 @@ Arguments: `Graph name, Query, Timeout [optional]`
 
 Returns: [Result set](/redisgraph/design/result_structure)
 
+### Queries and Parameterized Queries
+
+The execution plans of queries (both regular and parameterized) are cached (up to [CACHE_SIZE](https://redis.io/docs/stack/graph/configuration/#cache_size) execution plans are cached). Therefore, it is recommended to use parametrized queries when using many queries with the same pattern but different parameters.
+
+Query-level timeouts can be set as described in [the configuration section](/redisgraph/configuration#timeout).
+
+#### Query structure: 
+
+`GRAPH.QUERY graph_name "query"`
+
+example:
+
 ```sh
 GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
 ```
 
-Query-level timeouts can be set as described in [the configuration section](/redisgraph/configuration#timeout).
+#### Parametrized query structure: 
+
+`GRAPH.QUERY graph_name "CYPHER param=val [param=val ...] query"`
+
+example:
+
+```sh
+GRAPH.QUERY us_government "CYPHER s='Hawaii' MATCH (p:president)-[:born]->(:state {name:$s}) RETURN p"
+```
 
 ### Query language
 
-The syntax is based on [Cypher](http://www.opencypher.org/), and only a subset of the language currently
-supported.
+The syntax is based on [Cypher](http://www.opencypher.org/). Most of the language is supported.
 
 1. [Clauses](#query-structure)
 2. [Functions](#functions)
