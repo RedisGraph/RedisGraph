@@ -1132,8 +1132,6 @@ static void _AST_GetWithIdentifiers(
 		return;
 	}
 
-	// Don't visit the children of pattern comprehensions, as these will be aliased later.
-	if(type == CYPHER_AST_PATTERN_COMPREHENSION) return;
 
 	uint child_count = cypher_astnode_nchildren(node);
 

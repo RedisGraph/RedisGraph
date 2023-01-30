@@ -278,7 +278,8 @@ class testWithClause(FlowTestsBase):
             "WITH {a:a} as a RETURN a",
             "WITH a RETURN 0",
             "WITH 3 AS a, 4 AS b, a + b AS c RETURN c",
-            "WITH [x in l | x.prop1] AS l RETURN l",
+            "WITH [x in a | x.prop1] AS a RETURN 1",
+            "WITH [(n)-[x:R]->(m) | a.prop1] AS a RETURN 1"
         ]
         for query in invalid_queries:
             try:
@@ -286,4 +287,4 @@ class testWithClause(FlowTestsBase):
                 self.env.assertTrue(False)
             except redis.exceptions.ResponseError as e:
                 # Expecting an error.
-                self.env.assertIn("not defined", str(e))
+                self.env.assertIn("a not defined", str(e))
