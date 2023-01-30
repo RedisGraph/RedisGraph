@@ -67,6 +67,13 @@ bool SIArray_ContainsValue(SIValue siarray, SIValue value, bool *comparedNull);
 bool SIArray_AllOfType(SIValue siarray, SIType t);
 
 /**
+  * @brief  Sorts the array in place
+  * @param  siarray: array to print
+  * @param  ascending: sort order
+  */
+void SIArray_Sort(SIValue siarray, bool ascending);
+
+/**
   * @brief  Returns a copy of the array
   * @note   The caller needs to free the array
   * @param  siarray:
