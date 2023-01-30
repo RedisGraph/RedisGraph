@@ -267,3 +267,13 @@ class testWithClause(FlowTestsBase):
         query = """WITH 1 AS x MATCH (a:label_a), (b:label_b) RETURN a.v, b.v"""
         actual_result = redis_graph.query(query)
         self.env.assertEqual(len(actual_result.result_set), 36)
+
+    def test13_aggregated_projection_vars(self):
+        query = "WITH 1 as one UNWIND range(0,4) as x RETURN max(x) ORDER BY one"
+        try:
+            redis_graph.query(query)
+        except redis.exceptions.ResponseError as e:
+            # error expected
+            self.env.assertIn(
+                "Order by column contains implicit grouping expressions, which are not supported",
+                str(e))

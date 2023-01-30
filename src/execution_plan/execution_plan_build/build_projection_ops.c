@@ -8,6 +8,7 @@
 #include "execution_plan_modify.h"
 #include "../../RG.h"
 #include "../ops/ops.h"
+#include "../../errors.h"
 #include "../../query_ctx.h"
 #include "../execution_plan.h"
 #include "../../ast/ast_build_op_contexts.h"
@@ -100,13 +101,34 @@ AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *clause) {
 }
 
 // Merge all order expressions into the projections array without duplicates,
-static void _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **order_exps) {
+static void _combine_projection_arrays
+(
+	AR_ExpNode ***exps_ptr,   // projection expressions
+	AR_ExpNode **order_exps,  // expressions in ORDER BY clause
+	bool aggregate            // is an agg-func used in one of the projections
+) {
 	rax *projection_names = raxNew();
 	AR_ExpNode **project_exps = *exps_ptr;
 	uint order_count = array_len(order_exps);
 	uint project_count = array_len(project_exps);
 
-	// Add all WITH/RETURN projection names to rax.
+	// if an aggregation is performed in one of the projections, only projected
+	// variables are valid in the ORDER BY clause
+
+	if(aggregate) {
+		for(uint i = 0; i < order_count; i++) {
+			bool found = false;
+			for(uint j = 0; j < project_count && !found; j++) {
+				found = AR_EXP_Equal(order_exps[i], project_exps[j]);
+			}
+			if(!found) {
+				ErrorCtx_SetError(
+			"Order by column contains implicit grouping expressions, which are not supported.");
+			}
+		}
+	}
+
+	// Add all WITH/RETURN projection names to rax
 	for(uint i = 0; i < project_count; i ++) {
 		const char *name = project_exps[i]->resolved_name;
 		raxTryInsert(projection_names, (unsigned char *)name, strlen(name), NULL, NULL);
@@ -173,7 +195,7 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 		AST_PrepareSortOp(order_clause, &sort_directions);
 		order_exps = _BuildOrderExpressions(projections, order_clause);
 		// Merge order expressions into the projections array.
-		_combine_projection_arrays(&projections, order_exps);
+		_combine_projection_arrays(&projections, order_exps, aggregate);
 	}
 
 	// Our fundamental operation will be a projection or aggregation.
