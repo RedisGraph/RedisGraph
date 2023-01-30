@@ -509,19 +509,15 @@ SIValue AR_INSERT(SIValue *argv, int argc, void *private_data) {
 		dups = (bool)argv[3].longval;
 	}
 
-	if(!dups) {
-		// check if value already exists in list
-		// TODO: optimize using hashmap
-		if(SIArray_ContainsValue(list, val, NULL)) {
-			return SIArray_Clone(list);
-		}
+	if(!dups && SIArray_ContainsValue(list, val, NULL)) {
+		// if value already exists in list return the original list
+		return SIArray_Clone(list);
 	}
 
 	SIValue array = SI_Array(arrayLen + 1);
-	uint i = 0;
 
 	// append elements up to index
-	for(; i < index; i++) {
+	for(uint i = 0; i < index; i++) {
 		SIArray_Append(&array, SIArray_Get(list, i));
 	}
 
@@ -529,7 +525,7 @@ SIValue AR_INSERT(SIValue *argv, int argc, void *private_data) {
 	SIArray_Append(&array, val);
 
 	// append remaining elements
-	for(; i < arrayLen; i++) {
+	for(uint i = index; i < arrayLen; i++) {
 		SIArray_Append(&array, SIArray_Get(list, i));
 	}
 
