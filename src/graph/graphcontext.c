@@ -766,7 +766,6 @@ static void _GraphContext_Free(void *arg) {
 	//--------------------------------------------------------------------------
 	// Free the info structure
 	//--------------------------------------------------------------------------
-	// ASSERT(Info_Unlock(&gc->info));
 	const bool info_freed = Info_Free(&gc->info);
 	ASSERT(info_freed);
 
