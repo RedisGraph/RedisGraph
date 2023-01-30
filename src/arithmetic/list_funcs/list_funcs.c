@@ -569,35 +569,29 @@ SIValue AR_INSERTLISTELEMENTS(SIValue *argv, int argc, void *private_data) {
 	}
 
 	uint32_t arrayLen2 = SIArray_Length(list2);
-	if(!dups) {
-		// remove duplicates from list2
-		SIValue list2_no_duplicates = SI_Array(arrayLen2);
-		for(uint i = 0; i < arrayLen2; i++) {
-			SIValue _val = SIArray_Get(list2, i);
-			if(!SIArray_ContainsValue(list, _val, NULL)) {
-				SIArray_Append(&list2_no_duplicates, _val);
-			}
-		}
-
-		list2 = list2_no_duplicates;
-		arrayLen2 = SIArray_Length(list2);
-	}
-
-	SIValue array = SI_Array(arrayLen + arrayLen2);
-	uint i = 0;
+	SIValue  array     = SI_Array(arrayLen + arrayLen2);
 
 	// append elements up to index
-	for(; i < index; i++) {
+	for(uint i = 0; i < index; i++) {
 		SIArray_Append(&array, SIArray_Get(list, i));
 	}
 
 	// append list2
-	for(uint j = 0; j < arrayLen2; j++) {
-		SIArray_Append(&array, SIArray_Get(list2, j));
+	if(dups) {
+		for(uint j = 0; j < arrayLen2; j++) {
+			SIArray_Append(&array, SIArray_Get(list2, j));
+		}
+	} else {
+		for(uint i = 0; i < arrayLen2; i++) {
+			SIValue _val = SIArray_Get(list2, i);
+			if(!SIArray_ContainsValue(list, _val, NULL)) {
+				SIArray_Append(&array, _val);
+			}
+		}
 	}
 
 	// append remaining elements
-	for(; i < arrayLen; i++) {
+	for(uint i = index; i < arrayLen; i++) {
 		SIArray_Append(&array, SIArray_Get(list, i));
 	}
 
@@ -616,7 +610,7 @@ SIValue AR_DEDUP(SIValue *argv, int argc, void *private_data) {
 	ASSERT(SI_TYPE(list) == T_ARRAY);
 
 	uint32_t arrayLen = SIArray_Length(list);
-	SIValue array     = SI_Array(arrayLen);
+	SIValue  array    = SI_Array(arrayLen);
 	// check if value already exists in list
 	// TODO: optimize using hashmap
 	for(uint i = 0; i < arrayLen; i++) {
