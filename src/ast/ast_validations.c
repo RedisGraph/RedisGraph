@@ -1122,7 +1122,9 @@ static void _AST_GetWithIdentifiers(
 	const cypher_astnode_t *node, 
 	rax *identifiers
 ) {
-	if(!node) return;
+	if(!node) {
+		return;
+	}
 	ASSERT(identifiers != NULL);
 
 	cypher_astnode_type_t type = cypher_astnode_type(node);
@@ -1132,11 +1134,12 @@ static void _AST_GetWithIdentifiers(
 		return;
 	}
 
-
 	uint child_count = cypher_astnode_nchildren(node);
 
 	// In case current node is of type projection inspect first child only
-	if(type == CYPHER_AST_PROJECTION) child_count = 1;
+	if(type == CYPHER_AST_PROJECTION) {
+		child_count = 1;
+	}
 
 	for(uint i = 0; i < child_count; i++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
@@ -1149,8 +1152,13 @@ static void _AST_GetWithReferences
 	const cypher_astnode_t *node, 
 	rax *identifiers
 ) {
-	if(!node) return;
-	if(cypher_astnode_type(node) != CYPHER_AST_WITH) return;
+	if(!node) {
+		return;
+	}
+
+	if(cypher_astnode_type(node) != CYPHER_AST_WITH) {
+		return;
+	}
 	ASSERT(identifiers != NULL);
 
 	uint num_with_projections = cypher_ast_with_nprojections(node);
