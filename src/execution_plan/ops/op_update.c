@@ -21,7 +21,7 @@ static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void UpdateFree(OpBase *opBase);
 
 static Record _handoff(OpUpdate *op) {
-	/* TODO: poping a record out of op->records
+	/* TODO: popping a record out of op->records
 	 * will reverse the order in which records
 	 * are passed down the execution plan. */
 	if(op->records && array_len(op->records) > 0) return array_pop(op->records);

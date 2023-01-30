@@ -1,3 +1,4 @@
+import asyncio
 from common import *
 from index_utils import *
 
@@ -134,6 +135,7 @@ class testQueryTimeout():
             self.env.assertContains("Query timed out", str(error))
 
     def test05_invalid_loadtime_config(self):
+        self.env.flush()
         self.env.stop()
 
         try:
@@ -222,6 +224,7 @@ class testQueryTimeout():
                 self.env.assertContains("The query TIMEOUT parameter value cannot exceed the TIMEOUT_MAX configuration parameter value", str(error))
 
     def test_09_fallback(self):
+        self.env.flush()
         self.env.stop()
         self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT 1")
 
@@ -262,6 +265,7 @@ class testQueryTimeout():
     # should return to user
     def test10_profile_no_double_response(self):
         # reset timeout params to default
+        self.env.flush()
         self.env.stop()
         self.env = Env(decodeResponses=True)
 
@@ -279,3 +283,27 @@ class testQueryTimeout():
         # make sure no pending result exists
         res = redis_graph.query("RETURN 1")
         self.env.assertEquals(res.result_set[0][0], 1)
+
+    def test11_concurrent_timeout(self):
+        # skip test if we're running under Valgrind
+        if VALGRIND or "to_thread" not in dir(asyncio):
+            self.env.skip() # valgrind is not working correctly with multi processing
+
+        self.env.flush()
+        self.env.stop()
+        self.env = Env(decodeResponses=True)
+        
+        redis_graph.query("UNWIND range(1, 1000) AS x CREATE (:N {v:x})")
+
+        def query():
+            g = Graph(self.env.getConnection(), GRAPH_ID)
+
+            for i in range(1, 1000):
+                g.query(f"MATCH (n:N) WHERE n.v > {i} RETURN count(1)", timeout=1000)
+        
+        loop = asyncio.get_event_loop()
+        tasks = []
+        for i in range(1, 10):
+            tasks.append(loop.create_task(asyncio.to_thread(query)))
+
+        loop.run_until_complete(asyncio.wait(tasks))

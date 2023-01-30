@@ -289,7 +289,7 @@ static Record AggregateConsume
 		}
 	}
 
-	// did we processed any records?
+	// did we process any records?
 	// does aggregation contains keys?
 	// e.g.
 	// MATCH (n:N) WHERE n.noneExisting = 2 RETURN count(n)
