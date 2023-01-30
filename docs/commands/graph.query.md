@@ -32,7 +32,7 @@ GRAPH.QUERY us_government "CYPHER s='Hawaii' MATCH (p:president)-[:born]->(:stat
 
 ### Query language
 
-The syntax is based on [Cypher](http://www.opencypher.org/). Most of the language is supported.
+The syntax is based on [Cypher](http://www.opencypher.org/). [Most](https://redis.io/docs/stack/graph/cypher_support/) of the language is supported.
 
 1. [Clauses](#query-structure)
 2. [Functions](#functions)
