@@ -6,7 +6,7 @@ Returns: [Result set](/redisgraph/design/result_structure)
 
 ### Queries and Parameterized Queries
 
-The execution plans of queries, both regular and parameterized, are cached (up to [CACHE_SIZE](https://redis.io/docs/stack/graph/configuration/#cache_size) execution plans are cached). Therefore, it is recommended to use parametrized queries when using many queries with the same pattern but different parameters.
+The execution plans of queries, both regular and parameterized, are cached (up to [CACHE_SIZE](https://redis.io/docs/stack/graph/configuration/#cache_size) unique queries are cached). Therefore, it is recommended to use parametrized queries when executing many queries with the same pattern but different constant.
 
 Query-level timeouts can be set as described in [the configuration section](/redisgraph/configuration#timeout).
 
@@ -27,7 +27,7 @@ GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'})
 example:
 
 ```sh
-GRAPH.QUERY us_government "CYPHER s='Hawaii' MATCH (p:president)-[:born]->(:state {name:$s}) RETURN p"
+GRAPH.QUERY us_government "CYPHER state_name='Hawaii' MATCH (p:president)-[:born]->(:state {name:$state_name}) RETURN p"
 ```
 
 ### Query language
