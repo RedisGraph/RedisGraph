@@ -10,6 +10,7 @@
 
 //#define _POSIX_C_SOURCE 200809L
 #include "RG.h"
+#include <stdatomic.h>
 #include <unistd.h>
 #include <signal.h>
 #include <stdio.h>
@@ -38,8 +39,8 @@
 #define err(str)
 #endif
 
-static volatile int threads_keepalive;
-static volatile int threads_on_hold;
+static atomic_uint_fast32_t threads_keepalive;
+static atomic_uint_fast32_t threads_on_hold;
 
 /* ========================== STRUCTURES ============================ */
 
@@ -76,13 +77,13 @@ typedef struct thread {
 
 /* Threadpool */
 typedef struct thpool_ {
-	thread **threads;                 /* pointer to threads        */
-	const char *name;                 /* name associated with pool */
-	volatile int num_threads_alive;   /* threads currently alive   */
-	volatile int num_threads_working; /* threads currently working */
-	pthread_mutex_t thcount_lock;     /* used for thread count etc */
-	pthread_cond_t threads_all_idle;  /* signal to thpool_wait     */
-	jobqueue jobqueue;                /* job queue                 */
+	thread **threads;                         /* pointer to threads              */
+	const char *name;                         /* name associated with pool       */
+	atomic_uint_fast32_t num_threads_alive;   /* threads currently alive         */
+	atomic_uint_fast32_t num_threads_working; /* threads currently working       */
+	pthread_mutex_t thcount_lock;             /* used for the condition variable */
+	pthread_cond_t threads_all_idle;          /* signal to thpool_wait           */
+	jobqueue jobqueue;                        /* job queue                       */
 } thpool_;
 
 /* ========================== PROTOTYPES ============================ */
@@ -201,37 +202,27 @@ void thpool_destroy(thpool_* thpool_p) {
 	/* No need to destory if it's NULL */
 	if(thpool_p == NULL) return;
 
-	volatile int threads_total = thpool_p->num_threads_alive;
+	const uint32_t threads_total = thpool_p->num_threads_alive;
 
-	/* End each thread 's infinite loop */
+	/* Make the threads leave their main loops. */
 	threads_keepalive = 0;
 
-	/* Give 0.1 second to kill idle threads */
-	double TIMEOUT = 0.1;
-	time_t start, end;
-	double tpassed = 0.0;
-	time(&start);
-	while(tpassed < TIMEOUT && thpool_p->num_threads_alive) {
+	// Wake up the threads so that they exit and will become ready to be
+	// destroyed.
+	while(thpool_p->num_threads_alive) {
 		bsem_post_all(thpool_p->jobqueue.has_jobs);
-		time(&end);
-		tpassed = difftime(end, start);
 	}
 
-	/* Poll remaining threads */
-	// do not wait forever for threads to complete their work
-	//while(thpool_p->num_threads_alive) {
-	//	bsem_post_all(thpool_p->jobqueue.has_jobs);
-	//	sleep(1);
-	//}
+	// Destroy the threads.
+	for (size_t i = 0; i < threads_total; ++i) {
+		ASSERT(pthread_join(thpool_p->threads[i]->pthread, NULL) == 0);
+		thread_destroy(thpool_p->threads[i]);
+	}
+	rm_free(thpool_p->threads);
 
 	/* Job queue cleanup */
 	jobqueue_destroy(&thpool_p->jobqueue);
-	/* Deallocs */
-	int n;
-	for(n = 0; n < threads_total; n++) {
-		thread_destroy(thpool_p->threads[n]);
-	}
-	rm_free(thpool_p->threads);
+
 	rm_free(thpool_p);
 }
 
@@ -309,7 +300,6 @@ static int thread_init(thpool_* thpool_p, struct thread **thread_p, int id) {
 	(*thread_p)->id = id;
 
 	pthread_create(&(*thread_p)->pthread, NULL, (void *)thread_do, (*thread_p));
-	pthread_detach((*thread_p)->pthread);
 	return 0;
 }
 
@@ -358,9 +348,7 @@ static void *thread_do(struct thread *thread_p) {
 	}
 
 	/* Mark thread as alive (initialized) */
-	pthread_mutex_lock(&thpool_p->thcount_lock);
-	thpool_p->num_threads_alive += 1;
-	pthread_mutex_unlock(&thpool_p->thcount_lock);
+	++thpool_p->num_threads_alive;
 
 	while(threads_keepalive) {
 
@@ -368,9 +356,7 @@ static void *thread_do(struct thread *thread_p) {
 
 		if(threads_keepalive) {
 
-			pthread_mutex_lock(&thpool_p->thcount_lock);
 			thpool_p->num_threads_working++;
-			pthread_mutex_unlock(&thpool_p->thcount_lock);
 
 			/* Read job from queue and execute it */
 			void (*func_buff)(void *);
@@ -383,17 +369,15 @@ static void *thread_do(struct thread *thread_p) {
 				rm_free(job_p);
 			}
 
+			--thpool_p->num_threads_working;
 			pthread_mutex_lock(&thpool_p->thcount_lock);
-			thpool_p->num_threads_working--;
-			if(!thpool_p->num_threads_working) {
+			if (!thpool_p->num_threads_working) {
 				pthread_cond_signal(&thpool_p->threads_all_idle);
 			}
 			pthread_mutex_unlock(&thpool_p->thcount_lock);
 		}
 	}
-	pthread_mutex_lock(&thpool_p->thcount_lock);
-	thpool_p->num_threads_alive--;
-	pthread_mutex_unlock(&thpool_p->thcount_lock);
+	--thpool_p->num_threads_alive;
 
 	return NULL;
 }
