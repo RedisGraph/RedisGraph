@@ -109,10 +109,10 @@ static void _ExecutionPlan_ProcessQueryGraph
 			}
 
 			if(edge && (QGEdge_VariableLength(edge) || !QGEdge_SingleHop(edge))) {
-				// edge is part of a shortest-path
-				// MATCH allShortestPaths((a)-[*..]->(b))
-				// validate both edge ends are bounded
 				if(QGEdge_IsShortestPath(edge)) {
+					// edge is part of a shortest-path
+					// MATCH allShortestPaths((a)-[*..]->(b))
+					// validate both edge ends are bounded
 					const char *src_alias  = QGNode_Alias(QGEdge_Src(edge));
 					const char *dest_alias = QGNode_Alias(QGEdge_Dest(edge));
 					bool src_bounded =
