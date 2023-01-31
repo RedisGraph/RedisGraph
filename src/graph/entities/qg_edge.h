@@ -62,6 +62,14 @@ bool QGEdge_VariableLength
 	const QGEdge *e
 );
 
+// determine whether this is a "ghost" edge
+// an edge of length zero
+// e.g. ()-[*0]->()
+bool QGEdge_GhostEdge
+(
+	const QGEdge *e
+);
+
 // determine whether this edge represent a single hop
 bool QGEdge_SingleHop
 (
