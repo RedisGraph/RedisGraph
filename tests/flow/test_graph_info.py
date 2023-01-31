@@ -361,7 +361,7 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
 
     def test02_long_query_is_recorded_as_being_executed(self):
         query_issue_timestamp_ms = get_unix_timestamp_milliseconds()
-        query = """UNWIND (range(0, 10000000000)) AS x WITH x AS x WHERE (x / 90000) = 1 RETURN x"""
+        query = """UNWIND (range(0, 10000000)) AS x WITH x AS x WHERE (x / 90000) = 1 RETURN x"""
         waiter = run_concurrently((query), thread_run_query)
 
         # Wait until the concurrent query (UNWIND) starts execution: until

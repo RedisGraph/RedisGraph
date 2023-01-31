@@ -44,6 +44,13 @@ typedef struct QueryCtx QueryCtx;
 // Duplicate typedef from the circular buffer.
 typedef bool (*CircularBufferNRG_ReadAllCallback)(void *user_data, const void *item);
 
+// A stage a query may be in.
+typedef enum QueryStage {
+    QueryStage_WAITING = 0,
+    QueryStage_EXECUTING,
+    QueryStage_REPORTING,
+    QueryStage_FINISHED,
+} QueryStage;
 
 // Holds the necessary per-query statistics.
 typedef struct QueryInfo {
@@ -58,6 +65,8 @@ typedef struct QueryInfo {
     millis_t report_duration;
     // The context of the query.
     const QueryCtx *context;
+    // Current stage of the query.
+    QueryStage stage;
     // A timer for counting the time spent in the stages (waiting, executing,
     // reporting).
     simple_timer_t stage_timer;
@@ -245,10 +254,8 @@ typedef struct Info {
     // Synchronisation primitive to use when doing anything with the
     // waiting_queries collection, as it is supposed to be touched concurrently.
     pthread_rwlock_t waiting_queries_rwlock;
-    // Storage for query information for queries being executed.
-    QueryInfoStorage executing_queries_per_thread;
-    // Storage for query information for reporting currently queries.
-    QueryInfoStorage reporting_queries_per_thread;
+    // Storage for query information for executing and reporting queries.
+    QueryInfoStorage working_queries_per_thread;
     // Maximum registered time a query was spent waiting, executing and
     // reporting the results.
     atomic_uint_fast64_t max_query_pipeline_time;
@@ -330,12 +337,9 @@ bool Info_Unlock(Info *);
 // Returns a pointer to the underlying storage for all the waiting queries.
 // Must be accessed within the Info_Lock and Info_Unlock.
 QueryInfoStorage* Info_GetWaitingQueriesStorage(Info *info);
-// Returns a pointer to the underlying reporting queries storage per thread.
+// Returns a pointer to the underlying working queries storage per thread.
 // Must be accessed within the Info_Lock and Info_Unlock.
-QueryInfoStorage* Info_GetExecutingQueriesStorage(Info *info);
-// Returns a pointer to the underlying reporting queries storage per thread.
-// Must be accessed within the Info_Lock and Info_Unlock.
-QueryInfoStorage* Info_GetReportingQueriesStorage(Info *info);
+QueryInfoStorage* Info_GetWorkingQueriesStorage(Info *info);
 // Returns the statistics accumulated.
 Statistics Info_GetStatistics(const Info);
 // Resizes the finished queries storage.
