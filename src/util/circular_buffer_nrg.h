@@ -25,6 +25,7 @@ each of the stored item, by providing a pointer to it for further
 re-interpretation by the caller. During such a traversal, the custom callback
 function may force the ongoing traversal to stop by means of the return value.
 
+This circular buffer is not thread safe and requires external synchronisation.
 */
 
 #pragma once

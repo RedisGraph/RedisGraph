@@ -66,14 +66,6 @@ typedef struct GlobalInfo {
     uint64_t total_reporting_queries_count;
 } GlobalInfo;
 
-// A stage a query may be in.
-typedef enum QueryStage {
-    QueryStage_WAITING = 0,
-    QueryStage_EXECUTING,
-    QueryStage_REPORTING,
-    QueryStage_FINISHED,
-} QueryStage;
-
 // Flags for the "GRAPH.INFO QUERIES".
 typedef enum InfoQueriesFlag {
     InfoQueriesFlag_NONE = 0,
@@ -605,6 +597,8 @@ static int _reply_graph_query_info_storage
     while ((info = QueryInfoIterator_NextValid(&iterator)) != NULL) {
         if (actual_elements_count >= max_count) {
             break;
+        } else if (info->stage != query_stage) {
+            continue;
         }
         _update_query_stage_timer(query_stage, info);
         ++actual_elements_count;
@@ -647,12 +641,8 @@ static int _reply_with_graph_queries_of_stage
             storage = Info_GetWaitingQueriesStorage(info);
             break;
         }
-        case QueryStage_EXECUTING: {
-            storage = Info_GetExecutingQueriesStorage(info);
-            break;
-        }
-        case QueryStage_REPORTING: {
-            storage = Info_GetReportingQueriesStorage(info);
+        case QueryStage_EXECUTING: case QueryStage_REPORTING: {
+            storage = Info_GetWorkingQueriesStorage(info);
             break;
         }
         default: Info_Unlock(info); return REDISMODULE_ERR;
