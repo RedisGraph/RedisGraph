@@ -1187,17 +1187,15 @@ static AST_Validation _Validate_Aliases_DefinedInWithClause(
 	_prepareIterateAll(with_aliases, &it);
 
 	// Check if every alias identifier that is referred was previously defined
+	int len;
+	bool defined;
+	bool referred;
+	unsigned char *alias;
 	while(raxNext(&it)) {
-		bool referred = false;
-		bool defined = false;
-		int len = it.key_len;
-		unsigned char *alias = it.key;
-		if(raxFind(with_referred, alias, len) != raxNotFound) {
-			referred = true;
-		}
-		if(raxFind(defined_aliases, alias, len) != raxNotFound) {
-			defined = true;
-		}
+		len = it.key_len;
+		alias = it.key;
+		referred = (raxFind(with_referred, alias, len) != raxNotFound);
+		defined = (raxFind(defined_aliases, alias, len) != raxNotFound);
 		if(referred && !defined) {
 			ErrorCtx_SetError("%.*s not defined", len, alias);
 			res = AST_INVALID;
