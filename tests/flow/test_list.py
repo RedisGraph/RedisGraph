@@ -934,6 +934,16 @@ class testList(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
+        expected_result = [[1,2,3]]
+        query = """RETURN list.remove([1,2,3], 1, 0)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,2,3]]
+        query = """RETURN list.remove([1,2,3], 1, -1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
 
     def test10_sort(self):
         # NULL input should return NULL

@@ -448,7 +448,9 @@ SIValue AR_REMOVE(SIValue *argv, int argc, void *private_data) {
 		count = (int32_t)SI_GET_NUMERIC(argv[2]);
 	}
 
-	// TODO: what happens when count <= 0 ?
+	if(count <= 0) {
+		return SIArray_Clone(list);
+	}
 
 	uint32_t arrayLen = SIArray_Length(list);
 	if(!normalize_index(&index, arrayLen, false)) {
