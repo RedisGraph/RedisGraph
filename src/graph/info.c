@@ -694,12 +694,9 @@ bool Info_New(Info *info) {
     const uint64_t thread_count = ThreadPools_ThreadCount() + 1;
 
     info->waiting_queries = QueryInfoStorage_New();
-    info->executing_queries_per_thread
+    info->working_queries_per_thread
         = QueryInfoStorage_NewWithLength(thread_count);
-    info->reporting_queries_per_thread
-        = QueryInfoStorage_NewWithLength(thread_count);
-    _QueryInfoStorage_ResetAll(&info->executing_queries_per_thread);
-    _QueryInfoStorage_ResetAll(&info->reporting_queries_per_thread);
+    _QueryInfoStorage_ResetAll(&info->working_queries_per_thread);
 
     _FinishedQueryCounters_Reset(&info->finished_query_counters);
 
@@ -731,8 +728,7 @@ bool Info_Free(Info *info) {
     REQUIRE_ARG_OR_RETURN(info, false);
 
     QueryInfoStorage_Free(&info->waiting_queries);
-    QueryInfoStorage_Free(&info->executing_queries_per_thread);
-    QueryInfoStorage_Free(&info->reporting_queries_per_thread);
+    QueryInfoStorage_Free(&info->working_queries_per_thread);
     int lock_destroyed = pthread_rwlock_destroy(
         &info->waiting_queries_rwlock);
     ASSERT(lock_destroyed == 0 && "Waiting queries rwlock destroy error.");
@@ -761,6 +757,7 @@ void Info_AddWaitingQueryInfo
     QueryInfo_SetQueryContext(&query_info, query_context);
     query_info.wait_duration += wait_duration;
     query_info.received_unix_timestamp_milliseconds = received_unix_timestamp_milliseconds;
+    query_info.stage = QueryStage_WAITING;
     QueryInfoStorage_Add(&info->waiting_queries, query_info);
 
     REQUIRE_TRUE(_Info_UnlockWaitingQueries(info));
@@ -806,8 +803,9 @@ void Info_IndicateQueryStartedExecution
             QueryInfo_UpdateWaitingTime(&query_info);
             QueryInfo_ResetStageTimer(&query_info);
             array_del(storage.queries, i);
+            query_info.stage = QueryStage_EXECUTING;
             const bool set = QueryInfoStorage_Set(
-                &info->executing_queries_per_thread,
+                &info->working_queries_per_thread,
                 thread_id,
                 query_info);
             Statistics_RecordWaitDuration(&info->statistics, QueryInfo_GetWaitingTime(query_info));
@@ -832,30 +830,23 @@ void Info_IndicateQueryStartedReporting
 ) {
     REQUIRE_ARG(info);
     REQUIRE_ARG(context);
-    REQUIRE_TRUE(_Info_LockEverything(info, true));
 
     // This effectively moves the query info object from the executing queue
     // to the reporting queue, recording the time spent executing.
 
     const int thread_id = ThreadPools_GetThreadID();
     QueryInfo *query_info = QueryInfoStorage_Get(
-        &info->executing_queries_per_thread,
+        &info->working_queries_per_thread,
         thread_id);
     ASSERT(query_info && QueryInfo_GetQueryContext(query_info) == context);
     if (!query_info || QueryInfo_GetQueryContext(query_info) != context) {
         REQUIRE_TRUE(_Info_UnlockEverything(info));
         return;
     }
+    query_info->stage = QueryStage_REPORTING;
     QueryInfo_UpdateExecutionTime(query_info);
     QueryInfo_ResetStageTimer(query_info);
     Statistics_RecordExecutionDuration(&info->statistics, QueryInfo_GetExecutionTime(*query_info));
-
-    const bool moved = _Info_MoveQueryInfoBetweenStorages(
-        &info->executing_queries_per_thread,
-        &info->reporting_queries_per_thread,
-        thread_id);
-    ASSERT(moved);
-    REQUIRE_TRUE(_Info_UnlockEverything(info));
 }
 
 void Info_IndicateQueryFinishedReporting
@@ -871,15 +862,17 @@ void Info_IndicateQueryFinishedReporting
 
     const int thread_id = ThreadPools_GetThreadID();
     QueryInfo *query_info = QueryInfoStorage_Get(
-        &info->reporting_queries_per_thread,
+        &info->working_queries_per_thread,
         thread_id);
     const bool is_ours
-        = query_info && QueryInfo_GetQueryContext(query_info) == context;
+        = query_info && QueryInfo_GetQueryContext(query_info) == context
+        && query_info->stage == QueryStage_REPORTING;
     ASSERT(is_ours);
     if (!is_ours) {
         REQUIRE_TRUE(_Info_UnlockEverything(info));
         return;
     }
+    query_info->stage = QueryStage_FINISHED;
     QueryInfo_UpdateReportingTime(query_info);
     QueryInfo_ResetStageTimer(query_info);
     Statistics_RecordReportDuration(&info->statistics, QueryInfo_GetReportingTime(*query_info));
@@ -888,7 +881,7 @@ void Info_IndicateQueryFinishedReporting
     Statistics_RecordTotalDuration(&info->statistics, total_duration);
     _add_finished_query(finished);
     QueryInfoStorage_ResetElement(
-        &info->reporting_queries_per_thread,
+        &info->working_queries_per_thread,
         thread_id);
     REQUIRE_TRUE(_Info_UnlockEverything(info));
 }
@@ -926,8 +919,15 @@ uint64_t Info_GetExecutingQueriesCount(Info *info) {
 
     REQUIRE_TRUE_OR_RETURN(_Info_LockEverything(info, true), 0);
 
-    const uint64_t count
-        = QueryInfoStorage_ValidCount(&info->executing_queries_per_thread);
+    QueryInfoIterator iterator = QueryInfoIterator_New(&info->working_queries_per_thread);
+    uint64_t count = 0;
+
+    QueryInfo *query_info = NULL;
+    while ((query_info = QueryInfoIterator_NextValid(&iterator)) != NULL) {
+        if (query_info->stage == QueryStage_EXECUTING) {
+            ++count;
+        }
+    }
 
     REQUIRE_TRUE_OR_RETURN(_Info_UnlockEverything(info), 0);
 
@@ -939,8 +939,15 @@ uint64_t Info_GetReportingQueriesCount(Info *info) {
 
     REQUIRE_TRUE_OR_RETURN(_Info_LockEverything(info, true), 0);
 
-    const uint64_t count
-        = QueryInfoStorage_ValidCount(&info->reporting_queries_per_thread);
+    QueryInfoIterator iterator = QueryInfoIterator_New(&info->working_queries_per_thread);
+    uint64_t count = 0;
+
+    QueryInfo *query_info = NULL;
+    while ((query_info = QueryInfoIterator_NextValid(&iterator)) != NULL) {
+        if (query_info->stage == QueryStage_REPORTING) {
+            ++count;
+        }
+    }
 
     REQUIRE_TRUE_OR_RETURN(_Info_UnlockEverything(info), 0);
 
@@ -962,13 +969,7 @@ millis_t Info_GetMaxQueryWaitTime(Info *info) {
         REQUIRE_TRUE_OR_RETURN(_Info_UnlockWaitingQueries(info), 0);
     }
     {
-        QueryInfoIterator iterator = QueryInfoIterator_New(&info->executing_queries_per_thread);
-        while ((query = QueryInfoIterator_NextValid(&iterator)) != NULL) {
-            max_time = MAX(max_time, QueryInfo_GetWaitingTime(*query));
-        }
-    }
-    {
-        QueryInfoIterator iterator = QueryInfoIterator_New(&info->reporting_queries_per_thread);
+        QueryInfoIterator iterator = QueryInfoIterator_New(&info->working_queries_per_thread);
         while ((query = QueryInfoIterator_NextValid(&iterator)) != NULL) {
             max_time = MAX(max_time, QueryInfo_GetWaitingTime(*query));
         }
@@ -1011,14 +1012,9 @@ QueryInfoStorage* Info_GetWaitingQueriesStorage(Info *info) {
     return &info->waiting_queries;
 }
 
-QueryInfoStorage* Info_GetExecutingQueriesStorage(Info *info) {
+QueryInfoStorage* Info_GetWorkingQueriesStorage(Info *info) {
     REQUIRE_ARG_OR_RETURN(info, NULL);
-    return &info->executing_queries_per_thread;
-}
-
-QueryInfoStorage* Info_GetReportingQueriesStorage(Info *info) {
-    REQUIRE_ARG_OR_RETURN(info, NULL);
-    return &info->reporting_queries_per_thread;
+    return &info->working_queries_per_thread;
 }
 
 Statistics Info_GetStatistics(const Info info) {
