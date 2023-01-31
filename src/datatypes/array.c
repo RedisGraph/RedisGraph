@@ -92,15 +92,40 @@ bool SIArray_AllOfType(SIValue siarray, SIType t) {
 }
 
 // compare two SIValues, wrt ascending order
-static int _siarray_compare_func(const void *a, const void *b, void *ascending) {
-	int rel = SIValue_Compare(*(SIValue*)a, *(SIValue*)b, NULL);
-	return (*(bool*)ascending) ? rel : -rel;
+static int _siarray_compare_func_asc
+(
+	const void *a,
+	const void *b,
+	void *data
+) {
+	return SIValue_Compare(*(SIValue*)a, *(SIValue*)b, NULL);
+}
+
+// compare two SIValues, wrt ascending order
+static int _siarray_compare_func_desc
+(
+	const void *a,
+	const void *b,
+	void *data
+) {
+	return SIValue_Compare(*(SIValue*)b, *(SIValue*)a, NULL);
 }
 
 // sorts the array in place in ascending\descending order
-void SIArray_Sort(SIValue siarray, bool ascending) {
+void SIArray_Sort
+(
+	SIValue siarray,
+	bool ascending
+) {
 	uint32_t arrayLen = SIArray_Length(siarray);
-	sort_r(siarray.array, arrayLen, sizeof(SIValue), _siarray_compare_func, (void *)&ascending);
+
+	if(ascending) {
+		sort_r(siarray.array, arrayLen, sizeof(SIValue),
+				_siarray_compare_func_asc, (void *)&ascending);
+	} else {
+		sort_r(siarray.array, arrayLen, sizeof(SIValue),
+				_siarray_compare_func_desc, (void *)&ascending);
+	}
 }
 
 SIValue SIArray_Clone(SIValue siarray) {

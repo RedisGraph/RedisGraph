@@ -68,7 +68,7 @@ bool SIArray_AllOfType(SIValue siarray, SIType t);
 
 /**
   * @brief  Sorts the array in place
-  * @param  siarray: array to print
+  * @param  siarray: array to sort
   * @param  ascending: sort order
   */
 void SIArray_Sort(SIValue siarray, bool ascending);
