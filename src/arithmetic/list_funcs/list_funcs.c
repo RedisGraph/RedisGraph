@@ -442,10 +442,10 @@ SIValue AR_REMOVE(SIValue *argv, int argc, void *private_data) {
 	}
 
 	int32_t count = 1;
-	int32_t index = (int32_t)SI_NUMERIC(argv[1]);
+	int32_t index = (int32_t)SI_GET_NUMERIC(argv[1]);
 
 	if(argc == 3) {
-		count = (int32_t)SI_NUMERIC(argv[2]);
+		count = (int32_t)SI_GET_NUMERIC(argv[2]);
 	}
 
 	// TODO: what happens when count <= 0 ?
@@ -576,7 +576,7 @@ SIValue AR_INSERTLISTELEMENTS(SIValue *argv, int argc, void *private_data) {
 
 	bool allow_dups = true;  // default
 	if(argc == 4) {
-		dups = SIValue_IsTrue(argv[3]);
+		allow_dups = SIValue_IsTrue(argv[3]);
 	}
 
 	uint32_t b_len = SIArray_Length(B);
@@ -600,17 +600,17 @@ SIValue AR_INSERTLISTELEMENTS(SIValue *argv, int argc, void *private_data) {
 		for(uint i = 0; i < b_len; i++) {
 			SIValue _val = SIArray_Get(B, i);
 			if(!SIArray_ContainsValue(list, _val, NULL)) {
-				SIArray_Append(&array, _val);
+				SIArray_Append(&list, _val);
 			}
 		}
 	}
 
 	// append remaining elements
-	for(uint i = index; i < arrayLen; i++) {
-		SIArray_Append(&array, SIArray_Get(list, i));
+	for(uint i = index; i < a_len; i++) {
+		SIArray_Append(&list, SIArray_Get(list, i));
 	}
 
-	return array;
+	return list;
 }
 
 // given a list, return a similar list after removing duplicate elements
@@ -624,7 +624,7 @@ SIValue AR_DEDUP(SIValue *argv, int argc, void *private_data) {
 	}
 
 	uint32_t n          = SIArray_Length(list);
-	SIValue  dedup_list = SI_Array(arrayLen);
+	SIValue  dedup_list = SI_Array(n);
 
 	// check if value already exists in list
 	// TODO: optimize using dict
