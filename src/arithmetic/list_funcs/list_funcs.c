@@ -433,7 +433,7 @@ SIValue AR_TAIL(SIValue *argv, int argc, void *private_data) {
 // given a list, return the list received after removing a given number of
 // consecutive elements or less, if the end of the list has been reached
 // starting at a given index
-// list.remove(list, idx, count = 1) → list
+// list.remove(list, idx, count = 1) -> list
 // "RETURN remove([1,2,3], 2, 2)" returns [1]
 SIValue AR_REMOVE(SIValue *argv, int argc, void *private_data) {
 	SIValue list = argv[0];
@@ -477,7 +477,7 @@ SIValue AR_REMOVE(SIValue *argv, int argc, void *private_data) {
 
 // given a list, return a sorted copy of the list
 // order ascending if argv[1] is TRUE otherwise order will be descending
-// list.sort(list, ascending = TRUE) → list
+// list.sort(list, ascending = TRUE) -> list
 // "RETURN sort([1,3,2], TRUE)" returns [1,2,3]
 SIValue AR_SORT(SIValue *argv, int argc, void *private_data) {
 	SIValue list = argv[0];
@@ -615,7 +615,7 @@ SIValue AR_INSERTLISTELEMENTS(SIValue *argv, int argc, void *private_data) {
 
 // given a list, return a similar list after removing duplicate elements
 // order is preserved, duplicates are removed from the end of the list
-// list.dedup(list) → list
+// list.dedup(list) -> list
 // list.dedup([1,2,1,3,3]) -> [1,2,3]
 SIValue AR_DEDUP(SIValue *argv, int argc, void *private_data) {
 	SIValue list = argv[0];
