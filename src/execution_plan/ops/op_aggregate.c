@@ -32,7 +32,7 @@ void freeCallback
 	dict *d,
 	void *val
 ) {
-	FreeGroup((Group*)val);
+	Group_Free((Group*)val);
 }
 
 // hashtable callbacks
@@ -87,7 +87,7 @@ static inline SIValue *_build_group_key
 	SIValue *group_keys = rm_malloc(sizeof(SIValue) * op->key_count);
 
 	for(uint i = 0; i < op->key_count; i++) {
-		SIValue key = SI_TransferOwnership(&op->group_keys[i]);
+		SIValue key = SI_TransferOwnership(op->group_keys + i);
 		SIValue_Persist(&key);
 		group_keys[i] = key;
 	}
@@ -105,7 +105,7 @@ static Group *_CreateGroup
 	// get a fresh copy of aggregation functions
 	AR_ExpNode **agg_exps = _build_aggregate_exps(op);
 
-	op->group = NewGroup(group_keys, op->key_count, agg_exps,
+	op->group = Group_New(group_keys, op->key_count, agg_exps,
 			op->aggregate_count);
 
 	return op->group;
@@ -177,7 +177,7 @@ static void _aggregateRecord
 
 	// aggregate group exps
 	for(uint i = 0; i < op->aggregate_count; i++) {
-		AR_ExpNode *exp = group->aggregationFunctions[i];
+		AR_ExpNode *exp = group->agg[i];
 		AR_EXP_Aggregate(exp, r);
 	}
 
@@ -194,24 +194,30 @@ static Record _handoff
 		return NULL;
 	}
 
-	Group *group = (Group*)HashTableGetVal(entry);
-	Record r = OpBase_CreateRecord((OpBase *)op);
+	Record   r    = OpBase_CreateRecord((OpBase*)op);
+	Group   *g    = (Group*)HashTableGetVal(entry);
+	SIValue *keys = Group_DetacheKeys(g);
 
 	// add all projected keys to the Record
 	for(uint i = 0; i < op->key_count; i++) {
 		int rec_idx = op->record_offsets[i];
 		// non-aggregated expression
-		SIValue key = SI_TransferOwnership(group->keys + i);
+		SIValue key = SI_TransferOwnership(keys + i);
 		Record_Add(r, rec_idx, key);
 	}
 
 	// compute the final value of all aggregate expressions and add to Record
 	for(uint i = 0; i < op->aggregate_count; i++) {
 		int rec_idx = op->record_offsets[i + op->key_count];
-		AR_ExpNode *exp = group->aggregationFunctions[i];
+		AR_ExpNode *exp = g->agg[i];
 
 		SIValue agg = AR_EXP_FinalizeAggregations(exp, r);
 		Record_AddScalar(r, rec_idx, agg);
+	}
+
+	// free group keys array
+	if(keys != NULL) {
+		rm_free(keys);
 	}
 
 	return r;
@@ -245,6 +251,9 @@ OpBase *NewAggregateOp
 	// allocate memory for group keys if we have any non-aggregate expressions
 	if(op->key_count) {
 		op->group_keys = rm_malloc(op->key_count * sizeof(SIValue));
+		for(uint i = 0; i < op->key_count; i++) {
+			op->group_keys[i] = SI_NullVal();
+		}
 	}
 
 	// the projected record will associate values with their resolved name
@@ -383,6 +392,9 @@ static void AggregateFree
 	}
 
 	if(op->group_keys) {
+		// NOTE:
+		// in case of a runtime exception when computing
+		// a group key the keys for that specific group will leak
 		rm_free(op->group_keys);
 		op->group_keys = NULL;
 	}

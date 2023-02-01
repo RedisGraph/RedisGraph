@@ -10,23 +10,30 @@
 #include "../arithmetic/arithmetic_expression.h"
 
 typedef struct {
-	SIValue *keys;                       // SIValues that form the key associated with each group
-	AR_ExpNode **aggregationFunctions;   // nodes containing aggregate functions to be evaluated
-	uint key_count;                      // number of SIValues in the key
-	uint func_count;                     // number of aggregation function values
+	SIValue *keys;     // SIValues that form the key associated with group
+	AR_ExpNode **agg;  // aggregate functions
+	uint key_count;    // number of keys
+	uint func_count;   // number of aggregation functions
 } Group;
 
 // creates a new group
-Group *NewGroup
+Group *Group_New
 (
-	SIValue *keys,
-	uint key_count,
-	AR_ExpNode **funcs,
-	uint func_count
+	SIValue *keys,     // group keys
+	uint key_count,    // number of keys
+	AR_ExpNode **agg,  // aggregation functions
+	uint func_count    // number of aggregation functions
 );
 
-void FreeGroup
+// detach keys from group
+SIValue *Group_DetacheKeys
 (
-	Group *group
+	Group *g  // group from which to detach keys
+);
+
+// free group
+void Group_Free
+(
+	Group *g  // group to free
 );
 

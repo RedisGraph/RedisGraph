@@ -11,28 +11,41 @@
 #include "../util/rmalloc.h"
 #include "../execution_plan/ops/op.h"
 
-// Creates a new group
-// arguments specify group's key.
-Group *NewGroup
+// creates a new group
+Group *Group_New
 (
-	SIValue *keys,
-	uint key_count,
-	AR_ExpNode **funcs,
-	uint func_count
+	SIValue *keys,     // group keys
+	uint key_count,    // number of keys
+	AR_ExpNode **agg,  // aggregation functions
+	uint func_count    // number of aggregation functions
 ) {
 	Group *g = rm_malloc(sizeof(Group));
 
-	g->keys                 = keys;
-	g->aggregationFunctions = funcs;
-	g->key_count            = key_count;
-	g->func_count           = func_count;
+	g->keys       = keys;
+	g->agg        = agg;
+	g->key_count  = key_count;
+	g->func_count = func_count;
 
 	return g;
 }
 
-void FreeGroup
+// detach keys from group
+SIValue *Group_DetacheKeys
 (
-	Group *g
+	Group *g  // group from which to detach keys
+) {
+	ASSERT(g != NULL);
+
+	SIValue *keys = g->keys;
+	g->keys = NULL;
+
+	return keys;
+}
+
+// free group
+void Group_Free
+(
+	Group *g  // group to free
 ) {
 	if(g == NULL) {
 		return;
@@ -46,10 +59,10 @@ void FreeGroup
 	}
 
 	for(uint i = 0; i < g->func_count; i++) {
-		AR_EXP_Free(g->aggregationFunctions[i]);
+		AR_EXP_Free(g->agg[i]);
 	}
 
-	rm_free(g->aggregationFunctions);
+	rm_free(g->agg);
 	rm_free(g);
 }
 
