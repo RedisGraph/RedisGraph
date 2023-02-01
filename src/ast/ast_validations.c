@@ -1169,11 +1169,9 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 	// if one of the 'projections' is a star -> proceed with current env
 	// otherwise build a new environment using the new column names (aliases)
 	if(!cypher_ast_with_has_include_existing(n)) {
-		rax *new_env = raxNew();
-
 		// free old env, set new one
 		raxFree(vctx->defined_identifiers);
-		vctx->defined_identifiers = new_env;
+		vctx->defined_identifiers = raxNew();
 
 		// introduce the WITH aliases to the bound vars context
 		for(uint i = 0; i < cypher_ast_with_nprojections(n); i++) {
