@@ -63,7 +63,7 @@ SIValue AR_TOPATH(SIValue *argv, int argc, void *private_data) {
 	}
 
 	SIValue path = SIPathBuilder_New(path_elements);
-	for(uint i = 0; i < nelements; i++) {
+	for(uint i = 0; i < array_len(arr); i++) {
 		SIValue element = arr[i];
 
 		if(i % 2 == 0) {
