@@ -1026,8 +1026,8 @@ This section contains information on all supported functions from the Cypher que
 
 |Function      | Description|
 | ------------ |:-----------|
-|indegree(_node_ [, _label_ ...]) * <br> indegree(_node_ [, _labelList_]) *   | When no labels are specified: Returns the number of _node_'s incoming edges <br> When one or more labels are specified: Returns the number of _node's_ incoming edges with one of the given labels <br> Return null when _node_ evaluates to null <br> the _labelList_ syntax is supported since RedisGraph v2.10.8 |
-|outdegree(_node_ [, _label_ ...]) * <br> outdegree(_node_ [, _labelList_]) * | When no labels are specified: Returns the number of _node_'s outgoing edges <br> When one or more labels are specified: Returns the number of _node's_ outgoing edges with one of the given labels <br> Return null when _node_ evaluates to null <br> the _labelList_ syntax is supported since RedisGraph v2.10.8 |
+|indegree(_node_ [, _reltype_ ...]) * <br> indegree(_node_ [, _reltypeList_]) *   | When no relationship types are specified: Returns the number of _node_'s incoming edges <br> When one or more relationship types are specified: Returns the number of _node's_ incoming edges with one of the given relationship types <br> Return null when _node_ evaluates to null <br> the _reltypeList_ syntax is supported since RedisGraph v2.10.8 |
+|outdegree(_node_ [, _reltype_ ...]) * <br> outdegree(_node_ [, _reltypeList_]) * | When no relationship types are specified: Returns the number of _node_'s outgoing edges <br> When one or more relationship types are specified: Returns the number of _node's_ outgoing edges with one of the given relationship types <br> Return null when _node_ evaluates to null <br> the _reltypeList_ syntax is supported since RedisGraph v2.10.8 |
 
 &#42; RedisGraph-specific extensions to Cypher
 
