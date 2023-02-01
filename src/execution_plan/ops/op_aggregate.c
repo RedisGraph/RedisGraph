@@ -105,10 +105,7 @@ static Group *_CreateGroup
 	// get a fresh copy of aggregation functions
 	AR_ExpNode **agg_exps = _build_aggregate_exps(op);
 
-	op->group = Group_New(group_keys, op->key_count, agg_exps,
-			op->aggregate_count);
-
-	return op->group;
+	return Group_New(group_keys, op->key_count, agg_exps, op->aggregate_count);
 }
 
 static XXH64_hash_t _ComputeGroupKey
@@ -141,9 +138,11 @@ static Group *_GetGroup
 ) {
 	// construct group key
 	// evaluate non-aggregated fields
+
 	XXH64_hash_t hash = _ComputeGroupKey(op, r);
 
 	// lookup group by hashed key
+	Group *g;
 	dictEntry *existing;
 	dictEntry *entry = HashTableAddRaw(op->groups, (void *)hash, &existing);
 	if(entry == NULL) {
@@ -155,15 +154,15 @@ static Group *_GetGroup
 			SIValue_Free(op->group_keys[i]);
 		}
 
-		op->group = HashTableGetVal(existing);
+		g = HashTableGetVal(existing);
 	} else {
 		// entry missing
 		// group does not exists, create it
-		op->group = _CreateGroup(op);
-		HashTableSetVal(op->groups, entry, op->group);
+		g = _CreateGroup(op);
+		HashTableSetVal(op->groups, entry, g);
 	}
 
-	return op->group;
+	return g;
 }
 
 static void _aggregateRecord
@@ -172,12 +171,12 @@ static void _aggregateRecord
 	Record r
 ) {
 	// get group
-	Group *group = _GetGroup(op, r);
-	ASSERT(group != NULL);
+	Group *g = _GetGroup(op, r);
+	ASSERT(g != NULL);
 
 	// aggregate group exps
 	for(uint i = 0; i < op->aggregate_count; i++) {
-		AR_ExpNode *exp = group->agg[i];
+		AR_ExpNode *exp = g->agg[i];
 		AR_EXP_Aggregate(exp, r);
 	}
 
@@ -225,10 +224,9 @@ OpBase *NewAggregateOp
 ) {
 	OpAggregate *op = rm_malloc(sizeof(OpAggregate));
 
-	op->group                = NULL;
+	op->groups               = HashTableCreate(&dt);
 	op->group_iter           = NULL;
 	op->group_keys           = NULL;
-	op->groups               = HashTableCreate(&dt);
 
 	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", NULL,
 			AggregateConsume, AggregateReset, NULL, AggregateClone,
@@ -315,8 +313,7 @@ static Record AggregateConsume
 		r = OpBase_CreateRecord(child);
 
 		// get group
-		Group *group = _GetGroup(op, r);
-		ASSERT(group != NULL);
+		_GetGroup(op, r);
 
 		// free record
 		OpBase_DeleteRecord(r);
@@ -348,8 +345,6 @@ static OpResult AggregateReset
 	// expand hashtable to previous element count
 	int res = HashTableExpand(op->groups, elem_count);
 	ASSERT(res == DICT_OK);
-
-	op->group = NULL;
 
 	return OP_OK;
 }
@@ -424,7 +419,5 @@ static void AggregateFree
 		array_free(op->record_offsets);
 		op->record_offsets = NULL;
 	}
-
-	op->group = NULL;
 }
 
