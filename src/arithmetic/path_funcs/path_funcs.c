@@ -59,8 +59,8 @@ SIValue AR_TOPATH(SIValue *argv, int argc, void *private_data) {
 				// will be added to the returned path 
 				path_elements += len * 2 - 1;
 			}
-			arr[n++] = element;
 		}
+		arr[n++] = element;
 	}
 
 	SIValue path = SIPathBuilder_New(path_elements);
