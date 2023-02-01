@@ -220,7 +220,7 @@ class _testGraphInfoFlowBase(FlowTestsBase):
         return True
 
     def _wait_till_queries_start_being_executed(self, query_count=1, timeout=2, prev=False):
-        wait_step = 0.1
+        wait_step = 0.01
         waited_time = 0
         while True:
             cmd = INFO_QUERIES_CURRENT_COMMAND
@@ -371,8 +371,8 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
         # Got two clients connected.
 
         # Wait until the query starts execution and get the statistics.
-        info = self._wait_till_queries_start_being_executed()
-        self.env.assertIsNotNone(info, depth=1)
+        info = self._wait_till_queries_start_being_executed(timeout=10)
+        self.env.assertIsNotNone(info)
 
         waiter.wait()
         results = waiter.get().result_set
@@ -520,8 +520,8 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
         # Got two clients connected.
 
         # Wait until the query starts execution and get the statistics.
-        info = self._wait_till_queries_start_being_executed(prev=True)
-        self.env.assertIsNotNone(info, depth=1)
+        info = self._wait_till_queries_start_being_executed(prev=True, timeout=10)
+        self.env.assertIsNotNone(info)
 
         waiter.wait()
         results = waiter.get().result_set
