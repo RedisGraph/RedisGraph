@@ -18,7 +18,6 @@ typedef struct {
 	AR_ExpNode **key_exps;        // array of expressions used to calculate the group key
 	AR_ExpNode **aggregate_exps;  // array of expressions that aggregate data for each key
 	dict *groups;                 // map of all groups built by this operation
-	SIValue *group_keys;          // array of values that represent a key associated with a Group of aggregations
 	dictIterator *group_iter;     // iterator for walking all groups
 	uint key_count;               // number of key expressions
 	uint aggregate_count;         // number of aggregating expressions

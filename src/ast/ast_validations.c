@@ -1716,7 +1716,6 @@ bool AST_ValidationsMappingInit(void) {
 	validations_mapping[CYPHER_AST_PATTERN_COMPREHENSION]      = _Validate_pattern_comprehension;
 	validations_mapping[CYPHER_AST_CREATE_PATTERN_PROPS_INDEX] = _Validate_index_creation;
 
-
 	//--------------------------------------------------------------------------
 	// register unsupported types
 	//--------------------------------------------------------------------------

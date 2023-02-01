@@ -81,13 +81,14 @@ static inline AR_ExpNode **_build_aggregate_exps
 // build a new group key from the SIValue results of non-aggregate expressions
 static inline SIValue *_build_group_key
 (
-	OpAggregate *op
+	SIValue *keys,
+	uint n
 ) {
 	// TODO: might be expensive incase we're generating lots of groups
-	SIValue *group_keys = rm_malloc(sizeof(SIValue) * op->key_count);
+	SIValue *group_keys = rm_malloc(sizeof(SIValue) * n);
 
-	for(uint i = 0; i < op->key_count; i++) {
-		SIValue key = SI_TransferOwnership(op->group_keys + i);
+	for(uint i = 0; i < n; i++) {
+		SIValue key = SI_TransferOwnership(keys + i);
 		SIValue_Persist(&key);
 		group_keys[i] = key;
 	}
@@ -97,10 +98,11 @@ static inline SIValue *_build_group_key
 
 static Group *_CreateGroup
 (
-	OpAggregate *op
+	OpAggregate *op,
+	SIValue *keys
 ) {
 	// create a new group, clone group keys
-	SIValue *group_keys = _build_group_key(op);
+	SIValue *group_keys = _build_group_key(keys, op->key_count);
 
 	// get a fresh copy of aggregation functions
 	AR_ExpNode **agg_exps = _build_aggregate_exps(op);
@@ -110,6 +112,7 @@ static Group *_CreateGroup
 
 static XXH64_hash_t _ComputeGroupKey
 (
+	SIValue *keys,
 	OpAggregate *op,
 	Record r
 ) {
@@ -120,9 +123,10 @@ static XXH64_hash_t _ComputeGroupKey
 
 	for(uint i = 0; i < op->key_count; i++) {
 		AR_ExpNode *exp = op->key_exps[i];
-		op->group_keys[i] = AR_EXP_Evaluate(exp, r);
+		// note if AR_EXP_Evaluate throws a runtime exception we will leak
+		keys[i] = AR_EXP_Evaluate(exp, r);
 		// update the hash state with the current value.
-		SIValue_HashUpdate(op->group_keys[i], &state);
+		SIValue_HashUpdate(keys[i], &state);
 	}
 
 	// finalize the hash
@@ -139,7 +143,8 @@ static Group *_GetGroup
 	// construct group key
 	// evaluate non-aggregated fields
 
-	XXH64_hash_t hash = _ComputeGroupKey(op, r);
+	SIValue keys[op->key_count];
+	XXH64_hash_t hash = _ComputeGroupKey(keys, op, r);
 
 	// lookup group by hashed key
 	Group *g;
@@ -151,14 +156,14 @@ static Group *_GetGroup
 
 		// free computed keys
 		for(uint i = 0; i < op->key_count; i++) {
-			SIValue_Free(op->group_keys[i]);
+			SIValue_Free(keys[i]);
 		}
 
 		g = HashTableGetVal(existing);
 	} else {
 		// entry missing
 		// group does not exists, create it
-		g = _CreateGroup(op);
+		g = _CreateGroup(op, keys);
 		HashTableSetVal(op->groups, entry, g);
 	}
 
@@ -226,7 +231,6 @@ OpBase *NewAggregateOp
 
 	op->groups               = HashTableCreate(&dt);
 	op->group_iter           = NULL;
-	op->group_keys           = NULL;
 
 	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", NULL,
 			AggregateConsume, AggregateReset, NULL, AggregateClone,
@@ -240,14 +244,6 @@ OpBase *NewAggregateOp
 	// the aggregations array as appropriate
 	_migrate_expressions(op, exps);
 	array_free(exps);
-
-	// allocate memory for group keys if we have any non-aggregate expressions
-	if(op->key_count) {
-		op->group_keys = rm_malloc(op->key_count * sizeof(SIValue));
-		for(uint i = 0; i < op->key_count; i++) {
-			op->group_keys[i] = SI_NullVal();
-		}
-	}
 
 	// the projected record will associate values with their resolved name
 	// to ensure that space is allocated for each entry
@@ -379,14 +375,6 @@ static void AggregateFree
 	OpAggregate *op = (OpAggregate *)opBase;
 	if(op == NULL) {
 		return;
-	}
-
-	if(op->group_keys) {
-		// NOTE:
-		// in case of a runtime exception when computing
-		// a group key the keys for that specific group will leak
-		rm_free(op->group_keys);
-		op->group_keys = NULL;
 	}
 
 	if(op->group_iter) {
