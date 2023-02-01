@@ -151,6 +151,9 @@ typedef struct CommonQueryInfo {
     millis_t execution_duration;
     millis_t report_duration;
     // TODO memory
+    uint64_t allocated_memory;
+    uint64_t deallocated_memory;
+    uint64_t peak_memory;
 } CommonQueryInfo;
 
 static CommonQueryInfo _CommonQueryInfo_FromFinished
@@ -164,7 +167,10 @@ static CommonQueryInfo _CommonQueryInfo_FromFinished
         .query_string = (char *)finished.query_string,
         .wait_duration = finished.total_wait_duration,
         .execution_duration = finished.total_execution_duration,
-        .report_duration = finished.total_report_duration
+        .report_duration = finished.total_report_duration,
+        .allocated_memory = finished.allocated_memory,
+        .deallocated_memory = finished.deallocated_memory,
+        .peak_memory = finished.peak_memory
     };
     return info;
 }
@@ -181,7 +187,10 @@ static CommonQueryInfo _CommonQueryInfo_FromUnfinished
         .query_string = (char *)unfinished.context->query_data.query,
         .wait_duration = unfinished.wait_duration,
         .execution_duration = unfinished.execution_duration,
-        .report_duration = unfinished.report_duration
+        .report_duration = unfinished.report_duration,
+        .allocated_memory = unfinished.allocated_memory,
+        .deallocated_memory = unfinished.deallocated_memory,
+        .peak_memory = unfinished.deallocated_memory
     };
     return info;
 }
@@ -571,6 +580,24 @@ static int _reply_graph_query_info
         &recorder,
         REPORT_DURATION_KEY_NAME,
         info.report_duration
+    ));
+
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+        &recorder,
+        "allocated memory",
+        info.allocated_memory
+    ));
+
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+        &recorder,
+        "deallocated memory",
+        info.deallocated_memory
+    ));
+
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+        &recorder,
+        "peak memory",
+        info.peak_memory
     ));
 
     return REDISMODULE_OK;

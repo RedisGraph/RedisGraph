@@ -315,6 +315,7 @@ inline static bool _readonly_cmd_mode(CommandCtx *ctx) {
 // it may be called directly by a reader thread or the Redis main thread,
 // or dispatched as a worker thread job when is used for writing.
 static void _ExecuteQuery(void *args) {
+	rm_reset_track_memory();
 	ASSERT(args != NULL);
 
 	GraphQueryCtx   *gq_ctx       =  args;
@@ -424,6 +425,10 @@ static void _ExecuteQuery(void *args) {
 		// send result-set back to client
 		_report_query_started_reporting(gq_ctx);
 		ResultSet_Reply(result_set);
+		Info_SetMemory(&gq_ctx->graph_ctx->info, query_ctx,
+			rm_get_allocated_memory(),
+			rm_get_deallocated_memory(),
+			rm_get_peak_memory());
 		_report_query_finished_reporting(gq_ctx);
 	}
 
@@ -439,10 +444,10 @@ static void _ExecuteQuery(void *args) {
 	ExecutionCtx_Free(exec_ctx);
 	GraphContext_DecreaseRefCount(gc);
 	CommandCtx_Free(command_ctx);
-	QueryCtx_Free(); // reset the QueryCtx and free its allocations
 	ErrorCtx_Clear();
 	ResultSet_Free(result_set);
 	GraphQueryCtx_Free(gq_ctx);
+	QueryCtx_Free(); // reset the QueryCtx and free its allocations
 }
 
 static void _DelegateWriter(GraphQueryCtx *gq_ctx) {

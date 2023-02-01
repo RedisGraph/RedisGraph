@@ -5,6 +5,7 @@
 #include <string.h>
 #include "../redismodule.h"
 
+// #define REDIS_MODULE_TARGET
 #ifdef REDIS_MODULE_TARGET /* Set this when compiling your code as a module */
 
 // called when mem_capacity configuration changes
@@ -14,6 +15,12 @@
 // and the currently used allocator (capped vs none capped)
 // the allocator function pointers might be updated
 void rm_set_mem_capacity(int64_t cap);
+
+void rm_track_memory();
+void rm_reset_track_memory();
+uint64_t rm_get_allocated_memory();
+uint64_t rm_get_deallocated_memory();
+uint64_t rm_get_peak_memory();
 
 // reset thread memory consumption counter to 0 (no memory consumed)
 void rm_reset_n_alloced();

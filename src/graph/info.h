@@ -63,6 +63,9 @@ typedef struct QueryInfo {
     millis_t execution_duration;
     // The time spent on reporting.
     millis_t report_duration;
+    uint64_t allocated_memory;
+    uint64_t deallocated_memory;
+    uint64_t peak_memory;
     // The context of the query.
     const QueryCtx *context;
     // Current stage of the query.
@@ -79,6 +82,9 @@ typedef struct FinishedQueryInfo {
     millis_t total_report_duration;
     char *query_string;
     char *graph_name;
+    uint64_t allocated_memory;
+    uint64_t deallocated_memory;
+    uint64_t peak_memory;
 } FinishedQueryInfo;
 
 typedef struct FinishedQueryCounters {
@@ -308,6 +314,16 @@ void Info_IndicateQueryFinishedReporting
     Info *,
     const QueryCtx *
 );
+
+void Info_SetMemory
+(
+    Info *,
+    const QueryCtx *,
+    uint64_t,
+    uint64_t,
+    uint64_t
+);
+
 // Return the total number of queries currently queued or being executed.
 // Requires a pointer to mutable, for it changes the state of the locks.
 uint64_t Info_GetTotalQueriesCount(Info *);

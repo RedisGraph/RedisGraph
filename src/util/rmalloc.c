@@ -21,6 +21,10 @@
 static __thread int64_t n_alloced;
 static int64_t mem_capacity;  // maximum memory consumption for thread
 
+static __thread uint64_t bytes_allocated;
+static __thread uint64_t bytes_deallocated;
+static __thread uint64_t bytes_peak;
+ 
 // function pointers which hold the original address of RedisModule_Alloc*
 static void (*RedisModule_Free_Orig)(void *ptr);
 static void * (*RedisModule_Alloc_Orig)(size_t bytes);
@@ -114,6 +118,80 @@ void rm_set_mem_capacity(int64_t cap) {
 		RedisModule_Strdup   =  RedisModule_Strdup_Orig;
 		RedisModule_Realloc  =  RedisModule_Realloc_Orig;
 	}
+}
+
+inline void rm_update_peak() {
+	uint64_t peak = bytes_allocated - bytes_deallocated;
+	if(peak > bytes_peak) {
+		bytes_peak = peak;
+	}
+}
+
+void *rm_track_alloc(size_t n_bytes) {
+	void *p          = RedisModule_Alloc_Orig(n_bytes);
+	bytes_allocated += RedisModule_MallocSize(p);
+	rm_update_peak();
+	return p;
+}
+
+void *rm_track_realloc(void *ptr, size_t n_bytes) {
+	size_t d_bytes     = RedisModule_MallocSize(ptr);
+	void *p = RedisModule_Realloc_Orig(ptr, n_bytes);
+	bytes_allocated   += RedisModule_MallocSize(p);
+	bytes_deallocated += d_bytes;
+	rm_update_peak();
+	return p;
+}
+
+void *rm_track_calloc(size_t n_elem, size_t size) {
+	void *p          = RedisModule_Calloc_Orig(n_elem, size);
+	bytes_allocated += RedisModule_MallocSize(p);
+	rm_update_peak();
+	return p;
+}
+
+char *rm_track_strdup(const char *str) {
+	char *str_copy   = RedisModule_Strdup_Orig(str);
+	size_t n_bytes   = RedisModule_MallocSize(str_copy);
+	bytes_allocated += n_bytes;
+	rm_update_peak();
+	return str_copy;
+}
+
+void rm_track_free(void *ptr) {
+	bytes_deallocated += RedisModule_MallocSize(ptr);
+	RedisModule_Free_Orig(ptr);
+}
+
+void rm_track_memory() {
+	RedisModule_Free_Orig     =  RedisModule_Free;
+	RedisModule_Alloc_Orig    =  RedisModule_Alloc;
+	RedisModule_Calloc_Orig   =  RedisModule_Calloc;
+	RedisModule_Strdup_Orig   =  RedisModule_Strdup;
+	RedisModule_Realloc_Orig  =  RedisModule_Realloc;
+	RedisModule_Free          =  rm_track_free;
+	RedisModule_Alloc         =  rm_track_alloc;
+	RedisModule_Calloc        =  rm_track_calloc;
+	RedisModule_Strdup        =  rm_track_strdup;
+	RedisModule_Realloc       =  rm_track_realloc;
+}
+
+void rm_reset_track_memory() {
+	bytes_peak        = 0;
+	bytes_allocated   = 0;
+	bytes_deallocated = 0;
+}
+
+uint64_t rm_get_allocated_memory() {
+	return bytes_allocated;
+}
+
+uint64_t rm_get_deallocated_memory() {
+	return bytes_deallocated;
+}
+
+uint64_t rm_get_peak_memory() {
+	return bytes_peak;
 }
 
 #else

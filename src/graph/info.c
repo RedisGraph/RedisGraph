@@ -160,6 +160,9 @@ FinishedQueryInfo FinishedQueryInfo_FromQueryInfo(const QueryInfo info) {
     finished.total_wait_duration = info.wait_duration;
     finished.total_execution_duration = info.execution_duration;
     finished.total_report_duration = info.report_duration;
+    finished.allocated_memory = info.allocated_memory;
+    finished.deallocated_memory = info.deallocated_memory;
+    finished.peak_memory = info.peak_memory;
 
     if (info.context) {
         finished.query_string = strdup(info.context->query_data.query);
@@ -883,6 +886,31 @@ void Info_IndicateQueryFinishedReporting
     QueryInfoStorage_ResetElement(
         &info->working_queries_per_thread,
         thread_id);
+    REQUIRE_TRUE(_Info_UnlockEverything(info));
+}
+
+void Info_SetMemory
+(
+    Info *info,
+    const QueryCtx *context,
+    uint64_t allocated_memory,
+    uint64_t deallocated_memory,
+    uint64_t peak_memory
+) {
+    REQUIRE_ARG(info);
+    REQUIRE_ARG(context);
+    REQUIRE_TRUE(_Info_LockEverything(info, true));
+
+    // This effectively removes the query info object from the reporting queue.
+
+    const int thread_id = ThreadPools_GetThreadID();
+    QueryInfo *query_info = QueryInfoStorage_Get(
+        &info->working_queries_per_thread,
+        thread_id);
+
+    query_info->allocated_memory = allocated_memory;
+    query_info->deallocated_memory = deallocated_memory;
+    query_info->peak_memory = peak_memory;
     REQUIRE_TRUE(_Info_UnlockEverything(info));
 }
 

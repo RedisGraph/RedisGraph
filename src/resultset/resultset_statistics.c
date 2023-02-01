@@ -47,7 +47,7 @@ void ResultSetStat_emit
 ) {
 	int buflen;
 	char buff[512] = {0};
-	size_t resultset_size = 2; // execution time, cached
+	size_t resultset_size = 5; // execution time, cached
 
 	// compute required space for resultset statistics
 	if(stats->index_creation)            resultset_size++;
@@ -119,6 +119,18 @@ void ResultSetStat_emit
 	// emit query execution time
 	double t = QueryCtx_GetExecutionTime();
 	buflen = sprintf(buff, "Query internal execution time: %.6f milliseconds", t);
+	RedisModule_ReplyWithStringBuffer(ctx, buff, buflen);
+
+	uint64_t n = rm_get_allocated_memory();
+	buflen = sprintf(buff, "Query bytes allocated: %llu", n);
+	RedisModule_ReplyWithStringBuffer(ctx, buff, buflen);
+
+	n = rm_get_deallocated_memory();
+	buflen = sprintf(buff, "Query bytes deallocated: %llu", n);
+	RedisModule_ReplyWithStringBuffer(ctx, buff, buflen);
+
+	n = rm_get_peak_memory();
+	buflen = sprintf(buff, "Query bytes peak: %llu", n);
 	RedisModule_ReplyWithStringBuffer(ctx, buff, buflen);
 }
 
