@@ -146,7 +146,9 @@ static Record CondTraverseConsume(OpBase *opBase) {
 		/* Run out of tuples, try to get new data.
 		 * Free old records. */
 		op->r = NULL;
-		for(uint i = 0; i < op->record_count; i++) OpBase_DeleteRecord(op->records[i]);
+		for(uint i = 0; i < op->record_count; i++) {
+			OpBase_DeleteRecord(op->records[i]);
+		}
 
 		// Ask child operations for data.
 		for(op->record_count = 0; op->record_count < op->record_cap; op->record_count++) {
@@ -242,7 +244,9 @@ static void CondTraverseFree(OpBase *ctx) {
 	}
 
 	if(op->records) {
-		for(uint i = 0; i < op->record_count; i++) OpBase_DeleteRecord(op->records[i]);
+		for(uint i = 0; i < op->record_count; i++) {
+			OpBase_DeleteRecord(op->records[i]);
+		}
 		rm_free(op->records);
 		op->records = NULL;
 	}
