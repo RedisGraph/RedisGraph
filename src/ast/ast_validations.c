@@ -1122,15 +1122,26 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 ) {
 	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
 
-	if(start) {
-		vctx->clause = cypher_astnode_type(n);
+	if(!start) {
+		return VISITOR_CONTINUE;
+	}
 
-		if(_Validate_LIMIT_SKIP_Modifiers(cypher_ast_with_get_limit(n),
-			cypher_ast_with_get_skip(n)) == AST_INVALID) {
+	vctx->clause = cypher_astnode_type(n);
+
+	if(_Validate_LIMIT_SKIP_Modifiers(cypher_ast_with_get_limit(n),
+		cypher_ast_with_get_skip(n)) == AST_INVALID) {
+		return VISITOR_BREAK;
+	}
+
+	// manually traverse children. order by and predicate should be aware of the
+	// vars introduced in the with projections, but the projections should not
+	for(uint i = 0; i < cypher_ast_with_nprojections(n); i++) {
+		// visit the projection
+		const cypher_astnode_t *proj = cypher_ast_with_get_projection(n, i);
+		AST_Visitor_visit(proj, visitor);
+		if(ErrorCtx_EncounteredError()) {
 			return VISITOR_BREAK;
 		}
-
-		return VISITOR_RECURSE;
 	}
 
 	// introduce WITH aliases to the bound vars context
@@ -1138,23 +1149,44 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 		return VISITOR_BREAK;
 	}
 
+	// visit predicate and ORDER BY clauses
+	const cypher_astnode_t *predicate = cypher_ast_with_get_predicate(n);
+	if(predicate) {
+		AST_Visitor_visit(predicate, visitor);
+		if(ErrorCtx_EncounteredError()) {
+			return VISITOR_BREAK;
+		}
+	}
+
+	const cypher_astnode_t *order_by = cypher_ast_with_get_order_by(n);
+	if(order_by) {
+		AST_Visitor_visit(order_by, visitor);
+		if(ErrorCtx_EncounteredError()) {
+			return VISITOR_BREAK;
+		}
+	}
+
 	// if one of the 'projections' is a star -> proceed with current env
 	// otherwise build a new environment using the new column names (aliases)
 	if(!cypher_ast_with_has_include_existing(n)) {
 		rax *new_env = raxNew();
-		for(uint i = 0; i < cypher_ast_with_nprojections(n); i++) {
-			const cypher_astnode_t *proj = cypher_ast_with_get_projection(n, i);
-			const cypher_astnode_t *ast_alias = cypher_ast_projection_get_alias(proj);
-			if(!ast_alias) {
-				ast_alias = cypher_ast_projection_get_expression(proj);
-			}
-			const char *alias = cypher_ast_identifier_get_name(ast_alias);
-			raxInsert(new_env, (unsigned char *)alias, strlen(alias), NULL, NULL);
-		}
 
 		// free old env, set new one
 		raxFree(vctx->defined_identifiers);
 		vctx->defined_identifiers = new_env;
+
+		// introduce the WITH aliases to the bound vars context
+		for(uint i = 0; i < cypher_ast_with_nprojections(n); i++) {
+			const cypher_astnode_t *proj = cypher_ast_with_get_projection(n, i);
+			const cypher_astnode_t *ast_alias =
+				cypher_ast_projection_get_alias(proj);
+			if(!ast_alias) {
+				ast_alias = cypher_ast_projection_get_expression(proj);
+			}
+			const char *alias = cypher_ast_identifier_get_name(ast_alias);
+			raxInsert(vctx->defined_identifiers, (unsigned char *)alias,
+				strlen(alias), NULL, NULL);
+		}
 	}
 
 	return VISITOR_CONTINUE;
