@@ -64,7 +64,7 @@ static bool _ValidateAllShortestPaths
 	return false;
 }
 
-// get aliases of a WITH clause
+// introduce aliases of a WITH clause to the bound vars
 // return true if no errors where encountered, false otherwise
 static bool _AST_GetWithAliases
 (
@@ -1125,16 +1125,17 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 	if(start) {
 		vctx->clause = cypher_astnode_type(n);
 
-		if(!_AST_GetWithAliases(n, vctx->defined_identifiers)) {
-			return VISITOR_BREAK;
-		}
-
 		if(_Validate_LIMIT_SKIP_Modifiers(cypher_ast_with_get_limit(n),
 			cypher_ast_with_get_skip(n)) == AST_INVALID) {
 			return VISITOR_BREAK;
 		}
 
 		return VISITOR_RECURSE;
+	}
+
+	// introduce WITH aliases to the bound vars context
+	if(!_AST_GetWithAliases(n, vctx->defined_identifiers)) {
+		return VISITOR_BREAK;
 	}
 
 	// if one of the 'projections' is a star -> proceed with current env
