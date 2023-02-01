@@ -264,6 +264,83 @@ static void _buildForeachOp
 	ExecutionPlan_Free(embedded_plan);
 }
 
+static void _buildCallSubqueryPlan
+(
+	ExecutionPlan *plan,            // execution plan to add plan to
+	const cypher_astnode_t *clause  // call subquery clause
+) {
+	// starting with the simple case: construct an Apply operation, with the
+	// embedded plan constructed from the body of the CALL {} as its rhs, and
+	// the previous plan as its lhs (after removing Results op).
+	// This will support RO queries, since the updating operations are eager.
+
+	// -------------------------------------------------------------------------
+	// set the subquery to be the AST
+	// -------------------------------------------------------------------------
+	AST *orig_ast = QueryCtx_GetAST();
+	AST subquery_ast = {
+		.anot_ctx_collection = orig_ast->anot_ctx_collection,
+		.free_root = true,
+		.referenced_entities = orig_ast->referenced_entities,
+	};
+
+	// build the query, to be the root of the temporary AST
+	uint child_count = cypher_astnode_nchildren(clause);
+	cypher_astnode_t *children[child_count];
+	// Explicitly collect all child nodes from the clause.
+	for(uint i = 0; i < child_count; i ++) {
+		children[i] = (cypher_astnode_t *)cypher_astnode_get_child(clause, i);
+	}
+
+	struct cypher_input_range range = {0};
+	subquery_ast.root = cypher_ast_query(NULL,
+							0,
+							children,
+							child_count,
+							children,
+							child_count,
+							range);
+
+	QueryCtx_SetAST(&subquery_ast);
+
+	// -------------------------------------------------------------------------
+	// build the embedded execution plan corresponding to the subquery
+	// -------------------------------------------------------------------------
+	ExecutionPlan *embedded_plan = NewExecutionPlan();
+
+	// -------------------------------------------------------------------------
+	// return original root
+	// -------------------------------------------------------------------------
+	QueryCtx_SetAST(orig_ast);
+
+	// get rid of the Results op (at the moment only supporting returning subqueries)
+	ExecutionPlan_RemoveOp(embedded_plan, embedded_plan->root);
+
+	// -------------------------------------------------------------------------
+	// create an Argument op, plant it as the deepest child of the embedded plan
+	// -------------------------------------------------------------------------
+	OpBase *argument = NewArgumentOp(embedded_plan, NULL);
+	OpBase *deepest = embedded_plan->root;
+	while(deepest->childCount > 0) {
+		deepest = deepest->children[0];
+	}
+	ExecutionPlan_AddOp(deepest, argument);
+
+	// -------------------------------------------------------------------------
+	// create an Apply op, set it to be the root of the main plan
+	// -------------------------------------------------------------------------
+	OpBase *apply = NewApplyOp(plan);
+	ExecutionPlan_UpdateRoot(plan, apply);
+	// bind the embedded plan to be the rhs branch of the Apply op
+	ExecutionPlan_AddOp(apply, embedded_plan->root);
+
+	// bind new plan to the main plan
+	ExecutionPlan_BindPlanToOps(plan, embedded_plan->root, true);
+
+	// free temporary plan
+	// TBD
+}
+
 void ExecutionPlanSegment_ConvertClause
 (
 	GraphContext *gc,
@@ -296,8 +373,9 @@ void ExecutionPlanSegment_ConvertClause
 		buildWithOps(plan, clause);
 	} else if(t == CYPHER_AST_FOREACH) {
 		_buildForeachOp(plan, clause, gc);
+	} else if(t == CYPHER_AST_CALL_SUBQUERY) {
+		_buildCallSubqueryPlan(plan, clause);
 	} else {
 		assert(false && "unhandeled clause");
 	}
 }
-
