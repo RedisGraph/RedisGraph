@@ -29,19 +29,6 @@ Group *Group_New
 	return g;
 }
 
-// detach keys from group
-SIValue *Group_DetacheKeys
-(
-	Group *g  // group from which to detach keys
-) {
-	ASSERT(g != NULL);
-
-	SIValue *keys = g->keys;
-	g->keys = NULL;
-
-	return keys;
-}
-
 // free group
 void Group_Free
 (

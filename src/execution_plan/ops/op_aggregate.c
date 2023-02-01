@@ -196,13 +196,13 @@ static Record _handoff
 
 	Record   r    = OpBase_CreateRecord((OpBase*)op);
 	Group   *g    = (Group*)HashTableGetVal(entry);
-	SIValue *keys = Group_DetacheKeys(g);
+	SIValue *keys = g->keys;
 
 	// add all projected keys to the Record
 	for(uint i = 0; i < op->key_count; i++) {
 		int rec_idx = op->record_offsets[i];
 		// non-aggregated expression
-		SIValue key = SI_TransferOwnership(keys + i);
+		SIValue key = SI_ShareValue(keys[i]);
 		Record_Add(r, rec_idx, key);
 	}
 
@@ -213,11 +213,6 @@ static Record _handoff
 
 		SIValue agg = AR_EXP_FinalizeAggregations(exp, r);
 		Record_AddScalar(r, rec_idx, agg);
-	}
-
-	// free group keys array
-	if(keys != NULL) {
-		rm_free(keys);
 	}
 
 	return r;

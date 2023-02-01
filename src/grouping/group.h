@@ -25,12 +25,6 @@ Group *Group_New
 	uint func_count    // number of aggregation functions
 );
 
-// detach keys from group
-SIValue *Group_DetacheKeys
-(
-	Group *g  // group from which to detach keys
-);
-
 // free group
 void Group_Free
 (
