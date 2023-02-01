@@ -26,15 +26,45 @@ SIValue AR_TOPATH(SIValue *argv, int argc, void *private_data) {
 	uint nelements = cypher_ast_pattern_path_nelements(ast_path);
 	ASSERT(argc == (nelements + 1));
 
-	SIValue path = SIPathBuilder_New(nelements);
+	uint path_elements = 0;
+	SIValue *arr = array_new(SIValue, nelements);
 	for(uint i = 0; i < nelements; i++) {
 		SIValue element = argv[i + 1];
 		if(SI_TYPE(element) == T_NULL) {
 			/* If any element of the path does not exist, the entire path is invalid.
 			 * Free it and return a null value. */
-			SIValue_Free(path);
+			array_free(arr);
 			return SI_NullVal();
 		}
+
+		if(i % 2 == 0) {
+			path_elements++;
+			// Nodes are in even position.
+			array_append(arr, element);
+		} else {
+			// Edges and paths are in odd positions.
+			// Element type can be either edge, or path.
+			if(SI_TYPE(element) == T_EDGE) {
+				path_elements++;
+				array_append(arr, element);
+			} else { // If element is not an edge, it is a path.				
+				/* Path with 0 edges should not be appended. Their source and destination nodes are the same,
+				 * and the source node already appended.
+				 */
+				size_t len = SIPath_Length(element);
+				if(len == 0) {
+					i++;
+					continue;
+				}
+				path_elements += len * 2;
+				array_append(arr, element);
+			}
+		}
+	}
+
+	SIValue path = SIPathBuilder_New(path_elements);
+	for(uint i = 0; i < nelements; i++) {
+		SIValue element = arr[i];
 
 		if(i % 2 == 0) {
 			// Nodes are in even position.
@@ -44,23 +74,19 @@ SIValue AR_TOPATH(SIValue *argv, int argc, void *private_data) {
 			const cypher_astnode_t *ast_rel_pattern = cypher_ast_pattern_path_get_element(ast_path, i);
 			bool RTL_pattern = cypher_ast_rel_pattern_get_direction(ast_rel_pattern) == CYPHER_REL_INBOUND;
 			// Element type can be either edge, or path.
-			if(SI_TYPE(element) == T_EDGE) SIPathBuilder_AppendEdge(path, element, RTL_pattern);
-			// If element is not an edge, it is a path.
-			else {
-				/* Path with 0 edges should not be appended. Their source and destination nodes are the same,
-				 * and the source node already appended.
-				 * The build should continue to the next edge/path value. Consider the following query:
+			if(SI_TYPE(element) == T_EDGE) {
+				SIPathBuilder_AppendEdge(path, element, RTL_pattern);
+			} else { // If element is not an edge, it is a path.				
+				/* The build should continue to the next edge/path value. Consider the following query:
 				 * "MATCH p=(a:L1)-[*0..]->(b:L1)-[]->(c:L2)" for the graph in the form of (:L1)-[]->(:L2). The path build should
 				 * return a path with with the relevant entities.
 				 */
-				if(SIPath_Length(element) == 0) {
-					i++;
-					continue;
-				}
 				SIPathBuilder_AppendPath(path, element, RTL_pattern);
 			}
 		}
 	}
+
+	array_free(arr);
 	return path;
 }
 
