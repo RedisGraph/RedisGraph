@@ -557,6 +557,26 @@ jobs:
           command: make NPROC=16
       - benchmark-steps:
           module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
+          benchmark_glob: 'graph500*.yml$'
+
+  benchmark-graph-500:
+    docker:
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    resource_class: large
+    steps:
+      - early-returns
+      - checkout-all
+      - install-prerequisites:
+          benchmarks: "yes"
+      - attach_workspace:
+          at: ~/workspace
+      - run:
+          name: Build artifact
+          shell: /bin/bash -l -eo pipefail
+          command: make NPROC=16
+      - benchmark-steps:
+          module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
+          benchmark_glob: '^((?!graph500).)*.yml$'
 
   benchmark-profiler:
     docker:
@@ -724,6 +744,9 @@ workflows:
       - benchmark:
           context: common
           <<: *always
+      - benchmark-graph-500:
+          context: common
+          <<: *always
 
   nightly:
     triggers:
@@ -752,3 +775,7 @@ workflows:
     jobs:
       - benchmark:
           context: common
+          <<: *always
+      - benchmark-graph-500:
+          context: common
+          <<: *always
