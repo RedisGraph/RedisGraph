@@ -291,8 +291,8 @@ static void _buildCallSubqueryPlan
 	for(uint i = 0; i < child_count; i ++) {
 		children[i] = (cypher_astnode_t *)cypher_astnode_get_child(clause, i);
 	}
-
 	struct cypher_input_range range = {0};
+
 	subquery_ast.root = cypher_ast_query(NULL,
 							0,
 							children,

@@ -31,6 +31,11 @@ typedef struct {
 // number of ast-node types: _MAX_VT_OFF = sizeof(struct cypher_astnode_vts) / sizeof(struct cypher_astnode_vt *) = 114
 static visit validations_mapping[114];
 
+// forward declarations
+static AST_Validation _ValidateQuerySequence(const AST *ast);
+static AST_Validation _ValidateClauseOrder(const AST *ast);
+static AST_Validation _ValidateUnion_Clauses(const AST *ast);
+
 // validate that allShortestPaths is in a supported place
 static bool _ValidateAllShortestPaths
 (
@@ -1113,6 +1118,113 @@ cleanup:
 	return VISITOR_CONTINUE;
 }
 
+// validate a CALL {} (subquery) clause
+static VISITOR_STRATEGY _Validate_call_subquery
+(
+	const cypher_astnode_t *n,  // ast-node
+	bool start,                 // first traversal
+	ast_visitor *visitor        // visitor
+) {
+	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
+
+	if(!start) {
+		return VISITOR_CONTINUE;
+	}
+
+	// create a query astnode with the body of the subquery as its body
+	// build the query, to be the root of the temporary AST
+	uint nclauses = cypher_astnode_nchildren(n);
+	cypher_astnode_t *clauses[nclauses];
+	// Explicitly collect all child nodes from the clause.
+	for(uint i = 0; i < nclauses; i ++) {
+		clauses[i] = (cypher_astnode_t *)cypher_astnode_get_child(n, i);
+	}
+	struct cypher_input_range range = {0};
+
+	cypher_astnode_t *body = cypher_ast_query(NULL, 0, clauses, nclauses,
+		clauses, nclauses, range);
+	
+	AST ast; // Build a fake AST with the correct AST root
+	ast.root = body;
+	
+	// Verify that the RETURN clause and terminating clause do not violate scoping rules.
+	if(_ValidateQuerySequence(&ast) != AST_VALID) {
+		return VISITOR_BREAK;
+	}
+
+	// Verify that the clause order in the scope is valid.
+	if(_ValidateClauseOrder(&ast) != AST_VALID) {
+		return VISITOR_BREAK;
+	}
+
+	// Verify that the clauses surrounding UNION return the same column names.
+	if(_ValidateUnion_Clauses(&ast) != AST_VALID) {
+		return VISITOR_BREAK;
+	}
+
+	// validate positions of allShortestPaths
+	bool invalid = _ValidateAllShortestPaths(body);
+	if(invalid) {
+		ErrorCtx_SetError("RedisGraph support allShortestPaths only in match clauses");
+		return VISITOR_BREAK;
+	}
+	
+	// validate that the with imports (if exist) are simple, i.e., 'WITH a'
+	const cypher_astnode_t *with = cypher_ast_call_subquery_get_clause(n, 0);
+	if(cypher_astnode_type(with) == CYPHER_AST_WITH) {
+		for(uint i = 0; i < cypher_ast_with_nprojections(with); i++) {
+			const cypher_astnode_t *curr_proj =
+				cypher_ast_with_get_projection(with, i);
+			if(cypher_ast_projection_get_alias(curr_proj) != NULL ||
+				cypher_astnode_type(cypher_ast_projection_get_expression(curr_proj))
+					!= CYPHER_AST_IDENTIFIER) {
+				ErrorCtx_SetError(
+					"WITH imports in CALL {} must be simple ('WITH a')");
+			}
+
+			// order by, predicates, limit and skips are not valid
+			if(cypher_ast_with_get_skip(with)      != NULL ||
+				cypher_ast_with_get_limit(with)     != NULL ||
+				cypher_ast_with_get_order_by(with)  != NULL ||
+				cypher_ast_with_get_predicate(with) != NULL) {
+				ErrorCtx_SetError(
+					"WITH imports in CALL {} must be simple ('WITH a')");
+				}
+		}
+	}
+
+	// clone the bound vars context.
+	rax *in_env = raxClone(vctx->defined_identifiers);
+
+	// visit the subquery clauses
+	for(uint i = 0; i < cypher_ast_call_subquery_nclauses(n); i++) {
+		const cypher_astnode_t *clause =
+			cypher_ast_call_subquery_get_clause(n, i);
+		AST_Visitor_visit(clause, visitor);
+		if(ErrorCtx_EncounteredError()) {
+			return VISITOR_BREAK;
+		}
+	}
+
+	// if the subquery is a returning one, pass the current context. if the
+	// subquery is unit (no closing RETURN clause), pass the context as it was
+	// without traversing the clauses of the subquery.
+	const cypher_astnode_t *last_clause = cypher_ast_call_subquery_get_clause(n,
+										cypher_ast_call_subquery_nclauses(n)-1);
+	bool is_returning = cypher_astnode_type(last_clause) == CYPHER_AST_RETURN;
+	
+	if(!is_returning) {
+		// free old env and set the new one
+		raxFree(vctx->defined_identifiers);
+		vctx->defined_identifiers = in_env;
+	} else {
+		raxFree(in_env);
+	}
+
+	// don't traverse children
+	return VISITOR_CONTINUE;
+}
+
 // validate a WITH clause
 static VISITOR_STRATEGY _Validate_WITH_Clause
 (
@@ -1709,6 +1821,7 @@ bool AST_ValidationsMappingInit(void) {
 	validations_mapping[CYPHER_AST_SET_PROPERTY]               = _Validate_set_property;
 	validations_mapping[CYPHER_AST_NODE_PATTERN]               = _Validate_node_pattern;
 	validations_mapping[CYPHER_AST_PATTERN_PATH]               = _Validate_pattern_path;
+	validations_mapping[CYPHER_AST_CALL_SUBQUERY]              = _Validate_call_subquery;
 	validations_mapping[CYPHER_AST_SHORTEST_PATH]              = _Validate_shortest_path;
 	validations_mapping[CYPHER_AST_APPLY_OPERATOR]             = _Validate_apply_operator;
 	validations_mapping[CYPHER_AST_APPLY_ALL_OPERATOR]         = _Validate_apply_all_operator;
