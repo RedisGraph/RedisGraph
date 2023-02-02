@@ -275,5 +275,6 @@ class testWithClause(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             # error expected
             self.env.assertIn(
-                "Order by column contains implicit grouping expressions, which are not supported",
+                "In a WITH/RETURN with an aggregation,\
+it is not possible to access variables not projected by the WITH/RETURN.",
                 str(e))
