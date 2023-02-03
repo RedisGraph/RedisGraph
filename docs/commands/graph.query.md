@@ -110,10 +110,10 @@ Here we're interested in knowing which of my friends have visited at least one c
 Nodes that are at a variable number of relationships away can be found using the following syntax:
 
 ```sh
-[alias][:types]*[minLen[..[maxLen]]]
+[[alias][:types]*[minLen[..[maxLen]]]]
 ```
 
-(the square brackets above indicates optional parts; they are not part of the expression).
+(Except for the first and the last square brackets, all square brackets above indicate _optional parts_).
 
 - `alias`, when specified, is assigned with the list of relationships that compose the path
 - `types`, when specified, consists of one or more relationship types allowed in the path. Multiple relationship types should be seperated by `|` (e.g., `:R|Q`). When not specified - all relationship types are allowed.
