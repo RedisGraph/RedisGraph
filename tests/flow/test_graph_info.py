@@ -18,6 +18,7 @@ INFO_QUERIES_CURRENT_COMMAND = 'GRAPH.INFO QUERIES CURRENT'
 INFO_QUERIES_PREV_COMMAND = 'GRAPH.INFO QUERIES PREV 100 --compact'
 INFO_QUERIES_CURRENT_PREV_COMMAND = 'GRAPH.INFO QUERIES CURRENT PREV 100'
 INFO_GET_GENERIC_COMMAND_TEMPLATE = 'GRAPH.INFO GET %s'
+INFO_GET_ALL_COMMAND_TEMPLATE = 'GRAPH.INFO GET %s COUNTS STAT MEM'
 INFO_GET_STAT_COMMAND_TEMPLATE = 'GRAPH.INFO GET %s STAT'
 INFO_RESET_ALL_COMMAND = 'GRAPH.INFO RESET *'
 INFO_RESET_SPECIFIC_COMMAND_TEMPLATE = 'GRAPH.INFO RESET %s'
@@ -32,6 +33,46 @@ CURRENT_MAXIMUM_WAIT_DURATION_KEY_NAME = 'Current maximum query wait duration'
 GLOBAL_INFO_KEY_NAME = 'Global info'
 QUERY_STAGE_EXECUTING = 1
 QUERY_STAGE_FINISHED = 3
+
+# GRAPH.INFO GET STAT keys
+STAT_TOTAL_DURATIONS_KEY = 'Query total durations'
+STAT_WAIT_DURATIONS_KEY = 'Query wait durations'
+STAT_EXECUTION_DURATIONS_KEY = 'Query execution durations'
+STAT_REPORT_DURATIONS_KEY = 'Query report durations'
+STAT_DURATIONS_KEYS = [
+    STAT_TOTAL_DURATIONS_KEY,
+    STAT_WAIT_DURATIONS_KEY,
+    STAT_EXECUTION_DURATIONS_KEY,
+    STAT_REPORT_DURATIONS_KEY,
+]
+
+# GRAPH.INFO GET COUNTS keys
+COUNTS_TOTAL_NUMBER_OF_QUERIES_KEY = 'Total number of queries'
+COUNTS_SUCCESSFUL_READONLY_KEY = 'Successful read-only queries'
+COUNTS_SUCCESSFUL_WRITE_KEY = 'Successful write queries'
+COUNTS_FAILED_READONLY_KEY = 'Failed read-only queries'
+COUNTS_FAILED_WRITE_KEY = 'Failed write queries'
+COUNTS_TIMEDOUT_READONLY_KEY = 'Timed out read-only queries'
+COUNTS_TIMEDOUT_WRITE_KEY = 'Timed out write queries'
+COUNTS_KEYS = [
+    COUNTS_TOTAL_NUMBER_OF_QUERIES_KEY,
+    COUNTS_SUCCESSFUL_READONLY_KEY,
+    COUNTS_SUCCESSFUL_WRITE_KEY,
+    COUNTS_FAILED_READONLY_KEY,
+    COUNTS_FAILED_WRITE_KEY,
+    COUNTS_TIMEDOUT_READONLY_KEY,
+    COUNTS_TIMEDOUT_WRITE_KEY,
+]
+
+# GRAPH.INFO GET keys
+GET_NODES_COUNT_KEY = 'Number of nodes'
+GET_EDGES_COUNT_KEY = 'Number of relationships'
+GET_NODE_LABELS_COUNT_KEY = 'Number of node labels'
+GET_EDGE_TYPES_COUNT_KEY = 'Number of relationship types'
+COUNTS_NODE_INDICES_COUNT_KEY = 'Number of node indices'
+COUNTS_EDGE_INDICES_COUNT_KEY = 'Number of relationship indices'
+GET_TOTAL_NUMBER_OF_NODE_PROPERTIES = 'Total number of node properties'
+GET_TOTAL_NUMBER_OF_EDGE_PROPERTIES = 'Total number of edge properties'
 
 # Other
 LONG_CALCULATION_QUERY = """UNWIND (range(0, 10000000)) AS x WITH x AS x WHERE (x / 90000) = 1 RETURN x"""
@@ -151,7 +192,7 @@ class _testGraphInfoFlowBase(FlowTestsBase):
         return self._create_graph_filled(name)
 
     def _reset_graph_info_stats(self, name=GRAPH_ID):
-        query = 'GRAPH.INFO RESET %s' % GRAPH_ID
+        query = INFO_RESET_SPECIFIC_COMMAND_TEMPLATE % GRAPH_ID
         results = self.conn.execute_command(query)
         self.env.assertEquals(results, 1, depth=1)
 
@@ -242,35 +283,37 @@ class _testGraphInfoFlowBase(FlowTestsBase):
         node_indices=0, relationship_indices=0,
         node_property_names=0, edge_property_names=0):
         info = list_to_dict(result)
-        self.env.assertEqual(info['Number of nodes'], nodes)
-        self.env.assertEqual(info['Number of relationships'], relationships)
-        self.env.assertEqual(info['Number of node labels'], node_labels)
-        self.env.assertEqual(info['Number of relationship types'], relationship_types)
-        self.env.assertEqual(info['Number of node indices'], node_indices)
-        self.env.assertEqual(info['Number of relationship indices'], relationship_indices)
-        self.env.assertEqual(info['Total number of node properties'], node_property_names)
-        self.env.assertEqual(info['Total number of edge properties'], edge_property_names)
+        self.env.assertEqual(info[GET_NODES_COUNT_KEY], nodes)
+        self.env.assertEqual(info[GET_EDGES_COUNT_KEY], relationships)
+        self.env.assertEqual(info[GET_NODE_LABELS_COUNT_KEY], node_labels)
+        self.env.assertEqual(info[GET_EDGE_TYPES_COUNT_KEY], relationship_types)
+        self.env.assertEqual(info[COUNTS_NODE_INDICES_COUNT_KEY], node_indices)
+        self.env.assertEqual(info[COUNTS_EDGE_INDICES_COUNT_KEY], relationship_indices)
+        self.env.assertEqual(info[GET_TOTAL_NUMBER_OF_NODE_PROPERTIES], node_property_names)
+        self.env.assertEqual(info[GET_TOTAL_NUMBER_OF_EDGE_PROPERTIES], edge_property_names)
 
     def _assert_info_get_counts(self, result,
     total_query_count=0, successful_readonly=0, successful_write=0,
     failed_readonly=0, failed_write=0, timedout_readonly=0, timedout_write=0):
         info = list_to_dict(result)
-        self.env.assertEqual(info['Total number of queries'], total_query_count)
-        self.env.assertEqual(info['Successful read-only queries'], successful_readonly)
-        self.env.assertEqual(info['Successful write queries'], successful_write)
-        self.env.assertEqual(info['Failed read-only queries'], failed_readonly)
-        self.env.assertEqual(info['Failed write queries'], failed_write)
-        self.env.assertEqual(info['Timed out read-only queries'], timedout_readonly)
-        self.env.assertEqual(info['Timed out write queries'], timedout_write)
+        self.env.assertEqual(info[COUNTS_TOTAL_NUMBER_OF_QUERIES_KEY], total_query_count)
+        self.env.assertEqual(info[COUNTS_SUCCESSFUL_READONLY_KEY], successful_readonly)
+        self.env.assertEqual(info[COUNTS_SUCCESSFUL_WRITE_KEY], successful_write)
+        self.env.assertEqual(info[COUNTS_FAILED_READONLY_KEY], failed_readonly)
+        self.env.assertEqual(info[COUNTS_FAILED_WRITE_KEY], failed_write)
+        self.env.assertEqual(info[COUNTS_TIMEDOUT_READONLY_KEY], timedout_readonly)
+        self.env.assertEqual(info[COUNTS_TIMEDOUT_WRITE_KEY], timedout_write)
 
     def _assert_info_get_stat(self, result,
-    total_durations=[], wait_durations=[],
-    execution_durations=[], report_durations=[]):
+    total_durations=[0] * PERCENTILE_COUNTS_COUNT,
+    wait_durations=[0] * PERCENTILE_COUNTS_COUNT,
+    execution_durations=[0] * PERCENTILE_COUNTS_COUNT,
+    report_durations=[0] * PERCENTILE_COUNTS_COUNT):
         info = list_to_dict(result)
-        self.env.assertEqual(info['Query total durations'], total_durations)
-        self.env.assertEqual(info['Query wait durations'], wait_durations)
-        self.env.assertEqual(info['Query execution durations'], execution_durations)
-        self.env.assertEqual(info['Query report durations'], report_durations)
+        self.env.assertEqual(info[STAT_TOTAL_DURATIONS_KEY], total_durations)
+        self.env.assertEqual(info[STAT_WAIT_DURATIONS_KEY], wait_durations)
+        self.env.assertEqual(info[STAT_EXECUTION_DURATIONS_KEY], execution_durations)
+        self.env.assertEqual(info[STAT_REPORT_DURATIONS_KEY], report_durations)
 
 
     # Runs a read-only query. A read-only query isn't just based on whether
@@ -398,8 +441,8 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
         info = list_to_dict(self.conn.execute_command(INFO_QUERIES_CURRENT_COMMAND))
         self.env.assertEqual(info[GLOBAL_INFO_KEY_NAME][CURRENT_MAXIMUM_WAIT_DURATION_KEY_NAME], 0, depth=1)
 
-    def test04_graph_info_get_current_graph_generic(self):
-        info = self.conn.execute_command(INFO_GET_GENERIC_COMMAND_TEMPLATE % GRAPH_ID)
+    def test04_graph_info_get_current_graph_all(self):
+        info = self.conn.execute_command(INFO_GET_ALL_COMMAND_TEMPLATE % GRAPH_ID)
         self._assert_info_get_result(info, nodes=2, node_labels=1, node_property_names=2)
         query = """MATCH (p:Person) CREATE (p2:Person { Name: 'Victor', Country: 'The Netherlands' })-[e:knows { Since_Year: '1970'}]->(p)"""
         graph = Graph(self.conn, GRAPH_ID)
@@ -408,31 +451,69 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
         self.env.assertEquals(result.relationships_created, 2, depth=1)
         self.env.assertEquals(result.properties_set, 6, depth=1)
 
-        info = self.conn.execute_command(INFO_GET_GENERIC_COMMAND_TEMPLATE % GRAPH_ID)
+        info = self.conn.execute_command(INFO_GET_ALL_COMMAND_TEMPLATE % GRAPH_ID)
         self._assert_info_get_result(info, nodes=4, node_labels=1, relationships=2, relationship_types=1, node_property_names=6, edge_property_names=2)
 
-    def test04_info_get_all_generic(self):
+    def test04_info_get_aggregated_all(self):
         '''
         Tests that the results aggregated in the "GRAPH.INFO GET *"
         are sums and are correct.
         '''
         self._recreate_graph_with_node(GRAPH_ID)
         self._recreate_graph_with_node(GRAPH_ID_2)
-        info_1 = self.conn.execute_command(INFO_GET_GENERIC_COMMAND_TEMPLATE % GRAPH_ID)
+        info_1 = self.conn.execute_command(INFO_GET_ALL_COMMAND_TEMPLATE % GRAPH_ID)
         self._assert_info_get_result(info_1, nodes=2, node_labels=1, node_property_names=2)
         info_1 = list_to_dict(info_1)
-        info_2 = self.conn.execute_command(INFO_GET_GENERIC_COMMAND_TEMPLATE % GRAPH_ID_2)
+        info_2 = self.conn.execute_command(INFO_GET_ALL_COMMAND_TEMPLATE % GRAPH_ID_2)
         self._assert_info_get_result(info_2, nodes=2, node_labels=1, node_property_names=2)
         info_2 = list_to_dict(info_2)
 
-        info_all = self.conn.execute_command(INFO_GET_GENERIC_COMMAND_TEMPLATE % '*')
+        info_all = self.conn.execute_command(INFO_GET_ALL_COMMAND_TEMPLATE % '*')
+
+        # Collapse two separate infos into one.
         info_1_and_2 = dict()
         for key in info_1:
-            info_1_and_2[key] = info_1[key] + info_2[key]
+            element = info_1[key]
+            sum = info_2[key]
+            if isinstance(element, list):
+                pass
+            elif isinstance(element, str):
+                pass
+            else:
+                sum += element
+            info_1_and_2[key] = sum
+        for key in STAT_DURATIONS_KEYS:
+            info_1_and_2[key] = [
+                min(info_1[key][-1], info_2[key][-1]),
+                min(info_1[key][-1], info_2[key][-1]),
+                max(info_1[key][-1], info_2[key][-1]),
+                max(info_1[key][-1], info_2[key][-1]),
+                max(info_1[key][-1], info_2[key][-1]),
+                max(info_1[key][-1], info_2[key][-1]),
+            ]
+
         self._assert_info_get_result(info_all,
-        nodes=info_1_and_2['Number of nodes'],
-        node_labels=info_1_and_2['Number of node labels'],
-        node_property_names=info_1_and_2['Total number of node properties'])
+            nodes=info_1_and_2[GET_NODES_COUNT_KEY],
+            node_labels=info_1_and_2[GET_NODE_LABELS_COUNT_KEY],
+            node_property_names=info_1_and_2[GET_TOTAL_NUMBER_OF_NODE_PROPERTIES],
+        )
+
+        self._assert_info_get_counts(info_all,
+            total_query_count=info_1_and_2[COUNTS_TOTAL_NUMBER_OF_QUERIES_KEY],
+            successful_readonly=info_1_and_2[COUNTS_SUCCESSFUL_READONLY_KEY],
+            successful_write=info_1_and_2[COUNTS_SUCCESSFUL_WRITE_KEY],
+            failed_readonly=info_1_and_2[COUNTS_FAILED_READONLY_KEY],
+            failed_write=info_1_and_2[COUNTS_FAILED_WRITE_KEY],
+            timedout_readonly=info_1_and_2[COUNTS_TIMEDOUT_READONLY_KEY],
+            timedout_write=info_1_and_2[COUNTS_TIMEDOUT_WRITE_KEY],
+        )
+
+        self._assert_info_get_stat(info_all,
+            total_durations=info_1_and_2[STAT_TOTAL_DURATIONS_KEY],
+            wait_durations=info_1_and_2[STAT_WAIT_DURATIONS_KEY],
+            execution_durations=info_1_and_2[STAT_EXECUTION_DURATIONS_KEY],
+            report_durations=info_1_and_2[STAT_REPORT_DURATIONS_KEY],
+        )
 
     def test04_graph_info_get_current_graph_stat(self):
         self._recreate_graph_empty()
@@ -448,10 +529,10 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
         execution_durations = [0] * PERCENTILE_COUNTS_COUNT
         report_durations = [0] * PERCENTILE_COUNTS_COUNT
 
-        self.env.assertEqual(info['Query total durations'], total_durations, depth=1)
-        self.env.assertEqual(info['Query wait durations'], wait_durations, depth=1)
-        self.env.assertEqual(info['Query execution durations'], execution_durations, depth=1)
-        self.env.assertEqual(info['Query report durations'], report_durations, depth=1)
+        self.env.assertEqual(info[STAT_TOTAL_DURATIONS_KEY], total_durations, depth=1)
+        self.env.assertEqual(info[STAT_WAIT_DURATIONS_KEY], wait_durations, depth=1)
+        self.env.assertEqual(info[STAT_EXECUTION_DURATIONS_KEY], execution_durations, depth=1)
+        self.env.assertEqual(info[STAT_REPORT_DURATIONS_KEY], report_durations, depth=1)
 
         '''When there a query has been performed, the counters should reflect
         the durations respectively.'''
@@ -471,19 +552,19 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
         info = self.conn.execute_command(INFO_GET_STAT_COMMAND_TEMPLATE % GRAPH_ID)
         info = list_to_dict(info)
 
-        got_total_durations = info['Query total durations']
+        got_total_durations = info[STAT_TOTAL_DURATIONS_KEY]
         self.env.assertEqual(got_total_durations[0:2], [0, 0])
         self.env.assertEqual(got_total_durations[2:6], [total_duration] * 4)
 
-        got_wait_durations = info['Query wait durations']
+        got_wait_durations = info[STAT_WAIT_DURATIONS_KEY]
         self.env.assertEqual(got_wait_durations[0:2], [0, 0])
         self.env.assertEqual(got_wait_durations[2:6], [wait_duration] * 4)
 
-        got_execution_durations = info['Query execution durations']
+        got_execution_durations = info[STAT_EXECUTION_DURATIONS_KEY]
         self.env.assertEqual(got_execution_durations[0:2], [0, 0])
         self.env.assertEqual(got_execution_durations[2:6], [execution_duration] * 4)
 
-        got_report_durations = info['Query report durations']
+        got_report_durations = info[STAT_REPORT_DURATIONS_KEY]
         self.env.assertEqual(got_report_durations[0:2], [0, 0])
         self.env.assertEqual(got_report_durations[2:6], [report_duration] * 4)
 
@@ -611,7 +692,7 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
 
 # This test is separate as it needs a separate and a non-concurrent context.
 class testGraphInfoGetFlow(_testGraphInfoFlowBase):
-    QUERY = 'GRAPH.INFO GET %s COUNTS' % GRAPH_ID
+    QUERY = 'GRAPH.INFO GET %s COUNTS STAT' % GRAPH_ID
 
     def __init__(self):
         _testGraphInfoFlowBase.__init__(self, Env(decodeResponses=True, moduleArgs='TIMEOUT_MAX 1000'))
@@ -619,17 +700,18 @@ class testGraphInfoGetFlow(_testGraphInfoFlowBase):
     def test01_info_get_specific_counters_successful(self):
         nodes = self._recreate_graph_with_node()
 
-        query = 'GRAPH.INFO RESET %s' % GRAPH_ID
+        query = INFO_RESET_SPECIFIC_COMMAND_TEMPLATE % GRAPH_ID
         results = self.conn.execute_command(query)
         self.env.assertEquals(results, 1, depth=1)
 
-        query = 'GRAPH.INFO GET %s' % GRAPH_ID
+        query = INFO_GET_GENERIC_COMMAND_TEMPLATE % GRAPH_ID
         results = self.conn.execute_command(query)
         self._assert_info_get_result(results, nodes=nodes, node_labels=1, node_property_names=2)
 
         results = self.conn.execute_command(self.QUERY)
         self._assert_info_get_result(results, nodes=nodes, node_labels=1, node_property_names=2)
         self._assert_info_get_counts(results)
+        self._assert_info_get_stat(results)
 
         # Test all the successful read-only queries:
         successful_readonly_count = 0
@@ -653,7 +735,7 @@ class testGraphInfoGetFlow(_testGraphInfoFlowBase):
             self._assert_info_get_result(results, nodes=nodes, node_labels=2, node_property_names=2)
             self._assert_info_get_counts(results, total_query_count=total_query_count, successful_readonly=successful_readonly_count, successful_write=successful_write_count)
 
-        query = 'GRAPH.INFO RESET %s' % GRAPH_ID
+        query = INFO_RESET_SPECIFIC_COMMAND_TEMPLATE % GRAPH_ID
         results = self.conn.execute_command(query)
         self.env.assertEquals(results, 1, depth=1)
         results = self.conn.execute_command(self.QUERY)
@@ -662,7 +744,7 @@ class testGraphInfoGetFlow(_testGraphInfoFlowBase):
     def test02_info_get_specific_counters_failed_at_runtime(self):
         nodes = self._recreate_graph_with_node()
 
-        query = 'GRAPH.INFO RESET %s' % GRAPH_ID
+        query = INFO_RESET_SPECIFIC_COMMAND_TEMPLATE % GRAPH_ID
         results = self.conn.execute_command(query)
         self.env.assertEquals(results, 1, depth=1)
         total_query_count = 0
@@ -715,7 +797,7 @@ class testGraphInfoGetFlow(_testGraphInfoFlowBase):
 
         nodes = self._recreate_graph_with_node()
 
-        query = 'GRAPH.INFO RESET %s' % GRAPH_ID
+        query = INFO_RESET_SPECIFIC_COMMAND_TEMPLATE % GRAPH_ID
         results = self.conn.execute_command(query)
         self.env.assertEquals(results, 1, depth=1)
 
@@ -755,7 +837,7 @@ class testGraphInfoGetFlow(_testGraphInfoFlowBase):
     def test03_info_get_specific_counters_timedout(self):
         nodes = self._recreate_graph_with_node()
 
-        query = 'GRAPH.INFO RESET %s' % GRAPH_ID
+        query = INFO_RESET_SPECIFIC_COMMAND_TEMPLATE % GRAPH_ID
         results = self.conn.execute_command(query)
         self.env.assertEquals(results, 1, depth=1)
         total_query_count = 0
@@ -820,7 +902,7 @@ class testGraphInfoGetFlow(_testGraphInfoFlowBase):
             # This will fail and the undo log will have to delete the nodes
             # and edges.
             # This query creates nodes, labels, properties and relationships
-            # between the create nodes, but it fails to finish due to a runtime
+            # between the created nodes, but it fails to finish due to a runtime
             # error caused by a zero division.
             [
                 'CREATE (t:T { n: 0 }), (t2:T { n: 20 }), (t)-[r:R { a: 5 }]->(t2) RETURN t2.n / t.n',
@@ -859,12 +941,12 @@ class testGraphInfoGetFlow(_testGraphInfoFlowBase):
             results = self.conn.execute_command(self.QUERY)
 
             self._assert_info_get_result(results,
-            nodes=info['Number of nodes'],
-            relationships=info['Number of relationships'],
-            node_labels=info['Number of node labels'],
-            relationship_types=info['Number of relationship types'],
-            node_property_names=info['Total number of node properties'],
-            edge_property_names=info['Total number of edge properties'],
+            nodes=info[GET_NODES_COUNT_KEY],
+            relationships=info[GET_EDGES_COUNT_KEY],
+            node_labels=info[GET_NODE_LABELS_COUNT_KEY],
+            relationship_types=info[GET_EDGE_TYPES_COUNT_KEY],
+            node_property_names=info[GET_TOTAL_NUMBER_OF_NODE_PROPERTIES],
+            edge_property_names=info[GET_TOTAL_NUMBER_OF_EDGE_PROPERTIES],
             )
 
             self._assert_info_get_counts(
