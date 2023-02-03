@@ -110,11 +110,12 @@ Here we're interested in knowing which of my friends have visited at least one c
 Nodes that are at a variable number of relationships away can be found using the following syntax:
 
 ```sh
-[:TYPES]*[minLen[..[maxLen]]]
+[alias][:TYPES]*[minLen[..[maxLen]]]
 ```
 
 (the square brackets above represent optional parts; not parts of the expression).
 
+- alias, when specified, is assigned with the list of relationships that compose the path
 - `TYPES`, when specified, consists of one or more relationship types allowed in the path. Multiple relationship types should be seperated by `|` (e.g., `:R|Q`). When not specified - all relationship types are allowed.
 - `minLen` and `maxLen` are non-negative integers, `minLen` ≤ `maxLen`, specifying the minimal and maximal allowed path length (number of relationships along the path). When only `minLen` is specified - `maxLen` = `minLen`. When both are not specified - `minLen` is 1 and the maximal length in unbounded. A 0-length path means that the two connected nodes are the same node (no relationship).
 
