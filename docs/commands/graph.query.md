@@ -110,7 +110,7 @@ Here we're interested in knowing which of my friends have visited at least one c
 Nodes that are at a variable number of relationships away can be found using the following syntax:
 
 ```sh
-[ [alias][:types]*[minLen][..][maxLen] ]
+[ [alias][:types]*[minLen][..[maxLen]] ]
 ```
 
 (Except for the first and the last square brackets, all square brackets above indicate _optional parts_).
