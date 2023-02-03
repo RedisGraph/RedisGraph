@@ -51,7 +51,7 @@ typedef struct RedisModuleCtx RedisModuleCtx;
 
 // A helpful clean-up macro which specifies the ReplyRecorder destructor which
 // flushes the reply upon deletion.
-#define REPLY_AUTO_FINISH  __attribute__ ((__cleanup__(ReplyRecorder_Cleanup)))
+#define REPLY_AUTO_FINISH __attribute__ ((__cleanup__(ReplyRecorder_Cleanup)))
 
 
 // Replies with either a map or an array, depending on the compact mode flag.
