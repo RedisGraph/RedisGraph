@@ -110,7 +110,7 @@ Here we're interested in knowing which of my friends have visited at least one c
 Nodes that are at a variable number of relationships away can be found using the following syntax:
 
 ```sh
-[:TYPES]*[minLen[..maxLen]]
+[:TYPES]*[minLen[..[maxLen]]]
 ```
 
 (the square brackets above represent optional parts; not parts of the expression).
