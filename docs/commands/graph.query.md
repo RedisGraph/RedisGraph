@@ -113,7 +113,7 @@ Nodes that are at a variable number of relationships away can be found using the
 [alias][:types]*[minLen[..[maxLen]]]
 ```
 
-(the square brackets above represent optional parts; not parts of the expression).
+(the square brackets above indicates optional parts; they are not part of the expression).
 
 - `alias`, when specified, is assigned with the list of relationships that compose the path
 - `types`, when specified, consists of one or more relationship types allowed in the path. Multiple relationship types should be seperated by `|` (e.g., `:R|Q`). When not specified - all relationship types are allowed.
