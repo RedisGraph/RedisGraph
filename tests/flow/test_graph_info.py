@@ -25,8 +25,10 @@ INFO_RESET_SPECIFIC_COMMAND_TEMPLATE = 'GRAPH.INFO RESET %s'
 
 # Error messages
 COULDNOT_FIND_GRAPH_ERROR_MESSAGE = "Couldn't find the specified graph"
+NO_GRAPH_NAME_SPECIFIED = "No graph name was specified"
 TIMEOUT_ERROR_MESSAGE = "Query timed out"
 RUNTIME_FAILURE_MESSAGE = "Division by zero"
+UNKNOWN_SUBCOMMAND = 'Unknown subcommand.'
 
 # Keys
 CURRENT_MAXIMUM_WAIT_DURATION_KEY_NAME = 'Current maximum query wait duration'
@@ -641,6 +643,14 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
         except redis.exceptions.ResponseError as e:
             self.env.assertEquals(str(e), COULDNOT_FIND_GRAPH_ERROR_MESSAGE, depth=1)
 
+        try:
+            query = 'GRAPH.INFO RESET '
+            results = self.conn.execute_command(query)
+            # This should be unreachable.
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertEquals(str(e), "wrong number of arguments for 'graph.INFO' command", depth=1)
+
         # Reset an existing (current) graph should return a boolean true.
         query = 'GRAPH.INFO RESET %s' % GRAPH_ID
         results = self.conn.execute_command(query)
@@ -694,6 +704,17 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
                     f"Shouldn't have reached with this point, result: {results}"
             except redis.exceptions.ResponseError as e:
                 self.env.assertContains(COULDNOT_FIND_GRAPH_ERROR_MESSAGE, str(e), depth=1)
+
+    def test10_non_existing_subcommand_handling(self):
+        '''
+        This ensures that the non-existing commands are handled well.
+        '''
+        try:
+            results = self.conn.execute_command('GRAPH.INFO TY47ADASD')
+            assert False, \
+                f"Shouldn't have reached with this point, result: {results}"
+        except redis.exceptions.ResponseError as e:
+            self.env.assertEquals(UNKNOWN_SUBCOMMAND, str(e), depth=1)
 
 
 # This test is separate as it needs a separate and a non-concurrent context.
@@ -968,32 +989,3 @@ class testGraphInfoGetFlow(_testGraphInfoFlowBase):
     # 2) GRAPH.INFO CONFIG ?
     # 3) GRAPH.INFO INDEXES ?
     # 4) GRAPH.INFO CONSTRAINTS ?
-    # Test all of that for the undo log (deletions and additions):
-	# for (uint i = 0; i < count; i++) {
-	# 	UndoOp *op = log + i;
-	# 	switch(op->type) {
-	# 		case UNDO_UPDATE:
-	# 			SIValue_Free(op->update_op.orig_value);
-	# 			break;
-	# 		case UNDO_CREATE_NODE:
-	# 			break;
-	# 		case UNDO_CREATE_EDGE:
-	# 			break;
-	# 		case UNDO_DELETE_NODE:
-	# 			rm_free(op->delete_node_op.labels);
-	# 			AttributeSet_Free(&op->delete_node_op.set);
-	# 			break;
-	# 		case UNDO_DELETE_EDGE:
-	# 			AttributeSet_Free(&op->delete_edge_op.set);
-	# 			break;
-	# 		case UNDO_SET_LABELS:
-	# 		case UNDO_REMOVE_LABELS:
-	# 			array_free(op->labels_op.label_lds);
-	# 			break;
-	# 		case UNDO_ADD_SCHEMA:
-	# 		case UNDO_ADD_ATTRIBUTE:
-	# 			break;
-	# 		default:
-	# 			ASSERT(false);
-	# 	}
-	# }
