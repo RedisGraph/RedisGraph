@@ -105,17 +105,20 @@ Nodes can have more than one relationship coming in or out of them, for instance
 
 Here we're interested in knowing which of my friends have visited at least one country I've been to.
 
-##### Variable length relationships
+##### Variable-length path
 
-Nodes that are a variable number of relationship→node hops away can be found using the following syntax:
+Nodes that are at a variable number of relationships away can be found using the following syntax:
 
 ```sh
--[:TYPE*minHops..maxHops]->
+[:TYPES]*[minLen[..maxLen]]
 ```
 
-`TYPE`, `minHops` and `maxHops` are all optional and default to type agnostic, 1 and infinity, respectively.
+(the square brackets above represent optional parts; not parts of the expression).
 
-When no bounds are given the dots may be omitted. The dots may also be omitted when setting only one bound and this implies a fixed length pattern.
+- `TYPES`, if specified, contains one or more relationship types allowed in the path. Multiple relationship types should be seperated by `|` (e.g., `:R|Q`). When not specified - all relationship types are allowed.
+- `minLen` and `maxLen` are non-negative integers where `minLen` ≤ `maxLen`, specifying the minimal and maximal allowed path length (number of relationships along the path). When only `minLen` is specified then `maxLen` = `minLen`. When both are not specified - the path length is unbounded. A 0-length path means that the two connected nodes are the same node (no relationship).
+
+In RedisGraph, each match to a variable-length path is a sequence of nodes and edges that starts with a node and ends with a node, where no node appears more than once (except, possibly, the first and last nodes which may be identical). Note that other OpenCypher implementations may use different definitions (e.g., no edge may appear more than once).
 
 Example:
 
