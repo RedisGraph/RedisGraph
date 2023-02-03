@@ -569,6 +569,12 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
         self.env.assertEqual(got_report_durations[2:6], [report_duration] * 4)
 
     def test05_graph_info_queries_prev(self):
+        # It is invalid due to the "count" parameter not being specified.
+        invalid_prev_command = 'GRAPH.INFO QUERIES PREV'
+        results = self.conn.execute_command(invalid_prev_command)
+        results = list_to_dict(results)
+        self.env.assertTrue(isinstance(results['Queries'][0], redis.exceptions.ResponseError))
+
         query = """CYPHER end=100 RETURN reduce(sum = 0, n IN range(1, $end) | sum ^ n)"""
         graph = Graph(self.conn, GRAPH_ID)
         query_issue_timestamp_ms = get_unix_timestamp_milliseconds()
