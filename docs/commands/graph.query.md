@@ -117,7 +117,7 @@ Nodes that are at a variable number of relationships away can be found using the
 
 - `alias`, when specified, is assigned with the list of relationships that compose the path.
 - `types`, when specified, consists of one or more relationship types allowed in the path. Multiple relationship types should be seperated by `|` (e.g., `:R|Q`). When not specified - all relationship types are allowed.
-- `minLen` and `maxLen` are non-negative integers, `minLen` ≤ `maxLen`, specifying the minimal and maximal allowed path length (number of relationships along the path). When only `minLen` is specified - `maxLen` = `minLen`. When both are not specified - `minLen` is 1 and the maximal length is unbounded. A 0-length path means that the two connected nodes are the same node (no relationship).
+- `minLen` and `maxLen` are non-negative integers, `minLen` ≤ `maxLen`, specifying the minimal and maximal allowed path length (number of relationships along the path). When only `minLen` is specified - `maxLen` is set to `minLen`. When `minLen..` is specified the maximal length is unbounded. When both are not specified - `minLen` is 1 and the maximal length is unbounded. A 0-length path means that the two connected nodes are the same node (no relationship).
 
 In RedisGraph, each match to a variable-length path between nodes `a` and `b` is a finite sequence of edges and nodes that starts and ends with an edge, where `a` and `b` may not appear, and no node may appear more than once. Note that other OpenCypher implementations may use different definitions (e.g., nodes may appear more than once, but no edge may appear more than once).
 
