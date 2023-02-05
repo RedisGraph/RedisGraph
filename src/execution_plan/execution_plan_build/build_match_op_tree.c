@@ -108,11 +108,11 @@ static void _ExecutionPlan_ProcessQueryGraph
 					QueryGraph_GetEdgeByAlias(qg, AlgebraicExpression_Edge(exp));
 			}
 
-			if(edge && QGEdge_VariableLength(edge)) {
-				// edge is part of a shortest-path
-				// MATCH allShortestPaths((a)-[*..]->(b))
-				// validate both edge ends are bounded
+			if(edge && (QGEdge_VariableLength(edge) || !QGEdge_SingleHop(edge))) {
 				if(QGEdge_IsShortestPath(edge)) {
+					// edge is part of a shortest-path
+					// MATCH allShortestPaths((a)-[*..]->(b))
+					// validate both edge ends are bounded
 					const char *src_alias  = QGNode_Alias(QGEdge_Src(edge));
 					const char *dest_alias = QGNode_Alias(QGEdge_Dest(edge));
 					bool src_bounded =

@@ -74,8 +74,26 @@ bool QGEdge_VariableLength
 (
 	const QGEdge *e
 ) {
-	ASSERT(e);
+	ASSERT(e != NULL);
 	return (e->minHops != e->maxHops);
+}
+
+// determine whether this is a "ghost" edge
+// an edge of length zero
+// e.g. ()-[*0]->()
+bool QGEdge_GhostEdge
+(
+	const QGEdge *e
+) {
+	return (e->minHops == e->maxHops && e->minHops == 0);
+}
+
+bool QGEdge_SingleHop
+(
+	const QGEdge *e
+) {
+	ASSERT(e);
+	return (e->minHops == 1 && e->maxHops == 1);
 }
 
 bool QGEdge_IsShortestPath
