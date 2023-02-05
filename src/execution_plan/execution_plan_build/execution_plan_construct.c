@@ -313,29 +313,55 @@ static void _buildCallSubqueryPlan
 	// -------------------------------------------------------------------------
 	QueryCtx_SetAST(orig_ast);
 
-	// get rid of the Results op (at the moment only supporting returning subqueries)
-	ExecutionPlan_RemoveOp(embedded_plan, embedded_plan->root);
+	// -------------------------------------------------------------------------
+	// create an ArgumentList\Argument op according to the eagerness of the op,
+	// and plant it as the deepest child of the embedded plan
+	// -------------------------------------------------------------------------
+	// NTS: Do we need DELETE here? I think not.
+	OPType types[] = {OPType_CREATE, OPType_UPDATE, OPType_DELETE,
+					OPType_MERGE_CREATE};
+	bool is_eager =
+		ExecutionPlan_LocateOpMatchingType(embedded_plan->root, types, 4) != NULL;
 
-	// -------------------------------------------------------------------------
-	// create an Argument op, plant it as the deepest child of the embedded plan
-	// -------------------------------------------------------------------------
-	OpBase *argument = NewArgumentOp(embedded_plan, NULL);
+	// find the deepest op in the embedded plan
 	OpBase *deepest = embedded_plan->root;
 	while(deepest->childCount > 0) {
 		deepest = deepest->children[0];
 	}
-	ExecutionPlan_AddOp(deepest, argument);
+
+	if(is_eager) {
+		// add an ArgumentList op
+		OpBase *argument_list = NewArgumentListOp(embedded_plan);
+		ExecutionPlan_AddOp(deepest, argument_list);
+	} else {
+		// add an Argument op
+		OpBase *argument = NewArgumentOp(embedded_plan, NULL);
+		ExecutionPlan_AddOp(deepest, argument);
+	}
 
 	// -------------------------------------------------------------------------
-	// create an Apply op, set it to be the root of the main plan
+	// get rid of the Results op if it exists
 	// -------------------------------------------------------------------------
-	OpBase *apply = NewApplyOp(plan);
-	ExecutionPlan_UpdateRoot(plan, apply);
-	// bind the embedded plan to be the rhs branch of the Apply op
-	ExecutionPlan_AddOp(apply, embedded_plan->root);
+	bool is_returning = OpBase_Type(embedded_plan->root) == OPType_RESULTS;
+	if(is_returning) {
+		ExecutionPlan_RemoveOp(embedded_plan, embedded_plan->root);
+	}
 
-	// bind new plan to the main plan
-	ExecutionPlan_BindPlanToOps(plan, embedded_plan->root, true);
+	// -------------------------------------------------------------------------
+	// create a CallSubquery op, set it to be the root of the main plan
+	// -------------------------------------------------------------------------
+	OpBase *call_op = NewCallSubqueryOp(plan, is_eager, is_returning);
+	ExecutionPlan_UpdateRoot(plan, call_op);
+	// bind the embedded plan to be the rhs branch of the Call-Subquery op
+	ExecutionPlan_AddOp(call_op, embedded_plan->root);
+
+	// bind new plan to the main plan, merging the querygraphs only if the
+	// subquery is a returning subquery
+	if(is_returning) {
+		ExecutionPlan_BindPlanToOps(plan, embedded_plan->root, true);
+	} else {
+		ExecutionPlan_BindPlanToOps(plan, embedded_plan->root, false);
+	}
 
 	// free temporary plan
 	// TBD

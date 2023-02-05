@@ -47,8 +47,8 @@ void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b);
  * Returns NULL if alias is not resolved. */
 OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias);
 
-/* Locate the first operation matching one of the given types in the op tree by performing DFS.
- * Returns NULL if no matching operation was found. */
+// Locate the first operation matching one of the given types in the op tree by
+// performing DFS. Returns NULL if no matching operation was found
 OpBase *ExecutionPlan_LocateOpMatchingType(OpBase *root, const OPType *types, uint type_count);
 
 /* Convenience wrapper around ExecutionPlan_LocateOpMatchingType for lookups of a single type.

@@ -184,6 +184,8 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
 	return NULL;
 }
 
+// Locate the first operation matching one of the given types in the op tree by
+// performing DFS. Returns NULL if no matching operation was found
 OpBase *ExecutionPlan_LocateOpMatchingType(OpBase *root, const OPType *types, uint type_count) {
 	for(int i = 0; i < type_count; i++) {
 		// Return the current op if it matches any of the types we're searching for.
