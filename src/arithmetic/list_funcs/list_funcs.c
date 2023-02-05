@@ -654,6 +654,9 @@ SIValue AR_INSERTLISTELEMENTS(SIValue *argv, int argc, void *private_data) {
 		}
 
 		HashTableRelease(values);
+		if(!allow_dups) {
+			SIValue_Free(B);
+		}
 	}
 
 	// append remaining elements
