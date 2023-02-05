@@ -1202,6 +1202,7 @@ static VISITOR_STRATEGY _Validate_call_subquery
 			cypher_ast_call_subquery_get_clause(n, i);
 		AST_Visitor_visit(clause, visitor);
 		if(ErrorCtx_EncounteredError()) {
+			free(in_env);
 			return VISITOR_BREAK;
 		}
 	}
@@ -1213,6 +1214,8 @@ static VISITOR_STRATEGY _Validate_call_subquery
 										cypher_ast_call_subquery_nclauses(n)-1);
 	bool is_returning = cypher_astnode_type(last_clause) == CYPHER_AST_RETURN;
 
+	// if the subquery is not a returning subquery, we don't want it to affect
+	// the global context
 	if(!is_returning) {
 		// free old env and set the new one
 		raxFree(vctx->defined_identifiers);

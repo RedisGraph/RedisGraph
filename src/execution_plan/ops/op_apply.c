@@ -62,8 +62,8 @@ static Record ApplyConsume(OpBase *opBase) {
 		Record rhs_record = OpBase_Consume(op->rhs_branch);
 
 		if(rhs_record == NULL) {
-			/* RHS branch depleted for the current bound Record;
-			 * free it and loop back to retrieve a new one. */
+			// RHS branch depleted for the current bound Record;
+			// free it and loop back to retrieve a new one.
 			OpBase_DeleteRecord(op->r);
 			op->r = NULL;
 			// Reset the RHS branch.
