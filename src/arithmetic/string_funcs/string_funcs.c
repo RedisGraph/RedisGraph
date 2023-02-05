@@ -167,6 +167,63 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 	return SI_TransferStringVal(substring);
 }
 
+// given a list of strings and an optional delimiter,
+// return a concatenation of all the strings using the given delimiter
+//  string.join(list, delimiter = '') → string
+SIValue AR_JOIN(SIValue *argv, int argc, void *private_data) {
+	ASSERT(argc == 1 || argc == 2);
+	SIValue list = argv[0];
+	if(SI_TYPE(list) == T_NULL) {
+		return SI_NullVal();
+	}
+	ASSERT(SI_TYPE(list) == T_ARRAY);
+
+	char *delimiter = "";
+	if(argc == 2) {
+		ASSERT(SI_TYPE(argv[1]) == T_STRING);
+		delimiter = argv[1].stringval;
+	}
+
+	uint32_t arrayLen = SIArray_Length(list);
+	char *res = NULL;
+
+	// concatenate the first string in the list.
+	SIValue str = SIArray_Get(list, 0);
+	if(SI_TYPE(str) != T_STRING) {
+		goto err;
+	}
+
+	size_t str_len = strlen(str.stringval);
+	res = rm_malloc((str_len + 1)*sizeof(char));
+	memcpy(res, str.stringval, (str_len+1)*sizeof(char));
+
+	size_t delimeter_len = strlen(delimiter);
+	size_t cur_len = str_len;
+	// concatenate all the rest of the strings in the list.
+	for(uint i = 1; i < arrayLen; i++) {
+		str = SIArray_Get(list, i);
+		if(SI_TYPE(str) != T_STRING) {
+			goto err;
+		}
+
+		str_len = strlen(str.stringval);
+		res = rm_realloc(res, (cur_len + delimeter_len + str_len + 1)*sizeof(char));
+		memcpy(res + cur_len, delimiter, delimeter_len*sizeof(char));
+		cur_len += delimeter_len;
+		memcpy(res + cur_len, str.stringval, str_len*sizeof(char));
+		cur_len += str_len;
+	}
+	res[cur_len] = '\0';
+
+	return SI_TransferStringVal(res);
+
+err:
+	// all elements in the list should be string.
+	Error_SITypeMismatch(str, T_STRING);
+	rm_free(res);
+	return SI_NullVal();
+}
+
 // returns the original string in lowercase.
 SIValue AR_TOLOWER(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
@@ -457,6 +514,13 @@ void Register_StringFuncs() {
 	array_append(types, T_INT64);
 	ret_type = T_STRING | T_NULL;
 	func_desc = AR_FuncDescNew("substring", AR_SUBSTRING, 2, 3, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 2);
+	array_append(types, (T_ARRAY | T_NULL));
+	array_append(types, T_STRING);
+	ret_type = T_STRING | T_NULL;
+	func_desc = AR_FuncDescNew("join", AR_JOIN, 1, 2, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
