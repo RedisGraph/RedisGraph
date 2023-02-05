@@ -2085,7 +2085,9 @@ class testFunctionCallsFlow(FlowTestsBase):
             "RETURN replace('abcabc', 'bc', '0')": [["a0a0"]],
             "RETURN replace('abcabc', 'abc', '')": [[""]],
             "RETURN replace('abcabc', 'ab', '')": [["cc"]],
-            "RETURN replace('abcabc', '', '0')": [["0a0b0c0a0b0c0"]]
+            "RETURN replace('abcabc', '', '0')": [["0a0b0c0a0b0c0"]],
+            # test unicode charecters
+            "RETURN replace('丁丂七丄丅丆万丈三上', '\xe4', 'X')": [["丁丂七丄丅丆万丈三上"]],
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)

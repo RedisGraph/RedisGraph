@@ -16,16 +16,34 @@ void str_tolower_ascii
 	char *lower,
 	size_t *lower_len
 ) {
- 	size_t str_len = strlen(str);
- 	// avoid overflow
- 	ASSERT(*lower_len >= str_len);
+	size_t str_len = strlen(str);
+	// avoid overflow
+	ASSERT(*lower_len >= str_len);
 
- 	// update lower len
- 	*lower_len = str_len;
+	// update lower len
+	*lower_len = str_len;
 
- 	for(size_t i = 0; i < str_len; i++) lower[i] = tolower(str[i]);
- 	lower[str_len] = 0;
- }
+	for(size_t i = 0; i < str_len; i++) lower[i] = tolower(str[i]);
+	lower[str_len] = 0;
+}
+
+bool str_utf8_validate
+(
+    const char *str
+) {
+	// hold current Unicode character
+    utf8proc_int32_t c;
+
+    // while we didn't get to the end of the string
+    while(str[0] != 0) {
+        // increment current position by number of bytes in Unicode character
+        str += utf8proc_iterate((const utf8proc_uint8_t *)str, -1, &c);
+		if(c == -1) return false;
+    }
+
+    // return the length of the string in terms of Unicode characters
+    return true;
+}
 
 // determine the length of the string
 // not in terms of the number of bytes in the string

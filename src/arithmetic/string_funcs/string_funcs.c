@@ -325,6 +325,18 @@ SIValue AR_REPLACE(SIValue *argv, int argc, void *private_data) {
 	const char *ptr  = str;
 	const char **arr = array_new(const char *, 0);
 
+	if(!str_utf8_validate(old_string)) {
+		return SI_DuplicateStringVal(str);
+	}
+
+	if(!str_utf8_validate(new_string)) {
+		return SI_DuplicateStringVal(str);
+	}
+
+	if(!str_utf8_validate(str)) {
+		return SI_DuplicateStringVal(str);
+	}
+
 	while(ptr <= str + str_len) {
 		// find pointer to next substring
 		ptr = strstr(ptr, old_string);

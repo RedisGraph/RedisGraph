@@ -12,6 +12,12 @@ int str_length
 	const char *str
 );
 
+// return true if utf8 string is valid
+bool str_utf8_validate
+(
+    const char *str
+);
+
 // convert ascii str to a lower case string and save it in lower
 void str_tolower_ascii
 (
