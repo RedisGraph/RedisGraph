@@ -22,6 +22,7 @@ include_directories(
 	${root}/deps/rax
 	${root}/deps/xxHash
 	${root}/deps/utf8proc
+	${root}/deps/oniguruma
 	${root}/deps/RediSearch/src
 	${root}/deps/GraphBLAS/Include
 	${root}/deps/libcypher-parser/lib/src
@@ -48,7 +49,7 @@ set_target_properties(redisgraph PROPERTIES LINKER_LANGUAGE CXX)
 set(REDISGRAPH_OBJECTS $<TARGET_OBJECTS:redisgraph>)
 
 lists_from_env(GRAPHBLAS LIBXXHASH RAX LIBCYPHER_PARSER REDISEARCH_LIBS UTF8PROC)
-set(REDISGRAPH_LIBS ${GRAPHBLAS} ${LIBXXHASH} ${RAX} ${LIBCYPHER_PARSER} ${REDISEARCH_LIBS} ${UTF8PROC})
+set(REDISGRAPH_LIBS ${GRAPHBLAS} ${LIBXXHASH} ${RAX} ${LIBCYPHER_PARSER} ${REDISEARCH_LIBS} ${UTF8PROC} ${ONIGURUMA})
 
 target_link_options(redisgraph PRIVATE ${CMAKE_LD_FLAGS_LIST} ${CMAKE_SO_LD_FLAGS_LIST})
 target_link_libraries(redisgraph PRIVATE ${REDISGRAPH_LIBS} ${CMAKE_LD_LIBS})

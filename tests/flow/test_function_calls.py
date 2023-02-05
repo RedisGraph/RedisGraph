@@ -2420,3 +2420,61 @@ class testFunctionCallsFlow(FlowTestsBase):
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
 
+    def test90_MATCHREGEX(self):
+        # NULL input should return empty list
+        expected_result = [[]]
+        query = """WITH NULL as string RETURN matchRegEx(null, "bla")"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # NULL input should return empty list
+        expected_result = [[]]
+        query = """WITH NULL as string RETURN matchRegEx("bla", null)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # 1st arg should be string
+        try:
+            graph.query("RETURN matchRegEx(2, 'bla')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected String or Null but was Integer", str(e))
+
+        # 2nd arg should be string
+        try:
+            graph.query("RETURN matchRegEx('bla', 2)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected String or Null but was Integer", str(e))
+
+        # Test without input argument
+        try:
+            query = """RETURN matchRegEx()"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 0 arguments to function 'matchRegEx', expected at least 2", str(e))
+
+        # Test with 3 input argument
+        try:
+            query = """RETURN matchRegEx('bla', 'dsds', '')"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 3 arguments to function 'matchRegEx', expected at most 2", str(e))
+
+        ### Test valid inputs ###
+        expected_result = [[['<header h1>txt1</header>', 'h1', 'txt1']]]
+        query = """RETURN matchRegEx('blabla <header h1>txt1</header>', '<header (\\w+)>(\\w+)</header>')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[['<header h1>txt1</header>', 'h1', 'txt1'], ['<header h2>txt2</header>', 'h2', 'txt2']]]
+        query = """RETURN matchRegEx('blabla <header h1>txt1</header> blabla <header h2>txt2</header>', '<header (\\w+)>(\\w+)</header>')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[['?']]]
+        query = """RETURN matchRegEx('?', '\\\\?')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
