@@ -10,6 +10,7 @@
 #include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
+#include "../../util/dict.h"
 #include "../../datatypes/array.h"
 #include "../../util/rax_extensions.h"
 #include "../string_funcs/string_funcs.h"
@@ -97,6 +98,7 @@ static void _PopulateReduceCtx
 
 // forward declaration of property function
 SIValue AR_PROPERTY(SIValue *argv, int argc, void *private_data);
+SIValue AR_DEDUP(SIValue *argv, int argc, void *private_data);
 
 // create a list from a given squence of values
 // "RETURN [1, '2', True, null]"
@@ -199,7 +201,7 @@ SIValue AR_TOSTRINGLIST(SIValue *argv, int argc, void *private_data) {
 static inline bool normalize_index
 (
 	int32_t *index,
-	uint32_t arrayLen,
+	int32_t arrayLen,
 	bool bounds_inclusive
 ) {
 	int32_t idx = *index;
@@ -554,6 +556,42 @@ SIValue AR_INSERT(SIValue *argv, int argc, void *private_data) {
 	return array;
 }
 
+// fake hash function
+// hash of key is simply key
+static uint64_t nop_hash
+(
+	const void *key
+) {
+	return ((uint64_t)key);
+}
+
+// hashtable callbacks
+static dictType dt = { nop_hash, NULL, NULL, NULL, NULL, NULL, NULL,
+	NULL, NULL, NULL};
+
+static dict *_list2dict
+(
+	SIValue list
+) {
+	uint32_t n   = SIArray_Length(list);
+	dict *values = HashTableCreate(&dt);
+	for(uint i = 0; i < n; i++) {
+		SIValue val = SIArray_Get(list, i);
+		XXH64_state_t state;
+		XXH_errorcode res = XXH64_reset(&state, 0);
+		ASSERT(res != XXH_ERROR);
+
+		SIValue_HashUpdate(val, &state);
+
+		// finalize the hash
+		XXH64_hash_t hash = XXH64_digest(&state);
+		dictEntry *existing;
+		dictEntry *entry = HashTableAddRaw(values, (void *)hash, &existing);
+	}
+
+	return values;
+}
+
 // concatenate lists starting at specified position
 // list.insertListElements(list, list2, idx, dups = TRUE) -> list
 // RETURN list.insertListElements([0,1], [2,3], 0) -> [2,3,0,1]
@@ -579,6 +617,9 @@ SIValue AR_INSERTLISTELEMENTS(SIValue *argv, int argc, void *private_data) {
 	bool allow_dups = true;  // default
 	if(argc == 4) {
 		allow_dups = SIValue_IsTrue(argv[3]);
+		if(!allow_dups) {
+			B = AR_DEDUP(&B, 1, NULL);
+		}
 	}
 
 	uint32_t b_len = SIArray_Length(B);
@@ -589,27 +630,35 @@ SIValue AR_INSERTLISTELEMENTS(SIValue *argv, int argc, void *private_data) {
 		SIArray_Append(&list, SIArray_Get(A, i));
 	}
 
-	// TODO: follow up on the definition of dups
-	// RETURN list.insertListElements([2,2] [3,3], 0, dups = FALSE) -> [2,2,3,3]
-
 	// append B
 	if(allow_dups) {
 		for(uint i = 0; i < b_len; i++) {
 			SIArray_Append(&list, SIArray_Get(B, i));
 		}
 	} else {
+		dict *values = _list2dict(A);
 		// make sure there are no duplicates
 		for(uint i = 0; i < b_len; i++) {
-			SIValue _val = SIArray_Get(B, i);
-			if(!SIArray_ContainsValue(list, _val, NULL)) {
-				SIArray_Append(&list, _val);
+			SIValue val = SIArray_Get(B, i);
+			XXH64_state_t state;
+			XXH_errorcode res = XXH64_reset(&state, 0);
+			ASSERT(res != XXH_ERROR);
+
+			SIValue_HashUpdate(val, &state);
+
+			// finalize the hash
+			XXH64_hash_t hash = XXH64_digest(&state);
+			if(HashTableFind(values, (void *)hash) == NULL) {
+				SIArray_Append(&list, val);
 			}
 		}
+
+		HashTableRelease(values);
 	}
 
 	// append remaining elements
 	for(uint i = index; i < a_len; i++) {
-		SIArray_Append(&list, SIArray_Get(list, i));
+		SIArray_Append(&list, SIArray_Get(A, i));
 	}
 
 	return list;
@@ -628,14 +677,27 @@ SIValue AR_DEDUP(SIValue *argv, int argc, void *private_data) {
 	uint32_t n          = SIArray_Length(list);
 	SIValue  dedup_list = SI_Array(n);
 
+	dict *values = HashTableCreate(&dt);
 	// check if value already exists in list
-	// TODO: optimize using dict
 	for(uint i = 0; i < n; i++) {
 		SIValue val = SIArray_Get(list, i);
-		if(!SIArray_ContainsValue(dedup_list, val, NULL)) {
+		// initialize the hash state
+		XXH64_state_t state;
+		XXH_errorcode res = XXH64_reset(&state, 0);
+		ASSERT(res != XXH_ERROR);
+
+		SIValue_HashUpdate(val, &state);
+
+		// finalize the hash
+		XXH64_hash_t hash = XXH64_digest(&state);
+		dictEntry *existing;
+		dictEntry *entry = HashTableAddRaw(values, (void *)hash, &existing);
+		if(existing == NULL) {
 			SIArray_Append(&dedup_list, val);
 		}
 	}
+
+	HashTableRelease(values);
 
 	return dedup_list;
 }
