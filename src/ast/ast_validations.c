@@ -1143,10 +1143,10 @@ static VISITOR_STRATEGY _Validate_call_subquery
 
 	cypher_astnode_t *body = cypher_ast_query(NULL, 0, clauses, nclauses,
 		clauses, nclauses, range);
-	
+
 	AST ast; // Build a fake AST with the correct AST root
 	ast.root = body;
-	
+
 	// Verify that the RETURN clause and terminating clause do not violate scoping rules.
 	if(_ValidateQuerySequence(&ast) != AST_VALID) {
 		return VISITOR_BREAK;
@@ -1168,7 +1168,7 @@ static VISITOR_STRATEGY _Validate_call_subquery
 		ErrorCtx_SetError("RedisGraph support allShortestPaths only in match clauses");
 		return VISITOR_BREAK;
 	}
-	
+
 	// validate that the with imports (if exist) are simple, i.e., 'WITH a'
 	const cypher_astnode_t *with = cypher_ast_call_subquery_get_clause(n, 0);
 	if(cypher_astnode_type(with) == CYPHER_AST_WITH) {
@@ -1212,7 +1212,7 @@ static VISITOR_STRATEGY _Validate_call_subquery
 	const cypher_astnode_t *last_clause = cypher_ast_call_subquery_get_clause(n,
 										cypher_ast_call_subquery_nclauses(n)-1);
 	bool is_returning = cypher_astnode_type(last_clause) == CYPHER_AST_RETURN;
-	
+
 	if(!is_returning) {
 		// free old env and set the new one
 		raxFree(vctx->defined_identifiers);
@@ -1787,7 +1787,7 @@ bool AST_ValidationsMappingInit(void) {
 	// create a mapping for the validations
 
 	// set default entries
-	for(uint i = 0; i < 114; i++) {
+	for(uint i = 0; i < 115; i++) {
 		validations_mapping[i] = _default_visit;
 	}
 

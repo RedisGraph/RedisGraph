@@ -228,6 +228,8 @@ static ExecutionPlan *_tie_segments
 		// tap (of the current definition)
 		// for instance: FOREACH(i in [i] | CREATE (n:N))
 		// in any other case, there must be a tap
+
+		// TODO: Change this so it will work for Call {} as well.
 		// ASSERT((array_len(taps) > 0) ||
 		//    (segment_count == 1 &&
 		// 	(OpBase_Type(segment->root) == OPType_FOREACH)));
