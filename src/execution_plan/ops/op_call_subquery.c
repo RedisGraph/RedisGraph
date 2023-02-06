@@ -38,7 +38,7 @@ OpBase *NewCallSubqueryOp
                                         CallSubqueryConsume;
 
     OpBase_Init((OpBase *)op, OPType_CallSubquery, "CallSubquery", CallSubqueryInit,
-			CallSubqueryConsume, CallSubqueryReset, NULL, CallSubqueryClone, CallSubqueryFree,
+			consumeFunc, CallSubqueryReset, NULL, CallSubqueryClone, CallSubqueryFree,
 			false, plan);
 
 	return (OpBase *)op;
@@ -82,17 +82,23 @@ static OpResult CallSubqueryInit
 // passes a record to the parent op.
 // if the subquery is non-returning (unit), all the records have already been
 // consumed from the body, so that we only need to pop the records
-// if the subquery is returning, pop one record from op->records, and merge it with
-// every record consumed from body, and return those records one-by-one (append to records? or add another list..?)
+// the returning subquery case: TBD
 static Record _handoff_eager(OpCallSubquery *op) {
-    ASSERT(op->r != NULL || op->records != NULL);
+    ASSERT(op->records != NULL);
 
     if(!op->is_returning) {
         // if there is a record to return from the input records, return it
+        // NOTICE: The order of records reverses here.
         return array_len(op->records) > 0 ? array_pop(op->records) : NULL;
     }
 
     // returning subquery
+    // TBD
+    else {
+        // just for compilation
+        Record r;
+        return r;
+    }
 
 }
 
@@ -124,7 +130,7 @@ static Record CallSubqueryConsumeEager
             array_append(op->records, r);
         }
     } else {
-        r = OpBase_CreateRecord(op);
+        r = OpBase_CreateRecord(op->body);
         array_append(op->records, r);
     }
 
@@ -135,10 +141,11 @@ static Record CallSubqueryConsumeEager
 
     // if the subquery is non-returning, consume and free all records from body
     if(!op->is_returning) {
-        while((r = OpBase_consume(op))) {
+        while((r = OpBase_Consume(op->body))) {
             OpBase_DeleteRecord(r);
         }
     }
+    // eager returning subquery case: TBD.
 
     return _handoff_eager(op);
 }
@@ -147,7 +154,7 @@ static Record CallSubqueryConsumeEager
 // record with the input record (op->r) according to op->is_returning.
 // if unsuccessful, returns NULL
 static Record _handoff(OpCallSubquery *op) {
-    ASSERT(op->r != NULL || op->records != NULL);
+    ASSERT(op->r != NULL);
 
     // if returning subquery: consume --> merge --> return merged.
     // if unit subquery: consume until depleted, and return the current record
@@ -155,7 +162,7 @@ static Record _handoff(OpCallSubquery *op) {
     Record consumed;
     if(op->is_returning) {
         consumed = OpBase_Consume(op->body);
-        if(consumed = NULL) {
+        if(consumed == NULL) {
             return NULL;
         }
 
@@ -166,7 +173,8 @@ static Record _handoff(OpCallSubquery *op) {
     }
 
     // unit subquery
-    while((consumed = OpBase_Consume(op))) {
+    // drain the body, deleting (freeing) the records
+    while((consumed = OpBase_Consume(op->body))) {
         OpBase_DeleteRecord(consumed);
     }
     return op->r;
@@ -194,7 +202,7 @@ static Record CallSubqueryConsume
         if(op->lhs) {
             op->r = OpBase_Consume(op->lhs);
         } else {
-            // // reset children ops
+            // // reset children ops (needed?)
             // OpBase_PropagateReset(op);
             return NULL;
         }
@@ -204,17 +212,18 @@ static Record CallSubqueryConsume
             return NULL;
         }
 
-        // plant the record consumed at the Argument op
+        // plant a clone of the record consumed at the Argument op
         Argument_AddRecord(op->argument, OpBase_DeepCloneRecord(op->r));
 
         return _handoff(op);
     }
 
     // consume from lhs if exists, otherwise create dummy-record to pass to rhs
+    // (the latter case will happen AT MOST once)
     if(op->lhs) {
         op->r = OpBase_Consume(op->lhs);
     } else {
-        op->r = OpBase_CreateRecord(op);
+        op->r = OpBase_CreateRecord(op->body);
     }
 
     // plant the record consumed at the Argument op
@@ -231,17 +240,7 @@ static void _freeInternals
 (
 	OpCallSubquery *op  // operation to free
 ) {
-	// free records still held by this operation
-	if(op->records != NULL) {
-		// free record list components
-		uint nrecords = array_len(op->records);
-		for(uint i = 0; i < nrecords; i++) {
-			OpBase_DeleteRecord(op->records[i]);
-		}
-
-		array_free(op->records);
-		op->records = NULL;
-	}
+    // TBD
 }
 
 static OpResult CallSubqueryReset
@@ -252,8 +251,7 @@ static OpResult CallSubqueryReset
 
 	op->first = true;
 
-	// TODO: update
-    // _freeInternals(op);
+	// TBD
 
 	return OP_OK;
 }
@@ -275,6 +273,5 @@ static void CallSubqueryFree
 ) {
 	OpCallSubquery *_op = (OpCallSubquery *) op;
 
-	// TODO: update
-    // _freeInternals(op);
+	// TBD
 }

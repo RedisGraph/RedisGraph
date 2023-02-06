@@ -319,7 +319,7 @@ static void _buildCallSubqueryPlan
 	// -------------------------------------------------------------------------
 	// NTS: Do we need DELETE here? I think not.
 	OPType types[] = {OPType_CREATE, OPType_UPDATE, OPType_DELETE,
-					OPType_MERGE_CREATE};
+					OPType_MERGE};
 	bool is_eager =
 		ExecutionPlan_LocateOpMatchingType(embedded_plan->root, types, 4) != NULL;
 
