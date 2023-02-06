@@ -879,6 +879,9 @@ class testGraphInfoGetFlow(_testGraphInfoFlowBase):
                 failed_write=0)
 
     def test03_info_get_specific_counters_timedout(self):
+        if VALGRIND or SANITIZER != "":
+            print(f'Test skipped due to being running within unstable environment: Valgrind?={VALGRIND} | Sanitizer?="{SANITIZER}"')
+            return
         nodes = self._recreate_graph_with_node()
 
         query = INFO_RESET_SPECIFIC_COMMAND_TEMPLATE % GRAPH_ID
