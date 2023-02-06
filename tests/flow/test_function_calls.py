@@ -2479,6 +2479,16 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
+        expected_result = [[['a'], ['a']]]
+        query = """RETURN matchRegEx('aba', 'a')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[]]
+        query = """RETURN matchRegEx('', 'a')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
     def test91_REPLACEREGEX(self):
         # NULL input should return NULL
         expected_result = [None]
