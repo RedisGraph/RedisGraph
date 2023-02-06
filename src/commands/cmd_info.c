@@ -19,6 +19,7 @@
 #define SUBCOMMAND_NAME_GET "GET"
 #define SUBCOMMAND_NAME_RESET "RESET"
 #define COMPACT_MODE_OPTION "--compact"
+#define COMMAND_IS_DISABLED "The info tracking is disabled."
 #define UNKNOWN_SUBCOMMAND_MESSAGE "Unknown subcommand."
 #define INVALID_PARAMETERS_MESSAGE "Invalid parameters."
 #define INVALID_COUNT_PARAMETER_FOR_PREV_MESSAGE "\"PREV\": Invalid value for the <count> parameter."
@@ -1567,7 +1568,7 @@ int Graph_Info
     }
 
     if (!_is_cmd_info_enabled()) {
-        RedisModule_ReplyWithError(ctx, "TODO");
+        RedisModule_ReplyWithError(ctx, COMMAND_IS_DISABLED);
         return REDISMODULE_ERR;
     }
 

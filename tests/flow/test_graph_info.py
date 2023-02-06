@@ -29,6 +29,7 @@ NO_GRAPH_NAME_SPECIFIED = "No graph name was specified"
 TIMEOUT_ERROR_MESSAGE = "Query timed out"
 RUNTIME_FAILURE_MESSAGE = "Division by zero"
 UNKNOWN_SUBCOMMAND = 'Unknown subcommand.'
+COMMAND_IS_DISABLED = "The info tracking is disabled."
 
 # Keys
 CURRENT_MAXIMUM_WAIT_DURATION_KEY_NAME = 'Current maximum query wait duration'
@@ -715,6 +716,22 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
                 f"Shouldn't have reached with this point, result: {results}"
         except redis.exceptions.ResponseError as e:
             self.env.assertEquals(UNKNOWN_SUBCOMMAND, str(e), depth=1)
+
+    def test11_the_command_is_disabled(self):
+        env = Env(decodeResponses=True, moduleArgs='CMD_INFO no')
+        conn = env.getConnection()
+        queries = [
+            INFO_GET_GENERIC_COMMAND_TEMPLATE % GRAPH_ID,
+            INFO_GET_STAT_COMMAND_TEMPLATE % GRAPH_ID,
+            INFO_RESET_SPECIFIC_COMMAND_TEMPLATE % GRAPH_ID,
+        ]
+        for query in queries:
+            try:
+                results = conn.execute_command(query)
+                assert False, \
+                    f"Shouldn't have reached with this point, result: {results}"
+            except redis.exceptions.ResponseError as e:
+                env.assertEquals(COMMAND_IS_DISABLED, str(e), depth=1)
 
 
 # This test is separate as it needs a separate and a non-concurrent context.
