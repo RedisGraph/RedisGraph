@@ -11,7 +11,6 @@
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
-#include "../grouping/group_cache.h"
 
 static void _ResultSet_ReplyWithPreamble
 (
