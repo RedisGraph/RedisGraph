@@ -520,7 +520,7 @@ void Register_StringFuncs() {
 	array_append(types, (T_ARRAY | T_NULL));
 	array_append(types, T_STRING);
 	ret_type = T_STRING | T_NULL;
-	func_desc = AR_FuncDescNew("join", AR_JOIN, 1, 2, types, ret_type, false, true);
+	func_desc = AR_FuncDescNew("string.join", AR_JOIN, 1, 2, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
