@@ -992,8 +992,8 @@ This section contains information on all supported functions from the Cypher que
 | toUpper(_str_)                      | Returns _str_ in uppercase <br> Returns null when _str_ evaluates to null                                                                                      |
 | trim(_str_)                         | Returns _str_ with leading and trailing whitespace removed <br> Returns null when _str_ evaluates to null                                                      |
 | size(_str_)                         | Returns the number of characters in _str_ <br> Returns null when _str_ evaluates to null                                                                       |
-| matchRegEx(_str_, regex) (Since RedisGraph v2.12)           | Returns an array of all matches and matching regions <br> Returns an empty list when str is evaluated to null <br> Returns an empty list when regex is evaluated to null                                                                       |
-| replaceRegEx(_str_, regex, replacement) (Since RedisGraph v2.12)           | Returns a string after replacing each regex match with a given replacement <br> Returns null when str is evaluated to null <br> Returns null when regex is evaluated to null <br> Returns null when replacement is evaluated to null                                                                       |
+| string.matchRegEx(_str_, regex) (Since RedisGraph v2.12)           | Returns an array of all matches and matching regions <br> Returns an empty list when str is evaluated to null <br> Returns an empty list when regex is evaluated to null                                                                       |
+| string.replaceRegEx(_str_, regex, replacement) (Since RedisGraph v2.12)           | Returns a string after replacing each regex match with a given replacement <br> Returns null when str is evaluated to null <br> Returns null when regex is evaluated to null <br> Returns null when replacement is evaluated to null                                                                       |
 &#42; RedisGraph-specific extensions to Cypher
 
 ## Point functions

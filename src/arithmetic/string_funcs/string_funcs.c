@@ -704,7 +704,7 @@ void Register_StringFuncs() {
 	array_append(types, (T_STRING | T_NULL));
 	array_append(types, (T_STRING | T_NULL));
 	ret_type = T_ARRAY | T_NULL;
-	func_desc = AR_FuncDescNew("matchRegEx", AR_MATCHREGEX, 2, 2, types, ret_type, false, true);
+	func_desc = AR_FuncDescNew("string.matchRegEx", AR_MATCHREGEX, 2, 2, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
@@ -712,7 +712,7 @@ void Register_StringFuncs() {
 	array_append(types, (T_STRING | T_NULL));
 	array_append(types, (T_STRING | T_NULL));
 	ret_type = T_STRING | T_NULL;
-	func_desc = AR_FuncDescNew("replaceRegEx", AR_REPLACEREGEX, 2, 3, types, ret_type, false, true);
+	func_desc = AR_FuncDescNew("string.replaceRegEx", AR_REPLACEREGEX, 2, 3, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
