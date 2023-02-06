@@ -2489,6 +2489,32 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
+        expected_result = [[]]
+        query = """RETURN matchRegEx('bla', '(bla)(bal)')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[['bla9', 'bla']]]
+        query = """RETURN matchRegEx('bla9', '(bla)[(bal)9]')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[['bla9', 'bla']]]
+        query = """RETURN matchRegEx('bla9', '(bla)[(bal)9]')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[['😉']]]
+        query = """RETURN matchRegEx('😉', '😉')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # proof for Avi that I need to change the parser
+        #expected_result = [[[]]]
+        #query = """RETURN matchRegEx('aa', '(?:\\?)')"""
+        #actual_result = graph.query(query)
+        #self.env.assertEquals(actual_result.result_set[0], expected_result)
+
     def test91_REPLACEREGEX(self):
         # NULL input should return NULL
         expected_result = [None]
@@ -2593,5 +2619,10 @@ class testFunctionCallsFlow(FlowTestsBase):
 
         expected_result = ['blablala']
         query = """RETURN replaceRegEx('bbla', '[b]', 'bla')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = ['bl😀a']
+        query = """RETURN replaceRegEx('bl😉a', '😉', '😀')"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)

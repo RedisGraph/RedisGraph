@@ -218,6 +218,7 @@ static int _match_regex_scan_cb(int n, int pos, OnigRegion *region, void *arg) {
 	SIValue *list = args->list;
 	const char *str = args->str;
 	SIValue subList = SIArray_New(region->num_regs);
+	assert(region->num_regs > 0);
 
 	for (int i = 0; i < region->num_regs; i++) {
 		int substr_len = region->end[i] - region->beg[i];
@@ -256,9 +257,10 @@ SIValue AR_MATCHREGEX(SIValue *argv, int argc, void *private_data) {
 		char s[ONIG_MAX_ERROR_MESSAGE_LEN];
 		onig_error_code_to_str((UChar* )s, rv, &einfo);
 		ErrorCtx_SetError("invalid regex, err=%s", s);
+		onig_free(regex);
+		onig_region_free(region, 1);
 		return SI_NullVal();
 	}
-	ASSERT(rv == ONIG_NORMAL);
 
 	_match_regex_scan_cb_args args = {
 		.list = &list,
@@ -271,6 +273,8 @@ SIValue AR_MATCHREGEX(SIValue *argv, int argc, void *private_data) {
 		char s[ONIG_MAX_ERROR_MESSAGE_LEN];
 		onig_error_code_to_str((OnigUChar* )s, rv);
 		ErrorCtx_SetError("invalid regex, err=%s", s);
+		onig_free(regex);
+		onig_region_free(region, 1);
 		return SI_NullVal();
 	}
 
@@ -284,7 +288,7 @@ typedef struct {
 	char *res;
 	uint32_t res_len;
 	const char *str;
-	uint32_t str_ind;     		// current index in str
+	uint32_t str_ind; // current index in str
 	const char *replacement;
 	uint32_t replacement_len;
 } _replace_regex_scan_cb_args;
@@ -293,6 +297,7 @@ static int _replace_regex_scan_cb(int n, int pos, OnigRegion *region, void *arg)
 	_replace_regex_scan_cb_args *args = (_replace_regex_scan_cb_args *)arg;
 	const char *str = args->str;
 	SIValue subList = SIArray_New(region->num_regs);
+	assert(region->num_regs > 0);
 
 	int match_len = region->end[0] - region->beg[0];
 	int str_copy_len = region->beg[0] - args->str_ind;
@@ -350,12 +355,13 @@ SIValue AR_REPLACEREGEX(SIValue *argv, int argc, void *private_data) {
 		char s[ONIG_MAX_ERROR_MESSAGE_LEN];
 		onig_error_code_to_str((UChar* )s, rv, &einfo);
 		ErrorCtx_SetError("invalid regex, err=%s", s);
+		onig_free(regex);
+		onig_region_free(region, 1);
 		return SI_NullVal();
 	}
-	ASSERT(rv == ONIG_NORMAL);
 
 	_replace_regex_scan_cb_args args = {
-		.res = rm_malloc(sizeof(char)),
+		.res = NULL,
 		.res_len = 0,
 		.str = str,
 		.str_ind = 0,
@@ -369,6 +375,8 @@ SIValue AR_REPLACEREGEX(SIValue *argv, int argc, void *private_data) {
 		char s[ONIG_MAX_ERROR_MESSAGE_LEN];
 		onig_error_code_to_str((OnigUChar* )s, rv);
 		ErrorCtx_SetError("invalid regex, err=%s", s);
+		onig_free(regex);
+		onig_region_free(region, 1);
 		return SI_NullVal();
 	}
 
@@ -695,7 +703,7 @@ void Register_StringFuncs() {
 	types = array_new(SIType, 2);
 	array_append(types, (T_STRING | T_NULL));
 	array_append(types, (T_STRING | T_NULL));
-	ret_type = T_ARRAY;
+	ret_type = T_ARRAY | T_NULL;
 	func_desc = AR_FuncDescNew("matchRegEx", AR_MATCHREGEX, 2, 2, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
