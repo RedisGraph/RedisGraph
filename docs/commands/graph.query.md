@@ -988,12 +988,12 @@ This section contains information on all supported functions from the Cypher que
 | rTrim(_str_)                        | Returns _str_ with trailing whitespace removed <br> Returns null when _str_ evaluates to null                                                                  |
 | split(_str_, _delimiter_)           | Returns a list of strings from splitting _str_ by _delimiter_ <br> Returns null when any argument evaluates to null                                            |
 | substring(_str_, _start_[, _len_])  | When _len_ is specified: returns a substring of _str_ beginning with a 0-based index _start_ and with length _len_ <br> When _len_ is not specified: returns a substring of _str_ beginning with a 0-based index _start_ and extending to the end of _str_ <br> Returns null when _str_ evaluates to null <br> Error when _start_ or _len_ evaluate to null |
+| size(_str_)                         | Returns the number of characters in _str_ <br> Returns null when _str_ evaluates to null                                                                       |
+| string.join(strList, delimiter = '') (Since RedisGraph v2.12)        | Returns a concatenation of all the strings using the given delimiter.                                                                 |
 | toLower(_str_)                      | Returns _str_ in lowercase <br> Returns null when _str_ evaluates to null                                                                                      |
 | toJSON(_str_) *                     | Returns a [JSON representation](#json-format) of a value <br> Returns null when _str_ evaluates to null                                                        |
 | toUpper(_str_)                      | Returns _str_ in uppercase <br> Returns null when _str_ evaluates to null                                                                                      |
 | trim(_str_)                         | Returns _str_ with leading and trailing whitespace removed <br> Returns null when _str_ evaluates to null                                                      |
-| size(_str_)                         | Returns the number of characters in _str_ <br> Returns null when _str_ evaluates to null                                                                       |
-| string.join(strList, delimiter = '') (Since RedisGraph v2.12)        | Returns a concatenation of all the strings using the given delimiter.                                                                 |
 
 &#42; RedisGraph-specific extensions to Cypher
 
