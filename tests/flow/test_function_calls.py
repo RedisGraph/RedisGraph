@@ -2433,6 +2433,13 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
+        # test invalid regex
+        try:
+            query = """RETURN matchRegEx('aa', '?')"""
+            actual_result = graph.query(query)
+        except ResponseError as e:
+            self.env.assertContains("Invalid regex", str(e))
+
         # 1st arg should be string
         try:
             graph.query("RETURN matchRegEx(2, 'bla')")
@@ -2533,6 +2540,13 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """WITH NULL as string RETURN replaceRegEx("bla", "bla", null)"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # test invalid regex
+        try:
+            query = """RETURN replaceRegEx('aa', '?')"""
+            actual_result = graph.query(query)
+        except ResponseError as e:
+            self.env.assertContains("Invalid regex", str(e))
 
         # 1st arg should be string
         try:

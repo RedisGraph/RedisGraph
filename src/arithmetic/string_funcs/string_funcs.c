@@ -256,7 +256,7 @@ SIValue AR_MATCHREGEX(SIValue *argv, int argc, void *private_data) {
 	if(rv != ONIG_NORMAL) {
 		char s[ONIG_MAX_ERROR_MESSAGE_LEN];
 		onig_error_code_to_str((UChar* )s, rv, &einfo);
-		ErrorCtx_SetError("invalid regex, err=%s", s);
+		ErrorCtx_SetError("Invalid regex, err=%s", s);
 		onig_free(regex);
 		onig_region_free(region, 1);
 		return SI_NullVal();
@@ -272,7 +272,7 @@ SIValue AR_MATCHREGEX(SIValue *argv, int argc, void *private_data) {
 	if(rv < 0) {
 		char s[ONIG_MAX_ERROR_MESSAGE_LEN];
 		onig_error_code_to_str((OnigUChar* )s, rv);
-		ErrorCtx_SetError("invalid regex, err=%s", s);
+		ErrorCtx_SetError("Invalid regex, err=%s", s);
 		onig_free(regex);
 		onig_region_free(region, 1);
 		return SI_NullVal();
@@ -354,7 +354,7 @@ SIValue AR_REPLACEREGEX(SIValue *argv, int argc, void *private_data) {
 	if(rv != ONIG_NORMAL) {
 		char s[ONIG_MAX_ERROR_MESSAGE_LEN];
 		onig_error_code_to_str((UChar* )s, rv, &einfo);
-		ErrorCtx_SetError("invalid regex, err=%s", s);
+		ErrorCtx_SetError("Invalid regex, err=%s", s);
 		onig_free(regex);
 		onig_region_free(region, 1);
 		return SI_NullVal();
@@ -374,7 +374,7 @@ SIValue AR_REPLACEREGEX(SIValue *argv, int argc, void *private_data) {
 	if(rv < 0) {
 		char s[ONIG_MAX_ERROR_MESSAGE_LEN];
 		onig_error_code_to_str((OnigUChar* )s, rv);
-		ErrorCtx_SetError("invalid regex, err=%s", s);
+		ErrorCtx_SetError("Invalid regex, err=%s", s);
 		onig_free(regex);
 		onig_region_free(region, 1);
 		return SI_NullVal();
