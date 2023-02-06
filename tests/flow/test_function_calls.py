@@ -2590,3 +2590,8 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """RETURN replaceRegEx('', '[b]', 'bla')"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = ['blablala']
+        query = """RETURN replaceRegEx('bbla', '[b]', 'bla')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
