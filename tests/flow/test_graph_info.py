@@ -650,7 +650,7 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
             # This should be unreachable.
             assert(False)
         except redis.exceptions.ResponseError as e:
-            self.env.assertEquals(str(e), "wrong number of arguments for 'graph.INFO' command", depth=1)
+            self.env.assertEquals(str(e).lower(), "wrong number of arguments for 'graph.info' command", depth=1)
 
         # Reset an existing (current) graph should return a boolean true.
         query = 'GRAPH.INFO RESET %s' % GRAPH_ID
