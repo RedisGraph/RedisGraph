@@ -378,7 +378,7 @@ class _testGraphInfoFlowBase(FlowTestsBase):
         timeout = 0
 
         if problem_kind == QueryFailureSimulationKind.TIMEOUT:
-            query = 'UNWIND (range(0, 1000000)) AS x WITH x CREATE(b:Book { id: x })'
+            query = 'UNWIND (range(0, 100000000000)) AS x WITH x CREATE(b:Book { id: x })'
             timeout = 1
         elif problem_kind == QueryFailureSimulationKind.FAIL_RUNTIME:
             query = 'CREATE (t:T { n: 0 }), (t2:T { n: 20 }) RETURN t2.n / t.n'
