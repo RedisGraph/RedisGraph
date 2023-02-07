@@ -22,7 +22,7 @@
 #define CHECK_FLAG(flag_var, flag_value) \
     ((flag_var & flag_value) == flag_value)
 
-bool checked_add_u8(const uint64_t lhs, const uint64_t rhs, uint8_t *result);
-bool checked_add_u16(const uint64_t lhs, const uint64_t rhs, uint16_t *result);
-bool checked_add_u32(const uint64_t lhs, const uint64_t rhs, uint32_t *result);
+bool checked_add_u8(const uint8_t lhs, const uint8_t rhs, uint8_t *result);
+bool checked_add_u16(const uint16_t lhs, const uint16_t rhs, uint16_t *result);
+bool checked_add_u32(const uint32_t lhs, const uint32_t rhs, uint32_t *result);
 bool checked_add_u64(const uint64_t lhs, const uint64_t rhs, uint64_t *result);
