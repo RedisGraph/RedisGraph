@@ -8,24 +8,36 @@
 
 #include "acutest.h"
 
-// There is no need in parametrisation as the code is the same
-// for all the other (wider) types.
-void test_NumOverflow_CheckedAddU8(void) {
-    uint8_t out = 0;
-    bool is_ok = checked_add_u8(254, 1, &out);
-    TEST_ASSERT(out == 255);
-    TEST_ASSERT(is_ok == true);
-    is_ok = checked_add_u8(254, 2, &out);
-    // The value isn't changed when it is not ok.
-    TEST_ASSERT(out == 0);
-    TEST_ASSERT(is_ok == false);
-    is_ok = checked_add_u8(254, 100, &out);
-    // The value isn't changed when it is not ok.
-    TEST_ASSERT(out == 98);
-    TEST_ASSERT(is_ok == false);
+#define TYPE(width) uint##width ## _t
+#define FUNC(width) checked_add_u ## width
+
+#define DEFINE_TEST(name, width) \
+void test_NumOverflow_CheckedAddU ##width (void) { \
+    TYPE(width) out = 0; \
+    static const TYPE(width) MAX = UINT##width##_MAX; \
+    bool is_ok = FUNC(width)(MAX - 1, 1, &out); \
+    TEST_ASSERT(out == MAX); \
+    TEST_ASSERT(is_ok == true); \
+    is_ok = FUNC(width)(MAX - 1, 2, &out); \
+    /* The value isn't changed when it is not ok. */ \
+    TEST_ASSERT(out == 0); \
+    TEST_ASSERT(is_ok == false); \
+    is_ok = FUNC(width)(MAX - 1, 100, &out); \
+    /* The value isn't changed when it is not ok. */ \
+    TEST_ASSERT(out == 98); \
+    TEST_ASSERT(is_ok == false); \
 }
+
+DEFINE_TEST(test_NumOverflow_CheckedAddU8, 8);
+DEFINE_TEST(test_NumOverflow_CheckedAddU16, 16);
+DEFINE_TEST(test_NumOverflow_CheckedAddU32, 32);
+DEFINE_TEST(test_NumOverflow_CheckedAddU64, 64);
+
 
 TEST_LIST = {
     {"NumOverflow_CheckedAddU8", test_NumOverflow_CheckedAddU8},
+    {"NumOverflow_CheckedAddU16", test_NumOverflow_CheckedAddU16},
+    {"NumOverflow_CheckedAddU32", test_NumOverflow_CheckedAddU32},
+    {"NumOverflow_CheckedAddU64", test_NumOverflow_CheckedAddU64},
     {NULL, NULL}
 };

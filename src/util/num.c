@@ -8,12 +8,12 @@
 
 #if __has_builtin(__builtin_add_overflow)
 #define CHECKED_ADD(prefix, type) \
-bool checked_add_##prefix(const uint64_t lhs, const uint64_t rhs, type *result) { \
+bool checked_add_##prefix(const type lhs, const type rhs, type *result) { \
 return !__builtin_add_overflow(lhs, rhs, result); \
 }
 #else
 #define CHECKED_ADD(prefix, type) \
-bool checked_add_##prefix(const uint64_t lhs, const uint64_t rhs, type *result) { \
+bool checked_add_##prefix(const type lhs, const type rhs, type *result) { \
     if (!result) { \
         return false; \
     } \
