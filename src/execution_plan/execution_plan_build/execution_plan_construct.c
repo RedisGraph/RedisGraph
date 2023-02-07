@@ -331,11 +331,11 @@ static void _buildCallSubqueryPlan
 
 	if(is_eager) {
 		// add an ArgumentList op
-		OpBase *argument_list = NewArgumentListOp(embedded_plan);
+		OpBase *argument_list = NewArgumentListOp(plan);
 		ExecutionPlan_AddOp(deepest, argument_list);
 	} else {
 		// add an Argument op
-		OpBase *argument = NewArgumentOp(embedded_plan, NULL);
+		OpBase *argument = NewArgumentOp(plan, NULL);
 		ExecutionPlan_AddOp(deepest, argument);
 	}
 
@@ -355,16 +355,10 @@ static void _buildCallSubqueryPlan
 	// bind the embedded plan to be the rhs branch of the Call-Subquery op
 	ExecutionPlan_AddOp(call_op, embedded_plan->root);
 
-	// bind new plan to the main plan, merging the querygraphs only if the
-	// subquery is a returning subquery
-	if(is_returning) {
-		ExecutionPlan_BindPlanToOps(plan, embedded_plan->root, true);
-	} else {
-		ExecutionPlan_BindPlanToOps(plan, embedded_plan->root, false);
-	}
 
-	// free temporary plan
-	// TBD
+	// NTS: We intentionally leave the embedded plan's operations un-binded to
+	// the original plan, since we want it to be disconnected in its record-map.
+	// By thus we save a significant amount of memory
 }
 
 void ExecutionPlanSegment_ConvertClause
