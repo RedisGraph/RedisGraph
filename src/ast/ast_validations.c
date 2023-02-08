@@ -1221,6 +1221,14 @@ static VISITOR_STRATEGY _Validate_call_subquery
 		raxFree(vctx->defined_identifiers);
 		vctx->defined_identifiers = in_env;
 	} else {
+		// merge in_env into vctx->defined_identifiers
+		raxIterator it;
+		raxStart(&it, in_env);
+		raxSeek(&it, "^", NULL, 0);
+		while(raxNext(&it)) {
+			raxTryInsert(vctx->defined_identifiers, it.key, it.key_len, it.data, NULL);
+		}
+
 		raxFree(in_env);
 	}
 
