@@ -10,6 +10,7 @@
 #include "rmalloc.h"
 #include "utf8proc/utf8proc.h"
 
+// convert ascii str to a lower case string and save it in lower
 void str_tolower_ascii
 (
 	const char *str,
@@ -27,22 +28,26 @@ void str_tolower_ascii
 	lower[str_len] = 0;
 }
 
+// return true if utf8 string is valid
 bool str_utf8_validate
 (
-    const char *str
+	const char *str
 ) {
 	// hold current Unicode character
-    utf8proc_int32_t c;
+	utf8proc_int32_t c;
 
-    // while we didn't get to the end of the string
-    while(str[0] != 0) {
-        // increment current position by number of bytes in Unicode character
-        str += utf8proc_iterate((const utf8proc_uint8_t *)str, -1, &c);
-		if(c == -1) return false;
-    }
+	// while we didn't get to the end of the string
+	while(str[0] != 0) {
+		// increment current position by number of bytes in Unicode character
+		str += utf8proc_iterate((const utf8proc_uint8_t *)str, -1, &c);
+		if(c == -1) {
+			// string is not valid
+			return false;
+		}
+	}
 
-    // return the length of the string in terms of Unicode characters
-    return true;
+	// string is valid
+	return true;
 }
 
 // determine the length of the string
@@ -50,23 +55,23 @@ bool str_utf8_validate
 // but in terms of the number of Unicode characters in the string
 int str_length
 (
-    const char *str
+	const char *str
 ) {
 	// hold current Unicode character
-    utf8proc_int32_t c;
+	utf8proc_int32_t c;
 
-    int len = 0;
+	int len = 0;
 
-    // while we didn't get to the end of the string
-    while(str[0] != 0) {
-        // increment current position by number of bytes in Unicode character
-        str += utf8proc_iterate((const utf8proc_uint8_t *)str, -1, &c);
-        // increment length of the string in terms of Unicode characters
-        len++;
-    }
+	// while we didn't get to the end of the string
+	while(str[0] != 0) {
+		// increment current position by number of bytes in Unicode character
+		str += utf8proc_iterate((const utf8proc_uint8_t *)str, -1, &c);
+		// increment length of the string in terms of Unicode characters
+		len++;
+	}
 
-    // return the length of the string in terms of Unicode characters
-    return len;
+	// return the length of the string in terms of Unicode characters
+	return len;
 }
 
 char *str_tolower

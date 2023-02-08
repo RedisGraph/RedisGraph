@@ -8,9 +8,9 @@
 #include "../func_desc.h"
 #include "../../errors.h"
 #include "../../util/arr.h"
-#include "../../util/rmalloc.h"
 #include "../../util/uuid.h"
 #include "utf8proc/utf8proc.h"
+#include "../../util/rmalloc.h"
 #include "../../util/strutil.h"
 #include "../../datatypes/array.h"
 #include "../../util/json_encoder.h"
@@ -37,6 +37,7 @@ SIValue AR_LEFT(SIValue *argv, int argc, void *private_data) {
 		return SI_DuplicateStringVal(argv[0].stringval);
 	}
 
+	// determine new string byte size
 	utf8proc_int32_t c;
 	int64_t newlen_bytes = 0;
 	const char *str = argv[0].stringval;
@@ -183,19 +184,22 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 	}
 
 	utf8proc_int32_t c;
-	int64_t start_bytes = 0;
+	// find the start position to copy from
+	const char *start_p = original;
 	for (int i = 0; i < start; i++) {
-		start_bytes += utf8proc_iterate((const utf8proc_uint8_t *)(original+start_bytes), -1, &c);
+		start_p += utf8proc_iterate((const utf8proc_uint8_t *)start_p, -1, &c);
 	}
 
-	int64_t length_bytes = 0;
+	// find the end position
+	const char *end_p = start_p;
 	for (int i = 0; i < length; i++) {
-		length_bytes += utf8proc_iterate((const utf8proc_uint8_t *)(original+start_bytes + length_bytes), -1, &c);
+		end_p += utf8proc_iterate((const utf8proc_uint8_t *)end_p, -1, &c);
 	}
 
-	char *substring = rm_malloc((length_bytes + 1) * sizeof(char));
-	strncpy(substring, original + start_bytes, length_bytes);
-	substring[length_bytes] = '\0';
+	int len = end_p - start_p;
+	char *substring = rm_malloc((len + 1) * sizeof(char));
+	strncpy(substring, start_p, len);
+	substring[len] = '\0';
 
 	return SI_TransferStringVal(substring);
 }
@@ -430,6 +434,7 @@ SIValue AR_SPLIT(SIValue *argv, int argc, void *private_data) {
 		size_t rest_len   = str_len;
 		const char *start = str;
 		while(rest_len > delimiter_len) {
+			// find bytes length from start to delimiter
 			int len = 0;
 			while(len <= rest_len - delimiter_len) {
 				if(strncmp(start+len, delimiter, delimiter_len) == 0) {

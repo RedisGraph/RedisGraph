@@ -2087,6 +2087,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             "RETURN replace('abcabc', 'ab', '')": [["cc"]],
             "RETURN replace('abcabc', '', '0')": [["0a0b0c0a0b0c0"]],
             # test unicode charecters
+            # changing half unicode charecter will not change the original string
             "RETURN replace('丁丂七丄丅丆万丈三上', '\xe4', 'X')": [["丁丂七丄丅丆万丈三上"]],
         }
         for query, expected_result in query_to_expected_result.items():
