@@ -99,7 +99,6 @@ static Record _handoff_eager(OpCallSubquery *op) {
         Record r;
         return r;
     }
-
 }
 
 // eagerly consume and aggregate all the records from the lhs (if exists). pass
@@ -235,13 +234,13 @@ static Record CallSubqueryConsume
 
 }
 
-// free CallSubquery internal data structures
-static void _freeInternals
-(
-	OpCallSubquery *op  // operation to free
-) {
-    // TBD
-}
+// // free CallSubquery internal data structures
+// static void _freeInternals
+// (
+// 	OpCallSubquery *op  // operation to free
+// ) {
+//     // TBD
+// }
 
 static OpResult CallSubqueryReset
 (
@@ -249,9 +248,18 @@ static OpResult CallSubqueryReset
 ) {
     OpCallSubquery *op = (OpCallSubquery *)opBase;
 
-	op->first = true;
+    // non-eager case (RO)
+    if(op->r) {
+        OpBase_DeleteRecord(op->r);
+        op->r = NULL;
+    }
 
-	// TBD
+    // eager case
+    else if(op->records && (op->records) > 0) {
+	    op->first = true;
+        array_free_cb(op->records, OpBase_DeleteRecord);
+        op->records = NULL;
+    }
 
 	return OP_OK;
 }

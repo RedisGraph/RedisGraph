@@ -71,3 +71,50 @@ class testCallSubqueryFlow():
         # node labels and props should match created node
         self.env.assertEquals(res.result_set[0][0],
                               Node(label='N', properties={'name': 'Raz'}))
+
+    def test03_readonly(self):
+        """RO returning/unit subqueries"""
+
+        # the graph has one node with label `N` and prop `name` with val `Raz`
+
+        # clauses that can be used:
+        # MATCH, OPTIONAL MATCH, WHERE, ORDERBY, SKIP, LIMIT, WITH, UNION,
+        # UNWIND, (partly) FOREACH
+
+        res = graph.query(
+            """
+            UNWIND ['Omer', 'Raz', 'Moshe'] as name
+            CALL {
+                WITH name
+                MATCH (n:N {name: name})
+                RETURN n
+            }
+            RETURN n
+            """
+        )
+        # assert correctness of the result
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set,
+            Node(label='N', properties={'name': 'Raz'}))
+
+
+    # def test04_update_no_return_simple(self):
+    #     """simple updates"""
+
+    #     # clean db
+    #     self.env.flush()
+    #     graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+    #     # add a node via CALL {}
+
+
+    #     # update an edge via CALL {}
+
+
+    #     # remove a node\edge label via CALL {}
+
+
+    #     # remove a node\edge property via CALL {}
+
+
+    #     # delete a node\edge via CALL {}
