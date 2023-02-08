@@ -211,7 +211,7 @@ static void _buildForeachOp
 	ExecutionPlan *embedded_plan = ExecutionPlan_NewEmptyExecutionPlan();
 	// use a clone record-map, to not pollute the main one (different scope)
 	embedded_plan->record_map           = raxClone(plan->record_map);
-	embedded_plan->ast_segment          = plan->ast_segment;
+	embedded_plan->ast_segment          = ast;
 	// use a clone QueryGraph, to not pollute the main one (different scope)
 	embedded_plan->query_graph          = QueryGraph_Clone(plan->query_graph);
 	embedded_plan->record_pool          = plan->record_pool;
