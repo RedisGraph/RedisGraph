@@ -67,6 +67,9 @@ class testReplication(FlowTestsBase):
         # the WAIT command forces master slave sync to complete
         source_con.execute_command("WAIT", "1", "0")
 
+        # wait for index to sync in replica
+        wait_for_indices_to_sync(replica)
+
         # make sure index is available on replica
         q = "MATCH (s:L {id:2}) RETURN s.name"
         plan = graph.execution_plan(q)

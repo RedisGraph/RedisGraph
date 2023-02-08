@@ -389,7 +389,7 @@ void UndoLog_DeleteNode
 void UndoLog_DeleteEdge
 (
 	UndoLog *log,  // undo log
-	Edge *edge      // edge deleted
+	Edge *edge     // edge deleted
 ) {
 	ASSERT(log != NULL && *log != NULL);
 	ASSERT(edge != NULL);
