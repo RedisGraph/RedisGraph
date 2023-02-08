@@ -139,7 +139,8 @@ class testQueryTimeout():
         self.env.stop()
 
         try:
-            Env(decodeResponses=True, moduleArgs="TIMEOUT 10 TIMEOUT_DEFAULT 10 TIMEOUT_MAX 10")
+            env = Env(decodeResponses=True, moduleArgs="TIMEOUT 10 TIMEOUT_DEFAULT 10 TIMEOUT_MAX 10")
+            env.getConnection().ping()
             self.env.assertTrue(False)
         except:
             self.env.assertTrue(True)
