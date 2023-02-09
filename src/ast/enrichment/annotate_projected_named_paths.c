@@ -198,6 +198,7 @@ static void _annotate_foreach_clause_projected_named_path(AST *ast,
 	// annotate named paths defined inside the body
 	_annotate_relevant_projected_named_path_identifier(&subquery_clauses_ast, identifier_map, 0, nclauses-1);
 	array_free(clauses);
+	cypher_astnode_free(query_node);
 	// TODO: Fix the above call. It allows to define the named path AFTER using it.
 	raxFreeWithCallback(identifier_map, array_free);
 }
