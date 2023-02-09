@@ -157,17 +157,20 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 	*/
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
-	const char *original = argv[0].stringval;
-	const int64_t original_len = strlen(original);
-	const int64_t start = argv[1].longval;
 	int64_t length;
+	const char   *original     = argv[0].stringval;
+	const int64_t original_len = strlen(original);
+	const int64_t start        = argv[1].longval;
 
 	/* Make sure start doesn't overreach. */
 	if(start < 0) {
 		ErrorCtx_SetError("start must be a non-negative integer");
 		return SI_NullVal();
 	}
-	if(start >= original_len) return SI_ConstStringVal("");
+
+	if(start >= original_len) {
+		return SI_ConstStringVal("");
+	}
 
 	const int64_t suffix_len = original_len - start;
 	if(argc == 2) {
@@ -329,15 +332,9 @@ SIValue AR_REPLACE(SIValue *argv, int argc, void *private_data) {
 	const char *ptr  = str;
 	const char **arr = array_new(const char *, 0);
 
-	if(!str_utf8_validate(old_string)) {
-		return SI_DuplicateStringVal(str);
-	}
-
-	if(!str_utf8_validate(new_string)) {
-		return SI_DuplicateStringVal(str);
-	}
-
-	if(!str_utf8_validate(str)) {
+	// if any parameter is not a valid utf8 string return the original string
+	if(!str_utf8_validate(old_string) || !str_utf8_validate(new_string) ||
+		!str_utf8_validate(str)) {
 		return SI_DuplicateStringVal(str);
 	}
 
@@ -420,12 +417,14 @@ SIValue AR_SPLIT(SIValue *argv, int argc, void *private_data) {
 		if(strlen(str) == 0) {
 			SIArray_Append(&tokens, SI_ConstStringVal(""));
 		} else {
-			char token[2];
-			token[1] = '\0';
-			while(str[0] != '\0') {
-				token[0] = str[0];
-				SIArray_Append(&tokens, SI_ConstStringVal(token));
-				str++;
+			utf8proc_int32_t c;
+			utf8proc_uint8_t token[5];
+			const utf8proc_uint8_t *str_i = (const utf8proc_uint8_t *)str;
+			while(str_i[0] != 0) {
+				str_i += utf8proc_iterate(str_i, -1, &c);
+				int i  = utf8proc_encode_char(utf8proc_tolower(c), token);
+				token[i] = '\0';
+				SIArray_Append(&tokens, SI_ConstStringVal((const char *)token));
 			}
 		}
 	} else if(str_len == 0) {
@@ -436,13 +435,15 @@ SIValue AR_SPLIT(SIValue *argv, int argc, void *private_data) {
 		while(rest_len > delimiter_len) {
 			// find bytes length from start to delimiter
 			int len = 0;
+			bool delimiter_found = false;
 			while(len <= rest_len - delimiter_len) {
 				if(strncmp(start+len, delimiter, delimiter_len) == 0) {
+					delimiter_found = true;
 					break;
 				}
 				len++;
 			}
-			if(len > rest_len - delimiter_len) {
+			if(!delimiter_found) {
 				break;
 			}
 			SIValue si_token = SI_TransferStringVal(rm_strndup(start, len));
@@ -452,9 +453,8 @@ SIValue AR_SPLIT(SIValue *argv, int argc, void *private_data) {
 			rest_len -= len + delimiter_len;
 		}
 		if(rest_len > 0) {
-			SIValue si_token = SI_TransferStringVal(rm_strndup(start, rest_len));
+			SIValue si_token = SI_ConstStringVal(start);
 			SIArray_Append(&tokens, si_token);
-			SIValue_Free(si_token);
 		}
 	}
 

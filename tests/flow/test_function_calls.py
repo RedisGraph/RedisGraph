@@ -1128,6 +1128,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             "RETURN split('', '')": [[[""]]],
             # test unicode charecters
             "RETURN split('丁丂七丄丅丆万丈三上', '丄')": [[["丁丂七", "丅丆万丈三上"]]],
+            "RETURN split('丁丂七丅', '')": [[["丁", "丂", "七", "丅"]]],
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
@@ -2089,6 +2090,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             # test unicode charecters
             # changing half unicode charecter will not change the original string
             "RETURN replace('丁丂七丄丅丆万丈三上', '\xe4', 'X')": [["丁丂七丄丅丆万丈三上"]],
+            "RETURN replace('丁丂七丄丅丆万丈三上', '丄', 'X')": [["丁丂七X丅丆万丈三上"]]
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
