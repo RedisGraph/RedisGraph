@@ -76,22 +76,3 @@ double simple_toc           // returns time since last simple_tic
     simple_tic (toc) ;
     return ((toc [0] - tic [0]) + 1e-9 * (toc [1] - tic [1])) ;
 }
-
-/*
- * Copyright Redis Ltd. 2018 - present
- * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
- * the Server Side Public License v1 (SSPLv1).
- */
-#include <sys/time.h>
-
-uint64_t get_unix_timestamp_milliseconds() {
-	struct timeval tv = {};
-
-	gettimeofday(&tv, NULL);
-
-	const uint64_t milliseconds_since_epoch =
-		(uint64_t)(tv.tv_sec) * 1000 +
-		(uint64_t)(tv.tv_usec) / 1000;
-
-	return milliseconds_since_epoch;
-}

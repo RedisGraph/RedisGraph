@@ -27,13 +27,6 @@ void Graph_Explain(void *args) {
 
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
 	CommandCtx_TrackCtx(command_ctx);
-
-	if(strcmp(command_ctx->query, "") == 0) {
-		ErrorCtx_SetError("Error: empty query.");
-		query_ctx->status = QueryExecutionStatus_FAILURE;
-		goto cleanup;
-	}
-
 	QueryCtx_BeginTimer(); // Start query timing.
 
 	/* Retrieve the required execution items and information:

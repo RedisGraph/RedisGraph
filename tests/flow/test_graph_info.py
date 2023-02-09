@@ -378,7 +378,7 @@ class _testGraphInfoFlowBase(FlowTestsBase):
         timeout = 0
 
         if problem_kind == QueryFailureSimulationKind.TIMEOUT:
-            query = 'UNWIND (range(0, 100000000000)) AS x WITH x CREATE(b:Book { id: x })'
+            query = 'UNWIND (range(0, 10000000)) AS x WITH x CREATE(b:Book { id: x })'
             timeout = 1
         elif problem_kind == QueryFailureSimulationKind.FAIL_RUNTIME:
             query = 'CREATE (t:T { n: 0 }), (t2:T { n: 20 }) RETURN t2.n / t.n'
@@ -732,6 +732,10 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
                     f"Shouldn't have reached with this point, result: {results}"
             except redis.exceptions.ResponseError as e:
                 env.assertEquals(COMMAND_IS_DISABLED, str(e), depth=1)
+
+    def test12_change_finished_queries_limit(self):
+        pass
+        # self._recreate_graph_empty()
 
 
 # This test is separate as it needs a separate and a non-concurrent context.

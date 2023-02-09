@@ -11,6 +11,7 @@
 #include "../util/blocked_client.h"
 #include "../configuration/config.h"
 #include "../util/simple_timer.h"
+#include "../util/time.h"
 
 #define GRAPH_VERSION_MISSING -1
 
