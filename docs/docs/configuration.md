@@ -291,7 +291,7 @@ An on/off toggle for the `GRAPH.INFO` command. Disabling this command may increa
 
 #### Default
 
-`CMD_INFO` is `on`.
+`CMD_INFO` is `yes`.
 
 ### MAX_INFO_QUERIES
 

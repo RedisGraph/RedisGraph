@@ -66,39 +66,20 @@
 
 #endif // if _OPENMP
 
-#include <stdint.h>
-
 typedef double simple_timer_t[2];
 
 // Determines how many milliseconds are in a second.
 #define MILLISECONDS_IN_SECOND 1000
-// Determines how many nanoseconds are in a millisecond.
-#define NANOSECONDS_IN_MILLISECOND 1000000
 
-// An alias for the type of the timer.
-#define TIMER_TYPE double[2]
 // An alias to assign for the timer.
 #define TIMER_ASSIGN(lhs, rhs) lhs[0] = rhs[0]; lhs[1] = rhs[1]
 // (Re)starts the timer.
-#define TIMER_RESTART(name) simple_tic(name)
-// Returns the seconds (double) counted by the timer.
-#define TIMER_GET_SECONDS(name) name[0]
-// Returns the seconds (uint64_t) counted by the timer.
-#define TIMER_GET_FULL_SECONDS(name) (uint64_t)TIMER_GET_SECONDS(name)
+#define TIMER_RESTART(timer) simple_tic(timer)
 // Returns the nanoseconds (double) counted by the timer.
-#define TIMER_GET_NANOSECONDS(name) name[1]
-// Returns the time counted in full milliseconds.
-// TODO rounding?
-#define TIMER_GET_MILLISECONDS(name) \
-    (uint64_t)(TIMER_GET_SECONDS(name) * MILLISECONDS_IN_SECOND) + \
-    (uint64_t)(TIMER_GET_NANOSECONDS(name) / NANOSECONDS_IN_MILLISECOND)
-// An alias to return the time in seconds passed since the previous call.
-#define TIMER_GET_ELAPSED(name) simple_toc(name)
+#define TIMER_GET_NANOSECONDS(timer) timer[1]
 // An alias to return the time in milliseconds passed since the previous call.
-#define TIMER_GET_ELAPSED_MILLISECONDS(name) \
-    (uint64_t)(TIMER_GET_ELAPSED(name) * MILLISECONDS_IN_SECOND)
-// Defines a timer variable and starts the timer immediately.
-#define TIMER_DEFINE_AND_START(name) simple_timer_t name; TIMER_RESTART(name)
+#define TIMER_GET_ELAPSED_MILLISECONDS(timer) \
+    (uint64_t)(simple_toc(timer) * MILLISECONDS_IN_SECOND)
 
 void simple_tic         // returns current time in seconds and nanoseconds
 (
@@ -109,8 +90,5 @@ double simple_toc           // returns time since last simple_tic
 (
     const double tic [2]    // tic from last call to simple_tic
 ) ;
-
-// Returns the milliseconds elapsed since the UNIX epoch.
-uint64_t get_unix_timestamp_milliseconds();
 
 #endif // SIMPLE_TIMER_H
