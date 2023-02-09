@@ -44,7 +44,9 @@ static inline bool _should_populate_edge
 	QGEdge *e
 ) {
 	ASSERT(e != NULL);
-	return (_referred_entity(e->alias) || QGEdge_VariableLength(e));
+	return (_referred_entity(e->alias) ||
+			QGEdge_VariableLength(e)   ||
+			QGEdge_GhostEdge(e));
 }
 
 // checks if given expression contains a variable length edge
@@ -70,7 +72,7 @@ static bool _AlgebraicExpression_ContainsVariableLengthEdge
 	case AL_OPERAND:
 		if(exp->operand.edge) {
 			QGEdge *e = QueryGraph_GetEdgeByAlias(qg, exp->operand.edge);
-			return QGEdge_VariableLength(e);
+			return QGEdge_VariableLength(e) || QGEdge_GhostEdge(e);
 		}
 		break;
 	default:
@@ -329,81 +331,73 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
 	ASSERT(e != NULL);
 
 	uint reltype_id;
-	QGNode               *src_node          =  e->src;
-	QGNode               *dest_node         =  e->dest;
-	AlgebraicExpression  *add               =  NULL;
-	AlgebraicExpression  *root              =  NULL;
-	AlgebraicExpression  *src_filter        =  NULL;
-	bool                 var_len_traversal  =  QGEdge_VariableLength(e);
+	QGNode              *src_node         = e->src;
+	QGNode              *dest_node        = e->dest;
+	AlgebraicExpression *add              = NULL;
+	AlgebraicExpression *root             = NULL;
+	AlgebraicExpression *src_filter       = NULL;
+	bool                var_len_traversal = QGEdge_VariableLength(e);
 
 	// use original `src` and `dest` for algebraic operands
-	const  char  *src   =  (transpose)               ?  dest_node->alias  :  src_node->alias;
-	const  char  *dest  =  (transpose)               ?  src_node->alias   :  dest_node->alias;
-	const  char  *edge  =  _should_populate_edge(e)  ?  e->alias          :  NULL;
+	const char *src  = (transpose)              ? dest_node->alias : src_node->alias;
+	const char *dest = (transpose)              ? src_node->alias  : dest_node->alias;
+	const char *edge = _should_populate_edge(e) ? e->alias         : NULL;
 
 	// if src node has a label, multiply to the left by label matrix
 	if(QGNode_LabelCount(src_node) > 0) {
 		src_filter = _AlgebraicExpression_OperandFromNode(src_node);
 	}
 
-	// no hops: (a)-[:R*0]->(b)
-	// in this case we want to use the identity matrix
-	// f * I  = f 
-	if(!var_len_traversal && e->minHops == 0) {
-		root = AlgebraicExpression_NewOperand(IDENTITY_MATRIX, true, src, dest,
-				edge, "I");
-	} else {
-		uint reltype_count = array_len(e->reltypeIDs);
-		switch(reltype_count) {
-		case 0: // no relationship types specified; use the adjacency matrix
-			root = AlgebraicExpression_NewOperand(NULL, false, src, dest, edge, NULL);
-			break;
-		case 1: // single relationship type
-			root = AlgebraicExpression_NewOperand(NULL, false, src, dest, edge, e->reltypes[0]);
-			break;
-		default: // multiple edge type: -[:A|:B]->
-			add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
-			for(uint i = 0; i < reltype_count; i++) {
-				AlgebraicExpression *operand = AlgebraicExpression_NewOperand(
-						NULL, false, src, dest, edge, e->reltypes[i]);
-				AlgebraicExpression_AddChild(add, operand);
-			}
-			root = add;
-			break;
+	uint reltype_count = array_len(e->reltypeIDs);
+	switch(reltype_count) {
+	case 0: // no relationship types specified; use the adjacency matrix
+		root = AlgebraicExpression_NewOperand(NULL, false, src, dest, edge, NULL);
+		break;
+	case 1: // single relationship type
+		root = AlgebraicExpression_NewOperand(NULL, false, src, dest, edge, e->reltypes[0]);
+		break;
+	default: // multiple edge type: -[:A|:B]->
+		add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
+		for(uint i = 0; i < reltype_count; i++) {
+			AlgebraicExpression *operand = AlgebraicExpression_NewOperand(
+					NULL, false, src, dest, edge, e->reltypes[i]);
+			AlgebraicExpression_AddChild(add, operand);
 		}
+		root = add;
+		break;
+	}
 
-		if(e->bidirectional) {
-			// ()-[]-()
-			// Adj + Transpose(Adj)
-			//
-			// ()-[:R]-()
-			// R + Transpose(R)
-			//
-			// ()-[:R0|R1]-()
-			// (R0 + R1) + Transpose(R0 + R1)
-			add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
-			AlgebraicExpression_AddChild(add, root);
+	if(e->bidirectional) {
+		// ()-[]-()
+		// Adj + Transpose(Adj)
+		//
+		// ()-[:R]-()
+		// R + Transpose(R)
+		//
+		// ()-[:R0|R1]-()
+		// (R0 + R1) + Transpose(R0 + R1)
+		add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
+		AlgebraicExpression_AddChild(add, root);
 
-			AlgebraicExpression *op_transpose = AlgebraicExpression_NewOperation(AL_EXP_TRANSPOSE);
-			AlgebraicExpression_AddChild(op_transpose, AlgebraicExpression_Clone(root));
-			AlgebraicExpression_AddChild(add, op_transpose);
-			root = add;
+		AlgebraicExpression *op_transpose = AlgebraicExpression_NewOperation(AL_EXP_TRANSPOSE);
+		AlgebraicExpression_AddChild(op_transpose, AlgebraicExpression_Clone(root));
+		AlgebraicExpression_AddChild(add, op_transpose);
+		root = add;
+	}
+
+	// expand fixed variable length edge
+	// -[A*2..2]->
+	// A*A
+	// -[A|B*2..2]->
+	// (A+B) * (A+B)
+	if(!var_len_traversal && e->minHops > 1) {
+		AlgebraicExpression *mul = AlgebraicExpression_NewOperation(AL_EXP_MUL);
+		AlgebraicExpression_AddChild(mul, root);
+		for(int i = 1; i < e->minHops; i++) {
+			// clone to avoid double free
+			AlgebraicExpression_AddChild(mul, AlgebraicExpression_Clone(root));
 		}
-
-		// expand fixed variable length edge
-		// -[A*2..2]->
-		// A*A
-		// -[A|B*2..2]->
-		// (A+B) * (A+B)
-		if(!var_len_traversal && e->minHops > 1) {
-			AlgebraicExpression *mul = AlgebraicExpression_NewOperation(AL_EXP_MUL);
-			AlgebraicExpression_AddChild(mul, root);
-			for(int i = 1; i < e->minHops; i++) {
-				// clone to avoid double free
-				AlgebraicExpression_AddChild(mul, AlgebraicExpression_Clone(root));
-			}
-			root = mul;
-		}
+		root = mul;
 	}
 
 	// transpose entire expression

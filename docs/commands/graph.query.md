@@ -4,16 +4,35 @@ Arguments: `Graph name, Query, Timeout [optional]`
 
 Returns: [Result set](/redisgraph/design/result_structure)
 
+### Queries and Parameterized Queries
+
+The execution plans of queries, both regular and parameterized, are cached (up to [CACHE_SIZE](https://redis.io/docs/stack/graph/configuration/#cache_size) unique queries are cached). Therefore, it is recommended to use parametrized queries when executing many queries with the same pattern but different constants.
+
+Query-level timeouts can be set as described in [the configuration section](/redisgraph/configuration#timeout).
+
+#### Query structure: 
+
+`GRAPH.QUERY graph_name "query"`
+
+example:
+
 ```sh
 GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
 ```
 
-Query-level timeouts can be set as described in [the configuration section](/redisgraph/configuration#timeout).
+#### Parametrized query structure: 
+
+`GRAPH.QUERY graph_name "CYPHER param=val [param=val ...] query"`
+
+example:
+
+```sh
+GRAPH.QUERY us_government "CYPHER state_name='Hawaii' MATCH (p:president)-[:born]->(:state {name:$state_name}) RETURN p"
+```
 
 ### Query language
 
-The syntax is based on [Cypher](http://www.opencypher.org/), and only a subset of the language currently
-supported.
+The syntax is based on [Cypher](http://www.opencypher.org/). [Most](https://redis.io/docs/stack/graph/cypher_support/) of the language is supported. RedisGraph-specific extensions are also described below.
 
 1. [Clauses](#query-structure)
 2. [Functions](#functions)
@@ -994,9 +1013,9 @@ This section contains information on all supported functions from the Cypher que
 | toFloat(_expr_)             | Returns a floating point when _expr_ evaluates to a floating point <br> Converts an integer to a floating point <br> Converts a string to a floating point or null <br> Returns null when _expr_ evaluates to null <br> Error on other types |
 | toFloatList(_exprList_)     | Converts a list to a list of floating points. Each element in the list is converted using toFloatOrNull() |
 | toFloatOrNull(_expr_)       | Returns a floating point when _expr_ evaluates to a floating point <br> Converts an integer to a floating point <br> Converts a string to a floating point or null <br> Returns null when _expr_ evaluates to null <br> Returns null for other types |
-| toInteger(_expr_) *         | Returns an integer when _expr_ evaluates to an integer <br> Converts a floating point to integer <br> Converts a string to an integer or null <br> Converts a Boolean to an integer (false to 0, true to 1) <br> Returns null when _expr_ evaluates to null <br> Error on other types |
+| toInteger(_expr_) *         | Returns an integer when _expr_ evaluates to an integer <br> Converts a floating point to integer <br> Converts a string to an integer or null <br> Converts a Boolean to an integer (false to 0, true to 1) (Since RedisGraph v2.10.8) <br> Returns null when _expr_ evaluates to null <br> Error on other types |
 | toIntegerList(_exprList_) * | Converts a list to a list of integer values. Each element in the list is converted using toIntegerOrNull() |
-| toIntegerOrNull(_expr_) *   | Returns an integer when _expr_ evaluates to an integer <br> Converts a floating point to integer <br> Converts a string to an integer or null <br> Converts a Boolean to an integer (false to 0, true to 1) <br> Returns null when _expr_ evaluates to null <br> Returns null for other types |
+| toIntegerOrNull(_expr_) *   | Returns an integer when _expr_ evaluates to an integer <br> Converts a floating point to integer <br> Converts a string to an integer or null <br> Converts a Boolean to an integer (false to 0, true to 1) (Since RedisGraph v2.10.8) <br> Returns null when _expr_ evaluates to null <br> Returns null for other types |
 | toString(_expr_)            | Returns a string when _expr_ evaluates to a string <br> Converts an integer, float, Boolean, string, or point to a string representation <br> Returns null when _expr_ evaluates to null <br> Error on other types |
 | toStringList(_exprList_)    | Converts a list to a list of strings. Each element in the list is converted using toStringOrNull() | 
 | toStringOrNull(_expr_)      | Returns a string when _expr_ evaluates to a string <br> Converts an integer, float, Boolean, string, or point to a string representation <br> Returns null when _expr_ evaluates to null <br> Returns null for other types |
@@ -1007,8 +1026,8 @@ This section contains information on all supported functions from the Cypher que
 
 |Function      | Description|
 | ------------ |:-----------|
-|indegree(_node_ [, _label_...]) *   | When no labels are specified: Returns the number of _node_'s incoming edges <br> When one or more labels are specified: Returns the number of _node's_ incoming edges with one of the given labels <br> Return null when _node_ is evaluates to null |
-|outdegree(_node_ [, _labels_...]) * | When no labels are specified: Returns the number of _node_'s outgoing edges <br> When one or more labels are specified: Returns the number of _node's_ outgoing edges with one of the given labels <br> Return null when _node_ is evaluates to null |
+|indegree(_node_ [, _reltype_ ...]) * <br> indegree(_node_ [, _reltypeList_]) *   | When no relationship types are specified: Returns the number of _node_'s incoming edges <br> When one or more relationship types are specified: Returns the number of _node's_ incoming edges with one of the given relationship types <br> Return null when _node_ evaluates to null <br> the _reltypeList_ syntax is supported since RedisGraph v2.10.8 |
+|outdegree(_node_ [, _reltype_ ...]) * <br> outdegree(_node_ [, _reltypeList_]) * | When no relationship types are specified: Returns the number of _node_'s outgoing edges <br> When one or more relationship types are specified: Returns the number of _node's_ outgoing edges with one of the given relationship types <br> Return null when _node_ evaluates to null <br> the _reltypeList_ syntax is supported since RedisGraph v2.10.8 |
 
 &#42; RedisGraph-specific extensions to Cypher
 
