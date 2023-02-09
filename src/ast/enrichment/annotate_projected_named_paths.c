@@ -156,6 +156,23 @@ static void _annotate_unwind_clause_projected_named_path(AST *ast,
 	raxFreeWithCallback(identifier_map, array_free);
 }
 
+static void _annotate_foreach_clause_projected_named_path(AST *ast,
+														 const cypher_astnode_t *foreach_clause, uint scope_start, uint scope_end) {
+	rax *identifier_map = raxNew();
+	// collect identifiers from list expression
+	const cypher_astnode_t *exp =
+		cypher_ast_foreach_get_expression(foreach_clause);
+	_collect_projected_identifier(exp, identifier_map);
+
+	// annotate named paths for the list expression only, as it can be defined
+	// before the FOREACH clause only.
+	_annotate_relevant_projected_named_path_identifier(ast,
+		identifier_map, scope_start, scope_end);
+	// remove the list expression from the identifier_map
+	raxFreeWithCallback(identifier_map, array_free);
+	identifier_map = raxNew();
+}
+
 static void _annotate_return_clause_projected_named_path(AST *ast,
 														 const cypher_astnode_t *return_clause, uint scope_start, uint scope_end) {
 	rax *identifier_map = raxNew();
@@ -208,6 +225,14 @@ static void _annotate_projected_named_path(AST *ast) {
 			scope_end = i;
 			const cypher_astnode_t *match_clause = cypher_ast_query_get_clause(ast->root, i);
 			_annotate_match_clause_projected_named_path(ast, match_clause, scope_start, scope_end);
+			// Do not update scope start!
+		}
+		else if(cypher_astnode_type(child) == CYPHER_AST_FOREACH) {
+			scope_end = i;
+			const cypher_astnode_t *foreach_clause =
+				cypher_ast_query_get_clause(ast->root, i);
+			_annotate_foreach_clause_projected_named_path(ast,
+				foreach_clause, scope_start, scope_end);
 			// Do not update scope start!
 		}
 	}

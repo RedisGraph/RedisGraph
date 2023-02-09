@@ -255,6 +255,10 @@ static void _buildForeachOp
 	// connect foreach op to its child operation
 	ExecutionPlan_AddOp(foreach, embedded_plan->root);
 
+	// introduce the list-components variable (alias) to the record-map of the
+	// main plan
+	OpBase_Modifies(foreach, exp->resolved_name);
+
 	// free the temporary plan after disconnecting the shared components with
 	// the main plan
 	embedded_plan->root                 = NULL;
