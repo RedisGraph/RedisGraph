@@ -172,7 +172,7 @@ static void _annotate_foreach_clause_projected_named_path(AST *ast,
 	raxFreeWithCallback(identifier_map, array_free);
 	identifier_map = raxNew();
 
-	cypher_astnode_t ** clauses = array_new(cypher_astnode_t *, 1);
+	cypher_astnode_t **clauses = array_new(cypher_astnode_t *, 1);
 	uint nclauses = cypher_ast_foreach_nclauses(foreach_clause);
 	for(uint i = 0; i < nclauses; i++) {
 		array_append(clauses, (cypher_astnode_t *)cypher_ast_foreach_get_clause(foreach_clause, i));
@@ -197,6 +197,7 @@ static void _annotate_foreach_clause_projected_named_path(AST *ast,
 
 	// annotate named paths defined inside the body
 	_annotate_relevant_projected_named_path_identifier(&subquery_clauses_ast, identifier_map, 0, nclauses-1);
+	array_free(clauses);
 	// TODO: Fix the above call. It allows to define the named path AFTER using it.
 	raxFreeWithCallback(identifier_map, array_free);
 }
