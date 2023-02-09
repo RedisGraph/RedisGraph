@@ -519,13 +519,16 @@ class testForeachFlow():
         graph = Graph(self.env.getConnection(), GRAPH_ID)
 
         # create some data
-        graph.query(
+        res = graph.query(
             """
             CREATE (:Actor{id:'Marketing'}),
                    (:Actor{id:'vietld'}),
                    (:Actor{id:'phuongdd'})
             """
         )
+
+        # make sure three relationships was created
+        self.env.assertEquals(res.nodes_created, 3)
 
         res = graph.query(
             """
@@ -536,15 +539,45 @@ class testForeachFlow():
             )
             """
         )
+
+        # make sure two relationships was created
         self.env.assertEquals(res.relationships_created, 2)
 
         res = graph.query(
             """
-            MATCH (u:Actor), (g:Actor { id: 'Marketing' })
+            MATCH path = (u:Actor), (g:Actor { id: 'Marketing' })
             WHERE u.id = 'vietld' OR u.id = 'phuongdd'
-            FOREACH (n IN CASE WHEN u.id = 'vietld' THEN [u] ELSE [] END |
+            FOREACH (n IN CASE WHEN u.id = 'vietld' THEN nodes(path) ELSE [] END |
                 CREATE (n)-[:belong]->(g)
             )
             """
         )
+
+        # make sure one relationship was created
         self.env.assertEquals(res.relationships_created, 1)
+
+        # reference the named path inside the FOREACH body
+        res = graph.query(
+            """
+            MATCH path = (u: Actor)
+            FOREACH (n IN CASE WHEN u.id = 'vietld' THEN nodes(path) ELSE [] END |
+                MERGE (:Actor {id: nodes(path)[0].id})
+            )
+            """
+        )
+
+        # define the named path in the FOREACH clauses, and refer them
+        res = graph.query(
+            """
+            FOREACH (n in [1] |
+                MERGE p = (a:Actor {id: 'vietld'})
+                FOREACH (node in nodes(p) |
+                    MERGE (:Actor {id: 'vietld'})
+                )
+            )
+            """
+        )
+
+        # make sure no nodes were created and no properties were set
+        self.env.assertEquals(res.nodes_created, 0)
+        self.env.assertEquals(res.properties_set, 0)

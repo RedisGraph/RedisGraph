@@ -171,6 +171,34 @@ static void _annotate_foreach_clause_projected_named_path(AST *ast,
 	// remove the list expression from the identifier_map
 	raxFreeWithCallback(identifier_map, array_free);
 	identifier_map = raxNew();
+
+	cypher_astnode_t ** clauses = array_new(cypher_astnode_t *, 1);
+	uint nclauses = cypher_ast_foreach_nclauses(foreach_clause);
+	for(uint i = 0; i < nclauses; i++) {
+		array_append(clauses, (cypher_astnode_t *)cypher_ast_foreach_get_clause(foreach_clause, i));
+	}
+	struct cypher_input_range range = {0};
+	cypher_astnode_t *query_node = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, nclauses,
+		clauses, nclauses, range);
+
+	AST subquery_clauses_ast = {
+		.root = query_node,
+		.anot_ctx_collection = ast->anot_ctx_collection,
+		.referenced_entities = ast->referenced_entities
+	};
+
+	// collect identifiers from body
+	for(uint i = 0; i < nclauses; i++) {
+		exp = cypher_ast_foreach_get_clause(foreach_clause, i);
+		_collect_projected_identifier(exp, identifier_map);
+	}
+	// annotate named paths referring the outer scope
+	_annotate_relevant_projected_named_path_identifier(ast, identifier_map, scope_start, scope_end);
+
+	// annotate named paths defined inside the body
+	_annotate_relevant_projected_named_path_identifier(&subquery_clauses_ast, identifier_map, 0, nclauses-1);
+	// TODO: Fix the above call. It allows to define the named path AFTER using it.
+	raxFreeWithCallback(identifier_map, array_free);
 }
 
 static void _annotate_return_clause_projected_named_path(AST *ast,
