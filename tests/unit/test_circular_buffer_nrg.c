@@ -320,6 +320,11 @@ void delete_element(void *user_data, void *item) {
     ++(*deleted_counter);
 }
 
+void delete_count(void *user_data, void *item) {
+    uint64_t *deleted_counter = (uint64_t*)user_data;
+    ++(*deleted_counter);
+}
+
 void test_CircularBufferNRG_TestCustomDeleterIsUsedProperly(void) {
     CircularBufferNRG cb = CircularBufferNRG_New(sizeof(char *), 2);
     uint64_t deleted_counter = 0;
@@ -346,6 +351,12 @@ void test_CircularBufferNRG_TestCustomDeleterIsUsedProperly(void) {
 
     CircularBufferNRG_Free(cb);
     ASSERT_EQ(deleted_counter, 3);
+}
+
+void clone_func(const void *source, void *destination, void *user_data) {
+    uint64_t *copied_counter = (uint64_t*)user_data;
+    *(uint8_t*)destination = *(uint8_t*)source;
+    ++(*copied_counter);
 }
 
 typedef struct Reallocation {
@@ -388,11 +399,25 @@ void test_CircularBufferNRG_TestResetCapacitySingleStageWithReallocation(void) {
         const uint64_t original_item_count = CircularBufferNRG_ItemCount(cb);
         ASSERT_EQ(original_item_count, MIN(param.initial_elements_count, param.initialCapacity));
 
+        uint64_t deleted_counter = 0;
+        CircularBufferNRG_SetDeleter(
+            cb,
+            delete_count,
+            (void *)&deleted_counter
+        );
+        uint64_t copied_counter = 0;
+        CircularBufferNRG_SetItemClone(
+            cb,
+            clone_func,
+            (void*)&copied_counter
+        );
         CircularBufferNRG old_address = cb;
         TEST_ASSERT(CircularBufferNRG_SetCapacity(&cb, param.newCapacity));
         if (param.expectedReallocation) {
             // The address has changed, meaning there has been a reallocation.
             ASSERT_NE(old_address, cb);
+            ASSERT_EQ(deleted_counter, original_item_count);
+            ASSERT_EQ(copied_counter, MIN(param.newCapacity, original_item_count));
         } else {
             // The address hasn't changed, meaning there has been no reallocation.
             ASSERT_EQ(old_address, cb);

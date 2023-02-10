@@ -61,8 +61,49 @@
         } \
     } while (0);
 
+// This specifies the unlocking destructor for the ScopedRwlock object.
+// It is convenient to use when there are multiple branches of code which lead
+// to an exit from the function, to avoid writing the unlocking code if the
+// locking primitive is locked. It also reduces possible mistakes when the
+// unlock is forgotten to be done as it is done automatically when this is used.
+#define SCOPED_RWLOCK __attribute__ ((__cleanup__(_rwlock_cleanup)))
+
 static bool _lock_rwlock(pthread_rwlock_t *, const bool);
 static bool _unlock_rwlock(pthread_rwlock_t *);
+
+// An rwlock wrapper to be used with the SCOPED_RWLOCK macro.
+typedef struct ScopedRwlock {
+    pthread_rwlock_t *lock;
+    bool is_locked;
+    bool is_write;
+} ScopedRwlock;
+
+static ScopedRwlock ScopedRwlock_New
+(
+    pthread_rwlock_t *lock,
+    const bool is_write
+) {
+    ASSERT(lock);
+
+    const ScopedRwlock scoped = {
+        .lock = lock,
+        .is_write = is_write,
+        .is_locked = lock ? _lock_rwlock(lock, is_write) : false
+    };
+
+    return scoped;
+}
+
+// The cleanup function to be used by the `SCOPED_RWLOCK` macro for automatically
+// unlocking an rwlock.
+static void _rwlock_cleanup
+(
+    ScopedRwlock *scoped_lock
+) {
+    if (scoped_lock && scoped_lock->lock && scoped_lock->is_locked) {
+        ASSERT(_unlock_rwlock(scoped_lock->lock));
+    }
+}
 
 static CircularBufferNRG finished_queries;
 static pthread_rwlock_t finished_queries_rwlock = PTHREAD_RWLOCK_INITIALIZER;
@@ -185,19 +226,20 @@ void FinishedQueryInfo_Free(const FinishedQueryInfo query_info) {
 }
 
 static void _add_finished_query(const FinishedQueryInfo info) {
-    const bool locked = _lock_rwlock(&finished_queries_rwlock, true);
-    ASSERT(locked);
-    if (unlikely(!locked)) {
+    ScopedRwlock lock SCOPED_RWLOCK = ScopedRwlock_New(
+        &finished_queries_rwlock,
+        true);
+
+    ASSERT(lock.is_locked);
+    if (unlikely(!lock.is_locked)) {
         return;
     }
+
     if (unlikely(!finished_queries)) {
-        const bool unlocked = _unlock_rwlock(&finished_queries_rwlock);
-        ASSERT(unlocked);
         return;
     }
+
     CircularBufferNRG_Add(finished_queries, (const void*)&info);
-    const bool unlocked = _unlock_rwlock(&finished_queries_rwlock);
-    ASSERT(unlocked);
 }
 
 static bool _lock_rwlock
@@ -1035,23 +1077,55 @@ static void _FinishedQueryInfoDeleter(void *user_data, void *info) {
     }
 }
 
+static void _FinishedQueryInfoClone
+(
+    const void *item_to_clone,
+    void *destination_item,
+    void *user_data
+) {
+    ASSERT(item_to_clone);
+    ASSERT(destination_item);
+    UNUSED(user_data);
+
+    FinishedQueryInfo *source = (FinishedQueryInfo*)item_to_clone;
+    FinishedQueryInfo *destination = (FinishedQueryInfo*)destination_item;
+
+    *destination = *source;
+
+    if (destination->query_string) {
+        destination->query_string = strdup(destination->query_string);
+    }
+
+    if (destination->graph_name) {
+        destination->graph_name = strdup(destination->graph_name);
+    }
+}
+
 void Info_SetCapacityForFinishedQueriesStorage(const uint32_t count) {
-    const bool locked = _lock_rwlock(&finished_queries_rwlock, true);
-    ASSERT(locked);
-    if (!locked) {
+    ScopedRwlock lock SCOPED_RWLOCK = ScopedRwlock_New(
+        &finished_queries_rwlock,
+        true
+    );
+
+    ASSERT(lock.is_locked);
+    if (!lock.is_locked) {
         return;
     }
+
     if (!finished_queries) {
         finished_queries = CircularBufferNRG_New(sizeof(FinishedQueryInfo), count);
         CircularBufferNRG_SetDeleter(
             finished_queries,
             _FinishedQueryInfoDeleter,
             NULL);
+        CircularBufferNRG_SetItemClone(
+            finished_queries,
+            _FinishedQueryInfoClone,
+            NULL
+        );
     } else {
         CircularBufferNRG_SetCapacity(&finished_queries, count);
     }
-    const bool unlocked = _unlock_rwlock(&finished_queries_rwlock);
-    ASSERT(unlocked);
 }
 
 void Info_ViewAllFinishedQueries
@@ -1063,14 +1137,15 @@ void Info_ViewAllFinishedQueries
     if (!finished_queries) {
         return;
     }
-    const bool locked = _lock_rwlock(&finished_queries_rwlock, false);
-    ASSERT(locked);
-    if (!locked) {
+
+    ScopedRwlock lock SCOPED_RWLOCK = ScopedRwlock_New(
+        &finished_queries_rwlock,
+        false);
+
+    ASSERT(lock.is_locked);
+    if (!lock.is_locked) {
         return;
     }
 
     CircularBufferNRG_ViewAll(finished_queries, callback, user_data);
-
-    const bool unlocked = _unlock_rwlock(&finished_queries_rwlock);
-    ASSERT(unlocked);
 }
