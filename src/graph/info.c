@@ -187,7 +187,12 @@ void FinishedQueryInfo_Free(const FinishedQueryInfo query_info) {
 static void _add_finished_query(const FinishedQueryInfo info) {
     const bool locked = _lock_rwlock(&finished_queries_rwlock, true);
     ASSERT(locked);
-    if (unlikely(!locked || !finished_queries)) {
+    if (unlikely(!locked)) {
+        return;
+    }
+    if (unlikely(!finished_queries)) {
+        const bool unlocked = _unlock_rwlock(&finished_queries_rwlock);
+        ASSERT(unlocked);
         return;
     }
     CircularBufferNRG_Add(finished_queries, (const void*)&info);
