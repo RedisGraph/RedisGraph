@@ -717,7 +717,37 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
         except redis.exceptions.ResponseError as e:
             self.env.assertEquals(UNKNOWN_SUBCOMMAND, str(e), depth=1)
 
-    def test11_the_command_is_disabled(self):
+    def test11_change_finished_queries_limit(self):
+        '''
+        Perform two queries and check that one(the last) appears in the
+        PREV output. It should be there as we've just raised the limit to one.
+        Also, we should check that this is the last query there, not the first,
+        as we use a circular buffer for that purpose and we want to keep track
+        of only the "last N" entries.
+        '''
+        MAX_QUERIES = 1
+
+        self._recreate_graph_empty()
+        result = self.conn.execute_command('GRAPH.CONFIG', 'set', 'MAX_INFO_QUERIES', MAX_QUERIES)
+        self.env.assertIn("OK", str(result), depth=1)
+
+        queries = [
+            """UNWIND (range(0, 10)) AS x WITH x AS x WHERE (x / 7) = 1 RETURN x""",
+            """UNWIND (range(0, 10)) AS x WITH x AS x WHERE (x / 7) = 1 RETURN x""",
+        ]
+
+        for query in queries:
+            graph = Graph(self.conn, GRAPH_ID)
+            results = graph.query(query)
+            self.env.assertEquals(results.result_set[0][0], 7, depth=1)
+
+        # Check that the query stored is the last execute one.
+        results = self.conn.execute_command(INFO_QUERIES_PREV_COMMAND)
+        self.env.assertEquals(len(results[1]), MAX_QUERIES)
+        last_query = results[1][-1]
+        self.env.assertEquals(last_query[-5], queries[-1])
+
+    def test12_the_command_is_disabled(self):
         env = Env(decodeResponses=True, moduleArgs='CMD_INFO no')
         conn = env.getConnection()
         queries = [
@@ -732,11 +762,6 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
                     f"Shouldn't have reached with this point, result: {results}"
             except redis.exceptions.ResponseError as e:
                 env.assertEquals(COMMAND_IS_DISABLED, str(e), depth=1)
-
-    def test12_change_finished_queries_limit(self):
-        pass
-        # self._recreate_graph_empty()
-
 
 # This test is separate as it needs a separate and a non-concurrent context.
 class testGraphInfoGetFlow(_testGraphInfoFlowBase):

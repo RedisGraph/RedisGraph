@@ -17,6 +17,11 @@ typedef struct ElementDeleteInfo {
     void *user_data;
 } ElementDeleteInfo;
 
+typedef struct ElementCloneInfo {
+    CircularBufferNRG_CloneItem clone;
+    void *user_data;
+} ElementCloneInfo;
+
 // A FIFO circular queue.
 struct _CircularBufferNRG {
     uint64_t read_offset;
@@ -25,6 +30,7 @@ struct _CircularBufferNRG {
     uint64_t item_count;
     bool is_circled;
     ElementDeleteInfo delete_info;
+    ElementCloneInfo clone_info;
     uint8_t *end_marker;
     uint8_t data[];
 };
@@ -66,6 +72,36 @@ static void _DeleteElement(
     info.deleter(info.user_data, item);
 }
 
+static void _CloneElement(
+    const void *source,
+    void *destination,
+    ElementCloneInfo info
+) {
+    if (!info.clone) {
+        return;
+    }
+
+    info.clone(source, destination, info.user_data);
+}
+
+static void _CopyRegion(
+    const void *source,
+    void *destination,
+    const uint64_t size_of_item,
+    const uint64_t element_count,
+    ElementCloneInfo info
+) {
+    if (!info.clone) {
+        memcpy(destination, source, size_of_item * element_count);
+    } else {
+        for (uint64_t i = 0; i < element_count; ++i) {
+            const void *source_pos = source + i * size_of_item;
+            void *destination_pos = destination + i * size_of_item;
+            info.clone(source_pos, destination_pos, info.user_data);
+        }
+    }
+}
+
 CircularBufferNRG CircularBufferNRG_New
 (
     const uint64_t item_size,
@@ -87,6 +123,7 @@ CircularBufferNRG CircularBufferNRG_New
     cb->item_count = 0;
     cb->is_circled = false;
     memset(&cb->delete_info, 0, sizeof(ElementDeleteInfo));
+    memset(&cb->clone_info, 0, sizeof(ElementCloneInfo));
     cb->end_marker = cb->data + size_of_data;
 
     return cb;
@@ -101,6 +138,17 @@ void CircularBufferNRG_SetDeleter
     ASSERT(cb);
     cb->delete_info.deleter = deleter;
     cb->delete_info.user_data = user_data;
+}
+
+void CircularBufferNRG_SetItemClone
+(
+    CircularBufferNRG cb,
+    CircularBufferNRG_CloneItem clone,
+    void *user_data
+) {
+    ASSERT(cb);
+    cb->clone_info.clone = clone;
+    cb->clone_info.user_data = user_data;
 }
 
 uint64_t CircularBufferNRG_GetCapacity(const CircularBufferNRG cb) {
@@ -184,11 +232,17 @@ bool CircularBufferNRG_SetCapacity
     // If we can, this is simple:
     if (last_written_offset >= number_of_elements) {
         // Just copy the last "number_of_elements" elements.
-        const uint8_t *copy_from
+        const void *copy_from
             = cb->data + (cb->write_offset - number_of_elements) * cb->item_size;
         const uint64_t copy_amount
             = number_of_elements * cb->item_size;
-        memcpy(new_cb->data, copy_from, copy_amount);
+        _CopyRegion(
+            copy_from,
+            new_cb->data,
+            cb->item_size,
+            number_of_elements,
+            cb->clone_info
+        );
     } else {
         // Else if we can't, we split into the two stages as explained above.
         // This is going to be the number of elements we should copy from the
@@ -200,16 +254,28 @@ bool CircularBufferNRG_SetCapacity
         // 2. Copy from the end of the buffer, "the remainder":
         const uint64_t first_stage_bytes
             = how_many_from_the_end_of_buffer * cb->item_size;
-        const uint8_t *first_stage_from
+        const void *first_stage_from
             = cb->end_marker - first_stage_bytes;
-        memcpy(new_cb->data, first_stage_from, first_stage_bytes);
+        _CopyRegion(
+            first_stage_from,
+            new_cb->data,
+            cb->item_size,
+            how_many_from_the_end_of_buffer,
+            cb->clone_info
+        );
         // 1. Copy from the zeroth offset till the write offset.
         const uint64_t second_stage_bytes
             = how_many_from_the_write_offset * cb->item_size;
-        const uint8_t *second_stage_from
+        const void *second_stage_from
             = cb->data;
         void *second_stage_to = new_cb->data + first_stage_bytes;
-        memcpy(second_stage_to, second_stage_from, second_stage_bytes);
+        _CopyRegion(
+            second_stage_from,
+            second_stage_to,
+            cb->item_size,
+            how_many_from_the_write_offset,
+            cb->clone_info
+        );
     }
 
     // The very first unread element is copied directly to the beginning.
@@ -219,6 +285,7 @@ bool CircularBufferNRG_SetCapacity
     new_cb->item_count = number_of_elements;
     new_cb->is_circled = new_cb->write_offset == 0;
     memcpy(&new_cb->delete_info, &cb->delete_info, sizeof(ElementDeleteInfo));
+    memcpy(&new_cb->clone_info, &cb->clone_info, sizeof(ElementCloneInfo));
 
     CircularBufferNRG_Free(cb);
     *cb_ptr = new_cb;

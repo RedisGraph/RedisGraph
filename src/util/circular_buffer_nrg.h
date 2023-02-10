@@ -40,6 +40,7 @@ typedef _CircularBufferNRG* CircularBufferNRG;
 // Should return true if the read has to be stopped right after the invocation.
 typedef bool (*CircularBufferNRG_ReadAllCallback)(void *user_data, const void *item);
 typedef void (*CircularBufferNRG_ElementFree)(void *user_data, void *item);
+typedef void (*CircularBufferNRG_CloneItem)(const void *item_to_clone, void *destination_item, void *user_data);
 
 CircularBufferNRG CircularBufferNRG_New
 (
@@ -51,6 +52,13 @@ void CircularBufferNRG_SetDeleter
 (
     CircularBufferNRG cb,
     CircularBufferNRG_ElementFree deleter,
+    void *user_data
+);
+
+void CircularBufferNRG_SetItemClone
+(
+    CircularBufferNRG cb,
+    CircularBufferNRG_CloneItem clone,
     void *user_data
 );
 
